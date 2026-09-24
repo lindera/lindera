@@ -341,6 +341,46 @@ ko-dicは漢数詞を形態素単位に分割するため、`이/NR 천/NR 이/N
 
 空白の直後の`만`は既定の左側空白ペナルティにより`NR`になりますが、文頭や他の数詞の直後ではko-dicが`JX`と判定するため（`만 원`、`십만 원`）、`["SN", "NR"]`では結合されません。
 
+### korean_decompound
+
+ko-dic の複合語・活用形・기분석トークンを、`expression`フィールドが示す形態素に分割します。Lucene nori の`DecompoundMode`と同じ動作で、隣接トークンを結合する`korean_compound_word`の逆操作にあたります。Lindera の`Mode::Decompose`は日本語の漢字向けに調整された長さペナルティであり、これらのフィールドを読まないため、このフィルタなしでは`무궁화`はどのモードでも分割されません。
+
+| 入力 | ko-dic のトークン | `mode: "discard"` | `mode: "mixed"` |
+| --- | --- | --- | --- |
+| `무궁화꽃이` | `무궁화/NNG 꽃/NNG 이/JKS` | `무궁 화 꽃 이` | `무궁화 무궁 화 꽃 이` |
+| `가곡역` | `가곡역/NNP` | `가곡 역` | `가곡역 가곡 역` |
+
+断片のオフセットは nori に合わせています。自身のバイト範囲を持つのは`Compound`の断片だけで、トークンの範囲を各断片の長さで分割します。`Inflect`と`Preanalysis`の断片はトークン全体の範囲を共有します。活用形の断片は元の表層形の部分文字列とは限らないためです（`갔`は`가` + `았`に分解されます）。
+
+`discard`では断片が複合語自身の位置から連番で並び、`mixed`では複合語がその位置に`position_length`を断片数として残り、断片が同じ位置から続きます。展開後のトークンは増えた位置の分だけ後ろにずれ、それ以外はずれないため、`korean_stop_tags`など先行フィルタが残した位置の隙間は保たれます。
+
+断片は自身の品詞タグと意味分類を持ち、複合語自体を説明するフィールド（`type`、`expression`、`first_part_of_speech`、`last_part_of_speech`、`reading`、`presence_absence`）は空になります。読みを空にするのは nori と同じ挙動で、nori の`DecompoundToken.getReading()`は`null`を返します。`korean_reading_form`は`*`をスキップするため、断片は自身の表層形を保ちます。
+
+スキーマに`type`/`expression`フィールドがない辞書に適用した場合、フィルタは一度だけ警告を出し、すべてのトークンをそのまま通過させます。
+
+**パラメータ:**
+
+| パラメータ | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| `mode` | string | いいえ | `"discard"`（デフォルト、nori と同じ）は複合語を断片で置き換え、`"mixed"`は複合語を残したうえで断片も出力します |
+| `types` | array\<string\> | いいえ | 分解対象の`type`値。デフォルトは`["Compound", "Inflect", "Preanalysis"]` |
+
+**例:**
+
+```json
+{
+  "kind": "korean_decompound",
+  "args": {
+    "mode": "discard",
+    "types": [
+      "Compound",
+      "Inflect",
+      "Preanalysis"
+    ]
+  }
+}
+```
+
 ### korean_keep_tags
 
 最初の品詞タグが`tags`のいずれかに一致する韓国語トークンのみを保持します。

@@ -1611,6 +1611,7 @@ dependencies = [
  "kanaria",
  "lindera-dictionary",
  "lindera-segmenter",
+ "log",
  "once_cell",
  "regex",
  "serde",
