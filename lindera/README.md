@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Crates.io](https://img.shields.io/crates/v/lindera.svg)](https://crates.io/crates/lindera)
 
-A morphological analysis library in Rust. This project fork from [kuromoji-rs](https://github.com/fulmicoton/kuromoji-rs).
+A morphological analysis library in Rust. This project is forked from [kuromoji-rs](https://github.com/fulmicoton/kuromoji-rs).
 
 Lindera aims to build a library which is easy to install and provides concise APIs for various Rust applications.
 
@@ -16,15 +16,30 @@ As of v5.0, this crate is a pure morphological segmenter around the
 ```toml
 [dependencies]
 # Pure segmenter
-lindera = "5"
+lindera = "6"
 
 # With the analysis chain (character filters, token filters, Tokenizer)
-lindera = "5"
-lindera-analysis = "5"
+lindera = "6"
+lindera-analysis = "6"
 ```
 
-See the [migration guide](https://lindera.github.io/lindera/migration_v4_to_v5.html)
-when upgrading from v4.
+The main feature flags of this crate:
+
+| Feature | Description | Default |
+| --- | --- | --- |
+| `mmap` | Memory-mapped dictionary loading | Yes |
+| `train` | CRF-based dictionary training (depends on `lindera-trainer`) | No |
+| `embed-ipadic`, `embed-ipadic-neologd`, `embed-unidic`, `embed-sudachidict` | Embed a Japanese dictionary in the binary | No |
+| `embed-ko-dic` | Embed the Korean dictionary (ko-dic) in the binary | No |
+| `embed-cc-cedict`, `embed-jieba` | Embed a Chinese dictionary in the binary | No |
+
+The examples below use `embed-ipadic`. Without an `embed-*` feature, load a
+pre-built dictionary from its path instead (`load_dictionary("/path/to/ipadic")`).
+See [Feature Flags](https://lindera.github.io/lindera/development/feature_flags.html)
+for the full list, including the `embed-cjk*` bundles.
+
+See the [migration guide](https://lindera.github.io/lindera/migration_v5_to_v6.html)
+when upgrading from v5.
 
 ## Segmentation example
 
@@ -34,7 +49,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "5", features = ["embed-ipadic"] }
+lindera = { version = "6", features = ["embed-ipadic"] }
 ```
 
 This example covers the basic usage of Lindera as a pure segmenter — no
@@ -76,6 +91,15 @@ The above example can be run as follows:
 % cargo run -p lindera --features=embed-ipadic --example=segment
 ```
 
+You can see the result as follows:
+
+```text
+text:   関西国際空港限定トートバッグ
+token:  関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
+token:  限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
+token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
+```
+
 ## Tokenization examples
 
 The `Tokenizer` and the filter chain below are provided by the
@@ -83,8 +107,8 @@ The `Tokenizer` and the filter chain below are provided by the
 
 ```toml
 [dependencies]
-lindera = { version = "5", features = ["embed-ipadic"] }
-lindera-analysis = "5"
+lindera = { version = "6", features = ["embed-ipadic"] }
+lindera-analysis = "6"
 ```
 
 ### Basic tokenization
@@ -111,7 +135,7 @@ fn main() -> LinderaResult<()> {
 
     let text = "関西国際空港限定トートバッグ";
     let mut tokens = tokenizer.tokenize(text)?;
-    println!("text:\t{}", text);
+    println!("text:\t{text}");
     for token in tokens.iter_mut() {
         let details = token.details().join(",");
         println!("token:\t{}\t{}", token.surface.as_ref(), details);
@@ -133,7 +157,7 @@ You can see the result as follows:
 text:   関西国際空港限定トートバッグ
 token:  関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 token:  限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-token:  トートバッグ    UNK
+token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 ```
 
 ### Tokenization with user dictionary
@@ -148,20 +172,22 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "5", features = ["embed-ipadic"] }
-lindera-analysis = "5"
+lindera = { version = "6", features = ["embed-ipadic"] }
+lindera-analysis = "6"
+anyhow = "1"
+serde_json = "1"
 ```
 
 For example:
 
 ```shell
-% cat ./resources/simple_userdic.csv
+% cat ./resources/user_dict/ipadic_simple_userdic.csv
 東京スカイツリー,カスタム名詞,トウキョウスカイツリー
 東武スカイツリーライン,カスタム名詞,トウブスカイツリーライン
 とうきょうスカイツリー駅,カスタム名詞,トウキョウスカイツリーエキ
 ```
 
-With an user dictionary, `Tokenizer` will be created as follows:
+With a user dictionary, `Tokenizer` will be created as follows:
 
 ```rust
 use std::fs::File;
@@ -177,6 +203,7 @@ use lindera::LinderaResult;
 fn main() -> LinderaResult<()> {
     let user_dict_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../resources")
+        .join("user_dict")
         .join("ipadic_simple_userdic.csv");
 
     let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -206,7 +233,7 @@ fn main() -> LinderaResult<()> {
     let mut tokens = tokenizer.tokenize(text)?;
 
     // Print the text and tokens.
-    println!("text:\t{}", text);
+    println!("text:\t{text}");
     for token in tokens.iter_mut() {
         let details = token.details().join(",");
         println!("token:\t{}\t{}", token.surface.as_ref(), details);
@@ -235,32 +262,32 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "5", features = ["embed-ipadic"] }
-lindera-analysis = "5"
+lindera = { version = "6", features = ["embed-ipadic"] }
+lindera-analysis = "6"
 ```
 
-This example covers the basic usage of Lindera Analysis Framework.
+This example builds an analysis chain with character filters and token filters.
 
 It will:
 
-- Apply character filter for Unicode normalization (NFKC)
+- Apply character filters for Unicode normalization (NFKC) and Japanese iteration marks
 - Tokenize the input text with IPADIC
-- Apply token filters for removing stop tags (Part-of-speech) and Japanese Katakana stem filter
+- Apply token filters that merge consecutive numeral tokens, convert Japanese numerals to Arabic numerals, and remove tokens by part-of-speech tag
 
 ```rust
-    use lindera_analysis::character_filter::BoxCharacterFilter;
-    use lindera_analysis::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
-    use lindera_analysis::character_filter::unicode_normalize::{
-        UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
-    };
-    use lindera::dictionary::load_dictionary;
-    use lindera::mode::Mode;
-    use lindera::segmenter::Segmenter;
-    use lindera_analysis::token_filter::BoxTokenFilter;
-    use lindera_analysis::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
-    use lindera_analysis::token_filter::japanese_number::JapaneseNumberTokenFilter;
-    use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
-    use lindera_analysis::tokenizer::Tokenizer;
+use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera_analysis::character_filter::BoxCharacterFilter;
+use lindera_analysis::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
+use lindera_analysis::character_filter::unicode_normalize::{
+    UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
+};
+use lindera_analysis::token_filter::BoxTokenFilter;
+use lindera_analysis::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+use lindera_analysis::token_filter::japanese_number::JapaneseNumberTokenFilter;
+use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
@@ -336,7 +363,7 @@ fn main() -> LinderaResult<()> {
     let tokens = tokenizer.tokenize(text)?;
 
     // Print the text and tokens.
-    println!("text: {}", text);
+    println!("text: {text}");
     for token in tokens {
         println!(
             "token: {:?}, start: {:?}, end: {:?}, details: {:?}",
@@ -389,13 +416,12 @@ character_filters:
       normalize_kana: true
   - kind: mapping
     args:
-       mapping:
-         リンデラ: Lindera
+      mapping:
+        リンデラ: Lindera
 
 token_filters:
   - kind: "japanese_compound_word"
     args:
-      kind: "ipadic"
       # Merge the numeral tokens only. A counter merged into the number token keeps japanese_number from converting it.
       tags:
         - "名詞,数"
@@ -441,8 +467,10 @@ token_filters:
 ```
 
 ```shell
-% export LINDERA_CONFIG_PATH=./resources/lindera.yml
+% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 ```
+
+`TokenizerBuilder::new()` reads the file named by `LINDERA_CONFIG_PATH`. To load a file directly, use `TokenizerBuilder::from_file`:
 
 ```rust
 use std::path::PathBuf;
@@ -451,10 +479,10 @@ use lindera_analysis::tokenizer::TokenizerBuilder;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    // Creates a new `TokenizerConfigBuilder` instance.
-    // If the `LINDERA_CONFIG_PATH` environment variable is set, it will attempt to load the initial settings from the specified path.
+    // Load tokenizer configuration from file
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../resources")
+        .join("config")
         .join("lindera.yml");
 
     let builder = TokenizerBuilder::from_file(&path)?;
@@ -477,16 +505,38 @@ fn main() -> LinderaResult<()> {
 }
 ```
 
+The above example can be run as follows:
+
+```shell
+% cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize_with_config
+```
+
+You can see the result as follows. The `japanese_katakana_stem` filter in the configuration turns `ユーザー` into `ユーザ`:
+
+```text
+text: Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。
+token: "Lindera", start: 0, end: 21, details: Some(["名詞", "固有名詞", "組織", "*", "*", "*", "*", "*", "*"])
+token: "形態素", start: 24, end: 33, details: Some(["名詞", "一般", "*", "*", "*", "*", "形態素", "ケイタイソ", "ケイタイソ"])
+token: "解析", start: 33, end: 39, details: Some(["名詞", "サ変接続", "*", "*", "*", "*", "解析", "カイセキ", "カイセキ"])
+token: "エンジン", start: 39, end: 54, details: Some(["名詞", "一般", "*", "*", "*", "*", "エンジン", "エンジン", "エンジン"])
+token: "ユーザ", start: 63, end: 75, details: Some(["名詞", "一般", "*", "*", "*", "*", "ユーザー", "ユーザー", "ユーザー"])
+token: "辞書", start: 75, end: 81, details: Some(["名詞", "一般", "*", "*", "*", "*", "辞書", "ジショ", "ジショ"])
+token: "利用", start: 84, end: 90, details: Some(["名詞", "サ変接続", "*", "*", "*", "*", "利用", "リヨウ", "リヨー"])
+token: "可能", start: 90, end: 96, details: Some(["名詞", "形容動詞語幹", "*", "*", "*", "*", "可能", "カノウ", "カノー"])
+```
+
 ## Environment Variables
 
 ### LINDERA_BUILD_DICTIONARY_CACHE_DIR
 
 The `LINDERA_BUILD_DICTIONARY_CACHE_DIR` environment variable designates a build-time cache directory for the embedded-dictionary build pipeline. It is read only by the dictionary crates' build scripts and has no effect at runtime.
 
-When set, each build stores two kinds of files under `$LINDERA_BUILD_DICTIONARY_CACHE_DIR/<version>/` (where `<version>` is the dictionary crate version):
+When set, each build stores two kinds of files under `$LINDERA_BUILD_DICTIONARY_CACHE_DIR/<version>-fmt<format>/` (where `<version>` is the dictionary crate version and `<format>` is the dictionary format version):
 
 - the downloaded distribution archive (validated with MD5; invalid files are re-downloaded)
 - the built binary dictionary that gets embedded into the crate
+
+The format version is part of the path so that a cache written by a build with a different on-disk dictionary layout is a miss rather than a stale hit.
 
 This enables:
 
@@ -507,14 +557,14 @@ Notes:
 - Version subdirectories accumulate across upgrades and are not garbage-collected; old ones can be removed freely
 - Setting this variable causes dictionary crates to download and build their dictionaries even when no `embed-*` feature is enabled (useful for pre-populating the cache)
 
-> **Deprecated:** the previous name `LINDERA_DICTIONARIES_PATH` still works as a fallback (the new name wins when both are set) and will be removed in v6.0.0.
+> **Deprecated:** the previous name `LINDERA_DICTIONARIES_PATH` still works as a fallback (the new name wins when both are set) and will be removed in a future major release.
 
 ### LINDERA_CONFIG_PATH
 
 The `LINDERA_CONFIG_PATH` environment variable specifies the path to a YAML configuration file for the tokenizer. This allows you to configure tokenizer behavior without modifying Rust code.
 
 ```shell
-export LINDERA_CONFIG_PATH=./resources/lindera.yml
+export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 ```
 
 See the [Configuration file](#configuration-file) section for details on the configuration format.
@@ -536,3 +586,4 @@ This variable is set automatically and should not be modified by users.
 The API reference is available. Please see following URL:
 
 - [lindera](https://docs.rs/lindera)
+- [lindera-analysis](https://docs.rs/lindera-analysis)

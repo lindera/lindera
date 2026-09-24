@@ -1,7 +1,7 @@
 segmenter:
   mode: "normal"
   dictionary: "embedded://ipadic"
-  # user_dictionary: "./resources/ipadic_simple.csv"
+  # user_dictionary: "./resources/user_dict/ipadic_simple_userdic.csv"
 
 character_filters:
   - kind: "unicode_normalize"

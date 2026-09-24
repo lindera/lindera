@@ -13,10 +13,10 @@ Lindera は、さまざまな Rust アプリケーションに対して、簡単
 
 ```toml
 [dependencies]
-lindera = "5"
+lindera = "6"
 ```
 
-> **注記:** v4 からアップグレードする場合は[移行ガイド](https://lindera.github.io/lindera/ja/migration_v4_to_v5.html)を参照してください。
+> **注記:** v5 からアップグレードする場合は[移行ガイド](https://lindera.github.io/lindera/ja/migration_v5_to_v6.html)を参照してください。
 
 ビルド済み辞書は [GitHub Releases](https://github.com/lindera/lindera/releases) からダウンロードできます。
 辞書アーカイブ（例: `lindera-ipadic-*.zip`）をダウンロードし、読み込み時にパスを指定してください。

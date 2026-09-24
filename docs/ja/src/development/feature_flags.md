@@ -43,7 +43,7 @@ let dictionary = load_dictionary("/path/to/ipadic")?;
 
 ```toml
 [dependencies]
-lindera = { version = "5", features = ["embed-ipadic"] }
+lindera = { version = "6", features = ["embed-ipadic"] }
 ```
 
 埋め込みを有効にした場合、以下のように辞書を読み込めます：
@@ -75,7 +75,7 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 
 ```toml
 [dependencies]
-lindera = { version = "5", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "6", features = ["embed-ipadic", "embed-ko-dic"] }
 ```
 
 またはコマンドラインから：
