@@ -18,6 +18,29 @@ use crate::dictionary::{PhpDictionary, PhpUserDictionary};
 use crate::error::lindera_value_err;
 use crate::token::PhpToken;
 
+/// Converts a left-space penalty setting from PHP to JSON.
+///
+/// # Arguments
+///
+/// * `value` - `null`, a boolean, or an associative array with a `rules`
+///   key.
+///
+/// # Returns
+///
+/// The JSON value to hand to the core, or a `ValueError`. The shared
+/// converter throws a plain `Exception` for objects and NAN/INF; this reports
+/// them as a `ValueError` that names the setting, like every other rejected
+/// value, and keeps the reason for a value that nests too deeply.
+fn space_penalty_value(value: &Zval) -> PhpResult<serde_json::Value> {
+    zval_to_value(value).map_err(|error| match error {
+        ConvertError::Unsupported(_) => lindera_value_err(
+            "space_penalty must be null, a boolean or an array with a \"rules\" key \
+             (objects and non-finite floats are not supported)",
+        ),
+        ConvertError::TooDeep => PhpException::from(error),
+    })
+}
+
 /// Builder for creating a Tokenizer with custom configuration.
 ///
 /// The builder allows configuration of dictionaries, modes, and filter pipelines.
@@ -120,17 +143,7 @@ impl PhpTokenizerBuilder {
     /// forms above, including when it holds an object or a non-finite float
     /// anywhere inside, or when it nests arrays more than 128 levels deep.
     pub fn set_space_penalty(&self, value: &Zval) -> PhpResult<()> {
-        // The shared converter throws a plain `Exception` for objects and
-        // NAN/INF; report those as a `ValueError` that names the setting,
-        // like every other rejected value. Keep the reason for a value that
-        // nests too deeply.
-        let value = zval_to_value(value).map_err(|error| match error {
-            ConvertError::Unsupported(_) => lindera_value_err(
-                "space_penalty must be null, a boolean or an array with a \"rules\" key \
-                 (objects and non-finite floats are not supported)",
-            ),
-            ConvertError::TooDeep => PhpException::from(error),
-        })?;
+        let value = space_penalty_value(value)?;
         self.inner
             .borrow_mut()
             .set_space_penalty(&value)
@@ -206,22 +219,39 @@ impl PhpTokenizer {
     /// * `dictionary` - Dictionary to use for tokenization.
     /// * `mode` - Tokenization mode ("normal" or "decompose"). Default: "normal".
     /// * `user_dictionary` - Optional user dictionary for custom words.
+    /// * `space_penalty` - The left-space penalty, in the forms
+    ///   `TokenizerBuilder::setSpacePenalty()` accepts. `null` (the default)
+    ///   keeps the rules the dictionary ships.
     ///
     /// # Returns
     ///
-    /// A new Tokenizer instance.
+    /// A new Tokenizer instance, or a `ValueError` for an invalid mode or
+    /// space-penalty setting, as `setSpacePenalty()` and `build()` throw it.
+    // The defaults put `null` into the arginfo, so a caller can skip `mode`
+    // and `user_dictionary` with named arguments (`space_penalty: false`).
+    #[php(defaults(mode = None, user_dictionary = None, space_penalty = None))]
     pub fn __construct(
         dictionary: &PhpDictionary,
         mode: Option<String>,
         user_dictionary: Option<&PhpUserDictionary>,
+        space_penalty: Option<&Zval>,
     ) -> PhpResult<Self> {
         let mode_str = mode.unwrap_or_else(|| "normal".to_string());
+        let space_penalty = match space_penalty {
+            Some(value) => space_penalty_value(value)?,
+            None => serde_json::Value::Null,
+        };
 
         let dict = dictionary.inner.clone();
         let user_dict = user_dictionary.map(|d| d.inner.clone());
 
-        let inner =
-            CoreTokenizer::from_segmenter(&mode_str, dict, user_dict).map_err(lindera_value_err)?;
+        let inner = CoreTokenizer::from_segmenter_with_space_penalty(
+            &mode_str,
+            dict,
+            user_dict,
+            &space_penalty,
+        )
+        .map_err(lindera_value_err)?;
 
         Ok(Self { inner })
     }

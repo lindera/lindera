@@ -130,17 +130,20 @@ tokenizer = builder.build()
 
 ### Creating a Tokenizer
 
-#### `Tokenizer(dictionary, mode="normal", user_dictionary=None)`
+#### `Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None)`
 
 Creates a tokenizer directly from a loaded dictionary.
 
-The tokenizer uses the dictionary's defaults, including the left-space penalty rules it ships, so with ko-dic the penalty is always on. To turn it off or change the rules, build the tokenizer with [`TokenizerBuilder.set_space_penalty`](#set_space_penaltyvalue) instead.
+`space_penalty` takes the same values as [`TokenizerBuilder.set_space_penalty`](#set_space_penaltyvalue). `None` (the default) uses the left-space penalty rules the dictionary ships, so with ko-dic the penalty is on; pass `False` to turn it off. An invalid setting raises the same errors as `set_space_penalty` and `build()`.
 
 ```python
 from lindera import Tokenizer, load_dictionary
 
 dictionary = load_dictionary("embedded://ipadic")
 tokenizer = Tokenizer(dictionary, mode="normal")
+
+# ko-dic without the left-space penalty
+ko_tokenizer = Tokenizer(load_dictionary("embedded://ko-dic"), space_penalty=False)
 ```
 
 ### Tokenizer Methods

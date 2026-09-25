@@ -99,7 +99,7 @@ builder.setSpacePenalty(null);
 ```
 
 > [!NOTE]
-> Since v6.1.0, ko-dic applies the left-space penalty by default, because its `metadata.json` ships mecab-ko-dic's rules. This changes the Korean output compared with v6.0 (for example, `시` in `서울 시 에서` becomes the noun `NNG` instead of the ending `EP`). Call `setSpacePenalty(false)` to restore the v6.0 output. A `Tokenizer` created directly with `new Tokenizer(dictionary, ...)` always uses the default, so use `TokenizerBuilder` to turn it off. A ko-dic downloaded from the v6.0.0 release ships no rules, so with it the penalty stays off and `setSpacePenalty(true)` makes `build()` throw. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
+> Since v6.1.0, ko-dic applies the left-space penalty by default, because its `metadata.json` ships mecab-ko-dic's rules. This changes the Korean output compared with v6.0 (for example, `시` in `서울 시 에서` becomes the noun `NNG` instead of the ending `EP`). Call `setSpacePenalty(false)` to restore the v6.0 output. For a `Tokenizer` created directly, pass `false` as the fourth argument: `new Tokenizer(dictionary, "normal", null, false)`. A ko-dic downloaded from the v6.0.0 release ships no rules, so with it the penalty stays off and `setSpacePenalty(true)` makes `build()` throw. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
 
 #### `appendCharacterFilter(kind, args?)`
 
@@ -135,15 +135,20 @@ const tokenizer = builder.build();
 
 ### Creating a Tokenizer
 
-#### `new Tokenizer(dictionary, mode?, userDictionary?)`
+#### `new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?)`
 
 Creates a tokenizer directly from a loaded dictionary.
+
+`spacePenalty` takes the same values as [`setSpacePenalty`](#setspacepenaltyvalue). `null` or `undefined` (the default) uses the left-space penalty rules the dictionary ships. An invalid setting throws, as `setSpacePenalty` and `build()` do.
 
 ```javascript
 const { Tokenizer, loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
+
+// ko-dic without the left-space penalty
+const koTokenizer = new Tokenizer(loadDictionary("embedded://ko-dic"), "normal", null, false);
 ```
 
 ### Tokenizer Methods

@@ -108,7 +108,7 @@ $builder->setSpacePenalty(null);
 ```
 
 > [!NOTE]
-> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `서울 시 에서` now reads `시` as the noun `NNG` rather than the ending `EP`. Call `$builder->setSpacePenalty(false)` to get the v6.0 output back; a tokenizer created with [`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-userdictionary) always applies the dictionary's rules. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and `true` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
+> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `서울 시 에서` now reads `시` as the noun `NNG` rather than the ending `EP`. Call `$builder->setSpacePenalty(false)` to get the v6.0 output back; for a tokenizer created with [`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty), pass `space_penalty: false`. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and `true` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
 
 #### `appendCharacterFilter($kind, $args)`
 
@@ -150,17 +150,20 @@ $tokenizer = $builder->build();
 
 ### Creating a Tokenizer
 
-#### `new Lindera\Tokenizer($dictionary, $mode, $userDictionary)`
+#### `new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty)`
 
-Creates a tokenizer directly from a loaded dictionary.
+Creates a tokenizer directly from a loaded dictionary. `$mode`, `$user_dictionary` and `$space_penalty` are optional and default to `null`; `$mode` `null` means `'normal'`.
 
-A tokenizer created this way always applies the left-space penalty rules the dictionary ships (ko-dic ships them), and the constructor has no option to change that. To change or turn off the penalty, use a `TokenizerBuilder` with [`setSpacePenalty()`](#setspacepenaltyvalue).
+`$space_penalty` takes the same values as [`setSpacePenalty()`](#setspacepenaltyvalue). `null` uses the left-space penalty rules the dictionary ships (ko-dic ships them); pass `false` to turn the penalty off. Pass it by name to skip the other optional arguments. An invalid setting throws a `ValueError`, as `setSpacePenalty()` and `build()` do.
 
 ```php
 <?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
 $tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+
+// ko-dic without the left-space penalty
+$koTokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ko-dic'), space_penalty: false);
 ```
 
 With a user dictionary:

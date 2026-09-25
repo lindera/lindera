@@ -127,15 +127,20 @@ tokenizer = builder.build
 
 ### Creating a Tokenizer
 
-#### `Lindera::Tokenizer.new(dictionary, mode, user_dictionary)`
+#### `Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil)`
 
-Creates a tokenizer directly from a loaded dictionary. It always uses the dictionary's default left-space penalty; use [`TokenizerBuilder#set_space_penalty`](#set_space_penaltyvalue) to change it.
+Creates a tokenizer directly from a loaded dictionary. `mode` defaults to `'normal'`, and `user_dictionary` is optional.
+
+The `space_penalty:` keyword takes the same values as [`TokenizerBuilder#set_space_penalty`](#set_space_penaltyvalue). `nil` (the default) uses the left-space penalty rules the dictionary ships, so with ko-dic the penalty is on; pass `false` to turn it off. An invalid setting raises the same errors as `set_space_penalty` and `build`.
 
 ```ruby
 require 'lindera'
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', nil)
+tokenizer = Lindera::Tokenizer.new(dictionary)
+
+# ko-dic without the left-space penalty
+ko_tokenizer = Lindera::Tokenizer.new(Lindera.load_dictionary('embedded://ko-dic'), space_penalty: false)
 ```
 
 With a user dictionary:

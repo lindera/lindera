@@ -364,17 +364,42 @@ pub struct Tokenizer {
 
 #[wasm_bindgen]
 impl Tokenizer {
+    /// Creates a tokenizer directly from a loaded dictionary.
+    ///
+    /// # Arguments
+    ///
+    /// * `dictionary` - The system dictionary.
+    /// * `mode` - `"normal"` (the default) or `"decompose"`.
+    /// * `user_dictionary` - An optional user dictionary.
+    /// * `space_penalty` - The left-space penalty, in the forms
+    ///   `TokenizerBuilder.setSpacePenalty` accepts. `null` or `undefined`
+    ///   (the default) keeps the rules the dictionary ships.
+    ///
+    /// # Returns
+    ///
+    /// The tokenizer, or an error string for an invalid mode or space-penalty
+    /// setting, as `setSpacePenalty` and `build()` report them.
     #[wasm_bindgen(constructor)]
     pub fn new(
         dictionary: JsDictionary,
         mode: Option<String>,
         user_dictionary: Option<JsUserDictionary>,
+        #[wasm_bindgen(
+            unchecked_param_type = "boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined"
+        )]
+        space_penalty: Option<JsValue>,
     ) -> Result<Tokenizer, JsValue> {
+        let space_penalty = match space_penalty {
+            Some(value) => js_to_json(value)
+                .map_err(|e| JsValue::from_str(&format!("invalid space_penalty: {e}")))?,
+            None => Value::Null,
+        };
         let user_dict = user_dictionary.map(|d| d.inner);
-        let inner = CoreTokenizer::from_segmenter(
+        let inner = CoreTokenizer::from_segmenter_with_space_penalty(
             mode.as_deref().unwrap_or("normal"),
             dictionary.inner,
             user_dict,
+            &space_penalty,
         )
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
@@ -777,7 +802,7 @@ mod tests {
         use crate::dictionary::load_dictionary;
 
         let dict = load_dictionary("embedded://ipadic").unwrap();
-        let tokenizer = Tokenizer::new(dict, Some("normal".to_string()), None).unwrap();
+        let tokenizer = Tokenizer::new(dict, Some("normal".to_string()), None, None).unwrap();
 
         let tokens = tokenizer.tokenize("東京タワー").unwrap();
 
@@ -1030,11 +1055,11 @@ mod tests {
 
         // The constructor keeps the dictionary default.
         let baseline = surfaces_and_pos(
-            &Tokenizer::new(plain.clone(), None, None).unwrap(),
+            &Tokenizer::new(plain.clone(), None, None, None).unwrap(),
             SPACED_TEXT,
         );
         let penalized = surfaces_and_pos(
-            &Tokenizer::new(shipping.clone(), None, None).unwrap(),
+            &Tokenizer::new(shipping.clone(), None, None, None).unwrap(),
             SPACED_TEXT,
         );
         assert_ne!(penalized, baseline);
@@ -1235,6 +1260,73 @@ mod tests {
                 .map_err(|error| error.to_string());
             let actual = crate::json::json_from_js(value).map_err(|error| error.to_string());
             assert_eq!(actual, expected, "{shown}");
+        }
+    }
+
+    /// The constructor takes the same space-penalty setting as
+    /// `TokenizerBuilder.setSpacePenalty`, and omitting it keeps the
+    /// dictionary's default.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_constructor_applies_a_space_penalty_setting() {
+        use std::sync::Arc;
+
+        use crate::Tokenizer;
+        use crate::dictionary::{JsDictionary, load_dictionary};
+        use wasm_bindgen::JsValue;
+
+        let plain = load_dictionary("embedded://ipadic").unwrap();
+        let mut shipping = plain.clone();
+        Arc::make_mut(&mut shipping.inner.metadata).space_penalty = Some(ipadic_rules_config());
+        let tokenize = |dictionary: &JsDictionary, space_penalty: Option<JsValue>| {
+            let tokenizer = Tokenizer::new(dictionary.clone(), None, None, space_penalty).unwrap();
+            surfaces_and_pos(&tokenizer, SPACED_TEXT)
+        };
+
+        let baseline = tokenize(&plain, None);
+        let penalized = tokenize(&shipping, None);
+        assert_ne!(penalized, baseline);
+
+        for (value, expected) in [
+            (JsValue::NULL, &penalized),
+            (JsValue::UNDEFINED, &penalized),
+            (JsValue::FALSE, &baseline),
+            (JsValue::TRUE, &penalized),
+            (js_json(r#"{"rules":[]}"#), &baseline),
+        ] {
+            let shown = format!("{value:?}");
+            assert_eq!(&tokenize(&shipping, Some(value)), expected, "value {shown}");
+        }
+        // Explicit rules apply to a dictionary that ships none.
+        assert_eq!(tokenize(&plain, Some(ipadic_rules())), penalized);
+    }
+
+    /// The constructor reports an invalid setting as `setSpacePenalty` and
+    /// `build()` do.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_constructor_rejects_an_invalid_space_penalty() {
+        use crate::Tokenizer;
+        use crate::dictionary::load_dictionary;
+        use wasm_bindgen::JsValue;
+
+        let error = |space_penalty: JsValue| {
+            let dictionary = load_dictionary("embedded://ipadic").unwrap();
+            match Tokenizer::new(dictionary, None, None, Some(space_penalty)) {
+                Ok(_) => panic!("the setting was accepted"),
+                Err(error) => error.as_string().unwrap_or_default(),
+            }
+        };
+
+        // IPADIC ships no rules to require.
+        assert!(error(JsValue::TRUE).contains("ships no space_penalty rules"));
+        for value in [
+            JsValue::from(1),
+            JsValue::from_str("false"),
+            js_json(r#"{"rules":"JKS"}"#),
+        ] {
+            let shown = format!("{value:?}");
+            assert!(error(value).contains("space_penalty"), "value {shown}");
         }
     }
 }

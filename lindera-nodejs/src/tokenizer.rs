@@ -217,18 +217,34 @@ impl JsTokenizer {
     /// * `dictionary` - Dictionary to use for tokenization.
     /// * `mode` - Tokenization mode ("normal" or "decompose"). Default: "normal".
     /// * `user_dictionary` - Optional user dictionary for custom words.
+    /// * `space_penalty` - The left-space penalty, in the forms
+    ///   `TokenizerBuilder.setSpacePenalty` accepts. `null` or `undefined`
+    ///   (the default) keeps the rules the dictionary ships.
+    ///
+    /// Throws for an invalid space-penalty setting, as `setSpacePenalty` and
+    /// `build()` do.
     #[napi(constructor)]
     pub fn new(
         dictionary: &JsDictionary,
         mode: Option<String>,
         user_dictionary: Option<&JsUserDictionary>,
+        #[napi(
+            ts_arg_type = "boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined"
+        )]
+        space_penalty: Option<JsonArg>,
     ) -> napi::Result<Self> {
         let mode_str = mode.unwrap_or_else(|| "normal".to_string());
         let dict = dictionary.inner.clone();
         let user_dict = user_dictionary.map(|d| d.inner.clone());
+        let space_penalty = space_penalty.map_or(serde_json::Value::Null, |value| value.0);
 
-        let inner =
-            CoreTokenizer::from_segmenter(&mode_str, dict, user_dict).map_err(to_napi_error)?;
+        let inner = CoreTokenizer::from_segmenter_with_space_penalty(
+            &mode_str,
+            dict,
+            user_dict,
+            &space_penalty,
+        )
+        .map_err(to_napi_error)?;
 
         Ok(Self { inner })
     }

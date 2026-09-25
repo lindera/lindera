@@ -2,7 +2,12 @@ const assert = require("node:assert");
 const path = require("node:path");
 const { describe, it } = require("node:test");
 
-const { Metadata, TokenizerBuilder, loadDictionary } = require("../index.js");
+const {
+  Metadata,
+  Tokenizer,
+  TokenizerBuilder,
+  loadDictionary,
+} = require("../index.js");
 
 // Matches the guard in test_tokenize_ipadic.js: the embedded dictionary is behind the
 // `embed-ipadic` feature, which is not on by default.
@@ -168,4 +173,71 @@ describe("Metadata space penalty", () => {
     const obj = new Metadata().toObject();
     assert.strictEqual(Object.hasOwn(obj, "spacePenalty"), false);
   });
+});
+
+describe("Tokenizer constructor space penalty", () => {
+  // A rule IPADIC can observe: a particle (助詞) right after a space costs so
+  // much that "に" in "東京 に 行く" is no longer read as one.
+  const PARTICLE_RULES = { rules: [{ pos: ["助詞"], cost: 100000 }] };
+
+  // Returns the part of speech of "に" for a Tokenizer built directly with
+  // these trailing constructor arguments.
+  const particlePos = (...args) => {
+    const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), ...args);
+    const token = tokenizer.tokenize("東京 に 行く").find((t) => t.surface === "に");
+    assert.ok(token, "no token with surface に");
+    return token.details[0];
+  };
+
+  it(
+    "applies the setting it is given and keeps the default when omitted",
+    { skip: !hasEmbeddedIpadic && "embedded://ipadic not available" },
+    () => {
+      assert.strictEqual(particlePos(), "助詞", "omitted");
+      assert.strictEqual(particlePos("normal", null, undefined), "助詞", "undefined");
+      assert.strictEqual(particlePos("normal", null, null), "助詞", "null");
+      assert.strictEqual(particlePos("normal", null, false), "助詞", "false");
+      assert.notStrictEqual(particlePos("normal", null, PARTICLE_RULES), "助詞", "rules");
+    },
+  );
+
+  it(
+    "fails like build() when it requires rules IPADIC does not ship",
+    { skip: !hasEmbeddedIpadic && "embedded://ipadic not available" },
+    () => {
+      assert.throws(() => new Tokenizer(loadDictionary("embedded://ipadic"), "normal", null, true), {
+        name: "Error",
+        message: /ships no space_penalty rules/,
+      });
+    },
+  );
+
+  it(
+    "rejects values that are not a space-penalty setting",
+    { skip: !hasEmbeddedIpadic && "embedded://ipadic not available" },
+    () => {
+      for (const value of [1, "false", { rules: "JKS" }]) {
+        assert.throws(
+          () => new Tokenizer(loadDictionary("embedded://ipadic"), "normal", null, value),
+          { name: "Error", message: /space_penalty/ },
+          `value ${JSON.stringify(value)}`,
+        );
+      }
+    },
+  );
+
+  it(
+    "turns off ko-dic's shipped rules with false",
+    { skip: !hasEmbeddedKoDic && "embedded://ko-dic not available" },
+    () => {
+      const posOfSi = (...args) => {
+        const tokenizer = new Tokenizer(loadDictionary("embedded://ko-dic"), ...args);
+        const token = tokenizer.tokenize("서울 시 에서 출발").find((t) => t.surface === "시");
+        assert.ok(token, "no token with surface 시");
+        return token.details[0];
+      };
+      assert.strictEqual(posOfSi(), "NNG", "default");
+      assert.strictEqual(posOfSi("normal", null, false), "EP", "false");
+    },
+  );
 });

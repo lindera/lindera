@@ -318,20 +318,33 @@ impl PyTokenizer {
     /// * `dictionary` - Dictionary to use for tokenization.
     /// * `mode` - Tokenization mode ("normal" or "decompose"). Default: "normal".
     /// * `user_dictionary` - Optional user dictionary for custom words.
+    /// * `space_penalty` - The left-space penalty, in the forms
+    ///   `TokenizerBuilder.set_space_penalty` accepts. `None` (the default)
+    ///   keeps the rules the dictionary ships.
     ///
     /// # Returns
     ///
-    /// A new `Tokenizer` instance.
+    /// A new `Tokenizer` instance, or `ValueError` / `TypeError` for an
+    /// invalid setting, as `set_space_penalty` and `build()` raise them.
     #[new]
-    #[pyo3(signature = (dictionary, mode="normal", user_dictionary=None))]
+    #[pyo3(signature = (dictionary, mode="normal", user_dictionary=None, space_penalty=None))]
     fn new(
         dictionary: PyDictionary,
         mode: &str,
         user_dictionary: Option<PyUserDictionary>,
+        space_penalty: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<Self> {
-        let inner =
-            CoreTokenizer::from_segmenter(mode, dictionary.inner, user_dictionary.map(|d| d.inner))
-                .map_err(to_py_error)?;
+        let space_penalty = match space_penalty {
+            Some(value) => space_penalty_value(value)?,
+            None => serde_json::Value::Null,
+        };
+        let inner = CoreTokenizer::from_segmenter_with_space_penalty(
+            mode,
+            dictionary.inner,
+            user_dictionary.map(|d| d.inner),
+            &space_penalty,
+        )
+        .map_err(to_py_error)?;
 
         Ok(Self { inner })
     }

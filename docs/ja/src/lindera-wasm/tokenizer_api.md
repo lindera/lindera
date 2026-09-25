@@ -161,13 +161,14 @@ const tokenizer = builder.build();
 ### Tokenizer コンストラクタ
 
 ```javascript
-const tokenizer = new Tokenizer(dictionary, mode, userDictionary);
+const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
 ```
 
 - **パラメータ**:
   - `dictionary` (Dictionary) -- 読み込み済みの辞書オブジェクト
   - `mode` (string, 省略可) -- トークナイズモード（`"normal"` または `"decompose"`、デフォルト: `"normal"`）
   - `userDictionary` (UserDictionary, 省略可) -- 読み込み済みのユーザー辞書
+  - `spacePenalty` (boolean | object, 省略可) -- 左側空白ペナルティ。[`setSpacePenalty()`](#setspacepenaltyvalue) と同じ値を渡せます。`null` または `undefined`（デフォルト）では、辞書が同梱するルールを使います。不正な設定では、`setSpacePenalty()` や `build()` と同じくエラー文字列が投げられます。
 
 ### Tokenizer メソッド
 

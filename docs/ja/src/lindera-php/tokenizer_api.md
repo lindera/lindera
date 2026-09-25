@@ -87,7 +87,7 @@ $builder->setSpacePenalty(null);
 ```
 
 > [!NOTE]
-> v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば `서울 시 에서` の `시` は、語尾 `EP` ではなく名詞 `NNG` と解析されるようになりました。v6.0 の出力に戻すには `$builder->setSpacePenalty(false)` を呼び出してください。[`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-userdictionary) で作成したトークナイザーは常に辞書のルールを適用します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで `true` はエラーになります。詳しくは [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
+> v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば `서울 시 에서` の `시` は、語尾 `EP` ではなく名詞 `NNG` と解析されるようになりました。v6.0 の出力に戻すには `$builder->setSpacePenalty(false)` を呼び出してください。[`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty) で作成するトークナイザーでは `space_penalty: false` を渡します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで `true` はエラーになります。詳しくは [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
 
 #### `appendCharacterFilter($kind, $args)`
 
@@ -126,17 +126,20 @@ $tokenizer = $builder->build();
 
 ### Tokenizer の作成
 
-#### `new Lindera\Tokenizer($dictionary, $mode, $userDictionary)`
+#### `new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty)`
 
-読み込み済みの辞書から直接トークナイザーを作成します。
+読み込み済みの辞書から直接トークナイザーを作成します。`$mode`、`$user_dictionary`、`$space_penalty` は省略でき、デフォルトは `null` です（`$mode` の `null` は `'normal'` を意味します）。
 
-この方法で作成したトークナイザーは、辞書が同梱する左側空白ペナルティのルール（ko-dic は同梱しています）を常に適用し、コンストラクタにはそれを変更するオプションがありません。ペナルティを変更またはオフにするには、`TokenizerBuilder` と [`setSpacePenalty()`](#setspacepenaltyvalue) を使います。
+`$space_penalty` には [`setSpacePenalty()`](#setspacepenaltyvalue) と同じ値を渡せます。`null` では辞書が同梱する左側空白ペナルティのルール（ko-dic は同梱しています）を使います。オフにするには `false` を渡します。名前付き引数で渡せば、ほかの省略可能な引数を飛ばせます。不正な設定では、`setSpacePenalty()` や `build()` と同じく `ValueError` をスローします。
 
 ```php
 <?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
 $tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+
+// 左側空白ペナルティなしの ko-dic
+$koTokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ko-dic'), space_penalty: false);
 ```
 
 ユーザー辞書を指定する場合：

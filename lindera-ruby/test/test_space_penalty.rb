@@ -107,4 +107,54 @@ class TestSpacePenalty < Minitest::Test
     assert_includes rules[1]['pos'], 'JKS'
     assert_equal 6000, rules[1]['cost']
   end
+
+  # Tokenizes TEXT with a Tokenizer built directly from IPADIC with these
+  # arguments after the dictionary, and returns "surface/part-of-speech".
+  def constructor_tokens(*args, **kwargs)
+    dictionary = Lindera.load_dictionary('embedded://ipadic')
+    tokenizer = Lindera::Tokenizer.new(dictionary, *args, **kwargs)
+    tokenizer.tokenize(TEXT).map { |token| "#{token.surface}/#{token.details[0]}" }
+  end
+
+  def test_constructor_keeps_the_default_without_a_space_penalty
+    assert_equal DEFAULT_TOKENS, constructor_tokens
+    assert_equal DEFAULT_TOKENS, constructor_tokens('normal', nil)
+    assert_equal DEFAULT_TOKENS, constructor_tokens('normal', nil, space_penalty: nil)
+    assert_equal DEFAULT_TOKENS, constructor_tokens(space_penalty: false)
+  end
+
+  def test_constructor_applies_space_penalty_rules
+    refute_equal DEFAULT_TOKENS, constructor_tokens(space_penalty: PARTICLE_RULES)
+    assert_equal tokens_after(PARTICLE_RULES), constructor_tokens('normal', nil, space_penalty: PARTICLE_RULES)
+  end
+
+  def test_constructor_space_penalty_true_fails_on_ipadic
+    # The same error build raises for a dictionary without rules.
+    dictionary = Lindera.load_dictionary('embedded://ipadic')
+    error = assert_raises(RuntimeError) { Lindera::Tokenizer.new(dictionary, space_penalty: true) }
+    assert_match(/space_penalty/, error.message)
+  end
+
+  def test_constructor_rejects_other_space_penalty_values
+    dictionary = Lindera.load_dictionary('embedded://ipadic')
+    [1, 'false', { 'rules' => 'JKS' }].each do |value|
+      assert_raises(RuntimeError, value.inspect) { Lindera::Tokenizer.new(dictionary, space_penalty: value) }
+    end
+    assert_raises(TypeError) { Lindera::Tokenizer.new(dictionary, space_penalty: Float::NAN) }
+  end
+
+  def test_constructor_takes_mode_and_user_dictionary_as_optional_arguments
+    dictionary = Lindera.load_dictionary('embedded://ipadic')
+    [[], ['normal'], ['decompose', nil], [nil, nil]].each do |args|
+      refute_empty Lindera::Tokenizer.new(dictionary, *args).tokenize(TEXT), args.inspect
+    end
+  end
+
+  def test_constructor_rejects_unknown_keywords_and_extra_arguments
+    dictionary = Lindera.load_dictionary('embedded://ipadic')
+    assert_raises(ArgumentError) { Lindera::Tokenizer.new }
+    assert_raises(ArgumentError) { Lindera::Tokenizer.new(dictionary, penalty: false) }
+    # space_penalty is a keyword, not a fourth positional argument.
+    assert_raises(ArgumentError) { Lindera::Tokenizer.new(dictionary, 'normal', nil, false) }
+  end
 end
