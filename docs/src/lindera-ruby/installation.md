@@ -1,13 +1,34 @@
 # Installation
 
-> [!NOTE]
-> lindera-ruby is not yet published to RubyGems. You need to build from source.
+From v6.1.0, lindera-ruby installs from [RubyGems](https://rubygems.org/gems/lindera) as `lindera`. It is a source gem: `gem install` compiles the native extension from the bundled Rust source, which takes a few minutes.
 
 ## Prerequisites
 
-- **Ruby 3.1 or later**
-- **Rust toolchain** -- Install via [rustup](https://rustup.rs/)
-- **Bundler** -- Ruby dependency manager (`gem install bundler`)
+- **Ruby 3.1 or later**, with the tools needed to build native gems (a C compiler and `make`)
+- **Rust toolchain 1.88 or later** -- Install via [rustup](https://rustup.rs/)
+- **libclang** -- `libclang-dev` on Debian/Ubuntu; the Xcode command line tools on macOS
+- **Bundler** -- only to build from source (`gem install bundler`)
+
+## Install from RubyGems
+
+```bash
+gem install lindera
+```
+
+Or add it to your `Gemfile`:
+
+```ruby
+gem "lindera"
+```
+
+> [!NOTE]
+> Use lindera v6.1.0 or later. The `lindera` gems published before v6.1.0 fail to compile during installation; for those versions, build from source as described below.
+
+The gem compiles against the [crates.io](https://crates.io/crates/lindera) releases of `lindera` and `lindera-binding-core` of the same version, which it pins exactly. It ships no `Cargo.lock`, so their dependencies, including the other `lindera-*` crates, resolve to the latest compatible releases at install time. It builds with the default features (`train`) and no embedded dictionary; see [Obtaining Dictionaries](#obtaining-dictionaries). To enable other [feature flags](#feature-flags), set `LINDERA_FEATURES` when installing:
+
+```bash
+LINDERA_FEATURES="embed-ipadic" gem install lindera
+```
 
 ## Obtaining Dictionaries
 
@@ -42,6 +63,19 @@ make build-lindera-ruby
 Run `make test-lindera-ruby` to run both the Rust unit tests and the Ruby
 minitest suite.
 
+### Building the Gem
+
+`bundle exec rake build` (or `make package-lindera-ruby`) writes the source gem
+to `lindera-ruby/pkg/`. It packages the crate as `cargo package` normalizes it,
+so the gem compiles outside this repository, against the crates.io releases of
+`lindera` and `lindera-binding-core` of the same version. Do not run `gem build`
+directly: the crate's own `Cargo.toml` only resolves inside the Cargo workspace.
+
+`make test-lindera-ruby-gem` (requires Docker) builds the gem, installs it with
+`gem install` in a clean `ruby` container and tokenizes text with it. The test
+compiles the `lindera` crates from the checkout, so it also works for versions
+not yet released on crates.io.
+
 ### Build with Training Support
 
 The `train` feature enables CRF-based dictionary training functionality. It is enabled by default:
@@ -52,7 +86,7 @@ LINDERA_FEATURES="train" bundle exec rake compile
 
 ## Feature Flags
 
-Features are specified through the `LINDERA_FEATURES` environment variable as a comma-separated list.
+Features are specified through the `LINDERA_FEATURES` environment variable as a comma-separated list, both for `bundle exec rake compile` and for `gem install`.
 
 | Feature | Description | Default |
 | --- | --- | --- |

@@ -15,21 +15,37 @@ lindera-ruby は、Lindera 形態素解析エンジンへの Ruby インター�
 
 ## 動作要件
 
-- Ruby >= 3.1
-- Rust >= 1.85
-
-## 辞書
-
-ビルド済み辞書は [GitHub Releases](https://github.com/lindera/lindera/releases) から入手できます。
-辞書アーカイブ（例: `lindera-ipadic-*.zip`）をダウンロードし、ローカルパスに展開してください。
+- Ruby >= 3.1（ネイティブ gem のビルド用に C コンパイラと `make` が必要）
+- Rust >= 1.88
+- libclang（Debian/Ubuntu は `libclang-dev`、macOS は Xcode コマンドラインツール）
 
 ## インストール
+
+v6.1.0 以降は RubyGems からインストールできます。インストール時にネイティブ拡張を
+コンパイルするため、数分かかります:
+
+```bash
+gem install lindera
+```
+
+gem は辞書を埋め込みません（[辞書](#辞書)を参照）。辞書を埋め込む場合は、インストール時に
+Cargo の feature を指定します（例: `LINDERA_FEATURES="embed-ipadic" gem install lindera`）。
+
+### ソースからのビルド
 
 ```bash
 cd lindera-ruby
 bundle install
 bundle exec rake compile
 ```
+
+`bundle exec rake build` はソース gem を `pkg/` に出力します。`gem build` は Cargo
+ワークスペースの外にクレートをパッケージできないため、代わりにこちらを使用してください。
+
+## 辞書
+
+ビルド済み辞書は [GitHub Releases](https://github.com/lindera/lindera/releases) から入手できます。
+辞書アーカイブ（例: `lindera-ipadic-*.zip`）をダウンロードし、ローカルパスに展開してください。
 
 ## 使い方
 

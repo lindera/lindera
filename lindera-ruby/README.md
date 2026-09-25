@@ -15,21 +15,38 @@ lindera-ruby provides a Ruby interface to the Lindera morphological analysis eng
 
 ## Requirements
 
-- Ruby >= 3.1
-- Rust >= 1.85
-
-## Dictionary
-
-Pre-built dictionaries are available from [GitHub Releases](https://github.com/lindera/lindera/releases).
-Download a dictionary archive (e.g. `lindera-ipadic-*.zip`) and extract it to a local path.
+- Ruby >= 3.1, with a C compiler and `make` for building native gems
+- Rust >= 1.88
+- libclang (`libclang-dev` on Debian/Ubuntu; the Xcode command line tools on macOS)
 
 ## Install
+
+From v6.1.0 the gem installs from RubyGems. It compiles the native extension
+during installation, which takes a few minutes:
+
+```bash
+gem install lindera
+```
+
+The gem embeds no dictionary (see [Dictionary](#dictionary)). To embed one,
+pass the Cargo features at install time, e.g.
+`LINDERA_FEATURES="embed-ipadic" gem install lindera`.
+
+### Build from Source
 
 ```bash
 cd lindera-ruby
 bundle install
 bundle exec rake compile
 ```
+
+`bundle exec rake build` writes the source gem to `pkg/`. Use it instead of
+`gem build`, which cannot package the crate outside the Cargo workspace.
+
+## Dictionary
+
+Pre-built dictionaries are available from [GitHub Releases](https://github.com/lindera/lindera/releases).
+Download a dictionary archive (e.g. `lindera-ipadic-*.zip`) and extract it to a local path.
 
 ## Usage
 

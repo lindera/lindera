@@ -1,13 +1,34 @@
 # インストール
 
-> [!NOTE]
-> lindera-ruby はまだ RubyGems に公開されていません。ソースからビルドする必要があります。
+v6.1.0 以降の lindera-ruby は、[RubyGems](https://rubygems.org/gems/lindera) から `lindera` としてインストールできます。ソース gem のため、`gem install` の実行時に同梱の Rust ソースからネイティブ拡張をコンパイルします（数分かかります）。
 
 ## 前提条件
 
-- **Ruby 3.1 以降**
-- **Rust ツールチェーン** -- [rustup](https://rustup.rs/) 経由でインストール
-- **Bundler** -- Ruby の依存関係管理ツール（`gem install bundler`）
+- **Ruby 3.1 以降**と、ネイティブ gem のビルドに必要なツール（C コンパイラと `make`）
+- **Rust ツールチェーン 1.88 以降** -- [rustup](https://rustup.rs/) 経由でインストール
+- **libclang** -- Debian/Ubuntu は `libclang-dev`、macOS は Xcode コマンドラインツール
+- **Bundler** -- ソースからビルドする場合のみ（`gem install bundler`）
+
+## RubyGems からのインストール
+
+```bash
+gem install lindera
+```
+
+または `Gemfile` に追加します：
+
+```ruby
+gem "lindera"
+```
+
+> [!NOTE]
+> lindera v6.1.0 以降を使用してください。v6.1.0 より前に公開された `lindera` gem は、インストール時のコンパイルに失敗します。それらのバージョンは、以下の手順でソースからビルドしてください。
+
+gem は [crates.io](https://crates.io/crates/lindera) 上の同じバージョンの `lindera` と `lindera-binding-core` に対してコンパイルされます（この 2 つはバージョンを完全に固定しています）。gem には `Cargo.lock` が含まれないため、それ以外の依存（ほかの `lindera-*` クレートを含む）は、インストール時に互換性のある最新のリリースに解決されます。デフォルトの feature（`train`）のみを有効にし、辞書は埋め込みません。辞書は[辞書の入手](#辞書の入手)を参照してください。その他の [Feature フラグ](#feature-フラグ)を有効にするには、インストール時に `LINDERA_FEATURES` を指定します：
+
+```bash
+LINDERA_FEATURES="embed-ipadic" gem install lindera
+```
 
 ## 辞書の入手
 
@@ -42,6 +63,19 @@ make build-lindera-ruby
 `make test-lindera-ruby` を実行すると、Rust のユニットテストと Ruby の minitest
 スイートの両方が実行されます。
 
+### gem のビルド
+
+`bundle exec rake build`（または `make package-lindera-ruby`）は、ソース gem を
+`lindera-ruby/pkg/` に出力します。`cargo package` が正規化したクレートを同梱するため、
+gem はこのリポジトリの外でも、crates.io 上の同じバージョンの `lindera` と
+`lindera-binding-core` に対してコンパイルできます。`gem build` を直接実行しないで
+ください。クレート自身の `Cargo.toml` は Cargo ワークスペースの中でしか解決できません。
+
+`make test-lindera-ruby-gem`（Docker が必要）は、gem をビルドし、クリーンな `ruby`
+コンテナで `gem install` を実行して、テキストをトークナイズします。このテストは
+`lindera` クレートをチェックアウトからコンパイルするため、crates.io に未公開の
+バージョンでも実行できます。
+
 ### 学習機能付きビルド
 
 `train` feature は、CRF ベースの辞書学習機能を有効にします。デフォルトで有効です：
@@ -52,7 +86,7 @@ LINDERA_FEATURES="train" bundle exec rake compile
 
 ## Feature フラグ
 
-Feature は環境変数 `LINDERA_FEATURES` にカンマ区切りリストで指定します。
+Feature は環境変数 `LINDERA_FEATURES` にカンマ区切りリストで指定します。`bundle exec rake compile` と `gem install` のどちらでも使えます。
 
 | Feature | 説明 | デフォルト |
 | --- | --- | --- |

@@ -99,6 +99,7 @@ clean-lindera-nodejs: ## Clean lindera-nodejs build artifacts
 
 clean-lindera-ruby: ## Clean lindera-ruby build artifacts
 	rm -rf lindera-ruby/tmp
+	rm -rf lindera-ruby/pkg
 	rm -f lindera-ruby/lib/lindera/lindera_ruby.so
 	rm -f lindera-ruby/Gemfile.lock
 
@@ -209,6 +210,16 @@ test-lindera-ruby: ## Test lindera-ruby (Rust unit tests + minitest)
 	$(CARGO_TEST_WITH_RBCONFIG) cargo test -p lindera-ruby --lib
 	cd lindera-ruby && bundle install --quiet && LINDERA_FEATURES="embed-ipadic,train" bundle exec rake compile && bundle exec rake test
 
+# Installs the source gem with `gem install` in a clean Ruby container, as a
+# user would, and tokenizes with it (lindera-ruby/test/gem/). The lindera
+# crates are compiled from this checkout rather than crates.io, so unreleased
+# changes are tested too; release.yml runs the same script against crates.io.
+RUBY_GEM_TEST_IMAGE ?= ruby:3.3
+
+test-lindera-ruby-gem: package-lindera-ruby ## Test installing the lindera-ruby gem in a clean container (needs Docker)
+	docker run --rm -v "$(CURDIR):/src:ro" -e LINDERA_SOURCE_DIR=/src $(RUBY_GEM_TEST_IMAGE) \
+		bash /src/lindera-ruby/test/gem/install_and_test.sh --setup /src/lindera-ruby/pkg/lindera-$(LINDERA_VERSION).gem
+
 # The PHPUnit suite loads embedded://ipadic, so the test build embeds IPADIC.
 # Embedded dictionaries do not change the PHP API, so the same build also
 # serves the stub check (StubsTest) and `make stubs-lindera-php`.
@@ -263,6 +274,9 @@ build-lindera-nodejs: ## Build lindera-nodejs (release)
 
 build-lindera-ruby: ## Build lindera-ruby (release)
 	cd lindera-ruby && bundle install --quiet && LINDERA_FEATURES="embed-ipadic,train" bundle exec rake compile
+
+package-lindera-ruby: ## Build the lindera-ruby source gem into lindera-ruby/pkg/
+	cd lindera-ruby && bundle install --quiet && bundle exec rake build
 
 build-lindera-php: ## Build lindera-php (release)
 	cargo build -p lindera-php --release --features train

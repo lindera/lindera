@@ -61,6 +61,11 @@ sed -i \
 # follows `name` for these entries.
 sed -i "/^name = \"lindera/{n;s/^version = \"$CURRENT_RE\"\$/version = \"$NEW_VERSION\"/}" Cargo.lock
 
+# --- lindera-ruby/Cargo.toml: exact `=X.Y.Z` pins on lindera crates ---
+# The gem compiles against crates.io at install time, so lindera-ruby pins the
+# release it ships with instead of inheriting the workspace requirement.
+sed -i "s/^\(lindera[a-z-]* = { version = \"=\)$CURRENT_RE\(\"\)/\1$NEW_VERSION\2/" lindera-ruby/Cargo.toml
+
 # --- lindera-ruby/lindera.gemspec ---
 # No `^` anchor: the assignment is indented inside the `Gem::Specification.new`
 # block, not at the start of the line.

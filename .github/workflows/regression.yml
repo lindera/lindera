@@ -45,6 +45,7 @@ jobs:
       lindera-python: ${{ steps.filter.outputs.lindera-python }}
       lindera-nodejs: ${{ steps.filter.outputs.lindera-nodejs }}
       lindera-ruby: ${{ steps.filter.outputs.lindera-ruby }}
+      lindera-ruby-gem: ${{ steps.filter.outputs.lindera-ruby-gem }}
       lindera-php: ${{ steps.filter.outputs.lindera-php }}
       lindera-wasm: ${{ steps.filter.outputs.lindera-wasm }}
     steps:
@@ -170,6 +171,12 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+            # Gem packaging: the crate as `cargo package` normalizes it (which
+            # resolves the workspace inheritance in the root Cargo.toml), the
+            # gemspec, extconf.rb and the install test.
+            lindera-ruby-gem:
+              - 'lindera-ruby/**'
+              - 'Cargo.toml'
             lindera-php:
               - 'lindera-php/**'
               - 'composer.json'
@@ -518,6 +525,36 @@ jobs:
       # installed here; this covers the cargo half. See #962.
       - name: Run clippy
         run: cargo clippy -p lindera-ruby -- -D warnings
+
+  # Builds the source gem the way release.yml does and installs it with
+  # `gem install` in a bare ruby container, then tokenizes with it. The lindera
+  # crates come from this checkout instead of crates.io (see
+  # lindera-ruby/test/gem/install_and_test.sh), so unreleased changes compile.
+  test-lindera-ruby-gem:
+    name: Test lindera-ruby gem install
+    needs: [test-lindera, test-lindera-analysis, test-lindera-binding-core, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-ruby-gem == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+          working-directory: lindera-ruby
+
+      - name: Build the gem, install it in a clean container and tokenize
+        shell: bash
+        run: |
+          make test-lindera-ruby-gem
 
   test-lindera-php:
     name: Test lindera-php

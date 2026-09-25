@@ -10,14 +10,19 @@ Gem::Specification.new do |spec|
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.1"
 
+  # A source gem: `gem install` compiles the crate with extconf.rb. Build it
+  # with `bundle exec rake build`, which packages from the crate as
+  # `cargo package` normalizes it. Running `gem build` here would ship this
+  # directory's Cargo.toml, which only resolves inside the Cargo workspace.
   spec.files = Dir[
-    "lib/**/*.rb",
-    "ext/**/*.{rs,toml,rb,lock}",
-    "Cargo.*",
-    "README.md",
+    "Cargo.toml",
     "LICENSE",
+    "README.md",
+    "extconf.rb",
+    "lib/**/*.rb",
+    "src/**/*.rs",
   ]
-  spec.extensions = ["ext/lindera_ruby/extconf.rb"]
+  spec.extensions = ["extconf.rb"]
   spec.require_paths = ["lib"]
 
   spec.add_dependency "rb_sys", "~> 0.9"

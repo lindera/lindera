@@ -19,3 +19,6 @@ pkg/
 
 # Ruby
 Gemfile.lock
+
+# rake-compiler timestamp file written by `rake compile`
+.sitearchdir.time
