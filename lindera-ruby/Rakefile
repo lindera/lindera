@@ -5,7 +5,7 @@ require "rb_sys/extensiontask"
 
 GEMSPEC = Gem::Specification.load("lindera.gemspec")
 
-RbSys::ExtensionTask.new("lindera-ruby", GEMSPEC) do |ext|
+EXTENSION_TASK = RbSys::ExtensionTask.new("lindera-ruby", GEMSPEC) do |ext|
   ext.lib_dir = "lib/lindera"
 end
 
@@ -17,3 +17,57 @@ Rake::TestTask.new(:test) do |t|
 end
 
 task default: %i[compile test]
+
+# Output directory of `rake build`: the gem, plus the staging tree it is built from.
+PKG_DIR = File.expand_path("pkg", __dir__)
+
+# Lindera crates the gem must compile against at exactly its own version.
+PINNED_CRATES = %w[lindera lindera-binding-core].freeze
+
+# Returns the version requirement of a dependency in a manifest written by
+# `cargo package`, which gives every dependency its own `[dependencies.<name>]`
+# table.
+#
+# @param manifest [String] contents of the normalized Cargo.toml
+# @param crate [String] dependency name
+# @return [String, nil] the requirement, or nil when the dependency has none
+def normalized_requirement(manifest, crate)
+  table = manifest[/^\[dependencies\.#{Regexp.escape(crate)}\]\n(?:[^\[\n].*\n|\n)*/]
+  table && table[/^version = "([^"]*)"$/, 1]
+end
+
+desc "Build the source gem into pkg/ from the crate as `cargo package` normalizes it"
+task :build do
+  version = GEMSPEC.version.to_s
+  crate_version = EXTENSION_TASK.cargo_metadata.version
+  unless version == crate_version
+    abort "lindera.gemspec version #{version} does not match the lindera-ruby crate version #{crate_version}"
+  end
+
+  stage_dir = File.join(PKG_DIR, "stage")
+  crate_dir = File.join(stage_dir, "lindera-ruby-#{version}")
+  gem_file = File.join(PKG_DIR, "#{GEMSPEC.name}-#{version}.gem")
+
+  rm_f gem_file
+  rm_rf stage_dir
+  mkdir_p stage_dir
+  # `cargo package` resolves the workspace inheritance and turns the path
+  # dependencies into crates.io ones, so the crate builds outside this
+  # repository. No lockfile: generating one resolves the lindera crates of
+  # this version on crates.io, which do not exist yet when a pull request or a
+  # release builds the gem.
+  sh "cargo", "package", "--package", "lindera-ruby", "--no-verify", "--allow-dirty",
+     "--exclude-lockfile", "--target-dir", File.join(stage_dir, "target")
+  sh "tar", "-xzf", File.join(stage_dir, "target", "package", "lindera-ruby-#{version}.crate"), "-C", stage_dir
+
+  manifest = File.read(File.join(crate_dir, "Cargo.toml"))
+  PINNED_CRATES.each do |crate|
+    requirement = normalized_requirement(manifest, crate)
+    next if requirement == "=#{version}"
+
+    abort "the packaged Cargo.toml requires #{crate} #{requirement.inspect}, expected \"=#{version}\""
+  end
+
+  cp File.expand_path("../LICENSE", __dir__), crate_dir
+  Dir.chdir(crate_dir) { sh "gem", "build", "lindera.gemspec", "--output", gem_file }
+end

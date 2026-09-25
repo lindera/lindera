@@ -43,7 +43,13 @@ npm install lindera
 
 ## Ruby バインディング
 
-Lindera は Ruby バインディングも提供していますが、RubyGems にはまだ公開されていません。ソースからビルドしてください。詳細は [lindera-ruby](lindera-ruby/) ディレクトリを参照してください。
+Lindera は Ruby バインディングも提供しています。v6.1.0 以降は RubyGems から `lindera` としてインストールできます。gem はインストール時にネイティブ拡張をコンパイルするため、Rust ツールチェーンと libclang が必要です:
+
+```bash
+gem install lindera
+```
+
+詳細は [lindera-ruby](lindera-ruby/) ディレクトリを参照してください。
 
 ## PHP バインディング
 

@@ -49,7 +49,13 @@ For more details, see the [lindera-nodejs](lindera-nodejs/) directory.
 
 ## Ruby Bindings
 
-Lindera also provides Ruby bindings. They are not yet published to RubyGems — build from source; see the [lindera-ruby](lindera-ruby/) directory for instructions.
+Lindera also provides Ruby bindings. From v6.1.0 they install from RubyGems as `lindera`. The gem compiles its native extension during installation, so it needs a Rust toolchain and libclang:
+
+```bash
+gem install lindera
+```
+
+For more details, see the [lindera-ruby](lindera-ruby/) directory.
 
 ## PHP Bindings
 

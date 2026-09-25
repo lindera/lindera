@@ -572,27 +572,16 @@ jobs:
           name: sdist-lindera-python-${{ github.ref_name }}
           path: dist
 
-  build-ruby-gems:
-    name: Build Ruby Gem (${{ matrix.platform.ruby_platform }})
+  # One source gem for every platform: `gem install` compiles the extension
+  # (see lindera-ruby/extconf.rb), so there is nothing platform-specific to
+  # build here. `rake build` packages the crate as `cargo package` normalizes
+  # it, with lindera and lindera-binding-core pinned to crates.io releases of
+  # this version.
+  build-ruby-gem:
+    name: Build Ruby gem
     needs: [create-release]
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - runner: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            ruby_platform: x86_64-linux
-          - runner: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-gnu
-            ruby_platform: aarch64-linux
-          - runner: macos-latest
-            target: aarch64-apple-darwin
-            ruby_platform: arm64-darwin
-          - runner: macos-15-intel
-            target: x86_64-apple-darwin
-            ruby_platform: x86_64-darwin
-    runs-on: ${{ matrix.platform.runner }}
+    runs-on: ubuntu-latest
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -606,13 +595,6 @@ jobs:
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
-        with:
-          target: ${{ matrix.platform.target }}
-
-      - name: Cache Cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "stable-${{ matrix.platform.target }}"
 
       - name: Update gem version
         working-directory: lindera-ruby
@@ -622,28 +604,79 @@ jobs:
           sed -i.bak "s/spec.version = \".*\"/spec.version = \"${VERSION}\"/" lindera.gemspec
           rm -f lindera.gemspec.bak
 
+      # Fails when the gem version (from the tag) differs from the crate version.
       - name: Build gem
         working-directory: lindera-ruby
         shell: bash
         run: |
           bundle install --quiet
-          bundle exec rake compile
-          gem build lindera.gemspec
+          bundle exec rake build
 
       - name: Upload gem artifact
         uses: actions/upload-artifact@v7
         with:
-          name: gem-lindera-${{ matrix.platform.ruby_platform }}-${{ github.ref_name }}
-          path: lindera-ruby/*.gem
+          name: gem-lindera-${{ github.ref_name }}
+          path: lindera-ruby/pkg/*.gem
           if-no-files-found: error
 
-      - name: Upload to release
-        uses: softprops/action-gh-release@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # Installs the gem the way users will once it is on RubyGems: `gem install`
+  # compiles it against the crates publish-crates has just released. Linux runs
+  # in a bare ruby container, so a prerequisite missing from the docs would
+  # fail it; macOS installs into an empty GEM_HOME. Both use a current Ruby and
+  # the latest stable Rust, so the documented minimums (Ruby 3.1, Rust 1.88)
+  # are not tested. publish-rubygems attaches the gem to the GitHub Release and
+  # pushes it to RubyGems only after every leg passes.
+  test-ruby-gem:
+    name: Test Ruby gem install (${{ matrix.platform.name }})
+    needs: [build-ruby-gem, publish-crates]
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: linux-x86_64
+            runner: ubuntu-latest
+            container: true
+          - name: darwin-arm64
+            runner: macos-latest
+            container: false
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Download gem artifact
+        uses: actions/download-artifact@v8
         with:
-          files: lindera-ruby/*.gem
-          tag_name: ${{ github.ref_name }}
+          name: gem-lindera-${{ github.ref_name }}
+          path: gems
+
+      - name: Install gem in a clean ruby container and tokenize
+        if: ${{ matrix.platform.container }}
+        shell: bash
+        run: |
+          docker run --rm \
+            -v "$PWD/gems:/gems:ro" \
+            -v "$PWD/lindera-ruby/test/gem:/test:ro" \
+            ruby:3.3 \
+            bash /test/install_and_test.sh --setup "/gems/lindera-${GITHUB_REF_NAME#v}.gem"
+
+      - name: Setup Ruby
+        if: ${{ !matrix.platform.container }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+
+      - name: Set up Rust
+        if: ${{ !matrix.platform.container }}
+        uses: ./.github/actions/setup-rust
+
+      - name: Install gem into an empty GEM_HOME and tokenize
+        if: ${{ !matrix.platform.container }}
+        shell: bash
+        run: |
+          export GEM_HOME="$RUNNER_TEMP/gem-home"
+          bash lindera-ruby/test/gem/install_and_test.sh "gems/lindera-${GITHUB_REF_NAME#v}.gem"
 
   build-php-binaries:
     name: Build PIE binary (php${{ matrix.php-version }}-${{ matrix.platform.arch }}-${{ matrix.platform.os }}-${{ matrix.ts }})
@@ -1135,9 +1168,11 @@ jobs:
           # Publish the main package
           npm publish --access public
 
+  # The gem compiles against crates.io at install time, so it is published only
+  # after publish-crates (through test-ruby-gem, which needs it).
   publish-rubygems:
     name: Publish to RubyGems
-    needs: [build-ruby-gems]
+    needs: [test-ruby-gem]
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
@@ -1147,6 +1182,14 @@ jobs:
           pattern: gem-*
           merge-multiple: true
           path: gems
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: gems/*.gem
+          tag_name: ${{ github.ref_name }}
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
