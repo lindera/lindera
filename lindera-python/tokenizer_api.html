@@ -240,7 +240,7 @@ builder.set_space_penalty({
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.set_space_penalty(False)</code> to get the v6.0 output back. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>True</code> fails until the dictionary is rebuilt. See <a href="../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.set_space_penalty(False)</code> to get the v6.0 output back. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>True</code> fails until the dictionary is rebuilt. See <a href="../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
 </blockquote>
 <h4 id="append_character_filterkind-argsnone"><a class="header" href="#append_character_filterkind-argsnone"><code>append_character_filter(kind, args=None)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>

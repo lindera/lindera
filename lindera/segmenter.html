@@ -327,7 +327,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Som
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_from_dictionary()?;
 <span class="boring">}</span></code></pre></pre>
-<p>Only a ko-dic built by a Lindera release later than 6.0.0 carries these rules. A ko-dic downloaded from the v6.0.0 release ships none, so with it the penalty silently stays off, and <code>space_penalty_from_dictionary()</code> (or <code>"space_penalty": true</code>) returns an error until the dictionary is rebuilt. Explicit rules (<code>space_penalty</code>, <code>--space-penalty-rules</code>) work with any ko-dic.</p>
+<p>Only a ko-dic built by Lindera 6.1.0 or later carries these rules. A ko-dic downloaded from the v6.0.0 release ships none, so with it the penalty silently stays off, and <code>space_penalty_from_dictionary()</code> (or <code>"space_penalty": true</code>) returns an error until the dictionary is rebuilt. Explicit rules (<code>space_penalty</code>, <code>--space-penalty-rules</code>) work with any ko-dic.</p>
 <p>In a <code>SegmenterConfig</code>, the <code>space_penalty</code> key takes an object for explicit rules, <code>false</code> for off, and <code>true</code> for the dictionary's rules (an error when it ships none). Leaving the key out, or <code>null</code>, keeps the default: the dictionary's rules when it ships any.</p>
 <pre><code class="language-json">{
   "dictionary": "embedded://ko-dic",

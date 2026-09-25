@@ -334,7 +334,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Som
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_from_dictionary()?;
 <span class="boring">}</span></code></pre></pre>
-<p>このルールを同梱しているのは、Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースからダウンロードした ko-dic にはルールがないため、その辞書ではペナルティは黙ってオフのままになり、<code>space_penalty_from_dictionary()</code>（および <code>"space_penalty": true</code>）は辞書を再ビルドするまでエラーを返します。明示的なルール（<code>space_penalty</code>、<code>--space-penalty-rules</code>）はどの ko-dic でも使えます。</p>
+<p>このルールを同梱しているのは、Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースからダウンロードした ko-dic にはルールがないため、その辞書ではペナルティは黙ってオフのままになり、<code>space_penalty_from_dictionary()</code>（および <code>"space_penalty": true</code>）は辞書を再ビルドするまでエラーを返します。明示的なルール（<code>space_penalty</code>、<code>--space-penalty-rules</code>）はどの ko-dic でも使えます。</p>
 <p><code>SegmenterConfig</code> の <code>space_penalty</code> キーには、明示的なルールのオブジェクト、オフにする <code>false</code>、辞書のルールを要求する <code>true</code>（同梱しない辞書ではエラー）を指定できます。キーを省略するか <code>null</code> にするとデフォルト、つまり辞書がルールを同梱していればそのルールが使われます:</p>
 <pre><code class="language-json">{
   "dictionary": "embedded://ko-dic",

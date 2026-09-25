@@ -1244,7 +1244,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Som
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_from_dictionary()?;
 <span class="boring">}</span></code></pre></pre>
-<p>Only a ko-dic built by a Lindera release later than 6.0.0 carries these rules. A ko-dic downloaded from the v6.0.0 release ships none, so with it the penalty silently stays off, and <code>space_penalty_from_dictionary()</code> (or <code>"space_penalty": true</code>) returns an error until the dictionary is rebuilt. Explicit rules (<code>space_penalty</code>, <code>--space-penalty-rules</code>) work with any ko-dic.</p>
+<p>Only a ko-dic built by Lindera 6.1.0 or later carries these rules. A ko-dic downloaded from the v6.0.0 release ships none, so with it the penalty silently stays off, and <code>space_penalty_from_dictionary()</code> (or <code>"space_penalty": true</code>) returns an error until the dictionary is rebuilt. Explicit rules (<code>space_penalty</code>, <code>--space-penalty-rules</code>) work with any ko-dic.</p>
 <p>In a <code>SegmenterConfig</code>, the <code>space_penalty</code> key takes an object for explicit rules, <code>false</code> for off, and <code>true</code> for the dictionary's rules (an error when it ships none). Leaving the key out, or <code>null</code>, keeps the default: the dictionary's rules when it ships any.</p>
 <pre><code class="language-json">{
   "dictionary": "embedded://ko-dic",
@@ -3234,7 +3234,7 @@ builder.set_space_penalty({
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.set_space_penalty(False)</code> to get the v6.0 output back. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>True</code> fails until the dictionary is rebuilt. See <a href="lindera-python/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.set_space_penalty(False)</code> to get the v6.0 output back. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>True</code> fails until the dictionary is rebuilt. See <a href="lindera-python/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
 </blockquote>
 <h4 id="append_character_filterkind-argsnone"><a class="header" href="#append_character_filterkind-argsnone"><code>append_character_filter(kind, args=None)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
@@ -4881,7 +4881,7 @@ builder.set_space_penalty({
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.set_space_penalty(false)</code> to get the v6.0 output back. A tokenizer created directly with <code>Lindera::Tokenizer.new(dictionary, ...)</code> always uses the default, so use <code>TokenizerBuilder</code> to turn it off. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-ruby/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.set_space_penalty(false)</code> to get the v6.0 output back. A tokenizer created directly with <code>Lindera::Tokenizer.new(dictionary, ...)</code> always uses the default, so use <code>TokenizerBuilder</code> to turn it off. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-ruby/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
 </blockquote>
 <h4 id="append_character_filterkind-args"><a class="header" href="#append_character_filterkind-args"><code>append_character_filter(kind, args)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline. The <code>args</code> parameter is a hash with string keys.</p>
@@ -5747,7 +5747,7 @@ $builder-&gt;setSpacePenalty(null);
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>$builder-&gt;setSpacePenalty(false)</code> to get the v6.0 output back; a tokenizer created with <a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-userdictionary"><code>new Lindera\Tokenizer(...)</code></a> always applies the dictionary's rules. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-php/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>$builder-&gt;setSpacePenalty(false)</code> to get the v6.0 output back; a tokenizer created with <a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-userdictionary"><code>new Lindera\Tokenizer(...)</code></a> always applies the dictionary's rules. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-php/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
 </blockquote>
 <h4 id="appendcharacterfilterkind-args-1"><a class="header" href="#appendcharacterfilterkind-args-1"><code>appendCharacterFilter($kind, $args)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
@@ -6732,7 +6732,7 @@ builder.setSpacePenalty({
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.setSpacePenalty(false)</code> to get the v6.0 output back. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-wasm/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.setSpacePenalty(false)</code> to get the v6.0 output back. Only a ko-dic built by a Lindera release later than 6.1.0 ships the rules; with a ko-dic from the v6.1.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-wasm/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
 </blockquote>
 <h4 id="appendcharacterfiltername-args"><a class="header" href="#appendcharacterfiltername-args"><code>appendCharacterFilter(name, args)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
@@ -6886,7 +6886,7 @@ const dict = loadDictionary("embedded://ipadic");
 </ul>
 <pre><code class="language-javascript">import { version } from 'lindera-wasm-ipadic';
 
-console.log(version()); // e.g., "6.0.0"
+console.log(version()); // e.g., "6.1.0"
 </code></pre>
 <h2 id="enums-and-utility-classes"><a class="header" href="#enums-and-utility-classes">Enums and Utility Classes</a></h2>
 <h3 id="mode-5"><a class="header" href="#mode-5">Mode</a></h3>
@@ -8281,7 +8281,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <p>mecab-ko (the MeCab fork mecab-ko-dic is built for) raises the connection cost of a word whose left side is preceded by whitespace when its <code>pos-id.def</code> id is listed in <code>dicrc</code>:</p>
 <pre><code class="language-text">left-space-penalty-factor = 100,3000,120,6000,172,3000,183,3000,184,3000,185,3000,200,3000,210,6000,220,3000,221,3000,222,3000,230,3000
 </code></pre>
-<p>Lindera does not store <code>pos-id.def</code> ids, but every listed id corresponds to the entry's first part-of-speech tag (for <code>Inflect</code> rows, the <code>First part-of-speech</code> column), so the same rules are written by tag. ko-dic ships them in its <code>metadata.json</code> (<code>space_penalty</code>), and <code>Segmenter::new</code> applies them by default. Opt out with <code>Segmenter::space_penalty(None)</code>, <code>"space_penalty": false</code> in the segmenter config, or <code>lindera tokenize --disable-space-penalty</code>; explicit rules go through <code>Segmenter::space_penalty</code>, a <code>space_penalty</code> object, or <code>--space-penalty-rules</code>. The shipped rules are present only in a ko-dic built by a Lindera release later than 6.0.0; with a ko-dic from the v6.0.0 release the penalty silently stays off until the dictionary is rebuilt, while <code>--space-penalty-rules</code> works regardless.</p>
+<p>Lindera does not store <code>pos-id.def</code> ids, but every listed id corresponds to the entry's first part-of-speech tag (for <code>Inflect</code> rows, the <code>First part-of-speech</code> column), so the same rules are written by tag. ko-dic ships them in its <code>metadata.json</code> (<code>space_penalty</code>), and <code>Segmenter::new</code> applies them by default. Opt out with <code>Segmenter::space_penalty(None)</code>, <code>"space_penalty": false</code> in the segmenter config, or <code>lindera tokenize --disable-space-penalty</code>; explicit rules go through <code>Segmenter::space_penalty</code>, a <code>space_penalty</code> object, or <code>--space-penalty-rules</code>. The shipped rules are present only in a ko-dic built by Lindera 6.1.0 or later; with a ko-dic from the v6.0.0 release the penalty silently stays off until the dictionary is rebuilt, while <code>--space-penalty-rules</code> works regardless.</p>
 <div class="table-wrapper"><table><thead><tr><th>pos-id.def ids</th><th>First part-of-speech tags</th><th>Cost</th></tr></thead><tbody>
 <tr><td>100, 200 (<code>Inflect</code>)</td><td><code>EC</code>, <code>EF</code>, <code>EP</code>, <code>ETM</code>, <code>ETN</code></td><td>3000</td></tr>
 <tr><td>172, 230 (<code>Inflect</code>)</td><td><code>VCP</code></td><td>3000</td></tr>
