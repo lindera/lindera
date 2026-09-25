@@ -194,7 +194,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Som
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_from_dictionary()?;
 ```
 
-このルールを同梱しているのは、Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースからダウンロードした ko-dic にはルールがないため、その辞書ではペナルティは黙ってオフのままになり、`space_penalty_from_dictionary()`（および `"space_penalty": true`）は辞書を再ビルドするまでエラーを返します。明示的なルール（`space_penalty`、`--space-penalty-rules`）はどの ko-dic でも使えます。
+このルールを同梱しているのは、Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースからダウンロードした ko-dic にはルールがないため、その辞書ではペナルティは黙ってオフのままになり、`space_penalty_from_dictionary()`（および `"space_penalty": true`）は辞書を再ビルドするまでエラーを返します。明示的なルール（`space_penalty`、`--space-penalty-rules`）はどの ko-dic でも使えます。
 
 `SegmenterConfig` の `space_penalty` キーには、明示的なルールのオブジェクト、オフにする `false`、辞書のルールを要求する `true`（同梱しない辞書ではエラー）を指定できます。キーを省略するか `null` にするとデフォルト、つまり辞書がルールを同梱していればそのルールが使われます:
 

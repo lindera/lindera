@@ -91,7 +91,7 @@ builder.set_space_penalty({
 ```
 
 > [!NOTE]
-> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `서울 시 에서` now reads `시` as the noun `NNG` rather than the ending `EP`. Call `builder.set_space_penalty(false)` to get the v6.0 output back. A tokenizer created directly with `Lindera::Tokenizer.new(dictionary, ...)` always uses the default, so use `TokenizerBuilder` to turn it off. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and `true` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
+> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `서울 시 에서` now reads `시` as the noun `NNG` rather than the ending `EP`. Call `builder.set_space_penalty(false)` to get the v6.0 output back. A tokenizer created directly with `Lindera::Tokenizer.new(dictionary, ...)` always uses the default, so use `TokenizerBuilder` to turn it off. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and `true` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
 
 #### `append_character_filter(kind, args)`
 

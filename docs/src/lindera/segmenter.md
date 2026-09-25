@@ -187,7 +187,7 @@ A dictionary can ship its default rules in `metadata.json` under `space_penalty`
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_from_dictionary()?;
 ```
 
-Only a ko-dic built by a Lindera release later than 6.0.0 carries these rules. A ko-dic downloaded from the v6.0.0 release ships none, so with it the penalty silently stays off, and `space_penalty_from_dictionary()` (or `"space_penalty": true`) returns an error until the dictionary is rebuilt. Explicit rules (`space_penalty`, `--space-penalty-rules`) work with any ko-dic.
+Only a ko-dic built by Lindera 6.1.0 or later carries these rules. A ko-dic downloaded from the v6.0.0 release ships none, so with it the penalty silently stays off, and `space_penalty_from_dictionary()` (or `"space_penalty": true`) returns an error until the dictionary is rebuilt. Explicit rules (`space_penalty`, `--space-penalty-rules`) work with any ko-dic.
 
 In a `SegmenterConfig`, the `space_penalty` key takes an object for explicit rules, `false` for off, and `true` for the dictionary's rules (an error when it ships none). Leaving the key out, or `null`, keeps the default: the dictionary's rules when it ships any.
 
