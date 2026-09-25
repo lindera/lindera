@@ -112,7 +112,7 @@ builder.setSpacePenalty({
 ```
 
 > [!NOTE]
-> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `서울 시 에서` now reads `시` as the noun `NNG` rather than the ending `EP`. Call `builder.setSpacePenalty(false)` to get the v6.0 output back. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and `true` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
+> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `서울 시 에서` now reads `시` as the noun `NNG` rather than the ending `EP`. Call `builder.setSpacePenalty(false)` to get the v6.0 output back. Only a ko-dic built by a Lindera release later than 6.1.0 ships the rules; with a ko-dic from the v6.1.0 release the penalty stays off and `true` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
 
 #### `appendCharacterFilter(name, args)`
 
@@ -291,7 +291,7 @@ Returns the version string of the lindera-wasm package.
 ```javascript
 import { version } from 'lindera-wasm-ipadic';
 
-console.log(version()); // e.g., "6.0.0"
+console.log(version()); // e.g., "6.1.0"
 ```
 
 ## Enums and Utility Classes
