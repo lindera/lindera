@@ -130,9 +130,10 @@ pub struct Metadata {
     /// [`crate::space_penalty`]); ko-dic carries mecab-ko-dic's
     /// `left-space-penalty-factor` here. Optional, and omitted from the file
     /// when absent so existing `metadata.json` files stay byte-identical.
-    /// The rules are never applied implicitly: a consumer opts in (the
-    /// Segmenter's `space_penalty: true` config value or
-    /// `space_penalty_from_dictionary`).
+    /// When present, the rules are applied by default: the `lindera`
+    /// Segmenter picks them up unless told otherwise, e.g. with
+    /// `Segmenter::space_penalty(None)`, the segmenter config value
+    /// `"space_penalty": false`, or `lindera tokenize --disable-space-penalty`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub space_penalty: Option<SpacePenaltyConfig>,
 }
