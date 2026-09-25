@@ -311,7 +311,7 @@ jobs:
     # the branch name and action-gh-release would create a release and a tag
     # for it. Every build and publish job below needs this job (directly or
     # through a build job), so skipping it here also skips them; a dispatch is
-    # then a dry run of the tests and of build-php-binaries.
+    # then a dry run of the tests, build-php-binaries and build-python-sdist.
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
     steps:
@@ -543,10 +543,18 @@ jobs:
         with:
           name: wheels-lindera-python-${{ runner.os }}-${{ matrix.platform.target }}-${{ github.ref_name }}
           path: dist
+          if-no-files-found: error
 
   build-python-sdist:
     name: Build sdist
-    needs: [create-release]
+    needs: [test-lindera-python, create-release]
+    # Runs after the release exists on a tag push, and as a dry run on
+    # workflow_dispatch from a branch, so that a broken sdist shows up before
+    # the tag is cut: nothing else builds it, and publish-pypi holds back the
+    # wheels too when this job fails. The result checks mirror
+    # build-php-binaries (see the comment there). The sdist is attached to the
+    # GitHub Release only on a tag.
+    if: ${{ !cancelled() && needs.test-lindera-python.result == 'success' && (needs.create-release.result == 'success' || (needs.create-release.result == 'skipped' && !startsWith(github.ref, 'refs/tags/'))) }}
     runs-on: ubuntu-latest
     steps:
       - name: Run checkout
@@ -558,7 +566,71 @@ jobs:
           command: sdist
           args: --out dist --manifest-path lindera-python/Cargo.toml
 
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          # The oldest Python the abi3 wheels support (see build-python-wheels).
+          python-version: "3.10"
+
+      - name: Check sdist
+        id: sdist
+        # PyPI rejects an sdist whose PKG-INFO lists a License-File that is not
+        # at that path under the sdist's top directory (PEP 639). `maturin
+        # upload` does not send License-File, so PyPI skips that check for it,
+        # but twine and uv publish do send it. Run the same check here so that
+        # such an sdist never reaches PyPI, whichever tool uploads it.
+        shell: bash
+        run: |
+          shopt -s nullglob
+          sdists=(dist/*.tar.gz)
+          if [ "${#sdists[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one sdist in dist/, found ${#sdists[@]}"
+            exit 1
+          fi
+          python - "${sdists[0]}" <<'EOF'
+          import email.parser
+          import os
+          import sys
+          import tarfile
+
+          sdist = sys.argv[1]
+          with tarfile.open(sdist) as tar:
+              names = set(tar.getnames())
+              top = os.path.commonpath(names)
+              metadata = email.parser.BytesParser().parse(tar.extractfile(f"{top}/PKG-INFO"))
+          license_files = metadata.get_all("License-File", [])
+          if not license_files:
+              print(f"::error::{sdist}: PKG-INFO lists no License-File")
+              sys.exit(1)
+          missing = [path for path in license_files if f"{top}/{path}" not in names]
+          for path in missing:
+              print(f"::error::{sdist}: PKG-INFO lists License-File {path}, but there is no {top}/{path}")
+          sys.exit(1 if missing else 0)
+          EOF
+          echo "path=${sdists[0]}" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+
+      - name: Install sdist outside the repository
+        # pip builds this sdist on every platform without a wheel, so check that
+        # it builds on its own before anything is published: a build inside the
+        # checkout can hide files missing from the package. pip unpacks the
+        # sdist into a temporary directory, where cargo sees only what the sdist
+        # contains. LTO is turned off only to keep the job short; it does not
+        # change what the sdist must contain.
+        shell: bash
+        env:
+          CARGO_PROFILE_RELEASE_LTO: "false"
+          SDIST: ${{ steps.sdist.outputs.path }}
+        run: |
+          venv="${RUNNER_TEMP}/sdist-venv"
+          python -m venv "${venv}"
+          "${venv}/bin/python" -m pip install "${SDIST}"
+          "${venv}/bin/python" -c "import lindera; print('lindera', lindera.version())"
+
       - name: Upload artifact
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -569,8 +641,11 @@ jobs:
       - name: Upload to workflow artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: sdist-lindera-python-${{ github.ref_name }}
+          # No github.ref_name in the name: on a dry run from a branch such as
+          # fix/foo it would add a slash, which artifact names cannot contain.
+          name: sdist-lindera-python
           path: dist
+          if-no-files-found: error
 
   build-ruby-gems:
     name: Build Ruby Gem (${{ matrix.platform.ruby_platform }})
@@ -971,12 +1046,41 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - name: Download build artifacts
+      - name: Download wheels
         uses: actions/download-artifact@v8
         with:
           pattern: wheels-*
           merge-multiple: true
           path: dist
+
+      - name: Download sdist
+        uses: actions/download-artifact@v8
+        with:
+          name: sdist-lindera-python
+          path: dist
+
+      - name: Check distributions
+        # Upload the wheels and exactly one sdist, and nothing else. Without the
+        # sdist, pip on a platform without a wheel finds no distribution at all.
+        shell: bash
+        run: |
+          shopt -s nullglob
+          wheels=(dist/*.whl)
+          sdists=(dist/*.tar.gz)
+          files=(dist/*)
+          ls -l dist
+          if [ "${#sdists[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one sdist in dist/, found ${#sdists[@]}"
+            exit 1
+          fi
+          if [ "${#wheels[@]}" -eq 0 ]; then
+            echo "::error::Expected wheels in dist/, found none"
+            exit 1
+          fi
+          if [ "${#files[@]}" -ne $(( ${#wheels[@]} + 1 )) ]; then
+            echo "::error::dist/ holds files other than the wheels and the sdist"
+            exit 1
+          fi
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1

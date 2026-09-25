@@ -7,7 +7,8 @@ name = "lindera"
 dynamic = ["version"]
 description = "Python binding for Lindera (no embedded dictionaries)"
 authors = [{ name = "Minoru Osuka", email = "minoru.osuka@gmail.com" }]
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 readme = "README.md"
 keywords = ["morphological", "analysis", "library", "python"]
 classifiers = [
@@ -18,7 +19,6 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3.15",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 requires-python = ">=3.10,<3.15"
@@ -41,7 +41,7 @@ flake8-pyproject = "^1.2.4"
 mypy = "^2.3.1"
 
 [build-system]
-requires = ["maturin>=1.7,<2.0"]
+requires = ["maturin>=1.9.3,<2.0"]
 build-backend = "maturin"
 
 [tool.black]
