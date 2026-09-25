@@ -177,16 +177,27 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="インストール"><a class="header" href="#インストール">インストール</a></h1>
-<blockquote>
-<p>[!NOTE]
-lindera-ruby はまだ RubyGems に公開されていません。ソースからビルドする必要があります。</p>
-</blockquote>
+<p>v6.1.0 以降の lindera-ruby は、<a href="https://rubygems.org/gems/lindera">RubyGems</a> から <code>lindera</code> としてインストールできます。ソース gem のため、<code>gem install</code> の実行時に同梱の Rust ソースからネイティブ拡張をコンパイルします（数分かかります）。</p>
 <h2 id="前提条件"><a class="header" href="#前提条件">前提条件</a></h2>
 <ul>
-<li><strong>Ruby 3.1 以降</strong></li>
-<li><strong>Rust ツールチェーン</strong> -- <a href="https://rustup.rs/">rustup</a> 経由でインストール</li>
-<li><strong>Bundler</strong> -- Ruby の依存関係管理ツール（<code>gem install bundler</code>）</li>
+<li><strong>Ruby 3.1 以降</strong>と、ネイティブ gem のビルドに必要なツール（C コンパイラと <code>make</code>）</li>
+<li><strong>Rust ツールチェーン 1.88 以降</strong> -- <a href="https://rustup.rs/">rustup</a> 経由でインストール</li>
+<li><strong>libclang</strong> -- Debian/Ubuntu は <code>libclang-dev</code>、macOS は Xcode コマンドラインツール</li>
+<li><strong>Bundler</strong> -- ソースからビルドする場合のみ（<code>gem install bundler</code>）</li>
 </ul>
+<h2 id="rubygems-からのインストール"><a class="header" href="#rubygems-からのインストール">RubyGems からのインストール</a></h2>
+<pre><code class="language-bash">gem install lindera
+</code></pre>
+<p>または <code>Gemfile</code> に追加します：</p>
+<pre><code class="language-ruby">gem "lindera"
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+lindera v6.1.0 以降を使用してください。v6.1.0 より前に公開された <code>lindera</code> gem は、インストール時のコンパイルに失敗します。それらのバージョンは、以下の手順でソースからビルドしてください。</p>
+</blockquote>
+<p>gem は <a href="https://crates.io/crates/lindera">crates.io</a> 上の同じバージョンの <code>lindera</code> と <code>lindera-binding-core</code> に対してコンパイルされます（この 2 つはバージョンを完全に固定しています）。gem には <code>Cargo.lock</code> が含まれないため、それ以外の依存（ほかの <code>lindera-*</code> クレートを含む）は、インストール時に互換性のある最新のリリースに解決されます。デフォルトの feature（<code>train</code>）のみを有効にし、辞書は埋め込みません。辞書は<a href="#%E8%BE%9E%E6%9B%B8%E3%81%AE%E5%85%A5%E6%89%8B">辞書の入手</a>を参照してください。その他の <a href="#feature-%E3%83%95%E3%83%A9%E3%82%B0">Feature フラグ</a>を有効にするには、インストール時に <code>LINDERA_FEATURES</code> を指定します：</p>
+<pre><code class="language-bash">LINDERA_FEATURES="embed-ipadic" gem install lindera
+</code></pre>
 <h2 id="辞書の入手"><a class="header" href="#辞書の入手">辞書の入手</a></h2>
 <p>Lindera はパッケージに辞書を同梱していません。ビルド済み辞書を別途入手する必要があります。</p>
 <h3 id="github-releases-からのダウンロード"><a class="header" href="#github-releases-からのダウンロード">GitHub Releases からのダウンロード</a></h3>
@@ -206,12 +217,22 @@ bundle exec rake compile
 </code></pre>
 <p><code>make test-lindera-ruby</code> を実行すると、Rust のユニットテストと Ruby の minitest
 スイートの両方が実行されます。</p>
+<h3 id="gem-のビルド"><a class="header" href="#gem-のビルド">gem のビルド</a></h3>
+<p><code>bundle exec rake build</code>（または <code>make package-lindera-ruby</code>）は、ソース gem を
+<code>lindera-ruby/pkg/</code> に出力します。<code>cargo package</code> が正規化したクレートを同梱するため、
+gem はこのリポジトリの外でも、crates.io 上の同じバージョンの <code>lindera</code> と
+<code>lindera-binding-core</code> に対してコンパイルできます。<code>gem build</code> を直接実行しないで
+ください。クレート自身の <code>Cargo.toml</code> は Cargo ワークスペースの中でしか解決できません。</p>
+<p><code>make test-lindera-ruby-gem</code>（Docker が必要）は、gem をビルドし、クリーンな <code>ruby</code>
+コンテナで <code>gem install</code> を実行して、テキストをトークナイズします。このテストは
+<code>lindera</code> クレートをチェックアウトからコンパイルするため、crates.io に未公開の
+バージョンでも実行できます。</p>
 <h3 id="学習機能付きビルド"><a class="header" href="#学習機能付きビルド">学習機能付きビルド</a></h3>
 <p><code>train</code> feature は、CRF ベースの辞書学習機能を有効にします。デフォルトで有効です：</p>
 <pre><code class="language-bash">LINDERA_FEATURES="train" bundle exec rake compile
 </code></pre>
 <h2 id="feature-フラグ"><a class="header" href="#feature-フラグ">Feature フラグ</a></h2>
-<p>Feature は環境変数 <code>LINDERA_FEATURES</code> にカンマ区切りリストで指定します。</p>
+<p>Feature は環境変数 <code>LINDERA_FEATURES</code> にカンマ区切りリストで指定します。<code>bundle exec rake compile</code> と <code>gem install</code> のどちらでも使えます。</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>train</code></td><td>CRF 学習機能</td><td>有効</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>日本語辞書（IPADIC）をバイナリに埋め込み</td><td>無効</td></tr>

@@ -177,16 +177,27 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
-<blockquote>
-<p>[!NOTE]
-lindera-ruby is not yet published to RubyGems. You need to build from source.</p>
-</blockquote>
+<p>From v6.1.0, lindera-ruby installs from <a href="https://rubygems.org/gems/lindera">RubyGems</a> as <code>lindera</code>. It is a source gem: <code>gem install</code> compiles the native extension from the bundled Rust source, which takes a few minutes.</p>
 <h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
 <ul>
-<li><strong>Ruby 3.1 or later</strong></li>
-<li><strong>Rust toolchain</strong> -- Install via <a href="https://rustup.rs/">rustup</a></li>
-<li><strong>Bundler</strong> -- Ruby dependency manager (<code>gem install bundler</code>)</li>
+<li><strong>Ruby 3.1 or later</strong>, with the tools needed to build native gems (a C compiler and <code>make</code>)</li>
+<li><strong>Rust toolchain 1.88 or later</strong> -- Install via <a href="https://rustup.rs/">rustup</a></li>
+<li><strong>libclang</strong> -- <code>libclang-dev</code> on Debian/Ubuntu; the Xcode command line tools on macOS</li>
+<li><strong>Bundler</strong> -- only to build from source (<code>gem install bundler</code>)</li>
 </ul>
+<h2 id="install-from-rubygems"><a class="header" href="#install-from-rubygems">Install from RubyGems</a></h2>
+<pre><code class="language-bash">gem install lindera
+</code></pre>
+<p>Or add it to your <code>Gemfile</code>:</p>
+<pre><code class="language-ruby">gem "lindera"
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+Use lindera v6.1.0 or later. The <code>lindera</code> gems published before v6.1.0 fail to compile during installation; for those versions, build from source as described below.</p>
+</blockquote>
+<p>The gem compiles against the <a href="https://crates.io/crates/lindera">crates.io</a> releases of <code>lindera</code> and <code>lindera-binding-core</code> of the same version, which it pins exactly. It ships no <code>Cargo.lock</code>, so their dependencies, including the other <code>lindera-*</code> crates, resolve to the latest compatible releases at install time. It builds with the default features (<code>train</code>) and no embedded dictionary; see <a href="#obtaining-dictionaries">Obtaining Dictionaries</a>. To enable other <a href="#feature-flags">feature flags</a>, set <code>LINDERA_FEATURES</code> when installing:</p>
+<pre><code class="language-bash">LINDERA_FEATURES="embed-ipadic" gem install lindera
+</code></pre>
 <h2 id="obtaining-dictionaries"><a class="header" href="#obtaining-dictionaries">Obtaining Dictionaries</a></h2>
 <p>Lindera does not bundle dictionaries with the package. You need to obtain a pre-built dictionary separately.</p>
 <h3 id="download-from-github-releases"><a class="header" href="#download-from-github-releases">Download from GitHub Releases</a></h3>
@@ -206,12 +217,22 @@ bundle exec rake compile
 </code></pre>
 <p>Run <code>make test-lindera-ruby</code> to run both the Rust unit tests and the Ruby
 minitest suite.</p>
+<h3 id="building-the-gem"><a class="header" href="#building-the-gem">Building the Gem</a></h3>
+<p><code>bundle exec rake build</code> (or <code>make package-lindera-ruby</code>) writes the source gem
+to <code>lindera-ruby/pkg/</code>. It packages the crate as <code>cargo package</code> normalizes it,
+so the gem compiles outside this repository, against the crates.io releases of
+<code>lindera</code> and <code>lindera-binding-core</code> of the same version. Do not run <code>gem build</code>
+directly: the crate's own <code>Cargo.toml</code> only resolves inside the Cargo workspace.</p>
+<p><code>make test-lindera-ruby-gem</code> (requires Docker) builds the gem, installs it with
+<code>gem install</code> in a clean <code>ruby</code> container and tokenizes text with it. The test
+compiles the <code>lindera</code> crates from the checkout, so it also works for versions
+not yet released on crates.io.</p>
 <h3 id="build-with-training-support"><a class="header" href="#build-with-training-support">Build with Training Support</a></h3>
 <p>The <code>train</code> feature enables CRF-based dictionary training functionality. It is enabled by default:</p>
 <pre><code class="language-bash">LINDERA_FEATURES="train" bundle exec rake compile
 </code></pre>
 <h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
-<p>Features are specified through the <code>LINDERA_FEATURES</code> environment variable as a comma-separated list.</p>
+<p>Features are specified through the <code>LINDERA_FEATURES</code> environment variable as a comma-separated list, both for <code>bundle exec rake compile</code> and for <code>gem install</code>.</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>train</code></td><td>CRF training functionality</td><td>Enabled</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>Embed Japanese dictionary (IPADIC) into the binary</td><td>Disabled</td></tr>
