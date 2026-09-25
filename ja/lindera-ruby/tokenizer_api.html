@@ -256,12 +256,16 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Lindera::Tokenizer</code> はテキストに対して形態素解析を行います。</p>
 <h3 id="tokenizer-の作成"><a class="header" href="#tokenizer-の作成">Tokenizer の作成</a></h3>
-<h4 id="linderatokenizernewdictionary-mode-user_dictionary"><a class="header" href="#linderatokenizernewdictionary-mode-user_dictionary"><code>Lindera::Tokenizer.new(dictionary, mode, user_dictionary)</code></a></h4>
-<p>読み込み済みの辞書から直接トークナイザーを作成します。左側空白ペナルティは常に辞書のデフォルトになります。変更するには <a href="#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a> を使います。<code>user_dictionary</code> が不要な場合は <code>nil</code> を渡します。</p>
+<h4 id="linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><a class="header" href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil)</code></a></h4>
+<p>読み込み済みの辞書から直接トークナイザーを作成します。<code>mode</code> のデフォルトは <code>'normal'</code> で、<code>user_dictionary</code> は省略できます。</p>
+<p>キーワード引数 <code>space_penalty:</code> には <a href="#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a> と同じ値を渡せます。<code>nil</code>（デフォルト）では辞書が同梱する左側空白ペナルティのルールを使うため、ko-dic ではペナルティがオンになります。オフにするには <code>false</code> を渡します。不正な設定では、<code>set_space_penalty</code> や <code>build</code> と同じエラーが発生します。</p>
 <pre><code class="language-ruby">require 'lindera'
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', nil)
+tokenizer = Lindera::Tokenizer.new(dictionary)
+
+# 左側空白ペナルティなしの ko-dic
+ko_tokenizer = Lindera::Tokenizer.new(Lindera.load_dictionary('embedded://ko-dic'), space_penalty: false)
 </code></pre>
 <p>ユーザー辞書を使用する場合：</p>
 <pre><code class="language-ruby">dictionary = Lindera.load_dictionary('embedded://ipadic')

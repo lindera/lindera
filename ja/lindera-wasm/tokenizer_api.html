@@ -305,7 +305,7 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p>メインのトークナイザークラスです。<code>TokenizerBuilder.build()</code> またはコンストラクタ経由で作成できます。</p>
 <h3 id="tokenizer-コンストラクタ"><a class="header" href="#tokenizer-コンストラクタ">Tokenizer コンストラクタ</a></h3>
-<pre><code class="language-javascript">const tokenizer = new Tokenizer(dictionary, mode, userDictionary);
+<pre><code class="language-javascript">const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
 </code></pre>
 <ul>
 <li><strong>パラメータ</strong>:
@@ -313,6 +313,7 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <li><code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト</li>
 <li><code>mode</code> (string, 省略可) -- トークナイズモード（<code>"normal"</code> または <code>"decompose"</code>、デフォルト: <code>"normal"</code>）</li>
 <li><code>userDictionary</code> (UserDictionary, 省略可) -- 読み込み済みのユーザー辞書</li>
+<li><code>spacePenalty</code> (boolean | object, 省略可) -- 左側空白ペナルティ。<a href="#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> と同じ値を渡せます。<code>null</code> または <code>undefined</code>（デフォルト）では、辞書が同梱するルールを使います。不正な設定では、<code>setSpacePenalty()</code> や <code>build()</code> と同じくエラー文字列が投げられます。</li>
 </ul>
 </li>
 </ul>

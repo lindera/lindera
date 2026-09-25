@@ -257,12 +257,16 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Lindera::Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer"><a class="header" href="#creating-a-tokenizer">Creating a Tokenizer</a></h3>
-<h4 id="linderatokenizernewdictionary-mode-user_dictionary"><a class="header" href="#linderatokenizernewdictionary-mode-user_dictionary"><code>Lindera::Tokenizer.new(dictionary, mode, user_dictionary)</code></a></h4>
-<p>Creates a tokenizer directly from a loaded dictionary. It always uses the dictionary's default left-space penalty; use <a href="#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a> to change it.</p>
+<h4 id="linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><a class="header" href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil)</code></a></h4>
+<p>Creates a tokenizer directly from a loaded dictionary. <code>mode</code> defaults to <code>'normal'</code>, and <code>user_dictionary</code> is optional.</p>
+<p>The <code>space_penalty:</code> keyword takes the same values as <a href="#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a>. <code>nil</code> (the default) uses the left-space penalty rules the dictionary ships, so with ko-dic the penalty is on; pass <code>false</code> to turn it off. An invalid setting raises the same errors as <code>set_space_penalty</code> and <code>build</code>.</p>
 <pre><code class="language-ruby">require 'lindera'
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', nil)
+tokenizer = Lindera::Tokenizer.new(dictionary)
+
+# ko-dic without the left-space penalty
+ko_tokenizer = Lindera::Tokenizer.new(Lindera.load_dictionary('embedded://ko-dic'), space_penalty: false)
 </code></pre>
 <p>With a user dictionary:</p>
 <pre><code class="language-ruby">dictionary = Lindera.load_dictionary('embedded://ipadic')

@@ -255,7 +255,7 @@ $builder-&gt;setSpacePenalty(null);
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>$builder-&gt;setSpacePenalty(false)</code> to get the v6.0 output back; a tokenizer created with <a href="#new-linderatokenizerdictionary-mode-userdictionary"><code>new Lindera\Tokenizer(...)</code></a> always applies the dictionary's rules. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>$builder-&gt;setSpacePenalty(false)</code> to get the v6.0 output back; for a tokenizer created with <a href="#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer(...)</code></a>, pass <code>space_penalty: false</code>. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
 </blockquote>
 <h4 id="appendcharacterfilterkind-args"><a class="header" href="#appendcharacterfilterkind-args"><code>appendCharacterFilter($kind, $args)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
@@ -280,13 +280,16 @@ $tokenizer = $builder-&gt;build();
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Lindera\Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer"><a class="header" href="#creating-a-tokenizer">Creating a Tokenizer</a></h3>
-<h4 id="new-linderatokenizerdictionary-mode-userdictionary"><a class="header" href="#new-linderatokenizerdictionary-mode-userdictionary"><code>new Lindera\Tokenizer($dictionary, $mode, $userDictionary)</code></a></h4>
-<p>Creates a tokenizer directly from a loaded dictionary.</p>
-<p>A tokenizer created this way always applies the left-space penalty rules the dictionary ships (ko-dic ships them), and the constructor has no option to change that. To change or turn off the penalty, use a <code>TokenizerBuilder</code> with <a href="#setspacepenaltyvalue"><code>setSpacePenalty()</code></a>.</p>
+<h4 id="new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><a class="header" href="#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty)</code></a></h4>
+<p>Creates a tokenizer directly from a loaded dictionary. <code>$mode</code>, <code>$user_dictionary</code> and <code>$space_penalty</code> are optional and default to <code>null</code>; <code>$mode</code> <code>null</code> means <code>'normal'</code>.</p>
+<p><code>$space_penalty</code> takes the same values as <a href="#setspacepenaltyvalue"><code>setSpacePenalty()</code></a>. <code>null</code> uses the left-space penalty rules the dictionary ships (ko-dic ships them); pass <code>false</code> to turn the penalty off. Pass it by name to skip the other optional arguments. An invalid setting throws a <code>ValueError</code>, as <code>setSpacePenalty()</code> and <code>build()</code> do.</p>
 <pre><code class="language-php">&lt;?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
 $tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+
+// ko-dic without the left-space penalty
+$koTokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ko-dic'), space_penalty: false);
 </code></pre>
 <p>With a user dictionary:</p>
 <pre><code class="language-php">&lt;?php

@@ -260,13 +260,16 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Tokenizer</code> はテキストに対して形態素解析を行います。</p>
 <h3 id="tokenizer-の作成"><a class="header" href="#tokenizer-の作成">Tokenizer の作成</a></h3>
-<h4 id="tokenizerdictionary-modenormal-user_dictionarynone"><a class="header" href="#tokenizerdictionary-modenormal-user_dictionarynone"><code>Tokenizer(dictionary, mode="normal", user_dictionary=None)</code></a></h4>
+<h4 id="tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone"><a class="header" href="#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone"><code>Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None)</code></a></h4>
 <p>読み込み済みの辞書から直接トークナイザーを作成します。</p>
-<p>このトークナイザーは辞書のデフォルト設定を使い、辞書が同梱する左側空白ペナルティのルールも適用します。そのため ko-dic ではペナルティが常にオンです。オフにしたりルールを変えたりするには、<a href="#set_space_penaltyvalue"><code>TokenizerBuilder.set_space_penalty</code></a> を使ってトークナイザーをビルドしてください。</p>
+<p><code>space_penalty</code> には <a href="#set_space_penaltyvalue"><code>TokenizerBuilder.set_space_penalty</code></a> と同じ値を渡せます。<code>None</code>（デフォルト）では辞書が同梱する左側空白ペナルティのルールを使うため、ko-dic ではペナルティがオンになります。オフにするには <code>False</code> を渡します。不正な設定では、<code>set_space_penalty</code> や <code>build()</code> と同じエラーが送出されます。</p>
 <pre><code class="language-python">from lindera import Tokenizer, load_dictionary
 
 dictionary = load_dictionary("embedded://ipadic")
 tokenizer = Tokenizer(dictionary, mode="normal")
+
+# 左側空白ペナルティなしの ko-dic
+ko_tokenizer = Tokenizer(load_dictionary("embedded://ko-dic"), space_penalty=False)
 </code></pre>
 <h3 id="tokenizer-メソッド"><a class="header" href="#tokenizer-メソッド">Tokenizer メソッド</a></h3>
 <h4 id="tokenizetext"><a class="header" href="#tokenizetext"><code>tokenize(text)</code></a></h4>

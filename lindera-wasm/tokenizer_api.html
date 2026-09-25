@@ -307,7 +307,7 @@ configuration.</p>
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p>The main tokenizer class. Can be created via <code>TokenizerBuilder.build()</code> or directly via the constructor.</p>
 <h3 id="tokenizer-constructor"><a class="header" href="#tokenizer-constructor">Tokenizer Constructor</a></h3>
-<pre><code class="language-javascript">const tokenizer = new Tokenizer(dictionary, mode, userDictionary);
+<pre><code class="language-javascript">const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
 </code></pre>
 <ul>
 <li><strong>Parameters</strong>:
@@ -315,6 +315,7 @@ configuration.</p>
 <li><code>dictionary</code> (Dictionary) -- A loaded dictionary object</li>
 <li><code>mode</code> (string, optional) -- Tokenization mode (<code>"normal"</code> or <code>"decompose"</code>, defaults to <code>"normal"</code>)</li>
 <li><code>userDictionary</code> (UserDictionary, optional) -- A loaded user dictionary</li>
+<li><code>spacePenalty</code> (boolean | object, optional) -- The left-space penalty, in the forms <a href="#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> accepts. <code>null</code> or <code>undefined</code> (the default) uses the rules the dictionary ships. An invalid setting throws an error string, as <code>setSpacePenalty()</code> and <code>build()</code> do.</li>
 </ul>
 </li>
 </ul>

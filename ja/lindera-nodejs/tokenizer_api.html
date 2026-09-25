@@ -245,7 +245,7 @@ builder.setSpacePenalty(null);
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適用されます。ko-dic の <code>metadata.json</code> が mecab-ko-dic のルールを同梱しているためです。これにより韓国語の出力が v6.0 から変わります（例: <code>서울 시 에서</code> の <code>시</code> が語尾 <code>EP</code> ではなく名詞 <code>NNG</code> になる）。v6.0 の出力に戻すには <code>setSpacePenalty(false)</code> を呼び出してください。<code>new Tokenizer(dictionary, ...)</code> で直接作成した <code>Tokenizer</code> は常にデフォルトを使うため、オフにするには <code>TokenizerBuilder</code> を使ってください。v6.0.0 リリースからダウンロードした ko-dic はルールを同梱していないため、その辞書ではペナルティはオフのままで、<code>setSpacePenalty(true)</code> を指定すると <code>build()</code> が例外を投げます。詳細は <a href="../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適用されます。ko-dic の <code>metadata.json</code> が mecab-ko-dic のルールを同梱しているためです。これにより韓国語の出力が v6.0 から変わります（例: <code>서울 시 에서</code> の <code>시</code> が語尾 <code>EP</code> ではなく名詞 <code>NNG</code> になる）。v6.0 の出力に戻すには <code>setSpacePenalty(false)</code> を呼び出してください。直接作成する <code>Tokenizer</code> では、4 番目の引数に <code>false</code> を渡します（<code>new Tokenizer(dictionary, "normal", null, false)</code>）。v6.0.0 リリースからダウンロードした ko-dic はルールを同梱していないため、その辞書ではペナルティはオフのままで、<code>setSpacePenalty(true)</code> を指定すると <code>build()</code> が例外を投げます。詳細は <a href="../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
 </blockquote>
 <h4 id="appendcharacterfilterkind-args"><a class="header" href="#appendcharacterfilterkind-args"><code>appendCharacterFilter(kind, args?)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
@@ -264,12 +264,16 @@ v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Tokenizer</code> はテキストに対して形態素解析を行います。</p>
 <h3 id="tokenizer-の作成"><a class="header" href="#tokenizer-の作成">Tokenizer の作成</a></h3>
-<h4 id="new-tokenizerdictionary-mode-userdictionary"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary"><code>new Tokenizer(dictionary, mode?, userDictionary?)</code></a></h4>
+<h4 id="new-tokenizerdictionary-mode-userdictionary-spacepenalty"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary-spacepenalty"><code>new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?)</code></a></h4>
 <p>読み込み済みの辞書から直接トークナイザーを作成します。</p>
+<p><code>spacePenalty</code> には <a href="#setspacepenaltyvalue"><code>setSpacePenalty</code></a> と同じ値を渡せます。<code>null</code> または <code>undefined</code>（デフォルト）では、辞書が同梱する左側空白ペナルティのルールを使います。不正な設定では、<code>setSpacePenalty</code> や <code>build()</code> と同じくエラーを投げます。</p>
 <pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
+
+// 左側空白ペナルティなしの ko-dic
+const koTokenizer = new Tokenizer(loadDictionary("embedded://ko-dic"), "normal", null, false);
 </code></pre>
 <h3 id="tokenizer-メソッド"><a class="header" href="#tokenizer-メソッド">Tokenizer メソッド</a></h3>
 <h4 id="tokenizetext"><a class="header" href="#tokenizetext"><code>tokenize(text)</code></a></h4>

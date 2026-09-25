@@ -3253,13 +3253,16 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer"><a class="header" href="#creating-a-tokenizer">Creating a Tokenizer</a></h3>
-<h4 id="tokenizerdictionary-modenormal-user_dictionarynone"><a class="header" href="#tokenizerdictionary-modenormal-user_dictionarynone"><code>Tokenizer(dictionary, mode="normal", user_dictionary=None)</code></a></h4>
+<h4 id="tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone"><a class="header" href="#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone"><code>Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None)</code></a></h4>
 <p>Creates a tokenizer directly from a loaded dictionary.</p>
-<p>The tokenizer uses the dictionary's defaults, including the left-space penalty rules it ships, so with ko-dic the penalty is always on. To turn it off or change the rules, build the tokenizer with <a href="lindera-python/tokenizer_api.html#set_space_penaltyvalue"><code>TokenizerBuilder.set_space_penalty</code></a> instead.</p>
+<p><code>space_penalty</code> takes the same values as <a href="lindera-python/tokenizer_api.html#set_space_penaltyvalue"><code>TokenizerBuilder.set_space_penalty</code></a>. <code>None</code> (the default) uses the left-space penalty rules the dictionary ships, so with ko-dic the penalty is on; pass <code>False</code> to turn it off. An invalid setting raises the same errors as <code>set_space_penalty</code> and <code>build()</code>.</p>
 <pre><code class="language-python">from lindera import Tokenizer, load_dictionary
 
 dictionary = load_dictionary("embedded://ipadic")
 tokenizer = Tokenizer(dictionary, mode="normal")
+
+# ko-dic without the left-space penalty
+ko_tokenizer = Tokenizer(load_dictionary("embedded://ko-dic"), space_penalty=False)
 </code></pre>
 <h3 id="tokenizer-methods"><a class="header" href="#tokenizer-methods">Tokenizer Methods</a></h3>
 <h4 id="tokenizetext"><a class="header" href="#tokenizetext"><code>tokenize(text)</code></a></h4>
@@ -4120,7 +4123,7 @@ builder.setSpacePenalty(null);
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Since v6.1.0, ko-dic applies the left-space penalty by default, because its <code>metadata.json</code> ships mecab-ko-dic's rules. This changes the Korean output compared with v6.0 (for example, <code>시</code> in <code>서울 시 에서</code> becomes the noun <code>NNG</code> instead of the ending <code>EP</code>). Call <code>setSpacePenalty(false)</code> to restore the v6.0 output. A <code>Tokenizer</code> created directly with <code>new Tokenizer(dictionary, ...)</code> always uses the default, so use <code>TokenizerBuilder</code> to turn it off. A ko-dic downloaded from the v6.0.0 release ships no rules, so with it the penalty stays off and <code>setSpacePenalty(true)</code> makes <code>build()</code> throw. See <a href="lindera-nodejs/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+Since v6.1.0, ko-dic applies the left-space penalty by default, because its <code>metadata.json</code> ships mecab-ko-dic's rules. This changes the Korean output compared with v6.0 (for example, <code>시</code> in <code>서울 시 에서</code> becomes the noun <code>NNG</code> instead of the ending <code>EP</code>). Call <code>setSpacePenalty(false)</code> to restore the v6.0 output. For a <code>Tokenizer</code> created directly, pass <code>false</code> as the fourth argument: <code>new Tokenizer(dictionary, "normal", null, false)</code>. A ko-dic downloaded from the v6.0.0 release ships no rules, so with it the penalty stays off and <code>setSpacePenalty(true)</code> makes <code>build()</code> throw. See <a href="lindera-nodejs/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
 </blockquote>
 <h4 id="appendcharacterfilterkind-args"><a class="header" href="#appendcharacterfilterkind-args"><code>appendCharacterFilter(kind, args?)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
@@ -4139,12 +4142,16 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, because its <cod
 <h2 id="tokenizer-1"><a class="header" href="#tokenizer-1">Tokenizer</a></h2>
 <p><code>Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer-1"><a class="header" href="#creating-a-tokenizer-1">Creating a Tokenizer</a></h3>
-<h4 id="new-tokenizerdictionary-mode-userdictionary"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary"><code>new Tokenizer(dictionary, mode?, userDictionary?)</code></a></h4>
+<h4 id="new-tokenizerdictionary-mode-userdictionary-spacepenalty"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary-spacepenalty"><code>new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?)</code></a></h4>
 <p>Creates a tokenizer directly from a loaded dictionary.</p>
+<p><code>spacePenalty</code> takes the same values as <a href="lindera-nodejs/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty</code></a>. <code>null</code> or <code>undefined</code> (the default) uses the left-space penalty rules the dictionary ships. An invalid setting throws, as <code>setSpacePenalty</code> and <code>build()</code> do.</p>
 <pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
+
+// ko-dic without the left-space penalty
+const koTokenizer = new Tokenizer(loadDictionary("embedded://ko-dic"), "normal", null, false);
 </code></pre>
 <h3 id="tokenizer-methods-1"><a class="header" href="#tokenizer-methods-1">Tokenizer Methods</a></h3>
 <h4 id="tokenizetext-1"><a class="header" href="#tokenizetext-1"><code>tokenize(text)</code></a></h4>
@@ -4902,12 +4909,16 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does
 <h2 id="tokenizer-2"><a class="header" href="#tokenizer-2">Tokenizer</a></h2>
 <p><code>Lindera::Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer-2"><a class="header" href="#creating-a-tokenizer-2">Creating a Tokenizer</a></h3>
-<h4 id="linderatokenizernewdictionary-mode-user_dictionary"><a class="header" href="#linderatokenizernewdictionary-mode-user_dictionary"><code>Lindera::Tokenizer.new(dictionary, mode, user_dictionary)</code></a></h4>
-<p>Creates a tokenizer directly from a loaded dictionary. It always uses the dictionary's default left-space penalty; use <a href="lindera-ruby/tokenizer_api.html#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a> to change it.</p>
+<h4 id="linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><a class="header" href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil)</code></a></h4>
+<p>Creates a tokenizer directly from a loaded dictionary. <code>mode</code> defaults to <code>'normal'</code>, and <code>user_dictionary</code> is optional.</p>
+<p>The <code>space_penalty:</code> keyword takes the same values as <a href="lindera-ruby/tokenizer_api.html#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a>. <code>nil</code> (the default) uses the left-space penalty rules the dictionary ships, so with ko-dic the penalty is on; pass <code>false</code> to turn it off. An invalid setting raises the same errors as <code>set_space_penalty</code> and <code>build</code>.</p>
 <pre><code class="language-ruby">require 'lindera'
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', nil)
+tokenizer = Lindera::Tokenizer.new(dictionary)
+
+# ko-dic without the left-space penalty
+ko_tokenizer = Lindera::Tokenizer.new(Lindera.load_dictionary('embedded://ko-dic'), space_penalty: false)
 </code></pre>
 <p>With a user dictionary:</p>
 <pre><code class="language-ruby">dictionary = Lindera.load_dictionary('embedded://ipadic')
@@ -5750,7 +5761,7 @@ $builder-&gt;setSpacePenalty(null);
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>$builder-&gt;setSpacePenalty(false)</code> to get the v6.0 output back; a tokenizer created with <a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-userdictionary"><code>new Lindera\Tokenizer(...)</code></a> always applies the dictionary's rules. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-php/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>$builder-&gt;setSpacePenalty(false)</code> to get the v6.0 output back; for a tokenizer created with <a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer(...)</code></a>, pass <code>space_penalty: false</code>. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-php/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
 </blockquote>
 <h4 id="appendcharacterfilterkind-args-1"><a class="header" href="#appendcharacterfilterkind-args-1"><code>appendCharacterFilter($kind, $args)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
@@ -5775,13 +5786,16 @@ $tokenizer = $builder-&gt;build();
 <h2 id="tokenizer-3"><a class="header" href="#tokenizer-3">Tokenizer</a></h2>
 <p><code>Lindera\Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer-3"><a class="header" href="#creating-a-tokenizer-3">Creating a Tokenizer</a></h3>
-<h4 id="new-linderatokenizerdictionary-mode-userdictionary"><a class="header" href="#new-linderatokenizerdictionary-mode-userdictionary"><code>new Lindera\Tokenizer($dictionary, $mode, $userDictionary)</code></a></h4>
-<p>Creates a tokenizer directly from a loaded dictionary.</p>
-<p>A tokenizer created this way always applies the left-space penalty rules the dictionary ships (ko-dic ships them), and the constructor has no option to change that. To change or turn off the penalty, use a <code>TokenizerBuilder</code> with <a href="lindera-php/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a>.</p>
+<h4 id="new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><a class="header" href="#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty)</code></a></h4>
+<p>Creates a tokenizer directly from a loaded dictionary. <code>$mode</code>, <code>$user_dictionary</code> and <code>$space_penalty</code> are optional and default to <code>null</code>; <code>$mode</code> <code>null</code> means <code>'normal'</code>.</p>
+<p><code>$space_penalty</code> takes the same values as <a href="lindera-php/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a>. <code>null</code> uses the left-space penalty rules the dictionary ships (ko-dic ships them); pass <code>false</code> to turn the penalty off. Pass it by name to skip the other optional arguments. An invalid setting throws a <code>ValueError</code>, as <code>setSpacePenalty()</code> and <code>build()</code> do.</p>
 <pre><code class="language-php">&lt;?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
 $tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+
+// ko-dic without the left-space penalty
+$koTokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ko-dic'), space_penalty: false);
 </code></pre>
 <p>With a user dictionary:</p>
 <pre><code class="language-php">&lt;?php
@@ -6779,7 +6793,7 @@ configuration.</p>
 <h2 id="tokenizer-4"><a class="header" href="#tokenizer-4">Tokenizer</a></h2>
 <p>The main tokenizer class. Can be created via <code>TokenizerBuilder.build()</code> or directly via the constructor.</p>
 <h3 id="tokenizer-constructor"><a class="header" href="#tokenizer-constructor">Tokenizer Constructor</a></h3>
-<pre><code class="language-javascript">const tokenizer = new Tokenizer(dictionary, mode, userDictionary);
+<pre><code class="language-javascript">const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
 </code></pre>
 <ul>
 <li><strong>Parameters</strong>:
@@ -6787,6 +6801,7 @@ configuration.</p>
 <li><code>dictionary</code> (Dictionary) -- A loaded dictionary object</li>
 <li><code>mode</code> (string, optional) -- Tokenization mode (<code>"normal"</code> or <code>"decompose"</code>, defaults to <code>"normal"</code>)</li>
 <li><code>userDictionary</code> (UserDictionary, optional) -- A loaded user dictionary</li>
+<li><code>spacePenalty</code> (boolean | object, optional) -- The left-space penalty, in the forms <a href="lindera-wasm/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> accepts. <code>null</code> or <code>undefined</code> (the default) uses the rules the dictionary ships. An invalid setting throws an error string, as <code>setSpacePenalty()</code> and <code>build()</code> do.</li>
 </ul>
 </li>
 </ul>

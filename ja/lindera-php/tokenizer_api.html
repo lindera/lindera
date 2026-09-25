@@ -238,7 +238,7 @@ $builder-&gt;setSpacePenalty(null);
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>서울 시 에서</code> の <code>시</code> は、語尾 <code>EP</code> ではなく名詞 <code>NNG</code> と解析されるようになりました。v6.0 の出力に戻すには <code>$builder-&gt;setSpacePenalty(false)</code> を呼び出してください。<a href="#new-linderatokenizerdictionary-mode-userdictionary"><code>new Lindera\Tokenizer(...)</code></a> で作成したトークナイザーは常に辞書のルールを適用します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>서울 시 에서</code> の <code>시</code> は、語尾 <code>EP</code> ではなく名詞 <code>NNG</code> と解析されるようになりました。v6.0 の出力に戻すには <code>$builder-&gt;setSpacePenalty(false)</code> を呼び出してください。<a href="#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer(...)</code></a> で作成するトークナイザーでは <code>space_penalty: false</code> を渡します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
 </blockquote>
 <h4 id="appendcharacterfilterkind-args"><a class="header" href="#appendcharacterfilterkind-args"><code>appendCharacterFilter($kind, $args)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
@@ -260,13 +260,16 @@ $builder-&gt;appendTokenFilter('japanese_stop_tags', [
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Tokenizer</code> はテキストに対して形態素解析を行います。</p>
 <h3 id="tokenizer-の作成"><a class="header" href="#tokenizer-の作成">Tokenizer の作成</a></h3>
-<h4 id="new-linderatokenizerdictionary-mode-userdictionary"><a class="header" href="#new-linderatokenizerdictionary-mode-userdictionary"><code>new Lindera\Tokenizer($dictionary, $mode, $userDictionary)</code></a></h4>
-<p>読み込み済みの辞書から直接トークナイザーを作成します。</p>
-<p>この方法で作成したトークナイザーは、辞書が同梱する左側空白ペナルティのルール（ko-dic は同梱しています）を常に適用し、コンストラクタにはそれを変更するオプションがありません。ペナルティを変更またはオフにするには、<code>TokenizerBuilder</code> と <a href="#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> を使います。</p>
+<h4 id="new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><a class="header" href="#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty)</code></a></h4>
+<p>読み込み済みの辞書から直接トークナイザーを作成します。<code>$mode</code>、<code>$user_dictionary</code>、<code>$space_penalty</code> は省略でき、デフォルトは <code>null</code> です（<code>$mode</code> の <code>null</code> は <code>'normal'</code> を意味します）。</p>
+<p><code>$space_penalty</code> には <a href="#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> と同じ値を渡せます。<code>null</code> では辞書が同梱する左側空白ペナルティのルール（ko-dic は同梱しています）を使います。オフにするには <code>false</code> を渡します。名前付き引数で渡せば、ほかの省略可能な引数を飛ばせます。不正な設定では、<code>setSpacePenalty()</code> や <code>build()</code> と同じく <code>ValueError</code> をスローします。</p>
 <pre><code class="language-php">&lt;?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
 $tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+
+// 左側空白ペナルティなしの ko-dic
+$koTokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ko-dic'), space_penalty: false);
 </code></pre>
 <p>ユーザー辞書を指定する場合：</p>
 <pre><code class="language-php">&lt;?php
