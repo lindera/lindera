@@ -142,6 +142,8 @@ builder.appendTokenFilter("japanese_stop_tags", {
 });
 ```
 
+`setSpacePenalty`、`appendCharacterFilter`、`appendTokenFilter` の引数は、配列、オブジェクト、`Map` の入れ子が 128 段までです。それより深い値や、自分自身を含む値を渡すと、エラー文字列が投げられます。
+
 #### `build()`
 
 設定済みの `Tokenizer` インスタンスをビルドして返します。ビルド後もビルダーはそのまま使えるため、同じ設定から複数のトークナイザーをビルドできます。

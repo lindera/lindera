@@ -109,6 +109,8 @@ Appends a token filter to the postprocessing pipeline. The `args` parameter is a
 builder.append_token_filter('lowercase', nil)
 ```
 
+The arguments of `set_space_penalty`, `append_character_filter` and `append_token_filter` may nest arrays and hashes at most 128 levels deep. A deeper value, or one that contains itself, raises `ArgumentError`.
+
 ### Build
 
 #### `build`

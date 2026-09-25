@@ -13,7 +13,7 @@ use ext_php_rs::types::Zval;
 
 use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
 
-use crate::convert::zval_to_value;
+use crate::convert::{ConvertError, zval_to_value};
 use crate::dictionary::{PhpDictionary, PhpUserDictionary};
 use crate::error::lindera_value_err;
 use crate::token::PhpToken;
@@ -118,16 +118,18 @@ impl PhpTokenizerBuilder {
     ///
     /// Nothing on success; throws `ValueError` when `value` is not one of the
     /// forms above, including when it holds an object or a non-finite float
-    /// anywhere inside.
+    /// anywhere inside, or when it nests arrays more than 128 levels deep.
     pub fn set_space_penalty(&self, value: &Zval) -> PhpResult<()> {
         // The shared converter throws a plain `Exception` for objects and
         // NAN/INF; report those as a `ValueError` that names the setting,
-        // like every other rejected value.
-        let value = zval_to_value(value).map_err(|_| {
-            lindera_value_err(
+        // like every other rejected value. Keep the reason for a value that
+        // nests too deeply.
+        let value = zval_to_value(value).map_err(|error| match error {
+            ConvertError::Unsupported(_) => lindera_value_err(
                 "space_penalty must be null, a boolean or an array with a \"rules\" key \
                  (objects and non-finite floats are not supported)",
-            )
+            ),
+            ConvertError::TooDeep => PhpException::from(error),
         })?;
         self.inner
             .borrow_mut()

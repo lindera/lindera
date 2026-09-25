@@ -7,6 +7,7 @@ use wasm_bindgen::prelude::*;
 use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{JsDictionary, JsUserDictionary};
+use crate::json::json_from_js;
 use crate::token::token_view_to_js;
 
 /// Converts a JS value into a JSON value.
@@ -17,12 +18,13 @@ use crate::token::token_view_to_js;
 ///
 /// # Returns
 ///
-/// The JSON value, or the conversion error when the value has no JSON form.
+/// The JSON value, or the conversion error when the value has no JSON form
+/// or nests more than 128 levels deep.
 fn js_to_json(value: JsValue) -> Result<Value, serde_wasm_bindgen::Error> {
     if value.is_undefined() || value.is_null() {
         Ok(Value::Null)
     } else {
-        serde_wasm_bindgen::from_value::<Value>(value)
+        json_from_js(value)
     }
 }
 
@@ -1121,5 +1123,118 @@ mod tests {
 
         builder.set_space_penalty(JsValue::FALSE).unwrap();
         assert!(builder.build().is_ok());
+    }
+
+    /// The builder methods that convert a JS value to JSON.
+    #[cfg(target_arch = "wasm32")]
+    const CONVERTING_METHODS: [&str; 3] = [
+        "setSpacePenalty",
+        "appendCharacterFilter",
+        "appendTokenFilter",
+    ];
+
+    /// Part of the error message for an argument that nests too deeply.
+    #[cfg(target_arch = "wasm32")]
+    const TOO_DEEP: &str = "nested more than 128 levels deep";
+
+    /// Returns `{ a: { a: ... } }` made of `levels` nested objects.
+    #[cfg(target_arch = "wasm32")]
+    fn nested_objects(levels: usize) -> wasm_bindgen::JsValue {
+        let mut value: wasm_bindgen::JsValue = js_sys::Object::new().into();
+        for _ in 1..levels {
+            let outer = js_sys::Object::new();
+            js_sys::Reflect::set(&outer, &"a".into(), &value).unwrap();
+            value = outer.into();
+        }
+        value
+    }
+
+    /// Returns `{ rules: [], self: <the object itself> }`.
+    #[cfg(target_arch = "wasm32")]
+    fn self_containing_object() -> wasm_bindgen::JsValue {
+        let object = js_sys::Object::new();
+        js_sys::Reflect::set(&object, &"rules".into(), &js_sys::Array::new()).unwrap();
+        js_sys::Reflect::set(&object, &"self".into(), &object).unwrap();
+        object.into()
+    }
+
+    /// Calls one of [`CONVERTING_METHODS`] on a new builder.
+    #[cfg(target_arch = "wasm32")]
+    fn call_converting_method(method: &str, value: wasm_bindgen::JsValue) -> Result<(), String> {
+        let builder = crate::TokenizerBuilder::new().unwrap();
+        let result = match method {
+            "setSpacePenalty" => builder.set_space_penalty(value),
+            "appendCharacterFilter" => builder.append_character_filter("unicode_normalize", value),
+            _ => builder.append_token_filter("lowercase", value),
+        };
+        result
+            .map(|_| ())
+            .map_err(|error| error.as_string().unwrap_or_default())
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_argument_nesting_limit() {
+        for method in CONVERTING_METHODS {
+            // setSpacePenalty rejects the shape, but not for being too deep.
+            if let Err(message) = call_converting_method(method, nested_objects(128)) {
+                assert!(!message.contains(TOO_DEEP), "{method}: {message}");
+            }
+            for value in [
+                nested_objects(129),
+                nested_objects(10_000),
+                self_containing_object(),
+            ] {
+                let message = call_converting_method(method, value).expect_err(method);
+                assert!(message.contains(TOO_DEEP), "{method}: {message}");
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_argument_error_leaves_the_module_usable() {
+        for method in CONVERTING_METHODS {
+            assert!(call_converting_method(method, self_containing_object()).is_err());
+            // Without the limit, the stack overflow trapped the module and
+            // every later call into it failed as well.
+            assert!(
+                call_converting_method(method, wasm_bindgen::JsValue::NULL).is_ok(),
+                "{method}"
+            );
+            assert!(!crate::version().is_empty());
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_map_keyed_by_a_self_containing_array_is_rejected() {
+        let key = js_sys::Array::new();
+        key.push(&key);
+        let map = js_sys::Map::new();
+        map.set(&key, &1.into());
+        let message = call_converting_method("appendTokenFilter", map.into())
+            .expect_err("a non-string key is rejected");
+        assert!(message.contains("expected a string key"), "{message}");
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_argument_conversion_matches_serde_wasm_bindgen() {
+        let map = js_sys::Map::new();
+        map.set(&"k".into(), &js_json(r#"{"n":[1,2]}"#));
+        for value in [
+            js_json(r#"{"a":[1,-2,2.5,"x",null,true,{"b":{}}],"c":"日本語"}"#),
+            js_sys::eval("({ a: undefined, b: NaN, c: 10n, d: [Infinity, -0] })").unwrap(),
+            map.into(),
+            js_sys::Uint8Array::new_with_length(2).into(),
+            js_sys::Set::new(&wasm_bindgen::JsValue::UNDEFINED).into(),
+        ] {
+            let shown = format!("{value:?}");
+            let expected = serde_wasm_bindgen::from_value::<serde_json::Value>(value.clone())
+                .map_err(|error| error.to_string());
+            let actual = crate::json::json_from_js(value).map_err(|error| error.to_string());
+            assert_eq!(actual, expected, "{shown}");
+        }
     }
 }

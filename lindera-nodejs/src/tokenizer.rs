@@ -12,7 +12,7 @@ use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::error::to_napi_error;
 use crate::token::{NbestResult, Token};
-use crate::util::js_value_to_serde_value;
+use crate::util::{JsonArg, js_value_to_serde_value};
 
 /// Builder for creating a Tokenizer with custom configuration.
 ///
@@ -127,14 +127,15 @@ impl JsTokenizerBuilder {
     /// # Returns
     ///
     /// The builder itself (`this`), enabling method chaining. Throws when
-    /// `value` is none of the forms above.
+    /// `value` is none of the forms above, or when it nests more than 128
+    /// levels deep (a value that contains itself always does).
     #[napi(
         ts_args_type = "value: boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined"
     )]
-    pub fn set_space_penalty(&mut self, value: Option<serde_json::Value>) -> napi::Result<&Self> {
+    pub fn set_space_penalty(&mut self, value: Option<JsonArg>) -> napi::Result<&Self> {
         // `null` and `undefined` both arrive as `None`; they select the
         // default, which the core expresses as JSON `null`.
-        let value = value.unwrap_or(serde_json::Value::Null);
+        let value = value.map_or(serde_json::Value::Null, |value| value.0);
         self.inner
             .set_space_penalty(&value)
             .map_err(to_napi_error)?;
@@ -150,14 +151,16 @@ impl JsTokenizerBuilder {
     ///
     /// # Returns
     ///
-    /// The builder itself (`this`), enabling method chaining.
+    /// The builder itself (`this`), enabling method chaining. Throws when
+    /// `args` nests more than 128 levels deep (a value that contains itself
+    /// always does).
     #[napi]
     pub fn append_character_filter(
         &mut self,
         kind: String,
-        args: Option<serde_json::Value>,
+        #[napi(ts_arg_type = "any | undefined | null")] args: Option<JsonArg>,
     ) -> &Self {
-        let filter_args = js_value_to_serde_value(args);
+        let filter_args = js_value_to_serde_value(args.map(|args| args.0));
         self.inner.append_character_filter(&kind, &filter_args);
         self
     }
@@ -171,10 +174,16 @@ impl JsTokenizerBuilder {
     ///
     /// # Returns
     ///
-    /// The builder itself (`this`), enabling method chaining.
+    /// The builder itself (`this`), enabling method chaining. Throws when
+    /// `args` nests more than 128 levels deep (a value that contains itself
+    /// always does).
     #[napi]
-    pub fn append_token_filter(&mut self, kind: String, args: Option<serde_json::Value>) -> &Self {
-        let filter_args = js_value_to_serde_value(args);
+    pub fn append_token_filter(
+        &mut self,
+        kind: String,
+        #[napi(ts_arg_type = "any | undefined | null")] args: Option<JsonArg>,
+    ) -> &Self {
+        let filter_args = js_value_to_serde_value(args.map(|args| args.0));
         self.inner.append_token_filter(&kind, &filter_args);
         self
     }

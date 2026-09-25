@@ -108,6 +108,8 @@ $builder->appendTokenFilter('japanese_stop_tags', [
 ]);
 ```
 
+`setSpacePenalty`、`appendCharacterFilter`、`appendTokenFilter` の引数は、配列の入れ子が 128 段までです。それより深い配列を渡すと `ValueError` をスローします。
+
 ### ビルド
 
 #### `build()`

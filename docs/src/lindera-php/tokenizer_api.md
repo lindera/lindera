@@ -130,6 +130,8 @@ Appends a token filter to the postprocessing pipeline.
 $builder->appendTokenFilter('lowercase');
 ```
 
+The arguments of `setSpacePenalty`, `appendCharacterFilter` and `appendTokenFilter` may nest arrays at most 128 levels deep. A deeper array throws a `ValueError`.
+
 ### Build
 
 #### `build()`

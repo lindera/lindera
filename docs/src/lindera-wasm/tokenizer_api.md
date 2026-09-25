@@ -142,6 +142,8 @@ builder.appendTokenFilter("japanese_stop_tags", {
 });
 ```
 
+The arguments of `setSpacePenalty`, `appendCharacterFilter` and `appendTokenFilter` may nest arrays, objects and `Map`s at most 128 levels deep. A deeper value, or one that contains itself, throws an error string.
+
 #### `build()`
 
 Builds and returns a configured `Tokenizer` instance. The builder remains

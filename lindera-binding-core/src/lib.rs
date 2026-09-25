@@ -7,6 +7,7 @@
 //! same pure-Rust conversion logic. This crate holds that shared logic as
 //! plain Rust so it can be unit-tested without any FFI toolchain.
 
+pub mod argument;
 pub mod error;
 pub mod metadata;
 pub mod schema;

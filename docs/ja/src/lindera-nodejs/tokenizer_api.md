@@ -119,6 +119,8 @@ builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
 builder.appendTokenFilter("lowercase", {});
 ```
 
+`setSpacePenalty`、`appendCharacterFilter`、`appendTokenFilter` の引数は、配列とオブジェクトの入れ子が 128 段までです。それより深い値や、自分自身を含む値を渡すと `Error` を投げます。
+
 ### ビルド
 
 #### `build()`
