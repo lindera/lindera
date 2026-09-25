@@ -117,6 +117,8 @@ Appends a token filter to the postprocessing pipeline.
 builder.appendTokenFilter("lowercase", {});
 ```
 
+The arguments of `setSpacePenalty`, `appendCharacterFilter` and `appendTokenFilter` may nest arrays and objects at most 128 levels deep. A deeper value, or one that contains itself, throws an `Error`.
+
 ### Build
 
 #### `build()`

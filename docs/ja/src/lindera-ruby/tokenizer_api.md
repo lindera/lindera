@@ -108,6 +108,8 @@ builder.append_character_filter('unicode_normalize', { 'kind' => 'nfkc' })
 builder.append_token_filter('lowercase', nil)
 ```
 
+`set_space_penalty`、`append_character_filter`、`append_token_filter` の引数は、配列と hash の入れ子が 128 段までです。それより深い値や、自分自身を含む値を渡すと `ArgumentError` が発生します。
+
 ### ビルド
 
 #### `build`

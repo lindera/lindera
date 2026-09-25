@@ -35,6 +35,7 @@
 pub mod character_filter;
 pub mod dictionary;
 pub mod error;
+mod json;
 pub mod metadata;
 pub mod mode;
 pub mod schema;

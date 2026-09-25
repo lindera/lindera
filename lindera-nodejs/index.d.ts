@@ -356,7 +356,8 @@ export declare class TokenizerBuilder {
    * # Returns
    *
    * The builder itself (`this`), enabling method chaining. Throws when
-   * `value` is none of the forms above.
+   * `value` is none of the forms above, or when it nests more than 128
+   * levels deep (a value that contains itself always does).
    */
   setSpacePenalty(value: boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined): this
   /**
@@ -369,7 +370,9 @@ export declare class TokenizerBuilder {
    *
    * # Returns
    *
-   * The builder itself (`this`), enabling method chaining.
+   * The builder itself (`this`), enabling method chaining. Throws when
+   * `args` nests more than 128 levels deep (a value that contains itself
+   * always does).
    */
   appendCharacterFilter(kind: string, args?: any | undefined | null): this
   /**
@@ -382,7 +385,9 @@ export declare class TokenizerBuilder {
    *
    * # Returns
    *
-   * The builder itself (`this`), enabling method chaining.
+   * The builder itself (`this`), enabling method chaining. Throws when
+   * `args` nests more than 128 levels deep (a value that contains itself
+   * always does).
    */
   appendTokenFilter(kind: string, args?: any | undefined | null): this
   /**
