@@ -240,6 +240,7 @@ metadata = Metadata(name="custom", encoding="UTF-8")
 build_dictionary("/path/to/input_dir", "/path/to/output_dir", metadata)
 </code></pre>
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
+<p><code>Metadata.from_json_file</code> で読み込んだメタデータは <code>metadata.json</code> の <code>space_penalty</code> ルールを保持し、ビルドした辞書にもそのルールが同梱されます。そのため ko-dic をビルドした場合も、左側空白ペナルティはデフォルトでオンのままです。トークナイザーごとにオフにするには <code>TokenizerBuilder.set_space_penalty(False)</code> を使います（<a href="./tokenizer_api.html#set_space_penaltyvalue">Tokenizer API</a> を参照）。コンストラクタで作成した <code>Metadata</code> はルールを持ちません。</p>
 <h3 id="ユーザー辞書のビルド"><a class="header" href="#ユーザー辞書のビルド">ユーザー辞書のビルド</a></h3>
 <p>CSV ファイルからユーザー辞書をビルドします：</p>
 <pre><code class="language-python">from lindera import build_user_dictionary, Metadata
@@ -294,9 +295,14 @@ metadata.encoding = "EUC-JP"
 print(metadata.name)  # "custom_dict"
 </code></pre>
 <h3 id="to_dict"><a class="header" href="#to_dict"><code>to_dict()</code></a></h3>
-<p>メタデータの辞書表現を返します：</p>
+<p>メタデータを文字列の <code>dict</code> として返します。上記のプロパティを含み、2 つのスキーマは <code>dictionary_schema_fields</code> と <code>user_dictionary_schema_fields</code>（カンマ区切りのフィールド名）として格納されます：</p>
 <pre><code class="language-python">metadata = Metadata(name="test")
 print(metadata.to_dict())
+</code></pre>
+<p>ko-dic のようにメタデータが左側空白ペナルティのルールを持つ場合、<code>dict</code> にはそのルールを JSON 文字列で保持する <code>space_penalty</code> エントリも含まれます。ルールがない場合、このキーはありません：</p>
+<pre><code class="language-python">metadata = Metadata.from_json_file("/path/to/ko-dic/metadata.json")
+metadata.to_dict()["space_penalty"]
+# '{"rules":[{"pos":["EC","EF",...],"cost":3000},{"pos":["JC","JKB",...],"cost":6000}]}'
 </code></pre>
 <h2 id="schema"><a class="header" href="#schema">Schema</a></h2>
 <p><code>Schema</code>、<code>FieldDefinition</code>、<code>FieldType</code> は、辞書エントリーのフィールド構成を

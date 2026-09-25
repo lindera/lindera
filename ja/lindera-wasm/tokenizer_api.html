@@ -192,7 +192,7 @@
 <p>トークナイズモードを設定します。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>mode</code> (string) -- <code>"normal"</code> または <code>"decompose"</code></li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.setMode("normal");
 </code></pre>
@@ -200,7 +200,7 @@
 <p>トークナイズに使用する辞書を設定します。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>uri</code> (string) -- 辞書の URI（例: <code>"embedded://ipadic"</code>）</li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.setDictionary("embedded://ipadic");
 </code></pre>
@@ -209,7 +209,7 @@
 URI の代わりにバイトデータから読み込んだ辞書（例: <code>loadDictionaryFromBytes()</code> 経由）を使用する場合に使います。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト</li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
@@ -227,16 +227,45 @@ builder.setDictionaryInstance(dictionary);
 <p>読み込み済みのユーザー辞書インスタンスを設定します。<code>loadUserDictionaryFromBytes()</code>（CSV）または <code>loadUserDictionaryBinFromBytes()</code>（ビルド済み <code>.bin</code>）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>userDictionary</code> (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト</li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <h4 id="setkeepwhitespacekeep"><a class="header" href="#setkeepwhitespacekeep"><code>setKeepWhitespace(keep)</code></a></h4>
 <p>出力に空白トークンを保持するかどうかを設定します。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>keep</code> (boolean) -- <code>true</code> で空白トークンを保持</li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.setKeepWhitespace(true);
 </code></pre>
+<h4 id="setspacepenaltyvalue"><a class="header" href="#setspacepenaltyvalue"><code>setSpacePenalty(value)</code></a></h4>
+<p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。</p>
+<ul>
+<li><strong>パラメータ</strong>: <code>value</code> (boolean | object | null | undefined) -- 設定値。意味は<a href="../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
+</ul>
+<p><code>value</code> は次のいずれかの形式をとります。それ以外の値ではエラー文字列が投げられます：</p>
+<ul>
+<li><code>null</code> または <code>undefined</code> -- デフォルト。辞書が <code>metadata.json</code> に同梱するルールがあればそれを使います（ko-dic は mecab-ko-dic のルールを同梱し、他の同梱辞書はルールを持ちません）。以前の呼び出しを取り消すときにも使います。</li>
+<li><code>false</code> -- ペナルティをオフにします。</li>
+<li><code>true</code> -- 辞書のルールを要求します。ルールを同梱しない辞書では <code>build()</code> がエラーを投げます。</li>
+<li><code>{ rules: [{ pos: [...], cost: n }, ...] }</code> 形式のオブジェクト -- 辞書のルールの代わりにこのルールを適用します。先頭品詞タグが <code>pos</code> に含まれる候補に <code>cost</code> を加算し、最初に一致したルールが使われます。</li>
+</ul>
+<p>この設定は、<code>setDictionary()</code> で設定した辞書にも、<code>setDictionaryInstance()</code> で設定した辞書（たとえば <code>loadDictionaryFromBytes()</code> で OPFS から読み込んだ ko-dic）にも適用されます。辞書オブジェクト自体は変更されません。<code>Tokenizer</code> コンストラクタで作成したトークナイザーは常に辞書のデフォルトを使います。設定を変えるには <code>TokenizerBuilder</code> でビルドしてください。</p>
+<pre><code class="language-javascript">// ペナルティをオフにする
+builder.setSpacePenalty(false);
+
+// 明示的なルール
+builder.setSpacePenalty({
+    rules: [
+        { pos: ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], cost: 3000 },
+        { pos: ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], cost: 6000 },
+    ],
+});
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>서울 시 에서</code> の <code>시</code> は、語尾 <code>EP</code> ではなく名詞 <code>NNG</code> と解析されるようになりました。v6.0 の出力に戻すには <code>builder.setSpacePenalty(false)</code> を呼び出してください。ルールを同梱しているのは Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+</blockquote>
 <h4 id="appendcharacterfiltername-args"><a class="header" href="#appendcharacterfiltername-args"><code>appendCharacterFilter(name, args)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
 <ul>
@@ -246,7 +275,7 @@ builder.setDictionaryInstance(dictionary);
 <li><code>args</code> (object, 省略可) -- フィルタの設定</li>
 </ul>
 </li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
 </code></pre>
@@ -259,7 +288,7 @@ builder.setDictionaryInstance(dictionary);
 <li><code>args</code> (object, 省略可) -- フィルタの設定</li>
 </ul>
 </li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.appendTokenFilter("japanese_stop_tags", {
     tags: ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞", "記号,句点", "記号,読点"]
@@ -436,6 +465,7 @@ console.log(error.toString()); // "message"
 <tr><td><code>setDictionaryInstance()</code></td><td><code>set_dictionary_instance()</code></td></tr>
 <tr><td><code>setUserDictionaryInstance()</code></td><td><code>set_user_dictionary_instance()</code></td></tr>
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
+<tr><td><code>setSpacePenalty()</code></td><td><code>set_space_penalty()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
 <tr><td><code>tokenizeSurfaces()</code></td><td><code>tokenize_surfaces()</code></td></tr>

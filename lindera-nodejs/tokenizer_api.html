@@ -217,6 +217,34 @@ builder.setDictionary("/path/to/dictionary");
 <p>Controls whether whitespace tokens appear in the output.</p>
 <pre><code class="language-javascript">builder.setKeepWhitespace(true);
 </code></pre>
+<h4 id="setspacepenaltyvalue"><a class="header" href="#setspacepenaltyvalue"><code>setSpacePenalty(value)</code></a></h4>
+<p>Sets the left-space penalty for Korean (mecab-ko's <code>left-space-penalty-factor</code>): a candidate that starts right after whitespace and whose first part-of-speech tag is listed in a rule gets that rule's cost added. The value means the same as <code>segmenter.space_penalty</code> in a <a href="../lindera-analysis/configuration.html">configuration file</a>.</p>
+<div class="table-wrapper"><table><thead><tr><th>Value</th><th>Effect</th></tr></thead><tbody>
+<tr><td><code>null</code> or <code>undefined</code></td><td>Default: the rules the dictionary ships in its <code>metadata.json</code>, if any</td></tr>
+<tr><td><code>false</code></td><td>Turns the penalty off</td></tr>
+<tr><td><code>true</code></td><td>Requires the dictionary's rules; <code>build()</code> throws if the dictionary ships none</td></tr>
+<tr><td><code>{ rules: [{ pos: [...], cost: n }, ...] }</code></td><td>Applies these rules instead of the dictionary's</td></tr>
+</tbody></table>
+</div>
+<p>Any other value throws an <code>Error</code>.</p>
+<pre><code class="language-javascript">// Turn the penalty off
+builder.setSpacePenalty(false);
+
+// Explicit rules (these are the ones ko-dic ships)
+builder.setSpacePenalty({
+  rules: [
+    { pos: ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], cost: 3000 },
+    { pos: ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], cost: 6000 },
+  ],
+});
+
+// Back to the dictionary's default
+builder.setSpacePenalty(null);
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+Since v6.1.0, ko-dic applies the left-space penalty by default, because its <code>metadata.json</code> ships mecab-ko-dic's rules. This changes the Korean output compared with v6.0 (for example, <code>시</code> in <code>서울 시 에서</code> becomes the noun <code>NNG</code> instead of the ending <code>EP</code>). Call <code>setSpacePenalty(false)</code> to restore the v6.0 output. A <code>Tokenizer</code> created directly with <code>new Tokenizer(dictionary, ...)</code> always uses the default, so use <code>TokenizerBuilder</code> to turn it off. A ko-dic downloaded from the v6.0.0 release ships no rules, so with it the penalty stays off and <code>setSpacePenalty(true)</code> makes <code>build()</code> throw. See <a href="../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+</blockquote>
 <h4 id="appendcharacterfilterkind-args"><a class="header" href="#appendcharacterfilterkind-args"><code>appendCharacterFilter(kind, args?)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
 <pre><code class="language-javascript">builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });

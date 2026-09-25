@@ -239,6 +239,7 @@ metadata = Metadata(name="custom", encoding="UTF-8")
 build_dictionary("/path/to/input_dir", "/path/to/output_dir", metadata)
 </code></pre>
 <p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
+<p>Metadata loaded with <code>Metadata.from_json_file</code> keeps the <code>space_penalty</code> rules of the <code>metadata.json</code>, and the built dictionary ships them. For ko-dic this means the left-space penalty stays on by default in the dictionary you build; turn it off per tokenizer with <code>TokenizerBuilder.set_space_penalty(False)</code> (see <a href="./tokenizer_api.html#set_space_penaltyvalue">Tokenizer API</a>). A <code>Metadata</code> created with the constructor carries no rules.</p>
 <h3 id="user-dictionary"><a class="header" href="#user-dictionary">User Dictionary</a></h3>
 <p>Build a user dictionary from a CSV file:</p>
 <pre><code class="language-python">from lindera import build_user_dictionary, Metadata
@@ -293,9 +294,14 @@ metadata.encoding = "EUC-JP"
 print(metadata.name)  # "custom_dict"
 </code></pre>
 <h3 id="to_dict"><a class="header" href="#to_dict"><code>to_dict()</code></a></h3>
-<p>Returns a dictionary representation of the metadata:</p>
+<p>Returns the metadata as a <code>dict</code> of strings: the properties above, with <code>dictionary_schema_fields</code> and <code>user_dictionary_schema_fields</code> (comma-separated field names) in place of the two schemas.</p>
 <pre><code class="language-python">metadata = Metadata(name="test")
 print(metadata.to_dict())
+</code></pre>
+<p>When the metadata carries left-space penalty rules, as ko-dic's does, the <code>dict</code> also has a <code>space_penalty</code> entry holding them as a JSON string; the key is absent otherwise:</p>
+<pre><code class="language-python">metadata = Metadata.from_json_file("/path/to/ko-dic/metadata.json")
+metadata.to_dict()["space_penalty"]
+# '{"rules":[{"pos":["EC","EF",...],"cost":3000},{"pos":["JC","JKB",...],"cost":6000}]}'
 </code></pre>
 <h2 id="schema"><a class="header" href="#schema">Schema</a></h2>
 <p><code>Schema</code>, <code>FieldDefinition</code>, and <code>FieldType</code> describe the field layout of a

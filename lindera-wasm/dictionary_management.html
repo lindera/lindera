@@ -326,6 +326,12 @@ and writes an output directory, and there is no filesystem on
 <code>wasm32-unknown-unknown</code>. Build dictionaries with the <code>lindera</code> CLI (or a
 native binding) and load the result here as bytes — see
 <a href="opfs.html">OPFS Dictionary Management</a> for downloading prebuilt dictionaries.</p>
+<p>A dictionary built from a <code>metadata.json</code> that ships <code>space_penalty</code> rules
+keeps them, and <code>loadDictionaryFromBytes()</code> loads them with the rest of the
+metadata. ko-dic's <code>metadata.json</code> ships mecab-ko-dic's rules, so a tokenizer
+built on a ko-dic applies the left-space penalty by default; see
+<a href="./tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> for turning it
+off.</p>
 <h2 id="metadata"><a class="header" href="#metadata">Metadata</a></h2>
 <p>The <code>Metadata</code> class configures dictionary parameters.</p>
 <h3 id="constructor"><a class="header" href="#constructor">Constructor</a></h3>
@@ -360,7 +366,7 @@ console.log(metadata.name); // "custom_dict"
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Unlike the Python, Node.js, Ruby, and PHP bindings, the WASM <code>Metadata</code> class does not expose <code>default_word_cost</code>, <code>default_left_context_id</code>, <code>default_right_context_id</code>, <code>default_field_value</code>, <code>flexible_csv</code>, <code>skip_invalid_cost_or_id</code>, or <code>normalize_details</code> as gettable/settable properties (see <code>lindera-wasm/src/metadata.rs</code>). These always fall back to the shared binding defaults (word cost <code>-10000</code>, context IDs <code>1288</code>, field value <code>"*"</code>, flags <code>false</code>) and cannot be customized from JavaScript.</p>
+Unlike the Python, Node.js, Ruby, and PHP bindings, the WASM <code>Metadata</code> class does not expose <code>default_word_cost</code>, <code>default_left_context_id</code>, <code>default_right_context_id</code>, <code>default_field_value</code>, <code>flexible_csv</code>, <code>skip_invalid_cost_or_id</code>, or <code>normalize_details</code> as gettable/settable properties (see <code>lindera-wasm/src/metadata.rs</code>). These always fall back to the shared binding defaults (word cost <code>-10000</code>, context IDs <code>1288</code>, field value <code>"*"</code>, flags <code>false</code>) and cannot be customized from JavaScript. The <code>space_penalty</code> rules are not exposed either. They take effect only through the dictionary they were loaded with (see <a href="./tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a>); passing <code>dictionary.metadata</code> on, for example to <code>loadUserDictionaryFromBytes()</code>, does not apply them anywhere else.</p>
 </blockquote>
 <p>You can also access the metadata from a loaded dictionary via <code>dictionary.metadata</code>.</p>
 <h3 id="schema"><a class="header" href="#schema">Schema</a></h3>

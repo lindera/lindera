@@ -216,6 +216,30 @@ builder.set_dictionary('/path/to/dictionary')
 <p>Controls whether whitespace tokens appear in the output.</p>
 <pre><code class="language-ruby">builder.set_keep_whitespace(true)
 </code></pre>
+<h4 id="set_space_penaltyvalue"><a class="header" href="#set_space_penaltyvalue"><code>set_space_penalty(value)</code></a></h4>
+<p>Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added. <code>value</code> has the same meaning as <code>segmenter.space_penalty</code> in a <a href="../lindera-analysis/configuration.html">configuration file</a>:</p>
+<ul>
+<li><code>nil</code> -- The default: the rules the dictionary ships in its <code>metadata.json</code>, if any (ko-dic ships mecab-ko-dic's rules; the other bundled dictionaries ship none). Use it to undo an earlier call.</li>
+<li><code>false</code> -- Turns the penalty off.</li>
+<li><code>true</code> -- Requires the dictionary's rules; <code>build</code> raises <code>RuntimeError</code> for a dictionary that ships none.</li>
+<li>A hash with string keys, <code>{ 'rules' =&gt; [{ 'pos' =&gt; [...], 'cost' =&gt; n }, ...] }</code> -- Applies these rules instead. A candidate whose first part-of-speech tag is listed in <code>pos</code> gets <code>cost</code> added; the first matching rule wins.</li>
+</ul>
+<p>A value that is not one of these forms, such as <code>1</code>, <code>'false'</code> or <code>{ 'rules' =&gt; 'JKS' }</code>, raises <code>RuntimeError</code>. A value that cannot be converted raises <code>TypeError</code>: a Symbol (also as a hash key or an element, so write <code>%w[JKS]</code> rather than <code>%i[JKS]</code>), a non-finite <code>Float</code> (NaN or Infinity), an <code>Integer</code> outside the 64-bit range, or an object other than <code>nil</code>, <code>true</code>, <code>false</code>, an <code>Integer</code>, a <code>Float</code>, a <code>String</code>, an <code>Array</code> or a <code>Hash</code>.</p>
+<pre><code class="language-ruby"># Turn the penalty off
+builder.set_space_penalty(false)
+
+# Explicit rules
+builder.set_space_penalty({
+  'rules' =&gt; [
+    { 'pos' =&gt; %w[EC EF EP ETM ETN VCP XSA XSN XSV], 'cost' =&gt; 3000 },
+    { 'pos' =&gt; %w[JC JKB JKC JKG JKO JKQ JKS JKV JX], 'cost' =&gt; 6000 }
+  ]
+})
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.set_space_penalty(false)</code> to get the v6.0 output back. A tokenizer created directly with <code>Lindera::Tokenizer.new(dictionary, ...)</code> always uses the default, so use <code>TokenizerBuilder</code> to turn it off. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+</blockquote>
 <h4 id="append_character_filterkind-args"><a class="header" href="#append_character_filterkind-args"><code>append_character_filter(kind, args)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline. The <code>args</code> parameter is a hash with string keys.</p>
 <pre><code class="language-ruby">builder.append_character_filter('unicode_normalize', { 'kind' =&gt; 'nfkc' })
@@ -233,7 +257,7 @@ builder.set_dictionary('/path/to/dictionary')
 <p><code>Lindera::Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer"><a class="header" href="#creating-a-tokenizer">Creating a Tokenizer</a></h3>
 <h4 id="linderatokenizernewdictionary-mode-user_dictionary"><a class="header" href="#linderatokenizernewdictionary-mode-user_dictionary"><code>Lindera::Tokenizer.new(dictionary, mode, user_dictionary)</code></a></h4>
-<p>Creates a tokenizer directly from a loaded dictionary.</p>
+<p>Creates a tokenizer directly from a loaded dictionary. It always uses the dictionary's default left-space penalty; use <a href="#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a> to change it.</p>
 <pre><code class="language-ruby">require 'lindera'
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')

@@ -228,6 +228,10 @@ const metadata = new Metadata({ name: "custom", encoding: "UTF-8" });
 buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 </code></pre>
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
+<p>辞書の <code>metadata.json</code> に含まれる設定のままビルドするには、<code>Metadata.fromJsonFile()</code> でファイルを読み込み、その結果を渡します。ファイルの <code>space_penalty</code> ルールは保持されるため、この方法でビルドした ko-dic では左側空白ペナルティがデフォルトで適用されます（<a href="tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty</code></a> を参照）。<code>new Metadata(...)</code> で作成した <code>Metadata</code> はルールを持ちません。</p>
+<pre><code class="language-javascript">const metadata = Metadata.fromJsonFile("/path/to/lindera-ko-dic/metadata.json");
+buildDictionary("/path/to/mecab-ko-dic", "/path/to/output_dir", metadata);
+</code></pre>
 <h3 id="ユーザー辞書のビルド"><a class="header" href="#ユーザー辞書のビルド">ユーザー辞書のビルド</a></h3>
 <p>CSV ファイルからユーザー辞書をビルドします：</p>
 <pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera");
@@ -287,9 +291,14 @@ metadata.encoding = "EUC-JP";
 console.log(metadata.name); // "custom_dict"
 </code></pre>
 <h3 id="toobject"><a class="header" href="#toobject"><code>toObject()</code></a></h3>
-<p>メタデータのオブジェクト表現を返します：</p>
+<p>メタデータのオブジェクト表現を返します。値はすべて文字列です：</p>
 <pre><code class="language-javascript">const metadata = new Metadata({ name: "test" });
 console.log(metadata.toObject());
+</code></pre>
+<p>メタデータが左側空白ペナルティのルールを持つ場合（ko-dic の <code>metadata.json</code> から読み込んだ場合など）、オブジェクトにはルールを JSON 文字列で保持する <code>spacePenalty</code> エントリーも含まれます。ルールを持たない場合、このキーはありません。</p>
+<pre><code class="language-javascript">const koDic = Metadata.fromJsonFile("/path/to/lindera-ko-dic/metadata.json");
+const { rules } = JSON.parse(koDic.toObject().spacePenalty);
+console.log(rules[1].pos); // ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"]
 </code></pre>
 <h2 id="schema"><a class="header" href="#schema">Schema</a></h2>
 <p><code>Schema</code> クラスは辞書エントリーのフィールド構造を定義します。</p>

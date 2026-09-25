@@ -219,6 +219,30 @@ builder.set_dictionary("/path/to/dictionary")
 <p>出力に空白トークンを含めるかどうかを制御します。</p>
 <pre><code class="language-python">builder.set_keep_whitespace(True)
 </code></pre>
+<h4 id="set_space_penaltyvalue"><a class="header" href="#set_space_penaltyvalue"><code>set_space_penalty(value)</code></a></h4>
+<p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。<code>value</code> の意味は<a href="../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです：</p>
+<ul>
+<li><code>None</code> -- デフォルト。辞書が <code>metadata.json</code> に同梱するルールがあればそれを使います（ko-dic は mecab-ko-dic のルールを同梱し、他の同梱辞書はルールを持ちません）。以前の呼び出しを取り消すときにも使います。</li>
+<li><code>False</code> -- ペナルティをオフにします。</li>
+<li><code>True</code> -- 辞書のルールを要求します。ルールを同梱しない辞書では <code>build()</code> が <code>ValueError</code> を送出します。</li>
+<li><code>{"rules": [{"pos": [...], "cost": n}, ...]}</code> 形式の <code>dict</code> -- 辞書のルールの代わりにこのルールを適用します。先頭品詞タグが <code>pos</code> に含まれる候補に <code>cost</code> を加算し、最初に一致したルールが使われます。</li>
+</ul>
+<p>それ以外の値では <code>ValueError</code> が送出されます（任意のオブジェクトなど JSON に対応しない値は、<code>append_token_filter</code> と同様に <code>TypeError</code> になります）。</p>
+<pre><code class="language-python"># ペナルティをオフにする
+builder.set_space_penalty(False)
+
+# 明示的なルール
+builder.set_space_penalty({
+    "rules": [
+        {"pos": ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], "cost": 3000},
+        {"pos": ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], "cost": 6000},
+    ]
+})
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>서울 시 에서</code> の <code>시</code> は、語尾 <code>EP</code> ではなく名詞 <code>NNG</code> と解析されるようになりました。v6.0 の出力に戻すには <code>builder.set_space_penalty(False)</code> を呼び出してください。ルールを同梱しているのは Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>True</code> はエラーになります。詳しくは <a href="../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+</blockquote>
 <h4 id="append_character_filterkind-argsnone"><a class="header" href="#append_character_filterkind-argsnone"><code>append_character_filter(kind, args=None)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
 <pre><code class="language-python">builder.append_character_filter("unicode_normalize", {"kind": "nfkc"})
@@ -237,6 +261,7 @@ builder.set_dictionary("/path/to/dictionary")
 <h3 id="tokenizer-の作成"><a class="header" href="#tokenizer-の作成">Tokenizer の作成</a></h3>
 <h4 id="tokenizerdictionary-modenormal-user_dictionarynone"><a class="header" href="#tokenizerdictionary-modenormal-user_dictionarynone"><code>Tokenizer(dictionary, mode="normal", user_dictionary=None)</code></a></h4>
 <p>読み込み済みの辞書から直接トークナイザーを作成します。</p>
+<p>このトークナイザーは辞書のデフォルト設定を使い、辞書が同梱する左側空白ペナルティのルールも適用します。そのため ko-dic ではペナルティが常にオンです。オフにしたりルールを変えたりするには、<a href="#set_space_penaltyvalue"><code>TokenizerBuilder.set_space_penalty</code></a> を使ってトークナイザーをビルドしてください。</p>
 <pre><code class="language-python">from lindera import Tokenizer, load_dictionary
 
 dictionary = load_dictionary("embedded://ipadic")

@@ -3212,6 +3212,30 @@ builder.set_dictionary("/path/to/dictionary")
 <p>Controls whether whitespace tokens appear in the output.</p>
 <pre><code class="language-python">builder.set_keep_whitespace(True)
 </code></pre>
+<h4 id="set_space_penaltyvalue"><a class="header" href="#set_space_penaltyvalue"><code>set_space_penalty(value)</code></a></h4>
+<p>Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added. <code>value</code> has the same meaning as <code>segmenter.space_penalty</code> in a <a href="lindera-python/../lindera-analysis/configuration.html">configuration file</a>:</p>
+<ul>
+<li><code>None</code> -- The default: the rules the dictionary ships in its <code>metadata.json</code>, if any (ko-dic ships mecab-ko-dic's rules; the other bundled dictionaries ship none). Use it to undo an earlier call.</li>
+<li><code>False</code> -- Turns the penalty off.</li>
+<li><code>True</code> -- Requires the dictionary's rules; <code>build()</code> raises <code>ValueError</code> for a dictionary that ships none.</li>
+<li>A <code>dict</code> of the form <code>{"rules": [{"pos": [...], "cost": n}, ...]}</code> -- Applies these rules instead. A candidate whose first part-of-speech tag is listed in <code>pos</code> gets <code>cost</code> added; the first matching rule wins.</li>
+</ul>
+<p>Any other value raises <code>ValueError</code> (a value with no JSON equivalent, such as an arbitrary object, raises <code>TypeError</code>, as in <code>append_token_filter</code>).</p>
+<pre><code class="language-python"># Turn the penalty off
+builder.set_space_penalty(False)
+
+# Explicit rules
+builder.set_space_penalty({
+    "rules": [
+        {"pos": ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], "cost": 3000},
+        {"pos": ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], "cost": 6000},
+    ]
+})
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.set_space_penalty(False)</code> to get the v6.0 output back. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>True</code> fails until the dictionary is rebuilt. See <a href="lindera-python/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+</blockquote>
 <h4 id="append_character_filterkind-argsnone"><a class="header" href="#append_character_filterkind-argsnone"><code>append_character_filter(kind, args=None)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
 <pre><code class="language-python">builder.append_character_filter("unicode_normalize", {"kind": "nfkc"})
@@ -3230,6 +3254,7 @@ builder.set_dictionary("/path/to/dictionary")
 <h3 id="creating-a-tokenizer"><a class="header" href="#creating-a-tokenizer">Creating a Tokenizer</a></h3>
 <h4 id="tokenizerdictionary-modenormal-user_dictionarynone"><a class="header" href="#tokenizerdictionary-modenormal-user_dictionarynone"><code>Tokenizer(dictionary, mode="normal", user_dictionary=None)</code></a></h4>
 <p>Creates a tokenizer directly from a loaded dictionary.</p>
+<p>The tokenizer uses the dictionary's defaults, including the left-space penalty rules it ships, so with ko-dic the penalty is always on. To turn it off or change the rules, build the tokenizer with <a href="lindera-python/tokenizer_api.html#set_space_penaltyvalue"><code>TokenizerBuilder.set_space_penalty</code></a> instead.</p>
 <pre><code class="language-python">from lindera import Tokenizer, load_dictionary
 
 dictionary = load_dictionary("embedded://ipadic")
@@ -3463,6 +3488,7 @@ metadata = Metadata(name="custom", encoding="UTF-8")
 build_dictionary("/path/to/input_dir", "/path/to/output_dir", metadata)
 </code></pre>
 <p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
+<p>Metadata loaded with <code>Metadata.from_json_file</code> keeps the <code>space_penalty</code> rules of the <code>metadata.json</code>, and the built dictionary ships them. For ko-dic this means the left-space penalty stays on by default in the dictionary you build; turn it off per tokenizer with <code>TokenizerBuilder.set_space_penalty(False)</code> (see <a href="lindera-python/./tokenizer_api.html#set_space_penaltyvalue">Tokenizer API</a>). A <code>Metadata</code> created with the constructor carries no rules.</p>
 <h3 id="user-dictionary-2"><a class="header" href="#user-dictionary-2">User Dictionary</a></h3>
 <p>Build a user dictionary from a CSV file:</p>
 <pre><code class="language-python">from lindera import build_user_dictionary, Metadata
@@ -3517,9 +3543,14 @@ metadata.encoding = "EUC-JP"
 print(metadata.name)  # "custom_dict"
 </code></pre>
 <h3 id="to_dict-1"><a class="header" href="#to_dict-1"><code>to_dict()</code></a></h3>
-<p>Returns a dictionary representation of the metadata:</p>
+<p>Returns the metadata as a <code>dict</code> of strings: the properties above, with <code>dictionary_schema_fields</code> and <code>user_dictionary_schema_fields</code> (comma-separated field names) in place of the two schemas.</p>
 <pre><code class="language-python">metadata = Metadata(name="test")
 print(metadata.to_dict())
+</code></pre>
+<p>When the metadata carries left-space penalty rules, as ko-dic's does, the <code>dict</code> also has a <code>space_penalty</code> entry holding them as a JSON string; the key is absent otherwise:</p>
+<pre><code class="language-python">metadata = Metadata.from_json_file("/path/to/ko-dic/metadata.json")
+metadata.to_dict()["space_penalty"]
+# '{"rules":[{"pos":["EC","EF",...],"cost":3000},{"pos":["JC","JKB",...],"cost":6000}]}'
 </code></pre>
 <h2 id="schema"><a class="header" href="#schema">Schema</a></h2>
 <p><code>Schema</code>, <code>FieldDefinition</code>, and <code>FieldType</code> describe the field layout of a
@@ -4062,6 +4093,34 @@ builder.setDictionary("/path/to/dictionary");
 <p>Controls whether whitespace tokens appear in the output.</p>
 <pre><code class="language-javascript">builder.setKeepWhitespace(true);
 </code></pre>
+<h4 id="setspacepenaltyvalue"><a class="header" href="#setspacepenaltyvalue"><code>setSpacePenalty(value)</code></a></h4>
+<p>Sets the left-space penalty for Korean (mecab-ko's <code>left-space-penalty-factor</code>): a candidate that starts right after whitespace and whose first part-of-speech tag is listed in a rule gets that rule's cost added. The value means the same as <code>segmenter.space_penalty</code> in a <a href="lindera-nodejs/../lindera-analysis/configuration.html">configuration file</a>.</p>
+<div class="table-wrapper"><table><thead><tr><th>Value</th><th>Effect</th></tr></thead><tbody>
+<tr><td><code>null</code> or <code>undefined</code></td><td>Default: the rules the dictionary ships in its <code>metadata.json</code>, if any</td></tr>
+<tr><td><code>false</code></td><td>Turns the penalty off</td></tr>
+<tr><td><code>true</code></td><td>Requires the dictionary's rules; <code>build()</code> throws if the dictionary ships none</td></tr>
+<tr><td><code>{ rules: [{ pos: [...], cost: n }, ...] }</code></td><td>Applies these rules instead of the dictionary's</td></tr>
+</tbody></table>
+</div>
+<p>Any other value throws an <code>Error</code>.</p>
+<pre><code class="language-javascript">// Turn the penalty off
+builder.setSpacePenalty(false);
+
+// Explicit rules (these are the ones ko-dic ships)
+builder.setSpacePenalty({
+  rules: [
+    { pos: ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], cost: 3000 },
+    { pos: ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], cost: 6000 },
+  ],
+});
+
+// Back to the dictionary's default
+builder.setSpacePenalty(null);
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+Since v6.1.0, ko-dic applies the left-space penalty by default, because its <code>metadata.json</code> ships mecab-ko-dic's rules. This changes the Korean output compared with v6.0 (for example, <code>시</code> in <code>서울 시 에서</code> becomes the noun <code>NNG</code> instead of the ending <code>EP</code>). Call <code>setSpacePenalty(false)</code> to restore the v6.0 output. A <code>Tokenizer</code> created directly with <code>new Tokenizer(dictionary, ...)</code> always uses the default, so use <code>TokenizerBuilder</code> to turn it off. A ko-dic downloaded from the v6.0.0 release ships no rules, so with it the penalty stays off and <code>setSpacePenalty(true)</code> makes <code>build()</code> throw. See <a href="lindera-nodejs/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+</blockquote>
 <h4 id="appendcharacterfilterkind-args"><a class="header" href="#appendcharacterfilterkind-args"><code>appendCharacterFilter(kind, args?)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
 <pre><code class="language-javascript">builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
@@ -4224,6 +4283,10 @@ const metadata = new Metadata({ name: "custom", encoding: "UTF-8" });
 buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 </code></pre>
 <p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
+<p>To build a dictionary with the settings its <code>metadata.json</code> ships, load the file with <code>Metadata.fromJsonFile()</code> and pass the result. The file's <code>space_penalty</code> rules are kept, so a ko-dic built this way applies the left-space penalty by default (see <a href="lindera-nodejs/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty</code></a>). A <code>Metadata</code> created with <code>new Metadata(...)</code> carries no rules.</p>
+<pre><code class="language-javascript">const metadata = Metadata.fromJsonFile("/path/to/lindera-ko-dic/metadata.json");
+buildDictionary("/path/to/mecab-ko-dic", "/path/to/output_dir", metadata);
+</code></pre>
 <h3 id="user-dictionary-3"><a class="header" href="#user-dictionary-3">User Dictionary</a></h3>
 <p>Build a user dictionary from a CSV file:</p>
 <pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera");
@@ -4283,9 +4346,14 @@ metadata.encoding = "EUC-JP";
 console.log(metadata.name); // "custom_dict"
 </code></pre>
 <h3 id="toobject"><a class="header" href="#toobject"><code>toObject()</code></a></h3>
-<p>Returns a plain object representation of the metadata:</p>
+<p>Returns a plain object representation of the metadata, with every value as a string:</p>
 <pre><code class="language-javascript">const metadata = new Metadata({ name: "test" });
 console.log(metadata.toObject());
+</code></pre>
+<p>When the metadata carries left-space penalty rules (for example, when it was loaded from ko-dic's <code>metadata.json</code>), the object also has a <code>spacePenalty</code> entry holding the rules as a JSON string. Otherwise the key is absent.</p>
+<pre><code class="language-javascript">const koDic = Metadata.fromJsonFile("/path/to/lindera-ko-dic/metadata.json");
+const { rules } = JSON.parse(koDic.toObject().spacePenalty);
+console.log(rules[1].pos); // ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"]
 </code></pre>
 <h2 id="schema-1"><a class="header" href="#schema-1">Schema</a></h2>
 <p>The <code>Schema</code> class defines the field structure of dictionary entries.</p>
@@ -4791,6 +4859,30 @@ builder.set_dictionary('/path/to/dictionary')
 <p>Controls whether whitespace tokens appear in the output.</p>
 <pre><code class="language-ruby">builder.set_keep_whitespace(true)
 </code></pre>
+<h4 id="set_space_penaltyvalue-1"><a class="header" href="#set_space_penaltyvalue-1"><code>set_space_penalty(value)</code></a></h4>
+<p>Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added. <code>value</code> has the same meaning as <code>segmenter.space_penalty</code> in a <a href="lindera-ruby/../lindera-analysis/configuration.html">configuration file</a>:</p>
+<ul>
+<li><code>nil</code> -- The default: the rules the dictionary ships in its <code>metadata.json</code>, if any (ko-dic ships mecab-ko-dic's rules; the other bundled dictionaries ship none). Use it to undo an earlier call.</li>
+<li><code>false</code> -- Turns the penalty off.</li>
+<li><code>true</code> -- Requires the dictionary's rules; <code>build</code> raises <code>RuntimeError</code> for a dictionary that ships none.</li>
+<li>A hash with string keys, <code>{ 'rules' =&gt; [{ 'pos' =&gt; [...], 'cost' =&gt; n }, ...] }</code> -- Applies these rules instead. A candidate whose first part-of-speech tag is listed in <code>pos</code> gets <code>cost</code> added; the first matching rule wins.</li>
+</ul>
+<p>A value that is not one of these forms, such as <code>1</code>, <code>'false'</code> or <code>{ 'rules' =&gt; 'JKS' }</code>, raises <code>RuntimeError</code>. A value that cannot be converted raises <code>TypeError</code>: a Symbol (also as a hash key or an element, so write <code>%w[JKS]</code> rather than <code>%i[JKS]</code>), a non-finite <code>Float</code> (NaN or Infinity), an <code>Integer</code> outside the 64-bit range, or an object other than <code>nil</code>, <code>true</code>, <code>false</code>, an <code>Integer</code>, a <code>Float</code>, a <code>String</code>, an <code>Array</code> or a <code>Hash</code>.</p>
+<pre><code class="language-ruby"># Turn the penalty off
+builder.set_space_penalty(false)
+
+# Explicit rules
+builder.set_space_penalty({
+  'rules' =&gt; [
+    { 'pos' =&gt; %w[EC EF EP ETM ETN VCP XSA XSN XSV], 'cost' =&gt; 3000 },
+    { 'pos' =&gt; %w[JC JKB JKC JKG JKO JKQ JKS JKV JX], 'cost' =&gt; 6000 }
+  ]
+})
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.set_space_penalty(false)</code> to get the v6.0 output back. A tokenizer created directly with <code>Lindera::Tokenizer.new(dictionary, ...)</code> always uses the default, so use <code>TokenizerBuilder</code> to turn it off. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-ruby/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+</blockquote>
 <h4 id="append_character_filterkind-args"><a class="header" href="#append_character_filterkind-args"><code>append_character_filter(kind, args)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline. The <code>args</code> parameter is a hash with string keys.</p>
 <pre><code class="language-ruby">builder.append_character_filter('unicode_normalize', { 'kind' =&gt; 'nfkc' })
@@ -4808,7 +4900,7 @@ builder.set_dictionary('/path/to/dictionary')
 <p><code>Lindera::Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer-2"><a class="header" href="#creating-a-tokenizer-2">Creating a Tokenizer</a></h3>
 <h4 id="linderatokenizernewdictionary-mode-user_dictionary"><a class="header" href="#linderatokenizernewdictionary-mode-user_dictionary"><code>Lindera::Tokenizer.new(dictionary, mode, user_dictionary)</code></a></h4>
-<p>Creates a tokenizer directly from a loaded dictionary.</p>
+<p>Creates a tokenizer directly from a loaded dictionary. It always uses the dictionary's default left-space penalty; use <a href="lindera-ruby/tokenizer_api.html#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a> to change it.</p>
 <pre><code class="language-ruby">require 'lindera'
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
@@ -5082,6 +5174,7 @@ metadata = Lindera::Metadata.from_json_file('metadata.json')
 Lindera.build_dictionary('/path/to/input_dir', '/path/to/output_dir', metadata)
 </code></pre>
 <p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
+<p>Metadata loaded with <code>Lindera::Metadata.from_json_file</code> keeps the <code>space_penalty</code> rules of the <code>metadata.json</code>, and the built dictionary ships them. For ko-dic this means the left-space penalty stays on by default in the dictionary you build; turn it off per tokenizer with <code>TokenizerBuilder#set_space_penalty(false)</code> (see <a href="lindera-ruby/./tokenizer_api.html#set_space_penaltyvalue">Tokenizer API</a>).</p>
 <h3 id="user-dictionary-4"><a class="header" href="#user-dictionary-4">User Dictionary</a></h3>
 <p>Build a user dictionary from a CSV file:</p>
 <pre><code class="language-ruby">require 'lindera'
@@ -5140,7 +5233,13 @@ metadata = dictionary.metadata
 <tr><td><code>skip_invalid_cost_or_id</code></td><td><code>Boolean</code></td><td><code>false</code></td><td>Skip entries with invalid cost or ID</td></tr>
 <tr><td><code>normalize_details</code></td><td><code>Boolean</code></td><td><code>false</code></td><td>Normalize morphological details</td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="text-processing-pipeline-2"><a class="header" href="#text-processing-pipeline-2">Text Processing Pipeline</a></h1>
+</div>
+<p><code>to_h</code> (and its alias <code>to_hash</code>) returns these properties as a <code>Hash</code> of strings, together with <code>dictionary_schema_fields</code> and <code>user_dictionary_schema_fields</code> (comma-separated field names). When the metadata carries left-space penalty rules, as ko-dic's does, the hash also has a <code>space_penalty</code> entry holding them as a JSON string:</p>
+<pre><code class="language-ruby">metadata = Lindera::Metadata.from_json_file('/path/to/ko-dic/metadata.json')
+metadata.to_h['space_penalty']
+# '{"rules":[{"pos":["EC","EF",...],"cost":3000},{"pos":["JC","JKB",...],"cost":6000}]}'
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="text-processing-pipeline-2"><a class="header" href="#text-processing-pipeline-2">Text Processing Pipeline</a></h1>
 <p>Lindera Ruby supports a composable text processing pipeline that applies character filters before tokenization and token filters after tokenization. Filters are added to the <code>TokenizerBuilder</code> and executed in the order they are appended.</p>
 <pre><code class="language-text">Input Text
   --&gt; Character Filters (preprocessing)
@@ -5619,6 +5718,37 @@ $builder-&gt;setUserDictionary('/path/to/user_dictionary.csv');
 
 $builder-&gt;setKeepWhitespace(true);
 </code></pre>
+<h4 id="setspacepenaltyvalue-1"><a class="header" href="#setspacepenaltyvalue-1"><code>setSpacePenalty($value)</code></a></h4>
+<p>Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added. <code>$value</code> has the same meaning as <code>segmenter.space_penalty</code> in a <a href="lindera-php/../lindera-analysis/configuration.html">configuration file</a>:</p>
+<ul>
+<li><code>null</code> -- The default: the rules the dictionary ships in its <code>metadata.json</code>, if any (ko-dic ships mecab-ko-dic's rules; the other bundled dictionaries ship none). Use it to undo an earlier call.</li>
+<li><code>false</code> -- Turns the penalty off.</li>
+<li><code>true</code> -- Requires the dictionary's rules; <code>build()</code> throws a <code>ValueError</code> for a dictionary that ships none.</li>
+<li>An associative array, <code>['rules' =&gt; [['pos' =&gt; [...], 'cost' =&gt; n], ...]]</code> -- Applies these rules instead. A candidate whose first part-of-speech tag is listed in <code>pos</code> gets <code>cost</code> added; the first matching rule wins.</li>
+</ul>
+<p><code>rules</code> and each <code>pos</code> must be lists, with keys <code>0, 1, 2, ...</code> (apply <code>array_values()</code> after <code>array_filter()</code> or <code>array_unique()</code>), and <code>cost</code> must be an <code>int</code> in the 32-bit range; a float such as <code>6000.0</code> is rejected. Any other value throws a <code>ValueError</code>, including objects (a <code>stdClass</code>, or <code>json_decode()</code> without <code>true</code>) and <code>NAN</code> or <code>INF</code>.</p>
+<pre><code class="language-php">&lt;?php
+
+$builder-&gt;setDictionary('embedded://ko-dic');
+
+// Turn the penalty off (the v6.0 output)
+$builder-&gt;setSpacePenalty(false);
+
+// Apply explicit rules
+$builder-&gt;setSpacePenalty([
+    'rules' =&gt; [
+        ['pos' =&gt; ['EC', 'EF', 'EP', 'ETM', 'ETN', 'VCP', 'XSA', 'XSN', 'XSV'], 'cost' =&gt; 3000],
+        ['pos' =&gt; ['JC', 'JKB', 'JKC', 'JKG', 'JKO', 'JKQ', 'JKS', 'JKV', 'JX'], 'cost' =&gt; 6000],
+    ],
+]);
+
+// Back to the dictionary's default
+$builder-&gt;setSpacePenalty(null);
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>$builder-&gt;setSpacePenalty(false)</code> to get the v6.0 output back; a tokenizer created with <a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-userdictionary"><code>new Lindera\Tokenizer(...)</code></a> always applies the dictionary's rules. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-php/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+</blockquote>
 <h4 id="appendcharacterfilterkind-args-1"><a class="header" href="#appendcharacterfilterkind-args-1"><code>appendCharacterFilter($kind, $args)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
 <pre><code class="language-php">&lt;?php
@@ -5643,6 +5773,7 @@ $tokenizer = $builder-&gt;build();
 <h3 id="creating-a-tokenizer-3"><a class="header" href="#creating-a-tokenizer-3">Creating a Tokenizer</a></h3>
 <h4 id="new-linderatokenizerdictionary-mode-userdictionary"><a class="header" href="#new-linderatokenizerdictionary-mode-userdictionary"><code>new Lindera\Tokenizer($dictionary, $mode, $userDictionary)</code></a></h4>
 <p>Creates a tokenizer directly from a loaded dictionary.</p>
+<p>A tokenizer created this way always applies the left-space penalty rules the dictionary ships (ko-dic ships them), and the constructor has no option to change that. To change or turn off the penalty, use a <code>TokenizerBuilder</code> with <a href="lindera-php/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a>.</p>
 <pre><code class="language-php">&lt;?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
@@ -5857,6 +5988,7 @@ $metadata = Lindera\Metadata::fromJsonFile('/path/to/metadata.json');
 Lindera\Dictionary::build('/path/to/input_dir', '/path/to/output_dir', $metadata);
 </code></pre>
 <p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
+<p>Metadata loaded with <code>Lindera\Metadata::fromJsonFile</code> keeps the <code>space_penalty</code> rules of the <code>metadata.json</code>, and the built dictionary ships them. For ko-dic this means the left-space penalty stays on by default in the dictionary you build; turn it off per tokenizer with <code>TokenizerBuilder::setSpacePenalty(false)</code> (see <a href="lindera-php/./tokenizer_api.html#setspacepenaltyvalue">Tokenizer API</a>). Metadata created with the constructor carries no rules.</p>
 <p>Here is an example that downloads and builds the IPADIC dictionary:</p>
 <pre><code class="language-php">&lt;?php
 
@@ -5934,6 +6066,13 @@ echo $metadata-&gt;encoding;  // "EUC-JP"
 
 $metadata = new Lindera\Metadata(name: 'test');
 print_r($metadata-&gt;toArray());
+</code></pre>
+<p>When the metadata carries left-space penalty rules (for example, loaded from ko-dic's <code>metadata.json</code>), the array also has a <code>space_penalty</code> entry holding them as a JSON string; the key is absent otherwise:</p>
+<pre><code class="language-php">&lt;?php
+
+$metadata = Lindera\Metadata::fromJsonFile('/path/to/ko-dic/metadata.json');
+$rules = json_decode($metadata-&gt;toArray()['space_penalty'], true);
+// ['rules' =&gt; [['pos' =&gt; ['EC', 'EF', ...], 'cost' =&gt; 3000], ...]]
 </code></pre>
 <h3 id="dictionary-info"><a class="header" href="#dictionary-info">Dictionary Info</a></h3>
 <p>The <code>Lindera\Dictionary</code> object provides metadata accessors:</p>
@@ -6522,7 +6661,7 @@ configures the same underlying builder.</p>
 <p>Sets the tokenization mode.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>mode</code> (string) -- <code>"normal"</code> or <code>"decompose"</code></li>
-<li><strong>Returns</strong>: void</li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.setMode("normal");
 </code></pre>
@@ -6530,7 +6669,7 @@ configures the same underlying builder.</p>
 <p>Sets the dictionary to use for tokenization.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>uri</code> (string) -- Dictionary URI (e.g., <code>"embedded://ipadic"</code>)</li>
-<li><strong>Returns</strong>: void</li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.setDictionary("embedded://ipadic");
 </code></pre>
@@ -6539,7 +6678,7 @@ configures the same underlying builder.</p>
 Use this when the dictionary has been loaded from bytes (e.g., via <code>loadDictionaryFromBytes()</code>) instead of from a URI.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>dictionary</code> (Dictionary) -- A loaded dictionary object</li>
-<li><strong>Returns</strong>: void</li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
@@ -6556,16 +6695,45 @@ builder.setDictionaryInstance(dictionary);
 <p>Sets a pre-loaded user dictionary instance. Load one from bytes with <code>loadUserDictionaryFromBytes()</code> (CSV) or <code>loadUserDictionaryBinFromBytes()</code> (prebuilt <code>.bin</code>); URI-based user dictionaries are not available on WebAssembly.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>userDictionary</code> (UserDictionary) -- A loaded user dictionary object</li>
-<li><strong>Returns</strong>: void</li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <h4 id="setkeepwhitespacekeep-2"><a class="header" href="#setkeepwhitespacekeep-2"><code>setKeepWhitespace(keep)</code></a></h4>
 <p>Sets whether whitespace tokens are preserved in the output.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>keep</code> (boolean) -- <code>true</code> to keep whitespace tokens</li>
-<li><strong>Returns</strong>: void</li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.setKeepWhitespace(true);
 </code></pre>
+<h4 id="setspacepenaltyvalue-2"><a class="header" href="#setspacepenaltyvalue-2"><code>setSpacePenalty(value)</code></a></h4>
+<p>Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added.</p>
+<ul>
+<li><strong>Parameters</strong>: <code>value</code> (boolean | object | null | undefined) -- The setting, with the same meaning as <code>segmenter.space_penalty</code> in a <a href="lindera-wasm/../lindera-analysis/configuration.html">configuration file</a></li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
+</ul>
+<p><code>value</code> takes one of these forms; any other value throws an error string:</p>
+<ul>
+<li><code>null</code> or <code>undefined</code> -- The default: the rules the dictionary ships in its <code>metadata.json</code>, if any (ko-dic ships mecab-ko-dic's rules; the other bundled dictionaries ship none). Use it to undo an earlier call.</li>
+<li><code>false</code> -- Turns the penalty off.</li>
+<li><code>true</code> -- Requires the dictionary's rules; <code>build()</code> throws for a dictionary that ships none.</li>
+<li>An object of the form <code>{ rules: [{ pos: [...], cost: n }, ...] }</code> -- Applies these rules instead. A candidate whose first part-of-speech tag is listed in <code>pos</code> gets <code>cost</code> added; the first matching rule wins.</li>
+</ul>
+<p>The setting applies both to a dictionary set with <code>setDictionary()</code> and to one set with <code>setDictionaryInstance()</code>, such as a ko-dic loaded from OPFS with <code>loadDictionaryFromBytes()</code>. The dictionary object itself is not changed. A tokenizer created with the <code>Tokenizer</code> constructor always uses the dictionary's default; build it with <code>TokenizerBuilder</code> to change the setting.</p>
+<pre><code class="language-javascript">// Turn the penalty off
+builder.setSpacePenalty(false);
+
+// Explicit rules
+builder.setSpacePenalty({
+    rules: [
+        { pos: ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], cost: 3000 },
+        { pos: ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], cost: 6000 },
+    ],
+});
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.setSpacePenalty(false)</code> to get the v6.0 output back. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-wasm/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+</blockquote>
 <h4 id="appendcharacterfiltername-args"><a class="header" href="#appendcharacterfiltername-args"><code>appendCharacterFilter(name, args)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
 <ul>
@@ -6575,7 +6743,7 @@ builder.setDictionaryInstance(dictionary);
 <li><code>args</code> (object, optional) -- Filter configuration</li>
 </ul>
 </li>
-<li><strong>Returns</strong>: void</li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
 </code></pre>
@@ -6588,7 +6756,7 @@ builder.setDictionaryInstance(dictionary);
 <li><code>args</code> (object, optional) -- Filter configuration</li>
 </ul>
 </li>
-<li><strong>Returns</strong>: void</li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.appendTokenFilter("japanese_stop_tags", {
     tags: ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞", "記号,句点", "記号,読点"]
@@ -6767,6 +6935,7 @@ console.log(error.toString()); // "message"
 <tr><td><code>setDictionaryInstance()</code></td><td><code>set_dictionary_instance()</code></td></tr>
 <tr><td><code>setUserDictionaryInstance()</code></td><td><code>set_user_dictionary_instance()</code></td></tr>
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
+<tr><td><code>setSpacePenalty()</code></td><td><code>set_space_penalty()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
 <tr><td><code>tokenizeSurfaces()</code></td><td><code>tokenize_surfaces()</code></td></tr>
@@ -6926,6 +7095,12 @@ and writes an output directory, and there is no filesystem on
 <code>wasm32-unknown-unknown</code>. Build dictionaries with the <code>lindera</code> CLI (or a
 native binding) and load the result here as bytes — see
 <a href="lindera-wasm/opfs.html">OPFS Dictionary Management</a> for downloading prebuilt dictionaries.</p>
+<p>A dictionary built from a <code>metadata.json</code> that ships <code>space_penalty</code> rules
+keeps them, and <code>loadDictionaryFromBytes()</code> loads them with the rest of the
+metadata. ko-dic's <code>metadata.json</code> ships mecab-ko-dic's rules, so a tokenizer
+built on a ko-dic applies the left-space penalty by default; see
+<a href="lindera-wasm/./tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> for turning it
+off.</p>
 <h2 id="metadata-4"><a class="header" href="#metadata-4">Metadata</a></h2>
 <p>The <code>Metadata</code> class configures dictionary parameters.</p>
 <h3 id="constructor-1"><a class="header" href="#constructor-1">Constructor</a></h3>
@@ -6960,7 +7135,7 @@ console.log(metadata.name); // "custom_dict"
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Unlike the Python, Node.js, Ruby, and PHP bindings, the WASM <code>Metadata</code> class does not expose <code>default_word_cost</code>, <code>default_left_context_id</code>, <code>default_right_context_id</code>, <code>default_field_value</code>, <code>flexible_csv</code>, <code>skip_invalid_cost_or_id</code>, or <code>normalize_details</code> as gettable/settable properties (see <code>lindera-wasm/src/metadata.rs</code>). These always fall back to the shared binding defaults (word cost <code>-10000</code>, context IDs <code>1288</code>, field value <code>"*"</code>, flags <code>false</code>) and cannot be customized from JavaScript.</p>
+Unlike the Python, Node.js, Ruby, and PHP bindings, the WASM <code>Metadata</code> class does not expose <code>default_word_cost</code>, <code>default_left_context_id</code>, <code>default_right_context_id</code>, <code>default_field_value</code>, <code>flexible_csv</code>, <code>skip_invalid_cost_or_id</code>, or <code>normalize_details</code> as gettable/settable properties (see <code>lindera-wasm/src/metadata.rs</code>). These always fall back to the shared binding defaults (word cost <code>-10000</code>, context IDs <code>1288</code>, field value <code>"*"</code>, flags <code>false</code>) and cannot be customized from JavaScript. The <code>space_penalty</code> rules are not exposed either. They take effect only through the dictionary they were loaded with (see <a href="lindera-wasm/./tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a>); passing <code>dictionary.metadata</code> on, for example to <code>loadUserDictionaryFromBytes()</code>, does not apply them anywhere else.</p>
 </blockquote>
 <p>You can also access the metadata from a loaded dictionary via <code>dictionary.metadata</code>.</p>
 <h3 id="schema-4"><a class="header" href="#schema-4">Schema</a></h3>

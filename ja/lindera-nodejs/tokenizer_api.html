@@ -219,6 +219,34 @@ builder.setDictionary("/path/to/dictionary");
 <p>出力に空白トークンを含めるかどうかを制御します。</p>
 <pre><code class="language-javascript">builder.setKeepWhitespace(true);
 </code></pre>
+<h4 id="setspacepenaltyvalue"><a class="header" href="#setspacepenaltyvalue"><code>setSpacePenalty(value)</code></a></h4>
+<p>韓国語向けの左側空白ペナルティ（mecab-ko の <code>left-space-penalty-factor</code>）を設定します。直前に空白があり、先頭品詞タグがルールの一覧にある候補に、そのルールのコストを加算します。値の意味は<a href="../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです。</p>
+<div class="table-wrapper"><table><thead><tr><th>値</th><th>効果</th></tr></thead><tbody>
+<tr><td><code>null</code> または <code>undefined</code></td><td>デフォルト。辞書が <code>metadata.json</code> に同梱するルールがあればそれを使用</td></tr>
+<tr><td><code>false</code></td><td>ペナルティをオフにする</td></tr>
+<tr><td><code>true</code></td><td>辞書のルールを要求する。辞書がルールを同梱していない場合は <code>build()</code> が例外を投げる</td></tr>
+<tr><td><code>{ rules: [{ pos: [...], cost: n }, ...] }</code></td><td>辞書のルールの代わりにこのルールを適用する</td></tr>
+</tbody></table>
+</div>
+<p>それ以外の値を渡すと <code>Error</code> を投げます。</p>
+<pre><code class="language-javascript">// ペナルティをオフにする
+builder.setSpacePenalty(false);
+
+// 明示的なルール（ko-dic が同梱するルールと同じ）
+builder.setSpacePenalty({
+  rules: [
+    { pos: ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], cost: 3000 },
+    { pos: ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], cost: 6000 },
+  ],
+});
+
+// 辞書のデフォルトに戻す
+builder.setSpacePenalty(null);
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適用されます。ko-dic の <code>metadata.json</code> が mecab-ko-dic のルールを同梱しているためです。これにより韓国語の出力が v6.0 から変わります（例: <code>서울 시 에서</code> の <code>시</code> が語尾 <code>EP</code> ではなく名詞 <code>NNG</code> になる）。v6.0 の出力に戻すには <code>setSpacePenalty(false)</code> を呼び出してください。<code>new Tokenizer(dictionary, ...)</code> で直接作成した <code>Tokenizer</code> は常にデフォルトを使うため、オフにするには <code>TokenizerBuilder</code> を使ってください。v6.0.0 リリースからダウンロードした ko-dic はルールを同梱していないため、その辞書ではペナルティはオフのままで、<code>setSpacePenalty(true)</code> を指定すると <code>build()</code> が例外を投げます。詳細は <a href="../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+</blockquote>
 <h4 id="appendcharacterfilterkind-args"><a class="header" href="#appendcharacterfilterkind-args"><code>appendCharacterFilter(kind, args?)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
 <pre><code class="language-javascript">builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });

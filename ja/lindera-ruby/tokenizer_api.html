@@ -215,6 +215,30 @@ builder.set_dictionary('/path/to/dictionary')
 <p>出力に空白トークンを含めるかどうかを制御します。</p>
 <pre><code class="language-ruby">builder.set_keep_whitespace(true)
 </code></pre>
+<h4 id="set_space_penaltyvalue"><a class="header" href="#set_space_penaltyvalue"><code>set_space_penalty(value)</code></a></h4>
+<p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。<code>value</code> の意味は<a href="../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです：</p>
+<ul>
+<li><code>nil</code> -- デフォルト。辞書が <code>metadata.json</code> に同梱するルールがあればそれを使います（ko-dic は mecab-ko-dic のルールを同梱し、他の同梱辞書はルールを持ちません）。以前の呼び出しを取り消すときにも使います。</li>
+<li><code>false</code> -- ペナルティをオフにします。</li>
+<li><code>true</code> -- 辞書のルールを要求します。ルールを同梱しない辞書では <code>build</code> が <code>RuntimeError</code> を発生させます。</li>
+<li>文字列キーのハッシュ <code>{ 'rules' =&gt; [{ 'pos' =&gt; [...], 'cost' =&gt; n }, ...] }</code> -- 辞書のルールの代わりにこのルールを適用します。先頭品詞タグが <code>pos</code> に含まれる候補に <code>cost</code> を加算し、最初に一致したルールが使われます。</li>
+</ul>
+<p>これらの形式に当てはまらない値（<code>1</code>、<code>'false'</code>、<code>{ 'rules' =&gt; 'JKS' }</code> など）では <code>RuntimeError</code> が発生します。変換できない値では <code>TypeError</code> が発生します。該当するのは Symbol（ハッシュのキーや要素に含まれる場合も含むため、<code>%i[JKS]</code> ではなく <code>%w[JKS]</code> と書きます）、有限でない <code>Float</code>（NaN や Infinity）、64 ビットの範囲を超える <code>Integer</code>、および <code>nil</code>・<code>true</code>・<code>false</code>・<code>Integer</code>・<code>Float</code>・<code>String</code>・<code>Array</code>・<code>Hash</code> 以外のオブジェクトです。</p>
+<pre><code class="language-ruby"># ペナルティをオフにする
+builder.set_space_penalty(false)
+
+# 明示的なルール
+builder.set_space_penalty({
+  'rules' =&gt; [
+    { 'pos' =&gt; %w[EC EF EP ETM ETN VCP XSA XSN XSV], 'cost' =&gt; 3000 },
+    { 'pos' =&gt; %w[JC JKB JKC JKG JKO JKQ JKS JKV JX], 'cost' =&gt; 6000 }
+  ]
+})
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>서울 시 에서</code> の <code>시</code> は、語尾 <code>EP</code> ではなく名詞 <code>NNG</code> と解析されるようになりました。v6.0 の出力に戻すには <code>builder.set_space_penalty(false)</code> を呼び出してください。<code>Lindera::Tokenizer.new(dictionary, ...)</code> で直接作成したトークナイザーは常にデフォルトを使うため、オフにするには <code>TokenizerBuilder</code> を使ってください。ルールを同梱しているのは Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+</blockquote>
 <h4 id="append_character_filterkind-args"><a class="header" href="#append_character_filterkind-args"><code>append_character_filter(kind, args)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
 <pre><code class="language-ruby">builder.append_character_filter('unicode_normalize', { 'kind' =&gt; 'nfkc' })
@@ -232,7 +256,7 @@ builder.set_dictionary('/path/to/dictionary')
 <p><code>Lindera::Tokenizer</code> はテキストに対して形態素解析を行います。</p>
 <h3 id="tokenizer-の作成"><a class="header" href="#tokenizer-の作成">Tokenizer の作成</a></h3>
 <h4 id="linderatokenizernewdictionary-mode-user_dictionary"><a class="header" href="#linderatokenizernewdictionary-mode-user_dictionary"><code>Lindera::Tokenizer.new(dictionary, mode, user_dictionary)</code></a></h4>
-<p>読み込み済みの辞書から直接トークナイザーを作成します。<code>user_dictionary</code> が不要な場合は <code>nil</code> を渡します。</p>
+<p>読み込み済みの辞書から直接トークナイザーを作成します。左側空白ペナルティは常に辞書のデフォルトになります。変更するには <a href="#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a> を使います。<code>user_dictionary</code> が不要な場合は <code>nil</code> を渡します。</p>
 <pre><code class="language-ruby">require 'lindera'
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')

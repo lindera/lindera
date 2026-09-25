@@ -235,6 +235,7 @@ $metadata = Lindera\Metadata::fromJsonFile('/path/to/metadata.json');
 Lindera\Dictionary::build('/path/to/input_dir', '/path/to/output_dir', $metadata);
 </code></pre>
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
+<p><code>Lindera\Metadata::fromJsonFile</code> で読み込んだメタデータは <code>metadata.json</code> の <code>space_penalty</code> ルールを保持し、ビルドした辞書にもそのルールが同梱されます。そのため ko-dic をビルドした場合も、左側空白ペナルティはデフォルトでオンのままです。トークナイザーごとにオフにするには <code>TokenizerBuilder::setSpacePenalty(false)</code> を使います（<a href="./tokenizer_api.html#setspacepenaltyvalue">Tokenizer API</a> を参照）。コンストラクタで作成した <code>Metadata</code> はルールを持ちません。</p>
 <p>以下は IPADIC 辞書をダウンロードしてビルドする例です：</p>
 <pre><code class="language-php">&lt;?php
 
@@ -275,6 +276,14 @@ $metadata = new Lindera\Metadata('my_dictionary', 'UTF-8', -10000);
 <tr><td><code>default_word_cost</code></td><td><code>int</code></td><td><code>-10000</code></td><td>未知語のデフォルトコスト</td></tr>
 </tbody></table>
 </div>
+<h3 id="toarray"><a class="header" href="#toarray"><code>toArray()</code></a></h3>
+<p>メタデータを連想配列（値はすべて文字列）で返します。ko-dic のようにメタデータが左側空白ペナルティのルールを持つ場合は、そのルールを JSON 文字列で保持する <code>space_penalty</code> エントリも含まれます。ルールがなければこのキーはありません：</p>
+<pre><code class="language-php">&lt;?php
+
+$metadata = Lindera\Metadata::fromJsonFile('/path/to/ko-dic/metadata.json');
+$rules = json_decode($metadata-&gt;toArray()['space_penalty'], true);
+// ['rules' =&gt; [['pos' =&gt; ['EC', 'EF', ...], 'cost' =&gt; 3000], ...]]
+</code></pre>
 <h2 id="schema"><a class="header" href="#schema">Schema</a></h2>
 <p><code>Schema</code> クラスは辞書のフィールド構造を定義します。</p>
 <h3 id="schema-の作成"><a class="header" href="#schema-の作成">Schema の作成</a></h3>

@@ -228,6 +228,10 @@ const metadata = new Metadata({ name: "custom", encoding: "UTF-8" });
 buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 </code></pre>
 <p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
+<p>To build a dictionary with the settings its <code>metadata.json</code> ships, load the file with <code>Metadata.fromJsonFile()</code> and pass the result. The file's <code>space_penalty</code> rules are kept, so a ko-dic built this way applies the left-space penalty by default (see <a href="tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty</code></a>). A <code>Metadata</code> created with <code>new Metadata(...)</code> carries no rules.</p>
+<pre><code class="language-javascript">const metadata = Metadata.fromJsonFile("/path/to/lindera-ko-dic/metadata.json");
+buildDictionary("/path/to/mecab-ko-dic", "/path/to/output_dir", metadata);
+</code></pre>
 <h3 id="user-dictionary"><a class="header" href="#user-dictionary">User Dictionary</a></h3>
 <p>Build a user dictionary from a CSV file:</p>
 <pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera");
@@ -287,9 +291,14 @@ metadata.encoding = "EUC-JP";
 console.log(metadata.name); // "custom_dict"
 </code></pre>
 <h3 id="toobject"><a class="header" href="#toobject"><code>toObject()</code></a></h3>
-<p>Returns a plain object representation of the metadata:</p>
+<p>Returns a plain object representation of the metadata, with every value as a string:</p>
 <pre><code class="language-javascript">const metadata = new Metadata({ name: "test" });
 console.log(metadata.toObject());
+</code></pre>
+<p>When the metadata carries left-space penalty rules (for example, when it was loaded from ko-dic's <code>metadata.json</code>), the object also has a <code>spacePenalty</code> entry holding the rules as a JSON string. Otherwise the key is absent.</p>
+<pre><code class="language-javascript">const koDic = Metadata.fromJsonFile("/path/to/lindera-ko-dic/metadata.json");
+const { rules } = JSON.parse(koDic.toObject().spacePenalty);
+console.log(rules[1].pos); // ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"]
 </code></pre>
 <h2 id="schema"><a class="header" href="#schema">Schema</a></h2>
 <p>The <code>Schema</code> class defines the field structure of dictionary entries.</p>

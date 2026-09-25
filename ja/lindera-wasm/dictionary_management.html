@@ -326,6 +326,12 @@ IPADIC のシンプル形式は以下のとおりです：</p>
 ファイルシステムが無いためです。辞書は <code>lindera</code> CLI（またはネイティブ
 バインディング）でビルドし、結果をバイト列としてここに読み込んでください。
 ビルド済み辞書のダウンロードは <a href="opfs.html">OPFS 辞書管理</a> を参照してください。</p>
+<p><code>space_penalty</code> ルールを同梱する <code>metadata.json</code> からビルドした辞書はその
+ルールを保持し、<code>loadDictionaryFromBytes()</code> はほかのメタデータと一緒に
+ルールも読み込みます。ko-dic の <code>metadata.json</code> は mecab-ko-dic のルールを
+同梱しているため、ko-dic を使うトークナイザーでは左側空白ペナルティが
+デフォルトで適用されます。オフにする方法は
+<a href="./tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> を参照してください。</p>
 <h2 id="metadata"><a class="header" href="#metadata">Metadata</a></h2>
 <p><code>Metadata</code> クラスは辞書のパラメータを設定します。</p>
 <h3 id="コンストラクタ"><a class="header" href="#コンストラクタ">コンストラクタ</a></h3>
@@ -360,7 +366,7 @@ console.log(metadata.name); // "custom_dict"
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Python・Node.js・Ruby・PHP の各バインディングと異なり、WASM の <code>Metadata</code> クラスは <code>default_word_cost</code>、<code>default_left_context_id</code>、<code>default_right_context_id</code>、<code>default_field_value</code>、<code>flexible_csv</code>、<code>skip_invalid_cost_or_id</code>、<code>normalize_details</code> を取得・設定可能なプロパティとして公開していません（<code>lindera-wasm/src/metadata.rs</code> 参照）。これらは常にバインディング共通のデフォルト値（コスト <code>-10000</code>、文脈 ID <code>1288</code>、フィールド値 <code>"*"</code>、フラグはすべて <code>false</code>）にフォールバックし、JavaScript から変更することはできません。</p>
+Python・Node.js・Ruby・PHP の各バインディングと異なり、WASM の <code>Metadata</code> クラスは <code>default_word_cost</code>、<code>default_left_context_id</code>、<code>default_right_context_id</code>、<code>default_field_value</code>、<code>flexible_csv</code>、<code>skip_invalid_cost_or_id</code>、<code>normalize_details</code> を取得・設定可能なプロパティとして公開していません（<code>lindera-wasm/src/metadata.rs</code> 参照）。これらは常にバインディング共通のデフォルト値（コスト <code>-10000</code>、文脈 ID <code>1288</code>、フィールド値 <code>"*"</code>、フラグはすべて <code>false</code>）にフォールバックし、JavaScript から変更することはできません。<code>space_penalty</code> ルールも公開していません。ルールが効くのは、そのルールと一緒に読み込んだ辞書だけです（<a href="./tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> を参照）。<code>dictionary.metadata</code> を <code>loadUserDictionaryFromBytes()</code> などに渡しても、ほかの場所でルールが適用されることはありません。</p>
 </blockquote>
 <p>読み込み済み辞書のメタデータには <code>dictionary.metadata</code> からアクセスできます。</p>
 <h3 id="schema"><a class="header" href="#schema">Schema</a></h3>

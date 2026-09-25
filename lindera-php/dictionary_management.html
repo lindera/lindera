@@ -224,6 +224,7 @@ $metadata = Lindera\Metadata::fromJsonFile('/path/to/metadata.json');
 Lindera\Dictionary::build('/path/to/input_dir', '/path/to/output_dir', $metadata);
 </code></pre>
 <p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
+<p>Metadata loaded with <code>Lindera\Metadata::fromJsonFile</code> keeps the <code>space_penalty</code> rules of the <code>metadata.json</code>, and the built dictionary ships them. For ko-dic this means the left-space penalty stays on by default in the dictionary you build; turn it off per tokenizer with <code>TokenizerBuilder::setSpacePenalty(false)</code> (see <a href="./tokenizer_api.html#setspacepenaltyvalue">Tokenizer API</a>). Metadata created with the constructor carries no rules.</p>
 <p>Here is an example that downloads and builds the IPADIC dictionary:</p>
 <pre><code class="language-php">&lt;?php
 
@@ -301,6 +302,13 @@ echo $metadata-&gt;encoding;  // "EUC-JP"
 
 $metadata = new Lindera\Metadata(name: 'test');
 print_r($metadata-&gt;toArray());
+</code></pre>
+<p>When the metadata carries left-space penalty rules (for example, loaded from ko-dic's <code>metadata.json</code>), the array also has a <code>space_penalty</code> entry holding them as a JSON string; the key is absent otherwise:</p>
+<pre><code class="language-php">&lt;?php
+
+$metadata = Lindera\Metadata::fromJsonFile('/path/to/ko-dic/metadata.json');
+$rules = json_decode($metadata-&gt;toArray()['space_penalty'], true);
+// ['rules' =&gt; [['pos' =&gt; ['EC', 'EF', ...], 'cost' =&gt; 3000], ...]]
 </code></pre>
 <h3 id="dictionary-info"><a class="header" href="#dictionary-info">Dictionary Info</a></h3>
 <p>The <code>Lindera\Dictionary</code> object provides metadata accessors:</p>

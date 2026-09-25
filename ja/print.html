@@ -3214,6 +3214,30 @@ builder.set_dictionary("/path/to/dictionary")
 <p>出力に空白トークンを含めるかどうかを制御します。</p>
 <pre><code class="language-python">builder.set_keep_whitespace(True)
 </code></pre>
+<h4 id="set_space_penaltyvalue"><a class="header" href="#set_space_penaltyvalue"><code>set_space_penalty(value)</code></a></h4>
+<p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。<code>value</code> の意味は<a href="lindera-python/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです：</p>
+<ul>
+<li><code>None</code> -- デフォルト。辞書が <code>metadata.json</code> に同梱するルールがあればそれを使います（ko-dic は mecab-ko-dic のルールを同梱し、他の同梱辞書はルールを持ちません）。以前の呼び出しを取り消すときにも使います。</li>
+<li><code>False</code> -- ペナルティをオフにします。</li>
+<li><code>True</code> -- 辞書のルールを要求します。ルールを同梱しない辞書では <code>build()</code> が <code>ValueError</code> を送出します。</li>
+<li><code>{"rules": [{"pos": [...], "cost": n}, ...]}</code> 形式の <code>dict</code> -- 辞書のルールの代わりにこのルールを適用します。先頭品詞タグが <code>pos</code> に含まれる候補に <code>cost</code> を加算し、最初に一致したルールが使われます。</li>
+</ul>
+<p>それ以外の値では <code>ValueError</code> が送出されます（任意のオブジェクトなど JSON に対応しない値は、<code>append_token_filter</code> と同様に <code>TypeError</code> になります）。</p>
+<pre><code class="language-python"># ペナルティをオフにする
+builder.set_space_penalty(False)
+
+# 明示的なルール
+builder.set_space_penalty({
+    "rules": [
+        {"pos": ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], "cost": 3000},
+        {"pos": ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], "cost": 6000},
+    ]
+})
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>서울 시 에서</code> の <code>시</code> は、語尾 <code>EP</code> ではなく名詞 <code>NNG</code> と解析されるようになりました。v6.0 の出力に戻すには <code>builder.set_space_penalty(False)</code> を呼び出してください。ルールを同梱しているのは Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>True</code> はエラーになります。詳しくは <a href="lindera-python/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+</blockquote>
 <h4 id="append_character_filterkind-argsnone"><a class="header" href="#append_character_filterkind-argsnone"><code>append_character_filter(kind, args=None)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
 <pre><code class="language-python">builder.append_character_filter("unicode_normalize", {"kind": "nfkc"})
@@ -3232,6 +3256,7 @@ builder.set_dictionary("/path/to/dictionary")
 <h3 id="tokenizer-の作成"><a class="header" href="#tokenizer-の作成">Tokenizer の作成</a></h3>
 <h4 id="tokenizerdictionary-modenormal-user_dictionarynone"><a class="header" href="#tokenizerdictionary-modenormal-user_dictionarynone"><code>Tokenizer(dictionary, mode="normal", user_dictionary=None)</code></a></h4>
 <p>読み込み済みの辞書から直接トークナイザーを作成します。</p>
+<p>このトークナイザーは辞書のデフォルト設定を使い、辞書が同梱する左側空白ペナルティのルールも適用します。そのため ko-dic ではペナルティが常にオンです。オフにしたりルールを変えたりするには、<a href="lindera-python/tokenizer_api.html#set_space_penaltyvalue"><code>TokenizerBuilder.set_space_penalty</code></a> を使ってトークナイザーをビルドしてください。</p>
 <pre><code class="language-python">from lindera import Tokenizer, load_dictionary
 
 dictionary = load_dictionary("embedded://ipadic")
@@ -3466,6 +3491,7 @@ metadata = Metadata(name="custom", encoding="UTF-8")
 build_dictionary("/path/to/input_dir", "/path/to/output_dir", metadata)
 </code></pre>
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
+<p><code>Metadata.from_json_file</code> で読み込んだメタデータは <code>metadata.json</code> の <code>space_penalty</code> ルールを保持し、ビルドした辞書にもそのルールが同梱されます。そのため ko-dic をビルドした場合も、左側空白ペナルティはデフォルトでオンのままです。トークナイザーごとにオフにするには <code>TokenizerBuilder.set_space_penalty(False)</code> を使います（<a href="lindera-python/./tokenizer_api.html#set_space_penaltyvalue">Tokenizer API</a> を参照）。コンストラクタで作成した <code>Metadata</code> はルールを持ちません。</p>
 <h3 id="ユーザー辞書のビルド-1"><a class="header" href="#ユーザー辞書のビルド-1">ユーザー辞書のビルド</a></h3>
 <p>CSV ファイルからユーザー辞書をビルドします：</p>
 <pre><code class="language-python">from lindera import build_user_dictionary, Metadata
@@ -3520,9 +3546,14 @@ metadata.encoding = "EUC-JP"
 print(metadata.name)  # "custom_dict"
 </code></pre>
 <h3 id="to_dict-1"><a class="header" href="#to_dict-1"><code>to_dict()</code></a></h3>
-<p>メタデータの辞書表現を返します：</p>
+<p>メタデータを文字列の <code>dict</code> として返します。上記のプロパティを含み、2 つのスキーマは <code>dictionary_schema_fields</code> と <code>user_dictionary_schema_fields</code>（カンマ区切りのフィールド名）として格納されます：</p>
 <pre><code class="language-python">metadata = Metadata(name="test")
 print(metadata.to_dict())
+</code></pre>
+<p>ko-dic のようにメタデータが左側空白ペナルティのルールを持つ場合、<code>dict</code> にはそのルールを JSON 文字列で保持する <code>space_penalty</code> エントリも含まれます。ルールがない場合、このキーはありません：</p>
+<pre><code class="language-python">metadata = Metadata.from_json_file("/path/to/ko-dic/metadata.json")
+metadata.to_dict()["space_penalty"]
+# '{"rules":[{"pos":["EC","EF",...],"cost":3000},{"pos":["JC","JKB",...],"cost":6000}]}'
 </code></pre>
 <h2 id="schema"><a class="header" href="#schema">Schema</a></h2>
 <p><code>Schema</code>、<code>FieldDefinition</code>、<code>FieldType</code> は、辞書エントリーのフィールド構成を
@@ -4065,6 +4096,34 @@ builder.setDictionary("/path/to/dictionary");
 <p>出力に空白トークンを含めるかどうかを制御します。</p>
 <pre><code class="language-javascript">builder.setKeepWhitespace(true);
 </code></pre>
+<h4 id="setspacepenaltyvalue"><a class="header" href="#setspacepenaltyvalue"><code>setSpacePenalty(value)</code></a></h4>
+<p>韓国語向けの左側空白ペナルティ（mecab-ko の <code>left-space-penalty-factor</code>）を設定します。直前に空白があり、先頭品詞タグがルールの一覧にある候補に、そのルールのコストを加算します。値の意味は<a href="lindera-nodejs/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです。</p>
+<div class="table-wrapper"><table><thead><tr><th>値</th><th>効果</th></tr></thead><tbody>
+<tr><td><code>null</code> または <code>undefined</code></td><td>デフォルト。辞書が <code>metadata.json</code> に同梱するルールがあればそれを使用</td></tr>
+<tr><td><code>false</code></td><td>ペナルティをオフにする</td></tr>
+<tr><td><code>true</code></td><td>辞書のルールを要求する。辞書がルールを同梱していない場合は <code>build()</code> が例外を投げる</td></tr>
+<tr><td><code>{ rules: [{ pos: [...], cost: n }, ...] }</code></td><td>辞書のルールの代わりにこのルールを適用する</td></tr>
+</tbody></table>
+</div>
+<p>それ以外の値を渡すと <code>Error</code> を投げます。</p>
+<pre><code class="language-javascript">// ペナルティをオフにする
+builder.setSpacePenalty(false);
+
+// 明示的なルール（ko-dic が同梱するルールと同じ）
+builder.setSpacePenalty({
+  rules: [
+    { pos: ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], cost: 3000 },
+    { pos: ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], cost: 6000 },
+  ],
+});
+
+// 辞書のデフォルトに戻す
+builder.setSpacePenalty(null);
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適用されます。ko-dic の <code>metadata.json</code> が mecab-ko-dic のルールを同梱しているためです。これにより韓国語の出力が v6.0 から変わります（例: <code>서울 시 에서</code> の <code>시</code> が語尾 <code>EP</code> ではなく名詞 <code>NNG</code> になる）。v6.0 の出力に戻すには <code>setSpacePenalty(false)</code> を呼び出してください。<code>new Tokenizer(dictionary, ...)</code> で直接作成した <code>Tokenizer</code> は常にデフォルトを使うため、オフにするには <code>TokenizerBuilder</code> を使ってください。v6.0.0 リリースからダウンロードした ko-dic はルールを同梱していないため、その辞書ではペナルティはオフのままで、<code>setSpacePenalty(true)</code> を指定すると <code>build()</code> が例外を投げます。詳細は <a href="lindera-nodejs/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+</blockquote>
 <h4 id="appendcharacterfilterkind-args"><a class="header" href="#appendcharacterfilterkind-args"><code>appendCharacterFilter(kind, args?)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
 <pre><code class="language-javascript">builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
@@ -4227,6 +4286,10 @@ const metadata = new Metadata({ name: "custom", encoding: "UTF-8" });
 buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 </code></pre>
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
+<p>辞書の <code>metadata.json</code> に含まれる設定のままビルドするには、<code>Metadata.fromJsonFile()</code> でファイルを読み込み、その結果を渡します。ファイルの <code>space_penalty</code> ルールは保持されるため、この方法でビルドした ko-dic では左側空白ペナルティがデフォルトで適用されます（<a href="lindera-nodejs/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty</code></a> を参照）。<code>new Metadata(...)</code> で作成した <code>Metadata</code> はルールを持ちません。</p>
+<pre><code class="language-javascript">const metadata = Metadata.fromJsonFile("/path/to/lindera-ko-dic/metadata.json");
+buildDictionary("/path/to/mecab-ko-dic", "/path/to/output_dir", metadata);
+</code></pre>
 <h3 id="ユーザー辞書のビルド-2"><a class="header" href="#ユーザー辞書のビルド-2">ユーザー辞書のビルド</a></h3>
 <p>CSV ファイルからユーザー辞書をビルドします：</p>
 <pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera");
@@ -4286,9 +4349,14 @@ metadata.encoding = "EUC-JP";
 console.log(metadata.name); // "custom_dict"
 </code></pre>
 <h3 id="toobject"><a class="header" href="#toobject"><code>toObject()</code></a></h3>
-<p>メタデータのオブジェクト表現を返します：</p>
+<p>メタデータのオブジェクト表現を返します。値はすべて文字列です：</p>
 <pre><code class="language-javascript">const metadata = new Metadata({ name: "test" });
 console.log(metadata.toObject());
+</code></pre>
+<p>メタデータが左側空白ペナルティのルールを持つ場合（ko-dic の <code>metadata.json</code> から読み込んだ場合など）、オブジェクトにはルールを JSON 文字列で保持する <code>spacePenalty</code> エントリーも含まれます。ルールを持たない場合、このキーはありません。</p>
+<pre><code class="language-javascript">const koDic = Metadata.fromJsonFile("/path/to/lindera-ko-dic/metadata.json");
+const { rules } = JSON.parse(koDic.toObject().spacePenalty);
+console.log(rules[1].pos); // ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"]
 </code></pre>
 <h2 id="schema-1"><a class="header" href="#schema-1">Schema</a></h2>
 <p><code>Schema</code> クラスは辞書エントリーのフィールド構造を定義します。</p>
@@ -4789,6 +4857,30 @@ builder.set_dictionary('/path/to/dictionary')
 <p>出力に空白トークンを含めるかどうかを制御します。</p>
 <pre><code class="language-ruby">builder.set_keep_whitespace(true)
 </code></pre>
+<h4 id="set_space_penaltyvalue-1"><a class="header" href="#set_space_penaltyvalue-1"><code>set_space_penalty(value)</code></a></h4>
+<p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。<code>value</code> の意味は<a href="lindera-ruby/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです：</p>
+<ul>
+<li><code>nil</code> -- デフォルト。辞書が <code>metadata.json</code> に同梱するルールがあればそれを使います（ko-dic は mecab-ko-dic のルールを同梱し、他の同梱辞書はルールを持ちません）。以前の呼び出しを取り消すときにも使います。</li>
+<li><code>false</code> -- ペナルティをオフにします。</li>
+<li><code>true</code> -- 辞書のルールを要求します。ルールを同梱しない辞書では <code>build</code> が <code>RuntimeError</code> を発生させます。</li>
+<li>文字列キーのハッシュ <code>{ 'rules' =&gt; [{ 'pos' =&gt; [...], 'cost' =&gt; n }, ...] }</code> -- 辞書のルールの代わりにこのルールを適用します。先頭品詞タグが <code>pos</code> に含まれる候補に <code>cost</code> を加算し、最初に一致したルールが使われます。</li>
+</ul>
+<p>これらの形式に当てはまらない値（<code>1</code>、<code>'false'</code>、<code>{ 'rules' =&gt; 'JKS' }</code> など）では <code>RuntimeError</code> が発生します。変換できない値では <code>TypeError</code> が発生します。該当するのは Symbol（ハッシュのキーや要素に含まれる場合も含むため、<code>%i[JKS]</code> ではなく <code>%w[JKS]</code> と書きます）、有限でない <code>Float</code>（NaN や Infinity）、64 ビットの範囲を超える <code>Integer</code>、および <code>nil</code>・<code>true</code>・<code>false</code>・<code>Integer</code>・<code>Float</code>・<code>String</code>・<code>Array</code>・<code>Hash</code> 以外のオブジェクトです。</p>
+<pre><code class="language-ruby"># ペナルティをオフにする
+builder.set_space_penalty(false)
+
+# 明示的なルール
+builder.set_space_penalty({
+  'rules' =&gt; [
+    { 'pos' =&gt; %w[EC EF EP ETM ETN VCP XSA XSN XSV], 'cost' =&gt; 3000 },
+    { 'pos' =&gt; %w[JC JKB JKC JKG JKO JKQ JKS JKV JX], 'cost' =&gt; 6000 }
+  ]
+})
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>서울 시 에서</code> の <code>시</code> は、語尾 <code>EP</code> ではなく名詞 <code>NNG</code> と解析されるようになりました。v6.0 の出力に戻すには <code>builder.set_space_penalty(false)</code> を呼び出してください。<code>Lindera::Tokenizer.new(dictionary, ...)</code> で直接作成したトークナイザーは常にデフォルトを使うため、オフにするには <code>TokenizerBuilder</code> を使ってください。ルールを同梱しているのは Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="lindera-ruby/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+</blockquote>
 <h4 id="append_character_filterkind-args"><a class="header" href="#append_character_filterkind-args"><code>append_character_filter(kind, args)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
 <pre><code class="language-ruby">builder.append_character_filter('unicode_normalize', { 'kind' =&gt; 'nfkc' })
@@ -4806,7 +4898,7 @@ builder.set_dictionary('/path/to/dictionary')
 <p><code>Lindera::Tokenizer</code> はテキストに対して形態素解析を行います。</p>
 <h3 id="tokenizer-の作成-2"><a class="header" href="#tokenizer-の作成-2">Tokenizer の作成</a></h3>
 <h4 id="linderatokenizernewdictionary-mode-user_dictionary"><a class="header" href="#linderatokenizernewdictionary-mode-user_dictionary"><code>Lindera::Tokenizer.new(dictionary, mode, user_dictionary)</code></a></h4>
-<p>読み込み済みの辞書から直接トークナイザーを作成します。<code>user_dictionary</code> が不要な場合は <code>nil</code> を渡します。</p>
+<p>読み込み済みの辞書から直接トークナイザーを作成します。左側空白ペナルティは常に辞書のデフォルトになります。変更するには <a href="lindera-ruby/tokenizer_api.html#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a> を使います。<code>user_dictionary</code> が不要な場合は <code>nil</code> を渡します。</p>
 <pre><code class="language-ruby">require 'lindera'
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
@@ -5080,6 +5172,7 @@ metadata = Lindera::Metadata.from_json_file('metadata.json')
 Lindera.build_dictionary('/path/to/input_dir', '/path/to/output_dir', metadata)
 </code></pre>
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
+<p><code>Lindera::Metadata.from_json_file</code> で読み込んだメタデータは <code>metadata.json</code> の <code>space_penalty</code> ルールを保持し、ビルドした辞書にもそのルールが同梱されます。そのため ko-dic をビルドした場合も、左側空白ペナルティはデフォルトでオンのままです。トークナイザーごとにオフにするには <code>TokenizerBuilder#set_space_penalty(false)</code> を使います（<a href="lindera-ruby/./tokenizer_api.html#set_space_penaltyvalue">Tokenizer API</a> を参照）。</p>
 <h3 id="ユーザー辞書のビルド-3"><a class="header" href="#ユーザー辞書のビルド-3">ユーザー辞書のビルド</a></h3>
 <p>CSV ファイルからユーザー辞書をビルドします：</p>
 <pre><code class="language-ruby">require 'lindera'
@@ -5138,7 +5231,13 @@ metadata = dictionary.metadata
 <tr><td><code>skip_invalid_cost_or_id</code></td><td><code>Boolean</code></td><td><code>false</code></td><td>無効なコストまたは ID のエントリーをスキップ</td></tr>
 <tr><td><code>normalize_details</code></td><td><code>Boolean</code></td><td><code>false</code></td><td>形態素の詳細情報を正規化</td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="テキスト処理パイプライン-2"><a class="header" href="#テキスト処理パイプライン-2">テキスト処理パイプライン</a></h1>
+</div>
+<p><code>to_h</code>（別名 <code>to_hash</code>）は、これらのプロパティに <code>dictionary_schema_fields</code> と <code>user_dictionary_schema_fields</code>（カンマ区切りのフィールド名）を加えた、値がすべて文字列の <code>Hash</code> を返します。ko-dic のようにメタデータが左側空白ペナルティのルールを持つ場合は、そのルールを JSON 文字列で保持する <code>space_penalty</code> エントリも含まれます：</p>
+<pre><code class="language-ruby">metadata = Lindera::Metadata.from_json_file('/path/to/ko-dic/metadata.json')
+metadata.to_h['space_penalty']
+# '{"rules":[{"pos":["EC","EF",...],"cost":3000},{"pos":["JC","JKB",...],"cost":6000}]}'
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="テキスト処理パイプライン-2"><a class="header" href="#テキスト処理パイプライン-2">テキスト処理パイプライン</a></h1>
 <p>Lindera Ruby は、トークナイズ前に文字フィルタを適用し、トークナイズ後にトークンフィルタを適用する、組み合わせ可能なテキスト処理パイプラインをサポートしています。フィルタは <code>Lindera::TokenizerBuilder</code> に追加され、追加された順序で実行されます。</p>
 <pre><code class="language-text">Input Text
   --&gt; Character Filters (preprocessing)
@@ -5607,6 +5706,35 @@ $builder-&gt;setDictionary('/path/to/dictionary');
 <p>出力に空白トークンを含めるかどうかを制御します。</p>
 <pre><code class="language-php">$builder-&gt;setKeepWhitespace(true);
 </code></pre>
+<h4 id="setspacepenaltyvalue-1"><a class="header" href="#setspacepenaltyvalue-1"><code>setSpacePenalty($value)</code></a></h4>
+<p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。<code>$value</code> の意味は<a href="lindera-php/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです：</p>
+<ul>
+<li><code>null</code> -- デフォルト。辞書が <code>metadata.json</code> に同梱するルールがあればそれを使います（ko-dic は mecab-ko-dic のルールを同梱し、他の同梱辞書はルールを持ちません）。以前の呼び出しを取り消すときにも使います。</li>
+<li><code>false</code> -- ペナルティをオフにします。</li>
+<li><code>true</code> -- 辞書のルールを要求します。ルールを同梱しない辞書では <code>build()</code> が <code>ValueError</code> をスローします。</li>
+<li>連想配列 <code>['rules' =&gt; [['pos' =&gt; [...], 'cost' =&gt; n], ...]]</code> -- 辞書のルールの代わりにこのルールを適用します。先頭品詞タグが <code>pos</code> に含まれる候補に <code>cost</code> を加算し、最初に一致したルールが使われます。</li>
+</ul>
+<p><code>rules</code> と各 <code>pos</code> はキーが <code>0, 1, 2, ...</code> のリストでなければなりません（<code>array_filter()</code> や <code>array_unique()</code> の後は <code>array_values()</code> を適用してください）。<code>cost</code> は 32 ビットの範囲の <code>int</code> でなければならず、<code>6000.0</code> のような float は拒否されます。それ以外の値では、オブジェクト（<code>stdClass</code> や <code>true</code> を渡さない <code>json_decode()</code> の結果）や <code>NAN</code>、<code>INF</code> も含めて <code>ValueError</code> がスローされます。</p>
+<pre><code class="language-php">$builder-&gt;setDictionary('embedded://ko-dic');
+
+// ペナルティをオフにする（v6.0 の出力）
+$builder-&gt;setSpacePenalty(false);
+
+// 明示的なルール
+$builder-&gt;setSpacePenalty([
+    'rules' =&gt; [
+        ['pos' =&gt; ['EC', 'EF', 'EP', 'ETM', 'ETN', 'VCP', 'XSA', 'XSN', 'XSV'], 'cost' =&gt; 3000],
+        ['pos' =&gt; ['JC', 'JKB', 'JKC', 'JKG', 'JKO', 'JKQ', 'JKS', 'JKV', 'JX'], 'cost' =&gt; 6000],
+    ],
+]);
+
+// 辞書のデフォルトに戻す
+$builder-&gt;setSpacePenalty(null);
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>서울 시 에서</code> の <code>시</code> は、語尾 <code>EP</code> ではなく名詞 <code>NNG</code> と解析されるようになりました。v6.0 の出力に戻すには <code>$builder-&gt;setSpacePenalty(false)</code> を呼び出してください。<a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-userdictionary"><code>new Lindera\Tokenizer(...)</code></a> で作成したトークナイザーは常に辞書のルールを適用します。ルールを同梱しているのは Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="lindera-php/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+</blockquote>
 <h4 id="appendcharacterfilterkind-args-1"><a class="header" href="#appendcharacterfilterkind-args-1"><code>appendCharacterFilter($kind, $args)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
 <pre><code class="language-php">$builder-&gt;appendCharacterFilter('unicode_normalize', ['kind' =&gt; 'nfkc']);
@@ -5628,6 +5756,7 @@ $builder-&gt;appendTokenFilter('japanese_stop_tags', [
 <h3 id="tokenizer-の作成-3"><a class="header" href="#tokenizer-の作成-3">Tokenizer の作成</a></h3>
 <h4 id="new-linderatokenizerdictionary-mode-userdictionary"><a class="header" href="#new-linderatokenizerdictionary-mode-userdictionary"><code>new Lindera\Tokenizer($dictionary, $mode, $userDictionary)</code></a></h4>
 <p>読み込み済みの辞書から直接トークナイザーを作成します。</p>
+<p>この方法で作成したトークナイザーは、辞書が同梱する左側空白ペナルティのルール（ko-dic は同梱しています）を常に適用し、コンストラクタにはそれを変更するオプションがありません。ペナルティを変更またはオフにするには、<code>TokenizerBuilder</code> と <a href="lindera-php/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> を使います。</p>
 <pre><code class="language-php">&lt;?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
@@ -5843,6 +5972,7 @@ $metadata = Lindera\Metadata::fromJsonFile('/path/to/metadata.json');
 Lindera\Dictionary::build('/path/to/input_dir', '/path/to/output_dir', $metadata);
 </code></pre>
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
+<p><code>Lindera\Metadata::fromJsonFile</code> で読み込んだメタデータは <code>metadata.json</code> の <code>space_penalty</code> ルールを保持し、ビルドした辞書にもそのルールが同梱されます。そのため ko-dic をビルドした場合も、左側空白ペナルティはデフォルトでオンのままです。トークナイザーごとにオフにするには <code>TokenizerBuilder::setSpacePenalty(false)</code> を使います（<a href="lindera-php/./tokenizer_api.html#setspacepenaltyvalue">Tokenizer API</a> を参照）。コンストラクタで作成した <code>Metadata</code> はルールを持ちません。</p>
 <p>以下は IPADIC 辞書をダウンロードしてビルドする例です：</p>
 <pre><code class="language-php">&lt;?php
 
@@ -5883,6 +6013,14 @@ $metadata = new Lindera\Metadata('my_dictionary', 'UTF-8', -10000);
 <tr><td><code>default_word_cost</code></td><td><code>int</code></td><td><code>-10000</code></td><td>未知語のデフォルトコスト</td></tr>
 </tbody></table>
 </div>
+<h3 id="toarray-1"><a class="header" href="#toarray-1"><code>toArray()</code></a></h3>
+<p>メタデータを連想配列（値はすべて文字列）で返します。ko-dic のようにメタデータが左側空白ペナルティのルールを持つ場合は、そのルールを JSON 文字列で保持する <code>space_penalty</code> エントリも含まれます。ルールがなければこのキーはありません：</p>
+<pre><code class="language-php">&lt;?php
+
+$metadata = Lindera\Metadata::fromJsonFile('/path/to/ko-dic/metadata.json');
+$rules = json_decode($metadata-&gt;toArray()['space_penalty'], true);
+// ['rules' =&gt; [['pos' =&gt; ['EC', 'EF', ...], 'cost' =&gt; 3000], ...]]
+</code></pre>
 <h2 id="schema-3"><a class="header" href="#schema-3">Schema</a></h2>
 <p><code>Schema</code> クラスは辞書のフィールド構造を定義します。</p>
 <h3 id="schema-の作成-3"><a class="header" href="#schema-の作成-3">Schema の作成</a></h3>
@@ -6401,7 +6539,7 @@ results.forEach((result, rank) =&gt; {
 <p>トークナイズモードを設定します。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>mode</code> (string) -- <code>"normal"</code> または <code>"decompose"</code></li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.setMode("normal");
 </code></pre>
@@ -6409,7 +6547,7 @@ results.forEach((result, rank) =&gt; {
 <p>トークナイズに使用する辞書を設定します。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>uri</code> (string) -- 辞書の URI（例: <code>"embedded://ipadic"</code>）</li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.setDictionary("embedded://ipadic");
 </code></pre>
@@ -6418,7 +6556,7 @@ results.forEach((result, rank) =&gt; {
 URI の代わりにバイトデータから読み込んだ辞書（例: <code>loadDictionaryFromBytes()</code> 経由）を使用する場合に使います。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト</li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
@@ -6436,16 +6574,45 @@ builder.setDictionaryInstance(dictionary);
 <p>読み込み済みのユーザー辞書インスタンスを設定します。<code>loadUserDictionaryFromBytes()</code>（CSV）または <code>loadUserDictionaryBinFromBytes()</code>（ビルド済み <code>.bin</code>）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>userDictionary</code> (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト</li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <h4 id="setkeepwhitespacekeep-2"><a class="header" href="#setkeepwhitespacekeep-2"><code>setKeepWhitespace(keep)</code></a></h4>
 <p>出力に空白トークンを保持するかどうかを設定します。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>keep</code> (boolean) -- <code>true</code> で空白トークンを保持</li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.setKeepWhitespace(true);
 </code></pre>
+<h4 id="setspacepenaltyvalue-2"><a class="header" href="#setspacepenaltyvalue-2"><code>setSpacePenalty(value)</code></a></h4>
+<p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。</p>
+<ul>
+<li><strong>パラメータ</strong>: <code>value</code> (boolean | object | null | undefined) -- 設定値。意味は<a href="lindera-wasm/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
+</ul>
+<p><code>value</code> は次のいずれかの形式をとります。それ以外の値ではエラー文字列が投げられます：</p>
+<ul>
+<li><code>null</code> または <code>undefined</code> -- デフォルト。辞書が <code>metadata.json</code> に同梱するルールがあればそれを使います（ko-dic は mecab-ko-dic のルールを同梱し、他の同梱辞書はルールを持ちません）。以前の呼び出しを取り消すときにも使います。</li>
+<li><code>false</code> -- ペナルティをオフにします。</li>
+<li><code>true</code> -- 辞書のルールを要求します。ルールを同梱しない辞書では <code>build()</code> がエラーを投げます。</li>
+<li><code>{ rules: [{ pos: [...], cost: n }, ...] }</code> 形式のオブジェクト -- 辞書のルールの代わりにこのルールを適用します。先頭品詞タグが <code>pos</code> に含まれる候補に <code>cost</code> を加算し、最初に一致したルールが使われます。</li>
+</ul>
+<p>この設定は、<code>setDictionary()</code> で設定した辞書にも、<code>setDictionaryInstance()</code> で設定した辞書（たとえば <code>loadDictionaryFromBytes()</code> で OPFS から読み込んだ ko-dic）にも適用されます。辞書オブジェクト自体は変更されません。<code>Tokenizer</code> コンストラクタで作成したトークナイザーは常に辞書のデフォルトを使います。設定を変えるには <code>TokenizerBuilder</code> でビルドしてください。</p>
+<pre><code class="language-javascript">// ペナルティをオフにする
+builder.setSpacePenalty(false);
+
+// 明示的なルール
+builder.setSpacePenalty({
+    rules: [
+        { pos: ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], cost: 3000 },
+        { pos: ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], cost: 6000 },
+    ],
+});
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>서울 시 에서</code> の <code>시</code> は、語尾 <code>EP</code> ではなく名詞 <code>NNG</code> と解析されるようになりました。v6.0 の出力に戻すには <code>builder.setSpacePenalty(false)</code> を呼び出してください。ルールを同梱しているのは Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="lindera-wasm/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+</blockquote>
 <h4 id="appendcharacterfiltername-args"><a class="header" href="#appendcharacterfiltername-args"><code>appendCharacterFilter(name, args)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
 <ul>
@@ -6455,7 +6622,7 @@ builder.setDictionaryInstance(dictionary);
 <li><code>args</code> (object, 省略可) -- フィルタの設定</li>
 </ul>
 </li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
 </code></pre>
@@ -6468,7 +6635,7 @@ builder.setDictionaryInstance(dictionary);
 <li><code>args</code> (object, 省略可) -- フィルタの設定</li>
 </ul>
 </li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.appendTokenFilter("japanese_stop_tags", {
     tags: ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞", "記号,句点", "記号,読点"]
@@ -6645,6 +6812,7 @@ console.log(error.toString()); // "message"
 <tr><td><code>setDictionaryInstance()</code></td><td><code>set_dictionary_instance()</code></td></tr>
 <tr><td><code>setUserDictionaryInstance()</code></td><td><code>set_user_dictionary_instance()</code></td></tr>
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
+<tr><td><code>setSpacePenalty()</code></td><td><code>set_space_penalty()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
 <tr><td><code>tokenizeSurfaces()</code></td><td><code>tokenize_surfaces()</code></td></tr>
@@ -6804,6 +6972,12 @@ IPADIC のシンプル形式は以下のとおりです：</p>
 ファイルシステムが無いためです。辞書は <code>lindera</code> CLI（またはネイティブ
 バインディング）でビルドし、結果をバイト列としてここに読み込んでください。
 ビルド済み辞書のダウンロードは <a href="lindera-wasm/opfs.html">OPFS 辞書管理</a> を参照してください。</p>
+<p><code>space_penalty</code> ルールを同梱する <code>metadata.json</code> からビルドした辞書はその
+ルールを保持し、<code>loadDictionaryFromBytes()</code> はほかのメタデータと一緒に
+ルールも読み込みます。ko-dic の <code>metadata.json</code> は mecab-ko-dic のルールを
+同梱しているため、ko-dic を使うトークナイザーでは左側空白ペナルティが
+デフォルトで適用されます。オフにする方法は
+<a href="lindera-wasm/./tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> を参照してください。</p>
 <h2 id="metadata-4"><a class="header" href="#metadata-4">Metadata</a></h2>
 <p><code>Metadata</code> クラスは辞書のパラメータを設定します。</p>
 <h3 id="コンストラクタ-5"><a class="header" href="#コンストラクタ-5">コンストラクタ</a></h3>
@@ -6838,7 +7012,7 @@ console.log(metadata.name); // "custom_dict"
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Python・Node.js・Ruby・PHP の各バインディングと異なり、WASM の <code>Metadata</code> クラスは <code>default_word_cost</code>、<code>default_left_context_id</code>、<code>default_right_context_id</code>、<code>default_field_value</code>、<code>flexible_csv</code>、<code>skip_invalid_cost_or_id</code>、<code>normalize_details</code> を取得・設定可能なプロパティとして公開していません（<code>lindera-wasm/src/metadata.rs</code> 参照）。これらは常にバインディング共通のデフォルト値（コスト <code>-10000</code>、文脈 ID <code>1288</code>、フィールド値 <code>"*"</code>、フラグはすべて <code>false</code>）にフォールバックし、JavaScript から変更することはできません。</p>
+Python・Node.js・Ruby・PHP の各バインディングと異なり、WASM の <code>Metadata</code> クラスは <code>default_word_cost</code>、<code>default_left_context_id</code>、<code>default_right_context_id</code>、<code>default_field_value</code>、<code>flexible_csv</code>、<code>skip_invalid_cost_or_id</code>、<code>normalize_details</code> を取得・設定可能なプロパティとして公開していません（<code>lindera-wasm/src/metadata.rs</code> 参照）。これらは常にバインディング共通のデフォルト値（コスト <code>-10000</code>、文脈 ID <code>1288</code>、フィールド値 <code>"*"</code>、フラグはすべて <code>false</code>）にフォールバックし、JavaScript から変更することはできません。<code>space_penalty</code> ルールも公開していません。ルールが効くのは、そのルールと一緒に読み込んだ辞書だけです（<a href="lindera-wasm/./tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> を参照）。<code>dictionary.metadata</code> を <code>loadUserDictionaryFromBytes()</code> などに渡しても、ほかの場所でルールが適用されることはありません。</p>
 </blockquote>
 <p>読み込み済み辞書のメタデータには <code>dictionary.metadata</code> からアクセスできます。</p>
 <h3 id="schema-4"><a class="header" href="#schema-4">Schema</a></h3>

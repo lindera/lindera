@@ -193,7 +193,7 @@ configures the same underlying builder.</p>
 <p>Sets the tokenization mode.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>mode</code> (string) -- <code>"normal"</code> or <code>"decompose"</code></li>
-<li><strong>Returns</strong>: void</li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.setMode("normal");
 </code></pre>
@@ -201,7 +201,7 @@ configures the same underlying builder.</p>
 <p>Sets the dictionary to use for tokenization.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>uri</code> (string) -- Dictionary URI (e.g., <code>"embedded://ipadic"</code>)</li>
-<li><strong>Returns</strong>: void</li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.setDictionary("embedded://ipadic");
 </code></pre>
@@ -210,7 +210,7 @@ configures the same underlying builder.</p>
 Use this when the dictionary has been loaded from bytes (e.g., via <code>loadDictionaryFromBytes()</code>) instead of from a URI.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>dictionary</code> (Dictionary) -- A loaded dictionary object</li>
-<li><strong>Returns</strong>: void</li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
@@ -227,16 +227,45 @@ builder.setDictionaryInstance(dictionary);
 <p>Sets a pre-loaded user dictionary instance. Load one from bytes with <code>loadUserDictionaryFromBytes()</code> (CSV) or <code>loadUserDictionaryBinFromBytes()</code> (prebuilt <code>.bin</code>); URI-based user dictionaries are not available on WebAssembly.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>userDictionary</code> (UserDictionary) -- A loaded user dictionary object</li>
-<li><strong>Returns</strong>: void</li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <h4 id="setkeepwhitespacekeep"><a class="header" href="#setkeepwhitespacekeep"><code>setKeepWhitespace(keep)</code></a></h4>
 <p>Sets whether whitespace tokens are preserved in the output.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>keep</code> (boolean) -- <code>true</code> to keep whitespace tokens</li>
-<li><strong>Returns</strong>: void</li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.setKeepWhitespace(true);
 </code></pre>
+<h4 id="setspacepenaltyvalue"><a class="header" href="#setspacepenaltyvalue"><code>setSpacePenalty(value)</code></a></h4>
+<p>Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added.</p>
+<ul>
+<li><strong>Parameters</strong>: <code>value</code> (boolean | object | null | undefined) -- The setting, with the same meaning as <code>segmenter.space_penalty</code> in a <a href="../lindera-analysis/configuration.html">configuration file</a></li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
+</ul>
+<p><code>value</code> takes one of these forms; any other value throws an error string:</p>
+<ul>
+<li><code>null</code> or <code>undefined</code> -- The default: the rules the dictionary ships in its <code>metadata.json</code>, if any (ko-dic ships mecab-ko-dic's rules; the other bundled dictionaries ship none). Use it to undo an earlier call.</li>
+<li><code>false</code> -- Turns the penalty off.</li>
+<li><code>true</code> -- Requires the dictionary's rules; <code>build()</code> throws for a dictionary that ships none.</li>
+<li>An object of the form <code>{ rules: [{ pos: [...], cost: n }, ...] }</code> -- Applies these rules instead. A candidate whose first part-of-speech tag is listed in <code>pos</code> gets <code>cost</code> added; the first matching rule wins.</li>
+</ul>
+<p>The setting applies both to a dictionary set with <code>setDictionary()</code> and to one set with <code>setDictionaryInstance()</code>, such as a ko-dic loaded from OPFS with <code>loadDictionaryFromBytes()</code>. The dictionary object itself is not changed. A tokenizer created with the <code>Tokenizer</code> constructor always uses the dictionary's default; build it with <code>TokenizerBuilder</code> to change the setting.</p>
+<pre><code class="language-javascript">// Turn the penalty off
+builder.setSpacePenalty(false);
+
+// Explicit rules
+builder.setSpacePenalty({
+    rules: [
+        { pos: ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], cost: 3000 },
+        { pos: ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], cost: 6000 },
+    ],
+});
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.setSpacePenalty(false)</code> to get the v6.0 output back. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+</blockquote>
 <h4 id="appendcharacterfiltername-args"><a class="header" href="#appendcharacterfiltername-args"><code>appendCharacterFilter(name, args)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
 <ul>
@@ -246,7 +275,7 @@ builder.setDictionaryInstance(dictionary);
 <li><code>args</code> (object, optional) -- Filter configuration</li>
 </ul>
 </li>
-<li><strong>Returns</strong>: void</li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
 </code></pre>
@@ -259,7 +288,7 @@ builder.setDictionaryInstance(dictionary);
 <li><code>args</code> (object, optional) -- Filter configuration</li>
 </ul>
 </li>
-<li><strong>Returns</strong>: void</li>
+<li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.appendTokenFilter("japanese_stop_tags", {
     tags: ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞", "記号,句点", "記号,読点"]
@@ -438,6 +467,7 @@ console.log(error.toString()); // "message"
 <tr><td><code>setDictionaryInstance()</code></td><td><code>set_dictionary_instance()</code></td></tr>
 <tr><td><code>setUserDictionaryInstance()</code></td><td><code>set_user_dictionary_instance()</code></td></tr>
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
+<tr><td><code>setSpacePenalty()</code></td><td><code>set_space_penalty()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
 <tr><td><code>tokenizeSurfaces()</code></td><td><code>tokenize_surfaces()</code></td></tr>
