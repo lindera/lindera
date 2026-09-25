@@ -220,7 +220,7 @@ class Token implements \Stringable
 
 class Tokenizer
 {
-    public function __construct(Dictionary $dictionary, ?string $mode = null, ?UserDictionary $user_dictionary = null) {}
+    public function __construct(Dictionary $dictionary, ?string $mode = null, ?UserDictionary $user_dictionary = null, mixed $space_penalty = null) {}
 
     public function tokenize(string $text): array {}
 

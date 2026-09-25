@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from lindera import Metadata, TokenizerBuilder, load_dictionary
+from lindera import Metadata, Tokenizer, TokenizerBuilder, load_dictionary
 
 KO_DIC_METADATA = (
     Path(__file__).resolve().parents[2] / "lindera-ko-dic" / "metadata.json"
@@ -117,3 +117,46 @@ def test_metadata_without_rules_omits_space_penalty():
     assert (
         "space_penalty" not in load_dictionary("embedded://ipadic").metadata().to_dict()
     )
+
+
+def _constructor_particle_pos(*args, **kwargs):
+    """Returns the POS of "に" in "東京 に 行く" for a Tokenizer built directly."""
+    tokenizer = Tokenizer(load_dictionary("embedded://ipadic"), *args, **kwargs)
+    tokens = tokenizer.tokenize("東京 に 行く")
+    return {token.surface: token.details[0] for token in tokens}["に"]
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected_particle"),
+    [
+        ({}, True),
+        ({"space_penalty": None}, True),
+        ({"space_penalty": False}, True),
+        ({"space_penalty": PARTICLE_RULES}, False),
+    ],
+)
+def test_constructor_space_penalty_reaches_the_segmenter_on_ipadic(
+    kwargs, expected_particle
+):
+    assert (_constructor_particle_pos(**kwargs) == "助詞") is expected_particle
+
+
+def test_constructor_takes_space_penalty_positionally():
+    assert _constructor_particle_pos("normal", None, PARTICLE_RULES) != "助詞"
+
+
+def test_constructor_space_penalty_true_fails_on_ipadic():
+    # The same error build() raises for a dictionary without rules.
+    with pytest.raises(ValueError, match="space_penalty"):
+        Tokenizer(load_dictionary("embedded://ipadic"), space_penalty=True)
+
+
+@pytest.mark.parametrize("value", [1, "false", {"rules": "JKS"}, float("nan")])
+def test_constructor_rejects_other_space_penalty_values(value):
+    with pytest.raises(ValueError):
+        Tokenizer(load_dictionary("embedded://ipadic"), space_penalty=value)
+
+
+def test_constructor_rejects_non_json_space_penalty():
+    with pytest.raises(TypeError):
+        Tokenizer(load_dictionary("embedded://ipadic"), space_penalty=object())

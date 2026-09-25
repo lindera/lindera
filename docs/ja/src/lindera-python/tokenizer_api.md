@@ -131,17 +131,20 @@ tokenizer = builder.build()
 
 ### Tokenizer の作成
 
-#### `Tokenizer(dictionary, mode="normal", user_dictionary=None)`
+#### `Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None)`
 
 読み込み済みの辞書から直接トークナイザーを作成します。
 
-このトークナイザーは辞書のデフォルト設定を使い、辞書が同梱する左側空白ペナルティのルールも適用します。そのため ko-dic ではペナルティが常にオンです。オフにしたりルールを変えたりするには、[`TokenizerBuilder.set_space_penalty`](#set_space_penaltyvalue) を使ってトークナイザーをビルドしてください。
+`space_penalty` には [`TokenizerBuilder.set_space_penalty`](#set_space_penaltyvalue) と同じ値を渡せます。`None`（デフォルト）では辞書が同梱する左側空白ペナルティのルールを使うため、ko-dic ではペナルティがオンになります。オフにするには `False` を渡します。不正な設定では、`set_space_penalty` や `build()` と同じエラーが送出されます。
 
 ```python
 from lindera import Tokenizer, load_dictionary
 
 dictionary = load_dictionary("embedded://ipadic")
 tokenizer = Tokenizer(dictionary, mode="normal")
+
+# 左側空白ペナルティなしの ko-dic
+ko_tokenizer = Tokenizer(load_dictionary("embedded://ko-dic"), space_penalty=False)
 ```
 
 ### Tokenizer メソッド

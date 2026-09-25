@@ -378,6 +378,53 @@ class LinderaTest extends TestCase
         }
     }
 
+    // #1063: the Tokenizer constructor takes the same setting as
+    // setSpacePenalty, and omitting it keeps the dictionary's default.
+    public function testTokenizerConstructorSpacePenaltyTakesEffect(): void
+    {
+        // Returns the tokens as "surface/first POS tag" strings for a
+        // Tokenizer built from IPADIC with these constructor arguments.
+        $analyze = static function (mixed ...$args): array {
+            $tokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ipadic'), ...$args);
+
+            return array_map(
+                static fn($token) => $token->surface . '/' . $token->getDetail(0),
+                $tokenizer->tokenize('東京 は 晴れ です')
+            );
+        };
+        $rules = ['rules' => [['pos' => ['助詞'], 'cost' => 30000]]];
+
+        $default = $analyze();
+        $this->assertContains('は/助詞', $default);
+        $this->assertSame($default, $analyze('normal', null, null));
+        $this->assertSame($default, $analyze(space_penalty: false));
+
+        $penalized = $analyze(space_penalty: $rules);
+        $this->assertNotEmpty($penalized);
+        $this->assertNotContains('は/助詞', $penalized);
+        $this->assertSame($penalized, $analyze('normal', null, $rules));
+    }
+
+    public function testTokenizerConstructorRejectsInvalidSpacePenalty(): void
+    {
+        $values = [
+            // IPADIC ships no rules to require, as build() reports.
+            'true' => true,
+            'number' => 1,
+            'string' => 'false',
+            'rules as string' => ['rules' => 'JKS'],
+            'stdClass' => new \stdClass(),
+        ];
+        foreach ($values as $label => $value) {
+            try {
+                new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ipadic'), space_penalty: $value);
+                $this->fail("the constructor accepted an invalid space penalty: {$label}");
+            } catch (\ValueError $e) {
+                $this->assertStringContainsString('space_penalty', $e->getMessage(), $label);
+            }
+        }
+    }
+
     public function testTokenizerDirect(): void
     {
         $dict = Lindera\Dictionary::load('embedded://ipadic');

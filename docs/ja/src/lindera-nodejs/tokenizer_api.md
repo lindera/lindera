@@ -101,7 +101,7 @@ builder.setSpacePenalty(null);
 ```
 
 > [!NOTE]
-> v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適用されます。ko-dic の `metadata.json` が mecab-ko-dic のルールを同梱しているためです。これにより韓国語の出力が v6.0 から変わります（例: `서울 시 에서` の `시` が語尾 `EP` ではなく名詞 `NNG` になる）。v6.0 の出力に戻すには `setSpacePenalty(false)` を呼び出してください。`new Tokenizer(dictionary, ...)` で直接作成した `Tokenizer` は常にデフォルトを使うため、オフにするには `TokenizerBuilder` を使ってください。v6.0.0 リリースからダウンロードした ko-dic はルールを同梱していないため、その辞書ではペナルティはオフのままで、`setSpacePenalty(true)` を指定すると `build()` が例外を投げます。詳細は [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
+> v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適用されます。ko-dic の `metadata.json` が mecab-ko-dic のルールを同梱しているためです。これにより韓国語の出力が v6.0 から変わります（例: `서울 시 에서` の `시` が語尾 `EP` ではなく名詞 `NNG` になる）。v6.0 の出力に戻すには `setSpacePenalty(false)` を呼び出してください。直接作成する `Tokenizer` では、4 番目の引数に `false` を渡します（`new Tokenizer(dictionary, "normal", null, false)`）。v6.0.0 リリースからダウンロードした ko-dic はルールを同梱していないため、その辞書ではペナルティはオフのままで、`setSpacePenalty(true)` を指定すると `build()` が例外を投げます。詳細は [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
 
 #### `appendCharacterFilter(kind, args?)`
 
@@ -137,15 +137,20 @@ const tokenizer = builder.build();
 
 ### Tokenizer の作成
 
-#### `new Tokenizer(dictionary, mode?, userDictionary?)`
+#### `new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?)`
 
 読み込み済みの辞書から直接トークナイザーを作成します。
+
+`spacePenalty` には [`setSpacePenalty`](#setspacepenaltyvalue) と同じ値を渡せます。`null` または `undefined`（デフォルト）では、辞書が同梱する左側空白ペナルティのルールを使います。不正な設定では、`setSpacePenalty` や `build()` と同じくエラーを投げます。
 
 ```javascript
 const { Tokenizer, loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
+
+// 左側空白ペナルティなしの ko-dic
+const koTokenizer = new Tokenizer(loadDictionary("embedded://ko-dic"), "normal", null, false);
 ```
 
 ### Tokenizer メソッド

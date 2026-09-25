@@ -9,6 +9,7 @@ use std::cell::RefCell;
 use std::path::Path;
 
 use magnus::prelude::*;
+use magnus::scan_args::{get_kwargs, scan_args};
 use magnus::{Error, RArray, RHash, Ruby, Value, function, method};
 
 use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
@@ -199,28 +200,55 @@ pub struct RbTokenizer {
 
 /// Creates a new tokenizer with the given dictionary and mode.
 ///
+/// Ruby signature: `Tokenizer.new(dictionary, mode = nil, user_dictionary = nil,
+/// space_penalty: nil)`.
+///
 /// # Arguments
 ///
-/// * `dictionary` - Dictionary to use.
-/// * `mode` - Tokenization mode ("normal" or "decompose"). Defaults to "normal".
-/// * `user_dictionary` - Optional user dictionary.
+/// * `args` - The Ruby arguments:
+///   * `dictionary` - Dictionary to use.
+///   * `mode` - Tokenization mode ("normal" or "decompose"). `nil` or
+///     omitted means "normal".
+///   * `user_dictionary` - Optional user dictionary.
+///   * `space_penalty:` - The left-space penalty, in the forms
+///     `TokenizerBuilder#set_space_penalty` accepts. `nil` or omitted keeps
+///     the rules the dictionary ships.
 ///
 /// # Returns
 ///
-/// A new `RbTokenizer` instance.
-fn tokenizer_new(
-    dictionary: &RbDictionary,
-    mode: Option<String>,
-    user_dictionary: Option<&RbUserDictionary>,
-) -> Result<RbTokenizer, Error> {
+/// A new `RbTokenizer` instance, an `ArgumentError` for a wrong number of
+/// arguments or an unknown keyword, or the errors `set_space_penalty` and
+/// `build` raise for an invalid space-penalty setting.
+fn tokenizer_new(args: &[Value]) -> Result<RbTokenizer, Error> {
     let ruby = Ruby::get().expect("Ruby runtime not initialized");
+    let args = scan_args::<
+        (&RbDictionary,),
+        (Option<Option<String>>, Option<Option<&RbUserDictionary>>),
+        (),
+        (),
+        RHash,
+        (),
+    >(args)?;
+    let (dictionary,) = args.required;
+    let (mode, user_dictionary) = args.optional;
+    let keywords =
+        get_kwargs::<_, (), (Option<Value>,), ()>(args.keywords, &[], &["space_penalty"])?;
+    let (space_penalty,) = keywords.optional;
+
+    let mode = mode.flatten();
+    let user_dictionary = user_dictionary.flatten();
     let mode_str = mode.as_deref().unwrap_or("normal");
+    let space_penalty = match space_penalty {
+        Some(value) => rb_value_to_json(&ruby, value)?,
+        None => serde_json::Value::Null,
+    };
 
     let dict = dictionary.inner.clone();
     let user_dict = user_dictionary.map(|d| d.inner.clone());
 
-    let inner = CoreTokenizer::from_segmenter(mode_str, dict, user_dict)
-        .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
+    let inner =
+        CoreTokenizer::from_segmenter_with_space_penalty(mode_str, dict, user_dict, &space_penalty)
+            .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
 
     Ok(RbTokenizer { inner })
 }
@@ -361,7 +389,7 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
     builder_class.define_method("build", method!(RbTokenizerBuilder::build, 0))?;
 
     let tokenizer_class = module.define_class("Tokenizer", ruby.class_object())?;
-    tokenizer_class.define_singleton_method("new", function!(tokenizer_new, 3))?;
+    tokenizer_class.define_singleton_method("new", function!(tokenizer_new, -1))?;
     tokenizer_class.define_method("tokenize", method!(RbTokenizer::tokenize, 1))?;
     tokenizer_class.define_method(
         "tokenize_surfaces",

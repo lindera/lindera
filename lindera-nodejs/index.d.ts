@@ -213,8 +213,14 @@ export declare class Tokenizer {
    * * `dictionary` - Dictionary to use for tokenization.
    * * `mode` - Tokenization mode ("normal" or "decompose"). Default: "normal".
    * * `user_dictionary` - Optional user dictionary for custom words.
+   * * `space_penalty` - The left-space penalty, in the forms
+   *   `TokenizerBuilder.setSpacePenalty` accepts. `null` or `undefined`
+   *   (the default) keeps the rules the dictionary ships.
+   *
+   * Throws for an invalid space-penalty setting, as `setSpacePenalty` and
+   * `build()` do.
    */
-  constructor(dictionary: Dictionary, mode?: string | undefined | null, userDictionary?: UserDictionary | undefined | null)
+  constructor(dictionary: Dictionary, mode?: string | undefined | null, userDictionary?: UserDictionary | undefined | null, spacePenalty?: boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined)
   /**
    * Tokenizes the given text.
    *

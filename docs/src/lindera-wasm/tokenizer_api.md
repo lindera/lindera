@@ -163,13 +163,14 @@ The main tokenizer class. Can be created via `TokenizerBuilder.build()` or direc
 ### Tokenizer Constructor
 
 ```javascript
-const tokenizer = new Tokenizer(dictionary, mode, userDictionary);
+const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
 ```
 
 - **Parameters**:
   - `dictionary` (Dictionary) -- A loaded dictionary object
   - `mode` (string, optional) -- Tokenization mode (`"normal"` or `"decompose"`, defaults to `"normal"`)
   - `userDictionary` (UserDictionary, optional) -- A loaded user dictionary
+  - `spacePenalty` (boolean | object, optional) -- The left-space penalty, in the forms [`setSpacePenalty()`](#setspacepenaltyvalue) accepts. `null` or `undefined` (the default) uses the rules the dictionary ships. An invalid setting throws an error string, as `setSpacePenalty()` and `build()` do.
 
 ### Tokenizer Methods
 

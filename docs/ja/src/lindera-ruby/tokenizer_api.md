@@ -126,15 +126,20 @@ tokenizer = builder.build
 
 ### Tokenizer の作成
 
-#### `Lindera::Tokenizer.new(dictionary, mode, user_dictionary)`
+#### `Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil)`
 
-読み込み済みの辞書から直接トークナイザーを作成します。左側空白ペナルティは常に辞書のデフォルトになります。変更するには [`TokenizerBuilder#set_space_penalty`](#set_space_penaltyvalue) を使います。`user_dictionary` が不要な場合は `nil` を渡します。
+読み込み済みの辞書から直接トークナイザーを作成します。`mode` のデフォルトは `'normal'` で、`user_dictionary` は省略できます。
+
+キーワード引数 `space_penalty:` には [`TokenizerBuilder#set_space_penalty`](#set_space_penaltyvalue) と同じ値を渡せます。`nil`（デフォルト）では辞書が同梱する左側空白ペナルティのルールを使うため、ko-dic ではペナルティがオンになります。オフにするには `false` を渡します。不正な設定では、`set_space_penalty` や `build` と同じエラーが発生します。
 
 ```ruby
 require 'lindera'
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', nil)
+tokenizer = Lindera::Tokenizer.new(dictionary)
+
+# 左側空白ペナルティなしの ko-dic
+ko_tokenizer = Lindera::Tokenizer.new(Lindera.load_dictionary('embedded://ko-dic'), space_penalty: false)
 ```
 
 ユーザー辞書を使用する場合：
