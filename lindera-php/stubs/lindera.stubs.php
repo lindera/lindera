@@ -247,6 +247,8 @@ class TokenizerBuilder
 
     public function setMode(string $mode): void {}
 
+    public function setSpacePenalty(mixed $value): void {}
+
     public function setUserDictionary(string $uri): void {}
 }
 

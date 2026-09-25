@@ -5,7 +5,6 @@
 
 use magnus::prelude::*;
 use magnus::{Error, RArray, RHash, Ruby, TryConvert, Value};
-use serde_json::json;
 
 /// Converts a Ruby value to a serde_json::Value.
 ///
@@ -20,7 +19,8 @@ use serde_json::json;
 ///
 /// # Errors
 ///
-/// Returns an error if the Ruby value type is not supported.
+/// Returns a `TypeError` if the Ruby value type is not supported, or if it
+/// is a non-finite `Float` (NaN or Infinity), which JSON cannot represent.
 pub fn rb_value_to_json(ruby: &Ruby, value: Value) -> Result<serde_json::Value, Error> {
     if value.is_nil() {
         Ok(serde_json::Value::Null)
@@ -49,7 +49,16 @@ pub fn rb_value_to_json(ruby: &Ruby, value: Value) -> Result<serde_json::Value, 
                 format!("Failed to convert float: {e}"),
             )
         })?;
-        Ok(json!(f))
+        // JSON has no NaN or Infinity; reject them rather than let them
+        // silently turn into `null`, which callers read as "not set".
+        serde_json::Number::from_f64(f)
+            .map(serde_json::Value::Number)
+            .ok_or_else(|| {
+                Error::new(
+                    ruby.exception_type_error(),
+                    format!("Unsupported non-finite float: {f}"),
+                )
+            })
     } else if value.is_kind_of(ruby.class_string()) || value.is_kind_of(ruby.class_symbol()) {
         let s: String = TryConvert::try_convert(value).map_err(|e| {
             Error::new(

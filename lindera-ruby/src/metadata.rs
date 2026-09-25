@@ -150,7 +150,10 @@ impl RbMetadata {
     ///
     /// # Returns
     ///
-    /// A HashMap of metadata properties.
+    /// A HashMap of metadata properties, all as strings. The
+    /// `"space_penalty"` entry holds the left-space penalty rules the
+    /// dictionary ships as a JSON string, and is present only when it ships
+    /// some (ko-dic does).
     fn to_hash(&self) -> HashMap<String, String> {
         let mut dict = HashMap::new();
         dict.insert("name".to_string(), self.inner.name.clone());
@@ -191,6 +194,9 @@ impl RbMetadata {
             "user_dictionary_schema_fields".to_string(),
             self.inner.user_dictionary_schema.fields().join(","),
         );
+        if let Some(space_penalty) = self.inner.space_penalty_json() {
+            dict.insert("space_penalty".to_string(), space_penalty);
+        }
         dict
     }
 
@@ -387,5 +393,31 @@ mod tests {
         assert_eq!(back.default_field_value(), "*");
         assert_eq!(back.inner.dictionary_schema.field_count(), 13);
         assert_eq!(back.inner.user_dictionary_schema.field_count(), 3);
+    }
+
+    #[test]
+    fn test_rb_metadata_to_hash_omits_space_penalty_when_none() {
+        let hash = RbMetadata::create_default().to_hash();
+        assert!(!hash.contains_key("space_penalty"));
+    }
+
+    /// ko-dic's `metadata.json` ships left-space penalty rules: `to_hash`
+    /// exposes them, and converting back for a dictionary build keeps them.
+    #[test]
+    fn test_rb_metadata_keeps_ko_dic_space_penalty() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../lindera-ko-dic/metadata.json");
+        let json = std::fs::read_to_string(path).unwrap();
+        let metadata: Metadata = serde_json::from_str(&json).unwrap();
+        let shipped = metadata.space_penalty.clone().unwrap();
+
+        let rb_metadata: RbMetadata = metadata.into();
+        let hash = rb_metadata.to_hash();
+        let space_penalty = hash.get("space_penalty").unwrap();
+        assert!(space_penalty.contains("\"rules\""));
+        assert!(space_penalty.contains("JKS"));
+
+        let rebuilt: Metadata = rb_metadata.into();
+        assert_eq!(rebuilt.space_penalty, Some(shipped));
     }
 }

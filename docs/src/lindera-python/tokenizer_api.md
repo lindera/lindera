@@ -69,6 +69,33 @@ Controls whether whitespace tokens appear in the output.
 builder.set_keep_whitespace(True)
 ```
 
+#### `set_space_penalty(value)`
+
+Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added. `value` has the same meaning as `segmenter.space_penalty` in a [configuration file](../lindera-analysis/configuration.md):
+
+- `None` -- The default: the rules the dictionary ships in its `metadata.json`, if any (ko-dic ships mecab-ko-dic's rules; the other bundled dictionaries ship none). Use it to undo an earlier call.
+- `False` -- Turns the penalty off.
+- `True` -- Requires the dictionary's rules; `build()` raises `ValueError` for a dictionary that ships none.
+- A `dict` of the form `{"rules": [{"pos": [...], "cost": n}, ...]}` -- Applies these rules instead. A candidate whose first part-of-speech tag is listed in `pos` gets `cost` added; the first matching rule wins.
+
+Any other value raises `ValueError` (a value with no JSON equivalent, such as an arbitrary object, raises `TypeError`, as in `append_token_filter`).
+
+```python
+# Turn the penalty off
+builder.set_space_penalty(False)
+
+# Explicit rules
+builder.set_space_penalty({
+    "rules": [
+        {"pos": ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], "cost": 3000},
+        {"pos": ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], "cost": 6000},
+    ]
+})
+```
+
+> [!NOTE]
+> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `서울 시 에서` now reads `시` as the noun `NNG` rather than the ending `EP`. Call `builder.set_space_penalty(False)` to get the v6.0 output back. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and `True` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
+
 #### `append_character_filter(kind, args=None)`
 
 Appends a character filter to the preprocessing pipeline.
@@ -104,6 +131,8 @@ tokenizer = builder.build()
 #### `Tokenizer(dictionary, mode="normal", user_dictionary=None)`
 
 Creates a tokenizer directly from a loaded dictionary.
+
+The tokenizer uses the dictionary's defaults, including the left-space penalty rules it ships, so with ko-dic the penalty is always on. To turn it off or change the rules, build the tokenizer with [`TokenizerBuilder.set_space_penalty`](#set_space_penaltyvalue) instead.
 
 ```python
 from lindera import Tokenizer, load_dictionary

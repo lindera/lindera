@@ -25,7 +25,7 @@ const builder = new TokenizerBuilder();
 トークナイズモードを設定します。
 
 - **パラメータ**: `mode` (string) -- `"normal"` または `"decompose"`
-- **戻り値**: void
+- **戻り値**: `TokenizerBuilder`
 
 ```javascript
 builder.setMode("normal");
@@ -36,7 +36,7 @@ builder.setMode("normal");
 トークナイズに使用する辞書を設定します。
 
 - **パラメータ**: `uri` (string) -- 辞書の URI（例: `"embedded://ipadic"`）
-- **戻り値**: void
+- **戻り値**: `TokenizerBuilder`
 
 ```javascript
 builder.setDictionary("embedded://ipadic");
@@ -48,7 +48,7 @@ builder.setDictionary("embedded://ipadic");
 URI の代わりにバイトデータから読み込んだ辞書（例: `loadDictionaryFromBytes()` 経由）を使用する場合に使います。
 
 - **パラメータ**: `dictionary` (Dictionary) -- 読み込み済みの辞書オブジェクト
-- **戻り値**: void
+- **戻り値**: `TokenizerBuilder`
 
 ```javascript
 import { loadDictionaryFromBytes } from 'lindera-wasm';
@@ -69,18 +69,50 @@ builder.setDictionaryInstance(dictionary);
 読み込み済みのユーザー辞書インスタンスを設定します。`loadUserDictionaryFromBytes()`（CSV）または `loadUserDictionaryBinFromBytes()`（ビルド済み `.bin`）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。
 
 - **パラメータ**: `userDictionary` (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト
-- **戻り値**: void
+- **戻り値**: `TokenizerBuilder`
 
 #### `setKeepWhitespace(keep)`
 
 出力に空白トークンを保持するかどうかを設定します。
 
 - **パラメータ**: `keep` (boolean) -- `true` で空白トークンを保持
-- **戻り値**: void
+- **戻り値**: `TokenizerBuilder`
 
 ```javascript
 builder.setKeepWhitespace(true);
 ```
+
+#### `setSpacePenalty(value)`
+
+韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。
+
+- **パラメータ**: `value` (boolean | object | null | undefined) -- 設定値。意味は[設定ファイル](../lindera-analysis/configuration.md)の `segmenter.space_penalty` と同じです
+- **戻り値**: `TokenizerBuilder`
+
+`value` は次のいずれかの形式をとります。それ以外の値ではエラー文字列が投げられます：
+
+- `null` または `undefined` -- デフォルト。辞書が `metadata.json` に同梱するルールがあればそれを使います（ko-dic は mecab-ko-dic のルールを同梱し、他の同梱辞書はルールを持ちません）。以前の呼び出しを取り消すときにも使います。
+- `false` -- ペナルティをオフにします。
+- `true` -- 辞書のルールを要求します。ルールを同梱しない辞書では `build()` がエラーを投げます。
+- `{ rules: [{ pos: [...], cost: n }, ...] }` 形式のオブジェクト -- 辞書のルールの代わりにこのルールを適用します。先頭品詞タグが `pos` に含まれる候補に `cost` を加算し、最初に一致したルールが使われます。
+
+この設定は、`setDictionary()` で設定した辞書にも、`setDictionaryInstance()` で設定した辞書（たとえば `loadDictionaryFromBytes()` で OPFS から読み込んだ ko-dic）にも適用されます。辞書オブジェクト自体は変更されません。`Tokenizer` コンストラクタで作成したトークナイザーは常に辞書のデフォルトを使います。設定を変えるには `TokenizerBuilder` でビルドしてください。
+
+```javascript
+// ペナルティをオフにする
+builder.setSpacePenalty(false);
+
+// 明示的なルール
+builder.setSpacePenalty({
+    rules: [
+        { pos: ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], cost: 3000 },
+        { pos: ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], cost: 6000 },
+    ],
+});
+```
+
+> [!NOTE]
+> v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば `서울 시 에서` の `시` は、語尾 `EP` ではなく名詞 `NNG` と解析されるようになりました。v6.0 の出力に戻すには `builder.setSpacePenalty(false)` を呼び出してください。ルールを同梱しているのは Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで `true` はエラーになります。詳しくは [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
 
 #### `appendCharacterFilter(name, args)`
 
@@ -89,7 +121,7 @@ builder.setKeepWhitespace(true);
 - **パラメータ**:
   - `name` (string) -- フィルタ名（例: `"unicode_normalize"`、`"japanese_iteration_mark"`）
   - `args` (object, 省略可) -- フィルタの設定
-- **戻り値**: void
+- **戻り値**: `TokenizerBuilder`
 
 ```javascript
 builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
@@ -102,7 +134,7 @@ builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
 - **パラメータ**:
   - `name` (string) -- フィルタ名（例: `"japanese_stop_tags"`、`"lowercase"`）
   - `args` (object, 省略可) -- フィルタの設定
-- **戻り値**: void
+- **戻り値**: `TokenizerBuilder`
 
 ```javascript
 builder.appendTokenFilter("japanese_stop_tags", {
@@ -320,6 +352,7 @@ Python API との一貫性のため、すべてのメソッドは snake\_case �
 | `setDictionaryInstance()` | `set_dictionary_instance()` |
 | `setUserDictionaryInstance()` | `set_user_dictionary_instance()` |
 | `setKeepWhitespace()` | `set_keep_whitespace()` |
+| `setSpacePenalty()` | `set_space_penalty()` |
 | `appendCharacterFilter()` | `append_character_filter()` |
 | `appendTokenFilter()` | `append_token_filter()` |
 | `tokenizeSurfaces()` | `tokenize_surfaces()` |

@@ -216,6 +216,10 @@ impl PhpMetadata {
 
     /// Converts the metadata to an associative array.
     ///
+    /// When the dictionary ships left-space penalty rules (ko-dic), the
+    /// array also has a `space_penalty` entry holding them as a JSON string
+    /// (e.g. `{"rules":[...]}`); the key is absent otherwise.
+    ///
     /// # Returns
     ///
     /// A HashMap representing the metadata.
@@ -251,6 +255,9 @@ impl PhpMetadata {
             "normalize_details".to_string(),
             self.inner.normalize_details.to_string(),
         );
+        if let Some(space_penalty) = self.inner.space_penalty_json() {
+            dict.insert("space_penalty".to_string(), space_penalty);
+        }
         dict
     }
 
@@ -321,5 +328,31 @@ mod tests {
         assert_eq!(roundtripped.encoding(), "UTF-8");
         assert_eq!(roundtripped.default_word_cost(), -5000);
         assert!(roundtripped.flexible_csv());
+    }
+
+    #[test]
+    fn test_phpmetadata_to_array_omits_space_penalty_by_default() {
+        let meta = PhpMetadata::create_default();
+        assert!(!meta.to_array().contains_key("space_penalty"));
+    }
+
+    #[test]
+    fn test_phpmetadata_keeps_ko_dic_space_penalty() {
+        // Parse the file the way `from_json_file` does; calling it directly
+        // would link the PHP exception symbols, which only the PHP runtime
+        // provides, into this test binary.
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../lindera-ko-dic/metadata.json");
+        let json = std::fs::read_to_string(path).unwrap();
+        let meta = PhpMetadata::from(serde_json::from_str::<Metadata>(&json).unwrap());
+
+        let array = meta.to_array();
+        let space_penalty = &array["space_penalty"];
+        assert!(space_penalty.contains("\"rules\""), "{space_penalty}");
+        assert!(space_penalty.contains("JKS"), "{space_penalty}");
+
+        // The rules survive the conversion used by Dictionary::build.
+        let lindera_meta: Metadata = meta.into();
+        assert!(lindera_meta.space_penalty.is_some());
     }
 }

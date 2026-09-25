@@ -70,6 +70,8 @@ Lindera.build_dictionary('/path/to/input_dir', '/path/to/output_dir', metadata)
 
 入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。
 
+`Lindera::Metadata.from_json_file` で読み込んだメタデータは `metadata.json` の `space_penalty` ルールを保持し、ビルドした辞書にもそのルールが同梱されます。そのため ko-dic をビルドした場合も、左側空白ペナルティはデフォルトでオンのままです。トークナイザーごとにオフにするには `TokenizerBuilder#set_space_penalty(false)` を使います（[Tokenizer API](./tokenizer_api.md#set_space_penaltyvalue) を参照）。
+
 ### ユーザー辞書のビルド
 
 CSV ファイルからユーザー辞書をビルドします：
@@ -150,3 +152,11 @@ metadata = dictionary.metadata
 | `flexible_csv` | `Boolean` | `false` | 柔軟な CSV パースを許可 |
 | `skip_invalid_cost_or_id` | `Boolean` | `false` | 無効なコストまたは ID のエントリーをスキップ |
 | `normalize_details` | `Boolean` | `false` | 形態素の詳細情報を正規化 |
+
+`to_h`（別名 `to_hash`）は、これらのプロパティに `dictionary_schema_fields` と `user_dictionary_schema_fields`（カンマ区切りのフィールド名）を加えた、値がすべて文字列の `Hash` を返します。ko-dic のようにメタデータが左側空白ペナルティのルールを持つ場合は、そのルールを JSON 文字列で保持する `space_penalty` エントリも含まれます：
+
+```ruby
+metadata = Lindera::Metadata.from_json_file('/path/to/ko-dic/metadata.json')
+metadata.to_h['space_penalty']
+# '{"rules":[{"pos":["EC","EF",...],"cost":3000},{"pos":["JC","JKB",...],"cost":6000}]}'
+```

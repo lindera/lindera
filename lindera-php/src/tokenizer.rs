@@ -96,6 +96,46 @@ impl PhpTokenizerBuilder {
         Ok(())
     }
 
+    /// Sets the left-space penalty (Korean), with the same meaning as
+    /// `segmenter.space_penalty` in a config file. Exposed to PHP as
+    /// `setSpacePenalty(mixed $value)`.
+    ///
+    /// - `null` restores the default: the rules the dictionary ships, if any
+    ///   (ko-dic ships mecab-ko-dic's rules, so they apply unless turned off);
+    /// - `false` turns the penalty off;
+    /// - `true` requires the dictionary's rules (`build()` fails if it ships
+    ///   none);
+    /// - an associative array such as
+    ///   `['rules' => [['pos' => ['JKS'], 'cost' => 6000]]]` applies those
+    ///   rules instead.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The setting: `null`, a boolean, or an associative array
+    ///   with a `rules` key.
+    ///
+    /// # Returns
+    ///
+    /// Nothing on success; throws `ValueError` when `value` is not one of the
+    /// forms above, including when it holds an object or a non-finite float
+    /// anywhere inside.
+    pub fn set_space_penalty(&self, value: &Zval) -> PhpResult<()> {
+        // The shared converter throws a plain `Exception` for objects and
+        // NAN/INF; report those as a `ValueError` that names the setting,
+        // like every other rejected value.
+        let value = zval_to_value(value).map_err(|_| {
+            lindera_value_err(
+                "space_penalty must be null, a boolean or an array with a \"rules\" key \
+                 (objects and non-finite floats are not supported)",
+            )
+        })?;
+        self.inner
+            .borrow_mut()
+            .set_space_penalty(&value)
+            .map_err(lindera_value_err)?;
+        Ok(())
+    }
+
     /// Appends a character filter to the filter pipeline.
     ///
     /// # Arguments

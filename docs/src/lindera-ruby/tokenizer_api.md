@@ -66,6 +66,33 @@ Controls whether whitespace tokens appear in the output.
 builder.set_keep_whitespace(true)
 ```
 
+#### `set_space_penalty(value)`
+
+Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added. `value` has the same meaning as `segmenter.space_penalty` in a [configuration file](../lindera-analysis/configuration.md):
+
+- `nil` -- The default: the rules the dictionary ships in its `metadata.json`, if any (ko-dic ships mecab-ko-dic's rules; the other bundled dictionaries ship none). Use it to undo an earlier call.
+- `false` -- Turns the penalty off.
+- `true` -- Requires the dictionary's rules; `build` raises `RuntimeError` for a dictionary that ships none.
+- A hash with string keys, `{ 'rules' => [{ 'pos' => [...], 'cost' => n }, ...] }` -- Applies these rules instead. A candidate whose first part-of-speech tag is listed in `pos` gets `cost` added; the first matching rule wins.
+
+A value that is not one of these forms, such as `1`, `'false'` or `{ 'rules' => 'JKS' }`, raises `RuntimeError`. A value that cannot be converted raises `TypeError`: a Symbol (also as a hash key or an element, so write `%w[JKS]` rather than `%i[JKS]`), a non-finite `Float` (NaN or Infinity), an `Integer` outside the 64-bit range, or an object other than `nil`, `true`, `false`, an `Integer`, a `Float`, a `String`, an `Array` or a `Hash`.
+
+```ruby
+# Turn the penalty off
+builder.set_space_penalty(false)
+
+# Explicit rules
+builder.set_space_penalty({
+  'rules' => [
+    { 'pos' => %w[EC EF EP ETM ETN VCP XSA XSN XSV], 'cost' => 3000 },
+    { 'pos' => %w[JC JKB JKC JKG JKO JKQ JKS JKV JX], 'cost' => 6000 }
+  ]
+})
+```
+
+> [!NOTE]
+> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `서울 시 에서` now reads `시` as the noun `NNG` rather than the ending `EP`. Call `builder.set_space_penalty(false)` to get the v6.0 output back. A tokenizer created directly with `Lindera::Tokenizer.new(dictionary, ...)` always uses the default, so use `TokenizerBuilder` to turn it off. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and `true` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
+
 #### `append_character_filter(kind, args)`
 
 Appends a character filter to the preprocessing pipeline. The `args` parameter is a hash with string keys.
@@ -100,7 +127,7 @@ tokenizer = builder.build
 
 #### `Lindera::Tokenizer.new(dictionary, mode, user_dictionary)`
 
-Creates a tokenizer directly from a loaded dictionary.
+Creates a tokenizer directly from a loaded dictionary. It always uses the dictionary's default left-space penalty; use [`TokenizerBuilder#set_space_penalty`](#set_space_penaltyvalue) to change it.
 
 ```ruby
 require 'lindera'

@@ -70,6 +70,33 @@ builder.set_user_dictionary("/path/to/user_dictionary")
 builder.set_keep_whitespace(True)
 ```
 
+#### `set_space_penalty(value)`
+
+韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。`value` の意味は[設定ファイル](../lindera-analysis/configuration.md)の `segmenter.space_penalty` と同じです：
+
+- `None` -- デフォルト。辞書が `metadata.json` に同梱するルールがあればそれを使います（ko-dic は mecab-ko-dic のルールを同梱し、他の同梱辞書はルールを持ちません）。以前の呼び出しを取り消すときにも使います。
+- `False` -- ペナルティをオフにします。
+- `True` -- 辞書のルールを要求します。ルールを同梱しない辞書では `build()` が `ValueError` を送出します。
+- `{"rules": [{"pos": [...], "cost": n}, ...]}` 形式の `dict` -- 辞書のルールの代わりにこのルールを適用します。先頭品詞タグが `pos` に含まれる候補に `cost` を加算し、最初に一致したルールが使われます。
+
+それ以外の値では `ValueError` が送出されます（任意のオブジェクトなど JSON に対応しない値は、`append_token_filter` と同様に `TypeError` になります）。
+
+```python
+# ペナルティをオフにする
+builder.set_space_penalty(False)
+
+# 明示的なルール
+builder.set_space_penalty({
+    "rules": [
+        {"pos": ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], "cost": 3000},
+        {"pos": ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], "cost": 6000},
+    ]
+})
+```
+
+> [!NOTE]
+> v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば `서울 시 에서` の `시` は、語尾 `EP` ではなく名詞 `NNG` と解析されるようになりました。v6.0 の出力に戻すには `builder.set_space_penalty(False)` を呼び出してください。ルールを同梱しているのは Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで `True` はエラーになります。詳しくは [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
+
 #### `append_character_filter(kind, args=None)`
 
 前処理パイプラインに文字フィルタを追加します。
@@ -105,6 +132,8 @@ tokenizer = builder.build()
 #### `Tokenizer(dictionary, mode="normal", user_dictionary=None)`
 
 読み込み済みの辞書から直接トークナイザーを作成します。
+
+このトークナイザーは辞書のデフォルト設定を使い、辞書が同梱する左側空白ペナルティのルールも適用します。そのため ko-dic ではペナルティが常にオンです。オフにしたりルールを変えたりするには、[`TokenizerBuilder.set_space_penalty`](#set_space_penaltyvalue) を使ってトークナイザーをビルドしてください。
 
 ```python
 from lindera import Tokenizer, load_dictionary

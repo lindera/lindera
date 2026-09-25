@@ -9,14 +9,14 @@ use std::cell::RefCell;
 use std::path::Path;
 
 use magnus::prelude::*;
-use magnus::{Error, RArray, RHash, Ruby, function, method};
+use magnus::{Error, RArray, RHash, Ruby, Value, function, method};
 
 use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{RbDictionary, RbUserDictionary};
 use crate::error::to_magnus_error;
 use crate::token::RbToken;
-use crate::util::rb_hash_to_json;
+use crate::util::{rb_hash_to_json, rb_value_to_json};
 
 /// Builder for creating a `Tokenizer` with custom configuration.
 ///
@@ -100,6 +100,38 @@ impl RbTokenizerBuilder {
     /// * `keep_whitespace` - If true, whitespace tokens will be included.
     fn set_keep_whitespace(&self, keep_whitespace: bool) {
         self.inner.borrow_mut().set_keep_whitespace(keep_whitespace);
+    }
+
+    /// Sets the left-space penalty (Korean), with the same meaning as
+    /// `segmenter.space_penalty` in a YAML config.
+    ///
+    /// `nil` restores the default (the rules the dictionary ships, if any;
+    /// ko-dic ships mecab-ko-dic's), `false` turns the penalty off, `true`
+    /// requires the dictionary's rules (`build` then fails for a dictionary
+    /// that ships none), and a hash such as
+    /// `{ 'rules' => [{ 'pos' => ['JKS'], 'cost' => 6000 }] }` applies those
+    /// rules instead.
+    ///
+    /// # Arguments
+    ///
+    /// * `ruby` - Ruby runtime handle.
+    /// * `rb_self` - The builder.
+    /// * `value` - `nil`, `true`, `false`, or a hash with string keys holding `"rules"`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success, a `TypeError` when `value` holds something that
+    /// cannot be converted to JSON (such as a Symbol or a non-finite Float),
+    /// or a `RuntimeError` when it converts but is not one of the forms
+    /// above.
+    fn set_space_penalty(ruby: &Ruby, rb_self: &Self, value: Value) -> Result<(), Error> {
+        let setting = rb_value_to_json(ruby, value)?;
+        rb_self
+            .inner
+            .borrow_mut()
+            .set_space_penalty(&setting)
+            .map_err(|err| to_magnus_error(ruby, err.to_string()))?;
+        Ok(())
     }
 
     /// Appends a character filter to the filter pipeline.
@@ -313,6 +345,10 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
     builder_class.define_method(
         "set_keep_whitespace",
         method!(RbTokenizerBuilder::set_keep_whitespace, 1),
+    )?;
+    builder_class.define_method(
+        "set_space_penalty",
+        method!(RbTokenizerBuilder::set_space_penalty, 1),
     )?;
     builder_class.define_method(
         "append_character_filter",

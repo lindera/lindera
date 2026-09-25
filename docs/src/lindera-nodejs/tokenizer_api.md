@@ -69,6 +69,38 @@ Controls whether whitespace tokens appear in the output.
 builder.setKeepWhitespace(true);
 ```
 
+#### `setSpacePenalty(value)`
+
+Sets the left-space penalty for Korean (mecab-ko's `left-space-penalty-factor`): a candidate that starts right after whitespace and whose first part-of-speech tag is listed in a rule gets that rule's cost added. The value means the same as `segmenter.space_penalty` in a [configuration file](../lindera-analysis/configuration.md).
+
+| Value | Effect |
+| --- | --- |
+| `null` or `undefined` | Default: the rules the dictionary ships in its `metadata.json`, if any |
+| `false` | Turns the penalty off |
+| `true` | Requires the dictionary's rules; `build()` throws if the dictionary ships none |
+| `{ rules: [{ pos: [...], cost: n }, ...] }` | Applies these rules instead of the dictionary's |
+
+Any other value throws an `Error`.
+
+```javascript
+// Turn the penalty off
+builder.setSpacePenalty(false);
+
+// Explicit rules (these are the ones ko-dic ships)
+builder.setSpacePenalty({
+  rules: [
+    { pos: ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], cost: 3000 },
+    { pos: ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], cost: 6000 },
+  ],
+});
+
+// Back to the dictionary's default
+builder.setSpacePenalty(null);
+```
+
+> [!NOTE]
+> Since v6.1.0, ko-dic applies the left-space penalty by default, because its `metadata.json` ships mecab-ko-dic's rules. This changes the Korean output compared with v6.0 (for example, `시` in `서울 시 에서` becomes the noun `NNG` instead of the ending `EP`). Call `setSpacePenalty(false)` to restore the v6.0 output. A `Tokenizer` created directly with `new Tokenizer(dictionary, ...)` always uses the default, so use `TokenizerBuilder` to turn it off. A ko-dic downloaded from the v6.0.0 release ships no rules, so with it the penalty stays off and `setSpacePenalty(true)` makes `build()` throw. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
+
 #### `appendCharacterFilter(kind, args?)`
 
 Appends a character filter to the preprocessing pipeline.

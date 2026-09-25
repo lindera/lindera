@@ -26,7 +26,7 @@ configures the same underlying builder.
 Sets the tokenization mode.
 
 - **Parameters**: `mode` (string) -- `"normal"` or `"decompose"`
-- **Returns**: void
+- **Returns**: `TokenizerBuilder`
 
 ```javascript
 builder.setMode("normal");
@@ -37,7 +37,7 @@ builder.setMode("normal");
 Sets the dictionary to use for tokenization.
 
 - **Parameters**: `uri` (string) -- Dictionary URI (e.g., `"embedded://ipadic"`)
-- **Returns**: void
+- **Returns**: `TokenizerBuilder`
 
 ```javascript
 builder.setDictionary("embedded://ipadic");
@@ -49,7 +49,7 @@ Sets a pre-loaded dictionary instance for tokenization.
 Use this when the dictionary has been loaded from bytes (e.g., via `loadDictionaryFromBytes()`) instead of from a URI.
 
 - **Parameters**: `dictionary` (Dictionary) -- A loaded dictionary object
-- **Returns**: void
+- **Returns**: `TokenizerBuilder`
 
 ```javascript
 import { loadDictionaryFromBytes } from 'lindera-wasm';
@@ -69,18 +69,50 @@ builder.setDictionaryInstance(dictionary);
 Sets a pre-loaded user dictionary instance. Load one from bytes with `loadUserDictionaryFromBytes()` (CSV) or `loadUserDictionaryBinFromBytes()` (prebuilt `.bin`); URI-based user dictionaries are not available on WebAssembly.
 
 - **Parameters**: `userDictionary` (UserDictionary) -- A loaded user dictionary object
-- **Returns**: void
+- **Returns**: `TokenizerBuilder`
 
 #### `setKeepWhitespace(keep)`
 
 Sets whether whitespace tokens are preserved in the output.
 
 - **Parameters**: `keep` (boolean) -- `true` to keep whitespace tokens
-- **Returns**: void
+- **Returns**: `TokenizerBuilder`
 
 ```javascript
 builder.setKeepWhitespace(true);
 ```
+
+#### `setSpacePenalty(value)`
+
+Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added.
+
+- **Parameters**: `value` (boolean | object | null | undefined) -- The setting, with the same meaning as `segmenter.space_penalty` in a [configuration file](../lindera-analysis/configuration.md)
+- **Returns**: `TokenizerBuilder`
+
+`value` takes one of these forms; any other value throws an error string:
+
+- `null` or `undefined` -- The default: the rules the dictionary ships in its `metadata.json`, if any (ko-dic ships mecab-ko-dic's rules; the other bundled dictionaries ship none). Use it to undo an earlier call.
+- `false` -- Turns the penalty off.
+- `true` -- Requires the dictionary's rules; `build()` throws for a dictionary that ships none.
+- An object of the form `{ rules: [{ pos: [...], cost: n }, ...] }` -- Applies these rules instead. A candidate whose first part-of-speech tag is listed in `pos` gets `cost` added; the first matching rule wins.
+
+The setting applies both to a dictionary set with `setDictionary()` and to one set with `setDictionaryInstance()`, such as a ko-dic loaded from OPFS with `loadDictionaryFromBytes()`. The dictionary object itself is not changed. A tokenizer created with the `Tokenizer` constructor always uses the dictionary's default; build it with `TokenizerBuilder` to change the setting.
+
+```javascript
+// Turn the penalty off
+builder.setSpacePenalty(false);
+
+// Explicit rules
+builder.setSpacePenalty({
+    rules: [
+        { pos: ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], cost: 3000 },
+        { pos: ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], cost: 6000 },
+    ],
+});
+```
+
+> [!NOTE]
+> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `서울 시 에서` now reads `시` as the noun `NNG` rather than the ending `EP`. Call `builder.setSpacePenalty(false)` to get the v6.0 output back. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and `true` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
 
 #### `appendCharacterFilter(name, args)`
 
@@ -89,7 +121,7 @@ Appends a character filter to the preprocessing pipeline.
 - **Parameters**:
   - `name` (string) -- Filter name (e.g., `"unicode_normalize"`, `"japanese_iteration_mark"`)
   - `args` (object, optional) -- Filter configuration
-- **Returns**: void
+- **Returns**: `TokenizerBuilder`
 
 ```javascript
 builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
@@ -102,7 +134,7 @@ Appends a token filter to the postprocessing pipeline.
 - **Parameters**:
   - `name` (string) -- Filter name (e.g., `"japanese_stop_tags"`, `"lowercase"`)
   - `args` (object, optional) -- Filter configuration
-- **Returns**: void
+- **Returns**: `TokenizerBuilder`
 
 ```javascript
 builder.appendTokenFilter("japanese_stop_tags", {
@@ -322,6 +354,7 @@ For consistency with the Python API, all methods are also available in snake\_ca
 | `setDictionaryInstance()` | `set_dictionary_instance()` |
 | `setUserDictionaryInstance()` | `set_user_dictionary_instance()` |
 | `setKeepWhitespace()` | `set_keep_whitespace()` |
+| `setSpacePenalty()` | `set_space_penalty()` |
 | `appendCharacterFilter()` | `append_character_filter()` |
 | `appendTokenFilter()` | `append_token_filter()` |
 | `tokenizeSurfaces()` | `tokenize_surfaces()` |

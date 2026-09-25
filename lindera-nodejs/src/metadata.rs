@@ -233,7 +233,10 @@ impl JsMetadata {
     ///
     /// # Returns
     ///
-    /// A HashMap containing all metadata properties as strings.
+    /// A HashMap containing all metadata properties as strings. When the
+    /// metadata carries left-space penalty rules (as ko-dic's
+    /// `metadata.json` does), they are included under `spacePenalty` as a
+    /// JSON string such as `{"rules":[...]}`; otherwise the key is absent.
     #[napi]
     pub fn to_object(&self) -> HashMap<String, String> {
         let mut dict = HashMap::new();
@@ -267,6 +270,9 @@ impl JsMetadata {
             "normalizeDetails".to_string(),
             self.inner.normalize_details.to_string(),
         );
+        if let Some(space_penalty) = self.inner.space_penalty_json() {
+            dict.insert("spacePenalty".to_string(), space_penalty);
+        }
         dict
     }
 }
@@ -369,6 +375,29 @@ mod tests {
         assert!(js_metadata.flexible_csv());
         assert!(js_metadata.skip_invalid_cost_or_id());
         assert!(js_metadata.normalize_details());
+    }
+
+    #[test]
+    fn test_to_object_omits_space_penalty_when_absent() {
+        let js_metadata = JsMetadata::new(None);
+        assert!(!js_metadata.to_object().contains_key("spacePenalty"));
+    }
+
+    #[test]
+    fn test_to_object_exposes_ko_dic_space_penalty() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../lindera-ko-dic/metadata.json")
+            .to_string_lossy()
+            .into_owned();
+        let js_metadata = JsMetadata::from_json_file(path).unwrap();
+        let object = js_metadata.to_object();
+        let space_penalty = object.get("spacePenalty").unwrap();
+        assert!(space_penalty.contains("\"rules\""));
+        assert!(space_penalty.contains("JKS"));
+
+        // The rules survive the conversion used by `buildDictionary`.
+        let lindera_metadata = JsMetadata::to_lindera_metadata(&js_metadata);
+        assert!(lindera_metadata.space_penalty.is_some());
     }
 
     #[test]

@@ -57,6 +57,38 @@ $builder->setUserDictionary('/path/to/user_dictionary.csv');
 $builder->setKeepWhitespace(true);
 ```
 
+#### `setSpacePenalty($value)`
+
+韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。`$value` の意味は[設定ファイル](../lindera-analysis/configuration.md)の `segmenter.space_penalty` と同じです：
+
+- `null` -- デフォルト。辞書が `metadata.json` に同梱するルールがあればそれを使います（ko-dic は mecab-ko-dic のルールを同梱し、他の同梱辞書はルールを持ちません）。以前の呼び出しを取り消すときにも使います。
+- `false` -- ペナルティをオフにします。
+- `true` -- 辞書のルールを要求します。ルールを同梱しない辞書では `build()` が `ValueError` をスローします。
+- 連想配列 `['rules' => [['pos' => [...], 'cost' => n], ...]]` -- 辞書のルールの代わりにこのルールを適用します。先頭品詞タグが `pos` に含まれる候補に `cost` を加算し、最初に一致したルールが使われます。
+
+`rules` と各 `pos` はキーが `0, 1, 2, ...` のリストでなければなりません（`array_filter()` や `array_unique()` の後は `array_values()` を適用してください）。`cost` は 32 ビットの範囲の `int` でなければならず、`6000.0` のような float は拒否されます。それ以外の値では、オブジェクト（`stdClass` や `true` を渡さない `json_decode()` の結果）や `NAN`、`INF` も含めて `ValueError` がスローされます。
+
+```php
+$builder->setDictionary('embedded://ko-dic');
+
+// ペナルティをオフにする（v6.0 の出力）
+$builder->setSpacePenalty(false);
+
+// 明示的なルール
+$builder->setSpacePenalty([
+    'rules' => [
+        ['pos' => ['EC', 'EF', 'EP', 'ETM', 'ETN', 'VCP', 'XSA', 'XSN', 'XSV'], 'cost' => 3000],
+        ['pos' => ['JC', 'JKB', 'JKC', 'JKG', 'JKO', 'JKQ', 'JKS', 'JKV', 'JX'], 'cost' => 6000],
+    ],
+]);
+
+// 辞書のデフォルトに戻す
+$builder->setSpacePenalty(null);
+```
+
+> [!NOTE]
+> v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば `서울 시 에서` の `시` は、語尾 `EP` ではなく名詞 `NNG` と解析されるようになりました。v6.0 の出力に戻すには `$builder->setSpacePenalty(false)` を呼び出してください。[`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-userdictionary) で作成したトークナイザーは常に辞書のルールを適用します。ルールを同梱しているのは Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで `true` はエラーになります。詳しくは [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
+
 #### `appendCharacterFilter($kind, $args)`
 
 前処理パイプラインに文字フィルタを追加します。
@@ -95,6 +127,8 @@ $tokenizer = $builder->build();
 #### `new Lindera\Tokenizer($dictionary, $mode, $userDictionary)`
 
 読み込み済みの辞書から直接トークナイザーを作成します。
+
+この方法で作成したトークナイザーは、辞書が同梱する左側空白ペナルティのルール（ko-dic は同梱しています）を常に適用し、コンストラクタにはそれを変更するオプションがありません。ペナルティを変更またはオフにするには、`TokenizerBuilder` と [`setSpacePenalty()`](#setspacepenaltyvalue) を使います。
 
 ```php
 <?php

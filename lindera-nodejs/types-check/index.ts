@@ -13,6 +13,7 @@
 import {
   loadDictionary,
   Tokenizer,
+  TokenizerBuilder,
   type Token,
   type NbestResult,
 } from "../index.js";
@@ -47,4 +48,16 @@ export function checkTokenShape(text: string): void {
   const cost: number = nbest[0].cost;
 
   void [nbestTokens, cost];
+}
+
+// `setSpacePenalty` declares its argument type by hand (`ts_args_type`), so
+// check that the declaration parses and accepts every documented form.
+export function checkSpacePenaltyForms(): void {
+  const builder: TokenizerBuilder = new TokenizerBuilder()
+    .setSpacePenalty(null)
+    .setSpacePenalty(undefined)
+    .setSpacePenalty(true)
+    .setSpacePenalty(false)
+    .setSpacePenalty({ rules: [{ pos: ["JKS", "JX"], cost: 6000 }] });
+  void builder;
 }

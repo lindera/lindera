@@ -20,6 +20,7 @@
 
 use std::path::Path;
 
+use pyo3::exceptions::{PyOverflowError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
@@ -28,7 +29,7 @@ use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
 use crate::dictionary::{PyDictionary, PyUserDictionary};
 use crate::error::to_py_error;
 use crate::token::PyToken;
-use crate::util::pydict_to_value;
+use crate::util::{pyany_to_value, pydict_to_value};
 
 /// Converts the optional filter-argument dict into a JSON value.
 fn filter_args(args: Option<&Bound<'_, PyDict>>) -> PyResult<serde_json::Value> {
@@ -36,6 +37,46 @@ fn filter_args(args: Option<&Bound<'_, PyDict>>) -> PyResult<serde_json::Value> 
         Some(dict) => pydict_to_value(dict),
         None => Ok(serde_json::Value::Object(serde_json::Map::new())),
     }
+}
+
+/// Converts a `set_space_penalty` argument into the JSON value the core
+/// expects.
+///
+/// Only `None` becomes JSON `null`, which restores the dictionary default.
+/// The generic converter also turns a non-finite float into `null` and raises
+/// `OverflowError` for an integer beyond `i64`; both are rejected here with
+/// `ValueError`, like every other value the core does not accept.
+///
+/// # Arguments
+///
+/// * `value` - The Python value passed to `set_space_penalty`.
+///
+/// # Returns
+///
+/// The JSON value to hand to `CoreTokenizerBuilder::set_space_penalty`.
+///
+/// # Errors
+///
+/// Raises `ValueError` for a non-finite float or an out-of-range integer
+/// anywhere in `value`, and `TypeError` for an object with no JSON
+/// equivalent.
+fn space_penalty_value(value: &Bound<'_, PyAny>) -> PyResult<serde_json::Value> {
+    if value.is_none() {
+        return Ok(serde_json::Value::Null);
+    }
+    let json = pyany_to_value(value).map_err(|err| {
+        if err.is_instance_of::<PyOverflowError>(value.py()) {
+            PyValueError::new_err(format!("invalid space_penalty: {err}"))
+        } else {
+            err
+        }
+    })?;
+    if json.is_null() {
+        return Err(PyValueError::new_err(format!(
+            "space_penalty must be None, a bool or a dict with \"rules\", got {value}"
+        )));
+    }
+    Ok(json)
 }
 
 /// Builder for creating a `Tokenizer` with custom configuration.
@@ -153,6 +194,41 @@ impl PyTokenizerBuilder {
         keep_whitespace: bool,
     ) -> PyResult<PyRefMut<'a, Self>> {
         slf.inner.set_keep_whitespace(keep_whitespace);
+        Ok(slf)
+    }
+
+    /// Sets the left-space penalty (Korean), with the same meaning as
+    /// `segmenter.space_penalty` in a YAML config.
+    ///
+    /// - `None` restores the default: the rules the dictionary ships, if any
+    ///   (ko-dic ships mecab-ko-dic's rules, so they apply unless turned off).
+    /// - `False` turns the penalty off.
+    /// - `True` requires the dictionary's rules; `build()` then fails for a
+    ///   dictionary that ships none.
+    /// - A dict such as `{"rules": [{"pos": ["JKS"], "cost": 6000}]}` applies
+    ///   those rules instead.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - `None`, a `bool`, or a dict with a `"rules"` list.
+    ///
+    /// # Returns
+    ///
+    /// Self for method chaining.
+    ///
+    /// # Errors
+    ///
+    /// Raises `ValueError` when `value` is not one of the forms above (for
+    /// example a number, including `nan` and `inf`, or a dict whose `"rules"`
+    /// is not a list of rules), and `TypeError` when it holds a Python object
+    /// with no JSON equivalent.
+    #[pyo3(signature = (value))]
+    fn set_space_penalty<'a>(
+        mut slf: PyRefMut<'a, Self>,
+        value: &Bound<'_, PyAny>,
+    ) -> PyResult<PyRefMut<'a, Self>> {
+        let value = space_penalty_value(value)?;
+        slf.inner.set_space_penalty(&value).map_err(to_py_error)?;
         Ok(slf)
     }
 

@@ -84,6 +84,8 @@ Lindera\Dictionary::build('/path/to/input_dir', '/path/to/output_dir', $metadata
 
 入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。
 
+`Lindera\Metadata::fromJsonFile` で読み込んだメタデータは `metadata.json` の `space_penalty` ルールを保持し、ビルドした辞書にもそのルールが同梱されます。そのため ko-dic をビルドした場合も、左側空白ペナルティはデフォルトでオンのままです。トークナイザーごとにオフにするには `TokenizerBuilder::setSpacePenalty(false)` を使います（[Tokenizer API](./tokenizer_api.md#setspacepenaltyvalue) を参照）。コンストラクタで作成した `Metadata` はルールを持ちません。
+
 以下は IPADIC 辞書をダウンロードしてビルドする例です：
 
 ```php
@@ -135,6 +137,18 @@ $metadata = Lindera\Metadata::fromJsonFile('metadata.json');
 | `name` | `string` | `"default"` | 辞書名 |
 | `encoding` | `string` | `"UTF-8"` | 文字エンコーディング |
 | `default_word_cost` | `int` | `-10000` | 未知語のデフォルトコスト |
+
+### `toArray()`
+
+メタデータを連想配列（値はすべて文字列）で返します。ko-dic のようにメタデータが左側空白ペナルティのルールを持つ場合は、そのルールを JSON 文字列で保持する `space_penalty` エントリも含まれます。ルールがなければこのキーはありません：
+
+```php
+<?php
+
+$metadata = Lindera\Metadata::fromJsonFile('/path/to/ko-dic/metadata.json');
+$rules = json_decode($metadata->toArray()['space_penalty'], true);
+// ['rules' => [['pos' => ['EC', 'EF', ...], 'cost' => 3000], ...]]
+```
 
 ## Schema
 

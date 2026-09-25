@@ -79,6 +79,13 @@ buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 
 入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。
 
+辞書の `metadata.json` に含まれる設定のままビルドするには、`Metadata.fromJsonFile()` でファイルを読み込み、その結果を渡します。ファイルの `space_penalty` ルールは保持されるため、この方法でビルドした ko-dic では左側空白ペナルティがデフォルトで適用されます（[`setSpacePenalty`](tokenizer_api.md#setspacepenaltyvalue) を参照）。`new Metadata(...)` で作成した `Metadata` はルールを持ちません。
+
+```javascript
+const metadata = Metadata.fromJsonFile("/path/to/lindera-ko-dic/metadata.json");
+buildDictionary("/path/to/mecab-ko-dic", "/path/to/output_dir", metadata);
+```
+
 ### ユーザー辞書のビルド
 
 CSV ファイルからユーザー辞書をビルドします：
@@ -156,11 +163,19 @@ console.log(metadata.name); // "custom_dict"
 
 ### `toObject()`
 
-メタデータのオブジェクト表現を返します：
+メタデータのオブジェクト表現を返します。値はすべて文字列です：
 
 ```javascript
 const metadata = new Metadata({ name: "test" });
 console.log(metadata.toObject());
+```
+
+メタデータが左側空白ペナルティのルールを持つ場合（ko-dic の `metadata.json` から読み込んだ場合など）、オブジェクトにはルールを JSON 文字列で保持する `spacePenalty` エントリーも含まれます。ルールを持たない場合、このキーはありません。
+
+```javascript
+const koDic = Metadata.fromJsonFile("/path/to/lindera-ko-dic/metadata.json");
+const { rules } = JSON.parse(koDic.toObject().spacePenalty);
+console.log(rules[1].pos); // ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"]
 ```
 
 ## Schema

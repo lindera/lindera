@@ -194,4 +194,25 @@ mod tests {
         assert_eq!(back.name(), "test_dict");
         assert_eq!(back.encoding(), "utf-8");
     }
+
+    /// ko-dic's `metadata.json` ships left-space penalty rules. Loaded the
+    /// way `loadDictionaryFromBytes()` does, they must survive the
+    /// `dictionary.metadata` wrapper round trip (#1052), even though the
+    /// WASM `Metadata` class does not expose them as a property.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn test_metadata_keeps_ko_dic_space_penalty() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../lindera-ko-dic/metadata.json");
+        let bytes = std::fs::read(&path).unwrap();
+        let loaded = Metadata::load(&bytes).unwrap();
+        let shipped = loaded.space_penalty.clone().unwrap();
+
+        let wrapped = JsMetadata::from(loaded);
+        let as_json = wrapped.inner.space_penalty_json().unwrap();
+        assert!(as_json.contains("JKS"), "{as_json}");
+
+        let back: Metadata = wrapped.into();
+        assert_eq!(back.space_penalty, Some(shipped));
+    }
 }

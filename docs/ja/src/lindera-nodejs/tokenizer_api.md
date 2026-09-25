@@ -71,6 +71,38 @@ builder.setUserDictionary("/path/to/user_dictionary");
 builder.setKeepWhitespace(true);
 ```
 
+#### `setSpacePenalty(value)`
+
+韓国語向けの左側空白ペナルティ（mecab-ko の `left-space-penalty-factor`）を設定します。直前に空白があり、先頭品詞タグがルールの一覧にある候補に、そのルールのコストを加算します。値の意味は[設定ファイル](../lindera-analysis/configuration.md)の `segmenter.space_penalty` と同じです。
+
+| 値 | 効果 |
+| --- | --- |
+| `null` または `undefined` | デフォルト。辞書が `metadata.json` に同梱するルールがあればそれを使用 |
+| `false` | ペナルティをオフにする |
+| `true` | 辞書のルールを要求する。辞書がルールを同梱していない場合は `build()` が例外を投げる |
+| `{ rules: [{ pos: [...], cost: n }, ...] }` | 辞書のルールの代わりにこのルールを適用する |
+
+それ以外の値を渡すと `Error` を投げます。
+
+```javascript
+// ペナルティをオフにする
+builder.setSpacePenalty(false);
+
+// 明示的なルール（ko-dic が同梱するルールと同じ）
+builder.setSpacePenalty({
+  rules: [
+    { pos: ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], cost: 3000 },
+    { pos: ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], cost: 6000 },
+  ],
+});
+
+// 辞書のデフォルトに戻す
+builder.setSpacePenalty(null);
+```
+
+> [!NOTE]
+> v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適用されます。ko-dic の `metadata.json` が mecab-ko-dic のルールを同梱しているためです。これにより韓国語の出力が v6.0 から変わります（例: `서울 시 에서` の `시` が語尾 `EP` ではなく名詞 `NNG` になる）。v6.0 の出力に戻すには `setSpacePenalty(false)` を呼び出してください。`new Tokenizer(dictionary, ...)` で直接作成した `Tokenizer` は常にデフォルトを使うため、オフにするには `TokenizerBuilder` を使ってください。v6.0.0 リリースからダウンロードした ko-dic はルールを同梱していないため、その辞書ではペナルティはオフのままで、`setSpacePenalty(true)` を指定すると `build()` が例外を投げます。詳細は [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
+
 #### `appendCharacterFilter(kind, args?)`
 
 前処理パイプラインに文字フィルタを追加します。

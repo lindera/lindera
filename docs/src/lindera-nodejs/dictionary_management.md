@@ -79,6 +79,13 @@ buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 
 The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).
 
+To build a dictionary with the settings its `metadata.json` ships, load the file with `Metadata.fromJsonFile()` and pass the result. The file's `space_penalty` rules are kept, so a ko-dic built this way applies the left-space penalty by default (see [`setSpacePenalty`](tokenizer_api.md#setspacepenaltyvalue)). A `Metadata` created with `new Metadata(...)` carries no rules.
+
+```javascript
+const metadata = Metadata.fromJsonFile("/path/to/lindera-ko-dic/metadata.json");
+buildDictionary("/path/to/mecab-ko-dic", "/path/to/output_dir", metadata);
+```
+
 ### User Dictionary
 
 Build a user dictionary from a CSV file:
@@ -156,11 +163,19 @@ console.log(metadata.name); // "custom_dict"
 
 ### `toObject()`
 
-Returns a plain object representation of the metadata:
+Returns a plain object representation of the metadata, with every value as a string:
 
 ```javascript
 const metadata = new Metadata({ name: "test" });
 console.log(metadata.toObject());
+```
+
+When the metadata carries left-space penalty rules (for example, when it was loaded from ko-dic's `metadata.json`), the object also has a `spacePenalty` entry holding the rules as a JSON string. Otherwise the key is absent.
+
+```javascript
+const koDic = Metadata.fromJsonFile("/path/to/lindera-ko-dic/metadata.json");
+const { rules } = JSON.parse(koDic.toObject().spacePenalty);
+console.log(rules[1].pos); // ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"]
 ```
 
 ## Schema
