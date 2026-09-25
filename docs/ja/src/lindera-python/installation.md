@@ -8,6 +8,8 @@
 pip install lindera
 ```
 
+ホイールの対象は、CPython 3.10〜3.14 の Linux（x86_64 と aarch64、glibc）、macOS（x86_64 と arm64）、Windows（x64 と arm64）です。それ以外の環境（musl ベースの Linux（Alpine）、ほかの CPU アーキテクチャ、free-threaded 版 CPython など）では、`pip install lindera` がソース配布物（sdist）からパッケージをビルドします。このビルドには Rust ツールチェーン 1.88 以降（[rustup](https://rustup.rs/) でインストール）と `cc` などの C リンカが必要で、数分かかります。
+
 > [!NOTE]
 > PyPI パッケージには辞書が含まれていません。下記の[辞書の入手](#辞書の入手)を参照してください。
 
