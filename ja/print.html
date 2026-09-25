@@ -6611,7 +6611,7 @@ builder.setSpacePenalty({
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>서울 시 에서</code> の <code>시</code> は、語尾 <code>EP</code> ではなく名詞 <code>NNG</code> と解析されるようになりました。v6.0 の出力に戻すには <code>builder.setSpacePenalty(false)</code> を呼び出してください。ルールを同梱しているのは Lindera 6.1.0 より後のリリースでビルドした ko-dic だけです。v6.1.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="lindera-wasm/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>서울 시 에서</code> の <code>시</code> は、語尾 <code>EP</code> ではなく名詞 <code>NNG</code> と解析されるようになりました。v6.0 の出力に戻すには <code>builder.setSpacePenalty(false)</code> を呼び出してください。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="lindera-wasm/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
 </blockquote>
 <h4 id="appendcharacterfiltername-args"><a class="header" href="#appendcharacterfiltername-args"><code>appendCharacterFilter(name, args)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
