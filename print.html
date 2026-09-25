@@ -3244,6 +3244,7 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does
 <p>Appends a token filter to the postprocessing pipeline.</p>
 <pre><code class="language-python">builder.append_token_filter("lowercase", {})
 </code></pre>
+<p>The arguments of <code>set_space_penalty</code>, <code>append_character_filter</code> and <code>append_token_filter</code> may nest lists and dicts at most 128 levels deep. A deeper value, or one that contains itself, raises <code>ValueError</code>.</p>
 <h3 id="build-1"><a class="header" href="#build-1">Build</a></h3>
 <h4 id="build-2"><a class="header" href="#build-2"><code>build()</code></a></h4>
 <p>Builds and returns a <code>Tokenizer</code> with the configured settings.</p>
@@ -4129,6 +4130,7 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, because its <cod
 <p>Appends a token filter to the postprocessing pipeline.</p>
 <pre><code class="language-javascript">builder.appendTokenFilter("lowercase", {});
 </code></pre>
+<p>The arguments of <code>setSpacePenalty</code>, <code>appendCharacterFilter</code> and <code>appendTokenFilter</code> may nest arrays and objects at most 128 levels deep. A deeper value, or one that contains itself, throws an <code>Error</code>.</p>
 <h3 id="build-3"><a class="header" href="#build-3">Build</a></h3>
 <h4 id="build-4"><a class="header" href="#build-4"><code>build()</code></a></h4>
 <p>Builds and returns a <code>Tokenizer</code> with the configured settings.</p>
@@ -4891,6 +4893,7 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does
 <p>Appends a token filter to the postprocessing pipeline. The <code>args</code> parameter is a hash with string keys, or <code>nil</code> if the filter requires no arguments.</p>
 <pre><code class="language-ruby">builder.append_token_filter('lowercase', nil)
 </code></pre>
+<p>The arguments of <code>set_space_penalty</code>, <code>append_character_filter</code> and <code>append_token_filter</code> may nest arrays and hashes at most 128 levels deep. A deeper value, or one that contains itself, raises <code>ArgumentError</code>.</p>
 <h3 id="build-5"><a class="header" href="#build-5">Build</a></h3>
 <h4 id="build-6"><a class="header" href="#build-6"><code>build</code></a></h4>
 <p>Builds and returns a <code>Tokenizer</code> with the configured settings.</p>
@@ -5761,6 +5764,7 @@ $builder-&gt;appendCharacterFilter('unicode_normalize', ['kind' =&gt; 'nfkc']);
 
 $builder-&gt;appendTokenFilter('lowercase');
 </code></pre>
+<p>The arguments of <code>setSpacePenalty</code>, <code>appendCharacterFilter</code> and <code>appendTokenFilter</code> may nest arrays at most 128 levels deep. A deeper array throws a <code>ValueError</code>.</p>
 <h3 id="build-7"><a class="header" href="#build-7">Build</a></h3>
 <h4 id="build-8"><a class="header" href="#build-8"><code>build()</code></a></h4>
 <p>Builds and returns a <code>Tokenizer</code> with the configured settings.</p>
@@ -6762,6 +6766,7 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does
     tags: ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞", "記号,句点", "記号,読点"]
 });
 </code></pre>
+<p>The arguments of <code>setSpacePenalty</code>, <code>appendCharacterFilter</code> and <code>appendTokenFilter</code> may nest arrays, objects and <code>Map</code>s at most 128 levels deep. A deeper value, or one that contains itself, throws an error string.</p>
 <h4 id="build-9"><a class="header" href="#build-9"><code>build()</code></a></h4>
 <p>Builds and returns a configured <code>Tokenizer</code> instance. The builder remains
 usable afterwards, so multiple tokenizers can be built from the same

@@ -269,6 +269,7 @@ $builder-&gt;appendCharacterFilter('unicode_normalize', ['kind' =&gt; 'nfkc']);
 
 $builder-&gt;appendTokenFilter('lowercase');
 </code></pre>
+<p>The arguments of <code>setSpacePenalty</code>, <code>appendCharacterFilter</code> and <code>appendTokenFilter</code> may nest arrays at most 128 levels deep. A deeper array throws a <code>ValueError</code>.</p>
 <h3 id="build"><a class="header" href="#build">Build</a></h3>
 <h4 id="build-1"><a class="header" href="#build-1"><code>build()</code></a></h4>
 <p>Builds and returns a <code>Tokenizer</code> with the configured settings.</p>

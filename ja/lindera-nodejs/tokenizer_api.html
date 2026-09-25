@@ -255,6 +255,7 @@ v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適
 <p>後処理パイプラインにトークンフィルタを追加します。</p>
 <pre><code class="language-javascript">builder.appendTokenFilter("lowercase", {});
 </code></pre>
+<p><code>setSpacePenalty</code>、<code>appendCharacterFilter</code>、<code>appendTokenFilter</code> の引数は、配列とオブジェクトの入れ子が 128 段までです。それより深い値や、自分自身を含む値を渡すと <code>Error</code> を投げます。</p>
 <h3 id="ビルド"><a class="header" href="#ビルド">ビルド</a></h3>
 <h4 id="build"><a class="header" href="#build"><code>build()</code></a></h4>
 <p>設定された内容で <code>Tokenizer</code> をビルドして返します。</p>

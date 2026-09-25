@@ -294,6 +294,7 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does
     tags: ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞", "記号,句点", "記号,読点"]
 });
 </code></pre>
+<p>The arguments of <code>setSpacePenalty</code>, <code>appendCharacterFilter</code> and <code>appendTokenFilter</code> may nest arrays, objects and <code>Map</code>s at most 128 levels deep. A deeper value, or one that contains itself, throws an error string.</p>
 <h4 id="build"><a class="header" href="#build"><code>build()</code></a></h4>
 <p>Builds and returns a configured <code>Tokenizer</code> instance. The builder remains
 usable afterwards, so multiple tokenizers can be built from the same

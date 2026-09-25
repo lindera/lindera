@@ -294,6 +294,7 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
     tags: ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞", "記号,句点", "記号,読点"]
 });
 </code></pre>
+<p><code>setSpacePenalty</code>、<code>appendCharacterFilter</code>、<code>appendTokenFilter</code> の引数は、配列、オブジェクト、<code>Map</code> の入れ子が 128 段までです。それより深い値や、自分自身を含む値を渡すと、エラー文字列が投げられます。</p>
 <h4 id="build"><a class="header" href="#build"><code>build()</code></a></h4>
 <p>設定済みの <code>Tokenizer</code> インスタンスをビルドして返します。ビルド後もビルダーはそのまま使えるため、同じ設定から複数のトークナイザーをビルドできます。</p>
 <ul>

@@ -251,6 +251,7 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <p>後処理パイプラインにトークンフィルタを追加します。</p>
 <pre><code class="language-python">builder.append_token_filter("lowercase", {})
 </code></pre>
+<p><code>set_space_penalty</code>、<code>append_character_filter</code>、<code>append_token_filter</code> の引数は、list と dict の入れ子が 128 段までです。それより深い値や、自分自身を含む値を渡すと <code>ValueError</code> が送出されます。</p>
 <h3 id="ビルド"><a class="header" href="#ビルド">ビルド</a></h3>
 <h4 id="build"><a class="header" href="#build"><code>build()</code></a></h4>
 <p>設定された内容で <code>Tokenizer</code> をビルドして返します。</p>

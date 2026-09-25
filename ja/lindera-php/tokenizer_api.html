@@ -251,6 +251,7 @@ $builder-&gt;appendTokenFilter('japanese_stop_tags', [
     'tags' =&gt; ['助詞,格助詞,一般', '助詞,係助詞', '助詞,連体化', '助動詞'],
 ]);
 </code></pre>
+<p><code>setSpacePenalty</code>、<code>appendCharacterFilter</code>、<code>appendTokenFilter</code> の引数は、配列の入れ子が 128 段までです。それより深い配列を渡すと <code>ValueError</code> をスローします。</p>
 <h3 id="ビルド"><a class="header" href="#ビルド">ビルド</a></h3>
 <h4 id="build"><a class="header" href="#build"><code>build()</code></a></h4>
 <p>設定された内容で <code>Tokenizer</code> をビルドして返します。</p>
