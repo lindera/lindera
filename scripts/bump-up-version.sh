@@ -77,8 +77,11 @@ sed -i "s/\(spec\.version = \"\)$CURRENT_RE\(\"\)/\1$NEW_VERSION\2/" lindera-rub
 sed -i "s/$CURRENT_RE/$NEW_VERSION/g" lindera-nodejs/index.js
 
 # --- docs: sample `version()` output in the WASM tokenizer API guide ---
-sed -i "s/$CURRENT_RE/$NEW_VERSION/g" docs/src/lindera-wasm/tokenizer_api.md
-sed -i "s/$CURRENT_RE/$NEW_VERSION/g" docs/ja/src/lindera-wasm/tokenizer_api.md
+# Only the `console.log(version())` example line: the pages also mention
+# past releases (e.g. which release's ko-dic ships no space-penalty rules),
+# and those must not follow the version.
+sed -i "/console\.log(version())/s/$CURRENT_RE/$NEW_VERSION/" docs/src/lindera-wasm/tokenizer_api.md
+sed -i "/console\.log(version())/s/$CURRENT_RE/$NEW_VERSION/" docs/ja/src/lindera-wasm/tokenizer_api.md
 
 # --- package.json files: edit structurally via jq (same idiom as the
 # --- Makefile's own wasm-package-json version sync) to avoid formatting risk.
