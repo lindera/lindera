@@ -53,9 +53,14 @@ const COMMON_FIELD_COUNT: usize = 4;
 
 /// One penalty rule: the cost added to a candidate whose first
 /// part-of-speech tag is in `pos` when the candidate starts after whitespace.
+///
+/// The type is `#[non_exhaustive]` so that fields can be added without a
+/// breaking change; create it with [`SpacePenaltyRule::new`] or deserialize
+/// it from JSON/YAML.
 #[derive(
     Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize,
 )]
+#[non_exhaustive]
 pub struct SpacePenaltyRule {
     /// First part-of-speech tags this rule applies to (e.g. `["JKS", "JX"]`).
     pub pos: Vec<String>,
@@ -96,6 +101,10 @@ impl SpacePenaltyRule {
 ///   ]
 /// }
 /// ```
+///
+/// The type is `#[non_exhaustive]` so that fields can be added without a
+/// breaking change; create it with [`SpacePenaltyConfig::new`],
+/// [`Default::default`] or by deserializing it.
 #[derive(
     Clone,
     Debug,
@@ -108,6 +117,7 @@ impl SpacePenaltyRule {
     RkyvSerialize,
     RkyvDeserialize,
 )]
+#[non_exhaustive]
 pub struct SpacePenaltyConfig {
     /// The rules, consulted in order; the first match wins.
     pub rules: Vec<SpacePenaltyRule>,
@@ -420,6 +430,23 @@ mod tests {
         .unwrap();
         assert_eq!(parsed.rules.len(), 2);
         assert_eq!(parsed.cost_for_tag("JKS"), 6000);
+    }
+
+    #[test]
+    fn constructors_set_every_field() {
+        // The types are `#[non_exhaustive]`, so code outside this crate can
+        // only build them through these constructors (or serde); they must
+        // keep populating every field.
+        let rule = SpacePenaltyRule::new(["JKS", "JX"], 6000);
+        assert_eq!(rule.pos, vec!["JKS".to_string(), "JX".to_string()]);
+        assert_eq!(rule.cost, 6000);
+
+        let config = SpacePenaltyConfig::new(vec![rule.clone()]);
+        assert_eq!(config.rules, vec![rule]);
+
+        let empty = SpacePenaltyConfig::default();
+        assert!(empty.rules.is_empty());
+        assert_eq!(empty.cost_for_tag("JKS"), 0);
     }
 
     #[test]
