@@ -212,6 +212,21 @@ impl TokenizerBuilder {
         self
     }
 
+    /// Removes any left-space penalty setting, so the Segmenter falls back to
+    /// its default: the rules the dictionary ships, if any. This undoes
+    /// [`Self::set_segmenter_space_penalty`] and
+    /// [`Self::set_segmenter_space_penalty_from_dictionary`].
+    ///
+    /// # Returns
+    ///
+    /// A mutable reference to `self`, for chaining.
+    pub fn reset_segmenter_space_penalty(&mut self) -> &mut Self {
+        if let Some(segmenter) = self.config["segmenter"].as_object_mut() {
+            segmenter.remove("space_penalty");
+        }
+        self
+    }
+
     /// Set whether to route filesystem-loaded dictionaries through
     /// memory-mapped reads. Ignored for `embedded://` dictionaries.
     ///
@@ -658,6 +673,24 @@ mod tests {
             builder.config["segmenter"]["space_penalty"]["rules"][0]["cost"],
             6000
         );
+    }
+
+    /// Resetting removes the key again, so the dictionary default applies.
+    #[test]
+    fn test_reset_segmenter_space_penalty_removes_the_key() {
+        let mut builder = TokenizerBuilder::new().unwrap();
+        // Resetting an unset key is a no-op.
+        builder.reset_segmenter_space_penalty();
+        assert!(builder.config["segmenter"].get("space_penalty").is_none());
+
+        builder.set_segmenter_space_penalty(None);
+        builder.reset_segmenter_space_penalty();
+        assert!(builder.config["segmenter"].get("space_penalty").is_none());
+        // Other segmenter keys are untouched.
+        builder.set_segmenter_keep_whitespace(true);
+        builder.set_segmenter_space_penalty_from_dictionary(true);
+        builder.reset_segmenter_space_penalty();
+        assert_eq!(builder.config["segmenter"]["keep_whitespace"], true);
     }
 
     #[cfg(feature = "embed-ipadic")]

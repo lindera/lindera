@@ -15,6 +15,7 @@ license = { workspace = true }
 # Dictionary-embedding pass-throughs, used only by feature-gated tests and
 # benches in this crate; the bindings enable embedding via their own crates.
 embed-ipadic = ["lindera/embed-ipadic", "lindera-analysis/embed-ipadic"]
+embed-ko-dic = ["lindera/embed-ko-dic", "lindera-analysis/embed-ko-dic"]
 
 [dependencies]
 lindera = { workspace = true }

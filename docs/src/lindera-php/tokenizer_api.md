@@ -76,6 +76,40 @@ Controls whether whitespace tokens appear in the output.
 $builder->setKeepWhitespace(true);
 ```
 
+#### `setSpacePenalty($value)`
+
+Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added. `$value` has the same meaning as `segmenter.space_penalty` in a [configuration file](../lindera-analysis/configuration.md):
+
+- `null` -- The default: the rules the dictionary ships in its `metadata.json`, if any (ko-dic ships mecab-ko-dic's rules; the other bundled dictionaries ship none). Use it to undo an earlier call.
+- `false` -- Turns the penalty off.
+- `true` -- Requires the dictionary's rules; `build()` throws a `ValueError` for a dictionary that ships none.
+- An associative array, `['rules' => [['pos' => [...], 'cost' => n], ...]]` -- Applies these rules instead. A candidate whose first part-of-speech tag is listed in `pos` gets `cost` added; the first matching rule wins.
+
+`rules` and each `pos` must be lists, with keys `0, 1, 2, ...` (apply `array_values()` after `array_filter()` or `array_unique()`), and `cost` must be an `int` in the 32-bit range; a float such as `6000.0` is rejected. Any other value throws a `ValueError`, including objects (a `stdClass`, or `json_decode()` without `true`) and `NAN` or `INF`.
+
+```php
+<?php
+
+$builder->setDictionary('embedded://ko-dic');
+
+// Turn the penalty off (the v6.0 output)
+$builder->setSpacePenalty(false);
+
+// Apply explicit rules
+$builder->setSpacePenalty([
+    'rules' => [
+        ['pos' => ['EC', 'EF', 'EP', 'ETM', 'ETN', 'VCP', 'XSA', 'XSN', 'XSV'], 'cost' => 3000],
+        ['pos' => ['JC', 'JKB', 'JKC', 'JKG', 'JKO', 'JKQ', 'JKS', 'JKV', 'JX'], 'cost' => 6000],
+    ],
+]);
+
+// Back to the dictionary's default
+$builder->setSpacePenalty(null);
+```
+
+> [!NOTE]
+> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `서울 시 에서` now reads `시` as the noun `NNG` rather than the ending `EP`. Call `$builder->setSpacePenalty(false)` to get the v6.0 output back; a tokenizer created with [`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-userdictionary) always applies the dictionary's rules. Only a ko-dic built by a Lindera release later than 6.0.0 ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and `true` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
+
 #### `appendCharacterFilter($kind, $args)`
 
 Appends a character filter to the preprocessing pipeline.
@@ -117,6 +151,8 @@ $tokenizer = $builder->build();
 #### `new Lindera\Tokenizer($dictionary, $mode, $userDictionary)`
 
 Creates a tokenizer directly from a loaded dictionary.
+
+A tokenizer created this way always applies the left-space penalty rules the dictionary ships (ko-dic ships them), and the constructor has no option to change that. To change or turn off the penalty, use a `TokenizerBuilder` with [`setSpacePenalty()`](#setspacepenaltyvalue).
 
 ```php
 <?php

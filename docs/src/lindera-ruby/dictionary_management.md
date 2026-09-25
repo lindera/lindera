@@ -70,6 +70,8 @@ Lindera.build_dictionary('/path/to/input_dir', '/path/to/output_dir', metadata)
 
 The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).
 
+Metadata loaded with `Lindera::Metadata.from_json_file` keeps the `space_penalty` rules of the `metadata.json`, and the built dictionary ships them. For ko-dic this means the left-space penalty stays on by default in the dictionary you build; turn it off per tokenizer with `TokenizerBuilder#set_space_penalty(false)` (see [Tokenizer API](./tokenizer_api.md#set_space_penaltyvalue)).
+
 ### User Dictionary
 
 Build a user dictionary from a CSV file:
@@ -150,3 +152,11 @@ metadata = dictionary.metadata
 | `flexible_csv` | `Boolean` | `false` | Allow flexible CSV parsing |
 | `skip_invalid_cost_or_id` | `Boolean` | `false` | Skip entries with invalid cost or ID |
 | `normalize_details` | `Boolean` | `false` | Normalize morphological details |
+
+`to_h` (and its alias `to_hash`) returns these properties as a `Hash` of strings, together with `dictionary_schema_fields` and `user_dictionary_schema_fields` (comma-separated field names). When the metadata carries left-space penalty rules, as ko-dic's does, the hash also has a `space_penalty` entry holding them as a JSON string:
+
+```ruby
+metadata = Lindera::Metadata.from_json_file('/path/to/ko-dic/metadata.json')
+metadata.to_h['space_penalty']
+# '{"rules":[{"pos":["EC","EF",...],"cost":3000},{"pos":["JC","JKB",...],"cost":6000}]}'
+```

@@ -94,6 +94,8 @@ build_dictionary("/path/to/input_dir", "/path/to/output_dir", metadata)
 
 入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。
 
+`Metadata.from_json_file` で読み込んだメタデータは `metadata.json` の `space_penalty` ルールを保持し、ビルドした辞書にもそのルールが同梱されます。そのため ko-dic をビルドした場合も、左側空白ペナルティはデフォルトでオンのままです。トークナイザーごとにオフにするには `TokenizerBuilder.set_space_penalty(False)` を使います（[Tokenizer API](./tokenizer_api.md#set_space_penaltyvalue) を参照）。コンストラクタで作成した `Metadata` はルールを持ちません。
+
 ### ユーザー辞書のビルド
 
 CSV ファイルからユーザー辞書をビルドします：
@@ -169,11 +171,19 @@ print(metadata.name)  # "custom_dict"
 
 ### `to_dict()`
 
-メタデータの辞書表現を返します：
+メタデータを文字列の `dict` として返します。上記のプロパティを含み、2 つのスキーマは `dictionary_schema_fields` と `user_dictionary_schema_fields`（カンマ区切りのフィールド名）として格納されます：
 
 ```python
 metadata = Metadata(name="test")
 print(metadata.to_dict())
+```
+
+ko-dic のようにメタデータが左側空白ペナルティのルールを持つ場合、`dict` にはそのルールを JSON 文字列で保持する `space_penalty` エントリも含まれます。ルールがない場合、このキーはありません：
+
+```python
+metadata = Metadata.from_json_file("/path/to/ko-dic/metadata.json")
+metadata.to_dict()["space_penalty"]
+# '{"rules":[{"pos":["EC","EF",...],"cost":3000},{"pos":["JC","JKB",...],"cost":6000}]}'
 ```
 
 ## Schema

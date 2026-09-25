@@ -109,6 +109,27 @@ class LinderaTest extends TestCase
         $this->assertEquals(-5000, $metadata->default_word_cost);
     }
 
+    public function testMetadataToArrayOmitsSpacePenaltyByDefault(): void
+    {
+        $this->assertArrayNotHasKey('space_penalty', Lindera\Metadata::createDefault()->toArray());
+    }
+
+    // #1052: ko-dic's metadata.json ships the left-space penalty rules, and
+    // Metadata keeps them so a dictionary built from it applies them too.
+    public function testMetadataFromKoDicJsonKeepsSpacePenalty(): void
+    {
+        $metadata = Lindera\Metadata::fromJsonFile(__DIR__ . '/../../lindera-ko-dic/metadata.json');
+        $array = $metadata->toArray();
+
+        $this->assertArrayHasKey('space_penalty', $array);
+        $this->assertStringContainsString('JKS', $array['space_penalty']);
+
+        $config = json_decode($array['space_penalty'], true, flags: JSON_THROW_ON_ERROR);
+        $this->assertCount(2, $config['rules']);
+        $this->assertSame(6000, $config['rules'][1]['cost']);
+        $this->assertContains('JKS', $config['rules'][1]['pos']);
+    }
+
     public function testFieldType(): void
     {
         $ft = new Lindera\FieldType('surface');
@@ -255,6 +276,106 @@ class LinderaTest extends TestCase
 
         $tokens = $tokenizer->tokenize('関西国際空港');
         $this->assertGreaterThan(0, count($tokens));
+    }
+
+    // #1052: setSpacePenalty takes the same values as segmenter.space_penalty
+    // in a config file. IPADIC ships no rules, so everything but `true`
+    // (which requires the dictionary's rules) builds.
+    public function testTokenizerBuilderSetSpacePenaltyAcceptedValues(): void
+    {
+        $text = '関西国際空港限定トートバッグ';
+        $builder = new Lindera\TokenizerBuilder();
+        $builder->setDictionary('embedded://ipadic');
+        $expected = $builder->build()->tokenizeSurfaces($text);
+
+        $values = [
+            'null' => null,
+            'false' => false,
+            'rules' => ['rules' => [['pos' => ['JKS'], 'cost' => 6000]]],
+            'empty rules' => ['rules' => []],
+        ];
+        foreach ($values as $label => $value) {
+            $builder = new Lindera\TokenizerBuilder();
+            $builder->setDictionary('embedded://ipadic');
+            $builder->setSpacePenalty($value);
+            $tokenizer = $builder->build();
+
+            // No IPADIC tag matches a ko-dic rule, and the text has no
+            // spaces, so the output is unchanged; this only shows that each
+            // value is accepted. The effect is checked in the next test.
+            $this->assertSame($expected, $tokenizer->tokenizeSurfaces($text), "space penalty: {$label}");
+        }
+    }
+
+    // The rules array has to reach the segmenter: penalizing 助詞 after a
+    // space changes how IPADIC reads the particle "は" in a spaced text.
+    public function testTokenizerBuilderSetSpacePenaltyRulesTakeEffect(): void
+    {
+        // Returns the tokens as "surface/first POS tag" strings.
+        $analyze = static function (mixed $value): array {
+            $builder = new Lindera\TokenizerBuilder();
+            $builder->setDictionary('embedded://ipadic');
+            $builder->setSpacePenalty($value);
+
+            return array_map(
+                static fn($token) => $token->surface . '/' . $token->getDetail(0),
+                $builder->build()->tokenize('東京 は 晴れ です')
+            );
+        };
+
+        $default = $analyze(null);
+        $this->assertContains('は/助詞', $default);
+        $this->assertSame($default, $analyze(false));
+
+        $penalized = $analyze(['rules' => [['pos' => ['助詞'], 'cost' => 30000]]]);
+        $this->assertNotEmpty($penalized);
+        $this->assertNotContains('は/助詞', $penalized);
+    }
+
+    public function testTokenizerBuilderSetSpacePenaltyTrueFailsWithoutDictionaryRules(): void
+    {
+        $builder = new Lindera\TokenizerBuilder();
+        $builder->setDictionary('embedded://ipadic');
+        // Accepted by the setter; the dictionary is only checked by build().
+        $builder->setSpacePenalty(true);
+
+        try {
+            $builder->build();
+            $this->fail('build() succeeded although IPADIC ships no space penalty rules');
+        } catch (\ValueError $e) {
+            $this->assertNotEmpty($e->getMessage());
+        }
+
+        // null restores the default, so the same builder builds again.
+        $builder->setSpacePenalty(null);
+        $this->assertInstanceOf(Lindera\Tokenizer::class, $builder->build());
+    }
+
+    public function testTokenizerBuilderSetSpacePenaltyRejectsInvalidValues(): void
+    {
+        $values = [
+            'number' => 1,
+            'string' => 'false',
+            'list' => ['JKS'],
+            'rules as string' => ['rules' => 'JKS'],
+            'rule without cost' => ['rules' => [['pos' => ['JKS']]]],
+            // Objects and non-finite floats fail in the Zval conversion,
+            // before the core sees them; they must still be a ValueError.
+            'stdClass' => new \stdClass(),
+            'json_decode object' => json_decode('{"rules":[{"pos":["JKS"],"cost":6000}]}'),
+            'closure' => static fn() => null,
+            'NAN' => NAN,
+            'INF cost' => ['rules' => [['pos' => ['JKS'], 'cost' => INF]]],
+        ];
+        $builder = new Lindera\TokenizerBuilder();
+        foreach ($values as $label => $value) {
+            try {
+                $builder->setSpacePenalty($value);
+                $this->fail("setSpacePenalty accepted an invalid value: {$label}");
+            } catch (\ValueError $e) {
+                $this->assertStringContainsString('space_penalty', $e->getMessage(), $label);
+            }
+        }
     }
 
     public function testTokenizerDirect(): void

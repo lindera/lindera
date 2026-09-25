@@ -9,12 +9,37 @@ use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::token::token_view_to_js;
 
-/// Parses optional filter arguments (a JS value) into a JSON value.
-fn parse_filter_args(args: JsValue) -> Result<Value, JsValue> {
-    if args.is_undefined() || args.is_null() {
-        Ok(Value::Object(serde_json::Map::new()))
+/// Converts a JS value into a JSON value.
+///
+/// # Arguments
+///
+/// * `value` - The JS value; `null` and `undefined` both become JSON `null`.
+///
+/// # Returns
+///
+/// The JSON value, or the conversion error when the value has no JSON form.
+fn js_to_json(value: JsValue) -> Result<Value, serde_wasm_bindgen::Error> {
+    if value.is_undefined() || value.is_null() {
+        Ok(Value::Null)
     } else {
-        serde_wasm_bindgen::from_value::<Value>(args).map_err(|e| JsValue::from_str(&e.to_string()))
+        serde_wasm_bindgen::from_value::<Value>(value)
+    }
+}
+
+/// Parses optional filter arguments (a JS value) into a JSON value.
+///
+/// # Arguments
+///
+/// * `args` - The filter arguments; `null` or `undefined` mean no arguments.
+///
+/// # Returns
+///
+/// The arguments as JSON (an empty object when none were given), or an error
+/// string when they have no JSON form.
+fn parse_filter_args(args: JsValue) -> Result<Value, JsValue> {
+    match js_to_json(args).map_err(|e| JsValue::from_str(&e.to_string()))? {
+        Value::Null => Ok(Value::Object(serde_json::Map::new())),
+        value => Ok(value),
     }
 }
 
@@ -28,6 +53,10 @@ struct BuilderState {
     user_dictionary_instance: Option<JsUserDictionary>,
     /// Mode string stored for use when building with a dictionary instance.
     mode_for_instance: Option<String>,
+    /// The value last passed to `setSpacePenalty()` (JSON `null` when unset),
+    /// applied to a dictionary instance at build time; the URI path gets it
+    /// through `inner`.
+    space_penalty: Value,
 }
 
 /// Builder for creating a [`Tokenizer`] instance.
@@ -60,6 +89,7 @@ impl TokenizerBuilder {
                 dictionary_instance: None,
                 user_dictionary_instance: None,
                 mode_for_instance: None,
+                space_penalty: Value::Null,
             })),
         })
     }
@@ -71,16 +101,20 @@ impl TokenizerBuilder {
     ///
     /// The builder remains usable afterwards, so multiple tokenizers can be
     /// built from the same configuration.
+    ///
+    /// The `setSpacePenalty()` setting applies to a dictionary instance as it
+    /// does to a dictionary set by URI.
     pub fn build(&self) -> Result<Tokenizer, JsValue> {
         let state = self.state.borrow();
         if let Some(dict) = state.dictionary_instance.clone() {
             // Build tokenizer using the pre-loaded dictionary instance
             // (dictionaries are cheap to clone: their payload is shared).
             let user_dict = state.user_dictionary_instance.clone().map(|d| d.inner);
-            let inner = CoreTokenizer::from_segmenter(
+            let inner = CoreTokenizer::from_segmenter_with_space_penalty(
                 state.mode_for_instance.as_deref().unwrap_or("normal"),
                 dict.inner,
                 user_dict,
+                &state.space_penalty,
             )
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
@@ -173,6 +207,48 @@ impl TokenizerBuilder {
         self.share()
     }
 
+    /// Sets the left-space penalty (Korean; mecab-ko's
+    /// `left-space-penalty-factor`), with the same meaning as
+    /// `segmenter.space_penalty` in a YAML config.
+    ///
+    /// Since v6.1.0 a dictionary that ships rules in its `metadata.json`
+    /// (ko-dic does) applies them by default; pass `false` to turn them off.
+    ///
+    /// Applies both to a dictionary set with `setDictionary()` and to one set
+    /// with `setDictionaryInstance()` (e.g. loaded with
+    /// `loadDictionaryFromBytes()`).
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - One of:
+    ///   - `null` / `undefined`: the default, i.e. the rules the dictionary
+    ///     ships, if any;
+    ///   - `false`: turn the penalty off;
+    ///   - `true`: require the dictionary's rules (`build()` fails if it
+    ///     ships none);
+    ///   - an object such as `{ rules: [{ pos: ["JKS"], cost: 6000 }] }`:
+    ///     apply these rules instead.
+    ///
+    /// # Returns
+    ///
+    /// A builder handle sharing this configuration, enabling method chaining,
+    /// or an error string when `value` is not one of the forms above.
+    #[wasm_bindgen(js_name = "setSpacePenalty")]
+    pub fn set_space_penalty(&self, value: JsValue) -> Result<TokenizerBuilder, JsValue> {
+        let value = js_to_json(value)
+            .map_err(|e| JsValue::from_str(&format!("invalid space_penalty: {e}")))?;
+        {
+            let mut state = self.state.borrow_mut();
+            state
+                .inner
+                .set_space_penalty(&value)
+                .map_err(|e| JsValue::from_str(&e.to_string()))?;
+            state.space_penalty = value;
+        }
+
+        Ok(self.share())
+    }
+
     /// Appends a character filter to the tokenization pipeline.
     ///
     /// Returns a builder handle sharing this configuration, enabling method chaining.
@@ -239,6 +315,21 @@ impl TokenizerBuilder {
     #[wasm_bindgen(js_name = "set_keep_whitespace")]
     pub fn py_set_keep_whitespace(&self, keep: bool) -> TokenizerBuilder {
         self.set_keep_whitespace(keep)
+    }
+
+    /// Sets the left-space penalty (snake_case alias of `setSpacePenalty`).
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - `null` / `undefined`, a boolean, or an object with `rules`.
+    ///
+    /// # Returns
+    ///
+    /// A builder handle sharing this configuration, or an error string when
+    /// `value` is invalid.
+    #[wasm_bindgen(js_name = "set_space_penalty")]
+    pub fn py_set_space_penalty(&self, value: JsValue) -> Result<TokenizerBuilder, JsValue> {
+        self.set_space_penalty(value)
     }
 
     /// Appends a character filter (snake_case alias).
@@ -746,5 +837,289 @@ mod tests {
         let tokens = tokenizer.tokenize("すもも").unwrap();
 
         assert!(!tokens.is_empty());
+    }
+
+    /// Parses a JSON literal into a JS value.
+    #[cfg(target_arch = "wasm32")]
+    fn js_json(text: &str) -> wasm_bindgen::JsValue {
+        js_sys::JSON::parse(text).unwrap()
+    }
+
+    /// The explicit rules object used by the space-penalty tests.
+    #[cfg(target_arch = "wasm32")]
+    fn space_penalty_rules() -> wasm_bindgen::JsValue {
+        js_json(r#"{"rules":[{"pos":["JKS"],"cost":6000}]}"#)
+    }
+
+    /// Spaced Japanese text whose particle and auxiliary verb IPADIC reads
+    /// differently once a left-space penalty applies to them.
+    #[cfg(target_arch = "wasm32")]
+    const SPACED_TEXT: &str = "私 は 猫 です";
+
+    /// IPADIC-tag rules that penalize particles and auxiliary verbs after a
+    /// space, as a JS object for `setSpacePenalty()`.
+    #[cfg(target_arch = "wasm32")]
+    fn ipadic_rules() -> wasm_bindgen::JsValue {
+        js_json(r#"{"rules":[{"pos":["助詞","助動詞"],"cost":100000}]}"#)
+    }
+
+    /// The same rules as [`ipadic_rules`], as a Rust config.
+    #[cfg(target_arch = "wasm32")]
+    fn ipadic_rules_config() -> lindera::space_penalty::SpacePenaltyConfig {
+        use lindera::space_penalty::{SpacePenaltyConfig, SpacePenaltyRule};
+
+        SpacePenaltyConfig::new(vec![SpacePenaltyRule::new(["助詞", "助動詞"], 100000)])
+    }
+
+    /// Tokenizes `text` into `(surface, part of speech)` pairs.
+    #[cfg(target_arch = "wasm32")]
+    fn surfaces_and_pos(tokenizer: &crate::Tokenizer, text: &str) -> Vec<(String, String)> {
+        tokenizer
+            .tokenize(text)
+            .unwrap()
+            .iter()
+            .map(|t| (token_str(t, "surface"), token_details(t)[0].clone()))
+            .collect()
+    }
+
+    /// Builds `builder` and tokenizes [`SPACED_TEXT`].
+    #[cfg(target_arch = "wasm32")]
+    fn build_and_tokenize(builder: &crate::TokenizerBuilder) -> Vec<(String, String)> {
+        surfaces_and_pos(&builder.build().unwrap(), SPACED_TEXT)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_set_space_penalty_accepts_the_config_forms() {
+        use crate::TokenizerBuilder;
+        use wasm_bindgen::JsValue;
+
+        let builder = TokenizerBuilder::new().unwrap();
+        for value in [
+            JsValue::NULL,
+            JsValue::UNDEFINED,
+            JsValue::TRUE,
+            JsValue::FALSE,
+            space_penalty_rules(),
+            js_json(r#"{"rules":[]}"#),
+        ] {
+            let shown = format!("{value:?}");
+            assert!(builder.set_space_penalty(value).is_ok(), "rejected {shown}");
+        }
+        // The snake_case alias and chaining work as for the other setters.
+        builder
+            .py_set_space_penalty(JsValue::FALSE)
+            .unwrap()
+            .set_dictionary("embedded://ipadic")
+            .build()
+            .unwrap();
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_set_space_penalty_rejects_other_values() {
+        use crate::TokenizerBuilder;
+        use wasm_bindgen::JsValue;
+
+        let builder = TokenizerBuilder::new().unwrap();
+        for value in [
+            JsValue::from(1),
+            JsValue::from_str("false"),
+            js_json(r#"["JKS"]"#),
+            js_json(r#"{"rules":"JKS"}"#),
+            js_json(r#"{"rules":[{"pos":["JKS"]}]}"#),
+            // Values with no JSON form at all.
+            js_sys::Uint8Array::new_with_length(2).into(),
+            js_sys::Function::new_no_args("").into(),
+        ] {
+            let shown = format!("{value:?}");
+            let message = match builder.set_space_penalty(value) {
+                Ok(_) => panic!("accepted {shown}"),
+                Err(err) => err.as_string().unwrap(),
+            };
+            assert!(message.contains("space_penalty"), "{shown}: {message}");
+        }
+    }
+
+    /// IPADIC ships no left-space penalty rules: requiring them (`true`)
+    /// makes `build()` fail, while the other forms build fine, with the
+    /// dictionary set by URI or as an instance.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_space_penalty_true_fails_on_ipadic() {
+        use crate::TokenizerBuilder;
+        use crate::dictionary::load_dictionary;
+        use wasm_bindgen::JsValue;
+
+        for by_instance in [false, true] {
+            for (value, should_build) in [
+                (JsValue::NULL, true),
+                (JsValue::FALSE, true),
+                (space_penalty_rules(), true),
+                (JsValue::TRUE, false),
+            ] {
+                let shown = format!("{value:?} (instance: {by_instance})");
+                let builder = TokenizerBuilder::new().unwrap();
+                if by_instance {
+                    builder.set_dictionary_instance(load_dictionary("embedded://ipadic").unwrap());
+                } else {
+                    builder.set_dictionary("embedded://ipadic");
+                }
+                builder.set_space_penalty(value).unwrap();
+                let result = builder.build();
+                assert_eq!(result.is_ok(), should_build, "value {shown}");
+                if let Err(err) = result {
+                    let message = err.as_string().unwrap();
+                    assert!(message.contains("space_penalty"), "{shown}: {message}");
+                }
+            }
+        }
+    }
+
+    /// Rules change the tokenization of a dictionary set by URI, and
+    /// `false` or `null` bring the default output back on the same builder.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_space_penalty_changes_tokenization() {
+        use crate::TokenizerBuilder;
+        use wasm_bindgen::JsValue;
+
+        let builder = TokenizerBuilder::new().unwrap();
+        builder.set_dictionary("embedded://ipadic");
+        let baseline = build_and_tokenize(&builder);
+        assert!(
+            baseline.contains(&("は".to_string(), "助詞".to_string())),
+            "fixture assumption: {baseline:?}"
+        );
+
+        builder.set_space_penalty(ipadic_rules()).unwrap();
+        let penalized = build_and_tokenize(&builder);
+        assert_ne!(penalized, baseline);
+        assert!(
+            !penalized.contains(&("は".to_string(), "助詞".to_string())),
+            "{penalized:?}"
+        );
+
+        builder.set_space_penalty(JsValue::FALSE).unwrap();
+        assert_eq!(build_and_tokenize(&builder), baseline);
+
+        builder.set_space_penalty(ipadic_rules()).unwrap();
+        assert_eq!(build_and_tokenize(&builder), penalized);
+        builder.set_space_penalty(JsValue::NULL).unwrap();
+        assert_eq!(build_and_tokenize(&builder), baseline);
+    }
+
+    /// A dictionary instance that ships rules (as a ko-dic loaded with
+    /// `loadDictionaryFromBytes()` does) applies them by default, and every
+    /// `setSpacePenalty()` form takes effect on it, without changing the
+    /// caller's dictionary object.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_space_penalty_applies_to_a_dictionary_instance() {
+        use std::sync::Arc;
+
+        use crate::dictionary::load_dictionary;
+        use crate::{Tokenizer, TokenizerBuilder};
+        use wasm_bindgen::JsValue;
+
+        let plain = load_dictionary("embedded://ipadic").unwrap();
+        let mut shipping = plain.clone();
+        Arc::make_mut(&mut shipping.inner.metadata).space_penalty = Some(ipadic_rules_config());
+
+        // The constructor keeps the dictionary default.
+        let baseline = surfaces_and_pos(
+            &Tokenizer::new(plain.clone(), None, None).unwrap(),
+            SPACED_TEXT,
+        );
+        let penalized = surfaces_and_pos(
+            &Tokenizer::new(shipping.clone(), None, None).unwrap(),
+            SPACED_TEXT,
+        );
+        assert_ne!(penalized, baseline);
+
+        let builder = TokenizerBuilder::new().unwrap();
+        builder.set_dictionary_instance(shipping.clone());
+        for (value, expected) in [
+            (JsValue::NULL, &penalized),
+            (JsValue::FALSE, &baseline),
+            (JsValue::TRUE, &penalized),
+            (js_json(r#"{"rules":[]}"#), &baseline),
+            (JsValue::UNDEFINED, &penalized),
+        ] {
+            let shown = format!("{value:?}");
+            builder.set_space_penalty(value).unwrap();
+            assert_eq!(&build_and_tokenize(&builder), expected, "value {shown}");
+        }
+        // The builder changed only its tokenizer's copy of the metadata.
+        assert_eq!(
+            shipping.inner.metadata.space_penalty,
+            Some(ipadic_rules_config())
+        );
+
+        // Explicit rules apply to a dictionary that ships none.
+        let builder = TokenizerBuilder::new().unwrap();
+        builder.set_dictionary_instance(plain);
+        builder.set_space_penalty(ipadic_rules()).unwrap();
+        assert_eq!(build_and_tokenize(&builder), penalized);
+    }
+
+    /// Rules that cannot be applied to a dictionary instance fail the build,
+    /// as they do for a dictionary set by URI, instead of being dropped with
+    /// a warning by the segmenter.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_space_penalty_rules_that_cannot_apply_fail_the_build() {
+        use std::sync::Arc;
+
+        use lindera_dictionary::dictionary::schema::Schema;
+
+        use crate::TokenizerBuilder;
+        use crate::dictionary::load_dictionary;
+        use wasm_bindgen::JsValue;
+
+        // More rules than the penalty table can index, on both paths.
+        let rule = r#"{"pos":["助詞"],"cost":1}"#;
+        let too_many = js_json(&format!(r#"{{"rules":[{}]}}"#, vec![rule; 256].join(",")));
+        for by_instance in [false, true] {
+            let builder = TokenizerBuilder::new().unwrap();
+            if by_instance {
+                builder.set_dictionary_instance(load_dictionary("embedded://ipadic").unwrap());
+            } else {
+                builder.set_dictionary("embedded://ipadic");
+            }
+            builder.set_space_penalty(too_many.clone()).unwrap();
+            let message = match builder.build() {
+                Ok(_) => panic!("built with 256 rules (instance: {by_instance})"),
+                Err(err) => err.as_string().unwrap(),
+            };
+            assert!(message.contains("at most 255 rules"), "{message}");
+        }
+
+        // A schema without a part-of-speech field.
+        let mut dict = load_dictionary("embedded://ipadic").unwrap();
+        Arc::make_mut(&mut dict.inner.metadata).dictionary_schema = Schema::new(
+            [
+                "surface",
+                "left_context_id",
+                "right_context_id",
+                "cost",
+                "reading",
+            ]
+            .map(String::from)
+            .to_vec(),
+        );
+        let builder = TokenizerBuilder::new().unwrap();
+        builder.set_dictionary_instance(dict);
+        assert!(builder.build().is_ok());
+
+        builder.set_space_penalty(ipadic_rules()).unwrap();
+        let message = match builder.build() {
+            Ok(_) => panic!("built with rules on a schema without a part-of-speech field"),
+            Err(err) => err.as_string().unwrap(),
+        };
+        assert!(message.contains("part-of-speech"), "{message}");
+
+        builder.set_space_penalty(JsValue::FALSE).unwrap();
+        assert!(builder.build().is_ok());
     }
 }

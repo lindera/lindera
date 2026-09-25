@@ -222,6 +222,16 @@ impl PyMetadata {
         self.inner.user_dictionary_schema = schema.into();
     }
 
+    /// Returns the metadata as a string-valued dict.
+    ///
+    /// Schemas are flattened to comma-separated field names. When the
+    /// dictionary ships left-space penalty rules (ko-dic does), they are
+    /// included as a JSON string under `"space_penalty"`; the key is absent
+    /// otherwise.
+    ///
+    /// # Returns
+    ///
+    /// A map from metadata key to its string value.
     pub fn to_dict(&self) -> HashMap<String, String> {
         let mut dict = HashMap::new();
         dict.insert("name".to_string(), self.inner.name.clone());
@@ -262,6 +272,9 @@ impl PyMetadata {
             "user_dictionary_schema_fields".to_string(),
             self.inner.user_dictionary_schema.fields().join(","),
         );
+        if let Some(space_penalty) = self.inner.space_penalty_json() {
+            dict.insert("space_penalty".to_string(), space_penalty);
+        }
         dict
     }
 
@@ -415,5 +428,34 @@ mod tests {
         assert!(roundtripped.flexible_csv());
         assert!(!roundtripped.skip_invalid_cost_or_id());
         assert!(roundtripped.normalize_details());
+    }
+
+    #[test]
+    fn test_to_dict_omits_space_penalty_when_none() {
+        let py_meta = PyMetadata::create_default();
+        assert!(!py_meta.to_dict().contains_key("space_penalty"));
+    }
+
+    /// ko-dic's `metadata.json` ships left-space penalty rules: `to_dict`
+    /// exposes them, and converting back for a dictionary build keeps them
+    /// (#1052). The JSON is parsed the way `from_json_file` does, without
+    /// its `PyErr` mapping, so the test binary needs no libpython (the
+    /// Python-side test covers `from_json_file` itself).
+    #[test]
+    fn test_ko_dic_metadata_keeps_space_penalty() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../lindera-ko-dic/metadata.json");
+        let json = std::fs::read_to_string(path).unwrap();
+        let metadata: Metadata = serde_json::from_str(&json).unwrap();
+        let py_meta = PyMetadata::from(metadata);
+
+        let dict = py_meta.to_dict();
+        let space_penalty = dict.get("space_penalty").unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(space_penalty).unwrap();
+        assert!(parsed["rules"].is_array());
+        assert!(space_penalty.contains("JKS"));
+
+        let meta: Metadata = py_meta.into();
+        assert!(!meta.space_penalty.unwrap().rules.is_empty());
     }
 }

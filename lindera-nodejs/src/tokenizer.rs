@@ -108,6 +108,39 @@ impl JsTokenizerBuilder {
         self
     }
 
+    /// Sets the left-space penalty (Korean), with the same meaning as
+    /// `segmenter.space_penalty` in a configuration file.
+    ///
+    /// A candidate that starts right after whitespace and whose first
+    /// part-of-speech tag is listed in a rule gets that rule's cost added
+    /// (mecab-ko's `left-space-penalty-factor`). ko-dic ships mecab-ko-dic's
+    /// rules, so the penalty applies to it by default.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - `null` or `undefined` restores the default (the rules the
+    ///   dictionary ships, if any); `false` turns the penalty off; `true`
+    ///   requires the dictionary's rules (`build()` fails if it ships none);
+    ///   an object such as `{ rules: [{ pos: ["JKS"], cost: 6000 }] }`
+    ///   applies those rules instead.
+    ///
+    /// # Returns
+    ///
+    /// The builder itself (`this`), enabling method chaining. Throws when
+    /// `value` is none of the forms above.
+    #[napi(
+        ts_args_type = "value: boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined"
+    )]
+    pub fn set_space_penalty(&mut self, value: Option<serde_json::Value>) -> napi::Result<&Self> {
+        // `null` and `undefined` both arrive as `None`; they select the
+        // default, which the core expresses as JSON `null`.
+        let value = value.unwrap_or(serde_json::Value::Null);
+        self.inner
+            .set_space_penalty(&value)
+            .map_err(to_napi_error)?;
+        Ok(self)
+    }
+
     /// Appends a character filter to the preprocessing pipeline.
     ///
     /// # Arguments

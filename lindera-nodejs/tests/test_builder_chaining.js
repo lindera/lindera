@@ -21,6 +21,7 @@ describe("TokenizerBuilder method chaining", () => {
     assert.strictEqual(builder.setDictionary("/tmp/nonexistent"), builder);
     assert.strictEqual(builder.setUserDictionary("/tmp/nonexistent"), builder);
     assert.strictEqual(builder.setKeepWhitespace(true), builder);
+    assert.strictEqual(builder.setSpacePenalty(false), builder);
     assert.strictEqual(builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" }), builder);
     assert.strictEqual(builder.appendTokenFilter("lowercase", {}), builder);
   });

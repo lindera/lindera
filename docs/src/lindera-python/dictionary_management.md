@@ -93,6 +93,8 @@ build_dictionary("/path/to/input_dir", "/path/to/output_dir", metadata)
 
 The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).
 
+Metadata loaded with `Metadata.from_json_file` keeps the `space_penalty` rules of the `metadata.json`, and the built dictionary ships them. For ko-dic this means the left-space penalty stays on by default in the dictionary you build; turn it off per tokenizer with `TokenizerBuilder.set_space_penalty(False)` (see [Tokenizer API](./tokenizer_api.md#set_space_penaltyvalue)). A `Metadata` created with the constructor carries no rules.
+
 ### User Dictionary
 
 Build a user dictionary from a CSV file:
@@ -168,11 +170,19 @@ print(metadata.name)  # "custom_dict"
 
 ### `to_dict()`
 
-Returns a dictionary representation of the metadata:
+Returns the metadata as a `dict` of strings: the properties above, with `dictionary_schema_fields` and `user_dictionary_schema_fields` (comma-separated field names) in place of the two schemas.
 
 ```python
 metadata = Metadata(name="test")
 print(metadata.to_dict())
+```
+
+When the metadata carries left-space penalty rules, as ko-dic's does, the `dict` also has a `space_penalty` entry holding them as a JSON string; the key is absent otherwise:
+
+```python
+metadata = Metadata.from_json_file("/path/to/ko-dic/metadata.json")
+metadata.to_dict()["space_penalty"]
+# '{"rules":[{"pos":["EC","EF",...],"cost":3000},{"pos":["JC","JKB",...],"cost":6000}]}'
 ```
 
 ## Schema

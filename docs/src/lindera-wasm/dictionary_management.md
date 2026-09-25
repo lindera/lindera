@@ -193,6 +193,13 @@ and writes an output directory, and there is no filesystem on
 native binding) and load the result here as bytes — see
 [OPFS Dictionary Management](opfs.md) for downloading prebuilt dictionaries.
 
+A dictionary built from a `metadata.json` that ships `space_penalty` rules
+keeps them, and `loadDictionaryFromBytes()` loads them with the rest of the
+metadata. ko-dic's `metadata.json` ships mecab-ko-dic's rules, so a tokenizer
+built on a ko-dic applies the left-space penalty by default; see
+[`setSpacePenalty()`](./tokenizer_api.md#setspacepenaltyvalue) for turning it
+off.
+
 ## Metadata
 
 The `Metadata` class configures dictionary parameters.
@@ -236,7 +243,7 @@ console.log(metadata.name); // "custom_dict"
 ```
 
 > [!NOTE]
-> Unlike the Python, Node.js, Ruby, and PHP bindings, the WASM `Metadata` class does not expose `default_word_cost`, `default_left_context_id`, `default_right_context_id`, `default_field_value`, `flexible_csv`, `skip_invalid_cost_or_id`, or `normalize_details` as gettable/settable properties (see `lindera-wasm/src/metadata.rs`). These always fall back to the shared binding defaults (word cost `-10000`, context IDs `1288`, field value `"*"`, flags `false`) and cannot be customized from JavaScript.
+> Unlike the Python, Node.js, Ruby, and PHP bindings, the WASM `Metadata` class does not expose `default_word_cost`, `default_left_context_id`, `default_right_context_id`, `default_field_value`, `flexible_csv`, `skip_invalid_cost_or_id`, or `normalize_details` as gettable/settable properties (see `lindera-wasm/src/metadata.rs`). These always fall back to the shared binding defaults (word cost `-10000`, context IDs `1288`, field value `"*"`, flags `false`) and cannot be customized from JavaScript. The `space_penalty` rules are not exposed either. They take effect only through the dictionary they were loaded with (see [`setSpacePenalty()`](./tokenizer_api.md#setspacepenaltyvalue)); passing `dictionary.metadata` on, for example to `loadUserDictionaryFromBytes()`, does not apply them anywhere else.
 
 You can also access the metadata from a loaded dictionary via `dictionary.metadata`.
 

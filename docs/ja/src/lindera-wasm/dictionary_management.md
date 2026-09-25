@@ -193,6 +193,13 @@ WebAssembly では辞書のビルドはできません。ビルドはソース�
 バインディング）でビルドし、結果をバイト列としてここに読み込んでください。
 ビルド済み辞書のダウンロードは [OPFS 辞書管理](opfs.md) を参照してください。
 
+`space_penalty` ルールを同梱する `metadata.json` からビルドした辞書はその
+ルールを保持し、`loadDictionaryFromBytes()` はほかのメタデータと一緒に
+ルールも読み込みます。ko-dic の `metadata.json` は mecab-ko-dic のルールを
+同梱しているため、ko-dic を使うトークナイザーでは左側空白ペナルティが
+デフォルトで適用されます。オフにする方法は
+[`setSpacePenalty()`](./tokenizer_api.md#setspacepenaltyvalue) を参照してください。
+
 ## Metadata
 
 `Metadata` クラスは辞書のパラメータを設定します。
@@ -236,7 +243,7 @@ console.log(metadata.name); // "custom_dict"
 ```
 
 > [!NOTE]
-> Python・Node.js・Ruby・PHP の各バインディングと異なり、WASM の `Metadata` クラスは `default_word_cost`、`default_left_context_id`、`default_right_context_id`、`default_field_value`、`flexible_csv`、`skip_invalid_cost_or_id`、`normalize_details` を取得・設定可能なプロパティとして公開していません（`lindera-wasm/src/metadata.rs` 参照）。これらは常にバインディング共通のデフォルト値（コスト `-10000`、文脈 ID `1288`、フィールド値 `"*"`、フラグはすべて `false`）にフォールバックし、JavaScript から変更することはできません。
+> Python・Node.js・Ruby・PHP の各バインディングと異なり、WASM の `Metadata` クラスは `default_word_cost`、`default_left_context_id`、`default_right_context_id`、`default_field_value`、`flexible_csv`、`skip_invalid_cost_or_id`、`normalize_details` を取得・設定可能なプロパティとして公開していません（`lindera-wasm/src/metadata.rs` 参照）。これらは常にバインディング共通のデフォルト値（コスト `-10000`、文脈 ID `1288`、フィールド値 `"*"`、フラグはすべて `false`）にフォールバックし、JavaScript から変更することはできません。`space_penalty` ルールも公開していません。ルールが効くのは、そのルールと一緒に読み込んだ辞書だけです（[`setSpacePenalty()`](./tokenizer_api.md#setspacepenaltyvalue) を参照）。`dictionary.metadata` を `loadUserDictionaryFromBytes()` などに渡しても、ほかの場所でルールが適用されることはありません。
 
 読み込み済み辞書のメタデータには `dictionary.metadata` からアクセスできます。
 
