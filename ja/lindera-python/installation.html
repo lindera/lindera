@@ -181,6 +181,7 @@
 <p>ビルド済みホイールが <a href="https://pypi.org/project/lindera/">PyPI</a> で公開されています：</p>
 <pre><code class="language-bash">pip install lindera
 </code></pre>
+<p>ホイールの対象は、CPython 3.10〜3.14 の Linux（x86_64 と aarch64、glibc）、macOS（x86_64 と arm64）、Windows（x64 と arm64）です。それ以外の環境（musl ベースの Linux（Alpine）、ほかの CPU アーキテクチャ、free-threaded 版 CPython など）では、<code>pip install lindera</code> がソース配布物（sdist）からパッケージをビルドします。このビルドには Rust ツールチェーン 1.88 以降（<a href="https://rustup.rs/">rustup</a> でインストール）と <code>cc</code> などの C リンカが必要で、数分かかります。</p>
 <blockquote>
 <p>[!NOTE]
 PyPI パッケージには辞書が含まれていません。下記の<a href="#%E8%BE%9E%E6%9B%B8%E3%81%AE%E5%85%A5%E6%89%8B">辞書の入手</a>を参照してください。</p>
