@@ -474,17 +474,48 @@ fn metadata_matches_source(cached: &Metadata, source: &Metadata) -> bool {
     matches!((strip(cached), strip(source)), (Some(a), Some(b)) if a == b)
 }
 
+/// Returns the `cargo:` directives that decide when a dictionary crate's
+/// build script reruns.
+///
+/// `context_id_freq.txt` is registered only when the crate ships it: cargo
+/// treats a `rerun-if-changed` path that does not exist as always stale, so
+/// registering it unconditionally reran the build script, and rebuilt the
+/// dictionary, on every build of a crate without one (#1069). Adding the file
+/// to such a crate later takes effect on the next change to a watched file
+/// (such as `metadata.json`) or after a clean build.
+///
+/// # Arguments
+///
+/// * `ships_context_id_freq` - Whether the crate has a `context_id_freq.txt`.
+///
+/// # Returns
+///
+/// The directives, one per line, in the order the build script prints them.
+fn rerun_directives(ships_context_id_freq: bool) -> Vec<String> {
+    let mut directives = vec![
+        "cargo:rerun-if-changed=build.rs".to_string(),
+        "cargo:rerun-if-changed=Cargo.toml".to_string(),
+        // `metadata.json` drives build-time behavior (schema, flags such as
+        // `connection_id_mapping`), so a change to it must rebuild the
+        // dictionary.
+        "cargo:rerun-if-changed=metadata.json".to_string(),
+    ];
+    if ships_context_id_freq {
+        directives.push(format!("cargo:rerun-if-changed={CONTEXT_ID_FREQ_FILE}"));
+    }
+    directives.extend([
+        "cargo:rerun-if-env-changed=LINDERA_CTX_FREQ_FILE".to_string(),
+        format!("cargo:rerun-if-env-changed={CACHE_DIR_ENV}"),
+        format!("cargo:rerun-if-env-changed={CACHE_DIR_ENV_DEPRECATED}"),
+        "cargo:rerun-if-env-changed=DOCS_RS".to_string(),
+    ]);
+    directives
+}
+
 pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
-    println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=Cargo.toml");
-    // `metadata.json` drives build-time behavior (schema, flags such as
-    // `connection_id_mapping`), so a change to it must rebuild the dictionary.
-    println!("cargo:rerun-if-changed=metadata.json");
-    println!("cargo:rerun-if-changed={CONTEXT_ID_FREQ_FILE}");
-    println!("cargo:rerun-if-env-changed=LINDERA_CTX_FREQ_FILE");
-    println!("cargo:rerun-if-env-changed={CACHE_DIR_ENV}");
-    println!("cargo:rerun-if-env-changed={CACHE_DIR_ENV_DEPRECATED}");
-    println!("cargo:rerun-if-env-changed=DOCS_RS");
+    for directive in rerun_directives(Path::new(CONTEXT_ID_FREQ_FILE).is_file()) {
+        println!("{directive}");
+    }
 
     if std::env::var_os(CACHE_DIR_ENV).is_none()
         && std::env::var_os(CACHE_DIR_ENV_DEPRECATED).is_some()
@@ -824,6 +855,31 @@ pub fn build_embedded_dictionary(
 #[cfg(test)]
 mod tests {
     use std::ffi::OsString;
+
+    /// The directives every dictionary crate registers, in order.
+    const ALWAYS: [&str; 7] = [
+        "cargo:rerun-if-changed=build.rs",
+        "cargo:rerun-if-changed=Cargo.toml",
+        "cargo:rerun-if-changed=metadata.json",
+        "cargo:rerun-if-env-changed=LINDERA_CTX_FREQ_FILE",
+        "cargo:rerun-if-env-changed=LINDERA_BUILD_DICTIONARY_CACHE_DIR",
+        "cargo:rerun-if-env-changed=LINDERA_DICTIONARIES_PATH",
+        "cargo:rerun-if-env-changed=DOCS_RS",
+    ];
+
+    #[test]
+    fn rerun_directives_skip_a_missing_context_id_freq_file() {
+        // A missing `rerun-if-changed` path would rerun the build script,
+        // and rebuild the dictionary, on every build (#1069).
+        assert_eq!(super::rerun_directives(false), ALWAYS);
+    }
+
+    #[test]
+    fn rerun_directives_watch_a_shipped_context_id_freq_file() {
+        let mut expected = ALWAYS.to_vec();
+        expected.insert(3, "cargo:rerun-if-changed=context_id_freq.txt");
+        assert_eq!(super::rerun_directives(true), expected);
+    }
 
     #[test]
     fn resolve_cache_dir_prefers_new_name() {
