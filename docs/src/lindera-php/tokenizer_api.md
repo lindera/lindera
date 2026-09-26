@@ -16,7 +16,7 @@ Creates a new builder with default configuration.
 $builder = new Lindera\TokenizerBuilder();
 ```
 
-#### `$builder->fromFile($filePath)`
+#### `$builder->fromFile($file_path)`
 
 Loads configuration from a JSON file.
 
@@ -216,7 +216,7 @@ $surfaces = $tokenizer->tokenizeSurfaces('形態素解析');
 
 **Returns:** `array<string>`
 
-#### `tokenizeNbest($text, $n, $unique, $costThreshold)`
+#### `tokenizeNbest($text, $n, $unique, $cost_threshold)`
 
 Returns the N-best tokenization results as an array of `NbestResult` objects.
 
@@ -239,7 +239,7 @@ foreach ($results as $result) {
 | `$text` | `string` | Text to tokenize |
 | `$n` | `int` | Number of results to return |
 | `$unique` | `bool\|null` | Deduplicate results (default: `false`) |
-| `$costThreshold` | `int\|null` | Maximum cost difference from the best path (default: `null`) |
+| `$cost_threshold` | `int\|null` | Maximum cost difference from the best path (default: `null`) |
 
 **Returns:** `array<NbestResult>`
 

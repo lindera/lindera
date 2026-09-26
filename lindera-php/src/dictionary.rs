@@ -106,6 +106,8 @@ impl PhpDictionary {
     /// * `input_file` - Path to the CSV file.
     /// * `output_dir` - Directory where the built user dictionary will be saved.
     /// * `metadata` - Optional metadata configuration.
+    // `null` defaults in the arginfo let named arguments skip these (#1067).
+    #[php(defaults(metadata = None))]
     pub fn build_user(
         _kind: String,
         input_file: String,

@@ -157,6 +157,8 @@ impl PhpTokenizerBuilder {
     ///
     /// * `kind` - Type of character filter to add.
     /// * `args` - Optional Zval containing filter arguments (associative array).
+    // `null` defaults in the arginfo let named arguments skip these (#1067).
+    #[php(defaults(args = None))]
     pub fn append_character_filter(&self, kind: String, args: Option<&Zval>) -> PhpResult<()> {
         let filter_args = if let Some(zval) = args {
             zval_to_value(zval)?
@@ -176,6 +178,8 @@ impl PhpTokenizerBuilder {
     ///
     /// * `kind` - Type of token filter to add.
     /// * `args` - Optional Zval containing filter arguments (associative array).
+    // `null` defaults in the arginfo let named arguments skip these (#1067).
+    #[php(defaults(args = None))]
     pub fn append_token_filter(&self, kind: String, args: Option<&Zval>) -> PhpResult<()> {
         let filter_args = if let Some(zval) = args {
             zval_to_value(zval)?
@@ -309,6 +313,8 @@ impl PhpTokenizer {
     /// # Returns
     ///
     /// A list of NbestResult entries.
+    // `null` defaults in the arginfo let named arguments skip these (#1067).
+    #[php(defaults(unique = None, cost_threshold = None))]
     pub fn tokenize_nbest(
         &self,
         text: String,

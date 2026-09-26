@@ -48,6 +48,8 @@ impl PhpMetadata {
     ///
     /// A new Metadata instance.
     #[allow(clippy::too_many_arguments)]
+    // `null` defaults in the arginfo let named arguments skip these (#1067).
+    #[php(defaults(name = None, encoding = None, default_word_cost = None, default_left_context_id = None, default_right_context_id = None, default_field_value = None, flexible_csv = None, skip_invalid_cost_or_id = None, normalize_details = None))]
     pub fn __construct(
         name: Option<String>,
         encoding: Option<String>,
