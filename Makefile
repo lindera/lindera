@@ -212,6 +212,11 @@ memcheck-lindera-wasm: ## Check lindera-wasm releases token memory in synchronou
 	cd lindera-wasm && wasm-pack build --target nodejs --features=$(WASM_FEATURES) --out-dir pkg-node
 	node --expose-gc scripts/benchmarks/memcheck_wasm.mjs
 
+# The TypeScript version is kept in step with lindera-nodejs/package-lock.json.
+types-check-lindera-wasm: ## Type-check the TypeScript declarations wasm-pack generates for lindera-wasm
+	cd lindera-wasm && wasm-pack build --target nodejs --features=$(WASM_FEATURES) --out-dir pkg-node
+	cd lindera-wasm && npx --yes -p typescript@7.0.2 tsc --noEmit --project types-check/tsconfig.json
+
 test-lindera-ruby: ## Test lindera-ruby (Rust unit tests + minitest)
 	$(CARGO_TEST_WITH_RBCONFIG) cargo test -p lindera-ruby --lib
 	cd lindera-ruby && bundle install --quiet && LINDERA_FEATURES="embed-ipadic,train" bundle exec rake compile && bundle exec rake test

@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "target": "ES2022",
+    "lib": ["ES2022", "ESNext.Disposable"],
+    "module": "node16",
+    "moduleResolution": "node16",
+    "types": [],
+    "skipLibCheck": false
+  },
+  "include": ["index.ts", "../pkg-node/lindera_wasm.d.ts"]
+}

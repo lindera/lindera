@@ -703,6 +703,12 @@ jobs:
       - name: Check token memory is released in synchronous loops
         run: make memcheck-lindera-wasm
 
+      # Compile a TypeScript file against the declarations wasm-pack generates, so
+      # a change that breaks how TypeScript callers use the API fails here (#1076).
+      # It reuses the memcheck build above.
+      - name: Type-check the generated TypeScript declarations
+        run: make types-check-lindera-wasm
+
       # `make lint-lindera-wasm` also runs prettier, which is not installed here;
       # this covers the cargo half. The wasm32 target is what the crate is built
       # for, so lint it there too. See #962.

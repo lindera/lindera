@@ -379,13 +379,18 @@ impl Tokenizer {
     ///
     /// The tokenizer, or an error string for an invalid mode or space-penalty
     /// setting, as `setSpacePenalty` and `build()` report them.
+    // Once one parameter carries a type attribute, wasm-bindgen marks a
+    // parameter optional in the TypeScript declarations only when it uses
+    // `unchecked_optional_param_type`, so every trailing optional parameter
+    // needs one; otherwise `new Tokenizer(dictionary)` stops compiling (#1076).
     #[wasm_bindgen(constructor)]
     pub fn new(
         dictionary: JsDictionary,
-        mode: Option<String>,
+        #[wasm_bindgen(unchecked_optional_param_type = "string | null")] mode: Option<String>,
+        #[wasm_bindgen(unchecked_optional_param_type = "UserDictionary | null")]
         user_dictionary: Option<JsUserDictionary>,
         #[wasm_bindgen(
-            unchecked_param_type = "boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined"
+            unchecked_optional_param_type = "boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null"
         )]
         space_penalty: Option<JsValue>,
     ) -> Result<Tokenizer, JsValue> {

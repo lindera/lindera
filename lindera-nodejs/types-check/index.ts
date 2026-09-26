@@ -14,6 +14,7 @@ import {
   loadDictionary,
   Tokenizer,
   TokenizerBuilder,
+  type Dictionary,
   type Token,
   type NbestResult,
 } from "../index.js";
@@ -60,4 +61,17 @@ export function checkSpacePenaltyForms(): void {
     .setSpacePenalty(false)
     .setSpacePenalty({ rules: [{ pos: ["JKS", "JX"], cost: 6000 }] });
   void builder;
+}
+
+// Every documented form of the constructor: the arguments after the
+// dictionary are optional. The WASM declarations lost their `?` once (#1076);
+// this guards the Node.js ones the same way.
+export function checkTokenizerConstructorForms(dictionary: Dictionary): Array<Tokenizer> {
+  return [
+    new Tokenizer(dictionary),
+    new Tokenizer(dictionary, "normal"),
+    new Tokenizer(dictionary, "decompose", null),
+    new Tokenizer(dictionary, undefined, undefined, false),
+    new Tokenizer(dictionary, "normal", null, { rules: [{ pos: ["JKS", "JX"], cost: 6000 }] }),
+  ];
 }
