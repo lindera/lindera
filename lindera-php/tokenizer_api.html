@@ -186,7 +186,7 @@
 
 $builder = new Lindera\TokenizerBuilder();
 </code></pre>
-<h4 id="builder-fromfilefilepath"><a class="header" href="#builder-fromfilefilepath"><code>$builder-&gt;fromFile($filePath)</code></a></h4>
+<h4 id="builder-fromfilefile_path"><a class="header" href="#builder-fromfilefile_path"><code>$builder-&gt;fromFile($file_path)</code></a></h4>
 <p>Loads configuration from a JSON file.</p>
 <pre><code class="language-php">&lt;?php
 
@@ -325,7 +325,7 @@ $surfaces = $tokenizer-&gt;tokenizeSurfaces('形態素解析');
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>array&lt;string&gt;</code></p>
-<h4 id="tokenizenbesttext-n-unique-costthreshold"><a class="header" href="#tokenizenbesttext-n-unique-costthreshold"><code>tokenizeNbest($text, $n, $unique, $costThreshold)</code></a></h4>
+<h4 id="tokenizenbesttext-n-unique-cost_threshold"><a class="header" href="#tokenizenbesttext-n-unique-cost_threshold"><code>tokenizeNbest($text, $n, $unique, $cost_threshold)</code></a></h4>
 <p>Returns the N-best tokenization results as an array of <code>NbestResult</code> objects.</p>
 <pre><code class="language-php">&lt;?php
 
@@ -342,7 +342,7 @@ foreach ($results as $result) {
 <tr><td><code>$text</code></td><td><code>string</code></td><td>Text to tokenize</td></tr>
 <tr><td><code>$n</code></td><td><code>int</code></td><td>Number of results to return</td></tr>
 <tr><td><code>$unique</code></td><td><code>bool|null</code></td><td>Deduplicate results (default: <code>false</code>)</td></tr>
-<tr><td><code>$costThreshold</code></td><td><code>int|null</code></td><td>Maximum cost difference from the best path (default: <code>null</code>)</td></tr>
+<tr><td><code>$cost_threshold</code></td><td><code>int|null</code></td><td>Maximum cost difference from the best path (default: <code>null</code>)</td></tr>
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>array&lt;NbestResult&gt;</code></p>

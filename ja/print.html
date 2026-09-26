@@ -5813,7 +5813,7 @@ $surfaces = $tokenizer-&gt;tokenizeSurfaces('形態素解析');
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>array&lt;string&gt;</code></p>
-<h4 id="tokenizenbesttext-n"><a class="header" href="#tokenizenbesttext-n"><code>tokenizeNbest($text, $n)</code></a></h4>
+<h4 id="tokenizenbesttext-n-unique-cost_threshold"><a class="header" href="#tokenizenbesttext-n-unique-cost_threshold"><code>tokenizeNbest($text, $n, $unique, $cost_threshold)</code></a></h4>
 <p>N-best トークナイズ結果を返します。各結果は <code>NbestResult</code> オブジェクトで、トークン配列とトータルパスコストを含みます。</p>
 <pre><code class="language-php">$results = $tokenizer-&gt;tokenizeNbest('すもももももももものうち', 3);
 foreach ($results as $result) {
@@ -5827,6 +5827,8 @@ foreach ($results as $result) {
 <div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>$text</code></td><td><code>string</code></td><td>トークナイズするテキスト</td></tr>
 <tr><td><code>$n</code></td><td><code>int</code></td><td>返す結果の数</td></tr>
+<tr><td><code>$unique</code></td><td><code>bool|null</code></td><td>重複する結果を除く（デフォルト: <code>false</code>）</td></tr>
+<tr><td><code>$cost_threshold</code></td><td><code>int|null</code></td><td>最良パスとのコストの差の上限（デフォルト: <code>null</code>）</td></tr>
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>array&lt;NbestResult&gt;</code></p>
