@@ -14,6 +14,12 @@ PYTEST          := $(PYTHON_VENV_DIR)/bin/pytest
 # ── WASM ────────────────────────────────────────────────────────────────────
 WASM_FEATURES = embed-ipadic
 
+# ── Node.js ─────────────────────────────────────────────────────────────────
+# Dictionaries embedded in the Node.js test build, so the dictionary-backed
+# tests run instead of being skipped (#1066). memcheck builds with the same
+# features, so it does not switch the addon to a different build.
+NODEJS_TEST_FEATURES = embed-ipadic,embed-ko-dic
+
 # Run a cargo command with RbConfig values exported, as the Ruby binding build
 # expects (used by both lint and test for lindera-ruby).
 CARGO_TEST_WITH_RBCONFIG = ruby -rrbconfig -e 'RbConfig::CONFIG.each { |k, v| ENV["RBCONFIG_\#{k.upcase}"] = v }; exec(*ARGV)' --
@@ -196,10 +202,10 @@ test-lindera-python: setup-venv ## Test lindera-python (Rust unit tests + Python
 
 test-lindera-nodejs: ## Test lindera-nodejs (Rust unit tests + Node.js test + generated type check)
 	cargo test -p lindera-nodejs --lib
-	cd lindera-nodejs && npm install --quiet && npx napi build --platform -p lindera-nodejs && npm test && npm run test:types
+	cd lindera-nodejs && npm install --quiet && npx napi build --platform -p lindera-nodejs --features $(NODEJS_TEST_FEATURES) && npm test && npm run test:types
 
 memcheck-lindera-nodejs: ## Check lindera-nodejs releases token memory in synchronous loops
-	cd lindera-nodejs && npm install --quiet && npx napi build --platform -p lindera-nodejs --features embed-ipadic
+	cd lindera-nodejs && npm install --quiet && npx napi build --platform -p lindera-nodejs --features $(NODEJS_TEST_FEATURES)
 	node --expose-gc scripts/benchmarks/memcheck_nodejs.mjs
 
 memcheck-lindera-wasm: ## Check lindera-wasm releases token memory in synchronous loops
