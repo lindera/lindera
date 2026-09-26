@@ -45,8 +45,8 @@ default = ["train"] # No directories included
 # from. Their own dependencies (the other lindera crates included) resolve at
 # install time, as the gem ships no Cargo.lock.
 # scripts/bump-up-version.sh keeps these in step with the workspace.
-lindera = { version = "=6.1.0", path = "../lindera" }
-lindera-binding-core = { version = "=6.1.0", path = "../lindera-binding-core" }
+lindera = { version = "=6.2.0", path = "../lindera" }
+lindera-binding-core = { version = "=6.2.0", path = "../lindera-binding-core" }
 magnus = { version = "0.8.2", features = ["rb-sys"] }
 num_cpus = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
