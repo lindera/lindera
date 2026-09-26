@@ -57,36 +57,69 @@ jobs:
         id: filter
         with:
           filters: |
+            # Inputs shared by several jobs, referenced below with `- *name`. A
+            # change to one of them can change what those jobs build or run, so it
+            # must run them on pull requests too (#1070; #845 merged a
+            # Cargo.lock-only change untested).
+            shared-workspace: &shared-workspace
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.github/workflows/regression.yml'
+              - '.github/actions/**'
+            shared-crate-workflow: &shared-crate-workflow
+              - '.github/workflows/test-crate.yml'
+            shared-make: &shared-make
+              - 'Makefile'
             lindera-crf:
               - 'lindera-crf/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera-dictionary:
               - 'lindera-dictionary/**'
               - 'lindera-crf/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera-trainer:
               - 'lindera-trainer/**'
               - 'lindera-dictionary/**'
               - 'lindera-crf/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera-ipadic:
               - 'lindera-ipadic/**'
               - 'lindera-dictionary/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera-ipadic-neologd:
               - 'lindera-ipadic-neologd/**'
               - 'lindera-dictionary/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera-unidic:
               - 'lindera-unidic/**'
               - 'lindera-dictionary/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera-sudachidict:
               - 'lindera-sudachidict/**'
               - 'lindera-dictionary/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera-ko-dic:
               - 'lindera-ko-dic/**'
               - 'lindera-dictionary/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera-cc-cedict:
               - 'lindera-cc-cedict/**'
               - 'lindera-dictionary/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera-jieba:
               - 'lindera-jieba/**'
               - 'lindera-dictionary/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera:
               - 'lindera/**'
               - 'lindera-crf/**'
@@ -99,6 +132,8 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera-analysis:
               - 'lindera-analysis/**'
               - 'lindera/**'
@@ -106,12 +141,16 @@ jobs:
               - 'lindera-dictionary/**'
               - 'lindera-ipadic/**'
               - 'lindera-ko-dic/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera-binding-core:
               - 'lindera-binding-core/**'
               - 'lindera-analysis/**'
               - 'lindera/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera-cli:
               - 'lindera-cli/**'
               - 'lindera/**'
@@ -126,6 +165,8 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera-python:
               - 'lindera-python/**'
               - 'lindera-binding-core/**'
@@ -141,6 +182,8 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              - *shared-workspace
+              - *shared-make
             lindera-nodejs:
               - 'lindera-nodejs/**'
               - 'lindera-binding-core/**'
@@ -156,6 +199,9 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              - 'scripts/benchmarks/memcheck_nodejs.mjs'
+              - *shared-workspace
+              - *shared-make
             lindera-ruby:
               - 'lindera-ruby/**'
               - 'lindera-binding-core/**'
@@ -171,12 +217,15 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              - *shared-workspace
+              - *shared-make
             # Gem packaging: the crate as `cargo package` normalizes it (which
             # resolves the workspace inheritance in the root Cargo.toml), the
             # gemspec, extconf.rb and the install test.
             lindera-ruby-gem:
               - 'lindera-ruby/**'
-              - 'Cargo.toml'
+              - *shared-workspace
+              - *shared-make
             lindera-php:
               - 'lindera-php/**'
               - 'composer.json'
@@ -193,6 +242,8 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              - *shared-workspace
+              - *shared-make
             lindera-wasm:
               - 'lindera-wasm/**'
               - 'lindera-binding-core/**'
@@ -207,6 +258,9 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              - 'scripts/benchmarks/memcheck_wasm.mjs'
+              - *shared-workspace
+              - *shared-make
 
   test-lindera-crf:
     name: Test lindera-crf
