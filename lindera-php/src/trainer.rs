@@ -36,6 +36,8 @@ impl PhpTrainer {
     /// * `max_iter` - Maximum number of iterations, default: 100.
     /// * `max_threads` - Maximum number of threads (null = auto-detect CPU cores).
     #[allow(clippy::too_many_arguments)]
+    // `null` defaults in the arginfo let named arguments skip these (#1067).
+    #[php(defaults(lambda = None, max_iter = None, max_threads = None))]
     pub fn train(
         seed: String,
         corpus: String,
@@ -135,6 +137,8 @@ impl PhpTrainer {
     /// * `model` - Trained model file path (.dat format).
     /// * `output` - Output directory path.
     /// * `metadata` - Optional base metadata.json file to update.
+    // `null` defaults in the arginfo let named arguments skip these (#1067).
+    #[php(defaults(metadata = None))]
     pub fn export(model: String, output: String, metadata: Option<String>) -> PhpResult<()> {
         let model_path = Path::new(&model);
         let output_path = Path::new(&output);

@@ -191,7 +191,7 @@ $surfaces = $tokenizer->tokenizeSurfaces('形態素解析');
 
 **戻り値:** `array<string>`
 
-#### `tokenizeNbest($text, $n)`
+#### `tokenizeNbest($text, $n, $unique, $cost_threshold)`
 
 N-best トークナイズ結果を返します。各結果は `NbestResult` オブジェクトで、トークン配列とトータルパスコストを含みます。
 
@@ -211,6 +211,8 @@ foreach ($results as $result) {
 | --- | --- | --- |
 | `$text` | `string` | トークナイズするテキスト |
 | `$n` | `int` | 返す結果の数 |
+| `$unique` | `bool\|null` | 重複する結果を除く（デフォルト: `false`） |
+| `$cost_threshold` | `int\|null` | 最良パスとのコストの差の上限（デフォルト: `null`） |
 
 **戻り値:** `array<NbestResult>`
 

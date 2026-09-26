@@ -133,6 +133,8 @@ impl PhpFieldDefinition {
     /// # Returns
     ///
     /// A new FieldDefinition instance.
+    // `null` defaults in the arginfo let named arguments skip these (#1067).
+    #[php(defaults(description = None))]
     pub fn __construct(
         index: i64,
         name: String,
