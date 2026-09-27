@@ -37,7 +37,7 @@ CARGO_TEST_WITH_RBCONFIG = ruby -rrbconfig -e 'RbConfig::CONFIG.each { |k, v| EN
 CARGO_CRATES := lindera-crf lindera-dictionary lindera-trainer lindera-ipadic \
 	lindera-ipadic-neologd lindera-unidic lindera-sudachidict lindera-ko-dic \
 	lindera-cc-cedict lindera-jieba \
-	lindera lindera-analysis lindera-cli lindera-binding-core
+	lindera-segmenter lindera-analysis lindera lindera-binding lindera-cli
 
 # Language bindings with bespoke tooling (explicit targets below).
 BINDING_CRATES := lindera-python lindera-nodejs lindera-ruby lindera-php lindera-wasm
@@ -56,12 +56,14 @@ FEATURES_lindera-sudachidict    := --features embed-sudachidict
 FEATURES_lindera-ko-dic         := --features embed-ko-dic
 FEATURES_lindera-cc-cedict      := --features embed-cc-cedict
 FEATURES_lindera-jieba          := --features embed-jieba
+FEATURES_lindera-segmenter      := --features embed-ipadic,train
 FEATURES_lindera                := --features embed-ipadic,train
 FEATURES_lindera-analysis       := --features embed-ipadic,embed-ko-dic
 FEATURES_lindera-cli            := --features train
 
 # Per-target feature overrides (where lint/test/build differ).
 TEST_FEATURES_lindera-cli       := --features train,embed-ipadic
+BUILD_FEATURES_lindera-segmenter := --features train
 BUILD_FEATURES_lindera          := --features train
 
 .DEFAULT_GOAL := help
@@ -309,7 +311,7 @@ bench: ## Run all benchmarks
 		(cd lindera && cargo bench --bench=bench_$(dict) --features=embed-$(subst _,-,$(dict))) || true; \
 		echo "";)
 	@echo "All benchmarks completed!"
-	@echo "Results are available in lindera/target/criterion/"
+	@echo "Results are available in target/criterion/"
 
 bench-all: ## Run all benchmarks with CJK dictionaries
 	@echo "Running all Lindera benchmarks with CJK dictionaries..."
@@ -364,10 +366,11 @@ publish: ## Publish packages to crates.io
 	$(call PUBLISH_CRATE,lindera-ko-dic,$(call crate_version,lindera-ko-dic))
 	$(call PUBLISH_CRATE,lindera-unidic,$(call crate_version,lindera-unidic))
 	$(call PUBLISH_CRATE,lindera-sudachidict,$(call crate_version,lindera-sudachidict))
-	$(call PUBLISH_CRATE,lindera,$(LINDERA_VERSION))
+	$(call PUBLISH_CRATE,lindera-segmenter,$(call crate_version,lindera-segmenter))
 	$(call PUBLISH_CRATE,lindera-analysis,$(call crate_version,lindera-analysis))
+	$(call PUBLISH_CRATE,lindera,$(LINDERA_VERSION))
+	$(call PUBLISH_CRATE,lindera-binding,$(call crate_version,lindera-binding))
 	$(call PUBLISH_CRATE,lindera-cli,$(call crate_version,lindera-cli))
-	$(call PUBLISH_CRATE,lindera-binding-core,$(call crate_version,lindera-binding-core))
 	$(call PUBLISH_CRATE,lindera-python,$(call crate_version,lindera-python))
 	$(call PUBLISH_CRATE,lindera-nodejs,$(call crate_version,lindera-nodejs))
 	$(call PUBLISH_CRATE,lindera-ruby,$(call crate_version,lindera-ruby))
