@@ -1591,7 +1591,7 @@ dependencies = [
 
 [[package]]
 name = "lindera"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "anyhow",
  "criterion",
@@ -1604,7 +1604,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-analysis"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "anyhow",
  "criterion",
@@ -1624,7 +1624,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-binding"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "criterion",
  "lindera",
@@ -1633,14 +1633,14 @@ dependencies = [
 
 [[package]]
 name = "lindera-cc-cedict"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "lindera-dictionary",
 ]
 
 [[package]]
 name = "lindera-cli"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -1657,7 +1657,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-crf"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "argmin",
  "argmin-math",
@@ -1668,7 +1668,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-dictionary"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1700,35 +1700,35 @@ dependencies = [
 
 [[package]]
 name = "lindera-ipadic"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "lindera-dictionary",
 ]
 
 [[package]]
 name = "lindera-ipadic-neologd"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "lindera-dictionary",
 ]
 
 [[package]]
 name = "lindera-jieba"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "lindera-dictionary",
 ]
 
 [[package]]
 name = "lindera-ko-dic"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "lindera-dictionary",
 ]
 
 [[package]]
 name = "lindera-nodejs"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "lindera",
  "lindera-binding",
@@ -1743,7 +1743,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-php"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "ext-php-rs",
  "lindera",
@@ -1755,7 +1755,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-python"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "lindera",
  "lindera-binding",
@@ -1767,7 +1767,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ruby"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "lindera",
  "lindera-binding",
@@ -1779,7 +1779,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-segmenter"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "anyhow",
  "lindera-cc-cedict",
@@ -1803,14 +1803,14 @@ dependencies = [
 
 [[package]]
 name = "lindera-sudachidict"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "lindera-dictionary",
 ]
 
 [[package]]
 name = "lindera-trainer"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "anyhow",
  "lindera-crf",
@@ -1824,14 +1824,14 @@ dependencies = [
 
 [[package]]
 name = "lindera-unidic"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "lindera-dictionary",
 ]
 
 [[package]]
 name = "lindera-wasm"
-version = "6.2.0"
+version = "7.0.0"
 dependencies = [
  "js-sys",
  "lindera",
