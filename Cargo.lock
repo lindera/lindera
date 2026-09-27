@@ -1649,7 +1649,6 @@ dependencies = [
  "dirs",
  "flate2",
  "lindera",
- "lindera-analysis",
  "num_cpus",
  "serde_json",
  "tempfile",

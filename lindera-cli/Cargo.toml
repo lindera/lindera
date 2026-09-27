@@ -54,8 +54,7 @@ dirs = "7.0.0"
 flate2 = { version = "1.1.9", default-features = false, features = [
     "rust_backend",
 ] }
-lindera = { workspace = true }
-lindera-analysis = { workspace = true }
+lindera = { workspace = true, features = ["analysis"] }
 num_cpus = { workspace = true }
 serde_json = { workspace = true }
 # Same configuration as lindera-dictionary's build-time dependency: blocking

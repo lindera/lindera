@@ -4,13 +4,13 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use lindera::LinderaResult;
+use lindera::analysis::character_filter::CharacterFilterLoader;
+use lindera::analysis::token_filter::TokenFilterLoader;
+use lindera::analysis::tokenizer::TokenizerBuilder;
 use lindera::error::{LinderaError, LinderaErrorKind};
 use lindera::mode::Mode;
 use lindera::space_penalty::SpacePenaltyConfig;
 use lindera::token::Token;
-use lindera_analysis::character_filter::CharacterFilterLoader;
-use lindera_analysis::token_filter::TokenFilterLoader;
-use lindera_analysis::tokenizer::TokenizerBuilder;
 use lindera_cli::get_version;
 
 use super::io_err;
