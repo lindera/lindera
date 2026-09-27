@@ -46,6 +46,18 @@ use lindera_unidic::embedded::EmbeddedUniDicLoader;
 use crate::LinderaResult;
 use crate::error::{LinderaError, LinderaErrorKind};
 
+// Low-level building blocks of `lindera-dictionary`, exposed inside this
+// module so facade users reach them as
+// `lindera::dictionary::core::prefix_dictionary::PrefixDictionary` and
+// `lindera::dictionary::builder::DictionaryBuilder`. `no_inline` keeps
+// rustdoc from duplicating the whole crate under `dictionary`.
+#[doc(no_inline)]
+pub use lindera_dictionary::dictionary as core;
+#[doc(no_inline)]
+pub use lindera_dictionary::{builder, error, loader, mode, nbest, space_penalty, util, viterbi};
+#[doc(no_inline)]
+pub use lindera_dictionary::{embedded_dictionary, include_bytes_aligned};
+
 pub type Dictionary = lindera_dictionary::dictionary::Dictionary;
 pub type Metadata = lindera_dictionary::dictionary::metadata::Metadata;
 pub type UserDictionary = lindera_dictionary::dictionary::UserDictionary;
