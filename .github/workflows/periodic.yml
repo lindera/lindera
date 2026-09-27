@@ -233,8 +233,8 @@ jobs:
       - name: Run test
         run: cargo test -p lindera-jieba --features embed-jieba
 
-  test-lindera:
-    name: Test lindera (${{ matrix.platform.target }}, ${{ matrix.toolchain }})
+  test-lindera-segmenter:
+    name: Test lindera-segmenter (${{ matrix.platform.target }}, ${{ matrix.toolchain }})
     needs:
       - test-lindera-dictionary
       - test-lindera-ipadic
@@ -264,11 +264,11 @@ jobs:
           target: ${{ matrix.platform.target }}
 
       - name: Run test
-        run: cargo test -p lindera --features embed-ipadic,embed-ko-dic,train --target "${{ matrix.platform.target }}"
+        run: cargo test -p lindera-segmenter --features embed-ipadic,embed-ko-dic,train --target "${{ matrix.platform.target }}"
 
   test-lindera-analysis:
     name: Test lindera-analysis (${{ matrix.toolchain }})
-    needs: [test-lindera]
+    needs: [test-lindera-segmenter]
     strategy:
       matrix:
         toolchain: [stable, beta, nightly]
@@ -285,9 +285,34 @@ jobs:
       - name: Run test
         run: cargo test -p lindera-analysis --features embed-ipadic,embed-ko-dic
 
-  test-lindera-binding-core:
-    name: Test lindera-binding-core (${{ matrix.toolchain }})
+  test-lindera:
+    name: Test lindera (${{ matrix.platform.target }}, ${{ matrix.toolchain }})
     needs: [test-lindera-analysis]
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+        toolchain: [stable, beta, nightly]
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.platform.target }}
+
+      - name: Run test
+        run: cargo test -p lindera --features embed-ipadic,embed-ko-dic,train --target "${{ matrix.platform.target }}"
+
+  test-lindera-binding:
+    name: Test lindera-binding (${{ matrix.toolchain }})
+    needs: [test-lindera]
     strategy:
       matrix:
         toolchain: [stable, beta, nightly]
@@ -302,7 +327,7 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
 
       - name: Run test
-        run: cargo test -p lindera-binding-core
+        run: cargo test -p lindera-binding
 
   test-lindera-cli:
     name: Test lindera-cli (${{ matrix.toolchain }})

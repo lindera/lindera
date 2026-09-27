@@ -126,8 +126,8 @@ jobs:
       features: "--features embed-jieba"
       cache: true
 
-  test-lindera:
-    name: Test lindera (${{ matrix.platform.target }})
+  test-lindera-segmenter:
+    name: Test lindera-segmenter (${{ matrix.platform.target }})
     needs:
       - test-lindera-dictionary
       - test-lindera-trainer
@@ -147,7 +147,7 @@ jobs:
             target: x86_64-pc-windows-msvc
     uses: ./.github/workflows/test-crate.yml
     with:
-      crate: lindera
+      crate: lindera-segmenter
       features: "--features embed-ipadic,embed-ko-dic,train"
       target: ${{ matrix.platform.target }}
       runs-on: ${{ matrix.platform.runner }}
@@ -156,16 +156,52 @@ jobs:
 
   test-lindera-analysis:
     name: Test lindera-analysis
-    needs: [test-lindera]
+    needs: [test-lindera-segmenter]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-analysis
       features: "--features embed-ipadic,embed-ko-dic"
       cache: true
 
+  test-lindera:
+    name: Test lindera (${{ matrix.platform.target }})
+    needs: [test-lindera-analysis]
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera
+      features: "--features embed-ipadic,embed-ko-dic,train"
+      target: ${{ matrix.platform.target }}
+      runs-on: ${{ matrix.platform.runner }}
+      cache: true
+      cache-key: ${{ matrix.platform.target }}
+
+  test-lindera-no-default-features:
+    name: Test lindera (no default features)
+    needs: [test-lindera]
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera
+      features: "--no-default-features"
+      cache: true
+
+  test-lindera-binding:
+    name: Test lindera-binding
+    needs: [test-lindera]
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-binding
+      cache: true
+
   test-lindera-cli:
     name: Test lindera-cli
-    needs: [test-lindera, test-lindera-analysis]
+    needs: [test-lindera]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-cli
@@ -301,6 +337,8 @@ jobs:
     needs:
       [
         test-lindera-cli,
+        test-lindera-no-default-features,
+        test-lindera-binding,
         test-lindera-python,
         test-lindera-nodejs,
         test-lindera-ruby,
@@ -1055,7 +1093,7 @@ jobs:
           # Binding crates (lindera-python, lindera-nodejs, lindera-ruby,
           # lindera-wasm, lindera-php) are not published to crates.io; they are
           # distributed through their own registries (PyPI, npm, RubyGems).
-          for crate in lindera-crf lindera-dictionary lindera-trainer lindera-cc-cedict lindera-jieba lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera-sudachidict lindera lindera-analysis lindera-binding-core lindera-cli; do
+          for crate in lindera-crf lindera-dictionary lindera-trainer lindera-cc-cedict lindera-jieba lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera-sudachidict lindera-segmenter lindera-analysis lindera lindera-binding lindera-cli; do
             VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r ".packages[] | select(.name==\"$crate\") | .version")
             PUBLISHED_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" "https://crates.io/api/v1/crates/$crate" | jq -r 'select(.versions != null) | .versions[].num')
             if echo "${PUBLISHED_VERSIONS}" | grep -Fx "${VERSION}" >/dev/null; then
