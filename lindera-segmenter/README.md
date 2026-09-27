@@ -46,3 +46,5 @@ the CRF-based dictionary training API under `dictionary::trainer`.
 ## License
 
 MIT
+
+The crate version follows the Lindera workspace version.
