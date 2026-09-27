@@ -127,6 +127,11 @@ await init();
 RubyGems）経由で利用するものであり、Rust クレートとして依存する用途は
 想定されていません。コアクレートは引き続き crates.io に公開されます。
 
+> [!NOTE]
+> v7.0.0 以降、`lindera` クレートは `lindera-segmenter` と `lindera-analysis` を
+> 束ねるファサードになり、`lindera-binding-core` は `lindera-binding` として
+> 公開されています。[v6 から v7 への移行](./migration_v6_to_v7.md) を参照してください。
+
 ## ビルド済みユーザー辞書の再ビルドが必要
 
 Lindera v6 では `daachorse` を 4.x から 5.0 に更新しており、ユーザー辞書が

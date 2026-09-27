@@ -117,6 +117,11 @@ above. The existing 5.3.0 releases remain available there. The core crates
 (`lindera`, `lindera-dictionary`, the dictionary crates, and so on) continue
 to be published as before.
 
+> [!NOTE]
+> Since v7.0.0 the `lindera` crate is a facade over `lindera-segmenter` and
+> `lindera-analysis`, and `lindera-binding-core` is published as
+> `lindera-binding`. See [Migration v6 to v7](./migration_v6_to_v7.md).
+
 ## Prebuilt user dictionaries must be rebuilt
 
 Lindera v6 upgrades `daachorse` from 4.x to 5.0, which changed the serialized
