@@ -8,23 +8,29 @@ Lindera は、インストールが簡単で、さまざまな Rust アプリケ
 
 ## Feature フラグ
 
-v5.0 以降、このクレートは `Segmenter` API を中心とした純粋な形態素分割器（セグメンター）です。分析チェーン（文字フィルタ、トークンフィルタ、`Tokenizer`）は、姉妹クレートの [`lindera-analysis`](https://crates.io/crates/lindera-analysis) が提供します。
+v7.0 以降、`lindera` は 2 つのクレートのファサードです。[`lindera-segmenter`](https://crates.io/crates/lindera-segmenter)（`Segmenter` API を中心とした形態素セグメンター）と、`lindera::analysis` として再エクスポートされる [`lindera-analysis`](https://crates.io/crates/lindera-analysis)（文字フィルタ、トークンフィルタ、`Tokenizer`）です。依存は 1 行で両方が使えます。
 
 ```toml
 [dependencies]
-# Pure segmenter
-lindera = "6"
-
-# With the analysis chain (character filters, token filters, Tokenizer)
-lindera = "6"
-lindera-analysis = "6"
+# セグメンター + 分析チェーン（文字フィルタ、トークンフィルタ、Tokenizer）
+lindera = "7"
 ```
+
+セグメンターのみを使う場合:
+
+```toml
+[dependencies]
+lindera = { version = "7", default-features = false, features = ["mmap"] }
+```
+
+`default-features = false` にするとセグメンターだけになります。`analysis` feature と一緒に `mmap` feature も外れるので、ファイルシステム辞書のメモリマップ読み込みをデフォルトのままにしたい場合は `features = ["mmap"]` を付けてください。
 
 このクレートの主な feature フラグは次のとおりです。
 
 | Feature | 説明 | デフォルト |
 | --- | --- | --- |
-| `mmap` | メモリマップによる辞書の読み込み | 有効 |
+| `analysis` | 分析チェーン。`lindera::analysis` として再エクスポート（`lindera-analysis` が提供） | 有効 |
+| `mmap` | ファイルシステム辞書をデフォルトでメモリマップ読み込みする | 有効 |
 | `train` | CRF ベースの辞書学習（`lindera-trainer` に依存） | 無効 |
 | `embed-ipadic`、`embed-ipadic-neologd`、`embed-unidic`、`embed-sudachidict` | 日本語辞書をバイナリに埋め込む | 無効 |
 | `embed-ko-dic` | 韓国語辞書（ko-dic）をバイナリに埋め込む | 無効 |
@@ -32,7 +38,7 @@ lindera-analysis = "6"
 
 以下の例では `embed-ipadic` を使います。`embed-*` feature を使わない場合は、ビルド済みの辞書をパスから読み込みます（`load_dictionary("/path/to/ipadic")`）。`embed-cjk*` のような組み合わせを含む一覧は、[Feature フラグ](https://lindera.github.io/lindera/ja/development/feature_flags.html)を参照してください。
 
-v5 からアップグレードする場合は、[移行ガイド](https://lindera.github.io/lindera/ja/migration_v5_to_v6.html)を参照してください。
+v6 からアップグレードする場合は、[移行ガイド](https://lindera.github.io/lindera/ja/migration_v6_to_v7.html)を参照してください。
 
 ## セグメンテーションの例
 
@@ -42,10 +48,10 @@ Cargo.toml に以下を追加します。
 
 ```toml
 [dependencies]
-lindera = { version = "6", features = ["embed-ipadic"] }
+lindera = { version = "7", features = ["embed-ipadic"] }
 ```
 
-この例では、追加のクレートを使わずに、純粋なセグメンターとしての Lindera の基本的な使い方を説明します。
+この例では `Segmenter` API だけを使います。`default-features = false` でも動作します。
 
 以下の処理を行います。
 
@@ -94,12 +100,11 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 
 ## トークナイズの例
 
-以下の `Tokenizer` とフィルタチェーンは、`lindera-analysis` クレートが提供します。
+以下の `Tokenizer` とフィルタチェーンは `lindera::analysis`（デフォルトで有効な `analysis` feature）が提供します。
 
 ```toml
 [dependencies]
-lindera = { version = "6", features = ["embed-ipadic"] }
-lindera-analysis = "6"
+lindera = { version = "7", features = ["embed-ipadic"] }
 ```
 
 ### 基本的なトークナイズ
@@ -116,7 +121,7 @@ lindera-analysis = "6"
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera_analysis::tokenizer::Tokenizer;
+use lindera::analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
@@ -163,8 +168,7 @@ Cargo.toml に以下を追加します。
 
 ```toml
 [dependencies]
-lindera = { version = "6", features = ["embed-ipadic"] }
-lindera-analysis = "6"
+lindera = { version = "7", features = ["embed-ipadic"] }
 anyhow = "1"
 serde_json = "1"
 ```
@@ -188,7 +192,7 @@ use lindera::dictionary::{Metadata, load_dictionary, load_user_dictionary};
 use lindera::error::LinderaErrorKind;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera_analysis::tokenizer::Tokenizer;
+use lindera::analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
@@ -253,8 +257,7 @@ Cargo.toml に以下を追加します。
 
 ```toml
 [dependencies]
-lindera = { version = "6", features = ["embed-ipadic"] }
-lindera-analysis = "6"
+lindera = { version = "7", features = ["embed-ipadic"] }
 ```
 
 この例では、文字フィルタとトークンフィルタで分析チェーンを組み立てます。
@@ -269,16 +272,16 @@ lindera-analysis = "6"
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera_analysis::character_filter::BoxCharacterFilter;
-use lindera_analysis::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
-use lindera_analysis::character_filter::unicode_normalize::{
+use lindera::analysis::character_filter::BoxCharacterFilter;
+use lindera::analysis::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
+use lindera::analysis::character_filter::unicode_normalize::{
     UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
 };
-use lindera_analysis::token_filter::BoxTokenFilter;
-use lindera_analysis::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
-use lindera_analysis::token_filter::japanese_number::JapaneseNumberTokenFilter;
-use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
-use lindera_analysis::tokenizer::Tokenizer;
+use lindera::analysis::token_filter::BoxTokenFilter;
+use lindera::analysis::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+use lindera::analysis::token_filter::japanese_number::JapaneseNumberTokenFilter;
+use lindera::analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+use lindera::analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
@@ -465,7 +468,7 @@ token_filters:
 ```rust
 use std::path::PathBuf;
 
-use lindera_analysis::tokenizer::TokenizerBuilder;
+use lindera::analysis::tokenizer::TokenizerBuilder;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
@@ -576,4 +579,5 @@ export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 API リファレンスは以下の URL で参照できます。
 
 - [lindera](https://docs.rs/lindera)
+- [lindera-segmenter](https://docs.rs/lindera-segmenter)
 - [lindera-analysis](https://docs.rs/lindera-analysis)

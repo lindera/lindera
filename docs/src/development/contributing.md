@@ -60,7 +60,7 @@ or reviewing a binding feature, apply the following policy:
   defer class finalizers, while Python, Ruby, and PHP keep classes because
   their finalization is deterministic.
 
-Put shared logic in `lindera-binding-core` (e.g. `TokenView`) so each binding
+Put shared logic in `lindera-binding` (e.g. `TokenView`) so each binding
 only maps core data into its FFI types.
 
 ## Testing

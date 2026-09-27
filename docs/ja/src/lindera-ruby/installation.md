@@ -24,7 +24,7 @@ gem "lindera"
 > [!NOTE]
 > lindera v6.1.0 以降を使用してください。v6.1.0 より前に公開された `lindera` gem は、インストール時のコンパイルに失敗します。それらのバージョンは、以下の手順でソースからビルドしてください。
 
-gem は [crates.io](https://crates.io/crates/lindera) 上の同じバージョンの `lindera` と `lindera-binding-core` に対してコンパイルされます（この 2 つはバージョンを完全に固定しています）。gem には `Cargo.lock` が含まれないため、それ以外の依存（ほかの `lindera-*` クレートを含む）は、インストール時に互換性のある最新のリリースに解決されます。デフォルトの feature（`train`）のみを有効にし、辞書は埋め込みません。辞書は[辞書の入手](#辞書の入手)を参照してください。その他の [Feature フラグ](#feature-フラグ)を有効にするには、インストール時に `LINDERA_FEATURES` を指定します：
+gem は [crates.io](https://crates.io/crates/lindera) 上の同じバージョンの `lindera` と `lindera-binding` に対してコンパイルされます（この 2 つはバージョンを完全に固定しています）。gem には `Cargo.lock` が含まれないため、それ以外の依存（ほかの `lindera-*` クレートを含む）は、インストール時に互換性のある最新のリリースに解決されます。デフォルトの feature（`train`）のみを有効にし、辞書は埋め込みません。辞書は[辞書の入手](#辞書の入手)を参照してください。その他の [Feature フラグ](#feature-フラグ)を有効にするには、インストール時に `LINDERA_FEATURES` を指定します：
 
 ```bash
 LINDERA_FEATURES="embed-ipadic" gem install lindera
@@ -68,7 +68,7 @@ make build-lindera-ruby
 `bundle exec rake build`（または `make package-lindera-ruby`）は、ソース gem を
 `lindera-ruby/pkg/` に出力します。`cargo package` が正規化したクレートを同梱するため、
 gem はこのリポジトリの外でも、crates.io 上の同じバージョンの `lindera` と
-`lindera-binding-core` に対してコンパイルできます。`gem build` を直接実行しないで
+`lindera-binding` に対してコンパイルできます。`gem build` を直接実行しないで
 ください。クレート自身の `Cargo.toml` は Cargo ワークスペースの中でしか解決できません。
 
 `make test-lindera-ruby-gem`（Docker が必要）は、gem をビルドし、クリーンな `ruby`

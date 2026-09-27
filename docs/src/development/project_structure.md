@@ -9,10 +9,11 @@ lindera/
 ├── lindera-crf/            # CRF engine (pure Rust, no_std)
 ├── lindera-dictionary/     # Dictionary base library
 ├── lindera-trainer/        # CRF-based dictionary training
-├── lindera/                # Core morphological segmentation library
+├── lindera/                # Facade crate (re-exports lindera-segmenter and lindera-analysis); tests, examples, benches
+├── lindera-segmenter/      # Morphological segmentation library (Segmenter API)
 ├── lindera-analysis/       # Analysis chain (character/token filters, tokenizer)
 ├── lindera-cli/            # CLI tool
-├── lindera-binding-core/   # FFI-independent helpers shared by the language bindings
+├── lindera-binding/        # FFI-independent helpers shared by the language bindings
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
 ├── lindera-ipadic-neologd/ # IPADIC NEologd dictionary (Japanese)
 ├── lindera-unidic/         # UniDic dictionary (Japanese)
@@ -26,8 +27,7 @@ lindera/
 ├── lindera-php/            # PHP bindings (ext-php-rs)
 ├── lindera-wasm/           # WebAssembly bindings (wasm-bindgen)
 ├── resources/              # Test resources and sample data
-├── docs/                   # Documentation (mdBook)
-└── examples/               # Example code
+└── docs/                   # Documentation (mdBook)
 ```
 
 ## Crate Descriptions
@@ -54,21 +54,25 @@ CRF training pipeline for creating custom dictionaries. Builds on `lindera-dicti
 | `feature_rewriter.rs` | MeCab-compatible feature rewriting (3-section format) |
 | `model.rs` | Trained model storage, serialization, and dictionary output |
 
+#### `lindera-segmenter`
+
+The morphological segmentation library (published as `lindera` up to v6). Integrates the dictionary crates and provides the `Segmenter` API. Its `dictionary` module also re-exports the raw `lindera-dictionary` modules (`builder`, `core`, `loader`, `viterbi`, ...).
+
 #### `lindera`
 
-The main morphological segmentation library. Integrates dictionary crates and provides the `Segmenter` API.
+The facade crate and the single dependency for Rust users. It re-exports every module of `lindera-segmenter` and, with the default `analysis` feature, `lindera-analysis` as `lindera::analysis`. The directory also holds the integration tests, examples, and benches that exercise the public paths.
 
 #### `lindera-analysis`
 
-Lucene-style analysis chain on top of `lindera`: character filters, token filters, and the `Tokenizer` that composes them around a `Segmenter`.
+Lucene-style analysis chain on top of `lindera-segmenter` (used as `lindera::analysis` through the facade): character filters, token filters, and the `Tokenizer` that composes them around a `Segmenter`.
 
 #### `lindera-cli`
 
 Command-line interface for tokenization, dictionary training, export, and building. The `train` feature is enabled by default.
 
-#### `lindera-binding-core`
+#### `lindera-binding`
 
-FFI-independent helpers shared by all five language bindings (`lindera-python`, `lindera-nodejs`, `lindera-ruby`, `lindera-php`, `lindera-wasm`): a core tokenizer/schema/metadata layer that each binding wraps in its own language-native API.
+FFI-independent helpers shared by all five language bindings (`lindera-python`, `lindera-nodejs`, `lindera-ruby`, `lindera-php`, `lindera-wasm`): a core tokenizer/schema/metadata layer that each binding wraps in its own language-native API. It depends on the `lindera` facade.
 
 ### Dictionary Crates
 
@@ -116,10 +120,11 @@ Test resources including sample dictionaries, user dictionaries, and test corpor
 
 User-facing documentation built with [mdBook](https://rust-lang.github.io/mdBook/). The table of contents is defined in `docs/src/SUMMARY.md`. A Japanese translation is available under `docs/ja/`.
 
-#### `examples/`
+#### `lindera/examples/` and `lindera-analysis/examples/`
 
 Runnable example programs demonstrating common usage patterns. Run with:
 
 ```bash
-cargo run --features=embed-ipadic --example=<example_name>
+cargo run -p lindera --features=embed-ipadic --example=segment
+cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 ```

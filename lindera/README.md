@@ -8,26 +8,36 @@ Lindera aims to build a library which is easy to install and provides concise AP
 
 ## Feature flags
 
-As of v5.0, this crate is a pure morphological segmenter around the
-`Segmenter` API. The analysis chain (character filters, token filters, and the
-`Tokenizer`) lives in the companion
-[`lindera-analysis`](https://crates.io/crates/lindera-analysis) crate:
+Since v7.0, `lindera` is a facade over two crates:
+[`lindera-segmenter`](https://crates.io/crates/lindera-segmenter) (the
+morphological segmenter around the `Segmenter` API) and
+[`lindera-analysis`](https://crates.io/crates/lindera-analysis) (character
+filters, token filters, and the `Tokenizer`), re-exported as
+`lindera::analysis`. One dependency gives you both:
 
 ```toml
 [dependencies]
-# Pure segmenter
-lindera = "6"
-
-# With the analysis chain (character filters, token filters, Tokenizer)
-lindera = "6"
-lindera-analysis = "6"
+# Segmenter and analysis chain (character filters, token filters, Tokenizer)
+lindera = "7"
 ```
+
+Segmenter only:
+
+```toml
+[dependencies]
+lindera = { version = "7", default-features = false, features = ["mmap"] }
+```
+
+`default-features = false` gives you the segmenter only: it turns off the
+`analysis` feature and also the `mmap` feature, so add `features = ["mmap"]`
+to keep memory-mapped loading as the default for filesystem dictionaries.
 
 The main feature flags of this crate:
 
 | Feature | Description | Default |
 | --- | --- | --- |
-| `mmap` | Memory-mapped dictionary loading | Yes |
+| `analysis` | The analysis chain, re-exported as `lindera::analysis` (provided by `lindera-analysis`) | Yes |
+| `mmap` | Memory-mapped loading as the default for filesystem dictionaries | Yes |
 | `train` | CRF-based dictionary training (depends on `lindera-trainer`) | No |
 | `embed-ipadic`, `embed-ipadic-neologd`, `embed-unidic`, `embed-sudachidict` | Embed a Japanese dictionary in the binary | No |
 | `embed-ko-dic` | Embed the Korean dictionary (ko-dic) in the binary | No |
@@ -38,8 +48,8 @@ pre-built dictionary from its path instead (`load_dictionary("/path/to/ipadic")`
 See [Feature Flags](https://lindera.github.io/lindera/development/feature_flags.html)
 for the full list, including the `embed-cjk*` bundles.
 
-See the [migration guide](https://lindera.github.io/lindera/migration_v5_to_v6.html)
-when upgrading from v5.
+See the [migration guide](https://lindera.github.io/lindera/migration_v6_to_v7.html)
+when upgrading from v6.
 
 ## Segmentation example
 
@@ -49,11 +59,11 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "6", features = ["embed-ipadic"] }
+lindera = { version = "7", features = ["embed-ipadic"] }
 ```
 
-This example covers the basic usage of Lindera as a pure segmenter — no
-additional crates required.
+This example uses only the `Segmenter` API; it also works with
+`default-features = false`.
 
 It will:
 
@@ -102,13 +112,12 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 
 ## Tokenization examples
 
-The `Tokenizer` and the filter chain below are provided by the
-`lindera-analysis` crate:
+The `Tokenizer` and the filter chain below come from `lindera::analysis`
+(the `analysis` feature, on by default):
 
 ```toml
 [dependencies]
-lindera = { version = "6", features = ["embed-ipadic"] }
-lindera-analysis = "6"
+lindera = { version = "7", features = ["embed-ipadic"] }
 ```
 
 ### Basic tokenization
@@ -125,7 +134,7 @@ It will:
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera_analysis::tokenizer::Tokenizer;
+use lindera::analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
@@ -172,8 +181,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "6", features = ["embed-ipadic"] }
-lindera-analysis = "6"
+lindera = { version = "7", features = ["embed-ipadic"] }
 anyhow = "1"
 serde_json = "1"
 ```
@@ -197,7 +205,7 @@ use lindera::dictionary::{Metadata, load_dictionary, load_user_dictionary};
 use lindera::error::LinderaErrorKind;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera_analysis::tokenizer::Tokenizer;
+use lindera::analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
@@ -262,8 +270,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "6", features = ["embed-ipadic"] }
-lindera-analysis = "6"
+lindera = { version = "7", features = ["embed-ipadic"] }
 ```
 
 This example builds an analysis chain with character filters and token filters.
@@ -278,16 +285,16 @@ It will:
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera_analysis::character_filter::BoxCharacterFilter;
-use lindera_analysis::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
-use lindera_analysis::character_filter::unicode_normalize::{
+use lindera::analysis::character_filter::BoxCharacterFilter;
+use lindera::analysis::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
+use lindera::analysis::character_filter::unicode_normalize::{
     UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
 };
-use lindera_analysis::token_filter::BoxTokenFilter;
-use lindera_analysis::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
-use lindera_analysis::token_filter::japanese_number::JapaneseNumberTokenFilter;
-use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
-use lindera_analysis::tokenizer::Tokenizer;
+use lindera::analysis::token_filter::BoxTokenFilter;
+use lindera::analysis::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+use lindera::analysis::token_filter::japanese_number::JapaneseNumberTokenFilter;
+use lindera::analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+use lindera::analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
@@ -475,7 +482,7 @@ token_filters:
 ```rust
 use std::path::PathBuf;
 
-use lindera_analysis::tokenizer::TokenizerBuilder;
+use lindera::analysis::tokenizer::TokenizerBuilder;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
@@ -586,4 +593,5 @@ This variable is set automatically and should not be modified by users.
 The API reference is available. Please see following URL:
 
 - [lindera](https://docs.rs/lindera)
+- [lindera-segmenter](https://docs.rs/lindera-segmenter)
 - [lindera-analysis](https://docs.rs/lindera-analysis)
