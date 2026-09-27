@@ -11,11 +11,14 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = "6"
+lindera = "7"
 ```
 
 > [!NOTE]
-> Upgrading from v4? See [Migration v4 to v5](../migration_v4_to_v5.md) for details.
+> This single dependency also provides the analysis chain (character filters,
+> token filters, and the `Tokenizer`) as `lindera::analysis`; use
+> `default-features = false` if you only need the segmenter.
+> Upgrading from v6? See [Migration v6 to v7](../migration_v6_to_v7.md) for details.
 
 ## Dictionary Setup
 
@@ -29,7 +32,7 @@ let dictionary = load_dictionary("/path/to/ipadic")?;
 > If you want to embed a dictionary directly into the binary (advanced usage), enable the corresponding `embed-*` feature flag and load it using the `embedded://` scheme:
 >
 > ```rust
-> // Cargo.toml: lindera = { version = "6", features = ["embed-ipadic"] }
+> // Cargo.toml: lindera = { version = "7", features = ["embed-ipadic"] }
 > let dictionary = load_dictionary("embedded://ipadic")?;
 > ```
 >

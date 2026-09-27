@@ -58,7 +58,7 @@ Linderaは日本語テキスト（IPADIC）を、シングルスレッドで概�
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera_analysis::tokenizer::Tokenizer;
+use lindera::analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {

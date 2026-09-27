@@ -86,7 +86,7 @@ The `tokenize_nbest` method accepts the following parameters:
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera_analysis::tokenizer::Tokenizer;
+use lindera::analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
@@ -137,7 +137,7 @@ echo "すもももももももものうち" | lindera tokenize --dict embedded:/
 For repeated tokenization, you can reuse a `Lattice` to reduce memory allocations:
 
 ```rust
-use lindera_dictionary::viterbi::Lattice;
+use lindera::dictionary::Lattice;
 
 let mut lattice = Lattice::default();
 let results = tokenizer.tokenize_nbest_with_lattice(text, &mut lattice, 3, false, None)?;

@@ -1,6 +1,6 @@
 # Lindera Dictionary
 
-Lindera Dictionaryは、形態素解析辞書のベースライブラリです。辞書の読み込み、ビルド、Viterbiベースのセグメンテーションを提供します。CRFベースの辞書学習機能は、別クレートの[`lindera-trainer`](./lindera-trainer.md)が提供します。
+Lindera Dictionaryは、形態素解析辞書のベースライブラリです。辞書の読み込み、ビルド、Viterbiベースのセグメンテーションを提供します。CRFベースの辞書学習機能は、別クレートの[`lindera-trainer`](./lindera-trainer.md)が提供します。`lindera` ファサードからは `lindera::dictionary` 配下（辞書データ構造の `lindera::dictionary::core`、`lindera::dictionary::builder`、`lindera::dictionary::viterbi` など）で参照できるため、`lindera-dictionary` への直接依存はほとんど不要です。
 
 ## 主な特徴
 

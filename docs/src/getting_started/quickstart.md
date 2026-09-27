@@ -53,7 +53,9 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 ```
 
 > [!NOTE]
-> Character filters, token filters, and the `Tokenizer` API are provided by
-> the companion `lindera-analysis` crate (as of v5.0). Add
-> `lindera-analysis = "6"` to your dependencies if you need the analysis
-> chain.
+> Character filters, token filters, and the `Tokenizer` API are available as
+> `lindera::analysis` (the `analysis` feature, enabled by default), so
+> `lindera = "7"` already covers the whole analysis chain — no extra
+> dependency is needed. With `default-features = false` you get the segmenter
+> alone. See [Lindera Analysis](../lindera-analysis.md) for details, and
+> [Migration v6 to v7](../migration_v6_to_v7.md) if you are upgrading from v6.

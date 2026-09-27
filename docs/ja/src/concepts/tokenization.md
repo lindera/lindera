@@ -86,7 +86,7 @@ N-Bestトークナイズは**Forward-DP Backward-A\***アルゴリズムに基�
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera_analysis::tokenizer::Tokenizer;
+use lindera::analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
@@ -137,7 +137,7 @@ echo "すもももももももものうち" | lindera tokenize --dict embedded:/
 繰り返しトークナイズを行う場合、`Lattice`を再利用してメモリ割り当てを削減できます：
 
 ```rust
-use lindera_dictionary::viterbi::Lattice;
+use lindera::dictionary::Lattice;
 
 let mut lattice = Lattice::default();
 let results = tokenizer.tokenize_nbest_with_lattice(text, &mut lattice, 3, false, None)?;

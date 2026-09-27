@@ -610,14 +610,14 @@ Character filters and token filters can also be created and applied programmatic
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera_analysis::character_filter::BoxCharacterFilter;
-use lindera_analysis::character_filter::unicode_normalize::{
+use lindera::analysis::character_filter::BoxCharacterFilter;
+use lindera::analysis::character_filter::unicode_normalize::{
     UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
 };
-use lindera_analysis::token_filter::BoxTokenFilter;
-use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
-use lindera_analysis::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter;
-use lindera_analysis::tokenizer::Tokenizer;
+use lindera::analysis::token_filter::BoxTokenFilter;
+use lindera::analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+use lindera::analysis::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter;
+use lindera::analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {

@@ -6,14 +6,18 @@ Lindera は Cargo の feature フラグを使用して、オプション機能�
 
 | Feature | 説明 | デフォルト |
 | --- | --- | --- |
-| `mmap` | メモリマップドファイルサポート | 有効 |
-| `train` | CRF ベースの辞書学習（`lindera-trainer` に依存） | 下記参照 |
+| `analysis` | 分析チェーン（`lindera::analysis`: character filter・token filter・`Tokenizer`）。`lindera-analysis` を再エクスポート | 有効 |
+| `mmap` | ファイルシステム辞書のメモリマップ読み込みをデフォルトにする（`use_mmap`）。`memmap2` 自体は常にリンクされる | 有効 |
+| `train` | CRF ベースの辞書学習（`lindera-trainer` に依存。`lindera::dictionary::trainer`） | 下記参照 |
 
-- `mmap` はメインの `lindera` クレートでデフォルトで有効です。
-- 分析チェーン（character filter・token filter・`Tokenizer`）は本クレートの
-  feature ではありません。v5.0 以降は独立クレート `lindera-analysis` が提供します。
-  `lindera` クレート自体は `Segmenter` API を中心とした純粋な形態素分割器です。
-- `train` は `lindera-cli`・`lindera-python`・`lindera-nodejs`・`lindera-ruby`・`lindera-php` ではデフォルトで有効です。コアライブラリである `lindera` クレートではデフォルトで無効なので、ライブラリとして使用する場合は `features = ["train"]` で明示的に有効にしてください。`lindera-wasm` では利用できません。
+- `analysis` と `mmap` は `lindera` ファサードでどちらもデフォルト有効です。
+  `default-features = false` にすると両方とも無効になり、純粋なセグメンター
+  （`lindera-segmenter` クレート）だけになります。必要に応じて
+  `features = ["mmap"]` や `features = ["analysis"]` で個別に有効にしてください。
+- v7.0 以降、分析チェーンは再び `lindera` の一部です。`lindera::analysis` が
+  `lindera-analysis` クレートを再エクスポートします。v5.x・v6.x では別の依存として
+  追加する必要がありました。
+- `train` は `lindera-cli`・`lindera-python`・`lindera-nodejs`・`lindera-ruby`・`lindera-php` ではデフォルトで有効です。`lindera` ライブラリクレートではデフォルトで無効なので、ライブラリとして使用する場合は `features = ["train"]` で明示的に有効にしてください。`lindera-wasm` では利用できません。
 
 ## 外部辞書の使用（推奨）
 
@@ -43,7 +47,7 @@ let dictionary = load_dictionary("/path/to/ipadic")?;
 
 ```toml
 [dependencies]
-lindera = { version = "6", features = ["embed-ipadic"] }
+lindera = { version = "7", features = ["embed-ipadic"] }
 ```
 
 埋め込みを有効にした場合、以下のように辞書を読み込めます：
@@ -75,7 +79,7 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 
 ```toml
 [dependencies]
-lindera = { version = "6", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "7", features = ["embed-ipadic", "embed-ko-dic"] }
 ```
 
 またはコマンドラインから：
@@ -87,5 +91,5 @@ cargo build --features embed-ipadic,embed-ko-dic
 ### 注意事項
 
 - 辞書の埋め込みはバイナリサイズを大幅に増加させます。実際に必要な辞書のみを埋め込んでください。
-- `train` feature は `lindera-crf` への依存を追加し、コンパイル時間が増加します。トークナイズのみのユースケースでは不要です。
+- `train` feature は `lindera-trainer`（を通じて `lindera-crf`）への依存を追加し、コンパイル時間が増加します。トークナイズのみのユースケースでは不要です。
 - `mmap` feature はファイルシステム辞書に対するメモリマップド読み込みを有効にします（CLIの`--mmap`または`segmenter`設定の`use_mmap`キーで要求）。辞書フォーマットバージョン 2 以降、トライ（`dict.trie`/`dict.valsidx`）もシリアライズ済みバイト列上を直接走査するため、単語リストファイル（`dict.vals`/`dict.wordsidx`/`dict.words`）・接続コスト行列（`matrix.mtx`）と合わせて、大きなコンポーネントはすべて遅延読み込みされ、匿名メモリを消費しません。ロード時に全体がメモリに展開されるコンポーネントはありません。埋め込み辞書には影響しませんが、埋め込み辞書のトライと接続コスト行列もバイナリ内から直接参照されます。
