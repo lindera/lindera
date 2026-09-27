@@ -3,7 +3,7 @@
 //! This module provides helper functions for working with JavaScript values
 //! in the napi-rs context.
 
-use lindera_binding_core::argument::{MAX_ARGUMENT_DEPTH, argument_too_deep_message};
+use lindera_binding::argument::{MAX_ARGUMENT_DEPTH, argument_too_deep_message};
 use napi::bindgen_prelude::{Array, FromNapiValue, Object};
 use napi::{Error, JsValue, Status, Unknown, ValueType, check_status, sys};
 use serde_json::{Map, Value};

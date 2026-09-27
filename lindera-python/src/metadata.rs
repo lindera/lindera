@@ -2,7 +2,7 @@
 //!
 //! This module provides structures for configuring dictionary metadata, including
 //! character encodings and schema definitions. The defaults and schema wiring are
-//! delegated to [`lindera_binding_core::CoreMetadata`]; this module only adds the
+//! delegated to [`lindera_binding::CoreMetadata`]; this module only adds the
 //! PyO3 wrappers.
 //!
 //! # Examples
@@ -26,13 +26,13 @@ use std::collections::HashMap;
 use pyo3::prelude::*;
 
 use lindera::dictionary::Metadata;
-use lindera_binding_core::CoreMetadata;
+use lindera_binding::CoreMetadata;
 
 use crate::schema::PySchema;
 
 /// Dictionary metadata configuration.
 ///
-/// A thin PyO3 wrapper over [`lindera_binding_core::CoreMetadata`], which owns
+/// A thin PyO3 wrapper over [`lindera_binding::CoreMetadata`], which owns
 /// the default values and the schema wiring.
 ///
 /// # Fields
@@ -51,7 +51,7 @@ use crate::schema::PySchema;
 #[pyclass(name = "Metadata", from_py_object)]
 #[derive(Debug, Clone)]
 pub struct PyMetadata {
-    /// The backing binding-core metadata.
+    /// The backing lindera-binding metadata.
     pub inner: CoreMetadata,
 }
 

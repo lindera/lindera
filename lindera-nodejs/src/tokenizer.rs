@@ -2,12 +2,12 @@
 //!
 //! This module provides a builder pattern for creating tokenizers and the tokenizer itself.
 //! The build-flow orchestration is delegated to
-//! [`lindera_binding_core::CoreTokenizerBuilder`] / [`lindera_binding_core::CoreTokenizer`];
+//! [`lindera_binding::CoreTokenizerBuilder`] / [`lindera_binding::CoreTokenizer`];
 //! this module only adds the napi wrappers and the JS-value conversion.
 
 use std::path::Path;
 
-use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
+use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::error::to_napi_error;

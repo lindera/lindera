@@ -11,7 +11,7 @@
 
 use std::fmt;
 
-use lindera_binding_core::argument::{MAX_ARGUMENT_DEPTH, argument_too_deep_message};
+use lindera_binding::argument::{MAX_ARGUMENT_DEPTH, argument_too_deep_message};
 use serde::de::{self, DeserializeSeed, MapAccess, SeqAccess, Visitor};
 use serde_json::{Map, Number, Value};
 use wasm_bindgen::JsValue;

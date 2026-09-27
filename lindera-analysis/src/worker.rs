@@ -37,7 +37,7 @@ use crate::tokenizer::{Tokenizer, correct_offsets};
 ///
 /// The worker is `Send + Sync`; the `&mut self` API means cross-thread
 /// sharing requires external synchronization (one worker per thread, or a
-/// `Mutex` as `lindera-binding-core` does).
+/// `Mutex` as `lindera-binding` does).
 pub struct AnalysisWorker {
     /// Character filters applied to the text before segmentation.
     character_filters: Vec<BoxCharacterFilter>,

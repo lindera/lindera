@@ -2,7 +2,7 @@
 //!
 //! This module provides structures for configuring dictionary metadata, including
 //! character encodings and schema definitions. The defaults and schema wiring are
-//! delegated to [`lindera_binding_core::CoreMetadata`]; this module only adds the
+//! delegated to [`lindera_binding::CoreMetadata`]; this module only adds the
 //! ext-php-rs wrappers.
 
 use std::collections::HashMap;
@@ -10,19 +10,19 @@ use std::collections::HashMap;
 use ext_php_rs::prelude::*;
 
 use lindera::dictionary::Metadata;
-use lindera_binding_core::CoreMetadata;
+use lindera_binding::CoreMetadata;
 
 use crate::error::lindera_value_err;
 
 /// Dictionary metadata configuration.
 ///
-/// A thin ext-php-rs wrapper over [`lindera_binding_core::CoreMetadata`], which
+/// A thin ext-php-rs wrapper over [`lindera_binding::CoreMetadata`], which
 /// owns the default values and the schema wiring.
 #[php_class]
 #[php(name = "Lindera\\Metadata")]
 #[derive(Clone)]
 pub struct PhpMetadata {
-    /// The backing binding-core metadata.
+    /// The backing lindera-binding metadata.
     inner: CoreMetadata,
 }
 

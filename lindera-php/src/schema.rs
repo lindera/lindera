@@ -2,12 +2,12 @@
 //!
 //! This module provides schema structures that define the format and fields
 //! of dictionary entries. The field-management logic is delegated to
-//! [`lindera_binding_core::CoreSchema`]; this module only adds the ext-php-rs wrappers.
+//! [`lindera_binding::CoreSchema`]; this module only adds the ext-php-rs wrappers.
 
 use ext_php_rs::prelude::*;
 
 use lindera::dictionary::{FieldDefinition, FieldType, Schema};
-use lindera_binding_core::{CoreFieldDefinition, CoreSchema};
+use lindera_binding::{CoreFieldDefinition, CoreSchema};
 
 use crate::error::lindera_value_err;
 
@@ -242,13 +242,13 @@ impl From<PhpFieldDefinition> for FieldDefinition {
 
 /// Dictionary schema definition.
 ///
-/// A thin ext-php-rs wrapper over [`lindera_binding_core::CoreSchema`], which owns
+/// A thin ext-php-rs wrapper over [`lindera_binding::CoreSchema`], which owns
 /// the field storage, the name-to-index map, and the field lookups.
 #[php_class]
 #[php(name = "Lindera\\Schema")]
 #[derive(Clone)]
 pub struct PhpSchema {
-    /// The backing binding-core schema.
+    /// The backing lindera-binding schema.
     inner: CoreSchema,
 }
 

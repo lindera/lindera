@@ -22,7 +22,7 @@ task default: %i[compile test]
 PKG_DIR = File.expand_path("pkg", __dir__)
 
 # Lindera crates the gem must compile against at exactly its own version.
-PINNED_CRATES = %w[lindera lindera-binding-core].freeze
+PINNED_CRATES = %w[lindera lindera-binding].freeze
 
 # Returns the version requirement of a dependency in a manifest written by
 # `cargo package`, which gives every dependency its own `[dependencies.<name>]`

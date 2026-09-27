@@ -650,7 +650,7 @@ jobs:
   # One source gem for every platform: `gem install` compiles the extension
   # (see lindera-ruby/extconf.rb), so there is nothing platform-specific to
   # build here. `rake build` packages the crate as `cargo package` normalizes
-  # it, with lindera and lindera-binding-core pinned to crates.io releases of
+  # it, with lindera and lindera-binding pinned to crates.io releases of
   # this version.
   build-ruby-gem:
     name: Build Ruby gem

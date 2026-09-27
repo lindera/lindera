@@ -2,10 +2,10 @@
 //!
 //! This module provides schema structures that define the format and fields
 //! of dictionary entries. The field-management logic is delegated to
-//! [`lindera_binding_core::CoreSchema`]; this module only adds the napi wrappers.
+//! [`lindera_binding::CoreSchema`]; this module only adds the napi wrappers.
 
 use lindera::dictionary::{FieldDefinition, FieldType, Schema};
-use lindera_binding_core::{CoreFieldDefinition, CoreFieldType, CoreSchema};
+use lindera_binding::{CoreFieldDefinition, CoreFieldType, CoreSchema};
 
 use crate::error::to_napi_error;
 
@@ -113,11 +113,11 @@ impl From<JsFieldDefinition> for FieldDefinition {
 
 /// Dictionary schema definition.
 ///
-/// A thin napi wrapper over [`lindera_binding_core::CoreSchema`], which owns the
+/// A thin napi wrapper over [`lindera_binding::CoreSchema`], which owns the
 /// field storage, the name-to-index map, and the field lookups.
 #[napi(js_name = "Schema")]
 pub struct JsSchema {
-    /// The backing binding-core schema.
+    /// The backing lindera-binding schema.
     inner: CoreSchema,
 }
 

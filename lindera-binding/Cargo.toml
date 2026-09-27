@@ -1,10 +1,10 @@
 [package]
-name = "lindera-binding-core"
+name = "lindera-binding"
 version = { workspace = true }
 edition = { workspace = true }
 rust-version = { workspace = true }
 description = "Shared FFI-independent helpers for the Lindera language bindings."
-documentation = "https://docs.rs/lindera-binding-core"
+documentation = "https://docs.rs/lindera-binding"
 homepage = { workspace = true }
 repository = { workspace = true }
 keywords = ["morphological", "analysis", "binding"]
@@ -14,12 +14,11 @@ license = { workspace = true }
 [features]
 # Dictionary-embedding pass-throughs, used only by feature-gated tests and
 # benches in this crate; the bindings enable embedding via their own crates.
-embed-ipadic = ["lindera/embed-ipadic", "lindera-analysis/embed-ipadic"]
-embed-ko-dic = ["lindera/embed-ko-dic", "lindera-analysis/embed-ko-dic"]
+embed-ipadic = ["lindera/embed-ipadic"]
+embed-ko-dic = ["lindera/embed-ko-dic"]
 
 [dependencies]
-lindera = { workspace = true }
-lindera-analysis = { workspace = true }
+lindera = { workspace = true, features = ["analysis"] }
 serde_json = { workspace = true }
 
 [dev-dependencies]
@@ -28,6 +27,6 @@ criterion = { version = "0.8.2", default-features = false, features = [
 ] }
 
 [[bench]]
-name = "bench_binding_core_ipadic"
+name = "bench_binding_ipadic"
 harness = false
 required-features = ["embed-ipadic"]

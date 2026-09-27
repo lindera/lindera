@@ -60,7 +60,7 @@ pub fn validate_record(fields: &[String], record: &[String]) -> Result<(), Strin
 }
 
 /// Category of a schema field, decoupled from [`lindera::dictionary::FieldType`]
-/// so the bindings depend only on `lindera-binding-core`.
+/// so the bindings depend only on `lindera-binding`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CoreFieldType {
     /// Surface form (word text).

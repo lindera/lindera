@@ -2,7 +2,7 @@
 //!
 //! This module provides schema structures that define the format and fields
 //! of dictionary entries. The field-management logic is delegated to
-//! [`lindera_binding_core::CoreSchema`]; this module only adds the PyO3 wrappers.
+//! [`lindera_binding::CoreSchema`]; this module only adds the PyO3 wrappers.
 //!
 //! # Examples
 //!
@@ -27,7 +27,7 @@
 use pyo3::prelude::*;
 
 use lindera::dictionary::{FieldDefinition, FieldType, Schema};
-use lindera_binding_core::{CoreFieldDefinition, CoreFieldType, CoreSchema};
+use lindera_binding::{CoreFieldDefinition, CoreFieldType, CoreSchema};
 
 use crate::error::to_py_error;
 
@@ -183,7 +183,7 @@ impl From<PyFieldDefinition> for FieldDefinition {
 
 /// Dictionary schema definition.
 ///
-/// A thin PyO3 wrapper over [`lindera_binding_core::CoreSchema`], which owns the
+/// A thin PyO3 wrapper over [`lindera_binding::CoreSchema`], which owns the
 /// field storage, the name-to-index map, and the field lookups.
 ///
 /// # Examples
@@ -199,7 +199,7 @@ impl From<PyFieldDefinition> for FieldDefinition {
 #[pyclass(name = "Schema", from_py_object)]
 #[derive(Debug, Clone)]
 pub struct PySchema {
-    /// The backing binding-core schema.
+    /// The backing lindera-binding schema.
     pub inner: CoreSchema,
 }
 
@@ -451,7 +451,7 @@ mod tests {
     // Python C-API exception types; exercising it would pull those symbols into
     // the standalone `cargo test --lib` binary, which (with pyo3
     // `extension-module`) does not link libpython. The logic is covered by
-    // `lindera-binding-core`'s `core_schema_validate_record` test and by the
+    // `lindera-binding`'s `core_schema_validate_record` test and by the
     // Python pytest suite.
 
     #[test]

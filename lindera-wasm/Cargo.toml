@@ -36,7 +36,7 @@ default = []
 [dependencies]
 js-sys = "0.3.103"
 lindera = { workspace = true }
-lindera-binding-core = { workspace = true }
+lindera-binding = { workspace = true }
 lindera-dictionary = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde-wasm-bindgen = "0.6.5"

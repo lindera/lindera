@@ -2,13 +2,13 @@
 //!
 //! This module provides schema structures that define the format and fields
 //! of dictionary entries. The field-management logic is delegated to
-//! [`lindera_binding_core::CoreSchema`]; this module only adds the magnus wrappers.
+//! [`lindera_binding::CoreSchema`]; this module only adds the magnus wrappers.
 
 use magnus::prelude::*;
 use magnus::{Error, RArray, Ruby, function, method};
 
 use lindera::dictionary::{FieldDefinition, FieldType, Schema};
-use lindera_binding_core::{CoreFieldDefinition, CoreFieldType, CoreSchema};
+use lindera_binding::{CoreFieldDefinition, CoreFieldType, CoreSchema};
 
 /// Field type in dictionary schema.
 ///
@@ -177,12 +177,12 @@ impl From<RbFieldDefinition> for FieldDefinition {
 
 /// Dictionary schema definition.
 ///
-/// A thin magnus wrapper over [`lindera_binding_core::CoreSchema`], which owns
+/// A thin magnus wrapper over [`lindera_binding::CoreSchema`], which owns
 /// the field storage, the name-to-index map, and the field lookups.
 #[magnus::wrap(class = "Lindera::Schema", free_immediately, size)]
 #[derive(Debug, Clone)]
 pub struct RbSchema {
-    /// The backing binding-core schema.
+    /// The backing lindera-binding schema.
     inner: CoreSchema,
 }
 

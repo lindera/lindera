@@ -2,7 +2,7 @@
 //!
 //! This module provides a builder pattern for creating tokenizers and the tokenizer itself.
 //! The build-flow orchestration is delegated to
-//! [`lindera_binding_core::CoreTokenizerBuilder`] / [`lindera_binding_core::CoreTokenizer`];
+//! [`lindera_binding::CoreTokenizerBuilder`] / [`lindera_binding::CoreTokenizer`];
 //! this module only adds the PyO3 wrappers and the PyDict-to-JSON conversion.
 //!
 //! # Examples
@@ -24,7 +24,7 @@ use pyo3::exceptions::{PyOverflowError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
-use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
+use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{PyDictionary, PyUserDictionary};
 use crate::error::to_py_error;

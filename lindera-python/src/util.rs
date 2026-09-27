@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use lindera_binding_core::argument::{MAX_ARGUMENT_DEPTH, argument_too_deep_message};
+use lindera_binding::argument::{MAX_ARGUMENT_DEPTH, argument_too_deep_message};
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyBool, PyDict, PyFloat, PyInt, PyList, PyNone, PyString};

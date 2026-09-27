@@ -27,7 +27,7 @@ export type JsDictionary = Dictionary
 /**
  * Dictionary metadata configuration.
  *
- * A thin napi wrapper over [`lindera_binding_core::CoreMetadata`], which owns
+ * A thin napi wrapper over [`lindera_binding::CoreMetadata`], which owns
  * the default values and the schema wiring.
  */
 export declare class Metadata {
@@ -112,7 +112,7 @@ export type JsMetadata = Metadata
 /**
  * Dictionary schema definition.
  *
- * A thin napi wrapper over [`lindera_binding_core::CoreSchema`], which owns the
+ * A thin napi wrapper over [`lindera_binding::CoreSchema`], which owns the
  * field storage, the name-to-index map, and the field lookups.
  */
 export declare class Schema {
