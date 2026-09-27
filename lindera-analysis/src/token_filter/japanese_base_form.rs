@@ -3,8 +3,8 @@ use std::borrow::Cow;
 use serde_json::Value;
 
 use crate::token_filter::TokenFilter;
-use lindera::LinderaResult;
-use lindera::token::Token;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::token::Token;
 
 pub const JAPANESE_BASE_FORM_TOKEN_FILTER_NAME: &str = "japanese_base_form";
 
@@ -74,9 +74,9 @@ mod tests {
 
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
-        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_segmenter::token::Token;
 
         let filter = JapaneseBaseFormTokenFilter::new();
 
@@ -188,9 +188,9 @@ mod tests {
 
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
-        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_segmenter::token::Token;
 
         let filter = JapaneseBaseFormTokenFilter::new();
 

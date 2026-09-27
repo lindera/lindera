@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use serde_json::Value;
 
 use crate::character_filter::{CharacterFilter, OffsetMapping, Transformation};
-use lindera::LinderaResult;
-use lindera::error::LinderaErrorKind;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::error::LinderaErrorKind;
 
 pub const JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME: &str = "japanese_iteration_mark";
 

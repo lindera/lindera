@@ -12,8 +12,8 @@ use crate::token_filter::tags::{
     normalize_japanese_tag, normalize_japanese_tags, parse_tags, part_of_speech_offset_of,
     write_japanese_pos_key,
 };
-use lindera::LinderaResult;
-use lindera::token::Token;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::token::Token;
 
 pub const JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME: &str = "japanese_compound_word";
 
@@ -179,9 +179,9 @@ mod tests {
         use crate::token_filter::japanese_compound_word::{
             JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
         };
-        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_segmenter::token::Token;
 
         let config_str = r#"
         {
@@ -411,9 +411,11 @@ mod tests {
 
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
-        use lindera::dictionary::{Dictionary, DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{
+            Dictionary, DictionaryKind, WordId, load_embedded_dictionary,
+        };
+        use lindera_segmenter::token::Token;
 
         /// `一万円` as IPADIC tokenizes it: two numerals, then a counter suffix.
         fn tokens(dictionary: &Dictionary) -> Vec<Token<'_>> {

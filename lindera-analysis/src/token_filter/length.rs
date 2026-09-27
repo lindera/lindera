@@ -1,8 +1,8 @@
 use serde_json::Value;
 
 use crate::token_filter::TokenFilter;
-use lindera::LinderaResult;
-use lindera::token::Token;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::token::Token;
 
 pub const LENGTH_TOKEN_FILTER_NAME: &str = "length";
 
@@ -129,9 +129,9 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::token_filter::TokenFilter;
-        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_segmenter::token::Token;
 
         let config_str = r#"
             {

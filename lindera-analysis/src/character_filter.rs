@@ -89,8 +89,8 @@ use crate::character_filter::unicode_normalize::{
     UNICODE_NORMALIZE_CHARACTER_FILTER_NAME, UnicodeNormalizeCharacterFilter,
 };
 use crate::parse_cli_flag;
-use lindera::LinderaResult;
-use lindera::error::LinderaErrorKind;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::error::LinderaErrorKind;
 
 /// A transformation record for offset mapping between original and filtered text.
 ///

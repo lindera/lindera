@@ -8,13 +8,13 @@ use serde_json::{Value, json};
 
 use crate::character_filter::{BoxCharacterFilter, CharacterFilterLoader, OffsetMapping};
 use crate::token_filter::{BoxTokenFilter, TokenFilterLoader};
-use lindera::LinderaResult;
-use lindera::dictionary::Lattice;
-use lindera::error::LinderaErrorKind;
-use lindera::mode::Mode;
-use lindera::segmenter::Segmenter;
-use lindera::space_penalty::SpacePenaltyConfig;
-use lindera::token::Token;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::dictionary::Lattice;
+use lindera_segmenter::error::LinderaErrorKind;
+use lindera_segmenter::mode::Mode;
+use lindera_segmenter::segmenter::Segmenter;
+use lindera_segmenter::space_penalty::SpacePenaltyConfig;
+use lindera_segmenter::token::Token;
 
 pub type TokenizerConfig = Value;
 
@@ -642,7 +642,7 @@ impl Clone for Tokenizer {
 
 #[cfg(test)]
 mod tests {
-    use lindera::space_penalty::{SpacePenaltyConfig, SpacePenaltyRule};
+    use lindera_segmenter::space_penalty::{SpacePenaltyConfig, SpacePenaltyRule};
 
     use super::TokenizerBuilder;
 

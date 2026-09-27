@@ -1,4 +1,4 @@
-use lindera::LinderaResult;
+use lindera_segmenter::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "embed-ipadic")]

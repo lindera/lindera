@@ -1,12 +1,12 @@
-use lindera::LinderaResult;
+use lindera_segmenter::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "embed-ipadic")]
     {
-        use lindera::dictionary::load_dictionary;
-        use lindera::mode::Mode;
-        use lindera::segmenter::Segmenter;
         use lindera_analysis::tokenizer::Tokenizer;
+        use lindera_segmenter::dictionary::load_dictionary;
+        use lindera_segmenter::mode::Mode;
+        use lindera_segmenter::segmenter::Segmenter;
 
         let dictionary = load_dictionary("embedded://ipadic")?;
         let segmenter = Segmenter::new(Mode::Normal, dictionary, None);

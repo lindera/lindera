@@ -1,14 +1,14 @@
 //! Text analysis chain for Lindera.
 //!
 //! This crate layers Lucene-style text analysis on top of the pure
-//! morphological segmenter provided by the [`lindera`] crate:
+//! morphological segmenter provided by the [`lindera_segmenter`] crate:
 //!
 //! - [`character_filter`]: transforms the input text before segmentation
 //!   (with offset correction back to the original text)
 //! - [`token_filter`]: transforms the tokens produced by the segmenter
 //! - [`tokenizer`]: composes character filters, a
-//!   [`Segmenter`](lindera::segmenter::Segmenter), and token filters into a
-//!   single pipeline, configurable programmatically or via a YAML file
+//!   [`Segmenter`](lindera_segmenter::segmenter::Segmenter), and token filters
+//!   into a single pipeline, configurable programmatically or via a YAML file
 
 pub mod character_filter;
 pub mod token_filter;
@@ -17,8 +17,8 @@ pub mod worker;
 
 use serde_json::Value;
 
-use lindera::LinderaResult;
-use lindera::error::LinderaErrorKind;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::error::LinderaErrorKind;
 
 /// Parses a CLI-style filter flag of the form `kind:{"arg": ...}` into the
 /// filter kind and its JSON arguments.

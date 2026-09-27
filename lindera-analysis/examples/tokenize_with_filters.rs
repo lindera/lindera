@@ -1,11 +1,8 @@
-use lindera::LinderaResult;
+use lindera_segmenter::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "embed-ipadic")]
     {
-        use lindera::dictionary::load_dictionary;
-        use lindera::mode::Mode;
-        use lindera::segmenter::Segmenter;
         use lindera_analysis::character_filter::BoxCharacterFilter;
         use lindera_analysis::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
         use lindera_analysis::character_filter::unicode_normalize::{
@@ -16,6 +13,9 @@ fn main() -> LinderaResult<()> {
         use lindera_analysis::token_filter::japanese_number::JapaneseNumberTokenFilter;
         use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
         use lindera_analysis::tokenizer::Tokenizer;
+        use lindera_segmenter::dictionary::load_dictionary;
+        use lindera_segmenter::mode::Mode;
+        use lindera_segmenter::segmenter::Segmenter;
 
         let dictionary = load_dictionary("embedded://ipadic")?;
         let segmenter = Segmenter::new(

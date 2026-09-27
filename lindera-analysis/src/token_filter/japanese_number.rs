@@ -8,9 +8,9 @@ use crate::token_filter::numeral::{self, Numeral};
 use crate::token_filter::tags::{
     KEY_BUFFER_CAPACITY, normalize_japanese_tags, part_of_speech_offset_of, write_japanese_pos_key,
 };
-use lindera::LinderaResult;
-use lindera::error::LinderaErrorKind;
-use lindera::token::Token;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::error::LinderaErrorKind;
+use lindera_segmenter::token::Token;
 
 pub const JAPANESE_NUMBER_TOKEN_FILTER_NAME: &str = "japanese_number";
 
@@ -801,9 +801,9 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::token_filter::TokenFilter;
-        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_segmenter::token::Token;
 
         let config_str = r#"
             {
@@ -966,9 +966,9 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::token_filter::TokenFilter;
-        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_segmenter::token::Token;
 
         let config_str = r#"
             {
@@ -1154,9 +1154,9 @@ mod tests {
         use crate::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
         use crate::token_filter::japanese_number::JapaneseNumberTokenFilter;
         use crate::tokenizer::Tokenizer;
-        use lindera::dictionary::load_dictionary;
-        use lindera::mode::Mode;
-        use lindera::segmenter::Segmenter;
+        use lindera_segmenter::dictionary::load_dictionary;
+        use lindera_segmenter::mode::Mode;
+        use lindera_segmenter::segmenter::Segmenter;
 
         // The documented recipe: merge the numeral tokens first, then convert. The counter has
         // to stay a separate token; merged into the number it would make the token something

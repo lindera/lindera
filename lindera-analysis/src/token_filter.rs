@@ -111,7 +111,7 @@ use crate::token_filter::remove_diacritical_mark::{
 use crate::token_filter::stop_words::{STOP_WORDS_TOKEN_FILTER_NAME, StopWordsTokenFilter};
 use crate::token_filter::uppercase::{UPPERCASE_TOKEN_FILTER_NAME, UppercaseTokenFilter};
 use crate::{LinderaErrorKind, LinderaResult};
-use lindera::token::Token;
+use lindera_segmenter::token::Token;
 
 /// A trait for token filters that can be applied to a vector of tokens.
 ///

@@ -1,8 +1,8 @@
-use lindera::LinderaResult;
-use lindera::mode::Mode;
-use lindera::space_penalty::SpacePenaltyConfig;
-use lindera::token::Token;
-use lindera::worker::SegmentWorker;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::mode::Mode;
+use lindera_segmenter::space_penalty::SpacePenaltyConfig;
+use lindera_segmenter::token::Token;
+use lindera_segmenter::worker::SegmentWorker;
 
 use crate::character_filter::{BoxCharacterFilter, OffsetMapping};
 use crate::token_filter::BoxTokenFilter;
@@ -302,9 +302,9 @@ mod tests {
     mod with_ipadic {
         use std::collections::HashMap;
 
-        use lindera::dictionary::load_dictionary;
-        use lindera::mode::Mode;
-        use lindera::segmenter::Segmenter;
+        use lindera_segmenter::dictionary::load_dictionary;
+        use lindera_segmenter::mode::Mode;
+        use lindera_segmenter::segmenter::Segmenter;
 
         use crate::character_filter::BoxCharacterFilter;
         use crate::character_filter::mapping::MappingCharacterFilter;

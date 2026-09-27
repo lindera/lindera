@@ -30,14 +30,6 @@ use std::path::PathBuf;
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 
 #[cfg(feature = "embed-ipadic")]
-use lindera::dictionary::load_dictionary;
-#[cfg(feature = "embed-ipadic")]
-use lindera::mode::Mode;
-#[cfg(feature = "embed-ipadic")]
-use lindera::segmenter::Segmenter;
-#[cfg(feature = "embed-ipadic")]
-use lindera::token::Token;
-#[cfg(feature = "embed-ipadic")]
 use lindera_analysis::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter;
 #[cfg(feature = "embed-ipadic")]
 use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
@@ -45,6 +37,14 @@ use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFil
 use lindera_analysis::token_filter::{BoxTokenFilter, TokenFilter};
 #[cfg(feature = "embed-ipadic")]
 use lindera_analysis::tokenizer::Tokenizer;
+#[cfg(feature = "embed-ipadic")]
+use lindera_segmenter::dictionary::load_dictionary;
+#[cfg(feature = "embed-ipadic")]
+use lindera_segmenter::mode::Mode;
+#[cfg(feature = "embed-ipadic")]
+use lindera_segmenter::segmenter::Segmenter;
+#[cfg(feature = "embed-ipadic")]
+use lindera_segmenter::token::Token;
 
 /// The 25 stop tags configured in `resources/config/lindera.yml`, i.e. what
 /// the shipped default pipeline actually runs.

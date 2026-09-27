@@ -5,9 +5,9 @@ use serde_json::Value;
 
 use crate::token_filter::TokenFilter;
 use crate::token_filter::numeral::{self, Numeral};
-use lindera::LinderaResult;
-use lindera::error::LinderaErrorKind;
-use lindera::token::Token;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::error::LinderaErrorKind;
+use lindera_segmenter::token::Token;
 
 pub const KOREAN_NUMBER_TOKEN_FILTER_NAME: &str = "korean_number";
 
@@ -325,9 +325,9 @@ mod tests {
 
         use crate::token_filter::TokenFilter;
         use crate::token_filter::korean_number::KoreanNumberTokenFilter;
-        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_segmenter::token::Token;
 
         let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
 
@@ -379,9 +379,9 @@ mod tests {
         use crate::token_filter::BoxTokenFilter;
         use crate::token_filter::korean_number::KoreanNumberTokenFilter;
         use crate::tokenizer::Tokenizer;
-        use lindera::dictionary::load_dictionary;
-        use lindera::mode::Mode;
-        use lindera::segmenter::Segmenter;
+        use lindera_segmenter::dictionary::load_dictionary;
+        use lindera_segmenter::mode::Mode;
+        use lindera_segmenter::segmenter::Segmenter;
 
         let tokenize = |text: &str, filter: KoreanNumberTokenFilter| -> Vec<String> {
             let dictionary = load_dictionary("embedded://ko-dic").unwrap();

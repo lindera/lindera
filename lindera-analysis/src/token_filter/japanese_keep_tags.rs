@@ -7,8 +7,8 @@ use crate::token_filter::tags::{
     TagPolicy, apply_tag_filter, normalize_japanese_tags, parse_tags, part_of_speech_offset_of,
     write_japanese_pos_key,
 };
-use lindera::LinderaResult;
-use lindera::token::Token;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::token::Token;
 
 pub const JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME: &str = "japanese_keep_tags";
 
@@ -364,9 +364,9 @@ mod tests {
         use crate::token_filter::japanese_keep_tags::{
             JapaneseKeepTagsTokenFilter, JapaneseKeepTagsTokenFilterConfig,
         };
-        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_segmenter::token::Token;
 
         let config_str = r#"
             {
