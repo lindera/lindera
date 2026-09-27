@@ -1,14 +1,14 @@
 [package]
-name = "lindera"
+name = "lindera-segmenter"
 version = { workspace = true }
 edition = { workspace = true }
 rust-version = { workspace = true }
-description = "A morphological analysis library."
-documentation = "https://docs.rs/lindera"
+description = "Morphological segmenter and dictionary loading API for Lindera."
+documentation = "https://docs.rs/lindera-segmenter"
 homepage = { workspace = true }
 repository = { workspace = true }
 readme = "README.md"
-keywords = ["morphological", "analysis", "library"]
+keywords = ["morphological", "analysis", "segmenter", "library"]
 categories = { workspace = true }
 license = { workspace = true }
 
@@ -81,48 +81,8 @@ strum_macros = { workspace = true }
 url = "2.5.8"
 
 [dev-dependencies]
-criterion = { version = "0.8.2", default-features = false, features = [
-    "html_reports",
-] }
-insta = "1.48.0"
-once_cell = { workspace = true }
-serde_json = { workspace = true }
 tempfile = "3.27.0"
 
 [package.metadata.docs.rs]
+all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
-
-[[bench]]
-name = "bench_ipadic"
-harness = false
-required-features = ["embed-ipadic"]
-
-[[bench]]
-name = "bench_unidic"
-harness = false
-required-features = ["embed-unidic"]
-
-[[bench]]
-name = "bench_ko_dic"
-harness = false
-required-features = ["embed-ko-dic"]
-
-[[bench]]
-name = "bench_cc_cedict"
-harness = false
-required-features = ["embed-cc-cedict"]
-
-[[bench]]
-name = "bench_ipadic_neologd"
-harness = false
-required-features = ["embed-ipadic-neologd"]
-
-[[bench]]
-name = "bench_jieba"
-harness = false
-required-features = ["embed-jieba"]
-
-[[bench]]
-name = "bench_sudachidict"
-harness = false
-required-features = ["embed-sudachidict"]
