@@ -1,6 +1,6 @@
 # Filters
 
-Lindera's analysis pipeline (the `Tokenizer` provided by the [`lindera-analysis`](../lindera-analysis.md) crate) has two extension points around the segmenter: **character filters**, which transform the raw input text before tokenization, and **token filters**, which transform the list of tokens after tokenization.
+Lindera's analysis pipeline (the `Tokenizer` in `lindera::analysis`, provided by the [`lindera-analysis`](../lindera-analysis.md) crate) has two extension points around the segmenter: **character filters**, which transform the raw input text before tokenization, and **token filters**, which transform the list of tokens after tokenization.
 
 ```text
 Input Text

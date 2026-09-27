@@ -49,6 +49,12 @@ use lindera_analysis::tokenizer::Tokenizer;
 use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
 ```
 
+> [!NOTE]
+> Since v7.0.0 the `lindera` crate re-exports `lindera-analysis` as
+> `lindera::analysis`, so the separate dependency above is no longer needed
+> and the same items are available as `lindera::analysis::…`. See
+> [Migration v6 to v7](./migration_v6_to_v7.md).
+
 If you only segment text, nothing changes in your code — and your dependency
 tree shrinks (kanaria, unicode-normalization, unicode-segmentation,
 unicode-blocks, and serde_yaml_ng are no longer built):

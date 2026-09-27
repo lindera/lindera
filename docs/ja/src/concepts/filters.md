@@ -1,6 +1,6 @@
 # フィルタ
 
-Linderaの解析パイプライン（[`lindera-analysis`](../lindera-analysis.md)クレートが提供する`Tokenizer`）には、Segmenterの前後に2つの拡張ポイントがあります。トークナイズ**前**の生テキストを変換する**文字フィルタ**と、トークナイズ**後**のトークン列を変換する**トークンフィルタ**です。
+Linderaの解析パイプライン（[`lindera-analysis`](../lindera-analysis.md)クレートが提供し、`lindera::analysis`として使う`Tokenizer`）には、Segmenterの前後に2つの拡張ポイントがあります。トークナイズ**前**の生テキストを変換する**文字フィルタ**と、トークナイズ**後**のトークン列を変換する**トークンフィルタ**です。
 
 ```text
 Input Text

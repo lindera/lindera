@@ -1,6 +1,8 @@
 # サンプル
 
-Linderaには、一般的なユースケースを示すいくつかのサンプルプログラムが含まれています。ソースコードはGitHubの [examplesディレクトリ](https://github.com/lindera/lindera/tree/main/lindera/examples) で確認できます。
+Linderaには、一般的なユースケースを示すいくつかのサンプルプログラムが含まれています。ソースコードはGitHubの [examplesディレクトリ](https://github.com/lindera/lindera/tree/main/lindera/examples) で確認できます（`tokenize*` のサンプルは [lindera-analysis/examples](https://github.com/lindera/lindera/tree/main/lindera-analysis/examples) にあります）。
+
+`tokenize*` のサンプルは `lindera::analysis` の `Tokenizer` とフィルタ API を使います。ソースは `lindera-analysis` クレートにあるため、以下では `-p lindera-analysis` を指定します。
 
 以下のサンプルはすべて `embed-ipadic` feature を有効にして実行します。この feature はビルド時にIPADIC辞書を自動的にダウンロードしてバイナリに埋め込むため、辞書を手動でダウンロードする必要はありません。
 
@@ -8,7 +10,7 @@ Linderaには、一般的なユースケースを示すいくつかのサンプ�
 
 ### segment
 
-`Segmenter` API による基本的な形態素分割です。`lindera` クレート単体で動作します。
+`Segmenter` API による基本的な形態素分割です。セグメンターだけで足りるため、`default-features = false` でも動作します。
 
 ```shell
 cargo run -p lindera --features=embed-ipadic --example=segment

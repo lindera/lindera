@@ -49,6 +49,12 @@ use lindera_analysis::tokenizer::Tokenizer;
 use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
 ```
 
+> [!NOTE]
+> v7.0.0 以降、`lindera` クレートは `lindera-analysis` を `lindera::analysis` として
+> 再エクスポートするため、上記の別依存は不要になり、同じアイテムを
+> `lindera::analysis::…` から参照できます。
+> [v6 から v7 への移行](./migration_v6_to_v7.md) を参照してください。
+
 テキストの分割だけを行う場合、コードの変更は不要です。むしろ依存ツリーが
 軽量化されます（kanaria・unicode-normalization・unicode-segmentation・
 unicode-blocks・serde_yaml_ng がビルドされなくなります）：

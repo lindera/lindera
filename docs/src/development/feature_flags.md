@@ -6,15 +6,18 @@ Lindera uses Cargo feature flags to control optional functionality and dictionar
 
 | Feature | Description | Default |
 | --- | --- | --- |
-| `mmap` | Memory-mapped file support | Yes |
-| `train` | CRF-based dictionary training (depends on `lindera-trainer`) | See below |
+| `analysis` | The analysis chain (`lindera::analysis`: character filters, token filters, and the `Tokenizer`), re-exported from `lindera-analysis` | Yes |
+| `mmap` | Memory-mapped loading as the default for filesystem dictionaries (`use_mmap`); `memmap2` is linked either way | Yes |
+| `train` | CRF-based dictionary training (depends on `lindera-trainer`; `lindera::dictionary::trainer`) | See below |
 
-- `mmap` is enabled by default in the main `lindera` crate.
-- The analysis chain (character filters, token filters, and the `Tokenizer`)
-  is not a feature of this crate: as of v5.0 it lives in the companion
-  `lindera-analysis` crate. The `lindera` crate itself is a pure segmenter
-  around the `Segmenter` API.
-- `train` is enabled by default in `lindera-cli`, `lindera-python`, `lindera-nodejs`, `lindera-ruby`, and `lindera-php`. It is disabled by default in the core `lindera` library crate -- enable it explicitly with `features = ["train"]` for library usage. It is not available in `lindera-wasm`.
+- `analysis` and `mmap` are both enabled by default in the `lindera` facade.
+  `default-features = false` turns both off and leaves the pure segmenter (the
+  `lindera-segmenter` crate); re-enable them selectively with
+  `features = ["mmap"]` or `features = ["analysis"]`.
+- Since v7.0 the analysis chain is part of `lindera` again: `lindera::analysis`
+  re-exports the `lindera-analysis` crate. In v5.x and v6.x it had to be added
+  as a separate dependency.
+- `train` is enabled by default in `lindera-cli`, `lindera-python`, `lindera-nodejs`, `lindera-ruby`, and `lindera-php`. It is disabled by default in the `lindera` library crate -- enable it explicitly with `features = ["train"]` for library usage. It is not available in `lindera-wasm`.
 
 ## Using External Dictionaries (Recommended)
 
@@ -44,7 +47,7 @@ None of these are enabled by default. Enable them as needed:
 
 ```toml
 [dependencies]
-lindera = { version = "6", features = ["embed-ipadic"] }
+lindera = { version = "7", features = ["embed-ipadic"] }
 ```
 
 When embedding is enabled, you can load the dictionary with:
@@ -77,7 +80,7 @@ Multiple feature flags can be combined. For example, to embed both Japanese and 
 
 ```toml
 [dependencies]
-lindera = { version = "6", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "7", features = ["embed-ipadic", "embed-ko-dic"] }
 ```
 
 Or from the command line:
@@ -89,5 +92,5 @@ cargo build --features embed-ipadic,embed-ko-dic
 ### Notes
 
 - Embedding dictionaries increases binary size significantly. Only embed dictionaries you actually need.
-- The `train` feature adds a dependency on `lindera-crf` and increases compile time. It is not needed for tokenization-only use cases.
+- The `train` feature adds a dependency on `lindera-trainer` (and through it `lindera-crf`) and increases compile time. It is not needed for tokenization-only use cases.
 - The `mmap` feature enables memory-mapped dictionary loading for filesystem-based dictionaries, requested via `--mmap` (CLI) or the `use_mmap` segmenter config key. Every large component stays lazily paged and costs no anonymous memory: the word-list files (`dict.vals`/`dict.wordsidx`/`dict.words`), the connection-cost matrix (`matrix.mtx`), and the prefix-dictionary trie (`dict.trie`), which is walked in place over its serialized bytes. Nothing is fully materialized at load. It has no effect on embedded dictionaries, whose data is read in place from the binary regardless.

@@ -1,9 +1,10 @@
 # Examples
 
-Lindera includes several example programs that demonstrate common use cases. The source code is available in the [examples directory](https://github.com/lindera/lindera/tree/main/lindera/examples) on GitHub.
+Lindera includes several example programs that demonstrate common use cases. The source code is available in the [examples directory](https://github.com/lindera/lindera/tree/main/lindera/examples) on GitHub (the `tokenize*` examples are in [lindera-analysis/examples](https://github.com/lindera/lindera/tree/main/lindera-analysis/examples)).
 
-The `tokenize*` examples use the `Tokenizer` and filter APIs, which are
-provided by the `lindera-analysis` crate (as of v5.0).
+The `tokenize*` examples use the `Tokenizer` and filter APIs from
+`lindera::analysis`. They live in the `lindera-analysis` crate, hence
+`-p lindera-analysis` below.
 
 All examples below are run with the `embed-ipadic` feature enabled, which downloads the IPADIC dictionary and embeds it into the binary automatically at build time — no manual dictionary download is required.
 
@@ -11,8 +12,8 @@ All examples below are run with the `embed-ipadic` feature enabled, which downlo
 
 ### segment
 
-Basic morphological segmentation with the `Segmenter` API — the `lindera`
-crate alone is enough.
+Basic morphological segmentation with the `Segmenter` API — it needs only the
+segmenter, so it also works with `default-features = false`.
 
 ```shell
 cargo run -p lindera --features=embed-ipadic --example=segment

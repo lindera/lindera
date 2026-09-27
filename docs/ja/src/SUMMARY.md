@@ -132,6 +132,7 @@
 - [v3 から v4 への移行](./migration_v3_to_v4.md)
 - [v4 から v5 への移行](./migration_v4_to_v5.md)
 - [v5 から v6 への移行](./migration_v5_to_v6.md)
+- [v6 から v7 への移行](./migration_v6_to_v7.md)
 
 ---
 

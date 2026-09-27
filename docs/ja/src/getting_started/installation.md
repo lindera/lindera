@@ -11,11 +11,14 @@ Cargo.tomlに以下を追加してください：
 
 ```toml
 [dependencies]
-lindera = "6"
+lindera = "7"
 ```
 
 > [!NOTE]
-> v4 からアップグレードする場合は[v4からv5への移行](../migration_v4_to_v5.md)を参照してください。
+> この 1 つの依存だけで、分析チェーン（character filter・token filter・`Tokenizer`）も
+> `lindera::analysis` として利用できます。セグメンターだけが必要な場合は
+> `default-features = false` を指定してください。
+> v6 からアップグレードする場合は[v6 から v7 への移行](../migration_v6_to_v7.md)を参照してください。
 
 ## 辞書のセットアップ
 
@@ -29,7 +32,7 @@ let dictionary = load_dictionary("/path/to/ipadic")?;
 > 辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する `embed-*` feature フラグを有効にしてビルドし、`embedded://` スキームでロードしてください：
 >
 > ```rust
-> // Cargo.toml: lindera = { version = "6", features = ["embed-ipadic"] }
+> // Cargo.toml: lindera = { version = "7", features = ["embed-ipadic"] }
 > let dictionary = load_dictionary("embedded://ipadic")?;
 > ```
 >
