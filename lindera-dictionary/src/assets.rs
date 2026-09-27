@@ -335,37 +335,13 @@ fn download_with_retry(
 /// Environment variable that designates the dictionary build cache directory.
 const CACHE_DIR_ENV: &str = "LINDERA_BUILD_DICTIONARY_CACHE_DIR";
 
-/// Deprecated alias of [`CACHE_DIR_ENV`], kept as a fallback for backward
-/// compatibility. It will be removed in v7.0.0.
-const CACHE_DIR_ENV_DEPRECATED: &str = "LINDERA_DICTIONARIES_PATH";
-
-/// Selects the cache directory from the new and deprecated variable values.
-/// The new name takes precedence when both are set.
-///
-/// # Arguments
-///
-/// * `new` - Value of [`CACHE_DIR_ENV`], if set.
-/// * `deprecated` - Value of [`CACHE_DIR_ENV_DEPRECATED`], if set.
+/// Reads the dictionary build cache directory from the environment.
 ///
 /// # Returns
 ///
-/// The cache directory to use, or `None` when neither variable is set.
-fn resolve_cache_dir(new: Option<OsString>, deprecated: Option<OsString>) -> Option<OsString> {
-    new.or(deprecated)
-}
-
-/// Reads the dictionary build cache directory from the environment,
-/// honoring the deprecated variable name as a fallback.
-///
-/// # Returns
-///
-/// The configured cache directory, or `None` when neither
-/// [`CACHE_DIR_ENV`] nor [`CACHE_DIR_ENV_DEPRECATED`] is set.
+/// The configured cache directory, or `None` when [`CACHE_DIR_ENV`] is not set.
 fn dictionary_cache_dir_from_env() -> Option<OsString> {
-    resolve_cache_dir(
-        std::env::var_os(CACHE_DIR_ENV),
-        std::env::var_os(CACHE_DIR_ENV_DEPRECATED),
-    )
+    std::env::var_os(CACHE_DIR_ENV)
 }
 
 /// Fetch the necessary assets and then build the dictionary using `builder`.
@@ -506,7 +482,6 @@ fn rerun_directives(ships_context_id_freq: bool) -> Vec<String> {
     directives.extend([
         "cargo:rerun-if-env-changed=LINDERA_CTX_FREQ_FILE".to_string(),
         format!("cargo:rerun-if-env-changed={CACHE_DIR_ENV}"),
-        format!("cargo:rerun-if-env-changed={CACHE_DIR_ENV_DEPRECATED}"),
         "cargo:rerun-if-env-changed=DOCS_RS".to_string(),
     ]);
     directives
@@ -515,14 +490,6 @@ fn rerun_directives(ships_context_id_freq: bool) -> Vec<String> {
 pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
     for directive in rerun_directives(Path::new(CONTEXT_ID_FREQ_FILE).is_file()) {
         println!("{directive}");
-    }
-
-    if std::env::var_os(CACHE_DIR_ENV).is_none()
-        && std::env::var_os(CACHE_DIR_ENV_DEPRECATED).is_some()
-    {
-        println!(
-            "cargo:warning={CACHE_DIR_ENV_DEPRECATED} is deprecated and will be removed in v7.0.0; use {CACHE_DIR_ENV} instead"
-        );
     }
 
     // Directory path for build package
@@ -813,9 +780,8 @@ const CONTEXT_ID_FREQ_FILE: &str = "context_id_freq.txt";
 /// `LINDERA_WORKDIR`.
 ///
 /// When the crate's embed feature is disabled (`embed_enabled == false`) and
-/// no cache override is set via `LINDERA_BUILD_DICTIONARY_CACHE_DIR` (or its
-/// deprecated alias `LINDERA_DICTIONARIES_PATH`), this is a no-op so the
-/// crate builds without downloading any data.
+/// no cache override is set via `LINDERA_BUILD_DICTIONARY_CACHE_DIR`, this is
+/// a no-op so the crate builds without downloading any data.
 ///
 /// # Arguments
 ///
@@ -854,16 +820,13 @@ pub fn build_embedded_dictionary(
 
 #[cfg(test)]
 mod tests {
-    use std::ffi::OsString;
-
     /// The directives every dictionary crate registers, in order.
-    const ALWAYS: [&str; 7] = [
+    const ALWAYS: [&str; 6] = [
         "cargo:rerun-if-changed=build.rs",
         "cargo:rerun-if-changed=Cargo.toml",
         "cargo:rerun-if-changed=metadata.json",
         "cargo:rerun-if-env-changed=LINDERA_CTX_FREQ_FILE",
         "cargo:rerun-if-env-changed=LINDERA_BUILD_DICTIONARY_CACHE_DIR",
-        "cargo:rerun-if-env-changed=LINDERA_DICTIONARIES_PATH",
         "cargo:rerun-if-env-changed=DOCS_RS",
     ];
 
@@ -879,26 +842,6 @@ mod tests {
         let mut expected = ALWAYS.to_vec();
         expected.insert(3, "cargo:rerun-if-changed=context_id_freq.txt");
         assert_eq!(super::rerun_directives(true), expected);
-    }
-
-    #[test]
-    fn resolve_cache_dir_prefers_new_name() {
-        let result = super::resolve_cache_dir(
-            Some(OsString::from("/new")),
-            Some(OsString::from("/deprecated")),
-        );
-        assert_eq!(result, Some(OsString::from("/new")));
-    }
-
-    #[test]
-    fn resolve_cache_dir_falls_back_to_deprecated_name() {
-        let result = super::resolve_cache_dir(None, Some(OsString::from("/deprecated")));
-        assert_eq!(result, Some(OsString::from("/deprecated")));
-    }
-
-    #[test]
-    fn resolve_cache_dir_returns_none_when_unset() {
-        assert_eq!(super::resolve_cache_dir(None, None), None);
     }
 
     use super::*;
