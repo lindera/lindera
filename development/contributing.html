@@ -237,7 +237,7 @@ across bindings. The JS bindings return plain objects because their hosts
 defer class finalizers, while Python, Ruby, and PHP keep classes because
 their finalization is deterministic.</li>
 </ul>
-<p>Put shared logic in <code>lindera-binding-core</code> (e.g. <code>TokenView</code>) so each binding
+<p>Put shared logic in <code>lindera-binding</code> (e.g. <code>TokenView</code>) so each binding
 only maps core data into its FFI types.</p>
 <h2 id="testing"><a class="header" href="#testing">Testing</a></h2>
 <ul>

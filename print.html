@@ -268,10 +268,11 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
     CCCEDICT["lindera-cc-cedict"]
     JIEBA["lindera-jieba"]
     NEOLOGD["lindera-ipadic-neologd"]
-    LIB["lindera\n(Segmenter)"]
+    SEGMENTER["lindera-segmenter\n(Segmenter)"]
     ANALYSIS["lindera-analysis\n(Analysis Chain)"]
+    LIB["lindera\n(Facade)"]
     CLI["lindera-cli\n(CLI)"]
-    BINDINGCORE["lindera-binding-core"]
+    BINDING["lindera-binding"]
     PY["lindera-python"]
     NODEJS["lindera-nodejs"]
     RUBY["lindera-ruby"]
@@ -280,7 +281,7 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 
     CRF --&gt; TRAINER
     DICT --&gt; TRAINER
-    TRAINER -.-&gt;|"train feature"| LIB
+    TRAINER -.-&gt;|"train feature"| SEGMENTER
     DICT --&gt; IPADIC
     DICT --&gt; UNIDIC
     DICT --&gt; SUDACHIDICT
@@ -288,36 +289,35 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
     DICT --&gt; CCCEDICT
     DICT --&gt; JIEBA
     DICT --&gt; NEOLOGD
-    DICT --&gt; LIB
-    DICT --&gt; ANALYSIS
-    DICT --&gt; WASM
-    IPADIC --&gt; LIB
-    UNIDIC --&gt; LIB
-    SUDACHIDICT --&gt; LIB
-    KODIC --&gt; LIB
-    CCCEDICT --&gt; LIB
-    JIEBA --&gt; LIB
-    NEOLOGD --&gt; LIB
-    LIB --&gt; ANALYSIS
+    DICT --&gt; SEGMENTER
+    IPADIC --&gt; SEGMENTER
+    UNIDIC --&gt; SEGMENTER
+    SUDACHIDICT --&gt; SEGMENTER
+    KODIC --&gt; SEGMENTER
+    CCCEDICT --&gt; SEGMENTER
+    JIEBA --&gt; SEGMENTER
+    NEOLOGD --&gt; SEGMENTER
+    SEGMENTER --&gt; ANALYSIS
+    SEGMENTER --&gt; LIB
+    ANALYSIS -.-&gt;|"analysis feature"| LIB
     LIB --&gt; CLI
-    ANALYSIS --&gt; CLI
-    LIB --&gt; BINDINGCORE
-    ANALYSIS --&gt; BINDINGCORE
-    BINDINGCORE --&gt; PY
-    BINDINGCORE --&gt; NODEJS
-    BINDINGCORE --&gt; RUBY
-    BINDINGCORE --&gt; PHP
-    BINDINGCORE --&gt; WASM
+    LIB --&gt; BINDING
+    BINDING --&gt; PY
+    BINDING --&gt; NODEJS
+    BINDING --&gt; RUBY
+    BINDING --&gt; PHP
+    BINDING --&gt; WASM
 </code></pre>
 <h2 id="crate-overview"><a class="header" href="#crate-overview">Crate Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Crate</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>lindera-crf</code></td><td>Core</td><td>Pure Rust CRF (Conditional Random Field) implementation. Supports <code>no_std</code>. Uses <code>rkyv</code> for serialization.</td></tr>
 <tr><td><code>lindera-dictionary</code></td><td>Core</td><td>Dictionary base library. Provides dictionary loading and building.</td></tr>
 <tr><td><code>lindera-trainer</code></td><td>Core</td><td>CRF-based dictionary training pipeline. Builds on <code>lindera-crf</code> and <code>lindera-dictionary</code>; consumed directly or via the <code>lindera</code> facade's <code>train</code> feature.</td></tr>
-<tr><td><code>lindera</code></td><td>Core</td><td>Pure morphological segmenter. Integrates the dictionary crates and provides the <code>Segmenter</code> API.</td></tr>
-<tr><td><code>lindera-analysis</code></td><td>Core</td><td>Lucene-style analysis chain on top of <code>lindera</code>: character filters, token filters, and the <code>Tokenizer</code> that composes them around a <code>Segmenter</code>.</td></tr>
+<tr><td><code>lindera-segmenter</code></td><td>Core</td><td>Pure morphological segmenter (the <code>lindera</code> crate of v6 and earlier). Integrates the dictionary crates and provides the <code>Segmenter</code> API.</td></tr>
+<tr><td><code>lindera-analysis</code></td><td>Core</td><td>Lucene-style analysis chain on top of <code>lindera-segmenter</code>: character filters, token filters, and the <code>Tokenizer</code> that composes them around a <code>Segmenter</code>. Reachable as <code>lindera::analysis</code>.</td></tr>
+<tr><td><code>lindera</code></td><td>Core</td><td>Facade crate and the one dependency Rust users add: re-exports <code>lindera-segmenter</code> and, with the default <code>analysis</code> feature, <code>lindera-analysis</code> as <code>lindera::analysis</code>.</td></tr>
 <tr><td><code>lindera-cli</code></td><td>Application</td><td>Command-line interface for tokenization, dictionary building, and CRF training.</td></tr>
-<tr><td><code>lindera-binding-core</code></td><td>Core</td><td>FFI-independent helpers shared by the five language bindings below.</td></tr>
+<tr><td><code>lindera-binding</code></td><td>Core</td><td>FFI-independent helpers shared by the five language bindings below; depends on the <code>lindera</code> facade.</td></tr>
 <tr><td><code>lindera-ipadic</code></td><td>Dictionary</td><td>Japanese dictionary based on IPADIC.</td></tr>
 <tr><td><code>lindera-ipadic-neologd</code></td><td>Dictionary</td><td>Japanese dictionary based on IPADIC NEologd (includes neologisms).</td></tr>
 <tr><td><code>lindera-unidic</code></td><td>Dictionary</td><td>Japanese dictionary based on UniDic.</td></tr>
@@ -351,8 +351,9 @@ Output Tokens
 <p>The <strong>Segmenter</strong> is the core component. It builds a lattice of candidate tokens from the dictionary, then applies the Viterbi algorithm to find the lowest-cost path, producing the most likely segmentation. Dictionary lookups walk a char-wise double-array trie (built with <code>crawdad</code>) in place over the serialized bytes of <code>dict.trie</code>, rather than deserializing into an owned structure. For repeated tokenization, <code>Segmenter::new_worker()</code> returns a <code>SegmentWorker</code> that reuses lattice and scratch-buffer allocations across calls, with an automatic shrink policy to bound retained memory.</p>
 <h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>analysis</code></td><td>Re-export of <code>lindera-analysis</code> as <code>lindera::analysis</code> (character filters, token filters, <code>Tokenizer</code>)</td><td>Enabled (off with <code>default-features = false</code>)</td></tr>
 <tr><td><code>mmap</code></td><td>Memory-mapped file support for filesystem-based dictionary loading (opt-in via <code>--mmap</code>/<code>use_mmap</code>; the word-list files, the connection-cost matrix, and the trie all stay lazily paged)</td><td>Enabled</td></tr>
-<tr><td><code>train</code></td><td>CRF-based dictionary training functionality (depends on <code>lindera-crf</code>)</td><td>CLI + Python/Node.js/Ruby/PHP bindings (default); opt-in for <code>lindera</code> core; unavailable in <code>lindera-wasm</code></td></tr>
+<tr><td><code>train</code></td><td>CRF-based dictionary training functionality (depends on <code>lindera-crf</code>)</td><td>CLI + Python/Node.js/Ruby/PHP bindings (default); opt-in for the <code>lindera</code> library crate; unavailable in <code>lindera-wasm</code></td></tr>
 <tr><td><code>embed-ipadic</code></td><td>Embed the IPADIC dictionary into the binary</td><td>Disabled</td></tr>
 <tr><td><code>embed-ipadic-neologd</code></td><td>Embed the IPADIC NEologd dictionary into the binary</td><td>Disabled</td></tr>
 <tr><td><code>embed-unidic</code></td><td>Embed the UniDic dictionary into the binary</td><td>Disabled</td></tr>
@@ -370,7 +371,7 @@ Output Tokens
 <ul>
 <li><a href="./getting_started.html">Getting Started</a> -- Installation and first steps</li>
 <li><a href="./concepts.html">Core Concepts</a> -- Dictionaries, tokenization, and filters</li>
-<li><a href="./lindera.html">Lindera Library</a> -- Segmenter and API</li>
+<li><a href="./lindera.html">Lindera Library</a> -- The <code>lindera</code> facade and the segmenter API</li>
 <li><a href="./lindera-analysis.html">Lindera Analysis</a> -- Character filters, token filters, and the <code>Tokenizer</code></li>
 <li><a href="./lindera-dictionary.html">Lindera Dictionary</a> -- Dictionary loading and building</li>
 <li><a href="./lindera-trainer.html">Lindera Trainer</a> -- CRF-based dictionary training</li>
@@ -1385,6 +1386,7 @@ let content = std::fs::read_to_string("config.yml")
 <p>The API reference is available. Please see following URL:</p>
 <ul>
 <li><a href="https://docs.rs/lindera">lindera</a></li>
+<li><a href="https://docs.rs/lindera-segmenter">lindera-segmenter</a></li>
 <li><a href="https://docs.rs/lindera-analysis">lindera-analysis</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-analysis"><a class="header" href="#lindera-analysis">Lindera Analysis</a></h1>
@@ -2057,7 +2059,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <p><code>Tokenizer</code> composes character filters, a <a href="lindera-analysis/../lindera/segmenter.html"><code>lindera::segmenter::Segmenter</code></a>, and token filters into a single analysis pipeline. Calling <code>tokenize</code> runs the character filters over the input text, segments the filtered text, applies the token filters to the resulting tokens, and finally corrects each token's byte offsets back to the original text via the recorded <code>OffsetMapping</code>s.</p>
 <p><code>TokenizerBuilder</code> assembles a <code>Tokenizer</code> from a <code>TokenizerConfig</code> (a <code>serde_json::Value</code>), which can be constructed programmatically, loaded from a YAML file (via <code>TokenizerBuilder::from_file</code>, or automatically from the <code>LINDERA_CONFIG_PATH</code> environment variable via <code>TokenizerBuilder::new</code>), or built up incrementally with <code>set_segmenter_mode</code>, <code>set_segmenter_dictionary</code>, <code>append_character_filter</code>, and <code>append_token_filter</code>. See <a href="lindera-analysis/./configuration.html">Configuration</a> for the YAML file format and <a href="lindera-analysis/./filters.html">Filters</a> for the full filter reference.</p>
 <h3 id="analysisworker"><a class="header" href="#analysisworker">AnalysisWorker</a></h3>
-<p><code>AnalysisWorker</code> (created with <code>Tokenizer::new_worker</code> or <code>Tokenizer::into_worker</code>) is a reusable session over the full analysis chain. It owns every per-call buffer — the Viterbi lattice and backtrace scratch (via <code>SegmentWorker</code>), the normalized-text buffer the character filters operate on, and the offset-mapping scratch — so repeated <code>tokenize</code> calls avoid the per-call allocations <code>Tokenizer::tokenize</code> pays. When character filters are configured, token surfaces borrow the worker's buffer instead of being copied into per-token <code>String</code>s. Returned tokens borrow the worker and must be consumed before the next call; for multi-threaded use, create one worker per thread (or guard one with a <code>Mutex</code>, as <code>lindera-binding-core</code> does). See the <a href="lindera-analysis/../lindera/segmenter.html">Segmenter</a> page for the underlying <code>SegmentWorker</code> and its automatic memory-shrink policy.</p>
+<p><code>AnalysisWorker</code> (created with <code>Tokenizer::new_worker</code> or <code>Tokenizer::into_worker</code>) is a reusable session over the full analysis chain. It owns every per-call buffer — the Viterbi lattice and backtrace scratch (via <code>SegmentWorker</code>), the normalized-text buffer the character filters operate on, and the offset-mapping scratch — so repeated <code>tokenize</code> calls avoid the per-call allocations <code>Tokenizer::tokenize</code> pays. When character filters are configured, token surfaces borrow the worker's buffer instead of being copied into per-token <code>String</code>s. Returned tokens borrow the worker and must be consumed before the next call; for multi-threaded use, create one worker per thread (or guard one with a <code>Mutex</code>, as <code>lindera-binding</code> does). See the <a href="lindera-analysis/../lindera/segmenter.html">Segmenter</a> page for the underlying <code>SegmentWorker</code> and its automatic memory-shrink policy.</p>
 <p><code>AnalysisWorker</code>'s public methods:</p>
 <ul>
 <li><code>tokenize(&amp;mut self, text: &amp;str)</code> — tokenizes <code>text</code> through the full analysis chain, reusing the worker's internal buffers; produces exactly the same tokens as <code>Tokenizer::tokenize</code>.</li>
@@ -4689,7 +4691,7 @@ for (const token of tokens) {
 <p>[!NOTE]
 Use lindera v6.1.0 or later. The <code>lindera</code> gems published before v6.1.0 fail to compile during installation; for those versions, build from source as described below.</p>
 </blockquote>
-<p>The gem compiles against the <a href="https://crates.io/crates/lindera">crates.io</a> releases of <code>lindera</code> and <code>lindera-binding-core</code> of the same version, which it pins exactly. It ships no <code>Cargo.lock</code>, so their dependencies, including the other <code>lindera-*</code> crates, resolve to the latest compatible releases at install time. It builds with the default features (<code>train</code>) and no embedded dictionary; see <a href="lindera-ruby/installation.html#obtaining-dictionaries">Obtaining Dictionaries</a>. To enable other <a href="lindera-ruby/installation.html#feature-flags">feature flags</a>, set <code>LINDERA_FEATURES</code> when installing:</p>
+<p>The gem compiles against the <a href="https://crates.io/crates/lindera">crates.io</a> releases of <code>lindera</code> and <code>lindera-binding</code> of the same version, which it pins exactly. It ships no <code>Cargo.lock</code>, so their dependencies, including the other <code>lindera-*</code> crates, resolve to the latest compatible releases at install time. It builds with the default features (<code>train</code>) and no embedded dictionary; see <a href="lindera-ruby/installation.html#obtaining-dictionaries">Obtaining Dictionaries</a>. To enable other <a href="lindera-ruby/installation.html#feature-flags">feature flags</a>, set <code>LINDERA_FEATURES</code> when installing:</p>
 <pre><code class="language-bash">LINDERA_FEATURES="embed-ipadic" gem install lindera
 </code></pre>
 <h2 id="obtaining-dictionaries-4"><a class="header" href="#obtaining-dictionaries-4">Obtaining Dictionaries</a></h2>
@@ -4715,7 +4717,7 @@ minitest suite.</p>
 <p><code>bundle exec rake build</code> (or <code>make package-lindera-ruby</code>) writes the source gem
 to <code>lindera-ruby/pkg/</code>. It packages the crate as <code>cargo package</code> normalizes it,
 so the gem compiles outside this repository, against the crates.io releases of
-<code>lindera</code> and <code>lindera-binding-core</code> of the same version. Do not run <code>gem build</code>
+<code>lindera</code> and <code>lindera-binding</code> of the same version. Do not run <code>gem build</code>
 directly: the crate's own <code>Cargo.toml</code> only resolves inside the Cargo workspace.</p>
 <p><code>make test-lindera-ruby-gem</code> (requires Docker) builds the gem, installs it with
 <code>gem install</code> in a clean <code>ruby</code> container and tokenizes text with it. The test
@@ -9646,10 +9648,11 @@ lindera = { version = "6", features = ["embed-ipadic", "embed-ko-dic"] }
 ├── lindera-crf/            # CRF engine (pure Rust, no_std)
 ├── lindera-dictionary/     # Dictionary base library
 ├── lindera-trainer/        # CRF-based dictionary training
-├── lindera/                # Core morphological segmentation library
+├── lindera/                # Facade crate (re-exports lindera-segmenter and lindera-analysis); tests, examples, benches
+├── lindera-segmenter/      # Morphological segmentation library (Segmenter API)
 ├── lindera-analysis/       # Analysis chain (character/token filters, tokenizer)
 ├── lindera-cli/            # CLI tool
-├── lindera-binding-core/   # FFI-independent helpers shared by the language bindings
+├── lindera-binding/        # FFI-independent helpers shared by the language bindings
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
 ├── lindera-ipadic-neologd/ # IPADIC NEologd dictionary (Japanese)
 ├── lindera-unidic/         # UniDic dictionary (Japanese)
@@ -9663,8 +9666,7 @@ lindera = { version = "6", features = ["embed-ipadic", "embed-ko-dic"] }
 ├── lindera-php/            # PHP bindings (ext-php-rs)
 ├── lindera-wasm/           # WebAssembly bindings (wasm-bindgen)
 ├── resources/              # Test resources and sample data
-├── docs/                   # Documentation (mdBook)
-└── examples/               # Example code
+└── docs/                   # Documentation (mdBook)
 </code></pre>
 <h2 id="crate-descriptions"><a class="header" href="#crate-descriptions">Crate Descriptions</a></h2>
 <h3 id="core-crates"><a class="header" href="#core-crates">Core Crates</a></h3>
@@ -9682,14 +9684,16 @@ lindera = { version = "6", features = ["embed-ipadic", "embed-ko-dic"] }
 <tr><td><code>model.rs</code></td><td>Trained model storage, serialization, and dictionary output</td></tr>
 </tbody></table>
 </div>
+<h4 id="lindera-segmenter"><a class="header" href="#lindera-segmenter"><code>lindera-segmenter</code></a></h4>
+<p>The morphological segmentation library (published as <code>lindera</code> up to v6). Integrates the dictionary crates and provides the <code>Segmenter</code> API. Its <code>dictionary</code> module also re-exports the raw <code>lindera-dictionary</code> modules (<code>builder</code>, <code>core</code>, <code>loader</code>, <code>viterbi</code>, ...).</p>
 <h4 id="lindera-1"><a class="header" href="#lindera-1"><code>lindera</code></a></h4>
-<p>The main morphological segmentation library. Integrates dictionary crates and provides the <code>Segmenter</code> API.</p>
+<p>The facade crate and the single dependency for Rust users. It re-exports every module of <code>lindera-segmenter</code> and, with the default <code>analysis</code> feature, <code>lindera-analysis</code> as <code>lindera::analysis</code>. The directory also holds the integration tests, examples, and benches that exercise the public paths.</p>
 <h4 id="lindera-analysis-1"><a class="header" href="#lindera-analysis-1"><code>lindera-analysis</code></a></h4>
-<p>Lucene-style analysis chain on top of <code>lindera</code>: character filters, token filters, and the <code>Tokenizer</code> that composes them around a <code>Segmenter</code>.</p>
+<p>Lucene-style analysis chain on top of <code>lindera-segmenter</code> (used as <code>lindera::analysis</code> through the facade): character filters, token filters, and the <code>Tokenizer</code> that composes them around a <code>Segmenter</code>.</p>
 <h4 id="lindera-cli-1"><a class="header" href="#lindera-cli-1"><code>lindera-cli</code></a></h4>
 <p>Command-line interface for tokenization, dictionary training, export, and building. The <code>train</code> feature is enabled by default.</p>
-<h4 id="lindera-binding-core"><a class="header" href="#lindera-binding-core"><code>lindera-binding-core</code></a></h4>
-<p>FFI-independent helpers shared by all five language bindings (<code>lindera-python</code>, <code>lindera-nodejs</code>, <code>lindera-ruby</code>, <code>lindera-php</code>, <code>lindera-wasm</code>): a core tokenizer/schema/metadata layer that each binding wraps in its own language-native API.</p>
+<h4 id="lindera-binding"><a class="header" href="#lindera-binding"><code>lindera-binding</code></a></h4>
+<p>FFI-independent helpers shared by all five language bindings (<code>lindera-python</code>, <code>lindera-nodejs</code>, <code>lindera-ruby</code>, <code>lindera-php</code>, <code>lindera-wasm</code>): a core tokenizer/schema/metadata layer that each binding wraps in its own language-native API. It depends on the <code>lindera</code> facade.</p>
 <h3 id="dictionary-crates"><a class="header" href="#dictionary-crates">Dictionary Crates</a></h3>
 <p>Each dictionary crate contains pre-built dictionary data for a specific language and dictionary source.</p>
 <div class="table-wrapper"><table><thead><tr><th>Crate</th><th>Language</th><th>Dictionary Source</th></tr></thead><tbody>
@@ -9718,9 +9722,10 @@ lindera = { version = "6", features = ["embed-ipadic", "embed-ko-dic"] }
 <p>Test resources including sample dictionaries, user dictionaries, and test corpora used by the test suite.</p>
 <h4 id="docs"><a class="header" href="#docs"><code>docs/</code></a></h4>
 <p>User-facing documentation built with <a href="https://rust-lang.github.io/mdBook/">mdBook</a>. The table of contents is defined in <code>docs/src/SUMMARY.md</code>. A Japanese translation is available under <code>docs/ja/</code>.</p>
-<h4 id="examples-9"><a class="header" href="#examples-9"><code>examples/</code></a></h4>
+<h4 id="linderaexamples-and-lindera-analysisexamples"><a class="header" href="#linderaexamples-and-lindera-analysisexamples"><code>lindera/examples/</code> and <code>lindera-analysis/examples/</code></a></h4>
 <p>Runnable example programs demonstrating common usage patterns. Run with:</p>
-<pre><code class="language-bash">cargo run --features=embed-ipadic --example=&lt;example_name&gt;
+<pre><code class="language-bash">cargo run -p lindera --features=embed-ipadic --example=segment
+cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="training-pipeline"><a class="header" href="#training-pipeline">Training Pipeline</a></h1>
 <p>Lindera provides CRF-based dictionary training functionality for creating custom morphological analysis models. This feature requires the <code>train</code> feature flag.</p>
@@ -10014,7 +10019,7 @@ across bindings. The JS bindings return plain objects because their hosts
 defer class finalizers, while Python, Ruby, and PHP keep classes because
 their finalization is deterministic.</li>
 </ul>
-<p>Put shared logic in <code>lindera-binding-core</code> (e.g. <code>TokenView</code>) so each binding
+<p>Put shared logic in <code>lindera-binding</code> (e.g. <code>TokenView</code>) so each binding
 only maps core data into its FFI types.</p>
 <h2 id="testing"><a class="header" href="#testing">Testing</a></h2>
 <ul>

@@ -195,7 +195,7 @@
 <p>[!NOTE]
 lindera v6.1.0 以降を使用してください。v6.1.0 より前に公開された <code>lindera</code> gem は、インストール時のコンパイルに失敗します。それらのバージョンは、以下の手順でソースからビルドしてください。</p>
 </blockquote>
-<p>gem は <a href="https://crates.io/crates/lindera">crates.io</a> 上の同じバージョンの <code>lindera</code> と <code>lindera-binding-core</code> に対してコンパイルされます（この 2 つはバージョンを完全に固定しています）。gem には <code>Cargo.lock</code> が含まれないため、それ以外の依存（ほかの <code>lindera-*</code> クレートを含む）は、インストール時に互換性のある最新のリリースに解決されます。デフォルトの feature（<code>train</code>）のみを有効にし、辞書は埋め込みません。辞書は<a href="#%E8%BE%9E%E6%9B%B8%E3%81%AE%E5%85%A5%E6%89%8B">辞書の入手</a>を参照してください。その他の <a href="#feature-%E3%83%95%E3%83%A9%E3%82%B0">Feature フラグ</a>を有効にするには、インストール時に <code>LINDERA_FEATURES</code> を指定します：</p>
+<p>gem は <a href="https://crates.io/crates/lindera">crates.io</a> 上の同じバージョンの <code>lindera</code> と <code>lindera-binding</code> に対してコンパイルされます（この 2 つはバージョンを完全に固定しています）。gem には <code>Cargo.lock</code> が含まれないため、それ以外の依存（ほかの <code>lindera-*</code> クレートを含む）は、インストール時に互換性のある最新のリリースに解決されます。デフォルトの feature（<code>train</code>）のみを有効にし、辞書は埋め込みません。辞書は<a href="#%E8%BE%9E%E6%9B%B8%E3%81%AE%E5%85%A5%E6%89%8B">辞書の入手</a>を参照してください。その他の <a href="#feature-%E3%83%95%E3%83%A9%E3%82%B0">Feature フラグ</a>を有効にするには、インストール時に <code>LINDERA_FEATURES</code> を指定します：</p>
 <pre><code class="language-bash">LINDERA_FEATURES="embed-ipadic" gem install lindera
 </code></pre>
 <h2 id="辞書の入手"><a class="header" href="#辞書の入手">辞書の入手</a></h2>
@@ -221,7 +221,7 @@ bundle exec rake compile
 <p><code>bundle exec rake build</code>（または <code>make package-lindera-ruby</code>）は、ソース gem を
 <code>lindera-ruby/pkg/</code> に出力します。<code>cargo package</code> が正規化したクレートを同梱するため、
 gem はこのリポジトリの外でも、crates.io 上の同じバージョンの <code>lindera</code> と
-<code>lindera-binding-core</code> に対してコンパイルできます。<code>gem build</code> を直接実行しないで
+<code>lindera-binding</code> に対してコンパイルできます。<code>gem build</code> を直接実行しないで
 ください。クレート自身の <code>Cargo.toml</code> は Cargo ワークスペースの中でしか解決できません。</p>
 <p><code>make test-lindera-ruby-gem</code>（Docker が必要）は、gem をビルドし、クリーンな <code>ruby</code>
 コンテナで <code>gem install</code> を実行して、テキストをトークナイズします。このテストは

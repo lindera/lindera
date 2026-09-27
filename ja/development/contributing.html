@@ -220,6 +220,13 @@ cargo test
 <li><code>unsafe</code> ブロックは必要な場合にのみ使用し、必ず <code>// SAFETY: ...</code> コメントを付けてください。</li>
 <li>モジュールは <code>mod.rs</code> スタイルではなく、ファイルベースのスタイル（<code>src/tokenizer.rs</code>）を使用してください。</li>
 </ul>
+<h2 id="言語バインディングの整合性"><a class="header" href="#言語バインディングの整合性">言語バインディングの整合性</a></h2>
+<p>Lindera は Python・Node.js・Ruby・PHP・WASM のバインディングを提供しています。バインディングの機能を追加・レビューする際は次の方針に従ってください。</p>
+<ul>
+<li><strong>機能セットを揃える。</strong> トークナイズ（<code>tokenize</code> / <code>tokenize_surfaces</code> / <code>tokenize_nbest</code>）、ユーザー辞書、文字フィルタ、トークンフィルタは全バインディングで利用できるようにします。あるバインディングに機能を追加したら、他のバインディングの計画（または追跡 Issue）を添えてください。</li>
+<li><strong>表現と寿命管理は各言語に従う。</strong> トークンをクラスにするかプレーンデータにするか、命名規則（camelCase / snake_case）、変換ヘルパー（<code>to_dict</code> / <code>to_h</code> / <code>toArray</code> / <code>toJSON</code>）は言語ごとの判断で、バインディング間で一致させる必要はありません。JS バインディングはホストがクラスのファイナライザを遅延させるためプレーンオブジェクトを返し、Python・Ruby・PHP は解放が決定的なのでクラスを保ちます。</li>
+</ul>
+<p>共通ロジックは <code>lindera-binding</code>（例: <code>TokenView</code>）に置き、各バインディングはコアのデータを自身の FFI 型に写すだけにします。</p>
 <h2 id="テスト"><a class="header" href="#テスト">テスト</a></h2>
 <ul>
 <li>

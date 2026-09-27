@@ -195,7 +195,7 @@
 <p>[!NOTE]
 Use lindera v6.1.0 or later. The <code>lindera</code> gems published before v6.1.0 fail to compile during installation; for those versions, build from source as described below.</p>
 </blockquote>
-<p>The gem compiles against the <a href="https://crates.io/crates/lindera">crates.io</a> releases of <code>lindera</code> and <code>lindera-binding-core</code> of the same version, which it pins exactly. It ships no <code>Cargo.lock</code>, so their dependencies, including the other <code>lindera-*</code> crates, resolve to the latest compatible releases at install time. It builds with the default features (<code>train</code>) and no embedded dictionary; see <a href="#obtaining-dictionaries">Obtaining Dictionaries</a>. To enable other <a href="#feature-flags">feature flags</a>, set <code>LINDERA_FEATURES</code> when installing:</p>
+<p>The gem compiles against the <a href="https://crates.io/crates/lindera">crates.io</a> releases of <code>lindera</code> and <code>lindera-binding</code> of the same version, which it pins exactly. It ships no <code>Cargo.lock</code>, so their dependencies, including the other <code>lindera-*</code> crates, resolve to the latest compatible releases at install time. It builds with the default features (<code>train</code>) and no embedded dictionary; see <a href="#obtaining-dictionaries">Obtaining Dictionaries</a>. To enable other <a href="#feature-flags">feature flags</a>, set <code>LINDERA_FEATURES</code> when installing:</p>
 <pre><code class="language-bash">LINDERA_FEATURES="embed-ipadic" gem install lindera
 </code></pre>
 <h2 id="obtaining-dictionaries"><a class="header" href="#obtaining-dictionaries">Obtaining Dictionaries</a></h2>
@@ -221,7 +221,7 @@ minitest suite.</p>
 <p><code>bundle exec rake build</code> (or <code>make package-lindera-ruby</code>) writes the source gem
 to <code>lindera-ruby/pkg/</code>. It packages the crate as <code>cargo package</code> normalizes it,
 so the gem compiles outside this repository, against the crates.io releases of
-<code>lindera</code> and <code>lindera-binding-core</code> of the same version. Do not run <code>gem build</code>
+<code>lindera</code> and <code>lindera-binding</code> of the same version. Do not run <code>gem build</code>
 directly: the crate's own <code>Cargo.toml</code> only resolves inside the Cargo workspace.</p>
 <p><code>make test-lindera-ruby-gem</code> (requires Docker) builds the gem, installs it with
 <code>gem install</code> in a clean <code>ruby</code> container and tokenizes text with it. The test

@@ -190,10 +190,11 @@
     CCCEDICT["lindera-cc-cedict"]
     JIEBA["lindera-jieba"]
     NEOLOGD["lindera-ipadic-neologd"]
-    LIB["lindera\n(Segmenter)"]
+    SEGMENTER["lindera-segmenter\n(Segmenter)"]
     ANALYSIS["lindera-analysis\n(Analysis Chain)"]
+    LIB["lindera\n(Facade)"]
     CLI["lindera-cli\n(CLI)"]
-    BINDINGCORE["lindera-binding-core"]
+    BINDING["lindera-binding"]
     PY["lindera-python"]
     NODEJS["lindera-nodejs"]
     RUBY["lindera-ruby"]
@@ -202,7 +203,7 @@
 
     CRF --&gt; TRAINER
     DICT --&gt; TRAINER
-    TRAINER -.-&gt;|"train feature"| LIB
+    TRAINER -.-&gt;|"train feature"| SEGMENTER
     DICT --&gt; IPADIC
     DICT --&gt; UNIDIC
     DICT --&gt; SUDACHIDICT
@@ -210,36 +211,35 @@
     DICT --&gt; CCCEDICT
     DICT --&gt; JIEBA
     DICT --&gt; NEOLOGD
-    DICT --&gt; LIB
-    DICT --&gt; ANALYSIS
-    DICT --&gt; WASM
-    IPADIC --&gt; LIB
-    UNIDIC --&gt; LIB
-    SUDACHIDICT --&gt; LIB
-    KODIC --&gt; LIB
-    CCCEDICT --&gt; LIB
-    JIEBA --&gt; LIB
-    NEOLOGD --&gt; LIB
-    LIB --&gt; ANALYSIS
+    DICT --&gt; SEGMENTER
+    IPADIC --&gt; SEGMENTER
+    UNIDIC --&gt; SEGMENTER
+    SUDACHIDICT --&gt; SEGMENTER
+    KODIC --&gt; SEGMENTER
+    CCCEDICT --&gt; SEGMENTER
+    JIEBA --&gt; SEGMENTER
+    NEOLOGD --&gt; SEGMENTER
+    SEGMENTER --&gt; ANALYSIS
+    SEGMENTER --&gt; LIB
+    ANALYSIS -.-&gt;|"analysis feature"| LIB
     LIB --&gt; CLI
-    ANALYSIS --&gt; CLI
-    LIB --&gt; BINDINGCORE
-    ANALYSIS --&gt; BINDINGCORE
-    BINDINGCORE --&gt; PY
-    BINDINGCORE --&gt; NODEJS
-    BINDINGCORE --&gt; RUBY
-    BINDINGCORE --&gt; PHP
-    BINDINGCORE --&gt; WASM
+    LIB --&gt; BINDING
+    BINDING --&gt; PY
+    BINDING --&gt; NODEJS
+    BINDING --&gt; RUBY
+    BINDING --&gt; PHP
+    BINDING --&gt; WASM
 </code></pre>
 <h2 id="クレート一覧"><a class="header" href="#クレート一覧">クレート一覧</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>クレート</th><th>種類</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>lindera-crf</code></td><td>コア</td><td>Pure RustによるCRF（条件付き確率場）実装。<code>no_std</code>サポート。シリアライゼーションに<code>rkyv</code>を使用。</td></tr>
 <tr><td><code>lindera-dictionary</code></td><td>コア</td><td>辞書ベースライブラリ。辞書の読み込みとビルドを提供。</td></tr>
 <tr><td><code>lindera-trainer</code></td><td>コア</td><td>CRFベースの辞書学習パイプライン。<code>lindera-crf</code>と<code>lindera-dictionary</code>の上に構築され、直接、または<code>lindera</code>facadeの<code>train</code> feature経由で利用される。</td></tr>
-<tr><td><code>lindera</code></td><td>コア</td><td>純粋な形態素セグメンター。辞書クレートを統合し、<code>Segmenter</code> APIを提供。</td></tr>
-<tr><td><code>lindera-analysis</code></td><td>コア</td><td><code>lindera</code>の上に構築されたLucene風の分析チェーン。文字フィルタ、トークンフィルタ、およびそれらを<code>Segmenter</code>の周りで組み合わせる<code>Tokenizer</code>を提供。</td></tr>
+<tr><td><code>lindera-segmenter</code></td><td>コア</td><td>純粋な形態素セグメンター（v6 以前の <code>lindera</code> クレート）。辞書クレートを統合し、<code>Segmenter</code> APIを提供。</td></tr>
+<tr><td><code>lindera-analysis</code></td><td>コア</td><td><code>lindera-segmenter</code>の上に構築されたLucene風の分析チェーン。文字フィルタ、トークンフィルタ、およびそれらを<code>Segmenter</code>の周りで組み合わせる<code>Tokenizer</code>を提供。<code>lindera::analysis</code>として参照できる。</td></tr>
+<tr><td><code>lindera</code></td><td>コア</td><td>ファサードクレート。Rustユーザーが追加する唯一の依存で、<code>lindera-segmenter</code>を再エクスポートし、デフォルトで有効な<code>analysis</code> featureにより<code>lindera-analysis</code>を<code>lindera::analysis</code>として提供。</td></tr>
 <tr><td><code>lindera-cli</code></td><td>アプリケーション</td><td>トークナイズ、辞書ビルド、CRF学習のためのコマンドラインインターフェース。</td></tr>
-<tr><td><code>lindera-binding-core</code></td><td>コア</td><td>以下の5つの言語バインディングが共有するFFI非依存のヘルパー。</td></tr>
+<tr><td><code>lindera-binding</code></td><td>コア</td><td>以下の5つの言語バインディングが共有するFFI非依存のヘルパー。<code>lindera</code>ファサードに依存。</td></tr>
 <tr><td><code>lindera-ipadic</code></td><td>辞書</td><td>IPADICベースの日本語辞書。</td></tr>
 <tr><td><code>lindera-ipadic-neologd</code></td><td>辞書</td><td>IPADIC NEologdベースの日本語辞書（新語対応）。</td></tr>
 <tr><td><code>lindera-unidic</code></td><td>辞書</td><td>UniDicベースの日本語辞書。</td></tr>
@@ -273,8 +273,9 @@ Output Tokens
 <p><strong>Segmenter</strong>がコアコンポーネントです。辞書から候補トークンのラティスを構築し、Viterbiアルゴリズムを適用して最小コストのパスを見つけ、最も適切な分割結果を生成します。辞書検索は、所有権を持つ構造体へのデシリアライズを行わず、<code>dict.trie</code>のシリアライズ済みバイト列上を直接走査する文字単位のダブル配列トライ（<code>crawdad</code>でビルド）を使用します。繰り返しトークナイズを行う場合は、<code>Segmenter::new_worker()</code>が返す<code>SegmentWorker</code>がラティスとスクラッチバッファの割り当てを呼び出しをまたいで再利用し、保持メモリを自動収縮ポリシーで制限します。</p>
 <h2 id="featureフラグ"><a class="header" href="#featureフラグ">Featureフラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
+<tr><td><code>analysis</code></td><td><code>lindera-analysis</code>を<code>lindera::analysis</code>として再エクスポート（文字フィルタ、トークンフィルタ、<code>Tokenizer</code>）</td><td>有効（<code>default-features = false</code>で無効）</td></tr>
 <tr><td><code>mmap</code></td><td>ファイルシステム辞書読み込みのためのメモリマップドファイルサポート（<code>--mmap</code>/<code>use_mmap</code>でオプトイン。トライ・単語リストファイル・接続コスト行列はいずれもマップしたバイト列上で直接参照され、遅延読み込みされる）</td><td>有効</td></tr>
-<tr><td><code>train</code></td><td>CRFベースの辞書学習機能（<code>lindera-crf</code>に依存）</td><td>CLI + Python/Node.js/Ruby/PHPバインディング（デフォルト有効）／<code>lindera</code>コアではデフォルト無効（オプトイン）／<code>lindera-wasm</code>では利用不可</td></tr>
+<tr><td><code>train</code></td><td>CRFベースの辞書学習機能（<code>lindera-crf</code>に依存）</td><td>CLI + Python/Node.js/Ruby/PHPバインディング（デフォルト有効）／<code>lindera</code>ライブラリクレートではデフォルト無効（オプトイン）／<code>lindera-wasm</code>では利用不可</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC辞書をバイナリに埋め込み</td><td>無効</td></tr>
 <tr><td><code>embed-ipadic-neologd</code></td><td>IPADIC NEologd辞書をバイナリに埋め込み</td><td>無効</td></tr>
 <tr><td><code>embed-unidic</code></td><td>UniDic辞書をバイナリに埋め込み</td><td>無効</td></tr>
@@ -292,7 +293,7 @@ Output Tokens
 <ul>
 <li><a href="./getting_started.html">はじめに</a> -- インストールと最初のステップ</li>
 <li><a href="./concepts.html">基本概念</a> -- 辞書、トークナイズ、フィルター</li>
-<li><a href="./lindera.html">Linderaライブラリ</a> -- セグメンター、API</li>
+<li><a href="./lindera.html">Linderaライブラリ</a> -- <code>lindera</code>ファサードとセグメンターAPI</li>
 <li><a href="./lindera-analysis.html">Lindera Analysis</a> -- 文字フィルタ、トークンフィルタ、<code>Tokenizer</code></li>
 <li><a href="./lindera-dictionary.html">Lindera Dictionary</a> -- 辞書の読み込みとビルド</li>
 <li><a href="./lindera-trainer.html">Lindera Trainer</a> -- CRFベースの辞書学習</li>

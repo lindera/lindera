@@ -268,10 +268,11 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
     CCCEDICT["lindera-cc-cedict"]
     JIEBA["lindera-jieba"]
     NEOLOGD["lindera-ipadic-neologd"]
-    LIB["lindera\n(Segmenter)"]
+    SEGMENTER["lindera-segmenter\n(Segmenter)"]
     ANALYSIS["lindera-analysis\n(Analysis Chain)"]
+    LIB["lindera\n(Facade)"]
     CLI["lindera-cli\n(CLI)"]
-    BINDINGCORE["lindera-binding-core"]
+    BINDING["lindera-binding"]
     PY["lindera-python"]
     NODEJS["lindera-nodejs"]
     RUBY["lindera-ruby"]
@@ -280,7 +281,7 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 
     CRF --&gt; TRAINER
     DICT --&gt; TRAINER
-    TRAINER -.-&gt;|"train feature"| LIB
+    TRAINER -.-&gt;|"train feature"| SEGMENTER
     DICT --&gt; IPADIC
     DICT --&gt; UNIDIC
     DICT --&gt; SUDACHIDICT
@@ -288,36 +289,35 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
     DICT --&gt; CCCEDICT
     DICT --&gt; JIEBA
     DICT --&gt; NEOLOGD
-    DICT --&gt; LIB
-    DICT --&gt; ANALYSIS
-    DICT --&gt; WASM
-    IPADIC --&gt; LIB
-    UNIDIC --&gt; LIB
-    SUDACHIDICT --&gt; LIB
-    KODIC --&gt; LIB
-    CCCEDICT --&gt; LIB
-    JIEBA --&gt; LIB
-    NEOLOGD --&gt; LIB
-    LIB --&gt; ANALYSIS
+    DICT --&gt; SEGMENTER
+    IPADIC --&gt; SEGMENTER
+    UNIDIC --&gt; SEGMENTER
+    SUDACHIDICT --&gt; SEGMENTER
+    KODIC --&gt; SEGMENTER
+    CCCEDICT --&gt; SEGMENTER
+    JIEBA --&gt; SEGMENTER
+    NEOLOGD --&gt; SEGMENTER
+    SEGMENTER --&gt; ANALYSIS
+    SEGMENTER --&gt; LIB
+    ANALYSIS -.-&gt;|"analysis feature"| LIB
     LIB --&gt; CLI
-    ANALYSIS --&gt; CLI
-    LIB --&gt; BINDINGCORE
-    ANALYSIS --&gt; BINDINGCORE
-    BINDINGCORE --&gt; PY
-    BINDINGCORE --&gt; NODEJS
-    BINDINGCORE --&gt; RUBY
-    BINDINGCORE --&gt; PHP
-    BINDINGCORE --&gt; WASM
+    LIB --&gt; BINDING
+    BINDING --&gt; PY
+    BINDING --&gt; NODEJS
+    BINDING --&gt; RUBY
+    BINDING --&gt; PHP
+    BINDING --&gt; WASM
 </code></pre>
 <h2 id="クレート一覧"><a class="header" href="#クレート一覧">クレート一覧</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>クレート</th><th>種類</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>lindera-crf</code></td><td>コア</td><td>Pure RustによるCRF（条件付き確率場）実装。<code>no_std</code>サポート。シリアライゼーションに<code>rkyv</code>を使用。</td></tr>
 <tr><td><code>lindera-dictionary</code></td><td>コア</td><td>辞書ベースライブラリ。辞書の読み込みとビルドを提供。</td></tr>
 <tr><td><code>lindera-trainer</code></td><td>コア</td><td>CRFベースの辞書学習パイプライン。<code>lindera-crf</code>と<code>lindera-dictionary</code>の上に構築され、直接、または<code>lindera</code>facadeの<code>train</code> feature経由で利用される。</td></tr>
-<tr><td><code>lindera</code></td><td>コア</td><td>純粋な形態素セグメンター。辞書クレートを統合し、<code>Segmenter</code> APIを提供。</td></tr>
-<tr><td><code>lindera-analysis</code></td><td>コア</td><td><code>lindera</code>の上に構築されたLucene風の分析チェーン。文字フィルタ、トークンフィルタ、およびそれらを<code>Segmenter</code>の周りで組み合わせる<code>Tokenizer</code>を提供。</td></tr>
+<tr><td><code>lindera-segmenter</code></td><td>コア</td><td>純粋な形態素セグメンター（v6 以前の <code>lindera</code> クレート）。辞書クレートを統合し、<code>Segmenter</code> APIを提供。</td></tr>
+<tr><td><code>lindera-analysis</code></td><td>コア</td><td><code>lindera-segmenter</code>の上に構築されたLucene風の分析チェーン。文字フィルタ、トークンフィルタ、およびそれらを<code>Segmenter</code>の周りで組み合わせる<code>Tokenizer</code>を提供。<code>lindera::analysis</code>として参照できる。</td></tr>
+<tr><td><code>lindera</code></td><td>コア</td><td>ファサードクレート。Rustユーザーが追加する唯一の依存で、<code>lindera-segmenter</code>を再エクスポートし、デフォルトで有効な<code>analysis</code> featureにより<code>lindera-analysis</code>を<code>lindera::analysis</code>として提供。</td></tr>
 <tr><td><code>lindera-cli</code></td><td>アプリケーション</td><td>トークナイズ、辞書ビルド、CRF学習のためのコマンドラインインターフェース。</td></tr>
-<tr><td><code>lindera-binding-core</code></td><td>コア</td><td>以下の5つの言語バインディングが共有するFFI非依存のヘルパー。</td></tr>
+<tr><td><code>lindera-binding</code></td><td>コア</td><td>以下の5つの言語バインディングが共有するFFI非依存のヘルパー。<code>lindera</code>ファサードに依存。</td></tr>
 <tr><td><code>lindera-ipadic</code></td><td>辞書</td><td>IPADICベースの日本語辞書。</td></tr>
 <tr><td><code>lindera-ipadic-neologd</code></td><td>辞書</td><td>IPADIC NEologdベースの日本語辞書（新語対応）。</td></tr>
 <tr><td><code>lindera-unidic</code></td><td>辞書</td><td>UniDicベースの日本語辞書。</td></tr>
@@ -351,8 +351,9 @@ Output Tokens
 <p><strong>Segmenter</strong>がコアコンポーネントです。辞書から候補トークンのラティスを構築し、Viterbiアルゴリズムを適用して最小コストのパスを見つけ、最も適切な分割結果を生成します。辞書検索は、所有権を持つ構造体へのデシリアライズを行わず、<code>dict.trie</code>のシリアライズ済みバイト列上を直接走査する文字単位のダブル配列トライ（<code>crawdad</code>でビルド）を使用します。繰り返しトークナイズを行う場合は、<code>Segmenter::new_worker()</code>が返す<code>SegmentWorker</code>がラティスとスクラッチバッファの割り当てを呼び出しをまたいで再利用し、保持メモリを自動収縮ポリシーで制限します。</p>
 <h2 id="featureフラグ"><a class="header" href="#featureフラグ">Featureフラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
+<tr><td><code>analysis</code></td><td><code>lindera-analysis</code>を<code>lindera::analysis</code>として再エクスポート（文字フィルタ、トークンフィルタ、<code>Tokenizer</code>）</td><td>有効（<code>default-features = false</code>で無効）</td></tr>
 <tr><td><code>mmap</code></td><td>ファイルシステム辞書読み込みのためのメモリマップドファイルサポート（<code>--mmap</code>/<code>use_mmap</code>でオプトイン。トライ・単語リストファイル・接続コスト行列はいずれもマップしたバイト列上で直接参照され、遅延読み込みされる）</td><td>有効</td></tr>
-<tr><td><code>train</code></td><td>CRFベースの辞書学習機能（<code>lindera-crf</code>に依存）</td><td>CLI + Python/Node.js/Ruby/PHPバインディング（デフォルト有効）／<code>lindera</code>コアではデフォルト無効（オプトイン）／<code>lindera-wasm</code>では利用不可</td></tr>
+<tr><td><code>train</code></td><td>CRFベースの辞書学習機能（<code>lindera-crf</code>に依存）</td><td>CLI + Python/Node.js/Ruby/PHPバインディング（デフォルト有効）／<code>lindera</code>ライブラリクレートではデフォルト無効（オプトイン）／<code>lindera-wasm</code>では利用不可</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC辞書をバイナリに埋め込み</td><td>無効</td></tr>
 <tr><td><code>embed-ipadic-neologd</code></td><td>IPADIC NEologd辞書をバイナリに埋め込み</td><td>無効</td></tr>
 <tr><td><code>embed-unidic</code></td><td>UniDic辞書をバイナリに埋め込み</td><td>無効</td></tr>
@@ -370,7 +371,7 @@ Output Tokens
 <ul>
 <li><a href="./getting_started.html">はじめに</a> -- インストールと最初のステップ</li>
 <li><a href="./concepts.html">基本概念</a> -- 辞書、トークナイズ、フィルター</li>
-<li><a href="./lindera.html">Linderaライブラリ</a> -- セグメンター、API</li>
+<li><a href="./lindera.html">Linderaライブラリ</a> -- <code>lindera</code>ファサードとセグメンターAPI</li>
 <li><a href="./lindera-analysis.html">Lindera Analysis</a> -- 文字フィルタ、トークンフィルタ、<code>Tokenizer</code></li>
 <li><a href="./lindera-dictionary.html">Lindera Dictionary</a> -- 辞書の読み込みとビルド</li>
 <li><a href="./lindera-trainer.html">Lindera Trainer</a> -- CRFベースの辞書学習</li>
@@ -1387,6 +1388,7 @@ let content = std::fs::read_to_string("config.yml")
 <p>APIリファレンスは以下で公開されています：</p>
 <ul>
 <li><a href="https://docs.rs/lindera">lindera</a></li>
+<li><a href="https://docs.rs/lindera-segmenter">lindera-segmenter</a></li>
 <li><a href="https://docs.rs/lindera-analysis">lindera-analysis</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-analysis"><a class="header" href="#lindera-analysis">Lindera Analysis</a></h1>
@@ -2058,7 +2060,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <p><code>Tokenizer</code>は、文字フィルタ、<a href="lindera-analysis/../lindera/segmenter.html"><code>lindera::segmenter::Segmenter</code></a>、トークンフィルタを1つの解析パイプラインとして組み合わせます。<code>tokenize</code>を呼び出すと、入力テキストに文字フィルタを適用し、フィルタ後のテキストをセグメンテーションし、得られたトークンにトークンフィルタを適用したうえで、記録済みの<code>OffsetMapping</code>を使って各トークンのバイトオフセットを元のテキストに対する値へ補正します。</p>
 <p><code>TokenizerBuilder</code>は<code>TokenizerConfig</code>（<code>serde_json::Value</code>）から<code>Tokenizer</code>を組み立てます。この設定はプログラムから直接構築することも、YAMLファイルから読み込むこと（<code>TokenizerBuilder::from_file</code>、または環境変数<code>LINDERA_CONFIG_PATH</code>経由で自動的に読み込む<code>TokenizerBuilder::new</code>）も、<code>set_segmenter_mode</code>・<code>set_segmenter_dictionary</code>・<code>append_character_filter</code>・<code>append_token_filter</code>で段階的に組み立てることもできます。YAMLファイルの形式は<a href="lindera-analysis/./configuration.html">設定</a>を、フィルタの完全なリファレンスは<a href="lindera-analysis/./filters.html">フィルタ</a>を参照してください。</p>
 <h3 id="analysisworker"><a class="header" href="#analysisworker">AnalysisWorker</a></h3>
-<p><code>AnalysisWorker</code>（<code>Tokenizer::new_worker</code>または<code>Tokenizer::into_worker</code>で作成）は、解析チェーン全体に対する再利用可能なセッションです。呼び出しごとのバッファ — Viterbiラティスとバックトレース用スクラッチ（<code>SegmentWorker</code>経由）、文字フィルタが操作する正規化テキストバッファ、オフセットマッピング用スクラッチ — をすべて所有するため、<code>tokenize</code>を繰り返し呼び出しても<code>Tokenizer::tokenize</code>が支払う呼び出しごとのアロケーションを回避できます。文字フィルタが設定されている場合、トークンのsurfaceはトークンごとの<code>String</code>にコピーされる代わりにワーカーのバッファを借用します。返されるトークンはワーカーを借用するため、次の呼び出しの前に消費する必要があります。マルチスレッドで使う場合はスレッドごとにワーカーを作成してください（あるいは<code>lindera-binding-core</code>のように<code>Mutex</code>で保護します）。基盤となる<code>SegmentWorker</code>と自動メモリ縮小ポリシーについては<a href="lindera-analysis/../lindera/segmenter.html">Segmenter</a>のページを参照してください。</p>
+<p><code>AnalysisWorker</code>（<code>Tokenizer::new_worker</code>または<code>Tokenizer::into_worker</code>で作成）は、解析チェーン全体に対する再利用可能なセッションです。呼び出しごとのバッファ — Viterbiラティスとバックトレース用スクラッチ（<code>SegmentWorker</code>経由）、文字フィルタが操作する正規化テキストバッファ、オフセットマッピング用スクラッチ — をすべて所有するため、<code>tokenize</code>を繰り返し呼び出しても<code>Tokenizer::tokenize</code>が支払う呼び出しごとのアロケーションを回避できます。文字フィルタが設定されている場合、トークンのsurfaceはトークンごとの<code>String</code>にコピーされる代わりにワーカーのバッファを借用します。返されるトークンはワーカーを借用するため、次の呼び出しの前に消費する必要があります。マルチスレッドで使う場合はスレッドごとにワーカーを作成してください（あるいは<code>lindera-binding</code>のように<code>Mutex</code>で保護します）。基盤となる<code>SegmentWorker</code>と自動メモリ縮小ポリシーについては<a href="lindera-analysis/../lindera/segmenter.html">Segmenter</a>のページを参照してください。</p>
 <p><code>AnalysisWorker</code>の主なpublicメソッド:</p>
 <ul>
 <li><code>tokenize(&amp;mut self, text: &amp;str)</code> — ワーカーの内部バッファを再利用しながら、解析チェーン全体を通して<code>text</code>をトークナイズします。同じ入力・設定であれば<code>Tokenizer::tokenize</code>とまったく同じトークンを返します。</li>
@@ -4688,7 +4690,7 @@ for (const token of tokens) {
 <p>[!NOTE]
 lindera v6.1.0 以降を使用してください。v6.1.0 より前に公開された <code>lindera</code> gem は、インストール時のコンパイルに失敗します。それらのバージョンは、以下の手順でソースからビルドしてください。</p>
 </blockquote>
-<p>gem は <a href="https://crates.io/crates/lindera">crates.io</a> 上の同じバージョンの <code>lindera</code> と <code>lindera-binding-core</code> に対してコンパイルされます（この 2 つはバージョンを完全に固定しています）。gem には <code>Cargo.lock</code> が含まれないため、それ以外の依存（ほかの <code>lindera-*</code> クレートを含む）は、インストール時に互換性のある最新のリリースに解決されます。デフォルトの feature（<code>train</code>）のみを有効にし、辞書は埋め込みません。辞書は<a href="lindera-ruby/installation.html#%E8%BE%9E%E6%9B%B8%E3%81%AE%E5%85%A5%E6%89%8B">辞書の入手</a>を参照してください。その他の <a href="lindera-ruby/installation.html#feature-%E3%83%95%E3%83%A9%E3%82%B0">Feature フラグ</a>を有効にするには、インストール時に <code>LINDERA_FEATURES</code> を指定します：</p>
+<p>gem は <a href="https://crates.io/crates/lindera">crates.io</a> 上の同じバージョンの <code>lindera</code> と <code>lindera-binding</code> に対してコンパイルされます（この 2 つはバージョンを完全に固定しています）。gem には <code>Cargo.lock</code> が含まれないため、それ以外の依存（ほかの <code>lindera-*</code> クレートを含む）は、インストール時に互換性のある最新のリリースに解決されます。デフォルトの feature（<code>train</code>）のみを有効にし、辞書は埋め込みません。辞書は<a href="lindera-ruby/installation.html#%E8%BE%9E%E6%9B%B8%E3%81%AE%E5%85%A5%E6%89%8B">辞書の入手</a>を参照してください。その他の <a href="lindera-ruby/installation.html#feature-%E3%83%95%E3%83%A9%E3%82%B0">Feature フラグ</a>を有効にするには、インストール時に <code>LINDERA_FEATURES</code> を指定します：</p>
 <pre><code class="language-bash">LINDERA_FEATURES="embed-ipadic" gem install lindera
 </code></pre>
 <h2 id="辞書の入手-3"><a class="header" href="#辞書の入手-3">辞書の入手</a></h2>
@@ -4714,7 +4716,7 @@ bundle exec rake compile
 <p><code>bundle exec rake build</code>（または <code>make package-lindera-ruby</code>）は、ソース gem を
 <code>lindera-ruby/pkg/</code> に出力します。<code>cargo package</code> が正規化したクレートを同梱するため、
 gem はこのリポジトリの外でも、crates.io 上の同じバージョンの <code>lindera</code> と
-<code>lindera-binding-core</code> に対してコンパイルできます。<code>gem build</code> を直接実行しないで
+<code>lindera-binding</code> に対してコンパイルできます。<code>gem build</code> を直接実行しないで
 ください。クレート自身の <code>Cargo.toml</code> は Cargo ワークスペースの中でしか解決できません。</p>
 <p><code>make test-lindera-ruby-gem</code>（Docker が必要）は、gem をビルドし、クリーンな <code>ruby</code>
 コンテナで <code>gem install</code> を実行して、テキストをトークナイズします。このテストは
@@ -9513,28 +9515,28 @@ lindera = { version = "6", features = ["embed-ipadic", "embed-ko-dic"] }
 <p>Lindera は複数のクレートで構成される Cargo ワークスペースとして組織されています。</p>
 <h2 id="ディレクトリ構成"><a class="header" href="#ディレクトリ構成">ディレクトリ構成</a></h2>
 <pre><code class="language-text">lindera/
-├── lindera-crf/            # CRF engine (pure Rust, no_std)
-├── lindera-dictionary/     # Dictionary base library
+├── lindera-crf/            # CRF エンジン（pure Rust、no_std）
+├── lindera-dictionary/     # 辞書ベースライブラリ
 ├── lindera-trainer/        # CRF ベースの辞書学習
-├── lindera/                # Core morphological analysis library
+├── lindera/                # ファサードクレート（lindera-segmenter と lindera-analysis を再エクスポート）。tests・examples・benches を含む
+├── lindera-segmenter/      # 形態素分割ライブラリ（Segmenter API）
 ├── lindera-analysis/       # 分析チェーン（character/token filter・tokenizer）
-├── lindera-cli/            # CLI tool
-├── lindera-binding-core/   # 言語バインディングが共有するFFI非依存のヘルパー
-├── lindera-ipadic/         # IPADIC dictionary (Japanese)
-├── lindera-ipadic-neologd/ # IPADIC NEologd dictionary (Japanese)
-├── lindera-unidic/         # UniDic dictionary (Japanese)
-├── lindera-sudachidict/    # SudachiDict dictionary (Japanese)
-├── lindera-ko-dic/         # ko-dic dictionary (Korean)
-├── lindera-cc-cedict/      # CC-CEDICT dictionary (Chinese)
-├── lindera-jieba/          # Jieba dictionary (Chinese)
-├── lindera-python/         # Python bindings (PyO3)
-├── lindera-nodejs/         # Node.js bindings (NAPI-RS)
-├── lindera-ruby/           # Ruby bindings (Magnus + rb-sys)
-├── lindera-php/            # PHP bindings (ext-php-rs)
-├── lindera-wasm/           # WebAssembly bindings (wasm-bindgen)
-├── resources/              # Test resources and sample data
-├── docs/                   # Documentation (mdBook)
-└── examples/               # Example code
+├── lindera-cli/            # CLI ツール
+├── lindera-binding/        # 言語バインディングが共有するFFI非依存のヘルパー
+├── lindera-ipadic/         # IPADIC 辞書（日本語）
+├── lindera-ipadic-neologd/ # IPADIC NEologd 辞書（日本語）
+├── lindera-unidic/         # UniDic 辞書（日本語）
+├── lindera-sudachidict/    # SudachiDict 辞書（日本語）
+├── lindera-ko-dic/         # ko-dic 辞書（韓国語）
+├── lindera-cc-cedict/      # CC-CEDICT 辞書（中国語）
+├── lindera-jieba/          # Jieba 辞書（中国語）
+├── lindera-python/         # Python バインディング（PyO3）
+├── lindera-nodejs/         # Node.js バインディング（NAPI-RS）
+├── lindera-ruby/           # Ruby バインディング（Magnus + rb-sys）
+├── lindera-php/            # PHP バインディング（ext-php-rs）
+├── lindera-wasm/           # WebAssembly バインディング（wasm-bindgen）
+├── resources/              # テストリソースとサンプルデータ
+└── docs/                   # ドキュメント（mdBook）
 </code></pre>
 <h2 id="クレートの説明"><a class="header" href="#クレートの説明">クレートの説明</a></h2>
 <h3 id="コアクレート"><a class="header" href="#コアクレート">コアクレート</a></h3>
@@ -9552,14 +9554,16 @@ lindera = { version = "6", features = ["embed-ipadic", "embed-ko-dic"] }
 <tr><td><code>model.rs</code></td><td>学習済みモデルの保存、シリアライゼーション、辞書出力</td></tr>
 </tbody></table>
 </div>
+<h4 id="lindera-segmenter"><a class="header" href="#lindera-segmenter"><code>lindera-segmenter</code></a></h4>
+<p>形態素分割ライブラリです（v6 までは <code>lindera</code> として公開）。辞書クレートを統合し、<code>Segmenter</code> API を提供します。<code>dictionary</code> モジュールからは <code>lindera-dictionary</code> の生モジュール（<code>builder</code>・<code>core</code>・<code>loader</code>・<code>viterbi</code> など）も再エクスポートされます。</p>
 <h4 id="lindera-1"><a class="header" href="#lindera-1"><code>lindera</code></a></h4>
-<p>純粋な形態素セグメンターです。辞書クレートを統合し、<code>Segmenter</code> API を提供します。</p>
+<p>ファサードクレートで、Rust ユーザーが追加する唯一の依存です。<code>lindera-segmenter</code> の全モジュールを再エクスポートし、デフォルトで有効な <code>analysis</code> feature により <code>lindera-analysis</code> を <code>lindera::analysis</code> として提供します。このディレクトリには公開パスを検証する統合テスト・サンプル・ベンチマークも置かれています。</p>
 <h4 id="lindera-analysis-1"><a class="header" href="#lindera-analysis-1"><code>lindera-analysis</code></a></h4>
-<p><code>lindera</code> の上に構築されたLucene風の分析チェーンです。文字フィルタ、トークンフィルタ、およびそれらを <code>Segmenter</code> の周りで組み合わせる <code>Tokenizer</code> を提供します。</p>
+<p><code>lindera-segmenter</code> の上に構築されたLucene風の分析チェーンです（ファサード経由では <code>lindera::analysis</code> として利用します）。文字フィルタ、トークンフィルタ、およびそれらを <code>Segmenter</code> の周りで組み合わせる <code>Tokenizer</code> を提供します。</p>
 <h4 id="lindera-cli-1"><a class="header" href="#lindera-cli-1"><code>lindera-cli</code></a></h4>
 <p>トークナイズ、辞書学習、エクスポート、ビルドのためのコマンドラインインターフェースです。デフォルトで <code>train</code> feature が有効です。</p>
-<h4 id="lindera-binding-core"><a class="header" href="#lindera-binding-core"><code>lindera-binding-core</code></a></h4>
-<p>5つの言語バインディング（<code>lindera-python</code>、<code>lindera-nodejs</code>、<code>lindera-ruby</code>、<code>lindera-php</code>、<code>lindera-wasm</code>）すべてが共有するFFI非依存のヘルパーです。各バインディングがそれぞれの言語のネイティブAPIでラップするコアのトークナイザー・スキーマ・メタデータ層を提供します。</p>
+<h4 id="lindera-binding"><a class="header" href="#lindera-binding"><code>lindera-binding</code></a></h4>
+<p>5つの言語バインディング（<code>lindera-python</code>、<code>lindera-nodejs</code>、<code>lindera-ruby</code>、<code>lindera-php</code>、<code>lindera-wasm</code>）すべてが共有するFFI非依存のヘルパーです。各バインディングがそれぞれの言語のネイティブAPIでラップするコアのトークナイザー・スキーマ・メタデータ層を提供します。<code>lindera</code> ファサードに依存します。</p>
 <h3 id="辞書クレート"><a class="header" href="#辞書クレート">辞書クレート</a></h3>
 <p>各辞書クレートには、特定の言語と辞書ソースのビルド済み辞書データが含まれます。</p>
 <div class="table-wrapper"><table><thead><tr><th>クレート</th><th>言語</th><th>辞書ソース</th></tr></thead><tbody>
@@ -9588,9 +9592,10 @@ lindera = { version = "6", features = ["embed-ipadic", "embed-ko-dic"] }
 <p>テストスイートで使用されるサンプル辞書、ユーザー辞書、テストコーパスなどのテストリソースです。</p>
 <h4 id="docs"><a class="header" href="#docs"><code>docs/</code></a></h4>
 <p><a href="https://rust-lang.github.io/mdBook/">mdBook</a> で構築されたユーザー向けドキュメントです。目次は <code>docs/src/SUMMARY.md</code> で定義されています。日本語翻訳は <code>docs/ja/</code> 配下にあります。</p>
-<h4 id="examples"><a class="header" href="#examples"><code>examples/</code></a></h4>
+<h4 id="linderaexamples-と-lindera-analysisexamples"><a class="header" href="#linderaexamples-と-lindera-analysisexamples"><code>lindera/examples/</code> と <code>lindera-analysis/examples/</code></a></h4>
 <p>一般的な使用パターンを示す実行可能なサンプルプログラムです。以下のコマンドで実行できます：</p>
-<pre><code class="language-bash">cargo run --features=embed-ipadic --example=&lt;example_name&gt;
+<pre><code class="language-bash">cargo run -p lindera --features=embed-ipadic --example=segment
+cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="学習パイプライン"><a class="header" href="#学習パイプライン">学習パイプライン</a></h1>
 <p>Lindera は、カスタム形態素解析モデルを作成するための CRF ベースの辞書学習機能を提供します。この機能には <code>train</code> feature フラグが必要です。</p>
@@ -9867,6 +9872,13 @@ cargo test
 <li><code>unsafe</code> ブロックは必要な場合にのみ使用し、必ず <code>// SAFETY: ...</code> コメントを付けてください。</li>
 <li>モジュールは <code>mod.rs</code> スタイルではなく、ファイルベースのスタイル（<code>src/tokenizer.rs</code>）を使用してください。</li>
 </ul>
+<h2 id="言語バインディングの整合性"><a class="header" href="#言語バインディングの整合性">言語バインディングの整合性</a></h2>
+<p>Lindera は Python・Node.js・Ruby・PHP・WASM のバインディングを提供しています。バインディングの機能を追加・レビューする際は次の方針に従ってください。</p>
+<ul>
+<li><strong>機能セットを揃える。</strong> トークナイズ（<code>tokenize</code> / <code>tokenize_surfaces</code> / <code>tokenize_nbest</code>）、ユーザー辞書、文字フィルタ、トークンフィルタは全バインディングで利用できるようにします。あるバインディングに機能を追加したら、他のバインディングの計画（または追跡 Issue）を添えてください。</li>
+<li><strong>表現と寿命管理は各言語に従う。</strong> トークンをクラスにするかプレーンデータにするか、命名規則（camelCase / snake_case）、変換ヘルパー（<code>to_dict</code> / <code>to_h</code> / <code>toArray</code> / <code>toJSON</code>）は言語ごとの判断で、バインディング間で一致させる必要はありません。JS バインディングはホストがクラスのファイナライザを遅延させるためプレーンオブジェクトを返し、Python・Ruby・PHP は解放が決定的なのでクラスを保ちます。</li>
+</ul>
+<p>共通ロジックは <code>lindera-binding</code>（例: <code>TokenView</code>）に置き、各バインディングはコアのデータを自身の FFI 型に写すだけにします。</p>
 <h2 id="テスト-1"><a class="header" href="#テスト-1">テスト</a></h2>
 <ul>
 <li>

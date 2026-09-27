@@ -183,10 +183,11 @@
 ├── lindera-crf/            # CRF engine (pure Rust, no_std)
 ├── lindera-dictionary/     # Dictionary base library
 ├── lindera-trainer/        # CRF-based dictionary training
-├── lindera/                # Core morphological segmentation library
+├── lindera/                # Facade crate (re-exports lindera-segmenter and lindera-analysis); tests, examples, benches
+├── lindera-segmenter/      # Morphological segmentation library (Segmenter API)
 ├── lindera-analysis/       # Analysis chain (character/token filters, tokenizer)
 ├── lindera-cli/            # CLI tool
-├── lindera-binding-core/   # FFI-independent helpers shared by the language bindings
+├── lindera-binding/        # FFI-independent helpers shared by the language bindings
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
 ├── lindera-ipadic-neologd/ # IPADIC NEologd dictionary (Japanese)
 ├── lindera-unidic/         # UniDic dictionary (Japanese)
@@ -200,8 +201,7 @@
 ├── lindera-php/            # PHP bindings (ext-php-rs)
 ├── lindera-wasm/           # WebAssembly bindings (wasm-bindgen)
 ├── resources/              # Test resources and sample data
-├── docs/                   # Documentation (mdBook)
-└── examples/               # Example code
+└── docs/                   # Documentation (mdBook)
 </code></pre>
 <h2 id="crate-descriptions"><a class="header" href="#crate-descriptions">Crate Descriptions</a></h2>
 <h3 id="core-crates"><a class="header" href="#core-crates">Core Crates</a></h3>
@@ -219,14 +219,16 @@
 <tr><td><code>model.rs</code></td><td>Trained model storage, serialization, and dictionary output</td></tr>
 </tbody></table>
 </div>
+<h4 id="lindera-segmenter"><a class="header" href="#lindera-segmenter"><code>lindera-segmenter</code></a></h4>
+<p>The morphological segmentation library (published as <code>lindera</code> up to v6). Integrates the dictionary crates and provides the <code>Segmenter</code> API. Its <code>dictionary</code> module also re-exports the raw <code>lindera-dictionary</code> modules (<code>builder</code>, <code>core</code>, <code>loader</code>, <code>viterbi</code>, ...).</p>
 <h4 id="lindera"><a class="header" href="#lindera"><code>lindera</code></a></h4>
-<p>The main morphological segmentation library. Integrates dictionary crates and provides the <code>Segmenter</code> API.</p>
+<p>The facade crate and the single dependency for Rust users. It re-exports every module of <code>lindera-segmenter</code> and, with the default <code>analysis</code> feature, <code>lindera-analysis</code> as <code>lindera::analysis</code>. The directory also holds the integration tests, examples, and benches that exercise the public paths.</p>
 <h4 id="lindera-analysis"><a class="header" href="#lindera-analysis"><code>lindera-analysis</code></a></h4>
-<p>Lucene-style analysis chain on top of <code>lindera</code>: character filters, token filters, and the <code>Tokenizer</code> that composes them around a <code>Segmenter</code>.</p>
+<p>Lucene-style analysis chain on top of <code>lindera-segmenter</code> (used as <code>lindera::analysis</code> through the facade): character filters, token filters, and the <code>Tokenizer</code> that composes them around a <code>Segmenter</code>.</p>
 <h4 id="lindera-cli"><a class="header" href="#lindera-cli"><code>lindera-cli</code></a></h4>
 <p>Command-line interface for tokenization, dictionary training, export, and building. The <code>train</code> feature is enabled by default.</p>
-<h4 id="lindera-binding-core"><a class="header" href="#lindera-binding-core"><code>lindera-binding-core</code></a></h4>
-<p>FFI-independent helpers shared by all five language bindings (<code>lindera-python</code>, <code>lindera-nodejs</code>, <code>lindera-ruby</code>, <code>lindera-php</code>, <code>lindera-wasm</code>): a core tokenizer/schema/metadata layer that each binding wraps in its own language-native API.</p>
+<h4 id="lindera-binding"><a class="header" href="#lindera-binding"><code>lindera-binding</code></a></h4>
+<p>FFI-independent helpers shared by all five language bindings (<code>lindera-python</code>, <code>lindera-nodejs</code>, <code>lindera-ruby</code>, <code>lindera-php</code>, <code>lindera-wasm</code>): a core tokenizer/schema/metadata layer that each binding wraps in its own language-native API. It depends on the <code>lindera</code> facade.</p>
 <h3 id="dictionary-crates"><a class="header" href="#dictionary-crates">Dictionary Crates</a></h3>
 <p>Each dictionary crate contains pre-built dictionary data for a specific language and dictionary source.</p>
 <div class="table-wrapper"><table><thead><tr><th>Crate</th><th>Language</th><th>Dictionary Source</th></tr></thead><tbody>
@@ -255,9 +257,10 @@
 <p>Test resources including sample dictionaries, user dictionaries, and test corpora used by the test suite.</p>
 <h4 id="docs"><a class="header" href="#docs"><code>docs/</code></a></h4>
 <p>User-facing documentation built with <a href="https://rust-lang.github.io/mdBook/">mdBook</a>. The table of contents is defined in <code>docs/src/SUMMARY.md</code>. A Japanese translation is available under <code>docs/ja/</code>.</p>
-<h4 id="examples"><a class="header" href="#examples"><code>examples/</code></a></h4>
+<h4 id="linderaexamples-and-lindera-analysisexamples"><a class="header" href="#linderaexamples-and-lindera-analysisexamples"><code>lindera/examples/</code> and <code>lindera-analysis/examples/</code></a></h4>
 <p>Runnable example programs demonstrating common usage patterns. Run with:</p>
-<pre><code class="language-bash">cargo run --features=embed-ipadic --example=&lt;example_name&gt;
+<pre><code class="language-bash">cargo run -p lindera --features=embed-ipadic --example=segment
+cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 </code></pre>
 
                     </main>
