@@ -16,7 +16,7 @@ pub mod worker;
 
 /// Result type used throughout Lindera, with [`error::LinderaError`] as the
 /// error type.
-pub type LinderaResult<T> = lindera_dictionary::LinderaResult<T>;
+pub use lindera_dictionary::LinderaResult;
 
 /// Version of this crate, taken from `CARGO_PKG_VERSION` at compile time.
 const VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -58,17 +58,15 @@ pub use lindera_dictionary::{builder, error, loader, mode, nbest, space_penalty,
 #[doc(no_inline)]
 pub use lindera_dictionary::{embedded_dictionary, include_bytes_aligned};
 
-pub type Dictionary = lindera_dictionary::dictionary::Dictionary;
-pub type Metadata = lindera_dictionary::dictionary::metadata::Metadata;
-pub type UserDictionary = lindera_dictionary::dictionary::UserDictionary;
-pub type Lattice = lindera_dictionary::viterbi::Lattice;
-pub type WordId = lindera_dictionary::viterbi::WordId;
-pub type DictionaryBuilder = lindera_dictionary::builder::DictionaryBuilder;
+pub use lindera_dictionary::builder::DictionaryBuilder;
+pub use lindera_dictionary::dictionary::metadata::Metadata;
+pub use lindera_dictionary::dictionary::schema::{FieldDefinition, FieldType, Schema};
+pub use lindera_dictionary::dictionary::{Dictionary, UserDictionary};
+pub use lindera_dictionary::viterbi::{Lattice, WordId};
+
 pub type DictionaryConfig = Value;
 pub type UserDictionaryConfig = Value;
-pub type Schema = lindera_dictionary::dictionary::schema::Schema;
-pub type FieldDefinition = lindera_dictionary::dictionary::schema::FieldDefinition;
-pub type FieldType = lindera_dictionary::dictionary::schema::FieldType;
+
 #[derive(Debug, Clone, EnumIter, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DictionaryScheme {
     #[cfg(any(
