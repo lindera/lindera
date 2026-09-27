@@ -1836,7 +1836,6 @@ dependencies = [
  "js-sys",
  "lindera",
  "lindera-binding",
- "lindera-dictionary",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",

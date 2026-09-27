@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use wasm_bindgen::prelude::*;
 
+use lindera::dictionary::core::character_definition::CharacterDefinition;
+use lindera::dictionary::core::connection_cost_matrix::ConnectionCostMatrix;
+use lindera::dictionary::core::metadata::Metadata;
+use lindera::dictionary::core::prefix_dictionary::PrefixDictionary;
+use lindera::dictionary::core::unknown_dictionary::UnknownDictionary;
 use lindera::dictionary::{
     Dictionary, DictionaryBuilder, UserDictionary, load_dictionary as lindera_load_dictionary,
 };
-use lindera_dictionary::dictionary::character_definition::CharacterDefinition;
-use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
-use lindera_dictionary::dictionary::metadata::Metadata;
-use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
-use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
 
 use crate::metadata::JsMetadata;
 

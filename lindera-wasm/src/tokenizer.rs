@@ -1103,7 +1103,7 @@ mod tests {
     fn test_space_penalty_rules_that_cannot_apply_fail_the_build() {
         use std::sync::Arc;
 
-        use lindera_dictionary::dictionary::schema::Schema;
+        use lindera::dictionary::core::schema::Schema;
 
         use crate::TokenizerBuilder;
         use crate::dictionary::load_dictionary;
