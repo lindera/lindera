@@ -78,3 +78,30 @@ The facade re-exports the segmenter with `#[doc(inline)]`, which
 are not run against the facade. The facade's own regression test is
 `lindera/tests/public_paths.rs`, generated from these listings as
 `use lindera::...::Item as _;` statements.
+
+## Regenerating `lindera/tests/public_paths.rs`
+
+The generated part of `lindera/tests/public_paths.rs` is derived from the two
+listings above by a small script (kept outside the repository; the logic is
+short enough to reproduce):
+
+1. Read both listings and keep the lines that declare a module-level item:
+   `pub mod`, `pub struct`, `pub enum`, `pub trait`, `pub fn`, `pub type`,
+   `pub use`, `pub const` and `pub static`. Drop `impl` lines, fields and
+   enum variants (`pub lindera::...::Field: ...`).
+2. Take the path that follows the keyword, cut it at the first `(`, strip
+   generic arguments (`<'a>`, `<T>`) and a trailing `:`. Skip `lindera`
+   itself, and skip associated items, i.e. paths in which a segment before the
+   last one starts with an uppercase letter (`DictionaryKind::as_str`,
+   `Token::new`, `DictionaryKindIter::Item`).
+3. Emit `use <path> as _;` once per path, grouped by parent module (one blank
+   line between groups) and sorted inside a group. Paths that appear only in
+   the `train` listing get `#[cfg(feature = "train")]`.
+4. Append the hand-written sections for the paths that only exist since the
+   facade: `lindera::analysis::...` under `#[cfg(feature = "analysis")]`, and
+   the raw `lindera::dictionary::{core, builder, viterbi}` paths and the two
+   macros. Then run `cargo fmt --all`.
+
+`use path as _;` binds nothing, so the file also compiles with
+`--no-default-features`; its only test function asserts that
+`lindera::get_version()` is non-empty so that the file is always run.

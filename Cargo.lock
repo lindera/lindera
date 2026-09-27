@@ -496,6 +496,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
+name = "console"
+version = "0.16.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e96a4956774c13c126a8b5af4daa79384f4d826534c95a02d76afb39e2ab64e3"
+dependencies = [
+ "encode_unicode",
+ "libc",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "const-oid"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -845,6 +856,12 @@ name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
+
+[[package]]
+name = "encode_unicode"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
 
 [[package]]
 name = "encoding_rs"
@@ -1419,6 +1436,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "insta"
+version = "1.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86f0f8fee8c926415c58d6ae43a08523a26faccb2323f5e6b644fe7dd4ef6b82"
+dependencies = [
+ "console",
+ "once_cell",
+ "similar",
+ "tempfile",
+]
+
+[[package]]
 name = "inventory"
 version = "0.3.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1561,6 +1590,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "lindera"
+version = "6.2.0"
+dependencies = [
+ "anyhow",
+ "criterion",
+ "insta",
+ "lindera-analysis",
+ "lindera-segmenter",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "lindera-analysis"
 version = "6.2.0"
 dependencies = [
@@ -1585,8 +1627,8 @@ name = "lindera-binding-core"
 version = "6.2.0"
 dependencies = [
  "criterion",
+ "lindera",
  "lindera-analysis",
- "lindera-segmenter",
  "serde_json",
 ]
 
@@ -1606,8 +1648,8 @@ dependencies = [
  "clap",
  "dirs",
  "flate2",
+ "lindera",
  "lindera-analysis",
- "lindera-segmenter",
  "num_cpus",
  "serde_json",
  "tempfile",
@@ -1690,8 +1732,8 @@ dependencies = [
 name = "lindera-nodejs"
 version = "6.2.0"
 dependencies = [
+ "lindera",
  "lindera-binding-core",
- "lindera-segmenter",
  "napi",
  "napi-build",
  "napi-derive",
@@ -1706,8 +1748,8 @@ name = "lindera-php"
 version = "6.2.0"
 dependencies = [
  "ext-php-rs",
+ "lindera",
  "lindera-binding-core",
- "lindera-segmenter",
  "num_cpus",
  "serde",
  "serde_json",
@@ -1717,8 +1759,8 @@ dependencies = [
 name = "lindera-python"
 version = "6.2.0"
 dependencies = [
+ "lindera",
  "lindera-binding-core",
- "lindera-segmenter",
  "num_cpus",
  "pyo3",
  "serde",
@@ -1729,8 +1771,8 @@ dependencies = [
 name = "lindera-ruby"
 version = "6.2.0"
 dependencies = [
+ "lindera",
  "lindera-binding-core",
- "lindera-segmenter",
  "magnus",
  "num_cpus",
  "serde",
@@ -1794,9 +1836,9 @@ name = "lindera-wasm"
 version = "6.2.0"
 dependencies = [
  "js-sys",
+ "lindera",
  "lindera-binding-core",
  "lindera-dictionary",
- "lindera-segmenter",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
@@ -2907,6 +2949,12 @@ name = "simdutf8"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
+
+[[package]]
+name = "similar"
+version = "2.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
 
 [[package]]
 name = "skeptic"

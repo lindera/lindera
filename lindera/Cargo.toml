@@ -1,0 +1,127 @@
+[package]
+name = "lindera"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+description = "A morphological analysis library."
+documentation = "https://docs.rs/lindera"
+homepage = { workspace = true }
+repository = { workspace = true }
+readme = "README.md"
+keywords = ["morphological", "analysis", "library"]
+categories = { workspace = true }
+license = { workspace = true }
+
+[features]
+analysis = [
+    "dep:lindera-analysis",
+] # Text analysis chain (character filters, token filters, tokenizer) as `lindera::analysis`
+embed-ipadic = [
+    "lindera-segmenter/embed-ipadic",
+    "lindera-analysis?/embed-ipadic",
+] # Embed IPADIC dictionary in the binary
+embed-ipadic-neologd = [
+    "lindera-segmenter/embed-ipadic-neologd",
+    "lindera-analysis?/embed-ipadic-neologd",
+] # Embed IPADIC-NEologd dictionary in the binary
+embed-unidic = [
+    "lindera-segmenter/embed-unidic",
+    "lindera-analysis?/embed-unidic",
+] # Embed UniDic dictionary in the binary
+embed-sudachidict = [
+    "lindera-segmenter/embed-sudachidict",
+    "lindera-analysis?/embed-sudachidict",
+] # Embed SudachiDict dictionary in the binary
+embed-ko-dic = [
+    "lindera-segmenter/embed-ko-dic",
+    "lindera-analysis?/embed-ko-dic",
+] # Embed ko-dic dictionary in the binary
+embed-cc-cedict = [
+    "lindera-segmenter/embed-cc-cedict",
+    "lindera-analysis?/embed-cc-cedict",
+] # Embed CC-CEDICT dictionary in the binary
+embed-jieba = [
+    "lindera-segmenter/embed-jieba",
+    "lindera-analysis?/embed-jieba",
+] # Embed Jieba dictionary in the binary
+embed-cjk = [
+    "embed-ipadic",
+    "embed-ko-dic",
+    "embed-jieba",
+] # Embed CJK dictionaries (IPADIC, ko-dic, Jieba) in the binary
+embed-cjk2 = [
+    "embed-unidic",
+    "embed-ko-dic",
+    "embed-jieba",
+] # Embed CJK dictionaries (UniDic, ko-dic, Jieba) in the binary
+embed-cjk3 = [
+    "embed-ipadic-neologd",
+    "embed-ko-dic",
+    "embed-jieba",
+] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, Jieba) in the binary
+embed-cjk4 = [
+    "embed-sudachidict",
+    "embed-ko-dic",
+    "embed-jieba",
+] # Embed CJK dictionaries (SudachiDict, ko-dic, Jieba) in the binary
+mmap = [
+    "lindera-segmenter/mmap",
+    "lindera-analysis?/mmap",
+] # Use memory-mapped file
+train = ["lindera-segmenter/train"] # Enable training functionality
+# Experimental: profile per-context-id connection-matrix access frequency over a
+# corpus (see the `ctxfreq-dump` example). Off by default.
+ctxfreq = ["lindera-segmenter/ctxfreq"]
+default = ["mmap", "analysis"]
+
+[dependencies]
+lindera-analysis = { workspace = true, default-features = false, optional = true }
+lindera-segmenter = { workspace = true, default-features = false }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+criterion = { version = "0.8.2", default-features = false, features = [
+    "html_reports",
+] }
+insta = "1.48.0"
+serde_json = { workspace = true }
+tempfile = "3.27.0"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[[bench]]
+name = "bench_ipadic"
+harness = false
+required-features = ["embed-ipadic"]
+
+[[bench]]
+name = "bench_unidic"
+harness = false
+required-features = ["embed-unidic"]
+
+[[bench]]
+name = "bench_ko_dic"
+harness = false
+required-features = ["embed-ko-dic"]
+
+[[bench]]
+name = "bench_cc_cedict"
+harness = false
+required-features = ["embed-cc-cedict"]
+
+[[bench]]
+name = "bench_ipadic_neologd"
+harness = false
+required-features = ["embed-ipadic-neologd"]
+
+[[bench]]
+name = "bench_jieba"
+harness = false
+required-features = ["embed-jieba"]
+
+[[bench]]
+name = "bench_sudachidict"
+harness = false
+required-features = ["embed-sudachidict"]

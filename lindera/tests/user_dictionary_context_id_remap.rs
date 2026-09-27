@@ -15,11 +15,9 @@ use std::borrow::Cow;
 use std::fs;
 use std::path::Path;
 
-use lindera::dictionary::{load_dictionary, load_user_dictionary};
+use lindera::dictionary::{DictionaryBuilder, Metadata, load_dictionary, load_user_dictionary};
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera_dictionary::builder::DictionaryBuilder;
-use lindera_dictionary::dictionary::metadata::Metadata;
 
 /// DEFAULT plus KANJI, with the CJK range mapped to KANJI. `invoke = 0` keeps unknown
 /// words out of the way whenever a lexicon entry matches.

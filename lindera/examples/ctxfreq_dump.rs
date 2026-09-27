@@ -45,7 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // A single pass is enough: the histograms accumulate every cost() access.
     let tokens = segmenter.segment(Cow::Borrowed(text.as_str()))?;
 
-    lindera_dictionary::builder::context_id_remap::dump_ctx_freq(
+    lindera::dictionary::builder::context_id_remap::dump_ctx_freq(
         PathBuf::from(&out_path).as_path(),
         forward_size,
         backward_size,
