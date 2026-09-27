@@ -1,0 +1,469 @@
+<!DOCTYPE HTML>
+<html lang="ja" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>v6 から v7 への移行 - Lindera ドキュメント</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="index.html"><strong aria-hidden="true">1.</strong> はじめに</a></li><li class="chapter-item expanded "><a href="architecture.html"><strong aria-hidden="true">2.</strong> アーキテクチャ</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="getting_started.html"><strong aria-hidden="true">3.</strong> はじめる</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="getting_started/installation.html"><strong aria-hidden="true">3.1.</strong> インストール</a></li><li class="chapter-item expanded "><a href="getting_started/quickstart.html"><strong aria-hidden="true">3.2.</strong> クイックスタート</a></li><li class="chapter-item expanded "><a href="getting_started/examples.html"><strong aria-hidden="true">3.3.</strong> サンプル</a></li><li class="spacer"></li></ol></li><li class="chapter-item expanded "><a href="concepts.html"><strong aria-hidden="true">4.</strong> 基本概念</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="concepts/morphological_analysis.html"><strong aria-hidden="true">4.1.</strong> 形態素解析</a></li><li class="chapter-item expanded "><a href="concepts/dictionaries.html"><strong aria-hidden="true">4.2.</strong> 辞書</a></li><li class="chapter-item expanded "><a href="concepts/tokenization.html"><strong aria-hidden="true">4.3.</strong> トークナイズ</a></li><li class="chapter-item expanded "><a href="concepts/user_dictionary.html"><strong aria-hidden="true">4.4.</strong> ユーザー辞書</a></li><li class="chapter-item expanded "><a href="concepts/filters.html"><strong aria-hidden="true">4.5.</strong> フィルタ</a></li><li class="spacer"></li></ol></li><li class="chapter-item expanded "><a href="lindera-crf.html"><strong aria-hidden="true">5.</strong> Lindera CRF</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-crf/architecture.html"><strong aria-hidden="true">5.1.</strong> アーキテクチャ</a></li><li class="chapter-item expanded "><a href="lindera-crf/api_reference.html"><strong aria-hidden="true">5.2.</strong> APIリファレンス</a></li></ol></li><li class="chapter-item expanded "><a href="lindera-dictionary.html"><strong aria-hidden="true">6.</strong> Lindera Dictionary</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-dictionary/architecture.html"><strong aria-hidden="true">6.1.</strong> アーキテクチャ</a></li><li class="chapter-item expanded "><a href="lindera-dictionary/api_reference.html"><strong aria-hidden="true">6.2.</strong> APIリファレンス</a></li></ol></li><li class="chapter-item expanded "><a href="lindera-trainer.html"><strong aria-hidden="true">7.</strong> Lindera Trainer</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-trainer/architecture.html"><strong aria-hidden="true">7.1.</strong> アーキテクチャ</a></li><li class="chapter-item expanded "><a href="lindera-trainer/api_reference.html"><strong aria-hidden="true">7.2.</strong> APIリファレンス</a></li></ol></li><li class="chapter-item expanded "><a href="lindera.html"><strong aria-hidden="true">8.</strong> Lindera ライブラリ</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera/segmenter.html"><strong aria-hidden="true">8.1.</strong> セグメンタ</a></li><li class="chapter-item expanded "><a href="lindera/error_handling.html"><strong aria-hidden="true">8.2.</strong> エラーハンドリング</a></li><li class="chapter-item expanded "><a href="lindera/api_reference.html"><strong aria-hidden="true">8.3.</strong> APIリファレンス</a></li></ol></li><li class="chapter-item expanded "><a href="lindera-analysis.html"><strong aria-hidden="true">9.</strong> Lindera Analysis</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-analysis/configuration.html"><strong aria-hidden="true">9.1.</strong> 設定</a></li><li class="chapter-item expanded "><a href="lindera-analysis/filters.html"><strong aria-hidden="true">9.2.</strong> フィルタ</a></li><li class="chapter-item expanded "><a href="lindera-analysis/architecture.html"><strong aria-hidden="true">9.3.</strong> アーキテクチャ</a></li><li class="chapter-item expanded "><a href="lindera-analysis/api_reference.html"><strong aria-hidden="true">9.4.</strong> APIリファレンス</a></li></ol></li><li class="chapter-item expanded "><a href="lindera-cli.html"><strong aria-hidden="true">10.</strong> Lindera CLI</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-cli/installation.html"><strong aria-hidden="true">10.1.</strong> インストール</a></li><li class="chapter-item expanded "><a href="lindera-cli/commands.html"><strong aria-hidden="true">10.2.</strong> コマンド</a></li><li class="chapter-item expanded "><a href="lindera-cli/tutorial.html"><strong aria-hidden="true">10.3.</strong> チュートリアル</a></li></ol></li><li class="chapter-item expanded "><a href="lindera-python.html"><strong aria-hidden="true">11.</strong> Lindera Python</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-python/installation.html"><strong aria-hidden="true">11.1.</strong> インストール</a></li><li class="chapter-item expanded "><a href="lindera-python/quickstart.html"><strong aria-hidden="true">11.2.</strong> クイックスタート</a></li><li class="chapter-item expanded "><a href="lindera-python/tokenizer_api.html"><strong aria-hidden="true">11.3.</strong> トークナイザー API</a></li><li class="chapter-item expanded "><a href="lindera-python/dictionary_management.html"><strong aria-hidden="true">11.4.</strong> 辞書管理</a></li><li class="chapter-item expanded "><a href="lindera-python/text_processing_pipeline.html"><strong aria-hidden="true">11.5.</strong> テキスト処理パイプライン</a></li><li class="chapter-item expanded "><a href="lindera-python/training.html"><strong aria-hidden="true">11.6.</strong> 学習</a></li></ol></li><li class="chapter-item expanded "><a href="lindera-nodejs.html"><strong aria-hidden="true">12.</strong> Lindera Node.js</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-nodejs/installation.html"><strong aria-hidden="true">12.1.</strong> インストール</a></li><li class="chapter-item expanded "><a href="lindera-nodejs/quickstart.html"><strong aria-hidden="true">12.2.</strong> クイックスタート</a></li><li class="chapter-item expanded "><a href="lindera-nodejs/tokenizer_api.html"><strong aria-hidden="true">12.3.</strong> トークナイザー API</a></li><li class="chapter-item expanded "><a href="lindera-nodejs/dictionary_management.html"><strong aria-hidden="true">12.4.</strong> 辞書管理</a></li><li class="chapter-item expanded "><a href="lindera-nodejs/text_processing_pipeline.html"><strong aria-hidden="true">12.5.</strong> テキスト処理パイプライン</a></li><li class="chapter-item expanded "><a href="lindera-nodejs/training.html"><strong aria-hidden="true">12.6.</strong> 学習</a></li></ol></li><li class="chapter-item expanded "><a href="lindera-ruby.html"><strong aria-hidden="true">13.</strong> Lindera Ruby</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-ruby/installation.html"><strong aria-hidden="true">13.1.</strong> インストール</a></li><li class="chapter-item expanded "><a href="lindera-ruby/quickstart.html"><strong aria-hidden="true">13.2.</strong> クイックスタート</a></li><li class="chapter-item expanded "><a href="lindera-ruby/tokenizer_api.html"><strong aria-hidden="true">13.3.</strong> トークナイザー API</a></li><li class="chapter-item expanded "><a href="lindera-ruby/dictionary_management.html"><strong aria-hidden="true">13.4.</strong> 辞書管理</a></li><li class="chapter-item expanded "><a href="lindera-ruby/text_processing_pipeline.html"><strong aria-hidden="true">13.5.</strong> テキスト処理パイプライン</a></li><li class="chapter-item expanded "><a href="lindera-ruby/training.html"><strong aria-hidden="true">13.6.</strong> 学習</a></li></ol></li><li class="chapter-item expanded "><a href="lindera-php.html"><strong aria-hidden="true">14.</strong> Lindera PHP</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-php/installation.html"><strong aria-hidden="true">14.1.</strong> インストール</a></li><li class="chapter-item expanded "><a href="lindera-php/quickstart.html"><strong aria-hidden="true">14.2.</strong> クイックスタート</a></li><li class="chapter-item expanded "><a href="lindera-php/tokenizer_api.html"><strong aria-hidden="true">14.3.</strong> トークナイザー API</a></li><li class="chapter-item expanded "><a href="lindera-php/dictionary_management.html"><strong aria-hidden="true">14.4.</strong> 辞書管理</a></li><li class="chapter-item expanded "><a href="lindera-php/text_processing_pipeline.html"><strong aria-hidden="true">14.5.</strong> テキスト処理パイプライン</a></li><li class="chapter-item expanded "><a href="lindera-php/training.html"><strong aria-hidden="true">14.6.</strong> 学習</a></li></ol></li><li class="chapter-item expanded "><a href="lindera-wasm.html"><strong aria-hidden="true">15.</strong> Lindera WASM</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-wasm/installation.html"><strong aria-hidden="true">15.1.</strong> インストール</a></li><li class="chapter-item expanded "><a href="lindera-wasm/quickstart.html"><strong aria-hidden="true">15.2.</strong> クイックスタート</a></li><li class="chapter-item expanded "><a href="lindera-wasm/tokenizer_api.html"><strong aria-hidden="true">15.3.</strong> トークナイザー API</a></li><li class="chapter-item expanded "><a href="lindera-wasm/dictionary_management.html"><strong aria-hidden="true">15.4.</strong> 辞書管理</a></li><li class="chapter-item expanded "><a href="lindera-wasm/browser_usage.html"><strong aria-hidden="true">15.5.</strong> ブラウザでの使用</a></li><li class="chapter-item expanded "><a href="lindera-wasm/opfs.html"><strong aria-hidden="true">15.6.</strong> OPFS 辞書ストレージ</a></li><li class="spacer"></li></ol></li><li class="chapter-item expanded "><a href="lindera-ipadic.html"><strong aria-hidden="true">16.</strong> Lindera IPADIC</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-ipadic/dictionary_format.html"><strong aria-hidden="true">16.1.</strong> 辞書フォーマット</a></li><li class="chapter-item expanded "><a href="lindera-ipadic/build.html"><strong aria-hidden="true">16.2.</strong> ビルド</a></li><li class="chapter-item expanded "><a href="lindera-ipadic/examples.html"><strong aria-hidden="true">16.3.</strong> 使用例</a></li></ol></li><li class="chapter-item expanded "><a href="lindera-ipadic-neologd.html"><strong aria-hidden="true">17.</strong> Lindera IPADIC NEologd</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-ipadic-neologd/dictionary_format.html"><strong aria-hidden="true">17.1.</strong> 辞書フォーマット</a></li><li class="chapter-item expanded "><a href="lindera-ipadic-neologd/build.html"><strong aria-hidden="true">17.2.</strong> ビルド</a></li><li class="chapter-item expanded "><a href="lindera-ipadic-neologd/examples.html"><strong aria-hidden="true">17.3.</strong> 使用例</a></li></ol></li><li class="chapter-item expanded "><a href="lindera-unidic.html"><strong aria-hidden="true">18.</strong> Lindera UniDic</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-unidic/dictionary_format.html"><strong aria-hidden="true">18.1.</strong> 辞書フォーマット</a></li><li class="chapter-item expanded "><a href="lindera-unidic/build.html"><strong aria-hidden="true">18.2.</strong> ビルド</a></li><li class="chapter-item expanded "><a href="lindera-unidic/examples.html"><strong aria-hidden="true">18.3.</strong> 使用例</a></li></ol></li><li class="chapter-item expanded "><a href="lindera-sudachidict.html"><strong aria-hidden="true">19.</strong> Lindera SudachiDict</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-sudachidict/dictionary_format.html"><strong aria-hidden="true">19.1.</strong> 辞書フォーマット</a></li><li class="chapter-item expanded "><a href="lindera-sudachidict/build.html"><strong aria-hidden="true">19.2.</strong> ビルド</a></li><li class="chapter-item expanded "><a href="lindera-sudachidict/examples.html"><strong aria-hidden="true">19.3.</strong> 使用例</a></li></ol></li><li class="chapter-item expanded "><a href="lindera-ko-dic.html"><strong aria-hidden="true">20.</strong> Lindera ko-dic</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-ko-dic/dictionary_format.html"><strong aria-hidden="true">20.1.</strong> 辞書フォーマット</a></li><li class="chapter-item expanded "><a href="lindera-ko-dic/build.html"><strong aria-hidden="true">20.2.</strong> ビルド</a></li><li class="chapter-item expanded "><a href="lindera-ko-dic/examples.html"><strong aria-hidden="true">20.3.</strong> 使用例</a></li></ol></li><li class="chapter-item expanded "><a href="lindera-cc-cedict.html"><strong aria-hidden="true">21.</strong> Lindera CC-CEDICT</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-cc-cedict/dictionary_format.html"><strong aria-hidden="true">21.1.</strong> 辞書フォーマット</a></li><li class="chapter-item expanded "><a href="lindera-cc-cedict/build.html"><strong aria-hidden="true">21.2.</strong> ビルド</a></li><li class="chapter-item expanded "><a href="lindera-cc-cedict/examples.html"><strong aria-hidden="true">21.3.</strong> 使用例</a></li></ol></li><li class="chapter-item expanded "><a href="lindera-jieba.html"><strong aria-hidden="true">22.</strong> Lindera Jieba</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lindera-jieba/dictionary_format.html"><strong aria-hidden="true">22.1.</strong> 辞書フォーマット</a></li><li class="chapter-item expanded "><a href="lindera-jieba/build.html"><strong aria-hidden="true">22.2.</strong> ビルド</a></li><li class="chapter-item expanded "><a href="lindera-jieba/examples.html"><strong aria-hidden="true">22.3.</strong> 使用例</a></li></ol></li><li class="chapter-item expanded "><a href="sudachidict.html"><strong aria-hidden="true">23.</strong> SudachiDict（カスタムビルド）</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="migration_v3_to_v4.html"><strong aria-hidden="true">24.</strong> v3 から v4 への移行</a></li><li class="chapter-item expanded "><a href="migration_v4_to_v5.html"><strong aria-hidden="true">25.</strong> v4 から v5 への移行</a></li><li class="chapter-item expanded "><a href="migration_v5_to_v6.html"><strong aria-hidden="true">26.</strong> v5 から v6 への移行</a></li><li class="chapter-item expanded "><a href="migration_v6_to_v7.html" class="active"><strong aria-hidden="true">27.</strong> v6 から v7 への移行</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="development.html"><strong aria-hidden="true">28.</strong> 開発ガイド</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="development/build_and_test.html"><strong aria-hidden="true">28.1.</strong> ビルドとテスト</a></li><li class="chapter-item expanded "><a href="development/feature_flags.html"><strong aria-hidden="true">28.2.</strong> Feature フラグ</a></li><li class="chapter-item expanded "><a href="development/project_structure.html"><strong aria-hidden="true">28.3.</strong> プロジェクト構成</a></li><li class="chapter-item expanded "><a href="development/training_pipeline.html"><strong aria-hidden="true">28.4.</strong> 学習パイプライン</a></li><li class="chapter-item expanded "><a href="development/contributing.html"><strong aria-hidden="true">28.5.</strong> 貢献ガイド</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Lindera ドキュメント</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/lindera/lindera" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="v6-から-v7-への移行"><a class="header" href="#v6-から-v7-への移行">v6 から v7 への移行</a></h1>
+<p>Lindera v7.0.0 では <code>lindera</code> クレートがファサード（facade）になりました。
+形態素セグメンター（<code>lindera-segmenter</code> として公開）を再エクスポートし、
+新しくデフォルト有効になった <code>analysis</code> feature を通じて <code>lindera-analysis</code> の
+分析チェーンを <code>lindera::analysis</code> として提供します。依存 1 行で
+<code>Segmenter</code>・<code>Tokenizer</code>・すべてのフィルタが使えます。あわせて
+<code>lindera-binding-core</code> を <code>lindera-binding</code> に改名し、v5.0.0 で予告していた
+<code>LINDERA_DICTIONARIES_PATH</code> のフォールバックを削除しました。このガイドでは、
+すべての破壊的変更とその対処方法を説明します。</p>
+<h2 id="概要"><a class="header" href="#概要">概要</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>変更</th><th>影響範囲</th><th>対処方法</th></tr></thead><tbody>
+<tr><td><code>lindera</code> がファサードになり、<code>lindera::analysis</code> が <code>lindera-analysis</code> を再エクスポート（<code>analysis</code> feature、デフォルト有効）</td><td><code>lindera</code> と <code>lindera-analysis</code> の両方に依存する Rust ユーザー</td><td>両方を同時に <code>"7"</code> に上げるか、<code>lindera-analysis</code> を外して <code>lindera::analysis::…</code> から import する</td></tr>
+<tr><td><code>default-features = false</code> は「セグメンターのみ」の意味になり、<code>analysis</code>（と従来どおり <code>mmap</code>）が無効になる</td><td><code>default-features = false</code> で <code>lindera::analysis</code> を使いたい Rust ユーザー</td><td><code>features</code> に <code>"analysis"</code> を追加する（メモリマップ読み込みを維持するなら <code>"mmap"</code> も列挙したままにする）</td></tr>
+<tr><td>従来の <code>lindera</code> クレートは <code>lindera-segmenter</code> として公開</td><td>直接依存する人はいない</td><td>対応不要 — <code>lindera = "7"</code> が再エクスポートする</td></tr>
+<tr><td>生の <code>lindera-dictionary</code> モジュールを <code>lindera::dictionary</code> 配下から参照できる</td><td><code>lindera-dictionary</code> を直接使うユーザー</td><td>対応不要 — 任意で直接依存を外し、<code>lindera::dictionary::core::…</code>・<code>::builder</code>・<code>::viterbi</code> などを使う</td></tr>
+<tr><td><strong>暗黙の feature <code>lindera-ipadic</code>・<code>lindera-ipadic-neologd</code>・<code>lindera-unidic</code>・<code>lindera-sudachidict</code>・<code>lindera-ko-dic</code>・<code>lindera-cc-cedict</code>・<code>lindera-jieba</code> の削除</strong></td><td><code>features = [...]</code> に辞書クレート名を書いて有効化していたユーザー</td><td>代わりに <code>embed-*</code> feature を使う</td></tr>
+<tr><td><strong><code>lindera-binding-core</code> を <code>lindera-binding</code> に改名</strong></td><td>バインディング用ヘルパークレートを使う Rust ユーザー</td><td><code>lindera-binding</code> に依存し、<code>lindera_binding_core::</code> を <code>lindera_binding::</code> に置き換える</td></tr>
+<tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> の削除</strong></td><td>非推奨のビルドキャッシュ変数をまだ設定しているユーザー</td><td><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を設定する。旧名は無視される</td></tr>
+</tbody></table>
+</div>
+<p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI は影響を受けません。
+API・パッケージ名・出力は変わらず、バージョン番号だけが 7.0.0 になります。
+トークナイズ結果も不変です — v7.0.0 は構成変更のみのリリースであり、同じ入力と
+辞書に対して v6.2.0 とバイト単位で同一のトークンを出力します。</p>
+<h2 id="lindera-クレートはファサードに"><a class="header" href="#lindera-クレートはファサードに"><code>lindera</code> クレートはファサードに</a></h2>
+<p>v6 までの Rust API は、<code>lindera</code>（セグメンターと辞書読み込み API）と
+<code>lindera-analysis</code>（character filter・token filter・<code>Tokenizer</code>）の 2 クレートに
+分かれており、それぞれに依存する必要がありました。v7 では <code>lindera</code> クレートが
+両者を束ねる薄いファサードになります:</p>
+<pre><code class="language-text">lindera ──┬─▶ lindera-segmenter ──┬─▶ lindera-dictionary
+          │                       ├─▶ 辞書クレート          [features: embed-*]
+          │                       └─▶ lindera-trainer     [feature: train]
+          └─▶ lindera-analysis    [feature: analysis、デフォルト有効] ──▶ lindera-segmenter
+</code></pre>
+<p>公開ツリーは v6 のすべての <code>lindera::…</code> パスを維持し、<code>lindera::analysis</code> を
+追加します:</p>
+<pre><code class="language-text">lindera
+├── LinderaResult, get_version()
+├── dictionary, error, mode, segmenter, space_penalty, token, worker   （lindera-segmenter から。v6 と同じ）
+└── analysis   [feature: analysis、デフォルト有効]   （lindera-analysis: character_filter, token_filter, tokenizer, worker）
+</code></pre>
+<h3 id="依存は-1-つに"><a class="header" href="#依存は-1-つに">依存は 1 つに</a></h3>
+<pre><code class="language-toml"># v6
+[dependencies]
+lindera = "6"
+lindera-analysis = "6"
+
+# v7
+[dependencies]
+lindera = "7"
+</code></pre>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// v6
+use lindera_analysis::tokenizer::Tokenizer;
+use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+
+// v7
+use lindera::analysis::tokenizer::Tokenizer;
+use lindera::analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+<span class="boring">}</span></code></pre></pre>
+<p><code>lindera-analysis = "7"</code> への直接依存を残しても動作します。<code>lindera::analysis</code> は
+同じクレートなので、<code>lindera_analysis::tokenizer::Tokenizer</code> と
+<code>lindera::analysis::tokenizer::Tokenizer</code> は同一の型であり、既存の <code>use</code> パスを
+変える必要はありません。</p>
+<h3 id="lindera-と-lindera-analysis-は同時に上げる"><a class="header" href="#lindera-と-lindera-analysis-は同時に上げる"><code>lindera</code> と <code>lindera-analysis</code> は同時に上げる</a></h3>
+<p>両方の依存を残す場合は、同じタイミングで両方を上げてください。
+<code>lindera-analysis</code> 6.x は <code>lindera</code> 6.x（旧セグメンター）に依存するため、
+<code>lindera</code> の行だけを <code>"7"</code> にして <code>lindera-analysis = "6"</code> を残すと、
+セグメンターが 2 バージョン同時にビルドされます:</p>
+<pre><code class="language-toml"># Segmenter 型が 2 つになる: lindera 7（lindera-segmenter 経由）と lindera 6（lindera-analysis 6 経由）
+[dependencies]
+lindera = "7"
+lindera-analysis = "6"
+</code></pre>
+<p>この状態では <code>lindera::segmenter::Segmenter</code> は v7 の型、
+<code>lindera_analysis::tokenizer::Tokenizer::new</code> が受け取るのは v6 の型となり、
+型不一致でコンパイルに失敗します。両方の行を同時に <code>"7"</code> にするか、
+前述のとおり <code>lindera-analysis</code> を外してください。</p>
+<h3 id="default-features--false-はセグメンターのみの意味に"><a class="header" href="#default-features--false-はセグメンターのみの意味に"><code>default-features = false</code> は「セグメンターのみ」の意味に</a></h3>
+<p>ファサードのデフォルト feature は <code>mmap</code> と <code>analysis</code> です。
+<code>default-features = false</code> にすると純粋なセグメンターになり、両方が無効に
+なります。<code>lindera::analysis</code> は存在せず、ファイルシステム辞書のメモリマップ
+読み込みもデフォルトではなくなります（v6 でも <code>default-features = false</code> は
+<code>mmap</code> を無効にしていました）。必要なものを個別に有効にしてください:</p>
+<pre><code class="language-toml"># メモリマップ読み込み付きのセグメンター（v6 のデフォルトビルドと同じ）
+lindera = { version = "7", default-features = false, features = ["mmap"] }
+
+# セグメンターと分析チェーン。メモリマップ読み込みはデフォルトにしない
+lindera = { version = "7", default-features = false, features = ["analysis"] }
+</code></pre>
+<p><code>memmap2</code> 自体は <code>lindera-dictionary</code> のデフォルト feature を通じてどちらの場合も
+リンクされます。ファサードの <code>mmap</code> feature は <code>load_dictionary</code> などの
+<code>use_mmap</code> のデフォルト値を決めるだけで、
+<code>load_dictionary_with_options(uri, true)</code> は feature なしでも動作します。</p>
+<h3 id="セグメンターは-lindera-segmenter-として公開"><a class="header" href="#セグメンターは-lindera-segmenter-として公開">セグメンターは <code>lindera-segmenter</code> として公開</a></h3>
+<p>v6 までの <code>lindera</code> クレートは、同じモジュール（<code>dictionary</code>・<code>error</code>・<code>mode</code>・
+<code>segmenter</code>・<code>space_penalty</code>・<code>token</code>・<code>worker</code>）と同じ API を持つ
+<code>lindera-segmenter</code> 7.0.0 として続いています。ファサードはそのすべてを
+ルートで再エクスポートするため、v6 でコンパイルできた <code>lindera::…</code> パスは
+v7 でもそのままコンパイルできます。このクレートは、<code>lindera-analysis</code> が
+ファサードに依存せずにセグメンターを利用できるようにするために存在します。
+<code>lindera-segmenter</code> に直接依存する必要はなく、アプリケーションコードは
+引き続き <code>lindera</code> に依存してください。</p>
+<h2 id="linderadictionary-から生の辞書クレートを参照できる"><a class="header" href="#linderadictionary-から生の辞書クレートを参照できる"><code>lindera::dictionary</code> から生の辞書クレートを参照できる</a></h2>
+<p><code>lindera-dictionary</code> の構成部品（辞書のデータ構造・辞書ビルダー・Viterbi
+ラティスなど）を使うコードは、従来 <code>lindera-dictionary</code> への直接依存が
+必要でした。v7 ではこれらのモジュールが、高レベルの読み込み API と並んで
+<code>lindera::dictionary</code> の中に再エクスポートされます:</p>
+<pre><code class="language-text">lindera::dictionary
+├── Dictionary, Metadata, Schema, load_dictionary, load_user_dictionary, DictionaryKind, …   （変更なし）
+├── core          lindera_dictionary::dictionary（prefix_dictionary, character_definition, connection_cost_matrix, unknown_dictionary, …）
+├── builder, error, loader, mode, nbest, space_penalty, util, viterbi
+├── embedded_dictionary!, include_bytes_aligned!
+└── trainer       lindera_trainer（`train` feature。変更なし）
+</code></pre>
+<p>既存の <code>lindera::dictionary::*</code> パスはすべて有効なままで、再エクスポートは同じ
+アイテムを指します。<code>lindera::dictionary::Dictionary</code> と
+<code>lindera::dictionary::core::Dictionary</code> は同一の型です。<code>lindera-dictionary</code> への
+直接依存も引き続き動作しますが、必須ではなくなりました:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// v6: Cargo.toml に lindera-dictionary が必要
+use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
+use lindera_dictionary::viterbi::Lattice;
+
+// v7: ファサード経由で参照できる
+use lindera::dictionary::core::prefix_dictionary::PrefixDictionary;
+use lindera::dictionary::viterbi::Lattice;
+<span class="boring">}</span></code></pre></pre>
+<blockquote>
+<p>[!NOTE]
+<code>lindera::dictionary::core</code> は Rust の <code>core</code> クレートと同じ名前です。
+<code>use lindera::dictionary::*;</code> のような glob import はこのモジュールをスコープに
+持ち込み、そのモジュール内で <code>core</code> クレートを隠してしまうため、
+<code>core::fmt::Debug</code> のようなパスが標準ライブラリを指さなくなります。
+必要なアイテムを名前で個別に import してください。</p>
+</blockquote>
+<h2 id="暗黙の辞書-feature-の削除"><a class="header" href="#暗黙の辞書-feature-の削除">暗黙の辞書 feature の削除</a></h2>
+<p>v6 では <code>lindera</code> の optional な辞書依存が Cargo の feature としても機能しており、
+<code>features = ["lindera-ipadic"]</code> という指定が受け付けられていました（辞書を
+埋め込まずにクレートだけを取り込む動作でした）。ファサードは辞書クレートに
+依存しないため、次の 7 つの暗黙の feature は存在しなくなります:
+<code>lindera-ipadic</code>・<code>lindera-ipadic-neologd</code>・<code>lindera-unidic</code>・
+<code>lindera-sudachidict</code>・<code>lindera-ko-dic</code>・<code>lindera-cc-cedict</code>・<code>lindera-jieba</code>。
+これらを指定したマニフェストは Cargo がエラーにします。辞書の埋め込みには、
+従来から正式な方法である <code>embed-*</code> feature を使ってください:</p>
+<pre><code class="language-toml"># v6
+[dependencies]
+lindera = { version = "6", features = ["lindera-ipadic"] }
+
+# v7
+[dependencies]
+lindera = { version = "7", features = ["embed-ipadic"] }
+</code></pre>
+<h2 id="lindera-binding-core-は-lindera-binding-に改名"><a class="header" href="#lindera-binding-core-は-lindera-binding-に改名"><code>lindera-binding-core</code> は <code>lindera-binding</code> に改名</a></h2>
+<p>共通ヘルパークレートの上に独自の言語バインディングを構築している場合のみ
+関係します。<code>lindera-binding</code> 7.0.0 は <code>lindera</code> と <code>lindera-analysis</code> の代わりに
+<code>lindera</code> ファサード（<code>analysis</code> feature 付き）に依存します。クレート自身の
+API（<code>CoreTokenizerBuilder</code>・<code>CoreTokenizer</code>・<code>TokenView</code>、および argument・
+metadata・schema の各ヘルパー）は変わりません。公開済みの <code>lindera-binding-core</code>
+（4.0.0〜6.2.0）は crates.io にそのまま残り、yank もされませんが、
+以降のバージョンは公開されません。</p>
+<pre><code class="language-toml"># v6
+[dependencies]
+lindera-binding-core = "6"
+
+# v7
+[dependencies]
+lindera-binding = "7"
+</code></pre>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// v6
+use lindera_binding_core::tokenizer::CoreTokenizer;
+
+// v7
+use lindera_binding::tokenizer::CoreTokenizer;
+<span class="boring">}</span></code></pre></pre>
+<h2 id="lindera_dictionaries_path-の削除"><a class="header" href="#lindera_dictionaries_path-の削除"><code>LINDERA_DICTIONARIES_PATH</code> の削除</a></h2>
+<p>v5.0.0 でビルド時の辞書キャッシュ変数は <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> に
+改名され、旧名 <code>LINDERA_DICTIONARIES_PATH</code> はビルド警告付きの非推奨
+フォールバックとして残されていました（<a href="./migration_v4_to_v5.html">v4 から v5 への移行</a>
+を参照）。v7.0.0 ではこのフォールバックを削除します。旧名だけを設定した
+ビルドはキャッシュを使わず、警告も出しません。辞書クレートはキャッシュ
+未設定の場合と同じように辞書をダウンロード・ビルドします。設定している
+すべての場所（シェルのプロファイル・CI 設定・コンテナイメージ）で変数名を
+変更してください:</p>
+<pre><code class="language-shell"># v6
+export LINDERA_DICTIONARIES_PATH=/path/to/cache
+
+# v7
+export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
+</code></pre>
+<h2 id="対応が不要なケース"><a class="header" href="#対応が不要なケース">対応が不要なケース</a></h2>
+<ul>
+<li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の
+各パッケージと <code>lindera-cli</code> は影響を受けません。今回の構成変更は Rust
+クレート内部のもので、API・パッケージ名・出力は変わりません。</li>
+<li><strong><code>lindera = "6"</code> のまま使い続けるプロジェクト</strong>: <code>lindera</code> と <code>lindera-analysis</code>
+の 6.x は crates.io に残り、組み合わせて動作し続けます。メジャーバージョンを
+上げるまで何も変わりません。</li>
+<li><strong>セグメンター API だけを使うユーザー</strong>: <code>Segmenter</code>・<code>load_dictionary</code>・<code>Mode</code>
+など v6 の <code>lindera::…</code> アイテムを使うコードは、<code>lindera = "7"</code> でそのまま
+コンパイルできます。ただしデフォルトビルドでは <code>lindera-analysis</code> とその依存
+（kanaria・regex・serde_yaml_ng・unicode-blocks・unicode-normalization・
+unicode-segmentation）もコンパイルされるため、v6 の依存ツリーを維持したい
+場合は <code>default-features = false, features = ["mmap"]</code> を指定してください。</li>
+</ul>
+<h2 id="アップグレードチェックリスト"><a class="header" href="#アップグレードチェックリスト">アップグレードチェックリスト</a></h2>
+<p>Rust クレートのユーザー:</p>
+<ul>
+<li><code>lindera</code> を <code>"7"</code> に上げ、同じコミットで <code>lindera-analysis</code> も <code>"7"</code> に上げるか、
+取り除いて <code>lindera::analysis::…</code> から import する。</li>
+<li>任意で <code>use</code> パスの <code>lindera_analysis::</code> を <code>lindera::analysis::</code> に置き換える
+（どちらも同じ型を指す）。</li>
+<li><code>default-features = false</code> を指定している場合は、必要に応じて <code>features</code> に
+<code>"analysis"</code>（<code>Tokenizer</code> とフィルタ）と <code>"mmap"</code>（メモリマップ読み込み）を
+追加する。</li>
+<li><code>features = ["lindera-&lt;辞書&gt;"]</code> を <code>features = ["embed-&lt;辞書&gt;"]</code> に置き換える。</li>
+<li>任意で <code>lindera-dictionary</code> への直接依存を外し、<code>lindera::dictionary::core</code>・
+<code>::builder</code>・<code>::viterbi</code> などの再エクスポートに切り替える。</li>
+</ul>
+<p>バインディングの作者:</p>
+<ul>
+<li><code>lindera-binding-core</code> の代わりに <code>lindera-binding</code> に依存し、
+<code>lindera_binding_core::</code> を <code>lindera_binding::</code> に置き換える。</li>
+</ul>
+<p>ビルド環境:</p>
+<ul>
+<li>シェルのプロファイル・CI 設定・コンテナイメージで <code>LINDERA_DICTIONARIES_PATH</code>
+を <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> に改名する。</li>
+</ul>
+<p>言語バインディングと CLI:</p>
+<ul>
+<li>7.0.0 リリースを取り込む以外に対応は不要。</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="migration_v5_to_v6.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="development.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="migration_v5_to_v6.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="development.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>
