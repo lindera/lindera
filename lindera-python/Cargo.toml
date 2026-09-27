@@ -41,7 +41,7 @@ default = ["train"] # No directories included
 
 [dependencies]
 lindera = { workspace = true }
-lindera-binding-core = { workspace = true }
+lindera-binding = { workspace = true }
 num_cpus = { workspace = true }
 pyo3 = { version = "0.29.0", features = [
     "extension-module",

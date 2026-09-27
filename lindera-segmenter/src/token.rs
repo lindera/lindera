@@ -265,7 +265,7 @@ impl<'a> Token<'a> {
     /// # Example
     ///
     /// ```no_run
-    /// # use lindera::token::Token;
+    /// # use lindera_segmenter::token::Token;
     /// # let mut token: Token = unimplemented!();
     /// let base_form = token.get("base_form");
     /// let pos = token.get("major_pos");
@@ -301,7 +301,7 @@ impl<'a> Token<'a> {
     /// # Example
     ///
     /// ```no_run
-    /// # use lindera::token::Token;
+    /// # use lindera_segmenter::token::Token;
     /// # let mut token: Token = unimplemented!();
     /// let value = token.as_value();
     /// println!("Surface: {}", value["surface"]);

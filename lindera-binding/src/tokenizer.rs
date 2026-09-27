@@ -1,8 +1,8 @@
 //! Shared tokenizer build-flow orchestration for the bindings.
 //!
 //! Each binding's tokenizer wrapper reimplements the same flow: configure a
-//! [`lindera_analysis::tokenizer::TokenizerBuilder`], build a
-//! [`lindera_analysis::tokenizer::Tokenizer`], and convert the resulting tokens. This
+//! [`lindera::analysis::tokenizer::TokenizerBuilder`], build a
+//! [`lindera::analysis::tokenizer::Tokenizer`], and convert the resulting tokens. This
 //! module collects that orchestration into [`CoreTokenizerBuilder`] and
 //! [`CoreTokenizer`], leaving each binding to do only its FFI-value conversion
 //! (`serde_json::Value` ⇔ the host language's argument type) and a thin wrapper.
@@ -13,12 +13,12 @@ use std::sync::{Mutex, MutexGuard};
 
 use serde_json::Value;
 
+use lindera::analysis::tokenizer::{Tokenizer, TokenizerBuilder};
+use lindera::analysis::worker::AnalysisWorker;
 use lindera::dictionary::{Dictionary, UserDictionary};
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
 use lindera::space_penalty::SpacePenaltyConfig;
-use lindera_analysis::tokenizer::{Tokenizer, TokenizerBuilder};
-use lindera_analysis::worker::AnalysisWorker;
 
 use crate::error::{CoreError, CoreResult};
 use crate::token::{SurfaceView, TokenView};
@@ -88,7 +88,7 @@ impl SpacePenaltySetting {
 
 /// Builder that orchestrates tokenizer configuration on behalf of the bindings.
 ///
-/// Wraps [`lindera_analysis::tokenizer::TokenizerBuilder`]; filter arguments are passed
+/// Wraps [`lindera::analysis::tokenizer::TokenizerBuilder`]; filter arguments are passed
 /// as [`serde_json::Value`] so the FFI-specific value conversion stays in each
 /// binding.
 pub struct CoreTokenizerBuilder {

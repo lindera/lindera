@@ -14,13 +14,13 @@
 
 use wasm_bindgen::prelude::*;
 
-use lindera_binding_core::TokenView;
+use lindera_binding::TokenView;
 
-/// Converts a binding-core `TokenView` into a plain JS object.
+/// Converts a lindera-binding `TokenView` into a plain JS object.
 ///
 /// # Arguments
 ///
-/// * `view` - The token view produced by the binding-core tokenizer.
+/// * `view` - The token view produced by the lindera-binding tokenizer.
 ///
 /// # Returns
 ///

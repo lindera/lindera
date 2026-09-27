@@ -6,28 +6,28 @@ Lindera は複数のクレートで構成される Cargo ワークスペース�
 
 ```text
 lindera/
-├── lindera-crf/            # CRF engine (pure Rust, no_std)
-├── lindera-dictionary/     # Dictionary base library
+├── lindera-crf/            # CRF エンジン（pure Rust、no_std）
+├── lindera-dictionary/     # 辞書ベースライブラリ
 ├── lindera-trainer/        # CRF ベースの辞書学習
-├── lindera/                # Core morphological analysis library
+├── lindera/                # ファサードクレート（lindera-segmenter と lindera-analysis を再エクスポート）。tests・examples・benches を含む
+├── lindera-segmenter/      # 形態素分割ライブラリ（Segmenter API）
 ├── lindera-analysis/       # 分析チェーン（character/token filter・tokenizer）
-├── lindera-cli/            # CLI tool
-├── lindera-binding-core/   # 言語バインディングが共有するFFI非依存のヘルパー
-├── lindera-ipadic/         # IPADIC dictionary (Japanese)
-├── lindera-ipadic-neologd/ # IPADIC NEologd dictionary (Japanese)
-├── lindera-unidic/         # UniDic dictionary (Japanese)
-├── lindera-sudachidict/    # SudachiDict dictionary (Japanese)
-├── lindera-ko-dic/         # ko-dic dictionary (Korean)
-├── lindera-cc-cedict/      # CC-CEDICT dictionary (Chinese)
-├── lindera-jieba/          # Jieba dictionary (Chinese)
-├── lindera-python/         # Python bindings (PyO3)
-├── lindera-nodejs/         # Node.js bindings (NAPI-RS)
-├── lindera-ruby/           # Ruby bindings (Magnus + rb-sys)
-├── lindera-php/            # PHP bindings (ext-php-rs)
-├── lindera-wasm/           # WebAssembly bindings (wasm-bindgen)
-├── resources/              # Test resources and sample data
-├── docs/                   # Documentation (mdBook)
-└── examples/               # Example code
+├── lindera-cli/            # CLI ツール
+├── lindera-binding/        # 言語バインディングが共有するFFI非依存のヘルパー
+├── lindera-ipadic/         # IPADIC 辞書（日本語）
+├── lindera-ipadic-neologd/ # IPADIC NEologd 辞書（日本語）
+├── lindera-unidic/         # UniDic 辞書（日本語）
+├── lindera-sudachidict/    # SudachiDict 辞書（日本語）
+├── lindera-ko-dic/         # ko-dic 辞書（韓国語）
+├── lindera-cc-cedict/      # CC-CEDICT 辞書（中国語）
+├── lindera-jieba/          # Jieba 辞書（中国語）
+├── lindera-python/         # Python バインディング（PyO3）
+├── lindera-nodejs/         # Node.js バインディング（NAPI-RS）
+├── lindera-ruby/           # Ruby バインディング（Magnus + rb-sys）
+├── lindera-php/            # PHP バインディング（ext-php-rs）
+├── lindera-wasm/           # WebAssembly バインディング（wasm-bindgen）
+├── resources/              # テストリソースとサンプルデータ
+└── docs/                   # ドキュメント（mdBook）
 ```
 
 ## クレートの説明
@@ -54,21 +54,25 @@ lindera/
 | `feature_rewriter.rs` | MeCab 互換の素性書き換え（3セクション形式） |
 | `model.rs` | 学習済みモデルの保存、シリアライゼーション、辞書出力 |
 
+#### `lindera-segmenter`
+
+形態素分割ライブラリです（v6 までは `lindera` として公開）。辞書クレートを統合し、`Segmenter` API を提供します。`dictionary` モジュールからは `lindera-dictionary` の生モジュール（`builder`・`core`・`loader`・`viterbi` など）も再エクスポートされます。
+
 #### `lindera`
 
-純粋な形態素セグメンターです。辞書クレートを統合し、`Segmenter` API を提供します。
+ファサードクレートで、Rust ユーザーが追加する唯一の依存です。`lindera-segmenter` の全モジュールを再エクスポートし、デフォルトで有効な `analysis` feature により `lindera-analysis` を `lindera::analysis` として提供します。このディレクトリには公開パスを検証する統合テスト・サンプル・ベンチマークも置かれています。
 
 #### `lindera-analysis`
 
-`lindera` の上に構築されたLucene風の分析チェーンです。文字フィルタ、トークンフィルタ、およびそれらを `Segmenter` の周りで組み合わせる `Tokenizer` を提供します。
+`lindera-segmenter` の上に構築されたLucene風の分析チェーンです（ファサード経由では `lindera::analysis` として利用します）。文字フィルタ、トークンフィルタ、およびそれらを `Segmenter` の周りで組み合わせる `Tokenizer` を提供します。
 
 #### `lindera-cli`
 
 トークナイズ、辞書学習、エクスポート、ビルドのためのコマンドラインインターフェースです。デフォルトで `train` feature が有効です。
 
-#### `lindera-binding-core`
+#### `lindera-binding`
 
-5つの言語バインディング（`lindera-python`、`lindera-nodejs`、`lindera-ruby`、`lindera-php`、`lindera-wasm`）すべてが共有するFFI非依存のヘルパーです。各バインディングがそれぞれの言語のネイティブAPIでラップするコアのトークナイザー・スキーマ・メタデータ層を提供します。
+5つの言語バインディング（`lindera-python`、`lindera-nodejs`、`lindera-ruby`、`lindera-php`、`lindera-wasm`）すべてが共有するFFI非依存のヘルパーです。各バインディングがそれぞれの言語のネイティブAPIでラップするコアのトークナイザー・スキーマ・メタデータ層を提供します。`lindera` ファサードに依存します。
 
 ### 辞書クレート
 
@@ -116,10 +120,11 @@ lindera/
 
 [mdBook](https://rust-lang.github.io/mdBook/) で構築されたユーザー向けドキュメントです。目次は `docs/src/SUMMARY.md` で定義されています。日本語翻訳は `docs/ja/` 配下にあります。
 
-#### `examples/`
+#### `lindera/examples/` と `lindera-analysis/examples/`
 
 一般的な使用パターンを示す実行可能なサンプルプログラムです。以下のコマンドで実行できます：
 
 ```bash
-cargo run --features=embed-ipadic --example=<example_name>
+cargo run -p lindera --features=embed-ipadic --example=segment
+cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 ```

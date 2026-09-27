@@ -144,7 +144,7 @@ impl From<LinderaError> for CoreError {
     }
 }
 
-/// A convenient `Result` alias for binding-core operations.
+/// A convenient `Result` alias for lindera-binding operations.
 pub type CoreResult<T> = Result<T, CoreError>;
 
 #[cfg(test)]

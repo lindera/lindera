@@ -1,18 +1,18 @@
 use wasm_bindgen::prelude::*;
 
 use lindera::dictionary::Metadata;
-use lindera_binding_core::CoreMetadata;
+use lindera_binding::CoreMetadata;
 
 use crate::schema::JsSchema;
 
 /// Dictionary metadata configuration.
 ///
-/// A thin wasm-bindgen wrapper over [`lindera_binding_core::CoreMetadata`], which
+/// A thin wasm-bindgen wrapper over [`lindera_binding::CoreMetadata`], which
 /// owns the default values and the schema wiring.
 #[wasm_bindgen(js_name = "Metadata")]
 #[derive(Clone)]
 pub struct JsMetadata {
-    /// The backing binding-core metadata.
+    /// The backing lindera-binding metadata.
     pub(crate) inner: CoreMetadata,
 }
 

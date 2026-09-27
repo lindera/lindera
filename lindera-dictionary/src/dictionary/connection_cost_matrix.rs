@@ -13,7 +13,7 @@ const OLD_FORMAT_HEADER_LEN: usize = 4;
 ///
 /// A bare raw pointer is `!Send + !Sync`, which would strip both auto traits
 /// from [`ConnectionCostMatrix`] and, through `Arc<ConnectionCostMatrix>`,
-/// from `Dictionary` and every binding wrapper (`lindera-binding-core` has a
+/// from `Dictionary` and every binding wrapper (`lindera-binding` has a
 /// compile-time `assert_send_sync` for exactly this). Confining the assertion
 /// to the pointer instead of blanket-asserting it for the whole struct keeps
 /// a future non-`Send` field catchable by the compiler.

@@ -16,10 +16,11 @@ graph TB
     CCCEDICT["lindera-cc-cedict"]
     JIEBA["lindera-jieba"]
     NEOLOGD["lindera-ipadic-neologd"]
-    LIB["lindera\n(Segmenter)"]
+    SEGMENTER["lindera-segmenter\n(Segmenter)"]
     ANALYSIS["lindera-analysis\n(Analysis Chain)"]
+    LIB["lindera\n(Facade)"]
     CLI["lindera-cli\n(CLI)"]
-    BINDINGCORE["lindera-binding-core"]
+    BINDING["lindera-binding"]
     PY["lindera-python"]
     NODEJS["lindera-nodejs"]
     RUBY["lindera-ruby"]
@@ -28,7 +29,7 @@ graph TB
 
     CRF --> TRAINER
     DICT --> TRAINER
-    TRAINER -.->|"train feature"| LIB
+    TRAINER -.->|"train feature"| SEGMENTER
     DICT --> IPADIC
     DICT --> UNIDIC
     DICT --> SUDACHIDICT
@@ -36,26 +37,24 @@ graph TB
     DICT --> CCCEDICT
     DICT --> JIEBA
     DICT --> NEOLOGD
-    DICT --> LIB
-    DICT --> ANALYSIS
-    DICT --> WASM
-    IPADIC --> LIB
-    UNIDIC --> LIB
-    SUDACHIDICT --> LIB
-    KODIC --> LIB
-    CCCEDICT --> LIB
-    JIEBA --> LIB
-    NEOLOGD --> LIB
-    LIB --> ANALYSIS
+    DICT --> SEGMENTER
+    IPADIC --> SEGMENTER
+    UNIDIC --> SEGMENTER
+    SUDACHIDICT --> SEGMENTER
+    KODIC --> SEGMENTER
+    CCCEDICT --> SEGMENTER
+    JIEBA --> SEGMENTER
+    NEOLOGD --> SEGMENTER
+    SEGMENTER --> ANALYSIS
+    SEGMENTER --> LIB
+    ANALYSIS -.->|"analysis feature"| LIB
     LIB --> CLI
-    ANALYSIS --> CLI
-    LIB --> BINDINGCORE
-    ANALYSIS --> BINDINGCORE
-    BINDINGCORE --> PY
-    BINDINGCORE --> NODEJS
-    BINDINGCORE --> RUBY
-    BINDINGCORE --> PHP
-    BINDINGCORE --> WASM
+    LIB --> BINDING
+    BINDING --> PY
+    BINDING --> NODEJS
+    BINDING --> RUBY
+    BINDING --> PHP
+    BINDING --> WASM
 ```
 
 ## クレート一覧
@@ -65,10 +64,11 @@ graph TB
 | `lindera-crf` | コア | Pure RustによるCRF（条件付き確率場）実装。`no_std`サポート。シリアライゼーションに`rkyv`を使用。 |
 | `lindera-dictionary` | コア | 辞書ベースライブラリ。辞書の読み込みとビルドを提供。 |
 | `lindera-trainer` | コア | CRFベースの辞書学習パイプライン。`lindera-crf`と`lindera-dictionary`の上に構築され、直接、または`lindera`facadeの`train` feature経由で利用される。 |
-| `lindera` | コア | 純粋な形態素セグメンター。辞書クレートを統合し、`Segmenter` APIを提供。 |
-| `lindera-analysis` | コア | `lindera`の上に構築されたLucene風の分析チェーン。文字フィルタ、トークンフィルタ、およびそれらを`Segmenter`の周りで組み合わせる`Tokenizer`を提供。 |
+| `lindera-segmenter` | コア | 純粋な形態素セグメンター（v6 以前の `lindera` クレート）。辞書クレートを統合し、`Segmenter` APIを提供。 |
+| `lindera-analysis` | コア | `lindera-segmenter`の上に構築されたLucene風の分析チェーン。文字フィルタ、トークンフィルタ、およびそれらを`Segmenter`の周りで組み合わせる`Tokenizer`を提供。`lindera::analysis`として参照できる。 |
+| `lindera` | コア | ファサードクレート。Rustユーザーが追加する唯一の依存で、`lindera-segmenter`を再エクスポートし、デフォルトで有効な`analysis` featureにより`lindera-analysis`を`lindera::analysis`として提供。 |
 | `lindera-cli` | アプリケーション | トークナイズ、辞書ビルド、CRF学習のためのコマンドラインインターフェース。 |
-| `lindera-binding-core` | コア | 以下の5つの言語バインディングが共有するFFI非依存のヘルパー。 |
+| `lindera-binding` | コア | 以下の5つの言語バインディングが共有するFFI非依存のヘルパー。`lindera`ファサードに依存。 |
 | `lindera-ipadic` | 辞書 | IPADICベースの日本語辞書。 |
 | `lindera-ipadic-neologd` | 辞書 | IPADIC NEologdベースの日本語辞書（新語対応）。 |
 | `lindera-unidic` | 辞書 | UniDicベースの日本語辞書。 |
@@ -108,8 +108,9 @@ Output Tokens
 
 | Feature | 説明 | デフォルト |
 | --- | --- | --- |
+| `analysis` | `lindera-analysis`を`lindera::analysis`として再エクスポート（文字フィルタ、トークンフィルタ、`Tokenizer`） | 有効（`default-features = false`で無効） |
 | `mmap` | ファイルシステム辞書読み込みのためのメモリマップドファイルサポート（`--mmap`/`use_mmap`でオプトイン。トライ・単語リストファイル・接続コスト行列はいずれもマップしたバイト列上で直接参照され、遅延読み込みされる） | 有効 |
-| `train` | CRFベースの辞書学習機能（`lindera-crf`に依存） | CLI + Python/Node.js/Ruby/PHPバインディング（デフォルト有効）／`lindera`コアではデフォルト無効（オプトイン）／`lindera-wasm`では利用不可 |
+| `train` | CRFベースの辞書学習機能（`lindera-crf`に依存） | CLI + Python/Node.js/Ruby/PHPバインディング（デフォルト有効）／`lindera`ライブラリクレートではデフォルト無効（オプトイン）／`lindera-wasm`では利用不可 |
 | `embed-ipadic` | IPADIC辞書をバイナリに埋め込み | 無効 |
 | `embed-ipadic-neologd` | IPADIC NEologd辞書をバイナリに埋め込み | 無効 |
 | `embed-unidic` | UniDic辞書をバイナリに埋め込み | 無効 |
@@ -126,7 +127,7 @@ Output Tokens
 
 - [はじめに](./getting_started.md) -- インストールと最初のステップ
 - [基本概念](./concepts.md) -- 辞書、トークナイズ、フィルター
-- [Linderaライブラリ](./lindera.md) -- セグメンター、API
+- [Linderaライブラリ](./lindera.md) -- `lindera`ファサードとセグメンターAPI
 - [Lindera Analysis](./lindera-analysis.md) -- 文字フィルタ、トークンフィルタ、`Tokenizer`
 - [Lindera Dictionary](./lindera-dictionary.md) -- 辞書の読み込みとビルド
 - [Lindera Trainer](./lindera-trainer.md) -- CRFベースの辞書学習

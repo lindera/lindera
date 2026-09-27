@@ -1,0 +1,222 @@
+pub mod lindera
+pub mod lindera::dictionary
+pub enum lindera::dictionary::DictionaryKind
+impl lindera::dictionary::DictionaryKind
+pub fn lindera::dictionary::DictionaryKind::as_str(&self) -> &str
+pub fn lindera::dictionary::DictionaryKind::contained_variants() -> alloc::vec::Vec<lindera::dictionary::DictionaryKind>
+pub fn lindera::dictionary::DictionaryKind::variants() -> alloc::vec::Vec<lindera::dictionary::DictionaryKind>
+impl core::clone::Clone for lindera::dictionary::DictionaryKind
+pub fn lindera::dictionary::DictionaryKind::clone(&self) -> lindera::dictionary::DictionaryKind
+impl core::cmp::Eq for lindera::dictionary::DictionaryKind
+impl core::cmp::PartialEq for lindera::dictionary::DictionaryKind
+pub fn lindera::dictionary::DictionaryKind::eq(&self, &lindera::dictionary::DictionaryKind) -> bool
+impl core::fmt::Debug for lindera::dictionary::DictionaryKind
+pub fn lindera::dictionary::DictionaryKind::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for lindera::dictionary::DictionaryKind
+impl core::str::traits::FromStr for lindera::dictionary::DictionaryKind
+pub type lindera::dictionary::DictionaryKind::Err = lindera_dictionary::error::LinderaError
+pub fn lindera::dictionary::DictionaryKind::from_str(&str) -> core::result::Result<lindera::dictionary::DictionaryKind, Self::Err>
+impl serde_core::ser::Serialize for lindera::dictionary::DictionaryKind
+pub fn lindera::dictionary::DictionaryKind::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl strum::IntoEnumIterator for lindera::dictionary::DictionaryKind
+pub type lindera::dictionary::DictionaryKind::Iterator = lindera::dictionary::DictionaryKindIter
+pub fn lindera::dictionary::DictionaryKind::iter() -> lindera::dictionary::DictionaryKindIter
+impl<'de> serde_core::de::Deserialize<'de> for lindera::dictionary::DictionaryKind
+pub fn lindera::dictionary::DictionaryKind::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for lindera::dictionary::DictionaryKind
+impl core::marker::Send for lindera::dictionary::DictionaryKind
+impl core::marker::Sync for lindera::dictionary::DictionaryKind
+impl core::marker::Unpin for lindera::dictionary::DictionaryKind
+impl core::marker::UnsafeUnpin for lindera::dictionary::DictionaryKind
+impl core::panic::unwind_safe::RefUnwindSafe for lindera::dictionary::DictionaryKind
+impl core::panic::unwind_safe::UnwindSafe for lindera::dictionary::DictionaryKind
+pub enum lindera::dictionary::DictionaryScheme
+pub lindera::dictionary::DictionaryScheme::File
+impl lindera::dictionary::DictionaryScheme
+pub fn lindera::dictionary::DictionaryScheme::as_str(&self) -> &str
+impl core::clone::Clone for lindera::dictionary::DictionaryScheme
+pub fn lindera::dictionary::DictionaryScheme::clone(&self) -> lindera::dictionary::DictionaryScheme
+impl core::cmp::Eq for lindera::dictionary::DictionaryScheme
+impl core::cmp::PartialEq for lindera::dictionary::DictionaryScheme
+pub fn lindera::dictionary::DictionaryScheme::eq(&self, &lindera::dictionary::DictionaryScheme) -> bool
+impl core::fmt::Debug for lindera::dictionary::DictionaryScheme
+pub fn lindera::dictionary::DictionaryScheme::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for lindera::dictionary::DictionaryScheme
+impl core::str::traits::FromStr for lindera::dictionary::DictionaryScheme
+pub type lindera::dictionary::DictionaryScheme::Err = lindera_dictionary::error::LinderaError
+pub fn lindera::dictionary::DictionaryScheme::from_str(&str) -> core::result::Result<lindera::dictionary::DictionaryScheme, Self::Err>
+impl serde_core::ser::Serialize for lindera::dictionary::DictionaryScheme
+pub fn lindera::dictionary::DictionaryScheme::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl strum::IntoEnumIterator for lindera::dictionary::DictionaryScheme
+pub type lindera::dictionary::DictionaryScheme::Iterator = lindera::dictionary::DictionarySchemeIter
+pub fn lindera::dictionary::DictionaryScheme::iter() -> lindera::dictionary::DictionarySchemeIter
+impl<'de> serde_core::de::Deserialize<'de> for lindera::dictionary::DictionaryScheme
+pub fn lindera::dictionary::DictionaryScheme::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for lindera::dictionary::DictionaryScheme
+impl core::marker::Send for lindera::dictionary::DictionaryScheme
+impl core::marker::Sync for lindera::dictionary::DictionaryScheme
+impl core::marker::Unpin for lindera::dictionary::DictionaryScheme
+impl core::marker::UnsafeUnpin for lindera::dictionary::DictionaryScheme
+impl core::panic::unwind_safe::RefUnwindSafe for lindera::dictionary::DictionaryScheme
+impl core::panic::unwind_safe::UnwindSafe for lindera::dictionary::DictionaryScheme
+pub struct lindera::dictionary::DictionaryKindIter
+impl core::clone::Clone for lindera::dictionary::DictionaryKindIter
+pub fn lindera::dictionary::DictionaryKindIter::clone(&self) -> lindera::dictionary::DictionaryKindIter
+impl core::fmt::Debug for lindera::dictionary::DictionaryKindIter
+pub fn lindera::dictionary::DictionaryKindIter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::iter::traits::double_ended::DoubleEndedIterator for lindera::dictionary::DictionaryKindIter
+pub fn lindera::dictionary::DictionaryKindIter::next_back(&mut self) -> core::option::Option<<Self as core::iter::traits::iterator::Iterator>::Item>
+impl core::iter::traits::exact_size::ExactSizeIterator for lindera::dictionary::DictionaryKindIter
+pub fn lindera::dictionary::DictionaryKindIter::len(&self) -> usize
+impl core::iter::traits::iterator::Iterator for lindera::dictionary::DictionaryKindIter
+pub type lindera::dictionary::DictionaryKindIter::Item = lindera::dictionary::DictionaryKind
+pub fn lindera::dictionary::DictionaryKindIter::next(&mut self) -> core::option::Option<<Self as core::iter::traits::iterator::Iterator>::Item>
+pub fn lindera::dictionary::DictionaryKindIter::nth(&mut self, usize) -> core::option::Option<<Self as core::iter::traits::iterator::Iterator>::Item>
+pub fn lindera::dictionary::DictionaryKindIter::size_hint(&self) -> (usize, core::option::Option<usize>)
+impl core::iter::traits::marker::FusedIterator for lindera::dictionary::DictionaryKindIter
+impl core::marker::Freeze for lindera::dictionary::DictionaryKindIter
+impl core::marker::Send for lindera::dictionary::DictionaryKindIter
+impl core::marker::Sync for lindera::dictionary::DictionaryKindIter
+impl core::marker::Unpin for lindera::dictionary::DictionaryKindIter
+impl core::marker::UnsafeUnpin for lindera::dictionary::DictionaryKindIter
+impl core::panic::unwind_safe::RefUnwindSafe for lindera::dictionary::DictionaryKindIter
+impl core::panic::unwind_safe::UnwindSafe for lindera::dictionary::DictionaryKindIter
+pub struct lindera::dictionary::DictionarySchemeIter
+impl core::clone::Clone for lindera::dictionary::DictionarySchemeIter
+pub fn lindera::dictionary::DictionarySchemeIter::clone(&self) -> lindera::dictionary::DictionarySchemeIter
+impl core::fmt::Debug for lindera::dictionary::DictionarySchemeIter
+pub fn lindera::dictionary::DictionarySchemeIter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::iter::traits::double_ended::DoubleEndedIterator for lindera::dictionary::DictionarySchemeIter
+pub fn lindera::dictionary::DictionarySchemeIter::next_back(&mut self) -> core::option::Option<<Self as core::iter::traits::iterator::Iterator>::Item>
+impl core::iter::traits::exact_size::ExactSizeIterator for lindera::dictionary::DictionarySchemeIter
+pub fn lindera::dictionary::DictionarySchemeIter::len(&self) -> usize
+impl core::iter::traits::iterator::Iterator for lindera::dictionary::DictionarySchemeIter
+pub type lindera::dictionary::DictionarySchemeIter::Item = lindera::dictionary::DictionaryScheme
+pub fn lindera::dictionary::DictionarySchemeIter::next(&mut self) -> core::option::Option<<Self as core::iter::traits::iterator::Iterator>::Item>
+pub fn lindera::dictionary::DictionarySchemeIter::nth(&mut self, usize) -> core::option::Option<<Self as core::iter::traits::iterator::Iterator>::Item>
+pub fn lindera::dictionary::DictionarySchemeIter::size_hint(&self) -> (usize, core::option::Option<usize>)
+impl core::iter::traits::marker::FusedIterator for lindera::dictionary::DictionarySchemeIter
+impl core::marker::Freeze for lindera::dictionary::DictionarySchemeIter
+impl core::marker::Send for lindera::dictionary::DictionarySchemeIter
+impl core::marker::Sync for lindera::dictionary::DictionarySchemeIter
+impl core::marker::Unpin for lindera::dictionary::DictionarySchemeIter
+impl core::marker::UnsafeUnpin for lindera::dictionary::DictionarySchemeIter
+impl core::panic::unwind_safe::RefUnwindSafe for lindera::dictionary::DictionarySchemeIter
+impl core::panic::unwind_safe::UnwindSafe for lindera::dictionary::DictionarySchemeIter
+pub fn lindera::dictionary::load_dictionary(&str) -> lindera::LinderaResult<lindera::dictionary::Dictionary>
+pub fn lindera::dictionary::load_dictionary_with_options(&str, bool) -> lindera::LinderaResult<lindera::dictionary::Dictionary>
+pub fn lindera::dictionary::load_embedded_dictionary(lindera::dictionary::DictionaryKind) -> lindera::LinderaResult<lindera::dictionary::Dictionary>
+pub fn lindera::dictionary::load_fs_dictionary(&std::path::Path) -> lindera::LinderaResult<lindera::dictionary::Dictionary>
+pub fn lindera::dictionary::load_fs_dictionary_with_options(&std::path::Path, bool) -> lindera::LinderaResult<lindera::dictionary::Dictionary>
+pub fn lindera::dictionary::load_user_dictionary(&str, &lindera::dictionary::Metadata) -> lindera::LinderaResult<lindera::dictionary::UserDictionary>
+pub fn lindera::dictionary::load_user_dictionary_from_bin(&std::path::Path) -> lindera::LinderaResult<lindera::dictionary::UserDictionary>
+pub fn lindera::dictionary::load_user_dictionary_from_csv(&lindera::dictionary::Metadata, &std::path::Path) -> lindera::LinderaResult<lindera::dictionary::UserDictionary>
+pub fn lindera::dictionary::resolve_embedded_loader(lindera::dictionary::DictionaryKind) -> lindera::LinderaResult<alloc::boxed::Box<dyn lindera_dictionary::loader::DictionaryLoader>>
+pub type lindera::dictionary::Dictionary = lindera_dictionary::dictionary::Dictionary
+pub type lindera::dictionary::DictionaryBuilder = lindera_dictionary::builder::DictionaryBuilder
+pub type lindera::dictionary::DictionaryConfig = serde_json::value::Value
+pub type lindera::dictionary::FieldDefinition = lindera_dictionary::dictionary::schema::FieldDefinition
+pub type lindera::dictionary::FieldType = lindera_dictionary::dictionary::schema::FieldType
+pub type lindera::dictionary::Lattice = lindera_dictionary::viterbi::Lattice
+pub type lindera::dictionary::Metadata = lindera_dictionary::dictionary::metadata::Metadata
+pub type lindera::dictionary::Schema = lindera_dictionary::dictionary::schema::Schema
+pub type lindera::dictionary::UserDictionary = lindera_dictionary::dictionary::UserDictionary
+pub type lindera::dictionary::UserDictionaryConfig = serde_json::value::Value
+pub type lindera::dictionary::WordId = lindera_dictionary::viterbi::WordId
+pub mod lindera::error
+pub type lindera::error::LinderaError = lindera_dictionary::error::LinderaError
+pub type lindera::error::LinderaErrorKind = lindera_dictionary::error::LinderaErrorKind
+pub mod lindera::mode
+pub type lindera::mode::Mode = lindera_dictionary::mode::Mode
+pub type lindera::mode::Penalty = lindera_dictionary::mode::Penalty
+pub mod lindera::segmenter
+pub struct lindera::segmenter::Segmenter
+pub lindera::segmenter::Segmenter::dictionary: lindera_dictionary::dictionary::Dictionary
+pub lindera::segmenter::Segmenter::keep_whitespace: bool
+pub lindera::segmenter::Segmenter::max_grouping_len: core::option::Option<usize>
+pub lindera::segmenter::Segmenter::mode: lindera_dictionary::mode::Mode
+pub lindera::segmenter::Segmenter::unknown_word_ladder: bool
+pub lindera::segmenter::Segmenter::user_dictionary: core::option::Option<lindera_dictionary::dictionary::UserDictionary>
+impl lindera::segmenter::Segmenter
+pub fn lindera::segmenter::Segmenter::from_config(&lindera::segmenter::SegmenterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::segmenter::Segmenter::keep_whitespace(self, bool) -> Self
+pub fn lindera::segmenter::Segmenter::max_grouping_len(self, core::option::Option<usize>) -> Self
+pub fn lindera::segmenter::Segmenter::new(lindera_dictionary::mode::Mode, lindera_dictionary::dictionary::Dictionary, core::option::Option<lindera_dictionary::dictionary::UserDictionary>) -> Self
+pub fn lindera::segmenter::Segmenter::segment<'a>(&'a self, alloc::borrow::Cow<'a, str>) -> lindera::LinderaResult<alloc::vec::Vec<lindera::token::Token<'a>>>
+pub fn lindera::segmenter::Segmenter::segment_nbest<'a>(&'a self, alloc::borrow::Cow<'a, str>, usize, bool, core::option::Option<i64>) -> lindera::LinderaResult<alloc::vec::Vec<(alloc::vec::Vec<lindera::token::Token<'a>>, i64)>>
+pub fn lindera::segmenter::Segmenter::segment_nbest_with_lattice<'a>(&'a self, alloc::borrow::Cow<'a, str>, &mut lindera_dictionary::viterbi::Lattice, usize, bool, core::option::Option<i64>) -> lindera::LinderaResult<alloc::vec::Vec<(alloc::vec::Vec<lindera::token::Token<'a>>, i64)>>
+pub fn lindera::segmenter::Segmenter::segment_with_lattice<'a>(&'a self, alloc::borrow::Cow<'a, str>, &mut lindera_dictionary::viterbi::Lattice) -> lindera::LinderaResult<alloc::vec::Vec<lindera::token::Token<'a>>>
+pub fn lindera::segmenter::Segmenter::set_space_penalty(&mut self, core::option::Option<lindera_dictionary::space_penalty::SpacePenaltyConfig>) -> lindera::LinderaResult<()>
+pub fn lindera::segmenter::Segmenter::set_space_penalty_from_dictionary(&mut self) -> lindera::LinderaResult<()>
+pub fn lindera::segmenter::Segmenter::space_penalty(self, core::option::Option<lindera_dictionary::space_penalty::SpacePenaltyConfig>) -> lindera::LinderaResult<Self>
+pub fn lindera::segmenter::Segmenter::space_penalty_config(&self) -> core::option::Option<&lindera_dictionary::space_penalty::SpacePenaltyConfig>
+pub fn lindera::segmenter::Segmenter::space_penalty_from_dictionary(self) -> lindera::LinderaResult<Self>
+pub fn lindera::segmenter::Segmenter::unknown_word_ladder(self, bool) -> Self
+impl lindera::segmenter::Segmenter
+pub fn lindera::segmenter::Segmenter::into_worker(self) -> lindera::worker::SegmentWorker
+pub fn lindera::segmenter::Segmenter::new_worker(&self) -> lindera::worker::SegmentWorker
+impl core::clone::Clone for lindera::segmenter::Segmenter
+pub fn lindera::segmenter::Segmenter::clone(&self) -> lindera::segmenter::Segmenter
+impl core::marker::Freeze for lindera::segmenter::Segmenter
+impl core::marker::Send for lindera::segmenter::Segmenter
+impl core::marker::Sync for lindera::segmenter::Segmenter
+impl core::marker::Unpin for lindera::segmenter::Segmenter
+impl core::marker::UnsafeUnpin for lindera::segmenter::Segmenter
+impl core::panic::unwind_safe::RefUnwindSafe for lindera::segmenter::Segmenter
+impl core::panic::unwind_safe::UnwindSafe for lindera::segmenter::Segmenter
+pub type lindera::segmenter::SegmenterConfig = serde_json::value::Value
+pub mod lindera::space_penalty
+pub type lindera::space_penalty::SpacePenaltyConfig = lindera_dictionary::space_penalty::SpacePenaltyConfig
+pub type lindera::space_penalty::SpacePenaltyRule = lindera_dictionary::space_penalty::SpacePenaltyRule
+pub type lindera::space_penalty::SpacePenaltyTable = lindera_dictionary::space_penalty::SpacePenaltyTable
+pub mod lindera::token
+pub struct lindera::token::Token<'a>
+pub lindera::token::Token::byte_end: usize
+pub lindera::token::Token::byte_start: usize
+pub lindera::token::Token::details: core::option::Option<alloc::vec::Vec<alloc::borrow::Cow<'a, str>>>
+pub lindera::token::Token::dictionary: &'a lindera::dictionary::Dictionary
+pub lindera::token::Token::position: usize
+pub lindera::token::Token::position_length: usize
+pub lindera::token::Token::surface: alloc::borrow::Cow<'a, str>
+pub lindera::token::Token::user_dictionary: core::option::Option<&'a lindera::dictionary::UserDictionary>
+pub lindera::token::Token::word_id: lindera::dictionary::WordId
+impl<'a> lindera::token::Token<'a>
+pub fn lindera::token::Token<'a>::as_value(&mut self) -> serde_json::value::Value
+pub fn lindera::token::Token<'a>::details(&mut self) -> alloc::vec::Vec<&str>
+pub fn lindera::token::Token<'a>::details_iter(&mut self) -> impl core::iter::traits::iterator::Iterator<Item = &str>
+pub fn lindera::token::Token<'a>::get(&mut self, &str) -> core::option::Option<&str>
+pub fn lindera::token::Token<'a>::get_detail(&mut self, usize) -> core::option::Option<&str>
+pub fn lindera::token::Token<'a>::new(alloc::borrow::Cow<'a, str>, usize, usize, usize, lindera::dictionary::WordId, &'a lindera::dictionary::Dictionary, core::option::Option<&'a lindera::dictionary::UserDictionary>) -> Self
+pub fn lindera::token::Token<'a>::set_detail(&mut self, usize, alloc::borrow::Cow<'a, str>)
+impl<'a> core::clone::Clone for lindera::token::Token<'a>
+pub fn lindera::token::Token<'a>::clone(&self) -> lindera::token::Token<'a>
+impl<'a> core::marker::Freeze for lindera::token::Token<'a>
+impl<'a> core::marker::Send for lindera::token::Token<'a>
+impl<'a> core::marker::Sync for lindera::token::Token<'a>
+impl<'a> core::marker::Unpin for lindera::token::Token<'a>
+impl<'a> core::marker::UnsafeUnpin for lindera::token::Token<'a>
+impl<'a> core::panic::unwind_safe::RefUnwindSafe for lindera::token::Token<'a>
+impl<'a> core::panic::unwind_safe::UnwindSafe for lindera::token::Token<'a>
+pub mod lindera::worker
+pub struct lindera::worker::SegmentWorker
+impl lindera::worker::SegmentWorker
+pub fn lindera::worker::SegmentWorker::reset(&mut self)
+pub fn lindera::worker::SegmentWorker::segment<'w>(&'w mut self, &'w str) -> lindera::LinderaResult<alloc::vec::Vec<lindera::token::Token<'w>>>
+pub fn lindera::worker::SegmentWorker::segment_nbest<'w>(&'w mut self, &'w str, usize, bool, core::option::Option<i64>) -> lindera::LinderaResult<alloc::vec::Vec<(alloc::vec::Vec<lindera::token::Token<'w>>, i64)>>
+pub fn lindera::worker::SegmentWorker::segmenter(&self) -> &lindera::segmenter::Segmenter
+pub fn lindera::worker::SegmentWorker::set_keep_whitespace(&mut self, bool)
+pub fn lindera::worker::SegmentWorker::set_max_grouping_len(&mut self, core::option::Option<usize>)
+pub fn lindera::worker::SegmentWorker::set_mode(&mut self, lindera_dictionary::mode::Mode)
+pub fn lindera::worker::SegmentWorker::set_space_penalty(&mut self, core::option::Option<lindera_dictionary::space_penalty::SpacePenaltyConfig>) -> lindera::LinderaResult<()>
+pub fn lindera::worker::SegmentWorker::set_space_penalty_from_dictionary(&mut self) -> lindera::LinderaResult<()>
+pub fn lindera::worker::SegmentWorker::set_unknown_word_ladder(&mut self, bool)
+pub fn lindera::worker::SegmentWorker::shrink_to(&mut self, usize)
+impl core::marker::Freeze for lindera::worker::SegmentWorker
+impl core::marker::Send for lindera::worker::SegmentWorker
+impl core::marker::Sync for lindera::worker::SegmentWorker
+impl core::marker::Unpin for lindera::worker::SegmentWorker
+impl core::marker::UnsafeUnpin for lindera::worker::SegmentWorker
+impl core::panic::unwind_safe::RefUnwindSafe for lindera::worker::SegmentWorker
+impl core::panic::unwind_safe::UnwindSafe for lindera::worker::SegmentWorker
+pub fn lindera::get_version() -> &'static str
+pub type lindera::LinderaResult<T> = lindera_dictionary::LinderaResult<T>

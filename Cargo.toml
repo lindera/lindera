@@ -10,10 +10,11 @@ members = [
     "lindera-ko-dic",
     "lindera-sudachidict",
     "lindera-unidic",
+    "lindera-segmenter",
     "lindera",
     "lindera-analysis",
     "lindera-cli",
-    "lindera-binding-core",
+    "lindera-binding",
     "lindera-python",
     "lindera-nodejs",
     "lindera-ruby",
@@ -50,8 +51,8 @@ csv = "1.4.0"
 crawdad = "=0.4.1"
 daachorse = "5.0.0"
 lindera = { version = "6.2.0", path = "lindera" }
-lindera-analysis = { version = "6.2.0", path = "lindera-analysis" }
-lindera-binding-core = { version = "6.2.0", path = "lindera-binding-core" }
+lindera-analysis = { version = "6.2.0", path = "lindera-analysis", default-features = false }
+lindera-binding = { version = "6.2.0", path = "lindera-binding" }
 lindera-crf = { version = "6.2.0", path = "lindera-crf" }
 lindera-cc-cedict = { version = "6.2.0", path = "lindera-cc-cedict" }
 lindera-cli = { version = "6.2.0", path = "lindera-cli" }
@@ -65,6 +66,7 @@ lindera-nodejs = { version = "6.2.0", path = "lindera-nodejs" }
 lindera-sudachidict = { version = "6.2.0", path = "lindera-sudachidict" }
 lindera-python = { version = "6.2.0", path = "lindera-python" }
 lindera-ruby = { version = "6.2.0", path = "lindera-ruby" }
+lindera-segmenter = { version = "6.2.0", path = "lindera-segmenter", default-features = false }
 lindera-unidic = { version = "6.2.0", path = "lindera-unidic" }
 lindera-php = { version = "6.2.0", path = "lindera-php" }
 lindera-wasm = { version = "6.2.0", path = "lindera-wasm" }

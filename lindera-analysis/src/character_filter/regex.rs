@@ -2,8 +2,8 @@ use regex::Regex;
 use serde_json::Value;
 
 use crate::character_filter::{CharacterFilter, OffsetMapping, Transformation};
-use lindera::LinderaResult;
-use lindera::error::LinderaErrorKind;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::error::LinderaErrorKind;
 
 pub const REGEX_CHARACTER_FILTER_NAME: &str = "regex";
 

@@ -4,8 +4,8 @@ use serde_json::Value;
 
 use crate::token_filter::TokenFilter;
 use crate::token_filter::tags::{TagPolicy, apply_tag_filter, parse_tags};
-use lindera::LinderaResult;
-use lindera::token::Token;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::token::Token;
 
 pub const KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME: &str = "korean_keep_tags";
 
@@ -123,9 +123,9 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::token_filter::TokenFilter;
-        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_segmenter::token::Token;
 
         let config_str = r#"
             {

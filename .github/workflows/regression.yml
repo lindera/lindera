@@ -38,9 +38,10 @@ jobs:
       lindera-ko-dic: ${{ steps.filter.outputs.lindera-ko-dic }}
       lindera-cc-cedict: ${{ steps.filter.outputs.lindera-cc-cedict }}
       lindera-jieba: ${{ steps.filter.outputs.lindera-jieba }}
+      lindera-segmenter: ${{ steps.filter.outputs.lindera-segmenter }}
       lindera: ${{ steps.filter.outputs.lindera }}
       lindera-analysis: ${{ steps.filter.outputs.lindera-analysis }}
-      lindera-binding-core: ${{ steps.filter.outputs.lindera-binding-core }}
+      lindera-binding: ${{ steps.filter.outputs.lindera-binding }}
       lindera-cli: ${{ steps.filter.outputs.lindera-cli }}
       lindera-python: ${{ steps.filter.outputs.lindera-python }}
       lindera-nodejs: ${{ steps.filter.outputs.lindera-nodejs }}
@@ -120,8 +121,24 @@ jobs:
               - 'lindera-dictionary/**'
               - *shared-workspace
               - *shared-crate-workflow
+            lindera-segmenter:
+              - 'lindera-segmenter/**'
+              - 'lindera-crf/**'
+              - 'lindera-dictionary/**'
+              - 'lindera-trainer/**'
+              - 'lindera-ipadic/**'
+              - 'lindera-ipadic-neologd/**'
+              - 'lindera-unidic/**'
+              - 'lindera-sudachidict/**'
+              - 'lindera-ko-dic/**'
+              - 'lindera-cc-cedict/**'
+              - 'lindera-jieba/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera:
               - 'lindera/**'
+              - 'lindera-segmenter/**'
+              - 'lindera-analysis/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
               - 'lindera-trainer/**'
@@ -136,17 +153,18 @@ jobs:
               - *shared-crate-workflow
             lindera-analysis:
               - 'lindera-analysis/**'
-              - 'lindera/**'
+              - 'lindera-segmenter/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
               - 'lindera-ipadic/**'
               - 'lindera-ko-dic/**'
               - *shared-workspace
               - *shared-crate-workflow
-            lindera-binding-core:
-              - 'lindera-binding-core/**'
+            lindera-binding:
+              - 'lindera-binding/**'
               - 'lindera-analysis/**'
               - 'lindera/**'
+              - 'lindera-segmenter/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
               - *shared-workspace
@@ -154,6 +172,7 @@ jobs:
             lindera-cli:
               - 'lindera-cli/**'
               - 'lindera/**'
+              - 'lindera-segmenter/**'
               - 'lindera-analysis/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
@@ -169,8 +188,9 @@ jobs:
               - *shared-crate-workflow
             lindera-python:
               - 'lindera-python/**'
-              - 'lindera-binding-core/**'
+              - 'lindera-binding/**'
               - 'lindera/**'
+              - 'lindera-segmenter/**'
               - 'lindera-analysis/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
@@ -186,8 +206,9 @@ jobs:
               - *shared-make
             lindera-nodejs:
               - 'lindera-nodejs/**'
-              - 'lindera-binding-core/**'
+              - 'lindera-binding/**'
               - 'lindera/**'
+              - 'lindera-segmenter/**'
               - 'lindera-analysis/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
@@ -204,8 +225,9 @@ jobs:
               - *shared-make
             lindera-ruby:
               - 'lindera-ruby/**'
-              - 'lindera-binding-core/**'
+              - 'lindera-binding/**'
               - 'lindera/**'
+              - 'lindera-segmenter/**'
               - 'lindera-analysis/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
@@ -229,8 +251,9 @@ jobs:
             lindera-php:
               - 'lindera-php/**'
               - 'composer.json'
-              - 'lindera-binding-core/**'
+              - 'lindera-binding/**'
               - 'lindera/**'
+              - 'lindera-segmenter/**'
               - 'lindera-analysis/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
@@ -246,8 +269,9 @@ jobs:
               - *shared-make
             lindera-wasm:
               - 'lindera-wasm/**'
-              - 'lindera-binding-core/**'
+              - 'lindera-binding/**'
               - 'lindera/**'
+              - 'lindera-segmenter/**'
               - 'lindera-analysis/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
@@ -390,8 +414,8 @@ jobs:
       features: "--features embed-jieba"
       lint: true
 
-  test-lindera:
-    name: Test lindera (${{ matrix.platform.target }})
+  test-lindera-segmenter:
+    name: Test lindera-segmenter (${{ matrix.platform.target }})
     needs:
       - test-lindera-dictionary
       - test-lindera-trainer
@@ -403,6 +427,51 @@ jobs:
       - test-lindera-cc-cedict
       - test-lindera-jieba
       - detect-changes
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-segmenter == 'true')
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-segmenter
+      features: "--features embed-ipadic,embed-ko-dic,train"
+      target: ${{ matrix.platform.target }}
+      runs-on: ${{ matrix.platform.runner }}
+      lint: true
+
+  test-lindera-segmenter-no-default-features:
+    name: Test lindera-segmenter (no default features)
+    needs: [test-lindera-segmenter, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-segmenter == 'true')
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-segmenter
+      features: "--no-default-features"
+      lint: true
+
+  test-lindera-analysis:
+    name: Test lindera-analysis
+    needs: [test-lindera-segmenter, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-analysis == 'true')
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-analysis
+      features: "--features embed-ipadic,embed-ko-dic"
+      lint: true
+
+  test-lindera:
+    name: Test lindera (${{ matrix.platform.target }})
+    needs: [test-lindera-analysis, detect-changes]
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera == 'true')
@@ -434,27 +503,39 @@ jobs:
       features: "--no-default-features"
       lint: true
 
-  test-lindera-analysis:
-    name: Test lindera-analysis
+  # Reproduces the docs.rs build of the facade: nightly, `--cfg docsrs` (see
+  # `[package.metadata.docs.rs]` in lindera/Cargo.toml) and all features.
+  # DOCS_RS makes the dictionary build scripts generate dummy dictionaries
+  # instead of downloading them (lindera-dictionary/src/assets.rs), which is
+  # the path docs.rs takes and nothing else in CI exercises.
+  docs-rs:
+    name: Build docs as docs.rs does (lindera, all features)
     needs: [test-lindera, detect-changes]
     if: >-
       !cancelled() && !failure() &&
-      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-analysis == 'true')
-    uses: ./.github/workflows/test-crate.yml
-    with:
-      crate: lindera-analysis
-      features: "--features embed-ipadic,embed-ko-dic"
-      lint: true
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
 
-  test-lindera-binding-core:
-    name: Test lindera-binding-core
-    needs: [test-lindera-analysis, detect-changes]
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: nightly
+
+      - name: Build docs
+        run: DOCS_RS=1 RUSTDOCFLAGS='--cfg docsrs' cargo +nightly doc -p lindera --all-features --no-deps
+
+  test-lindera-binding:
+    name: Test lindera-binding
+    needs: [test-lindera, detect-changes]
     if: >-
       !cancelled() && !failure() &&
-      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-binding-core == 'true')
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-binding == 'true')
     uses: ./.github/workflows/test-crate.yml
     with:
-      crate: lindera-binding-core
+      crate: lindera-binding
       lint: true
 
   test-lindera-cli:
@@ -471,7 +552,7 @@ jobs:
 
   test-lindera-python:
     name: Test lindera-python
-    needs: [test-lindera, test-lindera-analysis, test-lindera-binding-core, detect-changes]
+    needs: [test-lindera, test-lindera-analysis, test-lindera-binding, detect-changes]
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-python == 'true')
@@ -500,7 +581,7 @@ jobs:
 
   test-lindera-nodejs:
     name: Test lindera-nodejs
-    needs: [test-lindera, test-lindera-analysis, test-lindera-binding-core, detect-changes]
+    needs: [test-lindera, test-lindera-analysis, test-lindera-binding, detect-changes]
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-nodejs == 'true')
@@ -551,7 +632,7 @@ jobs:
 
   test-lindera-ruby:
     name: Test lindera-ruby
-    needs: [test-lindera, test-lindera-analysis, test-lindera-binding-core, detect-changes]
+    needs: [test-lindera, test-lindera-analysis, test-lindera-binding, detect-changes]
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-ruby == 'true')
@@ -586,7 +667,7 @@ jobs:
   # lindera-ruby/test/gem/install_and_test.sh), so unreleased changes compile.
   test-lindera-ruby-gem:
     name: Test lindera-ruby gem install
-    needs: [test-lindera, test-lindera-analysis, test-lindera-binding-core, detect-changes]
+    needs: [test-lindera, test-lindera-analysis, test-lindera-binding, detect-changes]
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-ruby-gem == 'true')
@@ -612,7 +693,7 @@ jobs:
 
   test-lindera-php:
     name: Test lindera-php
-    needs: [test-lindera, test-lindera-analysis, test-lindera-binding-core, detect-changes]
+    needs: [test-lindera, test-lindera-analysis, test-lindera-binding, detect-changes]
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-php == 'true')
@@ -646,7 +727,7 @@ jobs:
 
   test-lindera-php-macos:
     name: Test lindera-php (macOS, phpize path)
-    needs: [test-lindera, test-lindera-analysis, test-lindera-binding-core, detect-changes]
+    needs: [test-lindera, test-lindera-analysis, test-lindera-binding, detect-changes]
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-php == 'true')
@@ -677,7 +758,7 @@ jobs:
 
   test-lindera-wasm:
     name: Test lindera-wasm
-    needs: [test-lindera, test-lindera-analysis, test-lindera-binding-core, detect-changes]
+    needs: [test-lindera, test-lindera-analysis, test-lindera-binding, detect-changes]
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-wasm == 'true')

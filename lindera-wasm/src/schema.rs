@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::*;
 
 use lindera::dictionary::{FieldDefinition, FieldType, Schema};
-use lindera_binding_core::{CoreFieldDefinition, CoreFieldType, CoreSchema};
+use lindera_binding::{CoreFieldDefinition, CoreFieldType, CoreSchema};
 
 /// Field type in dictionary schema.
 #[wasm_bindgen(js_name = "FieldType")]
@@ -121,12 +121,12 @@ impl From<JsFieldDefinition> for FieldDefinition {
 
 /// Dictionary schema definition.
 ///
-/// A thin wasm-bindgen wrapper over [`lindera_binding_core::CoreSchema`], which
+/// A thin wasm-bindgen wrapper over [`lindera_binding::CoreSchema`], which
 /// owns the field storage, the name-to-index map, and the field lookups.
 #[wasm_bindgen(js_name = "Schema")]
 #[derive(Clone)]
 pub struct JsSchema {
-    /// The backing binding-core schema.
+    /// The backing lindera-binding schema.
     pub(crate) inner: CoreSchema,
 }
 

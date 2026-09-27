@@ -7,7 +7,7 @@ use std::fmt;
 use pyo3::exceptions::{PyException, PyIOError, PyValueError};
 use pyo3::prelude::*;
 
-use lindera_binding_core::{CoreError, ErrorKind};
+use lindera_binding::{CoreError, ErrorKind};
 
 /// Error type for Lindera operations.
 ///

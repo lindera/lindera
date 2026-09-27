@@ -2,7 +2,7 @@
 //!
 //! This module provides structures for configuring dictionary metadata, including
 //! character encodings and schema definitions. The defaults and schema wiring are
-//! delegated to [`lindera_binding_core::CoreMetadata`]; this module only adds the
+//! delegated to [`lindera_binding::CoreMetadata`]; this module only adds the
 //! magnus wrappers.
 
 use std::collections::HashMap;
@@ -11,16 +11,16 @@ use magnus::prelude::*;
 use magnus::{Error, Ruby, function, method};
 
 use lindera::dictionary::Metadata;
-use lindera_binding_core::CoreMetadata;
+use lindera_binding::CoreMetadata;
 
 /// Dictionary metadata configuration.
 ///
-/// A thin magnus wrapper over [`lindera_binding_core::CoreMetadata`], which owns
+/// A thin magnus wrapper over [`lindera_binding::CoreMetadata`], which owns
 /// the default values and the schema wiring.
 #[magnus::wrap(class = "Lindera::Metadata", free_immediately, size)]
 #[derive(Debug, Clone)]
 pub struct RbMetadata {
-    /// The backing binding-core metadata.
+    /// The backing lindera-binding metadata.
     inner: CoreMetadata,
 }
 
@@ -288,7 +288,7 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lindera_binding_core::CoreSchema;
+    use lindera_binding::CoreSchema;
 
     #[test]
     fn test_rb_metadata_to_lindera_metadata() {

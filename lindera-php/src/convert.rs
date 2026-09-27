@@ -7,7 +7,7 @@ use ext_php_rs::convert::FromZval;
 use ext_php_rs::prelude::*;
 use ext_php_rs::types::array::ArrayKey;
 use ext_php_rs::types::{ZendHashTable, Zval};
-use lindera_binding_core::argument::{MAX_ARGUMENT_DEPTH, argument_too_deep_message};
+use lindera_binding::argument::{MAX_ARGUMENT_DEPTH, argument_too_deep_message};
 use serde_json::{Map, Value};
 
 use crate::error::lindera_value_err;

@@ -1,4 +1,4 @@
-use lindera::LinderaResult;
+use lindera_segmenter::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "embed-ipadic")]
@@ -6,11 +6,11 @@ fn main() -> LinderaResult<()> {
         use std::fs::File;
         use std::path::PathBuf;
 
-        use lindera::dictionary::{Metadata, load_dictionary, load_user_dictionary};
-        use lindera::error::LinderaErrorKind;
-        use lindera::mode::Mode;
-        use lindera::segmenter::Segmenter;
         use lindera_analysis::tokenizer::Tokenizer;
+        use lindera_segmenter::dictionary::{Metadata, load_dictionary, load_user_dictionary};
+        use lindera_segmenter::error::LinderaErrorKind;
+        use lindera_segmenter::mode::Mode;
+        use lindera_segmenter::segmenter::Segmenter;
 
         let user_dict_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")

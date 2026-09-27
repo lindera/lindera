@@ -59,7 +59,7 @@ Segmenterが生成したトークンを後処理するフィルタのtraitです
 
 ### AnalysisWorker
 
-`AnalysisWorker`（`Tokenizer::new_worker`または`Tokenizer::into_worker`で作成）は、解析チェーン全体に対する再利用可能なセッションです。呼び出しごとのバッファ — Viterbiラティスとバックトレース用スクラッチ（`SegmentWorker`経由）、文字フィルタが操作する正規化テキストバッファ、オフセットマッピング用スクラッチ — をすべて所有するため、`tokenize`を繰り返し呼び出しても`Tokenizer::tokenize`が支払う呼び出しごとのアロケーションを回避できます。文字フィルタが設定されている場合、トークンのsurfaceはトークンごとの`String`にコピーされる代わりにワーカーのバッファを借用します。返されるトークンはワーカーを借用するため、次の呼び出しの前に消費する必要があります。マルチスレッドで使う場合はスレッドごとにワーカーを作成してください（あるいは`lindera-binding-core`のように`Mutex`で保護します）。基盤となる`SegmentWorker`と自動メモリ縮小ポリシーについては[Segmenter](../lindera/segmenter.md)のページを参照してください。
+`AnalysisWorker`（`Tokenizer::new_worker`または`Tokenizer::into_worker`で作成）は、解析チェーン全体に対する再利用可能なセッションです。呼び出しごとのバッファ — Viterbiラティスとバックトレース用スクラッチ（`SegmentWorker`経由）、文字フィルタが操作する正規化テキストバッファ、オフセットマッピング用スクラッチ — をすべて所有するため、`tokenize`を繰り返し呼び出しても`Tokenizer::tokenize`が支払う呼び出しごとのアロケーションを回避できます。文字フィルタが設定されている場合、トークンのsurfaceはトークンごとの`String`にコピーされる代わりにワーカーのバッファを借用します。返されるトークンはワーカーを借用するため、次の呼び出しの前に消費する必要があります。マルチスレッドで使う場合はスレッドごとにワーカーを作成してください（あるいは`lindera-binding`のように`Mutex`で保護します）。基盤となる`SegmentWorker`と自動メモリ縮小ポリシーについては[Segmenter](../lindera/segmenter.md)のページを参照してください。
 
 `AnalysisWorker`の主なpublicメソッド:
 

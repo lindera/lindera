@@ -4,9 +4,9 @@ use std::collections::HashSet;
 use serde_json::Value;
 
 use crate::token_filter::tags::KEY_BUFFER_CAPACITY;
-use lindera::LinderaResult;
-use lindera::error::LinderaErrorKind;
-use lindera::token::Token;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::error::LinderaErrorKind;
+use lindera_segmenter::token::Token;
 
 /// Parses the optional `"new_tag"` string shared by the compound-word token
 /// filters.
@@ -185,9 +185,11 @@ mod tests {
     use std::cell::Cell;
     use std::collections::HashSet;
 
-    use lindera::dictionary::{Dictionary, DictionaryKind, WordId, load_embedded_dictionary};
-    use lindera::token::Token;
     use lindera_dictionary::viterbi::LexType;
+    use lindera_segmenter::dictionary::{
+        Dictionary, DictionaryKind, WordId, load_embedded_dictionary,
+    };
+    use lindera_segmenter::token::Token;
 
     use super::*;
     use crate::token_filter::tags::write_japanese_pos_key;

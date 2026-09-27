@@ -16,10 +16,11 @@ graph TB
     CCCEDICT["lindera-cc-cedict"]
     JIEBA["lindera-jieba"]
     NEOLOGD["lindera-ipadic-neologd"]
-    LIB["lindera\n(Segmenter)"]
+    SEGMENTER["lindera-segmenter\n(Segmenter)"]
     ANALYSIS["lindera-analysis\n(Analysis Chain)"]
+    LIB["lindera\n(Facade)"]
     CLI["lindera-cli\n(CLI)"]
-    BINDINGCORE["lindera-binding-core"]
+    BINDING["lindera-binding"]
     PY["lindera-python"]
     NODEJS["lindera-nodejs"]
     RUBY["lindera-ruby"]
@@ -28,7 +29,7 @@ graph TB
 
     CRF --> TRAINER
     DICT --> TRAINER
-    TRAINER -.->|"train feature"| LIB
+    TRAINER -.->|"train feature"| SEGMENTER
     DICT --> IPADIC
     DICT --> UNIDIC
     DICT --> SUDACHIDICT
@@ -36,26 +37,24 @@ graph TB
     DICT --> CCCEDICT
     DICT --> JIEBA
     DICT --> NEOLOGD
-    DICT --> LIB
-    DICT --> ANALYSIS
-    DICT --> WASM
-    IPADIC --> LIB
-    UNIDIC --> LIB
-    SUDACHIDICT --> LIB
-    KODIC --> LIB
-    CCCEDICT --> LIB
-    JIEBA --> LIB
-    NEOLOGD --> LIB
-    LIB --> ANALYSIS
+    DICT --> SEGMENTER
+    IPADIC --> SEGMENTER
+    UNIDIC --> SEGMENTER
+    SUDACHIDICT --> SEGMENTER
+    KODIC --> SEGMENTER
+    CCCEDICT --> SEGMENTER
+    JIEBA --> SEGMENTER
+    NEOLOGD --> SEGMENTER
+    SEGMENTER --> ANALYSIS
+    SEGMENTER --> LIB
+    ANALYSIS -.->|"analysis feature"| LIB
     LIB --> CLI
-    ANALYSIS --> CLI
-    LIB --> BINDINGCORE
-    ANALYSIS --> BINDINGCORE
-    BINDINGCORE --> PY
-    BINDINGCORE --> NODEJS
-    BINDINGCORE --> RUBY
-    BINDINGCORE --> PHP
-    BINDINGCORE --> WASM
+    LIB --> BINDING
+    BINDING --> PY
+    BINDING --> NODEJS
+    BINDING --> RUBY
+    BINDING --> PHP
+    BINDING --> WASM
 ```
 
 ## Crate Overview
@@ -65,10 +64,11 @@ graph TB
 | `lindera-crf` | Core | Pure Rust CRF (Conditional Random Field) implementation. Supports `no_std`. Uses `rkyv` for serialization. |
 | `lindera-dictionary` | Core | Dictionary base library. Provides dictionary loading and building. |
 | `lindera-trainer` | Core | CRF-based dictionary training pipeline. Builds on `lindera-crf` and `lindera-dictionary`; consumed directly or via the `lindera` facade's `train` feature. |
-| `lindera` | Core | Pure morphological segmenter. Integrates the dictionary crates and provides the `Segmenter` API. |
-| `lindera-analysis` | Core | Lucene-style analysis chain on top of `lindera`: character filters, token filters, and the `Tokenizer` that composes them around a `Segmenter`. |
+| `lindera-segmenter` | Core | Pure morphological segmenter (the `lindera` crate of v6 and earlier). Integrates the dictionary crates and provides the `Segmenter` API. |
+| `lindera-analysis` | Core | Lucene-style analysis chain on top of `lindera-segmenter`: character filters, token filters, and the `Tokenizer` that composes them around a `Segmenter`. Reachable as `lindera::analysis`. |
+| `lindera` | Core | Facade crate and the one dependency Rust users add: re-exports `lindera-segmenter` and, with the default `analysis` feature, `lindera-analysis` as `lindera::analysis`. |
 | `lindera-cli` | Application | Command-line interface for tokenization, dictionary building, and CRF training. |
-| `lindera-binding-core` | Core | FFI-independent helpers shared by the five language bindings below. |
+| `lindera-binding` | Core | FFI-independent helpers shared by the five language bindings below; depends on the `lindera` facade. |
 | `lindera-ipadic` | Dictionary | Japanese dictionary based on IPADIC. |
 | `lindera-ipadic-neologd` | Dictionary | Japanese dictionary based on IPADIC NEologd (includes neologisms). |
 | `lindera-unidic` | Dictionary | Japanese dictionary based on UniDic. |
@@ -108,8 +108,9 @@ The **Segmenter** is the core component. It builds a lattice of candidate tokens
 
 | Feature | Description | Default |
 | --- | --- | --- |
+| `analysis` | Re-export of `lindera-analysis` as `lindera::analysis` (character filters, token filters, `Tokenizer`) | Enabled (off with `default-features = false`) |
 | `mmap` | Memory-mapped file support for filesystem-based dictionary loading (opt-in via `--mmap`/`use_mmap`; the word-list files, the connection-cost matrix, and the trie all stay lazily paged) | Enabled |
-| `train` | CRF-based dictionary training functionality (depends on `lindera-crf`) | CLI + Python/Node.js/Ruby/PHP bindings (default); opt-in for `lindera` core; unavailable in `lindera-wasm` |
+| `train` | CRF-based dictionary training functionality (depends on `lindera-crf`) | CLI + Python/Node.js/Ruby/PHP bindings (default); opt-in for the `lindera` library crate; unavailable in `lindera-wasm` |
 | `embed-ipadic` | Embed the IPADIC dictionary into the binary | Disabled |
 | `embed-ipadic-neologd` | Embed the IPADIC NEologd dictionary into the binary | Disabled |
 | `embed-unidic` | Embed the UniDic dictionary into the binary | Disabled |
@@ -126,7 +127,7 @@ The **Segmenter** is the core component. It builds a lattice of candidate tokens
 
 - [Getting Started](./getting_started.md) -- Installation and first steps
 - [Core Concepts](./concepts.md) -- Dictionaries, tokenization, and filters
-- [Lindera Library](./lindera.md) -- Segmenter and API
+- [Lindera Library](./lindera.md) -- The `lindera` facade and the segmenter API
 - [Lindera Analysis](./lindera-analysis.md) -- Character filters, token filters, and the `Tokenizer`
 - [Lindera Dictionary](./lindera-dictionary.md) -- Dictionary loading and building
 - [Lindera Trainer](./lindera-trainer.md) -- CRF-based dictionary training

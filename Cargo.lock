@@ -497,9 +497,9 @@ checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
 name = "console"
-version = "0.16.3"
+version = "0.16.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d64e8af5551369d19cf50138de61f1c42074ab970f74e99be916646777f8fc87"
+checksum = "e96a4956774c13c126a8b5af4daa79384f4d826534c95a02d76afb39e2ab64e3"
 dependencies = [
  "encode_unicode",
  "libc",
@@ -1596,24 +1596,10 @@ dependencies = [
  "anyhow",
  "criterion",
  "insta",
- "lindera-cc-cedict",
- "lindera-dictionary",
- "lindera-ipadic",
- "lindera-ipadic-neologd",
- "lindera-jieba",
- "lindera-ko-dic",
- "lindera-sudachidict",
- "lindera-trainer",
- "lindera-unidic",
- "log",
- "once_cell",
- "percent-encoding",
- "serde",
+ "lindera-analysis",
+ "lindera-segmenter",
  "serde_json",
- "strum",
- "strum_macros",
  "tempfile",
- "url",
 ]
 
 [[package]]
@@ -1624,8 +1610,8 @@ dependencies = [
  "criterion",
  "daachorse",
  "kanaria",
- "lindera",
  "lindera-dictionary",
+ "lindera-segmenter",
  "once_cell",
  "regex",
  "serde",
@@ -1637,12 +1623,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "lindera-binding-core"
+name = "lindera-binding"
 version = "6.2.0"
 dependencies = [
  "criterion",
  "lindera",
- "lindera-analysis",
  "serde_json",
 ]
 
@@ -1663,7 +1648,6 @@ dependencies = [
  "dirs",
  "flate2",
  "lindera",
- "lindera-analysis",
  "num_cpus",
  "serde_json",
  "tempfile",
@@ -1747,7 +1731,7 @@ name = "lindera-nodejs"
 version = "6.2.0"
 dependencies = [
  "lindera",
- "lindera-binding-core",
+ "lindera-binding",
  "napi",
  "napi-build",
  "napi-derive",
@@ -1763,7 +1747,7 @@ version = "6.2.0"
 dependencies = [
  "ext-php-rs",
  "lindera",
- "lindera-binding-core",
+ "lindera-binding",
  "num_cpus",
  "serde",
  "serde_json",
@@ -1774,7 +1758,7 @@ name = "lindera-python"
 version = "6.2.0"
 dependencies = [
  "lindera",
- "lindera-binding-core",
+ "lindera-binding",
  "num_cpus",
  "pyo3",
  "serde",
@@ -1786,11 +1770,35 @@ name = "lindera-ruby"
 version = "6.2.0"
 dependencies = [
  "lindera",
- "lindera-binding-core",
+ "lindera-binding",
  "magnus",
  "num_cpus",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "lindera-segmenter"
+version = "6.2.0"
+dependencies = [
+ "anyhow",
+ "lindera-cc-cedict",
+ "lindera-dictionary",
+ "lindera-ipadic",
+ "lindera-ipadic-neologd",
+ "lindera-jieba",
+ "lindera-ko-dic",
+ "lindera-sudachidict",
+ "lindera-trainer",
+ "lindera-unidic",
+ "log",
+ "percent-encoding",
+ "serde",
+ "serde_json",
+ "strum",
+ "strum_macros",
+ "tempfile",
+ "url",
 ]
 
 [[package]]
@@ -1827,8 +1835,7 @@ version = "6.2.0"
 dependencies = [
  "js-sys",
  "lindera",
- "lindera-binding-core",
- "lindera-dictionary",
+ "lindera-binding",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",

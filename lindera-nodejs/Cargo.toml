@@ -39,7 +39,7 @@ default = ["train"] # Training enabled by default
 
 [dependencies]
 lindera = { workspace = true }
-lindera-binding-core = { workspace = true }
+lindera-binding = { workspace = true }
 napi = { version = "3.11.0", features = ["napi8", "serde-json"] }
 napi-derive = "3.6.0"
 num_cpus = { workspace = true }

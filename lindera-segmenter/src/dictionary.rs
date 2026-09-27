@@ -46,17 +46,27 @@ use lindera_unidic::embedded::EmbeddedUniDicLoader;
 use crate::LinderaResult;
 use crate::error::{LinderaError, LinderaErrorKind};
 
-pub type Dictionary = lindera_dictionary::dictionary::Dictionary;
-pub type Metadata = lindera_dictionary::dictionary::metadata::Metadata;
-pub type UserDictionary = lindera_dictionary::dictionary::UserDictionary;
-pub type Lattice = lindera_dictionary::viterbi::Lattice;
-pub type WordId = lindera_dictionary::viterbi::WordId;
-pub type DictionaryBuilder = lindera_dictionary::builder::DictionaryBuilder;
+// Low-level building blocks of `lindera-dictionary`, exposed inside this
+// module so facade users reach them as
+// `lindera::dictionary::core::prefix_dictionary::PrefixDictionary` and
+// `lindera::dictionary::builder::DictionaryBuilder`. `no_inline` keeps
+// rustdoc from duplicating the whole crate under `dictionary`.
+#[doc(no_inline)]
+pub use lindera_dictionary::dictionary as core;
+#[doc(no_inline)]
+pub use lindera_dictionary::{builder, error, loader, mode, nbest, space_penalty, util, viterbi};
+#[doc(no_inline)]
+pub use lindera_dictionary::{embedded_dictionary, include_bytes_aligned};
+
+pub use lindera_dictionary::builder::DictionaryBuilder;
+pub use lindera_dictionary::dictionary::metadata::Metadata;
+pub use lindera_dictionary::dictionary::schema::{FieldDefinition, FieldType, Schema};
+pub use lindera_dictionary::dictionary::{Dictionary, UserDictionary};
+pub use lindera_dictionary::viterbi::{Lattice, WordId};
+
 pub type DictionaryConfig = Value;
 pub type UserDictionaryConfig = Value;
-pub type Schema = lindera_dictionary::dictionary::schema::Schema;
-pub type FieldDefinition = lindera_dictionary::dictionary::schema::FieldDefinition;
-pub type FieldType = lindera_dictionary::dictionary::schema::FieldType;
+
 #[derive(Debug, Clone, EnumIter, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DictionaryScheme {
     #[cfg(any(

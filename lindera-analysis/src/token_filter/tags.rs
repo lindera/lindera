@@ -2,10 +2,10 @@ use std::collections::HashSet;
 
 use serde_json::Value;
 
-use lindera::LinderaResult;
-use lindera::dictionary::Dictionary;
-use lindera::error::LinderaErrorKind;
-use lindera::token::Token;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::dictionary::Dictionary;
+use lindera_segmenter::error::LinderaErrorKind;
+use lindera_segmenter::token::Token;
 
 /// Parses the `"tags"` string array shared by the keep/stop tag token filters.
 pub(crate) fn parse_tags(config: &Value) -> LinderaResult<HashSet<String>> {
@@ -232,11 +232,11 @@ pub(crate) mod test_support {
     use std::borrow::Cow;
     use std::sync::Arc;
 
-    use lindera::dictionary::{
+    use lindera_dictionary::viterbi::LexType;
+    use lindera_segmenter::dictionary::{
         Dictionary, DictionaryKind, Schema, WordId, load_embedded_dictionary,
     };
-    use lindera::token::Token;
-    use lindera_dictionary::viterbi::LexType;
+    use lindera_segmenter::token::Token;
 
     /// The SudachiDict schema (`lindera-sudachidict/metadata.json`): the
     /// display surface precedes the part-of-speech columns, so the
@@ -322,9 +322,9 @@ mod tests {
         use std::borrow::Cow;
         use std::cell::Cell;
 
-        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_segmenter::token::Token;
 
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
         let mut tokens: Vec<Token> = vec![Token {
@@ -357,9 +357,9 @@ mod tests {
         use std::borrow::Cow;
         use std::cell::Cell;
 
-        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_segmenter::token::Token;
 
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
         let mut tokens: Vec<Token> = vec![Token {
@@ -396,9 +396,9 @@ mod tests {
     fn test_write_japanese_pos_key_matches_join_semantics() {
         use std::borrow::Cow;
 
-        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_segmenter::token::Token;
 
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
@@ -451,9 +451,9 @@ mod tests {
     fn test_key_buffer_is_not_leaked_between_tokens() {
         use std::borrow::Cow;
 
-        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_segmenter::token::Token;
 
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
@@ -495,9 +495,9 @@ mod tests {
     fn test_retain_preserves_order_for_every_removal_shape() {
         use std::borrow::Cow;
 
-        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_segmenter::token::Token;
 
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
@@ -569,7 +569,7 @@ mod tests {
     /// first detail, which keeps those dictionaries on their old behavior.
     #[test]
     fn test_part_of_speech_offset_follows_the_schema() {
-        use lindera::dictionary::{DictionaryKind, Schema, load_embedded_dictionary};
+        use lindera_segmenter::dictionary::{DictionaryKind, Schema, load_embedded_dictionary};
 
         use super::test_support::{dictionary_with_schema, sudachidict_schema_dictionary};
 

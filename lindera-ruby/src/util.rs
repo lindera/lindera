@@ -3,7 +3,7 @@
 //! This module provides helper functions for converting between Ruby objects
 //! and Rust data structures, particularly for working with JSON-like data.
 
-use lindera_binding_core::argument::{MAX_ARGUMENT_DEPTH, argument_too_deep_message};
+use lindera_binding::argument::{MAX_ARGUMENT_DEPTH, argument_too_deep_message};
 use magnus::prelude::*;
 use magnus::{Error, RArray, RHash, Ruby, TryConvert, Value};
 

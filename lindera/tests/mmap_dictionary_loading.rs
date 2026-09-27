@@ -8,11 +8,11 @@ use std::borrow::Cow;
 use std::fs;
 use std::path::Path;
 
-use lindera::dictionary::{load_dictionary_with_options, load_fs_dictionary_with_options};
+use lindera::dictionary::{
+    DictionaryBuilder, Metadata, load_dictionary_with_options, load_fs_dictionary_with_options,
+};
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera_dictionary::builder::DictionaryBuilder;
-use lindera_dictionary::dictionary::metadata::Metadata;
 
 const CHAR_DEF: &str = "\
 DEFAULT 0 1 0

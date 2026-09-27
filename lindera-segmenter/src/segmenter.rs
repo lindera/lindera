@@ -271,9 +271,9 @@ impl Segmenter {
     /// # Example
     ///
     /// ```
-    /// use lindera::mode::Mode;
-    /// use lindera::dictionary::load_dictionary;
-    /// use lindera::segmenter::Segmenter;
+    /// use lindera_segmenter::mode::Mode;
+    /// use lindera_segmenter::dictionary::load_dictionary;
+    /// use lindera_segmenter::segmenter::Segmenter;
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// # #[cfg(feature = "embed-ipadic")]
@@ -343,10 +343,10 @@ impl Segmenter {
     /// # Example
     ///
     /// ```
-    /// use lindera::mode::Mode;
-    /// use lindera::dictionary::load_dictionary;
-    /// use lindera::segmenter::Segmenter;
-    /// use lindera::space_penalty::{SpacePenaltyConfig, SpacePenaltyRule};
+    /// use lindera_segmenter::mode::Mode;
+    /// use lindera_segmenter::dictionary::load_dictionary;
+    /// use lindera_segmenter::segmenter::Segmenter;
+    /// use lindera_segmenter::space_penalty::{SpacePenaltyConfig, SpacePenaltyRule};
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// # #[cfg(feature = "embed-ko-dic")]
@@ -419,9 +419,9 @@ impl Segmenter {
     /// # Example
     ///
     /// ```
-    /// use lindera::mode::Mode;
-    /// use lindera::dictionary::load_dictionary;
-    /// use lindera::segmenter::Segmenter;
+    /// use lindera_segmenter::mode::Mode;
+    /// use lindera_segmenter::dictionary::load_dictionary;
+    /// use lindera_segmenter::segmenter::Segmenter;
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// # #[cfg(feature = "embed-ko-dic")]

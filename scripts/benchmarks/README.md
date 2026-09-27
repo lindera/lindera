@@ -55,7 +55,7 @@ against two build output directories via `BENCH_LINDERA_DIR`).
 | Node.js | `npx napi build --platform --release --features embed-ipadic` per side; point `BENCH_LINDERA_DIR` at the checkout | `bench_nodejs.mjs` |
 | Ruby | `bundle exec rake compile` per side (`LINDERA_FEATURES=embed-ipadic`) | `bench_ruby.rb` |
 | PHP | `cargo build -p lindera-php --release --features embed-ipadic`; pass the extension path via `BENCH_PHP_EXT` | `bench_php.php` |
-| WASM | not measured in a browser (noise-dominated); covered by the Rust-level `lindera-binding-core` criterion bench instead | — |
+| WASM | not measured in a browser (noise-dominated); covered by the Rust-level `lindera-binding` criterion bench instead | — |
 
 ## Environment variables
 

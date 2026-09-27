@@ -2,7 +2,7 @@
 //!
 //! This module provides a builder pattern for creating tokenizers and the tokenizer itself.
 //! The build-flow orchestration is delegated to
-//! [`lindera_binding_core::CoreTokenizerBuilder`] / [`lindera_binding_core::CoreTokenizer`];
+//! [`lindera_binding::CoreTokenizerBuilder`] / [`lindera_binding::CoreTokenizer`];
 //! this module only adds the magnus wrappers and the Ruby-hash conversion.
 
 use std::cell::RefCell;
@@ -12,7 +12,7 @@ use magnus::prelude::*;
 use magnus::scan_args::{get_kwargs, scan_args};
 use magnus::{Error, RArray, RHash, Ruby, Value, function, method};
 
-use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
+use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{RbDictionary, RbUserDictionary};
 use crate::error::to_magnus_error;
@@ -25,7 +25,7 @@ use crate::util::{rb_hash_to_json, rb_value_to_json};
 /// Uses `RefCell` for interior mutability since Magnus `method!` requires `&self`.
 #[magnus::wrap(class = "Lindera::TokenizerBuilder", free_immediately, size)]
 pub struct RbTokenizerBuilder {
-    /// Inner binding-core tokenizer builder (wrapped in RefCell for interior mutability).
+    /// Inner lindera-binding tokenizer builder (wrapped in RefCell for interior mutability).
     inner: RefCell<CoreTokenizerBuilder>,
 }
 
@@ -194,7 +194,7 @@ impl RbTokenizerBuilder {
 /// The tokenizer processes text and returns tokens with their morphological features.
 #[magnus::wrap(class = "Lindera::Tokenizer", free_immediately, size)]
 pub struct RbTokenizer {
-    /// Inner binding-core tokenizer.
+    /// Inner lindera-binding tokenizer.
     inner: CoreTokenizer,
 }
 

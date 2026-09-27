@@ -7,8 +7,8 @@ use unicode_normalization::{
 };
 use unicode_segmentation::UnicodeSegmentation;
 
-use lindera::LinderaResult;
-use lindera::error::{LinderaError, LinderaErrorKind};
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::error::{LinderaError, LinderaErrorKind};
 
 use crate::character_filter::{CharacterFilter, OffsetMapping, Transformation};
 

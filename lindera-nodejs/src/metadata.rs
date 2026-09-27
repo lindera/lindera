@@ -2,13 +2,13 @@
 //!
 //! This module provides structures for configuring dictionary metadata, including
 //! character encodings and schema definitions. The defaults and schema wiring are
-//! delegated to [`lindera_binding_core::CoreMetadata`]; this module only adds the
+//! delegated to [`lindera_binding::CoreMetadata`]; this module only adds the
 //! napi wrappers.
 
 use std::collections::HashMap;
 
 use lindera::dictionary::Metadata;
-use lindera_binding_core::CoreMetadata;
+use lindera_binding::CoreMetadata;
 
 /// Options for creating a Metadata instance.
 ///
@@ -37,11 +37,11 @@ pub struct MetadataOptions {
 
 /// Dictionary metadata configuration.
 ///
-/// A thin napi wrapper over [`lindera_binding_core::CoreMetadata`], which owns
+/// A thin napi wrapper over [`lindera_binding::CoreMetadata`], which owns
 /// the default values and the schema wiring.
 #[napi(js_name = "Metadata")]
 pub struct JsMetadata {
-    /// The backing binding-core metadata.
+    /// The backing lindera-binding metadata.
     inner: CoreMetadata,
 }
 

@@ -65,8 +65,12 @@ if [[ -n "${LINDERA_SOURCE_DIR:-}" ]]; then
   trap 'rm -rf "$CARGO_HOME"' EXIT
   cat >"$CARGO_HOME/config.toml" <<TOML
 [patch.crates-io]
+# Only the crates lindera-ruby/Cargo.toml names directly need an entry: the
+# facade's own dependencies (lindera-segmenter, lindera-analysis,
+# lindera-dictionary, ...) are path dependencies inside the checkout's
+# workspace, so they already resolve there.
 lindera = { path = "$source_dir/lindera" }
-lindera-binding-core = { path = "$source_dir/lindera-binding-core" }
+lindera-binding = { path = "$source_dir/lindera-binding" }
 TOML
   echo "Compiling the lindera crates from $source_dir instead of crates.io (CARGO_HOME=$CARGO_HOME)"
 fi

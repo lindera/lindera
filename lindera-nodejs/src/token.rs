@@ -42,16 +42,16 @@ pub struct Token {
 }
 
 impl Token {
-    /// Creates a Token from a binding-core `TokenView`.
+    /// Creates a Token from a lindera-binding `TokenView`.
     ///
     /// # Arguments
     ///
-    /// * `view` - The token view produced by the binding-core tokenizer.
+    /// * `view` - The token view produced by the lindera-binding tokenizer.
     ///
     /// # Returns
     ///
     /// A new Token instance.
-    pub fn from_view(view: lindera_binding_core::TokenView) -> Self {
+    pub fn from_view(view: lindera_binding::TokenView) -> Self {
         Self {
             surface: view.surface,
             byte_start: view.byte_start as u32,

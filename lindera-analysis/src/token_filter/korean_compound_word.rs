@@ -9,8 +9,8 @@ use crate::token_filter::compound::{
     merge_consecutive_tokens, parse_new_tag, write_compound_details,
 };
 use crate::token_filter::tags::parse_tags;
-use lindera::LinderaResult;
-use lindera::token::Token;
+use lindera_segmenter::LinderaResult;
+use lindera_segmenter::token::Token;
 
 pub const KOREAN_COMPOUND_WORD_TOKEN_FILTER_NAME: &str = "korean_compound_word";
 
@@ -162,9 +162,11 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::token_filter::TokenFilter;
-        use lindera::dictionary::{Dictionary, DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera::token::Token;
         use lindera_dictionary::viterbi::LexType;
+        use lindera_segmenter::dictionary::{
+            Dictionary, DictionaryKind, WordId, load_embedded_dictionary,
+        };
+        use lindera_segmenter::token::Token;
 
         /// `이천이십육년` as ko-dic tokenizes it: one token per numeral morpheme, then `년`.
         /// Every Hangul syllable is three bytes.
@@ -266,10 +268,10 @@ mod tests {
         use crate::token_filter::BoxTokenFilter;
         use crate::token_filter::korean_number::KoreanNumberTokenFilter;
         use crate::tokenizer::Tokenizer;
-        use lindera::dictionary::load_dictionary;
-        use lindera::mode::Mode;
-        use lindera::segmenter::Segmenter;
-        use lindera::token::Token;
+        use lindera_segmenter::dictionary::load_dictionary;
+        use lindera_segmenter::mode::Mode;
+        use lindera_segmenter::segmenter::Segmenter;
+        use lindera_segmenter::token::Token;
 
         /// A tokenizer over the embedded ko-dic with the given filter chain.
         fn build(filters: Vec<BoxTokenFilter>) -> Tokenizer {

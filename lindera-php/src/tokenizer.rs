@@ -2,7 +2,7 @@
 //!
 //! This module provides a builder pattern for creating tokenizers and the tokenizer itself.
 //! The build-flow orchestration is delegated to
-//! [`lindera_binding_core::CoreTokenizerBuilder`] / [`lindera_binding_core::CoreTokenizer`];
+//! [`lindera_binding::CoreTokenizerBuilder`] / [`lindera_binding::CoreTokenizer`];
 //! this module only adds the ext-php-rs wrappers and the Zval conversion.
 
 use std::cell::RefCell;
@@ -11,7 +11,7 @@ use std::path::Path;
 use ext_php_rs::prelude::*;
 use ext_php_rs::types::Zval;
 
-use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
+use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::convert::{ConvertError, zval_to_value};
 use crate::dictionary::{PhpDictionary, PhpUserDictionary};
@@ -210,7 +210,7 @@ impl PhpTokenizerBuilder {
 #[php_class]
 #[php(name = "Lindera\\Tokenizer")]
 pub struct PhpTokenizer {
-    /// The inner binding-core tokenizer.
+    /// The inner lindera-binding tokenizer.
     inner: CoreTokenizer,
 }
 

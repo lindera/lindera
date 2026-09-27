@@ -1,0 +1,88 @@
+[package]
+name = "lindera-segmenter"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+description = "Morphological segmenter and dictionary loading API for Lindera."
+documentation = "https://docs.rs/lindera-segmenter"
+homepage = { workspace = true }
+repository = { workspace = true }
+readme = "README.md"
+keywords = ["morphological", "analysis", "segmenter", "library"]
+categories = { workspace = true }
+license = { workspace = true }
+
+[features]
+embed-ipadic = [
+    "lindera-ipadic/embed-ipadic",
+] # Embed IPADIC dictionary in the binary
+embed-ipadic-neologd = [
+    "lindera-ipadic-neologd/embed-ipadic-neologd",
+] # Embed IPADIC-NEologd dictionary in the binary
+embed-unidic = [
+    "lindera-unidic/embed-unidic",
+] # Embed UniDic dictionary in the binary
+embed-sudachidict = [
+    "lindera-sudachidict/embed-sudachidict",
+] # Embed SudachiDict dictionary in the binary
+embed-ko-dic = [
+    "lindera-ko-dic/embed-ko-dic",
+] # Embed ko-dic dictionary in the binary
+embed-cc-cedict = [
+    "lindera-cc-cedict/embed-cc-cedict",
+] # Embed CC-CEDICT dictionary in the binary
+embed-jieba = [
+    "lindera-jieba/embed-jieba",
+] # Embed Jieba dictionary in the binary
+embed-cjk = [
+    "embed-ipadic",
+    "embed-ko-dic",
+    "embed-jieba",
+] # Embed CJK dictionaries (IPADIC, ko-dic, Jieba) in the binary
+embed-cjk2 = [
+    "embed-unidic",
+    "embed-ko-dic",
+    "embed-jieba",
+] # Embed CJK dictionaries (UniDic, ko-dic, Jieba) in the binary
+embed-cjk3 = [
+    "embed-ipadic-neologd",
+    "embed-ko-dic",
+    "embed-jieba",
+] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, Jieba) in the binary
+embed-cjk4 = [
+    "embed-sudachidict",
+    "embed-ko-dic",
+    "embed-jieba",
+] # Embed CJK dictionaries (SudachiDict, ko-dic, Jieba) in the binary
+mmap = ["lindera-dictionary/mmap"] # Use memory-mapped file
+train = ["dep:lindera-trainer"] # Enable training functionality
+# Experimental: profile per-context-id connection-matrix access frequency over a
+# corpus (see the `ctxfreq-dump` example). Off by default.
+ctxfreq = ["lindera-dictionary/ctxfreq"]
+default = ["mmap"]
+
+[dependencies]
+anyhow = { workspace = true }
+lindera-cc-cedict = { workspace = true, optional = true }
+lindera-dictionary = { workspace = true }
+lindera-ipadic = { workspace = true, optional = true }
+lindera-ipadic-neologd = { workspace = true, optional = true }
+lindera-jieba = { workspace = true, optional = true }
+lindera-ko-dic = { workspace = true, optional = true }
+lindera-sudachidict = { workspace = true, optional = true }
+lindera-trainer = { workspace = true, optional = true }
+lindera-unidic = { workspace = true, optional = true }
+log = { workspace = true }
+percent-encoding = "2.3.2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+url = "2.5.8"
+
+[dev-dependencies]
+tempfile = "3.27.0"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

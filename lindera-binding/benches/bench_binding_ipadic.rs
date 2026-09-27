@@ -6,7 +6,7 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 
 #[cfg(feature = "embed-ipadic")]
-use lindera_binding_core::tokenizer::CoreTokenizer;
+use lindera_binding::tokenizer::CoreTokenizer;
 
 #[cfg(feature = "embed-ipadic")]
 const SHORT_TEXT: &str = "すもももももももものうち";
@@ -45,5 +45,5 @@ criterion_main!(benches);
 
 #[cfg(not(feature = "embed-ipadic"))]
 fn main() {
-    eprintln!("bench_binding_core_ipadic requires --features embed-ipadic");
+    eprintln!("bench_binding_ipadic requires --features embed-ipadic");
 }

@@ -24,7 +24,7 @@ gem "lindera"
 > [!NOTE]
 > Use lindera v6.1.0 or later. The `lindera` gems published before v6.1.0 fail to compile during installation; for those versions, build from source as described below.
 
-The gem compiles against the [crates.io](https://crates.io/crates/lindera) releases of `lindera` and `lindera-binding-core` of the same version, which it pins exactly. It ships no `Cargo.lock`, so their dependencies, including the other `lindera-*` crates, resolve to the latest compatible releases at install time. It builds with the default features (`train`) and no embedded dictionary; see [Obtaining Dictionaries](#obtaining-dictionaries). To enable other [feature flags](#feature-flags), set `LINDERA_FEATURES` when installing:
+The gem compiles against the [crates.io](https://crates.io/crates/lindera) releases of `lindera` and `lindera-binding` of the same version, which it pins exactly. It ships no `Cargo.lock`, so their dependencies, including the other `lindera-*` crates, resolve to the latest compatible releases at install time. It builds with the default features (`train`) and no embedded dictionary; see [Obtaining Dictionaries](#obtaining-dictionaries). To enable other [feature flags](#feature-flags), set `LINDERA_FEATURES` when installing:
 
 ```bash
 LINDERA_FEATURES="embed-ipadic" gem install lindera
@@ -68,7 +68,7 @@ minitest suite.
 `bundle exec rake build` (or `make package-lindera-ruby`) writes the source gem
 to `lindera-ruby/pkg/`. It packages the crate as `cargo package` normalizes it,
 so the gem compiles outside this repository, against the crates.io releases of
-`lindera` and `lindera-binding-core` of the same version. Do not run `gem build`
+`lindera` and `lindera-binding` of the same version. Do not run `gem build`
 directly: the crate's own `Cargo.toml` only resolves inside the Cargo workspace.
 
 `make test-lindera-ruby-gem` (requires Docker) builds the gem, installs it with

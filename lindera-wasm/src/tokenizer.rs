@@ -4,7 +4,7 @@ use std::rc::Rc;
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
 
-use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
+use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::json::json_from_js;
@@ -47,7 +47,7 @@ fn parse_filter_args(args: JsValue) -> Result<Value, JsValue> {
 
 /// Mutable builder configuration shared between chained builder handles.
 struct BuilderState {
-    /// The backing binding-core builder (used for URI-based dictionary loading).
+    /// The backing lindera-binding builder (used for URI-based dictionary loading).
     inner: CoreTokenizerBuilder,
     /// Pre-loaded dictionary instance, used instead of URI-based loading.
     dictionary_instance: Option<JsDictionary>,
@@ -66,7 +66,7 @@ struct BuilderState {
 /// `TokenizerBuilder` provides a fluent API for configuring and building a tokenizer
 /// with various options such as dictionary selection, tokenization mode, character filters,
 /// and token filters. The build-flow orchestration is delegated to
-/// [`lindera_binding_core::CoreTokenizerBuilder`].
+/// [`lindera_binding::CoreTokenizerBuilder`].
 ///
 /// Setters return a builder handle sharing the same configuration, so both the
 /// chained style (`builder.setMode(...).setDictionary(...).build()`) and the
@@ -358,7 +358,7 @@ impl TokenizerBuilder {
 /// A tokenizer for morphological analysis.
 #[wasm_bindgen]
 pub struct Tokenizer {
-    /// The backing binding-core tokenizer.
+    /// The backing lindera-binding tokenizer.
     inner: CoreTokenizer,
 }
 
@@ -1103,7 +1103,7 @@ mod tests {
     fn test_space_penalty_rules_that_cannot_apply_fail_the_build() {
         use std::sync::Arc;
 
-        use lindera_dictionary::dictionary::schema::Schema;
+        use lindera::dictionary::core::schema::Schema;
 
         use crate::TokenizerBuilder;
         use crate::dictionary::load_dictionary;
