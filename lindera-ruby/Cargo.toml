@@ -48,7 +48,7 @@ default = ["train"] # No directories included
 # scripts/bump-up-version.sh keeps these in step with the workspace.
 lindera = { version = "=7.0.0", path = "../lindera" }
 lindera-binding = { version = "=7.0.0", path = "../lindera-binding" }
-magnus = { version = "0.8.2", features = ["rb-sys"] }
+magnus = { version = "0.9.0", features = ["rb-sys"] }
 num_cpus = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
