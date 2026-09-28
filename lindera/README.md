@@ -564,8 +564,6 @@ Notes:
 - Version subdirectories accumulate across upgrades and are not garbage-collected; old ones can be removed freely
 - Setting this variable causes dictionary crates to download and build their dictionaries even when no `embed-*` feature is enabled (useful for pre-populating the cache)
 
-> **Deprecated:** the previous name `LINDERA_DICTIONARIES_PATH` still works as a fallback (the new name wins when both are set) and will be removed in v7.0.0.
-
 ### LINDERA_CONFIG_PATH
 
 The `LINDERA_CONFIG_PATH` environment variable specifies the path to a YAML configuration file for the tokenizer. This allows you to configure tokenizer behavior without modifying Rust code.

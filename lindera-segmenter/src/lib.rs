@@ -25,7 +25,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 ///
 /// # Returns
 ///
-/// The crate version string, e.g. `"6.2.0"`.
+/// The crate version string, e.g. `"7.0.0"`.
 pub fn get_version() -> &'static str {
     VERSION
 }
