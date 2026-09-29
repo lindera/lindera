@@ -259,7 +259,7 @@ const schema = new Schema(["surface", "left_id", "right_id", "cost", "pos", "rea
 
 #### Schema Static Methods
 
-- `Schema.create_default()` -- Creates a built-in 13-field schema loosely modeled on IPADIC's layout: the four system fields (`surface`, `left_context_id`, `right_context_id`, `cost`) followed by nine generic feature fields (`major_pos`, `pos_detail_1`-`pos_detail_3`, `conjugation_type`, `conjugation_form`, `base_form`, `reading`, `pronunciation`). These names -- and the `conjugation_type`/`conjugation_form` order -- differ from the real `lindera-ipadic` dictionary schema (`part_of_speech`, `part_of_speech_subcategory_1`-`_3`, `conjugation_form`, `conjugation_type`, ...). To match an actual IPADIC dictionary's schema, use `dictionary.metadata.dictionary_schema` from a loaded dictionary instead
+- `Schema.create_default()` -- Creates a built-in 13-field schema loosely modeled on IPADIC's layout: the four system fields (`surface`, `left_context_id`, `right_context_id`, `cost`) followed by nine generic feature fields (`major_pos`, `pos_detail_1`-`pos_detail_3`, `conjugation_type`, `conjugation_form`, `base_form`, `reading`, `pronunciation`). The four part-of-speech names differ from the real `lindera-ipadic` dictionary schema, which uses `part_of_speech` and `part_of_speech_subcategory_1`-`_3`; the remaining fields match it in name and order. To match an actual IPADIC dictionary's schema, use `dictionary.metadata.dictionary_schema` from a loaded dictionary instead
 
 #### Schema Methods
 

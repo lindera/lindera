@@ -26,8 +26,8 @@ IPADIC の辞書フォーマットと品詞タグの詳細は[マニュアル](h
 | 5 | 品詞細分類1 | Middle POS classification | |
 | 6 | 品詞細分類2 | Small POS classification | |
 | 7 | 品詞細分類3 | Fine POS classification | |
-| 8 | 活用形 | Conjugation type | |
-| 9 | 活用型 | Conjugation form | |
+| 8 | 活用型 | Conjugation type | |
+| 9 | 活用形 | Conjugation form | |
 | 10 | 原形 | Base form | |
 | 11 | 読み | Reading | |
 | 12 | 発音 | Pronunciation | |
@@ -54,8 +54,8 @@ IPADIC の辞書フォーマットと品詞タグの詳細は[マニュアル](h
 | 5 | 品詞細分類1 | POS subcategory 1 | |
 | 6 | 品詞細分類2 | POS subcategory 2 | |
 | 7 | 品詞細分類3 | POS subcategory 3 | |
-| 8 | 活用形 | Conjugation type | |
-| 9 | 活用型 | Conjugation form | |
+| 8 | 活用型 | Conjugation type | |
+| 9 | 活用形 | Conjugation form | |
 | 10 | 原形 | Base form | |
 | 11 | 読み | Reading | |
 | 12 | 発音 | Pronunciation | |
@@ -79,8 +79,8 @@ IPADIC の辞書フォーマットと品詞タグの詳細は[マニュアル](h
 | 5 | 品詞細分類1 | Middle POS classification | |
 | 6 | 品詞細分類2 | Small POS classification | |
 | 7 | 品詞細分類3 | Fine POS classification | |
-| 8 | 活用形 | Conjugation type | |
-| 9 | 活用型 | Conjugation form | |
+| 8 | 活用型 | Conjugation type | |
+| 9 | 活用形 | Conjugation form | |
 | 10 | 原形 | Base form | |
 | 11 | 読み | Reading | |
 | 12 | 発音 | Pronunciation | |
@@ -107,8 +107,8 @@ IPADIC の辞書フォーマットと品詞タグの詳細は[マニュアル](h
 | 5 | 品詞細分類1 | POS subcategory 1 | |
 | 6 | 品詞細分類2 | POS subcategory 2 | |
 | 7 | 品詞細分類3 | POS subcategory 3 | |
-| 8 | 活用形 | Conjugation type | |
-| 9 | 活用型 | Conjugation form | |
+| 8 | 活用型 | Conjugation type | |
+| 9 | 活用形 | Conjugation form | |
 | 10 | 原形 | Base form | |
 | 11 | 読み | Reading | |
 | 12 | 発音 | Pronunciation | |
@@ -132,8 +132,8 @@ unidic-mecab の辞書フォーマットと品詞タグの詳細は[マニュア
 | 5 | 品詞中分類 | Middle POS classification | |
 | 6 | 品詞小分類 | Small POS classification | |
 | 7 | 品詞細分類 | Fine POS classification | |
-| 8 | 活用型 | Conjugation form | |
-| 9 | 活用形 | Conjugation type | |
+| 8 | 活用型 | Conjugation type | |
+| 9 | 活用形 | Conjugation form | |
 | 10 | 語彙素読み | Lexeme reading | |
 | 11 | 語彙素（語彙素表記 + 語彙素細分類） | Lexeme | |
 | 12 | 書字形出現形 | Orthography appearance type | |
@@ -168,8 +168,8 @@ unidic-mecab の辞書フォーマットと品詞タグの詳細は[マニュア
 | 5 | 品詞中分類 | Middle POS classification | |
 | 6 | 品詞小分類 | Small POS classification | |
 | 7 | 品詞細分類 | Fine POS classification | |
-| 8 | 活用型 | Conjugation form | |
-| 9 | 活用形 | Conjugation type | |
+| 8 | 活用型 | Conjugation type | |
+| 9 | 活用形 | Conjugation form | |
 | 10 | 語彙素読み | Lexeme reading | |
 | 11 | 語彙素（語彙素表記 + 語彙素細分類） | Lexeme | |
 | 12 | 書字形出現形 | Orthography appearance type | |

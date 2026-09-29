@@ -259,7 +259,7 @@ const schema = new Schema(["surface", "left_id", "right_id", "cost", "pos", "rea
 
 #### Schema 静的メソッド
 
-- `Schema.create_default()` -- IPADIC のレイアウトを緩やかに踏襲した組み込みの 13 フィールドスキーマを作成する。内訳は 4 つのシステムフィールド（`surface`、`left_context_id`、`right_context_id`、`cost`）に続く 9 つの汎用素性フィールド（`major_pos`、`pos_detail_1`〜`pos_detail_3`、`conjugation_type`、`conjugation_form`、`base_form`、`reading`、`pronunciation`）。これらのフィールド名（および `conjugation_type`/`conjugation_form` の順序）は、実際の `lindera-ipadic` 辞書スキーマ（`part_of_speech`、`part_of_speech_subcategory_1`〜`_3`、`conjugation_form`、`conjugation_type`、...）とは異なる。実際の IPADIC 辞書のスキーマに合わせたい場合は、読み込み済み辞書の `dictionary.metadata.dictionary_schema` を使用すること
+- `Schema.create_default()` -- IPADIC のレイアウトを緩やかに踏襲した組み込みの 13 フィールドスキーマを作成する。内訳は 4 つのシステムフィールド（`surface`、`left_context_id`、`right_context_id`、`cost`）に続く 9 つの汎用素性フィールド（`major_pos`、`pos_detail_1`〜`pos_detail_3`、`conjugation_type`、`conjugation_form`、`base_form`、`reading`、`pronunciation`）。このうち品詞の 4 フィールド名は、実際の `lindera-ipadic` 辞書スキーマ（`part_of_speech`、`part_of_speech_subcategory_1`〜`_3`）とは異なる。残りのフィールドは名前も順序も一致する。実際の IPADIC 辞書のスキーマに合わせたい場合は、読み込み済み辞書の `dictionary.metadata.dictionary_schema` を使用すること
 
 #### Schema メソッド
 
