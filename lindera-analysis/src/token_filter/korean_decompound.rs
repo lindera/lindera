@@ -26,21 +26,26 @@ const KNOWN_TYPES: [&str; 3] = [TYPE_COMPOUND, "Inflect", "Preanalysis"];
 /// ko-dic's placeholder for an absent field.
 const ABSENT: &str = "*";
 
-/// Dictionary schema fields this filter reads and rewrites. `type`,
-/// `expression` and `part_of_speech_tag` are required; the rest are absent
-/// from some schemas and simply not rewritten then.
-const FIELD_TYPE: &str = "type";
-const FIELD_EXPRESSION: &str = "expression";
-const FIELD_POS_TAG: &str = "part_of_speech_tag";
-const FIELD_MEANING: &str = "meaning";
-const FIELD_READING: &str = "reading";
-const FIELD_PRESENCE: &str = "presence_absence";
-const FIELD_FIRST_POS: &str = "first_part_of_speech";
-const FIELD_LAST_POS: &str = "last_part_of_speech";
+// Dictionary schema fields this filter reads and rewrites. `type`,
+// `expression` and `part_of_speech_tag` are required; the rest are absent
+// from some schemas and simply not rewritten then.
 
-/// Number of leading CSV columns (`surface`, `left_context_id`,
-/// `right_context_id`, `cost`) that precede a token's detail fields.
-const COMMON_FIELD_COUNT: usize = 4;
+/// The schema field holding the entry type (`Compound`, `Inflect`, ...).
+const FIELD_TYPE: &str = "type";
+/// The schema field holding the decomposition, e.g. `무궁/NNG/*+화/NNG/*`.
+const FIELD_EXPRESSION: &str = "expression";
+/// The schema field holding the part-of-speech tag.
+const FIELD_POS_TAG: &str = "part_of_speech_tag";
+/// The schema field holding the semantic class.
+const FIELD_MEANING: &str = "meaning";
+/// The schema field holding the reading.
+const FIELD_READING: &str = "reading";
+/// The schema field recording whether the last syllable has a final consonant.
+const FIELD_PRESENCE: &str = "presence_absence";
+/// The schema field holding the first morpheme's part-of-speech tag.
+const FIELD_FIRST_POS: &str = "first_part_of_speech";
+/// The schema field holding the last morpheme's part-of-speech tag.
+const FIELD_LAST_POS: &str = "last_part_of_speech";
 
 /// How a decompounded token is represented in the output stream.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -89,8 +94,11 @@ struct Fragment {
 /// copied out so the compound itself can be moved into the output first.
 #[derive(Clone, Copy)]
 struct Source<'a> {
+    /// The compound's word id, kept by every fragment as a back-reference.
     word_id: WordId,
+    /// The system dictionary the compound was looked up in.
     dictionary: &'a Dictionary,
+    /// The user dictionary, if the segmenter has one.
     user_dictionary: Option<&'a UserDictionary>,
 }
 
@@ -98,13 +106,21 @@ struct Source<'a> {
 /// schema, so no per-token name lookup is needed.
 #[derive(Clone, Copy, Debug)]
 struct Fields {
+    /// Index of [`FIELD_TYPE`].
     type_: usize,
+    /// Index of [`FIELD_EXPRESSION`].
     expression: usize,
+    /// Index of [`FIELD_POS_TAG`].
     pos_tag: usize,
+    /// Index of [`FIELD_MEANING`], if the schema has it.
     meaning: Option<usize>,
+    /// Index of [`FIELD_READING`], if the schema has it.
     reading: Option<usize>,
+    /// Index of [`FIELD_PRESENCE`], if the schema has it.
     presence: Option<usize>,
+    /// Index of [`FIELD_FIRST_POS`], if the schema has it.
     first_pos: Option<usize>,
+    /// Index of [`FIELD_LAST_POS`], if the schema has it.
     last_pos: Option<usize>,
 }
 
@@ -121,12 +137,7 @@ impl Fields {
     /// `part_of_speech_tag` — i.e. the dictionary is not ko-dic-shaped and
     /// nothing can be decompounded.
     fn resolve(schema: &Schema) -> Option<Self> {
-        // Detail indexes are schema indexes minus the four common columns.
-        let detail = |name: &str| {
-            schema
-                .get_field_index(name)
-                .and_then(|i| i.checked_sub(COMMON_FIELD_COUNT))
-        };
+        let detail = |name: &str| schema.get_custom_field_index(name);
         Some(Self {
             type_: detail(FIELD_TYPE)?,
             expression: detail(FIELD_EXPRESSION)?,
@@ -159,24 +170,25 @@ impl Fields {
 ///
 /// # Offsets
 ///
-/// Only `Compound` fragments get their own byte range, carved out of the
-/// token's span from the right by each fragment's own length. Every other
-/// type shares the whole token's span, because an inflected form's fragments
-/// need not be substrings of it at all (`갔` decomposes to `가` + `았`). This
-/// is what nori does in `Viterbi`, including the direction the `Compound`
-/// walk runs in, which is what decides where the discrepancy lands for the
-/// handful of ko-dic entries whose fragment lengths fall short of the surface
-/// length (`그레이맨` = `그레이` + an empty fragment).
+/// Only `Compound` fragments get their own byte range, each covering exactly
+/// the text it spells. Every other type shares the whole token's span,
+/// because an inflected form's fragments need not be substrings of it at all
+/// (`갔` decomposes to `가` + `았`). This is the split nori makes in
+/// `Viterbi`.
 ///
-/// Where nori's walk would produce an offset outside the token or inside a
-/// character, a `Compound` token falls back to the shared span instead: when
-/// the fragments are longer than the surface, when a carved boundary is not a
-/// character boundary of the surface, or when an earlier filter has rewritten
-/// the surface so its bytes no longer match the span. No bundled ko-dic entry
-/// reaches any of these, so the bundled output is nori's exactly; the guard is
-/// for user dictionaries, where an entry such as `프린터3D` =
-/// `프린터` + `쓰리디` would otherwise yield an offset in the middle of `프`
-/// and make any caller slicing the text by it panic.
+/// A `Compound` token is carved only when its fragments spell its surface
+/// exactly and the surface still has the span's byte length; otherwise it
+/// shares the span too. Every carved offset is then a character boundary and
+/// every carved fragment covers its own text. That leaves nori's offsets
+/// unchanged for all but 12 bundled ko-dic entries, whose fragments do not
+/// spell the surface (`안지랑역` = `안지` + `역`, `고춧값` = `고추` + `값`);
+/// nori carves those from the right by fragment length, which points some
+/// fragments at text they do not spell. It also covers a user-dictionary
+/// entry such as `프린터3D` = `프린터` + `쓰리디`, where carving by length
+/// would put an offset in the middle of `프` and make any caller slicing the
+/// text by it panic (nori rejects a segmentation longer than its surface when
+/// it loads a user dictionary, and its UTF-16 offsets never split a Hangul
+/// syllable), and a surface an earlier filter has rewritten.
 ///
 /// # Positions
 ///
@@ -221,7 +233,9 @@ impl Fields {
 /// separately configured pipelines each warn.
 #[derive(Clone, Debug)]
 pub struct KoreanDecompoundTokenFilter {
+    /// Whether the compound is replaced by its fragments or kept alongside them.
     mode: KoreanDecompoundMode,
+    /// The `type` values whose tokens are decompounded.
     types: HashSet<String>,
     /// Set once the unsupported-schema warning has been logged.
     unsupported_warned: Arc<AtomicBool>,
@@ -400,8 +414,8 @@ impl KoreanDecompoundTokenFilter {
     /// # Arguments
     ///
     /// * `fragments` - The fragments, in reading order.
-    /// * `surface` - The compound's surface, used to check that every carved
-    ///   boundary is a character boundary.
+    /// * `surface` - The compound's surface, which the fragments must spell
+    ///   for the span to be carved up.
     /// * `byte_start` - The compound's start offset.
     /// * `byte_end` - The compound's end offset.
     /// * `is_compound` - Whether to carve the span up (`Compound`) or hand
@@ -409,8 +423,9 @@ impl KoreanDecompoundTokenFilter {
     ///
     /// # Returns
     ///
-    /// One `(start, end)` pair per fragment, in reading order. Every offset
-    /// lies inside the compound's span and on a character boundary.
+    /// One `(start, end)` pair per fragment, in reading order. A carved
+    /// fragment covers exactly the text it spells; otherwise every fragment
+    /// gets the whole span.
     fn spans(
         fragments: &[Fragment],
         surface: &str,
@@ -418,37 +433,35 @@ impl KoreanDecompoundTokenFilter {
         byte_end: usize,
         is_compound: bool,
     ) -> Vec<(usize, usize)> {
-        let shared = || vec![(byte_start, byte_end); fragments.len()];
-
-        // A surface an earlier filter rewrote (`korean_reading_form`,
-        // `mapping`) no longer matches the span byte for byte, so boundaries
-        // cannot be checked against it; share the span rather than guess.
-        if !is_compound || byte_end.checked_sub(byte_start) != Some(surface.len()) {
-            return shared();
+        // Carve only when the fragments spell the surface and the surface
+        // still covers the span byte for byte. That excludes the ko-dic
+        // entries whose fragments are not the surface's own text, fragments
+        // longer than the surface, and a surface an earlier filter rewrote
+        // (`korean_reading_form`, `mapping`); each of those shares the span
+        // rather than guess. Fragments that spell a valid `&str` end on its
+        // character boundaries, so every carved offset is one.
+        let mut rest = surface;
+        let spells_surface = is_compound
+            && byte_end.checked_sub(byte_start) == Some(surface.len())
+            && fragments.iter().all(|fragment| {
+                rest.strip_prefix(fragment.surface.as_str())
+                    .map(|tail| rest = tail)
+                    .is_some()
+            })
+            && rest.is_empty();
+        if !spells_surface {
+            return vec![(byte_start, byte_end); fragments.len()];
         }
 
-        // Walk from the end, as nori does: the last fragment is anchored to
-        // the compound's end, so a shortfall lands on the first fragment's
-        // start rather than on the last fragment's end. Where nori's walk
-        // would leave the token (fragments longer than the surface) or cut a
-        // character in two (fragments that are not substrings of it), share
-        // the span instead. No bundled ko-dic entry reaches either case.
-        let mut spans = vec![(byte_start, byte_end); fragments.len()];
-        let mut end = byte_end;
-        for (i, fragment) in fragments.iter().enumerate().rev() {
-            let Some(start) = end
-                .checked_sub(fragment.surface.len())
-                .filter(|&start| start >= byte_start)
-            else {
-                return shared();
-            };
-            if !surface.is_char_boundary(start - byte_start) {
-                return shared();
-            }
-            spans[i] = (start, end);
-            end = start;
-        }
-        spans
+        let mut start = byte_start;
+        fragments
+            .iter()
+            .map(|fragment| {
+                let span = (start, start + fragment.surface.len());
+                start = span.1;
+                span
+            })
+            .collect()
     }
 
     /// Builds one fragment token.
@@ -1022,13 +1035,13 @@ mod tests {
             assert_eq!(tokens[1].position, 1);
         }
 
-        /// A compound whose fragments are not substrings of it would have its
-        /// span carved in the middle of a character (`프린터3D` = `프린터` +
-        /// `쓰리디` puts a boundary at byte 2, inside `프`), and any caller
-        /// slicing the text by that offset would panic. Such a compound falls
-        /// back to the shared span, as do fragments longer than the surface
-        /// and a surface an earlier filter rewrote. Every offset stays on a
-        /// character boundary of the text.
+        /// A compound whose fragments do not spell it would have its span
+        /// carved in the middle of a character if cut by fragment length
+        /// (`프린터3D` = `프린터` + `쓰리디` puts a boundary at byte 2, inside
+        /// `프`), and any caller slicing the text by that offset would panic.
+        /// Such a compound shares the span instead, as do fragments longer
+        /// than the surface and a surface an earlier filter rewrote. Every
+        /// offset stays on a character boundary of the text.
         #[test]
         fn test_compound_spans_never_split_a_character() {
             let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
@@ -1056,8 +1069,8 @@ mod tests {
                 assert!(text.is_char_boundary(token.byte_end), "{}", token.surface);
             }
 
-            // Fragments longer than the surface: nori's walk would leave the
-            // token; the span is shared instead.
+            // Fragments longer than the surface: cutting by length would leave
+            // the token; the span is shared instead.
             let mut tokens = vec![token(
                 &dictionary,
                 "역사",
@@ -1085,6 +1098,44 @@ mod tests {
             let mut tokens = vec![rewritten];
             filter("{}").apply(&mut tokens).unwrap();
             assert!(tokens.iter().all(|t| (t.byte_start, t.byte_end) == (0, 12)));
+        }
+
+        /// Twelve bundled ko-dic compounds have fragments that do not spell
+        /// their surface: some fall short of it (`안지랑역` = `안지` + `역`),
+        /// others are spelled differently (`고춧값` = `고추` + `값`). Cutting
+        /// such a span by fragment length points fragments at text they do not
+        /// spell (`안지` at `지랑`), so these share the span, while a compound
+        /// whose fragments do spell it is still carved.
+        #[test]
+        fn test_compound_fragments_that_do_not_spell_the_surface_share_its_span() {
+            use std::borrow::Cow;
+
+            use lindera_segmenter::mode::Mode;
+            use lindera_segmenter::segmenter::Segmenter;
+
+            let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
+            let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+            let spans = |text: &'static str| {
+                let mut tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
+                filter("{}").apply(&mut tokens).unwrap();
+                tokens
+                    .iter()
+                    .map(|t| (t.surface.to_string(), t.byte_start, t.byte_end))
+                    .collect::<Vec<_>>()
+            };
+
+            assert_eq!(
+                spans("안지랑역"),
+                vec![("안지".to_string(), 0, 12), ("역".to_string(), 0, 12)]
+            );
+            assert_eq!(
+                spans("고춧값"),
+                vec![("고추".to_string(), 0, 9), ("값".to_string(), 0, 9)]
+            );
+            assert_eq!(
+                spans("가곡역"),
+                vec![("가곡".to_string(), 0, 6), ("역".to_string(), 6, 9)]
+            );
         }
 
         /// Only a token spanning one position is expanded. The compound a
@@ -1127,8 +1178,8 @@ mod tests {
             );
         }
 
-        /// The reviewer's chain: `mixed` output followed by a merge on a tag
-        /// the fragments carry. The merge ends its run at the overlap, so the
+        /// A `mixed` expansion followed by a merge on a tag the fragments
+        /// carry. The merge ends its run at the overlap, so the
         /// compound's text is not duplicated into `무궁화무궁화꽃`, and every
         /// surface still matches the text its offsets cover.
         #[test]

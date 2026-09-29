@@ -351,9 +351,9 @@ Splits ko-dic compound, inflected and pre-analyzed tokens into the morphemes the
 | `무궁화꽃이` | `무궁화/NNG 꽃/NNG 이/JKS` | `무궁 화 꽃 이` | `무궁화 무궁 화 꽃 이` |
 | `가곡역` | `가곡역/NNP` | `가곡 역` | `가곡역 가곡 역` |
 
-Fragment offsets follow nori: only `Compound` fragments get their own byte range, carved out of the token's span by each fragment's length. `Inflect` and `Preanalysis` fragments share the whole token's span, because an inflected form's fragments need not be substrings of it (`갔` decomposes to `가` + `았`).
+Fragment offsets follow nori: only `Compound` fragments get their own byte range, each covering the text it spells. `Inflect` and `Preanalysis` fragments share the whole token's span, because an inflected form's fragments need not be substrings of it (`갔` decomposes to `가` + `았`).
 
-Where nori's calculation would put an offset outside the token or inside a character, a `Compound` token shares its span instead: when the fragments are longer than the surface, when a carved boundary is not a character boundary (a user-dictionary entry such as `프린터3D` = `프린터` + `쓰리디`), or when an earlier filter has rewritten the surface. No bundled ko-dic entry reaches any of these, so the bundled output matches nori exactly, and every offset stays safe to slice the text with.
+A `Compound` token is carved only when its fragments spell its surface exactly; otherwise it shares its span too. That covers the 12 bundled ko-dic entries whose fragments are not the surface's own text (`안지랑역` = `안지` + `역`, `고춧값` = `고추` + `값`), where nori's offsets point some fragments at text they do not spell, as well as a user-dictionary entry such as `프린터3D` = `프린터` + `쓰리디` and a surface an earlier filter has rewritten. For every other bundled entry the offsets are nori's, and every offset is safe to slice the text with.
 
 In `discard` the fragments take consecutive positions starting at the compound's own; in `mixed` the compound keeps that position with a `position_length` spanning its fragments, which are then emitted from the same position onward. Tokens after the expansion shift by the positions it added, and only by those, so a gap left by an earlier filter such as `korean_stop_tags` survives.
 

@@ -46,7 +46,7 @@ Every filter -- character or token -- is identified by a `kind` string and confi
 
 ## Available filters
 
-Lindera ships 4 character filters and 20 token filters, covering Japanese, Korean, and general-purpose text normalization:
+Lindera ships 4 character filters and 21 token filters, covering Japanese, Korean, and general-purpose text normalization:
 
 | Category | Filters |
 | --- | --- |
