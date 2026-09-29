@@ -183,8 +183,10 @@ the new <code>analysis</code> feature, on by default — the analysis chain of
 <code>lindera-analysis</code> as <code>lindera::analysis</code>. One dependency line gives you the
 <code>Segmenter</code>, the <code>Tokenizer</code>, and every filter. The release also renames
 <code>lindera-binding-core</code> to <code>lindera-binding</code> and removes the deprecated
-<code>LINDERA_DICTIONARIES_PATH</code> fallback, as announced in v5.0.0. This guide
-lists every breaking change and the one-line fixes for each.</p>
+<code>LINDERA_DICTIONARIES_PATH</code> fallback, as announced in v5.0.0, and corrects
+the IPADIC schema, which had the <code>conjugation_type</code> and <code>conjugation_form</code>
+names swapped. This guide lists every breaking change and the one-line fixes
+for each.</p>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
 <tr><td><code>lindera</code> is a facade: <code>lindera::analysis</code> re-exports <code>lindera-analysis</code> (feature <code>analysis</code>, on by default)</td><td>Rust users who depend on both <code>lindera</code> and <code>lindera-analysis</code></td><td>Bump both to <code>"7"</code> in the same step, or drop <code>lindera-analysis</code> and import from <code>lindera::analysis::…</code></td></tr>
@@ -194,13 +196,16 @@ lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>The implicit features <code>lindera-ipadic</code>, <code>lindera-ipadic-neologd</code>, <code>lindera-unidic</code>, <code>lindera-sudachidict</code>, <code>lindera-ko-dic</code>, <code>lindera-cc-cedict</code>, and <code>lindera-jieba</code> are gone</strong></td><td>Anyone enabling a dictionary crate by name in <code>features = [...]</code></td><td>Use the <code>embed-*</code> features instead</td></tr>
 <tr><td><strong><code>lindera-binding-core</code> is renamed to <code>lindera-binding</code></strong></td><td>Rust users of the binding helper crate</td><td>Depend on <code>lindera-binding</code> and replace <code>lindera_binding_core::</code> with <code>lindera_binding::</code></td></tr>
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> is removed</strong></td><td>Anyone still setting the deprecated build-cache variable</td><td>Set <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>; the old name is now ignored</td></tr>
+<tr><td><strong>IPADIC and IPADIC-NEologd: <code>conjugation_type</code> and <code>conjugation_form</code> now name the right columns</strong></td><td>Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (<code>Token::get</code>, <code>Token::as_value</code>, <code>lindera tokenize -o json</code>, binding schemas)</td><td>Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 </tbody></table>
 </div>
-<p>The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI are
-unaffected: their APIs, package names, and output are unchanged, and only
-their version number moves to 7.0.0. Tokenization output is also unchanged —
-v7.0.0 is a restructuring release and produces byte-for-byte identical tokens
-to v6.2.0 for the same input and dictionary.</p>
+<p>The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
+their APIs and package names; only their version number moves to 7.0.0.
+Segmentation is also unchanged: for the same input and dictionary, v7.0.0
+produces the same tokens with the same positional details as v6.2.0. The
+one output difference is the IPADIC fix: with IPADIC or IPADIC-NEologd, the
+values reported under the names <code>conjugation_type</code> and <code>conjugation_form</code>
+trade places (described below).</p>
 <h2 id="the-lindera-crate-is-now-a-facade"><a class="header" href="#the-lindera-crate-is-now-a-facade">The lindera crate is now a facade</a></h2>
 <p>Up to v6 the Rust API was split between two crates that you had to depend on
 separately: <code>lindera</code> (the segmenter and the dictionary loading API) and
@@ -375,12 +380,50 @@ export LINDERA_DICTIONARIES_PATH=/path/to/cache
 # v7
 export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 </code></pre>
+<h2 id="ipadic-conjugation-field-names-corrected"><a class="header" href="#ipadic-conjugation-field-names-corrected">IPADIC conjugation field names corrected</a></h2>
+<p>IPADIC stores 活用型, the conjugation type (for example <code>五段・カ行イ音便</code>),
+in column 8 and 活用形, the conjugation form (for example <code>連用タ接続</code>), in
+column 9. From v1.0.0 through v6.2.0, the <code>lindera-ipadic</code> and
+<code>lindera-ipadic-neologd</code> schemas named the two columns the other way round,
+so every lookup by name returned the other value. v7.0.0 corrects the names.
+UniDic and SudachiDict were already correct.</p>
+<p>For the token <code>書い</code> in <code>書いた</code>:</p>
+<div class="table-wrapper"><table><thead><tr><th>Field name</th><th>v6</th><th>v7</th></tr></thead><tbody>
+<tr><td><code>conjugation_type</code></td><td><code>連用タ接続</code></td><td><code>五段・カ行イ音便</code></td></tr>
+<tr><td><code>conjugation_form</code></td><td><code>五段・カ行イ音便</code></td><td><code>連用タ接続</code></td></tr>
+</tbody></table>
+</div>
+<p>Only access by name changes: <code>Token::get("conjugation_type")</code> and
+<code>Token::get("conjugation_form")</code>, the JSON from <code>Token::as_value()</code> and
+<code>lindera tokenize -o json</code>, and the field names in the dictionary schema
+that the bindings expose. Positional access — <code>details</code>, and the MeCab and
+wakati output formats — is unchanged, because the values were always in the
+right columns. If your code reads these fields by name, or swapped them back
+as a workaround, update it.</p>
+<p>The names come from the <code>metadata.json</code> stored in each built dictionary, not
+from the library, and the dictionary format version is unchanged. The
+embedded dictionaries (<code>embed-ipadic</code>, <code>embed-ipadic-neologd</code>) and the
+dictionaries that the 7.0.0 CLI fetches with <code>lindera download</code> carry the
+corrected names. A dictionary directory built or downloaded with v6.2.0 or
+earlier still loads in v7.0.0 but keeps the old names. For such a directory,
+either:</p>
+<ul>
+<li>rebuild it with the v7.0.0 <code>lindera-ipadic/metadata.json</code> (or
+<code>lindera-ipadic-neologd/metadata.json</code>), or download the 7.0.0 release
+asset, or</li>
+<li>swap <code>"conjugation_form"</code> and <code>"conjugation_type"</code> in the
+<code>dictionary_schema.fields</code> list of its <code>metadata.json</code>. The dictionary data
+itself is unchanged, so no rebuild is needed.</li>
+</ul>
+<p>If you build dictionaries with your own copy of the IPADIC <code>metadata.json</code>,
+apply the same swap to that copy.</p>
 <h2 id="who-does-not-need-to-act"><a class="header" href="#who-does-not-need-to-act">Who does not need to act</a></h2>
 <ul>
 <li><strong>Users of the language bindings and the CLI</strong>: the Python, Node.js, Ruby,
-PHP, and WASM packages and <code>lindera-cli</code> are unaffected. The restructuring
-is internal to the Rust crates; APIs, package names, and output are
-unchanged.</li>
+PHP, and WASM packages and <code>lindera-cli</code> keep their APIs and package names.
+The restructuring is internal to the Rust crates. The only output change is
+the IPADIC conjugation fix, which matters only if you read those two fields
+by name.</li>
 <li><strong>Projects staying on <code>lindera = "6"</code></strong>: the 6.x releases of <code>lindera</code> and
 <code>lindera-analysis</code> remain on crates.io and keep working together. Nothing
 changes until you bump the major version.</li>
@@ -418,9 +461,17 @@ re-exported modules.</li>
 <li>Rename <code>LINDERA_DICTIONARIES_PATH</code> to <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>
 in shell profiles, CI configuration, and container images.</li>
 </ul>
+<p>Users of IPADIC or IPADIC-NEologd:</p>
+<ul>
+<li>If you read <code>conjugation_type</code> or <code>conjugation_form</code> by name (including
+the CLI's JSON output), expect the two values to trade places.</li>
+<li>Rebuild or re-download dictionary directories made with v6.2.0 or earlier,
+or swap the two names in their <code>metadata.json</code>.</li>
+</ul>
 <p>Language bindings and CLI:</p>
 <ul>
-<li>Nothing to do beyond taking the 7.0.0 release.</li>
+<li>Nothing to do beyond taking the 7.0.0 release, apart from the IPADIC items
+above.</li>
 </ul>
 
                     </main>

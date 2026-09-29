@@ -183,8 +183,9 @@
 分析チェーンを <code>lindera::analysis</code> として提供します。依存 1 行で
 <code>Segmenter</code>・<code>Tokenizer</code>・すべてのフィルタが使えます。あわせて
 <code>lindera-binding-core</code> を <code>lindera-binding</code> に改名し、v5.0.0 で予告していた
-<code>LINDERA_DICTIONARIES_PATH</code> のフォールバックを削除しました。このガイドでは、
-すべての破壊的変更とその対処方法を説明します。</p>
+<code>LINDERA_DICTIONARIES_PATH</code> のフォールバックを削除し、IPADIC のスキーマで
+<code>conjugation_type</code> と <code>conjugation_form</code> の名前が逆になっていた誤りを
+修正しました。このガイドでは、すべての破壊的変更とその対処方法を説明します。</p>
 <h2 id="概要"><a class="header" href="#概要">概要</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>変更</th><th>影響範囲</th><th>対処方法</th></tr></thead><tbody>
 <tr><td><code>lindera</code> がファサードになり、<code>lindera::analysis</code> が <code>lindera-analysis</code> を再エクスポート（<code>analysis</code> feature、デフォルト有効）</td><td><code>lindera</code> と <code>lindera-analysis</code> の両方に依存する Rust ユーザー</td><td>両方を同時に <code>"7"</code> に上げるか、<code>lindera-analysis</code> を外して <code>lindera::analysis::…</code> から import する</td></tr>
@@ -194,12 +195,15 @@
 <tr><td><strong>暗黙の feature <code>lindera-ipadic</code>・<code>lindera-ipadic-neologd</code>・<code>lindera-unidic</code>・<code>lindera-sudachidict</code>・<code>lindera-ko-dic</code>・<code>lindera-cc-cedict</code>・<code>lindera-jieba</code> の削除</strong></td><td><code>features = [...]</code> に辞書クレート名を書いて有効化していたユーザー</td><td>代わりに <code>embed-*</code> feature を使う</td></tr>
 <tr><td><strong><code>lindera-binding-core</code> を <code>lindera-binding</code> に改名</strong></td><td>バインディング用ヘルパークレートを使う Rust ユーザー</td><td><code>lindera-binding</code> に依存し、<code>lindera_binding_core::</code> を <code>lindera_binding::</code> に置き換える</td></tr>
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> の削除</strong></td><td>非推奨のビルドキャッシュ変数をまだ設定しているユーザー</td><td><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を設定する。旧名は無視される</td></tr>
+<tr><td><strong>IPADIC・IPADIC-NEologd の <code>conjugation_type</code> と <code>conjugation_form</code> が正しい列を指すように修正</strong></td><td>IPADIC・IPADIC-NEologd でこの 2 フィールドを名前で読むユーザー（<code>Token::get</code>・<code>Token::as_value</code>・<code>lindera tokenize -o json</code>・バインディングのスキーマ）</td><td>2 つの値が入れ替わることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 </tbody></table>
 </div>
-<p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI は影響を受けません。
-API・パッケージ名・出力は変わらず、バージョン番号だけが 7.0.0 になります。
-トークナイズ結果も不変です — v7.0.0 は構成変更のみのリリースであり、同じ入力と
-辞書に対して v6.2.0 とバイト単位で同一のトークンを出力します。</p>
+<p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI の API・パッケージ名は
+変わらず、バージョン番号だけが 7.0.0 になります。分割結果も不変です。同じ入力と
+辞書に対して、v7.0.0 は v6.2.0 と同じトークンを、同じ位置ベースの詳細情報
+（details）とともに出力します。出力の違いは IPADIC の修正だけです。
+IPADIC・IPADIC-NEologd では、<code>conjugation_type</code> と <code>conjugation_form</code> という
+名前で返る値が入れ替わります（後述）。</p>
 <h2 id="lindera-クレートはファサードに"><a class="header" href="#lindera-クレートはファサードに"><code>lindera</code> クレートはファサードに</a></h2>
 <p>v6 までの Rust API は、<code>lindera</code>（セグメンターと辞書読み込み API）と
 <code>lindera-analysis</code>（character filter・token filter・<code>Tokenizer</code>）の 2 クレートに
@@ -370,11 +374,48 @@ export LINDERA_DICTIONARIES_PATH=/path/to/cache
 # v7
 export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 </code></pre>
+<h2 id="ipadic-の活用フィールド名の修正"><a class="header" href="#ipadic-の活用フィールド名の修正">IPADIC の活用フィールド名の修正</a></h2>
+<p>IPADIC は 8 列目に活用型（例: <code>五段・カ行イ音便</code>）、9 列目に活用形（例:
+<code>連用タ接続</code>）を格納しています。v1.0.0 から v6.2.0 までの <code>lindera-ipadic</code> と
+<code>lindera-ipadic-neologd</code> のスキーマは、この 2 列の名前を逆に付けていたため、
+名前で引くと常にもう一方の値が返っていました。v7.0.0 で名前を修正しました。
+UniDic と SudachiDict は元から正しい順序です。</p>
+<p><code>書いた</code> の <code>書い</code> の場合:</p>
+<div class="table-wrapper"><table><thead><tr><th>フィールド名</th><th>v6</th><th>v7</th></tr></thead><tbody>
+<tr><td><code>conjugation_type</code></td><td><code>連用タ接続</code></td><td><code>五段・カ行イ音便</code></td></tr>
+<tr><td><code>conjugation_form</code></td><td><code>五段・カ行イ音便</code></td><td><code>連用タ接続</code></td></tr>
+</tbody></table>
+</div>
+<p>変わるのは名前によるアクセスだけです。<code>Token::get("conjugation_type")</code> と
+<code>Token::get("conjugation_form")</code>、<code>Token::as_value()</code> と
+<code>lindera tokenize -o json</code> の JSON、バインディングが公開する辞書スキーマの
+フィールド名が該当します。位置によるアクセス（<code>details</code>、MeCab 形式と wakati
+形式の出力）は変わりません。値そのものは元から正しい列に入っていたためです。
+これらのフィールドを名前で読んでいるコードや、回避策として 2 つを入れ替えて
+読んでいたコードは修正してください。</p>
+<p>フィールド名はライブラリではなく、ビルド済み辞書ごとに保存される
+<code>metadata.json</code> から読み込まれます。また、辞書フォーマットのバージョンは
+変わっていません。埋め込み辞書（<code>embed-ipadic</code>・<code>embed-ipadic-neologd</code>）と、
+7.0.0 の CLI が <code>lindera download</code> で取得する辞書は修正後の名前になります。
+v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは v7.0.0 でも
+そのまま読み込めますが、旧い名前のままです。このような辞書ディレクトリは、
+次のいずれかで対応してください:</p>
+<ul>
+<li>v7.0.0 の <code>lindera-ipadic/metadata.json</code>（または
+<code>lindera-ipadic-neologd/metadata.json</code>）で再ビルドするか、7.0.0 の
+リリースアセットをダウンロードする。</li>
+<li>その辞書の <code>metadata.json</code> の <code>dictionary_schema.fields</code> で
+<code>"conjugation_form"</code> と <code>"conjugation_type"</code> を入れ替える。辞書データ自体は
+変わらないため、再ビルドは不要です。</li>
+</ul>
+<p>IPADIC の <code>metadata.json</code> の独自のコピーで辞書をビルドしている場合は、
+そのコピーも同じように入れ替えてください。</p>
 <h2 id="対応が不要なケース"><a class="header" href="#対応が不要なケース">対応が不要なケース</a></h2>
 <ul>
 <li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の
-各パッケージと <code>lindera-cli</code> は影響を受けません。今回の構成変更は Rust
-クレート内部のもので、API・パッケージ名・出力は変わりません。</li>
+各パッケージと <code>lindera-cli</code> の API・パッケージ名は変わりません。今回の
+構成変更は Rust クレート内部のものです。出力の変化は IPADIC の活用フィールドの
+修正だけで、この 2 フィールドを名前で読む場合にのみ影響します。</li>
 <li><strong><code>lindera = "6"</code> のまま使い続けるプロジェクト</strong>: <code>lindera</code> と <code>lindera-analysis</code>
 の 6.x は crates.io に残り、組み合わせて動作し続けます。メジャーバージョンを
 上げるまで何も変わりません。</li>
@@ -409,9 +450,16 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <li>シェルのプロファイル・CI 設定・コンテナイメージで <code>LINDERA_DICTIONARIES_PATH</code>
 を <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> に改名する。</li>
 </ul>
+<p>IPADIC・IPADIC-NEologd のユーザー:</p>
+<ul>
+<li><code>conjugation_type</code> や <code>conjugation_form</code> を名前で読んでいる場合（CLI の JSON
+出力を含む）は、2 つの値が入れ替わることを前提にする。</li>
+<li>v6.2.0 以前に作った辞書ディレクトリは、再ビルド・再ダウンロードするか、
+<code>metadata.json</code> の 2 つの名前を入れ替える。</li>
+</ul>
 <p>言語バインディングと CLI:</p>
 <ul>
-<li>7.0.0 リリースを取り込む以外に対応は不要。</li>
+<li>7.0.0 リリースを取り込む以外に対応は不要（上記の IPADIC の項目を除く）。</li>
 </ul>
 
                     </main>
