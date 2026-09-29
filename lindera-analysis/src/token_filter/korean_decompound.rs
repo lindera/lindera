@@ -1,12 +1,13 @@
 use std::borrow::Cow;
 use std::collections::HashSet;
-use std::sync::Once;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde_json::Value;
 
 use crate::token_filter::TokenFilter;
 use lindera_segmenter::LinderaResult;
-use lindera_segmenter::dictionary::Schema;
+use lindera_segmenter::dictionary::{Dictionary, Schema, UserDictionary, WordId};
 use lindera_segmenter::error::LinderaErrorKind;
 use lindera_segmenter::token::Token;
 
@@ -17,6 +18,10 @@ pub type KoreanDecompoundTokenFilterConfig = Value;
 /// The `type` value ko-dic gives a compound noun, the only type whose
 /// fragments carry their own offsets (see [`KoreanDecompoundTokenFilter`]).
 const TYPE_COMPOUND: &str = "Compound";
+
+/// Every `type` value ko-dic gives an entry that carries a decomposition, and
+/// so every value `types` may name.
+const KNOWN_TYPES: [&str; 3] = [TYPE_COMPOUND, "Inflect", "Preanalysis"];
 
 /// ko-dic's placeholder for an absent field.
 const ABSENT: &str = "*";
@@ -36,10 +41,6 @@ const FIELD_LAST_POS: &str = "last_part_of_speech";
 /// Number of leading CSV columns (`surface`, `left_context_id`,
 /// `right_context_id`, `cost`) that precede a token's detail fields.
 const COMMON_FIELD_COUNT: usize = 4;
-
-/// Warns at most once per process that the configured dictionary cannot be
-/// decompounded, rather than per call or per token.
-static UNSUPPORTED_SCHEMA_WARNED: Once = Once::new();
 
 /// How a decompounded token is represented in the output stream.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -82,6 +83,15 @@ struct Fragment {
     pos: String,
     /// The fragment's semantic class, `*` when it carries none.
     meaning: String,
+}
+
+/// The parts of a compound token a fragment inherits besides its details,
+/// copied out so the compound itself can be moved into the output first.
+#[derive(Clone, Copy)]
+struct Source<'a> {
+    word_id: WordId,
+    dictionary: &'a Dictionary,
+    user_dictionary: Option<&'a UserDictionary>,
 }
 
 /// Detail-field indexes resolved once per `apply` call from the dictionary
@@ -153,10 +163,20 @@ impl Fields {
 /// token's span from the right by each fragment's own length. Every other
 /// type shares the whole token's span, because an inflected form's fragments
 /// need not be substrings of it at all (`갔` decomposes to `가` + `았`). This
-/// is exactly what nori does in `Viterbi`, including the direction the
-/// `Compound` walk runs in, which is what decides where the discrepancy lands
-/// for the handful of ko-dic entries whose fragment lengths do not sum to the
-/// surface length (`그레이맨` = `그레이` + an empty fragment).
+/// is what nori does in `Viterbi`, including the direction the `Compound`
+/// walk runs in, which is what decides where the discrepancy lands for the
+/// handful of ko-dic entries whose fragment lengths fall short of the surface
+/// length (`그레이맨` = `그레이` + an empty fragment).
+///
+/// Where nori's walk would produce an offset outside the token or inside a
+/// character, a `Compound` token falls back to the shared span instead: when
+/// the fragments are longer than the surface, when a carved boundary is not a
+/// character boundary of the surface, or when an earlier filter has rewritten
+/// the surface so its bytes no longer match the span. No bundled ko-dic entry
+/// reaches any of these, so the bundled output is nori's exactly; the guard is
+/// for user dictionaries, where an entry such as `프린터3D` =
+/// `프린터` + `쓰리디` would otherwise yield an offset in the middle of `프`
+/// and make any caller slicing the text by it panic.
 ///
 /// # Positions
 ///
@@ -167,6 +187,20 @@ impl Fields {
 /// increment on the first fragment. Later tokens shift by the number of
 /// positions the expansion added, which preserves any gaps an earlier filter
 /// (such as `korean_stop_tags`) left behind.
+///
+/// Only tokens spanning exactly one position are expanded. A longer token has
+/// already been expanded (the compound a `Mixed` pass keeps) or merged by
+/// another filter, and splitting it would duplicate its fragments. Put this
+/// filter in a chain once; a single-fragment entry kept by `Mixed` still spans
+/// one position, and a second pass would expand it again.
+///
+/// # Ordering
+///
+/// `Mixed` output and the fragments of a non-`Compound` token overlap in byte
+/// range by design. Place a merging filter (`korean_compound_word`) before this
+/// one when both are used: `merge_consecutive_tokens` ends a run at a byte
+/// overlap, so nothing breaks either way, but merging first is what lets it
+/// see the tokens the segmenter produced.
 ///
 /// # Details
 ///
@@ -181,12 +215,16 @@ impl Fields {
 /// came from.
 ///
 /// Applied to a dictionary whose schema has no `type`/`expression` fields
-/// (every non-ko-dic dictionary), the filter warns once and passes tokens
-/// through unchanged.
+/// (every non-ko-dic dictionary), the filter passes tokens through unchanged
+/// and warns once per configured filter. Clones share the warning, so a
+/// tokenizer and the workers made from it warn once between them, while two
+/// separately configured pipelines each warn.
 #[derive(Clone, Debug)]
 pub struct KoreanDecompoundTokenFilter {
     mode: KoreanDecompoundMode,
     types: HashSet<String>,
+    /// Set once the unsupported-schema warning has been logged.
+    unsupported_warned: Arc<AtomicBool>,
 }
 
 impl KoreanDecompoundTokenFilter {
@@ -196,13 +234,18 @@ impl KoreanDecompoundTokenFilter {
     ///
     /// * `mode` - Whether to replace the compound or keep it alongside the
     ///   fragments.
-    /// * `types` - The `type` values to decompound.
+    /// * `types` - The `type` values to decompound. Taken as given;
+    ///   [`Self::from_config`] is where a config's values are validated.
     ///
     /// # Returns
     ///
     /// The filter.
     pub fn new(mode: KoreanDecompoundMode, types: HashSet<String>) -> Self {
-        Self { mode, types }
+        Self {
+            mode,
+            types,
+            unsupported_warned: Arc::new(AtomicBool::new(false)),
+        }
     }
 
     /// The types decompounded when the config names none: every type ko-dic
@@ -212,10 +255,7 @@ impl KoreanDecompoundTokenFilter {
     ///
     /// `{Compound, Inflect, Preanalysis}`.
     pub fn default_types() -> HashSet<String> {
-        ["Compound", "Inflect", "Preanalysis"]
-            .into_iter()
-            .map(str::to_string)
-            .collect()
+        KNOWN_TYPES.into_iter().map(str::to_string).collect()
     }
 
     /// Builds a filter from its JSON config.
@@ -229,7 +269,11 @@ impl KoreanDecompoundTokenFilter {
     ///
     /// # Returns
     ///
-    /// The filter, or an error for an unknown mode or a malformed `types`.
+    /// The filter, or an error for an unknown mode, a malformed `types`, an
+    /// empty `types`, or a `types` value ko-dic never assigns. The last two
+    /// are rejected rather than accepted as a filter that silently does
+    /// nothing, the same way an unknown `mode` is; values are case-sensitive
+    /// because they are compared with the dictionary's own field.
     pub fn from_config(config: &KoreanDecompoundTokenFilterConfig) -> LinderaResult<Self> {
         let mode = match config.get("mode") {
             None | Some(Value::Null) => KoreanDecompoundMode::default(),
@@ -245,19 +289,32 @@ impl KoreanDecompoundTokenFilter {
         let types = match config.get("types") {
             None | Some(Value::Null) => Self::default_types(),
             Some(value) => {
+                let known = KNOWN_TYPES.join(", ");
                 let array = value.as_array().ok_or_else(|| {
                     LinderaErrorKind::Deserialize
                         .with_error(anyhow::anyhow!("types must be an array of strings"))
                 })?;
-                array
-                    .iter()
-                    .map(|v| {
-                        v.as_str().map(str::to_string).ok_or_else(|| {
-                            LinderaErrorKind::Deserialize
-                                .with_error(anyhow::anyhow!("type must be a string"))
-                        })
-                    })
-                    .collect::<LinderaResult<HashSet<String>>>()?
+                if array.is_empty() {
+                    return Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
+                        "types must name at least one of {known}; an empty list would \
+                         decompound nothing"
+                    )));
+                }
+                let mut types = HashSet::with_capacity(array.len());
+                for value in array {
+                    let token_type = value.as_str().ok_or_else(|| {
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!("type must be a string"))
+                    })?;
+                    if !KNOWN_TYPES.contains(&token_type) {
+                        return Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
+                            "unknown type {token_type:?}; expected one of {known} \
+                             (case-sensitive)"
+                        )));
+                    }
+                    types.insert(token_type.to_string());
+                }
+                types
             }
         };
 
@@ -343,6 +400,8 @@ impl KoreanDecompoundTokenFilter {
     /// # Arguments
     ///
     /// * `fragments` - The fragments, in reading order.
+    /// * `surface` - The compound's surface, used to check that every carved
+    ///   boundary is a character boundary.
     /// * `byte_start` - The compound's start offset.
     /// * `byte_end` - The compound's end offset.
     /// * `is_compound` - Whether to carve the span up (`Compound`) or hand
@@ -350,28 +409,43 @@ impl KoreanDecompoundTokenFilter {
     ///
     /// # Returns
     ///
-    /// One `(start, end)` pair per fragment, in reading order.
+    /// One `(start, end)` pair per fragment, in reading order. Every offset
+    /// lies inside the compound's span and on a character boundary.
     fn spans(
         fragments: &[Fragment],
+        surface: &str,
         byte_start: usize,
         byte_end: usize,
         is_compound: bool,
     ) -> Vec<(usize, usize)> {
-        if !is_compound {
-            return vec![(byte_start, byte_end); fragments.len()];
+        let shared = || vec![(byte_start, byte_end); fragments.len()];
+
+        // A surface an earlier filter rewrote (`korean_reading_form`,
+        // `mapping`) no longer matches the span byte for byte, so boundaries
+        // cannot be checked against it; share the span rather than guess.
+        if !is_compound || byte_end.checked_sub(byte_start) != Some(surface.len()) {
+            return shared();
         }
 
         // Walk from the end, as nori does: the last fragment is anchored to
-        // the compound's end, so any length discrepancy lands on the first
-        // fragment's start rather than on the last fragment's end. Offsets
-        // are clamped into the compound's own span, which keeps the handful
-        // of entries whose fragment lengths do not add up from producing
-        // ranges outside the token.
+        // the compound's end, so a shortfall lands on the first fragment's
+        // start rather than on the last fragment's end. Where nori's walk
+        // would leave the token (fragments longer than the surface) or cut a
+        // character in two (fragments that are not substrings of it), share
+        // the span instead. No bundled ko-dic entry reaches either case.
         let mut spans = vec![(byte_start, byte_end); fragments.len()];
         let mut end = byte_end;
         for (i, fragment) in fragments.iter().enumerate().rev() {
-            let start = end.saturating_sub(fragment.surface.len()).max(byte_start);
-            spans[i] = (start, end.max(start));
+            let Some(start) = end
+                .checked_sub(fragment.surface.len())
+                .filter(|&start| start >= byte_start)
+            else {
+                return shared();
+            };
+            if !surface.is_char_boundary(start - byte_start) {
+                return shared();
+            }
+            spans[i] = (start, end);
             end = start;
         }
         spans
@@ -381,25 +455,31 @@ impl KoreanDecompoundTokenFilter {
     ///
     /// # Arguments
     ///
-    /// * `fragment` - The fragment to build a token for.
+    /// * `fragment` - The fragment to build a token for, consumed so its
+    ///   strings move into the token.
     /// * `span` - Its `(byte_start, byte_end)`.
     /// * `position` - Its position in the token stream.
-    /// * `source` - The compound the fragment came from, supplying the
-    ///   dictionary references, word id and the details to inherit.
-    /// * `base_details` - The compound's materialized details.
+    /// * `source` - The dictionary references and word id of the compound
+    ///   the fragment came from.
+    /// * `base_details` - The compound's materialized details, inherited.
     /// * `fields` - The resolved schema indexes.
     ///
     /// # Returns
     ///
     /// The fragment token.
     fn fragment_token<'a>(
-        fragment: &Fragment,
+        fragment: Fragment,
         span: (usize, usize),
         position: usize,
-        source: &Token<'a>,
+        source: Source<'a>,
         base_details: &[Cow<'a, str>],
         fields: &Fields,
     ) -> Token<'a> {
+        let Fragment {
+            surface,
+            pos,
+            meaning,
+        } = fragment;
         let mut details = base_details.to_vec();
         let mut set = |index: usize, value: Cow<'a, str>| {
             if let Some(slot) = details.get_mut(index) {
@@ -407,11 +487,11 @@ impl KoreanDecompoundTokenFilter {
             }
         };
 
-        set(fields.pos_tag, Cow::Owned(fragment.pos.clone()));
+        set(fields.pos_tag, Cow::Owned(pos));
         set(fields.type_, Cow::Borrowed(ABSENT));
         set(fields.expression, Cow::Borrowed(ABSENT));
         if let Some(index) = fields.meaning {
-            set(index, Cow::Owned(fragment.meaning.clone()));
+            set(index, Cow::Owned(meaning));
         }
         // Fields that describe the compound, not the fragment. The reading is
         // blanked rather than guessed, matching nori.
@@ -428,7 +508,7 @@ impl KoreanDecompoundTokenFilter {
         }
 
         Token {
-            surface: Cow::Owned(fragment.surface.clone()),
+            surface: Cow::Owned(surface),
             byte_start: span.0,
             byte_end: span.1,
             position,
@@ -449,15 +529,15 @@ impl TokenFilter for KoreanDecompoundTokenFilter {
     /// Splits every configured compound token into the morphemes its
     /// `expression` field lists.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `tokens` - The tokens to filter, replaced in place.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `Ok(())`. A dictionary without the required schema fields is a no-op
-    /// (warned once), not an error, so a filter chain shared across
-    /// dictionaries keeps working.
+    /// (warned once per configured filter), not an error, so a filter chain
+    /// shared across dictionaries keeps working.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         let Some(first) = tokens.first() else {
             return Ok(());
@@ -467,7 +547,7 @@ impl TokenFilter for KoreanDecompoundTokenFilter {
         // is resolved once rather than per token.
         let metadata = &first.dictionary.metadata;
         let Some(fields) = Fields::resolve(&metadata.dictionary_schema) else {
-            UNSUPPORTED_SCHEMA_WARNED.call_once(|| {
+            if !self.unsupported_warned.swap(true, Ordering::Relaxed) {
                 log::warn!(
                     "{KOREAN_DECOMPOUND_TOKEN_FILTER_NAME}: dictionary '{}' has no \
                      '{FIELD_TYPE}'/'{FIELD_EXPRESSION}'/'{FIELD_POS_TAG}' fields, so no token \
@@ -475,7 +555,7 @@ impl TokenFilter for KoreanDecompoundTokenFilter {
                      schema.",
                     metadata.name
                 );
-            });
+            }
             return Ok(());
         };
 
@@ -489,32 +569,56 @@ impl TokenFilter for KoreanDecompoundTokenFilter {
         for mut token in source {
             token.position += shift;
 
+            // Only a token occupying exactly one position is expanded; the
+            // shift below assumes it. A longer one is the compound an earlier
+            // `Mixed` pass kept, or a merge, and expanding it would duplicate
+            // its fragments.
+            if token.position_length != 1 {
+                out.push(token);
+                continue;
+            }
+
             let Some((fragments, is_compound)) = self.fragments_of(&mut token, &fields) else {
                 out.push(token);
                 continue;
             };
 
-            // Materialize the compound's details before any of it is moved,
-            // so the fragments can inherit them.
-            let _ = token.details();
-            let base_details = token.details.clone().unwrap_or_default();
-
-            let spans = Self::spans(&fragments, token.byte_start, token.byte_end, is_compound);
+            let spans = Self::spans(
+                &fragments,
+                &token.surface,
+                token.byte_start,
+                token.byte_end,
+                is_compound,
+            );
             let base_position = token.position;
             let fragment_count = fragments.len();
+            let source = Source {
+                word_id: token.word_id,
+                dictionary: token.dictionary,
+                user_dictionary: token.user_dictionary,
+            };
+
+            // `fragments_of` read the type and expression through
+            // `get_detail`, which materialized the details. `Discard` drops
+            // the compound, so its details can be taken rather than copied.
+            let base_details = match self.mode {
+                KoreanDecompoundMode::Discard => token.details.take(),
+                KoreanDecompoundMode::Mixed => token.details.clone(),
+            }
+            .unwrap_or_default();
 
             if self.mode == KoreanDecompoundMode::Mixed {
                 // The compound spans every position its fragments occupy.
                 token.position_length = fragment_count;
-                out.push(token.clone());
+                out.push(token);
             }
 
-            for (i, fragment) in fragments.iter().enumerate() {
+            for (i, (fragment, span)) in fragments.into_iter().zip(spans).enumerate() {
                 out.push(Self::fragment_token(
                     fragment,
-                    spans[i],
+                    span,
                     base_position + i,
-                    &token,
+                    source,
                     &base_details,
                     &fields,
                 ));
@@ -569,6 +673,10 @@ mod tests {
             r#"{"mode": 1}"#,
             r#"{"types": "Compound"}"#,
             r#"{"types": [1]}"#,
+            // Would otherwise build a filter that silently does nothing.
+            r#"{"types": []}"#,
+            r#"{"types": ["compound"]}"#,
+            r#"{"types": ["Compound", "Noun"]}"#,
         ] {
             let config: KoreanDecompoundTokenFilterConfig =
                 serde_json::from_str(config_str).unwrap();
@@ -913,6 +1021,145 @@ mod tests {
             assert_eq!(tokens[0].position, 0);
             assert_eq!(tokens[1].position, 1);
         }
+
+        /// A compound whose fragments are not substrings of it would have its
+        /// span carved in the middle of a character (`프린터3D` = `프린터` +
+        /// `쓰리디` puts a boundary at byte 2, inside `프`), and any caller
+        /// slicing the text by that offset would panic. Such a compound falls
+        /// back to the shared span, as do fragments longer than the surface
+        /// and a surface an earlier filter rewrote. Every offset stays on a
+        /// character boundary of the text.
+        #[test]
+        fn test_compound_spans_never_split_a_character() {
+            let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
+            let text = "프린터3D";
+
+            let mut tokens = vec![token(
+                &dictionary,
+                text,
+                0,
+                0,
+                "NNG",
+                "Compound",
+                "프린터/NNG/*+쓰리디/NNG/*",
+            )];
+            filter("{}").apply(&mut tokens).unwrap();
+            assert_eq!(
+                rendered(&mut tokens),
+                vec![
+                    ("프린터".to_string(), 0, 11, 0, 1),
+                    ("쓰리디".to_string(), 0, 11, 1, 1),
+                ]
+            );
+            for token in &tokens {
+                assert!(text.is_char_boundary(token.byte_start), "{}", token.surface);
+                assert!(text.is_char_boundary(token.byte_end), "{}", token.surface);
+            }
+
+            // Fragments longer than the surface: nori's walk would leave the
+            // token; the span is shared instead.
+            let mut tokens = vec![token(
+                &dictionary,
+                "역사",
+                0,
+                0,
+                "NNG",
+                "Compound",
+                "역사/NNG/*+관/NNG/*",
+            )];
+            filter("{}").apply(&mut tokens).unwrap();
+            assert!(tokens.iter().all(|t| (t.byte_start, t.byte_end) == (0, 6)));
+
+            // A surface an earlier filter rewrote no longer matches the span
+            // byte for byte, so it cannot be carved.
+            let mut rewritten = token(
+                &dictionary,
+                "무궁화",
+                0,
+                0,
+                "NNG",
+                "Compound",
+                "무궁/NNG/*+화/NNG/*",
+            );
+            rewritten.byte_end = 12;
+            let mut tokens = vec![rewritten];
+            filter("{}").apply(&mut tokens).unwrap();
+            assert!(tokens.iter().all(|t| (t.byte_start, t.byte_end) == (0, 12)));
+        }
+
+        /// Only a token spanning one position is expanded. The compound a
+        /// `mixed` pass keeps spans all its fragments, so a second pass leaves
+        /// it alone instead of duplicating them (`무궁화 무궁 화 무궁 화`).
+        #[test]
+        fn test_mixed_output_is_not_expanded_again() {
+            let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
+            let input = || {
+                vec![
+                    token(
+                        &dictionary,
+                        "무궁화",
+                        0,
+                        0,
+                        "NNG",
+                        "Compound",
+                        "무궁/NNG/*+화/NNG/*",
+                    ),
+                    token(&dictionary, "꽃", 9, 1, "NNG", "*", "*"),
+                ]
+            };
+            let mixed = filter(r#"{"mode": "mixed"}"#);
+
+            let mut once = input();
+            mixed.apply(&mut once).unwrap();
+            let mut twice = input();
+            mixed.apply(&mut twice).unwrap();
+            mixed.apply(&mut twice).unwrap();
+
+            assert_eq!(rendered(&mut twice), rendered(&mut once));
+            assert_eq!(
+                rendered(&mut once),
+                vec![
+                    ("무궁화".to_string(), 0, 9, 0, 2),
+                    ("무궁".to_string(), 0, 6, 0, 1),
+                    ("화".to_string(), 6, 9, 1, 1),
+                    ("꽃".to_string(), 9, 12, 2, 1),
+                ]
+            );
+        }
+
+        /// The reviewer's chain: `mixed` output followed by a merge on a tag
+        /// the fragments carry. The merge ends its run at the overlap, so the
+        /// compound's text is not duplicated into `무궁화무궁화꽃`, and every
+        /// surface still matches the text its offsets cover.
+        #[test]
+        fn test_mixed_output_survives_a_following_merge() {
+            use std::borrow::Cow;
+
+            use crate::token_filter::korean_compound_word::KoreanCompoundWordTokenFilter;
+            use lindera_segmenter::mode::Mode;
+            use lindera_segmenter::segmenter::Segmenter;
+
+            let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
+            let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+            let text = "무궁화꽃";
+            let mut tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
+
+            filter(r#"{"mode": "mixed"}"#).apply(&mut tokens).unwrap();
+            let merge_config = serde_json::json!({ "tags": ["NNG"], "new_tag": "NNG" });
+            KoreanCompoundWordTokenFilter::from_config(&merge_config)
+                .unwrap()
+                .apply(&mut tokens)
+                .unwrap();
+
+            let surfaces: Vec<String> = tokens.iter().map(|t| t.surface.to_string()).collect();
+            assert!(
+                !surfaces.iter().any(|s| s.contains("무궁화무궁화")),
+                "{surfaces:?}"
+            );
+            for token in &tokens {
+                assert_eq!(&text[token.byte_start..token.byte_end], token.surface);
+            }
+        }
     }
 
     /// A dictionary whose schema has no `type`/`expression` fields cannot be
@@ -945,13 +1192,21 @@ mod tests {
         }];
 
         let config: KoreanDecompoundTokenFilterConfig = serde_json::from_str("{}").unwrap();
-        KoreanDecompoundTokenFilter::from_config(&config)
-            .unwrap()
-            .apply(&mut tokens)
-            .unwrap();
+        let filter = KoreanDecompoundTokenFilter::from_config(&config).unwrap();
+        let clone = filter.clone();
+        filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 1);
         assert_eq!(tokens[0].surface, "関西国際空港");
         assert_eq!(tokens[0].position, 0);
+
+        // The warning is per configured filter: a clone (a worker made from
+        // the same tokenizer) shares it, a separately configured filter does
+        // not, so a second misconfigured pipeline still gets logged.
+        use std::sync::atomic::Ordering;
+        assert!(filter.unsupported_warned.load(Ordering::Relaxed));
+        assert!(clone.unsupported_warned.load(Ordering::Relaxed));
+        let separate = KoreanDecompoundTokenFilter::from_config(&config).unwrap();
+        assert!(!separate.unsupported_warned.load(Ordering::Relaxed));
     }
 }

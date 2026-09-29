@@ -353,18 +353,22 @@ Splits ko-dic compound, inflected and pre-analyzed tokens into the morphemes the
 
 Fragment offsets follow nori: only `Compound` fragments get their own byte range, carved out of the token's span by each fragment's length. `Inflect` and `Preanalysis` fragments share the whole token's span, because an inflected form's fragments need not be substrings of it (`갔` decomposes to `가` + `았`).
 
+Where nori's calculation would put an offset outside the token or inside a character, a `Compound` token shares its span instead: when the fragments are longer than the surface, when a carved boundary is not a character boundary (a user-dictionary entry such as `프린터3D` = `프린터` + `쓰리디`), or when an earlier filter has rewritten the surface. No bundled ko-dic entry reaches any of these, so the bundled output matches nori exactly, and every offset stays safe to slice the text with.
+
 In `discard` the fragments take consecutive positions starting at the compound's own; in `mixed` the compound keeps that position with a `position_length` spanning its fragments, which are then emitted from the same position onward. Tokens after the expansion shift by the positions it added, and only by those, so a gap left by an earlier filter such as `korean_stop_tags` survives.
+
+Only tokens spanning a single position are expanded, so the compound a `mixed` pass keeps is not split again. Put the filter in a chain once all the same: a single-fragment entry kept by `mixed` still spans one position. When combining it with `korean_compound_word`, place the merge first; merging never joins tokens that overlap in byte range, so the reverse order does not corrupt anything, but merging first lets it see the segmenter's own tokens.
 
 A fragment takes its own part-of-speech tag and semantic class and blanks the fields that describe the compound (`type`, `expression`, `first_part_of_speech`, `last_part_of_speech`, `reading`, `presence_absence`). Blanking the reading matches nori, whose `DecompoundToken.getReading()` returns `null`; `korean_reading_form` skips `*`, so a fragment keeps its own surface.
 
-Applied to a dictionary whose schema has no `type`/`expression` fields, the filter warns once and passes every token through unchanged.
+Applied to a dictionary whose schema has no `type`/`expression` fields, the filter warns once per configured filter and passes every token through unchanged.
 
 **Parameters:**
 
 | Argument | Type | Required | Description |
 | --- | --- | --- | --- |
 | `mode` | string | No | `"discard"` (default, as in nori) replaces the compound with its fragments; `"mixed"` keeps the compound and emits the fragments as well |
-| `types` | array\<string\> | No | The `type` values to decompound. Defaults to `["Compound", "Inflect", "Preanalysis"]` |
+| `types` | array\<string\> | No | The `type` values to decompound, case-sensitive. Defaults to `["Compound", "Inflect", "Preanalysis"]`; an empty list or any other value is rejected |
 
 **Example:**
 
