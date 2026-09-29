@@ -18,8 +18,8 @@ Refer to the [manual](https://ja.osdn.net/projects/ipadic/docs/ipadic-2.7.0-manu
 | 5 | 品詞細分類1 | Part-of-speech subcategory 1 | |
 | 6 | 品詞細分類2 | Part-of-speech subcategory 2 | |
 | 7 | 品詞細分類3 | Part-of-speech subcategory 3 | |
-| 8 | 活用形 | Conjugation form | |
-| 9 | 活用型 | Conjugation type | |
+| 8 | 活用型 | Conjugation type | |
+| 9 | 活用形 | Conjugation form | |
 | 10 | 原形 | Base form | |
 | 11 | 読み | Reading | |
 | 12 | 発音 | Pronunciation | |
@@ -48,8 +48,8 @@ Fields not covered by this simple schema (such as `base_form` and `pronunciation
 | 5 | 品詞細分類1 | Part-of-speech subcategory 1 | |
 | 6 | 品詞細分類2 | Part-of-speech subcategory 2 | |
 | 7 | 品詞細分類3 | Part-of-speech subcategory 3 | |
-| 8 | 活用形 | Conjugation form | |
-| 9 | 活用型 | Conjugation type | |
+| 8 | 活用型 | Conjugation type | |
+| 9 | 活用形 | Conjugation form | |
 | 10 | 原形 | Base form | |
 | 11 | 読み | Reading | |
 | 12 | 発音 | Pronunciation | |

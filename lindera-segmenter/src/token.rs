@@ -615,4 +615,39 @@ mod tests {
             "expected at least one user-dictionary token"
         );
     }
+
+    /// IPADIC stores 活用型 (conjugation type) before 活用形 (conjugation
+    /// form), so the name-based accessors must resolve `conjugation_type` to
+    /// the first of the two columns and `conjugation_form` to the second.
+    /// The schema had the names the other way round until #1086.
+    #[test]
+    fn test_ipadic_conjugation_fields_by_name() {
+        let dictionary = match load_dictionary("embedded://ipadic") {
+            Ok(dictionary) => dictionary,
+            Err(err) => panic!("failed to load embedded IPADIC: {err}"),
+        };
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+        let tokens = match segmenter.segment(Cow::Borrowed("書いた")) {
+            Ok(tokens) => tokens,
+            Err(err) => panic!("segment failed: {err}"),
+        };
+
+        let expected = [
+            ("書い", "五段・カ行イ音便", "連用タ接続"),
+            ("た", "特殊・タ", "基本形"),
+        ];
+        assert_eq!(tokens.len(), expected.len());
+
+        for (mut token, (surface, conjugation_type, conjugation_form)) in
+            tokens.into_iter().zip(expected)
+        {
+            assert_eq!(token.surface, surface);
+            assert_eq!(token.get("conjugation_type"), Some(conjugation_type));
+            assert_eq!(token.get("conjugation_form"), Some(conjugation_form));
+
+            let value = token.as_value();
+            assert_eq!(value["conjugation_type"], conjugation_type);
+            assert_eq!(value["conjugation_form"], conjugation_form);
+        }
+    }
 }

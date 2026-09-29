@@ -6,8 +6,10 @@ the new `analysis` feature, on by default — the analysis chain of
 `lindera-analysis` as `lindera::analysis`. One dependency line gives you the
 `Segmenter`, the `Tokenizer`, and every filter. The release also renames
 `lindera-binding-core` to `lindera-binding` and removes the deprecated
-`LINDERA_DICTIONARIES_PATH` fallback, as announced in v5.0.0. This guide
-lists every breaking change and the one-line fixes for each.
+`LINDERA_DICTIONARIES_PATH` fallback, as announced in v5.0.0, and corrects
+the IPADIC schema, which had the `conjugation_type` and `conjugation_form`
+names swapped. This guide lists every breaking change and the one-line fixes
+for each.
 
 ## Overview
 
@@ -20,12 +22,15 @@ lists every breaking change and the one-line fixes for each.
 | **The implicit features `lindera-ipadic`, `lindera-ipadic-neologd`, `lindera-unidic`, `lindera-sudachidict`, `lindera-ko-dic`, `lindera-cc-cedict`, and `lindera-jieba` are gone** | Anyone enabling a dictionary crate by name in `features = [...]` | Use the `embed-*` features instead |
 | **`lindera-binding-core` is renamed to `lindera-binding`** | Rust users of the binding helper crate | Depend on `lindera-binding` and replace `lindera_binding_core::` with `lindera_binding::` |
 | **`LINDERA_DICTIONARIES_PATH` is removed** | Anyone still setting the deprecated build-cache variable | Set `LINDERA_BUILD_DICTIONARY_CACHE_DIR`; the old name is now ignored |
+| **IPADIC and IPADIC-NEologd: `conjugation_type` and `conjugation_form` now name the right columns** | Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (`Token::get`, `Token::as_value`, `lindera tokenize -o json`, binding schemas) | Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier |
 
-The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI are
-unaffected: their APIs, package names, and output are unchanged, and only
-their version number moves to 7.0.0. Tokenization output is also unchanged —
-v7.0.0 is a restructuring release and produces byte-for-byte identical tokens
-to v6.2.0 for the same input and dictionary.
+The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
+their APIs and package names; only their version number moves to 7.0.0.
+Segmentation is also unchanged: for the same input and dictionary, v7.0.0
+produces the same tokens with the same positional details as v6.2.0. The
+one output difference is the IPADIC fix: with IPADIC or IPADIC-NEologd, the
+values reported under the names `conjugation_type` and `conjugation_form`
+trade places (described below).
 
 ## The lindera crate is now a facade
 
@@ -240,12 +245,55 @@ export LINDERA_DICTIONARIES_PATH=/path/to/cache
 export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 ```
 
+## IPADIC conjugation field names corrected
+
+IPADIC stores 活用型, the conjugation type (for example `五段・カ行イ音便`),
+in column 8 and 活用形, the conjugation form (for example `連用タ接続`), in
+column 9. From v1.0.0 through v6.2.0, the `lindera-ipadic` and
+`lindera-ipadic-neologd` schemas named the two columns the other way round,
+so every lookup by name returned the other value. v7.0.0 corrects the names.
+UniDic and SudachiDict were already correct.
+
+For the token `書い` in `書いた`:
+
+| Field name | v6 | v7 |
+| --- | --- | --- |
+| `conjugation_type` | `連用タ接続` | `五段・カ行イ音便` |
+| `conjugation_form` | `五段・カ行イ音便` | `連用タ接続` |
+
+Only access by name changes: `Token::get("conjugation_type")` and
+`Token::get("conjugation_form")`, the JSON from `Token::as_value()` and
+`lindera tokenize -o json`, and the field names in the dictionary schema
+that the bindings expose. Positional access — `details`, and the MeCab and
+wakati output formats — is unchanged, because the values were always in the
+right columns. If your code reads these fields by name, or swapped them back
+as a workaround, update it.
+
+The names come from the `metadata.json` stored in each built dictionary, not
+from the library, and the dictionary format version is unchanged. The
+embedded dictionaries (`embed-ipadic`, `embed-ipadic-neologd`) and the
+dictionaries that the 7.0.0 CLI fetches with `lindera download` carry the
+corrected names. A dictionary directory built or downloaded with v6.2.0 or
+earlier still loads in v7.0.0 but keeps the old names. For such a directory,
+either:
+
+- rebuild it with the v7.0.0 `lindera-ipadic/metadata.json` (or
+  `lindera-ipadic-neologd/metadata.json`), or download the 7.0.0 release
+  asset, or
+- swap `"conjugation_form"` and `"conjugation_type"` in the
+  `dictionary_schema.fields` list of its `metadata.json`. The dictionary data
+  itself is unchanged, so no rebuild is needed.
+
+If you build dictionaries with your own copy of the IPADIC `metadata.json`,
+apply the same swap to that copy.
+
 ## Who does not need to act
 
 - **Users of the language bindings and the CLI**: the Python, Node.js, Ruby,
-  PHP, and WASM packages and `lindera-cli` are unaffected. The restructuring
-  is internal to the Rust crates; APIs, package names, and output are
-  unchanged.
+  PHP, and WASM packages and `lindera-cli` keep their APIs and package names.
+  The restructuring is internal to the Rust crates. The only output change is
+  the IPADIC conjugation fix, which matters only if you read those two fields
+  by name.
 - **Projects staying on `lindera = "6"`**: the 6.x releases of `lindera` and
   `lindera-analysis` remain on crates.io and keep working together. Nothing
   changes until you bump the major version.
@@ -284,6 +332,14 @@ Build environments:
 - Rename `LINDERA_DICTIONARIES_PATH` to `LINDERA_BUILD_DICTIONARY_CACHE_DIR`
   in shell profiles, CI configuration, and container images.
 
+Users of IPADIC or IPADIC-NEologd:
+
+- If you read `conjugation_type` or `conjugation_form` by name (including
+  the CLI's JSON output), expect the two values to trade places.
+- Rebuild or re-download dictionary directories made with v6.2.0 or earlier,
+  or swap the two names in their `metadata.json`.
+
 Language bindings and CLI:
 
-- Nothing to do beyond taking the 7.0.0 release.
+- Nothing to do beyond taking the 7.0.0 release, apart from the IPADIC items
+  above.
