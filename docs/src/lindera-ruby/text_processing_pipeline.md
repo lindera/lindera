@@ -12,9 +12,8 @@ Input Text
 
 > [!NOTE]
 > This page shows a few commonly used filters as examples -- it is **not** the complete list.
-> `lindera-analysis` ships 4 character filters and 18 token filters in total. See
-> [Filters](../lindera-analysis/filters.md) for the full, authoritative catalogue of every
-> character and token filter, including parameters and examples.
+> See [Filters](../lindera-analysis/filters.md) for the full, authoritative catalogue of every
+> character and token filter that `lindera-analysis` ships, including parameters and examples.
 
 ## Character Filters
 

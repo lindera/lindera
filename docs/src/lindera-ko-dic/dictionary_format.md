@@ -27,7 +27,7 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 | 8 | 타입 | Type | One of: `Inflect` (활용); `Compound` (복합명사); or `Preanalysis` (기분석) |
 | 9 | 첫번째 품사 | First part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `VV` |
 | 10 | 마지막 품사 | Last part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `EP` |
-| 11 | 표현 | Expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` -- Fields that tell how usage, compound nouns, and key analysis are organized |
+| 11 | 표현 | Expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` -- Field that tells how inflected forms, compound nouns, and pre-analyzed entries are composed |
 
 ## Left-space penalty
 
@@ -86,7 +86,7 @@ echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic
 | 8 | 타입 | type | One of: `Inflect` (활용); `Compound` (복합명사); or `Preanalysis` (기분석) |
 | 9 | 첫번째 품사 | first part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `VV` |
 | 10 | 마지막 품사 | last part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `EP` |
-| 11 | 표현 | expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` -- Fields that tell how usage, compound nouns, and key analysis are organized |
+| 11 | 표현 | expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` -- Field that tells how inflected forms, compound nouns, and pre-analyzed entries are composed |
 | 12 | - | - | After 12, it can be freely expanded. |
 
 ## API reference
