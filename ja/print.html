@@ -843,13 +843,13 @@ tokenizer
 </li>
 </ul>
 <h2 id="利用可能なフィルタ"><a class="header" href="#利用可能なフィルタ">利用可能なフィルタ</a></h2>
-<p>Linderaは4種類の文字フィルタと20種類のトークンフィルタを提供しており、日本語・韓国語・汎用的なテキスト正規化をカバーしています。</p>
+<p>Linderaは4種類の文字フィルタと21種類のトークンフィルタを提供しており、日本語・韓国語・汎用的なテキスト正規化をカバーしています。</p>
 <div class="table-wrapper"><table><thead><tr><th>カテゴリ</th><th>フィルタ</th></tr></thead><tbody>
 <tr><td>文字フィルタ</td><td><code>unicode_normalize</code>, <code>japanese_iteration_mark</code>, <code>mapping</code>, <code>regex</code></td></tr>
 <tr><td>トークンフィルタ -- 正規化</td><td><code>japanese_base_form</code>, <code>japanese_reading_form</code>, <code>korean_reading_form</code>, <code>japanese_kana</code>, <code>japanese_katakana_stem</code>, <code>japanese_number</code>, <code>korean_number</code>, <code>mapping</code>, <code>remove_diacritical_mark</code>, <code>lowercase</code>, <code>uppercase</code></td></tr>
 <tr><td>トークンフィルタ -- 品詞によるフィルタリング</td><td><code>japanese_keep_tags</code>, <code>japanese_stop_tags</code>, <code>korean_keep_tags</code>, <code>korean_stop_tags</code></td></tr>
 <tr><td>トークンフィルタ -- 単語によるフィルタリング</td><td><code>keep_words</code>, <code>stop_words</code></td></tr>
-<tr><td>トークンフィルタ -- 構造の変換</td><td><code>japanese_compound_word</code>, <code>korean_compound_word</code>, <code>length</code></td></tr>
+<tr><td>トークンフィルタ -- 構造の変換</td><td><code>japanese_compound_word</code>, <code>korean_compound_word</code>, <code>korean_decompound</code>, <code>length</code></td></tr>
 </tbody></table>
 </div>
 <p>各フィルタの説明・パラメータ・実行可能なYAML/Rust APIの例は<a href="concepts/../lindera-analysis/filters.html">フィルターリファレンス</a>を参照してください。</p>
@@ -1792,6 +1792,38 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 }
 </code></pre>
 <p>空白の直後の<code>만</code>は既定の左側空白ペナルティにより<code>NR</code>になりますが、文頭や他の数詞の直後ではko-dicが<code>JX</code>と判定するため（<code>만 원</code>、<code>십만 원</code>）、<code>["SN", "NR"]</code>では結合されません。</p>
+<h3 id="korean_decompound"><a class="header" href="#korean_decompound">korean_decompound</a></h3>
+<p>ko-dicの複合語・活用形・事前解析済み（<code>Preanalysis</code>）トークンを、<code>expression</code>フィールドが示す形態素に分割します。Lucene noriの<code>DecompoundMode</code>と同じ動作で、隣接トークンを結合する<code>korean_compound_word</code>の逆操作にあたります。Linderaの<code>Mode::Decompose</code>は日本語の漢字向けに調整された長さペナルティであり、これらのフィールドを読まないため、このフィルタなしでは<code>무궁화</code>はどのモードでも分割されません。</p>
+<div class="table-wrapper"><table><thead><tr><th>入力</th><th>ko-dicのトークン</th><th><code>mode: "discard"</code></th><th><code>mode: "mixed"</code></th></tr></thead><tbody>
+<tr><td><code>무궁화꽃이</code></td><td><code>무궁화/NNG 꽃/NNG 이/JKS</code></td><td><code>무궁 화 꽃 이</code></td><td><code>무궁화 무궁 화 꽃 이</code></td></tr>
+<tr><td><code>가곡역</code></td><td><code>가곡역/NNP</code></td><td><code>가곡 역</code></td><td><code>가곡역 가곡 역</code></td></tr>
+</tbody></table>
+</div>
+<p>断片のオフセットはnoriに合わせています。自身のバイト範囲を持つのは<code>Compound</code>の断片だけで、各断片は自身が表すテキストの範囲を持ちます。<code>Inflect</code>と<code>Preanalysis</code>の断片はトークン全体の範囲を共有します。活用形の断片は元の表層形の部分文字列とは限らないためです（<code>갔</code>は<code>가</code> + <code>았</code>に分解されます）。</p>
+<p><code>Compound</code>トークンを分割するのは、断片をつなげると表層形とちょうど一致する場合だけで、それ以外は範囲を共有します。これには、断片が表層形そのものの文字列ではない同梱ko-dicの12項目（<code>안지랑역</code> = <code>안지</code> + <code>역</code>、<code>고춧값</code> = <code>고추</code> + <code>값</code>）が含まれます。これらではnoriのオフセットが一部の断片を別の文字列に向けてしまいます。<code>프린터3D</code> = <code>프린터</code> + <code>쓰리디</code>のようなユーザー辞書の項目や、先行フィルタが表層形を書き換えた場合も同様です。同梱辞書のそれ以外の項目ではオフセットはnoriと一致し、どのオフセットでテキストを切り出しても安全です。</p>
+<p><code>discard</code>では断片が複合語自身の位置から連番で並び、<code>mixed</code>では複合語がその位置に<code>position_length</code>を断片数として残り、断片が同じ位置から続きます。展開後のトークンは増えた位置の分だけ後ろにずれ、それ以外はずれないため、<code>korean_stop_tags</code>など先行フィルタが残した位置の隙間は保たれます。</p>
+<p>展開するのは位置を1つだけ占めるトークンに限るため、<code>mixed</code>が残した複合語が再び分割されることはありません。それでもフィルタはチェーンに一度だけ入れてください。<code>mixed</code>が残した断片1つの項目は位置を1つしか占めないためです。<code>korean_compound_word</code>と組み合わせる場合は結合を先に置いてください。結合はバイト範囲の重なるトークンを繋がないため逆順でも壊れませんが、結合を先にするとセグメンターが出したトークンそのものを対象にできます。</p>
+<p>断片は自身の品詞タグと意味分類を持ち、複合語自体を説明するフィールド（<code>type</code>、<code>expression</code>、<code>first_part_of_speech</code>、<code>last_part_of_speech</code>、<code>reading</code>、<code>presence_absence</code>）は空になります。読みを空にするのはnoriと同じ挙動で、noriの<code>DecompoundToken.getReading()</code>は<code>null</code>を返します。<code>korean_reading_form</code>は<code>*</code>をスキップするため、断片は自身の表層形を保ちます。</p>
+<p>スキーマに<code>type</code>/<code>expression</code>フィールドがない辞書に適用した場合、フィルタは設定されたフィルタごとに一度だけ警告を出し、すべてのトークンをそのまま通過させます。</p>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>型</th><th>必須</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>mode</code></td><td>string</td><td>いいえ</td><td><code>"discard"</code>（デフォルト、noriと同じ）は複合語を断片で置き換え、<code>"mixed"</code>は複合語を残したうえで断片も出力します</td></tr>
+<tr><td><code>types</code></td><td>array&lt;string&gt;</td><td>いいえ</td><td>分解対象の<code>type</code>値（大文字と小文字を区別）。デフォルトは<code>["Compound", "Inflect", "Preanalysis"]</code>。空のリストやそれ以外の値はエラーになります</td></tr>
+</tbody></table>
+</div>
+<p><strong>例:</strong></p>
+<pre><code class="language-json">{
+  "kind": "korean_decompound",
+  "args": {
+    "mode": "discard",
+    "types": [
+      "Compound",
+      "Inflect",
+      "Preanalysis"
+    ]
+  }
+}
+</code></pre>
 <h3 id="korean_keep_tags"><a class="header" href="#korean_keep_tags">korean_keep_tags</a></h3>
 <p>最初の品詞タグが<code>tags</code>のいずれかに一致する韓国語トークンのみを保持します。</p>
 <p><strong>パラメータ:</strong></p>
@@ -2058,6 +2090,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 │   ├── japanese_stop_tags.rs
 │   ├── keep_words.rs
 │   ├── korean_compound_word.rs
+│   ├── korean_decompound.rs
 │   ├── korean_keep_tags.rs
 │   ├── korean_number.rs
 │   ├── korean_reading_form.rs
