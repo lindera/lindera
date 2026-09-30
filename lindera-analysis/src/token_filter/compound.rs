@@ -43,6 +43,14 @@ pub(crate) fn parse_new_tag(config: &Value) -> LinderaResult<Option<String>> {
 /// no matching neighbour is left untouched, details included, and an empty
 /// tag set leaves the whole list untouched without extracting a single key.
 ///
+/// A run also ends where a token starts before the previous one ends. Tokens
+/// straight from the segmenter never overlap, so this changes nothing for
+/// them, but `korean_decompound` emits overlapping ones by design: a `mixed`
+/// compound alongside its own fragments, and inflection fragments that all
+/// share their token's span. Concatenating those would duplicate text
+/// (`무궁화` + `무궁` + `화` + `꽃` becoming `무궁화무궁화꽃`) under an offset
+/// range that no longer matches the surface.
+///
 /// The key extraction strategy is supplied by the caller for the same reason
 /// as in [`super::tags::apply_tag_filter`]: Japanese filters join up to four
 /// part-of-speech parts, Korean filters use only the first. `write_tag`
@@ -96,7 +104,12 @@ pub(crate) fn merge_consecutive_tokens<'a, W, D>(
         // that follows. Each token's key is extracted exactly once.
         let mut end = read + 1;
         if matches(&mut tokens[read]) {
-            while end < len && matches(&mut tokens[end]) {
+            // The overlap check comes first so an overlapping token's key is
+            // never extracted just to be discarded.
+            while end < len
+                && tokens[end].byte_start >= tokens[end - 1].byte_end
+                && matches(&mut tokens[end])
+            {
                 end += 1;
             }
         }
@@ -327,6 +340,70 @@ mod tests {
                 .collect();
             assert_eq!(actual, expected_runs(shape), "shape {shape:?}");
         }
+    }
+
+    /// A run ends where a token starts before the previous one ends.
+    /// `korean_decompound` emits such overlaps by design (a `mixed` compound
+    /// before its own fragments, and inflection fragments sharing one span),
+    /// and joining them would duplicate text under a mismatched range. The
+    /// tokens that do follow each other contiguously still merge.
+    #[test]
+    fn test_merge_consecutive_tokens_ends_a_run_at_a_byte_overlap() {
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+        let tags = match_set();
+
+        let spanning = |surface: &'static str, start: usize, end: usize, position: usize| Token {
+            surface: Cow::Borrowed(surface),
+            byte_start: start,
+            byte_end: end,
+            position,
+            position_length: 1,
+            word_id: WordId::new(LexType::System, 0),
+            dictionary: &dictionary,
+            user_dictionary: None,
+            details: Some(vec![Cow::Borrowed(MATCH)]),
+        };
+        let render = |tokens: &[Token<'_>]| -> Vec<(String, usize, usize)> {
+            tokens
+                .iter()
+                .map(|t| (t.surface.to_string(), t.byte_start, t.byte_end))
+                .collect()
+        };
+
+        // A `mixed` expansion followed by a contiguous token: the compound
+        // stands alone, its fragments and the next token merge.
+        let mut tokens = vec![
+            spanning("무궁화", 0, 9, 0),
+            spanning("무궁", 0, 6, 0),
+            spanning("화", 6, 9, 1),
+            spanning("꽃", 9, 12, 2),
+        ];
+        merge_consecutive_tokens(
+            &mut tokens,
+            &tags,
+            |token, key| write_japanese_pos_key(token, 0, key),
+            mark_merged,
+        );
+        assert_eq!(
+            render(&tokens),
+            vec![
+                ("무궁화".to_string(), 0, 9),
+                ("무궁화꽃".to_string(), 0, 12),
+            ]
+        );
+
+        // Fragments sharing one span never merge with each other.
+        let mut tokens = vec![spanning("가", 0, 3, 0), spanning("았", 0, 3, 1)];
+        merge_consecutive_tokens(
+            &mut tokens,
+            &tags,
+            |token, key| write_japanese_pos_key(token, 0, key),
+            mark_merged,
+        );
+        assert_eq!(
+            render(&tokens),
+            vec![("가".to_string(), 0, 3), ("았".to_string(), 0, 3)]
+        );
     }
 
     #[test]

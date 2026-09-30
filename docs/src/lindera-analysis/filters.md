@@ -342,6 +342,50 @@ ko-dic tokenizes a Sino-Korean numeral into one token per morpheme, so this filt
 
 `만` right after a space is `NR` under the default left-space penalty, but at the start of the text or right after another numeral ko-dic tags it `JX` (`만 원`, `십만 원`), which stays outside `["SN", "NR"]`.
 
+### korean_decompound
+
+Splits ko-dic compound, inflected and pre-analyzed tokens into the morphemes their `expression` field lists, reproducing Lucene nori's `DecompoundMode`. This is the inverse of `korean_compound_word`, which merges neighbouring tokens. Lindera's `Mode::Decompose` applies a length penalty tuned for Japanese kanji and does not read these fields, so `무궁화` stays whole in every mode without this filter.
+
+| Input | Tokens from ko-dic | `mode: "discard"` | `mode: "mixed"` |
+| --- | --- | --- | --- |
+| `무궁화꽃이` | `무궁화/NNG 꽃/NNG 이/JKS` | `무궁 화 꽃 이` | `무궁화 무궁 화 꽃 이` |
+| `가곡역` | `가곡역/NNP` | `가곡 역` | `가곡역 가곡 역` |
+
+Fragment offsets follow nori: only `Compound` fragments get their own byte range, each covering the text it spells. `Inflect` and `Preanalysis` fragments share the whole token's span, because an inflected form's fragments need not be substrings of it (`갔` decomposes to `가` + `았`).
+
+A `Compound` token is carved only when its fragments spell its surface exactly; otherwise it shares its span too. That covers the 12 bundled ko-dic entries whose fragments are not the surface's own text (`안지랑역` = `안지` + `역`, `고춧값` = `고추` + `값`), where nori's offsets point some fragments at text they do not spell, as well as a user-dictionary entry such as `프린터3D` = `프린터` + `쓰리디` and a surface an earlier filter has rewritten. For every other bundled entry the offsets are nori's, and every offset is safe to slice the text with.
+
+In `discard` the fragments take consecutive positions starting at the compound's own; in `mixed` the compound keeps that position with a `position_length` spanning its fragments, which are then emitted from the same position onward. Tokens after the expansion shift by the positions it added, and only by those, so a gap left by an earlier filter such as `korean_stop_tags` survives.
+
+Only tokens spanning a single position are expanded, so the compound a `mixed` pass keeps is not split again. Put the filter in a chain once all the same: a single-fragment entry kept by `mixed` still spans one position. When combining it with `korean_compound_word`, place the merge first; merging never joins tokens that overlap in byte range, so the reverse order does not corrupt anything, but merging first lets it see the segmenter's own tokens.
+
+A fragment takes its own part-of-speech tag and semantic class and blanks the fields that describe the compound (`type`, `expression`, `first_part_of_speech`, `last_part_of_speech`, `reading`, `presence_absence`). Blanking the reading matches nori, whose `DecompoundToken.getReading()` returns `null`; `korean_reading_form` skips `*`, so a fragment keeps its own surface.
+
+Applied to a dictionary whose schema has no `type`/`expression` fields, the filter warns once per configured filter and passes every token through unchanged.
+
+**Parameters:**
+
+| Argument | Type | Required | Description |
+| --- | --- | --- | --- |
+| `mode` | string | No | `"discard"` (default, as in nori) replaces the compound with its fragments; `"mixed"` keeps the compound and emits the fragments as well |
+| `types` | array\<string\> | No | The `type` values to decompound, case-sensitive. Defaults to `["Compound", "Inflect", "Preanalysis"]`; an empty list or any other value is rejected |
+
+**Example:**
+
+```json
+{
+  "kind": "korean_decompound",
+  "args": {
+    "mode": "discard",
+    "types": [
+      "Compound",
+      "Inflect",
+      "Preanalysis"
+    ]
+  }
+}
+```
+
 ### korean_keep_tags
 
 Keeps only Korean tokens whose first part-of-speech tag matches one of `tags`.

@@ -44,6 +44,7 @@ anyhow = { workspace = true }
 daachorse = { workspace = true }
 kanaria = "0.2.0"
 lindera-segmenter = { workspace = true, default-features = false }
+log = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
