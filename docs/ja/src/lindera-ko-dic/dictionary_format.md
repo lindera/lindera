@@ -24,10 +24,10 @@ ko-dic は NAIST JDIC よりもフィールド列が 1 つ少なく、全体的�
 | 5 | 의미 부류 | Meaning | （確信するには例が少なすぎます） |
 | 6 | 종성 유무 | Presence or absence | `T` は true、`F` は false、それ以外は `*` |
 | 7 | 읽기 | Reading | 通常は表層形と一致しますが、外来語（例: 漢字語）では異なる場合があります |
-| 8 | 타입 | Type | `Inflect`（活用）、`Compound`（複合名詞）、`Preanalysis`（基分析）のいずれか |
+| 8 | 타입 | Type | `Inflect`（活用）、`Compound`（複合名詞）、`Preanalysis`（事前解析済み）のいずれか |
 | 9 | 첫번째 품사 | First part-of-speech | 例: 品詞タグが "VV+EM+VX+EP" の場合、`VV` を返します |
 | 10 | 마지막 품사 | Last part-of-speech | 例: 品詞タグが "VV+EM+VX+EP" の場合、`EP` を返します |
-| 11 | 표현 | Expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` -- 活用、複合名詞、基分析がどのように構成されるかを示すフィールド |
+| 11 | 표현 | Expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` -- 活用、複合名詞、事前解析済みの語がどのように構成されるかを示すフィールド |
 
 ## 左側空白ペナルティ
 
@@ -83,10 +83,10 @@ echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic
 | 5 | 의미 부류 | meaning | （確信するには例が少なすぎます） |
 | 6 | 종성 유무 | presence or absence | `T` は true、`F` は false、それ以外は `*` |
 | 7 | 읽기 | reading | 通常は表層形と一致しますが、外来語（例: 漢字語）では異なる場合があります |
-| 8 | 타입 | type | `Inflect`（活用）、`Compound`（複合名詞）、`Preanalysis`（基分析）のいずれか |
+| 8 | 타입 | type | `Inflect`（活用）、`Compound`（複合名詞）、`Preanalysis`（事前解析済み）のいずれか |
 | 9 | 첫번째 품사 | first part-of-speech | 例: 品詞タグが "VV+EM+VX+EP" の場合、`VV` を返します |
 | 10 | 마지막 품사 | last part-of-speech | 例: 品詞タグが "VV+EM+VX+EP" の場合、`EP` を返します |
-| 11 | 표현 | expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` -- 活用、複合名詞、基分析がどのように構成されるかを示すフィールド |
+| 11 | 표현 | expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` -- 活用、複合名詞、事前解析済みの語がどのように構成されるかを示すフィールド |
 | 12 | - | - | 12 以降は自由に拡張可能です。 |
 
 ## API リファレンス
