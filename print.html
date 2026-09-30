@@ -4478,9 +4478,8 @@ console.log(schema.getCustomFields());      // Fields from index 4 onward
 <blockquote>
 <p>[!NOTE]
 This page shows a few commonly used filters as examples -- it is <strong>not</strong> the complete list.
-<code>lindera-analysis</code> ships 4 character filters and 18 token filters in total. See
-<a href="lindera-nodejs/../lindera-analysis/filters.html">Filters</a> for the full, authoritative catalogue of every
-character and token filter, including parameters and examples.</p>
+See <a href="lindera-nodejs/../lindera-analysis/filters.html">Filters</a> for the full, authoritative catalogue of every
+character and token filter that <code>lindera-analysis</code> ships, including parameters and examples.</p>
 </blockquote>
 <h2 id="character-filters-3"><a class="header" href="#character-filters-3">Character Filters</a></h2>
 <p>Character filters transform the input text before tokenization.</p>
@@ -5322,9 +5321,8 @@ metadata.to_h['space_penalty']
 <blockquote>
 <p>[!NOTE]
 This page shows a few commonly used filters as examples -- it is <strong>not</strong> the complete list.
-<code>lindera-analysis</code> ships 4 character filters and 18 token filters in total. See
-<a href="lindera-ruby/../lindera-analysis/filters.html">Filters</a> for the full, authoritative catalogue of every
-character and token filter, including parameters and examples.</p>
+See <a href="lindera-ruby/../lindera-analysis/filters.html">Filters</a> for the full, authoritative catalogue of every
+character and token filter that <code>lindera-analysis</code> ships, including parameters and examples.</p>
 </blockquote>
 <h2 id="character-filters-4"><a class="header" href="#character-filters-4">Character Filters</a></h2>
 <p>Character filters transform the input text before tokenization.</p>
@@ -6200,9 +6198,8 @@ $schema = new Lindera\Schema(['surface', 'pos']);
 <blockquote>
 <p>[!NOTE]
 This page shows a few commonly used filters as examples -- it is <strong>not</strong> the complete list.
-<code>lindera-analysis</code> ships 4 character filters and 18 token filters in total. See
-<a href="lindera-php/../lindera-analysis/filters.html">Filters</a> for the full, authoritative catalogue of every
-character and token filter, including parameters and examples.</p>
+See <a href="lindera-php/../lindera-analysis/filters.html">Filters</a> for the full, authoritative catalogue of every
+character and token filter that <code>lindera-analysis</code> ships, including parameters and examples.</p>
 </blockquote>
 <h2 id="character-filters-5"><a class="header" href="#character-filters-5">Character Filters</a></h2>
 <p>Character filters transform the input text before tokenization.</p>
@@ -8352,7 +8349,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <tr><td>8</td><td>타입</td><td>Type</td><td>One of: <code>Inflect</code> (활용); <code>Compound</code> (복합명사); or <code>Preanalysis</code> (기분석)</td></tr>
 <tr><td>9</td><td>첫번째 품사</td><td>First part-of-speech</td><td>e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return <code>VV</code></td></tr>
 <tr><td>10</td><td>마지막 품사</td><td>Last part-of-speech</td><td>e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return <code>EP</code></td></tr>
-<tr><td>11</td><td>표현</td><td>Expression</td><td><code>활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드</code> -- Fields that tell how usage, compound nouns, and key analysis are organized</td></tr>
+<tr><td>11</td><td>표현</td><td>Expression</td><td><code>활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드</code> -- Field that tells how inflected forms, compound nouns, and pre-analyzed entries are composed</td></tr>
 </tbody></table>
 </div>
 <h2 id="left-space-penalty"><a class="header" href="#left-space-penalty">Left-space penalty</a></h2>
@@ -8398,7 +8395,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <tr><td>8</td><td>타입</td><td>type</td><td>One of: <code>Inflect</code> (활용); <code>Compound</code> (복합명사); or <code>Preanalysis</code> (기분석)</td></tr>
 <tr><td>9</td><td>첫번째 품사</td><td>first part-of-speech</td><td>e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return <code>VV</code></td></tr>
 <tr><td>10</td><td>마지막 품사</td><td>last part-of-speech</td><td>e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return <code>EP</code></td></tr>
-<tr><td>11</td><td>표현</td><td>expression</td><td><code>활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드</code> -- Fields that tell how usage, compound nouns, and key analysis are organized</td></tr>
+<tr><td>11</td><td>표현</td><td>expression</td><td><code>활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드</code> -- Field that tells how inflected forms, compound nouns, and pre-analyzed entries are composed</td></tr>
 <tr><td>12</td><td>-</td><td>-</td><td>After 12, it can be freely expanded.</td></tr>
 </tbody></table>
 </div>
