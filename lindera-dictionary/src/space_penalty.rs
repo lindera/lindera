@@ -36,11 +36,12 @@ use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::LinderaResult;
-use crate::dictionary::character_definition::{CategoryId, CharacterDefinition};
+use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::schema::Schema;
 use crate::dictionary::{Dictionary, UserDictionary};
 use crate::error::LinderaErrorKind;
 use crate::viterbi::{LexType, WordId};
+use crate::whitespace::WhitespaceClassifier;
 
 /// Schema field names consulted, in order, to find the part-of-speech tag
 /// column: `part_of_speech_tag` (ko-dic) and `part_of_speech` (IPADIC,
@@ -215,16 +216,10 @@ pub struct SpacePenaltyTable {
     unknown: Vec<u8>,
     /// `costs[0] == 0`; `costs[i]` is the cost of rule `i - 1`.
     costs: Vec<i32>,
-    /// Precomputed `SPACE`-category membership for the ASCII/Latin-1 range,
-    /// mirroring the table `Segmenter` keeps for `keep_whitespace`. Every
-    /// character `char.def` files classify as `SPACE` in practice lives here
-    /// (0x20, 0x09, 0x0A, 0x0B, 0x0D), so this is the path that actually
-    /// runs, one indexed load per character instead of a category lookup.
-    space_ascii: [bool; 256],
-    /// The dictionary's `SPACE` category, for codepoints outside
-    /// `space_ascii`; `None` when the dictionary defines no such category,
-    /// which selects the `char::is_whitespace` fallback.
-    space_category: Option<CategoryId>,
+    /// The dictionary's `SPACE`-category classifier; `None` when the
+    /// dictionary defines no such category, which selects the
+    /// `char::is_whitespace` fallback.
+    whitespace: Option<WhitespaceClassifier>,
 }
 
 impl SpacePenaltyTable {
@@ -292,27 +287,15 @@ impl SpacePenaltyTable {
             .collect();
 
         // Whitespace classifier, resolved once here rather than per character
-        // per sentence. Built from the dictionary's own `char.def`, like the
-        // equivalent table in `Segmenter::new`.
-        let char_definitions = &dictionary.character_definition;
-        let space_category = char_definitions.category_id_by_name("SPACE");
-        let mut space_ascii = [false; 256];
-        for (codepoint, is_space) in space_ascii.iter_mut().enumerate() {
-            if let Some(c) = char::from_u32(codepoint as u32) {
-                *is_space = match space_category {
-                    Some(space_id) => char_definitions.lookup_categories(c).contains(&space_id),
-                    None => c.is_whitespace(),
-                };
-            }
-        }
+        // per sentence, from the dictionary's own `char.def`.
+        let whitespace = WhitespaceClassifier::new(&dictionary.character_definition);
 
         Ok(Self {
             system,
             user,
             unknown,
             costs,
-            space_ascii,
-            space_category,
+            whitespace,
         })
     }
 
@@ -322,9 +305,9 @@ impl SpacePenaltyTable {
     /// that defines no `SPACE` category, one satisfying
     /// [`char::is_whitespace`].
     ///
-    /// ASCII/Latin-1 codepoints are answered from a precomputed table, which
-    /// covers every character real `char.def` files put in `SPACE`; anything
-    /// above falls back to a category lookup.
+    /// The `SPACE` test goes through a [`WhitespaceClassifier`], whose
+    /// precomputed ASCII/Latin-1 table covers every character real
+    /// `char.def` files put in `SPACE`.
     ///
     /// # Arguments
     ///
@@ -337,14 +320,9 @@ impl SpacePenaltyTable {
     /// `true` when a candidate starting after `c` is subject to the penalty.
     #[inline]
     pub fn is_space(&self, c: char, char_definitions: &CharacterDefinition) -> bool {
-        let codepoint = c as u32;
-        if codepoint < 256 {
-            self.space_ascii[codepoint as usize]
-        } else {
-            match self.space_category {
-                Some(space_id) => char_definitions.lookup_categories(c).contains(&space_id),
-                None => c.is_whitespace(),
-            }
+        match &self.whitespace {
+            Some(whitespace) => whitespace.is_space(c, char_definitions),
+            None => c.is_whitespace(),
         }
     }
 

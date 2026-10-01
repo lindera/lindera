@@ -10,6 +10,7 @@ use crate::dictionary::prefix_dictionary::{PrefixDictionary, UserPrefixDictionar
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
 use crate::mode::{Mode, Penalty};
 use crate::space_penalty::SpacePenaltyTable;
+use crate::whitespace::WhitespaceClassifier;
 
 /// Type of lexicon containing the word
 #[derive(
@@ -457,6 +458,11 @@ pub struct Lattice {
     /// The char position `penalty_cache` is valid for (`usize::MAX` =
     /// invalid; reset at the start of every sentence).
     penalty_cache_pos: usize,
+    /// Whether the current sentence skips whitespace (see
+    /// [`LatticeOptions::skip_whitespace`]); set at the start of every
+    /// sentence and read by the Decompose length penalty, which measures an
+    /// edge carried over a whitespace run without that run.
+    skip_whitespace: bool,
 }
 
 /// Upper bound applied to every stored `path_cost` so the relaxation loops
@@ -492,11 +498,28 @@ pub struct LatticeOptions<'a> {
     /// a character carrying the dictionary's `SPACE` category, or
     /// `char::is_whitespace` for a dictionary that defines no such category.
     pub space_penalty: Option<&'a SpacePenaltyTable>,
+    /// MeCab-compatible whitespace handling; `None` (the default) keeps
+    /// whitespace in the lattice. When set, no node starts on a character
+    /// the classifier accepts (the dictionary's `SPACE` category), and the
+    /// edges ending before or inside a run of such characters are carried
+    /// over to the end of the run, so the words on either side connect
+    /// directly and pay the connection cost the dictionary was trained with,
+    /// in every mode and in both the 1-best and the N-best lattice. Whitespace
+    /// otherwise becomes a `SPACE` unknown-word node, whose context ids carry
+    /// no connection costs in MeCab-trained dictionaries such as ko-dic, so
+    /// each space resets the context.
+    ///
+    /// A carried edge keeps its start position, so its span (the gap to the
+    /// next token's start) includes the whitespace after it; callers trim it.
+    /// When `space_penalty` is set as well, this classifier also decides
+    /// which characters count as whitespace for the penalty.
+    pub skip_whitespace: Option<&'a WhitespaceClassifier>,
 }
 
 impl<'a> LatticeOptions<'a> {
     /// Options for `mode` with the defaults `set_text` uses: unbounded
-    /// grouping, the length ladder on, no space penalty.
+    /// grouping, the length ladder on, no space penalty, whitespace kept in
+    /// the lattice.
     ///
     /// # Arguments
     ///
@@ -511,6 +534,7 @@ impl<'a> LatticeOptions<'a> {
             max_grouping_len: None,
             unknown_word_ladder: true,
             space_penalty: None,
+            skip_whitespace: None,
         }
     }
 
@@ -568,10 +592,10 @@ const CATEGORIES_IN_POOL: u32 = 1 << 31;
 struct CharData {
     byte_offset: u32,
     is_kanji: bool,
-    /// Whether this character counts as whitespace for the space penalty
-    /// (see `LatticeOptions::space_penalty`); computed only when the penalty
-    /// is enabled, its sole consumer. Fits in the struct's existing padding,
-    /// so `CharData` stays 16 bytes.
+    /// Whether this character is whitespace (see
+    /// `LatticeOptions::skip_whitespace` and `LatticeOptions::space_penalty`);
+    /// computed only when one of the two is enabled, its only consumers.
+    /// Fits in the struct's existing padding, so `CharData` stays 16 bytes.
     is_space: bool,
     categories_start: u32,
     categories_len: u16,
@@ -905,9 +929,11 @@ impl Lattice {
     ///   computed in Decompose mode, their sole consumer (`Penalty::penalty`
     ///   via `kanji_only`) — in Normal mode they stay zero and every edge
     ///   gets `kanji_only = false`, which the Normal relaxation arms never
-    ///   read (#942). Likewise `CharData::is_space` stays `false` unless the
-    ///   space penalty is enabled, in which case each character is classified
-    ///   by [`SpacePenaltyTable::is_space`].
+    ///   read (#942). Likewise `CharData::is_space` stays `false` unless
+    ///   whitespace skipping or the space penalty is enabled, in which case
+    ///   each character is classified by the skipping classifier
+    ///   ([`WhitespaceClassifier::is_space`]) or else by
+    ///   [`SpacePenaltyTable::is_space`].
     fn prepare_char_buffers(
         &mut self,
         dict: &PrefixDictionary,
@@ -919,8 +945,9 @@ impl Lattice {
         let search_mode = options.mode;
         let needs_kanji_runs = search_mode.is_search();
         // Hoisted so the per-character classification is one indexed load
-        // through the table's ASCII fast path, not a category lookup (the
-        // table also resolves the `SPACE` category id once, at build time).
+        // through an ASCII fast path, not a category lookup (both
+        // classifiers resolve the `SPACE` category id once, at build time).
+        let skip_whitespace = options.skip_whitespace;
         let space_table = options.space_penalty;
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
@@ -954,7 +981,11 @@ impl Lattice {
                 group_runs_total += categories_len as u32;
             }
 
-            let is_space = space_table.is_some_and(|table| table.is_space(c, char_definitions));
+            let is_space = match (skip_whitespace, space_table) {
+                (Some(whitespace), _) => whitespace.is_space(c, char_definitions),
+                (None, Some(table)) => table.is_space(c, char_definitions),
+                (None, None) => false,
+            };
 
             self.char_info_buffer.push(CharData {
                 byte_offset: byte_offset as u32,
@@ -1100,6 +1131,7 @@ impl Lattice {
         );
         self.record_and_grow(n_chars);
         self.penalty_cache_pos = usize::MAX;
+        self.skip_whitespace = options.skip_whitespace.is_some();
 
         let start_edge = Edge {
             path_cost: 0,
@@ -1155,6 +1187,16 @@ impl Lattice {
         }
 
         for char_idx in 0..n_chars {
+            if self.skip_whitespace {
+                // No node starts on whitespace (MeCab skips it); the edges
+                // ending before the run that ends here are carried over, so
+                // candidates starting here connect to them directly.
+                if self.char_info_buffer[char_idx].is_space {
+                    continue;
+                }
+                self.carry_over_whitespace(char_idx, false);
+            }
+
             // No arc is ending here.
             // No need to check if a valid word starts here.
             if self.ends_at[char_idx].is_empty() {
@@ -1240,12 +1282,17 @@ impl Lattice {
             }
         }
 
-        // Connect EOS
+        // Connect EOS, to the words before trailing whitespace when it is
+        // skipped (MeCab connects EOS to the last position a word ends at).
+        if self.skip_whitespace {
+            self.carry_over_whitespace(n_chars, false);
+        }
         if !self.ends_at[n_chars].is_empty() {
             let mut eos_edge = Edge {
                 start_char: n_chars as u16,
                 ..Default::default()
             };
+            let content_end = self.content_end(n_chars);
             // Calculate cost for EOS with the row hoisted (#880).
             let left_edges = &self.ends_at[n_chars];
             let mut best_cost = i32::MAX;
@@ -1256,9 +1303,10 @@ impl Lattice {
                 let path_cost = left_edge.path_cost + cost_row[left_edge.right_id as usize] as i32;
                 let path_cost = match search_mode {
                     Mode::Normal => path_cost,
-                    Mode::Decompose(penalty) => path_cost.saturating_add(
-                        penalty.penalty(left_edge, n_chars - left_edge.start_char as usize),
-                    ),
+                    Mode::Decompose(penalty) => path_cost.saturating_add(penalty.penalty(
+                        left_edge,
+                        content_end.saturating_sub(left_edge.start_char as usize),
+                    )),
                 };
                 if path_cost < best_cost {
                     best_cost = path_cost;
@@ -1270,6 +1318,90 @@ impl Lattice {
                 eos_edge.path_cost = best_cost;
                 self.ends_at[n_chars].push(eos_edge);
             }
+        }
+    }
+
+    /// Returns the start of the whitespace run that ends right before
+    /// `char_idx`, or `char_idx` itself when the preceding character is not
+    /// whitespace (or whitespace is not being classified).
+    ///
+    /// # Arguments
+    ///
+    /// * `char_idx` - A slot index, `0..=n_chars`.
+    ///
+    /// # Returns
+    ///
+    /// The run's start, in characters.
+    #[inline]
+    fn whitespace_run_start(&self, char_idx: usize) -> usize {
+        let mut start = char_idx;
+        while start > 0 && self.char_info_buffer[start - 1].is_space {
+            start -= 1;
+        }
+        start
+    }
+
+    /// Returns where the words in `ends_at[char_idx]` end once the
+    /// whitespace they were carried over is left out: the start of the
+    /// whitespace run before `char_idx` when whitespace is skipped,
+    /// `char_idx` otherwise. Used for the Decompose length penalty.
+    ///
+    /// # Arguments
+    ///
+    /// * `char_idx` - A slot index, `0..=n_chars`.
+    ///
+    /// # Returns
+    ///
+    /// The end position, in characters.
+    #[inline]
+    fn content_end(&self, char_idx: usize) -> usize {
+        if self.skip_whitespace {
+            self.whitespace_run_start(char_idx)
+        } else {
+            char_idx
+        }
+    }
+
+    /// Carries the edges ending before or inside the whitespace run that
+    /// ends at `char_idx` over to `ends_at[char_idx]` (see
+    /// [`LatticeOptions::skip_whitespace`]), so candidates starting at
+    /// `char_idx` connect to them directly. MeCab does the same by looking
+    /// words up past the whitespace from every position a word ends at.
+    ///
+    /// Carried edges keep their start positions and predecessor links, so
+    /// backtracking is unchanged. Nothing starts inside the run, so no edge
+    /// refers to an emptied slot. In the N-best lattice the transitions of
+    /// the carried edges move with them, their edge indexes shifted past the
+    /// edges already in the slot; appending slot by slot keeps each slot's
+    /// transitions sorted by edge index, which `nbest.rs` relies on.
+    ///
+    /// # Arguments
+    ///
+    /// * `char_idx` - The first position after the run (or `n_chars`).
+    /// * `nbest` - Whether to move the N-best transitions as well.
+    fn carry_over_whitespace(&mut self, char_idx: usize, nbest: bool) {
+        let run_start = self.whitespace_run_start(char_idx);
+        if run_start == char_idx {
+            // Not preceded by whitespace: the common case, one check.
+            return;
+        }
+        // Drained rather than taken so every slot keeps its allocation for
+        // the next sentence.
+        let (before, after) = self.ends_at.split_at_mut(char_idx);
+        let target = &mut after[0];
+        for slot in run_start..char_idx {
+            if before[slot].is_empty() {
+                continue;
+            }
+            if nbest {
+                let offset = target.len() as u16;
+                let (paths_before, paths_after) = self.all_paths.split_at_mut(char_idx);
+                paths_after[0].extend(paths_before[slot].drain(..).map(|mut path| {
+                    path.edge_index += offset;
+                    path
+                }));
+            }
+            target.append(&mut before[slot]);
         }
     }
 
@@ -1560,11 +1692,16 @@ impl Lattice {
         let mut cache = std::mem::take(&mut self.penalty_cache);
         if self.penalty_cache_pos != start_char {
             cache.clear();
+            let content_end = self.content_end(start_char);
             cache.extend(self.ends_at[start_char].iter().map(|left_edge| {
                 // The left edge ends where this edge starts, so its exact
                 // char span is start_char - its start (#943 fixed the
-                // former byte-length/3 approximation).
-                penalty.penalty(left_edge, start_char - left_edge.start_char as usize)
+                // former byte-length/3 approximation), less the whitespace
+                // it was carried over when whitespace is skipped.
+                penalty.penalty(
+                    left_edge,
+                    content_end.saturating_sub(left_edge.start_char as usize),
+                )
             }));
             self.penalty_cache_pos = start_char;
         }
@@ -1625,8 +1762,12 @@ impl Lattice {
         let mut cache = std::mem::take(&mut self.penalty_cache);
         if self.penalty_cache_pos != start_char {
             cache.clear();
+            let content_end = self.content_end(start_char);
             cache.extend(self.ends_at[start_char].iter().map(|left_edge| {
-                penalty.penalty(left_edge, start_char - left_edge.start_char as usize)
+                penalty.penalty(
+                    left_edge,
+                    content_end.saturating_sub(left_edge.start_char as usize),
+                )
             }));
             self.penalty_cache_pos = start_char;
         }
@@ -2098,6 +2239,7 @@ impl Lattice {
         );
         self.record_and_grow_nbest(n_chars);
         self.penalty_cache_pos = usize::MAX;
+        self.skip_whitespace = options.skip_whitespace.is_some();
 
         let start_edge = Edge {
             path_cost: 0,
@@ -2143,6 +2285,14 @@ impl Lattice {
         }
 
         for char_idx in 0..n_chars {
+            // Whitespace skipping; see set_text_with_options.
+            if self.skip_whitespace {
+                if self.char_info_buffer[char_idx].is_space {
+                    continue;
+                }
+                self.carry_over_whitespace(char_idx, true);
+            }
+
             if self.ends_at[char_idx].is_empty() {
                 continue;
             }
@@ -2236,8 +2386,13 @@ impl Lattice {
             }
         }
 
-        // Connect EOS with all-path recording
+        // Connect EOS with all-path recording; see set_text_with_options for
+        // trailing whitespace.
+        if self.skip_whitespace {
+            self.carry_over_whitespace(n_chars, true);
+        }
         if !self.ends_at[n_chars].is_empty() {
+            let content_end = self.content_end(n_chars);
             let eos_edge_index = self.ends_at[n_chars].len() as u16;
             let mut eos_edge = Edge {
                 start_char: n_chars as u16,
@@ -2252,9 +2407,10 @@ impl Lattice {
                 let path_cost = left_edge.path_cost + cost_row[left_edge.right_id as usize] as i32;
                 let path_cost = match search_mode {
                     Mode::Normal => path_cost,
-                    Mode::Decompose(penalty) => path_cost.saturating_add(
-                        penalty.penalty(left_edge, n_chars - left_edge.start_char as usize),
-                    ),
+                    Mode::Decompose(penalty) => path_cost.saturating_add(penalty.penalty(
+                        left_edge,
+                        content_end.saturating_sub(left_edge.start_char as usize),
+                    )),
                 };
 
                 // Record all transitions to EOS
