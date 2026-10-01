@@ -136,6 +136,18 @@ pub struct Metadata {
     /// `"space_penalty": false`, or `lindera tokenize --disable-space-penalty`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub space_penalty: Option<SpacePenaltyConfig>,
+    /// Whether the segmenter skips whitespace in the lattice by default (see
+    /// `LatticeOptions::skip_whitespace`). `None`, the value of every
+    /// dictionary that does not set it, means yes: MeCab skips whitespace,
+    /// and dictionaries trained with MeCab carry no connection costs for it.
+    /// SudachiDict sets `false`, because Sudachi keeps whitespace in the
+    /// lattice and its costs are tuned for that. Optional, and omitted from
+    /// the file when absent, like `space_penalty`. The `lindera` Segmenter
+    /// applies it unless told otherwise, e.g. with
+    /// `Segmenter::skip_whitespace`, the segmenter config value
+    /// `"skip_whitespace"`, or `lindera tokenize --disable-skip-whitespace`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skip_whitespace: Option<bool>,
 }
 
 impl Default for Metadata {
@@ -193,6 +205,7 @@ impl Metadata {
             user_dictionary_schema: userdic_schema,
             model_info: None,
             space_penalty: None,
+            skip_whitespace: None,
         }
     }
 
@@ -306,6 +319,27 @@ mod tests {
         });
         let parsed: Metadata = serde_json::from_value(value).unwrap();
         assert_eq!(parsed.space_penalty.unwrap().cost_for_tag("JX"), 6000);
+    }
+
+    /// `skip_whitespace` is optional in the same way: absent it reads as
+    /// `None` and is not written back; present, it round-trips.
+    #[test]
+    fn skip_whitespace_is_optional_and_round_trips() {
+        let without = serde_json::to_string(&Metadata::default()).unwrap();
+        assert!(!without.contains("skip_whitespace"));
+        let parsed: Metadata = serde_json::from_str(&without).unwrap();
+        assert_eq!(parsed.skip_whitespace, None);
+
+        for value in [false, true] {
+            let metadata = Metadata {
+                skip_whitespace: Some(value),
+                ..Metadata::default()
+            };
+            let json = serde_json::to_string(&metadata).unwrap();
+            assert!(json.contains(&format!("\"skip_whitespace\":{value}")));
+            let parsed: Metadata = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed.skip_whitespace, Some(value));
+        }
     }
 
     /// A source `metadata.json` -- the hand-written kind checked into each

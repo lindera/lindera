@@ -40,8 +40,9 @@ fn default_user_dictionary_schema() -> CoreSchema {
 /// `CoreMetadata` instead of re-declaring the same defaults and conversions.
 /// Converts to and from [`lindera::dictionary::Metadata`]; the optional
 /// `model_info` carried by the lindera type is not retained (the bindings do
-/// not expose it), while `space_penalty` is, so a dictionary built from a
-/// `metadata.json` that ships left-space penalty rules (ko-dic) keeps them.
+/// not expose it), while `space_penalty` and `skip_whitespace` are, so a
+/// dictionary built from a `metadata.json` that ships left-space penalty
+/// rules (ko-dic) or turns whitespace skipping off (SudachiDict) keeps them.
 #[derive(Debug, Clone)]
 pub struct CoreMetadata {
     /// Dictionary name.
@@ -69,6 +70,9 @@ pub struct CoreMetadata {
     /// Left-space penalty rules the dictionary ships (ko-dic carries
     /// mecab-ko-dic's `left-space-penalty-factor`); `None` when it ships none.
     pub space_penalty: Option<SpacePenaltyConfig>,
+    /// The dictionary's whitespace-skipping default (`false` for
+    /// SudachiDict); `None` when it sets none, which means skipping.
+    pub skip_whitespace: Option<bool>,
 }
 
 impl CoreMetadata {
@@ -102,6 +106,7 @@ impl CoreMetadata {
             user_dictionary_schema: user_dictionary_schema
                 .unwrap_or_else(default_user_dictionary_schema),
             space_penalty: None,
+            skip_whitespace: None,
         }
     }
 
@@ -138,7 +143,7 @@ impl Default for CoreMetadata {
 
 impl From<Metadata> for CoreMetadata {
     /// Converts a lindera [`Metadata`] into a [`CoreMetadata`] (dropping
-    /// `model_info`, keeping `space_penalty`).
+    /// `model_info`, keeping `space_penalty` and `skip_whitespace`).
     fn from(metadata: Metadata) -> Self {
         Self {
             name: metadata.name,
@@ -153,15 +158,17 @@ impl From<Metadata> for CoreMetadata {
             dictionary_schema: metadata.dictionary_schema.into(),
             user_dictionary_schema: metadata.user_dictionary_schema.into(),
             space_penalty: metadata.space_penalty,
+            skip_whitespace: metadata.skip_whitespace,
         }
     }
 }
 
 impl From<CoreMetadata> for Metadata {
     /// Converts a [`CoreMetadata`] into a lindera [`Metadata`] (`model_info` is
-    /// `None`; `space_penalty` is carried over).
+    /// `None`; `space_penalty` and `skip_whitespace` are carried over).
     fn from(metadata: CoreMetadata) -> Self {
         let space_penalty = metadata.space_penalty;
+        let skip_whitespace = metadata.skip_whitespace;
         let mut converted = Metadata::new(
             metadata.name,
             metadata.encoding,
@@ -176,6 +183,7 @@ impl From<CoreMetadata> for Metadata {
             metadata.user_dictionary_schema.into(),
         );
         converted.space_penalty = space_penalty;
+        converted.skip_whitespace = skip_whitespace;
         converted
     }
 }
@@ -240,6 +248,7 @@ mod tests {
         assert_eq!(back.dictionary_schema.fields()[5], "pos_detail_1");
         assert!(back.space_penalty.is_none());
         assert!(back.space_penalty_json().is_none());
+        assert!(back.skip_whitespace.is_none());
     }
 
     /// ko-dic's `metadata.json` ships left-space penalty rules; loading it the
@@ -262,5 +271,21 @@ mod tests {
 
         let rebuilt: Metadata = core.into();
         assert_eq!(rebuilt.space_penalty, Some(shipped));
+    }
+
+    /// SudachiDict's `metadata.json` turns whitespace skipping off; the
+    /// setting must survive the same round trip as `space_penalty`.
+    #[test]
+    fn keeps_skip_whitespace_from_sudachidict_metadata() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../lindera-sudachidict/metadata.json");
+        let json = std::fs::read_to_string(&path).unwrap();
+        let metadata: Metadata = serde_json::from_str(&json).unwrap();
+        assert_eq!(metadata.skip_whitespace, Some(false));
+
+        let core = CoreMetadata::from(metadata);
+        assert_eq!(core.skip_whitespace, Some(false));
+        let rebuilt: Metadata = core.into();
+        assert_eq!(rebuilt.skip_whitespace, Some(false));
     }
 }

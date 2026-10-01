@@ -38,5 +38,6 @@
       "reading"
     ]
   },
-  "connection_id_mapping": false
+  "connection_id_mapping": false,
+  "skip_whitespace": false
 }
