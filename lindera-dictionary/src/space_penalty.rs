@@ -24,11 +24,15 @@
 //! [`SpacePenaltyTable`], a per-word-id lookup precomputed once from the
 //! dictionary so the hot path never parses a part-of-speech string.
 //!
-//! Note that Lindera keeps whitespace as a lattice node (the `SPACE`
-//! unknown word) and connects its neighbours through it, whereas MeCab drops
-//! whitespace and connects the surrounding words directly. The penalty
-//! therefore fixes the penalized readings but does not by itself make every
-//! spaced sentence come out as mecab-ko would.
+//! The gate is the character before the candidate, not the edge the
+//! candidate connects to, so the penalty applies the same way whether
+//! whitespace is skipped in the lattice as MeCab does
+//! ([`LatticeOptions::skip_whitespace`], which the `Segmenter` enables by
+//! default) or kept as `SPACE` unknown-word nodes. Only with whitespace
+//! skipped do the words around a space connect directly, which mecab-ko's
+//! output also depends on; the penalty alone does not reproduce it.
+//!
+//! [`LatticeOptions::skip_whitespace`]: crate::viterbi::LatticeOptions::skip_whitespace
 
 use std::collections::HashMap;
 

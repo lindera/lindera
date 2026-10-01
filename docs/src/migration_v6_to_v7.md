@@ -6,10 +6,10 @@ the new `analysis` feature, on by default — the analysis chain of
 `lindera-analysis` as `lindera::analysis`. One dependency line gives you the
 `Segmenter`, the `Tokenizer`, and every filter. The release also renames
 `lindera-binding-core` to `lindera-binding` and removes the deprecated
-`LINDERA_DICTIONARIES_PATH` fallback, as announced in v5.0.0, and corrects
+`LINDERA_DICTIONARIES_PATH` fallback, as announced in v5.0.0, corrects
 the IPADIC schema, which had the `conjugation_type` and `conjugation_form`
-names swapped. This guide lists every breaking change and the one-line fixes
-for each.
+names swapped, and skips whitespace in the lattice as MeCab does. This guide
+lists every breaking change and the one-line fixes for each.
 
 ## Overview
 
@@ -23,14 +23,15 @@ for each.
 | **`lindera-binding-core` is renamed to `lindera-binding`** | Rust users of the binding helper crate | Depend on `lindera-binding` and replace `lindera_binding_core::` with `lindera_binding::` |
 | **`LINDERA_DICTIONARIES_PATH` is removed** | Anyone still setting the deprecated build-cache variable | Set `LINDERA_BUILD_DICTIONARY_CACHE_DIR`; the old name is now ignored |
 | **IPADIC and IPADIC-NEologd: `conjugation_type` and `conjugation_form` now name the right columns** | Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (`Token::get`, `Token::as_value`, `lindera tokenize -o json`, binding schemas) | Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier |
+| **Whitespace is skipped in the lattice: the words on either side of a space connect directly, as in MeCab** | Anyone who segments text containing whitespace with `keep_whitespace` false (the default), most visibly with ko-dic | Expect MeCab's segmentation for such text; `skip_whitespace(false)` (`"skip_whitespace": false`, `--disable-skip-whitespace`) restores the v6 segmentation |
 
 The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
 their APIs and package names; only their version number moves to 7.0.0.
-Segmentation is also unchanged: for the same input and dictionary, v7.0.0
-produces the same tokens with the same positional details as v6.2.0. The
-one output difference is the IPADIC fix: with IPADIC or IPADIC-NEologd, the
-values reported under the names `conjugation_type` and `conjugation_form`
-trade places (described below).
+Their output changes in two ways, both described below. With IPADIC or
+IPADIC-NEologd, the values reported under the names `conjugation_type` and
+`conjugation_form` trade places. And text that contains whitespace is
+segmented as MeCab segments it; for text without whitespace, v7.0.0 produces
+the same tokens with the same positional details as v6.2.0.
 
 ## The lindera crate is now a facade
 
@@ -287,13 +288,59 @@ either:
 If you build dictionaries with your own copy of the IPADIC `metadata.json`,
 apply the same swap to that copy.
 
+## Whitespace is skipped in the lattice
+
+With `keep_whitespace` false (the default), v7.0.0 skips whitespace in the
+Viterbi lattice, as MeCab does: the word after a space connects directly to
+the word before it. v6 dropped whitespace from the output but kept it in the
+lattice as the `SPACE` unknown word. Dictionaries trained with MeCab never
+see a connection to or from that entry (in ko-dic its connection costs are
+all zero), so every space cut the context between the words around it.
+
+The output changes only for sentences that contain whitespace. That includes
+a sentence that ends with the `\n` or `\t` it was split at, such as a line
+that does not end with `。`: its last word now connects to the end of the
+sentence directly.
+
+| Dictionary | Effect | Example |
+| --- | --- | --- |
+| ko-dic | Spaced Korean text now follows mecab-ko | `2년 전 대회`: `전` is `NNG`, not `저/NP + ㄴ/JX`; `하고 있다`: `있` is `VX`, not `VV` |
+| IPADIC, IPADIC-NEologd, UniDic, SudachiDict | A word after a half-width space connects to the word before it, as in MeCab | IPADIC `Google が 新しい`: `が` is a case particle, not a conjunction; `東京 都`: `都` is a suffix, as in MeCab |
+| CC-CEDICT, Jieba | No change in the best path (these dictionaries have no connection costs); N-best costs no longer include the whitespace nodes | — |
+
+Token surfaces and offsets never include the skipped whitespace, and text
+without whitespace is segmented exactly as before. `keep_whitespace(true)`
+keeps whitespace in the lattice and its output is unchanged.
+
+To get the v6 segmentation back, turn skipping off; whitespace is still
+dropped from the output:
+
+```rust
+// Segmenter
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
+// SegmentWorker
+worker.set_skip_whitespace(false);
+```
+
+```yaml
+# Configuration file / TokenizerBuilder::set_segmenter_skip_whitespace(false)
+segmenter:
+  skip_whitespace: false
+```
+
+```sh
+lindera tokenize --disable-skip-whitespace
+```
+
+The language bindings take the setting through the configuration file.
+
 ## Who does not need to act
 
 - **Users of the language bindings and the CLI**: the Python, Node.js, Ruby,
   PHP, and WASM packages and `lindera-cli` keep their APIs and package names.
-  The restructuring is internal to the Rust crates. The only output change is
+  The restructuring is internal to the Rust crates. The output changes are
   the IPADIC conjugation fix, which matters only if you read those two fields
-  by name.
+  by name, and the segmentation of text that contains whitespace.
 - **Projects staying on `lindera = "6"`**: the 6.x releases of `lindera` and
   `lindera-analysis` remain on crates.io and keep working together. Nothing
   changes until you bump the major version.
@@ -339,7 +386,13 @@ Users of IPADIC or IPADIC-NEologd:
 - Rebuild or re-download dictionary directories made with v6.2.0 or earlier,
   or swap the two names in their `metadata.json`.
 
+Everyone who segments text that contains whitespace:
+
+- Expect MeCab's segmentation for such text (most visible with ko-dic). If
+  you need the v6 output, set `skip_whitespace(false)`,
+  `"skip_whitespace": false`, or `--disable-skip-whitespace`.
+
 Language bindings and CLI:
 
-- Nothing to do beyond taking the 7.0.0 release, apart from the IPADIC items
-  above.
+- Nothing to do beyond taking the 7.0.0 release, apart from the IPADIC and
+  whitespace items above.

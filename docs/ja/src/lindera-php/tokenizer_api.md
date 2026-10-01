@@ -71,7 +71,7 @@ $builder->setKeepWhitespace(true);
 ```php
 $builder->setDictionary('embedded://ko-dic');
 
-// ペナルティをオフにする（v6.0 の出力）
+// ペナルティをオフにする
 $builder->setSpacePenalty(false);
 
 // 明示的なルール
@@ -87,7 +87,7 @@ $builder->setSpacePenalty(null);
 ```
 
 > [!NOTE]
-> v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば `서울 시 에서` の `시` は、語尾 `EP` ではなく名詞 `NNG` と解析されるようになりました。v6.0 の出力に戻すには `$builder->setSpacePenalty(false)` を呼び出してください。[`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty) で作成するトークナイザーでは `space_penalty: false` を渡します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで `true` はエラーになります。詳しくは [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
+> v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば `서울 시 에서` の `시` は、語尾 `EP` ではなく名詞 `NNG` と解析されるようになりました。オフにするには `$builder->setSpacePenalty(false)` を呼び出してください。[`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty) で作成するトークナイザーでは `space_penalty: false` を渡します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで `true` はエラーになります。詳しくは [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
 
 #### `appendCharacterFilter($kind, $args)`
 

@@ -8,7 +8,8 @@ Lindera v7.0.0 では `lindera` クレートがファサード（facade）にな
 `lindera-binding-core` を `lindera-binding` に改名し、v5.0.0 で予告していた
 `LINDERA_DICTIONARIES_PATH` のフォールバックを削除し、IPADIC のスキーマで
 `conjugation_type` と `conjugation_form` の名前が逆になっていた誤りを
-修正しました。このガイドでは、すべての破壊的変更とその対処方法を説明します。
+修正し、MeCab と同様に空白をラティス上で読み飛ばすようにしました。
+このガイドでは、すべての破壊的変更とその対処方法を説明します。
 
 ## 概要
 
@@ -22,13 +23,15 @@ Lindera v7.0.0 では `lindera` クレートがファサード（facade）にな
 | **`lindera-binding-core` を `lindera-binding` に改名** | バインディング用ヘルパークレートを使う Rust ユーザー | `lindera-binding` に依存し、`lindera_binding_core::` を `lindera_binding::` に置き換える |
 | **`LINDERA_DICTIONARIES_PATH` の削除** | 非推奨のビルドキャッシュ変数をまだ設定しているユーザー | `LINDERA_BUILD_DICTIONARY_CACHE_DIR` を設定する。旧名は無視される |
 | **IPADIC・IPADIC-NEologd の `conjugation_type` と `conjugation_form` が正しい列を指すように修正** | IPADIC・IPADIC-NEologd でこの 2 フィールドを名前で読むユーザー（`Token::get`・`Token::as_value`・`lindera tokenize -o json`・バインディングのスキーマ） | 2 つの値が入れ替わることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする |
+| **空白をラティス上で読み飛ばし、MeCab と同様に空白の前後の語を直接接続する** | `keep_whitespace` が false（デフォルト）で空白を含むテキストを分割するユーザー。ko-dic で特に顕著 | そのようなテキストは MeCab と同じ分割になることを前提にする。`skip_whitespace(false)`（`"skip_whitespace": false`、`--disable-skip-whitespace`）で v6 の分割に戻せる |
 
 言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI の API・パッケージ名は
-変わらず、バージョン番号だけが 7.0.0 になります。分割結果も不変です。同じ入力と
-辞書に対して、v7.0.0 は v6.2.0 と同じトークンを、同じ位置ベースの詳細情報
-（details）とともに出力します。出力の違いは IPADIC の修正だけです。
-IPADIC・IPADIC-NEologd では、`conjugation_type` と `conjugation_form` という
-名前で返る値が入れ替わります（後述）。
+変わらず、バージョン番号だけが 7.0.0 になります。出力の違いは 2 つあり、どちらも
+後述します。IPADIC・IPADIC-NEologd では、`conjugation_type` と
+`conjugation_form` という名前で返る値が入れ替わります。また、空白を含む
+テキストは MeCab と同じように分割されます。空白を含まないテキストに対しては、
+v7.0.0 は v6.2.0 と同じトークンを、同じ位置ベースの詳細情報（details）とともに
+出力します。
 
 ## `lindera` クレートはファサードに
 
@@ -280,12 +283,58 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 IPADIC の `metadata.json` の独自のコピーで辞書をビルドしている場合は、
 そのコピーも同じように入れ替えてください。
 
+## 空白をラティス上で読み飛ばす
+
+`keep_whitespace` が false（デフォルト）のとき、v7.0.0 は MeCab と同様に空白を
+Viterbi ラティス上で読み飛ばします。空白の後ろの語は空白の前の語に直接
+接続します。v6 は空白を出力から除外していましたが、ラティスには `SPACE` の
+未知語として残していました。MeCab で学習した辞書ではこの項目との連接は
+学習時に一度も現れないため（ko-dic ではその連接コストがすべて 0）、空白の
+たびに前後の語の文脈が途切れていました。
+
+出力が変わるのは空白を含む文だけです。分割の区切りになった `\n` や `\t` で
+終わる文（`。` で終わらない行など）もこれに含まれ、その文の最後の語は文末に
+直接接続するようになります。
+
+| 辞書 | 影響 | 例 |
+| --- | --- | --- |
+| ko-dic | 空白を含む韓国語が mecab-ko と同じ解析になる | `2년 전 대회` の `전` は `저/NP + ㄴ/JX` ではなく `NNG`、`하고 있다` の `있` は `VV` ではなく `VX` |
+| IPADIC・IPADIC-NEologd・UniDic・SudachiDict | MeCab と同様に、半角空白の後ろの語が空白の前の語に直接接続する | IPADIC の `Google が 新しい` の `が` は接続詞ではなく格助詞、`東京 都` の `都` は MeCab と同様に接尾 |
+| CC-CEDICT・Jieba | 最良パスは変わらない（連接コストを持たない辞書のため）。N-best のコストに空白ノードの分が含まれなくなる | — |
+
+トークンの表層形とオフセットには読み飛ばした空白が含まれず、空白を含まない
+テキストの分割は従来とまったく同じです。`keep_whitespace(true)` では空白が
+ラティスに残り、出力は変わりません。
+
+v6 の分割結果に戻すには、読み飛ばしを無効にします。空白は引き続き出力から
+除外されます:
+
+```rust
+// Segmenter
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
+// SegmentWorker
+worker.set_skip_whitespace(false);
+```
+
+```yaml
+# 設定ファイル / TokenizerBuilder::set_segmenter_skip_whitespace(false)
+segmenter:
+  skip_whitespace: false
+```
+
+```sh
+lindera tokenize --disable-skip-whitespace
+```
+
+言語バインディングでは設定ファイルで指定します。
+
 ## 対応が不要なケース
 
 - **言語バインディングと CLI のユーザー**: Python・Node.js・Ruby・PHP・WASM の
   各パッケージと `lindera-cli` の API・パッケージ名は変わりません。今回の
-  構成変更は Rust クレート内部のものです。出力の変化は IPADIC の活用フィールドの
-  修正だけで、この 2 フィールドを名前で読む場合にのみ影響します。
+  構成変更は Rust クレート内部のものです。出力の変化は、この 2 フィールドを
+  名前で読む場合にのみ影響する IPADIC の活用フィールドの修正と、空白を含む
+  テキストの分割です。
 - **`lindera = "6"` のまま使い続けるプロジェクト**: `lindera` と `lindera-analysis`
   の 6.x は crates.io に残り、組み合わせて動作し続けます。メジャーバージョンを
   上げるまで何も変わりません。
@@ -328,6 +377,12 @@ IPADIC・IPADIC-NEologd のユーザー:
 - v6.2.0 以前に作った辞書ディレクトリは、再ビルド・再ダウンロードするか、
   `metadata.json` の 2 つの名前を入れ替える。
 
+空白を含むテキストを分割するすべてのユーザー:
+
+- そのようなテキストは MeCab と同じ分割になることを前提にする（ko-dic で特に
+  顕著）。v6 の出力が必要な場合は `skip_whitespace(false)`、
+  `"skip_whitespace": false`、`--disable-skip-whitespace` を指定する。
+
 言語バインディングと CLI:
 
-- 7.0.0 リリースを取り込む以外に対応は不要（上記の IPADIC の項目を除く）。
+- 7.0.0 リリースを取り込む以外に対応は不要（上記の IPADIC と空白の項目を除く）。

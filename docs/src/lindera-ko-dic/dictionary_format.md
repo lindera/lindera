@@ -56,10 +56,14 @@ Lindera does not store `pos-id.def` ids, but every listed id corresponds to the 
 ```
 
 ```shell
-echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic
+echo "검색 이 잘 된다" | lindera tokenize --dict embedded://ko-dic
 ```
 
-`시` in `서울 시 에서` is read as the noun `NNG` (as mecab-ko does) instead of the ending `EP`; with `--disable-space-penalty` it reads as `EP` again. See the Segmenter documentation for the semantics and the remaining differences from mecab-ko's whitespace handling.
+`이` after the space is read as the interjection `IC` (as mecab-ko does) instead of the subject particle `JKS`; with `--disable-space-penalty` it reads as `JKS` again. See the Segmenter documentation for the semantics.
+
+## Whitespace
+
+mecab-ko skips whitespace when it builds the lattice, so a word after a space connects to the word before it. The `SPACE` unknown-word entry (`unk.def`: `SPACE,1798,3563,996`) is therefore never connected to anything during training, and its row and column of `matrix.def` are all zero. Lindera skips whitespace the same way by default. With `--disable-skip-whitespace` (`Segmenter::skip_whitespace(false)`, `"skip_whitespace": false`) whitespace stays in the lattice as that entry, which resets the context at every space: `2년 전 대회` then reads `전` as `저/NP + ㄴ/JX` instead of the noun `NNG`, and `하고 있다` reads `있` as a main verb instead of the auxiliary `VX`.
 
 ## User dictionary format (CSV)
 

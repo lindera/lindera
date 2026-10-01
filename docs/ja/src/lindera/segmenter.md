@@ -142,11 +142,21 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 
 ## 空白文字の扱い
 
-デフォルトでは、MeCab互換のため空白のみのトークンは出力から除外されます。`Segmenter` に対して `keep_whitespace(true)` を呼び出すと、これらを保持できます：
+デフォルトでは、空白を MeCab と同じように扱います。空白はラティス上で読み飛ばされます。空白文字から始まる語はなく、空白の後ろの語は空白の前の語に直接接続し、辞書が学習した連接コストが使われます。空白は出力に現れず、トークンの表層形とオフセットにも含まれません。「空白」とは辞書の `SPACE` 文字カテゴリ（`char.def`）のことで、ko-dic では U+0020、U+0009、U+000A、U+000B、U+000D、IPADIC・UniDic・CC-CEDICT・Jieba では U+0020、U+0009、U+000A、U+000B、U+00D0 です。
+
+`Segmenter` に対して `keep_whitespace(true)` を呼び出すと、空白のトークンを出力します。このとき空白は `SPACE` の未知語ノードとしてラティスに残ります：
 
 ```rust
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 ```
+
+v7 より前の Lindera は、空白を出力から除外する場合でもラティスにはノードとして残していました。MeCab で学習した辞書では `SPACE` の未知語との連接は学習時に一度も現れません。ko-dic では連接表のその行と列がすべて 0 なので、空白のたびに文脈が途切れ、空白に挟まれた語は単語コストだけで選ばれていました。ko-dic は `2년 전 대회` の `전` を名詞 `NNG` ではなく `저/NP + ㄴ/JX` と解析し、`SPACE` の項目が全角空白と文脈 ID を共有する IPADIC は `Google が 新しい` の `が` を接続詞と解析していました。CC-CEDICT と Jieba には連接コスト自体がないため、出力はこの違いに左右されません。従来どおり空白ノードをラティスに残し、出力からは除外するには `skip_whitespace(false)`（設定では `"skip_whitespace": false`、CLI では `--disable-skip-whitespace`）を指定します：
+
+```rust
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
+```
+
+文の分割は引き続き `\n` と `\t` で行われるため（[文分割](#文分割) を参照）、改行やタブをまたいで文脈は引き継がれません。mecab-ko は 1 行ずつ解析し、行内のタブは他の空白と同様に読み飛ばします。
 
 ## 未知語のグルーピング
 
@@ -172,7 +182,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladd
 
 ## 左側空白ペナルティ（韓国語）
 
-MeCab ベースの韓国語解析器（mecab-ko + mecab-ko-dic、Lucene の nori）は、直前に空白がある候補の品詞が、本来は前の語に空白なしで付く品詞（助詞 `J*`、語尾 `E*`、指定詞 `VCP`、派生接尾辞 `XS*`）である場合にコストを加算します。これがないと `서울 시 에서` の `시` は名詞 `NNG` ではなく語尾 `EP` と解析されます。Lindera は、ルールを `metadata.json` に同梱する辞書（ko-dic）ではこのペナルティをデフォルトで適用します。他の辞書には影響しません。`Segmenter::space_penalty(None)`、設定の `"space_penalty": false`、CLI の `--disable-space-penalty` でオフにでき、v6.0 の出力に戻ります。
+MeCab ベースの韓国語解析器（mecab-ko + mecab-ko-dic、Lucene の nori）は、直前に空白がある候補の品詞が、本来は前の語に空白なしで付く品詞（助詞 `J*`、語尾 `E*`、指定詞 `VCP`、派生接尾辞 `XS*`）である場合にコストを加算します。これがないと `검색 이 잘 된다` の `이` は感動詞 `IC` ではなく主格助詞 `JKS` と解析されます。Lindera は、ルールを `metadata.json` に同梱する辞書（ko-dic）ではこのペナルティをデフォルトで適用します。他の辞書には影響しません。`Segmenter::space_penalty(None)`、設定の `"space_penalty": false`、CLI の `--disable-space-penalty` でオフにできます。`skip_whitespace(false)` と併用すると v6.0 の出力に戻ります。
 
 `SpacePenaltyConfig` は「先頭品詞タグの一覧とコスト」の組（ルール）のリストです。候補は品詞タグの最初の `+` より前の部分（ko-dic の `Inflect` 行では `first_part_of_speech` 列）で照合され、最初に一致したルールが適用されます。一覧にないタグのコストは 0 です。mecab-ko-dic の `dicrc` のルールは次のように書けます:
 
@@ -210,7 +220,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_fro
 }
 ```
 
-なお、Lindera は空白をラティスのノード（`SPACE` の未知語）として保持し、前後の語をそのノード経由で接続しますが、MeCab は空白を読み飛ばして前後の語を直接接続します。そのため、このペナルティでペナルティ対象の読みは修正されますが、空白を含む文が常に mecab-ko と同じ分割になるわけではありません。
+ペナルティは候補の直前の文字で判定し、これは mecab-ko の判定と同じです。そのため、空白をラティス上で読み飛ばす場合（デフォルト。[空白文字の扱い](#空白文字の扱い) を参照）でも、ノードとして残す場合でも同じように適用されます。空白を読み飛ばすと、ペナルティの対象となる読みの一部は連接コストだけで排除されます（`서울 시 에서` の `시` はペナルティなしでも `NNG`）が、すべてではありません（`검색 이 잘 된다` の `이`）。
 
 ## N-Best セグメンテーション
 
