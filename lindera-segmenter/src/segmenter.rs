@@ -119,14 +119,18 @@ pub struct Segmenter {
     pub keep_whitespace: bool,
 
     /// Whether whitespace is skipped in the lattice when `keep_whitespace` is
-    /// false (default `true`; ignored when `keep_whitespace` is true).
+    /// false (ignored when `keep_whitespace` is true).
     ///
     /// MeCab never puts whitespace in the lattice: a word after a space
     /// connects to the word before it, and dictionaries trained with MeCab
     /// carry no connection costs for the `SPACE` unknown word (all zero in
-    /// ko-dic). Set this to `false` to keep whitespace as `SPACE` nodes, as
-    /// Lindera did before, while still dropping it from the output; every
-    /// space then resets the connection context.
+    /// ko-dic). [`Segmenter::new`] takes the default from the dictionary's
+    /// metadata (`Metadata::skip_whitespace`): `true` unless the dictionary
+    /// says otherwise, and `false` for SudachiDict, whose costs are tuned
+    /// for Sudachi's lattice, which keeps whitespace. With `false`,
+    /// whitespace stays a `SPACE` node, as in Lindera v6, while still being
+    /// dropped from the output; every space then resets the connection
+    /// context.
     pub skip_whitespace: bool,
 
     /// Cap on unknown-word grouping, counted in characters beyond the
@@ -199,6 +203,9 @@ impl Segmenter {
     ///   be applied (a schema without a part-of-speech field) log a warning
     ///   and leave the penalty off. Opt out with [`Segmenter::space_penalty`]
     ///   and `None`.
+    /// - Whitespace skipping: taken from the dictionary's metadata
+    ///   (`Metadata::skip_whitespace`), on unless the dictionary turns it off
+    ///   (SudachiDict does). Override with [`Segmenter::skip_whitespace`].
     pub fn new(
         mode: Mode,
         dictionary: Dictionary,
@@ -207,6 +214,9 @@ impl Segmenter {
         // Classify whitespace by the dictionary's SPACE category, which MeCab
         // skips (and Lindera drops from the output by default).
         let whitespace = WhitespaceClassifier::new(&dictionary.character_definition);
+        // Skip that whitespace in the lattice unless the dictionary's metadata
+        // says otherwise (SudachiDict does: Sudachi keeps it in the lattice).
+        let skip_whitespace = dictionary.metadata.skip_whitespace.unwrap_or(true);
 
         // A user dictionary is always compiled in the original context-ID space. If the
         // system dictionary was built with `connection_id_mapping`, relabel the user
@@ -227,7 +237,7 @@ impl Segmenter {
             dictionary,
             user_dictionary,
             keep_whitespace: false, // Default: drop whitespace, as MeCab does
-            skip_whitespace: true,  // Default: skip it in the lattice, as MeCab does
+            skip_whitespace,        // Default: the dictionary's (skip, as MeCab does)
             max_grouping_len: None, // Default: unbounded grouping
             unknown_word_ladder: true, // Default (v6+): honor char.def's LENGTH field
             space_penalty: None,    // Set below from the dictionary's shipped rules, if any
@@ -288,12 +298,13 @@ impl Segmenter {
 
     /// Builder method to set whether whitespace is skipped in the lattice
     /// when whitespace tokens are not kept (see the
-    /// [`skip_whitespace`](Segmenter#structfield.skip_whitespace) field).
+    /// [`skip_whitespace`](Segmenter#structfield.skip_whitespace) field),
+    /// overriding the dictionary's default.
     ///
-    /// Skipping is on by default. Turning it off keeps whitespace as `SPACE`
-    /// unknown-word nodes, as Lindera did before, which resets the
-    /// connection context at every space; whitespace is still dropped from
-    /// the output.
+    /// Skipping is on by default for every bundled dictionary but
+    /// SudachiDict. Turning it off keeps whitespace as `SPACE` unknown-word
+    /// nodes, as Lindera v6 did, which resets the connection context at
+    /// every space; whitespace is still dropped from the output.
     ///
     /// # Arguments
     ///
@@ -654,13 +665,18 @@ impl Segmenter {
             .and_then(Value::as_bool)
             .unwrap_or(false); // Default: false (drop whitespace)
 
-        // Load the skip_whitespace option from the config. Absent means the
-        // default (true): whitespace that is dropped is also skipped in the
-        // lattice, as MeCab does.
-        let skip_whitespace = config
-            .get("skip_whitespace")
-            .and_then(Value::as_bool)
-            .unwrap_or(true);
+        // Load the skip_whitespace option from the config. Absent or `null`
+        // keeps the default `Segmenter::new` chose (the dictionary's, which
+        // is to skip unless it says otherwise); a bool overrides it.
+        let skip_whitespace = match config.get("skip_whitespace") {
+            None | Some(Value::Null) => None,
+            Some(Value::Bool(skip)) => Some(*skip),
+            Some(value) => {
+                return Err(LinderaErrorKind::Parse.with_error(anyhow::anyhow!(
+                    "skip_whitespace field must be a bool or null, got {value}"
+                )));
+            }
+        };
 
         // Ignoring whitespace requires a SPACE category to detect it by.
         if !keep_whitespace {
@@ -715,11 +731,13 @@ impl Segmenter {
             ),
         };
 
-        let segmenter = Self::new(mode, dictionary, user_dictionary)
+        let mut segmenter = Self::new(mode, dictionary, user_dictionary)
             .keep_whitespace(keep_whitespace)
-            .skip_whitespace(skip_whitespace)
             .max_grouping_len(max_grouping_len)
             .unknown_word_ladder(unknown_word_ladder);
+        if let Some(skip_whitespace) = skip_whitespace {
+            segmenter.skip_whitespace = skip_whitespace;
+        }
         match space_penalty {
             SpacePenaltySetting::Default => Ok(segmenter),
             SpacePenaltySetting::Off => segmenter.space_penalty(None),
@@ -3089,6 +3107,48 @@ mod tests {
         assert_skip_whitespace_keeps_output("embedded://cc-cedict");
     }
 
+    /// SudachiDict keeps whitespace in the lattice by default, as Sudachi
+    /// does and as its costs assume: its metadata sets `skip_whitespace` to
+    /// `false`. A multi-word entry such as `caramel man` then stays one
+    /// token, whereas skipping would split it (the split path no longer pays
+    /// for the whitespace node). The config can still turn skipping on.
+    #[test]
+    #[cfg(feature = "embed-sudachidict")]
+    fn test_sudachidict_keeps_whitespace_nodes_by_default() {
+        use std::borrow::Cow;
+
+        use crate::dictionary::load_dictionary;
+        use crate::mode::Mode;
+        use crate::segmenter::{Segmenter, SegmenterConfig};
+
+        let surfaces = |segmenter: &Segmenter, text: &str| -> Vec<String> {
+            segmenter
+                .segment(Cow::Borrowed(text))
+                .unwrap()
+                .into_iter()
+                .map(|t| t.surface.to_string())
+                .collect()
+        };
+        let dictionary = load_dictionary("embedded://sudachidict").unwrap();
+        assert_eq!(dictionary.metadata.skip_whitespace, Some(false));
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+        assert!(!segmenter.skip_whitespace);
+
+        let text = "昨日caramel manを見た";
+        let kept = surfaces(&segmenter, text);
+        assert_eq!(kept[1], "caramel man", "{kept:?}");
+        let skipping = segmenter.clone().skip_whitespace(true);
+        assert_ne!(surfaces(&skipping, text), kept);
+
+        let config: SegmenterConfig = serde_json::json!({
+            "dictionary": "embedded://sudachidict",
+            "skip_whitespace": true,
+        });
+        let from_config = Segmenter::from_config(&config).unwrap();
+        assert!(from_config.skip_whitespace);
+        assert_eq!(surfaces(&from_config, text), surfaces(&skipping, text));
+    }
+
     /// MeCab-compatible whitespace handling on ko-dic: with
     /// `keep_whitespace` false, whitespace is skipped in the lattice and the
     /// words on either side of it connect directly.
@@ -3315,6 +3375,70 @@ mod tests {
             worker.set_skip_whitespace(true);
             let tokens = render_tokens(&mut worker.segment(text).unwrap());
             assert_eq!(tokens, words("2/SN 년/NNBC 전/NNG 대회/NNG"));
+        }
+
+        /// `Segmenter::new` takes the default from the dictionary's metadata:
+        /// absent or `true` skips, `false` keeps whitespace nodes, and the
+        /// builder overrides it either way.
+        #[test]
+        fn test_skip_whitespace_default_comes_from_metadata() {
+            let text = "2년 전 대회";
+            let skipped = words("2/SN 년/NNBC 전/NNG 대회/NNG");
+            let legacy = words("2/SN 년/NNBC 전/NP+JX 대회/NNG");
+            let with_metadata = |value: Option<bool>| {
+                let mut dictionary = load_dictionary("embedded://ko-dic").unwrap();
+                let mut metadata = (*dictionary.metadata).clone();
+                metadata.skip_whitespace = value;
+                dictionary.metadata = std::sync::Arc::new(metadata);
+                Segmenter::new(Mode::Normal, dictionary, None)
+            };
+
+            assert_eq!(
+                load_dictionary("embedded://ko-dic")
+                    .unwrap()
+                    .metadata
+                    .skip_whitespace,
+                None
+            );
+            for (value, expected) in [
+                (None, &skipped),
+                (Some(true), &skipped),
+                (Some(false), &legacy),
+            ] {
+                let segmenter = with_metadata(value);
+                assert_eq!(segmenter.skip_whitespace, value.unwrap_or(true));
+                assert_eq!(&render(&segmenter, text), expected, "{value:?}");
+            }
+            let overridden = with_metadata(Some(false)).skip_whitespace(true);
+            assert_eq!(render(&overridden, text), skipped);
+        }
+
+        /// In the config, `skip_whitespace` absent or `null` keeps the
+        /// dictionary's default, a bool overrides it, and anything else is
+        /// rejected.
+        #[test]
+        fn test_from_config_skip_whitespace() {
+            let text = "2년 전 대회";
+            let build = |value: Option<serde_json::Value>| {
+                let mut config = serde_json::json!({ "dictionary": "embedded://ko-dic" });
+                if let Some(value) = value {
+                    config["skip_whitespace"] = value;
+                }
+                Segmenter::from_config(&config)
+            };
+            for value in [
+                None,
+                Some(serde_json::Value::Null),
+                Some(serde_json::json!(true)),
+            ] {
+                let segmenter = build(value.clone()).unwrap();
+                assert!(segmenter.skip_whitespace, "{value:?}");
+                assert_eq!(render(&segmenter, text)[2], "전/NNG");
+            }
+            let off = build(Some(serde_json::json!(false))).unwrap();
+            assert!(!off.skip_whitespace);
+            assert_eq!(render(&off, text)[2], "전/NP+JX");
+            assert!(build(Some(serde_json::json!("false"))).is_err());
         }
 
         /// `keep_whitespace` keeps whitespace in the lattice, so whitespace

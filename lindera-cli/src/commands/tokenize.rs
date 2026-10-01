@@ -68,7 +68,7 @@ pub struct TokenizeArgs {
     keep_whitespace: bool,
     #[clap(
         long = "disable-skip-whitespace",
-        help = "Keep whitespace in the lattice as SPACE unknown-word nodes instead of skipping it, while still dropping it from the output (the behavior before whitespace skipping). By default the words on either side of whitespace connect directly, as in MeCab. No effect with --keep-whitespace"
+        help = "Keep whitespace in the lattice as SPACE unknown-word nodes instead of skipping it, while still dropping it from the output (the behavior before whitespace skipping). By default the words on either side of whitespace connect directly, as in MeCab, for every dictionary whose metadata.json does not turn skipping off (SudachiDict does). No effect with --keep-whitespace"
     )]
     disable_skip_whitespace: bool,
     #[clap(

@@ -221,7 +221,7 @@ impl AnalysisWorker {
 
     /// Sets whether whitespace is skipped in the lattice for subsequent
     /// calls when whitespace tokens are not kept (see
-    /// `Segmenter::skip_whitespace`; defaults to `true`).
+    /// `Segmenter::skip_whitespace`; defaults to the dictionary's setting).
     ///
     /// # 引数
     ///
