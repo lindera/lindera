@@ -49,7 +49,8 @@ const KOREAN_TEXTS: &[&str] = &[
     "아버지가방에들어가신다",
     "대한민국의 수도는 서울입니다.",
     // A particle and an ending after a space: pins the left-space penalty
-    // that ko-dic applies by default (`시` reads as NNG, not EP).
+    // that ko-dic applies by default (`시` reads as NNG, not EP) and the
+    // whitespace skipping that lets `에서` connect to `시` (JKB, not NNG).
     "서울 시 에서 출발",
 ];
 

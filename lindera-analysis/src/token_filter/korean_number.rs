@@ -431,10 +431,11 @@ mod tests {
 
         // ko-dic ships left-space penalty rules, applied by default since #1027, so a particle
         // reading is not chosen right after a space: `만` in `나는 만 원만 있다` is `만`/NR, a
-        // numeral, and is converted under the default tags.
+        // numeral, and is converted under the default tags. The particle `만` after `원` is
+        // left alone (mecab-ko reads `원/NNBC 만/JX` too).
         assert_eq!(
             tokenize("나는 만 원만 있다", default_filter()),
-            ["나", "는", "10000", "원만", "있", "다"]
+            ["나", "는", "10000", "원", "만", "있", "다"]
         );
 
         // With `tags` set to null every token is converted. The all-numeral rule still protects

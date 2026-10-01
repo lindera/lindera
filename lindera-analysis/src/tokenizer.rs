@@ -141,6 +141,23 @@ impl TokenizerBuilder {
         self
     }
 
+    /// Sets whether whitespace is skipped in the lattice when whitespace
+    /// tokens are not kept (see `Segmenter::skip_whitespace`): `true` (the
+    /// default) connects the words on either side of whitespace directly, as
+    /// MeCab does; `false` keeps whitespace as `SPACE` unknown-word nodes.
+    ///
+    /// # Arguments
+    ///
+    /// * `skip_whitespace` - `false` to keep whitespace nodes in the lattice.
+    ///
+    /// # Returns
+    ///
+    /// The builder, for chaining.
+    pub fn set_segmenter_skip_whitespace(&mut self, skip_whitespace: bool) -> &mut Self {
+        self.config["segmenter"]["skip_whitespace"] = json!(skip_whitespace);
+        self
+    }
+
     /// Caps unknown-word grouping (MeCab's `max-grouping-size` semantics);
     /// `0` or an absent key means unbounded grouping, the default.
     ///
@@ -691,6 +708,17 @@ mod tests {
         builder.set_segmenter_space_penalty_from_dictionary(true);
         builder.reset_segmenter_space_penalty();
         assert_eq!(builder.config["segmenter"]["keep_whitespace"], true);
+    }
+
+    /// The whitespace-skipping setter writes the `skip_whitespace` key.
+    #[test]
+    fn test_set_segmenter_skip_whitespace() {
+        let mut builder = TokenizerBuilder::new().unwrap();
+        assert!(builder.config["segmenter"].get("skip_whitespace").is_none());
+        builder.set_segmenter_skip_whitespace(false);
+        assert_eq!(builder.config["segmenter"]["skip_whitespace"], false);
+        builder.set_segmenter_skip_whitespace(true);
+        assert_eq!(builder.config["segmenter"]["skip_whitespace"], true);
     }
 
     #[cfg(feature = "embed-ipadic")]
