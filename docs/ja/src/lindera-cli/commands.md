@@ -61,7 +61,7 @@ jieba           no        no          -
 - `--char-filter` / `-c`: 文字フィルタ設定 (JSON)
 - `--token-filter` / `-t`: トークンフィルタ設定 (JSON)
 - `--keep-whitespace`: 空白文字のトークンを出力に含める（デフォルトでは MeCab と同様に、空白はラティス上で読み飛ばされ、出力から除去されます）
-- `--disable-skip-whitespace`: 空白を読み飛ばさず、`SPACE` の未知語ノードとしてラティスに残す（出力からは引き続き除去する。v7 より前の動作）。空白のたびに連接の文脈が途切れる。`--keep-whitespace` と併用した場合は効果がない。[Segmenter](../lindera/segmenter.md#空白文字の扱い) のドキュメントを参照
+- `--disable-skip-whitespace`: 空白を読み飛ばさず、`SPACE` の未知語ノードとしてラティスに残す（出力からは引き続き除去する。v7 より前の動作）。空白のたびに連接の文脈が途切れる。読み飛ばしは、`metadata.json` で無効にしていない辞書（SudachiDict は無効）ではデフォルトで有効。`--keep-whitespace` と併用した場合は効果がない。[Segmenter](../lindera/segmenter.md#空白文字の扱い) のドキュメントを参照
 - `--max-grouping-len`: 未知語グルーピングの上限（先頭を除いた文字数。MeCab の `max-grouping-size` に相当し、MeCab のデフォルトは 24）。上限は各位置で判定され、同じ文字種のランが上限を超える位置ではグルーピング候補を出さず、1 文字候補（および候補ラダーと辞書語）が残ります。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になります。`0` または省略: 無制限。例は [Segmenter](../lindera/segmenter.md) のドキュメントを参照
 - `--disable-unknown-word-ladder`: MeCab/Vibrato 由来の未知語候補ラダー（`char.def` の `LENGTH` フィールド）を無効化する。デフォルトで有効。v6 以前の Lindera と同一の出力にするには無効化する
 - `--disable-space-penalty`: 辞書の `metadata.json` に同梱されたルールでデフォルト有効になる左側空白ペナルティ（mecab-ko の `left-space-penalty-factor`。ko-dic は mecab-ko-dic のルールを同梱）を無効にする。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する機能で、`--disable-skip-whitespace` と併せて無効にすると韓国語の出力が v6.0 と同じになる。[Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) のドキュメントを参照

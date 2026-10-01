@@ -142,7 +142,9 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 
 ## 空白文字の扱い
 
-デフォルトでは、空白を MeCab と同じように扱います。空白はラティス上で読み飛ばされます。空白文字から始まる語はなく、空白の後ろの語は空白の前の語に直接接続し、辞書が学習した連接コストが使われます。空白は出力に現れず、トークンの表層形とオフセットにも含まれません。「空白」とは辞書の `SPACE` 文字カテゴリ（`char.def`）のことで、ko-dic では U+0020、U+0009、U+000A、U+000B、U+000D、IPADIC・UniDic・CC-CEDICT・Jieba では U+0020、U+0009、U+000A、U+000B、U+00D0 です。
+デフォルトでは、MeCab と同様に空白をラティス上で読み飛ばします。空白文字から始まる語はなく、空白の後ろの語は空白の前の語に直接接続し、辞書が学習した連接コストが使われます。空白は出力に現れず、トークンの表層形とオフセットにも含まれません。「空白」とは辞書の `SPACE` 文字カテゴリ（`char.def`）のことで、ko-dic では U+0020、U+0009、U+000A、U+000B、U+000D、IPADIC・IPADIC-NEologd・UniDic・SudachiDict・CC-CEDICT・Jieba では U+0020、U+0009、U+000A、U+000B、U+00D0 です。MeCab との違いが 1 つあります。これらの `char.def` では後続の `0x00C0..0x00FF ALPHA` 行により MeCab は U+00D0（`Ð`）を英字としてのみ扱いますが、Lindera は両方のカテゴリを保持し、空白として扱います。
+
+デフォルトは辞書の `metadata.json`（`skip_whitespace`）で決まります。SudachiDict はこれを `false` にしています。Sudachi は空白をラティスに残して `空白` トークンとして出力し、SudachiDict のコストもそれに合わせて調整されているため、読み飛ばすと、たとえば `caramel man` という項目が 2 つの普通名詞に分割されてしまいます。そのため SudachiDict では、デフォルトで空白が `SPACE` ノードとしてラティスに残ります（出力からは除外されます）。他の同梱辞書はこの設定を持たず、その場合は読み飛ばします。設定が導入される前にビルドされた辞書（再ビルドするまでの Lindera 6.x 製の SudachiDict を含む）も同様です。
 
 `Segmenter` に対して `keep_whitespace(true)` を呼び出すと、空白のトークンを出力します。このとき空白は `SPACE` の未知語ノードとしてラティスに残ります：
 
@@ -150,7 +152,7 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 ```
 
-v7 より前の Lindera は、空白を出力から除外する場合でもラティスにはノードとして残していました。MeCab で学習した辞書では `SPACE` の未知語との連接は学習時に一度も現れません。ko-dic では連接表のその行と列がすべて 0 なので、空白のたびに文脈が途切れ、空白に挟まれた語は単語コストだけで選ばれていました。ko-dic は `2년 전 대회` の `전` を名詞 `NNG` ではなく `저/NP + ㄴ/JX` と解析し、`SPACE` の項目が全角空白と文脈 ID を共有する IPADIC は `Google が 新しい` の `が` を接続詞と解析していました。CC-CEDICT と Jieba には連接コスト自体がないため、出力はこの違いに左右されません。従来どおり空白ノードをラティスに残し、出力からは除外するには `skip_whitespace(false)`（設定では `"skip_whitespace": false`、CLI では `--disable-skip-whitespace`）を指定します：
+v7 より前の Lindera は、空白を出力から除外する場合でもラティスにはノードとして残していました。MeCab で学習した辞書では `SPACE` の未知語との連接は学習時に一度も現れません。ko-dic では連接表のその行と列がすべて 0 なので、空白のたびに文脈が途切れ、空白に挟まれた語は単語コストだけで選ばれていました。ko-dic は `2년 전 대회` の `전` を名詞 `NNG` ではなく `저/NP + ㄴ/JX` と解析し、`SPACE` の項目が全角空白と文脈 ID を共有する IPADIC は `Google が 新しい` の `が` を接続詞と解析していました。CC-CEDICT と Jieba には連接コスト自体がないため、出力はこの違いに左右されません。`skip_whitespace` は辞書のデフォルトを上書きします。`skip_whitespace(false)` は従来どおり空白ノードをラティスに残し（出力からは除外）、`skip_whitespace(true)` は SudachiDict でも読み飛ばしを有効にします。`SegmenterConfig` の `skip_whitespace` キーには `true` または `false` を指定し、省略するか `null` にすると辞書のデフォルトのままになります。CLI では `--disable-skip-whitespace` で読み飛ばしを無効にします：
 
 ```rust
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);

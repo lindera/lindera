@@ -116,9 +116,14 @@ surface）です。そのため形態素の詳細情報はカラム 5 から始�
       "synonym_group_ids"
     ]
   },
-  "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] }
+  "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] },
+  "skip_whitespace": false
 }
 ```
+
+`skip_whitespace: false` は、Sudachi と同様に、また SudachiDict のコストが前提と
+しているとおりに、空白をラティスに残します。指定しないと Lindera は MeCab と
+同様に空白を読み飛ばします（[Segmenter](./lindera/segmenter.md#空白文字の扱い) を参照）。
 
 ## ビルドと確認
 

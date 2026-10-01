@@ -299,15 +299,21 @@ Viterbi ラティス上で読み飛ばします。空白の後ろの語は空白
 | 辞書 | 影響 | 例 |
 | --- | --- | --- |
 | ko-dic | 空白を含む韓国語が mecab-ko と同じ解析になる | `2년 전 대회` の `전` は `저/NP + ㄴ/JX` ではなく `NNG`、`하고 있다` の `있` は `VV` ではなく `VX` |
-| IPADIC・IPADIC-NEologd・UniDic・SudachiDict | MeCab と同様に、半角空白の後ろの語が空白の前の語に直接接続する | IPADIC の `Google が 新しい` の `が` は接続詞ではなく格助詞、`東京 都` の `都` は MeCab と同様に接尾 |
+| IPADIC・IPADIC-NEologd・UniDic | MeCab と同様に、半角空白の後ろの語が空白の前の語に直接接続する | IPADIC の `Google が 新しい` の `が` は接続詞ではなく格助詞、`東京 都` の `都` は MeCab と同様に接尾 |
+| SudachiDict | 変わらない。Sudachi は空白をラティスに残し、コストもそれを前提にしているため、`metadata.json` で `skip_whitespace` を `false` にしている | — |
 | CC-CEDICT・Jieba | 最良パスは変わらない（連接コストを持たない辞書のため）。N-best のコストに空白ノードの分が含まれなくなる | — |
+
+デフォルトは辞書の `metadata.json` で決まり、`skip_whitespace` を設定していない
+辞書は読み飛ばします。Lindera 6.x でビルドした SudachiDict にはこの設定がない
+ため、再ビルドするか `metadata.json` に設定を追加するまでは空白を読み飛ばします。
 
 トークンの表層形とオフセットには読み飛ばした空白が含まれず、空白を含まない
 テキストの分割は従来とまったく同じです。`keep_whitespace(true)` では空白が
 ラティスに残り、出力は変わりません。
 
 v6 の分割結果に戻すには、読み飛ばしを無効にします。空白は引き続き出力から
-除外されます:
+除外されます。設定で `skip_whitespace` を省略するか `null` にすると、辞書の
+デフォルトのままになります:
 
 ```rust
 // Segmenter

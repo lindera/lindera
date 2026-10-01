@@ -305,15 +305,22 @@ sentence directly.
 | Dictionary | Effect | Example |
 | --- | --- | --- |
 | ko-dic | Spaced Korean text now follows mecab-ko | `2년 전 대회`: `전` is `NNG`, not `저/NP + ㄴ/JX`; `하고 있다`: `있` is `VX`, not `VV` |
-| IPADIC, IPADIC-NEologd, UniDic, SudachiDict | A word after a half-width space connects to the word before it, as in MeCab | IPADIC `Google が 新しい`: `が` is a case particle, not a conjunction; `東京 都`: `都` is a suffix, as in MeCab |
+| IPADIC, IPADIC-NEologd, UniDic | A word after a half-width space connects to the word before it, as in MeCab | IPADIC `Google が 新しい`: `が` is a case particle, not a conjunction; `東京 都`: `都` is a suffix, as in MeCab |
+| SudachiDict | No change: its `metadata.json` sets `skip_whitespace` to `false`, because Sudachi keeps whitespace in the lattice and the costs assume it | — |
 | CC-CEDICT, Jieba | No change in the best path (these dictionaries have no connection costs); N-best costs no longer include the whitespace nodes | — |
+
+The default comes from the dictionary's `metadata.json`; a dictionary that
+does not set `skip_whitespace` skips. A SudachiDict built by Lindera 6.x has
+no such setting, so it skips whitespace until it is rebuilt or the setting
+is added to its `metadata.json`.
 
 Token surfaces and offsets never include the skipped whitespace, and text
 without whitespace is segmented exactly as before. `keep_whitespace(true)`
 keeps whitespace in the lattice and its output is unchanged.
 
 To get the v6 segmentation back, turn skipping off; whitespace is still
-dropped from the output:
+dropped from the output. Leaving `skip_whitespace` out of the configuration,
+or setting it to `null`, keeps the dictionary's default:
 
 ```rust
 // Segmenter
