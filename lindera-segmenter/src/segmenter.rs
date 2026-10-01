@@ -2689,6 +2689,13 @@ mod tests {
             s.split_whitespace().map(str::to_string).collect()
         }
 
+        /// The segmenter's `SPACE` classifier.
+        fn segmenter_whitespace(
+            segmenter: &Segmenter,
+        ) -> &lindera_dictionary::whitespace::WhitespaceClassifier {
+            segmenter.whitespace.as_ref().unwrap()
+        }
+
         /// The penalty flips the particle/ending reading of a token that
         /// follows a space (`시/EP` -> `시/NNG`, `이/VCP` -> a non-VCP tag),
         /// which is what mecab-ko does for these inputs; with the option off
@@ -2932,6 +2939,12 @@ mod tests {
             }
             // U+3000 is Unicode whitespace but not a ko-dic SPACE character.
             assert!('\u{3000}'.is_whitespace());
+            // No ko-dic SPACE character lies above U+00FF, so the classifier
+            // answers those codepoints without a category lookup.
+            let classifier = segmenter_whitespace(&on);
+            for c in ['가', '\u{3000}', '\u{2028}', '漢'] {
+                assert!(!classifier.is_space(c, char_definitions), "{c:?}");
+            }
 
             // The ASCII fast path must return what the category lookup would.
             let space_id = char_definitions.category_id_by_name("SPACE").unwrap();

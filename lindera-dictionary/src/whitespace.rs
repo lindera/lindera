@@ -16,14 +16,17 @@ use crate::dictionary::character_definition::{CategoryId, CharacterDefinition};
 /// Built once per dictionary so the per-character check in the lattice and
 /// the segmenter is one indexed load for ASCII/Latin-1, which covers every
 /// character real `char.def` files put in `SPACE` (0x20, 0x09, 0x0A, 0x0B,
-/// 0x0D, and IPADIC's 0xD0). Other characters fall back to a category
-/// lookup.
+/// 0x0D, and IPADIC's 0xD0). When the category has no member above U+00FF,
+/// as in every bundled dictionary, other characters are answered without a
+/// lookup; otherwise they fall back to a category lookup.
 #[derive(Clone, Debug)]
 pub struct WhitespaceClassifier {
     /// `SPACE`-category membership for the codepoints below 256.
     ascii: [bool; 256],
     /// The dictionary's `SPACE` category, for codepoints outside `ascii`.
     category: CategoryId,
+    /// Whether any codepoint above U+00FF is in the category.
+    above_latin1: bool,
 }
 
 impl WhitespaceClassifier {
@@ -45,7 +48,12 @@ impl WhitespaceClassifier {
                 *is_space = char_definitions.lookup_categories(c).contains(&category);
             }
         }
-        Some(Self { ascii, category })
+        let above_latin1 = char_definitions.has_category_from(category, 256);
+        Some(Self {
+            ascii,
+            category,
+            above_latin1,
+        })
     }
 
     /// Returns the `SPACE` category id the classifier tests for.
@@ -53,8 +61,34 @@ impl WhitespaceClassifier {
     /// # Returns
     ///
     /// The category id.
+    #[inline]
     pub fn category(&self) -> CategoryId {
         self.category
+    }
+
+    /// Returns the precomputed answer for a codepoint below 256.
+    ///
+    /// # Arguments
+    ///
+    /// * `codepoint` - A codepoint below 256.
+    ///
+    /// # Returns
+    ///
+    /// `true` for a `SPACE`-category character.
+    #[inline]
+    pub(crate) fn is_space_below_256(&self, codepoint: u32) -> bool {
+        self.ascii[codepoint as usize]
+    }
+
+    /// Returns whether any codepoint above U+00FF is in the category; when
+    /// not, [`Self::is_space`] answers those codepoints without a lookup.
+    ///
+    /// # Returns
+    ///
+    /// `true` when the category has members above U+00FF.
+    #[inline]
+    pub(crate) fn has_members_above_latin1(&self) -> bool {
+        self.above_latin1
     }
 
     /// Returns whether `c` is in the `SPACE` category.
@@ -74,9 +108,10 @@ impl WhitespaceClassifier {
         if codepoint < 256 {
             self.ascii[codepoint as usize]
         } else {
-            char_definitions
-                .lookup_categories(c)
-                .contains(&self.category)
+            self.above_latin1
+                && char_definitions
+                    .lookup_categories(c)
+                    .contains(&self.category)
         }
     }
 }

@@ -944,11 +944,20 @@ impl Lattice {
         let len = text.len();
         let search_mode = options.mode;
         let needs_kanji_runs = search_mode.is_search();
-        // Hoisted so the per-character classification is one indexed load
-        // through an ASCII fast path, not a category lookup (both
-        // classifiers resolve the `SPACE` category id once, at build time).
-        let skip_whitespace = options.skip_whitespace;
-        let space_table = options.space_penalty;
+        // Whitespace classification, hoisted: the skipping classifier, or
+        // else the penalty table's. Below U+0100 it is one indexed load; above,
+        // it is `false` outright when the category has no member there (every
+        // bundled dictionary), and otherwise scans the categories this loop
+        // fetches for the character anyway rather than looking them up a
+        // second time. A penalty table for a
+        // dictionary without a `SPACE` category falls back to
+        // `char::is_whitespace`.
+        let whitespace = options.skip_whitespace.or_else(|| {
+            options
+                .space_penalty
+                .and_then(SpacePenaltyTable::whitespace)
+        });
+        let unicode_whitespace = whitespace.is_none() && options.space_penalty.is_some();
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
         self.chars_buf.clear();
@@ -981,10 +990,22 @@ impl Lattice {
                 group_runs_total += categories_len as u32;
             }
 
-            let is_space = match (skip_whitespace, space_table) {
-                (Some(whitespace), _) => whitespace.is_space(c, char_definitions),
-                (None, Some(table)) => table.is_space(c, char_definitions),
-                (None, None) => false,
+            let is_space = match whitespace {
+                Some(whitespace) if (c as u32) < 256 => whitespace.is_space_below_256(c as u32),
+                Some(whitespace) if !whitespace.has_members_above_latin1() => false,
+                Some(whitespace) => {
+                    let space = whitespace.category();
+                    if categories_start & CATEGORIES_IN_POOL != 0 {
+                        let offset = (categories_start & !CATEGORIES_IN_POOL) as usize;
+                        (offset..offset + categories_len as usize)
+                            .any(|idx| char_definitions.flat_category(idx) == space)
+                    } else {
+                        let start = categories_start as usize;
+                        self.categories_buffer[start..start + categories_len as usize]
+                            .contains(&space)
+                    }
+                }
+                None => unicode_whitespace && c.is_whitespace(),
             };
 
             self.char_info_buffer.push(CharData {
@@ -1194,7 +1215,10 @@ impl Lattice {
                 if self.char_info_buffer[char_idx].is_space {
                     continue;
                 }
-                self.carry_over_whitespace(char_idx, false);
+                // Checked here so unspaced text never pays for the call.
+                if char_idx > 0 && self.char_info_buffer[char_idx - 1].is_space {
+                    self.carry_over_whitespace(char_idx, false);
+                }
             }
 
             // No arc is ending here.
@@ -1284,7 +1308,7 @@ impl Lattice {
 
         // Connect EOS, to the words before trailing whitespace when it is
         // skipped (MeCab connects EOS to the last position a word ends at).
-        if self.skip_whitespace {
+        if self.skip_whitespace && n_chars > 0 && self.char_info_buffer[n_chars - 1].is_space {
             self.carry_over_whitespace(n_chars, false);
         }
         if !self.ends_at[n_chars].is_empty() {
@@ -1375,16 +1399,16 @@ impl Lattice {
     /// edges already in the slot; appending slot by slot keeps each slot's
     /// transitions sorted by edge index, which `nbest.rs` relies on.
     ///
+    /// Callers check that the character before `char_idx` is whitespace, so
+    /// the common unspaced position never makes the call.
+    ///
     /// # Arguments
     ///
     /// * `char_idx` - The first position after the run (or `n_chars`).
     /// * `nbest` - Whether to move the N-best transitions as well.
+    #[inline(never)]
     fn carry_over_whitespace(&mut self, char_idx: usize, nbest: bool) {
         let run_start = self.whitespace_run_start(char_idx);
-        if run_start == char_idx {
-            // Not preceded by whitespace: the common case, one check.
-            return;
-        }
         // Drained rather than taken so every slot keeps its allocation for
         // the next sentence.
         let (before, after) = self.ends_at.split_at_mut(char_idx);
@@ -2290,7 +2314,9 @@ impl Lattice {
                 if self.char_info_buffer[char_idx].is_space {
                     continue;
                 }
-                self.carry_over_whitespace(char_idx, true);
+                if char_idx > 0 && self.char_info_buffer[char_idx - 1].is_space {
+                    self.carry_over_whitespace(char_idx, true);
+                }
             }
 
             if self.ends_at[char_idx].is_empty() {
@@ -2388,7 +2414,7 @@ impl Lattice {
 
         // Connect EOS with all-path recording; see set_text_with_options for
         // trailing whitespace.
-        if self.skip_whitespace {
+        if self.skip_whitespace && n_chars > 0 && self.char_info_buffer[n_chars - 1].is_space {
             self.carry_over_whitespace(n_chars, true);
         }
         if !self.ends_at[n_chars].is_empty() {

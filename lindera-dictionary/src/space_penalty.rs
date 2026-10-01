@@ -330,6 +330,18 @@ impl SpacePenaltyTable {
         }
     }
 
+    /// Returns the `SPACE`-category classifier behind [`Self::is_space`], or
+    /// `None` when the dictionary defines no `SPACE` category (and
+    /// `is_space` falls back to [`char::is_whitespace`]).
+    ///
+    /// # Returns
+    ///
+    /// The classifier, if any.
+    #[inline]
+    pub(crate) fn whitespace(&self) -> Option<&WhitespaceClassifier> {
+        self.whitespace.as_ref()
+    }
+
     /// Returns the penalty for a candidate that starts after whitespace.
     ///
     /// # Arguments
