@@ -138,7 +138,41 @@ impl Schema {
         &self.fields
     }
 
-    /// Validate that CSV row has all required fields
+    /// Returns whether a CSV field value counts as missing.
+    ///
+    /// The rule follows the dictionary builder: the numeric fields (cost and
+    /// the context ids) are trimmed before they are parsed, so they are
+    /// missing when blank; the surface and the detail fields are stored
+    /// verbatim and may consist of whitespace (IPADIC's U+3000 entry has
+    /// U+3000 as its surface, base form, reading and pronunciation), so they
+    /// are missing only when empty.
+    ///
+    /// # 引数
+    ///
+    /// * `field_name` - The schema field name.
+    /// * `value` - The field value.
+    ///
+    /// # 戻り値
+    ///
+    /// `true` if the value counts as missing.
+    pub fn is_missing_value(field_name: &str, value: &str) -> bool {
+        match field_name {
+            "left_context_id" | "right_context_id" | "cost" => value.trim().is_empty(),
+            _ => value.is_empty(),
+        }
+    }
+
+    /// Validate that CSV row has all required fields.
+    ///
+    /// Whether a field is missing is decided by [`Self::is_missing_value`].
+    ///
+    /// # 引数
+    ///
+    /// * `row` - The CSV row.
+    ///
+    /// # 戻り値
+    ///
+    /// `Ok(())` if the row has every schema field, an error otherwise.
     pub fn validate_fields(&self, row: &StringRecord) -> LinderaResult<()> {
         if row.len() < self.fields.len() {
             return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
@@ -150,7 +184,7 @@ impl Schema {
 
         // Check that required fields are not empty
         for (index, field_name) in self.fields.iter().enumerate() {
-            if index < row.len() && row[index].trim().is_empty() {
+            if index < row.len() && Self::is_missing_value(field_name, &row[index]) {
                 return Err(LinderaErrorKind::Content
                     .with_error(anyhow::anyhow!("Field {field_name} is missing or empty")));
             }
@@ -358,6 +392,54 @@ mod tests {
 
         let result = schema.validate_fields(&record);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_fields_whitespace_surface() {
+        let schema = Schema::default();
+        for surface in ["\u{3000}", " "] {
+            let record = StringRecord::from(vec![
+                surface, "9", "9", "1287", "記号", "空白", "*", "*", "*", "*", surface, surface,
+                surface,
+            ]);
+            assert!(schema.validate_fields(&record).is_ok(), "{surface:?}");
+        }
+    }
+
+    #[test]
+    fn test_validate_fields_blank_numeric_field() {
+        let schema = Schema::default();
+        let record = StringRecord::from(vec![
+            "word",
+            " ",
+            "456",
+            "789",
+            "名詞",
+            "一般",
+            "*",
+            "*",
+            "*",
+            "*",
+            "word",
+            "ワード",
+            "ワード",
+        ]);
+
+        assert!(schema.validate_fields(&record).is_err());
+    }
+
+    #[test]
+    fn test_is_missing_value() {
+        for field in ["left_context_id", "right_context_id", "cost"] {
+            assert!(Schema::is_missing_value(field, ""));
+            assert!(Schema::is_missing_value(field, " "));
+            assert!(!Schema::is_missing_value(field, " 12 "));
+        }
+        for field in ["surface", "reading", "custom_field"] {
+            assert!(Schema::is_missing_value(field, ""));
+            assert!(!Schema::is_missing_value(field, " "));
+            assert!(!Schema::is_missing_value(field, "\u{3000}"));
+        }
     }
 
     #[test]
