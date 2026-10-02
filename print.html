@@ -731,6 +731,7 @@ let results = tokenizer.tokenize_nbest_with_lattice(text, &amp;mut lattice, 3, f
 東武スカイツリーライン,カスタム名詞,トウブスカイツリーライン
 とうきょうスカイツリー駅,カスタム名詞,トウキョウスカイツリーエキ
 </code></pre>
+<p>The surface (the first column) is used exactly as written: whitespace at its start or end is part of the word, and a surface may consist of whitespace only (IPADIC registers U+3000 this way). Only an empty surface is skipped. The same applies to the lexicon CSV files of a system dictionary built with <code>lindera build</code>.</p>
 <p>Each dictionary type (IPADIC, UniDic, ko-dic, etc.) also supports a detailed CSV format with full control over context IDs, costs, and all feature fields. See the <a href="concepts/./dictionaries.html">Dictionaries</a> section for the detailed format of each dictionary type.</p>
 <h2 id="rust-api-example-1"><a class="header" href="#rust-api-example-1">Rust API example</a></h2>
 <pre><pre class="playground"><code class="language-rust">use std::fs::File;
@@ -9566,10 +9567,11 @@ the new <code>analysis</code> feature, on by default — the analysis chain of
 <code>lindera-analysis</code> as <code>lindera::analysis</code>. One dependency line gives you the
 <code>Segmenter</code>, the <code>Tokenizer</code>, and every filter. The release also renames
 <code>lindera-binding-core</code> to <code>lindera-binding</code> and removes the deprecated
-<code>LINDERA_DICTIONARIES_PATH</code> fallback, as announced in v5.0.0, and corrects
+<code>LINDERA_DICTIONARIES_PATH</code> fallback, as announced in v5.0.0, corrects
 the IPADIC schema, which had the <code>conjugation_type</code> and <code>conjugation_form</code>
-names swapped. This guide lists every breaking change and the one-line fixes
-for each.</p>
+names swapped, and keeps dictionary entries whose surface is whitespace or
+starts or ends with it. This guide lists every breaking change and the
+one-line fixes for each.</p>
 <h2 id="overview-4"><a class="header" href="#overview-4">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
 <tr><td><code>lindera</code> is a facade: <code>lindera::analysis</code> re-exports <code>lindera-analysis</code> (feature <code>analysis</code>, on by default)</td><td>Rust users who depend on both <code>lindera</code> and <code>lindera-analysis</code></td><td>Bump both to <code>"7"</code> in the same step, or drop <code>lindera-analysis</code> and import from <code>lindera::analysis::…</code></td></tr>
@@ -9580,15 +9582,18 @@ for each.</p>
 <tr><td><strong><code>lindera-binding-core</code> is renamed to <code>lindera-binding</code></strong></td><td>Rust users of the binding helper crate</td><td>Depend on <code>lindera-binding</code> and replace <code>lindera_binding_core::</code> with <code>lindera_binding::</code></td></tr>
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> is removed</strong></td><td>Anyone still setting the deprecated build-cache variable</td><td>Set <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>; the old name is now ignored</td></tr>
 <tr><td><strong>IPADIC and IPADIC-NEologd: <code>conjugation_type</code> and <code>conjugation_form</code> now name the right columns</strong></td><td>Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (<code>Token::get</code>, <code>Token::as_value</code>, <code>lindera tokenize -o json</code>, binding schemas)</td><td>Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
+<tr><td><strong>Dictionary entries with whitespace are kept</strong></td><td>Text with U+3000 (IPADIC, IPADIC-NEologd, UniDic), text with spaces (SudachiDict), and a few entries that ended with whitespace</td><td>Expect U+3000 to be <code>記号,空白</code> / <code>空白</code> and SudachiDict to segment spaced text much closer to Sudachi; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 </tbody></table>
 </div>
 <p>The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
 their APIs and package names; only their version number moves to 7.0.0.
-Segmentation is also unchanged: for the same input and dictionary, v7.0.0
-produces the same tokens with the same positional details as v6.2.0. The
-one output difference is the IPADIC fix: with IPADIC or IPADIC-NEologd, the
-values reported under the names <code>conjugation_type</code> and <code>conjugation_form</code>
-trade places (described below).</p>
+There are two output differences, both described below. With IPADIC or
+IPADIC-NEologd, the values reported under the names <code>conjugation_type</code> and
+<code>conjugation_form</code> trade places. And the dictionaries now contain the entries
+whose surface is or starts or ends with whitespace, which changes the
+segmentation of text that contains such whitespace. Otherwise, for the same
+input and dictionary, v7.0.0 produces the same tokens with the same
+positional details as v6.2.0.</p>
 <h2 id="the-lindera-crate-is-now-a-facade"><a class="header" href="#the-lindera-crate-is-now-a-facade">The lindera crate is now a facade</a></h2>
 <p>Up to v6 the Rust API was split between two crates that you had to depend on
 separately: <code>lindera</code> (the segmenter and the dictionary loading API) and
@@ -9800,13 +9805,42 @@ itself is unchanged, so no rebuild is needed.</li>
 </ul>
 <p>If you build dictionaries with your own copy of the IPADIC <code>metadata.json</code>,
 apply the same swap to that copy.</p>
+<h2 id="dictionary-entries-with-whitespace-are-kept"><a class="header" href="#dictionary-entries-with-whitespace-are-kept">Dictionary entries with whitespace are kept</a></h2>
+<p>Up to v6.2.0, the dictionary builder trimmed the surface of every lexicon
+entry. An entry whose surface is whitespace was dropped, and an entry that
+starts or ends with whitespace was stored under the trimmed surface, where
+a cheaper whitespace variant could take over the entry without whitespace.
+v7.0.0 reads the surface exactly as written, as MeCab and Sudachi do:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>Change</th></tr></thead><tbody>
+<tr><td>IPADIC, IPADIC-NEologd</td><td>U+3000 (ideographic space) is the dictionary entry <code>記号,空白</code> instead of an unknown <code>名詞,サ変接続</code>, so the word after it is also read as in MeCab: in <code>東京　都</code>, <code>都</code> is <code>名詞,一般</code> instead of <code>名詞,接尾</code>. <code>ルーマニア</code> has the base form <code>ルーマニア</code> instead of <code>ルーマニア</code> followed by U+3000</td></tr>
+<tr><td>UniDic</td><td>U+3000 is the entry <code>空白</code> instead of an unknown <code>名詞,普通名詞,サ変可能</code></td></tr>
+<tr><td>SudachiDict</td><td>U+0020 uses the dictionary's half-width space entry (<code>空白</code>) instead of the <code>SPACE</code> unknown word, so text with spaces is segmented much closer to Sudachi (on 600 sentences with a space between every word, agreement with Sudachi went from 201 to 597). With <code>keep_whitespace(true)</code>, each space is its own token. U+3000 is unchanged, because SudachiDict has no entry for it</td></tr>
+<tr><td>ko-dic</td><td><code>에듀</code> and <code>캘리</code> on their own are <code>NNP</code> (person names) instead of the <code>NNG</code> of their trailing-space variants</td></tr>
+<tr><td>CC-CEDICT, Jieba</td><td>No change</td></tr>
+</tbody></table>
+</div>
+<p>Entries that end with whitespace (55 in IPADIC-NEologd, 4 in ko-dic and 4 in
+SudachiDict) can now match, and their token then ends with that whitespace,
+as in MeCab: <code>GeForce GTX Titan X です</code> gives the token <code>GeForce GTX Titan X</code>
+followed by a space with IPADIC-NEologd.</p>
+<p>U+3000 is not in the <code>SPACE</code> character category, so it is a token even with
+<code>keep_whitespace(false)</code>, as in MeCab. To remove it, drop <code>記号,空白</code>
+(IPADIC) or <code>空白</code> (UniDic) with the <code>japanese_stop_tags</code> token filter, or
+turn it into U+0020 with the <code>unicode_normalize</code> character filter (NFKC).</p>
+<p>The change is in the dictionary builder; the dictionary format version is
+unchanged. The embedded dictionaries and the dictionaries that the 7.0.0 CLI
+fetches with <code>lindera download</code> include these entries. A dictionary
+directory built or downloaded with v6.2.0 or earlier still loads in v7.0.0
+but keeps the old entries until you rebuild it with <code>lindera build</code> or
+download the 7.0.0 release asset.</p>
 <h2 id="who-does-not-need-to-act-1"><a class="header" href="#who-does-not-need-to-act-1">Who does not need to act</a></h2>
 <ul>
 <li><strong>Users of the language bindings and the CLI</strong>: the Python, Node.js, Ruby,
 PHP, and WASM packages and <code>lindera-cli</code> keep their APIs and package names.
-The restructuring is internal to the Rust crates. The only output change is
+The restructuring is internal to the Rust crates. The output changes are
 the IPADIC conjugation fix, which matters only if you read those two fields
-by name.</li>
+by name, and the whitespace entries, which matter only for text with U+3000
+(IPADIC, IPADIC-NEologd, UniDic) or with spaces (SudachiDict).</li>
 <li><strong>Projects staying on <code>lindera = "6"</code></strong>: the 6.x releases of <code>lindera</code> and
 <code>lindera-analysis</code> remain on crates.io and keep working together. Nothing
 changes until you bump the major version.</li>
@@ -9851,10 +9885,19 @@ the CLI's JSON output), expect the two values to trade places.</li>
 <li>Rebuild or re-download dictionary directories made with v6.2.0 or earlier,
 or swap the two names in their <code>metadata.json</code>.</li>
 </ul>
+<p>Users of IPADIC, IPADIC-NEologd, UniDic or SudachiDict with text that
+contains U+3000 or spaces:</p>
+<ul>
+<li>Expect U+3000 to be <code>記号,空白</code> (IPADIC) or <code>空白</code> (UniDic) tokens, and
+SudachiDict to segment spaced text much closer to Sudachi. Drop U+3000 with
+<code>japanese_stop_tags</code> or NFKC normalization if you do not want it.</li>
+<li>Rebuild or re-download dictionary directories made with v6.2.0 or earlier
+to get the whitespace entries.</li>
+</ul>
 <p>Language bindings and CLI:</p>
 <ul>
-<li>Nothing to do beyond taking the 7.0.0 release, apart from the IPADIC items
-above.</li>
+<li>Nothing to do beyond taking the 7.0.0 release, apart from the dictionary
+items above.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="development-guide"><a class="header" href="#development-guide">Development Guide</a></h1>
 <p>This section provides information for developers who want to build, test, or contribute to Lindera.</p>

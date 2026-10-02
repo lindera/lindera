@@ -187,6 +187,7 @@
 東武スカイツリーライン,カスタム名詞,トウブスカイツリーライン
 とうきょうスカイツリー駅,カスタム名詞,トウキョウスカイツリーエキ
 </code></pre>
+<p>表層形（1 列目）は書いたとおりに使われます。先頭や末尾の空白も語の一部になり、空白だけの表層形も登録できます（IPADIC は U+3000 をこの形で登録しています）。読み飛ばされるのは空の表層形だけです。<code>lindera build</code> でビルドするシステム辞書の見出し語の CSV も同じです。</p>
 <p>各辞書タイプ（IPADIC、UniDic、ko-dicなど）は、文脈ID、コスト、すべての素性フィールドを完全に制御できる詳細CSVフォーマットもサポートしています。各辞書タイプの詳細フォーマットについては <a href="./dictionaries.html">辞書</a> セクションを参照してください。</p>
 <h2 id="rust-apiの例"><a class="header" href="#rust-apiの例">Rust APIの例</a></h2>
 <pre><pre class="playground"><code class="language-rust">use std::fs::File;

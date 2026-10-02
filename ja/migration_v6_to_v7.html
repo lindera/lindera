@@ -185,7 +185,8 @@
 <code>lindera-binding-core</code> を <code>lindera-binding</code> に改名し、v5.0.0 で予告していた
 <code>LINDERA_DICTIONARIES_PATH</code> のフォールバックを削除し、IPADIC のスキーマで
 <code>conjugation_type</code> と <code>conjugation_form</code> の名前が逆になっていた誤りを
-修正しました。このガイドでは、すべての破壊的変更とその対処方法を説明します。</p>
+修正し、表層形が空白だけの見出し語や先頭・末尾が空白の見出し語を保持するように
+しました。このガイドでは、すべての破壊的変更とその対処方法を説明します。</p>
 <h2 id="概要"><a class="header" href="#概要">概要</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>変更</th><th>影響範囲</th><th>対処方法</th></tr></thead><tbody>
 <tr><td><code>lindera</code> がファサードになり、<code>lindera::analysis</code> が <code>lindera-analysis</code> を再エクスポート（<code>analysis</code> feature、デフォルト有効）</td><td><code>lindera</code> と <code>lindera-analysis</code> の両方に依存する Rust ユーザー</td><td>両方を同時に <code>"7"</code> に上げるか、<code>lindera-analysis</code> を外して <code>lindera::analysis::…</code> から import する</td></tr>
@@ -196,14 +197,16 @@
 <tr><td><strong><code>lindera-binding-core</code> を <code>lindera-binding</code> に改名</strong></td><td>バインディング用ヘルパークレートを使う Rust ユーザー</td><td><code>lindera-binding</code> に依存し、<code>lindera_binding_core::</code> を <code>lindera_binding::</code> に置き換える</td></tr>
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> の削除</strong></td><td>非推奨のビルドキャッシュ変数をまだ設定しているユーザー</td><td><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を設定する。旧名は無視される</td></tr>
 <tr><td><strong>IPADIC・IPADIC-NEologd の <code>conjugation_type</code> と <code>conjugation_form</code> が正しい列を指すように修正</strong></td><td>IPADIC・IPADIC-NEologd でこの 2 フィールドを名前で読むユーザー（<code>Token::get</code>・<code>Token::as_value</code>・<code>lindera tokenize -o json</code>・バインディングのスキーマ）</td><td>2 つの値が入れ替わることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
+<tr><td><strong>空白を含む見出し語を保持</strong></td><td>U+3000 を含むテキスト（IPADIC・IPADIC-NEologd・UniDic）、空白を含むテキスト（SudachiDict）、末尾が空白の一部の語</td><td>U+3000 が <code>記号,空白</code>・<code>空白</code> になり、SudachiDict の分割が Sudachi にずっと近くなることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 </tbody></table>
 </div>
 <p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI の API・パッケージ名は
-変わらず、バージョン番号だけが 7.0.0 になります。分割結果も不変です。同じ入力と
-辞書に対して、v7.0.0 は v6.2.0 と同じトークンを、同じ位置ベースの詳細情報
-（details）とともに出力します。出力の違いは IPADIC の修正だけです。
-IPADIC・IPADIC-NEologd では、<code>conjugation_type</code> と <code>conjugation_form</code> という
-名前で返る値が入れ替わります（後述）。</p>
+変わらず、バージョン番号だけが 7.0.0 になります。出力の違いは 2 つあり、どちらも
+後述します。IPADIC・IPADIC-NEologd では、<code>conjugation_type</code> と
+<code>conjugation_form</code> という名前で返る値が入れ替わります。また、表層形が空白だけの
+見出し語や先頭・末尾が空白の見出し語が辞書に入るため、そうした空白を含む
+テキストの分割が変わります。それ以外は、同じ入力と辞書に対して、v7.0.0 は
+v6.2.0 と同じトークンを、同じ位置ベースの詳細情報（details）とともに出力します。</p>
 <h2 id="lindera-クレートはファサードに"><a class="header" href="#lindera-クレートはファサードに"><code>lindera</code> クレートはファサードに</a></h2>
 <p>v6 までの Rust API は、<code>lindera</code>（セグメンターと辞書読み込み API）と
 <code>lindera-analysis</code>（character filter・token filter・<code>Tokenizer</code>）の 2 クレートに
@@ -410,12 +413,40 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 </ul>
 <p>IPADIC の <code>metadata.json</code> の独自のコピーで辞書をビルドしている場合は、
 そのコピーも同じように入れ替えてください。</p>
+<h2 id="空白を含む見出し語を保持する"><a class="header" href="#空白を含む見出し語を保持する">空白を含む見出し語を保持する</a></h2>
+<p>v6.2.0 までは、辞書ビルダーがすべての見出し語の表層形を trim していました。そのため、
+表層形が空白だけの語は辞書から落ち、先頭や末尾が空白の語は空白を削った表層形で
+登録され、コストの低い空白付きの語が空白のない語を乗っ取ることがありました。
+v7.0.0 は、MeCab や Sudachi と同じく表層形を書いたとおりに読みます。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>変化</th></tr></thead><tbody>
+<tr><td>IPADIC・IPADIC-NEologd</td><td>U+3000（全角空白）は未知語の <code>名詞,サ変接続</code> ではなく辞書の <code>記号,空白</code> になり、後ろの語も MeCab と同じに解析されます（<code>東京　都</code> の <code>都</code> は <code>名詞,接尾</code> ではなく <code>名詞,一般</code>）。<code>ルーマニア</code> の原形は、末尾に U+3000 の付いた形ではなく <code>ルーマニア</code> になります</td></tr>
+<tr><td>UniDic</td><td>U+3000 は未知語の <code>名詞,普通名詞,サ変可能</code> ではなく辞書の <code>空白</code> になります</td></tr>
+<tr><td>SudachiDict</td><td>U+0020 には <code>SPACE</code> の未知語ではなく辞書の半角スペースの語（<code>空白</code>）が使われ、空白を含む文の分割が Sudachi にずっと近くなります（すべての語の間に空白を入れた 600 文で、Sudachi との一致が 201 文から 597 文に増加）。<code>keep_whitespace(true)</code> では空白が 1 つずつトークンになります。SudachiDict には U+3000 の語がないため、U+3000 は変わりません</td></tr>
+<tr><td>ko-dic</td><td>単独の <code>에듀</code> と <code>캘리</code> は、末尾に空白の付いた語の <code>NNG</code> ではなく <code>NNP</code>（人名）になります</td></tr>
+<tr><td>CC-CEDICT・Jieba</td><td>変化なし</td></tr>
+</tbody></table>
+</div>
+<p>末尾が空白の語（IPADIC-NEologd 55 語、ko-dic 4 語、SudachiDict 4 語）は一致するように
+なり、そのトークンは MeCab と同じく末尾の空白を含みます。IPADIC-NEologd では、
+<code>GeForce GTX Titan X です</code> から、末尾に半角スペースの付いた <code>GeForce GTX Titan X</code> の
+トークンが得られます。</p>
+<p>U+3000 は <code>SPACE</code> の文字カテゴリではないため、<code>keep_whitespace(false)</code> でも MeCab と
+同じくトークンとして出力されます。取り除くには、<code>japanese_stop_tags</code> トークンフィルタで
+<code>記号,空白</code>（IPADIC）や <code>空白</code>（UniDic）を除くか、<code>unicode_normalize</code> 文字フィルタ
+（NFKC）で U+0020 に変換してください。</p>
+<p>変更は辞書ビルダーにあり、辞書の形式バージョンは変わりません。埋め込み辞書と、
+7.0.0 の CLI が <code>lindera download</code> で取得する辞書には、これらの語が含まれます。
+v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは v7.0.0 でも読み込めますが、
+<code>lindera build</code> で再ビルドするか 7.0.0 のリリースアセットを再ダウンロードするまで、
+従来の見出し語のままです。</p>
 <h2 id="対応が不要なケース"><a class="header" href="#対応が不要なケース">対応が不要なケース</a></h2>
 <ul>
 <li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の
 各パッケージと <code>lindera-cli</code> の API・パッケージ名は変わりません。今回の
-構成変更は Rust クレート内部のものです。出力の変化は IPADIC の活用フィールドの
-修正だけで、この 2 フィールドを名前で読む場合にのみ影響します。</li>
+構成変更は Rust クレート内部のものです。出力の変化は、この 2 フィールドを
+名前で読む場合にのみ影響する IPADIC の活用フィールドの修正と、U+3000 を含む
+テキスト（IPADIC・IPADIC-NEologd・UniDic）や空白を含むテキスト（SudachiDict）に
+のみ影響する空白の見出し語です。</li>
 <li><strong><code>lindera = "6"</code> のまま使い続けるプロジェクト</strong>: <code>lindera</code> と <code>lindera-analysis</code>
 の 6.x は crates.io に残り、組み合わせて動作し続けます。メジャーバージョンを
 上げるまで何も変わりません。</li>
@@ -457,9 +488,18 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <li>v6.2.0 以前に作った辞書ディレクトリは、再ビルド・再ダウンロードするか、
 <code>metadata.json</code> の 2 つの名前を入れ替える。</li>
 </ul>
+<p>U+3000 や空白を含むテキストを IPADIC・IPADIC-NEologd・UniDic・SudachiDict で
+解析するユーザー:</p>
+<ul>
+<li>U+3000 が <code>記号,空白</code>（IPADIC）や <code>空白</code>（UniDic）のトークンになり、SudachiDict の
+空白を含む文の分割が Sudachi にずっと近くなることを前提にする。U+3000 が不要なら
+<code>japanese_stop_tags</code> か NFKC 正規化で取り除く。</li>
+<li>空白の見出し語を使うには、v6.2.0 以前に作った辞書ディレクトリを再ビルド・
+再ダウンロードする。</li>
+</ul>
 <p>言語バインディングと CLI:</p>
 <ul>
-<li>7.0.0 リリースを取り込む以外に対応は不要（上記の IPADIC の項目を除く）。</li>
+<li>7.0.0 リリースを取り込む以外に対応は不要（上記の辞書の項目を除く）。</li>
 </ul>
 
                     </main>

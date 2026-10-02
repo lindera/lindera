@@ -187,6 +187,7 @@
 東武スカイツリーライン,カスタム名詞,トウブスカイツリーライン
 とうきょうスカイツリー駅,カスタム名詞,トウキョウスカイツリーエキ
 </code></pre>
+<p>The surface (the first column) is used exactly as written: whitespace at its start or end is part of the word, and a surface may consist of whitespace only (IPADIC registers U+3000 this way). Only an empty surface is skipped. The same applies to the lexicon CSV files of a system dictionary built with <code>lindera build</code>.</p>
 <p>Each dictionary type (IPADIC, UniDic, ko-dic, etc.) also supports a detailed CSV format with full control over context IDs, costs, and all feature fields. See the <a href="./dictionaries.html">Dictionaries</a> section for the detailed format of each dictionary type.</p>
 <h2 id="rust-api-example"><a class="header" href="#rust-api-example">Rust API example</a></h2>
 <pre><pre class="playground"><code class="language-rust">use std::fs::File;
