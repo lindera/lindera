@@ -36,7 +36,7 @@ pytest = "^9.1.1"
 black = "^26.5.1"
 isort = "^9.0.1"
 autopep8 = "^2.3.2"
-flake8 = "^7.3.0"
+flake8 = "^7.4.1"
 flake8-pyproject = "^1.2.4"
 mypy = "^2.3.1"
 
