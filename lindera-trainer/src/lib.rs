@@ -150,20 +150,13 @@ impl Trainer {
             let l_vec: Vec<&str> = lfeature.split(',').collect();
             let r_vec: Vec<&str> = rfeature.split(',').collect();
 
-            // Compute character category ID from the first character of the surface
-            let cate_id = if let Some(first_char) = surface.chars().next() {
-                let categories = config
-                    .dict
-                    .character_definition
-                    .lookup_categories(first_char);
-                if !categories.is_empty() {
-                    categories[0].0 as u32
-                } else {
-                    0 // DEFAULT category
-                }
-            } else {
-                0
-            };
+            // The %t feature: the default category (MeCab's default_type) of
+            // the first character of the surface, or 0 (DEFAULT) if none
+            let cate_id = surface
+                .chars()
+                .next()
+                .and_then(|first_char| config.default_category(first_char))
+                .unwrap_or(0);
 
             // Create feature set for this vocabulary entry
             let feature_extractor = &mut config.feature_extractor;

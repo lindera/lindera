@@ -256,18 +256,18 @@ impl Model {
         Ok(())
     }
 
+    /// Returns the `%t` feature value of a character.
+    ///
+    /// # Arguments
+    ///
+    /// * `ch` - The character, usually the first character of a surface.
+    ///
+    /// # Returns
+    ///
+    /// The default category of `ch` from `char.def` (MeCab's `default_type`),
+    /// or 0 (DEFAULT) if it has none.
     fn get_category_id(&self, ch: char) -> u32 {
-        // Use CharacterDefinition to map character to category ID
-        // This works for any dictionary (IPADIC, UniDic, ko-dic, CC-CEDICT, etc.)
-        let char_def = &self.config.dict.character_definition;
-        let categories = char_def.lookup_categories(ch);
-
-        // Return the first category ID, or 0 (DEFAULT) if no categories match
-        if !categories.is_empty() {
-            categories[0].0 as u32
-        } else {
-            0 // DEFAULT category
-        }
+        self.config.default_category(ch).unwrap_or(0)
     }
 
     /// Writes the model to a writer.
@@ -753,9 +753,7 @@ impl Model {
         // 1. Exact feature match (all fields)
         // 2. First 2 fields match (main POS + sub POS)
         // 3. First field match (main POS only)
-        // 4. Same character category (via CharacterDefinition)
-
-        let char_def = &self.config.dict.character_definition;
+        // 4. Same character category (the default category from char.def)
 
         // Strategy 1 & 2 & 3: Match by feature similarity
         let mut best_match_idx: Option<usize> = None;
@@ -796,16 +794,13 @@ impl Model {
             }
         }
 
-        // Strategy 4: If no good match found, use character category
-        if best_match_score == 0 && !surface.is_empty() {
-            let first_char = surface.chars().next().unwrap();
-            let categories = char_def.lookup_categories(first_char);
-
-            if !categories.is_empty() {
-                let category_id = categories[0].0 as u32;
-                // Use category ID as both left and right ID
-                return (category_id, category_id);
-            }
+        // Strategy 4: If no good match found, use the default character
+        // category (MeCab's default_type) as both left and right ID
+        if best_match_score == 0
+            && let Some(first_char) = surface.chars().next()
+            && let Some(category_id) = self.config.default_category(first_char)
+        {
+            return (category_id, category_id);
         }
 
         // Ultimate fallback: use first user_entry's IDs or default to 0
