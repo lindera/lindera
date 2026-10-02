@@ -2273,6 +2273,29 @@ mod tests {
 
     #[test]
     #[cfg(feature = "embed-ipadic")]
+    fn test_segment_keeps_latin_capital_eth() {
+        use std::borrow::Cow;
+
+        use crate::dictionary::load_dictionary;
+        use crate::mode::Mode;
+
+        // IPADIC's char.def maps U+00D0 to SPACE and then to ALPHA. The later
+        // line wins, as in MeCab, so 'Ð' is a letter and is not dropped as
+        // whitespace (#1095).
+        let dictionary = load_dictionary("embedded://ipadic").unwrap();
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+
+        let tokens = segmenter.segment(Cow::Borrowed("GUÐMUNDUR さん")).unwrap();
+        let surfaces: Vec<&str> = tokens.iter().map(|token| token.surface.as_ref()).collect();
+        assert_eq!(surfaces, vec!["GUÐMUNDUR", "さん"]);
+
+        let tokens = segmenter.segment(Cow::Borrowed("Ð")).unwrap();
+        let surfaces: Vec<&str> = tokens.iter().map(|token| token.surface.as_ref()).collect();
+        assert_eq!(surfaces, vec!["Ð"]);
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
     fn test_dictionary_clone_shares_heavy_fields_via_arc() {
         use std::sync::Arc;
 

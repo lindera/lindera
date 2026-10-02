@@ -129,6 +129,14 @@ impl CharacterDefinitionBuilder {
                     )));
             }
         }
+        // A later line replaces an earlier one (see `lookup_categories`), so a
+        // line without categories would silently reset the range to DEFAULT.
+        // MeCab rejects such a line as a format error.
+        if fields.len() < 2 {
+            return Err(LinderaErrorKind::Content
+                .with_error(anyhow::anyhow!("Invalid line: {line}"))
+                .add_context("Character range requires at least one category"));
+        }
         let category_ids: Vec<CategoryId> = fields[1..]
             .iter()
             .map(|category| self.category_id(category))
@@ -208,32 +216,120 @@ impl CharacterDefinitionBuilder {
         Ok(())
     }
 
+    /// Returns the categories of the last range line that covers a code point.
+    ///
+    /// MeCab fills its character table line by line, so a later line that
+    /// covers a code point replaces everything an earlier line said about it
+    /// instead of adding to it.
+    ///
+    /// # Arguments
+    ///
+    /// * `c` - The code point to look up.
+    ///
+    /// # Returns
+    ///
+    /// The categories of that line in the order they are written, or `None`
+    /// when no line covers `c`.
+    fn last_covering_categories(&self, c: u32) -> Option<&[CategoryId]> {
+        self.char_ranges
+            .iter()
+            .rev()
+            .find(|(start, stop, _)| *start <= c && c <= *stop)
+            .map(|(_, _, category_ids)| category_ids.as_slice())
+    }
+
+    /// Returns the id of the `DEFAULT` category, if `char.def` uses it.
+    ///
+    /// # Returns
+    ///
+    /// The id, or `None` when no line names `DEFAULT`.
+    fn default_category_id(&self) -> Option<CategoryId> {
+        self.category_index.get(DEFAULT_CATEGORY_NAME).copied()
+    }
+
+    /// Writes the categories of a code point into `categories_buffer`.
+    ///
+    /// The set comes from the last line that covers the code point, as in
+    /// MeCab. It is listed in category id order (the order in which `char.def`
+    /// introduces the categories), not in the order of the line, because the
+    /// unknown-word grouping compares the categories of neighbouring characters
+    /// position by position. A code point that no line covers gets `DEFAULT`.
+    ///
+    /// # Arguments
+    ///
+    /// * `c` - The code point to look up.
+    /// * `categories_buffer` - Cleared, then filled with the category ids.
     fn lookup_categories(&self, c: u32, categories_buffer: &mut Vec<CategoryId>) {
         categories_buffer.clear();
-        for (start, stop, category_ids) in &self.char_ranges {
-            if *start <= c && *stop >= c {
-                for cat in category_ids {
-                    if !categories_buffer.contains(cat) {
-                        categories_buffer.push(*cat);
-                    }
-                }
-            }
-        }
-        if categories_buffer.is_empty()
-            && let Some(default_category) = self.category_index.get(DEFAULT_CATEGORY_NAME)
-        {
-            categories_buffer.push(*default_category);
+        if let Some(category_ids) = self.last_covering_categories(c) {
+            categories_buffer.extend_from_slice(category_ids);
+            categories_buffer.sort_unstable();
+            categories_buffer.dedup();
+        } else if let Some(default_category) = self.default_category_id() {
+            categories_buffer.push(default_category);
         }
     }
 
-    fn build_lookup_table(&self) -> LookupTable<CategoryId> {
+    /// Writes the default category of a code point into `categories_buffer`.
+    ///
+    /// The default category is the first category of the last line that
+    /// covers the code point (MeCab's `default_type`), or `DEFAULT` when no
+    /// line covers it.
+    ///
+    /// # Arguments
+    ///
+    /// * `c` - The code point to look up.
+    /// * `categories_buffer` - Cleared, then filled with at most one category id.
+    fn lookup_default_category(&self, c: u32, categories_buffer: &mut Vec<CategoryId>) {
+        categories_buffer.clear();
+        let default_category = match self.last_covering_categories(c) {
+            Some(category_ids) => category_ids.first().copied(),
+            None => self.default_category_id(),
+        };
+        categories_buffer.extend(default_category);
+    }
+
+    /// Returns every code point at which the result of a lookup can change.
+    ///
+    /// # Returns
+    ///
+    /// The start and the end + 1 of every range line, sorted and deduplicated.
+    fn range_boundaries(&self) -> Vec<u32> {
         let boundaries_set: BTreeSet<u32> = self
             .char_ranges
             .iter()
-            .flat_map(|(low, high, _)| vec![*low, *high + 1u32])
+            .flat_map(|(low, high, _)| [*low, *high + 1u32])
             .collect();
-        let boundaries: Vec<u32> = boundaries_set.into_iter().collect();
-        LookupTable::from_fn(boundaries, &|c, buff| self.lookup_categories(c, buff))
+        boundaries_set.into_iter().collect()
+    }
+
+    /// Builds the table that maps every code point to its categories.
+    ///
+    /// # Returns
+    ///
+    /// The lookup table stored in `char_def.bin`.
+    fn build_lookup_table(&self) -> LookupTable<CategoryId> {
+        LookupTable::from_fn(self.range_boundaries(), &|c, buff| {
+            self.lookup_categories(c, buff)
+        })
+    }
+
+    /// Builds a table that maps every code point to its default category.
+    ///
+    /// The default category is the first category of the last `char.def` line
+    /// that covers the code point (MeCab's `default_type`), or `DEFAULT` when
+    /// no line covers it. The dictionary itself does not store it; the trainer
+    /// uses it for the `%t` feature. Call it after [`Self::build_from_str`] or
+    /// [`Self::build`].
+    ///
+    /// # Returns
+    ///
+    /// A table whose rows hold one category id each (none when `char.def`
+    /// does not use `DEFAULT` and no line covers the code point).
+    pub fn build_default_category_table(&self) -> LookupTable<CategoryId> {
+        LookupTable::from_fn(self.range_boundaries(), &|c, buff| {
+            self.lookup_default_category(c, buff)
+        })
     }
 
     fn get_character_definition(&self) -> CharacterDefinition {
@@ -247,6 +343,37 @@ impl CharacterDefinitionBuilder {
         CharacterDefinition::new(self.category_definition.clone(), category_names, mapping)
     }
 
+    /// Parses `char.def` content and returns the character definition it
+    /// describes.
+    ///
+    /// Unlike [`Self::build`], it reads no file and writes no `char_def.bin`,
+    /// so other components (such as the trainer) can read `char.def` with
+    /// exactly the rules the dictionary builder uses.
+    ///
+    /// # Arguments
+    ///
+    /// * `content` - The text of a `char.def` file.
+    ///
+    /// # Returns
+    ///
+    /// The character definition, or an error if a line cannot be parsed.
+    pub fn build_from_str(&mut self, content: &str) -> LinderaResult<CharacterDefinition> {
+        self.parse(content)?;
+        Ok(self.get_character_definition())
+    }
+
+    /// Reads `char.def` from `input_dir` and writes `char_def.bin` to
+    /// `output_dir`.
+    ///
+    /// # Arguments
+    ///
+    /// * `input_dir` - The dictionary source directory holding `char.def`.
+    /// * `output_dir` - The directory to write `char_def.bin` to.
+    ///
+    /// # Returns
+    ///
+    /// The character definition that was written, or an error if `char.def`
+    /// cannot be read or parsed, or the output cannot be written.
     pub fn build(
         &mut self,
         input_dir: &Path,
@@ -256,9 +383,7 @@ impl CharacterDefinitionBuilder {
         debug!("reading {char_def_path:?}");
         let char_def = read_file_with_encoding(&char_def_path, &self.encoding)?;
 
-        // let mut char_definitions_builder = CharacterDefinitionsBuilder::default();
-        self.parse(&char_def)?;
-        let char_definitions = self.get_character_definition().clone();
+        let char_definitions = self.build_from_str(&char_def)?;
 
         let mut chardef_buffer = Vec::new();
         let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&char_definitions).map_err(|err| {
@@ -293,5 +418,166 @@ impl CharacterDefinitionBuilder {
         })?;
 
         Ok(char_definitions)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The overlapping lines of IPADIC's `char.def` that #1095 is about,
+    /// in the same order as there.
+    const OVERLAPPING_CHAR_DEF: &str = "\
+DEFAULT 0 1 0
+SPACE 0 1 0
+KANJI 0 0 2
+SYMBOL 1 1 0
+ALPHA 1 1 0
+KANJINUMERIC 1 1 0
+
+0x0020 SPACE
+0x00D0 SPACE  # a typo for 0x000D in IPADIC
+0x00C0..0x00FF ALPHA
+0x3005 KANJI
+0x3007 KANJI
+0x4E00..0x9FA5 KANJI
+0x4E00 KANJINUMERIC KANJI
+0x3000..0x303F SYMBOL
+0x3007 SYMBOL KANJINUMERIC
+";
+
+    fn build(content: &str) -> (CharacterDefinitionBuilder, CharacterDefinition) {
+        let mut builder = CharacterDefinitionBuilderOptions::default().builder();
+        let char_def = builder.build_from_str(content).unwrap();
+        (builder, char_def)
+    }
+
+    fn category_names(char_def: &CharacterDefinition, c: char) -> Vec<&str> {
+        char_def
+            .lookup_categories(c)
+            .iter()
+            .map(|id| char_def.category_name(*id))
+            .collect()
+    }
+
+    fn default_category_names<'a>(
+        char_def: &'a CharacterDefinition,
+        table: &LookupTable<CategoryId>,
+        c: char,
+    ) -> Vec<&'a str> {
+        table
+            .eval(c as u32)
+            .iter()
+            .map(|id| char_def.category_name(*id))
+            .collect()
+    }
+
+    #[test]
+    fn test_later_line_overrides_earlier_line() {
+        let (_, char_def) = build(OVERLAPPING_CHAR_DEF);
+
+        // U+00D0 is only ALPHA, as in MeCab, so it is no longer whitespace.
+        assert_eq!(category_names(&char_def, 'Ð'), vec!["ALPHA"]);
+        assert_eq!(category_names(&char_def, 'À'), vec!["ALPHA"]);
+        assert_eq!(category_names(&char_def, ' '), vec!["SPACE"]);
+        // The SYMBOL range replaces the KANJI line of U+3005.
+        assert_eq!(category_names(&char_def, '々'), vec!["SYMBOL"]);
+        assert_eq!(category_names(&char_def, '「'), vec!["SYMBOL"]);
+    }
+
+    #[test]
+    fn test_categories_are_listed_in_category_id_order() {
+        let (_, char_def) = build(OVERLAPPING_CHAR_DEF);
+
+        // The line says `KANJINUMERIC KANJI`, but the list follows the order
+        // in which char.def defines the categories, so KANJI keeps the same
+        // position as in the neighbouring kanji.
+        assert_eq!(
+            category_names(&char_def, '一'),
+            vec!["KANJI", "KANJINUMERIC"]
+        );
+        assert_eq!(category_names(&char_def, '丁'), vec!["KANJI"]);
+        assert_eq!(
+            category_names(&char_def, '〇'),
+            vec!["SYMBOL", "KANJINUMERIC"]
+        );
+    }
+
+    #[test]
+    fn test_uncovered_code_point_is_default() {
+        let (_, char_def) = build(OVERLAPPING_CHAR_DEF);
+
+        assert_eq!(category_names(&char_def, 'a'), vec!["DEFAULT"]);
+        assert_eq!(category_names(&char_def, 'あ'), vec!["DEFAULT"]);
+        assert_eq!(category_names(&char_def, '😀'), vec!["DEFAULT"]);
+    }
+
+    #[test]
+    fn test_default_category_is_first_category_of_last_line() {
+        let (builder, char_def) = build(OVERLAPPING_CHAR_DEF);
+        let table = builder.build_default_category_table();
+
+        assert_eq!(
+            default_category_names(&char_def, &table, '一'),
+            vec!["KANJINUMERIC"]
+        );
+        assert_eq!(
+            default_category_names(&char_def, &table, '丁'),
+            vec!["KANJI"]
+        );
+        assert_eq!(
+            default_category_names(&char_def, &table, '〇'),
+            vec!["SYMBOL"]
+        );
+        assert_eq!(
+            default_category_names(&char_def, &table, '々'),
+            vec!["SYMBOL"]
+        );
+        assert_eq!(
+            default_category_names(&char_def, &table, 'Ð'),
+            vec!["ALPHA"]
+        );
+        assert_eq!(
+            default_category_names(&char_def, &table, ' '),
+            vec!["SPACE"]
+        );
+        assert_eq!(
+            default_category_names(&char_def, &table, 'a'),
+            vec!["DEFAULT"]
+        );
+    }
+
+    #[test]
+    fn test_default_category_table_without_default_category() {
+        let (builder, _) = build("ALPHA 1 1 0\n0x0041..0x005A ALPHA\n");
+        let table = builder.build_default_category_table();
+
+        assert_eq!(table.eval('A' as u32), &[CategoryId(0)]);
+        assert!(table.eval('a' as u32).is_empty());
+    }
+
+    #[test]
+    fn test_range_line_without_category_is_an_error() {
+        let mut builder = CharacterDefinitionBuilderOptions::default().builder();
+        let result = builder.build_from_str("DEFAULT 0 1 0\n0x0041..0x005A  # no category\n");
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_build_writes_the_same_definition() {
+        let input_dir = tempfile::tempdir().unwrap();
+        let output_dir = tempfile::tempdir().unwrap();
+        std::fs::write(input_dir.path().join("char.def"), OVERLAPPING_CHAR_DEF).unwrap();
+
+        let mut builder = CharacterDefinitionBuilderOptions::default().builder();
+        builder.build(input_dir.path(), output_dir.path()).unwrap();
+        let written = std::fs::read(output_dir.path().join("char_def.bin")).unwrap();
+        let loaded = CharacterDefinition::load(&written).unwrap();
+
+        let (_, expected) = build(OVERLAPPING_CHAR_DEF);
+        for c in ['Ð', ' ', '々', '一', '〇', 'a'] {
+            assert_eq!(category_names(&loaded, c), category_names(&expected, c));
+        }
     }
 }
