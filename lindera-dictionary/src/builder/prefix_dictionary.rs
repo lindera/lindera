@@ -249,16 +249,17 @@ impl PrefixDictionaryBuilder {
                 continue;
             };
 
-            let key = if self.normalize_details {
-                if let Some(surface) = self.get_field_value(row, "surface")? {
-                    normalize(&surface)
-                } else {
-                    continue;
-                }
-            } else if let Some(surface) = self.get_field_value(row, "surface")? {
-                surface
-            } else {
+            // The surface is read verbatim: trimming it would drop whitespace
+            // entries such as U+3000 (IPADIC, UniDic) and U+0020 (SudachiDict)
+            // and merge entries that start or end with whitespace into the
+            // trimmed key (#1094).
+            let Some(surface) = self.get_surface(row) else {
                 continue;
+            };
+            let key = if self.normalize_details {
+                normalize(surface)
+            } else {
+                surface.to_string()
             };
 
             // Relabel context IDs to match the connection matrix when remapping is
@@ -283,7 +284,40 @@ impl PrefixDictionaryBuilder {
         Ok(word_entry_map)
     }
 
-    /// Get field value by name
+    /// Returns the surface of a row exactly as written in the CSV.
+    ///
+    /// Unlike [`Self::get_field_value`], the value is not trimmed: a surface
+    /// may consist of or start or end with whitespace (IPADIC's U+3000 entry,
+    /// SudachiDict's U+0020 entry), as in the user dictionary builder.
+    ///
+    /// # 引数
+    ///
+    /// * `row` - The CSV row.
+    ///
+    /// # 戻り値
+    ///
+    /// The surface, or `None` when the schema has no surface field, the row
+    /// is too short, or the surface is empty.
+    fn get_surface<'a>(&self, row: &'a StringRecord) -> Option<&'a str> {
+        let index = self.schema.get_field_index("surface")?;
+        row.get(index).filter(|value| !value.is_empty())
+    }
+
+    /// Returns a numeric field (cost or a context id) by name, trimmed.
+    ///
+    /// Whitespace around a number is tolerated, consistently with the
+    /// context id remapping (`context_id_remap.rs`). Do not use this for the
+    /// surface, which must be kept verbatim (see [`Self::get_surface`]).
+    ///
+    /// # 引数
+    ///
+    /// * `row` - The CSV row.
+    /// * `field_name` - The schema field name.
+    ///
+    /// # 戻り値
+    ///
+    /// The trimmed value, or `None` when the field is unknown, missing or
+    /// blank.
     fn get_field_value(
         &self,
         row: &StringRecord,
@@ -674,8 +708,7 @@ mod tests {
             "789", // Cost
         ]);
 
-        let surface = builder.get_field_value(&record, "surface").unwrap();
-        assert_eq!(surface, None);
+        assert_eq!(builder.get_surface(&record), None);
     }
 
     #[test]
@@ -837,10 +870,7 @@ mod tests {
         ]);
 
         // Test common fields
-        assert_eq!(
-            builder.get_field_value(&record, "surface").unwrap(),
-            Some("word".to_string())
-        );
+        assert_eq!(builder.get_surface(&record), Some("word"));
         assert_eq!(
             builder.get_field_value(&record, "left_context_id").unwrap(),
             Some("123".to_string())
@@ -862,5 +892,57 @@ mod tests {
             builder.get_field_value(&short_record, "cost").unwrap(),
             None
         );
+    }
+
+    #[test]
+    fn test_get_surface_keeps_whitespace() {
+        let builder = PrefixDictionaryBuilder::new(Schema::default());
+
+        for surface in ["\u{3000}", " ", " a", "a ", "\u{3000}a\u{3000}"] {
+            let record = StringRecord::from(vec![surface, "1", "1", "100"]);
+            assert_eq!(builder.get_surface(&record), Some(surface));
+        }
+    }
+
+    #[test]
+    fn test_build_word_entry_map_keeps_whitespace_surfaces() {
+        let builder = PrefixDictionaryBuilder::new(Schema::default());
+        let rows = vec![
+            StringRecord::from(vec!["\u{3000}", "9", "9", "1287", "記号", "空白"]),
+            StringRecord::from(vec![" ", "5967", "5967", "10", "空白"]),
+            StringRecord::from(vec!["AA ", "1", "1", "100", "名詞"]),
+            StringRecord::from(vec!["AA", "1", "1", "200", "名詞"]),
+            // Whitespace around numbers is still accepted.
+            StringRecord::from(vec![" 1", " 2 ", "3", " 4", "名詞"]),
+            // An empty surface is skipped.
+            StringRecord::from(vec!["", "1", "1", "1", "名詞"]),
+        ];
+
+        let map = builder.build_word_entry_map(&rows).unwrap();
+
+        let keys: Vec<&str> = map.keys().map(String::as_str).collect();
+        assert_eq!(keys, vec![" ", " 1", "AA", "AA ", "\u{3000}"]);
+        // "AA " no longer takes over "AA".
+        assert_eq!(map["AA"].len(), 1);
+        assert_eq!(map["AA"][0].word_cost(), 200);
+        assert_eq!(map["\u{3000}"][0].word_cost(), 1287);
+        assert_eq!(map[" 1"][0].word_cost(), 4);
+        assert_eq!(map[" 1"][0].left_id(), 2);
+    }
+
+    #[test]
+    fn test_build_word_entry_map_normalize_details_keeps_whitespace() {
+        let mut builder = PrefixDictionaryBuilder::new(Schema::default());
+        builder.normalize_details = true;
+        let rows = vec![
+            StringRecord::from(vec!["\u{3000}", "9", "9", "1287", "記号", "空白"]),
+            StringRecord::from(vec!["ルーマニア\u{3000}", "1", "1", "100", "名詞"]),
+            StringRecord::from(vec!["a―b", "1", "1", "100", "名詞"]),
+        ];
+
+        let map = builder.build_word_entry_map(&rows).unwrap();
+
+        let keys: Vec<&str> = map.keys().map(String::as_str).collect();
+        assert_eq!(keys, vec!["a—b", "\u{3000}", "ルーマニア\u{3000}"]);
     }
 }

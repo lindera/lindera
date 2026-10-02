@@ -33,6 +33,15 @@ const LEX_CSV: &str = "\
 本,0,0,200,名詞,一般,*,*,*,*,本,ホン,ホン
 ";
 
+/// Lexicon rows whose surface is or ends with whitespace: IPADIC's U+3000
+/// entry, SudachiDict's U+0020 entry, and a trailing-space variant of `日本`
+/// that is cheaper than the plain one (#1094).
+const WHITESPACE_LEX_CSV: &str = "\
+\u{3000},0,0,1287,記号,空白,*,*,*,*,\u{3000},\u{3000},\u{3000}
+\u{20},0,0,10,空白,*,*,*,*,*,*,\u{20},\u{20}
+日本\u{20},0,0,50,名詞,固有名詞,*,*,*,*,日本\u{20},ニッポン,ニッポン
+";
+
 /// Minimal 1x1 connection cost matrix.
 const MATRIX_DEF: &str = "1 1\n0 0 0\n";
 
@@ -75,6 +84,36 @@ fn build_dictionary_produces_all_artifacts() {
             fs::metadata(&path).unwrap_or_else(|err| panic!("missing artifact {name}: {err}"));
         assert!(meta.len() > 0, "artifact {name} is empty");
     }
+}
+
+/// Whitespace surfaces are kept verbatim: a surface made of whitespace is
+/// looked up as is, and an entry ending with whitespace gets its own key
+/// instead of being merged into the trimmed one (#1094).
+#[test]
+fn build_dictionary_keeps_whitespace_surfaces() {
+    let input = tempfile::tempdir().unwrap();
+    let output = tempfile::tempdir().unwrap();
+    write_source(input.path());
+    fs::write(input.path().join("whitespace.csv"), WHITESPACE_LEX_CSV).unwrap();
+
+    DictionaryBuilder::new(Metadata::default())
+        .build_dictionary(input.path(), output.path())
+        .expect("build_dictionary should succeed");
+    let dictionary =
+        Dictionary::load_from_path(output.path()).expect("a freshly built dictionary should load");
+    let prefix = &dictionary.prefix_dictionary;
+
+    let costs = |surface: &str| -> Vec<i16> {
+        prefix
+            .find_surface(surface)
+            .iter()
+            .map(|entry| entry.word_cost())
+            .collect()
+    };
+    assert_eq!(costs("\u{3000}"), vec![1287]);
+    assert_eq!(costs(" "), vec![10]);
+    assert_eq!(costs("日本"), vec![100]);
+    assert_eq!(costs("日本 "), vec![50]);
 }
 
 #[test]

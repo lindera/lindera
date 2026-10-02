@@ -223,3 +223,65 @@ fn ipadic_decompose_compound_at_eos() {
         assert_eq!(nbest_surfaces, expected);
     }
 }
+
+/// Segments `text` and returns each token's surface with its first `fields`
+/// detail fields joined by commas.
+#[allow(dead_code)]
+fn surfaces_and_details(segmenter: &Segmenter, text: &str, fields: usize) -> Vec<(String, String)> {
+    segmenter
+        .segment(Cow::Borrowed(text))
+        .expect("segmentation should succeed")
+        .iter_mut()
+        .map(|token| {
+            let details = token.details()[..fields].join(",");
+            (token.surface.to_string(), details)
+        })
+        .collect()
+}
+
+/// Regression test #1094: the full-width space is IPADIC's `記号,空白`
+/// entry (the dictionary builder used to trim the surface and drop it), and
+/// `ルーマニア` is no longer taken over by its trailing-U+3000 variant.
+#[cfg(feature = "embed-ipadic")]
+#[test]
+fn ipadic_whitespace_entries() {
+    let segmenter = segmenter("embedded://ipadic", Mode::Normal);
+
+    assert_eq!(
+        surfaces_and_details(&segmenter, "東京\u{3000}都", 2),
+        vec![
+            ("東京".to_string(), "名詞,固有名詞".to_string()),
+            ("\u{3000}".to_string(), "記号,空白".to_string()),
+            ("都".to_string(), "名詞,一般".to_string()),
+        ]
+    );
+
+    let mut tokens = segmenter
+        .segment(Cow::Borrowed("ルーマニア"))
+        .expect("segmentation should succeed");
+    assert_eq!(tokens.len(), 1);
+    // details[6] is the base form.
+    assert_eq!(tokens[0].details()[6], "ルーマニア");
+}
+
+/// Regression test #1094: the full-width space is UniDic's `空白` entry.
+#[cfg(feature = "embed-unidic")]
+#[test]
+fn unidic_whitespace_entries() {
+    let segmenter = segmenter("embedded://unidic", Mode::Normal);
+
+    let tokens = surfaces_and_details(&segmenter, "東京\u{3000}都", 1);
+    assert_eq!(tokens[1], ("\u{3000}".to_string(), "空白".to_string()));
+}
+
+/// Regression test #1094: SudachiDict's half-width space entry (display
+/// surface `" "`, part of speech `空白`) is used instead of the `SPACE`
+/// unknown word, whose display surface is `*`.
+#[cfg(feature = "embed-sudachidict")]
+#[test]
+fn sudachidict_whitespace_entries() {
+    let segmenter = segmenter("embedded://sudachidict", Mode::Normal).keep_whitespace(true);
+
+    let tokens = surfaces_and_details(&segmenter, "a b", 2);
+    assert_eq!(tokens[1], (" ".to_string(), " ,空白".to_string()));
+}
