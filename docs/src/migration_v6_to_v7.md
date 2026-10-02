@@ -6,10 +6,11 @@ the new `analysis` feature, on by default — the analysis chain of
 `lindera-analysis` as `lindera::analysis`. One dependency line gives you the
 `Segmenter`, the `Tokenizer`, and every filter. The release also renames
 `lindera-binding-core` to `lindera-binding` and removes the deprecated
-`LINDERA_DICTIONARIES_PATH` fallback, as announced in v5.0.0, and corrects
+`LINDERA_DICTIONARIES_PATH` fallback, as announced in v5.0.0, corrects
 the IPADIC schema, which had the `conjugation_type` and `conjugation_form`
-names swapped. This guide lists every breaking change and the one-line fixes
-for each.
+names swapped, and keeps dictionary entries whose surface is whitespace or
+starts or ends with it. This guide lists every breaking change and the
+one-line fixes for each.
 
 ## Overview
 
@@ -23,14 +24,17 @@ for each.
 | **`lindera-binding-core` is renamed to `lindera-binding`** | Rust users of the binding helper crate | Depend on `lindera-binding` and replace `lindera_binding_core::` with `lindera_binding::` |
 | **`LINDERA_DICTIONARIES_PATH` is removed** | Anyone still setting the deprecated build-cache variable | Set `LINDERA_BUILD_DICTIONARY_CACHE_DIR`; the old name is now ignored |
 | **IPADIC and IPADIC-NEologd: `conjugation_type` and `conjugation_form` now name the right columns** | Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (`Token::get`, `Token::as_value`, `lindera tokenize -o json`, binding schemas) | Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier |
+| **Dictionary entries with whitespace are kept** | Text with U+3000 (IPADIC, IPADIC-NEologd, UniDic), text with spaces (SudachiDict), and a few entries that ended with whitespace | Expect U+3000 to be `記号,空白` / `空白` and SudachiDict to segment spaced text much closer to Sudachi; rebuild or re-download dictionaries made with v6.2.0 or earlier |
 
 The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
 their APIs and package names; only their version number moves to 7.0.0.
-Segmentation is also unchanged: for the same input and dictionary, v7.0.0
-produces the same tokens with the same positional details as v6.2.0. The
-one output difference is the IPADIC fix: with IPADIC or IPADIC-NEologd, the
-values reported under the names `conjugation_type` and `conjugation_form`
-trade places (described below).
+There are two output differences, both described below. With IPADIC or
+IPADIC-NEologd, the values reported under the names `conjugation_type` and
+`conjugation_form` trade places. And the dictionaries now contain the entries
+whose surface is or starts or ends with whitespace, which changes the
+segmentation of text that contains such whitespace. Otherwise, for the same
+input and dictionary, v7.0.0 produces the same tokens with the same
+positional details as v6.2.0.
 
 ## The lindera crate is now a facade
 
@@ -287,13 +291,47 @@ either:
 If you build dictionaries with your own copy of the IPADIC `metadata.json`,
 apply the same swap to that copy.
 
+## Dictionary entries with whitespace are kept
+
+Up to v6.2.0, the dictionary builder trimmed the surface of every lexicon
+entry. An entry whose surface is whitespace was dropped, and an entry that
+starts or ends with whitespace was stored under the trimmed surface, where
+a cheaper whitespace variant could take over the entry without whitespace.
+v7.0.0 reads the surface exactly as written, as MeCab and Sudachi do:
+
+| Dictionary | Change |
+| --- | --- |
+| IPADIC, IPADIC-NEologd | U+3000 (ideographic space) is the dictionary entry `記号,空白` instead of an unknown `名詞,サ変接続`, so the word after it is also read as in MeCab: in `東京　都`, `都` is `名詞,一般` instead of `名詞,接尾`. `ルーマニア` has the base form `ルーマニア` instead of `ルーマニア` followed by U+3000 |
+| UniDic | U+3000 is the entry `空白` instead of an unknown `名詞,普通名詞,サ変可能` |
+| SudachiDict | U+0020 uses the dictionary's half-width space entry (`空白`) instead of the `SPACE` unknown word, so text with spaces is segmented much closer to Sudachi (on 600 sentences with a space between every word, agreement with Sudachi went from 201 to 597). With `keep_whitespace(true)`, each space is its own token. U+3000 is unchanged, because SudachiDict has no entry for it |
+| ko-dic | `에듀` and `캘리` on their own are `NNP` (person names) instead of the `NNG` of their trailing-space variants |
+| CC-CEDICT, Jieba | No change |
+
+Entries that end with whitespace (55 in IPADIC-NEologd, 4 in ko-dic and 4 in
+SudachiDict) can now match, and their token then ends with that whitespace,
+as in MeCab: `GeForce GTX Titan X です` gives the token `GeForce GTX Titan X`
+followed by a space with IPADIC-NEologd.
+
+U+3000 is not in the `SPACE` character category, so it is a token even with
+`keep_whitespace(false)`, as in MeCab. To remove it, drop `記号,空白`
+(IPADIC) or `空白` (UniDic) with the `japanese_stop_tags` token filter, or
+turn it into U+0020 with the `unicode_normalize` character filter (NFKC).
+
+The change is in the dictionary builder; the dictionary format version is
+unchanged. The embedded dictionaries and the dictionaries that the 7.0.0 CLI
+fetches with `lindera download` include these entries. A dictionary
+directory built or downloaded with v6.2.0 or earlier still loads in v7.0.0
+but keeps the old entries until you rebuild it with `lindera build` or
+download the 7.0.0 release asset.
+
 ## Who does not need to act
 
 - **Users of the language bindings and the CLI**: the Python, Node.js, Ruby,
   PHP, and WASM packages and `lindera-cli` keep their APIs and package names.
-  The restructuring is internal to the Rust crates. The only output change is
+  The restructuring is internal to the Rust crates. The output changes are
   the IPADIC conjugation fix, which matters only if you read those two fields
-  by name.
+  by name, and the whitespace entries, which matter only for text with U+3000
+  (IPADIC, IPADIC-NEologd, UniDic) or with spaces (SudachiDict).
 - **Projects staying on `lindera = "6"`**: the 6.x releases of `lindera` and
   `lindera-analysis` remain on crates.io and keep working together. Nothing
   changes until you bump the major version.
@@ -339,7 +377,16 @@ Users of IPADIC or IPADIC-NEologd:
 - Rebuild or re-download dictionary directories made with v6.2.0 or earlier,
   or swap the two names in their `metadata.json`.
 
+Users of IPADIC, IPADIC-NEologd, UniDic or SudachiDict with text that
+contains U+3000 or spaces:
+
+- Expect U+3000 to be `記号,空白` (IPADIC) or `空白` (UniDic) tokens, and
+  SudachiDict to segment spaced text much closer to Sudachi. Drop U+3000 with
+  `japanese_stop_tags` or NFKC normalization if you do not want it.
+- Rebuild or re-download dictionary directories made with v6.2.0 or earlier
+  to get the whitespace entries.
+
 Language bindings and CLI:
 
-- Nothing to do beyond taking the 7.0.0 release, apart from the IPADIC items
-  above.
+- Nothing to do beyond taking the 7.0.0 release, apart from the dictionary
+  items above.
