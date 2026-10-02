@@ -39,8 +39,19 @@ pub fn default_dictionary_fields() -> Vec<String> {
 /// Validates a CSV record against the given schema field names.
 ///
 /// Returns `Err(message)` if the record has fewer fields than the schema
-/// requires, or if any schema field is present but empty. The caller maps the
+/// requires, or if any schema field is present but empty, as decided by
+/// [`Schema::is_missing_value`] (the numeric fields may not be blank; the
+/// surface and detail fields may consist of whitespace). The caller maps the
 /// message onto its own FFI exception type.
+///
+/// # 引数
+///
+/// * `fields` - The schema field names.
+/// * `record` - The CSV record.
+///
+/// # 戻り値
+///
+/// `Ok(())` if the record is valid, `Err(message)` otherwise.
 pub fn validate_record(fields: &[String], record: &[String]) -> Result<(), String> {
     if record.len() < fields.len() {
         return Err(format!(
@@ -51,7 +62,7 @@ pub fn validate_record(fields: &[String], record: &[String]) -> Result<(), Strin
     }
 
     for (index, field_name) in fields.iter().enumerate() {
-        if index < record.len() && record[index].trim().is_empty() {
+        if index < record.len() && Schema::is_missing_value(field_name, &record[index]) {
             return Err(format!("Field {field_name} is missing or empty"));
         }
     }
@@ -270,9 +281,34 @@ mod tests {
     #[test]
     fn validate_empty_field() {
         let fields = vec!["surface".to_string(), "reading".to_string()];
-        let record = vec!["x".to_string(), "  ".to_string()];
+        let record = vec!["x".to_string(), String::new()];
         let err = validate_record(&fields, &record).unwrap_err();
         assert!(err.contains("reading"));
+    }
+
+    #[test]
+    fn validate_blank_numeric_field() {
+        let fields = vec!["surface".to_string(), "cost".to_string()];
+        let record = vec!["x".to_string(), "  ".to_string()];
+        let err = validate_record(&fields, &record).unwrap_err();
+        assert!(err.contains("cost"));
+    }
+
+    #[test]
+    fn validate_whitespace_surface_and_details() {
+        let fields = vec!["surface".to_string(), "reading".to_string()];
+        for value in ["\u{3000}", " "] {
+            let record = vec![value.to_string(), value.to_string()];
+            assert!(validate_record(&fields, &record).is_ok(), "{value:?}");
+        }
+    }
+
+    #[test]
+    fn validate_empty_surface() {
+        let fields = vec!["surface".to_string(), "reading".to_string()];
+        let record = vec![String::new(), "x".to_string()];
+        let err = validate_record(&fields, &record).unwrap_err();
+        assert!(err.contains("surface"));
     }
 
     #[test]

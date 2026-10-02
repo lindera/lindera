@@ -8,7 +8,8 @@ Lindera v7.0.0 では `lindera` クレートがファサード（facade）にな
 `lindera-binding-core` を `lindera-binding` に改名し、v5.0.0 で予告していた
 `LINDERA_DICTIONARIES_PATH` のフォールバックを削除し、IPADIC のスキーマで
 `conjugation_type` と `conjugation_form` の名前が逆になっていた誤りを
-修正しました。このガイドでは、すべての破壊的変更とその対処方法を説明します。
+修正し、表層形が空白だけの見出し語や先頭・末尾が空白の見出し語を保持するように
+しました。このガイドでは、すべての破壊的変更とその対処方法を説明します。
 
 ## 概要
 
@@ -22,13 +23,15 @@ Lindera v7.0.0 では `lindera` クレートがファサード（facade）にな
 | **`lindera-binding-core` を `lindera-binding` に改名** | バインディング用ヘルパークレートを使う Rust ユーザー | `lindera-binding` に依存し、`lindera_binding_core::` を `lindera_binding::` に置き換える |
 | **`LINDERA_DICTIONARIES_PATH` の削除** | 非推奨のビルドキャッシュ変数をまだ設定しているユーザー | `LINDERA_BUILD_DICTIONARY_CACHE_DIR` を設定する。旧名は無視される |
 | **IPADIC・IPADIC-NEologd の `conjugation_type` と `conjugation_form` が正しい列を指すように修正** | IPADIC・IPADIC-NEologd でこの 2 フィールドを名前で読むユーザー（`Token::get`・`Token::as_value`・`lindera tokenize -o json`・バインディングのスキーマ） | 2 つの値が入れ替わることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする |
+| **空白を含む見出し語を保持** | U+3000 を含むテキスト（IPADIC・IPADIC-NEologd・UniDic）、空白を含むテキスト（SudachiDict）、末尾が空白の一部の語 | U+3000 が `記号,空白`・`空白` になり、SudachiDict の分割が Sudachi にずっと近くなることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする |
 
 言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI の API・パッケージ名は
-変わらず、バージョン番号だけが 7.0.0 になります。分割結果も不変です。同じ入力と
-辞書に対して、v7.0.0 は v6.2.0 と同じトークンを、同じ位置ベースの詳細情報
-（details）とともに出力します。出力の違いは IPADIC の修正だけです。
-IPADIC・IPADIC-NEologd では、`conjugation_type` と `conjugation_form` という
-名前で返る値が入れ替わります（後述）。
+変わらず、バージョン番号だけが 7.0.0 になります。出力の違いは 2 つあり、どちらも
+後述します。IPADIC・IPADIC-NEologd では、`conjugation_type` と
+`conjugation_form` という名前で返る値が入れ替わります。また、表層形が空白だけの
+見出し語や先頭・末尾が空白の見出し語が辞書に入るため、そうした空白を含む
+テキストの分割が変わります。それ以外は、同じ入力と辞書に対して、v7.0.0 は
+v6.2.0 と同じトークンを、同じ位置ベースの詳細情報（details）とともに出力します。
 
 ## `lindera` クレートはファサードに
 
@@ -280,12 +283,45 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 IPADIC の `metadata.json` の独自のコピーで辞書をビルドしている場合は、
 そのコピーも同じように入れ替えてください。
 
+## 空白を含む見出し語を保持する
+
+v6.2.0 までは、辞書ビルダーがすべての見出し語の表層形を trim していました。そのため、
+表層形が空白だけの語は辞書から落ち、先頭や末尾が空白の語は空白を削った表層形で
+登録され、コストの低い空白付きの語が空白のない語を乗っ取ることがありました。
+v7.0.0 は、MeCab や Sudachi と同じく表層形を書いたとおりに読みます。
+
+| 辞書 | 変化 |
+| --- | --- |
+| IPADIC・IPADIC-NEologd | U+3000（全角空白）は未知語の `名詞,サ変接続` ではなく辞書の `記号,空白` になり、後ろの語も MeCab と同じに解析されます（`東京　都` の `都` は `名詞,接尾` ではなく `名詞,一般`）。`ルーマニア` の原形は、末尾に U+3000 の付いた形ではなく `ルーマニア` になります |
+| UniDic | U+3000 は未知語の `名詞,普通名詞,サ変可能` ではなく辞書の `空白` になります |
+| SudachiDict | U+0020 には `SPACE` の未知語ではなく辞書の半角スペースの語（`空白`）が使われ、空白を含む文の分割が Sudachi にずっと近くなります（すべての語の間に空白を入れた 600 文で、Sudachi との一致が 201 文から 597 文に増加）。`keep_whitespace(true)` では空白が 1 つずつトークンになります。SudachiDict には U+3000 の語がないため、U+3000 は変わりません |
+| ko-dic | 単独の `에듀` と `캘리` は、末尾に空白の付いた語の `NNG` ではなく `NNP`（人名）になります |
+| CC-CEDICT・Jieba | 変化なし |
+
+末尾が空白の語（IPADIC-NEologd 55 語、ko-dic 4 語、SudachiDict 4 語）は一致するように
+なり、そのトークンは MeCab と同じく末尾の空白を含みます。IPADIC-NEologd では、
+`GeForce GTX Titan X です` から、末尾に半角スペースの付いた `GeForce GTX Titan X` の
+トークンが得られます。
+
+U+3000 は `SPACE` の文字カテゴリではないため、`keep_whitespace(false)` でも MeCab と
+同じくトークンとして出力されます。取り除くには、`japanese_stop_tags` トークンフィルタで
+`記号,空白`（IPADIC）や `空白`（UniDic）を除くか、`unicode_normalize` 文字フィルタ
+（NFKC）で U+0020 に変換してください。
+
+変更は辞書ビルダーにあり、辞書の形式バージョンは変わりません。埋め込み辞書と、
+7.0.0 の CLI が `lindera download` で取得する辞書には、これらの語が含まれます。
+v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは v7.0.0 でも読み込めますが、
+`lindera build` で再ビルドするか 7.0.0 のリリースアセットを再ダウンロードするまで、
+従来の見出し語のままです。
+
 ## 対応が不要なケース
 
 - **言語バインディングと CLI のユーザー**: Python・Node.js・Ruby・PHP・WASM の
   各パッケージと `lindera-cli` の API・パッケージ名は変わりません。今回の
-  構成変更は Rust クレート内部のものです。出力の変化は IPADIC の活用フィールドの
-  修正だけで、この 2 フィールドを名前で読む場合にのみ影響します。
+  構成変更は Rust クレート内部のものです。出力の変化は、この 2 フィールドを
+  名前で読む場合にのみ影響する IPADIC の活用フィールドの修正と、U+3000 を含む
+  テキスト（IPADIC・IPADIC-NEologd・UniDic）や空白を含むテキスト（SudachiDict）に
+  のみ影響する空白の見出し語です。
 - **`lindera = "6"` のまま使い続けるプロジェクト**: `lindera` と `lindera-analysis`
   の 6.x は crates.io に残り、組み合わせて動作し続けます。メジャーバージョンを
   上げるまで何も変わりません。
@@ -328,6 +364,15 @@ IPADIC・IPADIC-NEologd のユーザー:
 - v6.2.0 以前に作った辞書ディレクトリは、再ビルド・再ダウンロードするか、
   `metadata.json` の 2 つの名前を入れ替える。
 
+U+3000 や空白を含むテキストを IPADIC・IPADIC-NEologd・UniDic・SudachiDict で
+解析するユーザー:
+
+- U+3000 が `記号,空白`（IPADIC）や `空白`（UniDic）のトークンになり、SudachiDict の
+  空白を含む文の分割が Sudachi にずっと近くなることを前提にする。U+3000 が不要なら
+  `japanese_stop_tags` か NFKC 正規化で取り除く。
+- 空白の見出し語を使うには、v6.2.0 以前に作った辞書ディレクトリを再ビルド・
+  再ダウンロードする。
+
 言語バインディングと CLI:
 
-- 7.0.0 リリースを取り込む以外に対応は不要（上記の IPADIC の項目を除く）。
+- 7.0.0 リリースを取り込む以外に対応は不要（上記の辞書の項目を除く）。
