@@ -218,9 +218,11 @@
   ]
 }
 </code></pre>
-<pre><code class="language-shell">echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic
+<pre><code class="language-shell">echo "검색 이 잘 된다" | lindera tokenize --dict embedded://ko-dic
 </code></pre>
-<p><code>서울 시 에서</code> の <code>시</code> は語尾 <code>EP</code> ではなく（mecab-ko と同様に）名詞 <code>NNG</code> と解析されます。<code>--disable-space-penalty</code> を付けると再び <code>EP</code> になります。意味論と、mecab-ko の空白処理との残る差異については Segmenter のドキュメントを参照してください。</p>
+<p>空白の後ろの <code>이</code> は主格助詞 <code>JKS</code> ではなく（mecab-ko と同様に）感動詞 <code>IC</code> と解析されます。<code>--disable-space-penalty</code> を付けると再び <code>JKS</code> になります。意味論については Segmenter のドキュメントを参照してください。</p>
+<h2 id="空白"><a class="header" href="#空白">空白</a></h2>
+<p>mecab-ko はラティスを構築する際に空白を読み飛ばすため、空白の後ろの語は空白の前の語に接続します。そのため <code>SPACE</code> の未知語項目（<code>unk.def</code>: <code>SPACE,1798,3563,996</code>）は学習時にどの語とも接続されず、<code>matrix.def</code> のその行と列はすべて 0 です。Lindera もデフォルトで同じように空白を読み飛ばします。<code>--disable-skip-whitespace</code>（<code>Segmenter::skip_whitespace(false)</code>、<code>"skip_whitespace": false</code>）を指定すると、空白はこの項目としてラティスに残り、空白のたびに文脈が途切れます。その場合、<code>2년 전 대회</code> の <code>전</code> は名詞 <code>NNG</code> ではなく <code>저/NP + ㄴ/JX</code>、<code>하고 있다</code> の <code>있</code> は補助用言 <code>VX</code> ではなく本動詞と解析されます。</p>
 <h2 id="ユーザー辞書フォーマット-csv"><a class="header" href="#ユーザー辞書フォーマット-csv">ユーザー辞書フォーマット (CSV)</a></h2>
 <h3 id="簡易版"><a class="header" href="#簡易版">簡易版</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Index</th><th>Name (Korean)</th><th>Name (English)</th><th>Notes</th></tr></thead><tbody>

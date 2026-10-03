@@ -293,11 +293,19 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 既に静的なゼロコピーバイトスライスであるため）。<code>mmap</code> cargo feature
 （デフォルトで有効）が必要です。</p>
 <h2 id="空白文字の扱い"><a class="header" href="#空白文字の扱い">空白文字の扱い</a></h2>
-<p>デフォルトでは、MeCab互換のため空白のみのトークンは出力から除外されます。<code>Segmenter</code> に対して <code>keep_whitespace(true)</code> を呼び出すと、これらを保持できます：</p>
+<p>デフォルトでは、MeCab と同様に空白をラティス上で読み飛ばします。空白文字から始まる語はなく、空白の後ろの語は空白の前の語に直接接続し、辞書が学習した連接コストが使われます。空白は出力に現れず、トークンの表層形とオフセットにも含まれません。「空白」とは辞書の <code>SPACE</code> 文字カテゴリ（<code>char.def</code>）のことで、ko-dic では U+0020、U+0009、U+000A、U+000B、U+000D、IPADIC・IPADIC-NEologd・UniDic・SudachiDict・CC-CEDICT・Jieba では U+0020、U+0009、U+000A、U+000B、U+00D0 です。MeCab との違いが 1 つあります。これらの <code>char.def</code> では後続の <code>0x00C0..0x00FF ALPHA</code> 行により MeCab は U+00D0（<code>Ð</code>）を英字としてのみ扱いますが、Lindera は両方のカテゴリを保持し、空白として扱います。</p>
+<p>デフォルトは辞書の <code>metadata.json</code>（<code>skip_whitespace</code>）で決まります。SudachiDict はこれを <code>false</code> にしています。Sudachi は空白をラティスに残して <code>空白</code> トークンとして出力し、SudachiDict のコストもそれに合わせて調整されているため、読み飛ばすと、たとえば <code>caramel man</code> という項目が 2 つの普通名詞に分割されてしまいます。そのため SudachiDict では、デフォルトで空白が <code>SPACE</code> ノードとしてラティスに残ります（出力からは除外されます）。他の同梱辞書はこの設定を持たず、その場合は読み飛ばします。設定が導入される前にビルドされた辞書（再ビルドするまでの Lindera 6.x 製の SudachiDict を含む）も同様です。</p>
+<p><code>Segmenter</code> に対して <code>keep_whitespace(true)</code> を呼び出すと、空白のトークンを出力します。このとき空白は <code>SPACE</code> の未知語ノードとしてラティスに残ります：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 <span class="boring">}</span></code></pre></pre>
+<p>v7 より前の Lindera は、空白を出力から除外する場合でもラティスにはノードとして残していました。MeCab で学習した辞書では <code>SPACE</code> の未知語との連接は学習時に一度も現れません。ko-dic では連接表のその行と列がすべて 0 なので、空白のたびに文脈が途切れ、空白に挟まれた語は単語コストだけで選ばれていました。ko-dic は <code>2년 전 대회</code> の <code>전</code> を名詞 <code>NNG</code> ではなく <code>저/NP + ㄴ/JX</code> と解析し、<code>SPACE</code> の項目が全角空白と文脈 ID を共有する IPADIC は <code>Google が 新しい</code> の <code>が</code> を接続詞と解析していました。CC-CEDICT と Jieba には連接コスト自体がないため、出力はこの違いに左右されません。<code>skip_whitespace</code> は辞書のデフォルトを上書きします。<code>skip_whitespace(false)</code> は従来どおり空白ノードをラティスに残し（出力からは除外）、<code>skip_whitespace(true)</code> は SudachiDict でも読み飛ばしを有効にします。<code>SegmenterConfig</code> の <code>skip_whitespace</code> キーには <code>true</code> または <code>false</code> を指定し、省略するか <code>null</code> にすると辞書のデフォルトのままになります。CLI では <code>--disable-skip-whitespace</code> で読み飛ばしを無効にします：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
+<span class="boring">}</span></code></pre></pre>
+<p>文の分割は引き続き <code>\n</code> と <code>\t</code> で行われるため（<a href="#%E6%96%87%E5%88%86%E5%89%B2">文分割</a> を参照）、改行やタブをまたいで文脈は引き継がれません。mecab-ko は 1 行ずつ解析し、行内のタブは他の空白と同様に読み飛ばします。</p>
 <h2 id="未知語のグルーピング"><a class="header" href="#未知語のグルーピング">未知語のグルーピング</a></h2>
 <p>未知語のグルーピングはデフォルトでは無制限です。<code>max_grouping_len(Some(n))</code> で MeCab の <code>max-grouping-size</code> と同じ意味論（先頭を除いた文字数で数え、MeCab のデフォルトは 24）の上限を設定できます:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -316,7 +324,7 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladder(false);
 <span class="boring">}</span></code></pre></pre>
 <h2 id="左側空白ペナルティ韓国語"><a class="header" href="#左側空白ペナルティ韓国語">左側空白ペナルティ（韓国語）</a></h2>
-<p>MeCab ベースの韓国語解析器（mecab-ko + mecab-ko-dic、Lucene の nori）は、直前に空白がある候補の品詞が、本来は前の語に空白なしで付く品詞（助詞 <code>J*</code>、語尾 <code>E*</code>、指定詞 <code>VCP</code>、派生接尾辞 <code>XS*</code>）である場合にコストを加算します。これがないと <code>서울 시 에서</code> の <code>시</code> は名詞 <code>NNG</code> ではなく語尾 <code>EP</code> と解析されます。Lindera は、ルールを <code>metadata.json</code> に同梱する辞書（ko-dic）ではこのペナルティをデフォルトで適用します。他の辞書には影響しません。<code>Segmenter::space_penalty(None)</code>、設定の <code>"space_penalty": false</code>、CLI の <code>--disable-space-penalty</code> でオフにでき、v6.0 の出力に戻ります。</p>
+<p>MeCab ベースの韓国語解析器（mecab-ko + mecab-ko-dic、Lucene の nori）は、直前に空白がある候補の品詞が、本来は前の語に空白なしで付く品詞（助詞 <code>J*</code>、語尾 <code>E*</code>、指定詞 <code>VCP</code>、派生接尾辞 <code>XS*</code>）である場合にコストを加算します。これがないと <code>검색 이 잘 된다</code> の <code>이</code> は感動詞 <code>IC</code> ではなく主格助詞 <code>JKS</code> と解析されます。Lindera は、ルールを <code>metadata.json</code> に同梱する辞書（ko-dic）ではこのペナルティをデフォルトで適用します。他の辞書には影響しません。<code>Segmenter::space_penalty(None)</code>、設定の <code>"space_penalty": false</code>、CLI の <code>--disable-space-penalty</code> でオフにできます。<code>skip_whitespace(false)</code> と併用すると v6.0 の出力に戻ります。</p>
 <p><code>SpacePenaltyConfig</code> は「先頭品詞タグの一覧とコスト」の組（ルール）のリストです。候補は品詞タグの最初の <code>+</code> より前の部分（ko-dic の <code>Inflect</code> 行では <code>first_part_of_speech</code> 列）で照合され、最初に一致したルールが適用されます。一覧にないタグのコストは 0 です。mecab-ko-dic の <code>dicrc</code> のルールは次のように書けます:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -346,7 +354,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Som
   }
 }
 </code></pre>
-<p>なお、Lindera は空白をラティスのノード（<code>SPACE</code> の未知語）として保持し、前後の語をそのノード経由で接続しますが、MeCab は空白を読み飛ばして前後の語を直接接続します。そのため、このペナルティでペナルティ対象の読みは修正されますが、空白を含む文が常に mecab-ko と同じ分割になるわけではありません。</p>
+<p>ペナルティは候補の直前の文字で判定し、これは mecab-ko の判定と同じです。そのため、空白をラティス上で読み飛ばす場合（デフォルト。<a href="#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">空白文字の扱い</a> を参照）でも、ノードとして残す場合でも同じように適用されます。空白を読み飛ばすと、ペナルティの対象となる読みの一部は連接コストだけで排除されます（<code>서울 시 에서</code> の <code>시</code> はペナルティなしでも <code>NNG</code>）が、すべてではありません（<code>검색 이 잘 된다</code> の <code>이</code>）。</p>
 <h2 id="n-best-セグメンテーション"><a class="header" href="#n-best-セグメンテーション">N-Best セグメンテーション</a></h2>
 <p><code>segment_nbest</code> は、コストの合計で並べた上位 <code>n</code> 件の分割結果を、それぞれのコストと共に返します。<code>unique</code> を指定すると、単語境界は同じで品詞タグのみ異なる結果を重複排除できます。<code>cost_threshold</code> を指定すると、<code>best_cost + threshold</code> を超えるコストのパスを除外できます：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]

@@ -185,9 +185,9 @@ the new <code>analysis</code> feature, on by default — the analysis chain of
 <code>lindera-binding-core</code> to <code>lindera-binding</code> and removes the deprecated
 <code>LINDERA_DICTIONARIES_PATH</code> fallback, as announced in v5.0.0, corrects
 the IPADIC schema, which had the <code>conjugation_type</code> and <code>conjugation_form</code>
-names swapped, and keeps dictionary entries whose surface is whitespace or
-starts or ends with it. This guide lists every breaking change and the
-one-line fixes for each.</p>
+names swapped, keeps dictionary entries whose surface is whitespace or
+starts or ends with it, and skips whitespace in the lattice as MeCab does.
+This guide lists every breaking change and the one-line fixes for each.</p>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
 <tr><td><code>lindera</code> is a facade: <code>lindera::analysis</code> re-exports <code>lindera-analysis</code> (feature <code>analysis</code>, on by default)</td><td>Rust users who depend on both <code>lindera</code> and <code>lindera-analysis</code></td><td>Bump both to <code>"7"</code> in the same step, or drop <code>lindera-analysis</code> and import from <code>lindera::analysis::…</code></td></tr>
@@ -199,17 +199,19 @@ one-line fixes for each.</p>
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> is removed</strong></td><td>Anyone still setting the deprecated build-cache variable</td><td>Set <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>; the old name is now ignored</td></tr>
 <tr><td><strong>IPADIC and IPADIC-NEologd: <code>conjugation_type</code> and <code>conjugation_form</code> now name the right columns</strong></td><td>Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (<code>Token::get</code>, <code>Token::as_value</code>, <code>lindera tokenize -o json</code>, binding schemas)</td><td>Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 <tr><td><strong>Dictionary entries with whitespace are kept</strong></td><td>Text with U+3000 (IPADIC, IPADIC-NEologd, UniDic), text with spaces (SudachiDict), and a few entries that ended with whitespace</td><td>Expect U+3000 to be <code>記号,空白</code> / <code>空白</code> and SudachiDict to segment spaced text much closer to Sudachi; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
+<tr><td><strong>Whitespace is skipped in the lattice: the words on either side of a space connect directly, as in MeCab</strong></td><td>Anyone who segments text containing whitespace with <code>keep_whitespace</code> false (the default), most visibly with ko-dic</td><td>Expect MeCab's segmentation for such text; <code>skip_whitespace(false)</code> (<code>"skip_whitespace": false</code>, <code>--disable-skip-whitespace</code>) restores the v6 segmentation</td></tr>
 </tbody></table>
 </div>
 <p>The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
 their APIs and package names; only their version number moves to 7.0.0.
-There are two output differences, both described below. With IPADIC or
+There are three output differences, all described below. With IPADIC or
 IPADIC-NEologd, the values reported under the names <code>conjugation_type</code> and
-<code>conjugation_form</code> trade places. And the dictionaries now contain the entries
+<code>conjugation_form</code> trade places. The dictionaries now contain the entries
 whose surface is or starts or ends with whitespace, which changes the
-segmentation of text that contains such whitespace. Otherwise, for the same
-input and dictionary, v7.0.0 produces the same tokens with the same
-positional details as v6.2.0.</p>
+segmentation of text that contains such whitespace. And text that contains
+whitespace is segmented as MeCab segments it. Otherwise, for the same input
+and dictionary, v7.0.0 produces the same tokens with the same positional
+details as v6.2.0.</p>
 <h2 id="the-lindera-crate-is-now-a-facade"><a class="header" href="#the-lindera-crate-is-now-a-facade">The lindera crate is now a facade</a></h2>
 <p>Up to v6 the Rust API was split between two crates that you had to depend on
 separately: <code>lindera</code> (the segmenter and the dictionary loading API) and
@@ -436,9 +438,14 @@ v7.0.0 reads the surface exactly as written, as MeCab and Sudachi do:</p>
 </tbody></table>
 </div>
 <p>Entries that end with whitespace (55 in IPADIC-NEologd, 4 in ko-dic and 4 in
-SudachiDict) can now match, and their token then ends with that whitespace,
-as in MeCab: <code>GeForce GTX Titan X です</code> gives the token <code>GeForce GTX Titan X</code>
-followed by a space with IPADIC-NEologd.</p>
+SudachiDict) now match only where the text has that whitespace, as in MeCab:
+with IPADIC-NEologd, the entry <code>GeForce GTX Titan X</code> followed by a space
+matches <code>GeForce GTX Titan X です</code> but no longer <code>GeForce GTX Titan Xです</code>.
+When whitespace stays in the lattice (<code>keep_whitespace(true)</code>, or
+<code>skip_whitespace(false)</code>, SudachiDict's default), the token ends with that
+whitespace, as in MeCab. When whitespace is skipped (the default for the
+other dictionaries, see the next section), the token ends before it, because
+token surfaces never include skipped whitespace.</p>
 <p>U+3000 is not in the <code>SPACE</code> character category, so it is a token even with
 <code>keep_whitespace(false)</code>, as in MeCab. To remove it, drop <code>記号,空白</code>
 (IPADIC) or <code>空白</code> (UniDic) with the <code>japanese_stop_tags</code> token filter, or
@@ -449,14 +456,58 @@ fetches with <code>lindera download</code> include these entries. A dictionary
 directory built or downloaded with v6.2.0 or earlier still loads in v7.0.0
 but keeps the old entries until you rebuild it with <code>lindera build</code> or
 download the 7.0.0 release asset.</p>
+<h2 id="whitespace-is-skipped-in-the-lattice"><a class="header" href="#whitespace-is-skipped-in-the-lattice">Whitespace is skipped in the lattice</a></h2>
+<p>With <code>keep_whitespace</code> false (the default), v7.0.0 skips whitespace in the
+Viterbi lattice, as MeCab does: the word after a space connects directly to
+the word before it. v6 dropped whitespace from the output but kept it in the
+lattice as the <code>SPACE</code> unknown word. Dictionaries trained with MeCab never
+see a connection to or from that entry (in ko-dic its connection costs are
+all zero), so every space cut the context between the words around it.</p>
+<p>The output changes only for sentences that contain whitespace. That includes
+a sentence that ends with the <code>\n</code> or <code>\t</code> it was split at, such as a line
+that does not end with <code>。</code>: its last word now connects to the end of the
+sentence directly.</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>Effect</th><th>Example</th></tr></thead><tbody>
+<tr><td>ko-dic</td><td>Spaced Korean text now follows mecab-ko</td><td><code>2년 전 대회</code>: <code>전</code> is <code>NNG</code>, not <code>저/NP + ㄴ/JX</code>; <code>하고 있다</code>: <code>있</code> is <code>VX</code>, not <code>VV</code></td></tr>
+<tr><td>IPADIC, IPADIC-NEologd, UniDic</td><td>A word after a half-width space connects to the word before it, as in MeCab</td><td>IPADIC <code>Google が 新しい</code>: <code>が</code> is a case particle, not a conjunction; <code>東京 都</code>: <code>都</code> is a suffix, as in MeCab</td></tr>
+<tr><td>SudachiDict</td><td>No change: its <code>metadata.json</code> sets <code>skip_whitespace</code> to <code>false</code>, because Sudachi keeps whitespace in the lattice and the costs assume it</td><td>—</td></tr>
+<tr><td>CC-CEDICT, Jieba</td><td>No change in the best path (these dictionaries have no connection costs); N-best costs no longer include the whitespace nodes</td><td>—</td></tr>
+</tbody></table>
+</div>
+<p>The default comes from the dictionary's <code>metadata.json</code>; a dictionary that
+does not set <code>skip_whitespace</code> skips. A SudachiDict built by Lindera 6.x has
+no such setting, so it skips whitespace until it is rebuilt or the setting
+is added to its <code>metadata.json</code>.</p>
+<p>Token surfaces and offsets never include the skipped whitespace, and
+skipping does not change the segmentation of text without whitespace.
+<code>keep_whitespace(true)</code> keeps whitespace in the lattice and its output is
+unchanged.</p>
+<p>To get the v6 segmentation back, turn skipping off; whitespace is still
+dropped from the output. Leaving <code>skip_whitespace</code> out of the configuration,
+or setting it to <code>null</code>, keeps the dictionary's default:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Segmenter
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
+// SegmentWorker
+worker.set_skip_whitespace(false);
+<span class="boring">}</span></code></pre></pre>
+<pre><code class="language-yaml"># Configuration file / TokenizerBuilder::set_segmenter_skip_whitespace(false)
+segmenter:
+  skip_whitespace: false
+</code></pre>
+<pre><code class="language-sh">lindera tokenize --disable-skip-whitespace
+</code></pre>
+<p>The language bindings take the setting through the configuration file.</p>
 <h2 id="who-does-not-need-to-act"><a class="header" href="#who-does-not-need-to-act">Who does not need to act</a></h2>
 <ul>
 <li><strong>Users of the language bindings and the CLI</strong>: the Python, Node.js, Ruby,
 PHP, and WASM packages and <code>lindera-cli</code> keep their APIs and package names.
 The restructuring is internal to the Rust crates. The output changes are
 the IPADIC conjugation fix, which matters only if you read those two fields
-by name, and the whitespace entries, which matter only for text with U+3000
-(IPADIC, IPADIC-NEologd, UniDic) or with spaces (SudachiDict).</li>
+by name, the whitespace entries, which matter only for text with U+3000
+(IPADIC, IPADIC-NEologd, UniDic) or with spaces (SudachiDict), and the
+segmentation of text that contains whitespace.</li>
 <li><strong>Projects staying on <code>lindera = "6"</code></strong>: the 6.x releases of <code>lindera</code> and
 <code>lindera-analysis</code> remain on crates.io and keep working together. Nothing
 changes until you bump the major version.</li>
@@ -510,10 +561,16 @@ SudachiDict to segment spaced text much closer to Sudachi. Drop U+3000 with
 <li>Rebuild or re-download dictionary directories made with v6.2.0 or earlier
 to get the whitespace entries.</li>
 </ul>
+<p>Everyone who segments text that contains whitespace:</p>
+<ul>
+<li>Expect MeCab's segmentation for such text (most visible with ko-dic). If
+you need the v6 output, set <code>skip_whitespace(false)</code>,
+<code>"skip_whitespace": false</code>, or <code>--disable-skip-whitespace</code>.</li>
+</ul>
 <p>Language bindings and CLI:</p>
 <ul>
 <li>Nothing to do beyond taking the 7.0.0 release, apart from the dictionary
-items above.</li>
+and whitespace items above.</li>
 </ul>
 
                     </main>

@@ -185,8 +185,9 @@
 <code>lindera-binding-core</code> を <code>lindera-binding</code> に改名し、v5.0.0 で予告していた
 <code>LINDERA_DICTIONARIES_PATH</code> のフォールバックを削除し、IPADIC のスキーマで
 <code>conjugation_type</code> と <code>conjugation_form</code> の名前が逆になっていた誤りを
-修正し、表層形が空白だけの見出し語や先頭・末尾が空白の見出し語を保持するように
-しました。このガイドでは、すべての破壊的変更とその対処方法を説明します。</p>
+修正し、表層形が空白だけの見出し語や先頭・末尾が空白の見出し語を保持し、
+MeCab と同様に空白をラティス上で読み飛ばすようにしました。このガイドでは、
+すべての破壊的変更とその対処方法を説明します。</p>
 <h2 id="概要"><a class="header" href="#概要">概要</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>変更</th><th>影響範囲</th><th>対処方法</th></tr></thead><tbody>
 <tr><td><code>lindera</code> がファサードになり、<code>lindera::analysis</code> が <code>lindera-analysis</code> を再エクスポート（<code>analysis</code> feature、デフォルト有効）</td><td><code>lindera</code> と <code>lindera-analysis</code> の両方に依存する Rust ユーザー</td><td>両方を同時に <code>"7"</code> に上げるか、<code>lindera-analysis</code> を外して <code>lindera::analysis::…</code> から import する</td></tr>
@@ -198,15 +199,17 @@
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> の削除</strong></td><td>非推奨のビルドキャッシュ変数をまだ設定しているユーザー</td><td><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を設定する。旧名は無視される</td></tr>
 <tr><td><strong>IPADIC・IPADIC-NEologd の <code>conjugation_type</code> と <code>conjugation_form</code> が正しい列を指すように修正</strong></td><td>IPADIC・IPADIC-NEologd でこの 2 フィールドを名前で読むユーザー（<code>Token::get</code>・<code>Token::as_value</code>・<code>lindera tokenize -o json</code>・バインディングのスキーマ）</td><td>2 つの値が入れ替わることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 <tr><td><strong>空白を含む見出し語を保持</strong></td><td>U+3000 を含むテキスト（IPADIC・IPADIC-NEologd・UniDic）、空白を含むテキスト（SudachiDict）、末尾が空白の一部の語</td><td>U+3000 が <code>記号,空白</code>・<code>空白</code> になり、SudachiDict の分割が Sudachi にずっと近くなることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
+<tr><td><strong>空白をラティス上で読み飛ばし、MeCab と同様に空白の前後の語を直接接続する</strong></td><td><code>keep_whitespace</code> が false（デフォルト）で空白を含むテキストを分割するユーザー。ko-dic で特に顕著</td><td>そのようなテキストは MeCab と同じ分割になることを前提にする。<code>skip_whitespace(false)</code>（<code>"skip_whitespace": false</code>、<code>--disable-skip-whitespace</code>）で v6 の分割に戻せる</td></tr>
 </tbody></table>
 </div>
 <p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI の API・パッケージ名は
-変わらず、バージョン番号だけが 7.0.0 になります。出力の違いは 2 つあり、どちらも
+変わらず、バージョン番号だけが 7.0.0 になります。出力の違いは 3 つあり、いずれも
 後述します。IPADIC・IPADIC-NEologd では、<code>conjugation_type</code> と
 <code>conjugation_form</code> という名前で返る値が入れ替わります。また、表層形が空白だけの
 見出し語や先頭・末尾が空白の見出し語が辞書に入るため、そうした空白を含む
-テキストの分割が変わります。それ以外は、同じ入力と辞書に対して、v7.0.0 は
-v6.2.0 と同じトークンを、同じ位置ベースの詳細情報（details）とともに出力します。</p>
+テキストの分割が変わります。さらに、空白を含むテキストは MeCab と同じように
+分割されます。それ以外は、同じ入力と辞書に対して、v7.0.0 は v6.2.0 と同じ
+トークンを、同じ位置ベースの詳細情報（details）とともに出力します。</p>
 <h2 id="lindera-クレートはファサードに"><a class="header" href="#lindera-クレートはファサードに"><code>lindera</code> クレートはファサードに</a></h2>
 <p>v6 までの Rust API は、<code>lindera</code>（セグメンターと辞書読み込み API）と
 <code>lindera-analysis</code>（character filter・token filter・<code>Tokenizer</code>）の 2 クレートに
@@ -426,10 +429,14 @@ v7.0.0 は、MeCab や Sudachi と同じく表層形を書いたとおりに読�
 <tr><td>CC-CEDICT・Jieba</td><td>変化なし</td></tr>
 </tbody></table>
 </div>
-<p>末尾が空白の語（IPADIC-NEologd 55 語、ko-dic 4 語、SudachiDict 4 語）は一致するように
-なり、そのトークンは MeCab と同じく末尾の空白を含みます。IPADIC-NEologd では、
-<code>GeForce GTX Titan X です</code> から、末尾に半角スペースの付いた <code>GeForce GTX Titan X</code> の
-トークンが得られます。</p>
+<p>末尾が空白の語（IPADIC-NEologd 55 語、ko-dic 4 語、SudachiDict 4 語）は、MeCab と
+同じく、テキストにその空白があるときだけ一致するようになります。IPADIC-NEologd では、
+末尾に半角スペースの付いた <code>GeForce GTX Titan X</code> の語が、<code>GeForce GTX Titan X です</code> には
+一致し、<code>GeForce GTX Titan Xです</code> には一致しなくなります。空白がラティスに残るとき
+（<code>keep_whitespace(true)</code>、または SudachiDict のデフォルトである
+<code>skip_whitespace(false)</code>）は、MeCab と同じくトークンが末尾の空白を含みます。空白を
+読み飛ばすとき（ほかの辞書のデフォルト。次の節を参照）は、トークンの表層形に
+読み飛ばした空白は含まれないため、トークンは空白の手前で終わります。</p>
 <p>U+3000 は <code>SPACE</code> の文字カテゴリではないため、<code>keep_whitespace(false)</code> でも MeCab と
 同じくトークンとして出力されます。取り除くには、<code>japanese_stop_tags</code> トークンフィルタで
 <code>記号,空白</code>（IPADIC）や <code>空白</code>（UniDic）を除くか、<code>unicode_normalize</code> 文字フィルタ
@@ -439,14 +446,54 @@ v7.0.0 は、MeCab や Sudachi と同じく表層形を書いたとおりに読�
 v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは v7.0.0 でも読み込めますが、
 <code>lindera build</code> で再ビルドするか 7.0.0 のリリースアセットを再ダウンロードするまで、
 従来の見出し語のままです。</p>
+<h2 id="空白をラティス上で読み飛ばす"><a class="header" href="#空白をラティス上で読み飛ばす">空白をラティス上で読み飛ばす</a></h2>
+<p><code>keep_whitespace</code> が false（デフォルト）のとき、v7.0.0 は MeCab と同様に空白を
+Viterbi ラティス上で読み飛ばします。空白の後ろの語は空白の前の語に直接
+接続します。v6 は空白を出力から除外していましたが、ラティスには <code>SPACE</code> の
+未知語として残していました。MeCab で学習した辞書ではこの項目との連接は
+学習時に一度も現れないため（ko-dic ではその連接コストがすべて 0）、空白の
+たびに前後の語の文脈が途切れていました。</p>
+<p>出力が変わるのは空白を含む文だけです。分割の区切りになった <code>\n</code> や <code>\t</code> で
+終わる文（<code>。</code> で終わらない行など）もこれに含まれ、その文の最後の語は文末に
+直接接続するようになります。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>影響</th><th>例</th></tr></thead><tbody>
+<tr><td>ko-dic</td><td>空白を含む韓国語が mecab-ko と同じ解析になる</td><td><code>2년 전 대회</code> の <code>전</code> は <code>저/NP + ㄴ/JX</code> ではなく <code>NNG</code>、<code>하고 있다</code> の <code>있</code> は <code>VV</code> ではなく <code>VX</code></td></tr>
+<tr><td>IPADIC・IPADIC-NEologd・UniDic</td><td>MeCab と同様に、半角空白の後ろの語が空白の前の語に直接接続する</td><td>IPADIC の <code>Google が 新しい</code> の <code>が</code> は接続詞ではなく格助詞、<code>東京 都</code> の <code>都</code> は MeCab と同様に接尾</td></tr>
+<tr><td>SudachiDict</td><td>変わらない。Sudachi は空白をラティスに残し、コストもそれを前提にしているため、<code>metadata.json</code> で <code>skip_whitespace</code> を <code>false</code> にしている</td><td>—</td></tr>
+<tr><td>CC-CEDICT・Jieba</td><td>最良パスは変わらない（連接コストを持たない辞書のため）。N-best のコストに空白ノードの分が含まれなくなる</td><td>—</td></tr>
+</tbody></table>
+</div>
+<p>デフォルトは辞書の <code>metadata.json</code> で決まり、<code>skip_whitespace</code> を設定していない
+辞書は読み飛ばします。Lindera 6.x でビルドした SudachiDict にはこの設定がない
+ため、再ビルドするか <code>metadata.json</code> に設定を追加するまでは空白を読み飛ばします。</p>
+<p>トークンの表層形とオフセットには読み飛ばした空白が含まれず、読み飛ばしは
+空白を含まないテキストの分割を変えません。<code>keep_whitespace(true)</code> では空白が
+ラティスに残り、出力は変わりません。</p>
+<p>v6 の分割結果に戻すには、読み飛ばしを無効にします。空白は引き続き出力から
+除外されます。設定で <code>skip_whitespace</code> を省略するか <code>null</code> にすると、辞書の
+デフォルトのままになります:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Segmenter
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
+// SegmentWorker
+worker.set_skip_whitespace(false);
+<span class="boring">}</span></code></pre></pre>
+<pre><code class="language-yaml"># 設定ファイル / TokenizerBuilder::set_segmenter_skip_whitespace(false)
+segmenter:
+  skip_whitespace: false
+</code></pre>
+<pre><code class="language-sh">lindera tokenize --disable-skip-whitespace
+</code></pre>
+<p>言語バインディングでは設定ファイルで指定します。</p>
 <h2 id="対応が不要なケース"><a class="header" href="#対応が不要なケース">対応が不要なケース</a></h2>
 <ul>
 <li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の
 各パッケージと <code>lindera-cli</code> の API・パッケージ名は変わりません。今回の
 構成変更は Rust クレート内部のものです。出力の変化は、この 2 フィールドを
-名前で読む場合にのみ影響する IPADIC の活用フィールドの修正と、U+3000 を含む
+名前で読む場合にのみ影響する IPADIC の活用フィールドの修正、U+3000 を含む
 テキスト（IPADIC・IPADIC-NEologd・UniDic）や空白を含むテキスト（SudachiDict）に
-のみ影響する空白の見出し語です。</li>
+のみ影響する空白の見出し語、そして空白を含むテキストの分割です。</li>
 <li><strong><code>lindera = "6"</code> のまま使い続けるプロジェクト</strong>: <code>lindera</code> と <code>lindera-analysis</code>
 の 6.x は crates.io に残り、組み合わせて動作し続けます。メジャーバージョンを
 上げるまで何も変わりません。</li>
@@ -497,9 +544,15 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <li>空白の見出し語を使うには、v6.2.0 以前に作った辞書ディレクトリを再ビルド・
 再ダウンロードする。</li>
 </ul>
+<p>空白を含むテキストを分割するすべてのユーザー:</p>
+<ul>
+<li>そのようなテキストは MeCab と同じ分割になることを前提にする（ko-dic で特に
+顕著）。v6 の出力が必要な場合は <code>skip_whitespace(false)</code>、
+<code>"skip_whitespace": false</code>、<code>--disable-skip-whitespace</code> を指定する。</li>
+</ul>
 <p>言語バインディングと CLI:</p>
 <ul>
-<li>7.0.0 リリースを取り込む以外に対応は不要（上記の辞書の項目を除く）。</li>
+<li>7.0.0 リリースを取り込む以外に対応は不要（上記の辞書と空白の項目を除く）。</li>
 </ul>
 
                     </main>

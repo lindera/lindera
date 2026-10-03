@@ -218,9 +218,11 @@
   ]
 }
 </code></pre>
-<pre><code class="language-shell">echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic
+<pre><code class="language-shell">echo "검색 이 잘 된다" | lindera tokenize --dict embedded://ko-dic
 </code></pre>
-<p><code>시</code> in <code>서울 시 에서</code> is read as the noun <code>NNG</code> (as mecab-ko does) instead of the ending <code>EP</code>; with <code>--disable-space-penalty</code> it reads as <code>EP</code> again. See the Segmenter documentation for the semantics and the remaining differences from mecab-ko's whitespace handling.</p>
+<p><code>이</code> after the space is read as the interjection <code>IC</code> (as mecab-ko does) instead of the subject particle <code>JKS</code>; with <code>--disable-space-penalty</code> it reads as <code>JKS</code> again. See the Segmenter documentation for the semantics.</p>
+<h2 id="whitespace"><a class="header" href="#whitespace">Whitespace</a></h2>
+<p>mecab-ko skips whitespace when it builds the lattice, so a word after a space connects to the word before it. The <code>SPACE</code> unknown-word entry (<code>unk.def</code>: <code>SPACE,1798,3563,996</code>) is therefore never connected to anything during training, and its row and column of <code>matrix.def</code> are all zero. Lindera skips whitespace the same way by default. With <code>--disable-skip-whitespace</code> (<code>Segmenter::skip_whitespace(false)</code>, <code>"skip_whitespace": false</code>) whitespace stays in the lattice as that entry, which resets the context at every space: <code>2년 전 대회</code> then reads <code>전</code> as <code>저/NP + ㄴ/JX</code> instead of the noun <code>NNG</code>, and <code>하고 있다</code> reads <code>있</code> as a main verb instead of the auxiliary <code>VX</code>.</p>
 <h2 id="user-dictionary-format-csv"><a class="header" href="#user-dictionary-format-csv">User dictionary format (CSV)</a></h2>
 <h3 id="simple-version"><a class="header" href="#simple-version">Simple version</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Index</th><th>Name (Korean)</th><th>Name (English)</th><th>Notes</th></tr></thead><tbody>

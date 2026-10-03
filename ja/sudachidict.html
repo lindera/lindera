@@ -275,9 +275,13 @@ surface）です。そのため形態素の詳細情報はカラム 5 から始�
       "synonym_group_ids"
     ]
   },
-  "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] }
+  "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] },
+  "skip_whitespace": false
 }
 </code></pre>
+<p><code>skip_whitespace: false</code> は、Sudachi と同様に、また SudachiDict のコストが前提と
+しているとおりに、空白をラティスに残します。指定しないと Lindera は MeCab と
+同様に空白を読み飛ばします（<a href="./lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> を参照）。</p>
 <h2 id="ビルドと確認"><a class="header" href="#ビルドと確認">ビルドと確認</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src /tmp/sudachidict-src \
