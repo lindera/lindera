@@ -1508,14 +1508,22 @@ impl Lattice {
             );
             edge.ws_tail = whole_run;
         }
+        // The edges at the run start end right before it and keep 0; skip
+        // them, as every word before a space is there (#1108).
+        debug_assert!(
+            before[run_start].iter().all(|edge| edge.ws_tail == 0),
+            "an edge is carried over twice"
+        );
         for slot in run_start..char_idx {
             if before[slot].is_empty() {
                 continue;
             }
-            let covered = u8::try_from(slot - run_start).unwrap_or(u8::MAX);
-            for edge in before[slot].iter_mut() {
-                debug_assert_eq!(edge.ws_tail, 0, "an edge is carried over twice");
-                edge.ws_tail = covered;
+            if slot > run_start {
+                let covered = u8::try_from(slot - run_start).unwrap_or(u8::MAX);
+                for edge in before[slot].iter_mut() {
+                    debug_assert_eq!(edge.ws_tail, 0, "an edge is carried over twice");
+                    edge.ws_tail = covered;
+                }
             }
             if nbest {
                 let offset = target.len() as u16;
