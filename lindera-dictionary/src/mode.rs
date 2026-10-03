@@ -30,11 +30,13 @@ impl Penalty {
     /// # 引数
     ///
     /// * `edge` - The edge to penalize (read for its kanji-only flag).
-    /// * `num_chars` - The edge's exact span in characters. The packed
-    ///   edge no longer stores its end position, so the caller derives
-    ///   this from the slot the edge lives in (#943 — this also replaced
-    ///   the former byte-length/3 approximation, which was wrong for
-    ///   1-, 2-, and 4-byte UTF-8 characters).
+    /// * `num_chars` - The edge's exact span in characters: the whitespace
+    ///   its own surface ends with included, whitespace skipped after it
+    ///   excluded. The packed edge does not store its end position, so the
+    ///   lattice derives this from the slot the edge lives in and the
+    ///   whitespace carry-over (#943 — this also replaced the former
+    ///   byte-length/3 approximation, which was wrong for 1-, 2-, and 4-byte
+    ///   UTF-8 characters; #1108).
     ///
     /// # 戻り値
     ///
