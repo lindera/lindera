@@ -20,6 +20,8 @@ The simplest user dictionary format is a CSV file with three columns:
 
 The surface (the first column) is used exactly as written: whitespace at its start or end is part of the word, and a surface may consist of whitespace only (IPADIC registers U+3000 this way). Only an empty surface is skipped. The same applies to the lexicon CSV files of a system dictionary built with `lindera build`.
 
+An entry that ends with whitespace keeps it in its token, as in MeCab, even when whitespace is skipped in the lattice (the default for every bundled dictionary except SudachiDict, see [Whitespace Handling](../lindera/segmenter.md#whitespace-handling)). With whitespace skipped, however, an entry that starts with whitespace of the dictionary's `SPACE` category, or consists of such whitespace only, never matches, because no word starts on skipped whitespace. U+3000 is not in the `SPACE` category, so IPADIC's U+3000 entry still matches.
+
 Each dictionary type (IPADIC, UniDic, ko-dic, etc.) also supports a detailed CSV format with full control over context IDs, costs, and all feature fields. See the [Dictionaries](./dictionaries.md) section for the detailed format of each dictionary type.
 
 ## Rust API example

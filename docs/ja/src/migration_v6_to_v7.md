@@ -10,8 +10,9 @@ Lindera v7.0.0 では `lindera` クレートがファサード（facade）にな
 `conjugation_type` と `conjugation_form` の名前が逆になっていた誤りを
 修正し、表層形が空白だけの見出し語や先頭・末尾が空白の見出し語を保持し、
 MeCab と同様に空白をラティス上で読み飛ばし、`char.def` の重複した行を MeCab と
-同じく解決し、N-best の各結果が入力全体を覆うようにしました。このガイドでは、
-すべての破壊的変更とその対処方法を説明します。
+同じく解決し、N-best の各結果が入力全体を覆うようにし、`lindera-dictionary` の
+ラティスのバックトレースが各トークンの終了オフセットも返すようにしました。
+このガイドでは、すべての破壊的変更とその対処方法を説明します。
 
 ## 概要
 
@@ -29,6 +30,7 @@ MeCab と同様に空白をラティス上で読み飛ばし、`char.def` の重
 | **空白をラティス上で読み飛ばし、MeCab と同様に空白の前後の語を直接接続する** | `keep_whitespace` が false（デフォルト）で空白を含むテキストを分割するユーザー。ko-dic で特に顕著 | そのようなテキストは MeCab と同じ分割になることを前提にする。`skip_whitespace(false)`（`"skip_whitespace": false`、`--disable-skip-whitespace`）で v6 の分割に戻せる |
 | **`char.def` の重複した行は最後の行が決める** | `Ð`（U+00D0、ko-dic 以外のすべての辞書）・`々`（U+3005）・`〇`（U+3007）を含むテキスト、単一コードポイントの行や重複した行を持つ `char.def` で `lindera train` を使うユーザー | `Ð` が文字として出力に残ることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする |
 | **N-best: 各結果が入力全体を覆う** | 複数の文を含む入力で N-best（`segment_nbest`・`tokenize_nbest`・`lindera tokenize -N`・バインディングの N-best メソッド）を使うユーザー | 2 件目以降が入力全体のコストの小さい分割になることを前提にする。コストの閾値は入力全体に対して適用される |
+| **`Lattice::tokens_offset`・`tokens_offset_into`・`nbest_tokens_offset`・`NBestGenerator::next` が `(start, end, WordId)` を返す** | これらの `lindera_dictionary` の関数を直接呼び出す Rust コード（`lindera::dictionary::viterbi::…`・`lindera::dictionary::Lattice`・`lindera::dictionary::nbest::…` 経由を含む） | 3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う |
 
 言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI の API・パッケージ名は
 変わらず、バージョン番号だけが 7.0.0 になります。出力の違いは 5 つあり、いずれも
@@ -311,9 +313,16 @@ v7.0.0 は、MeCab や Sudachi と同じく表層形を書いたとおりに読�
 末尾に半角スペースの付いた `GeForce GTX Titan X` の語が、`GeForce GTX Titan X です` には
 一致し、`GeForce GTX Titan Xです` には一致しなくなります。空白がラティスに残るとき
 （`keep_whitespace(true)`、または SudachiDict のデフォルトである
-`skip_whitespace(false)`）は、MeCab と同じくトークンが末尾の空白を含みます。空白を
-読み飛ばすとき（ほかの辞書のデフォルト。次の節を参照）は、トークンの表層形に
-読み飛ばした空白は含まれないため、トークンは空白の手前で終わります。
+`skip_whitespace(false)`）も、空白を読み飛ばすとき（ほかの辞書のデフォルト。次の節を
+参照）も、MeCab と同じくトークンは末尾の空白を含みます。読み飛ばすのは語の後ろの
+空白だけで、`GeForce GTX Titan X  です` のように空白が 2 つ続く場合、トークンは
+1 つ目の空白で終わります。IPADIC-NEologd の 55 語のうち 50 語は、ko-dic と
+SudachiDict の語と同じく半角スペースで終わります。残りの 5 語は U+3000 か U+00A0 で
+終わり、これらは `SPACE` の文字ではないため読み飛ばされません。
+Decompose の長さペナルティは、空白がラティスに残るときと同じく、語自身の空白も
+数えます。`unique` を指定した N-best では、この空白だけが異なる結果が 1 つに
+まとめられなくなります（`에듀 센터` に対する ko-dic の、半角スペースの付いた
+`에듀`（`NNG`）と `에듀`（`NNP`）など）。
 
 U+3000 は `SPACE` の文字カテゴリではないため、`keep_whitespace(false)` でも MeCab と
 同じくトークンとして出力されます。取り除くには、`japanese_stop_tags` トークンフィルタで
@@ -350,9 +359,10 @@ Viterbi ラティス上で読み飛ばします。空白の後ろの語は空白
 辞書は読み飛ばします。Lindera 6.x でビルドした SudachiDict にはこの設定がない
 ため、再ビルドするか `metadata.json` に設定を追加するまでは空白を読み飛ばします。
 
-トークンの表層形とオフセットには読み飛ばした空白が含まれず、読み飛ばしは
-空白を含まないテキストの分割を変えません。`keep_whitespace(true)` では空白が
-ラティスに残り、出力は変わりません。
+トークンの表層形とオフセットには読み飛ばした空白が含まれません。ただし、見出し語の
+一部である空白は、語の途中にあっても末尾にあっても、MeCab と同じくその語のトークンに
+残ります（前の節を参照）。読み飛ばしは空白を含まないテキストの分割を変えません。
+`keep_whitespace(true)` では空白がラティスに残り、出力は変わりません。
 
 v6 の分割結果に戻すには、読み飛ばしを無効にします。空白は引き続き出力から
 除外されます。設定で `skip_whitespace` を省略するか `null` にすると、辞書の
@@ -431,6 +441,53 @@ N-best のメソッド（`Segmenter::segment_nbest`・`Tokenizer::tokenize_nbest
 合計コストが 1 件目の結果のコストから閾値以内の結果を残します。v6 は閾値を文ごとに
 適用していました。`unique` を指定した場合も、結果の単語境界は互いに異なります。
 
+## `lindera_dictionary` の Rust API 変更
+
+以下は、ラティスのバックトレースを直接呼び出すコードにのみ影響します。対象は
+`lindera_dictionary::viterbi::Lattice` と `lindera_dictionary::nbest::NBestGenerator`
+で、`lindera::dictionary::viterbi::…`・`lindera::dictionary::Lattice`・
+`lindera::dictionary::nbest::…` からも参照できます。`Segmenter`・`Tokenizer`・
+`SegmentWorker`・`AnalysisWorker` の API、言語バインディング、CLI は影響を
+受けません。
+
+| v6 | v7 |
+| --- | --- |
+| `Lattice::tokens_offset() -> Vec<(usize, WordId)>` | `Lattice::tokens_offset() -> Vec<TokenOffset>` |
+| `Lattice::tokens_offset_into(&mut Vec<(usize, WordId)>)` | `Lattice::tokens_offset_into(&mut Vec<TokenOffset>)` |
+| `Lattice::nbest_tokens_offset(n, unique, cost_threshold) -> Vec<(Vec<(usize, WordId)>, i64)>` | `Lattice::nbest_tokens_offset(n, unique, cost_threshold) -> Vec<NBestPath>` |
+| `NBestGenerator::next() -> Option<(Vec<(usize, WordId)>, i64)>` | `NBestGenerator::next() -> Option<NBestPath>` |
+| — | `viterbi` に新しい型エイリアス `TokenOffset = (usize, usize, WordId)` と `NBestPath = (Vec<TokenOffset>, i64)` を追加 |
+
+各トークンは `(start, word_id)` ではなく `(start, end, word_id)` になりました。
+オフセットは文内のバイト位置です。空白を読み飛ばすとき（v7 で追加された
+`LatticeOptions::skip_whitespace`）は、トークンの終わりが次のトークンの開始位置と
+一致するとは限りません。間に読み飛ばした空白があると、そのうちどこまでが語に
+属するかはラティスにしかわからないためです。返される終了位置は、読み飛ばした空白を含まず、
+語自身の末尾の空白を含みます（[空白を含む見出し語を保持する](#空白を含む見出し語を保持する)
+を参照）。`set_text` や `set_text_nbest` のように空白をラティスに残す場合、終了位置は
+これまでどおり次のトークンの開始位置（最後のトークンでは文の終わり）です。`unique` を
+指定した `nbest_tokens_offset` は、パスの開始位置ではなく `(start, end)` の組を
+比較するようになりました。
+
+```rust
+use lindera::dictionary::viterbi::TokenOffset;
+
+// v6: トークンは次のトークンの開始位置で終わる
+let offsets = lattice.tokens_offset();
+for (i, &(start, word_id)) in offsets.iter().enumerate() {
+    let end = offsets.get(i + 1).map_or(sentence.len(), |&(next, _)| next);
+    handle(&sentence[start..end], word_id);
+}
+
+// v7: 終了位置が返される
+let offsets: Vec<TokenOffset> = lattice.tokens_offset();
+for &(start, end, word_id) in &offsets {
+    handle(&sentence[start..end], word_id);
+}
+```
+
+`nbest_tokens_offset` と `NBestGenerator::next` が返すパスも、同じ 3 つ組を持ちます。
+
 ## 対応が不要なケース
 
 - **言語バインディングと CLI のユーザー**: Python・Node.js・Ruby・PHP・WASM の
@@ -446,7 +503,9 @@ N-best のメソッド（`Segmenter::segment_nbest`・`Tokenizer::tokenize_nbest
   上げるまで何も変わりません。
 - **セグメンター API だけを使うユーザー**: `Segmenter`・`load_dictionary`・`Mode`
   など v6 の `lindera::…` アイテムを使うコードは、`lindera = "7"` でそのまま
-  コンパイルできます。ただしデフォルトビルドでは `lindera-analysis` とその依存
+  コンパイルできます（`lindera::dictionary::Lattice` のバックトレースを呼び出す
+  場合を除く。[`lindera_dictionary` の Rust API 変更](#lindera_dictionary-の-rust-api-変更)
+  を参照）。ただしデフォルトビルドでは `lindera-analysis` とその依存
   （kanaria・regex・serde_yaml_ng・unicode-blocks・unicode-normalization・
   unicode-segmentation）もコンパイルされるため、v6 の依存ツリーを維持したい
   場合は `default-features = false, features = ["mmap"]` を指定してください。
@@ -465,6 +524,9 @@ Rust クレートのユーザー:
 - `features = ["lindera-<辞書>"]` を `features = ["embed-<辞書>"]` に置き換える。
 - 任意で `lindera-dictionary` への直接依存を外し、`lindera::dictionary::core`・
   `::builder`・`::viterbi` などの再エクスポートに切り替える。
+- `Lattice::tokens_offset`・`tokens_offset_into`・`nbest_tokens_offset`・
+  `NBestGenerator::next` を呼び出している場合は、`(start, end, word_id)` に分解し、
+  次のトークンの開始位置の代わりに返された終了位置を使う。
 
 バインディングの作者:
 
@@ -497,6 +559,8 @@ U+3000 や空白を含むテキストを IPADIC・IPADIC-NEologd・UniDic・Suda
 - そのようなテキストは MeCab と同じ分割になることを前提にする（ko-dic で特に
   顕著）。v6 の出力が必要な場合は `skip_whitespace(false)`、
   `"skip_whitespace": false`、`--disable-skip-whitespace` を指定する。
+- 末尾が半角スペースの見出し語（IPADIC-NEologd・ko-dic・SudachiDict）のトークンは、
+  MeCab と同じくその空白を含むことを前提にする。
 
 `Ð`・`々`・`〇` を含むテキストを同梱の辞書で解析するユーザー:
 
