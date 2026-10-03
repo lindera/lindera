@@ -3250,7 +3250,10 @@ mod tests {
     #[cfg(feature = "embed-ko-dic")]
     mod skip_whitespace {
         use std::borrow::Cow;
+        use std::collections::HashSet;
         use std::io::Write;
+
+        use lindera_dictionary::viterbi::WordId;
 
         use crate::dictionary::{load_dictionary, load_user_dictionary};
         use crate::mode::{Mode, Penalty};
@@ -3324,7 +3327,7 @@ mod tests {
         /// Inputs exercising whitespace at the sentence edges, runs of it,
         /// the `\t`/`\n` sentence delimiters, whitespace-only text, and
         /// ko-dic entries whose surface ends with a space (`내셔날 `).
-        const WHITESPACE_EDGE_CASES: [&str; 12] = [
+        const WHITESPACE_EDGE_CASES: [&str; 18] = [
             "  2년 전 대회",
             "2년 전 대회  ",
             "2년   전   대회",
@@ -3337,6 +3340,13 @@ mod tests {
             "내셔날 지오그래픽",
             "내셔날   지오그래픽 ",
             "\u{000B}서울 시\r 에서",
+            // Entries that end with a space (#1108).
+            "에듀 센터",
+            "내셔날  지오그래픽",
+            "에듀 ",
+            "에듀 \t센터",
+            "에듀 \n센터",
+            "콜라비 샐러드",
         ];
 
         /// A ko-dic segmenter with the defaults `Segmenter::new` applies.
@@ -3642,7 +3652,7 @@ mod tests {
 
         /// The length of a whitespace run costs nothing: neither as a node
         /// nor through the Decompose length penalty, which measures a word
-        /// without the whitespace after it.
+        /// without the skipped whitespace after it.
         #[test]
         fn test_whitespace_run_length_does_not_change_costs() {
             let one = "부산광역시 해운대구에";
@@ -3698,6 +3708,195 @@ mod tests {
             let tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
             assert_eq!(tokens[0].surface, "해운대 해수욕장");
             assert_offsets(&segmenter, text, &tokens, &["해운대 해수욕장"]);
+        }
+
+        /// The surface, offsets and word id of each token.
+        fn spans(tokens: &[Token]) -> Vec<(String, usize, usize, WordId)> {
+            tokens
+                .iter()
+                .map(|t| (t.surface.to_string(), t.byte_start, t.byte_end, t.word_id))
+                .collect()
+        }
+
+        /// The surface and offsets of each token of `text`.
+        fn segment_spans(segmenter: &Segmenter, text: &str) -> Vec<(String, usize, usize)> {
+            spans(&segmenter.segment(Cow::Borrowed(text)).unwrap())
+                .into_iter()
+                .map(|(surface, start, end, _)| (surface, start, end))
+                .collect()
+        }
+
+        /// A ko-dic segmenter with a user dictionary of `NNP` entries in the
+        /// simple CSV format.
+        fn segmenter_with_user_entries(mode: Mode, surfaces: &[&str]) -> Segmenter {
+            let dictionary = load_dictionary("embedded://ko-dic").unwrap();
+            let mut csv = tempfile::Builder::new().suffix(".csv").tempfile().unwrap();
+            for surface in surfaces {
+                writeln!(csv, "{surface},NNP,{}", surface.trim()).unwrap();
+            }
+            csv.flush().unwrap();
+            let user_dictionary =
+                load_user_dictionary(csv.path().to_str().unwrap(), &dictionary.metadata).unwrap();
+            Segmenter::new(mode, dictionary, Some(user_dictionary))
+        }
+
+        /// An entry whose surface ends with a space keeps it in its token, as
+        /// in mecab-ko, and only the whitespace after it is skipped (#1108).
+        #[test]
+        fn test_entry_keeps_its_trailing_whitespace() {
+            let segmenter = segmenter(Mode::Normal);
+            let span = |surface: &str, start, end| (surface.to_string(), start, end);
+
+            let tokens = segment_spans(&segmenter, "에듀 센터");
+            assert_eq!(tokens, [span("에듀 ", 0, 7), span("센터", 7, 13)]);
+            assert_eq!(render(&segmenter, "에듀 센터")[0], "에듀 /NNG");
+
+            let tokens = segment_spans(&segmenter, "내셔날  지오그래픽");
+            assert_eq!(tokens[0], span("내셔날 ", 0, 10));
+            assert_eq!(tokens[1].1, 11);
+
+            // With the default left-space penalty as well.
+            assert_eq!(
+                segment_spans(&segmenter, "콜라비 샐러드")[0],
+                span("콜라비 ", 0, 10)
+            );
+
+            // At the end of the text and before a sentence delimiter.
+            for text in ["에듀 ", "에듀   ", "에듀 \t센터", "에듀 \n센터"] {
+                assert_eq!(
+                    segment_spans(&segmenter, text)[0],
+                    span("에듀 ", 0, 7),
+                    "{text:?}"
+                );
+            }
+        }
+
+        /// N-best results keep an entry's whitespace too, and `unique` tells
+        /// apart results that differ only in it: `에듀` and a space is NNG,
+        /// `에듀` alone NNP.
+        #[test]
+        fn test_entry_trailing_whitespace_in_nbest() {
+            let segmenter = segmenter(Mode::Normal);
+            let text = "에듀 센터";
+
+            let results = segmenter
+                .segment_nbest(Cow::Borrowed(text), 3, false, None)
+                .unwrap();
+            assert!(results.windows(2).all(|pair| pair[0].1 <= pair[1].1));
+            let best = segmenter.segment(Cow::Borrowed(text)).unwrap();
+            assert_eq!(spans(&results[0].0), spans(&best));
+            for (tokens, _) in &results {
+                assert_offsets(&segmenter, text, tokens, &[]);
+            }
+
+            let unique = segmenter
+                .segment_nbest(Cow::Borrowed(text), 3, true, None)
+                .unwrap();
+            let boundaries: HashSet<Vec<(usize, usize)>> = unique
+                .iter()
+                .map(|(tokens, _)| tokens.iter().map(|t| (t.byte_start, t.byte_end)).collect())
+                .collect();
+            assert_eq!(boundaries.len(), unique.len());
+            let first_words: Vec<String> = unique
+                .into_iter()
+                .map(|(mut tokens, _)| render_tokens(&mut tokens).swap_remove(0))
+                .collect();
+            assert!(
+                first_words.contains(&"에듀 /NNG".to_string()),
+                "{first_words:?}"
+            );
+            assert!(
+                first_words.contains(&"에듀/NNP".to_string()),
+                "{first_words:?}"
+            );
+        }
+
+        /// A user entry that ends with whitespace keeps all of it, however
+        /// much whitespace follows, and matches only where the text has it,
+        /// with whitespace skipped or kept in the lattice.
+        #[test]
+        fn test_user_entry_keeps_its_trailing_whitespace() {
+            let entry = "Foo  ";
+            let segmenter = segmenter_with_user_entries(Mode::Normal, &[entry]);
+            let span = |surface: &str, start, end| (surface.to_string(), start, end);
+
+            for (text, expected) in [
+                ("Foo   Bar", vec![span(entry, 0, 5), span("Bar", 6, 9)]),
+                ("Foo  Bar", vec![span(entry, 0, 5), span("Bar", 5, 8)]),
+                ("Foo  ", vec![span(entry, 0, 5)]),
+                ("Foo   ", vec![span(entry, 0, 5)]),
+                ("Foo  \tBar", vec![span(entry, 0, 5), span("Bar", 6, 9)]),
+                ("Foo  \nBar", vec![span(entry, 0, 5), span("Bar", 6, 9)]),
+            ] {
+                assert_eq!(segment_spans(&segmenter, text), expected, "{text:?}");
+                let tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
+                assert_offsets(&segmenter, text, &tokens, &[entry]);
+            }
+            assert_eq!(segment_spans(&segmenter, "Foo Bar")[0], span("Foo", 0, 3));
+
+            // With whitespace kept in the lattice the entry's token is the
+            // same (a longer run would add a `SPACE` node after it, whose
+            // costs decide the path instead).
+            for segmenter in [
+                segmenter_with_user_entries(Mode::Normal, &[entry]).skip_whitespace(false),
+                segmenter_with_user_entries(Mode::Normal, &[entry]).keep_whitespace(true),
+            ] {
+                assert_eq!(segment_spans(&segmenter, "Foo  Bar")[0], span(entry, 0, 5));
+            }
+        }
+
+        /// The Decompose length penalty counts the whitespace an entry ends
+        /// with, as its token shows it, but not the whitespace skipped after
+        /// it: a 10-character user entry (`Foo` and 7 spaces) costs
+        /// (10 - 7) * 1700 = 5100 more in Decompose mode on the same path,
+        /// however many spaces follow it.
+        #[test]
+        fn test_decompose_penalty_counts_the_entry_whitespace() {
+            let entry = "Foo       ";
+            assert_eq!(entry.chars().count(), 10);
+            let normal = segmenter_with_user_entries(Mode::Normal, &[entry]);
+            let decompose =
+                segmenter_with_user_entries(Mode::Decompose(Penalty::default()), &[entry]);
+            let results = |segmenter: &Segmenter, text: &str| {
+                segmenter
+                    .segment_nbest(Cow::Borrowed(text), 10, false, None)
+                    .unwrap()
+                    .iter()
+                    .map(|(tokens, cost)| (spans(tokens), *cost))
+                    .collect::<Vec<_>>()
+            };
+            for spaces in [8, 11] {
+                let text = format!("Foo{}Bar", " ".repeat(spaces));
+                let normal_results = results(&normal, &text);
+                let (path, normal_cost) = &normal_results[0];
+                assert_eq!(path[0].0, entry, "{text:?}");
+                let decompose_results = results(&decompose, &text);
+                let Some((_, decompose_cost)) =
+                    decompose_results.iter().find(|(tokens, _)| tokens == path)
+                else {
+                    panic!(
+                        "the path through the entry is not in the Decompose results of {text:?}"
+                    );
+                };
+                assert_eq!(decompose_cost - normal_cost, 5100, "{text:?}");
+            }
+        }
+
+        /// With whitespace kept in the lattice, turning skipping off gives
+        /// the tokens of `keep_whitespace(true)` without its whitespace
+        /// tokens: both read the same lattice.
+        #[test]
+        fn test_whitespace_in_lattice_settings_agree() {
+            let no_skip = segmenter(Mode::Normal).skip_whitespace(false);
+            let keep = segmenter(Mode::Normal).keep_whitespace(true);
+            for text in WHITESPACE_EDGE_CASES {
+                let without = spans(&no_skip.segment(Cow::Borrowed(text)).unwrap());
+                let kept: Vec<_> = spans(&keep.segment(Cow::Borrowed(text)).unwrap())
+                    .into_iter()
+                    .filter(|(surface, ..)| !surface.chars().all(is_ko_dic_space))
+                    .collect();
+                assert_eq!(without, kept, "{text:?}");
+            }
         }
     }
 
