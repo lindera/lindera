@@ -15,8 +15,8 @@ use crate::dictionary::character_definition::{CategoryId, CharacterDefinition};
 ///
 /// Built once per dictionary so the per-character check in the lattice and
 /// the segmenter is one indexed load for ASCII/Latin-1, which covers every
-/// character real `char.def` files put in `SPACE` (0x20, 0x09, 0x0A, 0x0B,
-/// 0x0D, and IPADIC's 0xD0). When the category has no member above U+00FF,
+/// character real `char.def` files put in `SPACE` (0x20, 0x09, 0x0A, 0x0B
+/// and 0x0D). When the category has no member above U+00FF,
 /// as in every bundled dictionary, other characters are answered without a
 /// lookup; otherwise they fall back to a category lookup.
 #[derive(Clone, Debug)]
