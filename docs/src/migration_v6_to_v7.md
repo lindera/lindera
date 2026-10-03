@@ -9,8 +9,9 @@ the new `analysis` feature, on by default — the analysis chain of
 `LINDERA_DICTIONARIES_PATH` fallback, as announced in v5.0.0, corrects
 the IPADIC schema, which had the `conjugation_type` and `conjugation_form`
 names swapped, keeps dictionary entries whose surface is whitespace or
-starts or ends with it, and skips whitespace in the lattice as MeCab does.
-This guide lists every breaking change and the one-line fixes for each.
+starts or ends with it, skips whitespace in the lattice as MeCab does, and
+resolves overlapping `char.def` lines as MeCab does. This guide lists every
+breaking change and the one-line fixes for each.
 
 ## Overview
 
@@ -26,17 +27,19 @@ This guide lists every breaking change and the one-line fixes for each.
 | **IPADIC and IPADIC-NEologd: `conjugation_type` and `conjugation_form` now name the right columns** | Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (`Token::get`, `Token::as_value`, `lindera tokenize -o json`, binding schemas) | Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier |
 | **Dictionary entries with whitespace are kept** | Text with U+3000 (IPADIC, IPADIC-NEologd, UniDic), text with spaces (SudachiDict), and a few entries that ended with whitespace | Expect U+3000 to be `記号,空白` / `空白` and SudachiDict to segment spaced text much closer to Sudachi; rebuild or re-download dictionaries made with v6.2.0 or earlier |
 | **Whitespace is skipped in the lattice: the words on either side of a space connect directly, as in MeCab** | Anyone who segments text containing whitespace with `keep_whitespace` false (the default), most visibly with ko-dic | Expect MeCab's segmentation for such text; `skip_whitespace(false)` (`"skip_whitespace": false`, `--disable-skip-whitespace`) restores the v6 segmentation |
+| **Overlapping `char.def` lines: the last line decides** | Text with `Ð` (U+00D0; every dictionary except ko-dic), `々` (U+3005) or `〇` (U+3007); `lindera train` users whose `char.def` has single-code-point or overlapping lines | Expect `Ð` to stay in the output as a letter; rebuild or re-download dictionaries made with v6.2.0 or earlier |
 
 The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
 their APIs and package names; only their version number moves to 7.0.0.
-There are three output differences, all described below. With IPADIC or
+There are four output differences, all described below. With IPADIC or
 IPADIC-NEologd, the values reported under the names `conjugation_type` and
 `conjugation_form` trade places. The dictionaries now contain the entries
 whose surface is or starts or ends with whitespace, which changes the
-segmentation of text that contains such whitespace. And text that contains
-whitespace is segmented as MeCab segments it. Otherwise, for the same input
-and dictionary, v7.0.0 produces the same tokens with the same positional
-details as v6.2.0.
+segmentation of text that contains such whitespace. Text that contains
+whitespace is segmented as MeCab segments it. And `Ð`, `々` and `〇` get the
+character categories that MeCab gives them, which changes the segmentation
+of text that contains them. Otherwise, for the same input and dictionary,
+v7.0.0 produces the same tokens with the same positional details as v6.2.0.
 
 ## The lindera crate is now a facade
 
@@ -385,6 +388,44 @@ lindera tokenize --disable-skip-whitespace
 
 The language bindings take the setting through the configuration file.
 
+## Overlapping char.def lines are resolved as in MeCab
+
+A dictionary's `char.def` can list the same code point on several lines. Up
+to v6.2.0, the dictionary builder gave such a code point the categories of
+every line that covers it. v7.0.0 uses only the last line, as MeCab,
+vibrato and Kuromoji do, and lists that line's categories in the order in
+which `char.def` defines them. In the bundled dictionaries, three characters
+change (ko-dic calls the kanji categories `HANJA` and `HANJANUMERIC`, and
+CC-CEDICT and Jieba call them `CHINESE` and `CHINESENUMERIC`):
+
+| Character | v6 categories | v7 categories | Effect |
+| --- | --- | --- | --- |
+| `Ð` (U+00D0) | `SPACE`, `ALPHA` | `ALPHA` | Every dictionary except ko-dic maps U+00D0 to `SPACE` (a typo for U+000D inherited from mecab-ipadic) before the `ALPHA` range, so `Ð` was dropped as whitespace and split the word around it. `GUÐMUNDUR さん` now gives `GUÐMUNDUR` and `さん` instead of `GU`, `MUNDUR` and `さん` |
+| `々` (U+3005) | `KANJI`, `SYMBOL` | `SYMBOL` | Dictionary words such as `人々` and `佐々木` are unchanged. After a kanji that the dictionary does not know, `々` is a token of its own, as in MeCab: `龘々` gives `龘` and `々` instead of one unknown word. With ko-dic, `々` is tagged `SY` instead of `SH` |
+| `〇` (U+3007) | `KANJI`, `SYMBOL`, `KANJINUMERIC` | `SYMBOL`, `KANJINUMERIC` | Runs of numerals can be grouped differently. With ko-dic, `二〇二六年` gives `二〇二六` and `年` instead of `二`, `〇`, `二六` and `年` |
+
+The kanji numerals `一` to `九`, `十`, `百`, `千`, `万`, `億` and `兆` are
+also listed on two lines, but keep their categories and their order.
+
+`lindera train` now reads `char.def` with the dictionary builder. It used
+to keep only the first category of each line, skip lines that name a single
+code point (such as `0x0020 SPACE`), and resolve overlaps by start position.
+The `%t` feature template now gives the first category of the last line
+that covers the character, which is MeCab's default type. The bundled
+training files have neither kind of line, so the models trained from them
+do not change.
+
+A range line without a category is now an error in `lindera build` and
+`lindera train`, as in MeCab; it would otherwise reset the earlier lines to
+`DEFAULT`.
+
+The change is in the dictionary builder; the dictionary format version is
+unchanged. The embedded dictionaries and the dictionaries that the 7.0.0 CLI
+fetches with `lindera download` have the new categories. A dictionary
+directory built or downloaded with v6.2.0 or earlier still loads in v7.0.0
+but keeps the old categories until you rebuild it with `lindera build` or
+download the 7.0.0 release asset.
+
 ## Who does not need to act
 
 - **Users of the language bindings and the CLI**: the Python, Node.js, Ruby,
@@ -392,8 +433,9 @@ The language bindings take the setting through the configuration file.
   The restructuring is internal to the Rust crates. The output changes are
   the IPADIC conjugation fix, which matters only if you read those two fields
   by name, the whitespace entries, which matter only for text with U+3000
-  (IPADIC, IPADIC-NEologd, UniDic) or with spaces (SudachiDict), and the
-  segmentation of text that contains whitespace.
+  (IPADIC, IPADIC-NEologd, UniDic) or with spaces (SudachiDict), the
+  segmentation of text that contains whitespace, and the `char.def` fix,
+  which matters only for text with `Ð`, `々` or `〇`.
 - **Projects staying on `lindera = "6"`**: the 6.x releases of `lindera` and
   `lindera-analysis` remain on crates.io and keep working together. Nothing
   changes until you bump the major version.
@@ -453,6 +495,19 @@ Everyone who segments text that contains whitespace:
 - Expect MeCab's segmentation for such text (most visible with ko-dic). If
   you need the v6 output, set `skip_whitespace(false)`,
   `"skip_whitespace": false`, or `--disable-skip-whitespace`.
+
+Users of any bundled dictionary with text that contains `Ð`, `々` or `〇`:
+
+- Expect `Ð` to stay in the output, and `々` after an unknown kanji to be a
+  token of its own.
+- Rebuild or re-download dictionary directories made with v6.2.0 or earlier
+  to get the new character categories.
+
+Users of `lindera train`:
+
+- Give every range line of your `char.def` at least one category.
+- If your `char.def` has single-code-point or overlapping lines, retrain:
+  the `%t` feature now follows those lines as MeCab does.
 
 Language bindings and CLI:
 

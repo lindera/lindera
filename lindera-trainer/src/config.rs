@@ -7,8 +7,11 @@ use anyhow::Result;
 
 use super::feature_extractor::FeatureExtractor;
 use super::feature_rewriter::DictionaryRewriter;
+use lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptions;
 use lindera_dictionary::dictionary::Dictionary;
-use lindera_dictionary::dictionary::character_definition::CharacterDefinition;
+use lindera_dictionary::dictionary::character_definition::{
+    CategoryId, CharacterDefinition, LookupTable,
+};
 use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use lindera_dictionary::dictionary::metadata::Metadata;
 use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
@@ -17,6 +20,11 @@ use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
 /// Configuration for training.
 pub struct TrainerConfig {
     pub(crate) dict: Dictionary,
+    /// Default category of every code point: the first category of the last
+    /// `char.def` line that covers it (MeCab's `default_type`). The `%t`
+    /// feature uses it, because the category list in `dict` is sorted by
+    /// category id and so does not start with the default category.
+    pub(crate) default_categories: LookupTable<CategoryId>,
     pub(crate) surfaces: Vec<String>,
     /// Feature strings for each entry (parallel to surfaces)
     pub(crate) features: Vec<String>,
@@ -67,6 +75,26 @@ impl TrainerConfig {
         &self,
     ) -> &lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary {
         &self.dict.unknown_dictionary
+    }
+
+    /// Returns the default category of a character, the value of the `%t`
+    /// feature.
+    ///
+    /// # Arguments
+    ///
+    /// * `c` - The character, usually the first character of a surface.
+    ///
+    /// # Returns
+    ///
+    /// The id of the first category of the last `char.def` line that covers
+    /// `c` (MeCab's `default_type`), the id of `DEFAULT` when no line covers
+    /// it, or `None` when no line covers it and `char.def` does not use
+    /// `DEFAULT`.
+    pub(crate) fn default_category(&self, c: char) -> Option<u32> {
+        self.default_categories
+            .eval(c as u32)
+            .first()
+            .map(|category_id| category_id.0 as u32)
     }
 }
 
@@ -222,7 +250,7 @@ impl TrainerConfig {
 
         // Build dictionary from readers (need to re-create readers from content strings)
         use std::io::Cursor;
-        let dict = Self::build_dictionary_from_readers(
+        let (dict, default_categories) = Self::build_dictionary_from_readers(
             &lexicon_content,
             Cursor::new(char_def_content.as_bytes()),
             Cursor::new(unk_content.as_bytes()),
@@ -230,6 +258,7 @@ impl TrainerConfig {
 
         Ok(Self {
             dict,
+            default_categories,
             surfaces,
             features,
             surface_features,
@@ -348,12 +377,23 @@ impl TrainerConfig {
         &self.metadata
     }
 
-    /// Builds a dictionary from raw file contents
+    /// Builds a dictionary from raw file contents.
+    ///
+    /// # Arguments
+    ///
+    /// * `lexicon_content` - The seed lexicon (lex.csv) content.
+    /// * `char_prop_rdr` - Reader for the character property file (char.def).
+    /// * `unk_handler_rdr` - Reader for the unknown word file (unk.def).
+    ///
+    /// # Returns
+    ///
+    /// The minimal dictionary used during training, and the default category
+    /// table built from the same `char.def`.
     fn build_dictionary_from_readers<R2, R3>(
         lexicon_content: &str,
         char_prop_rdr: R2,
         unk_handler_rdr: R3,
-    ) -> Result<Dictionary>
+    ) -> Result<(Dictionary, LookupTable<CategoryId>)>
     where
         R2: Read,
         R3: Read,
@@ -369,7 +409,7 @@ impl TrainerConfig {
         std::io::Read::read_to_string(&mut unk_reader, &mut unk_content)?;
 
         // Build character definition
-        let char_def = Self::build_char_def_from_content(&char_prop_content)?;
+        let (char_def, default_categories) = Self::build_char_def_from_content(&char_prop_content)?;
 
         // Build unknown dictionary
         let unknown_dict = Self::build_unknown_dict_from_content(&unk_content, &char_def)?;
@@ -380,143 +420,36 @@ impl TrainerConfig {
         // Create minimal connection cost matrix
         let conn_matrix = Self::create_minimal_connection_matrix()?;
 
-        Ok(Dictionary {
+        let dict = Dictionary {
             prefix_dictionary: Arc::new(prefix_dict),
             connection_cost_matrix: Arc::new(conn_matrix),
             character_definition: Arc::new(char_def),
             unknown_dictionary: Arc::new(unknown_dict),
             metadata: Arc::new(Metadata::default()),
-        })
+        };
+        Ok((dict, default_categories))
     }
 
-    fn build_char_def_from_content(content: &str) -> Result<CharacterDefinition> {
-        use lindera_dictionary::dictionary::character_definition::{
-            CategoryData, CategoryId, LookupTable,
-        };
-        use std::collections::HashMap;
-
-        let mut category_definitions = Vec::new();
-        let mut category_names = Vec::new();
-        let mut category_map = HashMap::new(); // Name -> Index
-        let mut char_ranges = Vec::new();
-
-        // Always add DEFAULT as category 0
-        category_names.push("DEFAULT".to_string());
-        category_map.insert("DEFAULT".to_string(), 0);
-        category_definitions.push(CategoryData {
-            invoke: false,
-            group: true,
-            length: 0,
-        });
-
-        // Parse the char.def file
-        for line in content.lines() {
-            let line = line.trim();
-
-            // Skip comments and empty lines
-            if line.is_empty() || line.starts_with('#') {
-                continue;
-            }
-
-            // Parse character range mappings (e.g., "0x3041..0x3096 HIRAGANA")
-            if line.starts_with("0x") {
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() >= 2 {
-                    let range_str = parts[0];
-                    let category = parts[1];
-
-                    // Parse range (e.g., "0x3041..0x3096")
-                    if let Some(range_parts) = range_str.split_once("..") {
-                        let start = u32::from_str_radix(&range_parts.0[2..], 16)?;
-                        let end = u32::from_str_radix(&range_parts.1[2..], 16)?;
-
-                        // Get or create category index
-                        let cat_idx =
-                            *category_map.entry(category.to_string()).or_insert_with(|| {
-                                let idx = category_names.len();
-                                category_names.push(category.to_string());
-                                // Default category data - will be overridden if defined
-                                category_definitions.push(CategoryData {
-                                    invoke: true,
-                                    group: true,
-                                    length: 0,
-                                });
-                                idx
-                            });
-
-                        char_ranges.push((start, end, cat_idx));
-                    }
-                }
-            } else {
-                // Parse category definitions (e.g., "HIRAGANA 1 1 0")
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() >= 4 {
-                    let name = parts[0];
-                    let invoke = parts[1] != "0";
-                    let group = parts[2] != "0";
-                    let length = parts[3].parse::<u8>().unwrap_or(0);
-
-                    // Get or create category index
-                    let cat_idx = *category_map.entry(name.to_string()).or_insert_with(|| {
-                        let idx = category_names.len();
-                        category_names.push(name.to_string());
-                        category_definitions.push(CategoryData {
-                            invoke,
-                            group,
-                            length: length.into(),
-                        });
-                        idx
-                    });
-
-                    // Update category definition if it already exists
-                    if cat_idx < category_definitions.len() {
-                        category_definitions[cat_idx] = CategoryData {
-                            invoke,
-                            group,
-                            length: length.into(),
-                        };
-                    }
-                }
-            }
-        }
-
-        // Sort char ranges by start position
-        char_ranges.sort_by_key(|&(start, _, _)| start);
-
-        // Build boundaries and mapping function
-        let mut boundaries = vec![0u32];
-        for &(start, end, _) in &char_ranges {
-            if start > boundaries[boundaries.len() - 1] {
-                boundaries.push(start);
-            }
-            boundaries.push(end + 1);
-        }
-        if boundaries[boundaries.len() - 1] < 0x10FFFF {
-            boundaries.push(0x10FFFF);
-        }
-
-        // Create lookup table with proper category mappings
-        let ranges_clone = char_ranges.clone();
-        let mapping = LookupTable::from_fn(boundaries, &|c, buff| {
-            let code = c;
-
-            // Find which category this character belongs to
-            for &(start, end, cat_idx) in &ranges_clone {
-                if code >= start && code <= end {
-                    buff.push(CategoryId(cat_idx));
-                    return;
-                }
-            }
-
-            // Default to category 0 (DEFAULT)
-            buff.push(CategoryId(0));
-        });
-
-        Ok(CharacterDefinition::new(
-            category_definitions,
-            category_names,
-            mapping,
-        ))
+    /// Reads `char.def` with the dictionary builder, so training sees the
+    /// same character categories as the dictionary built from the exported
+    /// files.
+    ///
+    /// # Arguments
+    ///
+    /// * `content` - The text of `char.def`.
+    ///
+    /// # Returns
+    ///
+    /// The character definition, and the table of default categories (MeCab's
+    /// `default_type` of every code point) used for the `%t` feature.
+    fn build_char_def_from_content(
+        content: &str,
+    ) -> Result<(CharacterDefinition, LookupTable<CategoryId>)> {
+        let mut builder = CharacterDefinitionBuilderOptions::default().builder();
+        let char_def = builder
+            .build_from_str(content)
+            .map_err(|err| anyhow::anyhow!("failed to parse char.def: {err}"))?;
+        Ok((char_def, builder.build_default_category_table()))
     }
 
     fn build_unknown_dict_from_content(
@@ -818,5 +751,56 @@ mod tests {
             config.unk_categories.get("DEFAULT").unwrap(),
             "n,unknown,*,*"
         );
+    }
+
+    fn config_with_char_def(char_data: &str) -> TrainerConfig {
+        TrainerConfig::from_readers(
+            Cursor::new("一,0,0,5000,名詞,数,*,*,*,*,一,イチ,イチ\n"),
+            Cursor::new(char_data),
+            Cursor::new("DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n"),
+            Cursor::new("UNIGRAM:%F[0]\n"),
+            Cursor::new("*\tUNK\n"),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn test_default_category_follows_mecab() {
+        // IPADIC-style char.def: the trainer reads it with the dictionary
+        // builder, so single-code-point and overlapping lines count and the
+        // last line wins (#1095). %t uses the first category of that line,
+        // MeCab's default_type.
+        let config = config_with_char_def(
+            "DEFAULT 0 1 0\n\
+             SPACE 0 1 0\n\
+             KANJI 0 0 2\n\
+             SYMBOL 1 1 0\n\
+             ALPHA 1 1 0\n\
+             KANJINUMERIC 1 1 0\n\
+             0x0020 SPACE\n\
+             0x00D0 SPACE\n\
+             0x00C0..0x00FF ALPHA\n\
+             0x3005 KANJI\n\
+             0x4E00..0x9FA5 KANJI\n\
+             0x4E00 KANJINUMERIC KANJI\n\
+             0x3000..0x303F SYMBOL\n",
+        );
+        let char_def = config.dict.character_definition.as_ref();
+        let id = |name: &str| char_def.category_id_by_name(name).map(|id| id.0 as u32);
+
+        assert_eq!(config.default_category('一'), id("KANJINUMERIC"));
+        assert_eq!(config.default_category('丁'), id("KANJI"));
+        assert_eq!(config.default_category(' '), id("SPACE"));
+        assert_eq!(config.default_category('Ð'), id("ALPHA"));
+        assert_eq!(config.default_category('々'), id("SYMBOL"));
+        assert_eq!(config.default_category('a'), id("DEFAULT"));
+    }
+
+    #[test]
+    fn test_default_category_without_default_category() {
+        let config = config_with_char_def("HIRAGANA 1 1 0\n0x3042..0x3096 HIRAGANA\n");
+
+        assert_eq!(config.default_category('あ'), Some(0));
+        assert_eq!(config.default_category('a'), None);
     }
 }
