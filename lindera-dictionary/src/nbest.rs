@@ -1,13 +1,14 @@
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 
-use crate::viterbi::{Lattice, WordId};
+use crate::viterbi::{Lattice, NBestPath, TokenOffset};
 
 /// An element in the A* priority queue for N-Best search.
 /// Represents a partial path from EOS backward toward BOS.
 #[derive(Clone, Debug)]
 struct QueueElement {
-    /// Char position of the current edge in ends_at
+    /// The `ends_at` slot holding the current edge (where it ends, unless it
+    /// was carried over skipped whitespace)
     char_pos: u32,
     /// Index of the current edge in ends_at[char_pos]
     edge_index: u16,
@@ -88,11 +89,13 @@ impl<'a> NBestGenerator<'a> {
     }
 
     /// Returns the next best path as (path, cost).
-    /// The path is a vector of (byte_start, WordId) pairs.
+    /// The path is a vector of (byte_start, byte_end, WordId) triples, with
+    /// the token ends of `Lattice::tokens_offset`: the whitespace an entry
+    /// ends with is part of its token, skipped whitespace is not.
     /// The cost is the total path cost (fx at BOS), lower is better.
     /// Returns None when no more paths are available.
     #[allow(clippy::should_implement_trait)]
-    pub fn next(&mut self) -> Option<(Vec<(usize, WordId)>, i64)> {
+    pub fn next(&mut self) -> Option<NBestPath> {
         while let Some(current) = self.queue.pop() {
             let char_pos = current.char_pos as usize;
             let edge_index = current.edge_index as usize;
@@ -160,7 +163,7 @@ impl<'a> NBestGenerator<'a> {
         None
     }
 
-    fn reconstruct_path(&self, bos_elem: &QueueElement) -> Vec<(usize, WordId)> {
+    fn reconstruct_path(&self, bos_elem: &QueueElement) -> Vec<TokenOffset> {
         let mut path = Vec::new();
         let mut maybe_idx = bos_elem.prev;
 
@@ -173,10 +176,12 @@ impl<'a> NBestGenerator<'a> {
             let edge = &edges[elem.edge_index as usize];
 
             // Skip the EOS edge: it is the only edge whose start equals the
-            // slot it ends in (a zero-length span at char_len).
+            // slot it is stored in (a zero-length span at char_len; a
+            // carried edge always starts before its slot).
             if edge.start_char() as u32 != elem.char_pos {
                 path.push((
                     self.lattice.byte_offset_of(edge.start_char() as usize),
+                    self.lattice.edge_end_byte(edge, elem.char_pos as usize),
                     edge.word_id(),
                 ));
             }

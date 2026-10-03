@@ -228,6 +228,15 @@ impl WordEntry {
     }
 }
 
+/// One token of a backtraced path: its start and end byte offsets within
+/// the sentence and its word id. With whitespace skipped, the end leaves the
+/// skipped whitespace out but keeps the whitespace an entry itself ends with
+/// (#1108).
+pub type TokenOffset = (usize, usize, WordId);
+
+/// One N-best path: its tokens in reading order and its total cost.
+pub type NBestPath = (Vec<TokenOffset>, i64);
+
 /// Bit in [`Edge::flags`] marking an edge whose surface is entirely kanji.
 const EDGE_FLAG_KANJI_ONLY: u8 = 0b100;
 
@@ -238,8 +247,10 @@ const EDGE_LEX_TYPE_MASK: u8 = 0b011;
 /// A lattice edge in the packed runtime representation (#943): 20 bytes,
 /// deliberately decoupled from the on-disk `WordEntry`/`WordId` types so
 /// shrinking it never touches the dictionary format. Positions are stored
-/// in characters; the edge's stop position is not stored because it always
-/// equals the index of the `ends_at` slot holding the edge.
+/// in characters. The edge's stop position is not stored: it is the index
+/// of the `ends_at` slot holding the edge, except for an edge carried over
+/// skipped whitespace, which ends where the run starts plus the whitespace
+/// its own surface ends with (see `ws_tail`).
 #[derive(Clone, Debug)]
 pub struct Edge {
     /// Numeric word id within its lexicon (`u32::MAX` for BOS/EOS).
@@ -262,7 +273,19 @@ pub struct Edge {
     /// Packed lexicon type ([`EDGE_LEX_TYPE_MASK`]) and kanji-only flag
     /// ([`EDGE_FLAG_KANJI_ONLY`]).
     flags: u8,
+    /// Distance in characters from the content end of the slot holding the
+    /// edge (the start of the whitespace run before it) to the edge's own
+    /// end: the whitespace its surface ends with, saturating at `u8::MAX`.
+    /// Only `carry_over_whitespace` writes it, so it stays 0 unless
+    /// whitespace is skipped (#1108).
+    ws_tail: u8,
 }
+
+/// Every lattice slot holds a vector of `Edge`s, so its size is a throughput
+/// concern: `ws_tail` fills the byte of padding the other fields left.
+/// Asserted so that a future field cannot silently grow every edge to 24
+/// bytes.
+const _: () = assert!(size_of::<Edge>() == 20);
 
 /// Mirrors the previous derived `Default` semantics: a BOS/EOS sentinel
 /// carrying the out-of-lexicon word id, System lexicon type, zero costs.
@@ -278,6 +301,7 @@ impl Default for Edge {
             word_cost: 0,
             start_char: 0,
             flags: 0, // LexType::System, not kanji-only
+            ws_tail: 0,
         }
     }
 }
@@ -323,6 +347,38 @@ impl Edge {
         WordId::new(self.lex_type(), self.word_id)
     }
 
+    /// Returns where the edge ends: the content end of the slot holding it
+    /// plus the whitespace its own surface ends with (#1108).
+    ///
+    /// # 引数
+    ///
+    /// * `content_end` - `Lattice::content_end` of the slot holding the edge.
+    ///
+    /// # 戻り値
+    ///
+    /// The end position, in characters.
+    #[inline]
+    fn end_char(&self, content_end: usize) -> usize {
+        content_end + self.ws_tail as usize
+    }
+
+    /// Returns the length of the edge's own span, its trailing whitespace
+    /// included and the whitespace skipped after it excluded: what the
+    /// Decompose length penalty measures.
+    ///
+    /// # 引数
+    ///
+    /// * `content_end` - `Lattice::content_end` of the slot holding the edge.
+    ///
+    /// # 戻り値
+    ///
+    /// The length, in characters.
+    #[inline]
+    fn char_len(&self, content_end: usize) -> usize {
+        self.end_char(content_end)
+            .saturating_sub(self.start_char as usize)
+    }
+
     /// Returns the emission (word) cost of this edge.
     #[inline]
     pub(crate) fn word_cost(&self) -> i16 {
@@ -361,8 +417,9 @@ impl Edge {
 pub struct PathEntry {
     /// Index of this edge in ends_at[stop_char]
     edge_index: u16,
-    /// Character position where the left edge ends (= this edge's
-    /// start_char). Kept as u32: narrowing would not shrink the struct
+    /// The slot holding the left edge (= this edge's start_char), which is
+    /// where the left edge ends unless it was carried over skipped
+    /// whitespace. Kept as u32: narrowing would not shrink the struct
     /// (alignment pads it back to 12 bytes) and would only add an
     /// overflow surface.
     left_pos: u32,
@@ -403,7 +460,9 @@ pub struct Lattice {
     /// Largest sentence length (in characters) whose slots are allocated.
     capacity: usize,
     /// Per-character-position edge slots (#943): `ends_at[i]` holds the
-    /// edges ending at char position `i`, 0 = BOS, `n_chars` = EOS.
+    /// edges ending at char position `i`, 0 = BOS, `n_chars` = EOS. With
+    /// whitespace skipped it also holds the edges carried over the run
+    /// before `i`, which end inside or before the run (`Edge::ws_tail`).
     ends_at: Vec<Vec<Edge>>,
     char_info_buffer: Vec<CharData>,
     categories_buffer: Vec<CategoryId>,
@@ -460,8 +519,9 @@ pub struct Lattice {
     penalty_cache_pos: usize,
     /// Whether the current sentence skips whitespace (see
     /// [`LatticeOptions::skip_whitespace`]); set at the start of every
-    /// sentence and read by the Decompose length penalty, which measures an
-    /// edge carried over a whitespace run without that run.
+    /// sentence and read by the Decompose length penalty and the backtraces,
+    /// which take an edge carried over a whitespace run to end where its own
+    /// surface ends.
     skip_whitespace: bool,
 }
 
@@ -509,8 +569,10 @@ pub struct LatticeOptions<'a> {
     /// no connection costs in MeCab-trained dictionaries such as ko-dic, so
     /// each space resets the context.
     ///
-    /// A carried edge keeps its start position, so its span (the gap to the
-    /// next token's start) includes the whitespace after it; callers trim it.
+    /// A carried edge keeps its start position, and the backtraces return
+    /// its real end: the whitespace its own surface ends with (an entry such
+    /// as IPADIC-NEologd's `GeForce GTX Titan X` followed by a space) is part
+    /// of it, as in MeCab, and the skipped whitespace after it is not.
     /// When `space_penalty` is set as well, this classifier also decides
     /// which characters count as whitespace for the penalty.
     pub skip_whitespace: Option<&'a WhitespaceClassifier>,
@@ -643,6 +705,7 @@ impl Lattice {
             word_cost: word_entry.word_cost,
             start_char: start_char as u16,
             flags: Edge::pack_flags(word_id.lex_type(), kanji_only),
+            ws_tail: 0,
         }
     }
 
@@ -1327,10 +1390,9 @@ impl Lattice {
                 let path_cost = left_edge.path_cost + cost_row[left_edge.right_id as usize] as i32;
                 let path_cost = match search_mode {
                     Mode::Normal => path_cost,
-                    Mode::Decompose(penalty) => path_cost.saturating_add(penalty.penalty(
-                        left_edge,
-                        content_end.saturating_sub(left_edge.start_char as usize),
-                    )),
+                    Mode::Decompose(penalty) => path_cost.saturating_add(
+                        penalty.penalty(left_edge, left_edge.char_len(content_end)),
+                    ),
                 };
                 if path_cost < best_cost {
                     best_cost = path_cost;
@@ -1365,10 +1427,11 @@ impl Lattice {
         start
     }
 
-    /// Returns where the words in `ends_at[char_idx]` end once the
-    /// whitespace they were carried over is left out: the start of the
-    /// whitespace run before `char_idx` when whitespace is skipped,
-    /// `char_idx` otherwise. Used for the Decompose length penalty.
+    /// Returns the start of the whitespace run before `char_idx` when
+    /// whitespace is skipped, `char_idx` otherwise: where the edges in
+    /// `ends_at[char_idx]` end, before the whitespace their own surfaces end
+    /// with (`Edge::ws_tail`) is added. Used for the Decompose length
+    /// penalty and for the end offsets of the backtraces.
     ///
     /// # Arguments
     ///
@@ -1386,6 +1449,23 @@ impl Lattice {
         }
     }
 
+    /// Returns where `edge`, held in `ends_at[slot]`, ends: the slot itself,
+    /// or, when whitespace is skipped, the start of the whitespace run
+    /// before the slot plus the whitespace the edge's own surface ends with.
+    ///
+    /// # Arguments
+    ///
+    /// * `edge` - An edge of `ends_at[slot]`.
+    /// * `slot` - The slot holding `edge`.
+    ///
+    /// # Returns
+    ///
+    /// The end position, in bytes within the sentence.
+    #[inline]
+    pub(crate) fn edge_end_byte(&self, edge: &Edge, slot: usize) -> usize {
+        self.byte_offset_of(edge.end_char(self.content_end(slot)))
+    }
+
     /// Carries the edges ending before or inside the whitespace run that
     /// ends at `char_idx` over to `ends_at[char_idx]` (see
     /// [`LatticeOptions::skip_whitespace`]), so candidates starting at
@@ -1398,6 +1478,13 @@ impl Lattice {
     /// the carried edges move with them, their edge indexes shifted past the
     /// edges already in the slot; appending slot by slot keeps each slot's
     /// transitions sorted by edge index, which `nbest.rs` relies on.
+    ///
+    /// Every edge that ends in the run or right after it gets in
+    /// `Edge::ws_tail` the part of the run its own surface covers, so its
+    /// end stays known once it sits in `ends_at[char_idx]` (#1108): an edge
+    /// moved from slot `k` covers `k - run_start` characters, and an edge
+    /// already in `ends_at[char_idx]` covers the whole run, since no edge
+    /// starts inside it.
     ///
     /// Callers check that the character before `char_idx` is whitespace, so
     /// the common unspaced position never makes the call.
@@ -1413,9 +1500,22 @@ impl Lattice {
         // the next sentence.
         let (before, after) = self.ends_at.split_at_mut(char_idx);
         let target = &mut after[0];
+        let whole_run = u8::try_from(char_idx - run_start).unwrap_or(u8::MAX);
+        for edge in target.iter_mut() {
+            debug_assert!(
+                (edge.start_char as usize) < run_start,
+                "an edge starts inside a skipped whitespace run"
+            );
+            edge.ws_tail = whole_run;
+        }
         for slot in run_start..char_idx {
             if before[slot].is_empty() {
                 continue;
+            }
+            let covered = u8::try_from(slot - run_start).unwrap_or(u8::MAX);
+            for edge in before[slot].iter_mut() {
+                debug_assert_eq!(edge.ws_tail, 0, "an edge is carried over twice");
+                edge.ws_tail = covered;
             }
             if nbest {
                 let offset = target.len() as u16;
@@ -1718,14 +1818,12 @@ impl Lattice {
             cache.clear();
             let content_end = self.content_end(start_char);
             cache.extend(self.ends_at[start_char].iter().map(|left_edge| {
-                // The left edge ends where this edge starts, so its exact
-                // char span is start_char - its start (#943 fixed the
-                // former byte-length/3 approximation), less the whitespace
-                // it was carried over when whitespace is skipped.
-                penalty.penalty(
-                    left_edge,
-                    content_end.saturating_sub(left_edge.start_char as usize),
-                )
+                // The left edge's exact char span (#943 fixed the former
+                // byte-length/3 approximation): it ends where this edge
+                // starts, or, when it was carried over skipped whitespace,
+                // where the run starts plus the whitespace its own surface
+                // ends with (#1108).
+                penalty.penalty(left_edge, left_edge.char_len(content_end))
             }));
             self.penalty_cache_pos = start_char;
         }
@@ -1787,12 +1885,11 @@ impl Lattice {
         if self.penalty_cache_pos != start_char {
             cache.clear();
             let content_end = self.content_end(start_char);
-            cache.extend(self.ends_at[start_char].iter().map(|left_edge| {
-                penalty.penalty(
-                    left_edge,
-                    content_end.saturating_sub(left_edge.start_char as usize),
-                )
-            }));
+            cache.extend(
+                self.ends_at[start_char]
+                    .iter()
+                    .map(|left_edge| penalty.penalty(left_edge, left_edge.char_len(content_end))),
+            );
             self.penalty_cache_pos = start_char;
         }
         let mut best_cost = i32::MAX;
@@ -1829,7 +1926,8 @@ impl Lattice {
     ///
     /// * `edge` - The edge to relax and store (path cost unset).
     /// * `stop_char` - The edge's end position, in characters; this is the
-    ///   `ends_at` slot the edge is stored in.
+    ///   `ends_at` slot the edge is stored in, though a later whitespace
+    ///   carry-over may move it on.
     /// * `cost_matrix` - The connection cost matrix.
     /// * `mode` - The segmentation mode.
     /// * `extra_cost` - Position-dependent cost of this edge (the space
@@ -1885,15 +1983,18 @@ impl Lattice {
         }
     }
 
-    /// Backtraces the best path and returns `(start_byte_offset, word_id)`
-    /// pairs for each token in reading order (BOS/EOS excluded).
+    /// Backtraces the best path and returns `(start_byte_offset,
+    /// end_byte_offset, word_id)` for each token in reading order (BOS/EOS
+    /// excluded). With whitespace skipped, a token ends where its own surface
+    /// ends: the skipped whitespace after it is left out, the whitespace an
+    /// entry itself ends with is not.
     ///
     /// # Returns
     ///
     /// A freshly allocated offsets vector; empty when the lattice holds no
     /// complete path. Prefer [`Lattice::tokens_offset_into`] in per-sentence
     /// loops to reuse one allocation across sentences.
-    pub fn tokens_offset(&self) -> Vec<(usize, WordId)> {
+    pub fn tokens_offset(&self) -> Vec<TokenOffset> {
         let mut offsets = Vec::new();
         self.tokens_offset_into(&mut offsets);
         offsets
@@ -1904,10 +2005,11 @@ impl Lattice {
     ///
     /// # Arguments
     ///
-    /// * `offsets` - The buffer to fill with `(start_byte_offset, word_id)`
-    ///   pairs in reading order (BOS/EOS excluded). Cleared on entry; left
-    ///   empty when the lattice holds no complete path.
-    pub fn tokens_offset_into(&self, offsets: &mut Vec<(usize, WordId)>) {
+    /// * `offsets` - The buffer to fill with `(start_byte_offset,
+    ///   end_byte_offset, word_id)` in reading order (BOS/EOS excluded; ends
+    ///   as in [`Lattice::tokens_offset`]). Cleared on entry; left empty
+    ///   when the lattice holds no complete path.
+    pub fn tokens_offset_into(&self, offsets: &mut Vec<TokenOffset>) {
         offsets.clear();
 
         if self.ends_at.is_empty() {
@@ -1934,14 +2036,20 @@ impl Lattice {
             return;
         }
 
+        let mut slot = last_idx;
         loop {
             if edge.left_index == u16::MAX {
                 break;
             }
 
             let start_char = edge.start_char as usize;
-            offsets.push((self.byte_offset_of(start_char), edge.word_id()));
+            offsets.push((
+                self.byte_offset_of(start_char),
+                self.edge_end_byte(edge, slot),
+                edge.word_id(),
+            ));
 
+            slot = start_char;
             edge = &self.ends_at[start_char][edge.left_index as usize];
         }
 
@@ -1970,8 +2078,9 @@ impl Lattice {
     ///
     /// # 戻り値
     ///
-    /// The edges ending there (#943 renamed this from the
-    /// byte-denominated `edges_at`).
+    /// The edges stored in that slot: those ending there and, with
+    /// whitespace skipped, those carried over the whitespace before it
+    /// (#943 renamed this from the byte-denominated `edges_at`).
     pub fn edges_at_char(&self, char_pos: usize) -> &[Edge] {
         &self.ends_at[char_pos]
     }
@@ -1984,8 +2093,8 @@ impl Lattice {
     ///
     /// # 戻り値
     ///
-    /// The transitions of edges ending there (#943 renamed this from the
-    /// byte-denominated `paths_at`).
+    /// The transitions of the edges stored in that slot (#943 renamed this
+    /// from the byte-denominated `paths_at`).
     pub fn paths_at_char(&self, char_pos: usize) -> &[PathEntry] {
         if char_pos < self.all_paths.len() {
             &self.all_paths[char_pos]
@@ -2000,7 +2109,8 @@ impl Lattice {
     /// # 引数
     ///
     /// * `edge` - The edge to relax and store (path cost unset).
-    /// * `stop_char` - The edge's end position, in characters.
+    /// * `stop_char` - The edge's end position, in characters; the slot it is
+    ///   stored in, though a later whitespace carry-over may move it on.
     /// * `cost_matrix` - The connection cost matrix.
     /// * `mode` - The segmentation mode.
     /// * `extra_cost` - Position-dependent cost of this edge (the space
@@ -2433,10 +2543,9 @@ impl Lattice {
                 let path_cost = left_edge.path_cost + cost_row[left_edge.right_id as usize] as i32;
                 let path_cost = match search_mode {
                     Mode::Normal => path_cost,
-                    Mode::Decompose(penalty) => path_cost.saturating_add(penalty.penalty(
-                        left_edge,
-                        content_end.saturating_sub(left_edge.start_char as usize),
-                    )),
+                    Mode::Decompose(penalty) => path_cost.saturating_add(
+                        penalty.penalty(left_edge, left_edge.char_len(content_end)),
+                    ),
                 };
 
                 // Record all transitions to EOS
@@ -2461,10 +2570,12 @@ impl Lattice {
     }
 
     /// Returns the top-N paths through the lattice.
-    /// Each result is a (path, cost) pair where path is a Vec of (byte_start, WordId) pairs.
+    /// Each result is a (path, cost) pair where path is a Vec of (byte_start, byte_end, WordId)
+    /// triples, with the ends of [`Lattice::tokens_offset`].
     /// The first result (index 0) is the 1-best path.
-    /// If `unique` is true, paths with the same segmentation (same byte_start sequence)
-    /// are deduplicated, keeping only the first (lowest cost) variant.
+    /// If `unique` is true, paths with the same segmentation (same sequence of
+    /// (byte_start, byte_end) pairs) are deduplicated, keeping only the first (lowest cost)
+    /// variant.
     /// If `cost_threshold` is Some(t), paths whose cost exceeds best_cost + t are discarded.
     /// Requires set_text_nbest() to have been called first.
     ///
@@ -2476,7 +2587,7 @@ impl Lattice {
         n: usize,
         unique: bool,
         cost_threshold: Option<i64>,
-    ) -> Vec<(Vec<(usize, WordId)>, i64)> {
+    ) -> Vec<NBestPath> {
         use std::collections::HashSet;
 
         use crate::nbest::NBestGenerator;
@@ -2487,7 +2598,7 @@ impl Lattice {
         let mut best_cost: Option<i64> = None;
 
         if unique {
-            let mut seen: HashSet<Vec<usize>> = HashSet::new();
+            let mut seen: HashSet<Vec<(usize, usize)>> = HashSet::new();
             while results.len() < n {
                 match generator.next() {
                     Some((path, cost)) => {
@@ -2501,7 +2612,8 @@ impl Lattice {
                         {
                             break;
                         }
-                        let key: Vec<usize> = path.iter().map(|(start, _)| *start).collect();
+                        let key: Vec<(usize, usize)> =
+                            path.iter().map(|&(start, end, _)| (start, end)).collect();
                         if seen.insert(key) {
                             results.push((path, cost));
                         }
@@ -2742,7 +2854,7 @@ mod tests {
         let offsets = lattice.tokens_offset();
         assert_eq!(offsets.len(), 1);
         assert_eq!(offsets[0].0, 0);
-        assert_eq!(offsets[0].1, WordId::new(LexType::System, 42));
+        assert_eq!(offsets[0].2, WordId::new(LexType::System, 42));
     }
 
     /// `shrink_to` must release slots beyond the target while preserving
@@ -2830,7 +2942,7 @@ mod tests {
         let offsets = lattice.tokens_offset();
         assert_eq!(offsets.len(), 1);
         assert_eq!(offsets[0].0, 0);
-        assert_eq!(offsets[0].1, WordId::new(LexType::System, 42));
+        assert_eq!(offsets[0].2, WordId::new(LexType::System, 42));
 
         // clear() after the shrink must leave nothing behind.
         lattice.clear();
@@ -2865,10 +2977,11 @@ mod tests {
         lattice.ends_at[3].push(test_edge(7, 0, 0)); // token A
         lattice.ends_at[3].push(test_edge(0, 3, 0)); // EOS -> token A
 
-        let mut reused = vec![(999usize, WordId::default())]; // stale content
+        let mut reused = vec![(999usize, 999usize, WordId::default())]; // stale content
         lattice.tokens_offset_into(&mut reused);
         assert_eq!(reused, lattice.tokens_offset());
-        assert_eq!(reused.len(), 1);
+        // Without whitespace skipping a token ends at its slot.
+        assert_eq!(reused, vec![(0, 3, WordId::new(LexType::System, 7))]);
 
         // A cleared (pathless) lattice must leave the reused buffer empty.
         lattice.clear();
@@ -2932,11 +3045,11 @@ mod tests {
         let results = lattice.nbest_tokens_offset(usize::MAX, false, Some(i64::MAX));
         assert_eq!(
             results,
-            vec![(vec![(0, word(1))], 3), (vec![(0, word(2))], 5)]
+            vec![(vec![(0, 1, word(1))], 3), (vec![(0, 1, word(2))], 5)]
         );
         // Both paths share one segmentation, so `unique` keeps the best.
         let results = lattice.nbest_tokens_offset(usize::MAX, true, Some(i64::MAX));
-        assert_eq!(results, vec![(vec![(0, word(1))], 3)]);
+        assert_eq!(results, vec![(vec![(0, 1, word(1))], 3)]);
 
         assert_eq!(lattice.nbest_tokens_offset(10, false, Some(1)).len(), 1);
         assert_eq!(lattice.nbest_tokens_offset(10, false, Some(2)).len(), 2);

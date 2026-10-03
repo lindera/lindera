@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use lindera_dictionary::mode::Mode;
 use lindera_dictionary::space_penalty::SpacePenaltyConfig;
-use lindera_dictionary::viterbi::{Lattice, WordId};
+use lindera_dictionary::viterbi::{Lattice, TokenOffset};
 
 use crate::LinderaResult;
 use crate::segmenter::{MAX_SENTENCE_BYTES, Segmenter};
@@ -72,7 +72,7 @@ pub struct SegmentWorker {
     lattice: Lattice,
     /// Backtrace scratch reused across calls (cleared per sentence by
     /// `tokens_offset_into`).
-    offsets: Vec<(usize, WordId)>,
+    offsets: Vec<TokenOffset>,
     /// Largest per-sentence character count observed in the current shrink
     /// window (drained from the lattice's own accounting).
     window_max_needed: usize,
