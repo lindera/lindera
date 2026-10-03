@@ -73,6 +73,8 @@ NUMERIC 1 1 0
 
 Parameters control how unknown words of each character type are segmented: compatibility with adjacent characters, whether runs of the same type continue as a single token, and default token length.
 
+A range line can list more than one category (for example `0x4E00 KANJINUMERIC KANJI`), and every range line needs at least one. When several lines cover the same code point, the last line decides its categories, as in MeCab. The first category on that line is the character's default category, which the `%t` feature template uses.
+
 ### 4. Unknown Word Definition (unk.def)
 
 Defines how out-of-vocabulary words are handled by character type.
