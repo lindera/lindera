@@ -659,13 +659,14 @@ corresponding <code>embed-*</code> feature (e.g.
 <p>N-Best tokenization enumerates the top N tokenization candidates ordered by total path cost (lower cost = better segmentation). This is useful when the best result is ambiguous, or when you want to explore alternative interpretations of the input text.</p>
 <h3 id="algorithm"><a class="header" href="#algorithm">Algorithm</a></h3>
 <p>N-Best tokenization is based on the <strong>Forward-DP Backward-A*</strong> algorithm, which is compatible with MeCab's N-Best implementation. The forward pass computes optimal costs using dynamic programming, and the backward pass uses A* search to enumerate paths in order of increasing total cost.</p>
+<p>As in 1-best tokenization, the input is first split into sentences (see <a href="concepts/../lindera/segmenter.html#sentence-splitting">Sentence Splitting</a>), and each sentence is searched on its own. Every candidate segments the whole input: it takes one path in each sentence, and its cost is the sum of those paths' costs. The candidates are the N cheapest of these combinations.</p>
 <h3 id="parameters"><a class="header" href="#parameters">Parameters</a></h3>
 <p>The <code>tokenize_nbest</code> method accepts the following parameters:</p>
 <div class="table-wrapper"><table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>text</code></td><td><code>&amp;str</code></td><td>The text to tokenize.</td></tr>
 <tr><td><code>n</code></td><td><code>usize</code></td><td>Number of N-best results to return.</td></tr>
 <tr><td><code>unique</code></td><td><code>bool</code></td><td>When <code>true</code>, deduplicates results that produce the same word boundary positions.</td></tr>
-<tr><td><code>cost_threshold</code></td><td><code>Option&lt;i64&gt;</code></td><td>When <code>Some(threshold)</code>, only returns paths with cost within <code>best_cost + threshold</code>.</td></tr>
+<tr><td><code>cost_threshold</code></td><td><code>Option&lt;i64&gt;</code></td><td>When <code>Some(threshold)</code>, only returns candidates with cost within <code>best_cost + threshold</code>, where <code>best_cost</code> is the cost of the first candidate (both are totals over the whole input).</td></tr>
 </tbody></table>
 </div>
 <h3 id="rust-api-example"><a class="header" href="#rust-api-example">Rust API example</a></h3>
@@ -1282,6 +1283,7 @@ for (tokens, cost) in results {
     }
 }
 <span class="boring">}</span></code></pre></pre>
+<p>Every result segments the whole input. The input is split into sentences as described in <a href="lindera/segmenter.html#sentence-splitting">Sentence Splitting</a>, and each sentence is searched on its own; a result takes one path in each sentence, its cost is the sum of those paths' costs, and the results are the <code>n</code> cheapest of these combinations. So a result can differ from the best one in a single sentence. <code>best_cost</code> is the cost of the first result, so <code>cost_threshold</code> applies to the whole input.</p>
 <p><code>segment_nbest_with_lattice</code> is the same operation but lets you pass in a reusable <code>Lattice</code> buffer to avoid reallocating one per call.</p>
 <h2 id="sentence-splitting"><a class="header" href="#sentence-splitting">Sentence Splitting</a></h2>
 <p>Before building the lattice, Lindera splits the input into sentences at delimiter characters (<code>\n</code>, <code>\t</code>, <code>。</code>, <code>、</code>) and segments one sentence at a time. If no delimiter appears within roughly 32 KiB of a sentence's start, Lindera forces a sentence boundary there anyway and logs a warning, to bound the size — and therefore the memory and CPU cost — of the Viterbi lattice built for that sentence. This is transparent for ordinary text, but for pathological delimiter-free input (e.g. minified text or base64-encoded blobs), it can affect tokenization at the artificial cut point.</p>
@@ -2290,7 +2292,7 @@ jieba           no        no          -
 <li><code>--mmap</code>: Use memory-mapped file loading for the dictionary directory's word list. Ignored for <code>embedded://</code> dictionaries and when the <code>mmap</code> feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup.</li>
 <li><code>--nbest</code> / <code>-N</code>: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.</li>
 <li><code>--nbest-unique</code>: Deduplicate N-best results by removing paths that produce the same segmentation.</li>
-<li><code>--nbest-cost-threshold</code>: Maximum cost difference from the best path. Only paths with cost within <code>best_cost + threshold</code> are returned.</li>
+<li><code>--nbest-cost-threshold</code>: Maximum cost difference from the best result. Only results with cost within <code>best_cost + threshold</code> are returned; both costs are totals over the whole input line.</li>
 <li>Input file: Optional file path (default: stdin)</li>
 </ul>
 <h3 id="basic-usage"><a class="header" href="#basic-usage">Basic usage</a></h3>
@@ -2597,6 +2599,7 @@ EOS
 </code></pre>
 <h3 id="n-best-tokenization-1"><a class="header" href="#n-best-tokenization-1">N-Best tokenization</a></h3>
 <p>Lindera supports N-Best tokenization, which returns the top N tokenization candidates ordered by cost (lower cost = better). This is based on the Forward-DP Backward-A* algorithm, compatible with MeCab's N-Best implementation.</p>
+<p>A line with several sentences (split at <code>\t</code>, <code>。</code> and <code>、</code>) is searched sentence by sentence. Every candidate still segments the whole line: the candidates are the N cheapest combinations of one path per sentence.</p>
 <h4 id="basic-n-best-example"><a class="header" href="#basic-n-best-example">Basic N-Best example</a></h4>
 <pre><code class="language-shell">% echo "すもももももももものうち" | lindera tokenize \
   --dict embedded://ipadic \
@@ -9587,9 +9590,10 @@ the new <code>analysis</code> feature, on by default — the analysis chain of
 <code>LINDERA_DICTIONARIES_PATH</code> fallback, as announced in v5.0.0, corrects
 the IPADIC schema, which had the <code>conjugation_type</code> and <code>conjugation_form</code>
 names swapped, keeps dictionary entries whose surface is whitespace or
-starts or ends with it, skips whitespace in the lattice as MeCab does, and
-resolves overlapping <code>char.def</code> lines as MeCab does. This guide lists every
-breaking change and the one-line fixes for each.</p>
+starts or ends with it, skips whitespace in the lattice as MeCab does,
+resolves overlapping <code>char.def</code> lines as MeCab does, and returns N-best
+results that each cover the whole input. This guide lists every breaking
+change and the one-line fixes for each.</p>
 <h2 id="overview-4"><a class="header" href="#overview-4">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
 <tr><td><code>lindera</code> is a facade: <code>lindera::analysis</code> re-exports <code>lindera-analysis</code> (feature <code>analysis</code>, on by default)</td><td>Rust users who depend on both <code>lindera</code> and <code>lindera-analysis</code></td><td>Bump both to <code>"7"</code> in the same step, or drop <code>lindera-analysis</code> and import from <code>lindera::analysis::…</code></td></tr>
@@ -9603,19 +9607,22 @@ breaking change and the one-line fixes for each.</p>
 <tr><td><strong>Dictionary entries with whitespace are kept</strong></td><td>Text with U+3000 (IPADIC, IPADIC-NEologd, UniDic), text with spaces (SudachiDict), and a few entries that ended with whitespace</td><td>Expect U+3000 to be <code>記号,空白</code> / <code>空白</code> and SudachiDict to segment spaced text much closer to Sudachi; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 <tr><td><strong>Whitespace is skipped in the lattice: the words on either side of a space connect directly, as in MeCab</strong></td><td>Anyone who segments text containing whitespace with <code>keep_whitespace</code> false (the default), most visibly with ko-dic</td><td>Expect MeCab's segmentation for such text; <code>skip_whitespace(false)</code> (<code>"skip_whitespace": false</code>, <code>--disable-skip-whitespace</code>) restores the v6 segmentation</td></tr>
 <tr><td><strong>Overlapping <code>char.def</code> lines: the last line decides</strong></td><td>Text with <code>Ð</code> (U+00D0; every dictionary except ko-dic), <code>々</code> (U+3005) or <code>〇</code> (U+3007); <code>lindera train</code> users whose <code>char.def</code> has single-code-point or overlapping lines</td><td>Expect <code>Ð</code> to stay in the output as a letter; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
+<tr><td><strong>N-best: every result covers the whole input</strong></td><td>Anyone who asks for N-best results (<code>segment_nbest</code>, <code>tokenize_nbest</code>, <code>lindera tokenize -N</code>, the bindings' N-best methods) for input with more than one sentence</td><td>Expect the cheapest segmentations of the whole input from the second result on; a cost threshold now applies to the whole input</td></tr>
 </tbody></table>
 </div>
 <p>The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
 their APIs and package names; only their version number moves to 7.0.0.
-There are four output differences, all described below. With IPADIC or
+There are five output differences, all described below. With IPADIC or
 IPADIC-NEologd, the values reported under the names <code>conjugation_type</code> and
 <code>conjugation_form</code> trade places. The dictionaries now contain the entries
 whose surface is or starts or ends with whitespace, which changes the
 segmentation of text that contains such whitespace. Text that contains
-whitespace is segmented as MeCab segments it. And <code>Ð</code>, <code>々</code> and <code>〇</code> get the
+whitespace is segmented as MeCab segments it. <code>Ð</code>, <code>々</code> and <code>〇</code> get the
 character categories that MeCab gives them, which changes the segmentation
-of text that contains them. Otherwise, for the same input and dictionary,
-v7.0.0 produces the same tokens with the same positional details as v6.2.0.</p>
+of text that contains them. And for input with more than one sentence, the
+N-best results from the second one on are the cheapest segmentations of the
+whole input. Otherwise, for the same input and dictionary, v7.0.0 produces
+the same tokens with the same positional details as v6.2.0.</p>
 <h2 id="the-lindera-crate-is-now-a-facade"><a class="header" href="#the-lindera-crate-is-now-a-facade">The lindera crate is now a facade</a></h2>
 <p>Up to v6 the Rust API was split between two crates that you had to depend on
 separately: <code>lindera</code> (the segmenter and the dictionary loading API) and
@@ -9935,6 +9942,28 @@ fetches with <code>lindera download</code> have the new categories. A dictionary
 directory built or downloaded with v6.2.0 or earlier still loads in v7.0.0
 but keeps the old categories until you rebuild it with <code>lindera build</code> or
 download the 7.0.0 release asset.</p>
+<h2 id="n-best-results-cover-the-whole-input"><a class="header" href="#n-best-results-cover-the-whole-input">N-best results cover the whole input</a></h2>
+<p>The N-best methods (<code>Segmenter::segment_nbest</code>, <code>Tokenizer::tokenize_nbest</code>,
+their <code>_with_lattice</code> and worker forms, <code>lindera tokenize -N</code> and the
+bindings' N-best methods) search the input sentence by sentence, splitting
+it at <code>\n</code>, <code>\t</code>, <code>。</code> and <code>、</code> as the 1-best segmentation does. Up to v6, the
+k-th result joined the k-th path of every sentence. From the second result
+on, that changed every sentence at once, so the results were not the
+cheapest segmentations of the input and their costs could go down, and a
+sentence with fewer than k paths was missing from the k-th result. v7.0.0
+returns the N cheapest combinations of one path per sentence, in ascending
+order of total cost, and every result covers the whole input:</p>
+<div class="table-wrapper"><table><thead><tr><th>Input (IPADIC, <code>-N 3</code>)</th><th>v6</th><th>v7</th></tr></thead><tbody>
+<tr><td><code>東京、です</code></td><td>3079 <code>東京 、 です</code>; 23850 <code>東 京 、 で す</code>; 24249 <code>東 京 、 で す</code></td><td>3079 <code>東京 、 です</code>; 11683 <code>東京 、 で す</code>; 12015 <code>東京 、 で す</code></td></tr>
+<tr><td><code>。東京</code></td><td>13 <code>。 東京</code>; 30433 <code>。 東 京</code>; 13520 <code>東 京</code> (no <code>。</code>)</td><td>13 <code>。 東京</code>; 11543 <code>。 東 京</code>; 11610 <code>。 東 京</code></td></tr>
+</tbody></table>
+</div>
+<p>The first result does not change, and neither does the output for input
+with a single sentence. The cost threshold (<code>cost_threshold</code>,
+<code>--nbest-cost-threshold</code>) is now measured over the whole input: a result is
+kept when its total cost is within the threshold of the first result's. v6
+applied the threshold to each sentence separately. With <code>unique</code>, the
+results still have distinct word boundaries.</p>
 <h2 id="who-does-not-need-to-act-1"><a class="header" href="#who-does-not-need-to-act-1">Who does not need to act</a></h2>
 <ul>
 <li><strong>Users of the language bindings and the CLI</strong>: the Python, Node.js, Ruby,
@@ -9943,8 +9972,9 @@ The restructuring is internal to the Rust crates. The output changes are
 the IPADIC conjugation fix, which matters only if you read those two fields
 by name, the whitespace entries, which matter only for text with U+3000
 (IPADIC, IPADIC-NEologd, UniDic) or with spaces (SudachiDict), the
-segmentation of text that contains whitespace, and the <code>char.def</code> fix,
-which matters only for text with <code>Ð</code>, <code>々</code> or <code>〇</code>.</li>
+segmentation of text that contains whitespace, the <code>char.def</code> fix, which
+matters only for text with <code>Ð</code>, <code>々</code> or <code>〇</code>, and the N-best fix, which
+matters only for N-best results for input with more than one sentence.</li>
 <li><strong>Projects staying on <code>lindera = "6"</code></strong>: the 6.x releases of <code>lindera</code> and
 <code>lindera-analysis</code> remain on crates.io and keep working together. Nothing
 changes until you bump the major version.</li>
@@ -10017,10 +10047,17 @@ to get the new character categories.</li>
 <li>If your <code>char.def</code> has single-code-point or overlapping lines, retrain:
 the <code>%t</code> feature now follows those lines as MeCab does.</li>
 </ul>
+<p>Users of N-best results:</p>
+<ul>
+<li>Expect every result to cover the whole input, and the results from the
+second one on to change for input with more than one sentence.</li>
+<li>If you set a cost threshold, it now applies to the total cost of the
+whole input, not to each sentence.</li>
+</ul>
 <p>Language bindings and CLI:</p>
 <ul>
-<li>Nothing to do beyond taking the 7.0.0 release, apart from the dictionary
-and whitespace items above.</li>
+<li>Nothing to do beyond taking the 7.0.0 release, apart from the dictionary,
+whitespace and N-best items above.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="development-guide"><a class="header" href="#development-guide">Development Guide</a></h1>
 <p>This section provides information for developers who want to build, test, or contribute to Lindera.</p>

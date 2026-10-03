@@ -244,7 +244,7 @@ jieba           no        no          -
 <li><code>--mmap</code>: 辞書ディレクトリの単語リストにメモリマップドファイル読み込みを使用する。<code>embedded://</code> 辞書、および <code>mmap</code> feature が無効な場合は無視される。プロセスがマップを保持している間に辞書ディレクトリを再ビルド・切り詰めると、次回のルックアップで SIGBUS を引き起こす可能性がある。</li>
 <li><code>--nbest</code> / <code>-N</code>: 返す N-best 結果の数（デフォルト: 1）。2以上に設定すると N-best 出力が有効になります。</li>
 <li><code>--nbest-unique</code>: 同じ分割を生成するパスの重複を排除します。</li>
-<li><code>--nbest-cost-threshold</code>: 最良パスからの最大コスト差。<code>best_cost + threshold</code> 以内のコストを持つパスのみが返されます。</li>
+<li><code>--nbest-cost-threshold</code>: 最良の結果からの最大コスト差。<code>best_cost + threshold</code> 以内のコストを持つ結果のみが返されます。どちらのコストも入力行全体の合計です。</li>
 <li>入力ファイル: オプションのファイルパス (デフォルト: 標準入力)</li>
 </ul>
 <h3 id="基本的な使用方法"><a class="header" href="#基本的な使用方法">基本的な使用方法</a></h3>
@@ -551,6 +551,7 @@ EOS
 </code></pre>
 <h3 id="n-best-トークナイズ"><a class="header" href="#n-best-トークナイズ">N-Best トークナイズ</a></h3>
 <p>Linderaは N-Best トークナイズをサポートしており、コスト順（低コスト＝高精度）に上位 N 件のトークナイズ候補を返します。これは MeCab の N-Best 実装と互換性のある Forward-DP Backward-A* アルゴリズムに基づいています。</p>
+<p>複数の文（<code>\t</code>・<code>。</code>・<code>、</code> で区切られます）を含む行は、文ごとに探索されます。それでも各候補は行全体の分割で、候補は文ごとに 1 つのパスを選んだ組み合わせのうちコストの小さい N 件です。</p>
 <h4 id="基本的な-n-best-の例"><a class="header" href="#基本的な-n-best-の例">基本的な N-Best の例</a></h4>
 <pre><code class="language-shell">% echo "すもももももももものうち" | lindera tokenize \
   --dict embedded://ipadic \
