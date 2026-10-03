@@ -187,8 +187,9 @@
 <code>conjugation_type</code> と <code>conjugation_form</code> の名前が逆になっていた誤りを
 修正し、表層形が空白だけの見出し語や先頭・末尾が空白の見出し語を保持し、
 MeCab と同様に空白をラティス上で読み飛ばし、<code>char.def</code> の重複した行を MeCab と
-同じく解決し、N-best の各結果が入力全体を覆うようにしました。このガイドでは、
-すべての破壊的変更とその対処方法を説明します。</p>
+同じく解決し、N-best の各結果が入力全体を覆うようにし、<code>lindera-dictionary</code> の
+ラティスのバックトレースが各トークンの終了オフセットも返すようにしました。
+このガイドでは、すべての破壊的変更とその対処方法を説明します。</p>
 <h2 id="概要"><a class="header" href="#概要">概要</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>変更</th><th>影響範囲</th><th>対処方法</th></tr></thead><tbody>
 <tr><td><code>lindera</code> がファサードになり、<code>lindera::analysis</code> が <code>lindera-analysis</code> を再エクスポート（<code>analysis</code> feature、デフォルト有効）</td><td><code>lindera</code> と <code>lindera-analysis</code> の両方に依存する Rust ユーザー</td><td>両方を同時に <code>"7"</code> に上げるか、<code>lindera-analysis</code> を外して <code>lindera::analysis::…</code> から import する</td></tr>
@@ -203,6 +204,7 @@ MeCab と同様に空白をラティス上で読み飛ばし、<code>char.def</c
 <tr><td><strong>空白をラティス上で読み飛ばし、MeCab と同様に空白の前後の語を直接接続する</strong></td><td><code>keep_whitespace</code> が false（デフォルト）で空白を含むテキストを分割するユーザー。ko-dic で特に顕著</td><td>そのようなテキストは MeCab と同じ分割になることを前提にする。<code>skip_whitespace(false)</code>（<code>"skip_whitespace": false</code>、<code>--disable-skip-whitespace</code>）で v6 の分割に戻せる</td></tr>
 <tr><td><strong><code>char.def</code> の重複した行は最後の行が決める</strong></td><td><code>Ð</code>（U+00D0、ko-dic 以外のすべての辞書）・<code>々</code>（U+3005）・<code>〇</code>（U+3007）を含むテキスト、単一コードポイントの行や重複した行を持つ <code>char.def</code> で <code>lindera train</code> を使うユーザー</td><td><code>Ð</code> が文字として出力に残ることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 <tr><td><strong>N-best: 各結果が入力全体を覆う</strong></td><td>複数の文を含む入力で N-best（<code>segment_nbest</code>・<code>tokenize_nbest</code>・<code>lindera tokenize -N</code>・バインディングの N-best メソッド）を使うユーザー</td><td>2 件目以降が入力全体のコストの小さい分割になることを前提にする。コストの閾値は入力全体に対して適用される</td></tr>
+<tr><td><strong><code>Lattice::tokens_offset</code>・<code>tokens_offset_into</code>・<code>nbest_tokens_offset</code>・<code>NBestGenerator::next</code> が <code>(start, end, WordId)</code> を返す</strong></td><td>これらの <code>lindera_dictionary</code> の関数を直接呼び出す Rust コード（<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・<code>lindera::dictionary::nbest::…</code> 経由を含む）</td><td>3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う</td></tr>
 </tbody></table>
 </div>
 <p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI の API・パッケージ名は
@@ -439,9 +441,16 @@ v7.0.0 は、MeCab や Sudachi と同じく表層形を書いたとおりに読�
 末尾に半角スペースの付いた <code>GeForce GTX Titan X</code> の語が、<code>GeForce GTX Titan X です</code> には
 一致し、<code>GeForce GTX Titan Xです</code> には一致しなくなります。空白がラティスに残るとき
 （<code>keep_whitespace(true)</code>、または SudachiDict のデフォルトである
-<code>skip_whitespace(false)</code>）は、MeCab と同じくトークンが末尾の空白を含みます。空白を
-読み飛ばすとき（ほかの辞書のデフォルト。次の節を参照）は、トークンの表層形に
-読み飛ばした空白は含まれないため、トークンは空白の手前で終わります。</p>
+<code>skip_whitespace(false)</code>）も、空白を読み飛ばすとき（ほかの辞書のデフォルト。次の節を
+参照）も、MeCab と同じくトークンは末尾の空白を含みます。読み飛ばすのは語の後ろの
+空白だけで、<code>GeForce GTX Titan X  です</code> のように空白が 2 つ続く場合、トークンは
+1 つ目の空白で終わります。IPADIC-NEologd の 55 語のうち 50 語は、ko-dic と
+SudachiDict の語と同じく半角スペースで終わります。残りの 5 語は U+3000 か U+00A0 で
+終わり、これらは <code>SPACE</code> の文字ではないため読み飛ばされません。
+Decompose の長さペナルティは、空白がラティスに残るときと同じく、語自身の空白も
+数えます。<code>unique</code> を指定した N-best では、この空白だけが異なる結果が 1 つに
+まとめられなくなります（<code>에듀 센터</code> に対する ko-dic の、半角スペースの付いた
+<code>에듀</code>（<code>NNG</code>）と <code>에듀</code>（<code>NNP</code>）など）。</p>
 <p>U+3000 は <code>SPACE</code> の文字カテゴリではないため、<code>keep_whitespace(false)</code> でも MeCab と
 同じくトークンとして出力されます。取り除くには、<code>japanese_stop_tags</code> トークンフィルタで
 <code>記号,空白</code>（IPADIC）や <code>空白</code>（UniDic）を除くか、<code>unicode_normalize</code> 文字フィルタ
@@ -471,9 +480,10 @@ Viterbi ラティス上で読み飛ばします。空白の後ろの語は空白
 <p>デフォルトは辞書の <code>metadata.json</code> で決まり、<code>skip_whitespace</code> を設定していない
 辞書は読み飛ばします。Lindera 6.x でビルドした SudachiDict にはこの設定がない
 ため、再ビルドするか <code>metadata.json</code> に設定を追加するまでは空白を読み飛ばします。</p>
-<p>トークンの表層形とオフセットには読み飛ばした空白が含まれず、読み飛ばしは
-空白を含まないテキストの分割を変えません。<code>keep_whitespace(true)</code> では空白が
-ラティスに残り、出力は変わりません。</p>
+<p>トークンの表層形とオフセットには読み飛ばした空白が含まれません。ただし、見出し語の
+一部である空白は、語の途中にあっても末尾にあっても、MeCab と同じくその語のトークンに
+残ります（前の節を参照）。読み飛ばしは空白を含まないテキストの分割を変えません。
+<code>keep_whitespace(true)</code> では空白がラティスに残り、出力は変わりません。</p>
 <p>v6 の分割結果に戻すには、読み飛ばしを無効にします。空白は引き続き出力から
 除外されます。設定で <code>skip_whitespace</code> を省略するか <code>null</code> にすると、辞書の
 デフォルトのままになります:</p>
@@ -536,6 +546,49 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 （<code>cost_threshold</code>・<code>--nbest-cost-threshold</code>）は入力全体で測るようになりました。
 合計コストが 1 件目の結果のコストから閾値以内の結果を残します。v6 は閾値を文ごとに
 適用していました。<code>unique</code> を指定した場合も、結果の単語境界は互いに異なります。</p>
+<h2 id="lindera_dictionary-の-rust-api-変更"><a class="header" href="#lindera_dictionary-の-rust-api-変更"><code>lindera_dictionary</code> の Rust API 変更</a></h2>
+<p>以下は、ラティスのバックトレースを直接呼び出すコードにのみ影響します。対象は
+<code>lindera_dictionary::viterbi::Lattice</code> と <code>lindera_dictionary::nbest::NBestGenerator</code>
+で、<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・
+<code>lindera::dictionary::nbest::…</code> からも参照できます。<code>Segmenter</code>・<code>Tokenizer</code>・
+<code>SegmentWorker</code>・<code>AnalysisWorker</code> の API、言語バインディング、CLI は影響を
+受けません。</p>
+<div class="table-wrapper"><table><thead><tr><th>v6</th><th>v7</th></tr></thead><tbody>
+<tr><td><code>Lattice::tokens_offset() -&gt; Vec&lt;(usize, WordId)&gt;</code></td><td><code>Lattice::tokens_offset() -&gt; Vec&lt;TokenOffset&gt;</code></td></tr>
+<tr><td><code>Lattice::tokens_offset_into(&amp;mut Vec&lt;(usize, WordId)&gt;)</code></td><td><code>Lattice::tokens_offset_into(&amp;mut Vec&lt;TokenOffset&gt;)</code></td></tr>
+<tr><td><code>Lattice::nbest_tokens_offset(n, unique, cost_threshold) -&gt; Vec&lt;(Vec&lt;(usize, WordId)&gt;, i64)&gt;</code></td><td><code>Lattice::nbest_tokens_offset(n, unique, cost_threshold) -&gt; Vec&lt;NBestPath&gt;</code></td></tr>
+<tr><td><code>NBestGenerator::next() -&gt; Option&lt;(Vec&lt;(usize, WordId)&gt;, i64)&gt;</code></td><td><code>NBestGenerator::next() -&gt; Option&lt;NBestPath&gt;</code></td></tr>
+<tr><td>—</td><td><code>viterbi</code> に新しい型エイリアス <code>TokenOffset = (usize, usize, WordId)</code> と <code>NBestPath = (Vec&lt;TokenOffset&gt;, i64)</code> を追加</td></tr>
+</tbody></table>
+</div>
+<p>各トークンは <code>(start, word_id)</code> ではなく <code>(start, end, word_id)</code> になりました。
+オフセットは文内のバイト位置です。空白を読み飛ばすとき（v7 で追加された
+<code>LatticeOptions::skip_whitespace</code>）は、トークンの終わりが次のトークンの開始位置と
+一致するとは限りません。間に読み飛ばした空白があると、そのうちどこまでが語に
+属するかはラティスにしかわからないためです。返される終了位置は、読み飛ばした空白を含まず、
+語自身の末尾の空白を含みます（<a href="#%E7%A9%BA%E7%99%BD%E3%82%92%E5%90%AB%E3%82%80%E8%A6%8B%E5%87%BA%E3%81%97%E8%AA%9E%E3%82%92%E4%BF%9D%E6%8C%81%E3%81%99%E3%82%8B">空白を含む見出し語を保持する</a>
+を参照）。<code>set_text</code> や <code>set_text_nbest</code> のように空白をラティスに残す場合、終了位置は
+これまでどおり次のトークンの開始位置（最後のトークンでは文の終わり）です。<code>unique</code> を
+指定した <code>nbest_tokens_offset</code> は、パスの開始位置ではなく <code>(start, end)</code> の組を
+比較するようになりました。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera::dictionary::viterbi::TokenOffset;
+
+// v6: トークンは次のトークンの開始位置で終わる
+let offsets = lattice.tokens_offset();
+for (i, &amp;(start, word_id)) in offsets.iter().enumerate() {
+    let end = offsets.get(i + 1).map_or(sentence.len(), |&amp;(next, _)| next);
+    handle(&amp;sentence[start..end], word_id);
+}
+
+// v7: 終了位置が返される
+let offsets: Vec&lt;TokenOffset&gt; = lattice.tokens_offset();
+for &amp;(start, end, word_id) in &amp;offsets {
+    handle(&amp;sentence[start..end], word_id);
+}
+<span class="boring">}</span></code></pre></pre>
+<p><code>nbest_tokens_offset</code> と <code>NBestGenerator::next</code> が返すパスも、同じ 3 つ組を持ちます。</p>
 <h2 id="対応が不要なケース"><a class="header" href="#対応が不要なケース">対応が不要なケース</a></h2>
 <ul>
 <li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の
@@ -551,7 +604,9 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 上げるまで何も変わりません。</li>
 <li><strong>セグメンター API だけを使うユーザー</strong>: <code>Segmenter</code>・<code>load_dictionary</code>・<code>Mode</code>
 など v6 の <code>lindera::…</code> アイテムを使うコードは、<code>lindera = "7"</code> でそのまま
-コンパイルできます。ただしデフォルトビルドでは <code>lindera-analysis</code> とその依存
+コンパイルできます（<code>lindera::dictionary::Lattice</code> のバックトレースを呼び出す
+場合を除く。<a href="#lindera_dictionary-%E3%81%AE-rust-api-%E5%A4%89%E6%9B%B4"><code>lindera_dictionary</code> の Rust API 変更</a>
+を参照）。ただしデフォルトビルドでは <code>lindera-analysis</code> とその依存
 （kanaria・regex・serde_yaml_ng・unicode-blocks・unicode-normalization・
 unicode-segmentation）もコンパイルされるため、v6 の依存ツリーを維持したい
 場合は <code>default-features = false, features = ["mmap"]</code> を指定してください。</li>
@@ -569,6 +624,9 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <li><code>features = ["lindera-&lt;辞書&gt;"]</code> を <code>features = ["embed-&lt;辞書&gt;"]</code> に置き換える。</li>
 <li>任意で <code>lindera-dictionary</code> への直接依存を外し、<code>lindera::dictionary::core</code>・
 <code>::builder</code>・<code>::viterbi</code> などの再エクスポートに切り替える。</li>
+<li><code>Lattice::tokens_offset</code>・<code>tokens_offset_into</code>・<code>nbest_tokens_offset</code>・
+<code>NBestGenerator::next</code> を呼び出している場合は、<code>(start, end, word_id)</code> に分解し、
+次のトークンの開始位置の代わりに返された終了位置を使う。</li>
 </ul>
 <p>バインディングの作者:</p>
 <ul>
@@ -601,6 +659,8 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <li>そのようなテキストは MeCab と同じ分割になることを前提にする（ko-dic で特に
 顕著）。v6 の出力が必要な場合は <code>skip_whitespace(false)</code>、
 <code>"skip_whitespace": false</code>、<code>--disable-skip-whitespace</code> を指定する。</li>
+<li>末尾が半角スペースの見出し語（IPADIC-NEologd・ko-dic・SudachiDict）のトークンは、
+MeCab と同じくその空白を含むことを前提にする。</li>
 </ul>
 <p><code>Ð</code>・<code>々</code>・<code>〇</code> を含むテキストを同梱の辞書で解析するユーザー:</p>
 <ul>

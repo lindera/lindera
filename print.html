@@ -733,6 +733,7 @@ let results = tokenizer.tokenize_nbest_with_lattice(text, &amp;mut lattice, 3, f
 とうきょうスカイツリー駅,カスタム名詞,トウキョウスカイツリーエキ
 </code></pre>
 <p>The surface (the first column) is used exactly as written: whitespace at its start or end is part of the word, and a surface may consist of whitespace only (IPADIC registers U+3000 this way). Only an empty surface is skipped. The same applies to the lexicon CSV files of a system dictionary built with <code>lindera build</code>.</p>
+<p>An entry that ends with whitespace keeps it in its token, as in MeCab, even when whitespace is skipped in the lattice (the default for every bundled dictionary except SudachiDict, see <a href="concepts/../lindera/segmenter.html#whitespace-handling">Whitespace Handling</a>). With whitespace skipped, however, an entry that starts with whitespace of the dictionary's <code>SPACE</code> category, or consists of such whitespace only, never matches, because no word starts on skipped whitespace. U+3000 is not in the <code>SPACE</code> category, so IPADIC's U+3000 entry still matches.</p>
 <p>Each dictionary type (IPADIC, UniDic, ko-dic, etc.) also supports a detailed CSV format with full control over context IDs, costs, and all feature fields. See the <a href="concepts/./dictionaries.html">Dictionaries</a> section for the detailed format of each dictionary type.</p>
 <h2 id="rust-api-example-1"><a class="header" href="#rust-api-example-1">Rust API example</a></h2>
 <pre><pre class="playground"><code class="language-rust">use std::fs::File;
@@ -1213,7 +1214,7 @@ serialized bytes. <code>use_mmap</code> is silently ignored for <code>embedded:/
 dictionaries, since their data is already a static, zero-copy byte slice.
 Requires the <code>mmap</code> cargo feature (enabled by default).</p>
 <h2 id="whitespace-handling"><a class="header" href="#whitespace-handling">Whitespace Handling</a></h2>
-<p>By default, whitespace is skipped in the lattice, as MeCab does: no word starts on a whitespace character, and the word after a run of whitespace connects directly to the word before it, with the connection cost the dictionary was trained with. Whitespace never appears in the output, and token surfaces and offsets leave it out. "Whitespace" is the dictionary's <code>SPACE</code> character category (<code>char.def</code>): U+0020, U+0009, U+000A, U+000B and U+000D for ko-dic, and U+0020, U+0009, U+000A and U+000B for IPADIC, IPADIC-NEologd, UniDic, SudachiDict, CC-CEDICT and Jieba. Those <code>char.def</code> files also map U+00D0 (<code>Ð</code>) to <code>SPACE</code>, a typo for U+000D, but a later <code>0x00C0..0x00FF ALPHA</code> line takes precedence, so <code>Ð</code> is a letter, as in MeCab.</p>
+<p>By default, whitespace is skipped in the lattice, as MeCab does: no word starts on a whitespace character, and the word after a run of whitespace connects directly to the word before it, with the connection cost the dictionary was trained with. Skipped whitespace is not output and is left out of token surfaces and offsets; whitespace that belongs to a dictionary entry, inside it (IPADIC-NEologd <code>GeForce GTX</code>, a user entry <code>해운대 해수욕장</code>) or at its end (ko-dic <code>에듀</code> followed by a space), stays in that entry's token, as in MeCab. "Whitespace" is the dictionary's <code>SPACE</code> character category (<code>char.def</code>): U+0020, U+0009, U+000A, U+000B and U+000D for ko-dic, and U+0020, U+0009, U+000A and U+000B for IPADIC, IPADIC-NEologd, UniDic, SudachiDict, CC-CEDICT and Jieba. Those <code>char.def</code> files also map U+00D0 (<code>Ð</code>) to <code>SPACE</code>, a typo for U+000D, but a later <code>0x00C0..0x00FF ALPHA</code> line takes precedence, so <code>Ð</code> is a letter, as in MeCab.</p>
 <p>The default comes from the dictionary's <code>metadata.json</code> (<code>skip_whitespace</code>). SudachiDict sets it to <code>false</code>: Sudachi keeps whitespace in the lattice and outputs it as <code>空白</code> tokens, and SudachiDict's costs are tuned for that, so skipping would, for example, split the entry <code>caramel man</code> into two common nouns. With SudachiDict, whitespace therefore stays in the lattice as a <code>SPACE</code> node by default, though it is still dropped from the output. The other bundled dictionaries leave the setting out, which means skipping, and so does a dictionary built before the setting existed (a SudachiDict built by Lindera 6.x included, until it is rebuilt).</p>
 <p>Call <code>keep_whitespace(true)</code> on a <code>Segmenter</code> to output whitespace tokens. Whitespace then stays in the lattice as <code>SPACE</code> unknown-word nodes:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -9591,9 +9592,10 @@ the new <code>analysis</code> feature, on by default — the analysis chain of
 the IPADIC schema, which had the <code>conjugation_type</code> and <code>conjugation_form</code>
 names swapped, keeps dictionary entries whose surface is whitespace or
 starts or ends with it, skips whitespace in the lattice as MeCab does,
-resolves overlapping <code>char.def</code> lines as MeCab does, and returns N-best
-results that each cover the whole input. This guide lists every breaking
-change and the one-line fixes for each.</p>
+resolves overlapping <code>char.def</code> lines as MeCab does, returns N-best
+results that each cover the whole input, and has the lattice backtraces of
+<code>lindera-dictionary</code> return each token's end offset. This guide lists every
+breaking change and the one-line fixes for each.</p>
 <h2 id="overview-4"><a class="header" href="#overview-4">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
 <tr><td><code>lindera</code> is a facade: <code>lindera::analysis</code> re-exports <code>lindera-analysis</code> (feature <code>analysis</code>, on by default)</td><td>Rust users who depend on both <code>lindera</code> and <code>lindera-analysis</code></td><td>Bump both to <code>"7"</code> in the same step, or drop <code>lindera-analysis</code> and import from <code>lindera::analysis::…</code></td></tr>
@@ -9608,6 +9610,7 @@ change and the one-line fixes for each.</p>
 <tr><td><strong>Whitespace is skipped in the lattice: the words on either side of a space connect directly, as in MeCab</strong></td><td>Anyone who segments text containing whitespace with <code>keep_whitespace</code> false (the default), most visibly with ko-dic</td><td>Expect MeCab's segmentation for such text; <code>skip_whitespace(false)</code> (<code>"skip_whitespace": false</code>, <code>--disable-skip-whitespace</code>) restores the v6 segmentation</td></tr>
 <tr><td><strong>Overlapping <code>char.def</code> lines: the last line decides</strong></td><td>Text with <code>Ð</code> (U+00D0; every dictionary except ko-dic), <code>々</code> (U+3005) or <code>〇</code> (U+3007); <code>lindera train</code> users whose <code>char.def</code> has single-code-point or overlapping lines</td><td>Expect <code>Ð</code> to stay in the output as a letter; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 <tr><td><strong>N-best: every result covers the whole input</strong></td><td>Anyone who asks for N-best results (<code>segment_nbest</code>, <code>tokenize_nbest</code>, <code>lindera tokenize -N</code>, the bindings' N-best methods) for input with more than one sentence</td><td>Expect the cheapest segmentations of the whole input from the second result on; a cost threshold now applies to the whole input</td></tr>
+<tr><td><strong><code>Lattice::tokens_offset</code>, <code>tokens_offset_into</code>, <code>nbest_tokens_offset</code> and <code>NBestGenerator::next</code> return <code>(start, end, WordId)</code></strong></td><td>Rust code that calls these <code>lindera_dictionary</code> functions directly (also as <code>lindera::dictionary::viterbi::…</code>, <code>lindera::dictionary::Lattice</code> and <code>lindera::dictionary::nbest::…</code>)</td><td>Destructure three fields and use the returned end instead of the next token's start</td></tr>
 </tbody></table>
 </div>
 <p>The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
@@ -9852,11 +9855,19 @@ v7.0.0 reads the surface exactly as written, as MeCab and Sudachi do:</p>
 SudachiDict) now match only where the text has that whitespace, as in MeCab:
 with IPADIC-NEologd, the entry <code>GeForce GTX Titan X</code> followed by a space
 matches <code>GeForce GTX Titan X です</code> but no longer <code>GeForce GTX Titan Xです</code>.
-When whitespace stays in the lattice (<code>keep_whitespace(true)</code>, or
-<code>skip_whitespace(false)</code>, SudachiDict's default), the token ends with that
-whitespace, as in MeCab. When whitespace is skipped (the default for the
-other dictionaries, see the next section), the token ends before it, because
-token surfaces never include skipped whitespace.</p>
+The token ends with that whitespace, as in MeCab, whether whitespace stays
+in the lattice (<code>keep_whitespace(true)</code>, or <code>skip_whitespace(false)</code>,
+SudachiDict's default) or is skipped (the default for the other
+dictionaries, see the next section). Skipping leaves out only the whitespace
+after the entry: in <code>GeForce GTX Titan X  です</code>, with two spaces, the token
+ends with the first space. 50 of the 55 IPADIC-NEologd entries end with a
+space, as do all those of ko-dic and SudachiDict; the other 5 end with
+U+3000 or U+00A0, which are not <code>SPACE</code> characters and are never skipped.
+The Decompose length penalty counts the entry's own whitespace, as it does
+when whitespace stays in the lattice. With <code>unique</code>, N-best results that
+differ only in that whitespace are no longer folded into one, such as
+ko-dic's <code>에듀</code> followed by the space (<code>NNG</code>) and <code>에듀</code> (<code>NNP</code>) in
+<code>에듀 센터</code>.</p>
 <p>U+3000 is not in the <code>SPACE</code> character category, so it is a token even with
 <code>keep_whitespace(false)</code>, as in MeCab. To remove it, drop <code>記号,空白</code>
 (IPADIC) or <code>空白</code> (UniDic) with the <code>japanese_stop_tags</code> token filter, or
@@ -9889,10 +9900,11 @@ sentence directly.</p>
 does not set <code>skip_whitespace</code> skips. A SudachiDict built by Lindera 6.x has
 no such setting, so it skips whitespace until it is rebuilt or the setting
 is added to its <code>metadata.json</code>.</p>
-<p>Token surfaces and offsets never include the skipped whitespace, and
-skipping does not change the segmentation of text without whitespace.
-<code>keep_whitespace(true)</code> keeps whitespace in the lattice and its output is
-unchanged.</p>
+<p>Token surfaces and offsets never include the skipped whitespace; whitespace
+that belongs to a dictionary entry, inside it or at its end, stays in that
+entry's token, as in MeCab (see the previous section). Skipping does not
+change the segmentation of text without whitespace. <code>keep_whitespace(true)</code>
+keeps whitespace in the lattice and its output is unchanged.</p>
 <p>To get the v6 segmentation back, turn skipping off; whitespace is still
 dropped from the output. Leaving <code>skip_whitespace</code> out of the configuration,
 or setting it to <code>null</code>, keeps the dictionary's default:</p>
@@ -9964,6 +9976,52 @@ with a single sentence. The cost threshold (<code>cost_threshold</code>,
 kept when its total cost is within the threshold of the first result's. v6
 applied the threshold to each sentence separately. With <code>unique</code>, the
 results still have distinct word boundaries.</p>
+<h2 id="rust-api-changes-in-lindera_dictionary-1"><a class="header" href="#rust-api-changes-in-lindera_dictionary-1">Rust API changes in <code>lindera_dictionary</code></a></h2>
+<p>These affect only code that calls the lattice backtraces directly:
+<code>lindera_dictionary::viterbi::Lattice</code> and
+<code>lindera_dictionary::nbest::NBestGenerator</code>, also reachable as
+<code>lindera::dictionary::viterbi::…</code>, <code>lindera::dictionary::Lattice</code> and
+<code>lindera::dictionary::nbest::…</code>. The <code>Segmenter</code>, <code>Tokenizer</code>,
+<code>SegmentWorker</code> and <code>AnalysisWorker</code> APIs, the language bindings and the
+CLI are unaffected.</p>
+<div class="table-wrapper"><table><thead><tr><th>v6</th><th>v7</th></tr></thead><tbody>
+<tr><td><code>Lattice::tokens_offset() -&gt; Vec&lt;(usize, WordId)&gt;</code></td><td><code>Lattice::tokens_offset() -&gt; Vec&lt;TokenOffset&gt;</code></td></tr>
+<tr><td><code>Lattice::tokens_offset_into(&amp;mut Vec&lt;(usize, WordId)&gt;)</code></td><td><code>Lattice::tokens_offset_into(&amp;mut Vec&lt;TokenOffset&gt;)</code></td></tr>
+<tr><td><code>Lattice::nbest_tokens_offset(n, unique, cost_threshold) -&gt; Vec&lt;(Vec&lt;(usize, WordId)&gt;, i64)&gt;</code></td><td><code>Lattice::nbest_tokens_offset(n, unique, cost_threshold) -&gt; Vec&lt;NBestPath&gt;</code></td></tr>
+<tr><td><code>NBestGenerator::next() -&gt; Option&lt;(Vec&lt;(usize, WordId)&gt;, i64)&gt;</code></td><td><code>NBestGenerator::next() -&gt; Option&lt;NBestPath&gt;</code></td></tr>
+<tr><td>—</td><td>New type aliases in <code>viterbi</code>: <code>TokenOffset = (usize, usize, WordId)</code> and <code>NBestPath = (Vec&lt;TokenOffset&gt;, i64)</code></td></tr>
+</tbody></table>
+</div>
+<p>Each token is now <code>(start, end, word_id)</code> instead of <code>(start, word_id)</code>,
+with byte offsets within the sentence. With whitespace skipped
+(<code>LatticeOptions::skip_whitespace</code>, new in v7), a token does not always end
+where the next one starts: skipped whitespace can lie in between, and only
+the lattice knows how much of it belongs to the entry. The returned end leaves
+the skipped whitespace out and keeps the whitespace an entry ends with (see
+<a href="migration_v6_to_v7.html#dictionary-entries-with-whitespace-are-kept">Dictionary entries with whitespace are kept</a>).
+With whitespace kept in the lattice, as <code>set_text</code> and <code>set_text_nbest</code> do,
+the end is the next token's start, or the end of the sentence for the last
+token, as before. <code>nbest_tokens_offset</code> with <code>unique</code> now compares the
+<code>(start, end)</code> pairs of the paths instead of their starts.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera::dictionary::viterbi::TokenOffset;
+
+// v6: a token ends where the next one starts
+let offsets = lattice.tokens_offset();
+for (i, &amp;(start, word_id)) in offsets.iter().enumerate() {
+    let end = offsets.get(i + 1).map_or(sentence.len(), |&amp;(next, _)| next);
+    handle(&amp;sentence[start..end], word_id);
+}
+
+// v7: the end is returned
+let offsets: Vec&lt;TokenOffset&gt; = lattice.tokens_offset();
+for &amp;(start, end, word_id) in &amp;offsets {
+    handle(&amp;sentence[start..end], word_id);
+}
+<span class="boring">}</span></code></pre></pre>
+<p>The paths of <code>nbest_tokens_offset</code> and <code>NBestGenerator::next</code> hold the same
+triples.</p>
 <h2 id="who-does-not-need-to-act-1"><a class="header" href="#who-does-not-need-to-act-1">Who does not need to act</a></h2>
 <ul>
 <li><strong>Users of the language bindings and the CLI</strong>: the Python, Node.js, Ruby,
@@ -9980,7 +10038,10 @@ matters only for N-best results for input with more than one sentence.</li>
 changes until you bump the major version.</li>
 <li><strong>Users of the segmenter API only</strong>: code that uses <code>Segmenter</code>,
 <code>load_dictionary</code>, <code>Mode</code>, and the other <code>lindera::…</code> items of v6 compiles
-unchanged with <code>lindera = "7"</code>. The default build now also compiles
+unchanged with <code>lindera = "7"</code>, unless it calls the lattice backtraces of
+<code>lindera::dictionary::Lattice</code> (see
+<a href="migration_v6_to_v7.html#rust-api-changes-in-lindera_dictionary">Rust API changes in <code>lindera_dictionary</code></a>).
+The default build now also compiles
 <code>lindera-analysis</code> and its dependencies (kanaria, regex, serde_yaml_ng,
 unicode-blocks, unicode-normalization, unicode-segmentation); to keep the
 v6 dependency tree, set <code>default-features = false, features = ["mmap"]</code>.</li>
@@ -10001,6 +10062,10 @@ paths — both name the same types.</li>
 <li>Optionally drop a direct <code>lindera-dictionary</code> dependency in favor of
 <code>lindera::dictionary::core</code>, <code>::builder</code>, <code>::viterbi</code>, and the other
 re-exported modules.</li>
+<li>If you call <code>Lattice::tokens_offset</code>, <code>tokens_offset_into</code>,
+<code>nbest_tokens_offset</code> or <code>NBestGenerator::next</code>, destructure
+<code>(start, end, word_id)</code> and use the returned end instead of the next
+token's start.</li>
 </ul>
 <p>Binding authors:</p>
 <ul>
@@ -10033,6 +10098,9 @@ to get the whitespace entries.</li>
 <li>Expect MeCab's segmentation for such text (most visible with ko-dic). If
 you need the v6 output, set <code>skip_whitespace(false)</code>,
 <code>"skip_whitespace": false</code>, or <code>--disable-skip-whitespace</code>.</li>
+<li>Expect the token of a dictionary entry that ends with a space (in
+IPADIC-NEologd, ko-dic and SudachiDict) to include that space, as in
+MeCab.</li>
 </ul>
 <p>Users of any bundled dictionary with text that contains <code>Ð</code>, <code>々</code> or <code>〇</code>:</p>
 <ul>
