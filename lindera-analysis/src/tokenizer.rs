@@ -141,6 +141,38 @@ impl TokenizerBuilder {
         self
     }
 
+    /// Sets whether whitespace is skipped in the lattice when whitespace
+    /// tokens are not kept (see `Segmenter::skip_whitespace`), overriding
+    /// the dictionary's default (skip, except for SudachiDict): `true`
+    /// connects the words on either side of whitespace directly, as MeCab
+    /// does; `false` keeps whitespace as `SPACE` unknown-word nodes.
+    ///
+    /// # Arguments
+    ///
+    /// * `skip_whitespace` - `false` to keep whitespace nodes in the lattice.
+    ///
+    /// # Returns
+    ///
+    /// The builder, for chaining.
+    pub fn set_segmenter_skip_whitespace(&mut self, skip_whitespace: bool) -> &mut Self {
+        self.config["segmenter"]["skip_whitespace"] = json!(skip_whitespace);
+        self
+    }
+
+    /// Removes any whitespace-skipping setting, so the Segmenter falls back
+    /// to the dictionary's default. This undoes
+    /// [`Self::set_segmenter_skip_whitespace`].
+    ///
+    /// # Returns
+    ///
+    /// A mutable reference to `self`, for chaining.
+    pub fn reset_segmenter_skip_whitespace(&mut self) -> &mut Self {
+        if let Some(segmenter) = self.config["segmenter"].as_object_mut() {
+            segmenter.remove("skip_whitespace");
+        }
+        self
+    }
+
     /// Caps unknown-word grouping (MeCab's `max-grouping-size` semantics);
     /// `0` or an absent key means unbounded grouping, the default.
     ///
@@ -691,6 +723,19 @@ mod tests {
         builder.set_segmenter_space_penalty_from_dictionary(true);
         builder.reset_segmenter_space_penalty();
         assert_eq!(builder.config["segmenter"]["keep_whitespace"], true);
+    }
+
+    /// The whitespace-skipping setter writes the `skip_whitespace` key.
+    #[test]
+    fn test_set_segmenter_skip_whitespace() {
+        let mut builder = TokenizerBuilder::new().unwrap();
+        assert!(builder.config["segmenter"].get("skip_whitespace").is_none());
+        builder.set_segmenter_skip_whitespace(false);
+        assert_eq!(builder.config["segmenter"]["skip_whitespace"], false);
+        builder.set_segmenter_skip_whitespace(true);
+        assert_eq!(builder.config["segmenter"]["skip_whitespace"], true);
+        builder.reset_segmenter_skip_whitespace();
+        assert!(builder.config["segmenter"].get("skip_whitespace").is_none());
     }
 
     #[cfg(feature = "embed-ipadic")]

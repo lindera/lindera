@@ -219,6 +219,17 @@ impl AnalysisWorker {
         self.segment_worker.set_keep_whitespace(keep);
     }
 
+    /// Sets whether whitespace is skipped in the lattice for subsequent
+    /// calls when whitespace tokens are not kept (see
+    /// `Segmenter::skip_whitespace`; defaults to the dictionary's setting).
+    ///
+    /// # 引数
+    ///
+    /// * `skip` - `false` to keep whitespace nodes in the lattice.
+    pub fn set_skip_whitespace(&mut self, skip: bool) {
+        self.segment_worker.set_skip_whitespace(skip);
+    }
+
     /// Sets the unknown-word grouping cap for subsequent calls (MeCab's
     /// `max-grouping-size` semantics; `None` = unbounded, the default).
     ///

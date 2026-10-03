@@ -124,33 +124,34 @@ describe("TokenizerBuilder.setSpacePenalty", () => {
       skip: !hasEmbeddedKoDic && "embedded://ko-dic not available",
     },
     () => {
-      // With the penalty, "시" after a space is not split off as the
-      // honorific ending (EP); without it, it is.
-      const posOfSi = (builder) => {
+      // With the penalty, "이" after a space is not read as the subject
+      // particle (JKS) but as an interjection (IC), as mecab-ko does;
+      // without it, it is.
+      const posOfI = (builder) => {
         const tokens = builder
           .setDictionary("embedded://ko-dic")
           .build()
-          .tokenize("서울 시 에서 출발");
-        const token = tokens.find((t) => t.surface === "시");
-        assert.ok(token, "no token with surface 시");
+          .tokenize("검색 이 잘 된다");
+        const token = tokens.find((t) => t.surface === "이");
+        assert.ok(token, "no token with surface 이");
         return token.details[0];
       };
       const shippedRules = JSON.parse(
         Metadata.fromJsonFile(KO_DIC_METADATA).toObject().spacePenalty,
       );
 
-      assert.strictEqual(posOfSi(new TokenizerBuilder()), "NNG", "no call");
+      assert.strictEqual(posOfI(new TokenizerBuilder()), "IC", "no call");
       for (const value of [undefined, null, true, shippedRules]) {
         assert.strictEqual(
-          posOfSi(new TokenizerBuilder().setSpacePenalty(value)),
-          "NNG",
+          posOfI(new TokenizerBuilder().setSpacePenalty(value)),
+          "IC",
           `value ${JSON.stringify(value)}`,
         );
       }
       for (const value of [false, { rules: [] }]) {
         assert.strictEqual(
-          posOfSi(new TokenizerBuilder().setSpacePenalty(value)),
-          "EP",
+          posOfI(new TokenizerBuilder().setSpacePenalty(value)),
+          "JKS",
           `value ${JSON.stringify(value)}`,
         );
       }
@@ -230,14 +231,14 @@ describe("Tokenizer constructor space penalty", () => {
     "turns off ko-dic's shipped rules with false",
     { skip: !hasEmbeddedKoDic && "embedded://ko-dic not available" },
     () => {
-      const posOfSi = (...args) => {
+      const posOfI = (...args) => {
         const tokenizer = new Tokenizer(loadDictionary("embedded://ko-dic"), ...args);
-        const token = tokenizer.tokenize("서울 시 에서 출발").find((t) => t.surface === "시");
-        assert.ok(token, "no token with surface 시");
+        const token = tokenizer.tokenize("검색 이 잘 된다").find((t) => t.surface === "이");
+        assert.ok(token, "no token with surface 이");
         return token.details[0];
       };
-      assert.strictEqual(posOfSi(), "NNG", "default");
-      assert.strictEqual(posOfSi("normal", null, false), "EP", "false");
+      assert.strictEqual(posOfI(), "IC", "default");
+      assert.strictEqual(posOfI("normal", null, false), "JKS", "false");
     },
   );
 });

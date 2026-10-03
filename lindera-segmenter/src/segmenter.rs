@@ -5,10 +5,10 @@ use std::sync::Arc;
 use lindera_dictionary::mode::Mode;
 use log::warn;
 
-use lindera_dictionary::dictionary::character_definition::CategoryId;
 use lindera_dictionary::dictionary::{Dictionary, UserDictionary};
 use lindera_dictionary::space_penalty::{SpacePenaltyConfig, SpacePenaltyTable};
 use lindera_dictionary::viterbi::{Lattice, LatticeOptions, WordId};
+use lindera_dictionary::whitespace::WhitespaceClassifier;
 use serde_json::Value;
 
 use crate::LinderaResult;
@@ -110,9 +110,28 @@ pub struct Segmenter {
 
     /// Keep whitespace tokens in output.
     ///
-    /// When false (default), whitespace is ignored for MeCab compatibility.
-    /// When true, whitespace tokens are included in the output.
+    /// When false (default), whitespace is handled as MeCab handles it: it is
+    /// skipped in the lattice, so the words on either side of it connect
+    /// directly (see [`Segmenter::skip_whitespace`]), and it is not output.
+    /// When true, whitespace stays in the lattice as `SPACE` unknown-word
+    /// nodes and is output as tokens. "Whitespace" is the dictionary's
+    /// `SPACE` character category (`char.def`).
     pub keep_whitespace: bool,
+
+    /// Whether whitespace is skipped in the lattice when `keep_whitespace` is
+    /// false (ignored when `keep_whitespace` is true).
+    ///
+    /// MeCab never puts whitespace in the lattice: a word after a space
+    /// connects to the word before it, and dictionaries trained with MeCab
+    /// carry no connection costs for the `SPACE` unknown word (all zero in
+    /// ko-dic). [`Segmenter::new`] takes the default from the dictionary's
+    /// metadata (`Metadata::skip_whitespace`): `true` unless the dictionary
+    /// says otherwise, and `false` for SudachiDict, whose costs are tuned
+    /// for Sudachi's lattice, which keeps whitespace. With `false`,
+    /// whitespace stays a `SPACE` node, as in Lindera v6, while still being
+    /// dropped from the output; every space then resets the connection
+    /// context.
+    pub skip_whitespace: bool,
 
     /// Cap on unknown-word grouping, counted in characters beyond the
     /// first (MeCab's `max-grouping-size`; MeCab defaults to 24). The cap
@@ -143,8 +162,8 @@ pub struct Segmenter {
     /// a space. [`Segmenter::new`] initializes it from the rules the
     /// dictionary ships in its metadata (`Metadata::space_penalty`; ko-dic
     /// does, the other bundled dictionaries do not), so for ko-dic the
-    /// penalty is on by default; `None` adds no penalty and reproduces the
-    /// v6.0 output. Set through [`Segmenter::space_penalty`] /
+    /// penalty is on by default; `None` adds no penalty, and together with
+    /// `skip_whitespace(false)` reproduces the v6.0 output. Set through [`Segmenter::space_penalty`] /
     /// [`Segmenter::set_space_penalty`], which also build the per-word-id
     /// lookup the lattice uses; the field is read-only for that reason.
     space_penalty: Option<SpacePenaltyConfig>,
@@ -153,17 +172,11 @@ pub struct Segmenter {
     /// dictionary pair; `Arc` so `Clone` stays cheap.
     space_penalty_table: Option<Arc<SpacePenaltyTable>>,
 
-    /// The category ID for space characters, used when keep_whitespace is false.
-    space_category_id: Option<CategoryId>,
-
-    /// Precomputed, per-codepoint (0..256) SPACE-category membership for the
-    /// ASCII/Latin-1 range, used as a fast path for the keep_whitespace=false
-    /// skip check. Built once from the loaded dictionary's actual character
-    /// definitions (not a hardcoded byte pattern), so it stays correct for
-    /// any dictionary regardless of which characters its char.def classifies
-    /// as SPACE. Codepoints >= 256 always fall back to
-    /// `character_definition.lookup_categories`.
-    space_ascii_table: Option<[bool; 256]>,
+    /// The dictionary's `SPACE`-category classifier, behind
+    /// `keep_whitespace` and `skip_whitespace`; built once from the loaded
+    /// dictionary's own `char.def`, with an ASCII/Latin-1 fast path. `None`
+    /// when the dictionary defines no `SPACE` category.
+    whitespace: Option<WhitespaceClassifier>,
 }
 
 impl Segmenter {
@@ -190,28 +203,20 @@ impl Segmenter {
     ///   be applied (a schema without a part-of-speech field) log a warning
     ///   and leave the penalty off. Opt out with [`Segmenter::space_penalty`]
     ///   and `None`.
+    /// - Whitespace skipping: taken from the dictionary's metadata
+    ///   (`Metadata::skip_whitespace`), on unless the dictionary turns it off
+    ///   (SudachiDict does). Override with [`Segmenter::skip_whitespace`].
     pub fn new(
         mode: Mode,
         dictionary: Dictionary,
         user_dictionary: Option<UserDictionary>,
     ) -> Self {
-        // Get SPACE category ID for MeCab compatibility (ignore whitespace by default)
-        let space_category_id = dictionary.character_definition.category_id_by_name("SPACE");
-
-        // Precompute ASCII/Latin-1 SPACE-category membership once, from the
-        // dictionary's actual character definitions.
-        let space_ascii_table = space_category_id.map(|space_id| {
-            let mut table = [false; 256];
-            for (codepoint, is_space) in table.iter_mut().enumerate() {
-                if let Some(c) = char::from_u32(codepoint as u32) {
-                    *is_space = dictionary
-                        .character_definition
-                        .lookup_categories(c)
-                        .contains(&space_id);
-                }
-            }
-            table
-        });
+        // Classify whitespace by the dictionary's SPACE category, which MeCab
+        // skips (and Lindera drops from the output by default).
+        let whitespace = WhitespaceClassifier::new(&dictionary.character_definition);
+        // Skip that whitespace in the lattice unless the dictionary's metadata
+        // says otherwise (SudachiDict does: Sudachi keeps it in the lattice).
+        let skip_whitespace = dictionary.metadata.skip_whitespace.unwrap_or(true);
 
         // A user dictionary is always compiled in the original context-ID space. If the
         // system dictionary was built with `connection_id_mapping`, relabel the user
@@ -231,13 +236,13 @@ impl Segmenter {
             mode,
             dictionary,
             user_dictionary,
-            keep_whitespace: false, // Default: ignore whitespace for MeCab compatibility
+            keep_whitespace: false, // Default: drop whitespace, as MeCab does
+            skip_whitespace,        // Default: the dictionary's (skip, as MeCab does)
             max_grouping_len: None, // Default: unbounded grouping
             unknown_word_ladder: true, // Default (v6+): honor char.def's LENGTH field
             space_penalty: None,    // Set below from the dictionary's shipped rules, if any
             space_penalty_table: None,
-            space_category_id,
-            space_ascii_table,
+            whitespace,
         };
 
         // Default (6.1+): apply the left-space penalty rules the dictionary
@@ -261,8 +266,9 @@ impl Segmenter {
 
     /// Builder method to set whether to keep whitespace tokens in output.
     ///
-    /// When `keep_whitespace` is false (default), whitespace is ignored for MeCab compatibility.
-    /// When true, whitespace tokens are included in the output.
+    /// When `keep_whitespace` is false (default), whitespace is skipped in the lattice and
+    /// dropped from the output, as MeCab does (see [`Segmenter::skip_whitespace`]).
+    /// When true, whitespace stays in the lattice and whitespace tokens are included in the output.
     ///
     /// # Arguments
     ///
@@ -287,6 +293,46 @@ impl Segmenter {
     /// ```
     pub fn keep_whitespace(mut self, keep_whitespace: bool) -> Self {
         self.keep_whitespace = keep_whitespace;
+        self
+    }
+
+    /// Builder method to set whether whitespace is skipped in the lattice
+    /// when whitespace tokens are not kept (see the
+    /// [`skip_whitespace`](Segmenter#structfield.skip_whitespace) field),
+    /// overriding the dictionary's default.
+    ///
+    /// Skipping is on by default for every bundled dictionary but
+    /// SudachiDict. Turning it off keeps whitespace as `SPACE` unknown-word
+    /// nodes, as Lindera v6 did, which resets the connection context at
+    /// every space; whitespace is still dropped from the output.
+    ///
+    /// # Arguments
+    ///
+    /// * `skip_whitespace` - `false` to keep whitespace nodes in the lattice.
+    ///
+    /// # Returns
+    ///
+    /// The segmenter.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lindera_segmenter::mode::Mode;
+    /// use lindera_segmenter::dictionary::load_dictionary;
+    /// use lindera_segmenter::segmenter::Segmenter;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # #[cfg(feature = "embed-ko-dic")]
+    /// # {
+    /// let dictionary = load_dictionary("embedded://ko-dic")?;
+    /// let segmenter = Segmenter::new(Mode::Normal, dictionary, None)
+    ///     .skip_whitespace(false);
+    /// # }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn skip_whitespace(mut self, skip_whitespace: bool) -> Self {
+        self.skip_whitespace = skip_whitespace;
         self
     }
 
@@ -470,7 +516,76 @@ impl Segmenter {
         options.max_grouping_len = self.max_grouping_len;
         options.unknown_word_ladder = self.unknown_word_ladder;
         options.space_penalty = self.space_penalty_table.as_deref();
+        options.skip_whitespace = self.whitespace_to_skip();
         options
+    }
+
+    /// Returns the classifier of the whitespace to skip in the lattice:
+    /// whitespace is skipped whenever it is dropped from the output, unless
+    /// `skip_whitespace` is off or the dictionary defines no `SPACE`
+    /// category.
+    ///
+    /// # Returns
+    ///
+    /// The classifier, or `None` to keep whitespace in the lattice.
+    fn whitespace_to_skip(&self) -> Option<&WhitespaceClassifier> {
+        if self.keep_whitespace || !self.skip_whitespace {
+            None
+        } else {
+            self.whitespace.as_ref()
+        }
+    }
+
+    /// Returns the end of the token that starts at `byte_start` in
+    /// `sentence` and runs up to `span_end`, the next token's start. With
+    /// whitespace skipped in the lattice the span carries the whitespace
+    /// after the token, which is trimmed off here.
+    ///
+    /// # Arguments
+    ///
+    /// * `sentence` - The sentence the offsets index.
+    /// * `byte_start` - The token's start.
+    /// * `span_end` - The next token's start, or the sentence length.
+    /// * `skipped` - The classifier of the skipped whitespace, if any.
+    ///
+    /// # Returns
+    ///
+    /// The token's end, in bytes within `sentence`.
+    fn token_end(
+        &self,
+        sentence: &str,
+        byte_start: usize,
+        span_end: usize,
+        skipped: Option<&WhitespaceClassifier>,
+    ) -> usize {
+        match skipped {
+            Some(whitespace) => {
+                let char_definitions = &self.dictionary.character_definition;
+                byte_start
+                    + sentence[byte_start..span_end]
+                        .trim_end_matches(|c| whitespace.is_space(c, char_definitions))
+                        .len()
+            }
+            None => span_end,
+        }
+    }
+
+    /// Returns whether `token_text` consists of whitespace only, i.e. is a
+    /// `SPACE` token to drop when `keep_whitespace` is false.
+    ///
+    /// # Arguments
+    ///
+    /// * `token_text` - The token's text.
+    /// * `whitespace` - The dictionary's `SPACE` classifier.
+    ///
+    /// # Returns
+    ///
+    /// `true` for a whitespace-only token.
+    fn is_whitespace_token(&self, token_text: &str, whitespace: &WhitespaceClassifier) -> bool {
+        let char_definitions = &self.dictionary.character_definition;
+        token_text
+            .chars()
+            .all(|c| whitespace.is_space(c, char_definitions))
     }
 
     /// A struct representing a segmenter for tokenizing text.
@@ -543,12 +658,25 @@ impl Segmenter {
         )?;
 
         // Load the keep_whitespace option from the config
-        // Default is false (MeCab compatible - ignore whitespace)
+        // Default is false (MeCab compatible - drop whitespace)
         // Set to true explicitly to include whitespace tokens
         let keep_whitespace = config
             .get("keep_whitespace")
             .and_then(Value::as_bool)
-            .unwrap_or(false); // Default: false (ignore whitespace)
+            .unwrap_or(false); // Default: false (drop whitespace)
+
+        // Load the skip_whitespace option from the config. Absent or `null`
+        // keeps the default `Segmenter::new` chose (the dictionary's, which
+        // is to skip unless it says otherwise); a bool overrides it.
+        let skip_whitespace = match config.get("skip_whitespace") {
+            None | Some(Value::Null) => None,
+            Some(Value::Bool(skip)) => Some(*skip),
+            Some(value) => {
+                return Err(LinderaErrorKind::Parse.with_error(anyhow::anyhow!(
+                    "skip_whitespace field must be a bool or null, got {value}"
+                )));
+            }
+        };
 
         // Ignoring whitespace requires a SPACE category to detect it by.
         if !keep_whitespace {
@@ -563,8 +691,8 @@ impl Segmenter {
         }
 
         // Go through `new` so the user-dictionary context-ID remap has a single
-        // application point. `space_category_id` is only read when `keep_whitespace` is
-        // false, so letting `new` always resolve it is equivalent to the previous
+        // application point. The `SPACE` classifier is only read when `keep_whitespace`
+        // is false, so letting `new` always build it is equivalent to the previous
         // conditional.
         // Load the max_grouping_len option from the config.
         // Absent or 0 means unbounded grouping (the default).
@@ -603,10 +731,13 @@ impl Segmenter {
             ),
         };
 
-        let segmenter = Self::new(mode, dictionary, user_dictionary)
+        let mut segmenter = Self::new(mode, dictionary, user_dictionary)
             .keep_whitespace(keep_whitespace)
             .max_grouping_len(max_grouping_len)
             .unknown_word_ladder(unknown_word_ladder);
+        if let Some(skip_whitespace) = skip_whitespace {
+            segmenter.skip_whitespace = skip_whitespace;
+        }
         match space_penalty {
             SpacePenaltySetting::Default => Ok(segmenter),
             SpacePenaltySetting::Off => segmenter.space_penalty(None),
@@ -731,19 +862,16 @@ impl Segmenter {
         let mut tokens: Vec<Token> = Vec::new();
 
         let mut position = 0_usize;
-        let mut byte_position = 0_usize;
 
-        // Whitespace-filter configuration, hoisted out of the per-token
-        // loop: the per-char closure previously re-unwrapped the Option'd
-        // ASCII table (a by-value array copy at source level) on every
-        // character it examined (#942). `space_category_id` and
-        // `space_ascii_table` are built together, so `zip` preserves the
-        // old `keep_whitespace`/`Some` gating exactly.
+        // Whitespace configuration, hoisted out of the per-token loop
+        // (#942): the classifier of the whitespace tokens to drop, and of
+        // the whitespace skipped in the lattice, whose tokens never exist.
         let space_filter = if self.keep_whitespace {
             None
         } else {
-            self.space_category_id.zip(self.space_ascii_table.as_ref())
+            self.whitespace.as_ref()
         };
+        let skipped = self.whitespace_to_skip();
 
         // Process whole text without splitting first for better performance with borrowed text
         let text_len = text.len();
@@ -781,39 +909,23 @@ impl Segmenter {
 
             for i in 0..offsets.len() {
                 let (byte_start, word_id) = offsets[i];
-                let byte_end = if i == offsets.len() - 1 {
+                let span_end = if i == offsets.len() - 1 {
                     sentence.len()
                 } else {
                     let (next_start, _word_id) = offsets[i + 1];
                     next_start
                 };
+                let byte_end = self.token_end(sentence, byte_start, span_end, skipped);
 
                 // Calculate absolute position in the original text
                 let absolute_start = sentence_start + byte_start;
                 let absolute_end = sentence_start + byte_end;
 
                 // Skip whitespace tokens if keep_whitespace is false (default MeCab behavior)
-                if let Some((space_category_id, space_ascii_table)) = space_filter {
-                    // Check if this token consists only of whitespace characters.
-                    // ASCII/Latin-1 codepoints use the precomputed table (O(1));
-                    // anything else falls back to the dictionary lookup.
-                    let token_text = &sentence[byte_start..byte_end];
-                    let is_space = token_text.chars().all(|c| {
-                        if (c as u32) < 256 {
-                            space_ascii_table[c as usize]
-                        } else {
-                            self.dictionary
-                                .character_definition
-                                .lookup_categories(c)
-                                .contains(&space_category_id)
-                        }
-                    });
-
-                    if is_space {
-                        // Update byte_position to maintain correct offsets
-                        byte_position += byte_end - byte_start;
-                        continue;
-                    }
+                if let Some(whitespace) = space_filter
+                    && self.is_whitespace_token(&sentence[byte_start..byte_end], whitespace)
+                {
+                    continue;
                 }
 
                 // Create surface Cow efficiently - avoid unnecessary string allocation for owned strings
@@ -825,15 +937,10 @@ impl Segmenter {
                     }
                 };
 
-                // compute the token's absolute byte positions
-                let token_start = byte_position;
-                byte_position += byte_end - byte_start;
-                let token_end = byte_position;
-
                 tokens.push(Token::new(
                     surface_cow,
-                    token_start,
-                    token_end,
+                    absolute_start,
+                    absolute_end,
                     position,
                     word_id,
                     &self.dictionary,
@@ -882,12 +989,13 @@ impl Segmenter {
     ) -> LinderaResult<Vec<(Vec<Token<'a>>, i64)>> {
         let mut all_results: Vec<(Vec<Token>, i64)> = Vec::with_capacity(n);
 
-        // Hoisted whitespace-filter configuration; see segment_with_buffers.
+        // Hoisted whitespace configuration; see segment_with_buffers.
         let space_filter = if self.keep_whitespace {
             None
         } else {
-            self.space_category_id.zip(self.space_ascii_table.as_ref())
+            self.whitespace.as_ref()
         };
+        let skipped = self.whitespace_to_skip();
 
         let text_len = text.len();
         let mut sentence_start = 0;
@@ -929,44 +1037,24 @@ impl Segmenter {
                 all_results[rank].1 += cost;
 
                 let mut position = all_results[rank].0.len();
-                let mut byte_position: usize = if all_results[rank].0.is_empty() {
-                    0
-                } else {
-                    all_results[rank].0.last().map_or(0, |t| t.byte_end)
-                };
 
                 for i in 0..offsets.len() {
                     let (byte_start, word_id) = offsets[i];
-                    let byte_end = if i == offsets.len() - 1 {
+                    let span_end = if i == offsets.len() - 1 {
                         sentence.len()
                     } else {
                         offsets[i + 1].0
                     };
+                    let byte_end = self.token_end(sentence, byte_start, span_end, skipped);
 
                     let absolute_start = sentence_start + byte_start;
                     let absolute_end = sentence_start + byte_end;
 
                     // Skip whitespace tokens if keep_whitespace is false
-                    if let Some((space_category_id, space_ascii_table)) = space_filter {
-                        // ASCII/Latin-1 codepoints use the precomputed table
-                        // (O(1)); anything else falls back to the dictionary
-                        // lookup.
-                        let token_text = &sentence[byte_start..byte_end];
-                        let is_space = token_text.chars().all(|c| {
-                            if (c as u32) < 256 {
-                                space_ascii_table[c as usize]
-                            } else {
-                                self.dictionary
-                                    .character_definition
-                                    .lookup_categories(c)
-                                    .contains(&space_category_id)
-                            }
-                        });
-
-                        if is_space {
-                            byte_position += byte_end - byte_start;
-                            continue;
-                        }
+                    if let Some(whitespace) = space_filter
+                        && self.is_whitespace_token(&sentence[byte_start..byte_end], whitespace)
+                    {
+                        continue;
                     }
 
                     let surface_cow = match &text {
@@ -974,14 +1062,10 @@ impl Segmenter {
                         Cow::Owned(s) => Cow::Owned(s[absolute_start..absolute_end].to_owned()),
                     };
 
-                    let token_start = byte_position;
-                    byte_position += byte_end - byte_start;
-                    let token_end = byte_position;
-
                     all_results[rank].0.push(Token::new(
                         surface_cow,
-                        token_start,
-                        token_end,
+                        absolute_start,
+                        absolute_end,
                         position,
                         word_id,
                         &self.dictionary,
@@ -2287,6 +2371,62 @@ mod tests {
         assert_eq!(tokens[1].surface, "都");
     }
 
+    /// Whitespace is skipped in the lattice, so a word after a space
+    /// connects to the word before it as in MeCab. The expected readings are
+    /// MeCab 0.996's with the same IPADIC source; with the whitespace node
+    /// (`skip_whitespace(false)`) `が` and `で` read as conjunctions and `都`
+    /// as a common noun instead.
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_segment_skips_whitespace_like_mecab_ipadic() {
+        use std::borrow::Cow;
+
+        use crate::dictionary::load_dictionary;
+        use crate::mode::Mode;
+
+        fn render(segmenter: &Segmenter, text: &str) -> Vec<String> {
+            segmenter
+                .segment(Cow::Borrowed(text))
+                .unwrap()
+                .iter_mut()
+                .map(|t| {
+                    let pos = t.details()[..2].join("-");
+                    format!("{}/{pos}", t.surface)
+                })
+                .collect()
+        }
+
+        let dictionary = load_dictionary("embedded://ipadic").unwrap();
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+        let cases = [
+            (
+                "東京 都に行く",
+                "東京/名詞-固有名詞 都/名詞-接尾 に/助詞-格助詞 行く/動詞-自立",
+            ),
+            (
+                "Google が 新しい サービス を 発表した",
+                "Google/名詞-固有名詞 が/助詞-格助詞 新しい/形容詞-自立 サービス/名詞-サ変接続 \
+                 を/助詞-格助詞 発表/名詞-サ変接続 し/動詞-自立 た/助動詞-*",
+            ),
+            (
+                "私は Python で プログラム を書く",
+                "私/名詞-代名詞 は/助詞-係助詞 Python/名詞-一般 で/助詞-格助詞 \
+                 プログラム/名詞-サ変接続 を/助詞-格助詞 書く/動詞-自立",
+            ),
+        ];
+        for (text, expected) in cases {
+            let expected: Vec<String> = expected.split_whitespace().map(String::from).collect();
+            assert_eq!(render(&segmenter, text), expected, "{text}");
+        }
+
+        let legacy = segmenter.clone().skip_whitespace(false);
+        assert_eq!(
+            render(&legacy, "Google が 新しい")[1],
+            "が/接続詞-*",
+            "the whitespace node reads が as a conjunction"
+        );
+    }
+
     #[test]
     #[cfg(feature = "embed-ipadic")]
     fn test_long_text() {
@@ -2487,6 +2627,13 @@ mod tests {
     }
 
     /// Left-space penalty (mecab-ko `left-space-penalty-factor`) on ko-dic.
+    ///
+    /// These tests keep whitespace in the lattice (`skip_whitespace(false)`):
+    /// there every space resets the connection context, so the penalty alone
+    /// decides readings such as `시/EP` vs `시/NNG` and its effect shows in
+    /// isolation. With whitespace skipped (the default) the connection costs
+    /// already pick `시/NNG`; `skip_whitespace::test_space_penalty_applies_
+    /// when_skipping_whitespace` covers the penalty in that lattice.
     #[cfg(feature = "embed-ko-dic")]
     mod space_penalty {
         use std::borrow::Cow;
@@ -2519,6 +2666,7 @@ mod tests {
         fn segmenter(mode: Mode, penalty: bool) -> Segmenter {
             let dictionary = load_dictionary("embedded://ko-dic").unwrap();
             Segmenter::new(mode, dictionary, None)
+                .skip_whitespace(false)
                 .space_penalty(penalty.then(ko_dic_rules))
                 .unwrap()
         }
@@ -2557,6 +2705,13 @@ mod tests {
 
         fn words(s: &str) -> Vec<String> {
             s.split_whitespace().map(str::to_string).collect()
+        }
+
+        /// The segmenter's `SPACE` classifier.
+        fn segmenter_whitespace(
+            segmenter: &Segmenter,
+        ) -> &lindera_dictionary::whitespace::WhitespaceClassifier {
+            segmenter.whitespace.as_ref().unwrap()
         }
 
         /// The penalty flips the particle/ending reading of a token that
@@ -2742,6 +2897,7 @@ mod tests {
             let base = serde_json::json!({
                 "dictionary": "embedded://ko-dic",
                 "mode": "normal",
+                "skip_whitespace": false,
             });
 
             let mut config: SegmenterConfig = base.clone();
@@ -2801,6 +2957,12 @@ mod tests {
             }
             // U+3000 is Unicode whitespace but not a ko-dic SPACE character.
             assert!('\u{3000}'.is_whitespace());
+            // No ko-dic SPACE character lies above U+00FF, so the classifier
+            // answers those codepoints without a category lookup.
+            let classifier = segmenter_whitespace(&on);
+            for c in ['가', '\u{3000}', '\u{2028}', '漢'] {
+                assert!(!classifier.is_space(c, char_definitions), "{c:?}");
+            }
 
             // The ASCII fast path must return what the category lookup would.
             let space_id = char_definitions.category_id_by_name("SPACE").unwrap();
@@ -2831,7 +2993,7 @@ mod tests {
         #[test]
         fn test_new_applies_shipped_rules_by_default() {
             let dictionary = load_dictionary("embedded://ko-dic").unwrap();
-            let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+            let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
             assert_eq!(segmenter.space_penalty_config(), Some(&ko_dic_rules()));
             assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/NNG");
 
@@ -2844,7 +3006,7 @@ mod tests {
             let mut metadata = (*dictionary.metadata).clone();
             metadata.space_penalty = None;
             dictionary.metadata = std::sync::Arc::new(metadata);
-            let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+            let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
             assert!(segmenter.space_penalty_config().is_none());
             assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/EP");
         }
@@ -2873,7 +3035,7 @@ mod tests {
             metadata.dictionary_schema = Schema::new(fields);
             dictionary.metadata = std::sync::Arc::new(metadata);
 
-            let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+            let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
             assert!(segmenter.space_penalty_config().is_none());
             assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/EP");
         }
@@ -2900,6 +3062,506 @@ mod tests {
             let mut segmenter = Segmenter::new(Mode::Normal, dictionary, None);
             assert!(segmenter.set_space_penalty_from_dictionary().is_err());
             assert!(segmenter.space_penalty_config().is_none());
+        }
+    }
+
+    /// Jieba and CC-CEDICT carry no connection costs (a 1x1 matrix), so
+    /// whitespace skipping cannot change their 1-best output on spaced text.
+    #[cfg(any(feature = "embed-jieba", feature = "embed-cc-cedict"))]
+    fn assert_skip_whitespace_keeps_output(uri: &str) {
+        use std::borrow::Cow;
+
+        use crate::dictionary::load_dictionary;
+        use crate::mode::Mode;
+        use crate::segmenter::Segmenter;
+
+        let render = |segmenter: &Segmenter, text: &str| -> Vec<(String, usize, usize)> {
+            segmenter
+                .segment(Cow::Borrowed(text))
+                .unwrap()
+                .into_iter()
+                .map(|t| (t.surface.to_string(), t.byte_start, t.byte_end))
+                .collect()
+        };
+        let on = Segmenter::new(Mode::Normal, load_dictionary(uri).unwrap(), None);
+        let off = on.clone().skip_whitespace(false);
+        for text in [
+            "我 喜欢 吃 苹果和香蕉。",
+            "北京 是 中华人民共和国 的 首都",
+            "  可以 进行   中文 形态学 分析  ",
+            "Hello World 你好",
+        ] {
+            assert_eq!(render(&on, text), render(&off, text), "{uri}: {text}");
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "embed-jieba")]
+    fn test_skip_whitespace_keeps_jieba_output() {
+        assert_skip_whitespace_keeps_output("embedded://jieba");
+    }
+
+    #[test]
+    #[cfg(feature = "embed-cc-cedict")]
+    fn test_skip_whitespace_keeps_cc_cedict_output() {
+        assert_skip_whitespace_keeps_output("embedded://cc-cedict");
+    }
+
+    /// SudachiDict keeps whitespace in the lattice by default, as Sudachi
+    /// does and as its costs assume: its metadata sets `skip_whitespace` to
+    /// `false`. A multi-word entry such as `caramel man` then stays one
+    /// token, whereas skipping would split it (the split path no longer pays
+    /// for the whitespace node). The config can still turn skipping on.
+    #[test]
+    #[cfg(feature = "embed-sudachidict")]
+    fn test_sudachidict_keeps_whitespace_nodes_by_default() {
+        use std::borrow::Cow;
+
+        use crate::dictionary::load_dictionary;
+        use crate::mode::Mode;
+        use crate::segmenter::{Segmenter, SegmenterConfig};
+
+        let surfaces = |segmenter: &Segmenter, text: &str| -> Vec<String> {
+            segmenter
+                .segment(Cow::Borrowed(text))
+                .unwrap()
+                .into_iter()
+                .map(|t| t.surface.to_string())
+                .collect()
+        };
+        let dictionary = load_dictionary("embedded://sudachidict").unwrap();
+        assert_eq!(dictionary.metadata.skip_whitespace, Some(false));
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+        assert!(!segmenter.skip_whitespace);
+
+        let text = "昨日caramel manを見た";
+        let kept = surfaces(&segmenter, text);
+        assert_eq!(kept[1], "caramel man", "{kept:?}");
+        let skipping = segmenter.clone().skip_whitespace(true);
+        assert_ne!(surfaces(&skipping, text), kept);
+
+        let config: SegmenterConfig = serde_json::json!({
+            "dictionary": "embedded://sudachidict",
+            "skip_whitespace": true,
+        });
+        let from_config = Segmenter::from_config(&config).unwrap();
+        assert!(from_config.skip_whitespace);
+        assert_eq!(surfaces(&from_config, text), surfaces(&skipping, text));
+    }
+
+    /// MeCab-compatible whitespace handling on ko-dic: with
+    /// `keep_whitespace` false, whitespace is skipped in the lattice and the
+    /// words on either side of it connect directly.
+    #[cfg(feature = "embed-ko-dic")]
+    mod skip_whitespace {
+        use std::borrow::Cow;
+        use std::io::Write;
+
+        use crate::dictionary::{load_dictionary, load_user_dictionary};
+        use crate::mode::{Mode, Penalty};
+        use crate::segmenter::{Segmenter, SegmenterConfig};
+        use crate::token::Token;
+
+        /// mecab-ko 0.996-ko-0.9.2 with mecab-ko-dic 2.1.1-20180720, the
+        /// source ko-dic is built from: `%m/%f[0]` per morpheme and the path
+        /// cost (`%pc` at EOS).
+        const MECAB_KO: [(&str, &str, i64); 14] = [
+            ("2년 전 대회", "2/SN 년/NNBC 전/NNG 대회/NNG", 6257),
+            (
+                "전 대통령이 방문했다",
+                "전/MM 대통령/NNG 이/JKS 방문/NNG 했/XSV+EP 다/EC",
+                547,
+            ),
+            (
+                "전 세계에서 가장 큰",
+                "전/MM 세계/NNG 에서/JKB 가장/MAG 큰/VA+ETM",
+                -5078,
+            ),
+            (
+                "공부를 하고 있다",
+                "공부/NNG 를/JKO 하/VV 고/EC 있/VX 다/EC",
+                -7222,
+            ),
+            ("갈 수 있다", "갈/VV+ETM 수/NNB 있/VV 다/EC", 682),
+            ("메일 제목에", "메일/NNG 제목/NNG 에/JKB", 2656),
+            (
+                "오늘 날씨가 참 좋네요",
+                "오늘/MAG 날씨/NNG 가/JKS 참/MAG 좋/VA 네요/EC",
+                -155,
+            ),
+            (
+                "부산광역시 해운대구에",
+                "부산광역시/NNP 해운대구/NNP 에/JKB",
+                5672,
+            ),
+            ("서울 시 에서", "서울/NNP 시/NNG 에서/JKB", 4166),
+            ("검색 이 잘 된다", "검색/NNG 이/IC 잘/MAG 된다/VV+EC", 6820),
+            (
+                "10년 전에 지어진 건물",
+                "10/SN 년/NNBC 전/NNG 에/JKB 지/VV 어/EC 진/VX+ETM 건물/NNG",
+                9317,
+            ),
+            (
+                "무궁화꽃이 피었습니다.",
+                "무궁화/NNG 꽃/NNG 이/JKS 피/VV 었/EP 습니다/EF ./SF",
+                1003,
+            ),
+            (
+                "아버지가방에들어가신다",
+                "아버지/NNG 가/JKS 방/NNG 에/JKB 들어가/VV 신다/EP+EC",
+                413,
+            ),
+            (
+                "기계학습을활용한이미지인식",
+                "기계/NNG 학습/NNG 을/JKO 활용/NNG 한/XSV+ETM 이미지/NNG 인식/NNG",
+                -971,
+            ),
+        ];
+
+        /// Sentences without whitespace.
+        const UNSPACED: [&str; 4] = [
+            "무궁화꽃이피었습니다.",
+            "아버지가방에들어가신다",
+            "기계학습을활용한이미지인식",
+            "삼천2백2십삼원",
+        ];
+
+        /// Inputs exercising whitespace at the sentence edges, runs of it,
+        /// the `\t`/`\n` sentence delimiters, whitespace-only text, and
+        /// ko-dic entries whose surface ends with a space (`내셔날 `).
+        const WHITESPACE_EDGE_CASES: [&str; 12] = [
+            "  2년 전 대회",
+            "2년 전 대회  ",
+            "2년   전   대회",
+            "2년 전\t대회",
+            "\n2년 전 대회\n",
+            "첫 줄\n  둘째 줄 \n\n셋째",
+            " \t\n ",
+            " ",
+            "",
+            "내셔날 지오그래픽",
+            "내셔날   지오그래픽 ",
+            "\u{000B}서울 시\r 에서",
+        ];
+
+        /// A ko-dic segmenter with the defaults `Segmenter::new` applies.
+        fn segmenter(mode: Mode) -> Segmenter {
+            let dictionary = load_dictionary("embedded://ko-dic").unwrap();
+            Segmenter::new(mode, dictionary, None)
+        }
+
+        /// Renders tokens as `surface/POS` (the first detail field).
+        fn render_tokens(tokens: &mut [Token]) -> Vec<String> {
+            tokens
+                .iter_mut()
+                .map(|t| {
+                    let pos = t.details()[0].to_string();
+                    format!("{}/{}", t.surface, pos)
+                })
+                .collect()
+        }
+
+        /// Segments `text` and renders the tokens.
+        fn render(segmenter: &Segmenter, text: &str) -> Vec<String> {
+            render_tokens(&mut segmenter.segment(Cow::Borrowed(text)).unwrap())
+        }
+
+        /// N-best results rendered like [`render`], paired with their costs.
+        fn render_nbest(segmenter: &Segmenter, text: &str, n: usize) -> Vec<(Vec<String>, i64)> {
+            segmenter
+                .segment_nbest(Cow::Borrowed(text), n, false, None)
+                .unwrap()
+                .into_iter()
+                .map(|(mut tokens, cost)| (render_tokens(&mut tokens), cost))
+                .collect()
+        }
+
+        fn words(s: &str) -> Vec<String> {
+            s.split_whitespace().map(str::to_string).collect()
+        }
+
+        /// Whether `c` is in ko-dic's `SPACE` category (`char.def`).
+        fn is_ko_dic_space(c: char) -> bool {
+            matches!(c, ' ' | '\t' | '\n' | '\u{000B}' | '\r')
+        }
+
+        /// Every token's offsets address its surface in `text`, tokens are in
+        /// order and do not overlap, and no surface starts or ends with
+        /// whitespace.
+        fn assert_offsets(text: &str, tokens: &[Token]) {
+            let mut previous_end = 0;
+            for token in tokens {
+                assert_eq!(
+                    &text[token.byte_start..token.byte_end],
+                    token.surface,
+                    "offsets of {:?} in {text:?}",
+                    token.surface
+                );
+                assert!(!token.surface.is_empty(), "empty token in {text:?}");
+                assert!(
+                    !token.surface.starts_with(is_ko_dic_space)
+                        && !token.surface.ends_with(is_ko_dic_space),
+                    "whitespace at the edge of {:?} in {text:?}",
+                    token.surface
+                );
+                assert!(token.byte_start >= previous_end, "overlap in {text:?}");
+                previous_end = token.byte_end;
+            }
+        }
+
+        /// The 1-best path is mecab-ko's, whitespace or not.
+        #[test]
+        fn test_skip_whitespace_matches_mecab_ko() {
+            let segmenter = segmenter(Mode::Normal);
+            for (text, expected, _) in MECAB_KO {
+                assert_eq!(render(&segmenter, text), words(expected), "{text}");
+            }
+        }
+
+        /// The N-best lattice skips whitespace too: its best path agrees with
+        /// `segment` and costs exactly what mecab-ko reports for it.
+        #[test]
+        fn test_skip_whitespace_nbest_matches_1best_and_mecab_ko_cost() {
+            let segmenter = segmenter(Mode::Normal);
+            for (text, expected, cost) in MECAB_KO {
+                let results = render_nbest(&segmenter, text, 3);
+                assert_eq!(results[0].0, render(&segmenter, text), "{text}");
+                assert_eq!(results[0].0, words(expected), "{text}");
+                assert_eq!(results[0].1, cost, "{text}");
+                assert!(results.windows(2).all(|w| w[0].1 <= w[1].1), "{text}");
+            }
+        }
+
+        /// Text without whitespace comes out the same whether or not
+        /// whitespace is skipped.
+        #[test]
+        fn test_skip_whitespace_leaves_unspaced_sentences_unchanged() {
+            let mode = Mode::Normal;
+            let on = segmenter(mode.clone());
+            let off = segmenter(mode).skip_whitespace(false);
+            for text in UNSPACED {
+                assert_eq!(render(&on, text), render(&off, text), "{text}");
+                assert_eq!(
+                    render_nbest(&on, text, 5),
+                    render_nbest(&off, text, 5),
+                    "{text}"
+                );
+            }
+        }
+
+        /// Turning skipping off restores the whitespace nodes and with them
+        /// the pre-7.1 output, through the builder, the config and the
+        /// worker.
+        #[test]
+        fn test_skip_whitespace_can_be_turned_off() {
+            let text = "2년 전 대회";
+            let legacy = words("2/SN 년/NNBC 전/NP+JX 대회/NNG");
+
+            let builder = segmenter(Mode::Normal).skip_whitespace(false);
+            assert!(!builder.skip_whitespace);
+            assert_eq!(render(&builder, text), legacy);
+
+            let config: SegmenterConfig = serde_json::from_str(
+                r#"{ "dictionary": "embedded://ko-dic", "skip_whitespace": false }"#,
+            )
+            .unwrap();
+            let from_config = Segmenter::from_config(&config).unwrap();
+            assert_eq!(render(&from_config, text), legacy);
+
+            let mut worker = segmenter(Mode::Normal).into_worker();
+            worker.set_skip_whitespace(false);
+            let tokens = render_tokens(&mut worker.segment(text).unwrap());
+            assert_eq!(tokens, legacy);
+            worker.set_skip_whitespace(true);
+            let tokens = render_tokens(&mut worker.segment(text).unwrap());
+            assert_eq!(tokens, words("2/SN 년/NNBC 전/NNG 대회/NNG"));
+        }
+
+        /// `Segmenter::new` takes the default from the dictionary's metadata:
+        /// absent or `true` skips, `false` keeps whitespace nodes, and the
+        /// builder overrides it either way.
+        #[test]
+        fn test_skip_whitespace_default_comes_from_metadata() {
+            let text = "2년 전 대회";
+            let skipped = words("2/SN 년/NNBC 전/NNG 대회/NNG");
+            let legacy = words("2/SN 년/NNBC 전/NP+JX 대회/NNG");
+            let with_metadata = |value: Option<bool>| {
+                let mut dictionary = load_dictionary("embedded://ko-dic").unwrap();
+                let mut metadata = (*dictionary.metadata).clone();
+                metadata.skip_whitespace = value;
+                dictionary.metadata = std::sync::Arc::new(metadata);
+                Segmenter::new(Mode::Normal, dictionary, None)
+            };
+
+            assert_eq!(
+                load_dictionary("embedded://ko-dic")
+                    .unwrap()
+                    .metadata
+                    .skip_whitespace,
+                None
+            );
+            for (value, expected) in [
+                (None, &skipped),
+                (Some(true), &skipped),
+                (Some(false), &legacy),
+            ] {
+                let segmenter = with_metadata(value);
+                assert_eq!(segmenter.skip_whitespace, value.unwrap_or(true));
+                assert_eq!(&render(&segmenter, text), expected, "{value:?}");
+            }
+            let overridden = with_metadata(Some(false)).skip_whitespace(true);
+            assert_eq!(render(&overridden, text), skipped);
+        }
+
+        /// In the config, `skip_whitespace` absent or `null` keeps the
+        /// dictionary's default, a bool overrides it, and anything else is
+        /// rejected.
+        #[test]
+        fn test_from_config_skip_whitespace() {
+            let text = "2년 전 대회";
+            let build = |value: Option<serde_json::Value>| {
+                let mut config = serde_json::json!({ "dictionary": "embedded://ko-dic" });
+                if let Some(value) = value {
+                    config["skip_whitespace"] = value;
+                }
+                Segmenter::from_config(&config)
+            };
+            for value in [
+                None,
+                Some(serde_json::Value::Null),
+                Some(serde_json::json!(true)),
+            ] {
+                let segmenter = build(value.clone()).unwrap();
+                assert!(segmenter.skip_whitespace, "{value:?}");
+                assert_eq!(render(&segmenter, text)[2], "전/NNG");
+            }
+            let off = build(Some(serde_json::json!(false))).unwrap();
+            assert!(!off.skip_whitespace);
+            assert_eq!(render(&off, text)[2], "전/NP+JX");
+            assert!(build(Some(serde_json::json!("false"))).is_err());
+        }
+
+        /// `keep_whitespace` keeps whitespace in the lattice, so whitespace
+        /// tokens still come out and the tokens still tile the input.
+        #[test]
+        fn test_keep_whitespace_keeps_whitespace_nodes() {
+            let segmenter = segmenter(Mode::Normal).keep_whitespace(true);
+            assert_eq!(
+                render(&segmenter, "2년 전 대회"),
+                ["2/SN", "년/NNBC", " /SP", "전/NP+JX", " /SP", "대회/NNG"]
+            );
+            for text in WHITESPACE_EDGE_CASES {
+                let tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
+                let rebuilt: String = tokens.iter().map(|t| t.surface.as_ref()).collect();
+                assert_eq!(rebuilt, text);
+                let mut expected_start = 0;
+                for token in &tokens {
+                    assert_eq!(token.byte_start, expected_start, "{text:?}");
+                    assert_eq!(&text[token.byte_start..token.byte_end], token.surface);
+                    expected_start = token.byte_end;
+                }
+            }
+        }
+
+        /// Whitespace at the sentence edges or in runs neither changes the
+        /// analysis nor leaks into token surfaces and offsets, in the 1-best
+        /// and N-best paths and in both modes.
+        #[test]
+        fn test_skip_whitespace_offsets_and_edges() {
+            for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
+                let segmenter = segmenter(mode);
+                let reference = render(&segmenter, "2년 전 대회");
+                for text in WHITESPACE_EDGE_CASES {
+                    let tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
+                    assert_offsets(text, &tokens);
+                    for (position, token) in tokens.iter().enumerate() {
+                        assert_eq!(token.position, position, "{text:?}");
+                    }
+                    let owned = segmenter.segment(Cow::Owned(text.to_string())).unwrap();
+                    assert_offsets(text, &owned);
+                    assert_eq!(owned.len(), tokens.len());
+
+                    for (tokens, _) in segmenter
+                        .segment_nbest(Cow::Borrowed(text), 3, false, None)
+                        .unwrap()
+                    {
+                        assert_offsets(text, &tokens);
+                    }
+                }
+                for text in [
+                    "  2년 전 대회",
+                    "2년 전 대회  ",
+                    "2년   전   대회",
+                    "\n2년 전 대회\n",
+                ] {
+                    assert_eq!(render(&segmenter, text), reference, "{text:?}");
+                }
+                let tokens = segmenter.segment(Cow::Borrowed("  2년 전 대회")).unwrap();
+                assert_eq!((tokens[0].byte_start, tokens[0].byte_end), (2, 3));
+                for text in [" \t\n ", " ", ""] {
+                    assert!(segmenter.segment(Cow::Borrowed(text)).unwrap().is_empty());
+                }
+            }
+        }
+
+        /// The length of a whitespace run costs nothing: neither as a node
+        /// nor through the Decompose length penalty, which measures a word
+        /// without the whitespace after it.
+        #[test]
+        fn test_whitespace_run_length_does_not_change_costs() {
+            let one = "부산광역시 해운대구에";
+            let many = "부산광역시     해운대구에";
+            for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
+                let segmenter = segmenter(mode);
+                let one_results = render_nbest(&segmenter, one, 5);
+                let many_results = render_nbest(&segmenter, many, 5);
+                assert_eq!(one_results, many_results);
+            }
+            assert_eq!(render_nbest(&segmenter(Mode::Normal), many, 1)[0].1, 5672);
+        }
+
+        /// The left-space penalty still keys on the character before a
+        /// candidate, so it applies when whitespace is skipped: `이` after a
+        /// space is not read as a particle (mecab-ko: `이/IC`).
+        #[test]
+        fn test_space_penalty_applies_when_skipping_whitespace() {
+            let text = "검색 이 잘 된다";
+            let on = segmenter(Mode::Normal);
+            let off = segmenter(Mode::Normal).space_penalty(None).unwrap();
+            assert_eq!(render(&on, text), words("검색/NNG 이/IC 잘/MAG 된다/VV+EC"));
+            assert_eq!(
+                render(&off, text),
+                words("검색/NNG 이/JKS 잘/MAG 된다/VV+EC")
+            );
+
+            // In the N-best lattice the particle path costs JX/JKS's 6000 more.
+            let jks = words("검색/NNG 이/JKS 잘/MAG 된다/VV+EC");
+            let cost = |segmenter: &Segmenter| {
+                render_nbest(segmenter, text, 20)
+                    .into_iter()
+                    .find(|(path, _)| *path == jks)
+                    .map(|(_, cost)| cost)
+                    .unwrap()
+            };
+            assert_eq!(cost(&on), cost(&off) + 6000);
+        }
+
+        /// A user-dictionary entry may contain a space: it is matched across
+        /// the whitespace and keeps it in its surface.
+        #[test]
+        fn test_skip_whitespace_user_entry_with_inner_space() {
+            let dictionary = load_dictionary("embedded://ko-dic").unwrap();
+            let mut csv = tempfile::Builder::new().suffix(".csv").tempfile().unwrap();
+            writeln!(csv, "해운대 해수욕장,NNP,해운대해수욕장").unwrap();
+            csv.flush().unwrap();
+            let user_dictionary =
+                load_user_dictionary(csv.path().to_str().unwrap(), &dictionary.metadata).unwrap();
+            let segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary));
+
+            let text = "해운대 해수욕장에 갔다";
+            let tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
+            assert_eq!(tokens[0].surface, "해운대 해수욕장");
+            assert_offsets(text, &tokens);
         }
     }
 }

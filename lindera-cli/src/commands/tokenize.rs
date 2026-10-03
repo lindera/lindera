@@ -63,9 +63,14 @@ pub struct TokenizeArgs {
     token_filters: Option<Vec<String>>,
     #[clap(
         long = "keep-whitespace",
-        help = "Keep whitespace tokens in output (default: whitespace is ignored for MeCab compatibility)"
+        help = "Keep whitespace tokens in output (default: whitespace is skipped in the lattice and dropped from the output, as MeCab does)"
     )]
     keep_whitespace: bool,
+    #[clap(
+        long = "disable-skip-whitespace",
+        help = "Keep whitespace in the lattice as SPACE unknown-word nodes instead of skipping it, while still dropping it from the output (the behavior before whitespace skipping). By default the words on either side of whitespace connect directly, as in MeCab, for every dictionary whose metadata.json does not turn skipping off (SudachiDict does). No effect with --keep-whitespace"
+    )]
+    disable_skip_whitespace: bool,
     #[clap(
         long = "max-grouping-len",
         help = "Cap on unknown-word grouping, in characters beyond the first (MeCab's max-grouping-size; MeCab defaults to 24). Applied at each position: a same-category run longer than the cap is not grouped there; the single-character candidate (plus the length ladder and dictionary words) remains and the remaining tail is grouped again once it fits, so no unknown token exceeds cap+1 characters. 0 or omitted: unbounded"
@@ -79,7 +84,7 @@ pub struct TokenizeArgs {
     #[clap(
         long = "disable-space-penalty",
         conflicts_with = "space_penalty_rules",
-        help = "Disable the left-space penalty (mecab-ko's left-space-penalty-factor) that a dictionary shipping rules in its metadata.json applies by default (ko-dic). A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added; disabling restores the v6.0 output for Korean"
+        help = "Disable the left-space penalty (mecab-ko's left-space-penalty-factor) that a dictionary shipping rules in its metadata.json applies by default (ko-dic). A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added; disabling it together with --disable-skip-whitespace restores the v6.0 output for Korean"
     )]
     disable_space_penalty: bool,
     #[clap(
@@ -263,9 +268,14 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     // Mode
     builder.set_segmenter_mode(&args.mode);
 
-    // Keep whitespace (default is to ignore whitespace for MeCab compatibility)
+    // Keep whitespace (default is to skip and drop it, as MeCab does)
     if args.keep_whitespace {
         builder.set_segmenter_keep_whitespace(true);
+    }
+
+    // Whitespace skipping in the lattice (default: enabled)
+    if args.disable_skip_whitespace {
+        builder.set_segmenter_skip_whitespace(false);
     }
 
     // Unknown-word grouping cap (default: unbounded)
@@ -385,6 +395,16 @@ mod tests {
     struct Cli {
         #[clap(flatten)]
         args: TokenizeArgs,
+    }
+
+    #[test]
+    fn disable_skip_whitespace_flag() {
+        let base = ["lindera", "--dict", "embedded://ko-dic"];
+        let cli = Cli::try_parse_from(base.iter()).unwrap();
+        assert!(!cli.args.disable_skip_whitespace);
+        let cli =
+            Cli::try_parse_from(base.iter().chain(["--disable-skip-whitespace"].iter())).unwrap();
+        assert!(cli.args.disable_skip_whitespace);
     }
 
     #[test]

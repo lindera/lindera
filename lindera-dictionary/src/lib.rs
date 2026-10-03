@@ -10,6 +10,7 @@ pub mod nbest;
 pub mod space_penalty;
 pub mod util;
 pub mod viterbi;
+pub mod whitespace;
 
 pub type LinderaResult<T> = Result<T, crate::error::LinderaError>;
 

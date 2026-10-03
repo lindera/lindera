@@ -119,9 +119,14 @@ reserved columns; the rest name SudachiDict's columns in order:
       "synonym_group_ids"
     ]
   },
-  "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] }
+  "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] },
+  "skip_whitespace": false
 }
 ```
+
+`skip_whitespace: false` keeps whitespace in the lattice, as Sudachi does and
+as SudachiDict's costs assume; without it, Lindera skips whitespace as MeCab
+does (see [Segmenter](./lindera/segmenter.md#whitespace-handling)).
 
 ## Build and verify
 

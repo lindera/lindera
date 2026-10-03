@@ -620,7 +620,7 @@ mod tests {
         /// explicitly behave like the default (#1052).
         #[test]
         fn space_penalty_setting_changes_ko_dic_output() {
-            let text = "서울 시 에서 출발";
+            let text = "검색 이 잘 된다";
             let default = tags(&Value::Null, text);
             let off = tags(&Value::Bool(false), text);
             let required = tags(&Value::Bool(true), text);
@@ -636,14 +636,14 @@ mod tests {
             );
             assert_eq!(default, required);
             assert_eq!(default, explicit);
-            // With the penalty, `시` after a space is no longer the
-            // pre-final ending EP.
+            // With the penalty, `이` after a space is no longer the subject
+            // particle JKS (mecab-ko reads it as the interjection IC).
             assert!(
-                off.iter().any(|(s, tag)| s == "시" && tag == "EP"),
+                off.iter().any(|(s, tag)| s == "이" && tag == "JKS"),
                 "{off:?}"
             );
             assert!(
-                !default.iter().any(|(s, tag)| s == "시" && tag == "EP"),
+                !default.iter().any(|(s, tag)| s == "이" && tag == "JKS"),
                 "{default:?}"
             );
         }
@@ -652,7 +652,7 @@ mod tests {
         /// `loadDictionaryFromBytes`) honours the same setting.
         #[test]
         fn from_segmenter_with_space_penalty_matches_the_builder() {
-            let text = "서울 시 에서 출발";
+            let text = "검색 이 잘 된다";
             for value in [Value::Null, Value::Bool(false), Value::Bool(true)] {
                 let dictionary = match lindera::dictionary::load_dictionary("embedded://ko-dic") {
                     Ok(dictionary) => dictionary,

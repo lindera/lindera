@@ -59,6 +59,26 @@ impl<T: Copy + Clone> LookupTable<T> {
             .unwrap_or_else(|val| val - 1);
         &self.values[idx][..]
     }
+
+    /// Returns whether `pred` holds for the values of any range that covers
+    /// a codepoint at or above `from`.
+    ///
+    /// # Arguments
+    ///
+    /// * `from` - The lowest codepoint of interest.
+    /// * `pred` - The test applied to a range's values.
+    ///
+    /// # Returns
+    ///
+    /// `true` when some such range satisfies `pred`.
+    pub(crate) fn any_range_from(&self, from: u32, pred: impl Fn(&[T]) -> bool) -> bool {
+        self.values.iter().enumerate().any(|(i, values)| {
+            // Range `i` covers `boundaries[i]..boundaries[i + 1]`; the last
+            // one is open-ended.
+            let end = self.boundaries.get(i + 1).copied().unwrap_or(u32::MAX);
+            end > from && pred(values)
+        })
+    }
 }
 
 /// Number of codepoints covered by the flat category table (the Basic
@@ -177,6 +197,22 @@ impl CharacterDefinition {
         &self.category_names[category_id.0]
     }
 
+    /// Returns whether `category` is assigned to any codepoint at or above
+    /// `from`.
+    ///
+    /// # Arguments
+    ///
+    /// * `category` - The category to look for.
+    /// * `from` - The lowest codepoint of interest.
+    ///
+    /// # Returns
+    ///
+    /// `true` when some codepoint at or above `from` carries `category`.
+    pub(crate) fn has_category_from(&self, category: CategoryId, from: u32) -> bool {
+        self.mapping
+            .any_range_from(from, |categories| categories.contains(&category))
+    }
+
     pub fn category_id_by_name(&self, name: &str) -> Option<CategoryId> {
         self.category_names
             .iter()
@@ -239,6 +275,33 @@ impl CharacterDefinition {
 
 #[cfg(test)]
 mod tests {
+    /// `any_range_from` looks at every range that reaches `from` or beyond,
+    /// including the open-ended last one, and at no range that ends below it.
+    #[test]
+    fn any_range_from_sees_only_ranges_reaching_from() {
+        let mark = |cp: u32, out: &mut Vec<u8>| {
+            if cp == 0x20 || cp == 0x3000 {
+                out.push(1);
+            }
+        };
+        let has_mark = |values: &[u8]| values.contains(&1);
+
+        // 0x20..0x21 and 0x3000..0x3001 are marked.
+        let table = LookupTable::from_fn(vec![0x20, 0x21, 0x3000, 0x3001], &mark);
+        assert!(table.any_range_from(256, has_mark));
+        assert!(table.any_range_from(0x3000, has_mark));
+        assert!(!table.any_range_from(0x3001, has_mark));
+
+        // Only 0x20..0x100 is marked: it ends below 256.
+        let table = LookupTable::from_fn(vec![0x20, 0x100], &mark);
+        assert!(table.any_range_from(0xFF, has_mark));
+        assert!(!table.any_range_from(256, has_mark));
+
+        // The last range is open-ended.
+        let table = LookupTable::from_fn(vec![0x20], &mark);
+        assert!(table.any_range_from(0x10_0000, has_mark));
+    }
+
     use crate::dictionary::character_definition::{
         CategoryData, CategoryId, CharacterDefinition, LookupTable,
     };

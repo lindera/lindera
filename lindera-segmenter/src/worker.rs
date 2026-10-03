@@ -206,10 +206,21 @@ impl SegmentWorker {
     ///
     /// # 引数
     ///
-    /// * `keep` - `true` to keep whitespace tokens, `false` (MeCab-compatible
-    ///   default) to drop them.
+    /// * `keep` - `true` to keep whitespace tokens (and whitespace nodes in
+    ///   the lattice), `false` (MeCab-compatible default) to drop them.
     pub fn set_keep_whitespace(&mut self, keep: bool) {
         self.segmenter.keep_whitespace = keep;
+    }
+
+    /// Sets whether whitespace is skipped in the lattice for subsequent
+    /// calls when whitespace tokens are not kept (see
+    /// `Segmenter::skip_whitespace`; defaults to the dictionary's setting).
+    ///
+    /// # 引数
+    ///
+    /// * `skip` - `false` to keep whitespace nodes in the lattice.
+    pub fn set_skip_whitespace(&mut self, skip: bool) {
+        self.segmenter.skip_whitespace = skip;
     }
 
     /// Sets the unknown-word grouping cap for subsequent calls (MeCab's

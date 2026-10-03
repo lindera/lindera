@@ -139,11 +139,23 @@ Requires the `mmap` cargo feature (enabled by default).
 
 ## Whitespace Handling
 
-By default, whitespace-only tokens are dropped from the output for MeCab compatibility. Call `keep_whitespace(true)` on a `Segmenter` to keep them:
+By default, whitespace is skipped in the lattice, as MeCab does: no word starts on a whitespace character, and the word after a run of whitespace connects directly to the word before it, with the connection cost the dictionary was trained with. Whitespace never appears in the output, and token surfaces and offsets leave it out. "Whitespace" is the dictionary's `SPACE` character category (`char.def`): U+0020, U+0009, U+000A, U+000B and U+000D for ko-dic, and U+0020, U+0009, U+000A, U+000B and U+00D0 for IPADIC, IPADIC-NEologd, UniDic, SudachiDict, CC-CEDICT and Jieba. One difference from MeCab: a later `0x00C0..0x00FF ALPHA` line in those `char.def` files makes MeCab treat U+00D0 (`Ð`) as a letter only, whereas Lindera keeps both categories and treats it as whitespace.
+
+The default comes from the dictionary's `metadata.json` (`skip_whitespace`). SudachiDict sets it to `false`: Sudachi keeps whitespace in the lattice and outputs it as `空白` tokens, and SudachiDict's costs are tuned for that, so skipping would, for example, split the entry `caramel man` into two common nouns. With SudachiDict, whitespace therefore stays in the lattice as a `SPACE` node by default, though it is still dropped from the output. The other bundled dictionaries leave the setting out, which means skipping, and so does a dictionary built before the setting existed (a SudachiDict built by Lindera 6.x included, until it is rebuilt).
+
+Call `keep_whitespace(true)` on a `Segmenter` to output whitespace tokens. Whitespace then stays in the lattice as `SPACE` unknown-word nodes:
 
 ```rust
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 ```
+
+Before v7, Lindera kept whitespace in the lattice even when it dropped it from the output. Dictionaries trained with MeCab never see a connection to or from the `SPACE` unknown word: in ko-dic its row and column of the connection matrix are all zero, so every space reset the context and a word between spaces was chosen by its word cost alone. ko-dic read `전` in `2년 전 대회` as `저/NP + ㄴ/JX` instead of the noun `NNG`, and IPADIC, whose `SPACE` entry shares the context of the full-width space, read `が` in `Google が 新しい` as a conjunction. CC-CEDICT and Jieba have no connection costs at all, so their output does not depend on this. `skip_whitespace` overrides the dictionary's default: `skip_whitespace(false)` keeps whitespace nodes in the lattice as before, while still dropping whitespace from the output, and `skip_whitespace(true)` turns skipping on for SudachiDict. In a `SegmenterConfig` the `skip_whitespace` key takes `true` or `false`, and leaving it out, or `null`, keeps the dictionary's default; on the CLI, `--disable-skip-whitespace` turns skipping off:
+
+```rust
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
+```
+
+Text is still split into sentences at `\n` and `\t` (see [Sentence Splitting](#sentence-splitting)), so the context is not carried across a newline or a tab. mecab-ko analyzes a line at a time and skips a tab inside it like any other whitespace.
 
 ## Unknown-Word Grouping
 
@@ -165,7 +177,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladd
 
 ## Left-Space Penalty (Korean)
 
-MeCab-based Korean analyzers (mecab-ko with mecab-ko-dic, Lucene's nori) add a cost to a candidate that starts right after whitespace when its part-of-speech tag is one that attaches to the preceding word without a space: particles (`J*`), endings (`E*`), the copula (`VCP`) and derivational suffixes (`XS*`). Without it, `서울 시 에서` reads `시` as the ending `EP` rather than the noun `NNG`. Lindera applies the same penalty by default for dictionaries that ship the rules in their metadata (ko-dic does); other dictionaries are unaffected. Opt out with `Segmenter::space_penalty(None)`, `"space_penalty": false` in the config, or `--disable-space-penalty` on the CLI, which restores the v6.0 output.
+MeCab-based Korean analyzers (mecab-ko with mecab-ko-dic, Lucene's nori) add a cost to a candidate that starts right after whitespace when its part-of-speech tag is one that attaches to the preceding word without a space: particles (`J*`), endings (`E*`), the copula (`VCP`) and derivational suffixes (`XS*`). Without it, `검색 이 잘 된다` reads `이` as the subject particle `JKS` rather than the interjection `IC`. Lindera applies the same penalty by default for dictionaries that ship the rules in their metadata (ko-dic does); other dictionaries are unaffected. Opt out with `Segmenter::space_penalty(None)`, `"space_penalty": false` in the config, or `--disable-space-penalty` on the CLI; together with `skip_whitespace(false)` this restores the v6.0 output.
 
 `SpacePenaltyConfig` is a list of rules, each pairing first part-of-speech tags with a cost. A candidate is matched by the part of its tag before the first `+` (for ko-dic `Inflect` rows, the `first_part_of_speech` column); the first matching rule wins and unlisted tags cost nothing. mecab-ko-dic's `dicrc` rules translate to:
 
@@ -203,7 +215,7 @@ In a `SegmenterConfig`, the `space_penalty` key takes an object for explicit rul
 }
 ```
 
-Note that Lindera keeps whitespace as a lattice node (the `SPACE` unknown word) and connects its neighbours through it, whereas MeCab drops whitespace and connects the surrounding words directly. The penalty therefore fixes the penalized readings, but a spaced sentence can still be segmented differently from mecab-ko.
+The penalty keys on the character before a candidate, which is mecab-ko's test as well, so it applies the same way whether whitespace is skipped in the lattice (the default, see [Whitespace Handling](#whitespace-handling)) or kept as nodes. With whitespace skipped, the connection costs on their own already rule out some readings the penalty targets (`시` in `서울 시 에서` reads as `NNG` without it), but not all of them (`이` in `검색 이 잘 된다`).
 
 ## N-Best Segmentation
 

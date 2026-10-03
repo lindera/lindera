@@ -56,10 +56,14 @@ Lindera は `pos-id.def` の ID を保持しませんが、列挙されている
 ```
 
 ```shell
-echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic
+echo "검색 이 잘 된다" | lindera tokenize --dict embedded://ko-dic
 ```
 
-`서울 시 에서` の `시` は語尾 `EP` ではなく（mecab-ko と同様に）名詞 `NNG` と解析されます。`--disable-space-penalty` を付けると再び `EP` になります。意味論と、mecab-ko の空白処理との残る差異については Segmenter のドキュメントを参照してください。
+空白の後ろの `이` は主格助詞 `JKS` ではなく（mecab-ko と同様に）感動詞 `IC` と解析されます。`--disable-space-penalty` を付けると再び `JKS` になります。意味論については Segmenter のドキュメントを参照してください。
+
+## 空白
+
+mecab-ko はラティスを構築する際に空白を読み飛ばすため、空白の後ろの語は空白の前の語に接続します。そのため `SPACE` の未知語項目（`unk.def`: `SPACE,1798,3563,996`）は学習時にどの語とも接続されず、`matrix.def` のその行と列はすべて 0 です。Lindera もデフォルトで同じように空白を読み飛ばします。`--disable-skip-whitespace`（`Segmenter::skip_whitespace(false)`、`"skip_whitespace": false`）を指定すると、空白はこの項目としてラティスに残り、空白のたびに文脈が途切れます。その場合、`2년 전 대회` の `전` は名詞 `NNG` ではなく `저/NP + ㄴ/JX`、`하고 있다` の `있` は補助用言 `VX` ではなく本動詞と解析されます。
 
 ## ユーザー辞書フォーマット (CSV)
 
