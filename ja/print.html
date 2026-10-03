@@ -1034,7 +1034,7 @@ tokenizer
 </code></pre>
 <h2 id="主要コンポーネント-2"><a class="header" href="#主要コンポーネント-2">主要コンポーネント</a></h2>
 <h3 id="trainerconfig"><a class="header" href="#trainerconfig">TrainerConfig</a></h3>
-<p>学習に必要な5つの入力ファイル――種辞書（<code>lex.csv</code>）、文字定義（<code>char.def</code>）、未知語定義（<code>unk.def</code>）、素性テンプレート（<code>feature.def</code>）、書き換えルール（<code>rewrite.def</code>）――をパースし、<code>Trainer</code>が利用する設定情報にまとめます。<code>TrainerConfig::from_readers</code>（またはファイルパスを直接渡せるラッパーの<code>from_paths</code>）は、種辞書から表層形と素性の語彙を抽出し、パースした素性テンプレートから<code>FeatureExtractor</code>を構築し、書き換えルールから<code>DictionaryRewriter</code>を構築し、さらに<code>char.def</code>から実際にパースした文字定義をもとに最小限のインメモリ<code>lindera_dictionary::dictionary::Dictionary</code>を組み立てます。注意: この<code>Dictionary</code>の<code>prefix_dictionary</code>（システム辞書）フィールドと<code>unknown_dictionary</code>フィールドは、空のスタブとして構築されるだけです――学習時に実際に使われる種辞書の語彙や未知語カテゴリの素性は、この<code>Dictionary</code>オブジェクトではなく、<code>TrainerConfig</code>自身の<code>surfaces</code> / <code>features</code> / <code>unk_categories</code> / <code>unk_costs</code>フィールドに別途保持されています。また、<code>surfaces()</code>、<code>surface_features()</code>、<code>get_features()</code>に加え、<code>user_lexicon()</code> / <code>add_user_lexicon_entry()</code> / <code>load_user_lexicon_from_content()</code>によるユーザー辞書へのアクセス、<code>metadata()</code>も提供します。</p>
+<p>学習に必要な5つの入力ファイル――種辞書（<code>lex.csv</code>）、文字定義（<code>char.def</code>）、未知語定義（<code>unk.def</code>）、素性テンプレート（<code>feature.def</code>）、書き換えルール（<code>rewrite.def</code>）――をパースし、<code>Trainer</code>が利用する設定情報にまとめます。<code>TrainerConfig::from_readers</code>（またはファイルパスを直接渡せるラッパーの<code>from_paths</code>）は、種辞書から表層形と素性の語彙を抽出し、パースした素性テンプレートから<code>FeatureExtractor</code>を構築し、書き換えルールから<code>DictionaryRewriter</code>を構築し、さらに文字定義をもとに最小限のインメモリ<code>lindera_dictionary::dictionary::Dictionary</code>を組み立てます。<code>char.def</code>は辞書ビルダー（<code>CharacterDefinitionBuilder::build_from_str</code>）でパースするため、学習時の文字カテゴリはビルドされる辞書と同じになります。<code>%t</code>素性に使う各文字の既定カテゴリは、ビルダーの<code>build_default_category_table</code>から得ます。注意: この<code>Dictionary</code>の<code>prefix_dictionary</code>（システム辞書）フィールドと<code>unknown_dictionary</code>フィールドは、空のスタブとして構築されるだけです――学習時に実際に使われる種辞書の語彙や未知語カテゴリの素性は、この<code>Dictionary</code>オブジェクトではなく、<code>TrainerConfig</code>自身の<code>surfaces</code> / <code>features</code> / <code>unk_categories</code> / <code>unk_costs</code>フィールドに別途保持されています。また、<code>surfaces()</code>、<code>surface_features()</code>、<code>get_features()</code>に加え、<code>user_lexicon()</code> / <code>add_user_lexicon_entry()</code> / <code>load_user_lexicon_from_content()</code>によるユーザー辞書へのアクセス、<code>metadata()</code>も提供します。</p>
 <h3 id="corpus--example--word"><a class="header" href="#corpus--example--word">Corpus / Example / Word</a></h3>
 <p>アノテーション付き学習データを表現します。<code>Word</code>は表層形とその素性文字列（カンマ区切り）のペアです。<code>Example</code>は1つの学習用の文であり、<code>Vec&lt;Word&gt;</code>から構築され、各語の表層形を連結して元の文を復元します。<code>Corpus</code>は<code>Example</code>の集合です。<code>Corpus::from_reader</code>はタブ区切りの<code>surface&lt;TAB&gt;features</code>形式の行をパースし、空行または<code>EOS</code>のみの行を文の区切りとして扱います。</p>
 <h3 id="featureextractor"><a class="header" href="#featureextractor">FeatureExtractor</a></h3>
@@ -1211,7 +1211,7 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 既に静的なゼロコピーバイトスライスであるため）。<code>mmap</code> cargo feature
 （デフォルトで有効）が必要です。</p>
 <h2 id="空白文字の扱い"><a class="header" href="#空白文字の扱い">空白文字の扱い</a></h2>
-<p>デフォルトでは、MeCab と同様に空白をラティス上で読み飛ばします。空白文字から始まる語はなく、空白の後ろの語は空白の前の語に直接接続し、辞書が学習した連接コストが使われます。空白は出力に現れず、トークンの表層形とオフセットにも含まれません。「空白」とは辞書の <code>SPACE</code> 文字カテゴリ（<code>char.def</code>）のことで、ko-dic では U+0020、U+0009、U+000A、U+000B、U+000D、IPADIC・IPADIC-NEologd・UniDic・SudachiDict・CC-CEDICT・Jieba では U+0020、U+0009、U+000A、U+000B、U+00D0 です。MeCab との違いが 1 つあります。これらの <code>char.def</code> では後続の <code>0x00C0..0x00FF ALPHA</code> 行により MeCab は U+00D0（<code>Ð</code>）を英字としてのみ扱いますが、Lindera は両方のカテゴリを保持し、空白として扱います。</p>
+<p>デフォルトでは、MeCab と同様に空白をラティス上で読み飛ばします。空白文字から始まる語はなく、空白の後ろの語は空白の前の語に直接接続し、辞書が学習した連接コストが使われます。空白は出力に現れず、トークンの表層形とオフセットにも含まれません。「空白」とは辞書の <code>SPACE</code> 文字カテゴリ（<code>char.def</code>）のことで、ko-dic では U+0020、U+0009、U+000A、U+000B、U+000D、IPADIC・IPADIC-NEologd・UniDic・SudachiDict・CC-CEDICT・Jieba では U+0020、U+0009、U+000A、U+000B です。これらの <code>char.def</code> は U+00D0（<code>Ð</code>）も <code>SPACE</code> に割り当てています（U+000D のタイポ）が、後続の <code>0x00C0..0x00FF ALPHA</code> 行が優先されるため、MeCab と同じく <code>Ð</code> は英字として扱われます。</p>
 <p>デフォルトは辞書の <code>metadata.json</code>（<code>skip_whitespace</code>）で決まります。SudachiDict はこれを <code>false</code> にしています。Sudachi は空白をラティスに残して <code>空白</code> トークンとして出力し、SudachiDict のコストもそれに合わせて調整されているため、読み飛ばすと、たとえば <code>caramel man</code> という項目が 2 つの普通名詞に分割されてしまいます。そのため SudachiDict では、デフォルトで空白が <code>SPACE</code> ノードとしてラティスに残ります（出力からは除外されます）。他の同梱辞書はこの設定を持たず、その場合は読み飛ばします。設定が導入される前にビルドされた辞書（再ビルドするまでの Lindera 6.x 製の SudachiDict を含む）も同様です。</p>
 <p><code>Segmenter</code> に対して <code>keep_whitespace(true)</code> を呼び出すと、空白のトークンを出力します。このとき空白は <code>SPACE</code> の未知語ノードとしてラティスに残ります：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -9464,8 +9464,9 @@ TypeScript 利用者は型名 <code>JsTokenData</code> を <code>Token</code> �
 <code>LINDERA_DICTIONARIES_PATH</code> のフォールバックを削除し、IPADIC のスキーマで
 <code>conjugation_type</code> と <code>conjugation_form</code> の名前が逆になっていた誤りを
 修正し、表層形が空白だけの見出し語や先頭・末尾が空白の見出し語を保持し、
-MeCab と同様に空白をラティス上で読み飛ばすようにしました。このガイドでは、
-すべての破壊的変更とその対処方法を説明します。</p>
+MeCab と同様に空白をラティス上で読み飛ばし、<code>char.def</code> の重複した行を MeCab と
+同じく解決するようにしました。このガイドでは、すべての破壊的変更とその対処方法を
+説明します。</p>
 <h2 id="概要-4"><a class="header" href="#概要-4">概要</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>変更</th><th>影響範囲</th><th>対処方法</th></tr></thead><tbody>
 <tr><td><code>lindera</code> がファサードになり、<code>lindera::analysis</code> が <code>lindera-analysis</code> を再エクスポート（<code>analysis</code> feature、デフォルト有効）</td><td><code>lindera</code> と <code>lindera-analysis</code> の両方に依存する Rust ユーザー</td><td>両方を同時に <code>"7"</code> に上げるか、<code>lindera-analysis</code> を外して <code>lindera::analysis::…</code> から import する</td></tr>
@@ -9478,16 +9479,18 @@ MeCab と同様に空白をラティス上で読み飛ばすようにしまし�
 <tr><td><strong>IPADIC・IPADIC-NEologd の <code>conjugation_type</code> と <code>conjugation_form</code> が正しい列を指すように修正</strong></td><td>IPADIC・IPADIC-NEologd でこの 2 フィールドを名前で読むユーザー（<code>Token::get</code>・<code>Token::as_value</code>・<code>lindera tokenize -o json</code>・バインディングのスキーマ）</td><td>2 つの値が入れ替わることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 <tr><td><strong>空白を含む見出し語を保持</strong></td><td>U+3000 を含むテキスト（IPADIC・IPADIC-NEologd・UniDic）、空白を含むテキスト（SudachiDict）、末尾が空白の一部の語</td><td>U+3000 が <code>記号,空白</code>・<code>空白</code> になり、SudachiDict の分割が Sudachi にずっと近くなることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 <tr><td><strong>空白をラティス上で読み飛ばし、MeCab と同様に空白の前後の語を直接接続する</strong></td><td><code>keep_whitespace</code> が false（デフォルト）で空白を含むテキストを分割するユーザー。ko-dic で特に顕著</td><td>そのようなテキストは MeCab と同じ分割になることを前提にする。<code>skip_whitespace(false)</code>（<code>"skip_whitespace": false</code>、<code>--disable-skip-whitespace</code>）で v6 の分割に戻せる</td></tr>
+<tr><td><strong><code>char.def</code> の重複した行は最後の行が決める</strong></td><td><code>Ð</code>（U+00D0、ko-dic 以外のすべての辞書）・<code>々</code>（U+3005）・<code>〇</code>（U+3007）を含むテキスト、単一コードポイントの行や重複した行を持つ <code>char.def</code> で <code>lindera train</code> を使うユーザー</td><td><code>Ð</code> が文字として出力に残ることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 </tbody></table>
 </div>
 <p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI の API・パッケージ名は
-変わらず、バージョン番号だけが 7.0.0 になります。出力の違いは 3 つあり、いずれも
+変わらず、バージョン番号だけが 7.0.0 になります。出力の違いは 4 つあり、いずれも
 後述します。IPADIC・IPADIC-NEologd では、<code>conjugation_type</code> と
-<code>conjugation_form</code> という名前で返る値が入れ替わります。また、表層形が空白だけの
+<code>conjugation_form</code> という名前で返る値が入れ替わります。表層形が空白だけの
 見出し語や先頭・末尾が空白の見出し語が辞書に入るため、そうした空白を含む
-テキストの分割が変わります。さらに、空白を含むテキストは MeCab と同じように
-分割されます。それ以外は、同じ入力と辞書に対して、v7.0.0 は v6.2.0 と同じ
-トークンを、同じ位置ベースの詳細情報（details）とともに出力します。</p>
+テキストの分割が変わります。空白を含むテキストは MeCab と同じように分割されます。
+さらに、<code>Ð</code>・<code>々</code>・<code>〇</code> が MeCab と同じ文字カテゴリになるため、これらを含む
+テキストの分割が変わります。それ以外は、同じ入力と辞書に対して、v7.0.0 は v6.2.0
+と同じトークンを、同じ位置ベースの詳細情報（details）とともに出力します。</p>
 <h2 id="lindera-クレートはファサードに"><a class="header" href="#lindera-クレートはファサードに"><code>lindera</code> クレートはファサードに</a></h2>
 <p>v6 までの Rust API は、<code>lindera</code>（セグメンターと辞書読み込み API）と
 <code>lindera-analysis</code>（character filter・token filter・<code>Tokenizer</code>）の 2 クレートに
@@ -9764,6 +9767,33 @@ segmenter:
 <pre><code class="language-sh">lindera tokenize --disable-skip-whitespace
 </code></pre>
 <p>言語バインディングでは設定ファイルで指定します。</p>
+<h2 id="chardef-の重複した行を-mecab-と同じく解決する"><a class="header" href="#chardef-の重複した行を-mecab-と同じく解決する"><code>char.def</code> の重複した行を MeCab と同じく解決する</a></h2>
+<p>辞書の <code>char.def</code> では、同じコードポイントを複数の行に書くことができます。v6.2.0
+までは、辞書ビルダーがそのコードポイントに、覆うすべての行のカテゴリを与えていました。
+v7.0.0 は MeCab・vibrato・Kuromoji と同じく最後の行だけを使い、その行のカテゴリを
+<code>char.def</code> で定義された順に並べます。同梱の辞書で変わるのは次の 3 文字です（漢字の
+カテゴリ名は、ko-dic では <code>HANJA</code>・<code>HANJANUMERIC</code>、CC-CEDICT と Jieba では
+<code>CHINESE</code>・<code>CHINESENUMERIC</code> です）。</p>
+<div class="table-wrapper"><table><thead><tr><th>文字</th><th>v6 のカテゴリ</th><th>v7 のカテゴリ</th><th>影響</th></tr></thead><tbody>
+<tr><td><code>Ð</code>（U+00D0）</td><td><code>SPACE</code>・<code>ALPHA</code></td><td><code>ALPHA</code></td><td>ko-dic 以外のすべての辞書は、<code>ALPHA</code> の範囲より前に U+00D0 を <code>SPACE</code> に割り当てています（mecab-ipadic から引き継がれた U+000D のタイポ）。このため <code>Ð</code> は空白として出力から消え、前後の語も分断されていました。<code>GUÐMUNDUR さん</code> は <code>GU</code>・<code>MUNDUR</code>・<code>さん</code> ではなく <code>GUÐMUNDUR</code>・<code>さん</code> になります</td></tr>
+<tr><td><code>々</code>（U+3005）</td><td><code>KANJI</code>・<code>SYMBOL</code></td><td><code>SYMBOL</code></td><td><code>人々</code> や <code>佐々木</code> のような辞書の語は変わりません。辞書にない漢字の後ろでは、MeCab と同じく <code>々</code> が単独のトークンになります（<code>龘々</code> は 1 つの未知語ではなく <code>龘</code>・<code>々</code>）。ko-dic では <code>々</code> の品詞が <code>SH</code> ではなく <code>SY</code> になります</td></tr>
+<tr><td><code>〇</code>（U+3007）</td><td><code>KANJI</code>・<code>SYMBOL</code>・<code>KANJINUMERIC</code></td><td><code>SYMBOL</code>・<code>KANJINUMERIC</code></td><td>数字の連続のまとまり方が変わることがあります。ko-dic では <code>二〇二六年</code> が <code>二</code>・<code>〇</code>・<code>二六</code>・<code>年</code> ではなく <code>二〇二六</code>・<code>年</code> になります</td></tr>
+</tbody></table>
+</div>
+<p>漢数字 <code>一</code>〜<code>九</code>・<code>十</code>・<code>百</code>・<code>千</code>・<code>万</code>・<code>億</code>・<code>兆</code> も 2 つの行に書かれていますが、
+カテゴリもその並びも変わりません。</p>
+<p><code>lindera train</code> は <code>char.def</code> を辞書ビルダーで読むようになりました。従来は各行の
+先頭のカテゴリだけを使い、単一コードポイントの行（<code>0x0020 SPACE</code> など）を読み飛ばし、
+重複は範囲の開始位置で解決していました。素性テンプレートの <code>%t</code> は、その文字を覆う
+最後の行の先頭カテゴリ（MeCab の既定カテゴリ）になります。同梱の学習用ファイルには
+どちらの種類の行もないため、それらから学習したモデルは変わりません。</p>
+<p>カテゴリのない範囲行は、MeCab と同じく <code>lindera build</code> と <code>lindera train</code> でエラーに
+なります。そうしないと、それより前の行を <code>DEFAULT</code> に戻してしまうためです。</p>
+<p>変更は辞書ビルダーにあり、辞書の形式バージョンは変わりません。埋め込み辞書と、
+7.0.0 の CLI が <code>lindera download</code> で取得する辞書は、新しいカテゴリを持ちます。
+v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは v7.0.0 でも読み込めますが、
+<code>lindera build</code> で再ビルドするか 7.0.0 のリリースアセットを再ダウンロードするまで、
+従来のカテゴリのままです。</p>
 <h2 id="対応が不要なケース-1"><a class="header" href="#対応が不要なケース-1">対応が不要なケース</a></h2>
 <ul>
 <li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の
@@ -9771,7 +9801,8 @@ segmenter:
 構成変更は Rust クレート内部のものです。出力の変化は、この 2 フィールドを
 名前で読む場合にのみ影響する IPADIC の活用フィールドの修正、U+3000 を含む
 テキスト（IPADIC・IPADIC-NEologd・UniDic）や空白を含むテキスト（SudachiDict）に
-のみ影響する空白の見出し語、そして空白を含むテキストの分割です。</li>
+のみ影響する空白の見出し語、空白を含むテキストの分割、そして <code>Ð</code>・<code>々</code>・<code>〇</code>
+を含むテキストにのみ影響する <code>char.def</code> の修正です。</li>
 <li><strong><code>lindera = "6"</code> のまま使い続けるプロジェクト</strong>: <code>lindera</code> と <code>lindera-analysis</code>
 の 6.x は crates.io に残り、組み合わせて動作し続けます。メジャーバージョンを
 上げるまで何も変わりません。</li>
@@ -9827,6 +9858,18 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <li>そのようなテキストは MeCab と同じ分割になることを前提にする（ko-dic で特に
 顕著）。v6 の出力が必要な場合は <code>skip_whitespace(false)</code>、
 <code>"skip_whitespace": false</code>、<code>--disable-skip-whitespace</code> を指定する。</li>
+</ul>
+<p><code>Ð</code>・<code>々</code>・<code>〇</code> を含むテキストを同梱の辞書で解析するユーザー:</p>
+<ul>
+<li><code>Ð</code> が出力に残り、未知語の漢字に続く <code>々</code> が単独のトークンになることを前提にする。</li>
+<li>新しい文字カテゴリを使うには、v6.2.0 以前に作った辞書ディレクトリを再ビルド・
+再ダウンロードする。</li>
+</ul>
+<p><code>lindera train</code> のユーザー:</p>
+<ul>
+<li><code>char.def</code> のすべての範囲行に 1 つ以上のカテゴリを書く。</li>
+<li><code>char.def</code> に単一コードポイントの行や重複した行がある場合は、再学習する。
+<code>%t</code> 素性が MeCab と同じくそれらの行に従うようになったため。</li>
 </ul>
 <p>言語バインディングと CLI:</p>
 <ul>
@@ -10121,6 +10164,7 @@ NUMERIC 1 1 0
 0x0061..0x007A ALPHA     # Lowercase letters
 </code></pre>
 <p>パラメータは各文字タイプの未知語がどのように分割されるかを制御します。隣接文字との互換性、同一タイプの連続が1つのトークンとして続くかどうか、デフォルトのトークン長を指定します。</p>
+<p>範囲行には複数のカテゴリを書くことができ（例: <code>0x4E00 KANJINUMERIC KANJI</code>）、少なくとも 1 つのカテゴリが必要です。同じコードポイントを複数の行が覆う場合は、MeCab と同じく最後の行がそのカテゴリを決めます。その行の先頭のカテゴリが文字の既定カテゴリで、素性テンプレートの <code>%t</code> はこれを使います。</p>
 <h3 id="4-未知語定義-unkdef"><a class="header" href="#4-未知語定義-unkdef">4. 未知語定義 (unk.def)</a></h3>
 <p>文字タイプごとに未知語の処理方法を定義します。</p>
 <pre><code class="language-csv">DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
