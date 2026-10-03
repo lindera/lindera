@@ -69,6 +69,8 @@ N-Best tokenization enumerates the top N tokenization candidates ordered by tota
 
 N-Best tokenization is based on the **Forward-DP Backward-A\*** algorithm, which is compatible with MeCab's N-Best implementation. The forward pass computes optimal costs using dynamic programming, and the backward pass uses A\* search to enumerate paths in order of increasing total cost.
 
+As in 1-best tokenization, the input is first split into sentences (see [Sentence Splitting](../lindera/segmenter.md#sentence-splitting)), and each sentence is searched on its own. Every candidate segments the whole input: it takes one path in each sentence, and its cost is the sum of those paths' costs. The candidates are the N cheapest of these combinations.
+
 ### Parameters
 
 The `tokenize_nbest` method accepts the following parameters:
@@ -78,7 +80,7 @@ The `tokenize_nbest` method accepts the following parameters:
 | `text` | `&str` | The text to tokenize. |
 | `n` | `usize` | Number of N-best results to return. |
 | `unique` | `bool` | When `true`, deduplicates results that produce the same word boundary positions. |
-| `cost_threshold` | `Option<i64>` | When `Some(threshold)`, only returns paths with cost within `best_cost + threshold`. |
+| `cost_threshold` | `Option<i64>` | When `Some(threshold)`, only returns candidates with cost within `best_cost + threshold`, where `best_cost` is the cost of the first candidate (both are totals over the whole input). |
 
 ### Rust API example
 

@@ -2467,6 +2467,10 @@ impl Lattice {
     /// are deduplicated, keeping only the first (lowest cost) variant.
     /// If `cost_threshold` is Some(t), paths whose cost exceeds best_cost + t are discarded.
     /// Requires set_text_nbest() to have been called first.
+    ///
+    /// The paths and costs are those of this lattice, i.e. of the one
+    /// sentence it was built from; the segmenter combines the lists of the
+    /// sentences of an input into whole-input results.
     pub fn nbest_tokens_offset(
         &self,
         n: usize,
@@ -2477,7 +2481,9 @@ impl Lattice {
 
         use crate::nbest::NBestGenerator;
         let mut generator = NBestGenerator::new(self);
-        let mut results = Vec::with_capacity(n);
+        // Grown on demand: `n` comes from the caller (the CLI's `-N`) and
+        // can be far larger than the number of paths.
+        let mut results = Vec::new();
         let mut best_cost: Option<i64> = None;
 
         if unique {
@@ -2487,9 +2493,11 @@ impl Lattice {
                     Some((path, cost)) => {
                         // Record best cost from first result
                         let bc = *best_cost.get_or_insert(cost);
-                        // Skip if cost exceeds threshold
+                        // Skip if cost exceeds threshold. Compare the
+                        // difference: `bc + threshold` overflows for a
+                        // threshold close to `i64::MAX`.
                         if let Some(threshold) = cost_threshold
-                            && cost > bc + threshold
+                            && cost.saturating_sub(bc) > threshold
                         {
                             break;
                         }
@@ -2507,7 +2515,7 @@ impl Lattice {
                     Some((path, cost)) => {
                         let bc = *best_cost.get_or_insert(cost);
                         if let Some(threshold) = cost_threshold
-                            && cost > bc + threshold
+                            && cost.saturating_sub(bc) > threshold
                         {
                             break;
                         }
@@ -2523,7 +2531,9 @@ impl Lattice {
 
 #[cfg(test)]
 mod tests {
-    use crate::viterbi::{CharData, Edge, Lattice, LatticeOptions, LexType, WordEntry, WordId};
+    use crate::viterbi::{
+        CharData, Edge, Lattice, LatticeOptions, LexType, PathEntry, WordEntry, WordId,
+    };
 
     /// Builds an edge whose backtrace fields are set explicitly, for
     /// hand-assembled lattices in tests. The edge's stop position is the
@@ -2865,5 +2875,71 @@ mod tests {
         lattice.tokens_offset_into(&mut reused);
         assert!(reused.is_empty());
         assert!(lattice.tokens_offset().is_empty());
+    }
+
+    /// Hand-assembles a one-character N-Best lattice with two paths: word 1
+    /// at cost `a` and word 2 at cost `b`, both spanning the character.
+    fn two_path_nbest_lattice(a: i32, b: i32) -> Lattice {
+        let mut lattice = Lattice::default();
+        lattice.set_capacity_nbest(1);
+        seed_identity_chars(&mut lattice, 1);
+        lattice.ends_at[0].push(test_edge(0, 0, u16::MAX)); // BOS
+        let mut word_a = test_edge(1, 0, 0);
+        word_a.path_cost = a;
+        let mut word_b = test_edge(2, 0, 0);
+        word_b.path_cost = b;
+        let mut eos = test_edge(0, 1, 0);
+        eos.path_cost = a.min(b);
+        lattice.ends_at[1].extend([word_a, word_b, eos]);
+        lattice.all_paths[1].extend([
+            // word 1 <- BOS, word 2 <- BOS, then EOS <- word 1 and word 2.
+            PathEntry {
+                edge_index: 0,
+                left_pos: 0,
+                left_index: 0,
+                cost: a,
+            },
+            PathEntry {
+                edge_index: 1,
+                left_pos: 0,
+                left_index: 0,
+                cost: b,
+            },
+            PathEntry {
+                edge_index: 2,
+                left_pos: 1,
+                left_index: 0,
+                cost: a,
+            },
+            PathEntry {
+                edge_index: 2,
+                left_pos: 1,
+                left_index: 1,
+                cost: b,
+            },
+        ]);
+        lattice
+    }
+
+    /// `nbest_tokens_offset` must accept a huge `n` and a threshold close to
+    /// `i64::MAX` without overflowing, and measure the threshold from the
+    /// best path.
+    #[test]
+    fn test_nbest_tokens_offset_extreme_n_and_threshold() {
+        let lattice = two_path_nbest_lattice(3, 5);
+        let word = |id| WordId::new(LexType::System, id);
+
+        let results = lattice.nbest_tokens_offset(usize::MAX, false, Some(i64::MAX));
+        assert_eq!(
+            results,
+            vec![(vec![(0, word(1))], 3), (vec![(0, word(2))], 5)]
+        );
+        // Both paths share one segmentation, so `unique` keeps the best.
+        let results = lattice.nbest_tokens_offset(usize::MAX, true, Some(i64::MAX));
+        assert_eq!(results, vec![(vec![(0, word(1))], 3)]);
+
+        assert_eq!(lattice.nbest_tokens_offset(10, false, Some(1)).len(), 1);
+        assert_eq!(lattice.nbest_tokens_offset(10, false, Some(2)).len(), 2);
+        assert!(lattice.nbest_tokens_offset(10, false, Some(-1)).is_empty());
     }
 }

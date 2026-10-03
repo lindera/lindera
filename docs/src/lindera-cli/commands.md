@@ -69,7 +69,7 @@ Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean te
 - `--mmap`: Use memory-mapped file loading for the dictionary directory's word list. Ignored for `embedded://` dictionaries and when the `mmap` feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup.
 - `--nbest` / `-N`: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.
 - `--nbest-unique`: Deduplicate N-best results by removing paths that produce the same segmentation.
-- `--nbest-cost-threshold`: Maximum cost difference from the best path. Only paths with cost within `best_cost + threshold` are returned.
+- `--nbest-cost-threshold`: Maximum cost difference from the best result. Only results with cost within `best_cost + threshold` are returned; both costs are totals over the whole input line.
 - Input file: Optional file path (default: stdin)
 
 ### Basic usage
@@ -491,6 +491,8 @@ Outputs detailed token information in JSON format:
 ### N-Best tokenization
 
 Lindera supports N-Best tokenization, which returns the top N tokenization candidates ordered by cost (lower cost = better). This is based on the Forward-DP Backward-A\* algorithm, compatible with MeCab's N-Best implementation.
+
+A line with several sentences (split at `\t`, `。` and `、`) is searched sentence by sentence. Every candidate still segments the whole line: the candidates are the N cheapest combinations of one path per sentence.
 
 #### Basic N-Best example
 

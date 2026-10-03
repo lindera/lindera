@@ -1,3 +1,7 @@
+mod nbest_merge;
+
+use self::nbest_merge::merge_nbest;
+
 use std::borrow::Cow;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -962,6 +966,24 @@ impl Segmenter {
     /// Results are ordered by cost (best first).
     /// If `unique` is true, results with the same word boundaries but different
     /// POS tags are deduplicated (only the lowest-cost variant is kept).
+    ///
+    /// Every result segments the whole input. The input is split into
+    /// sentences as [`Segmenter::segment`] splits it, and the results are the
+    /// `n` cheapest combinations of one path per sentence; see
+    /// [`Segmenter::segment_nbest_with_lattice`].
+    ///
+    /// # 引数
+    ///
+    /// * `text` - The input text, borrowed or owned.
+    /// * `n` - The maximum number of results.
+    /// * `unique` - Whether to drop results whose word boundaries repeat an
+    ///   earlier result's.
+    /// * `cost_threshold` - If `Some(t)`, the maximum cost above the first
+    ///   result's, measured over the whole input.
+    ///
+    /// # 戻り値
+    ///
+    /// The results, best first, each as its tokens and its total cost.
     pub fn segment_nbest<'a>(
         &'a self,
         text: Cow<'a, str>,
@@ -979,6 +1001,30 @@ impl Segmenter {
     /// POS tags are deduplicated (only the lowest-cost variant is kept).
     /// If `cost_threshold` is Some(t), paths whose cost exceeds best_cost + t
     /// are discarded.
+    ///
+    /// The input is split into sentences by the same rules as
+    /// [`Segmenter::segment`], and each sentence is searched on its own. Every
+    /// result is a segmentation of the whole input that takes one path in each
+    /// sentence, and its cost is the sum of those paths' costs; the results
+    /// are the `n` cheapest of these combinations, in ascending order of cost.
+    /// `best_cost` is the cost of the first result, i.e. of the best path of
+    /// every sentence, so the threshold applies to the whole input.
+    ///
+    /// # 引数
+    ///
+    /// * `text` - The input text, borrowed or owned.
+    /// * `lattice` - The N-best lattice to reuse across sentences and calls.
+    /// * `n` - The maximum number of results.
+    /// * `unique` - Whether to drop results whose word boundaries repeat an
+    ///   earlier result's.
+    /// * `cost_threshold` - If `Some(t)`, the maximum cost above the first
+    ///   result's.
+    ///
+    /// # 戻り値
+    ///
+    /// The results, best first, each as its tokens and its total cost. Empty
+    /// if `n` is zero, the input has no sentence, or `cost_threshold` is
+    /// negative.
     pub fn segment_nbest_with_lattice<'a>(
         &'a self,
         text: Cow<'a, str>,
@@ -987,16 +1033,15 @@ impl Segmenter {
         unique: bool,
         cost_threshold: Option<i64>,
     ) -> LinderaResult<Vec<(Vec<Token<'a>>, i64)>> {
-        let mut all_results: Vec<(Vec<Token>, i64)> = Vec::with_capacity(n);
+        if n == 0 {
+            return Ok(Vec::new());
+        }
 
-        // Hoisted whitespace configuration; see segment_with_buffers.
-        let space_filter = if self.keep_whitespace {
-            None
-        } else {
-            self.whitespace.as_ref()
-        };
-        let skipped = self.whitespace_to_skip();
-
+        // Phase 1: the N-best paths of every sentence. A path that exceeds
+        // its sentence's best by more than the threshold cannot be part of a
+        // result, because the other sentences add at least their best costs,
+        // so the threshold already prunes each sentence's list here.
+        let mut sentences: Vec<SentenceNbest> = Vec::new();
         let text_len = text.len();
         let mut sentence_start = 0;
 
@@ -1027,60 +1072,135 @@ impl Segmenter {
             );
 
             let nbest_offsets = lattice.nbest_tokens_offset(n, unique, cost_threshold);
-
-            for (rank, (offsets, cost)) in nbest_offsets.into_iter().enumerate() {
-                if rank >= all_results.len() {
-                    all_results.resize_with(rank + 1, || (Vec::new(), 0));
-                }
-
-                // Accumulate cost across sentences
-                all_results[rank].1 += cost;
-
-                let mut position = all_results[rank].0.len();
-
-                for i in 0..offsets.len() {
-                    let (byte_start, word_id) = offsets[i];
-                    let span_end = if i == offsets.len() - 1 {
-                        sentence.len()
-                    } else {
-                        offsets[i + 1].0
-                    };
-                    let byte_end = self.token_end(sentence, byte_start, span_end, skipped);
-
-                    let absolute_start = sentence_start + byte_start;
-                    let absolute_end = sentence_start + byte_end;
-
-                    // Skip whitespace tokens if keep_whitespace is false
-                    if let Some(whitespace) = space_filter
-                        && self.is_whitespace_token(&sentence[byte_start..byte_end], whitespace)
-                    {
-                        continue;
-                    }
-
-                    let surface_cow = match &text {
-                        Cow::Borrowed(s) => Cow::Borrowed(&s[absolute_start..absolute_end]),
-                        Cow::Owned(s) => Cow::Owned(s[absolute_start..absolute_end].to_owned()),
-                    };
-
-                    all_results[rank].0.push(Token::new(
-                        surface_cow,
-                        absolute_start,
-                        absolute_end,
-                        position,
-                        word_id,
-                        &self.dictionary,
-                        self.user_dictionary.as_ref(),
-                    ));
-
-                    position += 1;
-                }
+            // A sentence without paths adds nothing, as in the 1-best
+            // segmentation. A path without tokens (a sentence of skipped
+            // whitespace) is a path, and its cost counts.
+            if !nbest_offsets.is_empty() {
+                sentences.push(SentenceNbest {
+                    start: sentence_start,
+                    end: sentence_end,
+                    paths: nbest_offsets,
+                });
             }
 
             sentence_start = sentence_end;
         }
 
-        Ok(all_results)
+        // A single sentence needs no merge: its list, already cut to `n` and
+        // filtered by the threshold, is the result (`merge_nbest` would
+        // return it unchanged).
+        if let [sentence] = sentences.as_slice() {
+            return Ok(sentence
+                .paths
+                .iter()
+                .enumerate()
+                .map(|(rank, &(_, cost))| {
+                    let mut tokens = Vec::new();
+                    self.push_sentence_tokens(&text, sentence, rank, &mut tokens);
+                    (tokens, cost)
+                })
+                .collect());
+        }
+
+        // Phase 2: the cheapest combinations of one path per sentence. With
+        // `unique`, the paths of each sentence have distinct word boundaries,
+        // so the combinations do too.
+        let costs: Vec<Vec<i64>> = sentences
+            .iter()
+            .map(|s| s.paths.iter().map(|&(_, cost)| cost).collect())
+            .collect();
+        let combinations = merge_nbest(&costs, n, cost_threshold);
+
+        // Phase 3: the tokens of each combination, sentence by sentence.
+        let mut results = Vec::with_capacity(combinations.len());
+        for (ranks, cost) in combinations {
+            let mut tokens = Vec::new();
+            for (sentence, rank) in sentences.iter().zip(ranks) {
+                self.push_sentence_tokens(&text, sentence, rank, &mut tokens);
+            }
+            results.push((tokens, cost));
+        }
+
+        Ok(results)
     }
+
+    /// Appends the tokens of one N-best path of a sentence to `tokens`,
+    /// numbering them on from `tokens.len()`. Whitespace is handled as in
+    /// [`Segmenter::segment`]: skipped whitespace is trimmed off the token
+    /// before it, and whitespace tokens are dropped unless `keep_whitespace`
+    /// is set.
+    ///
+    /// # 引数
+    ///
+    /// * `text` - The whole input, which the surfaces borrow from or copy.
+    /// * `nbest` - The sentence and its N-best paths.
+    /// * `rank` - The index of the path to use in `nbest.paths`.
+    /// * `tokens` - The tokens of the result so far.
+    // `text` stays a `Cow` (not `&str`, as `ptr_arg` suggests) because its
+    // variant decides whether a surface borrows the input or copies it.
+    #[allow(clippy::ptr_arg)]
+    fn push_sentence_tokens<'a>(
+        &'a self,
+        text: &Cow<'a, str>,
+        nbest: &SentenceNbest,
+        rank: usize,
+        tokens: &mut Vec<Token<'a>>,
+    ) {
+        let space_filter = if self.keep_whitespace {
+            None
+        } else {
+            self.whitespace.as_ref()
+        };
+        let skipped = self.whitespace_to_skip();
+
+        let sentence_start = nbest.start;
+        let sentence = &text[nbest.start..nbest.end];
+        let offsets = &nbest.paths[rank].0;
+        for (i, &(byte_start, word_id)) in offsets.iter().enumerate() {
+            let span_end = offsets
+                .get(i + 1)
+                .map_or(sentence.len(), |&(next_start, _)| next_start);
+            let byte_end = self.token_end(sentence, byte_start, span_end, skipped);
+
+            let absolute_start = sentence_start + byte_start;
+            let absolute_end = sentence_start + byte_end;
+
+            // Skip whitespace tokens if keep_whitespace is false
+            if let Some(whitespace) = space_filter
+                && self.is_whitespace_token(&sentence[byte_start..byte_end], whitespace)
+            {
+                continue;
+            }
+
+            let surface_cow = match text {
+                Cow::Borrowed(s) => Cow::Borrowed(&s[absolute_start..absolute_end]),
+                Cow::Owned(s) => Cow::Owned(s[absolute_start..absolute_end].to_owned()),
+            };
+
+            tokens.push(Token::new(
+                surface_cow,
+                absolute_start,
+                absolute_end,
+                tokens.len(),
+                word_id,
+                &self.dictionary,
+                self.user_dictionary.as_ref(),
+            ));
+        }
+    }
+}
+
+/// The N-best paths of one sentence, kept until the sentences are combined
+/// (see [`Segmenter::segment_nbest_with_lattice`]).
+struct SentenceNbest {
+    /// The sentence's start in the input, in bytes.
+    start: usize,
+    /// The sentence's end in the input, in bytes.
+    end: usize,
+    /// The paths in ascending order of cost, as `nbest_tokens_offset`
+    /// returns them: each its tokens' start offsets within the sentence and
+    /// word ids, and its cost.
+    paths: Vec<(Vec<(usize, WordId)>, i64)>,
 }
 
 #[cfg(test)]
@@ -3585,6 +3705,326 @@ mod tests {
             let tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
             assert_eq!(tokens[0].surface, "해운대 해수욕장");
             assert_offsets(text, &tokens);
+        }
+    }
+
+    /// N-best over several sentences: every result segments the whole
+    /// input, and the results are the cheapest combinations of the paths of
+    /// the sentences (#1097).
+    #[cfg(feature = "embed-ipadic")]
+    mod nbest_whole_input {
+        use std::borrow::Cow;
+        use std::collections::HashSet;
+
+        use lindera_dictionary::viterbi::WordId;
+
+        use crate::dictionary::load_dictionary;
+        use crate::mode::{Mode, Penalty};
+        use crate::segmenter::{Segmenter, find_sentence_end};
+        use crate::token::Token;
+
+        /// The fields of a token that the tests compare: surface, byte
+        /// offsets, position and word id.
+        type Flat = (String, usize, usize, usize, WordId);
+
+        /// N-best results with their tokens flattened to [`Flat`].
+        type Results = Vec<(Vec<Flat>, i64)>;
+
+        fn ipadic(mode: Mode) -> Segmenter {
+            Segmenter::new(mode, load_dictionary("embedded://ipadic").unwrap(), None)
+        }
+
+        fn flatten(tokens: &[Token]) -> Vec<Flat> {
+            tokens
+                .iter()
+                .map(|t| {
+                    (
+                        t.surface.to_string(),
+                        t.byte_start,
+                        t.byte_end,
+                        t.position,
+                        t.word_id,
+                    )
+                })
+                .collect()
+        }
+
+        fn nbest(
+            segmenter: &Segmenter,
+            text: &str,
+            n: usize,
+            unique: bool,
+            threshold: Option<i64>,
+        ) -> Results {
+            segmenter
+                .segment_nbest(Cow::Borrowed(text), n, unique, threshold)
+                .unwrap()
+                .iter()
+                .map(|(tokens, cost)| (flatten(tokens), *cost))
+                .collect()
+        }
+
+        /// The sentences `segment` splits `text` into, with their starts.
+        fn sentences(text: &str) -> Vec<(usize, &str)> {
+            let mut sentences = Vec::new();
+            let mut start = 0;
+            while start < text.len() {
+                let (end, _) = find_sentence_end(text, start);
+                sentences.push((start, &text[start..end]));
+                start = end;
+            }
+            sentences
+        }
+
+        /// The expected results: each sentence searched on its own, every
+        /// combination of one path per sentence sorted by the merge order of
+        /// `nbest_merge` (the prefix costs from the last sentence back, then
+        /// the ranks), filtered by the threshold over the whole input and
+        /// cut to `n`.
+        fn oracle(
+            segmenter: &Segmenter,
+            text: &str,
+            n: usize,
+            unique: bool,
+            threshold: Option<i64>,
+        ) -> Results {
+            let lists: Vec<(usize, Results)> = sentences(text)
+                .into_iter()
+                .map(|(start, sentence)| (start, nbest(segmenter, sentence, n, unique, None)))
+                .filter(|(_, list)| !list.is_empty())
+                .collect();
+            if lists.is_empty() {
+                return Vec::new();
+            }
+            let best: i64 = lists.iter().map(|(_, list)| list[0].1).sum();
+
+            let mut combinations: Vec<Vec<usize>> = vec![Vec::new()];
+            for (_, list) in &lists {
+                combinations = combinations
+                    .into_iter()
+                    .flat_map(|prefix| {
+                        (0..list.len()).map(move |rank| {
+                            let mut combination = prefix.clone();
+                            combination.push(rank);
+                            combination
+                        })
+                    })
+                    .collect();
+            }
+            let mut keyed: Vec<(Vec<i64>, Vec<usize>, i64)> = combinations
+                .into_iter()
+                .map(|ranks| {
+                    let mut prefix_costs = Vec::new();
+                    let mut total = 0;
+                    for ((_, list), &rank) in lists.iter().zip(&ranks) {
+                        total += list[rank].1;
+                        prefix_costs.push(total);
+                    }
+                    let mut key: Vec<i64> = prefix_costs.into_iter().rev().collect();
+                    key.extend(ranks.iter().map(|&rank| rank as i64));
+                    (key, ranks, total)
+                })
+                .filter(|(_, _, total)| threshold.is_none_or(|t| total - best <= t))
+                .collect();
+            keyed.sort();
+
+            keyed
+                .into_iter()
+                .take(n)
+                .map(|(_, ranks, total)| {
+                    let mut tokens: Vec<Flat> = Vec::new();
+                    for ((start, list), &rank) in lists.iter().zip(&ranks) {
+                        for (surface, byte_start, byte_end, _, word_id) in &list[rank].0 {
+                            tokens.push((
+                                surface.clone(),
+                                start + byte_start,
+                                start + byte_end,
+                                tokens.len(),
+                                *word_id,
+                            ));
+                        }
+                    }
+                    (tokens, total)
+                })
+                .collect()
+        }
+
+        /// Every result covers the whole input except the dropped
+        /// whitespace, with consistent offsets and positions, and the costs
+        /// do not decrease.
+        fn assert_whole_input(text: &str, results: &[(Vec<Flat>, i64)]) {
+            let expected: String = text
+                .chars()
+                .filter(|c| !matches!(c, ' ' | '\t' | '\n' | '\u{0B}'))
+                .collect();
+            for (tokens, _) in results {
+                let joined: String = tokens.iter().map(|t| t.0.as_str()).collect();
+                assert_eq!(joined, expected);
+                for (i, (surface, start, end, position, _)) in tokens.iter().enumerate() {
+                    assert_eq!(&text[*start..*end], surface);
+                    assert_eq!(*position, i);
+                }
+            }
+            assert!(results.windows(2).all(|pair| pair[0].1 <= pair[1].1));
+        }
+
+        /// Ranks 2 and 3 used to take rank 2 of both sentences, then rank 3
+        /// of both; the whole-input top 3 keep one sentence at its best.
+        #[test]
+        fn test_nbest_multi_sentence_is_the_whole_input_top_n() {
+            let segmenter = ipadic(Mode::Normal);
+            let text = "東京、です";
+            let results = nbest(&segmenter, text, 3, false, None);
+            let costs: Vec<i64> = results.iter().map(|(_, cost)| *cost).collect();
+            assert_eq!(costs, vec![3079, 11683, 12015]);
+            assert_eq!(results, oracle(&segmenter, text, 3, false, None));
+            assert_whole_input(text, &results);
+        }
+
+        /// `。` has fewer paths than `n`; it used to be missing from rank 3.
+        #[test]
+        fn test_nbest_short_sentence_is_in_every_result() {
+            let segmenter = ipadic(Mode::Normal);
+            let text = "。東京";
+            for n in [1, 2, 3, 5] {
+                let results = nbest(&segmenter, text, n, false, None);
+                assert_eq!(results, oracle(&segmenter, text, n, false, None));
+                assert_whole_input(text, &results);
+                for (tokens, _) in &results {
+                    assert_eq!(tokens[0].0, "。");
+                }
+            }
+        }
+
+        /// The threshold is measured from the best cost of the whole input:
+        /// the second-best path of either sentence fits, both together do
+        /// not, although each is within the threshold of its own sentence.
+        #[test]
+        fn test_nbest_threshold_applies_to_the_whole_input() {
+            let segmenter = ipadic(Mode::Normal);
+            let text = "東京、です";
+            let lists: Vec<Vec<i64>> = sentences(text)
+                .into_iter()
+                .map(|(_, sentence)| {
+                    nbest(&segmenter, sentence, 2, false, None)
+                        .iter()
+                        .map(|(_, cost)| *cost)
+                        .collect()
+                })
+                .collect();
+            assert_eq!(lists.len(), 2);
+            let (a, b) = (&lists[0], &lists[1]);
+            let t = (a[1] - a[0]).max(b[1] - b[0]);
+            let best = a[0] + b[0];
+
+            // `n` is large enough that only the threshold limits the results.
+            let results = nbest(&segmenter, text, 100, false, Some(t));
+            assert!(results.len() < 100);
+            let costs: Vec<i64> = results.iter().map(|(_, cost)| *cost).collect();
+            assert!(costs.contains(&(a[1] + b[0])));
+            assert!(costs.contains(&(a[0] + b[1])));
+            assert!(!costs.contains(&(a[1] + b[1])));
+            assert!(costs.iter().all(|cost| cost - best <= t));
+
+            for threshold in [Some(0), Some(t), Some(a[1] - a[0] + b[1] - b[0]), None] {
+                assert_eq!(
+                    nbest(&segmenter, text, 5, false, threshold),
+                    oracle(&segmenter, text, 5, false, threshold)
+                );
+            }
+            assert!(nbest(&segmenter, text, 5, false, Some(-1)).is_empty());
+        }
+
+        /// With `unique`, the word boundaries of the results differ.
+        #[test]
+        fn test_nbest_unique_over_sentences() {
+            let segmenter = ipadic(Mode::Normal);
+            let text = "すもももももももものうち、です";
+            let results = nbest(&segmenter, text, 5, true, None);
+            assert_eq!(results, oracle(&segmenter, text, 5, true, None));
+            assert_whole_input(text, &results);
+            let boundaries: HashSet<Vec<usize>> = results
+                .iter()
+                .map(|(tokens, _)| tokens.iter().map(|t| t.1).collect())
+                .collect();
+            assert_eq!(boundaries.len(), results.len());
+        }
+
+        #[test]
+        fn test_nbest_decompose_over_sentences() {
+            let segmenter = ipadic(Mode::Decompose(Penalty::default()));
+            let text = "関西国際空港、です";
+            let results = nbest(&segmenter, text, 5, false, None);
+            assert_eq!(results, oracle(&segmenter, text, 5, false, None));
+            assert_whole_input(text, &results);
+        }
+
+        /// A sentence of skipped whitespace takes part with its empty path,
+        /// and the offsets after whitespace stay absolute.
+        #[test]
+        fn test_nbest_whitespace_sentences() {
+            let segmenter = ipadic(Mode::Normal);
+            for text in ["東京\n\nです", "東京\tです", "東京 です、 京都"] {
+                let results = nbest(&segmenter, text, 3, false, None);
+                assert_eq!(results, oracle(&segmenter, text, 3, false, None));
+                assert_whole_input(text, &results);
+            }
+        }
+
+        /// The whitespace settings apply to every sentence as in `segment`:
+        /// without skipping, whitespace stays in the lattice; with
+        /// `keep_whitespace`, the whitespace tokens stay in the output.
+        #[test]
+        fn test_nbest_whitespace_settings_over_sentences() {
+            let text = "東京 です、 京都\tへ";
+
+            let no_skip = ipadic(Mode::Normal).skip_whitespace(false);
+            let results = nbest(&no_skip, text, 3, false, None);
+            assert_eq!(results, oracle(&no_skip, text, 3, false, None));
+            assert_whole_input(text, &results);
+
+            let keep = ipadic(Mode::Normal).keep_whitespace(true);
+            let results = nbest(&keep, text, 3, false, None);
+            assert_eq!(results, oracle(&keep, text, 3, false, None));
+            for (tokens, _) in &results {
+                let joined: String = tokens.iter().map(|t| t.0.as_str()).collect();
+                assert_eq!(joined, text);
+            }
+        }
+
+        /// A huge `n` is not used to presize anything; it used to abort with
+        /// a capacity overflow.
+        #[test]
+        fn test_nbest_huge_n() {
+            let segmenter = ipadic(Mode::Normal);
+            let text = "東京、です";
+            let results = nbest(&segmenter, text, usize::MAX, false, Some(0));
+            assert!(!results.is_empty());
+            assert_eq!(results[0], nbest(&segmenter, text, 1, false, None)[0]);
+            assert!(results.iter().all(|(_, cost)| *cost == results[0].1));
+        }
+
+        #[test]
+        fn test_nbest_first_result_matches_segment_over_sentences() {
+            let segmenter = ipadic(Mode::Normal);
+            let text = "東京、です。すもももももももものうち\nもも";
+            let tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
+            let results = nbest(&segmenter, text, 1, false, None);
+            assert_eq!(results.len(), 1);
+            assert_eq!(results[0].0, flatten(&tokens));
+        }
+
+        #[test]
+        fn test_nbest_owned_matches_borrowed() {
+            let segmenter = ipadic(Mode::Normal);
+            let text = "東京、です。すもももももももものうち";
+            let owned: Results = segmenter
+                .segment_nbest(Cow::Owned(text.to_string()), 5, false, None)
+                .unwrap()
+                .iter()
+                .map(|(tokens, cost)| (flatten(tokens), *cost))
+                .collect();
+            assert_eq!(owned, nbest(&segmenter, text, 5, false, None));
         }
     }
 }

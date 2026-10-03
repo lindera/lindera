@@ -148,7 +148,8 @@ impl AnalysisWorker {
     /// * `text` - The input text to tokenize.
     /// * `n` - Maximum number of tokenizations to return.
     /// * `unique` - Deduplicate results with identical word boundaries.
-    /// * `cost_threshold` - Discard paths costing more than best + threshold.
+    /// * `cost_threshold` - Discard results costing more than the best
+    ///   result + threshold, over the whole input.
     ///
     /// # 戻り値
     ///

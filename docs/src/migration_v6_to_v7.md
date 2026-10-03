@@ -9,9 +9,10 @@ the new `analysis` feature, on by default — the analysis chain of
 `LINDERA_DICTIONARIES_PATH` fallback, as announced in v5.0.0, corrects
 the IPADIC schema, which had the `conjugation_type` and `conjugation_form`
 names swapped, keeps dictionary entries whose surface is whitespace or
-starts or ends with it, skips whitespace in the lattice as MeCab does, and
-resolves overlapping `char.def` lines as MeCab does. This guide lists every
-breaking change and the one-line fixes for each.
+starts or ends with it, skips whitespace in the lattice as MeCab does,
+resolves overlapping `char.def` lines as MeCab does, and returns N-best
+results that each cover the whole input. This guide lists every breaking
+change and the one-line fixes for each.
 
 ## Overview
 
@@ -28,18 +29,21 @@ breaking change and the one-line fixes for each.
 | **Dictionary entries with whitespace are kept** | Text with U+3000 (IPADIC, IPADIC-NEologd, UniDic), text with spaces (SudachiDict), and a few entries that ended with whitespace | Expect U+3000 to be `記号,空白` / `空白` and SudachiDict to segment spaced text much closer to Sudachi; rebuild or re-download dictionaries made with v6.2.0 or earlier |
 | **Whitespace is skipped in the lattice: the words on either side of a space connect directly, as in MeCab** | Anyone who segments text containing whitespace with `keep_whitespace` false (the default), most visibly with ko-dic | Expect MeCab's segmentation for such text; `skip_whitespace(false)` (`"skip_whitespace": false`, `--disable-skip-whitespace`) restores the v6 segmentation |
 | **Overlapping `char.def` lines: the last line decides** | Text with `Ð` (U+00D0; every dictionary except ko-dic), `々` (U+3005) or `〇` (U+3007); `lindera train` users whose `char.def` has single-code-point or overlapping lines | Expect `Ð` to stay in the output as a letter; rebuild or re-download dictionaries made with v6.2.0 or earlier |
+| **N-best: every result covers the whole input** | Anyone who asks for N-best results (`segment_nbest`, `tokenize_nbest`, `lindera tokenize -N`, the bindings' N-best methods) for input with more than one sentence | Expect the cheapest segmentations of the whole input from the second result on; a cost threshold now applies to the whole input |
 
 The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
 their APIs and package names; only their version number moves to 7.0.0.
-There are four output differences, all described below. With IPADIC or
+There are five output differences, all described below. With IPADIC or
 IPADIC-NEologd, the values reported under the names `conjugation_type` and
 `conjugation_form` trade places. The dictionaries now contain the entries
 whose surface is or starts or ends with whitespace, which changes the
 segmentation of text that contains such whitespace. Text that contains
-whitespace is segmented as MeCab segments it. And `Ð`, `々` and `〇` get the
+whitespace is segmented as MeCab segments it. `Ð`, `々` and `〇` get the
 character categories that MeCab gives them, which changes the segmentation
-of text that contains them. Otherwise, for the same input and dictionary,
-v7.0.0 produces the same tokens with the same positional details as v6.2.0.
+of text that contains them. And for input with more than one sentence, the
+N-best results from the second one on are the cheapest segmentations of the
+whole input. Otherwise, for the same input and dictionary, v7.0.0 produces
+the same tokens with the same positional details as v6.2.0.
 
 ## The lindera crate is now a facade
 
@@ -426,6 +430,31 @@ directory built or downloaded with v6.2.0 or earlier still loads in v7.0.0
 but keeps the old categories until you rebuild it with `lindera build` or
 download the 7.0.0 release asset.
 
+## N-best results cover the whole input
+
+The N-best methods (`Segmenter::segment_nbest`, `Tokenizer::tokenize_nbest`,
+their `_with_lattice` and worker forms, `lindera tokenize -N` and the
+bindings' N-best methods) search the input sentence by sentence, splitting
+it at `\n`, `\t`, `。` and `、` as the 1-best segmentation does. Up to v6, the
+k-th result joined the k-th path of every sentence. From the second result
+on, that changed every sentence at once, so the results were not the
+cheapest segmentations of the input and their costs could go down, and a
+sentence with fewer than k paths was missing from the k-th result. v7.0.0
+returns the N cheapest combinations of one path per sentence, in ascending
+order of total cost, and every result covers the whole input:
+
+| Input (IPADIC, `-N 3`) | v6 | v7 |
+| --- | --- | --- |
+| `東京、です` | 3079 `東京 、 です`; 23850 `東 京 、 で す`; 24249 `東 京 、 で す` | 3079 `東京 、 です`; 11683 `東京 、 で す`; 12015 `東京 、 で す` |
+| `。東京` | 13 `。 東京`; 30433 `。 東 京`; 13520 `東 京` (no `。`) | 13 `。 東京`; 11543 `。 東 京`; 11610 `。 東 京` |
+
+The first result does not change, and neither does the output for input
+with a single sentence. The cost threshold (`cost_threshold`,
+`--nbest-cost-threshold`) is now measured over the whole input: a result is
+kept when its total cost is within the threshold of the first result's. v6
+applied the threshold to each sentence separately. With `unique`, the
+results still have distinct word boundaries.
+
 ## Who does not need to act
 
 - **Users of the language bindings and the CLI**: the Python, Node.js, Ruby,
@@ -434,8 +463,9 @@ download the 7.0.0 release asset.
   the IPADIC conjugation fix, which matters only if you read those two fields
   by name, the whitespace entries, which matter only for text with U+3000
   (IPADIC, IPADIC-NEologd, UniDic) or with spaces (SudachiDict), the
-  segmentation of text that contains whitespace, and the `char.def` fix,
-  which matters only for text with `Ð`, `々` or `〇`.
+  segmentation of text that contains whitespace, the `char.def` fix, which
+  matters only for text with `Ð`, `々` or `〇`, and the N-best fix, which
+  matters only for N-best results for input with more than one sentence.
 - **Projects staying on `lindera = "6"`**: the 6.x releases of `lindera` and
   `lindera-analysis` remain on crates.io and keep working together. Nothing
   changes until you bump the major version.
@@ -509,7 +539,14 @@ Users of `lindera train`:
 - If your `char.def` has single-code-point or overlapping lines, retrain:
   the `%t` feature now follows those lines as MeCab does.
 
+Users of N-best results:
+
+- Expect every result to cover the whole input, and the results from the
+  second one on to change for input with more than one sentence.
+- If you set a cost threshold, it now applies to the total cost of the
+  whole input, not to each sentence.
+
 Language bindings and CLI:
 
-- Nothing to do beyond taking the 7.0.0 release, apart from the dictionary
-  and whitespace items above.
+- Nothing to do beyond taking the 7.0.0 release, apart from the dictionary,
+  whitespace and N-best items above.

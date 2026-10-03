@@ -157,14 +157,17 @@ impl SegmentWorker {
     /// this worker's lattice.
     ///
     /// Produces exactly the same results as [`Segmenter::segment_nbest`]
-    /// for the same input and configuration.
+    /// for the same input and configuration: every result segments the whole
+    /// input, and the results are the cheapest combinations of the paths of
+    /// its sentences.
     ///
     /// # 引数
     ///
     /// * `text` - The input text to segment.
     /// * `n` - Maximum number of segmentations to return.
     /// * `unique` - Deduplicate results with identical word boundaries.
-    /// * `cost_threshold` - Discard paths costing more than best + threshold.
+    /// * `cost_threshold` - Discard results costing more than the best
+    ///   result + threshold, over the whole input.
     ///
     /// # 戻り値
     ///
@@ -400,24 +403,31 @@ mod tests {
         fn test_worker_matches_segment_nbest_output() {
             let segmenter = ipadic_segmenter();
             let mut worker = segmenter.new_worker();
-            let text = "すもももももももものうち";
-
-            let expected = match segmenter.segment_nbest(Cow::Borrowed(text), 5, false, None) {
-                Ok(results) => results,
-                Err(err) => panic!("segment_nbest failed: {err}"),
-            };
-            // Second call exercises nbest lattice reuse.
-            for _ in 0..2 {
-                let actual = match worker.segment_nbest(text, 5, false, None) {
+            // The second text has several sentences, whose N-best lists are
+            // combined over the whole input.
+            for text in ["すもももももももものうち", "東京、です。すもももも"]
+            {
+                let expected = match segmenter.segment_nbest(Cow::Borrowed(text), 5, false, None) {
                     Ok(results) => results,
-                    Err(err) => panic!("worker.segment_nbest failed: {err}"),
+                    Err(err) => panic!("segment_nbest failed: {err}"),
                 };
-                assert_eq!(expected.len(), actual.len());
-                for ((e_tokens, e_cost), (a_tokens, a_cost)) in expected.iter().zip(actual.iter()) {
-                    assert_eq!(e_cost, a_cost);
-                    let e_surfaces: Vec<_> = e_tokens.iter().map(|t| t.surface.clone()).collect();
-                    let a_surfaces: Vec<_> = a_tokens.iter().map(|t| t.surface.clone()).collect();
-                    assert_eq!(e_surfaces, a_surfaces);
+                // Second call exercises nbest lattice reuse.
+                for _ in 0..2 {
+                    let actual = match worker.segment_nbest(text, 5, false, None) {
+                        Ok(results) => results,
+                        Err(err) => panic!("worker.segment_nbest failed: {err}"),
+                    };
+                    assert_eq!(expected.len(), actual.len());
+                    for ((e_tokens, e_cost), (a_tokens, a_cost)) in
+                        expected.iter().zip(actual.iter())
+                    {
+                        assert_eq!(e_cost, a_cost);
+                        let e_surfaces: Vec<_> =
+                            e_tokens.iter().map(|t| t.surface.clone()).collect();
+                        let a_surfaces: Vec<_> =
+                            a_tokens.iter().map(|t| t.surface.clone()).collect();
+                        assert_eq!(e_surfaces, a_surfaces);
+                    }
                 }
             }
         }
