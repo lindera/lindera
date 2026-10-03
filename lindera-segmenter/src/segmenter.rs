@@ -1,3 +1,5 @@
+mod nbest_merge;
+
 use std::borrow::Cow;
 use std::str::FromStr;
 use std::sync::Arc;
