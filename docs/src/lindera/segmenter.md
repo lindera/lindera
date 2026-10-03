@@ -231,6 +231,8 @@ for (tokens, cost) in results {
 }
 ```
 
+Every result segments the whole input. The input is split into sentences as described in [Sentence Splitting](#sentence-splitting), and each sentence is searched on its own; a result takes one path in each sentence, its cost is the sum of those paths' costs, and the results are the `n` cheapest of these combinations. So a result can differ from the best one in a single sentence. `best_cost` is the cost of the first result, so `cost_threshold` applies to the whole input.
+
 `segment_nbest_with_lattice` is the same operation but lets you pass in a reusable `Lattice` buffer to avoid reallocating one per call.
 
 ## Sentence Splitting

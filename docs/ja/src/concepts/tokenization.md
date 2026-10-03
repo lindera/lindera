@@ -69,6 +69,8 @@ N-Bestトークナイズは、総パスコスト順（低コスト = より良�
 
 N-Bestトークナイズは**Forward-DP Backward-A\***アルゴリズムに基づいており、MeCabのN-Best実装と互換性があります。フォワードパスは動的計画法で最適コストを計算し、バックワードパスはA\*探索を使用して総コストの昇順にパスを列挙します。
 
+1-best のトークナイズと同じく、入力はまず文に分けられ（[文分割](../lindera/segmenter.md#文分割)を参照）、文ごとに探索されます。どの候補も入力全体の分割で、文ごとに 1 つのパスを選び、そのコストは選んだパスのコストの合計です。候補は、これらの組み合わせのうちコストの小さい N 件です。
+
 ### パラメータ
 
 `tokenize_nbest`メソッドは以下のパラメータを受け付けます：
@@ -78,7 +80,7 @@ N-Bestトークナイズは**Forward-DP Backward-A\***アルゴリズムに基�
 | `text` | `&str` | トークナイズするテキスト。 |
 | `n` | `usize` | 返すN-best結果の数。 |
 | `unique` | `bool` | `true`の場合、同じ単語境界位置を生成する結果を重複排除します。 |
-| `cost_threshold` | `Option<i64>` | `Some(threshold)`の場合、`best_cost + threshold`以内のコストのパスのみを返します。 |
+| `cost_threshold` | `Option<i64>` | `Some(threshold)`の場合、`best_cost + threshold`以内のコストの候補のみを返します。`best_cost` は 1 件目の候補のコストです（どちらも入力全体の合計）。 |
 
 ### Rust APIの例
 
