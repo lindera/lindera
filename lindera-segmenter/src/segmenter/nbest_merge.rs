@@ -49,7 +49,8 @@ struct Node {
 /// # 戻り値
 ///
 /// The combinations, each as the rank chosen in every sentence and the total
-/// cost. Empty if `n` is zero, `lists` is empty, or any list is empty.
+/// cost. Empty if `n` is zero, `lists` is empty, any list is empty, or
+/// `cost_threshold` is negative.
 pub(super) fn merge_nbest<L: AsRef<[i64]>>(
     lists: &[L],
     n: usize,

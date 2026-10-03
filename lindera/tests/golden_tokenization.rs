@@ -167,17 +167,10 @@ fn ipadic_user_dictionary() {
     insta::assert_snapshot!("ipadic_user_dictionary", render(&segmenter, texts));
 }
 
-/// Pins N-best tokenization output (IPADIC).
+/// Renders N-best results as one block per candidate: its cost, then one
+/// `surface<TAB>start..end<TAB>details` line per token.
 #[cfg(feature = "embed-ipadic")]
-#[test]
-fn ipadic_nbest() {
-    let segmenter = segmenter("embedded://ipadic", Mode::Normal);
-
-    let text = "関西国際空港限定トートバッグ";
-    let results = segmenter
-        .segment_nbest(Cow::Borrowed(text), 3, false, None)
-        .expect("segmentation should succeed");
-
+fn render_nbest(results: Vec<(Vec<lindera::token::Token>, i64)>) -> String {
     let mut out = String::new();
     for (i, (mut tokens, cost)) in results.into_iter().enumerate() {
         out.push_str(&format!("## candidate {i} (cost: {cost})\n"));
@@ -190,7 +183,35 @@ fn ipadic_nbest() {
         }
         out.push('\n');
     }
-    insta::assert_snapshot!("ipadic_nbest", out);
+    out
+}
+
+/// Pins N-best tokenization output (IPADIC).
+#[cfg(feature = "embed-ipadic")]
+#[test]
+fn ipadic_nbest() {
+    let segmenter = segmenter("embedded://ipadic", Mode::Normal);
+
+    let text = "関西国際空港限定トートバッグ";
+    let results = segmenter
+        .segment_nbest(Cow::Borrowed(text), 3, false, None)
+        .expect("segmentation should succeed");
+    insta::assert_snapshot!("ipadic_nbest", render_nbest(results));
+}
+
+/// Pins N-best output over several sentences (IPADIC, #1097): every
+/// candidate segments the whole input, and the candidates are the cheapest
+/// combinations of the sentences' paths.
+#[cfg(feature = "embed-ipadic")]
+#[test]
+fn ipadic_nbest_multi_sentence() {
+    let segmenter = segmenter("embedded://ipadic", Mode::Normal);
+
+    let text = "東京、です。関西国際空港へ行く";
+    let results = segmenter
+        .segment_nbest(Cow::Borrowed(text), 5, false, None)
+        .expect("segmentation should succeed");
+    insta::assert_snapshot!("ipadic_nbest_multi_sentence", render_nbest(results));
 }
 
 /// Regression test #1016: Apply the Decompose penalty when connecting a compound to EOS.

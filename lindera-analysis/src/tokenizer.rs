@@ -541,6 +541,8 @@ impl Tokenizer {
     ///
     /// Each result is a `Vec<Token>` with character/token filters applied.
     /// Results are ordered by cost (best first).
+    /// Every result covers the whole (filtered) input; see
+    /// [`Tokenizer::tokenize_nbest_with_lattice`].
     pub fn tokenize_nbest<'a>(
         &'a self,
         text: &'a str,
@@ -557,6 +559,12 @@ impl Tokenizer {
     /// If `unique` is true, results with the same word boundaries are deduplicated.
     /// If `cost_threshold` is Some(t), paths whose cost exceeds best_cost + t
     /// are discarded.
+    ///
+    /// The segmentation comes from
+    /// [`Segmenter::segment_nbest_with_lattice`]: the text is split into
+    /// sentences, and the results are the `n` cheapest combinations of one
+    /// path per sentence. `best_cost` is the cost of the first result, so the
+    /// threshold applies to the whole input.
     pub fn tokenize_nbest_with_lattice<'a>(
         &'a self,
         text: &'a str,

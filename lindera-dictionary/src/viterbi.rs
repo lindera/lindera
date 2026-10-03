@@ -2467,6 +2467,10 @@ impl Lattice {
     /// are deduplicated, keeping only the first (lowest cost) variant.
     /// If `cost_threshold` is Some(t), paths whose cost exceeds best_cost + t are discarded.
     /// Requires set_text_nbest() to have been called first.
+    ///
+    /// The paths and costs are those of this lattice, i.e. of the one
+    /// sentence it was built from; the segmenter combines the lists of the
+    /// sentences of an input into whole-input results.
     pub fn nbest_tokens_offset(
         &self,
         n: usize,

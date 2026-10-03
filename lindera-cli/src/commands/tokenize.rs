@@ -112,7 +112,7 @@ pub struct TokenizeArgs {
     nbest_unique: bool,
     #[clap(
         long = "nbest-cost-threshold",
-        help = "Maximum cost difference from best path for N-best results (e.g. 10000)"
+        help = "Maximum cost difference from the best N-best result, over the whole line (e.g. 10000)"
     )]
     nbest_cost_threshold: Option<i64>,
     #[clap(help = "Input text file (default: stdin)")]
