@@ -69,7 +69,7 @@ N-Best tokenization enumerates the top N tokenization candidates ordered by tota
 
 N-Best tokenization is based on the **Forward-DP Backward-A\*** algorithm, which is compatible with MeCab's N-Best implementation. The forward pass computes optimal costs using dynamic programming, and the backward pass uses A\* search to enumerate paths in order of increasing total cost.
 
-As in 1-best tokenization, the input is first split into sentences (see [Sentence Splitting](../lindera/segmenter.md#sentence-splitting)), and each sentence is searched on its own. Every candidate segments the whole input: it takes one path in each sentence, and its cost is the sum of those paths' costs. The candidates are the N cheapest of these combinations.
+As in 1-best tokenization, the input is first split into sentences, and the sentences up to each `\n` or `\t` form a segment (see [Sentence Splitting](../lindera/segmenter.md#sentence-splitting)). Each segment is searched on its own: within it, the context is carried across `、` and `。`, so its paths are the N best paths of one lattice over the segment. Every candidate segments the whole input: it takes one path in each segment, and its cost is the sum of those paths' costs. The candidates are the N cheapest of these combinations.
 
 ### Parameters
 

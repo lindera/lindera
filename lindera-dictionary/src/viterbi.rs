@@ -2873,8 +2873,9 @@ impl Lattice {
     /// Requires set_text_nbest() to have been called first.
     ///
     /// The paths and costs are those of this lattice, i.e. of the one
-    /// sentence it was built from; the segmenter combines the lists of the
-    /// sentences of an input into whole-input results.
+    /// sentence it was built from, each ending with the EOS connection. The
+    /// segmenter uses it for a sentence that is a segment of its own and
+    /// combines the lists of an input's segments into whole-input results.
     ///
     /// Meant for the default single BOS edge: with several
     /// ([`LatticeOptions::bos`]) a path's cost includes its BOS edge's cost,

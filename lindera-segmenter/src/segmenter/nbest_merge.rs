@@ -411,8 +411,9 @@ mod tests {
 
     #[test]
     fn test_merge_nbest_global_order_differs_from_rank_join() {
-        // `東京、です` with IPADIC: joining rank r of every sentence gives
-        // 3079 / 23850 / 24249, the global top 3 keeps the first sentence.
+        // `東京、です` with IPADIC, cut at `、` into two independent lists as
+        // before the context was carried: joining rank r of every list gives
+        // 3079 / 23850 / 24249, the global top 3 keeps the first list.
         let lists = [vec![-1883, 10284, 10351], vec![4962, 13566, 13898]];
         assert_eq!(
             merge_nbest(&lists, 3, None),
@@ -422,8 +423,9 @@ mod tests {
 
     #[test]
     fn test_merge_nbest_short_list_stays_in_every_rank() {
-        // `。東京` with IPADIC: `。` has two paths; every combination still
-        // takes one of them.
+        // `。東京` with IPADIC, cut after `。` into two independent lists as
+        // before the context was carried: `。` has two paths; every
+        // combination still takes one of them.
         let lists = [vec![-1910, 16980], vec![1923, 13453, 13520]];
         assert_eq!(
             merge_nbest(&lists, 3, None),

@@ -957,7 +957,7 @@ impl Segmenter {
     /// 2. **Lattice Processing**:
     ///    - For each sentence, a lattice structure is set up using the main dictionary and, if available, the user dictionary. The lattice helps identify possible token boundaries within the sentence.
     ///    - The cost matrix is used to calculate the best path (i.e., the optimal sequence of tokens) through the lattice based on the mode.
-    ///    - A sentence that continues a segment starts from the exits of the previous sentence (the right context ids of the words that end it), and the EOS connection is paid only at the end of the segment, so the best path of a segment is the one that a single lattice over the segment gives, except for a dictionary entry or an unknown-word group that would span a cut.
+    ///    - A sentence that continues a segment starts from the exits of the previous sentence (the right context ids of the words that end it), and the EOS connection is paid only at the end of the segment, so the best path of a segment is the one that a single lattice over the segment gives, except that no dictionary entry or unknown-word group spans a cut and a word that starts right at a forced cut never pays the left-space penalty.
     ///
     /// 3. **Token Generation**:
     ///    - For each word of the best path, a token is generated using the byte offsets. The tokens contain the original text (in `Cow::Owned` form to ensure safe return), byte start/end positions, token positions, and dictionary references.
@@ -1000,7 +1000,7 @@ impl Segmenter {
     /// 2. **Lattice Processing**:
     ///    - For each sentence, a lattice structure is set up using the main dictionary and, if available, the user dictionary. The lattice helps identify possible token boundaries within the sentence.
     ///    - The cost matrix is used to calculate the best path (i.e., the optimal sequence of tokens) through the lattice based on the mode.
-    ///    - A sentence that continues a segment starts from the exits of the previous sentence (the right context ids of the words that end it), and the EOS connection is paid only at the end of the segment, so the best path of a segment is the one that a single lattice over the segment gives, except for a dictionary entry or an unknown-word group that would span a cut.
+    ///    - A sentence that continues a segment starts from the exits of the previous sentence (the right context ids of the words that end it), and the EOS connection is paid only at the end of the segment, so the best path of a segment is the one that a single lattice over the segment gives, except that no dictionary entry or unknown-word group spans a cut and a word that starts right at a forced cut never pays the left-space penalty.
     ///
     /// 3. **Token Generation**:
     ///    - For each word of the best path, a token is generated using the byte offsets. The tokens contain the original text (in `Cow::Owned` form to ensure safe return), byte start/end positions, token positions, and dictionary references.
@@ -1252,8 +1252,9 @@ impl Segmenter {
     /// [`Segmenter::segment`]. Within a segment (the sentences up to a `\n`,
     /// a `\t` or the end of the input), the context is carried across the
     /// cuts at `、`, `。` and the forced cuts: a path of a segment costs what
-    /// a single lattice over the segment gives it, the EOS connection paid
-    /// only at its end, and the segment's `n` best paths are searched exactly
+    /// a single lattice over the segment gives it (with the exceptions that
+    /// [`Segmenter::segment`] lists), the EOS connection paid only at its
+    /// end, and the segment's `n` best paths are searched exactly
     /// (with `unique` over the word boundaries of the whole segment, and the
     /// threshold from the segment's best). Every result is a segmentation of
     /// the whole input that takes one path in each segment, and its cost is

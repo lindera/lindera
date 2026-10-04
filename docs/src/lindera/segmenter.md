@@ -155,7 +155,7 @@ Before v7, Lindera kept whitespace in the lattice even when it dropped it from t
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
 ```
 
-Text is still split into sentences at `\n` and `\t` (see [Sentence Splitting](#sentence-splitting)), so the context is not carried across a newline or a tab. mecab-ko analyzes a line at a time and skips a tab inside it like any other whitespace.
+A `\n` or a `\t` still ends a segment (see [Sentence Splitting](#sentence-splitting)), so the context is not carried across a newline or a tab. mecab-ko analyzes a line at a time and skips a tab inside it like any other whitespace.
 
 ## Unknown-Word Grouping
 
@@ -231,17 +231,28 @@ for (tokens, cost) in results {
 }
 ```
 
-Every result segments the whole input. The input is split into sentences as described in [Sentence Splitting](#sentence-splitting), and each sentence is searched on its own; a result takes one path in each sentence, its cost is the sum of those paths' costs, and the results are the `n` cheapest of these combinations. So a result can differ from the best one in a single sentence. `best_cost` is the cost of the first result, so `cost_threshold` applies to the whole input.
+Every result segments the whole input. The input is split into segments as described in [Sentence Splitting](#sentence-splitting), and each segment is searched on its own. Within a segment, the context is carried across `、`, `。` and forced cuts, so the paths of a segment are the `n` best paths of one lattice over the whole segment, with the exceptions listed there; `unique` compares the word boundaries of the whole segment. A result takes one path in each segment, its cost is the sum of those paths' costs, and the results are the `n` cheapest of these combinations. So a result can differ from the best one in a single segment. `best_cost` is the cost of the first result, so `cost_threshold` applies to the whole input. The first result is the output of `segment`, unless several paths have exactly the same cost.
 
 `segment_nbest_with_lattice` is the same operation but lets you pass in a reusable `Lattice` buffer to avoid reallocating one per call.
 
 ## Sentence Splitting
 
-Before building the lattice, Lindera splits the input into sentences at delimiter characters (`\n`, `\t`, `。`, `、`) and segments one sentence at a time. If no delimiter appears within roughly 32 KiB of a sentence's start, Lindera forces a sentence boundary there anyway and logs a warning, to bound the size — and therefore the memory and CPU cost — of the Viterbi lattice built for that sentence. This is transparent for ordinary text, but for pathological delimiter-free input (e.g. minified text or base64-encoded blobs), it can affect tokenization at the artificial cut point.
+Before building the lattice, Lindera splits the input into sentences at delimiter characters (`\n`, `\t`, `。`, `、`) and builds one Viterbi lattice per sentence. If no delimiter appears within roughly 32 KiB of a sentence's start, Lindera forces a sentence boundary there anyway and logs a warning. The cuts bound the size — and therefore the memory and CPU cost — of each lattice.
+
+A `\n`, a `\t` or the end of the input ends a *segment*, the run of sentences up to it. Segments are independent of each other. Within a segment, the cuts at `、` and `。` and the forced cuts carry the context: the next sentence starts from the words that end the previous one (from their right context IDs, each with the cost of the best path to it) rather than from the beginning of a sentence (BOS), and the connection to the end of the sentence (EOS) is paid only at the end of the segment. So the best path of a segment, and its cost, are those of one lattice over the whole segment, as MeCab, which does not cut inside a line, finds them. Before v7, every sentence started from BOS and ended with EOS, so the word after `、` lost its context: with IPADIC, `ああ` in `彼は、ああ言った` was an interjection, and it is now an adverb, as in MeCab.
+
+The result can still differ from one lattice over the segment:
+
+- No word spans a cut: a dictionary entry that contains `、` or `。`, such as UniDic's `一、二塁`, never matches, an unknown word is not grouped across a cut, and a word that would span a forced cut is split there.
+- The left-space penalty (see [Left-Space Penalty (Korean)](#left-space-penalty-korean)) does not apply to a word that starts right at a forced cut, even when whitespace precedes the cut.
+
+Ordinary text never reaches the forced cut, but for pathological delimiter-free input (e.g. minified text or base64-encoded blobs), it can affect tokenization at the artificial cut point.
+
+N-best search uses the same segments; see [N-Best Segmentation](#n-best-segmentation).
 
 ## Reusable Worker
 
-`SegmentWorker` is a reusable segmentation session that owns the Viterbi lattice and the backtrace scratch buffer, so repeated calls avoid the per-call allocations `segment` pays. Create one with `new_worker` (clones the segmenter) or `into_worker` (consumes it, avoiding a user-dictionary copy), then call `segment`/`segment_nbest` on it:
+`SegmentWorker` is a reusable segmentation session that owns the Viterbi lattice and the scratch buffers of the segmentation, so repeated calls avoid the per-call allocations `segment` pays. Create one with `new_worker` (clones the segmenter) or `into_worker` (consumes it, avoiding a user-dictionary copy), then call `segment`/`segment_nbest` on it:
 
 ```rust
 let mut worker = segmenter.new_worker();
@@ -255,6 +266,6 @@ for line in lines {
 
 The returned tokens borrow the worker, so they must be consumed before the next call (the usual per-line loop above compiles as-is). `set_mode` and `set_keep_whitespace` switch the configuration between calls. `segmenter()` returns a shared reference to the underlying segmenter; no `&mut` accessor is provided, since swapping the dictionary out from under the reused lattice would break the dictionary-lattice pairing the worker exists to guarantee.
 
-A worker also bounds retained memory: one delimiter-free maximum-length sentence grows the lattice to several MB (roughly 18 MB for a 32 KiB ASCII sentence, 6 MB for a 32 KiB CJK one, whose character-indexed lattice has a third of the slots), and a plain `Lattice` keeps that forever. The worker automatically shrinks its lattice once a window of calls shows the capacity is oversized, and `shrink_to(text_len_hint)` forces a shrink immediately. `reset()` discards the internal buffers outright and replaces them with fresh ones; it is intended for recovery paths (e.g. after a panic poisoned a mutex holding the worker) where the buffers may hold an inconsistent intermediate state — the segmenter configuration itself is preserved.
+A worker also bounds retained memory: one delimiter-free maximum-length sentence grows the lattice to several MB (roughly 18 MB for a 32 KiB ASCII sentence, 6 MB for a 32 KiB CJK one, whose character-indexed lattice has a third of the slots), and a plain `Lattice` keeps that forever. The worker automatically shrinks its lattice, and releases its scratch buffers, once a window of calls shows the capacity is oversized, and `shrink_to(text_len_hint)` forces a shrink immediately. `reset()` discards the internal buffers outright and replaces them with fresh ones; it is intended for recovery paths (e.g. after a panic poisoned a mutex holding the worker) where the buffers may hold an inconsistent intermediate state — the segmenter configuration itself is preserved.
 
 The worker is permanently bound to the dictionary of the segmenter that created it; there is no way to swap dictionaries under a live worker, which rules out a class of lattice-reuse bugs by construction. For multi-threaded use, create one worker per thread from a shared `Segmenter`.
