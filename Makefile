@@ -30,8 +30,9 @@ CARGO_TEST_WITH_RBCONFIG = ruby -rrbconfig -e 'RbConfig::CONFIG.each { |k, v| EN
 # (clean-%, format-%, lint-%, test-%, build-%). The language bindings need extra
 # tooling, so they keep explicit targets, which override the matching pattern.
 #
-# `make <verb>` (clean/format/lint/test/build) runs the verb for every crate in
-# dependency order.
+# `make <verb>` (format/lint/test/build) runs the verb for every crate in
+# dependency order. `make clean` runs `cargo clean` once and then the binding
+# cleanups (see the Clean section).
 
 # Crates whose verbs are plain cargo invocations.
 CARGO_CRATES := lindera-crf lindera-dictionary lindera-trainer lindera-ipadic \
@@ -133,8 +134,12 @@ clean-lindera-wasm: ## Clean lindera-wasm build artifacts
 	rm -f lindera-wasm/example/package-lock.json
 	rm -f lindera-wasm/example/temp.json
 
-clean: ## Clean all build artifacts
-	$(foreach c,$(ALL_CRATES),make clean-$(c) &&) true
+# `cargo clean -p` keeps third-party dependencies and every profile/target
+# directory except the host dev one, so the aggregate target removes the whole
+# target directory instead and then runs the binding-specific cleanups.
+clean: ## Clean all build artifacts (removes the whole target directory)
+	cargo clean
+	$(foreach c,$(BINDING_CRATES),make clean-$(c) &&) true
 
 # ── Format ──────────────────────────────────────────────────────────────────
 
