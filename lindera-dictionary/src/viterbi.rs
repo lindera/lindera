@@ -403,6 +403,17 @@ impl Edge {
         self.start_char
     }
 
+    /// Returns the right context id of this edge: the context the edge
+    /// after it connects to.
+    ///
+    /// # 戻り値
+    ///
+    /// The right context id.
+    #[inline]
+    pub(crate) fn right_id(&self) -> u16 {
+        self.right_id
+    }
+
     /// Returns whether the edge surface consists solely of kanji.
     #[inline]
     pub(crate) fn kanji_only(&self) -> bool {
@@ -523,6 +534,18 @@ pub struct Lattice {
     /// which take an edge carried over a whitespace run to end where its own
     /// surface ends.
     skip_whitespace: bool,
+    /// Number of edges `ends_at[last_n_chars]` held when EOS was connected:
+    /// the edges a path can end with before EOS, from which the sentence's
+    /// exits come (see [`Lattice::exits_into`]). They are the first edges of
+    /// that slot; the EOS edge, when pushed, follows them. 0 when no edge
+    /// reaches the end of the sentence; reset by `clear()`.
+    final_edge_count: usize,
+    /// Decompose mode only: the length penalty of each final edge (see
+    /// `final_edge_count`), computed by the EOS connection, which is the
+    /// penalty such an edge pays whatever edge follows it. Empty in Normal
+    /// mode, where the penalty is 0, so Normal sentences never touch it;
+    /// cleared by `clear()`.
+    exit_penalties: Vec<i32>,
 }
 
 /// Upper bound applied to every stored `path_cost` so the relaxation loops
@@ -531,6 +554,72 @@ pub struct Lattice {
 /// not bounded by `i16` (the left-space penalty and `extra_cost`, both
 /// arbitrary `i32`) are folded in with `saturating_add` instead.
 const PATH_COST_CLAMP: i32 = i32::MAX - 131_072;
+
+/// One BOS (beginning-of-sentence) edge of a lattice; see
+/// [`LatticeOptions::bos`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BosContext {
+    /// Right context id of the BOS edge: the first word of the sentence
+    /// pays the connection cost from this context to its own left context
+    /// id. The dictionary's BOS context is 0.
+    pub right_id: u16,
+    /// Initial path cost of the BOS edge, part of the cost of every path
+    /// that starts from it. Clamped to `0..=i32::MAX - 131_072` when the
+    /// lattice is built, so pass costs relative to the cheapest context.
+    pub cost: i32,
+}
+
+/// One exit of a sentence: for one right context id, the best path from a
+/// BOS edge to a word that ends at the end of the sentence and has that
+/// right id, without EOS. Returned by [`Lattice::exits_into`]; its path is
+/// [`Lattice::exit_tokens_offset_into`], and every path that ends with that
+/// right id is
+/// [`NBestGenerator::from_exit`](crate::nbest::NBestGenerator::from_exit).
+///
+/// A segmenter that cuts a line into sentences uses the exits to carry the
+/// context of one sentence over to the next (see [`LatticeOptions::bos`]):
+/// the next sentence's lattice continues them as if the line were one
+/// lattice, without the EOS connection in between.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LatticeExit {
+    /// Right context id of the last word of the path (of the BOS edge for a
+    /// sentence without words).
+    right_id: u16,
+    /// Cost of the path: the BOS edge's cost, the word costs, the
+    /// connections and penalties between them, and the last word's
+    /// Decompose length penalty (the penalty it pays whatever follows it),
+    /// but not the EOS connection.
+    cost: i32,
+    /// Index in `ends_at[n_chars]` of the last edge of the path: the
+    /// cheapest final edge with this right id, the first one on ties (as
+    /// the EOS connection chooses).
+    edge: u16,
+}
+
+impl LatticeExit {
+    /// Returns the right context id of the last word of the path, the
+    /// context the next word connects to (the BOS edge's for a sentence
+    /// without words).
+    ///
+    /// # Returns
+    ///
+    /// The right context id.
+    #[inline]
+    pub fn right_id(&self) -> u16 {
+        self.right_id
+    }
+
+    /// Returns the cost of the path: everything from the BOS edge's cost to
+    /// the last word's Decompose length penalty, without the EOS connection.
+    ///
+    /// # Returns
+    ///
+    /// The cost; lower is better.
+    #[inline]
+    pub fn cost(&self) -> i32 {
+        self.cost
+    }
+}
 
 /// Per-sentence options for [`Lattice::set_text_with_options`] and
 /// [`Lattice::set_text_nbest_with_options`].
@@ -576,12 +665,30 @@ pub struct LatticeOptions<'a> {
     /// When `space_penalty` is set as well, this classifier also decides
     /// which characters count as whitespace for the penalty.
     pub skip_whitespace: Option<&'a WhitespaceClassifier>,
+    /// The BOS edges the sentence starts from. Empty (the default) means
+    /// the single BOS edge of the dictionary: right context id 0, cost 0.
+    ///
+    /// Otherwise the lattice gets one BOS edge per context, in this order,
+    /// in the 1-best and the N-best lattice alike. A path's cost includes
+    /// the cost of the BOS edge it starts from, so the best path is the best
+    /// over all contexts. A segmenter uses this to carry the context of the
+    /// previous sentence across a cut: one context per exit of that
+    /// sentence (see [`Lattice::exits_into`]). The index of a context in
+    /// this slice is the BOS index that [`Lattice::tokens_offset_into`],
+    /// [`Lattice::exit_tokens_offset_into`] and
+    /// [`NBestGenerator::next_with_bos`](crate::nbest::NBestGenerator::next_with_bos)
+    /// return. At most `u16::MAX - 1` contexts.
+    ///
+    /// [`Lattice::nbest_tokens_offset`] is not meant for several BOS edges:
+    /// it does not say which one a path starts from, and `unique` folds
+    /// paths that differ only in it.
+    pub bos: &'a [BosContext],
 }
 
 impl<'a> LatticeOptions<'a> {
     /// Options for `mode` with the defaults `set_text` uses: unbounded
     /// grouping, the length ladder on, no space penalty, whitespace kept in
-    /// the lattice.
+    /// the lattice, the dictionary's single BOS edge.
     ///
     /// # Arguments
     ///
@@ -597,6 +704,7 @@ impl<'a> LatticeOptions<'a> {
             unknown_word_ladder: true,
             space_penalty: None,
             skip_whitespace: None,
+            bos: &[],
         }
     }
 
@@ -735,6 +843,8 @@ impl Lattice {
         );
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
+        self.final_edge_count = 0;
+        self.exit_penalties.clear();
     }
 
     /// Returns whether the `num_chars`-character span starting at
@@ -850,6 +960,47 @@ impl Lattice {
             self.ends_at
                 .resize_with(n_chars + 1, || Vec::with_capacity(16));
         }
+    }
+
+    /// Pushes the sentence's BOS edges into `ends_at[0]`: the dictionary's
+    /// single BOS edge (right context id 0, cost 0) when `bos` is empty,
+    /// otherwise one edge per context, in order (see
+    /// [`LatticeOptions::bos`]). Every BOS edge has no predecessor
+    /// (`left_index == u16::MAX`), which is how the backtraces recognize
+    /// it.
+    ///
+    /// Nothing else ends at position 0, and a carry-over of leading skipped
+    /// whitespace moves the BOS edges into a slot no other edge reaches, so
+    /// the BOS edges are always the first edges of the slot holding them and
+    /// the index of a BOS edge in that slot is the index of its context in
+    /// `bos`.
+    ///
+    /// # Arguments
+    ///
+    /// * `bos` - The BOS contexts; fewer than `u16::MAX`.
+    #[inline]
+    fn push_bos_edges(&mut self, bos: &[BosContext]) {
+        if bos.is_empty() {
+            self.ends_at[0].push(Edge {
+                path_cost: 0,
+                left_index: u16::MAX,
+                ..Default::default()
+            });
+            return;
+        }
+        // An edge refers to its left edge by a u16 index, u16::MAX meaning
+        // none.
+        assert!(
+            bos.len() < u16::MAX as usize,
+            "set_text: {} BOS contexts, exceeding the u16::MAX-1 limit",
+            bos.len()
+        );
+        self.ends_at[0].extend(bos.iter().map(|context| Edge {
+            path_cost: context.cost.clamp(0, PATH_COST_CLAMP),
+            left_index: u16::MAX,
+            right_id: context.right_id,
+            ..Default::default()
+        }));
     }
 
     /// [`Self::record_and_grow`] plus growth of the nbest `all_paths` slots.
@@ -972,6 +1123,7 @@ impl Lattice {
         self.group_runs_buf.shrink_to(4 * n_chars);
         self.group_runs_start_buf.shrink_to(slots);
         self.penalty_cache.shrink_to(64);
+        self.exit_penalties.shrink_to(64);
     }
 
     /// Fills the per-sentence character buffers (`char_info_buffer`,
@@ -1184,7 +1336,8 @@ impl Lattice {
     /// * `unknown_dictionary` - Unknown-word entries.
     /// * `cost_matrix` - The connection cost matrix.
     /// * `text` - One sentence (fewer than `u16::MAX` characters).
-    /// * `options` - Mode, unknown-word knobs and the optional space penalty.
+    /// * `options` - Mode, unknown-word knobs, the optional space penalty and
+    ///   whitespace skipping, and the BOS edges (see [`LatticeOptions`]).
     #[inline(never)]
     #[allow(clippy::too_many_arguments)]
     pub fn set_text_with_options(
@@ -1217,12 +1370,7 @@ impl Lattice {
         self.penalty_cache_pos = usize::MAX;
         self.skip_whitespace = options.skip_whitespace.is_some();
 
-        let start_edge = Edge {
-            path_cost: 0,
-            left_index: u16::MAX,
-            ..Default::default()
-        };
-        self.ends_at[0].push(start_edge);
+        self.push_bos_edges(options.bos);
 
         // Char position one past the last character of the last emitted
         // unknown word
@@ -1382,6 +1530,8 @@ impl Lattice {
             let content_end = self.content_end(n_chars);
             // Calculate cost for EOS with the row hoisted (#880).
             let left_edges = &self.ends_at[n_chars];
+            // The edges before EOS are the sentence's exits (`exits_into`).
+            self.final_edge_count = left_edges.len();
             let mut best_cost = i32::MAX;
             let mut best_left = None;
             let cost_row = cost_matrix.row(0); // EOS default left_id
@@ -1390,9 +1540,12 @@ impl Lattice {
                 let path_cost = left_edge.path_cost + cost_row[left_edge.right_id as usize] as i32;
                 let path_cost = match search_mode {
                     Mode::Normal => path_cost,
-                    Mode::Decompose(penalty) => path_cost.saturating_add(
-                        penalty.penalty(left_edge, left_edge.char_len(content_end)),
-                    ),
+                    Mode::Decompose(penalty) => {
+                        let exit_penalty =
+                            penalty.penalty(left_edge, left_edge.char_len(content_end));
+                        self.exit_penalties.push(exit_penalty);
+                        path_cost.saturating_add(exit_penalty)
+                    }
                 };
                 if path_cost < best_cost {
                     best_cost = path_cost;
@@ -2017,11 +2170,17 @@ impl Lattice {
     ///   end_byte_offset, word_id)` in reading order (BOS/EOS excluded; ends
     ///   as in [`Lattice::tokens_offset`]). Cleared on entry; left empty
     ///   when the lattice holds no complete path.
-    pub fn tokens_offset_into(&self, offsets: &mut Vec<TokenOffset>) {
+    ///
+    /// # Returns
+    ///
+    /// The BOS index of the best path: the index in [`LatticeOptions::bos`]
+    /// of the context it starts from, always 0 for the default single BOS
+    /// edge. `None` when the lattice holds no complete path (no EOS edge).
+    pub fn tokens_offset_into(&self, offsets: &mut Vec<TokenOffset>) -> Option<usize> {
         offsets.clear();
 
         if self.ends_at.is_empty() {
-            return;
+            return None;
         }
 
         // The EOS edge, when present, sits at `ends_at[last_n_chars]`
@@ -2033,36 +2192,162 @@ impl Lattice {
             last_idx -= 1;
         }
 
-        if self.ends_at[last_idx].is_empty() {
-            return;
-        }
-
-        let idx = self.ends_at[last_idx].len() - 1;
-        let mut edge = &self.ends_at[last_idx][idx];
-
+        let edge = self.ends_at[last_idx].last()?;
         if edge.left_index == u16::MAX {
-            return;
+            return None;
         }
+        // The EOS edge is the only edge whose start is the slot holding it.
+        // Without one (no complete path), the scan above stops at some
+        // other edge, which is dropped like EOS and whose path is still
+        // returned, as before; it has no BOS index to report.
+        let complete = last_idx == self.last_n_chars && edge.start_char as usize == last_idx;
+        let bos = self.backtrace_into(edge.start_char as usize, edge.left_index as usize, offsets);
+        complete.then_some(bos)
+    }
 
-        let mut slot = last_idx;
+    /// Appends the path that ends with `ends_at[slot][index]` (that edge
+    /// included, BOS excluded) to `offsets` in reading order. The shared
+    /// core of [`Lattice::tokens_offset_into`] and
+    /// [`Lattice::exit_tokens_offset_into`].
+    ///
+    /// # Arguments
+    ///
+    /// * `slot` - The slot holding the last edge of the path.
+    /// * `index` - The index of that edge in `ends_at[slot]`; a BOS edge
+    ///   gives an empty path.
+    /// * `offsets` - An empty buffer to fill (it is reversed in place).
+    ///
+    /// # Returns
+    ///
+    /// The BOS index of the path: the index of the BOS edge it reaches in
+    /// the slot holding it, which is the index of its context in
+    /// [`LatticeOptions::bos`] (see `push_bos_edges`).
+    fn backtrace_into(
+        &self,
+        mut slot: usize,
+        mut index: usize,
+        offsets: &mut Vec<TokenOffset>,
+    ) -> usize {
+        debug_assert!(
+            offsets.is_empty(),
+            "backtrace_into appends to a non-empty buffer"
+        );
         loop {
+            let edge = &self.ends_at[slot][index];
             if edge.left_index == u16::MAX {
                 break;
             }
-
             let start_char = edge.start_char as usize;
             offsets.push((
                 self.byte_offset_of(start_char),
                 self.edge_end_byte(edge, slot),
                 edge.word_id(),
             ));
-
             slot = start_char;
-            edge = &self.ends_at[start_char][edge.left_index as usize];
+            index = edge.left_index as usize;
         }
-
         offsets.reverse();
-        offsets.pop(); // Remove EOS
+        index
+    }
+
+    /// Returns the edges a path can end with before EOS: the first
+    /// `final_edge_count` edges of `ends_at[last_n_chars]` (the BOS edges
+    /// themselves for a sentence without words).
+    ///
+    /// # Returns
+    ///
+    /// The final edges; empty when no edge reaches the end of the sentence.
+    pub(crate) fn final_edges(&self) -> &[Edge] {
+        self.ends_at
+            .get(self.last_n_chars)
+            .and_then(|slot| slot.get(..self.final_edge_count))
+            .unwrap_or(&[])
+    }
+
+    /// Returns the exit penalty of a final edge: its Decompose length
+    /// penalty as the EOS connection computed it, 0 in Normal mode.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The index of the edge in [`Lattice::final_edges`].
+    ///
+    /// # Returns
+    ///
+    /// The penalty.
+    #[inline]
+    pub(crate) fn exit_penalty(&self, index: usize) -> i32 {
+        self.exit_penalties.get(index).copied().unwrap_or(0)
+    }
+
+    /// Collects the exits of the sentence: for each distinct right context
+    /// id among the edges that end at the end of the sentence (the BOS
+    /// edges for a sentence without words, e.g. one of skipped whitespace),
+    /// the best path to such an edge, without the EOS connection (see
+    /// [`LatticeExit`]). The cost of the best complete path is the minimum
+    /// of `exit.cost()` plus the EOS connection from `exit.right_id()`.
+    ///
+    /// Works on the 1-best and the N-best lattice. Quadratic in the number
+    /// of final edges, which is small: the words ending at one position.
+    ///
+    /// # Arguments
+    ///
+    /// * `out` - The buffer to fill, cleared on entry: one exit per right
+    ///   id, in the order the right ids first appear among the final edges.
+    ///   Left empty when no edge reaches the end of the sentence.
+    pub fn exits_into(&self, out: &mut Vec<LatticeExit>) {
+        out.clear();
+        for (i, edge) in self.final_edges().iter().enumerate() {
+            let cost = edge.path_cost.saturating_add(self.exit_penalty(i));
+            match out.iter_mut().find(|exit| exit.right_id == edge.right_id) {
+                // Strictly lower, so the first edge wins ties, as in the
+                // EOS connection.
+                Some(exit) => {
+                    if cost < exit.cost {
+                        exit.cost = cost;
+                        exit.edge = i as u16;
+                    }
+                }
+                None => out.push(LatticeExit {
+                    right_id: edge.right_id,
+                    cost,
+                    edge: i as u16,
+                }),
+            }
+        }
+    }
+
+    /// Backtraces the path of an exit into a caller-provided buffer,
+    /// clearing it first.
+    ///
+    /// # Arguments
+    ///
+    /// * `exit` - An exit of this lattice's current sentence, from
+    ///   [`Lattice::exits_into`].
+    /// * `offsets` - The buffer to fill with the path's tokens in reading
+    ///   order, as [`Lattice::tokens_offset_into`] does; empty for a
+    ///   sentence without words.
+    ///
+    /// # Returns
+    ///
+    /// The BOS index of the path: the index in [`LatticeOptions::bos`] of
+    /// the context it starts from (0 for the default single BOS edge).
+    ///
+    /// # Panics
+    ///
+    /// When `exit` does not come from this lattice's current sentence.
+    pub fn exit_tokens_offset_into(
+        &self,
+        exit: &LatticeExit,
+        offsets: &mut Vec<TokenOffset>,
+    ) -> usize {
+        offsets.clear();
+        let index = exit.edge as usize;
+        assert!(
+            index < self.final_edge_count
+                && self.ends_at[self.last_n_chars][index].right_id == exit.right_id,
+            "exit_tokens_offset_into: the exit does not belong to this lattice's sentence"
+        );
+        self.backtrace_into(self.last_n_chars, index, offsets)
     }
 
     // --- N-Best support ---
@@ -2383,12 +2668,7 @@ impl Lattice {
         self.penalty_cache_pos = usize::MAX;
         self.skip_whitespace = options.skip_whitespace.is_some();
 
-        let start_edge = Edge {
-            path_cost: 0,
-            left_index: u16::MAX,
-            ..Default::default()
-        };
-        self.ends_at[0].push(start_edge);
+        self.push_bos_edges(options.bos);
 
         let mut unknown_word_end: Option<usize> = None;
 
@@ -2545,15 +2825,20 @@ impl Lattice {
             let mut best_cost = i32::MAX;
             let mut best_left = None;
             let cost_row = cost_matrix.row(0); // EOS default left_id
+            // The edges before EOS are the sentence's exits (`exits_into`).
+            self.final_edge_count = self.ends_at[n_chars].len();
 
             for i in 0..self.ends_at[n_chars].len() {
                 let left_edge = &self.ends_at[n_chars][i];
                 let path_cost = left_edge.path_cost + cost_row[left_edge.right_id as usize] as i32;
                 let path_cost = match search_mode {
                     Mode::Normal => path_cost,
-                    Mode::Decompose(penalty) => path_cost.saturating_add(
-                        penalty.penalty(left_edge, left_edge.char_len(content_end)),
-                    ),
+                    Mode::Decompose(penalty) => {
+                        let exit_penalty =
+                            penalty.penalty(left_edge, left_edge.char_len(content_end));
+                        self.exit_penalties.push(exit_penalty);
+                        path_cost.saturating_add(exit_penalty)
+                    }
                 };
 
                 // Record all transitions to EOS
@@ -2588,8 +2873,16 @@ impl Lattice {
     /// Requires set_text_nbest() to have been called first.
     ///
     /// The paths and costs are those of this lattice, i.e. of the one
-    /// sentence it was built from; the segmenter combines the lists of the
-    /// sentences of an input into whole-input results.
+    /// sentence it was built from, each ending with the EOS connection. The
+    /// segmenter uses it for a sentence that is a segment of its own and
+    /// combines the lists of an input's segments into whole-input results.
+    ///
+    /// Meant for the default single BOS edge: with several
+    /// ([`LatticeOptions::bos`]) a path's cost includes its BOS edge's cost,
+    /// but the result does not say which edge it starts from, and `unique`
+    /// folds paths that differ only in it. Use
+    /// [`NBestGenerator::next_with_bos`](crate::nbest::NBestGenerator::next_with_bos)
+    /// there.
     pub fn nbest_tokens_offset(
         &self,
         n: usize,
@@ -2660,9 +2953,10 @@ mod tests {
     use crate::dictionary::prefix_dictionary::PrefixDictionary;
     use crate::dictionary::unknown_dictionary::UnknownDictionary;
     use crate::mode::{Mode, Penalty};
+    use crate::nbest::NBestGenerator;
     use crate::viterbi::{
-        CharData, Edge, Lattice, LatticeOptions, LexType, NBestPath, PathEntry, TokenOffset,
-        WordEntry, WordId,
+        BosContext, CharData, Edge, Lattice, LatticeExit, LatticeOptions, LexType, NBestPath,
+        PATH_COST_CLAMP, PathEntry, TokenOffset, WordEntry, WordId,
     };
     use crate::whitespace::WhitespaceClassifier;
 
@@ -3105,30 +3399,46 @@ mod tests {
         classifier: WhitespaceClassifier,
     }
 
+    /// The categories of the test fixtures: DEFAULT = 0, SPACE = 1 (U+0009,
+    /// U+0020 and U+3000, a member wider than one byte), ALPHA = 2 (a-z).
+    /// No category invokes unknown words where a dictionary word starts,
+    /// and none has a length ladder.
+    fn test_char_definition() -> CharacterDefinition {
+        let mapping = LookupTable::from_fn(
+            vec![0, 0x09, 0x0A, 0x20, 0x21, 0x61, 0x7B, 0x3000, 0x3001],
+            &|c, buf: &mut Vec<CategoryId>| match c {
+                0x09 | 0x20 | 0x3000 => buf.push(CategoryId(1)),
+                0x61..=0x7A => buf.push(CategoryId(2)),
+                _ => buf.push(CategoryId(0)),
+            },
+        );
+        let categories = vec![
+            CategoryData {
+                invoke: false,
+                group: true,
+                length: 0,
+            };
+            3
+        ];
+        let names = vec!["DEFAULT".into(), "SPACE".into(), "ALPHA".into()];
+        CharacterDefinition::new(categories, names, mapping)
+    }
+
+    /// One costly unknown-word entry per category of
+    /// [`test_char_definition`].
+    fn test_unknown_dictionary() -> UnknownDictionary {
+        let unknown = |id| WordEntry::new(WordId::new(LexType::Unknown, id), 5000, 0, 0);
+        UnknownDictionary {
+            category_references: vec![vec![0], vec![UNKNOWN_SPACE], vec![2]],
+            costs: vec![unknown(0), unknown(UNKNOWN_SPACE), unknown(2)],
+            words_idx_data: Vec::new(),
+            words_data: Vec::new(),
+        }
+    }
+
     impl WsFixture {
         fn new() -> Self {
-            // DEFAULT = 0, SPACE = 1 (U+0009, U+0020 and U+3000, a member
-            // wider than one byte), ALPHA = 2 (a-z). No category invokes
-            // unknown words where a dictionary word starts, and none has a
-            // length ladder.
-            let mapping = LookupTable::from_fn(
-                vec![0, 0x09, 0x0A, 0x20, 0x21, 0x61, 0x7B, 0x3000, 0x3001],
-                &|c, buf: &mut Vec<CategoryId>| match c {
-                    0x09 | 0x20 | 0x3000 => buf.push(CategoryId(1)),
-                    0x61..=0x7A => buf.push(CategoryId(2)),
-                    _ => buf.push(CategoryId(0)),
-                },
-            );
-            let categories = vec![
-                CategoryData {
-                    invoke: false,
-                    group: true,
-                    length: 0,
-                };
-                3
-            ];
-            let names = vec!["DEFAULT".into(), "SPACE".into(), "ALPHA".into()];
-            let char_definition = CharacterDefinition::new(categories, names, mapping);
+            let char_definition = test_char_definition();
 
             // `ab ` is far cheaper than `ab`, so it wins wherever a space
             // follows `ab`, even with the Decompose penalty of
@@ -3145,14 +3455,7 @@ mod tests {
             );
             map.insert(format!("a{}", " ".repeat(300)), vec![entry(A_LONG, 100)]);
             let dict = PrefixDictionary::from_word_entry_map(&map).unwrap();
-
-            let unknown = |id| WordEntry::new(WordId::new(LexType::Unknown, id), 5000, 0, 0);
-            let unknown_dictionary = UnknownDictionary {
-                category_references: vec![vec![0], vec![UNKNOWN_SPACE], vec![2]],
-                costs: vec![unknown(0), unknown(UNKNOWN_SPACE), unknown(2)],
-                words_idx_data: Vec::new(),
-                words_data: Vec::new(),
-            };
+            let unknown_dictionary = test_unknown_dictionary();
 
             // Transposed-format header (-1, one forward id, one backward id)
             // and a single zero cost.
@@ -3503,5 +3806,949 @@ mod tests {
             fixture.skipped(&text),
             vec![(0, 1 + 255, sys(A_LONG)), (301, 303, sys(CD))]
         );
+    }
+
+    // --- #1096: several BOS edges, exits, N-best from an exit ---
+
+    /// Number of context ids in [`CtxFixture`]; 0 is BOS/EOS.
+    const CTX_IDS: usize = 4;
+
+    /// Connection costs of [`CtxFixture`], `CTX_CONN[right_id][left_id]`:
+    /// what a word with left id `left_id` pays after an edge with right id
+    /// `right_id`. Row 0 is the default BOS, column 0 is EOS. Every BOS
+    /// context prefers another first word, and the EOS connection differs
+    /// per right id.
+    const CTX_CONN: [[i16; CTX_IDS]; CTX_IDS] = [
+        [0, 30, 250, 400],
+        [500, 100, -50, 300],
+        [40, 200, 80, -20],
+        [300, -60, 150, 90],
+    ];
+
+    /// The entries of [`CtxFixture`]: (surface, word id, word cost, left id,
+    /// right id). Every letter has a one-character entry, so no unknown
+    /// word is ever emitted and the lattice holds exactly the paths
+    /// [`brute_paths`] enumerates. `d` has two identical entries (a tie),
+    /// and `b ` ends with a space.
+    const CTX_ENTRIES: &[(&str, u32, i16, u16, u16)] = &[
+        ("a", 0, 100, 1, 1),
+        ("a", 1, 150, 2, 3),
+        ("b", 2, 120, 2, 2),
+        ("b", 3, 80, 3, 1),
+        ("c", 4, 90, 3, 3),
+        ("c", 5, 60, 1, 2),
+        ("ab", 6, 200, 1, 2),
+        ("bc", 7, 160, 2, 3),
+        ("bc", 8, 170, 3, 2),
+        ("abc", 9, 260, 1, 3),
+        ("ca", 10, 140, 3, 1),
+        ("d", 12, 50, 1, 2),
+        ("d", 13, 50, 1, 2),
+        ("b ", 11, 70, 2, 3),
+    ];
+
+    /// The Decompose penalty of the #1096 tests: every entry longer than
+    /// one character pays 500 per extra character (none is kanji).
+    fn ctx_decompose() -> Mode {
+        Mode::Decompose(Penalty {
+            kanji_penalty_length_threshold: 1,
+            kanji_penalty_length_penalty: 3000,
+            other_penalty_length_threshold: 1,
+            other_penalty_length_penalty: 500,
+        })
+    }
+
+    fn bos_ctx(right_id: u16, cost: i32) -> BosContext {
+        BosContext { right_id, cost }
+    }
+
+    /// The BOS lists of the #1096 tests: the default, its explicit form, and
+    /// lists whose best context depends on the text.
+    fn ctx_bos_lists() -> Vec<Vec<BosContext>> {
+        vec![
+            vec![],
+            vec![bos_ctx(0, 0)],
+            vec![
+                bos_ctx(0, 0),
+                bos_ctx(1, 50),
+                bos_ctx(2, 10),
+                bos_ctx(3, 300),
+            ],
+            vec![bos_ctx(2, 400), bos_ctx(1, 0)],
+            vec![bos_ctx(3, 0), bos_ctx(2, 90), bos_ctx(1, 120)],
+        ]
+    }
+
+    /// Texts without whitespace (built with and without skipping).
+    const CTX_TEXTS: &[&str] = &[
+        "", "a", "b", "c", "abc", "cab", "bcab", "abcabc", "cbabca", "dab", "abd",
+    ];
+
+    /// Texts with whitespace (built with whitespace skipped only).
+    const CTX_SPACED_TEXTS: &[&str] = &["   ", " ab c", "ab  ", "b\t c", "ab b c ", "  ca", "ab\t"];
+
+    /// Runs `f` on every (text, mode, skip, BOS list) case of the #1096
+    /// tests.
+    fn for_each_ctx_case(mut f: impl FnMut(&str, &Mode, bool, &[BosContext])) {
+        for mode in [Mode::Normal, ctx_decompose()] {
+            for bos_list in ctx_bos_lists() {
+                for &text in CTX_TEXTS {
+                    for skip in [false, true] {
+                        f(text, &mode, skip, &bos_list);
+                    }
+                }
+                for &text in CTX_SPACED_TEXTS {
+                    f(text, &mode, true, &bos_list);
+                }
+            }
+        }
+    }
+
+    /// A tiny dictionary where context ids matter: the entries and
+    /// connection costs above, the categories of [`test_char_definition`].
+    struct CtxFixture {
+        dict: PrefixDictionary,
+        char_definition: CharacterDefinition,
+        unknown_dictionary: UnknownDictionary,
+        cost_matrix: ConnectionCostMatrix,
+        classifier: WhitespaceClassifier,
+    }
+
+    impl CtxFixture {
+        fn new() -> Self {
+            let mut map: BTreeMap<String, Vec<WordEntry>> = BTreeMap::new();
+            for &(surface, id, cost, left, right) in CTX_ENTRIES {
+                map.entry(surface.to_string())
+                    .or_default()
+                    .push(WordEntry::new(sys(id), cost, left, right));
+            }
+            let dict = PrefixDictionary::from_word_entry_map(&map).unwrap();
+
+            // Transposed format: header (-1, forward size, backward size),
+            // then `costs[right_id + left_id * forward size]`.
+            let mut bytes = Vec::new();
+            for value in [-1, CTX_IDS as i16, CTX_IDS as i16] {
+                bytes.extend_from_slice(&value.to_le_bytes());
+            }
+            for left in 0..CTX_IDS {
+                for row in &CTX_CONN {
+                    bytes.extend_from_slice(&row[left].to_le_bytes());
+                }
+            }
+            let cost_matrix = ConnectionCostMatrix::load(bytes).unwrap();
+            let char_definition = test_char_definition();
+            let classifier = WhitespaceClassifier::new(&char_definition).unwrap();
+            Self {
+                dict,
+                char_definition,
+                unknown_dictionary: test_unknown_dictionary(),
+                cost_matrix,
+                classifier,
+            }
+        }
+
+        fn options<'a>(
+            &'a self,
+            mode: &'a Mode,
+            skip: bool,
+            bos: &'a [BosContext],
+        ) -> LatticeOptions<'a> {
+            let mut options = LatticeOptions::new(mode);
+            options.skip_whitespace = skip.then_some(&self.classifier);
+            options.bos = bos;
+            options
+        }
+
+        fn lattice(&self, text: &str, mode: &Mode, skip: bool, bos: &[BosContext]) -> Lattice {
+            let mut lattice = Lattice::default();
+            lattice.set_text_with_options(
+                &self.dict,
+                &None,
+                &self.char_definition,
+                &self.unknown_dictionary,
+                &self.cost_matrix,
+                text,
+                &self.options(mode, skip, bos),
+            );
+            lattice
+        }
+
+        fn nbest_lattice(
+            &self,
+            text: &str,
+            mode: &Mode,
+            skip: bool,
+            bos: &[BosContext],
+        ) -> Lattice {
+            let mut lattice = Lattice::default();
+            lattice.set_text_nbest_with_options(
+                &self.dict,
+                &None,
+                &self.char_definition,
+                &self.unknown_dictionary,
+                &self.cost_matrix,
+                text,
+                &self.options(mode, skip, bos),
+            );
+            lattice
+        }
+    }
+
+    /// One path of [`brute_paths`].
+    #[derive(Clone, Debug)]
+    struct BrutePath {
+        bos: usize,
+        tokens: Vec<TokenOffset>,
+        /// Right id of the last word (of the BOS context without words).
+        last_right: u16,
+        /// Cost without EOS: what [`LatticeExit::cost`] measures.
+        exit_cost: i64,
+    }
+
+    impl BrutePath {
+        /// Cost with the EOS connection.
+        fn eos_cost(&self) -> i64 {
+            self.exit_cost + CTX_CONN[self.last_right as usize][0] as i64
+        }
+    }
+
+    /// Enumerates every path of `text` through the [`CtxFixture`] entries
+    /// from every BOS context, by definition: a path starts after leading
+    /// whitespace, each word starts where the previous one ends after the
+    /// whitespace there, and a word pays its cost, the connection from the
+    /// previous right id and the Decompose penalty of the previous word (0
+    /// for BOS); the last word's penalty is part of the exit cost. Meant
+    /// for texts of `a`-`d`, spaces and tabs, with whitespace skipped (or
+    /// absent).
+    fn brute_paths(text: &str, bos_list: &[BosContext], mode: &Mode) -> Vec<BrutePath> {
+        fn skip_ws(text: &str, mut pos: usize) -> usize {
+            while pos < text.len() && matches!(text.as_bytes()[pos], b' ' | b'\t') {
+                pos += 1;
+            }
+            pos
+        }
+
+        #[allow(clippy::too_many_arguments)]
+        fn walk(
+            text: &str,
+            mode: &Mode,
+            bos: usize,
+            pos: usize,
+            prev_right: u16,
+            prev_penalty: i64,
+            cost: i64,
+            tokens: &mut Vec<TokenOffset>,
+            out: &mut Vec<BrutePath>,
+        ) {
+            if pos == text.len() {
+                out.push(BrutePath {
+                    bos,
+                    tokens: tokens.clone(),
+                    last_right: prev_right,
+                    exit_cost: cost + prev_penalty,
+                });
+                return;
+            }
+            for &(surface, id, word_cost, left, right) in CTX_ENTRIES {
+                if !text[pos..].starts_with(surface) {
+                    continue;
+                }
+                let penalty = match mode {
+                    Mode::Normal => 0,
+                    Mode::Decompose(penalty) => {
+                        let entry = WordEntry::new(sys(id), word_cost, left, right);
+                        let edge = Lattice::create_edge(entry, 0, false);
+                        penalty.penalty(&edge, surface.chars().count()) as i64
+                    }
+                };
+                let end = pos + surface.len();
+                let cost = cost
+                    + prev_penalty
+                    + CTX_CONN[prev_right as usize][left as usize] as i64
+                    + word_cost as i64;
+                tokens.push((pos, end, sys(id)));
+                walk(
+                    text,
+                    mode,
+                    bos,
+                    skip_ws(text, end),
+                    right,
+                    penalty,
+                    cost,
+                    tokens,
+                    out,
+                );
+                tokens.pop();
+            }
+        }
+
+        let default_bos = [bos_ctx(0, 0)];
+        let bos_list = if bos_list.is_empty() {
+            &default_bos[..]
+        } else {
+            bos_list
+        };
+        let mut out = Vec::new();
+        for (index, context) in bos_list.iter().enumerate() {
+            let cost = context.cost.clamp(0, PATH_COST_CLAMP) as i64;
+            let start = skip_ws(text, 0);
+            walk(
+                text,
+                mode,
+                index,
+                start,
+                context.right_id,
+                0,
+                cost,
+                &mut Vec::new(),
+                &mut out,
+            );
+        }
+        out
+    }
+
+    /// Returns a sortable form of system-word tokens: `WordId` is not `Ord`.
+    fn token_keys(tokens: &[TokenOffset]) -> Vec<(usize, usize, u32)> {
+        tokens
+            .iter()
+            .map(|&(start, end, word_id)| {
+                assert!(word_id.is_system());
+                (start, end, word_id.id())
+            })
+            .collect()
+    }
+
+    /// Returns the 1-best tokens, BOS index and cost of a lattice.
+    fn best_path(lattice: &Lattice) -> (Vec<TokenOffset>, Option<usize>, i64) {
+        let mut tokens = vec![(9, 9, WordId::default())]; // stale content
+        let bos = lattice.tokens_offset_into(&mut tokens);
+        (tokens, bos, eos_cost(lattice))
+    }
+
+    /// Returns the exits of a lattice.
+    fn exits_of(lattice: &Lattice) -> Vec<LatticeExit> {
+        let mut exits = vec![LatticeExit {
+            right_id: 9,
+            cost: 9,
+            edge: 9,
+        }]; // stale content
+        lattice.exits_into(&mut exits);
+        exits
+    }
+
+    /// Asserts that the 1-best path is one of the cheapest `brute` paths
+    /// (with EOS), and the only one when the cheapest is unique.
+    fn assert_best_is_brute_min(lattice: &Lattice, brute: &[BrutePath], case: &str) {
+        let (tokens, bos, cost) = best_path(lattice);
+        let min = brute.iter().map(BrutePath::eos_cost).min().unwrap();
+        assert_eq!(cost, min, "{case}");
+        let bos = bos.unwrap();
+        assert!(
+            brute
+                .iter()
+                .any(|path| path.eos_cost() == min && path.tokens == tokens && path.bos == bos),
+            "{case}: {tokens:?} from BOS {bos} is not a cheapest path"
+        );
+    }
+
+    /// #1096: with several BOS edges, the best path is the best of the
+    /// lattices built from each context alone (with no cost, the context's
+    /// cost added afterwards), down to the tokens and the BOS index, and
+    /// the cheapest path by definition. The fixture makes the context
+    /// matter: some text is segmented differently from different contexts,
+    /// and some best path starts from a context other than the first.
+    #[test]
+    fn test_multi_bos_is_best_single_bos() {
+        let fixture = CtxFixture::new();
+        let mut segmentation_depends_on_bos = false;
+        let mut best_bos_not_first = false;
+        let mut bos_cost_decides = false;
+        for_each_ctx_case(|text, mode, skip, bos_list| {
+            if bos_list.len() < 2 {
+                return;
+            }
+            let case = format!("{text:?} {mode:?} skip={skip} {bos_list:?}");
+            let lattice = fixture.lattice(text, mode, skip, bos_list);
+            let (tokens, bos, cost) = best_path(&lattice);
+
+            let singles: Vec<_> = bos_list
+                .iter()
+                .map(|context| {
+                    let single = fixture.lattice(text, mode, skip, &[bos_ctx(context.right_id, 0)]);
+                    let (tokens, bos, cost) = best_path(&single);
+                    assert_eq!(bos, Some(0), "{case}");
+                    (tokens, cost + context.cost as i64)
+                })
+                .collect();
+            let min = singles.iter().map(|&(_, cost)| cost).min().unwrap();
+            assert_eq!(cost, min, "{case}");
+            segmentation_depends_on_bos |= singles.iter().any(|(t, _)| *t != singles[0].0);
+            let argmin: Vec<usize> = (0..singles.len())
+                .filter(|&i| singles[i].1 == min)
+                .collect();
+            let brute = brute_paths(text, bos_list, mode);
+            let unique = brute.iter().filter(|path| path.eos_cost() == min).count() == 1;
+            if unique {
+                assert_eq!(argmin, vec![bos.unwrap()], "{case}");
+                assert_eq!(tokens, singles[argmin[0]].0, "{case}");
+                best_bos_not_first |= argmin[0] != 0;
+            } else {
+                assert!(argmin.contains(&bos.unwrap()), "{case}");
+            }
+            assert_best_is_brute_min(&lattice, &brute, &case);
+
+            // Whether the BOS costs decide: no context that would win
+            // without them wins with them.
+            let free: Vec<i64> = singles
+                .iter()
+                .zip(bos_list)
+                .map(|((_, cost), context)| cost - context.cost as i64)
+                .collect();
+            let free_min = free.iter().copied().min().unwrap();
+            bos_cost_decides |= (0..free.len())
+                .filter(|&i| free[i] == free_min)
+                .all(|i| singles[i].1 != min);
+        });
+        assert!(segmentation_depends_on_bos);
+        assert!(best_bos_not_first);
+        assert!(bos_cost_decides);
+    }
+
+    /// The fields of a lattice the forward pass writes, for comparing two
+    /// lattices slot by slot.
+    #[allow(clippy::type_complexity)]
+    fn lattice_snapshot(
+        lattice: &Lattice,
+    ) -> (
+        Vec<Vec<(u32, i32, u16, u16, u16, i16, u16, u8, u8)>>,
+        Vec<Vec<(u16, u32, u16, i32)>>,
+        usize,
+        Vec<i32>,
+    ) {
+        let slots = 0..=lattice.char_len();
+        let edges = slots
+            .clone()
+            .map(|slot| {
+                lattice
+                    .edges_at_char(slot)
+                    .iter()
+                    .map(|e| {
+                        (
+                            e.word_id,
+                            e.path_cost,
+                            e.left_index,
+                            e.left_id,
+                            e.right_id,
+                            e.word_cost,
+                            e.start_char,
+                            e.flags,
+                            e.ws_tail,
+                        )
+                    })
+                    .collect()
+            })
+            .collect();
+        let paths = slots
+            .map(|slot| {
+                lattice
+                    .paths_at_char(slot)
+                    .iter()
+                    .map(|p| (p.edge_index, p.left_pos, p.left_index, p.cost))
+                    .collect()
+            })
+            .collect();
+        (
+            edges,
+            paths,
+            lattice.final_edge_count,
+            lattice.exit_penalties.clone(),
+        )
+    }
+
+    /// #1096: the default (no BOS context) builds exactly the lattice of
+    /// one explicit context with right id 0 and cost 0, edge by edge and
+    /// transition by transition, in the 1-best and the N-best lattice, with
+    /// both fixtures; its best path is the cheapest path by definition, and
+    /// its BOS index is 0 everywhere.
+    #[test]
+    fn test_default_bos_is_single_bos_zero() {
+        let fixture = CtxFixture::new();
+        let explicit = [bos_ctx(0, 0)];
+        for mode in [Mode::Normal, ctx_decompose()] {
+            for (text, skip) in CTX_TEXTS
+                .iter()
+                .flat_map(|&text| [(text, false), (text, true)])
+                .chain(CTX_SPACED_TEXTS.iter().map(|&text| (text, true)))
+            {
+                let case = format!("{text:?} {mode:?} skip={skip}");
+                let default = fixture.lattice(text, &mode, skip, &[]);
+                let single = fixture.lattice(text, &mode, skip, &explicit);
+                assert_eq!(
+                    lattice_snapshot(&default),
+                    lattice_snapshot(&single),
+                    "{case}"
+                );
+                assert_eq!(best_path(&default).1, Some(0), "{case}");
+                assert_best_is_brute_min(&default, &brute_paths(text, &[], &mode), &case);
+
+                let default = fixture.nbest_lattice(text, &mode, skip, &[]);
+                let single = fixture.nbest_lattice(text, &mode, skip, &explicit);
+                assert_eq!(
+                    lattice_snapshot(&default),
+                    lattice_snapshot(&single),
+                    "{case}"
+                );
+                let mut generator = NBestGenerator::new(&default);
+                while let Some((_, bos)) = generator.next_with_bos() {
+                    assert_eq!(bos, 0, "{case}");
+                }
+            }
+        }
+
+        let ws = WsFixture::new();
+        for text in ["ab cd", "  ab  cd ", "ab \t", "", "   "] {
+            for mode in [Mode::Normal, ctx_decompose()] {
+                for skip in [false, true] {
+                    let build = |bos: &[BosContext], nbest: bool| {
+                        let mut options = ws.options(&mode, skip);
+                        options.bos = bos;
+                        let mut lattice = Lattice::default();
+                        if nbest {
+                            lattice.set_text_nbest_with_options(
+                                &ws.dict,
+                                &None,
+                                &ws.char_definition,
+                                &ws.unknown_dictionary,
+                                &ws.cost_matrix,
+                                text,
+                                &options,
+                            );
+                        } else {
+                            lattice.set_text_with_options(
+                                &ws.dict,
+                                &None,
+                                &ws.char_definition,
+                                &ws.unknown_dictionary,
+                                &ws.cost_matrix,
+                                text,
+                                &options,
+                            );
+                        }
+                        lattice
+                    };
+                    for nbest in [false, true] {
+                        assert_eq!(
+                            lattice_snapshot(&build(&[], nbest)),
+                            lattice_snapshot(&build(&explicit, nbest)),
+                            "{text:?} {mode:?} skip={skip} nbest={nbest}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// #1096: `exits_into` returns, per right id, the cheapest path by
+    /// definition among the paths ending with that right id, without the
+    /// EOS connection and with the last word's Decompose penalty; in the
+    /// order the right ids first appear among the final edges, each with
+    /// the first of the cheapest final edges. `exit_tokens_offset_into`
+    /// returns such a path and its BOS index. The best complete path is the
+    /// exit minimizing cost plus EOS connection, through the same edge. The
+    /// N-best lattice has the same exits.
+    #[test]
+    fn test_exits_match_brute_force() {
+        let fixture = CtxFixture::new();
+        for_each_ctx_case(|text, mode, skip, bos_list| {
+            let case = format!("{text:?} {mode:?} skip={skip} {bos_list:?}");
+            let lattice = fixture.lattice(text, mode, skip, bos_list);
+            let brute = brute_paths(text, bos_list, mode);
+            let exits = exits_of(&lattice);
+
+            // Per right id, the cheapest path by definition.
+            let mut expected: BTreeMap<u16, i64> = BTreeMap::new();
+            for path in &brute {
+                let cost = expected.entry(path.last_right).or_insert(i64::MAX);
+                *cost = (*cost).min(path.exit_cost);
+            }
+            let actual: BTreeMap<u16, i64> = exits
+                .iter()
+                .map(|exit| (exit.right_id(), exit.cost() as i64))
+                .collect();
+            assert_eq!(actual.len(), exits.len(), "{case}: duplicate right id");
+            assert_eq!(actual, expected, "{case}");
+
+            // Order and edge choice.
+            let finals = lattice.final_edges();
+            let mut first_seen: Vec<u16> = Vec::new();
+            for edge in finals {
+                if !first_seen.contains(&edge.right_id) {
+                    first_seen.push(edge.right_id);
+                }
+            }
+            let order: Vec<u16> = exits.iter().map(LatticeExit::right_id).collect();
+            assert_eq!(order, first_seen, "{case}");
+            for exit in &exits {
+                for (i, edge) in finals.iter().enumerate() {
+                    if edge.right_id != exit.right_id {
+                        continue;
+                    }
+                    let cost = edge.path_cost + lattice.exit_penalty(i);
+                    assert!(cost >= exit.cost, "{case}");
+                    assert!(
+                        i >= exit.edge as usize || cost > exit.cost,
+                        "{case}: a tie must keep the first edge"
+                    );
+                }
+                assert_eq!(finals[exit.edge as usize].right_id, exit.right_id, "{case}");
+            }
+
+            // The exits' paths.
+            let mut tokens = vec![(9, 9, WordId::default())];
+            for exit in &exits {
+                let bos = lattice.exit_tokens_offset_into(exit, &mut tokens);
+                assert!(
+                    brute.iter().any(|path| path.bos == bos
+                        && path.tokens == tokens
+                        && path.last_right == exit.right_id()
+                        && path.exit_cost == exit.cost() as i64),
+                    "{case}: exit {exit:?} has path {tokens:?} from BOS {bos}"
+                );
+            }
+
+            // The best complete path goes through an exit.
+            let eos = lattice.edges_at_char(lattice.char_len()).last().unwrap();
+            let eos_total = |exit: &LatticeExit| {
+                exit.cost() as i64 + CTX_CONN[exit.right_id() as usize][0] as i64
+            };
+            let min = exits.iter().map(eos_total).min().unwrap();
+            assert_eq!(eos.path_cost as i64, min, "{case}");
+            let through = exits
+                .iter()
+                .filter(|exit| eos_total(exit) == min)
+                .min_by_key(|exit| exit.edge)
+                .unwrap();
+            assert_eq!(eos.left_index, through.edge, "{case}");
+            let (best_tokens, best_bos, _) = best_path(&lattice);
+            let bos = lattice.exit_tokens_offset_into(through, &mut tokens);
+            assert_eq!(
+                (best_tokens, best_bos),
+                (tokens.clone(), Some(bos)),
+                "{case}"
+            );
+
+            let nbest = fixture.nbest_lattice(text, mode, skip, bos_list);
+            assert_eq!(exits_of(&nbest), exits, "{case}");
+        });
+    }
+
+    /// #1096: `exits_into` and the EOS connection break a tie between two
+    /// final edges the same way, keeping the first: `d` has two identical
+    /// entries.
+    #[test]
+    fn test_exit_tie_keeps_first_edge() {
+        let fixture = CtxFixture::new();
+        let lattice = fixture.lattice("ad", &Mode::Normal, false, &[]);
+        let finals = lattice.final_edges();
+        assert_eq!(finals.len(), 2);
+        assert_eq!(finals[0].path_cost, finals[1].path_cost);
+        let exits = exits_of(&lattice);
+        assert_eq!(exits.len(), 1);
+        assert_eq!(exits[0].edge, 0);
+        let eos = lattice.edges_at_char(2).last().unwrap();
+        assert_eq!(eos.left_index, 0);
+        let mut tokens = Vec::new();
+        lattice.exit_tokens_offset_into(&exits[0], &mut tokens);
+        assert_eq!(tokens, lattice.tokens_offset());
+    }
+
+    /// #1096: leading skipped whitespace carries the BOS edges over in
+    /// their order, with their costs and `ws_tail` 0, and the BOS index
+    /// still names the context (here not the first one).
+    #[test]
+    fn test_leading_whitespace_keeps_bos_indices() {
+        let fixture = CtxFixture::new();
+        let bos_list = [
+            bos_ctx(0, 0),
+            bos_ctx(1, 50),
+            bos_ctx(2, 10),
+            bos_ctx(3, 300),
+        ];
+        for mode in [Mode::Normal, ctx_decompose()] {
+            for text in ["  bc", " \tbc"] {
+                let lattice = fixture.lattice(text, &mode, true, &bos_list);
+                let carried: Vec<_> = lattice.edges_at_char(2)[..4]
+                    .iter()
+                    .map(|e| (e.left_index, e.right_id, e.path_cost, e.ws_tail))
+                    .collect();
+                assert_eq!(
+                    carried,
+                    vec![
+                        (u16::MAX, 0, 0, 0),
+                        (u16::MAX, 1, 50, 0),
+                        (u16::MAX, 2, 10, 0),
+                        (u16::MAX, 3, 300, 0),
+                    ]
+                );
+                let brute = brute_paths(text, &bos_list, &mode);
+                let min = brute.iter().map(BrutePath::eos_cost).min().unwrap();
+                let winners: Vec<_> = brute.iter().filter(|p| p.eos_cost() == min).collect();
+                assert_eq!(winners.len(), 1, "{text:?} {mode:?}");
+                assert_ne!(winners[0].bos, 0, "{text:?} {mode:?}");
+                let (tokens, bos, cost) = best_path(&lattice);
+                assert_eq!(
+                    (tokens, bos, cost),
+                    (winners[0].tokens.clone(), Some(winners[0].bos), min)
+                );
+
+                let nbest = fixture.nbest_lattice(text, &mode, true, &bos_list);
+                let mut generator = NBestGenerator::new(&nbest);
+                let ((tokens, cost), bos) = generator.next_with_bos().unwrap();
+                assert_eq!(
+                    (tokens, cost, bos),
+                    (winners[0].tokens.clone(), min, winners[0].bos)
+                );
+            }
+        }
+    }
+
+    /// #1096: in a sentence without words (only skipped whitespace, or
+    /// empty) the BOS edges are the final edges: they are the exits, in
+    /// order and with their own costs, their paths are empty and lead to
+    /// themselves, the best path is the empty one from the BOS edge
+    /// cheapest with its EOS connection, and the N-best from an exit is one
+    /// empty path.
+    #[test]
+    fn test_sentence_without_words_exits_are_bos_edges() {
+        let fixture = CtxFixture::new();
+        let bos_list = [
+            bos_ctx(0, 0),
+            bos_ctx(1, 50),
+            bos_ctx(2, 10),
+            bos_ctx(3, 300),
+        ];
+        for mode in [Mode::Normal, ctx_decompose()] {
+            for (text, skip) in [("   ", true), (" \t", true), ("", false), ("", true)] {
+                let case = format!("{text:?} {mode:?} skip={skip}");
+                let lattice = fixture.lattice(text, &mode, skip, &bos_list);
+                let exits = exits_of(&lattice);
+                let summary: Vec<_> = exits
+                    .iter()
+                    .map(|exit| (exit.right_id(), exit.cost(), exit.edge))
+                    .collect();
+                assert_eq!(
+                    summary,
+                    vec![(0, 0, 0), (1, 50, 1), (2, 10, 2), (3, 300, 3)],
+                    "{case}"
+                );
+                let mut tokens = vec![(9, 9, WordId::default())];
+                for (index, exit) in exits.iter().enumerate() {
+                    assert_eq!(lattice.exit_tokens_offset_into(exit, &mut tokens), index);
+                    assert!(tokens.is_empty(), "{case}");
+                }
+                // EOS from right ids 0..3 costs 0, 500, 40 and 300.
+                assert_eq!(best_path(&lattice), (Vec::new(), Some(0), 0), "{case}");
+                let shifted = [bos_ctx(1, 50), bos_ctx(2, 10)];
+                let lattice = fixture.lattice(text, &mode, skip, &shifted);
+                assert_eq!(best_path(&lattice), (Vec::new(), Some(1), 50), "{case}");
+
+                let nbest = fixture.nbest_lattice(text, &mode, skip, &bos_list);
+                for (index, exit) in exits_of(&nbest).iter().enumerate() {
+                    let mut generator = NBestGenerator::from_exit(&nbest, exit);
+                    assert_eq!(
+                        generator.next_with_bos(),
+                        Some(((Vec::new(), exit.cost() as i64), index)),
+                        "{case}"
+                    );
+                    assert_eq!(generator.next_with_bos(), None, "{case}");
+                }
+            }
+        }
+
+        // The default BOS edge alone is the one exit.
+        let lattice = fixture.lattice("  ", &Mode::Normal, true, &[]);
+        assert_eq!(
+            exits_of(&lattice),
+            vec![LatticeExit {
+                right_id: 0,
+                cost: 0,
+                edge: 0
+            }]
+        );
+    }
+
+    /// #1096: the path of an exit ends where its last word's surface ends:
+    /// `b ` keeps its space, the skipped whitespace after a word is not
+    /// part of it (#1108).
+    #[test]
+    fn test_exit_tokens_end_with_entry_whitespace() {
+        let fixture = CtxFixture::new();
+        for text in ["ab  ", "ab \t", "ab "] {
+            let lattice = fixture.lattice(text, &Mode::Normal, true, &[]);
+            let mut tokens = Vec::new();
+            let ends: BTreeMap<u16, usize> = exits_of(&lattice)
+                .iter()
+                .map(|exit| {
+                    lattice.exit_tokens_offset_into(exit, &mut tokens);
+                    (exit.right_id(), tokens.last().unwrap().1)
+                })
+                .collect();
+            // `b ` (right id 3) ends after its space; `b`/`ab` (right ids 1
+            // and 2) end before the whitespace.
+            assert_eq!(ends, BTreeMap::from([(1, 2), (2, 2), (3, 3)]), "{text:?}");
+        }
+    }
+
+    /// #1096: in Decompose mode an exit's cost includes the last word's
+    /// length penalty, the one it pays whatever follows it: in `ab  ` the
+    /// exit with right id 3 can only end with `b ` (two characters, 500),
+    /// and costs that much more than in Normal mode; the exits ending with
+    /// one-character words cost the same in both modes.
+    #[test]
+    fn test_exit_cost_includes_decompose_penalty() {
+        let fixture = CtxFixture::new();
+        let text = "ab  ";
+        let decomposed = fixture.lattice(text, &ctx_decompose(), true, &[]);
+        let normal = fixture.lattice(text, &Mode::Normal, true, &[]);
+        let costs = |lattice: &Lattice| -> BTreeMap<u16, i32> {
+            exits_of(lattice)
+                .iter()
+                .map(|exit| (exit.right_id(), exit.cost()))
+                .collect()
+        };
+        let (decomposed_costs, normal_costs) = (costs(&decomposed), costs(&normal));
+        assert_eq!(decomposed_costs[&3] - normal_costs[&3], 500);
+        assert_eq!(decomposed_costs[&1], normal_costs[&1]);
+        let exit = exits_of(&decomposed)
+            .into_iter()
+            .find(|exit| exit.right_id() == 3)
+            .unwrap();
+        let mut tokens = Vec::new();
+        decomposed.exit_tokens_offset_into(&exit, &mut tokens);
+        assert_eq!(tokens.last(), Some(&(1, 3, sys(11))));
+        assert_eq!(decomposed.exit_penalty(exit.edge as usize), 500);
+        // Normal mode stores no penalties.
+        assert!(normal.exit_penalties.is_empty());
+        assert_eq!(normal.exit_penalty(0), 0);
+    }
+
+    /// #1096: a BOS cost is clamped to `0..=PATH_COST_CLAMP`, so a huge cost
+    /// cannot overflow the path costs after it and a negative one counts as
+    /// 0.
+    #[test]
+    fn test_bos_cost_is_clamped() {
+        let fixture = CtxFixture::new();
+        let lattice = fixture.lattice(
+            "abc",
+            &Mode::Normal,
+            false,
+            &[bos_ctx(1, i32::MAX), bos_ctx(2, -7)],
+        );
+        let costs: Vec<i32> = lattice
+            .edges_at_char(0)
+            .iter()
+            .map(|e| e.path_cost)
+            .collect();
+        assert_eq!(costs, vec![PATH_COST_CLAMP, 0]);
+        assert_eq!(best_path(&lattice).1, Some(1));
+
+        for nbest in [false, true] {
+            let huge = [bos_ctx(1, i32::MAX)];
+            let lattice = if nbest {
+                fixture.nbest_lattice("abc", &ctx_decompose(), false, &huge)
+            } else {
+                fixture.lattice("abc", &ctx_decompose(), false, &huge)
+            };
+            let (tokens, bos, cost) = best_path(&lattice);
+            assert!(!tokens.is_empty());
+            assert_eq!(bos, Some(0));
+            assert!(cost >= PATH_COST_CLAMP as i64);
+            let exits = exits_of(&lattice);
+            assert!(!exits.is_empty());
+            assert!(exits.iter().all(|exit| exit.cost() >= PATH_COST_CLAMP));
+            if nbest {
+                let mut generator = NBestGenerator::from_exit(&lattice, &exits[0]);
+                assert!(generator.next_with_bos().is_some());
+            }
+        }
+    }
+
+    /// #1096: `NBestGenerator::from_exit` yields exactly the paths ending
+    /// with the exit's right id, by definition (without EOS, with the last
+    /// word's Decompose penalty), each once with its BOS index, in
+    /// ascending order of cost, the BOS cost included; the first costs the
+    /// exit's cost. Over all exits, every path appears once.
+    #[test]
+    fn test_from_exit_matches_brute_force() {
+        let fixture = CtxFixture::new();
+        for_each_ctx_case(|text, mode, skip, bos_list| {
+            let case = format!("{text:?} {mode:?} skip={skip} {bos_list:?}");
+            let lattice = fixture.nbest_lattice(text, mode, skip, bos_list);
+            let brute = brute_paths(text, bos_list, mode);
+            let mut covered = 0;
+            for exit in exits_of(&lattice) {
+                let mut generator = NBestGenerator::from_exit(&lattice, &exit);
+                let mut actual = Vec::new();
+                while let Some(((tokens, cost), bos)) = generator.next_with_bos() {
+                    actual.push((cost, token_keys(&tokens), bos));
+                }
+                assert!(
+                    actual.windows(2).all(|pair| pair[0].0 <= pair[1].0),
+                    "{case}: not in cost order"
+                );
+                assert_eq!(
+                    actual.first().map(|path| path.0),
+                    Some(exit.cost() as i64),
+                    "{case}"
+                );
+                let mut expected: Vec<_> = brute
+                    .iter()
+                    .filter(|path| path.last_right == exit.right_id())
+                    .map(|path| (path.exit_cost, token_keys(&path.tokens), path.bos))
+                    .collect();
+                covered += expected.len();
+                actual.sort();
+                expected.sort();
+                assert_eq!(actual, expected, "{case}: right id {}", exit.right_id());
+            }
+            assert_eq!(covered, brute.len(), "{case}");
+        });
+    }
+
+    /// #1096: from EOS, the N-best paths of a lattice with several BOS
+    /// edges are exactly the paths by definition (EOS included), each once
+    /// with its BOS index, in ascending order of cost, the BOS cost
+    /// included; the first one is the 1-best path when that is unique.
+    #[test]
+    fn test_next_with_bos_matches_brute_force() {
+        let fixture = CtxFixture::new();
+        for_each_ctx_case(|text, mode, skip, bos_list| {
+            let case = format!("{text:?} {mode:?} skip={skip} {bos_list:?}");
+            let lattice = fixture.nbest_lattice(text, mode, skip, bos_list);
+            let mut generator = NBestGenerator::new(&lattice);
+            let mut actual = Vec::new();
+            while let Some(((tokens, cost), bos)) = generator.next_with_bos() {
+                actual.push((cost, token_keys(&tokens), bos));
+            }
+            assert!(
+                actual.windows(2).all(|pair| pair[0].0 <= pair[1].0),
+                "{case}: not in cost order"
+            );
+            let mut expected: Vec<_> = brute_paths(text, bos_list, mode)
+                .iter()
+                .map(|path| (path.eos_cost(), token_keys(&path.tokens), path.bos))
+                .collect();
+            expected.sort();
+            if expected.len() == 1 || expected[0].0 < expected[1].0 {
+                let (tokens, bos, cost) = best_path(&fixture.lattice(text, mode, skip, bos_list));
+                assert_eq!(
+                    actual[0],
+                    (cost, token_keys(&tokens), bos.unwrap()),
+                    "{case}"
+                );
+            }
+            actual.sort();
+            assert_eq!(actual, expected, "{case}");
+        });
     }
 }

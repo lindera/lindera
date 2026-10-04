@@ -10,8 +10,9 @@ the new `analysis` feature, on by default — the analysis chain of
 the IPADIC schema, which had the `conjugation_type` and `conjugation_form`
 names swapped, keeps dictionary entries whose surface is whitespace or
 starts or ends with it, skips whitespace in the lattice as MeCab does,
-resolves overlapping `char.def` lines as MeCab does, returns N-best
-results that each cover the whole input, and has the lattice backtraces of
+resolves overlapping `char.def` lines as MeCab does, carries the context
+across `、` and `。` within a line as MeCab does, returns N-best results
+that each cover the whole input, and has the lattice backtraces of
 `lindera-dictionary` return each token's end offset. This guide lists every
 breaking change and the one-line fixes for each.
 
@@ -30,22 +31,27 @@ breaking change and the one-line fixes for each.
 | **Dictionary entries with whitespace are kept** | Text with U+3000 (IPADIC, IPADIC-NEologd, UniDic), text with spaces (SudachiDict), and a few entries that ended with whitespace | Expect U+3000 to be `記号,空白` / `空白` and SudachiDict to segment spaced text much closer to Sudachi; rebuild or re-download dictionaries made with v6.2.0 or earlier |
 | **Whitespace is skipped in the lattice: the words on either side of a space connect directly, as in MeCab** | Anyone who segments text containing whitespace with `keep_whitespace` false (the default), most visibly with ko-dic | Expect MeCab's segmentation for such text; `skip_whitespace(false)` (`"skip_whitespace": false`, `--disable-skip-whitespace`) restores the v6 segmentation |
 | **Overlapping `char.def` lines: the last line decides** | Text with `Ð` (U+00D0; every dictionary except ko-dic), `々` (U+3005) or `〇` (U+3007); `lindera train` users whose `char.def` has single-code-point or overlapping lines | Expect `Ð` to stay in the output as a letter; rebuild or re-download dictionaries made with v6.2.0 or earlier |
+| **The context is carried across `、` and `。` within a line, as in MeCab** | Anyone who segments Japanese text with `、` or `。` inside a line | Expect some words after `、` or `。` to be read differently, mostly as MeCab reads them, and the N-best costs of such lines to change; no setting restores the v6 behavior |
 | **N-best: every result covers the whole input** | Anyone who asks for N-best results (`segment_nbest`, `tokenize_nbest`, `lindera tokenize -N`, the bindings' N-best methods) for input with more than one sentence | Expect the cheapest segmentations of the whole input from the second result on; a cost threshold now applies to the whole input |
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
+| **`Lattice::tokens_offset_into` returns the BOS index of the best path (`Option<usize>`)** | Rust code that uses the `()` value of `tokens_offset_into` | Nothing for a call written as a statement; otherwise ignore the new value |
 
 The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
 their APIs and package names; only their version number moves to 7.0.0.
-There are five output differences, all described below. With IPADIC or
+There are six output differences, all described below. With IPADIC or
 IPADIC-NEologd, the values reported under the names `conjugation_type` and
 `conjugation_form` trade places. The dictionaries now contain the entries
 whose surface is or starts or ends with whitespace, which changes the
 segmentation of text that contains such whitespace. Text that contains
 whitespace is segmented as MeCab segments it. `Ð`, `々` and `〇` get the
 character categories that MeCab gives them, which changes the segmentation
-of text that contains them. And for input with more than one sentence, the
-N-best results from the second one on are the cheapest segmentations of the
-whole input. Otherwise, for the same input and dictionary, v7.0.0 produces
-the same tokens with the same positional details as v6.2.0.
+of text that contains them. Within a line, the words after `、` and `。`
+are read in the context of the words before them, which changes the
+segmentation of some such text and the N-best costs of every such line. And
+for input with more than one sentence, the N-best results from the second
+one on are the cheapest segmentations of the whole input. Otherwise, for the
+same input and dictionary, v7.0.0 produces the same tokens with the same
+positional details as v6.2.0.
 
 ## The lindera crate is now a facade
 
@@ -441,26 +447,81 @@ directory built or downloaded with v6.2.0 or earlier still loads in v7.0.0
 but keeps the old categories until you rebuild it with `lindera build` or
 download the 7.0.0 release asset.
 
+## The context is carried across `、` and `。`
+
+The segmenter cuts the input into sentences at `\n`, `\t`, `。` and `、`,
+and after 32 KiB without any of them, to keep each lattice small. Up to v6,
+every sentence started from the beginning-of-sentence context (BOS) and
+ended with the connection to the end of the sentence (EOS), so the word
+after `、` or `。` was read as if it began a text. MeCab does not cut
+inside a line.
+v7.0.0 carries the context across the cuts at `、` and `。` and across the
+forced cuts: the next sentence starts from the words that end the previous
+one, and EOS is paid only at a `\n`, a `\t` or the end of the input. The
+sentences up to that point form a segment, and segments stay independent.
+The best path of a segment, and its cost, are those of one lattice over the
+whole segment, which is what MeCab gives for a line:
+
+| Input (dictionary) | v6 | v7 (as MeCab) |
+| --- | --- | --- |
+| `彼は、ああ言った` (IPADIC) | `ああ` is an interjection (`感動詞`) | `ああ` is an adverb (`副詞`) |
+| `だから、こんなに答える` (IPADIC) | `こんな` (`連体詞`) and `に` | `こんなに` (`副詞`) |
+| `選手が泳ぎ、さらにカヌーで進んだ` (UniDic) | `さらに` is a conjunction (`接続詞`) | `さらに` is an adverb (`副詞`) |
+| `言語としては、Javaのオブジェクト` (UniDic) | `J`, `a`, `v` and `a`, each `記号,文字` | `Java` (`名詞,普通名詞`) |
+
+On the sentences of UD Japanese GSD that contain `、`, the change alters
+50 lines with UniDic: 27 come closer to the gold segmentation and
+part-of-speech tags, 7 move away (sign test p = 0.0008), and 16 are ties.
+Of 505 paragraphs of *Botchan*, the number that Lindera segments and tags
+exactly as MeCab does went from 352 to 438 with IPADIC and from 428 to 503
+with UniDic. Text without `、`, `。` and forced cuts, such as text cut only
+at `\n` and `\t`, is not affected. Carrying the context costs the 1-best
+segmentation about 1% more instructions.
+
+The result can still differ from one lattice over the segment:
+
+- No word spans a cut. A dictionary entry that contains `、` or `。` never
+  matches: MeCab reads UniDic's `一、二塁` as one noun, Lindera as `一`,
+  `、` and `二塁`. An unknown word is not grouped across a cut, and a word
+  that would span a forced cut is split there.
+- The left-space penalty (ko-dic) does not apply to a word that starts
+  right at a forced cut, even when whitespace precedes the cut.
+
+The N-best results follow the same model. Within a segment, they are
+exactly the N best paths of one lattice over the segment: `unique` compares
+the word boundaries of the whole segment, and the cost threshold is
+measured from the first result. Across segments, the results are the
+cheapest combinations of one path per segment (see the next section). The
+first result is the 1-best segmentation, unless several paths have exactly
+the same cost. The costs of a line with `、` or `。` change, the first
+result's included, because they now include the connections across the cuts
+and the EOS connection only once.
+
+There is no setting to restore the v6 behavior.
+
 ## N-best results cover the whole input
 
 The N-best methods (`Segmenter::segment_nbest`, `Tokenizer::tokenize_nbest`,
 their `_with_lattice` and worker forms, `lindera tokenize -N` and the
-bindings' N-best methods) search the input sentence by sentence, splitting
-it at `\n`, `\t`, `。` and `、` as the 1-best segmentation does. Up to v6, the
-k-th result joined the k-th path of every sentence. From the second result
-on, that changed every sentence at once, so the results were not the
+bindings' N-best methods) cut the input into sentences as the 1-best
+segmentation does. Up to v6, they searched each sentence on its own, and
+the k-th result joined the k-th path of every sentence. From the second
+result on, that changed every sentence at once, so the results were not the
 cheapest segmentations of the input and their costs could go down, and a
 sentence with fewer than k paths was missing from the k-th result. v7.0.0
-returns the N cheapest combinations of one path per sentence, in ascending
+searches the input segment by segment (see the previous section) and
+returns the N cheapest combinations of one path per segment, in ascending
 order of total cost, and every result covers the whole input:
 
 | Input (IPADIC, `-N 3`) | v6 | v7 |
 | --- | --- | --- |
-| `東京、です` | 3079 `東京 、 です`; 23850 `東 京 、 で す`; 24249 `東 京 、 で す` | 3079 `東京 、 です`; 11683 `東京 、 で す`; 12015 `東京 、 で す` |
-| `。東京` | 13 `。 東京`; 30433 `。 東 京`; 13520 `東 京` (no `。`) | 13 `。 東京`; 11543 `。 東 京`; 11610 `。 東 京` |
+| `東京、です` | 3079 `東京 、 です`; 23850 `東 京 、 で す`; 24249 `東 京 、 で す` | 3357 `東京 、 です`; 12059 `東京 、 です` (`、` as `名詞,数`); 13633 `東京 、 で す` |
+| `。東京` | 13 `。 東京`; 30433 `。 東 京`; 13520 `東 京` (no `。`) | 852 `。 東京`; 13569 `。 東 京`; 13636 `。 東 京` |
 
-The first result does not change, and neither does the output for input
-with a single sentence. The cost threshold (`cost_threshold`,
+Each of these lines is one segment, so its v7 results are the three best
+paths of one lattice over the line, the ones MeCab returns. The first result
+is the 1-best segmentation, and the output for input with a single sentence
+does not change. The cost threshold (`cost_threshold`,
 `--nbest-cost-threshold`) is now measured over the whole input: a result is
 kept when its total cost is within the threshold of the first result's. v6
 applied the threshold to each sentence separately. With `unique`, the
@@ -479,10 +540,12 @@ CLI are unaffected.
 | v6 | v7 |
 | --- | --- |
 | `Lattice::tokens_offset() -> Vec<(usize, WordId)>` | `Lattice::tokens_offset() -> Vec<TokenOffset>` |
-| `Lattice::tokens_offset_into(&mut Vec<(usize, WordId)>)` | `Lattice::tokens_offset_into(&mut Vec<TokenOffset>)` |
+| `Lattice::tokens_offset_into(&mut Vec<(usize, WordId)>)` | `Lattice::tokens_offset_into(&mut Vec<TokenOffset>) -> Option<usize>` |
 | `Lattice::nbest_tokens_offset(n, unique, cost_threshold) -> Vec<(Vec<(usize, WordId)>, i64)>` | `Lattice::nbest_tokens_offset(n, unique, cost_threshold) -> Vec<NBestPath>` |
 | `NBestGenerator::next() -> Option<(Vec<(usize, WordId)>, i64)>` | `NBestGenerator::next() -> Option<NBestPath>` |
 | — | New type aliases in `viterbi`: `TokenOffset = (usize, usize, WordId)` and `NBestPath = (Vec<TokenOffset>, i64)` |
+| — | New in `viterbi`: `BosContext`, `LatticeOptions::bos`, `LatticeExit`, `Lattice::exits_into` and `Lattice::exit_tokens_offset_into` |
+| — | New in `nbest`: `NBestGenerator::from_exit` and `NBestGenerator::next_with_bos` |
 
 Each token is now `(start, end, word_id)` instead of `(start, word_id)`,
 with byte offsets within the sentence. With whitespace skipped
@@ -516,6 +579,32 @@ for &(start, end, word_id) in &offsets {
 The paths of `nbest_tokens_offset` and `NBestGenerator::next` hold the same
 triples.
 
+`tokens_offset_into` also returns the BOS index of the best path: the index
+in `LatticeOptions::bos` of the BOS edge it starts from, `Some(0)` with the
+default single BOS edge, and `None` when the lattice holds no complete path.
+A call written as a statement compiles unchanged; where a `()` value is
+expected, such as the body of a closure passed to `for_each`, add a `;`.
+
+The new items are what the segmenter uses to carry the context across
+`、` and `。` (see
+[The context is carried across `、` and `。`](#the-context-is-carried-across--and-)).
+They change nothing for existing code:
+
+- `BosContext` and `LatticeOptions::bos`: a sentence can start from several
+  BOS edges, each with a right context ID and a cost. The default, an empty
+  slice, is the single BOS edge of v6.
+- `LatticeExit`, `Lattice::exits_into` and `Lattice::exit_tokens_offset_into`:
+  for each right context ID of the words that end the sentence, the best path
+  to such a word without the EOS connection, and its tokens.
+- `NBestGenerator::from_exit` and `NBestGenerator::next_with_bos`: the paths
+  that end with the right context ID of an exit, without EOS, in ascending
+  order of cost, and each path together with the BOS index it starts from.
+  `next` returns the paths of `next_with_bos` without the BOS index.
+
+`nbest_tokens_offset` is meant for the default single BOS edge: with
+several, it does not say which one a path starts from. Use
+`NBestGenerator::next_with_bos` there.
+
 ## Who does not need to act
 
 - **Users of the language bindings and the CLI**: the Python, Node.js, Ruby,
@@ -525,8 +614,10 @@ triples.
   by name, the whitespace entries, which matter only for text with U+3000
   (IPADIC, IPADIC-NEologd, UniDic) or with spaces (SudachiDict), the
   segmentation of text that contains whitespace, the `char.def` fix, which
-  matters only for text with `Ð`, `々` or `〇`, and the N-best fix, which
-  matters only for N-best results for input with more than one sentence.
+  matters only for text with `Ð`, `々` or `〇`, the context carried across
+  `、` and `。`, which matters only for text with `、` or `。` inside a line,
+  and the N-best fix, which matters only for N-best results for input with
+  more than one sentence.
 - **Projects staying on `lindera = "6"`**: the 6.x releases of `lindera` and
   `lindera-analysis` remain on crates.io and keep working together. Nothing
   changes until you bump the major version.
@@ -561,6 +652,9 @@ Rust crate users:
   `nbest_tokens_offset` or `NBestGenerator::next`, destructure
   `(start, end, word_id)` and use the returned end instead of the next
   token's start.
+- If you use the `()` value of `Lattice::tokens_offset_into`, for example
+  as the body of a closure, add a `;`: it now returns the BOS index of the
+  best path.
 
 Binding authors:
 
@@ -610,14 +704,22 @@ Users of `lindera train`:
 - If your `char.def` has single-code-point or overlapping lines, retrain:
   the `%t` feature now follows those lines as MeCab does.
 
+Users of Japanese text with `、` or `。` inside a line:
+
+- Expect some words after `、` or `。` to be read in the context of the
+  words before them, mostly as MeCab reads them. No setting restores the v6
+  output.
+
 Users of N-best results:
 
 - Expect every result to cover the whole input, and the results from the
   second one on to change for input with more than one sentence.
+- For a line with `、` or `。`, expect every cost to change, the first
+  result's included: the costs are those of one lattice over the line.
 - If you set a cost threshold, it now applies to the total cost of the
   whole input, not to each sentence.
 
 Language bindings and CLI:
 
 - Nothing to do beyond taking the 7.0.0 release, apart from the dictionary,
-  whitespace and N-best items above.
+  whitespace, `、` and `。`, and N-best items above.

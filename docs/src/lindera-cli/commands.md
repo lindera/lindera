@@ -492,7 +492,7 @@ Outputs detailed token information in JSON format:
 
 Lindera supports N-Best tokenization, which returns the top N tokenization candidates ordered by cost (lower cost = better). This is based on the Forward-DP Backward-A\* algorithm, compatible with MeCab's N-Best implementation.
 
-A line with several sentences (split at `\t`, `。` and `、`) is searched sentence by sentence. Every candidate still segments the whole line: the candidates are the N cheapest combinations of one path per sentence.
+A line is cut into sentences at `\t`, `。` and `、`, but the context is carried across `、` and `。`, so the candidates for a line without a tab are the N best segmentations of the whole line (for the few exceptions, see [Sentence Splitting](../lindera/segmenter.md#sentence-splitting)). A tab ends a segment: a line with tabs is searched segment by segment, and its candidates are the N cheapest combinations of one path per segment. Every candidate segments the whole line.
 
 #### Basic N-Best example
 

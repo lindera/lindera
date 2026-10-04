@@ -562,9 +562,10 @@ impl Tokenizer {
     ///
     /// The segmentation comes from
     /// [`Segmenter::segment_nbest_with_lattice`]: the text is split into
-    /// sentences, and the results are the `n` cheapest combinations of one
-    /// path per sentence. `best_cost` is the cost of the first result, so the
-    /// threshold applies to the whole input.
+    /// segments at `\n` and `\t` (within a segment, the context is carried
+    /// across `、`, `。` and forced cuts), and the results are the `n`
+    /// cheapest combinations of one path per segment. `best_cost` is the cost
+    /// of the first result, so the threshold applies to the whole input.
     pub fn tokenize_nbest_with_lattice<'a>(
         &'a self,
         text: &'a str,

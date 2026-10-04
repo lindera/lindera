@@ -1,6 +1,12 @@
+mod carried_nbest;
+mod exit_dominance;
 mod nbest_merge;
+mod path_tree;
 
+use self::carried_nbest::CarriedNbest;
+use self::exit_dominance::{MarginCache, prune_dominated};
 use self::nbest_merge::merge_nbest;
+use self::path_tree::{CarryState, NO_NODE, PathTree};
 
 use std::borrow::Cow;
 use std::str::FromStr;
@@ -11,7 +17,9 @@ use log::warn;
 
 use lindera_dictionary::dictionary::{Dictionary, UserDictionary};
 use lindera_dictionary::space_penalty::{SpacePenaltyConfig, SpacePenaltyTable};
-use lindera_dictionary::viterbi::{Lattice, LatticeOptions, NBestPath, TokenOffset};
+use lindera_dictionary::viterbi::{
+    BosContext, Lattice, LatticeExit, LatticeOptions, NBestPath, TokenOffset,
+};
 use lindera_dictionary::whitespace::WhitespaceClassifier;
 use serde_json::Value;
 
@@ -63,13 +71,16 @@ fn find_sentence_end(text: &str, sentence_start: usize) -> (usize, bool) {
         // Check for Japanese punctuation (multi-byte). "。" and "、"
         // share the same 2-byte UTF-8 lead (E3 80) and differ only
         // in their last byte (0x82 / 0x81, which is exactly `ch`
-        // here), so this cheap pre-check skips the 3-byte slice
-        // comparison for ~254/256 possible byte values.
-        if (ch == 0x81 || ch == 0x82) && sentence_end >= 3 {
-            let last_3 = &text_bytes[sentence_end - 3..sentence_end];
-            if last_3 == "。".as_bytes() || last_3 == "、".as_bytes() {
-                return (sentence_end, false);
-            }
+        // here), so this cheap pre-check skips the lead comparison for
+        // ~254/256 possible byte values. The lead bytes are compared one
+        // by one: a 3-byte slice comparison may compile to a `memcmp`
+        // call.
+        if (ch == 0x81 || ch == 0x82)
+            && sentence_end >= 3
+            && text_bytes[sentence_end - 3] == 0xE3
+            && text_bytes[sentence_end - 2] == 0x80
+        {
+            return (sentence_end, false);
         }
         // No real delimiter within MAX_SENTENCE_BYTES: force a cut at the
         // next valid char boundary to bound lattice size.
@@ -80,6 +91,151 @@ fn find_sentence_end(text: &str, sentence_start: usize) -> (usize, bool) {
         }
     }
     (sentence_end, false)
+}
+
+/// One sentence of an input, as [`SentenceWalk`] yields it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Sentence {
+    /// The sentence's start in the input, in bytes.
+    start: usize,
+    /// The sentence's end in the input (exclusive), in bytes.
+    end: usize,
+    /// Whether the cut after the sentence carries the context over to the
+    /// next sentence: a cut after `、` or `。`, or a forced cut, that is not
+    /// the end of the input. A cut after `\n` or `\t` and the end of the
+    /// input carry nothing; they end a segment, a run of sentences that
+    /// carry the context from one to the next.
+    carries: bool,
+}
+
+/// Walks an input sentence by sentence, cutting where
+/// [`find_sentence_end`] cuts and logging a warning at every forced cut.
+struct SentenceWalk<'t> {
+    /// The whole input.
+    text: &'t str,
+    /// The start of the next sentence, in bytes.
+    next_start: usize,
+}
+
+impl<'t> SentenceWalk<'t> {
+    /// Starts a walk at the beginning of `text`.
+    ///
+    /// # 引数
+    ///
+    /// * `text` - The whole input.
+    ///
+    /// # 戻り値
+    ///
+    /// The walk.
+    fn new(text: &'t str) -> Self {
+        Self {
+            text,
+            next_start: 0,
+        }
+    }
+}
+
+impl Iterator for SentenceWalk<'_> {
+    type Item = Sentence;
+
+    /// Returns the next sentence, which is never empty.
+    ///
+    /// # 戻り値
+    ///
+    /// The sentence, or `None` at the end of the input.
+    #[inline]
+    fn next(&mut self) -> Option<Sentence> {
+        let text = self.text;
+        while self.next_start < text.len() {
+            let start = self.next_start;
+            let (end, forced_cut) = find_sentence_end(text, start);
+            if forced_cut {
+                warn!(
+                    "no sentence delimiter (\\n, \\t, 。, 、) found within {MAX_SENTENCE_BYTES} bytes from offset {start}; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)"
+                );
+            }
+            self.next_start = end;
+            if end == start {
+                continue;
+            }
+            // A sentence that ends with a non-forced cut other than `\n` or
+            // `\t` ends with `、` or `。` (or is the end of the input).
+            let carries = end < text.len() && {
+                let last = text.as_bytes()[end - 1];
+                forced_cut || (last != b'\n' && last != b'\t')
+            };
+            return Some(Sentence {
+                start,
+                end,
+                carries,
+            });
+        }
+        None
+    }
+}
+
+/// Scratch buffers of the 1-best segmentation, kept by `SegmentWorker`
+/// across calls so a call allocates nothing it already has
+/// ([`Segmenter::segment`] uses fresh ones).
+#[derive(Debug, Default)]
+pub(crate) struct SegmentBuffers {
+    /// The tokens of the best path of the current sentence, as
+    /// `tokens_offset_into` returns them (it clears the buffer first).
+    offsets: Vec<TokenOffset>,
+    /// The exits of the current sentence, as `exits_into` returns them.
+    exits: Vec<LatticeExit>,
+    /// The BOS contexts of the current sentence: one per state.
+    contexts: Vec<BosContext>,
+    /// The states the current sentence starts from, in ascending order of
+    /// right id (the order of `contexts`).
+    states: Vec<CarryState>,
+    /// The states the current sentence ends with, built from its exits.
+    next_states: Vec<CarryState>,
+    /// The open paths of the states.
+    tree: PathTree,
+    /// Scratch of the exit pruning: which exits are dominated.
+    dominated: Vec<bool>,
+}
+
+impl SegmentBuffers {
+    /// Releases the capacity of every buffer.
+    pub(crate) fn shrink_to_fit(&mut self) {
+        self.offsets.shrink_to_fit();
+        self.exits.shrink_to_fit();
+        self.contexts.shrink_to_fit();
+        self.states.shrink_to_fit();
+        self.next_states.shrink_to_fit();
+        self.tree.shrink_to_fit();
+        self.dominated.shrink_to_fit();
+    }
+}
+
+/// Fills `contexts` with one BOS context per state, in the order of the
+/// states, with costs relative to the cheapest state.
+///
+/// # 引数
+///
+/// * `states` - The states; not empty.
+/// * `contexts` - The buffer to fill, cleared first.
+///
+/// # 戻り値
+///
+/// The cost of the cheapest state, which the costs of the lattice's paths
+/// are relative to. A relative cost beyond `i32::MAX` is saturated (the
+/// lattice clamps BOS costs to its own bound anyway); such a cost gap cannot
+/// arise from the bounded word, connection and penalty costs of a
+/// dictionary in practice.
+fn fill_bos_contexts<I>(states: I, contexts: &mut Vec<BosContext>) -> i64
+where
+    I: Iterator<Item = (u16, i64)> + Clone,
+{
+    let base = states.clone().map(|(_, cost)| cost).min().unwrap_or(0);
+    contexts.clear();
+    contexts.extend(states.map(|(right_id, cost)| BosContext {
+        right_id,
+        cost: i32::try_from(cost.saturating_sub(base)).unwrap_or(i32::MAX),
+    }));
+    base
 }
 
 /// Segmenter
@@ -182,6 +338,12 @@ pub struct Segmenter {
     /// dictionary's own `char.def`, with an ASCII/Latin-1 fast path. `None`
     /// when the dictionary defines no `SPACE` category.
     whitespace: Option<WhitespaceClassifier>,
+
+    /// The margins between right context ids by which the 1-best
+    /// segmentation drops the exits of a sentence that cannot win (see
+    /// `exit_dominance`), cached per pair for the dictionary's connection
+    /// matrix; `Arc` so that clones share it.
+    exit_margins: Arc<MarginCache>,
 }
 
 impl Segmenter {
@@ -248,6 +410,7 @@ impl Segmenter {
             space_penalty: None,    // Set below from the dictionary's shipped rules, if any
             space_penalty_table: None,
             whitespace,
+            exit_margins: Arc::default(),
         };
 
         // Default (6.1+): apply the left-space penalty rules the dictionary
@@ -525,6 +688,65 @@ impl Segmenter {
         options
     }
 
+    /// Builds the 1-best lattice of one sentence.
+    ///
+    /// # 引数
+    ///
+    /// * `lattice` - The lattice to reuse.
+    /// * `sentence` - The sentence's text.
+    /// * `options` - The lattice options, from [`Segmenter::lattice_options`].
+    #[inline]
+    fn set_lattice_text(&self, lattice: &mut Lattice, sentence: &str, options: &LatticeOptions) {
+        lattice.set_text_with_options(
+            &self.dictionary.prefix_dictionary,
+            &self.user_dictionary.as_ref().map(|d| &d.dict),
+            &self.dictionary.character_definition,
+            &self.dictionary.unknown_dictionary,
+            &self.dictionary.connection_cost_matrix,
+            sentence,
+            options,
+        );
+    }
+
+    /// Builds the N-best lattice of one sentence.
+    ///
+    /// # 引数
+    ///
+    /// * `lattice` - The lattice to reuse.
+    /// * `sentence` - The sentence's text.
+    /// * `options` - The lattice options, from [`Segmenter::lattice_options`].
+    fn set_lattice_text_nbest(
+        &self,
+        lattice: &mut Lattice,
+        sentence: &str,
+        options: &LatticeOptions,
+    ) {
+        lattice.set_text_nbest_with_options(
+            &self.dictionary.prefix_dictionary,
+            &self.user_dictionary.as_ref().map(|d| &d.dict),
+            &self.dictionary.character_definition,
+            &self.dictionary.unknown_dictionary,
+            &self.dictionary.connection_cost_matrix,
+            sentence,
+            options,
+        );
+    }
+
+    /// Returns the classifier of the whitespace tokens to drop from the
+    /// output: the dictionary's `SPACE` classifier unless `keep_whitespace`
+    /// is set.
+    ///
+    /// # 戻り値
+    ///
+    /// The classifier, or `None` to keep every token.
+    fn space_filter(&self) -> Option<&WhitespaceClassifier> {
+        if self.keep_whitespace {
+            None
+        } else {
+            self.whitespace.as_ref()
+        }
+    }
+
     /// Returns the classifier of the whitespace to skip in the lattice:
     /// whitespace is skipped whenever it is dropped from the output, unless
     /// `skip_whitespace` is off or the dictionary defines no `SPACE`
@@ -730,14 +952,15 @@ impl Segmenter {
     /// # Process
     ///
     /// 1. **Sentence Splitting**:
-    ///    - The input text is split into sentences using Japanese punctuation (`。`, `、`, `\n`, `\t`). Each sentence is processed individually.
+    ///    - The input text is split into sentences at `。`, `、`, `\n` and `\t`, and by a forced cut after 32 KiB without any of them. A cut at `\n` or `\t` (or the end of the input) ends a segment; within a segment, the cuts at `、` and `。` and the forced cuts carry the context from one sentence to the next.
     ///
     /// 2. **Lattice Processing**:
     ///    - For each sentence, a lattice structure is set up using the main dictionary and, if available, the user dictionary. The lattice helps identify possible token boundaries within the sentence.
     ///    - The cost matrix is used to calculate the best path (i.e., the optimal sequence of tokens) through the lattice based on the mode.
+    ///    - A sentence that continues a segment starts from the exits of the previous sentence (the right context ids of the words that end it), and the EOS connection is paid only at the end of the segment, so the best path of a segment is the one that a single lattice over the segment gives, except that no dictionary entry or unknown-word group spans a cut and a word that starts right at a forced cut never pays the left-space penalty.
     ///
     /// 3. **Token Generation**:
-    ///    - For each segment (determined by the lattice), a token is generated using the byte offsets. The tokens contain the original text (in `Cow::Owned` form to ensure safe return), byte start/end positions, token positions, and dictionary references.
+    ///    - For each word of the best path, a token is generated using the byte offsets. The tokens contain the original text (in `Cow::Owned` form to ensure safe return), byte start/end positions, token positions, and dictionary references.
     ///
     /// # Notes
     ///
@@ -747,8 +970,8 @@ impl Segmenter {
     /// # Example Flow
     ///
     /// - Text is split into sentences based on punctuation.
-    /// - A lattice is created and processed for each sentence.
-    /// - Tokens are extracted from the lattice and returned in a vector.
+    /// - A lattice is created and processed for each sentence, continuing the context of the previous sentence within a segment.
+    /// - Tokens are extracted from the lattices and returned in a vector.
     ///
     /// # Errors
     ///
@@ -772,14 +995,15 @@ impl Segmenter {
     /// # Process
     ///
     /// 1. **Sentence Splitting**:
-    ///    - The input text is split into sentences using Japanese punctuation (`。`, `、`, `\n`, `\t`). Each sentence is processed individually.
+    ///    - The input text is split into sentences at `。`, `、`, `\n` and `\t`, and by a forced cut after 32 KiB without any of them. A cut at `\n` or `\t` (or the end of the input) ends a segment; within a segment, the cuts at `、` and `。` and the forced cuts carry the context from one sentence to the next.
     ///
     /// 2. **Lattice Processing**:
     ///    - For each sentence, a lattice structure is set up using the main dictionary and, if available, the user dictionary. The lattice helps identify possible token boundaries within the sentence.
     ///    - The cost matrix is used to calculate the best path (i.e., the optimal sequence of tokens) through the lattice based on the mode.
+    ///    - A sentence that continues a segment starts from the exits of the previous sentence (the right context ids of the words that end it), and the EOS connection is paid only at the end of the segment, so the best path of a segment is the one that a single lattice over the segment gives, except that no dictionary entry or unknown-word group spans a cut and a word that starts right at a forced cut never pays the left-space penalty.
     ///
     /// 3. **Token Generation**:
-    ///    - For each segment (determined by the lattice), a token is generated using the byte offsets. The tokens contain the original text (in `Cow::Owned` form to ensure safe return), byte start/end positions, token positions, and dictionary references.
+    ///    - For each word of the best path, a token is generated using the byte offsets. The tokens contain the original text (in `Cow::Owned` form to ensure safe return), byte start/end positions, token positions, and dictionary references.
     ///
     /// # Notes
     ///
@@ -789,8 +1013,8 @@ impl Segmenter {
     /// # Example Flow
     ///
     /// - Text is split into sentences based on punctuation.
-    /// - A lattice is created and processed for each sentence.
-    /// - Tokens are extracted from the lattice and returned in a vector.
+    /// - A lattice is created and processed for each sentence, continuing the context of the previous sentence within a segment.
+    /// - Tokens are extracted from the lattices and returned in a vector.
     ///
     /// # Errors
     ///
@@ -800,26 +1024,26 @@ impl Segmenter {
         text: Cow<'a, str>,
         lattice: &mut Lattice,
     ) -> LinderaResult<Vec<Token<'a>>> {
-        // The backtrace buffer is allocated once per call; SegmentWorker
-        // routes through segment_with_buffers to reuse it across calls too.
-        let mut offsets: Vec<TokenOffset> = Vec::new();
-        self.segment_with_buffers(text, lattice, &mut offsets)
+        // The scratch buffers are allocated once per call; SegmentWorker
+        // routes through segment_with_buffers to reuse them across calls too.
+        let mut buffers = SegmentBuffers::default();
+        self.segment_with_buffers(text, lattice, &mut buffers)
     }
 
     /// Segments the input text reusing both the caller's lattice and the
-    /// caller's backtrace scratch buffer.
+    /// caller's scratch buffers.
     ///
     /// This is the shared body behind [`Segmenter::segment_with_lattice`]
-    /// (which passes a fresh buffer) and `SegmentWorker::segment` (which
-    /// keeps one buffer alive across calls). Output is identical to
+    /// (which passes fresh buffers) and `SegmentWorker::segment` (which
+    /// keeps them alive across calls). Output is identical to
     /// `segment_with_lattice` for the same input.
     ///
     /// # 引数
     ///
     /// * `text` - The input text, borrowed or owned.
     /// * `lattice` - The Viterbi lattice to reuse across sentences/calls.
-    /// * `offsets` - Backtrace scratch buffer; overwritten per sentence
-    ///   (`tokens_offset_into` clears it), so no pre-clearing is required.
+    /// * `buffers` - The scratch buffers; every call overwrites what it
+    ///   uses, so no pre-clearing is required.
     ///
     /// # 戻り値
     ///
@@ -828,91 +1052,155 @@ impl Segmenter {
         &'a self,
         text: Cow<'a, str>,
         lattice: &mut Lattice,
-        offsets: &mut Vec<TokenOffset>,
+        buffers: &mut SegmentBuffers,
     ) -> LinderaResult<Vec<Token<'a>>> {
         let mut tokens: Vec<Token> = Vec::new();
 
-        let mut position = 0_usize;
+        // Hoisted out of the per-sentence and per-token loops (#942): the
+        // lattice options and the classifier of the whitespace tokens to
+        // drop. Skipped whitespace never becomes a token, and the lattice
+        // returns token ends without it (#1108).
+        let options = self.lattice_options();
+        let space_filter = self.space_filter();
 
-        // Whitespace configuration, hoisted out of the per-token loop
-        // (#942): the classifier of the whitespace tokens to drop. Skipped
-        // whitespace never becomes a token, and the lattice returns token
-        // ends without it (#1108).
-        let space_filter = if self.keep_whitespace {
-            None
-        } else {
-            self.whitespace.as_ref()
-        };
+        let SegmentBuffers {
+            offsets,
+            exits,
+            contexts,
+            states,
+            next_states,
+            tree,
+            dominated,
+        } = buffers;
+        // A previous call that panicked may have left paths behind.
+        tree.clear();
+        // Whether the current sentence starts a segment, from the
+        // dictionary's single BOS edge; otherwise it continues `states`.
+        let mut fresh = true;
 
-        // Process whole text without splitting first for better performance with borrowed text
-        let text_len = text.len();
-        let mut sentence_start = 0;
-
-        while sentence_start < text_len {
-            // Find the end of the current sentence
-            let (sentence_end, forced_cut) = find_sentence_end(&text, sentence_start);
-            if forced_cut {
-                warn!(
-                    "no sentence delimiter (\\n, \\t, 。, 、) found within {MAX_SENTENCE_BYTES} bytes from offset {sentence_start}; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)"
-                );
-            }
-
-            let sentence = &text[sentence_start..sentence_end];
-            if sentence.is_empty() {
-                sentence_start = sentence_end;
-                continue;
-            }
-
-            // Process the sentence through lattice
-            lattice.set_text_with_options(
-                &self.dictionary.prefix_dictionary,
-                &self.user_dictionary.as_ref().map(|d| &d.dict),
-                &self.dictionary.character_definition,
-                &self.dictionary.unknown_dictionary,
-                &self.dictionary.connection_cost_matrix,
-                sentence,
-                &self.lattice_options(),
-            );
-            // Forward Viterbi implementation handles cost calculation within `set_text`.
-
-            lattice.tokens_offset_into(offsets);
-            tokens.reserve(offsets.len());
-
-            for &(byte_start, byte_end, word_id) in offsets.iter() {
-                // Calculate absolute position in the original text
-                let absolute_start = sentence_start + byte_start;
-                let absolute_end = sentence_start + byte_end;
-
-                // Skip whitespace tokens if keep_whitespace is false (default MeCab behavior)
-                if let Some(whitespace) = space_filter
-                    && self.is_whitespace_token(&sentence[byte_start..byte_end], whitespace)
-                {
+        for sentence in SentenceWalk::new(&text) {
+            let sentence_text = &text[sentence.start..sentence.end];
+            // The cost of the cheapest state, which the lattice's costs are
+            // relative to.
+            let base = if fresh {
+                self.set_lattice_text(lattice, sentence_text, &options);
+                if !sentence.carries {
+                    // A segment of one sentence: the best path from BOS to
+                    // EOS, as before the context was carried.
+                    lattice.tokens_offset_into(offsets);
+                    self.push_tokens(&text, sentence.start, offsets, space_filter, &mut tokens);
                     continue;
                 }
+                states.clear();
+                states.push(CarryState::ROOT);
+                0
+            } else {
+                let base = fill_bos_contexts(
+                    states.iter().map(|state| (state.right_id, state.cost)),
+                    contexts,
+                );
+                let mut carried = options;
+                carried.bos = contexts;
+                self.set_lattice_text(lattice, sentence_text, &carried);
+                base
+            };
 
-                // Create surface Cow efficiently - avoid unnecessary string allocation for owned strings
-                let surface_cow = match &text {
-                    Cow::Borrowed(s) => Cow::Borrowed(&s[absolute_start..absolute_end]),
-                    Cow::Owned(s) => {
-                        // Use slice from owned string instead of creating new string
-                        Cow::Owned(s[absolute_start..absolute_end].to_owned())
+            // Whether the sentence has a complete path: an exit when it
+            // carries the context, EOS otherwise.
+            let complete = if sentence.carries {
+                // Every exit that can win becomes a state: its best path is
+                // the path of the state its BOS edge continues, plus this
+                // sentence's part. The exits and their paths are read now,
+                // before the next sentence rebuilds the lattice.
+                lattice.exits_into(exits);
+                prune_dominated(
+                    exits,
+                    &self.exit_margins,
+                    &self.dictionary.connection_cost_matrix,
+                    dominated,
+                );
+                if let [exit] = exits.as_slice() {
+                    // One state: its path is final, so it is emitted at once.
+                    let bos = lattice.exit_tokens_offset_into(exit, offsets);
+                    tree.for_each_part(states[bos].node, |part_start, part| {
+                        self.push_tokens(&text, part_start, part, space_filter, &mut tokens);
+                    });
+                    self.push_tokens(&text, sentence.start, offsets, space_filter, &mut tokens);
+                    tree.clear();
+                    states.clear();
+                    states.push(CarryState {
+                        right_id: exit.right_id(),
+                        cost: base.saturating_add(i64::from(exit.cost())),
+                        node: NO_NODE,
+                    });
+                    fresh = false;
+                    continue;
+                }
+                next_states.clear();
+                for exit in exits.iter() {
+                    let node = tree.add(sentence.start);
+                    let bos = lattice.exit_tokens_offset_into(exit, tree.tokens_mut(node));
+                    tree.set_parent(node, states[bos].node);
+                    next_states.push(CarryState {
+                        right_id: exit.right_id(),
+                        cost: base.saturating_add(i64::from(exit.cost())),
+                        node,
+                    });
+                }
+                if next_states.is_empty() {
+                    false
+                } else {
+                    std::mem::swap(states, next_states);
+                    // The BOS edges of the next sentence follow the order of
+                    // the right ids, which decides between paths of equal
+                    // cost.
+                    states.sort_unstable_by_key(|state| state.right_id);
+
+                    // The parts that every state's path shares are final.
+                    let cut = tree.common_ancestor(states);
+                    if cut != NO_NODE {
+                        tree.for_each_part(cut, |part_start, part| {
+                            self.push_tokens(&text, part_start, part, space_filter, &mut tokens);
+                        });
                     }
-                };
+                    tree.retain(states, cut);
+                    fresh = false;
+                    true
+                }
+            } else if let Some(bos) = lattice.tokens_offset_into(offsets) {
+                // The end of the segment pays the EOS connection; the best
+                // path picks the state it continues.
+                tree.for_each_part(states[bos].node, |part_start, part| {
+                    self.push_tokens(&text, part_start, part, space_filter, &mut tokens);
+                });
+                self.push_tokens(&text, sentence.start, offsets, space_filter, &mut tokens);
+                tree.clear();
+                fresh = true;
+                true
+            } else {
+                false
+            };
 
-                tokens.push(Token::new(
-                    surface_cow,
-                    absolute_start,
-                    absolute_end,
-                    position,
-                    word_id,
-                    &self.dictionary,
-                    self.user_dictionary.as_ref(),
-                ));
-
-                position += 1;
+            if !complete {
+                // No exit or no complete path, which a dictionary that
+                // covers every character with an unknown word never gives:
+                // commit the path of the first of the cheapest states, then
+                // segment the sentence from the dictionary's BOS edge, as
+                // before the context was carried. The next sentence starts
+                // a new segment.
+                if !fresh {
+                    if let Some(best) = states.iter().min_by_key(|state| state.cost) {
+                        tree.for_each_part(best.node, |part_start, part| {
+                            self.push_tokens(&text, part_start, part, space_filter, &mut tokens);
+                        });
+                    }
+                    self.set_lattice_text(lattice, sentence_text, &options);
+                }
+                tree.clear();
+                lattice.tokens_offset_into(offsets);
+                self.push_tokens(&text, sentence.start, offsets, space_filter, &mut tokens);
+                fresh = true;
             }
-
-            sentence_start = sentence_end;
         }
 
         Ok(tokens)
@@ -926,8 +1214,8 @@ impl Segmenter {
     /// POS tags are deduplicated (only the lowest-cost variant is kept).
     ///
     /// Every result segments the whole input. The input is split into
-    /// sentences as [`Segmenter::segment`] splits it, and the results are the
-    /// `n` cheapest combinations of one path per sentence; see
+    /// segments as [`Segmenter::segment`] splits it, and the results are the
+    /// `n` cheapest combinations of one path per segment; see
     /// [`Segmenter::segment_nbest_with_lattice`].
     ///
     /// # 引数
@@ -960,13 +1248,21 @@ impl Segmenter {
     /// If `cost_threshold` is Some(t), paths whose cost exceeds best_cost + t
     /// are discarded.
     ///
-    /// The input is split into sentences by the same rules as
-    /// [`Segmenter::segment`], and each sentence is searched on its own. Every
-    /// result is a segmentation of the whole input that takes one path in each
-    /// sentence, and its cost is the sum of those paths' costs; the results
-    /// are the `n` cheapest of these combinations, in ascending order of cost.
-    /// `best_cost` is the cost of the first result, i.e. of the best path of
-    /// every sentence, so the threshold applies to the whole input.
+    /// The input is split into sentences and segments by the same rules as
+    /// [`Segmenter::segment`]. Within a segment (the sentences up to a `\n`,
+    /// a `\t` or the end of the input), the context is carried across the
+    /// cuts at `、`, `。` and the forced cuts: a path of a segment costs what
+    /// a single lattice over the segment gives it (with the exceptions that
+    /// [`Segmenter::segment`] lists), the EOS connection paid only at its
+    /// end, and the segment's `n` best paths are searched exactly
+    /// (with `unique` over the word boundaries of the whole segment, and the
+    /// threshold from the segment's best). Every result is a segmentation of
+    /// the whole input that takes one path in each segment, and its cost is
+    /// the sum of those paths' costs; the results are the `n` cheapest of
+    /// these combinations, in ascending order of cost. `best_cost` is the
+    /// cost of the first result, i.e. of the best path of every segment, so
+    /// the threshold applies to the whole input. The first result is the
+    /// path of [`Segmenter::segment`], up to paths of equal cost.
     ///
     /// # 引数
     ///
@@ -991,90 +1287,137 @@ impl Segmenter {
         unique: bool,
         cost_threshold: Option<i64>,
     ) -> LinderaResult<Vec<(Vec<Token<'a>>, i64)>> {
-        if n == 0 {
+        // A negative threshold excludes even the best result.
+        if n == 0 || cost_threshold.is_some_and(|threshold| threshold < 0) {
             return Ok(Vec::new());
         }
 
-        // Phase 1: the N-best paths of every sentence. A path that exceeds
-        // its sentence's best by more than the threshold cannot be part of a
-        // result, because the other sentences add at least their best costs,
-        // so the threshold already prunes each sentence's list here.
-        let mut sentences: Vec<SentenceNbest> = Vec::new();
-        let text_len = text.len();
-        let mut sentence_start = 0;
-
-        while sentence_start < text_len {
-            // Find the end of the current sentence
-            let (sentence_end, forced_cut) = find_sentence_end(&text, sentence_start);
-            if forced_cut {
-                warn!(
-                    "no sentence delimiter (\\n, \\t, 。, 、) found within {MAX_SENTENCE_BYTES} bytes from offset {sentence_start}; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)"
-                );
+        // Phase 1: the N-best paths of every segment, a run of sentences
+        // that carry the context from one to the next. A path that exceeds
+        // its segment's best by more than the threshold cannot be part of a
+        // result, because the other segments add at least their best costs,
+        // so the threshold already prunes each segment's list here.
+        let options = self.lattice_options();
+        let mut parts: Vec<NbestPart> = Vec::new();
+        let mut search = CarriedNbest::new(n, unique, cost_threshold);
+        // Whether the current sentence starts a segment, from the
+        // dictionary's single BOS edge; otherwise it continues `search`.
+        let mut fresh = true;
+        for sentence in SentenceWalk::new(&text) {
+            let sentence_text = &text[sentence.start..sentence.end];
+            let first = fresh;
+            if first {
+                self.set_lattice_text_nbest(lattice, sentence_text, &options);
+                if !sentence.carries {
+                    // A segment of one sentence: its own N-best list, as
+                    // before the context was carried.
+                    let paths = lattice.nbest_tokens_offset(n, unique, cost_threshold);
+                    // A sentence without paths adds nothing, as in the
+                    // 1-best segmentation. A path without tokens (a sentence
+                    // of skipped whitespace) is a path, and its cost counts.
+                    if !paths.is_empty() {
+                        parts.push(NbestPart {
+                            start: sentence.start,
+                            paths,
+                        });
+                    }
+                    continue;
+                }
+                search.start(sentence.start);
+            } else {
+                let mut carried = options;
+                carried.bos = search.bos_contexts();
+                self.set_lattice_text_nbest(lattice, sentence_text, &carried);
             }
 
-            let sentence = &text[sentence_start..sentence_end];
-            if sentence.is_empty() {
-                sentence_start = sentence_end;
-                continue;
+            // Whether the sentence has a complete path: an exit when it
+            // carries the context, EOS otherwise.
+            let complete = if sentence.carries {
+                search.carry(
+                    lattice,
+                    sentence.start,
+                    &self.exit_margins,
+                    &self.dictionary.connection_cost_matrix,
+                )
+            } else {
+                let paths = search.finish(lattice, sentence.start);
+                let complete = !paths.is_empty();
+                if complete {
+                    parts.push(NbestPart {
+                        start: search.segment_start(),
+                        paths,
+                    });
+                }
+                complete
+            };
+            fresh = !sentence.carries;
+
+            if !complete {
+                // No exit or no complete path, which a dictionary that
+                // covers every character with an unknown word never gives:
+                // as in the 1-best segmentation, end the segment before the
+                // sentence, then search the sentence from the dictionary's
+                // BOS edge on its own. The next sentence starts a new
+                // segment.
+                if !first {
+                    let committed = search.commit();
+                    if !committed.is_empty() {
+                        parts.push(NbestPart {
+                            start: search.segment_start(),
+                            paths: committed,
+                        });
+                    }
+                    self.set_lattice_text_nbest(lattice, sentence_text, &options);
+                }
+                let paths = lattice.nbest_tokens_offset(n, unique, cost_threshold);
+                if !paths.is_empty() {
+                    parts.push(NbestPart {
+                        start: sentence.start,
+                        paths,
+                    });
+                }
+                fresh = true;
             }
-
-            // Process the sentence through N-Best lattice
-            lattice.set_text_nbest_with_options(
-                &self.dictionary.prefix_dictionary,
-                &self.user_dictionary.as_ref().map(|d| &d.dict),
-                &self.dictionary.character_definition,
-                &self.dictionary.unknown_dictionary,
-                &self.dictionary.connection_cost_matrix,
-                sentence,
-                &self.lattice_options(),
-            );
-
-            let nbest_offsets = lattice.nbest_tokens_offset(n, unique, cost_threshold);
-            // A sentence without paths adds nothing, as in the 1-best
-            // segmentation. A path without tokens (a sentence of skipped
-            // whitespace) is a path, and its cost counts.
-            if !nbest_offsets.is_empty() {
-                sentences.push(SentenceNbest {
-                    start: sentence_start,
-                    end: sentence_end,
-                    paths: nbest_offsets,
-                });
-            }
-
-            sentence_start = sentence_end;
         }
 
-        // A single sentence needs no merge: its list, already cut to `n` and
+        let space_filter = self.space_filter();
+
+        // A single part needs no merge: its list, already cut to `n` and
         // filtered by the threshold, is the result (`merge_nbest` would
         // return it unchanged).
-        if let [sentence] = sentences.as_slice() {
-            return Ok(sentence
+        if let [part] = parts.as_slice() {
+            return Ok(part
                 .paths
                 .iter()
-                .enumerate()
-                .map(|(rank, &(_, cost))| {
+                .map(|(offsets, cost)| {
                     let mut tokens = Vec::new();
-                    self.push_sentence_tokens(&text, sentence, rank, &mut tokens);
-                    (tokens, cost)
+                    self.push_tokens(&text, part.start, offsets, space_filter, &mut tokens);
+                    (tokens, *cost)
                 })
                 .collect());
         }
 
-        // Phase 2: the cheapest combinations of one path per sentence. With
-        // `unique`, the paths of each sentence have distinct word boundaries,
+        // Phase 2: the cheapest combinations of one path per part. With
+        // `unique`, the paths of each part have distinct word boundaries,
         // so the combinations do too.
-        let costs: Vec<Vec<i64>> = sentences
+        let costs: Vec<Vec<i64>> = parts
             .iter()
-            .map(|s| s.paths.iter().map(|&(_, cost)| cost).collect())
+            .map(|part| part.paths.iter().map(|&(_, cost)| cost).collect())
             .collect();
         let combinations = merge_nbest(&costs, n, cost_threshold);
 
-        // Phase 3: the tokens of each combination, sentence by sentence.
+        // Phase 3: the tokens of each combination, part by part.
         let mut results = Vec::with_capacity(combinations.len());
         for (ranks, cost) in combinations {
             let mut tokens = Vec::new();
-            for (sentence, rank) in sentences.iter().zip(ranks) {
-                self.push_sentence_tokens(&text, sentence, rank, &mut tokens);
+            for (part, rank) in parts.iter().zip(ranks) {
+                self.push_tokens(
+                    &text,
+                    part.start,
+                    &part.paths[rank].0,
+                    space_filter,
+                    &mut tokens,
+                );
             }
             results.push((tokens, cost));
         }
@@ -1082,48 +1425,51 @@ impl Segmenter {
         Ok(results)
     }
 
-    /// Appends the tokens of one N-best path of a sentence to `tokens`,
-    /// numbering them on from `tokens.len()`. Whitespace is handled as in
-    /// [`Segmenter::segment`]: the lattice's token ends leave skipped
-    /// whitespace out (an entry keeps the whitespace its own surface ends
-    /// with), and whitespace tokens are dropped unless `keep_whitespace` is
-    /// set.
+    /// Appends the tokens of one path to `tokens`, numbering them on from
+    /// `tokens.len()`. The shared token builder of the 1-best and the N-best
+    /// segmentation. Whitespace is handled as in [`Segmenter::segment`]: the
+    /// lattice's token ends leave skipped whitespace out (an entry keeps the
+    /// whitespace its own surface ends with), and whitespace tokens are
+    /// dropped when `space_filter` is set.
     ///
     /// # 引数
     ///
     /// * `text` - The whole input, which the surfaces borrow from or copy.
-    /// * `nbest` - The sentence and its N-best paths.
-    /// * `rank` - The index of the path to use in `nbest.paths`.
+    /// * `base` - The offset in `text` that the path's offsets are relative
+    ///   to, e.g. the start of its sentence.
+    /// * `offsets` - The path's tokens: start and end offsets relative to
+    ///   `base` and word ids, in reading order.
+    /// * `space_filter` - The classifier of the whitespace tokens to drop,
+    ///   from [`Segmenter::space_filter`].
     /// * `tokens` - The tokens of the result so far.
     // `text` stays a `Cow` (not `&str`, as `ptr_arg` suggests) because its
     // variant decides whether a surface borrows the input or copies it.
     #[allow(clippy::ptr_arg)]
-    fn push_sentence_tokens<'a>(
+    #[inline]
+    fn push_tokens<'a>(
         &'a self,
         text: &Cow<'a, str>,
-        nbest: &SentenceNbest,
-        rank: usize,
+        base: usize,
+        offsets: &[TokenOffset],
+        space_filter: Option<&WhitespaceClassifier>,
         tokens: &mut Vec<Token<'a>>,
     ) {
-        let space_filter = if self.keep_whitespace {
-            None
-        } else {
-            self.whitespace.as_ref()
-        };
-        let sentence_start = nbest.start;
-        let sentence = &text[nbest.start..nbest.end];
-        let offsets = &nbest.paths[rank].0;
-        for &(byte_start, byte_end, word_id) in offsets.iter() {
-            let absolute_start = sentence_start + byte_start;
-            let absolute_end = sentence_start + byte_end;
+        let whole: &str = text;
+        tokens.reserve(offsets.len());
+        for &(byte_start, byte_end, word_id) in offsets {
+            let absolute_start = base + byte_start;
+            let absolute_end = base + byte_end;
 
-            // Skip whitespace tokens if keep_whitespace is false
+            // Skip whitespace tokens if keep_whitespace is false (default
+            // MeCab behavior).
             if let Some(whitespace) = space_filter
-                && self.is_whitespace_token(&sentence[byte_start..byte_end], whitespace)
+                && self.is_whitespace_token(&whole[absolute_start..absolute_end], whitespace)
             {
                 continue;
             }
 
+            // A borrowed input lends the surface; an owned one is copied so
+            // the token does not borrow a temporary.
             let surface_cow = match text {
                 Cow::Borrowed(s) => Cow::Borrowed(&s[absolute_start..absolute_end]),
                 Cow::Owned(s) => Cow::Owned(s[absolute_start..absolute_end].to_owned()),
@@ -1142,16 +1488,15 @@ impl Segmenter {
     }
 }
 
-/// The N-best paths of one sentence, kept until the sentences are combined
-/// (see [`Segmenter::segment_nbest_with_lattice`]).
-struct SentenceNbest {
-    /// The sentence's start in the input, in bytes.
+/// The N-best paths of one part of the input (a segment: a run of sentences
+/// that carry the context from one to the next), kept until the parts are
+/// combined (see [`Segmenter::segment_nbest_with_lattice`]).
+struct NbestPart {
+    /// The part's start in the input, in bytes.
     start: usize,
-    /// The sentence's end in the input, in bytes.
-    end: usize,
     /// The paths in ascending order of cost, as `nbest_tokens_offset`
-    /// returns them: each its tokens' start and end offsets within the
-    /// sentence and word ids, and its cost.
+    /// returns them: each its tokens' start and end offsets relative to
+    /// `start` and word ids, and its cost.
     paths: Vec<NBestPath>,
 }
 
@@ -1164,7 +1509,7 @@ mod tests {
         path::PathBuf,
     };
 
-    use crate::segmenter::{MAX_SENTENCE_BYTES, find_sentence_end};
+    use crate::segmenter::{MAX_SENTENCE_BYTES, Sentence, SentenceWalk, find_sentence_end};
     #[cfg(feature = "embed-ipadic")]
     use crate::segmenter::{Segmenter, SegmenterConfig};
 
@@ -1226,6 +1571,69 @@ mod tests {
         let _ = &text[..end];
         assert!(end >= MAX_SENTENCE_BYTES);
         assert!(end <= MAX_SENTENCE_BYTES - 1 + 'あ'.len_utf8());
+    }
+
+    /// The walk cuts where `find_sentence_end` cuts; a cut after `、` or `。`
+    /// carries the context unless it ends the input, a cut after `\n` or
+    /// `\t` never does.
+    #[test]
+    fn test_sentence_walk_cuts_and_carries() {
+        let text = "東京、です。行く\nもも\t京都、\n。";
+        let sentences: Vec<(&str, bool)> = SentenceWalk::new(text)
+            .map(|sentence| (&text[sentence.start..sentence.end], sentence.carries))
+            .collect();
+        assert_eq!(
+            sentences,
+            vec![
+                ("東京、", true),
+                ("です。", true),
+                ("行く\n", false),
+                ("もも\t", false),
+                ("京都、", true),
+                ("\n", false),
+                ("。", false),
+            ]
+        );
+        assert_eq!(SentenceWalk::new("").next(), None);
+        assert_eq!(
+            SentenceWalk::new("東京、").collect::<Vec<_>>(),
+            vec![Sentence {
+                start: 0,
+                end: "東京、".len(),
+                carries: false,
+            }]
+        );
+    }
+
+    /// A forced cut carries the context unless it ends the input.
+    #[test]
+    fn test_sentence_walk_forced_cut_carries() {
+        let text = "a".repeat(MAX_SENTENCE_BYTES + 10);
+        assert_eq!(
+            SentenceWalk::new(&text).collect::<Vec<_>>(),
+            vec![
+                Sentence {
+                    start: 0,
+                    end: MAX_SENTENCE_BYTES,
+                    carries: true,
+                },
+                Sentence {
+                    start: MAX_SENTENCE_BYTES,
+                    end: MAX_SENTENCE_BYTES + 10,
+                    carries: false,
+                },
+            ]
+        );
+
+        let text = "a".repeat(MAX_SENTENCE_BYTES);
+        assert_eq!(
+            SentenceWalk::new(&text).collect::<Vec<_>>(),
+            vec![Sentence {
+                start: 0,
+                end: MAX_SENTENCE_BYTES,
+                carries: false,
+            }]
+        );
     }
 
     #[test]
@@ -3900,19 +4308,123 @@ mod tests {
         }
     }
 
-    /// N-best over several sentences: every result segments the whole
-    /// input, and the results are the cheapest combinations of the paths of
-    /// the sentences (#1097).
-    #[cfg(feature = "embed-ipadic")]
-    mod nbest_whole_input {
+    /// A sentence without a complete path (a character no word or unknown
+    /// word covers) inside a segment: the segment ends before it, and the
+    /// sentence is segmented on its own, as before the context was carried.
+    mod carried_context_fallback {
         use std::borrow::Cow;
-        use std::collections::HashSet;
+        use std::fs;
 
-        use lindera_dictionary::viterbi::WordId;
+        use crate::dictionary::{DictionaryBuilder, Metadata, load_fs_dictionary};
+        use crate::mode::Mode;
+        use crate::segmenter::{Segmenter, SentenceWalk};
+
+        /// `あ` is HIRAGANA, which has no unknown-word entry.
+        const CHAR_DEF: &str = "\
+DEFAULT 0 1 0
+HIRAGANA 0 1 0
+KANJI 0 0 2
+0x3041..0x309F HIRAGANA
+0x4E00..0x9FFF KANJI
+";
+        const UNK_DEF: &str = "\
+DEFAULT,0,0,10000,補助記号,一般,*,*,*,*,*,*,*
+KANJI,0,0,10000,名詞,一般,*,*,*,*,*,*,*
+";
+        const LEX_CSV: &str = "\
+東京,0,0,0,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トウキョウ
+";
+        const MATRIX_DEF: &str = "\
+1 1
+0 0 0
+";
+
+        fn segmenter() -> (tempfile::TempDir, Segmenter) {
+            let source = tempfile::tempdir().unwrap();
+            fs::write(source.path().join("char.def"), CHAR_DEF).unwrap();
+            fs::write(source.path().join("unk.def"), UNK_DEF).unwrap();
+            fs::write(source.path().join("lex.csv"), LEX_CSV).unwrap();
+            fs::write(source.path().join("matrix.def"), MATRIX_DEF).unwrap();
+            let output = tempfile::tempdir().unwrap();
+            DictionaryBuilder::new(Metadata::default())
+                .build_dictionary(source.path(), output.path())
+                .unwrap();
+            let dictionary = load_fs_dictionary(output.path()).unwrap();
+            (output, Segmenter::new(Mode::Normal, dictionary, None))
+        }
+
+        fn spans(segmenter: &Segmenter, text: &str) -> Vec<(String, usize, usize)> {
+            segmenter
+                .segment(Cow::Borrowed(text))
+                .unwrap()
+                .iter()
+                .map(|t| (t.surface.to_string(), t.byte_start, t.byte_end))
+                .collect()
+        }
+
+        /// Every sentence on its own, as before the context was carried.
+        fn per_sentence(segmenter: &Segmenter, text: &str) -> Vec<(String, usize, usize)> {
+            let mut out = Vec::new();
+            for sentence in SentenceWalk::new(text) {
+                for (surface, start, end) in spans(segmenter, &text[sentence.start..sentence.end]) {
+                    out.push((surface, start + sentence.start, end + sentence.start));
+                }
+            }
+            out
+        }
+
+        #[test]
+        fn test_sentence_without_path_ends_the_segment() {
+            let (_dir, segmenter) = segmenter();
+            // The connection costs are all 0, so carrying the context
+            // changes nothing but the costs of EOS, which are 0 as well.
+            for text in [
+                "東京、あ、東京",
+                "東京、東京、あ",
+                "あ、東京",
+                "東京。あ。東京、東京",
+            ] {
+                let tokens = spans(&segmenter, text);
+                assert_eq!(tokens, per_sentence(&segmenter, text), "{text:?}");
+                assert!(!tokens.iter().any(|(surface, ..)| surface.contains('あ')));
+
+                // The N-best search drops the sentence, as it drops a
+                // sentence without paths on its own.
+                let results = segmenter
+                    .segment_nbest(Cow::Borrowed(text), 3, false, None)
+                    .unwrap();
+                assert!(!results.is_empty(), "{text:?}");
+                for (result, _) in &results {
+                    let result: Vec<(String, usize, usize)> = result
+                        .iter()
+                        .map(|t| (t.surface.to_string(), t.byte_start, t.byte_end))
+                        .collect();
+                    assert_eq!(result, tokens, "{text:?}");
+                }
+            }
+        }
+    }
+
+    /// The context carried across `、`, `。` and forced cuts (#1096). A
+    /// segment (the sentences up to `\n`, `\t` or the end of the input) costs
+    /// what one lattice over it gives: the EOS connection is paid only at the
+    /// end of the segment, and a sentence continues the exits of the previous
+    /// one. Segments are independent, and the N-best results are the
+    /// cheapest combinations of one path per segment (#1097).
+    #[cfg(feature = "embed-ipadic")]
+    mod carried_context {
+        use std::borrow::Cow;
+        use std::collections::HashMap;
+        use std::path::PathBuf;
+
+        use lindera_dictionary::nbest::NBestGenerator;
+        use lindera_dictionary::viterbi::{BosContext, Lattice, TokenOffset, WordId};
 
         use crate::dictionary::load_dictionary;
         use crate::mode::{Mode, Penalty};
-        use crate::segmenter::{Segmenter, find_sentence_end};
+        use crate::segmenter::{
+            MAX_SENTENCE_BYTES, SegmentBuffers, Segmenter, Sentence, SentenceWalk,
+        };
         use crate::token::Token;
 
         /// The fields of a token that the tests compare: surface, byte
@@ -3921,6 +4433,10 @@ mod tests {
 
         /// N-best results with their tokens flattened to [`Flat`].
         type Results = Vec<(Vec<Flat>, i64)>;
+
+        /// The expected results: per result (per word-boundary class with
+        /// `unique`), its cost and the token lists that may stand for it.
+        type Expected = Vec<(i64, Vec<Vec<Flat>>)>;
 
         fn ipadic(mode: Mode) -> Segmenter {
             Segmenter::new(mode, load_dictionary("embedded://ipadic").unwrap(), None)
@@ -3941,6 +4457,10 @@ mod tests {
                 .collect()
         }
 
+        fn segment(segmenter: &Segmenter, text: &str) -> Vec<Flat> {
+            flatten(&segmenter.segment(Cow::Borrowed(text)).unwrap())
+        }
+
         fn nbest(
             segmenter: &Segmenter,
             text: &str,
@@ -3956,98 +4476,104 @@ mod tests {
                 .collect()
         }
 
-        /// The sentences `segment` splits `text` into, with their starts.
-        fn sentences(text: &str) -> Vec<(usize, &str)> {
-            let mut sentences = Vec::new();
-            let mut start = 0;
-            while start < text.len() {
-                let (end, _) = find_sentence_end(text, start);
-                sentences.push((start, &text[start..end]));
-                start = end;
-            }
-            sentences
+        /// The tokens of a path whose offsets are relative to `base`, built
+        /// as the segmenter builds them.
+        fn build(
+            segmenter: &Segmenter,
+            text: &str,
+            base: usize,
+            offsets: &[TokenOffset],
+        ) -> Vec<Flat> {
+            let text = Cow::Borrowed(text);
+            let mut tokens = Vec::new();
+            segmenter.push_tokens(&text, base, offsets, segmenter.space_filter(), &mut tokens);
+            flatten(&tokens)
         }
 
-        /// The expected results: each sentence searched on its own, every
-        /// combination of one path per sentence sorted by the merge order of
-        /// `nbest_merge` (the prefix costs from the last sentence back, then
-        /// the ranks), filtered by the threshold over the whole input and
-        /// cut to `n`.
-        fn oracle(
+        fn boundaries(tokens: &[Flat]) -> Vec<(usize, usize)> {
+            tokens.iter().map(|t| (t.1, t.2)).collect()
+        }
+
+        /// The best path of `text` as one lattice, without any cut.
+        fn unsplit_segment(segmenter: &Segmenter, text: &str) -> Vec<Flat> {
+            let mut lattice = Lattice::default();
+            segmenter.set_lattice_text(&mut lattice, text, &segmenter.lattice_options());
+            build(segmenter, text, 0, &lattice.tokens_offset())
+        }
+
+        /// The N-best paths of `text` as one lattice, without any cut, as
+        /// expected results (one token list each).
+        fn unsplit_nbest(
             segmenter: &Segmenter,
             text: &str,
             n: usize,
             unique: bool,
             threshold: Option<i64>,
-        ) -> Results {
-            let lists: Vec<(usize, Results)> = sentences(text)
-                .into_iter()
-                .map(|(start, sentence)| (start, nbest(segmenter, sentence, n, unique, None)))
-                .filter(|(_, list)| !list.is_empty())
-                .collect();
-            if lists.is_empty() {
-                return Vec::new();
-            }
-            let best: i64 = lists.iter().map(|(_, list)| list[0].1).sum();
-
-            let mut combinations: Vec<Vec<usize>> = vec![Vec::new()];
-            for (_, list) in &lists {
-                combinations = combinations
-                    .into_iter()
-                    .flat_map(|prefix| {
-                        (0..list.len()).map(move |rank| {
-                            let mut combination = prefix.clone();
-                            combination.push(rank);
-                            combination
-                        })
-                    })
-                    .collect();
-            }
-            let mut keyed: Vec<(Vec<i64>, Vec<usize>, i64)> = combinations
-                .into_iter()
-                .map(|ranks| {
-                    let mut prefix_costs = Vec::new();
-                    let mut total = 0;
-                    for ((_, list), &rank) in lists.iter().zip(&ranks) {
-                        total += list[rank].1;
-                        prefix_costs.push(total);
-                    }
-                    let mut key: Vec<i64> = prefix_costs.into_iter().rev().collect();
-                    key.extend(ranks.iter().map(|&rank| rank as i64));
-                    (key, ranks, total)
-                })
-                .filter(|(_, _, total)| threshold.is_none_or(|t| total - best <= t))
-                .collect();
-            keyed.sort();
-
-            keyed
-                .into_iter()
-                .take(n)
-                .map(|(_, ranks, total)| {
-                    let mut tokens: Vec<Flat> = Vec::new();
-                    for ((start, list), &rank) in lists.iter().zip(&ranks) {
-                        for (surface, byte_start, byte_end, _, word_id) in &list[rank].0 {
-                            tokens.push((
-                                surface.clone(),
-                                start + byte_start,
-                                start + byte_end,
-                                tokens.len(),
-                                *word_id,
-                            ));
-                        }
-                    }
-                    (tokens, total)
-                })
+        ) -> Expected {
+            let mut lattice = Lattice::default();
+            segmenter.set_lattice_text_nbest(&mut lattice, text, &segmenter.lattice_options());
+            lattice
+                .nbest_tokens_offset(n, unique, threshold)
+                .iter()
+                .map(|(offsets, cost)| (*cost, vec![build(segmenter, text, 0, offsets)]))
                 .collect()
+        }
+
+        /// Asserts that `actual` is the top `n` of `expected`: the same
+        /// costs as its first `n` entries, every result one of the token
+        /// lists of a distinct entry of its cost (so ties may come in any
+        /// order), and, with `unique`, distinct word boundaries. With
+        /// `boundaries_only`, results are matched by their word boundaries
+        /// (for the unsplit lattice, which keeps one variant per boundary
+        /// class and may break ties between variants differently).
+        fn assert_top_n(
+            actual: &Results,
+            expected: &Expected,
+            n: usize,
+            unique: bool,
+            boundaries_only: bool,
+            context: &str,
+        ) {
+            let costs: Vec<i64> = actual.iter().map(|(_, cost)| *cost).collect();
+            let expected_costs: Vec<i64> = expected.iter().take(n).map(|(cost, _)| *cost).collect();
+            assert_eq!(costs, expected_costs, "costs of {context}");
+            let mut used = vec![false; expected.len()];
+            for (tokens, cost) in actual {
+                let found = expected.iter().enumerate().position(|(i, (c, lists))| {
+                    !used[i]
+                        && c == cost
+                        && lists.iter().any(|list| {
+                            if boundaries_only {
+                                boundaries(list) == boundaries(tokens)
+                            } else {
+                                list == tokens
+                            }
+                        })
+                });
+                let Some(i) = found else {
+                    panic!("{context}: unexpected result {tokens:?} at cost {cost}");
+                };
+                used[i] = true;
+            }
+            if unique {
+                let mut seen = std::collections::HashSet::new();
+                for (tokens, _) in actual {
+                    assert!(
+                        seen.insert(boundaries(tokens)),
+                        "{context}: repeated boundaries"
+                    );
+                }
+            }
         }
 
         /// Every result covers the whole input except the dropped
         /// whitespace, with consistent offsets and positions, and the costs
         /// do not decrease.
-        fn assert_whole_input(text: &str, results: &[(Vec<Flat>, i64)]) {
+        fn assert_whole_input(segmenter: &Segmenter, text: &str, results: &Results) {
+            let keep_whitespace = segmenter.space_filter().is_none();
             let expected: String = text
                 .chars()
-                .filter(|c| !matches!(c, ' ' | '\t' | '\n' | '\u{0B}'))
+                .filter(|c| keep_whitespace || !matches!(c, ' ' | '\t' | '\n' | '\u{0B}'))
                 .collect();
             for (tokens, _) in results {
                 let joined: String = tokens.iter().map(|t| t.0.as_str()).collect();
@@ -4060,150 +4586,472 @@ mod tests {
             assert!(results.windows(2).all(|pair| pair[0].1 <= pair[1].1));
         }
 
-        /// Ranks 2 and 3 used to take rank 2 of both sentences, then rank 3
-        /// of both; the whole-input top 3 keep one sentence at its best.
-        #[test]
-        fn test_nbest_multi_sentence_is_the_whole_input_top_n() {
-            let segmenter = ipadic(Mode::Normal);
-            let text = "東京、です";
-            let results = nbest(&segmenter, text, 3, false, None);
-            let costs: Vec<i64> = results.iter().map(|(_, cost)| *cost).collect();
-            assert_eq!(costs, vec![3079, 11683, 12015]);
-            assert_eq!(results, oracle(&segmenter, text, 3, false, None));
-            assert_whole_input(text, &results);
+        /// One path of a sentence from one BOS context: its tokens (offsets
+        /// in the input), its cost (from a BOS edge of cost 0) and the right
+        /// id of its exit (0 after EOS).
+        type SentencePath = (Vec<TokenOffset>, i64, u16);
+
+        /// Every path of `sentence` from the BOS context `bos` (`None`: the
+        /// dictionary's BOS edge): to every exit without EOS when the cut
+        /// after it carries the context, through EOS otherwise.
+        fn sentence_paths(
+            segmenter: &Segmenter,
+            text: &str,
+            sentence: Sentence,
+            bos: Option<u16>,
+        ) -> Vec<SentencePath> {
+            let contexts: Vec<BosContext> = bos
+                .map(|right_id| BosContext { right_id, cost: 0 })
+                .into_iter()
+                .collect();
+            let mut options = segmenter.lattice_options();
+            options.bos = &contexts;
+            let mut lattice = Lattice::default();
+            segmenter.set_lattice_text_nbest(
+                &mut lattice,
+                &text[sentence.start..sentence.end],
+                &options,
+            );
+            let shift = |offsets: Vec<TokenOffset>| -> Vec<TokenOffset> {
+                offsets
+                    .into_iter()
+                    .map(|(start, end, word_id)| {
+                        (start + sentence.start, end + sentence.start, word_id)
+                    })
+                    .collect()
+            };
+            let mut paths = Vec::new();
+            if sentence.carries {
+                let mut exits = Vec::new();
+                lattice.exits_into(&mut exits);
+                for exit in &exits {
+                    let mut generator = NBestGenerator::from_exit(&lattice, exit);
+                    while let Some(((offsets, cost), _)) = generator.next_with_bos() {
+                        paths.push((shift(offsets), cost, exit.right_id()));
+                    }
+                }
+            } else {
+                let mut generator = NBestGenerator::new(&lattice);
+                while let Some(((offsets, cost), _)) = generator.next_with_bos() {
+                    paths.push((shift(offsets), cost, 0));
+                }
+            }
+            paths
         }
 
-        /// `。` has fewer paths than `n`; it used to be missing from rank 3.
+        /// Every path of a segment by definition: the first sentence starts
+        /// from the dictionary's BOS edge, every other one from the exit of
+        /// the previous sentence's path, and only the last pays EOS.
+        fn segment_paths(
+            segmenter: &Segmenter,
+            text: &str,
+            sentences: &[Sentence],
+        ) -> Vec<(Vec<TokenOffset>, i64)> {
+            let mut partial: Vec<(Vec<TokenOffset>, i64, Option<u16>)> =
+                vec![(Vec::new(), 0, None)];
+            for &sentence in sentences {
+                let mut memo: HashMap<Option<u16>, Vec<SentencePath>> = HashMap::new();
+                let mut next = Vec::new();
+                for (offsets, cost, state) in partial {
+                    let paths = memo
+                        .entry(state)
+                        .or_insert_with(|| sentence_paths(segmenter, text, sentence, state));
+                    for (path, path_cost, exit) in paths.iter() {
+                        let mut combined = offsets.clone();
+                        combined.extend_from_slice(path);
+                        next.push((combined, cost + path_cost, Some(*exit)));
+                    }
+                }
+                assert!(next.len() <= 200_000, "the oracle's input is too long");
+                partial = next;
+            }
+            partial
+                .into_iter()
+                .map(|(offsets, cost, _)| (offsets, cost))
+                .collect()
+        }
+
+        /// Every path of `text` by definition, built and sorted by cost:
+        /// every combination of one path per segment.
+        fn all_paths(segmenter: &Segmenter, text: &str) -> Vec<(i64, Vec<Flat>)> {
+            let mut segments: Vec<Vec<Sentence>> = vec![Vec::new()];
+            for sentence in SentenceWalk::new(text) {
+                segments.last_mut().unwrap().push(sentence);
+                if !sentence.carries {
+                    segments.push(Vec::new());
+                }
+            }
+            segments.retain(|segment| !segment.is_empty());
+
+            let mut all: Vec<(Vec<TokenOffset>, i64)> = vec![(Vec::new(), 0)];
+            for segment in &segments {
+                let paths = segment_paths(segmenter, text, segment);
+                let mut next = Vec::new();
+                for (offsets, cost) in &all {
+                    for (path, path_cost) in &paths {
+                        let mut combined = offsets.clone();
+                        combined.extend_from_slice(path);
+                        next.push((combined, cost + path_cost));
+                    }
+                }
+                assert!(next.len() <= 200_000, "the oracle's input is too long");
+                all = next;
+            }
+
+            let mut built: Vec<(i64, Vec<Flat>)> = all
+                .into_iter()
+                .map(|(offsets, cost)| (cost, build(segmenter, text, 0, &offsets)))
+                .collect();
+            built.sort_by_key(|(cost, _)| *cost);
+            built
+        }
+
+        /// The expected results by definition from [`all_paths`]: with
+        /// `unique`, one entry per word-boundary class, at its cheapest cost
+        /// and with every variant of that cost; cut at the threshold above
+        /// the best.
+        fn oracle(all: &[(i64, Vec<Flat>)], unique: bool, threshold: Option<i64>) -> Expected {
+            let mut expected: Expected = Vec::new();
+            if unique {
+                let mut classes: HashMap<Vec<(usize, usize)>, usize> = HashMap::new();
+                for (cost, tokens) in all {
+                    match classes.get(&boundaries(tokens)) {
+                        Some(&i) => {
+                            if expected[i].0 == *cost {
+                                expected[i].1.push(tokens.clone());
+                            }
+                        }
+                        None => {
+                            classes.insert(boundaries(tokens), expected.len());
+                            expected.push((*cost, vec![tokens.clone()]));
+                        }
+                    }
+                }
+            } else {
+                expected = all
+                    .iter()
+                    .map(|(cost, tokens)| (*cost, vec![tokens.clone()]))
+                    .collect();
+            }
+            if let (Some(threshold), Some(&(best, _))) = (threshold, expected.first()) {
+                expected.retain(|(cost, _)| cost - best <= threshold);
+            }
+            expected
+        }
+
+        /// Checks the N-best results of `text` against the oracle for
+        /// several `n`, with and without `unique`, and with thresholds, and
+        /// the 1-best path against the best of the oracle.
+        fn assert_oracle(segmenter: &Segmenter, text: &str) {
+            let all = all_paths(segmenter, text);
+            for unique in [false, true] {
+                for threshold in [None, Some(0), Some(1000), Some(5000)] {
+                    let expected = oracle(&all, unique, threshold);
+                    assert!(!expected.is_empty());
+                    for n in [1, 2, 3, 7, 50] {
+                        let context = format!("{text:?}, n {n}, unique {unique}, {threshold:?}");
+                        let results = nbest(segmenter, text, n, unique, threshold);
+                        assert_top_n(&results, &expected, n, unique, false, &context);
+                        assert_whole_input(segmenter, text, &results);
+                    }
+                }
+            }
+            let best = oracle(&all, false, Some(0));
+            let tokens = segment(segmenter, text);
+            assert!(
+                best.iter().any(|(_, lists)| lists.contains(&tokens)),
+                "{text:?}: segment is not a best path"
+            );
+        }
+
+        /// Lines of the bocchan text whose `、` and `。` are followed by a
+        /// letter (kana or kanji), so no unknown symbol group spans a cut,
+        /// without ruby annotations and short enough for an N-best search
+        /// over the whole line.
+        fn bocchan_lines(count: usize) -> Vec<String> {
+            let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../resources/bocchan.txt");
+            let text = std::fs::read_to_string(path).unwrap();
+            let is_letter = |c: char| matches!(c, '\u{3041}'..='\u{3096}' | '\u{30A1}'..='\u{30FA}' | '\u{4E00}'..='\u{9FAF}');
+            text.lines()
+                .map(|line| line.trim_start_matches('\u{3000}'))
+                .filter(|line| {
+                    let chars: Vec<char> = line.chars().collect();
+                    let cuts = chars.iter().filter(|&&c| c == '、' || c == '。').count();
+                    (2..=6).contains(&cuts)
+                        && chars.len() <= 60
+                        && !chars.iter().any(|c| "《》｜［］＃".contains(*c))
+                        && chars
+                            .windows(2)
+                            .all(|pair| !(pair[0] == '、' || pair[0] == '。') || is_letter(pair[1]))
+                })
+                .take(count)
+                .map(str::to_string)
+                .collect()
+        }
+
+        /// Lines that one lattice and the carried context solve alike: no
+        /// entry contains `、` or `。`, and no unknown word groups across a
+        /// cut.
+        fn unsplit_lines() -> Vec<String> {
+            let mut lines: Vec<String> = [
+                "東京、です。関西国際空港へ行く",
+                "やがて、やがて",
+                "つまらない、だから",
+                "狸、狸。狸",
+                "すもももももももものうち、すもも。もものうち",
+                "東京、 です",
+                // The best path continues the exit that is not the cheapest
+                // one of `一、`, also after skipped whitespace.
+                "一、人",
+                "三、人です。二、人",
+                "一、 人",
+                "1、 人。 １、 人",
+            ]
+            .iter()
+            .map(|line| line.to_string())
+            .collect();
+            let bocchan = bocchan_lines(10);
+            assert_eq!(bocchan.len(), 10);
+            lines.extend(bocchan);
+            lines
+        }
+
+        /// The 1-best path and its cost are those of one lattice over the
+        /// line.
         #[test]
-        fn test_nbest_short_sentence_is_in_every_result() {
-            let segmenter = ipadic(Mode::Normal);
-            let text = "。東京";
-            for n in [1, 2, 3, 5] {
-                let results = nbest(&segmenter, text, n, false, None);
-                assert_eq!(results, oracle(&segmenter, text, n, false, None));
-                assert_whole_input(text, &results);
-                for (tokens, _) in &results {
-                    assert_eq!(tokens[0].0, "。");
+        fn test_segment_matches_one_lattice_over_the_line() {
+            for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
+                let segmenter = ipadic(mode);
+                for line in unsplit_lines() {
+                    assert_eq!(
+                        segment(&segmenter, &line),
+                        unsplit_segment(&segmenter, &line),
+                        "{line:?}"
+                    );
+                    let best = &unsplit_nbest(&segmenter, &line, 1, false, None)[0];
+                    assert_eq!(nbest(&segmenter, &line, 1, false, None)[0].1, best.0);
                 }
             }
         }
 
-        /// The threshold is measured from the best cost of the whole input:
-        /// the second-best path of either sentence fits, both together do
-        /// not, although each is within the threshold of its own sentence.
+        /// The N-best results are those of one lattice over the line.
         #[test]
-        fn test_nbest_threshold_applies_to_the_whole_input() {
+        fn test_nbest_matches_one_lattice_over_the_line() {
             let segmenter = ipadic(Mode::Normal);
-            let text = "東京、です";
-            let lists: Vec<Vec<i64>> = sentences(text)
-                .into_iter()
-                .map(|(_, sentence)| {
-                    nbest(&segmenter, sentence, 2, false, None)
-                        .iter()
-                        .map(|(_, cost)| *cost)
-                        .collect()
-                })
-                .collect();
-            assert_eq!(lists.len(), 2);
-            let (a, b) = (&lists[0], &lists[1]);
-            let t = (a[1] - a[0]).max(b[1] - b[0]);
-            let best = a[0] + b[0];
-
-            // `n` is large enough that only the threshold limits the results.
-            let results = nbest(&segmenter, text, 100, false, Some(t));
-            assert!(results.len() < 100);
-            let costs: Vec<i64> = results.iter().map(|(_, cost)| *cost).collect();
-            assert!(costs.contains(&(a[1] + b[0])));
-            assert!(costs.contains(&(a[0] + b[1])));
-            assert!(!costs.contains(&(a[1] + b[1])));
-            assert!(costs.iter().all(|cost| cost - best <= t));
-
-            for threshold in [Some(0), Some(t), Some(a[1] - a[0] + b[1] - b[0]), None] {
-                assert_eq!(
-                    nbest(&segmenter, text, 5, false, threshold),
-                    oracle(&segmenter, text, 5, false, threshold)
-                );
+            for line in unsplit_lines() {
+                for unique in [false, true] {
+                    for threshold in [None, Some(0), Some(2000)] {
+                        // A margin beyond `n` so that ties at the cut are
+                        // among the expected results.
+                        let expected = unsplit_nbest(&segmenter, &line, 20, unique, threshold);
+                        for n in [1, 3, 10] {
+                            let context =
+                                format!("{line:?}, n {n}, unique {unique}, {threshold:?}");
+                            let results = nbest(&segmenter, &line, n, unique, threshold);
+                            assert_top_n(&results, &expected, n, unique, unique, &context);
+                            assert_whole_input(&segmenter, &line, &results);
+                        }
+                    }
+                }
             }
-            assert!(nbest(&segmenter, text, 5, false, Some(-1)).is_empty());
         }
 
-        /// With `unique`, the word boundaries of the results differ.
+        /// The model's own definition: EOS only at the ends of segments,
+        /// every sentence continuing the exit of the previous one's path,
+        /// `unique` and the threshold over the whole input.
         #[test]
-        fn test_nbest_unique_over_sentences() {
+        fn test_nbest_matches_the_definition() {
             let segmenter = ipadic(Mode::Normal);
-            let text = "すもももももももものうち、です";
-            let results = nbest(&segmenter, text, 5, true, None);
-            assert_eq!(results, oracle(&segmenter, text, 5, true, None));
-            assert_whole_input(text, &results);
-            let boundaries: HashSet<Vec<usize>> = results
-                .iter()
-                .map(|(tokens, _)| tokens.iter().map(|t| t.1).collect())
-                .collect();
-            assert_eq!(boundaries.len(), results.len());
+            for text in [
+                "東京、です",
+                "一、人",
+                "一、 人",
+                "もも、もも",
+                "狸、狸。狸",
+                "犬、犬。犬",
+                // A sentence that starts with skipped whitespace.
+                "東京、 です",
+                // A segment that ends with a sentence of whitespace only.
+                "東京、 \nです",
+                // Two segments, each with a carried cut.
+                "犬、犬\tもも、もも",
+                // The input ends with `、`, whose cut pays EOS.
+                "東京、です、",
+                // Cuts without a carried context only.
+                "東京\nです\tもも",
+            ] {
+                assert_oracle(&segmenter, text);
+            }
         }
 
         #[test]
-        fn test_nbest_decompose_over_sentences() {
+        fn test_nbest_matches_the_definition_with_whitespace_settings() {
+            let text = "犬 犬、 犬\tへ、 もも";
+            assert_oracle(&ipadic(Mode::Normal).skip_whitespace(false), text);
+            assert_oracle(&ipadic(Mode::Normal).keep_whitespace(true), text);
+        }
+
+        #[test]
+        fn test_nbest_matches_the_definition_in_decompose_mode() {
             let segmenter = ipadic(Mode::Decompose(Penalty::default()));
-            let text = "関西国際空港、です";
-            let results = nbest(&segmenter, text, 5, false, None);
-            assert_eq!(results, oracle(&segmenter, text, 5, false, None));
-            assert_whole_input(text, &results);
+            for text in ["東京、です", "関西、です", "犬、犬。犬"] {
+                assert_oracle(&segmenter, text);
+            }
         }
 
-        /// A sentence of skipped whitespace takes part with its empty path,
-        /// and the offsets after whitespace stay absolute.
+        /// A sentence of skipped whitespace between two carried cuts (a
+        /// forced cut inside a long run of spaces) passes its BOS edges on
+        /// as its exits.
         #[test]
-        fn test_nbest_whitespace_sentences() {
+        fn test_whitespace_only_sentence_passes_the_context_on() {
             let segmenter = ipadic(Mode::Normal);
-            for text in ["東京\n\nです", "東京\tです", "東京 です、 京都"] {
-                let results = nbest(&segmenter, text, 3, false, None);
-                assert_eq!(results, oracle(&segmenter, text, 3, false, None));
-                assert_whole_input(text, &results);
+            let text = format!("東京、{}、です", " ".repeat(MAX_SENTENCE_BYTES + 100));
+            let sentences: Vec<Sentence> = SentenceWalk::new(&text).collect();
+            assert_eq!(sentences.len(), 4);
+            assert!(sentences[1].carries);
+            assert!(text[sentences[1].start..sentences[1].end].trim().is_empty());
+
+            let expected = oracle(&all_paths(&segmenter, &text), false, None);
+            for n in [1, 3, 10] {
+                let results = nbest(&segmenter, &text, n, false, None);
+                assert_top_n(&results, &expected, n, false, false, &format!("n {n}"));
+                assert_whole_input(&segmenter, &text, &results);
+            }
+            let tokens = segment(&segmenter, &text);
+            assert!(
+                expected
+                    .iter()
+                    .any(|(cost, lists)| *cost == expected[0].0 && lists.contains(&tokens))
+            );
+            // The same costs as without the whitespace: it adds nothing.
+            let compact = nbest(&segmenter, "東京、、です", 10, false, None);
+            let costs: Vec<i64> = nbest(&segmenter, &text, 10, false, None)
+                .iter()
+                .map(|(_, cost)| *cost)
+                .collect();
+            let compact_costs: Vec<i64> = compact.iter().map(|(_, cost)| *cost).collect();
+            assert_eq!(costs, compact_costs);
+        }
+
+        /// Only `\n` and `\t` cut the input: every sentence is a segment, as
+        /// before the context was carried, so the results are the cheapest
+        /// combinations of the sentences' own N-best lists, and `segment`
+        /// is the sentences' own best paths.
+        #[test]
+        fn test_cuts_without_carried_context_are_unchanged() {
+            let segmenter = ipadic(Mode::Normal);
+            for text in [
+                "東京\nです\tもも",
+                "すもも\n\nもものうち\t",
+                " 東京 \n です",
+            ] {
+                let mut joined = Vec::new();
+                for sentence in SentenceWalk::new(text) {
+                    assert!(!sentence.carries);
+                    let part = &text[sentence.start..sentence.end];
+                    for (surface, start, end, _, word_id) in segment(&segmenter, part) {
+                        let position = joined.len();
+                        joined.push((
+                            surface,
+                            start + sentence.start,
+                            end + sentence.start,
+                            position,
+                            word_id,
+                        ));
+                    }
+                }
+                assert_eq!(segment(&segmenter, text), joined, "{text:?}");
+                assert_oracle(&segmenter, text);
             }
         }
 
-        /// The whitespace settings apply to every sentence as in `segment`:
-        /// without skipping, whitespace stays in the lattice; with
-        /// `keep_whitespace`, the whitespace tokens stay in the output.
+        /// The first N-best result is the 1-best path, also over a long line
+        /// with forced cuts.
         #[test]
-        fn test_nbest_whitespace_settings_over_sentences() {
-            let text = "東京 です、 京都\tへ";
-
-            let no_skip = ipadic(Mode::Normal).skip_whitespace(false);
-            let results = nbest(&no_skip, text, 3, false, None);
-            assert_eq!(results, oracle(&no_skip, text, 3, false, None));
-            assert_whole_input(text, &results);
-
-            let keep = ipadic(Mode::Normal).keep_whitespace(true);
-            let results = nbest(&keep, text, 3, false, None);
-            assert_eq!(results, oracle(&keep, text, 3, false, None));
-            for (tokens, _) in &results {
-                let joined: String = tokens.iter().map(|t| t.0.as_str()).collect();
-                assert_eq!(joined, text);
+        fn test_nbest_first_result_matches_segment() {
+            let segmenter = ipadic(Mode::Normal);
+            let long = "すもももももももものうち".repeat(70 * 1024 / 36 + 1);
+            assert!(long.len() > 2 * MAX_SENTENCE_BYTES);
+            let texts = [
+                "東京、です。すもももももももものうち\nもも".to_string(),
+                "やがて、やがて。つまらない、だから".to_string(),
+                long,
+            ];
+            for text in &texts {
+                let tokens = segment(&segmenter, text);
+                for n in [1, 3] {
+                    let results = nbest(&segmenter, text, n, false, None);
+                    assert_eq!(results[0].0, tokens, "n {n}");
+                    assert_whole_input(&segmenter, text, &results);
+                }
             }
         }
 
-        /// A huge `n` is not used to presize anything; it used to abort with
-        /// a capacity overflow.
+        /// The 1-best search emits a path once every state shares it and
+        /// leaves no open path behind, so the buffers stay small over a long
+        /// line with forced cuts and many `、`.
         #[test]
-        fn test_nbest_huge_n() {
+        fn test_segment_leaves_no_open_path() {
+            let segmenter = ipadic(Mode::Normal);
+            let long = "すもももももももものうち".repeat(70 * 1024 / 36 + 1);
+            let commas = "やがて、つまらない。".repeat(2000);
+            let mut lattice = Lattice::default();
+            let mut buffers = SegmentBuffers::default();
+            for text in [long.as_str(), commas.as_str()] {
+                let tokens = segmenter
+                    .segment_with_buffers(Cow::Borrowed(text), &mut lattice, &mut buffers)
+                    .unwrap();
+                assert_eq!(flatten(&tokens), segment(&segmenter, text));
+                assert_eq!(buffers.tree.len(), 0);
+            }
+        }
+
+        /// A huge `n` presizes nothing, a threshold of 0 keeps the best
+        /// results only, and a negative one keeps nothing.
+        #[test]
+        fn test_nbest_huge_n_and_zero_threshold() {
             let segmenter = ipadic(Mode::Normal);
             let text = "東京、です";
             let results = nbest(&segmenter, text, usize::MAX, false, Some(0));
             assert!(!results.is_empty());
             assert_eq!(results[0], nbest(&segmenter, text, 1, false, None)[0]);
             assert!(results.iter().all(|(_, cost)| *cost == results[0].1));
+            assert!(nbest(&segmenter, text, 5, false, Some(-1)).is_empty());
+            assert!(nbest(&segmenter, text, 0, false, None).is_empty());
+
+            let all = nbest(&segmenter, "狸、狸", usize::MAX, true, None);
+            assert_eq!(
+                all.len(),
+                oracle(&all_paths(&segmenter, "狸、狸"), true, None).len()
+            );
         }
 
+        /// The context carried across `、` changes the output where the
+        /// unsplit line differs from the sentences solved on their own: the
+        /// cost of the 1-best path is that of the line, not the sum of the
+        /// sentences'.
         #[test]
-        fn test_nbest_first_result_matches_segment_over_sentences() {
+        fn test_carried_cost_is_not_the_sum_of_sentences() {
             let segmenter = ipadic(Mode::Normal);
-            let text = "東京、です。すもももももももものうち\nもも";
-            let tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
-            let results = nbest(&segmenter, text, 1, false, None);
-            assert_eq!(results.len(), 1);
-            assert_eq!(results[0].0, flatten(&tokens));
+            let text = "東京、です";
+            let sum: i64 = SentenceWalk::new(text)
+                .map(|sentence| {
+                    nbest(
+                        &segmenter,
+                        &text[sentence.start..sentence.end],
+                        1,
+                        false,
+                        None,
+                    )[0]
+                    .1
+                })
+                .sum();
+            let carried = nbest(&segmenter, text, 1, false, None)[0].1;
+            assert_eq!(
+                carried,
+                unsplit_nbest(&segmenter, text, 1, false, None)[0].0
+            );
+            assert_ne!(carried, sum);
         }
 
         #[test]
@@ -4217,6 +5065,8 @@ mod tests {
                 .map(|(tokens, cost)| (flatten(tokens), *cost))
                 .collect();
             assert_eq!(owned, nbest(&segmenter, text, 5, false, None));
+            let owned_tokens = flatten(&segmenter.segment(Cow::Owned(text.to_string())).unwrap());
+            assert_eq!(owned_tokens, segment(&segmenter, text));
         }
     }
 }

@@ -199,18 +199,48 @@ fn ipadic_nbest() {
     insta::assert_snapshot!("ipadic_nbest", render_nbest(results));
 }
 
-/// Pins N-best output over several sentences (IPADIC, #1097): every
-/// candidate segments the whole input, and the candidates are the cheapest
-/// combinations of the sentences' paths.
+/// Pins N-best output over several sentences (IPADIC, #1097, #1096): every
+/// candidate segments the whole input, and the context is carried across
+/// `、` and `。`, so the candidates and their costs are those of one lattice
+/// over the line.
 #[cfg(feature = "embed-ipadic")]
 #[test]
 fn ipadic_nbest_multi_sentence() {
+    use lindera::dictionary::viterbi::{Lattice, LatticeOptions};
+
     let segmenter = segmenter("embedded://ipadic", Mode::Normal);
 
     let text = "東京、です。関西国際空港へ行く";
     let results = segmenter
         .segment_nbest(Cow::Borrowed(text), 5, false, None)
         .expect("segmentation should succeed");
+
+    // The same costs and segmentations as one lattice over the whole line
+    // (the line has no whitespace and no word across a cut).
+    let dictionary = &segmenter.dictionary;
+    let mut lattice = Lattice::default();
+    lattice.set_text_nbest_with_options(
+        &dictionary.prefix_dictionary,
+        &None,
+        &dictionary.character_definition,
+        &dictionary.unknown_dictionary,
+        &dictionary.connection_cost_matrix,
+        text,
+        &LatticeOptions::new(&Mode::Normal),
+    );
+    let unsplit = lattice.nbest_tokens_offset(5, false, None);
+    let carried: Vec<_> = results
+        .iter()
+        .map(|(tokens, cost)| {
+            let offsets: Vec<_> = tokens
+                .iter()
+                .map(|token| (token.byte_start, token.byte_end, token.word_id))
+                .collect();
+            (offsets, *cost)
+        })
+        .collect();
+    assert_eq!(carried, unsplit);
+
     insta::assert_snapshot!("ipadic_nbest_multi_sentence", render_nbest(results));
 }
 
