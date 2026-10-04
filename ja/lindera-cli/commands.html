@@ -551,7 +551,7 @@ EOS
 </code></pre>
 <h3 id="n-best-トークナイズ"><a class="header" href="#n-best-トークナイズ">N-Best トークナイズ</a></h3>
 <p>Linderaは N-Best トークナイズをサポートしており、コスト順（低コスト＝高精度）に上位 N 件のトークナイズ候補を返します。これは MeCab の N-Best 実装と互換性のある Forward-DP Backward-A* アルゴリズムに基づいています。</p>
-<p>複数の文（<code>\t</code>・<code>。</code>・<code>、</code> で区切られます）を含む行は、文ごとに探索されます。それでも各候補は行全体の分割で、候補は文ごとに 1 つのパスを選んだ組み合わせのうちコストの小さい N 件です。</p>
+<p>行は <code>\t</code>・<code>。</code>・<code>、</code> で文に区切られますが、<code>、</code> と <code>。</code> をまたいで文脈を引き継ぐため、タブを含まない行の候補は、行全体の分割のうちコストの小さい N 件です（わずかな例外は<a href="../lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>を参照）。タブは区間の終わりになります。タブを含む行は区間ごとに探索され、候補は区間ごとに 1 つのパスを選んだ組み合わせのうちコストの小さい N 件です。どの候補も行全体の分割です。</p>
 <h4 id="基本的な-n-best-の例"><a class="header" href="#基本的な-n-best-の例">基本的な N-Best の例</a></h4>
 <pre><code class="language-shell">% echo "すもももももももものうち" | lindera tokenize \
   --dict embedded://ipadic \

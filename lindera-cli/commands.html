@@ -551,7 +551,7 @@ EOS
 </code></pre>
 <h3 id="n-best-tokenization"><a class="header" href="#n-best-tokenization">N-Best tokenization</a></h3>
 <p>Lindera supports N-Best tokenization, which returns the top N tokenization candidates ordered by cost (lower cost = better). This is based on the Forward-DP Backward-A* algorithm, compatible with MeCab's N-Best implementation.</p>
-<p>A line with several sentences (split at <code>\t</code>, <code>。</code> and <code>、</code>) is searched sentence by sentence. Every candidate still segments the whole line: the candidates are the N cheapest combinations of one path per sentence.</p>
+<p>A line is cut into sentences at <code>\t</code>, <code>。</code> and <code>、</code>, but the context is carried across <code>、</code> and <code>。</code>, so the candidates for a line without a tab are the N best segmentations of the whole line (for the few exceptions, see <a href="../lindera/segmenter.html#sentence-splitting">Sentence Splitting</a>). A tab ends a segment: a line with tabs is searched segment by segment, and its candidates are the N cheapest combinations of one path per segment. Every candidate segments the whole line.</p>
 <h4 id="basic-n-best-example"><a class="header" href="#basic-n-best-example">Basic N-Best example</a></h4>
 <pre><code class="language-shell">% echo "すもももももももものうち" | lindera tokenize \
   --dict embedded://ipadic \

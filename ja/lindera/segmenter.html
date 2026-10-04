@@ -305,7 +305,7 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
 <span class="boring">}</span></code></pre></pre>
-<p>文の分割は引き続き <code>\n</code> と <code>\t</code> で行われるため（<a href="#%E6%96%87%E5%88%86%E5%89%B2">文分割</a> を参照）、改行やタブをまたいで文脈は引き継がれません。mecab-ko は 1 行ずつ解析し、行内のタブは他の空白と同様に読み飛ばします。</p>
+<p><code>\n</code> と <code>\t</code> は引き続き区間の終わりになるため（<a href="#%E6%96%87%E5%88%86%E5%89%B2">文分割</a> を参照）、改行やタブをまたいで文脈は引き継がれません。mecab-ko は 1 行ずつ解析し、行内のタブは他の空白と同様に読み飛ばします。</p>
 <h2 id="未知語のグルーピング"><a class="header" href="#未知語のグルーピング">未知語のグルーピング</a></h2>
 <p>未知語のグルーピングはデフォルトでは無制限です。<code>max_grouping_len(Some(n))</code> で MeCab の <code>max-grouping-size</code> と同じ意味論（先頭を除いた文字数で数え、MeCab のデフォルトは 24）の上限を設定できます:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -367,12 +367,20 @@ for (tokens, cost) in results {
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<p>どの結果も入力全体の分割です。入力は<a href="#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>のとおりに文に分けられ、文ごとに探索されます。各結果は文ごとに 1 つのパスを選んだ組み合わせで、そのコストは選んだパスのコストの合計です。結果は、これらの組み合わせのうちコストの小さい <code>n</code> 件です。そのため、1 つの文だけが最良の結果と異なる結果もあります。<code>best_cost</code> は 1 件目の結果のコストなので、<code>cost_threshold</code> は入力全体に対して適用されます。</p>
+<p>どの結果も入力全体の分割です。入力は<a href="#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>のとおりに区間に分けられ、区間ごとに探索されます。区間の中では <code>、</code>・<code>。</code>・強制的な区切りをまたいで文脈を引き継ぐため、区間のパスは、区間全体を 1 つのラティスで解いたときのコストの小さい <code>n</code> 本のパスです（例外は<a href="#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>を参照）。<code>unique</code> は区間全体の単語境界で比較します。各結果は区間ごとに 1 つのパスを選んだ組み合わせで、そのコストは選んだパスのコストの合計です。結果は、これらの組み合わせのうちコストの小さい <code>n</code> 件です。そのため、1 つの区間だけが最良の結果と異なる結果もあります。<code>best_cost</code> は 1 件目の結果のコストなので、<code>cost_threshold</code> は入力全体に対して適用されます。1 件目の結果は、コストがまったく同じパスが複数ある場合を除き、<code>segment</code> の出力と同じです。</p>
 <p><code>segment_nbest_with_lattice</code> は同じ処理を行いますが、呼び出しごとの <code>Lattice</code> バッファの再確保を避けるために、再利用可能な <code>Lattice</code> を自分で渡すことができます。</p>
 <h2 id="文分割"><a class="header" href="#文分割">文分割</a></h2>
-<p>ラティスを構築する前に、Linderaは入力テキストを区切り文字（<code>\n</code>、<code>\t</code>、<code>。</code>、<code>、</code>）で文単位に分割し、1文ずつ処理します。文の先頭からおよそ 32 KiB 以内に区切り文字が見つからない場合、Linderaはその位置で強制的に文の境界を区切り、警告をログに出力します。これは、その文に対して構築される Viterbi ラティスのサイズ（ひいてはメモリ・CPU コスト）を制限するためです。通常のテキストに対してはこの挙動は意識する必要がありませんが、区切り文字を含まない病的な入力（例えば minify されたテキストや base64 エンコードされたデータなど）に対しては、この人為的な分割位置でトークナイズ結果に影響が出ることがあります。</p>
+<p>ラティスを構築する前に、Linderaは入力テキストを区切り文字（<code>\n</code>、<code>\t</code>、<code>。</code>、<code>、</code>）で文単位に分割し、文ごとに Viterbi ラティスを構築します。文の先頭からおよそ 32 KiB 以内に区切り文字が見つからない場合、Linderaはその位置で強制的に文の境界を区切り、警告をログに出力します。こうして区切ることで、各ラティスのサイズ（ひいてはメモリ・CPU コスト）を制限しています。</p>
+<p><code>\n</code>・<code>\t</code>・入力の終わりは、<em>区間</em>（segment）の終わりになります。区間とは、そこまでの文の並びのことで、区間どうしは互いに独立しています。区間の中では、<code>、</code>・<code>。</code> と強制的な区切りをまたいで文脈を引き継ぎます。次の文は文頭（BOS）からではなく前の文の最後の語から始まり（その右文脈 ID ごとに、そこまでの最良のパスのコストを引き継ぎます）、文末（EOS）への連接コストは区間の終わりでだけ払います。そのため、区間の最良のパスとそのコストは、区間全体を 1 つのラティスで解いた場合と同じになり、行の中で区切らない MeCab の結果と一致します。v7 より前は、どの文も BOS から始まり EOS で終わっていたため、<code>、</code> の直後の語は文脈を失っていました。たとえば IPADIC では、<code>彼は、ああ言った</code> の <code>ああ</code> が感動詞になっていましたが、現在は MeCab と同じく副詞になります。</p>
+<p>次の場合は、区間全体を 1 つのラティスで解いた結果と異なることがあります。</p>
+<ul>
+<li>区切りをまたぐ語はできません。UniDic の <code>一、二塁</code> のように <code>、</code> や <code>。</code> を含む見出し語はマッチせず、未知語も区切りをまたいでまとめられず、強制的な区切りをまたぐはずの語はそこで分かれます。</li>
+<li>強制的な区切りの位置から始まる語には、区切りの直前が空白でも左側空白ペナルティ（<a href="#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">左側空白ペナルティ（韓国語）</a>を参照）がかかりません。</li>
+</ul>
+<p>通常のテキストが強制的な区切りに達することはありませんが、区切り文字を含まない病的な入力（例えば minify されたテキストや base64 エンコードされたデータなど）に対しては、この人為的な分割位置でトークナイズ結果に影響が出ることがあります。</p>
+<p>N-best の探索も同じ区間を使います。<a href="#n-best-%E3%82%BB%E3%82%B0%E3%83%A1%E3%83%B3%E3%83%86%E3%83%BC%E3%82%B7%E3%83%A7%E3%83%B3">N-Best セグメンテーション</a>を参照してください。</p>
 <h2 id="再利用可能な-worker"><a class="header" href="#再利用可能な-worker">再利用可能な Worker</a></h2>
-<p><code>SegmentWorker</code> は、Viterbi ラティスとバックトレース用スクラッチバッファを所有する再利用可能なセグメンテーションセッションです。呼び出しのたびに <code>segment</code> が支払うアロケーションを回避できます。<code>new_worker</code>（セグメンターを clone）または <code>into_worker</code>（セグメンターを消費し、ユーザー辞書のコピーを回避）で作成し、<code>segment</code>/<code>segment_nbest</code> を呼び出します：</p>
+<p><code>SegmentWorker</code> は、Viterbi ラティスと分割処理用のスクラッチバッファを所有する再利用可能なセグメンテーションセッションです。呼び出しのたびに <code>segment</code> が支払うアロケーションを回避できます。<code>new_worker</code>（セグメンターを clone）または <code>into_worker</code>（セグメンターを消費し、ユーザー辞書のコピーを回避）で作成し、<code>segment</code>/<code>segment_nbest</code> を呼び出します：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let mut worker = segmenter.new_worker();
@@ -384,7 +392,7 @@ for line in lines {
 }
 <span class="boring">}</span></code></pre></pre>
 <p>返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。<code>set_mode</code> と <code>set_keep_whitespace</code> で呼び出しごとに設定を切り替えられます。<code>segmenter()</code> は内部の Segmenter への共有参照を返します。<code>&amp;mut</code> でのアクセサは意図的に提供されていません。再利用中のラティスの下で辞書を差し替えてしまうと、この worker が保証する辞書とラティスの対応関係が壊れてしまうためです。</p>
-<p>Worker は保持メモリも制限します。区切り文字のない最大長の文を 1 回処理するとラティスは数 MB まで成長し（32 KiB の ASCII 文で約 18 MB、32 KiB の CJK 文では文字索引ラティスのスロット数が 1/3 のため約 6 MB）、素の <code>Lattice</code> はそれを保持し続けます。Worker は一定回数の呼び出し窓で容量が過大と判明した場合に自動でラティスを縮小し、<code>shrink_to(text_len_hint)</code> で即時に縮小することもできます。<code>reset()</code> は内部バッファを破棄して新しいものに置き換えます。これは、例えばパニックによって worker を保持する Mutex がポイズニングされた場合など、バッファが不整合な中間状態を保持している可能性がある回復経路のために用意されています。Segmenter の設定（mode や空白の扱いなど）自体は保持されます。</p>
+<p>Worker は保持メモリも制限します。区切り文字のない最大長の文を 1 回処理するとラティスは数 MB まで成長し（32 KiB の ASCII 文で約 18 MB、32 KiB の CJK 文では文字索引ラティスのスロット数が 1/3 のため約 6 MB）、素の <code>Lattice</code> はそれを保持し続けます。Worker は一定回数の呼び出し窓で容量が過大と判明した場合に、自動でラティスを縮小してスクラッチバッファを解放し、<code>shrink_to(text_len_hint)</code> で即時に縮小することもできます。<code>reset()</code> は内部バッファを破棄して新しいものに置き換えます。これは、例えばパニックによって worker を保持する Mutex がポイズニングされた場合など、バッファが不整合な中間状態を保持している可能性がある回復経路のために用意されています。Segmenter の設定（mode や空白の扱いなど）自体は保持されます。</p>
 <p>Worker は作成元セグメンターの辞書に恒久的に紐付けられ、稼働中の worker の辞書を差し替える手段はありません。これにより、ラティス再利用に起因するバグの一群を構造的に排除しています。マルチスレッドで使う場合は、共有の <code>Segmenter</code> からスレッドごとに worker を 1 つ作成してください。</p>
 
                     </main>

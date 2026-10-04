@@ -547,7 +547,7 @@ character filter・token filter・<code>Tokenizer</code> API は <code>lindera::
 <p>Linderaは辞書ベースの形態素解析器です。既知の単語とそのコストを含む事前コンパイル済みのシステム辞書を使用し、<strong>Viterbiアルゴリズム</strong>を適用して入力テキストの最適な分割を見つけます。</p>
 <p>解析処理は以下のように動作します：</p>
 <ol>
-<li><strong>文分割</strong>: ラティスを構築する前に、Linderaは入力テキストを区切り文字（<code>\n</code>、<code>\t</code>、<code>。</code>、<code>、</code>）で文単位に分割し、1文ずつ処理します。文の先頭からおよそ 32 KiB 以内に区切り文字が見つからない場合、Linderaはその位置で強制的に文の境界を区切り、警告をログに出力します。これはラティスのメモリ・CPU コストを制限するためです。区切り文字を含まない病的な入力（minify されたテキストや base64 エンコードされたデータなど）に対しては、この人為的な分割位置でトークナイズ結果に影響が出ることがあります。</li>
+<li><strong>文分割</strong>: ラティスを構築する前に、Linderaは入力テキストを区切り文字（<code>\n</code>、<code>\t</code>、<code>。</code>、<code>、</code>）で文単位に分割し、1文ずつ処理します。文の先頭からおよそ 32 KiB 以内に区切り文字が見つからない場合、Linderaはその位置で強制的に文の境界を区切り、警告をログに出力します。これはラティスのメモリ・CPU コストを制限するためです。次の <code>\n</code> や <code>\t</code> までは、各文が前の文の最後の語から続くため、わずかな例外を除いて、そのテキスト全体を 1 つのラティスで解いた場合と同じ結果になります（<a href="concepts/../lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>を参照）。区切り文字を含まない病的な入力（minify されたテキストや base64 エンコードされたデータなど）に対しては、強制的な分割位置でトークナイズ結果に影響が出ることがあります。</li>
 <li><strong>ラティス構築</strong>: Linderaは各文をスキャンし、各位置で辞書内のすべての候補単語を検索して、候補分割の有向非巡回グラフ（ラティス）を構築します。</li>
 <li><strong>コスト割り当て</strong>: 各候補単語には（辞書からの）単語コストが関連付けられており、隣接する単語のペアには（連接コスト行列からの）連接コストが関連付けられています。</li>
 <li><strong>最適パス探索</strong>: Viterbiアルゴリズムがラティスを通る最小総コストのパスを見つけ、最適な分割結果を生成します。</li>
@@ -656,7 +656,7 @@ feature 付きでビルドする必要があります（例:
 <p>N-Bestトークナイズは、総パスコスト順（低コスト = より良い分割）に上位N件のトークナイズ候補を列挙します。最良の結果が曖昧な場合や、入力テキストの代替解釈を探索したい場合に有用です。</p>
 <h3 id="アルゴリズム"><a class="header" href="#アルゴリズム">アルゴリズム</a></h3>
 <p>N-Bestトークナイズは**Forward-DP Backward-A***アルゴリズムに基づいており、MeCabのN-Best実装と互換性があります。フォワードパスは動的計画法で最適コストを計算し、バックワードパスはA*探索を使用して総コストの昇順にパスを列挙します。</p>
-<p>1-best のトークナイズと同じく、入力はまず文に分けられ（<a href="concepts/../lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>を参照）、文ごとに探索されます。どの候補も入力全体の分割で、文ごとに 1 つのパスを選び、そのコストは選んだパスのコストの合計です。候補は、これらの組み合わせのうちコストの小さい N 件です。</p>
+<p>1-best のトークナイズと同じく、入力はまず文に分けられ、<code>\n</code> や <code>\t</code> までの文の並びが 1 つの区間になります（<a href="concepts/../lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>を参照）。区間ごとに探索され、区間の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぐため、区間のパスは、区間全体を 1 つのラティスで解いたときのコストの小さい N 本のパスです。どの候補も入力全体の分割で、区間ごとに 1 つのパスを選び、そのコストは選んだパスのコストの合計です。候補は、これらの組み合わせのうちコストの小さい N 件です。</p>
 <h3 id="パラメータ"><a class="header" href="#パラメータ">パラメータ</a></h3>
 <p><code>tokenize_nbest</code>メソッドは以下のパラメータを受け付けます：</p>
 <div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>型</th><th>説明</th></tr></thead><tbody>
@@ -1225,7 +1225,7 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
 <span class="boring">}</span></code></pre></pre>
-<p>文の分割は引き続き <code>\n</code> と <code>\t</code> で行われるため（<a href="lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a> を参照）、改行やタブをまたいで文脈は引き継がれません。mecab-ko は 1 行ずつ解析し、行内のタブは他の空白と同様に読み飛ばします。</p>
+<p><code>\n</code> と <code>\t</code> は引き続き区間の終わりになるため（<a href="lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a> を参照）、改行やタブをまたいで文脈は引き継がれません。mecab-ko は 1 行ずつ解析し、行内のタブは他の空白と同様に読み飛ばします。</p>
 <h2 id="未知語のグルーピング"><a class="header" href="#未知語のグルーピング">未知語のグルーピング</a></h2>
 <p>未知語のグルーピングはデフォルトでは無制限です。<code>max_grouping_len(Some(n))</code> で MeCab の <code>max-grouping-size</code> と同じ意味論（先頭を除いた文字数で数え、MeCab のデフォルトは 24）の上限を設定できます:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -1287,12 +1287,20 @@ for (tokens, cost) in results {
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<p>どの結果も入力全体の分割です。入力は<a href="lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>のとおりに文に分けられ、文ごとに探索されます。各結果は文ごとに 1 つのパスを選んだ組み合わせで、そのコストは選んだパスのコストの合計です。結果は、これらの組み合わせのうちコストの小さい <code>n</code> 件です。そのため、1 つの文だけが最良の結果と異なる結果もあります。<code>best_cost</code> は 1 件目の結果のコストなので、<code>cost_threshold</code> は入力全体に対して適用されます。</p>
+<p>どの結果も入力全体の分割です。入力は<a href="lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>のとおりに区間に分けられ、区間ごとに探索されます。区間の中では <code>、</code>・<code>。</code>・強制的な区切りをまたいで文脈を引き継ぐため、区間のパスは、区間全体を 1 つのラティスで解いたときのコストの小さい <code>n</code> 本のパスです（例外は<a href="lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>を参照）。<code>unique</code> は区間全体の単語境界で比較します。各結果は区間ごとに 1 つのパスを選んだ組み合わせで、そのコストは選んだパスのコストの合計です。結果は、これらの組み合わせのうちコストの小さい <code>n</code> 件です。そのため、1 つの区間だけが最良の結果と異なる結果もあります。<code>best_cost</code> は 1 件目の結果のコストなので、<code>cost_threshold</code> は入力全体に対して適用されます。1 件目の結果は、コストがまったく同じパスが複数ある場合を除き、<code>segment</code> の出力と同じです。</p>
 <p><code>segment_nbest_with_lattice</code> は同じ処理を行いますが、呼び出しごとの <code>Lattice</code> バッファの再確保を避けるために、再利用可能な <code>Lattice</code> を自分で渡すことができます。</p>
 <h2 id="文分割"><a class="header" href="#文分割">文分割</a></h2>
-<p>ラティスを構築する前に、Linderaは入力テキストを区切り文字（<code>\n</code>、<code>\t</code>、<code>。</code>、<code>、</code>）で文単位に分割し、1文ずつ処理します。文の先頭からおよそ 32 KiB 以内に区切り文字が見つからない場合、Linderaはその位置で強制的に文の境界を区切り、警告をログに出力します。これは、その文に対して構築される Viterbi ラティスのサイズ（ひいてはメモリ・CPU コスト）を制限するためです。通常のテキストに対してはこの挙動は意識する必要がありませんが、区切り文字を含まない病的な入力（例えば minify されたテキストや base64 エンコードされたデータなど）に対しては、この人為的な分割位置でトークナイズ結果に影響が出ることがあります。</p>
+<p>ラティスを構築する前に、Linderaは入力テキストを区切り文字（<code>\n</code>、<code>\t</code>、<code>。</code>、<code>、</code>）で文単位に分割し、文ごとに Viterbi ラティスを構築します。文の先頭からおよそ 32 KiB 以内に区切り文字が見つからない場合、Linderaはその位置で強制的に文の境界を区切り、警告をログに出力します。こうして区切ることで、各ラティスのサイズ（ひいてはメモリ・CPU コスト）を制限しています。</p>
+<p><code>\n</code>・<code>\t</code>・入力の終わりは、<em>区間</em>（segment）の終わりになります。区間とは、そこまでの文の並びのことで、区間どうしは互いに独立しています。区間の中では、<code>、</code>・<code>。</code> と強制的な区切りをまたいで文脈を引き継ぎます。次の文は文頭（BOS）からではなく前の文の最後の語から始まり（その右文脈 ID ごとに、そこまでの最良のパスのコストを引き継ぎます）、文末（EOS）への連接コストは区間の終わりでだけ払います。そのため、区間の最良のパスとそのコストは、区間全体を 1 つのラティスで解いた場合と同じになり、行の中で区切らない MeCab の結果と一致します。v7 より前は、どの文も BOS から始まり EOS で終わっていたため、<code>、</code> の直後の語は文脈を失っていました。たとえば IPADIC では、<code>彼は、ああ言った</code> の <code>ああ</code> が感動詞になっていましたが、現在は MeCab と同じく副詞になります。</p>
+<p>次の場合は、区間全体を 1 つのラティスで解いた結果と異なることがあります。</p>
+<ul>
+<li>区切りをまたぐ語はできません。UniDic の <code>一、二塁</code> のように <code>、</code> や <code>。</code> を含む見出し語はマッチせず、未知語も区切りをまたいでまとめられず、強制的な区切りをまたぐはずの語はそこで分かれます。</li>
+<li>強制的な区切りの位置から始まる語には、区切りの直前が空白でも左側空白ペナルティ（<a href="lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">左側空白ペナルティ（韓国語）</a>を参照）がかかりません。</li>
+</ul>
+<p>通常のテキストが強制的な区切りに達することはありませんが、区切り文字を含まない病的な入力（例えば minify されたテキストや base64 エンコードされたデータなど）に対しては、この人為的な分割位置でトークナイズ結果に影響が出ることがあります。</p>
+<p>N-best の探索も同じ区間を使います。<a href="lindera/segmenter.html#n-best-%E3%82%BB%E3%82%B0%E3%83%A1%E3%83%B3%E3%83%86%E3%83%BC%E3%82%B7%E3%83%A7%E3%83%B3">N-Best セグメンテーション</a>を参照してください。</p>
 <h2 id="再利用可能な-worker"><a class="header" href="#再利用可能な-worker">再利用可能な Worker</a></h2>
-<p><code>SegmentWorker</code> は、Viterbi ラティスとバックトレース用スクラッチバッファを所有する再利用可能なセグメンテーションセッションです。呼び出しのたびに <code>segment</code> が支払うアロケーションを回避できます。<code>new_worker</code>（セグメンターを clone）または <code>into_worker</code>（セグメンターを消費し、ユーザー辞書のコピーを回避）で作成し、<code>segment</code>/<code>segment_nbest</code> を呼び出します：</p>
+<p><code>SegmentWorker</code> は、Viterbi ラティスと分割処理用のスクラッチバッファを所有する再利用可能なセグメンテーションセッションです。呼び出しのたびに <code>segment</code> が支払うアロケーションを回避できます。<code>new_worker</code>（セグメンターを clone）または <code>into_worker</code>（セグメンターを消費し、ユーザー辞書のコピーを回避）で作成し、<code>segment</code>/<code>segment_nbest</code> を呼び出します：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let mut worker = segmenter.new_worker();
@@ -1304,7 +1312,7 @@ for line in lines {
 }
 <span class="boring">}</span></code></pre></pre>
 <p>返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。<code>set_mode</code> と <code>set_keep_whitespace</code> で呼び出しごとに設定を切り替えられます。<code>segmenter()</code> は内部の Segmenter への共有参照を返します。<code>&amp;mut</code> でのアクセサは意図的に提供されていません。再利用中のラティスの下で辞書を差し替えてしまうと、この worker が保証する辞書とラティスの対応関係が壊れてしまうためです。</p>
-<p>Worker は保持メモリも制限します。区切り文字のない最大長の文を 1 回処理するとラティスは数 MB まで成長し（32 KiB の ASCII 文で約 18 MB、32 KiB の CJK 文では文字索引ラティスのスロット数が 1/3 のため約 6 MB）、素の <code>Lattice</code> はそれを保持し続けます。Worker は一定回数の呼び出し窓で容量が過大と判明した場合に自動でラティスを縮小し、<code>shrink_to(text_len_hint)</code> で即時に縮小することもできます。<code>reset()</code> は内部バッファを破棄して新しいものに置き換えます。これは、例えばパニックによって worker を保持する Mutex がポイズニングされた場合など、バッファが不整合な中間状態を保持している可能性がある回復経路のために用意されています。Segmenter の設定（mode や空白の扱いなど）自体は保持されます。</p>
+<p>Worker は保持メモリも制限します。区切り文字のない最大長の文を 1 回処理するとラティスは数 MB まで成長し（32 KiB の ASCII 文で約 18 MB、32 KiB の CJK 文では文字索引ラティスのスロット数が 1/3 のため約 6 MB）、素の <code>Lattice</code> はそれを保持し続けます。Worker は一定回数の呼び出し窓で容量が過大と判明した場合に、自動でラティスを縮小してスクラッチバッファを解放し、<code>shrink_to(text_len_hint)</code> で即時に縮小することもできます。<code>reset()</code> は内部バッファを破棄して新しいものに置き換えます。これは、例えばパニックによって worker を保持する Mutex がポイズニングされた場合など、バッファが不整合な中間状態を保持している可能性がある回復経路のために用意されています。Segmenter の設定（mode や空白の扱いなど）自体は保持されます。</p>
 <p>Worker は作成元セグメンターの辞書に恒久的に紐付けられ、稼働中の worker の辞書を差し替える手段はありません。これにより、ラティス再利用に起因するバグの一群を構造的に排除しています。マルチスレッドで使う場合は、共有の <code>Segmenter</code> からスレッドごとに worker を 1 つ作成してください。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="エラーハンドリング"><a class="header" href="#エラーハンドリング">エラーハンドリング</a></h1>
 <p>Lindera はライブラリ全体で使いやすいエラーハンドリングを実現するため、<code>anyhow</code> と <code>thiserror</code> に基づく構造化されたエラーシステムを使用しています。</p>
@@ -2600,7 +2608,7 @@ EOS
 </code></pre>
 <h3 id="n-best-トークナイズ"><a class="header" href="#n-best-トークナイズ">N-Best トークナイズ</a></h3>
 <p>Linderaは N-Best トークナイズをサポートしており、コスト順（低コスト＝高精度）に上位 N 件のトークナイズ候補を返します。これは MeCab の N-Best 実装と互換性のある Forward-DP Backward-A* アルゴリズムに基づいています。</p>
-<p>複数の文（<code>\t</code>・<code>。</code>・<code>、</code> で区切られます）を含む行は、文ごとに探索されます。それでも各候補は行全体の分割で、候補は文ごとに 1 つのパスを選んだ組み合わせのうちコストの小さい N 件です。</p>
+<p>行は <code>\t</code>・<code>。</code>・<code>、</code> で文に区切られますが、<code>、</code> と <code>。</code> をまたいで文脈を引き継ぐため、タブを含まない行の候補は、行全体の分割のうちコストの小さい N 件です（わずかな例外は<a href="lindera-cli/../lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>を参照）。タブは区間の終わりになります。タブを含む行は区間ごとに探索され、候補は区間ごとに 1 つのパスを選んだ組み合わせのうちコストの小さい N 件です。どの候補も行全体の分割です。</p>
 <h4 id="基本的な-n-best-の例"><a class="header" href="#基本的な-n-best-の例">基本的な N-Best の例</a></h4>
 <pre><code class="language-shell">% echo "すもももももももものうち" | lindera tokenize \
   --dict embedded://ipadic \
@@ -9469,7 +9477,8 @@ TypeScript 利用者は型名 <code>JsTokenData</code> を <code>Token</code> �
 <code>conjugation_type</code> と <code>conjugation_form</code> の名前が逆になっていた誤りを
 修正し、表層形が空白だけの見出し語や先頭・末尾が空白の見出し語を保持し、
 MeCab と同様に空白をラティス上で読み飛ばし、<code>char.def</code> の重複した行を MeCab と
-同じく解決し、N-best の各結果が入力全体を覆うようにし、<code>lindera-dictionary</code> の
+同じく解決し、MeCab と同じく行の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぎ、
+N-best の各結果が入力全体を覆うようにし、<code>lindera-dictionary</code> の
 ラティスのバックトレースが各トークンの終了オフセットも返すようにしました。
 このガイドでは、すべての破壊的変更とその対処方法を説明します。</p>
 <h2 id="概要-4"><a class="header" href="#概要-4">概要</a></h2>
@@ -9485,18 +9494,22 @@ MeCab と同様に空白をラティス上で読み飛ばし、<code>char.def</c
 <tr><td><strong>空白を含む見出し語を保持</strong></td><td>U+3000 を含むテキスト（IPADIC・IPADIC-NEologd・UniDic）、空白を含むテキスト（SudachiDict）、末尾が空白の一部の語</td><td>U+3000 が <code>記号,空白</code>・<code>空白</code> になり、SudachiDict の分割が Sudachi にずっと近くなることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 <tr><td><strong>空白をラティス上で読み飛ばし、MeCab と同様に空白の前後の語を直接接続する</strong></td><td><code>keep_whitespace</code> が false（デフォルト）で空白を含むテキストを分割するユーザー。ko-dic で特に顕著</td><td>そのようなテキストは MeCab と同じ分割になることを前提にする。<code>skip_whitespace(false)</code>（<code>"skip_whitespace": false</code>、<code>--disable-skip-whitespace</code>）で v6 の分割に戻せる</td></tr>
 <tr><td><strong><code>char.def</code> の重複した行は最後の行が決める</strong></td><td><code>Ð</code>（U+00D0、ko-dic 以外のすべての辞書）・<code>々</code>（U+3005）・<code>〇</code>（U+3007）を含むテキスト、単一コードポイントの行や重複した行を持つ <code>char.def</code> で <code>lindera train</code> を使うユーザー</td><td><code>Ð</code> が文字として出力に残ることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
+<tr><td><strong>MeCab と同じく、行の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぐ</strong></td><td>行の中に <code>、</code> や <code>。</code> を含む日本語のテキストを分割するユーザー</td><td><code>、</code> や <code>。</code> の直後の語の解析が一部変わり（多くは MeCab と同じ解析になる）、そうした行の N-best のコストが変わることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>N-best: 各結果が入力全体を覆う</strong></td><td>複数の文を含む入力で N-best（<code>segment_nbest</code>・<code>tokenize_nbest</code>・<code>lindera tokenize -N</code>・バインディングの N-best メソッド）を使うユーザー</td><td>2 件目以降が入力全体のコストの小さい分割になることを前提にする。コストの閾値は入力全体に対して適用される</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>・<code>tokens_offset_into</code>・<code>nbest_tokens_offset</code>・<code>NBestGenerator::next</code> が <code>(start, end, WordId)</code> を返す</strong></td><td>これらの <code>lindera_dictionary</code> の関数を直接呼び出す Rust コード（<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・<code>lindera::dictionary::nbest::…</code> 経由を含む）</td><td>3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う</td></tr>
+<tr><td><strong><code>Lattice::tokens_offset_into</code> が最良パスの BOS の添字（<code>Option&lt;usize&gt;</code>）を返す</strong></td><td><code>tokens_offset_into</code> の戻り値 <code>()</code> を値として使う Rust コード</td><td>文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する</td></tr>
 </tbody></table>
 </div>
 <p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI の API・パッケージ名は
-変わらず、バージョン番号だけが 7.0.0 になります。出力の違いは 5 つあり、いずれも
+変わらず、バージョン番号だけが 7.0.0 になります。出力の違いは 6 つあり、いずれも
 後述します。IPADIC・IPADIC-NEologd では、<code>conjugation_type</code> と
 <code>conjugation_form</code> という名前で返る値が入れ替わります。表層形が空白だけの
 見出し語や先頭・末尾が空白の見出し語が辞書に入るため、そうした空白を含む
 テキストの分割が変わります。空白を含むテキストは MeCab と同じように分割されます。
 <code>Ð</code>・<code>々</code>・<code>〇</code> が MeCab と同じ文字カテゴリになるため、これらを含むテキストの分割が
-変わります。さらに、複数の文を含む入力では、N-best の 2 件目以降が入力全体で
+変わります。行の中では <code>、</code>・<code>。</code> の直後の語が前の語の文脈を引き継いで解析されるため、
+そうしたテキストの一部で分割が変わり、<code>、</code>・<code>。</code> を含む行の N-best のコストは
+すべて変わります。さらに、複数の文を含む入力では、N-best の 2 件目以降が入力全体で
 コストの小さい分割になります。それ以外は、同じ入力と辞書に対して、v7.0.0 は v6.2.0
 と同じトークンを、同じ位置ベースの詳細情報（details）とともに出力します。</p>
 <h2 id="lindera-クレートはファサードに"><a class="header" href="#lindera-クレートはファサードに"><code>lindera</code> クレートはファサードに</a></h2>
@@ -9810,21 +9823,64 @@ v7.0.0 は MeCab・vibrato・Kuromoji と同じく最後の行だけを使い、
 v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは v7.0.0 でも読み込めますが、
 <code>lindera build</code> で再ビルドするか 7.0.0 のリリースアセットを再ダウンロードするまで、
 従来のカテゴリのままです。</p>
+<h2 id="-をまたいで文脈を引き継ぐ"><a class="header" href="#-をまたいで文脈を引き継ぐ"><code>、</code>・<code>。</code> をまたいで文脈を引き継ぐ</a></h2>
+<p>セグメンターは、各ラティスを小さく保つために、入力を <code>\n</code>・<code>\t</code>・<code>。</code>・<code>、</code> で
+文に区切り、区切り文字のないまま 32 KiB を超えたところでも区切ります。v6 までは、
+どの文も文頭（BOS）から始まり、文末（EOS）への連接で終わっていたため、<code>、</code> や <code>。</code> の
+直後の語は、テキストの先頭にあるものとして解析されていました。MeCab は行の中では
+区切りません。v7.0.0 は、<code>、</code>・<code>。</code> と強制的な区切りをまたいで文脈を引き継ぎます。
+次の文は前の文の最後の語から始まり、EOS への連接は <code>\n</code>・<code>\t</code>・入力の終わりでだけ
+払います。そこまでの文の並びが 1 つの区間（segment）になり、区間どうしは引き続き
+独立しています。区間の最良のパスとそのコストは、区間全体を 1 つのラティスで解いた
+場合と同じになり、MeCab が 1 行に対して返す結果と一致します。</p>
+<div class="table-wrapper"><table><thead><tr><th>入力（辞書）</th><th>v6</th><th>v7（MeCab と同じ）</th></tr></thead><tbody>
+<tr><td><code>彼は、ああ言った</code>（IPADIC）</td><td><code>ああ</code> が感動詞</td><td><code>ああ</code> が副詞</td></tr>
+<tr><td><code>だから、こんなに答える</code>（IPADIC）</td><td><code>こんな</code>（連体詞）と <code>に</code></td><td><code>こんなに</code>（副詞）</td></tr>
+<tr><td><code>選手が泳ぎ、さらにカヌーで進んだ</code>（UniDic）</td><td><code>さらに</code> が接続詞</td><td><code>さらに</code> が副詞</td></tr>
+<tr><td><code>言語としては、Javaのオブジェクト</code>（UniDic）</td><td><code>J</code>・<code>a</code>・<code>v</code>・<code>a</code>（それぞれ <code>記号,文字</code>）</td><td><code>Java</code>（<code>名詞,普通名詞</code>）</td></tr>
+</tbody></table>
+</div>
+<p>UD Japanese GSD の <code>、</code> を含む文では、UniDic で 50 行の出力が変わり、そのうち
+27 行は正解の分割と品詞に近づき、7 行は離れ（符号検定 p = 0.0008）、16 行は
+同点でした。『坊っちゃん』の 505 段落のうち、MeCab と分割・品詞が完全に一致する
+段落は、IPADIC で 352 から 438 に、UniDic で 428 から 503 に増えました。<code>、</code>・<code>。</code>・
+強制的な区切りを含まないテキスト（<code>\n</code> と <code>\t</code> だけで区切られるテキストなど）は
+影響を受けません。文脈の引き継ぎで、1-best の分割の命令数は 1% 程度増えます。</p>
+<p>次の場合は、区間全体を 1 つのラティスで解いた結果と異なることがあります。</p>
+<ul>
+<li>区切りをまたぐ語はできません。<code>、</code> や <code>。</code> を含む見出し語はマッチしません。
+UniDic の <code>一、二塁</code> を、MeCab は 1 つの名詞として、Lindera は <code>一</code>・<code>、</code>・
+<code>二塁</code> として解析します。未知語も区切りをまたいでまとめられず、強制的な区切りを
+またぐはずの語はそこで分かれます。</li>
+<li>強制的な区切りの位置から始まる語には、区切りの直前が空白でも左側空白ペナルティ
+（ko-dic）がかかりません。</li>
+</ul>
+<p>N-best の結果も同じモデルに従います。区間の中では、結果は区間全体を 1 つの
+ラティスで解いたときの上位 N 本のパスと厳密に一致します。<code>unique</code> は区間全体の
+単語境界で比較し、コストの閾値は 1 件目の結果から測ります。区間をまたぐ結果は、
+区間ごとに 1 つのパスを選んだ組み合わせのうちコストの小さいものです（次の節を
+参照）。1 件目の結果は、コストがまったく同じパスが複数ある場合を除き、1-best の
+分割と同じです。<code>、</code> や <code>。</code> を含む行のコストは、区切りをまたぐ連接を含み、EOS への連接を 1 回だけ
+含むようになるため、1 件目の結果も含めて変わります。</p>
+<p>v6 の動作に戻す設定はありません。</p>
 <h2 id="n-best-の結果が入力全体を覆う"><a class="header" href="#n-best-の結果が入力全体を覆う">N-best の結果が入力全体を覆う</a></h2>
 <p>N-best のメソッド（<code>Segmenter::segment_nbest</code>・<code>Tokenizer::tokenize_nbest</code>、それらの
 <code>_with_lattice</code> 版と worker 版、<code>lindera tokenize -N</code>、バインディングの N-best
-メソッド）は、1-best の分割と同じく入力を <code>\n</code>・<code>\t</code>・<code>。</code>・<code>、</code> で文に分け、文ごとに
-探索します。v6 までは、k 件目の結果は各文の k 番目のパスをつないだものでした。
-2 件目以降はすべての文が同時に変わるため、結果は入力全体でコストの小さい分割には
+メソッド）は、1-best の分割と同じく入力を文に区切ります。v6 までは文ごとに探索し、
+k 件目の結果は各文の k 番目のパスをつないだものでした。2 件目以降はすべての文が
+同時に変わるため、結果は入力全体でコストの小さい分割には
 ならず、コストが下がることもありました。また、パスが k 個未満の文は k 件目の結果から
-抜けていました。v7.0.0 は、文ごとに 1 つのパスを選んだ組み合わせのうちコストの
-小さい N 件を合計コストの昇順に返し、どの結果も入力全体を覆います。</p>
+抜けていました。v7.0.0 は入力を区間ごとに探索し（前の節を参照）、区間ごとに 1 つの
+パスを選んだ組み合わせのうちコストの小さい N 件を合計コストの昇順に返します。どの結果も
+入力全体を覆います。</p>
 <div class="table-wrapper"><table><thead><tr><th>入力（IPADIC、<code>-N 3</code>）</th><th>v6</th><th>v7</th></tr></thead><tbody>
-<tr><td><code>東京、です</code></td><td>3079 <code>東京 、 です</code>、23850 <code>東 京 、 で す</code>、24249 <code>東 京 、 で す</code></td><td>3079 <code>東京 、 です</code>、11683 <code>東京 、 で す</code>、12015 <code>東京 、 で す</code></td></tr>
-<tr><td><code>。東京</code></td><td>13 <code>。 東京</code>、30433 <code>。 東 京</code>、13520 <code>東 京</code>（<code>。</code> がない）</td><td>13 <code>。 東京</code>、11543 <code>。 東 京</code>、11610 <code>。 東 京</code></td></tr>
+<tr><td><code>東京、です</code></td><td>3079 <code>東京 、 です</code>、23850 <code>東 京 、 で す</code>、24249 <code>東 京 、 で す</code></td><td>3357 <code>東京 、 です</code>、12059 <code>東京 、 です</code>（<code>、</code> が <code>名詞,数</code>）、13633 <code>東京 、 で す</code></td></tr>
+<tr><td><code>。東京</code></td><td>13 <code>。 東京</code>、30433 <code>。 東 京</code>、13520 <code>東 京</code>（<code>。</code> がない）</td><td>852 <code>。 東京</code>、13569 <code>。 東 京</code>、13636 <code>。 東 京</code></td></tr>
 </tbody></table>
 </div>
-<p>1 件目の結果は変わらず、文が 1 つだけの入力の出力も変わりません。コストの閾値
+<p>どちらの行も 1 つの区間なので、v7 の結果は、行全体を 1 つのラティスで解いたときの
+上位 3 本のパスで、MeCab が返すものと同じです。1 件目の結果は 1-best の分割と同じで、
+文が 1 つだけの入力の出力は変わりません。コストの閾値
 （<code>cost_threshold</code>・<code>--nbest-cost-threshold</code>）は入力全体で測るようになりました。
 合計コストが 1 件目の結果のコストから閾値以内の結果を残します。v6 は閾値を文ごとに
 適用していました。<code>unique</code> を指定した場合も、結果の単語境界は互いに異なります。</p>
@@ -9837,10 +9893,12 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 受けません。</p>
 <div class="table-wrapper"><table><thead><tr><th>v6</th><th>v7</th></tr></thead><tbody>
 <tr><td><code>Lattice::tokens_offset() -&gt; Vec&lt;(usize, WordId)&gt;</code></td><td><code>Lattice::tokens_offset() -&gt; Vec&lt;TokenOffset&gt;</code></td></tr>
-<tr><td><code>Lattice::tokens_offset_into(&amp;mut Vec&lt;(usize, WordId)&gt;)</code></td><td><code>Lattice::tokens_offset_into(&amp;mut Vec&lt;TokenOffset&gt;)</code></td></tr>
+<tr><td><code>Lattice::tokens_offset_into(&amp;mut Vec&lt;(usize, WordId)&gt;)</code></td><td><code>Lattice::tokens_offset_into(&amp;mut Vec&lt;TokenOffset&gt;) -&gt; Option&lt;usize&gt;</code></td></tr>
 <tr><td><code>Lattice::nbest_tokens_offset(n, unique, cost_threshold) -&gt; Vec&lt;(Vec&lt;(usize, WordId)&gt;, i64)&gt;</code></td><td><code>Lattice::nbest_tokens_offset(n, unique, cost_threshold) -&gt; Vec&lt;NBestPath&gt;</code></td></tr>
 <tr><td><code>NBestGenerator::next() -&gt; Option&lt;(Vec&lt;(usize, WordId)&gt;, i64)&gt;</code></td><td><code>NBestGenerator::next() -&gt; Option&lt;NBestPath&gt;</code></td></tr>
 <tr><td>—</td><td><code>viterbi</code> に新しい型エイリアス <code>TokenOffset = (usize, usize, WordId)</code> と <code>NBestPath = (Vec&lt;TokenOffset&gt;, i64)</code> を追加</td></tr>
+<tr><td>—</td><td><code>viterbi</code> に <code>BosContext</code>・<code>LatticeOptions::bos</code>・<code>LatticeExit</code>・<code>Lattice::exits_into</code>・<code>Lattice::exit_tokens_offset_into</code> を追加</td></tr>
+<tr><td>—</td><td><code>nbest</code> に <code>NBestGenerator::from_exit</code>・<code>NBestGenerator::next_with_bos</code> を追加</td></tr>
 </tbody></table>
 </div>
 <p>各トークンは <code>(start, word_id)</code> ではなく <code>(start, end, word_id)</code> になりました。
@@ -9871,6 +9929,28 @@ for &amp;(start, end, word_id) in &amp;offsets {
 }
 <span class="boring">}</span></code></pre></pre>
 <p><code>nbest_tokens_offset</code> と <code>NBestGenerator::next</code> が返すパスも、同じ 3 つ組を持ちます。</p>
+<p><code>tokens_offset_into</code> は、最良パスの BOS の添字も返すようになりました。パスが始まる
+BOS の辺の、<code>LatticeOptions::bos</code> での添字です。デフォルトの単一の BOS では
+<code>Some(0)</code>、ラティスに完全なパスがないときは <code>None</code> です。文として呼び出している
+コードはそのままコンパイルできます。<code>for_each</code> に渡すクロージャの本体のように <code>()</code> を
+期待される場所で使っている場合は、<code>;</code> を付けてください。</p>
+<p>新しい項目は、セグメンターが <code>、</code>・<code>。</code> をまたいで文脈を引き継ぐために使うものです
+（<a href="migration_v6_to_v7.html#-%E3%82%92%E3%81%BE%E3%81%9F%E3%81%84%E3%81%A7%E6%96%87%E8%84%88%E3%82%92%E5%BC%95%E3%81%8D%E7%B6%99%E3%81%90"><code>、</code>・<code>。</code> をまたいで文脈を引き継ぐ</a>を参照）。
+既存のコードには影響しません。</p>
+<ul>
+<li><code>BosContext</code> と <code>LatticeOptions::bos</code>: 文を複数の BOS の辺から始められます。
+各辺は右文脈 ID とコストを持ちます。デフォルトの空のスライスは、v6 と同じ単一の
+BOS です。</li>
+<li><code>LatticeExit</code>・<code>Lattice::exits_into</code>・<code>Lattice::exit_tokens_offset_into</code>: 文の最後の
+語の右文脈 ID ごとに、その語までの最良のパス（EOS への連接を含まない）と、その
+トークンを返します。</li>
+<li><code>NBestGenerator::from_exit</code> と <code>NBestGenerator::next_with_bos</code>: ある出口の右文脈 ID
+で終わるパスを、EOS なしでコストの昇順に返し、各パスとともにそのパスが始まる BOS の
+添字を返します。<code>next</code> は、<code>next_with_bos</code> のパスを BOS の添字なしで返します。</li>
+</ul>
+<p><code>nbest_tokens_offset</code> はデフォルトの単一の BOS を前提にしています。BOS が複数ある
+場合は、パスがどの BOS から始まるかがわからないため、<code>NBestGenerator::next_with_bos</code>
+を使ってください。</p>
 <h2 id="対応が不要なケース-1"><a class="header" href="#対応が不要なケース-1">対応が不要なケース</a></h2>
 <ul>
 <li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の
@@ -9879,7 +9959,8 @@ for &amp;(start, end, word_id) in &amp;offsets {
 名前で読む場合にのみ影響する IPADIC の活用フィールドの修正、U+3000 を含む
 テキスト（IPADIC・IPADIC-NEologd・UniDic）や空白を含むテキスト（SudachiDict）に
 のみ影響する空白の見出し語、空白を含むテキストの分割、<code>Ð</code>・<code>々</code>・<code>〇</code> を含む
-テキストにのみ影響する <code>char.def</code> の修正、そして複数の文を含む入力の N-best に
+テキストにのみ影響する <code>char.def</code> の修正、行の中に <code>、</code> や <code>。</code> を含むテキストに
+のみ影響する <code>、</code>・<code>。</code> をまたぐ文脈の引き継ぎ、そして複数の文を含む入力の N-best に
 のみ影響する N-best の修正です。</li>
 <li><strong><code>lindera = "6"</code> のまま使い続けるプロジェクト</strong>: <code>lindera</code> と <code>lindera-analysis</code>
 の 6.x は crates.io に残り、組み合わせて動作し続けます。メジャーバージョンを
@@ -9909,6 +9990,8 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <li><code>Lattice::tokens_offset</code>・<code>tokens_offset_into</code>・<code>nbest_tokens_offset</code>・
 <code>NBestGenerator::next</code> を呼び出している場合は、<code>(start, end, word_id)</code> に分解し、
 次のトークンの開始位置の代わりに返された終了位置を使う。</li>
+<li><code>Lattice::tokens_offset_into</code> の戻り値 <code>()</code> をクロージャの本体などで値として
+使っている場合は、<code>;</code> を付ける。最良パスの BOS の添字を返すようになったため。</li>
 </ul>
 <p>バインディングの作者:</p>
 <ul>
@@ -9956,16 +10039,24 @@ MeCab と同じくその空白を含むことを前提にする。</li>
 <li><code>char.def</code> に単一コードポイントの行や重複した行がある場合は、再学習する。
 <code>%t</code> 素性が MeCab と同じくそれらの行に従うようになったため。</li>
 </ul>
+<p>行の中に <code>、</code> や <code>。</code> を含む日本語のテキストを解析するユーザー:</p>
+<ul>
+<li><code>、</code> や <code>。</code> の直後の語の一部が、前の語の文脈を引き継いで解析されることを前提に
+する（多くは MeCab と同じ解析になる）。v6 の出力に戻す設定はない。</li>
+</ul>
 <p>N-best を使うユーザー:</p>
 <ul>
 <li>どの結果も入力全体を覆い、複数の文を含む入力では 2 件目以降の結果が変わることを
 前提にする。</li>
+<li><code>、</code> や <code>。</code> を含む行では、1 件目の結果も含めてすべてのコストが変わることを前提に
+する。コストは行全体を 1 つのラティスで解いたときの値になる。</li>
 <li>コストの閾値を指定している場合、閾値は文ごとではなく入力全体の合計コストに
 適用される。</li>
 </ul>
 <p>言語バインディングと CLI:</p>
 <ul>
-<li>7.0.0 リリースを取り込む以外に対応は不要（上記の辞書・空白・N-best の項目を除く）。</li>
+<li>7.0.0 リリースを取り込む以外に対応は不要（上記の辞書・空白・<code>、</code> と <code>。</code>・N-best の
+項目を除く）。</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="開発ガイド"><a class="header" href="#開発ガイド">開発ガイド</a></h1>
 <p>このセクションでは、Lindera のビルド、テスト、貢献に関する情報を提供します。</p>
