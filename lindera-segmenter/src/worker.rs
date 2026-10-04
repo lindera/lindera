@@ -158,7 +158,8 @@ impl SegmentWorker {
     /// Produces exactly the same results as [`Segmenter::segment_nbest`]
     /// for the same input and configuration: every result segments the whole
     /// input, and the results are the cheapest combinations of the paths of
-    /// its sentences.
+    /// its segments (the sentences up to each `\n` and `\t`, across which
+    /// the context is carried).
     ///
     /// # 引数
     ///
@@ -323,8 +324,8 @@ impl SegmentWorker {
     }
 
     /// Records one call and, once per shrink window, shrinks the lattice
-    /// if its capacity exceeds the window's observed need by more than the
-    /// hysteresis factor.
+    /// (and releases the scratch buffers) if its capacity exceeds the
+    /// window's observed need by more than the hysteresis factor.
     ///
     /// The per-window need is the largest per-sentence character count the
     /// lattice actually processed ([`Lattice::take_max_char_len`]), so the
@@ -336,6 +337,9 @@ impl SegmentWorker {
             let target = self.window_max_needed.max(SHRINK_FLOOR_SLOTS);
             if self.lattice.capacity() > target.saturating_mul(SHRINK_HYSTERESIS) {
                 self.lattice.shrink_to(target);
+                // The open paths of a long segment grow with the sentences
+                // that grew the lattice.
+                self.buffers.shrink_to_fit();
             }
             self.window_max_needed = 0;
             self.calls_in_window = 0;
@@ -402,8 +406,8 @@ mod tests {
         fn test_worker_matches_segment_nbest_output() {
             let segmenter = ipadic_segmenter();
             let mut worker = segmenter.new_worker();
-            // The second text has several sentences, whose N-best lists are
-            // combined over the whole input.
+            // The second text has several sentences, which carry the
+            // context from one to the next.
             for text in ["すもももももももものうち", "東京、です。すもももも"]
             {
                 let expected = match segmenter.segment_nbest(Cow::Borrowed(text), 5, false, None) {

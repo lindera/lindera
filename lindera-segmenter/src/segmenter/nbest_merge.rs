@@ -1,21 +1,22 @@
-//! Combination of per-sentence N-best lists into whole-input N-best results.
+//! Combination of N-best lists into whole-input N-best results.
 //!
-//! The segmenter runs the N-best search sentence by sentence. Sentence
-//! boundaries are fixed and no connection cost spans them, so the cost of a
-//! segmentation of the whole input is the sum of the costs of the paths it
-//! takes in each sentence. [`merge_nbest`] picks the `n` cheapest of these
-//! combinations.
+//! The segmenter runs the N-best search segment by segment, a segment being
+//! a run of sentences that carry the context from one to the next (ended by
+//! `\n`, `\t` or the end of the input). Segment boundaries are fixed and no
+//! connection cost spans them, so the cost of a segmentation of the whole
+//! input is the sum of the costs of the paths it takes in each segment.
+//! [`merge_nbest`] picks the `n` cheapest of these combinations.
 //!
 //! [`merge_carried`] is the step for a sentence that continues the context
-//! of the previous one: the sentence's paths start from several BOS edges,
-//! one per group of earlier results (a state), and each path combines with
-//! the results of its own group only.
+//! of the previous one inside a segment: the sentence's paths start from
+//! several BOS edges, one per group of earlier results (a state), and each
+//! path combines with the results of its own group only.
 
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
 /// A combination kept after one merge step: a choice of path for each of the
-/// sentences merged so far.
+/// segments merged so far.
 #[derive(Clone, Copy, Debug)]
 struct Node {
     /// The total cost of the paths chosen so far.
@@ -23,20 +24,20 @@ struct Node {
     /// The index of the combination this one extends, in the previous step's
     /// list.
     parent: usize,
-    /// The rank of the path chosen in the sentence of this step.
+    /// The rank of the path chosen in the segment of this step.
     rank: usize,
 }
 
-/// Combines per-sentence N-best cost lists into the `n` cheapest
-/// combinations, choosing one path per sentence.
+/// Combines per-segment N-best cost lists into the `n` cheapest
+/// combinations, choosing one path per segment.
 ///
 /// Every list must be sorted in ascending order, as the N-best search
 /// returns it. The combinations come out in ascending order of total cost,
 /// and ties are broken the same way on every call. The first combination
-/// takes the first path of every sentence.
+/// takes the first path of every segment.
 ///
 /// The lists are merged from left to right. Each step merges the running
-/// list of combinations with the next sentence's list through a min-heap
+/// list of combinations with the next segment's list through a min-heap
 /// keyed by `(cost, i, j)`. A pair `(i, j)` is pushed only by its single
 /// parent, `(i, j - 1)` or, when `j == 0`, `(i - 1, 0)`, and keys strictly
 /// increase from parent to child. So the pops are sorted by the key and no
@@ -46,14 +47,14 @@ struct Node {
 ///
 /// # 引数
 ///
-/// * `lists` - The ascending path costs of each sentence, in sentence order.
+/// * `lists` - The ascending path costs of each segment, in input order.
 /// * `n` - The maximum number of combinations to return.
 /// * `cost_threshold` - If `Some(t)`, drop the combinations whose total cost
 ///   exceeds the cost of the first combination by more than `t`.
 ///
 /// # 戻り値
 ///
-/// The combinations, each as the rank chosen in every sentence and the total
+/// The combinations, each as the rank chosen in every segment and the total
 /// cost. Empty if `n` is zero, `lists` is empty, any list is empty, or
 /// `cost_threshold` is negative.
 pub(super) fn merge_nbest<L: AsRef<[i64]>>(
@@ -72,7 +73,7 @@ pub(super) fn merge_nbest<L: AsRef<[i64]>>(
         rank: 0,
     }];
     let mut steps: Vec<Vec<Node>> = Vec::with_capacity(lists.len());
-    // The cost of the first combination of the sentences merged so far.
+    // The cost of the first combination of the segments merged so far.
     let mut best_cost: i64 = 0;
 
     for list in lists {
@@ -95,9 +96,9 @@ pub(super) fn merge_nbest<L: AsRef<[i64]>>(
         .map(|index| {
             let mut ranks = vec![0; steps.len()];
             let mut node_index = index;
-            for (sentence, step) in steps.iter().enumerate().rev() {
+            for (segment, step) in steps.iter().enumerate().rev() {
                 let node = step[node_index];
-                ranks[sentence] = node.rank;
+                ranks[segment] = node.rank;
                 node_index = node.parent;
             }
             (ranks, last[index].cost)
@@ -105,22 +106,22 @@ pub(super) fn merge_nbest<L: AsRef<[i64]>>(
         .collect()
 }
 
-/// Merges the combinations of the previous sentences with the paths of the
-/// next sentence, keeping the `n` cheapest.
+/// Merges the combinations of the previous segments with the paths of the
+/// next segment, keeping the `n` cheapest.
 ///
 /// # 引数
 ///
-/// * `previous` - The combinations of the previous sentences, ascending.
-/// * `list` - The ascending path costs of the next sentence; not empty.
+/// * `previous` - The combinations of the previous segments, ascending.
+/// * `list` - The ascending path costs of the next segment; not empty.
 /// * `n` - The maximum number of combinations to keep.
-/// * `best_cost` - The cost of the first combination including this sentence.
+/// * `best_cost` - The cost of the first combination including this segment.
 /// * `cost_threshold` - If `Some(t)`, stop at the first combination whose
 ///   cost exceeds `best_cost` by more than `t`. The excess only grows from
-///   one pop to the next, and the remaining sentences cannot lower it.
+///   one pop to the next, and the remaining segments cannot lower it.
 ///
 /// # 戻り値
 ///
-/// The combinations including this sentence, ascending.
+/// The combinations including this segment, ascending.
 fn merge_step(
     previous: &[Node],
     list: &[i64],
@@ -168,13 +169,6 @@ fn merge_step(
 
 /// The paths of one sentence that [`merge_carried`] combines with the
 /// groups of earlier results, pulled lazily from an N-best search.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "used by the N-best search across carried cuts (#1096)"
-    )
-)]
 pub(super) trait CarriedPaths {
     /// Pulls the next path, in ascending order of cost.
     ///
@@ -204,13 +198,6 @@ pub(super) trait CarriedPaths {
 }
 
 /// One combination that [`merge_carried`] keeps.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "used by the N-best search across carried cuts (#1096)"
-    )
-)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct CarriedPick {
     /// The index of the path (see [`CarriedPaths::next_path`]).
@@ -254,13 +241,6 @@ pub(super) struct CarriedPick {
 /// The kept combinations, ascending: duplicates (see
 /// [`CarriedPaths::is_new`]) are skipped and do not count toward `n`. Empty
 /// if `n` is zero, there is no path, or `cost_threshold` is negative.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "used by the N-best search across carried cuts (#1096)"
-    )
-)]
 pub(super) fn merge_carried<L: AsRef<[i64]>>(
     paths: &mut impl CarriedPaths,
     groups: &[L],
