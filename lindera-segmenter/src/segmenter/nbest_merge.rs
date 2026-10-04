@@ -5,6 +5,11 @@
 //! segmentation of the whole input is the sum of the costs of the paths it
 //! takes in each sentence. [`merge_nbest`] picks the `n` cheapest of these
 //! combinations.
+//!
+//! [`merge_carried`] is the step for a sentence that continues the context
+//! of the previous one: the sentence's paths start from several BOS edges,
+//! one per group of earlier results (a state), and each path combines with
+//! the results of its own group only.
 
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -161,9 +166,169 @@ fn merge_step(
     merged
 }
 
+/// The paths of one sentence that [`merge_carried`] combines with the
+/// groups of earlier results, pulled lazily from an N-best search.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "used by the N-best search across carried cuts (#1096)"
+    )
+)]
+pub(super) trait CarriedPaths {
+    /// Pulls the next path, in ascending order of cost.
+    ///
+    /// # 戻り値
+    ///
+    /// The path's cost combined with the first (cheapest) result of its
+    /// group, and its group: the index of the state, i.e. of the BOS edge,
+    /// that it starts from. `None` when there are no more paths. Path `i`
+    /// is the one returned by the `i`-th call, counted from 0.
+    fn next_path(&mut self) -> Option<(i64, usize)>;
+
+    /// Returns whether combining a path with a result of its group gives a
+    /// new result, i.e. one that no result merged before it repeats; this is
+    /// how `unique` drops repeated word boundaries. Called in the order of
+    /// the merge, at most once per combination.
+    ///
+    /// # 引数
+    ///
+    /// * `path` - The index of the path (see
+    ///   [`CarriedPaths::next_path`]).
+    /// * `rank` - The index of the result in the path's group.
+    ///
+    /// # 戻り値
+    ///
+    /// `true` to keep the combination, `false` to drop it as a duplicate.
+    fn is_new(&mut self, path: usize, rank: usize) -> bool;
+}
+
+/// One combination that [`merge_carried`] keeps.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "used by the N-best search across carried cuts (#1096)"
+    )
+)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct CarriedPick {
+    /// The index of the path (see [`CarriedPaths::next_path`]).
+    pub(super) path: usize,
+    /// The index of the result of the path's group that it extends.
+    pub(super) rank: usize,
+    /// The cost of the combination: the path's cost plus how much the
+    /// result costs above the first result of its group.
+    pub(super) cost: i64,
+}
+
+/// Combines the paths of a sentence with the earlier results they continue,
+/// keeping the `n` cheapest combinations.
+///
+/// Every path starts from one state (a BOS edge), whose results are its
+/// group in `groups`, ascending. The paths come in ascending order of their
+/// cost combined with the first result of their group. Combining path `i`
+/// with result `k` of its group `g` costs
+/// `cost_i + groups[g][k] - groups[g][0]`.
+///
+/// The combinations come out in ascending order of the key `(cost, i, k)`.
+/// A min-heap holds the frontier: a pair `(i, k)` is pushed only by its
+/// single parent, `(i, k - 1)` or, when `k == 0`, `(i - 1, 0)`, and the key
+/// strictly increases from parent to child, so the pops are sorted by the
+/// key and no pair is visited twice. Path `i + 1` is pulled only when
+/// `(i, 0)` is popped, so the search runs no further than the combinations
+/// need.
+///
+/// # 引数
+///
+/// * `paths` - The paths, pulled lazily, and the duplicate check.
+/// * `groups` - The ascending costs of the results of every state, indexed
+///   by the group a path returns. A path whose group is empty combines with
+///   nothing.
+/// * `n` - The maximum number of combinations to keep.
+/// * `cost_threshold` - If `Some(t)`, stop at the first combination whose
+///   cost exceeds the first combination's by more than `t`.
+///
+/// # 戻り値
+///
+/// The kept combinations, ascending: duplicates (see
+/// [`CarriedPaths::is_new`]) are skipped and do not count toward `n`. Empty
+/// if `n` is zero, there is no path, or `cost_threshold` is negative.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "used by the N-best search across carried cuts (#1096)"
+    )
+)]
+pub(super) fn merge_carried<L: AsRef<[i64]>>(
+    paths: &mut impl CarriedPaths,
+    groups: &[L],
+    n: usize,
+    cost_threshold: Option<i64>,
+) -> Vec<CarriedPick> {
+    let mut picks = Vec::new();
+    if n == 0 {
+        return picks;
+    }
+    // The pulled paths: cost and group, indexed by path.
+    let mut pulled: Vec<(i64, usize)> = Vec::new();
+    let Some(first) = paths.next_path() else {
+        return picks;
+    };
+    pulled.push(first);
+    let mut heap = BinaryHeap::new();
+    heap.push(Reverse((first.0, 0_usize, 0_usize)));
+    // The cost of the first combination.
+    let mut best_cost: Option<i64> = None;
+
+    while picks.len() < n {
+        let Some(Reverse((cost, i, k))) = heap.pop() else {
+            break;
+        };
+        let (path_cost, group) = pulled[i];
+        let group = groups.get(group).map_or(&[][..], AsRef::as_ref);
+
+        if k + 1 < group.len() {
+            let extra = group[k + 1].saturating_sub(group[0]);
+            heap.push(Reverse((path_cost.saturating_add(extra), i, k + 1)));
+        }
+        if k == 0 {
+            // `(i, 0)` is popped once, right after path `i` is the last one
+            // pulled, so the next path is `i + 1`.
+            if let Some(next) = paths.next_path() {
+                debug_assert!(next.0 >= path_cost, "paths must come in ascending order");
+                pulled.push(next);
+                heap.push(Reverse((next.0, i + 1, 0)));
+            }
+        }
+        if group.is_empty() {
+            continue;
+        }
+
+        let best = *best_cost.get_or_insert(cost);
+        if let Some(threshold) = cost_threshold
+            && cost.saturating_sub(best) > threshold
+        {
+            break;
+        }
+        if paths.is_new(i, k) {
+            picks.push(CarriedPick {
+                path: i,
+                rank: k,
+                cost,
+            });
+        }
+    }
+
+    picks
+}
+
 #[cfg(test)]
 mod tests {
-    use super::merge_nbest;
+    use std::collections::HashSet;
+
+    use super::{CarriedPaths, CarriedPick, merge_carried, merge_nbest};
 
     /// All ascending lists of length 1 to 3 over `{-1, 0, 1}`.
     fn ascending_lists() -> Vec<Vec<i64>> {
@@ -354,5 +519,292 @@ mod tests {
         ];
         assert_eq!(merge_nbest(&lists, usize::MAX, Some(i64::MAX)).len(), 4);
         assert!(merge_nbest(&lists, 3, Some(-1)).is_empty());
+    }
+
+    /// A finite list of paths for `merge_carried`. A combination's word
+    /// boundaries are stood in for by labels: the label of the result it
+    /// extends and the label of the path; with `unique`, a combination whose
+    /// two labels repeat an earlier combination's is a duplicate.
+    struct Paths<'a> {
+        /// Each path's cost (combined with the first result of its group)
+        /// and group.
+        paths: &'a [(i64, usize)],
+        /// Each path's label.
+        path_labels: &'a [u32],
+        /// Each result's label, per group.
+        result_labels: &'a [Vec<u32>],
+        /// The label pairs seen so far; `None` without `unique`.
+        seen: Option<HashSet<(u32, u32)>>,
+        /// How many paths were pulled.
+        pulled: usize,
+        /// The combinations checked by `is_new`, in call order.
+        checked: Vec<(usize, usize)>,
+    }
+
+    impl<'a> Paths<'a> {
+        fn new(
+            paths: &'a [(i64, usize)],
+            path_labels: &'a [u32],
+            result_labels: &'a [Vec<u32>],
+            unique: bool,
+        ) -> Self {
+            Self {
+                paths,
+                path_labels,
+                result_labels,
+                seen: unique.then(HashSet::new),
+                pulled: 0,
+                checked: Vec::new(),
+            }
+        }
+
+        fn labels(&self, path: usize, rank: usize) -> (u32, u32) {
+            let group = self.paths[path].1;
+            (
+                self.result_labels[group][rank],
+                self.path_labels[path % self.path_labels.len()],
+            )
+        }
+    }
+
+    impl CarriedPaths for Paths<'_> {
+        fn next_path(&mut self) -> Option<(i64, usize)> {
+            let path = self.paths.get(self.pulled).copied()?;
+            self.pulled += 1;
+            Some(path)
+        }
+
+        fn is_new(&mut self, path: usize, rank: usize) -> bool {
+            assert!(
+                path < self.pulled,
+                "path {path} checked before it was pulled"
+            );
+            assert!(
+                !self.checked.contains(&(path, rank)),
+                "({path}, {rank}) checked twice"
+            );
+            self.checked.push((path, rank));
+            let labels = self.labels(path, rank);
+            match &mut self.seen {
+                Some(seen) => seen.insert(labels),
+                None => true,
+            }
+        }
+    }
+
+    /// The expected result: every combination of a path with a result of
+    /// its group, sorted by `(cost, path, rank)`, cut at the threshold above
+    /// the first, without duplicates, cut to `n`.
+    fn carried_oracle(
+        paths: &[(i64, usize)],
+        groups: &[Vec<i64>],
+        labels: &Paths,
+        n: usize,
+        threshold: Option<i64>,
+        unique: bool,
+    ) -> Vec<CarriedPick> {
+        let mut all: Vec<(i64, usize, usize)> = Vec::new();
+        for (path, &(cost, group)) in paths.iter().enumerate() {
+            let results = groups.get(group).map_or(&[][..], Vec::as_slice);
+            for (rank, result) in results.iter().enumerate() {
+                all.push((cost + result - results[0], path, rank));
+            }
+        }
+        all.sort();
+        let Some(&(best, _, _)) = all.first() else {
+            return Vec::new();
+        };
+        let mut seen = HashSet::new();
+        all.into_iter()
+            .take_while(|&(cost, _, _)| threshold.is_none_or(|t| cost - best <= t))
+            .filter(|&(_, path, rank)| !unique || seen.insert(labels.labels(path, rank)))
+            .take(n)
+            .map(|(cost, path, rank)| CarriedPick { path, rank, cost })
+            .collect()
+    }
+
+    /// All lists of up to 3 paths with ascending costs over `{0, 1}`, each
+    /// starting from group 0 or 1.
+    fn path_lists() -> Vec<Vec<(i64, usize)>> {
+        let mut lists: Vec<Vec<(i64, usize)>> = vec![Vec::new()];
+        let mut last: Vec<Vec<(i64, usize)>> = vec![Vec::new()];
+        for _ in 0..3 {
+            let mut next = Vec::new();
+            for list in &last {
+                let min_cost = list.last().map_or(0, |&(cost, _)| cost);
+                for cost in min_cost..=1 {
+                    for group in 0..2 {
+                        let mut longer = list.clone();
+                        longer.push((cost, group));
+                        next.push(longer);
+                    }
+                }
+            }
+            lists.extend(next.iter().cloned());
+            last = next;
+        }
+        lists
+    }
+
+    #[test]
+    fn test_merge_carried_matches_brute_force() {
+        // Group 0 takes every ascending list of up to 3 results, group 1 the
+        // lists of up to 2; both may also be empty.
+        let mut first_groups = vec![Vec::new()];
+        first_groups.extend(ascending_lists());
+        let second_groups: Vec<Vec<i64>> = first_groups
+            .iter()
+            .filter(|list| list.len() <= 2)
+            .cloned()
+            .collect();
+        // Results of different groups share labels; the second scheme gives
+        // every path the same label, so paths of equal boundaries repeat.
+        let result_labels = vec![vec![0, 1, 2], vec![2, 1, 0]];
+        let label_schemes: [&[u32]; 2] = [&[0, 1], &[0]];
+        let ns = [1, 2, 3, 30];
+        let thresholds = [None, Some(0), Some(1), Some(2)];
+
+        let path_lists = path_lists();
+        for first in &first_groups {
+            for second in &second_groups {
+                let groups = vec![first.clone(), second.clone()];
+                for paths in &path_lists {
+                    for path_labels in label_schemes {
+                        for unique in [false, true] {
+                            for &n in &ns {
+                                for &threshold in &thresholds {
+                                    let mut source =
+                                        Paths::new(paths, path_labels, &result_labels, unique);
+                                    let picks = merge_carried(&mut source, &groups, n, threshold);
+                                    let expected = carried_oracle(
+                                        paths, &groups, &source, n, threshold, unique,
+                                    );
+                                    assert_eq!(
+                                        picks, expected,
+                                        "groups {groups:?}, paths {paths:?}, labels \
+                                         {path_labels:?}, unique {unique}, n {n}, \
+                                         threshold {threshold:?}"
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// A path is pulled only when the combinations reach it.
+    #[test]
+    fn test_merge_carried_pulls_lazily() {
+        let paths: Vec<(i64, usize)> = (0..1000).map(|cost| (cost, 0)).collect();
+        let result_labels = vec![vec![0, 1, 2]];
+        for (results, n, expected_pulls) in [
+            // Popping path i's first combination pulls path i + 1.
+            (vec![0], 3, 4),
+            // Every result of the first path is cheaper than the next path.
+            (vec![0, 0, 0], 3, 2),
+            (vec![0, 0, 5], 3, 3),
+        ] {
+            let groups = vec![results];
+            let mut source = Paths::new(&paths, &[0], &result_labels, false);
+            let picks = merge_carried(&mut source, &groups, n, None);
+            assert_eq!(picks.len(), n);
+            assert_eq!(source.pulled, expected_pulls, "groups {groups:?}");
+        }
+
+        let groups = vec![vec![0]];
+        let mut source = Paths::new(&paths, &[0], &result_labels, false);
+        assert!(merge_carried(&mut source, &groups, 0, None).is_empty());
+        assert_eq!(source.pulled, 0);
+    }
+
+    /// On equal cost, the earlier path comes first, then the lower rank.
+    #[test]
+    fn test_merge_carried_tie_order() {
+        let paths = [(5, 0), (5, 1)];
+        let groups = vec![vec![2, 2], vec![-7]];
+        let result_labels = vec![vec![0, 1], vec![0]];
+        let mut source = Paths::new(&paths, &[0], &result_labels, false);
+        assert_eq!(
+            merge_carried(&mut source, &groups, 5, None),
+            vec![
+                CarriedPick {
+                    path: 0,
+                    rank: 0,
+                    cost: 5
+                },
+                CarriedPick {
+                    path: 0,
+                    rank: 1,
+                    cost: 5
+                },
+                CarriedPick {
+                    path: 1,
+                    rank: 0,
+                    cost: 5
+                },
+            ]
+        );
+    }
+
+    /// A path of an empty or unknown group combines with nothing, and the
+    /// threshold is measured from the first kept combination.
+    #[test]
+    fn test_merge_carried_skips_paths_without_results() {
+        let paths = [(1, 1), (2, 2), (3, 0), (4, 0)];
+        let groups = vec![vec![0], Vec::new()];
+        let result_labels = vec![vec![0], Vec::new()];
+        let mut source = Paths::new(&paths, &[0, 1], &result_labels, false);
+        assert_eq!(
+            merge_carried(&mut source, &groups, 5, Some(0)),
+            vec![CarriedPick {
+                path: 2,
+                rank: 0,
+                cost: 3
+            }]
+        );
+    }
+
+    /// Duplicates do not count toward `n` and do not stop the merge.
+    #[test]
+    fn test_merge_carried_unique_skips_duplicates() {
+        // Paths 0 and 1 have the same label, and so do results 0 and 2.
+        let paths = [(0, 0), (1, 0), (2, 0)];
+        let groups = vec![vec![0, 10, 20]];
+        let result_labels = vec![vec![0, 1, 0]];
+        let mut source = Paths::new(&paths, &[7, 7, 8], &result_labels, true);
+        let picks = merge_carried(&mut source, &groups, 3, None);
+        let kept: Vec<(usize, usize)> = picks.iter().map(|p| (p.path, p.rank)).collect();
+        assert_eq!(kept, vec![(0, 0), (2, 0), (0, 1)]);
+        assert_eq!(
+            source.checked,
+            vec![(0, 0), (1, 0), (2, 0), (0, 1)],
+            "is_new follows the merge order"
+        );
+    }
+
+    #[test]
+    fn test_merge_carried_empty_inputs() {
+        let groups = vec![vec![0]];
+        let result_labels = vec![vec![0]];
+        let mut source = Paths::new(&[], &[0], &result_labels, false);
+        assert!(merge_carried(&mut source, &groups, 3, None).is_empty());
+
+        let paths = [(0, 0)];
+        let mut source = Paths::new(&paths, &[0], &result_labels, false);
+        assert!(merge_carried(&mut source, &groups, 3, Some(-1)).is_empty());
+    }
+
+    #[test]
+    fn test_merge_carried_extreme_values() {
+        let paths = [(i64::MAX / 2, 0), (i64::MAX / 2, 0)];
+        let groups = vec![vec![i64::MIN / 2, i64::MAX / 2]];
+        let result_labels = vec![vec![0, 1]];
+        let mut source = Paths::new(&paths, &[0, 1], &result_labels, false);
+        let picks = merge_carried(&mut source, &groups, usize::MAX, Some(i64::MAX));
+        assert_eq!(picks.len(), 4);
+        assert!(picks.windows(2).all(|pair| pair[0].cost <= pair[1].cost));
+        assert_eq!(picks[3].cost, i64::MAX);
     }
 }

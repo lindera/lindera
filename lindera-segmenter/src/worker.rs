@@ -2,10 +2,10 @@ use std::borrow::Cow;
 
 use lindera_dictionary::mode::Mode;
 use lindera_dictionary::space_penalty::SpacePenaltyConfig;
-use lindera_dictionary::viterbi::{Lattice, TokenOffset};
+use lindera_dictionary::viterbi::Lattice;
 
 use crate::LinderaResult;
-use crate::segmenter::{MAX_SENTENCE_BYTES, Segmenter};
+use crate::segmenter::{MAX_SENTENCE_BYTES, SegmentBuffers, Segmenter};
 use crate::token::Token;
 
 /// Number of `segment`/`segment_nbest` calls between two automatic shrink
@@ -29,8 +29,8 @@ const SHRINK_HYSTERESIS: usize = 2;
 const SHRINK_FLOOR_SLOTS: usize = 4 * 1024;
 
 /// A reusable segmentation session that owns the Viterbi [`Lattice`] and
-/// the backtrace scratch buffer, so repeated calls avoid the per-call
-/// allocations that `Segmenter::segment` pays.
+/// the scratch buffers of the segmentation, so repeated calls avoid the
+/// per-call allocations that `Segmenter::segment` pays.
 ///
 /// A worker is created from a [`Segmenter`] via [`Segmenter::new_worker`]
 /// or [`Segmenter::into_worker`] — never constructed directly — so the
@@ -70,9 +70,8 @@ pub struct SegmentWorker {
     segmenter: Segmenter,
     /// The reused Viterbi lattice (grows monotonically between shrinks).
     lattice: Lattice,
-    /// Backtrace scratch reused across calls (cleared per sentence by
-    /// `tokens_offset_into`).
-    offsets: Vec<TokenOffset>,
+    /// Scratch buffers of the 1-best segmentation, reused across calls.
+    buffers: SegmentBuffers,
     /// Largest per-sentence character count observed in the current shrink
     /// window (drained from the lattice's own accounting).
     window_max_needed: usize,
@@ -123,7 +122,7 @@ impl SegmentWorker {
         Self {
             segmenter,
             lattice: Lattice::default(),
-            offsets: Vec::new(),
+            buffers: SegmentBuffers::default(),
             window_max_needed: 0,
             calls_in_window: 0,
         }
@@ -147,10 +146,10 @@ impl SegmentWorker {
         let Self {
             segmenter,
             lattice,
-            offsets,
+            buffers,
             ..
         } = self;
-        segmenter.segment_with_buffers(Cow::Borrowed(text), lattice, offsets)
+        segmenter.segment_with_buffers(Cow::Borrowed(text), lattice, buffers)
     }
 
     /// Segments `text` and returns the top-N results with costs, reusing
@@ -306,7 +305,7 @@ impl SegmentWorker {
     pub fn shrink_to(&mut self, text_len_hint: usize) {
         self.lattice
             .shrink_to(text_len_hint.min(MAX_SENTENCE_BYTES));
-        self.offsets.shrink_to_fit();
+        self.buffers.shrink_to_fit();
         self.window_max_needed = 0;
         self.calls_in_window = 0;
     }
@@ -318,7 +317,7 @@ impl SegmentWorker {
     /// intermediate state; the segmenter configuration is preserved.
     pub fn reset(&mut self) {
         self.lattice = Lattice::default();
-        self.offsets = Vec::new();
+        self.buffers = SegmentBuffers::default();
         self.window_max_needed = 0;
         self.calls_in_window = 0;
     }

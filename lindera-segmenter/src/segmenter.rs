@@ -82,6 +82,101 @@ fn find_sentence_end(text: &str, sentence_start: usize) -> (usize, bool) {
     (sentence_end, false)
 }
 
+/// One sentence of an input, as [`SentenceWalk`] yields it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Sentence {
+    /// The sentence's start in the input, in bytes.
+    start: usize,
+    /// The sentence's end in the input (exclusive), in bytes.
+    end: usize,
+    /// Whether the cut after the sentence carries the context over to the
+    /// next sentence: a cut after `、` or `。`, or a forced cut, that is not
+    /// the end of the input. A cut after `\n` or `\t` and the end of the
+    /// input carry nothing; they end a segment, a run of sentences that
+    /// carry the context from one to the next.
+    carries: bool,
+}
+
+/// Walks an input sentence by sentence, cutting where
+/// [`find_sentence_end`] cuts and logging a warning at every forced cut.
+struct SentenceWalk<'t> {
+    /// The whole input.
+    text: &'t str,
+    /// The start of the next sentence, in bytes.
+    next_start: usize,
+}
+
+impl<'t> SentenceWalk<'t> {
+    /// Starts a walk at the beginning of `text`.
+    ///
+    /// # 引数
+    ///
+    /// * `text` - The whole input.
+    ///
+    /// # 戻り値
+    ///
+    /// The walk.
+    fn new(text: &'t str) -> Self {
+        Self {
+            text,
+            next_start: 0,
+        }
+    }
+}
+
+impl Iterator for SentenceWalk<'_> {
+    type Item = Sentence;
+
+    /// Returns the next sentence, which is never empty.
+    ///
+    /// # 戻り値
+    ///
+    /// The sentence, or `None` at the end of the input.
+    fn next(&mut self) -> Option<Sentence> {
+        let text = self.text;
+        while self.next_start < text.len() {
+            let start = self.next_start;
+            let (end, forced_cut) = find_sentence_end(text, start);
+            if forced_cut {
+                warn!(
+                    "no sentence delimiter (\\n, \\t, 。, 、) found within {MAX_SENTENCE_BYTES} bytes from offset {start}; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)"
+                );
+            }
+            self.next_start = end;
+            if end == start {
+                continue;
+            }
+            let carries = end < text.len() && {
+                let sentence = &text[start..end];
+                forced_cut || sentence.ends_with('、') || sentence.ends_with('。')
+            };
+            return Some(Sentence {
+                start,
+                end,
+                carries,
+            });
+        }
+        None
+    }
+}
+
+/// Scratch buffers of the 1-best segmentation, kept by `SegmentWorker`
+/// across calls so a call allocates nothing it already has
+/// ([`Segmenter::segment`] uses fresh ones).
+#[derive(Debug, Default)]
+pub(crate) struct SegmentBuffers {
+    /// The tokens of the best path of the current sentence, as
+    /// `tokens_offset_into` returns them (it clears the buffer first).
+    offsets: Vec<TokenOffset>,
+}
+
+impl SegmentBuffers {
+    /// Releases the capacity of every buffer.
+    pub(crate) fn shrink_to_fit(&mut self) {
+        self.offsets.shrink_to_fit();
+    }
+}
+
 /// Segmenter
 #[derive(Clone)]
 pub struct Segmenter {
@@ -525,6 +620,65 @@ impl Segmenter {
         options
     }
 
+    /// Builds the 1-best lattice of one sentence.
+    ///
+    /// # 引数
+    ///
+    /// * `lattice` - The lattice to reuse.
+    /// * `sentence` - The sentence's text.
+    /// * `options` - The lattice options, from [`Segmenter::lattice_options`].
+    #[inline]
+    fn set_lattice_text(&self, lattice: &mut Lattice, sentence: &str, options: &LatticeOptions) {
+        lattice.set_text_with_options(
+            &self.dictionary.prefix_dictionary,
+            &self.user_dictionary.as_ref().map(|d| &d.dict),
+            &self.dictionary.character_definition,
+            &self.dictionary.unknown_dictionary,
+            &self.dictionary.connection_cost_matrix,
+            sentence,
+            options,
+        );
+    }
+
+    /// Builds the N-best lattice of one sentence.
+    ///
+    /// # 引数
+    ///
+    /// * `lattice` - The lattice to reuse.
+    /// * `sentence` - The sentence's text.
+    /// * `options` - The lattice options, from [`Segmenter::lattice_options`].
+    fn set_lattice_text_nbest(
+        &self,
+        lattice: &mut Lattice,
+        sentence: &str,
+        options: &LatticeOptions,
+    ) {
+        lattice.set_text_nbest_with_options(
+            &self.dictionary.prefix_dictionary,
+            &self.user_dictionary.as_ref().map(|d| &d.dict),
+            &self.dictionary.character_definition,
+            &self.dictionary.unknown_dictionary,
+            &self.dictionary.connection_cost_matrix,
+            sentence,
+            options,
+        );
+    }
+
+    /// Returns the classifier of the whitespace tokens to drop from the
+    /// output: the dictionary's `SPACE` classifier unless `keep_whitespace`
+    /// is set.
+    ///
+    /// # 戻り値
+    ///
+    /// The classifier, or `None` to keep every token.
+    fn space_filter(&self) -> Option<&WhitespaceClassifier> {
+        if self.keep_whitespace {
+            None
+        } else {
+            self.whitespace.as_ref()
+        }
+    }
+
     /// Returns the classifier of the whitespace to skip in the lattice:
     /// whitespace is skipped whenever it is dropped from the output, unless
     /// `skip_whitespace` is off or the dictionary defines no `SPACE`
@@ -800,26 +954,26 @@ impl Segmenter {
         text: Cow<'a, str>,
         lattice: &mut Lattice,
     ) -> LinderaResult<Vec<Token<'a>>> {
-        // The backtrace buffer is allocated once per call; SegmentWorker
-        // routes through segment_with_buffers to reuse it across calls too.
-        let mut offsets: Vec<TokenOffset> = Vec::new();
-        self.segment_with_buffers(text, lattice, &mut offsets)
+        // The scratch buffers are allocated once per call; SegmentWorker
+        // routes through segment_with_buffers to reuse them across calls too.
+        let mut buffers = SegmentBuffers::default();
+        self.segment_with_buffers(text, lattice, &mut buffers)
     }
 
     /// Segments the input text reusing both the caller's lattice and the
-    /// caller's backtrace scratch buffer.
+    /// caller's scratch buffers.
     ///
     /// This is the shared body behind [`Segmenter::segment_with_lattice`]
-    /// (which passes a fresh buffer) and `SegmentWorker::segment` (which
-    /// keeps one buffer alive across calls). Output is identical to
+    /// (which passes fresh buffers) and `SegmentWorker::segment` (which
+    /// keeps them alive across calls). Output is identical to
     /// `segment_with_lattice` for the same input.
     ///
     /// # 引数
     ///
     /// * `text` - The input text, borrowed or owned.
     /// * `lattice` - The Viterbi lattice to reuse across sentences/calls.
-    /// * `offsets` - Backtrace scratch buffer; overwritten per sentence
-    ///   (`tokens_offset_into` clears it), so no pre-clearing is required.
+    /// * `buffers` - The scratch buffers; every call overwrites what it
+    ///   uses, so no pre-clearing is required.
     ///
     /// # 戻り値
     ///
@@ -828,91 +982,29 @@ impl Segmenter {
         &'a self,
         text: Cow<'a, str>,
         lattice: &mut Lattice,
-        offsets: &mut Vec<TokenOffset>,
+        buffers: &mut SegmentBuffers,
     ) -> LinderaResult<Vec<Token<'a>>> {
         let mut tokens: Vec<Token> = Vec::new();
 
-        let mut position = 0_usize;
+        // Hoisted out of the per-sentence and per-token loops (#942): the
+        // lattice options and the classifier of the whitespace tokens to
+        // drop. Skipped whitespace never becomes a token, and the lattice
+        // returns token ends without it (#1108).
+        let options = self.lattice_options();
+        let space_filter = self.space_filter();
 
-        // Whitespace configuration, hoisted out of the per-token loop
-        // (#942): the classifier of the whitespace tokens to drop. Skipped
-        // whitespace never becomes a token, and the lattice returns token
-        // ends without it (#1108).
-        let space_filter = if self.keep_whitespace {
-            None
-        } else {
-            self.whitespace.as_ref()
-        };
-
-        // Process whole text without splitting first for better performance with borrowed text
-        let text_len = text.len();
-        let mut sentence_start = 0;
-
-        while sentence_start < text_len {
-            // Find the end of the current sentence
-            let (sentence_end, forced_cut) = find_sentence_end(&text, sentence_start);
-            if forced_cut {
-                warn!(
-                    "no sentence delimiter (\\n, \\t, 。, 、) found within {MAX_SENTENCE_BYTES} bytes from offset {sentence_start}; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)"
-                );
-            }
-
-            let sentence = &text[sentence_start..sentence_end];
-            if sentence.is_empty() {
-                sentence_start = sentence_end;
-                continue;
-            }
-
-            // Process the sentence through lattice
-            lattice.set_text_with_options(
-                &self.dictionary.prefix_dictionary,
-                &self.user_dictionary.as_ref().map(|d| &d.dict),
-                &self.dictionary.character_definition,
-                &self.dictionary.unknown_dictionary,
-                &self.dictionary.connection_cost_matrix,
-                sentence,
-                &self.lattice_options(),
+        // Every sentence starts from the dictionary's BOS edge and pays the
+        // EOS connection.
+        for sentence in SentenceWalk::new(&text) {
+            self.set_lattice_text(lattice, &text[sentence.start..sentence.end], &options);
+            lattice.tokens_offset_into(&mut buffers.offsets);
+            self.push_tokens(
+                &text,
+                sentence.start,
+                &buffers.offsets,
+                space_filter,
+                &mut tokens,
             );
-            // Forward Viterbi implementation handles cost calculation within `set_text`.
-
-            lattice.tokens_offset_into(offsets);
-            tokens.reserve(offsets.len());
-
-            for &(byte_start, byte_end, word_id) in offsets.iter() {
-                // Calculate absolute position in the original text
-                let absolute_start = sentence_start + byte_start;
-                let absolute_end = sentence_start + byte_end;
-
-                // Skip whitespace tokens if keep_whitespace is false (default MeCab behavior)
-                if let Some(whitespace) = space_filter
-                    && self.is_whitespace_token(&sentence[byte_start..byte_end], whitespace)
-                {
-                    continue;
-                }
-
-                // Create surface Cow efficiently - avoid unnecessary string allocation for owned strings
-                let surface_cow = match &text {
-                    Cow::Borrowed(s) => Cow::Borrowed(&s[absolute_start..absolute_end]),
-                    Cow::Owned(s) => {
-                        // Use slice from owned string instead of creating new string
-                        Cow::Owned(s[absolute_start..absolute_end].to_owned())
-                    }
-                };
-
-                tokens.push(Token::new(
-                    surface_cow,
-                    absolute_start,
-                    absolute_end,
-                    position,
-                    word_id,
-                    &self.dictionary,
-                    self.user_dictionary.as_ref(),
-                ));
-
-                position += 1;
-            }
-
-            sentence_start = sentence_end;
         }
 
         Ok(tokens)
@@ -999,82 +1091,60 @@ impl Segmenter {
         // its sentence's best by more than the threshold cannot be part of a
         // result, because the other sentences add at least their best costs,
         // so the threshold already prunes each sentence's list here.
-        let mut sentences: Vec<SentenceNbest> = Vec::new();
-        let text_len = text.len();
-        let mut sentence_start = 0;
-
-        while sentence_start < text_len {
-            // Find the end of the current sentence
-            let (sentence_end, forced_cut) = find_sentence_end(&text, sentence_start);
-            if forced_cut {
-                warn!(
-                    "no sentence delimiter (\\n, \\t, 。, 、) found within {MAX_SENTENCE_BYTES} bytes from offset {sentence_start}; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)"
-                );
-            }
-
-            let sentence = &text[sentence_start..sentence_end];
-            if sentence.is_empty() {
-                sentence_start = sentence_end;
-                continue;
-            }
-
-            // Process the sentence through N-Best lattice
-            lattice.set_text_nbest_with_options(
-                &self.dictionary.prefix_dictionary,
-                &self.user_dictionary.as_ref().map(|d| &d.dict),
-                &self.dictionary.character_definition,
-                &self.dictionary.unknown_dictionary,
-                &self.dictionary.connection_cost_matrix,
-                sentence,
-                &self.lattice_options(),
-            );
-
-            let nbest_offsets = lattice.nbest_tokens_offset(n, unique, cost_threshold);
+        let options = self.lattice_options();
+        let mut parts: Vec<NbestPart> = Vec::new();
+        for sentence in SentenceWalk::new(&text) {
+            self.set_lattice_text_nbest(lattice, &text[sentence.start..sentence.end], &options);
+            let paths = lattice.nbest_tokens_offset(n, unique, cost_threshold);
             // A sentence without paths adds nothing, as in the 1-best
             // segmentation. A path without tokens (a sentence of skipped
             // whitespace) is a path, and its cost counts.
-            if !nbest_offsets.is_empty() {
-                sentences.push(SentenceNbest {
-                    start: sentence_start,
-                    end: sentence_end,
-                    paths: nbest_offsets,
+            if !paths.is_empty() {
+                parts.push(NbestPart {
+                    start: sentence.start,
+                    paths,
                 });
             }
-
-            sentence_start = sentence_end;
         }
 
-        // A single sentence needs no merge: its list, already cut to `n` and
+        let space_filter = self.space_filter();
+
+        // A single part needs no merge: its list, already cut to `n` and
         // filtered by the threshold, is the result (`merge_nbest` would
         // return it unchanged).
-        if let [sentence] = sentences.as_slice() {
-            return Ok(sentence
+        if let [part] = parts.as_slice() {
+            return Ok(part
                 .paths
                 .iter()
-                .enumerate()
-                .map(|(rank, &(_, cost))| {
+                .map(|(offsets, cost)| {
                     let mut tokens = Vec::new();
-                    self.push_sentence_tokens(&text, sentence, rank, &mut tokens);
-                    (tokens, cost)
+                    self.push_tokens(&text, part.start, offsets, space_filter, &mut tokens);
+                    (tokens, *cost)
                 })
                 .collect());
         }
 
-        // Phase 2: the cheapest combinations of one path per sentence. With
-        // `unique`, the paths of each sentence have distinct word boundaries,
+        // Phase 2: the cheapest combinations of one path per part. With
+        // `unique`, the paths of each part have distinct word boundaries,
         // so the combinations do too.
-        let costs: Vec<Vec<i64>> = sentences
+        let costs: Vec<Vec<i64>> = parts
             .iter()
-            .map(|s| s.paths.iter().map(|&(_, cost)| cost).collect())
+            .map(|part| part.paths.iter().map(|&(_, cost)| cost).collect())
             .collect();
         let combinations = merge_nbest(&costs, n, cost_threshold);
 
-        // Phase 3: the tokens of each combination, sentence by sentence.
+        // Phase 3: the tokens of each combination, part by part.
         let mut results = Vec::with_capacity(combinations.len());
         for (ranks, cost) in combinations {
             let mut tokens = Vec::new();
-            for (sentence, rank) in sentences.iter().zip(ranks) {
-                self.push_sentence_tokens(&text, sentence, rank, &mut tokens);
+            for (part, rank) in parts.iter().zip(ranks) {
+                self.push_tokens(
+                    &text,
+                    part.start,
+                    &part.paths[rank].0,
+                    space_filter,
+                    &mut tokens,
+                );
             }
             results.push((tokens, cost));
         }
@@ -1082,48 +1152,51 @@ impl Segmenter {
         Ok(results)
     }
 
-    /// Appends the tokens of one N-best path of a sentence to `tokens`,
-    /// numbering them on from `tokens.len()`. Whitespace is handled as in
-    /// [`Segmenter::segment`]: the lattice's token ends leave skipped
-    /// whitespace out (an entry keeps the whitespace its own surface ends
-    /// with), and whitespace tokens are dropped unless `keep_whitespace` is
-    /// set.
+    /// Appends the tokens of one path to `tokens`, numbering them on from
+    /// `tokens.len()`. The shared token builder of the 1-best and the N-best
+    /// segmentation. Whitespace is handled as in [`Segmenter::segment`]: the
+    /// lattice's token ends leave skipped whitespace out (an entry keeps the
+    /// whitespace its own surface ends with), and whitespace tokens are
+    /// dropped when `space_filter` is set.
     ///
     /// # 引数
     ///
     /// * `text` - The whole input, which the surfaces borrow from or copy.
-    /// * `nbest` - The sentence and its N-best paths.
-    /// * `rank` - The index of the path to use in `nbest.paths`.
+    /// * `base` - The offset in `text` that the path's offsets are relative
+    ///   to, e.g. the start of its sentence.
+    /// * `offsets` - The path's tokens: start and end offsets relative to
+    ///   `base` and word ids, in reading order.
+    /// * `space_filter` - The classifier of the whitespace tokens to drop,
+    ///   from [`Segmenter::space_filter`].
     /// * `tokens` - The tokens of the result so far.
     // `text` stays a `Cow` (not `&str`, as `ptr_arg` suggests) because its
     // variant decides whether a surface borrows the input or copies it.
     #[allow(clippy::ptr_arg)]
-    fn push_sentence_tokens<'a>(
+    #[inline]
+    fn push_tokens<'a>(
         &'a self,
         text: &Cow<'a, str>,
-        nbest: &SentenceNbest,
-        rank: usize,
+        base: usize,
+        offsets: &[TokenOffset],
+        space_filter: Option<&WhitespaceClassifier>,
         tokens: &mut Vec<Token<'a>>,
     ) {
-        let space_filter = if self.keep_whitespace {
-            None
-        } else {
-            self.whitespace.as_ref()
-        };
-        let sentence_start = nbest.start;
-        let sentence = &text[nbest.start..nbest.end];
-        let offsets = &nbest.paths[rank].0;
-        for &(byte_start, byte_end, word_id) in offsets.iter() {
-            let absolute_start = sentence_start + byte_start;
-            let absolute_end = sentence_start + byte_end;
+        let whole: &str = text;
+        tokens.reserve(offsets.len());
+        for &(byte_start, byte_end, word_id) in offsets {
+            let absolute_start = base + byte_start;
+            let absolute_end = base + byte_end;
 
-            // Skip whitespace tokens if keep_whitespace is false
+            // Skip whitespace tokens if keep_whitespace is false (default
+            // MeCab behavior).
             if let Some(whitespace) = space_filter
-                && self.is_whitespace_token(&sentence[byte_start..byte_end], whitespace)
+                && self.is_whitespace_token(&whole[absolute_start..absolute_end], whitespace)
             {
                 continue;
             }
 
+            // A borrowed input lends the surface; an owned one is copied so
+            // the token does not borrow a temporary.
             let surface_cow = match text {
                 Cow::Borrowed(s) => Cow::Borrowed(&s[absolute_start..absolute_end]),
                 Cow::Owned(s) => Cow::Owned(s[absolute_start..absolute_end].to_owned()),
@@ -1142,16 +1215,14 @@ impl Segmenter {
     }
 }
 
-/// The N-best paths of one sentence, kept until the sentences are combined
-/// (see [`Segmenter::segment_nbest_with_lattice`]).
-struct SentenceNbest {
-    /// The sentence's start in the input, in bytes.
+/// The N-best paths of one part of the input (a sentence), kept until the
+/// parts are combined (see [`Segmenter::segment_nbest_with_lattice`]).
+struct NbestPart {
+    /// The part's start in the input, in bytes.
     start: usize,
-    /// The sentence's end in the input, in bytes.
-    end: usize,
     /// The paths in ascending order of cost, as `nbest_tokens_offset`
-    /// returns them: each its tokens' start and end offsets within the
-    /// sentence and word ids, and its cost.
+    /// returns them: each its tokens' start and end offsets relative to
+    /// `start` and word ids, and its cost.
     paths: Vec<NBestPath>,
 }
 
@@ -1164,7 +1235,7 @@ mod tests {
         path::PathBuf,
     };
 
-    use crate::segmenter::{MAX_SENTENCE_BYTES, find_sentence_end};
+    use crate::segmenter::{MAX_SENTENCE_BYTES, Sentence, SentenceWalk, find_sentence_end};
     #[cfg(feature = "embed-ipadic")]
     use crate::segmenter::{Segmenter, SegmenterConfig};
 
@@ -1226,6 +1297,69 @@ mod tests {
         let _ = &text[..end];
         assert!(end >= MAX_SENTENCE_BYTES);
         assert!(end <= MAX_SENTENCE_BYTES - 1 + 'あ'.len_utf8());
+    }
+
+    /// The walk cuts where `find_sentence_end` cuts; a cut after `、` or `。`
+    /// carries the context unless it ends the input, a cut after `\n` or
+    /// `\t` never does.
+    #[test]
+    fn test_sentence_walk_cuts_and_carries() {
+        let text = "東京、です。行く\nもも\t京都、\n。";
+        let sentences: Vec<(&str, bool)> = SentenceWalk::new(text)
+            .map(|sentence| (&text[sentence.start..sentence.end], sentence.carries))
+            .collect();
+        assert_eq!(
+            sentences,
+            vec![
+                ("東京、", true),
+                ("です。", true),
+                ("行く\n", false),
+                ("もも\t", false),
+                ("京都、", true),
+                ("\n", false),
+                ("。", false),
+            ]
+        );
+        assert_eq!(SentenceWalk::new("").next(), None);
+        assert_eq!(
+            SentenceWalk::new("東京、").collect::<Vec<_>>(),
+            vec![Sentence {
+                start: 0,
+                end: "東京、".len(),
+                carries: false,
+            }]
+        );
+    }
+
+    /// A forced cut carries the context unless it ends the input.
+    #[test]
+    fn test_sentence_walk_forced_cut_carries() {
+        let text = "a".repeat(MAX_SENTENCE_BYTES + 10);
+        assert_eq!(
+            SentenceWalk::new(&text).collect::<Vec<_>>(),
+            vec![
+                Sentence {
+                    start: 0,
+                    end: MAX_SENTENCE_BYTES,
+                    carries: true,
+                },
+                Sentence {
+                    start: MAX_SENTENCE_BYTES,
+                    end: MAX_SENTENCE_BYTES + 10,
+                    carries: false,
+                },
+            ]
+        );
+
+        let text = "a".repeat(MAX_SENTENCE_BYTES);
+        assert_eq!(
+            SentenceWalk::new(&text).collect::<Vec<_>>(),
+            vec![Sentence {
+                start: 0,
+                end: MAX_SENTENCE_BYTES,
+                carries: false,
+            }]
+        );
     }
 
     #[test]
