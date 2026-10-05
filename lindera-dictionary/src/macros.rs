@@ -56,12 +56,15 @@ macro_rules! include_bytes_aligned {
 /// reading from the `LINDERA_WORKDIR` directory populated by the crate's
 /// build script.
 ///
-/// The data is bound to `static`s rather than `const`s deliberately. A `const`
-/// body is encoded into the crate's metadata, so a `const` here would put a copy
-/// of every dictionary byte into `lib.rmeta` at roughly 4x its size — several
-/// hundred megabytes per dictionary crate, re-read by every downstream crate.
-/// The data is private to `load()` below and never const-evaluated, so a `static`
-/// is all that is needed.
+/// Each file except `matrix.mtx` is returned from a private `fn` rather than
+/// bound to a `const` or a `static`. A `const` body is encoded into the
+/// crate's metadata at roughly 4x its size and a `static`'s initializer at 1x,
+/// so either puts every dictionary byte into `lib.rmeta`, which every
+/// downstream crate reads back. The body of a private, non-generic,
+/// non-`#[inline]` `fn` is not encoded. Keep it that way: making these
+/// functions `pub` or `load()` `#[inline]` brings the bytes back into the
+/// metadata in release builds. `matrix.mtx` needs a const-evaluated aligned
+/// wrapper (see [`include_bytes_aligned!`]), so it stays in the metadata.
 ///
 /// * `$dir` — the dictionary subdirectory inside `LINDERA_WORKDIR`
 ///   (e.g. `"/lindera-ipadic"`).
