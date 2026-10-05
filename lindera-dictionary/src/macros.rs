@@ -19,8 +19,11 @@
 /// zero-copy path is taken deterministically rather than by the linker's
 /// goodwill.
 ///
-/// Like [`embedded_dictionary!`], the data is bound to a `static` rather than
-/// a `const` so it is not copied into the crate's metadata.
+/// The data is bound to a `static` rather than a `const`: a `const` body would
+/// be encoded into the crate's metadata at roughly 4x its size. A `static`'s
+/// initializer is still encoded once, so unlike the other files of
+/// [`embedded_dictionary!`], which are returned from private `fn`s, this
+/// payload remains in `lib.rmeta`.
 ///
 /// # Arguments
 ///
@@ -53,12 +56,15 @@ macro_rules! include_bytes_aligned {
 /// reading from the `LINDERA_WORKDIR` directory populated by the crate's
 /// build script.
 ///
-/// The data is bound to `static`s rather than `const`s deliberately. A `const`
-/// body is encoded into the crate's metadata, so a `const` here would put a copy
-/// of every dictionary byte into `lib.rmeta` at roughly 4x its size — several
-/// hundred megabytes per dictionary crate, re-read by every downstream crate.
-/// The data is private to `load()` below and never const-evaluated, so a `static`
-/// is all that is needed.
+/// Each file except `matrix.mtx` is returned from a private `fn` rather than
+/// bound to a `const` or a `static`. A `const` body is encoded into the
+/// crate's metadata at roughly 4x its size and a `static`'s initializer at 1x,
+/// so either puts every dictionary byte into `lib.rmeta`, which every
+/// downstream crate reads back. The body of a private, non-generic,
+/// non-`#[inline]` `fn` is not encoded. Keep it that way: making these
+/// functions `pub` or `load()` `#[inline]` brings the bytes back into the
+/// metadata in release builds. `matrix.mtx` needs a const-evaluated aligned
+/// wrapper (see [`include_bytes_aligned!`]), so it stays in the metadata.
 ///
 /// * `$dir` — the dictionary subdirectory inside `LINDERA_WORKDIR`
 ///   (e.g. `"/lindera-ipadic"`).
@@ -72,30 +78,54 @@ macro_rules! include_bytes_aligned {
 #[macro_export]
 macro_rules! embedded_dictionary {
     ($dir:literal, $loader:ident) => {
-        static CHAR_DEFINITION_DATA: &[u8] =
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/char_def.bin"));
+        /// Returns the dictionary's char_def.bin bytes.
+        fn char_definition_data() -> &'static [u8] {
+            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/char_def.bin"))
+        }
+
         // Aligned so `ConnectionCostMatrix::load` can view the payload as
         // `[i16]` in place instead of decoding it into an owned buffer.
         static CONNECTION_DATA: &[u8] =
             $crate::include_bytes_aligned!(concat!(env!("LINDERA_WORKDIR"), $dir, "/matrix.mtx"));
-        static TRIE_DATA: &[u8] =
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.trie"));
-        static VALS_IDX_DATA: &[u8] =
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.valsidx"));
-        static VALS_DATA: &[u8] =
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.vals"));
-        static UNKNOWN_DATA: &[u8] =
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/unk.bin"));
-        static WORDS_IDX_DATA: &[u8] =
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.wordsidx"));
-        static WORDS_DATA: &[u8] =
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.words"));
-        static METADATA_DATA: &[u8] =
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/metadata.json"));
+
+        /// Returns the dictionary's dict.trie bytes.
+        fn trie_data() -> &'static [u8] {
+            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.trie"))
+        }
+
+        /// Returns the dictionary's dict.valsidx bytes.
+        fn vals_idx_data() -> &'static [u8] {
+            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.valsidx"))
+        }
+
+        /// Returns the dictionary's dict.vals bytes.
+        fn vals_data() -> &'static [u8] {
+            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.vals"))
+        }
+
+        /// Returns the dictionary's unk.bin bytes.
+        fn unknown_data() -> &'static [u8] {
+            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/unk.bin"))
+        }
+
+        /// Returns the dictionary's dict.wordsidx bytes.
+        fn words_idx_data() -> &'static [u8] {
+            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.wordsidx"))
+        }
+
+        /// Returns the dictionary's dict.words bytes.
+        fn words_data() -> &'static [u8] {
+            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.words"))
+        }
+
+        /// Returns the dictionary's metadata.json bytes.
+        fn metadata_data() -> &'static [u8] {
+            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/metadata.json"))
+        }
 
         /// Loads the embedded dictionary from data baked into the binary.
         pub fn load() -> $crate::LinderaResult<$crate::dictionary::Dictionary> {
-            let metadata = $crate::dictionary::metadata::Metadata::load(METADATA_DATA)?;
+            let metadata = $crate::dictionary::metadata::Metadata::load(metadata_data())?;
             // Guards against a stale build cache: `include_bytes!` bakes in
             // whatever the build script produced, so a cache directory left
             // behind by another format version must be caught here.
@@ -105,11 +135,11 @@ macro_rules! embedded_dictionary {
             // representation there is no unchecked-deserialize fast path to
             // guard -- embedded and filesystem data take the same safe code.
             let prefix_dictionary = $crate::dictionary::prefix_dictionary::PrefixDictionary::load(
-                TRIE_DATA,
-                VALS_IDX_DATA,
-                VALS_DATA,
-                WORDS_IDX_DATA,
-                WORDS_DATA,
+                trie_data(),
+                vals_idx_data(),
+                vals_data(),
+                words_idx_data(),
+                words_data(),
             )?;
             let connection_cost_matrix =
                 $crate::dictionary::connection_cost_matrix::ConnectionCostMatrix::load(
@@ -117,10 +147,10 @@ macro_rules! embedded_dictionary {
                 )?;
             let character_definition =
                 $crate::dictionary::character_definition::CharacterDefinition::load(
-                    CHAR_DEFINITION_DATA,
+                    char_definition_data(),
                 )?;
             let unknown_dictionary =
-                $crate::dictionary::unknown_dictionary::UnknownDictionary::load(UNKNOWN_DATA)?;
+                $crate::dictionary::unknown_dictionary::UnknownDictionary::load(unknown_data())?;
 
             Ok($crate::dictionary::Dictionary {
                 prefix_dictionary: ::std::sync::Arc::new(prefix_dictionary),
