@@ -48,8 +48,6 @@ impl PhpMetadata {
     ///
     /// A new Metadata instance.
     #[allow(clippy::too_many_arguments)]
-    // `null` defaults in the arginfo let named arguments skip these (#1067).
-    #[php(defaults(name = None, encoding = None, default_word_cost = None, default_left_context_id = None, default_right_context_id = None, default_field_value = None, flexible_csv = None, skip_invalid_cost_or_id = None, normalize_details = None))]
     pub fn __construct(
         name: Option<String>,
         encoding: Option<String>,
@@ -111,7 +109,7 @@ impl PhpMetadata {
     /// # Returns
     ///
     /// The name string.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn name(&self) -> String {
         self.inner.name.clone()
     }
@@ -121,7 +119,7 @@ impl PhpMetadata {
     /// # Returns
     ///
     /// The encoding string.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn encoding(&self) -> String {
         self.inner.encoding.clone()
     }
@@ -131,7 +129,7 @@ impl PhpMetadata {
     /// # Returns
     ///
     /// The cost value.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn default_word_cost(&self) -> i64 {
         self.inner.default_word_cost as i64
     }
@@ -141,7 +139,7 @@ impl PhpMetadata {
     /// # Returns
     ///
     /// The context ID.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn default_left_context_id(&self) -> i64 {
         self.inner.default_left_context_id as i64
     }
@@ -151,7 +149,7 @@ impl PhpMetadata {
     /// # Returns
     ///
     /// The context ID.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn default_right_context_id(&self) -> i64 {
         self.inner.default_right_context_id as i64
     }
@@ -161,7 +159,7 @@ impl PhpMetadata {
     /// # Returns
     ///
     /// The default value string.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn default_field_value(&self) -> String {
         self.inner.default_field_value.clone()
     }
@@ -171,7 +169,7 @@ impl PhpMetadata {
     /// # Returns
     ///
     /// True if flexible CSV is enabled.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn flexible_csv(&self) -> bool {
         self.inner.flexible_csv
     }
@@ -181,7 +179,7 @@ impl PhpMetadata {
     /// # Returns
     ///
     /// True if skip is enabled.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn skip_invalid_cost_or_id(&self) -> bool {
         self.inner.skip_invalid_cost_or_id
     }
@@ -191,7 +189,7 @@ impl PhpMetadata {
     /// # Returns
     ///
     /// True if normalization is enabled.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn normalize_details(&self) -> bool {
         self.inner.normalize_details
     }
@@ -201,7 +199,7 @@ impl PhpMetadata {
     /// # Returns
     ///
     /// A list of field name strings.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn dictionary_schema_fields(&self) -> Vec<String> {
         self.inner.dictionary_schema.fields().to_vec()
     }
@@ -211,7 +209,7 @@ impl PhpMetadata {
     /// # Returns
     ///
     /// A list of field name strings.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn user_dictionary_schema_fields(&self) -> Vec<String> {
         self.inner.user_dictionary_schema.fields().to_vec()
     }

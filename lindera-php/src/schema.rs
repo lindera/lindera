@@ -49,7 +49,7 @@ impl PhpFieldType {
     /// # Returns
     ///
     /// The field type string.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn value(&self) -> String {
         self.value.clone()
     }
@@ -133,8 +133,6 @@ impl PhpFieldDefinition {
     /// # Returns
     ///
     /// A new FieldDefinition instance.
-    // `null` defaults in the arginfo let named arguments skip these (#1067).
-    #[php(defaults(description = None))]
     pub fn __construct(
         index: i64,
         name: String,
@@ -154,7 +152,7 @@ impl PhpFieldDefinition {
     /// # Returns
     ///
     /// The index value.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn index(&self) -> i64 {
         self.index as i64
     }
@@ -164,7 +162,7 @@ impl PhpFieldDefinition {
     /// # Returns
     ///
     /// The name string.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn name(&self) -> String {
         self.name.clone()
     }
@@ -174,7 +172,7 @@ impl PhpFieldDefinition {
     /// # Returns
     ///
     /// The field type string.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn field_type(&self) -> String {
         self.field_type.clone()
     }
@@ -184,7 +182,7 @@ impl PhpFieldDefinition {
     /// # Returns
     ///
     /// The description string or null.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn description(&self) -> Option<String> {
         self.description.clone()
     }
@@ -285,7 +283,7 @@ impl PhpSchema {
     /// # Returns
     ///
     /// A list of field name strings.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn fields(&self) -> Vec<String> {
         self.inner.fields().to_vec()
     }

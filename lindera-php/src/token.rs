@@ -40,7 +40,7 @@ impl PhpToken {
     /// # Returns
     ///
     /// The surface string.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn surface(&self) -> String {
         self.surface.clone()
     }
@@ -50,7 +50,7 @@ impl PhpToken {
     /// # Returns
     ///
     /// The byte start position.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn byte_start(&self) -> i64 {
         self.byte_start as i64
     }
@@ -60,7 +60,7 @@ impl PhpToken {
     /// # Returns
     ///
     /// The byte end position.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn byte_end(&self) -> i64 {
         self.byte_end as i64
     }
@@ -70,7 +70,7 @@ impl PhpToken {
     /// # Returns
     ///
     /// The token position.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn position(&self) -> i64 {
         self.position as i64
     }
@@ -80,7 +80,7 @@ impl PhpToken {
     /// # Returns
     ///
     /// The word ID.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn word_id(&self) -> i64 {
         self.word_id as i64
     }
@@ -90,7 +90,7 @@ impl PhpToken {
     /// # Returns
     ///
     /// True if the token is unknown.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn is_unknown(&self) -> bool {
         self.is_unknown
     }
@@ -100,7 +100,7 @@ impl PhpToken {
     /// # Returns
     ///
     /// A list of detail strings.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn details(&self) -> Vec<String> {
         self.details.clone()
     }
@@ -131,19 +131,19 @@ impl PhpToken {
     pub fn to_array(&self) -> PhpResult<ZBox<ZendHashTable>> {
         let mut arr = ZendHashTable::new();
         arr.insert("surface", self.surface.as_str())
-            .map_err(|e| PhpException::default(e.to_string()))?;
+            .map_err(|e| PhpException::from_message(e.to_string()))?;
         arr.insert("byte_start", self.byte_start as i64)
-            .map_err(|e| PhpException::default(e.to_string()))?;
+            .map_err(|e| PhpException::from_message(e.to_string()))?;
         arr.insert("byte_end", self.byte_end as i64)
-            .map_err(|e| PhpException::default(e.to_string()))?;
+            .map_err(|e| PhpException::from_message(e.to_string()))?;
         arr.insert("position", self.position as i64)
-            .map_err(|e| PhpException::default(e.to_string()))?;
+            .map_err(|e| PhpException::from_message(e.to_string()))?;
         arr.insert("word_id", self.word_id as i64)
-            .map_err(|e| PhpException::default(e.to_string()))?;
+            .map_err(|e| PhpException::from_message(e.to_string()))?;
         arr.insert("is_unknown", self.is_unknown)
-            .map_err(|e| PhpException::default(e.to_string()))?;
+            .map_err(|e| PhpException::from_message(e.to_string()))?;
         arr.insert("details", self.details.clone())
-            .map_err(|e| PhpException::default(e.to_string()))?;
+            .map_err(|e| PhpException::from_message(e.to_string()))?;
         Ok(arr)
     }
 

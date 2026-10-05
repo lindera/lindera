@@ -31,8 +31,6 @@ impl PhpMode {
     /// # Returns
     ///
     /// A new Mode instance.
-    // `null` defaults in the arginfo let named arguments skip these (#1067).
-    #[php(defaults(mode = None))]
     pub fn __construct(mode: Option<String>) -> PhpResult<Self> {
         let mode_str = mode.unwrap_or_else(|| "normal".to_string());
         match mode_str.to_lowercase().as_str() {
@@ -50,7 +48,7 @@ impl PhpMode {
     /// # Returns
     ///
     /// The mode name string.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn name(&self) -> String {
         self.mode.clone()
     }
@@ -128,8 +126,6 @@ impl PhpPenalty {
     /// # Returns
     ///
     /// A new Penalty instance.
-    // `null` defaults in the arginfo let named arguments skip these (#1067).
-    #[php(defaults(kanji_penalty_length_threshold = None, kanji_penalty_length_penalty = None, other_penalty_length_threshold = None, other_penalty_length_penalty = None))]
     pub fn __construct(
         kanji_penalty_length_threshold: Option<i64>,
         kanji_penalty_length_penalty: Option<i64>,
@@ -149,7 +145,7 @@ impl PhpPenalty {
     /// # Returns
     ///
     /// The threshold value.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn kanji_penalty_length_threshold(&self) -> i64 {
         self.kanji_penalty_length_threshold as i64
     }
@@ -159,7 +155,7 @@ impl PhpPenalty {
     /// # Returns
     ///
     /// The penalty value.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn kanji_penalty_length_penalty(&self) -> i64 {
         self.kanji_penalty_length_penalty as i64
     }
@@ -169,7 +165,7 @@ impl PhpPenalty {
     /// # Returns
     ///
     /// The threshold value.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn other_penalty_length_threshold(&self) -> i64 {
         self.other_penalty_length_threshold as i64
     }
@@ -179,7 +175,7 @@ impl PhpPenalty {
     /// # Returns
     ///
     /// The penalty value.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn other_penalty_length_penalty(&self) -> i64 {
         self.other_penalty_length_penalty as i64
     }
