@@ -7,9 +7,10 @@ use PHPUnit\Framework\TestCase;
 /**
  * Optional parameters carry a `null` default in the arginfo (lindera/lindera#1067).
  *
- * ext-php-rs registers an `Option<T>` parameter without a default unless the
- * method has `#[php(defaults(...))]`. PHP then rejects a named-argument call
- * that skips it ("the default value is not known"), and reflection reports no
+ * ext-php-rs (0.16 and later) gives a trailing `Option<T>` parameter a `null`
+ * default in the arginfo unless `#[php(defaults(...))]` sets another value.
+ * Without a default, PHP rejects a named-argument call that skips the
+ * parameter ("the default value is not known"), and reflection reports no
  * default either.
  */
 class ArgumentDefaultsTest extends TestCase
@@ -41,7 +42,7 @@ class ArgumentDefaultsTest extends TestCase
         $this->assertSame(
             [],
             $missing,
-            'optional parameters without a null default; add #[php(defaults(... = None))]'
+            'optional parameters without a null default; declare them as trailing Option<T> without a #[php(defaults)] value'
         );
     }
 

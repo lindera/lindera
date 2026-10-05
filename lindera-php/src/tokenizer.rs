@@ -157,8 +157,6 @@ impl PhpTokenizerBuilder {
     ///
     /// * `kind` - Type of character filter to add.
     /// * `args` - Optional Zval containing filter arguments (associative array).
-    // `null` defaults in the arginfo let named arguments skip these (#1067).
-    #[php(defaults(args = None))]
     pub fn append_character_filter(&self, kind: String, args: Option<&Zval>) -> PhpResult<()> {
         let filter_args = if let Some(zval) = args {
             zval_to_value(zval)?
@@ -178,8 +176,6 @@ impl PhpTokenizerBuilder {
     ///
     /// * `kind` - Type of token filter to add.
     /// * `args` - Optional Zval containing filter arguments (associative array).
-    // `null` defaults in the arginfo let named arguments skip these (#1067).
-    #[php(defaults(args = None))]
     pub fn append_token_filter(&self, kind: String, args: Option<&Zval>) -> PhpResult<()> {
         let filter_args = if let Some(zval) = args {
             zval_to_value(zval)?
@@ -231,9 +227,6 @@ impl PhpTokenizer {
     ///
     /// A new Tokenizer instance, or a `ValueError` for an invalid mode or
     /// space-penalty setting, as `setSpacePenalty()` and `build()` throw it.
-    // The defaults put `null` into the arginfo, so a caller can skip `mode`
-    // and `user_dictionary` with named arguments (`space_penalty: false`).
-    #[php(defaults(mode = None, user_dictionary = None, space_penalty = None))]
     pub fn __construct(
         dictionary: &PhpDictionary,
         mode: Option<String>,
@@ -313,8 +306,6 @@ impl PhpTokenizer {
     /// # Returns
     ///
     /// A list of NbestResult entries.
-    // `null` defaults in the arginfo let named arguments skip these (#1067).
-    #[php(defaults(unique = None, cost_threshold = None))]
     pub fn tokenize_nbest(
         &self,
         text: String,
@@ -360,7 +351,7 @@ impl PhpNbestResult {
     /// # Returns
     ///
     /// A list of Token objects.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn tokens(&self) -> Vec<PhpToken> {
         self.tokens.clone()
     }
@@ -370,7 +361,7 @@ impl PhpNbestResult {
     /// # Returns
     ///
     /// The cost value.
-    #[php(getter)]
+    #[php(getter, change_case = "snake_case")]
     pub fn cost(&self) -> i64 {
         self.cost
     }
