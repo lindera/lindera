@@ -79,7 +79,7 @@ macro_rules! embedded_dictionary {
 
         // Aligned so `ConnectionCostMatrix::load` can view the payload as
         // `[i16]` in place instead of decoding it into an owned buffer.
-        static CONNECTION_DATA: &'static [u8] =
+        static CONNECTION_DATA: &[u8] =
             $crate::include_bytes_aligned!(concat!(env!("LINDERA_WORKDIR"), $dir, "/matrix.mtx"));
 
         /// Returns the dictionary's dict.trie bytes.
