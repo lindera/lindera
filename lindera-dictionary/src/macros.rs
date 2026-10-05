@@ -76,10 +76,12 @@ macro_rules! embedded_dictionary {
         fn char_definition_data() -> &'static [u8] {
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/char_def.bin"))
         }
+
         // Aligned so `ConnectionCostMatrix::load` can view the payload as
         // `[i16]` in place instead of decoding it into an owned buffer.
         static CONNECTION_DATA: &'static [u8] =
             $crate::include_bytes_aligned!(concat!(env!("LINDERA_WORKDIR"), $dir, "/matrix.mtx"));
+
         /// Returns the dictionary's dict.trie bytes.
         fn trie_data() -> &'static [u8] {
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.trie"))
