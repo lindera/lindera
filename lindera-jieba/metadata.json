@@ -1,8 +1,13 @@
 {
-  "default_field_value": "*",
+  "name": "jieba",
+  "encoding": "UTF-8",
+  "default_word_cost": 1625,
   "default_left_context_id": 0,
   "default_right_context_id": 0,
-  "default_word_cost": 1625,
+  "default_field_value": "*",
+  "flexible_csv": true,
+  "skip_invalid_cost_or_id": true,
+  "normalize_details": false,
   "dictionary_schema": {
     "fields": [
       "surface",
@@ -21,8 +26,6 @@
       "freq_band"
     ]
   },
-  "encoding": "UTF-8",
-  "flexible_csv": true,
   "model_info": {
     "connection_matrix_size": "7x7",
     "feature_count": 584429,
@@ -33,9 +36,6 @@
     "training_iterations": 100,
     "version": "1.0.0"
   },
-  "name": "jieba",
-  "normalize_details": false,
-  "skip_invalid_cost_or_id": true,
   "user_dictionary_schema": {
     "fields": ["surface", "part_of_speech", "pinyin"]
   }
