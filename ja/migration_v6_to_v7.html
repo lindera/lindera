@@ -188,8 +188,9 @@
 修正し、表層形が空白だけの見出し語や先頭・末尾が空白の見出し語を保持し、
 MeCab と同様に空白をラティス上で読み飛ばし、<code>char.def</code> の重複した行を MeCab と
 同じく解決し、MeCab と同じく行の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぎ、
-N-best の各結果が入力全体を覆うようにし、<code>lindera-dictionary</code> の
-ラティスのバックトレースが各トークンの終了オフセットも返すようにしました。
+N-best の各結果が入力全体を覆うようにし、MeCab と同じくどの位置からも未知語が
+始まるようにし、<code>lindera-dictionary</code> のラティスのバックトレースが各トークンの
+終了オフセットも返すようにしました。
 このガイドでは、すべての破壊的変更とその対処方法を説明します。</p>
 <h2 id="概要"><a class="header" href="#概要">概要</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>変更</th><th>影響範囲</th><th>対処方法</th></tr></thead><tbody>
@@ -202,16 +203,17 @@ N-best の各結果が入力全体を覆うようにし、<code>lindera-dictiona
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> の削除</strong></td><td>非推奨のビルドキャッシュ変数をまだ設定しているユーザー</td><td><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を設定する。旧名は無視される</td></tr>
 <tr><td><strong>IPADIC・IPADIC-NEologd の <code>conjugation_type</code> と <code>conjugation_form</code> が正しい列を指すように修正</strong></td><td>IPADIC・IPADIC-NEologd でこの 2 フィールドを名前で読むユーザー（<code>Token::get</code>・<code>Token::as_value</code>・<code>lindera tokenize -o json</code>・バインディングのスキーマ）</td><td>2 つの値が入れ替わることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 <tr><td><strong>空白を含む見出し語を保持</strong></td><td>U+3000 を含むテキスト（IPADIC・IPADIC-NEologd・UniDic）、空白を含むテキスト（SudachiDict）、末尾が空白の一部の語</td><td>U+3000 が <code>記号,空白</code>・<code>空白</code> になり、SudachiDict の分割が Sudachi にずっと近くなることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
-<tr><td><strong>空白をラティス上で読み飛ばし、MeCab と同様に空白の前後の語を直接接続する</strong></td><td><code>keep_whitespace</code> が false（デフォルト）で空白を含むテキストを分割するユーザー。ko-dic で特に顕著</td><td>そのようなテキストは MeCab と同じ分割になることを前提にする。<code>skip_whitespace(false)</code>（<code>"skip_whitespace": false</code>、<code>--disable-skip-whitespace</code>）で v6 の分割に戻せる</td></tr>
+<tr><td><strong>空白をラティス上で読み飛ばし、MeCab と同様に空白の前後の語を直接接続する</strong></td><td><code>keep_whitespace</code> が false（デフォルト）で空白を含むテキストを分割するユーザー。ko-dic で特に顕著</td><td>そのようなテキストは MeCab と同じ分割になることを前提にする。<code>skip_whitespace(false)</code>（<code>"skip_whitespace": false</code>、<code>--disable-skip-whitespace</code>）で空白の扱いを v6 に戻せる（このガイドの他の出力の変化は戻らない）</td></tr>
 <tr><td><strong><code>char.def</code> の重複した行は最後の行が決める</strong></td><td><code>Ð</code>（U+00D0、ko-dic 以外のすべての辞書）・<code>々</code>（U+3005）・<code>〇</code>（U+3007）を含むテキスト、単一コードポイントの行や重複した行を持つ <code>char.def</code> で <code>lindera train</code> を使うユーザー</td><td><code>Ð</code> が文字として出力に残ることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 <tr><td><strong>MeCab と同じく、行の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぐ</strong></td><td>行の中に <code>、</code> や <code>。</code> を含む日本語のテキストを分割するユーザー</td><td><code>、</code> や <code>。</code> の直後の語の解析が一部変わり（多くは MeCab と同じ解析になる）、そうした行の N-best のコストが変わることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>N-best: 各結果が入力全体を覆う</strong></td><td>複数の文を含む入力で N-best（<code>segment_nbest</code>・<code>tokenize_nbest</code>・<code>lindera tokenize -N</code>・バインディングの N-best メソッド）を使うユーザー</td><td>2 件目以降が入力全体のコストの小さい分割になることを前提にする。コストの閾値は入力全体に対して適用される</td></tr>
+<tr><td><strong>MeCab と同じく、どの位置からも未知語が始まる</strong></td><td>カタカナ・記号・英字が続くテキストを通常モードで分割するユーザー。特に <code>・</code> でつないだカタカナ、<code>."</code> のような韓国語の文末の句読点、CC-CEDICT の英単語</td><td>そうした連続が MeCab と同じ位置で分かれること、カタカナや英字の多いテキストで命令数が 13% 程度増えることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>・<code>tokens_offset_into</code>・<code>nbest_tokens_offset</code>・<code>NBestGenerator::next</code> が <code>(start, end, WordId)</code> を返す</strong></td><td>これらの <code>lindera_dictionary</code> の関数を直接呼び出す Rust コード（<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・<code>lindera::dictionary::nbest::…</code> 経由を含む）</td><td>3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> が最良パスの BOS の添字（<code>Option&lt;usize&gt;</code>）を返す</strong></td><td><code>tokens_offset_into</code> の戻り値 <code>()</code> を値として使う Rust コード</td><td>文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する</td></tr>
 </tbody></table>
 </div>
 <p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI の API・パッケージ名は
-変わらず、バージョン番号だけが 7.0.0 になります。出力の違いは 6 つあり、いずれも
+変わらず、バージョン番号だけが 7.0.0 になります。出力の違いは 7 つあり、いずれも
 後述します。IPADIC・IPADIC-NEologd では、<code>conjugation_type</code> と
 <code>conjugation_form</code> という名前で返る値が入れ替わります。表層形が空白だけの
 見出し語や先頭・末尾が空白の見出し語が辞書に入るため、そうした空白を含む
@@ -219,9 +221,11 @@ N-best の各結果が入力全体を覆うようにし、<code>lindera-dictiona
 <code>Ð</code>・<code>々</code>・<code>〇</code> が MeCab と同じ文字カテゴリになるため、これらを含むテキストの分割が
 変わります。行の中では <code>、</code>・<code>。</code> の直後の語が前の語の文脈を引き継いで解析されるため、
 そうしたテキストの一部で分割が変わり、<code>、</code>・<code>。</code> を含む行の N-best のコストは
-すべて変わります。さらに、複数の文を含む入力では、N-best の 2 件目以降が入力全体で
-コストの小さい分割になります。それ以外は、同じ入力と辞書に対して、v7.0.0 は v6.2.0
-と同じトークンを、同じ位置ベースの詳細情報（details）とともに出力します。</p>
+すべて変わります。複数の文を含む入力では、N-best の 2 件目以降が入力全体で
+コストの小さい分割になります。さらに通常モードでは、同じ文字種が続く範囲の内側からも
+MeCab と同じく未知語が始まるため、カタカナ・記号・英字の連続の一部が分かれます。
+それ以外は、同じ入力と辞書に対して、v7.0.0 は v6.2.0 と同じトークンを、同じ位置
+ベースの詳細情報（details）とともに出力します。</p>
 <h2 id="lindera-クレートはファサードに"><a class="header" href="#lindera-クレートはファサードに"><code>lindera</code> クレートはファサードに</a></h2>
 <p>v6 までの Rust API は、<code>lindera</code>（セグメンターと辞書読み込み API）と
 <code>lindera-analysis</code>（character filter・token filter・<code>Tokenizer</code>）の 2 クレートに
@@ -489,9 +493,10 @@ Viterbi ラティス上で読み飛ばします。空白の後ろの語は空白
 一部である空白は、語の途中にあっても末尾にあっても、MeCab と同じくその語のトークンに
 残ります（前の節を参照）。読み飛ばしは空白を含まないテキストの分割を変えません。
 <code>keep_whitespace(true)</code> では空白がラティスに残り、出力は変わりません。</p>
-<p>v6 の分割結果に戻すには、読み飛ばしを無効にします。空白は引き続き出力から
-除外されます。設定で <code>skip_whitespace</code> を省略するか <code>null</code> にすると、辞書の
-デフォルトのままになります:</p>
+<p>空白の扱いを v6 に戻すには、読み飛ばしを無効にします。空白は引き続き出力から
+除外されます。ただし、<a href="#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E3%81%A9%E3%81%AE%E4%BD%8D%E7%BD%AE%E3%81%8B%E3%82%89%E3%82%82%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%8C%E5%A7%8B%E3%81%BE%E3%82%8B">MeCab と同じく、どの位置からも未知語が始まる</a>
+など、このガイドの他の出力の変化は戻りません。設定で <code>skip_whitespace</code> を省略するか
+<code>null</code> にすると、辞書のデフォルトのままになります:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Segmenter
@@ -594,6 +599,68 @@ k 件目の結果は各文の k 番目のパスをつないだものでした。
 （<code>cost_threshold</code>・<code>--nbest-cost-threshold</code>）は入力全体で測るようになりました。
 合計コストが 1 件目の結果のコストから閾値以内の結果を残します。v6 は閾値を文ごとに
 適用していました。<code>unique</code> を指定した場合も、結果の単語境界は互いに異なります。</p>
+<h2 id="mecab-と同じくどの位置からも未知語が始まる"><a class="header" href="#mecab-と同じくどの位置からも未知語が始まる">MeCab と同じく、どの位置からも未知語が始まる</a></h2>
+<p>辞書にない語は未知語として扱われ、辞書の <code>char.def</code> の文字種（カタカナ・英字・
+数字・記号など）をもとに作られます。多くの文字種はグルーピングする設定で、
+カタカナの連続のように同じ文字種が続く範囲が 1 つの候補になります。これを
+「グルーピングした未知語」と呼びます。v6 までの通常モードは、直前にグルーピング
+した未知語の内側の位置では未知語を作りませんでした。Kuromoji から引き継いだ
+近道で、MeCab にはないものです。そのため、こうした範囲の途中で終わる辞書語の
+後ろに未知語を続けられず、辞書語を飲み込んだグルーピングした未知語しか通り道が
+ないことがよくありました。v7.0.0 は、経路が到達するすべての位置で、どのモードでも、
+MeCab と同じ条件で未知語候補を作ります。条件は、その文字種が常に未知語を作る設定
+（<code>char.def</code> の <code>INVOKE</code>）であるか、その位置から始まる辞書語がないことです。
+Decompose モードはもともとこの動作で、出力は変わりません。</p>
+<div class="table-wrapper"><table><thead><tr><th>入力（辞書）</th><th>v6</th><th>v7（MeCab と同じ）</th></tr></thead><tbody>
+<tr><td><code>それが「⁂⁂第一だ</code>（IPADIC）</td><td><code>「⁂⁂</code>（辞書の記号 <code>「</code> を飲み込んだ 1 つの未知語の名詞）</td><td><code>「</code>（<code>記号,括弧開</code>）と <code>⁂⁂</code></td></tr>
+<tr><td><code>ジョン・レノンが歌う</code>（IPADIC）</td><td><code>ジョン・レノン</code>（1 つの未知語の名詞）</td><td><code>ジョン</code>、<code>・</code>、<code>レノン</code></td></tr>
+<tr><td><code>ホテル・コルテシアに泊まる</code>（UniDic）</td><td><code>ホテル・コルテシア</code>（1 つの未知語の名詞）</td><td><code>ホテル</code>、<code>・</code>、<code>コルテシア</code></td></tr>
+<tr><td><code>"좋아."</code>（ko-dic）</td><td><code>아</code>（<code>EC</code>）と <code>."</code>（<code>SY</code>）</td><td><code>아</code>（<code>EF</code>）、<code>.</code>（<code>SF</code>）、<code>"</code>（<code>SY</code>）</td></tr>
+<tr><td><code>The</code>（CC-CEDICT）</td><td><code>The</code></td><td><code>T</code> と <code>he</code></td></tr>
+</tbody></table>
+</div>
+<ul>
+<li><strong>日本語</strong>: IPADIC・IPADIC-NEologd・UniDic の <code>char.def</code> は <code>・</code> をカタカナの
+範囲に含めています。辞書語と <code>・</code> の後ろからはカタカナの未知語を始められなかった
+ため、<code>ジョン・レノン</code> は 1 つの未知語になっていました。v7 では MeCab と同じく、
+その後ろから未知語が始まります。<code>レノン・ジョン</code> のように未知語で始まる範囲は、
+MeCab でも 1 つの未知語のままです。同じように、辞書の記号がその後ろの未知の記号と
+まとめられることもなくなります。</li>
+<li><strong>韓国語</strong>: 文末の <code>."</code>・<code>?"</code>・<code>!"</code>・<code>.'</code> は 1 つの記号（<code>SY</code>）になっていました。
+v7 では MeCab と同じく <code>.</code>・<code>?</code>・<code>!</code> が文末の句読点（<code>SF</code>）になり、<code>"좋아."</code> の
+ように、その前の語尾の解析も変わることがあります。</li>
+<li><strong>中国語</strong>: CC-CEDICT では、<code>A</code>・<code>B</code>・<code>P</code>・<code>Q</code>・<code>T</code> で始まる英単語がその文字の
+後ろで分かれ（<code>The</code> は <code>T</code> と <code>he</code>、<code>TBS</code> は <code>T</code>、<code>B</code>、<code>S</code>）、日本語の仮名の
+連続は 1 文字ずつに分かれます。同じ辞書を使う MeCab と同じ分け方です。原因は
+辞書にあります。未知語のコストは長さによらず −3,200、連接表は 1 マスだけで
+コストは 0、これらの英字 1 文字はコスト −400 の辞書語なので、語の数が多い経路ほど
+安くなります。たとえば <code>T</code> と <code>he</code>（−3,600）は <code>The</code>（−3,200）より安くなります。
+これまでは近道がこの分割を隠していました。Jieba は影響を受けません。</li>
+<li><strong>SudachiDict</strong> でも、同じような範囲で出力が変わることがあります。</li>
+<li><strong>N-best</strong>: 1 件目の結果は 1-best の分割と同じように変わります。2 件目以降には、
+<code>Google</code> を <code>G</code> と <code>oogle</code> に分ける（UniDic）ような結果も現れるようになります。</li>
+</ul>
+<p>同じソースからビルドした辞書で、Lindera の分割と品詞が MeCab と完全に一致する
+行は、このガイドの他の変更に加えてさらに増えます。IPADIC では日本語 600 文のうち
+589 から 596 に、『坊っちゃん』の 505 段落のうち 438 から 459 に、IPADIC-NEologd
+では同じく 590 から 596 に、441 から 459 に、ko-dic では韓国語 1,500 文のうち 877 から
+1,498 に増えました（MeCab には左側空白ペナルティがないため、ko-dic はペナルティを
+無効にして比較）。一致していた行が一致しなくなった例はなく、UniDic はこれらの
+テキストでは変わりません。UD Japanese GSD を UniDic で解析すると 64 文が変わり、
+53 文は正解の分割と品詞に近づき、10 文は離れ（符号検定 p = 3.4 × 10⁻⁸）、1 文は
+同点でした。離れた 10 文はいずれも MeCab と同じ出力で、GSD が <code>・</code> でつないだ名前や
+数字の一部を 1 語としているためです。</p>
+<p>同じ文字種が続く範囲の内側のすべての位置で、MeCab と同じく候補を作るため、
+カタカナや英字の連続が多いテキストでは処理が増えます。この変更を除いた同じ
+リリースと比べると、あわせて入れた高速化を含めて、命令数は UD Japanese GSD
+（Wikipedia の文章）で 13%（N-best では 14〜17%）増え、『坊っちゃん』と韓国語で
+0.8%、Decompose モードで 14〜16% 減ります。区切り文字のないカタカナ 10,240 文字の
+行では、命令数が 1-best で 3〜5 倍、N-best で 3〜15 倍になり、その行に対する
+<code>lindera tokenize -N 3</code> の最大メモリは IPADIC で 12 MiB から 56 MiB に、UniDic で
+18 MiB から 127 MiB に増えます。</p>
+<p>v6 の動作に戻す設定はありません。<code>unknown_word_ladder(false)</code>
+（<code>--disable-unknown-word-ladder</code>）は引き続き短い未知語候補を無効にしますが、
+v6 より前の Lindera の出力は再現しなくなりました。</p>
 <h2 id="lindera_dictionary-の-rust-api-変更"><a class="header" href="#lindera_dictionary-の-rust-api-変更"><code>lindera_dictionary</code> の Rust API 変更</a></h2>
 <p>以下は、ラティスのバックトレースを直接呼び出すコードにのみ影響します。対象は
 <code>lindera_dictionary::viterbi::Lattice</code> と <code>lindera_dictionary::nbest::NBestGenerator</code>
@@ -670,8 +737,9 @@ BOS です。</li>
 テキスト（IPADIC・IPADIC-NEologd・UniDic）や空白を含むテキスト（SudachiDict）に
 のみ影響する空白の見出し語、空白を含むテキストの分割、<code>Ð</code>・<code>々</code>・<code>〇</code> を含む
 テキストにのみ影響する <code>char.def</code> の修正、行の中に <code>、</code> や <code>。</code> を含むテキストに
-のみ影響する <code>、</code>・<code>。</code> をまたぐ文脈の引き継ぎ、そして複数の文を含む入力の N-best に
-のみ影響する N-best の修正です。</li>
+のみ影響する <code>、</code>・<code>。</code> をまたぐ文脈の引き継ぎ、複数の文を含む入力の N-best に
+のみ影響する N-best の修正、そして通常モードでのカタカナ・記号・英字の連続に
+影響する、どの位置からも始まる未知語です。</li>
 <li><strong><code>lindera = "6"</code> のまま使い続けるプロジェクト</strong>: <code>lindera</code> と <code>lindera-analysis</code>
 の 6.x は crates.io に残り、組み合わせて動作し続けます。メジャーバージョンを
 上げるまで何も変わりません。</li>
@@ -732,8 +800,9 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <p>空白を含むテキストを分割するすべてのユーザー:</p>
 <ul>
 <li>そのようなテキストは MeCab と同じ分割になることを前提にする（ko-dic で特に
-顕著）。v6 の出力が必要な場合は <code>skip_whitespace(false)</code>、
-<code>"skip_whitespace": false</code>、<code>--disable-skip-whitespace</code> を指定する。</li>
+顕著）。空白の扱いを v6 に戻したい場合は <code>skip_whitespace(false)</code>、
+<code>"skip_whitespace": false</code>、<code>--disable-skip-whitespace</code> を指定する。このガイドの
+他の出力の変化は戻らない。</li>
 <li>末尾が半角スペースの見出し語（IPADIC-NEologd・ko-dic・SudachiDict）のトークンは、
 MeCab と同じくその空白を含むことを前提にする。</li>
 </ul>
@@ -763,10 +832,20 @@ MeCab と同じくその空白を含むことを前提にする。</li>
 <li>コストの閾値を指定している場合、閾値は文ごとではなく入力全体の合計コストに
 適用される。</li>
 </ul>
+<p>カタカナ・記号・英字が続くテキストを通常モードで解析するユーザー:</p>
+<ul>
+<li>そうした連続が MeCab と同じ位置で分かれることを前提にする。<code>・</code> でつないだ
+カタカナ（IPADIC・IPADIC-NEologd・UniDic）、辞書の記号の直後の未知の記号、
+<code>."</code> のような韓国語の文末の句読点、CC-CEDICT で <code>A</code>・<code>B</code>・<code>P</code>・<code>Q</code>・<code>T</code> で始まる
+英単語と日本語の仮名の連続が該当する。v6 の出力に戻す設定はなく、
+<code>unknown_word_ladder(false)</code> でも v6 より前の Lindera の出力にはならない。</li>
+<li>カタカナや英字の多いテキストで命令数が 13% 程度増え、カタカナの非常に長い連続の
+N-best では時間とメモリが大きく増えることを前提にする。</li>
+</ul>
 <p>言語バインディングと CLI:</p>
 <ul>
-<li>7.0.0 リリースを取り込む以外に対応は不要（上記の辞書・空白・<code>、</code> と <code>。</code>・N-best の
-項目を除く）。</li>
+<li>7.0.0 リリースを取り込む以外に対応は不要（上記の辞書・空白・<code>、</code> と <code>。</code>・N-best・
+未知語の項目を除く）。</li>
 </ul>
 
                     </main>
