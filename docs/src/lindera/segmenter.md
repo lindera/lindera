@@ -159,6 +159,10 @@ A `\n` or a `\t` still ends a segment (see [Sentence Splitting](#sentence-splitt
 
 ## Unknown-Word Grouping
 
+A word that is not in the dictionary is read as an *unknown word*, built from the categories that the dictionary's `char.def` gives its characters (katakana, Latin letters, digits, symbols and so on). At every position that a path through the lattice reaches, Lindera creates unknown-word candidates for each category of the character there if the category is set to always create them (`INVOKE` in `char.def`) or if no dictionary word starts at that position, as MeCab does. For a category set to group (`GROUP`), one candidate is a *grouped unknown word*: the whole run of characters of that category from that position on, such as a run of katakana.
+
+An unknown word can start at any such position, also inside a run that a grouped unknown word from an earlier position covers. IPADIC's `char.def` puts `・` in the katakana range, so in `ジョン・レノンが歌う` the first position has the grouped unknown word `ジョン・レノン`. The dictionary words `ジョン` and `・` reach the position of `レ`, where the unknown word `レノン` starts, and the result is `ジョン`, `・`, `レノン`, `が` and `歌う`, as in MeCab. Before v7, normal mode created no unknown words at the positions inside the last grouped unknown word, a shortcut inherited from Kuromoji, so it returned `ジョン・レノン` as one unknown word; Decompose mode never took this shortcut.
+
 Unknown-word grouping is unbounded by default. `max_grouping_len(Some(n))` caps it with MeCab's `max-grouping-size` semantics, counting characters beyond the first (MeCab defaults to 24):
 
 ```rust
@@ -169,7 +173,7 @@ The cap is applied at each lattice position rather than to a run as a whole. Whe
 
 `Some(0)` never groups a run of two or more characters. The `max_grouping_len` config key and the CLI flag `--max-grouping-len` treat `0` as unbounded instead.
 
-Independently of grouping, Lindera also generates a MeCab/Vibrato-inspired "length ladder" of shorter unknown-word candidates (up to each category's `char.def` `LENGTH` field) by default, so the Viterbi search can pick whichever length scores lowest. Call `unknown_word_ladder(false)` to disable it and match pre-v6 output exactly:
+Independently of grouping, Lindera also generates a MeCab/Vibrato-inspired "length ladder" of shorter unknown-word candidates (up to each category's `char.def` `LENGTH` field) by default, so the Viterbi search can pick whichever length scores lowest. Call `unknown_word_ladder(false)` to disable it: each category then gets only the grouped or the single-character candidate at a position, as before v6. The output still differs from that of Lindera before v6 wherever later changes apply, such as unknown words that start inside a grouped run (see [Migrating from v6 to v7](../migration_v6_to_v7.md#unknown-words-start-at-every-position-as-in-mecab)):
 
 ```rust
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladder(false);
@@ -177,7 +181,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladd
 
 ## Left-Space Penalty (Korean)
 
-MeCab-based Korean analyzers (mecab-ko with mecab-ko-dic, Lucene's nori) add a cost to a candidate that starts right after whitespace when its part-of-speech tag is one that attaches to the preceding word without a space: particles (`J*`), endings (`E*`), the copula (`VCP`) and derivational suffixes (`XS*`). Without it, `검색 이 잘 된다` reads `이` as the subject particle `JKS` rather than the interjection `IC`. Lindera applies the same penalty by default for dictionaries that ship the rules in their metadata (ko-dic does); other dictionaries are unaffected. Opt out with `Segmenter::space_penalty(None)`, `"space_penalty": false` in the config, or `--disable-space-penalty` on the CLI; together with `skip_whitespace(false)` this restores the v6.0 output.
+MeCab-based Korean analyzers (mecab-ko with mecab-ko-dic, Lucene's nori) add a cost to a candidate that starts right after whitespace when its part-of-speech tag is one that attaches to the preceding word without a space: particles (`J*`), endings (`E*`), the copula (`VCP`) and derivational suffixes (`XS*`). Without it, `검색 이 잘 된다` reads `이` as the subject particle `JKS` rather than the interjection `IC`. Lindera applies the same penalty by default for dictionaries that ship the rules in their metadata (ko-dic does); other dictionaries are unaffected. Opt out with `Segmenter::space_penalty(None)`, `"space_penalty": false` in the config, or `--disable-space-penalty` on the CLI. Together with `skip_whitespace(false)`, this turns off both changes since v6.0 in how Korean is read around spaces (this penalty and whitespace skipping), but not the other output changes since then, such as the split of punctuation runs like `."` (see [Migrating from v6 to v7](../migration_v6_to_v7.md#unknown-words-start-at-every-position-as-in-mecab)).
 
 `SpacePenaltyConfig` is a list of rules, each pairing first part-of-speech tags with a cost. A candidate is matched by the part of its tag before the first `+` (for ko-dic `Inflect` rows, the `first_part_of_speech` column); the first matching rule wins and unlisted tags cost nothing. mecab-ko-dic's `dicrc` rules translate to:
 

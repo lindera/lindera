@@ -12,9 +12,10 @@ names swapped, keeps dictionary entries whose surface is whitespace or
 starts or ends with it, skips whitespace in the lattice as MeCab does,
 resolves overlapping `char.def` lines as MeCab does, carries the context
 across `、` and `。` within a line as MeCab does, returns N-best results
-that each cover the whole input, and has the lattice backtraces of
-`lindera-dictionary` return each token's end offset. This guide lists every
-breaking change and the one-line fixes for each.
+that each cover the whole input, lets unknown words start at every position
+as MeCab does, and has the lattice backtraces of `lindera-dictionary` return
+each token's end offset. This guide lists every breaking change and the
+one-line fixes for each.
 
 ## Overview
 
@@ -29,16 +30,17 @@ breaking change and the one-line fixes for each.
 | **`LINDERA_DICTIONARIES_PATH` is removed** | Anyone still setting the deprecated build-cache variable | Set `LINDERA_BUILD_DICTIONARY_CACHE_DIR`; the old name is now ignored |
 | **IPADIC and IPADIC-NEologd: `conjugation_type` and `conjugation_form` now name the right columns** | Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (`Token::get`, `Token::as_value`, `lindera tokenize -o json`, binding schemas) | Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier |
 | **Dictionary entries with whitespace are kept** | Text with U+3000 (IPADIC, IPADIC-NEologd, UniDic), text with spaces (SudachiDict), and a few entries that ended with whitespace | Expect U+3000 to be `記号,空白` / `空白` and SudachiDict to segment spaced text much closer to Sudachi; rebuild or re-download dictionaries made with v6.2.0 or earlier |
-| **Whitespace is skipped in the lattice: the words on either side of a space connect directly, as in MeCab** | Anyone who segments text containing whitespace with `keep_whitespace` false (the default), most visibly with ko-dic | Expect MeCab's segmentation for such text; `skip_whitespace(false)` (`"skip_whitespace": false`, `--disable-skip-whitespace`) restores the v6 segmentation |
+| **Whitespace is skipped in the lattice: the words on either side of a space connect directly, as in MeCab** | Anyone who segments text containing whitespace with `keep_whitespace` false (the default), most visibly with ko-dic | Expect MeCab's segmentation for such text; `skip_whitespace(false)` (`"skip_whitespace": false`, `--disable-skip-whitespace`) restores the v6 handling of whitespace, but not the other output changes in this guide |
 | **Overlapping `char.def` lines: the last line decides** | Text with `Ð` (U+00D0; every dictionary except ko-dic), `々` (U+3005) or `〇` (U+3007); `lindera train` users whose `char.def` has single-code-point or overlapping lines | Expect `Ð` to stay in the output as a letter; rebuild or re-download dictionaries made with v6.2.0 or earlier |
 | **The context is carried across `、` and `。` within a line, as in MeCab** | Anyone who segments Japanese text with `、` or `。` inside a line | Expect some words after `、` or `。` to be read differently, mostly as MeCab reads them, and the N-best costs of such lines to change; no setting restores the v6 behavior |
 | **N-best: every result covers the whole input** | Anyone who asks for N-best results (`segment_nbest`, `tokenize_nbest`, `lindera tokenize -N`, the bindings' N-best methods) for input with more than one sentence | Expect the cheapest segmentations of the whole input from the second result on; a cost threshold now applies to the whole input |
+| **Unknown words start at every position, as in MeCab** | Anyone who segments text with runs of katakana, symbols or Latin letters in normal mode, most visibly katakana joined by `・`, Korean sentence-final punctuation such as `."`, and Latin words with CC-CEDICT | Expect such runs to be split where MeCab splits them, and katakana- and Latin-heavy text to take about 13% more instructions; no setting restores the v6 behavior |
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
 | **`Lattice::tokens_offset_into` returns the BOS index of the best path (`Option<usize>`)** | Rust code that uses the `()` value of `tokens_offset_into` | Nothing for a call written as a statement; otherwise ignore the new value |
 
 The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
 their APIs and package names; only their version number moves to 7.0.0.
-There are six output differences, all described below. With IPADIC or
+There are seven output differences, all described below. With IPADIC or
 IPADIC-NEologd, the values reported under the names `conjugation_type` and
 `conjugation_form` trade places. The dictionaries now contain the entries
 whose surface is or starts or ends with whitespace, which changes the
@@ -47,11 +49,13 @@ whitespace is segmented as MeCab segments it. `Ð`, `々` and `〇` get the
 character categories that MeCab gives them, which changes the segmentation
 of text that contains them. Within a line, the words after `、` and `。`
 are read in the context of the words before them, which changes the
-segmentation of some such text and the N-best costs of every such line. And
-for input with more than one sentence, the N-best results from the second
-one on are the cheapest segmentations of the whole input. Otherwise, for the
-same input and dictionary, v7.0.0 produces the same tokens with the same
-positional details as v6.2.0.
+segmentation of some such text and the N-best costs of every such line. For
+input with more than one sentence, the N-best results from the second one on
+are the cheapest segmentations of the whole input. And in normal mode, an
+unknown word can start inside a run of characters of one kind, as in MeCab,
+which splits some runs of katakana, symbols and Latin letters. Otherwise,
+for the same input and dictionary, v7.0.0 produces the same tokens with the
+same positional details as v6.2.0.
 
 ## The lindera crate is now a facade
 
@@ -386,9 +390,12 @@ entry's token, as in MeCab (see the previous section). Skipping does not
 change the segmentation of text without whitespace. `keep_whitespace(true)`
 keeps whitespace in the lattice and its output is unchanged.
 
-To get the v6 segmentation back, turn skipping off; whitespace is still
-dropped from the output. Leaving `skip_whitespace` out of the configuration,
-or setting it to `null`, keeps the dictionary's default:
+To get the v6 handling of whitespace back, turn skipping off; whitespace is
+still dropped from the output. This does not undo the other output changes in
+this guide, such as
+[Unknown words start at every position, as in MeCab](#unknown-words-start-at-every-position-as-in-mecab).
+Leaving `skip_whitespace` out of the configuration, or setting it to `null`,
+keeps the dictionary's default:
 
 ```rust
 // Segmenter
@@ -527,6 +534,81 @@ kept when its total cost is within the threshold of the first result's. v6
 applied the threshold to each sentence separately. With `unique`, the
 results still have distinct word boundaries.
 
+## Unknown words start at every position, as in MeCab
+
+A word that is not in the dictionary is read as an unknown word, built from
+the character categories of the dictionary's `char.def` (katakana, Latin
+letters, digits, symbols and so on). Most categories are set to group: a
+run of characters of one category, such as a run of katakana, becomes one
+candidate, a *grouped unknown word*. Up to v6, normal mode created no unknown
+words at the positions inside the last grouped unknown word, a shortcut
+inherited from Kuromoji that MeCab does not have. After a dictionary word
+that ends inside such a run, no unknown word could continue the path, so the
+grouped unknown word that swallowed the dictionary word was often the only
+way through. v7.0.0 creates unknown-word candidates at every position that a
+path reaches, in every mode, under MeCab's condition: the category is set to
+always create them (`INVOKE` in `char.def`), or no dictionary word starts at
+that position. Decompose mode already did this, and its output does not
+change.
+
+| Input (dictionary) | v6 | v7 (as MeCab) |
+| --- | --- | --- |
+| `それが「⁂⁂第一だ` (IPADIC) | `「⁂⁂`, one unknown noun that swallows the dictionary symbol `「` | `「` (`記号,括弧開`) and `⁂⁂` |
+| `ジョン・レノンが歌う` (IPADIC) | `ジョン・レノン`, one unknown noun | `ジョン`, `・` and `レノン` |
+| `ホテル・コルテシアに泊まる` (UniDic) | `ホテル・コルテシア`, one unknown noun | `ホテル`, `・` and `コルテシア` |
+| `"좋아."` (ko-dic) | `아` (`EC`) and `."` (`SY`) | `아` (`EF`), `.` (`SF`) and `"` (`SY`) |
+| `The` (CC-CEDICT) | `The` | `T` and `he` |
+
+- **Japanese**: IPADIC, IPADIC-NEologd and UniDic put `・` in the katakana
+  range of their `char.def`. After a dictionary word and `・`, an unknown
+  katakana word could not start, so `ジョン・レノン` became one unknown word.
+  Now the unknown word starts after them, as in MeCab. A run that starts
+  with an unknown word, such as `レノン・ジョン`, stays one unknown word, in
+  MeCab too. In the same way, a dictionary symbol is no longer merged into
+  the unknown symbols after it.
+- **Korean**: a sentence-final `."`, `?"`, `!"` or `.'` was one symbol
+  (`SY`). Now `.`, `?` and `!` are sentence-final punctuation (`SF`), as in
+  MeCab, and the ending before them can change with it, as in `"좋아."`.
+- **Chinese**: with CC-CEDICT, a Latin word that starts with `A`, `B`, `P`,
+  `Q` or `T` is split after that letter (`The` gives `T` and `he`, `TBS`
+  gives `T`, `B` and `S`), and a run of Japanese kana is split into single
+  characters, as MeCab splits them with the same dictionary. The splits
+  come from the dictionary: every unknown word costs −3,200 whatever its
+  length, the connection matrix has a single cell with no cost, and these
+  letters are entries that cost −400, so a path with more words costs less:
+  `T` and `he` (−3,600) beat `The` (−3,200). The shortcut hid this before.
+  Jieba is not affected.
+- **SudachiDict** output can change in the same kinds of runs.
+- **N-best**: the first result changes as the 1-best segmentation does, and
+  the other results can now include splits such as `G` and `oogle` for
+  `Google` (UniDic).
+
+With dictionaries built from the same sources, the number of lines that
+Lindera segments and tags exactly as MeCab does rises, on top of the other
+changes in this guide, from 589 to 596 of 600 Japanese sentences and from
+438 to 459 of 505 paragraphs of *Botchan* with IPADIC, from 590 to 596 and
+from 441 to 459 with IPADIC-NEologd, and from 877 to 1,498 of 1,500 Korean
+sentences with ko-dic (with the left-space penalty off, as MeCab has none).
+No line that matched before stops matching, and UniDic is unchanged on these
+texts. On UD Japanese GSD with UniDic, 64 sentences change: 53 come closer
+to the gold segmentation and part-of-speech tags, 10 move away (sign test
+p = 3.4 × 10⁻⁸), and 1 is a tie. The 10 all match MeCab's output; GSD keeps
+some names joined by `・` and some numbers as one word.
+
+Text with many runs of katakana or Latin letters costs more, because every
+position inside a run now gets candidates, as in MeCab. Against the same
+release without this change, counting the speedups made with it, the
+instruction count rises by 13% on UD Japanese GSD (Wikipedia text; 14% to
+17% for N-best), and falls by 0.8% on *Botchan* and on Korean and by 14% to
+16% in Decompose mode. A line of 10,240 katakana without a delimiter costs
+3 to 5 times as much in 1-best and 3 to 15 times in N-best, and the peak
+memory of `lindera tokenize -N 3` on it grows from 12 to 56 MiB with IPADIC
+and from 18 to 127 MiB with UniDic.
+
+There is no setting to restore the v6 behavior. `unknown_word_ladder(false)`
+(`--disable-unknown-word-ladder`) still turns off the shorter unknown-word
+candidates, but no longer reproduces the output of Lindera before v6.
+
 ## Rust API changes in `lindera_dictionary`
 
 These affect only code that calls the lattice backtraces directly:
@@ -616,8 +698,10 @@ several, it does not say which one a path starts from. Use
   segmentation of text that contains whitespace, the `char.def` fix, which
   matters only for text with `Ð`, `々` or `〇`, the context carried across
   `、` and `。`, which matters only for text with `、` or `。` inside a line,
-  and the N-best fix, which matters only for N-best results for input with
-  more than one sentence.
+  the N-best fix, which matters only for N-best results for input with
+  more than one sentence, and the unknown words that start at every
+  position, which matter for runs of katakana, symbols or Latin letters in
+  normal mode.
 - **Projects staying on `lindera = "6"`**: the 6.x releases of `lindera` and
   `lindera-analysis` remain on crates.io and keep working together. Nothing
   changes until you bump the major version.
@@ -685,8 +769,9 @@ contains U+3000 or spaces:
 Everyone who segments text that contains whitespace:
 
 - Expect MeCab's segmentation for such text (most visible with ko-dic). If
-  you need the v6 output, set `skip_whitespace(false)`,
-  `"skip_whitespace": false`, or `--disable-skip-whitespace`.
+  you need the v6 handling of whitespace, set `skip_whitespace(false)`,
+  `"skip_whitespace": false`, or `--disable-skip-whitespace`; the other
+  output changes in this guide still apply.
 - Expect the token of a dictionary entry that ends with a space (in
   IPADIC-NEologd, ko-dic and SudachiDict) to include that space, as in
   MeCab.
@@ -719,7 +804,21 @@ Users of N-best results:
 - If you set a cost threshold, it now applies to the total cost of the
   whole input, not to each sentence.
 
+Users of normal mode with text that has runs of katakana, symbols or Latin
+letters:
+
+- Expect such runs to be split where MeCab splits them: katakana joined by
+  `・` (IPADIC, IPADIC-NEologd, UniDic), unknown symbols right after a
+  dictionary symbol, Korean sentence-final punctuation such as `."`, and,
+  with CC-CEDICT, Latin words that start with `A`, `B`, `P`, `Q` or `T`
+  and runs of Japanese kana. No setting restores the v6 output, and
+  `unknown_word_ladder(false)` no longer gives the output of Lindera before
+  v6.
+- Expect katakana- and Latin-heavy text to take about 13% more
+  instructions, and very long katakana runs in N-best to take much more
+  time and memory.
+
 Language bindings and CLI:
 
 - Nothing to do beyond taking the 7.0.0 release, apart from the dictionary,
-  whitespace, `、` and `。`, and N-best items above.
+  whitespace, `、` and `。`, N-best and unknown-word items above.
