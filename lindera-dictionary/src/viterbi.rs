@@ -244,7 +244,7 @@ const EDGE_FLAG_KANJI_ONLY: u8 = 0b100;
 /// (0 = System, 1 = User, 2 = Unknown).
 const EDGE_LEX_TYPE_MASK: u8 = 0b011;
 
-/// A lattice edge in the packed runtime representation (#943): 20 bytes,
+/// A lattice edge in the packed runtime representation (#943): 24 bytes,
 /// deliberately decoupled from the on-disk `WordEntry`/`WordId` types so
 /// shrinking it never touches the dictionary format. Positions are stored
 /// in characters. The edge's stop position is not stored: it is the index
@@ -258,8 +258,10 @@ pub struct Edge {
     /// Best forward path cost reaching this edge.
     path_cost: i32,
     /// Index of the chosen left edge in the start slot's vector
-    /// (`u16::MAX` = no predecessor, i.e. BOS).
-    left_index: u16,
+    /// (`u32::MAX` = no predecessor, i.e. BOS). A `u32`, as one slot can
+    /// hold more than `u16::MAX` edges: the grouped unknown words starting
+    /// at the positions of a long run all end at the run's end (#1105).
+    left_index: u32,
     /// Left context id (read at insertion time).
     left_id: u16,
     /// Right context id (read by every relaxation scan).
@@ -282,10 +284,10 @@ pub struct Edge {
 }
 
 /// Every lattice slot holds a vector of `Edge`s, so its size is a throughput
-/// concern: `ws_tail` fills the byte of padding the other fields left.
-/// Asserted so that a future field cannot silently grow every edge to 24
-/// bytes.
-const _: () = assert!(size_of::<Edge>() == 20);
+/// concern: the fields take 22 bytes, which the 4-byte alignment pads to 24,
+/// so 2 bytes of padding remain for a future field. Asserted so that a
+/// future field cannot silently grow every edge to 28 bytes.
+const _: () = assert!(size_of::<Edge>() == 24);
 
 /// Mirrors the previous derived `Default` semantics: a BOS/EOS sentinel
 /// carrying the out-of-lexicon word id, System lexicon type, zero costs.
@@ -393,7 +395,7 @@ impl Edge {
 
     /// Returns the index of the chosen left edge in the previous position.
     #[inline]
-    pub(crate) fn left_index(&self) -> u16 {
+    pub(crate) fn left_index(&self) -> u32 {
         self.left_index
     }
 
@@ -426,16 +428,19 @@ impl Edge {
 /// (not just the best one as in 1-best).
 #[derive(Clone, Debug)]
 pub struct PathEntry {
-    /// Index of this edge in ends_at[stop_char]
-    edge_index: u16,
+    /// Index of this edge in ends_at[stop_char]; a `u32` like
+    /// `Edge::left_index`, as a slot can hold more than `u16::MAX` edges
+    /// (#1105).
+    edge_index: u32,
     /// The slot holding the left edge (= this edge's start_char), which is
     /// where the left edge ends unless it was carried over skipped
     /// whitespace. Kept as u32: narrowing would not shrink the struct
-    /// (alignment pads it back to 12 bytes) and would only add an
+    /// (alignment pads it back to 16 bytes) and would only add an
     /// overflow surface.
     left_pos: u32,
-    /// Index of the left edge in ends_at[left_pos]
-    left_index: u16,
+    /// Index of the left edge in ends_at[left_pos] (`u32`, see
+    /// `edge_index`).
+    left_index: u32,
     /// Total forward cost: left_edge.path_cost + conn_cost + penalty_cost
     cost: i32,
 }
@@ -443,7 +448,7 @@ pub struct PathEntry {
 impl PathEntry {
     /// Returns the index of this edge in `ends_at[stop_char]`.
     #[inline]
-    pub(crate) fn edge_index(&self) -> u16 {
+    pub(crate) fn edge_index(&self) -> u32 {
         self.edge_index
     }
 
@@ -455,7 +460,7 @@ impl PathEntry {
 
     /// Returns the index of the left edge in `ends_at[left_pos]`.
     #[inline]
-    pub(crate) fn left_index(&self) -> u16 {
+    pub(crate) fn left_index(&self) -> u32 {
         self.left_index
     }
 
@@ -593,7 +598,7 @@ pub struct LatticeExit {
     /// Index in `ends_at[n_chars]` of the last edge of the path: the
     /// cheapest final edge with this right id, the first one on ties (as
     /// the EOS connection chooses).
-    edge: u16,
+    edge: u32,
 }
 
 impl LatticeExit {
@@ -807,7 +812,7 @@ impl Lattice {
         Edge {
             word_id: word_id.id(),
             path_cost: i32::MAX,
-            left_index: u16::MAX,
+            left_index: u32::MAX,
             left_id: word_entry.left_id,
             right_id: word_entry.right_id,
             word_cost: word_entry.word_cost,
@@ -966,7 +971,7 @@ impl Lattice {
     /// single BOS edge (right context id 0, cost 0) when `bos` is empty,
     /// otherwise one edge per context, in order (see
     /// [`LatticeOptions::bos`]). Every BOS edge has no predecessor
-    /// (`left_index == u16::MAX`), which is how the backtraces recognize
+    /// (`left_index == u32::MAX`), which is how the backtraces recognize
     /// it.
     ///
     /// Nothing else ends at position 0, and a carry-over of leading skipped
@@ -983,13 +988,18 @@ impl Lattice {
         if bos.is_empty() {
             self.ends_at[0].push(Edge {
                 path_cost: 0,
-                left_index: u16::MAX,
+                left_index: u32::MAX,
                 ..Default::default()
             });
             return;
         }
-        // An edge refers to its left edge by a u16 index, u16::MAX meaning
-        // none.
+        // The documented limit of `LatticeOptions::bos`. The index width no
+        // longer needs it: an edge refers to its left edge, a BOS edge
+        // included, by a u32 index, u32::MAX meaning none (#1105). It stays
+        // so that the contract does not change. A segmenter passes one
+        // context per distinct right id among the previous sentence's final
+        // edges, so a dictionary with fewer than u16::MAX right ids cannot
+        // reach it.
         assert!(
             bos.len() < u16::MAX as usize,
             "set_text: {} BOS contexts, exceeding the u16::MAX-1 limit",
@@ -997,7 +1007,7 @@ impl Lattice {
         );
         self.ends_at[0].extend(bos.iter().map(|context| Edge {
             path_cost: context.cost.clamp(0, PATH_COST_CLAMP),
-            left_index: u16::MAX,
+            left_index: u32::MAX,
             right_id: context.right_id,
             ..Default::default()
         }));
@@ -1549,7 +1559,7 @@ impl Lattice {
                 };
                 if path_cost < best_cost {
                     best_cost = path_cost;
-                    best_left = Some(i as u16);
+                    best_left = Some(i as u32);
                 }
             }
             if let Some(left_idx) = best_left {
@@ -1679,7 +1689,7 @@ impl Lattice {
                 }
             }
             if nbest {
-                let offset = target.len() as u16;
+                let offset = target.len() as u32;
                 let (paths_before, paths_after) = self.all_paths.split_at_mut(char_idx);
                 paths_after[0].extend(paths_before[slot].drain(..).map(|mut path| {
                     path.edge_index += offset;
@@ -1968,7 +1978,7 @@ impl Lattice {
         right_left_id: u32,
         penalty: &Penalty,
         cost_matrix: &ConnectionCostMatrix,
-    ) -> (i32, Option<u16>) {
+    ) -> (i32, Option<u32>) {
         // Penalties depend only on the left edges, and
         // ends_at[start_char] is immutable while the main loop processes
         // this start position (every insertion targets a later slot), so
@@ -2002,7 +2012,7 @@ impl Lattice {
 
             if total_cost < best_cost {
                 best_cost = total_cost;
-                best_left = Some(i as u16);
+                best_left = Some(i as u32);
             }
         }
         self.penalty_cache = cache;
@@ -2034,12 +2044,12 @@ impl Lattice {
         &mut self,
         start_char: usize,
         stop_char: usize,
-        new_edge_index: u16,
+        new_edge_index: u32,
         right_left_id: u32,
         penalty: &Penalty,
         cost_matrix: &ConnectionCostMatrix,
         extra_cost: i32,
-    ) -> (i32, Option<u16>) {
+    ) -> (i32, Option<u32>) {
         // Same per-position penalty cache and hoisted row as
         // relax_decompose (#944).
         let mut cache = std::mem::take(&mut self.penalty_cache);
@@ -2067,13 +2077,13 @@ impl Lattice {
             self.all_paths[stop_char].push(PathEntry {
                 edge_index: new_edge_index,
                 left_pos: start_char as u32,
-                left_index: i as u16,
+                left_index: i as u32,
                 cost: total_cost,
             });
 
             if total_cost < best_cost {
                 best_cost = total_cost;
-                best_left = Some(i as u16);
+                best_left = Some(i as u32);
             }
         }
         self.penalty_cache = cache;
@@ -2124,7 +2134,7 @@ impl Lattice {
 
                     if total_cost < best_cost {
                         best_cost = total_cost;
-                        best_left = Some(i as u16);
+                        best_left = Some(i as u32);
                     }
                 }
             }
@@ -2193,7 +2203,7 @@ impl Lattice {
         }
 
         let edge = self.ends_at[last_idx].last()?;
-        if edge.left_index == u16::MAX {
+        if edge.left_index == u32::MAX {
             return None;
         }
         // The EOS edge is the only edge whose start is the slot holding it.
@@ -2234,7 +2244,7 @@ impl Lattice {
         );
         loop {
             let edge = &self.ends_at[slot][index];
-            if edge.left_index == u16::MAX {
+            if edge.left_index == u32::MAX {
                 break;
             }
             let start_char = edge.start_char as usize;
@@ -2304,13 +2314,13 @@ impl Lattice {
                 Some(exit) => {
                     if cost < exit.cost {
                         exit.cost = cost;
-                        exit.edge = i as u16;
+                        exit.edge = i as u32;
                     }
                 }
                 None => out.push(LatticeExit {
                     right_id: edge.right_id,
                     cost,
-                    edge: i as u16,
+                    edge: i as u32,
                 }),
             }
         }
@@ -2428,7 +2438,7 @@ impl Lattice {
         let mut best_left = None;
 
         // The edge_index of the new edge being added
-        let new_edge_index = self.ends_at[stop_char].len() as u16;
+        let new_edge_index = self.ends_at[stop_char].len() as u32;
 
         match mode {
             Mode::Normal => {
@@ -2444,13 +2454,13 @@ impl Lattice {
                     self.all_paths[stop_char].push(PathEntry {
                         edge_index: new_edge_index,
                         left_pos: start_char as u32,
-                        left_index: i as u16,
+                        left_index: i as u32,
                         cost: total_cost,
                     });
 
                     if total_cost < best_cost {
                         best_cost = total_cost;
-                        best_left = Some(i as u16);
+                        best_left = Some(i as u32);
                     }
                 }
             }
@@ -2817,7 +2827,7 @@ impl Lattice {
         }
         if !self.ends_at[n_chars].is_empty() {
             let content_end = self.content_end(n_chars);
-            let eos_edge_index = self.ends_at[n_chars].len() as u16;
+            let eos_edge_index = self.ends_at[n_chars].len() as u32;
             let mut eos_edge = Edge {
                 start_char: n_chars as u16,
                 ..Default::default()
@@ -2845,13 +2855,13 @@ impl Lattice {
                 self.all_paths[n_chars].push(PathEntry {
                     edge_index: eos_edge_index,
                     left_pos: n_chars as u32,
-                    left_index: i as u16,
+                    left_index: i as u32,
                     cost: path_cost,
                 });
 
                 if path_cost < best_cost {
                     best_cost = path_cost;
-                    best_left = Some(i as u16);
+                    best_left = Some(i as u32);
                 }
             }
             if let Some(left_idx) = best_left {
@@ -2963,7 +2973,7 @@ mod tests {
     /// Builds an edge whose backtrace fields are set explicitly, for
     /// hand-assembled lattices in tests. The edge's stop position is the
     /// `ends_at` slot the test pushes it into.
-    fn test_edge(word_id: u32, start_char: usize, left_index: u16) -> Edge {
+    fn test_edge(word_id: u32, start_char: usize, left_index: u32) -> Edge {
         let mut edge = Lattice::create_edge(
             WordEntry::new(WordId::new(LexType::System, word_id), 0, 0, 0),
             start_char,
@@ -3069,6 +3079,86 @@ mod tests {
         }
     }
 
+    /// #1105: a slot can hold more than `u16::MAX` edges. In Decompose
+    /// mode every position of a run adds its grouped unknown words to the
+    /// slot at the run's end, and a dictionary word per character makes
+    /// every position reachable. The cheapest path is one dictionary word
+    /// per character, whose last edge is pushed into the final slot after
+    /// about 5 * 14,000 grouped candidates. The edges refer to their left
+    /// edges by `u32` indices, so the 1-best and the N-best backtraces
+    /// still find that path; with `u16` indices the index was silently
+    /// truncated and they followed another edge.
+    #[test]
+    fn test_slot_with_more_than_u16_max_edges() {
+        // DEFAULT = 0, X = 1 (`x`), which invokes and groups, with five
+        // unknown-word entries.
+        let mapping = LookupTable::from_fn(vec![0, 0x78, 0x79], &|c, buf: &mut Vec<CategoryId>| {
+            buf.push(CategoryId(usize::from(c == 0x78)))
+        });
+        let category = |invoke| CategoryData {
+            invoke,
+            group: true,
+            length: 0,
+        };
+        let char_definition = CharacterDefinition::new(
+            vec![category(false), category(true)],
+            vec!["DEFAULT".into(), "X".into()],
+            mapping,
+        );
+        let unknown = |id| WordEntry::new(WordId::new(LexType::Unknown, id), 1000, 0, 0);
+        let unknown_dictionary = UnknownDictionary {
+            category_references: vec![vec![0], (1..6).collect()],
+            costs: (0..6).map(unknown).collect(),
+            words_idx_data: Vec::new(),
+            words_data: Vec::new(),
+        };
+        let mut map = BTreeMap::new();
+        map.insert(
+            "x".to_string(),
+            vec![WordEntry::new(WordId::new(LexType::System, 0), -10, 0, 0)],
+        );
+        let dict = PrefixDictionary::from_word_entry_map(&map).unwrap();
+        let cost_matrix = ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0, 0]).unwrap();
+
+        let n = 14_000;
+        let text = "x".repeat(n);
+        let expected: Vec<TokenOffset> = (0..n)
+            .map(|i| (i, i + 1, WordId::new(LexType::System, 0)))
+            .collect();
+        // Decompose mode only: Normal mode skips the unknown words at the
+        // positions inside a grouped run, so its final slot stays small.
+        let mode = Mode::Decompose(Penalty::default());
+        let options = LatticeOptions::new(&mode);
+        let mut lattice = Lattice::default();
+
+        lattice.set_text_with_options(
+            &dict,
+            &None,
+            &char_definition,
+            &unknown_dictionary,
+            &cost_matrix,
+            &text,
+            &options,
+        );
+        assert!(lattice.edges_at_char(n).len() > u16::MAX as usize);
+        assert_eq!(lattice.tokens_offset(), expected);
+
+        lattice.set_text_nbest_with_options(
+            &dict,
+            &None,
+            &char_definition,
+            &unknown_dictionary,
+            &cost_matrix,
+            &text,
+            &options,
+        );
+        assert!(lattice.edges_at_char(n).len() > u16::MAX as usize);
+        assert_eq!(
+            lattice.nbest_tokens_offset(1, false, None),
+            vec![(expected, -10 * n as i64)]
+        );
+    }
+
     #[test]
     fn test_word_entry() {
         let mut buffer = Vec::new();
@@ -3124,7 +3214,7 @@ mod tests {
 
         // Long sentence: capacity grows to 101 slots, writes up to index 100.
         lattice.set_capacity(100);
-        lattice.ends_at[0].push(test_edge(1, 0, u16::MAX));
+        lattice.ends_at[0].push(test_edge(1, 0, u32::MAX));
         lattice.ends_at[57].push(test_edge(2, 0, 0));
         lattice.ends_at[100].push(test_edge(3, 57, 0)); // boundary slot
 
@@ -3160,7 +3250,7 @@ mod tests {
         // BOS(ends_at[0]) <- token A (0..3) <- EOS(ends_at[3]).
         lattice.set_capacity(3);
         seed_identity_chars(&mut lattice, 3);
-        lattice.ends_at[0].push(test_edge(0, 0, u16::MAX)); // BOS
+        lattice.ends_at[0].push(test_edge(0, 0, u32::MAX)); // BOS
         lattice.ends_at[3].push(test_edge(42, 0, 0)); // token A
         lattice.ends_at[3].push(test_edge(0, 3, 0)); // EOS -> token A
 
@@ -3178,7 +3268,7 @@ mod tests {
         let mut lattice = Lattice::default();
 
         lattice.set_capacity(100);
-        lattice.ends_at[0].push(test_edge(1, 0, u16::MAX));
+        lattice.ends_at[0].push(test_edge(1, 0, u32::MAX));
         lattice.ends_at[100].push(test_edge(2, 0, 0));
 
         lattice.shrink_to(10);
@@ -3240,7 +3330,7 @@ mod tests {
     fn test_backtrace_works_after_shrink_to() {
         let mut lattice = Lattice::default();
         lattice.set_capacity(100);
-        lattice.ends_at[0].push(test_edge(1, 0, u16::MAX));
+        lattice.ends_at[0].push(test_edge(1, 0, u32::MAX));
         lattice.ends_at[100].push(test_edge(2, 0, 0));
 
         lattice.shrink_to(10);
@@ -3248,7 +3338,7 @@ mod tests {
         // Hand-assemble a 3-char sentence path, as in the #877 tests.
         lattice.set_capacity(3);
         seed_identity_chars(&mut lattice, 3);
-        lattice.ends_at[0].push(test_edge(0, 0, u16::MAX)); // BOS
+        lattice.ends_at[0].push(test_edge(0, 0, u32::MAX)); // BOS
         lattice.ends_at[3].push(test_edge(42, 0, 0)); // token A
         lattice.ends_at[3].push(test_edge(0, 3, 0)); // EOS -> token A
 
@@ -3286,7 +3376,7 @@ mod tests {
         let mut lattice = Lattice::default();
         lattice.set_capacity(3);
         seed_identity_chars(&mut lattice, 3);
-        lattice.ends_at[0].push(test_edge(0, 0, u16::MAX)); // BOS
+        lattice.ends_at[0].push(test_edge(0, 0, u32::MAX)); // BOS
         lattice.ends_at[3].push(test_edge(7, 0, 0)); // token A
         lattice.ends_at[3].push(test_edge(0, 3, 0)); // EOS -> token A
 
@@ -3309,7 +3399,7 @@ mod tests {
         let mut lattice = Lattice::default();
         lattice.set_capacity_nbest(1);
         seed_identity_chars(&mut lattice, 1);
-        lattice.ends_at[0].push(test_edge(0, 0, u16::MAX)); // BOS
+        lattice.ends_at[0].push(test_edge(0, 0, u32::MAX)); // BOS
         let mut word_a = test_edge(1, 0, 0);
         word_a.path_cost = a;
         let mut word_b = test_edge(2, 0, 0);
@@ -4220,8 +4310,8 @@ mod tests {
     fn lattice_snapshot(
         lattice: &Lattice,
     ) -> (
-        Vec<Vec<(u32, i32, u16, u16, u16, i16, u16, u8, u8)>>,
-        Vec<Vec<(u16, u32, u16, i32)>>,
+        Vec<Vec<(u32, i32, u32, u16, u16, i16, u16, u8, u8)>>,
+        Vec<Vec<(u32, u32, u32, i32)>>,
         usize,
         Vec<i32>,
     ) {
@@ -4484,10 +4574,10 @@ mod tests {
                 assert_eq!(
                     carried,
                     vec![
-                        (u16::MAX, 0, 0, 0),
-                        (u16::MAX, 1, 50, 0),
-                        (u16::MAX, 2, 10, 0),
-                        (u16::MAX, 3, 300, 0),
+                        (u32::MAX, 0, 0, 0),
+                        (u32::MAX, 1, 50, 0),
+                        (u32::MAX, 2, 10, 0),
+                        (u32::MAX, 3, 300, 0),
                     ]
                 );
                 let brute = brute_paths(text, &bos_list, &mode);
