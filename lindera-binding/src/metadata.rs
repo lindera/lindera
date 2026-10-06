@@ -2,7 +2,7 @@
 //!
 //! The Python/PHP/Ruby/Node.js `Metadata` wrappers each hard-coded the same
 //! default values (name `"default"`, encoding `"UTF-8"`, word cost `-10000`,
-//! context ids `1288`, field value `"*"`, three `false` flags) and the same
+//! context ids `1288`, field value `"*"`, two `false` flags) and the same
 //! default user-dictionary schema (`surface`/`reading`/`pronunciation`). This
 //! module collects that into a single [`CoreMetadata`] the bindings can wrap.
 
@@ -61,8 +61,6 @@ pub struct CoreMetadata {
     pub flexible_csv: bool,
     /// Whether entries with invalid cost or id are skipped.
     pub skip_invalid_cost_or_id: bool,
-    /// Whether morphological details are normalized.
-    pub normalize_details: bool,
     /// Schema for the main dictionary.
     pub dictionary_schema: CoreSchema,
     /// Schema for the user dictionary.
@@ -77,6 +75,23 @@ pub struct CoreMetadata {
 
 impl CoreMetadata {
     /// Creates metadata, falling back to the binding defaults for any `None`.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - Dictionary name (default: `"default"`).
+    /// * `encoding` - Character encoding (default: `"UTF-8"`).
+    /// * `default_word_cost` - Word cost for simple user-dictionary entries (default: `-10000`).
+    /// * `default_left_context_id` - Left context id for simple user-dictionary entries (default: `1288`).
+    /// * `default_right_context_id` - Right context id for simple user-dictionary entries (default: `1288`).
+    /// * `default_field_value` - Value substituted for missing fields (default: `"*"`).
+    /// * `flexible_csv` - Whether CSV columns are handled flexibly (default: `false`).
+    /// * `skip_invalid_cost_or_id` - Whether entries with invalid cost or id are skipped (default: `false`).
+    /// * `dictionary_schema` - Schema for the main dictionary (default: [`CoreSchema::create_default`]).
+    /// * `user_dictionary_schema` - Schema for the user dictionary (default: `surface`/`reading`/`pronunciation`).
+    ///
+    /// # Returns
+    ///
+    /// The new `CoreMetadata`, with no `space_penalty` and no `skip_whitespace` setting.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: Option<String>,
@@ -87,7 +102,6 @@ impl CoreMetadata {
         default_field_value: Option<String>,
         flexible_csv: Option<bool>,
         skip_invalid_cost_or_id: Option<bool>,
-        normalize_details: Option<bool>,
         dictionary_schema: Option<CoreSchema>,
         user_dictionary_schema: Option<CoreSchema>,
     ) -> Self {
@@ -101,7 +115,6 @@ impl CoreMetadata {
                 .unwrap_or_else(|| DEFAULT_FIELD_VALUE.to_string()),
             flexible_csv: flexible_csv.unwrap_or(false),
             skip_invalid_cost_or_id: skip_invalid_cost_or_id.unwrap_or(false),
-            normalize_details: normalize_details.unwrap_or(false),
             dictionary_schema: dictionary_schema.unwrap_or_else(CoreSchema::create_default),
             user_dictionary_schema: user_dictionary_schema
                 .unwrap_or_else(default_user_dictionary_schema),
@@ -112,9 +125,7 @@ impl CoreMetadata {
 
     /// Creates metadata with all binding defaults.
     pub fn create_default() -> Self {
-        Self::new(
-            None, None, None, None, None, None, None, None, None, None, None,
-        )
+        Self::new(None, None, None, None, None, None, None, None, None, None)
     }
 }
 
@@ -154,7 +165,6 @@ impl From<Metadata> for CoreMetadata {
             default_field_value: metadata.default_field_value,
             flexible_csv: metadata.flexible_csv,
             skip_invalid_cost_or_id: metadata.skip_invalid_cost_or_id,
-            normalize_details: metadata.normalize_details,
             dictionary_schema: metadata.dictionary_schema.into(),
             user_dictionary_schema: metadata.user_dictionary_schema.into(),
             space_penalty: metadata.space_penalty,
@@ -178,7 +188,6 @@ impl From<CoreMetadata> for Metadata {
             metadata.default_field_value,
             metadata.flexible_csv,
             metadata.skip_invalid_cost_or_id,
-            metadata.normalize_details,
             metadata.dictionary_schema.into(),
             metadata.user_dictionary_schema.into(),
         );
@@ -203,7 +212,6 @@ mod tests {
         assert_eq!(m.default_field_value, "*");
         assert!(!m.flexible_csv);
         assert!(!m.skip_invalid_cost_or_id);
-        assert!(!m.normalize_details);
         // The default dictionary schema uses the unified `pos_detail_*` names.
         assert_eq!(m.dictionary_schema.field_count(), 13);
         assert_eq!(m.dictionary_schema.fields()[5], "pos_detail_1");
@@ -222,7 +230,6 @@ mod tests {
             Some("N/A".to_string()),
             Some(true),
             Some(true),
-            Some(true),
             None,
             None,
         );
@@ -232,7 +239,7 @@ mod tests {
         assert_eq!(m.default_left_context_id, 100);
         assert_eq!(m.default_right_context_id, 200);
         assert_eq!(m.default_field_value, "N/A");
-        assert!(m.flexible_csv && m.skip_invalid_cost_or_id && m.normalize_details);
+        assert!(m.flexible_csv && m.skip_invalid_cost_or_id);
     }
 
     #[test]

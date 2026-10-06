@@ -106,15 +106,6 @@ pub struct Metadata {
     pub default_field_value: String,   // Default value for fields in simple user dictionary
     pub flexible_csv: bool,            // Handle CSV columns flexibly
     pub skip_invalid_cost_or_id: bool, // Skip invalid cost or ID
-    /// Has no effect since 7.0.0: the builder keeps surfaces and detail
-    /// fields as written in the CSV, as MeCab does (#1106). Before 7.0.0,
-    /// `true` rewrote U+2015 (HORIZONTAL BAR) to U+2014 (EM DASH) and U+FF5E
-    /// (FULLWIDTH TILDE) to U+301C (WAVE DASH) in both, while the input text
-    /// was left as it was. The field is still read and written so that
-    /// existing `metadata.json` files and binding constructors keep working;
-    /// when absent, it reads as `false`.
-    #[serde(default)]
-    pub normalize_details: bool,
     /// Reorder connection-cost context IDs by frequency at build time so that
     /// frequently-used connection-matrix cells cluster in cache. Optional and
     /// defaults to `false`; when `false` the field is omitted from `metadata.json`
@@ -170,7 +161,6 @@ impl Default for Metadata {
             DEFAULT_FIELD_VALUE.to_string(),
             false,
             false,
-            false,
             Schema::default(),
             Schema::new(vec![
                 "surface".to_string(),
@@ -182,6 +172,27 @@ impl Default for Metadata {
 }
 
 impl Metadata {
+    /// Creates metadata for a dictionary in the current on-disk format, with
+    /// every optional setting (`connection_id_mapping`, `context_id_map`,
+    /// `model_info`, `space_penalty`, `skip_whitespace`) left unset.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - Name of the dictionary.
+    /// * `encoding` - Character encoding of the source CSV files.
+    /// * `simple_word_cost` - Word cost for simple user dictionary entries.
+    /// * `default_left_context_id` - Left context ID for simple user dictionary entries.
+    /// * `default_right_context_id` - Right context ID for simple user dictionary entries.
+    /// * `default_field_value` - Value for fields a simple user dictionary entry lacks.
+    /// * `flexible_csv` - Whether CSV rows may have a varying number of columns.
+    /// * `skip_invalid_cost_or_id` - Whether rows with an invalid cost or context ID are skipped.
+    /// * `schema` - Schema of the system dictionary.
+    /// * `userdic_schema` - Schema of the user dictionary.
+    ///
+    /// # Returns
+    ///
+    /// The new `Metadata`, with `format_version` set to
+    /// [`DICTIONARY_FORMAT_VERSION`].
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: String,
@@ -192,7 +203,6 @@ impl Metadata {
         default_field_value: String,
         flexible_csv: bool,
         skip_invalid_cost_or_id: bool,
-        normalize_details: bool,
         schema: Schema,
         userdic_schema: Schema,
     ) -> Self {
@@ -207,7 +217,6 @@ impl Metadata {
             name,
             flexible_csv,
             skip_invalid_cost_or_id,
-            normalize_details,
             connection_id_mapping: false,
             context_id_map: None,
             user_dictionary_schema: userdic_schema,
@@ -459,6 +468,43 @@ mod tests {
         assert_eq!(Metadata::load(&json).unwrap().format_version, 7);
     }
 
+    /// A `metadata.json` written before 7.0.0 still carries
+    /// `normalize_details`, which was removed (#1106). Every way Lindera and
+    /// its bindings read the file ignores the field: `Metadata::load` (built
+    /// dictionaries, WASM), `serde_json::from_str` (the bindings'
+    /// `from_json_file`) and `serde_json::from_reader` (`lindera build`).
+    /// Writing the metadata back drops the field.
+    #[test]
+    fn metadata_json_with_the_removed_normalize_details_field_loads() {
+        let json = r#"{
+            "name": "ipadic",
+            "encoding": "UTF-8",
+            "default_word_cost": -10000,
+            "default_left_context_id": 1288,
+            "default_right_context_id": 1288,
+            "default_field_value": "*",
+            "flexible_csv": true,
+            "skip_invalid_cost_or_id": false,
+            "normalize_details": true,
+            "dictionary_schema": {"fields": ["surface", "left_context_id", "right_context_id", "cost", "part_of_speech"]},
+            "user_dictionary_schema": {"fields": ["surface", "part_of_speech", "reading"]}
+        }"#;
+
+        let loaded = [
+            Metadata::load(json.as_bytes()).unwrap(),
+            serde_json::from_str::<Metadata>(json).unwrap(),
+            serde_json::from_reader::<_, Metadata>(json.as_bytes()).unwrap(),
+        ];
+
+        for metadata in loaded {
+            assert_eq!(metadata.name, "ipadic");
+            assert!(metadata.flexible_csv);
+            assert_eq!(metadata.dictionary_schema.field_count(), 5);
+            let written = serde_json::to_value(&metadata).unwrap();
+            assert!(written.get("normalize_details").is_none());
+        }
+    }
+
     #[test]
     fn test_metadata_new() {
         let schema = Schema::default();
@@ -469,7 +515,6 @@ mod tests {
             0,
             0,
             "*".to_string(),
-            false,
             false,
             false,
             schema.clone(),

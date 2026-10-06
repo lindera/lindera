@@ -63,7 +63,6 @@ final class StubGenerator
             'encoding' => 'string',
             'flexible_csv' => 'bool',
             'name' => 'string',
-            'normalize_details' => 'bool',
             'skip_invalid_cost_or_id' => 'bool',
             'user_dictionary_schema_fields' => 'list<string>',
         ],

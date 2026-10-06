@@ -29,7 +29,17 @@ impl RbMetadata {
     ///
     /// # Arguments
     ///
-    /// All arguments are optional. Default values are used if not provided.
+    /// Ruby passes the eight arguments positionally, in this order; `nil`
+    /// selects the default.
+    ///
+    /// * `name` - Dictionary name (default: "default").
+    /// * `encoding` - Character encoding (default: "UTF-8").
+    /// * `default_word_cost` - Default word cost (default: -10000).
+    /// * `default_left_context_id` - Default left context ID (default: 1288).
+    /// * `default_right_context_id` - Default right context ID (default: 1288).
+    /// * `default_field_value` - Default field value (default: "*").
+    /// * `flexible_csv` - Allow flexible CSV (default: false).
+    /// * `skip_invalid_cost_or_id` - Skip invalid entries (default: false).
     ///
     /// # Returns
     ///
@@ -44,7 +54,6 @@ impl RbMetadata {
         default_field_value: Option<String>,
         flexible_csv: Option<bool>,
         skip_invalid_cost_or_id: Option<bool>,
-        normalize_details: Option<bool>,
     ) -> Self {
         RbMetadata {
             inner: CoreMetadata::new(
@@ -56,7 +65,6 @@ impl RbMetadata {
                 default_field_value,
                 flexible_csv,
                 skip_invalid_cost_or_id,
-                normalize_details,
                 None,
                 None,
             ),
@@ -69,7 +77,7 @@ impl RbMetadata {
     ///
     /// A new `RbMetadata` with default values.
     fn create_default() -> Self {
-        RbMetadata::new(None, None, None, None, None, None, None, None, None)
+        RbMetadata::new(None, None, None, None, None, None, None, None)
     }
 
     /// Loads metadata from a JSON file.
@@ -141,11 +149,6 @@ impl RbMetadata {
         self.inner.skip_invalid_cost_or_id
     }
 
-    /// Returns whether morphological details should be normalized.
-    fn normalize_details(&self) -> bool {
-        self.inner.normalize_details
-    }
-
     /// Converts the metadata to a Ruby hash.
     ///
     /// # Returns
@@ -181,10 +184,6 @@ impl RbMetadata {
         dict.insert(
             "skip_invalid_cost_or_id".to_string(),
             self.inner.skip_invalid_cost_or_id.to_string(),
-        );
-        dict.insert(
-            "normalize_details".to_string(),
-            self.inner.normalize_details.to_string(),
         );
         dict.insert(
             "dictionary_schema_fields".to_string(),
@@ -245,7 +244,7 @@ impl From<Metadata> for RbMetadata {
 /// `Ok(())` on success, or a Magnus `Error` on failure.
 pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
     let metadata_class = module.define_class("Metadata", ruby.class_object())?;
-    metadata_class.define_singleton_method("new", function!(RbMetadata::new, 9))?;
+    metadata_class.define_singleton_method("new", function!(RbMetadata::new, 8))?;
     metadata_class
         .define_singleton_method("create_default", function!(RbMetadata::create_default, 0))?;
     metadata_class
@@ -273,10 +272,6 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
         "skip_invalid_cost_or_id",
         method!(RbMetadata::skip_invalid_cost_or_id, 0),
     )?;
-    metadata_class.define_method(
-        "normalize_details",
-        method!(RbMetadata::normalize_details, 0),
-    )?;
     metadata_class.define_method("to_hash", method!(RbMetadata::to_hash, 0))?;
     metadata_class.define_method("to_h", method!(RbMetadata::to_hash, 0))?;
     metadata_class.define_method("to_s", method!(RbMetadata::to_s, 0))?;
@@ -302,7 +297,6 @@ mod tests {
                 Some("N/A".to_string()),
                 Some(true),
                 Some(true),
-                Some(true),
                 Some(CoreSchema::new(vec![
                     "surface".to_string(),
                     "cost".to_string(),
@@ -320,7 +314,6 @@ mod tests {
         assert_eq!(lindera_metadata.default_field_value, "N/A");
         assert!(lindera_metadata.flexible_csv);
         assert!(lindera_metadata.skip_invalid_cost_or_id);
-        assert!(lindera_metadata.normalize_details);
         assert_eq!(lindera_metadata.dictionary_schema.get_all_fields().len(), 2);
         assert_eq!(
             lindera_metadata
@@ -347,7 +340,6 @@ mod tests {
             "?".to_string(),
             false,
             true,
-            false,
             dict_schema,
             user_schema,
         );
@@ -361,7 +353,6 @@ mod tests {
         assert_eq!(rb_metadata.default_field_value(), "?");
         assert!(!rb_metadata.flexible_csv());
         assert!(rb_metadata.skip_invalid_cost_or_id());
-        assert!(!rb_metadata.normalize_details());
         assert_eq!(rb_metadata.inner.dictionary_schema.field_count(), 2);
         assert_eq!(rb_metadata.inner.user_dictionary_schema.field_count(), 2);
     }

@@ -31,8 +31,6 @@ pub struct MetadataOptions {
     pub flexible_csv: Option<bool>,
     /// Skip entries with invalid cost or ID (default: false).
     pub skip_invalid_cost_or_id: Option<bool>,
-    /// Normalize morphological details (default: false).
-    pub normalize_details: Option<bool>,
 }
 
 /// Dictionary metadata configuration.
@@ -63,7 +61,6 @@ impl JsMetadata {
             default_field_value: None,
             flexible_csv: None,
             skip_invalid_cost_or_id: None,
-            normalize_details: None,
         });
 
         JsMetadata {
@@ -76,7 +73,6 @@ impl JsMetadata {
                 opts.default_field_value,
                 opts.flexible_csv,
                 opts.skip_invalid_cost_or_id,
-                opts.normalize_details,
                 None,
                 None,
             ),
@@ -217,18 +213,6 @@ impl JsMetadata {
         self.inner.skip_invalid_cost_or_id = value;
     }
 
-    /// Whether to normalize morphological details.
-    #[napi(getter)]
-    pub fn normalize_details(&self) -> bool {
-        self.inner.normalize_details
-    }
-
-    /// Sets whether to normalize details.
-    #[napi(setter)]
-    pub fn set_normalize_details(&mut self, value: bool) {
-        self.inner.normalize_details = value;
-    }
-
     /// Returns a plain object representation of the metadata.
     ///
     /// # Returns
@@ -265,10 +249,6 @@ impl JsMetadata {
         dict.insert(
             "skipInvalidCostOrId".to_string(),
             self.inner.skip_invalid_cost_or_id.to_string(),
-        );
-        dict.insert(
-            "normalizeDetails".to_string(),
-            self.inner.normalize_details.to_string(),
         );
         if let Some(space_penalty) = self.inner.space_penalty_json() {
             dict.insert("spacePenalty".to_string(), space_penalty);
@@ -322,7 +302,6 @@ mod tests {
         assert_eq!(lindera_metadata.default_field_value, "*");
         assert!(!lindera_metadata.flexible_csv);
         assert!(!lindera_metadata.skip_invalid_cost_or_id);
-        assert!(!lindera_metadata.normalize_details);
     }
 
     #[test]
@@ -334,7 +313,6 @@ mod tests {
             100,
             200,
             "-".to_string(),
-            true,
             true,
             true,
             lindera::dictionary::Schema::default(),
@@ -349,7 +327,6 @@ mod tests {
         assert_eq!(js_metadata.default_field_value(), "-");
         assert!(js_metadata.flexible_csv());
         assert!(js_metadata.skip_invalid_cost_or_id());
-        assert!(js_metadata.normalize_details());
     }
 
     #[test]
@@ -363,7 +340,6 @@ mod tests {
             default_field_value: Some("-".to_string()),
             flexible_csv: Some(true),
             skip_invalid_cost_or_id: Some(true),
-            normalize_details: Some(true),
         };
         let js_metadata = JsMetadata::new(Some(opts));
         assert_eq!(js_metadata.name(), "custom");
@@ -374,7 +350,6 @@ mod tests {
         assert_eq!(js_metadata.default_field_value(), "-");
         assert!(js_metadata.flexible_csv());
         assert!(js_metadata.skip_invalid_cost_or_id());
-        assert!(js_metadata.normalize_details());
     }
 
     #[test]

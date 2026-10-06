@@ -45,7 +45,6 @@ use crate::schema::PySchema;
 /// * `default_field_value` - Default value for missing fields (default: "*")
 /// * `flexible_csv` - Allow flexible CSV parsing (default: false)
 /// * `skip_invalid_cost_or_id` - Skip entries with invalid cost/ID (default: false)
-/// * `normalize_details` - Normalize morphological details (default: false)
 /// * `dictionary_schema` - Schema for main dictionary
 /// * `user_dictionary_schema` - Schema for user dictionary
 #[pyclass(name = "Metadata", from_py_object)]
@@ -58,7 +57,7 @@ pub struct PyMetadata {
 #[pymethods]
 impl PyMetadata {
     #[new]
-    #[pyo3(signature = (name=None, encoding=None, default_word_cost=None, default_left_context_id=None, default_right_context_id=None, default_field_value=None, flexible_csv=None, skip_invalid_cost_or_id=None, normalize_details=None, dictionary_schema=None, user_dictionary_schema=None))]
+    #[pyo3(signature = (name=None, encoding=None, default_word_cost=None, default_left_context_id=None, default_right_context_id=None, default_field_value=None, flexible_csv=None, skip_invalid_cost_or_id=None, dictionary_schema=None, user_dictionary_schema=None))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: Option<String>,
@@ -69,7 +68,6 @@ impl PyMetadata {
         default_field_value: Option<String>,
         flexible_csv: Option<bool>,
         skip_invalid_cost_or_id: Option<bool>,
-        normalize_details: Option<bool>,
         dictionary_schema: Option<PySchema>,
         user_dictionary_schema: Option<PySchema>,
     ) -> Self {
@@ -83,7 +81,6 @@ impl PyMetadata {
                 default_field_value,
                 flexible_csv,
                 skip_invalid_cost_or_id,
-                normalize_details,
                 dictionary_schema.map(Into::into),
                 user_dictionary_schema.map(Into::into),
             ),
@@ -193,16 +190,6 @@ impl PyMetadata {
     }
 
     #[getter]
-    pub fn normalize_details(&self) -> bool {
-        self.inner.normalize_details
-    }
-
-    #[setter]
-    pub fn set_normalize_details(&mut self, value: bool) {
-        self.inner.normalize_details = value;
-    }
-
-    #[getter]
     pub fn dictionary_schema(&self) -> PySchema {
         PySchema::from(self.inner.dictionary_schema.clone())
     }
@@ -259,10 +246,6 @@ impl PyMetadata {
         dict.insert(
             "skip_invalid_cost_or_id".to_string(),
             self.inner.skip_invalid_cost_or_id.to_string(),
-        );
-        dict.insert(
-            "normalize_details".to_string(),
-            self.inner.normalize_details.to_string(),
         );
         dict.insert(
             "dictionary_schema_fields".to_string(),
@@ -333,7 +316,6 @@ mod tests {
             Some("N/A".to_string()),
             Some(true),
             Some(true),
-            Some(true),
             None,
             None,
         );
@@ -346,7 +328,6 @@ mod tests {
         assert_eq!(meta.default_field_value, "N/A");
         assert!(meta.flexible_csv);
         assert!(meta.skip_invalid_cost_or_id);
-        assert!(meta.normalize_details);
     }
 
     #[test]
@@ -368,7 +349,6 @@ mod tests {
             "*".to_string(),
             false,
             false,
-            false,
             schema,
             userdic_schema,
         );
@@ -381,7 +361,6 @@ mod tests {
         assert_eq!(py_meta.default_field_value(), "*");
         assert!(!py_meta.flexible_csv());
         assert!(!py_meta.skip_invalid_cost_or_id());
-        assert!(!py_meta.normalize_details());
         assert_eq!(py_meta.dictionary_schema().fields().len(), 4);
         assert_eq!(py_meta.user_dictionary_schema().fields().len(), 2);
     }
@@ -397,7 +376,6 @@ mod tests {
         assert_eq!(py_meta.default_field_value(), "*");
         assert!(!py_meta.flexible_csv());
         assert!(!py_meta.skip_invalid_cost_or_id());
-        assert!(!py_meta.normalize_details());
         assert_eq!(py_meta.dictionary_schema().field_count(), 13);
         assert_eq!(py_meta.user_dictionary_schema().fields().len(), 3);
     }
@@ -413,7 +391,6 @@ mod tests {
             Some("?".to_string()),
             Some(true),
             Some(false),
-            Some(true),
             None,
             None,
         );
@@ -427,7 +404,6 @@ mod tests {
         assert_eq!(roundtripped.default_field_value(), "?");
         assert!(roundtripped.flexible_csv());
         assert!(!roundtripped.skip_invalid_cost_or_id());
-        assert!(roundtripped.normalize_details());
     }
 
     #[test]

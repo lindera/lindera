@@ -22,7 +22,7 @@ impl JsMetadata {
     pub fn new(name: Option<String>, encoding: Option<String>) -> Self {
         Self {
             inner: CoreMetadata::new(
-                name, encoding, None, None, None, None, None, None, None, None, None,
+                name, encoding, None, None, None, None, None, None, None, None,
             ),
         }
     }
