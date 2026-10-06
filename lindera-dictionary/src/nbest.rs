@@ -207,14 +207,15 @@ impl<'a> NBestGenerator<'a> {
             //
             // `paths_at_char(char_pos)` is always partitioned into contiguous,
             // strictly-ascending-by-`edge_index` runs: every push site
-            // (`add_edge_in_lattice_nbest`'s Normal/Decompose branches and
+            // (`push_relaxed_nbest`, which records the transitions of a
+            // dictionary word or of one length of an unknown word, and
             // `set_text_nbest`'s EOS-connect block, all in viterbi.rs) writes
-            // every `PathEntry` for one edge in a single loop, using
-            // the target slot's length at call time as that edge's index,
-            // before any other edge targeting the same stop position can
-            // push into this same `all_paths` vector. So the target
-            // edge's entries form one contiguous run, locatable via binary
-            // search instead of a full linear scan.
+            // every `PathEntry` for one edge in one go, using the target
+            // slot's length at that time as that edge's index, before any
+            // other edge targeting the same stop position can push into this
+            // same `all_paths` vector. So the target edge's entries form one
+            // contiguous run, locatable via binary search instead of a full
+            // linear scan.
             let paths = self.lattice.paths_at_char(char_pos);
             let start = paths.partition_point(|p| p.edge_index() < edge_index as u32);
             let end = paths.partition_point(|p| p.edge_index() <= edge_index as u32);
