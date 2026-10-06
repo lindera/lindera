@@ -519,10 +519,11 @@ pub struct Lattice {
     /// The last grouping run found per category ordinal, as `(category,
     /// end)`: the characters from the position that scanned the run up to
     /// `end` (exclusive) all carry `category` at that ordinal. The
-    /// unknown-word logic visits the positions of a sentence in increasing
-    /// order, so a later position inside the run reads its length from here
-    /// instead of scanning again, which keeps the scans O(n) per ordinal
-    /// (#944) in every mode. Cleared per sentence by `prepare_char_buffers`.
+    /// unknown-word logic visits every reachable position of a sentence in
+    /// increasing order (#1105), so a later position inside the run reads
+    /// its length from here instead of scanning again, which keeps the scans
+    /// O(n) per ordinal (#944). Cleared per sentence by
+    /// `prepare_char_buffers`.
     group_run_ends: Vec<(CategoryId, u32)>,
     /// Decompose penalty cache for the left edges of the position
     /// currently being relaxed; see `add_edge_in_lattice` (#944).
@@ -1397,10 +1398,6 @@ impl Lattice {
 
         self.push_bos_edges(options.bos);
 
-        // Char position one past the last character of the last emitted
-        // unknown word
-        let mut unknown_word_end: Option<usize> = None;
-
         // Pre-scan text with Aho-Corasick to report all matches
         // Optimization: Use flat vectors instead of Vec<Vec<_>> to avoid many small allocations.
         // Linked list structure: matches_head[start_char] -> index in matches_store
@@ -1514,32 +1511,25 @@ impl Lattice {
                 found = true;
             }
 
-            // In the case of normal mode, it doesn't process unknown word greedily.
-            if search_mode.is_search()
-                || unknown_word_end
-                    .map(|index| index <= char_idx)
-                    .unwrap_or(true)
-            {
-                let num_categories = self.char_info_buffer[char_idx].categories_len as usize;
-                for category_ord in 0..num_categories {
-                    let category =
-                        self.get_cached_category(char_definitions, char_idx, category_ord);
-                    if let Some(end) = self.process_unknown_word(
-                        char_definitions,
-                        unknown_dictionary,
-                        cost_matrix,
-                        search_mode,
-                        max_grouping_len,
-                        unknown_word_ladder,
-                        space_penalty,
-                        category,
-                        category_ord,
-                        char_idx,
-                        found,
-                    ) {
-                        unknown_word_end = Some(end);
-                    }
-                }
+            // Unknown words at every reachable position, in every mode, as
+            // in MeCab (#1105): one may start inside a run that an earlier
+            // position grouped, e.g. after a dictionary word ending inside it.
+            let num_categories = self.char_info_buffer[char_idx].categories_len as usize;
+            for category_ord in 0..num_categories {
+                let category = self.get_cached_category(char_definitions, char_idx, category_ord);
+                self.process_unknown_word(
+                    char_definitions,
+                    unknown_dictionary,
+                    cost_matrix,
+                    search_mode,
+                    max_grouping_len,
+                    unknown_word_ladder,
+                    space_penalty,
+                    category,
+                    category_ord,
+                    char_idx,
+                    found,
+                );
             }
         }
 
@@ -1916,12 +1906,6 @@ impl Lattice {
     ///   set.
     /// * `char_idx` - Start position, in characters.
     /// * `found` - Whether a dictionary word starts at `char_idx`.
-    ///
-    /// # Returns
-    ///
-    /// The end of the primary candidate, in characters, or `None` when the
-    /// category creates no candidate at `char_idx`. Normal mode skips the
-    /// unknown words of the positions before the latest such end.
     #[allow(clippy::too_many_arguments)]
     fn process_unknown_word(
         &mut self,
@@ -1936,8 +1920,8 @@ impl Lattice {
         category_ord: usize,
         char_idx: usize,
         found: bool,
-    ) -> Option<usize> {
-        let (primary, ladder) = self.unknown_word_lengths(
+    ) {
+        let Some((primary, ladder)) = self.unknown_word_lengths(
             char_definitions,
             max_grouping_len,
             unknown_word_ladder,
@@ -1945,7 +1929,9 @@ impl Lattice {
             category_ord,
             char_idx,
             found,
-        )?;
+        ) else {
+            return;
+        };
         self.emit_unknown_word_edges(
             unknown_dictionary,
             cost_matrix,
@@ -1955,7 +1941,6 @@ impl Lattice {
             char_idx,
             Self::candidate_lengths(primary, ladder),
         );
-        Some(char_idx + primary)
     }
 
     /// Decompose-mode relaxation body of `add_edge_in_lattice`, outlined
@@ -2594,10 +2579,6 @@ impl Lattice {
     /// # Arguments
     ///
     /// See [`Self::process_unknown_word`].
-    ///
-    /// # Returns
-    ///
-    /// See [`Self::process_unknown_word`].
     #[allow(clippy::too_many_arguments)]
     fn process_unknown_word_nbest(
         &mut self,
@@ -2612,8 +2593,8 @@ impl Lattice {
         category_ord: usize,
         char_idx: usize,
         found: bool,
-    ) -> Option<usize> {
-        let (primary, ladder) = self.unknown_word_lengths(
+    ) {
+        let Some((primary, ladder)) = self.unknown_word_lengths(
             char_definitions,
             max_grouping_len,
             unknown_word_ladder,
@@ -2621,7 +2602,9 @@ impl Lattice {
             category_ord,
             char_idx,
             found,
-        )?;
+        ) else {
+            return;
+        };
         self.emit_unknown_word_edges_nbest(
             unknown_dictionary,
             cost_matrix,
@@ -2631,7 +2614,6 @@ impl Lattice {
             char_idx,
             Self::candidate_lengths(primary, ladder),
         );
-        Some(char_idx + primary)
     }
 
     /// Forward Viterbi for N-Best mode with the positional option set:
@@ -2706,8 +2688,6 @@ impl Lattice {
         self.skip_whitespace = options.skip_whitespace.is_some();
 
         self.push_bos_edges(options.bos);
-
-        let mut unknown_word_end: Option<usize> = None;
 
         // Pre-scan text with Aho-Corasick
         // Buffers are Lattice fields reused across calls; refill matches_head (its
@@ -2820,31 +2800,23 @@ impl Lattice {
                 found = true;
             }
 
-            if search_mode.is_search()
-                || unknown_word_end
-                    .map(|index| index <= char_idx)
-                    .unwrap_or(true)
-            {
-                let num_categories = self.char_info_buffer[char_idx].categories_len as usize;
-                for category_ord in 0..num_categories {
-                    let category =
-                        self.get_cached_category(char_definitions, char_idx, category_ord);
-                    if let Some(end) = self.process_unknown_word_nbest(
-                        char_definitions,
-                        unknown_dictionary,
-                        cost_matrix,
-                        search_mode,
-                        max_grouping_len,
-                        unknown_word_ladder,
-                        space_penalty,
-                        category,
-                        category_ord,
-                        char_idx,
-                        found,
-                    ) {
-                        unknown_word_end = Some(end);
-                    }
-                }
+            // Unknown words at every reachable position; see set_text_with_options.
+            let num_categories = self.char_info_buffer[char_idx].categories_len as usize;
+            for category_ord in 0..num_categories {
+                let category = self.get_cached_category(char_definitions, char_idx, category_ord);
+                self.process_unknown_word_nbest(
+                    char_definitions,
+                    unknown_dictionary,
+                    cost_matrix,
+                    search_mode,
+                    max_grouping_len,
+                    unknown_word_ladder,
+                    space_penalty,
+                    category,
+                    category_ord,
+                    char_idx,
+                    found,
+                );
             }
         }
 
@@ -3030,10 +3002,9 @@ mod tests {
     /// forward grouping scan exactly for every (char, ordinal) pair,
     /// including multi-ordinal chars, runs at the sentence end, and
     /// ordinals present on one char but absent on the next, in both modes.
-    /// The positions are visited in increasing order, all of them (as in
-    /// Decompose mode) or only some (as when Normal mode skips the positions
-    /// inside a grouped unknown word), and the cache must not leak from one
-    /// sentence into the next.
+    /// The positions are visited in increasing order, all of them or only
+    /// some (as when positions are unreachable or skipped whitespace), and
+    /// the cache must not leak from one sentence into the next.
     #[test]
     fn test_group_runs_match_forward_scan() {
         use std::collections::BTreeMap;
@@ -3122,10 +3093,10 @@ mod tests {
         }
     }
 
-    /// #1105: a slot can hold more than `u16::MAX` edges. In Decompose
-    /// mode every position of a run adds its grouped unknown words to the
-    /// slot at the run's end, and a dictionary word per character makes
-    /// every position reachable. The cheapest path is one dictionary word
+    /// #1105: a slot can hold more than `u16::MAX` edges. In every mode
+    /// each position of a run adds its grouped unknown words to the slot at
+    /// the run's end, and a dictionary word per character makes every
+    /// position reachable. The cheapest path is one dictionary word
     /// per character, whose last edge is pushed into the final slot after
     /// about 5 * 14,000 grouped candidates. The edges refer to their left
     /// edges by `u32` indices, so the 1-best and the N-best backtraces
@@ -3168,38 +3139,44 @@ mod tests {
         let expected: Vec<TokenOffset> = (0..n)
             .map(|i| (i, i + 1, WordId::new(LexType::System, 0)))
             .collect();
-        // Decompose mode only: Normal mode skips the unknown words at the
-        // positions inside a grouped run, so its final slot stays small.
-        let mode = Mode::Decompose(Penalty::default());
-        let options = LatticeOptions::new(&mode);
-        let mut lattice = Lattice::default();
+        for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
+            let options = LatticeOptions::new(&mode);
+            let mut lattice = Lattice::default();
 
-        lattice.set_text_with_options(
-            &dict,
-            &None,
-            &char_definition,
-            &unknown_dictionary,
-            &cost_matrix,
-            &text,
-            &options,
-        );
-        assert!(lattice.edges_at_char(n).len() > u16::MAX as usize);
-        assert_eq!(lattice.tokens_offset(), expected);
+            lattice.set_text_with_options(
+                &dict,
+                &None,
+                &char_definition,
+                &unknown_dictionary,
+                &cost_matrix,
+                &text,
+                &options,
+            );
+            assert!(
+                lattice.edges_at_char(n).len() > u16::MAX as usize,
+                "{mode:?}"
+            );
+            assert_eq!(lattice.tokens_offset(), expected, "{mode:?}");
 
-        lattice.set_text_nbest_with_options(
-            &dict,
-            &None,
-            &char_definition,
-            &unknown_dictionary,
-            &cost_matrix,
-            &text,
-            &options,
-        );
-        assert!(lattice.edges_at_char(n).len() > u16::MAX as usize);
-        assert_eq!(
-            lattice.nbest_tokens_offset(1, false, None),
-            vec![(expected, -10 * n as i64)]
-        );
+            lattice.set_text_nbest_with_options(
+                &dict,
+                &None,
+                &char_definition,
+                &unknown_dictionary,
+                &cost_matrix,
+                &text,
+                &options,
+            );
+            assert!(
+                lattice.edges_at_char(n).len() > u16::MAX as usize,
+                "{mode:?}"
+            );
+            assert_eq!(
+                lattice.nbest_tokens_offset(1, false, None),
+                vec![(expected.clone(), -10 * n as i64)],
+                "{mode:?}"
+            );
+        }
     }
 
     /// #1105: one relaxation serves all the lengths of an unknown-word
@@ -3315,6 +3292,81 @@ mod tests {
                 let stored: Vec<u32> = (0..nbest.edges_at_char(slot).len() as u32).collect();
                 assert_eq!(edges, stored, "{mode:?} slot {slot}");
             }
+        }
+    }
+
+    /// #1105: in every mode, an unknown word may start inside a run that
+    /// an earlier position grouped, as in MeCab. `「` is a cheap dictionary
+    /// word and a `SYMBOL` character, so the group `「⁂⁂` starts at 0; the
+    /// best path is still `「` + the group `⁂⁂` that starts at 1, in the
+    /// 1-best and the N-best lattice alike.
+    #[test]
+    fn test_unknown_word_starts_inside_grouped_run() {
+        // DEFAULT = 0, SYMBOL = 1 (`「` and `⁂`), which invokes and groups.
+        let mapping =
+            LookupTable::from_fn(vec![0, 0x2042, 0x2043, 0x300C, 0x300D], &|c,
+                                                                            buf: &mut Vec<
+                CategoryId,
+            >| match c {
+                0x2042 | 0x300C => buf.push(CategoryId(1)),
+                _ => buf.push(CategoryId(0)),
+            });
+        let category = |invoke| CategoryData {
+            invoke,
+            group: true,
+            length: 0,
+        };
+        let char_definition = CharacterDefinition::new(
+            vec![category(false), category(true)],
+            vec!["DEFAULT".into(), "SYMBOL".into()],
+            mapping,
+        );
+        let unknown = |id| WordEntry::new(WordId::new(LexType::Unknown, id), 1000, 0, 0);
+        let unknown_dictionary = UnknownDictionary {
+            category_references: vec![vec![0], vec![1]],
+            costs: vec![unknown(0), unknown(1)],
+            words_idx_data: Vec::new(),
+            words_data: Vec::new(),
+        };
+        let mut map = BTreeMap::new();
+        map.insert(
+            "「".to_string(),
+            vec![WordEntry::new(WordId::new(LexType::System, 0), -2000, 0, 0)],
+        );
+        let dict = PrefixDictionary::from_word_entry_map(&map).unwrap();
+        let cost_matrix = ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0, 0]).unwrap();
+
+        let text = "「⁂⁂";
+        let bracket = (0, 3, WordId::new(LexType::System, 0));
+        let symbols = (3, 9, WordId::new(LexType::Unknown, 1));
+        for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
+            let options = LatticeOptions::new(&mode);
+            let mut lattice = Lattice::default();
+            lattice.set_text_with_options(
+                &dict,
+                &None,
+                &char_definition,
+                &unknown_dictionary,
+                &cost_matrix,
+                text,
+                &options,
+            );
+            assert_eq!(lattice.tokens_offset(), vec![bracket, symbols], "{mode:?}");
+
+            lattice.set_text_nbest_with_options(
+                &dict,
+                &None,
+                &char_definition,
+                &unknown_dictionary,
+                &cost_matrix,
+                text,
+                &options,
+            );
+            let paths = lattice.nbest_tokens_offset(usize::MAX, false, None);
+            // `「` + `⁂⁂` and the group `「⁂⁂` (`SYMBOL` has no length
+            // ladder, so no unknown word ends inside the run).
+            assert_eq!(paths.len(), 2, "{mode:?}: {paths:?}");
+            assert_eq!(paths[0], (vec![bracket, symbols], -1000), "{mode:?}");
         }
     }
 
@@ -3916,13 +3968,28 @@ mod tests {
             );
         }
 
-        // The whitespace is an unknown-word token of its own here.
+        // The whitespace is an unknown-word token of its own here: the
+        // `SPACE` group, as no entry ends with a tab.
         let unknown_space = WordId::new(LexType::Unknown, UNKNOWN_SPACE);
+        assert_eq!(
+            fixture
+                .lattice("ab\t\tcd", &Mode::Normal, false)
+                .tokens_offset(),
+            vec![(0, 2, sys(AB)), (2, 4, unknown_space), (4, 6, sys(CD))]
+        );
+        // With two spaces, an unknown word also starts at the second one,
+        // inside the run the `SPACE` group covers (#1105), so `ab ` (100)
+        // plus a one-space unknown word (5000) beats `ab` (2000) plus the
+        // group (5000). The tokens still tile the text.
         assert_eq!(
             fixture
                 .lattice("ab  cd", &Mode::Normal, false)
                 .tokens_offset(),
-            vec![(0, 2, sys(AB)), (2, 4, unknown_space), (4, 6, sys(CD))]
+            vec![
+                (0, 3, sys(AB_SPACE)),
+                (3, 4, unknown_space),
+                (4, 6, sys(CD))
+            ]
         );
     }
 

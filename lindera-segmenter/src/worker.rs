@@ -574,6 +574,39 @@ mod tests {
             assert_eq!(without_ladder, vec!["龘".to_string(), "龍".to_string()]);
         }
 
+        /// #1105: an unknown word may start inside a run that an earlier
+        /// position grouped, so a known symbol in front of unknown symbols
+        /// stays a token of its own, as in MeCab (1-best and N-best rank 1).
+        #[test]
+        fn test_unknown_word_starts_inside_grouped_run() {
+            let segmenter = ipadic_segmenter();
+            let mut worker = segmenter.new_worker();
+            for (text, mark) in [
+                ("それが「⁂⁂第一だ", "「"),
+                ("それが…⁂⁂第一だ", "…"),
+                ("それが＝⁂⁂第一だ", "＝"),
+            ] {
+                let expected = ["それ", "が", mark, "⁂⁂", "第", "一", "だ"];
+                let surfaces = match worker.segment(text) {
+                    Ok(tokens) => tokens
+                        .iter()
+                        .map(|t| t.surface.to_string())
+                        .collect::<Vec<_>>(),
+                    Err(err) => panic!("worker.segment failed: {err}"),
+                };
+                assert_eq!(surfaces, expected, "{text:?}");
+                let rank1 = match worker.segment_nbest(text, 3, false, None) {
+                    Ok(results) => results[0]
+                        .0
+                        .iter()
+                        .map(|t| t.surface.to_string())
+                        .collect::<Vec<_>>(),
+                    Err(err) => panic!("worker.segment_nbest failed: {err}"),
+                };
+                assert_eq!(rank1, expected, "{text:?} (N-best rank 1)");
+            }
+        }
+
         /// #944: max_grouping_len caps unknown-word grouping with MeCab
         /// semantics -- at each position, a run with more characters beyond
         /// the first than the cap is not grouped, the single-char unknown

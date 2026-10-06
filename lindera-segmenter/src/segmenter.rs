@@ -2753,6 +2753,57 @@ mod tests {
 
     #[test]
     #[cfg(feature = "embed-ipadic")]
+    fn test_segment_unknown_word_starts_inside_grouped_run() {
+        use std::borrow::Cow;
+
+        use crate::dictionary::load_dictionary;
+        use crate::mode::Mode;
+
+        // #1105: an unknown word may start inside a run of one character
+        // category that an earlier position grouped, as in MeCab. The
+        // examples of the Issue (a dictionary symbol in front of unknown
+        // symbols) and a katakana name joined by `・`. The expected tokens
+        // are MeCab's with the same IPADIC, for the 1-best path and for the
+        // first N-best path alike.
+        let dictionary = load_dictionary("embedded://ipadic").unwrap();
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+        let cases: [(&str, &[&str]); 4] = [
+            (
+                "それが「⁂⁂第一だ",
+                &["それ", "が", "「", "⁂⁂", "第", "一", "だ"],
+            ),
+            (
+                "それが…⁂⁂第一だ",
+                &["それ", "が", "…", "⁂⁂", "第", "一", "だ"],
+            ),
+            (
+                "それが＝⁂⁂第一だ",
+                &["それ", "が", "＝", "⁂⁂", "第", "一", "だ"],
+            ),
+            (
+                "ジョン・レノンが歌う",
+                &["ジョン", "・", "レノン", "が", "歌う"],
+            ),
+        ];
+        for (text, expected) in cases {
+            let tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
+            let surfaces: Vec<&str> = tokens.iter().map(|token| token.surface.as_ref()).collect();
+            assert_eq!(surfaces, expected, "{text:?}");
+
+            let results = segmenter
+                .segment_nbest(Cow::Borrowed(text), 3, false, None)
+                .unwrap();
+            let rank1: Vec<&str> = results[0]
+                .0
+                .iter()
+                .map(|token| token.surface.as_ref())
+                .collect();
+            assert_eq!(rank1, expected, "{text:?} (N-best rank 1)");
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
     fn test_segment_keeps_latin_capital_eth() {
         use std::borrow::Cow;
 
