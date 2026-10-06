@@ -12,7 +12,7 @@ struct QueueElement {
     /// was carried over skipped whitespace)
     char_pos: u32,
     /// Index of the current edge in ends_at[char_pos]
-    edge_index: u16,
+    edge_index: u32,
     /// f(x) = g(x) + h(x) -- total estimated cost
     fx: i64,
     /// g(x) = accumulated real cost from EOS backward to this point
@@ -122,7 +122,7 @@ impl<'a> NBestGenerator<'a> {
             let gx = lattice.exit_penalty(i) as i64;
             generator.queue.push(QueueElement {
                 char_pos,
-                edge_index: i as u16,
+                edge_index: i as u32,
                 fx: edge.path_cost() as i64 + gx,
                 gx,
                 prev: None,
@@ -140,7 +140,7 @@ impl<'a> NBestGenerator<'a> {
         }
 
         // EOS is the last edge pushed to ends_at[char_len]
-        let eos_index = (eos_edges.len() - 1) as u16;
+        let eos_index = (eos_edges.len() - 1) as u32;
         let eos_edge = &eos_edges[eos_index as usize];
 
         // Initial element: start from EOS with g(x)=0
@@ -191,11 +191,11 @@ impl<'a> NBestGenerator<'a> {
             }
             let edge = &edges[edge_index];
 
-            // Check if we reached BOS (left_index == u16::MAX means no
+            // Check if we reached BOS (left_index == u32::MAX means no
             // predecessor = BOS). The BOS edges are the first edges of the
             // slot holding them, in the order of their contexts, so the
             // edge's index there is its BOS index.
-            if edge.left_index() == u16::MAX {
+            if edge.left_index() == u32::MAX {
                 return Some(((self.reconstruct_path(&current), current.fx), edge_index));
             }
 
@@ -207,17 +207,18 @@ impl<'a> NBestGenerator<'a> {
             //
             // `paths_at_char(char_pos)` is always partitioned into contiguous,
             // strictly-ascending-by-`edge_index` runs: every push site
-            // (`add_edge_in_lattice_nbest`'s Normal/Decompose branches and
+            // (`push_relaxed_nbest`, which records the transitions of a
+            // dictionary word or of one length of an unknown word, and
             // `set_text_nbest`'s EOS-connect block, all in viterbi.rs) writes
-            // every `PathEntry` for one edge in a single loop, using
-            // the target slot's length at call time as that edge's index,
-            // before any other edge targeting the same stop position can
-            // push into this same `all_paths` vector. So the target
-            // edge's entries form one contiguous run, locatable via binary
-            // search instead of a full linear scan.
+            // every `PathEntry` for one edge in one go, using the target
+            // slot's length at that time as that edge's index, before any
+            // other edge targeting the same stop position can push into this
+            // same `all_paths` vector. So the target edge's entries form one
+            // contiguous run, locatable via binary search instead of a full
+            // linear scan.
             let paths = self.lattice.paths_at_char(char_pos);
-            let start = paths.partition_point(|p| p.edge_index() < edge_index as u16);
-            let end = paths.partition_point(|p| p.edge_index() <= edge_index as u16);
+            let start = paths.partition_point(|p| p.edge_index() < edge_index as u32);
+            let end = paths.partition_point(|p| p.edge_index() <= edge_index as u32);
             for path_entry in &paths[start..end] {
                 let left_pos = path_entry.left_pos() as usize;
                 let left_index = path_entry.left_index() as usize;
@@ -240,7 +241,7 @@ impl<'a> NBestGenerator<'a> {
 
                 let new_elem = QueueElement {
                     char_pos: left_pos as u32,
-                    edge_index: left_index as u16,
+                    edge_index: left_index as u32,
                     fx: new_fx,
                     gx: new_gx,
                     prev: Some(current_idx),

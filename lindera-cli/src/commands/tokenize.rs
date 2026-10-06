@@ -78,13 +78,13 @@ pub struct TokenizeArgs {
     max_grouping_len: Option<usize>,
     #[clap(
         long = "disable-unknown-word-ladder",
-        help = "Disable the MeCab/Vibrato-inspired unknown-word length ladder (char.def's LENGTH field), matching pre-v6 output exactly. Enabled by default"
+        help = "Disable the MeCab/Vibrato-inspired unknown-word length ladder (char.def's LENGTH field), leaving out these candidates as before v6; other changes since then, such as unknown words that start inside a grouped run, still apply. Enabled by default"
     )]
     disable_unknown_word_ladder: bool,
     #[clap(
         long = "disable-space-penalty",
         conflicts_with = "space_penalty_rules",
-        help = "Disable the left-space penalty (mecab-ko's left-space-penalty-factor) that a dictionary shipping rules in its metadata.json applies by default (ko-dic). A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added; disabling it together with --disable-skip-whitespace restores the v6.0 output for Korean"
+        help = "Disable the left-space penalty (mecab-ko's left-space-penalty-factor) that a dictionary shipping rules in its metadata.json applies by default (ko-dic). A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added; disabling it together with --disable-skip-whitespace turns off both changes since v6.0 in how Korean is read around spaces (this penalty and whitespace skipping), but not the other output changes since then, such as the split of sentence-final punctuation runs"
     )]
     disable_space_penalty: bool,
     #[clap(

@@ -312,8 +312,11 @@ pub struct Segmenter {
     /// Whether to additionally emit MeCab/Vibrato-inspired shorter
     /// unknown-word candidates up to each category's `char.def` `LENGTH`
     /// field (#945). Lindera parsed but never read this field before this
-    /// option existed. Defaults to `true` starting with this release --
-    /// set to `false` to match pre-v6 output exactly.
+    /// option existed. Defaults to `true` (since v6). With `false`, each
+    /// category gets only its grouped or single-character candidate at a
+    /// position, as before v6; the output still differs from pre-v6 output
+    /// wherever later changes apply, such as unknown words that start
+    /// inside a grouped run (#1105).
     pub unknown_word_ladder: bool,
 
     /// Left-space penalty rules (mecab-ko's `left-space-penalty-factor`,
@@ -323,8 +326,12 @@ pub struct Segmenter {
     /// a space. [`Segmenter::new`] initializes it from the rules the
     /// dictionary ships in its metadata (`Metadata::space_penalty`; ko-dic
     /// does, the other bundled dictionaries do not), so for ko-dic the
-    /// penalty is on by default; `None` adds no penalty, and together with
-    /// `skip_whitespace(false)` reproduces the v6.0 output. Set through [`Segmenter::space_penalty`] /
+    /// penalty is on by default; `None` adds no penalty. Together with
+    /// `skip_whitespace(false)`, `None` turns off both changes since v6.0
+    /// in how text is read around spaces (this penalty and whitespace
+    /// skipping), but not the other output changes since then, such as the
+    /// split of Korean punctuation runs like `."` (#1105). Set through
+    /// [`Segmenter::space_penalty`] /
     /// [`Segmenter::set_space_penalty`], which also build the per-word-id
     /// lookup the lattice uses; the field is read-only for that reason.
     space_penalty: Option<SpacePenaltyConfig>,
@@ -2753,6 +2760,57 @@ mod tests {
 
     #[test]
     #[cfg(feature = "embed-ipadic")]
+    fn test_segment_unknown_word_starts_inside_grouped_run() {
+        use std::borrow::Cow;
+
+        use crate::dictionary::load_dictionary;
+        use crate::mode::Mode;
+
+        // #1105: an unknown word may start inside a run of one character
+        // category that an earlier position grouped, as in MeCab. The
+        // examples of the Issue (a dictionary symbol in front of unknown
+        // symbols) and a katakana name joined by `・`. The expected tokens
+        // are MeCab's with the same IPADIC, for the 1-best path and for the
+        // first N-best path alike.
+        let dictionary = load_dictionary("embedded://ipadic").unwrap();
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+        let cases: [(&str, &[&str]); 4] = [
+            (
+                "それが「⁂⁂第一だ",
+                &["それ", "が", "「", "⁂⁂", "第", "一", "だ"],
+            ),
+            (
+                "それが…⁂⁂第一だ",
+                &["それ", "が", "…", "⁂⁂", "第", "一", "だ"],
+            ),
+            (
+                "それが＝⁂⁂第一だ",
+                &["それ", "が", "＝", "⁂⁂", "第", "一", "だ"],
+            ),
+            (
+                "ジョン・レノンが歌う",
+                &["ジョン", "・", "レノン", "が", "歌う"],
+            ),
+        ];
+        for (text, expected) in cases {
+            let tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
+            let surfaces: Vec<&str> = tokens.iter().map(|token| token.surface.as_ref()).collect();
+            assert_eq!(surfaces, expected, "{text:?}");
+
+            let results = segmenter
+                .segment_nbest(Cow::Borrowed(text), 3, false, None)
+                .unwrap();
+            let rank1: Vec<&str> = results[0]
+                .0
+                .iter()
+                .map(|token| token.surface.as_ref())
+                .collect();
+            assert_eq!(rank1, expected, "{text:?} (N-best rank 1)");
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
     fn test_segment_keeps_latin_capital_eth() {
         use std::borrow::Cow;
 
@@ -3220,7 +3278,7 @@ mod tests {
         /// The penalty flips the particle/ending reading of a token that
         /// follows a space (`시/EP` -> `시/NNG`, `이/VCP` -> a non-VCP tag),
         /// which is what mecab-ko does for these inputs; with the option off
-        /// the v6.0.0 output is unchanged.
+        /// they keep their v6.0.0 output.
         #[test]
         fn test_space_penalty_flips_spaced_particles_and_endings() {
             let off = segmenter(Mode::Normal, false);
@@ -3409,7 +3467,7 @@ mod tests {
             assert_eq!(segmenter.space_penalty_config(), Some(&ko_dic_rules()));
             assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/NNG");
 
-            // `false` turns the penalty off and reproduces the v6.0 output.
+            // `false` turns the penalty off: `시` is read as in v6.0 again.
             let mut config = base.clone();
             config["space_penalty"] = serde_json::json!(false);
             let segmenter = Segmenter::from_config(&config).unwrap();
@@ -3492,7 +3550,7 @@ mod tests {
 
         /// `Segmenter::new` applies the rules the dictionary ships (ko-dic),
         /// leaves a dictionary without rules unpenalized, and
-        /// `space_penalty(None)` opts out and reproduces the v6.0 output.
+        /// `space_penalty(None)` opts out, which reads `시` as in v6.0 again.
         #[test]
         fn test_new_applies_shipped_rules_by_default() {
             let dictionary = load_dictionary("embedded://ko-dic").unwrap();

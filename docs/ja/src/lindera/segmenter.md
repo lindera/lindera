@@ -162,6 +162,10 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(f
 
 ## 未知語のグルーピング
 
+辞書にない語は「未知語」として扱われます。未知語は、辞書の `char.def` が文字に割り当てる文字種（カタカナ・英字・数字・記号など）をもとに作られます。Lindera は、ラティス上の経路が到達するすべての位置で、その位置の文字が持つ文字種ごとに未知語候補を作ります。作るのは、その文字種が常に未知語を作る設定（`char.def` の `INVOKE`）の場合か、その位置から始まる辞書語がない場合で、MeCab と同じ条件です。グルーピングする設定（`GROUP`）の文字種では、カタカナの連続のように、その位置から同じ文字種が続くラン全体を 1 つの候補にします。これを「グルーピングした未知語」と呼びます。
+
+未知語は、前の位置からグルーピングした未知語が覆うランの内側も含め、こうしたどの位置からも始まります。IPADIC の `char.def` は `・` をカタカナの範囲に含めるため、`ジョン・レノンが歌う` の先頭の位置では `ジョン・レノン` がグルーピングした未知語になります。一方、辞書語の `ジョン` と `・` をたどる経路が `レ` の位置に届き、そこから未知語 `レノン` が始まるので、結果は MeCab と同じく `ジョン / ・ / レノン / が / 歌う` になります。v7 より前の通常モードは、Kuromoji から引き継いだ近道として、直前にグルーピングした未知語の内側の位置では未知語を作らなかったため、`ジョン・レノン` を 1 つの未知語として返していました。Decompose モードにはこの近道はありませんでした。
+
 未知語のグルーピングはデフォルトでは無制限です。`max_grouping_len(Some(n))` で MeCab の `max-grouping-size` と同じ意味論（先頭を除いた文字数で数え、MeCab のデフォルトは 24）の上限を設定できます:
 
 ```rust
@@ -175,8 +179,10 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).max_grouping_len(
 グルーピングとは独立に、Lindera はデフォルトで MeCab/Vibrato 由来の
 「候補ラダー（length ladder）」も生成します。各カテゴリの `char.def` の
 `LENGTH` フィールドまでの短い未知語候補を段階的に生成し、Viterbi 探索が
-最もコストの低い長さを選べるようにします。v6 以前と同一の出力にするには
-`unknown_word_ladder(false)` で無効化してください:
+最もコストの低い長さを選べるようにします。`unknown_word_ladder(false)` で
+無効にすると、各位置で文字種ごとに作る候補は、v6 より前と同じくグルーピング候補か
+1 文字候補だけになります。ただし、ランの内側から始まる未知語など、その後の変更に
+よる出力の違いは残るため、v6 より前の出力とは一致しません（[v6 から v7 への移行](../migration_v6_to_v7.md#mecab-と同じくどの位置からも未知語が始まる)を参照）:
 
 ```rust
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladder(false);
@@ -184,7 +190,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladd
 
 ## 左側空白ペナルティ（韓国語）
 
-MeCab ベースの韓国語解析器（mecab-ko + mecab-ko-dic、Lucene の nori）は、直前に空白がある候補の品詞が、本来は前の語に空白なしで付く品詞（助詞 `J*`、語尾 `E*`、指定詞 `VCP`、派生接尾辞 `XS*`）である場合にコストを加算します。これがないと `검색 이 잘 된다` の `이` は感動詞 `IC` ではなく主格助詞 `JKS` と解析されます。Lindera は、ルールを `metadata.json` に同梱する辞書（ko-dic）ではこのペナルティをデフォルトで適用します。他の辞書には影響しません。`Segmenter::space_penalty(None)`、設定の `"space_penalty": false`、CLI の `--disable-space-penalty` でオフにできます。`skip_whitespace(false)` と併用すると v6.0 の出力に戻ります。
+MeCab ベースの韓国語解析器（mecab-ko + mecab-ko-dic、Lucene の nori）は、直前に空白がある候補の品詞が、本来は前の語に空白なしで付く品詞（助詞 `J*`、語尾 `E*`、指定詞 `VCP`、派生接尾辞 `XS*`）である場合にコストを加算します。これがないと `검색 이 잘 된다` の `이` は感動詞 `IC` ではなく主格助詞 `JKS` と解析されます。Lindera は、ルールを `metadata.json` に同梱する辞書（ko-dic）ではこのペナルティをデフォルトで適用します。他の辞書には影響しません。`Segmenter::space_penalty(None)`、設定の `"space_penalty": false`、CLI の `--disable-space-penalty` でオフにできます。`skip_whitespace(false)` と併用すると、空白まわりの韓国語の解析について v6.0 以降に入った 2 つの変更（このペナルティと空白の読み飛ばし）がどちらもオフになります。ただし、`."` のような記号の連続が分かれるなど、それ以外の出力の変化は残ります（[v6 から v7 への移行](../migration_v6_to_v7.md#mecab-と同じくどの位置からも未知語が始まる)を参照）。
 
 `SpacePenaltyConfig` は「先頭品詞タグの一覧とコスト」の組（ルール）のリストです。候補は品詞タグの最初の `+` より前の部分（ko-dic の `Inflect` 行では `first_part_of_speech` 列）で照合され、最初に一致したルールが適用されます。一覧にないタグのコストは 0 です。mecab-ko-dic の `dicrc` のルールは次のように書けます:
 

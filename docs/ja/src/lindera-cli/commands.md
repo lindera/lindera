@@ -63,8 +63,8 @@ jieba           no        no          -
 - `--keep-whitespace`: 空白文字のトークンを出力に含める（デフォルトでは MeCab と同様に、空白はラティス上で読み飛ばされ、出力から除去されます）
 - `--disable-skip-whitespace`: 空白を読み飛ばさず、`SPACE` の未知語ノードとしてラティスに残す（出力からは引き続き除去する。v7 より前の動作）。空白のたびに連接の文脈が途切れる。読み飛ばしは、`metadata.json` で無効にしていない辞書（SudachiDict は無効）ではデフォルトで有効。`--keep-whitespace` と併用した場合は効果がない。[Segmenter](../lindera/segmenter.md#空白文字の扱い) のドキュメントを参照
 - `--max-grouping-len`: 未知語グルーピングの上限（先頭を除いた文字数。MeCab の `max-grouping-size` に相当し、MeCab のデフォルトは 24）。上限は各位置で判定され、同じ文字種のランが上限を超える位置ではグルーピング候補を出さず、1 文字候補（および候補ラダーと辞書語）が残ります。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になります。`0` または省略: 無制限。例は [Segmenter](../lindera/segmenter.md) のドキュメントを参照
-- `--disable-unknown-word-ladder`: MeCab/Vibrato 由来の未知語候補ラダー（`char.def` の `LENGTH` フィールド）を無効化する。デフォルトで有効。v6 以前の Lindera と同一の出力にするには無効化する
-- `--disable-space-penalty`: 辞書の `metadata.json` に同梱されたルールでデフォルト有効になる左側空白ペナルティ（mecab-ko の `left-space-penalty-factor`。ko-dic は mecab-ko-dic のルールを同梱）を無効にする。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する機能で、`--disable-skip-whitespace` と併せて無効にすると韓国語の出力が v6.0 と同じになる。[Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) のドキュメントを参照
+- `--disable-unknown-word-ladder`: MeCab/Vibrato 由来の未知語候補ラダー（`char.def` の `LENGTH` フィールド）を無効化する。デフォルトで有効。無効にすると、v6 より前と同じくこれらの候補を作らない。ただし、グルーピングした未知語の内側から始まる未知語など、その後の変更による出力の違いは残る。[Segmenter](../lindera/segmenter.md#未知語のグルーピング) のドキュメントを参照
+- `--disable-space-penalty`: 辞書の `metadata.json` に同梱されたルールでデフォルト有効になる左側空白ペナルティ（mecab-ko の `left-space-penalty-factor`。ko-dic は mecab-ko-dic のルールを同梱）を無効にする。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する機能で、`--disable-skip-whitespace` と併せて無効にすると、空白まわりの韓国語の解析について v6.0 以降に入った 2 つの変更（このペナルティと空白の読み飛ばし）がどちらもオフになる。ただし、`."` のような記号の連続が分かれるなど、それ以外の出力の変化は残る。[Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) のドキュメントを参照
 - `--space-penalty-rules`: 辞書のルールの代わりに、明示的な左側空白ペナルティのルールを JSON で指定する。例: `'{"rules":[{"pos":["JKS","JX"],"cost":6000}]}'`。`--disable-space-penalty` とは同時に指定できない
 - `--mmap`: 辞書ディレクトリの単語リストにメモリマップドファイル読み込みを使用する。`embedded://` 辞書、および `mmap` feature が無効な場合は無視される。プロセスがマップを保持している間に辞書ディレクトリを再ビルド・切り詰めると、次回のルックアップで SIGBUS を引き起こす可能性がある。
 - `--nbest` / `-N`: 返す N-best 結果の数（デフォルト: 1）。2以上に設定すると N-best 出力が有効になります。
