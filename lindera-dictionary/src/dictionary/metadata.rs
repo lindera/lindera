@@ -106,7 +106,15 @@ pub struct Metadata {
     pub default_field_value: String,   // Default value for fields in simple user dictionary
     pub flexible_csv: bool,            // Handle CSV columns flexibly
     pub skip_invalid_cost_or_id: bool, // Skip invalid cost or ID
-    pub normalize_details: bool,       // Normalize characters
+    /// Has no effect since 7.0.0: the builder keeps surfaces and detail
+    /// fields as written in the CSV, as MeCab does (#1106). Before 7.0.0,
+    /// `true` rewrote U+2015 (HORIZONTAL BAR) to U+2014 (EM DASH) and U+FF5E
+    /// (FULLWIDTH TILDE) to U+301C (WAVE DASH) in both, while the input text
+    /// was left as it was. The field is still read and written so that
+    /// existing `metadata.json` files and binding constructors keep working;
+    /// when absent, it reads as `false`.
+    #[serde(default)]
+    pub normalize_details: bool,
     /// Reorder connection-cost context IDs by frequency at build time so that
     /// frequently-used connection-matrix cells cluster in cache. Optional and
     /// defaults to `false`; when `false` the field is omitted from `metadata.json`

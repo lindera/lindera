@@ -316,6 +316,39 @@ fn ipadic_whitespace_entries() {
     assert_eq!(tokens[0].details()[6], "ルーマニア");
 }
 
+/// Regression test #1106: IPADIC entries spelled with U+2015 (HORIZONTAL
+/// BAR) match text spelled the same way, as in MeCab. The dictionary builder
+/// used to store them under U+2014 (EM DASH), which the text does not use,
+/// so `ＣＤ―ＲＯＭ` was split and `――` was an unknown noun.
+#[cfg(feature = "embed-ipadic")]
+#[test]
+fn ipadic_dash_entries() {
+    let segmenter = segmenter("embedded://ipadic", Mode::Normal);
+
+    let mut tokens = segmenter
+        .segment(Cow::Borrowed("ＣＤ\u{2015}ＲＯＭ"))
+        .expect("segmentation should succeed");
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(tokens[0].surface, "ＣＤ\u{2015}ＲＯＭ");
+    // details[6] is the base form, kept as written in the CSV.
+    assert_eq!(tokens[0].details()[6], "ＣＤ\u{2015}ＲＯＭ");
+
+    assert_eq!(
+        surfaces_and_details(&segmenter, "\u{2015}\u{2015}", 2),
+        vec![("\u{2015}\u{2015}".to_string(), "記号,一般".to_string())]
+    );
+
+    // No entry is spelled with U+2014, so the text is split, as in MeCab.
+    assert_eq!(
+        surfaces_and_details(&segmenter, "ＣＤ\u{2014}ＲＯＭ", 2),
+        vec![
+            ("ＣＤ".to_string(), "名詞,一般".to_string()),
+            ("\u{2014}".to_string(), "名詞,サ変接続".to_string()),
+            ("ＲＯＭ".to_string(), "名詞,固有名詞".to_string()),
+        ]
+    );
+}
+
 /// Regression test #1094: the full-width space is UniDic's `空白` entry.
 #[cfg(feature = "embed-unidic")]
 #[test]
