@@ -150,7 +150,6 @@ $metadata = Lindera\Metadata::fromJsonFile('metadata.json');
 | `default_field_value` | `string` | `"*"` | Default value for missing fields |
 | `flexible_csv` | `bool` | `false` | Allow flexible CSV parsing |
 | `skip_invalid_cost_or_id` | `bool` | `false` | Skip entries with invalid cost or ID |
-| `normalize_details` | `bool` | `false` | Normalize morphological details |
 | `dictionary_schema_fields` | `array<string>` | IPADIC schema | Schema fields for the main dictionary |
 | `user_dictionary_schema_fields` | `array<string>` | Minimal schema | Schema fields for user dictionaries |
 

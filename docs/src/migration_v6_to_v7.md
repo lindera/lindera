@@ -13,9 +13,10 @@ starts or ends with it, skips whitespace in the lattice as MeCab does,
 resolves overlapping `char.def` lines as MeCab does, carries the context
 across `、` and `。` within a line as MeCab does, returns N-best results
 that each cover the whole input, lets unknown words start at every position
-as MeCab does, and has the lattice backtraces of `lindera-dictionary` return
-each token's end offset. This guide lists every breaking change and the
-one-line fixes for each.
+as MeCab does, keeps the dashes and tildes of dictionary entries as written
+instead of rewriting them, removing the `normalize_details` setting, and has
+the lattice backtraces of `lindera-dictionary` return each token's end offset.
+This guide lists every breaking change and the one-line fixes for each.
 
 ## Overview
 
@@ -35,12 +36,18 @@ one-line fixes for each.
 | **The context is carried across `、` and `。` within a line, as in MeCab** | Anyone who segments Japanese text with `、` or `。` inside a line | Expect some words after `、` or `。` to be read differently, mostly as MeCab reads them, and the N-best costs of such lines to change; no setting restores the v6 behavior |
 | **N-best: every result covers the whole input** | Anyone who asks for N-best results (`segment_nbest`, `tokenize_nbest`, `lindera tokenize -N`, the bindings' N-best methods) for input with more than one sentence | Expect the cheapest segmentations of the whole input from the second result on; a cost threshold now applies to the whole input |
 | **Unknown words start at every position, as in MeCab** | Anyone who segments text with runs of katakana, symbols or Latin letters in normal mode, most visibly katakana joined by `・`, Korean sentence-final punctuation such as `."`, and Latin words with CC-CEDICT | Expect such runs to be split where MeCab splits them, and katakana- and Latin-heavy text to take about 13% more instructions; no setting restores the v6 behavior |
+| **IPADIC and IPADIC-NEologd: dashes and tildes in dictionary entries are kept as written, as in MeCab** | Anyone who segments text with `―` (U+2015), `—` (U+2014), `～` (U+FF5E) or `〜` (U+301C) with IPADIC or IPADIC-NEologd | Expect entries spelled with `―` or `～` to match text spelled the same way, and text with `—` or `〜` to miss the 12 IPADIC and 1,085 IPADIC-NEologd entries it found only through the old rewrite (a `mapping` character filter can fold the spellings); rebuild or re-download dictionaries made with v6.2.0 or earlier |
+| **The `normalize_details` setting is removed: `Metadata::new` and `CoreMetadata::new` take 10 arguments, Ruby's `Metadata.new` takes 8** | Code that creates or reads dictionary metadata: Rust (`Metadata`, `lindera_binding::CoreMetadata`, `PrefixDictionaryBuilderOptions`) and the `Metadata` classes of the Python, Ruby, PHP and Node.js bindings | Remove the argument, option or property; a `metadata.json` that still has the key loads, and the key is ignored |
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
 | **`Lattice::tokens_offset_into` returns the BOS index of the best path (`Option<usize>`)** | Rust code that uses the `()` value of `tokens_offset_into` | Nothing for a call written as a statement; otherwise ignore the new value |
 
 The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
-their APIs and package names; only their version number moves to 7.0.0.
-There are seven output differences, all described below. With IPADIC or
+their package names, and their APIs apart from one setting: the `Metadata`
+classes of the Python, Node.js, Ruby and PHP bindings no longer take or
+expose `normalize_details` (see
+[The `normalize_details` setting is removed](#the-normalize_details-setting-is-removed)).
+Their version number moves to 7.0.0.
+There are eight output differences, all described below. With IPADIC or
 IPADIC-NEologd, the values reported under the names `conjugation_type` and
 `conjugation_form` trade places. The dictionaries now contain the entries
 whose surface is or starts or ends with whitespace, which changes the
@@ -53,7 +60,10 @@ segmentation of some such text and the N-best costs of every such line. For
 input with more than one sentence, the N-best results from the second one on
 are the cheapest segmentations of the whole input. And in normal mode, an
 unknown word can start inside a run of characters of one kind, as in MeCab,
-which splits some runs of katakana, symbols and Latin letters. Otherwise,
+which splits some runs of katakana, symbols and Latin letters. With IPADIC
+and IPADIC-NEologd, the entries spelled with `―` or `～` are found under
+that spelling, as in MeCab, which changes the segmentation of text that
+contains `―`, `—`, `～` or `〜`. Otherwise,
 for the same input and dictionary, v7.0.0 produces the same tokens with the
 same positional details as v6.2.0.
 
@@ -229,7 +239,10 @@ This only matters if you build your own language binding on the shared
 helper crate. `lindera-binding` 7.0.0 depends on the `lindera` facade (with
 the `analysis` feature) instead of on `lindera` plus `lindera-analysis`; its
 own API — `CoreTokenizerBuilder`, `CoreTokenizer`, `TokenView`, and the
-argument, metadata, and schema helpers — is unchanged. The published
+argument, metadata, and schema helpers — is unchanged, except that
+`CoreMetadata` no longer has `normalize_details` (see
+[The `normalize_details` setting is removed](#the-normalize_details-setting-is-removed)).
+The published
 `lindera-binding-core` releases (4.0.0 through 6.2.0) stay on crates.io as
 they are and are not yanked, but receive no further versions.
 
@@ -609,15 +622,123 @@ There is no setting to restore the v6 behavior. `unknown_word_ladder(false)`
 (`--disable-unknown-word-ladder`) still turns off the shorter unknown-word
 candidates, but no longer reproduces the output of Lindera before v6.
 
+## Dash and tilde spellings are kept as written
+
+Japanese text spells the dash and the tilde in two ways each: the dash as
+`―` (U+2015, HORIZONTAL BAR) or `—` (U+2014, EM DASH), the tilde as `～`
+(U+FF5E, FULLWIDTH TILDE) or `〜` (U+301C, WAVE DASH). Up to v6.2.0, the
+dictionary builder rewrote `―` to `—` and `～` to `〜` in every entry of
+IPADIC and IPADIC-NEologd, whose `metadata.json` turned the rewrite on with
+`normalize_details`. It rewrote the surface, the spelling under which the
+segmenter finds the entry in the text, and the detail fields, such as the
+base form and the reading. The text to segment was not rewritten, so an
+entry that the dictionary source spells with `―` or `～` matched only text
+that spelled it with `—` or `〜`. The rewrite was a workaround for an old
+EUC-JP conversion. The dictionary sources are UTF-8 now, and `―` is the dash
+that the common Shift_JIS and EUC-JP converters produce and that Aozora
+Bunko texts use. v7.0.0 keeps every entry as written in the dictionary's CSV
+files, as MeCab does:
+
+| Input (dictionary) | v6 | v7 (as MeCab) |
+| --- | --- | --- |
+| `ＣＤ―ＲＯＭ` (IPADIC) | `ＣＤ`, `―` and `ＲＯＭ` | `ＣＤ―ＲＯＭ` (`名詞,一般`) |
+| `――` (IPADIC) | An unknown noun (`名詞,サ変接続`) | `記号,一般` |
+| `あいいれなぁ～い` (IPADIC-NEologd) | `あいいれなぁ`, `～` and `い` | `あいいれなぁ～い` (`形容詞,自立`) |
+| `CD―ROM` (IPADIC-NEologd) | `CD`, `―` and `ROM` | `CD―ROM` (`名詞,一般`) |
+| `ＣＤ—ＲＯＭ` (IPADIC) | `ＣＤ—ＲＯＭ` (`名詞,一般`) | `ＣＤ`, `—` and `ＲＯＭ` |
+| `——` (IPADIC) | `記号,一般` | An unknown noun (`名詞,サ変接続`) |
+
+The detail fields keep the CSV spelling as well: the entry `ＣＤ―ＲＯＭ`
+gives the base form `ＣＤ―ＲＯＭ`, where v6 gave `ＣＤ—ＲＯＭ`.
+
+With dictionaries built from the same sources, the number of lines that
+Lindera segments and tags exactly as MeCab does rises, on top of the other
+changes in this guide, from 459 to 503 of 505 paragraphs of *Botchan* (from
+2,690 to 2,744 of its 2,746 sentences) and from 3,377 to 3,581 of 3,587
+paragraphs of *Kokoro* and *I Am a Cat*, two other novels from Aozora Bunko.
+The figures are the same with IPADIC and IPADIC-NEologd, and no line that
+matched before stops matching.
+
+Text that writes these characters as `—` or `〜` no longer finds the entries
+that it found only through the rewrite: 12 in IPADIC, all spelled with `―`,
+and 1,085 in IPADIC-NEologd, most of them spelled with `～`. In the table
+above, `ＣＤ—ＲＯＭ` is split and `——` is an unknown noun, as in MeCab.
+IPADIC-NEologd has most of its words with a tilde in both spellings, so text
+with either tilde still finds them.
+
+To have both spellings find the entries, map the text to the dictionary's
+spelling with the `mapping` character filter. IPADIC spells all its entries
+with a dash with `―` and all those with a tilde with `〜`, so map `—` to `―`
+and `～` to `〜`:
+
+```sh
+lindera tokenize --dict ipadic --char-filter 'mapping:{"mapping":{"—":"―","～":"〜"}}'
+```
+
+```yaml
+# Configuration file
+character_filters:
+  - kind: mapping
+    args:
+      mapping:
+        "—": "―"
+        "～": "〜"
+```
+
+With this filter, `ＣＤ—ＲＯＭ` is one word and `——` is `記号,一般` again,
+and text with `～` also finds IPADIC's entries with `〜`, which it did not
+in v6 either. The token's surface is the mapped text, such as `ＣＤ―ＲＯＭ`;
+its byte offsets point into the original text. Mapping the tilde the other
+way, `〜` to `～`, would hide IPADIC's entries with `〜`. With
+IPADIC-NEologd, a mapping trades words: some of its words exist in only one
+spelling, 129 only with `―` and 85 only with `—`, 957 only with `～` and
+1,813 only with `〜`, so mapping one spelling to the other makes text find
+the words of one and miss those of the other. NFKC normalization
+(the `unicode_normalize` character filter) does not fold these characters:
+it turns `～` into `~` and leaves `―`, `—` and `〜` as they are.
+
+User dictionaries were never rewritten and do not change. The change is in
+the dictionary builder; the dictionary format version is unchanged. The
+embedded dictionaries and the dictionaries that the 7.0.0 CLI fetches with
+`lindera download` keep the spellings. A dictionary directory built or
+downloaded with v6.2.0 or earlier still loads in v7.0.0 but keeps the
+rewritten entries until you rebuild it with `lindera build` or download the
+7.0.0 release asset. UniDic, ko-dic, CC-CEDICT, Jieba and SudachiDict never
+turned the rewrite on, and their dictionaries do not change.
+
+### The `normalize_details` setting is removed
+
+`normalize_details` turned this rewrite on and did nothing else, so v7.0.0
+removes it from the bundled `metadata.json` files and from the APIs that
+create or expose dictionary metadata:
+
+| API | Change |
+| --- | --- |
+| Rust | `Metadata::new` takes 10 arguments instead of 11 (`normalize_details` was the ninth), and the `Metadata::normalize_details` field and the `PrefixDictionaryBuilderOptions::normalize_details` method are gone. For binding authors, `lindera_binding::CoreMetadata` and `CoreMetadata::new` change the same way. See [Rust API changes in `lindera_dictionary`](#rust-api-changes-in-lindera_dictionary) |
+| Python | The `normalize_details` keyword argument of `Metadata`, the property and the `to_dict()` key are gone; passing the keyword raises `TypeError` |
+| Ruby | `Metadata.new` takes 8 positional arguments instead of 9, so passing 9 raises `ArgumentError`; the `normalize_details` reader and the `to_h` key are gone |
+| PHP | The last argument of the `Metadata` constructor, `normalize_details`, the property and the `toArray()` key are gone; passing the argument raises `Error` (by name) or `ArgumentCountError` (as a ninth argument) |
+| Node.js | The `normalizeDetails` option of `Metadata`, the property and the `toObject()` key are gone; TypeScript rejects the option, and at run time it is ignored |
+| WASM | No change: its `Metadata` never exposed the setting |
+
+A `metadata.json` that still contains `normalize_details`, such as one
+written by v6, loads as before, whether it comes with a built dictionary,
+is passed to `lindera build` or is read by a binding; the key is ignored
+and is not written back.
+
 ## Rust API changes in `lindera_dictionary`
 
-These affect only code that calls the lattice backtraces directly:
+These affect only code that calls the lattice backtraces directly, or that
+creates dictionary metadata with `Metadata::new`:
 `lindera_dictionary::viterbi::Lattice` and
 `lindera_dictionary::nbest::NBestGenerator`, also reachable as
 `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and
-`lindera::dictionary::nbest::…`. The `Segmenter`, `Tokenizer`,
-`SegmentWorker` and `AnalysisWorker` APIs, the language bindings and the
-CLI are unaffected.
+`lindera::dictionary::nbest::…`, and
+`lindera_dictionary::dictionary::metadata::Metadata`, also reachable as
+`lindera::dictionary::Metadata`. The `Segmenter`, `Tokenizer`,
+`SegmentWorker` and `AnalysisWorker` APIs and the CLI are unaffected; the
+language bindings change only in their `Metadata` class (see
+[The `normalize_details` setting is removed](#the-normalize_details-setting-is-removed)).
 
 | v6 | v7 |
 | --- | --- |
@@ -628,6 +749,9 @@ CLI are unaffected.
 | — | New type aliases in `viterbi`: `TokenOffset = (usize, usize, WordId)` and `NBestPath = (Vec<TokenOffset>, i64)` |
 | — | New in `viterbi`: `BosContext`, `LatticeOptions::bos`, `LatticeExit`, `Lattice::exits_into` and `Lattice::exit_tokens_offset_into` |
 | — | New in `nbest`: `NBestGenerator::from_exit` and `NBestGenerator::next_with_bos` |
+| `Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, normalize_details, schema, userdic_schema)` | `Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, schema, userdic_schema)` |
+| `Metadata::normalize_details` | Removed |
+| `PrefixDictionaryBuilderOptions::normalize_details(value)` | Removed |
 
 Each token is now `(start, end, word_id)` instead of `(start, word_id)`,
 with byte offsets within the sentence. With whitespace skipped
@@ -687,10 +811,22 @@ They change nothing for existing code:
 several, it does not say which one a path starts from. Use
 `NBestGenerator::next_with_bos` there.
 
+`Metadata::new` loses its ninth argument, `normalize_details`: delete it
+from the call. `Metadata` no longer has the field, and
+`PrefixDictionaryBuilderOptions` (in `lindera_dictionary::builder::prefix_dictionary`)
+no longer has the method, because the builder keeps every entry as written
+(see
+[Dash and tilde spellings are kept as written](#dash-and-tilde-spellings-are-kept-as-written)).
+`Metadata` still reads a `metadata.json` that contains the key, and ignores
+it. For binding authors, `lindera_binding::CoreMetadata` loses the field the
+same way, and `CoreMetadata::new` takes 10 arguments instead of 11.
+
 ## Who does not need to act
 
 - **Users of the language bindings and the CLI**: the Python, Node.js, Ruby,
-  PHP, and WASM packages and `lindera-cli` keep their APIs and package names.
+  PHP, and WASM packages and `lindera-cli` keep their package names, and
+  their APIs apart from the `normalize_details` setting of `Metadata` (see
+  [The `normalize_details` setting is removed](#the-normalize_details-setting-is-removed)).
   The restructuring is internal to the Rust crates. The output changes are
   the IPADIC conjugation fix, which matters only if you read those two fields
   by name, the whitespace entries, which matter only for text with U+3000
@@ -699,16 +835,18 @@ several, it does not say which one a path starts from. Use
   matters only for text with `Ð`, `々` or `〇`, the context carried across
   `、` and `。`, which matters only for text with `、` or `。` inside a line,
   the N-best fix, which matters only for N-best results for input with
-  more than one sentence, and the unknown words that start at every
-  position, which matter for runs of katakana, symbols or Latin letters in
-  normal mode.
+  more than one sentence, the unknown words that start at every position,
+  which matter for runs of katakana, symbols or Latin letters in normal
+  mode, and the dash and tilde spellings, which matter only for text with
+  `―`, `—`, `～` or `〜` with IPADIC or IPADIC-NEologd.
 - **Projects staying on `lindera = "6"`**: the 6.x releases of `lindera` and
   `lindera-analysis` remain on crates.io and keep working together. Nothing
   changes until you bump the major version.
 - **Users of the segmenter API only**: code that uses `Segmenter`,
   `load_dictionary`, `Mode`, and the other `lindera::…` items of v6 compiles
   unchanged with `lindera = "7"`, unless it calls the lattice backtraces of
-  `lindera::dictionary::Lattice` (see
+  `lindera::dictionary::Lattice` or creates metadata with
+  `lindera::dictionary::Metadata::new` (see
   [Rust API changes in `lindera_dictionary`](#rust-api-changes-in-lindera_dictionary)).
   The default build now also compiles
   `lindera-analysis` and its dependencies (kanaria, regex, serde_yaml_ng,
@@ -739,11 +877,17 @@ Rust crate users:
 - If you use the `()` value of `Lattice::tokens_offset_into`, for example
   as the body of a closure, add a `;`: it now returns the BOS index of the
   best path.
+- If you call `Metadata::new`, delete its ninth argument,
+  `normalize_details`, and stop using the `Metadata::normalize_details`
+  field and `PrefixDictionaryBuilderOptions::normalize_details`.
 
 Binding authors:
 
 - Depend on `lindera-binding` instead of `lindera-binding-core`, and replace
   `lindera_binding_core::` with `lindera_binding::`.
+- Delete the `normalize_details` argument of `CoreMetadata::new`, which now
+  takes 10 arguments, and stop using the `CoreMetadata::normalize_details`
+  field.
 
 Build environments:
 
@@ -818,7 +962,24 @@ letters:
   instructions, and very long katakana runs in N-best to take much more
   time and memory.
 
+Users of IPADIC or IPADIC-NEologd with text that contains `―`, `—`, `～` or
+`〜`:
+
+- Expect entries spelled with `―` or `～` to match text spelled the same
+  way, as in MeCab, and text with `—` or `〜` to miss the 12 IPADIC and
+  1,085 IPADIC-NEologd entries that it found only through the old rewrite.
+  With IPADIC, map `—` to `―` and `～` to `〜` with the `mapping` character
+  filter if both spellings should find the entries.
+- Rebuild or re-download dictionary directories made with v6.2.0 or earlier
+  to get the entries as written.
+
 Language bindings and CLI:
 
-- Nothing to do beyond taking the 7.0.0 release, apart from the dictionary,
-  whitespace, `、` and `。`, N-best and unknown-word items above.
+- Remove `normalize_details` where you create `Metadata`: the Python
+  keyword argument, the ninth positional argument of Ruby's `Metadata.new`,
+  the last argument of PHP's `Metadata` constructor, and the
+  `normalizeDetails` option in Node.js. Stop reading the property and the
+  key of the same name in `to_dict()`, `to_h`, `toArray()` and `toObject()`.
+- Nothing else to do beyond taking the 7.0.0 release, apart from the
+  dictionary, whitespace, `、` and `。`, N-best, unknown-word, and dash and
+  tilde items above.

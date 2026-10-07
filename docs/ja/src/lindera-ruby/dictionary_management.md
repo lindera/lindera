@@ -106,7 +106,7 @@ require 'lindera'
 metadata = Lindera::Metadata.create_default
 ```
 
-`Lindera::Metadata.new` は9つのプロパティすべてを必須の位置引数として受け取ります
+`Lindera::Metadata.new` は8つのプロパティすべてを必須の位置引数として受け取ります
 （それぞれ `nil` を渡すとデフォルト値にフォールバックします）。特定の値を上書きしたい
 場合にのみ使用してください：
 
@@ -119,8 +119,7 @@ metadata = Lindera::Metadata.new(
   1288,      # default_right_context_id
   '*',       # default_field_value
   false,     # flexible_csv
-  false,     # skip_invalid_cost_or_id
-  false      # normalize_details
+  false      # skip_invalid_cost_or_id
 )
 ```
 
@@ -151,7 +150,6 @@ metadata = dictionary.metadata
 | `default_field_value` | `String` | `"*"` | 欠損フィールドのデフォルト値 |
 | `flexible_csv` | `Boolean` | `false` | 柔軟な CSV パースを許可 |
 | `skip_invalid_cost_or_id` | `Boolean` | `false` | 無効なコストまたは ID のエントリーをスキップ |
-| `normalize_details` | `Boolean` | `false` | 形態素の詳細情報を正規化 |
 
 `to_h`（別名 `to_hash`）は、これらのプロパティに `dictionary_schema_fields` と `user_dictionary_schema_fields`（カンマ区切りのフィールド名）を加えた、値がすべて文字列の `Hash` を返します。ko-dic のようにメタデータが左側空白ペナルティのルールを持つ場合は、そのルールを JSON 文字列で保持する `space_penalty` エントリも含まれます：
 

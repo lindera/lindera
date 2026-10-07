@@ -145,7 +145,6 @@ const metadata = Metadata.fromJsonFile("metadata.json");
 | `defaultFieldValue` | `string` | `"*"` | 欠損フィールドのデフォルト値 |
 | `flexibleCsv` | `boolean` | `false` | 柔軟な CSV パースを許可 |
 | `skipInvalidCostOrId` | `boolean` | `false` | 無効なコストまたは ID のエントリーをスキップ |
-| `normalizeDetails` | `boolean` | `false` | 形態素の詳細情報を正規化 |
 
 > [!NOTE]
 > このバインディングの `Metadata` オブジェクトには、スキーマ情報（辞書/ユーザー辞書の

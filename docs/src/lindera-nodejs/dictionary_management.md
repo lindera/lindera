@@ -145,7 +145,6 @@ const metadata = Metadata.fromJsonFile("metadata.json");
 | `defaultFieldValue` | `string` | `"*"` | Default value for missing fields |
 | `flexibleCsv` | `boolean` | `false` | Allow flexible CSV parsing |
 | `skipInvalidCostOrId` | `boolean` | `false` | Skip entries with invalid cost or ID |
-| `normalizeDetails` | `boolean` | `false` | Normalize morphological details |
 
 > [!NOTE]
 > Schema information (dictionary/user-dictionary field layout) is not exposed on this binding's
