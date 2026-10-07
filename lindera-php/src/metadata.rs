@@ -42,7 +42,6 @@ impl PhpMetadata {
     /// * `default_field_value` - Default field value (default: "*").
     /// * `flexible_csv` - Allow flexible CSV (default: false).
     /// * `skip_invalid_cost_or_id` - Skip invalid entries (default: false).
-    /// * `normalize_details` - Normalize details (default: false).
     ///
     /// # Returns
     ///
@@ -57,7 +56,6 @@ impl PhpMetadata {
         default_field_value: Option<String>,
         flexible_csv: Option<bool>,
         skip_invalid_cost_or_id: Option<bool>,
-        normalize_details: Option<bool>,
     ) -> Self {
         Self {
             inner: CoreMetadata::new(
@@ -69,7 +67,6 @@ impl PhpMetadata {
                 default_field_value,
                 flexible_csv,
                 skip_invalid_cost_or_id,
-                normalize_details,
                 None,
                 None,
             ),
@@ -82,7 +79,7 @@ impl PhpMetadata {
     ///
     /// A new default Metadata instance.
     pub fn create_default() -> Self {
-        Self::__construct(None, None, None, None, None, None, None, None, None)
+        Self::__construct(None, None, None, None, None, None, None, None)
     }
 
     /// Loads Metadata from a JSON file.
@@ -184,16 +181,6 @@ impl PhpMetadata {
         self.inner.skip_invalid_cost_or_id
     }
 
-    /// Returns whether details normalization is enabled.
-    ///
-    /// # Returns
-    ///
-    /// True if normalization is enabled.
-    #[php(getter, change_case = "snake_case")]
-    pub fn normalize_details(&self) -> bool {
-        self.inner.normalize_details
-    }
-
     /// Returns the dictionary schema fields.
     ///
     /// # Returns
@@ -251,10 +238,6 @@ impl PhpMetadata {
             "skip_invalid_cost_or_id".to_string(),
             self.inner.skip_invalid_cost_or_id.to_string(),
         );
-        dict.insert(
-            "normalize_details".to_string(),
-            self.inner.normalize_details.to_string(),
-        );
         if let Some(space_penalty) = self.inner.space_penalty_json() {
             dict.insert("space_penalty".to_string(), space_penalty);
         }
@@ -304,7 +287,6 @@ mod tests {
         assert_eq!(meta.default_field_value(), "*");
         assert!(!meta.flexible_csv());
         assert!(!meta.skip_invalid_cost_or_id());
-        assert!(!meta.normalize_details());
         assert_eq!(meta.dictionary_schema_fields().len(), 13);
         assert_eq!(meta.user_dictionary_schema_fields().len(), 3);
     }
@@ -318,7 +300,6 @@ mod tests {
             Some(100),
             Some(200),
             Some("N/A".to_string()),
-            Some(true),
             Some(true),
             Some(true),
         );

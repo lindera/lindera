@@ -7,7 +7,6 @@
   "default_field_value": "*",
   "flexible_csv": false,
   "skip_invalid_cost_or_id": false,
-  "normalize_details": false,
   "dictionary_schema": {
     "fields": [
       "surface",

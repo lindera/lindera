@@ -26,7 +26,6 @@ pub struct PrefixDictionaryBuilder {
     flexible_csv: bool,
     /* If set to UTF-8, it can also read UTF-16 files with BOM. */
     encoding: Cow<'static, str>,
-    normalize_details: bool,
     skip_invalid_cost_or_id: bool,
     schema: Schema,
     /// Optional connection-cost context-ID remap. When present, each entry's
@@ -41,7 +40,6 @@ pub struct PrefixDictionaryBuilder {
 pub struct PrefixDictionaryBuilderOptions {
     flexible_csv: Option<bool>,
     encoding: Option<Cow<'static, str>>,
-    normalize_details: Option<bool>,
     skip_invalid_cost_or_id: Option<bool>,
     schema: Option<Schema>,
     context_id_remap: Option<Arc<ContextIdMap>>,
@@ -55,11 +53,6 @@ impl PrefixDictionaryBuilderOptions {
 
     pub fn encoding(&mut self, value: impl Into<Cow<'static, str>>) -> &mut Self {
         self.encoding = Some(value.into());
-        self
-    }
-
-    pub fn normalize_details(&mut self, value: bool) -> &mut Self {
-        self.normalize_details = Some(value);
         self
     }
 
@@ -82,7 +75,6 @@ impl PrefixDictionaryBuilderOptions {
         PrefixDictionaryBuilder {
             flexible_csv: self.flexible_csv.unwrap_or(true),
             encoding: self.encoding.clone().unwrap_or_else(|| "UTF-8".into()),
-            normalize_details: self.normalize_details.unwrap_or(false),
             skip_invalid_cost_or_id: self.skip_invalid_cost_or_id.unwrap_or(false),
             schema: self.schema.clone().unwrap_or_default(),
             context_id_remap: self.context_id_remap.clone(),
@@ -96,7 +88,6 @@ impl PrefixDictionaryBuilder {
         Self {
             flexible_csv: true,
             encoding: "UTF-8".into(),
-            normalize_details: false,
             skip_invalid_cost_or_id: false,
             schema,
             context_id_remap: None,
@@ -123,17 +114,9 @@ impl PrefixDictionaryBuilder {
         let encoding = self.get_encoding()?;
         let mut rows = self.read_csv_files(&filenames, encoding)?;
 
-        // Sort dictionary entries by the first column (word)
-        // Change sorting method based on normalization settings
-        if self.normalize_details {
-            // Sort after normalizing characters (―→—, ～→〜).
-            // The cached variant computes the allocating normalize key once
-            // per row instead of once per comparison.
-            rows.sort_by_cached_key(|row| normalize(&row[0]));
-        } else {
-            // Sort using original strings directly
-            rows.sort_by(|a, b| a[0].cmp(&b[0]))
-        }
+        // Sort dictionary entries by the surface as written. The sort is
+        // stable, so entries sharing a surface keep their input order.
+        rows.sort_by(|a, b| a[0].cmp(&b[0]));
 
         Ok(rows)
     }
@@ -249,17 +232,14 @@ impl PrefixDictionaryBuilder {
                 continue;
             };
 
-            // The surface is read verbatim: trimming it would drop whitespace
-            // entries such as U+3000 (IPADIC, UniDic) and U+0020 (SudachiDict)
-            // and merge entries that start or end with whitespace into the
-            // trimmed key (#1094).
+            // The surface is the key verbatim, as in MeCab. Trimming it would
+            // drop whitespace entries such as U+3000 (IPADIC, UniDic) and
+            // U+0020 (SudachiDict) and merge entries that start or end with
+            // whitespace into the trimmed key (#1094). Rewriting characters,
+            // as the builder once did with U+2015 and U+FF5E, would store an
+            // entry under a spelling the input text never has (#1106).
             let Some(surface) = self.get_surface(row) else {
                 continue;
-            };
-            let key = if self.normalize_details {
-                normalize(surface)
-            } else {
-                surface.to_string()
             };
 
             // Relabel context IDs to match the connection matrix when remapping is
@@ -273,12 +253,15 @@ impl PrefixDictionaryBuilder {
                 None => (left_id, right_id),
             };
 
-            word_entry_map.entry(key).or_default().push(WordEntry::new(
-                crate::viterbi::WordId::new(crate::viterbi::LexType::System, row_id as u32),
-                word_cost,
-                left_id,
-                right_id,
-            ));
+            word_entry_map
+                .entry(surface.to_string())
+                .or_default()
+                .push(WordEntry::new(
+                    crate::viterbi::WordId::new(crate::viterbi::LexType::System, row_id as u32),
+                    word_cost,
+                    left_id,
+                    right_id,
+                ));
         }
 
         Ok(word_entry_map)
@@ -430,16 +413,9 @@ impl PrefixDictionaryBuilder {
                         .add_context("Failed to write word index offset to dict.wordsidx buffer")
                 })?;
 
-            // Create word details from the row data (5th column and beyond)
-            let joined_details = if self.normalize_details {
-                row.iter()
-                    .skip(4)
-                    .map(normalize)
-                    .collect::<Vec<String>>()
-                    .join("\0")
-            } else {
-                row.iter().skip(4).collect::<Vec<&str>>().join("\0")
-            };
+            // Create word details from the row data (5th column and beyond),
+            // kept as written in the CSV like the surface.
+            let joined_details = row.iter().skip(4).collect::<Vec<&str>>().join("\0");
             let joined_details_len = u32::try_from(joined_details.len()).map_err(|err| {
                 LinderaErrorKind::Serialize
                     .with_error(anyhow::anyhow!(err))
@@ -637,10 +613,6 @@ pub(crate) fn pack_entry_value(surface: &str, offset: u32, count: u32) -> Linder
     Ok((offset << 8) | count)
 }
 
-fn normalize(text: &str) -> String {
-    text.to_string().replace('―', "—").replace('～', "〜")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -692,7 +664,6 @@ mod tests {
         // Schema no longer has version field
         assert!(builder.flexible_csv);
         assert_eq!(builder.encoding, "UTF-8");
-        assert!(!builder.normalize_details);
         assert!(!builder.skip_invalid_cost_or_id);
     }
 
@@ -806,38 +777,6 @@ mod tests {
     }
 
     #[test]
-    fn test_sort_by_cached_key_matches_sort_by_key() {
-        // Rows whose surfaces normalize to the same key (～ -> 〜) exercise
-        // stability: equal-key rows must keep their input order, so the
-        // cached-key sort must produce exactly the same order as the
-        // per-comparison sort_by_key it replaced.
-        let mut rows_cached: Vec<StringRecord> = vec![
-            StringRecord::from(vec!["テスト～", "1", "1", "10"]),
-            StringRecord::from(vec!["テスト〜", "2", "2", "20"]),
-            StringRecord::from(vec!["あ", "3", "3", "30"]),
-            StringRecord::from(vec!["テスト～", "4", "4", "40"]),
-            StringRecord::from(vec!["―", "5", "5", "50"]),
-            StringRecord::from(vec!["—", "6", "6", "60"]),
-        ];
-        let mut rows_naive = rows_cached.clone();
-
-        rows_cached.sort_by_cached_key(|row| normalize(&row[0]));
-        rows_naive.sort_by_key(|row| normalize(&row[0]));
-
-        let order_cached: Vec<String> = rows_cached.iter().map(|r| r[1].to_string()).collect();
-        let order_naive: Vec<String> = rows_naive.iter().map(|r| r[1].to_string()).collect();
-        assert_eq!(order_cached, order_naive);
-    }
-
-    #[test]
-    fn test_normalize_function() {
-        assert_eq!(normalize("test―text"), "test—text");
-        assert_eq!(normalize("test～text"), "test〜text");
-        assert_eq!(normalize("test―text～more"), "test—text〜more");
-        assert_eq!(normalize("normal text"), "normal text");
-    }
-
-    #[test]
     fn test_get_encoding() {
         let schema = Schema::default();
         let builder = PrefixDictionaryBuilder::new(schema);
@@ -931,18 +870,73 @@ mod tests {
     }
 
     #[test]
-    fn test_build_word_entry_map_normalize_details_keeps_whitespace() {
-        let mut builder = PrefixDictionaryBuilder::new(Schema::default());
-        builder.normalize_details = true;
+    fn test_build_word_entry_map_keeps_dash_and_tilde_surfaces() {
+        let builder = PrefixDictionaryBuilder::new(Schema::default());
         let rows = vec![
-            StringRecord::from(vec!["\u{3000}", "9", "9", "1287", "記号", "空白"]),
-            StringRecord::from(vec!["ルーマニア\u{3000}", "1", "1", "100", "名詞"]),
-            StringRecord::from(vec!["a―b", "1", "1", "100", "名詞"]),
+            StringRecord::from(vec!["ＣＤ\u{2015}ＲＯＭ", "1", "1", "100", "名詞"]),
+            StringRecord::from(vec!["ＣＤ\u{2014}ＲＯＭ", "1", "1", "200", "名詞"]),
+            StringRecord::from(vec!["\u{2015}\u{2015}", "2", "2", "300", "記号"]),
+            StringRecord::from(vec!["あ\u{ff5e}", "3", "3", "400", "名詞"]),
+            StringRecord::from(vec!["あ\u{301c}", "3", "3", "500", "名詞"]),
         ];
 
         let map = builder.build_word_entry_map(&rows).unwrap();
 
-        let keys: Vec<&str> = map.keys().map(String::as_str).collect();
-        assert_eq!(keys, vec!["a—b", "\u{3000}", "ルーマニア\u{3000}"]);
+        // Each spelling is its own key: U+2015 and U+FF5E are no longer
+        // rewritten to U+2014 and U+301C, so they neither move to another
+        // key nor merge with the entry spelled that way (#1106).
+        assert_eq!(map.len(), 5);
+        assert_eq!(map["ＣＤ\u{2015}ＲＯＭ"][0].word_cost(), 100);
+        assert_eq!(map["ＣＤ\u{2014}ＲＯＭ"][0].word_cost(), 200);
+        assert_eq!(map["\u{2015}\u{2015}"][0].word_cost(), 300);
+        assert_eq!(map["あ\u{ff5e}"].len(), 1);
+        assert_eq!(map["あ\u{ff5e}"][0].word_cost(), 400);
+        assert_eq!(map["あ\u{301c}"].len(), 1);
+        assert_eq!(map["あ\u{301c}"][0].word_cost(), 500);
+    }
+
+    #[test]
+    fn test_build_keeps_dash_and_tilde_in_surfaces_and_details() {
+        let input_dir = tempfile::tempdir().unwrap();
+        let output_dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            input_dir.path().join("lex.csv"),
+            "ＣＤ\u{2015}ＲＯＭ,1,1,100,名詞,一般,ＣＤ\u{2015}ＲＯＭ\n\
+             あ\u{ff5e},2,2,200,名詞,一般,あ\u{ff5e}\n",
+        )
+        .unwrap();
+
+        PrefixDictionaryBuilder::new(Schema::default())
+            .build(input_dir.path(), output_dir.path())
+            .unwrap();
+
+        let read = |name: &str| std::fs::read(output_dir.path().join(name)).unwrap();
+        let dict = crate::dictionary::prefix_dictionary::PrefixDictionary::load(
+            read("dict.trie"),
+            read("dict.valsidx"),
+            read("dict.vals"),
+            read("dict.wordsidx"),
+            read("dict.words"),
+        )
+        .unwrap();
+        let details = |surface: &str| {
+            let entries = dict.find_surface(surface);
+            assert_eq!(entries.len(), 1, "one entry for {surface}");
+            let word_id = entries[0].word_id().id() as usize;
+            let offset = crate::util::words_idx_offset(&dict.words_idx_data, word_id).unwrap();
+            crate::util::joined_details_at(&dict.words_data, offset)
+                .unwrap()
+                .to_string()
+        };
+
+        // The entries are found under the spelling of the CSV, and only there.
+        assert!(dict.find_surface("ＣＤ\u{2014}ＲＯＭ").is_empty());
+        assert!(dict.find_surface("あ\u{301c}").is_empty());
+        // The detail fields are kept as written too.
+        assert_eq!(
+            details("ＣＤ\u{2015}ＲＯＭ"),
+            "名詞\0一般\0ＣＤ\u{2015}ＲＯＭ"
+        );
+        assert_eq!(details("あ\u{ff5e}"), "名詞\0一般\0あ\u{ff5e}");
     }
 }

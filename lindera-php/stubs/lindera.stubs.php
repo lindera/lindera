@@ -93,15 +93,12 @@ class Metadata implements \Stringable
     public $name;
 
     /** @var bool */
-    public $normalize_details;
-
-    /** @var bool */
     public $skip_invalid_cost_or_id;
 
     /** @var list<string> */
     public $user_dictionary_schema_fields;
 
-    public function __construct(?string $name = null, ?string $encoding = null, ?int $default_word_cost = null, ?int $default_left_context_id = null, ?int $default_right_context_id = null, ?string $default_field_value = null, ?bool $flexible_csv = null, ?bool $skip_invalid_cost_or_id = null, ?bool $normalize_details = null) {}
+    public function __construct(?string $name = null, ?string $encoding = null, ?int $default_word_cost = null, ?int $default_left_context_id = null, ?int $default_right_context_id = null, ?string $default_field_value = null, ?bool $flexible_csv = null, ?bool $skip_invalid_cost_or_id = null) {}
 
     public function __toString(): string {}
 

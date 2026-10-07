@@ -155,7 +155,6 @@ metadata = Metadata.from_json_file("metadata.json")
 | `default_field_value` | `str` | `"*"` | Default value for missing fields |
 | `flexible_csv` | `bool` | `False` | Allow flexible CSV parsing |
 | `skip_invalid_cost_or_id` | `bool` | `False` | Skip entries with invalid cost or ID |
-| `normalize_details` | `bool` | `False` | Normalize morphological details |
 | `dictionary_schema` | `Schema` | IPADIC schema | Schema for the main dictionary |
 | `user_dictionary_schema` | `Schema` | Minimal schema | Schema for user dictionaries |
 

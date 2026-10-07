@@ -95,7 +95,6 @@ reserved columns; the rest name SudachiDict's columns in order:
   "default_field_value": "*",
   "flexible_csv": true,
   "skip_invalid_cost_or_id": true,
-  "normalize_details": false,
   "dictionary_schema": {
     "fields": [
       "surface",

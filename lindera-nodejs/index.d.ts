@@ -91,10 +91,6 @@ export declare class Metadata {
   get skipInvalidCostOrId(): boolean
   /** Sets whether to skip invalid entries. */
   set skipInvalidCostOrId(value: boolean)
-  /** Whether to normalize morphological details. */
-  get normalizeDetails(): boolean
-  /** Sets whether to normalize details. */
-  set normalizeDetails(value: boolean)
   /**
    * Returns a plain object representation of the metadata.
    *
@@ -574,8 +570,6 @@ export interface MetadataOptions {
   flexibleCsv?: boolean
   /** Skip entries with invalid cost or ID (default: false). */
   skipInvalidCostOrId?: boolean
-  /** Normalize morphological details (default: false). */
-  normalizeDetails?: boolean
 }
 
 /**

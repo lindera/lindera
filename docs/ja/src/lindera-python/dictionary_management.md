@@ -156,7 +156,6 @@ metadata = Metadata.from_json_file("metadata.json")
 | `default_field_value` | `str` | `"*"` | 欠損フィールドのデフォルト値 |
 | `flexible_csv` | `bool` | `False` | 柔軟な CSV パースを許可 |
 | `skip_invalid_cost_or_id` | `bool` | `False` | 無効なコストまたは ID のエントリーをスキップ |
-| `normalize_details` | `bool` | `False` | 形態素の詳細情報を正規化 |
 | `dictionary_schema` | `Schema` | IPADIC スキーマ | メイン辞書のスキーマ |
 | `user_dictionary_schema` | `Schema` | 最小スキーマ | ユーザー辞書のスキーマ |
 

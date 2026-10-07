@@ -106,7 +106,7 @@ require 'lindera'
 metadata = Lindera::Metadata.create_default
 ```
 
-`Lindera::Metadata.new` takes all nine properties as required positional
+`Lindera::Metadata.new` takes all eight properties as required positional
 arguments (each may be `nil` to fall back to its default) -- use it only when
 you need to override specific values:
 
@@ -119,8 +119,7 @@ metadata = Lindera::Metadata.new(
   1288,      # default_right_context_id
   '*',       # default_field_value
   false,     # flexible_csv
-  false,     # skip_invalid_cost_or_id
-  false      # normalize_details
+  false      # skip_invalid_cost_or_id
 )
 ```
 
@@ -151,7 +150,6 @@ metadata = dictionary.metadata
 | `default_field_value` | `String` | `"*"` | Default value for missing fields |
 | `flexible_csv` | `Boolean` | `false` | Allow flexible CSV parsing |
 | `skip_invalid_cost_or_id` | `Boolean` | `false` | Skip entries with invalid cost or ID |
-| `normalize_details` | `Boolean` | `false` | Normalize morphological details |
 
 `to_h` (and its alias `to_hash`) returns these properties as a `Hash` of strings, together with `dictionary_schema_fields` and `user_dictionary_schema_fields` (comma-separated field names). When the metadata carries left-space penalty rules, as ko-dic's does, the hash also has a `space_penalty` entry holding them as a JSON string:
 

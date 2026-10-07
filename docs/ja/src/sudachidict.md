@@ -92,7 +92,6 @@ surface）です。そのため形態素の詳細情報はカラム 5 から始�
   "default_field_value": "*",
   "flexible_csv": true,
   "skip_invalid_cost_or_id": true,
-  "normalize_details": false,
   "dictionary_schema": {
     "fields": [
       "surface",

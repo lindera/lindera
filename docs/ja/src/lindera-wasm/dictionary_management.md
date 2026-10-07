@@ -243,7 +243,7 @@ console.log(metadata.name); // "custom_dict"
 ```
 
 > [!NOTE]
-> Python・Node.js・Ruby・PHP の各バインディングと異なり、WASM の `Metadata` クラスは `default_word_cost`、`default_left_context_id`、`default_right_context_id`、`default_field_value`、`flexible_csv`、`skip_invalid_cost_or_id`、`normalize_details` を取得・設定可能なプロパティとして公開していません（`lindera-wasm/src/metadata.rs` 参照）。これらは常にバインディング共通のデフォルト値（コスト `-10000`、文脈 ID `1288`、フィールド値 `"*"`、フラグはすべて `false`）にフォールバックし、JavaScript から変更することはできません。`space_penalty` ルールも公開していません。ルールが効くのは、そのルールと一緒に読み込んだ辞書だけです（[`setSpacePenalty()`](./tokenizer_api.md#setspacepenaltyvalue) を参照）。`dictionary.metadata` を `loadUserDictionaryFromBytes()` などに渡しても、ほかの場所でルールが適用されることはありません。
+> Python・Node.js・Ruby・PHP の各バインディングと異なり、WASM の `Metadata` クラスは `default_word_cost`、`default_left_context_id`、`default_right_context_id`、`default_field_value`、`flexible_csv`、`skip_invalid_cost_or_id` を取得・設定可能なプロパティとして公開していません（`lindera-wasm/src/metadata.rs` 参照）。これらは常にバインディング共通のデフォルト値（コスト `-10000`、文脈 ID `1288`、フィールド値 `"*"`、フラグはすべて `false`）にフォールバックし、JavaScript から変更することはできません。`space_penalty` ルールも公開していません。ルールが効くのは、そのルールと一緒に読み込んだ辞書だけです（[`setSpacePenalty()`](./tokenizer_api.md#setspacepenaltyvalue) を参照）。`dictionary.metadata` を `loadUserDictionaryFromBytes()` などに渡しても、ほかの場所でルールが適用されることはありません。
 
 読み込み済み辞書のメタデータには `dictionary.metadata` からアクセスできます。
 
