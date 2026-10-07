@@ -190,9 +190,10 @@ starts or ends with it, skips whitespace in the lattice as MeCab does,
 resolves overlapping <code>char.def</code> lines as MeCab does, carries the context
 across <code>、</code> and <code>。</code> within a line as MeCab does, returns N-best results
 that each cover the whole input, lets unknown words start at every position
-as MeCab does, and has the lattice backtraces of <code>lindera-dictionary</code> return
-each token's end offset. This guide lists every breaking change and the
-one-line fixes for each.</p>
+as MeCab does, keeps the dashes and tildes of dictionary entries as written
+instead of rewriting them, removing the <code>normalize_details</code> setting, and has
+the lattice backtraces of <code>lindera-dictionary</code> return each token's end offset.
+This guide lists every breaking change and the one-line fixes for each.</p>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
 <tr><td><code>lindera</code> is a facade: <code>lindera::analysis</code> re-exports <code>lindera-analysis</code> (feature <code>analysis</code>, on by default)</td><td>Rust users who depend on both <code>lindera</code> and <code>lindera-analysis</code></td><td>Bump both to <code>"7"</code> in the same step, or drop <code>lindera-analysis</code> and import from <code>lindera::analysis::…</code></td></tr>
@@ -209,13 +210,19 @@ one-line fixes for each.</p>
 <tr><td><strong>The context is carried across <code>、</code> and <code>。</code> within a line, as in MeCab</strong></td><td>Anyone who segments Japanese text with <code>、</code> or <code>。</code> inside a line</td><td>Expect some words after <code>、</code> or <code>。</code> to be read differently, mostly as MeCab reads them, and the N-best costs of such lines to change; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>N-best: every result covers the whole input</strong></td><td>Anyone who asks for N-best results (<code>segment_nbest</code>, <code>tokenize_nbest</code>, <code>lindera tokenize -N</code>, the bindings' N-best methods) for input with more than one sentence</td><td>Expect the cheapest segmentations of the whole input from the second result on; a cost threshold now applies to the whole input</td></tr>
 <tr><td><strong>Unknown words start at every position, as in MeCab</strong></td><td>Anyone who segments text with runs of katakana, symbols or Latin letters in normal mode, most visibly katakana joined by <code>・</code>, Korean sentence-final punctuation such as <code>."</code>, and Latin words with CC-CEDICT</td><td>Expect such runs to be split where MeCab splits them, and katakana- and Latin-heavy text to take about 13% more instructions; no setting restores the v6 behavior</td></tr>
+<tr><td><strong>IPADIC and IPADIC-NEologd: dashes and tildes in dictionary entries are kept as written, as in MeCab</strong></td><td>Anyone who segments text with <code>―</code> (U+2015), <code>—</code> (U+2014), <code>～</code> (U+FF5E) or <code>〜</code> (U+301C) with IPADIC or IPADIC-NEologd</td><td>Expect entries spelled with <code>―</code> or <code>～</code> to match text spelled the same way, and text with <code>—</code> or <code>〜</code> to miss the 12 IPADIC and 1,085 IPADIC-NEologd entries it found only through the old rewrite (a <code>mapping</code> character filter can fold the spellings); rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
+<tr><td><strong>The <code>normalize_details</code> setting is removed: <code>Metadata::new</code> and <code>CoreMetadata::new</code> take 10 arguments, Ruby's <code>Metadata.new</code> takes 8</strong></td><td>Code that creates or reads dictionary metadata: Rust (<code>Metadata</code>, <code>lindera_binding::CoreMetadata</code>, <code>PrefixDictionaryBuilderOptions</code>) and the <code>Metadata</code> classes of the Python, Ruby, PHP and Node.js bindings</td><td>Remove the argument, option or property; a <code>metadata.json</code> that still has the key loads, and the key is ignored</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>, <code>tokens_offset_into</code>, <code>nbest_tokens_offset</code> and <code>NBestGenerator::next</code> return <code>(start, end, WordId)</code></strong></td><td>Rust code that calls these <code>lindera_dictionary</code> functions directly (also as <code>lindera::dictionary::viterbi::…</code>, <code>lindera::dictionary::Lattice</code> and <code>lindera::dictionary::nbest::…</code>)</td><td>Destructure three fields and use the returned end instead of the next token's start</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> returns the BOS index of the best path (<code>Option&lt;usize&gt;</code>)</strong></td><td>Rust code that uses the <code>()</code> value of <code>tokens_offset_into</code></td><td>Nothing for a call written as a statement; otherwise ignore the new value</td></tr>
 </tbody></table>
 </div>
 <p>The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
-their APIs and package names; only their version number moves to 7.0.0.
-There are seven output differences, all described below. With IPADIC or
+their package names, and their APIs apart from one setting: the <code>Metadata</code>
+classes of the Python, Node.js, Ruby and PHP bindings no longer take or
+expose <code>normalize_details</code> (see
+<a href="#the-normalize_details-setting-is-removed">The <code>normalize_details</code> setting is removed</a>).
+Their version number moves to 7.0.0.
+There are eight output differences, all described below. With IPADIC or
 IPADIC-NEologd, the values reported under the names <code>conjugation_type</code> and
 <code>conjugation_form</code> trade places. The dictionaries now contain the entries
 whose surface is or starts or ends with whitespace, which changes the
@@ -228,7 +235,10 @@ segmentation of some such text and the N-best costs of every such line. For
 input with more than one sentence, the N-best results from the second one on
 are the cheapest segmentations of the whole input. And in normal mode, an
 unknown word can start inside a run of characters of one kind, as in MeCab,
-which splits some runs of katakana, symbols and Latin letters. Otherwise,
+which splits some runs of katakana, symbols and Latin letters. With IPADIC
+and IPADIC-NEologd, the entries spelled with <code>―</code> or <code>～</code> are found under
+that spelling, as in MeCab, which changes the segmentation of text that
+contains <code>―</code>, <code>—</code>, <code>～</code> or <code>〜</code>. Otherwise,
 for the same input and dictionary, v7.0.0 produces the same tokens with the
 same positional details as v6.2.0.</p>
 <h2 id="the-lindera-crate-is-now-a-facade"><a class="header" href="#the-lindera-crate-is-now-a-facade">The lindera crate is now a facade</a></h2>
@@ -371,7 +381,10 @@ lindera = { version = "7", features = ["embed-ipadic"] }
 helper crate. <code>lindera-binding</code> 7.0.0 depends on the <code>lindera</code> facade (with
 the <code>analysis</code> feature) instead of on <code>lindera</code> plus <code>lindera-analysis</code>; its
 own API — <code>CoreTokenizerBuilder</code>, <code>CoreTokenizer</code>, <code>TokenView</code>, and the
-argument, metadata, and schema helpers — is unchanged. The published
+argument, metadata, and schema helpers — is unchanged, except that
+<code>CoreMetadata</code> no longer has <code>normalize_details</code> (see
+<a href="#the-normalize_details-setting-is-removed">The <code>normalize_details</code> setting is removed</a>).
+The published
 <code>lindera-binding-core</code> releases (4.0.0 through 6.2.0) stay on crates.io as
 they are and are not yanked, but receive no further versions.</p>
 <pre><code class="language-toml"># v6
@@ -705,14 +718,107 @@ and from 18 to 127 MiB with UniDic.</p>
 <p>There is no setting to restore the v6 behavior. <code>unknown_word_ladder(false)</code>
 (<code>--disable-unknown-word-ladder</code>) still turns off the shorter unknown-word
 candidates, but no longer reproduces the output of Lindera before v6.</p>
+<h2 id="dash-and-tilde-spellings-are-kept-as-written"><a class="header" href="#dash-and-tilde-spellings-are-kept-as-written">Dash and tilde spellings are kept as written</a></h2>
+<p>Japanese text spells the dash and the tilde in two ways each: the dash as
+<code>―</code> (U+2015, HORIZONTAL BAR) or <code>—</code> (U+2014, EM DASH), the tilde as <code>～</code>
+(U+FF5E, FULLWIDTH TILDE) or <code>〜</code> (U+301C, WAVE DASH). Up to v6.2.0, the
+dictionary builder rewrote <code>―</code> to <code>—</code> and <code>～</code> to <code>〜</code> in every entry of
+IPADIC and IPADIC-NEologd, whose <code>metadata.json</code> turned the rewrite on with
+<code>normalize_details</code>. It rewrote the surface, the spelling under which the
+segmenter finds the entry in the text, and the detail fields, such as the
+base form and the reading. The text to segment was not rewritten, so an
+entry that the dictionary source spells with <code>―</code> or <code>～</code> matched only text
+that spelled it with <code>—</code> or <code>〜</code>. The rewrite was a workaround for an old
+EUC-JP conversion. The dictionary sources are UTF-8 now, and <code>―</code> is the dash
+that the common Shift_JIS and EUC-JP converters produce and that Aozora
+Bunko texts use. v7.0.0 keeps every entry as written in the dictionary's CSV
+files, as MeCab does:</p>
+<div class="table-wrapper"><table><thead><tr><th>Input (dictionary)</th><th>v6</th><th>v7 (as MeCab)</th></tr></thead><tbody>
+<tr><td><code>ＣＤ―ＲＯＭ</code> (IPADIC)</td><td><code>ＣＤ</code>, <code>―</code> and <code>ＲＯＭ</code></td><td><code>ＣＤ―ＲＯＭ</code> (<code>名詞,一般</code>)</td></tr>
+<tr><td><code>――</code> (IPADIC)</td><td>An unknown noun (<code>名詞,サ変接続</code>)</td><td><code>記号,一般</code></td></tr>
+<tr><td><code>あいいれなぁ～い</code> (IPADIC-NEologd)</td><td><code>あいいれなぁ</code>, <code>～</code> and <code>い</code></td><td><code>あいいれなぁ～い</code> (<code>形容詞,自立</code>)</td></tr>
+<tr><td><code>CD―ROM</code> (IPADIC-NEologd)</td><td><code>CD</code>, <code>―</code> and <code>ROM</code></td><td><code>CD―ROM</code> (<code>名詞,一般</code>)</td></tr>
+<tr><td><code>ＣＤ—ＲＯＭ</code> (IPADIC)</td><td><code>ＣＤ—ＲＯＭ</code> (<code>名詞,一般</code>)</td><td><code>ＣＤ</code>, <code>—</code> and <code>ＲＯＭ</code></td></tr>
+<tr><td><code>——</code> (IPADIC)</td><td><code>記号,一般</code></td><td>An unknown noun (<code>名詞,サ変接続</code>)</td></tr>
+</tbody></table>
+</div>
+<p>The detail fields keep the CSV spelling as well: the entry <code>ＣＤ―ＲＯＭ</code>
+gives the base form <code>ＣＤ―ＲＯＭ</code>, where v6 gave <code>ＣＤ—ＲＯＭ</code>.</p>
+<p>With dictionaries built from the same sources, the number of lines that
+Lindera segments and tags exactly as MeCab does rises, on top of the other
+changes in this guide, from 459 to 503 of 505 paragraphs of <em>Botchan</em> (from
+2,690 to 2,744 of its 2,746 sentences) and from 3,377 to 3,581 of 3,587
+paragraphs of <em>Kokoro</em> and <em>I Am a Cat</em>, two other novels from Aozora Bunko.
+The figures are the same with IPADIC and IPADIC-NEologd, and no line that
+matched before stops matching.</p>
+<p>Text that writes these characters as <code>—</code> or <code>〜</code> no longer finds the entries
+that it found only through the rewrite: 12 in IPADIC, all spelled with <code>―</code>,
+and 1,085 in IPADIC-NEologd, most of them spelled with <code>～</code>. In the table
+above, <code>ＣＤ—ＲＯＭ</code> is split and <code>——</code> is an unknown noun, as in MeCab.
+IPADIC-NEologd has most of its words with a tilde in both spellings, so text
+with either tilde still finds them.</p>
+<p>To have both spellings find the entries, map the text to the dictionary's
+spelling with the <code>mapping</code> character filter. IPADIC spells all its entries
+with a dash with <code>―</code> and all those with a tilde with <code>〜</code>, so map <code>—</code> to <code>―</code>
+and <code>～</code> to <code>〜</code>:</p>
+<pre><code class="language-sh">lindera tokenize --dict ipadic --char-filter 'mapping:{"mapping":{"—":"―","～":"〜"}}'
+</code></pre>
+<pre><code class="language-yaml"># Configuration file
+character_filters:
+  - kind: mapping
+    args:
+      mapping:
+        "—": "―"
+        "～": "〜"
+</code></pre>
+<p>With this filter, <code>ＣＤ—ＲＯＭ</code> is one word and <code>——</code> is <code>記号,一般</code> again,
+and text with <code>～</code> also finds IPADIC's entries with <code>〜</code>, which it did not
+in v6 either. The token's surface is the mapped text, such as <code>ＣＤ―ＲＯＭ</code>;
+its byte offsets point into the original text. Mapping the tilde the other
+way, <code>〜</code> to <code>～</code>, would hide IPADIC's entries with <code>〜</code>. With
+IPADIC-NEologd, a mapping trades words: some of its words exist in only one
+spelling, 129 only with <code>―</code> and 85 only with <code>—</code>, 957 only with <code>～</code> and
+1,813 only with <code>〜</code>, so mapping one spelling to the other makes text find
+the words of one and miss those of the other. NFKC normalization
+(the <code>unicode_normalize</code> character filter) does not fold these characters:
+it turns <code>～</code> into <code>~</code> and leaves <code>―</code>, <code>—</code> and <code>〜</code> as they are.</p>
+<p>User dictionaries were never rewritten and do not change. The change is in
+the dictionary builder; the dictionary format version is unchanged. The
+embedded dictionaries and the dictionaries that the 7.0.0 CLI fetches with
+<code>lindera download</code> keep the spellings. A dictionary directory built or
+downloaded with v6.2.0 or earlier still loads in v7.0.0 but keeps the
+rewritten entries until you rebuild it with <code>lindera build</code> or download the
+7.0.0 release asset. UniDic, ko-dic, CC-CEDICT, Jieba and SudachiDict never
+turned the rewrite on, and their dictionaries do not change.</p>
+<h3 id="the-normalize_details-setting-is-removed"><a class="header" href="#the-normalize_details-setting-is-removed">The <code>normalize_details</code> setting is removed</a></h3>
+<p><code>normalize_details</code> turned this rewrite on and did nothing else, so v7.0.0
+removes it from the bundled <code>metadata.json</code> files and from the APIs that
+create or expose dictionary metadata:</p>
+<div class="table-wrapper"><table><thead><tr><th>API</th><th>Change</th></tr></thead><tbody>
+<tr><td>Rust</td><td><code>Metadata::new</code> takes 10 arguments instead of 11 (<code>normalize_details</code> was the ninth), and the <code>Metadata::normalize_details</code> field and the <code>PrefixDictionaryBuilderOptions::normalize_details</code> method are gone. For binding authors, <code>lindera_binding::CoreMetadata</code> and <code>CoreMetadata::new</code> change the same way. See <a href="#rust-api-changes-in-lindera_dictionary">Rust API changes in <code>lindera_dictionary</code></a></td></tr>
+<tr><td>Python</td><td>The <code>normalize_details</code> keyword argument of <code>Metadata</code>, the property and the <code>to_dict()</code> key are gone; passing the keyword raises <code>TypeError</code></td></tr>
+<tr><td>Ruby</td><td><code>Metadata.new</code> takes 8 positional arguments instead of 9, so passing 9 raises <code>ArgumentError</code>; the <code>normalize_details</code> reader and the <code>to_h</code> key are gone</td></tr>
+<tr><td>PHP</td><td>The last argument of the <code>Metadata</code> constructor, <code>normalize_details</code>, the property and the <code>toArray()</code> key are gone; passing the argument raises <code>Error</code> (by name) or <code>ArgumentCountError</code> (as a ninth argument)</td></tr>
+<tr><td>Node.js</td><td>The <code>normalizeDetails</code> option of <code>Metadata</code>, the property and the <code>toObject()</code> key are gone; TypeScript rejects the option, and at run time it is ignored</td></tr>
+<tr><td>WASM</td><td>No change: its <code>Metadata</code> never exposed the setting</td></tr>
+</tbody></table>
+</div>
+<p>A <code>metadata.json</code> that still contains <code>normalize_details</code>, such as one
+written by v6, loads as before, whether it comes with a built dictionary,
+is passed to <code>lindera build</code> or is read by a binding; the key is ignored
+and is not written back.</p>
 <h2 id="rust-api-changes-in-lindera_dictionary"><a class="header" href="#rust-api-changes-in-lindera_dictionary">Rust API changes in <code>lindera_dictionary</code></a></h2>
-<p>These affect only code that calls the lattice backtraces directly:
+<p>These affect only code that calls the lattice backtraces directly, or that
+creates dictionary metadata with <code>Metadata::new</code>:
 <code>lindera_dictionary::viterbi::Lattice</code> and
 <code>lindera_dictionary::nbest::NBestGenerator</code>, also reachable as
 <code>lindera::dictionary::viterbi::…</code>, <code>lindera::dictionary::Lattice</code> and
-<code>lindera::dictionary::nbest::…</code>. The <code>Segmenter</code>, <code>Tokenizer</code>,
-<code>SegmentWorker</code> and <code>AnalysisWorker</code> APIs, the language bindings and the
-CLI are unaffected.</p>
+<code>lindera::dictionary::nbest::…</code>, and
+<code>lindera_dictionary::dictionary::metadata::Metadata</code>, also reachable as
+<code>lindera::dictionary::Metadata</code>. The <code>Segmenter</code>, <code>Tokenizer</code>,
+<code>SegmentWorker</code> and <code>AnalysisWorker</code> APIs and the CLI are unaffected; the
+language bindings change only in their <code>Metadata</code> class (see
+<a href="#the-normalize_details-setting-is-removed">The <code>normalize_details</code> setting is removed</a>).</p>
 <div class="table-wrapper"><table><thead><tr><th>v6</th><th>v7</th></tr></thead><tbody>
 <tr><td><code>Lattice::tokens_offset() -&gt; Vec&lt;(usize, WordId)&gt;</code></td><td><code>Lattice::tokens_offset() -&gt; Vec&lt;TokenOffset&gt;</code></td></tr>
 <tr><td><code>Lattice::tokens_offset_into(&amp;mut Vec&lt;(usize, WordId)&gt;)</code></td><td><code>Lattice::tokens_offset_into(&amp;mut Vec&lt;TokenOffset&gt;) -&gt; Option&lt;usize&gt;</code></td></tr>
@@ -721,6 +827,9 @@ CLI are unaffected.</p>
 <tr><td>—</td><td>New type aliases in <code>viterbi</code>: <code>TokenOffset = (usize, usize, WordId)</code> and <code>NBestPath = (Vec&lt;TokenOffset&gt;, i64)</code></td></tr>
 <tr><td>—</td><td>New in <code>viterbi</code>: <code>BosContext</code>, <code>LatticeOptions::bos</code>, <code>LatticeExit</code>, <code>Lattice::exits_into</code> and <code>Lattice::exit_tokens_offset_into</code></td></tr>
 <tr><td>—</td><td>New in <code>nbest</code>: <code>NBestGenerator::from_exit</code> and <code>NBestGenerator::next_with_bos</code></td></tr>
+<tr><td><code>Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, normalize_details, schema, userdic_schema)</code></td><td><code>Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, schema, userdic_schema)</code></td></tr>
+<tr><td><code>Metadata::normalize_details</code></td><td>Removed</td></tr>
+<tr><td><code>PrefixDictionaryBuilderOptions::normalize_details(value)</code></td><td>Removed</td></tr>
 </tbody></table>
 </div>
 <p>Each token is now <code>(start, end, word_id)</code> instead of <code>(start, word_id)</code>,
@@ -777,10 +886,21 @@ order of cost, and each path together with the BOS index it starts from.
 <p><code>nbest_tokens_offset</code> is meant for the default single BOS edge: with
 several, it does not say which one a path starts from. Use
 <code>NBestGenerator::next_with_bos</code> there.</p>
+<p><code>Metadata::new</code> loses its ninth argument, <code>normalize_details</code>: delete it
+from the call. <code>Metadata</code> no longer has the field, and
+<code>PrefixDictionaryBuilderOptions</code> (in <code>lindera_dictionary::builder::prefix_dictionary</code>)
+no longer has the method, because the builder keeps every entry as written
+(see
+<a href="#dash-and-tilde-spellings-are-kept-as-written">Dash and tilde spellings are kept as written</a>).
+<code>Metadata</code> still reads a <code>metadata.json</code> that contains the key, and ignores
+it. For binding authors, <code>lindera_binding::CoreMetadata</code> loses the field the
+same way, and <code>CoreMetadata::new</code> takes 10 arguments instead of 11.</p>
 <h2 id="who-does-not-need-to-act"><a class="header" href="#who-does-not-need-to-act">Who does not need to act</a></h2>
 <ul>
 <li><strong>Users of the language bindings and the CLI</strong>: the Python, Node.js, Ruby,
-PHP, and WASM packages and <code>lindera-cli</code> keep their APIs and package names.
+PHP, and WASM packages and <code>lindera-cli</code> keep their package names, and
+their APIs apart from the <code>normalize_details</code> setting of <code>Metadata</code> (see
+<a href="#the-normalize_details-setting-is-removed">The <code>normalize_details</code> setting is removed</a>).
 The restructuring is internal to the Rust crates. The output changes are
 the IPADIC conjugation fix, which matters only if you read those two fields
 by name, the whitespace entries, which matter only for text with U+3000
@@ -789,16 +909,18 @@ segmentation of text that contains whitespace, the <code>char.def</code> fix, wh
 matters only for text with <code>Ð</code>, <code>々</code> or <code>〇</code>, the context carried across
 <code>、</code> and <code>。</code>, which matters only for text with <code>、</code> or <code>。</code> inside a line,
 the N-best fix, which matters only for N-best results for input with
-more than one sentence, and the unknown words that start at every
-position, which matter for runs of katakana, symbols or Latin letters in
-normal mode.</li>
+more than one sentence, the unknown words that start at every position,
+which matter for runs of katakana, symbols or Latin letters in normal
+mode, and the dash and tilde spellings, which matter only for text with
+<code>―</code>, <code>—</code>, <code>～</code> or <code>〜</code> with IPADIC or IPADIC-NEologd.</li>
 <li><strong>Projects staying on <code>lindera = "6"</code></strong>: the 6.x releases of <code>lindera</code> and
 <code>lindera-analysis</code> remain on crates.io and keep working together. Nothing
 changes until you bump the major version.</li>
 <li><strong>Users of the segmenter API only</strong>: code that uses <code>Segmenter</code>,
 <code>load_dictionary</code>, <code>Mode</code>, and the other <code>lindera::…</code> items of v6 compiles
 unchanged with <code>lindera = "7"</code>, unless it calls the lattice backtraces of
-<code>lindera::dictionary::Lattice</code> (see
+<code>lindera::dictionary::Lattice</code> or creates metadata with
+<code>lindera::dictionary::Metadata::new</code> (see
 <a href="#rust-api-changes-in-lindera_dictionary">Rust API changes in <code>lindera_dictionary</code></a>).
 The default build now also compiles
 <code>lindera-analysis</code> and its dependencies (kanaria, regex, serde_yaml_ng,
@@ -828,11 +950,17 @@ token's start.</li>
 <li>If you use the <code>()</code> value of <code>Lattice::tokens_offset_into</code>, for example
 as the body of a closure, add a <code>;</code>: it now returns the BOS index of the
 best path.</li>
+<li>If you call <code>Metadata::new</code>, delete its ninth argument,
+<code>normalize_details</code>, and stop using the <code>Metadata::normalize_details</code>
+field and <code>PrefixDictionaryBuilderOptions::normalize_details</code>.</li>
 </ul>
 <p>Binding authors:</p>
 <ul>
 <li>Depend on <code>lindera-binding</code> instead of <code>lindera-binding-core</code>, and replace
 <code>lindera_binding_core::</code> with <code>lindera_binding::</code>.</li>
+<li>Delete the <code>normalize_details</code> argument of <code>CoreMetadata::new</code>, which now
+takes 10 arguments, and stop using the <code>CoreMetadata::normalize_details</code>
+field.</li>
 </ul>
 <p>Build environments:</p>
 <ul>
@@ -907,10 +1035,27 @@ v6.</li>
 instructions, and very long katakana runs in N-best to take much more
 time and memory.</li>
 </ul>
+<p>Users of IPADIC or IPADIC-NEologd with text that contains <code>―</code>, <code>—</code>, <code>～</code> or
+<code>〜</code>:</p>
+<ul>
+<li>Expect entries spelled with <code>―</code> or <code>～</code> to match text spelled the same
+way, as in MeCab, and text with <code>—</code> or <code>〜</code> to miss the 12 IPADIC and
+1,085 IPADIC-NEologd entries that it found only through the old rewrite.
+With IPADIC, map <code>—</code> to <code>―</code> and <code>～</code> to <code>〜</code> with the <code>mapping</code> character
+filter if both spellings should find the entries.</li>
+<li>Rebuild or re-download dictionary directories made with v6.2.0 or earlier
+to get the entries as written.</li>
+</ul>
 <p>Language bindings and CLI:</p>
 <ul>
-<li>Nothing to do beyond taking the 7.0.0 release, apart from the dictionary,
-whitespace, <code>、</code> and <code>。</code>, N-best and unknown-word items above.</li>
+<li>Remove <code>normalize_details</code> where you create <code>Metadata</code>: the Python
+keyword argument, the ninth positional argument of Ruby's <code>Metadata.new</code>,
+the last argument of PHP's <code>Metadata</code> constructor, and the
+<code>normalizeDetails</code> option in Node.js. Stop reading the property and the
+key of the same name in <code>to_dict()</code>, <code>to_h</code>, <code>toArray()</code> and <code>toObject()</code>.</li>
+<li>Nothing else to do beyond taking the 7.0.0 release, apart from the
+dictionary, whitespace, <code>、</code> and <code>。</code>, N-best, unknown-word, and dash and
+tilde items above.</li>
 </ul>
 
                     </main>

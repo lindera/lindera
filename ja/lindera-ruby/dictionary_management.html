@@ -246,7 +246,7 @@ Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir',
 # 標準設定でデフォルトのメタデータを作成
 metadata = Lindera::Metadata.create_default
 </code></pre>
-<p><code>Lindera::Metadata.new</code> は9つのプロパティすべてを必須の位置引数として受け取ります
+<p><code>Lindera::Metadata.new</code> は8つのプロパティすべてを必須の位置引数として受け取ります
 （それぞれ <code>nil</code> を渡すとデフォルト値にフォールバックします）。特定の値を上書きしたい
 場合にのみ使用してください：</p>
 <pre><code class="language-ruby">metadata = Lindera::Metadata.new(
@@ -257,8 +257,7 @@ metadata = Lindera::Metadata.create_default
   1288,      # default_right_context_id
   '*',       # default_field_value
   false,     # flexible_csv
-  false,     # skip_invalid_cost_or_id
-  false      # normalize_details
+  false      # skip_invalid_cost_or_id
 )
 </code></pre>
 <h3 id="json-ファイルからの読み込み"><a class="header" href="#json-ファイルからの読み込み">JSON ファイルからの読み込み</a></h3>
@@ -279,7 +278,6 @@ metadata = dictionary.metadata
 <tr><td><code>default_field_value</code></td><td><code>String</code></td><td><code>"*"</code></td><td>欠損フィールドのデフォルト値</td></tr>
 <tr><td><code>flexible_csv</code></td><td><code>Boolean</code></td><td><code>false</code></td><td>柔軟な CSV パースを許可</td></tr>
 <tr><td><code>skip_invalid_cost_or_id</code></td><td><code>Boolean</code></td><td><code>false</code></td><td>無効なコストまたは ID のエントリーをスキップ</td></tr>
-<tr><td><code>normalize_details</code></td><td><code>Boolean</code></td><td><code>false</code></td><td>形態素の詳細情報を正規化</td></tr>
 </tbody></table>
 </div>
 <p><code>to_h</code>（別名 <code>to_hash</code>）は、これらのプロパティに <code>dictionary_schema_fields</code> と <code>user_dictionary_schema_fields</code>（カンマ区切りのフィールド名）を加えた、値がすべて文字列の <code>Hash</code> を返します。ko-dic のようにメタデータが左側空白ペナルティのルールを持つ場合は、そのルールを JSON 文字列で保持する <code>space_penalty</code> エントリも含まれます：</p>

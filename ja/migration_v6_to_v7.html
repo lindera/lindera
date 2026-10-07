@@ -189,8 +189,9 @@
 MeCab と同様に空白をラティス上で読み飛ばし、<code>char.def</code> の重複した行を MeCab と
 同じく解決し、MeCab と同じく行の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぎ、
 N-best の各結果が入力全体を覆うようにし、MeCab と同じくどの位置からも未知語が
-始まるようにし、<code>lindera-dictionary</code> のラティスのバックトレースが各トークンの
-終了オフセットも返すようにしました。
+始まるようにし、辞書の見出し語のダッシュとチルダを書かれたとおりに保持して、
+それを書き換えていた設定 <code>normalize_details</code> を削除し、<code>lindera-dictionary</code> の
+ラティスのバックトレースが各トークンの終了オフセットも返すようにしました。
 このガイドでは、すべての破壊的変更とその対処方法を説明します。</p>
 <h2 id="概要"><a class="header" href="#概要">概要</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>変更</th><th>影響範囲</th><th>対処方法</th></tr></thead><tbody>
@@ -208,12 +209,17 @@ N-best の各結果が入力全体を覆うようにし、MeCab と同じくど�
 <tr><td><strong>MeCab と同じく、行の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぐ</strong></td><td>行の中に <code>、</code> や <code>。</code> を含む日本語のテキストを分割するユーザー</td><td><code>、</code> や <code>。</code> の直後の語の解析が一部変わり（多くは MeCab と同じ解析になる）、そうした行の N-best のコストが変わることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>N-best: 各結果が入力全体を覆う</strong></td><td>複数の文を含む入力で N-best（<code>segment_nbest</code>・<code>tokenize_nbest</code>・<code>lindera tokenize -N</code>・バインディングの N-best メソッド）を使うユーザー</td><td>2 件目以降が入力全体のコストの小さい分割になることを前提にする。コストの閾値は入力全体に対して適用される</td></tr>
 <tr><td><strong>MeCab と同じく、どの位置からも未知語が始まる</strong></td><td>カタカナ・記号・英字が続くテキストを通常モードで分割するユーザー。特に <code>・</code> でつないだカタカナ、<code>."</code> のような韓国語の文末の句読点、CC-CEDICT の英単語</td><td>そうした連続が MeCab と同じ位置で分かれること、カタカナや英字の多いテキストで命令数が 13% 程度増えることを前提にする。v6 の動作に戻す設定はない</td></tr>
+<tr><td><strong>IPADIC・IPADIC-NEologd: MeCab と同じく、見出し語のダッシュとチルダを書かれたとおりに保持する</strong></td><td>IPADIC・IPADIC-NEologd で <code>―</code>（U+2015）・<code>—</code>（U+2014）・<code>～</code>（U+FF5E）・<code>〜</code>（U+301C）を含むテキストを分割するユーザー</td><td><code>―</code> や <code>～</code> で書かれた語が同じ綴りのテキストに一致し、<code>—</code> や <code>〜</code> で書いたテキストからは、以前の書き換えでしか引けなかった語（IPADIC 12 語、IPADIC-NEologd 1,085 語）が引けなくなることを前提にする（<code>mapping</code> 文字フィルタで綴りをそろえられる）。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
+<tr><td><strong>設定 <code>normalize_details</code> の削除: <code>Metadata::new</code> と <code>CoreMetadata::new</code> の引数は 10 個、Ruby の <code>Metadata.new</code> の引数は 8 個になる</strong></td><td>辞書のメタデータを作成・参照するコード。Rust（<code>Metadata</code>・<code>lindera_binding::CoreMetadata</code>・<code>PrefixDictionaryBuilderOptions</code>）と、Python・Ruby・PHP・Node.js のバインディングの <code>Metadata</code> クラス</td><td>引数・オプション・プロパティを削除する。このキーを含む <code>metadata.json</code> もそのまま読み込め、キーは無視される</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>・<code>tokens_offset_into</code>・<code>nbest_tokens_offset</code>・<code>NBestGenerator::next</code> が <code>(start, end, WordId)</code> を返す</strong></td><td>これらの <code>lindera_dictionary</code> の関数を直接呼び出す Rust コード（<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・<code>lindera::dictionary::nbest::…</code> 経由を含む）</td><td>3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> が最良パスの BOS の添字（<code>Option&lt;usize&gt;</code>）を返す</strong></td><td><code>tokens_offset_into</code> の戻り値 <code>()</code> を値として使う Rust コード</td><td>文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する</td></tr>
 </tbody></table>
 </div>
-<p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI の API・パッケージ名は
-変わらず、バージョン番号だけが 7.0.0 になります。出力の違いは 7 つあり、いずれも
+<p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI のパッケージ名は
+変わりません。API も 1 つの設定を除いて変わりません。Python・Node.js・Ruby・PHP の
+バインディングの <code>Metadata</code> クラスは、<code>normalize_details</code> を受け取らず、公開も
+しなくなりました（<a href="#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>
+を参照）。バージョン番号は 7.0.0 になります。出力の違いは 8 つあり、いずれも
 後述します。IPADIC・IPADIC-NEologd では、<code>conjugation_type</code> と
 <code>conjugation_form</code> という名前で返る値が入れ替わります。表層形が空白だけの
 見出し語や先頭・末尾が空白の見出し語が辞書に入るため、そうした空白を含む
@@ -224,8 +230,10 @@ N-best の各結果が入力全体を覆うようにし、MeCab と同じくど�
 すべて変わります。複数の文を含む入力では、N-best の 2 件目以降が入力全体で
 コストの小さい分割になります。さらに通常モードでは、同じ文字種が続く範囲の内側からも
 MeCab と同じく未知語が始まるため、カタカナ・記号・英字の連続の一部が分かれます。
-それ以外は、同じ入力と辞書に対して、v7.0.0 は v6.2.0 と同じトークンを、同じ位置
-ベースの詳細情報（details）とともに出力します。</p>
+IPADIC・IPADIC-NEologd では、<code>―</code> や <code>～</code> で書かれた見出し語を MeCab と同じく
+その綴りで引けるようになるため、<code>―</code>・<code>—</code>・<code>～</code>・<code>〜</code> を含むテキストの分割が
+変わります。それ以外は、同じ入力と辞書に対して、v7.0.0 は v6.2.0 と同じトークンを、
+同じ位置ベースの詳細情報（details）とともに出力します。</p>
 <h2 id="lindera-クレートはファサードに"><a class="header" href="#lindera-クレートはファサードに"><code>lindera</code> クレートはファサードに</a></h2>
 <p>v6 までの Rust API は、<code>lindera</code>（セグメンターと辞書読み込み API）と
 <code>lindera-analysis</code>（character filter・token filter・<code>Tokenizer</code>）の 2 クレートに
@@ -362,7 +370,9 @@ lindera = { version = "7", features = ["embed-ipadic"] }
 関係します。<code>lindera-binding</code> 7.0.0 は <code>lindera</code> と <code>lindera-analysis</code> の代わりに
 <code>lindera</code> ファサード（<code>analysis</code> feature 付き）に依存します。クレート自身の
 API（<code>CoreTokenizerBuilder</code>・<code>CoreTokenizer</code>・<code>TokenView</code>、および argument・
-metadata・schema の各ヘルパー）は変わりません。公開済みの <code>lindera-binding-core</code>
+metadata・schema の各ヘルパー）は、<code>CoreMetadata</code> から <code>normalize_details</code> が
+なくなったこと（<a href="#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>
+を参照）を除いて変わりません。公開済みの <code>lindera-binding-core</code>
 （4.0.0〜6.2.0）は crates.io にそのまま残り、yank もされませんが、
 以降のバージョンは公開されません。</p>
 <pre><code class="language-toml"># v6
@@ -661,13 +671,101 @@ v7 では MeCab と同じく <code>.</code>・<code>?</code>・<code>!</code> �
 <p>v6 の動作に戻す設定はありません。<code>unknown_word_ladder(false)</code>
 （<code>--disable-unknown-word-ladder</code>）は引き続き短い未知語候補を無効にしますが、
 v6 より前の Lindera の出力は再現しなくなりました。</p>
+<h2 id="ダッシュとチルダを辞書に書かれたとおりに保持する"><a class="header" href="#ダッシュとチルダを辞書に書かれたとおりに保持する">ダッシュとチルダを辞書に書かれたとおりに保持する</a></h2>
+<p>日本語のテキストでは、ダッシュとチルダにそれぞれ 2 通りの文字が使われます。
+ダッシュは <code>―</code>（U+2015、HORIZONTAL BAR）か <code>—</code>（U+2014、EM DASH）、チルダは
+<code>～</code>（U+FF5E、FULLWIDTH TILDE）か <code>〜</code>（U+301C、WAVE DASH）です。v6.2.0 までは、
+辞書ビルダーが IPADIC と IPADIC-NEologd のすべての見出し語で、<code>―</code> を <code>—</code> に、<code>～</code> を
+<code>〜</code> に書き換えていました。この 2 つの辞書の <code>metadata.json</code> が、設定
+<code>normalize_details</code> で書き換えを有効にしていたためです。書き換えの対象は、表層形
+（セグメンターがテキストの中でその語を探すときの綴り）と、原形や読みなどの詳細情報の
+欄です。解析するテキストは書き換えないため、辞書のソースで <code>―</code> や <code>～</code> を使って
+書かれた語は、その文字を <code>—</code> や <code>〜</code> で書いたテキストにしか一致しませんでした。
+この書き換えは、古い EUC-JP の変換に対する回避策でした。いまの辞書のソースは
+UTF-8 です。また、Shift_JIS や EUC-JP からの主な変換が出力するダッシュも、
+青空文庫のテキストが使うダッシュも <code>―</code> です。v7.0.0 は MeCab と同じく、すべての
+見出し語を辞書の CSV に書かれたとおりに保持します。</p>
+<div class="table-wrapper"><table><thead><tr><th>入力（辞書）</th><th>v6</th><th>v7（MeCab と同じ）</th></tr></thead><tbody>
+<tr><td><code>ＣＤ―ＲＯＭ</code>（IPADIC）</td><td><code>ＣＤ</code>、<code>―</code>、<code>ＲＯＭ</code></td><td><code>ＣＤ―ＲＯＭ</code>（<code>名詞,一般</code>）</td></tr>
+<tr><td><code>――</code>（IPADIC）</td><td>未知語の名詞（<code>名詞,サ変接続</code>）</td><td><code>記号,一般</code></td></tr>
+<tr><td><code>あいいれなぁ～い</code>（IPADIC-NEologd）</td><td><code>あいいれなぁ</code>、<code>～</code>、<code>い</code></td><td><code>あいいれなぁ～い</code>（<code>形容詞,自立</code>）</td></tr>
+<tr><td><code>CD―ROM</code>（IPADIC-NEologd）</td><td><code>CD</code>、<code>―</code>、<code>ROM</code></td><td><code>CD―ROM</code>（<code>名詞,一般</code>）</td></tr>
+<tr><td><code>ＣＤ—ＲＯＭ</code>（IPADIC）</td><td><code>ＣＤ—ＲＯＭ</code>（<code>名詞,一般</code>）</td><td><code>ＣＤ</code>、<code>—</code>、<code>ＲＯＭ</code></td></tr>
+<tr><td><code>——</code>（IPADIC）</td><td><code>記号,一般</code></td><td>未知語の名詞（<code>名詞,サ変接続</code>）</td></tr>
+</tbody></table>
+</div>
+<p>詳細情報の欄も CSV の綴りのままです。見出し語 <code>ＣＤ―ＲＯＭ</code> の原形は、v6 の
+<code>ＣＤ—ＲＯＭ</code> ではなく <code>ＣＤ―ＲＯＭ</code> になります。</p>
+<p>同じソースからビルドした辞書で、Lindera の分割と品詞が MeCab と完全に一致する
+行は、このガイドの他の変更に加えてさらに増えます。『坊っちゃん』の 505 段落の
+うち 459 から 503 に（2,746 文のうち 2,690 から 2,744 に）、同じく青空文庫の
+『こころ』と『吾輩は猫である』の 3,587 段落のうち 3,377 から 3,581 に増えました。
+IPADIC と IPADIC-NEologd で同じ数で、一致していた行が一致しなくなった例は
+ありません。</p>
+<p><code>—</code> や <code>〜</code> で書いたテキストからは、書き換えによってしか引けなかった語が引けなく
+なります。IPADIC では 12 語（すべて <code>―</code> で書かれた語）、IPADIC-NEologd では
+1,085 語（ほとんどが <code>～</code> で書かれた語）です。上の表のとおり、<code>ＣＤ—ＲＯＭ</code> は
+分かれ、<code>——</code> は未知語の名詞になります。どちらも MeCab と同じです。
+IPADIC-NEologd はチルダを含む語のほとんどを両方の綴りで持っているため、どちらの
+チルダで書いたテキストからも引けます。</p>
+<p>両方の綴りから語を引けるようにするには、<code>mapping</code> 文字フィルタでテキストを辞書の
+綴りにそろえます。IPADIC はダッシュを含む語をすべて <code>―</code> で、チルダを含む語を
+すべて <code>〜</code> で書いているので、<code>—</code> を <code>―</code> に、<code>～</code> を <code>〜</code> に置き換えます:</p>
+<pre><code class="language-sh">lindera tokenize --dict ipadic --char-filter 'mapping:{"mapping":{"—":"―","～":"〜"}}'
+</code></pre>
+<pre><code class="language-yaml"># 設定ファイル
+character_filters:
+  - kind: mapping
+    args:
+      mapping:
+        "—": "―"
+        "～": "〜"
+</code></pre>
+<p>このフィルタを使うと、<code>ＣＤ—ＲＯＭ</code> は再び 1 語になり、<code>——</code> は <code>記号,一般</code> に
+戻ります。さらに、<code>～</code> で書いたテキストからも、v6 でも引けなかった IPADIC の
+<code>〜</code> の語を引けるようになります。トークンの表層形は置き換え後の文字
+（<code>ＣＤ―ＲＯＭ</code> など）になり、バイト位置は元のテキストを指します。チルダを逆向きに
+（<code>〜</code> を <code>～</code> に）置き換えると、IPADIC の <code>〜</code> の語が引けなくなります。
+IPADIC-NEologd では、置き換えは語の入れ替えになります。片方の綴りにしかない語が
+どちらの側にもあるためです（<code>―</code> だけの語が 129、<code>—</code> だけの語が 85、<code>～</code> だけの
+語が 957、<code>〜</code> だけの語が 1,813）。一方の綴りにそろえると、その綴りの語が引ける
+かわりに、もう一方の綴りの語が引けなくなります。NFKC 正規化
+（<code>unicode_normalize</code> 文字フィルタ）では綴りはそろいません。<code>～</code> は <code>~</code> になり、
+<code>―</code>・<code>—</code>・<code>〜</code> はそのまま残ります。</p>
+<p>ユーザー辞書はもともと書き換えていないため、変わりません。変更は辞書ビルダーに
+あり、辞書の形式バージョンは変わりません。埋め込み辞書と、7.0.0 の CLI が
+<code>lindera download</code> で取得する辞書は、書かれたとおりの綴りを持ちます。v6.2.0 以前に
+ビルドまたはダウンロードした辞書ディレクトリは v7.0.0 でも読み込めますが、
+<code>lindera build</code> で再ビルドするか 7.0.0 のリリースアセットを再ダウンロードするまで、
+書き換えた見出し語のままです。UniDic・ko-dic・CC-CEDICT・Jieba・SudachiDict は
+この書き換えを有効にしていなかったため、辞書は変わりません。</p>
+<h3 id="設定-normalize_details-の削除"><a class="header" href="#設定-normalize_details-の削除">設定 <code>normalize_details</code> の削除</a></h3>
+<p><code>normalize_details</code> はこの書き換えを切り替えるだけの設定だったため、v7.0.0 では
+同梱の <code>metadata.json</code> と、辞書のメタデータを作成・公開する API から削除しました。</p>
+<div class="table-wrapper"><table><thead><tr><th>API</th><th>変更</th></tr></thead><tbody>
+<tr><td>Rust</td><td><code>Metadata::new</code> の引数が 11 個から 10 個になり（9 番目の <code>normalize_details</code> を削除）、<code>Metadata::normalize_details</code> フィールドと <code>PrefixDictionaryBuilderOptions::normalize_details</code> メソッドを削除。バインディングの作者向けの <code>lindera_binding::CoreMetadata</code> と <code>CoreMetadata::new</code> も同じように変わる。<a href="#lindera_dictionary-%E3%81%AE-rust-api-%E5%A4%89%E6%9B%B4"><code>lindera_dictionary</code> の Rust API 変更</a>を参照</td></tr>
+<tr><td>Python</td><td><code>Metadata</code> のキーワード引数 <code>normalize_details</code>、プロパティ、<code>to_dict()</code> のキーを削除。キーワード引数を渡すと <code>TypeError</code> になる</td></tr>
+<tr><td>Ruby</td><td><code>Metadata.new</code> の位置引数が 9 個から 8 個になり、9 個渡すと <code>ArgumentError</code> になる。<code>normalize_details</code> の読み取りメソッドと <code>to_h</code> のキーを削除</td></tr>
+<tr><td>PHP</td><td><code>Metadata</code> のコンストラクタの最後の引数 <code>normalize_details</code>、プロパティ、<code>toArray()</code> のキーを削除。この引数を渡すと、名前付き引数なら <code>Error</code>、9 番目の位置引数なら <code>ArgumentCountError</code> になる</td></tr>
+<tr><td>Node.js</td><td><code>Metadata</code> のオプション <code>normalizeDetails</code>、プロパティ、<code>toObject()</code> のキーを削除。TypeScript ではこのオプションがエラーになり、実行時には無視される</td></tr>
+<tr><td>WASM</td><td>変更なし（<code>Metadata</code> はこの設定を公開していなかった）</td></tr>
+</tbody></table>
+</div>
+<p><code>normalize_details</code> を含む <code>metadata.json</code>（v6 が書き出したものなど）は、ビルド
+済みの辞書に付いているものも、<code>lindera build</code> に渡すものも、バインディングで
+読み込むものも、これまでどおり読み込めます。キーは無視され、書き出すときには
+含まれません。</p>
 <h2 id="lindera_dictionary-の-rust-api-変更"><a class="header" href="#lindera_dictionary-の-rust-api-変更"><code>lindera_dictionary</code> の Rust API 変更</a></h2>
-<p>以下は、ラティスのバックトレースを直接呼び出すコードにのみ影響します。対象は
+<p>以下は、ラティスのバックトレースを直接呼び出すコードと、<code>Metadata::new</code> で辞書の
+メタデータを作成するコードにのみ影響します。対象は
 <code>lindera_dictionary::viterbi::Lattice</code> と <code>lindera_dictionary::nbest::NBestGenerator</code>
-で、<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・
-<code>lindera::dictionary::nbest::…</code> からも参照できます。<code>Segmenter</code>・<code>Tokenizer</code>・
-<code>SegmentWorker</code>・<code>AnalysisWorker</code> の API、言語バインディング、CLI は影響を
-受けません。</p>
+（<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・
+<code>lindera::dictionary::nbest::…</code> からも参照できます）、および
+<code>lindera_dictionary::dictionary::metadata::Metadata</code>（<code>lindera::dictionary::Metadata</code>
+からも参照できます）です。<code>Segmenter</code>・<code>Tokenizer</code>・<code>SegmentWorker</code>・
+<code>AnalysisWorker</code> の API と CLI は影響を受けません。言語バインディングで変わるのは
+<code>Metadata</code> クラスだけです（<a href="#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>
+を参照）。</p>
 <div class="table-wrapper"><table><thead><tr><th>v6</th><th>v7</th></tr></thead><tbody>
 <tr><td><code>Lattice::tokens_offset() -&gt; Vec&lt;(usize, WordId)&gt;</code></td><td><code>Lattice::tokens_offset() -&gt; Vec&lt;TokenOffset&gt;</code></td></tr>
 <tr><td><code>Lattice::tokens_offset_into(&amp;mut Vec&lt;(usize, WordId)&gt;)</code></td><td><code>Lattice::tokens_offset_into(&amp;mut Vec&lt;TokenOffset&gt;) -&gt; Option&lt;usize&gt;</code></td></tr>
@@ -676,6 +774,9 @@ v6 より前の Lindera の出力は再現しなくなりました。</p>
 <tr><td>—</td><td><code>viterbi</code> に新しい型エイリアス <code>TokenOffset = (usize, usize, WordId)</code> と <code>NBestPath = (Vec&lt;TokenOffset&gt;, i64)</code> を追加</td></tr>
 <tr><td>—</td><td><code>viterbi</code> に <code>BosContext</code>・<code>LatticeOptions::bos</code>・<code>LatticeExit</code>・<code>Lattice::exits_into</code>・<code>Lattice::exit_tokens_offset_into</code> を追加</td></tr>
 <tr><td>—</td><td><code>nbest</code> に <code>NBestGenerator::from_exit</code>・<code>NBestGenerator::next_with_bos</code> を追加</td></tr>
+<tr><td><code>Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, normalize_details, schema, userdic_schema)</code></td><td><code>Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, schema, userdic_schema)</code></td></tr>
+<tr><td><code>Metadata::normalize_details</code></td><td>削除</td></tr>
+<tr><td><code>PrefixDictionaryBuilderOptions::normalize_details(value)</code></td><td>削除</td></tr>
 </tbody></table>
 </div>
 <p>各トークンは <code>(start, word_id)</code> ではなく <code>(start, end, word_id)</code> になりました。
@@ -728,25 +829,38 @@ BOS です。</li>
 <p><code>nbest_tokens_offset</code> はデフォルトの単一の BOS を前提にしています。BOS が複数ある
 場合は、パスがどの BOS から始まるかがわからないため、<code>NBestGenerator::next_with_bos</code>
 を使ってください。</p>
+<p><code>Metadata::new</code> から 9 番目の引数 <code>normalize_details</code> がなくなったので、呼び出し
+から削除してください。ビルダーがすべての見出し語を書かれたとおりに保持するように
+なったため（<a href="#%E3%83%80%E3%83%83%E3%82%B7%E3%83%A5%E3%81%A8%E3%83%81%E3%83%AB%E3%83%80%E3%82%92%E8%BE%9E%E6%9B%B8%E3%81%AB%E6%9B%B8%E3%81%8B%E3%82%8C%E3%81%9F%E3%81%A8%E3%81%8A%E3%82%8A%E3%81%AB%E4%BF%9D%E6%8C%81%E3%81%99%E3%82%8B">ダッシュとチルダを辞書に書かれたとおりに保持する</a>
+を参照）、<code>Metadata</code> からはこのフィールドが、<code>PrefixDictionaryBuilderOptions</code>
+（<code>lindera_dictionary::builder::prefix_dictionary</code>）からはこのメソッドがなくなり
+ました。<code>Metadata</code> は、このキーを含む <code>metadata.json</code> も読み込み、キーを無視します。
+バインディングの作者向けの <code>lindera_binding::CoreMetadata</code> からも同じくフィールドが
+なくなり、<code>CoreMetadata::new</code> の引数は 11 個から 10 個になります。</p>
 <h2 id="対応が不要なケース"><a class="header" href="#対応が不要なケース">対応が不要なケース</a></h2>
 <ul>
 <li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の
-各パッケージと <code>lindera-cli</code> の API・パッケージ名は変わりません。今回の
-構成変更は Rust クレート内部のものです。出力の変化は、この 2 フィールドを
+各パッケージと <code>lindera-cli</code> のパッケージ名は変わらず、API も <code>Metadata</code> の設定
+<code>normalize_details</code> を除いて変わりません
+（<a href="#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>を参照）。
+今回の構成変更は Rust クレート内部のものです。出力の変化は、この 2 フィールドを
 名前で読む場合にのみ影響する IPADIC の活用フィールドの修正、U+3000 を含む
 テキスト（IPADIC・IPADIC-NEologd・UniDic）や空白を含むテキスト（SudachiDict）に
 のみ影響する空白の見出し語、空白を含むテキストの分割、<code>Ð</code>・<code>々</code>・<code>〇</code> を含む
 テキストにのみ影響する <code>char.def</code> の修正、行の中に <code>、</code> や <code>。</code> を含むテキストに
 のみ影響する <code>、</code>・<code>。</code> をまたぐ文脈の引き継ぎ、複数の文を含む入力の N-best に
-のみ影響する N-best の修正、そして通常モードでのカタカナ・記号・英字の連続に
-影響する、どの位置からも始まる未知語です。</li>
+のみ影響する N-best の修正、通常モードでのカタカナ・記号・英字の連続に
+影響する、どの位置からも始まる未知語、そして IPADIC・IPADIC-NEologd で
+<code>―</code>・<code>—</code>・<code>～</code>・<code>〜</code> を含むテキストにのみ影響する、ダッシュとチルダの綴りの
+保持です。</li>
 <li><strong><code>lindera = "6"</code> のまま使い続けるプロジェクト</strong>: <code>lindera</code> と <code>lindera-analysis</code>
 の 6.x は crates.io に残り、組み合わせて動作し続けます。メジャーバージョンを
 上げるまで何も変わりません。</li>
 <li><strong>セグメンター API だけを使うユーザー</strong>: <code>Segmenter</code>・<code>load_dictionary</code>・<code>Mode</code>
 など v6 の <code>lindera::…</code> アイテムを使うコードは、<code>lindera = "7"</code> でそのまま
 コンパイルできます（<code>lindera::dictionary::Lattice</code> のバックトレースを呼び出す
-場合を除く。<a href="#lindera_dictionary-%E3%81%AE-rust-api-%E5%A4%89%E6%9B%B4"><code>lindera_dictionary</code> の Rust API 変更</a>
+場合と、<code>lindera::dictionary::Metadata::new</code> でメタデータを作成する場合を除く。
+<a href="#lindera_dictionary-%E3%81%AE-rust-api-%E5%A4%89%E6%9B%B4"><code>lindera_dictionary</code> の Rust API 変更</a>
 を参照）。ただしデフォルトビルドでは <code>lindera-analysis</code> とその依存
 （kanaria・regex・serde_yaml_ng・unicode-blocks・unicode-normalization・
 unicode-segmentation）もコンパイルされるため、v6 の依存ツリーを維持したい
@@ -770,11 +884,16 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 次のトークンの開始位置の代わりに返された終了位置を使う。</li>
 <li><code>Lattice::tokens_offset_into</code> の戻り値 <code>()</code> をクロージャの本体などで値として
 使っている場合は、<code>;</code> を付ける。最良パスの BOS の添字を返すようになったため。</li>
+<li><code>Metadata::new</code> を呼び出している場合は、9 番目の引数 <code>normalize_details</code> を
+削除し、<code>Metadata::normalize_details</code> フィールドと
+<code>PrefixDictionaryBuilderOptions::normalize_details</code> を使わないようにする。</li>
 </ul>
 <p>バインディングの作者:</p>
 <ul>
 <li><code>lindera-binding-core</code> の代わりに <code>lindera-binding</code> に依存し、
 <code>lindera_binding_core::</code> を <code>lindera_binding::</code> に置き換える。</li>
+<li><code>CoreMetadata::new</code> から引数 <code>normalize_details</code> を削除し（引数は 10 個になる）、
+<code>CoreMetadata::normalize_details</code> フィールドを使わないようにする。</li>
 </ul>
 <p>ビルド環境:</p>
 <ul>
@@ -842,10 +961,25 @@ MeCab と同じくその空白を含むことを前提にする。</li>
 <li>カタカナや英字の多いテキストで命令数が 13% 程度増え、カタカナの非常に長い連続の
 N-best では時間とメモリが大きく増えることを前提にする。</li>
 </ul>
+<p><code>―</code>・<code>—</code>・<code>～</code>・<code>〜</code> を含むテキストを IPADIC・IPADIC-NEologd で解析するユーザー:</p>
+<ul>
+<li><code>―</code> や <code>～</code> で書かれた語が MeCab と同じく同じ綴りのテキストに一致し、<code>—</code> や <code>〜</code> で
+書いたテキストからは、以前の書き換えでしか引けなかった語（IPADIC 12 語、
+IPADIC-NEologd 1,085 語）が引けなくなることを前提にする。IPADIC で両方の綴りから
+語を引きたい場合は、<code>mapping</code> 文字フィルタで <code>—</code> を <code>―</code> に、<code>～</code> を <code>〜</code> に
+置き換える。</li>
+<li>書かれたとおりの見出し語を使うには、v6.2.0 以前に作った辞書ディレクトリを
+再ビルド・再ダウンロードする。</li>
+</ul>
 <p>言語バインディングと CLI:</p>
 <ul>
-<li>7.0.0 リリースを取り込む以外に対応は不要（上記の辞書・空白・<code>、</code> と <code>。</code>・N-best・
-未知語の項目を除く）。</li>
+<li><code>Metadata</code> を作成するときの <code>normalize_details</code> を削除する（Python のキーワード
+引数、Ruby の <code>Metadata.new</code> の 9 番目の位置引数、PHP の <code>Metadata</code> の
+コンストラクタの最後の引数、Node.js のオプション <code>normalizeDetails</code>）。
+プロパティと、<code>to_dict()</code>・<code>to_h</code>・<code>toArray()</code>・<code>toObject()</code> の同名のキーも
+読まないようにする。</li>
+<li>それ以外は、7.0.0 リリースを取り込む以外に対応は不要（上記の辞書・空白・<code>、</code> と
+<code>。</code>・N-best・未知語・ダッシュとチルダの項目を除く）。</li>
 </ul>
 
                     </main>

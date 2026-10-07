@@ -246,7 +246,7 @@ future use and has no effect on the build. Any string value can be passed for it
 # Create default metadata with standard settings
 metadata = Lindera::Metadata.create_default
 </code></pre>
-<p><code>Lindera::Metadata.new</code> takes all nine properties as required positional
+<p><code>Lindera::Metadata.new</code> takes all eight properties as required positional
 arguments (each may be <code>nil</code> to fall back to its default) -- use it only when
 you need to override specific values:</p>
 <pre><code class="language-ruby">metadata = Lindera::Metadata.new(
@@ -257,8 +257,7 @@ you need to override specific values:</p>
   1288,      # default_right_context_id
   '*',       # default_field_value
   false,     # flexible_csv
-  false,     # skip_invalid_cost_or_id
-  false      # normalize_details
+  false      # skip_invalid_cost_or_id
 )
 </code></pre>
 <h3 id="loading-from-json"><a class="header" href="#loading-from-json">Loading from JSON</a></h3>
@@ -279,7 +278,6 @@ metadata = dictionary.metadata
 <tr><td><code>default_field_value</code></td><td><code>String</code></td><td><code>"*"</code></td><td>Default value for missing fields</td></tr>
 <tr><td><code>flexible_csv</code></td><td><code>Boolean</code></td><td><code>false</code></td><td>Allow flexible CSV parsing</td></tr>
 <tr><td><code>skip_invalid_cost_or_id</code></td><td><code>Boolean</code></td><td><code>false</code></td><td>Skip entries with invalid cost or ID</td></tr>
-<tr><td><code>normalize_details</code></td><td><code>Boolean</code></td><td><code>false</code></td><td>Normalize morphological details</td></tr>
 </tbody></table>
 </div>
 <p><code>to_h</code> (and its alias <code>to_hash</code>) returns these properties as a <code>Hash</code> of strings, together with <code>dictionary_schema_fields</code> and <code>user_dictionary_schema_fields</code> (comma-separated field names). When the metadata carries left-space penalty rules, as ko-dic's does, the hash also has a <code>space_penalty</code> entry holding them as a JSON string:</p>
