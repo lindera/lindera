@@ -59,7 +59,7 @@ Lindera does not store `pos-id.def` ids, but every listed id corresponds to the 
 echo "검색 이 잘 된다" | lindera tokenize --dict embedded://ko-dic
 ```
 
-`이` after the space is read as the interjection `IC` (as mecab-ko does) instead of the subject particle `JKS`; with `--disable-space-penalty` it reads as `JKS` again. See the Segmenter documentation for the semantics.
+`이` after the space is read as the interjection `IC` (as mecab-ko does) instead of the subject particle `JKS`; with `--disable-space-penalty` it reads as `JKS`. See the Segmenter documentation for the semantics.
 
 ## Whitespace
 

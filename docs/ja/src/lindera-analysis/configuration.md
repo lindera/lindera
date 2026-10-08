@@ -82,8 +82,8 @@ token_filters:
 | `mode` | string | `"normal"` | 分割モード。`"normal"` または `"decompose"` |
 | `dictionary` | string | *(必須)* | 辞書 URI。例: `"embedded://ipadic"` |
 | `user_dictionary` | string | *(なし)* | ユーザー辞書のパス |
-| `keep_whitespace` | bool | `false` | 空白を MeCab のように除去せず、ラティスに残して空白トークンを出力する |
-| `skip_whitespace` | bool | *(辞書の設定: `true`、SudachiDict は `false`)* | `keep_whitespace` が false のとき、MeCab と同様に空白をラティス上で読み飛ばし、前後の語を直接接続する。`false` で空白を `SPACE` の未知語ノードとして残す（v7 より前の動作）。この場合、空白のたびに連接の文脈が途切れる。省略または `null` で辞書の `metadata.json` のデフォルトを使う。[Segmenter](../lindera/segmenter.md#空白文字の扱い) を参照 |
+| `keep_whitespace` | bool | `false` | 空白トークンを出力する。このとき空白はラティスにも残るため、他のトークンも、MeCab と同様に空白を読み飛ばすデフォルトの出力と変わることがある |
+| `skip_whitespace` | bool | *(辞書の設定: `true`、SudachiDict は `false`)* | `keep_whitespace` が false のとき、MeCab と同様に空白をラティス上で読み飛ばし、前後の語を直接接続する。`false` で空白を独立したノード（空白の見出し語か `SPACE` の未知語）としてラティスに残す（v7 より前の動作）。そのノードの連接コストがすべて 0 の ko-dic では、空白のたびに連接の文脈が途切れる。省略または `null` で辞書の `metadata.json` のデフォルトを使う。[Segmenter](../lindera/segmenter.md#空白文字の扱い) を参照 |
 | `use_mmap` | bool | `mmap` feature が有効なとき on（デフォルト） | 辞書をメモリマップする。ファイルシステム辞書（`embedded://` ではない辞書）にのみ意味がある |
 | `max_grouping_len` | integer | *(無制限)* | 未知語グルーピングの上限（**先頭の 1 文字を超えた**文字数）。MeCab の `max-grouping-size` に相当する（MeCab のデフォルトは 24）。上限は各位置で判定され、上限を超えるランはその位置ではグルーピングされず、1 文字候補（および候補ラダーと辞書語）が残る。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になる。キーを省略するか `0` を指定すると無制限になる |
 | `unknown_word_ladder` | bool | `true` | MeCab や Vibrato と同様に、`char.def` の各カテゴリの `LENGTH` フィールドまでの短い未知語候補も生成する。`false` を指定すると v6 より前と同じくこれらの候補を作らない。ただし、グルーピングした未知語の内側から始まる未知語など、その後の変更による出力の違いは残る。[Segmenter](../lindera/segmenter.md#未知語のグルーピング) を参照 |

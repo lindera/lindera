@@ -63,7 +63,7 @@ builder.setUserDictionary("/path/to/user_dictionary");
 
 #### `setKeepWhitespace(keep)`
 
-Controls whether whitespace tokens appear in the output.
+Controls whether whitespace tokens appear in the output. Kept whitespace also stays in the lattice, so the other tokens can differ from those of the default output, which skips whitespace in the lattice as MeCab does. Whitespace skipping itself has no setter: turn it off with `skip_whitespace: false` under `segmenter` in a [configuration file](../lindera-analysis/configuration.md) loaded with `fromFile`.
 
 ```javascript
 builder.setKeepWhitespace(true);
@@ -99,7 +99,7 @@ builder.setSpacePenalty(null);
 ```
 
 > [!NOTE]
-> Since v6.1.0, ko-dic applies the left-space penalty by default, because its `metadata.json` ships mecab-ko-dic's rules. This changes the Korean output compared with v6.0 (for example, `시` in `서울 시 에서` becomes the noun `NNG` instead of the ending `EP`). Call `setSpacePenalty(false)` to turn it off. For a `Tokenizer` created directly, pass `false` as the fourth argument: `new Tokenizer(dictionary, "normal", null, false)`. A ko-dic downloaded from the v6.0.0 release ships no rules, so with it the penalty stays off and `setSpacePenalty(true)` makes `build()` throw. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
+> Since v6.1.0, ko-dic applies the left-space penalty by default, because its `metadata.json` ships mecab-ko-dic's rules. This changes the Korean output (for example, `이` in `검색 이 잘 된다` is the interjection `IC` with the penalty and the subject particle `JKS` without it). Call `setSpacePenalty(false)` to turn it off. For a `Tokenizer` created directly, pass `false` as the fourth argument: `new Tokenizer(dictionary, "normal", null, false)`. A ko-dic downloaded from the v6.0.0 release ships no rules, so with it the penalty stays off and `setSpacePenalty(true)` makes `build()` throw. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
 
 #### `appendCharacterFilter(kind, args?)`
 

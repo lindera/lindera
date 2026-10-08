@@ -51,7 +51,7 @@ $builder->setUserDictionary('/path/to/user_dictionary.csv');
 
 #### `setKeepWhitespace($keep)`
 
-出力に空白トークンを含めるかどうかを制御します。
+出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白の読み飛ばし自体を変える setter はありません。`fromFile` で読み込む[設定ファイル](../lindera-analysis/configuration.md)の `segmenter` に `skip_whitespace: false` を書くと無効にできます。
 
 ```php
 $builder->setKeepWhitespace(true);
@@ -87,7 +87,7 @@ $builder->setSpacePenalty(null);
 ```
 
 > [!NOTE]
-> v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば `서울 시 에서` の `시` は、語尾 `EP` ではなく名詞 `NNG` と解析されるようになりました。オフにするには `$builder->setSpacePenalty(false)` を呼び出してください。[`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty) で作成するトークナイザーでは `space_penalty: false` を渡します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで `true` はエラーになります。詳しくは [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
+> v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば `검색 이 잘 된다` の `이` は感動詞 `IC` と解析されます（ペナルティがなければ主格助詞 `JKS`）。オフにするには `$builder->setSpacePenalty(false)` を呼び出してください。[`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty) で作成するトークナイザーでは `space_penalty: false` を渡します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで `true` はエラーになります。詳しくは [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
 
 #### `appendCharacterFilter($kind, $args)`
 

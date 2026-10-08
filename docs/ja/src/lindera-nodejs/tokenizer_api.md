@@ -65,7 +65,7 @@ builder.setUserDictionary("/path/to/user_dictionary");
 
 #### `setKeepWhitespace(keep)`
 
-出力に空白トークンを含めるかどうかを制御します。
+出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白の読み飛ばし自体を変える setter はありません。`fromFile` で読み込む[設定ファイル](../lindera-analysis/configuration.md)の `segmenter` に `skip_whitespace: false` を書くと無効にできます。
 
 ```javascript
 builder.setKeepWhitespace(true);
@@ -101,7 +101,7 @@ builder.setSpacePenalty(null);
 ```
 
 > [!NOTE]
-> v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適用されます。ko-dic の `metadata.json` が mecab-ko-dic のルールを同梱しているためです。これにより韓国語の出力が v6.0 から変わります（例: `서울 시 에서` の `시` が語尾 `EP` ではなく名詞 `NNG` になる）。オフにするには `setSpacePenalty(false)` を呼び出してください。直接作成する `Tokenizer` では、4 番目の引数に `false` を渡します（`new Tokenizer(dictionary, "normal", null, false)`）。v6.0.0 リリースからダウンロードした ko-dic はルールを同梱していないため、その辞書ではペナルティはオフのままで、`setSpacePenalty(true)` を指定すると `build()` が例外を投げます。詳細は [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
+> v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適用されます。ko-dic の `metadata.json` が mecab-ko-dic のルールを同梱しているためです。これにより韓国語の出力が変わります（例: `검색 이 잘 된다` の `이` は、ペナルティがあると感動詞 `IC`、なければ主格助詞 `JKS` になる）。オフにするには `setSpacePenalty(false)` を呼び出してください。直接作成する `Tokenizer` では、4 番目の引数に `false` を渡します（`new Tokenizer(dictionary, "normal", null, false)`）。v6.0.0 リリースからダウンロードした ko-dic はルールを同梱していないため、その辞書ではペナルティはオフのままで、`setSpacePenalty(true)` を指定すると `build()` が例外を投げます。詳細は [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
 
 #### `appendCharacterFilter(kind, args?)`
 

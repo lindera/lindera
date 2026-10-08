@@ -340,7 +340,7 @@ ko-dic tokenizes a Sino-Korean numeral into one token per morpheme, so this filt
 }
 ```
 
-`만` right after a space is `NR` under the default left-space penalty, but at the start of the text or right after another numeral ko-dic tags it `JX` (`만 원`, `십만 원`), which stays outside `["SN", "NR"]`.
+With the default settings, ko-dic tags `만` in `만 원` and `십만 원` as the numeral `NR`, so `십만 원` becomes `십만/NR 원/NNBC`. With whitespace skipping turned off (`skip_whitespace: false`), the word after `만` connects to the whitespace node instead, and ko-dic tags `만` there as the particle `JX` (`만/JX 원/NNG`), which stays outside `["SN", "NR"]`.
 
 ### korean_decompound
 

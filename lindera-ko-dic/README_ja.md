@@ -61,7 +61,7 @@ Lindera は `pos-id.def` の ID を保持しませんが、列挙されている
 echo "검색 이 잘 된다" | lindera tokenize --dict embedded://ko-dic
 ```
 
-空白の後ろの `이` は主格助詞 `JKS` ではなく（mecab-ko と同様に）感動詞 `IC` と解析されます。`--disable-space-penalty` を付けると再び `JKS` になります。意味論については Segmenter のドキュメントを参照してください。
+空白の後ろの `이` は主格助詞 `JKS` ではなく（mecab-ko と同様に）感動詞 `IC` と解析されます。`--disable-space-penalty` を付けると `JKS` になります。意味論については Segmenter のドキュメントを参照してください。
 
 ## 空白
 
