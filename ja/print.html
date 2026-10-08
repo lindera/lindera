@@ -732,6 +732,8 @@ let results = tokenizer.tokenize_nbest_with_lattice(text, &amp;mut lattice, 3, f
 <p>表層形（1 列目）は書いたとおりに使われます。先頭や末尾の空白も語の一部になり、空白だけの表層形も登録できます（IPADIC は U+3000 をこの形で登録しています）。読み飛ばされるのは空の表層形だけです。<code>lindera build</code> でビルドするシステム辞書の見出し語の CSV も同じです。</p>
 <p>末尾が空白の語は、空白をラティス上で読み飛ばすとき（SudachiDict を除く同梱辞書のデフォルト。<a href="concepts/../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">空白文字の扱い</a> を参照）も、MeCab と同じくその空白をトークンに含みます。ただし読み飛ばすときは、辞書の <code>SPACE</code> カテゴリの空白で始まる語や、その空白だけの語は一致しません。読み飛ばした空白から始まる語はないためです。U+3000 は <code>SPACE</code> カテゴリではないため、IPADIC の U+3000 の語は引き続き一致します。</p>
 <p>各辞書タイプ（IPADIC、UniDic、ko-dicなど）は、文脈ID、コスト、すべての素性フィールドを完全に制御できる詳細CSVフォーマットもサポートしています。各辞書タイプの詳細フォーマットについては <a href="concepts/./dictionaries.html">辞書</a> セクションを参照してください。</p>
+<h2 id="同点の見出し語"><a class="header" href="#同点の見出し語">同点の見出し語</a></h2>
+<p>表層形・左右の文脈 ID・コストがすべて同じ 2 つの見出し語は同点です。どちらを使っても経路のコストは同じになります。ユーザー辞書の見出し語は、同点のシステム辞書の見出し語より優先して選ばれます。そのため、システム辞書の見出し語の表層形・文脈 ID・コストをそのまま使った詳細形式の見出し語（たとえば語に別の読みを与えるもの）は、システム辞書の見出し語の代わりに出力されます。MeCab はシステム辞書の見出し語を選びます。同点のユーザー辞書の見出し語どうしでは、MeCab と同じく先の行が選ばれます（v7 より前は後の行でした。<a href="concepts/../migration_v6_to_v7.html#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E5%90%8C%E7%82%B9%E3%81%AE%E8%A6%8B%E5%87%BA%E3%81%97%E8%AA%9E%E3%81%AF-csv-%E3%81%A7%E5%85%88%E3%81%AE%E8%A1%8C%E3%82%92%E9%81%B8%E3%81%B6">v6 から v7 への移行</a>を参照）。簡易形式の見出し語には、辞書の <code>metadata.json</code> のコストと文脈 ID（<code>default_word_cost</code>・<code>default_left_context_id</code>・<code>default_right_context_id</code>。IPADIC では <code>-10000</code>・<code>0</code>・<code>0</code>）が使われるため、システム辞書の見出し語と同点になることはまずありません。</p>
 <h2 id="rust-apiの例-1"><a class="header" href="#rust-apiの例-1">Rust APIの例</a></h2>
 <pre><pre class="playground"><code class="language-rust">use std::fs::File;
 use std::path::PathBuf;
@@ -1097,7 +1099,7 @@ tokenizer
 <li><a href="./lindera/api_reference.html">APIリファレンス</a> - 生成されたAPIドキュメントへのリンク</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="segmenter"><a class="header" href="#segmenter">Segmenter</a></h1>
-<p><code>Segmenter</code> は形態素解析を実行するコアコンポーネントです。辞書とコストモデルに基づいて、入力テキストの最適な分割を Viterbi アルゴリズムで探索します。</p>
+<p><code>Segmenter</code> は形態素解析を実行するコアコンポーネントです。辞書とコストモデルに基づいて、入力テキストの最適な分割を Viterbi アルゴリズムで探索します。表層形・文脈 ID・コストがすべて同じ見出し語（同点の見出し語）からは、MeCab と同じく CSV で先の行を選び、ユーザー辞書の見出し語とシステム辞書の見出し語が同点ならユーザー辞書の見出し語を選びます（<a href="lindera/../concepts/user_dictionary.html#%E5%90%8C%E7%82%B9%E3%81%AE%E8%A6%8B%E5%87%BA%E3%81%97%E8%AA%9E">同点の見出し語</a>を参照）。</p>
 <h2 id="segmenter-の作成"><a class="header" href="#segmenter-の作成">Segmenter の作成</a></h2>
 <p><code>Segmenter</code> には以下の3つのコンポーネントが必要です：</p>
 <ul>
@@ -1291,7 +1293,7 @@ for (tokens, cost) in results {
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<p>どの結果も入力全体の分割です。入力は<a href="lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>のとおりに区間に分けられ、区間ごとに探索されます。区間の中では <code>、</code>・<code>。</code>・強制的な区切りをまたいで文脈を引き継ぐため、区間のパスは、区間全体を 1 つのラティスで解いたときのコストの小さい <code>n</code> 本のパスです（例外は<a href="lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>を参照）。<code>unique</code> は区間全体の単語境界で比較します。各結果は区間ごとに 1 つのパスを選んだ組み合わせで、そのコストは選んだパスのコストの合計です。結果は、これらの組み合わせのうちコストの小さい <code>n</code> 件です。そのため、1 つの区間だけが最良の結果と異なる結果もあります。<code>best_cost</code> は 1 件目の結果のコストなので、<code>cost_threshold</code> は入力全体に対して適用されます。1 件目の結果は、コストがまったく同じパスが複数ある場合を除き、<code>segment</code> の出力と同じです。</p>
+<p>どの結果も入力全体の分割です。入力は<a href="lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>のとおりに区間に分けられ、区間ごとに探索されます。区間の中では <code>、</code>・<code>。</code>・強制的な区切りをまたいで文脈を引き継ぐため、区間のパスは、区間全体を 1 つのラティスで解いたときのコストの小さい <code>n</code> 本のパスです（例外は<a href="lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>を参照）。<code>unique</code> は区間全体の単語境界で比較します。各結果は区間ごとに 1 つのパスを選んだ組み合わせで、そのコストは選んだパスのコストの合計です。結果は、これらの組み合わせのうちコストの小さい <code>n</code> 件です。そのため、1 つの区間だけが最良の結果と異なる結果もあります。<code>best_cost</code> は 1 件目の結果のコストなので、<code>cost_threshold</code> は入力全体に対して適用されます。1 件目の結果は常に <code>segment</code> の出力と同じです。</p>
 <p><code>segment_nbest_with_lattice</code> は同じ処理を行いますが、呼び出しごとの <code>Lattice</code> バッファの再確保を避けるために、再利用可能な <code>Lattice</code> を自分で渡すことができます。</p>
 <h2 id="文分割"><a class="header" href="#文分割">文分割</a></h2>
 <p>ラティスを構築する前に、Linderaは入力テキストを区切り文字（<code>\n</code>、<code>\t</code>、<code>。</code>、<code>、</code>）で文単位に分割し、文ごとに Viterbi ラティスを構築します。文の先頭からおよそ 32 KiB 以内に区切り文字が見つからない場合、Linderaはその位置で強制的に文の境界を区切り、警告をログに出力します。こうして区切ることで、各ラティスのサイズ（ひいてはメモリ・CPU コスト）を制限しています。</p>
@@ -9479,7 +9481,8 @@ MeCab と同様に空白をラティス上で読み飛ばし、<code>char.def</c
 同じく解決し、MeCab と同じく行の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぎ、
 N-best の各結果が入力全体を覆うようにし、MeCab と同じくどの位置からも未知語が
 始まるようにし、辞書の見出し語のダッシュとチルダを書かれたとおりに保持して、
-それを書き換えていた設定 <code>normalize_details</code> を削除し、<code>lindera-dictionary</code> の
+それを書き換えていた設定 <code>normalize_details</code> を削除し、MeCab と同じく同点の
+見出し語からは CSV で先の行を出力するようにし、<code>lindera-dictionary</code> の
 ラティスのバックトレースが各トークンの終了オフセットも返すようにしました。
 このガイドでは、すべての破壊的変更とその対処方法を説明します。</p>
 <h2 id="概要-4"><a class="header" href="#概要-4">概要</a></h2>
@@ -9499,6 +9502,7 @@ N-best の各結果が入力全体を覆うようにし、MeCab と同じくど�
 <tr><td><strong>N-best: 各結果が入力全体を覆う</strong></td><td>複数の文を含む入力で N-best（<code>segment_nbest</code>・<code>tokenize_nbest</code>・<code>lindera tokenize -N</code>・バインディングの N-best メソッド）を使うユーザー</td><td>2 件目以降が入力全体のコストの小さい分割になることを前提にする。コストの閾値は入力全体に対して適用される</td></tr>
 <tr><td><strong>MeCab と同じく、どの位置からも未知語が始まる</strong></td><td>カタカナ・記号・英字が続くテキストを通常モードで分割するユーザー。特に <code>・</code> でつないだカタカナ、<code>."</code> のような韓国語の文末の句読点、CC-CEDICT の英単語</td><td>そうした連続が MeCab と同じ位置で分かれること、カタカナや英字の多いテキストで命令数が 13% 程度増えることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>IPADIC・IPADIC-NEologd: MeCab と同じく、見出し語のダッシュとチルダを書かれたとおりに保持する</strong></td><td>IPADIC・IPADIC-NEologd で <code>―</code>（U+2015）・<code>—</code>（U+2014）・<code>～</code>（U+FF5E）・<code>〜</code>（U+301C）を含むテキストを分割するユーザー</td><td><code>―</code> や <code>～</code> で書かれた語が同じ綴りのテキストに一致し、<code>—</code> や <code>〜</code> で書いたテキストからは、以前の書き換えでしか引けなかった語（IPADIC 12 語、IPADIC-NEologd 1,085 語）が引けなくなることを前提にする（<code>mapping</code> 文字フィルタで綴りをそろえられる）。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
+<tr><td><strong>MeCab と同じく、表層形・文脈 ID・コストが同じ見出し語からは CSV で先の行を出力する</strong></td><td>IPADIC・IPADIC-NEologd・UniDic・ko-dic、またはそうした見出し語を持つユーザー辞書で、読みや原形などのトークンの詳細情報を読むユーザー。N-best を使うユーザー</td><td>そうした語の詳細情報が MeCab と同じになり（IPADIC の <code>狡い</code> の読みは <code>コスイ</code> ではなく <code>ズルイ</code>）、ユーザー辞書の見出し語が引き続きシステム辞書の同点の見出し語に勝ち、N-best の 1 件目が常に 1-best と同じになることを前提にする。再ビルドは不要。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>設定 <code>normalize_details</code> の削除: <code>Metadata::new</code> と <code>CoreMetadata::new</code> の引数は 10 個、Ruby の <code>Metadata.new</code> の引数は 8 個になる</strong></td><td>辞書のメタデータを作成・参照するコード。Rust（<code>Metadata</code>・<code>lindera_binding::CoreMetadata</code>・<code>PrefixDictionaryBuilderOptions</code>）と、Python・Ruby・PHP・Node.js のバインディングの <code>Metadata</code> クラス</td><td>引数・オプション・プロパティを削除する。このキーを含む <code>metadata.json</code> もそのまま読み込め、キーは無視される</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>・<code>tokens_offset_into</code>・<code>nbest_tokens_offset</code>・<code>NBestGenerator::next</code> が <code>(start, end, WordId)</code> を返す</strong></td><td>これらの <code>lindera_dictionary</code> の関数を直接呼び出す Rust コード（<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・<code>lindera::dictionary::nbest::…</code> 経由を含む）</td><td>3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> が最良パスの BOS の添字（<code>Option&lt;usize&gt;</code>）を返す</strong></td><td><code>tokens_offset_into</code> の戻り値 <code>()</code> を値として使う Rust コード</td><td>文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する</td></tr>
@@ -9508,7 +9512,7 @@ N-best の各結果が入力全体を覆うようにし、MeCab と同じくど�
 変わりません。API も 1 つの設定を除いて変わりません。Python・Node.js・Ruby・PHP の
 バインディングの <code>Metadata</code> クラスは、<code>normalize_details</code> を受け取らず、公開も
 しなくなりました（<a href="migration_v6_to_v7.html#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>
-を参照）。バージョン番号は 7.0.0 になります。出力の違いは 8 つあり、いずれも
+を参照）。バージョン番号は 7.0.0 になります。出力の違いは 9 つあり、いずれも
 後述します。IPADIC・IPADIC-NEologd では、<code>conjugation_type</code> と
 <code>conjugation_form</code> という名前で返る値が入れ替わります。表層形が空白だけの
 見出し語や先頭・末尾が空白の見出し語が辞書に入るため、そうした空白を含む
@@ -9521,8 +9525,11 @@ N-best の各結果が入力全体を覆うようにし、MeCab と同じくど�
 MeCab と同じく未知語が始まるため、カタカナ・記号・英字の連続の一部が分かれます。
 IPADIC・IPADIC-NEologd では、<code>―</code> や <code>～</code> で書かれた見出し語を MeCab と同じく
 その綴りで引けるようになるため、<code>―</code>・<code>—</code>・<code>～</code>・<code>〜</code> を含むテキストの分割が
-変わります。それ以外は、同じ入力と辞書に対して、v7.0.0 は v6.2.0 と同じトークンを、
-同じ位置ベースの詳細情報（details）とともに出力します。</p>
+変わります。表層形・文脈 ID・コストが同じ見出し語からは、MeCab と同じく CSV で
+最後の行ではなく最初の行を出力するため、そうした語の読みや原形などの詳細情報が
+変わり、N-best の 1 件目は常に 1-best と同じになります。それ以外は、同じ入力と
+辞書に対して、v7.0.0 は v6.2.0 と同じトークンを、同じ位置ベースの詳細情報
+（details）とともに出力します。</p>
 <h2 id="lindera-クレートはファサードに"><a class="header" href="#lindera-クレートはファサードに"><code>lindera</code> クレートはファサードに</a></h2>
 <p>v6 までの Rust API は、<code>lindera</code>（セグメンターと辞書読み込み API）と
 <code>lindera-analysis</code>（character filter・token filter・<code>Tokenizer</code>）の 2 クレートに
@@ -9873,9 +9880,9 @@ UniDic の <code>一、二塁</code> を、MeCab は 1 つの名詞として、L
 ラティスで解いたときの上位 N 本のパスと厳密に一致します。<code>unique</code> は区間全体の
 単語境界で比較し、コストの閾値は 1 件目の結果から測ります。区間をまたぐ結果は、
 区間ごとに 1 つのパスを選んだ組み合わせのうちコストの小さいものです（次の節を
-参照）。1 件目の結果は、コストがまったく同じパスが複数ある場合を除き、1-best の
-分割と同じです。<code>、</code> や <code>。</code> を含む行のコストは、区切りをまたぐ連接を含み、EOS への連接を 1 回だけ
-含むようになるため、1 件目の結果も含めて変わります。</p>
+参照）。1 件目の結果は 1-best の分割と同じです。<code>、</code> や <code>。</code> を含む行のコストは、
+区切りをまたぐ連接を含み、EOS への連接を 1 回だけ含むようになるため、1 件目の
+結果も含めて変わります。</p>
 <p>v6 の動作に戻す設定はありません。</p>
 <h2 id="n-best-の結果が入力全体を覆う"><a class="header" href="#n-best-の結果が入力全体を覆う">N-best の結果が入力全体を覆う</a></h2>
 <p>N-best のメソッド（<code>Segmenter::segment_nbest</code>・<code>Tokenizer::tokenize_nbest</code>、それらの
@@ -10044,6 +10051,64 @@ IPADIC-NEologd では、置き換えは語の入れ替えになります。片�
 済みの辞書に付いているものも、<code>lindera build</code> に渡すものも、バインディングで
 読み込むものも、これまでどおり読み込めます。キーは無視され、書き出すときには
 含まれません。</p>
+<h2 id="mecab-と同じく同点の見出し語は-csv-で先の行を選ぶ"><a class="header" href="#mecab-と同じく同点の見出し語は-csv-で先の行を選ぶ">MeCab と同じく、同点の見出し語は CSV で先の行を選ぶ</a></h2>
+<p>辞書には、表層形・左右の文脈 ID・コストがすべて同じで、読みや原形などの詳細情報
+だけが違う見出し語が複数あることがあります。このガイドでは、これを同点の見出し語と
+呼びます。どれを使っても経路のコストは同じなので、どれを出力するかは、セグメンターが
+それらを候補にする順で決まります。v6.2.0 までの Lindera は、ある位置から始まる辞書の
+見出し語を逆の順でラティスに入れていました。探索はコストが同じなら先に入った候補を
+残すため、同点の見出し語のうち CSV で最後の行が選ばれていました。逆の順になったのは
+v2.1.0 からで、意図しない変更だったとみられます。v7.0.0 は見出し語を CSV の順に
+入れ、MeCab と同じく最初の行を出力します。</p>
+<div class="table-wrapper"><table><thead><tr><th>入力（辞書）</th><th>v6</th><th>v7（MeCab と同じ）</th></tr></thead><tbody>
+<tr><td><code>あいつは狡い</code>（IPADIC）</td><td><code>狡い</code> の読みが <code>コスイ</code></td><td><code>狡い</code> の読みが <code>ズルイ</code></td></tr>
+</tbody></table>
+</div>
+<p>IPADIC の <code>Adj.csv</code> には、この 2 行がこの順で並んでいます。</p>
+<pre><code class="language-text">狡い,19,19,4682,形容詞,自立,*,*,形容詞・アウオ段,基本形,狡い,ズルイ,ズルイ
+狡い,19,19,4682,形容詞,自立,*,*,形容詞・アウオ段,基本形,狡い,コスイ,コスイ
+</code></pre>
+<p>同点の見出し語を持つ表層形は、IPADIC に 5,637、IPADIC-NEologd に 90,991、UniDic に
+3,324、ko-dic に 175 あります。日本語の辞書では、同点の行どうしで品詞の欄が違う
+ことはなく、違うのは読みや原形などの欄だけです。ko-dic では 5 組で品詞の欄も
+違います。同点の見出し語の表層形を 1 行に 1 つずつ解析すると、詳細情報まで
+MeCab 0.996 と一致する表層形は、IPADIC で 5,637 のうち 1,607 から 5,637 に、
+UniDic で 3,324 のうち 524 から 3,324 に、IPADIC-NEologd で 86,464 のうち 8,205 から
+86,319 に増えます（IPADIC-NEologd は空白や制御文字を含む表層形を除いて比較）。
+IPADIC-NEologd の残りの 145 は、<code>、</code> を含む表層形（区切りをまたぐ語はできません。
+<a href="migration_v6_to_v7.html#-%E3%82%92%E3%81%BE%E3%81%9F%E3%81%84%E3%81%A7%E6%96%87%E8%84%88%E3%82%92%E5%BC%95%E3%81%8D%E7%B6%99%E3%81%90"><code>、</code>・<code>。</code> をまたいで文脈を引き継ぐ</a>を参照）か、MeCab が
+別の順で行を読む組（後述）です。ko-dic では、MeCab の辞書を CSV ファイルの名前の順に
+ビルドすると、175 すべてが一致します。</p>
+<p>文章では、詳細情報まで MeCab と一致する行が、このガイドの他の変更に加えてさらに
+増えます。IPADIC では UD Japanese GSD の 8,100 文のうち 7,989 から 8,096 に、
+『こころ』と『吾輩は猫である』の 3,587 段落のうち 3,278 から 3,583 に、UniDic では
+同じ 3,587 段落のうち 3,394 から 3,571 に増えました。分割が変わった行はありません。
+比較したすべてのテキストで、品詞が変わったトークンは 15 個あり、どれも MeCab と
+同じ品詞になりました。その多くは、文脈 ID もコストも違う同じ表層形の見出し語どうしで、
+その文の中でたまたま経路のコストが同じになったものです。どちらを選ぶかは同じ順で
+決まります。たとえば UniDic の <code>御前</code> は、MeCab と同じく、普通名詞
+（<code>名詞,普通名詞,一般</code>）ではなく代名詞（<code>代名詞</code>）になります。</p>
+<p>ユーザー辞書も同じ規則に従います。同点のユーザー辞書の見出し語からは、最後の行では
+なく最初の行が選ばれるようになりました。ユーザー辞書の見出し語とシステム辞書の
+見出し語が同点の場合は、v6 と同じくユーザー辞書の見出し語が選ばれます。MeCab は
+システム辞書の見出し語を選ぶので、意図して MeCab と変えているのはこの点だけです。
+このような同点になるのは、詳細形式のユーザー辞書で、システム辞書の見出し語の文脈 ID と
+コストをそのまま使った場合（たとえば語に別の読みを与える場合）です。3 列の簡易形式の
+見出し語には、辞書の <code>metadata.json</code> のコストと文脈 ID（<code>default_word_cost</code>・
+<code>default_left_context_id</code>・<code>default_right_context_id</code>。IPADIC では <code>-10000</code>・<code>0</code>・
+<code>0</code>）が使われるため、システム辞書の見出し語と同点になることはまずありません。</p>
+<p>N-best の探索も同じ順を使います。さらに、N-best の 1 件目の結果は、常に 1-best の
+分割（<code>segment</code> の出力）と同じになりました。v6 までは、コストがまったく同じパスが
+複数あると、別のパスになることがありました。N-best の結果のコストは変わりません。
+入れ替わるのはコストが同じ結果どうしの順だけで、そのため <code>n</code> 件目で切られる結果が
+変わることもあります。N-best の命令数は 3〜4% 程度増えます（<code>-N 3</code>）。1-best の
+分割の速度は変わりません（差は 0.2% 以内）。</p>
+<p>MeCab の <code>mecab-dict-index</code> は CSV ファイルをファイルシステムが返す順（readdir の順）に
+読むため、行が複数のファイルにまたがる同点の組（IPADIC-NEologd と ko-dic にあります）
+では、MeCab がどの行を選ぶかはファイルシステムによって変わります（Lindera は
+ファイル名の順に読みます）。</p>
+<p>辞書のファイルは変わらないため、この変更のための再ビルドや再ダウンロードは不要です。
+v6 の動作に戻す設定はありません。</p>
 <h2 id="lindera_dictionary-の-rust-api-変更-1"><a class="header" href="#lindera_dictionary-の-rust-api-変更-1"><code>lindera_dictionary</code> の Rust API 変更</a></h2>
 <p>以下は、ラティスのバックトレースを直接呼び出すコードと、<code>Metadata::new</code> で辞書の
 メタデータを作成するコードにのみ影響します。対象は
@@ -10139,9 +10204,10 @@ BOS です。</li>
 テキストにのみ影響する <code>char.def</code> の修正、行の中に <code>、</code> や <code>。</code> を含むテキストに
 のみ影響する <code>、</code>・<code>。</code> をまたぐ文脈の引き継ぎ、複数の文を含む入力の N-best に
 のみ影響する N-best の修正、通常モードでのカタカナ・記号・英字の連続に
-影響する、どの位置からも始まる未知語、そして IPADIC・IPADIC-NEologd で
+影響する、どの位置からも始まる未知語、IPADIC・IPADIC-NEologd で
 <code>―</code>・<code>—</code>・<code>～</code>・<code>〜</code> を含むテキストにのみ影響する、ダッシュとチルダの綴りの
-保持です。</li>
+保持、そして読みや原形などのトークンの詳細情報や、コストが同じ N-best の結果の
+順を読む場合にのみ影響する、同点の見出し語の選び方です。</li>
 <li><strong><code>lindera = "6"</code> のまま使い続けるプロジェクト</strong>: <code>lindera</code> と <code>lindera-analysis</code>
 の 6.x は crates.io に残り、組み合わせて動作し続けます。メジャーバージョンを
 上げるまで何も変わりません。</li>
@@ -10239,6 +10305,8 @@ MeCab と同じくその空白を含むことを前提にする。</li>
 する。コストは行全体を 1 つのラティスで解いたときの値になる。</li>
 <li>コストの閾値を指定している場合、閾値は文ごとではなく入力全体の合計コストに
 適用される。</li>
+<li>コストがまったく同じパスが複数あっても 1 件目の結果が 1-best の分割と同じになり、
+コストが同じ結果どうしの順が入れ替わることがあると前提にする。</li>
 </ul>
 <p>カタカナ・記号・英字が続くテキストを通常モードで解析するユーザー:</p>
 <ul>
@@ -10260,6 +10328,14 @@ IPADIC-NEologd 1,085 語）が引けなくなることを前提にする。IPADI
 <li>書かれたとおりの見出し語を使うには、v6.2.0 以前に作った辞書ディレクトリを
 再ビルド・再ダウンロードする。</li>
 </ul>
+<p>読みや原形などのトークンの詳細情報を読むユーザー:</p>
+<ul>
+<li>同点の見出し語を持つ語が、MeCab と同じく CSV で先の行の詳細情報になることを
+前提にする（IPADIC の <code>狡い</code> の読みは <code>コスイ</code> ではなく <code>ズルイ</code>）。再ビルドは
+不要で、v6 の出力に戻す設定はない。</li>
+<li>ユーザー辞書では、同点の行のうち先の行が選ばれることを前提にする。ユーザー辞書の
+見出し語は、MeCab と異なり、引き続きシステム辞書の同点の見出し語に勝つ。</li>
+</ul>
 <p>言語バインディングと CLI:</p>
 <ul>
 <li><code>Metadata</code> を作成するときの <code>normalize_details</code> を削除する（Python のキーワード
@@ -10268,7 +10344,7 @@ IPADIC-NEologd 1,085 語）が引けなくなることを前提にする。IPADI
 プロパティと、<code>to_dict()</code>・<code>to_h</code>・<code>toArray()</code>・<code>toObject()</code> の同名のキーも
 読まないようにする。</li>
 <li>それ以外は、7.0.0 リリースを取り込む以外に対応は不要（上記の辞書・空白・<code>、</code> と
-<code>。</code>・N-best・未知語・ダッシュとチルダの項目を除く）。</li>
+<code>。</code>・N-best・未知語・ダッシュとチルダ・同点の見出し語の項目を除く）。</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="開発ガイド"><a class="header" href="#開発ガイド">開発ガイド</a></h1>
 <p>このセクションでは、Lindera のビルド、テスト、貢献に関する情報を提供します。</p>

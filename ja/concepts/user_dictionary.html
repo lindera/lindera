@@ -190,6 +190,8 @@
 <p>表層形（1 列目）は書いたとおりに使われます。先頭や末尾の空白も語の一部になり、空白だけの表層形も登録できます（IPADIC は U+3000 をこの形で登録しています）。読み飛ばされるのは空の表層形だけです。<code>lindera build</code> でビルドするシステム辞書の見出し語の CSV も同じです。</p>
 <p>末尾が空白の語は、空白をラティス上で読み飛ばすとき（SudachiDict を除く同梱辞書のデフォルト。<a href="../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">空白文字の扱い</a> を参照）も、MeCab と同じくその空白をトークンに含みます。ただし読み飛ばすときは、辞書の <code>SPACE</code> カテゴリの空白で始まる語や、その空白だけの語は一致しません。読み飛ばした空白から始まる語はないためです。U+3000 は <code>SPACE</code> カテゴリではないため、IPADIC の U+3000 の語は引き続き一致します。</p>
 <p>各辞書タイプ（IPADIC、UniDic、ko-dicなど）は、文脈ID、コスト、すべての素性フィールドを完全に制御できる詳細CSVフォーマットもサポートしています。各辞書タイプの詳細フォーマットについては <a href="./dictionaries.html">辞書</a> セクションを参照してください。</p>
+<h2 id="同点の見出し語"><a class="header" href="#同点の見出し語">同点の見出し語</a></h2>
+<p>表層形・左右の文脈 ID・コストがすべて同じ 2 つの見出し語は同点です。どちらを使っても経路のコストは同じになります。ユーザー辞書の見出し語は、同点のシステム辞書の見出し語より優先して選ばれます。そのため、システム辞書の見出し語の表層形・文脈 ID・コストをそのまま使った詳細形式の見出し語（たとえば語に別の読みを与えるもの）は、システム辞書の見出し語の代わりに出力されます。MeCab はシステム辞書の見出し語を選びます。同点のユーザー辞書の見出し語どうしでは、MeCab と同じく先の行が選ばれます（v7 より前は後の行でした。<a href="../migration_v6_to_v7.html#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E5%90%8C%E7%82%B9%E3%81%AE%E8%A6%8B%E5%87%BA%E3%81%97%E8%AA%9E%E3%81%AF-csv-%E3%81%A7%E5%85%88%E3%81%AE%E8%A1%8C%E3%82%92%E9%81%B8%E3%81%B6">v6 から v7 への移行</a>を参照）。簡易形式の見出し語には、辞書の <code>metadata.json</code> のコストと文脈 ID（<code>default_word_cost</code>・<code>default_left_context_id</code>・<code>default_right_context_id</code>。IPADIC では <code>-10000</code>・<code>0</code>・<code>0</code>）が使われるため、システム辞書の見出し語と同点になることはまずありません。</p>
 <h2 id="rust-apiの例"><a class="header" href="#rust-apiの例">Rust APIの例</a></h2>
 <pre><pre class="playground"><code class="language-rust">use std::fs::File;
 use std::path::PathBuf;
