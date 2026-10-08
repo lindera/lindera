@@ -14,8 +14,9 @@ resolves overlapping `char.def` lines as MeCab does, carries the context
 across `、` and `。` within a line as MeCab does, returns N-best results
 that each cover the whole input, lets unknown words start at every position
 as MeCab does, keeps the dashes and tildes of dictionary entries as written
-instead of rewriting them, removing the `normalize_details` setting, and has
-the lattice backtraces of `lindera-dictionary` return each token's end offset.
+instead of rewriting them, removing the `normalize_details` setting, outputs
+the first CSV row among tied dictionary entries as MeCab does, and has the
+lattice backtraces of `lindera-dictionary` return each token's end offset.
 This guide lists every breaking change and the one-line fixes for each.
 
 ## Overview
@@ -37,6 +38,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **N-best: every result covers the whole input** | Anyone who asks for N-best results (`segment_nbest`, `tokenize_nbest`, `lindera tokenize -N`, the bindings' N-best methods) for input with more than one sentence | Expect the cheapest segmentations of the whole input from the second result on; a cost threshold now applies to the whole input |
 | **Unknown words start at every position, as in MeCab** | Anyone who segments text with runs of katakana, symbols or Latin letters in normal mode, most visibly katakana joined by `・`, Korean sentence-final punctuation such as `."`, and Latin words with CC-CEDICT | Expect such runs to be split where MeCab splits them, and katakana- and Latin-heavy text to take about 13% more instructions; no setting restores the v6 behavior |
 | **IPADIC and IPADIC-NEologd: dashes and tildes in dictionary entries are kept as written, as in MeCab** | Anyone who segments text with `―` (U+2015), `—` (U+2014), `～` (U+FF5E) or `〜` (U+301C) with IPADIC or IPADIC-NEologd | Expect entries spelled with `―` or `～` to match text spelled the same way, and text with `—` or `〜` to miss the 12 IPADIC and 1,085 IPADIC-NEologd entries it found only through the old rewrite (a `mapping` character filter can fold the spellings); rebuild or re-download dictionaries made with v6.2.0 or earlier |
+| **Entries with the same surface, context IDs and cost: the first CSV row is output, as in MeCab** | Anyone who reads token details such as the reading or the base form with IPADIC, IPADIC-NEologd, UniDic or ko-dic, or with a user dictionary that has such entries; N-best users | Expect such words to get MeCab's details (IPADIC `狡い` reads `ズルイ`, not `コスイ`), a user entry to still win a tie with a system entry, and the first N-best result to always be the 1-best; no rebuild is needed, and no setting restores the v6 behavior |
 | **The `normalize_details` setting is removed: `Metadata::new` and `CoreMetadata::new` take 10 arguments, Ruby's `Metadata.new` takes 8** | Code that creates or reads dictionary metadata: Rust (`Metadata`, `lindera_binding::CoreMetadata`, `PrefixDictionaryBuilderOptions`) and the `Metadata` classes of the Python, Ruby, PHP and Node.js bindings | Remove the argument, option or property; a `metadata.json` that still has the key loads, and the key is ignored |
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
 | **`Lattice::tokens_offset_into` returns the BOS index of the best path (`Option<usize>`)** | Rust code that uses the `()` value of `tokens_offset_into` | Nothing for a call written as a statement; otherwise ignore the new value |
@@ -47,7 +49,7 @@ classes of the Python, Node.js, Ruby and PHP bindings no longer take or
 expose `normalize_details` (see
 [The `normalize_details` setting is removed](#the-normalize_details-setting-is-removed)).
 Their version number moves to 7.0.0.
-There are eight output differences, all described below. With IPADIC or
+There are nine output differences, all described below. With IPADIC or
 IPADIC-NEologd, the values reported under the names `conjugation_type` and
 `conjugation_form` trade places. The dictionaries now contain the entries
 whose surface is or starts or ends with whitespace, which changes the
@@ -63,9 +65,12 @@ unknown word can start inside a run of characters of one kind, as in MeCab,
 which splits some runs of katakana, symbols and Latin letters. With IPADIC
 and IPADIC-NEologd, the entries spelled with `―` or `～` are found under
 that spelling, as in MeCab, which changes the segmentation of text that
-contains `―`, `—`, `～` or `〜`. Otherwise,
-for the same input and dictionary, v7.0.0 produces the same tokens with the
-same positional details as v6.2.0.
+contains `―`, `—`, `～` or `〜`. Among dictionary entries that share the
+surface, the context IDs and the cost, the first CSV row is output instead
+of the last, as in MeCab, which changes the reading, the base form or other
+details of such words, and the first N-best result is always the 1-best.
+Otherwise, for the same input and dictionary, v7.0.0 produces the same
+tokens with the same positional details as v6.2.0.
 
 ## The lindera crate is now a facade
 
@@ -512,10 +517,9 @@ exactly the N best paths of one lattice over the segment: `unique` compares
 the word boundaries of the whole segment, and the cost threshold is
 measured from the first result. Across segments, the results are the
 cheapest combinations of one path per segment (see the next section). The
-first result is the 1-best segmentation, unless several paths have exactly
-the same cost. The costs of a line with `、` or `。` change, the first
-result's included, because they now include the connections across the cuts
-and the EOS connection only once.
+first result is the 1-best segmentation. The costs of a line with `、` or
+`。` change, the first result's included, because they now include the
+connections across the cuts and the EOS connection only once.
 
 There is no setting to restore the v6 behavior.
 
@@ -726,6 +730,85 @@ written by v6, loads as before, whether it comes with a built dictionary,
 is passed to `lindera build` or is read by a binding; the key is ignored
 and is not written back.
 
+## Tied entries resolve to the first CSV row, as in MeCab
+
+A dictionary can have several entries with the same surface, the same left
+and right context IDs and the same cost, which differ only in their details,
+such as the reading or the base form. Such entries are tied: a path costs
+the same with any of them, so the order in which the segmenter considers
+them decides which one it outputs. Up to v6.2.0, Lindera added the
+dictionary entries that start at a position in reverse order, and the search
+keeps the earlier of two candidates with equal cost, so the last CSV row of
+a tied group won. The reverse order came in with v2.1.0, apparently by
+accident. v7.0.0 adds the entries in CSV order and outputs the first row,
+as MeCab does:
+
+| Input (dictionary) | v6 | v7 (as MeCab) |
+| --- | --- | --- |
+| `あいつは狡い` (IPADIC) | `狡い` reads `コスイ` | `狡い` reads `ズルイ` |
+
+IPADIC's `Adj.csv` has the two rows in this order:
+
+```text
+狡い,19,19,4682,形容詞,自立,*,*,形容詞・アウオ段,基本形,狡い,ズルイ,ズルイ
+狡い,19,19,4682,形容詞,自立,*,*,形容詞・アウオ段,基本形,狡い,コスイ,コスイ
+```
+
+Tied entries exist for 5,637 surfaces in IPADIC, 90,991 in IPADIC-NEologd,
+3,324 in UniDic and 175 in ko-dic. In the Japanese dictionaries, the rows of
+a tied group never differ in the part of speech, only in fields such as the
+reading and the base form; in ko-dic, 5 groups also differ in the part of
+speech. With each tied surface on its own line, the number of surfaces whose
+full details equal those of MeCab 0.996 rises from 1,607 to 5,637 of 5,637
+with IPADIC, from 524 to 3,324 of 3,324 with UniDic, and from 8,205 to
+86,319 of 86,464 with IPADIC-NEologd (surfaces with whitespace or control
+characters left out). The other 145 IPADIC-NEologd surfaces contain `、`,
+which no word spans (see
+[The context is carried across `、` and `。`](#the-context-is-carried-across--and-)),
+or belong to groups whose rows MeCab reads in another order (see below).
+With ko-dic, all 175 agree when MeCab's dictionary is built from the CSV
+files in name order.
+
+On running text, the number of lines whose full details equal MeCab's rises,
+on top of the other changes in this guide, from 7,989 to 8,096 of the 8,100
+sentences of UD Japanese GSD and from 3,278 to 3,583 of the 3,587 paragraphs
+of *Kokoro* and *I Am a Cat* with IPADIC, and from 3,394 to 3,571 of the
+same 3,587 paragraphs with UniDic. No line is segmented differently. In all
+the texts compared, 15 tokens change their part of speech, all to MeCab's.
+Most of them are entries of the same surface with different context IDs and
+costs whose paths happen to cost the same in that sentence, and the same
+order decides between them: UniDic, for example, now reads `御前` as a
+pronoun (`代名詞`) instead of a common noun (`名詞,普通名詞,一般`), as
+MeCab does.
+
+User dictionaries follow the same rule: among tied user entries, the first
+row is now chosen instead of the last. A user entry that ties with a system
+entry is still chosen over it, as in v6. This is the one intended difference
+from MeCab, which chooses the system entry. Such a tie needs a user entry in
+the detailed format that copies the context IDs and the cost of a system
+entry, for example to give a word another reading. An entry in the simple
+three-column format gets the cost and the context IDs of the dictionary's
+`metadata.json` (`default_word_cost`, `default_left_context_id` and
+`default_right_context_id`: `-10000`, `0` and `0` for IPADIC), so it
+practically never ties with a system entry.
+
+N-best search uses the same order. In addition, the first N-best result is
+now always the 1-best segmentation, the output of `segment`; up to v6 it
+could be another path when several paths had exactly the same cost. The
+costs of the N-best results do not change: only results with the same cost
+can change places, which can also change which of them is cut off at the
+`n`-th result. N-best search takes about 3% to 4% more instructions
+(`-N 3`); the speed of the 1-best segmentation does not change (within
+0.2%).
+
+MeCab's `mecab-dict-index` reads the CSV files in the order the file system
+lists them (readdir order), so for tied groups whose rows are in different
+files (in IPADIC-NEologd and ko-dic), MeCab's choice depends on the file
+system, while Lindera reads the files in name order.
+
+The dictionary files do not change, so this change needs no rebuild or
+re-download. There is no setting to restore the v6 behavior.
+
 ## Rust API changes in `lindera_dictionary`
 
 These affect only code that calls the lattice backtraces directly, or that
@@ -837,8 +920,11 @@ same way, and `CoreMetadata::new` takes 10 arguments instead of 11.
   the N-best fix, which matters only for N-best results for input with
   more than one sentence, the unknown words that start at every position,
   which matter for runs of katakana, symbols or Latin letters in normal
-  mode, and the dash and tilde spellings, which matter only for text with
-  `―`, `—`, `～` or `〜` with IPADIC or IPADIC-NEologd.
+  mode, the dash and tilde spellings, which matter only for text with
+  `―`, `—`, `～` or `〜` with IPADIC or IPADIC-NEologd, and the choice among
+  tied entries, which matters only if you read token details such as the
+  reading or the base form, or the order of N-best results with the same
+  cost.
 - **Projects staying on `lindera = "6"`**: the 6.x releases of `lindera` and
   `lindera-analysis` remain on crates.io and keep working together. Nothing
   changes until you bump the major version.
@@ -947,6 +1033,9 @@ Users of N-best results:
   result's included: the costs are those of one lattice over the line.
 - If you set a cost threshold, it now applies to the total cost of the
   whole input, not to each sentence.
+- Expect the first result to be the 1-best segmentation also when several
+  paths have exactly the same cost; results with the same cost can change
+  places.
 
 Users of normal mode with text that has runs of katakana, symbols or Latin
 letters:
@@ -973,6 +1062,14 @@ Users of IPADIC or IPADIC-NEologd with text that contains `―`, `—`, `～` or
 - Rebuild or re-download dictionary directories made with v6.2.0 or earlier
   to get the entries as written.
 
+Users who read token details such as the reading or the base form:
+
+- Expect words with tied entries to get the details of the first CSV row,
+  as in MeCab: with IPADIC, `狡い` reads `ズルイ`, not `コスイ`. No rebuild
+  is needed, and no setting restores the v6 output.
+- In a user dictionary, expect the first of tied rows to be chosen. A user
+  entry still wins a tie with a system entry, unlike in MeCab.
+
 Language bindings and CLI:
 
 - Remove `normalize_details` where you create `Metadata`: the Python
@@ -981,5 +1078,5 @@ Language bindings and CLI:
   `normalizeDetails` option in Node.js. Stop reading the property and the
   key of the same name in `to_dict()`, `to_h`, `toArray()` and `toObject()`.
 - Nothing else to do beyond taking the 7.0.0 release, apart from the
-  dictionary, whitespace, `、` and `。`, N-best, unknown-word, and dash and
-  tilde items above.
+  dictionary, whitespace, `、` and `。`, N-best, unknown-word, dash and
+  tilde, and tied-entry items above.

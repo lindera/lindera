@@ -24,6 +24,10 @@ An entry that ends with whitespace keeps it in its token, as in MeCab, even when
 
 Each dictionary type (IPADIC, UniDic, ko-dic, etc.) also supports a detailed CSV format with full control over context IDs, costs, and all feature fields. See the [Dictionaries](./dictionaries.md) section for the detailed format of each dictionary type.
 
+## Tied entries
+
+Two entries tie when they have the same surface, the same left and right context IDs and the same cost: every path costs the same with either of them. A user entry that ties with a system entry is chosen over it, so a detailed entry that copies the surface, the context IDs and the cost of a system entry, for example to give the word another reading, takes its place in the output. MeCab chooses the system entry instead. Among tied user entries, the first row is chosen, as in MeCab (before v7, the last row was; see [Migrating from v6 to v7](../migration_v6_to_v7.md#tied-entries-resolve-to-the-first-csv-row-as-in-mecab)). Simple entries get the cost and the context IDs from the dictionary's `metadata.json` (`default_word_cost`, `default_left_context_id` and `default_right_context_id`: `-10000`, `0` and `0` for IPADIC), so they practically never tie with a system entry.
+
 ## Rust API example
 
 ```rust

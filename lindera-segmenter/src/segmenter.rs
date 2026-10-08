@@ -1269,7 +1269,7 @@ impl Segmenter {
     /// these combinations, in ascending order of cost. `best_cost` is the
     /// cost of the first result, i.e. of the best path of every segment, so
     /// the threshold applies to the whole input. The first result is the
-    /// path of [`Segmenter::segment`], up to paths of equal cost.
+    /// path of [`Segmenter::segment`].
     ///
     /// # 引数
     ///
