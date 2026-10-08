@@ -5051,10 +5051,12 @@ mod tests {
     /// #1096: from EOS, the N-best paths of a lattice with several BOS
     /// edges are exactly the paths by definition (EOS included), each once
     /// with its BOS index, in ascending order of cost, the BOS cost
-    /// included; the first one is the 1-best path when that is unique.
+    /// included; the first one is the 1-best path, also when other paths
+    /// cost the same (#1131).
     #[test]
     fn test_next_with_bos_matches_brute_force() {
         let fixture = CtxFixture::new();
+        let mut tie_for_first = false;
         for_each_ctx_case(|text, mode, skip, bos_list| {
             let case = format!("{text:?} {mode:?} skip={skip} {bos_list:?}");
             let lattice = fixture.nbest_lattice(text, mode, skip, bos_list);
@@ -5067,22 +5069,24 @@ mod tests {
                 actual.windows(2).all(|pair| pair[0].0 <= pair[1].0),
                 "{case}: not in cost order"
             );
+            // The brute force cannot tell which of several cheapest paths is
+            // the 1-best one; the 1-best lattice does.
+            let (tokens, bos, cost) = best_path(&fixture.lattice(text, mode, skip, bos_list));
+            assert_eq!(
+                actual.first(),
+                Some(&(cost, token_keys(&tokens), bos.unwrap())),
+                "{case}"
+            );
             let mut expected: Vec<_> = brute_paths(text, bos_list, mode)
                 .iter()
                 .map(|path| (path.eos_cost(), token_keys(&path.tokens), path.bos))
                 .collect();
             expected.sort();
-            if expected.len() == 1 || expected[0].0 < expected[1].0 {
-                let (tokens, bos, cost) = best_path(&fixture.lattice(text, mode, skip, bos_list));
-                assert_eq!(
-                    actual[0],
-                    (cost, token_keys(&tokens), bos.unwrap()),
-                    "{case}"
-                );
-            }
+            tie_for_first |= expected.len() > 1 && expected[0].0 == expected[1].0;
             actual.sort();
             assert_eq!(actual, expected, "{case}");
         });
+        assert!(tie_for_first, "no case has several cheapest paths");
     }
 
     /// Builds a user dictionary that holds `entries`, in CSV order, under
@@ -5158,6 +5162,82 @@ mod tests {
                 assert_eq!(paths.len(), tied, "{case}");
                 assert!(paths.iter().all(|(_, cost)| *cost == 100), "{case}");
                 assert_eq!(paths[0].0, vec![(0, 2, expected)], "{case}");
+            }
+        }
+    }
+
+    /// #1131: when many paths tie for the lowest cost, the first N-best
+    /// path is still the 1-best path, from EOS and from the exit, in both
+    /// modes. `a` has two tied entries and a costlier third one, and `aa`
+    /// costs as much as two `a` (its Decompose length penalty included), so
+    /// 5, 12 and 29 paths tie in `aa`, `aaa` and `aaaa`, with tied words at
+    /// several positions and of different lengths. A queue ordered by cost
+    /// alone popped another tied path first in `aaa` and `aaaa`.
+    #[test]
+    fn test_nbest_first_path_is_best_path_on_ties() {
+        let char_definition = test_char_definition();
+        let unknown_dictionary = test_unknown_dictionary();
+        let cost_matrix = ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0, 0]).unwrap();
+        let entry = |id, cost| WordEntry::new(sys(id), cost, 0, 0);
+        // `aa` pays 100 for its second character in Decompose mode.
+        let decompose = Mode::Decompose(Penalty {
+            kanji_penalty_length_threshold: 1,
+            kanji_penalty_length_penalty: 100,
+            other_penalty_length_threshold: 1,
+            other_penalty_length_penalty: 100,
+        });
+        for (mode, aa_cost) in [(Mode::Normal, 200), (decompose, 100)] {
+            let mut map = BTreeMap::new();
+            map.insert(
+                "a".to_string(),
+                vec![entry(0, 100), entry(1, 100), entry(2, 150)],
+            );
+            map.insert("aa".to_string(), vec![entry(3, aa_cost)]);
+            let dict = PrefixDictionary::from_word_entry_map(&map).unwrap();
+            let options = LatticeOptions::new(&mode);
+            for (text, tied) in [("aa", 5), ("aaa", 12), ("aaaa", 29)] {
+                let case = format!("{text} {mode:?}");
+                let mut lattice = Lattice::default();
+                lattice.set_text_with_options(
+                    &dict,
+                    &None,
+                    &char_definition,
+                    &unknown_dictionary,
+                    &cost_matrix,
+                    text,
+                    &options,
+                );
+                let best = (lattice.tokens_offset(), eos_cost(&lattice));
+
+                lattice.set_text_nbest_with_options(
+                    &dict,
+                    &None,
+                    &char_definition,
+                    &unknown_dictionary,
+                    &cost_matrix,
+                    text,
+                    &options,
+                );
+                let paths = lattice.nbest_tokens_offset(usize::MAX, false, None);
+                assert!(
+                    paths.windows(2).all(|pair| pair[0].1 <= pair[1].1),
+                    "{case}: not in cost order"
+                );
+                let cheapest = paths.iter().filter(|(_, cost)| *cost == best.1).count();
+                assert_eq!(cheapest, tied, "{case}");
+                assert!(paths.len() > tied, "{case}");
+                assert_eq!(paths[0], best, "{case}");
+
+                let exits = exits_of(&lattice);
+                assert_eq!(exits.len(), 1, "{case}");
+                let mut tokens = Vec::new();
+                lattice.exit_tokens_offset_into(&exits[0], &mut tokens);
+                let mut generator = NBestGenerator::from_exit(&lattice, &exits[0]);
+                assert_eq!(
+                    generator.next(),
+                    Some((tokens, exits[0].cost() as i64)),
+                    "{case}: from the exit"
+                );
             }
         }
     }

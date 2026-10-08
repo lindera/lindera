@@ -369,6 +369,62 @@ fn ipadic_tied_entries() {
     assert_eq!(details[8], "ズルイ");
 }
 
+/// Regression test #1131: the first N-best result is the output of
+/// `segment` also when several paths cost the same. IPADIC has six tied
+/// `大平山` entries (`Noun.proper.csv`) and eight tied `西河内` entries; the
+/// N-best search, which ordered its queue by cost alone, used to return
+/// another of them first (`オオヒラヤマ` instead of `オオヒラサン`,
+/// `ニシゴウド` instead of `ニシガワウチ`). The line with `、` covers the
+/// search of a segment whose context is carried across the cut. In
+/// Decompose mode only `大平山` stays one word, so only it ties there.
+#[cfg(feature = "embed-ipadic")]
+#[test]
+fn ipadic_tied_entries_nbest() {
+    /// Each token's surface and full details.
+    fn surfaces_and_all_details(tokens: &mut [lindera::token::Token]) -> Vec<(String, String)> {
+        tokens
+            .iter_mut()
+            .map(|token| (token.surface.to_string(), token.details().join(",")))
+            .collect()
+    }
+
+    let cases = [
+        (Mode::Normal, &["大平山", "西河内", "大平山、西河内"][..]),
+        (Mode::Decompose(Penalty::default()), &["大平山"][..]),
+    ];
+    for (mode, texts) in cases {
+        let segmenter = segmenter("embedded://ipadic", mode);
+
+        let mut results = segmenter
+            .segment_nbest(Cow::Borrowed("あいつは狡い"), 3, false, None)
+            .expect("segmentation should succeed");
+        let first = &mut results[0].0;
+        let surfaces: Vec<&str> = first.iter().map(|token| token.surface.as_ref()).collect();
+        assert_eq!(surfaces, vec!["あいつ", "は", "狡い"]);
+        // details[7] is the reading.
+        assert_eq!(first[2].details()[7], "ズルイ");
+
+        for text in texts {
+            let case = format!("{text} {:?}", segmenter.mode);
+            let mut expected = segmenter
+                .segment(Cow::Borrowed(text))
+                .expect("segmentation should succeed");
+            let mut results = segmenter
+                .segment_nbest(Cow::Borrowed(text), 3, false, None)
+                .expect("segmentation should succeed");
+            let costs: Vec<i64> = results.iter().map(|(_, cost)| *cost).collect();
+            assert!(costs.windows(2).all(|pair| pair[0] <= pair[1]), "{case}");
+            assert_eq!(costs.len(), 3, "{case}");
+            assert_eq!(costs[0], costs[1], "{case}: the first two paths tie");
+            assert_eq!(
+                surfaces_and_all_details(&mut results[0].0),
+                surfaces_and_all_details(&mut expected),
+                "{case}"
+            );
+        }
+    }
+}
+
 /// Regression test #1094: the full-width space is UniDic's `空白` entry.
 #[cfg(feature = "embed-unidic")]
 #[test]

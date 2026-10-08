@@ -19,16 +19,42 @@ struct QueueElement {
     gx: i64,
     /// Link to the previous QueueElement in the elements chain (toward EOS)
     prev: Option<usize>,
+    /// Push order (see [`NBestGenerator::push`]): of two elements with the
+    /// same `fx`, the one pushed later is popped first.
+    seq: u64,
 }
 
-/// Min-heap ordering: lower fx = higher priority
+/// Min-heap ordering: lower fx = higher priority; on equal fx, the element
+/// pushed later (higher `seq`) has the higher priority, so equal-cost
+/// partial paths are explored depth first, the last pushed first (#1131).
 impl Ord for QueueElement {
+    /// Orders by `fx` reversed, then by `seq`: the greatest element, the
+    /// one [`BinaryHeap`] pops first, has the lowest `fx` and, among those,
+    /// the highest `seq`.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - The element to compare with.
+    ///
+    /// # Returns
+    ///
+    /// The ordering of `self` relative to `other`.
     fn cmp(&self, other: &Self) -> Ordering {
-        other.fx.cmp(&self.fx) // Reversed for min-heap
+        // Reversed for min-heap.
+        other.fx.cmp(&self.fx).then(self.seq.cmp(&other.seq))
     }
 }
 
 impl PartialOrd for QueueElement {
+    /// The total order of `cmp`.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - The element to compare with.
+    ///
+    /// # Returns
+    ///
+    /// Always `Some`.
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
@@ -37,8 +63,18 @@ impl PartialOrd for QueueElement {
 impl Eq for QueueElement {}
 
 impl PartialEq for QueueElement {
+    /// Compares the fields `cmp` orders by, `fx` and `seq`, so equality
+    /// agrees with the ordering.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - The element to compare with.
+    ///
+    /// # Returns
+    ///
+    /// Whether both have the same `fx` and `seq`.
     fn eq(&self, other: &Self) -> bool {
-        self.fx == other.fx
+        self.fx == other.fx && self.seq == other.seq
     }
 }
 
@@ -53,6 +89,13 @@ impl PartialEq for QueueElement {
 /// the paths come out in ascending order of their total cost, BOS cost
 /// included, also with several BOS edges
 /// ([`LatticeOptions::bos`](crate::viterbi::LatticeOptions::bos)).
+///
+/// The first path is the lattice's best path, the one
+/// [`Lattice::tokens_offset`] backtraces (from an exit, the one
+/// [`Lattice::exit_tokens_offset_into`] backtraces), with its BOS index,
+/// even when other paths cost the same: the search follows the left edge
+/// the forward pass keeps, the first of equal-cost ones, before the others
+/// (#1131).
 pub struct NBestGenerator<'a> {
     /// The N-best lattice the paths are taken from.
     lattice: &'a Lattice,
@@ -60,6 +103,8 @@ pub struct NBestGenerator<'a> {
     queue: BinaryHeap<QueueElement>,
     /// Storage for QueueElement chain (for path reconstruction)
     elements: Vec<QueueElement>,
+    /// The number of elements pushed so far, the next element's `seq`.
+    pushed: u64,
 }
 
 impl<'a> NBestGenerator<'a> {
@@ -80,6 +125,7 @@ impl<'a> NBestGenerator<'a> {
             lattice,
             queue: BinaryHeap::new(),
             elements: Vec::new(),
+            pushed: 0,
         };
         generator.init();
         generator
@@ -90,7 +136,8 @@ impl<'a> NBestGenerator<'a> {
     /// edge that ends at the end of the sentence and has that right id, in
     /// ascending order of the cost [`LatticeExit::cost`] measures (the last
     /// word's Decompose length penalty included, the EOS connection not).
-    /// The first path costs `exit.cost()`.
+    /// The first path is the exit's own path
+    /// ([`Lattice::exit_tokens_offset_into`]) and costs `exit.cost()`.
     ///
     /// The search starts from all those final edges, each with its exit
     /// penalty as the cost accumulated so far. For a sentence without words
@@ -113,20 +160,17 @@ impl<'a> NBestGenerator<'a> {
             lattice,
             queue: BinaryHeap::new(),
             elements: Vec::new(),
+            pushed: 0,
         };
         let char_pos = lattice.char_len() as u32;
-        for (i, edge) in lattice.final_edges().iter().enumerate() {
+        // Last edge first: of the final edges with the same cost, the first
+        // one is popped first, as the exit keeps it (see `push`).
+        for (i, edge) in lattice.final_edges().iter().enumerate().rev() {
             if edge.right_id() != exit.right_id() {
                 continue;
             }
             let gx = lattice.exit_penalty(i) as i64;
-            generator.queue.push(QueueElement {
-                char_pos,
-                edge_index: i as u32,
-                fx: edge.path_cost() as i64 + gx,
-                gx,
-                prev: None,
-            });
+            generator.push(char_pos, i as u32, edge.path_cost() as i64 + gx, gx, None);
         }
         generator
     }
@@ -144,14 +188,45 @@ impl<'a> NBestGenerator<'a> {
         let eos_edge = &eos_edges[eos_index as usize];
 
         // Initial element: start from EOS with g(x)=0
-        let elem = QueueElement {
-            char_pos: char_len as u32,
-            edge_index: eos_index,
-            fx: eos_edge.path_cost() as i64,
-            gx: 0,
-            prev: None,
-        };
-        self.queue.push(elem);
+        self.push(
+            char_len as u32,
+            eos_index,
+            eos_edge.path_cost() as i64,
+            0,
+            None,
+        );
+    }
+
+    /// Pushes a queue element, numbering it in push order.
+    ///
+    /// Of the elements with the same `fx`, the last pushed is popped first.
+    /// The callers push the predecessors of an edge last first (its
+    /// `PathEntry` run lists them in slot order, the order the forward
+    /// relaxation scanned them in), and [`NBestGenerator::from_exit`]
+    /// pushes the final edges last first too. So among equal-cost
+    /// predecessors the search takes the first one, the one the forward
+    /// relaxation keeps (it keeps the first of equal-cost left edges), and
+    /// follows it depth first: the first path found is the path the lattice
+    /// backtraces, even when other paths cost the same (#1131).
+    ///
+    /// # Arguments
+    ///
+    /// * `char_pos` - The slot of the element's edge.
+    /// * `edge_index` - The index of the edge in its slot.
+    /// * `fx` - The estimated total cost.
+    /// * `gx` - The cost accumulated from EOS.
+    /// * `prev` - The element it was expanded from.
+    fn push(&mut self, char_pos: u32, edge_index: u32, fx: i64, gx: i64, prev: Option<usize>) {
+        let seq = self.pushed;
+        self.pushed += 1;
+        self.queue.push(QueueElement {
+            char_pos,
+            edge_index,
+            fx,
+            gx,
+            prev,
+            seq,
+        });
     }
 
     /// Returns the next best path as (path, cost).
@@ -219,7 +294,8 @@ impl<'a> NBestGenerator<'a> {
             let paths = self.lattice.paths_at_char(char_pos);
             let start = paths.partition_point(|p| p.edge_index() < edge_index as u32);
             let end = paths.partition_point(|p| p.edge_index() <= edge_index as u32);
-            for path_entry in &paths[start..end] {
+            // Last predecessor first: see `push`.
+            for path_entry in paths[start..end].iter().rev() {
                 let left_pos = path_entry.left_pos() as usize;
                 let left_index = path_entry.left_index() as usize;
 
@@ -239,14 +315,13 @@ impl<'a> NBestGenerator<'a> {
                 // f(x) = h(x) + g(x), where h(x) = left_edge.path_cost
                 let new_fx = left_edge.path_cost() as i64 + new_gx;
 
-                let new_elem = QueueElement {
-                    char_pos: left_pos as u32,
-                    edge_index: left_index as u32,
-                    fx: new_fx,
-                    gx: new_gx,
-                    prev: Some(current_idx),
-                };
-                self.queue.push(new_elem);
+                self.push(
+                    left_pos as u32,
+                    left_index as u32,
+                    new_fx,
+                    new_gx,
+                    Some(current_idx),
+                );
             }
         }
         None
