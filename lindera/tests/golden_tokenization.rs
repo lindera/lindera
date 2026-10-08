@@ -425,6 +425,56 @@ fn ipadic_tied_entries_nbest() {
     }
 }
 
+/// Asserts that `text` segments into `expected` and that the first N-best
+/// result does too, tied with the second (#1135).
+#[cfg(any(feature = "embed-ipadic", feature = "embed-ko-dic"))]
+fn assert_cross_start_tie(segmenter: &Segmenter, text: &str, expected: &[&str]) {
+    let tokens = segmenter
+        .segment(Cow::Borrowed(text))
+        .expect("segmentation should succeed");
+    let surfaces: Vec<&str> = tokens.iter().map(|token| token.surface.as_ref()).collect();
+    assert_eq!(surfaces, expected, "{text}");
+
+    let results = segmenter
+        .segment_nbest(Cow::Borrowed(text), 2, false, None)
+        .expect("segmentation should succeed");
+    let first: Vec<&str> = results[0]
+        .0
+        .iter()
+        .map(|token| token.surface.as_ref())
+        .collect();
+    assert_eq!(first, expected, "{text}: the first N-best result");
+    assert_eq!(results[0].1, results[1].1, "{text}: the two paths tie");
+}
+
+/// Regression test #1135: of two segmentations of equal cost that end at
+/// the same position, the one whose last word starts later wins, as in
+/// MeCab: `窒扶 / 斯` over `窒 / 扶斯` (unknown words), and `フリー /
+/// ホイール / ダイオード` over the one unknown word
+/// `フリーホイールダイオード`. The lattice used to keep the
+/// earlier-starting word.
+#[cfg(feature = "embed-ipadic")]
+#[test]
+fn ipadic_cross_start_ties() {
+    let segmenter = segmenter("embedded://ipadic", Mode::Normal);
+    assert_cross_start_tie(&segmenter, "腸窒扶斯", &["腸", "窒扶", "斯"]);
+    assert_cross_start_tie(
+        &segmenter,
+        "にフリーホイールダイオードや",
+        &["に", "フリー", "ホイール", "ダイオード", "や"],
+    );
+}
+
+/// Regression test #1135: `차 / 나` (a noun and a particle) and `차나` (one
+/// noun) cost the same before `마셔`, and the later-starting `나` wins, as
+/// in MeCab, with ko-dic's default left-space penalty.
+#[cfg(feature = "embed-ko-dic")]
+#[test]
+fn ko_dic_cross_start_ties() {
+    let segmenter = segmenter("embedded://ko-dic", Mode::Normal);
+    assert_cross_start_tie(&segmenter, "차나 마셔", &["차", "나", "마셔"]);
+}
+
 /// Regression test #1094: the full-width space is UniDic's `空白` entry.
 #[cfg(feature = "embed-unidic")]
 #[test]

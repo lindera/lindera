@@ -475,6 +475,10 @@ impl PathEntry {
 pub struct Lattice {
     /// Largest sentence length (in characters) whose slots are allocated.
     capacity: usize,
+    /// The number of BOS edges of the current sentence, set by
+    /// `push_bos_edges`; 0 for a lattice built by hand, which counts as the
+    /// default single BOS edge (see [`Lattice::bos_index`]).
+    bos_len: usize,
     /// Per-character-position edge slots (#943): `ends_at[i]` holds the
     /// edges ending at char position `i`, 0 = BOS, `n_chars` = EOS. With
     /// whitespace skipped it also holds the edges carried over the run
@@ -498,9 +502,9 @@ pub struct Lattice {
     /// Linked-list head table: matches_head[start_char] -> index into
     /// matches_store; u32::MAX terminates a list (#880 shrank the element
     /// widths to halve the per-sentence refill and walk traffic). Nodes are
-    /// inserted at the head, a surface's entries last row first, so a list
-    /// drains each surface's entries in CSV order and the first row wins a
-    /// tie (#1131).
+    /// inserted at the head, a surface's entries in CSV order, so a list
+    /// drains each surface's entries last row first, the order they are
+    /// added to the lattice in, and the first row wins a tie (#1131, #1135).
     matches_head: Vec<u32>,
     /// Linked-list node pool: (match end char position, word entry, next
     /// node index).
@@ -516,8 +520,8 @@ pub struct Lattice {
     codes_buf: Vec<u32>,
     /// Per-position system-dictionary matches (match end char position,
     /// word entry) in discovery order: shortest surface first, each
-    /// surface's entries in CSV order, which is also the order they are
-    /// added to the lattice in, so the first row wins a tie (#1131).
+    /// surface's entries in CSV order. They are added to the lattice in
+    /// reverse, so the first row wins a tie (#1131, #1135).
     /// Buffered because the trie search borrows `codes_buf` while adding an
     /// edge borrows the whole lattice.
     sys_matches: Vec<(u32, WordEntry)>,
@@ -605,8 +609,8 @@ pub struct LatticeExit {
     /// but not the EOS connection.
     cost: i32,
     /// Index in `ends_at[n_chars]` of the last edge of the path: the
-    /// cheapest final edge with this right id, the first one on ties (as
-    /// the EOS connection chooses).
+    /// cheapest final edge with this right id, the last one in the slot on
+    /// ties (as the EOS connection chooses).
     edge: u32,
 }
 
@@ -682,10 +686,13 @@ pub struct LatticeOptions<'a> {
     /// The BOS edges the sentence starts from. Empty (the default) means
     /// the single BOS edge of the dictionary: right context id 0, cost 0.
     ///
-    /// Otherwise the lattice gets one BOS edge per context, in this order,
-    /// in the 1-best and the N-best lattice alike. A path's cost includes
-    /// the cost of the BOS edge it starts from, so the best path is the best
-    /// over all contexts. A segmenter uses this to carry the context of the
+    /// Otherwise the lattice gets one BOS edge per context, in the 1-best
+    /// and the N-best lattice alike. A path's cost includes the cost of the
+    /// BOS edge it starts from, so the best path is the best over all
+    /// contexts; of paths of equal cost that differ only in their context,
+    /// the one from the context that comes first here wins (the edges are
+    /// stored in reverse, see [`Lattice::edges_at_char`]). A segmenter uses
+    /// this to carry the context of the
     /// previous sentence across a cut: one context per exit of that
     /// sentence (see [`Lattice::exits_into`]). The index of a context in
     /// this slice is the BOS index that [`Lattice::tokens_offset_into`],
@@ -763,6 +770,26 @@ impl<'a> LatticeOptions<'a> {
 #[inline]
 fn space_penalty_cost(space_penalty: Option<&SpacePenaltyTable>, word_entry: &WordEntry) -> i32 {
     space_penalty.map_or(0, |table| table.cost(word_entry.word_id()))
+}
+
+/// Returns the left edge a relaxation keeps, or `None` when there is no
+/// transition: no left edge, or a lowest cost saturated at `i32::MAX` (by a
+/// Decompose penalty or a space penalty that large). The relaxations keep
+/// the last of equal-cost left edges with `<=` (#1135), which also takes a
+/// saturated cost; such a transition is still dropped, as when they kept
+/// the first one with a strict `<` against the initial `i32::MAX`.
+///
+/// # Arguments
+///
+/// * `best_cost` - The lowest transition cost found, `i32::MAX` initially.
+/// * `best_left` - The index of the left edge with that cost.
+///
+/// # Returns
+///
+/// The index of the left edge, or `None`.
+#[inline(always)]
+fn connected(best_cost: i32, best_left: Option<u32>) -> Option<u32> {
+    best_left.filter(|_| best_cost < i32::MAX)
 }
 
 /// Flag bit on `CharData::categories_start` marking that the offset indexes
@@ -978,16 +1005,17 @@ impl Lattice {
 
     /// Pushes the sentence's BOS edges into `ends_at[0]`: the dictionary's
     /// single BOS edge (right context id 0, cost 0) when `bos` is empty,
-    /// otherwise one edge per context, in order (see
-    /// [`LatticeOptions::bos`]). Every BOS edge has no predecessor
-    /// (`left_index == u32::MAX`), which is how the backtraces recognize
-    /// it.
+    /// otherwise one edge per context, in reverse order, so that the last
+    /// of equal-cost left edges, which the relaxations keep, is the first
+    /// context (see [`LatticeOptions::bos`], #1135). Every BOS edge has no
+    /// predecessor (`left_index == u32::MAX`), which is how the backtraces
+    /// recognize it.
     ///
     /// Nothing else ends at position 0, and a carry-over of leading skipped
     /// whitespace moves the BOS edges into a slot no other edge reaches, so
     /// the BOS edges are always the first edges of the slot holding them and
-    /// the index of a BOS edge in that slot is the index of its context in
-    /// `bos`.
+    /// [`Lattice::bos_index`] maps the index of a BOS edge in that slot to the
+    /// index of its context in `bos`.
     ///
     /// # Arguments
     ///
@@ -995,6 +1023,7 @@ impl Lattice {
     #[inline]
     fn push_bos_edges(&mut self, bos: &[BosContext]) {
         if bos.is_empty() {
+            self.bos_len = 1;
             self.ends_at[0].push(Edge {
                 path_cost: 0,
                 left_index: u32::MAX,
@@ -1014,7 +1043,8 @@ impl Lattice {
             "set_text: {} BOS contexts, exceeding the u16::MAX-1 limit",
             bos.len()
         );
-        self.ends_at[0].extend(bos.iter().map(|context| Edge {
+        self.bos_len = bos.len();
+        self.ends_at[0].extend(bos.iter().rev().map(|context| Edge {
             path_cost: context.cost.clamp(0, PATH_COST_CLAMP),
             left_index: u32::MAX,
             right_id: context.right_id,
@@ -1359,15 +1389,19 @@ impl Lattice {
     /// the path costs simultaneously. This improves performance by avoiding a
     /// separate lattice traversal pass.
     ///
-    /// The candidates starting at a position are added in this order: the
-    /// user dictionary's words, then the system dictionary's, then the
-    /// unknown words; the entries of one surface come in the order of their
-    /// CSV rows. A slot keeps its edges in the order they were added, and every
-    /// relaxation keeps the first of the left edges that tie on cost. So
-    /// among entries that share the surface, the context ids and the cost,
-    /// the first CSV row wins, as in MeCab, and a user entry wins a tie with
-    /// a system entry (MeCab looks the system dictionary up first and would
-    /// pick the system entry) (#1131).
+    /// The candidates are added in the order MeCab processes them: position
+    /// by position, and at each position the unknown words, then the system
+    /// dictionary's words, then the user dictionary's, each group in reverse
+    /// (the entries of one surface last CSV row first). A slot keeps its
+    /// edges in the order they were added, and every relaxation keeps the
+    /// last of the left edges that tie on cost, as MeCab keeps the first
+    /// node of its end-node list, which holds them in reverse (#1135). So of
+    /// two paths of equal cost that end at the same position, the one whose
+    /// last word starts later wins, as in MeCab. Among entries that share the
+    /// surface, the context ids and the cost, the first CSV row wins, as in
+    /// MeCab, and a user entry wins a tie with a system entry (MeCab looks
+    /// the system dictionary up first and would pick the system entry)
+    /// (#1131).
     ///
     /// # Arguments
     ///
@@ -1446,9 +1480,10 @@ impl Lattice {
                         &ud_vals[offset_bytes..offset_bytes + n * WordEntry::SERIALIZED_LEN];
                     let end_char = self.char_index_of_byte(m.end()) as u32;
                     let (chunks, _) = block.as_chunks::<{ WordEntry::SERIALIZED_LEN }>();
-                    // Last row first: the list is drained from its head, so
-                    // the surface's entries come out in CSV order (#1131).
-                    for chunk in chunks.iter().rev() {
+                    // In CSV order: the list is drained from its head, so
+                    // the surface's entries come out last row first, in
+                    // processing order (see the method docs).
+                    for chunk in chunks {
                         let entry = WordEntry::deserialize(chunk, false);
                         let next = self.matches_head[start_char];
                         self.matches_head[start_char] = self.matches_store.len() as u32;
@@ -1478,35 +1513,14 @@ impl Lattice {
                 continue;
             }
 
-            let mut found: bool = false;
-
             // Space penalty gate for every candidate starting here: one
             // O(1) check per reachable position, `None` when disabled.
             let space_penalty = options.space_penalty_at(&self.char_info_buffer, char_idx);
 
-            // Dictionary words in the order of the method docs. First the
-            // user dictionary, so a user entry wins a tie with a system
-            // entry; each surface's entries in CSV order (see `matches_head`).
-            if char_idx < self.matches_head.len() {
-                let mut match_idx = self.matches_head[char_idx];
-                while match_idx != u32::MAX {
-                    let (end_char, word_entry, next) = self.matches_store[match_idx as usize];
-
-                    let end_char = end_char as usize;
-                    let kanji_only = self.is_kanji_all(char_idx, end_char - char_idx);
-                    let edge = Self::create_edge(word_entry, char_idx, kanji_only);
-                    let extra_cost = space_penalty_cost(space_penalty, &word_entry);
-                    self.add_edge_in_lattice(edge, end_char, cost_matrix, search_mode, extra_cost);
-                    found = true;
-
-                    match_idx = next;
-                }
-            }
-
-            // Then the system dictionary: per-position common-prefix search
-            // over the in-place trie, run only at lattice-reachable positions
-            // (the gate above), added in discovery order so a surface's first
-            // CSV row wins a tie (see `sys_matches`).
+            // The system dictionary: per-position common-prefix search over
+            // the in-place trie, run only at lattice-reachable positions (the
+            // gate above). Searched before anything is added, so that
+            // `found` is known to the unknown words, which come first.
             self.sys_matches.clear();
             {
                 let suffix = &self.codes_buf[char_idx..];
@@ -1518,21 +1532,17 @@ impl Lattice {
                     }
                 }
             }
-            for i in 0..self.sys_matches.len() {
-                let (end_char, word_entry) = self.sys_matches[i];
-                let end_char = end_char as usize;
-                let kanji_only = self.is_kanji_all(char_idx, end_char - char_idx);
-                let edge = Self::create_edge(word_entry, char_idx, kanji_only);
-                let extra_cost = space_penalty_cost(space_penalty, &word_entry);
-                self.add_edge_in_lattice(edge, end_char, cost_matrix, search_mode, extra_cost);
-                found = true;
-            }
+            // Whether a dictionary word starts here.
+            let found = (char_idx < self.matches_head.len()
+                && self.matches_head[char_idx] != u32::MAX)
+                || !self.sys_matches.is_empty();
 
-            // Unknown words at every reachable position, in every mode, as
-            // in MeCab (#1105): one may start inside a run that an earlier
+            // The candidates in processing order (see the method docs). First
+            // the unknown words, at every reachable position, in every mode,
+            // as in MeCab (#1105): one may start inside a run that an earlier
             // position grouped, e.g. after a dictionary word ending inside it.
             let num_categories = self.char_info_buffer[char_idx].categories_len as usize;
-            for category_ord in 0..num_categories {
+            for category_ord in (0..num_categories).rev() {
                 let category = self.get_cached_category(char_definitions, char_idx, category_ord);
                 self.process_unknown_word(
                     char_definitions,
@@ -1547,6 +1557,35 @@ impl Lattice {
                     char_idx,
                     found,
                 );
+            }
+
+            // Then the system dictionary's words, last found first, so a
+            // surface's first CSV row wins a tie (see `sys_matches`).
+            for i in (0..self.sys_matches.len()).rev() {
+                let (end_char, word_entry) = self.sys_matches[i];
+                let end_char = end_char as usize;
+                let kanji_only = self.is_kanji_all(char_idx, end_char - char_idx);
+                let edge = Self::create_edge(word_entry, char_idx, kanji_only);
+                let extra_cost = space_penalty_cost(space_penalty, &word_entry);
+                self.add_edge_in_lattice(edge, end_char, cost_matrix, search_mode, extra_cost);
+            }
+
+            // Then the user dictionary's, last, so a user entry wins a tie
+            // with a system entry; each surface's entries last row first
+            // (see `matches_head`).
+            if char_idx < self.matches_head.len() {
+                let mut match_idx = self.matches_head[char_idx];
+                while match_idx != u32::MAX {
+                    let (end_char, word_entry, next) = self.matches_store[match_idx as usize];
+
+                    let end_char = end_char as usize;
+                    let kanji_only = self.is_kanji_all(char_idx, end_char - char_idx);
+                    let edge = Self::create_edge(word_entry, char_idx, kanji_only);
+                    let extra_cost = space_penalty_cost(space_penalty, &word_entry);
+                    self.add_edge_in_lattice(edge, end_char, cost_matrix, search_mode, extra_cost);
+
+                    match_idx = next;
+                }
             }
         }
 
@@ -1580,12 +1619,13 @@ impl Lattice {
                         path_cost.saturating_add(exit_penalty)
                     }
                 };
-                if path_cost < best_cost {
+                // The last of equal-cost edges wins (see the method docs).
+                if path_cost <= best_cost {
                     best_cost = path_cost;
                     best_left = Some(i as u32);
                 }
             }
-            if let Some(left_idx) = best_left {
+            if let Some(left_idx) = connected(best_cost, best_left) {
                 eos_edge.left_index = left_idx;
                 eos_edge.path_cost = best_cost;
                 self.ends_at[n_chars].push(eos_edge);
@@ -1660,10 +1700,20 @@ impl Lattice {
     ///
     /// Carried edges keep their start positions and predecessor links, so
     /// backtracking is unchanged. Nothing starts inside the run, so no edge
-    /// refers to an emptied slot. In the N-best lattice the transitions of
-    /// the carried edges move with them, their edge indexes shifted past the
-    /// edges already in the slot; appending slot by slot keeps each slot's
-    /// transitions sorted by edge index, which `nbest.rs` relies on.
+    /// refers to an emptied slot.
+    ///
+    /// The slot ends up in the order the edges end in: the edges carried
+    /// from slot `run_start`, then from each later slot of the run, then the
+    /// edges already in `ends_at[char_idx]`, which end after the run. The
+    /// relaxations keep the last of equal-cost left edges, so the left word
+    /// that ends later wins a tie, as in MeCab, which looks the next word up
+    /// from every position a word ends at and keeps the node looked up from
+    /// the later one (#1135). No edge refers to `ends_at[char_idx]` yet, as
+    /// nothing has started there, so the edges can be reordered.
+    ///
+    /// In the N-best lattice the transitions of the edges move with them,
+    /// their edge indexes renumbered; the slot's transitions stay sorted by
+    /// edge index, which `nbest.rs` relies on.
     ///
     /// Every edge that ends in the run or right after it gets in
     /// `Edge::ws_tail` the part of the run its own surface covers, so its
@@ -1694,6 +1744,13 @@ impl Lattice {
             );
             edge.ws_tail = whole_run;
         }
+        // The slot's own edges, and their transitions, which go last.
+        let own = target.len();
+        let own_paths = if nbest {
+            self.all_paths[char_idx].len()
+        } else {
+            0
+        };
         // The edges at the run start end right before it and keep 0; skip
         // them, as every word before a space is there (#1108).
         debug_assert!(
@@ -1721,15 +1778,34 @@ impl Lattice {
             }
             target.append(&mut before[slot]);
         }
+        // Move the slot's own edges, which end after the run, behind the
+        // carried ones; usually there are none, as an entry seldom ends with
+        // whitespace (#1108).
+        let carried = target.len() - own;
+        if own > 0 && carried > 0 {
+            target.rotate_left(own);
+            if nbest {
+                let paths = &mut self.all_paths[char_idx];
+                for path in &mut paths[..own_paths] {
+                    path.edge_index += carried as u32;
+                }
+                for path in &mut paths[own_paths..] {
+                    path.edge_index -= own as u32;
+                }
+                paths.rotate_left(own_paths);
+            }
+        }
     }
 
     /// Emits the unknown-word edges of `category` at `char_idx`: for every
-    /// dictionary entry of the category, one edge per length in `lengths`.
+    /// dictionary entry of the category, last entry first (processing order,
+    /// see [`Self::set_text_with_options`]), one edge per length in
+    /// `lengths`.
     ///
     /// One relaxation per entry serves all its lengths: it depends only on
     /// the start and the entry's left context id (see [`Self::relax`]). Each
     /// length ends in its own slot, so every slot still receives the
-    /// entries in dictionary order, as when each length was emitted on its
+    /// entries in the same order, as when each length was emitted on its
     /// own.
     ///
     /// # Arguments
@@ -1754,7 +1830,7 @@ impl Lattice {
         char_idx: usize,
         lengths: impl Iterator<Item = usize> + Clone,
     ) {
-        for &word_id in unknown_dictionary.lookup_word_ids(category) {
+        for &word_id in unknown_dictionary.lookup_word_ids(category).iter().rev() {
             let word_entry = unknown_dictionary.word_entry(word_id);
             // No transition: none of this entry's edges is stored, as
             // `add_edge_in_lattice` would store none. Another entry, with
@@ -1795,7 +1871,7 @@ impl Lattice {
         char_idx: usize,
         lengths: impl Iterator<Item = usize> + Clone,
     ) {
-        for &word_id in unknown_dictionary.lookup_word_ids(category) {
+        for &word_id in unknown_dictionary.lookup_word_ids(category).iter().rev() {
             let word_entry = unknown_dictionary.word_entry(word_id);
             let extra_cost = space_penalty_cost(space_penalty, &word_entry);
             let best = self.relax_nbest(
@@ -1974,7 +2050,8 @@ impl Lattice {
     ///
     /// # 戻り値
     ///
-    /// The best `(cost, left index)` over the position's left edges.
+    /// The best `(cost, left index)` over the position's left edges, the
+    /// last of equal-cost ones (see [`Self::relax`]).
     #[inline(never)]
     fn relax_decompose(
         &mut self,
@@ -2014,7 +2091,7 @@ impl Lattice {
             let conn_cost = cost_row[left_edge.right_id as usize] as i32;
             let total_cost = (left_edge.path_cost + conn_cost).saturating_add(cache[i]);
 
-            if total_cost < best_cost {
+            if total_cost <= best_cost {
                 best_cost = total_cost;
                 best_left = Some(i as u32);
             }
@@ -2041,7 +2118,8 @@ impl Lattice {
     /// # Returns
     ///
     /// The best `(cost, left index)` over the position's left edges,
-    /// including `extra_cost`.
+    /// including `extra_cost`, the last of equal-cost ones (see
+    /// [`Self::relax`]).
     #[inline(never)]
     fn relax_decompose_nbest(
         &mut self,
@@ -2078,7 +2156,7 @@ impl Lattice {
             // Every transition is recorded for N-Best.
             costs.push(total_cost);
 
-            if total_cost < best_cost {
+            if total_cost <= best_cost {
                 best_cost = total_cost;
                 best_left = Some(i as u32);
             }
@@ -2121,9 +2199,16 @@ impl Lattice {
 
     /// Returns the best `(path cost, left index)` over the left edges of
     /// `start_char` for an edge with left context id `right_left_id`, or
-    /// `None` when no edge ends there. The result does not depend on the
-    /// incoming edge otherwise (its length, cost or right id), so edges that
-    /// share the start and the left id can share one relaxation.
+    /// `None` when there is no transition (see [`connected`]). The result does
+    /// not depend on the incoming edge otherwise (its length, cost or right
+    /// id), so edges that share the start and the left id can share one
+    /// relaxation.
+    ///
+    /// Of the left edges that tie on cost, the last one in the slot wins
+    /// (`<=`): the slot holds them in MeCab's processing order, so it is the
+    /// one MeCab keeps (see [`Self::set_text_with_options`], #1135). The
+    /// comparison compiles to conditional moves, keeping the loop free of
+    /// branches that depend on the costs.
     ///
     /// # Arguments
     ///
@@ -2160,15 +2245,19 @@ impl Lattice {
                     let conn_cost = cost_row[left_edge.right_id as usize] as i32;
                     let total_cost = left_edge.path_cost + conn_cost;
 
-                    if total_cost < best_cost {
+                    if total_cost <= best_cost {
                         best_cost = total_cost;
                         best_left = Some(i as u32);
                     }
                 }
+                // Below `i32::MAX`, so `connected` is not needed.
+                debug_assert!(best_cost < i32::MAX);
             }
             Mode::Decompose(penalty) => {
-                (best_cost, best_left) =
+                let (cost, left) =
                     self.relax_decompose(start_char, right_left_id, penalty, cost_matrix);
+                best_cost = cost;
+                best_left = connected(cost, left);
             }
         }
 
@@ -2277,9 +2366,8 @@ impl Lattice {
     ///
     /// # Returns
     ///
-    /// The BOS index of the path: the index of the BOS edge it reaches in
-    /// the slot holding it, which is the index of its context in
-    /// [`LatticeOptions::bos`] (see `push_bos_edges`).
+    /// The BOS index of the path: the index in [`LatticeOptions::bos`] of
+    /// the context of the BOS edge it reaches (see [`Lattice::bos_index`]).
     fn backtrace_into(
         &self,
         mut slot: usize,
@@ -2305,7 +2393,29 @@ impl Lattice {
             index = edge.left_index as usize;
         }
         offsets.reverse();
-        index
+        self.bos_index(index)
+    }
+
+    /// Maps the index of a BOS edge in the slot holding it to its BOS
+    /// index: the BOS edges are the first edges of that slot, in reverse
+    /// context order (see `push_bos_edges`). A lattice built without
+    /// `push_bos_edges` has the default single BOS edge.
+    ///
+    /// # Arguments
+    ///
+    /// * `edge_index` - The index of the BOS edge in its slot.
+    ///
+    /// # Returns
+    ///
+    /// The index of its context in [`LatticeOptions::bos`], 0 for the
+    /// default single BOS edge.
+    #[inline]
+    pub(crate) fn bos_index(&self, edge_index: usize) -> usize {
+        debug_assert!(
+            edge_index < self.bos_len.max(1),
+            "not the index of a BOS edge"
+        );
+        self.bos_len.max(1) - 1 - edge_index
     }
 
     /// Returns the edges a path can end with before EOS: the first
@@ -2357,10 +2467,10 @@ impl Lattice {
         for (i, edge) in self.final_edges().iter().enumerate() {
             let cost = edge.path_cost.saturating_add(self.exit_penalty(i));
             match out.iter_mut().find(|exit| exit.right_id == edge.right_id) {
-                // Strictly lower, so the first edge wins ties, as in the
-                // EOS connection.
+                // The last edge of equal cost wins, as in the EOS
+                // connection (see `Lattice::relax`).
                 Some(exit) => {
-                    if cost < exit.cost {
+                    if cost <= exit.cost {
                         exit.cost = cost;
                         exit.edge = i as u32;
                     }
@@ -2431,7 +2541,10 @@ impl Lattice {
     ///
     /// The edges stored in that slot: those ending there and, with
     /// whitespace skipped, those carried over the whitespace before it
-    /// (#943 renamed this from the byte-denominated `edges_at`).
+    /// (#943 renamed this from the byte-denominated `edges_at`). They come in
+    /// the order the lattice added them in, MeCab's processing order (see
+    /// [`Lattice::set_text_with_options`]); the BOS edges come first, in
+    /// reverse context order.
     pub fn edges_at_char(&self, char_pos: usize) -> &[Edge] {
         &self.ends_at[char_pos]
     }
@@ -2532,7 +2645,8 @@ impl Lattice {
                     // Every transition is recorded for N-Best.
                     costs.push(total_cost);
 
-                    if total_cost < best_cost {
+                    // The last of equal-cost edges wins (see `relax`).
+                    if total_cost <= best_cost {
                         best_cost = total_cost;
                         best_left = Some(i as u32);
                     }
@@ -2549,7 +2663,7 @@ impl Lattice {
             ),
         };
         self.transition_costs = costs;
-        best_left.map(|left| (best_cost, left))
+        connected(best_cost, best_left).map(|left| (best_cost, left))
     }
 
     /// Records the transitions [`Self::relax_nbest`] left in
@@ -2731,9 +2845,8 @@ impl Lattice {
                         &ud_vals[offset_bytes..offset_bytes + n * WordEntry::SERIALIZED_LEN];
                     let end_char = self.char_index_of_byte(m.end()) as u32;
                     let (chunks, _) = block.as_chunks::<{ WordEntry::SERIALIZED_LEN }>();
-                    // Last row first: the list is drained from its head, so
-                    // the surface's entries come out in CSV order (#1131).
-                    for chunk in chunks.iter().rev() {
+                    // In CSV order, drained last row first; see set_text.
+                    for chunk in chunks {
                         let entry = WordEntry::deserialize(chunk, false);
                         let next = self.matches_head[start_char];
                         self.matches_head[start_char] = self.matches_store.len() as u32;
@@ -2758,13 +2871,64 @@ impl Lattice {
                 continue;
             }
 
-            let mut found: bool = false;
-
             // Space penalty gate for this position; see set_text_with_options.
             let space_penalty = options.space_penalty_at(&self.char_info_buffer, char_idx);
 
-            // Dictionary words in the order of set_text_with_options, so
-            // ties resolve the same way: the user dictionary's first.
+            // The system dictionary's words, searched first; see
+            // set_text_with_options.
+            self.sys_matches.clear();
+            {
+                let suffix = &self.codes_buf[char_idx..];
+                for (entries, end_char_offset) in dict.common_prefix_search_codes(suffix) {
+                    let end_char = (char_idx + end_char_offset) as u32;
+                    for chunk in entries.as_chunks::<{ WordEntry::SERIALIZED_LEN }>().0 {
+                        self.sys_matches
+                            .push((end_char, WordEntry::deserialize(chunk, true)));
+                    }
+                }
+            }
+            // Whether a dictionary word starts here.
+            let found = (char_idx < self.matches_head.len()
+                && self.matches_head[char_idx] != u32::MAX)
+                || !self.sys_matches.is_empty();
+
+            // The candidates in the processing order of set_text_with_options,
+            // so ties resolve the same way: the unknown words first.
+            let num_categories = self.char_info_buffer[char_idx].categories_len as usize;
+            for category_ord in (0..num_categories).rev() {
+                let category = self.get_cached_category(char_definitions, char_idx, category_ord);
+                self.process_unknown_word_nbest(
+                    char_definitions,
+                    unknown_dictionary,
+                    cost_matrix,
+                    search_mode,
+                    max_grouping_len,
+                    unknown_word_ladder,
+                    space_penalty,
+                    category,
+                    category_ord,
+                    char_idx,
+                    found,
+                );
+            }
+
+            // Then the system dictionary's words, last found first.
+            for i in (0..self.sys_matches.len()).rev() {
+                let (end_char, word_entry) = self.sys_matches[i];
+                let end_char = end_char as usize;
+                let kanji_only = self.is_kanji_all(char_idx, end_char - char_idx);
+                let edge = Self::create_edge(word_entry, char_idx, kanji_only);
+                let extra_cost = space_penalty_cost(space_penalty, &word_entry);
+                self.add_edge_in_lattice_nbest(
+                    edge,
+                    end_char,
+                    cost_matrix,
+                    search_mode,
+                    extra_cost,
+                );
+            }
+
+            // Then the user dictionary's, last.
             if char_idx < self.matches_head.len() {
                 let mut match_idx = self.matches_head[char_idx];
                 while match_idx != u32::MAX {
@@ -2781,57 +2945,9 @@ impl Lattice {
                         search_mode,
                         extra_cost,
                     );
-                    found = true;
 
                     match_idx = next;
                 }
-            }
-
-            // Then the system dictionary's, in discovery order.
-            self.sys_matches.clear();
-            {
-                let suffix = &self.codes_buf[char_idx..];
-                for (entries, end_char_offset) in dict.common_prefix_search_codes(suffix) {
-                    let end_char = (char_idx + end_char_offset) as u32;
-                    for chunk in entries.as_chunks::<{ WordEntry::SERIALIZED_LEN }>().0 {
-                        self.sys_matches
-                            .push((end_char, WordEntry::deserialize(chunk, true)));
-                    }
-                }
-            }
-            for i in 0..self.sys_matches.len() {
-                let (end_char, word_entry) = self.sys_matches[i];
-                let end_char = end_char as usize;
-                let kanji_only = self.is_kanji_all(char_idx, end_char - char_idx);
-                let edge = Self::create_edge(word_entry, char_idx, kanji_only);
-                let extra_cost = space_penalty_cost(space_penalty, &word_entry);
-                self.add_edge_in_lattice_nbest(
-                    edge,
-                    end_char,
-                    cost_matrix,
-                    search_mode,
-                    extra_cost,
-                );
-                found = true;
-            }
-
-            // Unknown words at every reachable position; see set_text_with_options.
-            let num_categories = self.char_info_buffer[char_idx].categories_len as usize;
-            for category_ord in 0..num_categories {
-                let category = self.get_cached_category(char_definitions, char_idx, category_ord);
-                self.process_unknown_word_nbest(
-                    char_definitions,
-                    unknown_dictionary,
-                    cost_matrix,
-                    search_mode,
-                    max_grouping_len,
-                    unknown_word_ladder,
-                    space_penalty,
-                    category,
-                    category_ord,
-                    char_idx,
-                    found,
-                );
             }
         }
 
@@ -2874,12 +2990,13 @@ impl Lattice {
                     cost: path_cost,
                 });
 
-                if path_cost < best_cost {
+                // The last of equal-cost edges wins (see `relax`).
+                if path_cost <= best_cost {
                     best_cost = path_cost;
                     best_left = Some(i as u32);
                 }
             }
-            if let Some(left_idx) = best_left {
+            if let Some(left_idx) = connected(best_cost, best_left) {
                 eos_edge.left_index = left_idx;
                 eos_edge.path_cost = best_cost;
                 self.ends_at[n_chars].push(eos_edge);
@@ -3198,8 +3315,9 @@ mod tests {
 
     /// #1105: one relaxation serves all the lengths of an unknown-word
     /// entry (the grouped run and the length ladder), but every length
-    /// keeps an edge of its own: in its own slot, in dictionary order, with
-    /// its own kanji-only flag (which the Decompose penalty reads). `一一一x`
+    /// keeps an edge of its own: in its own slot, in processing order (the
+    /// entries last first, #1135), with its own kanji-only flag (which the
+    /// Decompose penalty reads). `一一一x`
     /// is one run of `X`, which groups and has a ladder up to 3, so the
     /// group (4 characters) is not kanji-only and the ladder lengths are.
     /// The N-best lattice must hold the same edges as the 1-best one, each
@@ -3273,7 +3391,7 @@ mod tests {
             let kanji = matches!(mode, Mode::Decompose(_));
             let mut expected = Vec::new();
             for (slot, kanji_only) in [(1, kanji), (2, kanji), (3, kanji), (4, false)] {
-                for (id, cost) in [(1, 100), (2, 200)] {
+                for (id, cost) in [(2, 200), (1, 100)] {
                     expected.push((slot, WordId::new(LexType::Unknown, id), kanji_only, cost));
                 }
             }
@@ -4685,7 +4803,7 @@ mod tests {
     /// definition among the paths ending with that right id, without the
     /// EOS connection and with the last word's Decompose penalty; in the
     /// order the right ids first appear among the final edges, each with
-    /// the first of the cheapest final edges. `exit_tokens_offset_into`
+    /// the last of the cheapest final edges (#1135). `exit_tokens_offset_into`
     /// returns such a path and its BOS index. The best complete path is the
     /// exit minimizing cost plus EOS connection, through the same edge. The
     /// N-best lattice has the same exits.
@@ -4729,8 +4847,8 @@ mod tests {
                     let cost = edge.path_cost + lattice.exit_penalty(i);
                     assert!(cost >= exit.cost, "{case}");
                     assert!(
-                        i >= exit.edge as usize || cost > exit.cost,
-                        "{case}: a tie must keep the first edge"
+                        i <= exit.edge as usize || cost > exit.cost,
+                        "{case}: a tie must keep the last edge"
                     );
                 }
                 assert_eq!(finals[exit.edge as usize].right_id, exit.right_id, "{case}");
@@ -4759,7 +4877,7 @@ mod tests {
             let through = exits
                 .iter()
                 .filter(|exit| eos_total(exit) == min)
-                .min_by_key(|exit| exit.edge)
+                .max_by_key(|exit| exit.edge)
                 .unwrap();
             assert_eq!(eos.left_index, through.edge, "{case}");
             let (best_tokens, best_bos, _) = best_path(&lattice);
@@ -4776,28 +4894,33 @@ mod tests {
     }
 
     /// #1096: `exits_into` and the EOS connection break a tie between two
-    /// final edges the same way, keeping the first: `d` has two identical
-    /// entries.
+    /// final edges the same way: `d` has two identical entries, stored last
+    /// row first, and both keep the last edge, the first row (#1135).
     #[test]
-    fn test_exit_tie_keeps_first_edge() {
+    fn test_exit_tie_keeps_first_row() {
         let fixture = CtxFixture::new();
         let lattice = fixture.lattice("ad", &Mode::Normal, false, &[]);
         let finals = lattice.final_edges();
-        assert_eq!(finals.len(), 2);
+        assert_eq!(
+            finals.iter().map(Edge::word_id).collect::<Vec<_>>(),
+            [sys(13), sys(12)]
+        );
         assert_eq!(finals[0].path_cost, finals[1].path_cost);
         let exits = exits_of(&lattice);
         assert_eq!(exits.len(), 1);
-        assert_eq!(exits[0].edge, 0);
+        assert_eq!(exits[0].edge, 1);
         let eos = lattice.edges_at_char(2).last().unwrap();
-        assert_eq!(eos.left_index, 0);
+        assert_eq!(eos.left_index, 1);
         let mut tokens = Vec::new();
         lattice.exit_tokens_offset_into(&exits[0], &mut tokens);
         assert_eq!(tokens, lattice.tokens_offset());
+        assert_eq!(tokens.last().map(|token| token.2), Some(sys(12)));
     }
 
     /// #1096: leading skipped whitespace carries the BOS edges over in
-    /// their order, with their costs and `ws_tail` 0, and the BOS index
-    /// still names the context (here not the first one).
+    /// their order (reverse context order, #1135), with their costs and
+    /// `ws_tail` 0, and the BOS index still names the context (here not the
+    /// first one).
     #[test]
     fn test_leading_whitespace_keeps_bos_indices() {
         let fixture = CtxFixture::new();
@@ -4817,10 +4940,10 @@ mod tests {
                 assert_eq!(
                     carried,
                     vec![
-                        (u32::MAX, 0, 0, 0),
-                        (u32::MAX, 1, 50, 0),
-                        (u32::MAX, 2, 10, 0),
                         (u32::MAX, 3, 300, 0),
+                        (u32::MAX, 2, 10, 0),
+                        (u32::MAX, 1, 50, 0),
+                        (u32::MAX, 0, 0, 0),
                     ]
                 );
                 let brute = brute_paths(text, &bos_list, &mode);
@@ -4847,7 +4970,8 @@ mod tests {
 
     /// #1096: in a sentence without words (only skipped whitespace, or
     /// empty) the BOS edges are the final edges: they are the exits, in
-    /// order and with their own costs, their paths are empty and lead to
+    /// their order (reverse context order, #1135) and with their own costs,
+    /// their paths are empty and lead to
     /// themselves, the best path is the empty one from the BOS edge
     /// cheapest with its EOS connection, and the N-best from an exit is one
     /// empty path.
@@ -4871,12 +4995,16 @@ mod tests {
                     .collect();
                 assert_eq!(
                     summary,
-                    vec![(0, 0, 0), (1, 50, 1), (2, 10, 2), (3, 300, 3)],
+                    vec![(3, 300, 0), (2, 10, 1), (1, 50, 2), (0, 0, 3)],
                     "{case}"
                 );
+                // Context `i` has right id `i` here.
                 let mut tokens = vec![(9, 9, WordId::default())];
-                for (index, exit) in exits.iter().enumerate() {
-                    assert_eq!(lattice.exit_tokens_offset_into(exit, &mut tokens), index);
+                for exit in &exits {
+                    assert_eq!(
+                        lattice.exit_tokens_offset_into(exit, &mut tokens),
+                        exit.right_id() as usize
+                    );
                     assert!(tokens.is_empty(), "{case}");
                 }
                 // EOS from right ids 0..3 costs 0, 500, 40 and 300.
@@ -4886,11 +5014,11 @@ mod tests {
                 assert_eq!(best_path(&lattice), (Vec::new(), Some(1), 50), "{case}");
 
                 let nbest = fixture.nbest_lattice(text, &mode, skip, &bos_list);
-                for (index, exit) in exits_of(&nbest).iter().enumerate() {
+                for exit in &exits_of(&nbest) {
                     let mut generator = NBestGenerator::from_exit(&nbest, exit);
                     assert_eq!(
                         generator.next_with_bos(),
-                        Some(((Vec::new(), exit.cost() as i64), index)),
+                        Some(((Vec::new(), exit.cost() as i64), exit.right_id() as usize)),
                         "{case}"
                     );
                     assert_eq!(generator.next_with_bos(), None, "{case}");
@@ -4982,7 +5110,8 @@ mod tests {
             .iter()
             .map(|e| e.path_cost)
             .collect();
-        assert_eq!(costs, vec![PATH_COST_CLAMP, 0]);
+        // In reverse context order (see `push_bos_edges`).
+        assert_eq!(costs, vec![0, PATH_COST_CLAMP]);
         assert_eq!(best_path(&lattice).1, Some(1));
 
         for nbest in [false, true] {
@@ -5240,5 +5369,176 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// Builds a system dictionary with one entry per surface, word ids in
+    /// the order of `surfaces`, each costing 100 with context ids 0.
+    fn hundred_each(surfaces: &[&str]) -> PrefixDictionary {
+        let mut map = BTreeMap::new();
+        for (id, surface) in surfaces.iter().enumerate() {
+            map.insert(
+                surface.to_string(),
+                vec![WordEntry::new(sys(id as u32), 100, 0, 0)],
+            );
+        }
+        PrefixDictionary::from_word_entry_map(&map).unwrap()
+    }
+
+    /// #1135: of two paths of equal cost that end at the same position, the
+    /// one whose last word starts later wins, as in MeCab: `ab|c` over
+    /// `a|bc`, whether EOS (`abc`) or the next word (`abcd`) chooses between
+    /// them, in the 1-best and the N-best lattice, in both modes, and for
+    /// the exit and the N-best search from it. Every word costs 100 and
+    /// every connection 0, so the two paths tie.
+    #[test]
+    fn test_cross_start_tie_keeps_later_start() {
+        let char_definition = test_char_definition();
+        let unknown_dictionary = test_unknown_dictionary();
+        let cost_matrix = ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0, 0]).unwrap();
+        let dict = hundred_each(&["a", "ab", "bc", "c", "d"]);
+        let decompose = Mode::Decompose(Penalty::default());
+        let cases = [
+            ("abc", vec![(0, 2, sys(1)), (2, 3, sys(3))], 200),
+            (
+                "abcd",
+                vec![(0, 2, sys(1)), (2, 3, sys(3)), (3, 4, sys(4))],
+                300,
+            ),
+        ];
+        for mode in [&Mode::Normal, &decompose] {
+            for (text, expected, cost) in &cases {
+                let case = format!("{text} {mode:?}");
+                let options = LatticeOptions::new(mode);
+                let mut lattice = Lattice::default();
+                lattice.set_text_with_options(
+                    &dict,
+                    &None,
+                    &char_definition,
+                    &unknown_dictionary,
+                    &cost_matrix,
+                    text,
+                    &options,
+                );
+                assert_eq!(&lattice.tokens_offset(), expected, "{case}");
+                assert_eq!(eos_cost(&lattice), *cost, "{case}");
+                let exits = exits_of(&lattice);
+                assert_eq!(exits.len(), 1, "{case}");
+                let mut tokens = Vec::new();
+                lattice.exit_tokens_offset_into(&exits[0], &mut tokens);
+                assert_eq!(&tokens, expected, "{case}: the exit");
+
+                lattice.set_text_nbest_with_options(
+                    &dict,
+                    &None,
+                    &char_definition,
+                    &unknown_dictionary,
+                    &cost_matrix,
+                    text,
+                    &options,
+                );
+                let paths = lattice.nbest_tokens_offset(usize::MAX, false, None);
+                assert_eq!(paths.len(), 2, "{case}");
+                assert_eq!(paths[0], (expected.clone(), *cost), "{case}");
+                assert_eq!(paths[1].1, *cost, "{case}: the other path ties");
+                let exits = exits_of(&lattice);
+                let mut generator = NBestGenerator::from_exit(&lattice, &exits[0]);
+                assert_eq!(
+                    generator.next().map(|(tokens, _)| tokens).as_ref(),
+                    Some(expected),
+                    "{case}: from the exit"
+                );
+            }
+        }
+    }
+
+    /// #1135: with whitespace skipped, of two left words of equal cost the
+    /// one that ends later wins, as in MeCab, which looks the next word up
+    /// from every position a word ends at and keeps the node looked up from
+    /// the later one: in `a b`, `a ` (an entry that ends with the space)
+    /// wins over `a`, which is carried over the space, in the 1-best and the
+    /// N-best lattice.
+    #[test]
+    fn test_cross_end_tie_keeps_later_end_across_skipped_whitespace() {
+        let char_definition = test_char_definition();
+        let unknown_dictionary = test_unknown_dictionary();
+        let cost_matrix = ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0, 0]).unwrap();
+        let classifier = WhitespaceClassifier::new(&char_definition).unwrap();
+        let dict = hundred_each(&["a", "a ", "b"]);
+        let expected = vec![(0, 2, sys(1)), (2, 3, sys(2))];
+        for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
+            let mut options = LatticeOptions::new(&mode);
+            options.skip_whitespace = Some(&classifier);
+            let mut lattice = Lattice::default();
+            lattice.set_text_with_options(
+                &dict,
+                &None,
+                &char_definition,
+                &unknown_dictionary,
+                &cost_matrix,
+                "a b",
+                &options,
+            );
+            assert_eq!(lattice.tokens_offset(), expected, "{mode:?}");
+            assert_eq!(eos_cost(&lattice), 200, "{mode:?}");
+
+            lattice.set_text_nbest_with_options(
+                &dict,
+                &None,
+                &char_definition,
+                &unknown_dictionary,
+                &cost_matrix,
+                "a b",
+                &options,
+            );
+            let paths = lattice.nbest_tokens_offset(usize::MAX, false, None);
+            assert_eq!(paths.len(), 2, "{mode:?}");
+            assert_eq!(paths[0], (expected.clone(), 200), "{mode:?}");
+            assert_eq!(paths[1].1, 200, "{mode:?}: the other path ties");
+        }
+    }
+
+    /// #1135: the relaxations keep the last of equal-cost left edges with
+    /// `<=`, but a transition whose cost saturates at `i32::MAX` is still
+    /// none, as with the former strict `<`: with a Decompose penalty of
+    /// `i32::MAX` on every word, nothing connects after `a`, so `ab` has no
+    /// complete path, in the 1-best and the N-best lattice.
+    #[test]
+    fn test_saturated_transition_does_not_connect() {
+        let char_definition = test_char_definition();
+        let unknown_dictionary = test_unknown_dictionary();
+        let cost_matrix = ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0, 0]).unwrap();
+        let dict = hundred_each(&["a", "b"]);
+        let mode = Mode::Decompose(Penalty {
+            kanji_penalty_length_threshold: 0,
+            kanji_penalty_length_penalty: i32::MAX,
+            other_penalty_length_threshold: 0,
+            other_penalty_length_penalty: i32::MAX,
+        });
+        let options = LatticeOptions::new(&mode);
+        let mut lattice = Lattice::default();
+        lattice.set_text_with_options(
+            &dict,
+            &None,
+            &char_definition,
+            &unknown_dictionary,
+            &cost_matrix,
+            "ab",
+            &options,
+        );
+        assert!(lattice.edges_at_char(2).is_empty());
+        let mut offsets = Vec::new();
+        assert_eq!(lattice.tokens_offset_into(&mut offsets), None);
+
+        lattice.set_text_nbest_with_options(
+            &dict,
+            &None,
+            &char_definition,
+            &unknown_dictionary,
+            &cost_matrix,
+            "ab",
+            &options,
+        );
+        assert!(lattice.edges_at_char(2).is_empty());
+        assert!(lattice.nbest_tokens_offset(10, false, None).is_empty());
     }
 }
