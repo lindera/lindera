@@ -94,8 +94,7 @@ pub struct Metadata {
     ///
     /// Absent from source `metadata.json` files, which describe build inputs
     /// rather than a built dictionary, and absent from dictionaries built
-    /// before the field existed; both read back as
-    /// [`LEGACY_FORMAT_VERSION`].
+    /// before the field existed; both read back as the legacy version, 1.
     #[serde(default = "legacy_format_version")]
     pub format_version: u32,
     pub name: String,                  // Name of the dictionary

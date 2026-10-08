@@ -62,7 +62,8 @@ impl UnknownDictionary {
     /// Unlike the packed dictionaries, this one distinguishes "no such entry"
     /// from "an entry with no fields", so the absence stays in the return
     /// type rather than collapsing into a sentinel; the caller decides what
-    /// to substitute (see [`Dictionary::unknown_word_details_iter`]).
+    /// to substitute (see
+    /// [`Dictionary::unknown_word_details_iter`](crate::dictionary::Dictionary::unknown_word_details_iter)).
     ///
     /// # 引数
     ///

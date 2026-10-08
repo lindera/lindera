@@ -22,7 +22,7 @@
 /// The data is bound to a `static` rather than a `const`: a `const` body would
 /// be encoded into the crate's metadata at roughly 4x its size. A `static`'s
 /// initializer is still encoded once, so unlike the other files of
-/// [`embedded_dictionary!`], which are returned from private `fn`s, this
+/// [`embedded_dictionary!`](crate::embedded_dictionary), which are returned from private `fn`s, this
 /// payload remains in `lib.rmeta`.
 ///
 /// # Arguments

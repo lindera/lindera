@@ -398,7 +398,7 @@ impl UserDictionary {
     /// space, or every connection cost it participates in would address the wrong
     /// matrix cell — silently, since the IDs stay in range.
     ///
-    /// Entries live in `vals_data` as a flat [`WordEntry::SERIALIZED_LEN`]-byte stride
+    /// Entries live in `vals_data` as a flat 10-byte (`WordEntry::SERIALIZED_LEN`) stride
     /// with `left_id` at offset 6 and `right_id` at offset 8 (little endian), so this
     /// rewrites those two `u16`s in place. IDs outside the permutation are left
     /// untouched, matching the builder's behaviour for malformed IDs.

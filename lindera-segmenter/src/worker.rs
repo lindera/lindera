@@ -56,10 +56,10 @@ const SHRINK_FLOOR_SLOTS: usize = 4 * 1024;
 /// The worker automatically bounds retained memory: one maximum-length
 /// sentence grows the lattice to several MB (~18 MB for 32 Ki ASCII slots,
 /// ~6 MB for a 32 KiB CJK sentence's ~10.9 Ki slots), and without
-/// intervention that stays pinned for the worker's lifetime. Every [`SHRINK_WINDOW_CALLS`] calls the
+/// intervention that stays pinned for the worker's lifetime. Every 64 calls the
 /// worker compares the lattice capacity against the window's largest
-/// sentence (with a [`SHRINK_HYSTERESIS`]x margin and a [`SHRINK_FLOOR_SLOTS`]
-/// floor) and shrinks it when oversized. [`SegmentWorker::shrink_to`]
+/// sentence (with a 2x margin and a floor of 4 Ki slots) and shrinks it when
+/// oversized. [`SegmentWorker::shrink_to`]
 /// forces a shrink immediately.
 ///
 /// The worker is `Send + Sync` (all fields are); the `&mut self` API means
