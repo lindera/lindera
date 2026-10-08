@@ -1103,7 +1103,7 @@ tokenizer
 <li><a href="./lindera/api_reference.html">API Reference</a> - Links to generated API documentation</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="segmenter"><a class="header" href="#segmenter">Segmenter</a></h1>
-<p>The <code>Segmenter</code> is the core component that performs morphological analysis. It uses the Viterbi algorithm to find the optimal segmentation of input text based on a dictionary and cost model. Among dictionary entries that share the surface, the context IDs and the cost, and so tie, it chooses the first CSV row, as MeCab does, and a user-dictionary entry over a tied system entry (see <a href="lindera/../concepts/user_dictionary.html#tied-entries">Tied entries</a>).</p>
+<p>The <code>Segmenter</code> is the core component that performs morphological analysis. It uses the Viterbi algorithm to find the optimal segmentation of input text based on a dictionary and cost model. Among dictionary entries that share the surface, the context IDs and the cost, and so tie, it chooses the first CSV row, as MeCab does, and a user-dictionary entry over a tied system entry (see <a href="lindera/../concepts/user_dictionary.html#tied-entries">Tied entries</a>). Of two segmentations of equal cost that end at the same position, it chooses the one whose last word starts later, as MeCab does.</p>
 <h2 id="creating-a-segmenter"><a class="header" href="#creating-a-segmenter">Creating a Segmenter</a></h2>
 <p>A <code>Segmenter</code> requires three components:</p>
 <ul>
@@ -9603,8 +9603,10 @@ across <code>、</code> and <code>。</code> within a line as MeCab does, return
 that each cover the whole input, lets unknown words start at every position
 as MeCab does, keeps the dashes and tildes of dictionary entries as written
 instead of rewriting them, removing the <code>normalize_details</code> setting, outputs
-the first CSV row among tied dictionary entries as MeCab does, and has the
-lattice backtraces of <code>lindera-dictionary</code> return each token's end offset.
+the first CSV row among tied dictionary entries as MeCab does, chooses the
+segmentation whose last word starts later when two cost the same, as MeCab
+does, and has the lattice backtraces of <code>lindera-dictionary</code> return each
+token's end offset.
 This guide lists every breaking change and the one-line fixes for each.</p>
 <h2 id="overview-4"><a class="header" href="#overview-4">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
@@ -9624,6 +9626,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>Unknown words start at every position, as in MeCab</strong></td><td>Anyone who segments text with runs of katakana, symbols or Latin letters in normal mode, most visibly katakana joined by <code>・</code>, Korean sentence-final punctuation such as <code>."</code>, and Latin words with CC-CEDICT</td><td>Expect such runs to be split where MeCab splits them, and katakana- and Latin-heavy text to take about 13% more instructions; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>IPADIC and IPADIC-NEologd: dashes and tildes in dictionary entries are kept as written, as in MeCab</strong></td><td>Anyone who segments text with <code>―</code> (U+2015), <code>—</code> (U+2014), <code>～</code> (U+FF5E) or <code>〜</code> (U+301C) with IPADIC or IPADIC-NEologd</td><td>Expect entries spelled with <code>―</code> or <code>～</code> to match text spelled the same way, and text with <code>—</code> or <code>〜</code> to miss the 12 IPADIC and 1,085 IPADIC-NEologd entries it found only through the old rewrite (a <code>mapping</code> character filter can fold the spellings); rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 <tr><td><strong>Entries with the same surface, context IDs and cost: the first CSV row is output, as in MeCab</strong></td><td>Anyone who reads token details such as the reading or the base form with IPADIC, IPADIC-NEologd, UniDic or ko-dic, or with a user dictionary that has such entries; N-best users</td><td>Expect such words to get MeCab's details (IPADIC <code>狡い</code> reads <code>ズルイ</code>, not <code>コスイ</code>), a user entry to still win a tie with a system entry, and the first N-best result to always be the 1-best; no rebuild is needed, and no setting restores the v6 behavior</td></tr>
+<tr><td><strong>Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab</strong></td><td>Anyone who segments text, in rare places (9 of about 54,000 lines in the texts compared)</td><td>Expect such lines to be segmented as MeCab segments them (IPADIC <code>腸窒扶斯</code> is <code>腸 / 窒扶 / 斯</code>, not <code>腸 / 窒 / 扶斯</code>); no rebuild is needed, and no setting restores the v6 behavior</td></tr>
 <tr><td><strong>The <code>normalize_details</code> setting is removed: <code>Metadata::new</code> and <code>CoreMetadata::new</code> take 10 arguments, Ruby's <code>Metadata.new</code> takes 8</strong></td><td>Code that creates or reads dictionary metadata: Rust (<code>Metadata</code>, <code>lindera_binding::CoreMetadata</code>, <code>PrefixDictionaryBuilderOptions</code>) and the <code>Metadata</code> classes of the Python, Ruby, PHP and Node.js bindings</td><td>Remove the argument, option or property; a <code>metadata.json</code> that still has the key loads, and the key is ignored</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>, <code>tokens_offset_into</code>, <code>nbest_tokens_offset</code> and <code>NBestGenerator::next</code> return <code>(start, end, WordId)</code></strong></td><td>Rust code that calls these <code>lindera_dictionary</code> functions directly (also as <code>lindera::dictionary::viterbi::…</code>, <code>lindera::dictionary::Lattice</code> and <code>lindera::dictionary::nbest::…</code>)</td><td>Destructure three fields and use the returned end instead of the next token's start</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> returns the BOS index of the best path (<code>Option&lt;usize&gt;</code>)</strong></td><td>Rust code that uses the <code>()</code> value of <code>tokens_offset_into</code></td><td>Nothing for a call written as a statement; otherwise ignore the new value</td></tr>
@@ -9635,7 +9638,7 @@ classes of the Python, Node.js, Ruby and PHP bindings no longer take or
 expose <code>normalize_details</code> (see
 <a href="migration_v6_to_v7.html#the-normalize_details-setting-is-removed">The <code>normalize_details</code> setting is removed</a>).
 Their version number moves to 7.0.0.
-There are nine output differences, all described below. With IPADIC or
+There are ten output differences, all described below. With IPADIC or
 IPADIC-NEologd, the values reported under the names <code>conjugation_type</code> and
 <code>conjugation_form</code> trade places. The dictionaries now contain the entries
 whose surface is or starts or ends with whitespace, which changes the
@@ -9655,6 +9658,8 @@ contains <code>―</code>, <code>—</code>, <code>～</code> or <code>〜</code
 surface, the context IDs and the cost, the first CSV row is output instead
 of the last, as in MeCab, which changes the reading, the base form or other
 details of such words, and the first N-best result is always the 1-best.
+When two segmentations cost exactly the same, the one whose last word starts
+later is chosen, as in MeCab, which changes the segmentation of a few lines.
 Otherwise, for the same input and dictionary, v7.0.0 produces the same
 tokens with the same positional details as v6.2.0.</p>
 <h2 id="the-lindera-crate-is-now-a-facade"><a class="header" href="#the-lindera-crate-is-now-a-facade">The lindera crate is now a facade</a></h2>
@@ -10231,8 +10236,7 @@ them decides which one it outputs. Up to v6.2.0, Lindera added the
 dictionary entries that start at a position in reverse order, and the search
 keeps the earlier of two candidates with equal cost, so the last CSV row of
 a tied group won. The reverse order came in with v2.1.0, apparently by
-accident. v7.0.0 adds the entries in CSV order and outputs the first row,
-as MeCab does:</p>
+accident. v7.0.0 outputs the first row, as MeCab does:</p>
 <div class="table-wrapper"><table><thead><tr><th>Input (dictionary)</th><th>v6</th><th>v7 (as MeCab)</th></tr></thead><tbody>
 <tr><td><code>あいつは狡い</code> (IPADIC)</td><td><code>狡い</code> reads <code>コスイ</code></td><td><code>狡い</code> reads <code>ズルイ</code></td></tr>
 </tbody></table>
@@ -10288,6 +10292,52 @@ can change places, which can also change which of them is cut off at the
 lists them (readdir order), so for tied groups whose rows are in different
 files (in IPADIC-NEologd and ko-dic), MeCab's choice depends on the file
 system, while Lindera reads the files in name order.</p>
+<p>The dictionary files do not change, so this change needs no rebuild or
+re-download. There is no setting to restore the v6 behavior.</p>
+<h2 id="equal-cost-segmentations-keep-the-later-starting-word-as-in-mecab"><a class="header" href="#equal-cost-segmentations-keep-the-later-starting-word-as-in-mecab">Equal-cost segmentations keep the later-starting word, as in MeCab</a></h2>
+<p>Two segmentations can reach the same position with exactly the same cost
+while their last words start at different positions. MeCab keeps the one
+whose last word starts later: it puts every word at the head of the list of
+words that end where it ends, so the words that start later come first in
+that list, and of words of equal cost it keeps the first. Up to v6.2.0,
+Lindera kept the one whose last word starts earlier. v7.0.0 chooses as
+MeCab does:</p>
+<div class="table-wrapper"><table><thead><tr><th>Input (dictionary)</th><th>v6</th><th>v7 (as MeCab)</th></tr></thead><tbody>
+<tr><td><code>腸窒扶斯</code> (IPADIC)</td><td><code>腸 / 窒 / 扶斯</code></td><td><code>腸 / 窒扶 / 斯</code></td></tr>
+<tr><td><code>にフリーホイールダイオードや</code> (IPADIC)</td><td><code>フリーホイールダイオード</code> (one unknown word)</td><td><code>フリー / ホイール / ダイオード</code></td></tr>
+<tr><td><code>家系譜</code> (UniDic)</td><td><code>家 / 系譜</code></td><td><code>家系 / 譜</code></td></tr>
+<tr><td><code>차나 마셔</code> (ko-dic)</td><td><code>차나 / 마셔</code></td><td><code>차 / 나 / 마셔</code></td></tr>
+</tbody></table>
+</div>
+<p>Both segmentations of <code>腸窒扶斯</code> cost 28,382. Such ties are rare. The texts
+compared are <em>Botchan</em> (as one file, as paragraphs and as sentences), the
+3,587 paragraphs of <em>Kokoro</em> and <em>I Am a Cat</em> and the 8,100 sentences of UD
+Japanese GSD, each with IPADIC, IPADIC-NEologd and UniDic, and the 7,759
+lines of <em>Sangnoksu</em> with ko-dic: about 54,000 lines in all. 9 of them
+change, all to MeCab's segmentation, and none moves away from it. In Decompose mode, which MeCab does not have, 0 to 2 lines
+per text change in the same way.</p>
+<p>When whitespace is skipped (see
+<a href="migration_v6_to_v7.html#whitespace-is-skipped-in-the-lattice">Whitespace is skipped in the lattice</a>),
+the word that ends later wins first, as in MeCab, which looks the next word
+up from every position a word ends at: an entry that ends with the space
+wins over a word that ends before it. One difference from MeCab remains in
+theory: after skipped whitespace, MeCab keeps a node for every position the
+previous word can end at, while Lindera keeps one, so two words that start
+right after the same whitespace and tie through previous words that end at
+different positions can be chosen differently. This needs an entry that
+ends with whitespace and an exact tie, and it does not occur in the texts
+compared.</p>
+<p>Among words that start at the same position, the order of
+<a href="migration_v6_to_v7.html#tied-entries-resolve-to-the-first-csv-row-as-in-mecab">Tied entries resolve to the first CSV row, as in MeCab</a>
+still applies, and the first N-best result is still the 1-best
+segmentation. When the context is carried across <code>、</code> or <code>。</code>, a tie
+between the contexts carried from the previous sentence still goes to the
+one with the lower right context ID (see
+<a href="migration_v6_to_v7.html#the-context-is-carried-across--and-">The context is carried across <code>、</code> and <code>。</code></a>).</p>
+<p>The 1-best segmentation takes 0.6% to 0.9% more instructions with IPADIC,
+IPADIC-NEologd and UniDic, with no measurable change in time, and about 2%
+more instructions and 2% to 5% more time with ko-dic. N-best search
+(<code>-N 3</code>) takes about 1% more instructions.</p>
 <p>The dictionary files do not change, so this change needs no rebuild or
 re-download. There is no setting to restore the v6 behavior.</p>
 <h2 id="rust-api-changes-in-lindera_dictionary-1"><a class="header" href="#rust-api-changes-in-lindera_dictionary-1">Rust API changes in <code>lindera_dictionary</code></a></h2>
@@ -10398,7 +10448,8 @@ mode, the dash and tilde spellings, which matter only for text with
 <code>―</code>, <code>—</code>, <code>～</code> or <code>〜</code> with IPADIC or IPADIC-NEologd, and the choice among
 tied entries, which matters only if you read token details such as the
 reading or the base form, or the order of N-best results with the same
-cost.</li>
+cost, and the choice between segmentations of equal cost, which changes
+the segmentation of a few lines.</li>
 <li><strong>Projects staying on <code>lindera = "6"</code></strong>: the 6.x releases of <code>lindera</code> and
 <code>lindera-analysis</code> remain on crates.io and keep working together. Nothing
 changes until you bump the major version.</li>
@@ -10543,6 +10594,13 @@ is needed, and no setting restores the v6 output.</li>
 <li>In a user dictionary, expect the first of tied rows to be chosen. A user
 entry still wins a tie with a system entry, unlike in MeCab.</li>
 </ul>
+<p>Everyone who compares the segmentation with v6 or with MeCab:</p>
+<ul>
+<li>Expect the few places where two segmentations cost exactly the same to be
+segmented as MeCab segments them, with the last word that starts later
+(IPADIC <code>腸窒扶斯</code> is <code>腸 / 窒扶 / 斯</code>). No rebuild is needed, and no
+setting restores the v6 output.</li>
+</ul>
 <p>Language bindings and CLI:</p>
 <ul>
 <li>Remove <code>normalize_details</code> where you create <code>Metadata</code>: the Python
@@ -10552,7 +10610,7 @@ the last argument of PHP's <code>Metadata</code> constructor, and the
 key of the same name in <code>to_dict()</code>, <code>to_h</code>, <code>toArray()</code> and <code>toObject()</code>.</li>
 <li>Nothing else to do beyond taking the 7.0.0 release, apart from the
 dictionary, whitespace, <code>、</code> and <code>。</code>, N-best, unknown-word, dash and
-tilde, and tied-entry items above.</li>
+tilde, tied-entry and equal-cost items above.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="development-guide"><a class="header" href="#development-guide">Development Guide</a></h1>
 <p>This section provides information for developers who want to build, test, or contribute to Lindera.</p>

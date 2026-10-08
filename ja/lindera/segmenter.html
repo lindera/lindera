@@ -177,7 +177,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="segmenter"><a class="header" href="#segmenter">Segmenter</a></h1>
-<p><code>Segmenter</code> は形態素解析を実行するコアコンポーネントです。辞書とコストモデルに基づいて、入力テキストの最適な分割を Viterbi アルゴリズムで探索します。表層形・文脈 ID・コストがすべて同じ見出し語（同点の見出し語）からは、MeCab と同じく CSV で先の行を選び、ユーザー辞書の見出し語とシステム辞書の見出し語が同点ならユーザー辞書の見出し語を選びます（<a href="../concepts/user_dictionary.html#%E5%90%8C%E7%82%B9%E3%81%AE%E8%A6%8B%E5%87%BA%E3%81%97%E8%AA%9E">同点の見出し語</a>を参照）。</p>
+<p><code>Segmenter</code> は形態素解析を実行するコアコンポーネントです。辞書とコストモデルに基づいて、入力テキストの最適な分割を Viterbi アルゴリズムで探索します。表層形・文脈 ID・コストがすべて同じ見出し語（同点の見出し語）からは、MeCab と同じく CSV で先の行を選び、ユーザー辞書の見出し語とシステム辞書の見出し語が同点ならユーザー辞書の見出し語を選びます（<a href="../concepts/user_dictionary.html#%E5%90%8C%E7%82%B9%E3%81%AE%E8%A6%8B%E5%87%BA%E3%81%97%E8%AA%9E">同点の見出し語</a>を参照）。同じ位置で終わる 2 つの分割のコストが同じなら、MeCab と同じく最後の語が後から始まる方を選びます。</p>
 <h2 id="segmenter-の作成"><a class="header" href="#segmenter-の作成">Segmenter の作成</a></h2>
 <p><code>Segmenter</code> には以下の3つのコンポーネントが必要です：</p>
 <ul>
