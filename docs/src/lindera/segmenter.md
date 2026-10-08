@@ -1,6 +1,6 @@
 # Segmenter
 
-The `Segmenter` is the core component that performs morphological analysis. It uses the Viterbi algorithm to find the optimal segmentation of input text based on a dictionary and cost model.
+The `Segmenter` is the core component that performs morphological analysis. It uses the Viterbi algorithm to find the optimal segmentation of input text based on a dictionary and cost model. Among dictionary entries that share the surface, the context IDs and the cost, and so tie, it chooses the first CSV row, as MeCab does, and a user-dictionary entry over a tied system entry (see [Tied entries](../concepts/user_dictionary.md#tied-entries)).
 
 ## Creating a Segmenter
 
@@ -235,7 +235,7 @@ for (tokens, cost) in results {
 }
 ```
 
-Every result segments the whole input. The input is split into segments as described in [Sentence Splitting](#sentence-splitting), and each segment is searched on its own. Within a segment, the context is carried across `、`, `。` and forced cuts, so the paths of a segment are the `n` best paths of one lattice over the whole segment, with the exceptions listed there; `unique` compares the word boundaries of the whole segment. A result takes one path in each segment, its cost is the sum of those paths' costs, and the results are the `n` cheapest of these combinations. So a result can differ from the best one in a single segment. `best_cost` is the cost of the first result, so `cost_threshold` applies to the whole input. The first result is the output of `segment`, unless several paths have exactly the same cost.
+Every result segments the whole input. The input is split into segments as described in [Sentence Splitting](#sentence-splitting), and each segment is searched on its own. Within a segment, the context is carried across `、`, `。` and forced cuts, so the paths of a segment are the `n` best paths of one lattice over the whole segment, with the exceptions listed there; `unique` compares the word boundaries of the whole segment. A result takes one path in each segment, its cost is the sum of those paths' costs, and the results are the `n` cheapest of these combinations. So a result can differ from the best one in a single segment. `best_cost` is the cost of the first result, so `cost_threshold` applies to the whole input. The first result is always the output of `segment`.
 
 `segment_nbest_with_lattice` is the same operation but lets you pass in a reusable `Lattice` buffer to avoid reallocating one per call.
 
