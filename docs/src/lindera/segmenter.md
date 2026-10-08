@@ -1,6 +1,6 @@
 # Segmenter
 
-The `Segmenter` is the core component that performs morphological analysis. It uses the Viterbi algorithm to find the optimal segmentation of input text based on a dictionary and cost model. Among dictionary entries that share the surface, the context IDs and the cost, and so tie, it chooses the first CSV row, as MeCab does, and a user-dictionary entry over a tied system entry (see [Tied entries](../concepts/user_dictionary.md#tied-entries)).
+The `Segmenter` is the core component that performs morphological analysis. It uses the Viterbi algorithm to find the optimal segmentation of input text based on a dictionary and cost model. Among dictionary entries that share the surface, the context IDs and the cost, and so tie, it chooses the first CSV row, as MeCab does, and a user-dictionary entry over a tied system entry (see [Tied entries](../concepts/user_dictionary.md#tied-entries)). Of two segmentations of equal cost that end at the same position, it chooses the one whose last word starts later, as MeCab does.
 
 ## Creating a Segmenter
 
