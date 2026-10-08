@@ -349,6 +349,26 @@ fn ipadic_dash_entries() {
     );
 }
 
+/// Regression test #1131: IPADIC's two `狡い` entries tie (same context ids
+/// and cost; only the reading and the pronunciation differ), and the first
+/// CSV row wins, as in MeCab: `ズルイ`, not `コスイ`. The lattice used to
+/// add a surface's entries last row first and so picked the last row.
+#[cfg(feature = "embed-ipadic")]
+#[test]
+fn ipadic_tied_entries() {
+    let segmenter = segmenter("embedded://ipadic", Mode::Normal);
+
+    let mut tokens = segmenter
+        .segment(Cow::Borrowed("あいつは狡い"))
+        .expect("segmentation should succeed");
+    let surfaces: Vec<&str> = tokens.iter().map(|token| token.surface.as_ref()).collect();
+    assert_eq!(surfaces, vec!["あいつ", "は", "狡い"]);
+    // details[7] is the reading and details[8] the pronunciation.
+    let details = tokens[2].details();
+    assert_eq!(details[7], "ズルイ");
+    assert_eq!(details[8], "ズルイ");
+}
+
 /// Regression test #1094: the full-width space is UniDic's `空白` entry.
 #[cfg(feature = "embed-unidic")]
 #[test]
