@@ -136,6 +136,18 @@ impl TokenizerBuilder {
         self
     }
 
+    /// Sets whether whitespace tokens are kept in the output (see
+    /// `Segmenter::keep_whitespace`). Kept whitespace also stays in the
+    /// lattice, so the other tokens can differ from those of the default
+    /// output, which skips whitespace as MeCab does.
+    ///
+    /// # Arguments
+    ///
+    /// * `keep_whitespace` - `true` to output whitespace tokens.
+    ///
+    /// # Returns
+    ///
+    /// The builder, for chaining.
     pub fn set_segmenter_keep_whitespace(&mut self, keep_whitespace: bool) -> &mut Self {
         self.config["segmenter"]["keep_whitespace"] = json!(keep_whitespace);
         self
@@ -145,7 +157,8 @@ impl TokenizerBuilder {
     /// tokens are not kept (see `Segmenter::skip_whitespace`), overriding
     /// the dictionary's default (skip, except for SudachiDict): `true`
     /// connects the words on either side of whitespace directly, as MeCab
-    /// does; `false` keeps whitespace as `SPACE` unknown-word nodes.
+    /// does; `false` keeps whitespace in the lattice as a node of its own
+    /// (a whitespace dictionary entry or the `SPACE` unknown word).
     ///
     /// # Arguments
     ///

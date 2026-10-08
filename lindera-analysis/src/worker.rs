@@ -211,7 +211,9 @@ impl AnalysisWorker {
     }
 
     /// Sets whether whitespace tokens are kept in the output for
-    /// subsequent calls.
+    /// subsequent calls. Kept whitespace also stays in the lattice, so the
+    /// other tokens can differ from those of the default output, which
+    /// skips whitespace (see [`Self::set_skip_whitespace`]).
     ///
     /// # 引数
     ///

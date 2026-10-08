@@ -111,6 +111,10 @@ impl PhpTokenizerBuilder {
 
     /// Sets whether to keep whitespace in tokenization results.
     ///
+    /// Kept whitespace also stays in the lattice, so the other tokens can
+    /// differ from those of the default output, which skips whitespace as
+    /// MeCab does.
+    ///
     /// # Arguments
     ///
     /// * `keep_whitespace` - If true, whitespace tokens will be included.

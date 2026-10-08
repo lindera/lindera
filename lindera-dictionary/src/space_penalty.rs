@@ -28,7 +28,7 @@
 //! candidate connects to, so the penalty applies the same way whether
 //! whitespace is skipped in the lattice as MeCab does
 //! ([`LatticeOptions::skip_whitespace`], which the `Segmenter` enables by
-//! default) or kept as `SPACE` unknown-word nodes. Only with whitespace
+//! default) or kept in the lattice as nodes of its own. Only with whitespace
 //! skipped do the words around a space connect directly, which mecab-ko's
 //! output also depends on; the penalty alone does not reproduce it.
 //!
