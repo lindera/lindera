@@ -94,8 +94,8 @@ impl PartialEq for QueueElement {
 /// [`Lattice::tokens_offset`] backtraces (from an exit, the one
 /// [`Lattice::exit_tokens_offset_into`] backtraces), with its BOS index,
 /// even when other paths cost the same: the search follows the left edge
-/// the forward pass keeps, the first of equal-cost ones, before the others
-/// (#1131).
+/// the forward pass keeps, the last of equal-cost ones in its slot, before
+/// the others (#1131, #1135).
 pub struct NBestGenerator<'a> {
     /// The N-best lattice the paths are taken from.
     lattice: &'a Lattice,
@@ -163,9 +163,9 @@ impl<'a> NBestGenerator<'a> {
             pushed: 0,
         };
         let char_pos = lattice.char_len() as u32;
-        // Last edge first: of the final edges with the same cost, the first
-        // one is popped first, as the exit keeps it (see `push`).
-        for (i, edge) in lattice.final_edges().iter().enumerate().rev() {
+        // In slot order: of the final edges with the same cost, the last one
+        // is popped first, as the exit keeps it (see `push`).
+        for (i, edge) in lattice.final_edges().iter().enumerate() {
             if edge.right_id() != exit.right_id() {
                 continue;
             }
@@ -200,14 +200,14 @@ impl<'a> NBestGenerator<'a> {
     /// Pushes a queue element, numbering it in push order.
     ///
     /// Of the elements with the same `fx`, the last pushed is popped first.
-    /// The callers push the predecessors of an edge last first (its
-    /// `PathEntry` run lists them in slot order, the order the forward
+    /// The callers push the predecessors of an edge in slot order (its
+    /// `PathEntry` run lists them in that order, the order the forward
     /// relaxation scanned them in), and [`NBestGenerator::from_exit`]
-    /// pushes the final edges last first too. So among equal-cost
-    /// predecessors the search takes the first one, the one the forward
-    /// relaxation keeps (it keeps the first of equal-cost left edges), and
-    /// follows it depth first: the first path found is the path the lattice
-    /// backtraces, even when other paths cost the same (#1131).
+    /// pushes the final edges in slot order too. So among equal-cost
+    /// predecessors the search takes the last one, the one the forward
+    /// relaxation keeps (it keeps the last of equal-cost left edges, #1135),
+    /// and follows it depth first: the first path found is the path the
+    /// lattice backtraces, even when other paths cost the same (#1131).
     ///
     /// # Arguments
     ///
@@ -268,10 +268,13 @@ impl<'a> NBestGenerator<'a> {
 
             // Check if we reached BOS (left_index == u32::MAX means no
             // predecessor = BOS). The BOS edges are the first edges of the
-            // slot holding them, in the order of their contexts, so the
-            // edge's index there is its BOS index.
+            // slot holding them, in reverse context order, which `bos_index`
+            // maps back.
             if edge.left_index() == u32::MAX {
-                return Some(((self.reconstruct_path(&current), current.fx), edge_index));
+                return Some((
+                    (self.reconstruct_path(&current), current.fx),
+                    self.lattice.bos_index(edge_index),
+                ));
             }
 
             // Store current element for chain linking
@@ -294,8 +297,8 @@ impl<'a> NBestGenerator<'a> {
             let paths = self.lattice.paths_at_char(char_pos);
             let start = paths.partition_point(|p| p.edge_index() < edge_index as u32);
             let end = paths.partition_point(|p| p.edge_index() <= edge_index as u32);
-            // Last predecessor first: see `push`.
-            for path_entry in paths[start..end].iter().rev() {
+            // In slot order: see `push`.
+            for path_entry in &paths[start..end] {
                 let left_pos = path_entry.left_pos() as usize;
                 let left_index = path_entry.left_index() as usize;
 
