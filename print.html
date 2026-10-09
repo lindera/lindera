@@ -10345,8 +10345,8 @@ compared.</p>
 <a href="migration_v6_to_v7.html#tied-entries-resolve-to-the-first-csv-row-as-in-mecab">Tied entries resolve to the first CSV row, as in MeCab</a>
 still applies, and the first N-best result is still the 1-best
 segmentation. When the context is carried across <code>、</code> or <code>。</code>, a tie
-between the contexts carried from the previous sentence still goes to the
-one with the lower right context ID (see
+between the words that end the previous sentence resolves the same way, as
+in one lattice over the line: the word that starts later wins (see
 <a href="migration_v6_to_v7.html#the-context-is-carried-across--and-">The context is carried across <code>、</code> and <code>。</code></a>).</p>
 <p>The 1-best segmentation takes 0.6% to 0.9% more instructions with IPADIC,
 IPADIC-NEologd and UniDic, with no measurable change in time, and about 2%
