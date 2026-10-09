@@ -1217,13 +1217,13 @@ dictionaries, since their data is already a static, zero-copy byte slice.
 Requires the <code>mmap</code> cargo feature (enabled by default).</p>
 <h2 id="whitespace-handling"><a class="header" href="#whitespace-handling">Whitespace Handling</a></h2>
 <p>By default, whitespace is skipped in the lattice, as MeCab does: no word starts on a whitespace character, and the word after a run of whitespace connects directly to the word before it, with the connection cost the dictionary was trained with. Skipped whitespace is not output and is left out of token surfaces and offsets; whitespace that belongs to a dictionary entry, inside it (IPADIC-NEologd <code>GeForce GTX</code>, a user entry <code>해운대 해수욕장</code>) or at its end (ko-dic <code>에듀</code> followed by a space), stays in that entry's token, as in MeCab. "Whitespace" is the dictionary's <code>SPACE</code> character category (<code>char.def</code>): U+0020, U+0009, U+000A, U+000B and U+000D for ko-dic, and U+0020, U+0009, U+000A and U+000B for IPADIC, IPADIC-NEologd, UniDic, SudachiDict, CC-CEDICT and Jieba. Those <code>char.def</code> files also map U+00D0 (<code>Ð</code>) to <code>SPACE</code>, a typo for U+000D, but a later <code>0x00C0..0x00FF ALPHA</code> line takes precedence, so <code>Ð</code> is a letter, as in MeCab.</p>
-<p>The default comes from the dictionary's <code>metadata.json</code> (<code>skip_whitespace</code>). SudachiDict sets it to <code>false</code>: Sudachi keeps whitespace in the lattice and outputs it as <code>空白</code> tokens, and SudachiDict's costs are tuned for that, so skipping would, for example, split the entry <code>caramel man</code> into two common nouns. With SudachiDict, whitespace therefore stays in the lattice as a <code>SPACE</code> node by default, though it is still dropped from the output. The other bundled dictionaries leave the setting out, which means skipping, and so does a dictionary built before the setting existed (a SudachiDict built by Lindera 6.x included, until it is rebuilt).</p>
-<p>Call <code>keep_whitespace(true)</code> on a <code>Segmenter</code> to output whitespace tokens. Whitespace then stays in the lattice as <code>SPACE</code> unknown-word nodes:</p>
+<p>The default comes from the dictionary's <code>metadata.json</code> (<code>skip_whitespace</code>). SudachiDict sets it to <code>false</code>: Sudachi keeps whitespace in the lattice and outputs it as <code>空白</code> tokens, and SudachiDict's costs are tuned for that, so skipping would, for example, split the entry <code>caramel man</code> into two common nouns. With SudachiDict, whitespace therefore stays in the lattice by default, as a node of its own (a <code>空白</code> dictionary entry, such as the one for U+0020, or the <code>SPACE</code> unknown word), though it is still dropped from the output. The other bundled dictionaries leave the setting out, which means skipping, and so does a dictionary built before the setting existed (a SudachiDict built by Lindera 6.x included, until it is rebuilt).</p>
+<p>Call <code>keep_whitespace(true)</code> on a <code>Segmenter</code> to output whitespace tokens. Whitespace then also stays in the lattice, as a node of its own (a whitespace dictionary entry, such as IPADIC's or UniDic's for U+3000, or the <code>SPACE</code> unknown word), so the other tokens can differ from those of the default output, which skips whitespace:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 <span class="boring">}</span></code></pre></pre>
-<p>Before v7, Lindera kept whitespace in the lattice even when it dropped it from the output. Dictionaries trained with MeCab never see a connection to or from the <code>SPACE</code> unknown word: in ko-dic its row and column of the connection matrix are all zero, so every space reset the context and a word between spaces was chosen by its word cost alone. ko-dic read <code>전</code> in <code>2년 전 대회</code> as <code>저/NP + ㄴ/JX</code> instead of the noun <code>NNG</code>, and IPADIC, whose <code>SPACE</code> entry shares the context of the full-width space, read <code>が</code> in <code>Google が 新しい</code> as a conjunction. CC-CEDICT and Jieba have no connection costs at all, so their output does not depend on this. <code>skip_whitespace</code> overrides the dictionary's default: <code>skip_whitespace(false)</code> keeps whitespace nodes in the lattice as before, while still dropping whitespace from the output, and <code>skip_whitespace(true)</code> turns skipping on for SudachiDict. In a <code>SegmenterConfig</code> the <code>skip_whitespace</code> key takes <code>true</code> or <code>false</code>, and leaving it out, or <code>null</code>, keeps the dictionary's default; on the CLI, <code>--disable-skip-whitespace</code> turns skipping off:</p>
+<p>Before v7, Lindera kept whitespace in the lattice even when it dropped it from the output, so the words on either side of a space connected to the whitespace node instead of to each other. How much that mattered depends on the dictionary's connection costs for the <code>SPACE</code> unknown word. In ko-dic its row and column of the connection matrix are all zero, so every space reset the context and a word between spaces was chosen by its word cost alone: ko-dic read <code>전</code> in <code>2년 전 대회</code> as <code>저/NP + ㄴ/JX</code> instead of the noun <code>NNG</code>. In IPADIC and UniDic the costs are not zero (IPADIC's <code>SPACE</code> unknown word shares its context with the full-width space entry <code>記号,空白</code>), and IPADIC read <code>が</code> in <code>Google が 新しい</code> as a conjunction. CC-CEDICT and Jieba have no connection costs at all, so their segmentation does not depend on this, although the path costs that N-best search reports do. <code>skip_whitespace</code> overrides the dictionary's default: <code>skip_whitespace(false)</code> keeps whitespace nodes in the lattice as before, while still dropping whitespace from the output, and <code>skip_whitespace(true)</code> turns skipping on for SudachiDict. In a <code>SegmenterConfig</code> the <code>skip_whitespace</code> key takes <code>true</code> or <code>false</code>, and leaving it out, or <code>null</code>, keeps the dictionary's default; on the CLI, <code>--disable-skip-whitespace</code> turns skipping off:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
@@ -1257,7 +1257,7 @@ let rules = SpacePenaltyConfig::new(vec![
 ]);
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Some(rules))?;
 <span class="boring">}</span></code></pre></pre>
-<p>"Whitespace" means a character of the dictionary's <code>SPACE</code> category (<code>char.def</code>), the same set <code>keep_whitespace</code> filters on; a dictionary without that category falls back to Unicode <code>White_Space</code>. The penalty applies in both modes and in N-best search, to system, user and unknown-word entries alike. <code>space_penalty</code> builds a per-word-id lookup once (a few tens of milliseconds for ko-dic), and returns an error when the dictionary schema has neither a <code>part_of_speech_tag</code> nor a <code>part_of_speech</code> field.</p>
+<p>"Whitespace" means a character of the dictionary's <code>SPACE</code> category (<code>char.def</code>), the same set that is skipped in the lattice and that <code>keep_whitespace</code> filters on; a dictionary without that category falls back to Unicode <code>White_Space</code>. The penalty applies in both modes and in N-best search, to system, user and unknown-word entries alike. <code>space_penalty</code> builds a per-word-id lookup once (a few tens of milliseconds for ko-dic), and returns an error when the dictionary schema has neither a <code>part_of_speech_tag</code> nor a <code>part_of_speech</code> field.</p>
 <p>A dictionary can ship its default rules in <code>metadata.json</code> under <code>space_penalty</code>; ko-dic does, with exactly the rules above, and <code>Segmenter::new</code> applies them automatically. <code>space_penalty_from_dictionary()</code> re-enables them after an opt-out and returns an error for a dictionary that ships none. Shipped rules that cannot be applied, because the schema has no part-of-speech field, only log a warning in <code>Segmenter::new</code>:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -1312,7 +1312,7 @@ for line in lines {
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<p>The returned tokens borrow the worker, so they must be consumed before the next call (the usual per-line loop above compiles as-is). <code>set_mode</code> and <code>set_keep_whitespace</code> switch the configuration between calls. <code>segmenter()</code> returns a shared reference to the underlying segmenter; no <code>&amp;mut</code> accessor is provided, since swapping the dictionary out from under the reused lattice would break the dictionary-lattice pairing the worker exists to guarantee.</p>
+<p>The returned tokens borrow the worker, so they must be consumed before the next call (the usual per-line loop above compiles as-is). <code>set_mode</code>, <code>set_keep_whitespace</code>, <code>set_skip_whitespace</code>, <code>set_max_grouping_len</code>, <code>set_unknown_word_ladder</code>, <code>set_space_penalty</code> and <code>set_space_penalty_from_dictionary</code> switch the configuration between calls. <code>segmenter()</code> returns a shared reference to the underlying segmenter; no <code>&amp;mut</code> accessor is provided, since swapping the dictionary out from under the reused lattice would break the dictionary-lattice pairing the worker exists to guarantee.</p>
 <p>A worker also bounds retained memory: one delimiter-free maximum-length sentence grows the lattice to several MB (roughly 18 MB for a 32 KiB ASCII sentence, 6 MB for a 32 KiB CJK one, whose character-indexed lattice has a third of the slots), and a plain <code>Lattice</code> keeps that forever. The worker automatically shrinks its lattice, and releases its scratch buffers, once a window of calls shows the capacity is oversized, and <code>shrink_to(text_len_hint)</code> forces a shrink immediately. <code>reset()</code> discards the internal buffers outright and replaces them with fresh ones; it is intended for recovery paths (e.g. after a panic poisoned a mutex holding the worker) where the buffers may hold an inconsistent intermediate state — the segmenter configuration itself is preserved.</p>
 <p>The worker is permanently bound to the dictionary of the segmenter that created it; there is no way to swap dictionaries under a live worker, which rules out a class of lattice-reuse bugs by construction. For multi-threaded use, create one worker per thread from a shared <code>Segmenter</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h1>
@@ -1530,8 +1530,8 @@ token_filters:
 <tr><td><code>mode</code></td><td>string</td><td><code>"normal"</code></td><td>Segmentation mode: <code>"normal"</code> or <code>"decompose"</code></td></tr>
 <tr><td><code>dictionary</code></td><td>string</td><td><em>(required)</em></td><td>Dictionary URI, e.g. <code>"embedded://ipadic"</code></td></tr>
 <tr><td><code>user_dictionary</code></td><td>string</td><td><em>(none)</em></td><td>Path to a user dictionary</td></tr>
-<tr><td><code>keep_whitespace</code></td><td>bool</td><td><code>false</code></td><td>Emit whitespace tokens and keep whitespace in the lattice, instead of dropping it as MeCab does</td></tr>
-<tr><td><code>skip_whitespace</code></td><td>bool</td><td><em>(the dictionary's: <code>true</code>, <code>false</code> for SudachiDict)</em></td><td>With <code>keep_whitespace</code> false, skip whitespace in the lattice so the words on either side connect directly, as in MeCab. <code>false</code> keeps whitespace as <code>SPACE</code> unknown-word nodes (the behavior before v7), which resets the connection context at every space. Omitted or <code>null</code> keeps the default from the dictionary's <code>metadata.json</code>. See <a href="lindera-analysis/../lindera/segmenter.html#whitespace-handling">Segmenter</a></td></tr>
+<tr><td><code>keep_whitespace</code></td><td>bool</td><td><code>false</code></td><td>Emit whitespace tokens. Whitespace then also stays in the lattice, so the other tokens can differ from those of the default output, which skips whitespace as MeCab does</td></tr>
+<tr><td><code>skip_whitespace</code></td><td>bool</td><td><em>(the dictionary's: <code>true</code>, <code>false</code> for SudachiDict)</em></td><td>With <code>keep_whitespace</code> false, skip whitespace in the lattice so the words on either side connect directly, as in MeCab. <code>false</code> keeps whitespace in the lattice as a node of its own (a whitespace dictionary entry or the <code>SPACE</code> unknown word), as before v7; with ko-dic, whose connection costs for that node are all zero, every space then resets the connection context. Omitted or <code>null</code> keeps the default from the dictionary's <code>metadata.json</code>. See <a href="lindera-analysis/../lindera/segmenter.html#whitespace-handling">Segmenter</a></td></tr>
 <tr><td><code>use_mmap</code></td><td>bool</td><td>on when the <code>mmap</code> feature is compiled in (the default)</td><td>Memory-map the dictionary; only meaningful for filesystem (non-<code>embedded://</code>) dictionaries</td></tr>
 <tr><td><code>max_grouping_len</code></td><td>integer</td><td><em>(unbounded)</em></td><td>Cap on unknown-word grouping, in characters <strong>beyond the first</strong>, matching MeCab's <code>max-grouping-size</code> (MeCab defaults to 24). Applied at each position: a run longer than the cap is not grouped there, the single-character candidate (plus the length ladder and dictionary words) remains, and the remaining tail is grouped again once it fits, so no unknown token exceeds cap+1 characters. Omitting the key, or setting <code>0</code>, leaves grouping unbounded</td></tr>
 <tr><td><code>unknown_word_ladder</code></td><td>bool</td><td><code>true</code></td><td>Also emit the shorter unknown-word candidates up to each category's <code>LENGTH</code> field in <code>char.def</code>, as MeCab and Vibrato do. <code>false</code> leaves them out, as before v6; other changes since then, such as unknown words that start inside a grouped run, still apply. See <a href="lindera-analysis/../lindera/segmenter.html#unknown-word-grouping">Segmenter</a></td></tr>
@@ -1817,7 +1817,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
   }
 }
 </code></pre>
-<p><code>만</code> right after a space is <code>NR</code> under the default left-space penalty, but at the start of the text or right after another numeral ko-dic tags it <code>JX</code> (<code>만 원</code>, <code>십만 원</code>), which stays outside <code>["SN", "NR"]</code>.</p>
+<p>With the default settings, ko-dic tags <code>만</code> in <code>만 원</code> and <code>십만 원</code> as the numeral <code>NR</code>, so <code>십만 원</code> becomes <code>십만/NR 원/NNBC</code>. With whitespace skipping turned off (<code>skip_whitespace: false</code>), the word after <code>만</code> connects to the whitespace node instead, and ko-dic tags <code>만</code> there as the particle <code>JX</code> (<code>만/JX 원/NNG</code>), which stays outside <code>["SN", "NR"]</code>.</p>
 <h3 id="korean_decompound"><a class="header" href="#korean_decompound">korean_decompound</a></h3>
 <p>Splits ko-dic compound, inflected and pre-analyzed tokens into the morphemes their <code>expression</code> field lists, reproducing Lucene nori's <code>DecompoundMode</code>. This is the inverse of <code>korean_compound_word</code>, which merges neighbouring tokens. Lindera's <code>Mode::Decompose</code> applies a length penalty tuned for Japanese kanji and does not read these fields, so <code>무궁화</code> stays whole in every mode without this filter.</p>
 <div class="table-wrapper"><table><thead><tr><th>Input</th><th>Tokens from ko-dic</th><th><code>mode: "discard"</code></th><th><code>mode: "mixed"</code></th></tr></thead><tbody>
@@ -2147,7 +2147,10 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <li><code>tokenize(&amp;mut self, text: &amp;str)</code> — tokenizes <code>text</code> through the full analysis chain, reusing the worker's internal buffers; produces exactly the same tokens as <code>Tokenizer::tokenize</code>.</li>
 <li><code>tokenize_nbest(&amp;mut self, text: &amp;str, n, unique, cost_threshold)</code> — tokenizes <code>text</code> and returns the top-N results with costs, reusing the worker's internal buffers; produces exactly the same results as <code>Tokenizer::tokenize_nbest</code>.</li>
 <li><code>set_mode(&amp;mut self, mode: Mode)</code> — sets the segmentation mode for subsequent calls.</li>
-<li><code>set_keep_whitespace(&amp;mut self, keep: bool)</code> — sets whether whitespace tokens are kept in the output for subsequent calls.</li>
+<li><code>set_keep_whitespace(&amp;mut self, keep: bool)</code> — sets whether whitespace tokens are kept in the output for subsequent calls; kept whitespace also stays in the lattice, so the other tokens can differ.</li>
+<li><code>set_skip_whitespace(&amp;mut self, skip: bool)</code> — sets whether whitespace is skipped in the lattice for subsequent calls when whitespace tokens are not kept (by default the dictionary's setting).</li>
+<li><code>set_max_grouping_len(&amp;mut self, max_grouping_len: Option&lt;usize&gt;)</code>, <code>set_unknown_word_ladder(&amp;mut self, unknown_word_ladder: bool)</code> — set the unknown-word grouping cap and the length ladder for subsequent calls.</li>
+<li><code>set_space_penalty(&amp;mut self, space_penalty: Option&lt;SpacePenaltyConfig&gt;)</code>, <code>set_space_penalty_from_dictionary(&amp;mut self)</code> — set the left-space penalty rules for subsequent calls, or restore the dictionary's.</li>
 <li><code>shrink_to(&amp;mut self, text_len_hint: usize)</code> — immediately shrinks the worker's internal buffers to what an input of <code>text_len_hint</code> bytes needs.</li>
 <li><code>reset(&amp;mut self)</code> — discards all internal buffers, replacing them with fresh ones; intended for recovery paths (e.g. after a panic poisoned a mutex holding the worker), with configuration (dictionary, filters, mode) preserved.</li>
 </ul>
@@ -2296,8 +2299,8 @@ jieba           no        no          -
 </li>
 <li><code>--char-filter</code> / <code>-c</code>: Character filter configuration (JSON)</li>
 <li><code>--token-filter</code> / <code>-t</code>: Token filter configuration (JSON)</li>
-<li><code>--keep-whitespace</code>: Keep whitespace tokens in the output (by default, whitespace is skipped in the lattice and dropped from the output, as MeCab does)</li>
-<li><code>--disable-skip-whitespace</code>: Keep whitespace in the lattice as <code>SPACE</code> unknown-word nodes instead of skipping it, while still dropping it from the output (the behavior before v7). Every space then resets the connection context. Skipping is on by default for every dictionary whose <code>metadata.json</code> does not turn it off (SudachiDict does). No effect with <code>--keep-whitespace</code>. See the <a href="lindera-cli/../lindera/segmenter.html#whitespace-handling">Segmenter</a> documentation</li>
+<li><code>--keep-whitespace</code>: Keep whitespace tokens in the output. Whitespace then also stays in the lattice, so the other tokens can differ from those of the default output, in which whitespace is dropped and, unless the dictionary's <code>metadata.json</code> turns it off (SudachiDict does), skipped in the lattice as MeCab does</li>
+<li><code>--disable-skip-whitespace</code>: Keep whitespace in the lattice as a node of its own (a whitespace dictionary entry or the <code>SPACE</code> unknown word) instead of skipping it, while still dropping it from the output (the behavior before v7). With ko-dic, whose connection costs for that node are all zero, every space then resets the connection context. Skipping is on by default for every dictionary whose <code>metadata.json</code> does not turn it off (SudachiDict does). No effect with <code>--keep-whitespace</code>. See the <a href="lindera-cli/../lindera/segmenter.html#whitespace-handling">Segmenter</a> documentation</li>
 <li><code>--max-grouping-len</code>: Cap on unknown-word grouping, in characters beyond the first (MeCab's <code>max-grouping-size</code>; MeCab defaults to 24). The cap is applied at each position: a same-category run longer than the cap is not grouped there, the single-character candidate (plus the length ladder and dictionary words) remains, and the remaining tail is grouped again once it fits, so no unknown token exceeds cap+1 characters. <code>0</code> or omitted: unbounded. See the <a href="lindera-cli/../lindera/segmenter.html#unknown-word-grouping">Segmenter</a> documentation for an example</li>
 <li><code>--disable-unknown-word-ladder</code>: Disable the MeCab/Vibrato-inspired unknown-word length ladder (<code>char.def</code>'s <code>LENGTH</code> field). Enabled by default. Disabling it leaves out these candidates, as before v6; other changes since then, such as unknown words that start inside a grouped run, still apply. See the <a href="lindera-cli/../lindera/segmenter.html#unknown-word-grouping">Segmenter</a> documentation</li>
 <li><code>--disable-space-penalty</code>: Disable the left-space penalty (mecab-ko's <code>left-space-penalty-factor</code>) that a dictionary shipping rules in its <code>metadata.json</code> applies by default (ko-dic ships mecab-ko-dic's). A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added; disabling it together with <code>--disable-skip-whitespace</code> turns off both changes since v6.0 in how Korean is read around spaces (this penalty and whitespace skipping), but not the other output changes since then, such as the split of punctuation runs like <code>."</code>. See the <a href="lindera-cli/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> documentation</li>
@@ -3295,7 +3298,7 @@ builder.set_dictionary("/path/to/dictionary")
 <pre><code class="language-python">builder.set_user_dictionary("/path/to/user_dictionary")
 </code></pre>
 <h4 id="set_keep_whitespacekeep"><a class="header" href="#set_keep_whitespacekeep"><code>set_keep_whitespace(keep)</code></a></h4>
-<p>Controls whether whitespace tokens appear in the output.</p>
+<p>Controls whether whitespace tokens appear in the output. Kept whitespace also stays in the lattice, so the other tokens can differ from those of the default output, which skips whitespace in the lattice as MeCab does. Whitespace skipping itself has no setter: turn it off with <code>skip_whitespace: false</code> under <code>segmenter</code> in a <a href="lindera-python/../lindera-analysis/configuration.html">configuration file</a> loaded with <code>from_file</code>.</p>
 <pre><code class="language-python">builder.set_keep_whitespace(True)
 </code></pre>
 <h4 id="set_space_penaltyvalue"><a class="header" href="#set_space_penaltyvalue"><code>set_space_penalty(value)</code></a></h4>
@@ -3320,7 +3323,7 @@ builder.set_space_penalty({
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.set_space_penalty(False)</code> to turn it off. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>True</code> fails until the dictionary is rebuilt. See <a href="lindera-python/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>검색 이 잘 된다</code> reads <code>이</code> as the interjection <code>IC</code>; without the penalty, as the subject particle <code>JKS</code>. Call <code>builder.set_space_penalty(False)</code> to turn it off. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>True</code> fails until the dictionary is rebuilt. See <a href="lindera-python/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
 </blockquote>
 <h4 id="append_character_filterkind-argsnone"><a class="header" href="#append_character_filterkind-argsnone"><code>append_character_filter(kind, args=None)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
@@ -4179,7 +4182,7 @@ builder.setDictionary("/path/to/dictionary");
 <pre><code class="language-javascript">builder.setUserDictionary("/path/to/user_dictionary");
 </code></pre>
 <h4 id="setkeepwhitespacekeep"><a class="header" href="#setkeepwhitespacekeep"><code>setKeepWhitespace(keep)</code></a></h4>
-<p>Controls whether whitespace tokens appear in the output.</p>
+<p>Controls whether whitespace tokens appear in the output. Kept whitespace also stays in the lattice, so the other tokens can differ from those of the default output, which skips whitespace in the lattice as MeCab does. Whitespace skipping itself has no setter: turn it off with <code>skip_whitespace: false</code> under <code>segmenter</code> in a <a href="lindera-nodejs/../lindera-analysis/configuration.html">configuration file</a> loaded with <code>fromFile</code>.</p>
 <pre><code class="language-javascript">builder.setKeepWhitespace(true);
 </code></pre>
 <h4 id="setspacepenaltyvalue"><a class="header" href="#setspacepenaltyvalue"><code>setSpacePenalty(value)</code></a></h4>
@@ -4208,7 +4211,7 @@ builder.setSpacePenalty(null);
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Since v6.1.0, ko-dic applies the left-space penalty by default, because its <code>metadata.json</code> ships mecab-ko-dic's rules. This changes the Korean output compared with v6.0 (for example, <code>시</code> in <code>서울 시 에서</code> becomes the noun <code>NNG</code> instead of the ending <code>EP</code>). Call <code>setSpacePenalty(false)</code> to turn it off. For a <code>Tokenizer</code> created directly, pass <code>false</code> as the fourth argument: <code>new Tokenizer(dictionary, "normal", null, false)</code>. A ko-dic downloaded from the v6.0.0 release ships no rules, so with it the penalty stays off and <code>setSpacePenalty(true)</code> makes <code>build()</code> throw. See <a href="lindera-nodejs/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+Since v6.1.0, ko-dic applies the left-space penalty by default, because its <code>metadata.json</code> ships mecab-ko-dic's rules. This changes the Korean output (for example, <code>이</code> in <code>검색 이 잘 된다</code> is the interjection <code>IC</code> with the penalty and the subject particle <code>JKS</code> without it). Call <code>setSpacePenalty(false)</code> to turn it off. For a <code>Tokenizer</code> created directly, pass <code>false</code> as the fourth argument: <code>new Tokenizer(dictionary, "normal", null, false)</code>. A ko-dic downloaded from the v6.0.0 release ships no rules, so with it the penalty stays off and <code>setSpacePenalty(true)</code> makes <code>build()</code> throw. See <a href="lindera-nodejs/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
 </blockquote>
 <h4 id="appendcharacterfilterkind-args"><a class="header" href="#appendcharacterfilterkind-args"><code>appendCharacterFilter(kind, args?)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
@@ -4948,7 +4951,7 @@ builder.set_dictionary('/path/to/dictionary')
 <pre><code class="language-ruby">builder.set_user_dictionary('/path/to/user_dictionary')
 </code></pre>
 <h4 id="set_keep_whitespacekeep-1"><a class="header" href="#set_keep_whitespacekeep-1"><code>set_keep_whitespace(keep)</code></a></h4>
-<p>Controls whether whitespace tokens appear in the output.</p>
+<p>Controls whether whitespace tokens appear in the output. Kept whitespace also stays in the lattice, so the other tokens can differ from those of the default output, which skips whitespace in the lattice as MeCab does. Whitespace skipping itself has no setter: turn it off with <code>skip_whitespace: false</code> under <code>segmenter</code> in a <a href="lindera-ruby/../lindera-analysis/configuration.html">configuration file</a> loaded with <code>TokenizerBuilder.from_file</code>.</p>
 <pre><code class="language-ruby">builder.set_keep_whitespace(true)
 </code></pre>
 <h4 id="set_space_penaltyvalue-1"><a class="header" href="#set_space_penaltyvalue-1"><code>set_space_penalty(value)</code></a></h4>
@@ -4973,7 +4976,7 @@ builder.set_space_penalty({
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.set_space_penalty(false)</code> to turn it off. A tokenizer created directly with <code>Lindera::Tokenizer.new(dictionary, ...)</code> always uses the default, so use <code>TokenizerBuilder</code> to turn it off. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-ruby/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>검색 이 잘 된다</code> reads <code>이</code> as the interjection <code>IC</code>; without the penalty, as the subject particle <code>JKS</code>. Call <code>builder.set_space_penalty(false)</code> to turn it off. A tokenizer created directly with <code>Lindera::Tokenizer.new(dictionary, ...)</code> always uses the default, so use <code>TokenizerBuilder</code> to turn it off. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-ruby/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
 </blockquote>
 <h4 id="append_character_filterkind-args"><a class="header" href="#append_character_filterkind-args"><code>append_character_filter(kind, args)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline. The <code>args</code> parameter is a hash with string keys.</p>
@@ -5807,7 +5810,7 @@ $builder-&gt;setDictionary('/path/to/dictionary');
 $builder-&gt;setUserDictionary('/path/to/user_dictionary.csv');
 </code></pre>
 <h4 id="setkeepwhitespacekeep-1"><a class="header" href="#setkeepwhitespacekeep-1"><code>setKeepWhitespace($keep)</code></a></h4>
-<p>Controls whether whitespace tokens appear in the output.</p>
+<p>Controls whether whitespace tokens appear in the output. Kept whitespace also stays in the lattice, so the other tokens can differ from those of the default output, which skips whitespace in the lattice as MeCab does. Whitespace skipping itself has no setter: turn it off with <code>skip_whitespace: false</code> under <code>segmenter</code> in a <a href="lindera-php/../lindera-analysis/configuration.html">configuration file</a> loaded with <code>fromFile</code>.</p>
 <pre><code class="language-php">&lt;?php
 
 $builder-&gt;setKeepWhitespace(true);
@@ -5841,7 +5844,7 @@ $builder-&gt;setSpacePenalty(null);
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>$builder-&gt;setSpacePenalty(false)</code> to turn it off; for a tokenizer created with <a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer(...)</code></a>, pass <code>space_penalty: false</code>. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-php/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>검색 이 잘 된다</code> reads <code>이</code> as the interjection <code>IC</code>; without the penalty, as the subject particle <code>JKS</code>. Call <code>$builder-&gt;setSpacePenalty(false)</code> to turn it off; for a tokenizer created with <a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer(...)</code></a>, pass <code>space_penalty: false</code>. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-php/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
 </blockquote>
 <h4 id="appendcharacterfilterkind-args-1"><a class="header" href="#appendcharacterfilterkind-args-1"><code>appendCharacterFilter($kind, $args)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
@@ -6794,7 +6797,7 @@ builder.setDictionaryInstance(dictionary);
 <li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <h4 id="setkeepwhitespacekeep-2"><a class="header" href="#setkeepwhitespacekeep-2"><code>setKeepWhitespace(keep)</code></a></h4>
-<p>Sets whether whitespace tokens are preserved in the output.</p>
+<p>Sets whether whitespace tokens are preserved in the output. Kept whitespace also stays in the lattice, so the other tokens can differ from those of the default output, which skips whitespace in the lattice as MeCab does. The WASM binding cannot turn whitespace skipping itself off: it has no setter for it and no configuration-file entry point, so the dictionary's default applies (skipping, except with SudachiDict).</p>
 <ul>
 <li><strong>Parameters</strong>: <code>keep</code> (boolean) -- <code>true</code> to keep whitespace tokens</li>
 <li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
@@ -6828,7 +6831,7 @@ builder.setSpacePenalty({
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>서울 시 에서</code> now reads <code>시</code> as the noun <code>NNG</code> rather than the ending <code>EP</code>. Call <code>builder.setSpacePenalty(false)</code> to turn it off. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-wasm/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>검색 이 잘 된다</code> reads <code>이</code> as the interjection <code>IC</code>; without the penalty, as the subject particle <code>JKS</code>. Call <code>builder.setSpacePenalty(false)</code> to turn it off. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-wasm/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
 </blockquote>
 <h4 id="appendcharacterfiltername-args"><a class="header" href="#appendcharacterfiltername-args"><code>appendCharacterFilter(name, args)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
@@ -8396,7 +8399,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 </code></pre>
 <pre><code class="language-shell">echo "검색 이 잘 된다" | lindera tokenize --dict embedded://ko-dic
 </code></pre>
-<p><code>이</code> after the space is read as the interjection <code>IC</code> (as mecab-ko does) instead of the subject particle <code>JKS</code>; with <code>--disable-space-penalty</code> it reads as <code>JKS</code> again. See the Segmenter documentation for the semantics.</p>
+<p><code>이</code> after the space is read as the interjection <code>IC</code> (as mecab-ko does) instead of the subject particle <code>JKS</code>; with <code>--disable-space-penalty</code> it reads as <code>JKS</code>. See the Segmenter documentation for the semantics.</p>
 <h2 id="whitespace"><a class="header" href="#whitespace">Whitespace</a></h2>
 <p>mecab-ko skips whitespace when it builds the lattice, so a word after a space connects to the word before it. The <code>SPACE</code> unknown-word entry (<code>unk.def</code>: <code>SPACE,1798,3563,996</code>) is therefore never connected to anything during training, and its row and column of <code>matrix.def</code> are all zero. Lindera skips whitespace the same way by default. With <code>--disable-skip-whitespace</code> (<code>Segmenter::skip_whitespace(false)</code>, <code>"skip_whitespace": false</code>) whitespace stays in the lattice as that entry, which resets the context at every space: <code>2년 전 대회</code> then reads <code>전</code> as <code>저/NP + ㄴ/JX</code> instead of the noun <code>NNG</code>, and <code>하고 있다</code> reads <code>있</code> as a main verb instead of the auxiliary <code>VX</code>.</p>
 <h2 id="user-dictionary-format-csv-4"><a class="header" href="#user-dictionary-format-csv-4">User dictionary format (CSV)</a></h2>
@@ -9597,7 +9600,8 @@ the new <code>analysis</code> feature, on by default — the analysis chain of
 <code>LINDERA_DICTIONARIES_PATH</code> fallback, as announced in v5.0.0, corrects
 the IPADIC schema, which had the <code>conjugation_type</code> and <code>conjugation_form</code>
 names swapped, keeps dictionary entries whose surface is whitespace or
-starts or ends with it, skips whitespace in the lattice as MeCab does,
+starts or ends with it, skips whitespace in the lattice as MeCab does
+(SudachiDict excepted, as Sudachi keeps it),
 resolves overlapping <code>char.def</code> lines as MeCab does, carries the context
 across <code>、</code> and <code>。</code> within a line as MeCab does, returns N-best results
 that each cover the whole input, lets unknown words start at every position
@@ -9619,7 +9623,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> is removed</strong></td><td>Anyone still setting the deprecated build-cache variable</td><td>Set <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>; the old name is now ignored</td></tr>
 <tr><td><strong>IPADIC and IPADIC-NEologd: <code>conjugation_type</code> and <code>conjugation_form</code> now name the right columns</strong></td><td>Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (<code>Token::get</code>, <code>Token::as_value</code>, <code>lindera tokenize -o json</code>, binding schemas)</td><td>Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 <tr><td><strong>Dictionary entries with whitespace are kept</strong></td><td>Text with U+3000 (IPADIC, IPADIC-NEologd, UniDic), text with spaces (SudachiDict), and a few entries that ended with whitespace</td><td>Expect U+3000 to be <code>記号,空白</code> / <code>空白</code> and SudachiDict to segment spaced text much closer to Sudachi; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
-<tr><td><strong>Whitespace is skipped in the lattice: the words on either side of a space connect directly, as in MeCab</strong></td><td>Anyone who segments text containing whitespace with <code>keep_whitespace</code> false (the default), most visibly with ko-dic</td><td>Expect MeCab's segmentation for such text; <code>skip_whitespace(false)</code> (<code>"skip_whitespace": false</code>, <code>--disable-skip-whitespace</code>) restores the v6 handling of whitespace, but not the other output changes in this guide</td></tr>
+<tr><td><strong>Whitespace is skipped in the lattice: the words on either side of a space connect directly, as in MeCab</strong></td><td>Anyone who segments text containing whitespace with <code>keep_whitespace</code> false (the default), most visibly with ko-dic; not with SudachiDict, which keeps whitespace in the lattice as Sudachi does</td><td>Expect MeCab's segmentation for such text; <code>skip_whitespace(false)</code> (<code>"skip_whitespace": false</code>, <code>--disable-skip-whitespace</code>) restores the v6 handling of whitespace, but not the other output changes in this guide</td></tr>
 <tr><td><strong>Overlapping <code>char.def</code> lines: the last line decides</strong></td><td>Text with <code>Ð</code> (U+00D0; every dictionary except ko-dic), <code>々</code> (U+3005) or <code>〇</code> (U+3007); <code>lindera train</code> users whose <code>char.def</code> has single-code-point or overlapping lines</td><td>Expect <code>Ð</code> to stay in the output as a letter; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 <tr><td><strong>The context is carried across <code>、</code> and <code>。</code> within a line, as in MeCab</strong></td><td>Anyone who segments Japanese text with <code>、</code> or <code>。</code> inside a line</td><td>Expect some words after <code>、</code> or <code>。</code> to be read differently, mostly as MeCab reads them, and the N-best costs of such lines to change; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>N-best: every result covers the whole input</strong></td><td>Anyone who asks for N-best results (<code>segment_nbest</code>, <code>tokenize_nbest</code>, <code>lindera tokenize -N</code>, the bindings' N-best methods) for input with more than one sentence</td><td>Expect the cheapest segmentations of the whole input from the second result on; a cost threshold now applies to the whole input</td></tr>
@@ -9643,7 +9647,8 @@ IPADIC-NEologd, the values reported under the names <code>conjugation_type</code
 <code>conjugation_form</code> trade places. The dictionaries now contain the entries
 whose surface is or starts or ends with whitespace, which changes the
 segmentation of text that contains such whitespace. Text that contains
-whitespace is segmented as MeCab segments it. <code>Ð</code>, <code>々</code> and <code>〇</code> get the
+whitespace is segmented as MeCab segments it, except with SudachiDict, which
+keeps whitespace in the lattice as Sudachi does. <code>Ð</code>, <code>々</code> and <code>〇</code> get the
 character categories that MeCab gives them, which changes the segmentation
 of text that contains them. Within a line, the words after <code>、</code> and <code>。</code>
 are read in the context of the words before them, which changes the
@@ -9921,9 +9926,12 @@ download the 7.0.0 release asset.</p>
 <p>With <code>keep_whitespace</code> false (the default), v7.0.0 skips whitespace in the
 Viterbi lattice, as MeCab does: the word after a space connects directly to
 the word before it. v6 dropped whitespace from the output but kept it in the
-lattice as the <code>SPACE</code> unknown word. Dictionaries trained with MeCab never
-see a connection to or from that entry (in ko-dic its connection costs are
-all zero), so every space cut the context between the words around it.</p>
+lattice as the <code>SPACE</code> unknown word, so the words around a space connected to
+that node instead of to each other. How much that changed depends on the
+dictionary's connection costs for the node: in ko-dic they are all zero, so
+every space cut the context between the words around it; in IPADIC and
+UniDic they are not zero, and the node's costs stood in for the connection
+between the words.</p>
 <p>The output changes only for sentences that contain whitespace. That includes
 a sentence that ends with the <code>\n</code> or <code>\t</code> it was split at, such as a line
 that does not end with <code>。</code>: its last word now connects to the end of the
@@ -9943,7 +9951,9 @@ is added to its <code>metadata.json</code>.</p>
 that belongs to a dictionary entry, inside it or at its end, stays in that
 entry's token, as in MeCab (see the previous section). Skipping does not
 change the segmentation of text without whitespace. <code>keep_whitespace(true)</code>
-keeps whitespace in the lattice and its output is unchanged.</p>
+keeps whitespace in the lattice, so its output is the same as in v6; beyond
+the whitespace tokens, it can differ from the default v7 output, which skips
+whitespace.</p>
 <p>To get the v6 handling of whitespace back, turn skipping off; whitespace is
 still dropped from the output. This does not undo the other output changes in
 this guide, such as
@@ -9963,7 +9973,10 @@ segmenter:
 </code></pre>
 <pre><code class="language-sh">lindera tokenize --disable-skip-whitespace
 </code></pre>
-<p>The language bindings take the setting through the configuration file.</p>
+<p>The language bindings have no setter for it. The Python, Node.js, Ruby and
+PHP bindings take it only through a configuration file loaded with
+<code>from_file</code> / <code>fromFile</code>; the WASM binding cannot change it and uses the
+dictionary's default.</p>
 <h2 id="overlapping-chardef-lines-are-resolved-as-in-mecab"><a class="header" href="#overlapping-chardef-lines-are-resolved-as-in-mecab">Overlapping char.def lines are resolved as in MeCab</a></h2>
 <p>A dictionary's <code>char.def</code> can list the same code point on several lines. Up
 to v6.2.0, the dictionary builder gave such a code point the categories of
@@ -10363,6 +10376,7 @@ language bindings change only in their <code>Metadata</code> class (see
 <tr><td><code>Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, normalize_details, schema, userdic_schema)</code></td><td><code>Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, schema, userdic_schema)</code></td></tr>
 <tr><td><code>Metadata::normalize_details</code></td><td>Removed</td></tr>
 <tr><td><code>PrefixDictionaryBuilderOptions::normalize_details(value)</code></td><td>Removed</td></tr>
+<tr><td>—</td><td>New public field <code>Metadata::skip_whitespace: Option&lt;bool&gt;</code> (also <code>lindera_binding::CoreMetadata::skip_whitespace</code>)</td></tr>
 </tbody></table>
 </div>
 <p>Each token is now <code>(start, end, word_id)</code> instead of <code>(start, word_id)</code>,
@@ -10428,6 +10442,14 @@ no longer has the method, because the builder keeps every entry as written
 <code>Metadata</code> still reads a <code>metadata.json</code> that contains the key, and ignores
 it. For binding authors, <code>lindera_binding::CoreMetadata</code> loses the field the
 same way, and <code>CoreMetadata::new</code> takes 10 arguments instead of 11.</p>
+<p><code>Metadata</code> gains the public field <code>skip_whitespace: Option&lt;bool&gt;</code>, the
+dictionary's default for whitespace skipping (see
+<a href="migration_v6_to_v7.html#whitespace-is-skipped-in-the-lattice">Whitespace is skipped in the lattice</a>),
+and so does <code>lindera_binding::CoreMetadata</code>. Neither struct is
+<code>#[non_exhaustive]</code>, so a struct literal that lists every field without
+<code>..</code> no longer compiles: add <code>skip_whitespace: None</code>, or end the literal
+with <code>..Default::default()</code>. <code>Metadata::new</code> and <code>CoreMetadata::new</code> set it
+to <code>None</code>, which skips whitespace.</p>
 <h2 id="who-does-not-need-to-act-1"><a class="header" href="#who-does-not-need-to-act-1">Who does not need to act</a></h2>
 <ul>
 <li><strong>Users of the language bindings and the CLI</strong>: the Python, Node.js, Ruby,
@@ -10490,6 +10512,8 @@ best path.</li>
 <li>If you call <code>Metadata::new</code>, delete its ninth argument,
 <code>normalize_details</code>, and stop using the <code>Metadata::normalize_details</code>
 field and <code>PrefixDictionaryBuilderOptions::normalize_details</code>.</li>
+<li>If you build <code>Metadata</code> with a struct literal that lists every field, add
+<code>skip_whitespace: None</code> or end it with <code>..Default::default()</code>.</li>
 </ul>
 <p>Binding authors:</p>
 <ul>
@@ -10498,6 +10522,8 @@ field and <code>PrefixDictionaryBuilderOptions::normalize_details</code>.</li>
 <li>Delete the <code>normalize_details</code> argument of <code>CoreMetadata::new</code>, which now
 takes 10 arguments, and stop using the <code>CoreMetadata::normalize_details</code>
 field.</li>
+<li>If you build <code>CoreMetadata</code> with a struct literal that lists every field,
+add <code>skip_whitespace: None</code> or end it with <code>..Default::default()</code>.</li>
 </ul>
 <p>Build environments:</p>
 <ul>
@@ -10522,7 +10548,8 @@ to get the whitespace entries.</li>
 </ul>
 <p>Everyone who segments text that contains whitespace:</p>
 <ul>
-<li>Expect MeCab's segmentation for such text (most visible with ko-dic). If
+<li>Expect MeCab's segmentation for such text (most visible with ko-dic; not
+with SudachiDict, which keeps whitespace in the lattice as Sudachi does). If
 you need the v6 handling of whitespace, set <code>skip_whitespace(false)</code>,
 <code>"skip_whitespace": false</code>, or <code>--disable-skip-whitespace</code>; the other
 output changes in this guide still apply.</li>

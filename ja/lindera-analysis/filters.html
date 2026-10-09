@@ -422,7 +422,7 @@
   }
 }
 </code></pre>
-<p>空白の直後の<code>만</code>は既定の左側空白ペナルティにより<code>NR</code>になりますが、文頭や他の数詞の直後ではko-dicが<code>JX</code>と判定するため（<code>만 원</code>、<code>십만 원</code>）、<code>["SN", "NR"]</code>では結合されません。</p>
+<p>既定の設定では、ko-dicは<code>만 원</code>や<code>십만 원</code>の<code>만</code>を数詞<code>NR</code>と判定するため、<code>십만 원</code>は<code>십만/NR 원/NNBC</code>になります。空白の読み飛ばしを無効にする（<code>skip_whitespace: false</code>）と、<code>만</code>の後ろの語は空白のノードに接続するため、ko-dicはそこでの<code>만</code>を助詞<code>JX</code>と判定し（<code>만/JX 원/NNG</code>）、<code>["SN", "NR"]</code>では結合されません。</p>
 <h3 id="korean_decompound"><a class="header" href="#korean_decompound">korean_decompound</a></h3>
 <p>ko-dicの複合語・活用形・事前解析済み（<code>Preanalysis</code>）トークンを、<code>expression</code>フィールドが示す形態素に分割します。Lucene noriの<code>DecompoundMode</code>と同じ動作で、隣接トークンを結合する<code>korean_compound_word</code>の逆操作にあたります。Linderaの<code>Mode::Decompose</code>は日本語の漢字向けに調整された長さペナルティであり、これらのフィールドを読まないため、このフィルタなしでは<code>무궁화</code>はどのモードでも分割されません。</p>
 <div class="table-wrapper"><table><thead><tr><th>入力</th><th>ko-dicのトークン</th><th><code>mode: "discard"</code></th><th><code>mode: "mixed"</code></th></tr></thead><tbody>

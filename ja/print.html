@@ -1216,13 +1216,13 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 （デフォルトで有効）が必要です。</p>
 <h2 id="空白文字の扱い"><a class="header" href="#空白文字の扱い">空白文字の扱い</a></h2>
 <p>デフォルトでは、MeCab と同様に空白をラティス上で読み飛ばします。空白文字から始まる語はなく、空白の後ろの語は空白の前の語に直接接続し、辞書が学習した連接コストが使われます。読み飛ばした空白は出力に現れず、トークンの表層形とオフセットにも含まれません。ただし、見出し語の一部である空白は、語の途中（IPADIC-NEologd の <code>GeForce GTX</code>、ユーザー辞書の <code>해운대 해수욕장</code>）でも末尾（ko-dic の、半角スペースの付いた <code>에듀</code>）でも、MeCab と同じくその語のトークンに残ります。「空白」とは辞書の <code>SPACE</code> 文字カテゴリ（<code>char.def</code>）のことで、ko-dic では U+0020、U+0009、U+000A、U+000B、U+000D、IPADIC・IPADIC-NEologd・UniDic・SudachiDict・CC-CEDICT・Jieba では U+0020、U+0009、U+000A、U+000B です。これらの <code>char.def</code> は U+00D0（<code>Ð</code>）も <code>SPACE</code> に割り当てています（U+000D のタイポ）が、後続の <code>0x00C0..0x00FF ALPHA</code> 行が優先されるため、MeCab と同じく <code>Ð</code> は英字として扱われます。</p>
-<p>デフォルトは辞書の <code>metadata.json</code>（<code>skip_whitespace</code>）で決まります。SudachiDict はこれを <code>false</code> にしています。Sudachi は空白をラティスに残して <code>空白</code> トークンとして出力し、SudachiDict のコストもそれに合わせて調整されているため、読み飛ばすと、たとえば <code>caramel man</code> という項目が 2 つの普通名詞に分割されてしまいます。そのため SudachiDict では、デフォルトで空白が <code>SPACE</code> ノードとしてラティスに残ります（出力からは除外されます）。他の同梱辞書はこの設定を持たず、その場合は読み飛ばします。設定が導入される前にビルドされた辞書（再ビルドするまでの Lindera 6.x 製の SudachiDict を含む）も同様です。</p>
-<p><code>Segmenter</code> に対して <code>keep_whitespace(true)</code> を呼び出すと、空白のトークンを出力します。このとき空白は <code>SPACE</code> の未知語ノードとしてラティスに残ります：</p>
+<p>デフォルトは辞書の <code>metadata.json</code>（<code>skip_whitespace</code>）で決まります。SudachiDict はこれを <code>false</code> にしています。Sudachi は空白をラティスに残して <code>空白</code> トークンとして出力し、SudachiDict のコストもそれに合わせて調整されているため、読み飛ばすと、たとえば <code>caramel man</code> という項目が 2 つの普通名詞に分割されてしまいます。そのため SudachiDict では、デフォルトで空白が独立したノード（U+0020 の項目のような <code>空白</code> の見出し語か、<code>SPACE</code> の未知語）としてラティスに残ります（出力からは除外されます）。他の同梱辞書はこの設定を持たず、その場合は読み飛ばします。設定が導入される前にビルドされた辞書（再ビルドするまでの Lindera 6.x 製の SudachiDict を含む）も同様です。</p>
+<p><code>Segmenter</code> に対して <code>keep_whitespace(true)</code> を呼び出すと、空白のトークンを出力します。このとき空白はラティスにも独立したノード（IPADIC や UniDic の U+3000 の項目のような空白の見出し語か、<code>SPACE</code> の未知語）として残るため、他のトークンも、空白を読み飛ばすデフォルトの出力と変わることがあります：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 <span class="boring">}</span></code></pre></pre>
-<p>v7 より前の Lindera は、空白を出力から除外する場合でもラティスにはノードとして残していました。MeCab で学習した辞書では <code>SPACE</code> の未知語との連接は学習時に一度も現れません。ko-dic では連接表のその行と列がすべて 0 なので、空白のたびに文脈が途切れ、空白に挟まれた語は単語コストだけで選ばれていました。ko-dic は <code>2년 전 대회</code> の <code>전</code> を名詞 <code>NNG</code> ではなく <code>저/NP + ㄴ/JX</code> と解析し、<code>SPACE</code> の項目が全角空白と文脈 ID を共有する IPADIC は <code>Google が 新しい</code> の <code>が</code> を接続詞と解析していました。CC-CEDICT と Jieba には連接コスト自体がないため、出力はこの違いに左右されません。<code>skip_whitespace</code> は辞書のデフォルトを上書きします。<code>skip_whitespace(false)</code> は従来どおり空白ノードをラティスに残し（出力からは除外）、<code>skip_whitespace(true)</code> は SudachiDict でも読み飛ばしを有効にします。<code>SegmenterConfig</code> の <code>skip_whitespace</code> キーには <code>true</code> または <code>false</code> を指定し、省略するか <code>null</code> にすると辞書のデフォルトのままになります。CLI では <code>--disable-skip-whitespace</code> で読み飛ばしを無効にします：</p>
+<p>v7 より前の Lindera は、空白を出力から除外する場合でもラティスにはノードとして残していました。そのため空白の前後の語は、互いにではなく空白のノードに接続していました。その影響の大きさは、辞書の <code>SPACE</code> の未知語の連接コストによります。ko-dic では連接表のその行と列がすべて 0 なので、空白のたびに文脈が途切れ、空白に挟まれた語は単語コストだけで選ばれていました。ko-dic は <code>2년 전 대회</code> の <code>전</code> を名詞 <code>NNG</code> ではなく <code>저/NP + ㄴ/JX</code> と解析していました。IPADIC と UniDic ではこの連接コストは 0 ではなく（IPADIC の <code>SPACE</code> の未知語は全角空白の項目 <code>記号,空白</code> と文脈 ID を共有します）、IPADIC は <code>Google が 新しい</code> の <code>が</code> を接続詞と解析していました。CC-CEDICT と Jieba には連接コスト自体がないため、分割はこの違いに左右されませんが、N-best が返す経路のコストは変わります。<code>skip_whitespace</code> は辞書のデフォルトを上書きします。<code>skip_whitespace(false)</code> は従来どおり空白ノードをラティスに残し（出力からは除外）、<code>skip_whitespace(true)</code> は SudachiDict でも読み飛ばしを有効にします。<code>SegmenterConfig</code> の <code>skip_whitespace</code> キーには <code>true</code> または <code>false</code> を指定し、省略するか <code>null</code> にすると辞書のデフォルトのままになります。CLI では <code>--disable-skip-whitespace</code> で読み飛ばしを無効にします：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
@@ -1262,7 +1262,7 @@ let rules = SpacePenaltyConfig::new(vec![
 ]);
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Some(rules))?;
 <span class="boring">}</span></code></pre></pre>
-<p>「空白」とは辞書の <code>SPACE</code> カテゴリ（<code>char.def</code>）に属する文字のことで、<code>keep_whitespace</code> が除外する文字集合と同じです。<code>SPACE</code> カテゴリを持たない辞書では Unicode の <code>White_Space</code> にフォールバックします。ペナルティは両モードと N-best 探索で適用され、システム辞書・ユーザー辞書・未知語のいずれのエントリにも効きます。<code>space_penalty</code> は単語 ID ごとの参照表を一度だけ構築し（ko-dic で数十ミリ秒）、辞書スキーマに <code>part_of_speech_tag</code> も <code>part_of_speech</code> もない場合はエラーを返します。</p>
+<p>「空白」とは辞書の <code>SPACE</code> カテゴリ（<code>char.def</code>）に属する文字のことで、ラティス上で読み飛ばす文字集合、<code>keep_whitespace</code> が除外する文字集合と同じです。<code>SPACE</code> カテゴリを持たない辞書では Unicode の <code>White_Space</code> にフォールバックします。ペナルティは両モードと N-best 探索で適用され、システム辞書・ユーザー辞書・未知語のいずれのエントリにも効きます。<code>space_penalty</code> は単語 ID ごとの参照表を一度だけ構築し（ko-dic で数十ミリ秒）、辞書スキーマに <code>part_of_speech_tag</code> も <code>part_of_speech</code> もない場合はエラーを返します。</p>
 <p>辞書は <code>metadata.json</code> の <code>space_penalty</code> にデフォルトのルールを同梱できます。ko-dic は上記とまったく同じルールを同梱しており、<code>Segmenter::new</code> がそれを自動的に適用します。<code>space_penalty_from_dictionary()</code> はオフにした後に再び有効化するためのもので、ルールを同梱しない辞書ではエラーを返します。同梱ルールを適用できない辞書（スキーマに品詞列が無い辞書）では、<code>Segmenter::new</code> は警告を出してオフのままにします:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -1317,7 +1317,7 @@ for line in lines {
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<p>返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。<code>set_mode</code> と <code>set_keep_whitespace</code> で呼び出しごとに設定を切り替えられます。<code>segmenter()</code> は内部の Segmenter への共有参照を返します。<code>&amp;mut</code> でのアクセサは意図的に提供されていません。再利用中のラティスの下で辞書を差し替えてしまうと、この worker が保証する辞書とラティスの対応関係が壊れてしまうためです。</p>
+<p>返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。<code>set_mode</code>・<code>set_keep_whitespace</code>・<code>set_skip_whitespace</code>・<code>set_max_grouping_len</code>・<code>set_unknown_word_ladder</code>・<code>set_space_penalty</code>・<code>set_space_penalty_from_dictionary</code> で呼び出しごとに設定を切り替えられます。<code>segmenter()</code> は内部の Segmenter への共有参照を返します。<code>&amp;mut</code> でのアクセサは意図的に提供されていません。再利用中のラティスの下で辞書を差し替えてしまうと、この worker が保証する辞書とラティスの対応関係が壊れてしまうためです。</p>
 <p>Worker は保持メモリも制限します。区切り文字のない最大長の文を 1 回処理するとラティスは数 MB まで成長し（32 KiB の ASCII 文で約 18 MB、32 KiB の CJK 文では文字索引ラティスのスロット数が 1/3 のため約 6 MB）、素の <code>Lattice</code> はそれを保持し続けます。Worker は一定回数の呼び出し窓で容量が過大と判明した場合に、自動でラティスを縮小してスクラッチバッファを解放し、<code>shrink_to(text_len_hint)</code> で即時に縮小することもできます。<code>reset()</code> は内部バッファを破棄して新しいものに置き換えます。これは、例えばパニックによって worker を保持する Mutex がポイズニングされた場合など、バッファが不整合な中間状態を保持している可能性がある回復経路のために用意されています。Segmenter の設定（mode や空白の扱いなど）自体は保持されます。</p>
 <p>Worker は作成元セグメンターの辞書に恒久的に紐付けられ、稼働中の worker の辞書を差し替える手段はありません。これにより、ラティス再利用に起因するバグの一群を構造的に排除しています。マルチスレッドで使う場合は、共有の <code>Segmenter</code> からスレッドごとに worker を 1 つ作成してください。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="エラーハンドリング"><a class="header" href="#エラーハンドリング">エラーハンドリング</a></h1>
@@ -1533,8 +1533,8 @@ token_filters:
 <tr><td><code>mode</code></td><td>string</td><td><code>"normal"</code></td><td>分割モード。<code>"normal"</code> または <code>"decompose"</code></td></tr>
 <tr><td><code>dictionary</code></td><td>string</td><td><em>(必須)</em></td><td>辞書 URI。例: <code>"embedded://ipadic"</code></td></tr>
 <tr><td><code>user_dictionary</code></td><td>string</td><td><em>(なし)</em></td><td>ユーザー辞書のパス</td></tr>
-<tr><td><code>keep_whitespace</code></td><td>bool</td><td><code>false</code></td><td>空白を MeCab のように除去せず、ラティスに残して空白トークンを出力する</td></tr>
-<tr><td><code>skip_whitespace</code></td><td>bool</td><td><em>(辞書の設定: <code>true</code>、SudachiDict は <code>false</code>)</em></td><td><code>keep_whitespace</code> が false のとき、MeCab と同様に空白をラティス上で読み飛ばし、前後の語を直接接続する。<code>false</code> で空白を <code>SPACE</code> の未知語ノードとして残す（v7 より前の動作）。この場合、空白のたびに連接の文脈が途切れる。省略または <code>null</code> で辞書の <code>metadata.json</code> のデフォルトを使う。<a href="lindera-analysis/../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> を参照</td></tr>
+<tr><td><code>keep_whitespace</code></td><td>bool</td><td><code>false</code></td><td>空白トークンを出力する。このとき空白はラティスにも残るため、他のトークンも、MeCab と同様に空白を読み飛ばすデフォルトの出力と変わることがある</td></tr>
+<tr><td><code>skip_whitespace</code></td><td>bool</td><td><em>(辞書の設定: <code>true</code>、SudachiDict は <code>false</code>)</em></td><td><code>keep_whitespace</code> が false のとき、MeCab と同様に空白をラティス上で読み飛ばし、前後の語を直接接続する。<code>false</code> で空白を独立したノード（空白の見出し語か <code>SPACE</code> の未知語）としてラティスに残す（v7 より前の動作）。そのノードの連接コストがすべて 0 の ko-dic では、空白のたびに連接の文脈が途切れる。省略または <code>null</code> で辞書の <code>metadata.json</code> のデフォルトを使う。<a href="lindera-analysis/../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> を参照</td></tr>
 <tr><td><code>use_mmap</code></td><td>bool</td><td><code>mmap</code> feature が有効なとき on（デフォルト）</td><td>辞書をメモリマップする。ファイルシステム辞書（<code>embedded://</code> ではない辞書）にのみ意味がある</td></tr>
 <tr><td><code>max_grouping_len</code></td><td>integer</td><td><em>(無制限)</em></td><td>未知語グルーピングの上限（<strong>先頭の 1 文字を超えた</strong>文字数）。MeCab の <code>max-grouping-size</code> に相当する（MeCab のデフォルトは 24）。上限は各位置で判定され、上限を超えるランはその位置ではグルーピングされず、1 文字候補（および候補ラダーと辞書語）が残る。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になる。キーを省略するか <code>0</code> を指定すると無制限になる</td></tr>
 <tr><td><code>unknown_word_ladder</code></td><td>bool</td><td><code>true</code></td><td>MeCab や Vibrato と同様に、<code>char.def</code> の各カテゴリの <code>LENGTH</code> フィールドまでの短い未知語候補も生成する。<code>false</code> を指定すると v6 より前と同じくこれらの候補を作らない。ただし、グルーピングした未知語の内側から始まる未知語など、その後の変更による出力の違いは残る。<a href="lindera-analysis/../lindera/segmenter.html#%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%AE%E3%82%B0%E3%83%AB%E3%83%BC%E3%83%94%E3%83%B3%E3%82%B0">Segmenter</a> を参照</td></tr>
@@ -1819,7 +1819,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
   }
 }
 </code></pre>
-<p>空白の直後の<code>만</code>は既定の左側空白ペナルティにより<code>NR</code>になりますが、文頭や他の数詞の直後ではko-dicが<code>JX</code>と判定するため（<code>만 원</code>、<code>십만 원</code>）、<code>["SN", "NR"]</code>では結合されません。</p>
+<p>既定の設定では、ko-dicは<code>만 원</code>や<code>십만 원</code>の<code>만</code>を数詞<code>NR</code>と判定するため、<code>십만 원</code>は<code>십만/NR 원/NNBC</code>になります。空白の読み飛ばしを無効にする（<code>skip_whitespace: false</code>）と、<code>만</code>の後ろの語は空白のノードに接続するため、ko-dicはそこでの<code>만</code>を助詞<code>JX</code>と判定し（<code>만/JX 원/NNG</code>）、<code>["SN", "NR"]</code>では結合されません。</p>
 <h3 id="korean_decompound"><a class="header" href="#korean_decompound">korean_decompound</a></h3>
 <p>ko-dicの複合語・活用形・事前解析済み（<code>Preanalysis</code>）トークンを、<code>expression</code>フィールドが示す形態素に分割します。Lucene noriの<code>DecompoundMode</code>と同じ動作で、隣接トークンを結合する<code>korean_compound_word</code>の逆操作にあたります。Linderaの<code>Mode::Decompose</code>は日本語の漢字向けに調整された長さペナルティであり、これらのフィールドを読まないため、このフィルタなしでは<code>무궁화</code>はどのモードでも分割されません。</p>
 <div class="table-wrapper"><table><thead><tr><th>入力</th><th>ko-dicのトークン</th><th><code>mode: "discard"</code></th><th><code>mode: "mixed"</code></th></tr></thead><tbody>
@@ -2149,7 +2149,10 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <li><code>tokenize(&amp;mut self, text: &amp;str)</code> — ワーカーの内部バッファを再利用しながら、解析チェーン全体を通して<code>text</code>をトークナイズします。同じ入力・設定であれば<code>Tokenizer::tokenize</code>とまったく同じトークンを返します。</li>
 <li><code>tokenize_nbest(&amp;mut self, text: &amp;str, n, unique, cost_threshold)</code> — ワーカーの内部バッファを再利用しながら、コスト付きの上位N件の結果をトークナイズして返します。<code>Tokenizer::tokenize_nbest</code>とまったく同じ結果を返します。</li>
 <li><code>set_mode(&amp;mut self, mode: Mode)</code> — 以降の呼び出しで使用するセグメンテーションモードを設定します。</li>
-<li><code>set_keep_whitespace(&amp;mut self, keep: bool)</code> — 以降の呼び出しで空白トークンを出力に残すかどうかを設定します。</li>
+<li><code>set_keep_whitespace(&amp;mut self, keep: bool)</code> — 以降の呼び出しで空白トークンを出力に残すかどうかを設定します。残した空白はラティスにも残るため、他のトークンも変わることがあります。</li>
+<li><code>set_skip_whitespace(&amp;mut self, skip: bool)</code> — 空白トークンを残さないとき、以降の呼び出しで空白をラティス上で読み飛ばすかどうかを設定します（デフォルトは辞書の設定）。</li>
+<li><code>set_max_grouping_len(&amp;mut self, max_grouping_len: Option&lt;usize&gt;)</code>・<code>set_unknown_word_ladder(&amp;mut self, unknown_word_ladder: bool)</code> — 以降の呼び出しで使う未知語グルーピングの上限と候補ラダーを設定します。</li>
+<li><code>set_space_penalty(&amp;mut self, space_penalty: Option&lt;SpacePenaltyConfig&gt;)</code>・<code>set_space_penalty_from_dictionary(&amp;mut self)</code> — 以降の呼び出しで使う左側空白ペナルティのルールを設定するか、辞書のルールに戻します。</li>
 <li><code>shrink_to(&amp;mut self, text_len_hint: usize)</code> — ワーカーの内部バッファを、<code>text_len_hint</code>バイトの入力に必要なサイズまで直ちに縮小します。</li>
 <li><code>reset(&amp;mut self)</code> — すべての内部バッファを破棄し、新しいバッファに置き換えます。（例えばワーカーを保持する<code>Mutex</code>がパニックでpoisonedになった場合の）リカバリ用途を想定しており、設定（辞書・フィルタ・モード）は保持されます。</li>
 </ul>
@@ -2298,8 +2301,8 @@ jieba           no        no          -
 </li>
 <li><code>--char-filter</code> / <code>-c</code>: 文字フィルタ設定 (JSON)</li>
 <li><code>--token-filter</code> / <code>-t</code>: トークンフィルタ設定 (JSON)</li>
-<li><code>--keep-whitespace</code>: 空白文字のトークンを出力に含める（デフォルトでは MeCab と同様に、空白はラティス上で読み飛ばされ、出力から除去されます）</li>
-<li><code>--disable-skip-whitespace</code>: 空白を読み飛ばさず、<code>SPACE</code> の未知語ノードとしてラティスに残す（出力からは引き続き除去する。v7 より前の動作）。空白のたびに連接の文脈が途切れる。読み飛ばしは、<code>metadata.json</code> で無効にしていない辞書（SudachiDict は無効）ではデフォルトで有効。<code>--keep-whitespace</code> と併用した場合は効果がない。<a href="lindera-cli/../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> のドキュメントを参照</li>
+<li><code>--keep-whitespace</code>: 空白文字のトークンを出力に含める。このとき空白はラティスにも残るため、他のトークンもデフォルトの出力と変わることがある（デフォルトでは空白は出力から除去され、辞書の <code>metadata.json</code> で無効にしていない限り（SudachiDict は無効）、MeCab と同様にラティス上で読み飛ばされる）</li>
+<li><code>--disable-skip-whitespace</code>: 空白を読み飛ばさず、独立したノード（空白の見出し語か <code>SPACE</code> の未知語）としてラティスに残す（出力からは引き続き除去する。v7 より前の動作）。そのノードの連接コストがすべて 0 の ko-dic では、空白のたびに連接の文脈が途切れる。読み飛ばしは、<code>metadata.json</code> で無効にしていない辞書（SudachiDict は無効）ではデフォルトで有効。<code>--keep-whitespace</code> と併用した場合は効果がない。<a href="lindera-cli/../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> のドキュメントを参照</li>
 <li><code>--max-grouping-len</code>: 未知語グルーピングの上限（先頭を除いた文字数。MeCab の <code>max-grouping-size</code> に相当し、MeCab のデフォルトは 24）。上限は各位置で判定され、同じ文字種のランが上限を超える位置ではグルーピング候補を出さず、1 文字候補（および候補ラダーと辞書語）が残ります。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になります。<code>0</code> または省略: 無制限。例は <a href="lindera-cli/../lindera/segmenter.html">Segmenter</a> のドキュメントを参照</li>
 <li><code>--disable-unknown-word-ladder</code>: MeCab/Vibrato 由来の未知語候補ラダー（<code>char.def</code> の <code>LENGTH</code> フィールド）を無効化する。デフォルトで有効。無効にすると、v6 より前と同じくこれらの候補を作らない。ただし、グルーピングした未知語の内側から始まる未知語など、その後の変更による出力の違いは残る。<a href="lindera-cli/../lindera/segmenter.html#%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%AE%E3%82%B0%E3%83%AB%E3%83%BC%E3%83%94%E3%83%B3%E3%82%B0">Segmenter</a> のドキュメントを参照</li>
 <li><code>--disable-space-penalty</code>: 辞書の <code>metadata.json</code> に同梱されたルールでデフォルト有効になる左側空白ペナルティ（mecab-ko の <code>left-space-penalty-factor</code>。ko-dic は mecab-ko-dic のルールを同梱）を無効にする。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する機能で、<code>--disable-skip-whitespace</code> と併せて無効にすると、空白まわりの韓国語の解析について v6.0 以降に入った 2 つの変更（このペナルティと空白の読み飛ばし）がどちらもオフになる。ただし、<code>."</code> のような記号の連続が分かれるなど、それ以外の出力の変化は残る。<a href="lindera-cli/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> のドキュメントを参照</li>
@@ -3298,7 +3301,7 @@ builder.set_dictionary("/path/to/dictionary")
 <pre><code class="language-python">builder.set_user_dictionary("/path/to/user_dictionary")
 </code></pre>
 <h4 id="set_keep_whitespacekeep"><a class="header" href="#set_keep_whitespacekeep"><code>set_keep_whitespace(keep)</code></a></h4>
-<p>出力に空白トークンを含めるかどうかを制御します。</p>
+<p>出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白の読み飛ばし自体を変える setter はありません。<code>from_file</code> で読み込む<a href="lindera-python/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter</code> に <code>skip_whitespace: false</code> を書くと無効にできます。</p>
 <pre><code class="language-python">builder.set_keep_whitespace(True)
 </code></pre>
 <h4 id="set_space_penaltyvalue"><a class="header" href="#set_space_penaltyvalue"><code>set_space_penalty(value)</code></a></h4>
@@ -3323,7 +3326,7 @@ builder.set_space_penalty({
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>서울 시 에서</code> の <code>시</code> は、語尾 <code>EP</code> ではなく名詞 <code>NNG</code> と解析されるようになりました。オフにするには <code>builder.set_space_penalty(False)</code> を呼び出してください。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>True</code> はエラーになります。詳しくは <a href="lindera-python/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>검색 이 잘 된다</code> の <code>이</code> は感動詞 <code>IC</code> と解析されます（ペナルティがなければ主格助詞 <code>JKS</code>）。オフにするには <code>builder.set_space_penalty(False)</code> を呼び出してください。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>True</code> はエラーになります。詳しくは <a href="lindera-python/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
 </blockquote>
 <h4 id="append_character_filterkind-argsnone"><a class="header" href="#append_character_filterkind-argsnone"><code>append_character_filter(kind, args=None)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
@@ -4183,7 +4186,7 @@ builder.setDictionary("/path/to/dictionary");
 <pre><code class="language-javascript">builder.setUserDictionary("/path/to/user_dictionary");
 </code></pre>
 <h4 id="setkeepwhitespacekeep"><a class="header" href="#setkeepwhitespacekeep"><code>setKeepWhitespace(keep)</code></a></h4>
-<p>出力に空白トークンを含めるかどうかを制御します。</p>
+<p>出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白の読み飛ばし自体を変える setter はありません。<code>fromFile</code> で読み込む<a href="lindera-nodejs/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter</code> に <code>skip_whitespace: false</code> を書くと無効にできます。</p>
 <pre><code class="language-javascript">builder.setKeepWhitespace(true);
 </code></pre>
 <h4 id="setspacepenaltyvalue"><a class="header" href="#setspacepenaltyvalue"><code>setSpacePenalty(value)</code></a></h4>
@@ -4212,7 +4215,7 @@ builder.setSpacePenalty(null);
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適用されます。ko-dic の <code>metadata.json</code> が mecab-ko-dic のルールを同梱しているためです。これにより韓国語の出力が v6.0 から変わります（例: <code>서울 시 에서</code> の <code>시</code> が語尾 <code>EP</code> ではなく名詞 <code>NNG</code> になる）。オフにするには <code>setSpacePenalty(false)</code> を呼び出してください。直接作成する <code>Tokenizer</code> では、4 番目の引数に <code>false</code> を渡します（<code>new Tokenizer(dictionary, "normal", null, false)</code>）。v6.0.0 リリースからダウンロードした ko-dic はルールを同梱していないため、その辞書ではペナルティはオフのままで、<code>setSpacePenalty(true)</code> を指定すると <code>build()</code> が例外を投げます。詳細は <a href="lindera-nodejs/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適用されます。ko-dic の <code>metadata.json</code> が mecab-ko-dic のルールを同梱しているためです。これにより韓国語の出力が変わります（例: <code>검색 이 잘 된다</code> の <code>이</code> は、ペナルティがあると感動詞 <code>IC</code>、なければ主格助詞 <code>JKS</code> になる）。オフにするには <code>setSpacePenalty(false)</code> を呼び出してください。直接作成する <code>Tokenizer</code> では、4 番目の引数に <code>false</code> を渡します（<code>new Tokenizer(dictionary, "normal", null, false)</code>）。v6.0.0 リリースからダウンロードした ko-dic はルールを同梱していないため、その辞書ではペナルティはオフのままで、<code>setSpacePenalty(true)</code> を指定すると <code>build()</code> が例外を投げます。詳細は <a href="lindera-nodejs/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
 </blockquote>
 <h4 id="appendcharacterfilterkind-args"><a class="header" href="#appendcharacterfilterkind-args"><code>appendCharacterFilter(kind, args?)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
@@ -4947,7 +4950,7 @@ builder.set_dictionary('/path/to/dictionary')
 <pre><code class="language-ruby">builder.set_user_dictionary('/path/to/user_dictionary')
 </code></pre>
 <h4 id="set_keep_whitespacekeep-1"><a class="header" href="#set_keep_whitespacekeep-1"><code>set_keep_whitespace(keep)</code></a></h4>
-<p>出力に空白トークンを含めるかどうかを制御します。</p>
+<p>出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白の読み飛ばし自体を変える setter はありません。<code>TokenizerBuilder.from_file</code> で読み込む<a href="lindera-ruby/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter</code> に <code>skip_whitespace: false</code> を書くと無効にできます。</p>
 <pre><code class="language-ruby">builder.set_keep_whitespace(true)
 </code></pre>
 <h4 id="set_space_penaltyvalue-1"><a class="header" href="#set_space_penaltyvalue-1"><code>set_space_penalty(value)</code></a></h4>
@@ -4972,7 +4975,7 @@ builder.set_space_penalty({
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>서울 시 에서</code> の <code>시</code> は、語尾 <code>EP</code> ではなく名詞 <code>NNG</code> と解析されるようになりました。オフにするには <code>builder.set_space_penalty(false)</code> を呼び出してください。<code>Lindera::Tokenizer.new(dictionary, ...)</code> で直接作成したトークナイザーは常にデフォルトを使うため、オフにするには <code>TokenizerBuilder</code> を使ってください。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="lindera-ruby/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>검색 이 잘 된다</code> の <code>이</code> は感動詞 <code>IC</code> と解析されます（ペナルティがなければ主格助詞 <code>JKS</code>）。オフにするには <code>builder.set_space_penalty(false)</code> を呼び出してください。<code>Lindera::Tokenizer.new(dictionary, ...)</code> で直接作成したトークナイザーは常にデフォルトを使うため、オフにするには <code>TokenizerBuilder</code> を使ってください。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="lindera-ruby/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
 </blockquote>
 <h4 id="append_character_filterkind-args"><a class="header" href="#append_character_filterkind-args"><code>append_character_filter(kind, args)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
@@ -5798,7 +5801,7 @@ $builder-&gt;setDictionary('/path/to/dictionary');
 <pre><code class="language-php">$builder-&gt;setUserDictionary('/path/to/user_dictionary.csv');
 </code></pre>
 <h4 id="setkeepwhitespacekeep-1"><a class="header" href="#setkeepwhitespacekeep-1"><code>setKeepWhitespace($keep)</code></a></h4>
-<p>出力に空白トークンを含めるかどうかを制御します。</p>
+<p>出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白の読み飛ばし自体を変える setter はありません。<code>fromFile</code> で読み込む<a href="lindera-php/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter</code> に <code>skip_whitespace: false</code> を書くと無効にできます。</p>
 <pre><code class="language-php">$builder-&gt;setKeepWhitespace(true);
 </code></pre>
 <h4 id="setspacepenaltyvalue-1"><a class="header" href="#setspacepenaltyvalue-1"><code>setSpacePenalty($value)</code></a></h4>
@@ -5828,7 +5831,7 @@ $builder-&gt;setSpacePenalty(null);
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>서울 시 에서</code> の <code>시</code> は、語尾 <code>EP</code> ではなく名詞 <code>NNG</code> と解析されるようになりました。オフにするには <code>$builder-&gt;setSpacePenalty(false)</code> を呼び出してください。<a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer(...)</code></a> で作成するトークナイザーでは <code>space_penalty: false</code> を渡します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="lindera-php/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>검색 이 잘 된다</code> の <code>이</code> は感動詞 <code>IC</code> と解析されます（ペナルティがなければ主格助詞 <code>JKS</code>）。オフにするには <code>$builder-&gt;setSpacePenalty(false)</code> を呼び出してください。<a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer(...)</code></a> で作成するトークナイザーでは <code>space_penalty: false</code> を渡します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="lindera-php/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
 </blockquote>
 <h4 id="appendcharacterfilterkind-args-1"><a class="header" href="#appendcharacterfilterkind-args-1"><code>appendCharacterFilter($kind, $args)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
@@ -6683,7 +6686,7 @@ builder.setDictionaryInstance(dictionary);
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <h4 id="setkeepwhitespacekeep-2"><a class="header" href="#setkeepwhitespacekeep-2"><code>setKeepWhitespace(keep)</code></a></h4>
-<p>出力に空白トークンを保持するかどうかを設定します。</p>
+<p>出力に空白トークンを保持するかどうかを設定します。保持した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。WASM バインディングには、空白の読み飛ばし自体を無効にする方法はありません（setter も設定ファイルの読み込みもないため、辞書のデフォルトが使われます。SudachiDict 以外では読み飛ばします）。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>keep</code> (boolean) -- <code>true</code> で空白トークンを保持</li>
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
@@ -6717,7 +6720,7 @@ builder.setSpacePenalty({
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>서울 시 에서</code> の <code>시</code> は、語尾 <code>EP</code> ではなく名詞 <code>NNG</code> と解析されるようになりました。オフにするには <code>builder.setSpacePenalty(false)</code> を呼び出してください。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="lindera-wasm/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>검색 이 잘 된다</code> の <code>이</code> は感動詞 <code>IC</code> と解析されます（ペナルティがなければ主格助詞 <code>JKS</code>）。オフにするには <code>builder.setSpacePenalty(false)</code> を呼び出してください。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="lindera-wasm/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
 </blockquote>
 <h4 id="appendcharacterfiltername-args"><a class="header" href="#appendcharacterfiltername-args"><code>appendCharacterFilter(name, args)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
@@ -8282,7 +8285,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 </code></pre>
 <pre><code class="language-shell">echo "검색 이 잘 된다" | lindera tokenize --dict embedded://ko-dic
 </code></pre>
-<p>空白の後ろの <code>이</code> は主格助詞 <code>JKS</code> ではなく（mecab-ko と同様に）感動詞 <code>IC</code> と解析されます。<code>--disable-space-penalty</code> を付けると再び <code>JKS</code> になります。意味論については Segmenter のドキュメントを参照してください。</p>
+<p>空白の後ろの <code>이</code> は主格助詞 <code>JKS</code> ではなく（mecab-ko と同様に）感動詞 <code>IC</code> と解析されます。<code>--disable-space-penalty</code> を付けると <code>JKS</code> になります。意味論については Segmenter のドキュメントを参照してください。</p>
 <h2 id="空白"><a class="header" href="#空白">空白</a></h2>
 <p>mecab-ko はラティスを構築する際に空白を読み飛ばすため、空白の後ろの語は空白の前の語に接続します。そのため <code>SPACE</code> の未知語項目（<code>unk.def</code>: <code>SPACE,1798,3563,996</code>）は学習時にどの語とも接続されず、<code>matrix.def</code> のその行と列はすべて 0 です。Lindera もデフォルトで同じように空白を読み飛ばします。<code>--disable-skip-whitespace</code>（<code>Segmenter::skip_whitespace(false)</code>、<code>"skip_whitespace": false</code>）を指定すると、空白はこの項目としてラティスに残り、空白のたびに文脈が途切れます。その場合、<code>2년 전 대회</code> の <code>전</code> は名詞 <code>NNG</code> ではなく <code>저/NP + ㄴ/JX</code>、<code>하고 있다</code> の <code>있</code> は補助用言 <code>VX</code> ではなく本動詞と解析されます。</p>
 <h2 id="ユーザー辞書フォーマット-csv-4"><a class="header" href="#ユーザー辞書フォーマット-csv-4">ユーザー辞書フォーマット (CSV)</a></h2>
@@ -9477,8 +9480,9 @@ TypeScript 利用者は型名 <code>JsTokenData</code> を <code>Token</code> �
 <code>LINDERA_DICTIONARIES_PATH</code> のフォールバックを削除し、IPADIC のスキーマで
 <code>conjugation_type</code> と <code>conjugation_form</code> の名前が逆になっていた誤りを
 修正し、表層形が空白だけの見出し語や先頭・末尾が空白の見出し語を保持し、
-MeCab と同様に空白をラティス上で読み飛ばし、<code>char.def</code> の重複した行を MeCab と
-同じく解決し、MeCab と同じく行の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぎ、
+MeCab と同様に空白をラティス上で読み飛ばし（Sudachi と同じく空白を残す SudachiDict
+を除く）、<code>char.def</code> の重複した行を MeCab と同じく解決し、MeCab と同じく行の中では
+<code>、</code>・<code>。</code> をまたいで文脈を引き継ぎ、
 N-best の各結果が入力全体を覆うようにし、MeCab と同じくどの位置からも未知語が
 始まるようにし、辞書の見出し語のダッシュとチルダを書かれたとおりに保持して、
 それを書き換えていた設定 <code>normalize_details</code> を削除し、MeCab と同じく同点の
@@ -9497,7 +9501,7 @@ MeCab と同じく最後の語が後から始まる方を選ぶようにし、<c
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> の削除</strong></td><td>非推奨のビルドキャッシュ変数をまだ設定しているユーザー</td><td><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を設定する。旧名は無視される</td></tr>
 <tr><td><strong>IPADIC・IPADIC-NEologd の <code>conjugation_type</code> と <code>conjugation_form</code> が正しい列を指すように修正</strong></td><td>IPADIC・IPADIC-NEologd でこの 2 フィールドを名前で読むユーザー（<code>Token::get</code>・<code>Token::as_value</code>・<code>lindera tokenize -o json</code>・バインディングのスキーマ）</td><td>2 つの値が入れ替わることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 <tr><td><strong>空白を含む見出し語を保持</strong></td><td>U+3000 を含むテキスト（IPADIC・IPADIC-NEologd・UniDic）、空白を含むテキスト（SudachiDict）、末尾が空白の一部の語</td><td>U+3000 が <code>記号,空白</code>・<code>空白</code> になり、SudachiDict の分割が Sudachi にずっと近くなることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
-<tr><td><strong>空白をラティス上で読み飛ばし、MeCab と同様に空白の前後の語を直接接続する</strong></td><td><code>keep_whitespace</code> が false（デフォルト）で空白を含むテキストを分割するユーザー。ko-dic で特に顕著</td><td>そのようなテキストは MeCab と同じ分割になることを前提にする。<code>skip_whitespace(false)</code>（<code>"skip_whitespace": false</code>、<code>--disable-skip-whitespace</code>）で空白の扱いを v6 に戻せる（このガイドの他の出力の変化は戻らない）</td></tr>
+<tr><td><strong>空白をラティス上で読み飛ばし、MeCab と同様に空白の前後の語を直接接続する</strong></td><td><code>keep_whitespace</code> が false（デフォルト）で空白を含むテキストを分割するユーザー。ko-dic で特に顕著。Sudachi と同じく空白をラティスに残す SudachiDict は対象外</td><td>そのようなテキストは MeCab と同じ分割になることを前提にする。<code>skip_whitespace(false)</code>（<code>"skip_whitespace": false</code>、<code>--disable-skip-whitespace</code>）で空白の扱いを v6 に戻せる（このガイドの他の出力の変化は戻らない）</td></tr>
 <tr><td><strong><code>char.def</code> の重複した行は最後の行が決める</strong></td><td><code>Ð</code>（U+00D0、ko-dic 以外のすべての辞書）・<code>々</code>（U+3005）・<code>〇</code>（U+3007）を含むテキスト、単一コードポイントの行や重複した行を持つ <code>char.def</code> で <code>lindera train</code> を使うユーザー</td><td><code>Ð</code> が文字として出力に残ることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 <tr><td><strong>MeCab と同じく、行の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぐ</strong></td><td>行の中に <code>、</code> や <code>。</code> を含む日本語のテキストを分割するユーザー</td><td><code>、</code> や <code>。</code> の直後の語の解析が一部変わり（多くは MeCab と同じ解析になる）、そうした行の N-best のコストが変わることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>N-best: 各結果が入力全体を覆う</strong></td><td>複数の文を含む入力で N-best（<code>segment_nbest</code>・<code>tokenize_nbest</code>・<code>lindera tokenize -N</code>・バインディングの N-best メソッド）を使うユーザー</td><td>2 件目以降が入力全体のコストの小さい分割になることを前提にする。コストの閾値は入力全体に対して適用される</td></tr>
@@ -9518,7 +9522,8 @@ MeCab と同じく最後の語が後から始まる方を選ぶようにし、<c
 後述します。IPADIC・IPADIC-NEologd では、<code>conjugation_type</code> と
 <code>conjugation_form</code> という名前で返る値が入れ替わります。表層形が空白だけの
 見出し語や先頭・末尾が空白の見出し語が辞書に入るため、そうした空白を含む
-テキストの分割が変わります。空白を含むテキストは MeCab と同じように分割されます。
+テキストの分割が変わります。空白を含むテキストは MeCab と同じように分割されます（Sudachi と同じく空白を
+ラティスに残す SudachiDict を除く）。
 <code>Ð</code>・<code>々</code>・<code>〇</code> が MeCab と同じ文字カテゴリになるため、これらを含むテキストの分割が
 変わります。行の中では <code>、</code>・<code>。</code> の直後の語が前の語の文脈を引き継いで解析されるため、
 そうしたテキストの一部で分割が変わり、<code>、</code>・<code>。</code> を含む行の N-best のコストは
@@ -9783,9 +9788,11 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <p><code>keep_whitespace</code> が false（デフォルト）のとき、v7.0.0 は MeCab と同様に空白を
 Viterbi ラティス上で読み飛ばします。空白の後ろの語は空白の前の語に直接
 接続します。v6 は空白を出力から除外していましたが、ラティスには <code>SPACE</code> の
-未知語として残していました。MeCab で学習した辞書ではこの項目との連接は
-学習時に一度も現れないため（ko-dic ではその連接コストがすべて 0）、空白の
-たびに前後の語の文脈が途切れていました。</p>
+未知語として残していたため、空白の前後の語は互いにではなくそのノードに接続して
+いました。その影響の大きさは、辞書がそのノードに与える連接コストによります。
+ko-dic ではすべて 0 なので、空白のたびに前後の語の文脈が途切れていました。
+IPADIC と UniDic では 0 ではなく、語どうしの連接の代わりにそのノードのコストが
+使われていました。</p>
 <p>出力が変わるのは空白を含む文だけです。分割の区切りになった <code>\n</code> や <code>\t</code> で
 終わる文（<code>。</code> で終わらない行など）もこれに含まれ、その文の最後の語は文末に
 直接接続するようになります。</p>
@@ -9802,7 +9809,9 @@ Viterbi ラティス上で読み飛ばします。空白の後ろの語は空白
 <p>トークンの表層形とオフセットには読み飛ばした空白が含まれません。ただし、見出し語の
 一部である空白は、語の途中にあっても末尾にあっても、MeCab と同じくその語のトークンに
 残ります（前の節を参照）。読み飛ばしは空白を含まないテキストの分割を変えません。
-<code>keep_whitespace(true)</code> では空白がラティスに残り、出力は変わりません。</p>
+<code>keep_whitespace(true)</code> では空白がラティスに残るため、出力は v6 と同じです。
+ただし、空白トークン以外のトークンも、空白を読み飛ばす v7 のデフォルトの出力と
+変わることがあります。</p>
 <p>空白の扱いを v6 に戻すには、読み飛ばしを無効にします。空白は引き続き出力から
 除外されます。ただし、<a href="migration_v6_to_v7.html#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E3%81%A9%E3%81%AE%E4%BD%8D%E7%BD%AE%E3%81%8B%E3%82%89%E3%82%82%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%8C%E5%A7%8B%E3%81%BE%E3%82%8B">MeCab と同じく、どの位置からも未知語が始まる</a>
 など、このガイドの他の出力の変化は戻りません。設定で <code>skip_whitespace</code> を省略するか
@@ -9820,7 +9829,9 @@ segmenter:
 </code></pre>
 <pre><code class="language-sh">lindera tokenize --disable-skip-whitespace
 </code></pre>
-<p>言語バインディングでは設定ファイルで指定します。</p>
+<p>言語バインディングには、この設定の setter はありません。Python・Node.js・Ruby・
+PHP のバインディングでは、<code>from_file</code> / <code>fromFile</code> で読み込む設定ファイルでだけ
+指定できます。WASM のバインディングでは変更できず、辞書のデフォルトが使われます。</p>
 <h2 id="chardef-の重複した行を-mecab-と同じく解決する"><a class="header" href="#chardef-の重複した行を-mecab-と同じく解決する"><code>char.def</code> の重複した行を MeCab と同じく解決する</a></h2>
 <p>辞書の <code>char.def</code> では、同じコードポイントを複数の行に書くことができます。v6.2.0
 までは、辞書ビルダーがそのコードポイントに、覆うすべての行のカテゴリを与えていました。
@@ -10175,6 +10186,7 @@ v6 の動作に戻す設定はありません。</p>
 <tr><td><code>Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, normalize_details, schema, userdic_schema)</code></td><td><code>Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, schema, userdic_schema)</code></td></tr>
 <tr><td><code>Metadata::normalize_details</code></td><td>削除</td></tr>
 <tr><td><code>PrefixDictionaryBuilderOptions::normalize_details(value)</code></td><td>削除</td></tr>
+<tr><td>—</td><td>公開フィールド <code>Metadata::skip_whitespace: Option&lt;bool&gt;</code> を追加（<code>lindera_binding::CoreMetadata::skip_whitespace</code> も）</td></tr>
 </tbody></table>
 </div>
 <p>各トークンは <code>(start, word_id)</code> ではなく <code>(start, end, word_id)</code> になりました。
@@ -10235,6 +10247,13 @@ BOS です。</li>
 ました。<code>Metadata</code> は、このキーを含む <code>metadata.json</code> も読み込み、キーを無視します。
 バインディングの作者向けの <code>lindera_binding::CoreMetadata</code> からも同じくフィールドが
 なくなり、<code>CoreMetadata::new</code> の引数は 11 個から 10 個になります。</p>
+<p><code>Metadata</code> には、空白の読み飛ばしの辞書のデフォルトを表す公開フィールド
+<code>skip_whitespace: Option&lt;bool&gt;</code> が加わりました（<a href="migration_v6_to_v7.html#%E7%A9%BA%E7%99%BD%E3%82%92%E3%83%A9%E3%83%86%E3%82%A3%E3%82%B9%E4%B8%8A%E3%81%A7%E8%AA%AD%E3%81%BF%E9%A3%9B%E3%81%B0%E3%81%99">空白をラティス上で読み飛ばす</a>
+を参照）。<code>lindera_binding::CoreMetadata</code> も同じです。どちらの構造体も
+<code>#[non_exhaustive]</code> ではないため、すべてのフィールドを <code>..</code> なしで並べた構造体
+リテラルはコンパイルできなくなります。<code>skip_whitespace: None</code> を加えるか、
+リテラルの最後を <code>..Default::default()</code> にしてください。<code>Metadata::new</code> と
+<code>CoreMetadata::new</code> はこれを <code>None</code>（読み飛ばす）にします。</p>
 <h2 id="対応が不要なケース-1"><a class="header" href="#対応が不要なケース-1">対応が不要なケース</a></h2>
 <ul>
 <li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の
@@ -10287,6 +10306,8 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <li><code>Metadata::new</code> を呼び出している場合は、9 番目の引数 <code>normalize_details</code> を
 削除し、<code>Metadata::normalize_details</code> フィールドと
 <code>PrefixDictionaryBuilderOptions::normalize_details</code> を使わないようにする。</li>
+<li>すべてのフィールドを並べた構造体リテラルで <code>Metadata</code> を作っている場合は、
+<code>skip_whitespace: None</code> を加えるか、最後を <code>..Default::default()</code> にする。</li>
 </ul>
 <p>バインディングの作者:</p>
 <ul>
@@ -10294,6 +10315,8 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <code>lindera_binding_core::</code> を <code>lindera_binding::</code> に置き換える。</li>
 <li><code>CoreMetadata::new</code> から引数 <code>normalize_details</code> を削除し（引数は 10 個になる）、
 <code>CoreMetadata::normalize_details</code> フィールドを使わないようにする。</li>
+<li>すべてのフィールドを並べた構造体リテラルで <code>CoreMetadata</code> を作っている場合は、
+<code>skip_whitespace: None</code> を加えるか、最後を <code>..Default::default()</code> にする。</li>
 </ul>
 <p>ビルド環境:</p>
 <ul>
@@ -10319,7 +10342,7 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <p>空白を含むテキストを分割するすべてのユーザー:</p>
 <ul>
 <li>そのようなテキストは MeCab と同じ分割になることを前提にする（ko-dic で特に
-顕著）。空白の扱いを v6 に戻したい場合は <code>skip_whitespace(false)</code>、
+顕著。Sudachi と同じく空白をラティスに残す SudachiDict は対象外）。空白の扱いを v6 に戻したい場合は <code>skip_whitespace(false)</code>、
 <code>"skip_whitespace": false</code>、<code>--disable-skip-whitespace</code> を指定する。このガイドの
 他の出力の変化は戻らない。</li>
 <li>末尾が半角スペースの見出し語（IPADIC-NEologd・ko-dic・SudachiDict）のトークンは、

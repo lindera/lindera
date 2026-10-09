@@ -186,7 +186,8 @@ the new <code>analysis</code> feature, on by default — the analysis chain of
 <code>LINDERA_DICTIONARIES_PATH</code> fallback, as announced in v5.0.0, corrects
 the IPADIC schema, which had the <code>conjugation_type</code> and <code>conjugation_form</code>
 names swapped, keeps dictionary entries whose surface is whitespace or
-starts or ends with it, skips whitespace in the lattice as MeCab does,
+starts or ends with it, skips whitespace in the lattice as MeCab does
+(SudachiDict excepted, as Sudachi keeps it),
 resolves overlapping <code>char.def</code> lines as MeCab does, carries the context
 across <code>、</code> and <code>。</code> within a line as MeCab does, returns N-best results
 that each cover the whole input, lets unknown words start at every position
@@ -208,7 +209,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> is removed</strong></td><td>Anyone still setting the deprecated build-cache variable</td><td>Set <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>; the old name is now ignored</td></tr>
 <tr><td><strong>IPADIC and IPADIC-NEologd: <code>conjugation_type</code> and <code>conjugation_form</code> now name the right columns</strong></td><td>Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (<code>Token::get</code>, <code>Token::as_value</code>, <code>lindera tokenize -o json</code>, binding schemas)</td><td>Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 <tr><td><strong>Dictionary entries with whitespace are kept</strong></td><td>Text with U+3000 (IPADIC, IPADIC-NEologd, UniDic), text with spaces (SudachiDict), and a few entries that ended with whitespace</td><td>Expect U+3000 to be <code>記号,空白</code> / <code>空白</code> and SudachiDict to segment spaced text much closer to Sudachi; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
-<tr><td><strong>Whitespace is skipped in the lattice: the words on either side of a space connect directly, as in MeCab</strong></td><td>Anyone who segments text containing whitespace with <code>keep_whitespace</code> false (the default), most visibly with ko-dic</td><td>Expect MeCab's segmentation for such text; <code>skip_whitespace(false)</code> (<code>"skip_whitespace": false</code>, <code>--disable-skip-whitespace</code>) restores the v6 handling of whitespace, but not the other output changes in this guide</td></tr>
+<tr><td><strong>Whitespace is skipped in the lattice: the words on either side of a space connect directly, as in MeCab</strong></td><td>Anyone who segments text containing whitespace with <code>keep_whitespace</code> false (the default), most visibly with ko-dic; not with SudachiDict, which keeps whitespace in the lattice as Sudachi does</td><td>Expect MeCab's segmentation for such text; <code>skip_whitespace(false)</code> (<code>"skip_whitespace": false</code>, <code>--disable-skip-whitespace</code>) restores the v6 handling of whitespace, but not the other output changes in this guide</td></tr>
 <tr><td><strong>Overlapping <code>char.def</code> lines: the last line decides</strong></td><td>Text with <code>Ð</code> (U+00D0; every dictionary except ko-dic), <code>々</code> (U+3005) or <code>〇</code> (U+3007); <code>lindera train</code> users whose <code>char.def</code> has single-code-point or overlapping lines</td><td>Expect <code>Ð</code> to stay in the output as a letter; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 <tr><td><strong>The context is carried across <code>、</code> and <code>。</code> within a line, as in MeCab</strong></td><td>Anyone who segments Japanese text with <code>、</code> or <code>。</code> inside a line</td><td>Expect some words after <code>、</code> or <code>。</code> to be read differently, mostly as MeCab reads them, and the N-best costs of such lines to change; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>N-best: every result covers the whole input</strong></td><td>Anyone who asks for N-best results (<code>segment_nbest</code>, <code>tokenize_nbest</code>, <code>lindera tokenize -N</code>, the bindings' N-best methods) for input with more than one sentence</td><td>Expect the cheapest segmentations of the whole input from the second result on; a cost threshold now applies to the whole input</td></tr>
@@ -232,7 +233,8 @@ IPADIC-NEologd, the values reported under the names <code>conjugation_type</code
 <code>conjugation_form</code> trade places. The dictionaries now contain the entries
 whose surface is or starts or ends with whitespace, which changes the
 segmentation of text that contains such whitespace. Text that contains
-whitespace is segmented as MeCab segments it. <code>Ð</code>, <code>々</code> and <code>〇</code> get the
+whitespace is segmented as MeCab segments it, except with SudachiDict, which
+keeps whitespace in the lattice as Sudachi does. <code>Ð</code>, <code>々</code> and <code>〇</code> get the
 character categories that MeCab gives them, which changes the segmentation
 of text that contains them. Within a line, the words after <code>、</code> and <code>。</code>
 are read in the context of the words before them, which changes the
@@ -510,9 +512,12 @@ download the 7.0.0 release asset.</p>
 <p>With <code>keep_whitespace</code> false (the default), v7.0.0 skips whitespace in the
 Viterbi lattice, as MeCab does: the word after a space connects directly to
 the word before it. v6 dropped whitespace from the output but kept it in the
-lattice as the <code>SPACE</code> unknown word. Dictionaries trained with MeCab never
-see a connection to or from that entry (in ko-dic its connection costs are
-all zero), so every space cut the context between the words around it.</p>
+lattice as the <code>SPACE</code> unknown word, so the words around a space connected to
+that node instead of to each other. How much that changed depends on the
+dictionary's connection costs for the node: in ko-dic they are all zero, so
+every space cut the context between the words around it; in IPADIC and
+UniDic they are not zero, and the node's costs stood in for the connection
+between the words.</p>
 <p>The output changes only for sentences that contain whitespace. That includes
 a sentence that ends with the <code>\n</code> or <code>\t</code> it was split at, such as a line
 that does not end with <code>。</code>: its last word now connects to the end of the
@@ -532,7 +537,9 @@ is added to its <code>metadata.json</code>.</p>
 that belongs to a dictionary entry, inside it or at its end, stays in that
 entry's token, as in MeCab (see the previous section). Skipping does not
 change the segmentation of text without whitespace. <code>keep_whitespace(true)</code>
-keeps whitespace in the lattice and its output is unchanged.</p>
+keeps whitespace in the lattice, so its output is the same as in v6; beyond
+the whitespace tokens, it can differ from the default v7 output, which skips
+whitespace.</p>
 <p>To get the v6 handling of whitespace back, turn skipping off; whitespace is
 still dropped from the output. This does not undo the other output changes in
 this guide, such as
@@ -552,7 +559,10 @@ segmenter:
 </code></pre>
 <pre><code class="language-sh">lindera tokenize --disable-skip-whitespace
 </code></pre>
-<p>The language bindings take the setting through the configuration file.</p>
+<p>The language bindings have no setter for it. The Python, Node.js, Ruby and
+PHP bindings take it only through a configuration file loaded with
+<code>from_file</code> / <code>fromFile</code>; the WASM binding cannot change it and uses the
+dictionary's default.</p>
 <h2 id="overlapping-chardef-lines-are-resolved-as-in-mecab"><a class="header" href="#overlapping-chardef-lines-are-resolved-as-in-mecab">Overlapping char.def lines are resolved as in MeCab</a></h2>
 <p>A dictionary's <code>char.def</code> can list the same code point on several lines. Up
 to v6.2.0, the dictionary builder gave such a code point the categories of
@@ -952,6 +962,7 @@ language bindings change only in their <code>Metadata</code> class (see
 <tr><td><code>Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, normalize_details, schema, userdic_schema)</code></td><td><code>Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, schema, userdic_schema)</code></td></tr>
 <tr><td><code>Metadata::normalize_details</code></td><td>Removed</td></tr>
 <tr><td><code>PrefixDictionaryBuilderOptions::normalize_details(value)</code></td><td>Removed</td></tr>
+<tr><td>—</td><td>New public field <code>Metadata::skip_whitespace: Option&lt;bool&gt;</code> (also <code>lindera_binding::CoreMetadata::skip_whitespace</code>)</td></tr>
 </tbody></table>
 </div>
 <p>Each token is now <code>(start, end, word_id)</code> instead of <code>(start, word_id)</code>,
@@ -1017,6 +1028,14 @@ no longer has the method, because the builder keeps every entry as written
 <code>Metadata</code> still reads a <code>metadata.json</code> that contains the key, and ignores
 it. For binding authors, <code>lindera_binding::CoreMetadata</code> loses the field the
 same way, and <code>CoreMetadata::new</code> takes 10 arguments instead of 11.</p>
+<p><code>Metadata</code> gains the public field <code>skip_whitespace: Option&lt;bool&gt;</code>, the
+dictionary's default for whitespace skipping (see
+<a href="#whitespace-is-skipped-in-the-lattice">Whitespace is skipped in the lattice</a>),
+and so does <code>lindera_binding::CoreMetadata</code>. Neither struct is
+<code>#[non_exhaustive]</code>, so a struct literal that lists every field without
+<code>..</code> no longer compiles: add <code>skip_whitespace: None</code>, or end the literal
+with <code>..Default::default()</code>. <code>Metadata::new</code> and <code>CoreMetadata::new</code> set it
+to <code>None</code>, which skips whitespace.</p>
 <h2 id="who-does-not-need-to-act"><a class="header" href="#who-does-not-need-to-act">Who does not need to act</a></h2>
 <ul>
 <li><strong>Users of the language bindings and the CLI</strong>: the Python, Node.js, Ruby,
@@ -1079,6 +1098,8 @@ best path.</li>
 <li>If you call <code>Metadata::new</code>, delete its ninth argument,
 <code>normalize_details</code>, and stop using the <code>Metadata::normalize_details</code>
 field and <code>PrefixDictionaryBuilderOptions::normalize_details</code>.</li>
+<li>If you build <code>Metadata</code> with a struct literal that lists every field, add
+<code>skip_whitespace: None</code> or end it with <code>..Default::default()</code>.</li>
 </ul>
 <p>Binding authors:</p>
 <ul>
@@ -1087,6 +1108,8 @@ field and <code>PrefixDictionaryBuilderOptions::normalize_details</code>.</li>
 <li>Delete the <code>normalize_details</code> argument of <code>CoreMetadata::new</code>, which now
 takes 10 arguments, and stop using the <code>CoreMetadata::normalize_details</code>
 field.</li>
+<li>If you build <code>CoreMetadata</code> with a struct literal that lists every field,
+add <code>skip_whitespace: None</code> or end it with <code>..Default::default()</code>.</li>
 </ul>
 <p>Build environments:</p>
 <ul>
@@ -1111,7 +1134,8 @@ to get the whitespace entries.</li>
 </ul>
 <p>Everyone who segments text that contains whitespace:</p>
 <ul>
-<li>Expect MeCab's segmentation for such text (most visible with ko-dic). If
+<li>Expect MeCab's segmentation for such text (most visible with ko-dic; not
+with SudachiDict, which keeps whitespace in the lattice as Sudachi does). If
 you need the v6 handling of whitespace, set <code>skip_whitespace(false)</code>,
 <code>"skip_whitespace": false</code>, or <code>--disable-skip-whitespace</code>; the other
 output changes in this guide still apply.</li>

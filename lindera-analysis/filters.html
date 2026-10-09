@@ -423,7 +423,7 @@
   }
 }
 </code></pre>
-<p><code>만</code> right after a space is <code>NR</code> under the default left-space penalty, but at the start of the text or right after another numeral ko-dic tags it <code>JX</code> (<code>만 원</code>, <code>십만 원</code>), which stays outside <code>["SN", "NR"]</code>.</p>
+<p>With the default settings, ko-dic tags <code>만</code> in <code>만 원</code> and <code>십만 원</code> as the numeral <code>NR</code>, so <code>십만 원</code> becomes <code>십만/NR 원/NNBC</code>. With whitespace skipping turned off (<code>skip_whitespace: false</code>), the word after <code>만</code> connects to the whitespace node instead, and ko-dic tags <code>만</code> there as the particle <code>JX</code> (<code>만/JX 원/NNG</code>), which stays outside <code>["SN", "NR"]</code>.</p>
 <h3 id="korean_decompound"><a class="header" href="#korean_decompound">korean_decompound</a></h3>
 <p>Splits ko-dic compound, inflected and pre-analyzed tokens into the morphemes their <code>expression</code> field lists, reproducing Lucene nori's <code>DecompoundMode</code>. This is the inverse of <code>korean_compound_word</code>, which merges neighbouring tokens. Lindera's <code>Mode::Decompose</code> applies a length penalty tuned for Japanese kanji and does not read these fields, so <code>무궁화</code> stays whole in every mode without this filter.</p>
 <div class="table-wrapper"><table><thead><tr><th>Input</th><th>Tokens from ko-dic</th><th><code>mode: "discard"</code></th><th><code>mode: "mixed"</code></th></tr></thead><tbody>

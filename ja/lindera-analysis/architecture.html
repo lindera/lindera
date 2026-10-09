@@ -230,7 +230,10 @@
 <li><code>tokenize(&amp;mut self, text: &amp;str)</code> — ワーカーの内部バッファを再利用しながら、解析チェーン全体を通して<code>text</code>をトークナイズします。同じ入力・設定であれば<code>Tokenizer::tokenize</code>とまったく同じトークンを返します。</li>
 <li><code>tokenize_nbest(&amp;mut self, text: &amp;str, n, unique, cost_threshold)</code> — ワーカーの内部バッファを再利用しながら、コスト付きの上位N件の結果をトークナイズして返します。<code>Tokenizer::tokenize_nbest</code>とまったく同じ結果を返します。</li>
 <li><code>set_mode(&amp;mut self, mode: Mode)</code> — 以降の呼び出しで使用するセグメンテーションモードを設定します。</li>
-<li><code>set_keep_whitespace(&amp;mut self, keep: bool)</code> — 以降の呼び出しで空白トークンを出力に残すかどうかを設定します。</li>
+<li><code>set_keep_whitespace(&amp;mut self, keep: bool)</code> — 以降の呼び出しで空白トークンを出力に残すかどうかを設定します。残した空白はラティスにも残るため、他のトークンも変わることがあります。</li>
+<li><code>set_skip_whitespace(&amp;mut self, skip: bool)</code> — 空白トークンを残さないとき、以降の呼び出しで空白をラティス上で読み飛ばすかどうかを設定します（デフォルトは辞書の設定）。</li>
+<li><code>set_max_grouping_len(&amp;mut self, max_grouping_len: Option&lt;usize&gt;)</code>・<code>set_unknown_word_ladder(&amp;mut self, unknown_word_ladder: bool)</code> — 以降の呼び出しで使う未知語グルーピングの上限と候補ラダーを設定します。</li>
+<li><code>set_space_penalty(&amp;mut self, space_penalty: Option&lt;SpacePenaltyConfig&gt;)</code>・<code>set_space_penalty_from_dictionary(&amp;mut self)</code> — 以降の呼び出しで使う左側空白ペナルティのルールを設定するか、辞書のルールに戻します。</li>
 <li><code>shrink_to(&amp;mut self, text_len_hint: usize)</code> — ワーカーの内部バッファを、<code>text_len_hint</code>バイトの入力に必要なサイズまで直ちに縮小します。</li>
 <li><code>reset(&amp;mut self)</code> — すべての内部バッファを破棄し、新しいバッファに置き換えます。（例えばワーカーを保持する<code>Mutex</code>がパニックでpoisonedになった場合の）リカバリ用途を想定しており、設定（辞書・フィルタ・モード）は保持されます。</li>
 </ul>

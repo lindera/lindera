@@ -230,7 +230,10 @@
 <li><code>tokenize(&amp;mut self, text: &amp;str)</code> — tokenizes <code>text</code> through the full analysis chain, reusing the worker's internal buffers; produces exactly the same tokens as <code>Tokenizer::tokenize</code>.</li>
 <li><code>tokenize_nbest(&amp;mut self, text: &amp;str, n, unique, cost_threshold)</code> — tokenizes <code>text</code> and returns the top-N results with costs, reusing the worker's internal buffers; produces exactly the same results as <code>Tokenizer::tokenize_nbest</code>.</li>
 <li><code>set_mode(&amp;mut self, mode: Mode)</code> — sets the segmentation mode for subsequent calls.</li>
-<li><code>set_keep_whitespace(&amp;mut self, keep: bool)</code> — sets whether whitespace tokens are kept in the output for subsequent calls.</li>
+<li><code>set_keep_whitespace(&amp;mut self, keep: bool)</code> — sets whether whitespace tokens are kept in the output for subsequent calls; kept whitespace also stays in the lattice, so the other tokens can differ.</li>
+<li><code>set_skip_whitespace(&amp;mut self, skip: bool)</code> — sets whether whitespace is skipped in the lattice for subsequent calls when whitespace tokens are not kept (by default the dictionary's setting).</li>
+<li><code>set_max_grouping_len(&amp;mut self, max_grouping_len: Option&lt;usize&gt;)</code>, <code>set_unknown_word_ladder(&amp;mut self, unknown_word_ladder: bool)</code> — set the unknown-word grouping cap and the length ladder for subsequent calls.</li>
+<li><code>set_space_penalty(&amp;mut self, space_penalty: Option&lt;SpacePenaltyConfig&gt;)</code>, <code>set_space_penalty_from_dictionary(&amp;mut self)</code> — set the left-space penalty rules for subsequent calls, or restore the dictionary's.</li>
 <li><code>shrink_to(&amp;mut self, text_len_hint: usize)</code> — immediately shrinks the worker's internal buffers to what an input of <code>text_len_hint</code> bytes needs.</li>
 <li><code>reset(&amp;mut self)</code> — discards all internal buffers, replacing them with fresh ones; intended for recovery paths (e.g. after a panic poisoned a mutex holding the worker), with configuration (dictionary, filters, mode) preserved.</li>
 </ul>
