@@ -9,6 +9,7 @@ use self::nbest_merge::merge_nbest;
 use self::path_tree::{CarryState, NO_NODE, PathTree};
 
 use std::borrow::Cow;
+use std::cmp::Reverse;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -186,8 +187,9 @@ pub(crate) struct SegmentBuffers {
     exits: Vec<LatticeExit>,
     /// The BOS contexts of the current sentence: one per state.
     contexts: Vec<BosContext>,
-    /// The states the current sentence starts from, in ascending order of
-    /// right id (the order of `contexts`).
+    /// The states the current sentence starts from, in the order of
+    /// `contexts`: descending order of their exits' edge indices, the order
+    /// in which one lattice over the line prefers them on ties (#1140).
     states: Vec<CarryState>,
     /// The states the current sentence ends with, built from its exits.
     next_states: Vec<CarryState>,
@@ -1148,6 +1150,7 @@ impl Segmenter {
                         right_id: exit.right_id(),
                         cost: base.saturating_add(i64::from(exit.cost())),
                         node: NO_NODE,
+                        rank: exit.edge_index(),
                     });
                     fresh = false;
                     continue;
@@ -1161,16 +1164,18 @@ impl Segmenter {
                         right_id: exit.right_id(),
                         cost: base.saturating_add(i64::from(exit.cost())),
                         node,
+                        rank: exit.edge_index(),
                     });
                 }
                 if next_states.is_empty() {
                     false
                 } else {
                     std::mem::swap(states, next_states);
-                    // The BOS edges of the next sentence follow the order of
-                    // the right ids, which decides between paths of equal
-                    // cost.
-                    states.sort_unstable_by_key(|state| state.right_id);
+                    // The first BOS edge of the next sentence wins ties, so
+                    // the states go in descending order of their exits' edge
+                    // indices: a tie then keeps the exit that one lattice
+                    // over the line would keep (#1140).
+                    states.sort_unstable_by_key(|state| Reverse(state.rank));
 
                     // The parts that every state's path shares are final.
                     let cut = tree.common_ancestor(states);
@@ -4549,10 +4554,10 @@ KANJI,0,0,10000,名詞,一般,*,*,*,*,*,*,*
                 .collect()
         }
 
-        /// Two `、` rows tie: the 1-best keeps the state with the lower
-        /// right id (the state order), and the first N-best result is the
-        /// same path. The N-best search used to commit the state whose exit
-        /// it found first.
+        /// Two `、` rows tie: the 1-best keeps the first CSV row (`テン`), the
+        /// later edge in the slot, as one lattice over the line would (#1131,
+        /// #1140), and the first N-best result is the same path. The N-best
+        /// search used to commit the state whose exit it found first.
         #[test]
         fn test_tied_states_commit_the_same_path() {
             let (_dir, segmenter) = segmenter(0, 0, 0);
@@ -4602,6 +4607,127 @@ KANJI,0,0,10000,名詞,一般,*,*,*,*,*,*,*
             let costs: Vec<i64> = results.iter().map(|(_, cost)| *cost).collect();
             assert_eq!(costs, vec![0, 95]);
             assert_eq!(readings(&mut results[1].0)[1].1, "テン");
+        }
+    }
+
+    /// #1140: ties between the states carried across a cut resolve as in
+    /// one lattice over the line. `、` cuts the line and `，` does not, so the
+    /// same text with `，` is segmented in one lattice.
+    mod carried_state_ties {
+        use std::borrow::Cow;
+        use std::fs;
+
+        use crate::dictionary::{DictionaryBuilder, Metadata, load_fs_dictionary};
+        use crate::mode::Mode;
+        use crate::segmenter::Segmenter;
+        use crate::token::Token;
+
+        const CHAR_DEF: &str = "\
+DEFAULT 0 1 0
+KANJI 0 0 2
+0x4E00..0x9FFF KANJI
+";
+        const UNK_DEF: &str = "\
+DEFAULT,0,0,10000,補助記号,一般,*,*,*,*,*,*,*
+KANJI,0,0,10000,名詞,一般,*,*,*,*,*,*,*
+";
+        /// `東 / 京、` (right id 3) and `東京 / 、` (right id 5) reach the
+        /// end of `東京、` at the same cost; one lattice keeps `、`, the word
+        /// that starts later (#1135). `京，` and `，` are the same with `，`.
+        const LEX_CSV: &str = "\
+東京,0,0,0,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トウキョウ
+東,0,0,0,名詞,一般,*,*,*,*,東,ヒガシ,ヒガシ
+京、,0,3,0,名詞,一般,*,*,*,*,京、,キョウ,キョウ
+、,0,5,0,記号,読点,*,*,*,*,、,、,、
+京，,0,3,0,名詞,一般,*,*,*,*,京，,キョウ,キョウ
+，,0,5,0,記号,読点,*,*,*,*,，,，,，
+";
+
+        /// Builds the dictionary. Without `crossing`, every connection
+        /// costs 0, so the two exits tie whatever follows and the exit
+        /// pruning keeps one of them. With `crossing`, the connections from
+        /// right ids 3 and 5 differ in opposite directions on left ids 1 and
+        /// 2, which no word has, so neither exit dominates the other: both
+        /// states are carried and their order decides.
+        fn segmenter(crossing: bool) -> (tempfile::TempDir, Segmenter) {
+            let mut matrix = String::from("6 6\n");
+            for right in 0..6 {
+                for left in 0..6 {
+                    let cost = match (crossing, right, left) {
+                        (true, 3, 1) | (true, 5, 2) => 10,
+                        _ => 0,
+                    };
+                    matrix.push_str(&format!("{right} {left} {cost}\n"));
+                }
+            }
+            let source = tempfile::tempdir().unwrap();
+            fs::write(source.path().join("char.def"), CHAR_DEF).unwrap();
+            fs::write(source.path().join("unk.def"), UNK_DEF).unwrap();
+            fs::write(source.path().join("lex.csv"), LEX_CSV).unwrap();
+            fs::write(source.path().join("matrix.def"), matrix).unwrap();
+            let output = tempfile::tempdir().unwrap();
+            DictionaryBuilder::new(Metadata::default())
+                .build_dictionary(source.path(), output.path())
+                .unwrap();
+            let dictionary = load_fs_dictionary(output.path()).unwrap();
+            (output, Segmenter::new(Mode::Normal, dictionary, None))
+        }
+
+        /// The surfaces of the tokens, with `，` written as `、`.
+        fn surfaces(tokens: &[Token]) -> Vec<String> {
+            tokens
+                .iter()
+                .map(|token| token.surface.replace('，', "、"))
+                .collect()
+        }
+
+        /// The 1-best surfaces and the 3 best N-best results with their
+        /// costs.
+        fn results(segmenter: &Segmenter, text: &str) -> (Vec<String>, Vec<(Vec<String>, i64)>) {
+            let best = segmenter.segment(Cow::Borrowed(text)).unwrap();
+            let nbest = segmenter
+                .segment_nbest(Cow::Borrowed(text), 3, false, None)
+                .unwrap();
+            (
+                surfaces(&best),
+                nbest
+                    .iter()
+                    .map(|(tokens, cost)| (surfaces(tokens), *cost))
+                    .collect(),
+            )
+        }
+
+        /// Both searches give the one-lattice results for texts with `、`,
+        /// and the first N-best result is the 1-best.
+        fn assert_one_lattice(crossing: bool) {
+            let (_dir, segmenter) = segmenter(crossing);
+            for text in [
+                "東京、東京",
+                "東京、東京、東京",
+                "東京、東京，東京",
+                "東京，東京、東京",
+            ] {
+                let carried = results(&segmenter, text);
+                let one_lattice = results(&segmenter, &text.replace('、', "，"));
+                assert_eq!(carried, one_lattice, "{text}");
+                assert_eq!(carried.1[0].0, carried.0, "{text}");
+            }
+            assert_eq!(results(&segmenter, "東京、東京").0, ["東京", "、", "東京"]);
+        }
+
+        /// The exit pruning keeps the exit one lattice keeps on a tie. It
+        /// used to keep the lower right id, `京、`.
+        #[test]
+        fn test_pruning_tie_keeps_the_later_word() {
+            assert_one_lattice(false);
+        }
+
+        /// The carried state whose exit one lattice keeps comes first and
+        /// wins the tie. The states used to go in right id order, `京、`
+        /// first.
+        #[test]
+        fn test_carried_tie_keeps_the_later_word() {
+            assert_one_lattice(true);
         }
     }
 

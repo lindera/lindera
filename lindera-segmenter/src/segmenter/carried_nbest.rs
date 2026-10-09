@@ -31,6 +31,7 @@
 //! exceeds the margin between their right ids, so every result through the
 //! exit has `n` cheaper (distinct) results through the other state.
 
+use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 
 use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
@@ -73,6 +74,11 @@ struct State {
     start: u32,
     /// The number of prefixes of the state; at least 1.
     len: u32,
+    /// The edge index of the state's exit (`LatticeExit::edge_index`): of
+    /// two states that lead to paths of equal cost, one lattice over the
+    /// line keeps the one with the greater rank (#1140). 0 for a segment's
+    /// first state.
+    rank: u32,
 }
 
 impl State {
@@ -196,7 +202,9 @@ pub(super) struct CarriedNbest {
     prefixes: Vec<Prefix>,
     /// The tokens of the prefixes' parts.
     tokens: Vec<TokenOffset>,
-    /// The states of the last sentence, in ascending order of right id.
+    /// The states of the last sentence, in descending order of their
+    /// exits' edge indices (the order of their BOS edges in the next
+    /// sentence).
     states: Vec<State>,
     /// The cost of the cheapest state, which the costs of the current
     /// lattice are relative to.
@@ -291,6 +299,7 @@ impl CarriedNbest {
             right_id: 0,
             start: 0,
             len: 1,
+            rank: 0,
         });
     }
 
@@ -448,6 +457,7 @@ impl CarriedNbest {
                 right_id: exit.right_id(),
                 start,
                 len: picks.len() as u32,
+                rank: exit.edge_index(),
             });
         }
 
@@ -457,9 +467,10 @@ impl CarriedNbest {
         prefixes.append(new_prefixes);
         costs.append(new_costs);
         std::mem::swap(states, next_states);
-        // The BOS edges of the next sentence follow the order of the right
-        // ids, as in the 1-best segmentation.
-        states.sort_unstable_by_key(|state| state.right_id);
+        // The BOS edges of the next sentence follow the order of the 1-best
+        // segmentation: descending edge index, so that the first one, which
+        // wins ties, is the exit one lattice over the line would keep.
+        states.sort_unstable_by_key(|state| Reverse(state.rank));
         true
     }
 

@@ -637,6 +637,22 @@ impl LatticeExit {
     pub fn cost(&self) -> i32 {
         self.cost
     }
+
+    /// Returns the index of the exit's edge among the final edges of the
+    /// sentence, which the lattice keeps in MeCab's processing order. When
+    /// two exits lead to paths of equal cost through the next word, one
+    /// lattice over the whole line keeps the one with the greater index,
+    /// since the last edge of equal cost wins (#1135). A segmenter that
+    /// carries the context lists the BOS contexts in descending order of this
+    /// index, so that the first one, which wins ties, is that exit.
+    ///
+    /// # Returns
+    ///
+    /// The index; distinct for the exits of one sentence.
+    #[inline]
+    pub fn edge_index(&self) -> u32 {
+        self.edge
+    }
 }
 
 /// Per-sentence options for [`Lattice::set_text_with_options`] and
@@ -4896,7 +4912,8 @@ mod tests {
 
     /// #1096: `exits_into` and the EOS connection break a tie between two
     /// final edges the same way: `d` has two identical entries, stored last
-    /// row first, and both keep the last edge, the first row (#1135).
+    /// row first, and both keep the last edge, the first row (#1135), which
+    /// `edge_index` names (#1140).
     #[test]
     fn test_exit_tie_keeps_first_row() {
         let fixture = CtxFixture::new();
@@ -4909,7 +4926,7 @@ mod tests {
         assert_eq!(finals[0].path_cost, finals[1].path_cost);
         let exits = exits_of(&lattice);
         assert_eq!(exits.len(), 1);
-        assert_eq!(exits[0].edge, 1);
+        assert_eq!(exits[0].edge_index(), 1);
         let eos = lattice.edges_at_char(2).last().unwrap();
         assert_eq!(eos.left_index, 1);
         let mut tokens = Vec::new();

@@ -32,6 +32,11 @@ pub(super) struct CarryState {
     /// The node of the path's last part in the [`PathTree`], or [`NO_NODE`]
     /// when the whole path is emitted (or empty).
     pub(super) node: u32,
+    /// The edge index of the state's exit (`LatticeExit::edge_index`): of
+    /// two states that lead to paths of equal cost, one lattice over the
+    /// line keeps the one with the greater rank (#1140). 0 for a segment's
+    /// first state.
+    pub(super) rank: u32,
 }
 
 impl CarryState {
@@ -41,6 +46,7 @@ impl CarryState {
         right_id: 0,
         cost: 0,
         node: NO_NODE,
+        rank: 0,
     };
 }
 
@@ -294,6 +300,7 @@ mod tests {
             right_id: 0,
             cost: 0,
             node,
+            rank: 0,
         }
     }
 
