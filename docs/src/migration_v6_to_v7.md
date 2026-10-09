@@ -43,6 +43,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **IPADIC and IPADIC-NEologd: dashes and tildes in dictionary entries are kept as written, as in MeCab** | Anyone who segments text with `―` (U+2015), `—` (U+2014), `～` (U+FF5E) or `〜` (U+301C) with IPADIC or IPADIC-NEologd | Expect entries spelled with `―` or `～` to match text spelled the same way, and text with `—` or `〜` to miss the 12 IPADIC and 1,085 IPADIC-NEologd entries it found only through the old rewrite (a `mapping` character filter can fold the spellings); rebuild or re-download dictionaries made with v6.2.0 or earlier |
 | **Entries with the same surface, context IDs and cost: the first CSV row is output, as in MeCab** | Anyone who reads token details such as the reading or the base form with IPADIC, IPADIC-NEologd, UniDic or ko-dic, or with a user dictionary that has such entries; N-best users | Expect such words to get MeCab's details (IPADIC `狡い` reads `ズルイ`, not `コスイ`), a user entry to still win a tie with a system entry, and the first N-best result to always be the 1-best; no rebuild is needed, and no setting restores the v6 behavior |
 | **Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab** | Anyone who segments text, in rare places (9 of about 54,000 lines in the texts compared) | Expect such lines to be segmented as MeCab segments them (IPADIC `腸窒扶斯` is `腸 / 窒扶 / 斯`, not `腸 / 窒 / 扶斯`); no rebuild is needed, and no setting restores the v6 behavior |
+| **`lindera tokenize` removes only the line terminator from each input line** | CLI users whose input lines start or end with whitespace | Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC `記号,空白`), and `--keep-whitespace` to output the spaces there; no setting restores the v6 behavior |
 | **The `normalize_details` setting is removed: `Metadata::new` and `CoreMetadata::new` take 10 arguments, Ruby's `Metadata.new` takes 8** | Code that creates or reads dictionary metadata: Rust (`Metadata`, `lindera_binding::CoreMetadata`, `PrefixDictionaryBuilderOptions`) and the `Metadata` classes of the Python, Ruby, PHP and Node.js bindings | Remove the argument, option or property; a `metadata.json` that still has the key loads, and the key is ignored |
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
 | **`Lattice::tokens_offset_into` returns the BOS index of the best path (`Option<usize>`)** | Rust code that uses the `()` value of `tokens_offset_into` | Nothing for a call written as a statement; otherwise ignore the new value |
@@ -53,7 +54,8 @@ classes of the Python, Node.js, Ruby and PHP bindings no longer take or
 expose `normalize_details` (see
 [The `normalize_details` setting is removed](#the-normalize_details-setting-is-removed)).
 Their version number moves to 7.0.0.
-There are ten output differences, all described below. With IPADIC or
+There are eleven output differences, all described below; the last one is
+in the CLI only. With IPADIC or
 IPADIC-NEologd, the values reported under the names `conjugation_type` and
 `conjugation_form` trade places. The dictionaries now contain the entries
 whose surface is or starts or ends with whitespace, which changes the
@@ -76,6 +78,9 @@ of the last, as in MeCab, which changes the reading, the base form or other
 details of such words, and the first N-best result is always the 1-best.
 When two segmentations cost exactly the same, the one whose last word starts
 later is chosen, as in MeCab, which changes the segmentation of a few lines.
+And `lindera tokenize` removes only the line terminator from each input line
+instead of all the whitespace at its ends, which keeps U+3000 at the start
+or end of a line and makes the offsets index the line.
 Otherwise, for the same input and dictionary, v7.0.0 produces the same
 tokens with the same positional details as v6.2.0.
 
@@ -876,6 +881,51 @@ more instructions and 2% to 5% more time with ko-dic. N-best search
 The dictionary files do not change, so this change needs no rebuild or
 re-download. There is no setting to restore the v6 behavior.
 
+## `lindera tokenize` removes only the line terminator
+
+`lindera tokenize` reads its input line by line. Up to v6.2.0, it removed
+all the whitespace at both ends of each line before tokenizing it: spaces,
+tabs, U+3000, U+00A0 and the other Unicode whitespace (`str::trim`). The
+library, the language bindings and MeCab do not. v7.0.0 removes only the
+line terminator (`\n`, or `\r\n`) and tokenizes the rest of the line as the
+library does:
+
+| Input line (IPADIC) | v6 | v7 (as MeCab) |
+| --- | --- | --- |
+| Two spaces, `東京`, a space | `東京` at bytes 0-6 | `東京` at bytes 2-8 |
+| U+3000, `東京` | `東京` at 0-6 | U+3000 (`記号,空白`) at 0-3, `東京` at 3-9 |
+| `東京`, U+3000 | `東京` at 0-6 | `東京` at 0-6, U+3000 (`記号,空白`) at 6-9 |
+| U+00A0, `東京`, U+00A0 | `東京` at 0-6 | U+00A0 (unknown, `記号,一般`) at 0-2, `東京` at 2-8, U+00A0 at 8-10 |
+
+- Spaces and tabs are `SPACE` characters, which the segmenter skips and
+  drops from the output, so they still give no tokens; only the byte
+  offsets of the tokens after them change, and now index the input line,
+  as the library's offsets do.
+- U+3000 at the start or end of a line is a token, as in the middle of a
+  line, with IPADIC, IPADIC-NEologd (`記号,空白`) and UniDic (`空白`) (see
+  [Dictionary entries with whitespace are kept](#dictionary-entries-with-whitespace-are-kept)).
+  In the 538 lines of *Botchan* as one file, where 202 lines start with an
+  indent of U+3000, 206 such tokens appear and no other token changes. Text
+  without whitespace at the ends of its lines, such as the 8,100 sentences
+  of UD Japanese GSD and the 3,587 paragraphs of *Kokoro* and *I Am a Cat*,
+  gives the same output as before.
+- With `--keep-whitespace`, the spaces at the start and end of a line are
+  tokens too: two spaces, `東京` and a space give three tokens.
+- With `-N`, a line of spaces or tabs gives one result without tokens
+  (`NBEST 1` and `EOS`), as in MeCab, instead of no result; an empty line
+  still gives none. The costs of a line with U+3000 at an end include that
+  token.
+- The `\r` of a line that ends with `\r\n` is removed, and only that one
+  `\r`. MeCab removes only the `\n` and outputs the `\r` as an unknown
+  word; Lindera removes it so that text with Windows line endings does not
+  end every line with a `\r` token.
+
+The library and the language bindings never trimmed their input, so they do
+not change. The dictionary files do not change either, so this change needs
+no rebuild or re-download. No option restores the v6 behavior; to get it,
+remove the whitespace at the ends of each line before passing the text to
+`lindera tokenize`.
+
 ## Rust API changes in `lindera_dictionary`
 
 These affect only code that calls the lattice backtraces directly, or that
@@ -998,11 +1048,13 @@ to `None`, which skips whitespace.
   more than one sentence, the unknown words that start at every position,
   which matter for runs of katakana, symbols or Latin letters in normal
   mode, the dash and tilde spellings, which matter only for text with
-  `―`, `—`, `～` or `〜` with IPADIC or IPADIC-NEologd, and the choice among
+  `―`, `—`, `～` or `〜` with IPADIC or IPADIC-NEologd, the choice among
   tied entries, which matters only if you read token details such as the
   reading or the base form, or the order of N-best results with the same
-  cost, and the choice between segmentations of equal cost, which changes
-  the segmentation of a few lines.
+  cost, the choice between segmentations of equal cost, which changes the
+  segmentation of a few lines, and, in the CLI only, the whitespace at the
+  ends of an input line, which matters only for lines that start or end
+  with whitespace.
 - **Projects staying on `lindera = "6"`**: the 6.x releases of `lindera` and
   `lindera-analysis` remain on crates.io and keep working together. Nothing
   changes until you bump the major version.
@@ -1167,6 +1219,13 @@ Language bindings and CLI:
   the last argument of PHP's `Metadata` constructor, and the
   `normalizeDetails` option in Node.js. Stop reading the property and the
   key of the same name in `to_dict()`, `to_h`, `toArray()` and `toObject()`.
+- With `lindera tokenize`, expect the offsets of a line that starts with
+  whitespace to index the input line, U+3000 at the start or end of a line
+  to be a token (IPADIC, IPADIC-NEologd, UniDic), `--keep-whitespace` to
+  output the spaces there, and `-N` to give one result for a line of
+  spaces. To get the v6 output, remove the whitespace at the ends of each
+  line first.
 - Nothing else to do beyond taking the 7.0.0 release, apart from the
   dictionary, whitespace, `、` and `。`, N-best, unknown-word, dash and
-  tilde, tied-entry and equal-cost items above.
+  tilde, tied-entry and equal-cost items above and the `lindera tokenize`
+  item.
