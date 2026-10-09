@@ -519,35 +519,56 @@ impl CarriedNbest {
     }
 
     /// Ends the segment early, at the end of the last sentence that carried
-    /// the context, without the EOS connection: for a sentence that has no
-    /// exit or no complete path, which a dictionary that covers every
-    /// character with an unknown word never gives. The results are the `n`
-    /// cheapest prefixes over all states, as the end of a segment selects
-    /// them.
+    /// the context: for a sentence that has no exit or no complete path,
+    /// which a dictionary that covers every character with an unknown word
+    /// never gives. The segment ends there, so every prefix pays the EOS
+    /// connection from its state's right id, and the results are the `n`
+    /// cheapest prefixes over all states with it. On equal cost the state
+    /// that comes first wins, then the prefix that comes first in its
+    /// state, so the first result is the path the 1-best segmentation
+    /// commits (#1133).
     ///
-    /// # 戻り値
+    /// # Arguments
+    ///
+    /// * `matrix` - The connection cost matrix of the segmenter's
+    ///   dictionary, for the EOS connection.
+    ///
+    /// # Returns
     ///
     /// The results in ascending order of cost, each its tokens (offsets
-    /// relative to the segment start) and its cost.
-    pub(super) fn commit(&self) -> Vec<NBestPath> {
-        let mut all: Vec<(i64, u32)> = self
+    /// relative to the segment start) and its cost, the EOS connection
+    /// included.
+    pub(super) fn commit(&self, matrix: &ConnectionCostMatrix) -> Vec<NBestPath> {
+        let mut all: Vec<(i64, usize, u32)> = self
             .states
             .iter()
-            .flat_map(|state| state.range().map(|index| (self.costs[index], index as u32)))
+            .enumerate()
+            .flat_map(|(position, state)| {
+                let eos = i64::from(matrix.cost(u32::from(state.right_id), 0));
+                state.range().map(move |index| {
+                    (
+                        self.costs[index].saturating_add(eos),
+                        position,
+                        index as u32,
+                    )
+                })
+            })
             .collect();
         all.sort_unstable();
-        let Some(&(best, _)) = all.first() else {
+        let Some(&(best, _, _)) = all.first() else {
             return Vec::new();
         };
         let mut seen = HashSet::new();
         all.into_iter()
-            .take_while(|&(cost, _)| {
+            .take_while(|&(cost, _, _)| {
                 self.cost_threshold
                     .is_none_or(|threshold| cost.saturating_sub(best) <= threshold)
             })
-            .filter(|&(_, index)| !self.unique || seen.insert(self.prefixes[index as usize].class))
+            .filter(|&(_, _, index)| {
+                !self.unique || seen.insert(self.prefixes[index as usize].class)
+            })
             .take(self.n)
-            .map(|(cost, index)| (self.prefix_tokens(index), cost))
+            .map(|(cost, _, index)| (self.prefix_tokens(index), cost))
             .collect()
     }
 
