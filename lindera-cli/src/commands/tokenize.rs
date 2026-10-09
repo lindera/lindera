@@ -63,12 +63,12 @@ pub struct TokenizeArgs {
     token_filters: Option<Vec<String>>,
     #[clap(
         long = "keep-whitespace",
-        help = "Keep whitespace tokens in output (default: whitespace is skipped in the lattice and dropped from the output, as MeCab does)"
+        help = "Keep whitespace tokens in output. Whitespace then also stays in the lattice, so the other tokens can differ from the default output, in which whitespace is dropped and, unless the dictionary's metadata.json turns it off (SudachiDict does), skipped in the lattice as MeCab does"
     )]
     keep_whitespace: bool,
     #[clap(
         long = "disable-skip-whitespace",
-        help = "Keep whitespace in the lattice as SPACE unknown-word nodes instead of skipping it, while still dropping it from the output (the behavior before whitespace skipping). By default the words on either side of whitespace connect directly, as in MeCab, for every dictionary whose metadata.json does not turn skipping off (SudachiDict does). No effect with --keep-whitespace"
+        help = "Keep whitespace in the lattice as a node of its own (a whitespace dictionary entry or the SPACE unknown word) instead of skipping it, while still dropping it from the output (the behavior before whitespace skipping). By default the words on either side of whitespace connect directly, as in MeCab, for every dictionary whose metadata.json does not turn skipping off (SudachiDict does). No effect with --keep-whitespace"
     )]
     disable_skip_whitespace: bool,
     #[clap(

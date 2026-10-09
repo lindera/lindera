@@ -73,7 +73,7 @@ Sets a pre-loaded user dictionary instance. Load one from bytes with `loadUserDi
 
 #### `setKeepWhitespace(keep)`
 
-Sets whether whitespace tokens are preserved in the output.
+Sets whether whitespace tokens are preserved in the output. Kept whitespace also stays in the lattice, so the other tokens can differ from those of the default output, which skips whitespace in the lattice as MeCab does. The WASM binding cannot turn whitespace skipping itself off: it has no setter for it and no configuration-file entry point, so the dictionary's default applies (skipping, except with SudachiDict).
 
 - **Parameters**: `keep` (boolean) -- `true` to keep whitespace tokens
 - **Returns**: `TokenizerBuilder`
@@ -112,7 +112,7 @@ builder.setSpacePenalty({
 ```
 
 > [!NOTE]
-> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `서울 시 에서` now reads `시` as the noun `NNG` rather than the ending `EP`. Call `builder.setSpacePenalty(false)` to turn it off. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and `true` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
+> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `검색 이 잘 된다` reads `이` as the interjection `IC`; without the penalty, as the subject particle `JKS`. Call `builder.setSpacePenalty(false)` to turn it off. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and `true` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
 
 #### `appendCharacterFilter(name, args)`
 

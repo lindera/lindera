@@ -250,8 +250,10 @@ pub struct Segmenter {
     ///
     /// Assigning to this field after construction is not supported: [`Segmenter::new`]
     /// derives per-dictionary state from it (the `SPACE` category lookup behind
-    /// `keep_whitespace`, and the [`Segmenter::space_penalty`] table when one is set),
-    /// and that state is *not* recomputed here. A replacement dictionary therefore
+    /// `keep_whitespace` and `skip_whitespace`, the default of
+    /// [`Segmenter::skip_whitespace`] from the dictionary's metadata, and the
+    /// [`Segmenter::space_penalty`] table when one is set), and that state is
+    /// *not* recomputed here. A replacement dictionary therefore
     /// leaves those caches addressing the previous dictionary's ids, which yields
     /// wrong results silently rather than failing. Build a new `Segmenter` instead.
     pub dictionary: Dictionary,
@@ -270,27 +272,30 @@ pub struct Segmenter {
 
     /// Keep whitespace tokens in output.
     ///
-    /// When false (default), whitespace is handled as MeCab handles it: it is
-    /// skipped in the lattice, so the words on either side of it connect
-    /// directly (see [`Segmenter::skip_whitespace`]), and it is not output.
-    /// When true, whitespace stays in the lattice as `SPACE` unknown-word
-    /// nodes and is output as tokens. "Whitespace" is the dictionary's
-    /// `SPACE` character category (`char.def`).
+    /// When false (default), whitespace is not output, and it is skipped in
+    /// the lattice unless [`Segmenter::skip_whitespace`] is false (the
+    /// default for SudachiDict), so the words on either side of it connect
+    /// directly, as in MeCab. When true, whitespace stays in the lattice as a
+    /// node of its own (a whitespace dictionary entry or the `SPACE` unknown
+    /// word) and is output as tokens, so the other tokens can differ from
+    /// those of the default output. "Whitespace" is the dictionary's `SPACE`
+    /// character category (`char.def`).
     pub keep_whitespace: bool,
 
     /// Whether whitespace is skipped in the lattice when `keep_whitespace` is
     /// false (ignored when `keep_whitespace` is true).
     ///
     /// MeCab never puts whitespace in the lattice: a word after a space
-    /// connects to the word before it, and dictionaries trained with MeCab
-    /// carry no connection costs for the `SPACE` unknown word (all zero in
-    /// ko-dic). [`Segmenter::new`] takes the default from the dictionary's
+    /// connects to the word before it. [`Segmenter::new`] takes the default from the dictionary's
     /// metadata (`Metadata::skip_whitespace`): `true` unless the dictionary
     /// says otherwise, and `false` for SudachiDict, whose costs are tuned
     /// for Sudachi's lattice, which keeps whitespace. With `false`,
-    /// whitespace stays a `SPACE` node, as in Lindera v6, while still being
-    /// dropped from the output; every space then resets the connection
-    /// context. Either way, a dictionary entry whose surface ends with
+    /// whitespace stays in the lattice as a node of its own (a whitespace
+    /// dictionary entry or the `SPACE` unknown word), as in Lindera v6,
+    /// while still being dropped from the output, and the words around it
+    /// connect to that node. Its connection costs depend on the dictionary:
+    /// all zero in ko-dic, so every space then resets the connection
+    /// context, but learned in IPADIC and UniDic. Either way, a dictionary entry whose surface ends with
     /// whitespace keeps it in its token, as in MeCab (#1108).
     pub skip_whitespace: bool,
 
@@ -441,9 +446,11 @@ impl Segmenter {
 
     /// Builder method to set whether to keep whitespace tokens in output.
     ///
-    /// When `keep_whitespace` is false (default), whitespace is skipped in the lattice and
-    /// dropped from the output, as MeCab does (see [`Segmenter::skip_whitespace`]).
-    /// When true, whitespace stays in the lattice and whitespace tokens are included in the output.
+    /// When `keep_whitespace` is false (default), whitespace is dropped from the output and,
+    /// unless the dictionary turns it off (SudachiDict does), skipped in the lattice, as MeCab
+    /// does (see [`Segmenter::skip_whitespace`]). When true, whitespace stays in the lattice
+    /// and whitespace tokens are included in the output, so the other tokens can differ from
+    /// those of the default output.
     ///
     /// # Arguments
     ///
@@ -477,9 +484,11 @@ impl Segmenter {
     /// overriding the dictionary's default.
     ///
     /// Skipping is on by default for every bundled dictionary but
-    /// SudachiDict. Turning it off keeps whitespace as `SPACE` unknown-word
-    /// nodes, as Lindera v6 did, which resets the connection context at
-    /// every space; whitespace is still dropped from the output.
+    /// SudachiDict. Turning it off keeps whitespace in the lattice as a node
+    /// of its own (a whitespace dictionary entry or the `SPACE` unknown
+    /// word), as Lindera v6 did; with ko-dic, whose connection costs for that
+    /// node are all zero, every space then resets the connection context.
+    /// Whitespace is still dropped from the output.
     ///
     /// # Arguments
     ///
@@ -3962,8 +3971,8 @@ mod tests {
         }
 
         /// Turning skipping off restores the whitespace nodes and with them
-        /// the pre-7.1 output, through the builder, the config and the
-        /// worker.
+        /// the v6 handling of whitespace, through the builder, the config
+        /// and the worker.
         #[test]
         fn test_skip_whitespace_can_be_turned_off() {
             let text = "2년 전 대회";

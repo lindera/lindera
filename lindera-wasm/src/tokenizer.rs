@@ -201,6 +201,10 @@ impl TokenizerBuilder {
 
     /// Sets whether to keep whitespace tokens in the output.
     ///
+    /// Kept whitespace also stays in the lattice, so the other tokens can
+    /// differ from those of the default output, which skips whitespace as
+    /// MeCab does.
+    ///
     /// Returns a builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "setKeepWhitespace")]
     pub fn set_keep_whitespace(&self, keep: bool) -> TokenizerBuilder {

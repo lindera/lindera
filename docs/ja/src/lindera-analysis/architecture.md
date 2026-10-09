@@ -67,7 +67,10 @@ Segmenterが生成したトークンを後処理するフィルタのtraitです
 - `tokenize(&mut self, text: &str)` — ワーカーの内部バッファを再利用しながら、解析チェーン全体を通して`text`をトークナイズします。同じ入力・設定であれば`Tokenizer::tokenize`とまったく同じトークンを返します。
 - `tokenize_nbest(&mut self, text: &str, n, unique, cost_threshold)` — ワーカーの内部バッファを再利用しながら、コスト付きの上位N件の結果をトークナイズして返します。`Tokenizer::tokenize_nbest`とまったく同じ結果を返します。
 - `set_mode(&mut self, mode: Mode)` — 以降の呼び出しで使用するセグメンテーションモードを設定します。
-- `set_keep_whitespace(&mut self, keep: bool)` — 以降の呼び出しで空白トークンを出力に残すかどうかを設定します。
+- `set_keep_whitespace(&mut self, keep: bool)` — 以降の呼び出しで空白トークンを出力に残すかどうかを設定します。残した空白はラティスにも残るため、他のトークンも変わることがあります。
+- `set_skip_whitespace(&mut self, skip: bool)` — 空白トークンを残さないとき、以降の呼び出しで空白をラティス上で読み飛ばすかどうかを設定します（デフォルトは辞書の設定）。
+- `set_max_grouping_len(&mut self, max_grouping_len: Option<usize>)`・`set_unknown_word_ladder(&mut self, unknown_word_ladder: bool)` — 以降の呼び出しで使う未知語グルーピングの上限と候補ラダーを設定します。
+- `set_space_penalty(&mut self, space_penalty: Option<SpacePenaltyConfig>)`・`set_space_penalty_from_dictionary(&mut self)` — 以降の呼び出しで使う左側空白ペナルティのルールを設定するか、辞書のルールに戻します。
 - `shrink_to(&mut self, text_len_hint: usize)` — ワーカーの内部バッファを、`text_len_hint`バイトの入力に必要なサイズまで直ちに縮小します。
 - `reset(&mut self)` — すべての内部バッファを破棄し、新しいバッファに置き換えます。（例えばワーカーを保持する`Mutex`がパニックでpoisonedになった場合の）リカバリ用途を想定しており、設定（辞書・フィルタ・モード）は保持されます。
 

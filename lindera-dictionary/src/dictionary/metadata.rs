@@ -94,8 +94,7 @@ pub struct Metadata {
     ///
     /// Absent from source `metadata.json` files, which describe build inputs
     /// rather than a built dictionary, and absent from dictionaries built
-    /// before the field existed; both read back as
-    /// [`LEGACY_FORMAT_VERSION`].
+    /// before the field existed; both read back as the legacy version, 1.
     #[serde(default = "legacy_format_version")]
     pub format_version: u32,
     pub name: String,                  // Name of the dictionary
@@ -137,9 +136,8 @@ pub struct Metadata {
     pub space_penalty: Option<SpacePenaltyConfig>,
     /// Whether the segmenter skips whitespace in the lattice by default (see
     /// `LatticeOptions::skip_whitespace`). `None`, the value of every
-    /// dictionary that does not set it, means yes: MeCab skips whitespace,
-    /// and dictionaries trained with MeCab carry no connection costs for it.
-    /// SudachiDict sets `false`, because Sudachi keeps whitespace in the
+    /// dictionary that does not set it, means yes, as MeCab skips
+    /// whitespace. SudachiDict sets `false`, because Sudachi keeps whitespace in the
     /// lattice and its costs are tuned for that. Optional, and omitted from
     /// the file when absent, like `space_penalty`. The `lindera` Segmenter
     /// applies it unless told otherwise, e.g. with

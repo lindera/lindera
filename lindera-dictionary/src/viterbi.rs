@@ -672,9 +672,10 @@ pub struct LatticeOptions<'a> {
     /// over to the end of the run, so the words on either side connect
     /// directly and pay the connection cost the dictionary was trained with,
     /// in every mode and in both the 1-best and the N-best lattice. Whitespace
-    /// otherwise becomes a `SPACE` unknown-word node, whose context ids carry
-    /// no connection costs in MeCab-trained dictionaries such as ko-dic, so
-    /// each space resets the context.
+    /// otherwise becomes a node of its own (a whitespace dictionary entry or
+    /// the `SPACE` unknown word) that the words on either side connect to;
+    /// ko-dic's connection costs for the `SPACE` unknown word are all zero,
+    /// so there each space resets the context.
     ///
     /// A carried edge keeps its start position, and the backtraces return
     /// its real end: the whitespace its own surface ends with (an entry such

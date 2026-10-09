@@ -144,15 +144,15 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 
 デフォルトでは、MeCab と同様に空白をラティス上で読み飛ばします。空白文字から始まる語はなく、空白の後ろの語は空白の前の語に直接接続し、辞書が学習した連接コストが使われます。読み飛ばした空白は出力に現れず、トークンの表層形とオフセットにも含まれません。ただし、見出し語の一部である空白は、語の途中（IPADIC-NEologd の `GeForce GTX`、ユーザー辞書の `해운대 해수욕장`）でも末尾（ko-dic の、半角スペースの付いた `에듀`）でも、MeCab と同じくその語のトークンに残ります。「空白」とは辞書の `SPACE` 文字カテゴリ（`char.def`）のことで、ko-dic では U+0020、U+0009、U+000A、U+000B、U+000D、IPADIC・IPADIC-NEologd・UniDic・SudachiDict・CC-CEDICT・Jieba では U+0020、U+0009、U+000A、U+000B です。これらの `char.def` は U+00D0（`Ð`）も `SPACE` に割り当てています（U+000D のタイポ）が、後続の `0x00C0..0x00FF ALPHA` 行が優先されるため、MeCab と同じく `Ð` は英字として扱われます。
 
-デフォルトは辞書の `metadata.json`（`skip_whitespace`）で決まります。SudachiDict はこれを `false` にしています。Sudachi は空白をラティスに残して `空白` トークンとして出力し、SudachiDict のコストもそれに合わせて調整されているため、読み飛ばすと、たとえば `caramel man` という項目が 2 つの普通名詞に分割されてしまいます。そのため SudachiDict では、デフォルトで空白が `SPACE` ノードとしてラティスに残ります（出力からは除外されます）。他の同梱辞書はこの設定を持たず、その場合は読み飛ばします。設定が導入される前にビルドされた辞書（再ビルドするまでの Lindera 6.x 製の SudachiDict を含む）も同様です。
+デフォルトは辞書の `metadata.json`（`skip_whitespace`）で決まります。SudachiDict はこれを `false` にしています。Sudachi は空白をラティスに残して `空白` トークンとして出力し、SudachiDict のコストもそれに合わせて調整されているため、読み飛ばすと、たとえば `caramel man` という項目が 2 つの普通名詞に分割されてしまいます。そのため SudachiDict では、デフォルトで空白が独立したノード（U+0020 の項目のような `空白` の見出し語か、`SPACE` の未知語）としてラティスに残ります（出力からは除外されます）。他の同梱辞書はこの設定を持たず、その場合は読み飛ばします。設定が導入される前にビルドされた辞書（再ビルドするまでの Lindera 6.x 製の SudachiDict を含む）も同様です。
 
-`Segmenter` に対して `keep_whitespace(true)` を呼び出すと、空白のトークンを出力します。このとき空白は `SPACE` の未知語ノードとしてラティスに残ります：
+`Segmenter` に対して `keep_whitespace(true)` を呼び出すと、空白のトークンを出力します。このとき空白はラティスにも独立したノード（IPADIC や UniDic の U+3000 の項目のような空白の見出し語か、`SPACE` の未知語）として残るため、他のトークンも、空白を読み飛ばすデフォルトの出力と変わることがあります：
 
 ```rust
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 ```
 
-v7 より前の Lindera は、空白を出力から除外する場合でもラティスにはノードとして残していました。MeCab で学習した辞書では `SPACE` の未知語との連接は学習時に一度も現れません。ko-dic では連接表のその行と列がすべて 0 なので、空白のたびに文脈が途切れ、空白に挟まれた語は単語コストだけで選ばれていました。ko-dic は `2년 전 대회` の `전` を名詞 `NNG` ではなく `저/NP + ㄴ/JX` と解析し、`SPACE` の項目が全角空白と文脈 ID を共有する IPADIC は `Google が 新しい` の `が` を接続詞と解析していました。CC-CEDICT と Jieba には連接コスト自体がないため、出力はこの違いに左右されません。`skip_whitespace` は辞書のデフォルトを上書きします。`skip_whitespace(false)` は従来どおり空白ノードをラティスに残し（出力からは除外）、`skip_whitespace(true)` は SudachiDict でも読み飛ばしを有効にします。`SegmenterConfig` の `skip_whitespace` キーには `true` または `false` を指定し、省略するか `null` にすると辞書のデフォルトのままになります。CLI では `--disable-skip-whitespace` で読み飛ばしを無効にします：
+v7 より前の Lindera は、空白を出力から除外する場合でもラティスにはノードとして残していました。そのため空白の前後の語は、互いにではなく空白のノードに接続していました。その影響の大きさは、辞書の `SPACE` の未知語の連接コストによります。ko-dic では連接表のその行と列がすべて 0 なので、空白のたびに文脈が途切れ、空白に挟まれた語は単語コストだけで選ばれていました。ko-dic は `2년 전 대회` の `전` を名詞 `NNG` ではなく `저/NP + ㄴ/JX` と解析していました。IPADIC と UniDic ではこの連接コストは 0 ではなく（IPADIC の `SPACE` の未知語は全角空白の項目 `記号,空白` と文脈 ID を共有します）、IPADIC は `Google が 新しい` の `が` を接続詞と解析していました。CC-CEDICT と Jieba には連接コスト自体がないため、分割はこの違いに左右されませんが、N-best が返す経路のコストは変わります。`skip_whitespace` は辞書のデフォルトを上書きします。`skip_whitespace(false)` は従来どおり空白ノードをラティスに残し（出力からは除外）、`skip_whitespace(true)` は SudachiDict でも読み飛ばしを有効にします。`SegmenterConfig` の `skip_whitespace` キーには `true` または `false` を指定し、省略するか `null` にすると辞書のデフォルトのままになります。CLI では `--disable-skip-whitespace` で読み飛ばしを無効にします：
 
 ```rust
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).skip_whitespace(false);
@@ -204,7 +204,7 @@ let rules = SpacePenaltyConfig::new(vec![
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Some(rules))?;
 ```
 
-「空白」とは辞書の `SPACE` カテゴリ（`char.def`）に属する文字のことで、`keep_whitespace` が除外する文字集合と同じです。`SPACE` カテゴリを持たない辞書では Unicode の `White_Space` にフォールバックします。ペナルティは両モードと N-best 探索で適用され、システム辞書・ユーザー辞書・未知語のいずれのエントリにも効きます。`space_penalty` は単語 ID ごとの参照表を一度だけ構築し（ko-dic で数十ミリ秒）、辞書スキーマに `part_of_speech_tag` も `part_of_speech` もない場合はエラーを返します。
+「空白」とは辞書の `SPACE` カテゴリ（`char.def`）に属する文字のことで、ラティス上で読み飛ばす文字集合、`keep_whitespace` が除外する文字集合と同じです。`SPACE` カテゴリを持たない辞書では Unicode の `White_Space` にフォールバックします。ペナルティは両モードと N-best 探索で適用され、システム辞書・ユーザー辞書・未知語のいずれのエントリにも効きます。`space_penalty` は単語 ID ごとの参照表を一度だけ構築し（ko-dic で数十ミリ秒）、辞書スキーマに `part_of_speech_tag` も `part_of_speech` もない場合はエラーを返します。
 
 辞書は `metadata.json` の `space_penalty` にデフォルトのルールを同梱できます。ko-dic は上記とまったく同じルールを同梱しており、`Segmenter::new` がそれを自動的に適用します。`space_penalty_from_dictionary()` はオフにした後に再び有効化するためのもので、ルールを同梱しない辞書ではエラーを返します。同梱ルールを適用できない辞書（スキーマに品詞列が無い辞書）では、`Segmenter::new` は警告を出してオフのままにします:
 
@@ -277,7 +277,7 @@ for line in lines {
 }
 ```
 
-返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。`set_mode` と `set_keep_whitespace` で呼び出しごとに設定を切り替えられます。`segmenter()` は内部の Segmenter への共有参照を返します。`&mut` でのアクセサは意図的に提供されていません。再利用中のラティスの下で辞書を差し替えてしまうと、この worker が保証する辞書とラティスの対応関係が壊れてしまうためです。
+返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。`set_mode`・`set_keep_whitespace`・`set_skip_whitespace`・`set_max_grouping_len`・`set_unknown_word_ladder`・`set_space_penalty`・`set_space_penalty_from_dictionary` で呼び出しごとに設定を切り替えられます。`segmenter()` は内部の Segmenter への共有参照を返します。`&mut` でのアクセサは意図的に提供されていません。再利用中のラティスの下で辞書を差し替えてしまうと、この worker が保証する辞書とラティスの対応関係が壊れてしまうためです。
 
 Worker は保持メモリも制限します。区切り文字のない最大長の文を 1 回処理するとラティスは数 MB まで成長し（32 KiB の ASCII 文で約 18 MB、32 KiB の CJK 文では文字索引ラティスのスロット数が 1/3 のため約 6 MB）、素の `Lattice` はそれを保持し続けます。Worker は一定回数の呼び出し窓で容量が過大と判明した場合に、自動でラティスを縮小してスクラッチバッファを解放し、`shrink_to(text_len_hint)` で即時に縮小することもできます。`reset()` は内部バッファを破棄して新しいものに置き換えます。これは、例えばパニックによって worker を保持する Mutex がポイズニングされた場合など、バッファが不整合な中間状態を保持している可能性がある回復経路のために用意されています。Segmenter の設定（mode や空白の扱いなど）自体は保持されます。
 

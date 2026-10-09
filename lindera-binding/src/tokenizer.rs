@@ -131,6 +131,18 @@ impl CoreTokenizerBuilder {
     }
 
     /// Sets whether whitespace tokens are kept in the output.
+    ///
+    /// Kept whitespace also stays in the lattice, so the other tokens can
+    /// differ from those of the default output, which skips whitespace as
+    /// MeCab does.
+    ///
+    /// # Arguments
+    ///
+    /// * `keep_whitespace` - `true` to output whitespace tokens.
+    ///
+    /// # Returns
+    ///
+    /// The builder, for chaining.
     pub fn set_keep_whitespace(&mut self, keep_whitespace: bool) -> &mut Self {
         self.inner.set_segmenter_keep_whitespace(keep_whitespace);
         self

@@ -115,3 +115,76 @@ impl WhitespaceClassifier {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::dictionary::character_definition::{
+        CategoryData, CategoryId, CharacterDefinition, LookupTable,
+    };
+
+    use super::WhitespaceClassifier;
+
+    /// Range starts of the test mappings: each range runs to the next one,
+    /// the last to the end of Unicode.
+    const BOUNDARIES: [u32; 9] = [0, 0x09, 0x0A, 0x20, 0x21, 0x61, 0x7B, 0x3000, 0x3001];
+
+    /// Builds character definitions in which the ranges starting at the
+    /// codepoints of `space` are `SPACE` and `a`-`z` are `ALPHA`; with
+    /// `with_space` false there is no `SPACE` category at all.
+    fn char_definitions(space: &'static [u32], with_space: bool) -> CharacterDefinition {
+        let mapping = LookupTable::from_fn(BOUNDARIES.to_vec(), &|c, buf: &mut Vec<CategoryId>| {
+            if with_space && space.contains(&c) {
+                buf.push(CategoryId(1));
+            } else if (0x61..=0x7A).contains(&c) {
+                buf.push(CategoryId(2));
+            } else {
+                buf.push(CategoryId(0));
+            }
+        });
+        let category = CategoryData {
+            invoke: false,
+            group: true,
+            length: 0,
+        };
+        let names = if with_space {
+            vec!["DEFAULT".into(), "SPACE".into(), "ALPHA".into()]
+        } else {
+            vec!["DEFAULT".into(), "UNUSED".into(), "ALPHA".into()]
+        };
+        CharacterDefinition::new(vec![category; 3], names, mapping)
+    }
+
+    #[test]
+    fn test_no_space_category_gives_no_classifier() {
+        assert!(WhitespaceClassifier::new(&char_definitions(&[0x20], false)).is_none());
+    }
+
+    #[test]
+    fn test_space_below_256_only() {
+        let definitions = char_definitions(&[0x09, 0x20], true);
+        let classifier = WhitespaceClassifier::new(&definitions).unwrap();
+        assert_eq!(classifier.category(), CategoryId(1));
+        assert!(!classifier.has_members_above_latin1());
+        for (c, expected) in [(' ', true), ('\t', true), ('\n', false), ('a', false)] {
+            assert_eq!(classifier.is_space(c, &definitions), expected, "{c:?}");
+            assert_eq!(classifier.is_space_below_256(c as u32), expected, "{c:?}");
+        }
+        // Above U+00FF nothing is whitespace, U+3000 included.
+        assert!(!classifier.is_space('\u{3000}', &definitions));
+        assert!(!classifier.is_space('あ', &definitions));
+    }
+
+    /// A `SPACE` member above U+00FF (U+3000 here, which no bundled
+    /// `char.def` puts in `SPACE`) is answered by the category lookup.
+    #[test]
+    fn test_space_member_above_latin1() {
+        let definitions = char_definitions(&[0x20, 0x3000], true);
+        let classifier = WhitespaceClassifier::new(&definitions).unwrap();
+        assert!(classifier.has_members_above_latin1());
+        assert!(classifier.is_space(' ', &definitions));
+        assert!(!classifier.is_space('\t', &definitions));
+        assert!(classifier.is_space('\u{3000}', &definitions));
+        assert!(!classifier.is_space('\u{3001}', &definitions));
+        assert!(!classifier.is_space('\u{2FFF}', &definitions));
+    }
+}

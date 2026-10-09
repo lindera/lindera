@@ -9,8 +9,9 @@ Lindera v7.0.0 では `lindera` クレートがファサード（facade）にな
 `LINDERA_DICTIONARIES_PATH` のフォールバックを削除し、IPADIC のスキーマで
 `conjugation_type` と `conjugation_form` の名前が逆になっていた誤りを
 修正し、表層形が空白だけの見出し語や先頭・末尾が空白の見出し語を保持し、
-MeCab と同様に空白をラティス上で読み飛ばし、`char.def` の重複した行を MeCab と
-同じく解決し、MeCab と同じく行の中では `、`・`。` をまたいで文脈を引き継ぎ、
+MeCab と同様に空白をラティス上で読み飛ばし（Sudachi と同じく空白を残す SudachiDict
+を除く）、`char.def` の重複した行を MeCab と同じく解決し、MeCab と同じく行の中では
+`、`・`。` をまたいで文脈を引き継ぎ、
 N-best の各結果が入力全体を覆うようにし、MeCab と同じくどの位置からも未知語が
 始まるようにし、辞書の見出し語のダッシュとチルダを書かれたとおりに保持して、
 それを書き換えていた設定 `normalize_details` を削除し、MeCab と同じく同点の
@@ -32,7 +33,7 @@ MeCab と同じく最後の語が後から始まる方を選ぶようにし、`l
 | **`LINDERA_DICTIONARIES_PATH` の削除** | 非推奨のビルドキャッシュ変数をまだ設定しているユーザー | `LINDERA_BUILD_DICTIONARY_CACHE_DIR` を設定する。旧名は無視される |
 | **IPADIC・IPADIC-NEologd の `conjugation_type` と `conjugation_form` が正しい列を指すように修正** | IPADIC・IPADIC-NEologd でこの 2 フィールドを名前で読むユーザー（`Token::get`・`Token::as_value`・`lindera tokenize -o json`・バインディングのスキーマ） | 2 つの値が入れ替わることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする |
 | **空白を含む見出し語を保持** | U+3000 を含むテキスト（IPADIC・IPADIC-NEologd・UniDic）、空白を含むテキスト（SudachiDict）、末尾が空白の一部の語 | U+3000 が `記号,空白`・`空白` になり、SudachiDict の分割が Sudachi にずっと近くなることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする |
-| **空白をラティス上で読み飛ばし、MeCab と同様に空白の前後の語を直接接続する** | `keep_whitespace` が false（デフォルト）で空白を含むテキストを分割するユーザー。ko-dic で特に顕著 | そのようなテキストは MeCab と同じ分割になることを前提にする。`skip_whitespace(false)`（`"skip_whitespace": false`、`--disable-skip-whitespace`）で空白の扱いを v6 に戻せる（このガイドの他の出力の変化は戻らない） |
+| **空白をラティス上で読み飛ばし、MeCab と同様に空白の前後の語を直接接続する** | `keep_whitespace` が false（デフォルト）で空白を含むテキストを分割するユーザー。ko-dic で特に顕著。Sudachi と同じく空白をラティスに残す SudachiDict は対象外 | そのようなテキストは MeCab と同じ分割になることを前提にする。`skip_whitespace(false)`（`"skip_whitespace": false`、`--disable-skip-whitespace`）で空白の扱いを v6 に戻せる（このガイドの他の出力の変化は戻らない） |
 | **`char.def` の重複した行は最後の行が決める** | `Ð`（U+00D0、ko-dic 以外のすべての辞書）・`々`（U+3005）・`〇`（U+3007）を含むテキスト、単一コードポイントの行や重複した行を持つ `char.def` で `lindera train` を使うユーザー | `Ð` が文字として出力に残ることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする |
 | **MeCab と同じく、行の中では `、`・`。` をまたいで文脈を引き継ぐ** | 行の中に `、` や `。` を含む日本語のテキストを分割するユーザー | `、` や `。` の直後の語の解析が一部変わり（多くは MeCab と同じ解析になる）、そうした行の N-best のコストが変わることを前提にする。v6 の動作に戻す設定はない |
 | **N-best: 各結果が入力全体を覆う** | 複数の文を含む入力で N-best（`segment_nbest`・`tokenize_nbest`・`lindera tokenize -N`・バインディングの N-best メソッド）を使うユーザー | 2 件目以降が入力全体のコストの小さい分割になることを前提にする。コストの閾値は入力全体に対して適用される |
@@ -52,7 +53,8 @@ MeCab と同じく最後の語が後から始まる方を選ぶようにし、`l
 後述します。IPADIC・IPADIC-NEologd では、`conjugation_type` と
 `conjugation_form` という名前で返る値が入れ替わります。表層形が空白だけの
 見出し語や先頭・末尾が空白の見出し語が辞書に入るため、そうした空白を含む
-テキストの分割が変わります。空白を含むテキストは MeCab と同じように分割されます。
+テキストの分割が変わります。空白を含むテキストは MeCab と同じように分割されます（Sudachi と同じく空白を
+ラティスに残す SudachiDict を除く）。
 `Ð`・`々`・`〇` が MeCab と同じ文字カテゴリになるため、これらを含むテキストの分割が
 変わります。行の中では `、`・`。` の直後の語が前の語の文脈を引き継いで解析されるため、
 そうしたテキストの一部で分割が変わり、`、`・`。` を含む行の N-best のコストは
@@ -368,9 +370,11 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 `keep_whitespace` が false（デフォルト）のとき、v7.0.0 は MeCab と同様に空白を
 Viterbi ラティス上で読み飛ばします。空白の後ろの語は空白の前の語に直接
 接続します。v6 は空白を出力から除外していましたが、ラティスには `SPACE` の
-未知語として残していました。MeCab で学習した辞書ではこの項目との連接は
-学習時に一度も現れないため（ko-dic ではその連接コストがすべて 0）、空白の
-たびに前後の語の文脈が途切れていました。
+未知語として残していたため、空白の前後の語は互いにではなくそのノードに接続して
+いました。その影響の大きさは、辞書がそのノードに与える連接コストによります。
+ko-dic ではすべて 0 なので、空白のたびに前後の語の文脈が途切れていました。
+IPADIC と UniDic では 0 ではなく、語どうしの連接の代わりにそのノードのコストが
+使われていました。
 
 出力が変わるのは空白を含む文だけです。分割の区切りになった `\n` や `\t` で
 終わる文（`。` で終わらない行など）もこれに含まれ、その文の最後の語は文末に
@@ -390,7 +394,9 @@ Viterbi ラティス上で読み飛ばします。空白の後ろの語は空白
 トークンの表層形とオフセットには読み飛ばした空白が含まれません。ただし、見出し語の
 一部である空白は、語の途中にあっても末尾にあっても、MeCab と同じくその語のトークンに
 残ります（前の節を参照）。読み飛ばしは空白を含まないテキストの分割を変えません。
-`keep_whitespace(true)` では空白がラティスに残り、出力は変わりません。
+`keep_whitespace(true)` では空白がラティスに残るため、出力は v6 と同じです。
+ただし、空白トークン以外のトークンも、空白を読み飛ばす v7 のデフォルトの出力と
+変わることがあります。
 
 空白の扱いを v6 に戻すには、読み飛ばしを無効にします。空白は引き続き出力から
 除外されます。ただし、[MeCab と同じく、どの位置からも未知語が始まる](#mecab-と同じくどの位置からも未知語が始まる)
@@ -414,7 +420,9 @@ segmenter:
 lindera tokenize --disable-skip-whitespace
 ```
 
-言語バインディングでは設定ファイルで指定します。
+言語バインディングには、この設定の setter はありません。Python・Node.js・Ruby・
+PHP のバインディングでは、`from_file` / `fromFile` で読み込む設定ファイルでだけ
+指定できます。WASM のバインディングでは変更できず、辞書のデフォルトが使われます。
 
 ## `char.def` の重複した行を MeCab と同じく解決する
 
@@ -824,6 +832,7 @@ v6 の動作に戻す設定はありません。
 | `Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, normalize_details, schema, userdic_schema)` | `Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, schema, userdic_schema)` |
 | `Metadata::normalize_details` | 削除 |
 | `PrefixDictionaryBuilderOptions::normalize_details(value)` | 削除 |
+| — | 公開フィールド `Metadata::skip_whitespace: Option<bool>` を追加（`lindera_binding::CoreMetadata::skip_whitespace` も） |
 
 各トークンは `(start, word_id)` ではなく `(start, end, word_id)` になりました。
 オフセットは文内のバイト位置です。空白を読み飛ばすとき（v7 で追加された
@@ -888,6 +897,14 @@ BOS の辺の、`LatticeOptions::bos` での添字です。デフォルトの単
 バインディングの作者向けの `lindera_binding::CoreMetadata` からも同じくフィールドが
 なくなり、`CoreMetadata::new` の引数は 11 個から 10 個になります。
 
+`Metadata` には、空白の読み飛ばしの辞書のデフォルトを表す公開フィールド
+`skip_whitespace: Option<bool>` が加わりました（[空白をラティス上で読み飛ばす](#空白をラティス上で読み飛ばす)
+を参照）。`lindera_binding::CoreMetadata` も同じです。どちらの構造体も
+`#[non_exhaustive]` ではないため、すべてのフィールドを `..` なしで並べた構造体
+リテラルはコンパイルできなくなります。`skip_whitespace: None` を加えるか、
+リテラルの最後を `..Default::default()` にしてください。`Metadata::new` と
+`CoreMetadata::new` はこれを `None`（読み飛ばす）にします。
+
 ## 対応が不要なケース
 
 - **言語バインディングと CLI のユーザー**: Python・Node.js・Ruby・PHP・WASM の
@@ -941,6 +958,8 @@ Rust クレートのユーザー:
 - `Metadata::new` を呼び出している場合は、9 番目の引数 `normalize_details` を
   削除し、`Metadata::normalize_details` フィールドと
   `PrefixDictionaryBuilderOptions::normalize_details` を使わないようにする。
+- すべてのフィールドを並べた構造体リテラルで `Metadata` を作っている場合は、
+  `skip_whitespace: None` を加えるか、最後を `..Default::default()` にする。
 
 バインディングの作者:
 
@@ -948,6 +967,8 @@ Rust クレートのユーザー:
   `lindera_binding_core::` を `lindera_binding::` に置き換える。
 - `CoreMetadata::new` から引数 `normalize_details` を削除し（引数は 10 個になる）、
   `CoreMetadata::normalize_details` フィールドを使わないようにする。
+- すべてのフィールドを並べた構造体リテラルで `CoreMetadata` を作っている場合は、
+  `skip_whitespace: None` を加えるか、最後を `..Default::default()` にする。
 
 ビルド環境:
 
@@ -973,7 +994,7 @@ U+3000 や空白を含むテキストを IPADIC・IPADIC-NEologd・UniDic・Suda
 空白を含むテキストを分割するすべてのユーザー:
 
 - そのようなテキストは MeCab と同じ分割になることを前提にする（ko-dic で特に
-  顕著）。空白の扱いを v6 に戻したい場合は `skip_whitespace(false)`、
+  顕著。Sudachi と同じく空白をラティスに残す SudachiDict は対象外）。空白の扱いを v6 に戻したい場合は `skip_whitespace(false)`、
   `"skip_whitespace": false`、`--disable-skip-whitespace` を指定する。このガイドの
   他の出力の変化は戻らない。
 - 末尾が半角スペースの見出し語（IPADIC-NEologd・ko-dic・SudachiDict）のトークンは、
