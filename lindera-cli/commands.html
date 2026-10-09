@@ -245,7 +245,7 @@ jieba           no        no          -
 <li><code>--nbest</code> / <code>-N</code>: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.</li>
 <li><code>--nbest-unique</code>: Deduplicate N-best results by removing paths that produce the same segmentation.</li>
 <li><code>--nbest-cost-threshold</code>: Maximum cost difference from the best result. Only results with cost within <code>best_cost + threshold</code> are returned; both costs are totals over the whole input line.</li>
-<li>Input file: Optional file path (default: stdin)</li>
+<li>Input file: Optional file path (default: stdin). The input is read line by line, and each line is tokenized on its own. Only the line terminator (<code>\n</code>, or <code>\r\n</code>) is removed: whitespace at the start or end of a line is handled as elsewhere in the line (spaces and tabs, which are <code>SPACE</code> characters, are skipped and dropped from the output; U+3000 is a token with IPADIC, IPADIC-NEologd and UniDic), and the byte offsets in the JSON output index the line. Unlike MeCab, which outputs the <code>\r</code> of a CRLF line as an unknown word, Lindera removes it</li>
 </ul>
 <h3 id="basic-usage"><a class="header" href="#basic-usage">Basic usage</a></h3>
 <pre><code class="language-bash"># Tokenize text using a dictionary directory

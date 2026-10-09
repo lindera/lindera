@@ -2312,7 +2312,7 @@ jieba           no        no          -
 <li><code>--nbest</code> / <code>-N</code>: 返す N-best 結果の数（デフォルト: 1）。2以上に設定すると N-best 出力が有効になります。</li>
 <li><code>--nbest-unique</code>: 同じ分割を生成するパスの重複を排除します。</li>
 <li><code>--nbest-cost-threshold</code>: 最良の結果からの最大コスト差。<code>best_cost + threshold</code> 以内のコストを持つ結果のみが返されます。どちらのコストも入力行全体の合計です。</li>
-<li>入力ファイル: オプションのファイルパス (デフォルト: 標準入力)</li>
+<li>入力ファイル: オプションのファイルパス (デフォルト: 標準入力)。入力は 1 行ずつ読み込まれ、行ごとに解析されます。取り除くのは行末の改行コード（<code>\n</code> または <code>\r\n</code>）だけで、行頭・行末の空白も行の途中と同じに扱います（<code>SPACE</code> の文字である半角空白とタブは読み飛ばして出力から除き、U+3000 は IPADIC・IPADIC-NEologd・UniDic ではトークンになります）。JSON 出力のバイトオフセットは入力行の中の位置を指します。MeCab は CRLF の行の <code>\r</code> も未知語として出力しますが、Lindera は取り除きます</li>
 </ul>
 <h3 id="基本的な使用方法"><a class="header" href="#基本的な使用方法">基本的な使用方法</a></h3>
 <pre><code class="language-bash"># 辞書ディレクトリを指定してトークナイズ
@@ -9510,6 +9510,7 @@ MeCab と同じく最後の語が後から始まる方を選ぶようにし、<c
 <tr><td><strong>IPADIC・IPADIC-NEologd: MeCab と同じく、見出し語のダッシュとチルダを書かれたとおりに保持する</strong></td><td>IPADIC・IPADIC-NEologd で <code>―</code>（U+2015）・<code>—</code>（U+2014）・<code>～</code>（U+FF5E）・<code>〜</code>（U+301C）を含むテキストを分割するユーザー</td><td><code>―</code> や <code>～</code> で書かれた語が同じ綴りのテキストに一致し、<code>—</code> や <code>〜</code> で書いたテキストからは、以前の書き換えでしか引けなかった語（IPADIC 12 語、IPADIC-NEologd 1,085 語）が引けなくなることを前提にする（<code>mapping</code> 文字フィルタで綴りをそろえられる）。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 <tr><td><strong>MeCab と同じく、表層形・文脈 ID・コストが同じ見出し語からは CSV で先の行を出力する</strong></td><td>IPADIC・IPADIC-NEologd・UniDic・ko-dic、またはそうした見出し語を持つユーザー辞書で、読みや原形などのトークンの詳細情報を読むユーザー。N-best を使うユーザー</td><td>そうした語の詳細情報が MeCab と同じになり（IPADIC の <code>狡い</code> の読みは <code>コスイ</code> ではなく <code>ズルイ</code>）、ユーザー辞書の見出し語が引き続きシステム辞書の同点の見出し語に勝ち、N-best の 1 件目が常に 1-best と同じになることを前提にする。再ビルドは不要。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>MeCab と同じく、コストが同じ分割からは最後の語が後から始まる方を選ぶ</strong></td><td>テキストを解析するすべてのユーザー。現れるのはまれ（比較したテキストでは約 54,000 行のうち 9 行）</td><td>そうした箇所が MeCab と同じ分割になることを前提にする（IPADIC の <code>腸窒扶斯</code> は <code>腸 / 窒 / 扶斯</code> ではなく <code>腸 / 窒扶 / 斯</code>）。再ビルドは不要。v6 の動作に戻す設定はない</td></tr>
+<tr><td><strong><code>lindera tokenize</code> が各入力行から改行コードだけを取り除く</strong></td><td>行頭・行末に空白がある入力を CLI に渡すユーザー</td><td>オフセットが入力行の中の位置を指し、行頭・行末の U+3000 がトークンになり（IPADIC では <code>記号,空白</code>）、<code>--keep-whitespace</code> でそこの空白も出力されることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>設定 <code>normalize_details</code> の削除: <code>Metadata::new</code> と <code>CoreMetadata::new</code> の引数は 10 個、Ruby の <code>Metadata.new</code> の引数は 8 個になる</strong></td><td>辞書のメタデータを作成・参照するコード。Rust（<code>Metadata</code>・<code>lindera_binding::CoreMetadata</code>・<code>PrefixDictionaryBuilderOptions</code>）と、Python・Ruby・PHP・Node.js のバインディングの <code>Metadata</code> クラス</td><td>引数・オプション・プロパティを削除する。このキーを含む <code>metadata.json</code> もそのまま読み込め、キーは無視される</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>・<code>tokens_offset_into</code>・<code>nbest_tokens_offset</code>・<code>NBestGenerator::next</code> が <code>(start, end, WordId)</code> を返す</strong></td><td>これらの <code>lindera_dictionary</code> の関数を直接呼び出す Rust コード（<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・<code>lindera::dictionary::nbest::…</code> 経由を含む）</td><td>3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> が最良パスの BOS の添字（<code>Option&lt;usize&gt;</code>）を返す</strong></td><td><code>tokens_offset_into</code> の戻り値 <code>()</code> を値として使う Rust コード</td><td>文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する</td></tr>
@@ -9519,8 +9520,9 @@ MeCab と同じく最後の語が後から始まる方を選ぶようにし、<c
 変わりません。API も 1 つの設定を除いて変わりません。Python・Node.js・Ruby・PHP の
 バインディングの <code>Metadata</code> クラスは、<code>normalize_details</code> を受け取らず、公開も
 しなくなりました（<a href="migration_v6_to_v7.html#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>
-を参照）。バージョン番号は 7.0.0 になります。出力の違いは 10 個あり、いずれも
-後述します。IPADIC・IPADIC-NEologd では、<code>conjugation_type</code> と
+を参照）。バージョン番号は 7.0.0 になります。出力の違いは 11 個あり、いずれも
+後述します（最後の 1 つは CLI だけの変化です）。IPADIC・IPADIC-NEologd では、
+<code>conjugation_type</code> と
 <code>conjugation_form</code> という名前で返る値が入れ替わります。表層形が空白だけの
 見出し語や先頭・末尾が空白の見出し語が辞書に入るため、そうした空白を含む
 テキストの分割が変わります。空白を含むテキストは MeCab と同じように分割されます（Sudachi と同じく空白を
@@ -9537,7 +9539,9 @@ IPADIC・IPADIC-NEologd では、<code>―</code> や <code>～</code> で書か
 最後の行ではなく最初の行を出力するため、そうした語の読みや原形などの詳細情報が
 変わり、N-best の 1 件目は常に 1-best と同じになります。コストがまったく同じ
 2 つの分割からは、MeCab と同じく最後の語が後から始まる方を選ぶため、わずかな行の
-分割が変わります。それ以外は、同じ入力と
+分割が変わります。そして <code>lindera tokenize</code> は、各入力行の両端の空白をすべて
+取り除くのをやめて改行コードだけを取り除くため、行頭・行末の U+3000 が残り、
+オフセットが入力行の中の位置を指すようになります。それ以外は、同じ入力と
 辞書に対して、v7.0.0 は v6.2.0 と同じトークンを、同じ位置ベースの詳細情報
 （details）とともに出力します。</p>
 <h2 id="lindera-クレートはファサードに"><a class="header" href="#lindera-クレートはファサードに"><code>lindera</code> クレートはファサードに</a></h2>
@@ -10165,6 +10169,43 @@ MeCab と違う方を選ぶことがあります。空白で終わる見出し�
 N-best（<code>-N 3</code>）の命令数は約 1% 増えます。</p>
 <p>辞書のファイルは変わらないため、この変更のための再ビルドや再ダウンロードは不要です。
 v6 の動作に戻す設定はありません。</p>
+<h2 id="lindera-tokenize-は行末の改行コードだけを取り除く"><a class="header" href="#lindera-tokenize-は行末の改行コードだけを取り除く"><code>lindera tokenize</code> は行末の改行コードだけを取り除く</a></h2>
+<p><code>lindera tokenize</code> は入力を 1 行ずつ読み込みます。v6.2.0 までは、各行の両端の空白
+（半角空白・タブ・U+3000・U+00A0 などの Unicode の空白、<code>str::trim</code>）をすべて
+取り除いてから解析していました。ライブラリ・言語バインディング・MeCab は取り除きません。
+v7.0.0 は行末の改行コード（<code>\n</code> または <code>\r\n</code>）だけを取り除き、残りをライブラリと
+同じように解析します。</p>
+<div class="table-wrapper"><table><thead><tr><th>入力行（IPADIC）</th><th>v6</th><th>v7（MeCab と同じ）</th></tr></thead><tbody>
+<tr><td>半角空白 2 つ、<code>東京</code>、半角空白 1 つ</td><td><code>東京</code> が 0-6 バイト目</td><td><code>東京</code> が 2-8 バイト目</td></tr>
+<tr><td>U+3000、<code>東京</code></td><td><code>東京</code> が 0-6</td><td>U+3000（<code>記号,空白</code>）が 0-3、<code>東京</code> が 3-9</td></tr>
+<tr><td><code>東京</code>、U+3000</td><td><code>東京</code> が 0-6</td><td><code>東京</code> が 0-6、U+3000（<code>記号,空白</code>）が 6-9</td></tr>
+<tr><td>U+00A0、<code>東京</code>、U+00A0</td><td><code>東京</code> が 0-6</td><td>U+00A0（未知語、<code>記号,一般</code>）が 0-2、<code>東京</code> が 2-8、U+00A0 が 8-10</td></tr>
+</tbody></table>
+</div>
+<ul>
+<li>半角空白とタブは <code>SPACE</code> の文字で、Segmenter が読み飛ばして出力から除くため、
+これまでどおりトークンにはなりません。変わるのはその後のトークンのバイトオフセット
+だけで、ライブラリのオフセットと同じく入力行の中の位置を指すようになります。</li>
+<li>行頭・行末の U+3000 は、行の途中と同じく、IPADIC・IPADIC-NEologd（<code>記号,空白</code>）と
+UniDic（<code>空白</code>）ではトークンになります
+（<a href="migration_v6_to_v7.html#%E7%A9%BA%E7%99%BD%E3%82%92%E5%90%AB%E3%82%80%E8%A6%8B%E5%87%BA%E3%81%97%E8%AA%9E%E3%82%92%E4%BF%9D%E6%8C%81%E3%81%99%E3%82%8B">空白を含む見出し語を保持する</a>を参照）。
+1 ファイルにまとめた『坊っちゃん』の 538 行のうち、202 行は U+3000 の字下げで
+始まり、このトークンが計 206 個現れ、ほかのトークンは変わりません。
+UD Japanese GSD の 8,100 文や『こころ』と『吾輩は猫である』の 3,587 段落の
+ように、行頭・行末に空白のないテキストの出力は変わりません。</li>
+<li><code>--keep-whitespace</code> では、行頭・行末の半角空白もトークンになります。半角空白 2 つ、
+<code>東京</code>、半角空白 1 つの行は 3 つのトークンになります。</li>
+<li><code>-N</code> では、半角空白やタブだけの行が、結果なしではなく、MeCab と同じくトークンのない
+結果を 1 件（<code>NBEST 1</code> と <code>EOS</code>）返します。空行はこれまでどおり結果を返しません。
+行頭・行末に U+3000 がある行のコストには、そのトークンが含まれます。</li>
+<li><code>\r\n</code> で終わる行の <code>\r</code> は取り除きます（取り除くのはその 1 つだけです）。MeCab は
+<code>\n</code> だけを取り除き、<code>\r</code> を未知語として出力しますが、Lindera は Windows の改行の
+テキストですべての行の末尾に <code>\r</code> のトークンが出ないように、これを取り除きます。</li>
+</ul>
+<p>ライブラリと言語バインディングは、もともと入力を trim していないため変わりません。
+辞書のファイルも変わらないため、この変更のための再ビルドや再ダウンロードは不要です。
+v6 の動作に戻す設定はありません。必要なら、テキストを <code>lindera tokenize</code> に渡す前に
+各行の両端の空白を取り除いてください。</p>
 <h2 id="lindera_dictionary-の-rust-api-変更-1"><a class="header" href="#lindera_dictionary-の-rust-api-変更-1"><code>lindera_dictionary</code> の Rust API 変更</a></h2>
 <p>以下は、ラティスのバックトレースを直接呼び出すコードと、<code>Metadata::new</code> で辞書の
 メタデータを作成するコードにのみ影響します。対象は
@@ -10271,8 +10312,9 @@ BOS です。</li>
 影響する、どの位置からも始まる未知語、IPADIC・IPADIC-NEologd で
 <code>―</code>・<code>—</code>・<code>～</code>・<code>〜</code> を含むテキストにのみ影響する、ダッシュとチルダの綴りの
 保持、読みや原形などのトークンの詳細情報や、コストが同じ N-best の結果の
-順を読む場合にのみ影響する、同点の見出し語の選び方、そしてわずかな行の分割を
-変える、コストが同じ分割の選び方です。</li>
+順を読む場合にのみ影響する、同点の見出し語の選び方、わずかな行の分割を
+変える、コストが同じ分割の選び方、そして CLI だけの変化として、行頭・行末に
+空白がある行にのみ影響する、入力行の両端の空白の扱いです。</li>
 <li><strong><code>lindera = "6"</code> のまま使い続けるプロジェクト</strong>: <code>lindera</code> と <code>lindera-analysis</code>
 の 6.x は crates.io に残り、組み合わせて動作し続けます。メジャーバージョンを
 上げるまで何も変わりません。</li>
@@ -10418,9 +10460,13 @@ IPADIC-NEologd 1,085 語）が引けなくなることを前提にする。IPADI
 コンストラクタの最後の引数、Node.js のオプション <code>normalizeDetails</code>）。
 プロパティと、<code>to_dict()</code>・<code>to_h</code>・<code>toArray()</code>・<code>toObject()</code> の同名のキーも
 読まないようにする。</li>
+<li><code>lindera tokenize</code> では、行頭に空白がある行のオフセットが入力行の中の位置を指し、
+行頭・行末の U+3000 がトークンになり（IPADIC・IPADIC-NEologd・UniDic）、
+<code>--keep-whitespace</code> でそこの空白も出力され、<code>-N</code> では空白だけの行が 1 件の結果を
+返すことを前提にする。v6 の出力が必要なら、先に各行の両端の空白を取り除く。</li>
 <li>それ以外は、7.0.0 リリースを取り込む以外に対応は不要（上記の辞書・空白・<code>、</code> と
-<code>。</code>・N-best・未知語・ダッシュとチルダ・同点の見出し語・コストが同じ分割の項目を
-除く）。</li>
+<code>。</code>・N-best・未知語・ダッシュとチルダ・同点の見出し語・コストが同じ分割の項目と、
+<code>lindera tokenize</code> の項目を除く）。</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="開発ガイド"><a class="header" href="#開発ガイド">開発ガイド</a></h1>
 <p>このセクションでは、Lindera のビルド、テスト、貢献に関する情報を提供します。</p>

@@ -245,7 +245,7 @@ jieba           no        no          -
 <li><code>--nbest</code> / <code>-N</code>: 返す N-best 結果の数（デフォルト: 1）。2以上に設定すると N-best 出力が有効になります。</li>
 <li><code>--nbest-unique</code>: 同じ分割を生成するパスの重複を排除します。</li>
 <li><code>--nbest-cost-threshold</code>: 最良の結果からの最大コスト差。<code>best_cost + threshold</code> 以内のコストを持つ結果のみが返されます。どちらのコストも入力行全体の合計です。</li>
-<li>入力ファイル: オプションのファイルパス (デフォルト: 標準入力)</li>
+<li>入力ファイル: オプションのファイルパス (デフォルト: 標準入力)。入力は 1 行ずつ読み込まれ、行ごとに解析されます。取り除くのは行末の改行コード（<code>\n</code> または <code>\r\n</code>）だけで、行頭・行末の空白も行の途中と同じに扱います（<code>SPACE</code> の文字である半角空白とタブは読み飛ばして出力から除き、U+3000 は IPADIC・IPADIC-NEologd・UniDic ではトークンになります）。JSON 出力のバイトオフセットは入力行の中の位置を指します。MeCab は CRLF の行の <code>\r</code> も未知語として出力しますが、Lindera は取り除きます</li>
 </ul>
 <h3 id="基本的な使用方法"><a class="header" href="#基本的な使用方法">基本的な使用方法</a></h3>
 <pre><code class="language-bash"># 辞書ディレクトリを指定してトークナイズ
