@@ -115,7 +115,9 @@ pub struct TokenizeArgs {
         help = "Maximum cost difference from the best N-best result, over the whole line (e.g. 10000)"
     )]
     nbest_cost_threshold: Option<i64>,
-    #[clap(help = "Input text file (default: stdin)")]
+    #[clap(
+        help = "Input text file (default: stdin). Each line is tokenized on its own, with only its line terminator (\\n or \\r\\n) removed, so whitespace at the start or end of a line is handled as elsewhere in the line and offsets index the line"
+    )]
     input_file: Option<PathBuf>,
 }
 
@@ -247,6 +249,33 @@ fn wakati_output<W: Write>(writer: &mut W, tokens: Vec<Token>) -> LinderaResult<
     Ok(())
 }
 
+/// Removes the line terminator that `BufRead::read_line` leaves at the end of
+/// a line: a final `\n` and, only then, one `\r` before it (the rule of
+/// `str::lines`).
+///
+/// Whitespace at the start or end of the line is kept, so it is tokenized
+/// as elsewhere in the line (by default, whitespace of the `SPACE` category
+/// is skipped and dropped by the segmenter, and U+3000 is a token with
+/// IPADIC) and token offsets index the input line. A last line without `\n` is returned
+/// unchanged, and any other `\r` stays part of the line. Unlike MeCab, which
+/// removes only the `\n` and outputs the `\r` of a CRLF line as an unknown
+/// word, the `\r` of a CRLF line is removed, so text with Windows line
+/// endings does not end every line with a `\r` token.
+///
+/// # Arguments
+///
+/// * `line` - One line as read by `BufRead::read_line`.
+///
+/// # Returns
+///
+/// The line without its line terminator.
+fn strip_line_terminator(line: &str) -> &str {
+    match line.strip_suffix('\n') {
+        Some(line) => line.strip_suffix('\r').unwrap_or(line),
+        None => line,
+    }
+}
+
 pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     let mut builder = TokenizerBuilder::new()?;
 
@@ -363,15 +392,18 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
             break;
         }
 
+        // Remove only the line terminator, not the whitespace at the ends of
+        // the line, which is part of the input (#1115).
+        let line = strip_line_terminator(&text);
+
         if nbest >= 2 {
-            let results =
-                worker.tokenize_nbest(text.trim(), nbest, nbest_unique, nbest_cost_threshold)?;
+            let results = worker.tokenize_nbest(line, nbest, nbest_unique, nbest_cost_threshold)?;
             for (rank, (tokens, cost)) in results.into_iter().enumerate() {
                 writeln!(writer, "NBEST {} (cost={})", rank + 1, cost).map_err(io_err)?;
                 write_output(&mut writer, output_format, tokens, &mut details_buf)?;
             }
         } else {
-            let tokens = worker.tokenize(text.trim())?;
+            let tokens = worker.tokenize(line)?;
             write_output(&mut writer, output_format, tokens, &mut details_buf)?;
         }
     }
@@ -387,7 +419,7 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
 mod tests {
     use clap::Parser;
 
-    use super::TokenizeArgs;
+    use super::{TokenizeArgs, strip_line_terminator};
 
     /// `TokenizeArgs` is a `clap::Args` group; parse it through a throwaway
     /// command so the flag rules can be checked without the whole CLI.
@@ -395,6 +427,45 @@ mod tests {
     struct Cli {
         #[clap(flatten)]
         args: TokenizeArgs,
+    }
+
+    #[test]
+    fn strip_line_terminator_removes_lf_and_crlf() {
+        assert_eq!(strip_line_terminator("東京\n"), "東京");
+        assert_eq!(strip_line_terminator("東京\r\n"), "東京");
+        assert_eq!(strip_line_terminator("\n"), "");
+        assert_eq!(strip_line_terminator("\r\n"), "");
+    }
+
+    #[test]
+    fn strip_line_terminator_keeps_a_line_without_lf() {
+        // The last line of the input may have no terminator; a `\r` that is
+        // not followed by `\n` is part of the line.
+        assert_eq!(strip_line_terminator("東京"), "東京");
+        assert_eq!(strip_line_terminator(""), "");
+        assert_eq!(strip_line_terminator("東京\r"), "東京\r");
+        assert_eq!(strip_line_terminator("東\r京\n"), "東\r京");
+    }
+
+    #[test]
+    fn strip_line_terminator_removes_one_cr_only() {
+        assert_eq!(strip_line_terminator("東京\r\r\n"), "東京\r");
+        assert_eq!(strip_line_terminator("東京\n\n"), "東京\n");
+    }
+
+    #[test]
+    fn strip_line_terminator_keeps_whitespace_at_the_ends() {
+        assert_eq!(strip_line_terminator("  東京 \n"), "  東京 ");
+        assert_eq!(strip_line_terminator("\t東京\t\r\n"), "\t東京\t");
+        assert_eq!(
+            strip_line_terminator("\u{3000}東京\u{3000}\n"),
+            "\u{3000}東京\u{3000}"
+        );
+        assert_eq!(
+            strip_line_terminator("\u{a0}東京\u{a0}\n"),
+            "\u{a0}東京\u{a0}"
+        );
+        assert_eq!(strip_line_terminator("   \n"), "   ");
     }
 
     #[test]
