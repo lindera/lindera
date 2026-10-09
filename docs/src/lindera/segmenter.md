@@ -249,6 +249,7 @@ The result can still differ from one lattice over the segment:
 
 - No word spans a cut: a dictionary entry that contains `、` or `。`, such as UniDic's `一、二塁`, never matches, an unknown word is not grouped across a cut, and a word that would span a forced cut is split there.
 - The left-space penalty (see [Left-Space Penalty (Korean)](#left-space-penalty-korean)) does not apply to a word that starts right at a forced cut, even when whitespace precedes the cut.
+- A sentence without a path, which only a dictionary that leaves some character without an unknown-word candidate gives, ends the segment before it: the best path up to the cut is kept as a path that ends there, the EOS connection included, and the sentence is segmented on its own. The first N-best result keeps the same path.
 
 Ordinary text never reaches the forced cut, but for pathological delimiter-free input (e.g. minified text or base64-encoded blobs), it can affect tokenization at the artificial cut point.
 
