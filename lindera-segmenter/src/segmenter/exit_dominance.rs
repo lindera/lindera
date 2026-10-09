@@ -19,6 +19,10 @@
 //! them almost always dominates the others, so a single state is carried and
 //! the context costs nearly nothing.
 //!
+//! When a later sentence has no path, the segment ends early and the states
+//! are compared with the EOS connection, whose left id is one of the `l`
+//! above, so a dropped exit cannot win there either (#1133).
+//!
 //! The N-best search keeps every exit: a dominated exit still has paths
 //! among the `n` best.
 

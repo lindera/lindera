@@ -1200,12 +1200,21 @@ impl Segmenter {
             if !complete {
                 // No exit or no complete path, which a dictionary that
                 // covers every character with an unknown word never gives:
-                // commit the path of the first of the cheapest states, then
-                // segment the sentence from the dictionary's BOS edge, as
-                // before the context was carried. The next sentence starts
-                // a new segment.
+                // commit the path of the state that is cheapest with the
+                // EOS connection, as the segment ends here (the first state
+                // on ties, as `CarriedNbest::commit` picks), then segment the
+                // sentence from the dictionary's BOS edge, as before the
+                // context was carried. The next sentence starts a new
+                // segment. With the EOS connection the exit pruning cannot
+                // have dropped a cheaper state: it drops only a state that
+                // loses with every continuation, EOS included (#1133).
                 if !fresh {
-                    if let Some(best) = states.iter().min_by_key(|state| state.cost) {
+                    let matrix = &self.dictionary.connection_cost_matrix;
+                    if let Some(best) = states.iter().min_by_key(|state| {
+                        state
+                            .cost
+                            .saturating_add(i64::from(matrix.cost(u32::from(state.right_id), 0)))
+                    }) {
                         tree.for_each_part(best.node, |part_start, part| {
                             self.push_tokens(&text, part_start, part, space_filter, &mut tokens);
                         });
@@ -1372,11 +1381,12 @@ impl Segmenter {
                 // No exit or no complete path, which a dictionary that
                 // covers every character with an unknown word never gives:
                 // as in the 1-best segmentation, end the segment before the
-                // sentence, then search the sentence from the dictionary's
-                // BOS edge on its own. The next sentence starts a new
+                // sentence (its paths compared with the EOS connection), then
+                // search the sentence from the dictionary's BOS edge on its
+                // own. The next sentence starts a new
                 // segment.
                 if !first {
-                    let committed = search.commit();
+                    let committed = search.commit(&self.dictionary.connection_cost_matrix);
                     if !committed.is_empty() {
                         parts.push(NbestPart {
                             start: search.segment_start(),
@@ -4469,6 +4479,129 @@ KANJI,0,0,10000,名詞,一般,*,*,*,*,*,*,*
                     assert_eq!(result, tokens, "{text:?}");
                 }
             }
+        }
+    }
+
+    /// #1133: when a sentence has no path, the 1-best segmentation and the
+    /// first N-best result commit the same path, ties included, comparing
+    /// the states with the EOS connection.
+    mod carried_context_fallback_ties {
+        use std::borrow::Cow;
+        use std::fs;
+
+        use crate::dictionary::{DictionaryBuilder, Metadata, load_fs_dictionary};
+        use crate::mode::Mode;
+        use crate::segmenter::Segmenter;
+        use crate::token::Token;
+
+        /// `あ` is HIRAGANA, which has no unknown-word entry, so a sentence
+        /// with it has no path.
+        const CHAR_DEF: &str = "\
+DEFAULT 0 1 0
+HIRAGANA 0 1 0
+KANJI 0 0 2
+0x3041..0x309F HIRAGANA
+0x4E00..0x9FFF KANJI
+";
+        const UNK_DEF: &str = "\
+DEFAULT,0,0,10000,補助記号,一般,*,*,*,*,*,*,*
+KANJI,0,0,10000,名詞,一般,*,*,*,*,*,*,*
+";
+
+        /// Builds a dictionary with `東京` and two `、` rows (left id 1,
+        /// right ids 3 and 5, word costs `cost3` and `cost5`), and a 6x6
+        /// connection matrix whose costs from right id 3 are `from3` and all
+        /// others 0.
+        fn segmenter(cost3: i32, cost5: i32, from3: i32) -> (tempfile::TempDir, Segmenter) {
+            let lex = format!(
+                "東京,0,0,0,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トウキョウ\n\
+                 、,1,3,{cost3},記号,読点,*,*,*,*,、,テン,テン\n\
+                 、,1,5,{cost5},記号,読点,*,*,*,*,、,トウ,トウ\n"
+            );
+            let mut matrix = String::from("6 6\n");
+            for right in 0..6 {
+                for left in 0..6 {
+                    let cost = if right == 3 { from3 } else { 0 };
+                    matrix.push_str(&format!("{right} {left} {cost}\n"));
+                }
+            }
+            let source = tempfile::tempdir().unwrap();
+            fs::write(source.path().join("char.def"), CHAR_DEF).unwrap();
+            fs::write(source.path().join("unk.def"), UNK_DEF).unwrap();
+            fs::write(source.path().join("lex.csv"), lex).unwrap();
+            fs::write(source.path().join("matrix.def"), matrix).unwrap();
+            let output = tempfile::tempdir().unwrap();
+            DictionaryBuilder::new(Metadata::default())
+                .build_dictionary(source.path(), output.path())
+                .unwrap();
+            let dictionary = load_fs_dictionary(output.path()).unwrap();
+            (output, Segmenter::new(Mode::Normal, dictionary, None))
+        }
+
+        /// Each token's surface and reading.
+        fn readings(tokens: &mut [Token]) -> Vec<(String, String)> {
+            tokens
+                .iter_mut()
+                .map(|token| {
+                    let reading = token.details()[7].to_string();
+                    (token.surface.to_string(), reading)
+                })
+                .collect()
+        }
+
+        /// Two `、` rows tie: the 1-best keeps the state with the lower
+        /// right id (the state order), and the first N-best result is the
+        /// same path. The N-best search used to commit the state whose exit
+        /// it found first.
+        #[test]
+        fn test_tied_states_commit_the_same_path() {
+            let (_dir, segmenter) = segmenter(0, 0, 0);
+            for (text, commas) in [("東京、あ", 1), ("東京、東京、あ", 2)] {
+                let mut tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
+                let tokens = readings(&mut tokens);
+                let commas_read: Vec<&str> = tokens
+                    .iter()
+                    .filter(|(surface, _)| surface == "、")
+                    .map(|(_, reading)| reading.as_str())
+                    .collect();
+                assert_eq!(commas_read, vec!["テン"; commas], "{text}");
+
+                let mut results = segmenter
+                    .segment_nbest(Cow::Borrowed(text), 3, false, None)
+                    .unwrap();
+                assert_eq!(readings(&mut results[0].0), tokens, "{text}");
+                assert!(results.iter().all(|(_, cost)| *cost == 0), "{text}");
+            }
+        }
+
+        /// The `テン` row is 5 cheaper, but every connection from its right
+        /// id costs 100, so the exit pruning drops it while the context is
+        /// carried: it loses whatever follows, EOS included. Compared with
+        /// the EOS connection when the segment ends early, it loses there as
+        /// well, so both searches commit `トウ`, and the N-best costs include
+        /// the EOS connection. The first N-best result used to be `テン`, the
+        /// cheaper one without a continuation.
+        #[test]
+        fn test_pruned_state_loses_with_the_eos_connection() {
+            let (_dir, segmenter) = segmenter(-5, 0, 100);
+            let text = "東京、あ";
+            let mut tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
+            let tokens = readings(&mut tokens);
+            assert_eq!(
+                tokens,
+                vec![
+                    ("東京".to_string(), "トウキョウ".to_string()),
+                    ("、".to_string(), "トウ".to_string()),
+                ]
+            );
+
+            let mut results = segmenter
+                .segment_nbest(Cow::Borrowed(text), 3, false, None)
+                .unwrap();
+            assert_eq!(readings(&mut results[0].0), tokens);
+            let costs: Vec<i64> = results.iter().map(|(_, cost)| *cost).collect();
+            assert_eq!(costs, vec![0, 95]);
+            assert_eq!(readings(&mut results[1].0)[1].1, "テン");
         }
     }
 
