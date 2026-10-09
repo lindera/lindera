@@ -13,8 +13,10 @@
 //!
 //! Dropping such an exit leaves the 1-best path unchanged: on equal cost the
 //! lattice prefers the BOS edge that comes first, and the BOS edges come in
-//! ascending order of right id, so `e` is dropped on equality only when
-//! `r_f < r_e`. After `、` and `。`, the exits are a few words that end with
+//! descending order of the exits' edge indices (`LatticeExit::edge_index`,
+//! the order in which one lattice over the line prefers them on ties), so
+//! `e` is dropped on equality only when `f`'s edge index is the greater one.
+//! After `、` and `。`, the exits are a few words that end with
 //! the mark (the punctuation entry and unknown symbol words), and one of
 //! them almost always dominates the others, so a single state is carried and
 //! the context costs nearly nothing.
@@ -124,25 +126,26 @@ fn margin(matrix: &ConnectionCostMatrix, from: u16, over: u16) -> i32 {
 /// path through the next word, whatever its left context id, so dropping
 /// `e` leaves the 1-best path unchanged.
 ///
-/// # 引数
+/// # Arguments
 ///
-/// * `f` - The right context id and the cost of the dominating exit.
-/// * `e` - The right context id and the cost of the dominated exit; a right
-///   id other than `f`'s.
+/// * `f` - The edge index (`LatticeExit::edge_index`) and the cost of the
+///   dominating exit.
+/// * `e` - The edge index and the cost of the dominated exit, an exit with
+///   a right context id other than `f`'s.
 /// * `margin` - `margin(r_e, r_f)` (see [`margin`]); `i32::MAX` dominates
 ///   nothing.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// `true` when `c_e - c_f` exceeds the margin, or equals it and `f`'s BOS
-/// edge comes first (a lower right id), which wins the ties.
-fn dominates(f: (u16, i32), e: (u16, i32), margin: i32) -> bool {
+/// edge comes first (the greater edge index), which wins the ties.
+fn dominates(f: (u32, i32), e: (u32, i32), margin: i32) -> bool {
     if margin == i32::MAX {
         return false;
     }
     let gap = i64::from(e.1) - i64::from(f.1);
     let margin = i64::from(margin);
-    gap > margin || (gap == margin && f.0 < e.0)
+    gap > margin || (gap == margin && f.0 > e.0)
 }
 
 /// Drops the exits that another exit dominates (see the module
@@ -168,14 +171,15 @@ pub(super) fn prune_dominated(
         exits.iter().any(|other| {
             other.right_id() != exit.right_id()
                 && dominates(
-                    (other.right_id(), other.cost()),
-                    (exit.right_id(), exit.cost()),
+                    (other.edge_index(), other.cost()),
+                    (exit.edge_index(), exit.cost()),
                     cache.margin(matrix, exit.right_id(), other.right_id()),
                 )
         })
     }));
     // Dominance is transitive and has no cycle (the tie rule follows the
-    // right ids), so the cheapest exit of every chain survives.
+    // edge indices, which are distinct), so the cheapest exit of every chain
+    // survives.
     let mut index = 0;
     exits.retain(|_| {
         let keep = !dominated[index];
@@ -189,16 +193,16 @@ mod tests {
     use super::dominates;
 
     /// On a gap equal to the margin, the exit whose BOS edge comes first
-    /// (the lower right id) wins the ties, so only the other one is
-    /// dominated.
+    /// (the greater edge index, which one lattice over the line keeps on
+    /// ties) wins the ties, so only the other one is dominated (#1140).
     #[test]
-    fn test_dominates_breaks_ties_by_right_id() {
+    fn test_dominates_breaks_ties_by_edge_index() {
         // Above the margin, either way round.
         assert!(dominates((3, 100), (7, 151), 50));
         assert!(dominates((7, 100), (3, 151), 50));
-        // At the margin: only the exit with the higher right id loses.
-        assert!(dominates((3, 100), (7, 150), 50));
-        assert!(!dominates((7, 100), (3, 150), 50));
+        // At the margin: only the exit with the lower edge index loses.
+        assert!(dominates((7, 100), (3, 150), 50));
+        assert!(!dominates((3, 100), (7, 150), 50));
         // Below the margin, nothing is dominated.
         assert!(!dominates((3, 100), (7, 149), 50));
         // Negative margins and extreme costs.

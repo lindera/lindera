@@ -864,8 +864,8 @@ Among words that start at the same position, the order of
 [Tied entries resolve to the first CSV row, as in MeCab](#tied-entries-resolve-to-the-first-csv-row-as-in-mecab)
 still applies, and the first N-best result is still the 1-best
 segmentation. When the context is carried across `、` or `。`, a tie
-between the contexts carried from the previous sentence still goes to the
-one with the lower right context ID (see
+between the words that end the previous sentence resolves the same way, as
+in one lattice over the line: the word that starts later wins (see
 [The context is carried across `、` and `。`](#the-context-is-carried-across--and-)).
 
 The 1-best segmentation takes 0.6% to 0.9% more instructions with IPADIC,
