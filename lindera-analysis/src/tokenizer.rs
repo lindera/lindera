@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 use crate::character_filter::{BoxCharacterFilter, CharacterFilterLoader, OffsetMapping};
 use crate::token_filter::{BoxTokenFilter, TokenFilterLoader};
 use lindera_segmenter::LinderaResult;
-use lindera_segmenter::dictionary::Lattice;
+use lindera_segmenter::dictionary::{Dictionary, Lattice, UserDictionary};
 use lindera_segmenter::error::LinderaErrorKind;
 use lindera_segmenter::mode::Mode;
 use lindera_segmenter::segmenter::Segmenter;
@@ -301,10 +301,44 @@ impl TokenizerBuilder {
         self
     }
 
+    /// Builds a [`Tokenizer`] from the configuration, loading the
+    /// dictionaries it names.
+    ///
+    /// # Returns
+    ///
+    /// The tokenizer, or an error when the configuration names no dictionary,
+    /// a dictionary cannot be loaded, or a setting or filter is invalid.
     pub fn build(&self) -> LinderaResult<Tokenizer> {
-        Tokenizer::from_config(&self.config).map_err(|err| {
-            LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to build tokenizer: {err}"))
-        })
+        self.build_with_dictionaries(None, None)
+    }
+
+    /// Builds a [`Tokenizer`] from the configuration, as [`Self::build`]
+    /// does, but with already-loaded dictionaries in place of the ones the
+    /// configuration names (see [`Segmenter::from_config_with_dictionaries`]).
+    /// Every other setting, filters included, applies as with
+    /// [`Self::build`].
+    ///
+    /// # Arguments
+    ///
+    /// * `dictionary` - The system dictionary to use instead of the
+    ///   configured one; `None` loads the configured one.
+    /// * `user_dictionary` - The user dictionary to use instead of the
+    ///   configured one; `None` loads the configured one, if any.
+    ///
+    /// # Returns
+    ///
+    /// The tokenizer, or an error as [`Self::build`] reports it.
+    pub fn build_with_dictionaries(
+        &self,
+        dictionary: Option<Dictionary>,
+        user_dictionary: Option<UserDictionary>,
+    ) -> LinderaResult<Tokenizer> {
+        Tokenizer::from_config_with_dictionaries(&self.config, dictionary, user_dictionary).map_err(
+            |err| {
+                LinderaErrorKind::Parse
+                    .with_error(anyhow::anyhow!("failed to build tokenizer: {err}"))
+            },
+        )
     }
 }
 
@@ -353,11 +387,51 @@ impl Tokenizer {
         }
     }
 
+    /// Creates a `Tokenizer` from a configuration, loading the dictionaries
+    /// its `segmenter` section names.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - The tokenizer configuration: a `segmenter` section and
+    ///   optional `character_filters` and `token_filters` lists.
+    ///
+    /// # Returns
+    ///
+    /// The tokenizer, or an error when the `segmenter` section is missing or
+    /// invalid, a dictionary cannot be loaded, or a filter is invalid.
     pub fn from_config(config: &TokenizerConfig) -> LinderaResult<Self> {
+        Self::from_config_with_dictionaries(config, None, None)
+    }
+
+    /// Creates a `Tokenizer` from a configuration, as [`Self::from_config`]
+    /// does, but with already-loaded dictionaries in place of the ones the
+    /// `segmenter` section names (see
+    /// [`Segmenter::from_config_with_dictionaries`]).
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - The tokenizer configuration, as for [`Self::from_config`].
+    /// * `dictionary` - The system dictionary to use instead of the
+    ///   configured one; `None` loads the configured one.
+    /// * `user_dictionary` - The user dictionary to use instead of the
+    ///   configured one; `None` loads the configured one, if any.
+    ///
+    /// # Returns
+    ///
+    /// The tokenizer, or an error as [`Self::from_config`] reports it.
+    pub fn from_config_with_dictionaries(
+        config: &TokenizerConfig,
+        dictionary: Option<Dictionary>,
+        user_dictionary: Option<UserDictionary>,
+    ) -> LinderaResult<Self> {
         let segmenter_config = config.get("segmenter").ok_or_else(|| {
             LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("missing segmenter config."))
         })?;
-        let segmenter = Segmenter::from_config(segmenter_config)?;
+        let segmenter = Segmenter::from_config_with_dictionaries(
+            segmenter_config,
+            dictionary,
+            user_dictionary,
+        )?;
 
         // Create a tokenizer from the segmenter.
         let mut tokenizer = Tokenizer::new(segmenter);
@@ -794,6 +868,90 @@ mod tests {
         let cloned_tokenizer_config = tokenizer_config.clone();
 
         assert_eq!(tokenizer_config, cloned_tokenizer_config);
+    }
+
+    /// Returns the surfaces `tokenizer` gives `text`.
+    #[cfg(feature = "embed-ipadic")]
+    fn surfaces(tokenizer: &super::Tokenizer, text: &str) -> Vec<String> {
+        tokenizer
+            .tokenize(text)
+            .unwrap()
+            .iter()
+            .map(|token| token.surface.to_string())
+            .collect()
+    }
+
+    /// Returns a builder, independent of `LINDERA_CONFIG_PATH`, that keeps
+    /// whitespace and has an NFKC character filter and a lowercase token
+    /// filter, but no dictionary.
+    #[cfg(feature = "embed-ipadic")]
+    fn builder_with_filters() -> TokenizerBuilder {
+        let mut builder = TokenizerBuilder::from_config(serde_json::json!({})).unwrap();
+        builder
+            .set_segmenter_keep_whitespace(true)
+            .append_character_filter("unicode_normalize", &serde_json::json!({ "kind": "nfkc" }))
+            .append_token_filter("lowercase", &serde_json::json!({}));
+        builder
+    }
+
+    /// A given dictionary takes every other setting of the builder, the
+    /// filters included, as the configured dictionary does.
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_build_with_dictionaries_applies_the_settings_and_filters() {
+        use lindera_segmenter::dictionary::load_dictionary;
+
+        let text = "Ｌｉｎｄｅｒａ 東京";
+        let mut by_uri = builder_with_filters();
+        by_uri.set_segmenter_dictionary("embedded://ipadic");
+        let expected = surfaces(&by_uri.build().unwrap(), text);
+        assert_eq!(expected, ["lindera", " ", "東京"]);
+
+        let given = builder_with_filters()
+            .build_with_dictionaries(Some(load_dictionary("embedded://ipadic").unwrap()), None)
+            .unwrap();
+        assert_eq!(surfaces(&given, text), expected);
+    }
+
+    /// A given user dictionary applies to the dictionary the configuration
+    /// names.
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_build_with_dictionaries_adds_a_user_dictionary_to_the_configured_dictionary() {
+        use std::path::PathBuf;
+
+        use lindera_segmenter::dictionary::{load_dictionary, load_user_dictionary};
+
+        let mut builder = TokenizerBuilder::from_config(serde_json::json!({})).unwrap();
+        builder.set_segmenter_dictionary("embedded://ipadic");
+        let baseline = surfaces(&builder.build().unwrap(), "東京スカイツリー");
+        assert!(baseline.len() > 1, "fixture assumption: {baseline:?}");
+
+        let dictionary = load_dictionary("embedded://ipadic").unwrap();
+        let csv = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources/user_dict/ipadic_simple_userdic.csv");
+        let user_dictionary =
+            load_user_dictionary(csv.to_str().unwrap(), &dictionary.metadata).unwrap();
+        let tokenizer = builder
+            .build_with_dictionaries(None, Some(user_dictionary))
+            .unwrap();
+        assert_eq!(
+            surfaces(&tokenizer, "東京スカイツリー"),
+            ["東京スカイツリー"]
+        );
+    }
+
+    /// Without a configured or a given dictionary, building fails as
+    /// `build()` does.
+    #[test]
+    fn test_build_with_dictionaries_without_a_dictionary_fails() {
+        let builder = TokenizerBuilder::from_config(serde_json::json!({})).unwrap();
+        let message = match builder.build_with_dictionaries(None, None) {
+            Ok(_) => panic!("built without a dictionary"),
+            Err(err) => err.to_string(),
+        };
+        assert!(message.contains("failed to build tokenizer"), "{message}");
+        assert!(message.contains("dictionary field is missing"), "{message}");
     }
 
     /// The Python and Node.js docs link their `resources/lindera.yml` as a complete example, so

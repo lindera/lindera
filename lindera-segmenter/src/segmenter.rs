@@ -799,55 +799,89 @@ impl Segmenter {
             .all(|c| whitespace.is_space(c, char_definitions))
     }
 
-    /// A struct representing a segmenter for tokenizing text.
+    /// Builds a `Segmenter` from a configuration (the `segmenter:` section of
+    /// a tokenizer configuration), loading the dictionary and the user
+    /// dictionary it names.
     ///
-    /// The `Segmenter` struct provides methods for creating a segmenter from a configuration,
-    /// creating a new segmenter, and segmenting text into tokens.
+    /// # Arguments
     ///
-    /// # Methods
+    /// * `config` - The segmenter configuration: `dictionary` (required),
+    ///   `user_dictionary`, `use_mmap`, `mode`, `keep_whitespace`,
+    ///   `skip_whitespace`, `max_grouping_len`, `unknown_word_ladder` and
+    ///   `space_penalty`.
     ///
-    /// - `from_config`: Creates a `Segmenter` from a given configuration.
-    /// - `new`: Creates a new `Segmenter` with the specified mode, dictionary, and optional user dictionary.
-    /// - `segment`: Segments the given text into tokens.
+    /// # Returns
     ///
-    /// # Errors
-    ///
-    /// Methods that return `LinderaResult` may produce errors related to dictionary loading,
-    /// user dictionary loading, or tokenization process.
+    /// The segmenter, or an error when the `dictionary` key is missing, a
+    /// dictionary cannot be loaded, or a setting is invalid.
     pub fn from_config(config: &SegmenterConfig) -> LinderaResult<Self> {
-        // Whether to route filesystem-loaded dictionaries through memory-mapped
-        // reads. Ignored for `embedded://` dictionaries. Defaults to on when
-        // the `mmap` feature is compiled in (#879); set `"use_mmap": false`
-        // to force eager reads.
-        let use_mmap = config
-            .get("use_mmap")
-            .and_then(Value::as_bool)
-            .unwrap_or(cfg!(feature = "mmap"));
+        Self::from_config_with_dictionaries(config, None, None)
+    }
 
-        // Load the dictionary from the config
-        let dictionary = load_dictionary_with_options(
-            config
-                .get("dictionary")
-                .and_then(Value::as_str)
-                .ok_or_else(|| {
-                    LinderaErrorKind::Parse
-                        .with_error(anyhow::anyhow!("dictionary field is missing"))
-                })?,
-            use_mmap,
-        )?;
+    /// Builds a `Segmenter` from a configuration, as
+    /// [`Segmenter::from_config`] does, but with already-loaded dictionaries
+    /// in place of the ones the configuration names. This applies a
+    /// configuration to a dictionary that was not loaded from a URI, such as
+    /// one loaded from bytes.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - The segmenter configuration, as for
+    ///   [`Segmenter::from_config`].
+    /// * `dictionary` - The system dictionary to use instead of the one the
+    ///   `dictionary` key names; the key may then be absent, and `use_mmap`
+    ///   does not apply. `None` loads the dictionary the key names.
+    /// * `user_dictionary` - The user dictionary to use instead of the one
+    ///   the `user_dictionary` key names. `None` loads the one the key names,
+    ///   if any, with the metadata of the system dictionary in use.
+    ///
+    /// # Returns
+    ///
+    /// The segmenter, or an error as [`Segmenter::from_config`] reports it;
+    /// a missing `dictionary` key is an error only when `dictionary` is
+    /// `None`.
+    pub fn from_config_with_dictionaries(
+        config: &SegmenterConfig,
+        dictionary: Option<Dictionary>,
+        user_dictionary: Option<UserDictionary>,
+    ) -> LinderaResult<Self> {
+        let dictionary = match dictionary {
+            Some(dictionary) => dictionary,
+            None => {
+                // Whether to route filesystem-loaded dictionaries through
+                // memory-mapped reads. Ignored for `embedded://` dictionaries.
+                // Defaults to on when the `mmap` feature is compiled in
+                // (#879); set `"use_mmap": false` to force eager reads.
+                let use_mmap = config
+                    .get("use_mmap")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(cfg!(feature = "mmap"));
+
+                // Load the dictionary from the config
+                load_dictionary_with_options(
+                    config
+                        .get("dictionary")
+                        .and_then(Value::as_str)
+                        .ok_or_else(|| {
+                            LinderaErrorKind::Parse
+                                .with_error(anyhow::anyhow!("dictionary field is missing"))
+                        })?,
+                    use_mmap,
+                )?
+            }
+        };
 
         // Get metadata from the dictionary
         let metadata = &dictionary.metadata;
 
-        // Load the user dictionary from the config
-        let user_dictionary_uri = config
-            .get("user_dictionary")
-            .and_then(Value::as_str)
-            .map(String::from);
-
-        let user_dictionary = match user_dictionary_uri {
-            Some(uri) => Some(load_user_dictionary(&uri, metadata)?),
-            None => None,
+        // Load the user dictionary from the config unless one was given; it
+        // is built with the metadata of the dictionary in use.
+        let user_dictionary = match user_dictionary {
+            Some(user_dictionary) => Some(user_dictionary),
+            None => match config.get("user_dictionary").and_then(Value::as_str) {
+                Some(uri) => Some(load_user_dictionary(uri, metadata)?),
+                None => None,
+            },
         };
 
         // Load the mode from the config
@@ -2924,6 +2958,197 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    /// Returns the surfaces `segmenter` gives `text`.
+    #[cfg(feature = "embed-ipadic")]
+    fn surfaces(segmenter: &Segmenter, text: &str) -> Vec<String> {
+        segmenter
+            .segment(std::borrow::Cow::Borrowed(text))
+            .unwrap()
+            .iter()
+            .map(|token| token.surface.to_string())
+            .collect()
+    }
+
+    /// The path of the IPADIC user dictionary fixture with
+    /// `東京スカイツリー`.
+    #[cfg(feature = "embed-ipadic")]
+    fn ipadic_userdic_csv() -> String {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources/user_dict/ipadic_simple_userdic.csv")
+            .to_str()
+            .unwrap()
+            .to_string()
+    }
+
+    /// A given dictionary takes the configuration's other settings as the
+    /// dictionary the configuration names does, and the configuration then
+    /// needs no `dictionary` key.
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_from_config_with_dictionaries_applies_the_settings() {
+        use crate::dictionary::load_dictionary;
+
+        let settings = serde_json::json!({
+            "mode": "decompose",
+            "keep_whitespace": true,
+            "max_grouping_len": 2,
+            "unknown_word_ladder": false,
+        });
+        let mut by_uri = settings.clone();
+        by_uri["dictionary"] = "embedded://ipadic".into();
+        let expected = Segmenter::from_config(&by_uri).unwrap();
+        let given = Segmenter::from_config_with_dictionaries(
+            &settings,
+            Some(load_dictionary("embedded://ipadic").unwrap()),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(given.mode, expected.mode);
+        assert!(given.keep_whitespace);
+        assert_eq!(given.max_grouping_len, Some(2));
+        assert!(!given.unknown_word_ladder);
+        assert!(given.user_dictionary.is_none());
+
+        let text = "関西国際空港 ABCDEFG";
+        let expected_surfaces = surfaces(&expected, text);
+        assert!(
+            expected_surfaces.contains(&" ".to_string()),
+            "{expected_surfaces:?}"
+        );
+        assert_eq!(surfaces(&given, text), expected_surfaces);
+    }
+
+    /// With no dictionaries given, the configured ones are loaded, as by
+    /// `from_config`, and a configuration without a `dictionary` key fails
+    /// the same way.
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_from_config_with_dictionaries_loads_the_configured_ones() {
+        let config = serde_json::json!({
+            "dictionary": "embedded://ipadic",
+            "user_dictionary": ipadic_userdic_csv(),
+        });
+        let loaded = Segmenter::from_config_with_dictionaries(&config, None, None).unwrap();
+        let expected = Segmenter::from_config(&config).unwrap();
+        assert_eq!(surfaces(&loaded, "東京スカイツリー"), ["東京スカイツリー"]);
+        assert_eq!(
+            surfaces(&loaded, "東京スカイツリーの最寄り駅"),
+            surfaces(&expected, "東京スカイツリーの最寄り駅")
+        );
+
+        let message = |result: crate::LinderaResult<Segmenter>| match result {
+            Ok(_) => panic!("built without a dictionary"),
+            Err(err) => err.to_string(),
+        };
+        let empty = serde_json::json!({});
+        let without_dictionary =
+            message(Segmenter::from_config_with_dictionaries(&empty, None, None));
+        assert!(
+            without_dictionary.contains("dictionary field is missing"),
+            "{without_dictionary}"
+        );
+        assert_eq!(message(Segmenter::from_config(&empty)), without_dictionary);
+    }
+
+    /// Given dictionaries replace the configured ones, which are then never
+    /// loaded; without a given user dictionary, the configured one is built
+    /// with the metadata of the given dictionary.
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_from_config_with_dictionaries_replaces_the_configured_ones() {
+        use crate::dictionary::{load_dictionary, load_user_dictionary};
+
+        let dictionary = load_dictionary("embedded://ipadic").unwrap();
+        let user_dictionary =
+            load_user_dictionary(&ipadic_userdic_csv(), &dictionary.metadata).unwrap();
+
+        // Neither path exists, so loading either one would fail.
+        let unloadable = serde_json::json!({
+            "dictionary": "/nonexistent/lindera/dictionary",
+            "user_dictionary": "/nonexistent/lindera/userdic.csv",
+        });
+        assert!(Segmenter::from_config(&unloadable).is_err());
+        let segmenter = Segmenter::from_config_with_dictionaries(
+            &unloadable,
+            Some(dictionary.clone()),
+            Some(user_dictionary),
+        )
+        .unwrap();
+        assert_eq!(
+            surfaces(&segmenter, "東京スカイツリー"),
+            ["東京スカイツリー"]
+        );
+
+        let configured_user_dictionary = serde_json::json!({
+            "dictionary": "/nonexistent/lindera/dictionary",
+            "user_dictionary": ipadic_userdic_csv(),
+        });
+        let segmenter = Segmenter::from_config_with_dictionaries(
+            &configured_user_dictionary,
+            Some(dictionary),
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            surfaces(&segmenter, "東京スカイツリー"),
+            ["東京スカイツリー"]
+        );
+    }
+
+    /// Settings that `from_config` rejects for the dictionary it loads are
+    /// rejected for a given dictionary as well: `space_penalty: true` with
+    /// IPADIC, which ships no rules, and ignoring whitespace with a
+    /// `char.def` that has no `SPACE` category.
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_from_config_with_dictionaries_rejects_what_from_config_rejects() {
+        use std::sync::Arc;
+
+        use crate::dictionary::load_dictionary;
+
+        let message =
+            |config: serde_json::Value, dictionary| match Segmenter::from_config_with_dictionaries(
+                &config,
+                Some(dictionary),
+                None,
+            ) {
+                Ok(_) => panic!("accepted {config}"),
+                Err(err) => err.to_string(),
+            };
+        let ipadic = load_dictionary("embedded://ipadic").unwrap();
+
+        let ships_none = message(serde_json::json!({ "space_penalty": true }), ipadic.clone());
+        assert!(
+            ships_none.contains("ships no space_penalty rules"),
+            "{ships_none}"
+        );
+
+        let mut without_space = ipadic;
+        let character_definition = Arc::make_mut(&mut without_space.character_definition);
+        character_definition.category_names = character_definition
+            .category_names
+            .iter()
+            .map(|name| {
+                if name == "SPACE" {
+                    "NOT_SPACE".to_string()
+                } else {
+                    name.clone()
+                }
+            })
+            .collect();
+        let no_space = message(serde_json::json!({}), without_space.clone());
+        assert!(no_space.contains("SPACE category"), "{no_space}");
+        assert!(
+            Segmenter::from_config_with_dictionaries(
+                &serde_json::json!({ "keep_whitespace": true }),
+                Some(without_space),
+                None,
+            )
+            .is_ok()
+        );
+    }
+
     #[test]
     #[cfg(feature = "embed-ipadic")]
     fn test_segment_default_multiple_spaces() {
@@ -3573,6 +3798,45 @@ mod tests {
             let mut config = base.clone();
             config["space_penalty"] = serde_json::json!({"rules": [{"pos": "JKB", "cost": 1}]});
             assert!(Segmenter::from_config(&config).is_err());
+        }
+
+        /// A ko-dic given to `from_config_with_dictionaries` takes every
+        /// `space_penalty` form as `from_config` does with the ko-dic the
+        /// configuration names.
+        #[test]
+        fn test_from_config_with_dictionaries_space_penalty() {
+            let dictionary = load_dictionary("embedded://ko-dic").unwrap();
+            for value in [
+                serde_json::Value::Null,
+                serde_json::json!(false),
+                serde_json::json!(true),
+                serde_json::to_value(SpacePenaltyConfig::new(Vec::new())).unwrap(),
+                serde_json::to_value(ko_dic_rules()).unwrap(),
+            ] {
+                let settings = serde_json::json!({
+                    "skip_whitespace": false,
+                    "space_penalty": value.clone(),
+                });
+                let mut by_uri = settings.clone();
+                by_uri["dictionary"] = "embedded://ko-dic".into();
+                let expected = Segmenter::from_config(&by_uri).unwrap();
+                let given = Segmenter::from_config_with_dictionaries(
+                    &settings,
+                    Some(dictionary.clone()),
+                    None,
+                )
+                .unwrap();
+                assert_eq!(
+                    given.space_penalty_config(),
+                    expected.space_penalty_config(),
+                    "{value}"
+                );
+                assert_eq!(
+                    render(&given, "서울 시 에서 출발"),
+                    render(&expected, "서울 시 에서 출발"),
+                    "{value}"
+                );
+            }
         }
 
         /// `SpacePenaltyTable::is_space` classifies by the dictionary's
