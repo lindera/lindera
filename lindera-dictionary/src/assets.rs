@@ -335,28 +335,52 @@ fn download_with_retry(
 /// Environment variable that designates the dictionary build cache directory.
 const CACHE_DIR_ENV: &str = "LINDERA_BUILD_DICTIONARY_CACHE_DIR";
 
+/// Environment variable that docs.rs sets, under which the build scripts
+/// generate dummy dictionaries instead of downloading the real ones.
+const DOCS_RS_ENV: &str = "DOCS_RS";
+
+/// Whether this is a documentation build, which uses dummy dictionaries.
+///
+/// # Returns
+///
+/// `true` when [`DOCS_RS_ENV`] is set.
+fn is_docs_rs_build() -> bool {
+    std::env::var(DOCS_RS_ENV).is_ok()
+}
+
 /// Reads the dictionary build cache directory from the environment.
 ///
 /// # Returns
 ///
-/// The configured cache directory, or `None` when [`CACHE_DIR_ENV`] is not set.
+/// The configured cache directory, or `None` when [`CACHE_DIR_ENV`] is not set
+/// or when this is a documentation build; see [`cache_dir_unless_docs_rs`].
 fn dictionary_cache_dir_from_env() -> Option<OsString> {
-    std::env::var_os(CACHE_DIR_ENV)
+    cache_dir_unless_docs_rs(std::env::var_os(CACHE_DIR_ENV), is_docs_rs_build())
 }
 
-/// Fetch the necessary assets and then build the dictionary using `builder`.
+/// The dictionary build cache directory to use, given the environment.
+///
+/// A documentation build generates dummy dictionaries, which must stay out of
+/// the cache: an entry is keyed on the crate and format versions only, and a
+/// dummy's `metadata.json` passes [`cached_dictionary_is_current`], so a later
+/// build without `DOCS_RS` would embed the dummy (#1157). A documentation
+/// build therefore ignores the cache, as if the variable were unset, which is
+/// how docs.rs runs it: the dummies go into `OUT_DIR`, and a crate whose embed
+/// feature is off builds nothing.
 ///
 /// # Arguments
 ///
-/// * `params` - Describes the asset to fetch (archive name, mirrors, MD5 hash)
-///   and the input/output directory layout of the dictionary build.
-/// * `builder` - Dictionary builder that turns the extracted MeCab sources into
-///   the Lindera dictionary format.
+/// * `cache_dir` - The value of [`CACHE_DIR_ENV`], if set.
+/// * `docs_rs` - Whether this is a documentation build ([`DOCS_RS_ENV`] is
+///   set).
 ///
 /// # Returns
 ///
-/// `Ok(())` once the dictionary has been built into the output directory, or a
-/// `LinderaError` if the download, extraction, or build fails.
+/// `cache_dir`, or `None` when `docs_rs` is `true`.
+fn cache_dir_unless_docs_rs(cache_dir: Option<OsString>, docs_rs: bool) -> Option<OsString> {
+    cache_dir.filter(|_| !docs_rs)
+}
+
 /// Whether a cached dictionary directory was built in the format this crate
 /// reads, from the metadata this crate ships.
 ///
@@ -482,18 +506,38 @@ fn rerun_directives(ships_context_id_freq: bool) -> Vec<String> {
     directives.extend([
         "cargo:rerun-if-env-changed=LINDERA_CTX_FREQ_FILE".to_string(),
         format!("cargo:rerun-if-env-changed={CACHE_DIR_ENV}"),
-        "cargo:rerun-if-env-changed=DOCS_RS".to_string(),
+        format!("cargo:rerun-if-env-changed={DOCS_RS_ENV}"),
     ]);
     directives
 }
 
+/// Fetch the necessary assets and then build the dictionary using `builder`.
+///
+/// The dictionary is built under `LINDERA_BUILD_DICTIONARY_CACHE_DIR` when
+/// that variable is set, reusing a current build found there, and under the
+/// build script's `OUT_DIR` otherwise. With `DOCS_RS` set, it is a dummy built
+/// from `params.dummy_input` instead of the downloaded one, and it always goes
+/// under `OUT_DIR`, so that later builds never take a dummy from the cache.
+///
+/// # Arguments
+///
+/// * `params` - Describes the asset to fetch (archive name, mirrors, MD5 hash)
+///   and the input/output directory layout of the dictionary build.
+/// * `builder` - Dictionary builder that turns the extracted MeCab sources into
+///   the Lindera dictionary format.
+///
+/// # Returns
+///
+/// `Ok(())` once the dictionary has been built into the output directory, or a
+/// `LinderaError` if the download, extraction, or build fails.
 pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
     for directive in rerun_directives(Path::new(CONTEXT_ID_FREQ_FILE).is_file()) {
         println!("{directive}");
     }
 
     // Directory path for build package
-    // if the cache directory variable is defined, behaves like a cache, where data is invalidated only:
+    // if the cache directory variable is defined (and this is not a documentation build, see
+    // `cache_dir_unless_docs_rs`), behaves like a cache, where data is invalidated only:
     // - on new lindera-assets version
     // - if the cache directory changed
     // otherwise, keeps behavior of always redownloading and rebuilding
@@ -569,7 +613,7 @@ pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<(
         return Ok(());
     }
 
-    if std::env::var("DOCS_RS").is_ok() {
+    if is_docs_rs_build() {
         create_dummy_dictionary_source(&input_dir, params.src_subdir, params.dummy_input)?;
     } else {
         // Source file path for build package
@@ -767,21 +811,23 @@ pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<(
     Ok(())
 }
 
-/// Shared body of every per-dictionary crate's `build.rs`.
-///
 /// Name of the optional per-dictionary context-ID access-frequency histogram,
 /// shipped in the dictionary crate root next to `metadata.json`. Produced by the
 /// `ctxfreq` instrumentation (see the `ctxfreq_dump` example) and consumed when
 /// `connection_id_mapping` is enabled.
 const CONTEXT_ID_FREQ_FILE: &str = "context_id_freq.txt";
 
+/// Shared body of every per-dictionary crate's `build.rs`.
+///
 /// Reads `metadata.json` from the crate root, fetches and builds the
 /// dictionary described by `params`, and embeds the result under
 /// `LINDERA_WORKDIR`.
 ///
 /// When the crate's embed feature is disabled (`embed_enabled == false`) and
 /// no cache override is set via `LINDERA_BUILD_DICTIONARY_CACHE_DIR`, this is
-/// a no-op so the crate builds without downloading any data.
+/// a no-op so the crate builds without downloading any data. With `DOCS_RS`
+/// set, the cache override is ignored, so this is a no-op whenever the embed
+/// feature is disabled.
 ///
 /// # Arguments
 ///
@@ -793,7 +839,7 @@ const CONTEXT_ID_FREQ_FILE: &str = "context_id_freq.txt";
 /// # Returns
 ///
 /// `Ok(())` once the dictionary has been built, or when the build was skipped
-/// because neither the embed feature nor a cache override is set. Returns an
+/// because neither the embed feature nor a cache override applies. Returns an
 /// error if `metadata.json` cannot be read or the dictionary build fails.
 pub fn build_embedded_dictionary(
     embed_enabled: bool,
@@ -1004,5 +1050,29 @@ mod tests {
         };
         let dir = cached_dir_with(&cached);
         assert!(cached_dictionary_is_current(dir.path(), &source));
+    }
+
+    #[test]
+    fn documentation_build_ignores_the_cache_dir() {
+        // A dummy dictionary built into the cache would be embedded by later
+        // builds without `DOCS_RS` (#1157).
+        assert_eq!(
+            cache_dir_unless_docs_rs(Some(OsString::from("/path/to/cache")), true),
+            None
+        );
+    }
+
+    #[test]
+    fn regular_build_uses_the_cache_dir() {
+        assert_eq!(
+            cache_dir_unless_docs_rs(Some(OsString::from("/path/to/cache")), false),
+            Some(OsString::from("/path/to/cache"))
+        );
+    }
+
+    #[test]
+    fn no_cache_dir_without_the_variable() {
+        assert_eq!(cache_dir_unless_docs_rs(None, false), None);
+        assert_eq!(cache_dir_unless_docs_rs(None, true), None);
     }
 }

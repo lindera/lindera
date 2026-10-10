@@ -215,10 +215,11 @@ lint: ## Lint all crates
 # items are checked too. `DOCS_RS=1` makes the dictionary build scripts
 # generate dummy dictionaries instead of downloading all seven. The separate
 # target directory keeps those dummies, and the rebuild of the real
-# dictionaries after them, out of `target/`, and the build cache variable is
-# unset so the dummies do not land in a shared cache either (#1157).
+# dictionaries after them, out of `target/`. The build scripts ignore
+# LINDERA_BUILD_DICTIONARY_CACHE_DIR under `DOCS_RS`, so the dummies do not
+# land in a shared cache either (#1157).
 CHECK_DOCS_TARGET_DIR ?= target/check-docs
-CHECK_DOCS = env -u LINDERA_BUILD_DICTIONARY_CACHE_DIR DOCS_RS=1 RUSTDOCFLAGS="-D warnings" \
+CHECK_DOCS = DOCS_RS=1 RUSTDOCFLAGS="-D warnings" \
 	cargo doc --no-deps --all-features --target-dir $(CHECK_DOCS_TARGET_DIR) \
 	$(addprefix -p ,$(CARGO_CRATES))
 
