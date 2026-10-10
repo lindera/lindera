@@ -442,6 +442,7 @@ cargo build --features=embed-ipadic
 <li>このディレクトリは自動管理されており、削除しても安全です（必要に応じて再ダウンロード・再ビルドされます）</li>
 <li>バージョンごとのサブディレクトリはアップグレードのたびに蓄積され、自動削除されません。古いものは自由に削除できます</li>
 <li>この変数を設定すると、<code>embed-*</code> feature が無効でも辞書クレートはダウンロードとビルドを実行します（キャッシュの事前準備に便利です）</li>
+<li><code>DOCS_RS</code> を設定したビルドは、この変数を無視します（後述の <code>DOCS_RS</code> を参照）</li>
 </ul>
 <h3 id="lindera_config_path"><a class="header" href="#lindera_config_path">LINDERA_CONFIG_PATH</a></h3>
 <p><code>LINDERA_CONFIG_PATH</code> 環境変数は、トークナイザーの設定ファイル（YAML形式）へのパスを指定します。これにより、Rustコードを変更せずにトークナイザーの動作を設定できます。</p>
@@ -450,6 +451,7 @@ cargo build --features=embed-ipadic
 <p>設定フォーマットの詳細は <a href="getting_started/../lindera-analysis/configuration.html">設定</a> セクションを参照してください。</p>
 <h3 id="docs_rs"><a class="header" href="#docs_rs">DOCS_RS</a></h3>
 <p><code>DOCS_RS</code> 環境変数は、docs.rsでドキュメントをビルドする際に自動的に設定されます。この変数が検出されると、Linderaは実際の辞書データをダウンロードする代わりにダミーの辞書ファイルを作成します。これにより、ネットワークアクセスや大容量ファイルのダウンロードなしでドキュメントをビルドできます。</p>
+<p>このビルドは <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を無視します。ダミーの辞書は build script の出力ディレクトリに作られ、キャッシュには入らないので、後で <code>DOCS_RS</code> なしにビルドしても埋め込まれません。</p>
 <p>これは主にdocs.rs内部で使用されるものであり、通常ユーザーが設定する必要はありません。</p>
 <h3 id="lindera_workdir"><a class="header" href="#lindera_workdir">LINDERA_WORKDIR</a></h3>
 <p><code>LINDERA_WORKDIR</code> 環境変数は、ビルドプロセス中に lindera-dictionary クレートによって自動的に設定されます。これはビルドされた辞書データファイルを含むディレクトリを指し、辞書クレートがデータファイルの場所を特定するために内部で使用されます。</p>
