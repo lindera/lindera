@@ -618,11 +618,12 @@ jobs:
         run: DOCS_RS=1 RUSTDOCFLAGS='--cfg docsrs' cargo +nightly doc -p lindera --all-features --no-deps
 
   # Fails on rustdoc warnings -- broken or private intra-doc links, empty code
-  # blocks, invalid HTML -- in every crate but the bindings (#1123). `make
-  # check-docs` holds the commands and why they are three. Stable rather than
-  # the nightly docs-rs uses, so a lint new in nightly cannot fail CI on
-  # unchanged code. It does not depend on any test result, so it runs
-  # alongside the tests.
+  # blocks, invalid HTML -- in every crate but the bindings (#1123). Building a
+  # binding needs its language's toolchain, so each binding's job checks that
+  # binding's docs instead (#1156). `make check-docs` holds the commands and why
+  # they are three. Stable rather than the nightly docs-rs uses, so a lint new
+  # in nightly cannot fail CI on unchanged code. It does not depend on any test
+  # result, so it runs alongside the tests.
   check-docs:
     name: Check docs (all crates but the bindings)
     needs: [format, detect-changes]
@@ -691,6 +692,12 @@ jobs:
       - name: Run clippy
         run: cargo clippy -p lindera-python -- -D warnings
 
+      # Fails on rustdoc warnings in this binding, public and private items, as
+      # check-docs does for the other crates (#1156). After clippy, so it reuses
+      # clippy's check builds of the crates.io dependencies.
+      - name: Check docs
+        run: make check-docs-lindera-python
+
   test-lindera-nodejs:
     name: Test lindera-nodejs
     needs: [test-lindera, test-lindera-analysis, test-lindera-binding, detect-changes]
@@ -742,6 +749,12 @@ jobs:
       - name: Run clippy
         run: cargo clippy -p lindera-nodejs -- -D warnings
 
+      # Fails on rustdoc warnings in this binding, public and private items, as
+      # check-docs does for the other crates (#1156). After clippy, so it reuses
+      # clippy's check builds of the crates.io dependencies.
+      - name: Check docs
+        run: make check-docs-lindera-nodejs
+
   test-lindera-ruby:
     name: Test lindera-ruby
     needs: [test-lindera, test-lindera-analysis, test-lindera-binding, detect-changes]
@@ -772,6 +785,12 @@ jobs:
       # installed here; this covers the cargo half. See #962.
       - name: Run clippy
         run: cargo clippy -p lindera-ruby -- -D warnings
+
+      # Fails on rustdoc warnings in this binding, public and private items, as
+      # check-docs does for the other crates (#1156). After clippy, so it reuses
+      # clippy's check builds of the crates.io dependencies.
+      - name: Check docs
+        run: make check-docs-lindera-ruby
 
   # Builds the source gem the way release.yml does and installs it with
   # `gem install` in a bare ruby container, then tokenizes with it. The lindera
@@ -836,6 +855,12 @@ jobs:
       # installed here; this covers the cargo half. See #962.
       - name: Run clippy
         run: cargo clippy -p lindera-php -- -D warnings
+
+      # Fails on rustdoc warnings in this binding, public and private items, as
+      # check-docs does for the other crates (#1156). After clippy, so it reuses
+      # clippy's check builds of the crates.io dependencies.
+      - name: Check docs
+        run: make check-docs-lindera-php
 
   test-lindera-php-macos:
     name: Test lindera-php (macOS, phpize path)
@@ -907,3 +932,9 @@ jobs:
       # for, so lint it there too. See #962.
       - name: Run clippy
         run: cargo clippy -p lindera-wasm --target wasm32-unknown-unknown -- -D warnings
+
+      # Fails on rustdoc warnings in this binding, public and private items, as
+      # check-docs does for the other crates (#1156). After clippy, so it reuses
+      # clippy's check builds of the crates.io dependencies.
+      - name: Check docs
+        run: make check-docs-lindera-wasm

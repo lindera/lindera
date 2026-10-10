@@ -30,7 +30,6 @@
 //!     console.log(tokens);
 //! });
 //! ```
-//! ```
 
 pub mod character_filter;
 pub mod dictionary;
