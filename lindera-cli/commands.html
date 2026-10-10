@@ -222,7 +222,7 @@ jieba           no        no          -
 <li><code>--output</code> / <code>-o</code>: Output format (default: mecab)
 <ul>
 <li><code>mecab</code>: MeCab-compatible format with part-of-speech info</li>
-<li><code>wakati</code>: Space-separated tokens only</li>
+<li><code>wakati</code>: Space-separated tokens only, one line per input line (an empty line for a line without tokens)</li>
 <li><code>json</code>: Detailed JSON format with all token information</li>
 </ul>
 </li>
@@ -517,7 +517,7 @@ EOS
 EOS
 </code></pre>
 <h4 id="wakati-format"><a class="header" href="#wakati-format">Wakati format</a></h4>
-<p>Outputs only the token text separated by spaces:</p>
+<p>Outputs only the token text separated by spaces, one line per input line (or per result with <code>-N</code>). A line without tokens, such as an empty line or a line of spaces, gives an empty line, as in MeCab:</p>
 <pre><code class="language-shell">% echo "お待ちしております。" | lindera tokenize \
   --dict embedded://ipadic \
   --output wakati

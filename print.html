@@ -1288,7 +1288,7 @@ for (tokens, cost) in results {
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<p>Every result segments the whole input. The input is split into segments as described in <a href="lindera/segmenter.html#sentence-splitting">Sentence Splitting</a>, and each segment is searched on its own. Within a segment, the context is carried across <code>、</code>, <code>。</code> and forced cuts, so the paths of a segment are the <code>n</code> best paths of one lattice over the whole segment, with the exceptions listed there; <code>unique</code> compares the word boundaries of the whole segment. A result takes one path in each segment, its cost is the sum of those paths' costs, and the results are the <code>n</code> cheapest of these combinations. So a result can differ from the best one in a single segment. <code>best_cost</code> is the cost of the first result, so <code>cost_threshold</code> applies to the whole input. The first result is always the output of <code>segment</code>.</p>
+<p>Every result segments the whole input. The input is split into segments as described in <a href="lindera/segmenter.html#sentence-splitting">Sentence Splitting</a>, and each segment is searched on its own. Within a segment, the context is carried across <code>、</code>, <code>。</code> and forced cuts, so the paths of a segment are the <code>n</code> best paths of one lattice over the whole segment, with the exceptions listed there; <code>unique</code> compares the word boundaries of the whole segment. A result takes one path in each segment, its cost is the sum of those paths' costs, and the results are the <code>n</code> cheapest of these combinations. So a result can differ from the best one in a single segment. <code>best_cost</code> is the cost of the first result, so <code>cost_threshold</code> applies to the whole input. The first result is always the output of <code>segment</code>. An input without words gives one result without tokens, with the connection cost from BOS to EOS, as in MeCab: an input of skipped whitespace and, since v7, an empty input (which gave no result before).</p>
 <p><code>segment_nbest_with_lattice</code> is the same operation but lets you pass in a reusable <code>Lattice</code> buffer to avoid reallocating one per call.</p>
 <h2 id="sentence-splitting"><a class="header" href="#sentence-splitting">Sentence Splitting</a></h2>
 <p>Before building the lattice, Lindera splits the input into sentences at delimiter characters (<code>\n</code>, <code>\t</code>, <code>。</code>, <code>、</code>) and builds one Viterbi lattice per sentence. If no delimiter appears within roughly 32 KiB of a sentence's start, Lindera forces a sentence boundary there anyway and logs a warning. The cuts bound the size — and therefore the memory and CPU cost — of each lattice.</p>
@@ -2287,7 +2287,7 @@ jieba           no        no          -
 <li><code>--output</code> / <code>-o</code>: Output format (default: mecab)
 <ul>
 <li><code>mecab</code>: MeCab-compatible format with part-of-speech info</li>
-<li><code>wakati</code>: Space-separated tokens only</li>
+<li><code>wakati</code>: Space-separated tokens only, one line per input line (an empty line for a line without tokens)</li>
 <li><code>json</code>: Detailed JSON format with all token information</li>
 </ul>
 </li>
@@ -2582,7 +2582,7 @@ EOS
 EOS
 </code></pre>
 <h4 id="wakati-format"><a class="header" href="#wakati-format">Wakati format</a></h4>
-<p>Outputs only the token text separated by spaces:</p>
+<p>Outputs only the token text separated by spaces, one line per input line (or per result with <code>-N</code>). A line without tokens, such as an empty line or a line of spaces, gives an empty line, as in MeCab:</p>
 <pre><code class="language-shell">% echo "お待ちしております。" | lindera tokenize \
   --dict embedded://ipadic \
   --output wakati
@@ -9627,12 +9627,12 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>Whitespace is skipped in the lattice: the words on either side of a space connect directly, as in MeCab</strong></td><td>Anyone who segments text containing whitespace with <code>keep_whitespace</code> false (the default), most visibly with ko-dic; not with SudachiDict, which keeps whitespace in the lattice as Sudachi does</td><td>Expect MeCab's segmentation for such text; <code>skip_whitespace(false)</code> (<code>"skip_whitespace": false</code>, <code>--disable-skip-whitespace</code>) restores the v6 handling of whitespace, but not the other output changes in this guide</td></tr>
 <tr><td><strong>Overlapping <code>char.def</code> lines: the last line decides</strong></td><td>Text with <code>Ð</code> (U+00D0; every dictionary except ko-dic), <code>々</code> (U+3005) or <code>〇</code> (U+3007); <code>lindera train</code> users whose <code>char.def</code> has single-code-point or overlapping lines</td><td>Expect <code>Ð</code> to stay in the output as a letter; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 <tr><td><strong>The context is carried across <code>、</code> and <code>。</code> within a line, as in MeCab</strong></td><td>Anyone who segments Japanese text with <code>、</code> or <code>。</code> inside a line</td><td>Expect some words after <code>、</code> or <code>。</code> to be read differently, mostly as MeCab reads them, and the N-best costs of such lines to change; no setting restores the v6 behavior</td></tr>
-<tr><td><strong>N-best: every result covers the whole input</strong></td><td>Anyone who asks for N-best results (<code>segment_nbest</code>, <code>tokenize_nbest</code>, <code>lindera tokenize -N</code>, the bindings' N-best methods) for input with more than one sentence</td><td>Expect the cheapest segmentations of the whole input from the second result on; a cost threshold now applies to the whole input</td></tr>
+<tr><td><strong>N-best: every result covers the whole input</strong></td><td>Anyone who asks for N-best results (<code>segment_nbest</code>, <code>tokenize_nbest</code>, <code>lindera tokenize -N</code>, the bindings' N-best methods) for input with more than one sentence</td><td>Expect the cheapest segmentations of the whole input from the second result on, and one result without tokens for an empty input; a cost threshold now applies to the whole input</td></tr>
 <tr><td><strong>Unknown words start at every position, as in MeCab</strong></td><td>Anyone who segments text with runs of katakana, symbols or Latin letters in normal mode, most visibly katakana joined by <code>・</code>, Korean sentence-final punctuation such as <code>."</code>, and Latin words with CC-CEDICT</td><td>Expect such runs to be split where MeCab splits them, and katakana- and Latin-heavy text to take about 13% more instructions; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>IPADIC and IPADIC-NEologd: dashes and tildes in dictionary entries are kept as written, as in MeCab</strong></td><td>Anyone who segments text with <code>―</code> (U+2015), <code>—</code> (U+2014), <code>～</code> (U+FF5E) or <code>〜</code> (U+301C) with IPADIC or IPADIC-NEologd</td><td>Expect entries spelled with <code>―</code> or <code>～</code> to match text spelled the same way, and text with <code>—</code> or <code>〜</code> to miss the 12 IPADIC and 1,085 IPADIC-NEologd entries it found only through the old rewrite (a <code>mapping</code> character filter can fold the spellings); rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 <tr><td><strong>Entries with the same surface, context IDs and cost: the first CSV row is output, as in MeCab</strong></td><td>Anyone who reads token details such as the reading or the base form with IPADIC, IPADIC-NEologd, UniDic or ko-dic, or with a user dictionary that has such entries; N-best users</td><td>Expect such words to get MeCab's details (IPADIC <code>狡い</code> reads <code>ズルイ</code>, not <code>コスイ</code>), a user entry to still win a tie with a system entry, and the first N-best result to always be the 1-best; no rebuild is needed, and no setting restores the v6 behavior</td></tr>
 <tr><td><strong>Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab</strong></td><td>Anyone who segments text, in rare places (9 of about 54,000 lines in the texts compared)</td><td>Expect such lines to be segmented as MeCab segments them (IPADIC <code>腸窒扶斯</code> is <code>腸 / 窒扶 / 斯</code>, not <code>腸 / 窒 / 扶斯</code>); no rebuild is needed, and no setting restores the v6 behavior</td></tr>
-<tr><td><strong><code>lindera tokenize</code> removes only the line terminator from each input line</strong></td><td>CLI users whose input lines start or end with whitespace</td><td>Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC <code>記号,空白</code>), and <code>--keep-whitespace</code> to output the spaces there; no setting restores the v6 behavior</td></tr>
+<tr><td><strong><code>lindera tokenize</code> removes only the line terminator from each input line and writes a result for every line</strong></td><td>CLI users whose input lines start or end with whitespace, or who read the wakati or N-best output of lines without tokens</td><td>Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC <code>記号,空白</code>), <code>--keep-whitespace</code> to output the spaces there, and an empty line or a line of spaces to give an empty wakati line and one N-best result; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>The <code>normalize_details</code> setting is removed: <code>Metadata::new</code> and <code>CoreMetadata::new</code> take 10 arguments, Ruby's <code>Metadata.new</code> takes 8</strong></td><td>Code that creates or reads dictionary metadata: Rust (<code>Metadata</code>, <code>lindera_binding::CoreMetadata</code>, <code>PrefixDictionaryBuilderOptions</code>) and the <code>Metadata</code> classes of the Python, Ruby, PHP and Node.js bindings</td><td>Remove the argument, option or property; a <code>metadata.json</code> that still has the key loads, and the key is ignored</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>, <code>tokens_offset_into</code>, <code>nbest_tokens_offset</code> and <code>NBestGenerator::next</code> return <code>(start, end, WordId)</code></strong></td><td>Rust code that calls these <code>lindera_dictionary</code> functions directly (also as <code>lindera::dictionary::viterbi::…</code>, <code>lindera::dictionary::Lattice</code> and <code>lindera::dictionary::nbest::…</code>)</td><td>Destructure three fields and use the returned end instead of the next token's start</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> returns the BOS index of the best path (<code>Option&lt;usize&gt;</code>)</strong></td><td>Rust code that uses the <code>()</code> value of <code>tokens_offset_into</code></td><td>Nothing for a call written as a statement; otherwise ignore the new value</td></tr>
@@ -9657,7 +9657,8 @@ of text that contains them. Within a line, the words after <code>、</code> and 
 are read in the context of the words before them, which changes the
 segmentation of some such text and the N-best costs of every such line. For
 input with more than one sentence, the N-best results from the second one on
-are the cheapest segmentations of the whole input. And in normal mode, an
+are the cheapest segmentations of the whole input, and an empty input gets
+one N-best result without tokens. And in normal mode, an
 unknown word can start inside a run of characters of one kind, as in MeCab,
 which splits some runs of katakana, symbols and Latin letters. With IPADIC
 and IPADIC-NEologd, the entries spelled with <code>―</code> or <code>～</code> are found under
@@ -9670,7 +9671,8 @@ When two segmentations cost exactly the same, the one whose last word starts
 later is chosen, as in MeCab, which changes the segmentation of a few lines.
 And <code>lindera tokenize</code> removes only the line terminator from each input line
 instead of all the whitespace at its ends, which keeps U+3000 at the start
-or end of a line and makes the offsets index the line.
+or end of a line and makes the offsets index the line, and it writes a
+result for every line, also in the wakati format and with <code>-N</code>.
 Otherwise, for the same input and dictionary, v7.0.0 produces the same
 tokens with the same positional details as v6.2.0.</p>
 <h2 id="the-lindera-crate-is-now-a-facade"><a class="header" href="#the-lindera-crate-is-now-a-facade">The lindera crate is now a facade</a></h2>
@@ -10086,6 +10088,12 @@ does not change. The cost threshold (<code>cost_threshold</code>,
 kept when its total cost is within the threshold of the first result's. v6
 applied the threshold to each sentence separately. With <code>unique</code>, the
 results still have distinct word boundaries.</p>
+<p>An empty input now gets one result without tokens, with the connection
+cost from BOS to EOS, as in MeCab and as an input of only whitespace
+already did; v6 gave no result, because an empty input has no sentence.
+This applies to <code>segment_nbest</code>, <code>tokenize_nbest</code>, their worker forms, the
+bindings' N-best methods and <code>lindera tokenize -N</code>, which now writes a
+result for an empty line.</p>
 <h2 id="unknown-words-start-at-every-position-as-in-mecab"><a class="header" href="#unknown-words-start-at-every-position-as-in-mecab">Unknown words start at every position, as in MeCab</a></h2>
 <p>A word that is not in the dictionary is read as an unknown word, built from
 the character categories of the dictionary's <code>char.def</code> (katakana, Latin
@@ -10359,7 +10367,7 @@ more instructions and 2% to 5% more time with ko-dic. N-best search
 (<code>-N 3</code>) takes about 1% more instructions.</p>
 <p>The dictionary files do not change, so this change needs no rebuild or
 re-download. There is no setting to restore the v6 behavior.</p>
-<h2 id="lindera-tokenize-removes-only-the-line-terminator"><a class="header" href="#lindera-tokenize-removes-only-the-line-terminator"><code>lindera tokenize</code> removes only the line terminator</a></h2>
+<h2 id="lindera-tokenize-removes-only-the-line-terminator-and-writes-every-line"><a class="header" href="#lindera-tokenize-removes-only-the-line-terminator-and-writes-every-line"><code>lindera tokenize</code> removes only the line terminator and writes every line</a></h2>
 <p><code>lindera tokenize</code> reads its input line by line. Up to v6.2.0, it removed
 all the whitespace at both ends of each line before tokenizing it: spaces,
 tabs, U+3000, U+00A0 and the other Unicode whitespace (<code>str::trim</code>). The
@@ -10388,18 +10396,25 @@ of UD Japanese GSD and the 3,587 paragraphs of <em>Kokoro</em> and <em>I Am a Ca
 gives the same output as before.</li>
 <li>With <code>--keep-whitespace</code>, the spaces at the start and end of a line are
 tokens too: two spaces, <code>東京</code> and a space give three tokens.</li>
-<li>With <code>-N</code>, a line of spaces or tabs gives one result without tokens
-(<code>NBEST 1</code> and <code>EOS</code>), as in MeCab, instead of no result; an empty line
-still gives none. The costs of a line with U+3000 at an end include that
-token.</li>
+<li>With <code>-N</code>, a line of spaces or tabs and an empty line give one result
+without tokens (<code>NBEST 1</code> and <code>EOS</code>), as in MeCab, instead of no result
+(see <a href="migration_v6_to_v7.html#n-best-results-cover-the-whole-input">N-best results cover the whole input</a>
+for the empty input). The costs of a line with U+3000 at an end include
+that token.</li>
+<li>The wakati format writes a line for every input line, or for every
+result with <code>-N</code>: a line without tokens, such as an empty line or a line
+of spaces, gives an empty line, as in MeCab. v6 wrote nothing for it, so
+the output had fewer lines than the input (<em>Botchan</em> as one file: 505
+output lines for its 538 input lines, 33 of them empty).</li>
 <li>The <code>\r</code> of a line that ends with <code>\r\n</code> is removed, and only that one
 <code>\r</code>. MeCab removes only the <code>\n</code> and outputs the <code>\r</code> as an unknown
 word; Lindera removes it so that text with Windows line endings does not
 end every line with a <code>\r</code> token.</li>
 </ul>
 <p>The library and the language bindings never trimmed their input, so they do
-not change. The dictionary files do not change either, so this change needs
-no rebuild or re-download. No option restores the v6 behavior; to get it,
+not change, except for the N-best result of an empty input. The dictionary
+files do not change either, so this change needs no rebuild or re-download.
+No option restores the v6 behavior; to get the v6 offsets and tokens,
 remove the whitespace at the ends of each line before passing the text to
 <code>lindera tokenize</code>.</p>
 <h2 id="rust-api-changes-in-lindera_dictionary-1"><a class="header" href="#rust-api-changes-in-lindera_dictionary-1">Rust API changes in <code>lindera_dictionary</code></a></h2>
@@ -10513,16 +10528,18 @@ segmentation of text that contains whitespace, the <code>char.def</code> fix, wh
 matters only for text with <code>Ð</code>, <code>々</code> or <code>〇</code>, the context carried across
 <code>、</code> and <code>。</code>, which matters only for text with <code>、</code> or <code>。</code> inside a line,
 the N-best fix, which matters only for N-best results for input with
-more than one sentence, the unknown words that start at every position,
-which matter for runs of katakana, symbols or Latin letters in normal
-mode, the dash and tilde spellings, which matter only for text with
-<code>―</code>, <code>—</code>, <code>～</code> or <code>〜</code> with IPADIC or IPADIC-NEologd, the choice among
+more than one sentence or for an empty input, the unknown words that
+start at every position, which matter for runs of katakana, symbols or
+Latin letters in normal mode, the dash and tilde spellings, which
+matter only for text with <code>―</code>, <code>—</code>, <code>～</code> or <code>〜</code> with IPADIC or
+IPADIC-NEologd, the choice among
 tied entries, which matters only if you read token details such as the
 reading or the base form, or the order of N-best results with the same
 cost, the choice between segmentations of equal cost, which changes the
 segmentation of a few lines, and, in the CLI only, the whitespace at the
-ends of an input line, which matters only for lines that start or end
-with whitespace.</li>
+ends of an input line and the output of lines without tokens, which
+matter only for lines that start or end with whitespace and for the
+wakati and N-best output of empty lines and lines of spaces.</li>
 <li><strong>Projects staying on <code>lindera = "6"</code></strong>: the 6.x releases of <code>lindera</code> and
 <code>lindera-analysis</code> remain on crates.io and keep working together. Nothing
 changes until you bump the major version.</li>
@@ -10635,6 +10652,8 @@ second one on to change for input with more than one sentence.</li>
 result's included: the costs are those of one lattice over the line.</li>
 <li>If you set a cost threshold, it now applies to the total cost of the
 whole input, not to each sentence.</li>
+<li>Expect an empty input to give one result without tokens, as an input of
+only whitespace does, instead of no result.</li>
 <li>Expect the first result to be the 1-best segmentation also when several
 paths have exactly the same cost; results with the same cost can change
 places.</li>
@@ -10689,9 +10708,10 @@ key of the same name in <code>to_dict()</code>, <code>to_h</code>, <code>toArray
 <li>With <code>lindera tokenize</code>, expect the offsets of a line that starts with
 whitespace to index the input line, U+3000 at the start or end of a line
 to be a token (IPADIC, IPADIC-NEologd, UniDic), <code>--keep-whitespace</code> to
-output the spaces there, and <code>-N</code> to give one result for a line of
-spaces. To get the v6 output, remove the whitespace at the ends of each
-line first.</li>
+output the spaces there, <code>-N</code> to give one result for an empty line or a
+line of spaces, and the wakati format to write an empty line for a line
+without tokens. To get the v6 offsets and tokens, remove the whitespace
+at the ends of each line first.</li>
 <li>Nothing else to do beyond taking the 7.0.0 release, apart from the
 dictionary, whitespace, <code>、</code> and <code>。</code>, N-best, unknown-word, dash and
 tilde, tied-entry and equal-cost items above and the <code>lindera tokenize</code>

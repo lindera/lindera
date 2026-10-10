@@ -222,7 +222,7 @@ jieba           no        no          -
 <li><code>--output</code> / <code>-o</code>: 出力形式 (デフォルト: mecab)
 <ul>
 <li><code>mecab</code>: 品詞情報を含むMeCab互換形式</li>
-<li><code>wakati</code>: スペース区切りのトークンのみ</li>
+<li><code>wakati</code>: スペース区切りのトークンのみ。入力 1 行につき 1 行（トークンのない行は空行）</li>
 <li><code>json</code>: すべてのトークン情報を含む詳細なJSON形式</li>
 </ul>
 </li>
@@ -517,7 +517,7 @@ EOS
 EOS
 </code></pre>
 <h4 id="wakati-形式"><a class="header" href="#wakati-形式">Wakati 形式</a></h4>
-<p>トークンテキストのみをスペース区切りで出力します：</p>
+<p>トークンテキストのみをスペース区切りで、入力 1 行につき 1 行（<code>-N</code> では結果 1 件につき 1 行）出力します。空行や空白だけの行のようにトークンのない行は、MeCab と同じく空行になります：</p>
 <pre><code class="language-shell">% echo "お待ちしております。" | lindera tokenize \
   --dict embedded://ipadic \
   --output wakati
