@@ -125,6 +125,23 @@ let segmenter = Segmenter::from_config(&config)?;
 
 Note: `use_mmap` here is set to `false` only to illustrate the option explicitly; omitting it entirely gives the same default (`true`, see below).
 
+`Segmenter::from_config_with_dictionaries` applies a configuration to dictionaries that are already loaded, such as ones loaded from bytes. A dictionary passed as `Some` is used instead of the one the `dictionary` key names, and the key may then be absent (`use_mmap` does not apply); a user dictionary passed as `Some` is used instead of the one the `user_dictionary` key names. For `None`, the dictionary is loaded from the configuration as `from_config` loads it, and a configured user dictionary is built with the metadata of the system dictionary in use. Every other key applies as with `from_config`:
+
+```rust
+use serde_json::json;
+use lindera::dictionary::load_dictionary;
+use lindera::segmenter::{Segmenter, SegmenterConfig};
+
+let dictionary = load_dictionary("embedded://ipadic")?;
+let config: SegmenterConfig = json!({
+    "mode": "normal",
+    "keep_whitespace": true
+});
+let segmenter = Segmenter::from_config_with_dictionaries(&config, Some(dictionary), None)?;
+```
+
+`Tokenizer::from_config_with_dictionaries` and `TokenizerBuilder::build_with_dictionaries` do the same for a tokenizer configuration, filters included (see [Architecture](../lindera-analysis/architecture.md)).
+
 ## Memory-Mapped Loading
 
 For a filesystem-based (not `embedded://`) dictionary, `use_mmap` defaults

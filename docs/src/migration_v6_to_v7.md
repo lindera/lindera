@@ -44,6 +44,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **Entries with the same surface, context IDs and cost: the first CSV row is output, as in MeCab** | Anyone who reads token details such as the reading or the base form with IPADIC, IPADIC-NEologd, UniDic or ko-dic, or with a user dictionary that has such entries; N-best users | Expect such words to get MeCab's details (IPADIC `狡い` reads `ズルイ`, not `コスイ`), a user entry to still win a tie with a system entry, and the first N-best result to always be the 1-best; no rebuild is needed, and no setting restores the v6 behavior |
 | **Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab** | Anyone who segments text, in rare places (9 of about 54,000 lines in the texts compared) | Expect such lines to be segmented as MeCab segments them (IPADIC `腸窒扶斯` is `腸 / 窒扶 / 斯`, not `腸 / 窒 / 扶斯`); no rebuild is needed, and no setting restores the v6 behavior |
 | **`lindera tokenize` removes only the line terminator from each input line and writes a result for every line** | CLI users whose input lines start or end with whitespace, or who read the wakati or N-best output of lines without tokens | Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC `記号,空白`), `--keep-whitespace` to output the spaces there, and an empty line or a line of spaces to give an empty wakati line and one N-best result; no setting restores the v6 behavior |
+| **WASM: the `TokenizerBuilder` settings apply whichever way the dictionary is set** | WASM users who combine `setDictionaryInstance()` with `setKeepWhitespace()` or filters, or `setDictionary()` with `setUserDictionaryInstance()` | Expect those settings and the user dictionary to take effect; a dictionary instance whose `char.def` has no `SPACE` category now needs `setKeepWhitespace(true)`, as a dictionary set by URI does |
 | **The `normalize_details` setting is removed: `Metadata::new` and `CoreMetadata::new` take 10 arguments, Ruby's `Metadata.new` takes 8** | Code that creates or reads dictionary metadata: Rust (`Metadata`, `lindera_binding::CoreMetadata`, `PrefixDictionaryBuilderOptions`) and the `Metadata` classes of the Python, Ruby, PHP and Node.js bindings | Remove the argument, option or property; a `metadata.json` that still has the key loads, and the key is ignored |
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
 | **`Lattice::tokens_offset_into` returns the BOS index of the best path (`Option<usize>`)** | Rust code that uses the `()` value of `tokens_offset_into` | Nothing for a call written as a statement; otherwise ignore the new value |
@@ -54,8 +55,8 @@ classes of the Python, Node.js, Ruby and PHP bindings no longer take or
 expose `normalize_details` (see
 [The `normalize_details` setting is removed](#the-normalize_details-setting-is-removed)).
 Their version number moves to 7.0.0.
-There are eleven output differences, all described below; the last one is
-in the CLI only. With IPADIC or
+There are twelve output differences, all described below; the last two are
+in the CLI only and in the WASM binding only. With IPADIC or
 IPADIC-NEologd, the values reported under the names `conjugation_type` and
 `conjugation_form` trade places. The dictionaries now contain the entries
 whose surface is or starts or ends with whitespace, which changes the
@@ -82,7 +83,10 @@ later is chosen, as in MeCab, which changes the segmentation of a few lines.
 And `lindera tokenize` removes only the line terminator from each input line
 instead of all the whitespace at its ends, which keeps U+3000 at the start
 or end of a line and makes the offsets index the line, and it writes a
-result for every line, also in the wakati format and with `-N`.
+result for every line, also in the wakati format and with `-N`. And the
+WASM binding's `TokenizerBuilder` applies all its settings and the user
+dictionary whichever way the dictionary was set, where v6 ignored some of
+them.
 Otherwise, for the same input and dictionary, v7.0.0 produces the same
 tokens with the same positional details as v6.2.0.
 
@@ -942,6 +946,31 @@ No option restores the v6 behavior; to get the v6 offsets and tokens,
 remove the whitespace at the ends of each line before passing the text to
 `lindera tokenize`.
 
+## WASM: the builder settings apply whichever way the dictionary is set
+
+Up to v6.2.0, `TokenizerBuilder.build()` in the WASM binding ignored part of
+the builder's configuration, depending on how the dictionary was set:
+
+| Dictionary set with | Ignored up to v6.2.0 |
+| --- | --- |
+| `setDictionaryInstance()`, such as a dictionary loaded from OPFS with `loadDictionaryFromBytes()` | `setKeepWhitespace()`, `appendCharacterFilter()` and `appendTokenFilter()` |
+| `setDictionary()`, such as an `embedded://` dictionary | The user dictionary set with `setUserDictionaryInstance()` |
+
+v7.0.0 applies every setting and the user dictionary either way, as the
+[Tokenizer API](lindera-wasm/tokenizer_api.md) page describes. For example,
+with IPADIC loaded from bytes, `setKeepWhitespace(true)` and the
+`unicode_normalize` (NFKC) and `lowercase` filters turn `Ｌｉｎｄｅｒａ 東京`
+into `lindera`, a space and `東京`; v6 gave `Ｌｉｎｄｅｒａ` and `東京`.
+
+With a dictionary instance, `build()` now also checks what it checks for a
+dictionary set by URI: unless whitespace is kept, the dictionary's
+`char.def` must define the `SPACE` category. Every bundled dictionary does;
+a custom dictionary without it now needs `setKeepWhitespace(true)`.
+
+The other bindings, the CLI and the library do not change, and neither do
+the dictionary files. No option restores the v6 behavior; to get it, leave
+out the settings that v6 ignored.
+
 ## Rust API changes in `lindera_dictionary`
 
 These affect only code that calls the lattice backtraces directly, or that
@@ -1069,10 +1098,12 @@ to `None`, which skips whitespace.
   tied entries, which matters only if you read token details such as the
   reading or the base form, or the order of N-best results with the same
   cost, the choice between segmentations of equal cost, which changes the
-  segmentation of a few lines, and, in the CLI only, the whitespace at the
+  segmentation of a few lines, in the CLI only, the whitespace at the
   ends of an input line and the output of lines without tokens, which
   matter only for lines that start or end with whitespace and for the
-  wakati and N-best output of empty lines and lines of spaces.
+  wakati and N-best output of empty lines and lines of spaces, and, in the
+  WASM binding only, the builder settings that v6 ignored for one way of
+  setting the dictionary.
 - **Projects staying on `lindera = "6"`**: the 6.x releases of `lindera` and
   `lindera-analysis` remain on crates.io and keep working together. Nothing
   changes until you bump the major version.
@@ -1246,7 +1277,12 @@ Language bindings and CLI:
   line of spaces, and the wakati format to write an empty line for a line
   without tokens. To get the v6 offsets and tokens, remove the whitespace
   at the ends of each line first.
+- With the WASM `TokenizerBuilder`, expect `setKeepWhitespace()` and the
+  appended filters to apply to a dictionary set with
+  `setDictionaryInstance()`, and a user dictionary set with
+  `setUserDictionaryInstance()` to apply to a dictionary set with
+  `setDictionary()`.
 - Nothing else to do beyond taking the 7.0.0 release, apart from the
   dictionary, whitespace, `、` and `。`, N-best, unknown-word, dash and
   tilde, tied-entry and equal-cost items above and the `lindera tokenize`
-  item.
+  and WASM items.

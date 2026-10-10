@@ -58,6 +58,8 @@ Segmenterが生成したトークンを後処理するフィルタのtraitです
 
 `TokenizerBuilder`は`TokenizerConfig`（`serde_json::Value`）から`Tokenizer`を組み立てます。この設定はプログラムから直接構築することも、YAMLファイルから読み込むこと（`TokenizerBuilder::from_file`、または環境変数`LINDERA_CONFIG_PATH`経由で自動的に読み込む`TokenizerBuilder::new`）も、`set_segmenter_mode`・`set_segmenter_dictionary`・`append_character_filter`・`append_token_filter`で段階的に組み立てることもできます。YAMLファイルの形式は[設定](./configuration.md)を、フィルタの完全なリファレンスは[フィルタ](./filters.md)を参照してください。
 
+`TokenizerBuilder::build`は、設定が指す辞書を読み込みます。`TokenizerBuilder::build_with_dictionaries`（と`Tokenizer::from_config_with_dictionaries`）は、代わりにバイト列から読み込んだ辞書などの読み込み済みの辞書を受け取り、フィルタを含む設定のほかの項目をすべてその辞書に適用します。渡した辞書が設定の辞書をどう置き換えるかは[Config からの構築](../lindera/segmenter.md#config-からの構築)を参照してください。WASMバインディングの`TokenizerBuilder`は、`setDictionaryInstance()`と`setUserDictionaryInstance()`で設定した辞書を渡して、この方法でトークナイザーをビルドします。
+
 ### AnalysisWorker
 
 `AnalysisWorker`（`Tokenizer::new_worker`または`Tokenizer::into_worker`で作成）は、解析チェーン全体に対する再利用可能なセッションです。呼び出しごとのバッファ — Viterbiラティスとバックトレース用スクラッチ（`SegmentWorker`経由）、文字フィルタが操作する正規化テキストバッファ、オフセットマッピング用スクラッチ — をすべて所有するため、`tokenize`を繰り返し呼び出しても`Tokenizer::tokenize`が支払う呼び出しごとのアロケーションを回避できます。文字フィルタが設定されている場合、トークンのsurfaceはトークンごとの`String`にコピーされる代わりにワーカーのバッファを借用します。返されるトークンはワーカーを借用するため、次の呼び出しの前に消費する必要があります。マルチスレッドで使う場合はスレッドごとにワーカーを作成してください（あるいは`lindera-binding`のように`Mutex`で保護します）。基盤となる`SegmentWorker`と自動メモリ縮小ポリシーについては[Segmenter](../lindera/segmenter.md)のページを参照してください。

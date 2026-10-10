@@ -33,7 +33,7 @@ builder.setMode("normal");
 
 #### `setDictionary(uri)`
 
-トークナイズに使用する辞書を設定します。
+トークナイズに使用する辞書を設定します。`setDictionaryInstance()` で設定した辞書は、この辞書に置き換わります。
 
 - **パラメータ**: `uri` (string) -- 辞書の URI（例: `"embedded://ipadic"`）
 - **戻り値**: `TokenizerBuilder`
@@ -46,6 +46,7 @@ builder.setDictionary("embedded://ipadic");
 
 読み込み済みの辞書インスタンスをトークナイズに設定します。
 URI の代わりにバイトデータから読み込んだ辞書（例: `loadDictionaryFromBytes()` 経由）を使用する場合に使います。
+`setDictionary()` で設定した辞書は、この辞書に置き換わります（2 つのうち最後に呼んだ方の辞書が使われます）。ビルダーのほかの設定（モード、`setUserDictionaryInstance()`、`setKeepWhitespace()`、`setSpacePenalty()`、追加したフィルタ）は、URI で設定した辞書と同じようにこの辞書にも適用されます。
 
 - **パラメータ**: `dictionary` (Dictionary) -- 読み込み済みの辞書オブジェクト
 - **戻り値**: `TokenizerBuilder`
@@ -66,7 +67,7 @@ builder.setDictionaryInstance(dictionary);
 
 #### `setUserDictionaryInstance(userDictionary)`
 
-読み込み済みのユーザー辞書インスタンスを設定します。`loadUserDictionaryFromBytes()`（CSV）または `loadUserDictionaryBinFromBytes()`（ビルド済み `.bin`）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。
+読み込み済みのユーザー辞書インスタンスを設定します。`loadUserDictionaryFromBytes()`（CSV）または `loadUserDictionaryBinFromBytes()`（ビルド済み `.bin`）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。ユーザー辞書は、`setDictionary()` と `setDictionaryInstance()` のどちらで設定した辞書にも適用されます。
 
 - **パラメータ**: `userDictionary` (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト
 - **戻り値**: `TokenizerBuilder`
@@ -96,7 +97,7 @@ builder.setKeepWhitespace(true);
 - `true` -- 辞書のルールを要求します。ルールを同梱しない辞書では `build()` がエラーを投げます。
 - `{ rules: [{ pos: [...], cost: n }, ...] }` 形式のオブジェクト -- 辞書のルールの代わりにこのルールを適用します。先頭品詞タグが `pos` に含まれる候補に `cost` を加算し、最初に一致したルールが使われます。
 
-この設定は、`setDictionary()` で設定した辞書にも、`setDictionaryInstance()` で設定した辞書（たとえば `loadDictionaryFromBytes()` で OPFS から読み込んだ ko-dic）にも適用されます。辞書オブジェクト自体は変更されません。`Tokenizer` コンストラクタで作成したトークナイザーは常に辞書のデフォルトを使います。設定を変えるには `TokenizerBuilder` でビルドしてください。
+この設定は、`setDictionary()` で設定した辞書にも、`setDictionaryInstance()` で設定した辞書（たとえば `loadDictionaryFromBytes()` で OPFS から読み込んだ ko-dic）にも適用されます。辞書オブジェクト自体は変更されません。`Tokenizer` コンストラクタは、同じ設定を引数 `spacePenalty` で受け取ります。
 
 ```javascript
 // ペナルティをオフにする
@@ -146,7 +147,7 @@ builder.appendTokenFilter("japanese_stop_tags", {
 
 #### `build()`
 
-設定済みの `Tokenizer` インスタンスをビルドして返します。ビルド後もビルダーはそのまま使えるため、同じ設定から複数のトークナイザーをビルドできます。
+設定済みの `Tokenizer` インスタンスをビルドして返します。辞書を `setDictionary()` と `setDictionaryInstance()` のどちらで設定しても、すべての設定が適用されます。ビルド後もビルダーはそのまま使えるため、同じ設定から複数のトークナイザーをビルドできます。
 
 - **戻り値**: `Tokenizer`
 
