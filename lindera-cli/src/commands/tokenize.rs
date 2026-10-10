@@ -226,7 +226,9 @@ fn json_output<W: Write>(writer: &mut W, mut tokens: Vec<Token>) -> LinderaResul
 }
 
 /// Writes tokens in the wakati format: surfaces separated by single spaces on
-/// one line.
+/// one line. The line is written even without tokens (an empty line, as
+/// MeCab writes it), so the output has one line per input line, or per
+/// N-best result.
 ///
 /// # Arguments
 ///
@@ -237,14 +239,13 @@ fn json_output<W: Write>(writer: &mut W, mut tokens: Vec<Token>) -> LinderaResul
 ///
 /// `Ok(())` on success, or an I/O error wrapped in `LinderaError`.
 fn wakati_output<W: Write>(writer: &mut W, tokens: Vec<Token>) -> LinderaResult<()> {
-    let mut it = tokens.iter().peekable();
-    while let Some(token) = it.next() {
-        if it.peek().is_some() {
-            write!(writer, "{} ", token.surface.as_ref()).map_err(io_err)?;
-        } else {
-            writeln!(writer, "{}", token.surface.as_ref()).map_err(io_err)?;
+    for (i, token) in tokens.iter().enumerate() {
+        if i > 0 {
+            write!(writer, " ").map_err(io_err)?;
         }
+        write!(writer, "{}", token.surface.as_ref()).map_err(io_err)?;
     }
+    writeln!(writer).map_err(io_err)?;
 
     Ok(())
 }

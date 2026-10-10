@@ -496,6 +496,19 @@ mod tests {
             }
         }
 
+        /// An empty input gets one N-best result without tokens (#1147),
+        /// which every binding's N-best method returns.
+        #[test]
+        fn tokenize_nbest_empty_input_gives_one_result() {
+            let tokenizer = ipadic_tokenizer();
+            let results = match tokenizer.tokenize_nbest("", 3, false, None) {
+                Ok(results) => results,
+                Err(err) => panic!("tokenize_nbest failed: {err}"),
+            };
+            assert_eq!(results.len(), 1);
+            assert!(results[0].0.is_empty());
+        }
+
         /// The surface-only fast path must yield exactly the surfaces and
         /// byte offsets of the full tokenize path, for repeated calls.
         #[test]

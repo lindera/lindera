@@ -416,4 +416,89 @@ mod with_ipadic {
             vec![vec![span("  ", 0, 2), span("東京", 2, 8)]]
         );
     }
+
+    /// Two lines with tokens around an empty line and a line of spaces,
+    /// which have no tokens.
+    const LINES_WITHOUT_TOKENS: &str = "東京\n\n   \n大阪\n";
+
+    fn tokenize_stdout(input: &str, args: &[&str]) -> String {
+        let output = lindera()
+            .args(["tokenize", "--dict", "embedded://ipadic"])
+            .args(args)
+            .write_stdin(input.to_string())
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        String::from_utf8(output.stdout).unwrap()
+    }
+
+    #[test]
+    fn tokenize_wakati_writes_a_line_for_every_input_line() {
+        // A line without tokens is an empty line, as in MeCab (#1147), so
+        // the output lines match the input lines.
+        assert_eq!(
+            tokenize_stdout(LINES_WITHOUT_TOKENS, &["--output", "wakati"]),
+            "東京\n\n\n大阪\n"
+        );
+    }
+
+    #[test]
+    fn tokenize_nbest_gives_every_line_a_result() {
+        // Every input line, the empty one included, gets at least one
+        // result (#1147), and every result has its line: `EOS` (mecab),
+        // an array (json) or a line of surfaces, empty without tokens
+        // (wakati).
+        for format in ["mecab", "json", "wakati"] {
+            let stdout =
+                tokenize_stdout(LINES_WITHOUT_TOKENS, &["--nbest", "2", "--output", format]);
+            let lines: Vec<&str> = stdout.lines().collect();
+            let headers: Vec<usize> = (0..lines.len())
+                .filter(|&i| lines[i].starts_with("NBEST "))
+                .collect();
+            let firsts = lines
+                .iter()
+                .filter(|line| line.starts_with("NBEST 1 "))
+                .count();
+            assert_eq!(
+                firsts, 4,
+                "one first result per input line ({format}): {stdout}"
+            );
+            if format == "wakati" {
+                // One line of surfaces after each header.
+                assert_eq!(lines.len(), 2 * headers.len(), "{stdout}");
+                for &i in &headers {
+                    assert!(!lines[i + 1].starts_with("NBEST "), "{stdout}");
+                }
+            } else {
+                // The last line of each result: `EOS`, or the closing
+                // bracket of a pretty-printed array (`[]` without tokens).
+                let ends = lines
+                    .iter()
+                    .filter(|line| match format {
+                        "mecab" => **line == "EOS",
+                        _ => **line == "]" || **line == "[]",
+                    })
+                    .count();
+                assert_eq!(ends, headers.len(), "({format}): {stdout}");
+            }
+        }
+
+        // The empty line and the line of spaces get one result without
+        // tokens each, with the same cost.
+        let results = spans(LINES_WITHOUT_TOKENS, &["--nbest", "2"]);
+        let empty: Vec<usize> = (0..results.len())
+            .filter(|&i| results[i].is_empty())
+            .collect();
+        assert_eq!(empty.len(), 2, "{results:?}");
+        let stdout = tokenize_stdout(LINES_WITHOUT_TOKENS, &["--nbest", "2"]);
+        let blank_costs: Vec<&str> = stdout
+            .lines()
+            .zip(stdout.lines().skip(1))
+            .filter(|(_, next)| *next == "EOS")
+            .map(|(header, _)| header)
+            .filter(|header| header.starts_with("NBEST "))
+            .collect();
+        assert_eq!(blank_costs.len(), 2, "{stdout}");
+        assert_eq!(blank_costs[0], blank_costs[1], "{stdout}");
+    }
 }

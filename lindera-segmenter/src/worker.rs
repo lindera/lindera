@@ -406,14 +406,18 @@ mod tests {
         fn test_worker_matches_segment_nbest_output() {
             let segmenter = ipadic_segmenter();
             let mut worker = segmenter.new_worker();
-            // The second text has several sentences, which carry the
-            // context from one to the next.
-            for text in ["すもももももももものうち", "東京、です。すもももも"]
+            // The third text has several sentences, which carry the
+            // context from one to the next. The empty input, after a longer
+            // one, reuses the lattice for its one path from BOS to EOS.
+            for text in ["すもももももももものうち", "", "東京、です。すもももも", ""]
             {
                 let expected = match segmenter.segment_nbest(Cow::Borrowed(text), 5, false, None) {
                     Ok(results) => results,
                     Err(err) => panic!("segment_nbest failed: {err}"),
                 };
+                if text.is_empty() {
+                    assert_eq!(expected.len(), 1);
+                }
                 // Second call exercises nbest lattice reuse.
                 for _ in 0..2 {
                     let actual = match worker.segment_nbest(text, 5, false, None) {

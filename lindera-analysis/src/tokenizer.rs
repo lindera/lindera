@@ -1235,4 +1235,30 @@ mod tests {
             assert!(!tokens.is_empty());
         }
     }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_tokenize_nbest_empty_input() {
+        use crate::tokenizer::TokenizerBuilder;
+
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_segmenter_dictionary("embedded://ipadic");
+        let tokenizer = builder.build().unwrap();
+
+        // An empty input gets one result without tokens, as an input of
+        // skipped whitespace does (#1147), through the tokenizer and its
+        // reusable worker alike.
+        let spaces = tokenizer.tokenize_nbest("   ", 3, false, None).unwrap();
+        assert_eq!(spaces.len(), 1);
+        let results = tokenizer.tokenize_nbest("", 3, false, None).unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(results[0].0.is_empty());
+        assert_eq!(results[0].1, spaces[0].1);
+
+        let mut worker = tokenizer.new_worker();
+        let results = worker.tokenize_nbest("", 3, false, None).unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(results[0].0.is_empty());
+        assert_eq!(results[0].1, spaces[0].1);
+    }
 }
