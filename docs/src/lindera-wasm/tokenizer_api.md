@@ -34,7 +34,7 @@ builder.setMode("normal");
 
 #### `setDictionary(uri)`
 
-Sets the dictionary to use for tokenization.
+Sets the dictionary to use for tokenization. It replaces a dictionary set with `setDictionaryInstance()`.
 
 - **Parameters**: `uri` (string) -- Dictionary URI (e.g., `"embedded://ipadic"`)
 - **Returns**: `TokenizerBuilder`
@@ -47,6 +47,7 @@ builder.setDictionary("embedded://ipadic");
 
 Sets a pre-loaded dictionary instance for tokenization.
 Use this when the dictionary has been loaded from bytes (e.g., via `loadDictionaryFromBytes()`) instead of from a URI.
+It replaces a dictionary set with `setDictionary()`: whichever of the two is called last sets the dictionary. Every other setting of the builder (the mode, `setUserDictionaryInstance()`, `setKeepWhitespace()`, `setSpacePenalty()` and the appended filters) applies to it as to a dictionary set by URI.
 
 - **Parameters**: `dictionary` (Dictionary) -- A loaded dictionary object
 - **Returns**: `TokenizerBuilder`
@@ -66,7 +67,7 @@ builder.setDictionaryInstance(dictionary);
 
 #### `setUserDictionaryInstance(userDictionary)`
 
-Sets a pre-loaded user dictionary instance. Load one from bytes with `loadUserDictionaryFromBytes()` (CSV) or `loadUserDictionaryBinFromBytes()` (prebuilt `.bin`); URI-based user dictionaries are not available on WebAssembly.
+Sets a pre-loaded user dictionary instance. Load one from bytes with `loadUserDictionaryFromBytes()` (CSV) or `loadUserDictionaryBinFromBytes()` (prebuilt `.bin`); URI-based user dictionaries are not available on WebAssembly. The user dictionary applies to a dictionary set with either `setDictionary()` or `setDictionaryInstance()`.
 
 - **Parameters**: `userDictionary` (UserDictionary) -- A loaded user dictionary object
 - **Returns**: `TokenizerBuilder`
@@ -96,7 +97,7 @@ Sets the left-space penalty for Korean: a candidate that starts right after whit
 - `true` -- Requires the dictionary's rules; `build()` throws for a dictionary that ships none.
 - An object of the form `{ rules: [{ pos: [...], cost: n }, ...] }` -- Applies these rules instead. A candidate whose first part-of-speech tag is listed in `pos` gets `cost` added; the first matching rule wins.
 
-The setting applies both to a dictionary set with `setDictionary()` and to one set with `setDictionaryInstance()`, such as a ko-dic loaded from OPFS with `loadDictionaryFromBytes()`. The dictionary object itself is not changed. A tokenizer created with the `Tokenizer` constructor always uses the dictionary's default; build it with `TokenizerBuilder` to change the setting.
+The setting applies both to a dictionary set with `setDictionary()` and to one set with `setDictionaryInstance()`, such as a ko-dic loaded from OPFS with `loadDictionaryFromBytes()`. The dictionary object itself is not changed. The `Tokenizer` constructor takes the same setting as its `spacePenalty` argument.
 
 ```javascript
 // Turn the penalty off
@@ -146,9 +147,10 @@ The arguments of `setSpacePenalty`, `appendCharacterFilter` and `appendTokenFilt
 
 #### `build()`
 
-Builds and returns a configured `Tokenizer` instance. The builder remains
-usable afterwards, so multiple tokenizers can be built from the same
-configuration.
+Builds and returns a configured `Tokenizer` instance. Every setting applies
+whether the dictionary was set with `setDictionary()` or with
+`setDictionaryInstance()`. The builder remains usable afterwards, so
+multiple tokenizers can be built from the same configuration.
 
 - **Returns**: `Tokenizer`
 

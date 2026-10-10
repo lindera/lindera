@@ -199,8 +199,39 @@ impl CoreTokenizerBuilder {
     }
 
     /// Builds a [`CoreTokenizer`] from the current configuration.
+    ///
+    /// # Returns
+    ///
+    /// The tokenizer, or an error when no dictionary is configured, a
+    /// dictionary cannot be loaded, or a setting or filter is invalid.
     pub fn build(&self) -> CoreResult<CoreTokenizer> {
-        Ok(CoreTokenizer::from_tokenizer(self.inner.build()?))
+        self.build_with_dictionaries(None, None)
+    }
+
+    /// Builds a [`CoreTokenizer`] from the current configuration with
+    /// already-loaded dictionaries in place of the configured ones. This is
+    /// how a binding that takes a dictionary instance (one loaded from bytes,
+    /// for example) applies every other setting of the builder to it.
+    ///
+    /// # Arguments
+    ///
+    /// * `dictionary` - The system dictionary to use instead of the one
+    ///   [`Self::set_dictionary`] set; `None` loads that one.
+    /// * `user_dictionary` - The user dictionary to use instead of the one
+    ///   [`Self::set_user_dictionary`] set; `None` loads that one, if any.
+    ///
+    /// # Returns
+    ///
+    /// The tokenizer, or an error as [`Self::build`] reports it.
+    pub fn build_with_dictionaries(
+        &self,
+        dictionary: Option<Dictionary>,
+        user_dictionary: Option<UserDictionary>,
+    ) -> CoreResult<CoreTokenizer> {
+        Ok(CoreTokenizer::from_tokenizer(
+            self.inner
+                .build_with_dictionaries(dictionary, user_dictionary)?,
+        ))
     }
 }
 
@@ -261,10 +292,9 @@ impl CoreTokenizer {
     }
 
     /// Like [`Self::from_segmenter`], with a left-space penalty setting
-    /// applied to the segmenter. This is how a binding that builds from a
-    /// dictionary instance (rather than a URI through
-    /// [`CoreTokenizerBuilder`]) honours
-    /// [`CoreTokenizerBuilder::set_space_penalty`].
+    /// applied to the segmenter. The bindings' `Tokenizer` constructors,
+    /// which take a dictionary instance and no builder, use this to accept
+    /// the setting [`CoreTokenizerBuilder::set_space_penalty`] takes.
     ///
     /// # Arguments
     ///
@@ -591,7 +621,8 @@ mod tests {
             }
         }
 
-        /// The dictionary-instance path behaves like the builder path.
+        /// The constructor path (a dictionary instance) behaves like the
+        /// builder path.
         #[test]
         fn from_segmenter_with_space_penalty_on_ipadic() {
             for (value, should_build) in [
@@ -610,6 +641,99 @@ mod tests {
                 let result = CoreTokenizer::from_segmenter_with_space_penalty(
                     "normal", dictionary, None, &value,
                 );
+                assert_eq!(result.is_ok(), should_build, "value {value}");
+            }
+        }
+
+        /// Loads the embedded IPADIC.
+        fn ipadic() -> Dictionary {
+            match lindera::dictionary::load_dictionary("embedded://ipadic") {
+                Ok(dictionary) => dictionary,
+                Err(err) => panic!("failed to load embedded IPADIC: {err}"),
+            }
+        }
+
+        /// Builds `builder` with the given dictionaries and returns the
+        /// surfaces of `text`.
+        fn surfaces(
+            builder: &CoreTokenizerBuilder,
+            dictionary: Option<Dictionary>,
+            user_dictionary: Option<UserDictionary>,
+            text: &str,
+        ) -> Vec<String> {
+            let tokenizer = match builder.build_with_dictionaries(dictionary, user_dictionary) {
+                Ok(tokenizer) => tokenizer,
+                Err(err) => panic!("build failed: {err}"),
+            };
+            match tokenizer.tokenize_surfaces(text) {
+                Ok(views) => views.into_iter().map(|view| view.surface).collect(),
+                Err(err) => panic!("tokenize_surfaces failed: {err}"),
+            }
+        }
+
+        /// A dictionary instance takes every other setting of the builder,
+        /// the filters included, as a dictionary set by URI does (#1138).
+        #[test]
+        fn build_with_dictionaries_applies_the_builder_settings() {
+            let mut builder = CoreTokenizerBuilder::new().expect("builder");
+            builder
+                .set_mode("normal")
+                .expect("valid mode")
+                .set_keep_whitespace(true)
+                .append_character_filter(
+                    "unicode_normalize",
+                    &serde_json::json!({ "kind": "nfkc" }),
+                )
+                .append_token_filter("lowercase", &serde_json::json!({}));
+            let text = "Ｌｉｎｄｅｒａ 東京";
+            let from_instance = surfaces(&builder, Some(ipadic()), None, text);
+
+            builder.set_dictionary("embedded://ipadic");
+            let by_uri = surfaces(&builder, None, None, text);
+            assert_eq!(by_uri, ["lindera", " ", "東京"]);
+            assert_eq!(from_instance, by_uri);
+        }
+
+        /// A user dictionary instance applies to a dictionary set by URI
+        /// (#1138).
+        #[test]
+        fn build_with_dictionaries_adds_a_user_dictionary_to_the_uri_dictionary() {
+            let mut builder = CoreTokenizerBuilder::new().expect("builder");
+            builder.set_dictionary("embedded://ipadic");
+            let baseline = surfaces(&builder, None, None, "東京スカイツリー");
+            assert!(baseline.len() > 1, "fixture assumption: {baseline:?}");
+
+            let csv = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../resources/user_dict/ipadic_simple_userdic.csv");
+            let user_dictionary = match lindera::dictionary::load_user_dictionary(
+                csv.to_str().expect("UTF-8 path"),
+                &ipadic().metadata,
+            ) {
+                Ok(user_dictionary) => user_dictionary,
+                Err(err) => panic!("failed to load the user dictionary: {err}"),
+            };
+            assert_eq!(
+                surfaces(&builder, None, Some(user_dictionary), "東京スカイツリー"),
+                ["東京スカイツリー"]
+            );
+        }
+
+        /// A dictionary instance given to the builder takes the space-penalty
+        /// setting as the constructor path does.
+        #[test]
+        fn build_with_dictionaries_space_penalty_on_ipadic() {
+            for (value, should_build) in [
+                (Value::Null, true),
+                (Value::Bool(false), true),
+                (Value::Bool(true), false),
+                (
+                    serde_json::json!({ "rules": [{ "pos": ["助詞"], "cost": 1000 }] }),
+                    true,
+                ),
+            ] {
+                let mut builder = CoreTokenizerBuilder::new().expect("builder");
+                builder.set_space_penalty(&value).expect("valid value");
+                let result = builder.build_with_dictionaries(Some(ipadic()), None);
                 assert_eq!(result.is_ok(), should_build, "value {value}");
             }
         }
@@ -673,8 +797,8 @@ mod tests {
             );
         }
 
-        /// Building from a dictionary instance (as lindera-wasm does after
-        /// `loadDictionaryFromBytes`) honours the same setting.
+        /// Building from a dictionary instance with the constructor path
+        /// honours the same setting.
         #[test]
         fn from_segmenter_with_space_penalty_matches_the_builder() {
             let text = "검색 이 잘 된다";
@@ -686,6 +810,33 @@ mod tests {
                 let tokenizer = match CoreTokenizer::from_segmenter_with_space_penalty(
                     "normal", dictionary, None, &value,
                 ) {
+                    Ok(tokenizer) => tokenizer,
+                    Err(err) => panic!("build failed for {value}: {err}"),
+                };
+                let from_instance: Vec<(String, String)> = match tokenizer.tokenize(text) {
+                    Ok(tokens) => tokens
+                        .into_iter()
+                        .map(|t| (t.surface, t.details.first().cloned().unwrap_or_default()))
+                        .collect(),
+                    Err(err) => panic!("tokenize failed: {err}"),
+                };
+                assert_eq!(from_instance, tags(&value, text), "value {value}");
+            }
+        }
+
+        /// A dictionary instance given to the builder (as lindera-wasm does
+        /// after `loadDictionaryFromBytes`) honours the same setting.
+        #[test]
+        fn build_with_dictionaries_matches_the_builder() {
+            let text = "검색 이 잘 된다";
+            for value in [Value::Null, Value::Bool(false), Value::Bool(true)] {
+                let dictionary = match lindera::dictionary::load_dictionary("embedded://ko-dic") {
+                    Ok(dictionary) => dictionary,
+                    Err(err) => panic!("failed to load embedded ko-dic: {err}"),
+                };
+                let mut builder = CoreTokenizerBuilder::new().expect("builder");
+                builder.set_space_penalty(&value).expect("valid value");
+                let tokenizer = match builder.build_with_dictionaries(Some(dictionary), None) {
                     Ok(tokenizer) => tokenizer,
                     Err(err) => panic!("build failed for {value}: {err}"),
                 };

@@ -42,6 +42,7 @@ MeCab と同じく最後の語が後から始まる方を選ぶようにし、`l
 | **MeCab と同じく、表層形・文脈 ID・コストが同じ見出し語からは CSV で先の行を出力する** | IPADIC・IPADIC-NEologd・UniDic・ko-dic、またはそうした見出し語を持つユーザー辞書で、読みや原形などのトークンの詳細情報を読むユーザー。N-best を使うユーザー | そうした語の詳細情報が MeCab と同じになり（IPADIC の `狡い` の読みは `コスイ` ではなく `ズルイ`）、ユーザー辞書の見出し語が引き続きシステム辞書の同点の見出し語に勝ち、N-best の 1 件目が常に 1-best と同じになることを前提にする。再ビルドは不要。v6 の動作に戻す設定はない |
 | **MeCab と同じく、コストが同じ分割からは最後の語が後から始まる方を選ぶ** | テキストを解析するすべてのユーザー。現れるのはまれ（比較したテキストでは約 54,000 行のうち 9 行） | そうした箇所が MeCab と同じ分割になることを前提にする（IPADIC の `腸窒扶斯` は `腸 / 窒 / 扶斯` ではなく `腸 / 窒扶 / 斯`）。再ビルドは不要。v6 の動作に戻す設定はない |
 | **`lindera tokenize` が各入力行から改行コードだけを取り除き、すべての行に結果を出す** | 行頭・行末に空白がある入力を CLI に渡すユーザー、トークンのない行の wakati や N-best の出力を読むユーザー | オフセットが入力行の中の位置を指し、行頭・行末の U+3000 がトークンになり（IPADIC では `記号,空白`）、`--keep-whitespace` でそこの空白も出力され、空行や空白だけの行が wakati では空行に、N-best では結果 1 件になることを前提にする。v6 の動作に戻す設定はない |
+| **WASM: 辞書の設定方法にかかわらず `TokenizerBuilder` の設定が適用される** | `setDictionaryInstance()` と `setKeepWhitespace()` やフィルタ、または `setDictionary()` と `setUserDictionaryInstance()` を組み合わせる WASM のユーザー | それらの設定とユーザー辞書が効くことを前提にする。`char.def` に `SPACE` カテゴリがない辞書インスタンスでは、URI で設定した辞書と同じく `setKeepWhitespace(true)` が必要になる |
 | **設定 `normalize_details` の削除: `Metadata::new` と `CoreMetadata::new` の引数は 10 個、Ruby の `Metadata.new` の引数は 8 個になる** | 辞書のメタデータを作成・参照するコード。Rust（`Metadata`・`lindera_binding::CoreMetadata`・`PrefixDictionaryBuilderOptions`）と、Python・Ruby・PHP・Node.js のバインディングの `Metadata` クラス | 引数・オプション・プロパティを削除する。このキーを含む `metadata.json` もそのまま読み込め、キーは無視される |
 | **`Lattice::tokens_offset`・`tokens_offset_into`・`nbest_tokens_offset`・`NBestGenerator::next` が `(start, end, WordId)` を返す** | これらの `lindera_dictionary` の関数を直接呼び出す Rust コード（`lindera::dictionary::viterbi::…`・`lindera::dictionary::Lattice`・`lindera::dictionary::nbest::…` 経由を含む） | 3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う |
 | **`Lattice::tokens_offset_into` が最良パスの BOS の添字（`Option<usize>`）を返す** | `tokens_offset_into` の戻り値 `()` を値として使う Rust コード | 文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する |
@@ -50,8 +51,8 @@ MeCab と同じく最後の語が後から始まる方を選ぶようにし、`l
 変わりません。API も 1 つの設定を除いて変わりません。Python・Node.js・Ruby・PHP の
 バインディングの `Metadata` クラスは、`normalize_details` を受け取らず、公開も
 しなくなりました（[設定 `normalize_details` の削除](#設定-normalize_details-の削除)
-を参照）。バージョン番号は 7.0.0 になります。出力の違いは 11 個あり、いずれも
-後述します（最後の 1 つは CLI だけの変化です）。IPADIC・IPADIC-NEologd では、
+を参照）。バージョン番号は 7.0.0 になります。出力の違いは 12 個あり、いずれも
+後述します（最後の 2 つは CLI だけ、WASM バインディングだけの変化です）。IPADIC・IPADIC-NEologd では、
 `conjugation_type` と
 `conjugation_form` という名前で返る値が入れ替わります。表層形が空白だけの
 見出し語や先頭・末尾が空白の見出し語が辞書に入るため、そうした空白を含む
@@ -73,7 +74,9 @@ IPADIC・IPADIC-NEologd では、`―` や `～` で書かれた見出し語を 
 分割が変わります。そして `lindera tokenize` は、各入力行の両端の空白をすべて
 取り除くのをやめて改行コードだけを取り除くため、行頭・行末の U+3000 が残り、
 オフセットが入力行の中の位置を指すようになり、wakati 形式や `-N` でもすべての行に
-結果を出します。それ以外は、同じ入力と
+結果を出します。また、WASM バインディングの `TokenizerBuilder` は、v6 では辞書の
+設定方法によって一部の設定を無視していましたが、どちらの方法でもすべての設定と
+ユーザー辞書を適用するようになります。それ以外は、同じ入力と
 辞書に対して、v7.0.0 は v6.2.0 と同じトークンを、同じ位置ベースの詳細情報
 （details）とともに出力します。
 
@@ -864,6 +867,30 @@ N-best の結果を除いて変わりません。辞書のファイルも変わ�
 オフセットとトークンが必要なら、テキストを `lindera tokenize` に渡す前に各行の
 両端の空白を取り除いてください。
 
+## WASM: 辞書の設定方法にかかわらずビルダーの設定が適用される
+
+v6.2.0 までの WASM バインディングの `TokenizerBuilder.build()` は、辞書の設定方法に
+よって、ビルダーの設定の一部を無視していました：
+
+| 辞書の設定方法 | v6.2.0 まで無視されていたもの |
+| --- | --- |
+| `setDictionaryInstance()`（`loadDictionaryFromBytes()` で OPFS から読み込んだ辞書など） | `setKeepWhitespace()`・`appendCharacterFilter()`・`appendTokenFilter()` |
+| `setDictionary()`（`embedded://` の辞書など） | `setUserDictionaryInstance()` で設定したユーザー辞書 |
+
+v7.0.0 は、[Tokenizer API](lindera-wasm/tokenizer_api.md) のページのとおり、どちらの
+方法でもすべての設定とユーザー辞書を適用します。たとえばバイト列から読み込んだ
+IPADIC で `setKeepWhitespace(true)` と `unicode_normalize`（NFKC）・`lowercase` の
+フィルタを設定すると、`Ｌｉｎｄｅｒａ 東京` は `lindera`・空白・`東京` になります。
+v6 では `Ｌｉｎｄｅｒａ` と `東京` でした。
+
+辞書インスタンスに対しても、`build()` は URI で設定した辞書と同じ確認を行うように
+なります。空白を保持しない場合、辞書の `char.def` に `SPACE` カテゴリが定義されて
+いる必要があります。同梱の辞書はすべて定義していますが、定義していない独自の辞書では
+`setKeepWhitespace(true)` が必要になります。
+
+ほかのバインディング・CLI・ライブラリは変わらず、辞書のファイルも変わりません。
+v6 の動作に戻す設定はありません。必要なら、v6 が無視していた設定を外してください。
+
 ## `lindera_dictionary` の Rust API 変更
 
 以下は、ラティスのバックトレースを直接呼び出すコードと、`Metadata::new` で辞書の
@@ -979,9 +1006,10 @@ BOS の辺の、`LatticeOptions::bos` での添字です。デフォルトの単
   `―`・`—`・`～`・`〜` を含むテキストにのみ影響する、ダッシュとチルダの綴りの
   保持、読みや原形などのトークンの詳細情報や、コストが同じ N-best の結果の
   順を読む場合にのみ影響する、同点の見出し語の選び方、わずかな行の分割を
-  変える、コストが同じ分割の選び方、そして CLI だけの変化として、行頭・行末に
+  変える、コストが同じ分割の選び方、CLI だけの変化として、行頭・行末に
   空白がある行と、空行や空白だけの行の wakati・N-best の出力にのみ影響する、入力行の
-  両端の空白の扱いとトークンのない行の出力です。
+  両端の空白の扱いとトークンのない行の出力、そして WASM バインディングだけの変化
+  として、v6 が辞書の設定方法によって無視していたビルダーの設定です。
 - **`lindera = "6"` のまま使い続けるプロジェクト**: `lindera` と `lindera-analysis`
   の 6.x は crates.io に残り、組み合わせて動作し続けます。メジャーバージョンを
   上げるまで何も変わりません。
@@ -1135,6 +1163,10 @@ N-best を使うユーザー:
   `--keep-whitespace` でそこの空白も出力され、`-N` では空行や空白だけの行が 1 件の
   結果を返し、wakati 形式ではトークンのない行が空行になることを前提にする。v6 の
   オフセットとトークンが必要なら、先に各行の両端の空白を取り除く。
+- WASM の `TokenizerBuilder` では、`setKeepWhitespace()` と追加したフィルタが
+  `setDictionaryInstance()` で設定した辞書にも、`setUserDictionaryInstance()` で
+  設定したユーザー辞書が `setDictionary()` で設定した辞書にも適用されることを
+  前提にする。
 - それ以外は、7.0.0 リリースを取り込む以外に対応は不要（上記の辞書・空白・`、` と
   `。`・N-best・未知語・ダッシュとチルダ・同点の見出し語・コストが同じ分割の項目と、
-  `lindera tokenize` の項目を除く）。
+  `lindera tokenize` と WASM の項目を除く）。

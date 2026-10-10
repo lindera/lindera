@@ -47,18 +47,13 @@ fn parse_filter_args(args: JsValue) -> Result<Value, JsValue> {
 
 /// Mutable builder configuration shared between chained builder handles.
 struct BuilderState {
-    /// The backing lindera-binding builder (used for URI-based dictionary loading).
+    /// The backing lindera-binding builder, which holds every setting but the
+    /// dictionary instances (the dictionary URI included).
     inner: CoreTokenizerBuilder,
-    /// Pre-loaded dictionary instance, used instead of URI-based loading.
+    /// Pre-loaded dictionary instance, used instead of the dictionary URI.
     dictionary_instance: Option<JsDictionary>,
-    /// Pre-loaded user dictionary instance, used instead of URI-based loading.
+    /// Pre-loaded user dictionary instance.
     user_dictionary_instance: Option<JsUserDictionary>,
-    /// Mode string stored for use when building with a dictionary instance.
-    mode_for_instance: Option<String>,
-    /// The value last passed to `setSpacePenalty()` (JSON `null` when unset),
-    /// applied to a dictionary instance at build time; the URI path gets it
-    /// through `inner`.
-    space_penalty: Value,
 }
 
 /// Builder for creating a [`Tokenizer`] instance.
@@ -90,45 +85,38 @@ impl TokenizerBuilder {
                 inner,
                 dictionary_instance: None,
                 user_dictionary_instance: None,
-                mode_for_instance: None,
-                space_penalty: Value::Null,
             })),
         })
     }
 
     /// Builds and returns a configured [`Tokenizer`] instance.
     ///
-    /// If a dictionary instance was set via `setDictionaryInstance()`,
-    /// it will be used directly instead of loading from a URI.
+    /// The dictionary is the one set last, by `setDictionary()` or
+    /// `setDictionaryInstance()`, and the user dictionary is the one set by
+    /// `setUserDictionaryInstance()`, if any. Every other setting applies
+    /// whichever way the dictionary was set.
     ///
     /// The builder remains usable afterwards, so multiple tokenizers can be
     /// built from the same configuration.
     ///
-    /// The `setSpacePenalty()` setting applies to a dictionary instance as it
-    /// does to a dictionary set by URI.
+    /// # Returns
+    ///
+    /// The tokenizer, or an error string when no dictionary was set, the
+    /// dictionary cannot be loaded, or a setting or filter is invalid.
     pub fn build(&self) -> Result<Tokenizer, JsValue> {
         let state = self.state.borrow();
-        if let Some(dict) = state.dictionary_instance.clone() {
-            // Build tokenizer using the pre-loaded dictionary instance
-            // (dictionaries are cheap to clone: their payload is shared).
-            let user_dict = state.user_dictionary_instance.clone().map(|d| d.inner);
-            let inner = CoreTokenizer::from_segmenter_with_space_penalty(
-                state.mode_for_instance.as_deref().unwrap_or("normal"),
-                dict.inner,
-                user_dict,
-                &state.space_penalty,
-            )
+        // Dictionaries are cheap to clone: their payload is shared.
+        let dictionary = state.dictionary_instance.as_ref().map(|d| d.inner.clone());
+        let user_dictionary = state
+            .user_dictionary_instance
+            .as_ref()
+            .map(|d| d.inner.clone());
+        let inner = state
+            .inner
+            .build_with_dictionaries(dictionary, user_dictionary)
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-            Ok(Tokenizer { inner })
-        } else {
-            let inner = state
-                .inner
-                .build()
-                .map_err(|e| JsValue::from_str(&e.to_string()))?;
-
-            Ok(Tokenizer { inner })
-        }
+        Ok(Tokenizer { inner })
     }
 
     /// Returns a new handle sharing this builder's configuration.
@@ -143,19 +131,17 @@ impl TokenizerBuilder {
     /// Returns a builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "setMode")]
     pub fn set_mode(&self, mode: &str) -> Result<TokenizerBuilder, JsValue> {
-        {
-            let mut state = self.state.borrow_mut();
-            state
-                .inner
-                .set_mode(mode)
-                .map_err(|e| JsValue::from_str(&e.to_string()))?;
-            state.mode_for_instance = Some(mode.to_string());
-        }
+        self.state
+            .borrow_mut()
+            .inner
+            .set_mode(mode)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
         Ok(self.share())
     }
 
-    /// Sets the dictionary to use for tokenization by URI.
+    /// Sets the dictionary to use for tokenization by URI, replacing a
+    /// dictionary instance set by `setDictionaryInstance()`.
     ///
     /// Returns a builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "setDictionary")]
@@ -172,7 +158,9 @@ impl TokenizerBuilder {
     /// Sets a pre-loaded dictionary instance for tokenization.
     ///
     /// Use this method when the dictionary has been loaded from bytes
-    /// (e.g., via `loadDictionaryFromBytes()`) instead of from a URI.
+    /// (e.g., via `loadDictionaryFromBytes()`) instead of from a URI. It
+    /// replaces a dictionary set by `setDictionary()`, and every other
+    /// setting of the builder applies to it as to a dictionary set by URI.
     ///
     /// Returns a builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "setDictionaryInstance")]
@@ -187,6 +175,8 @@ impl TokenizerBuilder {
     /// Use this method with a user dictionary loaded from bytes via
     /// `loadUserDictionaryFromBytes()` or `loadUserDictionaryBinFromBytes()`;
     /// URI-based user dictionaries are not available on WebAssembly (#972).
+    /// It applies to a dictionary set by `setDictionary()` or by
+    /// `setDictionaryInstance()`.
     ///
     /// Returns a builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "setUserDictionaryInstance")]
@@ -243,14 +233,11 @@ impl TokenizerBuilder {
     pub fn set_space_penalty(&self, value: JsValue) -> Result<TokenizerBuilder, JsValue> {
         let value = js_to_json(value)
             .map_err(|e| JsValue::from_str(&format!("invalid space_penalty: {e}")))?;
-        {
-            let mut state = self.state.borrow_mut();
-            state
-                .inner
-                .set_space_penalty(&value)
-                .map_err(|e| JsValue::from_str(&e.to_string()))?;
-            state.space_penalty = value;
-        }
+        self.state
+            .borrow_mut()
+            .inner
+            .set_space_penalty(&value)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
         Ok(self.share())
     }
@@ -873,6 +860,160 @@ mod tests {
         let tokens = tokenizer.tokenize("すもも").unwrap();
 
         assert!(!tokens.is_empty());
+    }
+
+    /// Text that each of [`builder_settings`] changes: NFKC folds the
+    /// full-width letters, `lowercase` lowers them, and kept whitespace
+    /// shows up as a token.
+    #[cfg(target_arch = "wasm32")]
+    const SETTINGS_TEXT: &str = "Ｌｉｎｄｅｒａ 東京";
+
+    /// The builder settings that `build()` must apply whichever way the
+    /// dictionary was set, with a name for the assertion messages.
+    #[cfg(target_arch = "wasm32")]
+    fn builder_settings() -> [(&'static str, fn(&crate::TokenizerBuilder)); 3] {
+        [
+            ("setKeepWhitespace(true)", |builder| {
+                builder.set_keep_whitespace(true);
+            }),
+            ("appendCharacterFilter(unicode_normalize)", |builder| {
+                builder
+                    .append_character_filter("unicode_normalize", js_json(r#"{"kind":"nfkc"}"#))
+                    .unwrap();
+            }),
+            ("appendTokenFilter(lowercase)", |builder| {
+                builder
+                    .append_token_filter("lowercase", wasm_bindgen::JsValue::UNDEFINED)
+                    .unwrap();
+            }),
+        ]
+    }
+
+    /// Builds a tokenizer with IPADIC, set by URI or as an instance, and
+    /// the given settings, and returns the surfaces of [`SETTINGS_TEXT`].
+    #[cfg(target_arch = "wasm32")]
+    fn build_with_settings(
+        by_instance: bool,
+        settings: &[fn(&crate::TokenizerBuilder)],
+    ) -> Vec<String> {
+        let builder = crate::TokenizerBuilder::new().unwrap();
+        if by_instance {
+            builder.set_dictionary_instance(
+                crate::dictionary::load_dictionary("embedded://ipadic").unwrap(),
+            );
+        } else {
+            builder.set_dictionary("embedded://ipadic");
+        }
+        for setting in settings {
+            setting(&builder);
+        }
+        builder
+            .build()
+            .unwrap()
+            .tokenize_surfaces(SETTINGS_TEXT)
+            .unwrap()
+    }
+
+    /// #1138: `setKeepWhitespace()` and the appended filters apply to a
+    /// dictionary set with `setDictionaryInstance()` as they do to one set
+    /// with `setDictionary()`.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_dictionary_instance_applies_the_builder_settings() {
+        let baseline = build_with_settings(false, &[]);
+        assert_eq!(build_with_settings(true, &[]), baseline);
+
+        // Collect every mismatch, so a failure names all the ignored settings.
+        let mut mismatches = Vec::new();
+        for (name, setting) in builder_settings() {
+            let by_uri = build_with_settings(false, &[setting]);
+            assert_ne!(
+                by_uri, baseline,
+                "fixture assumption: {name} changes the output"
+            );
+            let by_instance = build_with_settings(true, &[setting]);
+            if by_instance != by_uri {
+                mismatches.push(format!("{name}: {by_instance:?} != {by_uri:?}"));
+            }
+        }
+
+        let all = builder_settings().map(|(_, setting)| setting);
+        let by_uri = build_with_settings(false, &all);
+        assert_eq!(by_uri, ["lindera", " ", "東京"]);
+        let by_instance = build_with_settings(true, &all);
+        if by_instance != by_uri {
+            mismatches.push(format!("all: {by_instance:?} != {by_uri:?}"));
+        }
+        assert!(mismatches.is_empty(), "{mismatches:#?}");
+    }
+
+    /// The dictionary set last decides: a dictionary instance set after a
+    /// URI is used without loading the URI, and a URI set after an instance
+    /// replaces it.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_the_dictionary_set_last_is_used() {
+        use crate::TokenizerBuilder;
+        use crate::dictionary::load_dictionary;
+
+        // Building from this URI fails, so the build below that succeeds
+        // never loaded it.
+        let unloadable = "/nonexistent/lindera/dictionary";
+        let builder = TokenizerBuilder::new().unwrap();
+        builder.set_dictionary(unloadable);
+        assert!(builder.build().is_err());
+
+        builder.set_dictionary_instance(load_dictionary("embedded://ipadic").unwrap());
+        let tokenizer = builder.build().unwrap();
+        assert_eq!(
+            tokenizer.tokenize_surfaces("関西国際空港").unwrap(),
+            ["関西国際空港"]
+        );
+
+        builder.set_dictionary(unloadable);
+        assert!(builder.build().is_err());
+    }
+
+    /// #1138: a user dictionary set with `setUserDictionaryInstance()`
+    /// applies to a dictionary set with `setDictionary()` as it does to one
+    /// set with `setDictionaryInstance()`.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_user_dictionary_instance_applies_with_either_dictionary_setter() {
+        use crate::TokenizerBuilder;
+        use crate::dictionary::{load_dictionary, load_user_dictionary_from_bytes};
+
+        let dictionary = load_dictionary("embedded://ipadic").unwrap();
+        let csv = include_bytes!("../../resources/user_dict/ipadic_simple_userdic.csv");
+        let mut mismatches = Vec::new();
+        for by_instance in [false, true] {
+            let builder = TokenizerBuilder::new().unwrap();
+            if by_instance {
+                builder.set_dictionary_instance(dictionary.clone());
+            } else {
+                builder.set_dictionary("embedded://ipadic");
+            }
+            let surfaces = |builder: &TokenizerBuilder| {
+                builder
+                    .build()
+                    .unwrap()
+                    .tokenize_surfaces("東京スカイツリー")
+                    .unwrap()
+            };
+            assert!(
+                surfaces(&builder).len() > 1,
+                "fixture assumption: 東京スカイツリー splits under bare IPADIC"
+            );
+
+            builder.set_user_dictionary_instance(
+                load_user_dictionary_from_bytes(csv, dictionary.metadata()).unwrap(),
+            );
+            let with_user_dictionary = surfaces(&builder);
+            if with_user_dictionary != ["東京スカイツリー"] {
+                mismatches.push(format!("instance: {by_instance}: {with_user_dictionary:?}"));
+            }
+        }
+        assert!(mismatches.is_empty(), "{mismatches:#?}");
     }
 
     /// Parses a JSON literal into a JS value.
