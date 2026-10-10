@@ -1246,9 +1246,10 @@ impl Segmenter {
     /// Every result segments the whole input. The input is split into
     /// segments as [`Segmenter::segment`] splits it, and the results are the
     /// `n` cheapest combinations of one path per segment; see
-    /// [`Segmenter::segment_nbest_with_lattice`].
+    /// [`Segmenter::segment_nbest_with_lattice`]. An empty input gives one
+    /// result without tokens, as an input of skipped whitespace does.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `text` - The input text, borrowed or owned.
     /// * `n` - The maximum number of results.
@@ -1257,7 +1258,7 @@ impl Segmenter {
     /// * `cost_threshold` - If `Some(t)`, the maximum cost above the first
     ///   result's, measured over the whole input.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The results, best first, each as its tokens and its total cost.
     pub fn segment_nbest<'a>(
@@ -1294,7 +1295,11 @@ impl Segmenter {
     /// the threshold applies to the whole input. The first result is the
     /// path of [`Segmenter::segment`].
     ///
-    /// # 引数
+    /// An empty input has no sentence but one path, from BOS to EOS: it
+    /// gives one result without tokens, with the connection cost from BOS
+    /// to EOS, as in MeCab and as an input of skipped whitespace.
+    ///
+    /// # Arguments
     ///
     /// * `text` - The input text, borrowed or owned.
     /// * `lattice` - The N-best lattice to reuse across sentences and calls.
@@ -1304,11 +1309,10 @@ impl Segmenter {
     /// * `cost_threshold` - If `Some(t)`, the maximum cost above the first
     ///   result's.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The results, best first, each as its tokens and its total cost. Empty
-    /// if `n` is zero, the input has no sentence, or `cost_threshold` is
-    /// negative.
+    /// if `n` is zero or `cost_threshold` is negative.
     pub fn segment_nbest_with_lattice<'a>(
         &'a self,
         text: Cow<'a, str>,
@@ -1322,12 +1326,26 @@ impl Segmenter {
             return Ok(Vec::new());
         }
 
+        let options = self.lattice_options();
+
+        // An empty input has no sentence, so the walk below would build no
+        // lattice and give no result. Its one path, from BOS to EOS, comes
+        // from an empty lattice, which costs it as a sentence of skipped
+        // whitespace is costed (#1147).
+        if text.is_empty() {
+            self.set_lattice_text_nbest(lattice, "", &options);
+            return Ok(lattice
+                .nbest_tokens_offset(n, unique, cost_threshold)
+                .into_iter()
+                .map(|(_, cost)| (Vec::new(), cost))
+                .collect());
+        }
+
         // Phase 1: the N-best paths of every segment, a run of sentences
         // that carry the context from one to the next. A path that exceeds
         // its segment's best by more than the threshold cannot be part of a
         // result, because the other segments add at least their best costs,
         // so the threshold already prunes each segment's list here.
-        let options = self.lattice_options();
         let mut parts: Vec<NbestPart> = Vec::new();
         let mut search = CarriedNbest::new(n, unique, cost_threshold);
         // Whether the current sentence starts a segment, from the
@@ -3155,10 +3173,46 @@ mod tests {
         });
         let segmenter = Segmenter::from_config(&config).unwrap();
 
+        // An empty input has one path, from BOS to EOS, as in MeCab (#1147),
+        // costed as an input of skipped whitespace: the BOS-EOS connection.
         let results = segmenter
             .segment_nbest(Cow::Borrowed(""), 3, false, None)
             .unwrap();
-        assert!(results.is_empty() || results.iter().all(|(r, _)| r.is_empty()));
+        let spaces = segmenter
+            .segment_nbest(Cow::Borrowed("   "), 3, false, None)
+            .unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(results[0].0.is_empty());
+        assert_eq!(spaces.len(), 1);
+        assert!(spaces[0].0.is_empty());
+        assert_eq!(results[0].1, spaces[0].1);
+        assert_eq!(
+            results[0].1,
+            i64::from(segmenter.dictionary.connection_cost_matrix.cost(0, 0))
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_segment_nbest_empty_input_options() {
+        use std::borrow::Cow;
+
+        let config = serde_json::json!({
+            "dictionary": "embedded://ipadic",
+            "mode": "normal"
+        });
+        let segmenter = Segmenter::from_config(&config).unwrap();
+        let nbest = |n, unique, threshold| {
+            segmenter
+                .segment_nbest(Cow::Borrowed(""), n, unique, threshold)
+                .unwrap()
+        };
+
+        assert!(nbest(0, false, None).is_empty());
+        assert!(nbest(3, false, Some(-1)).is_empty());
+        assert_eq!(nbest(3, true, None).len(), 1);
+        assert_eq!(nbest(3, false, Some(0)).len(), 1);
+        assert_eq!(nbest(1, false, None).len(), 1);
     }
 
     #[test]
