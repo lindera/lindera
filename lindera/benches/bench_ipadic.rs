@@ -80,6 +80,31 @@ fn bench_segment_nbest_ipadic(c: &mut Criterion) {
     });
 }
 
+/// Unique N-best on an ordinary line: the fixed cost of the search over
+/// word boundaries (#1114).
+#[cfg(feature = "embed-ipadic")]
+fn bench_segment_nbest_unique_ipadic(c: &mut Criterion) {
+    let dictionary = load_dictionary("embedded://ipadic").unwrap();
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+
+    c.bench_function("bench-segment-nbest-unique-ipadic", |b| {
+        b.iter(|| segmenter.segment_nbest(Cow::Borrowed("すもももももももものうち"), 5, true, None))
+    });
+}
+
+/// Unique N-best on a line with 2 segmentations and 14,031,360 paths,
+/// asked for 3 results: a search over paths has to go through all of them
+/// (#1114).
+#[cfg(feature = "embed-ipadic")]
+fn bench_segment_nbest_unique_many_paths_ipadic(c: &mut Criterion) {
+    let dictionary = load_dictionary("embedded://ipadic").unwrap();
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+
+    c.bench_function("bench-segment-nbest-unique-many-paths-ipadic", |b| {
+        b.iter(|| segmenter.segment_nbest(Cow::Borrowed("先生には応《こた》えた。"), 3, true, None))
+    });
+}
+
 #[cfg(feature = "embed-ipadic")]
 fn bench_tokenize_ipadic(c: &mut Criterion) {
     let dictionary = load_dictionary("embedded://ipadic").unwrap();
@@ -274,6 +299,8 @@ criterion_group!(
     bench_tokenize_long_text_ipadic,
     bench_tokenize_details_long_text_ipadic,
     bench_segment_nbest_ipadic,
+    bench_segment_nbest_unique_ipadic,
+    bench_segment_nbest_unique_many_paths_ipadic,
     bench_segment_nbest_worker_ipadic,
     bench_segment_short_ipadic,
     bench_segment_short_with_lattice_ipadic,

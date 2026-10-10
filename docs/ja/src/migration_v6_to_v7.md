@@ -767,6 +767,15 @@ N-best の探索も同じ順を使います。さらに、N-best の 1 件目の
 変わることもあります。N-best の命令数は 3〜4% 程度増えます（`-N 3`）。1-best の
 分割の速度は変わりません（差は 0.2% 以内）。
 
+`unique`（`--nbest-unique`）を指定した場合、各結果はその単語境界のパスのうち最も
+コストの低いもので、同点の見出しは、1-best の分割と同じく、どの結果でも CSV の先の行に
+なりました。v6 までの unique な N-best は、パスをコストの順にたどって各区切りの最初の
+パスを残していたため、同点の組のどちらの行にもなりえました。また、次の区切りに
+届くまでに 1 つの区切りのパスを
+すべてたどっていたため、単語が多くの見出しを持つ短い行で、数十秒・数 GB かかることが
+ありました。探索は単語境界を単位に進むようになり、パスの数に左右されません。
+ここでも、入れ替わるのはコストが同じ結果だけです。
+
 MeCab の `mecab-dict-index` は CSV ファイルをファイルシステムが返す順（readdir の順）に
 読むため、行が複数のファイルにまたがる同点の組（IPADIC-NEologd と ko-dic にあります）
 では、MeCab がどの行を選ぶかはファイルシステムによって変わります（Lindera は
@@ -913,6 +922,7 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 | — | `viterbi` に新しい型エイリアス `TokenOffset = (usize, usize, WordId)` と `NBestPath = (Vec<TokenOffset>, i64)` を追加 |
 | — | `viterbi` に `BosContext`・`LatticeOptions::bos`・`LatticeExit`・`Lattice::exits_into`・`Lattice::exit_tokens_offset_into` を追加 |
 | — | `nbest` に `NBestGenerator::from_exit`・`NBestGenerator::next_with_bos` を追加 |
+| — | `nbest` に `UniqueNBestGenerator` を追加 |
 | `Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, normalize_details, schema, userdic_schema)` | `Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, schema, userdic_schema)` |
 | `Metadata::normalize_details` | 削除 |
 | `PrefixDictionaryBuilderOptions::normalize_details(value)` | 削除 |
@@ -967,6 +977,11 @@ BOS の辺の、`LatticeOptions::bos` での添字です。デフォルトの単
 - `NBestGenerator::from_exit` と `NBestGenerator::next_with_bos`: ある出口の右文脈 ID
   で終わるパスを、EOS なしでコストの昇順に返し、各パスとともにそのパスが始まる BOS の
   添字を返します。`next` は、`next_with_bos` のパスを BOS の添字なしで返します。
+
+`UniqueNBestGenerator` は `NBestGenerator` と同じメソッド（`new`・`from_exit`・
+`next`・`next_with_bos`）を持ち、単語境界と BOS の辺の組ごとに最もコストの低いパスを
+コストの昇順に返します。`unique` を指定した `nbest_tokens_offset` とセグメンターは
+これを使います。
 
 `nbest_tokens_offset` はデフォルトの単一の BOS を前提にしています。BOS が複数ある
 場合は、パスがどの BOS から始まるかがわからないため、`NBestGenerator::next_with_bos`

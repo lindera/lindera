@@ -9,7 +9,7 @@ lindera-dictionary/src/
 ├── builder.rs           # DictionaryBuilder
 ├── loader.rs            # DictionaryLoader trait, FSDictionaryLoader
 ├── viterbi.rs           # Lattice, Edge, Viterbi segmentation
-├── nbest.rs             # NBestGenerator (Forward-DP Backward-A*)
+├── nbest.rs             # NBestGenerator, UniqueNBestGenerator (Forward-DP Backward-A*)
 ├── mode.rs              # Mode (Normal/Decompose), Penalty
 ├── error.rs             # LinderaError, LinderaErrorKind
 ├── assets.rs            # Download and file management
@@ -49,6 +49,10 @@ Builds a lattice of candidate tokens from the input text and finds the optimal s
 ### NBestGenerator
 
 Generates N-best segmentation paths using the Forward-DP Backward-A* algorithm. This enables applications to consider alternative segmentations beyond the single best path.
+
+### UniqueNBestGenerator
+
+Generates the N-best distinct segmentations: for each sequence of word boundaries, its cheapest path, in ascending order of cost. Unique N-best (`unique`, `--nbest-unique`) uses it. A segmentation has one path per choice of dictionary entry for each of its words, which can be millions of paths for a short line, so the search runs backward over suffixes of word boundaries instead of paths: one search node holds every candidate of a span, and its cost is exact, so each segmentation comes out once and the work grows with the number of results and the length of the line, not with the number of paths. The first result is the 1-best path, and of identical entries (same surface, context ids and cost) every result holds the first CSV row, as the 1-best path does.
 
 ### Mode
 

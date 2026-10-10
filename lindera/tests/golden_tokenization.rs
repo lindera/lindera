@@ -244,6 +244,59 @@ fn ipadic_nbest_multi_sentence() {
     insta::assert_snapshot!("ipadic_nbest_multi_sentence", render_nbest(results));
 }
 
+/// Pins unique N-best on lines with many paths per segmentation (IPADIC,
+/// #1114). `先生には応《こた》えた。` has 2 segmentations and 14,031,360
+/// paths (its words have up to 7 entries each), so asking for 3 results
+/// gives both segmentations and then runs out; the line joined with `、`
+/// carries the context across the cut. A search over paths instead of
+/// word boundaries took 20 seconds and more for these lines. The first
+/// result is the 1-best segmentation, the results have distinct word
+/// boundaries and come in ascending order of cost.
+#[cfg(feature = "embed-ipadic")]
+#[test]
+fn ipadic_nbest_unique_many_paths() {
+    use std::collections::HashSet;
+
+    let segmenter = segmenter("embedded://ipadic", Mode::Normal);
+    let mut rendered = String::new();
+    for (text, segmentations) in [
+        ("先生には応《こた》えた。", 2),
+        ("先生には応《こた》えた、先生には応《こた》えた。", 3),
+    ] {
+        let results = segmenter
+            .segment_nbest(Cow::Borrowed(text), 3, true, None)
+            .expect("segmentation should succeed");
+        assert_eq!(results.len(), segmentations, "{text}");
+        let offsets = |tokens: &[lindera::token::Token]| -> Vec<_> {
+            tokens
+                .iter()
+                .map(|token| (token.byte_start, token.byte_end, token.word_id))
+                .collect()
+        };
+        let best = segmenter
+            .segment(Cow::Borrowed(text))
+            .expect("segmentation should succeed");
+        assert_eq!(offsets(&results[0].0), offsets(&best), "{text}");
+        let boundaries: HashSet<Vec<(usize, usize)>> = results
+            .iter()
+            .map(|(tokens, _)| {
+                tokens
+                    .iter()
+                    .map(|token| (token.byte_start, token.byte_end))
+                    .collect()
+            })
+            .collect();
+        assert_eq!(boundaries.len(), results.len(), "{text}");
+        assert!(
+            results.windows(2).all(|pair| pair[0].1 <= pair[1].1),
+            "{text}"
+        );
+        rendered.push_str(&format!("# {text}\n\n"));
+        rendered.push_str(&render_nbest(results));
+    }
+    insta::assert_snapshot!("ipadic_nbest_unique_many_paths", rendered);
+}
+
 /// Regression test #1016: Apply the Decompose penalty when connecting a compound to EOS.
 #[cfg(feature = "embed-ipadic")]
 #[test]

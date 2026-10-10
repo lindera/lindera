@@ -240,7 +240,7 @@ The penalty keys on the character before a candidate, which is mecab-ko's test a
 
 ## N-Best Segmentation
 
-`segment_nbest` returns the top-`n` segmentations ordered by total path cost, each paired with its cost. Set `unique` to deduplicate results that share the same word boundaries but differ only in POS tags, and `cost_threshold` to discard paths whose cost exceeds `best_cost + threshold`:
+`segment_nbest` returns the top-`n` segmentations ordered by total path cost, each paired with its cost. Set `unique` to deduplicate results that share the same word boundaries but differ only in POS tags (each result is the cheapest path of its word boundaries, and the search does not go through the others, so it stays fast when the words of a line have many entries), and `cost_threshold` to discard paths whose cost exceeds `best_cost + threshold`:
 
 ```rust
 let results = segmenter.segment_nbest(Cow::Borrowed("すもももももももものうち"), 3, false, None)?;

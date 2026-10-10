@@ -249,7 +249,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_fro
 
 ## N-Best セグメンテーション
 
-`segment_nbest` は、コストの合計で並べた上位 `n` 件の分割結果を、それぞれのコストと共に返します。`unique` を指定すると、単語境界は同じで品詞タグのみ異なる結果を重複排除できます。`cost_threshold` を指定すると、`best_cost + threshold` を超えるコストのパスを除外できます：
+`segment_nbest` は、コストの合計で並べた上位 `n` 件の分割結果を、それぞれのコストと共に返します。`unique` を指定すると、単語境界は同じで品詞タグのみ異なる結果を重複排除できます（各結果はその単語境界のパスのうち最もコストの低いものです。探索は他のパスをたどらないので、行の単語が多くのエントリを持つ場合も速く終わります）。`cost_threshold` を指定すると、`best_cost + threshold` を超えるコストのパスを除外できます：
 
 ```rust
 let results = segmenter.segment_nbest(Cow::Borrowed("すもももももももものうち"), 3, false, None)?;

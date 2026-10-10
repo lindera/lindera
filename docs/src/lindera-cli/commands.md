@@ -68,7 +68,7 @@ Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean te
 - `--space-penalty-rules`: Use explicit left-space penalty rules as JSON instead of the dictionary's, e.g. `'{"rules":[{"pos":["JKS","JX"],"cost":6000}]}'`. Mutually exclusive with `--disable-space-penalty`
 - `--mmap`: Use memory-mapped file loading for the dictionary directory's word list. Ignored for `embedded://` dictionaries and when the `mmap` feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup.
 - `--nbest` / `-N`: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.
-- `--nbest-unique`: Deduplicate N-best results by removing paths that produce the same segmentation.
+- `--nbest-unique`: Deduplicate N-best results by removing paths that produce the same segmentation: each result is the cheapest path of its word boundaries.
 - `--nbest-cost-threshold`: Maximum cost difference from the best result. Only results with cost within `best_cost + threshold` are returned; both costs are totals over the whole input line.
 - Input file: Optional file path (default: stdin). The input is read line by line, and each line is tokenized on its own. Only the line terminator (`\n`, or `\r\n`) is removed: whitespace at the start or end of a line is handled as elsewhere in the line (spaces and tabs, which are `SPACE` characters, are skipped and dropped from the output; U+3000 is a token with IPADIC, IPADIC-NEologd and UniDic), and the byte offsets in the JSON output index the line. Unlike MeCab, which outputs the `\r` of a CRLF line as an unknown word, Lindera removes it
 
@@ -533,7 +533,7 @@ EOS
 
 #### N-Best with unique results
 
-When the same segmentation appears in multiple paths (differing only in internal Viterbi states), use `--nbest-unique` to deduplicate:
+When the same segmentation appears in multiple paths (differing only in the dictionary entries of their words, such as their parts of speech), use `--nbest-unique` to deduplicate. Each result is then the cheapest path of its word boundaries, and the search does not go through the other paths, which can be millions for a short line:
 
 ```shell
 % echo "営業部長谷川です" | lindera tokenize \

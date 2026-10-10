@@ -30,12 +30,19 @@
 //! its best prefix whatever follows (see `exit_dominance`): the cost gap
 //! exceeds the margin between their right ids, so every result through the
 //! exit has `n` cheaper (distinct) results through the other state.
+//!
+//! With `unique`, the searches of a sentence yield only the cheapest path
+//! of each (word boundaries, BOS edge) pair
+//! ([`UniqueNBestGenerator`](lindera_dictionary::nbest::UniqueNBestGenerator)):
+//! a sentence can have a number of paths exponential in its length with the
+//! same boundaries, and none of the costlier ones can be part of a distinct
+//! result (#1114).
 
 use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 
 use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
-use lindera_dictionary::nbest::NBestGenerator;
+use lindera_dictionary::nbest::{NBestGenerator, UniqueNBestGenerator};
 use lindera_dictionary::viterbi::{BosContext, Lattice, LatticeExit, NBestPath, TokenOffset};
 
 use super::exit_dominance::MarginCache;
@@ -122,11 +129,78 @@ struct UniqueCheck<'s> {
     prefixes: &'s [Prefix],
 }
 
+/// The N-best search over the current sentence that [`Pulls`] takes its
+/// paths from: every path, or, with `unique`, the cheapest path of each
+/// (word boundaries, BOS edge) pair. The costlier paths of such a pair are
+/// all `unique` would drop: each of their combinations with a prefix comes
+/// after the same combination with the cheapest path, which
+/// [`merge_carried`] keeps or drops first, so skipping them changes only
+/// which of equal-cost results comes first (#1114).
+enum PathSearch<'l> {
+    /// Every path, in ascending order of cost.
+    All(NBestGenerator<'l>),
+    /// The cheapest path of each (word boundaries, BOS edge) pair, in
+    /// ascending order of cost.
+    Unique(UniqueNBestGenerator<'l>),
+}
+
+impl<'l> PathSearch<'l> {
+    /// Starts the search for the paths through EOS.
+    ///
+    /// # Arguments
+    ///
+    /// * `lattice` - The sentence's N-best lattice.
+    /// * `unique` - Whether to search the cheapest path per pair only.
+    ///
+    /// # Returns
+    ///
+    /// The search.
+    fn new(lattice: &'l Lattice, unique: bool) -> Self {
+        if unique {
+            Self::Unique(UniqueNBestGenerator::new(lattice))
+        } else {
+            Self::All(NBestGenerator::new(lattice))
+        }
+    }
+
+    /// Starts the search for the paths that end with an exit's right id.
+    ///
+    /// # Arguments
+    ///
+    /// * `lattice` - The sentence's N-best lattice.
+    /// * `exit` - An exit of the sentence.
+    /// * `unique` - Whether to search the cheapest path per pair only.
+    ///
+    /// # Returns
+    ///
+    /// The search.
+    fn from_exit(lattice: &'l Lattice, exit: &LatticeExit, unique: bool) -> Self {
+        if unique {
+            Self::Unique(UniqueNBestGenerator::from_exit(lattice, exit))
+        } else {
+            Self::All(NBestGenerator::from_exit(lattice, exit))
+        }
+    }
+
+    /// Returns the next path with its BOS index.
+    ///
+    /// # Returns
+    ///
+    /// The path and its cost, and its BOS index, or `None` when there are
+    /// no more.
+    fn next_with_bos(&mut self) -> Option<(NBestPath, usize)> {
+        match self {
+            Self::All(generator) => generator.next_with_bos(),
+            Self::Unique(generator) => generator.next_with_bos(),
+        }
+    }
+}
+
 /// The paths of one N-best search over the current sentence, as
 /// [`merge_carried`] pulls them.
 struct Pulls<'l, 's> {
     /// The search: the paths of one exit, or the paths through EOS.
-    generator: NBestGenerator<'l>,
+    generator: PathSearch<'l>,
     /// The paths pulled so far, indexed as `merge_carried` counts them.
     pulled: &'s mut Vec<Pulled>,
     /// The duplicate check, with `unique` only.
@@ -411,7 +485,7 @@ impl CarriedNbest {
             pulled.clear();
             seen.clear();
             let mut paths = Pulls {
-                generator: NBestGenerator::from_exit(lattice, exit),
+                generator: PathSearch::from_exit(lattice, exit, *unique),
                 pulled: &mut *pulled,
                 unique: unique.then(|| UniqueCheck {
                     path_classes: &mut *path_classes,
@@ -501,7 +575,7 @@ impl CarriedNbest {
             .map(|state| &self.costs[state.range()])
             .collect();
         let mut paths = Pulls {
-            generator: NBestGenerator::new(lattice),
+            generator: PathSearch::new(lattice, self.unique),
             pulled: &mut self.pulled,
             unique: self.unique.then(|| UniqueCheck {
                 path_classes: &mut self.path_classes,
