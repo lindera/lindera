@@ -49,6 +49,7 @@ jobs:
       lindera-ruby-gem: ${{ steps.filter.outputs.lindera-ruby-gem }}
       lindera-php: ${{ steps.filter.outputs.lindera-php }}
       lindera-wasm: ${{ steps.filter.outputs.lindera-wasm }}
+      docs: ${{ steps.filter.outputs.docs }}
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -285,6 +286,26 @@ jobs:
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
               - 'scripts/benchmarks/memcheck_wasm.mjs'
+              - *shared-workspace
+              - *shared-make
+            # The crates `make check-docs` documents (CARGO_CRATES in the
+            # Makefile, which also holds the command).
+            docs:
+              - 'lindera-crf/**'
+              - 'lindera-dictionary/**'
+              - 'lindera-trainer/**'
+              - 'lindera-ipadic/**'
+              - 'lindera-ipadic-neologd/**'
+              - 'lindera-unidic/**'
+              - 'lindera-sudachidict/**'
+              - 'lindera-ko-dic/**'
+              - 'lindera-cc-cedict/**'
+              - 'lindera-jieba/**'
+              - 'lindera-segmenter/**'
+              - 'lindera-analysis/**'
+              - 'lindera/**'
+              - 'lindera-binding/**'
+              - 'lindera-cli/**'
               - *shared-workspace
               - *shared-make
 
@@ -575,7 +596,8 @@ jobs:
   # `[package.metadata.docs.rs]` in lindera/Cargo.toml) and all features.
   # DOCS_RS makes the dictionary build scripts generate dummy dictionaries
   # instead of downloading them (lindera-dictionary/src/assets.rs), which is
-  # the path docs.rs takes and nothing else in CI exercises.
+  # the path docs.rs takes; only this job and check-docs take it in CI.
+  # Warnings do not fail this job: check-docs denies them, on stable.
   docs-rs:
     name: Build docs as docs.rs does (lindera, all features)
     needs: [test-lindera, detect-changes]
@@ -594,6 +616,27 @@ jobs:
 
       - name: Build docs
         run: DOCS_RS=1 RUSTDOCFLAGS='--cfg docsrs' cargo +nightly doc -p lindera --all-features --no-deps
+
+  # Fails on rustdoc warnings -- broken or private intra-doc links, empty code
+  # blocks, invalid HTML -- in every crate but the bindings (#1123). `make
+  # check-docs` holds the commands and why they are three. Stable rather than
+  # the nightly docs-rs uses, so a lint new in nightly cannot fail CI on
+  # unchanged code. It does not depend on any test result, so it runs
+  # alongside the tests.
+  check-docs:
+    name: Check docs (all crates but the bindings)
+    needs: [format, detect-changes]
+    if: github.event_name != 'pull_request' || needs.detect-changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+
+      - name: Check docs
+        run: make check-docs
 
   test-lindera-binding:
     name: Test lindera-binding

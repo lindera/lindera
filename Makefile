@@ -201,6 +201,32 @@ lint-lindera-wasm: ## Lint lindera-wasm (wasm32 target)
 lint: ## Lint all crates
 	$(foreach c,$(ALL_CRATES),make lint-$(c) &&) true
 
+# ── Docs ────────────────────────────────────────────────────────────────────
+
+# rustdoc for the cargo crates with warnings as errors, as CI runs it (#1123).
+# The libraries are documented twice, because neither pass sees what the other
+# does: the first documents public items only, as docs.rs publishes them, where
+# a public item linking to a private one warns
+# (`rustdoc::private_intra_doc_links`); the second adds private items, whose doc
+# comments the first pass does not read. The binaries (lindera-cli's, where all
+# of the CLI's code lives) get a pass of their own: cargo documents a binary's
+# private items by default, and the binary is named `lindera` like the facade,
+# so documenting both in one run would collide. All features, so feature-gated
+# items are checked too. `DOCS_RS=1` makes the dictionary build scripts
+# generate dummy dictionaries instead of downloading all seven. The separate
+# target directory keeps those dummies, and the rebuild of the real
+# dictionaries after them, out of `target/`, and the build cache variable is
+# unset so the dummies do not land in a shared cache either (#1157).
+CHECK_DOCS_TARGET_DIR ?= target/check-docs
+CHECK_DOCS = env -u LINDERA_BUILD_DICTIONARY_CACHE_DIR DOCS_RS=1 RUSTDOCFLAGS="-D warnings" \
+	cargo doc --no-deps --all-features --target-dir $(CHECK_DOCS_TARGET_DIR) \
+	$(addprefix -p ,$(CARGO_CRATES))
+
+check-docs: ## Check rustdoc warnings in the cargo crates (public and private items), as CI does
+	$(CHECK_DOCS) --lib
+	$(CHECK_DOCS) --lib --document-private-items
+	$(CHECK_DOCS) --bins
+
 # ── Test ────────────────────────────────────────────────────────────────────
 
 test-%:

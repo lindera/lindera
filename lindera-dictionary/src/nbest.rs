@@ -11,7 +11,7 @@ struct QueueElement {
     /// The `ends_at` slot holding the current edge (where it ends, unless it
     /// was carried over skipped whitespace)
     char_pos: u32,
-    /// Index of the current edge in ends_at[char_pos]
+    /// Index of the current edge in `ends_at[char_pos]`
     edge_index: u32,
     /// f(x) = g(x) + h(x) -- total estimated cost
     fx: i64,
