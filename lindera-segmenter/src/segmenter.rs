@@ -5453,6 +5453,9 @@ KANJI,0,0,10000,名詞,一般,*,*,*,*,*,*,*
                 "三、人です。二、人",
                 "一、 人",
                 "1、 人。 １、 人",
+                // #1114: each sentence has 2 segmentations and millions of
+                // paths, so unique N-best runs out of segmentations.
+                "先生には応《こた》えた、先生には応《こた》えた。",
             ]
             .iter()
             .map(|line| line.to_string())
