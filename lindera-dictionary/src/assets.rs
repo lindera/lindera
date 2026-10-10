@@ -344,19 +344,6 @@ fn dictionary_cache_dir_from_env() -> Option<OsString> {
     std::env::var_os(CACHE_DIR_ENV)
 }
 
-/// Fetch the necessary assets and then build the dictionary using `builder`.
-///
-/// # Arguments
-///
-/// * `params` - Describes the asset to fetch (archive name, mirrors, MD5 hash)
-///   and the input/output directory layout of the dictionary build.
-/// * `builder` - Dictionary builder that turns the extracted MeCab sources into
-///   the Lindera dictionary format.
-///
-/// # Returns
-///
-/// `Ok(())` once the dictionary has been built into the output directory, or a
-/// `LinderaError` if the download, extraction, or build fails.
 /// Whether a cached dictionary directory was built in the format this crate
 /// reads, from the metadata this crate ships.
 ///
@@ -487,6 +474,19 @@ fn rerun_directives(ships_context_id_freq: bool) -> Vec<String> {
     directives
 }
 
+/// Fetch the necessary assets and then build the dictionary using `builder`.
+///
+/// # Arguments
+///
+/// * `params` - Describes the asset to fetch (archive name, mirrors, MD5 hash)
+///   and the input/output directory layout of the dictionary build.
+/// * `builder` - Dictionary builder that turns the extracted MeCab sources into
+///   the Lindera dictionary format.
+///
+/// # Returns
+///
+/// `Ok(())` once the dictionary has been built into the output directory, or a
+/// `LinderaError` if the download, extraction, or build fails.
 pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
     for directive in rerun_directives(Path::new(CONTEXT_ID_FREQ_FILE).is_file()) {
         println!("{directive}");
@@ -767,14 +767,14 @@ pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<(
     Ok(())
 }
 
-/// Shared body of every per-dictionary crate's `build.rs`.
-///
 /// Name of the optional per-dictionary context-ID access-frequency histogram,
 /// shipped in the dictionary crate root next to `metadata.json`. Produced by the
 /// `ctxfreq` instrumentation (see the `ctxfreq_dump` example) and consumed when
 /// `connection_id_mapping` is enabled.
 const CONTEXT_ID_FREQ_FILE: &str = "context_id_freq.txt";
 
+/// Shared body of every per-dictionary crate's `build.rs`.
+///
 /// Reads `metadata.json` from the crate root, fetches and builds the
 /// dictionary described by `params`, and embeds the result under
 /// `LINDERA_WORKDIR`.
