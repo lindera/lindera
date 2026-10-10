@@ -7,8 +7,8 @@ expression: "render(& tokenizer, CHINESE_TEXTS)"
 进行	6..12	1:1	v,CHINESE,jin4 xing2,進行,进行,(of a process etc) to proceed; to be in progress; to be underway/(of people) to carry out; to conduct (an investigation or discussion etc)/(of an army etc) to be on the march; to advance,2,进,行,high
 中文	12..18	2:1	nz,CHINESE,Zhong1 wen2,中文,中文,Chinese language,2,中,文,high
 形态	18..24	3:1	n,CHINESE,xing2 tai4,形態,形态,shape/form/pattern/morphology,2,形,态,high
-学	24..27	4:1	n,CHINESE,xue2,學,学,to learn/to study/to imitate/science/-ology,1,学,学,high
-分析	27..33	5:1	vn,CHINESE,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4],2,分,析,high
+学分	24..30	4:1	n,CHINESE,xue2 fen1,學分,学分,course credit,2,学,分,mid
+析	30..33	5:1	vg,CHINESE,xi1,析,析,to separate/to divide/to analyze,1,析,析,mid
 。	33..36	6:1	w,*,*,*,*,*,*,*,*,*
 
 ## 北京是中华人民共和国的首都。

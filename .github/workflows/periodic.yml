@@ -266,6 +266,40 @@ jobs:
       - name: Run test
         run: cargo test -p lindera-segmenter --features embed-ipadic,embed-ko-dic,train --target "${{ matrix.platform.target }}"
 
+  # Every dictionary embedded, so the tests gated on the dictionaries other
+  # than IPADIC and ko-dic run too (#1153). Linux only, as in regression.yml.
+  test-lindera-segmenter-all-dictionaries:
+    name: Test lindera-segmenter (all dictionaries, ${{ matrix.toolchain }})
+    needs:
+      - test-lindera-dictionary
+      - test-lindera-ipadic
+      - test-lindera-ipadic-neologd
+      - test-lindera-unidic
+      - test-lindera-sudachidict
+      - test-lindera-ko-dic
+      - test-lindera-cc-cedict
+      - test-lindera-jieba
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          df -h /
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+
+      - name: Run test
+        run: cargo test -p lindera-segmenter --features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba
+
   test-lindera-analysis:
     name: Test lindera-analysis (${{ matrix.toolchain }})
     needs: [test-lindera-segmenter]
@@ -309,6 +343,30 @@ jobs:
 
       - name: Run test
         run: cargo test -p lindera --features embed-ipadic,embed-ko-dic,train --target "${{ matrix.platform.target }}"
+
+  test-lindera-all-dictionaries:
+    name: Test lindera (all dictionaries, ${{ matrix.toolchain }})
+    needs: [test-lindera-analysis]
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          df -h /
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+
+      - name: Run test
+        run: cargo test -p lindera --features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba
 
   test-lindera-binding:
     name: Test lindera-binding (${{ matrix.toolchain }})

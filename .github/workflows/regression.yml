@@ -459,6 +459,34 @@ jobs:
       features: "--no-default-features"
       lint: true
 
+  # The jobs above embed IPADIC and ko-dic only. This job and
+  # test-lindera-all-dictionaries embed every dictionary, so the tests and
+  # benches gated on the others are compiled, run and linted too (#1153).
+  # Linux only: the large dictionaries would lengthen the Windows legs, which
+  # are on the workflow's longest path.
+  test-lindera-segmenter-all-dictionaries:
+    name: Test lindera-segmenter (all dictionaries)
+    needs:
+      - test-lindera-dictionary
+      - test-lindera-trainer
+      - test-lindera-ipadic
+      - test-lindera-ipadic-neologd
+      - test-lindera-unidic
+      - test-lindera-sudachidict
+      - test-lindera-ko-dic
+      - test-lindera-cc-cedict
+      - test-lindera-jieba
+      - detect-changes
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-segmenter == 'true')
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-segmenter
+      features: "--features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba"
+      free-disk-space: true
+      lint: true
+
   test-lindera-analysis:
     name: Test lindera-analysis
     needs: [test-lindera-segmenter, detect-changes]
@@ -504,6 +532,44 @@ jobs:
       crate: lindera
       features: "--no-default-features"
       lint: true
+
+  # Every dictionary embedded, as in test-lindera-segmenter-all-dictionaries:
+  # the golden, zero-copy and #1094 tests and the benches gated on the other
+  # dictionaries (#1153).
+  test-lindera-all-dictionaries:
+    name: Test lindera (all dictionaries)
+    needs: [test-lindera-analysis, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera == 'true')
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera
+      features: "--features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba"
+      free-disk-space: true
+      lint: true
+
+  # `ctxfreq` counts every connection-cost lookup for profiling, so no test job
+  # enables it. The docs-rs job type-checks its library code; this lints that
+  # code in the three crates and the ctxfreq_dump example (#1153).
+  check-ctxfreq:
+    name: Check ctxfreq feature
+    needs: [test-lindera, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          components: clippy
+
+      - name: Run clippy
+        run: cargo clippy -p lindera-dictionary -p lindera-segmenter -p lindera --features ctxfreq --all-targets -- -D warnings
 
   # Reproduces the docs.rs build of the facade: nightly, `--cfg docsrs` (see
   # `[package.metadata.docs.rs]` in lindera/Cargo.toml) and all features.
