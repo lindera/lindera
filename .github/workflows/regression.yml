@@ -167,6 +167,8 @@ jobs:
               - 'lindera-segmenter/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
+              - 'lindera-ipadic/**'
+              - 'lindera-ko-dic/**'
               - *shared-workspace
               - *shared-crate-workflow
             lindera-cli:
@@ -536,6 +538,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-binding
+      features: "--features embed-ipadic,embed-ko-dic"
       lint: true
 
   test-lindera-cli:
