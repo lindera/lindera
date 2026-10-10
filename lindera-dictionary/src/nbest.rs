@@ -175,22 +175,20 @@ impl<'a> NBestGenerator<'a> {
         generator
     }
 
-    /// Seeds the queue with the EOS edge of the lattice, if any.
+    /// Seeds the queue with the EOS edge of the lattice, if any: a lattice
+    /// whose EOS did not connect has no complete path, even when words end
+    /// at the end of the sentence.
     fn init(&mut self) {
         let char_len = self.lattice.char_len();
-        let eos_edges = self.lattice.edges_at_char(char_len);
-        if eos_edges.is_empty() {
+        let Some(eos_index) = self.lattice.eos_index() else {
             return;
-        }
-
-        // EOS is the last edge pushed to ends_at[char_len]
-        let eos_index = (eos_edges.len() - 1) as u32;
-        let eos_edge = &eos_edges[eos_index as usize];
+        };
+        let eos_edge = &self.lattice.edges_at_char(char_len)[eos_index];
 
         // Initial element: start from EOS with g(x)=0
         self.push(
             char_len as u32,
-            eos_index,
+            eos_index as u32,
             eos_edge.path_cost() as i64,
             0,
             None,
@@ -299,6 +297,9 @@ impl<'a> NBestGenerator<'a> {
             let end = paths.partition_point(|p| p.edge_index() <= edge_index as u32);
             // In slot order: see `push`.
             for path_entry in &paths[start..end] {
+                // Every transition of an edge comes from the slot where the
+                // edge starts: only stored edges record transitions.
+                debug_assert_eq!(path_entry.left_pos(), u32::from(edge.start_char()));
                 let left_pos = path_entry.left_pos() as usize;
                 let left_index = path_entry.left_index() as usize;
 

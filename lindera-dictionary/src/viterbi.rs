@@ -2689,9 +2689,9 @@ impl Lattice {
     /// one go, before any other edge can push into the slot, and carry the
     /// index the edge gets there, so each edge's entries form one
     /// contiguous run in ascending edge order (which `nbest.rs`
-    /// binary-searches). Without a best transition the entries are still
-    /// recorded but the edge is not stored, as before the relaxation was
-    /// shared.
+    /// binary-searches). Without a best transition neither the edge nor its
+    /// entries are recorded: the entries would carry the index of the next
+    /// edge stored in the slot, which would read them as its own (#1114).
     ///
     /// # Arguments
     ///
@@ -2701,6 +2701,9 @@ impl Lattice {
     /// * `best` - The best transition [`Self::relax_nbest`] returned.
     #[inline]
     fn push_relaxed_nbest(&mut self, mut edge: Edge, stop_char: usize, best: Option<(i32, u32)>) {
+        let Some((best_cost, best_left)) = best else {
+            return;
+        };
         let edge_index = self.ends_at[stop_char].len() as u32;
         let left_pos = edge.start_char as u32;
         self.all_paths[stop_char].extend(self.transition_costs.iter().enumerate().map(
@@ -2711,15 +2714,13 @@ impl Lattice {
                 cost,
             },
         ));
-        if let Some((best_cost, best_left)) = best {
-            // `best_cost` already includes `extra_cost` (both arms of
-            // `relax_nbest` fold it into the recorded transitions).
-            edge.path_cost = best_cost
-                .saturating_add(edge.word_cost as i32)
-                .min(PATH_COST_CLAMP);
-            edge.left_index = best_left;
-            self.ends_at[stop_char].push(edge);
-        }
+        // `best_cost` already includes `extra_cost` (both arms of
+        // `relax_nbest` fold it into the recorded transitions).
+        edge.path_cost = best_cost
+            .saturating_add(edge.word_cost as i32)
+            .min(PATH_COST_CLAMP);
+        edge.left_index = best_left;
+        self.ends_at[stop_char].push(edge);
     }
 
     /// [`Self::process_unknown_word`] for the nbest lattice.
@@ -2985,6 +2986,9 @@ impl Lattice {
             let cost_row = cost_matrix.row(0); // EOS default left_id
             // The edges before EOS are the sentence's exits (`exits_into`).
             self.final_edge_count = self.ends_at[n_chars].len();
+            // Where EOS's transitions start, to drop them if EOS does not
+            // connect (see `push_relaxed_nbest`).
+            let eos_paths_start = self.all_paths[n_chars].len();
 
             for i in 0..self.ends_at[n_chars].len() {
                 let left_edge = &self.ends_at[n_chars][i];
@@ -3017,8 +3021,23 @@ impl Lattice {
                 eos_edge.left_index = left_idx;
                 eos_edge.path_cost = best_cost;
                 self.ends_at[n_chars].push(eos_edge);
+            } else {
+                self.all_paths[n_chars].truncate(eos_paths_start);
             }
         }
+    }
+
+    /// Returns the index of the EOS edge in the last slot
+    /// (`edges_at_char(char_len())`): the last edge, pushed after the final
+    /// edges, if EOS connected. Without it the lattice has no complete path,
+    /// and the last edge of the slot is a final edge, not EOS.
+    ///
+    /// # Returns
+    ///
+    /// The index, or `None` when the sentence has no complete path.
+    pub(crate) fn eos_index(&self) -> Option<usize> {
+        let slot = self.ends_at.get(self.last_n_chars)?;
+        (slot.len() > self.final_edge_count).then(|| slot.len() - 1)
     }
 
     /// Returns the top-N paths through the lattice.
@@ -5558,5 +5577,63 @@ mod tests {
         );
         assert!(lattice.edges_at_char(2).is_empty());
         assert!(lattice.nbest_tokens_offset(10, false, None).is_empty());
+    }
+
+    /// The Decompose mode of the saturation tests below: a kanji-only word
+    /// of two or more characters pays `i32::MAX` to the word after it (and
+    /// to EOS), any other word nothing.
+    fn saturating_kanji_decompose() -> Mode {
+        Mode::Decompose(Penalty {
+            kanji_penalty_length_threshold: 1,
+            kanji_penalty_length_penalty: i32::MAX,
+            other_penalty_length_threshold: 100,
+            other_penalty_length_penalty: 0,
+        })
+    }
+
+    /// Builds the N-best lattice of `text` over `dict` in
+    /// [`saturating_kanji_decompose`] mode.
+    fn saturating_nbest_lattice(dict: &PrefixDictionary, text: &str) -> Lattice {
+        let mode = saturating_kanji_decompose();
+        let options = LatticeOptions::new(&mode);
+        let mut lattice = Lattice::default();
+        lattice.set_text_nbest_with_options(
+            dict,
+            &None,
+            &test_char_definition(),
+            &test_unknown_dictionary(),
+            &ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0, 0]).unwrap(),
+            text,
+            &options,
+        );
+        lattice
+    }
+
+    /// #1114: an edge whose every transition saturates is not stored, and
+    /// neither are its transitions. In `漢字b`, `b` follows only `漢字`,
+    /// which pays `i32::MAX`, so `b` is not stored; its transitions used to
+    /// be recorded under the index EOS then took in the slot, so the N-best
+    /// search also found `漢字` alone, a path that stops before `b`.
+    #[test]
+    fn test_saturated_edge_records_no_transitions() {
+        let dict = hundred_each(&["漢字", "漢字b", "b"]);
+        let lattice = saturating_nbest_lattice(&dict, "漢字b");
+        let paths = lattice.nbest_tokens_offset(10, false, None);
+        assert_eq!(paths, vec![(vec![(0, 7, sys(1))], 100)]);
+        assert_eq!(lattice.nbest_tokens_offset(10, true, None), paths);
+    }
+
+    /// #1114: without an EOS edge there is no N-best path. In `漢字`, the
+    /// only final edge pays `i32::MAX` to EOS, so EOS does not connect and
+    /// the 1-best backtrace finds nothing; the N-best search used to take
+    /// the final edge for EOS and return `漢字` without the EOS connection.
+    #[test]
+    fn test_nbest_without_eos_has_no_path() {
+        let dict = hundred_each(&["漢字"]);
+        let lattice = saturating_nbest_lattice(&dict, "漢字");
+        assert_eq!(lattice.tokens_offset_into(&mut Vec::new()), None);
+        assert!(lattice.nbest_tokens_offset(10, false, None).is_empty());
+        assert!(lattice.nbest_tokens_offset(10, true, None).is_empty());
+        assert!(NBestGenerator::new(&lattice).next_with_bos().is_none());
     }
 }
