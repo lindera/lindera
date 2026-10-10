@@ -90,7 +90,7 @@ impl PyToken {
 }
 
 impl PyToken {
-    /// Builds a `PyToken` from a lindera-binding [`TokenView`].
+    /// Builds a `PyToken` from a lindera-binding [`TokenView`](lindera_binding::TokenView).
     pub fn from_view(view: lindera_binding::TokenView) -> Self {
         Self {
             surface: view.surface,
@@ -103,7 +103,7 @@ impl PyToken {
         }
     }
 
-    /// Builds a `PyToken` from a `lindera` token via [`TokenView`].
+    /// Builds a `PyToken` from a `lindera` token via [`TokenView`](lindera_binding::TokenView).
     pub fn from_token(token: Token) -> Self {
         Self::from_view(lindera_binding::TokenView::from_token(token))
     }
