@@ -557,7 +557,7 @@ EOS
   --dict embedded://ipadic \
   -N 3
 </code></pre>
-<pre><code class="language-text">NBEST 1 (cost=7546)
+<pre><code class="language-text">NBEST 1 (cost=21245)
 すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
 も      助詞,係助詞,*,*,*,*,も,モ,モ
 もも    名詞,一般,*,*,*,*,もも,モモ,モモ
@@ -566,24 +566,26 @@ EOS
 の      助詞,連体化,*,*,*,*,の,ノ,ノ
 うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
 EOS
-NBEST 2 (cost=7914)
+NBEST 2 (cost=24541)
 すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
 も      助詞,係助詞,*,*,*,*,も,モ,モ
 もも    名詞,一般,*,*,*,*,もも,モモ,モモ
-もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
 の      助詞,連体化,*,*,*,*,の,ノ,ノ
 うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
 EOS
-NBEST 3 (cost=10060)
+NBEST 3 (cost=24541)
 すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
 も      助詞,係助詞,*,*,*,*,も,モ,モ
 もも    名詞,一般,*,*,*,*,もも,モモ,モモ
-も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
 も      助詞,係助詞,*,*,*,*,も,モ,モ
 の      助詞,連体化,*,*,*,*,の,ノ,ノ
 うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
 EOS
 </code></pre>
+<p>Results 2 and 3 are different segmentations with the same cost (24541).</p>
 <h4 id="n-best-with-unique-results"><a class="header" href="#n-best-with-unique-results">N-Best with unique results</a></h4>
 <p>When the same segmentation appears in multiple paths (differing only in the dictionary entries of their words, such as their parts of speech), use <code>--nbest-unique</code> to deduplicate. Each result is then the cheapest path of its word boundaries, and the search does not go through the other paths, which can be millions for a short line:</p>
 <pre><code class="language-shell">% echo "営業部長谷川です" | lindera tokenize \
@@ -592,14 +594,14 @@ EOS
 </code></pre>
 <pre><code class="language-text">NBEST 1 (cost=15760)
 営業 部長 谷川 です
-NBEST 2 (cost=17758)
-営業 部長 谷 川 です
-NBEST 3 (cost=18816)
+NBEST 2 (cost=17747)
 営業 部 長谷川 です
-NBEST 4 (cost=19320)
-営業 部長 谷川 で す
-NBEST 5 (cost=20814)
+NBEST 3 (cost=18365)
 営業 部 長谷 川 です
+NBEST 4 (cost=21125)
+営業 部 長 谷川 です
+NBEST 5 (cost=22259)
+営業 部長 谷 川 です
 </code></pre>
 <h4 id="n-best-with-cost-threshold"><a class="header" href="#n-best-with-cost-threshold">N-Best with cost threshold</a></h4>
 <p>Use <code>--nbest-cost-threshold</code> to limit results to paths within a certain cost range of the best path:</p>
@@ -609,12 +611,12 @@ NBEST 5 (cost=20814)
 </code></pre>
 <pre><code class="language-text">NBEST 1 (cost=15760)
 営業 部長 谷川 です
-NBEST 2 (cost=17758)
-営業 部長 谷 川 です
-NBEST 3 (cost=18816)
+NBEST 2 (cost=17747)
 営業 部 長谷川 です
+NBEST 3 (cost=18365)
+営業 部 長谷 川 です
 </code></pre>
-<p>Only 3 results are returned because the remaining candidates exceed <code>15760 + 5000 = 20760</code>.</p>
+<p>Only 3 results are returned: the 4th result of the example above costs 21125, which exceeds <code>15760 + 5000 = 20760</code>.</p>
 <h3 id="advanced-tokenization-with-filters"><a class="header" href="#advanced-tokenization-with-filters">Advanced tokenization with filters</a></h3>
 <p>Lindera provides an analytical framework that combines character filters, tokenizers, and token filters for advanced text processing. Filters are configured using JSON.</p>
 <pre><code class="language-shell">% echo "すもももももももものうち" | lindera tokenize \
