@@ -52,7 +52,7 @@ Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean te
   - Downloaded dictionary name: `ipadic`, `unidic`, etc. — resolved to the dictionary installed by `lindera download`. An existing filesystem path with the same name takes precedence.
 - `--output` / `-o`: Output format (default: mecab)
   - `mecab`: MeCab-compatible format with part-of-speech info
-  - `wakati`: Space-separated tokens only
+  - `wakati`: Space-separated tokens only, one line per input line (an empty line for a line without tokens)
   - `json`: Detailed JSON format with all token information
 - `--user-dict` / `-u`: User dictionary path (optional)
 - `--mode` / `-m`: Tokenization mode (default: normal)
@@ -445,7 +445,7 @@ EOS
 
 #### Wakati format
 
-Outputs only the token text separated by spaces:
+Outputs only the token text separated by spaces, one line per input line (or per result with `-N`). A line without tokens, such as an empty line or a line of spaces, gives an empty line, as in MeCab:
 
 ```shell
 % echo "お待ちしております。" | lindera tokenize \
