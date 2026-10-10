@@ -100,7 +100,15 @@ Check the crates' API documentation for rustdoc warnings, such as a broken intra
 make check-docs
 ```
 
-> Note: CI runs `make check-docs` and fails on any rustdoc warning. It documents every crate but the language bindings with all features: the libraries twice, once with public items only, as docs.rs publishes them, and once with private items too, whose doc comments only that second pass checks; then `lindera-cli`'s binary, where the CLI's code lives, with its private items. It builds with dummy dictionaries (`DOCS_RS=1`) in its own target directory, `target/check-docs`, so it downloads no dictionary and leaves `target/` alone. The language bindings are not checked.
+> Note: CI runs `make check-docs` and fails on any rustdoc warning. It documents every crate but the language bindings with all features: the libraries twice, once with public items only, as docs.rs publishes them, and once with private items too, whose doc comments only that second pass checks; then `lindera-cli`'s binary, where the CLI's code lives, with its private items. It builds with dummy dictionaries (`DOCS_RS=1`) in its own target directory, `target/check-docs`, so it downloads no dictionary and leaves `target/` alone.
+
+The language bindings are checked one at a time, since building each needs its language's toolchain:
+
+```bash
+make check-docs-lindera-python   # also -nodejs, -ruby, -php, -wasm
+```
+
+> Note: Each binding's CI job runs its target and fails on any rustdoc warning. The target documents the binding twice, public items only and then with private items too, with default features, which already enable every feature that adds or removes an item; no dictionary is built. `lindera-ruby` runs through the same RbConfig wrapper as `make test-lindera-ruby`, and `lindera-wasm` is documented for `wasm32-unknown-unknown`.
 
 ### mdBook Documentation
 

@@ -100,7 +100,15 @@ cargo doc --no-deps --open
 make check-docs
 ```
 
-> 注意: CI は `make check-docs` を実行し、rustdoc の警告が 1 つでもあれば失敗します。言語バインディング以外のクレートを、すべての feature を有効にして文書化します。ライブラリは 2 回文書化し、1 回目は docs.rs が公開するのと同じく公開項目だけ、2 回目は private 項目も含めます。private 項目の doc コメントを検査するのは 2 回目だけです。続けて、CLI のコードがある `lindera-cli` のバイナリを private 項目も含めて文書化します。ダミーの辞書（`DOCS_RS=1`）を使い、専用の target ディレクトリ `target/check-docs` でビルドするので、辞書をダウンロードせず、`target/` にも影響しません。言語バインディングは検査の対象外です。
+> 注意: CI は `make check-docs` を実行し、rustdoc の警告が 1 つでもあれば失敗します。言語バインディング以外のクレートを、すべての feature を有効にして文書化します。ライブラリは 2 回文書化し、1 回目は docs.rs が公開するのと同じく公開項目だけ、2 回目は private 項目も含めます。private 項目の doc コメントを検査するのは 2 回目だけです。続けて、CLI のコードがある `lindera-cli` のバイナリを private 項目も含めて文書化します。ダミーの辞書（`DOCS_RS=1`）を使い、専用の target ディレクトリ `target/check-docs` でビルドするので、辞書をダウンロードせず、`target/` にも影響しません。
+
+言語バインディングは、ビルドにそれぞれの言語のツールチェーンが必要なため、1 つずつ検査します：
+
+```bash
+make check-docs-lindera-python   # -nodejs、-ruby、-php、-wasm も同様
+```
+
+> 注意: 各バインディングの CI ジョブがそれぞれのターゲットを実行し、rustdoc の警告が 1 つでもあれば失敗します。ターゲットはバインディングを 2 回文書化します。1 回目は公開項目だけ、2 回目は private 項目も含めます。feature はデフォルトのままです。項目の有無を切り替える feature はすべてデフォルトで有効なので、これで足ります。辞書はビルドしません。`lindera-ruby` は `make test-lindera-ruby` と同じ RbConfig のラッパーを通して実行し、`lindera-wasm` は `wasm32-unknown-unknown` 向けに文書化します。
 
 ### mdBook ドキュメント
 

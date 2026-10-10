@@ -21,7 +21,7 @@ WASM_FEATURES = embed-ipadic
 NODEJS_TEST_FEATURES = embed-ipadic,embed-ko-dic
 
 # Run a cargo command with RbConfig values exported, as the Ruby binding build
-# expects (used by both lint and test for lindera-ruby).
+# expects (used by lint, test and check-docs for lindera-ruby).
 CARGO_TEST_WITH_RBCONFIG = ruby -rrbconfig -e 'RbConfig::CONFIG.each { |k, v| ENV["RBCONFIG_\#{k.upcase}"] = v }; exec(*ARGV)' --
 
 # ── Per-crate configuration ───────────────────────────────────────────────────
@@ -226,6 +226,36 @@ check-docs: ## Check rustdoc warnings in the cargo crates (public and private it
 	$(CHECK_DOCS) --lib
 	$(CHECK_DOCS) --lib --document-private-items
 	$(CHECK_DOCS) --bins
+
+# The language bindings are left out of check-docs because building each one
+# needs its language's toolchain, so each gets a target of its own, which that
+# binding's CI job runs (#1156). The same two passes as the libraries above.
+# Default features, as they already enable every feature that adds or removes
+# an item (`train`; the `embed-*` features only choose the embedded
+# dictionaries). No dictionary is built, so neither DOCS_RS nor a separate
+# target directory is needed. `env` lets the command follow the RbConfig
+# wrapper for lindera-ruby.
+CHECK_DOCS_BINDING = env RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --lib
+
+check-docs-lindera-python: ## Check rustdoc warnings in lindera-python (public and private items)
+	$(CHECK_DOCS_BINDING) -p lindera-python
+	$(CHECK_DOCS_BINDING) -p lindera-python --document-private-items
+
+check-docs-lindera-nodejs: ## Check rustdoc warnings in lindera-nodejs (public and private items)
+	$(CHECK_DOCS_BINDING) -p lindera-nodejs
+	$(CHECK_DOCS_BINDING) -p lindera-nodejs --document-private-items
+
+check-docs-lindera-ruby: ## Check rustdoc warnings in lindera-ruby (public and private items)
+	$(CARGO_TEST_WITH_RBCONFIG) $(CHECK_DOCS_BINDING) -p lindera-ruby
+	$(CARGO_TEST_WITH_RBCONFIG) $(CHECK_DOCS_BINDING) -p lindera-ruby --document-private-items
+
+check-docs-lindera-php: ## Check rustdoc warnings in lindera-php (public and private items)
+	$(CHECK_DOCS_BINDING) -p lindera-php
+	$(CHECK_DOCS_BINDING) -p lindera-php --document-private-items
+
+check-docs-lindera-wasm: ## Check rustdoc warnings in lindera-wasm (public and private items, wasm32 target)
+	$(CHECK_DOCS_BINDING) -p lindera-wasm --target wasm32-unknown-unknown
+	$(CHECK_DOCS_BINDING) -p lindera-wasm --target wasm32-unknown-unknown --document-private-items
 
 # ── Test ────────────────────────────────────────────────────────────────────
 
