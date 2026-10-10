@@ -1309,7 +1309,10 @@ impl Segmenter {
     /// Segments the input text and returns the top-N segmentation results with costs.
     /// Each result is a (tokens, cost) pair.
     /// If `unique` is true, results with the same word boundaries but different
-    /// POS tags are deduplicated (only the lowest-cost variant is kept).
+    /// POS tags are deduplicated (only the lowest-cost variant is kept; of
+    /// identical entries, the first CSV row, as in the 1-best path). The
+    /// search goes over word boundaries, so its work does not grow with the
+    /// number of variants a segmentation has (#1114).
     /// If `cost_threshold` is Some(t), paths whose cost exceeds best_cost + t
     /// are discarded.
     ///

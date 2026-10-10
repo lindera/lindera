@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 
-use crate::viterbi::{Lattice, LatticeExit, NBestPath, TokenOffset};
+use crate::viterbi::{Edge, Lattice, LatticeExit, NBestPath, PathEntry, TokenOffset};
 
 /// An element in the A* priority queue for N-Best search.
 /// Represents a partial path from EOS (or from a final edge, see
@@ -96,6 +96,10 @@ impl PartialEq for QueueElement {
 /// even when other paths cost the same: the search follows the left edge
 /// the forward pass keeps, the last of equal-cost ones in its slot, before
 /// the others (#1131, #1135).
+///
+/// Every path comes out, also the many that share their word boundaries;
+/// for one path per segmentation (unique N-best) use
+/// [`UniqueNBestGenerator`], which does not enumerate them.
 pub struct NBestGenerator<'a> {
     /// The N-best lattice the paths are taken from.
     lattice: &'a Lattice,
@@ -279,24 +283,9 @@ impl<'a> NBestGenerator<'a> {
             let current_idx = self.elements.len();
             self.elements.push(current.clone());
 
-            // Expand: for each predecessor path of this edge.
-            //
-            // `paths_at_char(char_pos)` is always partitioned into contiguous,
-            // strictly-ascending-by-`edge_index` runs: every push site
-            // (`push_relaxed_nbest`, which records the transitions of a
-            // dictionary word or of one length of an unknown word, and
-            // `set_text_nbest`'s EOS-connect block, all in viterbi.rs) writes
-            // every `PathEntry` for one edge in one go, using the target
-            // slot's length at that time as that edge's index, before any
-            // other edge targeting the same stop position can push into this
-            // same `all_paths` vector. So the target edge's entries form one
-            // contiguous run, locatable via binary search instead of a full
-            // linear scan.
-            let paths = self.lattice.paths_at_char(char_pos);
-            let start = paths.partition_point(|p| p.edge_index() < edge_index as u32);
-            let end = paths.partition_point(|p| p.edge_index() <= edge_index as u32);
-            // In slot order: see `push`.
-            for path_entry in &paths[start..end] {
+            // Expand: for each predecessor path of this edge, in slot order
+            // (see `push`).
+            for path_entry in transitions(self.lattice, char_pos, edge_index as u32) {
                 // Every transition of an edge comes from the slot where the
                 // edge starts: only stored edges record transitions.
                 debug_assert_eq!(path_entry.left_pos(), u32::from(edge.start_char()));
@@ -352,23 +341,605 @@ impl<'a> NBestGenerator<'a> {
         // because each element's prev points toward EOS.
         while let Some(idx) = maybe_idx {
             let elem = &self.elements[idx];
-            let edges = self.lattice.edges_at_char(elem.char_pos as usize);
-            let edge = &edges[elem.edge_index as usize];
-
-            // Skip the EOS edge: it is the only edge whose start equals the
-            // slot it is stored in (a zero-length span at char_len; a
-            // carried edge always starts before its slot).
-            if edge.start_char() as u32 != elem.char_pos {
-                path.push((
-                    self.lattice.byte_offset_of(edge.start_char() as usize),
-                    self.lattice.edge_end_byte(edge, elem.char_pos as usize),
-                    edge.word_id(),
-                ));
-            }
-
+            let slot = elem.char_pos as usize;
+            let edge = &self.lattice.edges_at_char(slot)[elem.edge_index as usize];
+            path.extend(token(self.lattice, slot, edge));
             maybe_idx = elem.prev;
         }
 
         path
+    }
+}
+
+/// Returns the transitions into one edge: its run of `PathEntry`s in
+/// `paths_at_char(slot)`, in the order of their left edges in the left slot.
+///
+/// `paths_at_char(slot)` is always partitioned into contiguous,
+/// strictly-ascending-by-`edge_index` runs: every push site
+/// (`push_relaxed_nbest`, which records the transitions of a dictionary word
+/// or of one length of an unknown word, and `set_text_nbest`'s EOS-connect
+/// block, all in viterbi.rs) writes every `PathEntry` for one stored edge in
+/// one go, using the target slot's length at that time as that edge's index,
+/// before any other edge targeting the same stop position can push into this
+/// same `all_paths` vector. So the target edge's entries form one contiguous
+/// run, located by binary search instead of a full linear scan. Every entry
+/// of the run comes from the slot where the edge starts.
+///
+/// # Arguments
+///
+/// * `lattice` - The N-best lattice.
+/// * `slot` - The slot holding the edge.
+/// * `edge_index` - The index of the edge in its slot.
+///
+/// # Returns
+///
+/// The edge's transitions; empty for a BOS edge.
+fn transitions(lattice: &Lattice, slot: usize, edge_index: u32) -> &[PathEntry] {
+    let paths = lattice.paths_at_char(slot);
+    let start = paths.partition_point(|p| p.edge_index() < edge_index);
+    let end = paths.partition_point(|p| p.edge_index() <= edge_index);
+    &paths[start..end]
+}
+
+/// Returns the token of an edge of a path, with the ends of
+/// [`Lattice::tokens_offset`]: the whitespace an entry ends with is part of
+/// its token, skipped whitespace is not.
+///
+/// # Arguments
+///
+/// * `lattice` - The N-best lattice.
+/// * `slot` - The slot holding the edge.
+/// * `edge` - The edge.
+///
+/// # Returns
+///
+/// The token, or `None` for the EOS edge, the only edge whose start equals
+/// the slot it is stored in (a zero-length span at the end of the sentence;
+/// a carried edge always starts before its slot).
+fn token(lattice: &Lattice, slot: usize, edge: &Edge) -> Option<TokenOffset> {
+    let start = edge.start_char() as usize;
+    (start != slot).then(|| {
+        (
+            lattice.byte_offset_of(start),
+            lattice.edge_end_byte(edge, slot),
+            edge.word_id(),
+        )
+    })
+}
+
+/// The end of a chain of [`NodeEdge`]s: the edges a search of
+/// [`UniqueNBestGenerator`] starts from continue with nothing.
+const NO_EDGE: usize = usize::MAX;
+
+/// An edge of a node of [`UniqueNBestGenerator`], with the cheapest way from
+/// it to the end of the search along the node's suffix of token spans.
+#[derive(Clone, Copy, Debug)]
+struct NodeEdge {
+    /// The cost of that way, counted as `QueueElement::gx` counts it: from
+    /// the end of the search up to, but not including, the edge's own word
+    /// cost.
+    gx: i64,
+    /// The slot holding the edge.
+    slot: u32,
+    /// The index of the edge in its slot.
+    edge_index: u32,
+    /// The node edge (index in [`UniqueNBestGenerator::edges`]) the way
+    /// continues with toward the end, or [`NO_EDGE`].
+    next: usize,
+}
+
+/// A queued node of [`UniqueNBestGenerator`]: a token span (or a BOS edge)
+/// followed by a suffix of token spans to the end of the search, as the
+/// range of its edges in [`UniqueNBestGenerator::edges`].
+#[derive(Clone, Copy, Debug)]
+struct SpanNode {
+    /// The cost of the cheapest path through the node, the smallest forward
+    /// path cost plus `gx` of its edges: exact, as the forward pass gives the
+    /// cheapest cost from BOS to every edge.
+    fx: i64,
+    /// Push order (see [`UniqueNBestGenerator::push_node`]).
+    seq: u64,
+    /// The first of the node's edges.
+    start: usize,
+    /// The end of the node's edges.
+    end: usize,
+}
+
+/// Min-heap ordering, as for [`QueueElement`]: lower `fx` first, then the
+/// node pushed later.
+impl Ord for SpanNode {
+    /// Orders by `fx` reversed, then by `seq`.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - The node to compare with.
+    ///
+    /// # Returns
+    ///
+    /// The ordering of `self` relative to `other`.
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.fx.cmp(&self.fx).then(self.seq.cmp(&other.seq))
+    }
+}
+
+impl PartialOrd for SpanNode {
+    /// The total order of `cmp`.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - The node to compare with.
+    ///
+    /// # Returns
+    ///
+    /// Always `Some`.
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Eq for SpanNode {}
+
+impl PartialEq for SpanNode {
+    /// Compares the fields `cmp` orders by.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - The node to compare with.
+    ///
+    /// # Returns
+    ///
+    /// Whether both have the same `fx` and `seq`.
+    fn eq(&self, other: &Self) -> bool {
+        self.fx == other.fx && self.seq == other.seq
+    }
+}
+
+/// The cheapest way found into one left edge while a node of
+/// [`UniqueNBestGenerator`] is expanded.
+#[derive(Clone, Copy, Debug)]
+struct Way {
+    /// The cost of the way, as [`NodeEdge::gx`].
+    gx: i64,
+    /// The node edge the way continues with.
+    next: usize,
+    /// The position of the transition among those the expansion scanned.
+    order: u32,
+}
+
+/// Generates the N-best distinct segmentations of a lattice: for each
+/// sequence of token spans (word boundaries) and BOS edge, its cheapest
+/// path, in ascending order of cost, without enumerating the other paths of
+/// the segmentation. This is what unique N-best needs
+/// ([`Lattice::nbest_tokens_offset`] with `unique`): a segmentation can have
+/// a number of paths exponential in its length, one per choice of entry for
+/// each word (#1114).
+///
+/// The search runs backward from EOS (or from an exit) like
+/// [`NBestGenerator`], but over suffixes of token spans instead of paths. A
+/// node holds every edge of its first span, each with the cheapest way from
+/// it to the end along the node's suffix. Expanding a node follows the
+/// transitions of all its edges, keeps the cheapest way into each left
+/// edge, and makes one child per left span (and one per BOS edge). The cost
+/// of a node is the cheapest forward path cost plus way of its edges, which
+/// is the cost of the cheapest path with that suffix, so the complete paths
+/// come out in ascending order of cost, each (segmentation, BOS edge) pair
+/// once. The work grows with the number of results and the length of the
+/// sentence, not with the number of paths.
+///
+/// The first path is the lattice's best path, the one
+/// [`Lattice::tokens_offset_into`] backtraces (from an exit,
+/// [`Lattice::exit_tokens_offset_into`]), with its BOS index, as
+/// [`NBestGenerator`] yields it first; the search skips its segmentation
+/// once, so ties cannot change the first result. Of equal-cost ways into
+/// one edge, the one the expansion scanned last wins, as [`NBestGenerator`]
+/// pops the last pushed of equal-cost elements, and of equal-cost nodes the
+/// one pushed last is expanded first. So identical entries (same surface,
+/// context ids and cost) resolve to the first CSV row in every result, as in
+/// the best path (#1131). Which of several equal-cost paths with different
+/// context ids a result holds is deterministic but not otherwise specified.
+///
+/// The costs are exact unless a forward path cost was clamped at the
+/// lattice's limit, which only absurd penalties reach.
+pub struct UniqueNBestGenerator<'a> {
+    /// The N-best lattice the paths are taken from.
+    lattice: &'a Lattice,
+    /// The first path and its BOS index, until the first call returns it.
+    first: Option<(NBestPath, usize)>,
+    /// The word boundaries and BOS index of the first path, which the
+    /// search finds again and skips once.
+    skip: Option<(Vec<(usize, usize)>, usize)>,
+    /// The frontier, cheapest first.
+    queue: BinaryHeap<SpanNode>,
+    /// The edges of all nodes pushed so far; the nodes are ranges of it.
+    edges: Vec<NodeEdge>,
+    /// The number of nodes pushed so far, the next node's `seq`.
+    pushed: u64,
+    /// Scratch of an expansion: the cheapest way into each edge of the left
+    /// slot, by edge index; `None` for the edges no transition reached.
+    ways: Vec<Option<Way>>,
+    /// Scratch of an expansion: the edges of the left slot with a way, in
+    /// the order the transitions reached them.
+    touched: Vec<u32>,
+    /// Scratch of an expansion: the children, as (cost, the position of the
+    /// last transition that gives the cost, range of edges).
+    children: Vec<(i64, u32, usize, usize)>,
+    /// The number of nodes the tests let the search take from the queue
+    /// before it panics: their bound on the work.
+    #[cfg(test)]
+    budget: usize,
+}
+
+impl<'a> UniqueNBestGenerator<'a> {
+    /// Initializes the generator for the paths through EOS, with the EOS
+    /// connection in their costs, as [`NBestGenerator::new`].
+    ///
+    /// # Arguments
+    ///
+    /// * `lattice` - The N-best lattice (`set_text_nbest*`).
+    ///
+    /// # Returns
+    ///
+    /// The generator; it yields nothing when the lattice holds no complete
+    /// path.
+    pub fn new(lattice: &'a Lattice) -> Self {
+        let mut generator = Self::empty(lattice);
+        let slot = lattice.char_len();
+        let mut tokens = Vec::new();
+        let (Some(eos_index), Some(bos)) =
+            (lattice.eos_index(), lattice.tokens_offset_into(&mut tokens))
+        else {
+            return generator;
+        };
+        let cost = i64::from(lattice.edges_at_char(slot)[eos_index].path_cost());
+        generator.set_first(tokens, cost, bos);
+        generator.edges.push(NodeEdge {
+            gx: 0,
+            slot: slot as u32,
+            edge_index: eos_index as u32,
+            next: NO_EDGE,
+        });
+        generator.push_node(cost, 0, 1);
+        generator
+    }
+
+    /// Initializes the generator for the paths that end with the right
+    /// context id of `exit`, without EOS, as [`NBestGenerator::from_exit`]:
+    /// the costs include the last word's Decompose length penalty but not
+    /// the EOS connection, and the first path is the exit's own path at
+    /// `exit.cost()`. For a sentence without words the paths are the empty
+    /// ones of the BOS edges with that right id.
+    ///
+    /// # Arguments
+    ///
+    /// * `lattice` - The N-best lattice (`set_text_nbest*`).
+    /// * `exit` - An exit of the lattice's current sentence, from
+    ///   [`Lattice::exits_into`].
+    ///
+    /// # Returns
+    ///
+    /// The generator.
+    ///
+    /// # Panics
+    ///
+    /// If `exit` is not an exit of the lattice's current sentence, as
+    /// [`Lattice::exit_tokens_offset_into`].
+    pub fn from_exit(lattice: &'a Lattice, exit: &LatticeExit) -> Self {
+        let mut generator = Self::empty(lattice);
+        let mut tokens = Vec::new();
+        let bos = lattice.exit_tokens_offset_into(exit, &mut tokens);
+        generator.set_first(tokens, i64::from(exit.cost()), bos);
+        let slot = lattice.char_len();
+        generator.reset_ways(lattice.edges_at_char(slot).len());
+        for (i, edge) in lattice.final_edges().iter().enumerate() {
+            if edge.right_id() != exit.right_id() {
+                continue;
+            }
+            let way = Way {
+                gx: i64::from(lattice.exit_penalty(i)),
+                next: NO_EDGE,
+                order: i as u32,
+            };
+            generator.offer(i as u32, way);
+        }
+        generator.push_children(slot);
+        generator
+    }
+
+    /// Returns a generator with an empty queue.
+    ///
+    /// # Arguments
+    ///
+    /// * `lattice` - The N-best lattice.
+    ///
+    /// # Returns
+    ///
+    /// The generator; it yields nothing.
+    fn empty(lattice: &'a Lattice) -> Self {
+        Self {
+            lattice,
+            first: None,
+            skip: None,
+            queue: BinaryHeap::new(),
+            edges: Vec::new(),
+            pushed: 0,
+            ways: Vec::new(),
+            touched: Vec::new(),
+            children: Vec::new(),
+            #[cfg(test)]
+            budget: usize::MAX,
+        }
+    }
+
+    /// Bounds the number of nodes the search may take from the queue: a
+    /// test's check that the work stays proportional to what it expects,
+    /// which fails at once instead of running out of memory.
+    ///
+    /// # Arguments
+    ///
+    /// * `budget` - The number of nodes.
+    ///
+    /// # Returns
+    ///
+    /// The generator.
+    #[cfg(test)]
+    pub(crate) fn with_budget(mut self, budget: usize) -> Self {
+        self.budget = budget;
+        self
+    }
+
+    /// Sets the first path, and its word boundaries as the ones to skip.
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens` - The tokens of the lattice's best path.
+    /// * `cost` - Its cost.
+    /// * `bos` - Its BOS index.
+    fn set_first(&mut self, tokens: Vec<TokenOffset>, cost: i64, bos: usize) {
+        let bounds = tokens.iter().map(|&(start, end, _)| (start, end)).collect();
+        self.skip = Some((bounds, bos));
+        self.first = Some(((tokens, cost), bos));
+    }
+
+    /// Pushes a node, numbering it in push order: of the nodes with the
+    /// same cost, the last pushed is expanded first, as in
+    /// [`NBestGenerator`].
+    ///
+    /// # Arguments
+    ///
+    /// * `fx` - The cost of the cheapest path through the node.
+    /// * `start` - The first of its edges in `edges`.
+    /// * `end` - The end of its edges.
+    fn push_node(&mut self, fx: i64, start: usize, end: usize) {
+        let seq = self.pushed;
+        self.pushed += 1;
+        self.queue.push(SpanNode {
+            fx,
+            seq,
+            start,
+            end,
+        });
+    }
+
+    /// Makes room in the scratch of an expansion for the edges of the left
+    /// slot; the entries a previous expansion set were cleared by
+    /// [`UniqueNBestGenerator::push_children`].
+    ///
+    /// # Arguments
+    ///
+    /// * `len` - The number of edges in the left slot.
+    fn reset_ways(&mut self, len: usize) {
+        if self.ways.len() < len {
+            self.ways.resize(len, None);
+        }
+    }
+
+    /// Offers a way into an edge of the left slot: it replaces the edge's
+    /// way unless that one is cheaper, so of equal-cost ways the later one
+    /// wins.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The index of the edge in the left slot.
+    /// * `way` - The way.
+    fn offer(&mut self, index: u32, way: Way) {
+        match &mut self.ways[index as usize] {
+            Some(best) => {
+                if way.gx <= best.gx {
+                    *best = way;
+                }
+            }
+            empty => {
+                *empty = Some(way);
+                self.touched.push(index);
+            }
+        }
+    }
+
+    /// Turns the ways of an expansion into child nodes and pushes them: one
+    /// node per token span of the left slot, one per BOS edge. The children
+    /// are pushed in the order of the last transition that gives each its
+    /// cost, so of equal-cost children the one reached last is expanded
+    /// first, as [`NBestGenerator`] expands the last pushed of equal-cost
+    /// predecessors first. Clears the scratch for the next expansion.
+    ///
+    /// # Arguments
+    ///
+    /// * `left_slot` - The slot the ways lead into.
+    fn push_children(&mut self, left_slot: usize) {
+        let lattice = self.lattice;
+        let left_edges = lattice.edges_at_char(left_slot);
+        // Within one slot, the start position and the whitespace an entry
+        // ends with determine the token span (the slot fixes where the
+        // whitespace before it starts); a BOS edge is a node of its own.
+        let key = |index: u32| {
+            let edge = &left_edges[index as usize];
+            if edge.left_index() == u32::MAX {
+                (true, index, 0)
+            } else {
+                (false, u32::from(edge.start_char()), edge.ws_tail())
+            }
+        };
+        self.touched
+            .sort_unstable_by_key(|&index| (key(index), index));
+
+        self.children.clear();
+        let mut i = 0;
+        while i < self.touched.len() {
+            let group = key(self.touched[i]);
+            let start = self.edges.len();
+            let mut fx = i64::MAX;
+            let mut position = 0;
+            while i < self.touched.len() && key(self.touched[i]) == group {
+                let index = self.touched[i];
+                i += 1;
+                let Some(way) = self.ways[index as usize].take() else {
+                    continue;
+                };
+                let cost = i64::from(left_edges[index as usize].path_cost()) + way.gx;
+                if cost < fx || (cost == fx && way.order > position) {
+                    position = way.order;
+                }
+                fx = fx.min(cost);
+                self.edges.push(NodeEdge {
+                    gx: way.gx,
+                    slot: left_slot as u32,
+                    edge_index: index,
+                    next: way.next,
+                });
+            }
+            self.children.push((fx, position, start, self.edges.len()));
+        }
+        self.touched.clear();
+
+        self.children
+            .sort_unstable_by_key(|&(_, position, _, _)| position);
+        for k in 0..self.children.len() {
+            let (fx, _, start, end) = self.children[k];
+            self.push_node(fx, start, end);
+        }
+    }
+
+    /// Expands a node: offers the ways into the left edges of all its edges,
+    /// then pushes the children.
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - The node, not a BOS edge.
+    fn expand(&mut self, node: SpanNode) {
+        let lattice = self.lattice;
+        let slot = self.edges[node.start].slot as usize;
+        let slot_edges = lattice.edges_at_char(slot);
+        // All edges of the node share their start, the slot their
+        // transitions come from.
+        let left_slot =
+            slot_edges[self.edges[node.start].edge_index as usize].start_char() as usize;
+        let left_edges = lattice.edges_at_char(left_slot);
+        self.reset_ways(left_edges.len());
+        let mut order = 0;
+        for index in node.start..node.end {
+            let node_edge = self.edges[index];
+            let edge = &slot_edges[node_edge.edge_index as usize];
+            debug_assert_eq!(edge.start_char() as usize, left_slot);
+            for entry in transitions(lattice, slot, node_edge.edge_index) {
+                debug_assert_eq!(entry.left_pos() as usize, left_slot);
+                let Some(left_edge) = left_edges.get(entry.left_index() as usize) else {
+                    continue;
+                };
+                // As in `NBestGenerator::next_with_bos`: the entry's cost is
+                // the left edge's path cost plus the connection and penalty.
+                let gx = node_edge.gx + i64::from(entry.cost()) - i64::from(left_edge.path_cost())
+                    + i64::from(edge.word_cost());
+                self.offer(
+                    entry.left_index(),
+                    Way {
+                        gx,
+                        next: index,
+                        order,
+                    },
+                );
+                order += 1;
+            }
+        }
+        self.push_children(left_slot);
+    }
+
+    /// Rebuilds the tokens of a complete path from the chain of node edges
+    /// that follows its BOS edge.
+    ///
+    /// # Arguments
+    ///
+    /// * `next` - The node edge after the BOS edge.
+    ///
+    /// # Returns
+    ///
+    /// The tokens in reading order; empty for a path without words.
+    fn reconstruct(&self, mut next: usize) -> Vec<TokenOffset> {
+        let mut path = Vec::new();
+        while next != NO_EDGE {
+            let node_edge = &self.edges[next];
+            let slot = node_edge.slot as usize;
+            let edge = &self.lattice.edges_at_char(slot)[node_edge.edge_index as usize];
+            path.extend(token(self.lattice, slot, edge));
+            next = node_edge.next;
+        }
+        path
+    }
+
+    /// Returns the next segmentation as its cheapest path and that path's
+    /// cost, as [`NBestGenerator::next`].
+    ///
+    /// # Returns
+    ///
+    /// The next path and its cost, or `None` when there are no more; see
+    /// [`UniqueNBestGenerator::next_with_bos`].
+    #[allow(clippy::should_implement_trait)]
+    pub fn next(&mut self) -> Option<NBestPath> {
+        self.next_with_bos().map(|(path, _)| path)
+    }
+
+    /// Returns the next segmentation with its BOS index, as
+    /// [`NBestGenerator::next_with_bos`]: the cheapest path of the next
+    /// (word boundaries, BOS edge) pair in ascending order of cost.
+    ///
+    /// # Returns
+    ///
+    /// The path, its cost (the BOS edge's cost included) and its BOS index,
+    /// or `None` when there are no more.
+    pub fn next_with_bos(&mut self) -> Option<(NBestPath, usize)> {
+        if let Some(first) = self.first.take() {
+            return Some(first);
+        }
+        while let Some(node) = self.queue.pop() {
+            #[cfg(test)]
+            {
+                assert!(self.budget > 0, "the search exceeded its node budget");
+                self.budget -= 1;
+            }
+            let node_edge = self.edges[node.start];
+            let edge =
+                &self.lattice.edges_at_char(node_edge.slot as usize)[node_edge.edge_index as usize];
+            if edge.left_index() != u32::MAX {
+                self.expand(node);
+                continue;
+            }
+            // A BOS edge: a complete path.
+            let bos = self.lattice.bos_index(node_edge.edge_index as usize);
+            let tokens = self.reconstruct(node_edge.next);
+            let is_first = self.skip.as_ref().is_some_and(|(bounds, first_bos)| {
+                *first_bos == bos
+                    && bounds.len() == tokens.len()
+                    && bounds.iter().zip(&tokens).all(
+                        |(&(start, end), &(token_start, token_end, _))| {
+                            start == token_start && end == token_end
+                        },
+                    )
+            });
+            if is_first {
+                self.skip = None;
+                continue;
+            }
+            return Some(((tokens, node.fx), bos));
+        }
+        None
     }
 }

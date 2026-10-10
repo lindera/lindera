@@ -421,6 +421,19 @@ impl Edge {
     pub(crate) fn kanji_only(&self) -> bool {
         self.flags & EDGE_FLAG_KANJI_ONLY != 0
     }
+
+    /// Returns the whitespace the edge's own surface ends with, past the
+    /// content end of the slot holding it (see `Edge::ws_tail`). Within one
+    /// slot, the start position and this length determine where the edge's
+    /// token ends.
+    ///
+    /// # Returns
+    ///
+    /// The length in characters, saturating at `u8::MAX`.
+    #[inline]
+    pub(crate) fn ws_tail(&self) -> u8 {
+        self.ws_tail
+    }
 }
 
 /// Records a transition from a left edge to the current edge.
@@ -3044,9 +3057,15 @@ impl Lattice {
     /// Each result is a (path, cost) pair where path is a Vec of (byte_start, byte_end, WordId)
     /// triples, with the ends of [`Lattice::tokens_offset`].
     /// The first result (index 0) is the 1-best path.
-    /// If `unique` is true, paths with the same segmentation (same sequence of
-    /// (byte_start, byte_end) pairs) are deduplicated, keeping only the first (lowest cost)
-    /// variant.
+    /// If `unique` is true, the results have distinct segmentations (sequences
+    /// of (byte_start, byte_end) pairs): they are the cheapest path of each
+    /// segmentation, from
+    /// [`UniqueNBestGenerator`](crate::nbest::UniqueNBestGenerator), which
+    /// finds them without going through the other paths of a segmentation
+    /// (#1114). Of identical entries (same surface, context ids and cost) a
+    /// result holds the first CSV row, as the 1-best path does; which of
+    /// several equal-cost paths with different context ids it holds is not
+    /// specified.
     /// If `cost_threshold` is Some(t), paths whose cost exceeds best_cost + t are discarded.
     /// Requires set_text_nbest() to have been called first.
     ///
@@ -3069,54 +3088,73 @@ impl Lattice {
     ) -> Vec<NBestPath> {
         use std::collections::HashSet;
 
-        use crate::nbest::NBestGenerator;
-        let mut generator = NBestGenerator::new(self);
+        use crate::nbest::{NBestGenerator, UniqueNBestGenerator};
         // Grown on demand: `n` comes from the caller (the CLI's `-N`) and
         // can be far larger than the number of paths.
         let mut results = Vec::new();
-        let mut best_cost: Option<i64> = None;
-
         if unique {
+            let mut generator = UniqueNBestGenerator::new(self);
+            // One path per (segmentation, BOS edge): with several BOS edges,
+            // fold the paths that differ only in theirs.
             let mut seen: HashSet<Vec<(usize, usize)>> = HashSet::new();
-            while results.len() < n {
-                match generator.next() {
-                    Some((path, cost)) => {
-                        // Record best cost from first result
-                        let bc = *best_cost.get_or_insert(cost);
-                        // Skip if cost exceeds threshold. Compare the
-                        // difference: `bc + threshold` overflows for a
-                        // threshold close to `i64::MAX`.
-                        if let Some(threshold) = cost_threshold
-                            && cost.saturating_sub(bc) > threshold
-                        {
-                            break;
-                        }
-                        let key: Vec<(usize, usize)> =
-                            path.iter().map(|&(start, end, _)| (start, end)).collect();
-                        if seen.insert(key) {
-                            results.push((path, cost));
-                        }
-                    }
-                    None => break,
-                }
-            }
+            take_nbest(
+                &mut results,
+                n,
+                cost_threshold,
+                || generator.next(),
+                |(path, _)| seen.insert(path.iter().map(|&(start, end, _)| (start, end)).collect()),
+            );
         } else {
-            while results.len() < n {
-                match generator.next() {
-                    Some((path, cost)) => {
-                        let bc = *best_cost.get_or_insert(cost);
-                        if let Some(threshold) = cost_threshold
-                            && cost.saturating_sub(bc) > threshold
-                        {
-                            break;
-                        }
-                        results.push((path, cost));
-                    }
-                    None => break,
-                }
-            }
+            let mut generator = NBestGenerator::new(self);
+            take_nbest(
+                &mut results,
+                n,
+                cost_threshold,
+                || generator.next(),
+                |_| true,
+            );
         }
         results
+    }
+}
+
+/// Takes the paths of an N-best search into `results`, for
+/// [`Lattice::nbest_tokens_offset`]: until `results` holds `n` paths, the
+/// search runs out, or a path costs more than the threshold above the first
+/// one.
+///
+/// # Arguments
+///
+/// * `results` - The paths kept, in the order the search yields them.
+/// * `n` - The maximum number of paths to keep.
+/// * `cost_threshold` - If `Some(t)`, stop at the first path whose cost
+///   exceeds the first path's by more than `t`.
+/// * `next` - The search: the next path in ascending order of cost.
+/// * `keep` - Whether to keep a path; a dropped path does not count toward
+///   `n`.
+fn take_nbest(
+    results: &mut Vec<NBestPath>,
+    n: usize,
+    cost_threshold: Option<i64>,
+    mut next: impl FnMut() -> Option<NBestPath>,
+    mut keep: impl FnMut(&NBestPath) -> bool,
+) {
+    let mut best_cost: Option<i64> = None;
+    while results.len() < n {
+        let Some(path) = next() else {
+            break;
+        };
+        let best = *best_cost.get_or_insert(path.1);
+        // Compare the difference: `best + threshold` overflows for a
+        // threshold close to `i64::MAX`.
+        if let Some(threshold) = cost_threshold
+            && path.1.saturating_sub(best) > threshold
+        {
+            break;
+        }
+        if keep(&path) {
+            results.push(path);
+        }
     }
 }
 
@@ -3133,7 +3171,7 @@ mod tests {
     use crate::dictionary::prefix_dictionary::{PrefixDictionary, UserPrefixDictionary};
     use crate::dictionary::unknown_dictionary::UnknownDictionary;
     use crate::mode::{Mode, Penalty};
-    use crate::nbest::NBestGenerator;
+    use crate::nbest::{NBestGenerator, UniqueNBestGenerator};
     use crate::viterbi::{
         BosContext, CharData, Edge, Lattice, LatticeExit, LatticeOptions, LexType, NBestPath,
         PATH_COST_CLAMP, PathEntry, TokenOffset, WordEntry, WordId,
@@ -5591,22 +5629,37 @@ mod tests {
         })
     }
 
-    /// Builds the N-best lattice of `text` over `dict` in
-    /// [`saturating_kanji_decompose`] mode.
-    fn saturating_nbest_lattice(dict: &PrefixDictionary, text: &str) -> Lattice {
-        let mode = saturating_kanji_decompose();
-        let options = LatticeOptions::new(&mode);
+    /// Builds the N-best lattice of `text` over `dict` with the categories
+    /// and unknown words of [`test_char_definition`] and `matrix`.
+    fn nbest_lattice_with(
+        dict: &PrefixDictionary,
+        matrix: &ConnectionCostMatrix,
+        text: &str,
+        mode: &Mode,
+    ) -> Lattice {
+        let options = LatticeOptions::new(mode);
         let mut lattice = Lattice::default();
         lattice.set_text_nbest_with_options(
             dict,
             &None,
             &test_char_definition(),
             &test_unknown_dictionary(),
-            &ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0, 0]).unwrap(),
+            matrix,
             text,
             &options,
         );
         lattice
+    }
+
+    /// The connection cost matrix of one context id with a zero cost.
+    fn free_matrix() -> ConnectionCostMatrix {
+        ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0, 0]).unwrap()
+    }
+
+    /// Builds the N-best lattice of `text` over `dict` in
+    /// [`saturating_kanji_decompose`] mode.
+    fn saturating_nbest_lattice(dict: &PrefixDictionary, text: &str) -> Lattice {
+        nbest_lattice_with(dict, &free_matrix(), text, &saturating_kanji_decompose())
     }
 
     /// #1114: an edge whose every transition saturates is not stored, and
@@ -5635,5 +5688,313 @@ mod tests {
         assert!(lattice.nbest_tokens_offset(10, false, None).is_empty());
         assert!(lattice.nbest_tokens_offset(10, true, None).is_empty());
         assert!(NBestGenerator::new(&lattice).next_with_bos().is_none());
+    }
+
+    /// A path as the unique N-best tests compare it: cost, tokens with
+    /// system word ids, BOS index.
+    type KeyedPath = (i64, Vec<(usize, usize, u32)>, usize);
+
+    /// The class unique N-best keeps one path of: word boundaries, BOS index.
+    type PathClass = (Vec<(usize, usize)>, usize);
+
+    /// Takes every path of a unique N-best search.
+    fn unique_paths(mut generator: UniqueNBestGenerator) -> Vec<KeyedPath> {
+        let mut paths = Vec::new();
+        while let Some(((tokens, cost), bos)) = generator.next_with_bos() {
+            paths.push((cost, token_keys(&tokens), bos));
+        }
+        paths
+    }
+
+    /// Returns the word boundaries of the tokens of a path.
+    fn bounds_of(tokens: &[(usize, usize, u32)]) -> Vec<(usize, usize)> {
+        tokens.iter().map(|&(start, end, _)| (start, end)).collect()
+    }
+
+    /// Asserts that `actual`, every path of a unique N-best search, holds
+    /// one cheapest path of every (word boundaries, BOS index) class of
+    /// `all`, every path by definition: each class once, in ascending order
+    /// of cost, each a real path at its class's lowest cost.
+    ///
+    /// Returns whether two classes tie for a cost and whether a class has
+    /// several cheapest paths, so the callers can check that the cases
+    /// cover both.
+    fn assert_unique_paths(case: &str, actual: &[KeyedPath], all: &[KeyedPath]) -> (bool, bool) {
+        assert!(
+            actual.windows(2).all(|pair| pair[0].0 <= pair[1].0),
+            "{case}: not in cost order"
+        );
+        // Per class: the lowest cost and how many paths have it.
+        let mut classes: BTreeMap<PathClass, (i64, usize)> = BTreeMap::new();
+        for (cost, tokens, bos) in all {
+            let class = classes
+                .entry((bounds_of(tokens), *bos))
+                .or_insert((*cost, 0));
+            if *cost < class.0 {
+                *class = (*cost, 0);
+            }
+            if *cost == class.0 {
+                class.1 += 1;
+            }
+        }
+        for path in actual {
+            assert!(all.contains(path), "{case}: not a path: {path:?}");
+        }
+        let mut expected: Vec<_> = classes
+            .iter()
+            .map(|((bounds, bos), (cost, _))| (*cost, bounds.clone(), *bos))
+            .collect();
+        expected.sort();
+        let mut got: Vec<_> = actual
+            .iter()
+            .map(|(cost, tokens, bos)| (*cost, bounds_of(tokens), *bos))
+            .collect();
+        got.sort();
+        assert_eq!(got, expected, "{case}");
+        let tie_between = expected.windows(2).any(|pair| pair[0].0 == pair[1].0);
+        let tie_within = classes.values().any(|&(_, cheapest)| cheapest > 1);
+        (tie_between, tie_within)
+    }
+
+    /// #1114: from EOS and from every exit, `UniqueNBestGenerator` yields
+    /// the cheapest path of every (word boundaries, BOS index) class of the
+    /// paths by definition, each once, in ascending order of cost, and
+    /// first the path `NBestGenerator` yields first (the 1-best path from
+    /// EOS); with a single BOS edge, `nbest_tokens_offset` with `unique`
+    /// returns that sequence. The cases include ties between classes and
+    /// classes with several cheapest paths.
+    #[test]
+    fn test_unique_nbest_matches_brute_force() {
+        let fixture = CtxFixture::new();
+        let (mut tie_between, mut tie_within) = (false, false);
+        for_each_ctx_case(|text, mode, skip, bos_list| {
+            let case = format!("{text:?} {mode:?} skip={skip} {bos_list:?}");
+            let lattice = fixture.nbest_lattice(text, mode, skip, bos_list);
+            let brute = brute_paths(text, bos_list, mode);
+
+            let actual = unique_paths(UniqueNBestGenerator::new(&lattice));
+            let (tokens, bos, cost) = best_path(&fixture.lattice(text, mode, skip, bos_list));
+            assert_eq!(
+                actual.first(),
+                Some(&(cost, token_keys(&tokens), bos.unwrap())),
+                "{case}"
+            );
+            let all: Vec<_> = brute
+                .iter()
+                .map(|path| (path.eos_cost(), token_keys(&path.tokens), path.bos))
+                .collect();
+            let ties = assert_unique_paths(&case, &actual, &all);
+            tie_between |= ties.0;
+            tie_within |= ties.1;
+            if bos_list.len() <= 1 {
+                let listed: Vec<_> = lattice
+                    .nbest_tokens_offset(usize::MAX, true, None)
+                    .into_iter()
+                    .map(|(tokens, cost)| (cost, token_keys(&tokens), 0))
+                    .collect();
+                assert_eq!(listed, actual, "{case}: nbest_tokens_offset");
+            }
+
+            for exit in exits_of(&lattice) {
+                let case = format!("{case} exit {exit:?}");
+                let actual = unique_paths(UniqueNBestGenerator::from_exit(&lattice, &exit));
+                let first = NBestGenerator::from_exit(&lattice, &exit)
+                    .next_with_bos()
+                    .map(|((tokens, cost), bos)| (cost, token_keys(&tokens), bos));
+                assert_eq!(actual.first(), first.as_ref(), "{case}");
+                let all: Vec<_> = brute
+                    .iter()
+                    .filter(|path| path.last_right == exit.right_id())
+                    .map(|path| (path.exit_cost, token_keys(&path.tokens), path.bos))
+                    .collect();
+                let ties = assert_unique_paths(&case, &actual, &all);
+                tie_between |= ties.0;
+                tie_within |= ties.1;
+            }
+        });
+        assert!(tie_between, "no case has classes of equal cost");
+        assert!(
+            tie_within,
+            "no case has a class with several cheapest paths"
+        );
+    }
+
+    /// Asserts that the first path of `NBestGenerator` is the lattice's
+    /// backtrace, which `UniqueNBestGenerator` takes as its first path: from
+    /// EOS the tokens of `tokens_offset_into` at the EOS edge's path cost,
+    /// from every exit those of `exit_tokens_offset_into` at `exit.cost()`,
+    /// each with its BOS index.
+    fn assert_backtrace_is_first_path(lattice: &Lattice, case: &str) {
+        let mut tokens = Vec::new();
+        let first = NBestGenerator::new(lattice).next_with_bos();
+        match lattice.tokens_offset_into(&mut tokens) {
+            Some(bos) => assert_eq!(
+                first,
+                Some(((tokens.clone(), eos_cost(lattice)), bos)),
+                "{case}"
+            ),
+            None => assert_eq!(first, None, "{case}"),
+        }
+        for exit in exits_of(lattice) {
+            let bos = lattice.exit_tokens_offset_into(&exit, &mut tokens);
+            assert_eq!(
+                NBestGenerator::from_exit(lattice, &exit).next_with_bos(),
+                Some(((tokens.clone(), i64::from(exit.cost())), bos)),
+                "{case} exit {exit:?}"
+            );
+        }
+    }
+
+    /// #1114: the first N-best path is the N-best lattice's own backtrace,
+    /// from EOS and from every exit, with its cost and BOS index, on every
+    /// `CtxFixture` case and on the tie fixtures of #1131 (tied entries,
+    /// many cheapest paths) and #1135 (equal-cost paths whose last words
+    /// start at different positions).
+    #[test]
+    fn test_backtrace_is_first_nbest_path() {
+        let fixture = CtxFixture::new();
+        for_each_ctx_case(|text, mode, skip, bos_list| {
+            let lattice = fixture.nbest_lattice(text, mode, skip, bos_list);
+            assert_backtrace_is_first_path(
+                &lattice,
+                &format!("{text:?} {mode:?} skip={skip} {bos_list:?}"),
+            );
+        });
+
+        let entry = |id, cost| WordEntry::new(sys(id), cost, 0, 0);
+        let mut map = BTreeMap::new();
+        map.insert(
+            "a".to_string(),
+            vec![entry(0, 100), entry(1, 100), entry(2, 150)],
+        );
+        map.insert("aa".to_string(), vec![entry(3, 200)]);
+        let tied = PrefixDictionary::from_word_entry_map(&map).unwrap();
+        let cross = hundred_each(&["a", "ab", "bc", "c", "d"]);
+        for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
+            for (dict, text) in [
+                (&tied, "aa"),
+                (&tied, "aaa"),
+                (&tied, "aaaa"),
+                (&cross, "abc"),
+                (&cross, "abcd"),
+            ] {
+                let lattice = nbest_lattice_with(dict, &free_matrix(), text, &mode);
+                assert_backtrace_is_first_path(&lattice, &format!("{text} {mode:?}"));
+            }
+        }
+    }
+
+    /// #1114: identical entries (same surface, context ids and cost) resolve
+    /// to the first CSV row in a later unique result too, as in the 1-best
+    /// path (#1131), from EOS and from the exit, in both modes. `ab` is the
+    /// best segmentation; the second one, `a` + `b`, has two identical `b`
+    /// entries, and the first row (`b` id 2) must win.
+    #[test]
+    fn test_unique_nbest_later_result_keeps_first_row() {
+        let entry = |id, cost| WordEntry::new(sys(id), cost, 0, 0);
+        let mut map = BTreeMap::new();
+        map.insert("ab".to_string(), vec![entry(0, 100)]);
+        map.insert("a".to_string(), vec![entry(1, 100)]);
+        map.insert("b".to_string(), vec![entry(2, 100), entry(3, 100)]);
+        let dict = PrefixDictionary::from_word_entry_map(&map).unwrap();
+        let expected = vec![
+            (100, vec![(0, 2, 0)], 0),
+            (200, vec![(0, 1, 1), (1, 2, 2)], 0),
+        ];
+        for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
+            let lattice = nbest_lattice_with(&dict, &free_matrix(), "ab", &mode);
+            assert_eq!(
+                unique_paths(UniqueNBestGenerator::new(&lattice)),
+                expected,
+                "{mode:?}"
+            );
+            let exits = exits_of(&lattice);
+            assert_eq!(exits.len(), 1, "{mode:?}");
+            assert_eq!(
+                unique_paths(UniqueNBestGenerator::from_exit(&lattice, &exits[0])),
+                expected,
+                "{mode:?}: from the exit"
+            );
+        }
+    }
+
+    /// Builds the lattice of `k` characters `a` over entries that make the
+    /// paths of one segmentation many: four `a` entries and, with `pairs`,
+    /// two `aa` entries, each with context ids of its own, and connection
+    /// costs that depend on both ids. A segmentation into `m` words has
+    /// between 2^m and 4^m paths.
+    fn many_paths_lattice(k: usize, pairs: bool) -> Lattice {
+        let mut map: BTreeMap<String, Vec<WordEntry>> = BTreeMap::new();
+        for (id, ctx, cost) in [(0, 1, 100), (1, 2, 110), (2, 3, 120), (3, 4, 130)] {
+            map.entry("a".to_string())
+                .or_default()
+                .push(WordEntry::new(sys(id), cost, ctx, ctx));
+        }
+        if pairs {
+            for (id, ctx, cost) in [(4, 5, 190), (5, 6, 200)] {
+                map.entry("aa".to_string())
+                    .or_default()
+                    .push(WordEntry::new(sys(id), cost, ctx, ctx));
+            }
+        }
+        let dict = PrefixDictionary::from_word_entry_map(&map).unwrap();
+        let ids = 7_i16;
+        let mut bytes = Vec::new();
+        for value in [-1, ids, ids] {
+            bytes.extend_from_slice(&value.to_le_bytes());
+        }
+        for left in 0..ids {
+            for right in 0..ids {
+                let cost: i16 = (right * 7 + left * 13) % 11 * 10;
+                bytes.extend_from_slice(&cost.to_le_bytes());
+            }
+        }
+        let matrix = ConnectionCostMatrix::load(bytes).unwrap();
+        nbest_lattice_with(&dict, &matrix, &"a".repeat(k), &Mode::Normal)
+    }
+
+    /// #1114: the work of unique N-best grows with the length of the input,
+    /// not with the number of paths of a segmentation, checked with a node
+    /// budget proportional to the length (a search that enumerates paths
+    /// panics at once instead of running out of memory):
+    /// - with the `a` entries only, `a` repeated 24 times has one
+    ///   segmentation and 4^24 paths; asking for more results, as `-N 3`
+    ///   does when fewer segmentations exist, gives that segmentation (the
+    ///   1-best path) and then nothing, after one node per character;
+    /// - with the `aa` entries as well, the three best of the many
+    ///   segmentations come within a few nodes per character;
+    /// - for 6 characters the results match the brute force over every
+    ///   path.
+    #[test]
+    fn test_unique_nbest_work_is_linear_in_length() {
+        let k = 24;
+        let lattice = many_paths_lattice(k, false);
+        let mut generator = UniqueNBestGenerator::new(&lattice).with_budget(2 * (k + 2));
+        let (tokens, _) = generator.next().unwrap();
+        assert_eq!(tokens, lattice.tokens_offset());
+        assert_eq!(tokens.len(), k);
+        assert_eq!(generator.next(), None);
+
+        let lattice = many_paths_lattice(k, true);
+        let mut generator = UniqueNBestGenerator::new(&lattice).with_budget(4 * (k + 2));
+        let mut seen = std::collections::HashSet::new();
+        let mut last = i64::MIN;
+        for _ in 0..3 {
+            let (tokens, cost) = generator.next().unwrap();
+            assert!(seen.insert(bounds_of(&token_keys(&tokens))));
+            assert!(cost >= last);
+            last = cost;
+        }
+
+        let lattice = many_paths_lattice(6, true);
+        let all: Vec<_> = lattice
+            .nbest_tokens_offset(usize::MAX, false, None)
+            .into_iter()
+            .map(|(tokens, cost)| (cost, token_keys(&tokens), 0))
+            .collect();
+        assert!(all.len() > 1000);
+        let actual = unique_paths(UniqueNBestGenerator::new(&lattice));
+        assert_unique_paths("k = 6", &actual, &all);
+        assert_eq!(actual.first(), all.first());
     }
 }
