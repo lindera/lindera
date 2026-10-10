@@ -428,7 +428,7 @@ impl Edge {
 /// (not just the best one as in 1-best).
 #[derive(Clone, Debug)]
 pub struct PathEntry {
-    /// Index of this edge in ends_at[stop_char]; a `u32` like
+    /// Index of this edge in `ends_at[stop_char]`; a `u32` like
     /// `Edge::left_index`, as a slot can hold more than `u16::MAX` edges
     /// (#1105).
     edge_index: u32,
@@ -438,7 +438,7 @@ pub struct PathEntry {
     /// (alignment pads it back to 16 bytes) and would only add an
     /// overflow surface.
     left_pos: u32,
-    /// Index of the left edge in ends_at[left_pos] (`u32`, see
+    /// Index of the left edge in `ends_at[left_pos]` (`u32`, see
     /// `edge_index`).
     left_index: u32,
     /// Total forward cost: left_edge.path_cost + conn_cost + penalty_cost
@@ -499,7 +499,7 @@ pub struct Lattice {
     // Scratch buffers for the Aho-Corasick match pre-scan in set_text/set_text_nbest.
     // Reused across calls (like the fields above) instead of being reallocated per
     // call, since set_text runs once per sentence rather than once per document.
-    /// Linked-list head table: matches_head[start_char] -> index into
+    /// Linked-list head table: `matches_head[start_char]` -> index into
     /// matches_store; u32::MAX terminates a list (#880 shrank the element
     /// widths to halve the per-sentence refill and walk traffic). Nodes are
     /// inserted at the head, a surface's entries in CSV order, so a list

@@ -4,7 +4,8 @@
 //!
 //! Each of those crates' `embedded` module used to contain ~90 lines of
 //! identical boilerplate that differed only in the dictionary subdirectory
-//! name and the loader struct name. [`embedded_dictionary!`] generates that
+//! name and the loader struct name.
+//! [`embedded_dictionary!`](crate::embedded_dictionary) generates that
 //! boilerplate from those two inputs.
 
 /// Includes a file's bytes as a 16-byte-aligned `&'static [u8]`.
