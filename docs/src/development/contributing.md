@@ -24,9 +24,10 @@ Thank you for your interest in contributing to Lindera! This page provides guide
     cargo fmt --all -- --check
     cargo clippy -- -D warnings
     cargo test
+    make check-docs
     ```
 
-    > Note: only `cargo fmt --all -- --check` is enforced in CI; `cargo clippy` is not currently run in CI, but should still be run locally (e.g. via `make lint`) before opening a PR.
+    > Note: CI enforces all four: it checks formatting, runs clippy (warnings as errors) and the tests for each crate with the features it tests that crate with, and fails on rustdoc warnings in every crate but the language bindings. `make lint` and `make test` apply the same per-crate features; see [Build & Test](build_and_test.md).
 
 5. Commit and push your changes, then open a pull request.
 

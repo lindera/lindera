@@ -94,6 +94,14 @@ Rust の API ドキュメントを生成して開きます：
 cargo doc --no-deps --open
 ```
 
+各クレートの API ドキュメントに rustdoc の警告（壊れた intra-doc link や、公開項目から private 項目へのリンクなど）がないかを確認します：
+
+```bash
+make check-docs
+```
+
+> 注意: CI は `make check-docs` を実行し、rustdoc の警告が 1 つでもあれば失敗します。言語バインディング以外のクレートを、すべての feature を有効にして文書化します。ライブラリは 2 回文書化し、1 回目は docs.rs が公開するのと同じく公開項目だけ、2 回目は private 項目も含めます。private 項目の doc コメントを検査するのは 2 回目だけです。続けて、CLI のコードがある `lindera-cli` のバイナリを private 項目も含めて文書化します。ダミーの辞書（`DOCS_RS=1`）を使い、専用の target ディレクトリ `target/check-docs` でビルドするので、辞書をダウンロードせず、`target/` にも影響しません。言語バインディングは検査の対象外です。
+
 ### mdBook ドキュメント
 
 ユーザー向けドキュメントをビルドします：
