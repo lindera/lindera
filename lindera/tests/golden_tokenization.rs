@@ -528,6 +528,28 @@ fn ko_dic_cross_start_ties() {
     assert_cross_start_tie(&segmenter, "차나 마셔", &["차", "나", "마셔"]);
 }
 
+/// Regression test #1111: unknown words come from a character's default
+/// category, and a grouped run goes on while each character shares a
+/// category with the one before it, as in MeCab. A ko-dic numeral is
+/// `HANJANUMERIC HANJA` (default `HANJANUMERIC`, which groups), the other
+/// hanja are `HANJA`, and `〇` is `SYMBOL HANJANUMERIC`, so each input is one
+/// `SH` word in both modes; it used to break wherever `HANJANUMERIC` was
+/// missing at the same position of the next character's category list.
+#[cfg(feature = "embed-ko-dic")]
+#[test]
+fn ko_dic_unknown_words_follow_mecab() {
+    for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
+        let segmenter = segmenter("embedded://ko-dic", mode.clone());
+        for text in ["三國史記", "十人十色", "二十歲", "二〇二六年"] {
+            assert_eq!(
+                surfaces_and_details(&segmenter, text, 1),
+                vec![(text.to_string(), "SH".to_string())],
+                "{text} {mode:?}"
+            );
+        }
+    }
+}
+
 /// Regression test #1094: the full-width space is UniDic's `空白` entry.
 #[cfg(feature = "embed-unidic")]
 #[test]
