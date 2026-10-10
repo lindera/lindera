@@ -71,9 +71,9 @@ NUMERIC 1 1 0
 0x0061..0x007A ALPHA     # Lowercase letters
 ```
 
-Parameters control how unknown words of each character type are segmented: compatibility with adjacent characters, whether runs of the same type continue as a single token, and default token length.
+Parameters control the unknown words that a character's default category creates: whether they are created even where a dictionary word starts (`INVOKE`), whether a run in which each character shares a category with the one before continues as a single token (`GROUP`), and up to which length shorter candidates are created (`LENGTH`).
 
-A range line can list more than one category (for example `0x4E00 KANJINUMERIC KANJI`), and every range line needs at least one. When several lines cover the same code point, the last line decides its categories, as in MeCab. The first category on that line is the character's default category, which the `%t` feature template uses.
+A range line can list more than one category (for example `0x4E00 KANJINUMERIC KANJI`), and every range line needs at least one. When several lines cover the same code point, the last line decides its categories, as in MeCab. The first category on that line is the character's default category: the only one that creates unknown-word candidates, and the one the `%t` feature template uses.
 
 ### 4. Unknown Word Definition (unk.def)
 

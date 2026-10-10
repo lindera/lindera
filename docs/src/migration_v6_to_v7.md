@@ -14,12 +14,16 @@ starts or ends with it, skips whitespace in the lattice as MeCab does
 resolves overlapping `char.def` lines as MeCab does, carries the context
 across `、` and `。` within a line as MeCab does, returns N-best results
 that each cover the whole input, lets unknown words start at every position
-as MeCab does, keeps the dashes and tildes of dictionary entries as written
+as MeCab does, creates them from each character's default category and
+groups the characters that share a category, as MeCab does, keeps the
+dashes and tildes of dictionary entries as written
 instead of rewriting them, removing the `normalize_details` setting, outputs
 the first CSV row among tied dictionary entries as MeCab does, chooses the
 segmentation whose last word starts later when two cost the same, as MeCab
 does, and has the lattice backtraces of `lindera-dictionary` return each
-token's end offset.
+token's end offset. Dictionary directories built or downloaded with v6.2.0
+or earlier no longer load and must be rebuilt or downloaded again
+(dictionary format version 3).
 This guide lists every breaking change and the one-line fixes for each.
 
 ## Overview
@@ -33,6 +37,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **The implicit features `lindera-ipadic`, `lindera-ipadic-neologd`, `lindera-unidic`, `lindera-sudachidict`, `lindera-ko-dic`, `lindera-cc-cedict`, and `lindera-jieba` are gone** | Anyone enabling a dictionary crate by name in `features = [...]` | Use the `embed-*` features instead |
 | **`lindera-binding-core` is renamed to `lindera-binding`** | Rust users of the binding helper crate | Depend on `lindera-binding` and replace `lindera_binding_core::` with `lindera_binding::` |
 | **`LINDERA_DICTIONARIES_PATH` is removed** | Anyone still setting the deprecated build-cache variable | Set `LINDERA_BUILD_DICTIONARY_CACHE_DIR`; the old name is now ignored |
+| **Dictionary format version 3: dictionary directories built or downloaded with v6.2.0 or earlier no longer load** | Anyone who loads a dictionary from files (`load_dictionary` with a path, `lindera tokenize --dict <dir>`, the bindings' path and byte loaders, dictionaries saved in the WASM binding's OPFS storage); not the embedded dictionaries or user dictionaries | Rebuild with the 7.0.0 `lindera build`, or download again with the 7.0.0 `lindera download` or from the 7.0.0 release assets |
 | **IPADIC and IPADIC-NEologd: `conjugation_type` and `conjugation_form` now name the right columns** | Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (`Token::get`, `Token::as_value`, `lindera tokenize -o json`, binding schemas) | Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier |
 | **Dictionary entries with whitespace are kept** | Text with U+3000 (IPADIC, IPADIC-NEologd, UniDic), text with spaces (SudachiDict), and a few entries that ended with whitespace | Expect U+3000 to be `記号,空白` / `空白` and SudachiDict to segment spaced text much closer to Sudachi; rebuild or re-download dictionaries made with v6.2.0 or earlier |
 | **Whitespace is skipped in the lattice: the words on either side of a space connect directly, as in MeCab** | Anyone who segments text containing whitespace with `keep_whitespace` false (the default), most visibly with ko-dic; not with SudachiDict, which keeps whitespace in the lattice as Sudachi does | Expect MeCab's segmentation for such text; `skip_whitespace(false)` (`"skip_whitespace": false`, `--disable-skip-whitespace`) restores the v6 handling of whitespace, but not the other output changes in this guide |
@@ -40,9 +45,10 @@ This guide lists every breaking change and the one-line fixes for each.
 | **The context is carried across `、` and `。` within a line, as in MeCab** | Anyone who segments Japanese text with `、` or `。` inside a line | Expect some words after `、` or `。` to be read differently, mostly as MeCab reads them, and the N-best costs of such lines to change; no setting restores the v6 behavior |
 | **N-best: every result covers the whole input** | Anyone who asks for N-best results (`segment_nbest`, `tokenize_nbest`, `lindera tokenize -N`, the bindings' N-best methods) for input with more than one sentence | Expect the cheapest segmentations of the whole input from the second result on, and one result without tokens for an empty input; a cost threshold now applies to the whole input |
 | **Unknown words start at every position, as in MeCab** | Anyone who segments text with runs of katakana, symbols or Latin letters in normal mode, most visibly katakana joined by `・`, Korean sentence-final punctuation such as `."`, and Latin words with CC-CEDICT | Expect such runs to be split where MeCab splits them, and katakana- and Latin-heavy text to take about 13% more instructions; no setting restores the v6 behavior |
+| **Unknown words come from each character's default category and group the characters that share a category, as in MeCab** | Anyone who segments text where a character with several categories meets other characters; in the bundled dictionaries, a hanja numeral followed by hanja with ko-dic, and `〇` (U+3007) with ko-dic, CC-CEDICT and Jieba; Rust code that relies on the order of `CharacterDefinition::lookup_categories` | Expect such text to be segmented as MeCab segments it (ko-dic `三國史記` is one `SH` word, Jieba `二〇〇八年北京奧運會` is `二 / 〇〇八年北京奧運會`); no setting restores the v6 behavior |
 | **IPADIC and IPADIC-NEologd: dashes and tildes in dictionary entries are kept as written, as in MeCab** | Anyone who segments text with `―` (U+2015), `—` (U+2014), `～` (U+FF5E) or `〜` (U+301C) with IPADIC or IPADIC-NEologd | Expect entries spelled with `―` or `～` to match text spelled the same way, and text with `—` or `〜` to miss the 12 IPADIC and 1,085 IPADIC-NEologd entries it found only through the old rewrite (a `mapping` character filter can fold the spellings); rebuild or re-download dictionaries made with v6.2.0 or earlier |
-| **Entries with the same surface, context IDs and cost: the first CSV row is output, as in MeCab** | Anyone who reads token details such as the reading or the base form with IPADIC, IPADIC-NEologd, UniDic or ko-dic, or with a user dictionary that has such entries; N-best users | Expect such words to get MeCab's details (IPADIC `狡い` reads `ズルイ`, not `コスイ`), a user entry to still win a tie with a system entry, and the first N-best result to always be the 1-best; no rebuild is needed, and no setting restores the v6 behavior |
-| **Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab** | Anyone who segments text, in rare places (9 of about 54,000 lines in the texts compared) | Expect such lines to be segmented as MeCab segments them (IPADIC `腸窒扶斯` is `腸 / 窒扶 / 斯`, not `腸 / 窒 / 扶斯`); no rebuild is needed, and no setting restores the v6 behavior |
+| **Entries with the same surface, context IDs and cost: the first CSV row is output, as in MeCab** | Anyone who reads token details such as the reading or the base form with IPADIC, IPADIC-NEologd, UniDic or ko-dic, or with a user dictionary that has such entries; N-best users | Expect such words to get MeCab's details (IPADIC `狡い` reads `ズルイ`, not `コスイ`), a user entry to still win a tie with a system entry, and the first N-best result to always be the 1-best; no setting restores the v6 behavior |
+| **Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab** | Anyone who segments text, in rare places (9 of about 54,000 lines in the texts compared) | Expect such lines to be segmented as MeCab segments them (IPADIC `腸窒扶斯` is `腸 / 窒扶 / 斯`, not `腸 / 窒 / 扶斯`); no setting restores the v6 behavior |
 | **`lindera tokenize` removes only the line terminator from each input line and writes a result for every line** | CLI users whose input lines start or end with whitespace, or who read the wakati or N-best output of lines without tokens | Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC `記号,空白`), `--keep-whitespace` to output the spaces there, and an empty line or a line of spaces to give an empty wakati line and one N-best result; no setting restores the v6 behavior |
 | **WASM: the `TokenizerBuilder` settings apply whichever way the dictionary is set** | WASM users who combine `setDictionaryInstance()` with `setKeepWhitespace()` or filters, or `setDictionary()` with `setUserDictionaryInstance()` | Expect those settings and the user dictionary to take effect; a dictionary instance whose `char.def` has no `SPACE` category now needs `setKeepWhitespace(true)`, as a dictionary set by URI does |
 | **The `normalize_details` setting is removed: `Metadata::new` and `CoreMetadata::new` take 10 arguments, Ruby's `Metadata.new` takes 8** | Code that creates or reads dictionary metadata: Rust (`Metadata`, `lindera_binding::CoreMetadata`, `PrefixDictionaryBuilderOptions`) and the `Metadata` classes of the Python, Ruby, PHP and Node.js bindings | Remove the argument, option or property; a `metadata.json` that still has the key loads, and the key is ignored |
@@ -54,8 +60,10 @@ their package names, and their APIs apart from one setting: the `Metadata`
 classes of the Python, Node.js, Ruby and PHP bindings no longer take or
 expose `normalize_details` (see
 [The `normalize_details` setting is removed](#the-normalize_details-setting-is-removed)).
-Their version number moves to 7.0.0.
-There are twelve output differences, all described below; the last two are
+Their version number moves to 7.0.0. Like the Rust crates, they no longer
+load a dictionary directory built or downloaded with v6.2.0 or earlier (see
+[Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt)).
+There are thirteen output differences, all described below; the last two are
 in the CLI only and in the WASM binding only. With IPADIC or
 IPADIC-NEologd, the values reported under the names `conjugation_type` and
 `conjugation_form` trade places. The dictionaries now contain the entries
@@ -71,7 +79,11 @@ input with more than one sentence, the N-best results from the second one on
 are the cheapest segmentations of the whole input, and an empty input gets
 one N-best result without tokens. And in normal mode, an
 unknown word can start inside a run of characters of one kind, as in MeCab,
-which splits some runs of katakana, symbols and Latin letters. With IPADIC
+which splits some runs of katakana, symbols and Latin letters. Unknown words
+come from each character's default category, and a grouped unknown word
+goes on while each character shares a category with the one before it, as
+in MeCab, which makes a ko-dic hanja numeral and the hanja after it one
+word and `〇` a symbol with ko-dic, CC-CEDICT and Jieba. With IPADIC
 and IPADIC-NEologd, the entries spelled with `―` or `～` are found under
 that spelling, as in MeCab, which changes the segmentation of text that
 contains `―`, `—`, `～` or `〜`. Among dictionary entries that share the
@@ -306,6 +318,37 @@ export LINDERA_DICTIONARIES_PATH=/path/to/cache
 export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 ```
 
+## Dictionary directories must be rebuilt
+
+v7.0.0 writes dictionaries in format version 3 and rejects a dictionary
+directory built or downloaded with v6.2.0 or earlier, which is at version 2,
+when it loads it:
+
+```text
+Dictionary 'ipadic' has format version 2, but this build of Lindera reads format version 3. To fix this, rebuild it with `lindera build`, or download a matching prebuilt dictionary with `lindera download`.
+```
+
+Version 3 lists each code point's default category first in `char_def.bin`,
+because unknown words now come from that category only (see
+[Unknown words come from the default category, as in MeCab](#unknown-words-come-from-the-default-category-as-in-mecab)).
+A version 2 file has the same layout, so without the check it would load
+and silently give some characters the wrong default category. The version
+also covers the other changes in what the dictionary builder writes, which
+a v6.2.0 dictionary does not have:
+[the IPADIC conjugation names](#ipadic-conjugation-field-names-corrected),
+[the entries with whitespace](#dictionary-entries-with-whitespace-are-kept),
+[the overlapping `char.def` lines](#overlapping-chardef-lines-are-resolved-as-in-mecab)
+and [the dash and tilde spellings](#dash-and-tilde-spellings-are-kept-as-written).
+
+| Dictionary | What you do |
+| --- | --- |
+| Embedded (`embed-*` features) | Nothing: it is built when the crate is compiled |
+| Downloaded with `lindera download` | Download it again with the 7.0.0 CLI, which stores it under a directory of its own version |
+| Built with `lindera build` | Build it again with the 7.0.0 CLI |
+| Downloaded from the release assets | Download the 7.0.0 asset |
+| Saved in the WASM binding's OPFS storage | Remove it with `removeDictionary()` and download the 7.0.0 asset with `downloadDictionary()`; a `hasDictionary()` check alone keeps the old one |
+| User dictionaries (CSV and `.bin`) | Nothing: they have no `char_def.bin` and no format version |
+
 ## IPADIC conjugation field names corrected
 
 IPADIC stores 活用型, the conjugation type (for example `五段・カ行イ音便`),
@@ -331,22 +374,17 @@ right columns. If your code reads these fields by name, or swapped them back
 as a workaround, update it.
 
 The names come from the `metadata.json` stored in each built dictionary, not
-from the library, and the dictionary format version is unchanged. The
-embedded dictionaries (`embed-ipadic`, `embed-ipadic-neologd`) and the
-dictionaries that the 7.0.0 CLI fetches with `lindera download` carry the
-corrected names. A dictionary directory built or downloaded with v6.2.0 or
-earlier still loads in v7.0.0 but keeps the old names. For such a directory,
-either:
-
-- rebuild it with the v7.0.0 `lindera-ipadic/metadata.json` (or
-  `lindera-ipadic-neologd/metadata.json`), or download the 7.0.0 release
-  asset, or
-- swap `"conjugation_form"` and `"conjugation_type"` in the
-  `dictionary_schema.fields` list of its `metadata.json`. The dictionary data
-  itself is unchanged, so no rebuild is needed.
+from the library. The embedded dictionaries (`embed-ipadic`,
+`embed-ipadic-neologd`) and the dictionaries that the 7.0.0 CLI fetches with
+`lindera download` carry the corrected names. A dictionary directory built
+or downloaded with v6.2.0 or earlier no longer loads (see
+[Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt));
+rebuild it with the v7.0.0 `lindera-ipadic/metadata.json` (or
+`lindera-ipadic-neologd/metadata.json`), or download the 7.0.0 release asset.
 
 If you build dictionaries with your own copy of the IPADIC `metadata.json`,
-apply the same swap to that copy.
+swap `"conjugation_form"` and `"conjugation_type"` in its
+`dictionary_schema.fields` list.
 
 ## Dictionary entries with whitespace are kept
 
@@ -387,12 +425,11 @@ U+3000 is not in the `SPACE` character category, so it is a token even with
 (IPADIC) or `空白` (UniDic) with the `japanese_stop_tags` token filter, or
 turn it into U+0020 with the `unicode_normalize` character filter (NFKC).
 
-The change is in the dictionary builder; the dictionary format version is
-unchanged. The embedded dictionaries and the dictionaries that the 7.0.0 CLI
-fetches with `lindera download` include these entries. A dictionary
-directory built or downloaded with v6.2.0 or earlier still loads in v7.0.0
-but keeps the old entries until you rebuild it with `lindera build` or
-download the 7.0.0 release asset.
+The change is in the dictionary builder. The embedded dictionaries and the
+dictionaries that the 7.0.0 CLI fetches with `lindera download` include
+these entries; a dictionary directory built or downloaded with v6.2.0 or
+earlier no longer loads (see
+[Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt)).
 
 ## Whitespace is skipped in the lattice
 
@@ -420,8 +457,7 @@ sentence directly.
 
 The default comes from the dictionary's `metadata.json`; a dictionary that
 does not set `skip_whitespace` skips. A SudachiDict built by Lindera 6.x has
-no such setting, so it skips whitespace until it is rebuilt or the setting
-is added to its `metadata.json`.
+no such setting, but it no longer loads anyway; the rebuilt one has it.
 
 Token surfaces and offsets never include the skipped whitespace; whitespace
 that belongs to a dictionary entry, inside it or at its end, stays in that
@@ -465,8 +501,7 @@ dictionary's default.
 A dictionary's `char.def` can list the same code point on several lines. Up
 to v6.2.0, the dictionary builder gave such a code point the categories of
 every line that covers it. v7.0.0 uses only the last line, as MeCab,
-vibrato and Kuromoji do, and lists that line's categories in the order in
-which `char.def` defines them. In the bundled dictionaries, three characters
+vibrato and Kuromoji do. In the bundled dictionaries, three characters
 change (ko-dic calls the kanji categories `HANJA` and `HANJANUMERIC`, and
 CC-CEDICT and Jieba call them `CHINESE` and `CHINESENUMERIC`):
 
@@ -474,10 +509,10 @@ CC-CEDICT and Jieba call them `CHINESE` and `CHINESENUMERIC`):
 | --- | --- | --- | --- |
 | `Ð` (U+00D0) | `SPACE`, `ALPHA` | `ALPHA` | Every dictionary except ko-dic maps U+00D0 to `SPACE` (a typo for U+000D inherited from mecab-ipadic) before the `ALPHA` range, so `Ð` was dropped as whitespace and split the word around it. `GUÐMUNDUR さん` now gives `GUÐMUNDUR` and `さん` instead of `GU`, `MUNDUR` and `さん` |
 | `々` (U+3005) | `KANJI`, `SYMBOL` | `SYMBOL` | Dictionary words such as `人々` and `佐々木` are unchanged. After a kanji that the dictionary does not know, `々` is a token of its own, as in MeCab: `龘々` gives `龘` and `々` instead of one unknown word. With ko-dic, `々` is tagged `SY` instead of `SH` |
-| `〇` (U+3007) | `KANJI`, `SYMBOL`, `KANJINUMERIC` | `SYMBOL`, `KANJINUMERIC` | Runs of numerals can be grouped differently. With ko-dic, `二〇二六年` gives `二〇二六` and `年` instead of `二`, `〇`, `二六` and `年` |
+| `〇` (U+3007) | `KANJI`, `SYMBOL`, `KANJINUMERIC` | `SYMBOL`, `KANJINUMERIC` | Runs of numerals can be grouped differently. With ko-dic, `二〇二六年` is one unknown word (`SH`) instead of `二`, `〇`, `二六` and `年` (see also [Unknown words come from the default category, as in MeCab](#unknown-words-come-from-the-default-category-as-in-mecab)) |
 
 The kanji numerals `一` to `九`, `十`, `百`, `千`, `万`, `億` and `兆` are
-also listed on two lines, but keep their categories and their order.
+also listed on two lines, but keep their categories.
 
 `lindera train` now reads `char.def` with the dictionary builder. It used
 to keep only the first category of each line, skip lines that name a single
@@ -491,12 +526,11 @@ A range line without a category is now an error in `lindera build` and
 `lindera train`, as in MeCab; it would otherwise reset the earlier lines to
 `DEFAULT`.
 
-The change is in the dictionary builder; the dictionary format version is
-unchanged. The embedded dictionaries and the dictionaries that the 7.0.0 CLI
-fetches with `lindera download` have the new categories. A dictionary
-directory built or downloaded with v6.2.0 or earlier still loads in v7.0.0
-but keeps the old categories until you rebuild it with `lindera build` or
-download the 7.0.0 release asset.
+The change is in the dictionary builder. The embedded dictionaries and the
+dictionaries that the 7.0.0 CLI fetches with `lindera download` have the new
+categories; a dictionary directory built or downloaded with v6.2.0 or
+earlier no longer loads (see
+[Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt)).
 
 ## The context is carried across `、` and `。`
 
@@ -589,16 +623,16 @@ result for an empty line.
 A word that is not in the dictionary is read as an unknown word, built from
 the character categories of the dictionary's `char.def` (katakana, Latin
 letters, digits, symbols and so on). Most categories are set to group: a
-run of characters of one category, such as a run of katakana, becomes one
-candidate, a *grouped unknown word*. Up to v6, normal mode created no unknown
+run of characters that share a category, such as a run of katakana, becomes
+one candidate, a *grouped unknown word*. Up to v6, normal mode created no unknown
 words at the positions inside the last grouped unknown word, a shortcut
 inherited from Kuromoji that MeCab does not have. After a dictionary word
 that ends inside such a run, no unknown word could continue the path, so the
 grouped unknown word that swallowed the dictionary word was often the only
 way through. v7.0.0 creates unknown-word candidates at every position that a
-path reaches, in every mode, under MeCab's condition: the category is set to
-always create them (`INVOKE` in `char.def`), or no dictionary word starts at
-that position. Decompose mode already did this, and its output does not
+path reaches, in every mode, under MeCab's condition: the category that
+creates them is set to always create them (`INVOKE` in `char.def`), or no
+dictionary word starts at that position. Decompose mode already did this, and its output does not
 change.
 
 | Input (dictionary) | v6 | v7 (as MeCab) |
@@ -658,6 +692,66 @@ and from 18 to 127 MiB with UniDic.
 There is no setting to restore the v6 behavior. `unknown_word_ladder(false)`
 (`--disable-unknown-word-ladder`) still turns off the shorter unknown-word
 candidates, but no longer reproduces the output of Lindera before v6.
+
+## Unknown words come from the default category, as in MeCab
+
+A character can have more than one category in `char.def`: the kanji
+numerals are `KANJINUMERIC KANJI` in IPADIC and UniDic,
+`HANJANUMERIC HANJA` in ko-dic and `CHINESENUMERIC CHINESE` in CC-CEDICT
+and Jieba, and `〇` (U+3007) is `SYMBOL` plus the numeral category. The first category of the line that
+decides a character's categories is its *default category*. Up to v6.2.0,
+Lindera created unknown-word candidates for every category of a character,
+and went on with a grouped unknown word only while the next character had
+the same category at the same position of its category list. v7.0.0
+follows MeCab:
+
+- Unknown words come from the default category only, with its `INVOKE`,
+  `GROUP` and `LENGTH` settings and its `unk.def` entries.
+- A grouped unknown word goes on while each character shares a category
+  with the one before it.
+- The shorter candidates of the length ladder go on while each character
+  shares a category with the first one.
+
+| Input (dictionary) | v6 | v7 (as MeCab) |
+| --- | --- | --- |
+| `三國史記` (ko-dic) | `三` (`SH`), `國史` (`NNG`) and `記` (`NNG`) | `三國史記` (`SH`) |
+| `十人十色` (ko-dic) | `十` (`SH`), `人` (`NNG`), `十` (`SH`) and `色` (`NNG`) | `十人十色` (`SH`) |
+| `二十歲` (ko-dic) | `二十` (`SH`) and `歲` (`SH`) | `二十歲` (`SH`) |
+| `〇〇〇` (ko-dic) | `〇〇〇` (`SH`) | `〇〇〇` (`SY`) |
+| `二〇〇八年北京奧運會` (Jieba) | `二`, `〇〇`, `八`, `年`, `北京奧運` and `會` | `二` and `〇〇八年北京奧運會` (`w`) |
+| `二〇二六年` (CC-CEDICT) | `二`, `〇`, `二`, `六` and `年` | `二` and `〇二六年` |
+
+- **Korean**: many ko-dic numerals, such as `三` and `十`, are not
+  dictionary words, and their default category `HANJANUMERIC` groups, so a
+  numeral and the hanja after it become one `SH` word, as in MeCab.
+- **`〇`**: its default category is `SYMBOL`, which creates unknown words
+  even where a dictionary word starts, so it is a symbol (ko-dic `SY`,
+  Jieba `w`). With CC-CEDICT and Jieba, its group runs on through the
+  numerals and the Chinese characters after it, also in MeCab. A fix of the
+  `char.def` of these two dictionaries is tracked in
+  [#1162](https://github.com/lindera/lindera/issues/1162).
+- **Japanese**: IPADIC, IPADIC-NEologd and UniDic have the kanji numerals
+  and `〇` as dictionary words, and no line of the texts compared changes.
+  SudachiDict was not compared.
+
+With dictionaries built from the same sources, the number of lines that
+Lindera segments and tags exactly as MeCab does rises, on top of the other
+changes in this guide, from 3,913 to 3,917 of the 3,919 non-empty lines of
+*Sangnoksu* with ko-dic (with the left-space penalty off, as MeCab has
+none); every generated sentence that combines the characters with several
+categories with other characters now matches MeCab with IPADIC,
+IPADIC-NEologd, UniDic, ko-dic, CC-CEDICT and Jieba. No line that matched
+before stops matching. The instruction
+count falls by 0.3% to 4.8%.
+
+`CharacterDefinition::lookup_categories` (in
+`lindera_dictionary::dictionary::character_definition`) returns the default
+category first, then the other categories in category id order. The 7.0.0
+`char_def.bin` stores them in this order, which is why the dictionary format
+version changes (see
+[Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt)).
+
+There is no setting to restore the v6 behavior.
 
 ## Dash and tilde spellings are kept as written
 
@@ -735,13 +829,13 @@ the words of one and miss those of the other. NFKC normalization
 it turns `～` into `~` and leaves `―`, `—` and `〜` as they are.
 
 User dictionaries were never rewritten and do not change. The change is in
-the dictionary builder; the dictionary format version is unchanged. The
-embedded dictionaries and the dictionaries that the 7.0.0 CLI fetches with
-`lindera download` keep the spellings. A dictionary directory built or
-downloaded with v6.2.0 or earlier still loads in v7.0.0 but keeps the
-rewritten entries until you rebuild it with `lindera build` or download the
-7.0.0 release asset. UniDic, ko-dic, CC-CEDICT, Jieba and SudachiDict never
-turned the rewrite on, and their dictionaries do not change.
+the dictionary builder. The embedded dictionaries and the dictionaries that
+the 7.0.0 CLI fetches with `lindera download` keep the spellings; a
+dictionary directory built or downloaded with v6.2.0 or earlier no longer
+loads (see
+[Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt)).
+UniDic, ko-dic, CC-CEDICT, Jieba and SudachiDict never turned the rewrite
+on.
 
 ### The `normalize_details` setting is removed
 
@@ -849,8 +943,8 @@ lists them (readdir order), so for tied groups whose rows are in different
 files (in IPADIC-NEologd and ko-dic), MeCab's choice depends on the file
 system, while Lindera reads the files in name order.
 
-The dictionary files do not change, so this change needs no rebuild or
-re-download. There is no setting to restore the v6 behavior.
+The change is in the segmenter, not in the dictionary files. There is no
+setting to restore the v6 behavior.
 
 ## Equal-cost segmentations keep the later-starting word, as in MeCab
 
@@ -902,8 +996,8 @@ IPADIC-NEologd and UniDic, with no measurable change in time, and about 2%
 more instructions and 2% to 5% more time with ko-dic. N-best search
 (`-N 3`) takes about 1% more instructions.
 
-The dictionary files do not change, so this change needs no rebuild or
-re-download. There is no setting to restore the v6 behavior.
+The change is in the segmenter, not in the dictionary files. There is no
+setting to restore the v6 behavior.
 
 ## `lindera tokenize` removes only the line terminator and writes every line
 
@@ -951,9 +1045,8 @@ library does:
   end every line with a `\r` token.
 
 The library and the language bindings never trimmed their input, so they do
-not change, except for the N-best result of an empty input. The dictionary
-files do not change either, so this change needs no rebuild or re-download.
-No option restores the v6 behavior; to get the v6 offsets and tokens,
+not change, except for the N-best result of an empty input. The change is
+in the CLI, not in the dictionary files. No option restores the v6 behavior; to get the v6 offsets and tokens,
 remove the whitespace at the ends of each line before passing the text to
 `lindera tokenize`.
 
@@ -984,14 +1077,17 @@ out the settings that v6 ignored.
 
 ## Rust API changes in `lindera_dictionary`
 
-These affect only code that calls the lattice backtraces directly, or that
-creates dictionary metadata with `Metadata::new`:
+These affect only code that calls the lattice backtraces directly, that
+creates dictionary metadata with `Metadata::new`, or that reads the
+character categories of a dictionary:
 `lindera_dictionary::viterbi::Lattice` and
 `lindera_dictionary::nbest::NBestGenerator`, also reachable as
 `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and
 `lindera::dictionary::nbest::…`, and
 `lindera_dictionary::dictionary::metadata::Metadata`, also reachable as
-`lindera::dictionary::Metadata`. The `Segmenter`, `Tokenizer`,
+`lindera::dictionary::Metadata`, and
+`lindera_dictionary::dictionary::character_definition::CharacterDefinition`.
+The `Segmenter`, `Tokenizer`,
 `SegmentWorker` and `AnalysisWorker` APIs and the CLI are unaffected; the
 language bindings change only in their `Metadata` class (see
 [The `normalize_details` setting is removed](#the-normalize_details-setting-is-removed)).
@@ -1010,6 +1106,8 @@ language bindings change only in their `Metadata` class (see
 | `Metadata::normalize_details` | Removed |
 | `PrefixDictionaryBuilderOptions::normalize_details(value)` | Removed |
 | — | New public field `Metadata::skip_whitespace: Option<bool>` (also `lindera_binding::CoreMetadata::skip_whitespace`) |
+| `CharacterDefinition::lookup_categories(c)` returns the categories of every line that covers `c` | Returns the categories of the last line that covers `c`, its default category first and the others in category id order |
+| `DICTIONARY_FORMAT_VERSION` is `2` | `3` |
 
 Each token is now `(start, end, word_id)` instead of `(start, word_id)`,
 with byte offsets within the sentence. With whitespace skipped
@@ -1093,13 +1191,25 @@ and so does `lindera_binding::CoreMetadata`. Neither struct is
 with `..Default::default()`. `Metadata::new` and `CoreMetadata::new` set it
 to `None`, which skips whitespace.
 
+`CharacterDefinition::lookup_categories` keeps its signature. Its first
+category is the one that creates unknown words (see
+[Unknown words come from the default category, as in MeCab](#unknown-words-come-from-the-default-category-as-in-mecab));
+code that only checks whether a character has a category is unaffected.
+`DICTIONARY_FORMAT_VERSION`, the version that the builder writes and the
+loaders accept, is now 3 (see
+[Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt)).
+
 ## Who does not need to act
 
 - **Users of the language bindings and the CLI**: the Python, Node.js, Ruby,
   PHP, and WASM packages and `lindera-cli` keep their package names, and
   their APIs apart from the `normalize_details` setting of `Metadata` (see
   [The `normalize_details` setting is removed](#the-normalize_details-setting-is-removed)).
-  The restructuring is internal to the Rust crates. The output changes are
+  The restructuring is internal to the Rust crates. A dictionary directory
+  built or downloaded with v6.2.0 or earlier has to be rebuilt or downloaded
+  again (see
+  [Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt));
+  the embedded dictionaries need nothing. The output changes are
   the IPADIC conjugation fix, which matters only if you read those two fields
   by name, the whitespace entries, which matter only for text with U+3000
   (IPADIC, IPADIC-NEologd, UniDic) or with spaces (SudachiDict), the
@@ -1109,7 +1219,9 @@ to `None`, which skips whitespace.
   the N-best fix, which matters only for N-best results for input with
   more than one sentence or for an empty input, the unknown words that
   start at every position, which matter for runs of katakana, symbols or
-  Latin letters in normal mode, the dash and tilde spellings, which
+  Latin letters in normal mode, the unknown words made from the default
+  category, which matter for ko-dic hanja numerals followed by hanja and for
+  `〇` with ko-dic, CC-CEDICT and Jieba, the dash and tilde spellings, which
   matter only for text with `―`, `—`, `～` or `〜` with IPADIC or
   IPADIC-NEologd, the choice among
   tied entries, which matters only if you read token details such as the
@@ -1130,6 +1242,7 @@ to `None`, which skips whitespace.
   `lindera::dictionary::Lattice` or creates metadata with
   `lindera::dictionary::Metadata::new` (see
   [Rust API changes in `lindera_dictionary`](#rust-api-changes-in-lindera_dictionary)).
+  Dictionary directories loaded by path still have to be rebuilt.
   The default build now also compiles
   `lindera-analysis` and its dependencies (kanaria, regex, serde_yaml_ng,
   unicode-blocks, unicode-normalization, unicode-segmentation); to keep the
@@ -1164,6 +1277,8 @@ Rust crate users:
   field and `PrefixDictionaryBuilderOptions::normalize_details`.
 - If you build `Metadata` with a struct literal that lists every field, add
   `skip_whitespace: None` or end it with `..Default::default()`.
+- If you read `CharacterDefinition::lookup_categories`, expect the default
+  category first and the others in category id order.
 
 Binding authors:
 
@@ -1180,12 +1295,19 @@ Build environments:
 - Rename `LINDERA_DICTIONARIES_PATH` to `LINDERA_BUILD_DICTIONARY_CACHE_DIR`
   in shell profiles, CI configuration, and container images.
 
+Everyone who loads a dictionary from files:
+
+- Rebuild with `lindera build`, or download again, every dictionary
+  directory made with v6.2.0 or earlier, including those saved in the WASM
+  binding's OPFS storage: v7.0.0 rejects them (format version 3). The
+  embedded dictionaries and user dictionaries need nothing.
+
 Users of IPADIC or IPADIC-NEologd:
 
 - If you read `conjugation_type` or `conjugation_form` by name (including
   the CLI's JSON output), expect the two values to trade places.
-- Rebuild or re-download dictionary directories made with v6.2.0 or earlier,
-  or swap the two names in their `metadata.json`.
+- If you build dictionaries with your own copy of the IPADIC `metadata.json`,
+  swap the two names in it.
 
 Users of IPADIC, IPADIC-NEologd, UniDic or SudachiDict with text that
 contains U+3000 or spaces:
@@ -1193,8 +1315,6 @@ contains U+3000 or spaces:
 - Expect U+3000 to be `記号,空白` (IPADIC) or `空白` (UniDic) tokens, and
   SudachiDict to segment spaced text much closer to Sudachi. Drop U+3000 with
   `japanese_stop_tags` or NFKC normalization if you do not want it.
-- Rebuild or re-download dictionary directories made with v6.2.0 or earlier
-  to get the whitespace entries.
 
 Everyone who segments text that contains whitespace:
 
@@ -1211,8 +1331,6 @@ Users of any bundled dictionary with text that contains `Ð`, `々` or `〇`:
 
 - Expect `Ð` to stay in the output, and `々` after an unknown kanji to be a
   token of its own.
-- Rebuild or re-download dictionary directories made with v6.2.0 or earlier
-  to get the new character categories.
 
 Users of `lindera train`:
 
@@ -1254,6 +1372,15 @@ letters:
   instructions, and very long katakana runs in N-best to take much more
   time and memory.
 
+Users of ko-dic, CC-CEDICT or Jieba with text that has hanja numerals or
+`〇`:
+
+- Expect a ko-dic hanja numeral and the hanja after it to be one unknown
+  word (`三國史記` is one `SH` word), and `〇` to be a symbol (ko-dic `SY`,
+  Jieba `w`) whose group, with CC-CEDICT and Jieba, runs on through the
+  numerals and characters after it, as in MeCab. No setting restores the v6
+  output.
+
 Users of IPADIC or IPADIC-NEologd with text that contains `―`, `—`, `～` or
 `〜`:
 
@@ -1262,14 +1389,12 @@ Users of IPADIC or IPADIC-NEologd with text that contains `―`, `—`, `～` or
   1,085 IPADIC-NEologd entries that it found only through the old rewrite.
   With IPADIC, map `—` to `―` and `～` to `〜` with the `mapping` character
   filter if both spellings should find the entries.
-- Rebuild or re-download dictionary directories made with v6.2.0 or earlier
-  to get the entries as written.
 
 Users who read token details such as the reading or the base form:
 
 - Expect words with tied entries to get the details of the first CSV row,
-  as in MeCab: with IPADIC, `狡い` reads `ズルイ`, not `コスイ`. No rebuild
-  is needed, and no setting restores the v6 output.
+  as in MeCab: with IPADIC, `狡い` reads `ズルイ`, not `コスイ`. No setting
+  restores the v6 output.
 - In a user dictionary, expect the first of tied rows to be chosen. A user
   entry still wins a tie with a system entry, unlike in MeCab.
 
@@ -1277,8 +1402,8 @@ Everyone who compares the segmentation with v6 or with MeCab:
 
 - Expect the few places where two segmentations cost exactly the same to be
   segmented as MeCab segments them, with the last word that starts later
-  (IPADIC `腸窒扶斯` is `腸 / 窒扶 / 斯`). No rebuild is needed, and no
-  setting restores the v6 output.
+  (IPADIC `腸窒扶斯` is `腸 / 窒扶 / 斯`). No setting restores the v6
+  output.
 
 Language bindings and CLI:
 
@@ -1300,6 +1425,6 @@ Language bindings and CLI:
   `setUserDictionaryInstance()` to apply to a dictionary set with
   `setDictionary()`.
 - Nothing else to do beyond taking the 7.0.0 release, apart from the
-  dictionary, whitespace, `、` and `。`, N-best, unknown-word, dash and
-  tilde, tied-entry and equal-cost items above and the `lindera tokenize`
-  and WASM items.
+  dictionary rebuild, the dictionary, whitespace, `、` and `。`, N-best,
+  unknown-word, default-category, dash and tilde, tied-entry and equal-cost
+  items above and the `lindera tokenize` and WASM items.

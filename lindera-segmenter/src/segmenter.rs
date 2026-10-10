@@ -303,9 +303,10 @@ pub struct Segmenter {
 
     /// Cap on unknown-word grouping, counted in characters beyond the
     /// first (MeCab's `max-grouping-size`; MeCab defaults to 24). The cap
-    /// is applied at each lattice position: when the same-category run
-    /// starting there is longer than the cap, the grouped candidate is not
-    /// emitted at that position -- the single-character candidate (plus
+    /// is applied at each lattice position: when the grouping run starting
+    /// there (characters that each share a `char.def` category with the one
+    /// before, as in MeCab) is longer than the cap, the grouped candidate is
+    /// not emitted at that position -- the single-character candidate (plus
     /// the `unknown_word_ladder` candidates and any dictionary words)
     /// remains, and the remaining tail is grouped again once it fits. No
     /// unknown token is therefore longer than cap + 1 characters, but an
@@ -317,13 +318,14 @@ pub struct Segmenter {
     pub max_grouping_len: Option<usize>,
 
     /// Whether to additionally emit MeCab/Vibrato-inspired shorter
-    /// unknown-word candidates up to each category's `char.def` `LENGTH`
-    /// field (#945). Lindera parsed but never read this field before this
-    /// option existed. Defaults to `true` (since v6). With `false`, each
-    /// category gets only its grouped or single-character candidate at a
-    /// position, as before v6; the output still differs from pre-v6 output
-    /// wherever later changes apply, such as unknown words that start
-    /// inside a grouped run (#1105).
+    /// unknown-word candidates up to the `char.def` `LENGTH` field of the
+    /// character's default category, over the characters that share a
+    /// category with the first one, as in MeCab (#945, #1111). Lindera
+    /// parsed but never read this field before this option existed.
+    /// Defaults to `true` (since v6). With `false`, a position gets only the
+    /// grouped or the single-character candidate, as before v6; the output
+    /// still differs from pre-v6 output wherever later changes apply, such
+    /// as unknown words that start inside a grouped run (#1105).
     pub unknown_word_ladder: bool,
 
     /// Left-space penalty rules (mecab-ko's `left-space-penalty-factor`,

@@ -86,7 +86,7 @@ token_filters:
 | `skip_whitespace` | bool | *(辞書の設定: `true`、SudachiDict は `false`)* | `keep_whitespace` が false のとき、MeCab と同様に空白をラティス上で読み飛ばし、前後の語を直接接続する。`false` で空白を独立したノード（空白の見出し語か `SPACE` の未知語）としてラティスに残す（v7 より前の動作）。そのノードの連接コストがすべて 0 の ko-dic では、空白のたびに連接の文脈が途切れる。省略または `null` で辞書の `metadata.json` のデフォルトを使う。[Segmenter](../lindera/segmenter.md#空白文字の扱い) を参照 |
 | `use_mmap` | bool | `mmap` feature が有効なとき on（デフォルト） | 辞書をメモリマップする。ファイルシステム辞書（`embedded://` ではない辞書）にのみ意味がある |
 | `max_grouping_len` | integer | *(無制限)* | 未知語グルーピングの上限（**先頭の 1 文字を超えた**文字数）。MeCab の `max-grouping-size` に相当する（MeCab のデフォルトは 24）。上限は各位置で判定され、上限を超えるランはその位置ではグルーピングされず、1 文字候補（および候補ラダーと辞書語）が残る。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になる。キーを省略するか `0` を指定すると無制限になる |
-| `unknown_word_ladder` | bool | `true` | MeCab や Vibrato と同様に、`char.def` の各カテゴリの `LENGTH` フィールドまでの短い未知語候補も生成する。`false` を指定すると v6 より前と同じくこれらの候補を作らない。ただし、グルーピングした未知語の内側から始まる未知語など、その後の変更による出力の違いは残る。[Segmenter](../lindera/segmenter.md#未知語のグルーピング) を参照 |
+| `unknown_word_ladder` | bool | `true` | MeCab や Vibrato と同様に、文字の既定の文字種の `char.def` の `LENGTH` フィールドまでの短い未知語候補も生成する。`false` を指定すると v6 より前と同じくこれらの候補を作らない。ただし、グルーピングした未知語の内側から始まる未知語など、その後の変更による出力の違いは残る。[Segmenter](../lindera/segmenter.md#未知語のグルーピング) を参照 |
 | `space_penalty` | bool または object | *(辞書同梱のルール、あれば)* | 左側空白ペナルティ（mecab-ko の `left-space-penalty-factor`）。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する。省略または `null` で辞書が `metadata.json` に同梱するルールを使用（ko-dic は mecab-ko-dic のルールを同梱するため ko-dic ではデフォルトでオン。他の同梱辞書はルールを持たない）、`false` でオフ、`true` で辞書のルールを要求（同梱しない辞書ではエラー）、オブジェクト `{"rules": [{"pos": [...], "cost": n}, ...]}` で明示的なルールを指定。[Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照 |
 
 ```shell

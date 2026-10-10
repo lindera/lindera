@@ -19,8 +19,8 @@ pub(crate) const DOWNLOADABLE_DICTIONARIES: [&str; 7] = [
     "jieba",
 ];
 
-/// Files that make up a complete pre-built dictionary directory
-/// (dictionary format version 2: the system automaton is `dict.trie` +
+/// Files that make up a complete pre-built dictionary directory (the same
+/// since dictionary format version 2: the system automaton is `dict.trie` +
 /// `dict.valsidx`).
 pub(crate) const REQUIRED_DICTIONARY_FILES: [&str; 9] = [
     "metadata.json",

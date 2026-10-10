@@ -97,6 +97,9 @@ const FLAT_MAX_OFFSET: usize = (1 << 24) - 1;
 pub struct CharacterDefinition {
     pub category_definitions: Vec<CategoryData>,
     pub category_names: Vec<String>,
+    /// Code point ranges to their categories. Each row lists the default
+    /// category first, then the others in category id order (#1111); see
+    /// [`Self::lookup_categories`].
     pub mapping: LookupTable<CategoryId>,
     /// Concatenation of the `mapping` rows in row order; the backing pool
     /// sliced by `flat_index`. Runtime-only: skipped by serde and rkyv (a
@@ -220,6 +223,21 @@ impl CharacterDefinition {
             .map(CategoryId)
     }
 
+    /// Returns the categories of `c`.
+    ///
+    /// The first category is the default category of `c` (the first
+    /// category of the last `char.def` line that covers it, MeCab's
+    /// `default_type`), the only one that creates unknown-word candidates;
+    /// the others follow in category id order (#1111). The list is empty
+    /// only when no line covers `c` and `char.def` does not use `DEFAULT`.
+    ///
+    /// # Arguments
+    ///
+    /// * `c` - The character to look up.
+    ///
+    /// # Returns
+    ///
+    /// The category ids, the default category first.
     pub fn lookup_categories(&self, c: char) -> &[CategoryId] {
         let cp = c as u32;
         if (cp as usize) < FLAT_TABLE_LEN && !self.flat_index.is_empty() {
@@ -236,13 +254,16 @@ impl CharacterDefinition {
 
     /// Returns the pool coordinates of `c`'s category set when the flat BMP
     /// fast path can serve it, so callers can store the compact
-    /// `(offset, len)` pair instead of copying the categories (#942).
+    /// `(offset, len)` pair instead of copying the categories (#942). The
+    /// categories at those coordinates are those of
+    /// [`Self::lookup_categories`], in the same order: the default category
+    /// is at `offset`.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `c` - The character to look up.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `Some((offset, len))` addressing [`Self::flat_category`] (offset is
     /// at most 24 bits by construction), or `None` when the flat table is
