@@ -375,7 +375,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Som
 </code></pre>
 <p>ペナルティは候補の直前の文字で判定し、これは mecab-ko の判定と同じです。そのため、空白をラティス上で読み飛ばす場合（デフォルト。<a href="#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">空白文字の扱い</a> を参照）でも、ノードとして残す場合でも同じように適用されます。空白を読み飛ばすと、ペナルティの対象となる読みの一部は連接コストだけで排除されます（<code>서울 시 에서</code> の <code>시</code> はペナルティなしでも <code>NNG</code>）が、すべてではありません（<code>검색 이 잘 된다</code> の <code>이</code>）。</p>
 <h2 id="n-best-セグメンテーション"><a class="header" href="#n-best-セグメンテーション">N-Best セグメンテーション</a></h2>
-<p><code>segment_nbest</code> は、コストの合計で並べた上位 <code>n</code> 件の分割結果を、それぞれのコストと共に返します。<code>unique</code> を指定すると、単語境界は同じで品詞タグのみ異なる結果を重複排除できます。<code>cost_threshold</code> を指定すると、<code>best_cost + threshold</code> を超えるコストのパスを除外できます：</p>
+<p><code>segment_nbest</code> は、コストの合計で並べた上位 <code>n</code> 件の分割結果を、それぞれのコストと共に返します。<code>unique</code> を指定すると、単語境界は同じで品詞タグのみ異なる結果を重複排除できます（各結果はその単語境界のパスのうち最もコストの低いものです。探索は他のパスをたどらないので、行の単語が多くのエントリを持つ場合も速く終わります）。<code>cost_threshold</code> を指定すると、<code>best_cost + threshold</code> を超えるコストのパスを除外できます：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let results = segmenter.segment_nbest(Cow::Borrowed("すもももももももものうち"), 3, false, None)?;

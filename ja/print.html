@@ -657,12 +657,13 @@ feature 付きでビルドする必要があります（例:
 <h3 id="アルゴリズム"><a class="header" href="#アルゴリズム">アルゴリズム</a></h3>
 <p>N-Bestトークナイズは**Forward-DP Backward-A***アルゴリズムに基づいており、MeCabのN-Best実装と互換性があります。フォワードパスは動的計画法で最適コストを計算し、バックワードパスはA*探索を使用して総コストの昇順にパスを列挙します。</p>
 <p>1-best のトークナイズと同じく、入力はまず文に分けられ、<code>\n</code> や <code>\t</code> までの文の並びが 1 つの区間になります（<a href="concepts/../lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>を参照）。区間ごとに探索され、区間の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぐため、区間のパスは、区間全体を 1 つのラティスで解いたときのコストの小さい N 本のパスです。どの候補も入力全体の分割で、区間ごとに 1 つのパスを選び、そのコストは選んだパスのコストの合計です。候補は、これらの組み合わせのうちコストの小さい N 件です。</p>
+<p><code>unique</code> を指定すると、後ろ向きの探索はパスではなく単語境界を単位に進みます。1 つの区切りには各単語の辞書エントリの選び方の数だけパスがあり、短い行でも数百万本になることがありますが、探索は各区切りを最もコストの低いパスで 1 回だけ取り出し、他のパスはたどりません。</p>
 <h3 id="パラメータ"><a class="header" href="#パラメータ">パラメータ</a></h3>
 <p><code>tokenize_nbest</code>メソッドは以下のパラメータを受け付けます：</p>
 <div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>型</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>text</code></td><td><code>&amp;str</code></td><td>トークナイズするテキスト。</td></tr>
 <tr><td><code>n</code></td><td><code>usize</code></td><td>返すN-best結果の数。</td></tr>
-<tr><td><code>unique</code></td><td><code>bool</code></td><td><code>true</code>の場合、同じ単語境界位置を生成する結果を重複排除します。</td></tr>
+<tr><td><code>unique</code></td><td><code>bool</code></td><td><code>true</code>の場合、同じ単語境界位置を生成する結果を重複排除します。各結果は、その単語境界のパスのうち最もコストの低いものです。</td></tr>
 <tr><td><code>cost_threshold</code></td><td><code>Option&lt;i64&gt;</code></td><td><code>Some(threshold)</code>の場合、<code>best_cost + threshold</code>以内のコストの候補のみを返します。<code>best_cost</code> は 1 件目の候補のコストです（どちらも入力全体の合計）。</td></tr>
 </tbody></table>
 </div>
@@ -955,7 +956,7 @@ tokenizer
 ├── builder.rs           # DictionaryBuilder
 ├── loader.rs            # DictionaryLoader trait, FSDictionaryLoader
 ├── viterbi.rs           # Lattice, Edge, Viterbiセグメンテーション
-├── nbest.rs             # NBestGenerator (Forward-DP Backward-A*)
+├── nbest.rs             # NBestGenerator, UniqueNBestGenerator (Forward-DP Backward-A*)
 ├── mode.rs              # Mode (Normal/Decompose), Penalty
 ├── error.rs             # LinderaError, LinderaErrorKind
 ├── assets.rs            # ダウンロードとファイル管理
@@ -982,6 +983,8 @@ tokenizer
 <p>入力テキストから候補トークンのラティスを構築し、Viterbiアルゴリズムを使用して最適なセグメンテーションパスを探索します。ラティス内の各<code>Edge</code>は、関連するコスト（単語コスト + 連接コスト）を持つ候補トークンを表します。</p>
 <h3 id="nbestgenerator"><a class="header" href="#nbestgenerator">NBestGenerator</a></h3>
 <p>Forward-DP Backward-A*アルゴリズムを使用してN-bestセグメンテーションパスを生成します。これにより、アプリケーションは単一の最適パスを超えた代替セグメンテーションを検討できます。</p>
+<h3 id="uniquenbestgenerator"><a class="header" href="#uniquenbestgenerator">UniqueNBestGenerator</a></h3>
+<p>区切り（単語境界の並び）の異なる N-best を生成します。区切りごとに最もコストの低いパスを、コストの昇順に返します。unique な N-best（<code>unique</code>、<code>--nbest-unique</code>）はこれを使います。1 つの区切りには、各単語の辞書エントリの選び方の数だけパスがあり、短い行でも数百万本になることがあります。そのため、パスではなく単語境界の並びの末尾部分を単位に、後ろ向きに探索します。1 つの探索ノードが 1 つの範囲の候補をすべてまとめて持ち、そのコストは正確なので、各区切りはちょうど 1 回現れ、処理量はパスの数ではなく、結果の数と行の長さに比例します。1 件目は 1-best のパスで、同じ表層・同じ文脈 ID・同じコストのエントリは、1-best と同じく、どの結果でも CSV の先の行になります。</p>
 <h3 id="mode"><a class="header" href="#mode">Mode</a></h3>
 <p>トークナイゼーションの動作を制御します：</p>
 <ul>
@@ -1297,7 +1300,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Som
 </code></pre>
 <p>ペナルティは候補の直前の文字で判定し、これは mecab-ko の判定と同じです。そのため、空白をラティス上で読み飛ばす場合（デフォルト。<a href="lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">空白文字の扱い</a> を参照）でも、ノードとして残す場合でも同じように適用されます。空白を読み飛ばすと、ペナルティの対象となる読みの一部は連接コストだけで排除されます（<code>서울 시 에서</code> の <code>시</code> はペナルティなしでも <code>NNG</code>）が、すべてではありません（<code>검색 이 잘 된다</code> の <code>이</code>）。</p>
 <h2 id="n-best-セグメンテーション"><a class="header" href="#n-best-セグメンテーション">N-Best セグメンテーション</a></h2>
-<p><code>segment_nbest</code> は、コストの合計で並べた上位 <code>n</code> 件の分割結果を、それぞれのコストと共に返します。<code>unique</code> を指定すると、単語境界は同じで品詞タグのみ異なる結果を重複排除できます。<code>cost_threshold</code> を指定すると、<code>best_cost + threshold</code> を超えるコストのパスを除外できます：</p>
+<p><code>segment_nbest</code> は、コストの合計で並べた上位 <code>n</code> 件の分割結果を、それぞれのコストと共に返します。<code>unique</code> を指定すると、単語境界は同じで品詞タグのみ異なる結果を重複排除できます（各結果はその単語境界のパスのうち最もコストの低いものです。探索は他のパスをたどらないので、行の単語が多くのエントリを持つ場合も速く終わります）。<code>cost_threshold</code> を指定すると、<code>best_cost + threshold</code> を超えるコストのパスを除外できます：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let results = segmenter.segment_nbest(Cow::Borrowed("すもももももももものうち"), 3, false, None)?;
@@ -2326,7 +2329,7 @@ jieba           no        no          -
 <li><code>--space-penalty-rules</code>: 辞書のルールの代わりに、明示的な左側空白ペナルティのルールを JSON で指定する。例: <code>'{"rules":[{"pos":["JKS","JX"],"cost":6000}]}'</code>。<code>--disable-space-penalty</code> とは同時に指定できない</li>
 <li><code>--mmap</code>: 辞書ディレクトリの単語リストにメモリマップドファイル読み込みを使用する。<code>embedded://</code> 辞書、および <code>mmap</code> feature が無効な場合は無視される。プロセスがマップを保持している間に辞書ディレクトリを再ビルド・切り詰めると、次回のルックアップで SIGBUS を引き起こす可能性がある。</li>
 <li><code>--nbest</code> / <code>-N</code>: 返す N-best 結果の数（デフォルト: 1）。2以上に設定すると N-best 出力が有効になります。</li>
-<li><code>--nbest-unique</code>: 同じ分割を生成するパスの重複を排除します。</li>
+<li><code>--nbest-unique</code>: 同じ分割を生成するパスの重複を排除します。各結果は、その単語境界のパスのうち最もコストの低いものです。</li>
 <li><code>--nbest-cost-threshold</code>: 最良の結果からの最大コスト差。<code>best_cost + threshold</code> 以内のコストを持つ結果のみが返されます。どちらのコストも入力行全体の合計です。</li>
 <li>入力ファイル: オプションのファイルパス (デフォルト: 標準入力)。入力は 1 行ずつ読み込まれ、行ごとに解析されます。取り除くのは行末の改行コード（<code>\n</code> または <code>\r\n</code>）だけで、行頭・行末の空白も行の途中と同じに扱います（<code>SPACE</code> の文字である半角空白とタブは読み飛ばして出力から除き、U+3000 は IPADIC・IPADIC-NEologd・UniDic ではトークンになります）。JSON 出力のバイトオフセットは入力行の中の位置を指します。MeCab は CRLF の行の <code>\r</code> も未知語として出力しますが、Lindera は取り除きます</li>
 </ul>
@@ -2668,7 +2671,7 @@ NBEST 3 (cost=10060)
 EOS
 </code></pre>
 <h4 id="ユニーク結果を使用した-n-best"><a class="header" href="#ユニーク結果を使用した-n-best">ユニーク結果を使用した N-Best</a></h4>
-<p>同じ分割が複数のパスに現れる場合（内部的な Viterbi 状態のみが異なる場合）、<code>--nbest-unique</code> を使用して重複を排除します:</p>
+<p>同じ分割が複数のパスに現れる場合（各単語の品詞など、辞書エントリだけが異なる場合）、<code>--nbest-unique</code> を使用して重複を排除します。各結果は、その単語境界のパスのうち最もコストの低いものになります。探索は他のパスをたどりません（短い行でも数百万本になることがあります）:</p>
 <pre><code class="language-shell">% echo "営業部長谷川です" | lindera tokenize \
   --dict embedded://ipadic \
   -N 5 --nbest-unique -o wakati
@@ -10150,6 +10153,14 @@ IPADIC-NEologd の残りの 145 は、<code>、</code> を含む表層形（区�
 入れ替わるのはコストが同じ結果どうしの順だけで、そのため <code>n</code> 件目で切られる結果が
 変わることもあります。N-best の命令数は 3〜4% 程度増えます（<code>-N 3</code>）。1-best の
 分割の速度は変わりません（差は 0.2% 以内）。</p>
+<p><code>unique</code>（<code>--nbest-unique</code>）を指定した場合、各結果はその単語境界のパスのうち最も
+コストの低いもので、同点の見出しは、1-best の分割と同じく、どの結果でも CSV の先の行に
+なりました。v6 までの unique な N-best は、パスをコストの順にたどって各区切りの最初の
+パスを残していたため、同点の組のどちらの行にもなりえました。また、次の区切りに
+届くまでに 1 つの区切りのパスを
+すべてたどっていたため、単語が多くの見出しを持つ短い行で、数十秒・数 GB かかることが
+ありました。探索は単語境界を単位に進むようになり、パスの数に左右されません。
+ここでも、入れ替わるのはコストが同じ結果だけです。</p>
 <p>MeCab の <code>mecab-dict-index</code> は CSV ファイルをファイルシステムが返す順（readdir の順）に
 読むため、行が複数のファイルにまたがる同点の組（IPADIC-NEologd と ko-dic にあります）
 では、MeCab がどの行を選ぶかはファイルシステムによって変わります（Lindera は
@@ -10277,6 +10288,7 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 <tr><td>—</td><td><code>viterbi</code> に新しい型エイリアス <code>TokenOffset = (usize, usize, WordId)</code> と <code>NBestPath = (Vec&lt;TokenOffset&gt;, i64)</code> を追加</td></tr>
 <tr><td>—</td><td><code>viterbi</code> に <code>BosContext</code>・<code>LatticeOptions::bos</code>・<code>LatticeExit</code>・<code>Lattice::exits_into</code>・<code>Lattice::exit_tokens_offset_into</code> を追加</td></tr>
 <tr><td>—</td><td><code>nbest</code> に <code>NBestGenerator::from_exit</code>・<code>NBestGenerator::next_with_bos</code> を追加</td></tr>
+<tr><td>—</td><td><code>nbest</code> に <code>UniqueNBestGenerator</code> を追加</td></tr>
 <tr><td><code>Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, normalize_details, schema, userdic_schema)</code></td><td><code>Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, schema, userdic_schema)</code></td></tr>
 <tr><td><code>Metadata::normalize_details</code></td><td>削除</td></tr>
 <tr><td><code>PrefixDictionaryBuilderOptions::normalize_details(value)</code></td><td>削除</td></tr>
@@ -10330,6 +10342,10 @@ BOS です。</li>
 で終わるパスを、EOS なしでコストの昇順に返し、各パスとともにそのパスが始まる BOS の
 添字を返します。<code>next</code> は、<code>next_with_bos</code> のパスを BOS の添字なしで返します。</li>
 </ul>
+<p><code>UniqueNBestGenerator</code> は <code>NBestGenerator</code> と同じメソッド（<code>new</code>・<code>from_exit</code>・
+<code>next</code>・<code>next_with_bos</code>）を持ち、単語境界と BOS の辺の組ごとに最もコストの低いパスを
+コストの昇順に返します。<code>unique</code> を指定した <code>nbest_tokens_offset</code> とセグメンターは
+これを使います。</p>
 <p><code>nbest_tokens_offset</code> はデフォルトの単一の BOS を前提にしています。BOS が複数ある
 場合は、パスがどの BOS から始まるかがわからないため、<code>NBestGenerator::next_with_bos</code>
 を使ってください。</p>
@@ -10590,6 +10606,12 @@ IPADIC-NEologd 1,085 語）が引けなくなることを前提にする。IPADI
 <p>Rust の API ドキュメントを生成して開きます：</p>
 <pre><code class="language-bash">cargo doc --no-deps --open
 </code></pre>
+<p>各クレートの API ドキュメントに rustdoc の警告（壊れた intra-doc link や、公開項目から private 項目へのリンクなど）がないかを確認します：</p>
+<pre><code class="language-bash">make check-docs
+</code></pre>
+<blockquote>
+<p>注意: CI は <code>make check-docs</code> を実行し、rustdoc の警告が 1 つでもあれば失敗します。言語バインディング以外のクレートを、すべての feature を有効にして文書化します。ライブラリは 2 回文書化し、1 回目は docs.rs が公開するのと同じく公開項目だけ、2 回目は private 項目も含めます。private 項目の doc コメントを検査するのは 2 回目だけです。続けて、CLI のコードがある <code>lindera-cli</code> のバイナリを private 項目も含めて文書化します。ダミーの辞書（<code>DOCS_RS=1</code>）を使い、専用の target ディレクトリ <code>target/check-docs</code> でビルドするので、辞書をダウンロードせず、<code>target/</code> にも影響しません。言語バインディングは検査の対象外です。</p>
+</blockquote>
 <h3 id="mdbook-ドキュメント"><a class="header" href="#mdbook-ドキュメント">mdBook ドキュメント</a></h3>
 <p>ユーザー向けドキュメントをビルドします：</p>
 <pre><code class="language-bash">mdbook build docs
@@ -11020,9 +11042,10 @@ cd lindera
 <pre><code class="language-bash">cargo fmt --all -- --check
 cargo clippy -- -D warnings
 cargo test
+make check-docs
 </code></pre>
 <blockquote>
-<p>注意: CI で強制されているのは <code>cargo fmt --all -- --check</code> のみです。<code>cargo clippy</code> は現時点で CI では実行されませんが、PR を開く前にローカルで（例えば <code>make lint</code> 経由で）実行することを推奨します。</p>
+<p>注意: CI はこの 4 つをすべて検査します。フォーマットを確認し、各クレートに対してそのクレートのテストと同じ feature で clippy（警告はエラー扱い）とテストを実行し、言語バインディング以外のクレートの rustdoc に警告があれば失敗します。<code>make lint</code> と <code>make test</code> はクレートごとに同じ feature を使います。詳しくは<a href="development/build_and_test.html">ビルドとテスト</a>を参照してください。</p>
 </blockquote>
 </li>
 <li>

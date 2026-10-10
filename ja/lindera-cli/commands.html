@@ -243,7 +243,7 @@ jieba           no        no          -
 <li><code>--space-penalty-rules</code>: 辞書のルールの代わりに、明示的な左側空白ペナルティのルールを JSON で指定する。例: <code>'{"rules":[{"pos":["JKS","JX"],"cost":6000}]}'</code>。<code>--disable-space-penalty</code> とは同時に指定できない</li>
 <li><code>--mmap</code>: 辞書ディレクトリの単語リストにメモリマップドファイル読み込みを使用する。<code>embedded://</code> 辞書、および <code>mmap</code> feature が無効な場合は無視される。プロセスがマップを保持している間に辞書ディレクトリを再ビルド・切り詰めると、次回のルックアップで SIGBUS を引き起こす可能性がある。</li>
 <li><code>--nbest</code> / <code>-N</code>: 返す N-best 結果の数（デフォルト: 1）。2以上に設定すると N-best 出力が有効になります。</li>
-<li><code>--nbest-unique</code>: 同じ分割を生成するパスの重複を排除します。</li>
+<li><code>--nbest-unique</code>: 同じ分割を生成するパスの重複を排除します。各結果は、その単語境界のパスのうち最もコストの低いものです。</li>
 <li><code>--nbest-cost-threshold</code>: 最良の結果からの最大コスト差。<code>best_cost + threshold</code> 以内のコストを持つ結果のみが返されます。どちらのコストも入力行全体の合計です。</li>
 <li>入力ファイル: オプションのファイルパス (デフォルト: 標準入力)。入力は 1 行ずつ読み込まれ、行ごとに解析されます。取り除くのは行末の改行コード（<code>\n</code> または <code>\r\n</code>）だけで、行頭・行末の空白も行の途中と同じに扱います（<code>SPACE</code> の文字である半角空白とタブは読み飛ばして出力から除き、U+3000 は IPADIC・IPADIC-NEologd・UniDic ではトークンになります）。JSON 出力のバイトオフセットは入力行の中の位置を指します。MeCab は CRLF の行の <code>\r</code> も未知語として出力しますが、Lindera は取り除きます</li>
 </ul>
@@ -585,7 +585,7 @@ NBEST 3 (cost=10060)
 EOS
 </code></pre>
 <h4 id="ユニーク結果を使用した-n-best"><a class="header" href="#ユニーク結果を使用した-n-best">ユニーク結果を使用した N-Best</a></h4>
-<p>同じ分割が複数のパスに現れる場合（内部的な Viterbi 状態のみが異なる場合）、<code>--nbest-unique</code> を使用して重複を排除します:</p>
+<p>同じ分割が複数のパスに現れる場合（各単語の品詞など、辞書エントリだけが異なる場合）、<code>--nbest-unique</code> を使用して重複を排除します。各結果は、その単語境界のパスのうち最もコストの低いものになります。探索は他のパスをたどりません（短い行でも数百万本になることがあります）:</p>
 <pre><code class="language-shell">% echo "営業部長谷川です" | lindera tokenize \
   --dict embedded://ipadic \
   -N 5 --nbest-unique -o wakati

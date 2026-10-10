@@ -199,9 +199,10 @@ cd lindera
 <pre><code class="language-bash">cargo fmt --all -- --check
 cargo clippy -- -D warnings
 cargo test
+make check-docs
 </code></pre>
 <blockquote>
-<p>Note: only <code>cargo fmt --all -- --check</code> is enforced in CI; <code>cargo clippy</code> is not currently run in CI, but should still be run locally (e.g. via <code>make lint</code>) before opening a PR.</p>
+<p>Note: CI enforces all four: it checks formatting, runs clippy (warnings as errors) and the tests for each crate with the features it tests that crate with, and fails on rustdoc warnings in every crate but the language bindings. <code>make lint</code> and <code>make test</code> apply the same per-crate features; see <a href="build_and_test.html">Build &amp; Test</a>.</p>
 </blockquote>
 </li>
 <li>

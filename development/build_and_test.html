@@ -228,6 +228,12 @@
 <p>Generate and open Rust API documentation:</p>
 <pre><code class="language-bash">cargo doc --no-deps --open
 </code></pre>
+<p>Check the crates' API documentation for rustdoc warnings, such as a broken intra-doc link or a public item linking to a private one:</p>
+<pre><code class="language-bash">make check-docs
+</code></pre>
+<blockquote>
+<p>Note: CI runs <code>make check-docs</code> and fails on any rustdoc warning. It documents every crate but the language bindings with all features: the libraries twice, once with public items only, as docs.rs publishes them, and once with private items too, whose doc comments only that second pass checks; then <code>lindera-cli</code>'s binary, where the CLI's code lives, with its private items. It builds with dummy dictionaries (<code>DOCS_RS=1</code>) in its own target directory, <code>target/check-docs</code>, so it downloads no dictionary and leaves <code>target/</code> alone. The language bindings are not checked.</p>
+</blockquote>
 <h3 id="mdbook-documentation"><a class="header" href="#mdbook-documentation">mdBook Documentation</a></h3>
 <p>Build the user-facing documentation:</p>
 <pre><code class="language-bash">mdbook build docs

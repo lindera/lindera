@@ -660,12 +660,13 @@ corresponding <code>embed-*</code> feature (e.g.
 <h3 id="algorithm"><a class="header" href="#algorithm">Algorithm</a></h3>
 <p>N-Best tokenization is based on the <strong>Forward-DP Backward-A*</strong> algorithm, which is compatible with MeCab's N-Best implementation. The forward pass computes optimal costs using dynamic programming, and the backward pass uses A* search to enumerate paths in order of increasing total cost.</p>
 <p>As in 1-best tokenization, the input is first split into sentences, and the sentences up to each <code>\n</code> or <code>\t</code> form a segment (see <a href="concepts/../lindera/segmenter.html#sentence-splitting">Sentence Splitting</a>). Each segment is searched on its own: within it, the context is carried across <code>、</code> and <code>。</code>, so its paths are the N best paths of one lattice over the segment. Every candidate segments the whole input: it takes one path in each segment, and its cost is the sum of those paths' costs. The candidates are the N cheapest of these combinations.</p>
+<p>With <code>unique</code>, the backward search runs over word boundaries instead of paths: a segmentation has one path per choice of dictionary entry for each of its words, which can be millions for a short line, and the search takes each segmentation once, with its cheapest path, without going through the others.</p>
 <h3 id="parameters"><a class="header" href="#parameters">Parameters</a></h3>
 <p>The <code>tokenize_nbest</code> method accepts the following parameters:</p>
 <div class="table-wrapper"><table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>text</code></td><td><code>&amp;str</code></td><td>The text to tokenize.</td></tr>
 <tr><td><code>n</code></td><td><code>usize</code></td><td>Number of N-best results to return.</td></tr>
-<tr><td><code>unique</code></td><td><code>bool</code></td><td>When <code>true</code>, deduplicates results that produce the same word boundary positions.</td></tr>
+<tr><td><code>unique</code></td><td><code>bool</code></td><td>When <code>true</code>, deduplicates results that produce the same word boundary positions: each result is the cheapest path of its word boundaries.</td></tr>
 <tr><td><code>cost_threshold</code></td><td><code>Option&lt;i64&gt;</code></td><td>When <code>Some(threshold)</code>, only returns candidates with cost within <code>best_cost + threshold</code>, where <code>best_cost</code> is the cost of the first candidate (both are totals over the whole input).</td></tr>
 </tbody></table>
 </div>
@@ -959,7 +960,7 @@ tokenizer
 ├── builder.rs           # DictionaryBuilder
 ├── loader.rs            # DictionaryLoader trait, FSDictionaryLoader
 ├── viterbi.rs           # Lattice, Edge, Viterbi segmentation
-├── nbest.rs             # NBestGenerator (Forward-DP Backward-A*)
+├── nbest.rs             # NBestGenerator, UniqueNBestGenerator (Forward-DP Backward-A*)
 ├── mode.rs              # Mode (Normal/Decompose), Penalty
 ├── error.rs             # LinderaError, LinderaErrorKind
 ├── assets.rs            # Download and file management
@@ -986,6 +987,8 @@ tokenizer
 <p>Builds a lattice of candidate tokens from the input text and finds the optimal segmentation path using the Viterbi algorithm. Each <code>Edge</code> in the lattice represents a candidate token with associated costs (word cost + connection cost).</p>
 <h3 id="nbestgenerator"><a class="header" href="#nbestgenerator">NBestGenerator</a></h3>
 <p>Generates N-best segmentation paths using the Forward-DP Backward-A* algorithm. This enables applications to consider alternative segmentations beyond the single best path.</p>
+<h3 id="uniquenbestgenerator"><a class="header" href="#uniquenbestgenerator">UniqueNBestGenerator</a></h3>
+<p>Generates the N-best distinct segmentations: for each sequence of word boundaries, its cheapest path, in ascending order of cost. Unique N-best (<code>unique</code>, <code>--nbest-unique</code>) uses it. A segmentation has one path per choice of dictionary entry for each of its words, which can be millions of paths for a short line, so the search runs backward over suffixes of word boundaries instead of paths: one search node holds every candidate of a span, and its cost is exact, so each segmentation comes out once and the work grows with the number of results and the length of the line, not with the number of paths. The first result is the 1-best path, and of identical entries (same surface, context ids and cost) every result holds the first CSV row, as the 1-best path does.</p>
 <h3 id="mode"><a class="header" href="#mode">Mode</a></h3>
 <p>Controls tokenization behavior:</p>
 <ul>
@@ -1292,7 +1295,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Som
 </code></pre>
 <p>The penalty keys on the character before a candidate, which is mecab-ko's test as well, so it applies the same way whether whitespace is skipped in the lattice (the default, see <a href="lindera/segmenter.html#whitespace-handling">Whitespace Handling</a>) or kept as nodes. With whitespace skipped, the connection costs on their own already rule out some readings the penalty targets (<code>시</code> in <code>서울 시 에서</code> reads as <code>NNG</code> without it), but not all of them (<code>이</code> in <code>검색 이 잘 된다</code>).</p>
 <h2 id="n-best-segmentation"><a class="header" href="#n-best-segmentation">N-Best Segmentation</a></h2>
-<p><code>segment_nbest</code> returns the top-<code>n</code> segmentations ordered by total path cost, each paired with its cost. Set <code>unique</code> to deduplicate results that share the same word boundaries but differ only in POS tags, and <code>cost_threshold</code> to discard paths whose cost exceeds <code>best_cost + threshold</code>:</p>
+<p><code>segment_nbest</code> returns the top-<code>n</code> segmentations ordered by total path cost, each paired with its cost. Set <code>unique</code> to deduplicate results that share the same word boundaries but differ only in POS tags (each result is the cheapest path of its word boundaries, and the search does not go through the others, so it stays fast when the words of a line have many entries), and <code>cost_threshold</code> to discard paths whose cost exceeds <code>best_cost + threshold</code>:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let results = segmenter.segment_nbest(Cow::Borrowed("すもももももももものうち"), 3, false, None)?;
@@ -2324,7 +2327,7 @@ jieba           no        no          -
 <li><code>--space-penalty-rules</code>: Use explicit left-space penalty rules as JSON instead of the dictionary's, e.g. <code>'{"rules":[{"pos":["JKS","JX"],"cost":6000}]}'</code>. Mutually exclusive with <code>--disable-space-penalty</code></li>
 <li><code>--mmap</code>: Use memory-mapped file loading for the dictionary directory's word list. Ignored for <code>embedded://</code> dictionaries and when the <code>mmap</code> feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup.</li>
 <li><code>--nbest</code> / <code>-N</code>: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.</li>
-<li><code>--nbest-unique</code>: Deduplicate N-best results by removing paths that produce the same segmentation.</li>
+<li><code>--nbest-unique</code>: Deduplicate N-best results by removing paths that produce the same segmentation: each result is the cheapest path of its word boundaries.</li>
 <li><code>--nbest-cost-threshold</code>: Maximum cost difference from the best result. Only results with cost within <code>best_cost + threshold</code> are returned; both costs are totals over the whole input line.</li>
 <li>Input file: Optional file path (default: stdin). The input is read line by line, and each line is tokenized on its own. Only the line terminator (<code>\n</code>, or <code>\r\n</code>) is removed: whitespace at the start or end of a line is handled as elsewhere in the line (spaces and tabs, which are <code>SPACE</code> characters, are skipped and dropped from the output; U+3000 is a token with IPADIC, IPADIC-NEologd and UniDic), and the byte offsets in the JSON output index the line. Unlike MeCab, which outputs the <code>\r</code> of a CRLF line as an unknown word, Lindera removes it</li>
 </ul>
@@ -2666,7 +2669,7 @@ NBEST 3 (cost=10060)
 EOS
 </code></pre>
 <h4 id="n-best-with-unique-results"><a class="header" href="#n-best-with-unique-results">N-Best with unique results</a></h4>
-<p>When the same segmentation appears in multiple paths (differing only in internal Viterbi states), use <code>--nbest-unique</code> to deduplicate:</p>
+<p>When the same segmentation appears in multiple paths (differing only in the dictionary entries of their words, such as their parts of speech), use <code>--nbest-unique</code> to deduplicate. Each result is then the cheapest path of its word boundaries, and the search does not go through the other paths, which can be millions for a short line:</p>
 <pre><code class="language-shell">% echo "営業部長谷川です" | lindera tokenize \
   --dict embedded://ipadic \
   -N 5 --nbest-unique -o wakati
@@ -10337,6 +10340,16 @@ can change places, which can also change which of them is cut off at the
 <code>n</code>-th result. N-best search takes about 3% to 4% more instructions
 (<code>-N 3</code>); the speed of the 1-best segmentation does not change (within
 0.2%).</p>
+<p>With <code>unique</code> (<code>--nbest-unique</code>), every result is the cheapest path of its
+word boundaries, and of tied entries it now holds the first CSV row in
+every result, as the 1-best segmentation does. Up to v6, unique N-best went
+through the paths in order of cost and kept the first path of each
+segmentation, which could hold either row of a tied pair, and it went
+through every path of a segmentation
+before it reached the next one: a short line whose words have many entries
+could take tens of seconds and gigabytes. The search now goes over word
+boundaries, so it does not depend on the number of paths. Again, only
+results with the same cost can change.</p>
 <p>MeCab's <code>mecab-dict-index</code> reads the CSV files in the order the file system
 lists them (readdir order), so for tied groups whose rows are in different
 files (in IPADIC-NEologd and ko-dic), MeCab's choice depends on the file
@@ -10479,6 +10492,7 @@ language bindings change only in their <code>Metadata</code> class (see
 <tr><td>—</td><td>New type aliases in <code>viterbi</code>: <code>TokenOffset = (usize, usize, WordId)</code> and <code>NBestPath = (Vec&lt;TokenOffset&gt;, i64)</code></td></tr>
 <tr><td>—</td><td>New in <code>viterbi</code>: <code>BosContext</code>, <code>LatticeOptions::bos</code>, <code>LatticeExit</code>, <code>Lattice::exits_into</code> and <code>Lattice::exit_tokens_offset_into</code></td></tr>
 <tr><td>—</td><td>New in <code>nbest</code>: <code>NBestGenerator::from_exit</code> and <code>NBestGenerator::next_with_bos</code></td></tr>
+<tr><td>—</td><td>New in <code>nbest</code>: <code>UniqueNBestGenerator</code></td></tr>
 <tr><td><code>Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, normalize_details, schema, userdic_schema)</code></td><td><code>Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, schema, userdic_schema)</code></td></tr>
 <tr><td><code>Metadata::normalize_details</code></td><td>Removed</td></tr>
 <tr><td><code>PrefixDictionaryBuilderOptions::normalize_details(value)</code></td><td>Removed</td></tr>
@@ -10536,6 +10550,10 @@ that end with the right context ID of an exit, without EOS, in ascending
 order of cost, and each path together with the BOS index it starts from.
 <code>next</code> returns the paths of <code>next_with_bos</code> without the BOS index.</li>
 </ul>
+<p><code>UniqueNBestGenerator</code> has the methods of <code>NBestGenerator</code> (<code>new</code>,
+<code>from_exit</code>, <code>next</code> and <code>next_with_bos</code>) and yields the cheapest path of
+each pair of word boundaries and BOS edge, in ascending order of cost; it is
+what <code>nbest_tokens_offset</code> with <code>unique</code> and the segmenter use.</p>
 <p><code>nbest_tokens_offset</code> is meant for the default single BOS edge: with
 several, it does not say which one a path starts from. Use
 <code>NBestGenerator::next_with_bos</code> there.</p>
@@ -10827,6 +10845,12 @@ and WASM items.</li>
 <p>Generate and open Rust API documentation:</p>
 <pre><code class="language-bash">cargo doc --no-deps --open
 </code></pre>
+<p>Check the crates' API documentation for rustdoc warnings, such as a broken intra-doc link or a public item linking to a private one:</p>
+<pre><code class="language-bash">make check-docs
+</code></pre>
+<blockquote>
+<p>Note: CI runs <code>make check-docs</code> and fails on any rustdoc warning. It documents every crate but the language bindings with all features: the libraries twice, once with public items only, as docs.rs publishes them, and once with private items too, whose doc comments only that second pass checks; then <code>lindera-cli</code>'s binary, where the CLI's code lives, with its private items. It builds with dummy dictionaries (<code>DOCS_RS=1</code>) in its own target directory, <code>target/check-docs</code>, so it downloads no dictionary and leaves <code>target/</code> alone. The language bindings are not checked.</p>
+</blockquote>
 <h3 id="mdbook-documentation"><a class="header" href="#mdbook-documentation">mdBook Documentation</a></h3>
 <p>Build the user-facing documentation:</p>
 <pre><code class="language-bash">mdbook build docs
@@ -11258,9 +11282,10 @@ cd lindera
 <pre><code class="language-bash">cargo fmt --all -- --check
 cargo clippy -- -D warnings
 cargo test
+make check-docs
 </code></pre>
 <blockquote>
-<p>Note: only <code>cargo fmt --all -- --check</code> is enforced in CI; <code>cargo clippy</code> is not currently run in CI, but should still be run locally (e.g. via <code>make lint</code>) before opening a PR.</p>
+<p>Note: CI enforces all four: it checks formatting, runs clippy (warnings as errors) and the tests for each crate with the features it tests that crate with, and fails on rustdoc warnings in every crate but the language bindings. <code>make lint</code> and <code>make test</code> apply the same per-crate features; see <a href="development/build_and_test.html">Build &amp; Test</a>.</p>
 </blockquote>
 </li>
 <li>

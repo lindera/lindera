@@ -225,12 +225,13 @@ corresponding <code>embed-*</code> feature (e.g.
 <h3 id="algorithm"><a class="header" href="#algorithm">Algorithm</a></h3>
 <p>N-Best tokenization is based on the <strong>Forward-DP Backward-A*</strong> algorithm, which is compatible with MeCab's N-Best implementation. The forward pass computes optimal costs using dynamic programming, and the backward pass uses A* search to enumerate paths in order of increasing total cost.</p>
 <p>As in 1-best tokenization, the input is first split into sentences, and the sentences up to each <code>\n</code> or <code>\t</code> form a segment (see <a href="../lindera/segmenter.html#sentence-splitting">Sentence Splitting</a>). Each segment is searched on its own: within it, the context is carried across <code>、</code> and <code>。</code>, so its paths are the N best paths of one lattice over the segment. Every candidate segments the whole input: it takes one path in each segment, and its cost is the sum of those paths' costs. The candidates are the N cheapest of these combinations.</p>
+<p>With <code>unique</code>, the backward search runs over word boundaries instead of paths: a segmentation has one path per choice of dictionary entry for each of its words, which can be millions for a short line, and the search takes each segmentation once, with its cheapest path, without going through the others.</p>
 <h3 id="parameters"><a class="header" href="#parameters">Parameters</a></h3>
 <p>The <code>tokenize_nbest</code> method accepts the following parameters:</p>
 <div class="table-wrapper"><table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>text</code></td><td><code>&amp;str</code></td><td>The text to tokenize.</td></tr>
 <tr><td><code>n</code></td><td><code>usize</code></td><td>Number of N-best results to return.</td></tr>
-<tr><td><code>unique</code></td><td><code>bool</code></td><td>When <code>true</code>, deduplicates results that produce the same word boundary positions.</td></tr>
+<tr><td><code>unique</code></td><td><code>bool</code></td><td>When <code>true</code>, deduplicates results that produce the same word boundary positions: each result is the cheapest path of its word boundaries.</td></tr>
 <tr><td><code>cost_threshold</code></td><td><code>Option&lt;i64&gt;</code></td><td>When <code>Some(threshold)</code>, only returns candidates with cost within <code>best_cost + threshold</code>, where <code>best_cost</code> is the cost of the first candidate (both are totals over the whole input).</td></tr>
 </tbody></table>
 </div>

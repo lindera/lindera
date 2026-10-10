@@ -225,12 +225,13 @@ feature 付きでビルドする必要があります（例:
 <h3 id="アルゴリズム"><a class="header" href="#アルゴリズム">アルゴリズム</a></h3>
 <p>N-Bestトークナイズは**Forward-DP Backward-A***アルゴリズムに基づいており、MeCabのN-Best実装と互換性があります。フォワードパスは動的計画法で最適コストを計算し、バックワードパスはA*探索を使用して総コストの昇順にパスを列挙します。</p>
 <p>1-best のトークナイズと同じく、入力はまず文に分けられ、<code>\n</code> や <code>\t</code> までの文の並びが 1 つの区間になります（<a href="../lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>を参照）。区間ごとに探索され、区間の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぐため、区間のパスは、区間全体を 1 つのラティスで解いたときのコストの小さい N 本のパスです。どの候補も入力全体の分割で、区間ごとに 1 つのパスを選び、そのコストは選んだパスのコストの合計です。候補は、これらの組み合わせのうちコストの小さい N 件です。</p>
+<p><code>unique</code> を指定すると、後ろ向きの探索はパスではなく単語境界を単位に進みます。1 つの区切りには各単語の辞書エントリの選び方の数だけパスがあり、短い行でも数百万本になることがありますが、探索は各区切りを最もコストの低いパスで 1 回だけ取り出し、他のパスはたどりません。</p>
 <h3 id="パラメータ"><a class="header" href="#パラメータ">パラメータ</a></h3>
 <p><code>tokenize_nbest</code>メソッドは以下のパラメータを受け付けます：</p>
 <div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>型</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>text</code></td><td><code>&amp;str</code></td><td>トークナイズするテキスト。</td></tr>
 <tr><td><code>n</code></td><td><code>usize</code></td><td>返すN-best結果の数。</td></tr>
-<tr><td><code>unique</code></td><td><code>bool</code></td><td><code>true</code>の場合、同じ単語境界位置を生成する結果を重複排除します。</td></tr>
+<tr><td><code>unique</code></td><td><code>bool</code></td><td><code>true</code>の場合、同じ単語境界位置を生成する結果を重複排除します。各結果は、その単語境界のパスのうち最もコストの低いものです。</td></tr>
 <tr><td><code>cost_threshold</code></td><td><code>Option&lt;i64&gt;</code></td><td><code>Some(threshold)</code>の場合、<code>best_cost + threshold</code>以内のコストの候補のみを返します。<code>best_cost</code> は 1 件目の候補のコストです（どちらも入力全体の合計）。</td></tr>
 </tbody></table>
 </div>

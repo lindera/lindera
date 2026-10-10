@@ -243,7 +243,7 @@ jieba           no        no          -
 <li><code>--space-penalty-rules</code>: Use explicit left-space penalty rules as JSON instead of the dictionary's, e.g. <code>'{"rules":[{"pos":["JKS","JX"],"cost":6000}]}'</code>. Mutually exclusive with <code>--disable-space-penalty</code></li>
 <li><code>--mmap</code>: Use memory-mapped file loading for the dictionary directory's word list. Ignored for <code>embedded://</code> dictionaries and when the <code>mmap</code> feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup.</li>
 <li><code>--nbest</code> / <code>-N</code>: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.</li>
-<li><code>--nbest-unique</code>: Deduplicate N-best results by removing paths that produce the same segmentation.</li>
+<li><code>--nbest-unique</code>: Deduplicate N-best results by removing paths that produce the same segmentation: each result is the cheapest path of its word boundaries.</li>
 <li><code>--nbest-cost-threshold</code>: Maximum cost difference from the best result. Only results with cost within <code>best_cost + threshold</code> are returned; both costs are totals over the whole input line.</li>
 <li>Input file: Optional file path (default: stdin). The input is read line by line, and each line is tokenized on its own. Only the line terminator (<code>\n</code>, or <code>\r\n</code>) is removed: whitespace at the start or end of a line is handled as elsewhere in the line (spaces and tabs, which are <code>SPACE</code> characters, are skipped and dropped from the output; U+3000 is a token with IPADIC, IPADIC-NEologd and UniDic), and the byte offsets in the JSON output index the line. Unlike MeCab, which outputs the <code>\r</code> of a CRLF line as an unknown word, Lindera removes it</li>
 </ul>
@@ -585,7 +585,7 @@ NBEST 3 (cost=10060)
 EOS
 </code></pre>
 <h4 id="n-best-with-unique-results"><a class="header" href="#n-best-with-unique-results">N-Best with unique results</a></h4>
-<p>When the same segmentation appears in multiple paths (differing only in internal Viterbi states), use <code>--nbest-unique</code> to deduplicate:</p>
+<p>When the same segmentation appears in multiple paths (differing only in the dictionary entries of their words, such as their parts of speech), use <code>--nbest-unique</code> to deduplicate. Each result is then the cheapest path of its word boundaries, and the search does not go through the other paths, which can be millions for a short line:</p>
 <pre><code class="language-shell">% echo "営業部長谷川です" | lindera tokenize \
   --dict embedded://ipadic \
   -N 5 --nbest-unique -o wakati
