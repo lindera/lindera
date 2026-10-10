@@ -33,7 +33,7 @@
 //!
 //! With `unique`, the searches of a sentence yield only the cheapest path
 //! of each (word boundaries, BOS edge) pair
-//! ([`UniqueNBestGenerator`](lindera_dictionary::nbest::UniqueNBestGenerator)):
+//! ([`UniqueNBestGenerator`]):
 //! a sentence can have a number of paths exponential in its length with the
 //! same boundaries, and none of the costlier ones can be part of a distinct
 //! result (#1114).

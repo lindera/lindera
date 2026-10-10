@@ -501,4 +501,90 @@ mod with_ipadic {
         assert_eq!(blank_costs.len(), 2, "{stdout}");
         assert_eq!(blank_costs[0], blank_costs[1], "{stdout}");
     }
+
+    // The three examples of "N-Best tokenization" in
+    // docs/src/lindera-cli/commands.md and docs/ja/src/lindera-cli/commands.md
+    // (#1113), run with the same flags. When one of these outputs changes,
+    // update both pages too; they align the details with spaces where the
+    // CLI writes a tab.
+
+    #[test]
+    fn tokenize_nbest_documented_example() {
+        // Results 2 and 3 are different segmentations with the same cost.
+        assert_eq!(
+            tokenize_stdout("すもももももももものうち\n", &["-N", "3"]),
+            "NBEST 1 (cost=21245)\n\
+             すもも\t名詞,一般,*,*,*,*,すもも,スモモ,スモモ\n\
+             も\t助詞,係助詞,*,*,*,*,も,モ,モ\n\
+             もも\t名詞,一般,*,*,*,*,もも,モモ,モモ\n\
+             も\t助詞,係助詞,*,*,*,*,も,モ,モ\n\
+             もも\t名詞,一般,*,*,*,*,もも,モモ,モモ\n\
+             の\t助詞,連体化,*,*,*,*,の,ノ,ノ\n\
+             うち\t名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ\n\
+             EOS\n\
+             NBEST 2 (cost=24541)\n\
+             すもも\t名詞,一般,*,*,*,*,すもも,スモモ,スモモ\n\
+             もも\t名詞,一般,*,*,*,*,もも,モモ,モモ\n\
+             も\t助詞,係助詞,*,*,*,*,も,モ,モ\n\
+             もも\t名詞,一般,*,*,*,*,もも,モモ,モモ\n\
+             も\t助詞,係助詞,*,*,*,*,も,モ,モ\n\
+             の\t助詞,連体化,*,*,*,*,の,ノ,ノ\n\
+             うち\t名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ\n\
+             EOS\n\
+             NBEST 3 (cost=24541)\n\
+             すもも\t名詞,一般,*,*,*,*,すもも,スモモ,スモモ\n\
+             も\t助詞,係助詞,*,*,*,*,も,モ,モ\n\
+             もも\t名詞,一般,*,*,*,*,もも,モモ,モモ\n\
+             もも\t名詞,一般,*,*,*,*,もも,モモ,モモ\n\
+             も\t助詞,係助詞,*,*,*,*,も,モ,モ\n\
+             の\t助詞,連体化,*,*,*,*,の,ノ,ノ\n\
+             うち\t名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ\n\
+             EOS\n"
+        );
+    }
+
+    #[test]
+    fn tokenize_nbest_unique_documented_example() {
+        assert_eq!(
+            tokenize_stdout(
+                "営業部長谷川です\n",
+                &["-N", "5", "--nbest-unique", "-o", "wakati"]
+            ),
+            "NBEST 1 (cost=15760)\n\
+             営業 部長 谷川 です\n\
+             NBEST 2 (cost=17747)\n\
+             営業 部 長谷川 です\n\
+             NBEST 3 (cost=18365)\n\
+             営業 部 長谷 川 です\n\
+             NBEST 4 (cost=21125)\n\
+             営業 部 長 谷川 です\n\
+             NBEST 5 (cost=22259)\n\
+             営業 部長 谷 川 です\n"
+        );
+    }
+
+    #[test]
+    fn tokenize_nbest_cost_threshold_documented_example() {
+        // The 4th result of the example above (21125) exceeds 15760 + 5000.
+        assert_eq!(
+            tokenize_stdout(
+                "営業部長谷川です\n",
+                &[
+                    "-N",
+                    "10",
+                    "--nbest-unique",
+                    "--nbest-cost-threshold",
+                    "5000",
+                    "-o",
+                    "wakati",
+                ]
+            ),
+            "NBEST 1 (cost=15760)\n\
+             営業 部長 谷川 です\n\
+             NBEST 2 (cost=17747)\n\
+             営業 部 長谷川 です\n\
+             NBEST 3 (cost=18365)\n\
+             営業 部 長谷 川 です\n"
+        );
+    }
 }
