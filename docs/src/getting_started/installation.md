@@ -69,6 +69,7 @@ Notes:
 - The directory is managed automatically and is safe to delete; contents are re-downloaded and rebuilt as needed
 - Version subdirectories accumulate across upgrades and are not garbage-collected; old ones can be removed freely
 - Setting this variable causes dictionary crates to download and build their dictionaries even when no `embed-*` feature is enabled (useful for pre-populating the cache)
+- Builds with `DOCS_RS` set ignore this variable (see `DOCS_RS` below)
 
 ### LINDERA_CONFIG_PATH
 
@@ -83,6 +84,8 @@ See the [Configuration](../lindera-analysis/configuration.md) section for detail
 ### DOCS_RS
 
 The `DOCS_RS` environment variable is automatically set by docs.rs when building documentation. When this variable is detected, Lindera creates dummy dictionary files instead of downloading actual dictionary data, allowing documentation to be built without network access or large file downloads.
+
+Such a build ignores `LINDERA_BUILD_DICTIONARY_CACHE_DIR`: the dummy dictionaries are built in the build script's output directory, never in the cache, so a later build without `DOCS_RS` does not embed them.
 
 This is primarily used internally by docs.rs and typically doesn't need to be set by users.
 
