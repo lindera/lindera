@@ -71,6 +71,8 @@ N-Best tokenization is based on the **Forward-DP Backward-A\*** algorithm, which
 
 As in 1-best tokenization, the input is first split into sentences, and the sentences up to each `\n` or `\t` form a segment (see [Sentence Splitting](../lindera/segmenter.md#sentence-splitting)). Each segment is searched on its own: within it, the context is carried across `、` and `。`, so its paths are the N best paths of one lattice over the segment. Every candidate segments the whole input: it takes one path in each segment, and its cost is the sum of those paths' costs. The candidates are the N cheapest of these combinations.
 
+With `unique`, the backward search runs over word boundaries instead of paths: a segmentation has one path per choice of dictionary entry for each of its words, which can be millions for a short line, and the search takes each segmentation once, with its cheapest path, without going through the others.
+
 ### Parameters
 
 The `tokenize_nbest` method accepts the following parameters:
@@ -79,7 +81,7 @@ The `tokenize_nbest` method accepts the following parameters:
 | --- | --- | --- |
 | `text` | `&str` | The text to tokenize. |
 | `n` | `usize` | Number of N-best results to return. |
-| `unique` | `bool` | When `true`, deduplicates results that produce the same word boundary positions. |
+| `unique` | `bool` | When `true`, deduplicates results that produce the same word boundary positions: each result is the cheapest path of its word boundaries. |
 | `cost_threshold` | `Option<i64>` | When `Some(threshold)`, only returns candidates with cost within `best_cost + threshold`, where `best_cost` is the cost of the first candidate (both are totals over the whole input). |
 
 ### Rust API example

@@ -833,6 +833,17 @@ can change places, which can also change which of them is cut off at the
 (`-N 3`); the speed of the 1-best segmentation does not change (within
 0.2%).
 
+With `unique` (`--nbest-unique`), every result is the cheapest path of its
+word boundaries, and of tied entries it now holds the first CSV row in
+every result, as the 1-best segmentation does. Up to v6, unique N-best went
+through the paths in order of cost and kept the first path of each
+segmentation, which could hold either row of a tied pair, and it went
+through every path of a segmentation
+before it reached the next one: a short line whose words have many entries
+could take tens of seconds and gigabytes. The search now goes over word
+boundaries, so it does not depend on the number of paths. Again, only
+results with the same cost can change.
+
 MeCab's `mecab-dict-index` reads the CSV files in the order the file system
 lists them (readdir order), so for tied groups whose rows are in different
 files (in IPADIC-NEologd and ko-dic), MeCab's choice depends on the file
@@ -994,6 +1005,7 @@ language bindings change only in their `Metadata` class (see
 | — | New type aliases in `viterbi`: `TokenOffset = (usize, usize, WordId)` and `NBestPath = (Vec<TokenOffset>, i64)` |
 | — | New in `viterbi`: `BosContext`, `LatticeOptions::bos`, `LatticeExit`, `Lattice::exits_into` and `Lattice::exit_tokens_offset_into` |
 | — | New in `nbest`: `NBestGenerator::from_exit` and `NBestGenerator::next_with_bos` |
+| — | New in `nbest`: `UniqueNBestGenerator` |
 | `Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, normalize_details, schema, userdic_schema)` | `Metadata::new(name, encoding, simple_word_cost, default_left_context_id, default_right_context_id, default_field_value, flexible_csv, skip_invalid_cost_or_id, schema, userdic_schema)` |
 | `Metadata::normalize_details` | Removed |
 | `PrefixDictionaryBuilderOptions::normalize_details(value)` | Removed |
@@ -1052,6 +1064,11 @@ They change nothing for existing code:
   that end with the right context ID of an exit, without EOS, in ascending
   order of cost, and each path together with the BOS index it starts from.
   `next` returns the paths of `next_with_bos` without the BOS index.
+
+`UniqueNBestGenerator` has the methods of `NBestGenerator` (`new`,
+`from_exit`, `next` and `next_with_bos`) and yields the cheapest path of
+each pair of word boundaries and BOS edge, in ascending order of cost; it is
+what `nbest_tokens_offset` with `unique` and the segmenter use.
 
 `nbest_tokens_offset` is meant for the default single BOS edge: with
 several, it does not say which one a path starts from. Use

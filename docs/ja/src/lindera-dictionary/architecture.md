@@ -9,7 +9,7 @@ lindera-dictionary/src/
 ├── builder.rs           # DictionaryBuilder
 ├── loader.rs            # DictionaryLoader trait, FSDictionaryLoader
 ├── viterbi.rs           # Lattice, Edge, Viterbiセグメンテーション
-├── nbest.rs             # NBestGenerator (Forward-DP Backward-A*)
+├── nbest.rs             # NBestGenerator, UniqueNBestGenerator (Forward-DP Backward-A*)
 ├── mode.rs              # Mode (Normal/Decompose), Penalty
 ├── error.rs             # LinderaError, LinderaErrorKind
 ├── assets.rs            # ダウンロードとファイル管理
@@ -49,6 +49,10 @@ lindera-dictionary/src/
 ### NBestGenerator
 
 Forward-DP Backward-A*アルゴリズムを使用してN-bestセグメンテーションパスを生成します。これにより、アプリケーションは単一の最適パスを超えた代替セグメンテーションを検討できます。
+
+### UniqueNBestGenerator
+
+区切り（単語境界の並び）の異なる N-best を生成します。区切りごとに最もコストの低いパスを、コストの昇順に返します。unique な N-best（`unique`、`--nbest-unique`）はこれを使います。1 つの区切りには、各単語の辞書エントリの選び方の数だけパスがあり、短い行でも数百万本になることがあります。そのため、パスではなく単語境界の並びの末尾部分を単位に、後ろ向きに探索します。1 つの探索ノードが 1 つの範囲の候補をすべてまとめて持ち、そのコストは正確なので、各区切りはちょうど 1 回現れ、処理量はパスの数ではなく、結果の数と行の長さに比例します。1 件目は 1-best のパスで、同じ表層・同じ文脈 ID・同じコストのエントリは、1-best と同じく、どの結果でも CSV の先の行になります。
 
 ### Mode
 
