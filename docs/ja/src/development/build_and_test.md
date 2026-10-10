@@ -50,7 +50,7 @@ cargo test -p lindera-trainer
 cargo test -p <crate> --all-features
 ```
 
-> 注意: CI では `--all-features` は使用されません。各クレートに対してキュレートされた個別の feature の組み合わせでテストを実行します（`.github/workflows/regression.yml` を参照）。Makefile のクレート別パターンターゲット（`make test-<crate>`、`make lint-<crate>`）は CI と同じ feature の組み合わせを適用するため、ローカルでの実行方法としては最も近い代替手段です。
+> 注意: CI では `--all-features` は使用されません。各クレートに対してキュレートされた個別の feature の組み合わせでテストを実行します（`.github/workflows/regression.yml` を参照）。Makefile のクレート別パターンターゲット（`make test-<crate>`、`make lint-<crate>`）は CI と同じ feature の組み合わせを適用するため、ローカルでの実行方法としては最も近い代替手段です。CI はさらに、`lindera-segmenter` と `lindera` をすべての辞書を埋め込んだ状態でもう一度テストし（Linux のみ）、ほかの辞書の feature でだけ有効になるテストも実行します。ローカルで同じことをするには、`cargo test -p lindera --features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba` を実行します（`lindera-segmenter` も同様）。
 
 ### ワークスペース全体のテスト
 
@@ -82,7 +82,7 @@ Clippy を警告をエラーとして扱うモードで実行します：
 cargo clippy -- -D warnings
 ```
 
-> 注意: CI で強制されているのは `cargo fmt --all -- --check` のみです。`cargo clippy` は現時点で CI では実行されませんが、PR を開く前にローカルで（例えば `make lint` 経由で）実行することを推奨します。
+> 注意: CI は各クレートに対して、そのクレートのテストと同じ feature で `cargo clippy --all-targets -- -D warnings` を実行します（`.github/workflows/test-crate.yml` を参照）。PR を開く前にローカルで（例えば `make lint` 経由で）clippy を実行してください。
 
 ## ドキュメント
 

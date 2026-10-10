@@ -50,7 +50,7 @@ Run the full test suite for a single crate:
 cargo test -p <crate> --all-features
 ```
 
-> Note: CI does not use `--all-features` -- it runs each crate with a curated, crate-specific feature combination (see `.github/workflows/regression.yml`). The Makefile's per-crate pattern targets (`make test-<crate>`, `make lint-<crate>`) apply the same feature combinations CI uses and are the closest local equivalent.
+> Note: CI does not use `--all-features` -- it runs each crate with a curated, crate-specific feature combination (see `.github/workflows/regression.yml`). The Makefile's per-crate pattern targets (`make test-<crate>`, `make lint-<crate>`) apply the same feature combinations CI uses and are the closest local equivalent. CI also tests `lindera-segmenter` and `lindera` once more with every dictionary embedded (on Linux only), which runs the tests gated on the other dictionaries; to do the same locally, run `cargo test -p lindera --features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba` (and likewise for `lindera-segmenter`).
 
 ### Workspace-Wide Tests
 
@@ -82,7 +82,7 @@ Run Clippy with warnings treated as errors:
 cargo clippy -- -D warnings
 ```
 
-> Note: only `cargo fmt --all -- --check` is enforced in CI; `cargo clippy` is not currently run in CI, but should still be run locally (e.g. via `make lint`) before opening a PR.
+> Note: CI runs `cargo clippy --all-targets -- -D warnings` for each crate, with the features it tests that crate with (see `.github/workflows/test-crate.yml`). Run clippy locally (e.g. via `make lint`) before opening a PR.
 
 ## Documentation
 
