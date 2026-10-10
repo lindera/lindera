@@ -503,7 +503,7 @@ A line is cut into sentences at `\t`, `。` and `、`, but the context is carrie
 ```
 
 ```text
-NBEST 1 (cost=7546)
+NBEST 1 (cost=21245)
 すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
 も      助詞,係助詞,*,*,*,*,も,モ,モ
 もも    名詞,一般,*,*,*,*,もも,モモ,モモ
@@ -512,24 +512,27 @@ NBEST 1 (cost=7546)
 の      助詞,連体化,*,*,*,*,の,ノ,ノ
 うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
 EOS
-NBEST 2 (cost=7914)
+NBEST 2 (cost=24541)
 すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
 も      助詞,係助詞,*,*,*,*,も,モ,モ
 もも    名詞,一般,*,*,*,*,もも,モモ,モモ
-もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
 の      助詞,連体化,*,*,*,*,の,ノ,ノ
 うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
 EOS
-NBEST 3 (cost=10060)
+NBEST 3 (cost=24541)
 すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
 も      助詞,係助詞,*,*,*,*,も,モ,モ
 もも    名詞,一般,*,*,*,*,もも,モモ,モモ
-も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
 も      助詞,係助詞,*,*,*,*,も,モ,モ
 の      助詞,連体化,*,*,*,*,の,ノ,ノ
 うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
 EOS
 ```
+
+Results 2 and 3 are different segmentations with the same cost (24541).
 
 #### N-Best with unique results
 
@@ -544,14 +547,14 @@ When the same segmentation appears in multiple paths (differing only in the dict
 ```text
 NBEST 1 (cost=15760)
 営業 部長 谷川 です
-NBEST 2 (cost=17758)
-営業 部長 谷 川 です
-NBEST 3 (cost=18816)
+NBEST 2 (cost=17747)
 営業 部 長谷川 です
-NBEST 4 (cost=19320)
-営業 部長 谷川 で す
-NBEST 5 (cost=20814)
+NBEST 3 (cost=18365)
 営業 部 長谷 川 です
+NBEST 4 (cost=21125)
+営業 部 長 谷川 です
+NBEST 5 (cost=22259)
+営業 部長 谷 川 です
 ```
 
 #### N-Best with cost threshold
@@ -567,13 +570,13 @@ Use `--nbest-cost-threshold` to limit results to paths within a certain cost ran
 ```text
 NBEST 1 (cost=15760)
 営業 部長 谷川 です
-NBEST 2 (cost=17758)
-営業 部長 谷 川 です
-NBEST 3 (cost=18816)
+NBEST 2 (cost=17747)
 営業 部 長谷川 です
+NBEST 3 (cost=18365)
+営業 部 長谷 川 です
 ```
 
-Only 3 results are returned because the remaining candidates exceed `15760 + 5000 = 20760`.
+Only 3 results are returned: the 4th result of the example above costs 21125, which exceeds `15760 + 5000 = 20760`.
 
 ### Advanced tokenization with filters
 
