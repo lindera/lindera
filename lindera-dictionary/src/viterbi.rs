@@ -538,15 +538,16 @@ pub struct Lattice {
     /// Buffered because the trie search borrows `codes_buf` while adding an
     /// edge borrows the whole lattice.
     sys_matches: Vec<(u32, WordEntry)>,
-    /// The last grouping run found per category ordinal, as `(category,
-    /// end)`: the characters from the position that scanned the run up to
-    /// `end` (exclusive) all carry `category` at that ordinal. The
+    /// The end (exclusive) of the last grouping run found: from the
+    /// position that scanned it up to `end`, every character shares a
+    /// category with the one before it (MeCab's `seekToOtherType`, #1111).
+    /// The end does not depend on where in the run a scan starts, and the
     /// unknown-word logic visits every reachable position of a sentence in
     /// increasing order (#1105), so a later position inside the run reads
     /// its length from here instead of scanning again, which keeps the scans
-    /// O(n) per ordinal (#944). Cleared per sentence by
+    /// O(n) over a sentence (#944). Reset to 0 per sentence by
     /// `prepare_char_buffers`.
-    group_run_ends: Vec<(CategoryId, u32)>,
+    group_run_end: u32,
     /// Decompose penalty cache for the left edges of the position
     /// currently being relaxed; see `add_edge_in_lattice` (#944).
     penalty_cache: Vec<i32>,
@@ -1206,8 +1207,8 @@ impl Lattice {
 
     /// Fills the per-sentence character buffers (`char_info_buffer`,
     /// `categories_buffer`, `chars_buf`) from `text`, appends the
-    /// end-of-text sentinel, resets the grouping runs found so far
-    /// (`group_run_ends`), and precomputes the kanji run lengths consumed by
+    /// end-of-text sentinel, resets the grouping run found so far
+    /// (`group_run_end`), and precomputes the kanji run lengths consumed by
     /// the Decompose-mode penalty.
     ///
     /// Shared by `set_text` and `set_text_nbest` so the two hot paths cannot
@@ -1256,7 +1257,7 @@ impl Lattice {
         self.categories_buffer.clear();
         self.chars_buf.clear();
         self.codes_buf.clear();
-        self.group_run_ends.clear();
+        self.group_run_end = 0;
 
         for (byte_offset, c) in text.char_indices() {
             // Category lookup is O(1) for BMP codepoints via the flat table
@@ -1331,51 +1332,95 @@ impl Lattice {
         }
     }
 
-    /// Returns the grouping run length of `category` at ordinal
-    /// `category_ord` from `char_idx` on: how many characters carry that
-    /// category at that ordinal. Reads the run found by an earlier position
-    /// when `char_idx` lies inside it (see `group_run_ends`), and scans
-    /// forward otherwise. Must be called with non-decreasing `char_idx`
-    /// within a sentence.
+    /// Returns whether the characters at `a` and `b` share any category
+    /// (MeCab's `CharInfo::isKindOf`): whether their category lists, as
+    /// recorded by `prepare_char_buffers`, intersect.
     ///
     /// # Arguments
     ///
     /// * `char_definitions` - Character category definitions.
-    /// * `category` - The category of the char at `char_idx` at that ordinal.
-    /// * `category_ord` - Ordinal within the char's category set.
+    /// * `a` - One character index in `char_info_buffer`.
+    /// * `b` - The other character index.
+    ///
+    /// # Returns
+    ///
+    /// `true` when some category is in both lists.
+    #[inline]
+    fn shares_category(&self, char_definitions: &CharacterDefinition, a: usize, b: usize) -> bool {
+        let len_a = self.char_info_buffer[a].categories_len as usize;
+        let len_b = self.char_info_buffer[b].categories_len as usize;
+        for i in 0..len_a {
+            let category = self.get_cached_category(char_definitions, a, i);
+            for j in 0..len_b {
+                if self.get_cached_category(char_definitions, b, j) == category {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Returns the grouping run length from `char_idx` on: the run goes on
+    /// while each character shares a category with the one before it, as in
+    /// MeCab's `seekToOtherType`, which chains the check from character to
+    /// character (#1111). Reads the run found by an earlier position when
+    /// `char_idx` lies inside it (see `group_run_end`), and scans forward
+    /// otherwise. Must be called with non-decreasing `char_idx` within a
+    /// sentence.
+    ///
+    /// # Arguments
+    ///
+    /// * `char_definitions` - Character category definitions.
     /// * `char_idx` - Start position, in characters.
     ///
     /// # Returns
     ///
     /// The run length, at least 1.
     #[inline]
-    fn group_run_len(
-        &mut self,
-        char_definitions: &CharacterDefinition,
-        category: CategoryId,
-        category_ord: usize,
-        char_idx: usize,
-    ) -> usize {
-        if let Some(&(cat, end)) = self.group_run_ends.get(category_ord)
-            && cat == category
-            && char_idx < end as usize
-        {
-            return end as usize - char_idx;
+    fn group_run_len(&mut self, char_definitions: &CharacterDefinition, char_idx: usize) -> usize {
+        if char_idx < self.group_run_end as usize {
+            return self.group_run_end as usize - char_idx;
         }
         let n_chars = self.char_info_buffer.len() - 1;
         let mut end = char_idx + 1;
-        while end < n_chars
-            && category_ord < self.char_info_buffer[end].categories_len as usize
-            && self.get_cached_category(char_definitions, end, category_ord) == category
-        {
+        while end < n_chars && self.shares_category(char_definitions, end - 1, end) {
             end += 1;
         }
-        if self.group_run_ends.len() <= category_ord {
-            self.group_run_ends
-                .resize(category_ord + 1, (CategoryId(usize::MAX), 0));
-        }
-        self.group_run_ends[category_ord] = (category, end as u32);
+        self.group_run_end = end as u32;
         end - char_idx
+    }
+
+    /// Returns the longest length-ladder candidate at `char_idx`: how many
+    /// characters from `char_idx` on (itself included), at most `max`, share
+    /// a category with the character at `char_idx`. Unlike the grouping
+    /// run, the check is not chained: MeCab compares every character with
+    /// the first one (#1111).
+    ///
+    /// # Arguments
+    ///
+    /// * `char_definitions` - Character category definitions.
+    /// * `char_idx` - Start position, in characters.
+    /// * `max` - The category's `char.def` `LENGTH`, at least 1.
+    ///
+    /// # Returns
+    ///
+    /// The length, between 1 and `max`.
+    #[inline]
+    fn ladder_run_len(
+        &self,
+        char_definitions: &CharacterDefinition,
+        char_idx: usize,
+        max: usize,
+    ) -> usize {
+        let n_chars = self.char_info_buffer.len() - 1;
+        let mut len = 1;
+        while len < max
+            && char_idx + len < n_chars
+            && self.shares_category(char_definitions, char_idx, char_idx + len)
+        {
+            len += 1;
+        }
+        len
     }
 
     /// Forward Viterbi: constructs the lattice and calculates the path costs
@@ -1571,9 +1616,10 @@ impl Lattice {
             // the unknown words, at every reachable position, in every mode,
             // as in MeCab (#1105): one may start inside a run that an earlier
             // position grouped, e.g. after a dictionary word ending inside it.
-            let num_categories = self.char_info_buffer[char_idx].categories_len as usize;
-            for category_ord in (0..num_categories).rev() {
-                let category = self.get_cached_category(char_definitions, char_idx, category_ord);
+            // Only the character's default category, the first of its list,
+            // creates them, as MeCab's `default_type` does (#1111).
+            if self.char_info_buffer[char_idx].categories_len > 0 {
+                let category = self.get_cached_category(char_definitions, char_idx, 0);
                 self.process_unknown_word(
                     char_definitions,
                     unknown_dictionary,
@@ -1583,7 +1629,6 @@ impl Lattice {
                     unknown_word_ladder,
                     space_penalty,
                     category,
-                    category_ord,
                     char_idx,
                     found,
                 );
@@ -1919,7 +1964,7 @@ impl Lattice {
         }
     }
 
-    /// Returns the lengths of the unknown-word candidates of one category
+    /// Returns the lengths of the unknown-word candidates at a position
     /// in emission order: the primary length, then the length ladder
     /// `1..=ladder` without the primary one (see
     /// [`Self::unknown_word_lengths`]).
@@ -1937,34 +1982,32 @@ impl Lattice {
         std::iter::once(primary).chain((1..=ladder).filter(move |&len| len != primary))
     }
 
-    /// Returns the unknown-word candidate lengths for one category at
-    /// `char_idx`, or `None` when the category creates no candidate there
-    /// (it has `invoke` off and a dictionary word starts here).
+    /// Returns the unknown-word candidate lengths for the default category
+    /// at `char_idx`, or `None` when it creates no candidate there (it has
+    /// `invoke` off and a dictionary word starts here).
     ///
     /// The primary candidate covers the grouping run (`group` set) or one
     /// character; `max_grouping_len` turns a run with more than that many
-    /// characters beyond the first back into one character (#944). The
-    /// length ladder (#945) adds the lengths `1..=ladder` (skipping the
-    /// primary one), where `ladder` is the run length capped at the
-    /// category's `char.def` `LENGTH`, 0 when the ladder is off. Both read
-    /// the run from `group_run_len`, which scans each run once, so the calls
-    /// stay O(n) per category ordinal over a sentence (#944).
+    /// characters beyond the first back into one character (#944). The run
+    /// goes on while each character shares a category with the one before
+    /// it ([`Self::group_run_len`]). The length ladder (#945) adds the
+    /// lengths `1..=ladder` (skipping the primary one), where `ladder` is
+    /// the number of characters that share a category with the first one
+    /// ([`Self::ladder_run_len`]), capped at the category's `char.def`
+    /// `LENGTH`, and 0 when the ladder is off. Both follow MeCab (#1111).
     ///
     /// # Arguments
     ///
     /// * `char_definitions` - Character category definitions.
     /// * `max_grouping_len` - Unknown-word grouping cap (`None` = unbounded).
     /// * `unknown_word_ladder` - Whether to emit the length ladder.
-    /// * `category` - The category of the candidates.
-    /// * `category_ord` - Ordinal of `category` within the char's category
-    ///   set.
+    /// * `category` - The default category of the char at `char_idx`.
     /// * `char_idx` - Start position, in characters.
     /// * `found` - Whether a dictionary word starts at `char_idx`.
     ///
     /// # Returns
     ///
     /// `Some((primary, ladder))` in characters, or `None`.
-    #[allow(clippy::too_many_arguments)]
     #[inline]
     fn unknown_word_lengths(
         &mut self,
@@ -1972,7 +2015,6 @@ impl Lattice {
         max_grouping_len: Option<usize>,
         unknown_word_ladder: bool,
         category: CategoryId,
-        category_ord: usize,
         char_idx: usize,
         found: bool,
     ) -> Option<(usize, usize)> {
@@ -1980,15 +2022,9 @@ impl Lattice {
         if !category_data.invoke && found {
             return None;
         }
-        let needs_run = category_data.group || (unknown_word_ladder && category_data.length > 0);
-        let run_len = if needs_run {
-            self.group_run_len(char_definitions, category, category_ord, char_idx)
-        } else {
-            1
-        };
         let mut primary = 1;
         if category_data.group {
-            primary = run_len;
+            primary = self.group_run_len(char_definitions, char_idx);
             // MeCab-style cap (#944): a grouped candidate with more than
             // max_grouping_len characters beyond the first is not emitted
             // at this position; the single-char unknown word (plus the
@@ -2002,16 +2038,16 @@ impl Lattice {
                 primary = 1;
             }
         }
-        let ladder = if unknown_word_ladder {
-            run_len.min(category_data.length as usize)
+        let ladder = if unknown_word_ladder && category_data.length > 0 {
+            self.ladder_run_len(char_definitions, char_idx, category_data.length as usize)
         } else {
             0
         };
         Some((primary, ladder))
     }
 
-    /// Adds the unknown-word candidates of one category at `char_idx` to
-    /// the 1-best lattice: the primary candidate and the length ladder of
+    /// Adds the unknown-word candidates of the default category at
+    /// `char_idx` to the 1-best lattice: the primary candidate and the length ladder of
     /// [`Self::unknown_word_lengths`].
     ///
     /// # Arguments
@@ -2024,9 +2060,7 @@ impl Lattice {
     /// * `unknown_word_ladder` - Whether to emit the length ladder.
     /// * `space_penalty` - The space-penalty table when the position is
     ///   preceded by whitespace.
-    /// * `category` - The category of the candidates.
-    /// * `category_ord` - Ordinal of `category` within the char's category
-    ///   set.
+    /// * `category` - The default category of the char at `char_idx`.
     /// * `char_idx` - Start position, in characters.
     /// * `found` - Whether a dictionary word starts at `char_idx`.
     #[allow(clippy::too_many_arguments)]
@@ -2040,7 +2074,6 @@ impl Lattice {
         unknown_word_ladder: bool,
         space_penalty: Option<&SpacePenaltyTable>,
         category: CategoryId,
-        category_ord: usize,
         char_idx: usize,
         found: bool,
     ) {
@@ -2049,7 +2082,6 @@ impl Lattice {
             max_grouping_len,
             unknown_word_ladder,
             category,
-            category_ord,
             char_idx,
             found,
         ) else {
@@ -2752,7 +2784,6 @@ impl Lattice {
         unknown_word_ladder: bool,
         space_penalty: Option<&SpacePenaltyTable>,
         category: CategoryId,
-        category_ord: usize,
         char_idx: usize,
         found: bool,
     ) {
@@ -2761,7 +2792,6 @@ impl Lattice {
             max_grouping_len,
             unknown_word_ladder,
             category,
-            category_ord,
             char_idx,
             found,
         ) else {
@@ -2924,10 +2954,10 @@ impl Lattice {
                 || !self.sys_matches.is_empty();
 
             // The candidates in the processing order of set_text_with_options,
-            // so ties resolve the same way: the unknown words first.
-            let num_categories = self.char_info_buffer[char_idx].categories_len as usize;
-            for category_ord in (0..num_categories).rev() {
-                let category = self.get_cached_category(char_definitions, char_idx, category_ord);
+            // so ties resolve the same way: the unknown words of the default
+            // category first.
+            if self.char_info_buffer[char_idx].categories_len > 0 {
+                let category = self.get_cached_category(char_definitions, char_idx, 0);
                 self.process_unknown_word_nbest(
                     char_definitions,
                     unknown_dictionary,
@@ -2937,7 +2967,6 @@ impl Lattice {
                     unknown_word_ladder,
                     space_penalty,
                     category,
-                    category_ord,
                     char_idx,
                     found,
                 );
@@ -3212,13 +3241,14 @@ mod tests {
         }
     }
 
-    /// #944: the run lengths `group_run_len` caches must reproduce the
-    /// forward grouping scan exactly for every (char, ordinal) pair,
-    /// including multi-ordinal chars, runs at the sentence end, and
-    /// ordinals present on one char but absent on the next, in both modes.
-    /// The positions are visited in increasing order, all of them or only
-    /// some (as when positions are unreachable or skipped whitespace), and
-    /// the cache must not leak from one sentence into the next.
+    /// #944, #1111: the run lengths `group_run_len` caches must reproduce
+    /// the forward grouping scan exactly at every char, including runs that
+    /// chain through a char with two categories (`d` shares A with `a` and
+    /// B with `g`, which share nothing) and runs at the sentence end, in
+    /// both modes. The positions are visited in increasing order, all of
+    /// them or only some (as when positions are unreachable or skipped
+    /// whitespace), and the cache must not leak from one sentence into the
+    /// next.
     #[test]
     fn test_group_runs_match_forward_scan() {
         use std::collections::BTreeMap;
@@ -3229,20 +3259,17 @@ mod tests {
         use crate::dictionary::prefix_dictionary::PrefixDictionary;
         use crate::mode::{Mode, Penalty};
 
-        // 'a'..='c' -> {A}; 'd'..='f' -> {B, A}; everything else -> {C}.
-        let mapping = LookupTable::from_fn(vec![0u32, 0x61, 0x64, 0x67], &|c,
-                                                                           buf: &mut Vec<
-            CategoryId,
-        >| {
-            if (0x61..0x64).contains(&c) {
-                buf.push(CategoryId(0));
-            } else if (0x64..0x67).contains(&c) {
-                buf.push(CategoryId(1));
-                buf.push(CategoryId(0));
-            } else {
-                buf.push(CategoryId(2));
+        // 'a'..='c' -> {A}; 'd'..='f' -> {B, A}; 'g'..='i' -> {B};
+        // everything else -> {C}.
+        fn categories(c: u32, buf: &mut Vec<CategoryId>) {
+            match c {
+                0x61..0x64 => buf.push(CategoryId(0)),
+                0x64..0x67 => buf.extend([CategoryId(1), CategoryId(0)]),
+                0x67..0x6A => buf.push(CategoryId(1)),
+                _ => buf.push(CategoryId(2)),
             }
-        });
+        }
+        let mapping = LookupTable::from_fn(vec![0u32, 0x61, 0x64, 0x67, 0x6A], &categories);
         let defs = vec![
             CategoryData {
                 invoke: true,
@@ -3263,10 +3290,11 @@ mod tests {
 
         let mut lattice = Lattice::default();
         for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
-            // Runs crossing category boundaries, a two-ordinal stretch
-            // (d-f), and a trailing single char; then a long `A` run that a
-            // stale cache would extend into the next sentence's `a`.
-            for text in ["aabdddefzza", "aaaaaaaa", "azzz"] {
+            // Runs crossing category boundaries, a two-category stretch
+            // (d-f), and a trailing single char; runs that only chaining
+            // joins (a-d-g); then a long `A` run that a stale cache would
+            // extend into the next sentence's `a`.
+            for text in ["aabdddefzza", "adgzgdagz", "aaaaaaaa", "azzz"] {
                 // Every position, then every third one.
                 for step in [1, 3] {
                     lattice.prepare_char_buffers(
@@ -3278,29 +3306,22 @@ mod tests {
                     let n_chars = lattice.chars_buf.len();
                     assert_eq!(n_chars, text.chars().count());
                     for i in (0..n_chars).step_by(step) {
-                        let char_data = lattice.char_info_buffer[i];
-                        for ord in 0..char_data.categories_len as usize {
-                            let cat = lattice.get_cached_category(&chardef, i, ord);
-                            // Reference: the forward scan process_unknown_word
-                            // used before #944.
-                            let mut expected = 1usize;
-                            for j in i + 1..n_chars {
-                                let next = lattice.char_info_buffer[j];
-                                if ord < next.categories_len as usize
-                                    && lattice.get_cached_category(&chardef, j, ord) == cat
-                                {
-                                    expected += 1;
-                                } else {
-                                    break;
-                                }
+                        // Reference: a forward scan that goes on while each
+                        // character shares a category with the one before it
+                        // (#1111; MeCab's seekToOtherType).
+                        let mut expected = 1usize;
+                        for j in i + 1..n_chars {
+                            if lattice.shares_category(&chardef, j - 1, j) {
+                                expected += 1;
+                            } else {
+                                break;
                             }
-                            assert_eq!(
-                                lattice.group_run_len(&chardef, cat, ord, i),
-                                expected,
-                                "run mismatch in {text:?} at char {i} ordinal {ord} \
-                                 (step {step}, {mode:?})"
-                            );
                         }
+                        assert_eq!(
+                            lattice.group_run_len(&chardef, i),
+                            expected,
+                            "run mismatch in {text:?} at char {i} (step {step}, {mode:?})"
+                        );
                     }
                 }
             }
@@ -3583,6 +3604,162 @@ mod tests {
             assert_eq!(paths.len(), 2, "{mode:?}: {paths:?}");
             assert_eq!(paths[0], (vec![bracket, symbols], -1000), "{mode:?}");
         }
+    }
+
+    /// #1111: unknown words come from the default category (the first of a
+    /// character's list) only, and a grouped run goes on while each
+    /// character shares a category with the one before it, as in MeCab.
+    /// The character definition is ko-dic's in miniature: the numeral `三`
+    /// is `HANJANUMERIC HANJA` (default `HANJANUMERIC`, which invokes and
+    /// groups), `〇` is `SYMBOL HANJANUMERIC`, and the other hanja are
+    /// `HANJA` (no grouping, length 1). `HANJA`'s unknown word is by far
+    /// the cheapest, so a candidate from a category that is not the default
+    /// one would win, and so would a shorter run.
+    #[test]
+    fn test_unknown_words_use_default_category_and_chained_runs() {
+        // DEFAULT = 0, HANJA = 1, SYMBOL = 2, HANJANUMERIC = 3.
+        let mapping = LookupTable::from_fn(
+            vec![0, 0x3007, 0x3008, 0x4E09, 0x4E0A, 0x4E00 + 0x100],
+            &|c, buf: &mut Vec<CategoryId>| match c {
+                0x3007 => buf.extend([CategoryId(2), CategoryId(3)]),
+                0x4E09 => buf.extend([CategoryId(3), CategoryId(1)]),
+                0x4E0A..0x4F00 => buf.push(CategoryId(1)),
+                _ => buf.push(CategoryId(0)),
+            },
+        );
+        let category = |invoke, group, length| CategoryData {
+            invoke,
+            group,
+            length,
+        };
+        let char_definition = CharacterDefinition::new(
+            vec![
+                category(false, true, 0),
+                category(false, false, 1),
+                category(true, true, 0),
+                category(true, true, 0),
+            ],
+            vec![
+                "DEFAULT".into(),
+                "HANJA".into(),
+                "SYMBOL".into(),
+                "HANJANUMERIC".into(),
+            ],
+            mapping,
+        );
+        // One entry per category, its word id = its category id.
+        let unknown = |id, cost| WordEntry::new(WordId::new(LexType::Unknown, id), cost, 0, 0);
+        let unknown_dictionary = UnknownDictionary {
+            category_references: vec![vec![0], vec![1], vec![2], vec![3]],
+            costs: vec![
+                unknown(0, 1000),
+                unknown(1, 10),
+                unknown(2, 1000),
+                unknown(3, 1000),
+            ],
+            words_idx_data: Vec::new(),
+            words_data: Vec::new(),
+        };
+        let mut map = BTreeMap::new();
+        map.insert(
+            "x".to_string(),
+            vec![WordEntry::new(WordId::new(LexType::System, 0), 0, 0, 0)],
+        );
+        let dict = PrefixDictionary::from_word_entry_map(&map).unwrap();
+        let cost_matrix = ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0, 0]).unwrap();
+
+        // 三 U+4E09, 上 U+4E0A, 下 U+4E0B, 不 U+4E0D: one run, because each
+        // character shares HANJA (or HANJANUMERIC) with the one before it.
+        let unk =
+            |len: usize, category: u32| vec![(0, 3 * len, WordId::new(LexType::Unknown, category))];
+        for (text, expected) in [
+            // The numeral's HANJANUMERIC group takes the hanja after it.
+            ("三上下不", unk(4, 3)),
+            // `〇` starts a SYMBOL group that goes on through the numeral
+            // (HANJANUMERIC) into the hanja (HANJA).
+            ("〇三上", unk(3, 2)),
+            ("三〇三上", unk(4, 3)),
+        ] {
+            for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
+                let options = LatticeOptions::new(&mode);
+                let mut lattice = Lattice::default();
+                lattice.set_text_with_options(
+                    &dict,
+                    &None,
+                    &char_definition,
+                    &unknown_dictionary,
+                    &cost_matrix,
+                    text,
+                    &options,
+                );
+                assert_eq!(lattice.tokens_offset(), expected, "{text} {mode:?}");
+
+                lattice.set_text_nbest_with_options(
+                    &dict,
+                    &None,
+                    &char_definition,
+                    &unknown_dictionary,
+                    &cost_matrix,
+                    text,
+                    &options,
+                );
+                let paths = lattice.nbest_tokens_offset(1, false, None);
+                assert_eq!(paths[0].0, expected, "{text} {mode:?} (N-best)");
+            }
+        }
+    }
+
+    /// #1111: the length ladder compares every character with the first one
+    /// and does not chain, as in MeCab. `a` is L (length 3), `b` is `M L`,
+    /// `c` is M: from `a`, `b` shares L but `c` shares nothing with `a`, so
+    /// the ladder stops at 2 even though `b` and `c` share M. The grouped
+    /// run of M from `b` chains on through `c`.
+    #[test]
+    fn test_length_ladder_does_not_chain() {
+        // DEFAULT = 0, L = 1, M = 2.
+        fn categories(c: u32, buf: &mut Vec<CategoryId>) {
+            match c {
+                0x61 => buf.push(CategoryId(1)),
+                0x62 => buf.extend([CategoryId(2), CategoryId(1)]),
+                0x63 => buf.push(CategoryId(2)),
+                _ => buf.push(CategoryId(0)),
+            }
+        }
+        let mapping = LookupTable::from_fn(vec![0, 0x61, 0x62, 0x63, 0x64], &categories);
+        let category = |invoke, group, length| CategoryData {
+            invoke,
+            group,
+            length,
+        };
+        let chardef = CharacterDefinition::new(
+            vec![
+                category(false, true, 0),
+                category(true, false, 3),
+                category(true, true, 0),
+            ],
+            vec!["DEFAULT".into(), "L".into(), "M".into()],
+            mapping,
+        );
+        let mut map = BTreeMap::new();
+        map.insert(
+            "x".to_string(),
+            vec![WordEntry::new(WordId::new(LexType::System, 0), 0, 0, 0)],
+        );
+        let dict = PrefixDictionary::from_word_entry_map(&map).unwrap();
+        let mode = Mode::Normal;
+        let mut lattice = Lattice::default();
+        lattice.prepare_char_buffers(&dict, &chardef, "abcd", &LatticeOptions::new(&mode));
+        // From `a`: the primary candidate is 1 character (L does not
+        // group) and the ladder stops at `c`.
+        assert_eq!(
+            lattice.unknown_word_lengths(&chardef, None, true, CategoryId(1), 0, false),
+            Some((1, 2))
+        );
+        // From `b` (default M): the run chains through `c` and stops at `d`.
+        assert_eq!(
+            lattice.unknown_word_lengths(&chardef, None, true, CategoryId(2), 1, false),
+            Some((2, 0))
+        );
     }
 
     #[test]

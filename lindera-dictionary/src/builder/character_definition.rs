@@ -250,10 +250,11 @@ impl CharacterDefinitionBuilder {
     /// Writes the categories of a code point into `categories_buffer`.
     ///
     /// The set comes from the last line that covers the code point, as in
-    /// MeCab. It is listed in category id order (the order in which `char.def`
-    /// introduces the categories), not in the order of the line, because the
-    /// unknown-word grouping compares the categories of neighbouring characters
-    /// position by position. A code point that no line covers gets `DEFAULT`.
+    /// MeCab. Its first entry is the default category (the first category of
+    /// that line, MeCab's `default_type`), which alone creates unknown-word
+    /// candidates; the other categories follow in category id order (the
+    /// order in which `char.def` introduces them), each once. A code point
+    /// that no line covers gets `DEFAULT`.
     ///
     /// # Arguments
     ///
@@ -265,6 +266,16 @@ impl CharacterDefinitionBuilder {
             categories_buffer.extend_from_slice(category_ids);
             categories_buffer.sort_unstable();
             categories_buffer.dedup();
+            // Move the default category, the line's first (`parse_range`
+            // rejects a line without categories), to the front; the
+            // categories before it shift by one and stay in id order.
+            if let Some(&default_category) = category_ids.first()
+                && let Some(pos) = categories_buffer
+                    .iter()
+                    .position(|&id| id == default_category)
+            {
+                categories_buffer[..=pos].rotate_right(1);
+            }
         } else if let Some(default_category) = self.default_category_id() {
             categories_buffer.push(default_category);
         }
@@ -486,21 +497,58 @@ KANJINUMERIC 1 1 0
     }
 
     #[test]
-    fn test_categories_are_listed_in_category_id_order() {
+    fn test_default_category_comes_first() {
         let (_, char_def) = build(OVERLAPPING_CHAR_DEF);
 
-        // The line says `KANJINUMERIC KANJI`, but the list follows the order
-        // in which char.def defines the categories, so KANJI keeps the same
-        // position as in the neighbouring kanji.
+        // The line says `KANJINUMERIC KANJI`: the default category comes
+        // first although char.def defines KANJI before it (#1111).
         assert_eq!(
             category_names(&char_def, '一'),
-            vec!["KANJI", "KANJINUMERIC"]
+            vec!["KANJINUMERIC", "KANJI"]
         );
         assert_eq!(category_names(&char_def, '丁'), vec!["KANJI"]);
         assert_eq!(
             category_names(&char_def, '〇'),
             vec!["SYMBOL", "KANJINUMERIC"]
         );
+    }
+
+    #[test]
+    fn test_other_categories_follow_in_category_id_order() {
+        let (_, char_def) = build(
+            "DEFAULT 0 1 0\nKANJI 0 0 2\nSYMBOL 1 1 0\nKANJINUMERIC 1 1 0\n\
+             0x4E00 KANJINUMERIC SYMBOL KANJI\n0x4E01 SYMBOL KANJI SYMBOL\n",
+        );
+
+        // After the default category, the others are listed in the order in
+        // which char.def defines them, each once.
+        assert_eq!(
+            category_names(&char_def, '一'),
+            vec!["KANJINUMERIC", "KANJI", "SYMBOL"]
+        );
+        assert_eq!(category_names(&char_def, '丁'), vec!["SYMBOL", "KANJI"]);
+    }
+
+    /// The first category of every row is the default category that
+    /// `build_default_category_table` gives, for every code point.
+    #[test]
+    fn test_first_category_is_the_default_category() {
+        for content in [
+            OVERLAPPING_CHAR_DEF,
+            "DEFAULT 0 1 0\nKANJI 0 0 2\nSYMBOL 1 1 0\nKANJINUMERIC 1 1 0\n\
+             0x4E00..0x4E0F KANJI\n0x4E00 KANJINUMERIC SYMBOL KANJI\n",
+        ] {
+            let (builder, char_def) = build(content);
+            let table = builder.build_default_category_table();
+            for c in (0..=0x10FFFF).filter_map(char::from_u32) {
+                assert_eq!(
+                    char_def.lookup_categories(c).first(),
+                    table.eval(c as u32).first(),
+                    "U+{:04X}",
+                    c as u32
+                );
+            }
+        }
     }
 
     #[test]

@@ -44,7 +44,17 @@ const DEFAULT_FIELD_VALUE: &str = "*";
 ///   plus a `u32` prefix-sum index (`dict.valsidx`). `dict.vals`,
 ///   `dict.words`, `dict.wordsidx`, `matrix.mtx`, `char_def.bin` and
 ///   `unk.bin` are unchanged, as are user dictionary `.bin` files.
-pub const DICTIONARY_FORMAT_VERSION: u32 = 2;
+/// * `3` - v7.0.0: each `char_def.bin` row lists the code point's default
+///   category (MeCab's `default_type`) first, then the other categories in
+///   category id order; the unknown-word candidates come from the first
+///   entry only (#1111). The layout is unchanged, but a version 2 row
+///   (category id order) would silently give the wrong default category.
+///   The version also covers the earlier 7.0.0 builder changes that kept
+///   version 2: the IPADIC `conjugation_type` and `conjugation_form` column
+///   names (#1086), entries with whitespace kept (#1094), the last
+///   overlapping `char.def` line deciding (#1104) and IPADIC dashes and
+///   tildes kept as written (#1130).
+pub const DICTIONARY_FORMAT_VERSION: u32 = 3;
 
 /// The format version assumed for a built dictionary whose `metadata.json`
 /// predates the `format_version` field.

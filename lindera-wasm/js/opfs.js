@@ -8,8 +8,8 @@
  */
 
 /**
- * Dictionary file names that make up a built Lindera dictionary
- * (dictionary format version 2: the system automaton is dict.trie +
+ * Dictionary file names that make up a built Lindera dictionary (the same
+ * since dictionary format version 2: the system automaton is dict.trie +
  * dict.valsidx).
  */
 const DICTIONARY_FILES = [

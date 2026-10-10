@@ -91,11 +91,14 @@ pub fn load_dictionary(uri: &str) -> Result<JsDictionary, JsValue> {
 ///
 /// A `Dictionary` instance constructed from the provided byte data.
 ///
-/// # Breaking change (dictionary format version 2)
+/// # Breaking changes (dictionary format versions 2 and 3)
 ///
 /// Dictionaries built before Lindera v6 shipped a byte-wise automaton as
 /// `dict.da`; that argument was replaced by `dict_trie` + `dict_vals_idx`.
-/// Rebuild the dictionary or download a matching prebuilt one.
+/// Dictionaries built before Lindera v7 (format version 2) list the
+/// categories in `char_def.bin` in another order (#1111) and are rejected.
+/// Rebuild the dictionary or download a matching prebuilt one, including
+/// one saved in OPFS by an older Lindera.
 #[wasm_bindgen(js_name = "loadDictionaryFromBytes")]
 #[allow(clippy::too_many_arguments)]
 pub fn load_dictionary_from_bytes(
