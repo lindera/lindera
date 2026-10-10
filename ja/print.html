@@ -10612,7 +10612,13 @@ IPADIC-NEologd 1,085 語）が引けなくなることを前提にする。IPADI
 <pre><code class="language-bash">make check-docs
 </code></pre>
 <blockquote>
-<p>注意: CI は <code>make check-docs</code> を実行し、rustdoc の警告が 1 つでもあれば失敗します。言語バインディング以外のクレートを、すべての feature を有効にして文書化します。ライブラリは 2 回文書化し、1 回目は docs.rs が公開するのと同じく公開項目だけ、2 回目は private 項目も含めます。private 項目の doc コメントを検査するのは 2 回目だけです。続けて、CLI のコードがある <code>lindera-cli</code> のバイナリを private 項目も含めて文書化します。ダミーの辞書（<code>DOCS_RS=1</code>）を使い、専用の target ディレクトリ <code>target/check-docs</code> でビルドするので、辞書をダウンロードせず、<code>target/</code> にも影響しません。言語バインディングは検査の対象外です。</p>
+<p>注意: CI は <code>make check-docs</code> を実行し、rustdoc の警告が 1 つでもあれば失敗します。言語バインディング以外のクレートを、すべての feature を有効にして文書化します。ライブラリは 2 回文書化し、1 回目は docs.rs が公開するのと同じく公開項目だけ、2 回目は private 項目も含めます。private 項目の doc コメントを検査するのは 2 回目だけです。続けて、CLI のコードがある <code>lindera-cli</code> のバイナリを private 項目も含めて文書化します。ダミーの辞書（<code>DOCS_RS=1</code>）を使い、専用の target ディレクトリ <code>target/check-docs</code> でビルドするので、辞書をダウンロードせず、<code>target/</code> にも影響しません。</p>
+</blockquote>
+<p>言語バインディングは、ビルドにそれぞれの言語のツールチェーンが必要なため、1 つずつ検査します：</p>
+<pre><code class="language-bash">make check-docs-lindera-python   # -nodejs、-ruby、-php、-wasm も同様
+</code></pre>
+<blockquote>
+<p>注意: 各バインディングの CI ジョブがそれぞれのターゲットを実行し、rustdoc の警告が 1 つでもあれば失敗します。ターゲットはバインディングを 2 回文書化します。1 回目は公開項目だけ、2 回目は private 項目も含めます。feature はデフォルトのままです。項目の有無を切り替える feature はすべてデフォルトで有効なので、これで足ります。辞書はビルドしません。<code>lindera-ruby</code> は <code>make test-lindera-ruby</code> と同じ RbConfig のラッパーを通して実行し、<code>lindera-wasm</code> は <code>wasm32-unknown-unknown</code> 向けに文書化します。</p>
 </blockquote>
 <h3 id="mdbook-ドキュメント"><a class="header" href="#mdbook-ドキュメント">mdBook ドキュメント</a></h3>
 <p>ユーザー向けドキュメントをビルドします：</p>
@@ -11047,7 +11053,7 @@ cargo test
 make check-docs
 </code></pre>
 <blockquote>
-<p>注意: CI はこの 4 つをすべて検査します。フォーマットを確認し、各クレートに対してそのクレートのテストと同じ feature で clippy（警告はエラー扱い）とテストを実行し、言語バインディング以外のクレートの rustdoc に警告があれば失敗します。<code>make lint</code> と <code>make test</code> はクレートごとに同じ feature を使います。詳しくは<a href="development/build_and_test.html">ビルドとテスト</a>を参照してください。</p>
+<p>注意: CI はこの 4 つをすべて検査します。フォーマットを確認し、各クレートに対してそのクレートのテストと同じ feature で clippy（警告はエラー扱い）とテストを実行し、どのクレートでも rustdoc に警告があれば失敗します。<code>make check-docs</code> は、ビルドにそれぞれの言語のツールチェーンが必要な言語バインディングを対象にしません。バインディングを変更した場合は、そのバインディングの CI ジョブと同じく <code>make check-docs-lindera-&lt;binding&gt;</code> も実行してください。<code>make lint</code> と <code>make test</code> はクレートごとに同じ feature を使います。詳しくは<a href="development/build_and_test.html">ビルドとテスト</a>を参照してください。</p>
 </blockquote>
 </li>
 <li>

@@ -232,7 +232,13 @@
 <pre><code class="language-bash">make check-docs
 </code></pre>
 <blockquote>
-<p>Note: CI runs <code>make check-docs</code> and fails on any rustdoc warning. It documents every crate but the language bindings with all features: the libraries twice, once with public items only, as docs.rs publishes them, and once with private items too, whose doc comments only that second pass checks; then <code>lindera-cli</code>'s binary, where the CLI's code lives, with its private items. It builds with dummy dictionaries (<code>DOCS_RS=1</code>) in its own target directory, <code>target/check-docs</code>, so it downloads no dictionary and leaves <code>target/</code> alone. The language bindings are not checked.</p>
+<p>Note: CI runs <code>make check-docs</code> and fails on any rustdoc warning. It documents every crate but the language bindings with all features: the libraries twice, once with public items only, as docs.rs publishes them, and once with private items too, whose doc comments only that second pass checks; then <code>lindera-cli</code>'s binary, where the CLI's code lives, with its private items. It builds with dummy dictionaries (<code>DOCS_RS=1</code>) in its own target directory, <code>target/check-docs</code>, so it downloads no dictionary and leaves <code>target/</code> alone.</p>
+</blockquote>
+<p>The language bindings are checked one at a time, since building each needs its language's toolchain:</p>
+<pre><code class="language-bash">make check-docs-lindera-python   # also -nodejs, -ruby, -php, -wasm
+</code></pre>
+<blockquote>
+<p>Note: Each binding's CI job runs its target and fails on any rustdoc warning. The target documents the binding twice, public items only and then with private items too, with default features, which already enable every feature that adds or removes an item; no dictionary is built. <code>lindera-ruby</code> runs through the same RbConfig wrapper as <code>make test-lindera-ruby</code>, and <code>lindera-wasm</code> is documented for <code>wasm32-unknown-unknown</code>.</p>
 </blockquote>
 <h3 id="mdbook-documentation"><a class="header" href="#mdbook-documentation">mdBook Documentation</a></h3>
 <p>Build the user-facing documentation:</p>

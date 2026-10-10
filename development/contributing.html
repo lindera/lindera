@@ -202,7 +202,7 @@ cargo test
 make check-docs
 </code></pre>
 <blockquote>
-<p>Note: CI enforces all four: it checks formatting, runs clippy (warnings as errors) and the tests for each crate with the features it tests that crate with, and fails on rustdoc warnings in every crate but the language bindings. <code>make lint</code> and <code>make test</code> apply the same per-crate features; see <a href="build_and_test.html">Build &amp; Test</a>.</p>
+<p>Note: CI enforces all four: it checks formatting, runs clippy (warnings as errors) and the tests for each crate with the features it tests that crate with, and fails on rustdoc warnings in any crate. <code>make check-docs</code> leaves out the language bindings, which need their languages' toolchains to build; if you change one, also run <code>make check-docs-lindera-&lt;binding&gt;</code>, as that binding's CI job does. <code>make lint</code> and <code>make test</code> apply the same per-crate features; see <a href="build_and_test.html">Build &amp; Test</a>.</p>
 </blockquote>
 </li>
 <li>
