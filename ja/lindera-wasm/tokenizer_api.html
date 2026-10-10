@@ -197,7 +197,7 @@
 <pre><code class="language-javascript">builder.setMode("normal");
 </code></pre>
 <h4 id="setdictionaryuri"><a class="header" href="#setdictionaryuri"><code>setDictionary(uri)</code></a></h4>
-<p>トークナイズに使用する辞書を設定します。</p>
+<p>トークナイズに使用する辞書を設定します。<code>setDictionaryInstance()</code> で設定した辞書は、この辞書に置き換わります。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>uri</code> (string) -- 辞書の URI（例: <code>"embedded://ipadic"</code>）</li>
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
@@ -206,7 +206,8 @@
 </code></pre>
 <h4 id="setdictionaryinstancedictionary"><a class="header" href="#setdictionaryinstancedictionary"><code>setDictionaryInstance(dictionary)</code></a></h4>
 <p>読み込み済みの辞書インスタンスをトークナイズに設定します。
-URI の代わりにバイトデータから読み込んだ辞書（例: <code>loadDictionaryFromBytes()</code> 経由）を使用する場合に使います。</p>
+URI の代わりにバイトデータから読み込んだ辞書（例: <code>loadDictionaryFromBytes()</code> 経由）を使用する場合に使います。
+<code>setDictionary()</code> で設定した辞書は、この辞書に置き換わります（2 つのうち最後に呼んだ方の辞書が使われます）。ビルダーのほかの設定（モード、<code>setUserDictionaryInstance()</code>、<code>setKeepWhitespace()</code>、<code>setSpacePenalty()</code>、追加したフィルタ）は、URI で設定した辞書と同じようにこの辞書にも適用されます。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト</li>
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
@@ -224,7 +225,7 @@ const dictionary = loadDictionaryFromBytes(
 builder.setDictionaryInstance(dictionary);
 </code></pre>
 <h4 id="setuserdictionaryinstanceuserdictionary"><a class="header" href="#setuserdictionaryinstanceuserdictionary"><code>setUserDictionaryInstance(userDictionary)</code></a></h4>
-<p>読み込み済みのユーザー辞書インスタンスを設定します。<code>loadUserDictionaryFromBytes()</code>（CSV）または <code>loadUserDictionaryBinFromBytes()</code>（ビルド済み <code>.bin</code>）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。</p>
+<p>読み込み済みのユーザー辞書インスタンスを設定します。<code>loadUserDictionaryFromBytes()</code>（CSV）または <code>loadUserDictionaryBinFromBytes()</code>（ビルド済み <code>.bin</code>）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。ユーザー辞書は、<code>setDictionary()</code> と <code>setDictionaryInstance()</code> のどちらで設定した辞書にも適用されます。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>userDictionary</code> (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト</li>
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
@@ -250,7 +251,7 @@ builder.setDictionaryInstance(dictionary);
 <li><code>true</code> -- 辞書のルールを要求します。ルールを同梱しない辞書では <code>build()</code> がエラーを投げます。</li>
 <li><code>{ rules: [{ pos: [...], cost: n }, ...] }</code> 形式のオブジェクト -- 辞書のルールの代わりにこのルールを適用します。先頭品詞タグが <code>pos</code> に含まれる候補に <code>cost</code> を加算し、最初に一致したルールが使われます。</li>
 </ul>
-<p>この設定は、<code>setDictionary()</code> で設定した辞書にも、<code>setDictionaryInstance()</code> で設定した辞書（たとえば <code>loadDictionaryFromBytes()</code> で OPFS から読み込んだ ko-dic）にも適用されます。辞書オブジェクト自体は変更されません。<code>Tokenizer</code> コンストラクタで作成したトークナイザーは常に辞書のデフォルトを使います。設定を変えるには <code>TokenizerBuilder</code> でビルドしてください。</p>
+<p>この設定は、<code>setDictionary()</code> で設定した辞書にも、<code>setDictionaryInstance()</code> で設定した辞書（たとえば <code>loadDictionaryFromBytes()</code> で OPFS から読み込んだ ko-dic）にも適用されます。辞書オブジェクト自体は変更されません。<code>Tokenizer</code> コンストラクタは、同じ設定を引数 <code>spacePenalty</code> で受け取ります。</p>
 <pre><code class="language-javascript">// ペナルティをオフにする
 builder.setSpacePenalty(false);
 
@@ -296,7 +297,7 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 </code></pre>
 <p><code>setSpacePenalty</code>、<code>appendCharacterFilter</code>、<code>appendTokenFilter</code> の引数は、配列、オブジェクト、<code>Map</code> の入れ子が 128 段までです。それより深い値や、自分自身を含む値を渡すと、エラー文字列が投げられます。</p>
 <h4 id="build"><a class="header" href="#build"><code>build()</code></a></h4>
-<p>設定済みの <code>Tokenizer</code> インスタンスをビルドして返します。ビルド後もビルダーはそのまま使えるため、同じ設定から複数のトークナイザーをビルドできます。</p>
+<p>設定済みの <code>Tokenizer</code> インスタンスをビルドして返します。辞書を <code>setDictionary()</code> と <code>setDictionaryInstance()</code> のどちらで設定しても、すべての設定が適用されます。ビルド後もビルダーはそのまま使えるため、同じ設定から複数のトークナイザーをビルドできます。</p>
 <ul>
 <li><strong>戻り値</strong>: <code>Tokenizer</code></li>
 </ul>

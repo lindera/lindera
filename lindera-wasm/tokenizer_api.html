@@ -198,7 +198,7 @@ configures the same underlying builder.</p>
 <pre><code class="language-javascript">builder.setMode("normal");
 </code></pre>
 <h4 id="setdictionaryuri"><a class="header" href="#setdictionaryuri"><code>setDictionary(uri)</code></a></h4>
-<p>Sets the dictionary to use for tokenization.</p>
+<p>Sets the dictionary to use for tokenization. It replaces a dictionary set with <code>setDictionaryInstance()</code>.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>uri</code> (string) -- Dictionary URI (e.g., <code>"embedded://ipadic"</code>)</li>
 <li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
@@ -207,7 +207,8 @@ configures the same underlying builder.</p>
 </code></pre>
 <h4 id="setdictionaryinstancedictionary"><a class="header" href="#setdictionaryinstancedictionary"><code>setDictionaryInstance(dictionary)</code></a></h4>
 <p>Sets a pre-loaded dictionary instance for tokenization.
-Use this when the dictionary has been loaded from bytes (e.g., via <code>loadDictionaryFromBytes()</code>) instead of from a URI.</p>
+Use this when the dictionary has been loaded from bytes (e.g., via <code>loadDictionaryFromBytes()</code>) instead of from a URI.
+It replaces a dictionary set with <code>setDictionary()</code>: whichever of the two is called last sets the dictionary. Every other setting of the builder (the mode, <code>setUserDictionaryInstance()</code>, <code>setKeepWhitespace()</code>, <code>setSpacePenalty()</code> and the appended filters) applies to it as to a dictionary set by URI.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>dictionary</code> (Dictionary) -- A loaded dictionary object</li>
 <li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
@@ -224,7 +225,7 @@ const dictionary = loadDictionaryFromBytes(
 builder.setDictionaryInstance(dictionary);
 </code></pre>
 <h4 id="setuserdictionaryinstanceuserdictionary"><a class="header" href="#setuserdictionaryinstanceuserdictionary"><code>setUserDictionaryInstance(userDictionary)</code></a></h4>
-<p>Sets a pre-loaded user dictionary instance. Load one from bytes with <code>loadUserDictionaryFromBytes()</code> (CSV) or <code>loadUserDictionaryBinFromBytes()</code> (prebuilt <code>.bin</code>); URI-based user dictionaries are not available on WebAssembly.</p>
+<p>Sets a pre-loaded user dictionary instance. Load one from bytes with <code>loadUserDictionaryFromBytes()</code> (CSV) or <code>loadUserDictionaryBinFromBytes()</code> (prebuilt <code>.bin</code>); URI-based user dictionaries are not available on WebAssembly. The user dictionary applies to a dictionary set with either <code>setDictionary()</code> or <code>setDictionaryInstance()</code>.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>userDictionary</code> (UserDictionary) -- A loaded user dictionary object</li>
 <li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
@@ -250,7 +251,7 @@ builder.setDictionaryInstance(dictionary);
 <li><code>true</code> -- Requires the dictionary's rules; <code>build()</code> throws for a dictionary that ships none.</li>
 <li>An object of the form <code>{ rules: [{ pos: [...], cost: n }, ...] }</code> -- Applies these rules instead. A candidate whose first part-of-speech tag is listed in <code>pos</code> gets <code>cost</code> added; the first matching rule wins.</li>
 </ul>
-<p>The setting applies both to a dictionary set with <code>setDictionary()</code> and to one set with <code>setDictionaryInstance()</code>, such as a ko-dic loaded from OPFS with <code>loadDictionaryFromBytes()</code>. The dictionary object itself is not changed. A tokenizer created with the <code>Tokenizer</code> constructor always uses the dictionary's default; build it with <code>TokenizerBuilder</code> to change the setting.</p>
+<p>The setting applies both to a dictionary set with <code>setDictionary()</code> and to one set with <code>setDictionaryInstance()</code>, such as a ko-dic loaded from OPFS with <code>loadDictionaryFromBytes()</code>. The dictionary object itself is not changed. The <code>Tokenizer</code> constructor takes the same setting as its <code>spacePenalty</code> argument.</p>
 <pre><code class="language-javascript">// Turn the penalty off
 builder.setSpacePenalty(false);
 
@@ -296,9 +297,10 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does
 </code></pre>
 <p>The arguments of <code>setSpacePenalty</code>, <code>appendCharacterFilter</code> and <code>appendTokenFilter</code> may nest arrays, objects and <code>Map</code>s at most 128 levels deep. A deeper value, or one that contains itself, throws an error string.</p>
 <h4 id="build"><a class="header" href="#build"><code>build()</code></a></h4>
-<p>Builds and returns a configured <code>Tokenizer</code> instance. The builder remains
-usable afterwards, so multiple tokenizers can be built from the same
-configuration.</p>
+<p>Builds and returns a configured <code>Tokenizer</code> instance. Every setting applies
+whether the dictionary was set with <code>setDictionary()</code> or with
+<code>setDictionaryInstance()</code>. The builder remains usable afterwards, so
+multiple tokenizers can be built from the same configuration.</p>
 <ul>
 <li><strong>Returns</strong>: <code>Tokenizer</code></li>
 </ul>

@@ -279,6 +279,21 @@ let config: SegmenterConfig = json!({
 let segmenter = Segmenter::from_config(&amp;config)?;
 <span class="boring">}</span></code></pre></pre>
 <p>注: ここでは <code>use_mmap</code> を明示的に示すためにあえて <code>false</code> を指定していますが、省略した場合も後述のデフォルト（<code>true</code>）と同じ挙動になります。</p>
+<p><code>Segmenter::from_config_with_dictionaries</code> は、バイト列から読み込んだ辞書など、読み込み済みの辞書に設定を適用します。<code>Some</code> で渡した辞書は <code>dictionary</code> キーが指す辞書の代わりに使われ、このときキーは省略できます（<code>use_mmap</code> は関係しません）。<code>Some</code> で渡したユーザー辞書は、<code>user_dictionary</code> キーが指すユーザー辞書の代わりに使われます。<code>None</code> の場合、辞書は <code>from_config</code> と同じく設定から読み込まれ、設定にあるユーザー辞書は、使う辞書のメタデータでビルドされます。それ以外のキーは <code>from_config</code> と同じように適用されます：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use serde_json::json;
+use lindera::dictionary::load_dictionary;
+use lindera::segmenter::{Segmenter, SegmenterConfig};
+
+let dictionary = load_dictionary("embedded://ipadic")?;
+let config: SegmenterConfig = json!({
+    "mode": "normal",
+    "keep_whitespace": true
+});
+let segmenter = Segmenter::from_config_with_dictionaries(&amp;config, Some(dictionary), None)?;
+<span class="boring">}</span></code></pre></pre>
+<p><code>Tokenizer::from_config_with_dictionaries</code> と <code>TokenizerBuilder::build_with_dictionaries</code> は、フィルタを含むトークナイザーの設定に対して同じことを行います（<a href="../lindera-analysis/architecture.html">アーキテクチャ</a>を参照）。</p>
 <h2 id="メモリマップド読み込み"><a class="header" href="#メモリマップド読み込み">メモリマップド読み込み</a></h2>
 <p>ファイルシステム辞書（<code>embedded://</code> ではない辞書）に対しては、<code>mmap</code> cargo
 feature がコンパイルに含まれている場合（デフォルトで含まれます）、
