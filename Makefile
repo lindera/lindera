@@ -64,6 +64,9 @@ FEATURES_lindera-cli            := --features train
 
 # Per-target feature overrides (where lint/test/build differ).
 TEST_FEATURES_lindera-cli       := --features train,embed-ipadic
+# lindera-binding's dictionary features exist only for its tests and benches,
+# so build-lindera-binding keeps building without embedded dictionaries.
+TEST_FEATURES_lindera-binding   := --features embed-ipadic,embed-ko-dic
 BUILD_FEATURES_lindera-segmenter := --features train
 BUILD_FEATURES_lindera          := --features train
 

@@ -197,6 +197,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-binding
+      features: "--features embed-ipadic,embed-ko-dic"
       cache: true
 
   test-lindera-cli:
