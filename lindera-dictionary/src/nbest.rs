@@ -343,7 +343,9 @@ impl<'a> NBestGenerator<'a> {
             let elem = &self.elements[idx];
             let slot = elem.char_pos as usize;
             let edge = &self.lattice.edges_at_char(slot)[elem.edge_index as usize];
-            path.extend(token(self.lattice, slot, edge));
+            if let Some(token) = token(self.lattice, slot, edge) {
+                path.push(token);
+            }
             maybe_idx = elem.prev;
         }
 
@@ -374,6 +376,7 @@ impl<'a> NBestGenerator<'a> {
 /// # Returns
 ///
 /// The edge's transitions; empty for a BOS edge.
+#[inline]
 fn transitions(lattice: &Lattice, slot: usize, edge_index: u32) -> &[PathEntry] {
     let paths = lattice.paths_at_char(slot);
     let start = paths.partition_point(|p| p.edge_index() < edge_index);
@@ -396,6 +399,7 @@ fn transitions(lattice: &Lattice, slot: usize, edge_index: u32) -> &[PathEntry] 
 /// The token, or `None` for the EOS edge, the only edge whose start equals
 /// the slot it is stored in (a zero-length span at the end of the sentence;
 /// a carried edge always starts before its slot).
+#[inline]
 fn token(lattice: &Lattice, slot: usize, edge: &Edge) -> Option<TokenOffset> {
     let start = edge.start_char() as usize;
     (start != slot).then(|| {
@@ -410,6 +414,34 @@ fn token(lattice: &Lattice, slot: usize, edge: &Edge) -> Option<TokenOffset> {
 /// The end of a chain of [`NodeEdge`]s: the edges a search of
 /// [`UniqueNBestGenerator`] starts from continue with nothing.
 const NO_EDGE: usize = usize::MAX;
+
+/// The initial capacity of the queue and the buffers of
+/// [`UniqueNBestGenerator`]: enough for the few dozen nodes the search of a
+/// short sentence takes, so they do not regrow there.
+const INITIAL_CAPACITY: usize = 64;
+
+/// Returns the key [`UniqueNBestGenerator`] groups the left edges of an
+/// expansion by, all of one slot: within a slot, the start position and the
+/// whitespace an entry ends with determine the token span (the slot fixes
+/// where the whitespace before it starts), and a BOS edge is a node of its
+/// own. Spans sort by start, then by end, before the BOS edges.
+///
+/// # Arguments
+///
+/// * `edge` - An edge of the slot.
+/// * `index` - Its index in the slot.
+///
+/// # Returns
+///
+/// The key.
+#[inline]
+fn span_key(edge: &Edge, index: u32) -> u64 {
+    if edge.left_index() == u32::MAX {
+        1 << 40 | u64::from(index)
+    } else {
+        u64::from(edge.start_char()) << 8 | u64::from(edge.ws_tail())
+    }
+}
 
 /// An edge of a node of [`UniqueNBestGenerator`], with the cheapest way from
 /// it to the end of the search along the node's suffix of token spans.
@@ -557,9 +589,10 @@ pub struct UniqueNBestGenerator<'a> {
     /// Scratch of an expansion: the cheapest way into each edge of the left
     /// slot, by edge index; `None` for the edges no transition reached.
     ways: Vec<Option<Way>>,
-    /// Scratch of an expansion: the edges of the left slot with a way, in
-    /// the order the transitions reached them.
-    touched: Vec<u32>,
+    /// Scratch of an expansion: the edges of the left slot with a way, as
+    /// their [`span_key`] and index, in the order the transitions reached
+    /// them.
+    touched: Vec<(u64, u32)>,
     /// Scratch of an expansion: the children, as (cost, the position of the
     /// last transition that gives the cost, range of edges).
     children: Vec<(i64, u32, usize, usize)>,
@@ -639,7 +672,7 @@ impl<'a> UniqueNBestGenerator<'a> {
                 next: NO_EDGE,
                 order: i as u32,
             };
-            generator.offer(i as u32, way);
+            generator.offer(i as u32, edge, way);
         }
         generator.push_children(slot);
         generator
@@ -659,11 +692,12 @@ impl<'a> UniqueNBestGenerator<'a> {
             lattice,
             first: None,
             skip: None,
-            queue: BinaryHeap::new(),
-            edges: Vec::new(),
+            // Room for the search of a short sentence without regrowing.
+            queue: BinaryHeap::with_capacity(INITIAL_CAPACITY),
+            edges: Vec::with_capacity(INITIAL_CAPACITY),
             pushed: 0,
             ways: Vec::new(),
-            touched: Vec::new(),
+            touched: Vec::with_capacity(INITIAL_CAPACITY),
             children: Vec::new(),
             #[cfg(test)]
             budget: usize::MAX,
@@ -740,8 +774,9 @@ impl<'a> UniqueNBestGenerator<'a> {
     /// # Arguments
     ///
     /// * `index` - The index of the edge in the left slot.
+    /// * `edge` - The edge.
     /// * `way` - The way.
-    fn offer(&mut self, index: u32, way: Way) {
+    fn offer(&mut self, index: u32, edge: &Edge, way: Way) {
         match &mut self.ways[index as usize] {
             Some(best) => {
                 if way.gx <= best.gx {
@@ -750,7 +785,7 @@ impl<'a> UniqueNBestGenerator<'a> {
             }
             empty => {
                 *empty = Some(way);
-                self.touched.push(index);
+                self.touched.push((span_key(edge, index), index));
             }
         }
     }
@@ -768,29 +803,33 @@ impl<'a> UniqueNBestGenerator<'a> {
     fn push_children(&mut self, left_slot: usize) {
         let lattice = self.lattice;
         let left_edges = lattice.edges_at_char(left_slot);
-        // Within one slot, the start position and the whitespace an entry
-        // ends with determine the token span (the slot fixes where the
-        // whitespace before it starts); a BOS edge is a node of its own.
-        let key = |index: u32| {
-            let edge = &left_edges[index as usize];
-            if edge.left_index() == u32::MAX {
-                (true, index, 0)
-            } else {
-                (false, u32::from(edge.start_char()), edge.ws_tail())
+        if let [(_, index)] = self.touched[..] {
+            // One left edge, one child: nothing to group or order.
+            self.touched.clear();
+            if let Some(way) = self.ways[index as usize].take() {
+                let start = self.edges.len();
+                self.edges.push(NodeEdge {
+                    gx: way.gx,
+                    slot: left_slot as u32,
+                    edge_index: index,
+                    next: way.next,
+                });
+                let fx = i64::from(left_edges[index as usize].path_cost()) + way.gx;
+                self.push_node(fx, start, start + 1);
             }
-        };
-        self.touched
-            .sort_unstable_by_key(|&index| (key(index), index));
+            return;
+        }
+        self.touched.sort_unstable();
 
         self.children.clear();
         let mut i = 0;
         while i < self.touched.len() {
-            let group = key(self.touched[i]);
+            let group = self.touched[i].0;
             let start = self.edges.len();
             let mut fx = i64::MAX;
             let mut position = 0;
-            while i < self.touched.len() && key(self.touched[i]) == group {
-                let index = self.touched[i];
+            while i < self.touched.len() && self.touched[i].0 == group {
+                let index = self.touched[i].1;
                 i += 1;
                 let Some(way) = self.ways[index as usize].take() else {
                     continue;
@@ -811,8 +850,10 @@ impl<'a> UniqueNBestGenerator<'a> {
         }
         self.touched.clear();
 
-        self.children
-            .sort_unstable_by_key(|&(_, position, _, _)| position);
+        if self.children.len() > 1 {
+            self.children
+                .sort_unstable_by_key(|&(_, position, _, _)| position);
+        }
         for k in 0..self.children.len() {
             let (fx, _, start, end) = self.children[k];
             self.push_node(fx, start, end);
@@ -851,6 +892,7 @@ impl<'a> UniqueNBestGenerator<'a> {
                     + i64::from(edge.word_cost());
                 self.offer(
                     entry.left_index(),
+                    left_edge,
                     Way {
                         gx,
                         next: index,
@@ -861,6 +903,40 @@ impl<'a> UniqueNBestGenerator<'a> {
             }
         }
         self.push_children(left_slot);
+    }
+
+    /// Returns whether a complete path has the word boundaries and BOS index
+    /// of the first path, which the search skips once, comparing the chain
+    /// of node edges with them without building the tokens.
+    ///
+    /// # Arguments
+    ///
+    /// * `bos` - The BOS index of the path.
+    /// * `next` - The node edge after its BOS edge.
+    ///
+    /// # Returns
+    ///
+    /// `true` for the first path's pair while it has not been skipped.
+    fn is_first(&self, bos: usize, mut next: usize) -> bool {
+        let Some((bounds, first_bos)) = &self.skip else {
+            return false;
+        };
+        if *first_bos != bos {
+            return false;
+        }
+        let mut bounds = bounds.iter();
+        while next != NO_EDGE {
+            let node_edge = &self.edges[next];
+            let slot = node_edge.slot as usize;
+            let edge = &self.lattice.edges_at_char(slot)[node_edge.edge_index as usize];
+            if let Some((start, end, _)) = token(self.lattice, slot, edge)
+                && bounds.next() != Some(&(start, end))
+            {
+                return false;
+            }
+            next = node_edge.next;
+        }
+        bounds.next().is_none()
     }
 
     /// Rebuilds the tokens of a complete path from the chain of node edges
@@ -879,7 +955,9 @@ impl<'a> UniqueNBestGenerator<'a> {
             let node_edge = &self.edges[next];
             let slot = node_edge.slot as usize;
             let edge = &self.lattice.edges_at_char(slot)[node_edge.edge_index as usize];
-            path.extend(token(self.lattice, slot, edge));
+            if let Some(token) = token(self.lattice, slot, edge) {
+                path.push(token);
+            }
             next = node_edge.next;
         }
         path
@@ -924,21 +1002,11 @@ impl<'a> UniqueNBestGenerator<'a> {
             }
             // A BOS edge: a complete path.
             let bos = self.lattice.bos_index(node_edge.edge_index as usize);
-            let tokens = self.reconstruct(node_edge.next);
-            let is_first = self.skip.as_ref().is_some_and(|(bounds, first_bos)| {
-                *first_bos == bos
-                    && bounds.len() == tokens.len()
-                    && bounds.iter().zip(&tokens).all(
-                        |(&(start, end), &(token_start, token_end, _))| {
-                            start == token_start && end == token_end
-                        },
-                    )
-            });
-            if is_first {
+            if self.is_first(bos, node_edge.next) {
                 self.skip = None;
                 continue;
             }
-            return Some(((tokens, node.fx), bos));
+            return Some(((self.reconstruct(node_edge.next), node.fx), bos));
         }
         None
     }

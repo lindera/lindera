@@ -3095,14 +3095,20 @@ impl Lattice {
         if unique {
             let mut generator = UniqueNBestGenerator::new(self);
             // One path per (segmentation, BOS edge): with several BOS edges,
-            // fold the paths that differ only in theirs.
-            let mut seen: HashSet<Vec<(usize, usize)>> = HashSet::new();
+            // fold the paths that differ only in theirs; with one, every
+            // path is a segmentation of its own.
+            let mut seen: Option<HashSet<Vec<(usize, usize)>>> =
+                (self.bos_len > 1).then(HashSet::new);
             take_nbest(
                 &mut results,
                 n,
                 cost_threshold,
                 || generator.next(),
-                |(path, _)| seen.insert(path.iter().map(|&(start, end, _)| (start, end)).collect()),
+                |(path, _)| {
+                    seen.as_mut().is_none_or(|seen| {
+                        seen.insert(path.iter().map(|&(start, end, _)| (start, end)).collect())
+                    })
+                },
             );
         } else {
             let mut generator = NBestGenerator::new(self);
