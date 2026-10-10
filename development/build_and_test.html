@@ -203,7 +203,7 @@
 <pre><code class="language-bash">cargo test -p &lt;crate&gt; --all-features
 </code></pre>
 <blockquote>
-<p>Note: CI does not use <code>--all-features</code> -- it runs each crate with a curated, crate-specific feature combination (see <code>.github/workflows/regression.yml</code>). The Makefile's per-crate pattern targets (<code>make test-&lt;crate&gt;</code>, <code>make lint-&lt;crate&gt;</code>) apply the same feature combinations CI uses and are the closest local equivalent.</p>
+<p>Note: CI does not use <code>--all-features</code> -- it runs each crate with a curated, crate-specific feature combination (see <code>.github/workflows/regression.yml</code>). The Makefile's per-crate pattern targets (<code>make test-&lt;crate&gt;</code>, <code>make lint-&lt;crate&gt;</code>) apply the same feature combinations CI uses and are the closest local equivalent. CI also tests <code>lindera-segmenter</code> and <code>lindera</code> once more with every dictionary embedded (on Linux only), which runs the tests gated on the other dictionaries; to do the same locally, run <code>cargo test -p lindera --features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba</code> (and likewise for <code>lindera-segmenter</code>).</p>
 </blockquote>
 <h3 id="workspace-wide-tests"><a class="header" href="#workspace-wide-tests">Workspace-Wide Tests</a></h3>
 <pre><code class="language-bash">cargo test
@@ -221,7 +221,7 @@
 <pre><code class="language-bash">cargo clippy -- -D warnings
 </code></pre>
 <blockquote>
-<p>Note: only <code>cargo fmt --all -- --check</code> is enforced in CI; <code>cargo clippy</code> is not currently run in CI, but should still be run locally (e.g. via <code>make lint</code>) before opening a PR.</p>
+<p>Note: CI runs <code>cargo clippy --all-targets -- -D warnings</code> for each crate, with the features it tests that crate with (see <code>.github/workflows/test-crate.yml</code>). Run clippy locally (e.g. via <code>make lint</code>) before opening a PR.</p>
 </blockquote>
 <h2 id="documentation"><a class="header" href="#documentation">Documentation</a></h2>
 <h3 id="api-documentation"><a class="header" href="#api-documentation">API Documentation</a></h3>
