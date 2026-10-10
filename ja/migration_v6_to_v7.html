@@ -190,11 +190,14 @@ MeCab と同様に空白をラティス上で読み飛ばし（Sudachi と同じ
 を除く）、<code>char.def</code> の重複した行を MeCab と同じく解決し、MeCab と同じく行の中では
 <code>、</code>・<code>。</code> をまたいで文脈を引き継ぎ、
 N-best の各結果が入力全体を覆うようにし、MeCab と同じくどの位置からも未知語が
-始まるようにし、辞書の見出し語のダッシュとチルダを書かれたとおりに保持して、
+始まるようにし、MeCab と同じく文字の既定カテゴリから未知語を作ってカテゴリを
+共有する文字をまとめるようにし、辞書の見出し語のダッシュとチルダを書かれたとおりに保持して、
 それを書き換えていた設定 <code>normalize_details</code> を削除し、MeCab と同じく同点の
 見出し語からは CSV で先の行を出力するようにし、コストが同じ 2 つの分割からは
 MeCab と同じく最後の語が後から始まる方を選ぶようにし、<code>lindera-dictionary</code> の
 ラティスのバックトレースが各トークンの終了オフセットも返すようにしました。
+v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは読み込めなくなるため、
+再ビルドか再ダウンロードが必要です（辞書の形式バージョン 3）。
 このガイドでは、すべての破壊的変更とその対処方法を説明します。</p>
 <h2 id="概要"><a class="header" href="#概要">概要</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>変更</th><th>影響範囲</th><th>対処方法</th></tr></thead><tbody>
@@ -205,6 +208,7 @@ MeCab と同じく最後の語が後から始まる方を選ぶようにし、<c
 <tr><td><strong>暗黙の feature <code>lindera-ipadic</code>・<code>lindera-ipadic-neologd</code>・<code>lindera-unidic</code>・<code>lindera-sudachidict</code>・<code>lindera-ko-dic</code>・<code>lindera-cc-cedict</code>・<code>lindera-jieba</code> の削除</strong></td><td><code>features = [...]</code> に辞書クレート名を書いて有効化していたユーザー</td><td>代わりに <code>embed-*</code> feature を使う</td></tr>
 <tr><td><strong><code>lindera-binding-core</code> を <code>lindera-binding</code> に改名</strong></td><td>バインディング用ヘルパークレートを使う Rust ユーザー</td><td><code>lindera-binding</code> に依存し、<code>lindera_binding_core::</code> を <code>lindera_binding::</code> に置き換える</td></tr>
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> の削除</strong></td><td>非推奨のビルドキャッシュ変数をまだ設定しているユーザー</td><td><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を設定する。旧名は無視される</td></tr>
+<tr><td><strong>辞書の形式バージョン 3: v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは読み込めない</strong></td><td>ファイルから辞書を読み込むユーザー（パスを指定した <code>load_dictionary</code>、<code>lindera tokenize --dict &lt;dir&gt;</code>、バインディングのパスやバイト列からの読み込み、WASM バインディングの OPFS に保存した辞書）。埋め込み辞書とユーザー辞書は対象外</td><td>7.0.0 の <code>lindera build</code> で再ビルドするか、7.0.0 の <code>lindera download</code> やリリースアセットから再ダウンロードする</td></tr>
 <tr><td><strong>IPADIC・IPADIC-NEologd の <code>conjugation_type</code> と <code>conjugation_form</code> が正しい列を指すように修正</strong></td><td>IPADIC・IPADIC-NEologd でこの 2 フィールドを名前で読むユーザー（<code>Token::get</code>・<code>Token::as_value</code>・<code>lindera tokenize -o json</code>・バインディングのスキーマ）</td><td>2 つの値が入れ替わることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 <tr><td><strong>空白を含む見出し語を保持</strong></td><td>U+3000 を含むテキスト（IPADIC・IPADIC-NEologd・UniDic）、空白を含むテキスト（SudachiDict）、末尾が空白の一部の語</td><td>U+3000 が <code>記号,空白</code>・<code>空白</code> になり、SudachiDict の分割が Sudachi にずっと近くなることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 <tr><td><strong>空白をラティス上で読み飛ばし、MeCab と同様に空白の前後の語を直接接続する</strong></td><td><code>keep_whitespace</code> が false（デフォルト）で空白を含むテキストを分割するユーザー。ko-dic で特に顕著。Sudachi と同じく空白をラティスに残す SudachiDict は対象外</td><td>そのようなテキストは MeCab と同じ分割になることを前提にする。<code>skip_whitespace(false)</code>（<code>"skip_whitespace": false</code>、<code>--disable-skip-whitespace</code>）で空白の扱いを v6 に戻せる（このガイドの他の出力の変化は戻らない）</td></tr>
@@ -212,9 +216,10 @@ MeCab と同じく最後の語が後から始まる方を選ぶようにし、<c
 <tr><td><strong>MeCab と同じく、行の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぐ</strong></td><td>行の中に <code>、</code> や <code>。</code> を含む日本語のテキストを分割するユーザー</td><td><code>、</code> や <code>。</code> の直後の語の解析が一部変わり（多くは MeCab と同じ解析になる）、そうした行の N-best のコストが変わることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>N-best: 各結果が入力全体を覆う</strong></td><td>複数の文を含む入力で N-best（<code>segment_nbest</code>・<code>tokenize_nbest</code>・<code>lindera tokenize -N</code>・バインディングの N-best メソッド）を使うユーザー</td><td>2 件目以降が入力全体のコストの小さい分割になり、空の入力がトークンのない結果を 1 件返すことを前提にする。コストの閾値は入力全体に対して適用される</td></tr>
 <tr><td><strong>MeCab と同じく、どの位置からも未知語が始まる</strong></td><td>カタカナ・記号・英字が続くテキストを通常モードで分割するユーザー。特に <code>・</code> でつないだカタカナ、<code>."</code> のような韓国語の文末の句読点、CC-CEDICT の英単語</td><td>そうした連続が MeCab と同じ位置で分かれること、カタカナや英字の多いテキストで命令数が 13% 程度増えることを前提にする。v6 の動作に戻す設定はない</td></tr>
+<tr><td><strong>MeCab と同じく、未知語は文字の既定カテゴリから作り、カテゴリを共有する文字をまとめる</strong></td><td>複数のカテゴリを持つ文字がほかの文字と並ぶテキストを分割するユーザー。同梱の辞書では、ko-dic の漢数字に続く漢字と、ko-dic・CC-CEDICT・Jieba の <code>〇</code>（U+3007）。<code>CharacterDefinition::lookup_categories</code> の順序に依存する Rust コード</td><td>そうしたテキストが MeCab と同じ分割になることを前提にする（ko-dic の <code>三國史記</code> は 1 つの <code>SH</code>、Jieba の <code>二〇〇八年北京奧運會</code> は <code>二 / 〇〇八年北京奧運會</code>）。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>IPADIC・IPADIC-NEologd: MeCab と同じく、見出し語のダッシュとチルダを書かれたとおりに保持する</strong></td><td>IPADIC・IPADIC-NEologd で <code>―</code>（U+2015）・<code>—</code>（U+2014）・<code>～</code>（U+FF5E）・<code>〜</code>（U+301C）を含むテキストを分割するユーザー</td><td><code>―</code> や <code>～</code> で書かれた語が同じ綴りのテキストに一致し、<code>—</code> や <code>〜</code> で書いたテキストからは、以前の書き換えでしか引けなかった語（IPADIC 12 語、IPADIC-NEologd 1,085 語）が引けなくなることを前提にする（<code>mapping</code> 文字フィルタで綴りをそろえられる）。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
-<tr><td><strong>MeCab と同じく、表層形・文脈 ID・コストが同じ見出し語からは CSV で先の行を出力する</strong></td><td>IPADIC・IPADIC-NEologd・UniDic・ko-dic、またはそうした見出し語を持つユーザー辞書で、読みや原形などのトークンの詳細情報を読むユーザー。N-best を使うユーザー</td><td>そうした語の詳細情報が MeCab と同じになり（IPADIC の <code>狡い</code> の読みは <code>コスイ</code> ではなく <code>ズルイ</code>）、ユーザー辞書の見出し語が引き続きシステム辞書の同点の見出し語に勝ち、N-best の 1 件目が常に 1-best と同じになることを前提にする。再ビルドは不要。v6 の動作に戻す設定はない</td></tr>
-<tr><td><strong>MeCab と同じく、コストが同じ分割からは最後の語が後から始まる方を選ぶ</strong></td><td>テキストを解析するすべてのユーザー。現れるのはまれ（比較したテキストでは約 54,000 行のうち 9 行）</td><td>そうした箇所が MeCab と同じ分割になることを前提にする（IPADIC の <code>腸窒扶斯</code> は <code>腸 / 窒 / 扶斯</code> ではなく <code>腸 / 窒扶 / 斯</code>）。再ビルドは不要。v6 の動作に戻す設定はない</td></tr>
+<tr><td><strong>MeCab と同じく、表層形・文脈 ID・コストが同じ見出し語からは CSV で先の行を出力する</strong></td><td>IPADIC・IPADIC-NEologd・UniDic・ko-dic、またはそうした見出し語を持つユーザー辞書で、読みや原形などのトークンの詳細情報を読むユーザー。N-best を使うユーザー</td><td>そうした語の詳細情報が MeCab と同じになり（IPADIC の <code>狡い</code> の読みは <code>コスイ</code> ではなく <code>ズルイ</code>）、ユーザー辞書の見出し語が引き続きシステム辞書の同点の見出し語に勝ち、N-best の 1 件目が常に 1-best と同じになることを前提にする。v6 の動作に戻す設定はない</td></tr>
+<tr><td><strong>MeCab と同じく、コストが同じ分割からは最後の語が後から始まる方を選ぶ</strong></td><td>テキストを解析するすべてのユーザー。現れるのはまれ（比較したテキストでは約 54,000 行のうち 9 行）</td><td>そうした箇所が MeCab と同じ分割になることを前提にする（IPADIC の <code>腸窒扶斯</code> は <code>腸 / 窒 / 扶斯</code> ではなく <code>腸 / 窒扶 / 斯</code>）。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong><code>lindera tokenize</code> が各入力行から改行コードだけを取り除き、すべての行に結果を出す</strong></td><td>行頭・行末に空白がある入力を CLI に渡すユーザー、トークンのない行の wakati や N-best の出力を読むユーザー</td><td>オフセットが入力行の中の位置を指し、行頭・行末の U+3000 がトークンになり（IPADIC では <code>記号,空白</code>）、<code>--keep-whitespace</code> でそこの空白も出力され、空行や空白だけの行が wakati では空行に、N-best では結果 1 件になることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>WASM: 辞書の設定方法にかかわらず <code>TokenizerBuilder</code> の設定が適用される</strong></td><td><code>setDictionaryInstance()</code> と <code>setKeepWhitespace()</code> やフィルタ、または <code>setDictionary()</code> と <code>setUserDictionaryInstance()</code> を組み合わせる WASM のユーザー</td><td>それらの設定とユーザー辞書が効くことを前提にする。<code>char.def</code> に <code>SPACE</code> カテゴリがない辞書インスタンスでは、URI で設定した辞書と同じく <code>setKeepWhitespace(true)</code> が必要になる</td></tr>
 <tr><td><strong>設定 <code>normalize_details</code> の削除: <code>Metadata::new</code> と <code>CoreMetadata::new</code> の引数は 10 個、Ruby の <code>Metadata.new</code> の引数は 8 個になる</strong></td><td>辞書のメタデータを作成・参照するコード。Rust（<code>Metadata</code>・<code>lindera_binding::CoreMetadata</code>・<code>PrefixDictionaryBuilderOptions</code>）と、Python・Ruby・PHP・Node.js のバインディングの <code>Metadata</code> クラス</td><td>引数・オプション・プロパティを削除する。このキーを含む <code>metadata.json</code> もそのまま読み込め、キーは無視される</td></tr>
@@ -226,7 +231,9 @@ MeCab と同じく最後の語が後から始まる方を選ぶようにし、<c
 変わりません。API も 1 つの設定を除いて変わりません。Python・Node.js・Ruby・PHP の
 バインディングの <code>Metadata</code> クラスは、<code>normalize_details</code> を受け取らず、公開も
 しなくなりました（<a href="#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>
-を参照）。バージョン番号は 7.0.0 になります。出力の違いは 12 個あり、いずれも
+を参照）。バージョン番号は 7.0.0 になります。Rust クレートと同じく、v6.2.0 以前に
+ビルドまたはダウンロードした辞書ディレクトリは読み込めなくなります
+（<a href="#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。出力の違いは 13 個あり、いずれも
 後述します（最後の 2 つは CLI だけ、WASM バインディングだけの変化です）。IPADIC・IPADIC-NEologd では、
 <code>conjugation_type</code> と
 <code>conjugation_form</code> という名前で返る値が入れ替わります。表層形が空白だけの
@@ -240,6 +247,9 @@ MeCab と同じく最後の語が後から始まる方を選ぶようにし、<c
 コストの小さい分割になり、空の入力は N-best でトークンのない結果を 1 件返します。
 さらに通常モードでは、同じ文字種が続く範囲の内側からも
 MeCab と同じく未知語が始まるため、カタカナ・記号・英字の連続の一部が分かれます。
+未知語は MeCab と同じく文字の既定カテゴリから作り、グルーピングした未知語は
+どの文字も直前の文字とカテゴリを共有する間続くため、ko-dic では漢数字と後ろの
+漢字が 1 語になり、ko-dic・CC-CEDICT・Jieba では <code>〇</code> が記号になります。
 IPADIC・IPADIC-NEologd では、<code>―</code> や <code>～</code> で書かれた見出し語を MeCab と同じく
 その綴りで引けるようになるため、<code>―</code>・<code>—</code>・<code>～</code>・<code>〜</code> を含むテキストの分割が
 変わります。表層形・文脈 ID・コストが同じ見出し語からは、MeCab と同じく CSV で
@@ -426,6 +436,29 @@ export LINDERA_DICTIONARIES_PATH=/path/to/cache
 # v7
 export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 </code></pre>
+<h2 id="辞書ディレクトリの再ビルドが必要"><a class="header" href="#辞書ディレクトリの再ビルドが必要">辞書ディレクトリの再ビルドが必要</a></h2>
+<p>v7.0.0 は辞書を形式バージョン 3 で書き出し、v6.2.0 以前にビルドまたはダウンロード
+した辞書ディレクトリ（バージョン 2）を読み込むときに拒否します:</p>
+<pre><code class="language-text">Dictionary 'ipadic' has format version 2, but this build of Lindera reads format version 3. To fix this, rebuild it with `lindera build`, or download a matching prebuilt dictionary with `lindera download`.
+</code></pre>
+<p>バージョン 3 では、<code>char_def.bin</code> に各コードポイントの既定カテゴリを先頭に
+並べます。未知語をそのカテゴリだけから作るようになったためです（<a href="#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%AF%E6%97%A2%E5%AE%9A%E3%82%AB%E3%83%86%E3%82%B4%E3%83%AA%E3%81%8B%E3%82%89%E4%BD%9C%E3%82%8B">MeCab と同じく、未知語は既定カテゴリから作る</a>を参照）。
+バージョン 2 のファイルも配置は同じなので、検査がなければそのまま読み込まれ、
+一部の文字の既定カテゴリを黙って取り違えます。このバージョンには、v6.2.0 の辞書には
+ない、辞書ビルダーの出力のほかの変更も含まれます:
+<a href="#ipadic-%E3%81%AE%E6%B4%BB%E7%94%A8%E3%83%95%E3%82%A3%E3%83%BC%E3%83%AB%E3%83%89%E5%90%8D%E3%81%AE%E4%BF%AE%E6%AD%A3">IPADIC の活用フィールド名</a>、
+<a href="#%E7%A9%BA%E7%99%BD%E3%82%92%E5%90%AB%E3%82%80%E8%A6%8B%E5%87%BA%E3%81%97%E8%AA%9E%E3%82%92%E4%BF%9D%E6%8C%81%E3%81%99%E3%82%8B">空白を含む見出し語</a>、
+<a href="#chardef-%E3%81%AE%E9%87%8D%E8%A4%87%E3%81%97%E3%81%9F%E8%A1%8C%E3%82%92-mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E8%A7%A3%E6%B1%BA%E3%81%99%E3%82%8B"><code>char.def</code> の重複した行</a>、
+<a href="#%E3%83%80%E3%83%83%E3%82%B7%E3%83%A5%E3%81%A8%E3%83%81%E3%83%AB%E3%83%80%E3%82%92%E8%BE%9E%E6%9B%B8%E3%81%AB%E6%9B%B8%E3%81%8B%E3%82%8C%E3%81%9F%E3%81%A8%E3%81%8A%E3%82%8A%E3%81%AB%E4%BF%9D%E6%8C%81%E3%81%99%E3%82%8B">ダッシュとチルダの綴り</a>。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>対処方法</th></tr></thead><tbody>
+<tr><td>埋め込み辞書（<code>embed-*</code> feature）</td><td>対応不要。クレートのコンパイル時にビルドされる</td></tr>
+<tr><td><code>lindera download</code> でダウンロードした辞書</td><td>7.0.0 の CLI で再ダウンロードする。CLI は辞書を自身のバージョンのディレクトリに保存する</td></tr>
+<tr><td><code>lindera build</code> でビルドした辞書</td><td>7.0.0 の CLI で再ビルドする</td></tr>
+<tr><td>リリースアセットからダウンロードした辞書</td><td>7.0.0 のアセットをダウンロードする</td></tr>
+<tr><td>WASM バインディングの OPFS に保存した辞書</td><td><code>removeDictionary()</code> で削除し、<code>downloadDictionary()</code> で 7.0.0 のアセットをダウンロードする。<code>hasDictionary()</code> で確かめるだけでは古い辞書が残る</td></tr>
+<tr><td>ユーザー辞書（CSV と <code>.bin</code>）</td><td>対応不要。<code>char_def.bin</code> も形式バージョンも持たない</td></tr>
+</tbody></table>
+</div>
 <h2 id="ipadic-の活用フィールド名の修正"><a class="header" href="#ipadic-の活用フィールド名の修正">IPADIC の活用フィールド名の修正</a></h2>
 <p>IPADIC は 8 列目に活用型（例: <code>五段・カ行イ音便</code>）、9 列目に活用形（例:
 <code>連用タ接続</code>）を格納しています。v1.0.0 から v6.2.0 までの <code>lindera-ipadic</code> と
@@ -446,22 +479,16 @@ UniDic と SudachiDict は元から正しい順序です。</p>
 これらのフィールドを名前で読んでいるコードや、回避策として 2 つを入れ替えて
 読んでいたコードは修正してください。</p>
 <p>フィールド名はライブラリではなく、ビルド済み辞書ごとに保存される
-<code>metadata.json</code> から読み込まれます。また、辞書フォーマットのバージョンは
-変わっていません。埋め込み辞書（<code>embed-ipadic</code>・<code>embed-ipadic-neologd</code>）と、
-7.0.0 の CLI が <code>lindera download</code> で取得する辞書は修正後の名前になります。
-v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは v7.0.0 でも
-そのまま読み込めますが、旧い名前のままです。このような辞書ディレクトリは、
-次のいずれかで対応してください:</p>
-<ul>
-<li>v7.0.0 の <code>lindera-ipadic/metadata.json</code>（または
-<code>lindera-ipadic-neologd/metadata.json</code>）で再ビルドするか、7.0.0 の
-リリースアセットをダウンロードする。</li>
-<li>その辞書の <code>metadata.json</code> の <code>dictionary_schema.fields</code> で
-<code>"conjugation_form"</code> と <code>"conjugation_type"</code> を入れ替える。辞書データ自体は
-変わらないため、再ビルドは不要です。</li>
-</ul>
+<code>metadata.json</code> から読み込まれます。埋め込み辞書（<code>embed-ipadic</code>・
+<code>embed-ipadic-neologd</code>）と、7.0.0 の CLI が <code>lindera download</code> で取得する辞書は
+修正後の名前になります。v6.2.0 以前にビルドまたはダウンロードした辞書
+ディレクトリは読み込めなくなるため（<a href="#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）、
+v7.0.0 の <code>lindera-ipadic/metadata.json</code>（または
+<code>lindera-ipadic-neologd/metadata.json</code>）で再ビルドするか、7.0.0 のリリース
+アセットをダウンロードしてください。</p>
 <p>IPADIC の <code>metadata.json</code> の独自のコピーで辞書をビルドしている場合は、
-そのコピーも同じように入れ替えてください。</p>
+そのコピーの <code>dictionary_schema.fields</code> で <code>"conjugation_form"</code> と
+<code>"conjugation_type"</code> を入れ替えてください。</p>
 <h2 id="空白を含む見出し語を保持する"><a class="header" href="#空白を含む見出し語を保持する">空白を含む見出し語を保持する</a></h2>
 <p>v6.2.0 までは、辞書ビルダーがすべての見出し語の表層形を trim していました。そのため、
 表層形が空白だけの語は辞書から落ち、先頭や末尾が空白の語は空白を削った表層形で
@@ -494,11 +521,9 @@ Decompose の長さペナルティは、空白がラティスに残るときと�
 同じくトークンとして出力されます。取り除くには、<code>japanese_stop_tags</code> トークンフィルタで
 <code>記号,空白</code>（IPADIC）や <code>空白</code>（UniDic）を除くか、<code>unicode_normalize</code> 文字フィルタ
 （NFKC）で U+0020 に変換してください。</p>
-<p>変更は辞書ビルダーにあり、辞書の形式バージョンは変わりません。埋め込み辞書と、
-7.0.0 の CLI が <code>lindera download</code> で取得する辞書には、これらの語が含まれます。
-v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは v7.0.0 でも読み込めますが、
-<code>lindera build</code> で再ビルドするか 7.0.0 のリリースアセットを再ダウンロードするまで、
-従来の見出し語のままです。</p>
+<p>変更は辞書ビルダーにあります。埋め込み辞書と、7.0.0 の CLI が <code>lindera download</code>
+で取得する辞書には、これらの語が含まれます。v6.2.0 以前にビルドまたはダウンロード
+した辞書ディレクトリは読み込めなくなります（<a href="#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。</p>
 <h2 id="空白をラティス上で読み飛ばす"><a class="header" href="#空白をラティス上で読み飛ばす">空白をラティス上で読み飛ばす</a></h2>
 <p><code>keep_whitespace</code> が false（デフォルト）のとき、v7.0.0 は MeCab と同様に空白を
 Viterbi ラティス上で読み飛ばします。空白の後ろの語は空白の前の語に直接
@@ -519,8 +544,8 @@ IPADIC と UniDic では 0 ではなく、語どうしの連接の代わりに�
 </tbody></table>
 </div>
 <p>デフォルトは辞書の <code>metadata.json</code> で決まり、<code>skip_whitespace</code> を設定していない
-辞書は読み飛ばします。Lindera 6.x でビルドした SudachiDict にはこの設定がない
-ため、再ビルドするか <code>metadata.json</code> に設定を追加するまでは空白を読み飛ばします。</p>
+辞書は読み飛ばします。Lindera 6.x でビルドした SudachiDict にはこの設定が
+ありませんが、そもそも読み込めなくなります。再ビルドした辞書にはこの設定があります。</p>
 <p>トークンの表層形とオフセットには読み飛ばした空白が含まれません。ただし、見出し語の
 一部である空白は、語の途中にあっても末尾にあっても、MeCab と同じくその語のトークンに
 残ります（前の節を参照）。読み飛ばしは空白を含まないテキストの分割を変えません。
@@ -550,18 +575,18 @@ PHP のバインディングでは、<code>from_file</code> / <code>fromFile</co
 <h2 id="chardef-の重複した行を-mecab-と同じく解決する"><a class="header" href="#chardef-の重複した行を-mecab-と同じく解決する"><code>char.def</code> の重複した行を MeCab と同じく解決する</a></h2>
 <p>辞書の <code>char.def</code> では、同じコードポイントを複数の行に書くことができます。v6.2.0
 までは、辞書ビルダーがそのコードポイントに、覆うすべての行のカテゴリを与えていました。
-v7.0.0 は MeCab・vibrato・Kuromoji と同じく最後の行だけを使い、その行のカテゴリを
-<code>char.def</code> で定義された順に並べます。同梱の辞書で変わるのは次の 3 文字です（漢字の
+v7.0.0 は MeCab・vibrato・Kuromoji と同じく最後の行だけを使います。同梱の辞書で
+変わるのは次の 3 文字です（漢字の
 カテゴリ名は、ko-dic では <code>HANJA</code>・<code>HANJANUMERIC</code>、CC-CEDICT と Jieba では
 <code>CHINESE</code>・<code>CHINESENUMERIC</code> です）。</p>
 <div class="table-wrapper"><table><thead><tr><th>文字</th><th>v6 のカテゴリ</th><th>v7 のカテゴリ</th><th>影響</th></tr></thead><tbody>
 <tr><td><code>Ð</code>（U+00D0）</td><td><code>SPACE</code>・<code>ALPHA</code></td><td><code>ALPHA</code></td><td>ko-dic 以外のすべての辞書は、<code>ALPHA</code> の範囲より前に U+00D0 を <code>SPACE</code> に割り当てています（mecab-ipadic から引き継がれた U+000D のタイポ）。このため <code>Ð</code> は空白として出力から消え、前後の語も分断されていました。<code>GUÐMUNDUR さん</code> は <code>GU</code>・<code>MUNDUR</code>・<code>さん</code> ではなく <code>GUÐMUNDUR</code>・<code>さん</code> になります</td></tr>
 <tr><td><code>々</code>（U+3005）</td><td><code>KANJI</code>・<code>SYMBOL</code></td><td><code>SYMBOL</code></td><td><code>人々</code> や <code>佐々木</code> のような辞書の語は変わりません。辞書にない漢字の後ろでは、MeCab と同じく <code>々</code> が単独のトークンになります（<code>龘々</code> は 1 つの未知語ではなく <code>龘</code>・<code>々</code>）。ko-dic では <code>々</code> の品詞が <code>SH</code> ではなく <code>SY</code> になります</td></tr>
-<tr><td><code>〇</code>（U+3007）</td><td><code>KANJI</code>・<code>SYMBOL</code>・<code>KANJINUMERIC</code></td><td><code>SYMBOL</code>・<code>KANJINUMERIC</code></td><td>数字の連続のまとまり方が変わることがあります。ko-dic では <code>二〇二六年</code> が <code>二</code>・<code>〇</code>・<code>二六</code>・<code>年</code> ではなく <code>二〇二六</code>・<code>年</code> になります</td></tr>
+<tr><td><code>〇</code>（U+3007）</td><td><code>KANJI</code>・<code>SYMBOL</code>・<code>KANJINUMERIC</code></td><td><code>SYMBOL</code>・<code>KANJINUMERIC</code></td><td>数字の連続のまとまり方が変わることがあります。ko-dic では <code>二〇二六年</code> が <code>二</code>・<code>〇</code>・<code>二六</code>・<code>年</code> ではなく 1 つの未知語（<code>SH</code>）になります（<a href="#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%AF%E6%97%A2%E5%AE%9A%E3%82%AB%E3%83%86%E3%82%B4%E3%83%AA%E3%81%8B%E3%82%89%E4%BD%9C%E3%82%8B">MeCab と同じく、未知語は既定カテゴリから作る</a>も参照）</td></tr>
 </tbody></table>
 </div>
 <p>漢数字 <code>一</code>〜<code>九</code>・<code>十</code>・<code>百</code>・<code>千</code>・<code>万</code>・<code>億</code>・<code>兆</code> も 2 つの行に書かれていますが、
-カテゴリもその並びも変わりません。</p>
+カテゴリは変わりません。</p>
 <p><code>lindera train</code> は <code>char.def</code> を辞書ビルダーで読むようになりました。従来は各行の
 先頭のカテゴリだけを使い、単一コードポイントの行（<code>0x0020 SPACE</code> など）を読み飛ばし、
 重複は範囲の開始位置で解決していました。素性テンプレートの <code>%t</code> は、その文字を覆う
@@ -569,11 +594,9 @@ v7.0.0 は MeCab・vibrato・Kuromoji と同じく最後の行だけを使い、
 どちらの種類の行もないため、それらから学習したモデルは変わりません。</p>
 <p>カテゴリのない範囲行は、MeCab と同じく <code>lindera build</code> と <code>lindera train</code> でエラーに
 なります。そうしないと、それより前の行を <code>DEFAULT</code> に戻してしまうためです。</p>
-<p>変更は辞書ビルダーにあり、辞書の形式バージョンは変わりません。埋め込み辞書と、
-7.0.0 の CLI が <code>lindera download</code> で取得する辞書は、新しいカテゴリを持ちます。
-v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは v7.0.0 でも読み込めますが、
-<code>lindera build</code> で再ビルドするか 7.0.0 のリリースアセットを再ダウンロードするまで、
-従来のカテゴリのままです。</p>
+<p>変更は辞書ビルダーにあります。埋め込み辞書と、7.0.0 の CLI が <code>lindera download</code>
+で取得する辞書は、新しいカテゴリを持ちます。v6.2.0 以前にビルドまたはダウンロード
+した辞書ディレクトリは読み込めなくなります（<a href="#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。</p>
 <h2 id="-をまたいで文脈を引き継ぐ"><a class="header" href="#-をまたいで文脈を引き継ぐ"><code>、</code>・<code>。</code> をまたいで文脈を引き継ぐ</a></h2>
 <p>セグメンターは、各ラティスを小さく保つために、入力を <code>\n</code>・<code>\t</code>・<code>。</code>・<code>、</code> で
 文に区切り、区切り文字のないまま 32 KiB を超えたところでも区切ります。v6 までは、
@@ -643,14 +666,14 @@ EOS への連接コストを持つトークンのない結果を 1 件返すよ�
 <h2 id="mecab-と同じくどの位置からも未知語が始まる"><a class="header" href="#mecab-と同じくどの位置からも未知語が始まる">MeCab と同じく、どの位置からも未知語が始まる</a></h2>
 <p>辞書にない語は未知語として扱われ、辞書の <code>char.def</code> の文字種（カタカナ・英字・
 数字・記号など）をもとに作られます。多くの文字種はグルーピングする設定で、
-カタカナの連続のように同じ文字種が続く範囲が 1 つの候補になります。これを
+カタカナの連続のように文字種を共有する文字が続く範囲が 1 つの候補になります。これを
 「グルーピングした未知語」と呼びます。v6 までの通常モードは、直前にグルーピング
 した未知語の内側の位置では未知語を作りませんでした。Kuromoji から引き継いだ
 近道で、MeCab にはないものです。そのため、こうした範囲の途中で終わる辞書語の
 後ろに未知語を続けられず、辞書語を飲み込んだグルーピングした未知語しか通り道が
 ないことがよくありました。v7.0.0 は、経路が到達するすべての位置で、どのモードでも、
-MeCab と同じ条件で未知語候補を作ります。条件は、その文字種が常に未知語を作る設定
-（<code>char.def</code> の <code>INVOKE</code>）であるか、その位置から始まる辞書語がないことです。
+MeCab と同じ条件で未知語候補を作ります。条件は、候補を作る文字種が常に未知語を作る
+設定（<code>char.def</code> の <code>INVOKE</code>）であるか、その位置から始まる辞書語がないことです。
 Decompose モードはもともとこの動作で、出力は変わりません。</p>
 <div class="table-wrapper"><table><thead><tr><th>入力（辞書）</th><th>v6</th><th>v7（MeCab と同じ）</th></tr></thead><tbody>
 <tr><td><code>それが「⁂⁂第一だ</code>（IPADIC）</td><td><code>「⁂⁂</code>（辞書の記号 <code>「</code> を飲み込んだ 1 つの未知語の名詞）</td><td><code>「</code>（<code>記号,括弧開</code>）と <code>⁂⁂</code></td></tr>
@@ -702,6 +725,52 @@ v7 では MeCab と同じく <code>.</code>・<code>?</code>・<code>!</code> �
 <p>v6 の動作に戻す設定はありません。<code>unknown_word_ladder(false)</code>
 （<code>--disable-unknown-word-ladder</code>）は引き続き短い未知語候補を無効にしますが、
 v6 より前の Lindera の出力は再現しなくなりました。</p>
+<h2 id="mecab-と同じく未知語は既定カテゴリから作る"><a class="header" href="#mecab-と同じく未知語は既定カテゴリから作る">MeCab と同じく、未知語は既定カテゴリから作る</a></h2>
+<p><code>char.def</code> では、1 つの文字が複数のカテゴリを持つことがあります。漢数字は
+IPADIC と UniDic では <code>KANJINUMERIC KANJI</code>、ko-dic では <code>HANJANUMERIC HANJA</code>、CC-CEDICT と
+Jieba では <code>CHINESENUMERIC CHINESE</code> で、<code>〇</code>（U+3007）は <code>SYMBOL</code> と数字の
+カテゴリを持ちます。その文字のカテゴリを決める行の先頭のカテゴリを、その文字の
+「既定カテゴリ」と呼びます。v6.2.0 までの Lindera は、文字のカテゴリごとに未知語
+候補を作り、グルーピングした未知語は、次の文字がカテゴリの並びの同じ位置に同じ
+カテゴリを持つ間だけ続けていました。v7.0.0 は MeCab に合わせます:</p>
+<ul>
+<li>未知語は既定カテゴリだけから、その <code>INVOKE</code>・<code>GROUP</code>・<code>LENGTH</code> の設定と
+<code>unk.def</code> のエントリで作る。</li>
+<li>グルーピングした未知語は、どの文字も直前の文字とカテゴリを共有する間続く。</li>
+<li>候補ラダーの短い候補は、どの文字も先頭の文字とカテゴリを共有する間続く。</li>
+</ul>
+<div class="table-wrapper"><table><thead><tr><th>入力（辞書）</th><th>v6</th><th>v7（MeCab と同じ）</th></tr></thead><tbody>
+<tr><td><code>三國史記</code>（ko-dic）</td><td><code>三</code>（<code>SH</code>）・<code>國史</code>（<code>NNG</code>）・<code>記</code>（<code>NNG</code>）</td><td><code>三國史記</code>（<code>SH</code>）</td></tr>
+<tr><td><code>十人十色</code>（ko-dic）</td><td><code>十</code>（<code>SH</code>）・<code>人</code>（<code>NNG</code>）・<code>十</code>（<code>SH</code>）・<code>色</code>（<code>NNG</code>）</td><td><code>十人十色</code>（<code>SH</code>）</td></tr>
+<tr><td><code>二十歲</code>（ko-dic）</td><td><code>二十</code>（<code>SH</code>）・<code>歲</code>（<code>SH</code>）</td><td><code>二十歲</code>（<code>SH</code>）</td></tr>
+<tr><td><code>〇〇〇</code>（ko-dic）</td><td><code>〇〇〇</code>（<code>SH</code>）</td><td><code>〇〇〇</code>（<code>SY</code>）</td></tr>
+<tr><td><code>二〇〇八年北京奧運會</code>（Jieba）</td><td><code>二</code>・<code>〇〇</code>・<code>八</code>・<code>年</code>・<code>北京奧運</code>・<code>會</code></td><td><code>二</code>・<code>〇〇八年北京奧運會</code>（<code>w</code>）</td></tr>
+<tr><td><code>二〇二六年</code>（CC-CEDICT）</td><td><code>二</code>・<code>〇</code>・<code>二</code>・<code>六</code>・<code>年</code></td><td><code>二</code>・<code>〇二六年</code></td></tr>
+</tbody></table>
+</div>
+<ul>
+<li><strong>韓国語</strong>: ko-dic では <code>三</code> や <code>十</code> など多くの漢数字が辞書語でなく、その既定
+カテゴリ <code>HANJANUMERIC</code> はグルーピングするため、MeCab と同じく漢数字と後ろの
+漢字が 1 つの <code>SH</code> になります。</li>
+<li><strong><code>〇</code></strong>: 既定カテゴリの <code>SYMBOL</code> は辞書語が始まる位置でも未知語を作るため、
+記号になります（ko-dic は <code>SY</code>、Jieba は <code>w</code>）。CC-CEDICT と Jieba では、MeCab でも
+同じく、そのグループが後ろの数字と漢字まで続きます。この 2 つの辞書の <code>char.def</code> の修正は
+<a href="https://github.com/lindera/lindera/issues/1162">#1162</a> で扱います。</li>
+<li><strong>日本語</strong>: IPADIC・IPADIC-NEologd・UniDic では漢数字と <code>〇</code> が辞書語で、比較した
+テキストでは 1 行も変わりません。SudachiDict は比較していません。</li>
+</ul>
+<p>同じソースからビルドした辞書で、Lindera が MeCab とまったく同じに分割・品詞付け
+する行は、このガイドのほかの変更に加えて、ko-dic の『상록수』で空行を除く 3,919 行のうち
+3,913 行から 3,917 行に増えます（MeCab にはないため左側空白ペナルティは無効）。
+複数のカテゴリを持つ文字とほかの文字を組み合わせて作った文は、IPADIC・
+IPADIC-NEologd・UniDic・ko-dic・CC-CEDICT・Jieba のすべてで MeCab と一致するように
+なります。以前に一致していた行で一致しなくなる行は
+ありません。命令数は 0.3〜4.8% 減ります。</p>
+<p><code>CharacterDefinition::lookup_categories</code>（<code>lindera_dictionary::dictionary::character_definition</code>）
+は、既定カテゴリを先頭に、残りのカテゴリをカテゴリ ID 順に返します。7.0.0 の
+<code>char_def.bin</code> はこの順に保存するため、辞書の形式バージョンが変わります
+（<a href="#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。</p>
+<p>v6 の動作に戻す設定はありません。</p>
 <h2 id="ダッシュとチルダを辞書に書かれたとおりに保持する"><a class="header" href="#ダッシュとチルダを辞書に書かれたとおりに保持する">ダッシュとチルダを辞書に書かれたとおりに保持する</a></h2>
 <p>日本語のテキストでは、ダッシュとチルダにそれぞれ 2 通りの文字が使われます。
 ダッシュは <code>―</code>（U+2015、HORIZONTAL BAR）か <code>—</code>（U+2014、EM DASH）、チルダは
@@ -764,12 +833,11 @@ IPADIC-NEologd では、置き換えは語の入れ替えになります。片�
 （<code>unicode_normalize</code> 文字フィルタ）では綴りはそろいません。<code>～</code> は <code>~</code> になり、
 <code>―</code>・<code>—</code>・<code>〜</code> はそのまま残ります。</p>
 <p>ユーザー辞書はもともと書き換えていないため、変わりません。変更は辞書ビルダーに
-あり、辞書の形式バージョンは変わりません。埋め込み辞書と、7.0.0 の CLI が
-<code>lindera download</code> で取得する辞書は、書かれたとおりの綴りを持ちます。v6.2.0 以前に
-ビルドまたはダウンロードした辞書ディレクトリは v7.0.0 でも読み込めますが、
-<code>lindera build</code> で再ビルドするか 7.0.0 のリリースアセットを再ダウンロードするまで、
-書き換えた見出し語のままです。UniDic・ko-dic・CC-CEDICT・Jieba・SudachiDict は
-この書き換えを有効にしていなかったため、辞書は変わりません。</p>
+あります。埋め込み辞書と、7.0.0 の CLI が <code>lindera download</code> で取得する辞書は、
+書かれたとおりの綴りを持ちます。v6.2.0 以前にビルドまたはダウンロードした辞書
+ディレクトリは読み込めなくなります（<a href="#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。
+UniDic・ko-dic・CC-CEDICT・Jieba・SudachiDict はこの書き換えを有効にしていません
+でした。</p>
 <h3 id="設定-normalize_details-の削除"><a class="header" href="#設定-normalize_details-の削除">設定 <code>normalize_details</code> の削除</a></h3>
 <p><code>normalize_details</code> はこの書き換えを切り替えるだけの設定だったため、v7.0.0 では
 同梱の <code>metadata.json</code> と、辞書のメタデータを作成・公開する API から削除しました。</p>
@@ -850,8 +918,8 @@ IPADIC-NEologd の残りの 145 は、<code>、</code> を含む表層形（区�
 読むため、行が複数のファイルにまたがる同点の組（IPADIC-NEologd と ko-dic にあります）
 では、MeCab がどの行を選ぶかはファイルシステムによって変わります（Lindera は
 ファイル名の順に読みます）。</p>
-<p>辞書のファイルは変わらないため、この変更のための再ビルドや再ダウンロードは不要です。
-v6 の動作に戻す設定はありません。</p>
+<p>変更はセグメンターにあり、辞書のファイルは変わりません。v6 の動作に戻す設定は
+ありません。</p>
 <h2 id="mecab-と同じくコストが同じ分割からは最後の語が後から始まる方を選ぶ"><a class="header" href="#mecab-と同じくコストが同じ分割からは最後の語が後から始まる方を選ぶ">MeCab と同じく、コストが同じ分割からは最後の語が後から始まる方を選ぶ</a></h2>
 <p>2 つの分割が、同じ位置までまったく同じコストで届き、しかも最後の語の始まる位置が
 違うことがあります。MeCab は、最後の語が後から始まる方を残します。MeCab は語を、
@@ -890,8 +958,8 @@ MeCab と違う方を選ぶことがあります。空白で終わる見出し�
 <p>1-best の分割の命令数は、IPADIC・IPADIC-NEologd・UniDic で 0.6〜0.9% 増えますが、
 時間の差は測れない程度です。ko-dic では命令数が約 2%、時間が 2〜5% 増えます。
 N-best（<code>-N 3</code>）の命令数は約 1% 増えます。</p>
-<p>辞書のファイルは変わらないため、この変更のための再ビルドや再ダウンロードは不要です。
-v6 の動作に戻す設定はありません。</p>
+<p>変更はセグメンターにあり、辞書のファイルは変わりません。v6 の動作に戻す設定は
+ありません。</p>
 <h2 id="lindera-tokenize-は行末の改行コードだけを取り除きすべての行に結果を出す"><a class="header" href="#lindera-tokenize-は行末の改行コードだけを取り除きすべての行に結果を出す"><code>lindera tokenize</code> は行末の改行コードだけを取り除き、すべての行に結果を出す</a></h2>
 <p><code>lindera tokenize</code> は入力を 1 行ずつ読み込みます。v6.2.0 までは、各行の両端の空白
 （半角空白・タブ・U+3000・U+00A0 などの Unicode の空白、<code>str::trim</code>）をすべて
@@ -931,8 +999,8 @@ UD Japanese GSD の 8,100 文や『こころ』と『吾輩は猫である』の
 テキストですべての行の末尾に <code>\r</code> のトークンが出ないように、これを取り除きます。</li>
 </ul>
 <p>ライブラリと言語バインディングは、もともと入力を trim していないため、空の入力の
-N-best の結果を除いて変わりません。辞書のファイルも変わらないため、この変更のための
-再ビルドや再ダウンロードは不要です。v6 の動作に戻す設定はありません。v6 の
+N-best の結果を除いて変わりません。変更は CLI にあり、辞書のファイルは
+変わりません。v6 の動作に戻す設定はありません。v6 の
 オフセットとトークンが必要なら、テキストを <code>lindera tokenize</code> に渡す前に各行の
 両端の空白を取り除いてください。</p>
 <h2 id="wasm-辞書の設定方法にかかわらずビルダーの設定が適用される"><a class="header" href="#wasm-辞書の設定方法にかかわらずビルダーの設定が適用される">WASM: 辞書の設定方法にかかわらずビルダーの設定が適用される</a></h2>
@@ -955,13 +1023,14 @@ v6 では <code>Ｌｉｎｄｅｒａ</code> と <code>東京</code> でした�
 <p>ほかのバインディング・CLI・ライブラリは変わらず、辞書のファイルも変わりません。
 v6 の動作に戻す設定はありません。必要なら、v6 が無視していた設定を外してください。</p>
 <h2 id="lindera_dictionary-の-rust-api-変更"><a class="header" href="#lindera_dictionary-の-rust-api-変更"><code>lindera_dictionary</code> の Rust API 変更</a></h2>
-<p>以下は、ラティスのバックトレースを直接呼び出すコードと、<code>Metadata::new</code> で辞書の
-メタデータを作成するコードにのみ影響します。対象は
+<p>以下は、ラティスのバックトレースを直接呼び出すコード、<code>Metadata::new</code> で辞書の
+メタデータを作成するコード、辞書の文字カテゴリを読むコードにのみ影響します。対象は
 <code>lindera_dictionary::viterbi::Lattice</code> と <code>lindera_dictionary::nbest::NBestGenerator</code>
 （<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・
 <code>lindera::dictionary::nbest::…</code> からも参照できます）、および
 <code>lindera_dictionary::dictionary::metadata::Metadata</code>（<code>lindera::dictionary::Metadata</code>
-からも参照できます）です。<code>Segmenter</code>・<code>Tokenizer</code>・<code>SegmentWorker</code>・
+からも参照できます）、<code>lindera_dictionary::dictionary::character_definition::CharacterDefinition</code>
+です。<code>Segmenter</code>・<code>Tokenizer</code>・<code>SegmentWorker</code>・
 <code>AnalysisWorker</code> の API と CLI は影響を受けません。言語バインディングで変わるのは
 <code>Metadata</code> クラスだけです（<a href="#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>
 を参照）。</p>
@@ -978,6 +1047,8 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 <tr><td><code>Metadata::normalize_details</code></td><td>削除</td></tr>
 <tr><td><code>PrefixDictionaryBuilderOptions::normalize_details(value)</code></td><td>削除</td></tr>
 <tr><td>—</td><td>公開フィールド <code>Metadata::skip_whitespace: Option&lt;bool&gt;</code> を追加（<code>lindera_binding::CoreMetadata::skip_whitespace</code> も）</td></tr>
+<tr><td><code>CharacterDefinition::lookup_categories(c)</code> は <code>c</code> を覆うすべての行のカテゴリを返す</td><td><code>c</code> を覆う最後の行のカテゴリを、既定カテゴリを先頭に、残りをカテゴリ ID 順に返す</td></tr>
+<tr><td><code>DICTIONARY_FORMAT_VERSION</code> は <code>2</code></td><td><code>3</code></td></tr>
 </tbody></table>
 </div>
 <p>各トークンは <code>(start, word_id)</code> ではなく <code>(start, end, word_id)</code> になりました。
@@ -1049,20 +1120,27 @@ BOS です。</li>
 リテラルはコンパイルできなくなります。<code>skip_whitespace: None</code> を加えるか、
 リテラルの最後を <code>..Default::default()</code> にしてください。<code>Metadata::new</code> と
 <code>CoreMetadata::new</code> はこれを <code>None</code>（読み飛ばす）にします。</p>
+<p><code>CharacterDefinition::lookup_categories</code> のシグネチャは変わりません。先頭のカテゴリ
+が未知語を作るカテゴリです（<a href="#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%AF%E6%97%A2%E5%AE%9A%E3%82%AB%E3%83%86%E3%82%B4%E3%83%AA%E3%81%8B%E3%82%89%E4%BD%9C%E3%82%8B">MeCab と同じく、未知語は既定カテゴリから作る</a>を参照）。文字があるカテゴリを持つかどうかだけを
+調べるコードには影響しません。ビルダーが書き出し、読み込み時に受け付ける
+<code>DICTIONARY_FORMAT_VERSION</code> は 3 になりました（<a href="#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。</p>
 <h2 id="対応が不要なケース"><a class="header" href="#対応が不要なケース">対応が不要なケース</a></h2>
 <ul>
 <li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の
 各パッケージと <code>lindera-cli</code> のパッケージ名は変わらず、API も <code>Metadata</code> の設定
 <code>normalize_details</code> を除いて変わりません
 （<a href="#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>を参照）。
-今回の構成変更は Rust クレート内部のものです。出力の変化は、この 2 フィールドを
+今回の構成変更は Rust クレート内部のものです。v6.2.0 以前にビルドまたは
+ダウンロードした辞書ディレクトリは、再ビルドか再ダウンロードが必要です
+（<a href="#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。埋め込み辞書は対応不要です。出力の変化は、この 2 フィールドを
 名前で読む場合にのみ影響する IPADIC の活用フィールドの修正、U+3000 を含む
 テキスト（IPADIC・IPADIC-NEologd・UniDic）や空白を含むテキスト（SudachiDict）に
 のみ影響する空白の見出し語、空白を含むテキストの分割、<code>Ð</code>・<code>々</code>・<code>〇</code> を含む
 テキストにのみ影響する <code>char.def</code> の修正、行の中に <code>、</code> や <code>。</code> を含むテキストに
 のみ影響する <code>、</code>・<code>。</code> をまたぐ文脈の引き継ぎ、複数の文を含む入力や空の入力の
 N-best にのみ影響する N-best の修正、通常モードでのカタカナ・記号・英字の連続に
-影響する、どの位置からも始まる未知語、IPADIC・IPADIC-NEologd で
+影響する、どの位置からも始まる未知語、ko-dic の漢数字に続く漢字と、ko-dic・
+CC-CEDICT・Jieba の <code>〇</code> に影響する、既定カテゴリから作る未知語、IPADIC・IPADIC-NEologd で
 <code>―</code>・<code>—</code>・<code>～</code>・<code>〜</code> を含むテキストにのみ影響する、ダッシュとチルダの綴りの
 保持、読みや原形などのトークンの詳細情報や、コストが同じ N-best の結果の
 順を読む場合にのみ影響する、同点の見出し語の選び方、わずかな行の分割を
@@ -1078,7 +1156,7 @@ N-best にのみ影響する N-best の修正、通常モードでのカタカ�
 コンパイルできます（<code>lindera::dictionary::Lattice</code> のバックトレースを呼び出す
 場合と、<code>lindera::dictionary::Metadata::new</code> でメタデータを作成する場合を除く。
 <a href="#lindera_dictionary-%E3%81%AE-rust-api-%E5%A4%89%E6%9B%B4"><code>lindera_dictionary</code> の Rust API 変更</a>
-を参照）。ただしデフォルトビルドでは <code>lindera-analysis</code> とその依存
+を参照）。パスから読み込む辞書ディレクトリは再ビルドが必要です。ただしデフォルトビルドでは <code>lindera-analysis</code> とその依存
 （kanaria・regex・serde_yaml_ng・unicode-blocks・unicode-normalization・
 unicode-segmentation）もコンパイルされるため、v6 の依存ツリーを維持したい
 場合は <code>default-features = false, features = ["mmap"]</code> を指定してください。</li>
@@ -1106,6 +1184,8 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <code>PrefixDictionaryBuilderOptions::normalize_details</code> を使わないようにする。</li>
 <li>すべてのフィールドを並べた構造体リテラルで <code>Metadata</code> を作っている場合は、
 <code>skip_whitespace: None</code> を加えるか、最後を <code>..Default::default()</code> にする。</li>
+<li><code>CharacterDefinition::lookup_categories</code> を読んでいる場合は、既定カテゴリが先頭で、
+残りがカテゴリ ID 順になることを前提にする。</li>
 </ul>
 <p>バインディングの作者:</p>
 <ul>
@@ -1121,12 +1201,18 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <li>シェルのプロファイル・CI 設定・コンテナイメージで <code>LINDERA_DICTIONARIES_PATH</code>
 を <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> に改名する。</li>
 </ul>
+<p>ファイルから辞書を読み込むすべてのユーザー:</p>
+<ul>
+<li>v6.2.0 以前に作った辞書ディレクトリは、WASM バインディングの OPFS に保存した
+ものも含め、<code>lindera build</code> で再ビルドするか再ダウンロードする。v7.0.0 はそれらを
+拒否する（形式バージョン 3）。埋め込み辞書とユーザー辞書は対応不要。</li>
+</ul>
 <p>IPADIC・IPADIC-NEologd のユーザー:</p>
 <ul>
 <li><code>conjugation_type</code> や <code>conjugation_form</code> を名前で読んでいる場合（CLI の JSON
 出力を含む）は、2 つの値が入れ替わることを前提にする。</li>
-<li>v6.2.0 以前に作った辞書ディレクトリは、再ビルド・再ダウンロードするか、
-<code>metadata.json</code> の 2 つの名前を入れ替える。</li>
+<li>IPADIC の <code>metadata.json</code> の独自のコピーで辞書をビルドしている場合は、そのコピーの
+2 つの名前を入れ替える。</li>
 </ul>
 <p>U+3000 や空白を含むテキストを IPADIC・IPADIC-NEologd・UniDic・SudachiDict で
 解析するユーザー:</p>
@@ -1134,8 +1220,6 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <li>U+3000 が <code>記号,空白</code>（IPADIC）や <code>空白</code>（UniDic）のトークンになり、SudachiDict の
 空白を含む文の分割が Sudachi にずっと近くなることを前提にする。U+3000 が不要なら
 <code>japanese_stop_tags</code> か NFKC 正規化で取り除く。</li>
-<li>空白の見出し語を使うには、v6.2.0 以前に作った辞書ディレクトリを再ビルド・
-再ダウンロードする。</li>
 </ul>
 <p>空白を含むテキストを分割するすべてのユーザー:</p>
 <ul>
@@ -1149,8 +1233,6 @@ MeCab と同じくその空白を含むことを前提にする。</li>
 <p><code>Ð</code>・<code>々</code>・<code>〇</code> を含むテキストを同梱の辞書で解析するユーザー:</p>
 <ul>
 <li><code>Ð</code> が出力に残り、未知語の漢字に続く <code>々</code> が単独のトークンになることを前提にする。</li>
-<li>新しい文字カテゴリを使うには、v6.2.0 以前に作った辞書ディレクトリを再ビルド・
-再ダウンロードする。</li>
 </ul>
 <p><code>lindera train</code> のユーザー:</p>
 <ul>
@@ -1186,6 +1268,13 @@ MeCab と同じくその空白を含むことを前提にする。</li>
 <li>カタカナや英字の多いテキストで命令数が 13% 程度増え、カタカナの非常に長い連続の
 N-best では時間とメモリが大きく増えることを前提にする。</li>
 </ul>
+<p>漢数字や <code>〇</code> を含むテキストを ko-dic・CC-CEDICT・Jieba で解析するユーザー:</p>
+<ul>
+<li>ko-dic の漢数字と後ろの漢字が 1 つの未知語になり（<code>三國史記</code> は 1 つの <code>SH</code>）、
+<code>〇</code> が記号になり（ko-dic は <code>SY</code>、Jieba は <code>w</code>）、CC-CEDICT と Jieba ではその
+グループが後ろの数字と漢字まで続くことを、MeCab と同じく前提にする。v6 の出力に
+戻す設定はない。</li>
+</ul>
 <p><code>―</code>・<code>—</code>・<code>～</code>・<code>〜</code> を含むテキストを IPADIC・IPADIC-NEologd で解析するユーザー:</p>
 <ul>
 <li><code>―</code> や <code>～</code> で書かれた語が MeCab と同じく同じ綴りのテキストに一致し、<code>—</code> や <code>〜</code> で
@@ -1193,14 +1282,12 @@ N-best では時間とメモリが大きく増えることを前提にする。<
 IPADIC-NEologd 1,085 語）が引けなくなることを前提にする。IPADIC で両方の綴りから
 語を引きたい場合は、<code>mapping</code> 文字フィルタで <code>—</code> を <code>―</code> に、<code>～</code> を <code>〜</code> に
 置き換える。</li>
-<li>書かれたとおりの見出し語を使うには、v6.2.0 以前に作った辞書ディレクトリを
-再ビルド・再ダウンロードする。</li>
 </ul>
 <p>読みや原形などのトークンの詳細情報を読むユーザー:</p>
 <ul>
 <li>同点の見出し語を持つ語が、MeCab と同じく CSV で先の行の詳細情報になることを
-前提にする（IPADIC の <code>狡い</code> の読みは <code>コスイ</code> ではなく <code>ズルイ</code>）。再ビルドは
-不要で、v6 の出力に戻す設定はない。</li>
+前提にする（IPADIC の <code>狡い</code> の読みは <code>コスイ</code> ではなく <code>ズルイ</code>）。v6 の出力に
+戻す設定はない。</li>
 <li>ユーザー辞書では、同点の行のうち先の行が選ばれることを前提にする。ユーザー辞書の
 見出し語は、MeCab と異なり、引き続きシステム辞書の同点の見出し語に勝つ。</li>
 </ul>
@@ -1208,7 +1295,7 @@ IPADIC-NEologd 1,085 語）が引けなくなることを前提にする。IPADI
 <ul>
 <li>コストがまったく同じ 2 つの分割がある、まれな箇所が、MeCab と同じく最後の語が
 後から始まる分割になることを前提にする（IPADIC の <code>腸窒扶斯</code> は
-<code>腸 / 窒扶 / 斯</code>）。再ビルドは不要で、v6 の出力に戻す設定はない。</li>
+<code>腸 / 窒扶 / 斯</code>）。v6 の出力に戻す設定はない。</li>
 </ul>
 <p>言語バインディングと CLI:</p>
 <ul>
@@ -1226,9 +1313,9 @@ IPADIC-NEologd 1,085 語）が引けなくなることを前提にする。IPADI
 <code>setDictionaryInstance()</code> で設定した辞書にも、<code>setUserDictionaryInstance()</code> で
 設定したユーザー辞書が <code>setDictionary()</code> で設定した辞書にも適用されることを
 前提にする。</li>
-<li>それ以外は、7.0.0 リリースを取り込む以外に対応は不要（上記の辞書・空白・<code>、</code> と
-<code>。</code>・N-best・未知語・ダッシュとチルダ・同点の見出し語・コストが同じ分割の項目と、
-<code>lindera tokenize</code> と WASM の項目を除く）。</li>
+<li>それ以外は、7.0.0 リリースを取り込む以外に対応は不要（上記の辞書の再ビルド・辞書・
+空白・<code>、</code> と <code>。</code>・N-best・未知語・既定カテゴリ・ダッシュとチルダ・同点の見出し語・
+コストが同じ分割の項目と、<code>lindera tokenize</code> と WASM の項目を除く）。</li>
 </ul>
 
                     </main>
