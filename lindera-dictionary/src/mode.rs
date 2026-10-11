@@ -27,7 +27,7 @@ impl Default for Penalty {
 impl Penalty {
     /// Returns the Decompose-mode length penalty for an edge.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `edge` - The edge to penalize (read for its kanji-only flag).
     /// * `num_chars` - The edge's exact span in characters: the whitespace
@@ -38,7 +38,7 @@ impl Penalty {
     ///   byte-length/3 approximation, which was wrong for 1-, 2-, and 4-byte
     ///   UTF-8 characters; #1108).
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The penalty cost to add to the transition.
     #[inline]

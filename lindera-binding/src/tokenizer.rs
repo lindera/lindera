@@ -261,11 +261,11 @@ pub struct CoreTokenizer {
 /// dictionary and filter configuration are unaffected). Capacity built up
 /// so far is lost, which is acceptable on this exceptional path.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `mutex` - The worker mutex to lock.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// A guard for the (possibly reset) worker.
 fn lock_worker(mutex: &Mutex<AnalysisWorker>) -> MutexGuard<'_, AnalysisWorker> {

@@ -53,7 +53,7 @@ impl FeatureRewriterBuilder {
 
     /// Adds the rewrite rule associated with the pattern.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `pattern` - Field patterns matched positionally from field 0; `*`
     ///   matches any single field, `A|B` any of the listed values.

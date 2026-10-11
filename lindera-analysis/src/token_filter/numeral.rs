@@ -25,11 +25,11 @@ pub(crate) type Classifier = fn(char) -> Option<Numeral>;
 
 /// The number of zeros a position of this rank contributes.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `rank` - The rank carried by [`Numeral::Position`].
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The rank itself for ranks 1 to 3 (ten, hundred, thousand), and four zeros per myriad for the
 /// ranks above: 4 for 万 / 만, 8 for 億 / 억, and so on up to 20 for 垓 / 해.
@@ -47,13 +47,13 @@ fn zeros_for(rank: u8) -> usize {
 /// rather than bytes: a byte count makes one non-ASCII character weigh three digits, which is how
 /// `万歳` used to become `10歳` before the all-numeral rule made that buffer impossible.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `num` - The digits built so far.
 /// * `base` - The width of the position being applied (1 to 3), or 0 for a myriad unit.
 /// * `digit` - The current myriad scale, as a number of zeros.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// `num` left-padded with zeros to `base + digit` characters, or `num` itself when it is already
 /// at least that wide.
@@ -76,12 +76,12 @@ fn adjust_digits(num: &str, base: usize, digit: usize) -> String {
 /// This is the rule Lucene's `JapaneseNumberFilter` and `KoreanNumberFilter` apply through
 /// `isNumeral(String)`, and the reason a token is either converted whole or not at all.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `text` - The token surface to check.
 /// * `classify` - The per-language classifier.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// `true` when `classify` recognizes every character of `text`, including when `text` is empty.
 pub(crate) fn is_all_numeral(text: &str, classify: Classifier) -> bool {
@@ -99,12 +99,12 @@ pub(crate) fn is_all_numeral(text: &str, classify: Classifier) -> bool {
 /// myriad scale in `digit`. Reaching a position character pads the buffer to that position's
 /// width, so `二千二十六` builds `6`, then `26`, then `026`, then `2026`.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `from_str` - The token surface to convert.
 /// * `classify` - The per-language classifier.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The Arabic numeral for an all-numeral `from_str`, and `from_str` unchanged otherwise.
 pub(crate) fn to_arabic_numerals(from_str: &str, classify: Classifier) -> String {

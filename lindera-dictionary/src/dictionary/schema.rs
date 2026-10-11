@@ -101,11 +101,11 @@ impl Schema {
     /// Get the index of a field within the custom fields, which is its index
     /// within a token's details (the four common fields are not stored there).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `field_name` - The schema field name.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The field's index minus the four common fields, or `None` when the
     /// name is not in the schema or names a common field (`surface`,
@@ -147,12 +147,12 @@ impl Schema {
     /// U+3000 as its surface, base form, reading and pronunciation), so they
     /// are missing only when empty.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `field_name` - The schema field name.
     /// * `value` - The field value.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `true` if the value counts as missing.
     pub fn is_missing_value(field_name: &str, value: &str) -> bool {
@@ -166,11 +166,11 @@ impl Schema {
     ///
     /// Whether a field is missing is decided by [`Self::is_missing_value`].
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `row` - The CSV row.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `Ok(())` if the row has every schema field, an error otherwise.
     pub fn validate_fields(&self, row: &StringRecord) -> LinderaResult<()> {

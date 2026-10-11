@@ -48,12 +48,12 @@ pub(crate) const MAX_SENTENCE_BYTES: usize = 32 * 1024;
 /// for a real sentence delimiter (`\n`, `\t`, `。`, `、`) or, failing that,
 /// forcing a cut at [`MAX_SENTENCE_BYTES`] to bound lattice size.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `text` - The full input text.
 /// * `sentence_start` - The byte offset to start scanning from.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// A tuple of the byte offset (exclusive) where the sentence ends, and
 /// whether the cut was forced (`true`) rather than a real delimiter
@@ -121,11 +121,11 @@ struct SentenceWalk<'t> {
 impl<'t> SentenceWalk<'t> {
     /// Starts a walk at the beginning of `text`.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `text` - The whole input.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The walk.
     fn new(text: &'t str) -> Self {
@@ -141,7 +141,7 @@ impl Iterator for SentenceWalk<'_> {
 
     /// Returns the next sentence, which is never empty.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The sentence, or `None` at the end of the input.
     #[inline]
@@ -215,12 +215,12 @@ impl SegmentBuffers {
 /// Fills `contexts` with one BOS context per state, in the order of the
 /// states, with costs relative to the cheapest state.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `states` - The states; not empty.
 /// * `contexts` - The buffer to fill, cleared first.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The cost of the cheapest state, which the costs of the lattice's paths
 /// are relative to. A relative cost beyond `i32::MAX` is saturated (the
@@ -527,14 +527,14 @@ impl Segmenter {
     /// Builder method to cap unknown-word grouping (MeCab's
     /// `max-grouping-size` semantics; see the `max_grouping_len` field).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `max_grouping_len` - Maximum grouped characters beyond the first,
     ///   or `None` for unbounded grouping (the default). `Some(0)` never
     ///   groups two or more characters, unlike the config key, where `0`
     ///   means unbounded.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `self`, for chaining.
     pub fn max_grouping_len(mut self, max_grouping_len: Option<usize>) -> Self {
@@ -545,11 +545,11 @@ impl Segmenter {
     /// Builder method to enable/disable the unknown-word length ladder
     /// (see the `unknown_word_ladder` field; defaults to `true`).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `unknown_word_ladder` - Whether to emit the length ladder.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `self`, for chaining.
     pub fn unknown_word_ladder(mut self, unknown_word_ladder: bool) -> Self {
@@ -565,11 +565,11 @@ impl Segmenter {
     /// tag once, so this costs a few tens of milliseconds on a large
     /// dictionary; call it once at construction, not per document.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `space_penalty` - The rules, or `None` to disable the penalty.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `self`, for chaining, or an error when the dictionary schema has no
     /// part-of-speech field (`part_of_speech_tag` or `part_of_speech`).
@@ -607,11 +607,11 @@ impl Segmenter {
     /// In-place form of [`Segmenter::space_penalty`], for holders that own
     /// a `Segmenter` by `&mut` (e.g. a reusable worker).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `space_penalty` - The rules, or `None` to disable the penalty.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `Ok(())`, or the schema error described on
     /// [`Segmenter::space_penalty`]; on error the previous setting is kept.
@@ -634,7 +634,7 @@ impl Segmenter {
 
     /// Returns the configured left-space penalty rules, if any.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The rules set through [`Segmenter::space_penalty`], or `None`.
     pub fn space_penalty_config(&self) -> Option<&SpacePenaltyConfig> {
@@ -645,7 +645,7 @@ impl Segmenter {
     /// dictionary ships in its `metadata.json` (`space_penalty`); ko-dic
     /// carries mecab-ko-dic's `left-space-penalty-factor` there.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `self`, for chaining, or an error when the dictionary ships no rules
     /// (or its schema has no part-of-speech field).
@@ -673,7 +673,7 @@ impl Segmenter {
 
     /// In-place form of [`Segmenter::space_penalty_from_dictionary`].
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `Ok(())`, or an error when the dictionary ships no rules; the
     /// previous setting is kept on error.
@@ -695,7 +695,7 @@ impl Segmenter {
     /// Bundles the per-sentence lattice options from this segmenter's
     /// settings.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The options for `set_text_with_options` /
     /// `set_text_nbest_with_options`.
@@ -710,7 +710,7 @@ impl Segmenter {
 
     /// Builds the 1-best lattice of one sentence.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `lattice` - The lattice to reuse.
     /// * `sentence` - The sentence's text.
@@ -730,7 +730,7 @@ impl Segmenter {
 
     /// Builds the N-best lattice of one sentence.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `lattice` - The lattice to reuse.
     /// * `sentence` - The sentence's text.
@@ -756,7 +756,7 @@ impl Segmenter {
     /// output: the dictionary's `SPACE` classifier unless `keep_whitespace`
     /// is set.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The classifier, or `None` to keep every token.
     fn space_filter(&self) -> Option<&WhitespaceClassifier> {
@@ -1092,14 +1092,14 @@ impl Segmenter {
     /// keeps them alive across calls). Output is identical to
     /// `segment_with_lattice` for the same input.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `text` - The input text, borrowed or owned.
     /// * `lattice` - The Viterbi lattice to reuse across sentences/calls.
     /// * `buffers` - The scratch buffers; every call overwrites what it
     ///   uses, so no pre-clearing is required.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The tokens segmented from `text`, in reading order.
     pub(crate) fn segment_with_buffers<'a>(
@@ -1520,7 +1520,7 @@ impl Segmenter {
     /// whitespace its own surface ends with), and whitespace tokens are
     /// dropped when `space_filter` is set.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `text` - The whole input, which the surfaces borrow from or copy.
     /// * `base` - The offset in `text` that the path's offsets are relative

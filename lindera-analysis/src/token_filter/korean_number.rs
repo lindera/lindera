@@ -127,11 +127,11 @@ impl TokenFilter for KoreanNumberTokenFilter {
 /// Covers the ASCII and fullwidth digits, the Hangul numerals, their Hanja spellings with the
 /// financial (갖은자) variants, and the position characters from 십 to 해.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `c` - The character to classify.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The digit or position `c` stands for, or `None` when it takes no part in a Sino-Korean
 /// numeral.
@@ -170,11 +170,11 @@ fn classify(c: char) -> Option<Numeral> {
 /// native Korean numerals intact: `일곱` ("seven") starts with the Sino-Korean `일`, and a
 /// character-by-character conversion would give `1곱`. See [`super::numeral::to_arabic_numerals`].
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `from_str` - The token surface to convert.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The Arabic numeral for an all-numeral `from_str`, and `from_str` unchanged otherwise.
 fn to_arabic_numerals(from_str: &str) -> String {

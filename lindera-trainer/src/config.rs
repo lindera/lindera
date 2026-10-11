@@ -291,7 +291,7 @@ impl TrainerConfig {
     /// reads the user entries loaded via `Model::read_user_lexicon` instead
     /// (#981).
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The surface-to-features map.
     pub fn user_lexicon(&self) -> &HashMap<String, String> {
@@ -300,7 +300,7 @@ impl TrainerConfig {
 
     /// Add user lexicon entry (user dictionary support).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `surface` - Surface form of the entry.
     /// * `features` - Comma-joined feature string of the entry.
@@ -324,11 +324,11 @@ impl TrainerConfig {
 
     /// Load user lexicon from CSV content.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `content` - User lexicon CSV content.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `Ok(())`; malformed lines are skipped.
     #[deprecated(

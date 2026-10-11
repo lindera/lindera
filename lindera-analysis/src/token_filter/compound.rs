@@ -11,11 +11,11 @@ use lindera_segmenter::token::Token;
 /// Parses the optional `"new_tag"` string shared by the compound-word token
 /// filters.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `config` - The filter's JSON configuration.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// `Ok(None)` when `new_tag` is absent, `Ok(Some(tag))` when it is a string,
 /// and a deserialization error when it is present with any other type.
@@ -62,7 +62,7 @@ pub(crate) fn parse_new_tag(config: &Value) -> LinderaResult<Option<String>> {
 /// moved, never cloned. Each merged surface is built with a single
 /// allocation sized from the surfaces it joins.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `tokens` - The tokens to merge, modified in place; order is preserved.
 /// * `tags` - The configured tag set a token's key must be in to take part
@@ -150,7 +150,7 @@ pub(crate) fn merge_consecutive_tokens<'a, W, D>(
 /// are padded to, so the merged token stays indexable like any other.
 /// Fields of `leading` beyond that width are dropped.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `token` - The merged token whose details are replaced.
 /// * `leading` - The leading detail fields, typically the new part-of-speech

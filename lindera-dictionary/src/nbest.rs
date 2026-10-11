@@ -116,11 +116,11 @@ impl<'a> NBestGenerator<'a> {
     /// with set_text_nbest(): the paths through EOS, with the EOS
     /// connection in their costs.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `lattice` - The N-best lattice.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The generator; it yields nothing when the lattice holds no complete
     /// path.
@@ -149,13 +149,13 @@ impl<'a> NBestGenerator<'a> {
     /// BOS edges themselves, so it yields one empty path per BOS edge with
     /// that right id, at that edge's cost.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `lattice` - The N-best lattice (`set_text_nbest*`).
     /// * `exit` - An exit of the lattice's current sentence, from
     ///   [`Lattice::exits_into`]; only its right id is read.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The generator; it yields nothing when no final edge has the exit's
     /// right id.
@@ -238,7 +238,7 @@ impl<'a> NBestGenerator<'a> {
     /// The cost is the total path cost (fx at BOS), lower is better.
     /// Returns None when no more paths are available.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The next path and its cost, or `None` when there are no more; see
     /// [`NBestGenerator::next_with_bos`], which also returns the BOS index.
@@ -250,7 +250,7 @@ impl<'a> NBestGenerator<'a> {
     /// Returns the next best path as (path, cost), like
     /// [`NBestGenerator::next`], with the BOS index of the path.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The next path and its cost, lower is better (the BOS edge's cost
     /// included), and its BOS index: the index in
@@ -325,11 +325,11 @@ impl<'a> NBestGenerator<'a> {
     /// [`NBestGenerator::from_exit`] has no EOS, and its first element, a
     /// final word edge, is a token like any other.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `bos_elem` - The element of the BOS edge the path reached.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The tokens in reading order; empty for a path without words.
     fn reconstruct_path(&self, bos_elem: &QueueElement) -> Vec<TokenOffset> {

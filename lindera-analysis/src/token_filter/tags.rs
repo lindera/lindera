@@ -29,11 +29,11 @@ pub(crate) fn parse_tags(config: &Value) -> LinderaResult<HashSet<String>> {
 /// parts, padding missing trailing parts with `*` and dropping any part
 /// beyond the fourth.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `tag` - The tag as configured, with one or more comma-separated parts.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The tag in the four-part form the Japanese filters compare against.
 pub(crate) fn normalize_japanese_tag(tag: &str) -> String {
@@ -45,11 +45,11 @@ pub(crate) fn normalize_japanese_tag(tag: &str) -> String {
 /// Normalizes Japanese part-of-speech tags to exactly four comma-separated
 /// parts each, with [`normalize_japanese_tag`].
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `tags` - The tags as configured.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The same tags, each in the four-part form.
 pub(crate) fn normalize_japanese_tags(tags: HashSet<String>) -> HashSet<String> {
@@ -89,7 +89,7 @@ pub(crate) enum TagPolicy {
 /// returning a fresh `String`, so a whole `apply` call costs at most one key
 /// allocation instead of one per token.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `tokens` - The tokens to filter, modified in place.
 /// * `tags` - The configured tag set to compare each key against.
@@ -161,11 +161,11 @@ pub(crate) const PART_OF_SPEECH_FIELD: &str = "part_of_speech";
 /// The lookup is a hash-map probe, so the filters resolve it once per
 /// `apply` call rather than per token (see [`part_of_speech_offset_of`]).
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `dictionary` - The dictionary the tokens were segmented with.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The details index of the `part_of_speech` field, or `0` when the schema
 /// does not define one.
@@ -184,11 +184,11 @@ pub(crate) fn part_of_speech_offset(dictionary: &Dictionary) -> usize {
 /// same dictionary, so the first token's schema speaks for the list. An empty
 /// list yields `0`; no filter reads a detail of an empty list anyway.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `tokens` - The tokens an `apply` call received.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The details index the part-of-speech hierarchy starts at for these tokens.
 pub(crate) fn part_of_speech_offset_of(tokens: &[Token<'_>]) -> usize {
@@ -211,7 +211,7 @@ pub(crate) fn part_of_speech_offset_of(tokens: &[Token<'_>]) -> usize {
 /// `details_iter` is used rather than `details` so the per-token `Vec<&str>`
 /// the latter collects is not allocated.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `token` - The token whose details form the key.
 /// * `offset` - The details index the part-of-speech hierarchy starts at.

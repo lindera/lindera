@@ -143,7 +143,7 @@ impl<'a> Token<'a> {
     /// this accessor when the details are consumed once in order (joining,
     /// serializing, copying into an FFI buffer).
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// An iterator yielding each detail field as `&str`, in schema order.
     pub fn details_iter(&mut self) -> impl Iterator<Item = &str> {

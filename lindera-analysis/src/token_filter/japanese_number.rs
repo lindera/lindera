@@ -28,12 +28,12 @@ pub struct JapaneseNumberTokenFilter {
 impl JapaneseNumberTokenFilter {
     /// Creates the filter, padding each tag to four comma-separated parts.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `tags` - Part-of-speech tags, one to four comma-separated levels
     ///   each, or `None` to convert every token.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The configured filter.
     pub fn new(tags: Option<HashSet<String>>) -> Self {
@@ -128,11 +128,11 @@ impl TokenFilter for JapaneseNumberTokenFilter {
 /// Covers the ASCII and fullwidth digits, the kanji digits with their formal (大字) variants, and
 /// the position characters from 十 to 垓.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `c` - The character to classify.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The digit or position `c` stands for, or `None` when it takes no part in a Japanese numeral.
 fn classify(c: char) -> Option<Numeral> {
@@ -167,11 +167,11 @@ fn classify(c: char) -> Option<Numeral> {
 /// ordinary word that begins with one (`一部`, `万歳`) is returned unchanged. See
 /// [`super::numeral::to_arabic_numerals`].
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `from_str` - The token surface to convert.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The Arabic numeral for an all-numeral `from_str`, and `from_str` unchanged otherwise.
 fn to_arabic_numerals(from_str: &str) -> String {

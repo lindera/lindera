@@ -575,11 +575,11 @@ struct TrieWalk {
 impl TrieWalk {
     /// Creates a walk positioned at the trie root.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `dict` - The dictionary whose root to start from.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// A walk at node 0 with the load-time-cached root `base`.
     #[inline(always)]
@@ -592,12 +592,12 @@ impl TrieWalk {
 
     /// Follows the transition labeled `mc` from the current node.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `dict` - The dictionary being walked.
     /// * `mc` - The mapped code of the next character.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The child's raw `(base, check)` pair, or `None` when the walk ends
     /// (the current node is a leaf, the transition does not exist, or the
@@ -632,13 +632,13 @@ enum StepOutput<'a> {
 
 /// Resolves a just-entered node's `(base, check)` pair to its step output.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `dict` - The dictionary being walked.
 /// * `child_base` - The entered node's raw `base`.
 /// * `child_check` - The entered node's raw `check`.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// Whether the step yields a key's entries, continues, or stops.
 #[inline(always)]

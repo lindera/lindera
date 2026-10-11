@@ -273,11 +273,11 @@ impl PrefixDictionaryBuilder {
     /// may consist of or start or end with whitespace (IPADIC's U+3000 entry,
     /// SudachiDict's U+0020 entry), as in the user dictionary builder.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `row` - The CSV row.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The surface, or `None` when the schema has no surface field, the row
     /// is too short, or the surface is empty.
@@ -292,12 +292,12 @@ impl PrefixDictionaryBuilder {
     /// context id remapping (`context_id_remap.rs`). Do not use this for the
     /// surface, which must be kept verbatim (see [`Self::get_surface`]).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `row` - The CSV row.
     /// * `field_name` - The schema field name.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The trimmed value, or `None` when the field is unknown, missing or
     /// blank.
@@ -589,13 +589,13 @@ pub(crate) const MAX_ENTRY_OFFSET: u32 = (1 << 24) - 1;
 /// shifted out of the u32 entirely), producing a dictionary that built without
 /// error but tokenized incorrectly.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `surface` - The surface form being packed, used for error reporting.
 /// * `offset` - Entry offset into the values file, in `WordEntry` records.
 /// * `count` - Number of entries sharing this surface form.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The packed value, or an error naming the surface form and the limit it
 /// exceeded.

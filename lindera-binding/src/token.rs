@@ -57,12 +57,12 @@ impl SurfaceView {
     /// Extracts the surface data from a `lindera` token without loading
     /// details.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `token` - The token to consume; a borrowed surface is copied
     ///   once, an owned surface is moved.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The surface-only view.
     pub fn from_token(token: Token) -> Self {

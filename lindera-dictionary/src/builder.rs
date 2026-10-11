@@ -297,11 +297,11 @@ impl DictionaryBuilder {
     /// WebAssembly callers can build a user dictionary from bytes (#972).
     /// The content must be UTF-8.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `reader` - Read source of the user dictionary CSV content.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The built user dictionary.
     pub fn build_user_dict_from_reader<R: std::io::Read>(
@@ -315,7 +315,7 @@ impl DictionaryBuilder {
     /// including the handler that maps simple rows onto the dictionary
     /// schema's custom fields.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The configured builder, shared by the path and reader entry points.
     fn user_dictionary_builder(&self) -> UserDictionaryBuilder {

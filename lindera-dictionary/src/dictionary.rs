@@ -62,11 +62,11 @@ pub struct DetailFields<'a> {
 impl<'a> DetailFields<'a> {
     /// Builds the field list of a validated NUL-joined blob.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `joined` - The entry's joined fields, already UTF-8 validated.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The fields in schema order; always at least one, since an empty blob
     /// splits into a single empty field.
@@ -84,7 +84,7 @@ impl<'a> DetailFields<'a> {
     /// built by splitting the sentinel itself, so the fallback runs through
     /// the same machinery as a real entry instead of needing its own variant.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// A one-field iterator yielding `"UNK"`.
     //
@@ -103,7 +103,7 @@ impl<'a> DetailFields<'a> {
     /// [`Dictionary::word_details_iter`] yields for an out-of-range word id,
     /// where the allocating accessor has always returned an empty vector.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// An iterator that yields nothing.
     //
@@ -122,7 +122,7 @@ impl<'a> Iterator for DetailFields<'a> {
 
     /// Yields the next detail field.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The next field in schema order, or `None` once all are consumed.
     #[inline]
@@ -137,7 +137,7 @@ impl<'a> Iterator for DetailFields<'a> {
     /// Reports the exact number of fields left, so collecting into a `Vec`
     /// reserves in one shot.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `(remaining, Some(remaining))`.
     #[inline]
@@ -154,14 +154,14 @@ impl ExactSizeIterator for DetailFields<'_> {}
 /// identical and whose only behavioural difference is what a word id with no
 /// slot in the index yields.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `words_idx_data` - The word-id index table.
 /// * `words_data` - The packed detail records.
 /// * `word_id` - The word id to look up.
 /// * `missing` - Builds the fallback for a word id with no slot in the index.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The entry's fields; `missing()` when the id has no slot, and
 /// [`DetailFields::unk`] when the entry itself is malformed.
@@ -201,11 +201,11 @@ pub struct Dictionary {
 impl Dictionary {
     /// Retrieve the detail fields (POS, etc.) for an unknown word entry.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `word_id` - The unknown-word entry id.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// A freshly allocated vector of the entry's fields, or the [`UNK`]
     /// sentinel when the id is out of range or the entry is malformed. Prefer
@@ -218,11 +218,11 @@ impl Dictionary {
     /// Yields the detail fields of an unknown-word entry, borrowed from the
     /// dictionary's own bytes.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `word_id` - The unknown-word entry id.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The entry's fields, or the [`UNK`] sentinel when the id is out of
     /// range or the entry is malformed -- the fallback
@@ -236,11 +236,11 @@ impl Dictionary {
 
     /// Retrieve the detail fields (POS, etc.) for a system dictionary entry.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `word_id` - The system word id.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// A freshly allocated vector of the entry's fields; empty when `word_id`
     /// is out of range, and the [`UNK`] sentinel when the entry is malformed.
@@ -253,11 +253,11 @@ impl Dictionary {
     /// Yields the detail fields of a system dictionary entry, borrowed from
     /// the dictionary's own bytes.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `word_id` - The system word id.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The entry's fields; [`DetailFields::empty`] when `word_id` is out of
     /// range, and [`DetailFields::unk`] when the entry is malformed. Those
@@ -430,11 +430,11 @@ impl UserDictionary {
 
     /// Retrieve the detail fields (POS, etc.) for a user dictionary entry.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `word_id` - The user-dictionary word id.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// A freshly allocated vector of the entry's fields, or the [`UNK`]
     /// sentinel when the id is out of range or the entry is malformed --
@@ -449,11 +449,11 @@ impl UserDictionary {
     /// Yields the detail fields of a user dictionary entry, borrowed from the
     /// dictionary's own bytes.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `word_id` - The user-dictionary word id.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The entry's fields, or [`DetailFields::unk`] when the id is out of
     /// range or the entry is malformed. Unlike

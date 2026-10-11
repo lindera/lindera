@@ -281,11 +281,11 @@ impl CharacterDefinition {
 
     /// Returns the category at `idx` in the flat pool.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `idx` - Pool index derived from [`Self::lookup_categories_packed`].
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The category id stored at that pool slot.
     #[inline(always)]

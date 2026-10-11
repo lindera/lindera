@@ -47,13 +47,13 @@ const PARTIAL_BUDGET_BYTES: usize = 64 << 20;
 /// the summation order must not depend on how many workers happen to run.
 /// Thread counts above the returned value simply leave surplus workers idle.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `lattice_count` - Number of lattices to reduce over.
 /// * `param_len` - Length of the parameter vector, which sizes one partial
 ///   gradient buffer.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The chunk count; `0` when there are no lattices.
 fn chunk_count(lattice_count: usize, param_len: usize) -> usize {
@@ -76,13 +76,13 @@ fn chunk_count(lattice_count: usize, param_len: usize) -> usize {
 /// [`chunk_count`] this fixes the partition — and therefore the summation
 /// order — independently of the thread count.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `lattice_count` - Total number of lattices being partitioned.
 /// * `chunk_count` - Number of chunks, as returned by [`chunk_count`].
 /// * `index` - Chunk index in `0..chunk_count`.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The half-open range of lattice indices covered by the chunk; empty when
 /// `chunk_count` is `0`.
@@ -103,7 +103,7 @@ fn chunk_range(lattice_count: usize, chunk_count: usize, index: usize) -> Range<
 /// This is the single place where partial gradients are combined, so the
 /// sequential and the parallel path provably perform the same additions.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `dst` - Accumulator, updated in place.
 /// * `src` - Partial to add; must have the same length as `dst`.
@@ -120,7 +120,7 @@ fn add_assign(dst: &mut [f64], src: &[f64]) {
 /// The ascending fold makes the reduction independent of which worker
 /// produced which partial and of the order the workers finished in.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `acc` - Accumulator, updated in place.
 /// * `partials` - Indexed partial gradients, in any order.
@@ -134,11 +134,11 @@ fn add_indexed_partials(acc: &mut [f64], mut partials: Vec<(usize, Vec<f64>)>) {
 /// Sorts `(chunk index, partial loss)` pairs by chunk index and sums the
 /// partials from `0.0` in ascending index order.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `partials` - Indexed partial losses, in any order.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The index-ordered sum.
 fn sum_indexed_partials(mut partials: Vec<(usize, f64)>) -> f64 {
@@ -152,11 +152,11 @@ fn sum_indexed_partials(mut partials: Vec<(usize, f64)>) -> f64 {
 
 /// Joins a scoped worker thread, re-raising a worker panic in the caller.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `handle` - The scoped join handle to wait on.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The worker's return value.
 fn join_or_resume<T>(handle: thread::ScopedJoinHandle<'_, T>) -> T {
@@ -193,7 +193,7 @@ pub struct LatticesLoss<'a> {
 impl<'a> LatticesLoss<'a> {
     /// Creates a new loss function over the given lattices.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `lattices` - Lattices of the training corpus.
     /// * `provider` - Provider of per-label feature sets.
@@ -203,7 +203,7 @@ impl<'a> LatticesLoss<'a> {
     /// * `n_threads` - Maximum number of worker threads.
     /// * `l2_lambda` - L2 regularization strength, when enabled.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The loss function.
     pub const fn new(
@@ -231,7 +231,7 @@ impl<'a> LatticesLoss<'a> {
     /// chunk's lattices — independent of which worker runs the chunk and of
     /// what that worker ran before.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `param` - Current parameter vector.
     /// * `range` - Lattice indices covered by this chunk.
@@ -274,14 +274,14 @@ impl<'a> LatticesLoss<'a> {
     /// Computes the loss of one chunk of lattices, summed from `0.0` in
     /// ascending slice order.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `param` - Current parameter vector.
     /// * `range` - Lattice indices covered by this chunk.
     /// * `alphas` - Reusable forward-score scratch, grown as needed.
     /// * `betas` - Reusable backward-score scratch, grown as needed.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The chunk's partial loss.
     fn chunk_cost(
@@ -321,12 +321,12 @@ impl<'a> LatticesLoss<'a> {
     /// greedy (a slow chunk never stalls an idle worker) — but each partial is
     /// keyed by its chunk index, which is all the reduction depends on.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `param` - Current parameter vector.
     /// * `chunks` - Chunk count, as returned by [`chunk_count`].
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// One `(chunk index, partial gradient)` pair per chunk, in no particular
     /// order.
@@ -370,12 +370,12 @@ impl<'a> LatticesLoss<'a> {
     /// Runs every chunk on up to `n_threads` workers and returns the indexed
     /// partial losses.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `param` - Current parameter vector.
     /// * `chunks` - Chunk count, as returned by [`chunk_count`].
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// One `(chunk index, partial loss)` pair per chunk, in no particular
     /// order.
@@ -429,11 +429,11 @@ impl<'a> LatticesLoss<'a> {
     /// final add for a single chunk: `0.0 + x` maps `-0.0` to `+0.0`, so both
     /// shortcuts would make the result depend on the partition.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `param` - Current parameter vector.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The gradient, with the same length as `param`, including the L2 term
     /// when configured.
@@ -479,11 +479,11 @@ impl<'a> LatticesLoss<'a> {
     /// and therefore the same guarantee — the result is bit-identical for
     /// every thread count.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `param` - Current parameter vector.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The loss, including the L2 term when configured.
     pub fn cost(&self, param: &[f64]) -> f64 {

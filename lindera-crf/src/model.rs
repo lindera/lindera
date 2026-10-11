@@ -32,11 +32,11 @@ pub(crate) struct VecHashMapAsVec;
 /// Shared by `resolve_with` and `serialize_with`, which rkyv requires to
 /// observe the same value: both must produce the identical ordering.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `field` - The maps to flatten.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// One key-sorted pair vector per input map.
 fn sorted_pairs<K, V>(field: &[HashMap<K, V>]) -> Vec<Vec<(K, V)>>

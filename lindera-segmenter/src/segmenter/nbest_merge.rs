@@ -45,14 +45,14 @@ struct Node {
 /// a combination whose prefix is not among the `n` best prefixes has `n`
 /// strictly better combinations that share its suffix.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `lists` - The ascending path costs of each segment, in input order.
 /// * `n` - The maximum number of combinations to return.
 /// * `cost_threshold` - If `Some(t)`, drop the combinations whose total cost
 ///   exceeds the cost of the first combination by more than `t`.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The combinations, each as the rank chosen in every segment and the total
 /// cost. Empty if `n` is zero, `lists` is empty, any list is empty, or
@@ -109,7 +109,7 @@ pub(super) fn merge_nbest<L: AsRef<[i64]>>(
 /// Merges the combinations of the previous segments with the paths of the
 /// next segment, keeping the `n` cheapest.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `previous` - The combinations of the previous segments, ascending.
 /// * `list` - The ascending path costs of the next segment; not empty.
@@ -119,7 +119,7 @@ pub(super) fn merge_nbest<L: AsRef<[i64]>>(
 ///   cost exceeds `best_cost` by more than `t`. The excess only grows from
 ///   one pop to the next, and the remaining segments cannot lower it.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The combinations including this segment, ascending.
 fn merge_step(
@@ -172,7 +172,7 @@ fn merge_step(
 pub(super) trait CarriedPaths {
     /// Pulls the next path, in ascending order of cost.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The path's cost combined with the first (cheapest) result of its
     /// group, and its group: the index of the state, i.e. of the BOS edge,
@@ -185,13 +185,13 @@ pub(super) trait CarriedPaths {
     /// how `unique` drops repeated word boundaries. Called in the order of
     /// the merge, at most once per combination.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `path` - The index of the path (see
     ///   [`CarriedPaths::next_path`]).
     /// * `rank` - The index of the result in the path's group.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `true` to keep the combination, `false` to drop it as a duplicate.
     fn is_new(&mut self, path: usize, rank: usize) -> bool;
@@ -226,7 +226,7 @@ pub(super) struct CarriedPick {
 /// `(i, 0)` is popped, so the search runs no further than the combinations
 /// need.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `paths` - The paths, pulled lazily, and the duplicate check.
 /// * `groups` - The ascending costs of the results of every state, indexed
@@ -236,7 +236,7 @@ pub(super) struct CarriedPick {
 /// * `cost_threshold` - If `Some(t)`, stop at the first combination whose
 ///   cost exceeds the first combination's by more than `t`.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The kept combinations, ascending: duplicates (see
 /// [`CarriedPaths::is_new`]) are skipped and do not count toward `n`. Empty

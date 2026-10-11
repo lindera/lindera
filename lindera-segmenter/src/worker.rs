@@ -88,7 +88,7 @@ impl Segmenter {
     /// is no longer needed, prefer [`Segmenter::into_worker`] to avoid that
     /// copy.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// A fresh worker with empty internal buffers.
     pub fn new_worker(&self) -> SegmentWorker {
@@ -98,7 +98,7 @@ impl Segmenter {
     /// Consumes this segmenter and creates a reusable [`SegmentWorker`]
     /// from it, without cloning the user dictionary.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// A fresh worker with empty internal buffers.
     pub fn into_worker(self) -> SegmentWorker {
@@ -111,11 +111,11 @@ impl SegmentWorker {
     /// entry points are `Segmenter::new_worker`/`into_worker`, which keep
     /// the dictionary↔lattice pairing fixed.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `segmenter` - The segmenter this worker is bound to.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// A worker with empty internal buffers.
     fn new(segmenter: Segmenter) -> Self {
@@ -134,11 +134,11 @@ impl SegmentWorker {
     /// same input and configuration. The returned tokens borrow both `text`
     /// and this worker, so they must be consumed before the next call.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `text` - The input text to segment.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The tokens segmented from `text`, in reading order.
     pub fn segment<'w>(&'w mut self, text: &'w str) -> LinderaResult<Vec<Token<'w>>> {
@@ -161,7 +161,7 @@ impl SegmentWorker {
     /// its segments (the sentences up to each `\n` and `\t`, across which
     /// the context is carried).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `text` - The input text to segment.
     /// * `n` - Maximum number of segmentations to return.
@@ -169,7 +169,7 @@ impl SegmentWorker {
     /// * `cost_threshold` - Discard results costing more than the best
     ///   result + threshold, over the whole input.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// Up to `n` `(tokens, cost)` pairs ordered by cost (best first).
     pub fn segment_nbest<'w>(
@@ -197,7 +197,7 @@ impl SegmentWorker {
     /// The mode carries no lattice state (it is passed anew to every
     /// sentence), so switching per call is safe.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `mode` - The mode to use from the next call on.
     pub fn set_mode(&mut self, mode: Mode) {
@@ -207,7 +207,7 @@ impl SegmentWorker {
     /// Sets whether whitespace tokens are kept in the output for
     /// subsequent calls.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `keep` - `true` to keep whitespace tokens (and whitespace nodes in
     ///   the lattice), `false` (MeCab-compatible default) to drop them.
@@ -219,7 +219,7 @@ impl SegmentWorker {
     /// calls when whitespace tokens are not kept (see
     /// `Segmenter::skip_whitespace`; defaults to the dictionary's setting).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `skip` - `false` to keep whitespace nodes in the lattice.
     pub fn set_skip_whitespace(&mut self, skip: bool) {
@@ -229,7 +229,7 @@ impl SegmentWorker {
     /// Sets the unknown-word grouping cap for subsequent calls (MeCab's
     /// `max-grouping-size` semantics; `None` = unbounded, the default).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `max_grouping_len` - Maximum grouped characters beyond the first.
     pub fn set_max_grouping_len(&mut self, max_grouping_len: Option<usize>) {
@@ -239,7 +239,7 @@ impl SegmentWorker {
     /// Enables/disables the unknown-word length ladder for subsequent
     /// calls (see `Segmenter::unknown_word_ladder`; defaults to `true`).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `unknown_word_ladder` - Whether to emit the length ladder.
     pub fn set_unknown_word_ladder(&mut self, unknown_word_ladder: bool) {
@@ -252,11 +252,11 @@ impl SegmentWorker {
     ///
     /// Rebuilds the per-word-id lookup, so prefer setting this once.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `space_penalty` - The rules, or `None` to disable the penalty.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `Ok(())`, or an error when the dictionary schema has no
     /// part-of-speech field; the previous setting is kept on error.
@@ -271,7 +271,7 @@ impl SegmentWorker {
     /// its metadata (see `Segmenter::space_penalty_from_dictionary`), e.g.
     /// to restore the default after `set_space_penalty(None)`.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `Ok(())`, or an error when the dictionary ships no rules; the
     /// previous setting is kept on error.
@@ -285,7 +285,7 @@ impl SegmentWorker {
     /// out from under the reused lattice would break the dictionary↔lattice
     /// pairing this type exists to guarantee.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The segmenter this worker is bound to.
     pub fn segmenter(&self) -> &Segmenter {
@@ -300,7 +300,7 @@ impl SegmentWorker {
     /// a valid conservative bound, since a sentence never has more
     /// characters than bytes.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `text_len_hint` - Expected typical input length in bytes.
     pub fn shrink_to(&mut self, text_len_hint: usize) {
