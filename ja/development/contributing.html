@@ -215,7 +215,7 @@ make check-docs
 <li>コミット前に <code>cargo fmt</code> を実行してください。</li>
 <li>すべての public および private アイテム（型、関数、モジュール、フィールド、定数、型エイリアス）にドキュメントコメント（<code>///</code>）を記述してください。</li>
 <li>trait 実装メソッドにも、実装固有の振る舞いを説明するドキュメントコメントを記述してください。</li>
-<li>関数・メソッドのドキュメントには、該当する場合 <code># Arguments</code> と <code># Returns</code> セクションを含めてください。</li>
+<li>関数・メソッドのドキュメントには、該当する場合 <code># Arguments</code> と <code># Returns</code> セクションを含めてください。これらのセクションを日本語の見出し <code># 引数</code>・<code># 戻り値</code> で書くと、CI が失敗します。</li>
 <li>コードコメント、ドキュメントコメント、コミットメッセージ、ログメッセージ、エラーメッセージは英語で記述してください。</li>
 <li>本番コードでは <code>unwrap()</code> や <code>expect()</code> を避けてください（テストコードでは使用可）。</li>
 <li><code>unsafe</code> ブロックは必要な場合にのみ使用し、必ず <code>// SAFETY: ...</code> コメントを付けてください。</li>

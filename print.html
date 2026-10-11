@@ -11424,7 +11424,7 @@ make check-docs
 <li>Run <code>cargo fmt</code> before committing.</li>
 <li>All public and private items (types, functions, modules, fields, constants, type aliases) must have documentation comments (<code>///</code>).</li>
 <li>Trait implementation methods should also have documentation comments describing implementation-specific behavior.</li>
-<li>Function and method documentation should include <code># Arguments</code> and <code># Returns</code> sections where applicable.</li>
+<li>Function and method documentation should include <code># Arguments</code> and <code># Returns</code> sections where applicable. CI fails on these sections under the Japanese names <code># 引数</code> and <code># 戻り値</code>.</li>
 <li>Code comments, documentation comments, commit messages, log messages, and error messages should be written in English.</li>
 <li>Avoid <code>unwrap()</code> and <code>expect()</code> in production code (test code is fine).</li>
 <li>Use <code>unsafe</code> blocks only when necessary, and always include a <code>// SAFETY: ...</code> comment.</li>
