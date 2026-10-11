@@ -60,7 +60,7 @@ impl Tokenizer {
     /// prefer [`Tokenizer::into_worker`] when the tokenizer itself is no
     /// longer needed).
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// A fresh worker with empty internal buffers.
     pub fn new_worker(&self) -> AnalysisWorker {
@@ -70,7 +70,7 @@ impl Tokenizer {
     /// Consumes this tokenizer and creates a reusable [`AnalysisWorker`]
     /// from it without cloning any of its parts.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// A fresh worker with empty internal buffers.
     pub fn into_worker(self) -> AnalysisWorker {
@@ -93,11 +93,11 @@ impl AnalysisWorker {
     /// `text` and this worker, so they must be consumed before the next
     /// call.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `text` - The input text to tokenize.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The filtered tokens, in reading order, with byte offsets corrected
     /// back to the original (pre-filter) text.
@@ -143,7 +143,7 @@ impl AnalysisWorker {
     /// Produces exactly the same results as [`Tokenizer::tokenize_nbest`]
     /// for the same input and configuration.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `text` - The input text to tokenize.
     /// * `n` - Maximum number of tokenizations to return.
@@ -151,7 +151,7 @@ impl AnalysisWorker {
     /// * `cost_threshold` - Discard results costing more than the best
     ///   result + threshold, over the whole input.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// Up to `n` `(tokens, cost)` pairs ordered by cost (best first).
     pub fn tokenize_nbest<'w>(
@@ -203,7 +203,7 @@ impl AnalysisWorker {
 
     /// Sets the segmentation mode for subsequent calls.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `mode` - The mode to use from the next call on.
     pub fn set_mode(&mut self, mode: Mode) {
@@ -215,7 +215,7 @@ impl AnalysisWorker {
     /// other tokens can differ from those of the default output, which
     /// skips whitespace (see [`Self::set_skip_whitespace`]).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `keep` - `true` to keep whitespace tokens, `false` to drop them.
     pub fn set_keep_whitespace(&mut self, keep: bool) {
@@ -226,7 +226,7 @@ impl AnalysisWorker {
     /// calls when whitespace tokens are not kept (see
     /// `Segmenter::skip_whitespace`; defaults to the dictionary's setting).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `skip` - `false` to keep whitespace nodes in the lattice.
     pub fn set_skip_whitespace(&mut self, skip: bool) {
@@ -236,7 +236,7 @@ impl AnalysisWorker {
     /// Sets the unknown-word grouping cap for subsequent calls (MeCab's
     /// `max-grouping-size` semantics; `None` = unbounded, the default).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `max_grouping_len` - Maximum grouped characters beyond the first.
     pub fn set_max_grouping_len(&mut self, max_grouping_len: Option<usize>) {
@@ -246,7 +246,7 @@ impl AnalysisWorker {
     /// Enables/disables the unknown-word length ladder for subsequent
     /// calls (see `Segmenter::unknown_word_ladder`; defaults to `true`).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `unknown_word_ladder` - Whether to emit the length ladder.
     pub fn set_unknown_word_ladder(&mut self, unknown_word_ladder: bool) {
@@ -258,11 +258,11 @@ impl AnalysisWorker {
     /// `Segmenter::space_penalty`; `None` disables it, overriding the rules
     /// the dictionary ships and applies by default).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `space_penalty` - The rules, or `None` to disable the penalty.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `Ok(())`, or an error when the dictionary schema has no
     /// part-of-speech field; the previous setting is kept on error.
@@ -277,7 +277,7 @@ impl AnalysisWorker {
     /// its metadata (see `Segmenter::space_penalty_from_dictionary`), e.g.
     /// to restore the default after `set_space_penalty(None)`.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `Ok(())`, or an error when the dictionary ships no rules; the
     /// previous setting is kept on error.
@@ -288,7 +288,7 @@ impl AnalysisWorker {
     /// Immediately shrinks the worker's internal buffers to what an input
     /// of `text_len_hint` bytes needs.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `text_len_hint` - Expected typical input length in bytes.
     pub fn shrink_to(&mut self, text_len_hint: usize) {

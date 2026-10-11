@@ -706,7 +706,7 @@ impl Tokenizer {
 /// Shared by `tokenize_with_lattice`, `tokenize_nbest_with_lattice`, and
 /// `AnalysisWorker`.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `tokens` - The tokens whose `byte_start`/`byte_end` are corrected in
 ///   place.

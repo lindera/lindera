@@ -42,12 +42,12 @@ impl KoreanCompoundWordTokenFilter {
 
     /// Creates the filter.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `tags` - Part-of-speech tags whose consecutive tokens are merged.
     /// * `new_tag` - The tag assigned to a merged token, or `None` for [`Self::DEFAULT_NEW_TAG`].
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The configured filter.
     pub fn new(tags: HashSet<String>, new_tag: Option<String>) -> Self {
@@ -57,11 +57,11 @@ impl KoreanCompoundWordTokenFilter {
     /// Builds the filter from its JSON configuration: `tags` (required, array of strings) and
     /// `new_tag` (optional, string; used verbatim as the merged token's first detail).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `config` - The filter's JSON configuration.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The configured filter, or a deserialization error when `tags` is missing or either
     /// argument has the wrong type.
@@ -83,11 +83,11 @@ impl TokenFilter for KoreanCompoundWordTokenFilter {
     /// `new_tag` (or [`Self::DEFAULT_NEW_TAG`]) followed by `*` for every other field. A matching
     /// token with no matching neighbour is left as it is.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `tokens` - The tokens to merge, modified in place.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `Ok(())`; this filter cannot fail.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {

@@ -91,7 +91,7 @@ struct State {
 impl State {
     /// Returns the indices of the state's prefixes.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The range of [`CarriedNbest::prefixes`] that holds them.
     fn range(&self) -> std::ops::Range<usize> {
@@ -211,7 +211,7 @@ impl CarriedPaths for Pulls<'_, '_> {
     /// Pulls the next path of the search and, with `unique`, classifies its
     /// word boundaries.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The path's cost, which includes the cost of its BOS edge (its state's
     /// best prefix, relative to the cheapest state), and its BOS index.
@@ -238,12 +238,12 @@ impl CarriedPaths for Pulls<'_, '_> {
     /// Checks the word boundaries of the combination against the kept ones
     /// with `unique`; every combination is new without it.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `path` - The index of the pulled path.
     /// * `rank` - The index of the prefix in the path's state.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// Whether the combination is kept.
     fn is_new(&mut self, path: usize, rank: usize) -> bool {
@@ -314,14 +314,14 @@ pub(super) struct CarriedNbest {
 impl CarriedNbest {
     /// Creates the search with empty buffers.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `n` - The maximum number of results; at least 1.
     /// * `unique` - Whether to drop repeated word boundaries.
     /// * `cost_threshold` - If `Some(t)`, the maximum cost above the best;
     ///   not negative.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The search.
     pub(super) fn new(n: usize, unique: bool, cost_threshold: Option<i64>) -> Self {
@@ -352,7 +352,7 @@ impl CarriedNbest {
     /// Starts a segment: one state, the dictionary's BOS context, with the
     /// empty prefix.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `segment_start` - The start of the segment in the input, in bytes.
     pub(super) fn start(&mut self, segment_start: usize) {
@@ -379,7 +379,7 @@ impl CarriedNbest {
 
     /// Returns the start of the segment.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The start in the input, in bytes.
     pub(super) fn segment_start(&self) -> usize {
@@ -390,7 +390,7 @@ impl CarriedNbest {
     /// per state, with its best prefix's cost relative to the cheapest
     /// state's.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The contexts, for
     /// [`LatticeOptions::bos`](lindera_dictionary::viterbi::LatticeOptions::bos).
@@ -416,7 +416,7 @@ impl CarriedNbest {
     /// cheapest combinations of a path to the exit with a prefix of the
     /// state the path starts from.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `lattice` - The sentence's N-best lattice, built from the BOS
     ///   contexts of [`CarriedNbest::bos_contexts`], or from the default BOS
@@ -426,7 +426,7 @@ impl CarriedNbest {
     /// * `matrix` - The connection cost matrix of the segmenter's
     ///   dictionary.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `false` when the sentence has no exit; the states are then left
     /// unchanged.
@@ -554,13 +554,13 @@ impl CarriedNbest {
     /// segment's best and `unique` over the word boundaries of the whole
     /// segment.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `lattice` - The last sentence's N-best lattice, built from the BOS
     ///   contexts of [`CarriedNbest::bos_contexts`].
     /// * `sentence_start` - The start of the sentence in the input.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The results in ascending order of cost, each its tokens (offsets
     /// relative to the segment start) and its cost; empty when the sentence
@@ -659,11 +659,11 @@ impl CarriedNbest {
 
     /// Returns the tokens of a prefix, part by part from the segment start.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `prefix` - The index of the prefix.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The tokens, with offsets relative to the segment start.
     fn prefix_tokens(&self, prefix: u32) -> Vec<TokenOffset> {

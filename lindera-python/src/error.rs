@@ -61,11 +61,11 @@ impl From<PyLinderaError> for PyErr {
 /// (A `From<CoreError> for PyErr` impl is not possible here because of the
 /// orphan rule, so binding methods use this with `map_err`.)
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `err` - The core error to convert.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The equivalent Python exception.
 pub fn to_py_error(err: CoreError) -> PyErr {

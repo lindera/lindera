@@ -271,14 +271,14 @@ impl FeatureExtractor {
     /// extractor, and keeping `&self` off it is part of what lets the extract
     /// loops borrow the template vector and the id map disjointly (#965).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `template` - The parsed template to apply.
     /// * `features` - The entry's feature fields, indexed by `%F`/`%L`/`%R`.
     /// * `cate_id` - The character category id substituted for `%t`.
     /// * `ctx` - Surface and full-feature strings for `%w`/`%u`/`%l`/`%r`.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The generated feature string, or `None` when a `?`-marked required
     /// field is undefined (`*`, empty, or out of range), which means the
@@ -339,13 +339,13 @@ impl FeatureExtractor {
     /// call, and the ids are interned precisely because the same feature
     /// strings recur across lexicon entries.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `ids` - The feature-string to id map to intern into.
     /// * `next_id` - The counter for this id space; incremented on a miss.
     /// * `feature_str` - The generated feature string to intern.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The existing id, or the newly minted one.
     fn intern_feature_id(
@@ -374,13 +374,13 @@ impl FeatureExtractor {
 
     /// Extracts unigram feature IDs from features.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `features` - Rewritten unigram feature fields, one slice element per
     ///   comma-separated field.
     /// * `cate_id` - Character category id for the `%t` placeholder.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The interned feature ids; templates whose `%F?` field is undefined are
     /// skipped, so the result may be shorter than the template list.
@@ -394,13 +394,13 @@ impl FeatureExtractor {
 
     /// Extracts unigram feature IDs from features with template context.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `features` - Rewritten unigram feature fields.
     /// * `cate_id` - Character category id for the `%t` placeholder.
     /// * `ctx` - Values for the `%w` / `%u` / `%l` / `%r` placeholders.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The interned feature ids; skipped templates are dropped.
     pub fn extract_unigram_feature_ids_with_ctx(
@@ -440,11 +440,11 @@ impl FeatureExtractor {
 
     /// Extracts left context feature IDs from features (with Optional).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `features` - Rewritten left-context feature fields.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// One entry per template, `None` where the template was skipped, so the
     /// result stays index-aligned with the template list.
@@ -454,12 +454,12 @@ impl FeatureExtractor {
 
     /// Extracts left context feature IDs from features with template context.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `features` - Rewritten left-context feature fields.
     /// * `ctx` - Values for the `%w` / `%u` / `%l` / `%r` placeholders.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// One entry per template, `None` where the template was skipped.
     pub fn extract_left_feature_ids_with_ctx(
@@ -497,11 +497,11 @@ impl FeatureExtractor {
 
     /// Extracts right context feature IDs from features (with Optional).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `features` - Rewritten right-context feature fields.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// One entry per template, `None` where the template was skipped, so the
     /// result stays index-aligned with the template list.
@@ -511,12 +511,12 @@ impl FeatureExtractor {
 
     /// Extracts right context feature IDs from features with template context.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `features` - Rewritten right-context feature fields.
     /// * `ctx` - Values for the `%w` / `%u` / `%l` / `%r` placeholders.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// One entry per template, `None` where the template was skipped.
     pub fn extract_right_feature_ids_with_ctx(

@@ -44,12 +44,12 @@ pub fn default_dictionary_fields() -> Vec<String> {
 /// surface and detail fields may consist of whitespace). The caller maps the
 /// message onto its own FFI exception type.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `fields` - The schema field names.
 /// * `record` - The CSV record.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// `Ok(())` if the record is valid, `Err(message)` otherwise.
 pub fn validate_record(fields: &[String], record: &[String]) -> Result<(), String> {

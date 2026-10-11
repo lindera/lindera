@@ -66,11 +66,11 @@ impl TokenFilter for KoreanKeepTagsTokenFilter {
     /// The comparison key is the token's first detail field, written into a
     /// buffer reused across tokens rather than allocated per token.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `tokens` - The tokens to filter, modified in place.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `Ok(())`; this filter cannot fail.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {

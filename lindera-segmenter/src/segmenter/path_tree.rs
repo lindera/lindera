@@ -85,11 +85,11 @@ impl PathTree {
     /// Adds a node without a parent (see [`PathTree::set_parent`]) and
     /// without tokens (see [`PathTree::tokens_mut`]).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `base` - The start of the node's sentence in the input, in bytes.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The new node.
     pub(super) fn add(&mut self, base: usize) -> u32 {
@@ -104,11 +104,11 @@ impl PathTree {
 
     /// Returns the token buffer of a node, to fill with its tokens.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `node` - A node of the tree.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The buffer; its offsets are relative to the node's `base`.
     pub(super) fn tokens_mut(&mut self, node: u32) -> &mut Vec<TokenOffset> {
@@ -117,7 +117,7 @@ impl PathTree {
 
     /// Sets the parent of a node.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `node` - A node of the tree.
     /// * `parent` - The node of the part before it, or [`NO_NODE`].
@@ -127,11 +127,11 @@ impl PathTree {
 
     /// Returns the parent of a node.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `node` - A node of the tree, or [`NO_NODE`].
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The parent, or [`NO_NODE`] for a node without one and for
     /// [`NO_NODE`] itself.
@@ -147,7 +147,7 @@ impl PathTree {
     /// Calls `f` with every part of the path that ends with `node`, in
     /// reading order.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `node` - The last part of the path, or [`NO_NODE`] for nothing.
     /// * `f` - Called with each part's sentence start and tokens.
@@ -169,11 +169,11 @@ impl PathTree {
     /// The nodes of the states are all at the same depth (every sentence of
     /// a segment adds one level), so the paths are climbed in lock step.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `states` - The states; not empty.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The deepest common node, or [`NO_NODE`] when the paths share no
     /// open part.
@@ -201,7 +201,7 @@ impl PathTree {
     /// Keeps only the nodes on the paths of `states`, below `cut`, and
     /// renumbers them; the token buffers of the other nodes become spare.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `states` - The states; their nodes are renumbered, and a state
     ///   whose node is `cut` gets [`NO_NODE`].
@@ -262,7 +262,7 @@ impl PathTree {
     /// Returns a token buffer to the spare buffers, unless it holds no
     /// allocation.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `spare` - The spare buffers.
     /// * `tokens` - The buffer.
@@ -275,7 +275,7 @@ impl PathTree {
 
     /// Returns the number of nodes, for tests.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The number of open parts.
     #[cfg(test)]

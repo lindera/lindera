@@ -42,12 +42,12 @@ pub struct JapaneseCompoundWordTokenFilter {
 impl JapaneseCompoundWordTokenFilter {
     /// Creates the filter, padding `tags` and `new_tag` to four comma-separated parts.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `tags` - Part-of-speech tags, one to four comma-separated levels each.
     /// * `new_tag` - The tag assigned to a merged token, or `None` for `複合語`.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The configured filter.
     pub fn new(tags: HashSet<String>, new_tag: Option<String>) -> Self {
@@ -60,11 +60,11 @@ impl JapaneseCompoundWordTokenFilter {
     /// Builds the filter from its JSON configuration: `tags` (required, array of strings) and
     /// `new_tag` (optional, string).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `config` - The filter's JSON configuration.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The configured filter, or a deserialization error when `tags` is missing or either
     /// argument has the wrong type.
@@ -88,11 +88,11 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
     /// `display_surface`, and the rest up to the dictionary's field count) set to `*`. A
     /// matching token with no matching neighbour is left as it is.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `tokens` - The tokens to merge, modified in place.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `Ok(())`; this filter cannot fail.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {

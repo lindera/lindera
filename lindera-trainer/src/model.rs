@@ -24,11 +24,11 @@ fn tocost(weight: f64, cost_factor: i32) -> i16 {
 /// handing to the legacy JSON reader. rkyv is always tried first, so a false
 /// positive here cannot misroute a valid model.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `bytes` - Raw model file contents.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// `true` when the first non-whitespace byte is `{`.
 fn looks_like_json_object(bytes: &[u8]) -> bool {
@@ -678,11 +678,11 @@ impl Model {
     /// with its input parameters unchanged, per the contract documented on
     /// `read_user_lexicon`.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `writer` - Write sink for the user lexicon CSV.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `Ok(())` on success; writing nothing when no user lexicon was read.
     fn write_user_lexicon<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -878,13 +878,13 @@ impl Model {
     /// run over vectors or key-sorted map entries, never over raw map
     /// iteration order (#981).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `left_wtr` - Write sink for the left-feature file.
     /// * `right_wtr` - Write sink for the right-feature file.
     /// * `cost_wtr` - Write sink for the feature-pair cost file.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `Ok(())` on success.
     pub fn write_bigram_details<L, R, C>(
@@ -1140,7 +1140,7 @@ impl SerializableModel {
     /// exporting the same model twice produces byte-identical output (#981);
     /// serde_json's map is ordered, so key order is stable too.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `base_metadata_path` - Path of the base `metadata.json` to update.
     /// * `writer` - Write sink for the updated JSON.

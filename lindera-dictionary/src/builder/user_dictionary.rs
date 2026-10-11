@@ -95,11 +95,11 @@ impl UserDictionaryBuilderOptions {
 impl UserDictionaryBuilder {
     /// Builds a user dictionary from a CSV file on disk.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `input_file` - Path of the user dictionary CSV file.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The built user dictionary.
     pub fn build(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
@@ -122,11 +122,11 @@ impl UserDictionaryBuilder {
     /// [`Self::build`] delegates here after opening its file (#972).
     /// The content must be UTF-8.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `reader` - Read source of the user dictionary CSV content.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The built user dictionary.
     pub fn build_from_reader<R: Read>(&self, reader: R) -> LinderaResult<UserDictionary> {

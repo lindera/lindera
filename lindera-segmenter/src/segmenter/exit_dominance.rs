@@ -55,7 +55,7 @@ impl MarginCache {
     /// Returns the margin of an exit with right id `from` over an exit with
     /// right id `over`, from the cache or computed and cached.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `matrix` - The connection cost matrix of the segmenter's
     ///   dictionary.
@@ -63,7 +63,7 @@ impl MarginCache {
     /// * `over` - The right context id of the exit that may dominate it;
     ///   not `from`.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// See [`margin`].
     pub(super) fn margin(&self, matrix: &ConnectionCostMatrix, from: u16, over: u16) -> i32 {
@@ -97,13 +97,13 @@ impl MarginCache {
 /// id `from` than from `over`: the maximum over every left context id `l` of
 /// `conn(over, l) - conn(from, l)`.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `matrix` - The connection cost matrix.
 /// * `from` - The right context id of the exit that may be dominated.
 /// * `over` - The right context id of the exit that may dominate it.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The margin; `i32::MAX` (nothing is dominated) for a matrix without left
 /// ids or a right id outside the matrix.
@@ -151,7 +151,7 @@ fn dominates(f: (u32, i32), e: (u32, i32), margin: i32) -> bool {
 /// Drops the exits that another exit dominates (see the module
 /// documentation), keeping the order of the others.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `exits` - The exits of a sentence, with distinct right ids.
 /// * `cache` - The margin cache of the segmenter.

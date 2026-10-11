@@ -42,11 +42,11 @@ impl UnknownDictionary {
 
     /// Retrieve the detail fields (POS, etc.) for an unknown word entry.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `word_id` - The unknown-word entry id.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// A freshly allocated vector of the entry's fields, or `None` when the
     /// id is out of range or the entry is malformed. Prefer
@@ -65,11 +65,11 @@ impl UnknownDictionary {
     /// to substitute (see
     /// [`Dictionary::unknown_word_details_iter`](crate::dictionary::Dictionary::unknown_word_details_iter)).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `word_id` - The unknown-word entry id.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The entry's fields, or `None` when the id is out of range or the entry
     /// is malformed.

@@ -37,7 +37,7 @@ Thank you for your interest in contributing to Lindera! This page provides guide
 - Run `cargo fmt` before committing.
 - All public and private items (types, functions, modules, fields, constants, type aliases) must have documentation comments (`///`).
 - Trait implementation methods should also have documentation comments describing implementation-specific behavior.
-- Function and method documentation should include `# Arguments` and `# Returns` sections where applicable.
+- Function and method documentation should include `# Arguments` and `# Returns` sections where applicable. CI fails on these sections under the Japanese names `# 引数` and `# 戻り値`.
 - Code comments, documentation comments, commit messages, log messages, and error messages should be written in English.
 - Avoid `unwrap()` and `expect()` in production code (test code is fine).
 - Use `unsafe` blocks only when necessary, and always include a `// SAFETY: ...` comment.

@@ -71,7 +71,7 @@ impl WordId {
 
     /// Returns the numeric identifier of the word within its lexicon.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The lexicon-local word id.
     #[inline]
@@ -139,7 +139,7 @@ impl WordEntry {
 
     /// Creates a new word entry from its raw components.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `word_id` - The word id identifying the entry.
     /// * `word_cost` - The emission cost of the word.
@@ -311,12 +311,12 @@ impl Default for Edge {
 impl Edge {
     /// Packs a lexicon type and the kanji-only flag into the flags byte.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `lex_type` - The lexicon type to encode.
     /// * `kanji_only` - Whether the edge surface is entirely kanji.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The packed flags byte.
     #[inline]
@@ -341,7 +341,7 @@ impl Edge {
 
     /// Reconstructs the word id (with its lexicon type) backing this edge.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The word id; `WordId::new` re-derives the `is_system` flag.
     #[inline]
@@ -352,11 +352,11 @@ impl Edge {
     /// Returns where the edge ends: the content end of the slot holding it
     /// plus the whitespace its own surface ends with (#1108).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `content_end` - `Lattice::content_end` of the slot holding the edge.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The end position, in characters.
     #[inline]
@@ -368,11 +368,11 @@ impl Edge {
     /// included and the whitespace skipped after it excluded: what the
     /// Decompose length penalty measures.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `content_end` - `Lattice::content_end` of the slot holding the edge.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The length, in characters.
     #[inline]
@@ -408,7 +408,7 @@ impl Edge {
     /// Returns the right context id of this edge: the context the edge
     /// after it connects to.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The right context id.
     #[inline]
@@ -864,13 +864,13 @@ impl Lattice {
     /// Packs a decoded `WordEntry` into a runtime edge starting at
     /// `start_char`.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `word_entry` - The decoded dictionary entry backing the edge.
     /// * `start_char` - The edge's start position, in characters.
     /// * `kanji_only` - Whether the edge surface is entirely kanji.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// An edge ready for `add_edge_in_lattice` (path cost unset).
     #[inline]
@@ -923,12 +923,12 @@ impl Lattice {
     /// `char_idx` consists solely of kanji (always `false` in Normal mode,
     /// whose preparation leaves the run lengths zero).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `char_idx` - Start position of the span, in characters.
     /// * `num_chars` - Span length, in characters.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// `true` when the whole span lies inside one kanji run.
     #[inline]
@@ -940,13 +940,13 @@ impl Lattice {
     /// reading the `CharacterDefinition` flat pool or the fallback
     /// `categories_buffer` as recorded by `prepare_char_buffers`.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `char_definitions` - The definitions whose pool backs the fast path.
     /// * `char_idx` - Character index in `char_info_buffer`.
     /// * `category_ord` - Ordinal within that char's category set.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The category id.
     #[inline]
@@ -972,11 +972,11 @@ impl Lattice {
     /// the exact lookup succeeds; the floor fallback keeps malformed input
     /// panic-free.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `byte` - Byte offset into the current sentence.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The char position whose `byte_offset` equals (or, for a
     /// non-boundary byte, precedes) `byte`.
@@ -992,11 +992,11 @@ impl Lattice {
     /// length). Valid only between `prepare_char_buffers` and the next
     /// `clear()`.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `char_idx` - Char position, `0..=n_chars`.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The byte offset.
     #[inline]
@@ -1015,7 +1015,7 @@ impl Lattice {
     /// `n_chars`); `clear()` must already have run for the previous
     /// sentence, since it wipes the buffers `prepare` fills.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `n_chars` - The current sentence's character count.
     fn record_and_grow(&mut self, n_chars: usize) {
@@ -1085,7 +1085,7 @@ impl Lattice {
 
     /// [`Self::record_and_grow`] plus growth of the nbest `all_paths` slots.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `n_chars` - The current sentence's character count.
     fn record_and_grow_nbest(&mut self, n_chars: usize) {
@@ -1100,7 +1100,7 @@ impl Lattice {
     /// characters (test-facing shorthand for the clear + record + grow
     /// sequence `set_text` performs around `prepare_char_buffers`).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `n_chars` - The sentence's character count.
     #[cfg(test)]
@@ -1111,7 +1111,7 @@ impl Lattice {
 
     /// [`Self::set_capacity`] including the nbest `all_paths` slots.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `n_chars` - The sentence's character count.
     #[cfg(test)]
@@ -1123,7 +1123,7 @@ impl Lattice {
     /// Returns the lattice's current slot capacity: the largest sentence
     /// length (in characters) whose `ends_at` slots are already allocated.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The capacity in characters. `0` for a fresh lattice.
     pub fn capacity(&self) -> usize {
@@ -1134,7 +1134,7 @@ impl Lattice {
     /// since the last call (or the last `shrink_to`). Auto-shrink
     /// accounting for reusable workers.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The observed maximum, `0` when no sentence was processed since.
     pub fn take_max_char_len(&mut self) -> usize {
@@ -1159,7 +1159,7 @@ impl Lattice {
     /// - `clear()` runs first, so all slots are empty and the
     ///   `last_n_chars` bound (#877) stays valid after truncation.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `n_chars` - Target sentence length in characters; buffers are
     ///   reduced to what a sentence of this length requires. Buffers
@@ -2103,14 +2103,14 @@ impl Lattice {
     /// layout (#944 measured a ~2% Normal regression from the enlarged
     /// in-function Decompose arm alone).
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `start_char` - The incoming edge's start position.
     /// * `right_left_id` - The incoming edge's left context id.
     /// * `penalty` - The Decompose penalty configuration.
     /// * `cost_matrix` - The connection cost matrix.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The best `(cost, left index)` over the position's left edges, the
     /// last of equal-cost ones (see [`Self::relax`]).
@@ -2230,7 +2230,7 @@ impl Lattice {
     /// Adds an edge ending at char position `stop_char` to the lattice and
     /// calculates the minimum cost to reach it.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `edge` - The edge to relax and store (path cost unset).
     /// * `stop_char` - The edge's end position, in characters; this is the
@@ -2585,7 +2585,7 @@ impl Lattice {
     /// Returns the character count from the last set_text/set_text_nbest
     /// call.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The sentence length in characters (#943 renamed this from the
     /// byte-denominated `text_len`).
@@ -2595,11 +2595,11 @@ impl Lattice {
 
     /// Returns the edges ending at a given char position.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `char_pos` - Char position, `0..=char_len()`.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The edges stored in that slot: those ending there and, with
     /// whitespace skipped, those carried over the whitespace before it
@@ -2613,11 +2613,11 @@ impl Lattice {
 
     /// Returns the N-Best path entries recorded at a given char position.
     ///
-    /// # 引数
+    /// # Arguments
     ///
     /// * `char_pos` - Char position, `0..=char_len()`.
     ///
-    /// # 戻り値
+    /// # Returns
     ///
     /// The transitions of the edges stored in that slot (#943 renamed this
     /// from the byte-denominated `paths_at`).

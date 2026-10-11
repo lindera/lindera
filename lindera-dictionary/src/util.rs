@@ -23,11 +23,11 @@ use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 /// front instead of letting them grow from capacity zero, which cost two
 /// reallocations per token for a 9-field dictionary (#966).
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `joined_details` - The NUL-joined detail blob.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The number of fields, always at least 1 (an empty blob splits into a
 /// single empty field, matching `slice::split`).
@@ -43,12 +43,12 @@ pub(crate) fn detail_field_count(joined_details: &[u8]) -> usize {
 /// absurd id ends in `None` instead of a panic -- the accessors used to slice
 /// this unchecked (#966).
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `words_idx_data` - The word-id index table.
 /// * `word_id` - The word id to look up.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The entry's byte offset into `words_data`, or `None` when the id has no
 /// slot in the table. Callers map `None` onto their own missing-entry
@@ -68,11 +68,11 @@ pub(crate) fn words_idx_offset(words_idx_data: &[u8], word_id: usize) -> Option<
 /// `0..words_idx_count(table)` are exactly the ids for which
 /// `words_idx_offset` yields `Some`.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `words_idx_data` - The word-id index table.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The number of entries the table holds.
 #[inline]
@@ -89,12 +89,12 @@ pub(crate) fn words_idx_count(words_idx_data: &[u8]) -> usize {
 /// are the same statement. One `from_utf8` call replaces one per field, and
 /// the resulting `&str` can be split without re-validating.
 ///
-/// # 引数
+/// # Arguments
 ///
 /// * `words_data` - The packed detail records.
 /// * `offset` - The entry's byte offset inside `words_data`.
 ///
-/// # 戻り値
+/// # Returns
 ///
 /// The entry's joined fields, or `None` when the offset, the declared length
 /// or the payload's encoding is invalid.
