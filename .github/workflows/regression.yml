@@ -24,6 +24,19 @@ jobs:
       - name: Run format
         run: cargo fmt --all -- --check
 
+      # Doc comments name their sections in English (#1124). `git grep` exits
+      # with 0 on a match and 1 on none; anything else is an error, which must
+      # fail the step rather than pass it.
+      - name: Check doc comment section headings
+        run: |
+          status=0
+          git grep -nE '^[[:space:]]*//[/!][[:space:]]*#+[[:space:]]*(引数|戻り値)' -- '*.rs' || status=$?
+          if [ "$status" -eq 0 ]; then
+            echo "::error::Name doc comment sections '# Arguments' and '# Returns', not '# 引数' and '# 戻り値' (#1124)."
+            exit 1
+          fi
+          [ "$status" -eq 1 ]
+
   detect-changes:
     name: Detect Changes
     runs-on: ubuntu-latest
