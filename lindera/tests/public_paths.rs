@@ -46,6 +46,7 @@ use lindera::dictionary::load_embedded_dictionary as _;
 use lindera::dictionary::load_fs_dictionary as _;
 use lindera::dictionary::load_fs_dictionary_with_options as _;
 use lindera::dictionary::load_user_dictionary as _;
+use lindera::dictionary::load_user_dictionary_for as _;
 use lindera::dictionary::load_user_dictionary_from_bin as _;
 use lindera::dictionary::load_user_dictionary_from_csv as _;
 use lindera::dictionary::resolve_embedded_loader as _;

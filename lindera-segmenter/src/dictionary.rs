@@ -427,7 +427,105 @@ pub fn load_user_dictionary_from_bin(path: &Path) -> LinderaResult<UserDictionar
     UserDictionaryLoader::load_from_bin(path)
 }
 
+/// Load a user dictionary from a URI (`file://<path>`) or a bare filesystem
+/// path, by its extension: a `.csv` is built with `metadata`, and a `.bin`
+/// is loaded as `lindera build --user` wrote it.
+///
+/// A `.csv` loaded this way is not checked against a system dictionary's
+/// connection matrix until it is combined with one:
+/// [`Segmenter::try_new`](crate::segmenter::Segmenter::try_new) then names
+/// an entry outside the matrix by its word id. [`load_user_dictionary_for`]
+/// checks a `.csv` as it builds it instead, and names the CSV line and
+/// surface.
+///
+/// # Arguments
+///
+/// * `uri` - A `file://` URI or a bare filesystem path of a `.csv` or `.bin`
+///   user dictionary.
+/// * `metadata` - The metadata to build a `.csv` with, normally that of the
+///   system dictionary the user dictionary is used with.
+///
+/// # Returns
+///
+/// The user dictionary, or an error if the URI or the extension is invalid
+/// or the file cannot be loaded or built.
 pub fn load_user_dictionary(uri: &str, metadata: &Metadata) -> LinderaResult<UserDictionary> {
+    load_user_dictionary_with(uri, || DictionaryBuilder::new(metadata.clone()))
+}
+
+/// Load a user dictionary for the system dictionary `dictionary` from a URI
+/// (`file://<path>`) or a bare filesystem path, as [`load_user_dictionary`]
+/// does with `dictionary`'s metadata, and check a `.csv` against
+/// `dictionary`'s connection matrix as it is built.
+///
+/// A `.csv` is built with [`DictionaryBuilder::with_system_matrix`], so a
+/// row whose left or right context ID lies outside the matrix fails with an
+/// error that names its CSV line and surface, as
+/// `lindera build --user --system-dict` reports it. A `.bin` is loaded as it
+/// was built; [`Segmenter::try_new`](crate::segmenter::Segmenter::try_new)
+/// checks it when it is combined with `dictionary`, and names an entry
+/// outside the matrix by its word id.
+///
+/// # Arguments
+///
+/// * `uri` - A `file://` URI or a bare filesystem path of a `.csv` or `.bin`
+///   user dictionary.
+/// * `dictionary` - The system dictionary the user dictionary is used with.
+///
+/// # Returns
+///
+/// The user dictionary, or an error if the URI or the extension is invalid,
+/// the file cannot be loaded or built, or a `.csv` row has a context ID
+/// outside `dictionary`'s connection matrix.
+///
+/// # Example
+///
+/// ```
+/// use lindera_segmenter::dictionary::{load_dictionary, load_user_dictionary_for};
+/// use lindera_segmenter::mode::Mode;
+/// use lindera_segmenter::segmenter::Segmenter;
+///
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// # #[cfg(feature = "embed-ipadic")]
+/// # {
+/// let dictionary = load_dictionary("embedded://ipadic")?;
+/// let user_dictionary = load_user_dictionary_for(
+///     "../resources/user_dict/ipadic_simple_userdic.csv",
+///     &dictionary,
+/// )?;
+/// let segmenter = Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary))?;
+/// # }
+/// # Ok(())
+/// # }
+/// ```
+pub fn load_user_dictionary_for(
+    uri: &str,
+    dictionary: &Dictionary,
+) -> LinderaResult<UserDictionary> {
+    load_user_dictionary_with(uri, || {
+        DictionaryBuilder::new((*dictionary.metadata).clone())
+            .with_system_matrix(&dictionary.connection_cost_matrix)
+    })
+}
+
+/// Resolve a user dictionary URI or path and load the file by its
+/// extension, building a `.csv` with the builder that `builder` makes.
+///
+/// # Arguments
+///
+/// * `uri` - A `file://` URI or a bare filesystem path of a `.csv` or `.bin`
+///   user dictionary.
+/// * `builder` - Makes the builder for a `.csv`. It is called only for a
+///   `.csv`, so loading a `.bin` copies no metadata.
+///
+/// # Returns
+///
+/// The user dictionary, or an error if the URI or the extension is invalid
+/// or the file cannot be loaded or built.
+fn load_user_dictionary_with(
+    uri: &str,
+    builder: impl FnOnce() -> DictionaryBuilder,
+) -> LinderaResult<UserDictionary> {
     // Try to parse as URI first, but only if it looks like a URI
     // (contains "://" or starts with known schemes)
     let path = if uri.contains("://") {
@@ -497,10 +595,140 @@ pub fn load_user_dictionary(uri: &str, metadata: &Metadata) -> LinderaResult<Use
         })?;
 
     match extension {
-        "csv" => load_user_dictionary_from_csv(metadata, &path),
+        "csv" => UserDictionaryLoader::load_from_csv(builder(), &path),
         "bin" => load_user_dictionary_from_bin(&path),
         _ => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
             "Invalid user dictionary source file extension"
         ))),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(feature = "embed-ipadic")]
+    mod ipadic {
+        use std::borrow::Cow;
+        use std::path::{Path, PathBuf};
+
+        use crate::dictionary::{
+            Dictionary, DictionaryBuilder, load_dictionary, load_user_dictionary_for,
+        };
+        use crate::mode::Mode;
+        use crate::segmenter::Segmenter;
+
+        /// Line 1 lies inside IPADIC's 1316 x 1316 connection matrix (1288 is
+        /// its 名詞,固有名詞,一般 context ID); line 2 does not. Line 1's surface
+        /// sorts first, so line 2 is the user dictionary's entry 1.
+        const CSV_LINE_2_OUT_OF_RANGE: &str = "\
+とうきょうスカイツリー駅,1288,1288,-1000,名詞,固有名詞,一般,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,トウキョウスカイツリーエキ
+東京スカイツリー,60000,60000,-1000,名詞,固有名詞,一般,*,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー
+";
+
+        fn ipadic() -> Dictionary {
+            load_dictionary("embedded://ipadic").unwrap()
+        }
+
+        fn write_csv(dir: &Path, csv: &str) -> PathBuf {
+            let path = dir.join("userdic.csv");
+            std::fs::write(&path, csv).unwrap();
+            path
+        }
+
+        fn bundled_simple_csv() -> PathBuf {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../resources/user_dict/ipadic_simple_userdic.csv")
+        }
+
+        fn surfaces(segmenter: &Segmenter, text: &str) -> Vec<String> {
+            segmenter
+                .segment(Cow::Borrowed(text))
+                .unwrap()
+                .into_iter()
+                .map(|token| token.surface.to_string())
+                .collect()
+        }
+
+        /// A `.csv` row outside the system dictionary's matrix fails the load,
+        /// and the error names the row's CSV line and surface (#1187).
+        #[test]
+        fn load_user_dictionary_for_names_the_csv_line_and_surface() {
+            let dir = tempfile::tempdir().unwrap();
+            let csv = write_csv(dir.path(), CSV_LINE_2_OUT_OF_RANGE);
+
+            let err = match load_user_dictionary_for(csv.to_str().unwrap(), &ipadic()) {
+                Ok(_) => panic!("loaded a user dictionary outside the matrix"),
+                Err(err) => err.to_string(),
+            };
+            assert!(
+                err.contains(
+                    "user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 \
+                     is out of range for the connection matrix (matrix.def size 1316 1316; left \
+                     context ids must be below 1316)"
+                ),
+                "{err}"
+            );
+        }
+
+        /// A `.csv` inside the matrix loads and segments as the user
+        /// dictionary says.
+        #[test]
+        fn load_user_dictionary_for_loads_a_csv_inside_the_matrix() {
+            let dictionary = ipadic();
+            let user_dictionary =
+                load_user_dictionary_for(bundled_simple_csv().to_str().unwrap(), &dictionary)
+                    .unwrap();
+            let segmenter =
+                Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary)).unwrap();
+
+            assert_eq!(
+                surfaces(&segmenter, "東京スカイツリー"),
+                ["東京スカイツリー"]
+            );
+        }
+
+        /// A `.bin` is loaded as it was built, without the matrix check;
+        /// `Segmenter::try_new` still rejects it, naming the entry by word id.
+        #[test]
+        fn load_user_dictionary_for_loads_a_bin_as_built() {
+            let dictionary = ipadic();
+            let dir = tempfile::tempdir().unwrap();
+            let csv = write_csv(dir.path(), CSV_LINE_2_OUT_OF_RANGE);
+            let bin = dir.path().join("userdic.bin");
+            DictionaryBuilder::new((*dictionary.metadata).clone())
+                .build_user_dictionary(&csv, &bin)
+                .unwrap();
+
+            let user_dictionary =
+                load_user_dictionary_for(bin.to_str().unwrap(), &dictionary).unwrap();
+            let err = match Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary)) {
+                Ok(_) => panic!("try_new accepted a user dictionary outside the matrix"),
+                Err(err) => err.to_string(),
+            };
+            assert!(
+                err.contains(
+                    "user dictionary entry 1 (名詞,固有名詞,一般,*,*,*,東京スカイツリー,\
+                     トウキョウスカイツリー,トウキョウスカイツリー): left context id 60000 is out \
+                     of range"
+                ),
+                "{err}"
+            );
+        }
+
+        /// A `file://` URI resolves to the same file as the bare path.
+        #[test]
+        fn load_user_dictionary_for_resolves_a_file_uri() {
+            let dictionary = ipadic();
+            let path = bundled_simple_csv().canonicalize().unwrap();
+            let uri = url::Url::from_file_path(&path).unwrap();
+
+            let user_dictionary = load_user_dictionary_for(uri.as_str(), &dictionary).unwrap();
+            let segmenter =
+                Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary)).unwrap();
+
+            assert_eq!(
+                surfaces(&segmenter, "東京スカイツリー"),
+                ["東京スカイツリー"]
+            );
+        }
     }
 }
