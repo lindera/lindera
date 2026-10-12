@@ -669,6 +669,19 @@ impl LatticeExit {
     }
 }
 
+/// One unknown-word candidate of a sentence, as
+/// [`Lattice::unknown_word_candidates`] reports it: a span and the
+/// unknown-word entry the lattice would create an edge for there.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct UnknownWordCandidate {
+    /// Start position of the span, in characters.
+    pub start_char: usize,
+    /// End position (exclusive) of the span, in characters.
+    pub end_char: usize,
+    /// The unknown-word entry id (its line index in `unk.def`).
+    pub word_id: u32,
+}
+
 /// Per-sentence options for [`Lattice::set_text_with_options`] and
 /// [`Lattice::set_text_nbest_with_options`].
 ///
@@ -2096,6 +2109,81 @@ impl Lattice {
             char_idx,
             Self::candidate_lengths(primary, ladder),
         );
+    }
+
+    /// Lists the unknown-word candidates of `text` at every start position,
+    /// as [`Lattice::set_text_with_options`] would create them with the
+    /// default options and the given `max_grouping_len` (the length ladder
+    /// on, whitespace kept), but without the reachability gate: a position
+    /// no edge ends at gets its candidates too. The trainer builds its
+    /// lattices from them, so that training sees the unknown words the
+    /// runtime creates (#1110).
+    ///
+    /// At each position, only the character's default category creates
+    /// candidates, and none when it has `invoke` off and a word of `dict`
+    /// starts there; the spans are the grouping run and the length ladder
+    /// the runtime computes, with the same code, and every `unk.def` entry
+    /// of the category gets each span. The candidates come in increasing
+    /// start order; at one start, entry by entry in `unk.def` order, each
+    /// entry's spans in the order the runtime adds them. (The runtime adds
+    /// the entries in reverse; the set is the same.)
+    ///
+    /// The lattice's per-sentence buffers are overwritten; the edges are
+    /// not touched, and the next `set_text*` call starts afresh as usual.
+    ///
+    /// # Arguments
+    ///
+    /// * `dict` - The prefix dictionary deciding whether a word starts at a
+    ///   position (the `invoke` check).
+    /// * `char_definitions` - Character category definitions.
+    /// * `unknown_dictionary` - Unknown-word entries.
+    /// * `text` - One sentence.
+    /// * `max_grouping_len` - Unknown-word grouping cap, as
+    ///   [`LatticeOptions::max_grouping_len`] (`None` = unbounded).
+    /// * `out` - Cleared, then filled with the candidates.
+    pub fn unknown_word_candidates(
+        &mut self,
+        dict: &PrefixDictionary,
+        char_definitions: &CharacterDefinition,
+        unknown_dictionary: &UnknownDictionary,
+        text: &str,
+        max_grouping_len: Option<usize>,
+        out: &mut Vec<UnknownWordCandidate>,
+    ) {
+        out.clear();
+        let mode = Mode::Normal;
+        let options = LatticeOptions::new(&mode);
+        self.prepare_char_buffers(dict, char_definitions, text, &options);
+        let n_chars = self.chars_buf.len();
+        for char_idx in 0..n_chars {
+            if self.char_info_buffer[char_idx].categories_len == 0 {
+                continue;
+            }
+            let found = dict
+                .common_prefix_search_codes(&self.codes_buf[char_idx..])
+                .next()
+                .is_some();
+            let category = self.get_cached_category(char_definitions, char_idx, 0);
+            let Some((primary, ladder)) = self.unknown_word_lengths(
+                char_definitions,
+                max_grouping_len,
+                options.unknown_word_ladder,
+                category,
+                char_idx,
+                found,
+            ) else {
+                continue;
+            };
+            for &word_id in unknown_dictionary.lookup_word_ids(category) {
+                for num_chars in Self::candidate_lengths(primary, ladder) {
+                    out.push(UnknownWordCandidate {
+                        start_char: char_idx,
+                        end_char: char_idx + num_chars,
+                        word_id,
+                    });
+                }
+            }
+        }
     }
 
     /// Decompose-mode relaxation body of `add_edge_in_lattice`, outlined
@@ -3760,6 +3848,171 @@ mod tests {
             lattice.unknown_word_lengths(&chardef, None, true, CategoryId(2), 1, false),
             Some((2, 0))
         );
+    }
+
+    /// #1110: `unknown_word_candidates` lists, at every start position,
+    /// exactly the unknown-word edges the runtime lattice creates there
+    /// (checked at the positions the runtime reaches), every entry of the
+    /// default category included, and nothing for an `invoke`-off category
+    /// where a dictionary word starts. `K` (KANJI-like: no grouping,
+    /// length 2) has two entries, listed in entry order; `H` (grouping,
+    /// invoke) one; the word `kx` suppresses `K` at its start only.
+    #[test]
+    fn test_unknown_word_candidates_match_runtime_edges() {
+        use crate::viterbi::UnknownWordCandidate;
+
+        // DEFAULT = 0, K = 1, H = 2.
+        fn categories(c: u32, buf: &mut Vec<CategoryId>) {
+            match c {
+                0x68 => buf.push(CategoryId(2)),
+                0x6B => buf.push(CategoryId(1)),
+                _ => buf.push(CategoryId(0)),
+            }
+        }
+        let mapping = LookupTable::from_fn(vec![0, 0x68, 0x69, 0x6B, 0x6C], &categories);
+        let category = |invoke, group, length| CategoryData {
+            invoke,
+            group,
+            length,
+        };
+        let char_definitions = CharacterDefinition::new(
+            vec![
+                category(false, true, 0),
+                category(false, false, 2),
+                category(true, true, 0),
+            ],
+            vec!["DEFAULT".into(), "K".into(), "H".into()],
+            mapping,
+        );
+        // unk.def order: H, K (two entries), DEFAULT -- not char.def order.
+        let unknown = |id| WordEntry::new(WordId::new(LexType::Unknown, id), 0, 0, 0);
+        let unknown_dictionary = UnknownDictionary {
+            category_references: vec![vec![3], vec![1, 2], vec![0]],
+            costs: (0..4).map(unknown).collect(),
+            words_idx_data: Vec::new(),
+            words_data: Vec::new(),
+        };
+        let mut map = BTreeMap::new();
+        map.insert(
+            "kx".to_string(),
+            vec![WordEntry::new(WordId::new(LexType::System, 0), 0, 0, 0)],
+        );
+        let dict = PrefixDictionary::from_word_entry_map(&map).unwrap();
+        let cost_matrix = ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0, 0]).unwrap();
+
+        let candidate = |start_char, end_char, word_id| UnknownWordCandidate {
+            start_char,
+            end_char,
+            word_id,
+        };
+        let mut lattice = Lattice::default();
+        let mut out = Vec::new();
+
+        // "kkhhk": K at 0 (ladder 1..=2, entries 1 and 2), K at 1 (ladder
+        // stops at `h`), the H group "hh" at 2 and its tail at 3, K at 4.
+        lattice.unknown_word_candidates(
+            &dict,
+            &char_definitions,
+            &unknown_dictionary,
+            "kkhhk",
+            None,
+            &mut out,
+        );
+        assert_eq!(
+            out,
+            vec![
+                candidate(0, 1, 1),
+                candidate(0, 2, 1),
+                candidate(0, 1, 2),
+                candidate(0, 2, 2),
+                candidate(1, 2, 1),
+                candidate(1, 2, 2),
+                candidate(2, 4, 0),
+                candidate(3, 4, 0),
+                candidate(4, 5, 1),
+                candidate(4, 5, 2),
+            ]
+        );
+
+        // "kxk": the word `kx` starts at 0, so K (invoke off) creates
+        // nothing there; `x` is DEFAULT (invoke off, no word): one char.
+        lattice.unknown_word_candidates(
+            &dict,
+            &char_definitions,
+            &unknown_dictionary,
+            "kxk",
+            None,
+            &mut out,
+        );
+        assert_eq!(
+            out,
+            vec![candidate(1, 2, 3), candidate(2, 3, 1), candidate(2, 3, 2),]
+        );
+
+        // max_grouping_len: a run of three `h` has two characters beyond
+        // the first, over the cap of 1, so its start falls back to one
+        // character; the tail "hh" fits.
+        lattice.unknown_word_candidates(
+            &dict,
+            &char_definitions,
+            &unknown_dictionary,
+            "hhh",
+            Some(1),
+            &mut out,
+        );
+        assert_eq!(
+            out,
+            vec![candidate(0, 1, 0), candidate(1, 3, 0), candidate(2, 3, 0)]
+        );
+
+        // Against the runtime lattice: at every position it reaches, its
+        // unknown-word edges are the candidates starting there.
+        for text in ["kkhhk", "kxk", "hkxhh", "xxkhk", "kkkhhhxk"] {
+            let mode = Mode::Normal;
+            let options = LatticeOptions::new(&mode);
+            let mut runtime = Lattice::default();
+            runtime.set_text_with_options(
+                &dict,
+                &None,
+                &char_definitions,
+                &unknown_dictionary,
+                &cost_matrix,
+                text,
+                &options,
+            );
+            let n_chars = text.chars().count();
+            let mut edges = Vec::new();
+            let mut reachable = vec![true];
+            for end_char in 1..=n_chars {
+                let slot = runtime.edges_at_char(end_char);
+                reachable.push(!slot.is_empty());
+                for edge in slot {
+                    if edge.word_id().is_unknown() {
+                        edges.push(candidate(
+                            edge.start_char() as usize,
+                            end_char,
+                            edge.word_id().id(),
+                        ));
+                    }
+                }
+            }
+            lattice.unknown_word_candidates(
+                &dict,
+                &char_definitions,
+                &unknown_dictionary,
+                text,
+                None,
+                &mut out,
+            );
+            let mut expected: Vec<_> = out
+                .iter()
+                .copied()
+                .filter(|c| reachable[c.start_char])
+                .collect();
+            expected.sort_by_key(|c| (c.start_char, c.end_char, c.word_id));
+            edges.sort_by_key(|c| (c.start_char, c.end_char, c.word_id));
+            assert_eq!(edges, expected, "{text}");
+        }
     }
 
     #[test]

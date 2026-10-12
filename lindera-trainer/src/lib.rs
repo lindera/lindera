@@ -17,7 +17,10 @@ use std::num::NonZeroU32;
 
 use anyhow::Result;
 
-use self::feature_extractor::TemplateContext;
+use lindera_dictionary::viterbi::UnknownWordCandidate;
+
+use self::feature_extractor::{FeatureExtractor, TemplateContext};
+use self::feature_rewriter::DictionaryRewriter;
 
 /// Logging macros for training process
 macro_rules! log_info {
@@ -50,7 +53,8 @@ pub use self::model::{Model, SerializableModel};
 /// adapted for Lindera's architecture. It supports:
 /// - Feature extraction from vocabulary and corpus
 /// - L-BFGS optimization for weight learning
-/// - Unknown word categorization for 6 character types
+/// - Unknown words from every `unk.def` entry, created as the runtime
+///   creates them (#1110)
 /// - Connection cost matrix generation
 ///
 /// # Training Process
@@ -90,42 +94,185 @@ pub use self::model::{Model, SerializableModel};
 pub struct Trainer {
     config: TrainerConfig,
 
-    /// Maximum length (in characters) for tokens to be included in training.
-    /// Tokens longer than this value will be skipped during lattice construction
-    /// to improve training efficiency and avoid memory issues with extremely long tokens.
-    /// Default: Some(10) - tokens with more than 10 characters are skipped.
-    /// Set to None to include all tokens regardless of length.
+    /// Unknown-word grouping cap, with the meaning of the runtime's
+    /// `max_grouping_len` (MeCab's `max-grouping-size`): a grouped candidate
+    /// with more than this many characters beyond the first is not created
+    /// at its start position, where the one-character candidate and the
+    /// length ladder stand in. `None` (the default) leaves grouping
+    /// unbounded, as the runtime's default does.
     max_grouping_len: Option<usize>,
 
     provider: lindera_crf::FeatureProvider,
 
-    // Maps feature strings to label IDs
-    label_id_map: std::collections::HashMap<String, std::collections::HashMap<char, NonZeroU32>>,
+    /// The CRF label of every `unk.def` entry, indexed by unknown-word entry
+    /// id (the entry's index in `TrainerConfig::unk_entries`).
+    unk_entry_labels: Vec<NonZeroU32>,
 
-    /// Pre-allocated label IDs for unknown word categories.
-    /// Index corresponds to character type categories:
-    /// - 0: DEFAULT (fallback for unclassified characters)
-    /// - 1: HIRAGANA (Japanese hiragana characters)
-    /// - 2: KATAKANA (Japanese katakana characters)
-    /// - 3: KANJI (Chinese/Japanese ideographic characters)
-    /// - 4: ALPHA (ASCII alphabetic characters)
-    /// - 5: NUMERIC (ASCII numeric characters)
-    label_id_map_unk: Vec<NonZeroU32>,
+    /// Labels created for gold tokens that no candidate matches, as MeCab's
+    /// learner adds a virtual node for them, keyed by the gold feature
+    /// string so that a repeated token reuses its label. They are trained
+    /// but never exported.
+    virtual_labels: HashMap<String, NonZeroU32>,
+
+    /// The feature string of every virtual label, in label order. The
+    /// virtual labels follow the seed and `unk.def` labels; their feature
+    /// strings name the context ids only they use in `left-id.def` and
+    /// `right-id.def`.
+    virtual_features: Vec<String>,
+
+    /// Reusable lattice that lists the unknown-word candidates of a sentence
+    /// (`Lattice::unknown_word_candidates`).
+    candidate_lattice: lindera_dictionary::viterbi::Lattice,
+
+    /// Reusable buffer for the unknown-word candidates of a sentence.
+    unknown_candidates: Vec<UnknownWordCandidate>,
 
     regularization_cost: f64,
     use_l2: bool,
     elastic_net_l1_ratio: Option<f64>,
     max_iter: u64,
     num_threads: usize,
+
+    /// Counts gathered while the training lattices are built, logged once
+    /// they are all built.
+    stats: LatticeStats,
+}
+
+/// Returns the CRF label of a seed lexicon row: its index plus one.
+///
+/// `Trainer::new` creates the seed rows' labels first, in row order, and
+/// the training lexicon uses the row index as the word id, so a lexicon
+/// match turns into its label through this function.
+///
+/// # Arguments
+///
+/// * `index` - The row index in `TrainerConfig::surfaces`, the word id of
+///   the training lexicon.
+///
+/// # Returns
+///
+/// The label, or an error when the index does not fit a label.
+fn lexicon_label(index: usize) -> Result<NonZeroU32> {
+    index
+        .checked_add(1)
+        .and_then(|label| u32::try_from(label).ok())
+        .and_then(NonZeroU32::new)
+        .ok_or_else(|| anyhow::anyhow!("seed row {index} has no label"))
+}
+
+/// Counts of the gold labels and negative edges of the training lattices.
+#[derive(Debug, Default)]
+struct LatticeStats {
+    /// Gold tokens labelled with a seed row's label.
+    gold_lexicon: usize,
+    /// Gold tokens labelled with an `unk.def` entry's label.
+    gold_unknown: usize,
+    /// Gold tokens labelled with a virtual label.
+    gold_virtual: usize,
+    /// Negative edges from the seed lexicon.
+    negative_lexicon: usize,
+    /// Negative edges from the unknown-word candidates.
+    negative_unknown: usize,
+}
+
+/// The `%t` value of a virtual label: MeCab allocates its virtual node
+/// zeroed, so the node's `char_type` is 0.
+const VIRTUAL_CHAR_TYPE: u32 = 0;
+
+/// Returns whether an `unk.def` entry accepts a gold feature string: every
+/// column of the entry's feature string that is not `*` equals the gold
+/// column at the same index.
+///
+/// # Arguments
+///
+/// * `entry_feature` - The entry's feature string.
+/// * `gold_feature` - The gold token's feature string.
+///
+/// # Returns
+///
+/// `true` when every column of the entry other than `*` matches.
+fn unk_entry_accepts(entry_feature: &str, gold_feature: &str) -> bool {
+    let mut gold_columns = gold_feature.split(',');
+    entry_feature.split(',').all(|column| {
+        let gold_column = gold_columns.next();
+        column == "*" || gold_column == Some(column)
+    })
+}
+
+/// Returns the candidates that start at a position.
+///
+/// # Arguments
+///
+/// * `candidates` - Unknown-word candidates in increasing start order, as
+///   `Lattice::unknown_word_candidates` lists them.
+/// * `pos` - The start position, in characters.
+///
+/// # Returns
+///
+/// The candidates starting at `pos`, empty when there are none.
+fn candidates_at(candidates: &[UnknownWordCandidate], pos: usize) -> &[UnknownWordCandidate] {
+    let from = candidates.partition_point(|candidate| candidate.start_char < pos);
+    let to = candidates.partition_point(|candidate| candidate.start_char <= pos);
+    &candidates[from..to]
+}
+
+/// Builds the CRF feature set of a label from its feature string.
+///
+/// # Arguments
+///
+/// * `rewriter` - Rewrites the feature string into its unigram, left and
+///   right forms.
+/// * `extractor` - Expands the feature templates; it assigns ids to the
+///   features it has not seen.
+/// * `feature` - The label's feature string.
+/// * `char_type` - The `%t` value.
+/// * `surface` - The `%w` value, if any.
+///
+/// # Returns
+///
+/// The feature set.
+fn label_feature_set(
+    rewriter: &DictionaryRewriter,
+    extractor: &mut FeatureExtractor,
+    feature: &str,
+    char_type: u32,
+    surface: Option<&str>,
+) -> lindera_crf::FeatureSet {
+    // Uncached on purpose: real feature strings are unique per seed row, so
+    // a cache keyed on them never hits (#975).
+    let (ufeature, lfeature, rfeature) = rewriter.rewrite(feature);
+    let u_vec: Vec<&str> = ufeature.split(',').collect();
+    let l_vec: Vec<&str> = lfeature.split(',').collect();
+    let r_vec: Vec<&str> = rfeature.split(',').collect();
+    let ctx = TemplateContext {
+        surface,
+        ufeature: Some(&ufeature),
+        lfeature: Some(&lfeature),
+        rfeature: Some(&rfeature),
+    };
+    let unigram_ids = extractor.extract_unigram_feature_ids_with_ctx(&u_vec, char_type, &ctx);
+    let left_ids = extractor.extract_left_feature_ids_with_ctx(&l_vec, &ctx);
+    let right_ids = extractor.extract_right_feature_ids_with_ctx(&r_vec, &ctx);
+    lindera_crf::FeatureSet::new(&unigram_ids, &right_ids, &left_ids)
 }
 
 impl Trainer {
     /// Creates a new [`Trainer`] using the specified configuration.
+    ///
+    /// Creates one CRF label per seed row, in row order (label `row + 1`),
+    /// then one per `unk.def` entry, in file order, whose `%t` is the id of
+    /// the entry's category (#1110).
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - The training configuration.
+    ///
+    /// # Returns
+    ///
+    /// The trainer, or an error when a label cannot be created.
     pub fn new(mut config: TrainerConfig) -> Result<Self> {
         let mut provider = lindera_crf::FeatureProvider::default();
-        let mut label_id_map: HashMap<String, HashMap<char, NonZeroU32>> = HashMap::new();
 
-        // Build label mapping from surfaces and add feature sets to provider
         // Generate default features based on dictionary schema
         let default_features = if let Some(first_feature) = config.features.first() {
             let field_count = first_feature.split(',').count();
@@ -136,19 +283,10 @@ impl Trainer {
 
         for (i, surface) in config.surfaces.iter().enumerate() {
             // Get feature string from config.features (parallel to surfaces)
-            let feature_str: &str = if i < config.features.len() {
-                &config.features[i]
-            } else {
-                &default_features
-            };
-
-            // Apply dictionary rewriter to get ufeature, lfeature, rfeature.
-            // Uncached on purpose: real feature strings are unique per row,
-            // so a cache keyed on them never hits (#975).
-            let (ufeature, lfeature, rfeature) = config.dictionary_rewriter.rewrite(feature_str);
-            let u_vec: Vec<&str> = ufeature.split(',').collect();
-            let l_vec: Vec<&str> = lfeature.split(',').collect();
-            let r_vec: Vec<&str> = rfeature.split(',').collect();
+            let feature_str = config
+                .features
+                .get(i)
+                .map_or(default_features.as_str(), String::as_str);
 
             // The %t feature: the default category (MeCab's default_type) of
             // the first character of the surface, or 0 (DEFAULT) if none
@@ -158,84 +296,61 @@ impl Trainer {
                 .and_then(|first_char| config.default_category(first_char))
                 .unwrap_or(0);
 
-            // Create feature set for this vocabulary entry
-            let feature_extractor = &mut config.feature_extractor;
-            let ctx = TemplateContext {
-                surface: Some(surface),
-                ufeature: Some(&ufeature),
-                lfeature: Some(&lfeature),
-                rfeature: Some(&rfeature),
-            };
+            let feature_set = label_feature_set(
+                &config.dictionary_rewriter,
+                &mut config.feature_extractor,
+                feature_str,
+                cate_id,
+                Some(surface),
+            );
 
-            let unigram_ids =
-                feature_extractor.extract_unigram_feature_ids_with_ctx(&u_vec, cate_id, &ctx);
-            let left_ids = feature_extractor.extract_left_feature_ids_with_ctx(&l_vec, &ctx);
-            let right_ids = feature_extractor.extract_right_feature_ids_with_ctx(&r_vec, &ctx);
-
-            let feature_set = lindera_crf::FeatureSet::new(&unigram_ids, &right_ids, &left_ids);
-
-            // Add feature set to provider and get label ID
+            // Add feature set to provider and get label ID. `build_lattice`
+            // finds a seed row by its word id in the training lexicon, the
+            // row index, and labels it `index + 1` (see `lexicon_label`).
             let label_id = provider.add_feature_set(feature_set)?;
-
-            // Map feature string to label ID using first character classification
-            let char_map = label_id_map.entry(feature_str.to_string()).or_default();
-            if let Some(first_char) = surface.chars().next() {
-                char_map.insert(first_char, label_id);
+            if lexicon_label(i)? != label_id {
+                return Err(anyhow::anyhow!(
+                    "seed row {i} got label {label_id}, not its index plus one"
+                ));
             }
         }
 
-        // Initialize unknown word labels from character definition categories
-        let mut label_id_map_unk = Vec::new();
-        let char_def = &config.dict.character_definition;
-        let unk_category_names = char_def.categories();
-
-        for (i, category) in unk_category_names.iter().enumerate() {
-            // Get unknown word feature string from unk_categories
-            let unk_feature: &str = config
-                .unk_categories
-                .get(category)
-                .map(|s| s.as_str())
-                .unwrap_or(&default_features);
-
-            // Apply dictionary rewriter to get ufeature, lfeature, rfeature.
-            // Uncached on purpose: see the seed loop above (#975).
-            let (ufeature, lfeature, rfeature) = config.dictionary_rewriter.rewrite(unk_feature);
-            let u_vec: Vec<&str> = ufeature.split(',').collect();
-            let l_vec: Vec<&str> = lfeature.split(',').collect();
-            let r_vec: Vec<&str> = rfeature.split(',').collect();
-
-            // Create feature set for unknown word category
-            let feature_extractor = &mut config.feature_extractor;
-            let ctx = TemplateContext {
-                surface: None,
-                ufeature: Some(&ufeature),
-                lfeature: Some(&lfeature),
-                rfeature: Some(&rfeature),
-            };
-
-            let unigram_ids =
-                feature_extractor.extract_unigram_feature_ids_with_ctx(&u_vec, i as u32, &ctx);
-            let left_ids = feature_extractor.extract_left_feature_ids_with_ctx(&l_vec, &ctx);
-            let right_ids = feature_extractor.extract_right_feature_ids_with_ctx(&r_vec, &ctx);
-
-            let feature_set = lindera_crf::FeatureSet::new(&unigram_ids, &right_ids, &left_ids);
-
-            // Add to provider
-            let unk_label_id = provider.add_feature_set(feature_set)?;
-            label_id_map_unk.push(unk_label_id);
+        // One label per unk.def entry, in file order (#1110). %t is the id of
+        // the entry's category, the default category of the characters whose
+        // unknown words the entry creates; an entry whose category char.def
+        // does not define never becomes a candidate, and gets 0.
+        let mut unk_entry_labels = Vec::with_capacity(config.unk_entries.len());
+        for (category, feature) in &config.unk_entries {
+            let char_type = config
+                .dict
+                .character_definition
+                .category_id_by_name(category)
+                .map_or(0, |category_id| category_id.0 as u32);
+            let feature_set = label_feature_set(
+                &config.dictionary_rewriter,
+                &mut config.feature_extractor,
+                feature,
+                char_type,
+                None,
+            );
+            unk_entry_labels.push(provider.add_feature_set(feature_set)?);
         }
 
         Ok(Self {
             config,
-            max_grouping_len: None, // Default: no length limit for feature grouping
+            max_grouping_len: None,
             provider,
-            label_id_map,
-            label_id_map_unk,
+            unk_entry_labels,
+            virtual_labels: HashMap::new(),
+            virtual_features: Vec::new(),
+            candidate_lattice: lindera_dictionary::viterbi::Lattice::default(),
+            unknown_candidates: Vec::new(),
             regularization_cost: 0.01,
             use_l2: false,
             elastic_net_l1_ratio: None,
             max_iter: 100,
             num_threads: 8,
+            stats: LatticeStats::default(),
         })
     }
 
@@ -271,7 +386,19 @@ impl Trainer {
         self
     }
 
-    /// Sets the maximum grouping length for token sequences.
+    /// Sets the unknown-word grouping cap, with the meaning of the runtime's
+    /// `max_grouping_len`: a grouped candidate with more than `len`
+    /// characters beyond the first is not created at its start position,
+    /// where the one-character candidate and the length ladder stand in.
+    /// Train with the value the dictionary will be used with.
+    ///
+    /// # Arguments
+    ///
+    /// * `len` - The cap, or `None` (the default) for unbounded grouping.
+    ///
+    /// # Returns
+    ///
+    /// The trainer.
     pub fn max_grouping_len(mut self, len: Option<usize>) -> Self {
         self.max_grouping_len = len;
         self
@@ -316,6 +443,17 @@ impl Trainer {
             let lattice = self.build_lattice(example)?;
             lattices.push(lattice);
         }
+
+        let stats = &self.stats;
+        log_info!(
+            "Lattice statistics: gold_lexicon={} gold_unknown={} gold_virtual={} virtual_labels={} negative_lexicon={} negative_unknown={}",
+            stats.gold_lexicon,
+            stats.gold_unknown,
+            stats.gold_virtual,
+            self.virtual_features.len(),
+            stats.negative_lexicon,
+            stats.negative_unknown
+        );
 
         Ok(lattices)
     }
@@ -446,6 +584,7 @@ impl Trainer {
             self.config,
             feature_weights,
             labels,
+            self.virtual_features,
             self.regularization_cost,
             self.max_iter,
         ))
@@ -497,65 +636,180 @@ impl Trainer {
         log_info!("Used {} raw model weights", feature_weights.len());
     }
 
-    /// Extracts labels from the configuration
+    /// Extracts the exported labels: the seed surfaces, then the category
+    /// name of every `unk.def` entry in file order. The virtual labels follow
+    /// them in the CRF model but are not exported, so they have no name here.
+    ///
+    /// # Returns
+    ///
+    /// The label names, in label order.
     fn extract_labels(&self) -> Vec<String> {
         let mut labels = self.config.surfaces.clone();
-        // Add unknown word category labels from character definition
-        // This makes it work for any dictionary (IPADIC, UniDic, ko-dic, CC-CEDICT, etc.)
-        let char_def = &self.config.dict.character_definition;
-        for category_name in char_def.categories() {
-            labels.push(category_name.to_string());
-        }
+        labels.extend(
+            self.config
+                .unk_entries
+                .iter()
+                .map(|(category, _)| category.clone()),
+        );
         labels
     }
 
+    /// Returns the CRF label of an `unk.def` entry.
+    ///
+    /// # Arguments
+    ///
+    /// * `word_id` - The unknown-word entry id.
+    ///
+    /// # Returns
+    ///
+    /// The label, or an error when the entry has none.
+    fn unk_entry_label(&self, word_id: u32) -> Result<NonZeroU32> {
+        self.unk_entry_labels
+            .get(word_id as usize)
+            .copied()
+            .ok_or_else(|| anyhow::anyhow!("unk.def entry {word_id} has no label"))
+    }
+
+    /// Returns the virtual label of a gold feature string, creating it on
+    /// first use. Its feature set is built from the gold feature string as a
+    /// seed row's is, but with `%t` = 0 and no `%w`, as MeCab builds the
+    /// features of its virtual node; without the surface, the feature string
+    /// alone decides the features, so it can key the cache.
+    ///
+    /// # Arguments
+    ///
+    /// * `feature` - The gold token's feature string.
+    ///
+    /// # Returns
+    ///
+    /// The label, or an error when it cannot be created.
+    fn virtual_label(&mut self, feature: &str) -> Result<NonZeroU32> {
+        if let Some(&label) = self.virtual_labels.get(feature) {
+            return Ok(label);
+        }
+        let feature_set = label_feature_set(
+            &self.config.dictionary_rewriter,
+            &mut self.config.feature_extractor,
+            feature,
+            VIRTUAL_CHAR_TYPE,
+            None,
+        );
+        let label = self.provider.add_feature_set(feature_set)?;
+        self.virtual_labels.insert(feature.to_string(), label);
+        self.virtual_features.push(feature.to_string());
+        Ok(label)
+    }
+
+    /// Builds the CRF lattice of one example, as MeCab's learner builds its
+    /// lattice (#1110).
+    ///
+    /// The candidates are the seed words at every position and the unknown
+    /// words the runtime creates there (`Lattice::unknown_word_candidates`:
+    /// every `unk.def` entry of the default category). Each gold token is
+    /// labelled, in this order, with the first seed row of the same span and
+    /// the same feature string, else with an unknown-word candidate of the
+    /// same span whose entry accepts the gold feature string
+    /// ([`unk_entry_accepts`]; the first such entry in `unk.def` order, the
+    /// node MeCab's learner takes), else with a virtual label built from the
+    /// gold feature string. Every other candidate is a negative edge.
+    ///
+    /// # Arguments
+    ///
+    /// * `example` - The example.
+    ///
+    /// # Returns
+    ///
+    /// The lattice, with the gold edge first at each of its positions.
     fn build_lattice(&mut self, example: &Example) -> Result<lindera_crf::Lattice> {
         use lindera_crf::{Edge, Lattice};
 
         let input_chars: Vec<char> = example.sentence.chars().collect();
         let input_len = input_chars.len();
 
+        // The seed-lexicon words that start at each position (#1164): the
+        // gold tokens are looked up among them, and the others become
+        // negative edges.
+        let lexicon: Vec<_> = (0..input_len)
+            .map(|pos| {
+                self.config
+                    .system_lexicon()
+                    .common_prefix_iterator(&input_chars[pos..])
+            })
+            .collect();
+
+        // The unknown words the runtime creates in this sentence, in
+        // increasing start order (#1110).
+        let dict = &self.config.dict;
+        self.candidate_lattice.unknown_word_candidates(
+            &dict.prefix_dictionary,
+            &dict.character_definition,
+            &dict.unknown_dictionary,
+            &example.sentence,
+            self.max_grouping_len,
+            &mut self.unknown_candidates,
+        );
+
         // Add positive edges from training data
-        let mut edges = vec![];
+        let mut edges = Vec::with_capacity(example.tokens.len());
         let mut pos = 0;
         for token in &example.tokens {
             let token_len = token.surface().chars().count();
-            let first_char = input_chars[pos];
+            let end = pos + token_len;
+            let feature = token.feature();
 
-            // Try to find existing label ID, or create one
-            let label_id = self
-                .label_id_map
-                .get(token.feature())
-                .and_then(|hm| hm.get(&first_char))
-                .cloned()
-                .map(Ok)
-                .unwrap_or_else(|| {
-                    // Check for compatible unknown word first
-                    self.config
-                        .dict()
-                        .unknown_dictionary
-                        .compatible_unk_index(
-                            &example.sentence,
-                            pos,
-                            pos + token_len,
-                            token.feature(),
-                        )
-                        .map_or_else(
-                            || {
-                                self.provider.add_feature_set(lindera_crf::FeatureSet::new(
-                                    &[],
-                                    &[],
-                                    &[],
-                                ))
-                            },
-                            |unk_index| Ok(self.label_id_map_unk[unk_index.word_id as usize]),
-                        )
-                })?;
+            // A gold token is a seed word when a seed row with its span and
+            // its whole feature starts here. The first such row in seed order
+            // gives the label, as MeCab's learner takes the first matching
+            // dictionary node; matching the feature alone could pick another
+            // word's row.
+            let lexicon_match = lexicon.get(pos).and_then(|matches| {
+                matches.iter().find(|m| {
+                    m.end_char == token_len
+                        && self
+                            .config
+                            .features
+                            .get(m.word_idx.word_id as usize)
+                            .is_some_and(|seed_feature| seed_feature == feature)
+                })
+            });
+            let label_id = if let Some(m) = lexicon_match {
+                self.stats.gold_lexicon += 1;
+                lexicon_label(m.word_idx.word_id as usize)?
+            } else {
+                // Otherwise an unknown-word candidate of the same span whose
+                // entry accepts the gold feature string: the first such
+                // entry in unk.def order. MeCab's learner takes the matching
+                // node it created first, and it creates them entry by entry.
+                let unknown_match = candidates_at(&self.unknown_candidates, pos)
+                    .iter()
+                    .filter(|candidate| candidate.end_char == end)
+                    .map(|candidate| candidate.word_id)
+                    .filter(|&word_id| {
+                        self.config
+                            .unk_entries
+                            .get(word_id as usize)
+                            .is_some_and(|(_, entry)| unk_entry_accepts(entry, feature))
+                    })
+                    .min();
+                if let Some(word_id) = unknown_match {
+                    self.stats.gold_unknown += 1;
+                    self.unk_entry_label(word_id)?
+                } else {
+                    // No candidate: a virtual label, as MeCab's learner adds
+                    // a virtual node.
+                    self.stats.gold_virtual += 1;
+                    self.virtual_label(feature)?
+                }
+            };
 
-            edges.push((pos, Edge::new(pos + token_len, label_id)));
-            pos += token_len;
+            edges.push((pos, Edge::new(end, label_id)));
+            pos = end;
         }
-        assert_eq!(pos, input_len);
+        if pos != input_len {
+            return Err(anyhow::anyhow!(
+                "the gold tokens cover {pos} of the {input_len} characters of the sentence"
+            ));
+        }
 
         let mut lattice = Lattice::new(input_len)?;
 
@@ -564,52 +818,31 @@ impl Trainer {
             lattice.add_edge(pos, edge)?;
         }
 
-        // Add negative edges using optimized unknown word generation
-        for start_word in 0..input_len {
-            let mut has_matched = false;
+        // Add negative edges: the seed words, then the unknown words, except
+        // the gold edge
+        for (pos, matches) in lexicon.iter().enumerate() {
+            let gold = lattice.nodes()[pos].edges().first().copied();
 
-            let suffix = &input_chars[start_word..];
-
-            // System lexicon matching with common_prefix_iterator
-            for m in self.config.system_lexicon().common_prefix_iterator(suffix) {
-                has_matched = true;
-                let label_id = NonZeroU32::new(m.word_idx.word_id + 1).unwrap(); // word_id is 0-based, NonZeroU32 needs +1
-                let pos = start_word;
-                let target = pos + m.end_char;
-                let edge = Edge::new(target, label_id);
-
-                // Skip adding if the edge is already added as a positive edge
-                if let Some(first_edge) = lattice.nodes()[pos].edges().first()
-                    && edge == *first_edge
-                {
+            for m in matches {
+                let edge = Edge::new(
+                    pos + m.end_char,
+                    lexicon_label(m.word_idx.word_id as usize)?,
+                );
+                if Some(edge) == gold {
                     continue;
                 }
                 lattice.add_edge(pos, edge)?;
+                self.stats.negative_lexicon += 1;
             }
 
-            // Generate unknown words using callback system
-            let sentence: String = input_chars.iter().collect();
-            self.config.unk_handler().gen_unk_words(
-                &sentence,
-                start_word,
-                has_matched,
-                self.max_grouping_len,
-                |w| {
-                    let id_offset = self.config.surfaces.len() as u32;
-                    let label_id = NonZeroU32::new(id_offset + w.word_idx().word_id + 1).unwrap(); // Offset for unknown words
-                    let pos = start_word;
-                    let target = w.end_char();
-                    let edge = lindera_crf::Edge::new(target, label_id);
-
-                    // Skip adding if the edge is already added as a positive edge
-                    if let Some(first_edge) = lattice.nodes()[pos].edges().first()
-                        && edge == *first_edge
-                    {
-                        return;
-                    }
-                    lattice.add_edge(pos, edge).unwrap();
-                },
-            );
+            for candidate in candidates_at(&self.unknown_candidates, pos) {
+                let edge = Edge::new(candidate.end_char, self.unk_entry_label(candidate.word_id)?);
+                if Some(edge) == gold {
+                    continue;
+                }
+                lattice.add_edge(pos, edge)?;
+                self.stats.negative_unknown += 1;
+            }
         }
 
         Ok(lattice)
@@ -767,10 +1000,10 @@ mod tests {
             "Right ID map should not be empty"
         );
 
-        // Verify unknown word categories are preserved
+        // Verify unknown word entries are preserved
         assert!(
-            !serializable.unk_categories.is_empty(),
-            "Unknown word categories should not be empty"
+            !serializable.unk_entries.is_empty(),
+            "Unknown word entries should not be empty"
         );
 
         // Verify cost factor is set
@@ -945,6 +1178,176 @@ mod tests {
         assert_eq!(
             right_id_count, rows,
             "right-id.def entries ({right_id_count}) should match matrix rows ({rows})"
+        );
+    }
+
+    fn train_fixture_with_feature_def(feature_def: &str) -> model::Model {
+        let (seed_csv, char_def, unk_def, _, rewrite_def, corpus_text) = test_fixtures::fixtures();
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed_csv),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+        let trainer = Trainer::new(config)
+            .unwrap()
+            .regularization_cost(0.01)
+            .max_iter(5)
+            .num_threads(1);
+        let corpus = Corpus::from_reader(Cursor::new(corpus_text)).unwrap();
+        trainer.train(corpus).unwrap()
+    }
+
+    fn written(write: impl FnOnce(&mut Vec<u8>) -> anyhow::Result<()>) -> String {
+        let mut buf = Vec::new();
+        write(&mut buf).unwrap();
+        String::from_utf8(buf).unwrap()
+    }
+
+    fn matrix_header(matrix_def: &str) -> (usize, usize) {
+        let header = matrix_def.lines().next().unwrap();
+        let dims: Vec<usize> = header
+            .split_whitespace()
+            .map(|s| s.parse().unwrap())
+            .collect();
+        assert_eq!(dims.len(), 2, "matrix.def header: {header}");
+        (dims[0], dims[1])
+    }
+
+    /// Asserts that every context id of the exported lexicon and unknown
+    /// entries lies inside the exported matrix, as the runtime requires.
+    fn assert_entries_inside_matrix(serializable: &model::SerializableModel) {
+        let matrix = written(|w| serializable.write_connection_costs(w));
+        let (rows, cols) = matrix_header(&matrix);
+        assert_eq!(matrix.lines().count() - 1, rows * cols, "dense matrix");
+
+        let left_ids = written(|w| serializable.write_left_id_def(w));
+        let right_ids = written(|w| serializable.write_right_id_def(w));
+        assert_eq!(left_ids.lines().count(), cols, "left-id.def vs columns");
+        assert_eq!(right_ids.lines().count(), rows, "right-id.def vs rows");
+
+        let lexicon = written(|w| serializable.write_lexicon(w));
+        let unknown = written(|w| serializable.write_unknown_dictionary(w));
+        for line in lexicon.lines().chain(unknown.lines()) {
+            let fields: Vec<&str> = line.split(',').collect();
+            let left_id: usize = fields[1].parse().unwrap();
+            let right_id: usize = fields[2].parse().unwrap();
+            assert!(left_id < cols, "left id outside the matrix: {line}");
+            assert!(right_id < rows, "right id outside the matrix: {line}");
+        }
+    }
+
+    #[test]
+    fn test_exported_matrix_covers_every_context_id_without_bigram_weights() {
+        // Without a BIGRAM template no bigram weight exists: the state L1
+        // reaches on `resources/training/` once every bigram weight is
+        // zeroed. The entries still carry context ids, so the matrix must
+        // cover them; it used to be written as `0 0`.
+        let model = train_fixture_with_feature_def("UNIGRAM U00:%F[0]\n");
+        let mut buf = Vec::new();
+        model.write_model(&mut buf).unwrap();
+        let serializable = model::Model::read_model(Cursor::new(&buf)).unwrap();
+        assert!(
+            serializable.connection_matrix.is_empty(),
+            "precondition: no bigram weight"
+        );
+
+        let (rows, cols) = matrix_header(&written(|w| serializable.write_connection_costs(w)));
+        assert!(rows > 1 && cols > 1, "matrix {rows}x{cols}");
+        assert_entries_inside_matrix(&serializable);
+
+        // The model the trainer holds writes the same matrix as the one read
+        // back from model.dat.
+        assert_eq!(
+            written(|w| model.write_connection_costs(w)),
+            written(|w| serializable.write_connection_costs(w))
+        );
+    }
+
+    #[test]
+    fn test_exported_matrix_matches_the_trainer_matrix() {
+        // With bigram weights, too, both writers give the same matrix, and
+        // every exported entry lies inside it.
+        let model = test_fixtures::train_wide_model(1);
+        let mut buf = Vec::new();
+        model.write_model(&mut buf).unwrap();
+        let serializable = model::Model::read_model(Cursor::new(&buf)).unwrap();
+
+        assert_entries_inside_matrix(&serializable);
+        assert_eq!(
+            written(|w| model.write_connection_costs(w)),
+            written(|w| serializable.write_connection_costs(w))
+        );
+    }
+
+    fn lattice_of(seed_csv: &str, corpus_text: &str) -> lindera_crf::Lattice {
+        let (_, char_def, unk_def, feature_def, rewrite_def, _) = test_fixtures::fixtures();
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed_csv),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+        let mut trainer = Trainer::new(config).unwrap();
+        let corpus = Corpus::from_reader(Cursor::new(corpus_text)).unwrap();
+        trainer.build_lattice(&corpus.examples[0]).unwrap()
+    }
+
+    /// The `(target, label)` pairs of the edges starting at `pos`, gold edge
+    /// first.
+    fn edges_at(lattice: &lindera_crf::Lattice, pos: usize) -> Vec<(usize, u32)> {
+        lattice.nodes()[pos]
+            .edges()
+            .iter()
+            .map(|edge| (edge.target(), edge.label().get()))
+            .collect()
+    }
+
+    #[test]
+    fn test_training_lattice_has_the_other_seed_words() {
+        // #1164: the gold `都` (名詞,接尾,地域) must compete with the seed's
+        // other `都` row; the training lexicon used to be empty. A seed row's
+        // label is its index plus one.
+        let seed = "東京,0,0,0,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー\n\
+                    都,0,0,0,名詞,一般,*,*,*,*,都,ミヤコ,ミヤコ\n\
+                    都,0,0,0,名詞,接尾,地域,*,*,*,都,ト,ト\n";
+        let corpus = "東京\t名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー\n\
+                      都\t名詞,接尾,地域,*,*,*,都,ト,ト\n\
+                      EOS\n";
+        let lattice = lattice_of(seed, corpus);
+
+        assert_eq!(edges_at(&lattice, 0).first(), Some(&(2, 1)), "gold 東京");
+        let at_2 = edges_at(&lattice, 2);
+        assert_eq!(at_2.first(), Some(&(3, 3)), "gold 都 is row 2");
+        assert!(
+            at_2.contains(&(3, 2)),
+            "the other 都 (row 1) is a negative edge: {at_2:?}"
+        );
+    }
+
+    #[test]
+    fn test_gold_seed_word_keeps_its_own_label() {
+        // Two seed words with the same feature and first character: the gold
+        // `東京` gets its own row's label, not `東北`'s, and is not added again
+        // as a negative edge.
+        let seed = "東京,0,0,0,名詞,固有名詞,地域,一般,*,*,*,*,*\n\
+                    東北,0,0,0,名詞,固有名詞,地域,一般,*,*,*,*,*\n\
+                    へ,0,0,0,助詞,格助詞,一般,*,*,*,へ,ヘ,エ\n";
+        let corpus = "東京\t名詞,固有名詞,地域,一般,*,*,*,*,*\n\
+                      へ\t助詞,格助詞,一般,*,*,*,へ,ヘ,エ\n\
+                      EOS\n";
+        let lattice = lattice_of(seed, corpus);
+
+        let at_0 = edges_at(&lattice, 0);
+        assert_eq!(at_0.first(), Some(&(2, 1)), "gold 東京 is row 0");
+        assert_eq!(
+            at_0.iter().filter(|&&(_, label)| label == 1).count(),
+            1,
+            "東京 is not also a negative edge: {at_0:?}"
         );
     }
 }
@@ -1278,5 +1681,301 @@ mod train_determinism_tests {
         }
 
         assert_eq!(first, second, "two writes of one model must match");
+    }
+}
+
+/// #1110: unknown words in training follow `unk.def` and `char.def` as the
+/// runtime does. The fixture's `unk.def` lists the categories in another
+/// order than `char.def` (ko-dic lists them alphabetically) and gives
+/// `ALPHA`, `KANJI` and `KATAKANA` several entries (as IPADIC does).
+#[cfg(test)]
+mod unk_def_entry_tests {
+    use std::collections::BTreeSet;
+    use std::io::Cursor;
+    use std::num::NonZeroU32;
+
+    use crate::{Corpus, Example, Trainer, TrainerConfig, Word};
+
+    const SEED: &str = "は,0,0,0,助詞,係助詞,*,*,*,*,は,ハ,ワ\n\
+                        東,0,0,0,名詞,固有名詞,地域,一般,*,*,東,ヒガシ,ヒガシ\n";
+    const CHAR_DEF: &str = "DEFAULT 0 1 0\nSPACE 0 1 0\nKANJI 0 0 2\nALPHA 1 1 0\n\
+                            HIRAGANA 0 1 2\nKATAKANA 1 1 2\n\
+                            0x0020 SPACE\n0x4E00..0x9FFF KANJI\n0x0041..0x005A ALPHA\n\
+                            0x0061..0x007A ALPHA\n0x3041..0x3096 HIRAGANA\n\
+                            0x30A1..0x30F6 KATAKANA\n";
+    /// Entry ids: DEFAULT 0, SPACE 1, ALPHA 2-3, HIRAGANA 4, KANJI 5-7,
+    /// KATAKANA 8-9 (9 accepts every noun).
+    const UNK_DEF: &str = "DEFAULT,5,5,4000,記号,一般,*,*,*,*,*\n\
+                           SPACE,6,6,4000,記号,空白,*,*,*,*,*\n\
+                           ALPHA,7,7,4000,名詞,固有名詞,組織,*,*,*,*\n\
+                           ALPHA,8,8,4000,名詞,一般,*,*,*,*,*\n\
+                           HIRAGANA,9,9,4000,名詞,一般,*,*,*,*,*\n\
+                           KANJI,10,10,4000,名詞,一般,*,*,*,*,*\n\
+                           KANJI,11,11,4000,名詞,固有名詞,人名,姓,*,*,*\n\
+                           KANJI,12,12,4000,名詞,固有名詞,組織,*,*,*,*\n\
+                           KATAKANA,13,13,4000,名詞,一般,*,*,*,*,*\n\
+                           KATAKANA,14,14,4000,名詞,*,*,*,*,*,*\n";
+    const FEATURE_DEF: &str = "UNIGRAM U00:%F[0]\nUNIGRAM U01:%F[0],%F?[1]\n\
+                               UNIGRAM U02:%t\nBIGRAM B00:%L[0]/%R[0]\n";
+    const REWRITE_DEF: &str = "[unigram rewrite]\n*,*,*\t$1,$2,$3\n\
+                               [left rewrite]\n*,*\t$1,$2\n\
+                               [right rewrite]\n*,*\t$1,$2\n";
+    /// `山田`: a surname no seed row has; `ABC`: an organization; `ほげ`: an
+    /// interjection no `HIRAGANA` entry accepts.
+    const CORPUS: &str = "山田\t名詞,固有名詞,人名,姓,*,*,山田,ヤマダ,ヤマダ\n\
+                          は\t助詞,係助詞,*,*,*,*,は,ハ,ワ\n\
+                          ABC\t名詞,固有名詞,組織,*,*,*,*\n\
+                          ほげ\t感動詞,*,*,*,*,*,ほげ,ホゲ,ホゲ\n\
+                          EOS\n\
+                          ほげ\t感動詞,*,*,*,*,*,ほげ,ホゲ,ホゲ\n\
+                          東\t名詞,固有名詞,地域,一般,*,*,東,ヒガシ,ヒガシ\n\
+                          EOS\n";
+    /// The feature string of `ほげ`, which only a virtual label carries.
+    const HOGE: &str = "感動詞,*,*,*,*,*,ほげ,ホゲ,ホゲ";
+
+    fn trainer() -> Trainer {
+        let config = match TrainerConfig::from_readers(
+            Cursor::new(SEED),
+            Cursor::new(CHAR_DEF),
+            Cursor::new(UNK_DEF),
+            Cursor::new(FEATURE_DEF),
+            Cursor::new(REWRITE_DEF),
+        ) {
+            Ok(config) => config,
+            Err(err) => panic!("failed to build config: {err}"),
+        };
+        match Trainer::new(config) {
+            Ok(trainer) => trainer.max_iter(5).num_threads(1),
+            Err(err) => panic!("failed to build trainer: {err}"),
+        }
+    }
+
+    fn example(tokens: &[(&str, &str)]) -> Example {
+        Example::new(
+            tokens
+                .iter()
+                .map(|(surface, feature)| Word::new(surface, feature))
+                .collect(),
+        )
+    }
+
+    fn build(trainer: &mut Trainer, example: &Example) -> lindera_crf::Lattice {
+        match trainer.build_lattice(example) {
+            Ok(lattice) => lattice,
+            Err(err) => panic!("build_lattice failed: {err}"),
+        }
+    }
+
+    /// The label of `unk.def` entry `id`: the entries follow the two seed
+    /// rows.
+    fn unk(id: u32) -> NonZeroU32 {
+        match NonZeroU32::new(2 + id + 1) {
+            Some(label) => label,
+            None => unreachable!(),
+        }
+    }
+
+    /// The `(target, label)` pair of the gold edge at `pos`.
+    fn gold(lattice: &lindera_crf::Lattice, pos: usize) -> (usize, u32) {
+        let edge = lattice.nodes()[pos].edges()[0];
+        (edge.target(), edge.label().get())
+    }
+
+    /// The `(target, label)` pairs of the edges at `pos` after the gold one.
+    fn negatives(lattice: &lindera_crf::Lattice, pos: usize) -> BTreeSet<(usize, u32)> {
+        lattice.nodes()[pos].edges()[1..]
+            .iter()
+            .map(|edge| (edge.target(), edge.label().get()))
+            .collect()
+    }
+
+    /// `(target, unk(id))` pairs.
+    fn unks(pairs: &[(usize, u32)]) -> BTreeSet<(usize, u32)> {
+        pairs
+            .iter()
+            .map(|&(target, id)| (target, unk(id).get()))
+            .collect()
+    }
+
+    /// One label per `unk.def` line, named by its category, in file order.
+    #[test]
+    fn labels_follow_unk_def_lines() {
+        let trainer = trainer();
+        assert_eq!(
+            trainer.extract_labels(),
+            [
+                "は", "東", "DEFAULT", "SPACE", "ALPHA", "ALPHA", "HIRAGANA", "KANJI", "KANJI",
+                "KANJI", "KATAKANA", "KATAKANA"
+            ]
+        );
+        assert_eq!(
+            trainer.unk_entry_labels,
+            (0..10).map(unk).collect::<Vec<_>>()
+        );
+        assert_eq!(trainer.provider.len(), 2 + 10);
+    }
+
+    /// The candidates come from the default category's entries with the
+    /// spans `char.def` gives, and each gold token takes the first entry
+    /// that accepts its features, or a virtual label shared by repeats.
+    #[test]
+    fn lattice_uses_unk_def_entries_and_virtual_labels() {
+        let mut trainer = trainer();
+        let first = example(&[
+            ("山田", "名詞,固有名詞,人名,姓,*,*,山田,ヤマダ,ヤマダ"),
+            ("は", "助詞,係助詞,*,*,*,*,は,ハ,ワ"),
+            ("ABC", "名詞,固有名詞,組織,*,*,*,*"),
+            ("ほげ", HOGE),
+        ]);
+        let lattice = build(&mut trainer, &first);
+
+        // 山田 (KANJI: no grouping, lengths 1 and 2): the surname entry (6),
+        // not the first KANJI entry; the KANJI entries are the negatives.
+        assert_eq!(gold(&lattice, 0), (2, unk(6).get()));
+        assert_eq!(
+            negatives(&lattice, 0),
+            unks(&[(1, 5), (2, 5), (1, 6), (1, 7), (2, 7)])
+        );
+
+        // は: the seed row, label 1, and no unknown word: HIRAGANA has
+        // invoke off and a seed word starts here.
+        assert_eq!(gold(&lattice, 2), (3, 1));
+        assert!(negatives(&lattice, 2).is_empty());
+
+        // ABC (ALPHA groups): the organization entry (2), and the other
+        // ALPHA entry over the same span as a negative.
+        assert_eq!(gold(&lattice, 3), (6, unk(2).get()));
+        assert_eq!(negatives(&lattice, 3), unks(&[(6, 3)]));
+
+        // ほげ: no HIRAGANA entry accepts an interjection, so a virtual
+        // label, after the 2 seed and 10 unk.def labels. HIRAGANA groups ほげ
+        // and its length ladder adds ほ.
+        let virtual_label = 2 + 10 + 1;
+        assert_eq!(gold(&lattice, 6), (8, virtual_label));
+        assert_eq!(negatives(&lattice, 6), unks(&[(7, 4), (8, 4)]));
+
+        // The repeat reuses the virtual label. 東 is a seed word, so the
+        // invoke-off KANJI creates no unknown word there.
+        let second = example(&[
+            ("ほげ", HOGE),
+            ("東", "名詞,固有名詞,地域,一般,*,*,東,ヒガシ,ヒガシ"),
+        ]);
+        let lattice2 = build(&mut trainer, &second);
+        assert_eq!(gold(&lattice2, 0), (2, virtual_label));
+        assert_eq!(gold(&lattice2, 2), (3, 2));
+        assert!(negatives(&lattice2, 2).is_empty());
+        assert_eq!(trainer.provider.len(), 2 + 10 + 1);
+        assert_eq!(trainer.virtual_features, [HOGE]);
+
+        // テスト (KATAKANA groups, ladder up to 2): both KATAKANA entries
+        // accept a common noun; the first in unk.def order (8) is the gold
+        // label, as the node MeCab's learner takes.
+        let third = example(&[("テスト", "名詞,一般,*,*,*,*,テスト,テスト,テスト")]);
+        let lattice3 = build(&mut trainer, &third);
+        assert_eq!(gold(&lattice3, 0), (3, unk(8).get()));
+        assert_eq!(
+            negatives(&lattice3, 0),
+            unks(&[(1, 8), (2, 8), (3, 9), (1, 9), (2, 9)])
+        );
+
+        let stats = &trainer.stats;
+        assert_eq!(
+            (stats.gold_lexicon, stats.gold_unknown, stats.gold_virtual),
+            (2, 3, 2)
+        );
+    }
+
+    /// `Trainer::max_grouping_len` caps grouping as the runtime option does:
+    /// `ABC` has 2 characters beyond the first, so a cap of 2 keeps the
+    /// grouped candidate and a cap of 1 leaves only one character, which no
+    /// ALPHA length ladder extends.
+    #[test]
+    fn max_grouping_len_caps_grouping_as_at_runtime() {
+        let abc = example(&[("ABC", "名詞,固有名詞,組織,*,*,*,*")]);
+
+        let mut capped_at_2 = trainer().max_grouping_len(Some(2));
+        let lattice2 = build(&mut capped_at_2, &abc);
+        assert_eq!(gold(&lattice2, 0), (3, unk(2).get()));
+        assert_eq!(negatives(&lattice2, 0), unks(&[(3, 3)]));
+
+        let mut capped_at_1 = trainer().max_grouping_len(Some(1));
+        let lattice1 = build(&mut capped_at_1, &abc);
+        assert_eq!(gold(&lattice1, 0), (3, 2 + 10 + 1), "a virtual label");
+        assert_eq!(negatives(&lattice1, 0), unks(&[(1, 2), (1, 3)]));
+    }
+
+    /// The exported `unk.def` has one line per input line, in input order,
+    /// with the category and feature string of that line -- from the model
+    /// and from `model.dat` alike -- and `lex.csv` has the seed rows only.
+    #[test]
+    fn exported_unk_def_keeps_every_line_in_order() {
+        let corpus = match Corpus::from_reader(Cursor::new(CORPUS)) {
+            Ok(corpus) => corpus,
+            Err(err) => panic!("failed to read corpus: {err}"),
+        };
+        let model = match trainer().train(corpus) {
+            Ok(model) => model,
+            Err(err) => panic!("training failed: {err}"),
+        };
+        assert_eq!(model.virtual_features, [HOGE]);
+
+        let expected: Vec<(String, String)> = UNK_DEF
+            .lines()
+            .map(|line| {
+                let columns: Vec<&str> = line.split(',').collect();
+                (columns[0].to_string(), columns[4..].join(","))
+            })
+            .collect();
+        let entries = |bytes: Vec<u8>| -> Vec<(String, String)> {
+            let text = match String::from_utf8(bytes) {
+                Ok(text) => text,
+                Err(err) => panic!("unk.def is not UTF-8: {err}"),
+            };
+            text.lines()
+                .map(|line| {
+                    let columns: Vec<&str> = line.split(',').collect();
+                    for column in &columns[1..4] {
+                        if column.parse::<i32>().is_err() {
+                            panic!("non-numeric id or cost in {line}");
+                        }
+                    }
+                    (columns[0].to_string(), columns[4..].join(","))
+                })
+                .collect()
+        };
+
+        let mut from_model = Vec::new();
+        if let Err(err) = model.write_unknown_dictionary(&mut from_model) {
+            panic!("write_unknown_dictionary failed: {err}");
+        }
+        assert_eq!(entries(from_model), expected, "Model");
+
+        let mut bytes = Vec::new();
+        if let Err(err) = model.write_model(&mut bytes) {
+            panic!("write_model failed: {err}");
+        }
+        let serializable = match crate::Model::read_model(Cursor::new(bytes)) {
+            Ok(model) => model,
+            Err(err) => panic!("read_model failed: {err}"),
+        };
+        assert_eq!(serializable.unk_entries, expected);
+        let mut from_file = Vec::new();
+        if let Err(err) = serializable.write_unknown_dictionary(&mut from_file) {
+            panic!("write_unknown_dictionary failed: {err}");
+        }
+        assert_eq!(entries(from_file), expected, "SerializableModel");
+
+        // The lexicon keeps the seed rows only: neither the unk.def entries
+        // nor the virtual label.
+        let mut lexicon = Vec::new();
+        if let Err(err) = serializable.write_lexicon(&mut lexicon) {
+            panic!("write_lexicon failed: {err}");
+        }
+        let lexicon = String::from_utf8_lossy(&lexicon).to_string();
+        let surfaces: Vec<&str> = lexicon
+            .lines()
+            .filter_map(|line| line.split(',').next())
+            .collect();
+        assert_eq!(surfaces, ["は", "東"]);
     }
 }

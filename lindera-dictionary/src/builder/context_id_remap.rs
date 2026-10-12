@@ -19,7 +19,7 @@ use encoding_rs_io::DecodeReaderBytesBuilder;
 use glob::glob;
 
 use crate::LinderaResult;
-use crate::builder::connection_cost_matrix::read_matrix_header;
+use crate::builder::connection_cost_matrix::{MatrixSize, read_matrix_header};
 use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::metadata::Metadata;
 use crate::error::LinderaErrorKind;
@@ -56,7 +56,35 @@ pub fn compute_context_id_remap(
     metadata: &Metadata,
     freq_file: Option<&Path>,
 ) -> LinderaResult<ContextIdMap> {
-    let (forward_size, backward_size) = read_matrix_header(input_dir, &metadata.encoding)?;
+    let matrix_size = read_matrix_header(input_dir, &metadata.encoding)?;
+    compute_context_id_remap_for_matrix(input_dir, metadata, freq_file, matrix_size)
+}
+
+/// [`compute_context_id_remap`] for a `matrix.def` header the caller has
+/// already read, so that [`crate::builder::DictionaryBuilder::build_dictionary`]
+/// reads it once for the remap and the context-id checks.
+///
+/// # Arguments
+///
+/// * `input_dir` - Directory containing the lexicon `*.csv` files.
+/// * `metadata` - Dictionary metadata (encoding, schema, `flexible_csv`).
+/// * `freq_file` - Optional bundled context-ID frequency histogram.
+/// * `matrix_size` - The axis sizes read from the `matrix.def` header.
+///
+/// # Returns
+///
+/// A [`ContextIdMap`] whose axes match `matrix_size`, or an error if the schema
+/// lacks the context-ID columns or an axis exceeds the `u16` ID range.
+pub(crate) fn compute_context_id_remap_for_matrix(
+    input_dir: &Path,
+    metadata: &Metadata,
+    freq_file: Option<&Path>,
+    matrix_size: MatrixSize,
+) -> LinderaResult<ContextIdMap> {
+    let MatrixSize {
+        forward_size,
+        backward_size,
+    } = matrix_size;
 
     // Context IDs are stored as u16; a larger axis cannot be represented.
     if forward_size as usize > u16::MAX as usize + 1

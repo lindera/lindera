@@ -21,7 +21,11 @@ instead of rewriting them, removing the `normalize_details` setting, outputs
 the first CSV row among tied dictionary entries as MeCab does, chooses the
 segmentation whose last word starts later when two cost the same, as MeCab
 does, and has the lattice backtraces of `lindera-dictionary` return each
-token's end offset. Dictionary directories built or downloaded with v6.2.0
+token's end offset. `lindera train` builds its lattices as MeCab's learner
+does, with the seed words and the unknown words that the runtime creates,
+and keeps every `unk.def` entry, so models trained with earlier versions
+must be trained again, and `lindera build` rejects a dictionary whose
+context IDs fall outside its connection matrix. Dictionary directories built or downloaded with v6.2.0
 or earlier no longer load and must be rebuilt or downloaded again
 (dictionary format version 3).
 This guide lists every breaking change and the one-line fixes for each.
@@ -51,9 +55,13 @@ This guide lists every breaking change and the one-line fixes for each.
 | **Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab** | Anyone who segments text, in rare places (9 of about 54,000 lines in the texts compared) | Expect such lines to be segmented as MeCab segments them (IPADIC `腸窒扶斯` is `腸 / 窒扶 / 斯`, not `腸 / 窒 / 扶斯`); no setting restores the v6 behavior |
 | **`lindera tokenize` removes only the line terminator from each input line and writes a result for every line** | CLI users whose input lines start or end with whitespace, or who read the wakati or N-best output of lines without tokens | Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC `記号,空白`), `--keep-whitespace` to output the spaces there, and an empty line or a line of spaces to give an empty wakati line and one N-best result; no setting restores the v6 behavior |
 | **WASM: the `TokenizerBuilder` settings apply whichever way the dictionary is set** | WASM users who combine `setDictionaryInstance()` with `setKeepWhitespace()` or filters, or `setDictionary()` with `setUserDictionaryInstance()` | Expect those settings and the user dictionary to take effect; a dictionary instance whose `char.def` has no `SPACE` category now needs `setKeepWhitespace(true)`, as a dictionary set by URI does |
+| **`lindera train` builds its lattices as MeCab's learner does and keeps every `unk.def` entry; `model.dat` has the format version 2.0.0** | Users of `lindera train` and `lindera export`, and of the training functions of the Python, Node.js, Ruby and PHP bindings | Train every model again with 7.0.0, then export and build it again (a `model.dat` written by v6.2.0 or earlier is rejected); give every `unk.def` line at least five fields |
+| **`lindera build` rejects context IDs outside `matrix.def`** | Anyone who builds a system dictionary whose `lex.csv` or `unk.def` has a context ID beyond the size of its `matrix.def` (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's `mecab-dict-index` accepts | Fix the IDs or the matrix, or set `skip_invalid_cost_or_id` in `metadata.json` to drop such `lex.csv` rows |
 | **The `normalize_details` setting is removed: `Metadata::new` and `CoreMetadata::new` take 10 arguments, Ruby's `Metadata.new` takes 8** | Code that creates or reads dictionary metadata: Rust (`Metadata`, `lindera_binding::CoreMetadata`, `PrefixDictionaryBuilderOptions`) and the `Metadata` classes of the Python, Ruby, PHP and Node.js bindings | Remove the argument, option or property; a `metadata.json` that still has the key loads, and the key is ignored |
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
 | **`Lattice::tokens_offset_into` returns the BOS index of the best path (`Option<usize>`)** | Rust code that uses the `()` value of `tokens_offset_into` | Nothing for a call written as a statement; otherwise ignore the new value |
+| **`UnknownDictionary::gen_unk_words`, `UnknownDictionary::compatible_unk_index`, `UnkWord` and `WordIdx` are removed** | Rust code that uses them from `lindera_dictionary::dictionary::unknown_dictionary` (also `lindera::dictionary::core::unknown_dictionary`) | Use `Lattice::unknown_word_candidates`, which lists the unknown words that the runtime creates |
+| **`lindera_trainer`: `SerializableModel::unk_category_names` and `unk_categories` are replaced by `unk_entries`, and `Trainer::max_grouping_len` takes the runtime's meaning** | Rust code that uses `lindera-trainer` (also `lindera::dictionary::trainer`) | Read `unk_entries`, the `unk.def` entries in file order; pass `max_grouping_len` the cap the dictionary will be used with |
 
 The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
 their package names, and their APIs apart from one setting: the `Metadata`
@@ -63,6 +71,9 @@ expose `normalize_details` (see
 Their version number moves to 7.0.0. Like the Rust crates, they no longer
 load a dictionary directory built or downloaded with v6.2.0 or earlier (see
 [Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt)).
+A model file written by their training functions, or by `lindera train`,
+with v6.2.0 or earlier has to be trained again (see
+[`lindera train` builds its lattices as MeCab's learner does](#lindera-train-builds-its-lattices-as-mecabs-learner-does)).
 There are thirteen output differences, all described below; the last two are
 in the CLI only and in the WASM binding only. With IPADIC or
 IPADIC-NEologd, the values reported under the names `conjugation_type` and
@@ -1075,18 +1086,122 @@ The other bindings, the CLI and the library do not change, and neither do
 the dictionary files. No option restores the v6 behavior; to get it, leave
 out the settings that v6 ignored.
 
+## `lindera train` builds its lattices as MeCab's learner does
+
+Up to v6.2.0, `lindera train` built training lattices that differ from
+those of MeCab's learner:
+
+- The seed lexicon was not in the lattice, so a gold token competed only
+  with unknown words, never with the other seed words.
+- The unknown-word candidates ignored `char.def`. A fixed classifier (ASCII
+  digit, ASCII letter, kanji, katakana, hiragana, other) gave the class of
+  the first character, every candidate was one to three characters long,
+  and the class number served as the `unk.def` entry, so only an `unk.def`
+  with one entry per class, in the order `DEFAULT`, `HIRAGANA`, `KATAKANA`,
+  `KANJI`, `ALPHA`, `NUMERIC`, worked.
+- Each `char.def` category got one label, with the feature string of its
+  last `unk.def` line, and `lindera export` wrote one `unk.def` line per
+  category. mecab-ipadic's `unk.def` has 40 lines for 11 categories; they
+  became 11 lines, and the unknown `ALPHA`, `HIRAGANA` and `KATAKANA` words
+  all became `感動詞`, the feature of the last line of each of these
+  categories.
+- A gold token that was not a seed word got an unknown-word label through
+  a check written for IPADIC features (`名詞,一般` and the like), or a label
+  without features. An `unk.def` line with fewer than five fields was
+  silently skipped.
+- When regularization left no bigram weight for some context IDs,
+  `lindera export` wrote a `matrix.def` smaller than the IDs of the entries
+  (`0 0` when no weight was left at all), and the built dictionary panicked
+  at tokenization. `model_info.connection_matrix_size` in `metadata.json`
+  was a square of the larger ID.
+
+v7.0.0 trains as MeCab's learner does (see
+[How training works](development/training_pipeline.md#how-training-works)):
+
+- The lattice has the seed words that start at each position, and the
+  unknown words that the runtime creates there, with the same code: those
+  of the character's default category, with its `INVOKE`, `GROUP` and
+  `LENGTH` settings, for every `unk.def` entry of the category.
+- Every `unk.def` line is an entry and a CRF label of its own, with the ID
+  of its category as `%t`, and `lindera export` writes every line, in file
+  order. Comment lines and empty lines are skipped, and a line with fewer
+  than five fields is an error.
+- A gold token gets the label of the first seed row with the same span and
+  the same whole feature string; else that of the first `unk.def` entry of
+  an unknown-word candidate with the same span whose feature columns other
+  than `*` all equal the gold token's; else a virtual label, which is
+  trained and not exported, as MeCab's learner adds a virtual node.
+  `lindera train` prints the counts in a `Lattice statistics:` line.
+- `matrix.def` covers every context ID, plus 0 for BOS/EOS, and
+  `model_info.connection_matrix_size` gives its size, rows by columns.
+- `model.dat` has the format version 2.0.0. `lindera export` and the
+  bindings' export functions reject a `model.dat` of any other version,
+  including every `model.dat` written by v6.2.0 or earlier, with an error
+  that ends in "re-run `lindera train` to regenerate it".
+
+Training takes longer, because every lattice now has the seed words. It is
+slower than MeCab's learner, and it can stop at `--max-iterations`
+before it converges
+([#1167](https://github.com/lindera/lindera/issues/1167)). A dictionary
+trained from the files in `resources/training/` needs `--keep-whitespace`
+to tokenize, because their `char.def` has no `SPACE` category
+([#1166](https://github.com/lindera/lindera/issues/1166)); this was already
+the case in v6.
+
+What you do: train every model again with the 7.0.0 `lindera train` or the
+bindings' training functions, then export it and build the dictionary
+again. Give every `unk.def` line at least five fields. An `unk.def` with
+several entries per category, such as mecab-ipadic's, is now trained and
+exported as it is. There is no setting to restore the v6 behavior.
+
+## `lindera build` rejects context IDs outside the connection matrix
+
+Up to v6.2.0, `lindera build` accepted a `lex.csv` row or an `unk.def` line
+whose context IDs fall outside `matrix.def`, and the built dictionary
+panicked when such a word was looked up during tokenization. A `matrix.def`
+row whose ID exceeded its axis was accepted too, and its cost landed in
+another cell. v7.0.0 rejects all of these, as MeCab's `mecab-dict-index`
+does: in every `lex.csv` row and `unk.def` line, the right context ID must
+be below the first value of the `matrix.def` header, and the left context
+ID below the second. The error names the file, the line, the ID and the
+matrix size:
+
+```text
+Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
+```
+
+- A dictionary whose `metadata.json` sets `skip_invalid_cost_or_id` drops
+  such a `lex.csv` row instead, with a warning through the `log` crate,
+  which the CLI does not print yet
+  ([#1107](https://github.com/lindera/lindera/issues/1107)). `unk.def` lines are
+  always checked.
+- An `unk.def` line with fewer than four fields is an error instead of a
+  panic.
+- User dictionaries (`lindera build --user`) are not checked yet
+  ([#1171](https://github.com/lindera/lindera/issues/1171)).
+
+Dictionaries that `mecab-dict-index` builds pass, since it checks the same
+bounds. A dictionary exported by `lindera export` of v6.2.0 or earlier can
+fail, since its `matrix.def` could be smaller than its context IDs; train
+and export it again with 7.0.0 (see the previous section). For another
+dictionary that fails, fix the IDs in `lex.csv` or `unk.def` or the size in
+`matrix.def`.
+
 ## Rust API changes in `lindera_dictionary`
 
 These affect only code that calls the lattice backtraces directly, that
-creates dictionary metadata with `Metadata::new`, or that reads the
-character categories of a dictionary:
+creates dictionary metadata with `Metadata::new`, that reads the
+character categories of a dictionary, or that generates unknown words with
+`UnknownDictionary`:
 `lindera_dictionary::viterbi::Lattice` and
 `lindera_dictionary::nbest::NBestGenerator`, also reachable as
 `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and
 `lindera::dictionary::nbest::…`, and
 `lindera_dictionary::dictionary::metadata::Metadata`, also reachable as
 `lindera::dictionary::Metadata`, and
-`lindera_dictionary::dictionary::character_definition::CharacterDefinition`.
+`lindera_dictionary::dictionary::character_definition::CharacterDefinition`, and
+`lindera_dictionary::dictionary::unknown_dictionary`, also reachable as
+`lindera::dictionary::core::unknown_dictionary`.
 The `Segmenter`, `Tokenizer`,
 `SegmentWorker` and `AnalysisWorker` APIs and the CLI are unaffected; the
 language bindings change only in their `Metadata` class (see
@@ -1108,6 +1223,10 @@ language bindings change only in their `Metadata` class (see
 | — | New public field `Metadata::skip_whitespace: Option<bool>` (also `lindera_binding::CoreMetadata::skip_whitespace`) |
 | `CharacterDefinition::lookup_categories(c)` returns the categories of every line that covers `c` | Returns the categories of the last line that covers `c`, its default category first and the others in category id order |
 | `DICTIONARY_FORMAT_VERSION` is `2` | `3` |
+| `UnknownDictionary::gen_unk_words(sentence, start_pos, has_matched, max_grouping_len, callback)` | Removed |
+| `UnknownDictionary::compatible_unk_index(sentence, start, end, feature) -> Option<WordIdx>` | Removed |
+| `unknown_dictionary::UnkWord` and `unknown_dictionary::WordIdx` | Removed |
+| — | New in `viterbi`: `Lattice::unknown_word_candidates` and `UnknownWordCandidate` |
 
 Each token is now `(start, end, word_id)` instead of `(start, word_id)`,
 with byte offsets within the sentence. With whitespace skipped
@@ -1199,6 +1318,43 @@ code that only checks whether a character has a category is unaffected.
 loaders accept, is now 3 (see
 [Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt)).
 
+`UnknownDictionary::gen_unk_words` and `UnknownDictionary::compatible_unk_index`
+are removed, together with the `UnkWord` and `WordIdx` types they used.
+Only `lindera train` called them, and they ignored `char.def` (see
+[`lindera train` builds its lattices as MeCab's learner does](#lindera-train-builds-its-lattices-as-mecabs-learner-does)).
+To list the unknown words that the runtime creates, call
+`Lattice::unknown_word_candidates(dict, char_definitions, unknown_dictionary, text, max_grouping_len, out)`.
+It fills `out` with an `UnknownWordCandidate { start_char, end_char, word_id }`
+for every candidate of every start position of `text`, with character
+positions and the `unk.def` entry ID, as `set_text_with_options` creates
+them with the default options and the given `max_grouping_len`, also at
+positions that no path reaches. The tokenization path does not change.
+
+## Rust API changes in `lindera_trainer`
+
+These affect only Rust code that uses `lindera-trainer` directly or through
+`lindera::dictionary::trainer` (the `train` feature) (see
+[`lindera train` builds its lattices as MeCab's learner does](#lindera-train-builds-its-lattices-as-mecabs-learner-does)):
+
+| v6 | v7 |
+| --- | --- |
+| `SerializableModel::unk_category_names: Vec<String>` and `SerializableModel::unk_categories: BTreeMap<String, String>` | `SerializableModel::unk_entries: Vec<(String, String)>`, the `(category, feature string)` pairs of `unk.def` in file order |
+| `ModelMetadata::version` is `"1.0.0"`, and `Model::read_model` does not check it | `"2.0.0"`; `Model::read_model` rejects a model of any other version |
+| — | New in `model`: `MODEL_FORMAT_VERSION` |
+| `TrainerConfig::dict()` holds an empty lexicon and a placeholder unknown-word dictionary | Holds the seed lexicon (`system_lexicon()`) and the `unk.def` entries (`unk_handler()`) |
+| `TrainerConfig::from_readers` skips an `unk.def` line with fewer than five fields | Returns an error |
+| `Trainer::max_grouping_len(len)` bounds the unknown-word candidates, which never exceed three characters | Caps unknown-word grouping with the runtime's meaning, in characters beyond the first; `None`, the default, leaves it unbounded |
+| `Model::num_labels()` and `ModelMetadata::label_count` count one unknown-word label per `char.def` category | Count one per `unk.def` entry; the virtual labels are not counted |
+
+A model is now written with `MODEL_FORMAT_VERSION` as its `metadata.version`,
+and `Model::read_model` checks it, in both the `rkyv` and the legacy JSON
+format, so a model written by v6.2.0 or earlier has to be trained again.
+Code that reads `unk_category_names` or `unk_categories` reads
+`unk_entries` instead: one pair per `unk.def` line, several per category
+included, in the order of the exported `unk.def`. If you set
+`Trainer::max_grouping_len`, pass the cap that the dictionary will be used
+with (`max_grouping_len` of the segmenter, `--max-grouping-len` of the CLI).
+
 ## Who does not need to act
 
 - **Users of the language bindings and the CLI**: the Python, Node.js, Ruby,
@@ -1209,7 +1365,10 @@ loaders accept, is now 3 (see
   built or downloaded with v6.2.0 or earlier has to be rebuilt or downloaded
   again (see
   [Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt));
-  the embedded dictionaries need nothing. The output changes are
+  the embedded dictionaries need nothing. A model file trained with v6.2.0
+  or earlier has to be trained again (see
+  [`lindera train` builds its lattices as MeCab's learner does](#lindera-train-builds-its-lattices-as-mecabs-learner-does)).
+  The output changes are
   the IPADIC conjugation fix, which matters only if you read those two fields
   by name, the whitespace entries, which matter only for text with U+3000
   (IPADIC, IPADIC-NEologd, UniDic) or with spaces (SudachiDict), the
@@ -1279,6 +1438,12 @@ Rust crate users:
   `skip_whitespace: None` or end it with `..Default::default()`.
 - If you read `CharacterDefinition::lookup_categories`, expect the default
   category first and the others in category id order.
+- If you call `UnknownDictionary::gen_unk_words` or
+  `UnknownDictionary::compatible_unk_index`, or use `UnkWord` or `WordIdx`,
+  list the unknown words with `Lattice::unknown_word_candidates` instead.
+- If you read `SerializableModel::unk_category_names` or `unk_categories`,
+  read `unk_entries` instead, and if you set `Trainer::max_grouping_len`,
+  pass it the cap that the dictionary will be used with.
 
 Binding authors:
 
@@ -1337,6 +1502,25 @@ Users of `lindera train`:
 - Give every range line of your `char.def` at least one category.
 - If your `char.def` has single-code-point or overlapping lines, retrain:
   the `%t` feature now follows those lines as MeCab does.
+- Train every model again with the 7.0.0 `lindera train` (or the bindings'
+  training functions), then export it and build the dictionary again:
+  `lindera export` rejects a `model.dat` written by v6.2.0 or earlier, and
+  the training lattices, the unknown-word labels and the exported `unk.def`
+  and `matrix.def` have changed.
+- Give every line of your `unk.def` at least five fields: the category,
+  the two context IDs, the cost and at least one feature column.
+- To tokenize with a dictionary trained from `resources/training/`, pass
+  `--keep-whitespace`: its `char.def` has no `SPACE` category
+  ([#1166](https://github.com/lindera/lindera/issues/1166)).
+
+Everyone who builds a system dictionary with `lindera build`:
+
+- If the build reports a context ID out of range for the connection
+  matrix, fix the IDs in `lex.csv` or `unk.def` or the size in
+  `matrix.def`, or set `skip_invalid_cost_or_id` to drop such `lex.csv`
+  rows. Such a dictionary used to build and then panic at
+  tokenization. A dictionary exported by v6.2.0 or earlier is best trained
+  and exported again.
 
 Users of Japanese text with `、` or `。` inside a line:
 
@@ -1427,4 +1611,5 @@ Language bindings and CLI:
 - Nothing else to do beyond taking the 7.0.0 release, apart from the
   dictionary rebuild, the dictionary, whitespace, `、` and `。`, N-best,
   unknown-word, default-category, dash and tilde, tied-entry and equal-cost
-  items above and the `lindera tokenize` and WASM items.
+  items above, the `lindera train` and `lindera build` items, and the
+  `lindera tokenize` and WASM items.

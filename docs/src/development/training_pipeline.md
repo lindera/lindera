@@ -14,6 +14,22 @@ lindera train --> model.dat --> lindera export --> dictionary files --> lindera 
 2. **Export**: Convert the trained model into Lindera dictionary source files.
 3. **Build**: Compile the source files into a binary dictionary that Lindera can load at runtime.
 
+### How training works
+
+`lindera train` builds one lattice for each sentence of the corpus, as MeCab's learner does. At every position, the lattice has the seed words that start there and the unknown words that the runtime creates there from `char.def` and `unk.def` (see [Character Definition](#3-character-definition-chardef) and [Unknown Word Definition](#4-unknown-word-definition-unkdef)). The CRF learns the weights that make the annotated path, the gold tokens, the cheapest. Each gold token is labelled with the first of these that fits:
+
+1. The first seed row, in file order, with the same span and the same whole feature string. Unlike MeCab's learner, which compares only the first `eval-size` columns, every column must match, so a token whose reading or other columns differ from the seed row falls through to the next steps.
+2. The first `unk.def` entry, in file order, of an unknown-word candidate with the same span whose feature columns other than `*` all equal the gold token's columns.
+3. A virtual label built from the gold feature string, as MeCab's learner adds a virtual node. Gold tokens with the same feature string share one virtual label. Virtual labels are trained but not exported.
+
+Every other candidate is a negative example. Once the lattices are built, `lindera train` prints how the gold tokens were labelled; with the files in `resources/training/`:
+
+```text
+Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+```
+
+`gold_lexicon`, `gold_unknown` and `gold_virtual` count the gold tokens labelled by each of the three steps, `virtual_labels` counts the virtual labels, and `negative_lexicon` and `negative_unknown` count the negative edges from the seed lexicon and from the unknown-word candidates.
+
 ## Required Input Files
 
 ### 1. Seed Lexicon (seed.csv)
@@ -75,17 +91,36 @@ Parameters control the unknown words that a character's default category creates
 
 A range line can list more than one category (for example `0x4E00 KANJINUMERIC KANJI`), and every range line needs at least one. When several lines cover the same code point, the last line decides its categories, as in MeCab. The first category on that line is the character's default category: the only one that creates unknown-word candidates, and the one the `%t` feature template uses.
 
+Training creates the unknown-word candidates with the runtime's own code (`Lattice::unknown_word_candidates`), so it learns weights for the candidates that the built dictionary produces:
+
+- At each position, the character's default category creates the candidates. It creates none when its `INVOKE` is 0 and a seed word starts there.
+- With `GROUP` 1, the run in which each character shares a category with the one before becomes one candidate.
+- With `LENGTH` n, the candidates of 1 to n characters are created too, while each character shares a category with the first one (the length ladder). In the example above, `KANJI 0 0 2` gives a kanji where no seed word starts the candidates of one and two kanji.
+- Each `unk.def` entry of the category gets every one of these spans.
+
+Grouping is unbounded, as at runtime by default. The Rust API's `Trainer::max_grouping_len` caps it with the runtime's meaning (characters beyond the first); the CLI has no option for it.
+
 ### 4. Unknown Word Definition (unk.def)
 
-Defines how out-of-vocabulary words are handled by character type.
+Defines the unknown words that each character category creates. Each line is `category,left_id,right_id,cost,feature...`, where `category` is a category name from `char.def`. As in the seed lexicon, the ids and the cost are set to 0; export writes the trained values.
 
 ```csv
+# Unknown word definitions
 DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
 HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*
 ALPHA,0,0,0,名詞,固有名詞,一般,*,*,*,*,*,*
 NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*
+```
+
+- Every line is an entry of its own, and a category can have several: one for each part of speech its unknown words can take. mecab-ipadic's `unk.def`, for example, has 40 lines for 11 categories, six of them for `KANJI` (`名詞,一般`, `名詞,サ変接続` and four kinds of `名詞,固有名詞`).
+- Each entry becomes a CRF label of its own, whose `%t` is the id of its category. A candidate of the category is created once for each entry, so training learns which entry fits where.
+- The order of the lines is kept: `lindera export` writes one line for each entry, in the same order.
+- Lines that start with `#` and empty lines are skipped. A line with fewer than five fields (the category, the two ids, the cost and at least one feature column) is an error:
+
+```text
+Error: LinderaError { kind: Args, source: unk.def line 1: expected at least 5 fields (category, left id, right id, cost, feature), got 4 }
 ```
 
 ### 5. Feature Template (feature.def)
@@ -149,6 +184,8 @@ Each line is `pattern<TAB>replacement`. Patterns use `*` as a wildcard and are m
 | `max-iterations` | Maximum number of training iterations | 100 |
 | `max-threads` | Number of parallel processing threads | CPU core count |
 
+Training is slower than MeCab's learner, and it can stop at `max-iterations` before it converges ([#1167](https://github.com/lindera/lindera/issues/1167)).
+
 ## CLI Usage
 
 ### Train
@@ -183,14 +220,26 @@ This produces the following files:
 | File | Description |
 | --- | --- |
 | `lex.csv` | Lexicon with trained costs |
-| `matrix.def` | Connection cost matrix |
-| `unk.def` | Unknown word definition |
+| `matrix.def` | Connection cost matrix over every context ID, plus 0 for BOS/EOS, even when regularization leaves no bigram weight |
+| `unk.def` | Unknown word definition: one line for each input `unk.def` entry, in input order, with its category, trained IDs and cost, and feature |
 | `char.def` | Character definition |
 | `feature.def` | Feature template |
 | `rewrite.def` | Feature rewrite rules |
 | `left-id.def` | Left context ID mapping |
 | `right-id.def` | Right context ID mapping |
-| `metadata.json` | Dictionary metadata |
+| `metadata.json` | Dictionary metadata; its `model_info.connection_matrix_size` is the size of `matrix.def`, rows (right IDs) by columns (left IDs) |
+
+For example, if the `unk.def` above has a second `KANJI` line, `KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*`, after the first one, the exported `unk.def` keeps both, in input order:
+
+```csv
+DEFAULT,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,0,名詞,サ変接続,*,*,*,*,*,*,*
+ALPHA,1,1,0,名詞,固有名詞,一般,*,*,*,*,*,*
+NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
+```
 
 ### Build
 
@@ -203,15 +252,42 @@ lindera build \
     --metadata ./dict-source/metadata.json
 ```
 
+`lindera build` checks that the context IDs of every `lex.csv` row and `unk.def` line lie inside `matrix.def`, as MeCab's `mecab-dict-index` does (see [Context ID check](../lindera-cli/commands.md#context-id-check)). The files that `lindera export` writes pass this check.
+
+### Tokenize
+
+Tokenize text with the built dictionary:
+
+```bash
+echo "これは外国人参政権です。" | lindera tokenize --keep-whitespace -d ./dict-compiled
+```
+
+With the files in `resources/training/` as the inputs above, the output is:
+
+```text
+これは	名詞,一般,*,*,*,*,*,*,*
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+```
+
+`--keep-whitespace` is needed because `resources/training/char.def` has no `SPACE` category, which the segmenter needs to skip whitespace ([#1166](https://github.com/lindera/lindera/issues/1166)). Without it, `lindera tokenize` fails with `SPACE category is not defined in the dictionary (char.def)`.
+
 ## Output Model Format
 
 The trained model is serialized in `rkyv` binary format for fast loading. It contains:
 
 - Feature weights learned by the CRF
-- Label set (vocabulary entries)
+- Label set (the seed rows, then the `unk.def` entries)
 - Part-of-speech information
-- Feature templates
-- Training metadata (regularization, iterations, feature/label counts)
+- The `unk.def` entries, in file order, and the content of `char.def`, `feature.def` and `rewrite.def`
+- Training metadata (format version, regularization, iterations, feature/label counts)
+
+The format version is `2.0.0` (`lindera_trainer::model::MODEL_FORMAT_VERSION`), and it changes whenever the layout or the meaning of the model changes. `lindera export` rejects a `model.dat` written by another version, including every `model.dat` written before 7.0.0, with an error that ends in "re-run `lindera train` to regenerate it". Train such a model again with the current version.
 
 The output is byte-reproducible: training the same inputs twice with the same
 flags produces identical `model.dat` bytes, so the artifact can be checksummed

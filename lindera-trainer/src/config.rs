@@ -15,15 +15,17 @@ use lindera_dictionary::dictionary::character_definition::{
 use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use lindera_dictionary::dictionary::metadata::Metadata;
 use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
-use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
+use lindera_dictionary::dictionary::unknown_dictionary::{UnknownDictionary, parse_unk};
+use lindera_dictionary::viterbi::{LexType, WordEntry, WordId};
 
 /// Configuration for training.
 pub struct TrainerConfig {
     pub(crate) dict: Dictionary,
     /// Default category of every code point: the first category of the last
-    /// `char.def` line that covers it (MeCab's `default_type`). The `%t`
-    /// feature uses it, because the category list in `dict` is sorted by
-    /// category id and so does not start with the default category.
+    /// `char.def` line that covers it (MeCab's `default_type`), the `%t`
+    /// value of a seed row. Since #1111 the character definition in `dict`
+    /// lists the same category first for every code point, so the two
+    /// agree; this table is the builder's direct record of it.
     pub(crate) default_categories: LookupTable<CategoryId>,
     pub(crate) surfaces: Vec<String>,
     /// Feature strings for each entry (parallel to surfaces)
@@ -38,15 +40,20 @@ pub struct TrainerConfig {
     pub(crate) cost_factor: i32,
     /// Metadata from which encoding and schema information is derived
     pub(crate) metadata: Metadata,
-    /// Maps unknown word category names to their feature strings from unk.def
-    /// Format: category -> "pos,feature1,feature2,..."
+    /// The `unk.def` entries in file order, as `(category, feature string)`
+    /// pairs: every entry line, several per category included (#1110). The
+    /// index of an entry is its unknown-word entry id in
+    /// `dict.unknown_dictionary`, which is built from the same lines, and
+    /// the order of its CRF label and of its exported `unk.def` line.
     ///
-    /// Ordered rather than hashed: this map is cloned verbatim into
-    /// `SerializableModel::unk_categories`, whose serialized byte layout must
-    /// not depend on iteration order (#974).
-    pub(crate) unk_categories: BTreeMap<String, String>,
-    /// Maps unknown word category names to their costs from unk.def
-    /// Format: category -> cost
+    /// A `Vec` rather than a map keyed by category, which kept only the last
+    /// line of a category. It is cloned into
+    /// `SerializableModel::unk_entries`, and a `Vec` serializes in its own
+    /// order, so `model.dat` stays byte-reproducible (#974).
+    pub(crate) unk_entries: Vec<(String, String)>,
+    /// The cost column of `unk.def` by category name; a category with
+    /// several entries keeps the cost of its last one. Only
+    /// `Model::get_unknown_word_cost` reads it.
     pub(crate) unk_costs: HashMap<String, i32>,
     /// Raw content of the character definition file (char.def)
     /// Preserved from training input for export
@@ -214,30 +221,44 @@ impl TrainerConfig {
         let dictionary_rewriter =
             DictionaryRewriter::from_reader(std::io::Cursor::new(rewrite_def_content.as_bytes()))?;
 
-        // Parse unk.def to extract category-to-features mapping
+        // Parse unk.def into its entries, in file order
         let mut unk_content = String::new();
         {
             let mut unk_reader = BufReader::new(unk_handler_rdr);
             std::io::Read::read_to_string(&mut unk_reader, &mut unk_content)?;
         }
 
-        let mut unk_categories = BTreeMap::new();
+        let mut unk_entries = Vec::new();
         let mut unk_costs = HashMap::new();
-        for line in unk_content.lines() {
+        // The entry lines alone, for the unknown-word dictionary: the
+        // dictionary builder's `parse_unk` reads every line as an entry, and
+        // must number the entries as `unk_entries` does.
+        let mut unk_entry_lines = String::new();
+        for (index, line) in unk_content.lines().enumerate() {
             if line.trim().is_empty() || line.starts_with('#') {
                 continue;
             }
             let parts: Vec<&str> = line.split(',').collect();
             // Format: category,left_id,right_id,cost,feature1,feature2,...
-            if parts.len() >= 5 {
-                let category = parts[0].to_string();
-                let features = parts[4..].join(",");
-                unk_categories.insert(category.clone(), features);
+            // A shorter line is a format error, as in MeCab and `lindera
+            // build`; skipping it would silently drop an unknown-word entry.
+            if parts.len() < 5 {
+                return Err(anyhow::anyhow!(
+                    "unk.def line {}: expected at least 5 fields (category, left id, \
+                     right id, cost, feature), got {}",
+                    index + 1,
+                    parts.len()
+                ));
+            }
+            let category = parts[0].to_string();
+            let features = parts[4..].join(",");
+            unk_entries.push((category.clone(), features));
+            unk_entry_lines.push_str(line);
+            unk_entry_lines.push('\n');
 
-                // Parse cost (4th column)
-                if let Ok(cost) = parts[3].parse::<i32>() {
-                    unk_costs.insert(category, cost);
-                }
+            // Parse cost (4th column)
+            if let Ok(cost) = parts[3].parse::<i32>() {
+                unk_costs.insert(category, cost);
             }
         }
 
@@ -251,9 +272,9 @@ impl TrainerConfig {
         // Build dictionary from readers (need to re-create readers from content strings)
         use std::io::Cursor;
         let (dict, default_categories) = Self::build_dictionary_from_readers(
-            &lexicon_content,
+            &surfaces,
             Cursor::new(char_def_content.as_bytes()),
-            Cursor::new(unk_content.as_bytes()),
+            Cursor::new(unk_entry_lines.as_bytes()),
         )?;
 
         Ok(Self {
@@ -267,7 +288,7 @@ impl TrainerConfig {
             dictionary_rewriter,
             cost_factor: 700,              // MeCab default cost-factor
             metadata: Metadata::default(), // Use default metadata for backward compatibility
-            unk_categories,
+            unk_entries,
             unk_costs,
             char_def_content,
             feature_def_content: feature_content,
@@ -381,16 +402,18 @@ impl TrainerConfig {
     ///
     /// # Arguments
     ///
-    /// * `lexicon_content` - The seed lexicon (lex.csv) content.
+    /// * `surfaces` - The seed surfaces, one per kept lexicon row, in row
+    ///   order (see [`Self::build_prefix_dict_from_surfaces`]).
     /// * `char_prop_rdr` - Reader for the character property file (char.def).
-    /// * `unk_handler_rdr` - Reader for the unknown word file (unk.def).
+    /// * `unk_handler_rdr` - Reader for the entry lines of the unknown word
+    ///   file (unk.def), without comment or blank lines.
     ///
     /// # Returns
     ///
     /// The minimal dictionary used during training, and the default category
     /// table built from the same `char.def`.
     fn build_dictionary_from_readers<R2, R3>(
-        lexicon_content: &str,
+        surfaces: &[String],
         char_prop_rdr: R2,
         unk_handler_rdr: R3,
     ) -> Result<(Dictionary, LookupTable<CategoryId>)>
@@ -415,7 +438,7 @@ impl TrainerConfig {
         let unknown_dict = Self::build_unknown_dict_from_content(&unk_content, &char_def)?;
 
         // Build prefix dictionary (lexicon)
-        let prefix_dict = Self::build_prefix_dict_from_content(lexicon_content)?;
+        let prefix_dict = Self::build_prefix_dict_from_surfaces(surfaces)?;
 
         // Create minimal connection cost matrix
         let conn_matrix = Self::create_minimal_connection_matrix()?;
@@ -452,24 +475,70 @@ impl TrainerConfig {
         Ok((char_def, builder.build_default_category_table()))
     }
 
+    /// Reads `unk.def` with the dictionary builder's parser, so training
+    /// sees the unknown-word entries of the dictionary built from the
+    /// exported files: every entry of a category, in file order, under the
+    /// category's id (#1110).
+    ///
+    /// # Arguments
+    ///
+    /// * `content` - The entry lines of `unk.def`, without comment or blank
+    ///   lines: `parse_unk` reads every line as an entry.
+    /// * `char_def` - The character definition whose categories the entries
+    ///   are grouped by.
+    ///
+    /// # Returns
+    ///
+    /// The unknown-word dictionary; entry `i` is the `i`-th line of
+    /// `content`. Its costs and context ids are the input's, which training
+    /// does not read.
     fn build_unknown_dict_from_content(
-        _content: &str,
-        _char_def: &CharacterDefinition,
+        content: &str,
+        char_def: &CharacterDefinition,
     ) -> Result<UnknownDictionary> {
-        // Create minimal unknown dictionary for training
-        Ok(UnknownDictionary {
-            category_references: vec![vec![0]; 6], // One for each category
-            costs: vec![],                         // Will be filled during training
-            words_idx_data: vec![],
-            words_data: vec![],
-        })
+        parse_unk(char_def.categories(), content, None)
+            .map_err(|err| anyhow::anyhow!("failed to parse unk.def: {err}"))
     }
 
-    fn build_prefix_dict_from_content(_content: &str) -> Result<PrefixDictionary> {
-        // Create minimal (empty) prefix dictionary structure for training.
-        // In production, this would parse the lexicon CSV format.
-        PrefixDictionary::from_word_entry_map(&std::collections::BTreeMap::new())
-            .map_err(|err| anyhow::anyhow!("failed to build empty prefix dictionary: {err}"))
+    /// Builds the training lexicon: a prefix dictionary over the seed
+    /// surfaces whose word id is the entry's index in `surfaces` (#1164).
+    ///
+    /// `Trainer::build_lattice` turns a match into the CRF label
+    /// `word_id + 1`, the label `Trainer::new` created for the same seed row,
+    /// so the ids must follow `surfaces` exactly, rows that share a surface
+    /// included (they become several entries of one key, in row order). A
+    /// surface the trie cannot store (empty, or containing NUL) is left out:
+    /// its row keeps its label but never becomes a candidate.
+    ///
+    /// # Arguments
+    ///
+    /// * `surfaces` - The seed surfaces, one per kept lexicon row, in row
+    ///   order.
+    ///
+    /// # Returns
+    ///
+    /// The prefix dictionary. Its entries carry no cost and no context ids,
+    /// which training does not read.
+    fn build_prefix_dict_from_surfaces(surfaces: &[String]) -> Result<PrefixDictionary> {
+        let mut word_entry_map: BTreeMap<String, Vec<WordEntry>> = BTreeMap::new();
+        for (index, surface) in surfaces.iter().enumerate() {
+            if surface.is_empty() || surface.contains('\0') {
+                continue;
+            }
+            let word_id = u32::try_from(index)
+                .map_err(|_| anyhow::anyhow!("the seed lexicon has more than u32::MAX rows"))?;
+            word_entry_map
+                .entry(surface.clone())
+                .or_default()
+                .push(WordEntry::new(
+                    WordId::new(LexType::System, word_id),
+                    0,
+                    0,
+                    0,
+                ));
+        }
+        PrefixDictionary::from_word_entry_map(&word_entry_map)
+            .map_err(|err| anyhow::anyhow!("failed to build the training lexicon: {err}"))
     }
 
     fn create_minimal_connection_matrix() -> Result<ConnectionCostMatrix> {
@@ -674,8 +743,8 @@ mod tests {
     }
 
     #[test]
-    fn test_unk_categories_ipadic() {
-        // Test that unk_categories are correctly extracted for IPADIC format
+    fn test_unk_entries_ipadic() {
+        // Test that unk_entries are correctly extracted for IPADIC format
         let lexicon_data = "東京,0,0,5000,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー\n";
         let char_data = "DEFAULT 0 1 0\nHIRAGANA 1 1 0\n";
         let unk_data = "DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\nHIRAGANA,1,1,2000,名詞,代名詞,一般,*,*,*,*,*,*\n";
@@ -691,21 +760,22 @@ mod tests {
         )
         .unwrap();
 
-        // Verify unk_categories extracted correctly
-        assert_eq!(config.unk_categories.len(), 2);
+        // Verify unk_entries extracted correctly
         assert_eq!(
-            config.unk_categories.get("DEFAULT").unwrap(),
-            "名詞,一般,*,*,*,*,*,*,*"
-        );
-        assert_eq!(
-            config.unk_categories.get("HIRAGANA").unwrap(),
-            "名詞,代名詞,一般,*,*,*,*,*,*"
+            config.unk_entries,
+            vec![
+                ("DEFAULT".to_string(), "名詞,一般,*,*,*,*,*,*,*".to_string()),
+                (
+                    "HIRAGANA".to_string(),
+                    "名詞,代名詞,一般,*,*,*,*,*,*".to_string()
+                ),
+            ]
         );
     }
 
     #[test]
-    fn test_unk_categories_ko_dic() {
-        // Test that unk_categories work for Korean dictionary format
+    fn test_unk_entries_ko_dic() {
+        // Test that unk_entries work for Korean dictionary format
         let lexicon_data = "한국,0,0,5000,NNG,Korea,F,han-guk\n";
         let char_data = "DEFAULT 0 1 0\n";
         let unk_data = "DEFAULT,0,0,1500,NNG,unknown,F,*\n";
@@ -721,16 +791,15 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(config.unk_categories.len(), 1);
         assert_eq!(
-            config.unk_categories.get("DEFAULT").unwrap(),
-            "NNG,unknown,F,*"
+            config.unk_entries,
+            vec![("DEFAULT".to_string(), "NNG,unknown,F,*".to_string())]
         );
     }
 
     #[test]
-    fn test_unk_categories_cc_cedict() {
-        // Test that unk_categories work for Chinese dictionary format
+    fn test_unk_entries_cc_cedict() {
+        // Test that unk_entries work for Chinese dictionary format
         let lexicon_data = "中国,0,0,5000,n,China,*,zhong1guo2\n";
         let char_data = "DEFAULT 0 1 0\n";
         let unk_data = "DEFAULT,0,0,1500,n,unknown,*,*\n";
@@ -746,11 +815,90 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(config.unk_categories.len(), 1);
         assert_eq!(
-            config.unk_categories.get("DEFAULT").unwrap(),
-            "n,unknown,*,*"
+            config.unk_entries,
+            vec![("DEFAULT".to_string(), "n,unknown,*,*".to_string())]
         );
+    }
+
+    /// #1110: every `unk.def` line is an entry, several per category and in
+    /// file order (here not the `char.def` order), and the unknown-word
+    /// dictionary numbers them the same way. Comment and blank lines
+    /// (`resources/training/unk.def` starts with a comment) and a line
+    /// without features are not entries; `parse_unk` would read the first
+    /// two as malformed entries.
+    #[test]
+    fn test_unk_def_line_without_a_feature_is_an_error() {
+        // MeCab and `lindera build` reject such a line; training must not
+        // silently drop the entry.
+        let result = TrainerConfig::from_readers(
+            Cursor::new("東京,0,0,5000,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー\n"),
+            Cursor::new("DEFAULT 0 1 0\nALPHA 1 1 0\n0x0041..0x005A ALPHA\n"),
+            Cursor::new("DEFAULT,1,1,0,名詞,一般,*,*,*,*,*\nALPHA,1,1,0\n"),
+            Cursor::new("UNIGRAM:%F[0]\n"),
+            Cursor::new("*\tUNK\n"),
+        );
+        let message = match result {
+            Ok(_) => panic!("a four-field unk.def line was accepted"),
+            Err(err) => err.to_string(),
+        };
+        assert!(message.contains("unk.def line 2"), "{message}");
+    }
+
+    #[test]
+    fn test_unk_entries_keep_every_line_in_file_order() {
+        let config = TrainerConfig::from_readers(
+            Cursor::new("東京,0,0,5000,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー\n"),
+            Cursor::new(
+                "DEFAULT 0 1 0\nKANJI 0 0 2\nALPHA 1 1 0\n\
+                 0x4E00..0x9FFF KANJI\n0x0041..0x005A ALPHA\n",
+            ),
+            Cursor::new(
+                "# Unknown word definitions\n\
+                 ALPHA,1,1,0,名詞,固有名詞,一般,*,*,*,*\n\
+                 \n\
+                 DEFAULT,1,1,0,名詞,一般,*,*,*,*,*\n\
+                 KANJI,2,2,0,名詞,一般,*,*,*,*,*\n\
+                 KANJI,3,3,0,名詞,固有名詞,人名,一般,*,*,*\n",
+            ),
+            Cursor::new("UNIGRAM:%F[0]\n"),
+            Cursor::new("*\tUNK\n"),
+        )
+        .unwrap();
+
+        assert_eq!(
+            config.unk_entries,
+            vec![
+                (
+                    "ALPHA".to_string(),
+                    "名詞,固有名詞,一般,*,*,*,*".to_string()
+                ),
+                ("DEFAULT".to_string(), "名詞,一般,*,*,*,*,*".to_string()),
+                ("KANJI".to_string(), "名詞,一般,*,*,*,*,*".to_string()),
+                (
+                    "KANJI".to_string(),
+                    "名詞,固有名詞,人名,一般,*,*,*".to_string()
+                ),
+            ]
+        );
+        let char_def = config.dict.character_definition.as_ref();
+        let unknown = config.dict.unknown_dictionary.as_ref();
+        let ids = |name: &str| match char_def.category_id_by_name(name) {
+            Some(id) => unknown.lookup_word_ids(id).to_vec(),
+            None => panic!("no category {name}"),
+        };
+        assert_eq!(ids("DEFAULT"), vec![1]);
+        assert_eq!(ids("KANJI"), vec![2, 3]);
+        assert_eq!(ids("ALPHA"), vec![0]);
+        for (id, (_, feature)) in config.unk_entries.iter().enumerate() {
+            assert_eq!(
+                unknown
+                    .word_details(id as u32)
+                    .map(|fields| fields.join(",")),
+                Some(feature.clone()),
+                "entry {id}"
+            );
+        }
     }
 
     fn config_with_char_def(char_data: &str) -> TrainerConfig {

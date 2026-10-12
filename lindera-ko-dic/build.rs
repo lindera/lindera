@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         input_dir: "mecab-ko-dic-2.1.1-20180720",
         src_subdir: None,
         output_dir: "lindera-ko-dic",
-        dummy_input: "테스트,1785,3543,4721,NNG,행위,F,테스트,*,*,*,*\n",
+        dummy_input: "테스트,0,0,4721,NNG,행위,F,테스트,*,*,*,*\n",
         download_urls: &["https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz"],
         md5_hash: "b996764e91c96bc89dc32ea208514a96",
     };

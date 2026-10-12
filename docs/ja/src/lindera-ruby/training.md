@@ -74,6 +74,8 @@ Lindera.export('/tmp/model.dat', '/tmp/dictionary_source', 'resources/training/m
 - `char.def` -- 文字カテゴリ定義
 - `metadata.json` -- 更新されたメタデータ（`metadata` パラメータ指定時）
 
+モデルファイルは、このバージョンの学習で作ったものである必要があります。それより前のバージョンで書かれたモデルファイル（7.0.0 より前に書かれたものはすべて該当）は拒否され、`Lindera.export` は学習のやり直しを求めるエラーで失敗します。そうしたモデルは `Lindera.train` で学習し直してください。
+
 ## 完全なワークフロー
 
 カスタム辞書の学習と使用の完全なワークフロー：

@@ -9,6 +9,33 @@ use serde::{Deserialize, Serialize};
 use crate::corpus::Word;
 use lindera_dictionary::viterbi::{LexType, WordEntry, WordId};
 
+/// The `metadata.version` this build writes into `model.dat` and requires
+/// when reading one. Bumped whenever the layout or the meaning of
+/// [`SerializableModel`] changes; 2.0.0 keeps every `unk.def` line as its own
+/// entry (`SerializableModel::unk_entries`, #1110).
+pub const MODEL_FORMAT_VERSION: &str = "2.0.0";
+
+/// Checks that a model was written in the format this build reads.
+///
+/// # Arguments
+///
+/// * `version` - The model's `metadata.version`, or `None` when it has none.
+///
+/// # Returns
+///
+/// `Ok(())` when the version is [`MODEL_FORMAT_VERSION`], or an error that
+/// tells the user to re-train.
+fn check_format_version(version: Option<&str>) -> Result<()> {
+    if version == Some(MODEL_FORMAT_VERSION) {
+        return Ok(());
+    }
+    Err(anyhow::anyhow!(
+        "model format version {} is not {MODEL_FORMAT_VERSION}, so the model was written by \
+         a different version of lindera-trainer; re-run `lindera train` to regenerate it.",
+        version.unwrap_or("(none)")
+    ))
+}
+
 /// Convert CRF weight to MeCab-compatible cost using cost-factor.
 ///
 /// MeCab's `tocost(d, n)` formula: `clamp(-n * d, -32767, 32767)`
@@ -101,20 +128,24 @@ pub struct SerializableModel {
     /// byte-reproducible. No stored value changes: both levels are only ever
     /// filled key-by-key from `Vec`-ordered sources.
     pub connection_matrix: BTreeMap<usize, BTreeMap<usize, f64>>,
-    /// Maximum left connection ID
+    /// Highest left context id of the model, whether or not a weight survived
+    /// for it; `matrix.def` has `max_left_id + 1` columns.
     pub max_left_id: usize,
-    /// Maximum right connection ID
+    /// Highest right context id of the model, whether or not a weight
+    /// survived for it; `matrix.def` has `max_right_id + 1` rows.
     pub max_right_id: usize,
     /// Feature set information (left_id, right_id, weight) for each label
     pub feature_sets: Vec<FeatureSetInfo>,
-    /// Unknown word category names (from char.def)
-    pub unk_category_names: Vec<String>,
-    /// Unknown word category features (from unk.def).
+    /// The `unk.def` entries the model was trained with, in file order, as
+    /// `(category, feature string)` pairs: every line, several per category
+    /// included (#1110). Entry `i` is label
+    /// `labels.len() - unk_entries.len() + i` and is written to `unk.def` as
+    /// line `i`.
     ///
-    /// Ordered for the same reason as
-    /// [`SerializableModel::connection_matrix`]: rkyv's archived `HashMap`
-    /// layout follows source iteration order (#974).
-    pub unk_categories: BTreeMap<String, String>,
+    /// A `Vec`, which serializes in its own order, so `model.dat` stays
+    /// byte-reproducible without the ordered map the per-category field
+    /// needed (#974).
+    pub unk_entries: Vec<(String, String)>,
     /// Raw content of the character definition file (char.def)
     pub char_def_content: String,
     /// Raw content of the feature definition file (feature.def)
@@ -145,6 +176,11 @@ pub struct Model {
     pub(crate) config: super::config::TrainerConfig,
     pub(crate) feature_weights: Vec<f64>,
     pub(crate) labels: Vec<String>,
+    /// The feature strings of the virtual labels, in label order. They
+    /// follow the exported labels in the CRF model (see
+    /// `Trainer::virtual_label`) and are never exported themselves; they only
+    /// name context ids in `left-id.def` and `right-id.def`.
+    pub(crate) virtual_features: Vec<String>,
     pub(crate) user_entries: Vec<(Word, WordEntry, NonZeroU32)>,
     pub(crate) merged_model: Option<lindera_crf::MergedModel>,
     pub(crate) regularization_cost: f64,
@@ -153,11 +189,28 @@ pub struct Model {
 
 impl Model {
     /// Creates a new model with metadata.
+    ///
+    /// # Arguments
+    ///
+    /// * `raw_model` - The trained CRF model.
+    /// * `config` - The training configuration.
+    /// * `feature_weights` - The weight of every seed row.
+    /// * `labels` - The exported labels: the seed surfaces, then the category
+    ///   of every `unk.def` entry.
+    /// * `virtual_features` - The feature strings of the virtual labels,
+    ///   which follow the exported labels in `raw_model`.
+    /// * `regularization_cost` - The regularization coefficient used.
+    /// * `max_iterations` - The iteration limit used.
+    ///
+    /// # Returns
+    ///
+    /// The model.
     pub(crate) fn new_with_metadata(
         raw_model: lindera_crf::RawModel,
         config: super::config::TrainerConfig,
         feature_weights: Vec<f64>,
         labels: Vec<String>,
+        virtual_features: Vec<String>,
         regularization_cost: f64,
         max_iterations: u64,
     ) -> Self {
@@ -166,6 +219,7 @@ impl Model {
             config,
             feature_weights,
             labels,
+            virtual_features,
             user_entries: Vec::new(),
             merged_model: None,
             regularization_cost,
@@ -280,18 +334,21 @@ impl Model {
         // Compute optimal cost factor from actual weight range
         let cost_factor = calculate_cost_factor(&merged_model);
 
+        // The matrix must cover every context id the merge assigned, whether
+        // or not a weight survived for it: the merge numbers the ids densely
+        // from 1 (0 is BOS/EOS), and every lexicon and unknown entry carries
+        // one. Counting only the cells that kept a weight shrank the left
+        // axis, and to nothing when regularization zeroed every bigram
+        // weight, so the built dictionary indexed past its matrix.
+        let max_right_id = merged_model.right_conn_to_left_feats.len();
+        let max_left_id = merged_model.left_conn_to_right_feats.len();
+
         let mut connection_matrix: BTreeMap<usize, BTreeMap<usize, f64>> = BTreeMap::new();
-        let mut max_left_id = 0;
-        let mut max_right_id = 0;
-
         for (right_id, left_map) in merged_model.matrix.iter().enumerate() {
-            max_right_id = max_right_id.max(right_id);
-            let mut inner_map = BTreeMap::new();
-
-            for (&left_id, &weight) in left_map.iter() {
-                max_left_id = max_left_id.max(left_id as usize);
-                inner_map.insert(left_id as usize, weight);
-            }
+            let inner_map: BTreeMap<usize, f64> = left_map
+                .iter()
+                .map(|(&left_id, &weight)| (left_id as usize, weight))
+                .collect();
 
             if !inner_map.is_empty() {
                 connection_matrix.insert(right_id, inner_map);
@@ -309,47 +366,25 @@ impl Model {
             })
             .collect();
 
-        // Extract unknown word category information
-        let char_def = &self.config.dict.character_definition;
-        let unk_category_names: Vec<String> = char_def
-            .categories()
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
-
         // Build left/right ID maps from merged model's connection IDs
-        // before feature_sets is moved into SerializableModel
-        // Build left/right ID maps from merged model's connection IDs.
-        // Use feature strings (POS info) from config.features, not surface forms.
+        // before feature_sets is moved into SerializableModel.
+        // Use feature strings (POS info), not surface forms. The labels are
+        // the seed rows, then the unk.def entries, then the virtual labels.
         let features = &self.config.features;
-        let unk_categories = &self.config.unk_categories;
-        let unk_start_idx = self
-            .labels
-            .len()
-            .saturating_sub(self.config.dict.character_definition.categories().len());
+        let unk_entries = &self.config.unk_entries;
+        let unk_start_idx = self.config.surfaces.len();
+        let virtual_start_idx = unk_start_idx + unk_entries.len();
 
         let get_feature_string = |i: usize| -> String {
             if i < unk_start_idx {
-                // Dictionary entry: use feature string from config.features
-                if i < features.len() {
-                    features[i].clone()
-                } else {
-                    "*".to_string()
-                }
+                features.get(i).cloned().unwrap_or_else(|| "*".to_string())
+            } else if i < virtual_start_idx {
+                unk_entries[i - unk_start_idx].1.clone()
             } else {
-                // Unknown word category: use unk feature string
-                let category_idx = i - unk_start_idx;
-                let char_def = &self.config.dict.character_definition;
-                let categories = char_def.categories();
-                if category_idx < categories.len() {
-                    let cat_name = &categories[category_idx];
-                    unk_categories
-                        .get(cat_name)
-                        .cloned()
-                        .unwrap_or_else(|| format!("UNK_{cat_name}"))
-                } else {
-                    format!("UNK_{}", category_idx)
-                }
+                self.virtual_features
+                    .get(i - virtual_start_idx)
+                    .cloned()
+                    .unwrap_or_else(|| "*".to_string())
             }
         };
 
@@ -389,7 +424,7 @@ impl Model {
             labels: self.labels.clone(),
             pos_info: self.extract_pos_info(),
             metadata: ModelMetadata {
-                version: "1.0.0".to_string(),
+                version: MODEL_FORMAT_VERSION.to_string(),
                 regularization: self.regularization_cost,
                 iterations: self.max_iterations,
                 feature_count: self.feature_weights.len(),
@@ -399,8 +434,7 @@ impl Model {
             max_left_id,
             max_right_id,
             feature_sets,
-            unk_category_names,
-            unk_categories: self.config.unk_categories.clone(),
+            unk_entries: self.config.unk_entries.clone(),
             char_def_content: self.config.char_def_content.clone(),
             feature_def_content: self.config.feature_def_content.clone(),
             rewrite_def_content: self.config.rewrite_def_content.clone(),
@@ -435,7 +469,9 @@ impl Model {
     /// Returns an error naming the format that failed. A model written by a
     /// build with a different `SerializableModel` layout is reported as such,
     /// with the instruction to re-train -- it used to fall through to the
-    /// legacy JSON reader and surface as an unrelated UTF-8 error (#974).
+    /// legacy JSON reader and surface as an unrelated UTF-8 error (#974). So
+    /// is a model, in either format, whose `metadata.version` is not
+    /// [`MODEL_FORMAT_VERSION`] (#1110).
     pub fn read_model<R: Read>(mut reader: R) -> Result<SerializableModel> {
         let mut buffer = Vec::new();
         reader.read_to_end(&mut buffer)?;
@@ -450,6 +486,7 @@ impl Model {
         // a successful parse proves the on-disk layout matched this build.
         let rkyv_error = match rkyv::from_bytes::<SerializableModel, rkyv::rancor::Error>(&buffer) {
             Ok(mut model) => {
+                check_format_version(Some(&model.metadata.version))?;
                 // Backward compatibility: if feature_sets is empty, generate from feature_weights
                 if model.feature_sets.is_empty() {
                     model.feature_sets = model
@@ -477,7 +514,18 @@ impl Model {
             let json_str = String::from_utf8(buffer).map_err(|err| {
                 anyhow::anyhow!("model file starts like legacy JSON but is not valid UTF-8: {err}")
             })?;
-            return serde_json::from_str(&json_str)
+            let value: serde_json::Value = serde_json::from_str(&json_str)
+                .map_err(|err| anyhow::anyhow!("failed to parse legacy JSON model: {err}"))?;
+            // Checked before the fields are read, so that a model of another
+            // format version gets the instruction to re-train rather than a
+            // missing-field error.
+            check_format_version(
+                value
+                    .get("metadata")
+                    .and_then(|metadata| metadata.get("version"))
+                    .and_then(serde_json::Value::as_str),
+            )?;
+            return serde_json::from_value(value)
                 .map_err(|err| anyhow::anyhow!("failed to parse legacy JSON model: {err}"));
         }
 
@@ -496,8 +544,8 @@ impl Model {
     /// Generate a default feature string with appropriate number of fields
     /// based on existing entries in the dictionary
     fn generate_default_features(&self) -> String {
-        // Try to infer field count from existing unk_categories
-        if let Some(first_unk) = self.config.unk_categories.values().next() {
+        // Try to infer field count from the unk.def entries
+        if let Some((_, first_unk)) = self.config.unk_entries.first() {
             let field_count = first_unk.split(',').count();
             return vec!["*"; field_count].join(",");
         }
@@ -517,26 +565,18 @@ impl Model {
         // Get POS info from config.features (parallel to surfaces/labels)
         let mut pos_info = Vec::new();
 
-        for (i, label) in self.labels.iter().enumerate() {
+        for i in 0..self.labels.len() {
             // First check if this is within the vocabulary (config.features range)
             if i < self.config.features.len() {
                 pos_info.push(self.config.features[i].clone());
             } else {
-                // For unknown word categories (DEFAULT, HIRAGANA, etc.),
-                // look up POS info from unk_categories
+                // An unk.def entry: its own feature string, by entry index
                 let unk_features = self
                     .config
-                    .unk_categories
-                    .get(label)
-                    .cloned()
-                    .unwrap_or_else(|| {
-                        // Fallback: use DEFAULT category if label not found in unk_categories
-                        self.config
-                            .unk_categories
-                            .get("DEFAULT")
-                            .cloned()
-                            .unwrap_or_else(|| self.generate_default_features())
-                    });
+                    .unk_entries
+                    .get(i - self.config.features.len())
+                    .map(|(_, feature)| feature.clone())
+                    .unwrap_or_else(|| self.generate_default_features());
                 pos_info.push(unk_features);
             }
         }
@@ -632,27 +672,28 @@ impl Model {
         Ok(())
     }
 
+    /// Writes `unk.def`: one line per `unk.def` entry the model was trained
+    /// with, in file order, with the entry's category name and feature string
+    /// and its trained context ids and cost (#1110).
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `unk.def`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
     pub fn write_unknown_dictionary<W: Write>(&self, writer: &mut W) -> Result<()> {
         let merged_model = self.get_merged_model()?;
         let cost_factor = calculate_cost_factor(&merged_model);
 
-        let char_def = &self.config.dict.character_definition;
-        let category_names = char_def.categories();
         let unk_start_idx = self.config.surfaces.len();
 
-        for (i, category_name) in category_names.iter().enumerate() {
+        for (i, (category_name, features)) in self.config.unk_entries.iter().enumerate() {
             let feature_set_idx = unk_start_idx + i;
             if feature_set_idx < merged_model.feature_sets.len() {
                 let feature_set = merged_model.feature_sets[feature_set_idx];
                 let cost = tocost(feature_set.weight, cost_factor);
-
-                let default_features = self.generate_default_features();
-                let features = self
-                    .config
-                    .unk_categories
-                    .get(category_name.as_str())
-                    .map(|s| s.as_str())
-                    .unwrap_or(default_features.as_str());
 
                 writeln!(
                     writer,
@@ -723,7 +764,18 @@ impl Model {
         800 // Slightly lower cost than default for user words
     }
 
-    /// Calculate unknown word cost based on trained feature weights using dynamic calculation
+    /// Returns the input cost of an unknown-word category.
+    ///
+    /// It reads the cost column of `unk.def`, not the trained weights; a
+    /// category with several entries gives the cost of its last line.
+    ///
+    /// # Arguments
+    ///
+    /// * `category` - The category id, its index in `char.def`.
+    ///
+    /// # Returns
+    ///
+    /// The cost, or 2000 when the category or its cost is unknown.
     pub fn get_unknown_word_cost(&self, category: usize) -> i32 {
         // Get category name from character definition
         let char_def = &self.config.dict.character_definition;
@@ -1049,8 +1101,8 @@ impl SerializableModel {
     /// Generate a default feature string with appropriate number of fields
     /// based on existing entries in the dictionary
     fn generate_default_features(&self) -> String {
-        // Try to infer field count from existing unk_categories
-        if let Some(first_unk) = self.unk_categories.values().next() {
+        // Try to infer field count from the unk.def entries
+        if let Some((_, first_unk)) = self.unk_entries.first() {
             let field_count = first_unk.split(',').count();
             return vec!["*"; field_count].join(",");
         }
@@ -1067,11 +1119,8 @@ impl SerializableModel {
 
     /// Write lexicon file with proper cost calculation
     pub fn write_lexicon<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
-        // Unknown word categories are at the end of labels, skip them (they go to unk.def)
-        let unk_start_idx = self
-            .labels
-            .len()
-            .saturating_sub(self.unk_category_names.len());
+        // Unknown word entries are at the end of labels, skip them (they go to unk.def)
+        let unk_start_idx = self.labels.len().saturating_sub(self.unk_entries.len());
 
         // Write lexicon entries using learned connection IDs and costs
         for (i, label) in self.labels.iter().enumerate() {
@@ -1102,33 +1151,41 @@ impl SerializableModel {
         Ok(())
     }
 
-    /// Write dense connection cost matrix (MeCab-compatible)
+    /// Writes the dense connection cost matrix (MeCab-compatible `matrix.def`).
+    ///
+    /// The matrix covers every context id of the model, plus 0 for BOS/EOS,
+    /// even when no bigram weight survived training: the lexicon and unknown
+    /// entries carry those ids, and the runtime looks every transition up.
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `matrix.def`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
     pub fn write_connection_costs<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
-        if !self.connection_matrix.is_empty() {
-            let right_size = self.max_right_id + 1;
-            let left_size = self.max_left_id + 1;
+        let right_size = self.max_right_id + 1;
+        let left_size = self.max_left_id + 1;
 
-            writeln!(writer, "{right_size} {left_size}")?;
+        writeln!(writer, "{right_size} {left_size}")?;
 
-            // Dense matrix: all (right_id, left_id) pairs
-            // Unseen pairs get maximum penalty cost to block unlearned transitions,
-            // forcing Viterbi to prefer paths through learned POS bigram connections.
-            for right_id in 0..right_size {
-                for left_id in 0..left_size {
-                    let cost = if let Some(&weight) = self
-                        .connection_matrix
-                        .get(&right_id)
-                        .and_then(|inner| inner.get(&left_id))
-                    {
-                        tocost(weight, self.cost_factor)
-                    } else {
-                        i16::MAX
-                    };
-                    writeln!(writer, "{right_id} {left_id} {cost}")?;
-                }
+        // Dense matrix: all (right_id, left_id) pairs
+        // Unseen pairs get maximum penalty cost to block unlearned transitions,
+        // forcing Viterbi to prefer paths through learned POS bigram connections.
+        for right_id in 0..right_size {
+            for left_id in 0..left_size {
+                let cost = if let Some(&weight) = self
+                    .connection_matrix
+                    .get(&right_id)
+                    .and_then(|inner| inner.get(&left_id))
+                {
+                    tocost(weight, self.cost_factor)
+                } else {
+                    i16::MAX
+                };
+                writeln!(writer, "{right_id} {left_id} {cost}")?;
             }
-        } else {
-            writeln!(writer, "0 0")?;
         }
 
         Ok(())
@@ -1177,14 +1234,15 @@ impl SerializableModel {
         metadata["default_word_cost"] =
             serde_json::Value::Number(serde_json::Number::from(updated_default_cost));
 
-        // Add model_info section with training statistics
-        let max_context_id = std::cmp::max(self.max_left_id, self.max_right_id);
+        // Add model_info section with training statistics. The matrix size is
+        // the one `write_connection_costs` writes: rows are right ids, columns
+        // left ids, each with 0 for BOS/EOS.
         metadata["model_info"] = serde_json::json!({
             "feature_count": self.feature_weights.len(),
             "label_count": self.labels.len(),
             "max_left_context_id": self.max_left_id,
             "max_right_context_id": self.max_right_id,
-            "connection_matrix_size": format!("{}x{}", max_context_id + 1, max_context_id + 1),
+            "connection_matrix_size": format!("{}x{}", self.max_right_id + 1, self.max_left_id + 1),
             "version": self.metadata.version,
             "training_iterations": self.metadata.iterations,
             "regularization": self.metadata.regularization,
@@ -1197,27 +1255,28 @@ impl SerializableModel {
         Ok(())
     }
 
-    /// Write unknown word definitions
+    /// Writes `unk.def`: one line per `unk.def` entry the model was trained
+    /// with, in file order, with the entry's category name and feature string
+    /// and its trained context ids and cost (#1110).
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `unk.def`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
     pub fn write_unknown_dictionary<W: std::io::Write>(
         &self,
         writer: &mut W,
     ) -> anyhow::Result<()> {
-        let unk_start_idx = self
-            .labels
-            .len()
-            .saturating_sub(self.unk_category_names.len());
+        let unk_start_idx = self.labels.len().saturating_sub(self.unk_entries.len());
 
-        for (i, category_name) in self.unk_category_names.iter().enumerate() {
+        for (i, (category_name, features)) in self.unk_entries.iter().enumerate() {
             let feature_idx = unk_start_idx + i;
 
             if feature_idx < self.feature_sets.len() {
                 let fs = &self.feature_sets[feature_idx];
-
-                let features = self
-                    .unk_categories
-                    .get(category_name)
-                    .cloned()
-                    .unwrap_or_else(|| self.generate_default_features());
 
                 let cost = tocost(fs.weight, self.cost_factor);
 
@@ -1381,14 +1440,13 @@ mod tests {
 // `HashMap` iteration order is seeded per instance.
 #[cfg(test)]
 mod determinism_tests {
-    use super::{FeatureSetInfo, ModelMetadata, SerializableModel};
+    use super::{FeatureSetInfo, MODEL_FORMAT_VERSION, ModelMetadata, SerializableModel};
     use std::collections::BTreeMap;
 
-    /// Builds a model whose two order-sensitive maps are populated by walking
+    /// Builds a model whose order-sensitive map is populated by walking
     /// `keys` in the given order. Everything else is fixed.
     fn model_with_maps(keys: &[usize]) -> SerializableModel {
         let mut connection_matrix = BTreeMap::new();
-        let mut unk_categories = BTreeMap::new();
         for &k in keys {
             // The inner key set is derived from `k`, not from the traversal
             // order, so two builds over the same keys in different orders
@@ -1399,14 +1457,13 @@ mod determinism_tests {
                 inner.insert(k + j, (k * 64 + j) as f64);
             }
             connection_matrix.insert(k, inner);
-            unk_categories.insert(format!("CAT{k:03}"), format!("feat{k},*,*"));
         }
         SerializableModel {
             feature_weights: vec![0.5; 4],
             labels: vec!["a".to_string()],
             pos_info: vec!["名詞,一般".to_string()],
             metadata: ModelMetadata {
-                version: "1.0.0".to_string(),
+                version: MODEL_FORMAT_VERSION.to_string(),
                 regularization: 0.01,
                 iterations: 10,
                 feature_count: 4,
@@ -1420,8 +1477,7 @@ mod determinism_tests {
                 right_id: 1,
                 weight: 0.25,
             }],
-            unk_category_names: vec!["CAT000".to_string()],
-            unk_categories,
+            unk_entries: vec![("CAT000".to_string(), "feat0,*,*".to_string())],
             char_def_content: String::new(),
             feature_def_content: String::new(),
             rewrite_def_content: String::new(),
@@ -1431,8 +1487,8 @@ mod determinism_tests {
         }
     }
 
-    /// The archived bytes must depend only on the logical contents of the two
-    /// maps, never on the order they were populated in.
+    /// The archived bytes must depend only on the logical contents of the
+    /// map, never on the order it was populated in.
     ///
     /// 32 keys is deliberate: rkyv sizes the SwissTable at ~89% load and its
     /// probe window is 16 slots, so under `HashMap` the ascending and
@@ -1484,22 +1540,93 @@ mod determinism_tests {
     /// below names it exactly.
     type OrderedConnectionMatrix = BTreeMap<usize, BTreeMap<usize, f64>>;
 
-    /// The unknown-word category map's type, for the same reason.
-    type OrderedUnkCategories = BTreeMap<String, String>;
-
-    /// Compile-time guard. `model.dat` is byte-reproducible only while these
-    /// two fields are ordered maps. These functions are never called; they
-    /// exist so that switching either field back to `HashMap` fails to
-    /// compile rather than silently regressing (#974).
+    /// Compile-time guard. `model.dat` is byte-reproducible only while this
+    /// field is an ordered map. This function is never called; it exists so
+    /// that switching the field back to `HashMap` fails to compile rather
+    /// than silently regressing (#974). (`unk_entries` is a `Vec`, which
+    /// needs no guard.)
     #[allow(dead_code)]
     fn assert_connection_matrix_is_ordered(model: &SerializableModel) -> &OrderedConnectionMatrix {
         &model.connection_matrix
     }
 
-    /// See [`assert_connection_matrix_is_ordered`].
-    #[allow(dead_code)]
-    fn assert_unk_categories_is_ordered(model: &SerializableModel) -> &OrderedUnkCategories {
-        &model.unk_categories
+    /// #1110: a model written in another format version (1.0.0 kept one
+    /// unknown-word entry per category) is rejected with the instruction to
+    /// re-train, even when its bytes happen to deserialize.
+    #[test]
+    fn read_model_rejects_another_format_version() {
+        let mut model = model_with_maps(&[0, 1]);
+        let current = match rkyv::to_bytes::<rkyv::rancor::Error>(&model) {
+            Ok(bytes) => bytes,
+            Err(err) => panic!("failed to serialize model: {err}"),
+        };
+        if let Err(err) = super::Model::read_model(current.as_slice()) {
+            panic!("a {MODEL_FORMAT_VERSION} model must load: {err}");
+        }
+
+        model.metadata.version = "1.0.0".to_string();
+        let old = match rkyv::to_bytes::<rkyv::rancor::Error>(&model) {
+            Ok(bytes) => bytes,
+            Err(err) => panic!("failed to serialize model: {err}"),
+        };
+        let err = match super::Model::read_model(old.as_slice()) {
+            Ok(_) => panic!("a 1.0.0 model must not load"),
+            Err(err) => err.to_string(),
+        };
+
+        assert!(err.contains("lindera train"), "unhelpful message: {err}");
+        assert!(
+            err.contains("1.0.0"),
+            "message must name the version: {err}"
+        );
+    }
+
+    /// #1110: a legacy JSON model in the 1.0.0 layout (per-category
+    /// `unk_category_names` / `unk_categories`, no `unk_entries`) gets the
+    /// same instruction to re-train, not a missing-field error; one in the
+    /// current version and layout still loads.
+    #[test]
+    fn read_model_rejects_a_legacy_json_model_of_another_format_version() {
+        let mut value = match serde_json::to_value(model_with_maps(&[0, 1])) {
+            Ok(value) => value,
+            Err(err) => panic!("failed to serialize model as JSON: {err}"),
+        };
+        let current = value.to_string();
+        if let Err(err) = super::Model::read_model(current.as_bytes()) {
+            panic!("a {MODEL_FORMAT_VERSION} JSON model must load: {err}");
+        }
+
+        let serde_json::Value::Object(fields) = &mut value else {
+            panic!("a model serializes as a JSON object");
+        };
+        fields.remove("unk_entries");
+        fields.insert(
+            "unk_category_names".to_string(),
+            serde_json::json!(["DEFAULT"]),
+        );
+        fields.insert(
+            "unk_categories".to_string(),
+            serde_json::json!({"DEFAULT": "名詞,一般"}),
+        );
+        match fields.get_mut("metadata") {
+            Some(metadata) => metadata["version"] = serde_json::json!("1.0.0"),
+            None => panic!("a model has metadata"),
+        }
+        let old = value.to_string();
+
+        let err = match super::Model::read_model(old.as_bytes()) {
+            Ok(_) => panic!("a 1.0.0 JSON model must not load"),
+            Err(err) => err.to_string(),
+        };
+        assert!(err.contains("lindera train"), "unhelpful message: {err}");
+        assert!(
+            err.contains("1.0.0"),
+            "message must name the version: {err}"
+        );
+        assert!(
+            !err.contains("missing field"),
+            "message must not be the serde error: {err}"
+        );
     }
 
     /// A payload that is neither valid rkyv nor JSON must say so and tell the
