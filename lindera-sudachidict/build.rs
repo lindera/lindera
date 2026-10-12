@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         input_dir: "sudachidict-20260723",
         src_subdir: None,
         output_dir: "lindera-sudachidict",
-        dummy_input: "テスト,5131,5131,767,テスト,名詞,普通名詞,一般,*,*,*,テスト,テスト,*,A,*,*,*,*\n",
+        dummy_input: "テスト,0,0,767,テスト,名詞,普通名詞,一般,*,*,*,テスト,テスト,*,A,*,*,*,*\n",
         download_urls: &["https://lindera.dev/sudachidict-20260723.tar.gz"],
         md5_hash: "f4cb9708a1d21f895ed49e8b66839283",
     };

@@ -290,8 +290,10 @@ fn make_costs_array(
                 warn!("left id and right id are not same: {e:?}");
             }
             let (left_id, right_id) = (e.left_id as u16, e.right_id as u16);
-            // Relabel to match the remapped connection matrix. `get().unwrap_or`
-            // leaves an out-of-range id untouched (it would fail the matrix build).
+            // Relabel to match the remapped connection matrix. An id out of range
+            // of the matrix (and so of the remap) is rejected before parsing when
+            // the dictionary builder knows the matrix size; `get().unwrap_or` only
+            // keeps a caller without that check from panicking here.
             let (left_id, right_id) = match remap {
                 Some(m) => (
                     m.left.get(left_id as usize).copied().unwrap_or(left_id),

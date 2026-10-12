@@ -13,9 +13,10 @@ use csv::StringRecord;
 use encoding_rs::{Encoding, UTF_8};
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use glob::glob;
-use log::debug;
+use log::{debug, warn};
 
 use crate::LinderaResult;
+use crate::builder::connection_cost_matrix::MatrixSize;
 use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::schema::Schema;
 use crate::error::LinderaErrorKind;
@@ -32,6 +33,11 @@ pub struct PrefixDictionaryBuilder {
     /// `left_id`/`right_id` is relabeled via `remap.left`/`remap.right` before the
     /// `WordEntry` is created, matching the remap applied to the connection matrix.
     context_id_remap: Option<Arc<ContextIdMap>>,
+    /// Axis sizes of the connection matrix. When present, every row's context ids
+    /// (as written, before the remap) are checked against them while the CSV files
+    /// are read; see [`Self::check_context_ids`]. `None` skips the check, which is
+    /// what a stage run on its own gets: it does not read `matrix.def`.
+    matrix_size: Option<MatrixSize>,
 }
 
 /// Options for [`PrefixDictionaryBuilder`]. Every field has a default, so
@@ -43,6 +49,7 @@ pub struct PrefixDictionaryBuilderOptions {
     skip_invalid_cost_or_id: Option<bool>,
     schema: Option<Schema>,
     context_id_remap: Option<Arc<ContextIdMap>>,
+    matrix_size: Option<MatrixSize>,
 }
 
 impl PrefixDictionaryBuilderOptions {
@@ -71,6 +78,22 @@ impl PrefixDictionaryBuilderOptions {
         self
     }
 
+    /// Sets the connection matrix size to check every row's context ids
+    /// against, as `mecab-dict-index` does.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The axis sizes from the `matrix.def` header, or `None` (the
+    ///   default) to skip the check.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    pub(crate) fn matrix_size(&mut self, value: Option<MatrixSize>) -> &mut Self {
+        self.matrix_size = value;
+        self
+    }
+
     pub fn builder(&self) -> PrefixDictionaryBuilder {
         PrefixDictionaryBuilder {
             flexible_csv: self.flexible_csv.unwrap_or(true),
@@ -78,6 +101,7 @@ impl PrefixDictionaryBuilderOptions {
             skip_invalid_cost_or_id: self.skip_invalid_cost_or_id.unwrap_or(false),
             schema: self.schema.clone().unwrap_or_default(),
             context_id_remap: self.context_id_remap.clone(),
+            matrix_size: self.matrix_size,
         }
     }
 }
@@ -91,6 +115,7 @@ impl PrefixDictionaryBuilder {
             skip_invalid_cost_or_id: false,
             schema,
             context_id_remap: None,
+            matrix_size: None,
         }
     }
 
@@ -172,7 +197,20 @@ impl PrefixDictionaryBuilder {
         })
     }
 
-    /// Read CSV files
+    /// Read CSV files.
+    ///
+    /// When a matrix size is set, each row's context ids are checked as the row
+    /// is read, while its file name is still at hand; see
+    /// [`Self::check_context_ids`].
+    ///
+    /// # Arguments
+    ///
+    /// * `filenames` - The lexicon CSV files.
+    /// * `encoding` - Encoding to decode them with.
+    ///
+    /// # Returns
+    ///
+    /// The rows in file order, without the rows the context-id check skipped.
     fn read_csv_files(
         &self,
         filenames: &[PathBuf],
@@ -208,11 +246,69 @@ impl PrefixDictionaryBuilder {
                         .with_error(anyhow!(err))
                         .add_context(format!("Failed to parse CSV record in file: {filename:?}"))
                 })?;
+                if let Some(matrix_size) = self.matrix_size
+                    && !self.check_context_ids(&record, matrix_size, filename)?
+                {
+                    continue;
+                }
                 rows.push(record);
             }
         }
 
         Ok(rows)
+    }
+
+    /// Checks a lexicon row's context ids against the connection matrix size,
+    /// as `mecab-dict-index` does, so that a dictionary whose ids exceed its
+    /// matrix fails to build instead of indexing past the matrix when the word
+    /// is looked up.
+    ///
+    /// The ids are checked as written, before the context-id remap. A row
+    /// whose ids are missing or do not parse is left to
+    /// [`Self::build_word_entry_map`], which skips or rejects it as before.
+    ///
+    /// # Arguments
+    ///
+    /// * `record` - The CSV row.
+    /// * `matrix_size` - The axis sizes from the `matrix.def` header.
+    /// * `filename` - The file the row was read from, for the message.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(true)` to keep the row. For an id out of range, `Ok(false)` to drop
+    /// the row with a warning when `skip_invalid_cost_or_id` is set, otherwise
+    /// an error naming the file, the line, the id and the matrix size.
+    fn check_context_ids(
+        &self,
+        record: &StringRecord,
+        matrix_size: MatrixSize,
+        filename: &Path,
+    ) -> LinderaResult<bool> {
+        // Parsed as `parse_left_id` / `parse_right_id` do (trimmed, `u16`), but
+        // without allocating, since this runs on every row, and without
+        // reporting a malformed id, which `build_word_entry_map` does.
+        let parse_id = |field_name: &str| {
+            self.schema
+                .get_field_index(field_name)
+                .and_then(|index| record.get(index))
+                .and_then(|value| u16::from_str(value.trim()).ok())
+        };
+        let (Some(left_id), Some(right_id)) =
+            (parse_id("left_context_id"), parse_id("right_context_id"))
+        else {
+            return Ok(true);
+        };
+        let Err(message) = matrix_size.check_context_ids(left_id.into(), right_id.into()) else {
+            return Ok(true);
+        };
+        let line = record.position().map_or(0, |position| position.line());
+        let message = format!("{}: line {line}: {message}", filename.display());
+        if self.skip_invalid_cost_or_id {
+            warn!("Skipping a lexicon entry: {message}");
+            Ok(false)
+        } else {
+            Err(LinderaErrorKind::Content.with_error(anyhow!(message)))
+        }
     }
 
     /// Build word entry map
@@ -243,8 +339,10 @@ impl PrefixDictionaryBuilder {
             };
 
             // Relabel context IDs to match the connection matrix when remapping is
-            // enabled. `get().unwrap_or` leaves any out-of-range id untouched (a
-            // malformed id fails the matrix build instead of panicking here).
+            // enabled. An id out of range of the matrix (and so of the remap) is
+            // rejected while the CSV files are read when the matrix size is known
+            // (`check_context_ids`); `get().unwrap_or` only keeps a stage run on
+            // its own, without that check, from panicking here.
             let (left_id, right_id) = match &self.context_id_remap {
                 Some(m) => (
                     m.left.get(left_id as usize).copied().unwrap_or(left_id),

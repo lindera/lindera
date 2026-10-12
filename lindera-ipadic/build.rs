@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         input_dir: "mecab-ipadic-2.7.0-20250920",
         src_subdir: None,
         output_dir: "lindera-ipadic",
-        dummy_input: "テスト,1288,1288,-1000,名詞,固有名詞,一般,*,*,*,*,*,*\n",
+        dummy_input: "テスト,0,0,-1000,名詞,固有名詞,一般,*,*,*,*,*,*\n",
         download_urls: &["https://Lindera.dev/mecab-ipadic-2.7.0-20250920.tar.gz"],
         md5_hash: "a95c409f12f1023fce8ef91f991ef042",
     };

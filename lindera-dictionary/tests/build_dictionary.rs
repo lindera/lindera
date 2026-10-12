@@ -205,3 +205,265 @@ fn loading_rejects_a_dictionary_from_another_format_version() {
     };
     assert!(err.contains("format version"), "{err}");
 }
+
+/// An asymmetric connection matrix: 3 forward ids (the right context ids of
+/// the left word) and 2 backward ids (the left context ids of the right word).
+/// An id of 2 is valid as a right id but not as a left id, so the two bounds
+/// are told apart.
+const ASYMMETRIC_MATRIX_DEF: &str = "\
+3 2
+0 0 0
+1 0 0
+2 0 0
+0 1 0
+1 1 0
+2 1 0
+";
+
+/// Writes a source whose lexicon, `unk.def` and `matrix.def` are given, with
+/// the minimal `char.def`.
+fn write_source_with(dir: &Path, lex_csv: &str, unk_def: &str, matrix_def: &str) {
+    fs::write(dir.join("char.def"), CHAR_DEF).unwrap();
+    fs::write(dir.join("unk.def"), unk_def).unwrap();
+    fs::write(dir.join("lex.csv"), lex_csv).unwrap();
+    fs::write(dir.join("matrix.def"), matrix_def).unwrap();
+}
+
+/// Builds a source made of the given files with `metadata`.
+///
+/// Returns the message of the build error, or `None` when the build
+/// succeeded.
+fn build_error(
+    metadata: Metadata,
+    lex_csv: &str,
+    unk_def: &str,
+    matrix_def: &str,
+) -> Option<String> {
+    let input = tempfile::tempdir().unwrap();
+    let output = tempfile::tempdir().unwrap();
+    write_source_with(input.path(), lex_csv, unk_def, matrix_def);
+    DictionaryBuilder::new(metadata)
+        .build_dictionary(input.path(), output.path())
+        .err()
+        .map(|err| err.to_string())
+}
+
+/// A lexicon row whose context ids are `left` and `right`, after an in-range
+/// first row, so that the row checked is on line 2.
+fn lex_with_ids(left: u32, right: u32) -> String {
+    format!(
+        "本,0,0,200,名詞,一般,*,*,*,*,本,ホン,ホン\n\
+         日本,{left},{right},100,名詞,固有名詞,地域,国,*,*,日本,ニッポン,ニッポン\n"
+    )
+}
+
+/// The lexicon's context ids are checked against the matrix as
+/// `mecab-dict-index` does: each id against its own axis (left ids against
+/// the backward size, right ids against the forward size), naming the file,
+/// the line, the id and the matrix size.
+#[test]
+fn build_dictionary_rejects_lexicon_context_ids_outside_the_matrix() {
+    // Left id 2 is valid for the forward axis (3) but not for the backward
+    // axis (2).
+    let err = build_error(
+        Metadata::default(),
+        &lex_with_ids(2, 0),
+        UNK_DEF,
+        ASYMMETRIC_MATRIX_DEF,
+    )
+    .expect("left id 2 is out of the backward axis");
+    assert!(err.contains("lex.csv: line 2: "), "{err}");
+    assert!(err.contains("left context id 2 is out of range"), "{err}");
+    assert!(err.contains("matrix.def size 3 2"), "{err}");
+    assert!(err.contains("must be below 2"), "{err}");
+
+    let err = build_error(
+        Metadata::default(),
+        &lex_with_ids(0, 3),
+        UNK_DEF,
+        ASYMMETRIC_MATRIX_DEF,
+    )
+    .expect("right id 3 is out of the forward axis");
+    assert!(err.contains("lex.csv: line 2: "), "{err}");
+    assert!(err.contains("right context id 3 is out of range"), "{err}");
+    assert!(err.contains("must be below 3"), "{err}");
+
+    // The largest id of each axis: right id 2 would fail a check against the
+    // backward size (2), as a swapped check would do.
+    assert_eq!(
+        build_error(
+            Metadata::default(),
+            &lex_with_ids(1, 2),
+            UNK_DEF,
+            ASYMMETRIC_MATRIX_DEF
+        ),
+        None
+    );
+}
+
+/// The check is made on the ids as written, before the context-id remap
+/// relabels them, so it holds when the remap is enabled. Without it the remap
+/// would leave the out-of-range id as is and the build would succeed.
+#[test]
+fn build_dictionary_rejects_out_of_range_context_ids_with_the_remap() {
+    let metadata = Metadata {
+        connection_id_mapping: true,
+        ..Metadata::default()
+    };
+
+    let err = build_error(
+        metadata.clone(),
+        &lex_with_ids(2, 0),
+        UNK_DEF,
+        ASYMMETRIC_MATRIX_DEF,
+    )
+    .expect("left id 2 is out of the backward axis");
+    assert!(err.contains("lex.csv: line 2: "), "{err}");
+    assert!(err.contains("left context id 2 is out of range"), "{err}");
+
+    let err = build_error(
+        metadata.clone(),
+        LEX_CSV,
+        "DEFAULT,0,0,0,補助記号,一般,*,*,*,*,*,*,*\nKANJI,1,3,0,名詞,一般,*,*,*,*,*,*,*\n",
+        ASYMMETRIC_MATRIX_DEF,
+    )
+    .expect("right id 3 is out of the forward axis");
+    assert!(err.contains("unk.def: line 2: "), "{err}");
+    assert!(err.contains("right context id 3 is out of range"), "{err}");
+
+    assert_eq!(
+        build_error(
+            metadata,
+            &lex_with_ids(1, 2),
+            UNK_DEF,
+            ASYMMETRIC_MATRIX_DEF
+        ),
+        None
+    );
+}
+
+/// `unk.def` ids are checked as written: 65537 would be truncated to 1 (in
+/// range) by the conversion to the `u16` the dictionary stores.
+#[test]
+fn build_dictionary_rejects_unk_def_context_ids_outside_the_matrix() {
+    let err = build_error(
+        Metadata::default(),
+        LEX_CSV,
+        "DEFAULT,0,0,0,補助記号,一般,*,*,*,*,*,*,*\nKANJI,65537,65537,0,名詞,一般,*,*,*,*,*,*,*\n",
+        ASYMMETRIC_MATRIX_DEF,
+    )
+    .expect("id 65537 is out of range");
+    assert!(err.contains("unk.def: line 2: "), "{err}");
+    assert!(
+        err.contains("left context id 65537 is out of range"),
+        "{err}"
+    );
+
+    let err = build_error(
+        Metadata::default(),
+        LEX_CSV,
+        "DEFAULT,0,0,0,補助記号,一般,*,*,*,*,*,*,*\nKANJI,1,3,0,名詞,一般,*,*,*,*,*,*,*\n",
+        ASYMMETRIC_MATRIX_DEF,
+    )
+    .expect("right id 3 is out of the forward axis");
+    assert!(err.contains("right context id 3 is out of range"), "{err}");
+
+    // A line too short to hold the ids is an error, not a panic.
+    let err = build_error(
+        Metadata::default(),
+        LEX_CSV,
+        "DEFAULT,0,0,0,補助記号,一般,*,*,*,*,*,*,*\nKANJI,0\n",
+        ASYMMETRIC_MATRIX_DEF,
+    )
+    .expect("a short line is rejected");
+    assert!(err.contains("unk.def: line 2: "), "{err}");
+    assert!(err.contains("expected at least 4 fields"), "{err}");
+}
+
+/// Each `matrix.def` id is checked against its own axis. A forward id equal to
+/// the forward size used to pass the flat index check and land in the first
+/// cell of the next row.
+#[test]
+fn build_dictionary_rejects_matrix_entries_outside_their_axis() {
+    let err = build_error(Metadata::default(), LEX_CSV, UNK_DEF, "3 2\n0 0 0\n3 0 0\n")
+        .expect("forward id 3 is out of the forward axis");
+    assert!(err.contains("matrix.def line 3: "), "{err}");
+    assert!(err.contains("entry (3, 0) is out of range"), "{err}");
+    assert!(err.contains("forward ids must be below 3"), "{err}");
+
+    let err = build_error(
+        Metadata::default(),
+        LEX_CSV,
+        UNK_DEF,
+        "3 2\n0 0 0\n1 1 0\n0 2 0\n",
+    )
+    .expect("backward id 2 is out of the backward axis");
+    assert!(err.contains("matrix.def line 4: "), "{err}");
+    assert!(err.contains("entry (0, 2) is out of range"), "{err}");
+    assert!(err.contains("backward ids below 2"), "{err}");
+}
+
+/// With `skip_invalid_cost_or_id` (CC-CEDICT, Jieba, SudachiDict) a lexicon
+/// row whose ids are out of range is dropped, like the other invalid rows,
+/// instead of failing the build.
+#[test]
+fn build_dictionary_skips_out_of_range_rows_when_skipping_invalid_ids() {
+    let input = tempfile::tempdir().unwrap();
+    let output = tempfile::tempdir().unwrap();
+    write_source_with(
+        input.path(),
+        &lex_with_ids(2, 0),
+        UNK_DEF,
+        ASYMMETRIC_MATRIX_DEF,
+    );
+    let metadata = Metadata {
+        skip_invalid_cost_or_id: true,
+        ..Metadata::default()
+    };
+
+    DictionaryBuilder::new(metadata)
+        .build_dictionary(input.path(), output.path())
+        .expect("the out-of-range row is skipped");
+
+    let dictionary =
+        Dictionary::load_from_path(output.path()).expect("a freshly built dictionary should load");
+    let prefix = &dictionary.prefix_dictionary;
+    assert!(prefix.find_surface("日本").is_empty());
+    assert_eq!(prefix.find_surface("本").len(), 1);
+}
+
+/// The header is read for the checks with the decoding the matrix stage uses,
+/// so a UTF-16 `matrix.def` (here with a BOM, under the default UTF-8 label)
+/// still builds, and its sizes are the ones checked against.
+#[test]
+fn build_dictionary_reads_the_header_of_a_utf16_matrix() {
+    let utf16 = |text: &str| -> Vec<u8> {
+        let mut bytes = vec![0xFF, 0xFE];
+        for unit in text.encode_utf16() {
+            bytes.extend_from_slice(&unit.to_le_bytes());
+        }
+        bytes
+    };
+
+    let input = tempfile::tempdir().unwrap();
+    let output = tempfile::tempdir().unwrap();
+    write_source_with(input.path(), &lex_with_ids(1, 2), UNK_DEF, "");
+    fs::write(
+        input.path().join("matrix.def"),
+        utf16(ASYMMETRIC_MATRIX_DEF),
+    )
+    .unwrap();
+    DictionaryBuilder::new(Metadata::default())
+        .build_dictionary(input.path(), output.path())
+        .expect("a UTF-16 matrix.def builds");
+    let dictionary =
+        Dictionary::load_from_path(output.path()).expect("a freshly built dictionary should load");
+    assert_eq!(dictionary.prefix_dictionary.find_surface("日本").len(), 1);
+
+    fs::write(input.path().join("lex.csv"), lex_with_ids(2, 0)).unwrap();
+    let err = DictionaryBuilder::new(Metadata::default())
+        .build_dictionary(input.path(), output.path())
+        .expect_err("left id 2 is out of the backward axis")
+        .to_string();
+    assert!(err.contains("matrix.def size 3 2"), "{err}");
+}

@@ -2,11 +2,13 @@ use std::borrow::Cow;
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use log::debug;
 
 use crate::LinderaResult;
+use crate::builder::connection_cost_matrix::MatrixSize;
 use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::unknown_dictionary::parse_unk;
@@ -19,6 +21,11 @@ pub struct UnknownDictionaryBuilder {
     /// Optional connection-cost context-ID remap, applied to each unknown-word
     /// entry's `left_id`/`right_id` so they match the remapped connection matrix.
     context_id_remap: Option<Arc<ContextIdMap>>,
+    /// Axis sizes of the connection matrix. When present, every entry's context
+    /// ids are checked against them before `unk.def` is parsed; see
+    /// [`check_context_ids`]. `None` skips the check, which is what a stage run on
+    /// its own gets: it does not read `matrix.def`.
+    matrix_size: Option<MatrixSize>,
 }
 
 /// Options for [`UnknownDictionaryBuilder`]. Every field has a default, so
@@ -27,6 +34,7 @@ pub struct UnknownDictionaryBuilder {
 pub struct UnknownDictionaryBuilderOptions {
     encoding: Option<Cow<'static, str>>,
     context_id_remap: Option<Arc<ContextIdMap>>,
+    matrix_size: Option<MatrixSize>,
 }
 
 impl UnknownDictionaryBuilderOptions {
@@ -40,10 +48,27 @@ impl UnknownDictionaryBuilderOptions {
         self
     }
 
+    /// Sets the connection matrix size to check every entry's context ids
+    /// against, as `mecab-dict-index` does.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The axis sizes from the `matrix.def` header, or `None` (the
+    ///   default) to skip the check.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    pub(crate) fn matrix_size(&mut self, value: Option<MatrixSize>) -> &mut Self {
+        self.matrix_size = value;
+        self
+    }
+
     pub fn builder(&self) -> UnknownDictionaryBuilder {
         UnknownDictionaryBuilder {
             encoding: self.encoding.clone().unwrap_or_else(|| "UTF-8".into()),
             context_id_remap: self.context_id_remap.clone(),
+            matrix_size: self.matrix_size,
         }
     }
 }
@@ -58,6 +83,9 @@ impl UnknownDictionaryBuilder {
         let unk_data_path = input_dir.join("unk.def");
         debug!("reading {unk_data_path:?}");
         let unk_data = read_file_with_encoding(&unk_data_path, &self.encoding)?;
+        if let Some(matrix_size) = self.matrix_size {
+            check_context_ids(&unk_data, matrix_size, &unk_data_path)?;
+        }
         let unknown_dictionary = parse_unk(
             chardef.categories(),
             &unk_data,
@@ -90,4 +118,53 @@ impl UnknownDictionaryBuilder {
 
         Ok(())
     }
+}
+
+/// Checks the context ids of every `unk.def` entry against the connection
+/// matrix size, as `mecab-dict-index` does, so that a dictionary whose ids
+/// exceed its matrix fails to build instead of indexing past the matrix when
+/// an unknown word is looked up.
+///
+/// The check runs on the raw lines, before [`parse_unk`] relabels the ids
+/// through the remap and truncates them to `u16`: an id of 65537 is rejected
+/// rather than read as 1. An id that does not parse is left to `parse_unk` to
+/// report.
+///
+/// # Arguments
+///
+/// * `unk_data` - The decoded `unk.def` content.
+/// * `matrix_size` - The axis sizes from the `matrix.def` header.
+/// * `path` - The `unk.def` path, for the message.
+///
+/// # Returns
+///
+/// `Ok(())`, or an error naming the file, the line, and either the offending
+/// id and the matrix size or the number of fields of a line too short to
+/// hold the ids and the cost.
+fn check_context_ids(unk_data: &str, matrix_size: MatrixSize, path: &Path) -> LinderaResult<()> {
+    for (index, line) in unk_data.lines().enumerate() {
+        let line_number = index + 1;
+        let fields: Vec<&str> = line.split(',').collect();
+        if fields.len() < 4 {
+            return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                "{}: line {line_number}: expected at least 4 fields (category, left context id, \
+                 right context id, cost), got {}",
+                path.display(),
+                fields.len()
+            )));
+        }
+        let (Ok(left_id), Ok(right_id)) = (u32::from_str(fields[1]), u32::from_str(fields[2]))
+        else {
+            continue;
+        };
+        matrix_size
+            .check_context_ids(left_id, right_id)
+            .map_err(|message| {
+                LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                    "{}: line {line_number}: {message}",
+                    path.display()
+                ))
+            })?;
+    }
+    Ok(())
 }

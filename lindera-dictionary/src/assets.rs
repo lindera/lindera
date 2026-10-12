@@ -36,7 +36,11 @@ pub struct FetchParams {
     /// Lindera directory
     pub output_dir: &'static str,
 
-    /// Dummy input for docs.rs
+    /// Dummy lexicon CSV for docs.rs builds.
+    ///
+    /// Its left and right context ids must be 0: the dummy `matrix.def` is a
+    /// 1x1 matrix, and the dictionary build rejects an entry whose ids fall
+    /// outside the matrix.
     pub dummy_input: &'static str,
 
     /// URLs from which to fetch the asset
@@ -143,6 +147,11 @@ fn rename_directory(dir: &Path, new_dir: &Path) -> LinderaResult<()> {
     Ok(())
 }
 
+/// The `matrix.def` of the dummy dictionary: a 1x1 matrix with its one cell,
+/// which covers context id 0, the only id the dummy entries may use (see
+/// [`FetchParams::dummy_input`]).
+const DUMMY_MATRIX_DEF: &str = "1 1\n0 0 0\n";
+
 /// Scaffold the dummy dictionary source files used for docs.rs documentation builds.
 ///
 /// The files are created in the directory the dictionary builder actually reads
@@ -235,11 +244,13 @@ fn create_dummy_dictionary_source(
                 dummy_src_dir.join("matrix.def")
             ))
     })?;
-    dummy_matrix_def.write_all(b"0 1 0\n").map_err(|err| {
-        LinderaErrorKind::Io
-            .with_error(anyhow::anyhow!(err))
-            .add_context("Failed to write to dummy matrix.def")
-    })?;
+    dummy_matrix_def
+        .write_all(DUMMY_MATRIX_DEF.as_bytes())
+        .map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context("Failed to write to dummy matrix.def")
+        })?;
 
     Ok(())
 }
@@ -938,6 +949,35 @@ mod tests {
         create_dummy_dictionary_source(&input_dir, Some("dict-src"), "dummy,0,0,0\n").unwrap();
 
         assert!(input_dir.join("dict-src").join("char.def").is_file());
+    }
+
+    /// The dummy dictionary docs.rs builds must pass the dictionary build,
+    /// which checks every entry's context ids against the dummy matrix. The
+    /// entries have the shapes of the dictionary crates' `dummy_input`s.
+    #[test]
+    fn dummy_dictionary_source_builds() {
+        for dummy_input in [
+            "テスト,0,0,-1000,名詞,固有名詞,一般,*,*,*,*,*,*\n",
+            "테스트,0,0,4721,NNG,행위,F,테스트,*,*,*,*\n",
+            "测试,0,0,-1131,*,*,*,*,ce4 shi4,測試,测试,to test/\n",
+        ] {
+            let temp_dir = tempfile::tempdir().unwrap();
+            let input_dir = temp_dir.path().join("mecab-test");
+            let output_dir = temp_dir.path().join("lindera-test");
+            create_dummy_dictionary_source(&input_dir, Some("dict-src"), dummy_input).unwrap();
+
+            DictionaryBuilder::new(Metadata::default())
+                .build_dictionary(&input_dir.join("dict-src"), &output_dir)
+                .unwrap_or_else(|err| panic!("the dummy for {dummy_input:?} must build: {err}"));
+            let dictionary = crate::dictionary::Dictionary::load_from_path(&output_dir)
+                .expect("the dummy dictionary loads");
+            let surface = dummy_input.split(',').next().unwrap();
+            assert_eq!(
+                dictionary.prefix_dictionary.find_surface(surface).len(),
+                1,
+                "{surface}"
+            );
+        }
     }
 
     /// Writes `metadata` as `metadata.json` into a fresh directory, standing

@@ -13,11 +13,13 @@ use std::sync::Arc;
 use csv::StringRecord;
 
 use self::character_definition::CharacterDefinitionBuilderOptions;
-use self::connection_cost_matrix::ConnectionCostMatrixBuilderOptions;
-use self::context_id_remap::compute_context_id_remap;
+use self::connection_cost_matrix::{
+    ConnectionCostMatrixBuilderOptions, MatrixSize, read_matrix_header,
+};
+use self::context_id_remap::compute_context_id_remap_for_matrix;
 use self::metadata::MetadataBuilder;
-use self::prefix_dictionary::PrefixDictionaryBuilderOptions;
-use self::unknown_dictionary::UnknownDictionaryBuilderOptions;
+use self::prefix_dictionary::{PrefixDictionaryBuilder, PrefixDictionaryBuilderOptions};
+use self::unknown_dictionary::{UnknownDictionaryBuilder, UnknownDictionaryBuilderOptions};
 use self::user_dictionary::{
     UserDictionaryBuilder, UserDictionaryBuilderOptions, build_user_dictionary,
 };
@@ -76,6 +78,15 @@ impl DictionaryBuilder {
     /// sequentially on wasm (which has no OS threads). The output files are
     /// identical regardless of the path taken.
     ///
+    /// The context ids of every lexicon and `unk.def` entry, and the ids of
+    /// every `matrix.def` entry, are checked against the axis sizes of the
+    /// `matrix.def` header, as MeCab's `mecab-dict-index` does: an id out of
+    /// range fails the build (a lexicon row is skipped with a warning instead
+    /// when `skip_invalid_cost_or_id` is set), rather than building a
+    /// dictionary that indexes past its connection matrix at tokenize time.
+    /// The stage methods run on their own do not read the header, so they
+    /// check only the `matrix.def` entries.
+    ///
     /// # Arguments
     ///
     /// * `input_dir` - Directory containing the source dictionary files.
@@ -88,14 +99,20 @@ impl DictionaryBuilder {
         fs::create_dir_all(output_dir)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
+        // Read the matrix.def header ONCE, serially, before the independent stages
+        // start: the prefix and unknown stages check their entries' context ids
+        // against it, and the remap is sized by it.
+        let matrix_size = read_matrix_header(input_dir, &self.metadata.encoding)?;
+
         // Compute the connection-cost context-ID remap ONCE, serially, before the
         // independent stages start, so the prefix / unknown / matrix stages all apply
         // the same permutations. `None` (flag off) keeps every stage byte-identical.
         let remap: Option<Arc<ContextIdMap>> = if self.metadata.connection_id_mapping {
-            Some(Arc::new(compute_context_id_remap(
+            Some(Arc::new(compute_context_id_remap_for_matrix(
                 input_dir,
                 &self.metadata,
                 self.context_id_freq.as_deref(),
+                matrix_size,
             )?))
         } else {
             None
@@ -103,11 +120,11 @@ impl DictionaryBuilder {
 
         #[cfg(not(target_family = "wasm"))]
         {
-            self.build_dictionary_parallel(input_dir, output_dir, remap.as_ref())
+            self.build_dictionary_parallel(input_dir, output_dir, remap.as_ref(), matrix_size)
         }
         #[cfg(target_family = "wasm")]
         {
-            self.build_dictionary_sequential(input_dir, output_dir, remap.as_ref())
+            self.build_dictionary_sequential(input_dir, output_dir, remap.as_ref(), matrix_size)
         }
     }
 
@@ -121,17 +138,27 @@ impl DictionaryBuilder {
     ///
     /// * `input_dir` - Directory containing the source dictionary files.
     /// * `output_dir` - Directory to write the built artifacts into.
+    /// * `remap` - The context-id remap every stage applies, if any.
+    /// * `matrix_size` - The `matrix.def` axis sizes the entries' context ids
+    ///   are checked against.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success, or the first stage error.
     #[cfg(target_family = "wasm")]
     fn build_dictionary_sequential(
         &self,
         input_dir: &Path,
         output_dir: &Path,
         remap: Option<&Arc<ContextIdMap>>,
+        matrix_size: MatrixSize,
     ) -> LinderaResult<()> {
         self.build_metadata(output_dir, remap)?;
         let chardef = self.build_character_definition(input_dir, output_dir)?;
-        self.build_unknown_dictionary(input_dir, output_dir, &chardef, remap.cloned())?;
-        self.build_prefix_dictionary(input_dir, output_dir, remap.cloned())?;
+        self.unknown_dictionary_builder(remap.cloned(), Some(matrix_size))
+            .build(input_dir, &chardef, output_dir)?;
+        self.prefix_dictionary_builder(remap.cloned(), Some(matrix_size))
+            .build(input_dir, output_dir)?;
         self.build_connection_cost_matrix(input_dir, output_dir, remap.cloned())?;
 
         Ok(())
@@ -155,21 +182,32 @@ impl DictionaryBuilder {
     ///
     /// * `input_dir` - Directory containing the source dictionary files.
     /// * `output_dir` - Directory to write the built artifacts into.
+    /// * `remap` - The context-id remap every stage applies, if any.
+    /// * `matrix_size` - The `matrix.def` axis sizes the entries' context ids
+    ///   are checked against.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success, or the earliest stage error in stage order.
     #[cfg(not(target_family = "wasm"))]
     fn build_dictionary_parallel(
         &self,
         input_dir: &Path,
         output_dir: &Path,
         remap: Option<&Arc<ContextIdMap>>,
+        matrix_size: MatrixSize,
     ) -> LinderaResult<()> {
         std::thread::scope(|scope| {
             let metadata = scope.spawn(move || self.build_metadata(output_dir, remap));
             let unknown = scope.spawn(move || {
                 let chardef = self.build_character_definition(input_dir, output_dir)?;
-                self.build_unknown_dictionary(input_dir, output_dir, &chardef, remap.cloned())
+                self.unknown_dictionary_builder(remap.cloned(), Some(matrix_size))
+                    .build(input_dir, &chardef, output_dir)
             });
-            let prefix = scope
-                .spawn(move || self.build_prefix_dictionary(input_dir, output_dir, remap.cloned()));
+            let prefix = scope.spawn(move || {
+                self.prefix_dictionary_builder(remap.cloned(), Some(matrix_size))
+                    .build(input_dir, output_dir)
+            });
             let matrix = scope.spawn(move || {
                 self.build_connection_cost_matrix(input_dir, output_dir, remap.cloned())
             });
@@ -235,6 +273,22 @@ impl DictionaryBuilder {
             .build(input_dir, output_dir)
     }
 
+    /// Builds the unknown-word dictionary (`unk.bin`) from `unk.def` alone.
+    ///
+    /// Run on its own, the stage does not read `matrix.def`, so it does not
+    /// check the entries' context ids against the connection matrix;
+    /// [`Self::build_dictionary`] does.
+    ///
+    /// # Arguments
+    ///
+    /// * `input_dir` - Directory containing `unk.def`.
+    /// * `output_dir` - Directory to write `unk.bin` into.
+    /// * `chardef` - The character definition the categories come from.
+    /// * `remap` - The context-id remap to relabel the entries with, if any.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success, or an error if `unk.def` cannot be read or parsed.
     pub fn build_unknown_dictionary(
         &self,
         input_dir: &Path,
@@ -242,27 +296,84 @@ impl DictionaryBuilder {
         chardef: &CharacterDefinition,
         remap: Option<Arc<ContextIdMap>>,
     ) -> LinderaResult<()> {
-        UnknownDictionaryBuilderOptions::default()
-            .encoding(self.metadata.encoding.clone())
-            .context_id_remap(remap)
-            .builder()
+        self.unknown_dictionary_builder(remap, None)
             .build(input_dir, chardef, output_dir)
     }
 
+    /// Configures the unknown-dictionary stage from this builder's metadata.
+    ///
+    /// # Arguments
+    ///
+    /// * `remap` - The context-id remap to relabel the entries with, if any.
+    /// * `matrix_size` - The connection matrix size to check the entries'
+    ///   context ids against, or `None` to skip the check.
+    ///
+    /// # Returns
+    ///
+    /// The configured stage builder.
+    fn unknown_dictionary_builder(
+        &self,
+        remap: Option<Arc<ContextIdMap>>,
+        matrix_size: Option<MatrixSize>,
+    ) -> UnknownDictionaryBuilder {
+        UnknownDictionaryBuilderOptions::default()
+            .encoding(self.metadata.encoding.clone())
+            .context_id_remap(remap)
+            .matrix_size(matrix_size)
+            .builder()
+    }
+
+    /// Builds the prefix dictionary (`dict.*`) from the lexicon CSV files
+    /// alone.
+    ///
+    /// Run on its own, the stage does not read `matrix.def`, so it does not
+    /// check the rows' context ids against the connection matrix;
+    /// [`Self::build_dictionary`] does.
+    ///
+    /// # Arguments
+    ///
+    /// * `input_dir` - Directory containing the lexicon `*.csv` files.
+    /// * `output_dir` - Directory to write the `dict.*` files into.
+    /// * `remap` - The context-id remap to relabel the rows with, if any.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success, or an error if a file cannot be read or a row is
+    /// invalid.
     pub fn build_prefix_dictionary(
         &self,
         input_dir: &Path,
         output_dir: &Path,
         remap: Option<Arc<ContextIdMap>>,
     ) -> LinderaResult<()> {
+        self.prefix_dictionary_builder(remap, None)
+            .build(input_dir, output_dir)
+    }
+
+    /// Configures the prefix-dictionary stage from this builder's metadata.
+    ///
+    /// # Arguments
+    ///
+    /// * `remap` - The context-id remap to relabel the rows with, if any.
+    /// * `matrix_size` - The connection matrix size to check the rows' context
+    ///   ids against, or `None` to skip the check.
+    ///
+    /// # Returns
+    ///
+    /// The configured stage builder.
+    fn prefix_dictionary_builder(
+        &self,
+        remap: Option<Arc<ContextIdMap>>,
+        matrix_size: Option<MatrixSize>,
+    ) -> PrefixDictionaryBuilder {
         PrefixDictionaryBuilderOptions::default()
             .flexible_csv(self.metadata.flexible_csv)
             .encoding(self.metadata.encoding.clone())
             .skip_invalid_cost_or_id(self.metadata.skip_invalid_cost_or_id)
             .schema(self.metadata.dictionary_schema.clone())
             .context_id_remap(remap)
+            .matrix_size(matrix_size)
             .builder()
-            .build(input_dir, output_dir)
     }
 
     pub fn build_connection_cost_matrix(
