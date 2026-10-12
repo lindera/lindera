@@ -82,7 +82,7 @@ Run Clippy with warnings treated as errors:
 cargo clippy -- -D warnings
 ```
 
-> Note: CI runs `cargo clippy --all-targets -- -D warnings` for each crate, with the features it tests that crate with (see `.github/workflows/test-crate.yml`). Run clippy locally (e.g. via `make lint`) before opening a PR.
+> Note: CI runs `cargo clippy --all-targets -- -D warnings` for each crate, with the features it tests that crate with (see `.github/workflows/test-crate.yml`, and the language binding jobs in `.github/workflows/regression.yml`), so the test code is linted too. `make lint-<crate>` runs the same clippy command. Run clippy locally (e.g. via `make lint`) before opening a PR.
 
 ## Documentation
 

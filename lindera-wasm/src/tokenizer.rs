@@ -919,10 +919,14 @@ mod tests {
     #[cfg(target_arch = "wasm32")]
     const SETTINGS_TEXT: &str = "Ｌｉｎｄｅｒａ 東京";
 
+    /// A builder setting: a call that changes one setting of the builder.
+    #[cfg(target_arch = "wasm32")]
+    type BuilderSetting = fn(&crate::TokenizerBuilder);
+
     /// The builder settings that `build()` must apply whichever way the
     /// dictionary was set, with a name for the assertion messages.
     #[cfg(target_arch = "wasm32")]
-    fn builder_settings() -> [(&'static str, fn(&crate::TokenizerBuilder)); 3] {
+    fn builder_settings() -> [(&'static str, BuilderSetting); 3] {
         [
             ("setKeepWhitespace(true)", |builder| {
                 builder.set_keep_whitespace(true);
@@ -943,10 +947,7 @@ mod tests {
     /// Builds a tokenizer with IPADIC, set by URI or as an instance, and
     /// the given settings, and returns the surfaces of [`SETTINGS_TEXT`].
     #[cfg(target_arch = "wasm32")]
-    fn build_with_settings(
-        by_instance: bool,
-        settings: &[fn(&crate::TokenizerBuilder)],
-    ) -> Vec<String> {
+    fn build_with_settings(by_instance: bool, settings: &[BuilderSetting]) -> Vec<String> {
         let builder = crate::TokenizerBuilder::new().unwrap();
         if by_instance {
             builder.set_dictionary_instance(

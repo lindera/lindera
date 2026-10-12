@@ -48,7 +48,9 @@ ALL_CRATES := $(CARGO_CRATES) $(BINDING_CRATES)
 
 # Per-crate cargo features, used by lint/test/build unless a per-target
 # override (TEST_FEATURES_* / BUILD_FEATURES_*) is set. Crates without an entry
-# are built with no extra features.
+# are built with no extra features. With the TEST_FEATURES_* overrides below,
+# they match the main feature combination CI tests and lints each crate with
+# (regression.yml).
 FEATURES_lindera-dictionary     := --features build_rs
 FEATURES_lindera-ipadic         := --features embed-ipadic
 FEATURES_lindera-ipadic-neologd := --features embed-ipadic-neologd
@@ -57,18 +59,24 @@ FEATURES_lindera-sudachidict    := --features embed-sudachidict
 FEATURES_lindera-ko-dic         := --features embed-ko-dic
 FEATURES_lindera-cc-cedict      := --features embed-cc-cedict
 FEATURES_lindera-jieba          := --features embed-jieba
-FEATURES_lindera-segmenter      := --features embed-ipadic,train
-FEATURES_lindera                := --features embed-ipadic,train
+FEATURES_lindera-segmenter      := --features embed-ipadic,embed-ko-dic,train
+FEATURES_lindera                := --features embed-ipadic,embed-ko-dic,train
 FEATURES_lindera-analysis       := --features embed-ipadic,embed-ko-dic
 FEATURES_lindera-cli            := --features train
 
-# Per-target feature overrides (where lint/test/build differ).
+# Per-target feature overrides (where test/build differ). Lint uses the test
+# features, as it lints the test code too (see test_features).
 TEST_FEATURES_lindera-cli       := --features train,embed-ipadic
 # lindera-binding's dictionary features exist only for its tests and benches,
 # so build-lindera-binding keeps building without embedded dictionaries.
 TEST_FEATURES_lindera-binding   := --features embed-ipadic,embed-ko-dic
 BUILD_FEATURES_lindera-segmenter := --features train
 BUILD_FEATURES_lindera          := --features train
+
+# The features the tests of crate $(1) are built with: TEST_FEATURES_$(1) when
+# set, else FEATURES_$(1). lint-% uses them too, because clippy lints the test
+# code (`--all-targets`), as CI does with the features it tests each crate with.
+test_features = $(if $(TEST_FEATURES_$(1)),$(TEST_FEATURES_$(1)),$(FEATURES_$(1)))
 
 .DEFAULT_GOAL := help
 
@@ -176,26 +184,26 @@ format: ## Format all crates
 # ── Lint ────────────────────────────────────────────────────────────────────
 
 lint-%:
-	cargo clippy -p $* $(FEATURES_$*) -- -D warnings
+	cargo clippy -p $* $(call test_features,$*) --all-targets -- -D warnings
 
 lint-lindera-python: ## Lint lindera-python
-	cargo clippy -p lindera-python -- -D warnings
+	cargo clippy -p lindera-python --all-targets -- -D warnings
 	ruff format --check lindera-python/tests/ lindera-python/examples/
 	ruff check lindera-python/tests/ lindera-python/examples/
 
 lint-lindera-nodejs: ## Lint lindera-nodejs
-	cargo clippy -p lindera-nodejs -- -D warnings
+	cargo clippy -p lindera-nodejs --all-targets -- -D warnings
 	prettier --check lindera-nodejs/tests/ lindera-nodejs/examples/
 
 lint-lindera-ruby: ## Lint lindera-ruby
-	$(CARGO_TEST_WITH_RBCONFIG) cargo clippy -p lindera-ruby -- -D warnings
+	$(CARGO_TEST_WITH_RBCONFIG) cargo clippy -p lindera-ruby --all-targets -- -D warnings
 	rubocop lindera-ruby/test/ lindera-ruby/examples/ lindera-ruby/lib/
 
 lint-lindera-php: ## Lint lindera-php
-	cargo clippy -p lindera-php -- -D warnings
+	cargo clippy -p lindera-php --all-targets -- -D warnings
 
 lint-lindera-wasm: ## Lint lindera-wasm (wasm32 target)
-	cargo clippy -p lindera-wasm --target wasm32-unknown-unknown -- -D warnings
+	cargo clippy -p lindera-wasm --target wasm32-unknown-unknown --all-targets --features=$(WASM_FEATURES) -- -D warnings
 	prettier --check lindera-wasm/js/ lindera-wasm/example/
 
 lint: ## Lint all crates
@@ -261,7 +269,7 @@ check-docs-lindera-wasm: ## Check rustdoc warnings in lindera-wasm (public and p
 # ── Test ────────────────────────────────────────────────────────────────────
 
 test-%:
-	cargo test -p $* $(if $(TEST_FEATURES_$*),$(TEST_FEATURES_$*),$(FEATURES_$*))
+	cargo test -p $* $(call test_features,$*)
 
 test-lindera-python: setup-venv ## Test lindera-python (Rust unit tests + Python pytest)
 	cargo test -p lindera-python --lib

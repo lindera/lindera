@@ -701,9 +701,10 @@ jobs:
           make test-lindera-python
 
       # `make lint-lindera-python` also runs the language-side linter, which is not
-      # installed here; this covers the cargo half. See #962.
+      # installed here; this covers the cargo half. See #962. `--all-targets`
+      # lints the test code too, as test-crate.yml does for the other crates (#1174).
       - name: Run clippy
-        run: cargo clippy -p lindera-python -- -D warnings
+        run: cargo clippy -p lindera-python --all-targets -- -D warnings
 
       # Fails on rustdoc warnings in this binding, public and private items, as
       # check-docs does for the other crates (#1156). After clippy, so it reuses
@@ -758,9 +759,10 @@ jobs:
           make memcheck-lindera-nodejs
 
       # `make lint-lindera-nodejs` also runs prettier, which is not installed here;
-      # this covers the cargo half. See #962.
+      # this covers the cargo half. See #962. `--all-targets` lints the test code
+      # too, as test-crate.yml does for the other crates (#1174).
       - name: Run clippy
-        run: cargo clippy -p lindera-nodejs -- -D warnings
+        run: cargo clippy -p lindera-nodejs --all-targets -- -D warnings
 
       # Fails on rustdoc warnings in this binding, public and private items, as
       # check-docs does for the other crates (#1156). After clippy, so it reuses
@@ -795,9 +797,10 @@ jobs:
           make test-lindera-ruby
 
       # `make lint-lindera-ruby` also runs the language-side linter, which is not
-      # installed here; this covers the cargo half. See #962.
+      # installed here; this covers the cargo half. See #962. `--all-targets`
+      # lints the test code too, as test-crate.yml does for the other crates (#1174).
       - name: Run clippy
-        run: cargo clippy -p lindera-ruby -- -D warnings
+        run: cargo clippy -p lindera-ruby --all-targets -- -D warnings
 
       # Fails on rustdoc warnings in this binding, public and private items, as
       # check-docs does for the other crates (#1156). After clippy, so it reuses
@@ -865,9 +868,10 @@ jobs:
           make test-lindera-php-pie
 
       # `make lint-lindera-php` also runs the language-side linter, which is not
-      # installed here; this covers the cargo half. See #962.
+      # installed here; this covers the cargo half. See #962. `--all-targets`
+      # lints the test code too, as test-crate.yml does for the other crates (#1174).
       - name: Run clippy
-        run: cargo clippy -p lindera-php -- -D warnings
+        run: cargo clippy -p lindera-php --all-targets -- -D warnings
 
       # Fails on rustdoc warnings in this binding, public and private items, as
       # check-docs does for the other crates (#1156). After clippy, so it reuses
@@ -942,9 +946,11 @@ jobs:
 
       # `make lint-lindera-wasm` also runs prettier, which is not installed here;
       # this covers the cargo half. The wasm32 target is what the crate is built
-      # for, so lint it there too. See #962.
+      # for, so lint it there too. See #962. `--all-targets` lints the test code
+      # too, with the features `make test-lindera-wasm` runs the tests with, as
+      # some of them need IPADIC embedded (#1174).
       - name: Run clippy
-        run: cargo clippy -p lindera-wasm --target wasm32-unknown-unknown -- -D warnings
+        run: cargo clippy -p lindera-wasm --target wasm32-unknown-unknown --all-targets --features embed-ipadic -- -D warnings
 
       # Fails on rustdoc warnings in this binding, public and private items, as
       # check-docs does for the other crates (#1156). After clippy, so it reuses

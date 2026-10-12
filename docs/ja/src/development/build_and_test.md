@@ -82,7 +82,7 @@ Clippy を警告をエラーとして扱うモードで実行します：
 cargo clippy -- -D warnings
 ```
 
-> 注意: CI は各クレートに対して、そのクレートのテストと同じ feature で `cargo clippy --all-targets -- -D warnings` を実行します（`.github/workflows/test-crate.yml` を参照）。PR を開く前にローカルで（例えば `make lint` 経由で）clippy を実行してください。
+> 注意: CI は各クレートに対して、そのクレートのテストと同じ feature で `cargo clippy --all-targets -- -D warnings` を実行します（`.github/workflows/test-crate.yml` と、`.github/workflows/regression.yml` の言語バインディングのジョブを参照）。そのため、テストのコードも lint されます。`make lint-<crate>` は同じ clippy のコマンドを実行します。PR を開く前にローカルで（例えば `make lint` 経由で）clippy を実行してください。
 
 ## ドキュメント
 
