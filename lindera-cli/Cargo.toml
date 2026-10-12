@@ -61,7 +61,7 @@ serde_json = { workspace = true }
 # HTTPS GET without an async runtime; `rustls` selects the ring provider,
 # keeping aws-lc-sys out of the dependency graph.
 ureq = { version = "3.3.0", default-features = false, features = ["rustls"] }
-zip = { version = "8.6.0", default-features = false, features = [
+zip = { version = "9.0.0", default-features = false, features = [
     "deflate-flate2",
 ] }
 
