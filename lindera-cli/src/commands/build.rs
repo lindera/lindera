@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use lindera::LinderaResult;
-use lindera::dictionary::{DictionaryBuilder, Metadata};
+use lindera::dictionary::{DictionaryBuilder, Metadata, load_dictionary};
 use lindera::error::LinderaErrorKind;
 use lindera_cli::get_version;
 
@@ -42,6 +42,12 @@ pub struct BuildArgs {
     )]
     user: bool,
     #[clap(
+        long = "system-dict",
+        requires = "user",
+        help = "System dictionary the user dictionary is for: a directory path, URI, or downloaded dictionary name (e.g., embedded://ipadic, /path/to/dictionary, ipadic). Every row's context IDs are then checked against its connection matrix, and a row outside it fails the build with an error naming its line and surface. Only with --user; without it, the IDs are checked when the user dictionary is used"
+    )]
+    system_dict: Option<String>,
+    #[clap(
         short = 'f',
         long = "context-id-freq",
         help = "Context-ID access-frequency file used to order connection-cost IDs (requires connection_id_mapping in metadata)"
@@ -56,6 +62,18 @@ pub fn build(args: BuildArgs) -> LinderaResult<()> {
     let mut builder = DictionaryBuilder::new(metadata);
     if let Some(freq) = &args.context_id_freq {
         builder = builder.with_context_id_freq(freq.clone());
+    }
+
+    // The system dictionary is named as for `lindera tokenize --dict`; only
+    // its connection matrix is used, to check the user dictionary's rows.
+    if let Some(system_dict) = &args.system_dict {
+        let system_dict_uri = crate::dictionary_registry::resolve_dictionary_arg(
+            system_dict,
+            std::env::var_os(crate::dictionary_registry::DATA_DIR_ENV).map(PathBuf::from),
+            get_version(),
+        )?;
+        let dictionary = load_dictionary(&system_dict_uri)?;
+        builder = builder.with_system_matrix(&dictionary.connection_cost_matrix);
     }
 
     if args.user {
