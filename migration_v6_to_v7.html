@@ -1165,6 +1165,12 @@ surface <code>","</code> became the surface <code>"</code>, and <code>lindera ex
 unquoted, so <code>lindera build</code> read the rest of <code>lex.csv</code> as one field and
 dropped every row after it without an error. The <code>#</code> rows of UniDic,
 SudachiDict and IPADIC NEologd were not trained.</li>
+<li>A feature was split on <code>,</code> for the rewrite rules, the feature templates,
+unknown-word matching and the context IDs of user lexicon entries. A
+quoted column with a comma in it became several columns and shifted the
+columns after it: in 19,955 rows of mecab-jieba's training seed, whose
+quoted English definition is followed by four more columns, <code>%F[6]</code> to
+<code>%F[9]</code> were pieces of the definition.</li>
 </ul>
 <p>v7.0.0 trains as MeCab's learner does (see
 <a href="development/training_pipeline.html#how-training-works">How training works</a>):</p>
@@ -1196,6 +1202,12 @@ feature columns are kept as written. A quoted field that spans lines is
 an error. <code>lindera export</code> quotes a surface that contains <code>,</code>, <code>"</code> or a
 line break. The user lexicon that <code>Model::read_user_lexicon</code> reads is
 read the same way.</li>
+<li>A feature is split into columns as MeCab's learner splits it (see
+<a href="development/training_pipeline.html#1-seed-lexicon-seedcsv">Seed Lexicon</a>):
+a quoted column is one column, spaces and tabs before a column are
+skipped, and the text from a closing quote to the next <code>,</code> is dropped.
+The rewrite rules join the columns they rewrite with <code>,</code>, quoting a
+column that contains <code>,</code> or <code>"</code>, as MeCab does.</li>
 </ul>
 <p>Training takes longer, because every lattice now has the seed words. It is
 slower than MeCab's learner, and it can stop at <code>--max-iterations</code>

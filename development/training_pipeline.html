@@ -215,6 +215,13 @@
 <li>A quoted field that spans lines is an error that names the line. It is most likely a quote that is never closed, which would otherwise swallow the rows after it.</li>
 <li>The rows keep their order, which gives their labels their ids.</li>
 </ul>
+<p>To read the columns of a feature, for the rewrite rules, the feature templates and unknown-word matching, <code>lindera train</code> splits it as MeCab's learner does (<code>tokenizeCSV</code>), not as the CSV reader above does. The features of the corpus are split the same way.</p>
+<ul>
+<li>A quoted column is one column, with <code>""</code> read as <code>"</code>. The definition of mecab-jieba's <code>4S店</code>, <code>"authorized full-service car dealership (offering sales, spare parts, after-sales service and customer support)"</code>, is one column.</li>
+<li>Spaces and tabs before a column are skipped: CC-CEDICT's <code>COVID-19, the coronavirus disease identified in 2019/</code> is the two columns <code>COVID-19</code> and <code>the coronavirus disease identified in 2019/</code>.</li>
+<li>The text from a closing quote to the next <code>,</code> is dropped: <code>"bamboo" radical in Chinese characters (Kangxi radical 118)/</code> is the column <code>bamboo</code>.</li>
+<li>A <code>,</code> at the end of a feature does not start an empty last column.</li>
+</ul>
 <h3 id="2-training-corpus-corpustxt"><a class="header" href="#2-training-corpus-corpustxt">2. Training Corpus (corpus.txt)</a></h3>
 <p>Annotated text data in tab-separated format. Each line is <code>surface&lt;TAB&gt;pos_info</code>, and sentences are separated by <code>EOS</code>.</p>
 <pre><code class="language-text">外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
@@ -298,6 +305,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>%r</code></td><td>Right rewritten feature string</td></tr>
 </tbody></table>
 </div>
+<p>The fields of <code>%F[n]</code>, <code>%L[n]</code> and <code>%R[n]</code> are the columns of the rewritten features, split as described in <a href="#1-seed-lexicon-seedcsv">Seed Lexicon</a>. <code>%u</code>, <code>%l</code> and <code>%r</code> are the rewritten features as <code>rewrite.def</code> writes them, with a column that contains <code>,</code> or <code>"</code> quoted.</p>
 <h3 id="6-feature-rewrite-rules-rewritedef"><a class="header" href="#6-feature-rewrite-rules-rewritedef">6. Feature Rewrite Rules (rewrite.def)</a></h3>
 <p>Feature normalization rules in MeCab-compatible 3-section format. Sections are separated by blank lines.</p>
 <pre><code class="language-text"># Section 1: Unigram rewrite rules
@@ -316,6 +324,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 *  *
 </code></pre>
 <p>Each line is <code>pattern&lt;TAB&gt;replacement</code>. Patterns use <code>*</code> as a wildcard and are matched by prefix. The first matching rule in each section is applied. Different rules can be applied to unigram, left context, and right context independently, enabling fine-grained feature normalization to reduce sparsity.</p>
+<p>The pattern, the replacement and the feature are split into columns as described in <a href="#1-seed-lexicon-seedcsv">Seed Lexicon</a>, so a quoted column with <code>,</code> in it is one column. As MeCab does, the rewritten columns are joined with <code>,</code>, and a column that contains <code>,</code> or <code>"</code> is quoted, with its quotes doubled: with the left rule <code>* $5</code>, the feature <code>n,dian4,店,店,"shop, store",1</code> is rewritten to <code>"shop, store"</code>.</p>
 <h2 id="training-parameters"><a class="header" href="#training-parameters">Training Parameters</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Parameter</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>lambda</code></td><td>Regularization coefficient (controls overfitting)</td><td>0.01</td></tr>

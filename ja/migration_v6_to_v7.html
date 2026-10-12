@@ -1063,6 +1063,10 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 <code>lex.csv</code> の残りを 1 つのフィールドとして読み、その後ろの行をすべて何も知らせずに
 捨てていました。UniDic・SudachiDict・IPADIC NEologd の <code>#</code> の行は学習されません
 でした。</li>
+<li>書き換え規則・素性テンプレート・未知語の照合・ユーザー辞書の語の文脈 ID では、
+素性を <code>,</code> で分割していました。<code>,</code> を含む引用付きの列は複数の列になり、後ろの列が
+ずれていました。英語の定義を引用符で囲み、その後ろに 4 つの列を持つ mecab-jieba
+の学習用の種辞書では、19,955 行で <code>%F[6]</code>〜<code>%F[9]</code> が定義の断片になっていました。</li>
 </ul>
 <p>v7.0.0 は MeCab の学習器と同じく学習します
 （<a href="development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。</p>
@@ -1092,6 +1096,11 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 まま保ちます。複数の行にまたがる引用付きのフィールドはエラーになります。
 <code>lindera export</code> は、<code>,</code>・<code>"</code>・改行を含む表層形を引用符で囲みます。
 <code>Model::read_user_lexicon</code> が読むユーザー辞書も同じく読みます。</li>
+<li>素性は MeCab の学習器と同じく列に分けます
+（<a href="development/training_pipeline.html#1-%E7%A8%AE%E8%BE%9E%E6%9B%B8-seedcsv">種辞書</a>を参照）。
+引用付きの列は 1 つの列で、列の前の空白とタブは読み飛ばし、閉じる引用符から
+次の <code>,</code> までのテキストは捨てます。書き換え規則は、書き換えた列を <code>,</code> でつなぎ、
+MeCab と同じく <code>,</code> か <code>"</code> を含む列を引用符で囲みます。</li>
 </ul>
 <p>すべてのラティスに種辞書の語が入るため、学習には以前より時間がかかります。学習は
 MeCab の学習器より遅く、収束する前に <code>--max-iterations</code> で

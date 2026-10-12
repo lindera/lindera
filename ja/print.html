@@ -1058,12 +1058,12 @@ tokenizer
 <h3 id="featureextractor"><a class="header" href="#featureextractor">FeatureExtractor</a></h3>
 <p>MeCab互換の素性テンプレートを解析し、生成された素性文字列から内部で採番される<code>NonZeroU32</code>型の素性IDへのマッピングを管理します。サポートされるテンプレートのプレースホルダは、<code>%F[n]</code> / <code>%F?[n]</code>（インデックス<code>n</code>の素性フィールド。<code>?</code>付きは値が<code>*</code>の場合にスキップ）、<code>%t</code>（文字カテゴリ）、<code>%w</code>（表層形、ユニグラムのみ）、<code>%u</code> / <code>%l</code> / <code>%r</code>（書き換え後のユニグラム／左文脈／右文脈の素性文字列全体）、およびバイグラムの左右文脈フィールド用の<code>%L[n]</code> / <code>%L?[n]</code> / <code>%R[n]</code> / <code>%R?[n]</code>です。<code>extract_unigram_feature_ids[_with_ctx]</code>、<code>extract_left_feature_ids[_with_ctx]</code>、<code>extract_right_feature_ids[_with_ctx]</code>は、パース済みテンプレートを素性の配列（バイグラム抽出の場合は表層形／ufeature／lfeature／rfeatureを保持するオプションの<code>TemplateContext</code>も併せて）に適用し、対応する素性IDを返します。初回利用時には新しいIDが割り当てられます。</p>
 <h3 id="dictionaryrewriter"><a class="header" href="#dictionaryrewriter">DictionaryRewriter</a></h3>
-<p>MeCabの3セクション形式<code>rewrite.def</code>（<code>[unigram rewrite]</code>、<code>[left rewrite]</code>、<code>[right rewrite]</code>）を実装します。各セクションは<code>pattern&lt;TAB&gt;replacement</code>形式のルールの並びを持ち、内部の<code>FeatureRewriterBuilder</code>によって<code>FeatureRewriter</code>というprefix trie（前方一致木）に構築されます。<code>DictionaryRewriter::from_reader</code>は3セクションすべてをパースしますが、セクションヘッダのないファイルは後方互換性のため（右文脈書き換えのみのレガシー形式として）扱います。<code>rewrite()</code>は素性文字列に3つの書き換え器すべてを適用し、<code>(ufeature, lfeature, rfeature)</code>を返します。マッチするルールがないセクションは入力をそのまま通過させます。（かつての<code>rewrite_cached()</code>は素性文字列全体をキーにメモ化していましたが、実辞書の素性は行ごとにほぼ一意でキャッシュが一度もヒットしないため削除されました — #975。）</p>
+<p>MeCabの3セクション形式<code>rewrite.def</code>（<code>[unigram rewrite]</code>、<code>[left rewrite]</code>、<code>[right rewrite]</code>）を実装します。各セクションは<code>pattern&lt;TAB&gt;replacement</code>形式のルールの並びを持ち、内部の<code>FeatureRewriterBuilder</code>によって<code>FeatureRewriter</code>というprefix trie（前方一致木）に構築されます。<code>DictionaryRewriter::from_reader</code>は3セクションすべてをパースしますが、セクションヘッダのないファイルは後方互換性のため（右文脈書き換えのみのレガシー形式として）扱います。<code>rewrite()</code>は素性文字列に3つの書き換え器すべてを適用し、<code>(ufeature, lfeature, rfeature)</code>を返します。マッチするルールがないセクションは入力をそのまま通過させます。MeCabと同じく、素性と各ルールのパターン・置換はMeCabの<code>tokenizeCSV</code>の規則（クレート内部の<code>feature_csv::split_feature</code>）で列に分けるので、<code>,</code>を含む引用付きの列は1つの列です。<code>rewrite()</code>は書き換えた列を<code>,</code>でつなぎ、<code>,</code>か<code>"</code>を含む列は引用符で囲みます。学習器は、素性テンプレートのために3つの結果を同じく列に分けます。（かつての<code>rewrite_cached()</code>は素性文字列全体をキーにメモ化していましたが、実辞書の素性は行ごとにほぼ一意でキャッシュが一度もヒットしないため削除されました — #975。）</p>
 <h3 id="trainer-1"><a class="header" href="#trainer-1">Trainer</a></h3>
 <p><code>Trainer::new</code>はCRFのラベルを作ります。まず種辞書の行ごとに行順で1つ（ラベル<code>行番号 + 1</code>。単語IDが行番号である学習用辞書での一致を、そのままラベルに対応付けるため）、続いて<code>unk.def</code>のエントリごとにファイル順で1つ作り、その<code>%t</code>はエントリのカテゴリのIDです。<code>Trainer::train</code>は、MeCabの学習器と同じく、例文ごとに<code>lindera_crf::Lattice</code>を1つ作ります。</p>
 <ul>
 <li>各位置の候補は、その位置から始まる種辞書の語と、ランタイムがその位置に作る未知語です。未知語は<code>lindera_dictionary::viterbi::Lattice::unknown_word_candidates</code>が列挙します。文字の既定カテゴリの未知語を、その<code>INVOKE</code>・<code>GROUP</code>・<code>LENGTH</code>の設定で、カテゴリの<code>unk.def</code>のエントリそれぞれについて作ります。</li>
-<li>正解の各トークンには、範囲と素性文字列全体が同じ最初の種辞書の行のラベルを付けます。なければ、範囲が同じ未知語候補の<code>unk.def</code>エントリのうち、<code>*</code>以外の素性の列がすべて正解トークンの列と一致するファイル順で最初のエントリのラベルを付けます。それもなければ、MeCabの学習器が仮想ノードを追加するのと同じく、正解の素性文字列から作る仮想ラベル（<code>%t</code>は0、<code>%w</code>なし、素性文字列ごとに1つ）を付けます。仮想ラベルはほかのラベルの後に並び、学習されますが、エクスポートされることはありません。</li>
+<li>正解の各トークンには、範囲と素性文字列全体が同じ最初の種辞書の行のラベルを付けます。なければ、範囲が同じ未知語候補の<code>unk.def</code>エントリのうち、<code>*</code>以外の素性の列がすべて正解トークンの列と一致するファイル順で最初のエントリのラベルを付けます（どちらの列も<code>rewrite()</code>と同じく分けます）。それもなければ、MeCabの学習器が仮想ノードを追加するのと同じく、正解の素性文字列から作る仮想ラベル（<code>%t</code>は0、<code>%w</code>なし、素性文字列ごとに1つ）を付けます。仮想ラベルはほかのラベルの後に並び、学習されますが、エクスポートされることはありません。</li>
 <li>それ以外の候補はすべて負例の辺になります。</li>
 </ul>
 <p>ラティスを作り終えると、<code>Lattice statistics:</code>の行を出力します。各方法でラベルを付けた正解トークンの数（<code>gold_lexicon</code>・<code>gold_unknown</code>・<code>gold_virtual</code>）、仮想ラベルの数（<code>virtual_labels</code>）、種辞書と未知語候補それぞれから作った負例の辺の数（<code>negative_lexicon</code>・<code>negative_unknown</code>）です。<code>Trainer::max_grouping_len</code>は、ランタイムと同じ意味（先頭の1文字を除いた文字数。デフォルトの<code>None</code>は無制限）で未知語のグルーピングの長さに上限を設けます。ほかのビルダーメソッドは、正則化・イテレーション数の上限・スレッド数を設定します。</p>
@@ -10516,6 +10516,10 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 <code>lex.csv</code> の残りを 1 つのフィールドとして読み、その後ろの行をすべて何も知らせずに
 捨てていました。UniDic・SudachiDict・IPADIC NEologd の <code>#</code> の行は学習されません
 でした。</li>
+<li>書き換え規則・素性テンプレート・未知語の照合・ユーザー辞書の語の文脈 ID では、
+素性を <code>,</code> で分割していました。<code>,</code> を含む引用付きの列は複数の列になり、後ろの列が
+ずれていました。英語の定義を引用符で囲み、その後ろに 4 つの列を持つ mecab-jieba
+の学習用の種辞書では、19,955 行で <code>%F[6]</code>〜<code>%F[9]</code> が定義の断片になっていました。</li>
 </ul>
 <p>v7.0.0 は MeCab の学習器と同じく学習します
 （<a href="development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。</p>
@@ -10545,6 +10549,11 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 まま保ちます。複数の行にまたがる引用付きのフィールドはエラーになります。
 <code>lindera export</code> は、<code>,</code>・<code>"</code>・改行を含む表層形を引用符で囲みます。
 <code>Model::read_user_lexicon</code> が読むユーザー辞書も同じく読みます。</li>
+<li>素性は MeCab の学習器と同じく列に分けます
+（<a href="development/training_pipeline.html#1-%E7%A8%AE%E8%BE%9E%E6%9B%B8-seedcsv">種辞書</a>を参照）。
+引用付きの列は 1 つの列で、列の前の空白とタブは読み飛ばし、閉じる引用符から
+次の <code>,</code> までのテキストは捨てます。書き換え規則は、書き換えた列を <code>,</code> でつなぎ、
+MeCab と同じく <code>,</code> か <code>"</code> を含む列を引用符で囲みます。</li>
 </ul>
 <p>すべてのラティスに種辞書の語が入るため、学習には以前より時間がかかります。学習は
 MeCab の学習器より遅く、収束する前に <code>--max-iterations</code> で
@@ -11254,6 +11263,13 @@ cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 <li>複数の行にまたがる引用付きのフィールドは、その行を示すエラーになります。閉じていない引用符である可能性が高く、そのままでは後ろの行を飲み込んでしまうためです。</li>
 <li>行の順序はそのまま保たれ、その順序がラベルの ID になります。</li>
 </ul>
+<p>書き換え規則・素性テンプレート・未知語の照合で素性の列を読むとき、<code>lindera train</code> は素性を、上の CSV の読み方ではなく、MeCab の学習器と同じく（<code>tokenizeCSV</code>）列に分けます。コーパスの素性も同じく分けます。</p>
+<ul>
+<li>引用符で囲んだ列は 1 つの列で、<code>""</code> は <code>"</code> と読みます。mecab-jieba の <code>4S店</code> の定義 <code>"authorized full-service car dealership (offering sales, spare parts, after-sales service and customer support)"</code> は 1 つの列です。</li>
+<li>列の前の空白とタブは読み飛ばします。CC-CEDICT の <code>COVID-19, the coronavirus disease identified in 2019/</code> は、<code>COVID-19</code> と <code>the coronavirus disease identified in 2019/</code> の 2 つの列です。</li>
+<li>閉じる引用符から次の <code>,</code> までのテキストは捨てます。<code>"bamboo" radical in Chinese characters (Kangxi radical 118)/</code> は <code>bamboo</code> という列です。</li>
+<li>素性の末尾の <code>,</code> の後ろに空の列はできません。</li>
+</ul>
 <h3 id="2-学習コーパス-corpustxt"><a class="header" href="#2-学習コーパス-corpustxt">2. 学習コーパス (corpus.txt)</a></h3>
 <p>タブ区切り形式のアノテーション付きテキストデータです。各行は <code>surface&lt;TAB&gt;pos_info</code> で、文は <code>EOS</code> で区切られます。</p>
 <pre><code class="language-text">外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
@@ -11337,6 +11353,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>%r</code></td><td>右書き換え後の素性文字列</td></tr>
 </tbody></table>
 </div>
+<p><code>%F[n]</code>・<code>%L[n]</code>・<code>%R[n]</code> のフィールドは、書き換え後の素性を<a href="development/training_pipeline.html#1-%E7%A8%AE%E8%BE%9E%E6%9B%B8-seedcsv">種辞書</a>で説明したとおりに分けた列です。<code>%u</code>・<code>%l</code>・<code>%r</code> は、<code>rewrite.def</code> が書き出したままの書き換え後の素性で、<code>,</code> か <code>"</code> を含む列は引用符で囲まれています。</p>
 <h3 id="6-素性書き換えルール-rewritedef"><a class="header" href="#6-素性書き換えルール-rewritedef">6. 素性書き換えルール (rewrite.def)</a></h3>
 <p>MeCab 互換の3セクション形式による素性正規化ルールです。セクションは空行で区切られます。</p>
 <pre><code class="language-text"># Section 1: Unigram rewrite rules
@@ -11355,6 +11372,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 *  *
 </code></pre>
 <p>各行は <code>pattern&lt;TAB&gt;replacement</code> です。パターンはワイルドカードとして <code>*</code> を使用し、前方一致で照合されます。各セクションで最初に一致したルールが適用されます。ユニグラム、左文脈、右文脈に対して異なるルールを独立して適用できるため、スパース性を低減するきめ細かい素性正規化が可能です。</p>
+<p>パターン・置換・素性は<a href="development/training_pipeline.html#1-%E7%A8%AE%E8%BE%9E%E6%9B%B8-seedcsv">種辞書</a>で説明したとおりに列に分けるので、<code>,</code> を含む引用付きの列は 1 つの列です。MeCab と同じく、書き換えた列は <code>,</code> でつなぎ、<code>,</code> か <code>"</code> を含む列は引用符で囲み、中の <code>"</code> を二重にします。たとえば左の規則 <code>* $5</code> は、素性 <code>n,dian4,店,店,"shop, store",1</code> を <code>"shop, store"</code> に書き換えます。</p>
 <h2 id="学習パラメータ-5"><a class="header" href="#学習パラメータ-5">学習パラメータ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>lambda</code></td><td>正則化係数（過学習の制御）</td><td>0.01</td></tr>

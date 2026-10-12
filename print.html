@@ -1062,12 +1062,12 @@ tokenizer
 <h3 id="featureextractor"><a class="header" href="#featureextractor">FeatureExtractor</a></h3>
 <p>Parses MeCab-compatible feature templates and manages the mapping from generated feature strings to interned, <code>NonZeroU32</code> feature IDs. Supported template placeholders are <code>%F[n]</code> / <code>%F?[n]</code> (feature field at index <code>n</code>, the <code>?</code> form skipped when the value is <code>*</code>), <code>%t</code> (character category), <code>%w</code> (surface form, unigram only), <code>%u</code> / <code>%l</code> / <code>%r</code> (full rewritten unigram/left/right feature string), and <code>%L[n]</code> / <code>%L?[n]</code> / <code>%R[n]</code> / <code>%R?[n]</code> for bigram left/right context fields. <code>extract_unigram_feature_ids[_with_ctx]</code>, <code>extract_left_feature_ids[_with_ctx]</code>, and <code>extract_right_feature_ids[_with_ctx]</code> apply the parsed templates to a feature vector (plus, for bigram extraction, an optional <code>TemplateContext</code> carrying surface/ufeature/lfeature/rfeature) and return the resulting feature IDs, creating new IDs on first use.</p>
 <h3 id="dictionaryrewriter"><a class="header" href="#dictionaryrewriter">DictionaryRewriter</a></h3>
-<p>Implements MeCab's 3-section <code>rewrite.def</code> format: <code>[unigram rewrite]</code>, <code>[left rewrite]</code>, and <code>[right rewrite]</code> sections, each holding an ordered list of <code>pattern&lt;TAB&gt;replacement</code> rules built into a <code>FeatureRewriter</code> prefix trie (via the internal <code>FeatureRewriterBuilder</code>). <code>DictionaryRewriter::from_reader</code> parses all three sections (falling back to treating an unsectioned file as legacy right-rewrite-only content, for backward compatibility with older Lindera <code>rewrite.def</code> files). <code>rewrite()</code> applies all three rewriters to a feature string and returns <code>(ufeature, lfeature, rfeature)</code>, passing a section through unchanged when no rule matches. (An earlier <code>rewrite_cached()</code> memoized per full feature string, but real lexicon features are unique per row, so the cache never hit and was removed — #975.)</p>
+<p>Implements MeCab's 3-section <code>rewrite.def</code> format: <code>[unigram rewrite]</code>, <code>[left rewrite]</code>, and <code>[right rewrite]</code> sections, each holding an ordered list of <code>pattern&lt;TAB&gt;replacement</code> rules built into a <code>FeatureRewriter</code> prefix trie (via the internal <code>FeatureRewriterBuilder</code>). <code>DictionaryRewriter::from_reader</code> parses all three sections (falling back to treating an unsectioned file as legacy right-rewrite-only content, for backward compatibility with older Lindera <code>rewrite.def</code> files). <code>rewrite()</code> applies all three rewriters to a feature string and returns <code>(ufeature, lfeature, rfeature)</code>, passing a section through unchanged when no rule matches. As in MeCab, the feature and the pattern and replacement of each rule are split into columns with the rules of MeCab's <code>tokenizeCSV</code> (the crate-private <code>feature_csv::split_feature</code>), so a quoted column with <code>,</code> in it is one column, and <code>rewrite()</code> joins the rewritten columns with <code>,</code>, quoting a column that contains <code>,</code> or <code>"</code>. The trainer splits the three results the same way for the feature templates. (An earlier <code>rewrite_cached()</code> memoized per full feature string, but real lexicon features are unique per row, so the cache never hit and was removed — #975.)</p>
 <h3 id="trainer-1"><a class="header" href="#trainer-1">Trainer</a></h3>
 <p><code>Trainer::new</code> creates the CRF labels: one per seed row, in row order (label <code>row + 1</code>, so that a match in the training lexicon, whose word ID is the row index, maps to its label), then one per <code>unk.def</code> entry, in file order, whose <code>%t</code> is the ID of the entry's category. <code>Trainer::train</code> builds one <code>lindera_crf::Lattice</code> per example, as MeCab's learner does:</p>
 <ul>
 <li>The candidates at each position are the seed words that start there and the unknown words that the runtime creates there, listed by <code>lindera_dictionary::viterbi::Lattice::unknown_word_candidates</code>: those of the character's default category, with its <code>INVOKE</code>, <code>GROUP</code> and <code>LENGTH</code> settings, for every <code>unk.def</code> entry of the category.</li>
-<li>Each gold token gets the label of the first seed row with the same span and the same whole feature string; else that of the first <code>unk.def</code> entry, in file order, of an unknown-word candidate with the same span whose feature columns other than <code>*</code> all equal the gold token's; else a virtual label built from the gold feature string (<code>%t</code> 0, no <code>%w</code>, one per distinct feature string), as MeCab's learner adds a virtual node. Virtual labels follow the other labels, are trained, and are never exported.</li>
+<li>Each gold token gets the label of the first seed row with the same span and the same whole feature string; else that of the first <code>unk.def</code> entry, in file order, of an unknown-word candidate with the same span whose feature columns other than <code>*</code> all equal the gold token's (both split as <code>rewrite()</code> splits a feature); else a virtual label built from the gold feature string (<code>%t</code> 0, no <code>%w</code>, one per distinct feature string), as MeCab's learner adds a virtual node. Virtual labels follow the other labels, are trained, and are never exported.</li>
 <li>Every other candidate becomes a negative edge.</li>
 </ul>
 <p>Once the lattices are built, it prints a <code>Lattice statistics:</code> line with the number of gold tokens labelled each way (<code>gold_lexicon</code>, <code>gold_unknown</code>, <code>gold_virtual</code>), the number of virtual labels (<code>virtual_labels</code>), and the negative edges from the seed lexicon and from the unknown-word candidates (<code>negative_lexicon</code>, <code>negative_unknown</code>). <code>Trainer::max_grouping_len</code> caps unknown-word grouping with the runtime's meaning (characters beyond the first; <code>None</code>, the default, leaves it unbounded); the other builder methods set the regularization, the iteration cap and the thread count.</p>
@@ -10739,6 +10739,12 @@ surface <code>","</code> became the surface <code>"</code>, and <code>lindera ex
 unquoted, so <code>lindera build</code> read the rest of <code>lex.csv</code> as one field and
 dropped every row after it without an error. The <code>#</code> rows of UniDic,
 SudachiDict and IPADIC NEologd were not trained.</li>
+<li>A feature was split on <code>,</code> for the rewrite rules, the feature templates,
+unknown-word matching and the context IDs of user lexicon entries. A
+quoted column with a comma in it became several columns and shifted the
+columns after it: in 19,955 rows of mecab-jieba's training seed, whose
+quoted English definition is followed by four more columns, <code>%F[6]</code> to
+<code>%F[9]</code> were pieces of the definition.</li>
 </ul>
 <p>v7.0.0 trains as MeCab's learner does (see
 <a href="development/training_pipeline.html#how-training-works">How training works</a>):</p>
@@ -10770,6 +10776,12 @@ feature columns are kept as written. A quoted field that spans lines is
 an error. <code>lindera export</code> quotes a surface that contains <code>,</code>, <code>"</code> or a
 line break. The user lexicon that <code>Model::read_user_lexicon</code> reads is
 read the same way.</li>
+<li>A feature is split into columns as MeCab's learner splits it (see
+<a href="development/training_pipeline.html#1-seed-lexicon-seedcsv">Seed Lexicon</a>):
+a quoted column is one column, spaces and tabs before a column are
+skipped, and the text from a closing quote to the next <code>,</code> is dropped.
+The rewrite rules join the columns they rewrite with <code>,</code>, quoting a
+column that contains <code>,</code> or <code>"</code>, as MeCab does.</li>
 </ul>
 <p>Training takes longer, because every lattice now has the seed words. It is
 slower than MeCab's learner, and it can stop at <code>--max-iterations</code>
@@ -11542,6 +11554,13 @@ cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 <li>A quoted field that spans lines is an error that names the line. It is most likely a quote that is never closed, which would otherwise swallow the rows after it.</li>
 <li>The rows keep their order, which gives their labels their ids.</li>
 </ul>
+<p>To read the columns of a feature, for the rewrite rules, the feature templates and unknown-word matching, <code>lindera train</code> splits it as MeCab's learner does (<code>tokenizeCSV</code>), not as the CSV reader above does. The features of the corpus are split the same way.</p>
+<ul>
+<li>A quoted column is one column, with <code>""</code> read as <code>"</code>. The definition of mecab-jieba's <code>4S店</code>, <code>"authorized full-service car dealership (offering sales, spare parts, after-sales service and customer support)"</code>, is one column.</li>
+<li>Spaces and tabs before a column are skipped: CC-CEDICT's <code>COVID-19, the coronavirus disease identified in 2019/</code> is the two columns <code>COVID-19</code> and <code>the coronavirus disease identified in 2019/</code>.</li>
+<li>The text from a closing quote to the next <code>,</code> is dropped: <code>"bamboo" radical in Chinese characters (Kangxi radical 118)/</code> is the column <code>bamboo</code>.</li>
+<li>A <code>,</code> at the end of a feature does not start an empty last column.</li>
+</ul>
 <h3 id="2-training-corpus-corpustxt"><a class="header" href="#2-training-corpus-corpustxt">2. Training Corpus (corpus.txt)</a></h3>
 <p>Annotated text data in tab-separated format. Each line is <code>surface&lt;TAB&gt;pos_info</code>, and sentences are separated by <code>EOS</code>.</p>
 <pre><code class="language-text">外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
@@ -11625,6 +11644,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>%r</code></td><td>Right rewritten feature string</td></tr>
 </tbody></table>
 </div>
+<p>The fields of <code>%F[n]</code>, <code>%L[n]</code> and <code>%R[n]</code> are the columns of the rewritten features, split as described in <a href="development/training_pipeline.html#1-seed-lexicon-seedcsv">Seed Lexicon</a>. <code>%u</code>, <code>%l</code> and <code>%r</code> are the rewritten features as <code>rewrite.def</code> writes them, with a column that contains <code>,</code> or <code>"</code> quoted.</p>
 <h3 id="6-feature-rewrite-rules-rewritedef"><a class="header" href="#6-feature-rewrite-rules-rewritedef">6. Feature Rewrite Rules (rewrite.def)</a></h3>
 <p>Feature normalization rules in MeCab-compatible 3-section format. Sections are separated by blank lines.</p>
 <pre><code class="language-text"># Section 1: Unigram rewrite rules
@@ -11643,6 +11663,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 *  *
 </code></pre>
 <p>Each line is <code>pattern&lt;TAB&gt;replacement</code>. Patterns use <code>*</code> as a wildcard and are matched by prefix. The first matching rule in each section is applied. Different rules can be applied to unigram, left context, and right context independently, enabling fine-grained feature normalization to reduce sparsity.</p>
+<p>The pattern, the replacement and the feature are split into columns as described in <a href="development/training_pipeline.html#1-seed-lexicon-seedcsv">Seed Lexicon</a>, so a quoted column with <code>,</code> in it is one column. As MeCab does, the rewritten columns are joined with <code>,</code>, and a column that contains <code>,</code> or <code>"</code> is quoted, with its quotes doubled: with the left rule <code>* $5</code>, the feature <code>n,dian4,店,店,"shop, store",1</code> is rewritten to <code>"shop, store"</code>.</p>
 <h2 id="training-parameters-4"><a class="header" href="#training-parameters-4">Training Parameters</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Parameter</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>lambda</code></td><td>Regularization coefficient (controls overfitting)</td><td>0.01</td></tr>

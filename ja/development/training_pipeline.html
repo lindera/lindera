@@ -215,6 +215,13 @@
 <li>複数の行にまたがる引用付きのフィールドは、その行を示すエラーになります。閉じていない引用符である可能性が高く、そのままでは後ろの行を飲み込んでしまうためです。</li>
 <li>行の順序はそのまま保たれ、その順序がラベルの ID になります。</li>
 </ul>
+<p>書き換え規則・素性テンプレート・未知語の照合で素性の列を読むとき、<code>lindera train</code> は素性を、上の CSV の読み方ではなく、MeCab の学習器と同じく（<code>tokenizeCSV</code>）列に分けます。コーパスの素性も同じく分けます。</p>
+<ul>
+<li>引用符で囲んだ列は 1 つの列で、<code>""</code> は <code>"</code> と読みます。mecab-jieba の <code>4S店</code> の定義 <code>"authorized full-service car dealership (offering sales, spare parts, after-sales service and customer support)"</code> は 1 つの列です。</li>
+<li>列の前の空白とタブは読み飛ばします。CC-CEDICT の <code>COVID-19, the coronavirus disease identified in 2019/</code> は、<code>COVID-19</code> と <code>the coronavirus disease identified in 2019/</code> の 2 つの列です。</li>
+<li>閉じる引用符から次の <code>,</code> までのテキストは捨てます。<code>"bamboo" radical in Chinese characters (Kangxi radical 118)/</code> は <code>bamboo</code> という列です。</li>
+<li>素性の末尾の <code>,</code> の後ろに空の列はできません。</li>
+</ul>
 <h3 id="2-学習コーパス-corpustxt"><a class="header" href="#2-学習コーパス-corpustxt">2. 学習コーパス (corpus.txt)</a></h3>
 <p>タブ区切り形式のアノテーション付きテキストデータです。各行は <code>surface&lt;TAB&gt;pos_info</code> で、文は <code>EOS</code> で区切られます。</p>
 <pre><code class="language-text">外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
@@ -298,6 +305,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>%r</code></td><td>右書き換え後の素性文字列</td></tr>
 </tbody></table>
 </div>
+<p><code>%F[n]</code>・<code>%L[n]</code>・<code>%R[n]</code> のフィールドは、書き換え後の素性を<a href="#1-%E7%A8%AE%E8%BE%9E%E6%9B%B8-seedcsv">種辞書</a>で説明したとおりに分けた列です。<code>%u</code>・<code>%l</code>・<code>%r</code> は、<code>rewrite.def</code> が書き出したままの書き換え後の素性で、<code>,</code> か <code>"</code> を含む列は引用符で囲まれています。</p>
 <h3 id="6-素性書き換えルール-rewritedef"><a class="header" href="#6-素性書き換えルール-rewritedef">6. 素性書き換えルール (rewrite.def)</a></h3>
 <p>MeCab 互換の3セクション形式による素性正規化ルールです。セクションは空行で区切られます。</p>
 <pre><code class="language-text"># Section 1: Unigram rewrite rules
@@ -316,6 +324,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 *  *
 </code></pre>
 <p>各行は <code>pattern&lt;TAB&gt;replacement</code> です。パターンはワイルドカードとして <code>*</code> を使用し、前方一致で照合されます。各セクションで最初に一致したルールが適用されます。ユニグラム、左文脈、右文脈に対して異なるルールを独立して適用できるため、スパース性を低減するきめ細かい素性正規化が可能です。</p>
+<p>パターン・置換・素性は<a href="#1-%E7%A8%AE%E8%BE%9E%E6%9B%B8-seedcsv">種辞書</a>で説明したとおりに列に分けるので、<code>,</code> を含む引用付きの列は 1 つの列です。MeCab と同じく、書き換えた列は <code>,</code> でつなぎ、<code>,</code> か <code>"</code> を含む列は引用符で囲み、中の <code>"</code> を二重にします。たとえば左の規則 <code>* $5</code> は、素性 <code>n,dian4,店,店,"shop, store",1</code> を <code>"shop, store"</code> に書き換えます。</p>
 <h2 id="学習パラメータ"><a class="header" href="#学習パラメータ">学習パラメータ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>lambda</code></td><td>正則化係数（過学習の制御）</td><td>0.01</td></tr>
