@@ -10,6 +10,7 @@ pub mod config;
 pub mod corpus;
 pub mod feature_extractor;
 pub mod feature_rewriter;
+mod lexicon_csv;
 pub mod model;
 
 use std::collections::HashMap;
@@ -1977,5 +1978,181 @@ mod unk_def_entry_tests {
             .filter_map(|line| line.split(',').next())
             .collect();
         assert_eq!(surfaces, ["は", "東"]);
+    }
+}
+
+#[cfg(test)]
+mod lexicon_csv_export_tests {
+    use std::io::Cursor;
+
+    use crate::corpus::Word;
+    use crate::test_fixtures::{fixtures, train_wide_model, wide_seed_and_corpus};
+    use crate::{Corpus, Trainer, TrainerConfig};
+
+    /// Returns the surfaces of `content` as `lindera build` reads `lex.csv`.
+    fn surfaces_read_by_dictionary_builder(content: &[u8]) -> Vec<String> {
+        csv::ReaderBuilder::new()
+            .has_headers(false)
+            .flexible(true)
+            .from_reader(content)
+            .records()
+            .map(|record| record.unwrap()[0].to_string())
+            .collect()
+    }
+
+    /// A seed with mecab-ko-dic's quoted `","` row, a doubled quote and
+    /// UniDic's `#` row trains with a label for every row, in seed order, and
+    /// both lexicon writers write every row, so that `lindera build` reads the
+    /// seed surfaces back (#1170).
+    #[test]
+    fn seed_with_quoted_and_hash_surfaces_exports_every_row() {
+        let (_, char_def, unk_def, feature_def, rewrite_def, _) = fixtures();
+        let (wide_seed, corpus_text) = wide_seed_and_corpus();
+        let seed = format!(
+            "\",\",0,0,0,記号,読点,*,*,*,*,*,*,*\n\
+             \"\"\"\",0,0,0,記号,括弧開,*,*,*,*,*,*,*\n\
+             #,0,0,0,記号,一般,*,*,*,*,#,#,#\n\
+             {wide_seed}"
+        );
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed.as_bytes()),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+        let surfaces = config.surfaces().to_vec();
+        assert_eq!(surfaces.len(), seed.lines().count());
+        assert_eq!(surfaces[..4], [",", "\"", "#", "語00"]);
+
+        let trainer = Trainer::new(config)
+            .unwrap()
+            .regularization_cost(0.01)
+            .max_iter(5)
+            .num_threads(1);
+        let corpus = Corpus::from_reader(Cursor::new(corpus_text.as_bytes())).unwrap();
+        let model = trainer.train(corpus).unwrap();
+
+        let mut lexicon = Vec::new();
+        model.write_lexicon(&mut lexicon).unwrap();
+        assert_eq!(
+            surfaces_read_by_dictionary_builder(&lexicon),
+            surfaces,
+            "Model::write_lexicon:\n{}",
+            String::from_utf8_lossy(&lexicon)
+        );
+
+        let mut bytes = Vec::new();
+        model.write_model(&mut bytes).unwrap();
+        let serializable = crate::Model::read_model(Cursor::new(bytes)).unwrap();
+        assert_eq!(serializable.labels[..surfaces.len()], surfaces[..]);
+        let mut lexicon = Vec::new();
+        serializable.write_lexicon(&mut lexicon).unwrap();
+        assert_eq!(
+            surfaces_read_by_dictionary_builder(&lexicon),
+            surfaces,
+            "SerializableModel::write_lexicon:\n{}",
+            String::from_utf8_lossy(&lexicon)
+        );
+    }
+
+    /// A user lexicon with a quoted `","` row and a `#` row round-trips: the
+    /// rows are read as CSV records, and a row with parameters is written
+    /// back as it was read (#1170).
+    #[test]
+    fn user_lexicon_with_quoted_and_hash_surfaces_round_trips() {
+        let user_csv = "\",\",3,3,912,記号,読点,*,*,*,*,*,*,*\n\
+                        #,0,0,0,記号,一般,*,*,*,*,#,#,#\n";
+        let mut model = train_wide_model(1);
+        model
+            .read_user_lexicon(Cursor::new(user_csv.as_bytes()))
+            .unwrap();
+
+        let (mut lex, mut conn, mut unk, mut user) =
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+        model
+            .write_dictionary(&mut lex, &mut conn, &mut unk, &mut user)
+            .unwrap();
+
+        assert_eq!(surfaces_read_by_dictionary_builder(&user), [",", "#"]);
+        let text = String::from_utf8(user).unwrap();
+        assert_eq!(text.lines().next(), user_csv.lines().next());
+        assert!(
+            text.lines()
+                .nth(1)
+                .is_some_and(|line| line.ends_with(",記号,一般,*,*,*,*,#,#,#")),
+            "{text}"
+        );
+    }
+
+    /// Every lexicon writer quotes a surface with `,` or `"` in it, so that
+    /// `lindera build` reads the same surfaces, in the same order (#1170).
+    /// A label of `"` is what a model trained before #1170 has for
+    /// mecab-ko-dic's `","` row; written unquoted, it opened a quoted field
+    /// that swallowed the rows after it.
+    #[test]
+    fn lexicon_writers_quote_surfaces() {
+        let mut model = train_wide_model(1);
+        for (index, surface) in [(0, ","), (1, "\""), (2, "a\"b,c"), (3, "#")] {
+            model.config.surfaces[index] = surface.to_string();
+            model.labels[index] = surface.to_string();
+        }
+        let surfaces = model.config.surfaces.clone();
+
+        let mut lexicon = Vec::new();
+        model.write_lexicon(&mut lexicon).unwrap();
+        assert_eq!(
+            surfaces_read_by_dictionary_builder(&lexicon),
+            surfaces,
+            "Model::write_lexicon:\n{}",
+            String::from_utf8_lossy(&lexicon)
+        );
+
+        let mut bytes = Vec::new();
+        model.write_model(&mut bytes).unwrap();
+        let serializable = crate::Model::read_model(Cursor::new(bytes)).unwrap();
+        let mut lexicon = Vec::new();
+        serializable.write_lexicon(&mut lexicon).unwrap();
+        assert_eq!(
+            surfaces_read_by_dictionary_builder(&lexicon),
+            surfaces,
+            "SerializableModel::write_lexicon:\n{}",
+            String::from_utf8_lossy(&lexicon)
+        );
+    }
+
+    /// The user lexicon writer quotes a surface with `,` or `"` in it, for
+    /// both an entry whose parameters it infers and one it re-emits (#1170).
+    #[test]
+    fn user_lexicon_writer_quotes_surfaces() {
+        let user_csv = "外食,0,0,0,名詞,一般,*,*,*,*,外食,ガイショク,ガイショク\n\
+                        ラー油,3,3,912,名詞,一般,*,*,*,*,ラー油,ラーユ,ラーユ\n";
+        let mut model = train_wide_model(1);
+        model
+            .read_user_lexicon(Cursor::new(user_csv.as_bytes()))
+            .unwrap();
+        for (index, surface) in [(0, ","), (1, "\"")] {
+            let feature = model.user_entries[index].0.feature().to_string();
+            model.user_entries[index].0 = Word::new(surface, &feature);
+        }
+
+        let (mut lex, mut conn, mut unk, mut user) =
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+        model
+            .write_dictionary(&mut lex, &mut conn, &mut unk, &mut user)
+            .unwrap();
+
+        assert_eq!(
+            surfaces_read_by_dictionary_builder(&user),
+            [",", "\""],
+            "{}",
+            String::from_utf8_lossy(&user)
+        );
+        let text = String::from_utf8(user).unwrap();
+        assert_eq!(
+            text.lines().nth(1),
+            Some("\"\"\"\",3,3,912,名詞,一般,*,*,*,*,ラー油,ラーユ,ラーユ")
+        );
     }
 }

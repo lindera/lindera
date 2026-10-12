@@ -7,6 +7,7 @@ use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::corpus::Word;
+use crate::lexicon_csv::{csv_field, read_lexicon_rows};
 use lindera_dictionary::viterbi::{LexType, WordEntry, WordId};
 
 /// The `metadata.version` this build writes into `model.dat` and requires
@@ -233,78 +234,75 @@ impl Model {
     /// function before exporting the dictionary. The model overwrites the parameter only when it
     /// is `0,0,0`. Otherwise, the parameter is used as is.
     ///
+    /// The file is read as the seed lexicon is (see
+    /// [`TrainerConfig::from_readers`](crate::config::TrainerConfig::from_readers)):
+    /// as CSV records, so a field may be quoted, with no comment lines, and
+    /// with the feature kept as written (#1170). Records with fewer than five
+    /// fields are skipped.
+    ///
     /// # Arguments
     ///
     /// * `rdr` - Read sink of the user-defined lexicon file.
-    pub fn read_user_lexicon<R: Read>(&mut self, rdr: R) -> Result<()> {
-        use std::io::BufRead;
-        use std::io::BufReader;
-
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())`, or an error when the file cannot be read or a quoted field
+    /// spans lines; no entry is added then.
+    pub fn read_user_lexicon<R: Read>(&mut self, mut rdr: R) -> Result<()> {
         self.merged_model = None;
-        let reader = BufReader::new(rdr);
+        let mut content = String::new();
+        rdr.read_to_string(&mut content)?;
 
-        for line in reader.lines() {
-            let line = line?;
-            if line.trim().is_empty() || line.starts_with('#') {
-                continue;
-            }
+        for row in read_lexicon_rows(&content, "user lexicon")? {
+            let surface = row.surface.as_str();
+            let left_id = row.left_id.parse::<i32>().unwrap_or(0);
+            let right_id = row.right_id.parse::<i32>().unwrap_or(0);
+            let cost = row.cost.parse::<i16>().unwrap_or(0);
+            let features = row.feature.as_str();
 
-            let parts: Vec<&str> = line.split(',').collect();
-            if parts.len() >= 5 {
-                let surface = parts[0];
-                let left_id = parts[1].parse::<i32>().unwrap_or(0);
-                let right_id = parts[2].parse::<i32>().unwrap_or(0);
-                let cost = parts[3].parse::<i16>().unwrap_or(0);
-                let features = parts[4..].join(",");
+            let word = Word::new(surface, features);
 
-                let word = Word::new(surface, &features);
+            // Create word ID for user dictionary entry
+            let word_id = WordId::new(LexType::User, self.user_entries.len() as u32);
 
-                // Create word ID for user dictionary entry
-                let word_id = WordId::new(LexType::User, self.user_entries.len() as u32);
+            let entry = WordEntry::new(word_id, cost, left_id as u16, right_id as u16);
 
-                let entry = WordEntry::new(word_id, cost, left_id as u16, right_id as u16);
+            // Extract features and create feature set for this user entry
+            let first_char = surface.chars().next().unwrap_or('\0');
+            let cate_id = self.get_category_id(first_char);
 
-                // Extract features and create feature set for this user entry
-                let first_char = surface.chars().next().unwrap_or('\0');
-                let cate_id = self.get_category_id(first_char);
+            // Apply dictionary rewriter to get ufeature, lfeature, rfeature
+            let (ufeature, lfeature, rfeature) = self.config.dictionary_rewriter.rewrite(features);
+            let u_vec: Vec<&str> = ufeature.split(',').collect();
+            let l_vec: Vec<&str> = lfeature.split(',').collect();
+            let r_vec: Vec<&str> = rfeature.split(',').collect();
 
-                // Apply dictionary rewriter to get ufeature, lfeature, rfeature
-                let (ufeature, lfeature, rfeature) =
-                    self.config.dictionary_rewriter.rewrite(&features);
-                let u_vec: Vec<&str> = ufeature.split(',').collect();
-                let l_vec: Vec<&str> = lfeature.split(',').collect();
-                let r_vec: Vec<&str> = rfeature.split(',').collect();
+            let unigram_features = self
+                .config
+                .feature_extractor
+                .extract_unigram_feature_ids(&u_vec, cate_id);
+            let left_features = self
+                .config
+                .feature_extractor
+                .extract_left_feature_ids(&l_vec);
+            let right_features = self
+                .config
+                .feature_extractor
+                .extract_right_feature_ids(&r_vec);
 
-                let unigram_features = self
-                    .config
-                    .feature_extractor
-                    .extract_unigram_feature_ids(&u_vec, cate_id);
-                let left_features = self
-                    .config
-                    .feature_extractor
-                    .extract_left_feature_ids(&l_vec);
-                let right_features = self
-                    .config
-                    .feature_extractor
-                    .extract_right_feature_ids(&r_vec);
+            let _feature_set =
+                lindera_crf::FeatureSet::new(&unigram_features, &right_features, &left_features);
+            // TODO: Integrate feature_set into provider for proper user lexicon feature handling
+            // Currently, we cannot access the provider from this context, which limits
+            // the integration of user lexicon features into the trained model.
+            // This should be refactored to allow proper feature integration.
 
-                let _feature_set = lindera_crf::FeatureSet::new(
-                    &unigram_features,
-                    &right_features,
-                    &left_features,
-                );
-                // TODO: Integrate feature_set into provider for proper user lexicon feature handling
-                // Currently, we cannot access the provider from this context, which limits
-                // the integration of user lexicon features into the trained model.
-                // This should be refactored to allow proper feature integration.
+            // Create a label ID without modifying the provider
+            // Since we can't clone the provider, we'll use a fixed ID based on entry count
+            let label_id = NonZeroU32::new(1000000 + self.user_entries.len() as u32 + 1)
+                .ok_or_else(|| anyhow::anyhow!("Failed to create label ID"))?;
 
-                // Create a label ID without modifying the provider
-                // Since we can't clone the provider, we'll use a fixed ID based on entry count
-                let label_id = NonZeroU32::new(1000000 + self.user_entries.len() as u32 + 1)
-                    .ok_or_else(|| anyhow::anyhow!("Failed to create label ID"))?;
-
-                self.user_entries.push((word, entry, label_id));
-            }
+            self.user_entries.push((word, entry, label_id));
         }
 
         Ok(())
@@ -613,11 +611,26 @@ impl Model {
         Ok(())
     }
 
+    /// Writes `lex.csv`: one row per seed lexicon row, in seed order, with
+    /// its trained context ids and cost.
+    ///
+    /// A surface that contains `,`, `"` or a line break is quoted, with its
+    /// quotes doubled, so that `lindera build` reads it back as it is; the
+    /// feature is written as it was read (#1170).
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `lex.csv`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
     pub fn write_lexicon<W: Write>(&self, writer: &mut W) -> Result<()> {
         let merged_model = self.get_merged_model()?;
         let cost_factor = calculate_cost_factor(&merged_model);
 
         for (i, surface) in self.config.surfaces.iter().enumerate() {
+            let surface = csv_field(surface);
             if i < merged_model.feature_sets.len() {
                 let feature_set = merged_model.feature_sets[i];
                 let cost = tocost(feature_set.weight, cost_factor);
@@ -717,7 +730,9 @@ impl Model {
     /// An entry whose left id, right id and cost are all zero receives
     /// inferred context ids and a trained cost; any other entry is re-emitted
     /// with its input parameters unchanged, per the contract documented on
-    /// `read_user_lexicon`.
+    /// `read_user_lexicon`. A surface that contains `,`, `"` or a line break
+    /// is quoted, with its quotes doubled; the feature is written as it was
+    /// read (#1170).
     ///
     /// # Arguments
     ///
@@ -737,16 +752,20 @@ impl Model {
         for (word, entry, _label_id) in &self.user_entries {
             let surface = word.surface();
             let features = word.feature();
+            let surface_field = csv_field(surface);
             if entry.left_id() == 0 && entry.right_id() == 0 && entry.word_cost() == 0 {
                 let (left_id, right_id) = self.infer_context_ids(surface, features);
                 let raw_cost = self.get_user_word_cost(surface) as f64 / 1000.0;
                 let cost = tocost(raw_cost, cost_factor);
-                writeln!(writer, "{surface},{left_id},{right_id},{cost},{features}")?;
+                writeln!(
+                    writer,
+                    "{surface_field},{left_id},{right_id},{cost},{features}"
+                )?;
             } else {
                 writeln!(
                     writer,
                     "{},{},{},{},{}",
-                    surface,
+                    surface_field,
                     entry.left_id(),
                     entry.right_id(),
                     entry.word_cost(),
@@ -1117,7 +1136,21 @@ impl SerializableModel {
         "*".to_string()
     }
 
-    /// Write lexicon file with proper cost calculation
+    /// Writes `lex.csv`: one row per seed lexicon label, in label order, with
+    /// its trained context ids and cost. `lindera export` and the bindings'
+    /// export functions write `lex.csv` with this method.
+    ///
+    /// A surface (a label) that contains `,`, `"` or a line break is quoted,
+    /// with its quotes doubled, so that `lindera build` reads it back as it
+    /// is; the feature is written as it was read (#1170).
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `lex.csv`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
     pub fn write_lexicon<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
         // Unknown word entries are at the end of labels, skip them (they go to unk.def)
         let unk_start_idx = self.labels.len().saturating_sub(self.unk_entries.len());
@@ -1143,7 +1176,11 @@ impl SerializableModel {
                 writeln!(
                     writer,
                     "{},{},{},{},{}",
-                    label, fs.left_id, fs.right_id, cost, pos_info
+                    csv_field(label),
+                    fs.left_id,
+                    fs.right_id,
+                    cost,
+                    pos_info
                 )?;
             }
         }

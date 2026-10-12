@@ -56,7 +56,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab** | Anyone who segments text, in rare places (9 of about 54,000 lines in the texts compared) | Expect such lines to be segmented as MeCab segments them (IPADIC `腸窒扶斯` is `腸 / 窒扶 / 斯`, not `腸 / 窒 / 扶斯`); no setting restores the v6 behavior |
 | **`lindera tokenize` removes only the line terminator from each input line and writes a result for every line** | CLI users whose input lines start or end with whitespace, or who read the wakati or N-best output of lines without tokens | Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC `記号,空白`), `--keep-whitespace` to output the spaces there, and an empty line or a line of spaces to give an empty wakati line and one N-best result; no setting restores the v6 behavior |
 | **WASM: the `TokenizerBuilder` settings apply whichever way the dictionary is set** | WASM users who combine `setDictionaryInstance()` with `setKeepWhitespace()` or filters, or `setDictionary()` with `setUserDictionaryInstance()` | Expect those settings and the user dictionary to take effect; a dictionary instance whose `char.def` has no `SPACE` category now needs `setKeepWhitespace(true)`, as a dictionary set by URI does |
-| **`lindera train` builds its lattices as MeCab's learner does and keeps every `unk.def` entry; `model.dat` has the format version 2.0.0** | Users of `lindera train` and `lindera export`, and of the training functions of the Python, Node.js, Ruby and PHP bindings | Train every model again with 7.0.0, then export and build it again (a `model.dat` written by v6.2.0 or earlier is rejected); give every `unk.def` line at least five fields |
+| **`lindera train` builds its lattices as MeCab's learner does and keeps every `unk.def` entry; `model.dat` has the format version 2.0.0** | Users of `lindera train` and `lindera export`, and of the training functions of the Python, Node.js, Ruby and PHP bindings | Train every model again with 7.0.0, then export and build it again (a `model.dat` written by v6.2.0 or earlier is rejected); give every `unk.def` line at least five fields; remove comment lines from seed lexicons |
 | **`lindera build` rejects context IDs outside `matrix.def`** | Anyone who builds a system dictionary whose `lex.csv` or `unk.def` has a context ID beyond the size of its `matrix.def` (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's `mecab-dict-index` accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic | Fix the IDs or the matrix, or set `skip_invalid_cost_or_id` in `metadata.json` to drop such `lex.csv` rows; fix such IDs in the user dictionary |
 | **The `normalize_details` setting is removed: `Metadata::new` and `CoreMetadata::new` take 10 arguments, Ruby's `Metadata.new` takes 8** | Code that creates or reads dictionary metadata: Rust (`Metadata`, `lindera_binding::CoreMetadata`, `PrefixDictionaryBuilderOptions`) and the `Metadata` classes of the Python, Ruby, PHP and Node.js bindings | Remove the argument, option or property; a `metadata.json` that still has the key loads, and the key is ignored |
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
@@ -1115,6 +1115,12 @@ those of MeCab's learner:
   (`0 0` when no weight was left at all), and the built dictionary panicked
   at tokenization. `model_info.connection_matrix_size` in `metadata.json`
   was a square of the larger ID.
+- The seed lexicon was read line by line and split on `,`, and a line that
+  starts with `#` was skipped as a comment. mecab-ko-dic's quoted comma
+  surface `","` became the surface `"`, and `lindera export` wrote it
+  unquoted, so `lindera build` read the rest of `lex.csv` as one field and
+  dropped every row after it without an error. The `#` rows of UniDic,
+  SudachiDict and IPADIC NEologd were not trained.
 
 v7.0.0 trains as MeCab's learner does (see
 [How training works](development/training_pipeline.md#how-training-works)):
@@ -1139,6 +1145,13 @@ v7.0.0 trains as MeCab's learner does (see
   bindings' export functions reject a `model.dat` of any other version,
   including every `model.dat` written by v6.2.0 or earlier, with an error
   that ends in "re-run `lindera train` to regenerate it".
+- The seed lexicon is read as CSV, as `lindera build` reads `lex.csv` (see
+  [Seed Lexicon](development/training_pipeline.md#1-seed-lexicon-seedcsv)):
+  a field may be quoted, a line that starts with `#` is a row, and the
+  feature columns are kept as written. A quoted field that spans lines is
+  an error. `lindera export` quotes a surface that contains `,`, `"` or a
+  line break. The user lexicon that `Model::read_user_lexicon` reads is
+  read the same way.
 
 Training takes longer, because every lattice now has the seed words. It is
 slower than MeCab's learner, and it can stop at `--max-iterations`
@@ -1153,7 +1166,9 @@ What you do: train every model again with the 7.0.0 `lindera train` or the
 bindings' training functions, then export it and build the dictionary
 again. Give every `unk.def` line at least five fields. An `unk.def` with
 several entries per category, such as mecab-ipadic's, is now trained and
-exported as it is. There is no setting to restore the v6 behavior.
+exported as it is. Remove the comment lines from your seed lexicons: a line
+that starts with `#` is now a row. There is no setting to restore the v6
+behavior.
 
 ## `lindera build` rejects context IDs outside the connection matrix
 
