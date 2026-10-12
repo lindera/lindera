@@ -194,6 +194,17 @@ use lindera::segmenter::Segmenter;
 let dictionary = load_dictionary("embedded://ipadic")?;
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
 <span class="boring">}</span></code></pre></pre>
+<p><code>Segmenter::new</code> does not check a user dictionary against the system dictionary. <code>Segmenter::try_new</code> takes the same arguments and returns an error when an entry's context ID lies outside the system dictionary's connection matrix; <code>Segmenter::new</code> accepts such an entry, and segmentation then panics when the entry matches the input (see <a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>). Building from a configuration checks too.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera::dictionary::{load_dictionary, load_user_dictionary};
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+
+let dictionary = load_dictionary("embedded://ipadic")?;
+let user_dictionary = load_user_dictionary("userdic.csv", &amp;dictionary.metadata)?;
+let segmenter = Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary))?;
+<span class="boring">}</span></code></pre></pre>
 <h2 id="tokenization-modes"><a class="header" href="#tokenization-modes">Tokenization Modes</a></h2>
 <h3 id="modenormal"><a class="header" href="#modenormal">Mode::Normal</a></h3>
 <p>Standard tokenization based on the dictionary entries. Words are segmented faithfully according to what is registered in the dictionary.</p>

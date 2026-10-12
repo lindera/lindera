@@ -226,7 +226,7 @@ jieba           no        no          -
 <li><code>json</code>: すべてのトークン情報を含む詳細なJSON形式</li>
 </ul>
 </li>
-<li><code>--user-dict</code> / <code>-u</code>: ユーザー辞書のパス（オプション）</li>
+<li><code>--user-dict</code> / <code>-u</code>: ユーザー辞書のパス（オプション）。文脈 ID がシステム辞書の接続コスト行列の範囲外にある見出し語はエラーになります（<a href="../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。</li>
 <li><code>--mode</code> / <code>-m</code>: トークナイズモード (デフォルト: normal)
 <ul>
 <li><code>normal</code>: 標準的なトークナイズ</li>
@@ -657,7 +657,7 @@ EOS
 <ul>
 <li>辞書の <code>metadata.json</code> で <code>skip_invalid_cost_or_id</code> が <code>true</code> の場合は、そうした <code>lex.csv</code> の行を取り除きます。<code>log</code> クレートに警告を出しますが、CLI はまだそれを表示しません（<a href="https://github.com/lindera/lindera/issues/1107">#1107</a>）。<code>unk.def</code> の行は常に確認します。</li>
 <li>ID が軸の範囲外にある <code>matrix.def</code> の行もエラーになり、フィールドが 4 つ未満の <code>unk.def</code> の行もエラーになります。</li>
-<li>ユーザー辞書（<code>--user</code>）はまだ確認しません（<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>）。</li>
+<li>ユーザー辞書（<code>--user</code>）はここでは確認しません。ビルドの時点では、組み合わせるシステム辞書が分からないためです。代わりに <code>lindera tokenize --user-dict</code> がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を示すエラーで失敗します（<a href="../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。</li>
 </ul>
 <h3 id="例"><a class="header" href="#例">例</a></h3>
 <h4 id="ipadic日本語辞書のビルド"><a class="header" href="#ipadic日本語辞書のビルド">IPADIC（日本語辞書）のビルド</a></h4>

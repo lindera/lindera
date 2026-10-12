@@ -226,7 +226,7 @@ jieba           no        no          -
 <li><code>json</code>: Detailed JSON format with all token information</li>
 </ul>
 </li>
-<li><code>--user-dict</code> / <code>-u</code>: User dictionary path (optional)</li>
+<li><code>--user-dict</code> / <code>-u</code>: User dictionary path (optional). An entry whose context ID lies outside the system dictionary's connection matrix is an error (see <a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>).</li>
 <li><code>--mode</code> / <code>-m</code>: Tokenization mode (default: normal)
 <ul>
 <li><code>normal</code>: Standard tokenization</li>
@@ -657,7 +657,7 @@ EOS
 <ul>
 <li>If the dictionary's <code>metadata.json</code> sets <code>skip_invalid_cost_or_id</code> to <code>true</code>, such a <code>lex.csv</code> row is dropped instead, with a warning through the <code>log</code> crate that the CLI does not print yet (<a href="https://github.com/lindera/lindera/issues/1107">#1107</a>). An <code>unk.def</code> line is always checked.</li>
 <li>A <code>matrix.def</code> row whose IDs fall outside its axes is an error too, and so is an <code>unk.def</code> line with fewer than four fields.</li>
-<li>User dictionaries (<code>--user</code>) are not checked yet (<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>).</li>
+<li>A user dictionary (<code>--user</code>) is not checked here, since the build does not know the system dictionary it will be used with. <code>lindera tokenize --user-dict</code> checks it against the system dictionary instead and fails with an error that names the first entry outside the matrix (see <a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>).</li>
 </ul>
 <h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
 <h4 id="build-ipadic-japanese-dictionary"><a class="header" href="#build-ipadic-japanese-dictionary">Build IPADIC (Japanese dictionary)</a></h4>

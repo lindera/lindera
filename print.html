@@ -740,6 +740,12 @@ let results = tokenizer.tokenize_nbest_with_lattice(text, &amp;mut lattice, 3, f
 <p>Each dictionary type (IPADIC, UniDic, ko-dic, etc.) also supports a detailed CSV format with full control over context IDs, costs, and all feature fields. See the <a href="concepts/./dictionaries.html">Dictionaries</a> section for the detailed format of each dictionary type.</p>
 <h2 id="tied-entries"><a class="header" href="#tied-entries">Tied entries</a></h2>
 <p>Two entries tie when they have the same surface, the same left and right context IDs and the same cost: every path costs the same with either of them. A user entry that ties with a system entry is chosen over it, so a detailed entry that copies the surface, the context IDs and the cost of a system entry, for example to give the word another reading, takes its place in the output. MeCab chooses the system entry instead. Among tied user entries, the first row is chosen, as in MeCab (before v7, the last row was; see <a href="concepts/../migration_v6_to_v7.html#tied-entries-resolve-to-the-first-csv-row-as-in-mecab">Migrating from v6 to v7</a>). Simple entries get the cost and the context IDs from the dictionary's <code>metadata.json</code> (<code>default_word_cost</code>, <code>default_left_context_id</code> and <code>default_right_context_id</code>: <code>-10000</code>, <code>0</code> and <code>0</code> for IPADIC), so they practically never tie with a system entry.</p>
+<h2 id="context-ids"><a class="header" href="#context-ids">Context IDs</a></h2>
+<p>The left and right context IDs of a detailed entry must address a cell of the connection matrix of the system dictionary it is used with: the left context ID must be below the second value of that dictionary's <code>matrix.def</code> header, and the right context ID below the first, the bounds <code>lindera build</code> applies to the system dictionary itself. IPADIC's matrix is 1316 x 1316, for example. A user dictionary is built without the system dictionary (<code>lindera build --user</code> reads only <code>metadata.json</code>), so these IDs are checked when the two dictionaries are combined: <code>Segmenter::try_new</code>, the configuration path (<code>Segmenter::from_config</code>, <code>TokenizerBuilder</code>), <code>lindera tokenize --user-dict</code>, and the <code>Tokenizer</code> constructors and builders of the language bindings return an error for the first entry outside the matrix. The error names the entry by its word id, which counts the rows from 0 in the order of their surfaces, and by its detail fields:</p>
+<pre><code class="language-text">$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.bin
+Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary entry 0 (名詞,固有名詞,一般,*,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
+</code></pre>
+<p><code>Segmenter::new</code> does not check the IDs: an entry outside the matrix then makes segmentation panic when the entry matches the input. Before v7.0.0, every path behaved this way. Simple entries are checked too; they get the context IDs that the <code>metadata.json</code> they are built with sets (<code>default_left_context_id</code> and <code>default_right_context_id</code>, 0 in every bundled dictionary).</p>
 <h2 id="rust-api-example-1"><a class="header" href="#rust-api-example-1">Rust API example</a></h2>
 <pre><pre class="playground"><code class="language-rust">use std::fs::File;
 use std::path::PathBuf;
@@ -770,11 +776,13 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 
     let dictionary = load_dictionary("embedded://ipadic")?;
     let user_dictionary = load_user_dictionary(user_dict_path.to_str().unwrap(), &amp;metadata)?;
-    let segmenter = Segmenter::new(
+    // `try_new` checks the user dictionary's context IDs against the
+    // dictionary's connection matrix (see "Context IDs" above).
+    let segmenter = Segmenter::try_new(
         Mode::Normal,
         dictionary,
         Some(user_dictionary), // Using the loaded user dictionary
-    );
+    )?;
 
     // Create a tokenizer.
     let tokenizer = Tokenizer::new(segmenter);
@@ -1132,6 +1140,17 @@ use lindera::segmenter::Segmenter;
 
 let dictionary = load_dictionary("embedded://ipadic")?;
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+<span class="boring">}</span></code></pre></pre>
+<p><code>Segmenter::new</code> does not check a user dictionary against the system dictionary. <code>Segmenter::try_new</code> takes the same arguments and returns an error when an entry's context ID lies outside the system dictionary's connection matrix; <code>Segmenter::new</code> accepts such an entry, and segmentation then panics when the entry matches the input (see <a href="lindera/../concepts/user_dictionary.html#context-ids">Context IDs</a>). Building from a configuration checks too.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera::dictionary::{load_dictionary, load_user_dictionary};
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+
+let dictionary = load_dictionary("embedded://ipadic")?;
+let user_dictionary = load_user_dictionary("userdic.csv", &amp;dictionary.metadata)?;
+let segmenter = Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary))?;
 <span class="boring">}</span></code></pre></pre>
 <h2 id="tokenization-modes-1"><a class="header" href="#tokenization-modes-1">Tokenization Modes</a></h2>
 <h3 id="modenormal"><a class="header" href="#modenormal">Mode::Normal</a></h3>
@@ -2321,7 +2340,7 @@ jieba           no        no          -
 <li><code>json</code>: Detailed JSON format with all token information</li>
 </ul>
 </li>
-<li><code>--user-dict</code> / <code>-u</code>: User dictionary path (optional)</li>
+<li><code>--user-dict</code> / <code>-u</code>: User dictionary path (optional). An entry whose context ID lies outside the system dictionary's connection matrix is an error (see <a href="lindera-cli/../concepts/user_dictionary.html#context-ids">Context IDs</a>).</li>
 <li><code>--mode</code> / <code>-m</code>: Tokenization mode (default: normal)
 <ul>
 <li><code>normal</code>: Standard tokenization</li>
@@ -2752,7 +2771,7 @@ EOS
 <ul>
 <li>If the dictionary's <code>metadata.json</code> sets <code>skip_invalid_cost_or_id</code> to <code>true</code>, such a <code>lex.csv</code> row is dropped instead, with a warning through the <code>log</code> crate that the CLI does not print yet (<a href="https://github.com/lindera/lindera/issues/1107">#1107</a>). An <code>unk.def</code> line is always checked.</li>
 <li>A <code>matrix.def</code> row whose IDs fall outside its axes is an error too, and so is an <code>unk.def</code> line with fewer than four fields.</li>
-<li>User dictionaries (<code>--user</code>) are not checked yet (<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>).</li>
+<li>A user dictionary (<code>--user</code>) is not checked here, since the build does not know the system dictionary it will be used with. <code>lindera tokenize --user-dict</code> checks it against the system dictionary instead and fails with an error that names the first entry outside the matrix (see <a href="lindera-cli/../concepts/user_dictionary.html#context-ids">Context IDs</a>).</li>
 </ul>
 <h3 id="examples-1"><a class="header" href="#examples-1">Examples</a></h3>
 <h4 id="build-ipadic-japanese-dictionary"><a class="header" href="#build-ipadic-japanese-dictionary">Build IPADIC (Japanese dictionary)</a></h4>
@@ -9748,7 +9767,8 @@ token's end offset. <code>lindera train</code> builds its lattices as MeCab's le
 does, with the seed words and the unknown words that the runtime creates,
 and keeps every <code>unk.def</code> entry, so models trained with earlier versions
 must be trained again, and <code>lindera build</code> rejects a dictionary whose
-context IDs fall outside its connection matrix. Dictionary directories built or downloaded with v6.2.0
+context IDs fall outside its connection matrix, as building a tokenizer
+does for such a user dictionary. Dictionary directories built or downloaded with v6.2.0
 or earlier no longer load and must be rebuilt or downloaded again
 (dictionary format version 3).
 This guide lists every breaking change and the one-line fixes for each.</p>
@@ -9776,7 +9796,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong><code>lindera tokenize</code> removes only the line terminator from each input line and writes a result for every line</strong></td><td>CLI users whose input lines start or end with whitespace, or who read the wakati or N-best output of lines without tokens</td><td>Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC <code>記号,空白</code>), <code>--keep-whitespace</code> to output the spaces there, and an empty line or a line of spaces to give an empty wakati line and one N-best result; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>WASM: the <code>TokenizerBuilder</code> settings apply whichever way the dictionary is set</strong></td><td>WASM users who combine <code>setDictionaryInstance()</code> with <code>setKeepWhitespace()</code> or filters, or <code>setDictionary()</code> with <code>setUserDictionaryInstance()</code></td><td>Expect those settings and the user dictionary to take effect; a dictionary instance whose <code>char.def</code> has no <code>SPACE</code> category now needs <code>setKeepWhitespace(true)</code>, as a dictionary set by URI does</td></tr>
 <tr><td><strong><code>lindera train</code> builds its lattices as MeCab's learner does and keeps every <code>unk.def</code> entry; <code>model.dat</code> has the format version 2.0.0</strong></td><td>Users of <code>lindera train</code> and <code>lindera export</code>, and of the training functions of the Python, Node.js, Ruby and PHP bindings</td><td>Train every model again with 7.0.0, then export and build it again (a <code>model.dat</code> written by v6.2.0 or earlier is rejected); give every <code>unk.def</code> line at least five fields</td></tr>
-<tr><td><strong><code>lindera build</code> rejects context IDs outside <code>matrix.def</code></strong></td><td>Anyone who builds a system dictionary whose <code>lex.csv</code> or <code>unk.def</code> has a context ID beyond the size of its <code>matrix.def</code> (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's <code>mecab-dict-index</code> accepts</td><td>Fix the IDs or the matrix, or set <code>skip_invalid_cost_or_id</code> in <code>metadata.json</code> to drop such <code>lex.csv</code> rows</td></tr>
+<tr><td><strong><code>lindera build</code> rejects context IDs outside <code>matrix.def</code></strong></td><td>Anyone who builds a system dictionary whose <code>lex.csv</code> or <code>unk.def</code> has a context ID beyond the size of its <code>matrix.def</code> (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's <code>mecab-dict-index</code> accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic</td><td>Fix the IDs or the matrix, or set <code>skip_invalid_cost_or_id</code> in <code>metadata.json</code> to drop such <code>lex.csv</code> rows; fix such IDs in the user dictionary</td></tr>
 <tr><td><strong>The <code>normalize_details</code> setting is removed: <code>Metadata::new</code> and <code>CoreMetadata::new</code> take 10 arguments, Ruby's <code>Metadata.new</code> takes 8</strong></td><td>Code that creates or reads dictionary metadata: Rust (<code>Metadata</code>, <code>lindera_binding::CoreMetadata</code>, <code>PrefixDictionaryBuilderOptions</code>) and the <code>Metadata</code> classes of the Python, Ruby, PHP and Node.js bindings</td><td>Remove the argument, option or property; a <code>metadata.json</code> that still has the key loads, and the key is ignored</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>, <code>tokens_offset_into</code>, <code>nbest_tokens_offset</code> and <code>NBestGenerator::next</code> return <code>(start, end, WordId)</code></strong></td><td>Rust code that calls these <code>lindera_dictionary</code> functions directly (also as <code>lindera::dictionary::viterbi::…</code>, <code>lindera::dictionary::Lattice</code> and <code>lindera::dictionary::nbest::…</code>)</td><td>Destructure three fields and use the returned end instead of the next token's start</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> returns the BOS index of the best path (<code>Option&lt;usize&gt;</code>)</strong></td><td>Rust code that uses the <code>()</code> value of <code>tokens_offset_into</code></td><td>Nothing for a call written as a statement; otherwise ignore the new value</td></tr>
@@ -10766,8 +10786,15 @@ empty line, is an error instead of a panic, also in
 <code>lindera_dictionary</code>. The error names the line, and so does the error for
 a context ID or a cost that is not a number, which did not name it
 before.</li>
-<li>User dictionaries (<code>lindera build --user</code>) are not checked yet
-(<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>).</li>
+<li>A user dictionary is checked when it is combined with the system
+dictionary, since <code>lindera build --user</code> does not know the system
+dictionary: <code>Segmenter::try_new</code>, the configuration path,
+<code>lindera tokenize --user-dict</code>, and the <code>Tokenizer</code> constructors and
+builders of the language bindings return an error that names the first
+entry outside the matrix
+(<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>; see
+<a href="concepts/user_dictionary.html#context-ids">Context IDs</a>).
+<code>Segmenter::new</code> does not check, as before.</li>
 </ul>
 <p>Dictionaries that <code>mecab-dict-index</code> builds pass, since it checks the same
 bounds. A dictionary exported by <code>lindera export</code> of v6.2.0 or earlier can
@@ -11094,6 +11121,14 @@ matrix, fix the IDs in <code>lex.csv</code> or <code>unk.def</code> or the size 
 rows. Such a dictionary used to build and then panic at
 tokenization. A dictionary exported by v6.2.0 or earlier is best trained
 and exported again.</li>
+</ul>
+<p>Everyone who uses a user dictionary with detailed entries:</p>
+<ul>
+<li>If building the tokenizer reports a user dictionary entry whose context
+ID is out of range for the connection matrix, fix the IDs in the user
+dictionary CSV for the system dictionary you use, and build the <code>.bin</code>
+again if you use one. Such a user dictionary used to panic at
+tokenization when the entry matched the input.</li>
 </ul>
 <p>Users of Japanese text with <code>、</code> or <code>。</code> inside a line:</p>
 <ul>

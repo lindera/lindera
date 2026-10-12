@@ -192,6 +192,12 @@
 <p>各辞書タイプ（IPADIC、UniDic、ko-dicなど）は、文脈ID、コスト、すべての素性フィールドを完全に制御できる詳細CSVフォーマットもサポートしています。各辞書タイプの詳細フォーマットについては <a href="./dictionaries.html">辞書</a> セクションを参照してください。</p>
 <h2 id="同点の見出し語"><a class="header" href="#同点の見出し語">同点の見出し語</a></h2>
 <p>表層形・左右の文脈 ID・コストがすべて同じ 2 つの見出し語は同点です。どちらを使っても経路のコストは同じになります。ユーザー辞書の見出し語は、同点のシステム辞書の見出し語より優先して選ばれます。そのため、システム辞書の見出し語の表層形・文脈 ID・コストをそのまま使った詳細形式の見出し語（たとえば語に別の読みを与えるもの）は、システム辞書の見出し語の代わりに出力されます。MeCab はシステム辞書の見出し語を選びます。同点のユーザー辞書の見出し語どうしでは、MeCab と同じく先の行が選ばれます（v7 より前は後の行でした。<a href="../migration_v6_to_v7.html#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E5%90%8C%E7%82%B9%E3%81%AE%E8%A6%8B%E5%87%BA%E3%81%97%E8%AA%9E%E3%81%AF-csv-%E3%81%A7%E5%85%88%E3%81%AE%E8%A1%8C%E3%82%92%E9%81%B8%E3%81%B6">v6 から v7 への移行</a>を参照）。簡易形式の見出し語には、辞書の <code>metadata.json</code> のコストと文脈 ID（<code>default_word_cost</code>・<code>default_left_context_id</code>・<code>default_right_context_id</code>。IPADIC では <code>-10000</code>・<code>0</code>・<code>0</code>）が使われるため、システム辞書の見出し語と同点になることはまずありません。</p>
+<h2 id="文脈-id"><a class="header" href="#文脈-id">文脈 ID</a></h2>
+<p>詳細形式の見出し語の左右の文脈 ID は、組み合わせるシステム辞書の接続コスト行列のセルを指していなければなりません。左文脈 ID はそのシステム辞書の <code>matrix.def</code> のヘッダの 2 つ目の値より小さく、右文脈 ID は 1 つ目の値より小さくなければなりません。<code>lindera build</code> がシステム辞書自体に課すのと同じ範囲です。たとえば IPADIC の行列は 1316 x 1316 です。ユーザー辞書はシステム辞書なしでビルドされる（<code>lindera build --user</code> は <code>metadata.json</code> しか読まない）ため、この ID は 2 つの辞書を組み合わせるときに確認します。<code>Segmenter::try_new</code>、設定からの構築（<code>Segmenter::from_config</code>、<code>TokenizerBuilder</code>）、<code>lindera tokenize --user-dict</code>、各言語バインディングの <code>Tokenizer</code> のコンストラクタとビルダーは、行列の範囲外にある最初の見出し語についてエラーを返します。エラーは、見出し語をその単語 ID（表層形の順に並べた行を 0 から数えた番号）と詳細フィールドで示します。</p>
+<pre><code class="language-text">$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.bin
+Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary entry 0 (名詞,固有名詞,一般,*,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
+</code></pre>
+<p><code>Segmenter::new</code> はこの ID を確認しません。範囲外の見出し語があると、その見出し語が入力に一致したときに解析中にパニックします。v7.0.0 より前は、どの経路もこの動作でした。簡易形式の見出し語も確認します。簡易形式の見出し語には、ビルドに使う <code>metadata.json</code> の文脈 ID（<code>default_left_context_id</code> と <code>default_right_context_id</code>。同梱のどの辞書でも 0）が使われます。</p>
 <h2 id="rust-apiの例"><a class="header" href="#rust-apiの例">Rust APIの例</a></h2>
 <pre><pre class="playground"><code class="language-rust">use std::fs::File;
 use std::path::PathBuf;
@@ -222,11 +228,13 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 
     let dictionary = load_dictionary("embedded://ipadic")?;
     let user_dictionary = load_user_dictionary(user_dict_path.to_str().unwrap(), &amp;metadata)?;
-    let segmenter = Segmenter::new(
+    // `try_new` checks the user dictionary's context IDs against the
+    // dictionary's connection matrix (see "Context IDs" above).
+    let segmenter = Segmenter::try_new(
         Mode::Normal,
         dictionary,
         Some(user_dictionary), // Using the loaded user dictionary
-    );
+    )?;
 
     // Create a tokenizer.
     let tokenizer = Tokenizer::new(segmenter);

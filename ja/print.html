@@ -737,6 +737,12 @@ let results = tokenizer.tokenize_nbest_with_lattice(text, &amp;mut lattice, 3, f
 <p>各辞書タイプ（IPADIC、UniDic、ko-dicなど）は、文脈ID、コスト、すべての素性フィールドを完全に制御できる詳細CSVフォーマットもサポートしています。各辞書タイプの詳細フォーマットについては <a href="concepts/./dictionaries.html">辞書</a> セクションを参照してください。</p>
 <h2 id="同点の見出し語"><a class="header" href="#同点の見出し語">同点の見出し語</a></h2>
 <p>表層形・左右の文脈 ID・コストがすべて同じ 2 つの見出し語は同点です。どちらを使っても経路のコストは同じになります。ユーザー辞書の見出し語は、同点のシステム辞書の見出し語より優先して選ばれます。そのため、システム辞書の見出し語の表層形・文脈 ID・コストをそのまま使った詳細形式の見出し語（たとえば語に別の読みを与えるもの）は、システム辞書の見出し語の代わりに出力されます。MeCab はシステム辞書の見出し語を選びます。同点のユーザー辞書の見出し語どうしでは、MeCab と同じく先の行が選ばれます（v7 より前は後の行でした。<a href="concepts/../migration_v6_to_v7.html#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E5%90%8C%E7%82%B9%E3%81%AE%E8%A6%8B%E5%87%BA%E3%81%97%E8%AA%9E%E3%81%AF-csv-%E3%81%A7%E5%85%88%E3%81%AE%E8%A1%8C%E3%82%92%E9%81%B8%E3%81%B6">v6 から v7 への移行</a>を参照）。簡易形式の見出し語には、辞書の <code>metadata.json</code> のコストと文脈 ID（<code>default_word_cost</code>・<code>default_left_context_id</code>・<code>default_right_context_id</code>。IPADIC では <code>-10000</code>・<code>0</code>・<code>0</code>）が使われるため、システム辞書の見出し語と同点になることはまずありません。</p>
+<h2 id="文脈-id"><a class="header" href="#文脈-id">文脈 ID</a></h2>
+<p>詳細形式の見出し語の左右の文脈 ID は、組み合わせるシステム辞書の接続コスト行列のセルを指していなければなりません。左文脈 ID はそのシステム辞書の <code>matrix.def</code> のヘッダの 2 つ目の値より小さく、右文脈 ID は 1 つ目の値より小さくなければなりません。<code>lindera build</code> がシステム辞書自体に課すのと同じ範囲です。たとえば IPADIC の行列は 1316 x 1316 です。ユーザー辞書はシステム辞書なしでビルドされる（<code>lindera build --user</code> は <code>metadata.json</code> しか読まない）ため、この ID は 2 つの辞書を組み合わせるときに確認します。<code>Segmenter::try_new</code>、設定からの構築（<code>Segmenter::from_config</code>、<code>TokenizerBuilder</code>）、<code>lindera tokenize --user-dict</code>、各言語バインディングの <code>Tokenizer</code> のコンストラクタとビルダーは、行列の範囲外にある最初の見出し語についてエラーを返します。エラーは、見出し語をその単語 ID（表層形の順に並べた行を 0 から数えた番号）と詳細フィールドで示します。</p>
+<pre><code class="language-text">$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.bin
+Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary entry 0 (名詞,固有名詞,一般,*,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
+</code></pre>
+<p><code>Segmenter::new</code> はこの ID を確認しません。範囲外の見出し語があると、その見出し語が入力に一致したときに解析中にパニックします。v7.0.0 より前は、どの経路もこの動作でした。簡易形式の見出し語も確認します。簡易形式の見出し語には、ビルドに使う <code>metadata.json</code> の文脈 ID（<code>default_left_context_id</code> と <code>default_right_context_id</code>。同梱のどの辞書でも 0）が使われます。</p>
 <h2 id="rust-apiの例-1"><a class="header" href="#rust-apiの例-1">Rust APIの例</a></h2>
 <pre><pre class="playground"><code class="language-rust">use std::fs::File;
 use std::path::PathBuf;
@@ -767,11 +773,13 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 
     let dictionary = load_dictionary("embedded://ipadic")?;
     let user_dictionary = load_user_dictionary(user_dict_path.to_str().unwrap(), &amp;metadata)?;
-    let segmenter = Segmenter::new(
+    // `try_new` checks the user dictionary's context IDs against the
+    // dictionary's connection matrix (see "Context IDs" above).
+    let segmenter = Segmenter::try_new(
         Mode::Normal,
         dictionary,
         Some(user_dictionary), // Using the loaded user dictionary
-    );
+    )?;
 
     // Create a tokenizer.
     let tokenizer = Tokenizer::new(segmenter);
@@ -1128,6 +1136,17 @@ use lindera::segmenter::Segmenter;
 
 let dictionary = load_dictionary("embedded://ipadic")?;
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+<span class="boring">}</span></code></pre></pre>
+<p><code>Segmenter::new</code> はユーザー辞書をシステム辞書と照らし合わせて確認しません。<code>Segmenter::try_new</code> は同じ引数を取り、見出し語の文脈 ID がシステム辞書の接続コスト行列の範囲外にあるとエラーを返します。<code>Segmenter::new</code> はそうした見出し語を受け付け、その見出し語が入力に一致したときに解析中にパニックします（<a href="lindera/../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。設定からの構築も確認します。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera::dictionary::{load_dictionary, load_user_dictionary};
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+
+let dictionary = load_dictionary("embedded://ipadic")?;
+let user_dictionary = load_user_dictionary("userdic.csv", &amp;dictionary.metadata)?;
+let segmenter = Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary))?;
 <span class="boring">}</span></code></pre></pre>
 <h2 id="トークナイズモード-1"><a class="header" href="#トークナイズモード-1">トークナイズモード</a></h2>
 <h3 id="modenormal"><a class="header" href="#modenormal">Mode::Normal</a></h3>
@@ -2325,7 +2344,7 @@ jieba           no        no          -
 <li><code>json</code>: すべてのトークン情報を含む詳細なJSON形式</li>
 </ul>
 </li>
-<li><code>--user-dict</code> / <code>-u</code>: ユーザー辞書のパス（オプション）</li>
+<li><code>--user-dict</code> / <code>-u</code>: ユーザー辞書のパス（オプション）。文脈 ID がシステム辞書の接続コスト行列の範囲外にある見出し語はエラーになります（<a href="lindera-cli/../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。</li>
 <li><code>--mode</code> / <code>-m</code>: トークナイズモード (デフォルト: normal)
 <ul>
 <li><code>normal</code>: 標準的なトークナイズ</li>
@@ -2756,7 +2775,7 @@ EOS
 <ul>
 <li>辞書の <code>metadata.json</code> で <code>skip_invalid_cost_or_id</code> が <code>true</code> の場合は、そうした <code>lex.csv</code> の行を取り除きます。<code>log</code> クレートに警告を出しますが、CLI はまだそれを表示しません（<a href="https://github.com/lindera/lindera/issues/1107">#1107</a>）。<code>unk.def</code> の行は常に確認します。</li>
 <li>ID が軸の範囲外にある <code>matrix.def</code> の行もエラーになり、フィールドが 4 つ未満の <code>unk.def</code> の行もエラーになります。</li>
-<li>ユーザー辞書（<code>--user</code>）はまだ確認しません（<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>）。</li>
+<li>ユーザー辞書（<code>--user</code>）はここでは確認しません。ビルドの時点では、組み合わせるシステム辞書が分からないためです。代わりに <code>lindera tokenize --user-dict</code> がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を示すエラーで失敗します（<a href="lindera-cli/../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。</li>
 </ul>
 <h3 id="例"><a class="header" href="#例">例</a></h3>
 <h4 id="ipadic日本語辞書のビルド"><a class="header" href="#ipadic日本語辞書のビルド">IPADIC（日本語辞書）のビルド</a></h4>
@@ -9624,7 +9643,8 @@ MeCab と同じく最後の語が後から始まる方を選ぶようにし、<c
 <code>lindera train</code> は MeCab の学習器と同じく、種辞書の語とランタイムが作る未知語で
 ラティスを作り、<code>unk.def</code> のすべてのエントリを保持するため、以前のバージョンで
 学習したモデルは学習し直す必要があります。<code>lindera build</code> は、文脈 ID が接続コスト
-行列の範囲外にある辞書を拒否します。
+行列の範囲外にある辞書を拒否し、トークナイザーの構築もそうしたユーザー辞書を
+拒否します。
 v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは読み込めなくなるため、
 再ビルドか再ダウンロードが必要です（辞書の形式バージョン 3）。
 このガイドでは、すべての破壊的変更とその対処方法を説明します。</p>
@@ -9652,7 +9672,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong><code>lindera tokenize</code> が各入力行から改行コードだけを取り除き、すべての行に結果を出す</strong></td><td>行頭・行末に空白がある入力を CLI に渡すユーザー、トークンのない行の wakati や N-best の出力を読むユーザー</td><td>オフセットが入力行の中の位置を指し、行頭・行末の U+3000 がトークンになり（IPADIC では <code>記号,空白</code>）、<code>--keep-whitespace</code> でそこの空白も出力され、空行や空白だけの行が wakati では空行に、N-best では結果 1 件になることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>WASM: 辞書の設定方法にかかわらず <code>TokenizerBuilder</code> の設定が適用される</strong></td><td><code>setDictionaryInstance()</code> と <code>setKeepWhitespace()</code> やフィルタ、または <code>setDictionary()</code> と <code>setUserDictionaryInstance()</code> を組み合わせる WASM のユーザー</td><td>それらの設定とユーザー辞書が効くことを前提にする。<code>char.def</code> に <code>SPACE</code> カテゴリがない辞書インスタンスでは、URI で設定した辞書と同じく <code>setKeepWhitespace(true)</code> が必要になる</td></tr>
 <tr><td><strong><code>lindera train</code> は MeCab の学習器と同じくラティスを作り、<code>unk.def</code> のすべてのエントリを保持する。<code>model.dat</code> の形式バージョンは 2.0.0</strong></td><td><code>lindera train</code>・<code>lindera export</code> と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー</td><td>7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた <code>model.dat</code> は拒否される）。<code>unk.def</code> のすべての行に 5 つ以上のフィールドを書く</td></tr>
-<tr><td><strong><code>lindera build</code> は <code>matrix.def</code> の範囲外の文脈 ID を拒否する</strong></td><td><code>lex.csv</code> や <code>unk.def</code> に <code>matrix.def</code> の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の <code>mecab-dict-index</code> が受け付ける辞書は対象外</td><td>ID か行列を直すか、<code>metadata.json</code> の <code>skip_invalid_cost_or_id</code> でそうした <code>lex.csv</code> の行を取り除く</td></tr>
+<tr><td><strong><code>lindera build</code> は <code>matrix.def</code> の範囲外の文脈 ID を拒否する</strong></td><td><code>lex.csv</code> や <code>unk.def</code> に <code>matrix.def</code> の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の <code>mecab-dict-index</code> が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる）</td><td>ID か行列を直すか、<code>metadata.json</code> の <code>skip_invalid_cost_or_id</code> でそうした <code>lex.csv</code> の行を取り除く。ユーザー辞書ではそうした ID を直す</td></tr>
 <tr><td><strong>設定 <code>normalize_details</code> の削除: <code>Metadata::new</code> と <code>CoreMetadata::new</code> の引数は 10 個、Ruby の <code>Metadata.new</code> の引数は 8 個になる</strong></td><td>辞書のメタデータを作成・参照するコード。Rust（<code>Metadata</code>・<code>lindera_binding::CoreMetadata</code>・<code>PrefixDictionaryBuilderOptions</code>）と、Python・Ruby・PHP・Node.js のバインディングの <code>Metadata</code> クラス</td><td>引数・オプション・プロパティを削除する。このキーを含む <code>metadata.json</code> もそのまま読み込め、キーは無視される</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>・<code>tokens_offset_into</code>・<code>nbest_tokens_offset</code>・<code>NBestGenerator::next</code> が <code>(start, end, WordId)</code> を返す</strong></td><td>これらの <code>lindera_dictionary</code> の関数を直接呼び出す Rust コード（<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・<code>lindera::dictionary::nbest::…</code> 経由を含む）</td><td>3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> が最良パスの BOS の添字（<code>Option&lt;usize&gt;</code>）を返す</strong></td><td><code>tokens_offset_into</code> の戻り値 <code>()</code> を値として使う Rust コード</td><td>文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する</td></tr>
@@ -10537,8 +10557,14 @@ ID は <code>matrix.def</code> のヘッダの 1 つ目の値より小さく、�
 <code>DictionaryBuilder::build_unknown_dictionary</code> と <code>parse_unk</code> でも同じです。
 エラーは行を示します。これまで行を示さなかった、文脈 ID やコストが数値でない
 行のエラーも、行を示すようになります。</li>
-<li>ユーザー辞書（<code>lindera build --user</code>）はまだ確認しません
-（<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>）。</li>
+<li>ユーザー辞書は、システム辞書と組み合わせるときに確認します。
+<code>lindera build --user</code> はシステム辞書を知らないためです。
+<code>Segmenter::try_new</code>、設定からの構築、<code>lindera tokenize --user-dict</code>、
+各言語バインディングの <code>Tokenizer</code> のコンストラクタとビルダーは、行列の範囲外に
+ある最初の見出し語を示すエラーを返します
+（<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>。
+<a href="concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。
+<code>Segmenter::new</code> はこれまでどおり確認しません。</li>
 </ul>
 <p><code>mecab-dict-index</code> は同じ範囲を確認するため、それでビルドできる辞書は確認を
 通ります。v6.2.0 以前の <code>lindera export</code> で書き出した辞書は、<code>matrix.def</code> が
@@ -10826,6 +10852,13 @@ MeCab と同じくその空白を含むことを前提にする。</li>
 <code>lex.csv</code> の行を取り除く。そうした辞書は、以前はビルドでき、解析時に
 パニックしていた。v6.2.0 以前にエクスポートした辞書は、学習とエクスポートを
 やり直すのがよい。</li>
+</ul>
+<p>詳細形式の見出し語を含むユーザー辞書を使うすべてのユーザー:</p>
+<ul>
+<li>トークナイザーの構築で、文脈 ID が接続コスト行列の範囲外だというユーザー辞書の
+見出し語のエラーが出た場合は、使うシステム辞書に合わせてユーザー辞書の CSV の
+ID を直し、<code>.bin</code> を使う場合はビルドし直す。そうしたユーザー辞書は、以前は
+その見出し語が入力に一致したときに解析中にパニックしていた。</li>
 </ul>
 <p>行の中に <code>、</code> や <code>。</code> を含む日本語のテキストを解析するユーザー:</p>
 <ul>

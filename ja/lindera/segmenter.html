@@ -194,6 +194,17 @@ use lindera::segmenter::Segmenter;
 let dictionary = load_dictionary("embedded://ipadic")?;
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
 <span class="boring">}</span></code></pre></pre>
+<p><code>Segmenter::new</code> はユーザー辞書をシステム辞書と照らし合わせて確認しません。<code>Segmenter::try_new</code> は同じ引数を取り、見出し語の文脈 ID がシステム辞書の接続コスト行列の範囲外にあるとエラーを返します。<code>Segmenter::new</code> はそうした見出し語を受け付け、その見出し語が入力に一致したときに解析中にパニックします（<a href="../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。設定からの構築も確認します。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera::dictionary::{load_dictionary, load_user_dictionary};
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+
+let dictionary = load_dictionary("embedded://ipadic")?;
+let user_dictionary = load_user_dictionary("userdic.csv", &amp;dictionary.metadata)?;
+let segmenter = Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary))?;
+<span class="boring">}</span></code></pre></pre>
 <h2 id="トークナイズモード"><a class="header" href="#トークナイズモード">トークナイズモード</a></h2>
 <h3 id="modenormal"><a class="header" href="#modenormal">Mode::Normal</a></h3>
 <p>辞書に登録されたエントリに基づく標準的なトークナイズです。辞書に登録された単語に忠実に分割します。</p>
