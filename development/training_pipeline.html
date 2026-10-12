@@ -207,6 +207,14 @@
 </code></pre>
 <p>Each line contains: <code>surface,left_id,right_id,cost,pos,pos_detail1,pos_detail2,pos_detail3,inflection_type,inflection_form,base_form,reading,pronunciation</code></p>
 <p>The <code>left_id</code>, <code>right_id</code>, and <code>cost</code> fields are set to 0 in the seed dictionary -- the trainer will compute appropriate values from the CRF model.</p>
+<p>The seed lexicon is read as CSV, as <code>lindera build</code> reads <code>lex.csv</code>:</p>
+<ul>
+<li>A field may be quoted, as mecab-ko-dic's comma surface is: <code>",",1792,3558,788,SC,*,*,*,*,*,*,*</code>.</li>
+<li>A line that starts with <code>#</code> is a row, not a comment, as UniDic's <code>#</code> surface is. Blank lines and rows with fewer than five fields are skipped.</li>
+<li>The feature of a row is the text after its fourth field, as written, quotes included. <code>lindera export</code> writes it back as it is, and quotes a surface that contains <code>,</code>, <code>"</code> or a line break.</li>
+<li>A quoted field that spans lines is an error that names the line. It is most likely a quote that is never closed, which would otherwise swallow the rows after it.</li>
+<li>The rows keep their order, which gives their labels their ids.</li>
+</ul>
 <h3 id="2-training-corpus-corpustxt"><a class="header" href="#2-training-corpus-corpustxt">2. Training Corpus (corpus.txt)</a></h3>
 <p>Annotated text data in tab-separated format. Each line is <code>surface&lt;TAB&gt;pos_info</code>, and sentences are separated by <code>EOS</code>.</p>
 <pre><code class="language-text">外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク

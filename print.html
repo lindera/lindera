@@ -2968,6 +2968,7 @@ Downloaded dictionary 'ipadic'
 <pre><code class="language-csv">外国,0,0,0,名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人,0,0,0,名詞,接尾,一般,*,*,*,人,ジン,ジン
 </code></pre>
+<p>The file is read as CSV, as <code>lindera build</code> reads <code>lex.csv</code>: a field may be quoted (<code>",",0,0,0,...</code>), and a line that starts with <code>#</code> is an entry, not a comment. See <a href="lindera-cli/../development/training_pipeline.html#1-seed-lexicon-seedcsv">Seed Lexicon</a> for the details.</p>
 <p><strong>Training corpus (corpus.txt):</strong></p>
 <p>The training corpus file contains annotated text data used to train the CRF model. Each line consists of:</p>
 <ul>
@@ -9795,7 +9796,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab</strong></td><td>Anyone who segments text, in rare places (9 of about 54,000 lines in the texts compared)</td><td>Expect such lines to be segmented as MeCab segments them (IPADIC <code>腸窒扶斯</code> is <code>腸 / 窒扶 / 斯</code>, not <code>腸 / 窒 / 扶斯</code>); no setting restores the v6 behavior</td></tr>
 <tr><td><strong><code>lindera tokenize</code> removes only the line terminator from each input line and writes a result for every line</strong></td><td>CLI users whose input lines start or end with whitespace, or who read the wakati or N-best output of lines without tokens</td><td>Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC <code>記号,空白</code>), <code>--keep-whitespace</code> to output the spaces there, and an empty line or a line of spaces to give an empty wakati line and one N-best result; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>WASM: the <code>TokenizerBuilder</code> settings apply whichever way the dictionary is set</strong></td><td>WASM users who combine <code>setDictionaryInstance()</code> with <code>setKeepWhitespace()</code> or filters, or <code>setDictionary()</code> with <code>setUserDictionaryInstance()</code></td><td>Expect those settings and the user dictionary to take effect; a dictionary instance whose <code>char.def</code> has no <code>SPACE</code> category now needs <code>setKeepWhitespace(true)</code>, as a dictionary set by URI does</td></tr>
-<tr><td><strong><code>lindera train</code> builds its lattices as MeCab's learner does and keeps every <code>unk.def</code> entry; <code>model.dat</code> has the format version 2.0.0</strong></td><td>Users of <code>lindera train</code> and <code>lindera export</code>, and of the training functions of the Python, Node.js, Ruby and PHP bindings</td><td>Train every model again with 7.0.0, then export and build it again (a <code>model.dat</code> written by v6.2.0 or earlier is rejected); give every <code>unk.def</code> line at least five fields</td></tr>
+<tr><td><strong><code>lindera train</code> builds its lattices as MeCab's learner does and keeps every <code>unk.def</code> entry; <code>model.dat</code> has the format version 2.0.0</strong></td><td>Users of <code>lindera train</code> and <code>lindera export</code>, and of the training functions of the Python, Node.js, Ruby and PHP bindings</td><td>Train every model again with 7.0.0, then export and build it again (a <code>model.dat</code> written by v6.2.0 or earlier is rejected); give every <code>unk.def</code> line at least five fields; remove comment lines from seed lexicons</td></tr>
 <tr><td><strong><code>lindera build</code> rejects context IDs outside <code>matrix.def</code></strong></td><td>Anyone who builds a system dictionary whose <code>lex.csv</code> or <code>unk.def</code> has a context ID beyond the size of its <code>matrix.def</code> (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's <code>mecab-dict-index</code> accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic</td><td>Fix the IDs or the matrix, or set <code>skip_invalid_cost_or_id</code> in <code>metadata.json</code> to drop such <code>lex.csv</code> rows; fix such IDs in the user dictionary</td></tr>
 <tr><td><strong>The <code>normalize_details</code> setting is removed: <code>Metadata::new</code> and <code>CoreMetadata::new</code> take 10 arguments, Ruby's <code>Metadata.new</code> takes 8</strong></td><td>Code that creates or reads dictionary metadata: Rust (<code>Metadata</code>, <code>lindera_binding::CoreMetadata</code>, <code>PrefixDictionaryBuilderOptions</code>) and the <code>Metadata</code> classes of the Python, Ruby, PHP and Node.js bindings</td><td>Remove the argument, option or property; a <code>metadata.json</code> that still has the key loads, and the key is ignored</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>, <code>tokens_offset_into</code>, <code>nbest_tokens_offset</code> and <code>NBestGenerator::next</code> return <code>(start, end, WordId)</code></strong></td><td>Rust code that calls these <code>lindera_dictionary</code> functions directly (also as <code>lindera::dictionary::viterbi::…</code>, <code>lindera::dictionary::Lattice</code> and <code>lindera::dictionary::nbest::…</code>)</td><td>Destructure three fields and use the returned end instead of the next token's start</td></tr>
@@ -10724,6 +10725,12 @@ silently skipped.</li>
 (<code>0 0</code> when no weight was left at all), and the built dictionary panicked
 at tokenization. <code>model_info.connection_matrix_size</code> in <code>metadata.json</code>
 was a square of the larger ID.</li>
+<li>The seed lexicon was read line by line and split on <code>,</code>, and a line that
+starts with <code>#</code> was skipped as a comment. mecab-ko-dic's quoted comma
+surface <code>","</code> became the surface <code>"</code>, and <code>lindera export</code> wrote it
+unquoted, so <code>lindera build</code> read the rest of <code>lex.csv</code> as one field and
+dropped every row after it without an error. The <code>#</code> rows of UniDic,
+SudachiDict and IPADIC NEologd were not trained.</li>
 </ul>
 <p>v7.0.0 trains as MeCab's learner does (see
 <a href="development/training_pipeline.html#how-training-works">How training works</a>):</p>
@@ -10748,6 +10755,13 @@ trained and not exported, as MeCab's learner adds a virtual node.
 bindings' export functions reject a <code>model.dat</code> of any other version,
 including every <code>model.dat</code> written by v6.2.0 or earlier, with an error
 that ends in "re-run <code>lindera train</code> to regenerate it".</li>
+<li>The seed lexicon is read as CSV, as <code>lindera build</code> reads <code>lex.csv</code> (see
+<a href="development/training_pipeline.html#1-seed-lexicon-seedcsv">Seed Lexicon</a>):
+a field may be quoted, a line that starts with <code>#</code> is a row, and the
+feature columns are kept as written. A quoted field that spans lines is
+an error. <code>lindera export</code> quotes a surface that contains <code>,</code>, <code>"</code> or a
+line break. The user lexicon that <code>Model::read_user_lexicon</code> reads is
+read the same way.</li>
 </ul>
 <p>Training takes longer, because every lattice now has the seed words. It is
 slower than MeCab's learner, and it can stop at <code>--max-iterations</code>
@@ -10761,7 +10775,9 @@ the case in v6.</p>
 bindings' training functions, then export it and build the dictionary
 again. Give every <code>unk.def</code> line at least five fields. An <code>unk.def</code> with
 several entries per category, such as mecab-ipadic's, is now trained and
-exported as it is. There is no setting to restore the v6 behavior.</p>
+exported as it is. Remove the comment lines from your seed lexicons: a line
+that starts with <code>#</code> is now a row. There is no setting to restore the v6
+behavior.</p>
 <h2 id="lindera-build-rejects-context-ids-outside-the-connection-matrix"><a class="header" href="#lindera-build-rejects-context-ids-outside-the-connection-matrix"><code>lindera build</code> rejects context IDs outside the connection matrix</a></h2>
 <p>Up to v6.2.0, <code>lindera build</code> accepted a <code>lex.csv</code> row or an <code>unk.def</code> line
 whose context IDs fall outside <code>matrix.def</code>, and the built dictionary
@@ -11502,6 +11518,14 @@ cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 </code></pre>
 <p>Each line contains: <code>surface,left_id,right_id,cost,pos,pos_detail1,pos_detail2,pos_detail3,inflection_type,inflection_form,base_form,reading,pronunciation</code></p>
 <p>The <code>left_id</code>, <code>right_id</code>, and <code>cost</code> fields are set to 0 in the seed dictionary -- the trainer will compute appropriate values from the CRF model.</p>
+<p>The seed lexicon is read as CSV, as <code>lindera build</code> reads <code>lex.csv</code>:</p>
+<ul>
+<li>A field may be quoted, as mecab-ko-dic's comma surface is: <code>",",1792,3558,788,SC,*,*,*,*,*,*,*</code>.</li>
+<li>A line that starts with <code>#</code> is a row, not a comment, as UniDic's <code>#</code> surface is. Blank lines and rows with fewer than five fields are skipped.</li>
+<li>The feature of a row is the text after its fourth field, as written, quotes included. <code>lindera export</code> writes it back as it is, and quotes a surface that contains <code>,</code>, <code>"</code> or a line break.</li>
+<li>A quoted field that spans lines is an error that names the line. It is most likely a quote that is never closed, which would otherwise swallow the rows after it.</li>
+<li>The rows keep their order, which gives their labels their ids.</li>
+</ul>
 <h3 id="2-training-corpus-corpustxt"><a class="header" href="#2-training-corpus-corpustxt">2. Training Corpus (corpus.txt)</a></h3>
 <p>Annotated text data in tab-separated format. Each line is <code>surface&lt;TAB&gt;pos_info</code>, and sentences are separated by <code>EOS</code>.</p>
 <pre><code class="language-text">外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク

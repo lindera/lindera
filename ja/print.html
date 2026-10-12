@@ -2972,6 +2972,7 @@ Downloaded dictionary 'ipadic'
 <pre><code class="language-csv">外国,0,0,0,名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人,0,0,0,名詞,接尾,一般,*,*,*,人,ジン,ジン
 </code></pre>
+<p>このファイルは、<code>lindera build</code> が <code>lex.csv</code> を読むのと同じく CSV として読みます。フィールドは引用符で囲め（<code>",",0,0,0,...</code>）、<code>#</code> で始まる行はコメントではなくエントリです。詳しくは<a href="lindera-cli/../development/training_pipeline.html#1-%E7%A8%AE%E8%BE%9E%E6%9B%B8-seedcsv">種辞書</a>を参照してください。</p>
 <p><strong>学習用コーパス (corpus.txt):</strong></p>
 <p>学習用コーパスファイルは、CRFモデルの学習に使用される注釈付きテキストデータを含みます。各行は以下で構成されます：</p>
 <ul>
@@ -9671,7 +9672,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong>MeCab と同じく、コストが同じ分割からは最後の語が後から始まる方を選ぶ</strong></td><td>テキストを解析するすべてのユーザー。現れるのはまれ（比較したテキストでは約 54,000 行のうち 9 行）</td><td>そうした箇所が MeCab と同じ分割になることを前提にする（IPADIC の <code>腸窒扶斯</code> は <code>腸 / 窒 / 扶斯</code> ではなく <code>腸 / 窒扶 / 斯</code>）。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong><code>lindera tokenize</code> が各入力行から改行コードだけを取り除き、すべての行に結果を出す</strong></td><td>行頭・行末に空白がある入力を CLI に渡すユーザー、トークンのない行の wakati や N-best の出力を読むユーザー</td><td>オフセットが入力行の中の位置を指し、行頭・行末の U+3000 がトークンになり（IPADIC では <code>記号,空白</code>）、<code>--keep-whitespace</code> でそこの空白も出力され、空行や空白だけの行が wakati では空行に、N-best では結果 1 件になることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>WASM: 辞書の設定方法にかかわらず <code>TokenizerBuilder</code> の設定が適用される</strong></td><td><code>setDictionaryInstance()</code> と <code>setKeepWhitespace()</code> やフィルタ、または <code>setDictionary()</code> と <code>setUserDictionaryInstance()</code> を組み合わせる WASM のユーザー</td><td>それらの設定とユーザー辞書が効くことを前提にする。<code>char.def</code> に <code>SPACE</code> カテゴリがない辞書インスタンスでは、URI で設定した辞書と同じく <code>setKeepWhitespace(true)</code> が必要になる</td></tr>
-<tr><td><strong><code>lindera train</code> は MeCab の学習器と同じくラティスを作り、<code>unk.def</code> のすべてのエントリを保持する。<code>model.dat</code> の形式バージョンは 2.0.0</strong></td><td><code>lindera train</code>・<code>lindera export</code> と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー</td><td>7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた <code>model.dat</code> は拒否される）。<code>unk.def</code> のすべての行に 5 つ以上のフィールドを書く</td></tr>
+<tr><td><strong><code>lindera train</code> は MeCab の学習器と同じくラティスを作り、<code>unk.def</code> のすべてのエントリを保持する。<code>model.dat</code> の形式バージョンは 2.0.0</strong></td><td><code>lindera train</code>・<code>lindera export</code> と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー</td><td>7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた <code>model.dat</code> は拒否される）。<code>unk.def</code> のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す</td></tr>
 <tr><td><strong><code>lindera build</code> は <code>matrix.def</code> の範囲外の文脈 ID を拒否する</strong></td><td><code>lex.csv</code> や <code>unk.def</code> に <code>matrix.def</code> の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の <code>mecab-dict-index</code> が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる）</td><td>ID か行列を直すか、<code>metadata.json</code> の <code>skip_invalid_cost_or_id</code> でそうした <code>lex.csv</code> の行を取り除く。ユーザー辞書ではそうした ID を直す</td></tr>
 <tr><td><strong>設定 <code>normalize_details</code> の削除: <code>Metadata::new</code> と <code>CoreMetadata::new</code> の引数は 10 個、Ruby の <code>Metadata.new</code> の引数は 8 個になる</strong></td><td>辞書のメタデータを作成・参照するコード。Rust（<code>Metadata</code>・<code>lindera_binding::CoreMetadata</code>・<code>PrefixDictionaryBuilderOptions</code>）と、Python・Ruby・PHP・Node.js のバインディングの <code>Metadata</code> クラス</td><td>引数・オプション・プロパティを削除する。このキーを含む <code>metadata.json</code> もそのまま読み込め、キーは無視される</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>・<code>tokens_offset_into</code>・<code>nbest_tokens_offset</code>・<code>NBestGenerator::next</code> が <code>(start, end, WordId)</code> を返す</strong></td><td>これらの <code>lindera_dictionary</code> の関数を直接呼び出す Rust コード（<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・<code>lindera::dictionary::nbest::…</code> 経由を含む）</td><td>3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う</td></tr>
@@ -10501,6 +10502,12 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 エントリの ID より小さい <code>matrix.def</code>（重みが 1 つも残らなければ <code>0 0</code>）を書き出し、
 ビルドした辞書は解析時にパニックしていました。<code>metadata.json</code> の
 <code>model_info.connection_matrix_size</code> は、大きい方の ID の正方形でした。</li>
+<li>種辞書を 1 行ずつ <code>,</code> で分割して読み、<code>#</code> で始まる行をコメントとして読み飛ばして
+いました。mecab-ko-dic の引用符付きのカンマの表層形 <code>","</code> は表層形 <code>"</code> になり、
+<code>lindera export</code> がそれを引用符なしで書き出したため、<code>lindera build</code> は
+<code>lex.csv</code> の残りを 1 つのフィールドとして読み、その後ろの行をすべて何も知らせずに
+捨てていました。UniDic・SudachiDict・IPADIC NEologd の <code>#</code> の行は学習されません
+でした。</li>
 </ul>
 <p>v7.0.0 は MeCab の学習器と同じく学習します
 （<a href="development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。</p>
@@ -10524,6 +10531,12 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 エクスポート関数は、v6.2.0 以前に書いたものを含め、ほかのバージョンの
 <code>model.dat</code> を「re-run <code>lindera train</code> to regenerate it」で終わるエラーで拒否
 します。</li>
+<li>種辞書は、<code>lindera build</code> が <code>lex.csv</code> を読むのと同じく CSV として読みます
+（<a href="development/training_pipeline.html#1-%E7%A8%AE%E8%BE%9E%E6%9B%B8-seedcsv">種辞書</a>を参照）。
+フィールドは引用符で囲め、<code>#</code> で始まる行も 1 つの行として読み、素性の列は書かれた
+まま保ちます。複数の行にまたがる引用付きのフィールドはエラーになります。
+<code>lindera export</code> は、<code>,</code>・<code>"</code>・改行を含む表層形を引用符で囲みます。
+<code>Model::read_user_lexicon</code> が読むユーザー辞書も同じく読みます。</li>
 </ul>
 <p>すべてのラティスに種辞書の語が入るため、学習には以前より時間がかかります。学習は
 MeCab の学習器より遅く、収束する前に <code>--max-iterations</code> で
@@ -10536,7 +10549,8 @@ MeCab の学習器より遅く、収束する前に <code>--max-iterations</code
 学習し直し、エクスポートと辞書のビルドもやり直してください。<code>unk.def</code> のすべての
 行に 5 つ以上のフィールドを書いてください。mecab-ipadic のようにカテゴリごとに
 複数のエントリを持つ <code>unk.def</code> も、そのまま学習・エクスポートできるように
-なりました。v6 の動作に戻す設定はありません。</p>
+なりました。種辞書からコメント行を消してください。<code>#</code> で始まる行は 1 つの行として
+読むようになりました。v6 の動作に戻す設定はありません。</p>
 <h2 id="lindera-build-は接続コスト行列の範囲外の文脈-id-を拒否する"><a class="header" href="#lindera-build-は接続コスト行列の範囲外の文脈-id-を拒否する"><code>lindera build</code> は接続コスト行列の範囲外の文脈 ID を拒否する</a></h2>
 <p>v6.2.0 までの <code>lindera build</code> は、文脈 ID が <code>matrix.def</code> の範囲外にある <code>lex.csv</code>
 の行や <code>unk.def</code> の行を受け付け、ビルドした辞書は、解析中にそうした語を引いた
@@ -11217,6 +11231,14 @@ cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 </code></pre>
 <p>各行の構成: <code>surface,left_id,right_id,cost,pos,pos_detail1,pos_detail2,pos_detail3,inflection_type,inflection_form,base_form,reading,pronunciation</code></p>
 <p>種辞書では <code>left_id</code>、<code>right_id</code>、<code>cost</code> フィールドは 0 に設定されます。学習器が CRF モデルから適切な値を計算します。</p>
+<p>種辞書は、<code>lindera build</code> が <code>lex.csv</code> を読むのと同じく CSV として読みます。</p>
+<ul>
+<li>フィールドは引用符で囲めます。mecab-ko-dic のカンマの表層形がその例です: <code>",",1792,3558,788,SC,*,*,*,*,*,*,*</code>。</li>
+<li><code>#</code> で始まる行はコメントではなく、1 つの行として読みます。UniDic の <code>#</code> の表層形がその例です。空行と、フィールドが 5 つ未満の行は読み飛ばします。</li>
+<li>行の素性は、4 つ目のフィールドより後ろのテキストを、引用符も含めて書かれたまま使います。<code>lindera export</code> はそれをそのまま書き出し、<code>,</code>・<code>"</code>・改行を含む表層形は引用符で囲みます。</li>
+<li>複数の行にまたがる引用付きのフィールドは、その行を示すエラーになります。閉じていない引用符である可能性が高く、そのままでは後ろの行を飲み込んでしまうためです。</li>
+<li>行の順序はそのまま保たれ、その順序がラベルの ID になります。</li>
+</ul>
 <h3 id="2-学習コーパス-corpustxt"><a class="header" href="#2-学習コーパス-corpustxt">2. 学習コーパス (corpus.txt)</a></h3>
 <p>タブ区切り形式のアノテーション付きテキストデータです。各行は <code>surface&lt;TAB&gt;pos_info</code> で、文は <code>EOS</code> で区切られます。</p>
 <pre><code class="language-text">外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク

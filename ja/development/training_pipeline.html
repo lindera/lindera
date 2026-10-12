@@ -207,6 +207,14 @@
 </code></pre>
 <p>各行の構成: <code>surface,left_id,right_id,cost,pos,pos_detail1,pos_detail2,pos_detail3,inflection_type,inflection_form,base_form,reading,pronunciation</code></p>
 <p>種辞書では <code>left_id</code>、<code>right_id</code>、<code>cost</code> フィールドは 0 に設定されます。学習器が CRF モデルから適切な値を計算します。</p>
+<p>種辞書は、<code>lindera build</code> が <code>lex.csv</code> を読むのと同じく CSV として読みます。</p>
+<ul>
+<li>フィールドは引用符で囲めます。mecab-ko-dic のカンマの表層形がその例です: <code>",",1792,3558,788,SC,*,*,*,*,*,*,*</code>。</li>
+<li><code>#</code> で始まる行はコメントではなく、1 つの行として読みます。UniDic の <code>#</code> の表層形がその例です。空行と、フィールドが 5 つ未満の行は読み飛ばします。</li>
+<li>行の素性は、4 つ目のフィールドより後ろのテキストを、引用符も含めて書かれたまま使います。<code>lindera export</code> はそれをそのまま書き出し、<code>,</code>・<code>"</code>・改行を含む表層形は引用符で囲みます。</li>
+<li>複数の行にまたがる引用付きのフィールドは、その行を示すエラーになります。閉じていない引用符である可能性が高く、そのままでは後ろの行を飲み込んでしまうためです。</li>
+<li>行の順序はそのまま保たれ、その順序がラベルの ID になります。</li>
+</ul>
 <h3 id="2-学習コーパス-corpustxt"><a class="header" href="#2-学習コーパス-corpustxt">2. 学習コーパス (corpus.txt)</a></h3>
 <p>タブ区切り形式のアノテーション付きテキストデータです。各行は <code>surface&lt;TAB&gt;pos_info</code> で、文は <code>EOS</code> で区切られます。</p>
 <pre><code class="language-text">外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク

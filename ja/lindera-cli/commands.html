@@ -854,6 +854,7 @@ Downloaded dictionary 'ipadic'
 <pre><code class="language-csv">外国,0,0,0,名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人,0,0,0,名詞,接尾,一般,*,*,*,人,ジン,ジン
 </code></pre>
+<p>このファイルは、<code>lindera build</code> が <code>lex.csv</code> を読むのと同じく CSV として読みます。フィールドは引用符で囲め（<code>",",0,0,0,...</code>）、<code>#</code> で始まる行はコメントではなくエントリです。詳しくは<a href="../development/training_pipeline.html#1-%E7%A8%AE%E8%BE%9E%E6%9B%B8-seedcsv">種辞書</a>を参照してください。</p>
 <p><strong>学習用コーパス (corpus.txt):</strong></p>
 <p>学習用コーパスファイルは、CRFモデルの学習に使用される注釈付きテキストデータを含みます。各行は以下で構成されます：</p>
 <ul>
