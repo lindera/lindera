@@ -28,6 +28,17 @@
 
 表層形・左右の文脈 ID・コストがすべて同じ 2 つの見出し語は同点です。どちらを使っても経路のコストは同じになります。ユーザー辞書の見出し語は、同点のシステム辞書の見出し語より優先して選ばれます。そのため、システム辞書の見出し語の表層形・文脈 ID・コストをそのまま使った詳細形式の見出し語（たとえば語に別の読みを与えるもの）は、システム辞書の見出し語の代わりに出力されます。MeCab はシステム辞書の見出し語を選びます。同点のユーザー辞書の見出し語どうしでは、MeCab と同じく先の行が選ばれます（v7 より前は後の行でした。[v6 から v7 への移行](../migration_v6_to_v7.md#mecab-と同じく同点の見出し語は-csv-で先の行を選ぶ)を参照）。簡易形式の見出し語には、辞書の `metadata.json` のコストと文脈 ID（`default_word_cost`・`default_left_context_id`・`default_right_context_id`。IPADIC では `-10000`・`0`・`0`）が使われるため、システム辞書の見出し語と同点になることはまずありません。
 
+## 文脈 ID
+
+詳細形式の見出し語の左右の文脈 ID は、組み合わせるシステム辞書の接続コスト行列のセルを指していなければなりません。左文脈 ID はそのシステム辞書の `matrix.def` のヘッダの 2 つ目の値より小さく、右文脈 ID は 1 つ目の値より小さくなければなりません。`lindera build` がシステム辞書自体に課すのと同じ範囲です。たとえば IPADIC の行列は 1316 x 1316 です。ユーザー辞書はシステム辞書なしでビルドされる（`lindera build --user` は `metadata.json` しか読まない）ため、この ID は 2 つの辞書を組み合わせるときに確認します。`Segmenter::try_new`、設定からの構築（`Segmenter::from_config`、`TokenizerBuilder`）、`lindera tokenize --user-dict`、各言語バインディングの `Tokenizer` のコンストラクタとビルダーは、行列の範囲外にある最初の見出し語についてエラーを返します。エラーは、見出し語をその単語 ID（表層形の順に並べた行を 0 から数えた番号）と詳細フィールドで示します。
+
+```text
+$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.bin
+Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary entry 0 (名詞,固有名詞,一般,*,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
+```
+
+`Segmenter::new` はこの ID を確認しません。範囲外の見出し語があると、その見出し語が入力に一致したときに解析中にパニックします。v7.0.0 より前は、どの経路もこの動作でした。簡易形式の見出し語も確認します。簡易形式の見出し語には、ビルドに使う `metadata.json` の文脈 ID（`default_left_context_id` と `default_right_context_id`。同梱のどの辞書でも 0）が使われます。
+
 ## Rust APIの例
 
 ```rust
@@ -60,11 +71,13 @@ fn main() -> LinderaResult<()> {
 
     let dictionary = load_dictionary("embedded://ipadic")?;
     let user_dictionary = load_user_dictionary(user_dict_path.to_str().unwrap(), &metadata)?;
-    let segmenter = Segmenter::new(
+    // `try_new` checks the user dictionary's context IDs against the
+    // dictionary's connection matrix (see "Context IDs" above).
+    let segmenter = Segmenter::try_new(
         Mode::Normal,
         dictionary,
         Some(user_dictionary), // Using the loaded user dictionary
-    );
+    )?;
 
     // Create a tokenizer.
     let tokenizer = Tokenizer::new(segmenter);

@@ -25,7 +25,8 @@ token's end offset. `lindera train` builds its lattices as MeCab's learner
 does, with the seed words and the unknown words that the runtime creates,
 and keeps every `unk.def` entry, so models trained with earlier versions
 must be trained again, and `lindera build` rejects a dictionary whose
-context IDs fall outside its connection matrix. Dictionary directories built or downloaded with v6.2.0
+context IDs fall outside its connection matrix, as building a tokenizer
+does for such a user dictionary. Dictionary directories built or downloaded with v6.2.0
 or earlier no longer load and must be rebuilt or downloaded again
 (dictionary format version 3).
 This guide lists every breaking change and the one-line fixes for each.
@@ -56,7 +57,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`lindera tokenize` removes only the line terminator from each input line and writes a result for every line** | CLI users whose input lines start or end with whitespace, or who read the wakati or N-best output of lines without tokens | Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC `記号,空白`), `--keep-whitespace` to output the spaces there, and an empty line or a line of spaces to give an empty wakati line and one N-best result; no setting restores the v6 behavior |
 | **WASM: the `TokenizerBuilder` settings apply whichever way the dictionary is set** | WASM users who combine `setDictionaryInstance()` with `setKeepWhitespace()` or filters, or `setDictionary()` with `setUserDictionaryInstance()` | Expect those settings and the user dictionary to take effect; a dictionary instance whose `char.def` has no `SPACE` category now needs `setKeepWhitespace(true)`, as a dictionary set by URI does |
 | **`lindera train` builds its lattices as MeCab's learner does and keeps every `unk.def` entry; `model.dat` has the format version 2.0.0** | Users of `lindera train` and `lindera export`, and of the training functions of the Python, Node.js, Ruby and PHP bindings | Train every model again with 7.0.0, then export and build it again (a `model.dat` written by v6.2.0 or earlier is rejected); give every `unk.def` line at least five fields |
-| **`lindera build` rejects context IDs outside `matrix.def`** | Anyone who builds a system dictionary whose `lex.csv` or `unk.def` has a context ID beyond the size of its `matrix.def` (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's `mecab-dict-index` accepts | Fix the IDs or the matrix, or set `skip_invalid_cost_or_id` in `metadata.json` to drop such `lex.csv` rows |
+| **`lindera build` rejects context IDs outside `matrix.def`** | Anyone who builds a system dictionary whose `lex.csv` or `unk.def` has a context ID beyond the size of its `matrix.def` (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's `mecab-dict-index` accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic | Fix the IDs or the matrix, or set `skip_invalid_cost_or_id` in `metadata.json` to drop such `lex.csv` rows; fix such IDs in the user dictionary |
 | **The `normalize_details` setting is removed: `Metadata::new` and `CoreMetadata::new` take 10 arguments, Ruby's `Metadata.new` takes 8** | Code that creates or reads dictionary metadata: Rust (`Metadata`, `lindera_binding::CoreMetadata`, `PrefixDictionaryBuilderOptions`) and the `Metadata` classes of the Python, Ruby, PHP and Node.js bindings | Remove the argument, option or property; a `metadata.json` that still has the key loads, and the key is ignored |
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
 | **`Lattice::tokens_offset_into` returns the BOS index of the best path (`Option<usize>`)** | Rust code that uses the `()` value of `tokens_offset_into` | Nothing for a call written as a statement; otherwise ignore the new value |
@@ -1181,8 +1182,15 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
   `lindera_dictionary`. The error names the line, and so does the error for
   a context ID or a cost that is not a number, which did not name it
   before.
-- User dictionaries (`lindera build --user`) are not checked yet
-  ([#1171](https://github.com/lindera/lindera/issues/1171)).
+- A user dictionary is checked when it is combined with the system
+  dictionary, since `lindera build --user` does not know the system
+  dictionary: `Segmenter::try_new`, the configuration path,
+  `lindera tokenize --user-dict`, and the `Tokenizer` constructors and
+  builders of the language bindings return an error that names the first
+  entry outside the matrix
+  ([#1171](https://github.com/lindera/lindera/issues/1171); see
+  [Context IDs](concepts/user_dictionary.md#context-ids)).
+  `Segmenter::new` does not check, as before.
 
 Dictionaries that `mecab-dict-index` builds pass, since it checks the same
 bounds. A dictionary exported by `lindera export` of v6.2.0 or earlier can
@@ -1525,6 +1533,14 @@ Everyone who builds a system dictionary with `lindera build`:
   rows. Such a dictionary used to build and then panic at
   tokenization. A dictionary exported by v6.2.0 or earlier is best trained
   and exported again.
+
+Everyone who uses a user dictionary with detailed entries:
+
+- If building the tokenizer reports a user dictionary entry whose context
+  ID is out of range for the connection matrix, fix the IDs in the user
+  dictionary CSV for the system dictionary you use, and build the `.bin`
+  again if you use one. Such a user dictionary used to panic at
+  tokenization when the entry matched the input.
 
 Users of Japanese text with `、` or `。` inside a line:
 
