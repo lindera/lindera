@@ -10955,7 +10955,7 @@ IPADIC-NEologd 1,085 語）が引けなくなることを前提にする。IPADI
 <pre><code class="language-bash">cargo clippy -- -D warnings
 </code></pre>
 <blockquote>
-<p>注意: CI は各クレートに対して、そのクレートのテストと同じ feature で <code>cargo clippy --all-targets -- -D warnings</code> を実行します（<code>.github/workflows/test-crate.yml</code> を参照）。PR を開く前にローカルで（例えば <code>make lint</code> 経由で）clippy を実行してください。</p>
+<p>注意: CI は各クレートに対して、そのクレートのテストと同じ feature で <code>cargo clippy --all-targets -- -D warnings</code> を実行します（<code>.github/workflows/test-crate.yml</code> と、<code>.github/workflows/regression.yml</code> の言語バインディングのジョブを参照）。そのため、テストのコードも lint されます。<code>make lint-&lt;crate&gt;</code> は同じ clippy のコマンドを実行します。PR を開く前にローカルで（例えば <code>make lint</code> 経由で）clippy を実行してください。</p>
 </blockquote>
 <h2 id="ドキュメント-4"><a class="header" href="#ドキュメント-4">ドキュメント</a></h2>
 <h3 id="api-ドキュメント"><a class="header" href="#api-ドキュメント">API ドキュメント</a></h3>

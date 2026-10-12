@@ -221,7 +221,7 @@
 <pre><code class="language-bash">cargo clippy -- -D warnings
 </code></pre>
 <blockquote>
-<p>Note: CI runs <code>cargo clippy --all-targets -- -D warnings</code> for each crate, with the features it tests that crate with (see <code>.github/workflows/test-crate.yml</code>). Run clippy locally (e.g. via <code>make lint</code>) before opening a PR.</p>
+<p>Note: CI runs <code>cargo clippy --all-targets -- -D warnings</code> for each crate, with the features it tests that crate with (see <code>.github/workflows/test-crate.yml</code>, and the language binding jobs in <code>.github/workflows/regression.yml</code>), so the test code is linted too. <code>make lint-&lt;crate&gt;</code> runs the same clippy command. Run clippy locally (e.g. via <code>make lint</code>) before opening a PR.</p>
 </blockquote>
 <h2 id="documentation"><a class="header" href="#documentation">Documentation</a></h2>
 <h3 id="api-documentation"><a class="header" href="#api-documentation">API Documentation</a></h3>
