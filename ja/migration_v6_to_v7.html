@@ -1107,7 +1107,11 @@ ID は <code>matrix.def</code> のヘッダの 1 つ目の値より小さく、�
 そうした <code>lex.csv</code> の行を取り除きます。<code>log</code> クレートに警告を出しますが、CLI
 はまだそれを表示しません（<a href="https://github.com/lindera/lindera/issues/1107">#1107</a>）。
 <code>unk.def</code> の行は常に確認します。</li>
-<li>フィールドが 4 つ未満の <code>unk.def</code> の行は、パニックではなくエラーになります。</li>
+<li>コメント行や空行など、フィールドが 4 つ未満の <code>unk.def</code> の行は、パニックでは
+なくエラーになります。<code>lindera_dictionary</code> の
+<code>DictionaryBuilder::build_unknown_dictionary</code> と <code>parse_unk</code> でも同じです。
+エラーは行を示します。これまで行を示さなかった、文脈 ID やコストが数値でない
+行のエラーも、行を示すようになります。</li>
 <li>ユーザー辞書（<code>lindera build --user</code>）はまだ確認しません
 （<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>）。</li>
 </ul>
