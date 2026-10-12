@@ -68,12 +68,31 @@ $builder->setUserDictionary('/path/to/user_dictionary.csv');
 
 #### `setKeepWhitespace($keep)`
 
-Controls whether whitespace tokens appear in the output. Kept whitespace also stays in the lattice, so the other tokens can differ from those of the default output, which skips whitespace in the lattice as MeCab does. Whitespace skipping itself has no setter: turn it off with `skip_whitespace: false` under `segmenter` in a [configuration file](../lindera-analysis/configuration.md) loaded with `fromFile`.
+Controls whether whitespace tokens appear in the output. Kept whitespace also stays in the lattice, so the other tokens can differ from those of the default output, which skips whitespace in the lattice as MeCab does. To keep whitespace in the lattice without outputting it, use [`setSkipWhitespace(false)`](#setskipwhitespaceskip) instead.
 
 ```php
 <?php
 
 $builder->setKeepWhitespace(true);
+```
+
+#### `setSkipWhitespace($skip)`
+
+Sets whether whitespace is skipped in the lattice. `$skip` has the same meaning as `segmenter.skip_whitespace` in a [configuration file](../lindera-analysis/configuration.md):
+
+- `true` -- Skips whitespace, so the words on either side of it connect directly, as MeCab does.
+- `false` -- Keeps whitespace in the lattice as a node of its own (a whitespace dictionary entry or the `SPACE` unknown word), as before v7. Whitespace is still dropped from the output.
+- `null` -- The default of the dictionary's `metadata.json`: skipping, except with SudachiDict. Use it to undo an earlier call.
+
+A value set here overrides the dictionary's default and a `skip_whitespace` loaded with `fromFile`. It has no effect while whitespace tokens are kept (`setKeepWhitespace(true)`), because kept whitespace always stays in the lattice. The argument is required; a value of any other type throws `TypeError`.
+
+With IPADIC, for example, `Google が 新しい` reads `が` as a particle (`助詞`) by default and as a conjunction (`接続詞`) with `setSkipWhitespace(false)`. See [Segmenter](../lindera/segmenter.md#whitespace-handling) for details.
+
+```php
+<?php
+
+// Keep whitespace in the lattice, as before v7
+$builder->setSkipWhitespace(false);
 ```
 
 #### `setSpacePenalty($value)`

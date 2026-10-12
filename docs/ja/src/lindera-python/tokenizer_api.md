@@ -64,10 +64,27 @@ builder.set_user_dictionary("/path/to/user_dictionary")
 
 #### `set_keep_whitespace(keep)`
 
-出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白の読み飛ばし自体を変える setter はありません。`from_file` で読み込む[設定ファイル](../lindera-analysis/configuration.md)の `segmenter` に `skip_whitespace: false` を書くと無効にできます。
+出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白を出力せずにラティスにだけ残すには、代わりに [`set_skip_whitespace(False)`](#set_skip_whitespaceskip) を使います。
 
 ```python
 builder.set_keep_whitespace(True)
+```
+
+#### `set_skip_whitespace(skip)`
+
+空白をラティス上で読み飛ばすかどうかを設定します。`skip` の意味は[設定ファイル](../lindera-analysis/configuration.md)の `segmenter.skip_whitespace` と同じです：
+
+- `True` -- 空白を読み飛ばし、MeCab と同様に空白の前後の語を直接接続します。
+- `False` -- 空白を独立したノード（空白の見出し語か `SPACE` の未知語）としてラティスに残します（v7 より前の動作）。空白は引き続き出力から除外されます。
+- `None` -- 辞書の `metadata.json` のデフォルトです。SudachiDict 以外では読み飛ばします。以前の呼び出しを取り消すときに使います。
+
+ここで設定した値は、辞書のデフォルトと、`from_file` で読み込んだ `skip_whitespace` より優先されます。空白トークンを残すとき（`set_keep_whitespace(True)`）は効果がありません。残した空白は常にラティスに残るためです。それ以外の値では `TypeError` が送出されます。
+
+たとえば IPADIC では、`Google が 新しい` の `が` は、デフォルトでは助詞（`助詞`）、`set_skip_whitespace(False)` では接続詞（`接続詞`）と解析されます。詳しくは [Segmenter](../lindera/segmenter.md#空白文字の扱い) を参照してください。
+
+```python
+# v7 より前と同じく、空白をラティスに残す
+builder.set_skip_whitespace(False)
 ```
 
 #### `set_space_penalty(value)`

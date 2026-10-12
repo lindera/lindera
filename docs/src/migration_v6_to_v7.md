@@ -491,10 +491,10 @@ segmenter:
 lindera tokenize --disable-skip-whitespace
 ```
 
-The language bindings have no setter for it. The Python, Node.js, Ruby and
-PHP bindings take it only through a configuration file loaded with
-`from_file` / `fromFile`; the WASM binding cannot change it and uses the
-dictionary's default.
+The language bindings set it on `TokenizerBuilder`:
+`set_skip_whitespace(False)` in Python, `set_skip_whitespace(false)` in Ruby,
+and `setSkipWhitespace(false)` in Node.js, PHP and WASM. `null` (`None` in
+Python, `nil` in Ruby) goes back to the dictionary's default.
 
 ## Overlapping char.def lines are resolved as in MeCab
 
