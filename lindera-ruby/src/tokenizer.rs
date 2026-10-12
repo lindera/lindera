@@ -240,8 +240,10 @@ pub struct RbTokenizer {
 /// # Returns
 ///
 /// A new `RbTokenizer` instance, an `ArgumentError` for a wrong number of
-/// arguments or an unknown keyword, or the errors `set_space_penalty` and
-/// `build` raise for an invalid space-penalty setting.
+/// arguments or an unknown keyword, the errors `set_space_penalty` and
+/// `build` raise for an invalid space-penalty setting, or a `RuntimeError`
+/// for a user dictionary with a context ID outside the dictionary's
+/// connection matrix.
 fn tokenizer_new(args: &[Value]) -> Result<RbTokenizer, Error> {
     let ruby = Ruby::get().expect("Ruby runtime not initialized");
     let args = scan_args::<

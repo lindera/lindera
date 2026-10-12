@@ -283,7 +283,9 @@ impl PhpTokenizer {
     /// # Returns
     ///
     /// A new Tokenizer instance, or a `ValueError` for an invalid mode or
-    /// space-penalty setting, as `setSpacePenalty()` and `build()` throw it.
+    /// space-penalty setting, as `setSpacePenalty()` and `build()` throw it,
+    /// or for a user dictionary with a context ID outside the dictionary's
+    /// connection matrix.
     pub fn __construct(
         dictionary: &PhpDictionary,
         mode: Option<String>,

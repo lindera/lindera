@@ -420,7 +420,9 @@ impl Tokenizer {
     /// # Returns
     ///
     /// The tokenizer, or an error string for an invalid mode or space-penalty
-    /// setting, as `setSpacePenalty` and `build()` report them.
+    /// setting, as `setSpacePenalty` and `build()` report them, or for a user
+    /// dictionary with a context ID outside the dictionary's connection
+    /// matrix.
     // Once one parameter carries a type attribute, wasm-bindgen marks a
     // parameter optional in the TypeScript declarations only when it uses
     // `unchecked_optional_param_type`, so every trailing optional parameter

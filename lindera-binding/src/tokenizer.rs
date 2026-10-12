@@ -239,7 +239,9 @@ impl CoreTokenizerBuilder {
     /// # Returns
     ///
     /// The tokenizer, or an error when no dictionary is configured, a
-    /// dictionary cannot be loaded, or a setting or filter is invalid.
+    /// dictionary cannot be loaded, a setting or filter is invalid, or the
+    /// user dictionary has a context ID outside the system dictionary's
+    /// connection matrix.
     pub fn build(&self) -> CoreResult<CoreTokenizer> {
         self.build_with_dictionaries(None, None)
     }
@@ -317,13 +319,30 @@ fn lock_worker(mutex: &Mutex<AnalysisWorker>) -> MutexGuard<'_, AnalysisWorker> 
 
 impl CoreTokenizer {
     /// Builds a tokenizer from segmenter parts, parsing `mode` from a string.
+    ///
+    /// The user dictionary is checked against the dictionary's connection
+    /// matrix ([`Segmenter::try_new`]), so a user dictionary written for
+    /// another dictionary is an error here rather than a panic at
+    /// tokenization.
+    ///
+    /// # Arguments
+    ///
+    /// * `mode` - `"normal"` or `"decompose"`.
+    /// * `dictionary` - The system dictionary.
+    /// * `user_dictionary` - An optional user dictionary.
+    ///
+    /// # Returns
+    ///
+    /// The tokenizer, or an error for an invalid mode or for a user
+    /// dictionary with a context ID outside the dictionary's connection
+    /// matrix.
     pub fn from_segmenter(
         mode: &str,
         dictionary: Dictionary,
         user_dictionary: Option<UserDictionary>,
     ) -> CoreResult<Self> {
         let mode = Mode::from_str(mode)?;
-        let segmenter = Segmenter::new(mode, dictionary, user_dictionary);
+        let segmenter = Segmenter::try_new(mode, dictionary, user_dictionary)?;
         Ok(Self::from_tokenizer(Tokenizer::new(segmenter)))
     }
 
@@ -336,7 +355,8 @@ impl CoreTokenizer {
     ///
     /// * `mode` - `"normal"` or `"decompose"`.
     /// * `dictionary` - The system dictionary.
-    /// * `user_dictionary` - An optional user dictionary.
+    /// * `user_dictionary` - An optional user dictionary, checked against
+    ///   the dictionary's connection matrix as in [`Self::from_segmenter`].
     /// * `space_penalty` - The setting, in the forms
     ///   [`CoreTokenizerBuilder::set_space_penalty`] accepts (`null` keeps the
     ///   dictionary's default rules).
@@ -344,8 +364,9 @@ impl CoreTokenizer {
     /// # Returns
     ///
     /// The tokenizer, or an error for an invalid mode or setting, for `true`
-    /// with a dictionary that ships no rules, or for rules that cannot be
-    /// applied to the dictionary.
+    /// with a dictionary that ships no rules, for rules that cannot be
+    /// applied to the dictionary, or for a user dictionary with a context ID
+    /// outside the dictionary's connection matrix.
     pub fn from_segmenter_with_space_penalty(
         mode: &str,
         dictionary: Dictionary,
@@ -354,7 +375,7 @@ impl CoreTokenizer {
     ) -> CoreResult<Self> {
         let setting = SpacePenaltySetting::from_value(space_penalty)?;
         let mode = Mode::from_str(mode)?;
-        let mut segmenter = Segmenter::new(mode, dictionary, user_dictionary);
+        let mut segmenter = Segmenter::try_new(mode, dictionary, user_dictionary)?;
         setting.apply(&mut segmenter)?;
         Ok(Self::from_tokenizer(Tokenizer::new(segmenter)))
     }
@@ -753,6 +774,63 @@ mod tests {
                 surfaces(&builder, None, Some(user_dictionary), "東京スカイツリー"),
                 ["東京スカイツリー"]
             );
+        }
+
+        /// Builds a user dictionary whose entry has context IDs 60000, far
+        /// outside IPADIC's 1316 x 1316 connection matrix.
+        fn out_of_range_user_dictionary() -> UserDictionary {
+            let csv = "東京スカイツリー,60000,60000,-1000,名詞,固有名詞,一般,*,*,*,\
+                       東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー\n";
+            match lindera::dictionary::DictionaryBuilder::new((*ipadic().metadata).clone())
+                .build_user_dict_from_reader(csv.as_bytes())
+            {
+                Ok(user_dictionary) => user_dictionary,
+                Err(err) => panic!("failed to build the user dictionary: {err}"),
+            }
+        }
+
+        /// The `Tokenizer` constructors of the bindings and their builders
+        /// reject a user dictionary whose context IDs lie outside the
+        /// dictionary's connection matrix, instead of building a tokenizer
+        /// that panics when the entry matches the input (#1171).
+        #[test]
+        fn user_dictionary_outside_the_matrix_is_an_error() {
+            let results = [
+                CoreTokenizer::from_segmenter(
+                    "normal",
+                    ipadic(),
+                    Some(out_of_range_user_dictionary()),
+                )
+                .err(),
+                CoreTokenizer::from_segmenter_with_space_penalty(
+                    "normal",
+                    ipadic(),
+                    Some(out_of_range_user_dictionary()),
+                    &Value::Null,
+                )
+                .err(),
+                CoreTokenizerBuilder::new()
+                    .expect("builder")
+                    .build_with_dictionaries(Some(ipadic()), Some(out_of_range_user_dictionary()))
+                    .err(),
+            ];
+            for (case, err) in results.into_iter().enumerate() {
+                match err {
+                    Some(err) => {
+                        assert_eq!(
+                            err.kind(),
+                            crate::error::ErrorKind::Parse,
+                            "case {case}: {err}"
+                        );
+                        assert!(
+                            err.to_string()
+                                .contains("left context id 60000 is out of range"),
+                            "case {case}: {err}"
+                        );
+                    }
+                    None => panic!("case {case}: built a tokenizer"),
+                }
+            }
         }
 
         /// A dictionary instance given to the builder takes the space-penalty
