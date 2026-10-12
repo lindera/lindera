@@ -8,6 +8,7 @@
 
 pub mod config;
 pub mod corpus;
+mod feature_csv;
 pub mod feature_extractor;
 pub mod feature_rewriter;
 mod lexicon_csv;
