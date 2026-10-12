@@ -184,9 +184,9 @@
 <li>MeCab互換の素性テンプレート解析（<code>feature.def</code>: <code>%F[n]</code>、<code>%L[n]</code>、<code>%R[n]</code>、<code>%w</code>、<code>%u</code>、<code>%l</code>、<code>%r</code>、およびそれぞれの<code>?</code>付きオプション形式）</li>
 <li>MeCab互換の3セクション形式による素性書き換え（<code>rewrite.def</code>: ユニグラム／左文脈／右文脈の書き換えルール）</li>
 <li>辞書形式に依存しない設計: <code>surface,left_id,right_id,cost,feature...</code>の列構成に従う辞書であれば任意のもの（IPADIC、UniDic、ko-dic、CC-CEDICTなど）を扱える</li>
-<li><code>char.def</code>の文字カテゴリに基づく未知語の自動カテゴリ分類</li>
+<li>MeCabの学習器と同じ学習用ラティス: 各位置から始まる種辞書の語と、ランタイムが<code>char.def</code>と<code>unk.def</code>から作る未知語を候補にし、<code>unk.def</code>のエントリごとに1つのCRFラベルを割り当てる</li>
 <li>学習されたCRFの重みから連接コスト行列を生成し、MeCab互換のコスト変換（<code>tocost</code>）を適用</li>
-<li>ゼロコピーの<code>rkyv</code>バイナリ形式によるモデルのシリアライズ（読み込み時はレガシーJSON形式へのフォールバックにも対応）</li>
+<li>ゼロコピーの<code>rkyv</code>バイナリ形式による、形式バージョン付きのモデルのシリアライズ（読み込み時はレガシーJSON形式へのフォールバックにも対応）</li>
 <li>Lindera／MeCab辞書ソースファイル（<code>lex.csv</code>、<code>matrix.def</code>、<code>unk.def</code>、<code>char.def</code>、<code>feature.def</code>、<code>rewrite.def</code>、<code>left-id.def</code>、<code>right-id.def</code>）の直接エクスポート</li>
 </ul>
 <h2 id="目次"><a class="header" href="#目次">目次</a></h2>

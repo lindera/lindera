@@ -246,6 +246,7 @@ exportModel({
 <li><code>char.def</code> -- 文字カテゴリ定義</li>
 <li><code>metadata.json</code> -- 更新されたメタデータ（<code>metadata</code> パラメータ指定時）</li>
 </ul>
+<p>モデルファイルは、このバージョンの学習で作ったものである必要があります。それより前のバージョンで書かれたモデルファイル（7.0.0 より前に書かれたものはすべて該当）は拒否され、<code>exportModel()</code> は学習のやり直しを求めるエラーで失敗します。そうしたモデルは <code>train()</code> で学習し直してください。</p>
 <h2 id="完全なワークフロー"><a class="header" href="#完全なワークフロー">完全なワークフロー</a></h2>
 <p>カスタム辞書の学習と使用の完全なワークフロー：</p>
 <pre><code class="language-javascript">const {

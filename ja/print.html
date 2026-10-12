@@ -1021,9 +1021,9 @@ tokenizer
 <li>MeCab互換の素性テンプレート解析（<code>feature.def</code>: <code>%F[n]</code>、<code>%L[n]</code>、<code>%R[n]</code>、<code>%w</code>、<code>%u</code>、<code>%l</code>、<code>%r</code>、およびそれぞれの<code>?</code>付きオプション形式）</li>
 <li>MeCab互換の3セクション形式による素性書き換え（<code>rewrite.def</code>: ユニグラム／左文脈／右文脈の書き換えルール）</li>
 <li>辞書形式に依存しない設計: <code>surface,left_id,right_id,cost,feature...</code>の列構成に従う辞書であれば任意のもの（IPADIC、UniDic、ko-dic、CC-CEDICTなど）を扱える</li>
-<li><code>char.def</code>の文字カテゴリに基づく未知語の自動カテゴリ分類</li>
+<li>MeCabの学習器と同じ学習用ラティス: 各位置から始まる種辞書の語と、ランタイムが<code>char.def</code>と<code>unk.def</code>から作る未知語を候補にし、<code>unk.def</code>のエントリごとに1つのCRFラベルを割り当てる</li>
 <li>学習されたCRFの重みから連接コスト行列を生成し、MeCab互換のコスト変換（<code>tocost</code>）を適用</li>
-<li>ゼロコピーの<code>rkyv</code>バイナリ形式によるモデルのシリアライズ（読み込み時はレガシーJSON形式へのフォールバックにも対応）</li>
+<li>ゼロコピーの<code>rkyv</code>バイナリ形式による、形式バージョン付きのモデルのシリアライズ（読み込み時はレガシーJSON形式へのフォールバックにも対応）</li>
 <li>Lindera／MeCab辞書ソースファイル（<code>lex.csv</code>、<code>matrix.def</code>、<code>unk.def</code>、<code>char.def</code>、<code>feature.def</code>、<code>rewrite.def</code>、<code>left-id.def</code>、<code>right-id.def</code>）の直接エクスポート</li>
 </ul>
 <h2 id="目次-2"><a class="header" href="#目次-2">目次</a></h2>
@@ -1035,7 +1035,7 @@ tokenizer
 <h2 id="モジュール構成-2"><a class="header" href="#モジュール構成-2">モジュール構成</a></h2>
 <pre><code class="language-text">lindera-trainer/src/
 ├── lib.rs                # Trainer: CRF学習の実行制御。パブリックAPIの再エクスポート
-├── config.rs             # TrainerConfig: 種辞書・char.def・feature.def・rewrite.defのパース
+├── config.rs             # TrainerConfig: 種辞書・char.def・unk.def・feature.def・rewrite.defのパース
 ├── corpus.rs              # Corpus, Example, Word: 学習データの表現
 ├── feature_extractor.rs  # FeatureExtractor: 素性テンプレート解析と素性ID管理
 ├── feature_rewriter.rs   # DictionaryRewriter: MeCab互換の3セクション書き換え
@@ -1043,28 +1043,36 @@ tokenizer
 </code></pre>
 <h2 id="主要コンポーネント-2"><a class="header" href="#主要コンポーネント-2">主要コンポーネント</a></h2>
 <h3 id="trainerconfig"><a class="header" href="#trainerconfig">TrainerConfig</a></h3>
-<p>学習に必要な5つの入力ファイル――種辞書（<code>lex.csv</code>）、文字定義（<code>char.def</code>）、未知語定義（<code>unk.def</code>）、素性テンプレート（<code>feature.def</code>）、書き換えルール（<code>rewrite.def</code>）――をパースし、<code>Trainer</code>が利用する設定情報にまとめます。<code>TrainerConfig::from_readers</code>（またはファイルパスを直接渡せるラッパーの<code>from_paths</code>）は、種辞書から表層形と素性の語彙を抽出し、パースした素性テンプレートから<code>FeatureExtractor</code>を構築し、書き換えルールから<code>DictionaryRewriter</code>を構築し、さらに文字定義をもとに最小限のインメモリ<code>lindera_dictionary::dictionary::Dictionary</code>を組み立てます。<code>char.def</code>は辞書ビルダー（<code>CharacterDefinitionBuilder::build_from_str</code>）でパースするため、学習時の文字カテゴリはビルドされる辞書と同じになります。<code>%t</code>素性に使う各文字の既定カテゴリは、ビルダーの<code>build_default_category_table</code>から得ます。注意: この<code>Dictionary</code>の<code>prefix_dictionary</code>（システム辞書）フィールドと<code>unknown_dictionary</code>フィールドは、空のスタブとして構築されるだけです――学習時に実際に使われる種辞書の語彙や未知語カテゴリの素性は、この<code>Dictionary</code>オブジェクトではなく、<code>TrainerConfig</code>自身の<code>surfaces</code> / <code>features</code> / <code>unk_categories</code> / <code>unk_costs</code>フィールドに別途保持されています。また、<code>surfaces()</code>、<code>surface_features()</code>、<code>get_features()</code>に加え、<code>user_lexicon()</code> / <code>add_user_lexicon_entry()</code> / <code>load_user_lexicon_from_content()</code>によるユーザー辞書へのアクセス、<code>metadata()</code>も提供します。</p>
+<p>学習に必要な5つの入力ファイル――種辞書（<code>lex.csv</code>）、文字定義（<code>char.def</code>）、未知語定義（<code>unk.def</code>）、素性テンプレート（<code>feature.def</code>）、書き換えルール（<code>rewrite.def</code>）――をパースし、<code>Trainer</code>が利用する設定情報にまとめます。<code>TrainerConfig::from_readers</code>（またはファイルパスを直接渡せるラッパーの<code>from_paths</code>）は、種辞書から表層形と素性の語彙を抽出し、パースした素性テンプレートから<code>FeatureExtractor</code>を構築し、書き換えルールから<code>DictionaryRewriter</code>を構築し、さらに種辞書・文字定義・未知語定義をもとにインメモリの<code>lindera_dictionary::dictionary::Dictionary</code>を組み立てます。<code>char.def</code>は辞書ビルダー（<code>CharacterDefinitionBuilder::build_from_str</code>）でパースするため、学習時の文字カテゴリはビルドされる辞書と同じになります。<code>%t</code>素性に使う各文字の既定カテゴリは、ビルダーの<code>build_default_category_table</code>から得ます。この<code>Dictionary</code>（<code>dict()</code>）は学習用ラティスの材料を持ちます。<code>prefix_dictionary</code>（<code>system_lexicon()</code>）は種辞書で、種辞書の表層形を収めたprefix dictionaryの単語IDは行番号です。<code>unknown_dictionary</code>（<code>unk_handler()</code>）は、辞書ビルダーの<code>parse_unk</code>で読んだ<code>unk.def</code>のエントリを、ファイル順に1行1エントリで持ちます。これらのコストと文脈IDは学習では使わず、<code>Dictionary</code>の連接行列はプレースホルダーです。<code>TrainerConfig</code>は、種辞書の素性文字列と、<code>unk.def</code>のエントリを<code>(カテゴリ, 素性文字列)</code>の組としてファイル順にも保持し、ラベルとエクスポートする<code>unk.def</code>はこれらから作ります。<code>unk.def</code>では、<code>#</code>で始まる行と空行を読み飛ばし、フィールドが5つ未満の行はエラーになります。また、<code>surfaces()</code>、<code>surface_features()</code>、<code>get_features()</code>に加え、<code>user_lexicon()</code> / <code>add_user_lexicon_entry()</code> / <code>load_user_lexicon_from_content()</code>によるユーザー辞書へのアクセス、<code>metadata()</code>も提供します。</p>
 <h3 id="corpus--example--word"><a class="header" href="#corpus--example--word">Corpus / Example / Word</a></h3>
 <p>アノテーション付き学習データを表現します。<code>Word</code>は表層形とその素性文字列（カンマ区切り）のペアです。<code>Example</code>は1つの学習用の文であり、<code>Vec&lt;Word&gt;</code>から構築され、各語の表層形を連結して元の文を復元します。<code>Corpus</code>は<code>Example</code>の集合です。<code>Corpus::from_reader</code>はタブ区切りの<code>surface&lt;TAB&gt;features</code>形式の行をパースし、空行または<code>EOS</code>のみの行を文の区切りとして扱います。</p>
 <h3 id="featureextractor"><a class="header" href="#featureextractor">FeatureExtractor</a></h3>
 <p>MeCab互換の素性テンプレートを解析し、生成された素性文字列から内部で採番される<code>NonZeroU32</code>型の素性IDへのマッピングを管理します。サポートされるテンプレートのプレースホルダは、<code>%F[n]</code> / <code>%F?[n]</code>（インデックス<code>n</code>の素性フィールド。<code>?</code>付きは値が<code>*</code>の場合にスキップ）、<code>%t</code>（文字カテゴリ）、<code>%w</code>（表層形、ユニグラムのみ）、<code>%u</code> / <code>%l</code> / <code>%r</code>（書き換え後のユニグラム／左文脈／右文脈の素性文字列全体）、およびバイグラムの左右文脈フィールド用の<code>%L[n]</code> / <code>%L?[n]</code> / <code>%R[n]</code> / <code>%R?[n]</code>です。<code>extract_unigram_feature_ids[_with_ctx]</code>、<code>extract_left_feature_ids[_with_ctx]</code>、<code>extract_right_feature_ids[_with_ctx]</code>は、パース済みテンプレートを素性の配列（バイグラム抽出の場合は表層形／ufeature／lfeature／rfeatureを保持するオプションの<code>TemplateContext</code>も併せて）に適用し、対応する素性IDを返します。初回利用時には新しいIDが割り当てられます。</p>
 <h3 id="dictionaryrewriter"><a class="header" href="#dictionaryrewriter">DictionaryRewriter</a></h3>
 <p>MeCabの3セクション形式<code>rewrite.def</code>（<code>[unigram rewrite]</code>、<code>[left rewrite]</code>、<code>[right rewrite]</code>）を実装します。各セクションは<code>pattern&lt;TAB&gt;replacement</code>形式のルールの並びを持ち、内部の<code>FeatureRewriterBuilder</code>によって<code>FeatureRewriter</code>というprefix trie（前方一致木）に構築されます。<code>DictionaryRewriter::from_reader</code>は3セクションすべてをパースしますが、セクションヘッダのないファイルは後方互換性のため（右文脈書き換えのみのレガシー形式として）扱います。<code>rewrite()</code>は素性文字列に3つの書き換え器すべてを適用し、<code>(ufeature, lfeature, rfeature)</code>を返します。マッチするルールがないセクションは入力をそのまま通過させます。（かつての<code>rewrite_cached()</code>は素性文字列全体をキーにメモ化していましたが、実辞書の素性は行ごとにほぼ一意でキャッシュが一度もヒットしないため削除されました — #975。）</p>
+<h3 id="trainer-1"><a class="header" href="#trainer-1">Trainer</a></h3>
+<p><code>Trainer::new</code>はCRFのラベルを作ります。まず種辞書の行ごとに行順で1つ（ラベル<code>行番号 + 1</code>。単語IDが行番号である学習用辞書での一致を、そのままラベルに対応付けるため）、続いて<code>unk.def</code>のエントリごとにファイル順で1つ作り、その<code>%t</code>はエントリのカテゴリのIDです。<code>Trainer::train</code>は、MeCabの学習器と同じく、例文ごとに<code>lindera_crf::Lattice</code>を1つ作ります。</p>
+<ul>
+<li>各位置の候補は、その位置から始まる種辞書の語と、ランタイムがその位置に作る未知語です。未知語は<code>lindera_dictionary::viterbi::Lattice::unknown_word_candidates</code>が列挙します。文字の既定カテゴリの未知語を、その<code>INVOKE</code>・<code>GROUP</code>・<code>LENGTH</code>の設定で、カテゴリの<code>unk.def</code>のエントリそれぞれについて作ります。</li>
+<li>正解の各トークンには、範囲と素性文字列全体が同じ最初の種辞書の行のラベルを付けます。なければ、範囲が同じ未知語候補の<code>unk.def</code>エントリのうち、<code>*</code>以外の素性の列がすべて正解トークンの列と一致するファイル順で最初のエントリのラベルを付けます。それもなければ、MeCabの学習器が仮想ノードを追加するのと同じく、正解の素性文字列から作る仮想ラベル（<code>%t</code>は0、<code>%w</code>なし、素性文字列ごとに1つ）を付けます。仮想ラベルはほかのラベルの後に並び、学習されますが、エクスポートされることはありません。</li>
+<li>それ以外の候補はすべて負例の辺になります。</li>
+</ul>
+<p>ラティスを作り終えると、<code>Lattice statistics:</code>の行を出力します。各方法でラベルを付けた正解トークンの数（<code>gold_lexicon</code>・<code>gold_unknown</code>・<code>gold_virtual</code>）、仮想ラベルの数（<code>virtual_labels</code>）、種辞書と未知語候補それぞれから作った負例の辺の数（<code>negative_lexicon</code>・<code>negative_unknown</code>）です。<code>Trainer::max_grouping_len</code>は、ランタイムと同じ意味（先頭の1文字を除いた文字数。デフォルトの<code>None</code>は無制限）で未知語のグルーピングの長さに上限を設けます。ほかのビルダーメソッドは、正則化・イテレーション数の上限・スレッド数を設定します。</p>
 <h3 id="model--serializablemodel"><a class="header" href="#model--serializablemodel">Model / SerializableModel</a></h3>
-<p><code>Model</code>は<code>Trainer::train</code>が生成する学習済みモデルです。学習された<code>lindera_crf::RawModel</code>、学習に用いた<code>TrainerConfig</code>、抽出済みの素性の重みとラベル、そして学習後に<code>read_user_lexicon</code>で追加されたユーザー辞書エントリを保持します。学習されたCRFの重みは、MeCab互換の整数コストに変換されます（<code>tocost(weight, cost_factor) = clamp(round(-weight * cost_factor), i16::MIN, i16::MAX)</code>、すなわち<code>[-32768, 32767]</code>の範囲にクランプされます）。この際のコストファクターは、<code>i16</code>の値域を最大限活用できるよう計算されます（<code>calculate_cost_factor</code>）。<code>Model</code>は自身をシリアライズでき（<code>write_model</code>）、辞書ソースファイルを直接エクスポートすることもできます。</p>
-<p><code>SerializableModel</code>は、<code>Model::read_model</code>がリーダーから以前学習したモデルを読み込んだ際に返される、<code>rkyv</code>でシリアライズ可能な素のデータ型です（<code>lindera export</code> CLIコマンドで使用されます）。<code>Model</code>と同じ学習結果の情報――素性の重み、ラベル、品詞情報、連接コスト行列、未知語カテゴリ、保存されている<code>char.def</code> / <code>feature.def</code> / <code>rewrite.def</code>の内容、コストファクター、左右文脈IDマッピング――を<code>TrainerConfig</code>を持たない所有データとして保持し、辞書エクスポートファイルを生成するための独自のライターメソッド群を提供します。</p>
+<p><code>Model</code>は<code>Trainer::train</code>が生成する学習済みモデルです。学習された<code>lindera_crf::RawModel</code>、学習に用いた<code>TrainerConfig</code>、抽出済みの素性の重みとラベル、仮想ラベルの素性文字列、そして学習後に<code>read_user_lexicon</code>で追加されたユーザー辞書エントリを保持します。学習されたCRFの重みは、MeCab互換の整数コストに変換されます（<code>tocost(weight, cost_factor) = clamp(round(-weight * cost_factor), i16::MIN, i16::MAX)</code>、すなわち<code>[-32768, 32767]</code>の範囲にクランプされます）。この際のコストファクターは、<code>i16</code>の値域を最大限活用できるよう計算されます（<code>calculate_cost_factor</code>）。<code>Model</code>は自身をシリアライズでき（<code>write_model</code>）、辞書ソースファイルを直接エクスポートすることもできます。</p>
+<p><code>SerializableModel</code>は、<code>Model::read_model</code>がリーダーから以前学習したモデルを読み込んだ際に返される、<code>rkyv</code>でシリアライズ可能な素のデータ型です（<code>lindera export</code> CLIコマンドで使用されます）。<code>Model</code>と同じ学習結果の情報――素性の重み、ラベル、品詞情報、連接コスト行列、<code>unk.def</code>のエントリ（<code>unk_entries</code>。ファイル順の<code>(カテゴリ, 素性文字列)</code>の組）、保存されている<code>char.def</code> / <code>feature.def</code> / <code>rewrite.def</code>の内容、コストファクター、左右文脈IDマッピング――を<code>TrainerConfig</code>を持たない所有データとして保持し、辞書エクスポートファイルを生成するための独自のライターメソッド群を提供します。</p>
 <h4 id="modelのパブリックメソッド"><a class="header" href="#modelのパブリックメソッド"><code>Model</code>のパブリックメソッド</a></h4>
 <div class="table-wrapper"><table><thead><tr><th>メソッド</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>read_user_lexicon&lt;R: Read&gt;(&amp;mut self, rdr: R) -&gt; Result&lt;()&gt;</code></td><td>ユーザー定義辞書（種辞書と同じ<code>surface,left_id,right_id,cost,feature...</code>のCSV形式）をモデルに読み込みます。これにより、後続のエクスポート処理で推定された連接IDとコストを割り当てられるようになります。ユーザー辞書が必要な場合は、辞書を書き出す前に呼び出す必要があります。</td></tr>
-<tr><td><code>write_model&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>学習済みモデル全体（素性の重み、ラベル、品詞情報、連接行列、未知語カテゴリ、保存された定義ファイルの内容、コストファクター、左右IDマッピング）を<code>rkyv</code>バイナリ形式でシリアライズします。出力はバイト単位で再現可能です。連接行列と未知語カテゴリが順序付きマップであるため、バイト列はモデルの内容だけで決まります。</td></tr>
-<tr><td><code>read_model&lt;R: Read&gt;(reader: R) -&gt; Result&lt;SerializableModel&gt;</code></td><td>関連関数。<code>write_model</code>が書き出したデータから<code>SerializableModel</code>をデシリアライズします。まず<code>rkyv</code>形式を試み、ペイロードが実際にJSONオブジェクトで始まる場合にのみレガシーのJSON形式へフォールバックします。いずれでもない場合は、形式の不一致として再学習を促すエラーを返します。<code>feature_sets</code>フィールドが存在しない旧形式のモデルについては、<code>feature_weights</code>から補完します。</td></tr>
+<tr><td><code>write_model&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>学習済みモデル全体（素性の重み、ラベル、品詞情報、連接行列、<code>unk.def</code>のエントリ、保存された定義ファイルの内容、コストファクター、左右IDマッピング）を<code>rkyv</code>バイナリ形式でシリアライズします。<code>metadata.version</code>は<code>model::MODEL_FORMAT_VERSION</code>（<code>2.0.0</code>）です。保存する行列の大きさは、重みが残ったかどうかにかかわらず、モデルのすべての文脈IDを覆います。出力はバイト単位で再現可能です。連接行列は順序付きマップ、<code>unk.def</code>のエントリは<code>Vec</code>であるため、バイト列はモデルの内容だけで決まります。</td></tr>
+<tr><td><code>read_model&lt;R: Read&gt;(reader: R) -&gt; Result&lt;SerializableModel&gt;</code></td><td>関連関数。<code>write_model</code>が書き出したデータから<code>SerializableModel</code>をデシリアライズします。まず<code>rkyv</code>形式を試み、ペイロードが実際にJSONオブジェクトで始まる場合にのみレガシーのJSON形式へフォールバックします。いずれでもない場合は、形式の不一致として再学習を促すエラーを返します。どちらの形式でも、<code>metadata.version</code>が<code>MODEL_FORMAT_VERSION</code>でないモデルは同じエラーで拒否するため、7.0.0より前に書かれたモデルはすべて再学習が必要です。<code>feature_sets</code>フィールドが存在しない旧形式のモデルについては、<code>feature_weights</code>から補完します。</td></tr>
 <tr><td><code>write_dictionary&lt;W1, W2, W3, W4&gt;(&amp;self, lexicon_wtr, connector_wtr, unk_handler_wtr, user_lexicon_wtr) -&gt; Result&lt;()&gt;</code></td><td>レキシコン、連接コスト行列、未知語辞書、ユーザー辞書を一度にまとめて書き出す便利メソッドです。ユーザー辞書は<code>read_user_lexicon</code>で読み込んだエントリを入力順で書き出します。パラメータが<code>0,0,0</code>のエントリには推定した連接IDと学習済みコストを割り当て、それ以外のエントリは入力のまま再出力します。</td></tr>
 <tr><td><code>write_lexicon&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>マージされたCRFモデルから得た連接IDとコストを用いて、種辞書の各語彙エントリについて<code>lex.csv</code>形式のエントリ（<code>surface,left_id,right_id,cost,features...</code>）を書き出します。</td></tr>
-<tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>すべての<code>(right_id, left_id)</code>の組み合わせ（BOS/EOSを含む）を網羅する密な<code>matrix.def</code>形式の連接コスト行列を書き出します。学習中に一度も出現しなかった組み合わせには最大のペナルティコスト（<code>i16::MAX</code>）が設定され、Viterbi探索が未学習の遷移を避けるようにします。</td></tr>
-<tr><td><code>write_unknown_dictionary&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>各未知語文字カテゴリについて、学習された連接ID・コストと<code>unk.def</code>由来の素性文字列を用いて<code>unk.def</code>形式のエントリを書き出します。</td></tr>
-<tr><td><code>get_unknown_word_cost(&amp;self, category: usize) -&gt; i32</code></td><td>指定した未知語カテゴリのインデックスに対して設定されているコスト（<code>unk.def</code>のコスト列由来）を返します。設定がない場合はデフォルト値<code>2000</code>を返します。</td></tr>
+<tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>マージしたモデルの文脈IDのすべての<code>(right_id, left_id)</code>の組み合わせ（BOS/EOS用の0を含む）を網羅する密な<code>matrix.def</code>形式の連接コスト行列を書き出します。学習中に一度も出現しなかった組み合わせには最大のペナルティコスト（<code>i16::MAX</code>）が設定され、Viterbi探索が未学習の遷移を避けるようにします。</td></tr>
+<tr><td><code>write_unknown_dictionary&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>学習に使った<code>unk.def</code>のエントリごとに、ファイル順で<code>unk.def</code>の行を1行ずつ書き出します。各行は、エントリのカテゴリ名と素性文字列、学習された連接IDとコストを持ちます。</td></tr>
+<tr><td><code>get_unknown_word_cost(&amp;self, category: usize) -&gt; i32</code></td><td><code>char.def</code>のカテゴリのインデックスに対する入力のコストを返します。学習した値ではなく<code>unk.def</code>のコスト列の値で、エントリが複数あるカテゴリでは最後の行のコストです。設定がない場合はデフォルト値<code>2000</code>を返します。</td></tr>
 <tr><td><code>num_features(&amp;self) -&gt; usize</code></td><td>学習済みモデルが保持する素性の重みの数を返します。</td></tr>
-<tr><td><code>num_labels(&amp;self) -&gt; usize</code></td><td>学習済みモデルにおけるラベル（語彙の表層形と未知語カテゴリの合計）の数を返します。</td></tr>
+<tr><td><code>num_labels(&amp;self) -&gt; usize</code></td><td>学習済みモデルのエクスポートされるラベル（種辞書の行と<code>unk.def</code>のエントリの合計）の数を返します。仮想ラベルは数えません。</td></tr>
 <tr><td><code>raw_model(&amp;self) -&gt; &amp;lindera_crf::RawModel</code></td><td>高度な操作や低レベルの処理のために、内部の<code>lindera-crf</code>のraw modelへアクセスします。</td></tr>
 <tr><td><code>write_bigram_details&lt;L: Write, R: Write, C: Write&gt;(&amp;self, left_wtr, right_wtr, cost_wtr) -&gt; Result&lt;()&gt;</code></td><td>バイグラム素性とコストを記述した3つの診断用ファイル（左側素性一覧、右側素性一覧、生のバイグラム素性ペアごとのコスト行。id 0 は<code>BOS</code>/<code>EOS</code>、名前は素性抽出器由来）を書き出します。3ファイルとも同じモデルに対してバイト単位で再現可能です。</td></tr>
 <tr><td><code>evaluate(&amp;self, test_lattices: &amp;[lindera_crf::Lattice]) -&gt; f64</code></td><td>raw modelの素性の重みの絶対値の平均を簡易的な評価スコアとして返します。引数<code>test_lattices</code>は現時点では未使用であり、保留データに対するモデルの評価はまだ行われません。</td></tr>
@@ -1076,20 +1084,20 @@ tokenizer
 <h4 id="serializablemodelのパブリックメソッド"><a class="header" href="#serializablemodelのパブリックメソッド"><code>SerializableModel</code>のパブリックメソッド</a></h4>
 <p><code>Model::read_model</code>が返す値に対して利用できるメソッド群で、以前に学習・シリアライズされたモデルから辞書ソースファイルを再エクスポートするために使用します（<code>lindera export</code> CLIコマンドで利用されます）。</p>
 <div class="table-wrapper"><table><thead><tr><th>メソッド</th><th>説明</th></tr></thead><tbody>
-<tr><td><code>write_lexicon&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>保存されている<code>feature_sets</code>、<code>labels</code>、<code>pos_info</code>から、末尾の未知語カテゴリのラベルを除いて<code>lex.csv</code>形式のエントリを書き出します。</td></tr>
-<tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>保存されている<code>connection_matrix</code>、<code>max_left_id</code>、<code>max_right_id</code>から、密な<code>matrix.def</code>形式の連接コスト行列を書き出します。</td></tr>
-<tr><td><code>write_unknown_dictionary&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>保存されている各未知語カテゴリについて<code>unk.def</code>形式のエントリを書き出します。</td></tr>
+<tr><td><code>write_lexicon&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>保存されている<code>feature_sets</code>、<code>labels</code>、<code>pos_info</code>から、種辞書の行の後に続く<code>unk.def</code>のエントリのラベルを除いて<code>lex.csv</code>形式のエントリを書き出します。</td></tr>
+<tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>保存されている<code>connection_matrix</code>、<code>max_left_id</code>、<code>max_right_id</code>から、密な<code>matrix.def</code>形式の連接コスト行列を書き出します。大きさは<code>max_right_id + 1</code>行×<code>max_left_id + 1</code>列で、学習でバイグラムの重みが1つも残らなかった場合もモデルのすべての文脈IDを覆います。</td></tr>
+<tr><td><code>write_unknown_dictionary&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>保存されている<code>unk_entries</code>のエントリごとに、ファイル順で<code>unk.def</code>の行を1行ずつ書き出します。各行は、カテゴリ名、学習された連接IDとコスト、素性文字列を持ちます。</td></tr>
 <tr><td><code>write_char_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>元の学習入力からそのまま保存されている<code>char.def</code>の内容を書き出します。</td></tr>
 <tr><td><code>write_feature_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>元の学習入力からそのまま保存されている<code>feature.def</code>の内容を書き出します。</td></tr>
 <tr><td><code>write_rewrite_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>元の学習入力からそのまま保存されている<code>rewrite.def</code>の内容を書き出します。</td></tr>
 <tr><td><code>write_left_id_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>保存されている<code>left_id_map</code>から<code>left-id.def</code>を書き出します。先頭行は<code>0 BOS/EOS</code>です。</td></tr>
 <tr><td><code>write_right_id_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>保存されている<code>right_id_map</code>から<code>right-id.def</code>を書き出します。先頭行は<code>0 BOS/EOS</code>です。</td></tr>
-<tr><td><code>update_metadata_json&lt;W: Write&gt;(&amp;self, base_metadata_path: &amp;Path, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>ベースとなる<code>metadata.json</code>を読み込み、学習結果に基づく値（素性の重みの中央値から推定した<code>default_word_cost</code>、および素性・ラベル数や文脈IDの範囲・学習メタデータを含む<code>model_info</code>セクション）で更新した結果を書き出します。タイムスタンプは含まれず、同じモデルに対してバイト単位で再現可能です。</td></tr>
+<tr><td><code>update_metadata_json&lt;W: Write&gt;(&amp;self, base_metadata_path: &amp;Path, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>ベースとなる<code>metadata.json</code>を読み込み、学習結果に基づく値（素性の重みの中央値から推定した<code>default_word_cost</code>、および素性・ラベル数や文脈IDの範囲・<code>connection_matrix_size</code>としての<code>matrix.def</code>の大きさ（<code>{行数}x{列数}</code>）・学習メタデータを含む<code>model_info</code>セクション）で更新した結果を書き出します。タイムスタンプは含まれず、同じモデルに対してバイト単位で再現可能です。</td></tr>
 </tbody></table>
 </div>
 <h4 id="modelmetadataとfeaturesetinfo"><a class="header" href="#modelmetadataとfeaturesetinfo"><code>ModelMetadata</code>と<code>FeatureSetInfo</code></a></h4>
-<p><code>ModelMetadata</code>は学習実行に関する要約情報を保持します: <code>version</code>、<code>regularization</code>（使用した正則化コスト係数）、<code>iterations</code>（設定された最大イテレーション数）、<code>feature_count</code>、<code>label_count</code>です。<code>SerializableModel::metadata</code>に格納されます。</p>
-<p><code>FeatureSetInfo</code>は、学習後にマージされたCRFモデルから抽出された、ラベルごとの連接情報を保持します: <code>left_id</code>、<code>right_id</code>、<code>weight</code>です。<code>SerializableModel::feature_sets</code>には、<code>labels</code>と同じ順序で各ラベルに対応する1エントリが格納されます。</p>
+<p><code>ModelMetadata</code>は学習実行に関する要約情報を保持します: <code>version</code>（モデルの形式バージョン<code>MODEL_FORMAT_VERSION</code>）、<code>regularization</code>（使用した正則化コスト係数）、<code>iterations</code>（設定された最大イテレーション数）、<code>feature_count</code>、<code>label_count</code>です。<code>SerializableModel::metadata</code>に格納されます。</p>
+<p><code>FeatureSetInfo</code>は、学習後にマージされたCRFモデルから抽出された、ラベルごとの連接情報を保持します: <code>left_id</code>、<code>right_id</code>、<code>weight</code>です。<code>SerializableModel::feature_sets</code>には、CRFのラベルごとに1エントリが格納されます。<code>labels</code>の各要素に対応するエントリが同じ順序で並び、その後にエクスポートされない仮想ラベルのエントリが続きます。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="apiリファレンス-2"><a class="header" href="#apiリファレンス-2">APIリファレンス</a></h1>
 <p>APIリファレンスは以下で公開されています：</p>
 <ul>
@@ -2741,6 +2749,15 @@ EOS
 </ul>
 <h4 id="ユーザー辞書-user-dictionary"><a class="header" href="#ユーザー辞書-user-dictionary">ユーザー辞書 (User dictionary)</a></h4>
 <p>システム辞書と一緒に動作する、カスタム単語のための補助辞書です。</p>
+<h3 id="文脈-id-の確認"><a class="header" href="#文脈-id-の確認">文脈 ID の確認</a></h3>
+<p>システム辞書をビルドするとき、<code>lindera build</code> は MeCab の <code>mecab-dict-index</code> と同じく、すべての文脈 ID が接続コスト行列の範囲内にあることを確認します。<code>lex.csv</code> の各行と <code>unk.def</code> の各行で、右文脈 ID は <code>matrix.def</code> のヘッダの 1 つ目の値より小さく、左文脈 ID は 2 つ目の値より小さくなければなりません。これに反する辞書はビルドに失敗し、エラーはファイル・行・ID・行列の大きさを示します。たとえば 2 x 2 の <code>matrix.def</code> で、<code>lex.csv</code> の 2 行目の右文脈 ID が 2 の場合は次のとおりです：</p>
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
+</code></pre>
+<ul>
+<li>辞書の <code>metadata.json</code> で <code>skip_invalid_cost_or_id</code> が <code>true</code> の場合は、そうした <code>lex.csv</code> の行を取り除きます。<code>log</code> クレートに警告を出しますが、CLI はまだそれを表示しません（<a href="https://github.com/lindera/lindera/issues/1107">#1107</a>）。<code>unk.def</code> の行は常に確認します。</li>
+<li>ID が軸の範囲外にある <code>matrix.def</code> の行もエラーになり、フィールドが 4 つ未満の <code>unk.def</code> の行もエラーになります。</li>
+<li>ユーザー辞書（<code>--user</code>）はまだ確認しません（<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>）。</li>
+</ul>
 <h3 id="例"><a class="header" href="#例">例</a></h3>
 <h4 id="ipadic日本語辞書のビルド"><a class="header" href="#ipadic日本語辞書のビルド">IPADIC（日本語辞書）のビルド</a></h4>
 <pre><code class="language-shell"># IPADICソースファイルのダウンロードと展開
@@ -2963,11 +2980,15 @@ EOS
   --max-iterations 100
 </code></pre>
 <h4 id="3-学習結果"><a class="header" href="#3-学習結果">3. 学習結果</a></h4>
+<p><code>lindera train</code> はモデルを <code>--output</code> のファイルに書き出します。学習用のラティスを作り終えると、コーパスの正解トークンのラベルの付き方を出力します（<a href="lindera-cli/../development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。<code>./resources/training/</code> のファイルでは次のとおりです：</p>
+<pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+</code></pre>
 <p>学習済みモデルには以下が含まれます：</p>
 <ul>
-<li><strong>既存単語</strong>: 新しく学習された重みを持つすべてのシード辞書レコード</li>
-<li><strong>新語</strong>: シード辞書にはないがコーパスに含まれる単語（適切な重み付きで追加）</li>
+<li><strong>シード辞書の語</strong>: シード辞書のすべてのレコード（学習された重みと文脈 ID 付き）</li>
+<li><strong>未知語</strong>: <code>unk.def</code> のすべてのエントリをファイル順に（学習された重みと文脈 ID 付き）</li>
 </ul>
+<p>シード辞書にないコーパスの語は、語として追加されません。それらは <code>unk.def</code> のエントリか、学習されるもののエクスポートされない仮想ラベルを通じて学習されます。</p>
 <h2 id="export"><a class="header" href="#export">export</a></h2>
 <p>学習済みモデルファイルをLindera辞書フォーマットのファイルにエクスポートします。この機能を使用するには、<code>train</code> 機能フラグを有効にしてビルドする必要があります。</p>
 <h3 id="エクスポートパラメータ"><a class="header" href="#エクスポートパラメータ">エクスポートパラメータ</a></h3>
@@ -2981,8 +3002,8 @@ EOS
 <p>エクスポートコマンドは出力ディレクトリに以下の辞書ファイルを作成します：</p>
 <ul>
 <li><code>lex.csv</code>: 学習された重みを持つ語彙ファイル（MeCab互換の <code>tocost()</code> によるコスト変換）</li>
-<li><code>matrix.def</code>: 全 (right_id, left_id) ペアを網羅する密な接続コスト行列</li>
-<li><code>unk.def</code>: 未知語定義</li>
+<li><code>matrix.def</code>: モデルの文脈 ID と BOS/EOS 用の 0 の全 (right_id, left_id) ペアを網羅する密な接続コスト行列</li>
+<li><code>unk.def</code>: 未知語定義。学習の入力の <code>unk.def</code> のエントリごとに 1 行を、同じ順序で書き出す</li>
 <li><code>char.def</code>: 文字種定義</li>
 <li><code>feature.def</code>: 素性テンプレート定義（学習済みモデルからコピー）</li>
 <li><code>rewrite.def</code>: 素性リライトルール（学習済みモデルからコピー）</li>
@@ -2990,6 +3011,10 @@ EOS
 <li><code>right-id.def</code>: 右文脈IDから素性文字列へのマッピング</li>
 <li><code>metadata.json</code>: 更新されたメタデータファイル（<code>--metadata</code> オプションが指定された場合）</li>
 </ul>
+<h3 id="モデルの形式バージョン"><a class="header" href="#モデルの形式バージョン">モデルの形式バージョン</a></h3>
+<p><code>lindera export</code> が読み込めるのは、現在の形式バージョン（2.0.0）のモデルだけです。それより前のバージョンで書かれた <code>model.dat</code>（7.0.0 より前に書かれたものはすべて該当）は拒否されるため、<code>lindera train</code> で学習し直す必要があります。6.1.0 の CLI で学習したモデルでは次のとおりです：</p>
+<pre><code class="language-text">Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera train` to regenerate it. }
+</code></pre>
 <h3 id="完全なワークフロー例"><a class="header" href="#完全なワークフロー例">完全なワークフロー例</a></h3>
 <h4 id="1-モデルの学習"><a class="header" href="#1-モデルの学習">1. モデルの学習</a></h4>
 <pre><code class="language-bash">lindera train \
@@ -3017,8 +3042,19 @@ EOS
 </code></pre>
 <h4 id="4-学習済み辞書の使用"><a class="header" href="#4-学習済み辞書の使用">4. 学習済み辞書の使用</a></h4>
 <pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize \
+  --keep-whitespace \
   -d /tmp/lindera/training/compiled_dictionary
 </code></pre>
+<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<p><code>resources/training/char.def</code> には、Segmenter が空白を読み飛ばすのに必要な <code>SPACE</code> カテゴリがないため、<code>--keep-whitespace</code> が必要です（<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>）。</p>
 <h3 id="メタデータ更新機能"><a class="header" href="#メタデータ更新機能">メタデータ更新機能</a></h3>
 <p><code>--metadata</code> オプションが指定されると、エクスポートコマンドは以下の処理を行います：</p>
 <ol>
@@ -3026,7 +3062,7 @@ EOS
 <li><strong>特定のフィールドを学習済みモデルの値で更新</strong>します：
 <ul>
 <li><code>default_word_cost</code>: 素性重みの中央値から計算された値</li>
-<li><code>model_info</code>: 素性数、ラベル数、行列サイズ、反復回数、正則化、バージョンを含む学習統計情報。タイムスタンプは書き込まれないため、同じモデルを 2 回エクスポートすると同一の出力になります</li>
+<li><code>model_info</code>: 素性数、ラベル数、行列サイズ（<code>connection_matrix_size</code>。<code>matrix.def</code> の大きさを行数 x 列数で表す）、反復回数、正則化、モデルの形式バージョンを含む学習統計情報。タイムスタンプは書き込まれないため、同じモデルを 2 回エクスポートすると同一の出力になります</li>
 </ul>
 </li>
 <li><strong>既存の設定を保持</strong>します（辞書名、文字エンコード設定、スキーマ定義、その他のユーザー定義設定など）</li>
@@ -3956,6 +3992,7 @@ lindera.export(
 <li><code>char.def</code> -- 文字カテゴリ定義</li>
 <li><code>metadata.json</code> -- 更新されたメタデータ（<code>metadata</code> パラメータ指定時）</li>
 </ul>
+<p>モデルファイルは、このバージョンの学習で作ったものである必要があります。それより前のバージョンで書かれたモデルファイル（7.0.0 より前に書かれたものはすべて該当）は拒否され、<code>lindera.export()</code> は学習のやり直しを求めるエラーで失敗します。そうしたモデルは <code>lindera.train()</code> で学習し直してください。</p>
 <h2 id="完全なワークフロー"><a class="header" href="#完全なワークフロー">完全なワークフロー</a></h2>
 <p>カスタム辞書の学習と使用の完全なワークフロー：</p>
 <pre><code class="language-python">import lindera
@@ -4746,6 +4783,7 @@ exportModel({
 <li><code>char.def</code> -- 文字カテゴリ定義</li>
 <li><code>metadata.json</code> -- 更新されたメタデータ（<code>metadata</code> パラメータ指定時）</li>
 </ul>
+<p>モデルファイルは、このバージョンの学習で作ったものである必要があります。それより前のバージョンで書かれたモデルファイル（7.0.0 より前に書かれたものはすべて該当）は拒否され、<code>exportModel()</code> は学習のやり直しを求めるエラーで失敗します。そうしたモデルは <code>train()</code> で学習し直してください。</p>
 <h2 id="完全なワークフロー-1"><a class="header" href="#完全なワークフロー-1">完全なワークフロー</a></h2>
 <p>カスタム辞書の学習と使用の完全なワークフロー：</p>
 <pre><code class="language-javascript">const {
@@ -5593,6 +5631,7 @@ Lindera.export('/tmp/model.dat', '/tmp/dictionary_source', 'resources/training/m
 <li><code>char.def</code> -- 文字カテゴリ定義</li>
 <li><code>metadata.json</code> -- 更新されたメタデータ（<code>metadata</code> パラメータ指定時）</li>
 </ul>
+<p>モデルファイルは、このバージョンの学習で作ったものである必要があります。それより前のバージョンで書かれたモデルファイル（7.0.0 より前に書かれたものはすべて該当）は拒否され、<code>Lindera.export</code> は学習のやり直しを求めるエラーで失敗します。そうしたモデルは <code>Lindera.train</code> で学習し直してください。</p>
 <h2 id="完全なワークフロー-2"><a class="header" href="#完全なワークフロー-2">完全なワークフロー</a></h2>
 <p>カスタム辞書の学習と使用の完全なワークフロー：</p>
 <pre><code class="language-ruby">require 'lindera'
@@ -6451,6 +6490,7 @@ Lindera\Trainer::export(
 <li><code>char.def</code> -- 文字カテゴリ定義</li>
 <li><code>metadata.json</code> -- 更新されたメタデータ（<code>$metadata</code> パラメータ指定時）</li>
 </ul>
+<p>モデルファイルは、このバージョンの学習で作ったものである必要があります。それより前のバージョンで書かれたモデルファイル（7.0.0 より前に書かれたものはすべて該当）は拒否され、<code>Lindera\Trainer::export()</code> は学習のやり直しを求めるエラーで失敗します。そうしたモデルは <code>Lindera\Trainer::train()</code> で学習し直してください。</p>
 <h2 id="完全なワークフロー-3"><a class="header" href="#完全なワークフロー-3">完全なワークフロー</a></h2>
 <p>カスタム辞書の学習と使用の完全なワークフロー：</p>
 <pre><code class="language-php">&lt;?php
@@ -9581,6 +9621,10 @@ N-best の各結果が入力全体を覆うようにし、MeCab と同じくど�
 見出し語からは CSV で先の行を出力するようにし、コストが同じ 2 つの分割からは
 MeCab と同じく最後の語が後から始まる方を選ぶようにし、<code>lindera-dictionary</code> の
 ラティスのバックトレースが各トークンの終了オフセットも返すようにしました。
+<code>lindera train</code> は MeCab の学習器と同じく、種辞書の語とランタイムが作る未知語で
+ラティスを作り、<code>unk.def</code> のすべてのエントリを保持するため、以前のバージョンで
+学習したモデルは学習し直す必要があります。<code>lindera build</code> は、文脈 ID が接続コスト
+行列の範囲外にある辞書を拒否します。
 v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは読み込めなくなるため、
 再ビルドか再ダウンロードが必要です（辞書の形式バージョン 3）。
 このガイドでは、すべての破壊的変更とその対処方法を説明します。</p>
@@ -9607,9 +9651,13 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong>MeCab と同じく、コストが同じ分割からは最後の語が後から始まる方を選ぶ</strong></td><td>テキストを解析するすべてのユーザー。現れるのはまれ（比較したテキストでは約 54,000 行のうち 9 行）</td><td>そうした箇所が MeCab と同じ分割になることを前提にする（IPADIC の <code>腸窒扶斯</code> は <code>腸 / 窒 / 扶斯</code> ではなく <code>腸 / 窒扶 / 斯</code>）。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong><code>lindera tokenize</code> が各入力行から改行コードだけを取り除き、すべての行に結果を出す</strong></td><td>行頭・行末に空白がある入力を CLI に渡すユーザー、トークンのない行の wakati や N-best の出力を読むユーザー</td><td>オフセットが入力行の中の位置を指し、行頭・行末の U+3000 がトークンになり（IPADIC では <code>記号,空白</code>）、<code>--keep-whitespace</code> でそこの空白も出力され、空行や空白だけの行が wakati では空行に、N-best では結果 1 件になることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>WASM: 辞書の設定方法にかかわらず <code>TokenizerBuilder</code> の設定が適用される</strong></td><td><code>setDictionaryInstance()</code> と <code>setKeepWhitespace()</code> やフィルタ、または <code>setDictionary()</code> と <code>setUserDictionaryInstance()</code> を組み合わせる WASM のユーザー</td><td>それらの設定とユーザー辞書が効くことを前提にする。<code>char.def</code> に <code>SPACE</code> カテゴリがない辞書インスタンスでは、URI で設定した辞書と同じく <code>setKeepWhitespace(true)</code> が必要になる</td></tr>
+<tr><td><strong><code>lindera train</code> は MeCab の学習器と同じくラティスを作り、<code>unk.def</code> のすべてのエントリを保持する。<code>model.dat</code> の形式バージョンは 2.0.0</strong></td><td><code>lindera train</code>・<code>lindera export</code> と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー</td><td>7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた <code>model.dat</code> は拒否される）。<code>unk.def</code> のすべての行に 5 つ以上のフィールドを書く</td></tr>
+<tr><td><strong><code>lindera build</code> は <code>matrix.def</code> の範囲外の文脈 ID を拒否する</strong></td><td><code>lex.csv</code> や <code>unk.def</code> に <code>matrix.def</code> の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の <code>mecab-dict-index</code> が受け付ける辞書は対象外</td><td>ID か行列を直すか、<code>metadata.json</code> の <code>skip_invalid_cost_or_id</code> でそうした <code>lex.csv</code> の行を取り除く</td></tr>
 <tr><td><strong>設定 <code>normalize_details</code> の削除: <code>Metadata::new</code> と <code>CoreMetadata::new</code> の引数は 10 個、Ruby の <code>Metadata.new</code> の引数は 8 個になる</strong></td><td>辞書のメタデータを作成・参照するコード。Rust（<code>Metadata</code>・<code>lindera_binding::CoreMetadata</code>・<code>PrefixDictionaryBuilderOptions</code>）と、Python・Ruby・PHP・Node.js のバインディングの <code>Metadata</code> クラス</td><td>引数・オプション・プロパティを削除する。このキーを含む <code>metadata.json</code> もそのまま読み込め、キーは無視される</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>・<code>tokens_offset_into</code>・<code>nbest_tokens_offset</code>・<code>NBestGenerator::next</code> が <code>(start, end, WordId)</code> を返す</strong></td><td>これらの <code>lindera_dictionary</code> の関数を直接呼び出す Rust コード（<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・<code>lindera::dictionary::nbest::…</code> 経由を含む）</td><td>3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> が最良パスの BOS の添字（<code>Option&lt;usize&gt;</code>）を返す</strong></td><td><code>tokens_offset_into</code> の戻り値 <code>()</code> を値として使う Rust コード</td><td>文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する</td></tr>
+<tr><td><strong><code>UnknownDictionary::gen_unk_words</code>・<code>UnknownDictionary::compatible_unk_index</code>・<code>UnkWord</code>・<code>WordIdx</code> の削除</strong></td><td>これらを <code>lindera_dictionary::dictionary::unknown_dictionary</code>（<code>lindera::dictionary::core::unknown_dictionary</code> 経由を含む）から使う Rust コード</td><td>ランタイムが作る未知語を列挙する <code>Lattice::unknown_word_candidates</code> を使う</td></tr>
+<tr><td><strong><code>lindera_trainer</code>: <code>SerializableModel::unk_category_names</code> と <code>unk_categories</code> は <code>unk_entries</code> に置き換わり、<code>Trainer::max_grouping_len</code> はランタイムと同じ意味になる</strong></td><td><code>lindera-trainer</code>（<code>lindera::dictionary::trainer</code> 経由を含む）を使う Rust コード</td><td>ファイル順の <code>unk.def</code> のエントリである <code>unk_entries</code> を読む。<code>max_grouping_len</code> には辞書を使うときの上限を渡す</td></tr>
 </tbody></table>
 </div>
 <p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI のパッケージ名は
@@ -9618,7 +9666,9 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 しなくなりました（<a href="migration_v6_to_v7.html#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>
 を参照）。バージョン番号は 7.0.0 になります。Rust クレートと同じく、v6.2.0 以前に
 ビルドまたはダウンロードした辞書ディレクトリは読み込めなくなります
-（<a href="migration_v6_to_v7.html#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。出力の違いは 13 個あり、いずれも
+（<a href="migration_v6_to_v7.html#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。v6.2.0 以前にバインディングの
+学習関数や <code>lindera train</code> で書いたモデルファイルは、学習し直す必要があります
+（<a href="migration_v6_to_v7.html#lindera-train-%E3%81%AF-mecab-%E3%81%AE%E5%AD%A6%E7%BF%92%E5%99%A8%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E3%83%A9%E3%83%86%E3%82%A3%E3%82%B9%E3%82%92%E4%BD%9C%E3%82%8B"><code>lindera train</code> は MeCab の学習器と同じくラティスを作る</a>を参照）。出力の違いは 13 個あり、いずれも
 後述します（最後の 2 つは CLI だけ、WASM バインディングだけの変化です）。IPADIC・IPADIC-NEologd では、
 <code>conjugation_type</code> と
 <code>conjugation_form</code> という名前で返る値が入れ替わります。表層形が空白だけの
@@ -10408,15 +10458,100 @@ v6 では <code>Ｌｉｎｄｅｒａ</code> と <code>東京</code> でした�
 <code>setKeepWhitespace(true)</code> が必要になります。</p>
 <p>ほかのバインディング・CLI・ライブラリは変わらず、辞書のファイルも変わりません。
 v6 の動作に戻す設定はありません。必要なら、v6 が無視していた設定を外してください。</p>
+<h2 id="lindera-train-は-mecab-の学習器と同じくラティスを作る"><a class="header" href="#lindera-train-は-mecab-の学習器と同じくラティスを作る"><code>lindera train</code> は MeCab の学習器と同じくラティスを作る</a></h2>
+<p>v6.2.0 までの <code>lindera train</code> は、MeCab の学習器とは異なる学習用ラティスを
+作っていました。</p>
+<ul>
+<li>種辞書がラティスに入っていなかったため、正解のトークンは未知語とだけ競合し、
+ほかの種辞書の語とは競合しませんでした。</li>
+<li>未知語候補は <code>char.def</code> を無視していました。固定の分類（ASCII の数字、ASCII の
+英字、漢字、カタカナ、ひらがな、その他）が先頭の文字の種類を決め、候補はすべて
+1〜3 文字で、種類の番号を <code>unk.def</code> のエントリとして使っていました。そのため、
+種類ごとに 1 エントリを <code>DEFAULT</code>・<code>HIRAGANA</code>・<code>KATAKANA</code>・<code>KANJI</code>・<code>ALPHA</code>・
+<code>NUMERIC</code> の順に並べた <code>unk.def</code> でしか正しく動きませんでした。</li>
+<li><code>char.def</code> のカテゴリごとに、そのカテゴリの最後の <code>unk.def</code> の行の素性文字列を
+持つラベルを 1 つ作り、<code>lindera export</code> もカテゴリごとに <code>unk.def</code> を 1 行書き
+出していました。mecab-ipadic の <code>unk.def</code> は 11 カテゴリに 40 行ありますが、
+これが 11 行になり、<code>ALPHA</code>・<code>HIRAGANA</code>・<code>KATAKANA</code> の未知語はすべて、これらの
+カテゴリの最後の行の素性である <code>感動詞</code> になっていました。</li>
+<li>種辞書の語でない正解トークンには、IPADIC の素性（<code>名詞,一般</code> など）向けに書かれた
+判定で未知語のラベルを付けるか、素性のないラベルを付けていました。フィールドが
+5 つ未満の <code>unk.def</code> の行は、何も知らせずに読み飛ばしていました。</li>
+<li>正則化で一部の文脈 ID のバイグラムの重みが残らなかった場合、<code>lindera export</code> は
+エントリの ID より小さい <code>matrix.def</code>（重みが 1 つも残らなければ <code>0 0</code>）を書き出し、
+ビルドした辞書は解析時にパニックしていました。<code>metadata.json</code> の
+<code>model_info.connection_matrix_size</code> は、大きい方の ID の正方形でした。</li>
+</ul>
+<p>v7.0.0 は MeCab の学習器と同じく学習します
+（<a href="development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。</p>
+<ul>
+<li>ラティスには、各位置から始まる種辞書の語と、ランタイムがその位置に同じコードで
+作る未知語が入ります。未知語は、文字の既定カテゴリのものを、その <code>INVOKE</code>・
+<code>GROUP</code>・<code>LENGTH</code> の設定で、カテゴリの <code>unk.def</code> のエントリそれぞれについて
+作ります。</li>
+<li><code>unk.def</code> の各行はそれぞれ 1 つのエントリで 1 つの CRF ラベルになり、その <code>%t</code>
+はカテゴリの ID です。<code>lindera export</code> はすべての行をファイル順に書き出します。
+コメント行と空行は読み飛ばし、フィールドが 5 つ未満の行はエラーになります。</li>
+<li>正解のトークンには、範囲と素性文字列全体が同じ最初の種辞書の行のラベルを
+付けます。なければ、範囲が同じ未知語候補の <code>unk.def</code> エントリのうち、<code>*</code> 以外の
+素性の列がすべて正解トークンの列と一致する最初のエントリのラベルを付けます。
+それもなければ、MeCab の学習器が仮想ノードを追加するのと同じく、学習はされる
+もののエクスポートされない仮想ラベルを付けます。<code>lindera train</code> はこれらの数を
+<code>Lattice statistics:</code> の行に出力します。</li>
+<li><code>matrix.def</code> はすべての文脈 ID と BOS/EOS 用の 0 を覆い、
+<code>model_info.connection_matrix_size</code> はその大きさを行数 x 列数で示します。</li>
+<li><code>model.dat</code> の形式バージョンは 2.0.0 です。<code>lindera export</code> とバインディングの
+エクスポート関数は、v6.2.0 以前に書いたものを含め、ほかのバージョンの
+<code>model.dat</code> を「re-run <code>lindera train</code> to regenerate it」で終わるエラーで拒否
+します。</li>
+</ul>
+<p>すべてのラティスに種辞書の語が入るため、学習には以前より時間がかかります。学習は
+MeCab の学習器より遅く、収束する前に <code>--max-iterations</code> で
+止まることがあります（<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>）。
+<code>resources/training/</code> のファイルから学習した辞書で解析するには
+<code>--keep-whitespace</code> が必要です。その <code>char.def</code> に <code>SPACE</code> カテゴリがないためで
+（<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>）、これは v6 でも同じ
+でした。</p>
+<p>対処方法: 7.0.0 の <code>lindera train</code> かバインディングの学習関数ですべてのモデルを
+学習し直し、エクスポートと辞書のビルドもやり直してください。<code>unk.def</code> のすべての
+行に 5 つ以上のフィールドを書いてください。mecab-ipadic のようにカテゴリごとに
+複数のエントリを持つ <code>unk.def</code> も、そのまま学習・エクスポートできるように
+なりました。v6 の動作に戻す設定はありません。</p>
+<h2 id="lindera-build-は接続コスト行列の範囲外の文脈-id-を拒否する"><a class="header" href="#lindera-build-は接続コスト行列の範囲外の文脈-id-を拒否する"><code>lindera build</code> は接続コスト行列の範囲外の文脈 ID を拒否する</a></h2>
+<p>v6.2.0 までの <code>lindera build</code> は、文脈 ID が <code>matrix.def</code> の範囲外にある <code>lex.csv</code>
+の行や <code>unk.def</code> の行を受け付け、ビルドした辞書は、解析中にそうした語を引いた
+ときにパニックしていました。ID が軸の範囲を超える <code>matrix.def</code> の行も受け付け、
+そのコストは別のセルに入っていました。v7.0.0 は MeCab の <code>mecab-dict-index</code> と
+同じく、これらをすべて拒否します。<code>lex.csv</code> の各行と <code>unk.def</code> の各行で、右文脈
+ID は <code>matrix.def</code> のヘッダの 1 つ目の値より小さく、左文脈 ID は 2 つ目の値より
+小さくなければなりません。エラーはファイル・行・ID・行列の大きさを示します。</p>
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
+</code></pre>
+<ul>
+<li>辞書の <code>metadata.json</code> で <code>skip_invalid_cost_or_id</code> を設定している場合は、
+そうした <code>lex.csv</code> の行を取り除きます。<code>log</code> クレートに警告を出しますが、CLI
+はまだそれを表示しません（<a href="https://github.com/lindera/lindera/issues/1107">#1107</a>）。
+<code>unk.def</code> の行は常に確認します。</li>
+<li>フィールドが 4 つ未満の <code>unk.def</code> の行は、パニックではなくエラーになります。</li>
+<li>ユーザー辞書（<code>lindera build --user</code>）はまだ確認しません
+（<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>）。</li>
+</ul>
+<p><code>mecab-dict-index</code> は同じ範囲を確認するため、それでビルドできる辞書は確認を
+通ります。v6.2.0 以前の <code>lindera export</code> で書き出した辞書は、<code>matrix.def</code> が
+文脈 ID より小さいことがあるため、失敗する場合があります。7.0.0 で学習と
+エクスポートをやり直してください（前の節を参照）。それ以外の辞書が失敗した場合は、
+<code>lex.csv</code> や <code>unk.def</code> の ID か、<code>matrix.def</code> の大きさを直してください。</p>
 <h2 id="lindera_dictionary-の-rust-api-変更-1"><a class="header" href="#lindera_dictionary-の-rust-api-変更-1"><code>lindera_dictionary</code> の Rust API 変更</a></h2>
 <p>以下は、ラティスのバックトレースを直接呼び出すコード、<code>Metadata::new</code> で辞書の
-メタデータを作成するコード、辞書の文字カテゴリを読むコードにのみ影響します。対象は
+メタデータを作成するコード、辞書の文字カテゴリを読むコード、<code>UnknownDictionary</code>
+で未知語を生成するコードにのみ影響します。対象は
 <code>lindera_dictionary::viterbi::Lattice</code> と <code>lindera_dictionary::nbest::NBestGenerator</code>
 （<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・
 <code>lindera::dictionary::nbest::…</code> からも参照できます）、および
 <code>lindera_dictionary::dictionary::metadata::Metadata</code>（<code>lindera::dictionary::Metadata</code>
-からも参照できます）、<code>lindera_dictionary::dictionary::character_definition::CharacterDefinition</code>
-です。<code>Segmenter</code>・<code>Tokenizer</code>・<code>SegmentWorker</code>・
+からも参照できます）、<code>lindera_dictionary::dictionary::character_definition::CharacterDefinition</code>、
+<code>lindera_dictionary::dictionary::unknown_dictionary</code>（<code>lindera::dictionary::core::unknown_dictionary</code>
+からも参照できます）です。<code>Segmenter</code>・<code>Tokenizer</code>・<code>SegmentWorker</code>・
 <code>AnalysisWorker</code> の API と CLI は影響を受けません。言語バインディングで変わるのは
 <code>Metadata</code> クラスだけです（<a href="migration_v6_to_v7.html#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>
 を参照）。</p>
@@ -10435,6 +10570,10 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 <tr><td>—</td><td>公開フィールド <code>Metadata::skip_whitespace: Option&lt;bool&gt;</code> を追加（<code>lindera_binding::CoreMetadata::skip_whitespace</code> も）</td></tr>
 <tr><td><code>CharacterDefinition::lookup_categories(c)</code> は <code>c</code> を覆うすべての行のカテゴリを返す</td><td><code>c</code> を覆う最後の行のカテゴリを、既定カテゴリを先頭に、残りをカテゴリ ID 順に返す</td></tr>
 <tr><td><code>DICTIONARY_FORMAT_VERSION</code> は <code>2</code></td><td><code>3</code></td></tr>
+<tr><td><code>UnknownDictionary::gen_unk_words(sentence, start_pos, has_matched, max_grouping_len, callback)</code></td><td>削除</td></tr>
+<tr><td><code>UnknownDictionary::compatible_unk_index(sentence, start, end, feature) -&gt; Option&lt;WordIdx&gt;</code></td><td>削除</td></tr>
+<tr><td><code>unknown_dictionary::UnkWord</code> と <code>unknown_dictionary::WordIdx</code></td><td>削除</td></tr>
+<tr><td>—</td><td><code>viterbi</code> に <code>Lattice::unknown_word_candidates</code> と <code>UnknownWordCandidate</code> を追加</td></tr>
 </tbody></table>
 </div>
 <p>各トークンは <code>(start, word_id)</code> ではなく <code>(start, end, word_id)</code> になりました。
@@ -10510,6 +10649,39 @@ BOS です。</li>
 が未知語を作るカテゴリです（<a href="migration_v6_to_v7.html#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%AF%E6%97%A2%E5%AE%9A%E3%82%AB%E3%83%86%E3%82%B4%E3%83%AA%E3%81%8B%E3%82%89%E4%BD%9C%E3%82%8B">MeCab と同じく、未知語は既定カテゴリから作る</a>を参照）。文字があるカテゴリを持つかどうかだけを
 調べるコードには影響しません。ビルダーが書き出し、読み込み時に受け付ける
 <code>DICTIONARY_FORMAT_VERSION</code> は 3 になりました（<a href="migration_v6_to_v7.html#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。</p>
+<p><code>UnknownDictionary::gen_unk_words</code> と <code>UnknownDictionary::compatible_unk_index</code> は、
+これらが使う <code>UnkWord</code> 型・<code>WordIdx</code> 型とともに削除しました。呼び出していたのは
+<code>lindera train</code> だけで、<code>char.def</code> を無視していました
+（<a href="migration_v6_to_v7.html#lindera-train-%E3%81%AF-mecab-%E3%81%AE%E5%AD%A6%E7%BF%92%E5%99%A8%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E3%83%A9%E3%83%86%E3%82%A3%E3%82%B9%E3%82%92%E4%BD%9C%E3%82%8B"><code>lindera train</code> は MeCab の学習器と同じくラティスを作る</a>を参照）。
+ランタイムが作る未知語を列挙するには、
+<code>Lattice::unknown_word_candidates(dict, char_definitions, unknown_dictionary, text, max_grouping_len, out)</code>
+を呼び出します。<code>text</code> の各開始位置の各候補について、文字単位の位置と <code>unk.def</code> の
+エントリ ID を持つ <code>UnknownWordCandidate { start_char, end_char, word_id }</code> を
+<code>out</code> に入れます。候補は <code>set_text_with_options</code> がデフォルトの設定と指定した
+<code>max_grouping_len</code> で作るものと同じで、どのパスも届かない位置の候補も含みます。
+解析の処理は変わりません。</p>
+<h2 id="lindera_trainer-の-rust-api-変更"><a class="header" href="#lindera_trainer-の-rust-api-変更"><code>lindera_trainer</code> の Rust API 変更</a></h2>
+<p>以下は、<code>lindera-trainer</code> を直接、または <code>lindera::dictionary::trainer</code>（<code>train</code>
+feature）経由で使う Rust コードにのみ影響します
+（<a href="migration_v6_to_v7.html#lindera-train-%E3%81%AF-mecab-%E3%81%AE%E5%AD%A6%E7%BF%92%E5%99%A8%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E3%83%A9%E3%83%86%E3%82%A3%E3%82%B9%E3%82%92%E4%BD%9C%E3%82%8B"><code>lindera train</code> は MeCab の学習器と同じくラティスを作る</a>を参照）。</p>
+<div class="table-wrapper"><table><thead><tr><th>v6</th><th>v7</th></tr></thead><tbody>
+<tr><td><code>SerializableModel::unk_category_names: Vec&lt;String&gt;</code> と <code>SerializableModel::unk_categories: BTreeMap&lt;String, String&gt;</code></td><td><code>SerializableModel::unk_entries: Vec&lt;(String, String)&gt;</code>。ファイル順の <code>unk.def</code> の <code>(カテゴリ, 素性文字列)</code> の組</td></tr>
+<tr><td><code>ModelMetadata::version</code> は <code>"1.0.0"</code> で、<code>Model::read_model</code> はこれを確認しない</td><td><code>"2.0.0"</code>。<code>Model::read_model</code> はほかのバージョンのモデルを拒否する</td></tr>
+<tr><td>—</td><td><code>model</code> に <code>MODEL_FORMAT_VERSION</code> を追加</td></tr>
+<tr><td><code>TrainerConfig::dict()</code> は空の辞書とプレースホルダーの未知語辞書を持つ</td><td>種辞書（<code>system_lexicon()</code>）と <code>unk.def</code> のエントリ（<code>unk_handler()</code>）を持つ</td></tr>
+<tr><td><code>TrainerConfig::from_readers</code> はフィールドが 5 つ未満の <code>unk.def</code> の行を読み飛ばす</td><td>エラーを返す</td></tr>
+<tr><td><code>Trainer::max_grouping_len(len)</code> は未知語候補の長さを制限し、候補は 3 文字を超えない</td><td>ランタイムと同じ意味（先頭の 1 文字を除いた文字数）で未知語のグルーピングに上限を設ける。デフォルトの <code>None</code> は無制限</td></tr>
+<tr><td><code>Model::num_labels()</code> と <code>ModelMetadata::label_count</code> は <code>char.def</code> のカテゴリごとに 1 つの未知語ラベルを数える</td><td><code>unk.def</code> のエントリごとに 1 つを数える。仮想ラベルは数えない</td></tr>
+</tbody></table>
+</div>
+<p>モデルは <code>MODEL_FORMAT_VERSION</code> を <code>metadata.version</code> として書き出され、
+<code>Model::read_model</code> は <code>rkyv</code> 形式でもレガシーの JSON 形式でもこれを確認するため、
+v6.2.0 以前に書かれたモデルは学習し直す必要があります。<code>unk_category_names</code> や
+<code>unk_categories</code> を読むコードは、代わりに <code>unk_entries</code> を読んでください。
+<code>unk.def</code> の 1 行につき 1 組で、カテゴリごとに複数ある場合も含み、エクスポート
+される <code>unk.def</code> と同じ順序です。<code>Trainer::max_grouping_len</code> を設定している場合は、
+辞書を使うときの上限（Segmenter の <code>max_grouping_len</code>、CLI の
+<code>--max-grouping-len</code>）を渡してください。</p>
 <h2 id="対応が不要なケース-1"><a class="header" href="#対応が不要なケース-1">対応が不要なケース</a></h2>
 <ul>
 <li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の
@@ -10518,7 +10690,9 @@ BOS です。</li>
 （<a href="migration_v6_to_v7.html#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>を参照）。
 今回の構成変更は Rust クレート内部のものです。v6.2.0 以前にビルドまたは
 ダウンロードした辞書ディレクトリは、再ビルドか再ダウンロードが必要です
-（<a href="migration_v6_to_v7.html#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。埋め込み辞書は対応不要です。出力の変化は、この 2 フィールドを
+（<a href="migration_v6_to_v7.html#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。埋め込み辞書は対応不要です。
+v6.2.0 以前に学習したモデルファイルは学習し直す必要があります
+（<a href="migration_v6_to_v7.html#lindera-train-%E3%81%AF-mecab-%E3%81%AE%E5%AD%A6%E7%BF%92%E5%99%A8%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E3%83%A9%E3%83%86%E3%82%A3%E3%82%B9%E3%82%92%E4%BD%9C%E3%82%8B"><code>lindera train</code> は MeCab の学習器と同じくラティスを作る</a>を参照）。出力の変化は、この 2 フィールドを
 名前で読む場合にのみ影響する IPADIC の活用フィールドの修正、U+3000 を含む
 テキスト（IPADIC・IPADIC-NEologd・UniDic）や空白を含むテキスト（SudachiDict）に
 のみ影響する空白の見出し語、空白を含むテキストの分割、<code>Ð</code>・<code>々</code>・<code>〇</code> を含む
@@ -10572,6 +10746,12 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <code>skip_whitespace: None</code> を加えるか、最後を <code>..Default::default()</code> にする。</li>
 <li><code>CharacterDefinition::lookup_categories</code> を読んでいる場合は、既定カテゴリが先頭で、
 残りがカテゴリ ID 順になることを前提にする。</li>
+<li><code>UnknownDictionary::gen_unk_words</code> や <code>UnknownDictionary::compatible_unk_index</code> を
+呼び出しているか、<code>UnkWord</code> や <code>WordIdx</code> を使っている場合は、代わりに
+<code>Lattice::unknown_word_candidates</code> で未知語を列挙する。</li>
+<li><code>SerializableModel::unk_category_names</code> や <code>unk_categories</code> を読んでいる場合は
+代わりに <code>unk_entries</code> を読み、<code>Trainer::max_grouping_len</code> を設定している場合は
+辞書を使うときの上限を渡す。</li>
 </ul>
 <p>バインディングの作者:</p>
 <ul>
@@ -10625,6 +10805,23 @@ MeCab と同じくその空白を含むことを前提にする。</li>
 <li><code>char.def</code> のすべての範囲行に 1 つ以上のカテゴリを書く。</li>
 <li><code>char.def</code> に単一コードポイントの行や重複した行がある場合は、再学習する。
 <code>%t</code> 素性が MeCab と同じくそれらの行に従うようになったため。</li>
+<li>7.0.0 の <code>lindera train</code>（またはバインディングの学習関数）ですべてのモデルを
+学習し直し、エクスポートと辞書のビルドもやり直す。<code>lindera export</code> は v6.2.0 以前に
+書いた <code>model.dat</code> を拒否し、学習用ラティス・未知語のラベル・エクスポートする
+<code>unk.def</code> と <code>matrix.def</code> も変わったため。</li>
+<li><code>unk.def</code> のすべての行に 5 つ以上のフィールド（カテゴリ、2 つの文脈 ID、コスト、
+1 列以上の素性）を書く。</li>
+<li><code>resources/training/</code> から学習した辞書で解析するときは <code>--keep-whitespace</code> を指定
+する。その <code>char.def</code> に <code>SPACE</code> カテゴリがないため
+（<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>）。</li>
+</ul>
+<p><code>lindera build</code> でシステム辞書をビルドするすべてのユーザー:</p>
+<ul>
+<li>文脈 ID が接続コスト行列の範囲外だというエラーが出た場合は、<code>lex.csv</code> や <code>unk.def</code>
+の ID か <code>matrix.def</code> の大きさを直すか、<code>skip_invalid_cost_or_id</code> でそうした
+<code>lex.csv</code> の行を取り除く。そうした辞書は、以前はビルドでき、解析時に
+パニックしていた。v6.2.0 以前にエクスポートした辞書は、学習とエクスポートを
+やり直すのがよい。</li>
 </ul>
 <p>行の中に <code>、</code> や <code>。</code> を含む日本語のテキストを解析するユーザー:</p>
 <ul>
@@ -10701,7 +10898,8 @@ IPADIC-NEologd 1,085 語）が引けなくなることを前提にする。IPADI
 前提にする。</li>
 <li>それ以外は、7.0.0 リリースを取り込む以外に対応は不要（上記の辞書の再ビルド・辞書・
 空白・<code>、</code> と <code>。</code>・N-best・未知語・既定カテゴリ・ダッシュとチルダ・同点の見出し語・
-コストが同じ分割の項目と、<code>lindera tokenize</code> と WASM の項目を除く）。</li>
+コストが同じ分割の項目、<code>lindera train</code> と <code>lindera build</code> の項目、<code>lindera tokenize</code>
+と WASM の項目を除く）。</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="開発ガイド"><a class="header" href="#開発ガイド">開発ガイド</a></h1>
 <p>このセクションでは、Lindera のビルド、テスト、貢献に関する情報を提供します。</p>
@@ -10962,6 +11160,17 @@ cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 <li><strong>Export</strong>: 学習済みモデルを Lindera 辞書ソースファイルに変換します。</li>
 <li><strong>Build</strong>: ソースファイルを Lindera が実行時に読み込めるバイナリ辞書にコンパイルします。</li>
 </ol>
+<h3 id="学習のしくみ"><a class="header" href="#学習のしくみ">学習のしくみ</a></h3>
+<p><code>lindera train</code> は、MeCab の学習器と同じく、コーパスの文ごとにラティスを 1 つ作ります。ラティスには、各位置から始まる種辞書の語と、ランタイムが <code>char.def</code> と <code>unk.def</code> からその位置に作る未知語が入ります（<a href="development/training_pipeline.html#3-%E6%96%87%E5%AD%97%E5%AE%9A%E7%BE%A9-chardef">文字定義</a>と<a href="development/training_pipeline.html#4-%E6%9C%AA%E7%9F%A5%E8%AA%9E%E5%AE%9A%E7%BE%A9-unkdef">未知語定義</a>を参照）。CRF は、アノテーションされたパス（正解のトークン）が最もコストの低いパスになるように重みを学習します。正解の各トークンには、次のうち最初に当てはまるもののラベルを付けます。</p>
+<ol>
+<li>範囲（span）と素性文字列全体が同じ種辞書の行のうち、ファイル順で最初の行。MeCab の学習器は先頭の <code>eval-size</code> 列だけを比べますが、Lindera はすべての列が一致する必要があるため、読みなどの列が種辞書の行と異なるトークンは次の段階に進みます。</li>
+<li>範囲が同じ未知語候補の <code>unk.def</code> エントリのうち、<code>*</code> 以外の素性の列がすべて正解トークンの列と一致する、ファイル順で最初のエントリ。</li>
+<li>正解の素性文字列から作る仮想ラベル。MeCab の学習器が仮想ノードを追加するのと同じです。素性文字列が同じ正解トークンは 1 つの仮想ラベルを共有します。仮想ラベルは学習されますが、エクスポートされません。</li>
+</ol>
+<p>それ以外の候補はすべて負例になります。ラティスを作り終えると、<code>lindera train</code> は正解トークンのラベルの付き方を出力します。<code>resources/training/</code> のファイルでは次のとおりです。</p>
+<pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+</code></pre>
+<p><code>gold_lexicon</code>・<code>gold_unknown</code>・<code>gold_virtual</code> は上の 3 つの段階それぞれでラベルを付けた正解トークンの数、<code>virtual_labels</code> は仮想ラベルの数、<code>negative_lexicon</code> と <code>negative_unknown</code> は種辞書と未知語候補それぞれから作った負例の辺の数です。</p>
 <h2 id="必要な入力ファイル"><a class="header" href="#必要な入力ファイル">必要な入力ファイル</a></h2>
 <h3 id="1-種辞書-seedcsv"><a class="header" href="#1-種辞書-seedcsv">1. 種辞書 (seed.csv)</a></h3>
 <p>MeCab CSV 形式のベース語彙辞書です。</p>
@@ -11005,14 +11214,31 @@ NUMERIC 1 1 0
 </code></pre>
 <p>パラメータは、文字の既定カテゴリが作る未知語を制御します。辞書語が始まる位置でも未知語を作るか（<code>INVOKE</code>）、どの文字も直前の文字とカテゴリを共有する連続を 1 つのトークンにするか（<code>GROUP</code>）、どの長さまで短い候補を作るか（<code>LENGTH</code>）を指定します。</p>
 <p>範囲行には複数のカテゴリを書くことができ（例: <code>0x4E00 KANJINUMERIC KANJI</code>）、少なくとも 1 つのカテゴリが必要です。同じコードポイントを複数の行が覆う場合は、MeCab と同じく最後の行がそのカテゴリを決めます。その行の先頭のカテゴリが文字の既定カテゴリです。未知語候補を作るのは既定カテゴリだけで、素性テンプレートの <code>%t</code> もこれを使います。</p>
+<p>学習は、ランタイムと同じコード（<code>Lattice::unknown_word_candidates</code>）で未知語候補を作ります。そのため、ビルドした辞書が作る候補に対して重みを学習します。</p>
+<ul>
+<li>各位置では、文字の既定カテゴリが候補を作ります。<code>INVOKE</code> が 0 で、その位置から種辞書の語が始まる場合は作りません。</li>
+<li><code>GROUP</code> が 1 なら、どの文字も直前の文字とカテゴリを共有する連続を 1 つの候補にします。</li>
+<li><code>LENGTH</code> が n なら、どの文字も先頭の文字とカテゴリを共有する間、1〜n 文字の候補も作ります（候補ラダー）。上の例の <code>KANJI 0 0 2</code> では、種辞書の語が始まらない漢字の位置に、漢字 1 文字と 2 文字の候補ができます。</li>
+<li>カテゴリの <code>unk.def</code> のエントリそれぞれが、これらすべての範囲の候補を持ちます。</li>
+</ul>
+<p>グルーピングの長さは、ランタイムのデフォルトと同じく無制限です。Rust API の <code>Trainer::max_grouping_len</code> で、ランタイムと同じ意味（先頭の 1 文字を除いた文字数）の上限を設定できます。CLI にはこのオプションはありません。</p>
 <h3 id="4-未知語定義-unkdef"><a class="header" href="#4-未知語定義-unkdef">4. 未知語定義 (unk.def)</a></h3>
-<p>文字タイプごとに未知語の処理方法を定義します。</p>
-<pre><code class="language-csv">DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
+<p>文字カテゴリごとに、そのカテゴリが作る未知語を定義します。各行は <code>category,left_id,right_id,cost,feature...</code> で、<code>category</code> は <code>char.def</code> のカテゴリ名です。種辞書と同じく ID とコストは 0 にしておきます。学習した値はエクスポートで書き出されます。</p>
+<pre><code class="language-csv"># Unknown word definitions
+DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
 HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*
 ALPHA,0,0,0,名詞,固有名詞,一般,*,*,*,*,*,*
 NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*
+</code></pre>
+<ul>
+<li>各行がそれぞれ 1 つのエントリで、1 つのカテゴリが複数のエントリを持てます。未知語がとりうる品詞ごとに 1 行です。たとえば mecab-ipadic の <code>unk.def</code> は 11 カテゴリに 40 行あり、そのうち 6 行が <code>KANJI</code>（<code>名詞,一般</code>・<code>名詞,サ変接続</code>・4 種類の <code>名詞,固有名詞</code>）です。</li>
+<li>各エントリはそれぞれ 1 つの CRF ラベルになり、その <code>%t</code> はエントリのカテゴリの ID です。カテゴリの候補はエントリごとに作られるため、どのエントリがどこに合うかを学習します。</li>
+<li>行の順序は保たれます。<code>lindera export</code> はエントリごとに 1 行を同じ順序で書き出します。</li>
+<li><code>#</code> で始まる行と空行は読み飛ばします。フィールドが 5 つ未満（カテゴリ、2 つの ID、コスト、1 列以上の素性）の行はエラーになります。</li>
+</ul>
+<pre><code class="language-text">Error: LinderaError { kind: Args, source: unk.def line 1: expected at least 5 fields (category, left id, right id, cost, feature), got 4 }
 </code></pre>
 <h3 id="5-素性テンプレート-featuredef"><a class="header" href="#5-素性テンプレート-featuredef">5. 素性テンプレート (feature.def)</a></h3>
 <p>CRF モデルが学習に使用する情報を定義する MeCab 互換の素性抽出パターンです。</p>
@@ -11064,6 +11290,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>max-threads</code></td><td>並列処理スレッド数</td><td>CPU コア数</td></tr>
 </tbody></table>
 </div>
+<p>学習は MeCab の学習器より遅く、収束する前に <code>max-iterations</code> で止まることがあります（<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>）。</p>
 <h2 id="cli-の使用"><a class="header" href="#cli-の使用">CLI の使用</a></h2>
 <h3 id="train-1"><a class="header" href="#train-1">Train</a></h3>
 <pre><code class="language-bash">lindera train \
@@ -11088,16 +11315,25 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <p>以下のファイルが生成されます：</p>
 <div class="table-wrapper"><table><thead><tr><th>ファイル</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>lex.csv</code></td><td>学習済みコスト付きレキシコン</td></tr>
-<tr><td><code>matrix.def</code></td><td>連接コスト行列</td></tr>
-<tr><td><code>unk.def</code></td><td>未知語定義</td></tr>
+<tr><td><code>matrix.def</code></td><td>すべての文脈 ID と BOS/EOS 用の 0 を覆う連接コスト行列。正則化でバイグラムの重みが 1 つも残らない場合も同じ</td></tr>
+<tr><td><code>unk.def</code></td><td>未知語定義。入力の <code>unk.def</code> のエントリごとに 1 行を入力と同じ順序で書き、カテゴリ・学習した ID とコスト・素性を持つ</td></tr>
 <tr><td><code>char.def</code></td><td>文字定義</td></tr>
 <tr><td><code>feature.def</code></td><td>素性テンプレート</td></tr>
 <tr><td><code>rewrite.def</code></td><td>素性書き換えルール</td></tr>
 <tr><td><code>left-id.def</code></td><td>左文脈 ID マッピング</td></tr>
 <tr><td><code>right-id.def</code></td><td>右文脈 ID マッピング</td></tr>
-<tr><td><code>metadata.json</code></td><td>辞書メタデータ</td></tr>
+<tr><td><code>metadata.json</code></td><td>辞書メタデータ。<code>model_info.connection_matrix_size</code> は <code>matrix.def</code> の大きさ（行（右文脈 ID）× 列（左文脈 ID））</td></tr>
 </tbody></table>
 </div>
+<p>たとえば上の <code>unk.def</code> で、最初の <code>KANJI</code> の行の後に 2 つ目の <code>KANJI</code> の行 <code>KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*</code> を加えると、エクスポートした <code>unk.def</code> は両方の行を入力と同じ順序で持ちます。</p>
+<pre><code class="language-csv">DEFAULT,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,0,名詞,サ変接続,*,*,*,*,*,*,*
+ALPHA,1,1,0,名詞,固有名詞,一般,*,*,*,*,*,*
+NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
+</code></pre>
 <h3 id="build-6"><a class="header" href="#build-6">Build</a></h3>
 <p>エクスポートされたソースファイルをバイナリ辞書にコンパイルします：</p>
 <pre><code class="language-bash">lindera build \
@@ -11105,15 +11341,32 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
     --dest ./dict-compiled \
     --metadata ./dict-source/metadata.json
 </code></pre>
+<p><code>lindera build</code> は、MeCab の <code>mecab-dict-index</code> と同じく、<code>lex.csv</code> の各行と <code>unk.def</code> の各行の文脈 ID が <code>matrix.def</code> の範囲内にあることを確認します（<a href="development/../lindera-cli/commands.html#%E6%96%87%E8%84%88-id-%E3%81%AE%E7%A2%BA%E8%AA%8D">文脈 ID の確認</a>を参照）。<code>lindera export</code> が書き出したファイルはこの確認を通ります。</p>
+<h3 id="tokenize-2"><a class="header" href="#tokenize-2">Tokenize</a></h3>
+<p>ビルドした辞書でテキストを解析します：</p>
+<pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize --keep-whitespace -d ./dict-compiled
+</code></pre>
+<p>上の入力ファイルに <code>resources/training/</code> のファイルを使うと、出力は次のとおりです。</p>
+<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<p><code>resources/training/char.def</code> には、Segmenter が空白を読み飛ばすのに必要な <code>SPACE</code> カテゴリがないため、<code>--keep-whitespace</code> が必要です（<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>）。指定しないと、<code>lindera tokenize</code> は <code>SPACE category is not defined in the dictionary (char.def)</code> で失敗します。</p>
 <h2 id="出力モデルの形式"><a class="header" href="#出力モデルの形式">出力モデルの形式</a></h2>
 <p>学習済みモデルは高速読み込みのために <code>rkyv</code> バイナリ形式でシリアライズされます。以下を含みます：</p>
 <ul>
 <li>CRF で学習された素性の重み</li>
-<li>ラベルセット（語彙エントリー）</li>
+<li>ラベルセット（種辞書の行、続いて <code>unk.def</code> のエントリ）</li>
 <li>品詞情報</li>
-<li>素性テンプレート</li>
-<li>学習メタデータ（正則化、イテレーション数、素性・ラベル数）</li>
+<li>ファイル順の <code>unk.def</code> のエントリと、<code>char.def</code>・<code>feature.def</code>・<code>rewrite.def</code> の内容</li>
+<li>学習メタデータ（形式バージョン、正則化、イテレーション数、素性・ラベル数）</li>
 </ul>
+<p>形式バージョンは <code>2.0.0</code>（<code>lindera_trainer::model::MODEL_FORMAT_VERSION</code>）で、モデルの構造や意味が変わるたびに変わります。<code>lindera export</code> は、別のバージョンで書かれた <code>model.dat</code>（7.0.0 より前に書かれたものはすべて該当）を、「re-run <code>lindera train</code> to regenerate it」で終わるエラーで拒否します。そうしたモデルは現在のバージョンで学習し直してください。</p>
 <p>出力はバイト単位で再現可能です。同じ入力・同じフラグで 2 回学習すると
 <code>model.dat</code> のバイト列が一致するため、チェックサムの取得や差分比較ができます。
 これは <code>--max-threads</code> の値によらず成り立ちます。勾配と損失は学習データの

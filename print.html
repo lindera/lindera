@@ -1025,9 +1025,9 @@ tokenizer
 <li>MeCab-compatible feature template parsing (<code>feature.def</code>: <code>%F[n]</code>, <code>%L[n]</code>, <code>%R[n]</code>, <code>%w</code>, <code>%u</code>, <code>%l</code>, <code>%r</code>, and their optional <code>?</code> variants)</li>
 <li>MeCab-compatible 3-section feature rewriting (<code>rewrite.def</code>: unigram / left / right rewrite rules)</li>
 <li>Dictionary-format agnostic: works with any lexicon whose columns follow <code>surface,left_id,right_id,cost,feature...</code> (IPADIC, UniDic, ko-dic, CC-CEDICT, etc.)</li>
-<li>Automatic unknown-word categorization driven by <code>char.def</code> character categories</li>
+<li>Training lattices built as MeCab's learner builds them: the seed words at every position, and the unknown words that the runtime creates from <code>char.def</code> and <code>unk.def</code>, with one CRF label per <code>unk.def</code> entry</li>
 <li>Connection cost matrix and MeCab-compatible cost conversion (<code>tocost</code>) derived from learned CRF weights</li>
-<li>Zero-copy <code>rkyv</code> binary model serialization, with legacy JSON fallback on read</li>
+<li>Zero-copy <code>rkyv</code> binary model serialization with a format version, with legacy JSON fallback on read</li>
 <li>Direct export of Lindera/MeCab dictionary source files (<code>lex.csv</code>, <code>matrix.def</code>, <code>unk.def</code>, <code>char.def</code>, <code>feature.def</code>, <code>rewrite.def</code>, <code>left-id.def</code>, <code>right-id.def</code>)</li>
 </ul>
 <h2 id="contents-2"><a class="header" href="#contents-2">Contents</a></h2>
@@ -1039,7 +1039,7 @@ tokenizer
 <h2 id="module-structure-2"><a class="header" href="#module-structure-2">Module Structure</a></h2>
 <pre><code class="language-text">lindera-trainer/src/
 ├── lib.rs                # Trainer: CRF training orchestration; public API re-exports
-├── config.rs             # TrainerConfig: parses seed lexicon, char.def, feature.def, rewrite.def
+├── config.rs             # TrainerConfig: parses seed lexicon, char.def, unk.def, feature.def, rewrite.def
 ├── corpus.rs              # Corpus, Example, Word: training data representation
 ├── feature_extractor.rs  # FeatureExtractor: feature template parsing and feature ID management
 ├── feature_rewriter.rs   # DictionaryRewriter: MeCab-compatible 3-section rewrite
@@ -1047,28 +1047,36 @@ tokenizer
 </code></pre>
 <h2 id="key-components-2"><a class="header" href="#key-components-2">Key Components</a></h2>
 <h3 id="trainerconfig"><a class="header" href="#trainerconfig">TrainerConfig</a></h3>
-<p>Parses the five training input files -- seed lexicon (<code>lex.csv</code>), character definition (<code>char.def</code>), unknown-word definition (<code>unk.def</code>), feature template (<code>feature.def</code>), and rewrite rules (<code>rewrite.def</code>) -- into the configuration consumed by <code>Trainer</code>. <code>TrainerConfig::from_readers</code> (or <code>from_paths</code>, its file-path convenience wrapper) extracts the surface/feature vocabulary from the seed lexicon, builds a <code>FeatureExtractor</code> from the parsed feature templates, builds a <code>DictionaryRewriter</code> from the rewrite rules, and assembles a minimal in-memory <code>lindera_dictionary::dictionary::Dictionary</code> from the character definition. <code>char.def</code> is parsed by the dictionary builder (<code>CharacterDefinitionBuilder::build_from_str</code>), so training sees the same character categories as the built dictionary; the default category of each character, which the <code>%t</code> feature uses, comes from the builder's <code>build_default_category_table</code>. Note: the <code>Dictionary</code>'s <code>prefix_dictionary</code> (system lexicon) and <code>unknown_dictionary</code> fields are built as empty/stub placeholders -- the real seed-lexicon vocabulary and unk-category features used during training are held separately in <code>TrainerConfig</code>'s own <code>surfaces</code>/<code>features</code>/<code>unk_categories</code>/<code>unk_costs</code> fields, not in this <code>Dictionary</code> object. It also exposes <code>surfaces()</code>, <code>surface_features()</code>, <code>get_features()</code>, a user lexicon accessible via <code>user_lexicon()</code> / <code>add_user_lexicon_entry()</code> / <code>load_user_lexicon_from_content()</code>, and <code>metadata()</code>.</p>
+<p>Parses the five training input files -- seed lexicon (<code>lex.csv</code>), character definition (<code>char.def</code>), unknown-word definition (<code>unk.def</code>), feature template (<code>feature.def</code>), and rewrite rules (<code>rewrite.def</code>) -- into the configuration consumed by <code>Trainer</code>. <code>TrainerConfig::from_readers</code> (or <code>from_paths</code>, its file-path convenience wrapper) extracts the surface/feature vocabulary from the seed lexicon, builds a <code>FeatureExtractor</code> from the parsed feature templates, builds a <code>DictionaryRewriter</code> from the rewrite rules, and assembles an in-memory <code>lindera_dictionary::dictionary::Dictionary</code> from the seed lexicon, the character definition and the unknown-word definition. <code>char.def</code> is parsed by the dictionary builder (<code>CharacterDefinitionBuilder::build_from_str</code>), so training sees the same character categories as the built dictionary; the default category of each character, which the <code>%t</code> feature uses, comes from the builder's <code>build_default_category_table</code>. The <code>Dictionary</code> (<code>dict()</code>) holds what the training lattices are built from: its <code>prefix_dictionary</code> (<code>system_lexicon()</code>) is the seed lexicon, a prefix dictionary over the seed surfaces whose word ID is the row index, and its <code>unknown_dictionary</code> (<code>unk_handler()</code>) holds the <code>unk.def</code> entries, read with the dictionary builder's <code>parse_unk</code>, one entry per line in file order. Their costs and context IDs are not used in training, and the <code>Dictionary</code>'s connection matrix is a placeholder. <code>TrainerConfig</code> also keeps the seed feature strings and the <code>unk.def</code> entries as <code>(category, feature string)</code> pairs in file order, from which the labels and the exported <code>unk.def</code> are made. In <code>unk.def</code>, lines that start with <code>#</code> and empty lines are skipped, and a line with fewer than five fields is an error. It also exposes <code>surfaces()</code>, <code>surface_features()</code>, <code>get_features()</code>, a user lexicon accessible via <code>user_lexicon()</code> / <code>add_user_lexicon_entry()</code> / <code>load_user_lexicon_from_content()</code>, and <code>metadata()</code>.</p>
 <h3 id="corpus--example--word"><a class="header" href="#corpus--example--word">Corpus / Example / Word</a></h3>
 <p>Represent annotated training data. <code>Word</code> pairs a surface form with its (comma-joined) feature string. <code>Example</code> is one training sentence, built from a <code>Vec&lt;Word&gt;</code> whose surfaces are concatenated to reconstruct the original sentence text. <code>Corpus</code> is a collection of <code>Example</code>s; <code>Corpus::from_reader</code> parses tab-separated <code>surface&lt;TAB&gt;features</code> lines, treating blank lines or literal <code>EOS</code> lines as sentence boundaries.</p>
 <h3 id="featureextractor"><a class="header" href="#featureextractor">FeatureExtractor</a></h3>
 <p>Parses MeCab-compatible feature templates and manages the mapping from generated feature strings to interned, <code>NonZeroU32</code> feature IDs. Supported template placeholders are <code>%F[n]</code> / <code>%F?[n]</code> (feature field at index <code>n</code>, the <code>?</code> form skipped when the value is <code>*</code>), <code>%t</code> (character category), <code>%w</code> (surface form, unigram only), <code>%u</code> / <code>%l</code> / <code>%r</code> (full rewritten unigram/left/right feature string), and <code>%L[n]</code> / <code>%L?[n]</code> / <code>%R[n]</code> / <code>%R?[n]</code> for bigram left/right context fields. <code>extract_unigram_feature_ids[_with_ctx]</code>, <code>extract_left_feature_ids[_with_ctx]</code>, and <code>extract_right_feature_ids[_with_ctx]</code> apply the parsed templates to a feature vector (plus, for bigram extraction, an optional <code>TemplateContext</code> carrying surface/ufeature/lfeature/rfeature) and return the resulting feature IDs, creating new IDs on first use.</p>
 <h3 id="dictionaryrewriter"><a class="header" href="#dictionaryrewriter">DictionaryRewriter</a></h3>
 <p>Implements MeCab's 3-section <code>rewrite.def</code> format: <code>[unigram rewrite]</code>, <code>[left rewrite]</code>, and <code>[right rewrite]</code> sections, each holding an ordered list of <code>pattern&lt;TAB&gt;replacement</code> rules built into a <code>FeatureRewriter</code> prefix trie (via the internal <code>FeatureRewriterBuilder</code>). <code>DictionaryRewriter::from_reader</code> parses all three sections (falling back to treating an unsectioned file as legacy right-rewrite-only content, for backward compatibility with older Lindera <code>rewrite.def</code> files). <code>rewrite()</code> applies all three rewriters to a feature string and returns <code>(ufeature, lfeature, rfeature)</code>, passing a section through unchanged when no rule matches. (An earlier <code>rewrite_cached()</code> memoized per full feature string, but real lexicon features are unique per row, so the cache never hit and was removed — #975.)</p>
+<h3 id="trainer-1"><a class="header" href="#trainer-1">Trainer</a></h3>
+<p><code>Trainer::new</code> creates the CRF labels: one per seed row, in row order (label <code>row + 1</code>, so that a match in the training lexicon, whose word ID is the row index, maps to its label), then one per <code>unk.def</code> entry, in file order, whose <code>%t</code> is the ID of the entry's category. <code>Trainer::train</code> builds one <code>lindera_crf::Lattice</code> per example, as MeCab's learner does:</p>
+<ul>
+<li>The candidates at each position are the seed words that start there and the unknown words that the runtime creates there, listed by <code>lindera_dictionary::viterbi::Lattice::unknown_word_candidates</code>: those of the character's default category, with its <code>INVOKE</code>, <code>GROUP</code> and <code>LENGTH</code> settings, for every <code>unk.def</code> entry of the category.</li>
+<li>Each gold token gets the label of the first seed row with the same span and the same whole feature string; else that of the first <code>unk.def</code> entry, in file order, of an unknown-word candidate with the same span whose feature columns other than <code>*</code> all equal the gold token's; else a virtual label built from the gold feature string (<code>%t</code> 0, no <code>%w</code>, one per distinct feature string), as MeCab's learner adds a virtual node. Virtual labels follow the other labels, are trained, and are never exported.</li>
+<li>Every other candidate becomes a negative edge.</li>
+</ul>
+<p>Once the lattices are built, it prints a <code>Lattice statistics:</code> line with the number of gold tokens labelled each way (<code>gold_lexicon</code>, <code>gold_unknown</code>, <code>gold_virtual</code>), the number of virtual labels (<code>virtual_labels</code>), and the negative edges from the seed lexicon and from the unknown-word candidates (<code>negative_lexicon</code>, <code>negative_unknown</code>). <code>Trainer::max_grouping_len</code> caps unknown-word grouping with the runtime's meaning (characters beyond the first; <code>None</code>, the default, leaves it unbounded); the other builder methods set the regularization, the iteration cap and the thread count.</p>
 <h3 id="model--serializablemodel"><a class="header" href="#model--serializablemodel">Model / SerializableModel</a></h3>
-<p><code>Model</code> is the trained model produced by <code>Trainer::train</code>. It owns the trained <code>lindera_crf::RawModel</code>, the <code>TrainerConfig</code> used to train it, the extracted feature weights and labels, and any user lexicon entries added afterward via <code>read_user_lexicon</code>. It converts learned CRF weights into MeCab-compatible integer costs (<code>tocost(weight, cost_factor) = clamp(round(-weight * cost_factor), i16::MIN, i16::MAX)</code>, i.e. clamped to <code>[-32768, 32767]</code>), with the cost factor computed to make full use of the <code>i16</code> range (<code>calculate_cost_factor</code>). <code>Model</code> can serialize itself (<code>write_model</code>) and export dictionary source files directly.</p>
-<p><code>SerializableModel</code> is the plain-data, <code>rkyv</code>-serializable counterpart returned by <code>Model::read_model</code> when loading a previously trained model back from a reader (as done by the <code>lindera export</code> CLI command). It carries the same trained information as <code>Model</code> -- feature weights, labels, POS info, connection cost matrix, unknown-word categories, preserved <code>char.def</code>/<code>feature.def</code>/<code>rewrite.def</code> content, cost factor, and left/right context ID maps -- as owned data, without a <code>TrainerConfig</code>, and exposes its own writer methods for producing the dictionary export files.</p>
+<p><code>Model</code> is the trained model produced by <code>Trainer::train</code>. It owns the trained <code>lindera_crf::RawModel</code>, the <code>TrainerConfig</code> used to train it, the extracted feature weights and labels, the feature strings of the virtual labels, and any user lexicon entries added afterward via <code>read_user_lexicon</code>. It converts learned CRF weights into MeCab-compatible integer costs (<code>tocost(weight, cost_factor) = clamp(round(-weight * cost_factor), i16::MIN, i16::MAX)</code>, i.e. clamped to <code>[-32768, 32767]</code>), with the cost factor computed to make full use of the <code>i16</code> range (<code>calculate_cost_factor</code>). <code>Model</code> can serialize itself (<code>write_model</code>) and export dictionary source files directly.</p>
+<p><code>SerializableModel</code> is the plain-data, <code>rkyv</code>-serializable counterpart returned by <code>Model::read_model</code> when loading a previously trained model back from a reader (as done by the <code>lindera export</code> CLI command). It carries the same trained information as <code>Model</code> -- feature weights, labels, POS info, connection cost matrix, the <code>unk.def</code> entries (<code>unk_entries</code>, <code>(category, feature string)</code> pairs in file order), preserved <code>char.def</code>/<code>feature.def</code>/<code>rewrite.def</code> content, cost factor, and left/right context ID maps -- as owned data, without a <code>TrainerConfig</code>, and exposes its own writer methods for producing the dictionary export files.</p>
 <h4 id="model-public-methods"><a class="header" href="#model-public-methods"><code>Model</code> public methods</a></h4>
 <div class="table-wrapper"><table><thead><tr><th>Method</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>read_user_lexicon&lt;R: Read&gt;(&amp;mut self, rdr: R) -&gt; Result&lt;()&gt;</code></td><td>Loads a user-defined lexicon (same <code>surface,left_id,right_id,cost,feature...</code> CSV format as the seed lexicon) into the model so that later exports can assign it inferred connection IDs and costs. Must be called before writing the dictionary if a user lexicon is needed.</td></tr>
-<tr><td><code>write_model&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Serializes the full trained model (feature weights, labels, POS info, connection matrix, unknown-word categories, preserved definition file contents, cost factor, left/right ID maps) to <code>rkyv</code> binary format. The output is byte-reproducible: the connection matrix and unknown-word categories are ordered maps, so the bytes depend only on the model's contents.</td></tr>
-<tr><td><code>read_model&lt;R: Read&gt;(reader: R) -&gt; Result&lt;SerializableModel&gt;</code></td><td>Associated function. Deserializes a <code>SerializableModel</code> from data written by <code>write_model</code>. It tries <code>rkyv</code> first, and falls back to legacy JSON only when the payload actually begins a JSON object; anything else is reported as a format mismatch with the instruction to re-train. Backfills <code>feature_sets</code> from <code>feature_weights</code> for older models that predate that field.</td></tr>
+<tr><td><code>write_model&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Serializes the full trained model (feature weights, labels, POS info, connection matrix, <code>unk.def</code> entries, preserved definition file contents, cost factor, left/right ID maps) to <code>rkyv</code> binary format, with <code>metadata.version</code> set to <code>model::MODEL_FORMAT_VERSION</code> (<code>2.0.0</code>). The stored matrix size covers every context ID of the model, whether or not a weight survived for it. The output is byte-reproducible: the connection matrix is an ordered map and the <code>unk.def</code> entries a <code>Vec</code>, so the bytes depend only on the model's contents.</td></tr>
+<tr><td><code>read_model&lt;R: Read&gt;(reader: R) -&gt; Result&lt;SerializableModel&gt;</code></td><td>Associated function. Deserializes a <code>SerializableModel</code> from data written by <code>write_model</code>. It tries <code>rkyv</code> first, and falls back to legacy JSON only when the payload actually begins a JSON object; anything else is reported as a format mismatch with the instruction to re-train. A model, in either format, whose <code>metadata.version</code> is not <code>MODEL_FORMAT_VERSION</code> is rejected with the same instruction, so every model written before 7.0.0 must be retrained. Backfills <code>feature_sets</code> from <code>feature_weights</code> for older models that predate that field.</td></tr>
 <tr><td><code>write_dictionary&lt;W1, W2, W3, W4&gt;(&amp;self, lexicon_wtr, connector_wtr, unk_handler_wtr, user_lexicon_wtr) -&gt; Result&lt;()&gt;</code></td><td>Convenience method that writes the lexicon, connection cost matrix, unknown-word dictionary, and user lexicon in one call. The user lexicon is written from the entries loaded by <code>read_user_lexicon</code>, in input order; an entry whose parameters were <code>0,0,0</code> gets inferred connection IDs and a trained cost, any other entry is re-emitted verbatim.</td></tr>
 <tr><td><code>write_lexicon&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>lex.csv</code>-style entries (<code>surface,left_id,right_id,cost,features...</code>) for every seed vocabulary entry, using the connection IDs and costs from the merged CRF model.</td></tr>
-<tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes a dense <code>matrix.def</code>-style connection cost matrix over every <code>(right_id, left_id)</code> pair (including BOS/EOS); pairs never seen during training get the maximum penalty cost (<code>i16::MAX</code>) so Viterbi avoids untrained transitions.</td></tr>
-<tr><td><code>write_unknown_dictionary&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>unk.def</code>-style entries for each unknown-word character category, using the learned connection IDs/costs together with the category's feature string from <code>unk.def</code>.</td></tr>
-<tr><td><code>get_unknown_word_cost(&amp;self, category: usize) -&gt; i32</code></td><td>Returns the configured cost for an unknown-word category index (from <code>unk.def</code>'s cost column), defaulting to <code>2000</code> if the category has no configured cost.</td></tr>
+<tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes a dense <code>matrix.def</code>-style connection cost matrix over every <code>(right_id, left_id)</code> pair of the merged model's context IDs (including 0 for BOS/EOS); pairs never seen during training get the maximum penalty cost (<code>i16::MAX</code>) so Viterbi avoids untrained transitions.</td></tr>
+<tr><td><code>write_unknown_dictionary&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes one <code>unk.def</code> line for each <code>unk.def</code> entry the model was trained with, in file order, with the entry's category name and feature string and its learned connection IDs and cost.</td></tr>
+<tr><td><code>get_unknown_word_cost(&amp;self, category: usize) -&gt; i32</code></td><td>Returns the input cost of a <code>char.def</code> category index, read from <code>unk.def</code>'s cost column rather than learned; for a category with several entries, the cost of its last line. Defaults to <code>2000</code> if the category has no configured cost.</td></tr>
 <tr><td><code>num_features(&amp;self) -&gt; usize</code></td><td>Number of feature weights held by the trained model.</td></tr>
-<tr><td><code>num_labels(&amp;self) -&gt; usize</code></td><td>Number of labels (vocabulary surfaces plus unknown-word categories) in the trained model.</td></tr>
+<tr><td><code>num_labels(&amp;self) -&gt; usize</code></td><td>Number of exported labels in the trained model: the seed rows plus the <code>unk.def</code> entries. The virtual labels are not counted.</td></tr>
 <tr><td><code>raw_model(&amp;self) -&gt; &amp;lindera_crf::RawModel</code></td><td>Access to the underlying <code>lindera-crf</code> raw model, for advanced or lower-level operations.</td></tr>
 <tr><td><code>write_bigram_details&lt;L: Write, R: Write, C: Write&gt;(&amp;self, left_wtr, right_wtr, cost_wtr) -&gt; Result&lt;()&gt;</code></td><td>Writes three diagnostic files describing bigram features and costs (left feature list, right feature list, and one line per raw bigram feature pair with <code>BOS</code>/<code>EOS</code> for id 0 and names from the feature extractor). All three files are byte-reproducible for the same model.</td></tr>
 <tr><td><code>evaluate(&amp;self, test_lattices: &amp;[lindera_crf::Lattice]) -&gt; f64</code></td><td>Returns the mean absolute value of the raw model's feature weights as a simple evaluation score. The <code>test_lattices</code> argument is currently unused; it does not yet score the model against held-out data.</td></tr>
@@ -1080,20 +1088,20 @@ tokenizer
 <h4 id="serializablemodel-public-methods"><a class="header" href="#serializablemodel-public-methods"><code>SerializableModel</code> public methods</a></h4>
 <p>Available on the value returned by <code>Model::read_model</code>, for re-exporting dictionary source files from a previously trained and serialized model (used by the <code>lindera export</code> CLI command):</p>
 <div class="table-wrapper"><table><thead><tr><th>Method</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>write_lexicon&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>lex.csv</code>-style entries from the stored <code>feature_sets</code>, <code>labels</code>, and <code>pos_info</code>, skipping the trailing unknown-word category labels.</td></tr>
-<tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes the dense <code>matrix.def</code>-style connection cost matrix from the stored <code>connection_matrix</code>, <code>max_left_id</code>, and <code>max_right_id</code>.</td></tr>
-<tr><td><code>write_unknown_dictionary&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>unk.def</code>-style entries for each stored unknown-word category.</td></tr>
+<tr><td><code>write_lexicon&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>lex.csv</code>-style entries from the stored <code>feature_sets</code>, <code>labels</code>, and <code>pos_info</code>, skipping the <code>unk.def</code> entry labels that follow the seed rows.</td></tr>
+<tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes the dense <code>matrix.def</code>-style connection cost matrix from the stored <code>connection_matrix</code>, <code>max_left_id</code>, and <code>max_right_id</code>: <code>max_right_id + 1</code> rows by <code>max_left_id + 1</code> columns, which cover every context ID of the model even when no bigram weight survived training.</td></tr>
+<tr><td><code>write_unknown_dictionary&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes one <code>unk.def</code> line for each stored entry of <code>unk_entries</code>, in file order, with its category name, learned connection IDs and cost, and feature string.</td></tr>
 <tr><td><code>write_char_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes the <code>char.def</code> content preserved verbatim from the original training input.</td></tr>
 <tr><td><code>write_feature_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes the <code>feature.def</code> content preserved verbatim from the original training input.</td></tr>
 <tr><td><code>write_rewrite_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes the <code>rewrite.def</code> content preserved verbatim from the original training input.</td></tr>
 <tr><td><code>write_left_id_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>left-id.def</code> from the stored <code>left_id_map</code>, with <code>0 BOS/EOS</code> as the first line.</td></tr>
 <tr><td><code>write_right_id_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>right-id.def</code> from the stored <code>right_id_map</code>, with <code>0 BOS/EOS</code> as the first line.</td></tr>
-<tr><td><code>update_metadata_json&lt;W: Write&gt;(&amp;self, base_metadata_path: &amp;Path, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Reads a base <code>metadata.json</code>, updates it with training-derived values (<code>default_word_cost</code> estimated from the median feature weight, plus a <code>model_info</code> section with feature/label counts, context ID ranges, and training metadata), and writes the result. The output carries no timestamp and is byte-reproducible for the same model.</td></tr>
+<tr><td><code>update_metadata_json&lt;W: Write&gt;(&amp;self, base_metadata_path: &amp;Path, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Reads a base <code>metadata.json</code>, updates it with training-derived values (<code>default_word_cost</code> estimated from the median feature weight, plus a <code>model_info</code> section with feature/label counts, context ID ranges, the <code>matrix.def</code> size as <code>connection_matrix_size</code> (<code>{rows}x{columns}</code>), and training metadata), and writes the result. The output carries no timestamp and is byte-reproducible for the same model.</td></tr>
 </tbody></table>
 </div>
 <h4 id="modelmetadata-and-featuresetinfo"><a class="header" href="#modelmetadata-and-featuresetinfo"><code>ModelMetadata</code> and <code>FeatureSetInfo</code></a></h4>
-<p><code>ModelMetadata</code> records summary information about a training run: <code>version</code>, <code>regularization</code> (the cost coefficient used), <code>iterations</code> (max iterations configured), <code>feature_count</code>, and <code>label_count</code>. It is embedded in <code>SerializableModel::metadata</code>.</p>
-<p><code>FeatureSetInfo</code> holds the per-label connection information extracted from the merged CRF model after training: <code>left_id</code>, <code>right_id</code>, and <code>weight</code>. <code>SerializableModel::feature_sets</code> stores one entry per label, in the same order as <code>labels</code>.</p>
+<p><code>ModelMetadata</code> records summary information about a training run: <code>version</code> (the model format version, <code>MODEL_FORMAT_VERSION</code>), <code>regularization</code> (the cost coefficient used), <code>iterations</code> (max iterations configured), <code>feature_count</code>, and <code>label_count</code>. It is embedded in <code>SerializableModel::metadata</code>.</p>
+<p><code>FeatureSetInfo</code> holds the per-label connection information extracted from the merged CRF model after training: <code>left_id</code>, <code>right_id</code>, and <code>weight</code>. <code>SerializableModel::feature_sets</code> stores one entry per CRF label: one for each entry of <code>labels</code>, in the same order, then one for each virtual label, which is not exported.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="api-reference-2"><a class="header" href="#api-reference-2">API Reference</a></h1>
 <p>The API reference is available. Please see following URL:</p>
 <ul>
@@ -2737,6 +2745,15 @@ EOS
 </ul>
 <h4 id="user-dictionary-1"><a class="header" href="#user-dictionary-1">User dictionary</a></h4>
 <p>A supplementary dictionary for custom words that works alongside a system dictionary.</p>
+<h3 id="context-id-check"><a class="header" href="#context-id-check">Context ID check</a></h3>
+<p>When it builds a system dictionary, <code>lindera build</code> checks that every context ID lies inside the connection matrix, as MeCab's <code>mecab-dict-index</code> does. In every <code>lex.csv</code> row and <code>unk.def</code> line, the right context ID must be below the first value of the <code>matrix.def</code> header, and the left context ID below the second. A dictionary that breaks this fails to build, with an error that names the file, the line, the ID and the matrix size. For example, with a 2 x 2 <code>matrix.def</code> and a <code>lex.csv</code> whose second row has the right context ID 2:</p>
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
+</code></pre>
+<ul>
+<li>If the dictionary's <code>metadata.json</code> sets <code>skip_invalid_cost_or_id</code> to <code>true</code>, such a <code>lex.csv</code> row is dropped instead, with a warning through the <code>log</code> crate that the CLI does not print yet (<a href="https://github.com/lindera/lindera/issues/1107">#1107</a>). An <code>unk.def</code> line is always checked.</li>
+<li>A <code>matrix.def</code> row whose IDs fall outside its axes is an error too, and so is an <code>unk.def</code> line with fewer than four fields.</li>
+<li>User dictionaries (<code>--user</code>) are not checked yet (<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>).</li>
+</ul>
 <h3 id="examples-1"><a class="header" href="#examples-1">Examples</a></h3>
 <h4 id="build-ipadic-japanese-dictionary"><a class="header" href="#build-ipadic-japanese-dictionary">Build IPADIC (Japanese dictionary)</a></h4>
 <pre><code class="language-shell"># Download and extract IPADIC source files
@@ -2959,11 +2976,15 @@ EOS
   --max-iterations 100
 </code></pre>
 <h4 id="3-training-results"><a class="header" href="#3-training-results">3. Training results</a></h4>
-<p>The trained model will contain:</p>
+<p><code>lindera train</code> writes the model to the <code>--output</code> file. Once it has built the training lattices, it prints how the gold tokens of the corpus were labelled (see <a href="lindera-cli/../development/training_pipeline.html#how-training-works">How training works</a>). With the files in <code>./resources/training/</code>:</p>
+<pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+</code></pre>
+<p>The trained model contains:</p>
 <ul>
-<li><strong>Existing words</strong>: All seed dictionary records with newly learned weights</li>
-<li><strong>New words</strong>: Words from the corpus not in the seed dictionary, added with appropriate weights</li>
+<li><strong>Seed words</strong>: every seed lexicon row, with a learned weight and context IDs</li>
+<li><strong>Unknown words</strong>: every <code>unk.def</code> entry, in file order, with a learned weight and context IDs</li>
 </ul>
+<p>Corpus words that are not in the seed lexicon are not added as words. They are learned through the <code>unk.def</code> entries, or through virtual labels, which are trained but not exported.</p>
 <h2 id="export"><a class="header" href="#export">export</a></h2>
 <p>Export a trained model file to Lindera dictionary format files. This feature requires building with the <code>train</code> feature flag enabled.</p>
 <h3 id="export-parameters"><a class="header" href="#export-parameters">Export parameters</a></h3>
@@ -2977,8 +2998,8 @@ EOS
 <p>The export command creates the following dictionary files in the output directory:</p>
 <ul>
 <li><code>lex.csv</code>: Lexicon file with learned weights (MeCab-compatible cost via <code>tocost()</code>)</li>
-<li><code>matrix.def</code>: Dense connection cost matrix covering all (right_id, left_id) pairs</li>
-<li><code>unk.def</code>: Unknown word definitions</li>
+<li><code>matrix.def</code>: Dense connection cost matrix covering all (right_id, left_id) pairs of the model's context IDs, plus 0 for BOS/EOS</li>
+<li><code>unk.def</code>: Unknown word definitions, one line for each <code>unk.def</code> entry of the training input, in the same order</li>
 <li><code>char.def</code>: Character type definitions</li>
 <li><code>feature.def</code>: Feature template definitions (copied from trained model)</li>
 <li><code>rewrite.def</code>: Feature rewrite rules (copied from trained model)</li>
@@ -2986,6 +3007,10 @@ EOS
 <li><code>right-id.def</code>: Right context ID to feature string mapping</li>
 <li><code>metadata.json</code>: Updated metadata file (if <code>--metadata</code> option is provided)</li>
 </ul>
+<h3 id="model-format-version"><a class="header" href="#model-format-version">Model format version</a></h3>
+<p><code>lindera export</code> reads a model of the current format version (2.0.0) only. A <code>model.dat</code> written by an earlier version, which includes every <code>model.dat</code> written before 7.0.0, is rejected, and has to be trained again with <code>lindera train</code>. For a model trained with the 6.1.0 CLI:</p>
+<pre><code class="language-text">Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera train` to regenerate it. }
+</code></pre>
 <h3 id="complete-workflow-example"><a class="header" href="#complete-workflow-example">Complete workflow example</a></h3>
 <h4 id="1-train-model"><a class="header" href="#1-train-model">1. Train model</a></h4>
 <pre><code class="language-bash">lindera train \
@@ -3013,8 +3038,19 @@ EOS
 </code></pre>
 <h4 id="4-use-trained-dictionary"><a class="header" href="#4-use-trained-dictionary">4. Use trained dictionary</a></h4>
 <pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize \
+  --keep-whitespace \
   -d /tmp/lindera/training/compiled_dictionary
 </code></pre>
+<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<p><code>--keep-whitespace</code> is needed because <code>resources/training/char.def</code> has no <code>SPACE</code> category, which the segmenter needs to skip whitespace (<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>).</p>
 <h3 id="metadata-update-feature"><a class="header" href="#metadata-update-feature">Metadata update feature</a></h3>
 <p>When the <code>--metadata</code> option is provided, the export command will:</p>
 <ol>
@@ -3022,7 +3058,7 @@ EOS
 <li><strong>Update specific fields</strong> with values from the trained model:
 <ul>
 <li><code>default_word_cost</code>: Calculated from feature weight median</li>
-<li><code>model_info</code>: Training statistics including feature count, label count, matrix size, iterations, regularization, and version. No timestamp is written, so exporting the same model twice produces identical output</li>
+<li><code>model_info</code>: Training statistics including feature count, label count, matrix size (<code>connection_matrix_size</code>, the size of <code>matrix.def</code> as rows x columns), iterations, regularization, and the model format version. No timestamp is written, so exporting the same model twice produces identical output</li>
 </ul>
 </li>
 <li><strong>Preserve existing settings</strong> such as dictionary name, character encoding, schema definitions, and other user-defined configuration</li>
@@ -3950,6 +3986,7 @@ lindera.export(
 <li><code>char.def</code> -- Character category definitions</li>
 <li><code>metadata.json</code> -- Updated metadata (when <code>metadata</code> parameter is provided)</li>
 </ul>
+<p>The model file must come from this version's training. A model file written by an earlier version, which includes every model file written before 7.0.0, is rejected: <code>lindera.export()</code> fails with an error that asks you to re-run training. Train such a model again with <code>lindera.train()</code>.</p>
 <h2 id="complete-workflow"><a class="header" href="#complete-workflow">Complete Workflow</a></h2>
 <p>The full workflow for training and using a custom dictionary:</p>
 <pre><code class="language-python">import lindera
@@ -4744,6 +4781,7 @@ exportModel({
 <li><code>char.def</code> -- Character category definitions</li>
 <li><code>metadata.json</code> -- Updated metadata (when <code>metadata</code> parameter is provided)</li>
 </ul>
+<p>The model file must come from this version's training. A model file written by an earlier version, which includes every model file written before 7.0.0, is rejected: <code>exportModel()</code> fails with an error that asks you to re-run training. Train such a model again with <code>train()</code>.</p>
 <h2 id="complete-workflow-1"><a class="header" href="#complete-workflow-1">Complete Workflow</a></h2>
 <p>The full workflow for training and using a custom dictionary:</p>
 <pre><code class="language-javascript">const {
@@ -5600,6 +5638,7 @@ Lindera.export(
 <li><code>char.def</code> -- Character category definitions</li>
 <li><code>metadata.json</code> -- Updated metadata (when <code>metadata</code> parameter is provided)</li>
 </ul>
+<p>The model file must come from this version's training. A model file written by an earlier version, which includes every model file written before 7.0.0, is rejected: <code>Lindera.export</code> fails with an error that asks you to re-run training. Train such a model again with <code>Lindera.train</code>.</p>
 <h2 id="complete-workflow-2"><a class="header" href="#complete-workflow-2">Complete Workflow</a></h2>
 <p>The full workflow for training and using a custom dictionary:</p>
 <pre><code class="language-ruby">require 'lindera'
@@ -6525,6 +6564,7 @@ Lindera\Trainer::export(
 <li><code>char.def</code> -- Character category definitions</li>
 <li><code>metadata.json</code> -- Updated metadata (when <code>$metadata</code> parameter is provided)</li>
 </ul>
+<p>The model file must come from this version's training. A model file written by an earlier version, which includes every model file written before 7.0.0, is rejected: <code>Lindera\Trainer::export()</code> fails with an error that asks you to re-run training. Train such a model again with <code>Lindera\Trainer::train()</code>.</p>
 <h2 id="complete-workflow-3"><a class="header" href="#complete-workflow-3">Complete Workflow</a></h2>
 <p>The full workflow for training and using a custom dictionary:</p>
 <pre><code class="language-php">&lt;?php
@@ -9704,7 +9744,11 @@ instead of rewriting them, removing the <code>normalize_details</code> setting, 
 the first CSV row among tied dictionary entries as MeCab does, chooses the
 segmentation whose last word starts later when two cost the same, as MeCab
 does, and has the lattice backtraces of <code>lindera-dictionary</code> return each
-token's end offset. Dictionary directories built or downloaded with v6.2.0
+token's end offset. <code>lindera train</code> builds its lattices as MeCab's learner
+does, with the seed words and the unknown words that the runtime creates,
+and keeps every <code>unk.def</code> entry, so models trained with earlier versions
+must be trained again, and <code>lindera build</code> rejects a dictionary whose
+context IDs fall outside its connection matrix. Dictionary directories built or downloaded with v6.2.0
 or earlier no longer load and must be rebuilt or downloaded again
 (dictionary format version 3).
 This guide lists every breaking change and the one-line fixes for each.</p>
@@ -9731,9 +9775,13 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab</strong></td><td>Anyone who segments text, in rare places (9 of about 54,000 lines in the texts compared)</td><td>Expect such lines to be segmented as MeCab segments them (IPADIC <code>腸窒扶斯</code> is <code>腸 / 窒扶 / 斯</code>, not <code>腸 / 窒 / 扶斯</code>); no setting restores the v6 behavior</td></tr>
 <tr><td><strong><code>lindera tokenize</code> removes only the line terminator from each input line and writes a result for every line</strong></td><td>CLI users whose input lines start or end with whitespace, or who read the wakati or N-best output of lines without tokens</td><td>Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC <code>記号,空白</code>), <code>--keep-whitespace</code> to output the spaces there, and an empty line or a line of spaces to give an empty wakati line and one N-best result; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>WASM: the <code>TokenizerBuilder</code> settings apply whichever way the dictionary is set</strong></td><td>WASM users who combine <code>setDictionaryInstance()</code> with <code>setKeepWhitespace()</code> or filters, or <code>setDictionary()</code> with <code>setUserDictionaryInstance()</code></td><td>Expect those settings and the user dictionary to take effect; a dictionary instance whose <code>char.def</code> has no <code>SPACE</code> category now needs <code>setKeepWhitespace(true)</code>, as a dictionary set by URI does</td></tr>
+<tr><td><strong><code>lindera train</code> builds its lattices as MeCab's learner does and keeps every <code>unk.def</code> entry; <code>model.dat</code> has the format version 2.0.0</strong></td><td>Users of <code>lindera train</code> and <code>lindera export</code>, and of the training functions of the Python, Node.js, Ruby and PHP bindings</td><td>Train every model again with 7.0.0, then export and build it again (a <code>model.dat</code> written by v6.2.0 or earlier is rejected); give every <code>unk.def</code> line at least five fields</td></tr>
+<tr><td><strong><code>lindera build</code> rejects context IDs outside <code>matrix.def</code></strong></td><td>Anyone who builds a system dictionary whose <code>lex.csv</code> or <code>unk.def</code> has a context ID beyond the size of its <code>matrix.def</code> (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's <code>mecab-dict-index</code> accepts</td><td>Fix the IDs or the matrix, or set <code>skip_invalid_cost_or_id</code> in <code>metadata.json</code> to drop such <code>lex.csv</code> rows</td></tr>
 <tr><td><strong>The <code>normalize_details</code> setting is removed: <code>Metadata::new</code> and <code>CoreMetadata::new</code> take 10 arguments, Ruby's <code>Metadata.new</code> takes 8</strong></td><td>Code that creates or reads dictionary metadata: Rust (<code>Metadata</code>, <code>lindera_binding::CoreMetadata</code>, <code>PrefixDictionaryBuilderOptions</code>) and the <code>Metadata</code> classes of the Python, Ruby, PHP and Node.js bindings</td><td>Remove the argument, option or property; a <code>metadata.json</code> that still has the key loads, and the key is ignored</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>, <code>tokens_offset_into</code>, <code>nbest_tokens_offset</code> and <code>NBestGenerator::next</code> return <code>(start, end, WordId)</code></strong></td><td>Rust code that calls these <code>lindera_dictionary</code> functions directly (also as <code>lindera::dictionary::viterbi::…</code>, <code>lindera::dictionary::Lattice</code> and <code>lindera::dictionary::nbest::…</code>)</td><td>Destructure three fields and use the returned end instead of the next token's start</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> returns the BOS index of the best path (<code>Option&lt;usize&gt;</code>)</strong></td><td>Rust code that uses the <code>()</code> value of <code>tokens_offset_into</code></td><td>Nothing for a call written as a statement; otherwise ignore the new value</td></tr>
+<tr><td><strong><code>UnknownDictionary::gen_unk_words</code>, <code>UnknownDictionary::compatible_unk_index</code>, <code>UnkWord</code> and <code>WordIdx</code> are removed</strong></td><td>Rust code that uses them from <code>lindera_dictionary::dictionary::unknown_dictionary</code> (also <code>lindera::dictionary::core::unknown_dictionary</code>)</td><td>Use <code>Lattice::unknown_word_candidates</code>, which lists the unknown words that the runtime creates</td></tr>
+<tr><td><strong><code>lindera_trainer</code>: <code>SerializableModel::unk_category_names</code> and <code>unk_categories</code> are replaced by <code>unk_entries</code>, and <code>Trainer::max_grouping_len</code> takes the runtime's meaning</strong></td><td>Rust code that uses <code>lindera-trainer</code> (also <code>lindera::dictionary::trainer</code>)</td><td>Read <code>unk_entries</code>, the <code>unk.def</code> entries in file order; pass <code>max_grouping_len</code> the cap the dictionary will be used with</td></tr>
 </tbody></table>
 </div>
 <p>The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
@@ -9744,6 +9792,9 @@ expose <code>normalize_details</code> (see
 Their version number moves to 7.0.0. Like the Rust crates, they no longer
 load a dictionary directory built or downloaded with v6.2.0 or earlier (see
 <a href="migration_v6_to_v7.html#dictionary-directories-must-be-rebuilt">Dictionary directories must be rebuilt</a>).
+A model file written by their training functions, or by <code>lindera train</code>,
+with v6.2.0 or earlier has to be trained again (see
+<a href="migration_v6_to_v7.html#lindera-train-builds-its-lattices-as-mecabs-learner-does"><code>lindera train</code> builds its lattices as MeCab's learner does</a>).
 There are thirteen output differences, all described below; the last two are
 in the CLI only and in the WASM binding only. With IPADIC or
 IPADIC-NEologd, the values reported under the names <code>conjugation_type</code> and
@@ -10626,17 +10677,114 @@ a custom dictionary without it now needs <code>setKeepWhitespace(true)</code>.</
 <p>The other bindings, the CLI and the library do not change, and neither do
 the dictionary files. No option restores the v6 behavior; to get it, leave
 out the settings that v6 ignored.</p>
+<h2 id="lindera-train-builds-its-lattices-as-mecabs-learner-does"><a class="header" href="#lindera-train-builds-its-lattices-as-mecabs-learner-does"><code>lindera train</code> builds its lattices as MeCab's learner does</a></h2>
+<p>Up to v6.2.0, <code>lindera train</code> built training lattices that differ from
+those of MeCab's learner:</p>
+<ul>
+<li>The seed lexicon was not in the lattice, so a gold token competed only
+with unknown words, never with the other seed words.</li>
+<li>The unknown-word candidates ignored <code>char.def</code>. A fixed classifier (ASCII
+digit, ASCII letter, kanji, katakana, hiragana, other) gave the class of
+the first character, every candidate was one to three characters long,
+and the class number served as the <code>unk.def</code> entry, so only an <code>unk.def</code>
+with one entry per class, in the order <code>DEFAULT</code>, <code>HIRAGANA</code>, <code>KATAKANA</code>,
+<code>KANJI</code>, <code>ALPHA</code>, <code>NUMERIC</code>, worked.</li>
+<li>Each <code>char.def</code> category got one label, with the feature string of its
+last <code>unk.def</code> line, and <code>lindera export</code> wrote one <code>unk.def</code> line per
+category. mecab-ipadic's <code>unk.def</code> has 40 lines for 11 categories; they
+became 11 lines, and the unknown <code>ALPHA</code>, <code>HIRAGANA</code> and <code>KATAKANA</code> words
+all became <code>感動詞</code>, the feature of the last line of each of these
+categories.</li>
+<li>A gold token that was not a seed word got an unknown-word label through
+a check written for IPADIC features (<code>名詞,一般</code> and the like), or a label
+without features. An <code>unk.def</code> line with fewer than five fields was
+silently skipped.</li>
+<li>When regularization left no bigram weight for some context IDs,
+<code>lindera export</code> wrote a <code>matrix.def</code> smaller than the IDs of the entries
+(<code>0 0</code> when no weight was left at all), and the built dictionary panicked
+at tokenization. <code>model_info.connection_matrix_size</code> in <code>metadata.json</code>
+was a square of the larger ID.</li>
+</ul>
+<p>v7.0.0 trains as MeCab's learner does (see
+<a href="development/training_pipeline.html#how-training-works">How training works</a>):</p>
+<ul>
+<li>The lattice has the seed words that start at each position, and the
+unknown words that the runtime creates there, with the same code: those
+of the character's default category, with its <code>INVOKE</code>, <code>GROUP</code> and
+<code>LENGTH</code> settings, for every <code>unk.def</code> entry of the category.</li>
+<li>Every <code>unk.def</code> line is an entry and a CRF label of its own, with the ID
+of its category as <code>%t</code>, and <code>lindera export</code> writes every line, in file
+order. Comment lines and empty lines are skipped, and a line with fewer
+than five fields is an error.</li>
+<li>A gold token gets the label of the first seed row with the same span and
+the same whole feature string; else that of the first <code>unk.def</code> entry of
+an unknown-word candidate with the same span whose feature columns other
+than <code>*</code> all equal the gold token's; else a virtual label, which is
+trained and not exported, as MeCab's learner adds a virtual node.
+<code>lindera train</code> prints the counts in a <code>Lattice statistics:</code> line.</li>
+<li><code>matrix.def</code> covers every context ID, plus 0 for BOS/EOS, and
+<code>model_info.connection_matrix_size</code> gives its size, rows by columns.</li>
+<li><code>model.dat</code> has the format version 2.0.0. <code>lindera export</code> and the
+bindings' export functions reject a <code>model.dat</code> of any other version,
+including every <code>model.dat</code> written by v6.2.0 or earlier, with an error
+that ends in "re-run <code>lindera train</code> to regenerate it".</li>
+</ul>
+<p>Training takes longer, because every lattice now has the seed words. It is
+slower than MeCab's learner, and it can stop at <code>--max-iterations</code>
+before it converges
+(<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>). A dictionary
+trained from the files in <code>resources/training/</code> needs <code>--keep-whitespace</code>
+to tokenize, because their <code>char.def</code> has no <code>SPACE</code> category
+(<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>); this was already
+the case in v6.</p>
+<p>What you do: train every model again with the 7.0.0 <code>lindera train</code> or the
+bindings' training functions, then export it and build the dictionary
+again. Give every <code>unk.def</code> line at least five fields. An <code>unk.def</code> with
+several entries per category, such as mecab-ipadic's, is now trained and
+exported as it is. There is no setting to restore the v6 behavior.</p>
+<h2 id="lindera-build-rejects-context-ids-outside-the-connection-matrix"><a class="header" href="#lindera-build-rejects-context-ids-outside-the-connection-matrix"><code>lindera build</code> rejects context IDs outside the connection matrix</a></h2>
+<p>Up to v6.2.0, <code>lindera build</code> accepted a <code>lex.csv</code> row or an <code>unk.def</code> line
+whose context IDs fall outside <code>matrix.def</code>, and the built dictionary
+panicked when such a word was looked up during tokenization. A <code>matrix.def</code>
+row whose ID exceeded its axis was accepted too, and its cost landed in
+another cell. v7.0.0 rejects all of these, as MeCab's <code>mecab-dict-index</code>
+does: in every <code>lex.csv</code> row and <code>unk.def</code> line, the right context ID must
+be below the first value of the <code>matrix.def</code> header, and the left context
+ID below the second. The error names the file, the line, the ID and the
+matrix size:</p>
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
+</code></pre>
+<ul>
+<li>A dictionary whose <code>metadata.json</code> sets <code>skip_invalid_cost_or_id</code> drops
+such a <code>lex.csv</code> row instead, with a warning through the <code>log</code> crate,
+which the CLI does not print yet
+(<a href="https://github.com/lindera/lindera/issues/1107">#1107</a>). <code>unk.def</code> lines are
+always checked.</li>
+<li>An <code>unk.def</code> line with fewer than four fields is an error instead of a
+panic.</li>
+<li>User dictionaries (<code>lindera build --user</code>) are not checked yet
+(<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>).</li>
+</ul>
+<p>Dictionaries that <code>mecab-dict-index</code> builds pass, since it checks the same
+bounds. A dictionary exported by <code>lindera export</code> of v6.2.0 or earlier can
+fail, since its <code>matrix.def</code> could be smaller than its context IDs; train
+and export it again with 7.0.0 (see the previous section). For another
+dictionary that fails, fix the IDs in <code>lex.csv</code> or <code>unk.def</code> or the size in
+<code>matrix.def</code>.</p>
 <h2 id="rust-api-changes-in-lindera_dictionary-1"><a class="header" href="#rust-api-changes-in-lindera_dictionary-1">Rust API changes in <code>lindera_dictionary</code></a></h2>
 <p>These affect only code that calls the lattice backtraces directly, that
-creates dictionary metadata with <code>Metadata::new</code>, or that reads the
-character categories of a dictionary:
+creates dictionary metadata with <code>Metadata::new</code>, that reads the
+character categories of a dictionary, or that generates unknown words with
+<code>UnknownDictionary</code>:
 <code>lindera_dictionary::viterbi::Lattice</code> and
 <code>lindera_dictionary::nbest::NBestGenerator</code>, also reachable as
 <code>lindera::dictionary::viterbi::…</code>, <code>lindera::dictionary::Lattice</code> and
 <code>lindera::dictionary::nbest::…</code>, and
 <code>lindera_dictionary::dictionary::metadata::Metadata</code>, also reachable as
 <code>lindera::dictionary::Metadata</code>, and
-<code>lindera_dictionary::dictionary::character_definition::CharacterDefinition</code>.
+<code>lindera_dictionary::dictionary::character_definition::CharacterDefinition</code>, and
+<code>lindera_dictionary::dictionary::unknown_dictionary</code>, also reachable as
+<code>lindera::dictionary::core::unknown_dictionary</code>.
 The <code>Segmenter</code>, <code>Tokenizer</code>,
 <code>SegmentWorker</code> and <code>AnalysisWorker</code> APIs and the CLI are unaffected; the
 language bindings change only in their <code>Metadata</code> class (see
@@ -10656,6 +10804,10 @@ language bindings change only in their <code>Metadata</code> class (see
 <tr><td>—</td><td>New public field <code>Metadata::skip_whitespace: Option&lt;bool&gt;</code> (also <code>lindera_binding::CoreMetadata::skip_whitespace</code>)</td></tr>
 <tr><td><code>CharacterDefinition::lookup_categories(c)</code> returns the categories of every line that covers <code>c</code></td><td>Returns the categories of the last line that covers <code>c</code>, its default category first and the others in category id order</td></tr>
 <tr><td><code>DICTIONARY_FORMAT_VERSION</code> is <code>2</code></td><td><code>3</code></td></tr>
+<tr><td><code>UnknownDictionary::gen_unk_words(sentence, start_pos, has_matched, max_grouping_len, callback)</code></td><td>Removed</td></tr>
+<tr><td><code>UnknownDictionary::compatible_unk_index(sentence, start, end, feature) -&gt; Option&lt;WordIdx&gt;</code></td><td>Removed</td></tr>
+<tr><td><code>unknown_dictionary::UnkWord</code> and <code>unknown_dictionary::WordIdx</code></td><td>Removed</td></tr>
+<tr><td>—</td><td>New in <code>viterbi</code>: <code>Lattice::unknown_word_candidates</code> and <code>UnknownWordCandidate</code></td></tr>
 </tbody></table>
 </div>
 <p>Each token is now <code>(start, end, word_id)</code> instead of <code>(start, word_id)</code>,
@@ -10740,6 +10892,39 @@ code that only checks whether a character has a category is unaffected.
 <code>DICTIONARY_FORMAT_VERSION</code>, the version that the builder writes and the
 loaders accept, is now 3 (see
 <a href="migration_v6_to_v7.html#dictionary-directories-must-be-rebuilt">Dictionary directories must be rebuilt</a>).</p>
+<p><code>UnknownDictionary::gen_unk_words</code> and <code>UnknownDictionary::compatible_unk_index</code>
+are removed, together with the <code>UnkWord</code> and <code>WordIdx</code> types they used.
+Only <code>lindera train</code> called them, and they ignored <code>char.def</code> (see
+<a href="migration_v6_to_v7.html#lindera-train-builds-its-lattices-as-mecabs-learner-does"><code>lindera train</code> builds its lattices as MeCab's learner does</a>).
+To list the unknown words that the runtime creates, call
+<code>Lattice::unknown_word_candidates(dict, char_definitions, unknown_dictionary, text, max_grouping_len, out)</code>.
+It fills <code>out</code> with an <code>UnknownWordCandidate { start_char, end_char, word_id }</code>
+for every candidate of every start position of <code>text</code>, with character
+positions and the <code>unk.def</code> entry ID, as <code>set_text_with_options</code> creates
+them with the default options and the given <code>max_grouping_len</code>, also at
+positions that no path reaches. The tokenization path does not change.</p>
+<h2 id="rust-api-changes-in-lindera_trainer"><a class="header" href="#rust-api-changes-in-lindera_trainer">Rust API changes in <code>lindera_trainer</code></a></h2>
+<p>These affect only Rust code that uses <code>lindera-trainer</code> directly or through
+<code>lindera::dictionary::trainer</code> (the <code>train</code> feature) (see
+<a href="migration_v6_to_v7.html#lindera-train-builds-its-lattices-as-mecabs-learner-does"><code>lindera train</code> builds its lattices as MeCab's learner does</a>):</p>
+<div class="table-wrapper"><table><thead><tr><th>v6</th><th>v7</th></tr></thead><tbody>
+<tr><td><code>SerializableModel::unk_category_names: Vec&lt;String&gt;</code> and <code>SerializableModel::unk_categories: BTreeMap&lt;String, String&gt;</code></td><td><code>SerializableModel::unk_entries: Vec&lt;(String, String)&gt;</code>, the <code>(category, feature string)</code> pairs of <code>unk.def</code> in file order</td></tr>
+<tr><td><code>ModelMetadata::version</code> is <code>"1.0.0"</code>, and <code>Model::read_model</code> does not check it</td><td><code>"2.0.0"</code>; <code>Model::read_model</code> rejects a model of any other version</td></tr>
+<tr><td>—</td><td>New in <code>model</code>: <code>MODEL_FORMAT_VERSION</code></td></tr>
+<tr><td><code>TrainerConfig::dict()</code> holds an empty lexicon and a placeholder unknown-word dictionary</td><td>Holds the seed lexicon (<code>system_lexicon()</code>) and the <code>unk.def</code> entries (<code>unk_handler()</code>)</td></tr>
+<tr><td><code>TrainerConfig::from_readers</code> skips an <code>unk.def</code> line with fewer than five fields</td><td>Returns an error</td></tr>
+<tr><td><code>Trainer::max_grouping_len(len)</code> bounds the unknown-word candidates, which never exceed three characters</td><td>Caps unknown-word grouping with the runtime's meaning, in characters beyond the first; <code>None</code>, the default, leaves it unbounded</td></tr>
+<tr><td><code>Model::num_labels()</code> and <code>ModelMetadata::label_count</code> count one unknown-word label per <code>char.def</code> category</td><td>Count one per <code>unk.def</code> entry; the virtual labels are not counted</td></tr>
+</tbody></table>
+</div>
+<p>A model is now written with <code>MODEL_FORMAT_VERSION</code> as its <code>metadata.version</code>,
+and <code>Model::read_model</code> checks it, in both the <code>rkyv</code> and the legacy JSON
+format, so a model written by v6.2.0 or earlier has to be trained again.
+Code that reads <code>unk_category_names</code> or <code>unk_categories</code> reads
+<code>unk_entries</code> instead: one pair per <code>unk.def</code> line, several per category
+included, in the order of the exported <code>unk.def</code>. If you set
+<code>Trainer::max_grouping_len</code>, pass the cap that the dictionary will be used
+with (<code>max_grouping_len</code> of the segmenter, <code>--max-grouping-len</code> of the CLI).</p>
 <h2 id="who-does-not-need-to-act-1"><a class="header" href="#who-does-not-need-to-act-1">Who does not need to act</a></h2>
 <ul>
 <li><strong>Users of the language bindings and the CLI</strong>: the Python, Node.js, Ruby,
@@ -10750,7 +10935,10 @@ The restructuring is internal to the Rust crates. A dictionary directory
 built or downloaded with v6.2.0 or earlier has to be rebuilt or downloaded
 again (see
 <a href="migration_v6_to_v7.html#dictionary-directories-must-be-rebuilt">Dictionary directories must be rebuilt</a>);
-the embedded dictionaries need nothing. The output changes are
+the embedded dictionaries need nothing. A model file trained with v6.2.0
+or earlier has to be trained again (see
+<a href="migration_v6_to_v7.html#lindera-train-builds-its-lattices-as-mecabs-learner-does"><code>lindera train</code> builds its lattices as MeCab's learner does</a>).
+The output changes are
 the IPADIC conjugation fix, which matters only if you read those two fields
 by name, the whitespace entries, which matter only for text with U+3000
 (IPADIC, IPADIC-NEologd, UniDic) or with spaces (SudachiDict), the
@@ -10819,6 +11007,12 @@ field and <code>PrefixDictionaryBuilderOptions::normalize_details</code>.</li>
 <code>skip_whitespace: None</code> or end it with <code>..Default::default()</code>.</li>
 <li>If you read <code>CharacterDefinition::lookup_categories</code>, expect the default
 category first and the others in category id order.</li>
+<li>If you call <code>UnknownDictionary::gen_unk_words</code> or
+<code>UnknownDictionary::compatible_unk_index</code>, or use <code>UnkWord</code> or <code>WordIdx</code>,
+list the unknown words with <code>Lattice::unknown_word_candidates</code> instead.</li>
+<li>If you read <code>SerializableModel::unk_category_names</code> or <code>unk_categories</code>,
+read <code>unk_entries</code> instead, and if you set <code>Trainer::max_grouping_len</code>,
+pass it the cap that the dictionary will be used with.</li>
 </ul>
 <p>Binding authors:</p>
 <ul>
@@ -10877,6 +11071,25 @@ token of its own.</li>
 <li>Give every range line of your <code>char.def</code> at least one category.</li>
 <li>If your <code>char.def</code> has single-code-point or overlapping lines, retrain:
 the <code>%t</code> feature now follows those lines as MeCab does.</li>
+<li>Train every model again with the 7.0.0 <code>lindera train</code> (or the bindings'
+training functions), then export it and build the dictionary again:
+<code>lindera export</code> rejects a <code>model.dat</code> written by v6.2.0 or earlier, and
+the training lattices, the unknown-word labels and the exported <code>unk.def</code>
+and <code>matrix.def</code> have changed.</li>
+<li>Give every line of your <code>unk.def</code> at least five fields: the category,
+the two context IDs, the cost and at least one feature column.</li>
+<li>To tokenize with a dictionary trained from <code>resources/training/</code>, pass
+<code>--keep-whitespace</code>: its <code>char.def</code> has no <code>SPACE</code> category
+(<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>).</li>
+</ul>
+<p>Everyone who builds a system dictionary with <code>lindera build</code>:</p>
+<ul>
+<li>If the build reports a context ID out of range for the connection
+matrix, fix the IDs in <code>lex.csv</code> or <code>unk.def</code> or the size in
+<code>matrix.def</code>, or set <code>skip_invalid_cost_or_id</code> to drop such <code>lex.csv</code>
+rows. Such a dictionary used to build and then panic at
+tokenization. A dictionary exported by v6.2.0 or earlier is best trained
+and exported again.</li>
 </ul>
 <p>Users of Japanese text with <code>、</code> or <code>。</code> inside a line:</p>
 <ul>
@@ -10967,7 +11180,8 @@ appended filters to apply to a dictionary set with
 <li>Nothing else to do beyond taking the 7.0.0 release, apart from the
 dictionary rebuild, the dictionary, whitespace, <code>、</code> and <code>。</code>, N-best,
 unknown-word, default-category, dash and tilde, tied-entry and equal-cost
-items above and the <code>lindera tokenize</code> and WASM items.</li>
+items above, the <code>lindera train</code> and <code>lindera build</code> items, and the
+<code>lindera tokenize</code> and WASM items.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="development-guide"><a class="header" href="#development-guide">Development Guide</a></h1>
 <p>This section provides information for developers who want to build, test, or contribute to Lindera.</p>
@@ -11229,6 +11443,17 @@ cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 <li><strong>Export</strong>: Convert the trained model into Lindera dictionary source files.</li>
 <li><strong>Build</strong>: Compile the source files into a binary dictionary that Lindera can load at runtime.</li>
 </ol>
+<h3 id="how-training-works"><a class="header" href="#how-training-works">How training works</a></h3>
+<p><code>lindera train</code> builds one lattice for each sentence of the corpus, as MeCab's learner does. At every position, the lattice has the seed words that start there and the unknown words that the runtime creates there from <code>char.def</code> and <code>unk.def</code> (see <a href="development/training_pipeline.html#3-character-definition-chardef">Character Definition</a> and <a href="development/training_pipeline.html#4-unknown-word-definition-unkdef">Unknown Word Definition</a>). The CRF learns the weights that make the annotated path, the gold tokens, the cheapest. Each gold token is labelled with the first of these that fits:</p>
+<ol>
+<li>The first seed row, in file order, with the same span and the same whole feature string. Unlike MeCab's learner, which compares only the first <code>eval-size</code> columns, every column must match, so a token whose reading or other columns differ from the seed row falls through to the next steps.</li>
+<li>The first <code>unk.def</code> entry, in file order, of an unknown-word candidate with the same span whose feature columns other than <code>*</code> all equal the gold token's columns.</li>
+<li>A virtual label built from the gold feature string, as MeCab's learner adds a virtual node. Gold tokens with the same feature string share one virtual label. Virtual labels are trained but not exported.</li>
+</ol>
+<p>Every other candidate is a negative example. Once the lattices are built, <code>lindera train</code> prints how the gold tokens were labelled; with the files in <code>resources/training/</code>:</p>
+<pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+</code></pre>
+<p><code>gold_lexicon</code>, <code>gold_unknown</code> and <code>gold_virtual</code> count the gold tokens labelled by each of the three steps, <code>virtual_labels</code> counts the virtual labels, and <code>negative_lexicon</code> and <code>negative_unknown</code> count the negative edges from the seed lexicon and from the unknown-word candidates.</p>
 <h2 id="required-input-files"><a class="header" href="#required-input-files">Required Input Files</a></h2>
 <h3 id="1-seed-lexicon-seedcsv"><a class="header" href="#1-seed-lexicon-seedcsv">1. Seed Lexicon (seed.csv)</a></h3>
 <p>Base vocabulary dictionary in MeCab CSV format.</p>
@@ -11272,14 +11497,31 @@ NUMERIC 1 1 0
 </code></pre>
 <p>Parameters control the unknown words that a character's default category creates: whether they are created even where a dictionary word starts (<code>INVOKE</code>), whether a run in which each character shares a category with the one before continues as a single token (<code>GROUP</code>), and up to which length shorter candidates are created (<code>LENGTH</code>).</p>
 <p>A range line can list more than one category (for example <code>0x4E00 KANJINUMERIC KANJI</code>), and every range line needs at least one. When several lines cover the same code point, the last line decides its categories, as in MeCab. The first category on that line is the character's default category: the only one that creates unknown-word candidates, and the one the <code>%t</code> feature template uses.</p>
+<p>Training creates the unknown-word candidates with the runtime's own code (<code>Lattice::unknown_word_candidates</code>), so it learns weights for the candidates that the built dictionary produces:</p>
+<ul>
+<li>At each position, the character's default category creates the candidates. It creates none when its <code>INVOKE</code> is 0 and a seed word starts there.</li>
+<li>With <code>GROUP</code> 1, the run in which each character shares a category with the one before becomes one candidate.</li>
+<li>With <code>LENGTH</code> n, the candidates of 1 to n characters are created too, while each character shares a category with the first one (the length ladder). In the example above, <code>KANJI 0 0 2</code> gives a kanji where no seed word starts the candidates of one and two kanji.</li>
+<li>Each <code>unk.def</code> entry of the category gets every one of these spans.</li>
+</ul>
+<p>Grouping is unbounded, as at runtime by default. The Rust API's <code>Trainer::max_grouping_len</code> caps it with the runtime's meaning (characters beyond the first); the CLI has no option for it.</p>
 <h3 id="4-unknown-word-definition-unkdef"><a class="header" href="#4-unknown-word-definition-unkdef">4. Unknown Word Definition (unk.def)</a></h3>
-<p>Defines how out-of-vocabulary words are handled by character type.</p>
-<pre><code class="language-csv">DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
+<p>Defines the unknown words that each character category creates. Each line is <code>category,left_id,right_id,cost,feature...</code>, where <code>category</code> is a category name from <code>char.def</code>. As in the seed lexicon, the ids and the cost are set to 0; export writes the trained values.</p>
+<pre><code class="language-csv"># Unknown word definitions
+DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
 HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*
 ALPHA,0,0,0,名詞,固有名詞,一般,*,*,*,*,*,*
 NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*
+</code></pre>
+<ul>
+<li>Every line is an entry of its own, and a category can have several: one for each part of speech its unknown words can take. mecab-ipadic's <code>unk.def</code>, for example, has 40 lines for 11 categories, six of them for <code>KANJI</code> (<code>名詞,一般</code>, <code>名詞,サ変接続</code> and four kinds of <code>名詞,固有名詞</code>).</li>
+<li>Each entry becomes a CRF label of its own, whose <code>%t</code> is the id of its category. A candidate of the category is created once for each entry, so training learns which entry fits where.</li>
+<li>The order of the lines is kept: <code>lindera export</code> writes one line for each entry, in the same order.</li>
+<li>Lines that start with <code>#</code> and empty lines are skipped. A line with fewer than five fields (the category, the two ids, the cost and at least one feature column) is an error:</li>
+</ul>
+<pre><code class="language-text">Error: LinderaError { kind: Args, source: unk.def line 1: expected at least 5 fields (category, left id, right id, cost, feature), got 4 }
 </code></pre>
 <h3 id="5-feature-template-featuredef"><a class="header" href="#5-feature-template-featuredef">5. Feature Template (feature.def)</a></h3>
 <p>MeCab-compatible feature extraction patterns that define what information the CRF model uses for learning.</p>
@@ -11331,6 +11573,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>max-threads</code></td><td>Number of parallel processing threads</td><td>CPU core count</td></tr>
 </tbody></table>
 </div>
+<p>Training is slower than MeCab's learner, and it can stop at <code>max-iterations</code> before it converges (<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>).</p>
 <h2 id="cli-usage"><a class="header" href="#cli-usage">CLI Usage</a></h2>
 <h3 id="train-1"><a class="header" href="#train-1">Train</a></h3>
 <pre><code class="language-bash">lindera train \
@@ -11355,16 +11598,25 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <p>This produces the following files:</p>
 <div class="table-wrapper"><table><thead><tr><th>File</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>lex.csv</code></td><td>Lexicon with trained costs</td></tr>
-<tr><td><code>matrix.def</code></td><td>Connection cost matrix</td></tr>
-<tr><td><code>unk.def</code></td><td>Unknown word definition</td></tr>
+<tr><td><code>matrix.def</code></td><td>Connection cost matrix over every context ID, plus 0 for BOS/EOS, even when regularization leaves no bigram weight</td></tr>
+<tr><td><code>unk.def</code></td><td>Unknown word definition: one line for each input <code>unk.def</code> entry, in input order, with its category, trained IDs and cost, and feature</td></tr>
 <tr><td><code>char.def</code></td><td>Character definition</td></tr>
 <tr><td><code>feature.def</code></td><td>Feature template</td></tr>
 <tr><td><code>rewrite.def</code></td><td>Feature rewrite rules</td></tr>
 <tr><td><code>left-id.def</code></td><td>Left context ID mapping</td></tr>
 <tr><td><code>right-id.def</code></td><td>Right context ID mapping</td></tr>
-<tr><td><code>metadata.json</code></td><td>Dictionary metadata</td></tr>
+<tr><td><code>metadata.json</code></td><td>Dictionary metadata; its <code>model_info.connection_matrix_size</code> is the size of <code>matrix.def</code>, rows (right IDs) by columns (left IDs)</td></tr>
 </tbody></table>
 </div>
+<p>For example, if the <code>unk.def</code> above has a second <code>KANJI</code> line, <code>KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*</code>, after the first one, the exported <code>unk.def</code> keeps both, in input order:</p>
+<pre><code class="language-csv">DEFAULT,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,0,名詞,サ変接続,*,*,*,*,*,*,*
+ALPHA,1,1,0,名詞,固有名詞,一般,*,*,*,*,*,*
+NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
+</code></pre>
 <h3 id="build-18"><a class="header" href="#build-18">Build</a></h3>
 <p>Compile the exported source files into a binary dictionary:</p>
 <pre><code class="language-bash">lindera build \
@@ -11372,15 +11624,32 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
     --dest ./dict-compiled \
     --metadata ./dict-source/metadata.json
 </code></pre>
+<p><code>lindera build</code> checks that the context IDs of every <code>lex.csv</code> row and <code>unk.def</code> line lie inside <code>matrix.def</code>, as MeCab's <code>mecab-dict-index</code> does (see <a href="development/../lindera-cli/commands.html#context-id-check">Context ID check</a>). The files that <code>lindera export</code> writes pass this check.</p>
+<h3 id="tokenize-2"><a class="header" href="#tokenize-2">Tokenize</a></h3>
+<p>Tokenize text with the built dictionary:</p>
+<pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize --keep-whitespace -d ./dict-compiled
+</code></pre>
+<p>With the files in <code>resources/training/</code> as the inputs above, the output is:</p>
+<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<p><code>--keep-whitespace</code> is needed because <code>resources/training/char.def</code> has no <code>SPACE</code> category, which the segmenter needs to skip whitespace (<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>). Without it, <code>lindera tokenize</code> fails with <code>SPACE category is not defined in the dictionary (char.def)</code>.</p>
 <h2 id="output-model-format"><a class="header" href="#output-model-format">Output Model Format</a></h2>
 <p>The trained model is serialized in <code>rkyv</code> binary format for fast loading. It contains:</p>
 <ul>
 <li>Feature weights learned by the CRF</li>
-<li>Label set (vocabulary entries)</li>
+<li>Label set (the seed rows, then the <code>unk.def</code> entries)</li>
 <li>Part-of-speech information</li>
-<li>Feature templates</li>
-<li>Training metadata (regularization, iterations, feature/label counts)</li>
+<li>The <code>unk.def</code> entries, in file order, and the content of <code>char.def</code>, <code>feature.def</code> and <code>rewrite.def</code></li>
+<li>Training metadata (format version, regularization, iterations, feature/label counts)</li>
 </ul>
+<p>The format version is <code>2.0.0</code> (<code>lindera_trainer::model::MODEL_FORMAT_VERSION</code>), and it changes whenever the layout or the meaning of the model changes. <code>lindera export</code> rejects a <code>model.dat</code> written by another version, including every <code>model.dat</code> written before 7.0.0, with an error that ends in "re-run <code>lindera train</code> to regenerate it". Train such a model again with the current version.</p>
 <p>The output is byte-reproducible: training the same inputs twice with the same
 flags produces identical <code>model.dat</code> bytes, so the artifact can be checksummed
 and diffed. This holds for any <code>--max-threads</code> value: the gradient and the

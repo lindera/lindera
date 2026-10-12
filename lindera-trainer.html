@@ -184,9 +184,9 @@
 <li>MeCab-compatible feature template parsing (<code>feature.def</code>: <code>%F[n]</code>, <code>%L[n]</code>, <code>%R[n]</code>, <code>%w</code>, <code>%u</code>, <code>%l</code>, <code>%r</code>, and their optional <code>?</code> variants)</li>
 <li>MeCab-compatible 3-section feature rewriting (<code>rewrite.def</code>: unigram / left / right rewrite rules)</li>
 <li>Dictionary-format agnostic: works with any lexicon whose columns follow <code>surface,left_id,right_id,cost,feature...</code> (IPADIC, UniDic, ko-dic, CC-CEDICT, etc.)</li>
-<li>Automatic unknown-word categorization driven by <code>char.def</code> character categories</li>
+<li>Training lattices built as MeCab's learner builds them: the seed words at every position, and the unknown words that the runtime creates from <code>char.def</code> and <code>unk.def</code>, with one CRF label per <code>unk.def</code> entry</li>
 <li>Connection cost matrix and MeCab-compatible cost conversion (<code>tocost</code>) derived from learned CRF weights</li>
-<li>Zero-copy <code>rkyv</code> binary model serialization, with legacy JSON fallback on read</li>
+<li>Zero-copy <code>rkyv</code> binary model serialization with a format version, with legacy JSON fallback on read</li>
 <li>Direct export of Lindera/MeCab dictionary source files (<code>lex.csv</code>, <code>matrix.def</code>, <code>unk.def</code>, <code>char.def</code>, <code>feature.def</code>, <code>rewrite.def</code>, <code>left-id.def</code>, <code>right-id.def</code>)</li>
 </ul>
 <h2 id="contents"><a class="header" href="#contents">Contents</a></h2>

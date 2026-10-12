@@ -187,6 +187,17 @@
 <li><strong>Export</strong>: Convert the trained model into Lindera dictionary source files.</li>
 <li><strong>Build</strong>: Compile the source files into a binary dictionary that Lindera can load at runtime.</li>
 </ol>
+<h3 id="how-training-works"><a class="header" href="#how-training-works">How training works</a></h3>
+<p><code>lindera train</code> builds one lattice for each sentence of the corpus, as MeCab's learner does. At every position, the lattice has the seed words that start there and the unknown words that the runtime creates there from <code>char.def</code> and <code>unk.def</code> (see <a href="#3-character-definition-chardef">Character Definition</a> and <a href="#4-unknown-word-definition-unkdef">Unknown Word Definition</a>). The CRF learns the weights that make the annotated path, the gold tokens, the cheapest. Each gold token is labelled with the first of these that fits:</p>
+<ol>
+<li>The first seed row, in file order, with the same span and the same whole feature string. Unlike MeCab's learner, which compares only the first <code>eval-size</code> columns, every column must match, so a token whose reading or other columns differ from the seed row falls through to the next steps.</li>
+<li>The first <code>unk.def</code> entry, in file order, of an unknown-word candidate with the same span whose feature columns other than <code>*</code> all equal the gold token's columns.</li>
+<li>A virtual label built from the gold feature string, as MeCab's learner adds a virtual node. Gold tokens with the same feature string share one virtual label. Virtual labels are trained but not exported.</li>
+</ol>
+<p>Every other candidate is a negative example. Once the lattices are built, <code>lindera train</code> prints how the gold tokens were labelled; with the files in <code>resources/training/</code>:</p>
+<pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+</code></pre>
+<p><code>gold_lexicon</code>, <code>gold_unknown</code> and <code>gold_virtual</code> count the gold tokens labelled by each of the three steps, <code>virtual_labels</code> counts the virtual labels, and <code>negative_lexicon</code> and <code>negative_unknown</code> count the negative edges from the seed lexicon and from the unknown-word candidates.</p>
 <h2 id="required-input-files"><a class="header" href="#required-input-files">Required Input Files</a></h2>
 <h3 id="1-seed-lexicon-seedcsv"><a class="header" href="#1-seed-lexicon-seedcsv">1. Seed Lexicon (seed.csv)</a></h3>
 <p>Base vocabulary dictionary in MeCab CSV format.</p>
@@ -230,14 +241,31 @@ NUMERIC 1 1 0
 </code></pre>
 <p>Parameters control the unknown words that a character's default category creates: whether they are created even where a dictionary word starts (<code>INVOKE</code>), whether a run in which each character shares a category with the one before continues as a single token (<code>GROUP</code>), and up to which length shorter candidates are created (<code>LENGTH</code>).</p>
 <p>A range line can list more than one category (for example <code>0x4E00 KANJINUMERIC KANJI</code>), and every range line needs at least one. When several lines cover the same code point, the last line decides its categories, as in MeCab. The first category on that line is the character's default category: the only one that creates unknown-word candidates, and the one the <code>%t</code> feature template uses.</p>
+<p>Training creates the unknown-word candidates with the runtime's own code (<code>Lattice::unknown_word_candidates</code>), so it learns weights for the candidates that the built dictionary produces:</p>
+<ul>
+<li>At each position, the character's default category creates the candidates. It creates none when its <code>INVOKE</code> is 0 and a seed word starts there.</li>
+<li>With <code>GROUP</code> 1, the run in which each character shares a category with the one before becomes one candidate.</li>
+<li>With <code>LENGTH</code> n, the candidates of 1 to n characters are created too, while each character shares a category with the first one (the length ladder). In the example above, <code>KANJI 0 0 2</code> gives a kanji where no seed word starts the candidates of one and two kanji.</li>
+<li>Each <code>unk.def</code> entry of the category gets every one of these spans.</li>
+</ul>
+<p>Grouping is unbounded, as at runtime by default. The Rust API's <code>Trainer::max_grouping_len</code> caps it with the runtime's meaning (characters beyond the first); the CLI has no option for it.</p>
 <h3 id="4-unknown-word-definition-unkdef"><a class="header" href="#4-unknown-word-definition-unkdef">4. Unknown Word Definition (unk.def)</a></h3>
-<p>Defines how out-of-vocabulary words are handled by character type.</p>
-<pre><code class="language-csv">DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
+<p>Defines the unknown words that each character category creates. Each line is <code>category,left_id,right_id,cost,feature...</code>, where <code>category</code> is a category name from <code>char.def</code>. As in the seed lexicon, the ids and the cost are set to 0; export writes the trained values.</p>
+<pre><code class="language-csv"># Unknown word definitions
+DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
 HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*
 ALPHA,0,0,0,名詞,固有名詞,一般,*,*,*,*,*,*
 NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*
+</code></pre>
+<ul>
+<li>Every line is an entry of its own, and a category can have several: one for each part of speech its unknown words can take. mecab-ipadic's <code>unk.def</code>, for example, has 40 lines for 11 categories, six of them for <code>KANJI</code> (<code>名詞,一般</code>, <code>名詞,サ変接続</code> and four kinds of <code>名詞,固有名詞</code>).</li>
+<li>Each entry becomes a CRF label of its own, whose <code>%t</code> is the id of its category. A candidate of the category is created once for each entry, so training learns which entry fits where.</li>
+<li>The order of the lines is kept: <code>lindera export</code> writes one line for each entry, in the same order.</li>
+<li>Lines that start with <code>#</code> and empty lines are skipped. A line with fewer than five fields (the category, the two ids, the cost and at least one feature column) is an error:</li>
+</ul>
+<pre><code class="language-text">Error: LinderaError { kind: Args, source: unk.def line 1: expected at least 5 fields (category, left id, right id, cost, feature), got 4 }
 </code></pre>
 <h3 id="5-feature-template-featuredef"><a class="header" href="#5-feature-template-featuredef">5. Feature Template (feature.def)</a></h3>
 <p>MeCab-compatible feature extraction patterns that define what information the CRF model uses for learning.</p>
@@ -289,6 +317,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>max-threads</code></td><td>Number of parallel processing threads</td><td>CPU core count</td></tr>
 </tbody></table>
 </div>
+<p>Training is slower than MeCab's learner, and it can stop at <code>max-iterations</code> before it converges (<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>).</p>
 <h2 id="cli-usage"><a class="header" href="#cli-usage">CLI Usage</a></h2>
 <h3 id="train"><a class="header" href="#train">Train</a></h3>
 <pre><code class="language-bash">lindera train \
@@ -313,16 +342,25 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <p>This produces the following files:</p>
 <div class="table-wrapper"><table><thead><tr><th>File</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>lex.csv</code></td><td>Lexicon with trained costs</td></tr>
-<tr><td><code>matrix.def</code></td><td>Connection cost matrix</td></tr>
-<tr><td><code>unk.def</code></td><td>Unknown word definition</td></tr>
+<tr><td><code>matrix.def</code></td><td>Connection cost matrix over every context ID, plus 0 for BOS/EOS, even when regularization leaves no bigram weight</td></tr>
+<tr><td><code>unk.def</code></td><td>Unknown word definition: one line for each input <code>unk.def</code> entry, in input order, with its category, trained IDs and cost, and feature</td></tr>
 <tr><td><code>char.def</code></td><td>Character definition</td></tr>
 <tr><td><code>feature.def</code></td><td>Feature template</td></tr>
 <tr><td><code>rewrite.def</code></td><td>Feature rewrite rules</td></tr>
 <tr><td><code>left-id.def</code></td><td>Left context ID mapping</td></tr>
 <tr><td><code>right-id.def</code></td><td>Right context ID mapping</td></tr>
-<tr><td><code>metadata.json</code></td><td>Dictionary metadata</td></tr>
+<tr><td><code>metadata.json</code></td><td>Dictionary metadata; its <code>model_info.connection_matrix_size</code> is the size of <code>matrix.def</code>, rows (right IDs) by columns (left IDs)</td></tr>
 </tbody></table>
 </div>
+<p>For example, if the <code>unk.def</code> above has a second <code>KANJI</code> line, <code>KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*</code>, after the first one, the exported <code>unk.def</code> keeps both, in input order:</p>
+<pre><code class="language-csv">DEFAULT,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,0,名詞,サ変接続,*,*,*,*,*,*,*
+ALPHA,1,1,0,名詞,固有名詞,一般,*,*,*,*,*,*
+NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
+</code></pre>
 <h3 id="build"><a class="header" href="#build">Build</a></h3>
 <p>Compile the exported source files into a binary dictionary:</p>
 <pre><code class="language-bash">lindera build \
@@ -330,15 +368,32 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
     --dest ./dict-compiled \
     --metadata ./dict-source/metadata.json
 </code></pre>
+<p><code>lindera build</code> checks that the context IDs of every <code>lex.csv</code> row and <code>unk.def</code> line lie inside <code>matrix.def</code>, as MeCab's <code>mecab-dict-index</code> does (see <a href="../lindera-cli/commands.html#context-id-check">Context ID check</a>). The files that <code>lindera export</code> writes pass this check.</p>
+<h3 id="tokenize"><a class="header" href="#tokenize">Tokenize</a></h3>
+<p>Tokenize text with the built dictionary:</p>
+<pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize --keep-whitespace -d ./dict-compiled
+</code></pre>
+<p>With the files in <code>resources/training/</code> as the inputs above, the output is:</p>
+<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<p><code>--keep-whitespace</code> is needed because <code>resources/training/char.def</code> has no <code>SPACE</code> category, which the segmenter needs to skip whitespace (<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>). Without it, <code>lindera tokenize</code> fails with <code>SPACE category is not defined in the dictionary (char.def)</code>.</p>
 <h2 id="output-model-format"><a class="header" href="#output-model-format">Output Model Format</a></h2>
 <p>The trained model is serialized in <code>rkyv</code> binary format for fast loading. It contains:</p>
 <ul>
 <li>Feature weights learned by the CRF</li>
-<li>Label set (vocabulary entries)</li>
+<li>Label set (the seed rows, then the <code>unk.def</code> entries)</li>
 <li>Part-of-speech information</li>
-<li>Feature templates</li>
-<li>Training metadata (regularization, iterations, feature/label counts)</li>
+<li>The <code>unk.def</code> entries, in file order, and the content of <code>char.def</code>, <code>feature.def</code> and <code>rewrite.def</code></li>
+<li>Training metadata (format version, regularization, iterations, feature/label counts)</li>
 </ul>
+<p>The format version is <code>2.0.0</code> (<code>lindera_trainer::model::MODEL_FORMAT_VERSION</code>), and it changes whenever the layout or the meaning of the model changes. <code>lindera export</code> rejects a <code>model.dat</code> written by another version, including every <code>model.dat</code> written before 7.0.0, with an error that ends in "re-run <code>lindera train</code> to regenerate it". Train such a model again with the current version.</p>
 <p>The output is byte-reproducible: training the same inputs twice with the same
 flags produces identical <code>model.dat</code> bytes, so the artifact can be checksummed
 and diffed. This holds for any <code>--max-threads</code> value: the gradient and the

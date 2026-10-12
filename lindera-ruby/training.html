@@ -239,6 +239,7 @@ Lindera.export(
 <li><code>char.def</code> -- Character category definitions</li>
 <li><code>metadata.json</code> -- Updated metadata (when <code>metadata</code> parameter is provided)</li>
 </ul>
+<p>The model file must come from this version's training. A model file written by an earlier version, which includes every model file written before 7.0.0, is rejected: <code>Lindera.export</code> fails with an error that asks you to re-run training. Train such a model again with <code>Lindera.train</code>.</p>
 <h2 id="complete-workflow"><a class="header" href="#complete-workflow">Complete Workflow</a></h2>
 <p>The full workflow for training and using a custom dictionary:</p>
 <pre><code class="language-ruby">require 'lindera'

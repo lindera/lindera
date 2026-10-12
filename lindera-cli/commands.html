@@ -650,6 +650,15 @@ EOS
 </ul>
 <h4 id="user-dictionary"><a class="header" href="#user-dictionary">User dictionary</a></h4>
 <p>A supplementary dictionary for custom words that works alongside a system dictionary.</p>
+<h3 id="context-id-check"><a class="header" href="#context-id-check">Context ID check</a></h3>
+<p>When it builds a system dictionary, <code>lindera build</code> checks that every context ID lies inside the connection matrix, as MeCab's <code>mecab-dict-index</code> does. In every <code>lex.csv</code> row and <code>unk.def</code> line, the right context ID must be below the first value of the <code>matrix.def</code> header, and the left context ID below the second. A dictionary that breaks this fails to build, with an error that names the file, the line, the ID and the matrix size. For example, with a 2 x 2 <code>matrix.def</code> and a <code>lex.csv</code> whose second row has the right context ID 2:</p>
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
+</code></pre>
+<ul>
+<li>If the dictionary's <code>metadata.json</code> sets <code>skip_invalid_cost_or_id</code> to <code>true</code>, such a <code>lex.csv</code> row is dropped instead, with a warning through the <code>log</code> crate that the CLI does not print yet (<a href="https://github.com/lindera/lindera/issues/1107">#1107</a>). An <code>unk.def</code> line is always checked.</li>
+<li>A <code>matrix.def</code> row whose IDs fall outside its axes is an error too, and so is an <code>unk.def</code> line with fewer than four fields.</li>
+<li>User dictionaries (<code>--user</code>) are not checked yet (<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>).</li>
+</ul>
 <h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
 <h4 id="build-ipadic-japanese-dictionary"><a class="header" href="#build-ipadic-japanese-dictionary">Build IPADIC (Japanese dictionary)</a></h4>
 <pre><code class="language-shell"># Download and extract IPADIC source files
@@ -872,11 +881,15 @@ EOS
   --max-iterations 100
 </code></pre>
 <h4 id="3-training-results"><a class="header" href="#3-training-results">3. Training results</a></h4>
-<p>The trained model will contain:</p>
+<p><code>lindera train</code> writes the model to the <code>--output</code> file. Once it has built the training lattices, it prints how the gold tokens of the corpus were labelled (see <a href="../development/training_pipeline.html#how-training-works">How training works</a>). With the files in <code>./resources/training/</code>:</p>
+<pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+</code></pre>
+<p>The trained model contains:</p>
 <ul>
-<li><strong>Existing words</strong>: All seed dictionary records with newly learned weights</li>
-<li><strong>New words</strong>: Words from the corpus not in the seed dictionary, added with appropriate weights</li>
+<li><strong>Seed words</strong>: every seed lexicon row, with a learned weight and context IDs</li>
+<li><strong>Unknown words</strong>: every <code>unk.def</code> entry, in file order, with a learned weight and context IDs</li>
 </ul>
+<p>Corpus words that are not in the seed lexicon are not added as words. They are learned through the <code>unk.def</code> entries, or through virtual labels, which are trained but not exported.</p>
 <h2 id="export"><a class="header" href="#export">export</a></h2>
 <p>Export a trained model file to Lindera dictionary format files. This feature requires building with the <code>train</code> feature flag enabled.</p>
 <h3 id="export-parameters"><a class="header" href="#export-parameters">Export parameters</a></h3>
@@ -890,8 +903,8 @@ EOS
 <p>The export command creates the following dictionary files in the output directory:</p>
 <ul>
 <li><code>lex.csv</code>: Lexicon file with learned weights (MeCab-compatible cost via <code>tocost()</code>)</li>
-<li><code>matrix.def</code>: Dense connection cost matrix covering all (right_id, left_id) pairs</li>
-<li><code>unk.def</code>: Unknown word definitions</li>
+<li><code>matrix.def</code>: Dense connection cost matrix covering all (right_id, left_id) pairs of the model's context IDs, plus 0 for BOS/EOS</li>
+<li><code>unk.def</code>: Unknown word definitions, one line for each <code>unk.def</code> entry of the training input, in the same order</li>
 <li><code>char.def</code>: Character type definitions</li>
 <li><code>feature.def</code>: Feature template definitions (copied from trained model)</li>
 <li><code>rewrite.def</code>: Feature rewrite rules (copied from trained model)</li>
@@ -899,6 +912,10 @@ EOS
 <li><code>right-id.def</code>: Right context ID to feature string mapping</li>
 <li><code>metadata.json</code>: Updated metadata file (if <code>--metadata</code> option is provided)</li>
 </ul>
+<h3 id="model-format-version"><a class="header" href="#model-format-version">Model format version</a></h3>
+<p><code>lindera export</code> reads a model of the current format version (2.0.0) only. A <code>model.dat</code> written by an earlier version, which includes every <code>model.dat</code> written before 7.0.0, is rejected, and has to be trained again with <code>lindera train</code>. For a model trained with the 6.1.0 CLI:</p>
+<pre><code class="language-text">Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera train` to regenerate it. }
+</code></pre>
 <h3 id="complete-workflow-example"><a class="header" href="#complete-workflow-example">Complete workflow example</a></h3>
 <h4 id="1-train-model"><a class="header" href="#1-train-model">1. Train model</a></h4>
 <pre><code class="language-bash">lindera train \
@@ -926,8 +943,19 @@ EOS
 </code></pre>
 <h4 id="4-use-trained-dictionary"><a class="header" href="#4-use-trained-dictionary">4. Use trained dictionary</a></h4>
 <pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize \
+  --keep-whitespace \
   -d /tmp/lindera/training/compiled_dictionary
 </code></pre>
+<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<p><code>--keep-whitespace</code> is needed because <code>resources/training/char.def</code> has no <code>SPACE</code> category, which the segmenter needs to skip whitespace (<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>).</p>
 <h3 id="metadata-update-feature"><a class="header" href="#metadata-update-feature">Metadata update feature</a></h3>
 <p>When the <code>--metadata</code> option is provided, the export command will:</p>
 <ol>
@@ -935,7 +963,7 @@ EOS
 <li><strong>Update specific fields</strong> with values from the trained model:
 <ul>
 <li><code>default_word_cost</code>: Calculated from feature weight median</li>
-<li><code>model_info</code>: Training statistics including feature count, label count, matrix size, iterations, regularization, and version. No timestamp is written, so exporting the same model twice produces identical output</li>
+<li><code>model_info</code>: Training statistics including feature count, label count, matrix size (<code>connection_matrix_size</code>, the size of <code>matrix.def</code> as rows x columns), iterations, regularization, and the model format version. No timestamp is written, so exporting the same model twice produces identical output</li>
 </ul>
 </li>
 <li><strong>Preserve existing settings</strong> such as dictionary name, character encoding, schema definitions, and other user-defined configuration</li>

@@ -187,6 +187,17 @@
 <li><strong>Export</strong>: 学習済みモデルを Lindera 辞書ソースファイルに変換します。</li>
 <li><strong>Build</strong>: ソースファイルを Lindera が実行時に読み込めるバイナリ辞書にコンパイルします。</li>
 </ol>
+<h3 id="学習のしくみ"><a class="header" href="#学習のしくみ">学習のしくみ</a></h3>
+<p><code>lindera train</code> は、MeCab の学習器と同じく、コーパスの文ごとにラティスを 1 つ作ります。ラティスには、各位置から始まる種辞書の語と、ランタイムが <code>char.def</code> と <code>unk.def</code> からその位置に作る未知語が入ります（<a href="#3-%E6%96%87%E5%AD%97%E5%AE%9A%E7%BE%A9-chardef">文字定義</a>と<a href="#4-%E6%9C%AA%E7%9F%A5%E8%AA%9E%E5%AE%9A%E7%BE%A9-unkdef">未知語定義</a>を参照）。CRF は、アノテーションされたパス（正解のトークン）が最もコストの低いパスになるように重みを学習します。正解の各トークンには、次のうち最初に当てはまるもののラベルを付けます。</p>
+<ol>
+<li>範囲（span）と素性文字列全体が同じ種辞書の行のうち、ファイル順で最初の行。MeCab の学習器は先頭の <code>eval-size</code> 列だけを比べますが、Lindera はすべての列が一致する必要があるため、読みなどの列が種辞書の行と異なるトークンは次の段階に進みます。</li>
+<li>範囲が同じ未知語候補の <code>unk.def</code> エントリのうち、<code>*</code> 以外の素性の列がすべて正解トークンの列と一致する、ファイル順で最初のエントリ。</li>
+<li>正解の素性文字列から作る仮想ラベル。MeCab の学習器が仮想ノードを追加するのと同じです。素性文字列が同じ正解トークンは 1 つの仮想ラベルを共有します。仮想ラベルは学習されますが、エクスポートされません。</li>
+</ol>
+<p>それ以外の候補はすべて負例になります。ラティスを作り終えると、<code>lindera train</code> は正解トークンのラベルの付き方を出力します。<code>resources/training/</code> のファイルでは次のとおりです。</p>
+<pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+</code></pre>
+<p><code>gold_lexicon</code>・<code>gold_unknown</code>・<code>gold_virtual</code> は上の 3 つの段階それぞれでラベルを付けた正解トークンの数、<code>virtual_labels</code> は仮想ラベルの数、<code>negative_lexicon</code> と <code>negative_unknown</code> は種辞書と未知語候補それぞれから作った負例の辺の数です。</p>
 <h2 id="必要な入力ファイル"><a class="header" href="#必要な入力ファイル">必要な入力ファイル</a></h2>
 <h3 id="1-種辞書-seedcsv"><a class="header" href="#1-種辞書-seedcsv">1. 種辞書 (seed.csv)</a></h3>
 <p>MeCab CSV 形式のベース語彙辞書です。</p>
@@ -230,14 +241,31 @@ NUMERIC 1 1 0
 </code></pre>
 <p>パラメータは、文字の既定カテゴリが作る未知語を制御します。辞書語が始まる位置でも未知語を作るか（<code>INVOKE</code>）、どの文字も直前の文字とカテゴリを共有する連続を 1 つのトークンにするか（<code>GROUP</code>）、どの長さまで短い候補を作るか（<code>LENGTH</code>）を指定します。</p>
 <p>範囲行には複数のカテゴリを書くことができ（例: <code>0x4E00 KANJINUMERIC KANJI</code>）、少なくとも 1 つのカテゴリが必要です。同じコードポイントを複数の行が覆う場合は、MeCab と同じく最後の行がそのカテゴリを決めます。その行の先頭のカテゴリが文字の既定カテゴリです。未知語候補を作るのは既定カテゴリだけで、素性テンプレートの <code>%t</code> もこれを使います。</p>
+<p>学習は、ランタイムと同じコード（<code>Lattice::unknown_word_candidates</code>）で未知語候補を作ります。そのため、ビルドした辞書が作る候補に対して重みを学習します。</p>
+<ul>
+<li>各位置では、文字の既定カテゴリが候補を作ります。<code>INVOKE</code> が 0 で、その位置から種辞書の語が始まる場合は作りません。</li>
+<li><code>GROUP</code> が 1 なら、どの文字も直前の文字とカテゴリを共有する連続を 1 つの候補にします。</li>
+<li><code>LENGTH</code> が n なら、どの文字も先頭の文字とカテゴリを共有する間、1〜n 文字の候補も作ります（候補ラダー）。上の例の <code>KANJI 0 0 2</code> では、種辞書の語が始まらない漢字の位置に、漢字 1 文字と 2 文字の候補ができます。</li>
+<li>カテゴリの <code>unk.def</code> のエントリそれぞれが、これらすべての範囲の候補を持ちます。</li>
+</ul>
+<p>グルーピングの長さは、ランタイムのデフォルトと同じく無制限です。Rust API の <code>Trainer::max_grouping_len</code> で、ランタイムと同じ意味（先頭の 1 文字を除いた文字数）の上限を設定できます。CLI にはこのオプションはありません。</p>
 <h3 id="4-未知語定義-unkdef"><a class="header" href="#4-未知語定義-unkdef">4. 未知語定義 (unk.def)</a></h3>
-<p>文字タイプごとに未知語の処理方法を定義します。</p>
-<pre><code class="language-csv">DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
+<p>文字カテゴリごとに、そのカテゴリが作る未知語を定義します。各行は <code>category,left_id,right_id,cost,feature...</code> で、<code>category</code> は <code>char.def</code> のカテゴリ名です。種辞書と同じく ID とコストは 0 にしておきます。学習した値はエクスポートで書き出されます。</p>
+<pre><code class="language-csv"># Unknown word definitions
+DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
 HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*
 ALPHA,0,0,0,名詞,固有名詞,一般,*,*,*,*,*,*
 NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*
+</code></pre>
+<ul>
+<li>各行がそれぞれ 1 つのエントリで、1 つのカテゴリが複数のエントリを持てます。未知語がとりうる品詞ごとに 1 行です。たとえば mecab-ipadic の <code>unk.def</code> は 11 カテゴリに 40 行あり、そのうち 6 行が <code>KANJI</code>（<code>名詞,一般</code>・<code>名詞,サ変接続</code>・4 種類の <code>名詞,固有名詞</code>）です。</li>
+<li>各エントリはそれぞれ 1 つの CRF ラベルになり、その <code>%t</code> はエントリのカテゴリの ID です。カテゴリの候補はエントリごとに作られるため、どのエントリがどこに合うかを学習します。</li>
+<li>行の順序は保たれます。<code>lindera export</code> はエントリごとに 1 行を同じ順序で書き出します。</li>
+<li><code>#</code> で始まる行と空行は読み飛ばします。フィールドが 5 つ未満（カテゴリ、2 つの ID、コスト、1 列以上の素性）の行はエラーになります。</li>
+</ul>
+<pre><code class="language-text">Error: LinderaError { kind: Args, source: unk.def line 1: expected at least 5 fields (category, left id, right id, cost, feature), got 4 }
 </code></pre>
 <h3 id="5-素性テンプレート-featuredef"><a class="header" href="#5-素性テンプレート-featuredef">5. 素性テンプレート (feature.def)</a></h3>
 <p>CRF モデルが学習に使用する情報を定義する MeCab 互換の素性抽出パターンです。</p>
@@ -289,6 +317,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>max-threads</code></td><td>並列処理スレッド数</td><td>CPU コア数</td></tr>
 </tbody></table>
 </div>
+<p>学習は MeCab の学習器より遅く、収束する前に <code>max-iterations</code> で止まることがあります（<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>）。</p>
 <h2 id="cli-の使用"><a class="header" href="#cli-の使用">CLI の使用</a></h2>
 <h3 id="train"><a class="header" href="#train">Train</a></h3>
 <pre><code class="language-bash">lindera train \
@@ -313,16 +342,25 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <p>以下のファイルが生成されます：</p>
 <div class="table-wrapper"><table><thead><tr><th>ファイル</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>lex.csv</code></td><td>学習済みコスト付きレキシコン</td></tr>
-<tr><td><code>matrix.def</code></td><td>連接コスト行列</td></tr>
-<tr><td><code>unk.def</code></td><td>未知語定義</td></tr>
+<tr><td><code>matrix.def</code></td><td>すべての文脈 ID と BOS/EOS 用の 0 を覆う連接コスト行列。正則化でバイグラムの重みが 1 つも残らない場合も同じ</td></tr>
+<tr><td><code>unk.def</code></td><td>未知語定義。入力の <code>unk.def</code> のエントリごとに 1 行を入力と同じ順序で書き、カテゴリ・学習した ID とコスト・素性を持つ</td></tr>
 <tr><td><code>char.def</code></td><td>文字定義</td></tr>
 <tr><td><code>feature.def</code></td><td>素性テンプレート</td></tr>
 <tr><td><code>rewrite.def</code></td><td>素性書き換えルール</td></tr>
 <tr><td><code>left-id.def</code></td><td>左文脈 ID マッピング</td></tr>
 <tr><td><code>right-id.def</code></td><td>右文脈 ID マッピング</td></tr>
-<tr><td><code>metadata.json</code></td><td>辞書メタデータ</td></tr>
+<tr><td><code>metadata.json</code></td><td>辞書メタデータ。<code>model_info.connection_matrix_size</code> は <code>matrix.def</code> の大きさ（行（右文脈 ID）× 列（左文脈 ID））</td></tr>
 </tbody></table>
 </div>
+<p>たとえば上の <code>unk.def</code> で、最初の <code>KANJI</code> の行の後に 2 つ目の <code>KANJI</code> の行 <code>KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*</code> を加えると、エクスポートした <code>unk.def</code> は両方の行を入力と同じ順序で持ちます。</p>
+<pre><code class="language-csv">DEFAULT,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,0,名詞,サ変接続,*,*,*,*,*,*,*
+ALPHA,1,1,0,名詞,固有名詞,一般,*,*,*,*,*,*
+NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
+</code></pre>
 <h3 id="build"><a class="header" href="#build">Build</a></h3>
 <p>エクスポートされたソースファイルをバイナリ辞書にコンパイルします：</p>
 <pre><code class="language-bash">lindera build \
@@ -330,15 +368,32 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
     --dest ./dict-compiled \
     --metadata ./dict-source/metadata.json
 </code></pre>
+<p><code>lindera build</code> は、MeCab の <code>mecab-dict-index</code> と同じく、<code>lex.csv</code> の各行と <code>unk.def</code> の各行の文脈 ID が <code>matrix.def</code> の範囲内にあることを確認します（<a href="../lindera-cli/commands.html#%E6%96%87%E8%84%88-id-%E3%81%AE%E7%A2%BA%E8%AA%8D">文脈 ID の確認</a>を参照）。<code>lindera export</code> が書き出したファイルはこの確認を通ります。</p>
+<h3 id="tokenize"><a class="header" href="#tokenize">Tokenize</a></h3>
+<p>ビルドした辞書でテキストを解析します：</p>
+<pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize --keep-whitespace -d ./dict-compiled
+</code></pre>
+<p>上の入力ファイルに <code>resources/training/</code> のファイルを使うと、出力は次のとおりです。</p>
+<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<p><code>resources/training/char.def</code> には、Segmenter が空白を読み飛ばすのに必要な <code>SPACE</code> カテゴリがないため、<code>--keep-whitespace</code> が必要です（<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>）。指定しないと、<code>lindera tokenize</code> は <code>SPACE category is not defined in the dictionary (char.def)</code> で失敗します。</p>
 <h2 id="出力モデルの形式"><a class="header" href="#出力モデルの形式">出力モデルの形式</a></h2>
 <p>学習済みモデルは高速読み込みのために <code>rkyv</code> バイナリ形式でシリアライズされます。以下を含みます：</p>
 <ul>
 <li>CRF で学習された素性の重み</li>
-<li>ラベルセット（語彙エントリー）</li>
+<li>ラベルセット（種辞書の行、続いて <code>unk.def</code> のエントリ）</li>
 <li>品詞情報</li>
-<li>素性テンプレート</li>
-<li>学習メタデータ（正則化、イテレーション数、素性・ラベル数）</li>
+<li>ファイル順の <code>unk.def</code> のエントリと、<code>char.def</code>・<code>feature.def</code>・<code>rewrite.def</code> の内容</li>
+<li>学習メタデータ（形式バージョン、正則化、イテレーション数、素性・ラベル数）</li>
 </ul>
+<p>形式バージョンは <code>2.0.0</code>（<code>lindera_trainer::model::MODEL_FORMAT_VERSION</code>）で、モデルの構造や意味が変わるたびに変わります。<code>lindera export</code> は、別のバージョンで書かれた <code>model.dat</code>（7.0.0 より前に書かれたものはすべて該当）を、「re-run <code>lindera train</code> to regenerate it」で終わるエラーで拒否します。そうしたモデルは現在のバージョンで学習し直してください。</p>
 <p>出力はバイト単位で再現可能です。同じ入力・同じフラグで 2 回学習すると
 <code>model.dat</code> のバイト列が一致するため、チェックサムの取得や差分比較ができます。
 これは <code>--max-threads</code> の値によらず成り立ちます。勾配と損失は学習データの

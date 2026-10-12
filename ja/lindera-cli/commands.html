@@ -650,6 +650,15 @@ EOS
 </ul>
 <h4 id="ユーザー辞書-user-dictionary"><a class="header" href="#ユーザー辞書-user-dictionary">ユーザー辞書 (User dictionary)</a></h4>
 <p>システム辞書と一緒に動作する、カスタム単語のための補助辞書です。</p>
+<h3 id="文脈-id-の確認"><a class="header" href="#文脈-id-の確認">文脈 ID の確認</a></h3>
+<p>システム辞書をビルドするとき、<code>lindera build</code> は MeCab の <code>mecab-dict-index</code> と同じく、すべての文脈 ID が接続コスト行列の範囲内にあることを確認します。<code>lex.csv</code> の各行と <code>unk.def</code> の各行で、右文脈 ID は <code>matrix.def</code> のヘッダの 1 つ目の値より小さく、左文脈 ID は 2 つ目の値より小さくなければなりません。これに反する辞書はビルドに失敗し、エラーはファイル・行・ID・行列の大きさを示します。たとえば 2 x 2 の <code>matrix.def</code> で、<code>lex.csv</code> の 2 行目の右文脈 ID が 2 の場合は次のとおりです：</p>
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
+</code></pre>
+<ul>
+<li>辞書の <code>metadata.json</code> で <code>skip_invalid_cost_or_id</code> が <code>true</code> の場合は、そうした <code>lex.csv</code> の行を取り除きます。<code>log</code> クレートに警告を出しますが、CLI はまだそれを表示しません（<a href="https://github.com/lindera/lindera/issues/1107">#1107</a>）。<code>unk.def</code> の行は常に確認します。</li>
+<li>ID が軸の範囲外にある <code>matrix.def</code> の行もエラーになり、フィールドが 4 つ未満の <code>unk.def</code> の行もエラーになります。</li>
+<li>ユーザー辞書（<code>--user</code>）はまだ確認しません（<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>）。</li>
+</ul>
 <h3 id="例"><a class="header" href="#例">例</a></h3>
 <h4 id="ipadic日本語辞書のビルド"><a class="header" href="#ipadic日本語辞書のビルド">IPADIC（日本語辞書）のビルド</a></h4>
 <pre><code class="language-shell"># IPADICソースファイルのダウンロードと展開
@@ -872,11 +881,15 @@ EOS
   --max-iterations 100
 </code></pre>
 <h4 id="3-学習結果"><a class="header" href="#3-学習結果">3. 学習結果</a></h4>
+<p><code>lindera train</code> はモデルを <code>--output</code> のファイルに書き出します。学習用のラティスを作り終えると、コーパスの正解トークンのラベルの付き方を出力します（<a href="../development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。<code>./resources/training/</code> のファイルでは次のとおりです：</p>
+<pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+</code></pre>
 <p>学習済みモデルには以下が含まれます：</p>
 <ul>
-<li><strong>既存単語</strong>: 新しく学習された重みを持つすべてのシード辞書レコード</li>
-<li><strong>新語</strong>: シード辞書にはないがコーパスに含まれる単語（適切な重み付きで追加）</li>
+<li><strong>シード辞書の語</strong>: シード辞書のすべてのレコード（学習された重みと文脈 ID 付き）</li>
+<li><strong>未知語</strong>: <code>unk.def</code> のすべてのエントリをファイル順に（学習された重みと文脈 ID 付き）</li>
 </ul>
+<p>シード辞書にないコーパスの語は、語として追加されません。それらは <code>unk.def</code> のエントリか、学習されるもののエクスポートされない仮想ラベルを通じて学習されます。</p>
 <h2 id="export"><a class="header" href="#export">export</a></h2>
 <p>学習済みモデルファイルをLindera辞書フォーマットのファイルにエクスポートします。この機能を使用するには、<code>train</code> 機能フラグを有効にしてビルドする必要があります。</p>
 <h3 id="エクスポートパラメータ"><a class="header" href="#エクスポートパラメータ">エクスポートパラメータ</a></h3>
@@ -890,8 +903,8 @@ EOS
 <p>エクスポートコマンドは出力ディレクトリに以下の辞書ファイルを作成します：</p>
 <ul>
 <li><code>lex.csv</code>: 学習された重みを持つ語彙ファイル（MeCab互換の <code>tocost()</code> によるコスト変換）</li>
-<li><code>matrix.def</code>: 全 (right_id, left_id) ペアを網羅する密な接続コスト行列</li>
-<li><code>unk.def</code>: 未知語定義</li>
+<li><code>matrix.def</code>: モデルの文脈 ID と BOS/EOS 用の 0 の全 (right_id, left_id) ペアを網羅する密な接続コスト行列</li>
+<li><code>unk.def</code>: 未知語定義。学習の入力の <code>unk.def</code> のエントリごとに 1 行を、同じ順序で書き出す</li>
 <li><code>char.def</code>: 文字種定義</li>
 <li><code>feature.def</code>: 素性テンプレート定義（学習済みモデルからコピー）</li>
 <li><code>rewrite.def</code>: 素性リライトルール（学習済みモデルからコピー）</li>
@@ -899,6 +912,10 @@ EOS
 <li><code>right-id.def</code>: 右文脈IDから素性文字列へのマッピング</li>
 <li><code>metadata.json</code>: 更新されたメタデータファイル（<code>--metadata</code> オプションが指定された場合）</li>
 </ul>
+<h3 id="モデルの形式バージョン"><a class="header" href="#モデルの形式バージョン">モデルの形式バージョン</a></h3>
+<p><code>lindera export</code> が読み込めるのは、現在の形式バージョン（2.0.0）のモデルだけです。それより前のバージョンで書かれた <code>model.dat</code>（7.0.0 より前に書かれたものはすべて該当）は拒否されるため、<code>lindera train</code> で学習し直す必要があります。6.1.0 の CLI で学習したモデルでは次のとおりです：</p>
+<pre><code class="language-text">Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera train` to regenerate it. }
+</code></pre>
 <h3 id="完全なワークフロー例"><a class="header" href="#完全なワークフロー例">完全なワークフロー例</a></h3>
 <h4 id="1-モデルの学習"><a class="header" href="#1-モデルの学習">1. モデルの学習</a></h4>
 <pre><code class="language-bash">lindera train \
@@ -926,8 +943,19 @@ EOS
 </code></pre>
 <h4 id="4-学習済み辞書の使用"><a class="header" href="#4-学習済み辞書の使用">4. 学習済み辞書の使用</a></h4>
 <pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize \
+  --keep-whitespace \
   -d /tmp/lindera/training/compiled_dictionary
 </code></pre>
+<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<p><code>resources/training/char.def</code> には、Segmenter が空白を読み飛ばすのに必要な <code>SPACE</code> カテゴリがないため、<code>--keep-whitespace</code> が必要です（<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>）。</p>
 <h3 id="メタデータ更新機能"><a class="header" href="#メタデータ更新機能">メタデータ更新機能</a></h3>
 <p><code>--metadata</code> オプションが指定されると、エクスポートコマンドは以下の処理を行います：</p>
 <ol>
@@ -935,7 +963,7 @@ EOS
 <li><strong>特定のフィールドを学習済みモデルの値で更新</strong>します：
 <ul>
 <li><code>default_word_cost</code>: 素性重みの中央値から計算された値</li>
-<li><code>model_info</code>: 素性数、ラベル数、行列サイズ、反復回数、正則化、バージョンを含む学習統計情報。タイムスタンプは書き込まれないため、同じモデルを 2 回エクスポートすると同一の出力になります</li>
+<li><code>model_info</code>: 素性数、ラベル数、行列サイズ（<code>connection_matrix_size</code>。<code>matrix.def</code> の大きさを行数 x 列数で表す）、反復回数、正則化、モデルの形式バージョンを含む学習統計情報。タイムスタンプは書き込まれないため、同じモデルを 2 回エクスポートすると同一の出力になります</li>
 </ul>
 </li>
 <li><strong>既存の設定を保持</strong>します（辞書名、文字エンコード設定、スキーマ定義、その他のユーザー定義設定など）</li>
