@@ -947,6 +947,107 @@ mod tests {
             "right-id.def entries ({right_id_count}) should match matrix rows ({rows})"
         );
     }
+
+    fn train_fixture_with_feature_def(feature_def: &str) -> model::Model {
+        let (seed_csv, char_def, unk_def, _, rewrite_def, corpus_text) = test_fixtures::fixtures();
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed_csv),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+        let trainer = Trainer::new(config)
+            .unwrap()
+            .regularization_cost(0.01)
+            .max_iter(5)
+            .num_threads(1);
+        let corpus = Corpus::from_reader(Cursor::new(corpus_text)).unwrap();
+        trainer.train(corpus).unwrap()
+    }
+
+    fn written(write: impl FnOnce(&mut Vec<u8>) -> anyhow::Result<()>) -> String {
+        let mut buf = Vec::new();
+        write(&mut buf).unwrap();
+        String::from_utf8(buf).unwrap()
+    }
+
+    fn matrix_header(matrix_def: &str) -> (usize, usize) {
+        let header = matrix_def.lines().next().unwrap();
+        let dims: Vec<usize> = header
+            .split_whitespace()
+            .map(|s| s.parse().unwrap())
+            .collect();
+        assert_eq!(dims.len(), 2, "matrix.def header: {header}");
+        (dims[0], dims[1])
+    }
+
+    /// Asserts that every context id of the exported lexicon and unknown
+    /// entries lies inside the exported matrix, as the runtime requires.
+    fn assert_entries_inside_matrix(serializable: &model::SerializableModel) {
+        let matrix = written(|w| serializable.write_connection_costs(w));
+        let (rows, cols) = matrix_header(&matrix);
+        assert_eq!(matrix.lines().count() - 1, rows * cols, "dense matrix");
+
+        let left_ids = written(|w| serializable.write_left_id_def(w));
+        let right_ids = written(|w| serializable.write_right_id_def(w));
+        assert_eq!(left_ids.lines().count(), cols, "left-id.def vs columns");
+        assert_eq!(right_ids.lines().count(), rows, "right-id.def vs rows");
+
+        let lexicon = written(|w| serializable.write_lexicon(w));
+        let unknown = written(|w| serializable.write_unknown_dictionary(w));
+        for line in lexicon.lines().chain(unknown.lines()) {
+            let fields: Vec<&str> = line.split(',').collect();
+            let left_id: usize = fields[1].parse().unwrap();
+            let right_id: usize = fields[2].parse().unwrap();
+            assert!(left_id < cols, "left id outside the matrix: {line}");
+            assert!(right_id < rows, "right id outside the matrix: {line}");
+        }
+    }
+
+    #[test]
+    fn test_exported_matrix_covers_every_context_id_without_bigram_weights() {
+        // Without a BIGRAM template no bigram weight exists: the state L1
+        // reaches on `resources/training/` once every bigram weight is
+        // zeroed. The entries still carry context ids, so the matrix must
+        // cover them; it used to be written as `0 0`.
+        let model = train_fixture_with_feature_def("UNIGRAM U00:%F[0]\n");
+        let mut buf = Vec::new();
+        model.write_model(&mut buf).unwrap();
+        let serializable = model::Model::read_model(Cursor::new(&buf)).unwrap();
+        assert!(
+            serializable.connection_matrix.is_empty(),
+            "precondition: no bigram weight"
+        );
+
+        let (rows, cols) = matrix_header(&written(|w| serializable.write_connection_costs(w)));
+        assert!(rows > 1 && cols > 1, "matrix {rows}x{cols}");
+        assert_entries_inside_matrix(&serializable);
+
+        // The model the trainer holds writes the same matrix as the one read
+        // back from model.dat.
+        assert_eq!(
+            written(|w| model.write_connection_costs(w)),
+            written(|w| serializable.write_connection_costs(w))
+        );
+    }
+
+    #[test]
+    fn test_exported_matrix_matches_the_trainer_matrix() {
+        // With bigram weights, too, both writers give the same matrix, and
+        // every exported entry lies inside it.
+        let model = test_fixtures::train_wide_model(1);
+        let mut buf = Vec::new();
+        model.write_model(&mut buf).unwrap();
+        let serializable = model::Model::read_model(Cursor::new(&buf)).unwrap();
+
+        assert_entries_inside_matrix(&serializable);
+        assert_eq!(
+            written(|w| model.write_connection_costs(w)),
+            written(|w| serializable.write_connection_costs(w))
+        );
+    }
 }
 
 // Regression tests for #974: `lindera train` must produce a byte-reproducible

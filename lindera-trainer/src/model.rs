@@ -101,9 +101,11 @@ pub struct SerializableModel {
     /// byte-reproducible. No stored value changes: both levels are only ever
     /// filled key-by-key from `Vec`-ordered sources.
     pub connection_matrix: BTreeMap<usize, BTreeMap<usize, f64>>,
-    /// Maximum left connection ID
+    /// Highest left context id of the model, whether or not a weight survived
+    /// for it; `matrix.def` has `max_left_id + 1` columns.
     pub max_left_id: usize,
-    /// Maximum right connection ID
+    /// Highest right context id of the model, whether or not a weight
+    /// survived for it; `matrix.def` has `max_right_id + 1` rows.
     pub max_right_id: usize,
     /// Feature set information (left_id, right_id, weight) for each label
     pub feature_sets: Vec<FeatureSetInfo>,
@@ -280,18 +282,21 @@ impl Model {
         // Compute optimal cost factor from actual weight range
         let cost_factor = calculate_cost_factor(&merged_model);
 
+        // The matrix must cover every context id the merge assigned, whether
+        // or not a weight survived for it: the merge numbers the ids densely
+        // from 1 (0 is BOS/EOS), and every lexicon and unknown entry carries
+        // one. Counting only the cells that kept a weight shrank the left
+        // axis, and to nothing when regularization zeroed every bigram
+        // weight, so the built dictionary indexed past its matrix.
+        let max_right_id = merged_model.right_conn_to_left_feats.len();
+        let max_left_id = merged_model.left_conn_to_right_feats.len();
+
         let mut connection_matrix: BTreeMap<usize, BTreeMap<usize, f64>> = BTreeMap::new();
-        let mut max_left_id = 0;
-        let mut max_right_id = 0;
-
         for (right_id, left_map) in merged_model.matrix.iter().enumerate() {
-            max_right_id = max_right_id.max(right_id);
-            let mut inner_map = BTreeMap::new();
-
-            for (&left_id, &weight) in left_map.iter() {
-                max_left_id = max_left_id.max(left_id as usize);
-                inner_map.insert(left_id as usize, weight);
-            }
+            let inner_map: BTreeMap<usize, f64> = left_map
+                .iter()
+                .map(|(&left_id, &weight)| (left_id as usize, weight))
+                .collect();
 
             if !inner_map.is_empty() {
                 connection_matrix.insert(right_id, inner_map);
@@ -1102,33 +1107,41 @@ impl SerializableModel {
         Ok(())
     }
 
-    /// Write dense connection cost matrix (MeCab-compatible)
+    /// Writes the dense connection cost matrix (MeCab-compatible `matrix.def`).
+    ///
+    /// The matrix covers every context id of the model, plus 0 for BOS/EOS,
+    /// even when no bigram weight survived training: the lexicon and unknown
+    /// entries carry those ids, and the runtime looks every transition up.
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `matrix.def`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
     pub fn write_connection_costs<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
-        if !self.connection_matrix.is_empty() {
-            let right_size = self.max_right_id + 1;
-            let left_size = self.max_left_id + 1;
+        let right_size = self.max_right_id + 1;
+        let left_size = self.max_left_id + 1;
 
-            writeln!(writer, "{right_size} {left_size}")?;
+        writeln!(writer, "{right_size} {left_size}")?;
 
-            // Dense matrix: all (right_id, left_id) pairs
-            // Unseen pairs get maximum penalty cost to block unlearned transitions,
-            // forcing Viterbi to prefer paths through learned POS bigram connections.
-            for right_id in 0..right_size {
-                for left_id in 0..left_size {
-                    let cost = if let Some(&weight) = self
-                        .connection_matrix
-                        .get(&right_id)
-                        .and_then(|inner| inner.get(&left_id))
-                    {
-                        tocost(weight, self.cost_factor)
-                    } else {
-                        i16::MAX
-                    };
-                    writeln!(writer, "{right_id} {left_id} {cost}")?;
-                }
+        // Dense matrix: all (right_id, left_id) pairs
+        // Unseen pairs get maximum penalty cost to block unlearned transitions,
+        // forcing Viterbi to prefer paths through learned POS bigram connections.
+        for right_id in 0..right_size {
+            for left_id in 0..left_size {
+                let cost = if let Some(&weight) = self
+                    .connection_matrix
+                    .get(&right_id)
+                    .and_then(|inner| inner.get(&left_id))
+                {
+                    tocost(weight, self.cost_factor)
+                } else {
+                    i16::MAX
+                };
+                writeln!(writer, "{right_id} {left_id} {cost}")?;
             }
-        } else {
-            writeln!(writer, "0 0")?;
         }
 
         Ok(())
@@ -1177,14 +1190,15 @@ impl SerializableModel {
         metadata["default_word_cost"] =
             serde_json::Value::Number(serde_json::Number::from(updated_default_cost));
 
-        // Add model_info section with training statistics
-        let max_context_id = std::cmp::max(self.max_left_id, self.max_right_id);
+        // Add model_info section with training statistics. The matrix size is
+        // the one `write_connection_costs` writes: rows are right ids, columns
+        // left ids, each with 0 for BOS/EOS.
         metadata["model_info"] = serde_json::json!({
             "feature_count": self.feature_weights.len(),
             "label_count": self.labels.len(),
             "max_left_context_id": self.max_left_id,
             "max_right_context_id": self.max_right_id,
-            "connection_matrix_size": format!("{}x{}", max_context_id + 1, max_context_id + 1),
+            "connection_matrix_size": format!("{}x{}", self.max_right_id + 1, self.max_left_id + 1),
             "version": self.metadata.version,
             "training_iterations": self.metadata.iterations,
             "regularization": self.metadata.regularization,
