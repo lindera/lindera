@@ -1127,13 +1127,20 @@ ID は <code>matrix.def</code> のヘッダの 1 つ目の値より小さく、�
 エラーは行を示します。これまで行を示さなかった、文脈 ID やコストが数値でない
 行のエラーも、行を示すようになります。</li>
 <li>ユーザー辞書は、システム辞書と組み合わせるときに確認します。
-<code>lindera build --user</code> はシステム辞書を知らないためです。
 <code>Segmenter::try_new</code>、設定からの構築、<code>lindera tokenize --user-dict</code>、
 各言語バインディングの <code>Tokenizer</code> のコンストラクタとビルダーは、行列の範囲外に
 ある最初の見出し語を示すエラーを返します
 （<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>。
 <a href="concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。
-<code>Segmenter::new</code> はこれまでどおり確認しません。</li>
+<code>Segmenter::new</code> はこれまでどおり確認しません。新しい <code>--system-dict</code>
+オプションでシステム辞書を指定すると、<code>lindera build --user</code> の時点で各行を
+確認し、行列の範囲外にある最初の行を CSV の行番号と表層形で示します
+（Rust API では <code>DictionaryBuilder::with_system_matrix</code>。
+<a href="https://github.com/lindera/lindera/issues/1182">#1182</a>）。</li>
+<li>ユーザー辞書の行のコストや文脈 ID が数値でないときのエラーは、
+<code>lindera build --user</code> でも <code>.csv</code> のユーザー辞書の読み込みでも、その行の
+CSV の行番号を示します（<code>at line 1</code>）。これまでは、表層形の順に並べた行を
+数えていました（1 行目にあり、表層形の順で 2 番目になる行は <code>at row 2</code>）。</li>
 </ul>
 <p><code>mecab-dict-index</code> は同じ範囲を確認するため、それでビルドできる辞書は確認を
 通ります。v6.2.0 以前の <code>lindera export</code> で書き出した辞書は、<code>matrix.def</code> が

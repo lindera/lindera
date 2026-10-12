@@ -637,6 +637,7 @@ EOS
 <li><code>--dest</code> / <code>-d</code>: Destination directory for compiled dictionary output</li>
 <li><code>--metadata</code> / <code>-m</code>: Metadata configuration file (metadata.json) that defines dictionary structure</li>
 <li><code>--user</code> / <code>-u</code>: Build user dictionary instead of system dictionary (optional flag)</li>
+<li><code>--system-dict</code>: The system dictionary the user dictionary is for, as a directory path, URI, or downloaded dictionary name, the forms <code>tokenize --dict</code> accepts (optional; only with <code>--user</code>). The build then checks every row's context IDs against its connection matrix (see <a href="#context-id-check">Context ID check</a>)</li>
 <li><code>--context-id-freq</code> / <code>-f</code>: Context-ID access-frequency file used to reorder connection-cost IDs (optional; only meaningful when the dictionary's <code>metadata.json</code> sets <code>connection_id_mapping: true</code>)</li>
 </ul>
 <h3 id="dictionary-types"><a class="header" href="#dictionary-types">Dictionary types</a></h3>
@@ -657,8 +658,13 @@ EOS
 <ul>
 <li>If the dictionary's <code>metadata.json</code> sets <code>skip_invalid_cost_or_id</code> to <code>true</code>, such a <code>lex.csv</code> row is dropped instead, with a warning through the <code>log</code> crate that the CLI does not print yet (<a href="https://github.com/lindera/lindera/issues/1107">#1107</a>). An <code>unk.def</code> line is always checked.</li>
 <li>A <code>matrix.def</code> row whose IDs fall outside its axes is an error too, and so is an <code>unk.def</code> line with fewer than four fields.</li>
-<li>A user dictionary (<code>--user</code>) is not checked here, since the build does not know the system dictionary it will be used with. <code>lindera tokenize --user-dict</code> checks it against the system dictionary instead and fails with an error that names the first entry outside the matrix (see <a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>).</li>
+<li>A user dictionary (<code>--user</code>) is checked only when <code>--system-dict</code> names the system dictionary it is for, as described below.</li>
 </ul>
+<p>With <code>--system-dict</code>, <code>lindera build --user</code> checks every row of the user dictionary against the connection matrix of that system dictionary, with the same bounds. A simple row is checked with the default context IDs of <code>metadata.json</code> (<code>default_left_context_id</code> and <code>default_right_context_id</code>). The first row outside the matrix fails the build, with an error that names its CSV line and surface, and no <code>.bin</code> file is written. For example, against IPADIC's 1316 x 1316 matrix, with a <code>userdic.csv</code> whose second row has the left context ID 60000:</p>
+<pre><code class="language-text">% lindera build --src ./userdic.csv --dest ./user_dict --metadata ./lindera-ipadic/metadata.json --user --system-dict embedded://ipadic
+Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
+</code></pre>
+<p>Without <code>--system-dict</code>, the build does not know the system dictionary, and the user dictionary builds. <code>lindera tokenize --user-dict</code> then checks it against the system dictionary and fails with an error that names the first entry outside the matrix by its word id (see <a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>).</p>
 <h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
 <h4 id="build-ipadic-japanese-dictionary"><a class="header" href="#build-ipadic-japanese-dictionary">Build IPADIC (Japanese dictionary)</a></h4>
 <pre><code class="language-shell"># Download and extract IPADIC source files
@@ -728,6 +734,7 @@ EOS
   --metadata ./lindera-ipadic/metadata.json \
   --user
 </code></pre>
+<p>Add <code>--system-dict embedded://ipadic</code>, or the path of a built IPADIC, to check the rows' context IDs against IPADIC's connection matrix (see <a href="#context-id-check">Context ID check</a>).</p>
 <h4 id="build-unidic-user-dictionary-japanese"><a class="header" href="#build-unidic-user-dictionary-japanese">Build UniDic user dictionary (Japanese)</a></h4>
 <p>For more details about user dictionary format please refer to the following URL:</p>
 <ul>

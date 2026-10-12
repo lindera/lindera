@@ -637,6 +637,7 @@ EOS
 <li><code>--dest</code> / <code>-d</code>: コンパイルされた辞書の出力先ディレクトリ</li>
 <li><code>--metadata</code> / <code>-m</code>: 辞書構造を定義するメタデータ設定ファイル (metadata.json)</li>
 <li><code>--user</code> / <code>-u</code>: システム辞書の代わりにユーザー辞書をビルドする（オプションフラグ）</li>
+<li><code>--system-dict</code>: ユーザー辞書を組み合わせるシステム辞書。ディレクトリのパス、URI、ダウンロード済みの辞書名のいずれかで、<code>tokenize --dict</code> と同じ形で指定する（オプション。<code>--user</code> のときだけ）。指定すると、各行の文脈 ID をそのシステム辞書の接続コスト行列と照らし合わせて確認します（<a href="#%E6%96%87%E8%84%88-id-%E3%81%AE%E7%A2%BA%E8%AA%8D">文脈 ID の確認</a> を参照）</li>
 <li><code>--context-id-freq</code> / <code>-f</code>: 接続コストIDの並び替えに使用するコンテキストID アクセス頻度ファイル（オプション。辞書の <code>metadata.json</code> で <code>connection_id_mapping: true</code> が設定されている場合にのみ意味を持ちます）</li>
 </ul>
 <h3 id="辞書の種類"><a class="header" href="#辞書の種類">辞書の種類</a></h3>
@@ -657,8 +658,13 @@ EOS
 <ul>
 <li>辞書の <code>metadata.json</code> で <code>skip_invalid_cost_or_id</code> が <code>true</code> の場合は、そうした <code>lex.csv</code> の行を取り除きます。<code>log</code> クレートに警告を出しますが、CLI はまだそれを表示しません（<a href="https://github.com/lindera/lindera/issues/1107">#1107</a>）。<code>unk.def</code> の行は常に確認します。</li>
 <li>ID が軸の範囲外にある <code>matrix.def</code> の行もエラーになり、フィールドが 4 つ未満の <code>unk.def</code> の行もエラーになります。</li>
-<li>ユーザー辞書（<code>--user</code>）はここでは確認しません。ビルドの時点では、組み合わせるシステム辞書が分からないためです。代わりに <code>lindera tokenize --user-dict</code> がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を示すエラーで失敗します（<a href="../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。</li>
+<li>ユーザー辞書（<code>--user</code>）を確認するのは、組み合わせるシステム辞書を <code>--system-dict</code> で指定したときだけです（次の段落を参照）。</li>
 </ul>
+<p><code>--system-dict</code> を指定すると、<code>lindera build --user</code> はユーザー辞書の各行を、そのシステム辞書の接続コスト行列と同じ範囲で照らし合わせて確認します。簡易形式の行は、<code>metadata.json</code> の既定の文脈 ID（<code>default_left_context_id</code> と <code>default_right_context_id</code>）で確認します。行列の範囲外にある最初の行でビルドは失敗し、エラーはその行の CSV の行番号と表層形を示します。<code>.bin</code> ファイルは書き出しません。たとえば IPADIC の 1316 x 1316 の行列に対して、<code>userdic.csv</code> の 2 行目の左文脈 ID が 60000 の場合は次のとおりです：</p>
+<pre><code class="language-text">% lindera build --src ./userdic.csv --dest ./user_dict --metadata ./lindera-ipadic/metadata.json --user --system-dict embedded://ipadic
+Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
+</code></pre>
+<p><code>--system-dict</code> を指定しないと、ビルドの時点では組み合わせるシステム辞書が分からないため、ユーザー辞書はそのままビルドされます。その後 <code>lindera tokenize --user-dict</code> がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を単語 ID で示すエラーで失敗します（<a href="../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。</p>
 <h3 id="例"><a class="header" href="#例">例</a></h3>
 <h4 id="ipadic日本語辞書のビルド"><a class="header" href="#ipadic日本語辞書のビルド">IPADIC（日本語辞書）のビルド</a></h4>
 <pre><code class="language-shell"># IPADICソースファイルのダウンロードと展開
@@ -728,6 +734,7 @@ EOS
   --metadata ./lindera-ipadic/metadata.json \
   --user
 </code></pre>
+<p><code>--system-dict embedded://ipadic</code>（またはビルド済みの IPADIC のパス）を加えると、各行の文脈 ID を IPADIC の接続コスト行列と照らし合わせて確認します（<a href="#%E6%96%87%E8%84%88-id-%E3%81%AE%E7%A2%BA%E8%AA%8D">文脈 ID の確認</a> を参照）。</p>
 <h4 id="unidicユーザー辞書日本語のビルド"><a class="header" href="#unidicユーザー辞書日本語のビルド">UniDicユーザー辞書（日本語）のビルド</a></h4>
 <p>ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：</p>
 <ul>

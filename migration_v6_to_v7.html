@@ -1237,14 +1237,22 @@ empty line, is an error instead of a panic, also in
 a context ID or a cost that is not a number, which did not name it
 before.</li>
 <li>A user dictionary is checked when it is combined with the system
-dictionary, since <code>lindera build --user</code> does not know the system
 dictionary: <code>Segmenter::try_new</code>, the configuration path,
 <code>lindera tokenize --user-dict</code>, and the <code>Tokenizer</code> constructors and
 builders of the language bindings return an error that names the first
 entry outside the matrix
 (<a href="https://github.com/lindera/lindera/issues/1171">#1171</a>; see
 <a href="concepts/user_dictionary.html#context-ids">Context IDs</a>).
-<code>Segmenter::new</code> does not check, as before.</li>
+<code>Segmenter::new</code> does not check, as before. <code>lindera build --user</code>
+checks the rows already when the new <code>--system-dict</code> option names the
+system dictionary (<code>DictionaryBuilder::with_system_matrix</code> in the Rust
+API), and names the first row outside the matrix by its CSV line and
+surface (<a href="https://github.com/lindera/lindera/issues/1182">#1182</a>).</li>
+<li>The errors for a user dictionary row whose cost or context ID is not a
+number, from <code>lindera build --user</code> or from loading a <code>.csv</code> user
+dictionary, name the row's CSV line (<code>at line 1</code>). Before, they counted
+the rows in the order of their surfaces (<code>at row 2</code> for a row on line 1
+whose surface sorts second).</li>
 </ul>
 <p>Dictionaries that <code>mecab-dict-index</code> builds pass, since it checks the same
 bounds. A dictionary exported by <code>lindera export</code> of v6.2.0 or earlier can
