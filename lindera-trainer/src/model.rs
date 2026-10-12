@@ -7,6 +7,7 @@ use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::corpus::Word;
+use crate::lexicon_csv::csv_field;
 use lindera_dictionary::viterbi::{LexType, WordEntry, WordId};
 
 /// The `metadata.version` this build writes into `model.dat` and requires
@@ -613,11 +614,26 @@ impl Model {
         Ok(())
     }
 
+    /// Writes `lex.csv`: one row per seed lexicon row, in seed order, with
+    /// its trained context ids and cost.
+    ///
+    /// A surface that contains `,`, `"` or a line break is quoted, with its
+    /// quotes doubled, so that `lindera build` reads it back as it is; the
+    /// feature is written as it was read (#1170).
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `lex.csv`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
     pub fn write_lexicon<W: Write>(&self, writer: &mut W) -> Result<()> {
         let merged_model = self.get_merged_model()?;
         let cost_factor = calculate_cost_factor(&merged_model);
 
         for (i, surface) in self.config.surfaces.iter().enumerate() {
+            let surface = csv_field(surface);
             if i < merged_model.feature_sets.len() {
                 let feature_set = merged_model.feature_sets[i];
                 let cost = tocost(feature_set.weight, cost_factor);
@@ -717,7 +733,9 @@ impl Model {
     /// An entry whose left id, right id and cost are all zero receives
     /// inferred context ids and a trained cost; any other entry is re-emitted
     /// with its input parameters unchanged, per the contract documented on
-    /// `read_user_lexicon`.
+    /// `read_user_lexicon`. A surface that contains `,`, `"` or a line break
+    /// is quoted, with its quotes doubled; the feature is written as it was
+    /// read (#1170).
     ///
     /// # Arguments
     ///
@@ -737,16 +755,20 @@ impl Model {
         for (word, entry, _label_id) in &self.user_entries {
             let surface = word.surface();
             let features = word.feature();
+            let surface_field = csv_field(surface);
             if entry.left_id() == 0 && entry.right_id() == 0 && entry.word_cost() == 0 {
                 let (left_id, right_id) = self.infer_context_ids(surface, features);
                 let raw_cost = self.get_user_word_cost(surface) as f64 / 1000.0;
                 let cost = tocost(raw_cost, cost_factor);
-                writeln!(writer, "{surface},{left_id},{right_id},{cost},{features}")?;
+                writeln!(
+                    writer,
+                    "{surface_field},{left_id},{right_id},{cost},{features}"
+                )?;
             } else {
                 writeln!(
                     writer,
                     "{},{},{},{},{}",
-                    surface,
+                    surface_field,
                     entry.left_id(),
                     entry.right_id(),
                     entry.word_cost(),
@@ -1117,7 +1139,21 @@ impl SerializableModel {
         "*".to_string()
     }
 
-    /// Write lexicon file with proper cost calculation
+    /// Writes `lex.csv`: one row per seed lexicon label, in label order, with
+    /// its trained context ids and cost. `lindera export` and the bindings'
+    /// export functions write `lex.csv` with this method.
+    ///
+    /// A surface (a label) that contains `,`, `"` or a line break is quoted,
+    /// with its quotes doubled, so that `lindera build` reads it back as it
+    /// is; the feature is written as it was read (#1170).
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `lex.csv`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
     pub fn write_lexicon<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
         // Unknown word entries are at the end of labels, skip them (they go to unk.def)
         let unk_start_idx = self.labels.len().saturating_sub(self.unk_entries.len());
@@ -1143,7 +1179,11 @@ impl SerializableModel {
                 writeln!(
                     writer,
                     "{},{},{},{},{}",
-                    label, fs.left_id, fs.right_id, cost, pos_info
+                    csv_field(label),
+                    fs.left_id,
+                    fs.right_id,
+                    cost,
+                    pos_info
                 )?;
             }
         }

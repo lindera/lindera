@@ -1810,6 +1810,7 @@ name = "lindera-trainer"
 version = "7.0.0"
 dependencies = [
  "anyhow",
+ "csv",
  "lindera-crf",
  "lindera-dictionary",
  "regex",
