@@ -17,6 +17,7 @@ use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::LinderaResult;
+use crate::builder::connection_cost_matrix::MatrixSize;
 use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use crate::dictionary::context_id_map::ContextIdMap;
@@ -420,6 +421,64 @@ impl UserDictionary {
         self.dict.vals_data = Data::Vec(vals);
     }
 
+    /// Checks that every entry's context IDs address a cell of a system
+    /// dictionary's connection matrix.
+    ///
+    /// A user dictionary is built without the system dictionary it will be
+    /// used with (`lindera build --user` reads only `metadata.json`), so an
+    /// entry whose left or right context ID lies outside that dictionary's
+    /// matrix builds, and then indexes past the matrix, a panic, when it
+    /// matches the input. MeCab rejects such an entry when it compiles the
+    /// user dictionary and records the matrix size in the result; a Lindera
+    /// user dictionary has no room for the size, so its entries are checked
+    /// when the two dictionaries are combined instead (`Segmenter::try_new`
+    /// in `lindera-segmenter`).
+    ///
+    /// The bounds are those `lindera build` applies to a system dictionary:
+    /// a left context ID must be below the matrix's backward size and a
+    /// right context ID below its forward size. Call this before
+    /// [`Self::remap_context_ids`], while the IDs are still the ones written
+    /// in the user dictionary; the remap leaves an out-of-range ID unchanged,
+    /// so the result would be the same, but the error would show remapped
+    /// IDs.
+    ///
+    /// # Arguments
+    ///
+    /// * `matrix` - The connection matrix of the system dictionary.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` when every entry is in range, or a
+    /// [`LinderaErrorKind::Content`] error for the first entry that is not.
+    /// The error names the entry by its word id and detail fields, since the
+    /// surface is kept only in the automaton, and gives the offending ID and
+    /// the matrix size.
+    pub fn check_context_ids(&self, matrix: &ConnectionCostMatrix) -> LinderaResult<()> {
+        let matrix_size = MatrixSize {
+            forward_size: matrix.forward_size,
+            backward_size: matrix.backward_size,
+        };
+        for chunk in self
+            .dict
+            .vals_data
+            .as_chunks::<{ WordEntry::SERIALIZED_LEN }>()
+            .0
+        {
+            let entry = WordEntry::deserialize(chunk, false);
+            if let Err(message) = matrix_size.check_context_ids(entry.left_id(), entry.right_id()) {
+                let word_id = entry.word_id().id();
+                let details = self
+                    .word_details_iter(word_id as usize)
+                    .collect::<Vec<_>>()
+                    .join(",");
+                return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                    "user dictionary entry {word_id} ({details}): {message}"
+                )));
+            }
+        }
+        Ok(())
+    }
+
     pub fn load(user_dict_data: &[u8]) -> LinderaResult<UserDictionary> {
         let mut aligned = rkyv::util::AlignedVec::<16>::new();
         aligned.extend_from_slice(user_dict_data);
@@ -475,6 +534,8 @@ mod tests {
     use daachorse::DoubleArrayAhoCorasickBuilder;
 
     use super::{DetailFields, UNK, UserDictionary};
+    use crate::builder::user_dictionary::UserDictionaryBuilderOptions;
+    use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
     use crate::dictionary::prefix_dictionary::UserPrefixDictionary;
 
     /// Builds a user dictionary whose words blob holds `entries`, each
@@ -603,6 +664,100 @@ mod tests {
 
         assert_eq!(dict.word_details(0), UNK.to_vec());
         assert_eq!(dict.word_details_iter(0).collect::<Vec<_>>(), vec!["UNK"]);
+    }
+
+    /// Builds a connection matrix of `forward_size` x `backward_size` zero
+    /// costs, in the legacy layout `ConnectionCostMatrix::load` still reads.
+    fn zero_matrix(forward_size: i16, backward_size: i16) -> ConnectionCostMatrix {
+        let mut data = Vec::new();
+        data.extend_from_slice(&forward_size.to_le_bytes());
+        data.extend_from_slice(&backward_size.to_le_bytes());
+        for _ in 0..(forward_size as usize * backward_size as usize) {
+            data.extend_from_slice(&0i16.to_le_bytes());
+        }
+        match ConnectionCostMatrix::load(data) {
+            Ok(matrix) => matrix,
+            Err(err) => panic!("failed to load test matrix: {err}"),
+        }
+    }
+
+    /// Builds a user dictionary from CSV rows with the builder's defaults:
+    /// a 3-field row is a simple entry with context IDs 0, a row of 12 or
+    /// more fields a detailed entry with its own IDs.
+    fn built_user_dictionary(csv: &str) -> UserDictionary {
+        match UserDictionaryBuilderOptions::default()
+            .builder()
+            .build_from_reader(csv.as_bytes())
+        {
+            Ok(dictionary) => dictionary,
+            Err(err) => panic!("failed to build test user dictionary: {err}"),
+        }
+    }
+
+    /// IDs up to the last cell of each axis pass: left IDs index the
+    /// backward axis (3 here) and right IDs the forward axis (2).
+    #[test]
+    fn check_context_ids_accepts_ids_inside_the_matrix() {
+        let matrix = zero_matrix(2, 3);
+        let dict = built_user_dictionary(
+            "東京,2,1,0,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トウキョウ\n\
+             京都,0,0,0,名詞,固有名詞,地域,一般,*,*,京都,キョウト,キョウト\n\
+             大阪,名詞,オオサカ\n",
+        );
+
+        assert!(dict.check_context_ids(&matrix).is_ok());
+    }
+
+    /// A left ID equal to the backward size is the first one outside the
+    /// matrix; the error names the entry, the ID and the matrix size.
+    #[test]
+    fn check_context_ids_rejects_a_left_id_at_the_backward_size() {
+        let matrix = zero_matrix(2, 3);
+        let dict = built_user_dictionary(
+            "東京,3,1,0,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トウキョウ\n",
+        );
+
+        let err = dict.check_context_ids(&matrix).unwrap_err().to_string();
+        assert!(
+            err.contains(
+                "user dictionary entry 0 (名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トウキョウ): \
+                 left context id 3 is out of range for the connection matrix \
+                 (matrix.def size 2 3; left context ids must be below 3)"
+            ),
+            "{err}"
+        );
+    }
+
+    /// A right ID equal to the forward size is rejected the same way.
+    #[test]
+    fn check_context_ids_rejects_a_right_id_at_the_forward_size() {
+        let matrix = zero_matrix(2, 3);
+        let dict = built_user_dictionary(
+            "東京,2,2,0,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トウキョウ\n",
+        );
+
+        let err = dict.check_context_ids(&matrix).unwrap_err().to_string();
+        assert!(err.contains("right context id 2 is out of range"), "{err}");
+        assert!(err.contains("right context ids must be below 2"), "{err}");
+    }
+
+    /// The error names the offending entry, not the first one: word ids
+    /// follow the rows sorted by surface, so `京都` is entry 0 and `東京`
+    /// entry 1. The IDs of the issue report (60000) are far outside.
+    #[test]
+    fn check_context_ids_names_the_offending_entry() {
+        let matrix = zero_matrix(2, 3);
+        let dict = built_user_dictionary(
+            "東京,60000,60000,0,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トウキョウ\n\
+             京都,0,0,0,名詞,固有名詞,地域,一般,*,*,京都,キョウト,キョウト\n",
+        );
+
+        let err = dict.check_context_ids(&matrix).unwrap_err().to_string();
+        assert!(
+            err.contains("user dictionary entry 1 (名詞,固有名詞,地域,一般,*,*,東京,"),
+            "{err}"
+        );
+        assert!(err.contains("left context id 60000"), "{err}");
     }
 
     /// `DetailFields::empty` yields nothing and `DetailFields::unk` yields

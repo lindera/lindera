@@ -389,6 +389,12 @@ impl Segmenter {
     /// - Whitespace skipping: taken from the dictionary's metadata
     ///   (`Metadata::skip_whitespace`), on unless the dictionary turns it off
     ///   (SudachiDict does). Override with [`Segmenter::skip_whitespace`].
+    /// - User dictionary context IDs: not checked against the dictionary's
+    ///   connection matrix. An entry whose ID lies outside it makes
+    ///   segmentation panic when the entry matches the input. Use
+    ///   [`Segmenter::try_new`], which returns an error instead, for a user
+    ///   dictionary that was not built for this dictionary or may not have
+    ///   been, such as one supplied by a user.
     pub fn new(
         mode: Mode,
         dictionary: Dictionary,
@@ -446,6 +452,63 @@ impl Segmenter {
         }
 
         segmenter
+    }
+
+    /// Creates a new instance as [`Segmenter::new`] does, after checking that
+    /// every entry of the user dictionary fits the dictionary's connection
+    /// matrix.
+    ///
+    /// A user dictionary is built without the system dictionary it is used
+    /// with, so its context IDs can lie outside that dictionary's connection
+    /// matrix, for example when it was written for another dictionary.
+    /// [`Segmenter::new`] accepts such a user dictionary, and segmentation
+    /// then panics when the entry matches the input; this constructor returns
+    /// an error instead, as MeCab refuses such an entry.
+    /// [`Segmenter::from_config`], and through it the CLI and the language
+    /// bindings, build their segmenters with it.
+    ///
+    /// # Arguments
+    ///
+    /// * `mode` - The segmentation mode.
+    /// * `dictionary` - The system dictionary.
+    /// * `user_dictionary` - An optional user dictionary, checked against
+    ///   `dictionary`'s connection matrix.
+    ///
+    /// # Returns
+    ///
+    /// The segmenter, or an error naming the first user dictionary entry
+    /// whose left or right context ID lies outside the connection matrix
+    /// (see [`UserDictionary::check_context_ids`]).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lindera_segmenter::dictionary::{load_dictionary, load_user_dictionary};
+    /// use lindera_segmenter::mode::Mode;
+    /// use lindera_segmenter::segmenter::Segmenter;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # #[cfg(feature = "embed-ipadic")]
+    /// # {
+    /// let dictionary = load_dictionary("embedded://ipadic")?;
+    /// let user_dictionary = load_user_dictionary(
+    ///     "../resources/user_dict/ipadic_simple_userdic.csv",
+    ///     &dictionary.metadata,
+    /// )?;
+    /// let segmenter = Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary))?;
+    /// # }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn try_new(
+        mode: Mode,
+        dictionary: Dictionary,
+        user_dictionary: Option<UserDictionary>,
+    ) -> LinderaResult<Self> {
+        if let Some(user_dictionary) = &user_dictionary {
+            user_dictionary.check_context_ids(&dictionary.connection_cost_matrix)?;
+        }
+        Ok(Self::new(mode, dictionary, user_dictionary))
     }
 
     /// Builder method to set whether to keep whitespace tokens in output.
@@ -815,7 +878,9 @@ impl Segmenter {
     /// # Returns
     ///
     /// The segmenter, or an error when the `dictionary` key is missing, a
-    /// dictionary cannot be loaded, or a setting is invalid.
+    /// dictionary cannot be loaded, a setting is invalid, or the user
+    /// dictionary has a context ID outside the dictionary's connection
+    /// matrix (see [`Segmenter::try_new`]).
     pub fn from_config(config: &SegmenterConfig) -> LinderaResult<Self> {
         Self::from_config_with_dictionaries(config, None, None)
     }
@@ -937,10 +1002,10 @@ impl Segmenter {
                 })?;
         }
 
-        // Go through `new` so the user-dictionary context-ID remap has a single
-        // application point. The `SPACE` classifier is only read when `keep_whitespace`
-        // is false, so letting `new` always build it is equivalent to the previous
-        // conditional.
+        // Go through `try_new`, and so `new`, so the user-dictionary context-ID
+        // check and remap have a single application point. The `SPACE` classifier
+        // is only read when `keep_whitespace` is false, so letting `new` always
+        // build it is equivalent to the previous conditional.
         // Load the max_grouping_len option from the config.
         // Absent or 0 means unbounded grouping (the default).
         let max_grouping_len = config
@@ -978,7 +1043,7 @@ impl Segmenter {
             ),
         };
 
-        let mut segmenter = Self::new(mode, dictionary, user_dictionary)
+        let mut segmenter = Self::try_new(mode, dictionary, user_dictionary)?
             .keep_whitespace(keep_whitespace)
             .max_grouping_len(max_grouping_len)
             .unknown_word_ladder(unknown_word_ladder);

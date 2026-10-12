@@ -28,6 +28,17 @@ Each dictionary type (IPADIC, UniDic, ko-dic, etc.) also supports a detailed CSV
 
 Two entries tie when they have the same surface, the same left and right context IDs and the same cost: every path costs the same with either of them. A user entry that ties with a system entry is chosen over it, so a detailed entry that copies the surface, the context IDs and the cost of a system entry, for example to give the word another reading, takes its place in the output. MeCab chooses the system entry instead. Among tied user entries, the first row is chosen, as in MeCab (before v7, the last row was; see [Migrating from v6 to v7](../migration_v6_to_v7.md#tied-entries-resolve-to-the-first-csv-row-as-in-mecab)). Simple entries get the cost and the context IDs from the dictionary's `metadata.json` (`default_word_cost`, `default_left_context_id` and `default_right_context_id`: `-10000`, `0` and `0` for IPADIC), so they practically never tie with a system entry.
 
+## Context IDs
+
+The left and right context IDs of a detailed entry must address a cell of the connection matrix of the system dictionary it is used with: the left context ID must be below the second value of that dictionary's `matrix.def` header, and the right context ID below the first, the bounds `lindera build` applies to the system dictionary itself. IPADIC's matrix is 1316 x 1316, for example. A user dictionary is built without the system dictionary (`lindera build --user` reads only `metadata.json`), so these IDs are checked when the two dictionaries are combined: `Segmenter::try_new`, the configuration path (`Segmenter::from_config`, `TokenizerBuilder`), `lindera tokenize --user-dict`, and the `Tokenizer` constructors and builders of the language bindings return an error for the first entry outside the matrix. The error names the entry by its word id, which counts the rows from 0 in the order of their surfaces, and by its detail fields:
+
+```text
+$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.bin
+Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary entry 0 (名詞,固有名詞,一般,*,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
+```
+
+`Segmenter::new` does not check the IDs: an entry outside the matrix then makes segmentation panic when the entry matches the input. Before v7.0.0, every path behaved this way. Simple entries are checked too; they get the context IDs that the `metadata.json` they are built with sets (`default_left_context_id` and `default_right_context_id`, 0 in every bundled dictionary).
+
 ## Rust API example
 
 ```rust
@@ -60,11 +71,13 @@ fn main() -> LinderaResult<()> {
 
     let dictionary = load_dictionary("embedded://ipadic")?;
     let user_dictionary = load_user_dictionary(user_dict_path.to_str().unwrap(), &metadata)?;
-    let segmenter = Segmenter::new(
+    // `try_new` checks the user dictionary's context IDs against the
+    // dictionary's connection matrix (see "Context IDs" above).
+    let segmenter = Segmenter::try_new(
         Mode::Normal,
         dictionary,
         Some(user_dictionary), // Using the loaded user dictionary
-    );
+    )?;
 
     // Create a tokenizer.
     let tokenizer = Tokenizer::new(segmenter);

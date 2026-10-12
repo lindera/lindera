@@ -214,7 +214,8 @@ export declare class Tokenizer {
    *   (the default) keeps the rules the dictionary ships.
    *
    * Throws for an invalid space-penalty setting, as `setSpacePenalty` and
-   * `build()` do.
+   * `build()` do, and for a user dictionary with a context ID outside the
+   * dictionary's connection matrix.
    */
   constructor(dictionary: Dictionary, mode?: string | undefined | null, userDictionary?: UserDictionary | undefined | null, spacePenalty?: boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined)
   /**

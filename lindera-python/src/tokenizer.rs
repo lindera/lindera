@@ -356,6 +356,8 @@ impl PyTokenizer {
     ///
     /// A new `Tokenizer` instance, or `ValueError` / `TypeError` for an
     /// invalid setting, as `set_space_penalty` and `build()` raise them.
+    /// A user dictionary with a context ID outside the dictionary's
+    /// connection matrix raises `ValueError`.
     #[new]
     #[pyo3(signature = (dictionary, mode="normal", user_dictionary=None, space_penalty=None))]
     fn new(

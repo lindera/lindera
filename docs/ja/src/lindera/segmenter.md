@@ -19,6 +19,18 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
 ```
 
+`Segmenter::new` はユーザー辞書をシステム辞書と照らし合わせて確認しません。`Segmenter::try_new` は同じ引数を取り、見出し語の文脈 ID がシステム辞書の接続コスト行列の範囲外にあるとエラーを返します。`Segmenter::new` はそうした見出し語を受け付け、その見出し語が入力に一致したときに解析中にパニックします（[文脈 ID](../concepts/user_dictionary.md#文脈-id) を参照）。設定からの構築も確認します。
+
+```rust
+use lindera::dictionary::{load_dictionary, load_user_dictionary};
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+
+let dictionary = load_dictionary("embedded://ipadic")?;
+let user_dictionary = load_user_dictionary("userdic.csv", &dictionary.metadata)?;
+let segmenter = Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary))?;
+```
+
 ## トークナイズモード
 
 ### Mode::Normal

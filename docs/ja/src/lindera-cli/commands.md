@@ -54,7 +54,7 @@ jieba           no        no          -
   - `mecab`: 品詞情報を含むMeCab互換形式
   - `wakati`: スペース区切りのトークンのみ。入力 1 行につき 1 行（トークンのない行は空行）
   - `json`: すべてのトークン情報を含む詳細なJSON形式
-- `--user-dict` / `-u`: ユーザー辞書のパス（オプション）
+- `--user-dict` / `-u`: ユーザー辞書のパス（オプション）。文脈 ID がシステム辞書の接続コスト行列の範囲外にある見出し語はエラーになります（[文脈 ID](../concepts/user_dictionary.md#文脈-id) を参照）。
 - `--mode` / `-m`: トークナイズモード (デフォルト: normal)
   - `normal`: 標準的なトークナイズ
   - `decompose`: 複合語を分解する
@@ -633,7 +633,7 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
 
 - 辞書の `metadata.json` で `skip_invalid_cost_or_id` が `true` の場合は、そうした `lex.csv` の行を取り除きます。`log` クレートに警告を出しますが、CLI はまだそれを表示しません（[#1107](https://github.com/lindera/lindera/issues/1107)）。`unk.def` の行は常に確認します。
 - ID が軸の範囲外にある `matrix.def` の行もエラーになり、フィールドが 4 つ未満の `unk.def` の行もエラーになります。
-- ユーザー辞書（`--user`）はまだ確認しません（[#1171](https://github.com/lindera/lindera/issues/1171)）。
+- ユーザー辞書（`--user`）はここでは確認しません。ビルドの時点では、組み合わせるシステム辞書が分からないためです。代わりに `lindera tokenize --user-dict` がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を示すエラーで失敗します（[文脈 ID](../concepts/user_dictionary.md#文脈-id) を参照）。
 
 ### 例
 

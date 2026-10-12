@@ -19,6 +19,18 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
 ```
 
+`Segmenter::new` does not check a user dictionary against the system dictionary. `Segmenter::try_new` takes the same arguments and returns an error when an entry's context ID lies outside the system dictionary's connection matrix; `Segmenter::new` accepts such an entry, and segmentation then panics when the entry matches the input (see [Context IDs](../concepts/user_dictionary.md#context-ids)). Building from a configuration checks too.
+
+```rust
+use lindera::dictionary::{load_dictionary, load_user_dictionary};
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+
+let dictionary = load_dictionary("embedded://ipadic")?;
+let user_dictionary = load_user_dictionary("userdic.csv", &dictionary.metadata)?;
+let segmenter = Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary))?;
+```
+
 ## Tokenization Modes
 
 ### Mode::Normal

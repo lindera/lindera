@@ -250,7 +250,8 @@ impl JsTokenizer {
     ///   (the default) keeps the rules the dictionary ships.
     ///
     /// Throws for an invalid space-penalty setting, as `setSpacePenalty` and
-    /// `build()` do.
+    /// `build()` do, and for a user dictionary with a context ID outside the
+    /// dictionary's connection matrix.
     #[napi(constructor)]
     pub fn new(
         dictionary: &JsDictionary,

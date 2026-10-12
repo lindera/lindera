@@ -54,7 +54,7 @@ Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean te
   - `mecab`: MeCab-compatible format with part-of-speech info
   - `wakati`: Space-separated tokens only, one line per input line (an empty line for a line without tokens)
   - `json`: Detailed JSON format with all token information
-- `--user-dict` / `-u`: User dictionary path (optional)
+- `--user-dict` / `-u`: User dictionary path (optional). An entry whose context ID lies outside the system dictionary's connection matrix is an error (see [Context IDs](../concepts/user_dictionary.md#context-ids)).
 - `--mode` / `-m`: Tokenization mode (default: normal)
   - `normal`: Standard tokenization
   - `decompose`: Decompose compound words
@@ -633,7 +633,7 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
 
 - If the dictionary's `metadata.json` sets `skip_invalid_cost_or_id` to `true`, such a `lex.csv` row is dropped instead, with a warning through the `log` crate that the CLI does not print yet ([#1107](https://github.com/lindera/lindera/issues/1107)). An `unk.def` line is always checked.
 - A `matrix.def` row whose IDs fall outside its axes is an error too, and so is an `unk.def` line with fewer than four fields.
-- User dictionaries (`--user`) are not checked yet ([#1171](https://github.com/lindera/lindera/issues/1171)).
+- A user dictionary (`--user`) is not checked here, since the build does not know the system dictionary it will be used with. `lindera tokenize --user-dict` checks it against the system dictionary instead and fails with an error that names the first entry outside the matrix (see [Context IDs](../concepts/user_dictionary.md#context-ids)).
 
 ### Examples
 
