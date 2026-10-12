@@ -12,6 +12,7 @@ use daachorse::DoubleArrayAhoCorasickBuilder;
 use log::debug;
 
 use crate::LinderaResult;
+use crate::builder::connection_cost_matrix::MatrixSize;
 use crate::dictionary::UserDictionary;
 use crate::dictionary::prefix_dictionary::UserPrefixDictionary;
 use crate::error::LinderaErrorKind;
@@ -40,6 +41,10 @@ pub struct UserDictionaryBuilder {
     default_right_context_id: u16,
     flexible_csv: bool,
     user_dictionary_handler: StringRecordProcessor,
+    /// The connection matrix size of the system dictionary the user
+    /// dictionary is for. Every row's context IDs are checked against it;
+    /// `None` skips the check.
+    matrix_size: Option<MatrixSize>,
 }
 
 /// Options for [`UserDictionaryBuilder`]. Every field has a default, so
@@ -54,6 +59,8 @@ pub struct UserDictionaryBuilderOptions {
     default_right_context_id: Option<u16>,
     flexible_csv: Option<bool>,
     user_dictionary_handler: StringRecordProcessor,
+    /// See [`UserDictionaryBuilder`]'s field of the same name.
+    matrix_size: Option<MatrixSize>,
 }
 
 impl UserDictionaryBuilderOptions {
@@ -92,6 +99,22 @@ impl UserDictionaryBuilderOptions {
         self
     }
 
+    /// Sets the connection matrix size to check every row's context IDs
+    /// against.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The matrix size of the system dictionary the user
+    ///   dictionary is for, or `None` to skip the check.
+    ///
+    /// # Returns
+    ///
+    /// The options with the matrix size set.
+    pub(crate) fn matrix_size(mut self, value: Option<MatrixSize>) -> Self {
+        self.matrix_size = value;
+        self
+    }
+
     pub fn builder(self) -> UserDictionaryBuilder {
         UserDictionaryBuilder {
             user_dictionary_fields_num: self.user_dictionary_fields_num.unwrap_or(3),
@@ -101,6 +124,7 @@ impl UserDictionaryBuilderOptions {
             default_right_context_id: self.default_right_context_id.unwrap_or(0),
             flexible_csv: self.flexible_csv.unwrap_or(true),
             user_dictionary_handler: self.user_dictionary_handler,
+            matrix_size: self.matrix_size,
         }
     }
 }
@@ -292,7 +316,10 @@ impl UserDictionaryBuilder {
     /// the cost and context-id columns and panic out of bounds, and a panic
     /// aborts the module on wasm32, where this builder is fed untrusted
     /// browser input (#972). A simple row takes the default cost and context
-    /// IDs; a detailed row has its own in columns 2 to 4.
+    /// IDs; a detailed row has its own in columns 2 to 4. When the matrix
+    /// size of a system dictionary is set, the context IDs must address a
+    /// cell of it, the bounds `lindera build` applies to the system
+    /// dictionary's own lexicon (#1182).
     ///
     /// # Arguments
     ///
@@ -320,7 +347,8 @@ impl UserDictionaryBuilder {
                 )));
         }
 
-        let (word_cost, left_id, right_id) = if record.len() == self.user_dictionary_fields_num {
+        let simple = record.len() == self.user_dictionary_fields_num;
+        let (word_cost, left_id, right_id) = if simple {
             (
                 self.default_word_cost,
                 self.default_left_context_id,
@@ -347,6 +375,22 @@ impl UserDictionaryBuilder {
                     .map_err(|_err| parse_error("right context ID", &record[2]))?,
             )
         };
+
+        let check = self.matrix_size.map_or(Ok(()), |matrix_size| {
+            matrix_size.check_context_ids(left_id.into(), right_id.into())
+        });
+        if let Err(message) = check {
+            let origin = if simple {
+                "; a simple row takes its context ids from default_left_context_id and \
+                 default_right_context_id in metadata.json"
+            } else {
+                ""
+            };
+            return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                "user dictionary line {line} (surface: '{}'): {message}{origin}",
+                &record[0]
+            )));
+        }
 
         Ok(ParsedRow {
             record,
@@ -411,6 +455,7 @@ mod tests {
     use std::path::PathBuf;
 
     use crate::builder::DictionaryBuilder;
+    use crate::dictionary::connection_cost_matrix::zero_matrix;
     use crate::dictionary::metadata::Metadata;
 
     fn fixture_path(name: &str) -> PathBuf {
@@ -557,5 +602,138 @@ mod tests {
             err.contains("Invalid word cost 'abc' at line 1 (surface: '東京タワー')"),
             "unexpected error: {err}"
         );
+    }
+
+    /// A builder for flexible CSV whose rows are checked against a
+    /// connection matrix of 2 forward x 3 backward IDs: left context IDs
+    /// must be below 3 and right context IDs below 2.
+    fn checked_builder(metadata: Metadata) -> DictionaryBuilder {
+        let metadata = Metadata {
+            flexible_csv: true,
+            ..metadata
+        };
+        DictionaryBuilder::new(metadata).with_system_matrix(&zero_matrix(2, 3))
+    }
+
+    /// Builds `csv` with [`checked_builder`] and returns the error.
+    fn checked_build_error(csv: &str) -> String {
+        match checked_builder(Metadata::default()).build_user_dict_from_reader(csv.as_bytes()) {
+            Ok(_) => panic!("{csv:?} must not build"),
+            Err(err) => format!("{err:?}"),
+        }
+    }
+
+    /// With the system matrix set, a row whose context ID lies outside it
+    /// fails the build with an error that names the CSV line and the surface
+    /// (#1182). The bad row is on line 2, and its surface sorts first.
+    #[test]
+    fn out_of_range_context_ids_fail_with_the_line_and_surface() {
+        let good = detailed_row("東京タワー", "2", "1", "-1000");
+        for (bad, expected) in [
+            (
+                detailed_row("あいう", "3", "1", "-1000"),
+                "user dictionary line 2 (surface: 'あいう'): left context id 3 is out of range \
+                 for the connection matrix (matrix.def size 2 3; left context ids must be below 3)",
+            ),
+            (
+                detailed_row("あいう", "0", "2", "-1000"),
+                "user dictionary line 2 (surface: 'あいう'): right context id 2 is out of range \
+                 for the connection matrix (matrix.def size 2 3; right context ids must be below 2)",
+            ),
+            (
+                detailed_row("あいう", "60000", "60000", "-1000"),
+                "user dictionary line 2 (surface: 'あいう'): left context id 60000 is out of range",
+            ),
+        ] {
+            let csv = format!("{good}{bad}");
+            let err = checked_build_error(&csv);
+            assert!(
+                err.contains(expected),
+                "unexpected error for {csv:?}: {err}"
+            );
+            assert!(!err.contains("metadata.json"), "unexpected error: {err}");
+        }
+    }
+
+    /// The last cell of each axis is inside the matrix.
+    #[test]
+    fn context_ids_at_the_last_cell_build() {
+        let csv = detailed_row("東京タワー", "2", "1", "-1000");
+        let result =
+            checked_builder(Metadata::default()).build_user_dict_from_reader(csv.as_bytes());
+        assert!(result.is_ok(), "unexpected error: {:?}", result.err());
+    }
+
+    /// A simple row takes its context IDs from `metadata.json`, so they are
+    /// checked too, and the error says where they come from.
+    #[test]
+    fn simple_rows_are_checked_with_the_default_context_ids() {
+        let metadata = Metadata {
+            default_left_context_id: 3,
+            ..Metadata::default()
+        };
+        let csv = "大阪,名詞,オオサカ\n";
+        let err = match checked_builder(metadata).build_user_dict_from_reader(csv.as_bytes()) {
+            Ok(_) => panic!("{csv:?} must not build"),
+            Err(err) => format!("{err:?}"),
+        };
+        assert!(
+            err.contains(
+                "user dictionary line 1 (surface: '大阪'): left context id 3 is out of range"
+            ),
+            "unexpected error: {err}"
+        );
+        assert!(
+            err.contains(
+                "a simple row takes its context ids from default_left_context_id and \
+                 default_right_context_id in metadata.json"
+            ),
+            "unexpected error: {err}"
+        );
+    }
+
+    /// Without a system matrix the context IDs are not checked, as before
+    /// #1182: they are checked when the user dictionary is combined with the
+    /// system dictionary.
+    #[test]
+    fn without_a_system_matrix_context_ids_are_not_checked() {
+        let csv = detailed_row("あいう", "60000", "60000", "-1000");
+        let result = flexible_builder().build_user_dict_from_reader(csv.as_bytes());
+        assert!(result.is_ok(), "unexpected error: {:?}", result.err());
+    }
+
+    /// The file and reader entry points of `DictionaryBuilder` all check
+    /// against the system matrix, and `build_user_dictionary` writes no
+    /// output when the check fails.
+    #[test]
+    fn every_entry_point_checks_against_the_system_matrix() {
+        let dir = match tempfile::tempdir() {
+            Ok(dir) => dir,
+            Err(err) => panic!("failed to create a temporary directory: {err}"),
+        };
+        let csv = detailed_row("あいう", "60000", "1", "-1000");
+        let input = dir.path().join("userdic.csv");
+        if let Err(err) = std::fs::write(&input, &csv) {
+            panic!("failed to write {input:?}: {err}");
+        }
+        let output = dir.path().join("out").join("userdic.bin");
+        let builder = checked_builder(Metadata::default());
+
+        let errors = [
+            builder.build_user_dict(&input).err(),
+            builder.build_user_dict_from_reader(csv.as_bytes()).err(),
+            builder.build_user_dictionary(&input, &output).err(),
+        ];
+        for err in errors {
+            let err = match err {
+                Some(err) => format!("{err:?}"),
+                None => panic!("{csv:?} must not build"),
+            };
+            assert!(
+                err.contains("user dictionary line 1 (surface: 'あいう'): left context id 60000"),
+                "unexpected error: {err}"
+            );
+        }
+        assert!(!output.exists(), "{output:?} must not be written");
     }
 }

@@ -419,6 +419,23 @@ impl Clone for ConnectionCostMatrix {
     }
 }
 
+/// Builds a connection matrix of `forward_size` x `backward_size` zero
+/// costs, in the legacy layout `ConnectionCostMatrix::load` still reads.
+/// Shared by the tests that check context IDs against a matrix.
+#[cfg(test)]
+pub(crate) fn zero_matrix(forward_size: i16, backward_size: i16) -> ConnectionCostMatrix {
+    let mut data = Vec::new();
+    data.extend_from_slice(&forward_size.to_le_bytes());
+    data.extend_from_slice(&backward_size.to_le_bytes());
+    for _ in 0..(forward_size as usize * backward_size as usize) {
+        data.extend_from_slice(&0i16.to_le_bytes());
+    }
+    match ConnectionCostMatrix::load(data) {
+        Ok(matrix) => matrix,
+        Err(err) => panic!("failed to load test matrix: {err}"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
