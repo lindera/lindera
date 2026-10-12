@@ -54,6 +54,13 @@ The seed lexicon is read as CSV, as `lindera build` reads `lex.csv`:
 - A quoted field that spans lines is an error that names the line. It is most likely a quote that is never closed, which would otherwise swallow the rows after it.
 - The rows keep their order, which gives their labels their ids.
 
+To read the columns of a feature, for the rewrite rules, the feature templates and unknown-word matching, `lindera train` splits it as MeCab's learner does (`tokenizeCSV`), not as the CSV reader above does. The features of the corpus are split the same way.
+
+- A quoted column is one column, with `""` read as `"`. The definition of mecab-jieba's `4S店`, `"authorized full-service car dealership (offering sales, spare parts, after-sales service and customer support)"`, is one column.
+- Spaces and tabs before a column are skipped: CC-CEDICT's `COVID-19, the coronavirus disease identified in 2019/` is the two columns `COVID-19` and `the coronavirus disease identified in 2019/`.
+- The text from a closing quote to the next `,` is dropped: `"bamboo" radical in Chinese characters (Kangxi radical 118)/` is the column `bamboo`.
+- A `,` at the end of a feature does not start an empty last column.
+
 ### 2. Training Corpus (corpus.txt)
 
 Annotated text data in tab-separated format. Each line is `surface<TAB>pos_info`, and sentences are separated by `EOS`.
@@ -159,6 +166,8 @@ Template variables:
 | `%l` | Left rewritten feature string |
 | `%r` | Right rewritten feature string |
 
+The fields of `%F[n]`, `%L[n]` and `%R[n]` are the columns of the rewritten features, split as described in [Seed Lexicon](#1-seed-lexicon-seedcsv). `%u`, `%l` and `%r` are the rewritten features as `rewrite.def` writes them, with a column that contains `,` or `"` quoted.
+
 ### 6. Feature Rewrite Rules (rewrite.def)
 
 Feature normalization rules in MeCab-compatible 3-section format. Sections are separated by blank lines.
@@ -181,6 +190,8 @@ Feature normalization rules in MeCab-compatible 3-section format. Sections are s
 ```
 
 Each line is `pattern<TAB>replacement`. Patterns use `*` as a wildcard and are matched by prefix. The first matching rule in each section is applied. Different rules can be applied to unigram, left context, and right context independently, enabling fine-grained feature normalization to reduce sparsity.
+
+The pattern, the replacement and the feature are split into columns as described in [Seed Lexicon](#1-seed-lexicon-seedcsv), so a quoted column with `,` in it is one column. As MeCab does, the rewritten columns are joined with `,`, and a column that contains `,` or `"` is quoted, with its quotes doubled: with the left rule `* $5`, the feature `n,dian4,店,店,"shop, store",1` is rewritten to `"shop, store"`.
 
 ## Training Parameters
 
