@@ -12,7 +12,6 @@ pub mod feature_extractor;
 pub mod feature_rewriter;
 pub mod model;
 
-use std::collections::HashMap;
 use std::num::NonZeroU32;
 
 use anyhow::Result;
@@ -99,9 +98,6 @@ pub struct Trainer {
 
     provider: lindera_crf::FeatureProvider,
 
-    // Maps feature strings to label IDs
-    label_id_map: std::collections::HashMap<String, std::collections::HashMap<char, NonZeroU32>>,
-
     /// Pre-allocated label IDs for unknown word categories.
     /// Index corresponds to character type categories:
     /// - 0: DEFAULT (fallback for unclassified characters)
@@ -117,13 +113,53 @@ pub struct Trainer {
     elastic_net_l1_ratio: Option<f64>,
     max_iter: u64,
     num_threads: usize,
+
+    /// Counts gathered while the training lattices are built, logged once
+    /// they are all built.
+    stats: LatticeStats,
+}
+
+/// Returns the CRF label of a seed lexicon row: its index plus one.
+///
+/// `Trainer::new` creates the seed rows' labels first, in row order, and
+/// the training lexicon uses the row index as the word id, so a lexicon
+/// match turns into its label through this function.
+///
+/// # Arguments
+///
+/// * `index` - The row index in `TrainerConfig::surfaces`, the word id of
+///   the training lexicon.
+///
+/// # Returns
+///
+/// The label, or an error when the index does not fit a label.
+fn lexicon_label(index: usize) -> Result<NonZeroU32> {
+    index
+        .checked_add(1)
+        .and_then(|label| u32::try_from(label).ok())
+        .and_then(NonZeroU32::new)
+        .ok_or_else(|| anyhow::anyhow!("seed row {index} has no label"))
+}
+
+/// Counts of the gold labels and negative edges of the training lattices.
+#[derive(Debug, Default)]
+struct LatticeStats {
+    /// Gold tokens labelled with a seed row's label.
+    gold_lexicon: usize,
+    /// Gold tokens labelled with an unknown-word label.
+    gold_unknown: usize,
+    /// Gold tokens labelled with a label created during lattice building.
+    gold_empty: usize,
+    /// Negative edges from the seed lexicon.
+    negative_lexicon: usize,
+    /// Negative edges from unknown-word generation.
+    negative_unknown: usize,
 }
 
 impl Trainer {
     /// Creates a new [`Trainer`] using the specified configuration.
     pub fn new(mut config: TrainerConfig) -> Result<Self> {
         let mut provider = lindera_crf::FeatureProvider::default();
-        let mut label_id_map: HashMap<String, HashMap<char, NonZeroU32>> = HashMap::new();
 
         // Build label mapping from surfaces and add feature sets to provider
         // Generate default features based on dictionary schema
@@ -174,13 +210,14 @@ impl Trainer {
 
             let feature_set = lindera_crf::FeatureSet::new(&unigram_ids, &right_ids, &left_ids);
 
-            // Add feature set to provider and get label ID
+            // Add feature set to provider and get label ID. `build_lattice`
+            // finds a seed row by its word id in the training lexicon, the
+            // row index, and labels it `index + 1` (see `lexicon_label`).
             let label_id = provider.add_feature_set(feature_set)?;
-
-            // Map feature string to label ID using first character classification
-            let char_map = label_id_map.entry(feature_str.to_string()).or_default();
-            if let Some(first_char) = surface.chars().next() {
-                char_map.insert(first_char, label_id);
+            if lexicon_label(i)? != label_id {
+                return Err(anyhow::anyhow!(
+                    "seed row {i} got label {label_id}, not its index plus one"
+                ));
             }
         }
 
@@ -229,13 +266,13 @@ impl Trainer {
             config,
             max_grouping_len: None, // Default: no length limit for feature grouping
             provider,
-            label_id_map,
             label_id_map_unk,
             regularization_cost: 0.01,
             use_l2: false,
             elastic_net_l1_ratio: None,
             max_iter: 100,
             num_threads: 8,
+            stats: LatticeStats::default(),
         })
     }
 
@@ -316,6 +353,16 @@ impl Trainer {
             let lattice = self.build_lattice(example)?;
             lattices.push(lattice);
         }
+
+        let stats = &self.stats;
+        log_info!(
+            "Lattice statistics: gold_lexicon={} gold_unknown={} gold_empty={} negative_lexicon={} negative_unknown={}",
+            stats.gold_lexicon,
+            stats.gold_unknown,
+            stats.gold_empty,
+            stats.negative_lexicon,
+            stats.negative_unknown
+        );
 
         Ok(lattices)
     }
@@ -515,42 +562,63 @@ impl Trainer {
         let input_chars: Vec<char> = example.sentence.chars().collect();
         let input_len = input_chars.len();
 
+        // The seed-lexicon words that start at each position (#1164): the
+        // gold tokens are looked up among them, and the others become
+        // negative edges.
+        let lexicon: Vec<_> = (0..input_len)
+            .map(|pos| {
+                self.config
+                    .system_lexicon()
+                    .common_prefix_iterator(&input_chars[pos..])
+            })
+            .collect();
+
         // Add positive edges from training data
         let mut edges = vec![];
         let mut pos = 0;
         for token in &example.tokens {
             let token_len = token.surface().chars().count();
-            let first_char = input_chars[pos];
 
-            // Try to find existing label ID, or create one
-            let label_id = self
-                .label_id_map
-                .get(token.feature())
-                .and_then(|hm| hm.get(&first_char))
-                .cloned()
-                .map(Ok)
-                .unwrap_or_else(|| {
-                    // Check for compatible unknown word first
-                    self.config
-                        .dict()
-                        .unknown_dictionary
-                        .compatible_unk_index(
-                            &example.sentence,
-                            pos,
-                            pos + token_len,
-                            token.feature(),
-                        )
-                        .map_or_else(
-                            || {
-                                self.provider.add_feature_set(lindera_crf::FeatureSet::new(
-                                    &[],
-                                    &[],
-                                    &[],
-                                ))
-                            },
-                            |unk_index| Ok(self.label_id_map_unk[unk_index.word_id as usize]),
-                        )
-                })?;
+            // A gold token is a seed word when a seed row with its span and
+            // its whole feature starts here. The first such row in seed order
+            // gives the label, as MeCab's learner takes the first matching
+            // dictionary node; matching the feature alone could pick another
+            // word's row.
+            let lexicon_match = lexicon.get(pos).and_then(|matches| {
+                matches.iter().find(|m| {
+                    m.end_char == token_len
+                        && self
+                            .config
+                            .features
+                            .get(m.word_idx.word_id as usize)
+                            .is_some_and(|feature| feature == token.feature())
+                })
+            });
+            let label_id = if let Some(m) = lexicon_match {
+                self.stats.gold_lexicon += 1;
+                lexicon_label(m.word_idx.word_id as usize)?
+            } else {
+                // Check for compatible unknown word first
+                match self.config.dict().unknown_dictionary.compatible_unk_index(
+                    &example.sentence,
+                    pos,
+                    pos + token_len,
+                    token.feature(),
+                ) {
+                    Some(unk_index) => {
+                        self.stats.gold_unknown += 1;
+                        self.label_id_map_unk[unk_index.word_id as usize]
+                    }
+                    None => {
+                        self.stats.gold_empty += 1;
+                        self.provider.add_feature_set(lindera_crf::FeatureSet::new(
+                            &[],
+                            &[],
+                            &[],
+                        ))?
+                    }
+                }
+            };
 
             edges.push((pos, Edge::new(pos + token_len, label_id)));
             pos += token_len;
@@ -564,16 +632,12 @@ impl Trainer {
             lattice.add_edge(pos, edge)?;
         }
 
-        // Add negative edges using optimized unknown word generation
-        for start_word in 0..input_len {
-            let mut has_matched = false;
+        // Add negative edges: the seed words, then the unknown words
+        for (start_word, matches) in lexicon.iter().enumerate() {
+            let has_matched = !matches.is_empty();
 
-            let suffix = &input_chars[start_word..];
-
-            // System lexicon matching with common_prefix_iterator
-            for m in self.config.system_lexicon().common_prefix_iterator(suffix) {
-                has_matched = true;
-                let label_id = NonZeroU32::new(m.word_idx.word_id + 1).unwrap(); // word_id is 0-based, NonZeroU32 needs +1
+            for m in matches {
+                let label_id = lexicon_label(m.word_idx.word_id as usize)?;
                 let pos = start_word;
                 let target = pos + m.end_char;
                 let edge = Edge::new(target, label_id);
@@ -585,10 +649,12 @@ impl Trainer {
                     continue;
                 }
                 lattice.add_edge(pos, edge)?;
+                self.stats.negative_lexicon += 1;
             }
 
             // Generate unknown words using callback system
             let sentence: String = input_chars.iter().collect();
+            let mut negative_unknown = 0;
             self.config.unk_handler().gen_unk_words(
                 &sentence,
                 start_word,
@@ -608,8 +674,10 @@ impl Trainer {
                         return;
                     }
                     lattice.add_edge(pos, edge).unwrap();
+                    negative_unknown += 1;
                 },
             );
+            self.stats.negative_unknown += negative_unknown;
         }
 
         Ok(lattice)
@@ -1046,6 +1114,75 @@ mod tests {
         assert_eq!(
             written(|w| model.write_connection_costs(w)),
             written(|w| serializable.write_connection_costs(w))
+        );
+    }
+
+    fn lattice_of(seed_csv: &str, corpus_text: &str) -> lindera_crf::Lattice {
+        let (_, char_def, unk_def, feature_def, rewrite_def, _) = test_fixtures::fixtures();
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed_csv),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+        let mut trainer = Trainer::new(config).unwrap();
+        let corpus = Corpus::from_reader(Cursor::new(corpus_text)).unwrap();
+        trainer.build_lattice(&corpus.examples[0]).unwrap()
+    }
+
+    /// The `(target, label)` pairs of the edges starting at `pos`, gold edge
+    /// first.
+    fn edges_at(lattice: &lindera_crf::Lattice, pos: usize) -> Vec<(usize, u32)> {
+        lattice.nodes()[pos]
+            .edges()
+            .iter()
+            .map(|edge| (edge.target(), edge.label().get()))
+            .collect()
+    }
+
+    #[test]
+    fn test_training_lattice_has_the_other_seed_words() {
+        // #1164: the gold `都` (名詞,接尾,地域) must compete with the seed's
+        // other `都` row; the training lexicon used to be empty. A seed row's
+        // label is its index plus one.
+        let seed = "東京,0,0,0,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー\n\
+                    都,0,0,0,名詞,一般,*,*,*,*,都,ミヤコ,ミヤコ\n\
+                    都,0,0,0,名詞,接尾,地域,*,*,*,都,ト,ト\n";
+        let corpus = "東京\t名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー\n\
+                      都\t名詞,接尾,地域,*,*,*,都,ト,ト\n\
+                      EOS\n";
+        let lattice = lattice_of(seed, corpus);
+
+        assert_eq!(edges_at(&lattice, 0).first(), Some(&(2, 1)), "gold 東京");
+        let at_2 = edges_at(&lattice, 2);
+        assert_eq!(at_2.first(), Some(&(3, 3)), "gold 都 is row 2");
+        assert!(
+            at_2.contains(&(3, 2)),
+            "the other 都 (row 1) is a negative edge: {at_2:?}"
+        );
+    }
+
+    #[test]
+    fn test_gold_seed_word_keeps_its_own_label() {
+        // Two seed words with the same feature and first character: the gold
+        // `東京` gets its own row's label, not `東北`'s, and is not added again
+        // as a negative edge.
+        let seed = "東京,0,0,0,名詞,固有名詞,地域,一般,*,*,*,*,*\n\
+                    東北,0,0,0,名詞,固有名詞,地域,一般,*,*,*,*,*\n\
+                    へ,0,0,0,助詞,格助詞,一般,*,*,*,へ,ヘ,エ\n";
+        let corpus = "東京\t名詞,固有名詞,地域,一般,*,*,*,*,*\n\
+                      へ\t助詞,格助詞,一般,*,*,*,へ,ヘ,エ\n\
+                      EOS\n";
+        let lattice = lattice_of(seed, corpus);
+
+        let at_0 = edges_at(&lattice, 0);
+        assert_eq!(at_0.first(), Some(&(2, 1)), "gold 東京 is row 0");
+        assert_eq!(
+            at_0.iter().filter(|&&(_, label)| label == 1).count(),
+            1,
+            "東京 is not also a negative edge: {at_0:?}"
         );
     }
 }

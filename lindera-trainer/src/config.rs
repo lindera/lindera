@@ -16,6 +16,7 @@ use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix
 use lindera_dictionary::dictionary::metadata::Metadata;
 use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
 use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
+use lindera_dictionary::viterbi::{LexType, WordEntry, WordId};
 
 /// Configuration for training.
 pub struct TrainerConfig {
@@ -251,7 +252,7 @@ impl TrainerConfig {
         // Build dictionary from readers (need to re-create readers from content strings)
         use std::io::Cursor;
         let (dict, default_categories) = Self::build_dictionary_from_readers(
-            &lexicon_content,
+            &surfaces,
             Cursor::new(char_def_content.as_bytes()),
             Cursor::new(unk_content.as_bytes()),
         )?;
@@ -381,7 +382,8 @@ impl TrainerConfig {
     ///
     /// # Arguments
     ///
-    /// * `lexicon_content` - The seed lexicon (lex.csv) content.
+    /// * `surfaces` - The seed surfaces, one per kept lexicon row, in row
+    ///   order (see [`Self::build_prefix_dict_from_surfaces`]).
     /// * `char_prop_rdr` - Reader for the character property file (char.def).
     /// * `unk_handler_rdr` - Reader for the unknown word file (unk.def).
     ///
@@ -390,7 +392,7 @@ impl TrainerConfig {
     /// The minimal dictionary used during training, and the default category
     /// table built from the same `char.def`.
     fn build_dictionary_from_readers<R2, R3>(
-        lexicon_content: &str,
+        surfaces: &[String],
         char_prop_rdr: R2,
         unk_handler_rdr: R3,
     ) -> Result<(Dictionary, LookupTable<CategoryId>)>
@@ -415,7 +417,7 @@ impl TrainerConfig {
         let unknown_dict = Self::build_unknown_dict_from_content(&unk_content, &char_def)?;
 
         // Build prefix dictionary (lexicon)
-        let prefix_dict = Self::build_prefix_dict_from_content(lexicon_content)?;
+        let prefix_dict = Self::build_prefix_dict_from_surfaces(surfaces)?;
 
         // Create minimal connection cost matrix
         let conn_matrix = Self::create_minimal_connection_matrix()?;
@@ -465,11 +467,45 @@ impl TrainerConfig {
         })
     }
 
-    fn build_prefix_dict_from_content(_content: &str) -> Result<PrefixDictionary> {
-        // Create minimal (empty) prefix dictionary structure for training.
-        // In production, this would parse the lexicon CSV format.
-        PrefixDictionary::from_word_entry_map(&std::collections::BTreeMap::new())
-            .map_err(|err| anyhow::anyhow!("failed to build empty prefix dictionary: {err}"))
+    /// Builds the training lexicon: a prefix dictionary over the seed
+    /// surfaces whose word id is the entry's index in `surfaces` (#1164).
+    ///
+    /// `Trainer::build_lattice` turns a match into the CRF label
+    /// `word_id + 1`, the label `Trainer::new` created for the same seed row,
+    /// so the ids must follow `surfaces` exactly, rows that share a surface
+    /// included (they become several entries of one key, in row order). A
+    /// surface the trie cannot store (empty, or containing NUL) is left out:
+    /// its row keeps its label but never becomes a candidate.
+    ///
+    /// # Arguments
+    ///
+    /// * `surfaces` - The seed surfaces, one per kept lexicon row, in row
+    ///   order.
+    ///
+    /// # Returns
+    ///
+    /// The prefix dictionary. Its entries carry no cost and no context ids,
+    /// which training does not read.
+    fn build_prefix_dict_from_surfaces(surfaces: &[String]) -> Result<PrefixDictionary> {
+        let mut word_entry_map: BTreeMap<String, Vec<WordEntry>> = BTreeMap::new();
+        for (index, surface) in surfaces.iter().enumerate() {
+            if surface.is_empty() || surface.contains('\0') {
+                continue;
+            }
+            let word_id = u32::try_from(index)
+                .map_err(|_| anyhow::anyhow!("the seed lexicon has more than u32::MAX rows"))?;
+            word_entry_map
+                .entry(surface.clone())
+                .or_default()
+                .push(WordEntry::new(
+                    WordId::new(LexType::System, word_id),
+                    0,
+                    0,
+                    0,
+                ));
+        }
+        PrefixDictionary::from_word_entry_map(&word_entry_map)
+            .map_err(|err| anyhow::anyhow!("failed to build the training lexicon: {err}"))
     }
 
     fn create_minimal_connection_matrix() -> Result<ConnectionCostMatrix> {
