@@ -1068,7 +1068,11 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
   そうした `lex.csv` の行を取り除きます。`log` クレートに警告を出しますが、CLI
   はまだそれを表示しません（[#1107](https://github.com/lindera/lindera/issues/1107)）。
   `unk.def` の行は常に確認します。
-- フィールドが 4 つ未満の `unk.def` の行は、パニックではなくエラーになります。
+- コメント行や空行など、フィールドが 4 つ未満の `unk.def` の行は、パニックでは
+  なくエラーになります。`lindera_dictionary` の
+  `DictionaryBuilder::build_unknown_dictionary` と `parse_unk` でも同じです。
+  エラーは行を示します。これまで行を示さなかった、文脈 ID やコストが数値でない
+  行のエラーも、行を示すようになります。
 - ユーザー辞書（`lindera build --user`）はまだ確認しません
   （[#1171](https://github.com/lindera/lindera/issues/1171)）。
 
