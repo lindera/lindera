@@ -201,6 +201,32 @@ impl PyTokenizerBuilder {
         Ok(slf)
     }
 
+    /// Sets whether whitespace is skipped in the lattice, with the same
+    /// meaning as `segmenter.skip_whitespace` in a YAML config.
+    ///
+    /// `True` skips whitespace, so the words on either side connect
+    /// directly, as MeCab does; `False` keeps whitespace in the lattice as a
+    /// node of its own, as before v7 (it is still dropped from the output);
+    /// `None` goes back to the default of the dictionary's `metadata.json`
+    /// (skipping, except with SudachiDict). No effect while whitespace tokens
+    /// are kept (`set_keep_whitespace(True)`).
+    ///
+    /// # Arguments
+    ///
+    /// * `skip_whitespace` - The setting, or `None` for the dictionary's default.
+    ///
+    /// # Returns
+    ///
+    /// Self for method chaining.
+    #[pyo3(signature = (skip_whitespace))]
+    fn set_skip_whitespace<'a>(
+        mut slf: PyRefMut<'a, Self>,
+        skip_whitespace: Option<bool>,
+    ) -> PyResult<PyRefMut<'a, Self>> {
+        slf.inner.set_skip_whitespace(skip_whitespace);
+        Ok(slf)
+    }
+
     /// Sets the left-space penalty (Korean), with the same meaning as
     /// `segmenter.space_penalty` in a YAML config.
     ///

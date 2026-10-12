@@ -460,9 +460,10 @@ segmenter:
 lindera tokenize --disable-skip-whitespace
 ```
 
-言語バインディングには、この設定の setter はありません。Python・Node.js・Ruby・
-PHP のバインディングでは、`from_file` / `fromFile` で読み込む設定ファイルでだけ
-指定できます。WASM のバインディングでは変更できず、辞書のデフォルトが使われます。
+言語バインディングでは `TokenizerBuilder` で設定します。Python では
+`set_skip_whitespace(False)`、Ruby では `set_skip_whitespace(false)`、Node.js・
+PHP・WASM では `setSkipWhitespace(false)` です。`null`（Python では `None`、
+Ruby では `nil`）を渡すと辞書のデフォルトに戻ります。
 
 ## `char.def` の重複した行を MeCab と同じく解決する
 

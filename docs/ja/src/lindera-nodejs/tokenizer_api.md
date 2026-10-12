@@ -65,10 +65,32 @@ builder.setUserDictionary("/path/to/user_dictionary");
 
 #### `setKeepWhitespace(keep)`
 
-出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白の読み飛ばし自体を変える setter はありません。`fromFile` で読み込む[設定ファイル](../lindera-analysis/configuration.md)の `segmenter` に `skip_whitespace: false` を書くと無効にできます。
+出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白を出力せずにラティスにだけ残すには、代わりに [`setSkipWhitespace(false)`](#setskipwhitespaceskip) を使います。
 
 ```javascript
 builder.setKeepWhitespace(true);
+```
+
+#### `setSkipWhitespace(skip)`
+
+空白をラティス上で読み飛ばすかどうかを設定します。値の意味は[設定ファイル](../lindera-analysis/configuration.md)の `segmenter.skip_whitespace` と同じです。
+
+| 値 | 効果 |
+| --- | --- |
+| `true` | 空白を読み飛ばし、MeCab と同様に空白の前後の語を直接接続する |
+| `false` | 空白を独立したノード（空白の見出し語か `SPACE` の未知語）としてラティスに残す（v7 より前の動作）。空白は引き続き出力から除外する |
+| `null` または `undefined` | デフォルト。辞書の `metadata.json` の設定に従う（SudachiDict 以外では読み飛ばす） |
+
+ここで設定した値は、辞書のデフォルトと、`fromFile` で読み込んだ `skip_whitespace` より優先されます。空白トークンを残すとき（`setKeepWhitespace(true)`）は効果がありません。残した空白は常にラティスに残るためです。引数は省略できず、それ以外の値を渡すと `Error` を投げます。
+
+たとえば IPADIC では、`Google が 新しい` の `が` は、デフォルトでは助詞（`助詞`）、`setSkipWhitespace(false)` では接続詞（`接続詞`）と解析されます。詳しくは [Segmenter](../lindera/segmenter.md#空白文字の扱い) を参照してください。
+
+```javascript
+// v7 より前と同じく、空白をラティスに残す
+builder.setSkipWhitespace(false);
+
+// 辞書のデフォルトに戻す
+builder.setSkipWhitespace(null);
 ```
 
 #### `setSpacePenalty(value)`

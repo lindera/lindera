@@ -63,6 +63,19 @@ export function checkSpacePenaltyForms(): void {
   void builder;
 }
 
+// `setSkipWhitespace` declares its argument type by hand too: a boolean, `null`
+// or `undefined`, and the argument is required, as for `setSpacePenalty`.
+export function checkSkipWhitespaceForms(): void {
+  const builder: TokenizerBuilder = new TokenizerBuilder()
+    .setSkipWhitespace(true)
+    .setSkipWhitespace(false)
+    .setSkipWhitespace(null)
+    .setSkipWhitespace(undefined);
+  // @ts-expect-error -- the argument is required.
+  builder.setSkipWhitespace();
+  void builder;
+}
+
 // Every documented form of the constructor: the arguments after the
 // dictionary are optional. The WASM declarations lost their `?` once (#1076);
 // this guards the Node.js ones the same way.

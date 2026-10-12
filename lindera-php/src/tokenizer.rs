@@ -10,6 +10,7 @@ use std::path::Path;
 
 use ext_php_rs::prelude::*;
 use ext_php_rs::types::Zval;
+use ext_php_rs::zend::ce;
 
 use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
@@ -38,6 +39,33 @@ fn space_penalty_value(value: &Zval) -> PhpResult<serde_json::Value> {
              (objects and non-finite floats are not supported)",
         ),
         ConvertError::TooDeep => PhpException::from(error),
+    })
+}
+
+/// Converts a whitespace-skipping setting from PHP.
+///
+/// ext-php-rs reads a value of another type as `null` for an `Option<bool>`
+/// parameter, which would silently restore the dictionary's default, so the
+/// setter takes the raw value and this checks it.
+///
+/// # Arguments
+///
+/// * `value` - `null` or a boolean.
+///
+/// # Returns
+///
+/// `None` for `null`, the boolean otherwise, or a `TypeError` for a value of
+/// any other type.
+fn skip_whitespace_value(value: &Zval) -> PhpResult<Option<bool>> {
+    if value.is_null() {
+        return Ok(None);
+    }
+    value.bool().map(Some).ok_or_else(|| {
+        PhpException::new(
+            "skip_whitespace must be null or a boolean".to_string(),
+            0,
+            ce::type_error(),
+        )
     })
 }
 
@@ -120,6 +148,31 @@ impl PhpTokenizerBuilder {
     /// * `keep_whitespace` - If true, whitespace tokens will be included.
     pub fn set_keep_whitespace(&self, keep_whitespace: bool) -> PhpResult<()> {
         self.inner.borrow_mut().set_keep_whitespace(keep_whitespace);
+        Ok(())
+    }
+
+    /// Sets whether whitespace is skipped in the lattice, with the same
+    /// meaning as `segmenter.skip_whitespace` in a config file. Exposed to
+    /// PHP as `setSkipWhitespace(mixed $skip_whitespace)`.
+    ///
+    /// `true` skips whitespace, so the words on either side connect directly,
+    /// as MeCab does; `false` keeps whitespace in the lattice as a node of
+    /// its own, as before v7 (it is still dropped from the output); `null`
+    /// goes back to the default of the dictionary's `metadata.json`
+    /// (skipping, except with SudachiDict). No effect while whitespace tokens
+    /// are kept (`setKeepWhitespace(true)`).
+    ///
+    /// # Arguments
+    ///
+    /// * `skip_whitespace` - The setting: a boolean, or `null` for the
+    ///   dictionary's default. The argument is required.
+    ///
+    /// # Returns
+    ///
+    /// Nothing on success; throws `TypeError` for a value of any other type.
+    pub fn set_skip_whitespace(&self, skip_whitespace: &Zval) -> PhpResult<()> {
+        let skip_whitespace = skip_whitespace_value(skip_whitespace)?;
+        self.inner.borrow_mut().set_skip_whitespace(skip_whitespace);
         Ok(())
     }
 

@@ -107,6 +107,25 @@ impl RbTokenizerBuilder {
         self.inner.borrow_mut().set_keep_whitespace(keep_whitespace);
     }
 
+    /// Sets whether whitespace is skipped in the lattice, with the same
+    /// meaning as `segmenter.skip_whitespace` in a YAML config.
+    ///
+    /// `true` skips whitespace, so the words on either side connect directly,
+    /// as MeCab does; `false` keeps whitespace in the lattice as a node of
+    /// its own, as before v7 (it is still dropped from the output); `nil`
+    /// goes back to the default of the dictionary's `metadata.json`
+    /// (skipping, except with SudachiDict). No effect while whitespace tokens
+    /// are kept (`set_keep_whitespace(true)`).
+    ///
+    /// # Arguments
+    ///
+    /// * `skip_whitespace` - The setting, or `nil` for the dictionary's
+    ///   default. Any other value counts by Ruby truthiness, as for
+    ///   `set_keep_whitespace`.
+    fn set_skip_whitespace(&self, skip_whitespace: Option<bool>) {
+        self.inner.borrow_mut().set_skip_whitespace(skip_whitespace);
+    }
+
     /// Sets the left-space penalty (Korean), with the same meaning as
     /// `segmenter.space_penalty` in a YAML config.
     ///
@@ -377,6 +396,10 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
     builder_class.define_method(
         "set_keep_whitespace",
         method!(RbTokenizerBuilder::set_keep_whitespace, 1),
+    )?;
+    builder_class.define_method(
+        "set_skip_whitespace",
+        method!(RbTokenizerBuilder::set_skip_whitespace, 1),
     )?;
     builder_class.define_method(
         "set_space_penalty",

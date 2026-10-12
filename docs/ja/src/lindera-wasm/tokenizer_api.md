@@ -46,7 +46,7 @@ builder.setDictionary("embedded://ipadic");
 
 読み込み済みの辞書インスタンスをトークナイズに設定します。
 URI の代わりにバイトデータから読み込んだ辞書（例: `loadDictionaryFromBytes()` 経由）を使用する場合に使います。
-`setDictionary()` で設定した辞書は、この辞書に置き換わります（2 つのうち最後に呼んだ方の辞書が使われます）。ビルダーのほかの設定（モード、`setUserDictionaryInstance()`、`setKeepWhitespace()`、`setSpacePenalty()`、追加したフィルタ）は、URI で設定した辞書と同じようにこの辞書にも適用されます。
+`setDictionary()` で設定した辞書は、この辞書に置き換わります（2 つのうち最後に呼んだ方の辞書が使われます）。ビルダーのほかの設定（モード、`setUserDictionaryInstance()`、`setKeepWhitespace()`、`setSkipWhitespace()`、`setSpacePenalty()`、追加したフィルタ）は、URI で設定した辞書と同じようにこの辞書にも適用されます。
 
 - **パラメータ**: `dictionary` (Dictionary) -- 読み込み済みの辞書オブジェクト
 - **戻り値**: `TokenizerBuilder`
@@ -74,13 +74,27 @@ builder.setDictionaryInstance(dictionary);
 
 #### `setKeepWhitespace(keep)`
 
-出力に空白トークンを保持するかどうかを設定します。保持した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。WASM バインディングには、空白の読み飛ばし自体を無効にする方法はありません（setter も設定ファイルの読み込みもないため、辞書のデフォルトが使われます。SudachiDict 以外では読み飛ばします）。
+出力に空白トークンを保持するかどうかを設定します。保持した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白を出力せずにラティスにだけ残すには、代わりに [`setSkipWhitespace(false)`](#setskipwhitespaceskip) を使います。
 
 - **パラメータ**: `keep` (boolean) -- `true` で空白トークンを保持
 - **戻り値**: `TokenizerBuilder`
 
 ```javascript
 builder.setKeepWhitespace(true);
+```
+
+#### `setSkipWhitespace(skip)`
+
+空白をラティス上で読み飛ばすかどうかを設定します。意味は[設定ファイル](../lindera-analysis/configuration.md)の `segmenter.skip_whitespace` と同じです。`true` では空白を読み飛ばし、MeCab と同様に空白の前後の語を直接接続します。`false` では空白を独立したノード（空白の見出し語か `SPACE` の未知語）としてラティスに残します（v7 より前の動作。空白は引き続き出力から除外されます）。`null` または `undefined` では、辞書の `metadata.json` のデフォルトに戻ります（SudachiDict 以外では読み飛ばします）。
+
+ここで設定した値は、`setDictionary()` と `setDictionaryInstance()` のどちらで設定した辞書でも、辞書のデフォルトより優先されます。空白トークンを保持するとき（`setKeepWhitespace(true)`）は効果がありません。保持した空白は常にラティスに残るためです。たとえば IPADIC では、`Google が 新しい` の `が` は、デフォルトでは助詞（`助詞`）、`setSkipWhitespace(false)` では接続詞（`接続詞`）と解析されます。詳しくは [Segmenter](../lindera/segmenter.md#空白文字の扱い) を参照してください。
+
+- **パラメータ**: `skip` (boolean | null | undefined) -- 設定値。`null` または `undefined` で辞書のデフォルト。TypeScript の宣言では引数を省略できません。それ以外の値は JavaScript の真偽値の規則で扱われます
+- **戻り値**: `TokenizerBuilder`
+
+```javascript
+// v7 より前と同じく、空白をラティスに残す
+builder.setSkipWhitespace(false);
 ```
 
 #### `setSpacePenalty(value)`
@@ -356,6 +370,7 @@ Python API との一貫性のため、すべてのメソッドは snake\_case �
 | `setDictionaryInstance()` | `set_dictionary_instance()` |
 | `setUserDictionaryInstance()` | `set_user_dictionary_instance()` |
 | `setKeepWhitespace()` | `set_keep_whitespace()` |
+| `setSkipWhitespace()` | `set_skip_whitespace()` |
 | `setSpacePenalty()` | `set_space_penalty()` |
 | `appendCharacterFilter()` | `append_character_filter()` |
 | `appendTokenFilter()` | `append_token_filter()` |

@@ -278,6 +278,76 @@ class LinderaTest extends TestCase
         $this->assertGreaterThan(0, count($tokens));
     }
 
+    // #1137: with whitespace skipped (the default for IPADIC), "が" connects
+    // to the word before the space and reads as a particle (助詞), as in
+    // MeCab; with the whitespace node in the lattice, as a conjunction (接続詞).
+    // null goes back to the dictionary's default.
+    public function testTokenizerBuilderSetSkipWhitespace(): void
+    {
+        // Returns the first POS tag of "が" after calling the setter with
+        // each of the values in turn.
+        $posOfGa = function (?bool ...$values): string {
+            $builder = new Lindera\TokenizerBuilder();
+            $builder->setDictionary('embedded://ipadic');
+            foreach ($values as $value) {
+                $this->assertNull($builder->setSkipWhitespace($value));
+            }
+            foreach ($builder->build()->tokenize('Google が 新しい') as $token) {
+                if ($token->surface === 'が') {
+                    return $token->getDetail(0);
+                }
+            }
+            $this->fail('no token with surface が');
+        };
+
+        $this->assertSame('助詞', $posOfGa());
+        $this->assertSame('助詞', $posOfGa(true));
+        $this->assertSame('接続詞', $posOfGa(false));
+        $this->assertSame('助詞', $posOfGa(false, null));
+        // The last call wins.
+        $this->assertSame('接続詞', $posOfGa(true, false));
+    }
+
+    public function testTokenizerBuilderSetSkipWhitespaceHasNoEffectWithKeptWhitespace(): void
+    {
+        $surfaces = static function (?bool $skip): array {
+            $builder = new Lindera\TokenizerBuilder();
+            $builder->setDictionary('embedded://ipadic');
+            $builder->setKeepWhitespace(true);
+            $builder->setSkipWhitespace($skip);
+
+            return $builder->build()->tokenizeSurfaces('Google が 新しい');
+        };
+
+        $kept = $surfaces(null);
+        $this->assertContains(' ', $kept);
+        $this->assertSame($kept, $surfaces(true));
+    }
+
+    // A value of another type must not be read as null, which would silently
+    // restore the default, and the argument is required.
+    public function testTokenizerBuilderSetSkipWhitespaceRejectsNonBooleans(): void
+    {
+        $values = [
+            'string' => 'false',
+            'int' => 0,
+            'array' => [],
+            'object' => new \stdClass(),
+        ];
+        $builder = new Lindera\TokenizerBuilder();
+        foreach ($values as $label => $value) {
+            try {
+                $builder->setSkipWhitespace($value);
+                $this->fail("setSkipWhitespace accepted a non-boolean: {$label}");
+            } catch (\TypeError $e) {
+                $this->assertStringContainsString('skip_whitespace', $e->getMessage(), $label);
+            }
+        }
+
+        $this->expectException(\ArgumentCountError::class);
+        $builder->setSkipWhitespace();
+    }
+
     // #1052: setSpacePenalty takes the same values as segmenter.space_penalty
     // in a config file. IPADIC ships no rules, so everything but `true`
     // (which requires the dictionary's rules) builds.

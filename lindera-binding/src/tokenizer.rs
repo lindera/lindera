@@ -148,6 +148,42 @@ impl CoreTokenizerBuilder {
         self
     }
 
+    /// Sets whether whitespace is skipped in the lattice (see
+    /// `Segmenter::skip_whitespace`), with the same meaning as
+    /// `segmenter.skip_whitespace` in a YAML config:
+    ///
+    /// - `Some(true)` skips whitespace, so the words on either side connect
+    ///   directly, as MeCab does;
+    /// - `Some(false)` keeps whitespace in the lattice as a node of its own,
+    ///   as before v7; it is still dropped from the output;
+    /// - `None` removes the setting, so the default of the dictionary's
+    ///   `metadata.json` applies (skipping, except with SudachiDict).
+    ///
+    /// A value set here overrides the dictionary's default and a setting
+    /// loaded from a configuration file. It has no effect while whitespace
+    /// tokens are kept ([`Self::set_keep_whitespace`]), because kept
+    /// whitespace always stays in the lattice.
+    ///
+    /// # Arguments
+    ///
+    /// * `skip_whitespace` - The setting, or `None` for the dictionary's
+    ///   default.
+    ///
+    /// # Returns
+    ///
+    /// The builder, for chaining.
+    pub fn set_skip_whitespace(&mut self, skip_whitespace: Option<bool>) -> &mut Self {
+        match skip_whitespace {
+            Some(skip_whitespace) => {
+                self.inner.set_segmenter_skip_whitespace(skip_whitespace);
+            }
+            None => {
+                self.inner.reset_segmenter_skip_whitespace();
+            }
+        }
+        self
+    }
+
     /// Sets the left-space penalty (Korean; see `Segmenter::space_penalty`)
     /// from a value with the same meaning as `segmenter.space_penalty` in a
     /// YAML config:
@@ -410,6 +446,7 @@ mod tests {
         builder
             .set_dictionary("embedded://ipadic")
             .set_keep_whitespace(true)
+            .set_skip_whitespace(Some(false))
             .append_token_filter("japanese_compound_word", &Value::Object(Default::default()));
         // Reaching here means the borrow-returning setters compose.
     }
@@ -737,6 +774,113 @@ mod tests {
                 assert_eq!(result.is_ok(), should_build, "value {value}");
             }
         }
+
+        /// Text whose reading depends on whitespace skipping: with whitespace
+        /// skipped IPADIC reads `が` as a particle (助詞), as MeCab does; with
+        /// the whitespace node in the lattice, as a conjunction (接続詞).
+        const SPACED_TEXT: &str = "Google が 新しい";
+
+        /// Builds `builder` with the given dictionary instance (`None` loads
+        /// the one set by URI) and returns each token of [`SPACED_TEXT`] as
+        /// (surface, first part-of-speech field).
+        fn readings(
+            builder: &CoreTokenizerBuilder,
+            dictionary: Option<Dictionary>,
+        ) -> Vec<(String, String)> {
+            let tokenizer = match builder.build_with_dictionaries(dictionary, None) {
+                Ok(tokenizer) => tokenizer,
+                Err(err) => panic!("build failed: {err}"),
+            };
+            match tokenizer.tokenize(SPACED_TEXT) {
+                Ok(tokens) => tokens
+                    .into_iter()
+                    .map(|t| (t.surface, t.details.first().cloned().unwrap_or_default()))
+                    .collect(),
+                Err(err) => panic!("tokenize failed: {err}"),
+            }
+        }
+
+        /// The first part-of-speech field of `が` in [`SPACED_TEXT`].
+        fn reading_of_ga(builder: &CoreTokenizerBuilder, dictionary: Option<Dictionary>) -> String {
+            let readings = readings(builder, dictionary);
+            match readings.iter().find(|(surface, _)| surface == "が") {
+                Some((_, pos)) => pos.clone(),
+                None => panic!("no token with surface が: {readings:?}"),
+            }
+        }
+
+        /// `set_skip_whitespace` turns whitespace skipping off and on, the
+        /// last call wins, and `None` goes back to the dictionary's default
+        /// (skipping, for IPADIC).
+        #[test]
+        fn set_skip_whitespace_changes_the_ipadic_reading() {
+            let cases: [(&[Option<bool>], &str); 5] = [
+                (&[], "助詞"),
+                (&[Some(true)], "助詞"),
+                (&[Some(false)], "接続詞"),
+                (&[Some(false), None], "助詞"),
+                (&[Some(true), Some(false)], "接続詞"),
+            ];
+            for (settings, expected) in cases {
+                let mut builder = CoreTokenizerBuilder::new().expect("builder");
+                builder.set_dictionary("embedded://ipadic");
+                for setting in settings {
+                    builder.set_skip_whitespace(*setting);
+                }
+                assert_eq!(
+                    reading_of_ga(&builder, None),
+                    expected,
+                    "settings {settings:?}"
+                );
+            }
+        }
+
+        /// A value set with `set_skip_whitespace` overrides the default of
+        /// the dictionary's metadata, and `None` restores that default: an
+        /// IPADIC whose metadata turns skipping off, as SudachiDict's does,
+        /// reads `が` as a conjunction unless skipping is turned on.
+        #[test]
+        fn set_skip_whitespace_overrides_the_dictionary_default() {
+            let no_skip_ipadic = || {
+                let mut dictionary = ipadic();
+                std::sync::Arc::make_mut(&mut dictionary.metadata).skip_whitespace = Some(false);
+                dictionary
+            };
+            let mut builder = CoreTokenizerBuilder::new().expect("builder");
+            assert_eq!(reading_of_ga(&builder, Some(no_skip_ipadic())), "接続詞");
+            builder.set_skip_whitespace(Some(true));
+            assert_eq!(reading_of_ga(&builder, Some(no_skip_ipadic())), "助詞");
+            builder.set_skip_whitespace(None);
+            assert_eq!(reading_of_ga(&builder, Some(no_skip_ipadic())), "接続詞");
+        }
+
+        /// A dictionary instance takes the setting as a dictionary set by URI
+        /// does; lindera-wasm's `setDictionaryInstance()` builds this way.
+        #[test]
+        fn set_skip_whitespace_applies_to_a_dictionary_instance() {
+            let mut builder = CoreTokenizerBuilder::new().expect("builder");
+            assert_eq!(reading_of_ga(&builder, Some(ipadic())), "助詞");
+            builder.set_skip_whitespace(Some(false));
+            assert_eq!(reading_of_ga(&builder, Some(ipadic())), "接続詞");
+        }
+
+        /// Kept whitespace always stays in the lattice, so skipping cannot
+        /// take effect: the output, whitespace tokens included, is the same
+        /// with and without `set_skip_whitespace(Some(true))`.
+        #[test]
+        fn set_skip_whitespace_has_no_effect_with_kept_whitespace() {
+            let mut builder = CoreTokenizerBuilder::new().expect("builder");
+            builder
+                .set_dictionary("embedded://ipadic")
+                .set_keep_whitespace(true);
+            let kept = readings(&builder, None);
+            assert!(
+                kept.iter().any(|(surface, _)| surface == " "),
+                "fixture assumption: whitespace tokens are kept: {kept:?}"
+            );
+            builder.set_skip_whitespace(Some(true));
+            assert_eq!(readings(&builder, None), kept);
+        }
     }
 
     #[cfg(feature = "embed-ko-dic")]
@@ -849,6 +993,34 @@ mod tests {
                 };
                 assert_eq!(from_instance, tags(&value, text), "value {value}");
             }
+        }
+
+        /// ko-dic skips whitespace by default, so `전` in `2년 전 대회` is the
+        /// noun NNG, as in mecab-ko; with the whitespace node in the lattice,
+        /// which resets the context at the space, it is `저/NP + ㄴ/JX`.
+        #[test]
+        fn set_skip_whitespace_changes_ko_dic_output() {
+            let tag_of_jeon = |skip_whitespace: Option<bool>| {
+                let mut builder = CoreTokenizerBuilder::new().expect("builder");
+                builder
+                    .set_dictionary("embedded://ko-dic")
+                    .set_skip_whitespace(skip_whitespace);
+                let tokenizer = match builder.build() {
+                    Ok(tokenizer) => tokenizer,
+                    Err(err) => panic!("build failed: {err}"),
+                };
+                let tokens = match tokenizer.tokenize("2년 전 대회") {
+                    Ok(tokens) => tokens,
+                    Err(err) => panic!("tokenize failed: {err}"),
+                };
+                match tokens.into_iter().find(|t| t.surface == "전") {
+                    Some(token) => token.details.first().cloned().unwrap_or_default(),
+                    None => panic!("no token with surface 전"),
+                }
+            };
+            assert_eq!(tag_of_jeon(None), "NNG");
+            assert_eq!(tag_of_jeon(Some(true)), "NNG");
+            assert_eq!(tag_of_jeon(Some(false)), "NP+JX");
         }
     }
 }

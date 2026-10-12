@@ -47,7 +47,7 @@ builder.setDictionary("embedded://ipadic");
 
 Sets a pre-loaded dictionary instance for tokenization.
 Use this when the dictionary has been loaded from bytes (e.g., via `loadDictionaryFromBytes()`) instead of from a URI.
-It replaces a dictionary set with `setDictionary()`: whichever of the two is called last sets the dictionary. Every other setting of the builder (the mode, `setUserDictionaryInstance()`, `setKeepWhitespace()`, `setSpacePenalty()` and the appended filters) applies to it as to a dictionary set by URI.
+It replaces a dictionary set with `setDictionary()`: whichever of the two is called last sets the dictionary. Every other setting of the builder (the mode, `setUserDictionaryInstance()`, `setKeepWhitespace()`, `setSkipWhitespace()`, `setSpacePenalty()` and the appended filters) applies to it as to a dictionary set by URI.
 
 - **Parameters**: `dictionary` (Dictionary) -- A loaded dictionary object
 - **Returns**: `TokenizerBuilder`
@@ -74,13 +74,27 @@ Sets a pre-loaded user dictionary instance. Load one from bytes with `loadUserDi
 
 #### `setKeepWhitespace(keep)`
 
-Sets whether whitespace tokens are preserved in the output. Kept whitespace also stays in the lattice, so the other tokens can differ from those of the default output, which skips whitespace in the lattice as MeCab does. The WASM binding cannot turn whitespace skipping itself off: it has no setter for it and no configuration-file entry point, so the dictionary's default applies (skipping, except with SudachiDict).
+Sets whether whitespace tokens are preserved in the output. Kept whitespace also stays in the lattice, so the other tokens can differ from those of the default output, which skips whitespace in the lattice as MeCab does. To keep whitespace in the lattice without outputting it, use [`setSkipWhitespace(false)`](#setskipwhitespaceskip) instead.
 
 - **Parameters**: `keep` (boolean) -- `true` to keep whitespace tokens
 - **Returns**: `TokenizerBuilder`
 
 ```javascript
 builder.setKeepWhitespace(true);
+```
+
+#### `setSkipWhitespace(skip)`
+
+Sets whether whitespace is skipped in the lattice, with the same meaning as `segmenter.skip_whitespace` in a [configuration file](../lindera-analysis/configuration.md). `true` skips whitespace, so the words on either side of it connect directly, as MeCab does. `false` keeps whitespace in the lattice as a node of its own (a whitespace dictionary entry or the `SPACE` unknown word), as before v7; whitespace is still dropped from the output. `null` or `undefined` goes back to the default of the dictionary's `metadata.json`: skipping, except with SudachiDict.
+
+A value set here overrides the dictionary's default, for a dictionary set with `setDictionary()` or `setDictionaryInstance()`. It has no effect while whitespace tokens are kept (`setKeepWhitespace(true)`), because kept whitespace always stays in the lattice. With IPADIC, for example, `Google が 新しい` reads `が` as a particle (`助詞`) by default and as a conjunction (`接続詞`) with `setSkipWhitespace(false)`. See [Segmenter](../lindera/segmenter.md#whitespace-handling) for details.
+
+- **Parameters**: `skip` (boolean | null | undefined) -- The setting; `null` or `undefined` for the dictionary's default. The argument is required in the TypeScript declaration. Other values count by JavaScript truthiness.
+- **Returns**: `TokenizerBuilder`
+
+```javascript
+// Keep whitespace in the lattice, as before v7
+builder.setSkipWhitespace(false);
 ```
 
 #### `setSpacePenalty(value)`
@@ -359,6 +373,7 @@ For consistency with the Python API, all methods are also available in snake\_ca
 | `setDictionaryInstance()` | `set_dictionary_instance()` |
 | `setUserDictionaryInstance()` | `set_user_dictionary_instance()` |
 | `setKeepWhitespace()` | `set_keep_whitespace()` |
+| `setSkipWhitespace()` | `set_skip_whitespace()` |
 | `setSpacePenalty()` | `set_space_penalty()` |
 | `appendCharacterFilter()` | `append_character_filter()` |
 | `appendTokenFilter()` | `append_token_filter()` |
