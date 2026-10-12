@@ -307,7 +307,9 @@ impl TokenizerBuilder {
     /// # Returns
     ///
     /// The tokenizer, or an error when the configuration names no dictionary,
-    /// a dictionary cannot be loaded, or a setting or filter is invalid.
+    /// a dictionary cannot be loaded, a setting or filter is invalid, or the
+    /// user dictionary has a context ID outside the system dictionary's
+    /// connection matrix (see [`Segmenter::try_new`]).
     pub fn build(&self) -> LinderaResult<Tokenizer> {
         self.build_with_dictionaries(None, None)
     }
@@ -398,7 +400,9 @@ impl Tokenizer {
     /// # Returns
     ///
     /// The tokenizer, or an error when the `segmenter` section is missing or
-    /// invalid, a dictionary cannot be loaded, or a filter is invalid.
+    /// invalid, a dictionary cannot be loaded, a filter is invalid, or the
+    /// user dictionary has a context ID outside the system dictionary's
+    /// connection matrix (see [`Segmenter::try_new`]).
     pub fn from_config(config: &TokenizerConfig) -> LinderaResult<Self> {
         Self::from_config_with_dictionaries(config, None, None)
     }

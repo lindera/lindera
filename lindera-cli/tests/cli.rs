@@ -93,6 +93,95 @@ fn tokenize_with_undownloaded_name_suggests_download() {
     assert!(stderr.contains("lindera download ipadic"), "got: {stderr}");
 }
 
+/// A user dictionary whose context IDs lie outside the system dictionary's
+/// connection matrix builds (`lindera build --user` reads only
+/// `metadata.json`), and `lindera tokenize` then reports it as an error
+/// instead of panicking when the entry matches the input (#1171). The system
+/// dictionary is a hand-made 4x4 one, so no embedded dictionary is needed.
+#[test]
+fn tokenize_rejects_user_dictionary_context_ids_outside_the_matrix() {
+    let dir = tempfile::tempdir().unwrap();
+    let source = dir.path().join("source");
+    std::fs::create_dir(&source).unwrap();
+    std::fs::write(
+        source.join("char.def"),
+        "DEFAULT 0 1 0\nSPACE 0 1 0\nKANJI 0 0 2\n0x0020 SPACE\n0x4E00..0x9FFF KANJI\n",
+    )
+    .unwrap();
+    std::fs::write(
+        source.join("unk.def"),
+        "DEFAULT,0,0,10000,補助記号,一般,*,*,*,*,*,*,*\n\
+         SPACE,0,0,10000,空白,*,*,*,*,*,*,*,*\n\
+         KANJI,0,0,10000,名詞,一般,*,*,*,*,*,*,*\n",
+    )
+    .unwrap();
+    std::fs::write(
+        source.join("lex.csv"),
+        "東京,2,2,0,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トウキョウ\n",
+    )
+    .unwrap();
+    let mut matrix_def = String::from("4 4\n");
+    for right_id in 0..4 {
+        for left_id in 0..4 {
+            matrix_def.push_str(&format!("{right_id} {left_id} 100\n"));
+        }
+    }
+    std::fs::write(source.join("matrix.def"), matrix_def).unwrap();
+    let metadata = dir.path().join("metadata.json");
+    std::fs::write(
+        &metadata,
+        serde_json::to_vec(&lindera::dictionary::Metadata::default()).unwrap(),
+    )
+    .unwrap();
+    // The entry of the issue report: context IDs 60000 against a 4x4 matrix.
+    let user_csv = dir.path().join("userdic.csv");
+    std::fs::write(
+        &user_csv,
+        "東京都,60000,60000,-1000,名詞,固有名詞,地域,一般,*,*,東京都,トウキョウト,トウキョウト\n",
+    )
+    .unwrap();
+
+    let dict = dir.path().join("dict");
+    let user_dest = dir.path().join("user");
+    for args in [
+        vec!["build", "--src", source.to_str().unwrap()],
+        vec!["build", "--user", "--src", user_csv.to_str().unwrap()],
+    ] {
+        let dest = if args.contains(&"--user") {
+            &user_dest
+        } else {
+            &dict
+        };
+        let output = lindera()
+            .args(&args)
+            .args(["--dest", dest.to_str().unwrap()])
+            .args(["--metadata", metadata.to_str().unwrap()])
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{args:?} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    for user_dictionary in [user_dest.join("userdic.bin"), user_csv] {
+        let output = lindera()
+            .args(["tokenize", "--dict", dict.to_str().unwrap()])
+            .args(["--user-dict", user_dictionary.to_str().unwrap()])
+            .write_stdin("東京都\n")
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(!output.status.success(), "got: {stderr}");
+        assert!(
+            stderr.contains("left context id 60000 is out of range"),
+            "got: {stderr}"
+        );
+        assert!(!stderr.contains("panicked"), "got: {stderr}");
+    }
+}
+
 #[cfg(feature = "embed-ipadic")]
 mod with_ipadic {
     use super::*;
