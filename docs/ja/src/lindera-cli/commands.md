@@ -623,6 +623,18 @@ Linderaで使用するための形態素解析辞書をCSVソースファイル�
 
 システム辞書と一緒に動作する、カスタム単語のための補助辞書です。
 
+### 文脈 ID の確認
+
+システム辞書をビルドするとき、`lindera build` は MeCab の `mecab-dict-index` と同じく、すべての文脈 ID が接続コスト行列の範囲内にあることを確認します。`lex.csv` の各行と `unk.def` の各行で、右文脈 ID は `matrix.def` のヘッダの 1 つ目の値より小さく、左文脈 ID は 2 つ目の値より小さくなければなりません。これに反する辞書はビルドに失敗し、エラーはファイル・行・ID・行列の大きさを示します。たとえば 2 x 2 の `matrix.def` で、`lex.csv` の 2 行目の右文脈 ID が 2 の場合は次のとおりです：
+
+```text
+Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
+```
+
+- 辞書の `metadata.json` で `skip_invalid_cost_or_id` が `true` の場合は、そうした `lex.csv` の行を取り除きます。`log` クレートに警告を出しますが、CLI はまだそれを表示しません（[#1107](https://github.com/lindera/lindera/issues/1107)）。`unk.def` の行は常に確認します。
+- ID が軸の範囲外にある `matrix.def` の行もエラーになり、フィールドが 4 つ未満の `unk.def` の行もエラーになります。
+- ユーザー辞書（`--user`）はまだ確認しません（[#1171](https://github.com/lindera/lindera/issues/1171)）。
+
 ### 例
 
 #### IPADIC（日本語辞書）のビルド
@@ -915,10 +927,18 @@ lindera train \
 
 #### 3. 学習結果
 
+`lindera train` はモデルを `--output` のファイルに書き出します。学習用のラティスを作り終えると、コーパスの正解トークンのラベルの付き方を出力します（[学習のしくみ](../development/training_pipeline.md#学習のしくみ)を参照）。`./resources/training/` のファイルでは次のとおりです：
+
+```text
+Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+```
+
 学習済みモデルには以下が含まれます：
 
-- **既存単語**: 新しく学習された重みを持つすべてのシード辞書レコード
-- **新語**: シード辞書にはないがコーパスに含まれる単語（適切な重み付きで追加）
+- **シード辞書の語**: シード辞書のすべてのレコード（学習された重みと文脈 ID 付き）
+- **未知語**: `unk.def` のすべてのエントリをファイル順に（学習された重みと文脈 ID 付き）
+
+シード辞書にないコーパスの語は、語として追加されません。それらは `unk.def` のエントリか、学習されるもののエクスポートされない仮想ラベルを通じて学習されます。
 
 ## export
 
@@ -936,14 +956,22 @@ lindera train \
 エクスポートコマンドは出力ディレクトリに以下の辞書ファイルを作成します：
 
 - `lex.csv`: 学習された重みを持つ語彙ファイル（MeCab互換の `tocost()` によるコスト変換）
-- `matrix.def`: 全 (right\_id, left\_id) ペアを網羅する密な接続コスト行列
-- `unk.def`: 未知語定義
+- `matrix.def`: モデルの文脈 ID と BOS/EOS 用の 0 の全 (right\_id, left\_id) ペアを網羅する密な接続コスト行列
+- `unk.def`: 未知語定義。学習の入力の `unk.def` のエントリごとに 1 行を、同じ順序で書き出す
 - `char.def`: 文字種定義
 - `feature.def`: 素性テンプレート定義（学習済みモデルからコピー）
 - `rewrite.def`: 素性リライトルール（学習済みモデルからコピー）
 - `left-id.def`: 左文脈IDから素性文字列へのマッピング
 - `right-id.def`: 右文脈IDから素性文字列へのマッピング
 - `metadata.json`: 更新されたメタデータファイル（`--metadata` オプションが指定された場合）
+
+### モデルの形式バージョン
+
+`lindera export` が読み込めるのは、現在の形式バージョン（2.0.0）のモデルだけです。それより前のバージョンで書かれた `model.dat`（7.0.0 より前に書かれたものはすべて該当）は拒否されるため、`lindera train` で学習し直す必要があります。6.1.0 の CLI で学習したモデルでは次のとおりです：
+
+```text
+Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera train` to regenerate it. }
+```
 
 ### 完全なワークフロー例
 
@@ -984,8 +1012,22 @@ lindera build \
 
 ```bash
 echo "これは外国人参政権です。" | lindera tokenize \
+  --keep-whitespace \
   -d /tmp/lindera/training/compiled_dictionary
 ```
+
+```text
+これは	名詞,一般,*,*,*,*,*,*,*
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+```
+
+`resources/training/char.def` には、Segmenter が空白を読み飛ばすのに必要な `SPACE` カテゴリがないため、`--keep-whitespace` が必要です（[#1166](https://github.com/lindera/lindera/issues/1166)）。
 
 ### メタデータ更新機能
 
@@ -994,5 +1036,5 @@ echo "これは外国人参政権です。" | lindera tokenize \
 1. **ベースとなる metadata.json ファイルを読み込み**、既存の設定を保持します
 2. **特定のフィールドを学習済みモデルの値で更新**します：
    - `default_word_cost`: 素性重みの中央値から計算された値
-   - `model_info`: 素性数、ラベル数、行列サイズ、反復回数、正則化、バージョンを含む学習統計情報。タイムスタンプは書き込まれないため、同じモデルを 2 回エクスポートすると同一の出力になります
+   - `model_info`: 素性数、ラベル数、行列サイズ（`connection_matrix_size`。`matrix.def` の大きさを行数 x 列数で表す）、反復回数、正則化、モデルの形式バージョンを含む学習統計情報。タイムスタンプは書き込まれないため、同じモデルを 2 回エクスポートすると同一の出力になります
 3. **既存の設定を保持**します（辞書名、文字エンコード設定、スキーマ定義、その他のユーザー定義設定など）

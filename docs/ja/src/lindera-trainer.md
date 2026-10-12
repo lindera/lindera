@@ -8,9 +8,9 @@ Lindera Trainerは、CRFベースの辞書学習パイプライン（`lindera tr
 - MeCab互換の素性テンプレート解析（`feature.def`: `%F[n]`、`%L[n]`、`%R[n]`、`%w`、`%u`、`%l`、`%r`、およびそれぞれの`?`付きオプション形式）
 - MeCab互換の3セクション形式による素性書き換え（`rewrite.def`: ユニグラム／左文脈／右文脈の書き換えルール）
 - 辞書形式に依存しない設計: `surface,left_id,right_id,cost,feature...`の列構成に従う辞書であれば任意のもの（IPADIC、UniDic、ko-dic、CC-CEDICTなど）を扱える
-- `char.def`の文字カテゴリに基づく未知語の自動カテゴリ分類
+- MeCabの学習器と同じ学習用ラティス: 各位置から始まる種辞書の語と、ランタイムが`char.def`と`unk.def`から作る未知語を候補にし、`unk.def`のエントリごとに1つのCRFラベルを割り当てる
 - 学習されたCRFの重みから連接コスト行列を生成し、MeCab互換のコスト変換（`tocost`）を適用
-- ゼロコピーの`rkyv`バイナリ形式によるモデルのシリアライズ（読み込み時はレガシーJSON形式へのフォールバックにも対応）
+- ゼロコピーの`rkyv`バイナリ形式による、形式バージョン付きのモデルのシリアライズ（読み込み時はレガシーJSON形式へのフォールバックにも対応）
 - Lindera／MeCab辞書ソースファイル（`lex.csv`、`matrix.def`、`unk.def`、`char.def`、`feature.def`、`rewrite.def`、`left-id.def`、`right-id.def`）の直接エクスポート
 
 ## 目次

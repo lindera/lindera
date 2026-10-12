@@ -8,9 +8,9 @@ Lindera Trainer implements the CRF-based dictionary training pipeline (`lindera 
 - MeCab-compatible feature template parsing (`feature.def`: `%F[n]`, `%L[n]`, `%R[n]`, `%w`, `%u`, `%l`, `%r`, and their optional `?` variants)
 - MeCab-compatible 3-section feature rewriting (`rewrite.def`: unigram / left / right rewrite rules)
 - Dictionary-format agnostic: works with any lexicon whose columns follow `surface,left_id,right_id,cost,feature...` (IPADIC, UniDic, ko-dic, CC-CEDICT, etc.)
-- Automatic unknown-word categorization driven by `char.def` character categories
+- Training lattices built as MeCab's learner builds them: the seed words at every position, and the unknown words that the runtime creates from `char.def` and `unk.def`, with one CRF label per `unk.def` entry
 - Connection cost matrix and MeCab-compatible cost conversion (`tocost`) derived from learned CRF weights
-- Zero-copy `rkyv` binary model serialization, with legacy JSON fallback on read
+- Zero-copy `rkyv` binary model serialization with a format version, with legacy JSON fallback on read
 - Direct export of Lindera/MeCab dictionary source files (`lex.csv`, `matrix.def`, `unk.def`, `char.def`, `feature.def`, `rewrite.def`, `left-id.def`, `right-id.def`)
 
 ## Contents

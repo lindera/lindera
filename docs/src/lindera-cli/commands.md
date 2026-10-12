@@ -623,6 +623,18 @@ A full morphological analysis dictionary containing:
 
 A supplementary dictionary for custom words that works alongside a system dictionary.
 
+### Context ID check
+
+When it builds a system dictionary, `lindera build` checks that every context ID lies inside the connection matrix, as MeCab's `mecab-dict-index` does. In every `lex.csv` row and `unk.def` line, the right context ID must be below the first value of the `matrix.def` header, and the left context ID below the second. A dictionary that breaks this fails to build, with an error that names the file, the line, the ID and the matrix size. For example, with a 2 x 2 `matrix.def` and a `lex.csv` whose second row has the right context ID 2:
+
+```text
+Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
+```
+
+- If the dictionary's `metadata.json` sets `skip_invalid_cost_or_id` to `true`, such a `lex.csv` row is dropped instead, with a warning through the `log` crate that the CLI does not print yet ([#1107](https://github.com/lindera/lindera/issues/1107)). An `unk.def` line is always checked.
+- A `matrix.def` row whose IDs fall outside its axes is an error too, and so is an `unk.def` line with fewer than four fields.
+- User dictionaries (`--user`) are not checked yet ([#1171](https://github.com/lindera/lindera/issues/1171)).
+
 ### Examples
 
 #### Build IPADIC (Japanese dictionary)
@@ -915,10 +927,18 @@ lindera train \
 
 #### 3. Training results
 
-The trained model will contain:
+`lindera train` writes the model to the `--output` file. Once it has built the training lattices, it prints how the gold tokens of the corpus were labelled (see [How training works](../development/training_pipeline.md#how-training-works)). With the files in `./resources/training/`:
 
-- **Existing words**: All seed dictionary records with newly learned weights
-- **New words**: Words from the corpus not in the seed dictionary, added with appropriate weights
+```text
+Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+```
+
+The trained model contains:
+
+- **Seed words**: every seed lexicon row, with a learned weight and context IDs
+- **Unknown words**: every `unk.def` entry, in file order, with a learned weight and context IDs
+
+Corpus words that are not in the seed lexicon are not added as words. They are learned through the `unk.def` entries, or through virtual labels, which are trained but not exported.
 
 ## export
 
@@ -936,14 +956,22 @@ Export a trained model file to Lindera dictionary format files. This feature req
 The export command creates the following dictionary files in the output directory:
 
 - `lex.csv`: Lexicon file with learned weights (MeCab-compatible cost via `tocost()`)
-- `matrix.def`: Dense connection cost matrix covering all (right\_id, left\_id) pairs
-- `unk.def`: Unknown word definitions
+- `matrix.def`: Dense connection cost matrix covering all (right\_id, left\_id) pairs of the model's context IDs, plus 0 for BOS/EOS
+- `unk.def`: Unknown word definitions, one line for each `unk.def` entry of the training input, in the same order
 - `char.def`: Character type definitions
 - `feature.def`: Feature template definitions (copied from trained model)
 - `rewrite.def`: Feature rewrite rules (copied from trained model)
 - `left-id.def`: Left context ID to feature string mapping
 - `right-id.def`: Right context ID to feature string mapping
 - `metadata.json`: Updated metadata file (if `--metadata` option is provided)
+
+### Model format version
+
+`lindera export` reads a model of the current format version (2.0.0) only. A `model.dat` written by an earlier version, which includes every `model.dat` written before 7.0.0, is rejected, and has to be trained again with `lindera train`. For a model trained with the 6.1.0 CLI:
+
+```text
+Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera train` to regenerate it. }
+```
 
 ### Complete workflow example
 
@@ -984,8 +1012,22 @@ lindera build \
 
 ```bash
 echo "これは外国人参政権です。" | lindera tokenize \
+  --keep-whitespace \
   -d /tmp/lindera/training/compiled_dictionary
 ```
+
+```text
+これは	名詞,一般,*,*,*,*,*,*,*
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+```
+
+`--keep-whitespace` is needed because `resources/training/char.def` has no `SPACE` category, which the segmenter needs to skip whitespace ([#1166](https://github.com/lindera/lindera/issues/1166)).
 
 ### Metadata update feature
 
@@ -994,5 +1036,5 @@ When the `--metadata` option is provided, the export command will:
 1. **Read the base metadata.json file** to preserve existing configuration
 2. **Update specific fields** with values from the trained model:
    - `default_word_cost`: Calculated from feature weight median
-   - `model_info`: Training statistics including feature count, label count, matrix size, iterations, regularization, and version. No timestamp is written, so exporting the same model twice produces identical output
+   - `model_info`: Training statistics including feature count, label count, matrix size (`connection_matrix_size`, the size of `matrix.def` as rows x columns), iterations, regularization, and the model format version. No timestamp is written, so exporting the same model twice produces identical output
 3. **Preserve existing settings** such as dictionary name, character encoding, schema definitions, and other user-defined configuration

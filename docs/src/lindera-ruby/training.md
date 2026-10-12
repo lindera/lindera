@@ -78,6 +78,8 @@ The export creates the following files in the output directory:
 - `char.def` -- Character category definitions
 - `metadata.json` -- Updated metadata (when `metadata` parameter is provided)
 
+The model file must come from this version's training. A model file written by an earlier version, which includes every model file written before 7.0.0, is rejected: `Lindera.export` fails with an error that asks you to re-run training. Train such a model again with `Lindera.train`.
+
 ## Complete Workflow
 
 The full workflow for training and using a custom dictionary:

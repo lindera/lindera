@@ -5,7 +5,7 @@
 ```text
 lindera-trainer/src/
 ├── lib.rs                # Trainer: CRF学習の実行制御。パブリックAPIの再エクスポート
-├── config.rs             # TrainerConfig: 種辞書・char.def・feature.def・rewrite.defのパース
+├── config.rs             # TrainerConfig: 種辞書・char.def・unk.def・feature.def・rewrite.defのパース
 ├── corpus.rs              # Corpus, Example, Word: 学習データの表現
 ├── feature_extractor.rs  # FeatureExtractor: 素性テンプレート解析と素性ID管理
 ├── feature_rewriter.rs   # DictionaryRewriter: MeCab互換の3セクション書き換え
@@ -16,7 +16,7 @@ lindera-trainer/src/
 
 ### TrainerConfig
 
-学習に必要な5つの入力ファイル――種辞書（`lex.csv`）、文字定義（`char.def`）、未知語定義（`unk.def`）、素性テンプレート（`feature.def`）、書き換えルール（`rewrite.def`）――をパースし、`Trainer`が利用する設定情報にまとめます。`TrainerConfig::from_readers`（またはファイルパスを直接渡せるラッパーの`from_paths`）は、種辞書から表層形と素性の語彙を抽出し、パースした素性テンプレートから`FeatureExtractor`を構築し、書き換えルールから`DictionaryRewriter`を構築し、さらに文字定義をもとに最小限のインメモリ`lindera_dictionary::dictionary::Dictionary`を組み立てます。`char.def`は辞書ビルダー（`CharacterDefinitionBuilder::build_from_str`）でパースするため、学習時の文字カテゴリはビルドされる辞書と同じになります。`%t`素性に使う各文字の既定カテゴリは、ビルダーの`build_default_category_table`から得ます。注意: この`Dictionary`の`prefix_dictionary`（システム辞書）フィールドと`unknown_dictionary`フィールドは、空のスタブとして構築されるだけです――学習時に実際に使われる種辞書の語彙や未知語カテゴリの素性は、この`Dictionary`オブジェクトではなく、`TrainerConfig`自身の`surfaces` / `features` / `unk_categories` / `unk_costs`フィールドに別途保持されています。また、`surfaces()`、`surface_features()`、`get_features()`に加え、`user_lexicon()` / `add_user_lexicon_entry()` / `load_user_lexicon_from_content()`によるユーザー辞書へのアクセス、`metadata()`も提供します。
+学習に必要な5つの入力ファイル――種辞書（`lex.csv`）、文字定義（`char.def`）、未知語定義（`unk.def`）、素性テンプレート（`feature.def`）、書き換えルール（`rewrite.def`）――をパースし、`Trainer`が利用する設定情報にまとめます。`TrainerConfig::from_readers`（またはファイルパスを直接渡せるラッパーの`from_paths`）は、種辞書から表層形と素性の語彙を抽出し、パースした素性テンプレートから`FeatureExtractor`を構築し、書き換えルールから`DictionaryRewriter`を構築し、さらに種辞書・文字定義・未知語定義をもとにインメモリの`lindera_dictionary::dictionary::Dictionary`を組み立てます。`char.def`は辞書ビルダー（`CharacterDefinitionBuilder::build_from_str`）でパースするため、学習時の文字カテゴリはビルドされる辞書と同じになります。`%t`素性に使う各文字の既定カテゴリは、ビルダーの`build_default_category_table`から得ます。この`Dictionary`（`dict()`）は学習用ラティスの材料を持ちます。`prefix_dictionary`（`system_lexicon()`）は種辞書で、種辞書の表層形を収めたprefix dictionaryの単語IDは行番号です。`unknown_dictionary`（`unk_handler()`）は、辞書ビルダーの`parse_unk`で読んだ`unk.def`のエントリを、ファイル順に1行1エントリで持ちます。これらのコストと文脈IDは学習では使わず、`Dictionary`の連接行列はプレースホルダーです。`TrainerConfig`は、種辞書の素性文字列と、`unk.def`のエントリを`(カテゴリ, 素性文字列)`の組としてファイル順にも保持し、ラベルとエクスポートする`unk.def`はこれらから作ります。`unk.def`では、`#`で始まる行と空行を読み飛ばし、フィールドが5つ未満の行はエラーになります。また、`surfaces()`、`surface_features()`、`get_features()`に加え、`user_lexicon()` / `add_user_lexicon_entry()` / `load_user_lexicon_from_content()`によるユーザー辞書へのアクセス、`metadata()`も提供します。
 
 ### Corpus / Example / Word
 
@@ -30,26 +30,36 @@ MeCab互換の素性テンプレートを解析し、生成された素性文字
 
 MeCabの3セクション形式`rewrite.def`（`[unigram rewrite]`、`[left rewrite]`、`[right rewrite]`）を実装します。各セクションは`pattern<TAB>replacement`形式のルールの並びを持ち、内部の`FeatureRewriterBuilder`によって`FeatureRewriter`というprefix trie（前方一致木）に構築されます。`DictionaryRewriter::from_reader`は3セクションすべてをパースしますが、セクションヘッダのないファイルは後方互換性のため（右文脈書き換えのみのレガシー形式として）扱います。`rewrite()`は素性文字列に3つの書き換え器すべてを適用し、`(ufeature, lfeature, rfeature)`を返します。マッチするルールがないセクションは入力をそのまま通過させます。（かつての`rewrite_cached()`は素性文字列全体をキーにメモ化していましたが、実辞書の素性は行ごとにほぼ一意でキャッシュが一度もヒットしないため削除されました — #975。）
 
+### Trainer
+
+`Trainer::new`はCRFのラベルを作ります。まず種辞書の行ごとに行順で1つ（ラベル`行番号 + 1`。単語IDが行番号である学習用辞書での一致を、そのままラベルに対応付けるため）、続いて`unk.def`のエントリごとにファイル順で1つ作り、その`%t`はエントリのカテゴリのIDです。`Trainer::train`は、MeCabの学習器と同じく、例文ごとに`lindera_crf::Lattice`を1つ作ります。
+
+- 各位置の候補は、その位置から始まる種辞書の語と、ランタイムがその位置に作る未知語です。未知語は`lindera_dictionary::viterbi::Lattice::unknown_word_candidates`が列挙します。文字の既定カテゴリの未知語を、その`INVOKE`・`GROUP`・`LENGTH`の設定で、カテゴリの`unk.def`のエントリそれぞれについて作ります。
+- 正解の各トークンには、範囲と素性文字列全体が同じ最初の種辞書の行のラベルを付けます。なければ、範囲が同じ未知語候補の`unk.def`エントリのうち、`*`以外の素性の列がすべて正解トークンの列と一致するファイル順で最初のエントリのラベルを付けます。それもなければ、MeCabの学習器が仮想ノードを追加するのと同じく、正解の素性文字列から作る仮想ラベル（`%t`は0、`%w`なし、素性文字列ごとに1つ）を付けます。仮想ラベルはほかのラベルの後に並び、学習されますが、エクスポートされることはありません。
+- それ以外の候補はすべて負例の辺になります。
+
+ラティスを作り終えると、`Lattice statistics:`の行を出力します。各方法でラベルを付けた正解トークンの数（`gold_lexicon`・`gold_unknown`・`gold_virtual`）、仮想ラベルの数（`virtual_labels`）、種辞書と未知語候補それぞれから作った負例の辺の数（`negative_lexicon`・`negative_unknown`）です。`Trainer::max_grouping_len`は、ランタイムと同じ意味（先頭の1文字を除いた文字数。デフォルトの`None`は無制限）で未知語のグルーピングの長さに上限を設けます。ほかのビルダーメソッドは、正則化・イテレーション数の上限・スレッド数を設定します。
+
 ### Model / SerializableModel
 
-`Model`は`Trainer::train`が生成する学習済みモデルです。学習された`lindera_crf::RawModel`、学習に用いた`TrainerConfig`、抽出済みの素性の重みとラベル、そして学習後に`read_user_lexicon`で追加されたユーザー辞書エントリを保持します。学習されたCRFの重みは、MeCab互換の整数コストに変換されます（`tocost(weight, cost_factor) = clamp(round(-weight * cost_factor), i16::MIN, i16::MAX)`、すなわち`[-32768, 32767]`の範囲にクランプされます）。この際のコストファクターは、`i16`の値域を最大限活用できるよう計算されます（`calculate_cost_factor`）。`Model`は自身をシリアライズでき（`write_model`）、辞書ソースファイルを直接エクスポートすることもできます。
+`Model`は`Trainer::train`が生成する学習済みモデルです。学習された`lindera_crf::RawModel`、学習に用いた`TrainerConfig`、抽出済みの素性の重みとラベル、仮想ラベルの素性文字列、そして学習後に`read_user_lexicon`で追加されたユーザー辞書エントリを保持します。学習されたCRFの重みは、MeCab互換の整数コストに変換されます（`tocost(weight, cost_factor) = clamp(round(-weight * cost_factor), i16::MIN, i16::MAX)`、すなわち`[-32768, 32767]`の範囲にクランプされます）。この際のコストファクターは、`i16`の値域を最大限活用できるよう計算されます（`calculate_cost_factor`）。`Model`は自身をシリアライズでき（`write_model`）、辞書ソースファイルを直接エクスポートすることもできます。
 
-`SerializableModel`は、`Model::read_model`がリーダーから以前学習したモデルを読み込んだ際に返される、`rkyv`でシリアライズ可能な素のデータ型です（`lindera export` CLIコマンドで使用されます）。`Model`と同じ学習結果の情報――素性の重み、ラベル、品詞情報、連接コスト行列、未知語カテゴリ、保存されている`char.def` / `feature.def` / `rewrite.def`の内容、コストファクター、左右文脈IDマッピング――を`TrainerConfig`を持たない所有データとして保持し、辞書エクスポートファイルを生成するための独自のライターメソッド群を提供します。
+`SerializableModel`は、`Model::read_model`がリーダーから以前学習したモデルを読み込んだ際に返される、`rkyv`でシリアライズ可能な素のデータ型です（`lindera export` CLIコマンドで使用されます）。`Model`と同じ学習結果の情報――素性の重み、ラベル、品詞情報、連接コスト行列、`unk.def`のエントリ（`unk_entries`。ファイル順の`(カテゴリ, 素性文字列)`の組）、保存されている`char.def` / `feature.def` / `rewrite.def`の内容、コストファクター、左右文脈IDマッピング――を`TrainerConfig`を持たない所有データとして保持し、辞書エクスポートファイルを生成するための独自のライターメソッド群を提供します。
 
 #### `Model`のパブリックメソッド
 
 | メソッド | 説明 |
 | --- | --- |
 | `read_user_lexicon<R: Read>(&mut self, rdr: R) -> Result<()>` | ユーザー定義辞書（種辞書と同じ`surface,left_id,right_id,cost,feature...`のCSV形式）をモデルに読み込みます。これにより、後続のエクスポート処理で推定された連接IDとコストを割り当てられるようになります。ユーザー辞書が必要な場合は、辞書を書き出す前に呼び出す必要があります。 |
-| `write_model<W: Write>(&self, writer: &mut W) -> Result<()>` | 学習済みモデル全体（素性の重み、ラベル、品詞情報、連接行列、未知語カテゴリ、保存された定義ファイルの内容、コストファクター、左右IDマッピング）を`rkyv`バイナリ形式でシリアライズします。出力はバイト単位で再現可能です。連接行列と未知語カテゴリが順序付きマップであるため、バイト列はモデルの内容だけで決まります。 |
-| `read_model<R: Read>(reader: R) -> Result<SerializableModel>` | 関連関数。`write_model`が書き出したデータから`SerializableModel`をデシリアライズします。まず`rkyv`形式を試み、ペイロードが実際にJSONオブジェクトで始まる場合にのみレガシーのJSON形式へフォールバックします。いずれでもない場合は、形式の不一致として再学習を促すエラーを返します。`feature_sets`フィールドが存在しない旧形式のモデルについては、`feature_weights`から補完します。 |
+| `write_model<W: Write>(&self, writer: &mut W) -> Result<()>` | 学習済みモデル全体（素性の重み、ラベル、品詞情報、連接行列、`unk.def`のエントリ、保存された定義ファイルの内容、コストファクター、左右IDマッピング）を`rkyv`バイナリ形式でシリアライズします。`metadata.version`は`model::MODEL_FORMAT_VERSION`（`2.0.0`）です。保存する行列の大きさは、重みが残ったかどうかにかかわらず、モデルのすべての文脈IDを覆います。出力はバイト単位で再現可能です。連接行列は順序付きマップ、`unk.def`のエントリは`Vec`であるため、バイト列はモデルの内容だけで決まります。 |
+| `read_model<R: Read>(reader: R) -> Result<SerializableModel>` | 関連関数。`write_model`が書き出したデータから`SerializableModel`をデシリアライズします。まず`rkyv`形式を試み、ペイロードが実際にJSONオブジェクトで始まる場合にのみレガシーのJSON形式へフォールバックします。いずれでもない場合は、形式の不一致として再学習を促すエラーを返します。どちらの形式でも、`metadata.version`が`MODEL_FORMAT_VERSION`でないモデルは同じエラーで拒否するため、7.0.0より前に書かれたモデルはすべて再学習が必要です。`feature_sets`フィールドが存在しない旧形式のモデルについては、`feature_weights`から補完します。 |
 | `write_dictionary<W1, W2, W3, W4>(&self, lexicon_wtr, connector_wtr, unk_handler_wtr, user_lexicon_wtr) -> Result<()>` | レキシコン、連接コスト行列、未知語辞書、ユーザー辞書を一度にまとめて書き出す便利メソッドです。ユーザー辞書は`read_user_lexicon`で読み込んだエントリを入力順で書き出します。パラメータが`0,0,0`のエントリには推定した連接IDと学習済みコストを割り当て、それ以外のエントリは入力のまま再出力します。 |
 | `write_lexicon<W: Write>(&self, writer: &mut W) -> Result<()>` | マージされたCRFモデルから得た連接IDとコストを用いて、種辞書の各語彙エントリについて`lex.csv`形式のエントリ（`surface,left_id,right_id,cost,features...`）を書き出します。 |
-| `write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()>` | すべての`(right_id, left_id)`の組み合わせ（BOS/EOSを含む）を網羅する密な`matrix.def`形式の連接コスト行列を書き出します。学習中に一度も出現しなかった組み合わせには最大のペナルティコスト（`i16::MAX`）が設定され、Viterbi探索が未学習の遷移を避けるようにします。 |
-| `write_unknown_dictionary<W: Write>(&self, writer: &mut W) -> Result<()>` | 各未知語文字カテゴリについて、学習された連接ID・コストと`unk.def`由来の素性文字列を用いて`unk.def`形式のエントリを書き出します。 |
-| `get_unknown_word_cost(&self, category: usize) -> i32` | 指定した未知語カテゴリのインデックスに対して設定されているコスト（`unk.def`のコスト列由来）を返します。設定がない場合はデフォルト値`2000`を返します。 |
+| `write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()>` | マージしたモデルの文脈IDのすべての`(right_id, left_id)`の組み合わせ（BOS/EOS用の0を含む）を網羅する密な`matrix.def`形式の連接コスト行列を書き出します。学習中に一度も出現しなかった組み合わせには最大のペナルティコスト（`i16::MAX`）が設定され、Viterbi探索が未学習の遷移を避けるようにします。 |
+| `write_unknown_dictionary<W: Write>(&self, writer: &mut W) -> Result<()>` | 学習に使った`unk.def`のエントリごとに、ファイル順で`unk.def`の行を1行ずつ書き出します。各行は、エントリのカテゴリ名と素性文字列、学習された連接IDとコストを持ちます。 |
+| `get_unknown_word_cost(&self, category: usize) -> i32` | `char.def`のカテゴリのインデックスに対する入力のコストを返します。学習した値ではなく`unk.def`のコスト列の値で、エントリが複数あるカテゴリでは最後の行のコストです。設定がない場合はデフォルト値`2000`を返します。 |
 | `num_features(&self) -> usize` | 学習済みモデルが保持する素性の重みの数を返します。 |
-| `num_labels(&self) -> usize` | 学習済みモデルにおけるラベル（語彙の表層形と未知語カテゴリの合計）の数を返します。 |
+| `num_labels(&self) -> usize` | 学習済みモデルのエクスポートされるラベル（種辞書の行と`unk.def`のエントリの合計）の数を返します。仮想ラベルは数えません。 |
 | `raw_model(&self) -> &lindera_crf::RawModel` | 高度な操作や低レベルの処理のために、内部の`lindera-crf`のraw modelへアクセスします。 |
 | `write_bigram_details<L: Write, R: Write, C: Write>(&self, left_wtr, right_wtr, cost_wtr) -> Result<()>` | バイグラム素性とコストを記述した3つの診断用ファイル（左側素性一覧、右側素性一覧、生のバイグラム素性ペアごとのコスト行。id 0 は`BOS`/`EOS`、名前は素性抽出器由来）を書き出します。3ファイルとも同じモデルに対してバイト単位で再現可能です。 |
 | `evaluate(&self, test_lattices: &[lindera_crf::Lattice]) -> f64` | raw modelの素性の重みの絶対値の平均を簡易的な評価スコアとして返します。引数`test_lattices`は現時点では未使用であり、保留データに対するモデルの評価はまだ行われません。 |
@@ -63,18 +73,18 @@ MeCabの3セクション形式`rewrite.def`（`[unigram rewrite]`、`[left rewri
 
 | メソッド | 説明 |
 | --- | --- |
-| `write_lexicon<W: Write>(&self, writer: &mut W) -> Result<()>` | 保存されている`feature_sets`、`labels`、`pos_info`から、末尾の未知語カテゴリのラベルを除いて`lex.csv`形式のエントリを書き出します。 |
-| `write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()>` | 保存されている`connection_matrix`、`max_left_id`、`max_right_id`から、密な`matrix.def`形式の連接コスト行列を書き出します。 |
-| `write_unknown_dictionary<W: Write>(&self, writer: &mut W) -> Result<()>` | 保存されている各未知語カテゴリについて`unk.def`形式のエントリを書き出します。 |
+| `write_lexicon<W: Write>(&self, writer: &mut W) -> Result<()>` | 保存されている`feature_sets`、`labels`、`pos_info`から、種辞書の行の後に続く`unk.def`のエントリのラベルを除いて`lex.csv`形式のエントリを書き出します。 |
+| `write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()>` | 保存されている`connection_matrix`、`max_left_id`、`max_right_id`から、密な`matrix.def`形式の連接コスト行列を書き出します。大きさは`max_right_id + 1`行×`max_left_id + 1`列で、学習でバイグラムの重みが1つも残らなかった場合もモデルのすべての文脈IDを覆います。 |
+| `write_unknown_dictionary<W: Write>(&self, writer: &mut W) -> Result<()>` | 保存されている`unk_entries`のエントリごとに、ファイル順で`unk.def`の行を1行ずつ書き出します。各行は、カテゴリ名、学習された連接IDとコスト、素性文字列を持ちます。 |
 | `write_char_def<W: Write>(&self, writer: &mut W) -> Result<()>` | 元の学習入力からそのまま保存されている`char.def`の内容を書き出します。 |
 | `write_feature_def<W: Write>(&self, writer: &mut W) -> Result<()>` | 元の学習入力からそのまま保存されている`feature.def`の内容を書き出します。 |
 | `write_rewrite_def<W: Write>(&self, writer: &mut W) -> Result<()>` | 元の学習入力からそのまま保存されている`rewrite.def`の内容を書き出します。 |
 | `write_left_id_def<W: Write>(&self, writer: &mut W) -> Result<()>` | 保存されている`left_id_map`から`left-id.def`を書き出します。先頭行は`0 BOS/EOS`です。 |
 | `write_right_id_def<W: Write>(&self, writer: &mut W) -> Result<()>` | 保存されている`right_id_map`から`right-id.def`を書き出します。先頭行は`0 BOS/EOS`です。 |
-| `update_metadata_json<W: Write>(&self, base_metadata_path: &Path, writer: &mut W) -> Result<()>` | ベースとなる`metadata.json`を読み込み、学習結果に基づく値（素性の重みの中央値から推定した`default_word_cost`、および素性・ラベル数や文脈IDの範囲・学習メタデータを含む`model_info`セクション）で更新した結果を書き出します。タイムスタンプは含まれず、同じモデルに対してバイト単位で再現可能です。 |
+| `update_metadata_json<W: Write>(&self, base_metadata_path: &Path, writer: &mut W) -> Result<()>` | ベースとなる`metadata.json`を読み込み、学習結果に基づく値（素性の重みの中央値から推定した`default_word_cost`、および素性・ラベル数や文脈IDの範囲・`connection_matrix_size`としての`matrix.def`の大きさ（`{行数}x{列数}`）・学習メタデータを含む`model_info`セクション）で更新した結果を書き出します。タイムスタンプは含まれず、同じモデルに対してバイト単位で再現可能です。 |
 
 #### `ModelMetadata`と`FeatureSetInfo`
 
-`ModelMetadata`は学習実行に関する要約情報を保持します: `version`、`regularization`（使用した正則化コスト係数）、`iterations`（設定された最大イテレーション数）、`feature_count`、`label_count`です。`SerializableModel::metadata`に格納されます。
+`ModelMetadata`は学習実行に関する要約情報を保持します: `version`（モデルの形式バージョン`MODEL_FORMAT_VERSION`）、`regularization`（使用した正則化コスト係数）、`iterations`（設定された最大イテレーション数）、`feature_count`、`label_count`です。`SerializableModel::metadata`に格納されます。
 
-`FeatureSetInfo`は、学習後にマージされたCRFモデルから抽出された、ラベルごとの連接情報を保持します: `left_id`、`right_id`、`weight`です。`SerializableModel::feature_sets`には、`labels`と同じ順序で各ラベルに対応する1エントリが格納されます。
+`FeatureSetInfo`は、学習後にマージされたCRFモデルから抽出された、ラベルごとの連接情報を保持します: `left_id`、`right_id`、`weight`です。`SerializableModel::feature_sets`には、CRFのラベルごとに1エントリが格納されます。`labels`の各要素に対応するエントリが同じ順序で並び、その後にエクスポートされない仮想ラベルのエントリが続きます。
