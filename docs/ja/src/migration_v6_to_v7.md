@@ -1106,7 +1106,12 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
   オプションでシステム辞書を指定すると、`lindera build --user` の時点で各行を
   確認し、行列の範囲外にある最初の行を CSV の行番号と表層形で示します
   （Rust API では `DictionaryBuilder::with_system_matrix`。
-  [#1182](https://github.com/lindera/lindera/issues/1182)）。
+  [#1182](https://github.com/lindera/lindera/issues/1182)）。設定からの構築、
+  `lindera tokenize --user-dict`、バインディングの `TokenizerBuilder` がパスで
+  読み込む `.csv` のユーザー辞書と、Rust API に新しく加わった
+  `load_user_dictionary_for` で読み込むユーザー辞書も、システム辞書に合わせて
+  ビルドするときに同じように確認し、CSV の行番号と表層形を示します
+  （[#1187](https://github.com/lindera/lindera/issues/1187)）。
 - ユーザー辞書の行のコストや文脈 ID が数値でないときのエラーは、
   `lindera build --user` でも `.csv` のユーザー辞書の読み込みでも、その行の
   CSV の行番号を示します（`at line 1`）。これまでは、表層形の順に並べた行を

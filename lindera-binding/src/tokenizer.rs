@@ -833,6 +833,37 @@ mod tests {
             }
         }
 
+        /// A `.csv` user dictionary set on the builder by path is built for
+        /// the builder's dictionary, so a row outside its connection matrix
+        /// is reported by its CSV line and surface (#1187).
+        #[test]
+        fn builder_names_the_csv_line_of_a_user_dictionary_outside_the_matrix() {
+            let dir = tempfile::tempdir().expect("temporary directory");
+            let csv = dir.path().join("userdic.csv");
+            if let Err(err) = std::fs::write(
+                &csv,
+                "東京スカイツリー,60000,60000,-1000,名詞,固有名詞,一般,*,*,*,\
+                 東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー\n",
+            ) {
+                panic!("failed to write the user dictionary: {err}");
+            }
+
+            let mut builder = CoreTokenizerBuilder::new().expect("builder");
+            builder
+                .set_dictionary("embedded://ipadic")
+                .set_user_dictionary(csv.to_str().expect("UTF-8 path"));
+            match builder.build() {
+                Ok(_) => panic!("built a tokenizer"),
+                Err(err) => assert!(
+                    err.to_string().contains(
+                        "user dictionary line 1 (surface: '東京スカイツリー'): left context id \
+                         60000 is out of range"
+                    ),
+                    "{err}"
+                ),
+            }
+        }
+
         /// A dictionary instance given to the builder takes the space-penalty
         /// setting as the constructor path does.
         #[test]

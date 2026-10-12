@@ -168,7 +168,10 @@ fn build_user_dictionary(
 /// A user dictionary whose context IDs lie outside the system dictionary's
 /// connection matrix builds when `lindera build --user` is not given the
 /// system dictionary, and `lindera tokenize` then reports it as an error
-/// instead of panicking when the entry matches the input (#1171).
+/// instead of panicking when the entry matches the input (#1171). The `.bin`
+/// is checked when it is combined with the system dictionary, by word id;
+/// the `.csv` is checked as it is built for the system dictionary, by CSV
+/// line and surface (#1187).
 #[test]
 fn tokenize_rejects_user_dictionary_context_ids_outside_the_matrix() {
     let dir = tempfile::tempdir().unwrap();
@@ -188,7 +191,13 @@ fn tokenize_rejects_user_dictionary_context_ids_outside_the_matrix() {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    for user_dictionary in [user_dest.join("userdic.bin"), user_csv] {
+    for (user_dictionary, names_the_entry) in [
+        (
+            user_dest.join("userdic.bin"),
+            "user dictionary entry 0 (名詞,固有名詞,地域,一般,*,*,東京都,トウキョウト,トウキョウト)",
+        ),
+        (user_csv, "user dictionary line 1 (surface: '東京都')"),
+    ] {
         let output = lindera()
             .args(["tokenize", "--dict", dict.to_str().unwrap()])
             .args(["--user-dict", user_dictionary.to_str().unwrap()])
@@ -198,7 +207,9 @@ fn tokenize_rejects_user_dictionary_context_ids_outside_the_matrix() {
         let stderr = String::from_utf8(output.stderr).unwrap();
         assert!(!output.status.success(), "got: {stderr}");
         assert!(
-            stderr.contains("left context id 60000 is out of range"),
+            stderr.contains(&format!(
+                "{names_the_entry}: left context id 60000 is out of range"
+            )),
             "got: {stderr}"
         );
         assert!(!stderr.contains("panicked"), "got: {stderr}");

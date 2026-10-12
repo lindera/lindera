@@ -30,11 +30,26 @@ Two entries tie when they have the same surface, the same left and right context
 
 ## Context IDs
 
-The left and right context IDs of a detailed entry must address a cell of the connection matrix of the system dictionary it is used with: the left context ID must be below the second value of that dictionary's `matrix.def` header, and the right context ID below the first, the bounds `lindera build` applies to the system dictionary itself. IPADIC's matrix is 1316 x 1316, for example. `lindera build --user` checks these IDs when `--system-dict` names the system dictionary (`DictionaryBuilder::with_system_matrix` in the Rust API), and fails on the first row outside the matrix with an error that names its CSV line and surface (see [Context ID check](../lindera-cli/commands.md#context-id-check)). Otherwise the user dictionary is built without the system dictionary, and the IDs are checked when the two dictionaries are combined: `Segmenter::try_new`, the configuration path (`Segmenter::from_config`, `TokenizerBuilder`), `lindera tokenize --user-dict`, and the `Tokenizer` constructors and builders of the language bindings return an error for the first entry outside the matrix. The error names the entry by its word id, which counts the rows from 0 in the order of their surfaces, and by its detail fields:
+The left and right context IDs of a detailed entry must address a cell of the connection matrix of the system dictionary it is used with: the left context ID must be below the second value of that dictionary's `matrix.def` header, and the right context ID below the first, the bounds `lindera build` applies to the system dictionary itself. IPADIC's matrix is 1316 x 1316, for example.
+
+A user dictionary built from CSV together with its system dictionary is checked row by row as it is built, and the first row outside the matrix fails with an error that names its CSV line and surface:
+
+- `lindera build --user` when `--system-dict` names the system dictionary (`DictionaryBuilder::with_system_matrix` in the Rust API; see [Context ID check](../lindera-cli/commands.md#context-id-check))
+- a `.csv` user dictionary that the configuration names (`Segmenter::from_config`, `TokenizerBuilder`), that `lindera tokenize --user-dict` names, or that the `TokenizerBuilder` of the Python, Node.js, Ruby and PHP bindings is given by path
+- `load_user_dictionary_for` in the Rust API, which loads a user dictionary for a loaded system dictionary
+
+For example, with a `userdic.csv` whose first row lies inside IPADIC's matrix and whose second row has the left context ID 60000:
 
 ```text
-$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.bin
-Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary entry 0 (名詞,固有名詞,一般,*,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
+$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.csv
+Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
+```
+
+Otherwise the user dictionary is built without the system dictionary: a `.bin` that `lindera build --user` wrote without `--system-dict`, or a user dictionary loaded with metadata only (`load_user_dictionary` in the Rust API, Python and Ruby, `loadUserDictionary` in Node.js, `Lindera\Dictionary::loadUser` in PHP, `loadUserDictionaryFromBytes` in WebAssembly). Its IDs are checked when the two dictionaries are combined: `Segmenter::try_new`, the configuration path, `lindera tokenize --user-dict`, and the `Tokenizer` constructors and builders of the language bindings return an error for the first entry outside the matrix. The error names the entry by its word id, which counts the rows from 0 in the order of their surfaces, and by its detail fields. The `.bin` built from the `userdic.csv` above gives:
+
+```text
+$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u user_dict/userdic.bin
+Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary entry 1 (名詞,固有名詞,一般,*,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
 ```
 
 `Segmenter::new` does not check the IDs: an entry outside the matrix then makes segmentation panic when the entry matches the input. Before v7.0.0, every path behaved this way. Simple entries are checked too; they get the context IDs that the `metadata.json` they are built with sets (`default_left_context_id` and `default_right_context_id`, 0 in every bundled dictionary).

@@ -1220,7 +1220,13 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
   checks the rows already when the new `--system-dict` option names the
   system dictionary (`DictionaryBuilder::with_system_matrix` in the Rust
   API), and names the first row outside the matrix by its CSV line and
-  surface ([#1182](https://github.com/lindera/lindera/issues/1182)).
+  surface ([#1182](https://github.com/lindera/lindera/issues/1182)). A
+  `.csv` user dictionary that the configuration path,
+  `lindera tokenize --user-dict` or the bindings' `TokenizerBuilder` loads
+  by path, or that the new `load_user_dictionary_for` of the Rust API
+  loads, is checked the same way as it is built for the system dictionary,
+  and its error names the CSV line and surface too
+  ([#1187](https://github.com/lindera/lindera/issues/1187)).
 - The errors for a user dictionary row whose cost or context ID is not a
   number, from `lindera build --user` or from loading a `.csv` user
   dictionary, name the row's CSV line (`at line 1`). Before, they counted
