@@ -11,7 +11,7 @@ use crate::LinderaResult;
 use crate::builder::connection_cost_matrix::MatrixSize;
 use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::context_id_map::ContextIdMap;
-use crate::dictionary::unknown_dictionary::parse_unk;
+use crate::dictionary::unknown_dictionary::parse_unk_named;
 use crate::error::LinderaErrorKind;
 use crate::util::{read_file_with_encoding, write_data};
 
@@ -86,7 +86,8 @@ impl UnknownDictionaryBuilder {
         if let Some(matrix_size) = self.matrix_size {
             check_context_ids(&unk_data, matrix_size, &unk_data_path)?;
         }
-        let unknown_dictionary = parse_unk(
+        let unknown_dictionary = parse_unk_named(
+            &unk_data_path.display().to_string(),
             chardef.categories(),
             &unk_data,
             self.context_id_remap.as_deref(),
@@ -125,10 +126,11 @@ impl UnknownDictionaryBuilder {
 /// exceed its matrix fails to build instead of indexing past the matrix when
 /// an unknown word is looked up.
 ///
-/// The check runs on the raw lines, before [`parse_unk`] relabels the ids
-/// through the remap and truncates them to `u16`: an id of 65537 is rejected
-/// rather than read as 1. An id that does not parse is left to `parse_unk` to
-/// report.
+/// The check runs on the raw lines, before [`parse_unk_named`] relabels the
+/// ids through the remap and truncates them to `u16`: an id of 65537 is
+/// rejected rather than read as 1. A line that the parser cannot read, with
+/// fewer than four fields or an id that does not parse, is left to it to
+/// report with the line.
 ///
 /// # Arguments
 ///
@@ -138,23 +140,16 @@ impl UnknownDictionaryBuilder {
 ///
 /// # Returns
 ///
-/// `Ok(())`, or an error naming the file, the line, and either the offending
-/// id and the matrix size or the number of fields of a line too short to
-/// hold the ids and the cost.
+/// `Ok(())`, or an error naming the file, the line, the offending id and the
+/// matrix size.
 fn check_context_ids(unk_data: &str, matrix_size: MatrixSize, path: &Path) -> LinderaResult<()> {
     for (index, line) in unk_data.lines().enumerate() {
         let line_number = index + 1;
         let fields: Vec<&str> = line.split(',').collect();
-        if fields.len() < 4 {
-            return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
-                "{}: line {line_number}: expected at least 4 fields (category, left context id, \
-                 right context id, cost), got {}",
-                path.display(),
-                fields.len()
-            )));
-        }
-        let (Ok(left_id), Ok(right_id)) = (u32::from_str(fields[1]), u32::from_str(fields[2]))
-        else {
+        let [_, left_id, right_id, _, ..] = fields[..] else {
+            continue;
+        };
+        let (Ok(left_id), Ok(right_id)) = (u32::from_str(left_id), u32::from_str(right_id)) else {
             continue;
         };
         matrix_size

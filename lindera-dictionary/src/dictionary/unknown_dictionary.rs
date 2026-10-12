@@ -91,24 +91,40 @@ pub struct UnknownDictionaryEntry {
     pub word_cost: i32,
 }
 
+/// Parses the leading columns of one `unk.def` line: the category, the left
+/// and right context ids and the cost.
+///
+/// # Arguments
+///
+/// * `fields` - The comma-separated columns of the line.
+/// * `source` - The name of the content, for the messages.
+/// * `line_number` - The 1-based number of the line, for the messages.
+///
+/// # Returns
+///
+/// The entry, or an error naming the source and the line when the line has
+/// fewer than four columns or a context id or the cost does not parse.
 fn parse_dictionary_entry(
     fields: &[&str],
-    expected_fields_len: usize,
+    source: &str,
+    line_number: usize,
 ) -> LinderaResult<UnknownDictionaryEntry> {
-    if fields.len() != expected_fields_len {
+    let [surface, left_id, right_id, word_cost, ..] = fields else {
         return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
-            "Invalid number of fields. Expect {}, got {}",
-            expected_fields_len,
+            "{source}: line {line_number}: expected at least 4 fields (category, left context id, \
+             right context id, cost), got {}",
             fields.len()
         )));
-    }
-    let surface = fields[0];
-    let left_id = u32::from_str(fields[1])
-        .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
-    let right_id = u32::from_str(fields[2])
-        .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
-    let word_cost = i32::from_str(fields[3])
-        .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+    };
+    let invalid = |column: &str, value: &str, err: std::num::ParseIntError| {
+        LinderaErrorKind::Parse.with_error(anyhow::anyhow!(
+            "{source}: line {line_number}: invalid {column} `{value}`: {err}"
+        ))
+    };
+    let left_id = u32::from_str(left_id).map_err(|err| invalid("left context id", left_id, err))?;
+    let right_id =
+        u32::from_str(right_id).map_err(|err| invalid("right context id", right_id, err))?;
+    let word_cost = i32::from_str(word_cost).map_err(|err| invalid("cost", word_cost, err))?;
 
     Ok(UnknownDictionaryEntry {
         surface: surface.to_string(),
@@ -180,7 +196,46 @@ fn make_costs_array(
         .collect()
 }
 
+/// Parses the content of an `unk.def` file into an unknown-word dictionary.
+///
+/// Every line is an entry: the category, the left and right context ids and
+/// the cost, then the details. Comment and empty lines are not skipped; as
+/// in MeCab, they are errors.
+///
+/// # Arguments
+///
+/// * `categories` - The `char.def` category names, in category id order.
+/// * `file_content` - The decoded `unk.def` content.
+/// * `remap` - The context-id remap to relabel the entries with, if any.
+///
+/// # Returns
+///
+/// The dictionary, whose entry `i` is the line `i + 1`, or an error naming
+/// the line (`unk.def: line N: ...`) when a line has fewer than four fields
+/// or a context id or the cost is not a number.
 pub fn parse_unk(
+    categories: &[String],
+    file_content: &str,
+    remap: Option<&crate::dictionary::context_id_map::ContextIdMap>,
+) -> LinderaResult<UnknownDictionary> {
+    parse_unk_named("unk.def", categories, file_content, remap)
+}
+
+/// [`parse_unk`] with the name that its error messages give the content, so
+/// that the dictionary builder can name the file it read.
+///
+/// # Arguments
+///
+/// * `source` - The name of the content, such as the path of the file.
+/// * `categories` - The `char.def` category names, in category id order.
+/// * `file_content` - The decoded `unk.def` content.
+/// * `remap` - The context-id remap to relabel the entries with, if any.
+///
+/// # Returns
+///
+/// The dictionary, or an error naming `source` and the line.
+pub(crate) fn parse_unk_named(
+    source: &str,
     categories: &[String],
     file_content: &str,
     remap: Option<&crate::dictionary::context_id_map::ContextIdMap>,
@@ -189,9 +244,9 @@ pub fn parse_unk(
     let mut words_idx_data = Vec::new();
     let mut words_data: Vec<u8> = Vec::new();
 
-    for line in file_content.lines() {
+    for (index, line) in file_content.lines().enumerate() {
         let fields: Vec<&str> = line.split(',').collect::<Vec<&str>>();
-        let entry = parse_dictionary_entry(&fields[..], fields.len())?;
+        let entry = parse_dictionary_entry(&fields[..], source, index + 1)?;
         unknown_dict_entries.push(entry);
 
         // Store detail fields (columns after the first 4: category, left_id, right_id, cost)
@@ -221,7 +276,7 @@ pub fn parse_unk(
 
 #[cfg(test)]
 mod tests {
-    use super::UnknownDictionary;
+    use super::{UnknownDictionary, parse_unk};
 
     /// Builds a dictionary whose `words_data` holds `entries`, each encoded
     /// as a 4-byte LE length followed by its NUL-joined fields -- the layout
@@ -314,5 +369,67 @@ mod tests {
         let past_end = (dict.words_data.len() + 1) as u32;
         dict.words_data[0..4].copy_from_slice(&past_end.to_le_bytes());
         assert_eq!(dict.word_details(0), None);
+    }
+
+    /// The categories of the `parse_unk` tests' `char.def`.
+    fn categories() -> Vec<String> {
+        vec!["DEFAULT".to_string(), "KANJI".to_string()]
+    }
+
+    /// Parses `content`, which must be rejected, and returns the message.
+    fn parse_error(content: &str) -> String {
+        match parse_unk(&categories(), content, None) {
+            Ok(_) => panic!("unk.def content was accepted: {content:?}"),
+            Err(err) => err.to_string(),
+        }
+    }
+
+    /// #1175: a line too short to hold the category, the context ids and the
+    /// cost is an error naming the line, not an index out of bounds. A
+    /// comment and an empty line are such lines, as in MeCab.
+    #[test]
+    fn parse_unk_rejects_a_line_with_fewer_than_four_fields() {
+        for (line, fields) in [("# a comment", 1), ("", 1), ("KANJI,1,1", 3)] {
+            let message = parse_error(&format!("DEFAULT,0,0,0,名詞,一般\n{line}\n"));
+            assert!(
+                message.contains(&format!(
+                    "unk.def: line 2: expected at least 4 fields (category, left context id, \
+                     right context id, cost), got {fields}"
+                )),
+                "{line:?}: {message}"
+            );
+        }
+    }
+
+    /// A context id or a cost that is not a number is an error naming the
+    /// line and the column.
+    #[test]
+    fn parse_unk_names_the_line_of_a_field_that_is_not_a_number() {
+        for (line, column) in [
+            ("KANJI,x,1,0,名詞", "left context id `x`"),
+            ("KANJI,1,-1,0,名詞", "right context id `-1`"),
+            ("KANJI,1,1,1.5,名詞", "cost `1.5`"),
+        ] {
+            let message = parse_error(&format!("DEFAULT,0,0,0,名詞,一般\n{line}\n"));
+            assert!(
+                message.contains(&format!("unk.def: line 2: invalid {column}")),
+                "{line:?}: {message}"
+            );
+        }
+    }
+
+    /// Four fields are enough: the entry has no details.
+    #[test]
+    fn parse_unk_accepts_a_line_with_four_fields() {
+        let dict = parse_unk(
+            &categories(),
+            "DEFAULT,0,0,0,名詞,一般\nKANJI,1,1,10\n",
+            None,
+        )
+        .expect("four fields are enough");
+
+        assert_eq!(dict.category_references, vec![vec![0], vec![1]]);
+        assert_eq!(dict.word_details(0), Some(vec!["名詞", "一般"]));
+        assert_eq!(dict.word_details(1), Some(vec![""]));
     }
 }
