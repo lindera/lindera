@@ -1145,7 +1145,12 @@ ID は <code>matrix.def</code> のヘッダの 1 つ目の値より小さく、�
 オプションでシステム辞書を指定すると、<code>lindera build --user</code> の時点で各行を
 確認し、行列の範囲外にある最初の行を CSV の行番号と表層形で示します
 （Rust API では <code>DictionaryBuilder::with_system_matrix</code>。
-<a href="https://github.com/lindera/lindera/issues/1182">#1182</a>）。</li>
+<a href="https://github.com/lindera/lindera/issues/1182">#1182</a>）。設定からの構築、
+<code>lindera tokenize --user-dict</code>、バインディングの <code>TokenizerBuilder</code> がパスで
+読み込む <code>.csv</code> のユーザー辞書と、Rust API に新しく加わった
+<code>load_user_dictionary_for</code> で読み込むユーザー辞書も、システム辞書に合わせて
+ビルドするときに同じように確認し、CSV の行番号と表層形を示します
+（<a href="https://github.com/lindera/lindera/issues/1187">#1187</a>）。</li>
 <li>ユーザー辞書の行のコストや文脈 ID が数値でないときのエラーは、
 <code>lindera build --user</code> でも <code>.csv</code> のユーザー辞書の読み込みでも、その行の
 CSV の行番号を示します（<code>at line 1</code>）。これまでは、表層形の順に並べた行を

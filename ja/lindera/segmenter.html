@@ -194,15 +194,15 @@ use lindera::segmenter::Segmenter;
 let dictionary = load_dictionary("embedded://ipadic")?;
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
 <span class="boring">}</span></code></pre></pre>
-<p><code>Segmenter::new</code> はユーザー辞書をシステム辞書と照らし合わせて確認しません。<code>Segmenter::try_new</code> は同じ引数を取り、見出し語の文脈 ID がシステム辞書の接続コスト行列の範囲外にあるとエラーを返します。<code>Segmenter::new</code> はそうした見出し語を受け付け、その見出し語が入力に一致したときに解析中にパニックします（<a href="../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。設定からの構築も確認します。</p>
+<p><code>Segmenter::new</code> はユーザー辞書をシステム辞書と照らし合わせて確認しません。<code>Segmenter::try_new</code> は同じ引数を取り、見出し語の文脈 ID がシステム辞書の接続コスト行列の範囲外にあるとエラーを返します。<code>Segmenter::new</code> はそうした見出し語を受け付け、その見出し語が入力に一致したときに解析中にパニックします（<a href="../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。設定からの構築も確認します。<code>load_user_dictionary_for</code> は、読み込み済みのシステム辞書に合わせてユーザー辞書を読み込み、<code>.csv</code> はビルドする時点で確認するため、エラーはその行の CSV の行番号と表層形を示します。<code>.bin</code> や、<code>load_user_dictionary</code> でメタデータだけを使って読み込んだユーザー辞書では、<code>try_new</code> が見出し語を単語 ID で示します。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use lindera::dictionary::{load_dictionary, load_user_dictionary};
+</span>use lindera::dictionary::{load_dictionary, load_user_dictionary_for};
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
 
 let dictionary = load_dictionary("embedded://ipadic")?;
-let user_dictionary = load_user_dictionary("userdic.csv", &amp;dictionary.metadata)?;
+let user_dictionary = load_user_dictionary_for("userdic.csv", &amp;dictionary)?;
 let segmenter = Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary))?;
 <span class="boring">}</span></code></pre></pre>
 <h2 id="トークナイズモード"><a class="header" href="#トークナイズモード">トークナイズモード</a></h2>
@@ -290,7 +290,7 @@ let config: SegmenterConfig = json!({
 let segmenter = Segmenter::from_config(&amp;config)?;
 <span class="boring">}</span></code></pre></pre>
 <p>注: ここでは <code>use_mmap</code> を明示的に示すためにあえて <code>false</code> を指定していますが、省略した場合も後述のデフォルト（<code>true</code>）と同じ挙動になります。</p>
-<p><code>Segmenter::from_config_with_dictionaries</code> は、バイト列から読み込んだ辞書など、読み込み済みの辞書に設定を適用します。<code>Some</code> で渡した辞書は <code>dictionary</code> キーが指す辞書の代わりに使われ、このときキーは省略できます（<code>use_mmap</code> は関係しません）。<code>Some</code> で渡したユーザー辞書は、<code>user_dictionary</code> キーが指すユーザー辞書の代わりに使われます。<code>None</code> の場合、辞書は <code>from_config</code> と同じく設定から読み込まれ、設定にあるユーザー辞書は、使う辞書のメタデータでビルドされます。それ以外のキーは <code>from_config</code> と同じように適用されます：</p>
+<p><code>Segmenter::from_config_with_dictionaries</code> は、バイト列から読み込んだ辞書など、読み込み済みの辞書に設定を適用します。<code>Some</code> で渡した辞書は <code>dictionary</code> キーが指す辞書の代わりに使われ、このときキーは省略できます（<code>use_mmap</code> は関係しません）。<code>Some</code> で渡したユーザー辞書は、<code>user_dictionary</code> キーが指すユーザー辞書の代わりに使われます。<code>None</code> の場合、辞書は <code>from_config</code> と同じく設定から読み込まれ、設定にあるユーザー辞書は、<code>load_user_dictionary_for</code> で使う辞書に合わせて読み込まれます（<code>.csv</code> はその辞書のメタデータでビルドし、接続コスト行列と照らし合わせて確認します）。それ以外のキーは <code>from_config</code> と同じように適用されます：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use serde_json::json;

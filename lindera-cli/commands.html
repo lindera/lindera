@@ -664,7 +664,7 @@ EOS
 <pre><code class="language-text">% lindera build --src ./userdic.csv --dest ./user_dict --metadata ./lindera-ipadic/metadata.json --user --system-dict embedded://ipadic
 Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
 </code></pre>
-<p>Without <code>--system-dict</code>, the build does not know the system dictionary, and the user dictionary builds. <code>lindera tokenize --user-dict</code> then checks it against the system dictionary and fails with an error that names the first entry outside the matrix by its word id (see <a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>).</p>
+<p>Without <code>--system-dict</code>, the build does not know the system dictionary, and the user dictionary builds. <code>lindera tokenize --user-dict</code> then checks it against the system dictionary and fails with an error that names the first entry outside the matrix by its word id (see <a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>). A <code>.csv</code> given to <code>lindera tokenize --user-dict</code> is built for the system dictionary of <code>--dict</code> as it is loaded, so its error names the CSV line and surface, as with <code>--system-dict</code>.</p>
 <h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
 <h4 id="build-ipadic-japanese-dictionary"><a class="header" href="#build-ipadic-japanese-dictionary">Build IPADIC (Japanese dictionary)</a></h4>
 <pre><code class="language-shell"># Download and extract IPADIC source files

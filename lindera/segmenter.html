@@ -194,15 +194,15 @@ use lindera::segmenter::Segmenter;
 let dictionary = load_dictionary("embedded://ipadic")?;
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
 <span class="boring">}</span></code></pre></pre>
-<p><code>Segmenter::new</code> does not check a user dictionary against the system dictionary. <code>Segmenter::try_new</code> takes the same arguments and returns an error when an entry's context ID lies outside the system dictionary's connection matrix; <code>Segmenter::new</code> accepts such an entry, and segmentation then panics when the entry matches the input (see <a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>). Building from a configuration checks too.</p>
+<p><code>Segmenter::new</code> does not check a user dictionary against the system dictionary. <code>Segmenter::try_new</code> takes the same arguments and returns an error when an entry's context ID lies outside the system dictionary's connection matrix; <code>Segmenter::new</code> accepts such an entry, and segmentation then panics when the entry matches the input (see <a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>). Building from a configuration checks too. <code>load_user_dictionary_for</code> loads a user dictionary for a loaded system dictionary and checks a <code>.csv</code> already as it builds it, so the error names the row's CSV line and surface; <code>try_new</code> names an entry of a <code>.bin</code>, or of a user dictionary loaded with <code>load_user_dictionary</code> and metadata only, by its word id.</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use lindera::dictionary::{load_dictionary, load_user_dictionary};
+</span>use lindera::dictionary::{load_dictionary, load_user_dictionary_for};
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
 
 let dictionary = load_dictionary("embedded://ipadic")?;
-let user_dictionary = load_user_dictionary("userdic.csv", &amp;dictionary.metadata)?;
+let user_dictionary = load_user_dictionary_for("userdic.csv", &amp;dictionary)?;
 let segmenter = Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary))?;
 <span class="boring">}</span></code></pre></pre>
 <h2 id="tokenization-modes"><a class="header" href="#tokenization-modes">Tokenization Modes</a></h2>
@@ -290,7 +290,7 @@ let config: SegmenterConfig = json!({
 let segmenter = Segmenter::from_config(&amp;config)?;
 <span class="boring">}</span></code></pre></pre>
 <p>Note: <code>use_mmap</code> here is set to <code>false</code> only to illustrate the option explicitly; omitting it entirely gives the same default (<code>true</code>, see below).</p>
-<p><code>Segmenter::from_config_with_dictionaries</code> applies a configuration to dictionaries that are already loaded, such as ones loaded from bytes. A dictionary passed as <code>Some</code> is used instead of the one the <code>dictionary</code> key names, and the key may then be absent (<code>use_mmap</code> does not apply); a user dictionary passed as <code>Some</code> is used instead of the one the <code>user_dictionary</code> key names. For <code>None</code>, the dictionary is loaded from the configuration as <code>from_config</code> loads it, and a configured user dictionary is built with the metadata of the system dictionary in use. Every other key applies as with <code>from_config</code>:</p>
+<p><code>Segmenter::from_config_with_dictionaries</code> applies a configuration to dictionaries that are already loaded, such as ones loaded from bytes. A dictionary passed as <code>Some</code> is used instead of the one the <code>dictionary</code> key names, and the key may then be absent (<code>use_mmap</code> does not apply); a user dictionary passed as <code>Some</code> is used instead of the one the <code>user_dictionary</code> key names. For <code>None</code>, the dictionary is loaded from the configuration as <code>from_config</code> loads it, and a configured user dictionary is loaded for the system dictionary in use with <code>load_user_dictionary_for</code>: a <code>.csv</code> is built with its metadata and checked against its connection matrix. Every other key applies as with <code>from_config</code>:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use serde_json::json;

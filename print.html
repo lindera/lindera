@@ -741,9 +741,20 @@ let results = tokenizer.tokenize_nbest_with_lattice(text, &amp;mut lattice, 3, f
 <h2 id="tied-entries"><a class="header" href="#tied-entries">Tied entries</a></h2>
 <p>Two entries tie when they have the same surface, the same left and right context IDs and the same cost: every path costs the same with either of them. A user entry that ties with a system entry is chosen over it, so a detailed entry that copies the surface, the context IDs and the cost of a system entry, for example to give the word another reading, takes its place in the output. MeCab chooses the system entry instead. Among tied user entries, the first row is chosen, as in MeCab (before v7, the last row was; see <a href="concepts/../migration_v6_to_v7.html#tied-entries-resolve-to-the-first-csv-row-as-in-mecab">Migrating from v6 to v7</a>). Simple entries get the cost and the context IDs from the dictionary's <code>metadata.json</code> (<code>default_word_cost</code>, <code>default_left_context_id</code> and <code>default_right_context_id</code>: <code>-10000</code>, <code>0</code> and <code>0</code> for IPADIC), so they practically never tie with a system entry.</p>
 <h2 id="context-ids"><a class="header" href="#context-ids">Context IDs</a></h2>
-<p>The left and right context IDs of a detailed entry must address a cell of the connection matrix of the system dictionary it is used with: the left context ID must be below the second value of that dictionary's <code>matrix.def</code> header, and the right context ID below the first, the bounds <code>lindera build</code> applies to the system dictionary itself. IPADIC's matrix is 1316 x 1316, for example. <code>lindera build --user</code> checks these IDs when <code>--system-dict</code> names the system dictionary (<code>DictionaryBuilder::with_system_matrix</code> in the Rust API), and fails on the first row outside the matrix with an error that names its CSV line and surface (see <a href="concepts/../lindera-cli/commands.html#context-id-check">Context ID check</a>). Otherwise the user dictionary is built without the system dictionary, and the IDs are checked when the two dictionaries are combined: <code>Segmenter::try_new</code>, the configuration path (<code>Segmenter::from_config</code>, <code>TokenizerBuilder</code>), <code>lindera tokenize --user-dict</code>, and the <code>Tokenizer</code> constructors and builders of the language bindings return an error for the first entry outside the matrix. The error names the entry by its word id, which counts the rows from 0 in the order of their surfaces, and by its detail fields:</p>
-<pre><code class="language-text">$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.bin
-Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary entry 0 (名詞,固有名詞,一般,*,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
+<p>The left and right context IDs of a detailed entry must address a cell of the connection matrix of the system dictionary it is used with: the left context ID must be below the second value of that dictionary's <code>matrix.def</code> header, and the right context ID below the first, the bounds <code>lindera build</code> applies to the system dictionary itself. IPADIC's matrix is 1316 x 1316, for example.</p>
+<p>A user dictionary built from CSV together with its system dictionary is checked row by row as it is built, and the first row outside the matrix fails with an error that names its CSV line and surface:</p>
+<ul>
+<li><code>lindera build --user</code> when <code>--system-dict</code> names the system dictionary (<code>DictionaryBuilder::with_system_matrix</code> in the Rust API; see <a href="concepts/../lindera-cli/commands.html#context-id-check">Context ID check</a>)</li>
+<li>a <code>.csv</code> user dictionary that the configuration names (<code>Segmenter::from_config</code>, <code>TokenizerBuilder</code>), that <code>lindera tokenize --user-dict</code> names, or that the <code>TokenizerBuilder</code> of the Python, Node.js, Ruby and PHP bindings is given by path</li>
+<li><code>load_user_dictionary_for</code> in the Rust API, which loads a user dictionary for a loaded system dictionary</li>
+</ul>
+<p>For example, with a <code>userdic.csv</code> whose first row lies inside IPADIC's matrix and whose second row has the left context ID 60000:</p>
+<pre><code class="language-text">$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.csv
+Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
+</code></pre>
+<p>Otherwise the user dictionary is built without the system dictionary: a <code>.bin</code> that <code>lindera build --user</code> wrote without <code>--system-dict</code>, or a user dictionary loaded with metadata only (<code>load_user_dictionary</code> in the Rust API, Python and Ruby, <code>loadUserDictionary</code> in Node.js, <code>Lindera\Dictionary::loadUser</code> in PHP, <code>loadUserDictionaryFromBytes</code> in WebAssembly). Its IDs are checked when the two dictionaries are combined: <code>Segmenter::try_new</code>, the configuration path, <code>lindera tokenize --user-dict</code>, and the <code>Tokenizer</code> constructors and builders of the language bindings return an error for the first entry outside the matrix. The error names the entry by its word id, which counts the rows from 0 in the order of their surfaces, and by its detail fields. The <code>.bin</code> built from the <code>userdic.csv</code> above gives:</p>
+<pre><code class="language-text">$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u user_dict/userdic.bin
+Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary entry 1 (名詞,固有名詞,一般,*,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
 </code></pre>
 <p><code>Segmenter::new</code> does not check the IDs: an entry outside the matrix then makes segmentation panic when the entry matches the input. Before v7.0.0, every path behaved this way. Simple entries are checked too; they get the context IDs that the <code>metadata.json</code> they are built with sets (<code>default_left_context_id</code> and <code>default_right_context_id</code>, 0 in every bundled dictionary).</p>
 <h2 id="rust-api-example-1"><a class="header" href="#rust-api-example-1">Rust API example</a></h2>
@@ -1142,15 +1153,15 @@ use lindera::segmenter::Segmenter;
 let dictionary = load_dictionary("embedded://ipadic")?;
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
 <span class="boring">}</span></code></pre></pre>
-<p><code>Segmenter::new</code> does not check a user dictionary against the system dictionary. <code>Segmenter::try_new</code> takes the same arguments and returns an error when an entry's context ID lies outside the system dictionary's connection matrix; <code>Segmenter::new</code> accepts such an entry, and segmentation then panics when the entry matches the input (see <a href="lindera/../concepts/user_dictionary.html#context-ids">Context IDs</a>). Building from a configuration checks too.</p>
+<p><code>Segmenter::new</code> does not check a user dictionary against the system dictionary. <code>Segmenter::try_new</code> takes the same arguments and returns an error when an entry's context ID lies outside the system dictionary's connection matrix; <code>Segmenter::new</code> accepts such an entry, and segmentation then panics when the entry matches the input (see <a href="lindera/../concepts/user_dictionary.html#context-ids">Context IDs</a>). Building from a configuration checks too. <code>load_user_dictionary_for</code> loads a user dictionary for a loaded system dictionary and checks a <code>.csv</code> already as it builds it, so the error names the row's CSV line and surface; <code>try_new</code> names an entry of a <code>.bin</code>, or of a user dictionary loaded with <code>load_user_dictionary</code> and metadata only, by its word id.</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use lindera::dictionary::{load_dictionary, load_user_dictionary};
+</span>use lindera::dictionary::{load_dictionary, load_user_dictionary_for};
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
 
 let dictionary = load_dictionary("embedded://ipadic")?;
-let user_dictionary = load_user_dictionary("userdic.csv", &amp;dictionary.metadata)?;
+let user_dictionary = load_user_dictionary_for("userdic.csv", &amp;dictionary)?;
 let segmenter = Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary))?;
 <span class="boring">}</span></code></pre></pre>
 <h2 id="tokenization-modes-1"><a class="header" href="#tokenization-modes-1">Tokenization Modes</a></h2>
@@ -1238,7 +1249,7 @@ let config: SegmenterConfig = json!({
 let segmenter = Segmenter::from_config(&amp;config)?;
 <span class="boring">}</span></code></pre></pre>
 <p>Note: <code>use_mmap</code> here is set to <code>false</code> only to illustrate the option explicitly; omitting it entirely gives the same default (<code>true</code>, see below).</p>
-<p><code>Segmenter::from_config_with_dictionaries</code> applies a configuration to dictionaries that are already loaded, such as ones loaded from bytes. A dictionary passed as <code>Some</code> is used instead of the one the <code>dictionary</code> key names, and the key may then be absent (<code>use_mmap</code> does not apply); a user dictionary passed as <code>Some</code> is used instead of the one the <code>user_dictionary</code> key names. For <code>None</code>, the dictionary is loaded from the configuration as <code>from_config</code> loads it, and a configured user dictionary is built with the metadata of the system dictionary in use. Every other key applies as with <code>from_config</code>:</p>
+<p><code>Segmenter::from_config_with_dictionaries</code> applies a configuration to dictionaries that are already loaded, such as ones loaded from bytes. A dictionary passed as <code>Some</code> is used instead of the one the <code>dictionary</code> key names, and the key may then be absent (<code>use_mmap</code> does not apply); a user dictionary passed as <code>Some</code> is used instead of the one the <code>user_dictionary</code> key names. For <code>None</code>, the dictionary is loaded from the configuration as <code>from_config</code> loads it, and a configured user dictionary is loaded for the system dictionary in use with <code>load_user_dictionary_for</code>: a <code>.csv</code> is built with its metadata and checked against its connection matrix. Every other key applies as with <code>from_config</code>:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use serde_json::json;
@@ -2779,7 +2790,7 @@ EOS
 <pre><code class="language-text">% lindera build --src ./userdic.csv --dest ./user_dict --metadata ./lindera-ipadic/metadata.json --user --system-dict embedded://ipadic
 Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
 </code></pre>
-<p>Without <code>--system-dict</code>, the build does not know the system dictionary, and the user dictionary builds. <code>lindera tokenize --user-dict</code> then checks it against the system dictionary and fails with an error that names the first entry outside the matrix by its word id (see <a href="lindera-cli/../concepts/user_dictionary.html#context-ids">Context IDs</a>).</p>
+<p>Without <code>--system-dict</code>, the build does not know the system dictionary, and the user dictionary builds. <code>lindera tokenize --user-dict</code> then checks it against the system dictionary and fails with an error that names the first entry outside the matrix by its word id (see <a href="lindera-cli/../concepts/user_dictionary.html#context-ids">Context IDs</a>). A <code>.csv</code> given to <code>lindera tokenize --user-dict</code> is built for the system dictionary of <code>--dict</code> as it is loaded, so its error names the CSV line and surface, as with <code>--system-dict</code>.</p>
 <h3 id="examples-1"><a class="header" href="#examples-1">Examples</a></h3>
 <h4 id="build-ipadic-japanese-dictionary"><a class="header" href="#build-ipadic-japanese-dictionary">Build IPADIC (Japanese dictionary)</a></h4>
 <pre><code class="language-shell"># Download and extract IPADIC source files
@@ -10833,7 +10844,13 @@ entry outside the matrix
 checks the rows already when the new <code>--system-dict</code> option names the
 system dictionary (<code>DictionaryBuilder::with_system_matrix</code> in the Rust
 API), and names the first row outside the matrix by its CSV line and
-surface (<a href="https://github.com/lindera/lindera/issues/1182">#1182</a>).</li>
+surface (<a href="https://github.com/lindera/lindera/issues/1182">#1182</a>). A
+<code>.csv</code> user dictionary that the configuration path,
+<code>lindera tokenize --user-dict</code> or the bindings' <code>TokenizerBuilder</code> loads
+by path, or that the new <code>load_user_dictionary_for</code> of the Rust API
+loads, is checked the same way as it is built for the system dictionary,
+and its error names the CSV line and surface too
+(<a href="https://github.com/lindera/lindera/issues/1187">#1187</a>).</li>
 <li>The errors for a user dictionary row whose cost or context ID is not a
 number, from <code>lindera build --user</code> or from loading a <code>.csv</code> user
 dictionary, name the row's CSV line (<code>at line 1</code>). Before, they counted

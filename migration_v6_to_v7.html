@@ -1259,7 +1259,13 @@ entry outside the matrix
 checks the rows already when the new <code>--system-dict</code> option names the
 system dictionary (<code>DictionaryBuilder::with_system_matrix</code> in the Rust
 API), and names the first row outside the matrix by its CSV line and
-surface (<a href="https://github.com/lindera/lindera/issues/1182">#1182</a>).</li>
+surface (<a href="https://github.com/lindera/lindera/issues/1182">#1182</a>). A
+<code>.csv</code> user dictionary that the configuration path,
+<code>lindera tokenize --user-dict</code> or the bindings' <code>TokenizerBuilder</code> loads
+by path, or that the new <code>load_user_dictionary_for</code> of the Rust API
+loads, is checked the same way as it is built for the system dictionary,
+and its error names the CSV line and surface too
+(<a href="https://github.com/lindera/lindera/issues/1187">#1187</a>).</li>
 <li>The errors for a user dictionary row whose cost or context ID is not a
 number, from <code>lindera build --user</code> or from loading a <code>.csv</code> user
 dictionary, name the row's CSV line (<code>at line 1</code>). Before, they counted
