@@ -892,6 +892,8 @@ Note: The exact field definitions differ between dictionary formats (IPADIC, Uni
 人,0,0,0,名詞,接尾,一般,*,*,*,人,ジン,ジン
 ```
 
+The file is read as CSV, as `lindera build` reads `lex.csv`: a field may be quoted (`",",0,0,0,...`), and a line that starts with `#` is an entry, not a comment. See [Seed Lexicon](../development/training_pipeline.md#1-seed-lexicon-seedcsv) for the details.
+
 **Training corpus (corpus.txt):**
 
 The training corpus file contains annotated text data used to train the CRF model. Each line consists of:

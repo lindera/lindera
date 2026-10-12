@@ -46,6 +46,14 @@ Each line contains: `surface,left_id,right_id,cost,pos,pos_detail1,pos_detail2,p
 
 The `left_id`, `right_id`, and `cost` fields are set to 0 in the seed dictionary -- the trainer will compute appropriate values from the CRF model.
 
+The seed lexicon is read as CSV, as `lindera build` reads `lex.csv`:
+
+- A field may be quoted, as mecab-ko-dic's comma surface is: `",",1792,3558,788,SC,*,*,*,*,*,*,*`.
+- A line that starts with `#` is a row, not a comment, as UniDic's `#` surface is. Blank lines and rows with fewer than five fields are skipped.
+- The feature of a row is the text after its fourth field, as written, quotes included. `lindera export` writes it back as it is, and quotes a surface that contains `,`, `"` or a line break.
+- A quoted field that spans lines is an error that names the line. It is most likely a quote that is never closed, which would otherwise swallow the rows after it.
+- The rows keep their order, which gives their labels their ids.
+
 ### 2. Training Corpus (corpus.txt)
 
 Annotated text data in tab-separated format. Each line is `surface<TAB>pos_info`, and sentences are separated by `EOS`.

@@ -53,7 +53,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **MeCab と同じく、コストが同じ分割からは最後の語が後から始まる方を選ぶ** | テキストを解析するすべてのユーザー。現れるのはまれ（比較したテキストでは約 54,000 行のうち 9 行） | そうした箇所が MeCab と同じ分割になることを前提にする（IPADIC の `腸窒扶斯` は `腸 / 窒 / 扶斯` ではなく `腸 / 窒扶 / 斯`）。v6 の動作に戻す設定はない |
 | **`lindera tokenize` が各入力行から改行コードだけを取り除き、すべての行に結果を出す** | 行頭・行末に空白がある入力を CLI に渡すユーザー、トークンのない行の wakati や N-best の出力を読むユーザー | オフセットが入力行の中の位置を指し、行頭・行末の U+3000 がトークンになり（IPADIC では `記号,空白`）、`--keep-whitespace` でそこの空白も出力され、空行や空白だけの行が wakati では空行に、N-best では結果 1 件になることを前提にする。v6 の動作に戻す設定はない |
 | **WASM: 辞書の設定方法にかかわらず `TokenizerBuilder` の設定が適用される** | `setDictionaryInstance()` と `setKeepWhitespace()` やフィルタ、または `setDictionary()` と `setUserDictionaryInstance()` を組み合わせる WASM のユーザー | それらの設定とユーザー辞書が効くことを前提にする。`char.def` に `SPACE` カテゴリがない辞書インスタンスでは、URI で設定した辞書と同じく `setKeepWhitespace(true)` が必要になる |
-| **`lindera train` は MeCab の学習器と同じくラティスを作り、`unk.def` のすべてのエントリを保持する。`model.dat` の形式バージョンは 2.0.0** | `lindera train`・`lindera export` と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー | 7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた `model.dat` は拒否される）。`unk.def` のすべての行に 5 つ以上のフィールドを書く |
+| **`lindera train` は MeCab の学習器と同じくラティスを作り、`unk.def` のすべてのエントリを保持する。`model.dat` の形式バージョンは 2.0.0** | `lindera train`・`lindera export` と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー | 7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた `model.dat` は拒否される）。`unk.def` のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す |
 | **`lindera build` は `matrix.def` の範囲外の文脈 ID を拒否する** | `lex.csv` や `unk.def` に `matrix.def` の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の `mecab-dict-index` が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる） | ID か行列を直すか、`metadata.json` の `skip_invalid_cost_or_id` でそうした `lex.csv` の行を取り除く。ユーザー辞書ではそうした ID を直す |
 | **設定 `normalize_details` の削除: `Metadata::new` と `CoreMetadata::new` の引数は 10 個、Ruby の `Metadata.new` の引数は 8 個になる** | 辞書のメタデータを作成・参照するコード。Rust（`Metadata`・`lindera_binding::CoreMetadata`・`PrefixDictionaryBuilderOptions`）と、Python・Ruby・PHP・Node.js のバインディングの `Metadata` クラス | 引数・オプション・プロパティを削除する。このキーを含む `metadata.json` もそのまま読み込め、キーは無視される |
 | **`Lattice::tokens_offset`・`tokens_offset_into`・`nbest_tokens_offset`・`NBestGenerator::next` が `(start, end, WordId)` を返す** | これらの `lindera_dictionary` の関数を直接呼び出す Rust コード（`lindera::dictionary::viterbi::…`・`lindera::dictionary::Lattice`・`lindera::dictionary::nbest::…` 経由を含む） | 3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う |
@@ -1013,6 +1013,12 @@ v6.2.0 までの `lindera train` は、MeCab の学習器とは異なる学習�
   エントリの ID より小さい `matrix.def`（重みが 1 つも残らなければ `0 0`）を書き出し、
   ビルドした辞書は解析時にパニックしていました。`metadata.json` の
   `model_info.connection_matrix_size` は、大きい方の ID の正方形でした。
+- 種辞書を 1 行ずつ `,` で分割して読み、`#` で始まる行をコメントとして読み飛ばして
+  いました。mecab-ko-dic の引用符付きのカンマの表層形 `","` は表層形 `"` になり、
+  `lindera export` がそれを引用符なしで書き出したため、`lindera build` は
+  `lex.csv` の残りを 1 つのフィールドとして読み、その後ろの行をすべて何も知らせずに
+  捨てていました。UniDic・SudachiDict・IPADIC NEologd の `#` の行は学習されません
+  でした。
 
 v7.0.0 は MeCab の学習器と同じく学習します
 （[学習のしくみ](development/training_pipeline.md#学習のしくみ)を参照）。
@@ -1036,6 +1042,12 @@ v7.0.0 は MeCab の学習器と同じく学習します
   エクスポート関数は、v6.2.0 以前に書いたものを含め、ほかのバージョンの
   `model.dat` を「re-run `lindera train` to regenerate it」で終わるエラーで拒否
   します。
+- 種辞書は、`lindera build` が `lex.csv` を読むのと同じく CSV として読みます
+  （[種辞書](development/training_pipeline.md#1-種辞書-seedcsv)を参照）。
+  フィールドは引用符で囲め、`#` で始まる行も 1 つの行として読み、素性の列は書かれた
+  まま保ちます。複数の行にまたがる引用付きのフィールドはエラーになります。
+  `lindera export` は、`,`・`"`・改行を含む表層形を引用符で囲みます。
+  `Model::read_user_lexicon` が読むユーザー辞書も同じく読みます。
 
 すべてのラティスに種辞書の語が入るため、学習には以前より時間がかかります。学習は
 MeCab の学習器より遅く、収束する前に `--max-iterations` で
@@ -1049,7 +1061,8 @@ MeCab の学習器より遅く、収束する前に `--max-iterations` で
 学習し直し、エクスポートと辞書のビルドもやり直してください。`unk.def` のすべての
 行に 5 つ以上のフィールドを書いてください。mecab-ipadic のようにカテゴリごとに
 複数のエントリを持つ `unk.def` も、そのまま学習・エクスポートできるように
-なりました。v6 の動作に戻す設定はありません。
+なりました。種辞書からコメント行を消してください。`#` で始まる行は 1 つの行として
+読むようになりました。v6 の動作に戻す設定はありません。
 
 ## `lindera build` は接続コスト行列の範囲外の文脈 ID を拒否する
 
