@@ -343,6 +343,27 @@ export declare class TokenizerBuilder {
    */
   setKeepWhitespace(keepWhitespace: boolean): this
   /**
+   * Sets whether whitespace is skipped in the lattice, with the same
+   * meaning as `segmenter.skip_whitespace` in a YAML config.
+   *
+   * `true` skips whitespace, so the words on either side connect directly,
+   * as MeCab does; `false` keeps whitespace in the lattice as a node of
+   * its own, as before v7 (it is still dropped from the output); `null`
+   * or `undefined` goes back to the default of the dictionary's
+   * `metadata.json` (skipping, except with SudachiDict). No effect while
+   * whitespace tokens are kept (`setKeepWhitespace(true)`).
+   *
+   * # Arguments
+   *
+   * * `skip_whitespace` - The setting, or `null` / `undefined` for the
+   *   dictionary's default.
+   *
+   * # Returns
+   *
+   * The builder itself (`this`), enabling method chaining.
+   */
+  setSkipWhitespace(skipWhitespace: boolean | null | undefined): this
+  /**
    * Sets the left-space penalty (Korean), with the same meaning as
    * `segmenter.space_penalty` in a configuration file.
    *

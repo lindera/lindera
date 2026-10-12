@@ -203,6 +203,38 @@ impl TokenizerBuilder {
         self.share()
     }
 
+    /// Sets whether whitespace is skipped in the lattice, with the same
+    /// meaning as `segmenter.skip_whitespace` in a YAML config.
+    ///
+    /// `true` skips whitespace, so the words on either side connect directly,
+    /// as MeCab does; `false` keeps whitespace in the lattice as a node of
+    /// its own, as before v7 (it is still dropped from the output); `null`
+    /// or `undefined` goes back to the default of the dictionary's
+    /// `metadata.json` (skipping, except with SudachiDict). No effect while
+    /// whitespace tokens are kept (`setKeepWhitespace(true)`).
+    ///
+    /// Applies both to a dictionary set with `setDictionary()` and to one set
+    /// with `setDictionaryInstance()`.
+    ///
+    /// # Arguments
+    ///
+    /// * `skip` - The setting, or `null` / `undefined` for the dictionary's
+    ///   default. The argument is required in the TypeScript declaration, as
+    ///   for `setSpacePenalty`.
+    ///
+    /// # Returns
+    ///
+    /// A builder handle sharing this configuration, enabling method chaining.
+    #[wasm_bindgen(js_name = "setSkipWhitespace")]
+    pub fn set_skip_whitespace(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "boolean | null | undefined")] skip: Option<bool>,
+    ) -> TokenizerBuilder {
+        self.state.borrow_mut().inner.set_skip_whitespace(skip);
+
+        self.share()
+    }
+
     /// Sets the left-space penalty (Korean; mecab-ko's
     /// `left-space-penalty-factor`), with the same meaning as
     /// `segmenter.space_penalty` in a YAML config.
@@ -308,6 +340,25 @@ impl TokenizerBuilder {
     #[wasm_bindgen(js_name = "set_keep_whitespace")]
     pub fn py_set_keep_whitespace(&self, keep: bool) -> TokenizerBuilder {
         self.set_keep_whitespace(keep)
+    }
+
+    /// Sets whether whitespace is skipped in the lattice (snake_case alias of
+    /// `setSkipWhitespace`).
+    ///
+    /// # Arguments
+    ///
+    /// * `skip` - A boolean, or `null` / `undefined` for the dictionary's
+    ///   default.
+    ///
+    /// # Returns
+    ///
+    /// A builder handle sharing this configuration.
+    #[wasm_bindgen(js_name = "set_skip_whitespace")]
+    pub fn py_set_skip_whitespace(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "boolean | null | undefined")] skip: Option<bool>,
+    ) -> TokenizerBuilder {
+        self.set_skip_whitespace(skip)
     }
 
     /// Sets the left-space penalty (snake_case alias of `setSpacePenalty`).
@@ -1184,6 +1235,64 @@ mod tests {
         assert_eq!(build_and_tokenize(&builder), penalized);
         builder.set_space_penalty(JsValue::NULL).unwrap();
         assert_eq!(build_and_tokenize(&builder), baseline);
+    }
+
+    /// `setSkipWhitespace()` and its snake_case alias turn whitespace
+    /// skipping off and on, for a dictionary set by URI or as an instance,
+    /// and `null` / `undefined` go back to the dictionary's default. IPADIC
+    /// reads `が` in `Google が 新しい` as a particle (助詞) with whitespace
+    /// skipped, as MeCab does, and as a conjunction (接続詞) without.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_set_skip_whitespace_changes_tokenization() {
+        use crate::TokenizerBuilder;
+        use crate::dictionary::load_dictionary;
+
+        fn pos_of_ga(builder: &TokenizerBuilder) -> String {
+            let readings = surfaces_and_pos(&builder.build().unwrap(), "Google が 新しい");
+            match readings.iter().find(|(surface, _)| surface == "が") {
+                Some((_, pos)) => pos.clone(),
+                None => panic!("no token with surface が: {readings:?}"),
+            }
+        }
+
+        for by_instance in [false, true] {
+            let builder = TokenizerBuilder::new().unwrap();
+            if by_instance {
+                builder.set_dictionary_instance(load_dictionary("embedded://ipadic").unwrap());
+            } else {
+                builder.set_dictionary("embedded://ipadic");
+            }
+            assert_eq!(
+                pos_of_ga(&builder),
+                "助詞",
+                "default (instance: {by_instance})"
+            );
+            builder.set_skip_whitespace(Some(false));
+            assert_eq!(
+                pos_of_ga(&builder),
+                "接続詞",
+                "false (instance: {by_instance})"
+            );
+            builder.set_skip_whitespace(None);
+            assert_eq!(
+                pos_of_ga(&builder),
+                "助詞",
+                "null (instance: {by_instance})"
+            );
+            builder.py_set_skip_whitespace(Some(false));
+            assert_eq!(
+                pos_of_ga(&builder),
+                "接続詞",
+                "alias false (instance: {by_instance})"
+            );
+            builder.py_set_skip_whitespace(Some(true));
+            assert_eq!(
+                pos_of_ga(&builder),
+                "助詞",
+                "alias true (instance: {by_instance})"
+            );
+        }
     }
 
     /// A dictionary instance that ships rules (as a ko-dic loaded with

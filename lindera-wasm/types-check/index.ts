@@ -45,3 +45,20 @@ export function checkSpacePenaltyForms(): void {
     .setSpacePenalty({ rules: [{ pos: ["JKS", "JX"], cost: 6000 }] });
   void builder;
 }
+
+// `setSkipWhitespace` and its alias type their argument with
+// `unchecked_param_type`: a boolean, `null` or `undefined`, and required.
+export function checkSkipWhitespaceForms(): void {
+  const builder: TokenizerBuilder = new TokenizerBuilder()
+    .setSkipWhitespace(true)
+    .setSkipWhitespace(false)
+    .setSkipWhitespace(null)
+    .setSkipWhitespace(undefined)
+    .set_skip_whitespace(false)
+    .set_skip_whitespace(null);
+  // @ts-expect-error -- the argument is required.
+  builder.setSkipWhitespace();
+  // @ts-expect-error -- the argument is required.
+  builder.set_skip_whitespace();
+  void builder;
+}
