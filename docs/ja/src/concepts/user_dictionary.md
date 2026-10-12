@@ -30,11 +30,26 @@
 
 ## 文脈 ID
 
-詳細形式の見出し語の左右の文脈 ID は、組み合わせるシステム辞書の接続コスト行列のセルを指していなければなりません。左文脈 ID はそのシステム辞書の `matrix.def` のヘッダの 2 つ目の値より小さく、右文脈 ID は 1 つ目の値より小さくなければなりません。`lindera build` がシステム辞書自体に課すのと同じ範囲です。たとえば IPADIC の行列は 1316 x 1316 です。`lindera build --user` は、`--system-dict` でシステム辞書を指定したとき（Rust API では `DictionaryBuilder::with_system_matrix`）にこの ID を確認し、行列の範囲外にある最初の行で、その CSV の行番号と表層形を示すエラーを出して失敗します（[文脈 ID の確認](../lindera-cli/commands.md#文脈-id-の確認) を参照）。指定しない場合、ユーザー辞書はシステム辞書なしでビルドされるため、この ID は 2 つの辞書を組み合わせるときに確認します。`Segmenter::try_new`、設定からの構築（`Segmenter::from_config`、`TokenizerBuilder`）、`lindera tokenize --user-dict`、各言語バインディングの `Tokenizer` のコンストラクタとビルダーは、行列の範囲外にある最初の見出し語についてエラーを返します。エラーは、見出し語をその単語 ID（表層形の順に並べた行を 0 から数えた番号）と詳細フィールドで示します。
+詳細形式の見出し語の左右の文脈 ID は、組み合わせるシステム辞書の接続コスト行列のセルを指していなければなりません。左文脈 ID はそのシステム辞書の `matrix.def` のヘッダの 2 つ目の値より小さく、右文脈 ID は 1 つ目の値より小さくなければなりません。`lindera build` がシステム辞書自体に課すのと同じ範囲です。たとえば IPADIC の行列は 1316 x 1316 です。
+
+CSV のユーザー辞書をシステム辞書と一緒にビルドするときは、ビルドしながら各行を確認し、行列の範囲外にある最初の行で、その CSV の行番号と表層形を示すエラーを出して失敗します。
+
+- `--system-dict` でシステム辞書を指定した `lindera build --user`（Rust API では `DictionaryBuilder::with_system_matrix`。[文脈 ID の確認](../lindera-cli/commands.md#文脈-id-の確認) を参照）
+- 設定（`Segmenter::from_config`、`TokenizerBuilder`）や `lindera tokenize --user-dict` で指定した `.csv` のユーザー辞書と、Python・Node.js・Ruby・PHP のバインディングの `TokenizerBuilder` にパスで渡した `.csv` のユーザー辞書
+- Rust API の `load_user_dictionary_for`（読み込み済みのシステム辞書に合わせてユーザー辞書を読み込みます）
+
+たとえば、1 行目が IPADIC の行列の範囲内にあり、2 行目の左文脈 ID が 60000 の `userdic.csv` では次のようになります。
 
 ```text
-$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.bin
-Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary entry 0 (名詞,固有名詞,一般,*,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
+$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.csv
+Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
+```
+
+それ以外のユーザー辞書は、システム辞書なしでビルドされます。`--system-dict` を指定せずに `lindera build --user` で書き出した `.bin` と、メタデータだけで読み込んだユーザー辞書（Rust API・Python・Ruby の `load_user_dictionary`、Node.js の `loadUserDictionary`、PHP の `Lindera\Dictionary::loadUser`、WebAssembly の `loadUserDictionaryFromBytes`）です。この場合、文脈 ID は 2 つの辞書を組み合わせるときに確認します。`Segmenter::try_new`、設定からの構築、`lindera tokenize --user-dict`、各言語バインディングの `Tokenizer` のコンストラクタとビルダーは、行列の範囲外にある最初の見出し語についてエラーを返します。エラーは、見出し語をその単語 ID（表層形の順に並べた行を 0 から数えた番号）と詳細フィールドで示します。上の `userdic.csv` からビルドした `.bin` では次のようになります。
+
+```text
+$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u user_dict/userdic.bin
+Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary entry 1 (名詞,固有名詞,一般,*,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
 ```
 
 `Segmenter::new` はこの ID を確認しません。範囲外の見出し語があると、その見出し語が入力に一致したときに解析中にパニックします。v7.0.0 より前は、どの経路もこの動作でした。簡易形式の見出し語も確認します。簡易形式の見出し語には、ビルドに使う `metadata.json` の文脈 ID（`default_left_context_id` と `default_right_context_id`。同梱のどの辞書でも 0）が使われます。

@@ -643,7 +643,7 @@ With `--system-dict`, `lindera build --user` checks every row of the user dictio
 Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
 ```
 
-Without `--system-dict`, the build does not know the system dictionary, and the user dictionary builds. `lindera tokenize --user-dict` then checks it against the system dictionary and fails with an error that names the first entry outside the matrix by its word id (see [Context IDs](../concepts/user_dictionary.md#context-ids)).
+Without `--system-dict`, the build does not know the system dictionary, and the user dictionary builds. `lindera tokenize --user-dict` then checks it against the system dictionary and fails with an error that names the first entry outside the matrix by its word id (see [Context IDs](../concepts/user_dictionary.md#context-ids)). A `.csv` given to `lindera tokenize --user-dict` is built for the system dictionary of `--dict` as it is loaded, so its error names the CSV line and surface, as with `--system-dict`.
 
 ### Examples
 

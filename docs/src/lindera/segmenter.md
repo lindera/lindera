@@ -19,15 +19,15 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
 ```
 
-`Segmenter::new` does not check a user dictionary against the system dictionary. `Segmenter::try_new` takes the same arguments and returns an error when an entry's context ID lies outside the system dictionary's connection matrix; `Segmenter::new` accepts such an entry, and segmentation then panics when the entry matches the input (see [Context IDs](../concepts/user_dictionary.md#context-ids)). Building from a configuration checks too.
+`Segmenter::new` does not check a user dictionary against the system dictionary. `Segmenter::try_new` takes the same arguments and returns an error when an entry's context ID lies outside the system dictionary's connection matrix; `Segmenter::new` accepts such an entry, and segmentation then panics when the entry matches the input (see [Context IDs](../concepts/user_dictionary.md#context-ids)). Building from a configuration checks too. `load_user_dictionary_for` loads a user dictionary for a loaded system dictionary and checks a `.csv` already as it builds it, so the error names the row's CSV line and surface; `try_new` names an entry of a `.bin`, or of a user dictionary loaded with `load_user_dictionary` and metadata only, by its word id.
 
 ```rust
-use lindera::dictionary::{load_dictionary, load_user_dictionary};
+use lindera::dictionary::{load_dictionary, load_user_dictionary_for};
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
 
 let dictionary = load_dictionary("embedded://ipadic")?;
-let user_dictionary = load_user_dictionary("userdic.csv", &dictionary.metadata)?;
+let user_dictionary = load_user_dictionary_for("userdic.csv", &dictionary)?;
 let segmenter = Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary))?;
 ```
 
@@ -137,7 +137,7 @@ let segmenter = Segmenter::from_config(&config)?;
 
 Note: `use_mmap` here is set to `false` only to illustrate the option explicitly; omitting it entirely gives the same default (`true`, see below).
 
-`Segmenter::from_config_with_dictionaries` applies a configuration to dictionaries that are already loaded, such as ones loaded from bytes. A dictionary passed as `Some` is used instead of the one the `dictionary` key names, and the key may then be absent (`use_mmap` does not apply); a user dictionary passed as `Some` is used instead of the one the `user_dictionary` key names. For `None`, the dictionary is loaded from the configuration as `from_config` loads it, and a configured user dictionary is built with the metadata of the system dictionary in use. Every other key applies as with `from_config`:
+`Segmenter::from_config_with_dictionaries` applies a configuration to dictionaries that are already loaded, such as ones loaded from bytes. A dictionary passed as `Some` is used instead of the one the `dictionary` key names, and the key may then be absent (`use_mmap` does not apply); a user dictionary passed as `Some` is used instead of the one the `user_dictionary` key names. For `None`, the dictionary is loaded from the configuration as `from_config` loads it, and a configured user dictionary is loaded for the system dictionary in use with `load_user_dictionary_for`: a `.csv` is built with its metadata and checked against its connection matrix. Every other key applies as with `from_config`:
 
 ```rust
 use serde_json::json;

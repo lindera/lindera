@@ -19,15 +19,15 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
 ```
 
-`Segmenter::new` はユーザー辞書をシステム辞書と照らし合わせて確認しません。`Segmenter::try_new` は同じ引数を取り、見出し語の文脈 ID がシステム辞書の接続コスト行列の範囲外にあるとエラーを返します。`Segmenter::new` はそうした見出し語を受け付け、その見出し語が入力に一致したときに解析中にパニックします（[文脈 ID](../concepts/user_dictionary.md#文脈-id) を参照）。設定からの構築も確認します。
+`Segmenter::new` はユーザー辞書をシステム辞書と照らし合わせて確認しません。`Segmenter::try_new` は同じ引数を取り、見出し語の文脈 ID がシステム辞書の接続コスト行列の範囲外にあるとエラーを返します。`Segmenter::new` はそうした見出し語を受け付け、その見出し語が入力に一致したときに解析中にパニックします（[文脈 ID](../concepts/user_dictionary.md#文脈-id) を参照）。設定からの構築も確認します。`load_user_dictionary_for` は、読み込み済みのシステム辞書に合わせてユーザー辞書を読み込み、`.csv` はビルドする時点で確認するため、エラーはその行の CSV の行番号と表層形を示します。`.bin` や、`load_user_dictionary` でメタデータだけを使って読み込んだユーザー辞書では、`try_new` が見出し語を単語 ID で示します。
 
 ```rust
-use lindera::dictionary::{load_dictionary, load_user_dictionary};
+use lindera::dictionary::{load_dictionary, load_user_dictionary_for};
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
 
 let dictionary = load_dictionary("embedded://ipadic")?;
-let user_dictionary = load_user_dictionary("userdic.csv", &dictionary.metadata)?;
+let user_dictionary = load_user_dictionary_for("userdic.csv", &dictionary)?;
 let segmenter = Segmenter::try_new(Mode::Normal, dictionary, Some(user_dictionary))?;
 ```
 
@@ -137,7 +137,7 @@ let segmenter = Segmenter::from_config(&config)?;
 
 注: ここでは `use_mmap` を明示的に示すためにあえて `false` を指定していますが、省略した場合も後述のデフォルト（`true`）と同じ挙動になります。
 
-`Segmenter::from_config_with_dictionaries` は、バイト列から読み込んだ辞書など、読み込み済みの辞書に設定を適用します。`Some` で渡した辞書は `dictionary` キーが指す辞書の代わりに使われ、このときキーは省略できます（`use_mmap` は関係しません）。`Some` で渡したユーザー辞書は、`user_dictionary` キーが指すユーザー辞書の代わりに使われます。`None` の場合、辞書は `from_config` と同じく設定から読み込まれ、設定にあるユーザー辞書は、使う辞書のメタデータでビルドされます。それ以外のキーは `from_config` と同じように適用されます：
+`Segmenter::from_config_with_dictionaries` は、バイト列から読み込んだ辞書など、読み込み済みの辞書に設定を適用します。`Some` で渡した辞書は `dictionary` キーが指す辞書の代わりに使われ、このときキーは省略できます（`use_mmap` は関係しません）。`Some` で渡したユーザー辞書は、`user_dictionary` キーが指すユーザー辞書の代わりに使われます。`None` の場合、辞書は `from_config` と同じく設定から読み込まれ、設定にあるユーザー辞書は、`load_user_dictionary_for` で使う辞書に合わせて読み込まれます（`.csv` はその辞書のメタデータでビルドし、接続コスト行列と照らし合わせて確認します）。それ以外のキーは `from_config` と同じように適用されます：
 
 ```rust
 use serde_json::json;

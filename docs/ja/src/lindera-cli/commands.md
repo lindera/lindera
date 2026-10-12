@@ -643,7 +643,7 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
 Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
 ```
 
-`--system-dict` を指定しないと、ビルドの時点では組み合わせるシステム辞書が分からないため、ユーザー辞書はそのままビルドされます。その後 `lindera tokenize --user-dict` がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を単語 ID で示すエラーで失敗します（[文脈 ID](../concepts/user_dictionary.md#文脈-id) を参照）。
+`--system-dict` を指定しないと、ビルドの時点では組み合わせるシステム辞書が分からないため、ユーザー辞書はそのままビルドされます。その後 `lindera tokenize --user-dict` がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を単語 ID で示すエラーで失敗します（[文脈 ID](../concepts/user_dictionary.md#文脈-id) を参照）。`lindera tokenize --user-dict` に `.csv` を渡すと、読み込むときに `--dict` のシステム辞書に合わせてビルドするため、`--system-dict` と同じく CSV の行番号と表層形を示すエラーになります。
 
 ### 例
 
