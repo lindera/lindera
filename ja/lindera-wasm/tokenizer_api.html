@@ -207,7 +207,7 @@
 <h4 id="setdictionaryinstancedictionary"><a class="header" href="#setdictionaryinstancedictionary"><code>setDictionaryInstance(dictionary)</code></a></h4>
 <p>読み込み済みの辞書インスタンスをトークナイズに設定します。
 URI の代わりにバイトデータから読み込んだ辞書（例: <code>loadDictionaryFromBytes()</code> 経由）を使用する場合に使います。
-<code>setDictionary()</code> で設定した辞書は、この辞書に置き換わります（2 つのうち最後に呼んだ方の辞書が使われます）。ビルダーのほかの設定（モード、<code>setUserDictionaryInstance()</code>、<code>setKeepWhitespace()</code>、<code>setSpacePenalty()</code>、追加したフィルタ）は、URI で設定した辞書と同じようにこの辞書にも適用されます。</p>
+<code>setDictionary()</code> で設定した辞書は、この辞書に置き換わります（2 つのうち最後に呼んだ方の辞書が使われます）。ビルダーのほかの設定（モード、<code>setUserDictionaryInstance()</code>、<code>setKeepWhitespace()</code>、<code>setSkipWhitespace()</code>、<code>setSpacePenalty()</code>、追加したフィルタ）は、URI で設定した辞書と同じようにこの辞書にも適用されます。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト</li>
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
@@ -231,12 +231,22 @@ builder.setDictionaryInstance(dictionary);
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <h4 id="setkeepwhitespacekeep"><a class="header" href="#setkeepwhitespacekeep"><code>setKeepWhitespace(keep)</code></a></h4>
-<p>出力に空白トークンを保持するかどうかを設定します。保持した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。WASM バインディングには、空白の読み飛ばし自体を無効にする方法はありません（setter も設定ファイルの読み込みもないため、辞書のデフォルトが使われます。SudachiDict 以外では読み飛ばします）。</p>
+<p>出力に空白トークンを保持するかどうかを設定します。保持した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白を出力せずにラティスにだけ残すには、代わりに <a href="#setskipwhitespaceskip"><code>setSkipWhitespace(false)</code></a> を使います。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>keep</code> (boolean) -- <code>true</code> で空白トークンを保持</li>
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.setKeepWhitespace(true);
+</code></pre>
+<h4 id="setskipwhitespaceskip"><a class="header" href="#setskipwhitespaceskip"><code>setSkipWhitespace(skip)</code></a></h4>
+<p>空白をラティス上で読み飛ばすかどうかを設定します。意味は<a href="../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.skip_whitespace</code> と同じです。<code>true</code> では空白を読み飛ばし、MeCab と同様に空白の前後の語を直接接続します。<code>false</code> では空白を独立したノード（空白の見出し語か <code>SPACE</code> の未知語）としてラティスに残します（v7 より前の動作。空白は引き続き出力から除外されます）。<code>null</code> または <code>undefined</code> では、辞書の <code>metadata.json</code> のデフォルトに戻ります（SudachiDict 以外では読み飛ばします）。</p>
+<p>ここで設定した値は、<code>setDictionary()</code> と <code>setDictionaryInstance()</code> のどちらで設定した辞書でも、辞書のデフォルトより優先されます。空白トークンを保持するとき（<code>setKeepWhitespace(true)</code>）は効果がありません。保持した空白は常にラティスに残るためです。たとえば IPADIC では、<code>Google が 新しい</code> の <code>が</code> は、デフォルトでは助詞（<code>助詞</code>）、<code>setSkipWhitespace(false)</code> では接続詞（<code>接続詞</code>）と解析されます。詳しくは <a href="../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> を参照してください。</p>
+<ul>
+<li><strong>パラメータ</strong>: <code>skip</code> (boolean | null | undefined) -- 設定値。<code>null</code> または <code>undefined</code> で辞書のデフォルト。TypeScript の宣言では引数を省略できません。それ以外の値は JavaScript の真偽値の規則で扱われます</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
+</ul>
+<pre><code class="language-javascript">// v7 より前と同じく、空白をラティスに残す
+builder.setSkipWhitespace(false);
 </code></pre>
 <h4 id="setspacepenaltyvalue"><a class="header" href="#setspacepenaltyvalue"><code>setSpacePenalty(value)</code></a></h4>
 <p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。</p>
@@ -468,6 +478,7 @@ console.log(error.toString()); // "message"
 <tr><td><code>setDictionaryInstance()</code></td><td><code>set_dictionary_instance()</code></td></tr>
 <tr><td><code>setUserDictionaryInstance()</code></td><td><code>set_user_dictionary_instance()</code></td></tr>
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
+<tr><td><code>setSkipWhitespace()</code></td><td><code>set_skip_whitespace()</code></td></tr>
 <tr><td><code>setSpacePenalty()</code></td><td><code>set_space_penalty()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>

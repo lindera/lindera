@@ -600,10 +600,10 @@ segmenter:
 </code></pre>
 <pre><code class="language-sh">lindera tokenize --disable-skip-whitespace
 </code></pre>
-<p>The language bindings have no setter for it. The Python, Node.js, Ruby and
-PHP bindings take it only through a configuration file loaded with
-<code>from_file</code> / <code>fromFile</code>; the WASM binding cannot change it and uses the
-dictionary's default.</p>
+<p>The language bindings set it on <code>TokenizerBuilder</code>:
+<code>set_skip_whitespace(False)</code> in Python, <code>set_skip_whitespace(false)</code> in Ruby,
+and <code>setSkipWhitespace(false)</code> in Node.js, PHP and WASM. <code>null</code> (<code>None</code> in
+Python, <code>nil</code> in Ruby) goes back to the dictionary's default.</p>
 <h2 id="overlapping-chardef-lines-are-resolved-as-in-mecab"><a class="header" href="#overlapping-chardef-lines-are-resolved-as-in-mecab">Overlapping char.def lines are resolved as in MeCab</a></h2>
 <p>A dictionary's <code>char.def</code> can list the same code point on several lines. Up
 to v6.2.0, the dictionary builder gave such a code point the categories of

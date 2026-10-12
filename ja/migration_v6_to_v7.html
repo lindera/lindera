@@ -569,9 +569,10 @@ segmenter:
 </code></pre>
 <pre><code class="language-sh">lindera tokenize --disable-skip-whitespace
 </code></pre>
-<p>言語バインディングには、この設定の setter はありません。Python・Node.js・Ruby・
-PHP のバインディングでは、<code>from_file</code> / <code>fromFile</code> で読み込む設定ファイルでだけ
-指定できます。WASM のバインディングでは変更できず、辞書のデフォルトが使われます。</p>
+<p>言語バインディングでは <code>TokenizerBuilder</code> で設定します。Python では
+<code>set_skip_whitespace(False)</code>、Ruby では <code>set_skip_whitespace(false)</code>、Node.js・
+PHP・WASM では <code>setSkipWhitespace(false)</code> です。<code>null</code>（Python では <code>None</code>、
+Ruby では <code>nil</code>）を渡すと辞書のデフォルトに戻ります。</p>
 <h2 id="chardef-の重複した行を-mecab-と同じく解決する"><a class="header" href="#chardef-の重複した行を-mecab-と同じく解決する"><code>char.def</code> の重複した行を MeCab と同じく解決する</a></h2>
 <p>辞書の <code>char.def</code> では、同じコードポイントを複数の行に書くことができます。v6.2.0
 までは、辞書ビルダーがそのコードポイントに、覆うすべての行のカテゴリを与えていました。

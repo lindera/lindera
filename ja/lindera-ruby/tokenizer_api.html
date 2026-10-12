@@ -212,8 +212,20 @@ builder.set_dictionary('/path/to/dictionary')
 <pre><code class="language-ruby">builder.set_user_dictionary('/path/to/user_dictionary')
 </code></pre>
 <h4 id="set_keep_whitespacekeep"><a class="header" href="#set_keep_whitespacekeep"><code>set_keep_whitespace(keep)</code></a></h4>
-<p>出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白の読み飛ばし自体を変える setter はありません。<code>TokenizerBuilder.from_file</code> で読み込む<a href="../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter</code> に <code>skip_whitespace: false</code> を書くと無効にできます。</p>
+<p>出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白を出力せずにラティスにだけ残すには、代わりに <a href="#set_skip_whitespaceskip"><code>set_skip_whitespace(false)</code></a> を使います。</p>
 <pre><code class="language-ruby">builder.set_keep_whitespace(true)
+</code></pre>
+<h4 id="set_skip_whitespaceskip"><a class="header" href="#set_skip_whitespaceskip"><code>set_skip_whitespace(skip)</code></a></h4>
+<p>空白をラティス上で読み飛ばすかどうかを設定します。<code>skip</code> の意味は<a href="../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.skip_whitespace</code> と同じです：</p>
+<ul>
+<li><code>true</code> -- 空白を読み飛ばし、MeCab と同様に空白の前後の語を直接接続します。</li>
+<li><code>false</code> -- 空白を独立したノード（空白の見出し語か <code>SPACE</code> の未知語）としてラティスに残します（v7 より前の動作）。空白は引き続き出力から除外されます。</li>
+<li><code>nil</code> -- 辞書の <code>metadata.json</code> のデフォルトです。SudachiDict 以外では読み飛ばします。以前の呼び出しを取り消すときに使います。</li>
+</ul>
+<p>ここで設定した値は、辞書のデフォルトと、<code>TokenizerBuilder.from_file</code> で読み込んだ <code>skip_whitespace</code> より優先されます。空白トークンを残すとき（<code>set_keep_whitespace(true)</code>）は効果がありません。残した空白は常にラティスに残るためです。それ以外の値は、<code>set_keep_whitespace</code> と同じく Ruby の真偽値の規則で扱われ、<code>false</code> と <code>nil</code> 以外は読み飛ばしを有効にします。</p>
+<p>たとえば IPADIC では、<code>Google が 新しい</code> の <code>が</code> は、デフォルトでは助詞（<code>助詞</code>）、<code>set_skip_whitespace(false)</code> では接続詞（<code>接続詞</code>）と解析されます。詳しくは <a href="../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> を参照してください。</p>
+<pre><code class="language-ruby"># v7 より前と同じく、空白をラティスに残す
+builder.set_skip_whitespace(false)
 </code></pre>
 <h4 id="set_space_penaltyvalue"><a class="header" href="#set_space_penaltyvalue"><code>set_space_penalty(value)</code></a></h4>
 <p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。<code>value</code> の意味は<a href="../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです：</p>

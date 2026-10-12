@@ -3328,8 +3328,20 @@ builder.set_dictionary("/path/to/dictionary")
 <pre><code class="language-python">builder.set_user_dictionary("/path/to/user_dictionary")
 </code></pre>
 <h4 id="set_keep_whitespacekeep"><a class="header" href="#set_keep_whitespacekeep"><code>set_keep_whitespace(keep)</code></a></h4>
-<p>出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白の読み飛ばし自体を変える setter はありません。<code>from_file</code> で読み込む<a href="lindera-python/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter</code> に <code>skip_whitespace: false</code> を書くと無効にできます。</p>
+<p>出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白を出力せずにラティスにだけ残すには、代わりに <a href="lindera-python/tokenizer_api.html#set_skip_whitespaceskip"><code>set_skip_whitespace(False)</code></a> を使います。</p>
 <pre><code class="language-python">builder.set_keep_whitespace(True)
+</code></pre>
+<h4 id="set_skip_whitespaceskip"><a class="header" href="#set_skip_whitespaceskip"><code>set_skip_whitespace(skip)</code></a></h4>
+<p>空白をラティス上で読み飛ばすかどうかを設定します。<code>skip</code> の意味は<a href="lindera-python/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.skip_whitespace</code> と同じです：</p>
+<ul>
+<li><code>True</code> -- 空白を読み飛ばし、MeCab と同様に空白の前後の語を直接接続します。</li>
+<li><code>False</code> -- 空白を独立したノード（空白の見出し語か <code>SPACE</code> の未知語）としてラティスに残します（v7 より前の動作）。空白は引き続き出力から除外されます。</li>
+<li><code>None</code> -- 辞書の <code>metadata.json</code> のデフォルトです。SudachiDict 以外では読み飛ばします。以前の呼び出しを取り消すときに使います。</li>
+</ul>
+<p>ここで設定した値は、辞書のデフォルトと、<code>from_file</code> で読み込んだ <code>skip_whitespace</code> より優先されます。空白トークンを残すとき（<code>set_keep_whitespace(True)</code>）は効果がありません。残した空白は常にラティスに残るためです。それ以外の値では <code>TypeError</code> が送出されます。</p>
+<p>たとえば IPADIC では、<code>Google が 新しい</code> の <code>が</code> は、デフォルトでは助詞（<code>助詞</code>）、<code>set_skip_whitespace(False)</code> では接続詞（<code>接続詞</code>）と解析されます。詳しくは <a href="lindera-python/../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> を参照してください。</p>
+<pre><code class="language-python"># v7 より前と同じく、空白をラティスに残す
+builder.set_skip_whitespace(False)
 </code></pre>
 <h4 id="set_space_penaltyvalue"><a class="header" href="#set_space_penaltyvalue"><code>set_space_penalty(value)</code></a></h4>
 <p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。<code>value</code> の意味は<a href="lindera-python/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです：</p>
@@ -4213,8 +4225,24 @@ builder.setDictionary("/path/to/dictionary");
 <pre><code class="language-javascript">builder.setUserDictionary("/path/to/user_dictionary");
 </code></pre>
 <h4 id="setkeepwhitespacekeep"><a class="header" href="#setkeepwhitespacekeep"><code>setKeepWhitespace(keep)</code></a></h4>
-<p>出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白の読み飛ばし自体を変える setter はありません。<code>fromFile</code> で読み込む<a href="lindera-nodejs/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter</code> に <code>skip_whitespace: false</code> を書くと無効にできます。</p>
+<p>出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白を出力せずにラティスにだけ残すには、代わりに <a href="lindera-nodejs/tokenizer_api.html#setskipwhitespaceskip"><code>setSkipWhitespace(false)</code></a> を使います。</p>
 <pre><code class="language-javascript">builder.setKeepWhitespace(true);
+</code></pre>
+<h4 id="setskipwhitespaceskip"><a class="header" href="#setskipwhitespaceskip"><code>setSkipWhitespace(skip)</code></a></h4>
+<p>空白をラティス上で読み飛ばすかどうかを設定します。値の意味は<a href="lindera-nodejs/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.skip_whitespace</code> と同じです。</p>
+<div class="table-wrapper"><table><thead><tr><th>値</th><th>効果</th></tr></thead><tbody>
+<tr><td><code>true</code></td><td>空白を読み飛ばし、MeCab と同様に空白の前後の語を直接接続する</td></tr>
+<tr><td><code>false</code></td><td>空白を独立したノード（空白の見出し語か <code>SPACE</code> の未知語）としてラティスに残す（v7 より前の動作）。空白は引き続き出力から除外する</td></tr>
+<tr><td><code>null</code> または <code>undefined</code></td><td>デフォルト。辞書の <code>metadata.json</code> の設定に従う（SudachiDict 以外では読み飛ばす）</td></tr>
+</tbody></table>
+</div>
+<p>ここで設定した値は、辞書のデフォルトと、<code>fromFile</code> で読み込んだ <code>skip_whitespace</code> より優先されます。空白トークンを残すとき（<code>setKeepWhitespace(true)</code>）は効果がありません。残した空白は常にラティスに残るためです。引数は省略できず、それ以外の値を渡すと <code>Error</code> を投げます。</p>
+<p>たとえば IPADIC では、<code>Google が 新しい</code> の <code>が</code> は、デフォルトでは助詞（<code>助詞</code>）、<code>setSkipWhitespace(false)</code> では接続詞（<code>接続詞</code>）と解析されます。詳しくは <a href="lindera-nodejs/../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> を参照してください。</p>
+<pre><code class="language-javascript">// v7 より前と同じく、空白をラティスに残す
+builder.setSkipWhitespace(false);
+
+// 辞書のデフォルトに戻す
+builder.setSkipWhitespace(null);
 </code></pre>
 <h4 id="setspacepenaltyvalue"><a class="header" href="#setspacepenaltyvalue"><code>setSpacePenalty(value)</code></a></h4>
 <p>韓国語向けの左側空白ペナルティ（mecab-ko の <code>left-space-penalty-factor</code>）を設定します。直前に空白があり、先頭品詞タグがルールの一覧にある候補に、そのルールのコストを加算します。値の意味は<a href="lindera-nodejs/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです。</p>
@@ -4977,8 +5005,20 @@ builder.set_dictionary('/path/to/dictionary')
 <pre><code class="language-ruby">builder.set_user_dictionary('/path/to/user_dictionary')
 </code></pre>
 <h4 id="set_keep_whitespacekeep-1"><a class="header" href="#set_keep_whitespacekeep-1"><code>set_keep_whitespace(keep)</code></a></h4>
-<p>出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白の読み飛ばし自体を変える setter はありません。<code>TokenizerBuilder.from_file</code> で読み込む<a href="lindera-ruby/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter</code> に <code>skip_whitespace: false</code> を書くと無効にできます。</p>
+<p>出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白を出力せずにラティスにだけ残すには、代わりに <a href="lindera-ruby/tokenizer_api.html#set_skip_whitespaceskip"><code>set_skip_whitespace(false)</code></a> を使います。</p>
 <pre><code class="language-ruby">builder.set_keep_whitespace(true)
+</code></pre>
+<h4 id="set_skip_whitespaceskip-1"><a class="header" href="#set_skip_whitespaceskip-1"><code>set_skip_whitespace(skip)</code></a></h4>
+<p>空白をラティス上で読み飛ばすかどうかを設定します。<code>skip</code> の意味は<a href="lindera-ruby/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.skip_whitespace</code> と同じです：</p>
+<ul>
+<li><code>true</code> -- 空白を読み飛ばし、MeCab と同様に空白の前後の語を直接接続します。</li>
+<li><code>false</code> -- 空白を独立したノード（空白の見出し語か <code>SPACE</code> の未知語）としてラティスに残します（v7 より前の動作）。空白は引き続き出力から除外されます。</li>
+<li><code>nil</code> -- 辞書の <code>metadata.json</code> のデフォルトです。SudachiDict 以外では読み飛ばします。以前の呼び出しを取り消すときに使います。</li>
+</ul>
+<p>ここで設定した値は、辞書のデフォルトと、<code>TokenizerBuilder.from_file</code> で読み込んだ <code>skip_whitespace</code> より優先されます。空白トークンを残すとき（<code>set_keep_whitespace(true)</code>）は効果がありません。残した空白は常にラティスに残るためです。それ以外の値は、<code>set_keep_whitespace</code> と同じく Ruby の真偽値の規則で扱われ、<code>false</code> と <code>nil</code> 以外は読み飛ばしを有効にします。</p>
+<p>たとえば IPADIC では、<code>Google が 新しい</code> の <code>が</code> は、デフォルトでは助詞（<code>助詞</code>）、<code>set_skip_whitespace(false)</code> では接続詞（<code>接続詞</code>）と解析されます。詳しくは <a href="lindera-ruby/../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> を参照してください。</p>
+<pre><code class="language-ruby"># v7 より前と同じく、空白をラティスに残す
+builder.set_skip_whitespace(false)
 </code></pre>
 <h4 id="set_space_penaltyvalue-1"><a class="header" href="#set_space_penaltyvalue-1"><code>set_space_penalty(value)</code></a></h4>
 <p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。<code>value</code> の意味は<a href="lindera-ruby/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです：</p>
@@ -5828,8 +5868,20 @@ $builder-&gt;setDictionary('/path/to/dictionary');
 <pre><code class="language-php">$builder-&gt;setUserDictionary('/path/to/user_dictionary.csv');
 </code></pre>
 <h4 id="setkeepwhitespacekeep-1"><a class="header" href="#setkeepwhitespacekeep-1"><code>setKeepWhitespace($keep)</code></a></h4>
-<p>出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白の読み飛ばし自体を変える setter はありません。<code>fromFile</code> で読み込む<a href="lindera-php/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter</code> に <code>skip_whitespace: false</code> を書くと無効にできます。</p>
+<p>出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白を出力せずにラティスにだけ残すには、代わりに <a href="lindera-php/tokenizer_api.html#setskipwhitespaceskip"><code>setSkipWhitespace(false)</code></a> を使います。</p>
 <pre><code class="language-php">$builder-&gt;setKeepWhitespace(true);
+</code></pre>
+<h4 id="setskipwhitespaceskip-1"><a class="header" href="#setskipwhitespaceskip-1"><code>setSkipWhitespace($skip)</code></a></h4>
+<p>空白をラティス上で読み飛ばすかどうかを設定します。<code>$skip</code> の意味は<a href="lindera-php/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.skip_whitespace</code> と同じです：</p>
+<ul>
+<li><code>true</code> -- 空白を読み飛ばし、MeCab と同様に空白の前後の語を直接接続します。</li>
+<li><code>false</code> -- 空白を独立したノード（空白の見出し語か <code>SPACE</code> の未知語）としてラティスに残します（v7 より前の動作）。空白は引き続き出力から除外されます。</li>
+<li><code>null</code> -- 辞書の <code>metadata.json</code> のデフォルトです。SudachiDict 以外では読み飛ばします。以前の呼び出しを取り消すときに使います。</li>
+</ul>
+<p>ここで設定した値は、辞書のデフォルトと、<code>fromFile</code> で読み込んだ <code>skip_whitespace</code> より優先されます。空白トークンを残すとき（<code>setKeepWhitespace(true)</code>）は効果がありません。残した空白は常にラティスに残るためです。引数は省略できず、それ以外の型の値では <code>TypeError</code> をスローします。</p>
+<p>たとえば IPADIC では、<code>Google が 新しい</code> の <code>が</code> は、デフォルトでは助詞（<code>助詞</code>）、<code>setSkipWhitespace(false)</code> では接続詞（<code>接続詞</code>）と解析されます。詳しくは <a href="lindera-php/../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> を参照してください。</p>
+<pre><code class="language-php">// v7 より前と同じく、空白をラティスに残す
+$builder-&gt;setSkipWhitespace(false);
 </code></pre>
 <h4 id="setspacepenaltyvalue-1"><a class="header" href="#setspacepenaltyvalue-1"><code>setSpacePenalty($value)</code></a></h4>
 <p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。<code>$value</code> の意味は<a href="lindera-php/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです：</p>
@@ -6690,7 +6742,7 @@ results.forEach((result, rank) =&gt; {
 <h4 id="setdictionaryinstancedictionary"><a class="header" href="#setdictionaryinstancedictionary"><code>setDictionaryInstance(dictionary)</code></a></h4>
 <p>読み込み済みの辞書インスタンスをトークナイズに設定します。
 URI の代わりにバイトデータから読み込んだ辞書（例: <code>loadDictionaryFromBytes()</code> 経由）を使用する場合に使います。
-<code>setDictionary()</code> で設定した辞書は、この辞書に置き換わります（2 つのうち最後に呼んだ方の辞書が使われます）。ビルダーのほかの設定（モード、<code>setUserDictionaryInstance()</code>、<code>setKeepWhitespace()</code>、<code>setSpacePenalty()</code>、追加したフィルタ）は、URI で設定した辞書と同じようにこの辞書にも適用されます。</p>
+<code>setDictionary()</code> で設定した辞書は、この辞書に置き換わります（2 つのうち最後に呼んだ方の辞書が使われます）。ビルダーのほかの設定（モード、<code>setUserDictionaryInstance()</code>、<code>setKeepWhitespace()</code>、<code>setSkipWhitespace()</code>、<code>setSpacePenalty()</code>、追加したフィルタ）は、URI で設定した辞書と同じようにこの辞書にも適用されます。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト</li>
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
@@ -6714,12 +6766,22 @@ builder.setDictionaryInstance(dictionary);
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <h4 id="setkeepwhitespacekeep-2"><a class="header" href="#setkeepwhitespacekeep-2"><code>setKeepWhitespace(keep)</code></a></h4>
-<p>出力に空白トークンを保持するかどうかを設定します。保持した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。WASM バインディングには、空白の読み飛ばし自体を無効にする方法はありません（setter も設定ファイルの読み込みもないため、辞書のデフォルトが使われます。SudachiDict 以外では読み飛ばします）。</p>
+<p>出力に空白トークンを保持するかどうかを設定します。保持した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白を出力せずにラティスにだけ残すには、代わりに <a href="lindera-wasm/tokenizer_api.html#setskipwhitespaceskip"><code>setSkipWhitespace(false)</code></a> を使います。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>keep</code> (boolean) -- <code>true</code> で空白トークンを保持</li>
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">builder.setKeepWhitespace(true);
+</code></pre>
+<h4 id="setskipwhitespaceskip-2"><a class="header" href="#setskipwhitespaceskip-2"><code>setSkipWhitespace(skip)</code></a></h4>
+<p>空白をラティス上で読み飛ばすかどうかを設定します。意味は<a href="lindera-wasm/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.skip_whitespace</code> と同じです。<code>true</code> では空白を読み飛ばし、MeCab と同様に空白の前後の語を直接接続します。<code>false</code> では空白を独立したノード（空白の見出し語か <code>SPACE</code> の未知語）としてラティスに残します（v7 より前の動作。空白は引き続き出力から除外されます）。<code>null</code> または <code>undefined</code> では、辞書の <code>metadata.json</code> のデフォルトに戻ります（SudachiDict 以外では読み飛ばします）。</p>
+<p>ここで設定した値は、<code>setDictionary()</code> と <code>setDictionaryInstance()</code> のどちらで設定した辞書でも、辞書のデフォルトより優先されます。空白トークンを保持するとき（<code>setKeepWhitespace(true)</code>）は効果がありません。保持した空白は常にラティスに残るためです。たとえば IPADIC では、<code>Google が 新しい</code> の <code>が</code> は、デフォルトでは助詞（<code>助詞</code>）、<code>setSkipWhitespace(false)</code> では接続詞（<code>接続詞</code>）と解析されます。詳しくは <a href="lindera-wasm/../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> を参照してください。</p>
+<ul>
+<li><strong>パラメータ</strong>: <code>skip</code> (boolean | null | undefined) -- 設定値。<code>null</code> または <code>undefined</code> で辞書のデフォルト。TypeScript の宣言では引数を省略できません。それ以外の値は JavaScript の真偽値の規則で扱われます</li>
+<li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
+</ul>
+<pre><code class="language-javascript">// v7 より前と同じく、空白をラティスに残す
+builder.setSkipWhitespace(false);
 </code></pre>
 <h4 id="setspacepenaltyvalue-2"><a class="header" href="#setspacepenaltyvalue-2"><code>setSpacePenalty(value)</code></a></h4>
 <p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。</p>
@@ -6951,6 +7013,7 @@ console.log(error.toString()); // "message"
 <tr><td><code>setDictionaryInstance()</code></td><td><code>set_dictionary_instance()</code></td></tr>
 <tr><td><code>setUserDictionaryInstance()</code></td><td><code>set_user_dictionary_instance()</code></td></tr>
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
+<tr><td><code>setSkipWhitespace()</code></td><td><code>set_skip_whitespace()</code></td></tr>
 <tr><td><code>setSpacePenalty()</code></td><td><code>set_space_penalty()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
@@ -9891,9 +9954,10 @@ segmenter:
 </code></pre>
 <pre><code class="language-sh">lindera tokenize --disable-skip-whitespace
 </code></pre>
-<p>言語バインディングには、この設定の setter はありません。Python・Node.js・Ruby・
-PHP のバインディングでは、<code>from_file</code> / <code>fromFile</code> で読み込む設定ファイルでだけ
-指定できます。WASM のバインディングでは変更できず、辞書のデフォルトが使われます。</p>
+<p>言語バインディングでは <code>TokenizerBuilder</code> で設定します。Python では
+<code>set_skip_whitespace(False)</code>、Ruby では <code>set_skip_whitespace(false)</code>、Node.js・
+PHP・WASM では <code>setSkipWhitespace(false)</code> です。<code>null</code>（Python では <code>None</code>、
+Ruby では <code>nil</code>）を渡すと辞書のデフォルトに戻ります。</p>
 <h2 id="chardef-の重複した行を-mecab-と同じく解決する"><a class="header" href="#chardef-の重複した行を-mecab-と同じく解決する"><code>char.def</code> の重複した行を MeCab と同じく解決する</a></h2>
 <p>辞書の <code>char.def</code> では、同じコードポイントを複数の行に書くことができます。v6.2.0
 までは、辞書ビルダーがそのコードポイントに、覆うすべての行のカテゴリを与えていました。
