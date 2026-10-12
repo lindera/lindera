@@ -1,11 +1,13 @@
 //! A user dictionary whose context IDs lie outside the system dictionary's connection
 //! matrix must be rejected when the two are combined, not panic at tokenization (#1171).
 //!
-//! A user dictionary is built without the system dictionary (`lindera build --user` reads
-//! only `metadata.json`), so nothing stops an entry from naming a context ID the matrix
-//! does not have. `Segmenter::new` accepts such a dictionary, and the lookup then indexes
-//! past the matrix when the entry matches the input. `Segmenter::try_new`, and the
-//! configuration path that the CLI and the bindings use, check every entry first.
+//! A user dictionary can be built without the system dictionary (`lindera build --user`
+//! without `--system-dict` reads only `metadata.json`), so nothing stops an entry from
+//! naming a context ID the matrix does not have. `Segmenter::new` accepts such a
+//! dictionary, and the lookup then indexes past the matrix when the entry matches the
+//! input. `Segmenter::try_new`, and the configuration path that the CLI and the bindings
+//! use, check every entry first. The configuration path builds a `.csv` against the
+//! system dictionary's matrix, so its error names the CSV line and surface (#1187).
 //!
 //! The fixture is a 4x4 dictionary, so context IDs 0..=3 are valid on both axes.
 
@@ -232,24 +234,59 @@ fn try_new_accepts_a_user_dictionary_inside_the_matrix() {
     }
 }
 
+/// Returns the message of the error `Segmenter::from_config` gives for the user
+/// dictionary at `uri` with the system dictionary at `dict_dir`.
+fn from_config_error(dict_dir: &Path, uri: &str) -> String {
+    let config = serde_json::json!({
+        "dictionary": dict_dir.to_str().unwrap(),
+        "user_dictionary": uri,
+    });
+    match Segmenter::from_config(&config) {
+        Ok(_) => panic!("from_config accepted a user dictionary outside the matrix"),
+        Err(err) => err.to_string(),
+    }
+}
+
 /// The configuration path, which `TokenizerBuilder`, the CLI and the bindings' builders
-/// use, checks the user dictionary that the `user_dictionary` key names.
+/// use, checks the user dictionary that the `user_dictionary` key names. A `.csv` is
+/// built against the system dictionary's matrix, so the error names its CSV line and
+/// surface, with and without the context-ID remap (#1187).
 #[test]
 fn from_config_rejects_a_user_dictionary_outside_the_matrix() {
-    let dict_dir = build_system_dictionary(false);
     let user_dir = tempfile::tempdir().unwrap();
     let user_csv = write_user_csv(user_dir.path(), USER_CSV_LEFT_OUT_OF_RANGE);
 
-    let config = serde_json::json!({
-        "dictionary": dict_dir.path().to_str().unwrap(),
-        "user_dictionary": user_csv,
-    });
-    let err = match Segmenter::from_config(&config) {
-        Ok(_) => panic!("from_config accepted a user dictionary outside the matrix"),
-        Err(err) => err.to_string(),
-    };
+    for remap in [false, true] {
+        let dict_dir = build_system_dictionary(remap);
+        let err = from_config_error(dict_dir.path(), &user_csv);
+        assert!(
+            err.contains(
+                "user dictionary line 1 (surface: '東京都'): left context id 60000 is out of \
+                 range for the connection matrix (matrix.def size 4 4; left context ids must be \
+                 below 4)"
+            ),
+            "remap {remap}: {err}"
+        );
+    }
+}
+
+/// A pre-built `.bin` that the `user_dictionary` key names is still checked when it is
+/// combined with the system dictionary, and the error names the entry by word id.
+#[test]
+fn from_config_rejects_a_prebuilt_bin_user_dictionary_by_word_id() {
+    let dict_dir = build_system_dictionary(false);
+    let user_dir = tempfile::tempdir().unwrap();
+    let user_csv = write_user_csv(user_dir.path(), USER_CSV_LEFT_OUT_OF_RANGE);
+    let user_bin = user_dir.path().join("user.bin");
+    DictionaryBuilder::new(Metadata::default())
+        .build_user_dictionary(Path::new(&user_csv), &user_bin)
+        .unwrap();
+
+    let err = from_config_error(dict_dir.path(), user_bin.to_str().unwrap());
     assert!(
-        err.contains("left context id 60000 is out of range"),
+        err.contains(&format!(
+            "user dictionary entry 0 ({USER_DETAILS}): left context id 60000 is out of range"
+        )),
         "{err}"
     );
 }

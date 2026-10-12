@@ -25,7 +25,7 @@ use lindera_dictionary::whitespace::WhitespaceClassifier;
 use serde_json::Value;
 
 use crate::LinderaResult;
-use crate::dictionary::{load_dictionary_with_options, load_user_dictionary};
+use crate::dictionary::{load_dictionary_with_options, load_user_dictionary_for};
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
 
@@ -458,9 +458,11 @@ impl Segmenter {
     /// every entry of the user dictionary fits the dictionary's connection
     /// matrix.
     ///
-    /// A user dictionary is built without the system dictionary it is used
-    /// with, so its context IDs can lie outside that dictionary's connection
-    /// matrix, for example when it was written for another dictionary.
+    /// A user dictionary can be built without the system dictionary it is
+    /// used with (by `lindera build --user` without `--system-dict`, or by
+    /// [`load_user_dictionary`](crate::dictionary::load_user_dictionary)), so
+    /// its context IDs can lie outside that dictionary's connection matrix,
+    /// for example when it was written for another dictionary.
     /// [`Segmenter::new`] accepts such a user dictionary, and segmentation
     /// then panics when the entry matches the input; this constructor returns
     /// an error instead, as MeCab refuses such an entry.
@@ -880,7 +882,10 @@ impl Segmenter {
     /// The segmenter, or an error when the `dictionary` key is missing, a
     /// dictionary cannot be loaded, a setting is invalid, or the user
     /// dictionary has a context ID outside the dictionary's connection
-    /// matrix (see [`Segmenter::try_new`]).
+    /// matrix. A `.csv` user dictionary is checked as it is built, and the
+    /// error names its CSV line and surface (see
+    /// [`load_user_dictionary_for`]); a `.bin` is checked by
+    /// [`Segmenter::try_new`], and the error names the entry by word id.
     pub fn from_config(config: &SegmenterConfig) -> LinderaResult<Self> {
         Self::from_config_with_dictionaries(config, None, None)
     }
@@ -900,7 +905,8 @@ impl Segmenter {
     ///   does not apply. `None` loads the dictionary the key names.
     /// * `user_dictionary` - The user dictionary to use instead of the one
     ///   the `user_dictionary` key names. `None` loads the one the key names,
-    ///   if any, with the metadata of the system dictionary in use.
+    ///   if any, for the system dictionary in use, with
+    ///   [`load_user_dictionary_for`].
     ///
     /// # Returns
     ///
@@ -938,15 +944,14 @@ impl Segmenter {
             }
         };
 
-        // Get metadata from the dictionary
-        let metadata = &dictionary.metadata;
-
-        // Load the user dictionary from the config unless one was given; it
-        // is built with the metadata of the dictionary in use.
+        // Load the user dictionary from the config unless one was given. A
+        // `.csv` is built with the metadata of the dictionary in use and
+        // checked against its connection matrix, so an entry outside it is
+        // reported by its CSV line and surface.
         let user_dictionary = match user_dictionary {
             Some(user_dictionary) => Some(user_dictionary),
             None => match config.get("user_dictionary").and_then(Value::as_str) {
-                Some(uri) => Some(load_user_dictionary(uri, metadata)?),
+                Some(uri) => Some(load_user_dictionary_for(uri, &dictionary)?),
                 None => None,
             },
         };
