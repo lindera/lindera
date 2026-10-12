@@ -250,16 +250,30 @@ impl TrainerConfig {
                     parts.len()
                 ));
             }
+            // The numbers are checked here as `parse_unk` checks them, so
+            // that the error names the line in the file: `parse_unk` reads
+            // the entry lines alone and would count those (#1175).
+            for (column, value) in [("left id", parts[1]), ("right id", parts[2])] {
+                value.parse::<u32>().map_err(|err| {
+                    anyhow::anyhow!(
+                        "unk.def line {}: invalid {column} `{value}`: {err}",
+                        index + 1
+                    )
+                })?;
+            }
+            let cost = parts[3].parse::<i32>().map_err(|err| {
+                anyhow::anyhow!(
+                    "unk.def line {}: invalid cost `{}`: {err}",
+                    index + 1,
+                    parts[3]
+                )
+            })?;
             let category = parts[0].to_string();
             let features = parts[4..].join(",");
             unk_entries.push((category.clone(), features));
             unk_entry_lines.push_str(line);
             unk_entry_lines.push('\n');
-
-            // Parse cost (4th column)
-            if let Ok(cost) = parts[3].parse::<i32>() {
-                unk_costs.insert(category, cost);
-            }
+            unk_costs.insert(category, cost);
         }
 
         // Read character properties content
@@ -843,6 +857,38 @@ mod tests {
             Err(err) => err.to_string(),
         };
         assert!(message.contains("unk.def line 2"), "{message}");
+    }
+
+    /// #1175: a context id or a cost that is not a number is an error naming
+    /// the line in the file, counting the comment line before it, not the
+    /// entry number that `parse_unk` would report.
+    #[test]
+    fn test_unk_def_number_that_does_not_parse_names_the_line_in_the_file() {
+        for (line, column) in [
+            ("ALPHA,x,1,0,名詞,一般,*,*,*,*,*", "left id `x`"),
+            ("ALPHA,1,-1,0,名詞,一般,*,*,*,*,*", "right id `-1`"),
+            ("ALPHA,1,1,1.5,名詞,一般,*,*,*,*,*", "cost `1.5`"),
+        ] {
+            let result = TrainerConfig::from_readers(
+                Cursor::new(
+                    "東京,0,0,5000,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー\n",
+                ),
+                Cursor::new("DEFAULT 0 1 0\nALPHA 1 1 0\n0x0041..0x005A ALPHA\n"),
+                Cursor::new(format!(
+                    "# entries\nDEFAULT,1,1,0,名詞,一般,*,*,*,*,*\n{line}\n"
+                )),
+                Cursor::new("UNIGRAM:%F[0]\n"),
+                Cursor::new("*\tUNK\n"),
+            );
+            let message = match result {
+                Ok(_) => panic!("unk.def line was accepted: {line:?}"),
+                Err(err) => err.to_string(),
+            };
+            assert!(
+                message.contains(&format!("unk.def line 3: invalid {column}")),
+                "{line:?}: {message}"
+            );
+        }
     }
 
     #[test]

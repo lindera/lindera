@@ -380,6 +380,52 @@ fn build_dictionary_rejects_unk_def_context_ids_outside_the_matrix() {
     assert!(err.contains("expected at least 4 fields"), "{err}");
 }
 
+/// The context-id check leaves an id that does not parse to the `unk.def`
+/// parser, which names the file and the line (#1175).
+#[test]
+fn build_dictionary_names_the_unk_def_line_whose_id_does_not_parse() {
+    let err = build_error(
+        Metadata::default(),
+        LEX_CSV,
+        "DEFAULT,0,0,0,補助記号,一般,*,*,*,*,*,*,*\nKANJI,x,0,0,名詞,一般,*,*,*,*,*,*,*\n",
+        ASYMMETRIC_MATRIX_DEF,
+    )
+    .expect("id x does not parse");
+    assert!(
+        err.contains("unk.def: line 2: invalid left context id `x`"),
+        "{err}"
+    );
+}
+
+/// Run on its own, the unknown-word stage does not check the context ids, so
+/// a comment line reached the `unk.def` parser and panicked there (#1175). It
+/// is an error naming the file and the line.
+#[test]
+fn build_unknown_dictionary_rejects_a_comment_line() {
+    let input = tempfile::tempdir().unwrap();
+    let output = tempfile::tempdir().unwrap();
+    write_source_with(
+        input.path(),
+        LEX_CSV,
+        &format!("# a comment\n{UNK_DEF}"),
+        ASYMMETRIC_MATRIX_DEF,
+    );
+    let builder = DictionaryBuilder::new(Metadata::default());
+    let chardef = builder
+        .build_character_definition(input.path(), output.path())
+        .unwrap();
+
+    let err = builder
+        .build_unknown_dictionary(input.path(), output.path(), &chardef, None)
+        .expect_err("a comment line is rejected")
+        .to_string();
+    let expected = format!(
+        "{}: line 1: expected at least 4 fields",
+        input.path().join("unk.def").display()
+    );
+    assert!(err.contains(&expected), "{err}");
+}
+
 /// Each `matrix.def` id is checked against its own axis. A forward id equal to
 /// the forward size used to pass the flat index check and land in the first
 /// cell of the next row.

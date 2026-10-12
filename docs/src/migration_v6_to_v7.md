@@ -1175,8 +1175,12 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
   which the CLI does not print yet
   ([#1107](https://github.com/lindera/lindera/issues/1107)). `unk.def` lines are
   always checked.
-- An `unk.def` line with fewer than four fields is an error instead of a
-  panic.
+- An `unk.def` line with fewer than four fields, such as a comment or an
+  empty line, is an error instead of a panic, also in
+  `DictionaryBuilder::build_unknown_dictionary` and `parse_unk` of
+  `lindera_dictionary`. The error names the line, and so does the error for
+  a context ID or a cost that is not a number, which did not name it
+  before.
 - User dictionaries (`lindera build --user`) are not checked yet
   ([#1171](https://github.com/lindera/lindera/issues/1171)).
 
