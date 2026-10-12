@@ -7,6 +7,7 @@ use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::corpus::Word;
+use crate::feature_csv::{split_feature, wildcard_feature};
 use crate::lexicon_csv::{csv_field, read_lexicon_rows};
 use lindera_dictionary::viterbi::{LexType, WordEntry, WordId};
 
@@ -91,6 +92,45 @@ fn calculate_cost_factor(merged_model: &lindera_crf::MergedModel) -> i32 {
     } else {
         700 // MeCab default fallback
     }
+}
+
+/// Returns the seed row whose feature is the most similar to a user lexicon
+/// feature, for `Model::infer_context_ids`.
+///
+/// Each column that is the same in both features, up to the shorter of the
+/// two, adds `(n - j) * 10` to the score of a row, where `n` is that length
+/// and `j` the column, so the earlier columns, such as the part of speech,
+/// weigh more. The features are split with `split_feature`, so the columns
+/// after a quoted column with `,` in it line up (#1184). The first row with
+/// the highest score wins.
+///
+/// # Arguments
+///
+/// * `user_feature` - The user lexicon entry's feature.
+/// * `seed_features` - The features of the seed rows.
+///
+/// # Returns
+///
+/// The index of the row and its score, or `None` when no row has a column
+/// in common with `user_feature`.
+fn best_matching_seed_row(user_feature: &str, seed_features: &[String]) -> Option<(usize, usize)> {
+    let user_columns = split_feature(user_feature);
+    let mut best: Option<(usize, usize)> = None;
+    for (index, seed_feature) in seed_features.iter().enumerate() {
+        let seed_columns = split_feature(seed_feature);
+        let max_fields = user_columns.len().min(seed_columns.len());
+        let score = user_columns
+            .iter()
+            .zip(&seed_columns)
+            .enumerate()
+            .filter(|(_, (user, seed))| user == seed)
+            .map(|(j, _)| (max_fields - j) * 10)
+            .sum();
+        if score > best.map_or(0, |(_, best_score)| best_score) {
+            best = Some((index, score));
+        }
+    }
+    best
 }
 
 /// Feature set information extracted from CRF training
@@ -273,9 +313,16 @@ impl Model {
 
             // Apply dictionary rewriter to get ufeature, lfeature, rfeature
             let (ufeature, lfeature, rfeature) = self.config.dictionary_rewriter.rewrite(features);
-            let u_vec: Vec<&str> = ufeature.split(',').collect();
-            let l_vec: Vec<&str> = lfeature.split(',').collect();
-            let r_vec: Vec<&str> = rfeature.split(',').collect();
+            // Split as MeCab splits a feature, so a quoted column with `,` in
+            // it is one column (#1184).
+            let (u_columns, l_columns, r_columns) = (
+                split_feature(&ufeature),
+                split_feature(&lfeature),
+                split_feature(&rfeature),
+            );
+            let u_vec: Vec<&str> = u_columns.iter().map(|column| column.as_ref()).collect();
+            let l_vec: Vec<&str> = l_columns.iter().map(|column| column.as_ref()).collect();
+            let r_vec: Vec<&str> = r_columns.iter().map(|column| column.as_ref()).collect();
 
             let unigram_features = self
                 .config
@@ -544,14 +591,12 @@ impl Model {
     fn generate_default_features(&self) -> String {
         // Try to infer field count from the unk.def entries
         if let Some((_, first_unk)) = self.config.unk_entries.first() {
-            let field_count = first_unk.split(',').count();
-            return vec!["*"; field_count].join(",");
+            return wildcard_feature(first_unk);
         }
 
         // Fallback: try from config.features
         if let Some(first_feature) = self.config.features.first() {
-            let field_count = first_feature.split(',').count();
-            return vec!["*"; field_count].join(",");
+            return wildcard_feature(first_feature);
         }
 
         // Ultimate fallback (should rarely happen)
@@ -816,9 +861,6 @@ impl Model {
     /// Infer context IDs (left_id, right_id) from surface form and features.
     /// Finds the most similar POS pattern from trained vocabulary and uses its ID.
     fn infer_context_ids(&self, surface: &str, features: &str) -> (u32, u32) {
-        // Parse feature string to get POS information
-        let feature_parts: Vec<&str> = features.split(',').collect();
-
         // Find best matching entry from trained vocabulary by comparing features
         // Try to match increasingly general patterns:
         // 1. Exact feature match (all fields)
@@ -826,38 +868,14 @@ impl Model {
         // 3. First field match (main POS only)
         // 4. Same character category (the default category from char.def)
 
-        // Strategy 1 & 2 & 3: Match by feature similarity
-        let mut best_match_idx: Option<usize> = None;
-        let mut best_match_score = 0;
-
-        for (i, _label) in self.labels.iter().enumerate() {
-            // Skip unknown word categories
-            if i >= self.config.features.len() {
-                break;
-            }
-
-            let vocab_features = &self.config.features[i];
-            let vocab_parts: Vec<&str> = vocab_features.split(',').collect();
-
-            // Calculate similarity score
-            let mut score = 0;
-            let max_fields = feature_parts.len().min(vocab_parts.len());
-
-            for j in 0..max_fields {
-                if feature_parts[j] == vocab_parts[j] {
-                    // Weight earlier fields more heavily (POS > sub-POS > details)
-                    score += (max_fields - j) * 10;
-                }
-            }
-
-            if score > best_match_score {
-                best_match_score = score;
-                best_match_idx = Some(i);
-            }
-        }
+        // Strategy 1 & 2 & 3: Match by feature similarity, over the seed rows
+        // (the labels after them are unknown word categories)
+        let seed_rows = self.labels.len().min(self.config.features.len());
+        let best_match = best_matching_seed_row(features, &self.config.features[..seed_rows]);
+        let best_match_score = best_match.map_or(0, |(_, score)| score);
 
         // If found a match from vocabulary, look up from user_entries
-        if let Some(idx) = best_match_idx {
+        if let Some((idx, _)) = best_match {
             // Try to find in user_entries first
             if idx < self.user_entries.len() {
                 let (_, entry, _) = &self.user_entries[idx];
@@ -1122,14 +1140,12 @@ impl SerializableModel {
     fn generate_default_features(&self) -> String {
         // Try to infer field count from the unk.def entries
         if let Some((_, first_unk)) = self.unk_entries.first() {
-            let field_count = first_unk.split(',').count();
-            return vec!["*"; field_count].join(",");
+            return wildcard_feature(first_unk);
         }
 
         // Fallback: try from pos_info
         if let Some(first_pos) = self.pos_info.first() {
-            let field_count = first_pos.split(',').count();
-            return vec!["*"; field_count].join(",");
+            return wildcard_feature(first_pos);
         }
 
         // Ultimate fallback (should rarely happen)
@@ -1415,6 +1431,32 @@ impl Model {
 mod tests {
     use crate::{Trainer, TrainerConfig};
     use std::io::Cursor;
+
+    use super::best_matching_seed_row;
+
+    /// The columns after a quoted column with `,` in it line up (#1184).
+    /// Split on `,`, the user feature would have four columns, and the first
+    /// row, whose `"a` and `b"` pieces match, would score 60 and win.
+    #[test]
+    fn best_matching_seed_row_reads_a_quoted_column_as_one_column() {
+        let seeds = ["n,\"a,b\"".to_string(), "n,\"c,d\",x".to_string()];
+
+        // Row 0: `n` and `a,b` of two columns, 20 + 10. Row 1: `n` and `x`
+        // of three columns, 30 + 10.
+        assert_eq!(best_matching_seed_row("n,\"a,b\",x", &seeds), Some((1, 40)));
+    }
+
+    #[test]
+    fn best_matching_seed_row_takes_the_first_best_row() {
+        let seeds = [
+            "動詞,自立".to_string(),
+            "名詞,一般".to_string(),
+            "名詞,一般".to_string(),
+        ];
+
+        assert_eq!(best_matching_seed_row("名詞,一般", &seeds), Some((1, 30)));
+        assert_eq!(best_matching_seed_row("助詞,格助詞", &seeds), None);
+    }
 
     #[test]
     fn test_trainer_creation() {

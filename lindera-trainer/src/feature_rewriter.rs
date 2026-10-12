@@ -1,6 +1,8 @@
 use regex::Regex;
 use std::collections::HashSet;
 
+use crate::feature_csv::{join_feature, split_feature};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Pattern {
     Any,
@@ -201,7 +203,7 @@ impl FeatureRewriter {
     ///
     /// The format should be:
     /// Each line contains a pattern and replacement separated by a tab.
-    /// Pattern can be comma-separated list of features, where:
+    /// Pattern is a list of feature columns, where:
     /// - "*" matches any feature
     /// - "(A|B|C)" matches any of A, B, or C
     /// - "text" matches exactly "text"
@@ -209,6 +211,9 @@ impl FeatureRewriter {
     /// Replacement can contain:
     /// - "$1", "$2", etc. to reference pattern matches
     /// - literal text
+    ///
+    /// The pattern and the replacement are split into columns as MeCab
+    /// splits them, so a quoted column with `,` in it is one column (#1184).
     pub fn from_reader<R: std::io::Read>(reader: R) -> anyhow::Result<Self> {
         use std::io::{BufRead, BufReader};
 
@@ -223,8 +228,8 @@ impl FeatureRewriter {
 
             let parts: Vec<&str> = line.split('\t').collect();
             if parts.len() >= 2 {
-                let pattern: Vec<&str> = parts[0].split(',').collect();
-                let replacement: Vec<&str> = parts[1].split(',').collect();
+                let pattern = split_feature(parts[0]);
+                let replacement = split_feature(parts[1]);
                 builder.add_rule(&pattern, &replacement);
             }
         }
@@ -275,6 +280,10 @@ impl DictionaryRewriter {
     /// pattern1,pattern2\t$1
     /// ...
     /// ```
+    ///
+    /// The pattern and the replacement of a rule are split into columns as
+    /// MeCab splits them, so a quoted column with `,` in it is one column
+    /// (#1184).
     pub fn from_reader<R: std::io::Read>(reader: R) -> anyhow::Result<Self> {
         use std::io::{BufRead, BufReader};
 
@@ -319,9 +328,8 @@ impl DictionaryRewriter {
             // Parse rewrite rule: pattern and replacement separated by tab or whitespace
             let parts: Vec<&str> = trimmed.splitn(2, ['\t', ' ']).collect();
             if parts.len() >= 2 {
-                let pattern: Vec<&str> = parts[0].split(',').collect();
-                let replacement_str = parts[1].trim();
-                let replacement: Vec<&str> = replacement_str.split(',').collect();
+                let pattern = split_feature(parts[0]);
+                let replacement = split_feature(parts[1].trim());
 
                 let builder = match current_section {
                     1 => &mut unigram_builder,
@@ -345,25 +353,39 @@ impl DictionaryRewriter {
     ///
     /// Returns the original feature string for any section whose rewriter has no rules
     /// or no matching pattern (passthrough behavior).
+    ///
+    /// As in MeCab, the feature is split into columns with `tokenizeCSV`'s
+    /// rules, and the rewritten columns are joined with `,`, with a column
+    /// that contains `,` or `"` quoted (#1184). Split the result into columns
+    /// the same way (`feature_csv::split_feature`): a split on `,` would cut
+    /// such a column, as in Jieba's quoted definitions.
+    ///
+    /// # Arguments
+    ///
+    /// * `feature` - The feature string.
+    ///
+    /// # Returns
+    ///
+    /// The unigram, left and right features.
     pub fn rewrite(&self, feature: &str) -> (String, String, String) {
-        let fields: Vec<&str> = feature.split(',').collect();
+        let fields = split_feature(feature);
 
         let ufeature = self
             .unigram_rewriter
             .rewrite(&fields)
-            .map(|v| v.join(","))
+            .map(|v| join_feature(&v))
             .unwrap_or_else(|| feature.to_string());
 
         let lfeature = self
             .left_rewriter
             .rewrite(&fields)
-            .map(|v| v.join(","))
+            .map(|v| join_feature(&v))
             .unwrap_or_else(|| feature.to_string());
 
         let rfeature = self
             .right_rewriter
             .rewrite(&fields)
-            .map(|v| v.join(","))
+            .map(|v| join_feature(&v))
             .unwrap_or_else(|| feature.to_string());
 
         (ufeature, lfeature, rfeature)
@@ -466,6 +488,57 @@ mod tests {
 
         let (_, _, r) = rewriter.rewrite("名詞,一般");
         assert_eq!(r, "$0,名詞");
+    }
+
+    /// A quoted column with `,` in it is one column, and a rewritten column
+    /// with `,` in it is quoted (#1184). The rules and the feature are those
+    /// of the issue's reproduction; for them, MeCab's learner gives the
+    /// unigram feature `n,dian4,店,店,"shop, store",1`, and `mecab-dict-gen`
+    /// writes `"shop, store"` to `left-id.def` and `1` to `right-id.def`.
+    #[test]
+    fn test_dictionary_rewriter_quoted_column_is_one_column() {
+        let rewrite_def = "\
+[unigram rewrite]
+* $1,$2,$3,$4,$5,$6
+
+[left rewrite]
+* $5
+
+[right rewrite]
+* $6
+";
+        let rewriter =
+            DictionaryRewriter::from_reader(Cursor::new(rewrite_def.as_bytes())).unwrap();
+
+        let (u, l, r) = rewriter.rewrite("n,dian4,店,店,\"shop, store\",1");
+        assert_eq!(u, "n,dian4,店,店,\"shop, store\",1");
+        assert_eq!(l, "\"shop, store\"");
+        assert_eq!(r, "1");
+    }
+
+    /// The columns of a rule are split as the feature is, so a pattern can
+    /// match a quoted column with `,` in it (#1184).
+    #[test]
+    fn test_dictionary_rewriter_rule_with_a_quoted_column() {
+        let rewrite_def = "[right rewrite]\n*,\"a,b\"\t$1,\"x,y\"\n";
+        let rewriter =
+            DictionaryRewriter::from_reader(Cursor::new(rewrite_def.as_bytes())).unwrap();
+
+        let (_, _, r) = rewriter.rewrite("n,\"a,b\"");
+        assert_eq!(r, "n,\"x,y\"");
+
+        // `a` and `b` in two columns do not match the quoted `a,b`.
+        let (_, _, r) = rewriter.rewrite("n,a,b");
+        assert_eq!(r, "n,a,b");
+    }
+
+    #[test]
+    fn test_feature_rewriter_rule_with_a_quoted_column() {
+        let rewrite_def = "\"a,b\",*\t\"X,Y\",$2\n";
+        let rewriter = FeatureRewriter::from_reader(Cursor::new(rewrite_def.as_bytes())).unwrap();
+
+        let result = rewriter.rewrite(&["a,b", "c"]);
+        assert_eq!(result, Some(vec!["X,Y".to_string(), "c".to_string()]));
     }
 
     #[test]

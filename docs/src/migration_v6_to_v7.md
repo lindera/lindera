@@ -1121,6 +1121,12 @@ those of MeCab's learner:
   unquoted, so `lindera build` read the rest of `lex.csv` as one field and
   dropped every row after it without an error. The `#` rows of UniDic,
   SudachiDict and IPADIC NEologd were not trained.
+- A feature was split on `,` for the rewrite rules, the feature templates,
+  unknown-word matching and the context IDs of user lexicon entries. A
+  quoted column with a comma in it became several columns and shifted the
+  columns after it: in 19,955 rows of mecab-jieba's training seed, whose
+  quoted English definition is followed by four more columns, `%F[6]` to
+  `%F[9]` were pieces of the definition.
 
 v7.0.0 trains as MeCab's learner does (see
 [How training works](development/training_pipeline.md#how-training-works)):
@@ -1152,6 +1158,12 @@ v7.0.0 trains as MeCab's learner does (see
   an error. `lindera export` quotes a surface that contains `,`, `"` or a
   line break. The user lexicon that `Model::read_user_lexicon` reads is
   read the same way.
+- A feature is split into columns as MeCab's learner splits it (see
+  [Seed Lexicon](development/training_pipeline.md#1-seed-lexicon-seedcsv)):
+  a quoted column is one column, spaces and tabs before a column are
+  skipped, and the text from a closing quote to the next `,` is dropped.
+  The rewrite rules join the columns they rewrite with `,`, quoting a
+  column that contains `,` or `"`, as MeCab does.
 
 Training takes longer, because every lattice now has the seed words. It is
 slower than MeCab's learner, and it can stop at `--max-iterations`

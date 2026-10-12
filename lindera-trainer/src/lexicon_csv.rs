@@ -26,7 +26,9 @@ pub(crate) struct LexiconRow {
     /// as the source does. A feature rebuilt from the parsed fields would
     /// lose the quotes of a column such as Jieba's `"authorized full-service
     /// car dealership (offering sales, ...)"`, whose commas would then split
-    /// it.
+    /// it. The trainer splits the feature into columns with
+    /// [`split_feature`](crate::feature_csv::split_feature), as MeCab's
+    /// learner does (#1184).
     pub(crate) feature: String,
 }
 
