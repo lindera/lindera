@@ -21,6 +21,7 @@ use anyhow::Result;
 
 use lindera_dictionary::viterbi::UnknownWordCandidate;
 
+use self::feature_csv::{split_feature, wildcard_feature};
 use self::feature_extractor::{FeatureExtractor, TemplateContext};
 use self::feature_rewriter::DictionaryRewriter;
 
@@ -185,6 +186,9 @@ const VIRTUAL_CHAR_TYPE: u32 = 0;
 /// column of the entry's feature string that is not `*` equals the gold
 /// column at the same index.
 ///
+/// Both feature strings are split into columns as MeCab splits a feature,
+/// so a quoted column with `,` in it is one column (#1184).
+///
 /// # Arguments
 ///
 /// * `entry_feature` - The entry's feature string.
@@ -194,11 +198,11 @@ const VIRTUAL_CHAR_TYPE: u32 = 0;
 ///
 /// `true` when every column of the entry other than `*` matches.
 fn unk_entry_accepts(entry_feature: &str, gold_feature: &str) -> bool {
-    let mut gold_columns = gold_feature.split(',');
-    entry_feature.split(',').all(|column| {
-        let gold_column = gold_columns.next();
-        column == "*" || gold_column == Some(column)
-    })
+    let gold_columns = split_feature(gold_feature);
+    split_feature(entry_feature)
+        .iter()
+        .enumerate()
+        .all(|(index, column)| column == "*" || gold_columns.get(index) == Some(column))
 }
 
 /// Returns the candidates that start at a position.
@@ -243,9 +247,16 @@ fn label_feature_set(
     // Uncached on purpose: real feature strings are unique per seed row, so
     // a cache keyed on them never hits (#975).
     let (ufeature, lfeature, rfeature) = rewriter.rewrite(feature);
-    let u_vec: Vec<&str> = ufeature.split(',').collect();
-    let l_vec: Vec<&str> = lfeature.split(',').collect();
-    let r_vec: Vec<&str> = rfeature.split(',').collect();
+    // Split as MeCab splits the rewritten features for its templates, so a
+    // quoted column with `,` in it is one column (#1184).
+    let (u_columns, l_columns, r_columns) = (
+        split_feature(&ufeature),
+        split_feature(&lfeature),
+        split_feature(&rfeature),
+    );
+    let u_vec: Vec<&str> = u_columns.iter().map(|column| column.as_ref()).collect();
+    let l_vec: Vec<&str> = l_columns.iter().map(|column| column.as_ref()).collect();
+    let r_vec: Vec<&str> = r_columns.iter().map(|column| column.as_ref()).collect();
     let ctx = TemplateContext {
         surface,
         ufeature: Some(&ufeature),
@@ -276,12 +287,10 @@ impl Trainer {
         let mut provider = lindera_crf::FeatureProvider::default();
 
         // Generate default features based on dictionary schema
-        let default_features = if let Some(first_feature) = config.features.first() {
-            let field_count = first_feature.split(',').count();
-            vec!["*"; field_count].join(",")
-        } else {
-            "*".to_string()
-        };
+        let default_features = config.features.first().map_or_else(
+            || "*".to_string(),
+            |first_feature| wildcard_feature(first_feature),
+        );
 
         for (i, surface) in config.surfaces.iter().enumerate() {
             // Get feature string from config.features (parallel to surfaces)
@@ -2155,5 +2164,102 @@ mod lexicon_csv_export_tests {
             text.lines().nth(1),
             Some("\"\"\"\",3,3,912,名詞,一般,*,*,*,*,ラー油,ラーユ,ラーユ")
         );
+    }
+}
+
+/// A quoted feature column with `,` in it is one column for the feature
+/// templates and for unknown-word matching (#1184).
+#[cfg(test)]
+mod feature_column_tests {
+    use std::collections::HashMap;
+    use std::io::Cursor;
+    use std::num::NonZeroU32;
+
+    use crate::feature_extractor::FeatureExtractor;
+    use crate::feature_rewriter::DictionaryRewriter;
+    use crate::{label_feature_set, unk_entry_accepts};
+
+    /// The feature of the issue's reproduction: Jieba-like columns whose
+    /// fifth, a definition, is quoted and has a comma in it.
+    const FEATURE: &str = "n,dian4,店,店,\"shop, store\",1";
+
+    /// Returns the feature strings an extractor has interned, sorted.
+    fn interned(ids: &HashMap<String, NonZeroU32>) -> Vec<&str> {
+        let mut features: Vec<&str> = ids.keys().map(String::as_str).collect();
+        features.sort_unstable();
+        features
+    }
+
+    #[test]
+    fn templates_read_a_quoted_column_as_one_column() {
+        let rewrite_def = "\
+[unigram rewrite]
+* $1,$2,$3,$4,$5,$6
+
+[left rewrite]
+* $1,$5
+
+[right rewrite]
+* $5,$6
+";
+        let rewriter = match DictionaryRewriter::from_reader(Cursor::new(rewrite_def)) {
+            Ok(rewriter) => rewriter,
+            Err(err) => panic!("rewrite.def: {err}"),
+        };
+        let mut extractor = FeatureExtractor::from_templates(
+            &["U04:%F[4]", "U05:%F[5]"],
+            &[("L1:%L[1]", "R1:%R[1]")],
+        );
+
+        label_feature_set(&rewriter, &mut extractor, FEATURE, 0, None);
+
+        // MeCab's learner gives `U04:shop, store` and `U05:1` for the same
+        // feature and unigram rule.
+        assert_eq!(
+            interned(&extractor.unigram_feature_ids),
+            ["U04:shop, store", "U05:1"]
+        );
+        assert_eq!(interned(&extractor.left_feature_ids), ["L1:shop, store"]);
+        assert_eq!(interned(&extractor.right_feature_ids), ["R1:1"]);
+    }
+
+    #[test]
+    fn user_lexicon_features_read_a_quoted_column_as_one_column() {
+        // The bigram templates of the fixtures are `%L[0]` and `%R[0]`, and
+        // no rule of their rewrite.def matches the entry, so its left and
+        // right features are its feature, and `write_left_id_def` and
+        // `write_right_id_def` list its first column.
+        let mut model = crate::test_fixtures::train_wide_model(1);
+        if let Err(err) = model.read_user_lexicon(Cursor::new("X,0,0,0,\"名詞,固有\",*\n")) {
+            panic!("user lexicon: {err}");
+        }
+        let mut left_ids = Vec::new();
+        let mut right_ids = Vec::new();
+        if let Err(err) = model.write_left_id_def(&mut left_ids) {
+            panic!("left-id.def: {err}");
+        }
+        if let Err(err) = model.write_right_id_def(&mut right_ids) {
+            panic!("right-id.def: {err}");
+        }
+
+        for ids in [left_ids, right_ids] {
+            let ids = String::from_utf8_lossy(&ids);
+            assert!(
+                ids.lines().any(|line| line.ends_with(" 名詞,固有")),
+                "{ids}"
+            );
+            assert!(!ids.contains('"'), "{ids}");
+        }
+    }
+
+    #[test]
+    fn unknown_word_matching_reads_a_quoted_column_as_one_column() {
+        // The entry's sixth column is compared with the gold token's sixth
+        // column, `1`, which a split on `,` would make ` store"`.
+        assert!(unk_entry_accepts("n,*,*,*,*,1", FEATURE));
+        assert!(!unk_entry_accepts("n,*,*,*,*,2", FEATURE));
+        // A quoted column of the entry is compared whole.
+        assert!(unk_entry_accepts("n,*,*,*,\"shop, store\",*", FEATURE));
+        assert!(!unk_entry_accepts("n,*,*,*,shop,*", FEATURE));
     }
 }

@@ -377,7 +377,8 @@ impl FeatureExtractor {
     /// # Arguments
     ///
     /// * `features` - Rewritten unigram feature fields, one slice element per
-    ///   comma-separated field.
+    ///   column, with a quoted column with `,` in it as one column, as MeCab
+    ///   splits a feature.
     /// * `cate_id` - Character category id for the `%t` placeholder.
     ///
     /// # Returns

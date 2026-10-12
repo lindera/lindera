@@ -162,6 +162,21 @@ pub(crate) fn join_feature<S: AsRef<str>>(columns: &[S]) -> String {
     feature
 }
 
+/// Returns a feature string of `*` columns, as many as `feature` has, for a
+/// row with no feature of its own.
+///
+/// # Arguments
+///
+/// * `feature` - A feature string with the number of columns to give, such
+///   as the first seed feature.
+///
+/// # Returns
+///
+/// One `*` per column of `feature`, at least one, joined with `,`.
+pub(crate) fn wildcard_feature(feature: &str) -> String {
+    vec!["*"; split_feature(feature).len().max(1)].join(",")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -251,6 +266,13 @@ mod tests {
         assert_eq!(join_feature(&["a", "", "b"]), "a,,b");
         assert_eq!(join_feature(&["名詞", "一般"]), "名詞,一般");
         assert_eq!(join_feature::<&str>(&[]), "");
+    }
+
+    #[test]
+    fn wildcard_feature_counts_a_quoted_column_once() {
+        assert_eq!(wildcard_feature("名詞,一般,*"), "*,*,*");
+        assert_eq!(wildcard_feature("n,\"shop, store\",1"), "*,*,*");
+        assert_eq!(wildcard_feature(""), "*");
     }
 
     #[test]
