@@ -606,6 +606,7 @@ Build (compile) a morphological analysis dictionary from source CSV files for us
 - `--dest` / `-d`: Destination directory for compiled dictionary output
 - `--metadata` / `-m`: Metadata configuration file (metadata.json) that defines dictionary structure
 - `--user` / `-u`: Build user dictionary instead of system dictionary (optional flag)
+- `--system-dict`: The system dictionary the user dictionary is for, as a directory path, URI, or downloaded dictionary name, the forms `tokenize --dict` accepts (optional; only with `--user`). The build then checks every row's context IDs against its connection matrix (see [Context ID check](#context-id-check))
 - `--context-id-freq` / `-f`: Context-ID access-frequency file used to reorder connection-cost IDs (optional; only meaningful when the dictionary's `metadata.json` sets `connection_id_mapping: true`)
 
 ### Dictionary types
@@ -633,7 +634,16 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
 
 - If the dictionary's `metadata.json` sets `skip_invalid_cost_or_id` to `true`, such a `lex.csv` row is dropped instead, with a warning through the `log` crate that the CLI does not print yet ([#1107](https://github.com/lindera/lindera/issues/1107)). An `unk.def` line is always checked.
 - A `matrix.def` row whose IDs fall outside its axes is an error too, and so is an `unk.def` line with fewer than four fields.
-- A user dictionary (`--user`) is not checked here, since the build does not know the system dictionary it will be used with. `lindera tokenize --user-dict` checks it against the system dictionary instead and fails with an error that names the first entry outside the matrix (see [Context IDs](../concepts/user_dictionary.md#context-ids)).
+- A user dictionary (`--user`) is checked only when `--system-dict` names the system dictionary it is for, as described below.
+
+With `--system-dict`, `lindera build --user` checks every row of the user dictionary against the connection matrix of that system dictionary, with the same bounds. A simple row is checked with the default context IDs of `metadata.json` (`default_left_context_id` and `default_right_context_id`). The first row outside the matrix fails the build, with an error that names its CSV line and surface, and no `.bin` file is written. For example, against IPADIC's 1316 x 1316 matrix, with a `userdic.csv` whose second row has the left context ID 60000:
+
+```text
+% lindera build --src ./userdic.csv --dest ./user_dict --metadata ./lindera-ipadic/metadata.json --user --system-dict embedded://ipadic
+Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
+```
+
+Without `--system-dict`, the build does not know the system dictionary, and the user dictionary builds. `lindera tokenize --user-dict` then checks it against the system dictionary and fails with an error that names the first entry outside the matrix by its word id (see [Context IDs](../concepts/user_dictionary.md#context-ids)).
 
 ### Examples
 
@@ -726,6 +736,8 @@ For more details about user dictionary format please refer to the following URL:
   --metadata ./lindera-ipadic/metadata.json \
   --user
 ```
+
+Add `--system-dict embedded://ipadic`, or the path of a built IPADIC, to check the rows' context IDs against IPADIC's connection matrix (see [Context ID check](#context-id-check)).
 
 #### Build UniDic user dictionary (Japanese)
 

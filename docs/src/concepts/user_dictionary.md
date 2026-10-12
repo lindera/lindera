@@ -30,7 +30,7 @@ Two entries tie when they have the same surface, the same left and right context
 
 ## Context IDs
 
-The left and right context IDs of a detailed entry must address a cell of the connection matrix of the system dictionary it is used with: the left context ID must be below the second value of that dictionary's `matrix.def` header, and the right context ID below the first, the bounds `lindera build` applies to the system dictionary itself. IPADIC's matrix is 1316 x 1316, for example. A user dictionary is built without the system dictionary (`lindera build --user` reads only `metadata.json`), so these IDs are checked when the two dictionaries are combined: `Segmenter::try_new`, the configuration path (`Segmenter::from_config`, `TokenizerBuilder`), `lindera tokenize --user-dict`, and the `Tokenizer` constructors and builders of the language bindings return an error for the first entry outside the matrix. The error names the entry by its word id, which counts the rows from 0 in the order of their surfaces, and by its detail fields:
+The left and right context IDs of a detailed entry must address a cell of the connection matrix of the system dictionary it is used with: the left context ID must be below the second value of that dictionary's `matrix.def` header, and the right context ID below the first, the bounds `lindera build` applies to the system dictionary itself. IPADIC's matrix is 1316 x 1316, for example. `lindera build --user` checks these IDs when `--system-dict` names the system dictionary (`DictionaryBuilder::with_system_matrix` in the Rust API), and fails on the first row outside the matrix with an error that names its CSV line and surface (see [Context ID check](../lindera-cli/commands.md#context-id-check)). Otherwise the user dictionary is built without the system dictionary, and the IDs are checked when the two dictionaries are combined: `Segmenter::try_new`, the configuration path (`Segmenter::from_config`, `TokenizerBuilder`), `lindera tokenize --user-dict`, and the `Tokenizer` constructors and builders of the language bindings return an error for the first entry outside the matrix. The error names the entry by its word id, which counts the rows from 0 in the order of their surfaces, and by its detail fields:
 
 ```text
 $ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.bin
@@ -120,8 +120,10 @@ surface form. The simple three-column user-dictionary schema only supplies
 You can build a user dictionary from CSV to binary format using the CLI:
 
 ```shell
-lindera build --src <source_dir> --dest <dest_dir> --metadata <metadata.json> --user
+lindera build --src <user_dictionary.csv> --dest <dest_dir> --metadata <metadata.json> --user [--system-dict <system_dictionary>]
 ```
+
+With `--system-dict`, the build checks the context IDs against the system dictionary the user dictionary is for (see [Context IDs](#context-ids)).
 
 ### Binary vs CSV user dictionary
 

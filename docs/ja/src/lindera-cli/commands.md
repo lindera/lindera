@@ -606,6 +606,7 @@ Linderaで使用するための形態素解析辞書をCSVソースファイル�
 - `--dest` / `-d`: コンパイルされた辞書の出力先ディレクトリ
 - `--metadata` / `-m`: 辞書構造を定義するメタデータ設定ファイル (metadata.json)
 - `--user` / `-u`: システム辞書の代わりにユーザー辞書をビルドする（オプションフラグ）
+- `--system-dict`: ユーザー辞書を組み合わせるシステム辞書。ディレクトリのパス、URI、ダウンロード済みの辞書名のいずれかで、`tokenize --dict` と同じ形で指定する（オプション。`--user` のときだけ）。指定すると、各行の文脈 ID をそのシステム辞書の接続コスト行列と照らし合わせて確認します（[文脈 ID の確認](#文脈-id-の確認) を参照）
 - `--context-id-freq` / `-f`: 接続コストIDの並び替えに使用するコンテキストID アクセス頻度ファイル（オプション。辞書の `metadata.json` で `connection_id_mapping: true` が設定されている場合にのみ意味を持ちます）
 
 ### 辞書の種類
@@ -633,7 +634,16 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
 
 - 辞書の `metadata.json` で `skip_invalid_cost_or_id` が `true` の場合は、そうした `lex.csv` の行を取り除きます。`log` クレートに警告を出しますが、CLI はまだそれを表示しません（[#1107](https://github.com/lindera/lindera/issues/1107)）。`unk.def` の行は常に確認します。
 - ID が軸の範囲外にある `matrix.def` の行もエラーになり、フィールドが 4 つ未満の `unk.def` の行もエラーになります。
-- ユーザー辞書（`--user`）はここでは確認しません。ビルドの時点では、組み合わせるシステム辞書が分からないためです。代わりに `lindera tokenize --user-dict` がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を示すエラーで失敗します（[文脈 ID](../concepts/user_dictionary.md#文脈-id) を参照）。
+- ユーザー辞書（`--user`）を確認するのは、組み合わせるシステム辞書を `--system-dict` で指定したときだけです（次の段落を参照）。
+
+`--system-dict` を指定すると、`lindera build --user` はユーザー辞書の各行を、そのシステム辞書の接続コスト行列と同じ範囲で照らし合わせて確認します。簡易形式の行は、`metadata.json` の既定の文脈 ID（`default_left_context_id` と `default_right_context_id`）で確認します。行列の範囲外にある最初の行でビルドは失敗し、エラーはその行の CSV の行番号と表層形を示します。`.bin` ファイルは書き出しません。たとえば IPADIC の 1316 x 1316 の行列に対して、`userdic.csv` の 2 行目の左文脈 ID が 60000 の場合は次のとおりです：
+
+```text
+% lindera build --src ./userdic.csv --dest ./user_dict --metadata ./lindera-ipadic/metadata.json --user --system-dict embedded://ipadic
+Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
+```
+
+`--system-dict` を指定しないと、ビルドの時点では組み合わせるシステム辞書が分からないため、ユーザー辞書はそのままビルドされます。その後 `lindera tokenize --user-dict` がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を単語 ID で示すエラーで失敗します（[文脈 ID](../concepts/user_dictionary.md#文脈-id) を参照）。
 
 ### 例
 
@@ -726,6 +736,8 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
   --metadata ./lindera-ipadic/metadata.json \
   --user
 ```
+
+`--system-dict embedded://ipadic`（またはビルド済みの IPADIC のパス）を加えると、各行の文脈 ID を IPADIC の接続コスト行列と照らし合わせて確認します（[文脈 ID の確認](#文脈-id-の確認) を参照）。
 
 #### UniDicユーザー辞書（日本語）のビルド
 
