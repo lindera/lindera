@@ -12,6 +12,7 @@ use log::debug;
 use memchr::memchr;
 
 use crate::LinderaResult;
+use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use crate::dictionary::context_id_map::ContextIdMap;
 use crate::error::{LinderaError, LinderaErrorKind};
 use crate::util::{read_file, write_data};
@@ -48,6 +49,23 @@ pub(crate) struct MatrixSize {
 }
 
 impl MatrixSize {
+    /// Takes the axis sizes of a built connection matrix, such as the one of
+    /// the system dictionary a user dictionary is checked against.
+    ///
+    /// # Arguments
+    ///
+    /// * `matrix` - The connection matrix.
+    ///
+    /// # Returns
+    ///
+    /// The matrix's forward and backward sizes.
+    pub(crate) fn from_matrix(matrix: &ConnectionCostMatrix) -> Self {
+        Self {
+            forward_size: matrix.forward_size,
+            backward_size: matrix.backward_size,
+        }
+    }
+
     /// Checks that a dictionary entry's context ids address a cell of the
     /// connection matrix.
     ///

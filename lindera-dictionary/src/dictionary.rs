@@ -424,15 +424,18 @@ impl UserDictionary {
     /// Checks that every entry's context IDs address a cell of a system
     /// dictionary's connection matrix.
     ///
-    /// A user dictionary is built without the system dictionary it will be
-    /// used with (`lindera build --user` reads only `metadata.json`), so an
-    /// entry whose left or right context ID lies outside that dictionary's
-    /// matrix builds, and then indexes past the matrix, a panic, when it
-    /// matches the input. MeCab rejects such an entry when it compiles the
-    /// user dictionary and records the matrix size in the result; a Lindera
-    /// user dictionary has no room for the size, so its entries are checked
-    /// when the two dictionaries are combined instead (`Segmenter::try_new`
-    /// in `lindera-segmenter`).
+    /// A user dictionary is usually built without the system dictionary it
+    /// will be used with (`lindera build --user` reads only `metadata.json`
+    /// unless `--system-dict` names one), so an entry whose left or right
+    /// context ID lies outside that dictionary's matrix can build, and then
+    /// indexes past the matrix, a panic, when it matches the input. MeCab
+    /// rejects such an entry when it compiles the user dictionary and records
+    /// the matrix size in the result; a Lindera user dictionary has no room
+    /// for the size, so its entries are checked when the two dictionaries are
+    /// combined (`Segmenter::try_new` in `lindera-segmenter`). A build that
+    /// knows the system dictionary
+    /// ([`DictionaryBuilder::with_system_matrix`](crate::builder::DictionaryBuilder::with_system_matrix))
+    /// checks the rows already, and names them by CSV line and surface.
     ///
     /// The bounds are those `lindera build` applies to a system dictionary:
     /// a left context ID must be below the matrix's backward size and a
@@ -454,10 +457,7 @@ impl UserDictionary {
     /// surface is kept only in the automaton, and gives the offending ID and
     /// the matrix size.
     pub fn check_context_ids(&self, matrix: &ConnectionCostMatrix) -> LinderaResult<()> {
-        let matrix_size = MatrixSize {
-            forward_size: matrix.forward_size,
-            backward_size: matrix.backward_size,
-        };
+        let matrix_size = MatrixSize::from_matrix(matrix);
         for chunk in self
             .dict
             .vals_data
@@ -535,7 +535,7 @@ mod tests {
 
     use super::{DetailFields, UNK, UserDictionary};
     use crate::builder::user_dictionary::UserDictionaryBuilderOptions;
-    use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
+    use crate::dictionary::connection_cost_matrix::zero_matrix;
     use crate::dictionary::prefix_dictionary::UserPrefixDictionary;
 
     /// Builds a user dictionary whose words blob holds `entries`, each
@@ -664,21 +664,6 @@ mod tests {
 
         assert_eq!(dict.word_details(0), UNK.to_vec());
         assert_eq!(dict.word_details_iter(0).collect::<Vec<_>>(), vec!["UNK"]);
-    }
-
-    /// Builds a connection matrix of `forward_size` x `backward_size` zero
-    /// costs, in the legacy layout `ConnectionCostMatrix::load` still reads.
-    fn zero_matrix(forward_size: i16, backward_size: i16) -> ConnectionCostMatrix {
-        let mut data = Vec::new();
-        data.extend_from_slice(&forward_size.to_le_bytes());
-        data.extend_from_slice(&backward_size.to_le_bytes());
-        for _ in 0..(forward_size as usize * backward_size as usize) {
-            data.extend_from_slice(&0i16.to_le_bytes());
-        }
-        match ConnectionCostMatrix::load(data) {
-            Ok(matrix) => matrix,
-            Err(err) => panic!("failed to load test matrix: {err}"),
-        }
     }
 
     /// Builds a user dictionary from CSV rows with the builder's defaults:

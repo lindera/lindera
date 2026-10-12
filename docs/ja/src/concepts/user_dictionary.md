@@ -30,7 +30,7 @@
 
 ## 文脈 ID
 
-詳細形式の見出し語の左右の文脈 ID は、組み合わせるシステム辞書の接続コスト行列のセルを指していなければなりません。左文脈 ID はそのシステム辞書の `matrix.def` のヘッダの 2 つ目の値より小さく、右文脈 ID は 1 つ目の値より小さくなければなりません。`lindera build` がシステム辞書自体に課すのと同じ範囲です。たとえば IPADIC の行列は 1316 x 1316 です。ユーザー辞書はシステム辞書なしでビルドされる（`lindera build --user` は `metadata.json` しか読まない）ため、この ID は 2 つの辞書を組み合わせるときに確認します。`Segmenter::try_new`、設定からの構築（`Segmenter::from_config`、`TokenizerBuilder`）、`lindera tokenize --user-dict`、各言語バインディングの `Tokenizer` のコンストラクタとビルダーは、行列の範囲外にある最初の見出し語についてエラーを返します。エラーは、見出し語をその単語 ID（表層形の順に並べた行を 0 から数えた番号）と詳細フィールドで示します。
+詳細形式の見出し語の左右の文脈 ID は、組み合わせるシステム辞書の接続コスト行列のセルを指していなければなりません。左文脈 ID はそのシステム辞書の `matrix.def` のヘッダの 2 つ目の値より小さく、右文脈 ID は 1 つ目の値より小さくなければなりません。`lindera build` がシステム辞書自体に課すのと同じ範囲です。たとえば IPADIC の行列は 1316 x 1316 です。`lindera build --user` は、`--system-dict` でシステム辞書を指定したとき（Rust API では `DictionaryBuilder::with_system_matrix`）にこの ID を確認し、行列の範囲外にある最初の行で、その CSV の行番号と表層形を示すエラーを出して失敗します（[文脈 ID の確認](../lindera-cli/commands.md#文脈-id-の確認) を参照）。指定しない場合、ユーザー辞書はシステム辞書なしでビルドされるため、この ID は 2 つの辞書を組み合わせるときに確認します。`Segmenter::try_new`、設定からの構築（`Segmenter::from_config`、`TokenizerBuilder`）、`lindera tokenize --user-dict`、各言語バインディングの `Tokenizer` のコンストラクタとビルダーは、行列の範囲外にある最初の見出し語についてエラーを返します。エラーは、見出し語をその単語 ID（表層形の順に並べた行を 0 から数えた番号）と詳細フィールドで示します。
 
 ```text
 $ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.bin
@@ -119,8 +119,10 @@ token:  です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
 CLIを使用して、CSVからバイナリ形式のユーザー辞書をビルドできます：
 
 ```shell
-lindera build --src <source_dir> --dest <dest_dir> --metadata <metadata.json> --user
+lindera build --src <user_dictionary.csv> --dest <dest_dir> --metadata <metadata.json> --user [--system-dict <system_dictionary>]
 ```
+
+`--system-dict` を指定すると、組み合わせるシステム辞書と照らし合わせて文脈 ID を確認します（[文脈 ID](#文脈-id) を参照）。
 
 ### バイナリとCSVのユーザー辞書
 

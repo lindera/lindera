@@ -1198,14 +1198,22 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
   a context ID or a cost that is not a number, which did not name it
   before.
 - A user dictionary is checked when it is combined with the system
-  dictionary, since `lindera build --user` does not know the system
   dictionary: `Segmenter::try_new`, the configuration path,
   `lindera tokenize --user-dict`, and the `Tokenizer` constructors and
   builders of the language bindings return an error that names the first
   entry outside the matrix
   ([#1171](https://github.com/lindera/lindera/issues/1171); see
   [Context IDs](concepts/user_dictionary.md#context-ids)).
-  `Segmenter::new` does not check, as before.
+  `Segmenter::new` does not check, as before. `lindera build --user`
+  checks the rows already when the new `--system-dict` option names the
+  system dictionary (`DictionaryBuilder::with_system_matrix` in the Rust
+  API), and names the first row outside the matrix by its CSV line and
+  surface ([#1182](https://github.com/lindera/lindera/issues/1182)).
+- The errors for a user dictionary row whose cost or context ID is not a
+  number, from `lindera build --user` or from loading a `.csv` user
+  dictionary, name the row's CSV line (`at line 1`). Before, they counted
+  the rows in the order of their surfaces (`at row 2` for a row on line 1
+  whose surface sorts second).
 
 Dictionaries that `mecab-dict-index` builds pass, since it checks the same
 bounds. A dictionary exported by `lindera export` of v6.2.0 or earlier can

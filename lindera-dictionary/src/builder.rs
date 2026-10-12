@@ -26,6 +26,7 @@ use self::user_dictionary::{
 use crate::LinderaResult;
 use crate::dictionary::UserDictionary;
 use crate::dictionary::character_definition::CharacterDefinition;
+use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::metadata::{DICTIONARY_FORMAT_VERSION, Metadata};
 use crate::error::LinderaErrorKind;
@@ -38,6 +39,10 @@ pub struct DictionaryBuilder {
     /// alongside `metadata.json` in the dictionary crate; see
     /// [`context_id_remap::compute_context_id_remap`] for the precedence rules.
     context_id_freq: Option<std::path::PathBuf>,
+    /// The connection matrix size of the system dictionary a user dictionary
+    /// is built for, set by [`Self::with_system_matrix`]. `None` builds a
+    /// user dictionary without checking its context IDs.
+    system_matrix_size: Option<MatrixSize>,
 }
 
 impl DictionaryBuilder {
@@ -45,6 +50,7 @@ impl DictionaryBuilder {
         Self {
             metadata,
             context_id_freq: None,
+            system_matrix_size: None,
         }
     }
 
@@ -69,6 +75,36 @@ impl DictionaryBuilder {
     /// The builder with the frequency source attached.
     pub fn with_context_id_freq(mut self, path: impl Into<std::path::PathBuf>) -> Self {
         self.context_id_freq = Some(path.into());
+        self
+    }
+
+    /// Names the connection matrix of the system dictionary a user
+    /// dictionary is built for, so that the build checks every row's context
+    /// IDs against it, as MeCab's `mecab-dict-index -u` does.
+    ///
+    /// The bounds are those [`Self::build_dictionary`] applies to the system
+    /// dictionary's own lexicon: a left context ID must be below the matrix's
+    /// backward size and a right context ID below its forward size. A row
+    /// outside them fails [`Self::build_user_dictionary`],
+    /// [`Self::build_user_dict`] and [`Self::build_user_dict_from_reader`]
+    /// with an error that names its CSV line and surface. Without this, a
+    /// user dictionary is checked only when it is combined with the system
+    /// dictionary ([`UserDictionary::check_context_ids`]), whose error names
+    /// the entry by word id. A system dictionary build ignores the matrix,
+    /// since it checks against its own `matrix.def`.
+    ///
+    /// Only the matrix's size is kept.
+    ///
+    /// # Arguments
+    ///
+    /// * `matrix` - The connection matrix of the system dictionary, such as
+    ///   `Dictionary::connection_cost_matrix` of a loaded dictionary.
+    ///
+    /// # Returns
+    ///
+    /// The builder with the system matrix size set.
+    pub fn with_system_matrix(mut self, matrix: &ConnectionCostMatrix) -> Self {
+        self.system_matrix_size = Some(MatrixSize::from_matrix(matrix));
         self
     }
 
@@ -441,6 +477,7 @@ impl DictionaryBuilder {
             .default_left_context_id(self.metadata.default_left_context_id)
             .default_right_context_id(self.metadata.default_right_context_id)
             .flexible_csv(self.metadata.flexible_csv)
+            .matrix_size(self.system_matrix_size)
             .user_dictionary_handler(Some(Box::new(move |row: &StringRecord| {
                 // Map user dictionary fields to dictionary schema fields
                 let mut result = Vec::new();

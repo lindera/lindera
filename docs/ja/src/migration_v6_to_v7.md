@@ -1088,13 +1088,20 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
   エラーは行を示します。これまで行を示さなかった、文脈 ID やコストが数値でない
   行のエラーも、行を示すようになります。
 - ユーザー辞書は、システム辞書と組み合わせるときに確認します。
-  `lindera build --user` はシステム辞書を知らないためです。
   `Segmenter::try_new`、設定からの構築、`lindera tokenize --user-dict`、
   各言語バインディングの `Tokenizer` のコンストラクタとビルダーは、行列の範囲外に
   ある最初の見出し語を示すエラーを返します
   （[#1171](https://github.com/lindera/lindera/issues/1171)。
   [文脈 ID](concepts/user_dictionary.md#文脈-id) を参照）。
-  `Segmenter::new` はこれまでどおり確認しません。
+  `Segmenter::new` はこれまでどおり確認しません。新しい `--system-dict`
+  オプションでシステム辞書を指定すると、`lindera build --user` の時点で各行を
+  確認し、行列の範囲外にある最初の行を CSV の行番号と表層形で示します
+  （Rust API では `DictionaryBuilder::with_system_matrix`。
+  [#1182](https://github.com/lindera/lindera/issues/1182)）。
+- ユーザー辞書の行のコストや文脈 ID が数値でないときのエラーは、
+  `lindera build --user` でも `.csv` のユーザー辞書の読み込みでも、その行の
+  CSV の行番号を示します（`at line 1`）。これまでは、表層形の順に並べた行を
+  数えていました（1 行目にあり、表層形の順で 2 番目になる行は `at row 2`）。
 
 `mecab-dict-index` は同じ範囲を確認するため、それでビルドできる辞書は確認を
 通ります。v6.2.0 以前の `lindera export` で書き出した辞書は、`matrix.def` が

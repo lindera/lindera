@@ -7,6 +7,8 @@
 //! cargo test -p lindera-cli --features train,embed-ipadic
 //! ```
 
+use std::path::{Path, PathBuf};
+
 use assert_cmd::Command;
 
 fn lindera() -> Command {
@@ -93,15 +95,13 @@ fn tokenize_with_undownloaded_name_suggests_download() {
     assert!(stderr.contains("lindera download ipadic"), "got: {stderr}");
 }
 
-/// A user dictionary whose context IDs lie outside the system dictionary's
-/// connection matrix builds (`lindera build --user` reads only
-/// `metadata.json`), and `lindera tokenize` then reports it as an error
-/// instead of panicking when the entry matches the input (#1171). The system
-/// dictionary is a hand-made 4x4 one, so no embedded dictionary is needed.
-#[test]
-fn tokenize_rejects_user_dictionary_context_ids_outside_the_matrix() {
-    let dir = tempfile::tempdir().unwrap();
-    let source = dir.path().join("source");
+/// Builds a hand-made system dictionary with a 4x4 connection matrix
+/// (context IDs 0 to 3) in `dir`, so that no embedded dictionary is needed.
+///
+/// Returns the built dictionary directory and its `metadata.json`, the
+/// default metadata, which has the IPADIC layout.
+fn build_four_by_four_dictionary(dir: &Path) -> (PathBuf, PathBuf) {
+    let source = dir.join("source");
     std::fs::create_dir(&source).unwrap();
     std::fs::write(
         source.join("char.def"),
@@ -127,12 +127,52 @@ fn tokenize_rejects_user_dictionary_context_ids_outside_the_matrix() {
         }
     }
     std::fs::write(source.join("matrix.def"), matrix_def).unwrap();
-    let metadata = dir.path().join("metadata.json");
+    let metadata = dir.join("metadata.json");
     std::fs::write(
         &metadata,
         serde_json::to_vec(&lindera::dictionary::Metadata::default()).unwrap(),
     )
     .unwrap();
+
+    let dict = dir.join("dict");
+    let output = lindera()
+        .args(["build", "--src", source.to_str().unwrap()])
+        .args(["--dest", dict.to_str().unwrap()])
+        .args(["--metadata", metadata.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "system build failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    (dict, metadata)
+}
+
+/// Runs `lindera build --user` on `user_csv` into `dest`, with `extra_args`.
+fn build_user_dictionary(
+    user_csv: &Path,
+    dest: &Path,
+    metadata: &Path,
+    extra_args: &[&str],
+) -> std::process::Output {
+    lindera()
+        .args(["build", "--user", "--src", user_csv.to_str().unwrap()])
+        .args(["--dest", dest.to_str().unwrap()])
+        .args(["--metadata", metadata.to_str().unwrap()])
+        .args(extra_args)
+        .output()
+        .unwrap()
+}
+
+/// A user dictionary whose context IDs lie outside the system dictionary's
+/// connection matrix builds when `lindera build --user` is not given the
+/// system dictionary, and `lindera tokenize` then reports it as an error
+/// instead of panicking when the entry matches the input (#1171).
+#[test]
+fn tokenize_rejects_user_dictionary_context_ids_outside_the_matrix() {
+    let dir = tempfile::tempdir().unwrap();
+    let (dict, metadata) = build_four_by_four_dictionary(dir.path());
     // The entry of the issue report: context IDs 60000 against a 4x4 matrix.
     let user_csv = dir.path().join("userdic.csv");
     std::fs::write(
@@ -140,30 +180,13 @@ fn tokenize_rejects_user_dictionary_context_ids_outside_the_matrix() {
         "東京都,60000,60000,-1000,名詞,固有名詞,地域,一般,*,*,東京都,トウキョウト,トウキョウト\n",
     )
     .unwrap();
-
-    let dict = dir.path().join("dict");
     let user_dest = dir.path().join("user");
-    for args in [
-        vec!["build", "--src", source.to_str().unwrap()],
-        vec!["build", "--user", "--src", user_csv.to_str().unwrap()],
-    ] {
-        let dest = if args.contains(&"--user") {
-            &user_dest
-        } else {
-            &dict
-        };
-        let output = lindera()
-            .args(&args)
-            .args(["--dest", dest.to_str().unwrap()])
-            .args(["--metadata", metadata.to_str().unwrap()])
-            .output()
-            .unwrap();
-        assert!(
-            output.status.success(),
-            "{args:?} failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
+    let output = build_user_dictionary(&user_csv, &user_dest, &metadata, &[]);
+    assert!(
+        output.status.success(),
+        "user build failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
     for user_dictionary in [user_dest.join("userdic.bin"), user_csv] {
         let output = lindera()
@@ -182,9 +205,125 @@ fn tokenize_rejects_user_dictionary_context_ids_outside_the_matrix() {
     }
 }
 
+/// With `--system-dict`, `lindera build --user` checks every row's context
+/// IDs against the system dictionary's matrix and fails on a row outside
+/// it, naming its CSV line and surface, without writing the output (#1182).
+#[test]
+fn build_user_with_system_dict_rejects_context_ids_outside_the_matrix() {
+    let dir = tempfile::tempdir().unwrap();
+    let (dict, metadata) = build_four_by_four_dictionary(dir.path());
+    let user_csv = dir.path().join("userdic.csv");
+    std::fs::write(
+        &user_csv,
+        "東京タワー,3,3,-1000,名詞,固有名詞,一般,*,*,*,東京タワー,トウキョウタワー,トウキョウタワー\n\
+         東京都,60000,1,-1000,名詞,固有名詞,地域,一般,*,*,東京都,トウキョウト,トウキョウト\n",
+    )
+    .unwrap();
+    let user_dest = dir.path().join("user");
+
+    let output = build_user_dictionary(
+        &user_csv,
+        &user_dest,
+        &metadata,
+        &["--system-dict", dict.to_str().unwrap()],
+    );
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(!output.status.success(), "got: {stderr}");
+    assert!(
+        stderr.contains(
+            "user dictionary line 2 (surface: '東京都'): left context id 60000 is out of range \
+             for the connection matrix (matrix.def size 4 4; left context ids must be below 4)"
+        ),
+        "got: {stderr}"
+    );
+    assert!(!stderr.contains("panicked"), "got: {stderr}");
+    assert!(!user_dest.join("userdic.bin").exists());
+}
+
+/// A user dictionary whose context IDs are all inside the matrix builds with
+/// `--system-dict`, the last cell of each axis included.
+#[test]
+fn build_user_with_system_dict_accepts_context_ids_inside_the_matrix() {
+    let dir = tempfile::tempdir().unwrap();
+    let (dict, metadata) = build_four_by_four_dictionary(dir.path());
+    let user_csv = dir.path().join("userdic.csv");
+    std::fs::write(
+        &user_csv,
+        "東京タワー,3,3,-1000,名詞,固有名詞,一般,*,*,*,東京タワー,トウキョウタワー,トウキョウタワー\n",
+    )
+    .unwrap();
+    let user_dest = dir.path().join("user");
+
+    let output = build_user_dictionary(
+        &user_csv,
+        &user_dest,
+        &metadata,
+        &["--system-dict", dict.to_str().unwrap()],
+    );
+    assert!(
+        output.status.success(),
+        "got: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(user_dest.join("userdic.bin").exists());
+}
+
+/// `--system-dict` names the system dictionary a user dictionary is for, so
+/// it is rejected without `--user`.
+#[test]
+fn build_system_dict_requires_user() {
+    let dir = tempfile::tempdir().unwrap();
+    let output = lindera()
+        .args(["build", "--src", dir.path().to_str().unwrap()])
+        .args(["--dest", dir.path().join("dict").to_str().unwrap()])
+        .args([
+            "--metadata",
+            dir.path().join("metadata.json").to_str().unwrap(),
+        ])
+        .args(["--system-dict", "embedded://ipadic"])
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(!output.status.success(), "got: {stderr}");
+    assert!(stderr.contains("--user"), "got: {stderr}");
+}
+
 #[cfg(feature = "embed-ipadic")]
 mod with_ipadic {
     use super::*;
+
+    /// `--system-dict` takes a dictionary URI as `lindera tokenize --dict`
+    /// does; against IPADIC's 1316 x 1316 matrix, context ID 60000 fails
+    /// the build (#1182).
+    #[test]
+    fn build_user_with_embedded_system_dict_rejects_context_ids_outside_the_matrix() {
+        let dir = tempfile::tempdir().unwrap();
+        let user_csv = dir.path().join("userdic.csv");
+        std::fs::write(
+            &user_csv,
+            "東京スカイツリー,60000,1,-1000,名詞,固有名詞,一般,*,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー\n",
+        )
+        .unwrap();
+        let metadata =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../lindera-ipadic/metadata.json");
+
+        let output = build_user_dictionary(
+            &user_csv,
+            &dir.path().join("user"),
+            &metadata,
+            &["--system-dict", "embedded://ipadic"],
+        );
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(!output.status.success(), "got: {stderr}");
+        assert!(
+            stderr.contains(
+                "user dictionary line 1 (surface: '東京スカイツリー'): left context id 60000 is \
+                 out of range for the connection matrix (matrix.def size 1316 1316; left context \
+                 ids must be below 1316)"
+            ),
+            "got: {stderr}"
+        );
+    }
 
     #[test]
     fn tokenize_mecab_output() {
