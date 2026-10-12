@@ -7,6 +7,7 @@ use anyhow::Result;
 
 use super::feature_extractor::FeatureExtractor;
 use super::feature_rewriter::DictionaryRewriter;
+use super::lexicon_csv::read_lexicon_rows;
 use lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptions;
 use lindera_dictionary::dictionary::Dictionary;
 use lindera_dictionary::dictionary::character_definition::{
@@ -108,6 +109,14 @@ impl TrainerConfig {
 impl TrainerConfig {
     /// Creates a new trainer configuration from readers.
     ///
+    /// The seed lexicon is read as `lindera build` reads `lex.csv`: as CSV
+    /// records, so a field may be quoted (mecab-ko-dic's `","` surface), and
+    /// a line that starts with `#` is a row, not a comment (UniDic's `#`
+    /// surface). Blank lines and records with fewer than five fields are
+    /// skipped. The feature of a row is the text after its fourth field
+    /// separator, as written. The rows keep their order, which gives their
+    /// labels their ids (#1170).
+    ///
     /// # Arguments
     ///
     /// * `lexicon_rdr` - Reader for the seed lexicon file (lex.csv)
@@ -115,6 +124,11 @@ impl TrainerConfig {
     /// * `unk_handler_rdr` - Reader for the unknown word file (unk.def)
     /// * `feature_templates_rdr` - Reader for the feature templates file (feature.def)
     /// * `rewrite_rules_rdr` - Reader for the rewrite rules file (rewrite.def)
+    ///
+    /// # Returns
+    ///
+    /// The configuration, or an error when a file cannot be read or parsed,
+    /// such as a seed lexicon with a quoted field that spans lines.
     pub fn from_readers<R1, R2, R3, R4, R5>(
         lexicon_rdr: R1,
         char_prop_rdr: R2,
@@ -139,27 +153,18 @@ impl TrainerConfig {
             std::io::Read::read_to_string(&mut lexicon_reader, &mut lexicon_content)?;
         }
 
-        for line in lexicon_content.lines() {
-            if line.trim().is_empty() || line.starts_with('#') {
-                continue;
-            }
-            let parts: Vec<&str> = line.split(',').collect();
-
-            // Accept any dictionary format with at least 5 columns
-            // Format: surface,left_id,right_id,cost,feature1,feature2,...
-            // - IPADIC:    13 columns (pos + 8 feature fields)
-            // - UniDic:    21+ columns (pos + 16+ feature fields)
-            // - ko-dic:    8 columns (pos + 3 feature fields)
-            // - CC-CEDICT: 8 columns (pos + 3 feature fields)
-            if parts.len() >= 5 {
-                let surface = parts[0].to_string();
-                // Extract features from columns 4 onwards (skip surface,left_id,right_id,cost)
-                // This works for any dictionary format
-                let feature_str = parts[4..].join(",");
-                surfaces.push(surface.clone());
-                features.push(feature_str.clone());
-                surface_features.insert(surface, feature_str);
-            }
+        // Accept any dictionary format with at least 5 columns
+        // Format: surface,left_id,right_id,cost,feature1,feature2,...
+        // - IPADIC:    13 columns (pos + 8 feature fields)
+        // - UniDic:    21+ columns (pos + 16+ feature fields)
+        // - ko-dic:    8 columns (pos + 3 feature fields)
+        // - CC-CEDICT: 8 columns (pos + 3 feature fields)
+        // The rows are CSV records, read as `lindera build` reads `lex.csv`,
+        // and their order gives the seed labels their ids (#1170).
+        for row in read_lexicon_rows(&lexicon_content, "seed lexicon")? {
+            surfaces.push(row.surface.clone());
+            features.push(row.feature.clone());
+            surface_features.insert(row.surface, row.feature);
         }
 
         // Create feature extractor from templates
@@ -359,31 +364,26 @@ impl TrainerConfig {
 
     /// Load user lexicon from CSV content.
     ///
+    /// The content is read as the seed lexicon is (see
+    /// [`TrainerConfig::from_readers`]): as CSV records, with no comment
+    /// lines, and with the feature kept as written (#1170).
+    ///
     /// # Arguments
     ///
     /// * `content` - User lexicon CSV content.
     ///
     /// # Returns
     ///
-    /// `Ok(())`; malformed lines are skipped.
+    /// `Ok(())`; records with fewer than five fields are skipped. An error
+    /// when a quoted field spans lines.
     #[deprecated(
         since = "5.3.0",
         note = "this map only feeds TrainerConfig::get_features; dictionary \
                 export reads user entries loaded via Model::read_user_lexicon"
     )]
     pub fn load_user_lexicon_from_content(&mut self, content: &str) -> Result<()> {
-        for line in content.lines() {
-            if line.trim().is_empty() || line.starts_with('#') {
-                continue;
-            }
-
-            let parts: Vec<&str> = line.split(',').collect();
-            if parts.len() >= 5 {
-                let surface = parts[0].to_string();
-                // Extract features from columns 4 onwards (skip surface,left_id,right_id,cost)
-                let features = parts[4..].join(",");
-                self.user_lexicon.insert(surface, features);
-            }
+        for row in read_lexicon_rows(content, "user lexicon")? {
+            self.user_lexicon.insert(row.surface, row.feature);
         }
         Ok(())
     }
@@ -606,6 +606,84 @@ mod tests {
             tokyo_features,
             "名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー"
         );
+    }
+
+    /// The seed rows are CSV records: mecab-ko-dic's quoted `","` surface is
+    /// `,`, and UniDic's `#` row is a row, not a comment. The surfaces, and
+    /// so the labels, follow the seed rows in order (#1170).
+    #[test]
+    fn seed_rows_with_quoted_and_hash_surfaces_keep_their_order() {
+        let seed_csv = "東京,0,0,0,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー\n\
+                        \",\",0,0,0,記号,読点,*,*,*,*,*,*,*\n\
+                        #,0,0,0,記号,一般,*,*,*,*,#,#,#\n\
+                        中国,0,0,0,名詞,固有名詞,地域,国,*,*,中国,チュウゴク,チューゴク\n";
+        let char_def = "DEFAULT 0 1 0\n";
+        let unk_def = "DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n";
+        let feature_def = "UNIGRAM:%F[0]\n";
+        let rewrite_def = "*\tUNK\n";
+
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed_csv),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+
+        assert_eq!(config.surfaces(), ["東京", ",", "#", "中国"]);
+        assert_eq!(config.features[1], "記号,読点,*,*,*,*,*,*,*");
+        assert_eq!(config.features[2], "記号,一般,*,*,*,*,#,#,#");
+        assert_eq!(
+            config.get_features(","),
+            Some("記号,読点,*,*,*,*,*,*,*".to_string())
+        );
+    }
+
+    /// A quoted field that is never closed, as in a `lex.csv` exported before
+    /// #1170 (`",1,1,0,0,記号,...`), is an error instead of swallowing the
+    /// rows after it.
+    #[test]
+    fn seed_row_with_an_unclosed_quote_is_an_error() {
+        let seed_csv = "東京,0,0,0,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー\n\
+                        \",1,1,0,0,記号,読点,*,*,*,*,*,*,*\n\
+                        中国,0,0,0,名詞,固有名詞,地域,国,*,*,中国,チュウゴク,チューゴク\n";
+
+        let err = match TrainerConfig::from_readers(
+            Cursor::new(seed_csv),
+            Cursor::new("DEFAULT 0 1 0\n"),
+            Cursor::new("DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n"),
+            Cursor::new("UNIGRAM:%F[0]\n"),
+            Cursor::new("*\tUNK\n"),
+        ) {
+            Ok(_) => panic!("an unclosed quote must be an error"),
+            Err(err) => err.to_string(),
+        };
+        assert!(
+            err.contains("seed lexicon line 2: a quoted field spans lines"),
+            "{err}"
+        );
+    }
+
+    /// The deprecated user lexicon reader reads the rows as CSV records too.
+    #[test]
+    #[allow(deprecated)]
+    fn deprecated_user_lexicon_reader_reads_csv_records() {
+        let mut config = TrainerConfig::from_readers(
+            Cursor::new("東京,0,0,0,名詞\n"),
+            Cursor::new("DEFAULT 0 1 0\n"),
+            Cursor::new("DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n"),
+            Cursor::new("UNIGRAM:%F[0]\n"),
+            Cursor::new("*\tUNK\n"),
+        )
+        .unwrap();
+
+        config
+            .load_user_lexicon_from_content("\",\",0,0,0,記号,読点\n#,0,0,0,記号,一般\n")
+            .unwrap();
+
+        assert_eq!(config.get_features(","), Some("記号,読点".to_string()));
+        assert_eq!(config.get_features("#"), Some("記号,一般".to_string()));
     }
 
     #[test]

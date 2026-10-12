@@ -7,7 +7,7 @@ use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::corpus::Word;
-use crate::lexicon_csv::csv_field;
+use crate::lexicon_csv::{csv_field, read_lexicon_rows};
 use lindera_dictionary::viterbi::{LexType, WordEntry, WordId};
 
 /// The `metadata.version` this build writes into `model.dat` and requires
@@ -234,78 +234,75 @@ impl Model {
     /// function before exporting the dictionary. The model overwrites the parameter only when it
     /// is `0,0,0`. Otherwise, the parameter is used as is.
     ///
+    /// The file is read as the seed lexicon is (see
+    /// [`TrainerConfig::from_readers`](crate::config::TrainerConfig::from_readers)):
+    /// as CSV records, so a field may be quoted, with no comment lines, and
+    /// with the feature kept as written (#1170). Records with fewer than five
+    /// fields are skipped.
+    ///
     /// # Arguments
     ///
     /// * `rdr` - Read sink of the user-defined lexicon file.
-    pub fn read_user_lexicon<R: Read>(&mut self, rdr: R) -> Result<()> {
-        use std::io::BufRead;
-        use std::io::BufReader;
-
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())`, or an error when the file cannot be read or a quoted field
+    /// spans lines; no entry is added then.
+    pub fn read_user_lexicon<R: Read>(&mut self, mut rdr: R) -> Result<()> {
         self.merged_model = None;
-        let reader = BufReader::new(rdr);
+        let mut content = String::new();
+        rdr.read_to_string(&mut content)?;
 
-        for line in reader.lines() {
-            let line = line?;
-            if line.trim().is_empty() || line.starts_with('#') {
-                continue;
-            }
+        for row in read_lexicon_rows(&content, "user lexicon")? {
+            let surface = row.surface.as_str();
+            let left_id = row.left_id.parse::<i32>().unwrap_or(0);
+            let right_id = row.right_id.parse::<i32>().unwrap_or(0);
+            let cost = row.cost.parse::<i16>().unwrap_or(0);
+            let features = row.feature.as_str();
 
-            let parts: Vec<&str> = line.split(',').collect();
-            if parts.len() >= 5 {
-                let surface = parts[0];
-                let left_id = parts[1].parse::<i32>().unwrap_or(0);
-                let right_id = parts[2].parse::<i32>().unwrap_or(0);
-                let cost = parts[3].parse::<i16>().unwrap_or(0);
-                let features = parts[4..].join(",");
+            let word = Word::new(surface, features);
 
-                let word = Word::new(surface, &features);
+            // Create word ID for user dictionary entry
+            let word_id = WordId::new(LexType::User, self.user_entries.len() as u32);
 
-                // Create word ID for user dictionary entry
-                let word_id = WordId::new(LexType::User, self.user_entries.len() as u32);
+            let entry = WordEntry::new(word_id, cost, left_id as u16, right_id as u16);
 
-                let entry = WordEntry::new(word_id, cost, left_id as u16, right_id as u16);
+            // Extract features and create feature set for this user entry
+            let first_char = surface.chars().next().unwrap_or('\0');
+            let cate_id = self.get_category_id(first_char);
 
-                // Extract features and create feature set for this user entry
-                let first_char = surface.chars().next().unwrap_or('\0');
-                let cate_id = self.get_category_id(first_char);
+            // Apply dictionary rewriter to get ufeature, lfeature, rfeature
+            let (ufeature, lfeature, rfeature) = self.config.dictionary_rewriter.rewrite(features);
+            let u_vec: Vec<&str> = ufeature.split(',').collect();
+            let l_vec: Vec<&str> = lfeature.split(',').collect();
+            let r_vec: Vec<&str> = rfeature.split(',').collect();
 
-                // Apply dictionary rewriter to get ufeature, lfeature, rfeature
-                let (ufeature, lfeature, rfeature) =
-                    self.config.dictionary_rewriter.rewrite(&features);
-                let u_vec: Vec<&str> = ufeature.split(',').collect();
-                let l_vec: Vec<&str> = lfeature.split(',').collect();
-                let r_vec: Vec<&str> = rfeature.split(',').collect();
+            let unigram_features = self
+                .config
+                .feature_extractor
+                .extract_unigram_feature_ids(&u_vec, cate_id);
+            let left_features = self
+                .config
+                .feature_extractor
+                .extract_left_feature_ids(&l_vec);
+            let right_features = self
+                .config
+                .feature_extractor
+                .extract_right_feature_ids(&r_vec);
 
-                let unigram_features = self
-                    .config
-                    .feature_extractor
-                    .extract_unigram_feature_ids(&u_vec, cate_id);
-                let left_features = self
-                    .config
-                    .feature_extractor
-                    .extract_left_feature_ids(&l_vec);
-                let right_features = self
-                    .config
-                    .feature_extractor
-                    .extract_right_feature_ids(&r_vec);
+            let _feature_set =
+                lindera_crf::FeatureSet::new(&unigram_features, &right_features, &left_features);
+            // TODO: Integrate feature_set into provider for proper user lexicon feature handling
+            // Currently, we cannot access the provider from this context, which limits
+            // the integration of user lexicon features into the trained model.
+            // This should be refactored to allow proper feature integration.
 
-                let _feature_set = lindera_crf::FeatureSet::new(
-                    &unigram_features,
-                    &right_features,
-                    &left_features,
-                );
-                // TODO: Integrate feature_set into provider for proper user lexicon feature handling
-                // Currently, we cannot access the provider from this context, which limits
-                // the integration of user lexicon features into the trained model.
-                // This should be refactored to allow proper feature integration.
+            // Create a label ID without modifying the provider
+            // Since we can't clone the provider, we'll use a fixed ID based on entry count
+            let label_id = NonZeroU32::new(1000000 + self.user_entries.len() as u32 + 1)
+                .ok_or_else(|| anyhow::anyhow!("Failed to create label ID"))?;
 
-                // Create a label ID without modifying the provider
-                // Since we can't clone the provider, we'll use a fixed ID based on entry count
-                let label_id = NonZeroU32::new(1000000 + self.user_entries.len() as u32 + 1)
-                    .ok_or_else(|| anyhow::anyhow!("Failed to create label ID"))?;
-
-                self.user_entries.push((word, entry, label_id));
-            }
+            self.user_entries.push((word, entry, label_id));
         }
 
         Ok(())
