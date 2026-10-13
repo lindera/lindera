@@ -1025,9 +1025,7 @@ lindera build \
 #### 4. 学習済み辞書の使用
 
 ```bash
-echo "これは外国人参政権です。" | lindera tokenize \
-  --keep-whitespace \
-  -d /tmp/lindera/training/compiled_dictionary
+echo "これは外国人参政権です。" | lindera tokenize -d /tmp/lindera/training/compiled_dictionary
 ```
 
 ```text
@@ -1040,8 +1038,6 @@ echo "これは外国人参政権です。" | lindera tokenize \
 。	記号,句点,*,*,*,*,。,。,。
 EOS
 ```
-
-`resources/training/char.def` には、Segmenter が空白を読み飛ばすのに必要な `SPACE` カテゴリがないため、`--keep-whitespace` が必要です（[#1166](https://github.com/lindera/lindera/issues/1166)）。
 
 ### メタデータ更新機能
 

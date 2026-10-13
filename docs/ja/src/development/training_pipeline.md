@@ -87,6 +87,7 @@ EOS
 ```text
 # Category definition: category_name compatibility_flag continuity_flag length
 DEFAULT 0 1 0
+SPACE 0 1 0
 HIRAGANA 1 1 0
 KATAKANA 1 1 0
 KANJI 0 0 2
@@ -94,6 +95,11 @@ ALPHA 1 1 0
 NUMERIC 1 1 0
 
 # Character range mapping
+0x0020 SPACE             # Space (reserved for SPACE)
+0x0009 SPACE             # Tab
+0x000A SPACE             # Line feed
+0x000B SPACE             # Vertical tab
+0x000D SPACE             # Carriage return
 0x3041..0x3096 HIRAGANA  # Hiragana
 0x30A1..0x30F6 KATAKANA  # Katakana
 0x4E00..0x9FAF KANJI     # Kanji
@@ -105,6 +111,8 @@ NUMERIC 1 1 0
 パラメータは、文字の既定カテゴリが作る未知語を制御します。辞書語が始まる位置でも未知語を作るか（`INVOKE`）、どの文字も直前の文字とカテゴリを共有する連続を 1 つのトークンにするか（`GROUP`）、どの長さまで短い候補を作るか（`LENGTH`）を指定します。
 
 範囲行には複数のカテゴリを書くことができ（例: `0x4E00 KANJINUMERIC KANJI`）、少なくとも 1 つのカテゴリが必要です。同じコードポイントを複数の行が覆う場合は、MeCab と同じく最後の行がそのカテゴリを決めます。その行の先頭のカテゴリが文字の既定カテゴリです。未知語候補を作るのは既定カテゴリだけで、素性テンプレートの `%t` もこれを使います。
+
+`SPACE` カテゴリと、`unk.def` のその行は残してください。MeCab は、すべての `char.def` に `DEFAULT` と `SPACE` を求め、すべてのカテゴリに `unk.def` の行を 1 つ以上求めます。Segmenter は `SPACE` の文字を空白として扱い、デフォルトでは MeCab と同じく読み飛ばして出力しません。`char.def` に `SPACE` カテゴリがない辞書は、`--keep-whitespace` を指定しないと使えず、`lindera tokenize` は `SPACE category is not defined in the dictionary (char.def)` で失敗します。
 
 学習は、ランタイムと同じコード（`Lattice::unknown_word_candidates`）で未知語候補を作ります。そのため、ビルドした辞書が作る候補に対して重みを学習します。
 
@@ -122,6 +130,7 @@ NUMERIC 1 1 0
 ```csv
 # Unknown word definitions
 DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
+SPACE,0,0,0,記号,空白,*,*,*,*,*,*,*
 HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*
@@ -254,6 +263,7 @@ lindera export \
 
 ```csv
 DEFAULT,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+SPACE,1,1,0,記号,空白,*,*,*,*,*,*,*
 HIRAGANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
 KATAKANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
 KANJI,1,1,32761,名詞,一般,*,*,*,*,*,*,*
@@ -280,7 +290,7 @@ lindera build \
 ビルドした辞書でテキストを解析します：
 
 ```bash
-echo "これは外国人参政権です。" | lindera tokenize --keep-whitespace -d ./dict-compiled
+echo "これは外国人参政権です。" | lindera tokenize -d ./dict-compiled
 ```
 
 上の入力ファイルに `resources/training/` のファイルを使うと、出力は次のとおりです。
@@ -296,7 +306,19 @@ echo "これは外国人参政権です。" | lindera tokenize --keep-whitespace
 EOS
 ```
 
-`resources/training/char.def` には、Segmenter が空白を読み飛ばすのに必要な `SPACE` カテゴリがないため、`--keep-whitespace` が必要です（[#1166](https://github.com/lindera/lindera/issues/1166)）。指定しないと、`lindera tokenize` は `SPACE category is not defined in the dictionary (char.def)` で失敗します。
+`これは 外国人参政権です。` のように入力に空白があっても、空白は読み飛ばされ、出力は同じです。`--keep-whitespace` を指定すると、空白は `SPACE` の未知語として出力されます。
+
+```text
+これは	名詞,一般,*,*,*,*,*,*,*
+ 	記号,空白,*,*,*,*,*,*,*
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+```
 
 ## 出力モデルの形式
 

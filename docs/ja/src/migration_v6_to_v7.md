@@ -1074,10 +1074,10 @@ v7.0.0 は MeCab の学習器と同じく学習します
 すべてのラティスに種辞書の語が入るため、学習には以前より時間がかかります。学習は
 MeCab の学習器より遅く、収束する前に `--max-iterations` で
 止まることがあります（[#1167](https://github.com/lindera/lindera/issues/1167)）。
-`resources/training/` のファイルから学習した辞書で解析するには
-`--keep-whitespace` が必要です。その `char.def` に `SPACE` カテゴリがないためで
-（[#1166](https://github.com/lindera/lindera/issues/1166)）、これは v6 でも同じ
-でした。
+`resources/training/` のファイルは、`char.def` に `SPACE` カテゴリを、`unk.def`
+に `SPACE` の行を持つようになりました。そのため、これらから学習した辞書は、v6 では
+必要だった `--keep-whitespace` なしで解析できます
+（[#1166](https://github.com/lindera/lindera/issues/1166)）。
 
 対処方法: 7.0.0 の `lindera train` かバインディングの学習関数ですべてのモデルを
 学習し直し、エクスポートと辞書のビルドもやり直してください。`unk.def` のすべての
@@ -1427,8 +1427,9 @@ U+3000 や空白を含むテキストを IPADIC・IPADIC-NEologd・UniDic・Suda
   `unk.def` と `matrix.def` も変わったため。
 - `unk.def` のすべての行に 5 つ以上のフィールド（カテゴリ、2 つの文脈 ID、コスト、
   1 列以上の素性）を書く。
-- `resources/training/` から学習した辞書で解析するときは `--keep-whitespace` を指定
-  する。その `char.def` に `SPACE` カテゴリがないため
+- `resources/training/` からコピーした `char.def` と `unk.def` に `SPACE` カテゴリが
+  なければ、いまのそれらのファイルと同じく追加する。学習した辞書を
+  `--keep-whitespace` なしで解析できるようにするため
   （[#1166](https://github.com/lindera/lindera/issues/1166)）。
 
 `lindera build` でシステム辞書をビルドするすべてのユーザー:

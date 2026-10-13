@@ -1183,11 +1183,11 @@ v7.0.0 trains as MeCab's learner does (see
 Training takes longer, because every lattice now has the seed words. It is
 slower than MeCab's learner, and it can stop at `--max-iterations`
 before it converges
-([#1167](https://github.com/lindera/lindera/issues/1167)). A dictionary
-trained from the files in `resources/training/` needs `--keep-whitespace`
-to tokenize, because their `char.def` has no `SPACE` category
-([#1166](https://github.com/lindera/lindera/issues/1166)); this was already
-the case in v6.
+([#1167](https://github.com/lindera/lindera/issues/1167)). The files in
+`resources/training/` now define a `SPACE` category in `char.def` and a
+`SPACE` line in `unk.def`, so a dictionary trained from them tokenizes
+without `--keep-whitespace`, which it needed in v6
+([#1166](https://github.com/lindera/lindera/issues/1166)).
 
 What you do: train every model again with the 7.0.0 `lindera train` or the
 bindings' training functions, then export it and build the dictionary
@@ -1583,8 +1583,9 @@ Users of `lindera train`:
   and `matrix.def` have changed.
 - Give every line of your `unk.def` at least five fields: the category,
   the two context IDs, the cost and at least one feature column.
-- To tokenize with a dictionary trained from `resources/training/`, pass
-  `--keep-whitespace`: its `char.def` has no `SPACE` category
+- If your `char.def` and `unk.def` were copied from `resources/training/`
+  and have no `SPACE` category, add it as those files now do, so that the
+  trained dictionary tokenizes without `--keep-whitespace`
   ([#1166](https://github.com/lindera/lindera/issues/1166)).
 
 Everyone who builds a system dictionary with `lindera build`:

@@ -87,6 +87,7 @@ Defines character type categories and Unicode code point ranges.
 ```text
 # Category definition: category_name compatibility_flag continuity_flag length
 DEFAULT 0 1 0
+SPACE 0 1 0
 HIRAGANA 1 1 0
 KATAKANA 1 1 0
 KANJI 0 0 2
@@ -94,6 +95,11 @@ ALPHA 1 1 0
 NUMERIC 1 1 0
 
 # Character range mapping
+0x0020 SPACE             # Space (reserved for SPACE)
+0x0009 SPACE             # Tab
+0x000A SPACE             # Line feed
+0x000B SPACE             # Vertical tab
+0x000D SPACE             # Carriage return
 0x3041..0x3096 HIRAGANA  # Hiragana
 0x30A1..0x30F6 KATAKANA  # Katakana
 0x4E00..0x9FAF KANJI     # Kanji
@@ -105,6 +111,8 @@ NUMERIC 1 1 0
 Parameters control the unknown words that a character's default category creates: whether they are created even where a dictionary word starts (`INVOKE`), whether a run in which each character shares a category with the one before continues as a single token (`GROUP`), and up to which length shorter candidates are created (`LENGTH`).
 
 A range line can list more than one category (for example `0x4E00 KANJINUMERIC KANJI`), and every range line needs at least one. When several lines cover the same code point, the last line decides its categories, as in MeCab. The first category on that line is the character's default category: the only one that creates unknown-word candidates, and the one the `%t` feature template uses.
+
+Keep the `SPACE` category, which MeCab requires in every `char.def` along with `DEFAULT`, and its line in `unk.def`: MeCab requires at least one `unk.def` line for every category. The segmenter treats its characters as whitespace: by default it skips them, as MeCab does, and does not output them. Without `--keep-whitespace`, a dictionary whose `char.def` has no `SPACE` category cannot be used: `lindera tokenize` fails with `SPACE category is not defined in the dictionary (char.def)`.
 
 Training creates the unknown-word candidates with the runtime's own code (`Lattice::unknown_word_candidates`), so it learns weights for the candidates that the built dictionary produces:
 
@@ -122,6 +130,7 @@ Defines the unknown words that each character category creates. Each line is `ca
 ```csv
 # Unknown word definitions
 DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
+SPACE,0,0,0,記号,空白,*,*,*,*,*,*,*
 HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*
@@ -254,6 +263,7 @@ For example, if the `unk.def` above has a second `KANJI` line, `KANJI,0,0,0,名�
 
 ```csv
 DEFAULT,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+SPACE,1,1,0,記号,空白,*,*,*,*,*,*,*
 HIRAGANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
 KATAKANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
 KANJI,1,1,32761,名詞,一般,*,*,*,*,*,*,*
@@ -280,7 +290,7 @@ lindera build \
 Tokenize text with the built dictionary:
 
 ```bash
-echo "これは外国人参政権です。" | lindera tokenize --keep-whitespace -d ./dict-compiled
+echo "これは外国人参政権です。" | lindera tokenize -d ./dict-compiled
 ```
 
 With the files in `resources/training/` as the inputs above, the output is:
@@ -296,7 +306,19 @@ With the files in `resources/training/` as the inputs above, the output is:
 EOS
 ```
 
-`--keep-whitespace` is needed because `resources/training/char.def` has no `SPACE` category, which the segmenter needs to skip whitespace ([#1166](https://github.com/lindera/lindera/issues/1166)). Without it, `lindera tokenize` fails with `SPACE category is not defined in the dictionary (char.def)`.
+A space in the input, as in `これは 外国人参政権です。`, is skipped and gives the same output. With `--keep-whitespace`, it is output as the `SPACE` unknown word:
+
+```text
+これは	名詞,一般,*,*,*,*,*,*,*
+ 	記号,空白,*,*,*,*,*,*,*
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+```
 
 ## Output Model Format
 
