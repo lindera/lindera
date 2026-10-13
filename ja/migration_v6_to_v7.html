@@ -1118,10 +1118,10 @@ mecab-ipadic・mecab-ipadic-neologd・unidic-mecab・mecab-ko-dic・mecab-jieba�
 <p>すべてのラティスに種辞書の語が入るため、学習には以前より時間がかかります。学習は
 MeCab の学習器より遅く、収束する前に <code>--max-iterations</code> で
 止まることがあります（<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>）。
-<code>resources/training/</code> のファイルから学習した辞書で解析するには
-<code>--keep-whitespace</code> が必要です。その <code>char.def</code> に <code>SPACE</code> カテゴリがないためで
-（<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>）、これは v6 でも同じ
-でした。</p>
+<code>resources/training/</code> のファイルは、<code>char.def</code> に <code>SPACE</code> カテゴリを、<code>unk.def</code>
+に <code>SPACE</code> の行を持つようになりました。そのため、これらから学習した辞書は、v6 では
+必要だった <code>--keep-whitespace</code> なしで解析できます
+（<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>）。</p>
 <p>対処方法: 7.0.0 の <code>lindera train</code> かバインディングの学習関数ですべてのモデルを
 学習し直し、エクスポートと辞書のビルドもやり直してください。<code>unk.def</code> のすべての
 行に 5 つ以上のフィールドを書いてください。mecab-ipadic のようにカテゴリごとに
@@ -1450,8 +1450,9 @@ MeCab と同じくその空白を含むことを前提にする。</li>
 <code>unk.def</code> と <code>matrix.def</code> も変わったため。</li>
 <li><code>unk.def</code> のすべての行に 5 つ以上のフィールド（カテゴリ、2 つの文脈 ID、コスト、
 1 列以上の素性）を書く。</li>
-<li><code>resources/training/</code> から学習した辞書で解析するときは <code>--keep-whitespace</code> を指定
-する。その <code>char.def</code> に <code>SPACE</code> カテゴリがないため
+<li><code>resources/training/</code> からコピーした <code>char.def</code> と <code>unk.def</code> に <code>SPACE</code> カテゴリが
+なければ、いまのそれらのファイルと同じく追加する。学習した辞書を
+<code>--keep-whitespace</code> なしで解析できるようにするため
 （<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>）。</li>
 </ul>
 <p><code>lindera build</code> でシステム辞書をビルドするすべてのユーザー:</p>

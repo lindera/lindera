@@ -240,6 +240,7 @@ EOS
 <p>文字タイプのカテゴリと Unicode コードポイント範囲を定義します。</p>
 <pre><code class="language-text"># Category definition: category_name compatibility_flag continuity_flag length
 DEFAULT 0 1 0
+SPACE 0 1 0
 HIRAGANA 1 1 0
 KATAKANA 1 1 0
 KANJI 0 0 2
@@ -247,6 +248,11 @@ ALPHA 1 1 0
 NUMERIC 1 1 0
 
 # Character range mapping
+0x0020 SPACE             # Space (reserved for SPACE)
+0x0009 SPACE             # Tab
+0x000A SPACE             # Line feed
+0x000B SPACE             # Vertical tab
+0x000D SPACE             # Carriage return
 0x3041..0x3096 HIRAGANA  # Hiragana
 0x30A1..0x30F6 KATAKANA  # Katakana
 0x4E00..0x9FAF KANJI     # Kanji
@@ -256,6 +262,7 @@ NUMERIC 1 1 0
 </code></pre>
 <p>パラメータは、文字の既定カテゴリが作る未知語を制御します。辞書語が始まる位置でも未知語を作るか（<code>INVOKE</code>）、どの文字も直前の文字とカテゴリを共有する連続を 1 つのトークンにするか（<code>GROUP</code>）、どの長さまで短い候補を作るか（<code>LENGTH</code>）を指定します。</p>
 <p>範囲行には複数のカテゴリを書くことができ（例: <code>0x4E00 KANJINUMERIC KANJI</code>）、少なくとも 1 つのカテゴリが必要です。同じコードポイントを複数の行が覆う場合は、MeCab と同じく最後の行がそのカテゴリを決めます。その行の先頭のカテゴリが文字の既定カテゴリです。未知語候補を作るのは既定カテゴリだけで、素性テンプレートの <code>%t</code> もこれを使います。</p>
+<p><code>SPACE</code> カテゴリと、<code>unk.def</code> のその行は残してください。MeCab は、すべての <code>char.def</code> に <code>DEFAULT</code> と <code>SPACE</code> を求め、すべてのカテゴリに <code>unk.def</code> の行を 1 つ以上求めます。Segmenter は <code>SPACE</code> の文字を空白として扱い、デフォルトでは MeCab と同じく読み飛ばして出力しません。<code>char.def</code> に <code>SPACE</code> カテゴリがない辞書は、<code>--keep-whitespace</code> を指定しないと使えず、<code>lindera tokenize</code> は <code>SPACE category is not defined in the dictionary (char.def)</code> で失敗します。</p>
 <p>学習は、ランタイムと同じコード（<code>Lattice::unknown_word_candidates</code>）で未知語候補を作ります。そのため、ビルドした辞書が作る候補に対して重みを学習します。</p>
 <ul>
 <li>各位置では、文字の既定カテゴリが候補を作ります。<code>INVOKE</code> が 0 で、その位置から種辞書の語が始まる場合は作りません。</li>
@@ -268,6 +275,7 @@ NUMERIC 1 1 0
 <p>文字カテゴリごとに、そのカテゴリが作る未知語を定義します。各行は <code>category,left_id,right_id,cost,feature...</code> で、<code>category</code> は <code>char.def</code> のカテゴリ名です。種辞書と同じく ID とコストは 0 にしておきます。学習した値はエクスポートで書き出されます。</p>
 <pre><code class="language-csv"># Unknown word definitions
 DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
+SPACE,0,0,0,記号,空白,*,*,*,*,*,*,*
 HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*
@@ -372,6 +380,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </div>
 <p>たとえば上の <code>unk.def</code> で、最初の <code>KANJI</code> の行の後に 2 つ目の <code>KANJI</code> の行 <code>KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*</code> を加えると、エクスポートした <code>unk.def</code> は両方の行を入力と同じ順序で持ちます。</p>
 <pre><code class="language-csv">DEFAULT,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+SPACE,1,1,0,記号,空白,*,*,*,*,*,*,*
 HIRAGANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
 KATAKANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
 KANJI,1,1,32761,名詞,一般,*,*,*,*,*,*,*
@@ -389,7 +398,7 @@ NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
 <p><code>lindera build</code> は、MeCab の <code>mecab-dict-index</code> と同じく、<code>lex.csv</code> の各行と <code>unk.def</code> の各行の文脈 ID が <code>matrix.def</code> の範囲内にあることを確認します（<a href="../lindera-cli/commands.html#%E6%96%87%E8%84%88-id-%E3%81%AE%E7%A2%BA%E8%AA%8D">文脈 ID の確認</a>を参照）。<code>lindera export</code> が書き出したファイルはこの確認を通ります。</p>
 <h3 id="tokenize"><a class="header" href="#tokenize">Tokenize</a></h3>
 <p>ビルドした辞書でテキストを解析します：</p>
-<pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize --keep-whitespace -d ./dict-compiled
+<pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize -d ./dict-compiled
 </code></pre>
 <p>上の入力ファイルに <code>resources/training/</code> のファイルを使うと、出力は次のとおりです。</p>
 <pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
@@ -401,7 +410,17 @@ NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
 。	記号,句点,*,*,*,*,。,。,。
 EOS
 </code></pre>
-<p><code>resources/training/char.def</code> には、Segmenter が空白を読み飛ばすのに必要な <code>SPACE</code> カテゴリがないため、<code>--keep-whitespace</code> が必要です（<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>）。指定しないと、<code>lindera tokenize</code> は <code>SPACE category is not defined in the dictionary (char.def)</code> で失敗します。</p>
+<p><code>これは 外国人参政権です。</code> のように入力に空白があっても、空白は読み飛ばされ、出力は同じです。<code>--keep-whitespace</code> を指定すると、空白は <code>SPACE</code> の未知語として出力されます。</p>
+<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+ 	記号,空白,*,*,*,*,*,*,*
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
 <h2 id="出力モデルの形式"><a class="header" href="#出力モデルの形式">出力モデルの形式</a></h2>
 <p>学習済みモデルは高速読み込みのために <code>rkyv</code> バイナリ形式でシリアライズされます。以下を含みます：</p>
 <ul>

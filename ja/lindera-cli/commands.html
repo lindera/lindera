@@ -950,9 +950,7 @@ EOS
   --metadata /tmp/lindera/training/dictionary/metadata.json
 </code></pre>
 <h4 id="4-学習済み辞書の使用"><a class="header" href="#4-学習済み辞書の使用">4. 学習済み辞書の使用</a></h4>
-<pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize \
-  --keep-whitespace \
-  -d /tmp/lindera/training/compiled_dictionary
+<pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize -d /tmp/lindera/training/compiled_dictionary
 </code></pre>
 <pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
 外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
@@ -963,7 +961,6 @@ EOS
 。	記号,句点,*,*,*,*,。,。,。
 EOS
 </code></pre>
-<p><code>resources/training/char.def</code> には、Segmenter が空白を読み飛ばすのに必要な <code>SPACE</code> カテゴリがないため、<code>--keep-whitespace</code> が必要です（<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>）。</p>
 <h3 id="メタデータ更新機能"><a class="header" href="#メタデータ更新機能">メタデータ更新機能</a></h3>
 <p><code>--metadata</code> オプションが指定されると、エクスポートコマンドは以下の処理を行います：</p>
 <ol>

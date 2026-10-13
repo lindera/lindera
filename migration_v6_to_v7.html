@@ -1227,11 +1227,11 @@ changes.</li>
 <p>Training takes longer, because every lattice now has the seed words. It is
 slower than MeCab's learner, and it can stop at <code>--max-iterations</code>
 before it converges
-(<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>). A dictionary
-trained from the files in <code>resources/training/</code> needs <code>--keep-whitespace</code>
-to tokenize, because their <code>char.def</code> has no <code>SPACE</code> category
-(<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>); this was already
-the case in v6.</p>
+(<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>). The files in
+<code>resources/training/</code> now define a <code>SPACE</code> category in <code>char.def</code> and a
+<code>SPACE</code> line in <code>unk.def</code>, so a dictionary trained from them tokenizes
+without <code>--keep-whitespace</code>, which it needed in v6
+(<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>).</p>
 <p>What you do: train every model again with the 7.0.0 <code>lindera train</code> or the
 bindings' training functions, then export it and build the dictionary
 again. Give every <code>unk.def</code> line at least five fields. An <code>unk.def</code> with
@@ -1606,8 +1606,9 @@ the training lattices, the unknown-word labels and the exported <code>unk.def</c
 and <code>matrix.def</code> have changed.</li>
 <li>Give every line of your <code>unk.def</code> at least five fields: the category,
 the two context IDs, the cost and at least one feature column.</li>
-<li>To tokenize with a dictionary trained from <code>resources/training/</code>, pass
-<code>--keep-whitespace</code>: its <code>char.def</code> has no <code>SPACE</code> category
+<li>If your <code>char.def</code> and <code>unk.def</code> were copied from <code>resources/training/</code>
+and have no <code>SPACE</code> category, add it as those files now do, so that the
+trained dictionary tokenizes without <code>--keep-whitespace</code>
 (<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>).</li>
 </ul>
 <p>Everyone who builds a system dictionary with <code>lindera build</code>:</p>

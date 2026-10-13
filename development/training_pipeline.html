@@ -240,6 +240,7 @@ EOS
 <p>Defines character type categories and Unicode code point ranges.</p>
 <pre><code class="language-text"># Category definition: category_name compatibility_flag continuity_flag length
 DEFAULT 0 1 0
+SPACE 0 1 0
 HIRAGANA 1 1 0
 KATAKANA 1 1 0
 KANJI 0 0 2
@@ -247,6 +248,11 @@ ALPHA 1 1 0
 NUMERIC 1 1 0
 
 # Character range mapping
+0x0020 SPACE             # Space (reserved for SPACE)
+0x0009 SPACE             # Tab
+0x000A SPACE             # Line feed
+0x000B SPACE             # Vertical tab
+0x000D SPACE             # Carriage return
 0x3041..0x3096 HIRAGANA  # Hiragana
 0x30A1..0x30F6 KATAKANA  # Katakana
 0x4E00..0x9FAF KANJI     # Kanji
@@ -256,6 +262,7 @@ NUMERIC 1 1 0
 </code></pre>
 <p>Parameters control the unknown words that a character's default category creates: whether they are created even where a dictionary word starts (<code>INVOKE</code>), whether a run in which each character shares a category with the one before continues as a single token (<code>GROUP</code>), and up to which length shorter candidates are created (<code>LENGTH</code>).</p>
 <p>A range line can list more than one category (for example <code>0x4E00 KANJINUMERIC KANJI</code>), and every range line needs at least one. When several lines cover the same code point, the last line decides its categories, as in MeCab. The first category on that line is the character's default category: the only one that creates unknown-word candidates, and the one the <code>%t</code> feature template uses.</p>
+<p>Keep the <code>SPACE</code> category, which MeCab requires in every <code>char.def</code> along with <code>DEFAULT</code>, and its line in <code>unk.def</code>: MeCab requires at least one <code>unk.def</code> line for every category. The segmenter treats its characters as whitespace: by default it skips them, as MeCab does, and does not output them. Without <code>--keep-whitespace</code>, a dictionary whose <code>char.def</code> has no <code>SPACE</code> category cannot be used: <code>lindera tokenize</code> fails with <code>SPACE category is not defined in the dictionary (char.def)</code>.</p>
 <p>Training creates the unknown-word candidates with the runtime's own code (<code>Lattice::unknown_word_candidates</code>), so it learns weights for the candidates that the built dictionary produces:</p>
 <ul>
 <li>At each position, the character's default category creates the candidates. It creates none when its <code>INVOKE</code> is 0 and a seed word starts there.</li>
@@ -268,6 +275,7 @@ NUMERIC 1 1 0
 <p>Defines the unknown words that each character category creates. Each line is <code>category,left_id,right_id,cost,feature...</code>, where <code>category</code> is a category name from <code>char.def</code>. As in the seed lexicon, the ids and the cost are set to 0; export writes the trained values.</p>
 <pre><code class="language-csv"># Unknown word definitions
 DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
+SPACE,0,0,0,記号,空白,*,*,*,*,*,*,*
 HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
 KANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*
@@ -372,6 +380,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </div>
 <p>For example, if the <code>unk.def</code> above has a second <code>KANJI</code> line, <code>KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*</code>, after the first one, the exported <code>unk.def</code> keeps both, in input order:</p>
 <pre><code class="language-csv">DEFAULT,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+SPACE,1,1,0,記号,空白,*,*,*,*,*,*,*
 HIRAGANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
 KATAKANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
 KANJI,1,1,32761,名詞,一般,*,*,*,*,*,*,*
@@ -389,7 +398,7 @@ NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
 <p><code>lindera build</code> checks that the context IDs of every <code>lex.csv</code> row and <code>unk.def</code> line lie inside <code>matrix.def</code>, as MeCab's <code>mecab-dict-index</code> does (see <a href="../lindera-cli/commands.html#context-id-check">Context ID check</a>). The files that <code>lindera export</code> writes pass this check.</p>
 <h3 id="tokenize"><a class="header" href="#tokenize">Tokenize</a></h3>
 <p>Tokenize text with the built dictionary:</p>
-<pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize --keep-whitespace -d ./dict-compiled
+<pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize -d ./dict-compiled
 </code></pre>
 <p>With the files in <code>resources/training/</code> as the inputs above, the output is:</p>
 <pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
@@ -401,7 +410,17 @@ NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
 。	記号,句点,*,*,*,*,。,。,。
 EOS
 </code></pre>
-<p><code>--keep-whitespace</code> is needed because <code>resources/training/char.def</code> has no <code>SPACE</code> category, which the segmenter needs to skip whitespace (<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>). Without it, <code>lindera tokenize</code> fails with <code>SPACE category is not defined in the dictionary (char.def)</code>.</p>
+<p>A space in the input, as in <code>これは 外国人参政権です。</code>, is skipped and gives the same output. With <code>--keep-whitespace</code>, it is output as the <code>SPACE</code> unknown word:</p>
+<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+ 	記号,空白,*,*,*,*,*,*,*
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
 <h2 id="output-model-format"><a class="header" href="#output-model-format">Output Model Format</a></h2>
 <p>The trained model is serialized in <code>rkyv</code> binary format for fast loading. It contains:</p>
 <ul>
