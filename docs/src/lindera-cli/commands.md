@@ -1025,9 +1025,7 @@ lindera build \
 #### 4. Use trained dictionary
 
 ```bash
-echo "これは外国人参政権です。" | lindera tokenize \
-  --keep-whitespace \
-  -d /tmp/lindera/training/compiled_dictionary
+echo "これは外国人参政権です。" | lindera tokenize -d /tmp/lindera/training/compiled_dictionary
 ```
 
 ```text
@@ -1040,8 +1038,6 @@ echo "これは外国人参政権です。" | lindera tokenize \
 。	記号,句点,*,*,*,*,。,。,。
 EOS
 ```
-
-`--keep-whitespace` is needed because `resources/training/char.def` has no `SPACE` category, which the segmenter needs to skip whitespace ([#1166](https://github.com/lindera/lindera/issues/1166)).
 
 ### Metadata update feature
 
