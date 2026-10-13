@@ -189,19 +189,32 @@ dictionary = Lindera.load_dictionary('/path/to/ipadic')
 <pre><code class="language-ruby">dictionary = Lindera.load_dictionary('embedded://ipadic')
 </code></pre>
 <h3 id="user-dictionaries"><a class="header" href="#user-dictionaries">User Dictionaries</a></h3>
-<p>User dictionaries add custom vocabulary on top of a system dictionary.</p>
+<p>User dictionaries add custom vocabulary on top of a system dictionary. Load
+one for the system dictionary it is used with:</p>
+<pre><code class="language-ruby">require 'lindera'
+
+dictionary = Lindera.load_dictionary('/path/to/ipadic')
+user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
+</code></pre>
+<p>A <code>.csv</code> is built with the system dictionary's metadata and checked against
+its connection matrix as it is built: a row whose context ID lies outside the
+matrix raises a <code>RuntimeError</code> that names its CSV line and surface (see
+<a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>). A <code>.bin</code> is loaded
+as it was built.</p>
+<p><code>Lindera.load_user_dictionary(uri, metadata)</code> loads a user dictionary with
+metadata only. A <code>.csv</code> loaded this way is checked when it is combined with
+the system dictionary, and the error names the entry by its word id:</p>
 <pre><code class="language-ruby">require 'lindera'
 
 dictionary = Lindera.load_dictionary('/path/to/ipadic')
 metadata = dictionary.metadata
-user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary', metadata)
+user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary.csv', metadata)
 </code></pre>
 <p>Pass the user dictionary when building a tokenizer:</p>
 <pre><code class="language-ruby">require 'lindera'
 
 dictionary = Lindera.load_dictionary('/path/to/ipadic')
-metadata = dictionary.metadata
-user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary', metadata)
+user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
 
 tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
 </code></pre>
@@ -210,7 +223,7 @@ tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
 
 builder = Lindera::TokenizerBuilder.new
 builder.set_dictionary('/path/to/ipadic')
-builder.set_user_dictionary('/path/to/user_dictionary')
+builder.set_user_dictionary('/path/to/user_dictionary.csv')
 tokenizer = builder.build
 </code></pre>
 <h2 id="building-dictionaries"><a class="header" href="#building-dictionaries">Building Dictionaries</a></h2>

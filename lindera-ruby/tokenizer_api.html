@@ -210,7 +210,7 @@ builder.set_dictionary('/path/to/dictionary')
 </code></pre>
 <h4 id="set_user_dictionaryuri"><a class="header" href="#set_user_dictionaryuri"><code>set_user_dictionary(uri)</code></a></h4>
 <p>Sets the user dictionary URI.</p>
-<pre><code class="language-ruby">builder.set_user_dictionary('/path/to/user_dictionary')
+<pre><code class="language-ruby">builder.set_user_dictionary('/path/to/user_dictionary.csv')
 </code></pre>
 <h4 id="set_keep_whitespacekeep"><a class="header" href="#set_keep_whitespacekeep"><code>set_keep_whitespace(keep)</code></a></h4>
 <p>Controls whether whitespace tokens appear in the output. Kept whitespace also stays in the lattice, so the other tokens can differ from those of the default output, which skips whitespace in the lattice as MeCab does. To keep whitespace in the lattice without outputting it, use <a href="#set_skip_whitespaceskip"><code>set_skip_whitespace(false)</code></a> instead.</p>
@@ -282,8 +282,7 @@ ko_tokenizer = Lindera::Tokenizer.new(Lindera.load_dictionary('embedded://ko-dic
 </code></pre>
 <p>With a user dictionary:</p>
 <pre><code class="language-ruby">dictionary = Lindera.load_dictionary('embedded://ipadic')
-metadata = dictionary.metadata
-user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary', metadata)
+user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
 tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
 </code></pre>
 <h3 id="tokenizer-methods"><a class="header" href="#tokenizer-methods">Tokenizer Methods</a></h3>

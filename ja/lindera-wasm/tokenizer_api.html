@@ -225,7 +225,7 @@ const dictionary = loadDictionaryFromBytes(
 builder.setDictionaryInstance(dictionary);
 </code></pre>
 <h4 id="setuserdictionaryinstanceuserdictionary"><a class="header" href="#setuserdictionaryinstanceuserdictionary"><code>setUserDictionaryInstance(userDictionary)</code></a></h4>
-<p>読み込み済みのユーザー辞書インスタンスを設定します。<code>loadUserDictionaryFromBytes()</code>（CSV）または <code>loadUserDictionaryBinFromBytes()</code>（ビルド済み <code>.bin</code>）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。ユーザー辞書は、<code>setDictionary()</code> と <code>setDictionaryInstance()</code> のどちらで設定した辞書にも適用されます。</p>
+<p>読み込み済みのユーザー辞書インスタンスを設定します。<code>loadUserDictionaryFromBytesFor()</code> か <code>loadUserDictionaryFromBytes()</code>（CSV）、または <code>loadUserDictionaryBinFromBytes()</code>（ビルド済み <code>.bin</code>）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。ユーザー辞書は、<code>setDictionary()</code> と <code>setDictionaryInstance()</code> のどちらで設定した辞書にも適用されます。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>userDictionary</code> (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト</li>
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
@@ -416,6 +416,17 @@ const dict = loadDictionary("embedded://ipadic");
 </li>
 <li><strong>戻り値</strong>: <code>UserDictionary</code></li>
 </ul>
+<h3 id="loaduserdictionaryfrombytesforcsv-dictionary"><a class="header" href="#loaduserdictionaryfrombytesforcsv-dictionary"><code>loadUserDictionaryFromBytesFor(csv, dictionary)</code></a></h3>
+<p>読み込み済みのシステム辞書に合わせて、CSV バイト列（UTF-8）からユーザー辞書をビルドします。CSV はその辞書のメタデータでビルドし、接続コスト行列と照らして確認するので、文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を示すエラーになります。辞書は借用するだけで、その後も使えます。</p>
+<ul>
+<li><strong>パラメータ</strong>:
+<ul>
+<li><code>csv</code> (Uint8Array) -- ユーザー辞書 CSV の内容</li>
+<li><code>dictionary</code> (Dictionary) -- 組み合わせるシステム辞書</li>
+</ul>
+</li>
+<li><strong>戻り値</strong>: <code>UserDictionary</code></li>
+</ul>
 <h3 id="loaduserdictionarybinfrombytesbytes"><a class="header" href="#loaduserdictionarybinfrombytesbytes"><code>loadUserDictionaryBinFromBytes(bytes)</code></a></h3>
 <p>ビルド済みユーザー辞書（<code>lindera build --user</code> の出力）をバイト列から読み込みます。</p>
 <ul>
@@ -487,6 +498,7 @@ console.log(error.toString()); // "message"
 <tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
 <tr><td><code>loadDictionaryFromBytes()</code></td><td><code>load_dictionary_from_bytes()</code></td></tr>
 <tr><td><code>loadUserDictionaryFromBytes()</code></td><td><code>load_user_dictionary_from_bytes()</code></td></tr>
+<tr><td><code>loadUserDictionaryFromBytesFor()</code></td><td><code>load_user_dictionary_from_bytes_for()</code></td></tr>
 <tr><td><code>loadUserDictionaryBinFromBytes()</code></td><td><code>load_user_dictionary_bin_from_bytes()</code></td></tr>
 </tbody></table>
 </div>

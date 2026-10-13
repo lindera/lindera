@@ -209,7 +209,7 @@ builder.set_dictionary('/path/to/dictionary')
 </code></pre>
 <h4 id="set_user_dictionaryuri"><a class="header" href="#set_user_dictionaryuri"><code>set_user_dictionary(uri)</code></a></h4>
 <p>ユーザー辞書の URI を設定します。</p>
-<pre><code class="language-ruby">builder.set_user_dictionary('/path/to/user_dictionary')
+<pre><code class="language-ruby">builder.set_user_dictionary('/path/to/user_dictionary.csv')
 </code></pre>
 <h4 id="set_keep_whitespacekeep"><a class="header" href="#set_keep_whitespacekeep"><code>set_keep_whitespace(keep)</code></a></h4>
 <p>出力に空白トークンを含めるかどうかを制御します。残した空白はラティスにも残るため、他のトークンも、MeCab と同様に空白をラティス上で読み飛ばすデフォルトの出力と変わることがあります。空白を出力せずにラティスにだけ残すには、代わりに <a href="#set_skip_whitespaceskip"><code>set_skip_whitespace(false)</code></a> を使います。</p>
@@ -281,8 +281,7 @@ ko_tokenizer = Lindera::Tokenizer.new(Lindera.load_dictionary('embedded://ko-dic
 </code></pre>
 <p>ユーザー辞書を使用する場合：</p>
 <pre><code class="language-ruby">dictionary = Lindera.load_dictionary('embedded://ipadic')
-metadata = dictionary.metadata
-user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary', metadata)
+user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
 tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
 </code></pre>
 <h3 id="tokenizer-メソッド"><a class="header" href="#tokenizer-メソッド">Tokenizer メソッド</a></h3>

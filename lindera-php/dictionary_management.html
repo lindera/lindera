@@ -191,7 +191,21 @@ $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
 </code></pre>
 <h3 id="user-dictionaries"><a class="header" href="#user-dictionaries">User Dictionaries</a></h3>
-<p>User dictionaries add custom vocabulary on top of a system dictionary.</p>
+<p>User dictionaries add custom vocabulary on top of a system dictionary. Load
+one for the system dictionary it is used with:</p>
+<pre><code class="language-php">&lt;?php
+
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+$userDict = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
+</code></pre>
+<p>A <code>.csv</code> is built with the system dictionary's metadata and checked against
+its connection matrix as it is built: a row whose context ID lies outside the
+matrix throws a <code>ValueError</code> that names its CSV line and surface (see
+<a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>). A <code>.bin</code> is loaded
+as it was built.</p>
+<p><code>Lindera\Dictionary::loadUser($uri, $metadata)</code> loads a user dictionary with
+metadata only. A <code>.csv</code> loaded this way is checked when it is combined with
+the system dictionary, and the error names the entry by its word id:</p>
 <pre><code class="language-php">&lt;?php
 
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
@@ -202,8 +216,7 @@ $userDict = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $metada
 <pre><code class="language-php">&lt;?php
 
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
-$metadata = $dictionary-&gt;metadata();
-$userDict = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $metadata);
+$userDict = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
 
 $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDict);
 </code></pre>

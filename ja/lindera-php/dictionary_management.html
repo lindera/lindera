@@ -191,7 +191,19 @@ $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
 </code></pre>
 <h3 id="ユーザー辞書"><a class="header" href="#ユーザー辞書">ユーザー辞書</a></h3>
-<p>ユーザー辞書はシステム辞書にカスタム語彙を追加します。<code>Lindera\Dictionary::loadUser()</code> を使用して読み込みます。</p>
+<p>ユーザー辞書はシステム辞書にカスタム語彙を追加します。<code>Lindera\Dictionary::loadUserFor()</code> を使用して、組み合わせるシステム辞書に合わせて読み込みます。</p>
+<pre><code class="language-php">&lt;?php
+
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+$userDictionary = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
+</code></pre>
+<p><code>.csv</code> はシステム辞書のメタデータでビルドし、ビルドしながら接続コスト行列と
+照らして確認します。文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を
+示す <code>ValueError</code> になります（<a href="../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a>
+を参照）。<code>.bin</code> はビルドされたとおりに読み込みます。</p>
+<p><code>Lindera\Dictionary::loadUser($uri, $metadata)</code> は、メタデータだけでユーザー辞書を
+読み込みます。この方法で読み込んだ <code>.csv</code> はシステム辞書と組み合わせるときに
+確認し、エラーは見出し語をその単語 ID で示します：</p>
 <pre><code class="language-php">&lt;?php
 
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
@@ -202,8 +214,7 @@ $userDictionary = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $
 <pre><code class="language-php">&lt;?php
 
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
-$metadata = $dictionary-&gt;metadata();
-$userDictionary = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $metadata);
+$userDictionary = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
 
 $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
 </code></pre>

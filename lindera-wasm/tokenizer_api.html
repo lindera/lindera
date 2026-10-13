@@ -225,7 +225,7 @@ const dictionary = loadDictionaryFromBytes(
 builder.setDictionaryInstance(dictionary);
 </code></pre>
 <h4 id="setuserdictionaryinstanceuserdictionary"><a class="header" href="#setuserdictionaryinstanceuserdictionary"><code>setUserDictionaryInstance(userDictionary)</code></a></h4>
-<p>Sets a pre-loaded user dictionary instance. Load one from bytes with <code>loadUserDictionaryFromBytes()</code> (CSV) or <code>loadUserDictionaryBinFromBytes()</code> (prebuilt <code>.bin</code>); URI-based user dictionaries are not available on WebAssembly. The user dictionary applies to a dictionary set with either <code>setDictionary()</code> or <code>setDictionaryInstance()</code>.</p>
+<p>Sets a pre-loaded user dictionary instance. Load one from bytes with <code>loadUserDictionaryFromBytesFor()</code> or <code>loadUserDictionaryFromBytes()</code> (CSV) or <code>loadUserDictionaryBinFromBytes()</code> (prebuilt <code>.bin</code>); URI-based user dictionaries are not available on WebAssembly. The user dictionary applies to a dictionary set with either <code>setDictionary()</code> or <code>setDictionaryInstance()</code>.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>userDictionary</code> (UserDictionary) -- A loaded user dictionary object</li>
 <li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
@@ -419,6 +419,17 @@ const dict = loadDictionary("embedded://ipadic");
 </li>
 <li><strong>Returns</strong>: <code>UserDictionary</code></li>
 </ul>
+<h3 id="loaduserdictionaryfrombytesforcsv-dictionary"><a class="header" href="#loaduserdictionaryfrombytesforcsv-dictionary"><code>loadUserDictionaryFromBytesFor(csv, dictionary)</code></a></h3>
+<p>Builds a user dictionary from CSV bytes (UTF-8) for a loaded system dictionary: the CSV is built with the dictionary's metadata and checked against its connection matrix, so a row whose context ID lies outside the matrix fails with an error that names its CSV line and surface. The dictionary is borrowed and stays usable.</p>
+<ul>
+<li><strong>Parameters</strong>:
+<ul>
+<li><code>csv</code> (Uint8Array) -- The user dictionary CSV content</li>
+<li><code>dictionary</code> (Dictionary) -- The system dictionary the user dictionary will be used with</li>
+</ul>
+</li>
+<li><strong>Returns</strong>: <code>UserDictionary</code></li>
+</ul>
 <h3 id="loaduserdictionarybinfrombytesbytes"><a class="header" href="#loaduserdictionarybinfrombytesbytes"><code>loadUserDictionaryBinFromBytes(bytes)</code></a></h3>
 <p>Loads a prebuilt user dictionary (the output of <code>lindera build --user</code>) from bytes.</p>
 <ul>
@@ -490,6 +501,7 @@ console.log(error.toString()); // "message"
 <tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
 <tr><td><code>loadDictionaryFromBytes()</code></td><td><code>load_dictionary_from_bytes()</code></td></tr>
 <tr><td><code>loadUserDictionaryFromBytes()</code></td><td><code>load_user_dictionary_from_bytes()</code></td></tr>
+<tr><td><code>loadUserDictionaryFromBytesFor()</code></td><td><code>load_user_dictionary_from_bytes_for()</code></td></tr>
 <tr><td><code>loadUserDictionaryBinFromBytes()</code></td><td><code>load_user_dictionary_bin_from_bytes()</code></td></tr>
 </tbody></table>
 </div>

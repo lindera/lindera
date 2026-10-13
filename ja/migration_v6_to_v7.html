@@ -1150,7 +1150,13 @@ ID は <code>matrix.def</code> のヘッダの 1 つ目の値より小さく、�
 読み込む <code>.csv</code> のユーザー辞書と、Rust API に新しく加わった
 <code>load_user_dictionary_for</code> で読み込むユーザー辞書も、システム辞書に合わせて
 ビルドするときに同じように確認し、CSV の行番号と表層形を示します
-（<a href="https://github.com/lindera/lindera/issues/1187">#1187</a>）。</li>
+（<a href="https://github.com/lindera/lindera/issues/1187">#1187</a>）。各言語バインディングにも、
+読み込み済みのシステム辞書に合わせてユーザー辞書を読み込む関数が加わりました。
+Python・Ruby の <code>load_user_dictionary_for</code>、Node.js の <code>loadUserDictionaryFor</code>、
+PHP の <code>Lindera\Dictionary::loadUserFor</code>、WebAssembly の
+<code>loadUserDictionaryFromBytesFor</code> です
+（<a href="https://github.com/lindera/lindera/issues/1193">#1193</a>）。メタデータを受け取る
+これまでの関数は変わりません。</li>
 <li>ユーザー辞書の行のコストや文脈 ID が数値でないときのエラーは、
 <code>lindera build --user</code> でも <code>.csv</code> のユーザー辞書の読み込みでも、その行の
 CSV の行番号を示します（<code>at line 1</code>）。これまでは、表層形の順に並べた行を

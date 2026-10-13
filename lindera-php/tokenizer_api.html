@@ -309,8 +309,7 @@ $koTokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ko-dic
 <pre><code class="language-php">&lt;?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
-$metadata = $dictionary-&gt;metadata();
-$userDict = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $metadata);
+$userDict = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
 $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDict);
 </code></pre>
 <h3 id="tokenizer-methods"><a class="header" href="#tokenizer-methods">Tokenizer Methods</a></h3>

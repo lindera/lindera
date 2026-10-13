@@ -198,7 +198,7 @@
 <ul>
 <li><code>lindera build --user</code> when <code>--system-dict</code> names the system dictionary (<code>DictionaryBuilder::with_system_matrix</code> in the Rust API; see <a href="../lindera-cli/commands.html#context-id-check">Context ID check</a>)</li>
 <li>a <code>.csv</code> user dictionary that the configuration names (<code>Segmenter::from_config</code>, <code>TokenizerBuilder</code>), that <code>lindera tokenize --user-dict</code> names, or that the <code>TokenizerBuilder</code> of the Python, Node.js, Ruby and PHP bindings is given by path</li>
-<li><code>load_user_dictionary_for</code> in the Rust API, which loads a user dictionary for a loaded system dictionary</li>
+<li>the loaders that load a user dictionary for a loaded system dictionary: <code>load_user_dictionary_for</code> in the Rust API, Python and Ruby, <code>loadUserDictionaryFor</code> in Node.js, <code>Lindera\Dictionary::loadUserFor</code> in PHP, and <code>loadUserDictionaryFromBytesFor</code> in WebAssembly</li>
 </ul>
 <p>For example, with a <code>userdic.csv</code> whose first row lies inside IPADIC's matrix and whose second row has the left context ID 60000:</p>
 <pre><code class="language-text">$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.csv

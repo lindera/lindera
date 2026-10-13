@@ -193,31 +193,36 @@ dictionary = load_dictionary("/path/to/ipadic")
 print(dictionary.metadata_encoding())  # 例: "UTF-8"
 metadata = dictionary.metadata()       # Metadata オブジェクト全体
 </code></pre>
-<p>これは、システム辞書と同じメタデータ（スキーマ、エンコーディングなど）を
-共有する必要があるユーザー辞書を読み込む際に便利です。
+<p>ユーザー辞書は、組み合わせるシステム辞書と同じメタデータ（スキーマ、
+エンコーディングなど）を共有する必要があります。<code>load_user_dictionary_for</code> は
+システム辞書を受け取り、そのメタデータを使います。
 <a href="https://github.com/lindera/lindera/blob/main/lindera-python/examples/tokenize_with_userdict.py"><code>lindera-python/examples/tokenize_with_userdict.py</code></a>
-を参照してください：</p>
-<pre><code class="language-python">from lindera import Tokenizer, load_dictionary, load_user_dictionary
-
-dictionary = load_dictionary("embedded://ipadic")
-metadata = dictionary.metadata()
-user_dictionary = load_user_dictionary("/path/to/user_dictionary.csv", metadata)
-
-tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dictionary)
-</code></pre>
+と<a href="#%E3%83%A6%E3%83%BC%E3%82%B6%E3%83%BC%E8%BE%9E%E6%9B%B8">ユーザー辞書</a>を参照してください。</p>
 <h3 id="ユーザー辞書"><a class="header" href="#ユーザー辞書">ユーザー辞書</a></h3>
-<p>ユーザー辞書はシステム辞書にカスタム語彙を追加します。</p>
+<p>ユーザー辞書はシステム辞書にカスタム語彙を追加します。組み合わせるシステム辞書に
+合わせて読み込みます：</p>
+<pre><code class="language-python">from lindera import load_dictionary, load_user_dictionary_for
+
+dictionary = load_dictionary("/path/to/ipadic")
+user_dict = load_user_dictionary_for("/path/to/user_dictionary.csv", dictionary)
+</code></pre>
+<p><code>.csv</code> はシステム辞書のメタデータでビルドし、ビルドしながら接続コスト行列と
+照らして確認します。文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を
+示す <code>ValueError</code> になります（<a href="../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a>
+を参照）。<code>.bin</code> はビルドされたとおりに読み込みます。</p>
+<p><code>load_user_dictionary(uri, metadata)</code> は、メタデータだけでユーザー辞書を
+読み込みます。この方法で読み込んだ <code>.csv</code> はシステム辞書と組み合わせるときに
+確認し、エラーは見出し語をその単語 ID で示します：</p>
 <pre><code class="language-python">from lindera import load_user_dictionary, Metadata
 
 metadata = Metadata()
-user_dict = load_user_dictionary("/path/to/user_dictionary", metadata)
+user_dict = load_user_dictionary("/path/to/user_dictionary.csv", metadata)
 </code></pre>
 <p>トークナイザーのビルド時にユーザー辞書を渡します：</p>
-<pre><code class="language-python">from lindera import Tokenizer, load_dictionary, load_user_dictionary, Metadata
+<pre><code class="language-python">from lindera import Tokenizer, load_dictionary, load_user_dictionary_for
 
 dictionary = load_dictionary("/path/to/ipadic")
-metadata = Metadata()
-user_dict = load_user_dictionary("/path/to/user_dictionary", metadata)
+user_dict = load_user_dictionary_for("/path/to/user_dictionary.csv", dictionary)
 
 tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dict)
 </code></pre>
@@ -227,7 +232,7 @@ tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dict)
 tokenizer = (
     TokenizerBuilder()
     .set_dictionary("/path/to/ipadic")
-    .set_user_dictionary("/path/to/user_dictionary")
+    .set_user_dictionary("/path/to/user_dictionary.csv")
     .build()
 )
 </code></pre>

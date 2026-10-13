@@ -198,7 +198,7 @@
 <ul>
 <li><code>--system-dict</code> でシステム辞書を指定した <code>lindera build --user</code>（Rust API では <code>DictionaryBuilder::with_system_matrix</code>。<a href="../lindera-cli/commands.html#%E6%96%87%E8%84%88-id-%E3%81%AE%E7%A2%BA%E8%AA%8D">文脈 ID の確認</a> を参照）</li>
 <li>設定（<code>Segmenter::from_config</code>、<code>TokenizerBuilder</code>）や <code>lindera tokenize --user-dict</code> で指定した <code>.csv</code> のユーザー辞書と、Python・Node.js・Ruby・PHP のバインディングの <code>TokenizerBuilder</code> にパスで渡した <code>.csv</code> のユーザー辞書</li>
-<li>Rust API の <code>load_user_dictionary_for</code>（読み込み済みのシステム辞書に合わせてユーザー辞書を読み込みます）</li>
+<li>読み込み済みのシステム辞書に合わせてユーザー辞書を読み込む関数（Rust API・Python・Ruby の <code>load_user_dictionary_for</code>、Node.js の <code>loadUserDictionaryFor</code>、PHP の <code>Lindera\Dictionary::loadUserFor</code>、WebAssembly の <code>loadUserDictionaryFromBytesFor</code>）</li>
 </ul>
 <p>たとえば、1 行目が IPADIC の行列の範囲内にあり、2 行目の左文脈 ID が 60000 の <code>userdic.csv</code> では次のようになります。</p>
 <pre><code class="language-text">$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.csv

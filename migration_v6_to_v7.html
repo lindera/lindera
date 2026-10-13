@@ -1265,7 +1265,13 @@ surface (<a href="https://github.com/lindera/lindera/issues/1182">#1182</a>). A
 by path, or that the new <code>load_user_dictionary_for</code> of the Rust API
 loads, is checked the same way as it is built for the system dictionary,
 and its error names the CSV line and surface too
-(<a href="https://github.com/lindera/lindera/issues/1187">#1187</a>).</li>
+(<a href="https://github.com/lindera/lindera/issues/1187">#1187</a>). The language
+bindings have such a loader for a loaded system dictionary too:
+<code>load_user_dictionary_for</code> in Python and Ruby, <code>loadUserDictionaryFor</code> in
+Node.js, <code>Lindera\Dictionary::loadUserFor</code> in PHP and
+<code>loadUserDictionaryFromBytesFor</code> in WebAssembly
+(<a href="https://github.com/lindera/lindera/issues/1193">#1193</a>). The loaders that
+take metadata are unchanged.</li>
 <li>The errors for a user dictionary row whose cost or context ID is not a
 number, from <code>lindera build --user</code> or from loading a <code>.csv</code> user
 dictionary, name the row's CSV line (<code>at line 1</code>). Before, they counted

@@ -273,20 +273,26 @@ console.log(dictionary.encoding); // "utf-8"
 <p>WebAssembly にはファイルシステムが無いため、ユーザー辞書は JavaScript 側で
 取得した<strong>バイト列</strong>（<code>fetch</code>・<code>&lt;input type="file"&gt;</code>・OPFS）から読み込みます。</p>
 <h3 id="csv-バイト列からのユーザー辞書の読み込み"><a class="header" href="#csv-バイト列からのユーザー辞書の読み込み">CSV バイト列からのユーザー辞書の読み込み</a></h3>
-<p>ユーザー辞書を組み合わせるシステム辞書のメタデータ（例:
-<code>dictionary.metadata</code>）を渡してください。CSV の内容は UTF-8 である必要が
+<p>ユーザー辞書を組み合わせるシステム辞書を渡してください。CSV はそのスキーマで
+解釈し、その接続コスト行列と照らして確認します。CSV の内容は UTF-8 である必要が
 あります。</p>
-<pre><code class="language-javascript">import { loadUserDictionaryFromBytes } from 'lindera-wasm';
+<pre><code class="language-javascript">import { loadUserDictionaryFromBytesFor } from 'lindera-wasm';
 
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
-const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
+const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
 </code></pre>
+<p>文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を示すエラーになります
+（<a href="../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。辞書は借用する
+だけなので、その後も <code>Tokenizer</code> に渡せます。</p>
+<p><code>loadUserDictionaryFromBytes(csv, metadata)</code> は、メタデータ（例:
+<code>dictionary.metadata</code>）だけで CSV をビルドします。文脈 ID はシステム辞書と
+組み合わせるときに確認し、エラーは見出し語をその単語 ID で示します。</p>
 <p>OPFS 上のファイルも同じ形で使えます：</p>
 <pre><code class="language-javascript">const root = await navigator.storage.getDirectory();
 const handle = await root.getFileHandle('user_dict.csv');
 const csvBytes = new Uint8Array(await (await handle.getFile()).arrayBuffer());
-const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
+const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
 </code></pre>
 <h3 id="ビルド済みユーザー辞書binの読み込み"><a class="header" href="#ビルド済みユーザー辞書binの読み込み">ビルド済みユーザー辞書（<code>.bin</code>）の読み込み</a></h3>
 <p><code>lindera build --user</code> でコンパイルしたユーザー辞書はそのまま読み込めます：</p>
@@ -297,7 +303,7 @@ const binBytes = new Uint8Array(await response.arrayBuffer());
 const userDict = loadUserDictionaryBinFromBytes(binBytes);
 </code></pre>
 <h3 id="tokenizer-でのユーザー辞書の使用"><a class="header" href="#tokenizer-でのユーザー辞書の使用">Tokenizer でのユーザー辞書の使用</a></h3>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytesFor, Tokenizer } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
@@ -308,7 +314,7 @@ const dictionary = loadDictionaryFromBytes(
 );
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
-const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
+const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 </code></pre>
 <h3 id="ユーザー辞書の-csv-フォーマット"><a class="header" href="#ユーザー辞書の-csv-フォーマット">ユーザー辞書の CSV フォーマット</a></h3>

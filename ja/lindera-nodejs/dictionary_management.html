@@ -196,18 +196,30 @@ const metadata = dictionary.metadata(); // Metadata オブジェクト全体
 console.log(metadata.defaultWordCost);
 </code></pre>
 <h3 id="ユーザー辞書"><a class="header" href="#ユーザー辞書">ユーザー辞書</a></h3>
-<p>ユーザー辞書はシステム辞書にカスタム語彙を追加します。</p>
+<p>ユーザー辞書はシステム辞書にカスタム語彙を追加します。組み合わせるシステム辞書に
+合わせて読み込みます：</p>
+<pre><code class="language-javascript">const { loadDictionary, loadUserDictionaryFor } = require("lindera");
+
+const dictionary = loadDictionary("/path/to/ipadic");
+const userDict = loadUserDictionaryFor("/path/to/user_dictionary.csv", dictionary);
+</code></pre>
+<p><code>.csv</code> はシステム辞書のメタデータでビルドし、ビルドしながら接続コスト行列と
+照らして確認します。文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を
+示すエラーになります（<a href="../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a>
+を参照）。<code>.bin</code> はビルドされたとおりに読み込みます。</p>
+<p><code>loadUserDictionary(uri, metadata)</code> は、メタデータだけでユーザー辞書を
+読み込みます。この方法で読み込んだ <code>.csv</code> はシステム辞書と組み合わせるときに
+確認し、エラーは見出し語をその単語 ID で示します：</p>
 <pre><code class="language-javascript">const { loadUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
-const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
+const userDict = loadUserDictionary("/path/to/user_dictionary.csv", metadata);
 </code></pre>
 <p>トークナイザーのビルド時にユーザー辞書を渡します：</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera");
+<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionaryFor } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
-const metadata = new Metadata();
-const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
+const userDict = loadUserDictionaryFor("/path/to/user_dictionary.csv", dictionary);
 
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 </code></pre>
@@ -216,7 +228,7 @@ const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 
 const builder = new TokenizerBuilder();
 builder.setDictionary("/path/to/ipadic");
-builder.setUserDictionary("/path/to/user_dictionary");
+builder.setUserDictionary("/path/to/user_dictionary.csv");
 const tokenizer = builder.build();
 </code></pre>
 <h2 id="辞書のビルド"><a class="header" href="#辞書のビルド">辞書のビルド</a></h2>

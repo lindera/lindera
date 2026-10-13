@@ -196,18 +196,31 @@ const metadata = dictionary.metadata(); // full Metadata object
 console.log(metadata.defaultWordCost);
 </code></pre>
 <h3 id="user-dictionaries"><a class="header" href="#user-dictionaries">User Dictionaries</a></h3>
-<p>User dictionaries add custom vocabulary on top of a system dictionary.</p>
+<p>User dictionaries add custom vocabulary on top of a system dictionary. Load
+one for the system dictionary it is used with:</p>
+<pre><code class="language-javascript">const { loadDictionary, loadUserDictionaryFor } = require("lindera");
+
+const dictionary = loadDictionary("/path/to/ipadic");
+const userDict = loadUserDictionaryFor("/path/to/user_dictionary.csv", dictionary);
+</code></pre>
+<p>A <code>.csv</code> is built with the system dictionary's metadata and checked against
+its connection matrix as it is built: a row whose context ID lies outside the
+matrix throws an error that names its CSV line and surface (see
+<a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>). A <code>.bin</code> is loaded
+as it was built.</p>
+<p><code>loadUserDictionary(uri, metadata)</code> loads a user dictionary with metadata
+only. A <code>.csv</code> loaded this way is checked when it is combined with the system
+dictionary, and the error names the entry by its word id:</p>
 <pre><code class="language-javascript">const { loadUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
-const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
+const userDict = loadUserDictionary("/path/to/user_dictionary.csv", metadata);
 </code></pre>
 <p>Pass the user dictionary when building a tokenizer:</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera");
+<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionaryFor } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
-const metadata = new Metadata();
-const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
+const userDict = loadUserDictionaryFor("/path/to/user_dictionary.csv", dictionary);
 
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 </code></pre>
@@ -216,7 +229,7 @@ const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 
 const builder = new TokenizerBuilder();
 builder.setDictionary("/path/to/ipadic");
-builder.setUserDictionary("/path/to/user_dictionary");
+builder.setUserDictionary("/path/to/user_dictionary.csv");
 const tokenizer = builder.build();
 </code></pre>
 <h2 id="building-dictionaries"><a class="header" href="#building-dictionaries">Building Dictionaries</a></h2>

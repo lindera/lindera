@@ -274,20 +274,27 @@ console.log(dictionary.encoding); // "utf-8"
 <strong>bytes</strong> obtained in JavaScript — from <code>fetch</code>, an <code>&lt;input type="file"&gt;</code>
 element, or OPFS.</p>
 <h3 id="loading-a-user-dictionary-from-csv-bytes"><a class="header" href="#loading-a-user-dictionary-from-csv-bytes">Loading a User Dictionary from CSV Bytes</a></h3>
-<p>Pass the metadata of the system dictionary the user dictionary will be used
-with (e.g. <code>dictionary.metadata</code>), so the CSV is interpreted with the right
-schema. The CSV content must be UTF-8.</p>
-<pre><code class="language-javascript">import { loadUserDictionaryFromBytes } from 'lindera-wasm';
+<p>Pass the system dictionary the user dictionary will be used with, so the CSV
+is interpreted with its schema and checked against its connection matrix. The
+CSV content must be UTF-8.</p>
+<pre><code class="language-javascript">import { loadUserDictionaryFromBytesFor } from 'lindera-wasm';
 
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
-const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
+const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
 </code></pre>
+<p>A row whose context ID lies outside the matrix fails with an error that names
+its CSV line and surface (see
+<a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>). The dictionary is
+only borrowed, so it can still be passed to <code>Tokenizer</code> afterwards.</p>
+<p><code>loadUserDictionaryFromBytes(csv, metadata)</code> builds the CSV with metadata only
+(e.g. <code>dictionary.metadata</code>). Its context IDs are checked when it is combined
+with the system dictionary, and the error names the entry by its word id.</p>
 <p>Bytes from OPFS work the same way:</p>
 <pre><code class="language-javascript">const root = await navigator.storage.getDirectory();
 const handle = await root.getFileHandle('user_dict.csv');
 const csvBytes = new Uint8Array(await (await handle.getFile()).arrayBuffer());
-const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
+const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
 </code></pre>
 <h3 id="loading-a-prebuilt-user-dictionary-bin"><a class="header" href="#loading-a-prebuilt-user-dictionary-bin">Loading a Prebuilt User Dictionary (<code>.bin</code>)</a></h3>
 <p>A user dictionary compiled with <code>lindera build --user</code> loads directly:</p>
@@ -298,7 +305,7 @@ const binBytes = new Uint8Array(await response.arrayBuffer());
 const userDict = loadUserDictionaryBinFromBytes(binBytes);
 </code></pre>
 <h3 id="using-a-user-dictionary-with-tokenizer"><a class="header" href="#using-a-user-dictionary-with-tokenizer">Using a User Dictionary with Tokenizer</a></h3>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytesFor, Tokenizer } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
@@ -308,7 +315,7 @@ const dictionary = loadDictionaryFromBytes(
 );
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
-const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
+const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 </code></pre>
 <h3 id="user-dictionary-csv-format"><a class="header" href="#user-dictionary-csv-format">User Dictionary CSV Format</a></h3>
