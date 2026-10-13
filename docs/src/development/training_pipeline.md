@@ -168,6 +168,8 @@ Template variables:
 
 The fields of `%F[n]`, `%L[n]` and `%R[n]` are the columns of the rewritten features, split as described in [Seed Lexicon](#1-seed-lexicon-seedcsv). `%u`, `%l` and `%r` are the rewritten features as `rewrite.def` writes them, with a column that contains `,` or `"` quoted.
 
+A template that reads past the last column of a feature gives no feature for it, with or without `?`, as in MeCab's learner. For example, `UNIGRAM U06:%F[6]` gives nothing for the `unk.def` feature `n,*,*,*,*`, which has five columns. A bigram template gives nothing when either `%L[n]` or `%R[n]` reads past the last column.
+
 ### 6. Feature Rewrite Rules (rewrite.def)
 
 Feature normalization rules in MeCab-compatible 3-section format. Sections are separated by blank lines.

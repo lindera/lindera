@@ -24,7 +24,7 @@ lindera-trainer/src/
 
 ### FeatureExtractor
 
-MeCab互換の素性テンプレートを解析し、生成された素性文字列から内部で採番される`NonZeroU32`型の素性IDへのマッピングを管理します。サポートされるテンプレートのプレースホルダは、`%F[n]` / `%F?[n]`（インデックス`n`の素性フィールド。`?`付きは値が`*`の場合にスキップ）、`%t`（文字カテゴリ）、`%w`（表層形、ユニグラムのみ）、`%u` / `%l` / `%r`（書き換え後のユニグラム／左文脈／右文脈の素性文字列全体）、およびバイグラムの左右文脈フィールド用の`%L[n]` / `%L?[n]` / `%R[n]` / `%R?[n]`です。`extract_unigram_feature_ids[_with_ctx]`、`extract_left_feature_ids[_with_ctx]`、`extract_right_feature_ids[_with_ctx]`は、パース済みテンプレートを素性の配列（バイグラム抽出の場合は表層形／ufeature／lfeature／rfeatureを保持するオプションの`TemplateContext`も併せて）に適用し、対応する素性IDを返します。初回利用時には新しいIDが割り当てられます。
+MeCab互換の素性テンプレートを解析し、生成された素性文字列から内部で採番される`NonZeroU32`型の素性IDへのマッピングを管理します。サポートされるテンプレートのプレースホルダは、`%F[n]` / `%F?[n]`（インデックス`n`の素性フィールド。`?`付きは値が`*`の場合にスキップ）、`%t`（文字カテゴリ）、`%w`（表層形、ユニグラムのみ）、`%u` / `%l` / `%r`（書き換え後のユニグラム／左文脈／右文脈の素性文字列全体）、およびバイグラムの左右文脈フィールド用の`%L[n]` / `%L?[n]` / `%R[n]` / `%R?[n]`です。`%F[n]`・`%L[n]`・`%R[n]`が最後の列より後ろを読むテンプレートは、`?`の有無にかかわらず、MeCabの学習器と同じく素性を作りません。`extract_unigram_feature_ids[_with_ctx]`、`extract_left_feature_ids[_with_ctx]`、`extract_right_feature_ids[_with_ctx]`は、パース済みテンプレートを素性の配列（バイグラム抽出の場合は表層形／ufeature／lfeature／rfeatureを保持するオプションの`TemplateContext`も併せて）に適用し、対応する素性IDを返します。初回利用時には新しいIDが割り当てられます。
 
 ### DictionaryRewriter
 

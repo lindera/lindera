@@ -1127,6 +1127,13 @@ those of MeCab's learner:
   columns after it: in 19,955 rows of mecab-jieba's training seed, whose
   quoted English definition is followed by four more columns, `%F[6]` to
   `%F[9]` were pieces of the definition.
+- A `%F[n]`, `%L[n]` or `%R[n]` without `?` that read past the last column
+  of a feature read `*` there, so the template still gave a feature, such
+  as `U09:*`, which every feature with fewer columns shared. MeCab's
+  learner skips the template. The `unk.def` features of mecab-jieba have
+  five columns, and its `feature.def` reads `%F[6]` to `%F[9]`, so its 11
+  unknown-word labels had four features, `U06:*` to `U09:*`, that no seed
+  row had.
 
 v7.0.0 trains as MeCab's learner does (see
 [How training works](development/training_pipeline.md#how-training-works)):
@@ -1164,6 +1171,14 @@ v7.0.0 trains as MeCab's learner does (see
   skipped, and the text from a closing quote to the next `,` is dropped.
   The rewrite rules join the columns they rewrite with `,`, quoting a
   column that contains `,` or `"`, as MeCab does.
+- A template that reads past the last column of a feature gives no feature
+  for it, with or without `?`, as in MeCab's learner (see
+  [Feature Template](development/training_pipeline.md#5-feature-template-featuredef)).
+  In the training files of mecab-ipadic, mecab-ipadic-neologd,
+  unidic-mecab, mecab-ko-dic, mecab-jieba and `resources/training/`, only
+  the `unk.def` lines of mecab-jieba have features that a template reads
+  past the last column of, so only a model trained on mecab-jieba's files
+  changes.
 
 Training takes longer, because every lattice now has the seed words. It is
 slower than MeCab's learner, and it can stop at `--max-iterations`
