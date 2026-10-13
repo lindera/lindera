@@ -1226,7 +1226,13 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
   by path, or that the new `load_user_dictionary_for` of the Rust API
   loads, is checked the same way as it is built for the system dictionary,
   and its error names the CSV line and surface too
-  ([#1187](https://github.com/lindera/lindera/issues/1187)).
+  ([#1187](https://github.com/lindera/lindera/issues/1187)). The language
+  bindings have such a loader for a loaded system dictionary too:
+  `load_user_dictionary_for` in Python and Ruby, `loadUserDictionaryFor` in
+  Node.js, `Lindera\Dictionary::loadUserFor` in PHP and
+  `loadUserDictionaryFromBytesFor` in WebAssembly
+  ([#1193](https://github.com/lindera/lindera/issues/1193)). The loaders that
+  take metadata are unchanged.
 - The errors for a user dictionary row whose cost or context ID is not a
   number, from `lindera build --user` or from loading a `.csv` user
   dictionary, name the row's CSV line (`at line 1`). Before, they counted

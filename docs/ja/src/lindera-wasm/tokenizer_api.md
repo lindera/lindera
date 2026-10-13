@@ -67,7 +67,7 @@ builder.setDictionaryInstance(dictionary);
 
 #### `setUserDictionaryInstance(userDictionary)`
 
-読み込み済みのユーザー辞書インスタンスを設定します。`loadUserDictionaryFromBytes()`（CSV）または `loadUserDictionaryBinFromBytes()`（ビルド済み `.bin`）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。ユーザー辞書は、`setDictionary()` と `setDictionaryInstance()` のどちらで設定した辞書にも適用されます。
+読み込み済みのユーザー辞書インスタンスを設定します。`loadUserDictionaryFromBytesFor()` か `loadUserDictionaryFromBytes()`（CSV）、または `loadUserDictionaryBinFromBytes()`（ビルド済み `.bin`）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。ユーザー辞書は、`setDictionary()` と `setDictionaryInstance()` のどちらで設定した辞書にも適用されます。
 
 - **パラメータ**: `userDictionary` (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト
 - **戻り値**: `TokenizerBuilder`
@@ -291,6 +291,15 @@ CSV バイト列（UTF-8）からユーザー辞書をビルドします。バ�
   - `metadata` (Metadata) -- 組み合わせるシステム辞書のメタデータ（例: `dictionary.metadata`）
 - **戻り値**: `UserDictionary`
 
+### `loadUserDictionaryFromBytesFor(csv, dictionary)`
+
+読み込み済みのシステム辞書に合わせて、CSV バイト列（UTF-8）からユーザー辞書をビルドします。CSV はその辞書のメタデータでビルドし、接続コスト行列と照らして確認するので、文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を示すエラーになります。辞書は借用するだけで、その後も使えます。
+
+- **パラメータ**:
+  - `csv` (Uint8Array) -- ユーザー辞書 CSV の内容
+  - `dictionary` (Dictionary) -- 組み合わせるシステム辞書
+- **戻り値**: `UserDictionary`
+
 ### `loadUserDictionaryBinFromBytes(bytes)`
 
 ビルド済みユーザー辞書（`lindera build --user` の出力）をバイト列から読み込みます。
@@ -379,4 +388,5 @@ Python API との一貫性のため、すべてのメソッドは snake\_case �
 | `loadDictionary()` | `load_dictionary()` |
 | `loadDictionaryFromBytes()` | `load_dictionary_from_bytes()` |
 | `loadUserDictionaryFromBytes()` | `load_user_dictionary_from_bytes()` |
+| `loadUserDictionaryFromBytesFor()` | `load_user_dictionary_from_bytes_for()` |
 | `loadUserDictionaryBinFromBytes()` | `load_user_dictionary_bin_from_bytes()` |

@@ -28,40 +28,47 @@ print(dictionary.metadata_encoding())  # 例: "UTF-8"
 metadata = dictionary.metadata()       # Metadata オブジェクト全体
 ```
 
-これは、システム辞書と同じメタデータ（スキーマ、エンコーディングなど）を
-共有する必要があるユーザー辞書を読み込む際に便利です。
+ユーザー辞書は、組み合わせるシステム辞書と同じメタデータ（スキーマ、
+エンコーディングなど）を共有する必要があります。`load_user_dictionary_for` は
+システム辞書を受け取り、そのメタデータを使います。
 [`lindera-python/examples/tokenize_with_userdict.py`](https://github.com/lindera/lindera/blob/main/lindera-python/examples/tokenize_with_userdict.py)
-を参照してください：
-
-```python
-from lindera import Tokenizer, load_dictionary, load_user_dictionary
-
-dictionary = load_dictionary("embedded://ipadic")
-metadata = dictionary.metadata()
-user_dictionary = load_user_dictionary("/path/to/user_dictionary.csv", metadata)
-
-tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dictionary)
-```
+と[ユーザー辞書](#ユーザー辞書)を参照してください。
 
 ### ユーザー辞書
 
-ユーザー辞書はシステム辞書にカスタム語彙を追加します。
+ユーザー辞書はシステム辞書にカスタム語彙を追加します。組み合わせるシステム辞書に
+合わせて読み込みます：
+
+```python
+from lindera import load_dictionary, load_user_dictionary_for
+
+dictionary = load_dictionary("/path/to/ipadic")
+user_dict = load_user_dictionary_for("/path/to/user_dictionary.csv", dictionary)
+```
+
+`.csv` はシステム辞書のメタデータでビルドし、ビルドしながら接続コスト行列と
+照らして確認します。文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を
+示す `ValueError` になります（[文脈 ID](../concepts/user_dictionary.md#文脈-id)
+を参照）。`.bin` はビルドされたとおりに読み込みます。
+
+`load_user_dictionary(uri, metadata)` は、メタデータだけでユーザー辞書を
+読み込みます。この方法で読み込んだ `.csv` はシステム辞書と組み合わせるときに
+確認し、エラーは見出し語をその単語 ID で示します：
 
 ```python
 from lindera import load_user_dictionary, Metadata
 
 metadata = Metadata()
-user_dict = load_user_dictionary("/path/to/user_dictionary", metadata)
+user_dict = load_user_dictionary("/path/to/user_dictionary.csv", metadata)
 ```
 
 トークナイザーのビルド時にユーザー辞書を渡します：
 
 ```python
-from lindera import Tokenizer, load_dictionary, load_user_dictionary, Metadata
+from lindera import Tokenizer, load_dictionary, load_user_dictionary_for
 
 dictionary = load_dictionary("/path/to/ipadic")
-metadata = Metadata()
-user_dict = load_user_dictionary("/path/to/user_dictionary", metadata)
+user_dict = load_user_dictionary_for("/path/to/user_dictionary.csv", dictionary)
 
 tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dict)
 ```
@@ -74,7 +81,7 @@ from lindera import TokenizerBuilder
 tokenizer = (
     TokenizerBuilder()
     .set_dictionary("/path/to/ipadic")
-    .set_user_dictionary("/path/to/user_dictionary")
+    .set_user_dictionary("/path/to/user_dictionary.csv")
     .build()
 )
 ```

@@ -1111,7 +1111,13 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
   読み込む `.csv` のユーザー辞書と、Rust API に新しく加わった
   `load_user_dictionary_for` で読み込むユーザー辞書も、システム辞書に合わせて
   ビルドするときに同じように確認し、CSV の行番号と表層形を示します
-  （[#1187](https://github.com/lindera/lindera/issues/1187)）。
+  （[#1187](https://github.com/lindera/lindera/issues/1187)）。各言語バインディングにも、
+  読み込み済みのシステム辞書に合わせてユーザー辞書を読み込む関数が加わりました。
+  Python・Ruby の `load_user_dictionary_for`、Node.js の `loadUserDictionaryFor`、
+  PHP の `Lindera\Dictionary::loadUserFor`、WebAssembly の
+  `loadUserDictionaryFromBytesFor` です
+  （[#1193](https://github.com/lindera/lindera/issues/1193)）。メタデータを受け取る
+  これまでの関数は変わりません。
 - ユーザー辞書の行のコストや文脈 ID が数値でないときのエラーは、
   `lindera build --user` でも `.csv` のユーザー辞書の読み込みでも、その行の
   CSV の行番号を示します（`at line 1`）。これまでは、表層形の順に並べた行を

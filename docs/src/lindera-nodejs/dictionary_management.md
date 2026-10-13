@@ -32,23 +32,40 @@ console.log(metadata.defaultWordCost);
 
 ### User Dictionaries
 
-User dictionaries add custom vocabulary on top of a system dictionary.
+User dictionaries add custom vocabulary on top of a system dictionary. Load
+one for the system dictionary it is used with:
+
+```javascript
+const { loadDictionary, loadUserDictionaryFor } = require("lindera");
+
+const dictionary = loadDictionary("/path/to/ipadic");
+const userDict = loadUserDictionaryFor("/path/to/user_dictionary.csv", dictionary);
+```
+
+A `.csv` is built with the system dictionary's metadata and checked against
+its connection matrix as it is built: a row whose context ID lies outside the
+matrix throws an error that names its CSV line and surface (see
+[Context IDs](../concepts/user_dictionary.md#context-ids)). A `.bin` is loaded
+as it was built.
+
+`loadUserDictionary(uri, metadata)` loads a user dictionary with metadata
+only. A `.csv` loaded this way is checked when it is combined with the system
+dictionary, and the error names the entry by its word id:
 
 ```javascript
 const { loadUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
-const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
+const userDict = loadUserDictionary("/path/to/user_dictionary.csv", metadata);
 ```
 
 Pass the user dictionary when building a tokenizer:
 
 ```javascript
-const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera");
+const { Tokenizer, loadDictionary, loadUserDictionaryFor } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
-const metadata = new Metadata();
-const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
+const userDict = loadUserDictionaryFor("/path/to/user_dictionary.csv", dictionary);
 
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 ```
@@ -60,7 +77,7 @@ const { TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
 builder.setDictionary("/path/to/ipadic");
-builder.setUserDictionary("/path/to/user_dictionary");
+builder.setUserDictionary("/path/to/user_dictionary.csv");
 const tokenizer = builder.build();
 ```
 

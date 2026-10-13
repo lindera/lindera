@@ -36,7 +36,7 @@ A user dictionary built from CSV together with its system dictionary is checked 
 
 - `lindera build --user` when `--system-dict` names the system dictionary (`DictionaryBuilder::with_system_matrix` in the Rust API; see [Context ID check](../lindera-cli/commands.md#context-id-check))
 - a `.csv` user dictionary that the configuration names (`Segmenter::from_config`, `TokenizerBuilder`), that `lindera tokenize --user-dict` names, or that the `TokenizerBuilder` of the Python, Node.js, Ruby and PHP bindings is given by path
-- `load_user_dictionary_for` in the Rust API, which loads a user dictionary for a loaded system dictionary
+- the loaders that load a user dictionary for a loaded system dictionary: `load_user_dictionary_for` in the Rust API, Python and Ruby, `loadUserDictionaryFor` in Node.js, `Lindera\Dictionary::loadUserFor` in PHP, and `loadUserDictionaryFromBytesFor` in WebAssembly
 
 For example, with a `userdic.csv` whose first row lies inside IPADIC's matrix and whose second row has the left context ID 60000:
 

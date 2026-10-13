@@ -125,7 +125,7 @@ All classes live in the `Lindera` namespace; the extension registers no function
 | `Lindera\Tokenizer` | Morphological analyzer |
 | `Lindera\Token` | Analysis result token |
 | `Lindera\NbestResult` | N-best tokenization result |
-| `Lindera\Dictionary` | Morphological dictionary: `load()`, `loadUser()`, `build()`, `buildUser()`, `version()` |
+| `Lindera\Dictionary` | Morphological dictionary: `load()`, `loadUser()`, `loadUserFor()`, `build()`, `buildUser()`, `version()` |
 | `Lindera\UserDictionary` | User-defined dictionary |
 | `Lindera\Mode` | Tokenization mode |
 | `Lindera\Penalty` | Decompose mode penalty |

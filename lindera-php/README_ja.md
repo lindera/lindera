@@ -127,7 +127,7 @@ foreach ($results as $result) {
 | `Lindera\Tokenizer` | 形態素解析器 |
 | `Lindera\Token` | 解析結果のトークン |
 | `Lindera\NbestResult` | N-Best トークナイズ結果 |
-| `Lindera\Dictionary` | 形態素辞書: `load()`、`loadUser()`、`build()`、`buildUser()`、`version()` |
+| `Lindera\Dictionary` | 形態素辞書: `load()`、`loadUser()`、`loadUserFor()`、`build()`、`buildUser()`、`version()` |
 | `Lindera\UserDictionary` | ユーザー定義辞書 |
 | `Lindera\Mode` | トークナイズモード |
 | `Lindera\Penalty` | Decompose モードのペナルティ |

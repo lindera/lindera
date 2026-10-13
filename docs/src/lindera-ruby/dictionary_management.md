@@ -22,14 +22,32 @@ dictionary = Lindera.load_dictionary('embedded://ipadic')
 
 ### User Dictionaries
 
-User dictionaries add custom vocabulary on top of a system dictionary.
+User dictionaries add custom vocabulary on top of a system dictionary. Load
+one for the system dictionary it is used with:
+
+```ruby
+require 'lindera'
+
+dictionary = Lindera.load_dictionary('/path/to/ipadic')
+user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
+```
+
+A `.csv` is built with the system dictionary's metadata and checked against
+its connection matrix as it is built: a row whose context ID lies outside the
+matrix raises a `RuntimeError` that names its CSV line and surface (see
+[Context IDs](../concepts/user_dictionary.md#context-ids)). A `.bin` is loaded
+as it was built.
+
+`Lindera.load_user_dictionary(uri, metadata)` loads a user dictionary with
+metadata only. A `.csv` loaded this way is checked when it is combined with
+the system dictionary, and the error names the entry by its word id:
 
 ```ruby
 require 'lindera'
 
 dictionary = Lindera.load_dictionary('/path/to/ipadic')
 metadata = dictionary.metadata
-user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary', metadata)
+user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary.csv', metadata)
 ```
 
 Pass the user dictionary when building a tokenizer:
@@ -38,8 +56,7 @@ Pass the user dictionary when building a tokenizer:
 require 'lindera'
 
 dictionary = Lindera.load_dictionary('/path/to/ipadic')
-metadata = dictionary.metadata
-user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary', metadata)
+user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
 
 tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
 ```
@@ -51,7 +68,7 @@ require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
 builder.set_dictionary('/path/to/ipadic')
-builder.set_user_dictionary('/path/to/user_dictionary')
+builder.set_user_dictionary('/path/to/user_dictionary.csv')
 tokenizer = builder.build
 ```
 

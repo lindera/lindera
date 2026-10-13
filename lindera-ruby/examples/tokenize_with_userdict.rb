@@ -7,11 +7,9 @@ project_root = File.expand_path('..', __dir__)
 # Load the dictionary
 dictionary = Lindera.load_dictionary('embedded://ipadic')
 
-metadata = dictionary.metadata
-
-# Load the user dictionary
+# Load the user dictionary for the dictionary
 user_dictionary_path = File.join(project_root, 'resources', 'ipadic_simple_userdic.csv')
-user_dictionary = Lindera.load_user_dictionary(user_dictionary_path, metadata)
+user_dictionary = Lindera.load_user_dictionary_for(user_dictionary_path, dictionary)
 
 # Create a tokenizer
 tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dictionary)

@@ -28,39 +28,48 @@ print(dictionary.metadata_encoding())  # e.g. "UTF-8"
 metadata = dictionary.metadata()       # the full Metadata object
 ```
 
-This is useful for loading a user dictionary that must share the same
-metadata (schema, encoding, etc.) as the system dictionary it augments, as in
-[`lindera-python/examples/tokenize_with_userdict.py`](https://github.com/lindera/lindera/blob/main/lindera-python/examples/tokenize_with_userdict.py):
-
-```python
-from lindera import Tokenizer, load_dictionary, load_user_dictionary
-
-dictionary = load_dictionary("embedded://ipadic")
-metadata = dictionary.metadata()
-user_dictionary = load_user_dictionary("/path/to/user_dictionary.csv", metadata)
-
-tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dictionary)
-```
+A user dictionary must share the metadata (schema, encoding, etc.) of the
+system dictionary it augments. `load_user_dictionary_for` takes the system
+dictionary and uses its metadata, as in
+[`lindera-python/examples/tokenize_with_userdict.py`](https://github.com/lindera/lindera/blob/main/lindera-python/examples/tokenize_with_userdict.py)
+(see [User Dictionaries](#user-dictionaries)).
 
 ### User Dictionaries
 
-User dictionaries add custom vocabulary on top of a system dictionary.
+User dictionaries add custom vocabulary on top of a system dictionary. Load
+one for the system dictionary it is used with:
+
+```python
+from lindera import load_dictionary, load_user_dictionary_for
+
+dictionary = load_dictionary("/path/to/ipadic")
+user_dict = load_user_dictionary_for("/path/to/user_dictionary.csv", dictionary)
+```
+
+A `.csv` is built with the system dictionary's metadata and checked against
+its connection matrix as it is built: a row whose context ID lies outside the
+matrix raises a `ValueError` that names its CSV line and surface (see
+[Context IDs](../concepts/user_dictionary.md#context-ids)). A `.bin` is loaded
+as it was built.
+
+`load_user_dictionary(uri, metadata)` loads a user dictionary with metadata
+only. A `.csv` loaded this way is checked when it is combined with the system
+dictionary, and the error names the entry by its word id:
 
 ```python
 from lindera import load_user_dictionary, Metadata
 
 metadata = Metadata()
-user_dict = load_user_dictionary("/path/to/user_dictionary", metadata)
+user_dict = load_user_dictionary("/path/to/user_dictionary.csv", metadata)
 ```
 
 Pass the user dictionary when building a tokenizer:
 
 ```python
-from lindera import Tokenizer, load_dictionary, load_user_dictionary, Metadata
+from lindera import Tokenizer, load_dictionary, load_user_dictionary_for
 
 dictionary = load_dictionary("/path/to/ipadic")
-metadata = Metadata()
-user_dict = load_user_dictionary("/path/to/user_dictionary", metadata)
+user_dict = load_user_dictionary_for("/path/to/user_dictionary.csv", dictionary)
 
 tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dict)
 ```
@@ -73,7 +82,7 @@ from lindera import TokenizerBuilder
 tokenizer = (
     TokenizerBuilder()
     .set_dictionary("/path/to/ipadic")
-    .set_user_dictionary("/path/to/user_dictionary")
+    .set_user_dictionary("/path/to/user_dictionary.csv")
     .build()
 )
 ```

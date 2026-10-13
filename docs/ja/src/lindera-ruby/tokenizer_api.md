@@ -54,7 +54,7 @@ builder.set_dictionary('/path/to/dictionary')
 ユーザー辞書の URI を設定します。
 
 ```ruby
-builder.set_user_dictionary('/path/to/user_dictionary')
+builder.set_user_dictionary('/path/to/user_dictionary.csv')
 ```
 
 #### `set_keep_whitespace(keep)`
@@ -163,8 +163,7 @@ ko_tokenizer = Lindera::Tokenizer.new(Lindera.load_dictionary('embedded://ko-dic
 
 ```ruby
 dictionary = Lindera.load_dictionary('embedded://ipadic')
-metadata = dictionary.metadata
-user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary', metadata)
+user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
 tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
 ```
 

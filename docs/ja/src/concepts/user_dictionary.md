@@ -36,7 +36,7 @@ CSV のユーザー辞書をシステム辞書と一緒にビルドするとき�
 
 - `--system-dict` でシステム辞書を指定した `lindera build --user`（Rust API では `DictionaryBuilder::with_system_matrix`。[文脈 ID の確認](../lindera-cli/commands.md#文脈-id-の確認) を参照）
 - 設定（`Segmenter::from_config`、`TokenizerBuilder`）や `lindera tokenize --user-dict` で指定した `.csv` のユーザー辞書と、Python・Node.js・Ruby・PHP のバインディングの `TokenizerBuilder` にパスで渡した `.csv` のユーザー辞書
-- Rust API の `load_user_dictionary_for`（読み込み済みのシステム辞書に合わせてユーザー辞書を読み込みます）
+- 読み込み済みのシステム辞書に合わせてユーザー辞書を読み込む関数（Rust API・Python・Ruby の `load_user_dictionary_for`、Node.js の `loadUserDictionaryFor`、PHP の `Lindera\Dictionary::loadUserFor`、WebAssembly の `loadUserDictionaryFromBytesFor`）
 
 たとえば、1 行目が IPADIC の行列の範囲内にあり、2 行目の左文脈 ID が 60000 の `userdic.csv` では次のようになります。
 

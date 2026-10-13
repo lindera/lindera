@@ -24,7 +24,23 @@ $dictionary = Lindera\Dictionary::load('embedded://ipadic');
 
 ### ユーザー辞書
 
-ユーザー辞書はシステム辞書にカスタム語彙を追加します。`Lindera\Dictionary::loadUser()` を使用して読み込みます。
+ユーザー辞書はシステム辞書にカスタム語彙を追加します。`Lindera\Dictionary::loadUserFor()` を使用して、組み合わせるシステム辞書に合わせて読み込みます。
+
+```php
+<?php
+
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+$userDictionary = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
+```
+
+`.csv` はシステム辞書のメタデータでビルドし、ビルドしながら接続コスト行列と
+照らして確認します。文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を
+示す `ValueError` になります（[文脈 ID](../concepts/user_dictionary.md#文脈-id)
+を参照）。`.bin` はビルドされたとおりに読み込みます。
+
+`Lindera\Dictionary::loadUser($uri, $metadata)` は、メタデータだけでユーザー辞書を
+読み込みます。この方法で読み込んだ `.csv` はシステム辞書と組み合わせるときに
+確認し、エラーは見出し語をその単語 ID で示します：
 
 ```php
 <?php
@@ -40,8 +56,7 @@ $userDictionary = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $
 <?php
 
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
-$metadata = $dictionary->metadata();
-$userDictionary = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $metadata);
+$userDictionary = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
 
 $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
 ```

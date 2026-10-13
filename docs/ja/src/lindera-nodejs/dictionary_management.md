@@ -32,23 +32,39 @@ console.log(metadata.defaultWordCost);
 
 ### ユーザー辞書
 
-ユーザー辞書はシステム辞書にカスタム語彙を追加します。
+ユーザー辞書はシステム辞書にカスタム語彙を追加します。組み合わせるシステム辞書に
+合わせて読み込みます：
+
+```javascript
+const { loadDictionary, loadUserDictionaryFor } = require("lindera");
+
+const dictionary = loadDictionary("/path/to/ipadic");
+const userDict = loadUserDictionaryFor("/path/to/user_dictionary.csv", dictionary);
+```
+
+`.csv` はシステム辞書のメタデータでビルドし、ビルドしながら接続コスト行列と
+照らして確認します。文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を
+示すエラーになります（[文脈 ID](../concepts/user_dictionary.md#文脈-id)
+を参照）。`.bin` はビルドされたとおりに読み込みます。
+
+`loadUserDictionary(uri, metadata)` は、メタデータだけでユーザー辞書を
+読み込みます。この方法で読み込んだ `.csv` はシステム辞書と組み合わせるときに
+確認し、エラーは見出し語をその単語 ID で示します：
 
 ```javascript
 const { loadUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
-const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
+const userDict = loadUserDictionary("/path/to/user_dictionary.csv", metadata);
 ```
 
 トークナイザーのビルド時にユーザー辞書を渡します：
 
 ```javascript
-const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera");
+const { Tokenizer, loadDictionary, loadUserDictionaryFor } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
-const metadata = new Metadata();
-const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
+const userDict = loadUserDictionaryFor("/path/to/user_dictionary.csv", dictionary);
 
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 ```
@@ -60,7 +76,7 @@ const { TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
 builder.setDictionary("/path/to/ipadic");
-builder.setUserDictionary("/path/to/user_dictionary");
+builder.setUserDictionary("/path/to/user_dictionary.csv");
 const tokenizer = builder.build();
 ```
 
