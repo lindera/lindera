@@ -575,6 +575,26 @@ export declare function loadDictionary(uri: string): Dictionary
 export declare function loadUserDictionary(uri: string, metadata: JsMetadata): UserDictionary
 
 /**
+ * Loads a user dictionary for a loaded system dictionary.
+ *
+ * A `.csv` is built with the system dictionary's metadata and checked
+ * against its connection matrix as it is built, so a row whose context ID
+ * lies outside the matrix fails with an error that names its CSV line and
+ * surface. A `.bin` is loaded as it was built; the `Tokenizer` checks it
+ * when it is built with the system dictionary.
+ *
+ * # Arguments
+ *
+ * * `uri` - URI or path of the `.csv` or `.bin` user dictionary.
+ * * `dictionary` - The system dictionary the user dictionary is used with.
+ *
+ * # Returns
+ *
+ * A loaded UserDictionary object.
+ */
+export declare function loadUserDictionaryFor(uri: string, dictionary: Dictionary): UserDictionary
+
+/**
  * Options for creating a Metadata instance.
  *
  * All fields are optional. When omitted, default values are used.

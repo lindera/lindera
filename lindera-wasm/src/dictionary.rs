@@ -170,6 +170,39 @@ pub fn load_user_dictionary_from_bytes(
     Ok(JsUserDictionary { inner: dict })
 }
 
+/// Builds a user dictionary from CSV bytes for a loaded system dictionary.
+///
+/// The CSV is built with the system dictionary's metadata, as
+/// `loadUserDictionaryFromBytes` builds it with the metadata passed, and is
+/// checked against the system dictionary's connection matrix as it is
+/// built: a row whose context ID lies outside the matrix fails with an error
+/// that names its CSV line and surface. The system dictionary is borrowed,
+/// so it can still be passed to `Tokenizer` or
+/// `TokenizerBuilder.setDictionaryInstance()` afterwards.
+///
+/// # Arguments
+///
+/// * `csv` - The user dictionary CSV content (UTF-8).
+/// * `dictionary` - The system dictionary the user dictionary is used with.
+///
+/// # Returns
+///
+/// The user dictionary, or an error if the CSV cannot be built or a row has
+/// a context ID outside the system dictionary's connection matrix.
+#[wasm_bindgen(js_name = "loadUserDictionaryFromBytesFor")]
+pub fn load_user_dictionary_from_bytes_for(
+    csv: &[u8],
+    dictionary: &JsDictionary,
+) -> Result<JsUserDictionary, JsValue> {
+    let system = &dictionary.inner;
+    let builder = DictionaryBuilder::new((*system.metadata).clone())
+        .with_system_matrix(&system.connection_cost_matrix);
+    let dict = builder
+        .build_user_dict_from_reader(csv)
+        .map_err(|e| JsValue::from_str(&format!("user_dict csv: {e:?}")))?;
+    Ok(JsUserDictionary { inner: dict })
+}
+
 /// Loads a prebuilt user dictionary (`.bin`) from bytes.
 ///
 /// The bytes are the output of `lindera build --user` (a serialized user
@@ -287,6 +320,52 @@ mod tests {
         let bin = include_bytes!("../../resources/user_dict/ipadic_simple_userdic.bin");
 
         let user_dict = load_user_dictionary_bin_from_bytes(bin).unwrap();
+        let tokenizer = Tokenizer::new(dict, None, Some(user_dict), None).unwrap();
+        let surfaces = tokenizer.tokenize_surfaces("東京スカイツリー").unwrap();
+        assert_eq!(surfaces, vec!["東京スカイツリー".to_string()]);
+    }
+
+    /// A CSV built for a loaded system dictionary is checked against its
+    /// connection matrix, and a row outside it is reported by its CSV line
+    /// and surface (#1193). Line 1 lies inside IPADIC's 1316 x 1316 matrix;
+    /// line 2 has the context IDs 60000.
+    #[cfg(all(target_arch = "wasm32", feature = "embed-ipadic"))]
+    #[wasm_bindgen_test]
+    fn test_user_dictionary_from_csv_bytes_for_names_the_csv_line_and_surface() {
+        use super::{load_dictionary, load_user_dictionary_from_bytes_for};
+
+        let dict = load_dictionary("embedded://ipadic").unwrap();
+        let csv = "東京タワー,1288,1288,-1000,名詞,固有名詞,一般,*,*,*,\
+                   東京タワー,トウキョウタワー,トウキョウタワー\n\
+                   東京スカイツリー,60000,60000,-1000,名詞,固有名詞,一般,*,*,*,\
+                   東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー\n";
+
+        let err = match load_user_dictionary_from_bytes_for(csv.as_bytes(), &dict) {
+            Ok(_) => panic!("a row outside the matrix must be rejected"),
+            Err(err) => err.as_string().unwrap_or_default(),
+        };
+        assert!(
+            err.contains("line 2 (surface: '東京スカイツリー')"),
+            "the error must name the CSV line and surface: {err}"
+        );
+        assert!(
+            err.contains("left context id 60000 is out of range"),
+            "the error must name the context id: {err}"
+        );
+    }
+
+    /// A CSV inside the matrix loads for the system dictionary, which stays
+    /// usable for the tokenizer (#1193).
+    #[cfg(all(target_arch = "wasm32", feature = "embed-ipadic"))]
+    #[wasm_bindgen_test]
+    fn test_user_dictionary_from_csv_bytes_for_changes_tokenization() {
+        use super::{load_dictionary, load_user_dictionary_from_bytes_for};
+        use crate::tokenizer::Tokenizer;
+
+        let dict = load_dictionary("embedded://ipadic").unwrap();
+        let csv = "東京スカイツリー,カスタム名詞,トウキョウスカイツリー\n";
+
+        let user_dict = load_user_dictionary_from_bytes_for(csv.as_bytes(), &dict).unwrap();
         let tokenizer = Tokenizer::new(dict, None, Some(user_dict), None).unwrap();
         let surfaces = tokenizer.tokenize_surfaces("東京スカイツリー").unwrap();
         assert_eq!(surfaces, vec!["東京スカイツリー".to_string()]);

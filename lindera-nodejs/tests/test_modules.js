@@ -14,6 +14,7 @@ describe("Module structure", () => {
   it("should export core functions", () => {
     assert.strictEqual(typeof lindera.loadDictionary, "function");
     assert.strictEqual(typeof lindera.loadUserDictionary, "function");
+    assert.strictEqual(typeof lindera.loadUserDictionaryFor, "function");
     assert.strictEqual(typeof lindera.buildDictionary, "function");
     assert.strictEqual(typeof lindera.buildUserDictionary, "function");
     assert.strictEqual(typeof lindera.version, "function");

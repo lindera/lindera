@@ -26,6 +26,7 @@ class TestModules < Minitest::Test
   def test_module_functions
     assert Lindera.respond_to?(:load_dictionary)
     assert Lindera.respond_to?(:load_user_dictionary)
+    assert Lindera.respond_to?(:load_user_dictionary_for)
     assert Lindera.respond_to?(:build_dictionary)
     assert Lindera.respond_to?(:build_user_dictionary)
     assert Lindera.respond_to?(:version)
