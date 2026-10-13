@@ -1171,6 +1171,13 @@ quoted column with a comma in it became several columns and shifted the
 columns after it: in 19,955 rows of mecab-jieba's training seed, whose
 quoted English definition is followed by four more columns, <code>%F[6]</code> to
 <code>%F[9]</code> were pieces of the definition.</li>
+<li>A <code>%F[n]</code>, <code>%L[n]</code> or <code>%R[n]</code> without <code>?</code> that read past the last column
+of a feature read <code>*</code> there, so the template still gave a feature, such
+as <code>U09:*</code>, which every feature with fewer columns shared. MeCab's
+learner skips the template. The <code>unk.def</code> features of mecab-jieba have
+five columns, and its <code>feature.def</code> reads <code>%F[6]</code> to <code>%F[9]</code>, so its 11
+unknown-word labels had four features, <code>U06:*</code> to <code>U09:*</code>, that no seed
+row had.</li>
 </ul>
 <p>v7.0.0 trains as MeCab's learner does (see
 <a href="development/training_pipeline.html#how-training-works">How training works</a>):</p>
@@ -1208,6 +1215,14 @@ a quoted column is one column, spaces and tabs before a column are
 skipped, and the text from a closing quote to the next <code>,</code> is dropped.
 The rewrite rules join the columns they rewrite with <code>,</code>, quoting a
 column that contains <code>,</code> or <code>"</code>, as MeCab does.</li>
+<li>A template that reads past the last column of a feature gives no feature
+for it, with or without <code>?</code>, as in MeCab's learner (see
+<a href="development/training_pipeline.html#5-feature-template-featuredef">Feature Template</a>).
+In the training files of mecab-ipadic, mecab-ipadic-neologd,
+unidic-mecab, mecab-ko-dic, mecab-jieba and <code>resources/training/</code>, only
+the <code>unk.def</code> lines of mecab-jieba have features that a template reads
+past the last column of, so only a model trained on mecab-jieba's files
+changes.</li>
 </ul>
 <p>Training takes longer, because every lattice now has the seed words. It is
 slower than MeCab's learner, and it can stop at <code>--max-iterations</code>

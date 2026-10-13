@@ -1067,6 +1067,12 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 素性を <code>,</code> で分割していました。<code>,</code> を含む引用付きの列は複数の列になり、後ろの列が
 ずれていました。英語の定義を引用符で囲み、その後ろに 4 つの列を持つ mecab-jieba
 の学習用の種辞書では、19,955 行で <code>%F[6]</code>〜<code>%F[9]</code> が定義の断片になっていました。</li>
+<li><code>?</code> のない <code>%F[n]</code>・<code>%L[n]</code>・<code>%R[n]</code> が素性の最後の列より後ろを読むと、そこを
+<code>*</code> として読んだため、テンプレートは <code>U09:*</code> のような素性を作り、列の少ない素性
+がすべてそれを共有していました。MeCab の学習器はそのテンプレートを飛ばします。
+mecab-jieba の <code>unk.def</code> の素性は 5 列で、その <code>feature.def</code> は <code>%F[6]</code>〜
+<code>%F[9]</code> を読むため、11 個の未知語のラベルは、どの種辞書の行も持たない 4 つの
+素性 <code>U06:*</code>〜<code>U09:*</code> を持っていました。</li>
 </ul>
 <p>v7.0.0 は MeCab の学習器と同じく学習します
 （<a href="development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。</p>
@@ -1101,6 +1107,13 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 引用付きの列は 1 つの列で、列の前の空白とタブは読み飛ばし、閉じる引用符から
 次の <code>,</code> までのテキストは捨てます。書き換え規則は、書き換えた列を <code>,</code> でつなぎ、
 MeCab と同じく <code>,</code> か <code>"</code> を含む列を引用符で囲みます。</li>
+<li>素性の最後の列より後ろを読むテンプレートは、<code>?</code> の有無にかかわらず、MeCab の
+学習器と同じく何も作りません
+（<a href="development/training_pipeline.html#5-%E7%B4%A0%E6%80%A7%E3%83%86%E3%83%B3%E3%83%97%E3%83%AC%E3%83%BC%E3%83%88-featuredef">素性テンプレート</a>を参照）。
+mecab-ipadic・mecab-ipadic-neologd・unidic-mecab・mecab-ko-dic・mecab-jieba・
+<code>resources/training/</code> の学習用のファイルのうち、テンプレートが最後の列より後ろを
+読む素性があるのは mecab-jieba の <code>unk.def</code> の行だけで、変わるのは mecab-jieba
+のファイルから学習したモデルだけです。</li>
 </ul>
 <p>すべてのラティスに種辞書の語が入るため、学習には以前より時間がかかります。学習は
 MeCab の学習器より遅く、収束する前に <code>--max-iterations</code> で

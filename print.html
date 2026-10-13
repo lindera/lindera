@@ -1071,7 +1071,7 @@ tokenizer
 <h3 id="corpus--example--word"><a class="header" href="#corpus--example--word">Corpus / Example / Word</a></h3>
 <p>Represent annotated training data. <code>Word</code> pairs a surface form with its (comma-joined) feature string. <code>Example</code> is one training sentence, built from a <code>Vec&lt;Word&gt;</code> whose surfaces are concatenated to reconstruct the original sentence text. <code>Corpus</code> is a collection of <code>Example</code>s; <code>Corpus::from_reader</code> parses tab-separated <code>surface&lt;TAB&gt;features</code> lines, treating blank lines or literal <code>EOS</code> lines as sentence boundaries.</p>
 <h3 id="featureextractor"><a class="header" href="#featureextractor">FeatureExtractor</a></h3>
-<p>Parses MeCab-compatible feature templates and manages the mapping from generated feature strings to interned, <code>NonZeroU32</code> feature IDs. Supported template placeholders are <code>%F[n]</code> / <code>%F?[n]</code> (feature field at index <code>n</code>, the <code>?</code> form skipped when the value is <code>*</code>), <code>%t</code> (character category), <code>%w</code> (surface form, unigram only), <code>%u</code> / <code>%l</code> / <code>%r</code> (full rewritten unigram/left/right feature string), and <code>%L[n]</code> / <code>%L?[n]</code> / <code>%R[n]</code> / <code>%R?[n]</code> for bigram left/right context fields. <code>extract_unigram_feature_ids[_with_ctx]</code>, <code>extract_left_feature_ids[_with_ctx]</code>, and <code>extract_right_feature_ids[_with_ctx]</code> apply the parsed templates to a feature vector (plus, for bigram extraction, an optional <code>TemplateContext</code> carrying surface/ufeature/lfeature/rfeature) and return the resulting feature IDs, creating new IDs on first use.</p>
+<p>Parses MeCab-compatible feature templates and manages the mapping from generated feature strings to interned, <code>NonZeroU32</code> feature IDs. Supported template placeholders are <code>%F[n]</code> / <code>%F?[n]</code> (feature field at index <code>n</code>, the <code>?</code> form skipped when the value is <code>*</code>), <code>%t</code> (character category), <code>%w</code> (surface form, unigram only), <code>%u</code> / <code>%l</code> / <code>%r</code> (full rewritten unigram/left/right feature string), and <code>%L[n]</code> / <code>%L?[n]</code> / <code>%R[n]</code> / <code>%R?[n]</code> for bigram left/right context fields. A template whose <code>%F[n]</code>, <code>%L[n]</code> or <code>%R[n]</code> reads past the last column gives no feature, with or without <code>?</code>, as in MeCab's learner. <code>extract_unigram_feature_ids[_with_ctx]</code>, <code>extract_left_feature_ids[_with_ctx]</code>, and <code>extract_right_feature_ids[_with_ctx]</code> apply the parsed templates to a feature vector (plus, for bigram extraction, an optional <code>TemplateContext</code> carrying surface/ufeature/lfeature/rfeature) and return the resulting feature IDs, creating new IDs on first use.</p>
 <h3 id="dictionaryrewriter"><a class="header" href="#dictionaryrewriter">DictionaryRewriter</a></h3>
 <p>Implements MeCab's 3-section <code>rewrite.def</code> format: <code>[unigram rewrite]</code>, <code>[left rewrite]</code>, and <code>[right rewrite]</code> sections, each holding an ordered list of <code>pattern&lt;TAB&gt;replacement</code> rules built into a <code>FeatureRewriter</code> prefix trie (via the internal <code>FeatureRewriterBuilder</code>). <code>DictionaryRewriter::from_reader</code> parses all three sections (falling back to treating an unsectioned file as legacy right-rewrite-only content, for backward compatibility with older Lindera <code>rewrite.def</code> files). <code>rewrite()</code> applies all three rewriters to a feature string and returns <code>(ufeature, lfeature, rfeature)</code>, passing a section through unchanged when no rule matches. As in MeCab, the feature and the pattern and replacement of each rule are split into columns with the rules of MeCab's <code>tokenizeCSV</code> (the crate-private <code>feature_csv::split_feature</code>), so a quoted column with <code>,</code> in it is one column, and <code>rewrite()</code> joins the rewritten columns with <code>,</code>, quoting a column that contains <code>,</code> or <code>"</code>. The trainer splits the three results the same way for the feature templates. (An earlier <code>rewrite_cached()</code> memoized per full feature string, but real lexicon features are unique per row, so the cache never hit and was removed — #975.)</p>
 <h3 id="trainer-1"><a class="header" href="#trainer-1">Trainer</a></h3>
@@ -10819,6 +10819,13 @@ quoted column with a comma in it became several columns and shifted the
 columns after it: in 19,955 rows of mecab-jieba's training seed, whose
 quoted English definition is followed by four more columns, <code>%F[6]</code> to
 <code>%F[9]</code> were pieces of the definition.</li>
+<li>A <code>%F[n]</code>, <code>%L[n]</code> or <code>%R[n]</code> without <code>?</code> that read past the last column
+of a feature read <code>*</code> there, so the template still gave a feature, such
+as <code>U09:*</code>, which every feature with fewer columns shared. MeCab's
+learner skips the template. The <code>unk.def</code> features of mecab-jieba have
+five columns, and its <code>feature.def</code> reads <code>%F[6]</code> to <code>%F[9]</code>, so its 11
+unknown-word labels had four features, <code>U06:*</code> to <code>U09:*</code>, that no seed
+row had.</li>
 </ul>
 <p>v7.0.0 trains as MeCab's learner does (see
 <a href="development/training_pipeline.html#how-training-works">How training works</a>):</p>
@@ -10856,6 +10863,14 @@ a quoted column is one column, spaces and tabs before a column are
 skipped, and the text from a closing quote to the next <code>,</code> is dropped.
 The rewrite rules join the columns they rewrite with <code>,</code>, quoting a
 column that contains <code>,</code> or <code>"</code>, as MeCab does.</li>
+<li>A template that reads past the last column of a feature gives no feature
+for it, with or without <code>?</code>, as in MeCab's learner (see
+<a href="development/training_pipeline.html#5-feature-template-featuredef">Feature Template</a>).
+In the training files of mecab-ipadic, mecab-ipadic-neologd,
+unidic-mecab, mecab-ko-dic, mecab-jieba and <code>resources/training/</code>, only
+the <code>unk.def</code> lines of mecab-jieba have features that a template reads
+past the last column of, so only a model trained on mecab-jieba's files
+changes.</li>
 </ul>
 <p>Training takes longer, because every lattice now has the seed words. It is
 slower than MeCab's learner, and it can stop at <code>--max-iterations</code>
@@ -11731,6 +11746,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </tbody></table>
 </div>
 <p>The fields of <code>%F[n]</code>, <code>%L[n]</code> and <code>%R[n]</code> are the columns of the rewritten features, split as described in <a href="development/training_pipeline.html#1-seed-lexicon-seedcsv">Seed Lexicon</a>. <code>%u</code>, <code>%l</code> and <code>%r</code> are the rewritten features as <code>rewrite.def</code> writes them, with a column that contains <code>,</code> or <code>"</code> quoted.</p>
+<p>A template that reads past the last column of a feature gives no feature for it, with or without <code>?</code>, as in MeCab's learner. For example, <code>UNIGRAM U06:%F[6]</code> gives nothing for the <code>unk.def</code> feature <code>n,*,*,*,*</code>, which has five columns. A bigram template gives nothing when either <code>%L[n]</code> or <code>%R[n]</code> reads past the last column.</p>
 <h3 id="6-feature-rewrite-rules-rewritedef"><a class="header" href="#6-feature-rewrite-rules-rewritedef">6. Feature Rewrite Rules (rewrite.def)</a></h3>
 <p>Feature normalization rules in MeCab-compatible 3-section format. Sections are separated by blank lines.</p>
 <pre><code class="language-text"># Section 1: Unigram rewrite rules

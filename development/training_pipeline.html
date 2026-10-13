@@ -306,6 +306,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </tbody></table>
 </div>
 <p>The fields of <code>%F[n]</code>, <code>%L[n]</code> and <code>%R[n]</code> are the columns of the rewritten features, split as described in <a href="#1-seed-lexicon-seedcsv">Seed Lexicon</a>. <code>%u</code>, <code>%l</code> and <code>%r</code> are the rewritten features as <code>rewrite.def</code> writes them, with a column that contains <code>,</code> or <code>"</code> quoted.</p>
+<p>A template that reads past the last column of a feature gives no feature for it, with or without <code>?</code>, as in MeCab's learner. For example, <code>UNIGRAM U06:%F[6]</code> gives nothing for the <code>unk.def</code> feature <code>n,*,*,*,*</code>, which has five columns. A bigram template gives nothing when either <code>%L[n]</code> or <code>%R[n]</code> reads past the last column.</p>
 <h3 id="6-feature-rewrite-rules-rewritedef"><a class="header" href="#6-feature-rewrite-rules-rewritedef">6. Feature Rewrite Rules (rewrite.def)</a></h3>
 <p>Feature normalization rules in MeCab-compatible 3-section format. Sections are separated by blank lines.</p>
 <pre><code class="language-text"># Section 1: Unigram rewrite rules
