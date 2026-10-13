@@ -280,9 +280,11 @@ impl FeatureExtractor {
     ///
     /// # Returns
     ///
-    /// The generated feature string, or `None` when a `?`-marked required
-    /// field is undefined (`*`, empty, or out of range), which means the
-    /// template does not apply to this entry.
+    /// The generated feature string, or `None` when the template does not
+    /// apply to this entry: a `?`-marked field is `*` or empty, or a
+    /// `%F[n]` / `%L[n]` / `%R[n]` reads past the last column, with or
+    /// without `?`. MeCab's learner skips the template in both cases
+    /// (`getIndex` in `feature_index.cpp`) (#1189).
     fn apply_parsed_template(
         template: &ParsedTemplate,
         features: &[&str],
@@ -305,13 +307,9 @@ impl FeatureExtractor {
         // Process captures in reverse order to maintain string positions
         for (range, feature_type) in template.captures.iter().rev() {
             let replacement = match feature_type {
-                FeatureType::Index(idx) => {
-                    if *idx >= features.len() {
-                        "*".to_string() // Default for out of bounds
-                    } else {
-                        features[*idx].to_string()
-                    }
-                }
+                // An index past the last column skips the template rather
+                // than reading as `*`, as MeCab's learner does (#1189).
+                FeatureType::Index(idx) => features.get(*idx)?.to_string(),
                 FeatureType::CharacterType => cate_id.to_string(),
                 FeatureType::SurfaceForm => ctx.surface.unwrap_or("").to_string(),
                 FeatureType::AllUnigramFeature => ctx.ufeature.unwrap_or("").to_string(),
@@ -383,8 +381,9 @@ impl FeatureExtractor {
     ///
     /// # Returns
     ///
-    /// The interned feature ids; templates whose `%F?` field is undefined are
-    /// skipped, so the result may be shorter than the template list.
+    /// The interned feature ids; templates whose `%F?` field is undefined or
+    /// that read past the last column are skipped, so the result may be
+    /// shorter than the template list.
     pub fn extract_unigram_feature_ids(
         &mut self,
         features: &[&str],
@@ -423,9 +422,10 @@ impl FeatureExtractor {
 
         let mut feature_ids = Vec::with_capacity(unigram_templates.len());
         for template in unigram_templates.iter() {
-            // A template whose `%F?` field is undefined is skipped entirely,
-            // so the result is shorter than the template list. The left/right
-            // variants below deliberately differ.
+            // A template whose `%F?` field is undefined or that reads past the
+            // last column is skipped entirely, so the result is shorter than
+            // the template list. The left/right variants below deliberately
+            // differ.
             if let Some(feature_str) = Self::apply_parsed_template(template, features, cate_id, ctx)
             {
                 feature_ids.push(Self::intern_feature_id(
@@ -701,16 +701,41 @@ mod tests {
         assert_eq!(fe.right_feature_ids.len(), 1);
     }
 
-    /// `%t` substitutes the character-category id, and out-of-range `%F[n]`
-    /// (without `?`) substitutes `*` rather than skipping the template.
+    /// `%t` substitutes the character-category id, and a template whose
+    /// `%F[n]` (without `?`) reads past the last column is skipped, as
+    /// MeCab's learner skips it, rather than reading the column as `*`
+    /// (#1189). One such index skips the template even when its other
+    /// indices are in range.
     #[test]
-    fn character_type_and_out_of_range_index_substitution() {
-        let mut fe = extractor(&["T:%t", "O:%F[9]"], &[]);
+    fn character_type_substitution_and_unigram_templates_past_the_last_column() {
+        let mut fe = extractor(&["T:%t", "O:%F[9]", "P:%F[0],%F[1]"], &[]);
 
         let ids = fe.extract_unigram_feature_ids(&features(&["名詞"]), 7);
 
-        assert_eq!(ids.len(), 2, "neither template is skipped");
-        assert_eq!(unigram_strings_in_id_order(&fe), vec!["T:7", "O:*"]);
+        assert_eq!(ids.len(), 1, "only T should survive");
+        assert_eq!(unigram_strings_in_id_order(&fe), vec!["T:7"]);
+    }
+
+    /// A `%L[n]` or `%R[n]` (without `?`) that reads past the last column
+    /// skips its template, which yields `None` in its slot as a `%L?` or
+    /// `%R?` does (#1189). The CRF uses a bigram feature only when both
+    /// sides are `Some`, so the feature is dropped, as MeCab's learner drops
+    /// the whole bigram template.
+    #[test]
+    fn left_and_right_templates_past_the_last_column_yield_none() {
+        let mut fe = extractor(&[], &[("L0:%L[0]", "R0:%R[0]"), ("L1:%L[1]", "R1:%R[1]")]);
+
+        let left = fe.extract_left_feature_ids(&features(&["名詞"]));
+        let right = fe.extract_right_feature_ids(&features(&["名詞"]));
+
+        assert_eq!(left.len(), 2, "index alignment with the template list");
+        assert!(left[0].is_some());
+        assert!(left[1].is_none(), "L1 reads past the last column");
+        assert_eq!(right.len(), 2);
+        assert!(right[0].is_some());
+        assert!(right[1].is_none(), "R1 reads past the last column");
+        assert_eq!(fe.left_feature_ids.len(), 1);
+        assert_eq!(fe.right_feature_ids.len(), 1);
     }
 
     /// The context meta-characters substitute the strings the caller supplies:

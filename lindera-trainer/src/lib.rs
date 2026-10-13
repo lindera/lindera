@@ -2263,3 +2263,42 @@ mod feature_column_tests {
         assert!(!unk_entry_accepts("n,*,*,*,shop,*", FEATURE));
     }
 }
+
+/// A feature template that reads past the last column of a label's feature
+/// gives the label no feature, as in MeCab's learner (#1189).
+#[cfg(test)]
+mod template_past_last_column_tests {
+    use std::io::Cursor;
+
+    use crate::feature_extractor::FeatureExtractor;
+    use crate::feature_rewriter::DictionaryRewriter;
+    use crate::label_feature_set;
+
+    #[test]
+    fn a_short_unk_def_feature_gets_no_feature_from_templates_past_its_last_column() {
+        // mecab-jieba's feature.def reads up to the tenth column, which every
+        // seed row has, but its unk.def features, such as `n,*,*,*,*`, have
+        // five. Its rewrite.def has no rules, so the rewritten features are
+        // the feature.
+        let rewriter = match DictionaryRewriter::from_reader(Cursor::new("# No rules\n")) {
+            Ok(rewriter) => rewriter,
+            Err(err) => panic!("rewrite.def: {err}"),
+        };
+        let mut extractor = FeatureExtractor::from_templates(
+            &["U00:%F[0]", "U06:%F[6]"],
+            &[("%L[0]", "%R[0]"), ("%L[6]", "%R[6]")],
+        );
+
+        let feature_set = label_feature_set(&rewriter, &mut extractor, "n,*,*,*,*", 0, None);
+
+        // MeCab's learner gives this label `U00:n` and the first bigram
+        // template only; the CRF drops a bigram slot that is `None`.
+        assert_eq!(feature_set.unigram().len(), 1, "U06 reads column 7 of 5");
+        assert_eq!(feature_set.bigram_left().len(), 2);
+        assert!(feature_set.bigram_left()[0].is_some());
+        assert!(feature_set.bigram_left()[1].is_none());
+        assert_eq!(feature_set.bigram_right().len(), 2);
+        assert!(feature_set.bigram_right()[0].is_some());
+        assert!(feature_set.bigram_right()[1].is_none());
+    }
+}
