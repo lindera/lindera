@@ -200,6 +200,8 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              # The CLI tests train, export and build from these files.
+              - 'resources/training/**'
               - *shared-workspace
               - *shared-crate-workflow
             lindera-python:

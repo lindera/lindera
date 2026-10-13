@@ -827,3 +827,102 @@ mod with_ipadic {
         );
     }
 }
+
+// The training pipeline of docs/src/development/training_pipeline.md and of
+// the complete workflow example in docs/src/lindera-cli/commands.md (and
+// their docs/ja pages), run on the files in resources/training/ with the same
+// flags. When the tokenize output changes, update those pages too.
+#[cfg(feature = "train")]
+mod with_trained_dictionary {
+    use super::*;
+
+    /// The documented tokenize output for "これは外国人参政権です。".
+    const DOCUMENTED_OUTPUT: &str = "これは\t名詞,一般,*,*,*,*,*,*,*\n\
+                                     外国\t名詞,一般,*,*,*,*,外国,ガイコク,ガイコク\n\
+                                     人\t名詞,接尾,一般,*,*,*,人,ジン,ジン\n\
+                                     参政\t名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ\n\
+                                     権\t名詞,接尾,一般,*,*,*,権,ケン,ケン\n\
+                                     です\t助動詞,*,*,*,特殊・デス,基本形,です,デス,デス\n\
+                                     。\t記号,句点,*,*,*,*,。,。,。\n\
+                                     EOS\n";
+
+    /// Runs `command`, asserts that it succeeds and returns its stdout.
+    fn stdout_of(command: &mut Command) -> String {
+        let output = command.output().unwrap();
+        assert!(
+            output.status.success(),
+            "{command:?} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        String::from_utf8(output.stdout).unwrap()
+    }
+
+    /// Trains, exports and builds a dictionary from `resources/training/` in
+    /// `dir`, and returns the built dictionary directory.
+    fn build_trained_dictionary(dir: &Path) -> PathBuf {
+        let training = Path::new(env!("CARGO_MANIFEST_DIR")).join("../resources/training");
+        let input = |name: &str| training.join(name).to_str().unwrap().to_string();
+        let model = dir.join("model.dat");
+        let source = dir.join("dictionary");
+        let dict = dir.join("compiled_dictionary");
+
+        stdout_of(
+            lindera()
+                .arg("train")
+                .args(["--seed", &input("seed.csv")])
+                .args(["--corpus", &input("corpus.txt")])
+                .args(["--unk-def", &input("unk.def")])
+                .args(["--char-def", &input("char.def")])
+                .args(["--feature-def", &input("feature.def")])
+                .args(["--rewrite-def", &input("rewrite.def")])
+                .args(["--output", model.to_str().unwrap()])
+                .args(["--lambda", "0.01", "--max-iterations", "100"]),
+        );
+        stdout_of(
+            lindera()
+                .arg("export")
+                .args(["--model", model.to_str().unwrap()])
+                .args(["--metadata", &input("metadata.json")])
+                .args(["--output", source.to_str().unwrap()]),
+        );
+        stdout_of(
+            lindera()
+                .arg("build")
+                .args(["--src", source.to_str().unwrap()])
+                .args(["--dest", dict.to_str().unwrap()])
+                .args(["--metadata", source.join("metadata.json").to_str().unwrap()]),
+        );
+        dict
+    }
+
+    /// A dictionary trained from `resources/training/` tokenizes with the
+    /// default settings, which skip whitespace by the `SPACE` category of its
+    /// `char.def`, and outputs a kept space as the `SPACE` unknown word
+    /// (#1166).
+    #[test]
+    fn tokenize_with_dictionary_trained_from_resources() {
+        let dir = tempfile::tempdir().unwrap();
+        let dict = build_trained_dictionary(dir.path());
+        let tokenize = |input: &str, args: &[&str]| {
+            stdout_of(
+                lindera()
+                    .args(["tokenize", "--dict", dict.to_str().unwrap()])
+                    .args(args)
+                    .write_stdin(input.to_string()),
+            )
+        };
+
+        assert_eq!(
+            tokenize("これは外国人参政権です。\n", &[]),
+            DOCUMENTED_OUTPUT
+        );
+        assert_eq!(
+            tokenize("これは 外国人参政権です。\n", &[]),
+            DOCUMENTED_OUTPUT
+        );
+        assert_eq!(
+            tokenize("これは 外国人参政権です。\n", &["--keep-whitespace"]),
+            DOCUMENTED_OUTPUT.replacen("\n", "\n \t記号,空白,*,*,*,*,*,*,*\n", 1)
+        );
+    }
+}
