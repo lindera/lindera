@@ -12,6 +12,7 @@ use lindera::dictionary::{
     Dictionary, DictionaryBuilder, Metadata, UserDictionary,
     load_dictionary as lindera_load_dictionary,
     load_user_dictionary as lindera_load_user_dictionary,
+    load_user_dictionary_for as lindera_load_user_dictionary_for,
 };
 
 use crate::error::to_magnus_error;
@@ -136,6 +137,38 @@ fn load_user_dictionary(uri: String, metadata: &RbMetadata) -> Result<RbUserDict
         .map(|d| RbUserDictionary { inner: d })
 }
 
+/// Loads a user dictionary for a loaded system dictionary.
+///
+/// A `.csv` is built with the system dictionary's metadata and checked
+/// against its connection matrix as it is built, so a row whose context ID
+/// lies outside the matrix fails with an error that names its CSV line and
+/// surface. A `.bin` is loaded as it was built; the `Tokenizer` checks it
+/// when it is built with the system dictionary.
+///
+/// # Arguments
+///
+/// * `ruby` - Ruby runtime handle (passed by magnus, not by the caller).
+/// * `uri` - URI or path of the `.csv` or `.bin` user dictionary.
+/// * `dictionary` - The system dictionary the user dictionary is used with.
+///
+/// # Returns
+///
+/// A loaded `RbUserDictionary` object.
+fn load_user_dictionary_for(
+    ruby: &Ruby,
+    uri: String,
+    dictionary: &RbDictionary,
+) -> Result<RbUserDictionary, Error> {
+    lindera_load_user_dictionary_for(&uri, &dictionary.inner)
+        .map_err(|e| {
+            to_magnus_error(
+                ruby,
+                format!("Failed to load user dictionary from '{uri}': {e}"),
+            )
+        })
+        .map(|d| RbUserDictionary { inner: d })
+}
+
 /// Builds a dictionary from source files.
 ///
 /// # Arguments
@@ -232,6 +265,10 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
 
     module.define_module_function("load_dictionary", function!(load_dictionary, 1))?;
     module.define_module_function("load_user_dictionary", function!(load_user_dictionary, 2))?;
+    module.define_module_function(
+        "load_user_dictionary_for",
+        function!(load_user_dictionary_for, 2),
+    )?;
     module.define_module_function("build_dictionary", function!(build_dictionary, 3))?;
     module.define_module_function("build_user_dictionary", function!(build_user_dictionary, 4))?;
 

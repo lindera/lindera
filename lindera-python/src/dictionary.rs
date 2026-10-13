@@ -32,6 +32,7 @@ use lindera::dictionary::{
     Dictionary, DictionaryBuilder, Metadata, UserDictionary,
     load_dictionary as lindera_load_dictionary,
     load_user_dictionary as lindera_load_user_dictionary,
+    load_user_dictionary_for as lindera_load_user_dictionary_for,
 };
 
 use crate::metadata::PyMetadata;
@@ -301,6 +302,44 @@ pub fn load_user_dictionary(uri: &str, metadata: PyMetadata) -> PyResult<PyUserD
         .map(PyUserDictionary::new)
 }
 
+/// Loads a user dictionary for a loaded system dictionary.
+///
+/// A `.csv` is built with the system dictionary's metadata and checked
+/// against its connection matrix as it is built, so a row whose context ID
+/// lies outside the matrix fails with an error that names its CSV line and
+/// surface. A `.bin` is loaded as it was built; the `Tokenizer` checks it
+/// when it is built with the system dictionary.
+///
+/// # Arguments
+///
+/// * `uri` - URI or path of the `.csv` or `.bin` user dictionary.
+/// * `dictionary` - The system dictionary the user dictionary is used with.
+///
+/// # Returns
+///
+/// A loaded `UserDictionary` object.
+///
+/// # Errors
+///
+/// Returns an error if the user dictionary cannot be loaded, or if a `.csv`
+/// row has a context ID outside the system dictionary's connection matrix.
+///
+/// # Examples
+///
+/// ```python
+/// dictionary = lindera.load_dictionary("embedded://ipadic")
+/// user_dict = lindera.load_user_dictionary_for("/path/to/user_dict.csv", dictionary)
+/// ```
+#[pyfunction]
+#[pyo3(signature = (uri, dictionary))]
+pub fn load_user_dictionary_for(uri: &str, dictionary: PyDictionary) -> PyResult<PyUserDictionary> {
+    lindera_load_user_dictionary_for(uri, &dictionary.inner)
+        .map_err(|e| {
+            PyValueError::new_err(format!("Failed to load user dictionary from '{uri}': {e}"))
+        })
+        .map(PyUserDictionary::new)
+}
+
 pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     let py = parent_module.py();
     let m = PyModule::new(py, "dictionary")?;
@@ -310,6 +349,7 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(build_user_dictionary, &m)?)?;
     m.add_function(wrap_pyfunction!(load_dictionary, &m)?)?;
     m.add_function(wrap_pyfunction!(load_user_dictionary, &m)?)?;
+    m.add_function(wrap_pyfunction!(load_user_dictionary_for, &m)?)?;
     parent_module.add_submodule(&m)?;
     Ok(())
 }

@@ -120,17 +120,25 @@ WebAssembly にはファイルシステムが無いため、ユーザー辞書�
 
 ### CSV バイト列からのユーザー辞書の読み込み
 
-ユーザー辞書を組み合わせるシステム辞書のメタデータ（例:
-`dictionary.metadata`）を渡してください。CSV の内容は UTF-8 である必要が
+ユーザー辞書を組み合わせるシステム辞書を渡してください。CSV はそのスキーマで
+解釈し、その接続コスト行列と照らして確認します。CSV の内容は UTF-8 である必要が
 あります。
 
 ```javascript
-import { loadUserDictionaryFromBytes } from 'lindera-wasm';
+import { loadUserDictionaryFromBytesFor } from 'lindera-wasm';
 
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
-const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
+const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
 ```
+
+文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を示すエラーになります
+（[文脈 ID](../concepts/user_dictionary.md#文脈-id) を参照）。辞書は借用する
+だけなので、その後も `Tokenizer` に渡せます。
+
+`loadUserDictionaryFromBytes(csv, metadata)` は、メタデータ（例:
+`dictionary.metadata`）だけで CSV をビルドします。文脈 ID はシステム辞書と
+組み合わせるときに確認し、エラーは見出し語をその単語 ID で示します。
 
 OPFS 上のファイルも同じ形で使えます：
 
@@ -138,7 +146,7 @@ OPFS 上のファイルも同じ形で使えます：
 const root = await navigator.storage.getDirectory();
 const handle = await root.getFileHandle('user_dict.csv');
 const csvBytes = new Uint8Array(await (await handle.getFile()).arrayBuffer());
-const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
+const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
 ```
 
 ### ビルド済みユーザー辞書（`.bin`）の読み込み
@@ -156,7 +164,7 @@ const userDict = loadUserDictionaryBinFromBytes(binBytes);
 ### Tokenizer でのユーザー辞書の使用
 
 ```javascript
-import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm';
+import { loadDictionaryFromBytes, loadUserDictionaryFromBytesFor, Tokenizer } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
@@ -167,7 +175,7 @@ const dictionary = loadDictionaryFromBytes(
 );
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
-const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
+const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 ```
 

@@ -165,8 +165,7 @@ $koTokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ko-dic
 <?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
-$metadata = $dictionary->metadata();
-$userDictionary = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $metadata);
+$userDictionary = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
 
 $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
 ```

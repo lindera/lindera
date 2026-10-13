@@ -1,7 +1,7 @@
 const path = require("path");
 const {
   loadDictionary,
-  loadUserDictionary,
+  loadUserDictionaryFor,
   Tokenizer,
 } = require("../index.js");
 
@@ -11,15 +11,13 @@ function main() {
   // load the dictionary
   const dictionary = loadDictionary("embedded://ipadic");
 
-  const metadata = dictionary.metadata();
-
-  // load the user dictionary
+  // load the user dictionary for the dictionary
   const userDictionaryPath = path.join(
     projectRoot,
     "resources",
     "ipadic_simple_userdic.csv",
   );
-  const userDictionary = loadUserDictionary(userDictionaryPath, metadata);
+  const userDictionary = loadUserDictionaryFor(userDictionaryPath, dictionary);
 
   // create a tokenizer
   const tokenizer = new Tokenizer(dictionary, "normal", userDictionary);

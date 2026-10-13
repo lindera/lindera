@@ -58,7 +58,7 @@ builder.set_dictionary("/path/to/dictionary")
 Sets the user dictionary URI.
 
 ```python
-builder.set_user_dictionary("/path/to/user_dictionary")
+builder.set_user_dictionary("/path/to/user_dictionary.csv")
 ```
 
 #### `set_keep_whitespace(keep)`

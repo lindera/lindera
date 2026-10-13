@@ -797,5 +797,6 @@ module.exports.JsFieldType = nativeBinding.JsFieldType
 module.exports.JsMode = nativeBinding.JsMode
 module.exports.loadDictionary = nativeBinding.loadDictionary
 module.exports.loadUserDictionary = nativeBinding.loadUserDictionary
+module.exports.loadUserDictionaryFor = nativeBinding.loadUserDictionaryFor
 module.exports.train = nativeBinding.train
 module.exports.version = nativeBinding.version

@@ -93,6 +93,26 @@ pub fn py_load_user_dictionary_from_bytes(
     crate::dictionary::load_user_dictionary_from_bytes(csv, metadata)
 }
 
+/// Snake-case alias of `loadUserDictionaryFromBytesFor`
+/// ([`crate::dictionary::load_user_dictionary_from_bytes_for`]).
+///
+/// # Arguments
+///
+/// * `csv` - The user dictionary CSV content (UTF-8).
+/// * `dictionary` - The system dictionary the user dictionary is used with.
+///
+/// # Returns
+///
+/// The user dictionary, or an error if the CSV cannot be built or a row has
+/// a context ID outside the system dictionary's connection matrix.
+#[wasm_bindgen(js_name = "load_user_dictionary_from_bytes_for")]
+pub fn py_load_user_dictionary_from_bytes_for(
+    csv: &[u8],
+    dictionary: &Dictionary,
+) -> Result<UserDictionary, JsValue> {
+    crate::dictionary::load_user_dictionary_from_bytes_for(csv, dictionary)
+}
+
 #[wasm_bindgen(js_name = "load_user_dictionary_bin_from_bytes")]
 pub fn py_load_user_dictionary_bin_from_bytes(bytes: &[u8]) -> Result<UserDictionary, JsValue> {
     crate::dictionary::load_user_dictionary_bin_from_bytes(bytes)

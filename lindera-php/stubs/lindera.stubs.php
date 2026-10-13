@@ -28,6 +28,8 @@ class Dictionary implements \Stringable
 
     public static function loadUser(string $uri, Metadata $metadata): UserDictionary {}
 
+    public static function loadUserFor(string $uri, Dictionary $dictionary): UserDictionary {}
+
     public function metadata(): Metadata {}
 
     public function metadataEncoding(): string {}

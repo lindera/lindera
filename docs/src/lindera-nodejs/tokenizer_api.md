@@ -58,7 +58,7 @@ builder.setDictionary("/path/to/dictionary");
 Sets the user dictionary URI.
 
 ```javascript
-builder.setUserDictionary("/path/to/user_dictionary");
+builder.setUserDictionary("/path/to/user_dictionary.csv");
 ```
 
 #### `setKeepWhitespace(keep)`

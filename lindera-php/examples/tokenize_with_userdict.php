@@ -13,11 +13,9 @@ $projectRoot = dirname(__DIR__);
 // Load the dictionary
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
 
-$metadata = $dictionary->metadata();
-
-// Load the user dictionary
+// Load the user dictionary for the dictionary
 $userDictionaryPath = $projectRoot . '/resources/ipadic_simple_userdic.csv';
-$userDictionary = Lindera\Dictionary::loadUser($userDictionaryPath, $metadata);
+$userDictionary = Lindera\Dictionary::loadUserFor($userDictionaryPath, $dictionary);
 
 // Create a tokenizer
 $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);

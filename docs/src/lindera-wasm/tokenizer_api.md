@@ -67,7 +67,7 @@ builder.setDictionaryInstance(dictionary);
 
 #### `setUserDictionaryInstance(userDictionary)`
 
-Sets a pre-loaded user dictionary instance. Load one from bytes with `loadUserDictionaryFromBytes()` (CSV) or `loadUserDictionaryBinFromBytes()` (prebuilt `.bin`); URI-based user dictionaries are not available on WebAssembly. The user dictionary applies to a dictionary set with either `setDictionary()` or `setDictionaryInstance()`.
+Sets a pre-loaded user dictionary instance. Load one from bytes with `loadUserDictionaryFromBytesFor()` or `loadUserDictionaryFromBytes()` (CSV) or `loadUserDictionaryBinFromBytes()` (prebuilt `.bin`); URI-based user dictionaries are not available on WebAssembly. The user dictionary applies to a dictionary set with either `setDictionary()` or `setDictionaryInstance()`.
 
 - **Parameters**: `userDictionary` (UserDictionary) -- A loaded user dictionary object
 - **Returns**: `TokenizerBuilder`
@@ -294,6 +294,15 @@ Builds a user dictionary from CSV bytes (UTF-8), obtained via `fetch`, a file in
   - `metadata` (Metadata) -- Metadata of the system dictionary the user dictionary will be used with (e.g. `dictionary.metadata`)
 - **Returns**: `UserDictionary`
 
+### `loadUserDictionaryFromBytesFor(csv, dictionary)`
+
+Builds a user dictionary from CSV bytes (UTF-8) for a loaded system dictionary: the CSV is built with the dictionary's metadata and checked against its connection matrix, so a row whose context ID lies outside the matrix fails with an error that names its CSV line and surface. The dictionary is borrowed and stays usable.
+
+- **Parameters**:
+  - `csv` (Uint8Array) -- The user dictionary CSV content
+  - `dictionary` (Dictionary) -- The system dictionary the user dictionary will be used with
+- **Returns**: `UserDictionary`
+
 ### `loadUserDictionaryBinFromBytes(bytes)`
 
 Loads a prebuilt user dictionary (the output of `lindera build --user`) from bytes.
@@ -382,4 +391,5 @@ For consistency with the Python API, all methods are also available in snake\_ca
 | `loadDictionary()` | `load_dictionary()` |
 | `loadDictionaryFromBytes()` | `load_dictionary_from_bytes()` |
 | `loadUserDictionaryFromBytes()` | `load_user_dictionary_from_bytes()` |
+| `loadUserDictionaryFromBytesFor()` | `load_user_dictionary_from_bytes_for()` |
 | `loadUserDictionaryBinFromBytes()` | `load_user_dictionary_bin_from_bytes()` |

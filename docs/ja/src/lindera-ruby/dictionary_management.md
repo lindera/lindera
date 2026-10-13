@@ -22,14 +22,31 @@ dictionary = Lindera.load_dictionary('embedded://ipadic')
 
 ### ユーザー辞書
 
-ユーザー辞書はシステム辞書にカスタム語彙を追加します。
+ユーザー辞書はシステム辞書にカスタム語彙を追加します。組み合わせるシステム辞書に
+合わせて読み込みます：
+
+```ruby
+require 'lindera'
+
+dictionary = Lindera.load_dictionary('/path/to/ipadic')
+user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
+```
+
+`.csv` はシステム辞書のメタデータでビルドし、ビルドしながら接続コスト行列と
+照らして確認します。文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を
+示す `RuntimeError` になります（[文脈 ID](../concepts/user_dictionary.md#文脈-id)
+を参照）。`.bin` はビルドされたとおりに読み込みます。
+
+`Lindera.load_user_dictionary(uri, metadata)` は、メタデータだけでユーザー辞書を
+読み込みます。この方法で読み込んだ `.csv` はシステム辞書と組み合わせるときに
+確認し、エラーは見出し語をその単語 ID で示します：
 
 ```ruby
 require 'lindera'
 
 dictionary = Lindera.load_dictionary('/path/to/ipadic')
 metadata = dictionary.metadata
-user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary', metadata)
+user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary.csv', metadata)
 ```
 
 トークナイザーの作成時にユーザー辞書を渡します：
@@ -38,8 +55,7 @@ user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary', metadata)
 require 'lindera'
 
 dictionary = Lindera.load_dictionary('/path/to/ipadic')
-metadata = dictionary.metadata
-user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary', metadata)
+user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
 
 tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
 ```
@@ -51,7 +67,7 @@ require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
 builder.set_dictionary('/path/to/ipadic')
-builder.set_user_dictionary('/path/to/user_dictionary')
+builder.set_user_dictionary('/path/to/user_dictionary.csv')
 tokenizer = builder.build
 ```
 

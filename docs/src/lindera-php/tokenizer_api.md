@@ -191,8 +191,7 @@ With a user dictionary:
 <?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
-$metadata = $dictionary->metadata();
-$userDict = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $metadata);
+$userDict = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
 $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDict);
 ```
 

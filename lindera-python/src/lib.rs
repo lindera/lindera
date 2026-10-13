@@ -115,6 +115,11 @@ fn lindera(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m.getattr("dictionary")?.getattr("load_user_dictionary")?,
     )?;
     m.add(
+        "load_user_dictionary_for",
+        m.getattr("dictionary")?
+            .getattr("load_user_dictionary_for")?,
+    )?;
+    m.add(
         "build_dictionary",
         m.getattr("dictionary")?.getattr("build_dictionary")?,
     )?;

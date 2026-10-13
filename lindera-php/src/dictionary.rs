@@ -11,6 +11,7 @@ use lindera::dictionary::{
     Dictionary, DictionaryBuilder, Metadata, UserDictionary,
     load_dictionary as lindera_load_dictionary,
     load_user_dictionary as lindera_load_user_dictionary,
+    load_user_dictionary_for as lindera_load_user_dictionary_for,
 };
 
 use crate::error::lindera_value_err;
@@ -65,6 +66,30 @@ impl PhpDictionary {
     pub fn load_user(uri: String, metadata: &PhpMetadata) -> PhpResult<PhpUserDictionary> {
         let meta: Metadata = metadata.clone().into();
         lindera_load_user_dictionary(&uri, &meta)
+            .map_err(|e| {
+                lindera_value_err(format!("Failed to load user dictionary from '{uri}': {e}"))
+            })
+            .map(PhpUserDictionary::new)
+    }
+
+    /// Loads a user dictionary for a loaded system dictionary.
+    ///
+    /// A `.csv` is built with the system dictionary's metadata and checked
+    /// against its connection matrix as it is built, so a row whose context
+    /// ID lies outside the matrix fails with an error that names its CSV line
+    /// and surface. A `.bin` is loaded as it was built; the `Tokenizer`
+    /// checks it when it is built with the system dictionary.
+    ///
+    /// # Arguments
+    ///
+    /// * `uri` - URI or path of the `.csv` or `.bin` user dictionary.
+    /// * `dictionary` - The system dictionary the user dictionary is used with.
+    ///
+    /// # Returns
+    ///
+    /// A loaded UserDictionary object.
+    pub fn load_user_for(uri: String, dictionary: &PhpDictionary) -> PhpResult<PhpUserDictionary> {
+        lindera_load_user_dictionary_for(&uri, &dictionary.inner)
             .map_err(|e| {
                 lindera_value_err(format!("Failed to load user dictionary from '{uri}': {e}"))
             })
