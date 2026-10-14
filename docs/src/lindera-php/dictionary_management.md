@@ -115,14 +115,40 @@ Lindera\Dictionary::build(
 
 ### User Dictionary
 
-Build a user dictionary from a CSV file:
+Build a user dictionary from a CSV file for the system dictionary it is used
+with:
+
+```php
+<?php
+
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+Lindera\Dictionary::buildUserFor('user_words.csv', '/path/to/user_dictionary.bin', $dictionary);
+$userDict = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.bin', $dictionary);
+```
+
+The CSV is built with the system dictionary's metadata and checked against
+its connection matrix: a row whose context ID lies outside the matrix throws
+a `ValueError` that names its CSV line and surface, and no file is written
+(see [Context IDs](../concepts/user_dictionary.md#context-ids)). The second
+argument is the path of the file to write. End it with `.bin`, since the
+loaders choose how to load a user dictionary by its extension.
+
+`Lindera\Dictionary::buildUser($kind, $input_file, $output_dir, $metadata)`
+builds a user dictionary with metadata only. Despite its name, `$output_dir`
+is the path of the file to write too, not a directory. The rows are checked
+when the user dictionary is combined with the system dictionary, and the
+error names the entry by its word id:
 
 ```php
 <?php
 
 $metadata = new Lindera\Metadata();
-Lindera\Dictionary::buildUser('ipadic', 'user_words.csv', '/path/to/output_dir', $metadata);
+Lindera\Dictionary::buildUser('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', $metadata);
 ```
+
+The first argument (`$kind`, `'ipadic'` above) is currently unused and
+reserved for future use. To build for a system dictionary, use
+`Lindera\Dictionary::buildUserFor`.
 
 ## Metadata
 

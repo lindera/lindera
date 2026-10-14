@@ -67,3 +67,51 @@ describe(
     });
   },
 );
+
+describe(
+  "buildUserDictionaryFor",
+  { skip: !hasEmbeddedIpadic && "embedded://ipadic not available" },
+  () => {
+    it("names the CSV line and surface of a row outside the matrix", () => {
+      const dictionary = lindera.loadDictionary("embedded://ipadic");
+      withCsv(OUT_OF_RANGE_CSV, (csv) => {
+        const output = path.join(path.dirname(csv), "userdic.bin");
+        assert.throws(
+          () => lindera.buildUserDictionaryFor(csv, output, dictionary),
+          /line 2 \(surface: '東京スカイツリー'\): left context id 60000 is out of range/,
+        );
+        assert.strictEqual(fs.existsSync(output), false);
+      });
+    });
+
+    it("writes a CSV inside the matrix to the output file", () => {
+      const dictionary = lindera.loadDictionary("embedded://ipadic");
+      const userDictionary = withCsv(SIMPLE_CSV, (csv) => {
+        const output = path.join(path.dirname(csv), "out", "userdic.bin");
+        lindera.buildUserDictionaryFor(csv, output, dictionary);
+        assert.ok(fs.statSync(output).isFile());
+        return lindera.loadUserDictionaryFor(output, dictionary);
+      });
+      const tokenizer = new lindera.Tokenizer(dictionary, "normal", userDictionary);
+      const surfaces = tokenizer.tokenize("東京スカイツリー").map((token) => token.surface);
+      assert.deepStrictEqual(surfaces, ["東京スカイツリー"]);
+    });
+  },
+);
+
+describe(
+  "buildUserDictionary",
+  { skip: !hasEmbeddedIpadic && "embedded://ipadic not available" },
+  () => {
+    // `outputDir` is the path of the file to write, not a directory.
+    it("writes the file it is given", () => {
+      const dictionary = lindera.loadDictionary("embedded://ipadic");
+      withCsv(SIMPLE_CSV, (csv) => {
+        const output = path.join(path.dirname(csv), "userdic.bin");
+        lindera.buildUserDictionary("ipadic", csv, output);
+        assert.ok(fs.statSync(output).isFile());
+        lindera.loadUserDictionaryFor(output, dictionary);
+      });
+    });
+  },
+);

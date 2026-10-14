@@ -20,8 +20,8 @@
 //! metadata = lindera.Metadata()
 //! lindera.build_dictionary("/path/to/input", "/path/to/output", metadata)
 //!
-//! # Build a user dictionary
-//! lindera.build_user_dictionary("ipadic", "user.csv", "/path/to/output")
+//! # Build a user dictionary for a system dictionary
+//! lindera.build_user_dictionary_for("user.csv", "/path/to/user.bin", dictionary)
 //! ```
 
 use std::path::Path;
@@ -98,12 +98,12 @@ impl PyDictionary {
 /// # Examples
 ///
 /// ```python
-/// # Build a user dictionary
-/// lindera.build_user_dictionary("ipadic", "user.csv", "/path/to/output")
+/// # Build a user dictionary for a system dictionary
+/// dictionary = lindera.load_dictionary("embedded://ipadic")
+/// lindera.build_user_dictionary_for("user.csv", "/path/to/user.bin", dictionary)
 ///
 /// # Load it
-/// metadata = lindera.Metadata()
-/// user_dict = lindera.load_user_dictionary("/path/to/output", metadata)
+/// user_dict = lindera.load_user_dictionary_for("/path/to/user.bin", dictionary)
 /// ```
 #[pyclass(name = "UserDictionary", from_py_object)]
 #[derive(Clone)]
@@ -172,11 +172,18 @@ pub fn build_dictionary(input_dir: &str, output_dir: &str, metadata: PyMetadata)
 
 /// Builds a user dictionary from a CSV file.
 ///
+/// The rows' context IDs are not checked here; they are checked when the
+/// user dictionary is combined with a system dictionary. To check them as
+/// the CSV is built, use [`build_user_dictionary_for`] with the system
+/// dictionary.
+///
 /// # Arguments
 ///
 /// * `_kind` - Dictionary kind (currently unused, reserved for future use).
 /// * `input_file` - Path to the CSV file containing user dictionary entries.
-/// * `output_dir` - Directory where the built user dictionary will be saved.
+/// * `output_dir` - Path of the file to write the built user dictionary to,
+///   not a directory despite its name. The user dictionary loaders choose
+///   how to load a file by its extension, so end it with `.bin`.
 /// * `metadata` - Optional metadata configuration. If None, default values are used.
 ///
 /// # CSV Format
@@ -192,11 +199,11 @@ pub fn build_dictionary(input_dir: &str, output_dir: &str, metadata: PyMetadata)
 ///
 /// ```python
 /// # Build with default metadata
-/// lindera.build_user_dictionary("ipadic", "user.csv", "/path/to/output")
+/// lindera.build_user_dictionary("ipadic", "user.csv", "/path/to/user.bin")
 ///
 /// # Build with custom metadata
 /// metadata = lindera.Metadata()
-/// lindera.build_user_dictionary("ipadic", "user.csv", "/path/to/output", metadata)
+/// lindera.build_user_dictionary("ipadic", "user.csv", "/path/to/user.bin", metadata)
 /// ```
 #[pyfunction]
 #[pyo3(signature = (_kind, input_file, output_dir, metadata=None))]
@@ -232,6 +239,49 @@ pub fn build_user_dictionary(
         .map_err(|e| PyValueError::new_err(format!("Failed to build user dictionary: {e}")))?;
 
     Ok(())
+}
+
+/// Builds a user dictionary from a CSV file for a loaded system dictionary.
+///
+/// The CSV is built with the system dictionary's metadata, and every row's
+/// context IDs are checked against its connection matrix, so a row outside
+/// the matrix fails with an error that names its CSV line and surface, and
+/// no file is written.
+///
+/// # Arguments
+///
+/// * `input_file` - Path to the CSV file containing user dictionary entries.
+/// * `output_file` - Path of the file to write the built user dictionary to.
+///   The user dictionary loaders choose how to load a file by its extension,
+///   so end it with `.bin`.
+/// * `dictionary` - The system dictionary the user dictionary is built for.
+///
+/// # Errors
+///
+/// Returns an error if the CSV cannot be read or built, if a row has a
+/// context ID outside the system dictionary's connection matrix, or if the
+/// file cannot be written.
+///
+/// # Examples
+///
+/// ```python
+/// dictionary = lindera.load_dictionary("embedded://ipadic")
+/// lindera.build_user_dictionary_for("user.csv", "/path/to/user.bin", dictionary)
+/// user_dict = lindera.load_user_dictionary_for("/path/to/user.bin", dictionary)
+/// ```
+#[pyfunction]
+#[pyo3(signature = (input_file, output_file, dictionary))]
+pub fn build_user_dictionary_for(
+    input_file: &str,
+    output_file: &str,
+    dictionary: PyDictionary,
+) -> PyResult<()> {
+    lindera_binding::dictionary::build_user_dictionary_for(
+        Path::new(input_file),
+        Path::new(output_file),
+        &dictionary.inner,
+    )
+    .map_err(|e| PyValueError::new_err(format!("Failed to build user dictionary: {e}")))
 }
 
 /// Loads a dictionary from the specified URI.
@@ -347,6 +397,7 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyUserDictionary>()?;
     m.add_function(wrap_pyfunction!(build_dictionary, &m)?)?;
     m.add_function(wrap_pyfunction!(build_user_dictionary, &m)?)?;
+    m.add_function(wrap_pyfunction!(build_user_dictionary_for, &m)?)?;
     m.add_function(wrap_pyfunction!(load_dictionary, &m)?)?;
     m.add_function(wrap_pyfunction!(load_user_dictionary, &m)?)?;
     m.add_function(wrap_pyfunction!(load_user_dictionary_for, &m)?)?;

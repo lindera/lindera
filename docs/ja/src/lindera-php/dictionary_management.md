@@ -78,8 +78,11 @@ $tokenizer = $builder->build();
 | --- | --- | --- |
 | `Dictionary::load($uri)` | `Dictionary` | システム辞書を読み込む |
 | `Dictionary::loadUser($path, $metadata)` | `UserDictionary` | ユーザー辞書を読み込む |
+| `Dictionary::loadUserFor($path, $dictionary)` | `UserDictionary` | システム辞書に合わせてユーザー辞書を読み込む |
 | `Dictionary::version()` | `string` | Lindera のバージョン文字列を返す |
 | `Dictionary::build($source, $dest, $metadata)` | `void` | 辞書をビルドする |
+| `Dictionary::buildUser($kind, $source, $dest, $metadata)` | `void` | ユーザー辞書をビルドする |
+| `Dictionary::buildUserFor($source, $dest, $dictionary)` | `void` | システム辞書に合わせてユーザー辞書をビルドする |
 | `$dictionary->metadata()` | `Metadata` | 辞書のメタデータを返す |
 | `$dictionary->metadataName()` | `string` | 辞書名を返す |
 | `$dictionary->metadataEncoding()` | `string` | 辞書のエンコーディングを返す |
@@ -122,6 +125,40 @@ Lindera\Dictionary::build(
     $metadata
 );
 ```
+
+### ユーザー辞書のビルド
+
+組み合わせるシステム辞書に合わせて、CSV ファイルからユーザー辞書をビルドします：
+
+```php
+<?php
+
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+Lindera\Dictionary::buildUserFor('user_words.csv', '/path/to/user_dictionary.bin', $dictionary);
+$userDict = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.bin', $dictionary);
+```
+
+CSV はシステム辞書のメタデータでビルドし、接続コスト行列と照らして確認します。
+文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を示す `ValueError`
+になり、ファイルは書き出しません（[文脈 ID](../concepts/user_dictionary.md#文脈-id)
+を参照）。2 番目の引数は書き出すファイルのパスです。ローダーは拡張子で
+ユーザー辞書の読み込み方を決めるので、`.bin` で終えてください。
+
+`Lindera\Dictionary::buildUser($kind, $input_file, $output_dir, $metadata)` は、
+メタデータだけでユーザー辞書をビルドします。`$output_dir` も、名前に反して
+ディレクトリではなく、書き出すファイルのパスです。各行はシステム辞書と
+組み合わせるときに確認し、エラーは見出し語をその単語 ID で示します：
+
+```php
+<?php
+
+$metadata = new Lindera\Metadata();
+Lindera\Dictionary::buildUser('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', $metadata);
+```
+
+第一引数（`$kind`、上の例では `'ipadic'`）は現時点では未使用で、将来のために
+予約されています。システム辞書に合わせてビルドするには
+`Lindera\Dictionary::buildUserFor` を使います。
 
 ## Metadata
 

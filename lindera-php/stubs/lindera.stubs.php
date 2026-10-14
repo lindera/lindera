@@ -24,6 +24,8 @@ class Dictionary implements \Stringable
 
     public static function buildUser(string $_kind, string $input_file, string $output_dir, ?Metadata $metadata = null): void {}
 
+    public static function buildUserFor(string $input_file, string $output_file, Dictionary $dictionary): void {}
+
     public static function load(string $uri): Dictionary {}
 
     public static function loadUser(string $uri, Metadata $metadata): UserDictionary {}

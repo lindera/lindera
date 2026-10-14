@@ -105,25 +105,45 @@ build_dictionary("/path/to/input_dir", "/path/to/output_dir", metadata)
 
 ### ユーザー辞書のビルド
 
-CSV ファイルからユーザー辞書をビルドします：
+組み合わせるシステム辞書に合わせて、CSV ファイルからユーザー辞書をビルドします：
+
+```python
+from lindera import build_user_dictionary_for, load_dictionary, load_user_dictionary_for
+
+dictionary = load_dictionary("/path/to/ipadic")
+build_user_dictionary_for("user_words.csv", "/path/to/user_dictionary.bin", dictionary)
+user_dict = load_user_dictionary_for("/path/to/user_dictionary.bin", dictionary)
+```
+
+CSV はシステム辞書のメタデータでビルドし、接続コスト行列と照らして確認します。
+文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を示す `ValueError`
+になり、ファイルは書き出しません（[文脈 ID](../concepts/user_dictionary.md#文脈-id)
+を参照）。2 番目の引数は書き出すファイルのパスです。ローダーは拡張子で
+ユーザー辞書の読み込み方を決めるので、`.bin` で終えてください。
+
+`build_user_dictionary(kind, input_file, output_dir, metadata)` は、メタデータ
+だけでユーザー辞書をビルドします。`output_dir` も、名前に反してディレクトリでは
+なく、書き出すファイルのパスです。各行はシステム辞書と組み合わせるときに確認し、
+エラーは見出し語をその単語 ID で示します：
 
 ```python
 from lindera import build_user_dictionary, Metadata
 
 metadata = Metadata()
-build_user_dictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata)
+build_user_dictionary("ipadic", "user_words.csv", "/path/to/user_dictionary.bin", metadata)
 ```
 
 `metadata` パラメータは省略可能です。省略した場合はデフォルトのメタデータ値が使用されます：
 
 ```python
-build_user_dictionary("ipadic", "user_words.csv", "/path/to/output_dir")
+build_user_dictionary("ipadic", "user_words.csv", "/path/to/user_dictionary.bin")
 ```
 
 **注意:** 最初の引数（上記の `"ipadic"`）は現在未使用で、将来のために予約されて
 いるものです -- ビルドの選択や設定には一切影響しません。ビルドの挙動は
 `metadata`（特に `metadata.user_dictionary_schema`）によってのみ制御されます。
-現時点では任意の文字列を渡すことができます。
+現時点では任意の文字列を渡すことができます。システム辞書に合わせてビルドするには
+`build_user_dictionary_for` を使います。
 
 ## Metadata
 

@@ -1261,7 +1261,14 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
   Node.js, `Lindera\Dictionary::loadUserFor` in PHP and
   `loadUserDictionaryFromBytesFor` in WebAssembly
   ([#1193](https://github.com/lindera/lindera/issues/1193)). The loaders that
-  take metadata are unchanged.
+  take metadata are unchanged. The user dictionary builders of these
+  bindings have such a variant as well, which checks the rows against a
+  loaded system dictionary as it builds the CSV: `build_user_dictionary_for`
+  in Python and Ruby, `buildUserDictionaryFor` in Node.js and
+  `Lindera\Dictionary::buildUserFor` in PHP
+  ([#1188](https://github.com/lindera/lindera/issues/1188)). The builders
+  that take metadata are unchanged too: their `output_dir` is, as before,
+  the path of the file they write, not a directory.
 - The errors for a user dictionary row whose cost or context ID is not a
   number, from `lindera build --user` or from loading a `.csv` user
   dictionary, name the row's CSV line (`at line 1`). Before, they counted
