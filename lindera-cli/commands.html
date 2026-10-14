@@ -665,18 +665,6 @@ EOS
 Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
 </code></pre>
 <p>Without <code>--system-dict</code>, the build does not know the system dictionary, and the user dictionary builds. <code>lindera tokenize --user-dict</code> then checks it against the system dictionary and fails with an error that names the first entry outside the matrix by its word id (see <a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>). A <code>.csv</code> given to <code>lindera tokenize --user-dict</code> is built for the system dictionary of <code>--dict</code> as it is loaded, so its error names the CSV line and surface, as with <code>--system-dict</code>.</p>
-<h3 id="chardef-and-unkdef-check"><a class="header" href="#chardef-and-unkdef-check">char.def and unk.def check</a></h3>
-<p>When it builds a system dictionary, <code>lindera build</code> also checks <code>char.def</code> and <code>unk.def</code> against each other, as <code>mecab-dict-index</code> does:</p>
-<ul>
-<li>A range line of <code>char.def</code> names only categories defined on an earlier line.</li>
-<li>Each category is defined once.</li>
-<li>Every <code>unk.def</code> line names a category that <code>char.def</code> defines.</li>
-<li>Every <code>char.def</code> category has at least one <code>unk.def</code> line.</li>
-</ul>
-<p>A dictionary that breaks one of these fails to build, with an error that names the file, the category and, except for a category without an <code>unk.def</code> line, the line. Such a dictionary used to build, and then <code>lindera tokenize</code> panicked on a character of an undefined category, gave some categories the settings of others, stopped its output before a character that no word or unknown word covers, or ignored the <code>unk.def</code> line. For example, with a <code>char.def</code> that defines the <code>SPACE</code> category and an <code>unk.def</code> that has no <code>SPACE</code> line:</p>
-<pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for category SPACE, which char.def defines; every char.def category needs at least one unk.def line }
-</code></pre>
-<p><code>lindera train</code> checks its <code>--char-def</code> and <code>--unk-def</code> in the same way before it trains (see <a href="../development/training_pipeline.html#3-character-definition-chardef">Training Pipeline</a>).</p>
 <h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
 <h4 id="build-ipadic-japanese-dictionary"><a class="header" href="#build-ipadic-japanese-dictionary">Build IPADIC (Japanese dictionary)</a></h4>
 <pre><code class="language-shell"># Download and extract IPADIC source files

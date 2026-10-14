@@ -1069,7 +1069,7 @@ tokenizer
 </code></pre>
 <h2 id="key-components-2"><a class="header" href="#key-components-2">Key Components</a></h2>
 <h3 id="trainerconfig"><a class="header" href="#trainerconfig">TrainerConfig</a></h3>
-<p>Parses the five training input files -- seed lexicon (<code>lex.csv</code>), character definition (<code>char.def</code>), unknown-word definition (<code>unk.def</code>), feature template (<code>feature.def</code>), and rewrite rules (<code>rewrite.def</code>) -- into the configuration consumed by <code>Trainer</code>. <code>TrainerConfig::from_readers</code> (or <code>from_paths</code>, its file-path convenience wrapper) extracts the surface/feature vocabulary from the seed lexicon, builds a <code>FeatureExtractor</code> from the parsed feature templates, builds a <code>DictionaryRewriter</code> from the rewrite rules, and assembles an in-memory <code>lindera_dictionary::dictionary::Dictionary</code> from the seed lexicon, the character definition and the unknown-word definition. <code>char.def</code> is parsed by the dictionary builder (<code>CharacterDefinitionBuilder::build_from_str</code>), so training sees the same character categories as the built dictionary; the default category of each character, which the <code>%t</code> feature uses, comes from the builder's <code>build_default_category_table</code>. The <code>Dictionary</code> (<code>dict()</code>) holds what the training lattices are built from: its <code>prefix_dictionary</code> (<code>system_lexicon()</code>) is the seed lexicon, a prefix dictionary over the seed surfaces whose word ID is the row index, and its <code>unknown_dictionary</code> (<code>unk_handler()</code>) holds the <code>unk.def</code> entries, read with the dictionary builder's <code>parse_unk</code>, one entry per line in file order. Their costs and context IDs are not used in training, and the <code>Dictionary</code>'s connection matrix is a placeholder. <code>TrainerConfig</code> also keeps the seed feature strings and the <code>unk.def</code> entries as <code>(category, feature string)</code> pairs in file order, from which the labels and the exported <code>unk.def</code> are made. In <code>unk.def</code>, lines that start with <code>#</code> and empty lines are skipped, and a line with fewer than five fields, or whose context IDs or cost are not numbers, is an error that names the line. As <code>mecab-dict-index</code> and <code>lindera build</code> do, <code>from_readers</code> also rejects a <code>char.def</code> range line that names a category not defined on an earlier line, a category defined twice, an <code>unk.def</code> line whose category <code>char.def</code> does not define, and a <code>char.def</code> category without an <code>unk.def</code> line (<code>lindera_dictionary::dictionary::unknown_dictionary::check_unknown_word_categories</code>), so that such input fails before training rather than when the exported files are built. It also exposes <code>surfaces()</code>, <code>surface_features()</code>, <code>get_features()</code>, a user lexicon accessible via <code>user_lexicon()</code> / <code>add_user_lexicon_entry()</code> / <code>load_user_lexicon_from_content()</code>, and <code>metadata()</code>.</p>
+<p>Parses the five training input files -- seed lexicon (<code>lex.csv</code>), character definition (<code>char.def</code>), unknown-word definition (<code>unk.def</code>), feature template (<code>feature.def</code>), and rewrite rules (<code>rewrite.def</code>) -- into the configuration consumed by <code>Trainer</code>. <code>TrainerConfig::from_readers</code> (or <code>from_paths</code>, its file-path convenience wrapper) extracts the surface/feature vocabulary from the seed lexicon, builds a <code>FeatureExtractor</code> from the parsed feature templates, builds a <code>DictionaryRewriter</code> from the rewrite rules, and assembles an in-memory <code>lindera_dictionary::dictionary::Dictionary</code> from the seed lexicon, the character definition and the unknown-word definition. <code>char.def</code> is parsed by the dictionary builder (<code>CharacterDefinitionBuilder::build_from_str</code>), so training sees the same character categories as the built dictionary; the default category of each character, which the <code>%t</code> feature uses, comes from the builder's <code>build_default_category_table</code>. The <code>Dictionary</code> (<code>dict()</code>) holds what the training lattices are built from: its <code>prefix_dictionary</code> (<code>system_lexicon()</code>) is the seed lexicon, a prefix dictionary over the seed surfaces whose word ID is the row index, and its <code>unknown_dictionary</code> (<code>unk_handler()</code>) holds the <code>unk.def</code> entries, read with the dictionary builder's <code>parse_unk</code>, one entry per line in file order. Their costs and context IDs are not used in training, and the <code>Dictionary</code>'s connection matrix is a placeholder. <code>TrainerConfig</code> also keeps the seed feature strings and the <code>unk.def</code> entries as <code>(category, feature string)</code> pairs in file order, from which the labels and the exported <code>unk.def</code> are made. In <code>unk.def</code>, lines that start with <code>#</code> and empty lines are skipped, and a line with fewer than five fields, or whose context IDs or cost are not numbers, is an error that names the line. It also exposes <code>surfaces()</code>, <code>surface_features()</code>, <code>get_features()</code>, a user lexicon accessible via <code>user_lexicon()</code> / <code>add_user_lexicon_entry()</code> / <code>load_user_lexicon_from_content()</code>, and <code>metadata()</code>.</p>
 <h3 id="corpus--example--word"><a class="header" href="#corpus--example--word">Corpus / Example / Word</a></h3>
 <p>Represent annotated training data. <code>Word</code> pairs a surface form with its (comma-joined) feature string. <code>Example</code> is one training sentence, built from a <code>Vec&lt;Word&gt;</code> whose surfaces are concatenated to reconstruct the original sentence text. <code>Corpus</code> is a collection of <code>Example</code>s; <code>Corpus::from_reader</code> parses tab-separated <code>surface&lt;TAB&gt;features</code> lines, treating blank lines or literal <code>EOS</code> lines as sentence boundaries.</p>
 <h3 id="featureextractor"><a class="header" href="#featureextractor">FeatureExtractor</a></h3>
@@ -2793,18 +2793,6 @@ EOS
 Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
 </code></pre>
 <p>Without <code>--system-dict</code>, the build does not know the system dictionary, and the user dictionary builds. <code>lindera tokenize --user-dict</code> then checks it against the system dictionary and fails with an error that names the first entry outside the matrix by its word id (see <a href="lindera-cli/../concepts/user_dictionary.html#context-ids">Context IDs</a>). A <code>.csv</code> given to <code>lindera tokenize --user-dict</code> is built for the system dictionary of <code>--dict</code> as it is loaded, so its error names the CSV line and surface, as with <code>--system-dict</code>.</p>
-<h3 id="chardef-and-unkdef-check"><a class="header" href="#chardef-and-unkdef-check">char.def and unk.def check</a></h3>
-<p>When it builds a system dictionary, <code>lindera build</code> also checks <code>char.def</code> and <code>unk.def</code> against each other, as <code>mecab-dict-index</code> does:</p>
-<ul>
-<li>A range line of <code>char.def</code> names only categories defined on an earlier line.</li>
-<li>Each category is defined once.</li>
-<li>Every <code>unk.def</code> line names a category that <code>char.def</code> defines.</li>
-<li>Every <code>char.def</code> category has at least one <code>unk.def</code> line.</li>
-</ul>
-<p>A dictionary that breaks one of these fails to build, with an error that names the file, the category and, except for a category without an <code>unk.def</code> line, the line. Such a dictionary used to build, and then <code>lindera tokenize</code> panicked on a character of an undefined category, gave some categories the settings of others, stopped its output before a character that no word or unknown word covers, or ignored the <code>unk.def</code> line. For example, with a <code>char.def</code> that defines the <code>SPACE</code> category and an <code>unk.def</code> that has no <code>SPACE</code> line:</p>
-<pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for category SPACE, which char.def defines; every char.def category needs at least one unk.def line }
-</code></pre>
-<p><code>lindera train</code> checks its <code>--char-def</code> and <code>--unk-def</code> in the same way before it trains (see <a href="lindera-cli/../development/training_pipeline.html#3-character-definition-chardef">Training Pipeline</a>).</p>
 <h3 id="examples-1"><a class="header" href="#examples-1">Examples</a></h3>
 <h4 id="build-ipadic-japanese-dictionary"><a class="header" href="#build-ipadic-japanese-dictionary">Build IPADIC (Japanese dictionary)</a></h4>
 <pre><code class="language-shell"># Download and extract IPADIC source files
@@ -9969,7 +9957,6 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>WASM: the <code>TokenizerBuilder</code> settings apply whichever way the dictionary is set</strong></td><td>WASM users who combine <code>setDictionaryInstance()</code> with <code>setKeepWhitespace()</code> or filters, or <code>setDictionary()</code> with <code>setUserDictionaryInstance()</code></td><td>Expect those settings and the user dictionary to take effect; a dictionary instance whose <code>char.def</code> has no <code>SPACE</code> category now needs <code>setKeepWhitespace(true)</code>, as a dictionary set by URI does</td></tr>
 <tr><td><strong><code>lindera train</code> builds its lattices as MeCab's learner does and keeps every <code>unk.def</code> entry; <code>model.dat</code> has the format version 2.0.0</strong></td><td>Users of <code>lindera train</code> and <code>lindera export</code>, and of the training functions of the Python, Node.js, Ruby and PHP bindings</td><td>Train every model again with 7.0.0, then export and build it again (a <code>model.dat</code> written by v6.2.0 or earlier is rejected); give every <code>unk.def</code> line at least five fields; remove comment lines from seed lexicons</td></tr>
 <tr><td><strong><code>lindera build</code> rejects context IDs outside <code>matrix.def</code></strong></td><td>Anyone who builds a system dictionary whose <code>lex.csv</code> or <code>unk.def</code> has a context ID beyond the size of its <code>matrix.def</code> (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's <code>mecab-dict-index</code> accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic</td><td>Fix the IDs or the matrix, or set <code>skip_invalid_cost_or_id</code> in <code>metadata.json</code> to drop such <code>lex.csv</code> rows; fix such IDs in the user dictionary</td></tr>
-<tr><td><strong><code>lindera build</code> and <code>lindera train</code> check <code>char.def</code> against <code>unk.def</code></strong></td><td>Anyone whose <code>char.def</code> has a range line that names a category not defined on an earlier line, or a category defined twice, or whose <code>char.def</code> and <code>unk.def</code> do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored <code>unk.def</code> lines); not dictionaries that MeCab's <code>mecab-dict-index</code> accepts</td><td>Define each category once, before the range lines that name it; give every category an <code>unk.def</code> line, and remove the <code>unk.def</code> lines of undefined categories</td></tr>
 <tr><td><strong>The <code>normalize_details</code> setting is removed: <code>Metadata::new</code> and <code>CoreMetadata::new</code> take 10 arguments, Ruby's <code>Metadata.new</code> takes 8</strong></td><td>Code that creates or reads dictionary metadata: Rust (<code>Metadata</code>, <code>lindera_binding::CoreMetadata</code>, <code>PrefixDictionaryBuilderOptions</code>) and the <code>Metadata</code> classes of the Python, Ruby, PHP and Node.js bindings</td><td>Remove the argument, option or property; a <code>metadata.json</code> that still has the key loads, and the key is ignored</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>, <code>tokens_offset_into</code>, <code>nbest_tokens_offset</code> and <code>NBestGenerator::next</code> return <code>(start, end, WordId)</code></strong></td><td>Rust code that calls these <code>lindera_dictionary</code> functions directly (also as <code>lindera::dictionary::viterbi::…</code>, <code>lindera::dictionary::Lattice</code> and <code>lindera::dictionary::nbest::…</code>)</td><td>Destructure three fields and use the returned end instead of the next token's start</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> returns the BOS index of the best path (<code>Option&lt;usize&gt;</code>)</strong></td><td>Rust code that uses the <code>()</code> value of <code>tokens_offset_into</code></td><td>Nothing for a call written as a statement; otherwise ignore the new value</td></tr>
@@ -11075,46 +11062,11 @@ fail, since its <code>matrix.def</code> could be smaller than its context IDs; t
 and export it again with 7.0.0 (see the previous section). For another
 dictionary that fails, fix the IDs in <code>lex.csv</code> or <code>unk.def</code> or the size in
 <code>matrix.def</code>.</p>
-<h2 id="lindera-build-and-lindera-train-check-chardef-against-unkdef"><a class="header" href="#lindera-build-and-lindera-train-check-chardef-against-unkdef"><code>lindera build</code> and <code>lindera train</code> check <code>char.def</code> against <code>unk.def</code></a></h2>
-<p>Up to v6.2.0, <code>lindera build</code> and <code>lindera train</code> accepted a <code>char.def</code> and
-an <code>unk.def</code> that MeCab's <code>mecab-dict-index</code> rejects
-(<a href="https://github.com/lindera/lindera/issues/1195">#1195</a>):</p>
-<ul>
-<li>A range line of <code>char.def</code> that names a category no line defines. The
-built dictionary panicked on a character of the category, and so did
-training when the corpus had one.</li>
-<li>A range line before the definition of its category, or a category
-defined twice. The categories defined after it got the <code>INVOKE</code>, <code>GROUP</code>
-and <code>LENGTH</code> settings of another category, which changed the unknown
-words.</li>
-<li>A <code>char.def</code> category without an <code>unk.def</code> line. A character of it that no
-word covers got no unknown word, so tokenization stopped its output
-before it, without an error, and a training lattice had no path through
-it.</li>
-<li>An <code>unk.def</code> line whose category <code>char.def</code> does not define. The line was
-never used, and <code>lindera export</code> wrote it back.</li>
-</ul>
-<p>v7.0.0 rejects all of these, as <code>mecab-dict-index</code> does. The error names
-the file, the category and, except for a category without an <code>unk.def</code>
-line, the line. For example, with <code>0x3005 KANJI_ITERATION</code> on line 8 of
-<code>char.def</code>, whose category no line defines:</p>
-<pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/char.def: line 8: category KANJI_ITERATION is not defined; a range line can only name a category defined on an earlier line }
-</code></pre>
-<p><code>lindera train</code> and the bindings' training functions check their input in
-the same way before they train, and number the <code>unk.def</code> lines as in the
-file, comment and empty lines included.</p>
-<p>Every bundled dictionary passes, and so does a dictionary that
-<code>mecab-dict-index</code> builds. For another dictionary that fails, define each
-category once, before the range lines that name it, give every category at
-least one <code>unk.def</code> line, and remove the <code>unk.def</code> lines of categories that
-<code>char.def</code> does not define.</p>
 <h2 id="rust-api-changes-in-lindera_dictionary-1"><a class="header" href="#rust-api-changes-in-lindera_dictionary-1">Rust API changes in <code>lindera_dictionary</code></a></h2>
 <p>These affect only code that calls the lattice backtraces directly, that
 creates dictionary metadata with <code>Metadata::new</code>, that reads the
-character categories of a dictionary, that generates unknown words with
-<code>UnknownDictionary</code>, or that builds a dictionary from a <code>char.def</code> and an
-<code>unk.def</code> that <code>mecab-dict-index</code> rejects (see
-<a href="migration_v6_to_v7.html#lindera-build-and-lindera-train-check-chardef-against-unkdef">the previous section</a>):
+character categories of a dictionary, or that generates unknown words with
+<code>UnknownDictionary</code>:
 <code>lindera_dictionary::viterbi::Lattice</code> and
 <code>lindera_dictionary::nbest::NBestGenerator</code>, also reachable as
 <code>lindera::dictionary::viterbi::…</code>, <code>lindera::dictionary::Lattice</code> and
@@ -11123,9 +11075,7 @@ character categories of a dictionary, that generates unknown words with
 <code>lindera::dictionary::Metadata</code>, and
 <code>lindera_dictionary::dictionary::character_definition::CharacterDefinition</code>, and
 <code>lindera_dictionary::dictionary::unknown_dictionary</code>, also reachable as
-<code>lindera::dictionary::core::unknown_dictionary</code>, and
-<code>lindera_dictionary::builder</code>, also reachable as
-<code>lindera::dictionary::builder</code>.
+<code>lindera::dictionary::core::unknown_dictionary</code>.
 The <code>Segmenter</code>, <code>Tokenizer</code>,
 <code>SegmentWorker</code> and <code>AnalysisWorker</code> APIs and the CLI are unaffected; the
 language bindings change only in their <code>Metadata</code> class (see
@@ -11149,9 +11099,6 @@ language bindings change only in their <code>Metadata</code> class (see
 <tr><td><code>UnknownDictionary::compatible_unk_index(sentence, start, end, feature) -&gt; Option&lt;WordIdx&gt;</code></td><td>Removed</td></tr>
 <tr><td><code>unknown_dictionary::UnkWord</code> and <code>unknown_dictionary::WordIdx</code></td><td>Removed</td></tr>
 <tr><td>—</td><td>New in <code>viterbi</code>: <code>Lattice::unknown_word_candidates</code> and <code>UnknownWordCandidate</code></td></tr>
-<tr><td><code>CharacterDefinitionBuilder::build_from_str</code> and <code>build</code> accept a range line that names a category not defined on an earlier line, and a category defined twice</td><td>Return an error that names the line and the category</td></tr>
-<tr><td><code>DictionaryBuilder::build_dictionary</code> and <code>build_unknown_dictionary</code> accept an <code>unk.def</code> line whose category <code>char.def</code> does not define, and a <code>char.def</code> category without an <code>unk.def</code> line</td><td>Return an error that names the file and the category</td></tr>
-<tr><td>—</td><td>New in <code>unknown_dictionary</code>: <code>check_unknown_word_categories</code>, the check of <code>unk.def</code> against the <code>char.def</code> categories that the builder and the trainer run</td></tr>
 </tbody></table>
 </div>
 <p>Each token is now <code>(start, end, word_id)</code> instead of <code>(start, word_id)</code>,
@@ -11257,7 +11204,6 @@ positions that no path reaches. The tokenization path does not change.</p>
 <tr><td>—</td><td>New in <code>model</code>: <code>MODEL_FORMAT_VERSION</code></td></tr>
 <tr><td><code>TrainerConfig::dict()</code> holds an empty lexicon and a placeholder unknown-word dictionary</td><td>Holds the seed lexicon (<code>system_lexicon()</code>) and the <code>unk.def</code> entries (<code>unk_handler()</code>)</td></tr>
 <tr><td><code>TrainerConfig::from_readers</code> skips an <code>unk.def</code> line with fewer than five fields</td><td>Returns an error</td></tr>
-<tr><td><code>TrainerConfig::from_readers</code> accepts a <code>char.def</code> and an <code>unk.def</code> that <code>mecab-dict-index</code> rejects</td><td>Returns an error that names the file, the category and, where there is one, the line (see <a href="migration_v6_to_v7.html#lindera-build-and-lindera-train-check-chardef-against-unkdef"><code>lindera build</code> and <code>lindera train</code> check <code>char.def</code> against <code>unk.def</code></a>)</td></tr>
 <tr><td><code>Trainer::max_grouping_len(len)</code> bounds the unknown-word candidates, which never exceed three characters</td><td>Caps unknown-word grouping with the runtime's meaning, in characters beyond the first; <code>None</code>, the default, leaves it unbounded</td></tr>
 <tr><td><code>Model::num_labels()</code> and <code>ModelMetadata::label_count</code> count one unknown-word label per <code>char.def</code> category</td><td>Count one per <code>unk.def</code> entry; the virtual labels are not counted</td></tr>
 </tbody></table>
@@ -11427,10 +11373,6 @@ the two context IDs, the cost and at least one feature column.</li>
 and have no <code>SPACE</code> category, add it as those files now do, so that the
 trained dictionary tokenizes without <code>--keep-whitespace</code>
 (<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>).</li>
-<li>If training reports a category of <code>char.def</code> or <code>unk.def</code>, define each
-category once, before the range lines that name it, give every category
-an <code>unk.def</code> line, and remove the <code>unk.def</code> lines of undefined categories
-(<a href="https://github.com/lindera/lindera/issues/1195">#1195</a>).</li>
 </ul>
 <p>Everyone who builds a system dictionary with <code>lindera build</code>:</p>
 <ul>
@@ -11440,10 +11382,6 @@ matrix, fix the IDs in <code>lex.csv</code> or <code>unk.def</code> or the size 
 rows. Such a dictionary used to build and then panic at
 tokenization. A dictionary exported by v6.2.0 or earlier is best trained
 and exported again.</li>
-<li>If the build reports a category of <code>char.def</code> or <code>unk.def</code>, define each
-category once, before the range lines that name it, give every category
-an <code>unk.def</code> line, and remove the <code>unk.def</code> lines of undefined categories
-(<a href="https://github.com/lindera/lindera/issues/1195">#1195</a>).</li>
 </ul>
 <p>Everyone who uses a user dictionary with detailed entries:</p>
 <ul>
@@ -11880,10 +11818,7 @@ NUMERIC 1 1 0
 </code></pre>
 <p>Parameters control the unknown words that a character's default category creates: whether they are created even where a dictionary word starts (<code>INVOKE</code>), whether a run in which each character shares a category with the one before continues as a single token (<code>GROUP</code>), and up to which length shorter candidates are created (<code>LENGTH</code>).</p>
 <p>A range line can list more than one category (for example <code>0x4E00 KANJINUMERIC KANJI</code>), and every range line needs at least one. When several lines cover the same code point, the last line decides its categories, as in MeCab. The first category on that line is the character's default category: the only one that creates unknown-word candidates, and the one the <code>%t</code> feature template uses.</p>
-<p>As in MeCab, a range line can name only categories defined on an earlier line, and each category is defined once. <code>lindera train</code> and <code>lindera build</code> reject a <code>char.def</code> that breaks either, with an error that names the line and the category. For example, <code>lindera train</code> with <code>0x30FC KATAKANA</code> inserted as the first line of <code>char.def</code>, before the line that defines <code>KATAKANA</code>:</p>
-<pre><code class="language-text">Error: LinderaError { kind: Args, source: failed to parse char.def: LinderaError(kind=Content, source=char.def: line 1: category KATAKANA is not defined; a range line can only name a category defined on an earlier line) }
-</code></pre>
-<p>Keep the <code>SPACE</code> category, which MeCab requires in every <code>char.def</code> along with <code>DEFAULT</code>, and its line in <code>unk.def</code>: every category needs at least one <code>unk.def</code> line (see the next section). The segmenter treats its characters as whitespace: by default it skips them, as MeCab does, and does not output them. Without <code>--keep-whitespace</code>, a dictionary whose <code>char.def</code> has no <code>SPACE</code> category cannot be used: <code>lindera tokenize</code> fails with <code>SPACE category is not defined in the dictionary (char.def)</code>.</p>
+<p>Keep the <code>SPACE</code> category, which MeCab requires in every <code>char.def</code> along with <code>DEFAULT</code>, and its line in <code>unk.def</code>: MeCab requires at least one <code>unk.def</code> line for every category. The segmenter treats its characters as whitespace: by default it skips them, as MeCab does, and does not output them. Without <code>--keep-whitespace</code>, a dictionary whose <code>char.def</code> has no <code>SPACE</code> category cannot be used: <code>lindera tokenize</code> fails with <code>SPACE category is not defined in the dictionary (char.def)</code>.</p>
 <p>Training creates the unknown-word candidates with the runtime's own code (<code>Lattice::unknown_word_candidates</code>), so it learns weights for the candidates that the built dictionary produces:</p>
 <ul>
 <li>At each position, the character's default category creates the candidates. It creates none when its <code>INVOKE</code> is 0 and a seed word starts there.</li>
@@ -11910,11 +11845,6 @@ NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*
 <li>Lines that start with <code>#</code> and empty lines are skipped. A line with fewer than five fields (the category, the two ids, the cost and at least one feature column) is an error:</li>
 </ul>
 <pre><code class="language-text">Error: LinderaError { kind: Args, source: unk.def line 1: expected at least 5 fields (category, left id, right id, cost, feature), got 4 }
-</code></pre>
-<ul>
-<li>As in MeCab, every line names a category that <code>char.def</code> defines, and every category of <code>char.def</code> has at least one line. <code>lindera train</code> and <code>lindera build</code> reject an <code>unk.def</code> that breaks either. The error names the category and, for a line whose category <code>char.def</code> does not define, the line, counted with the comment and empty lines. For example, <code>lindera train</code> with <code>SYMBOL,0,0,0,記号,一般,*,*,*,*,*,*,*</code> appended to the <code>unk.def</code> above as its ninth line, while <code>char.def</code> has no <code>SYMBOL</code> category:</li>
-</ul>
-<pre><code class="language-text">Error: LinderaError { kind: Args, source: failed to check unk.def: LinderaError(kind=Content, source=unk.def: line 9: category SYMBOL is not defined in char.def) }
 </code></pre>
 <h3 id="5-feature-template-featuredef"><a class="header" href="#5-feature-template-featuredef">5. Feature Template (feature.def)</a></h3>
 <p>MeCab-compatible feature extraction patterns that define what information the CRF model uses for learning.</p>
