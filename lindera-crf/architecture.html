@@ -213,6 +213,7 @@
 <li><strong>MergedModel</strong>: Optimized for inference; merges feature weights into a compact representation serializable with rkyv, using <code>MergedFeatureSet</code> as its per-label element type</li>
 </ul>
 <p><code>MergedFeatureSet</code> holds the pre-summed unigram <code>weight</code> for a label, along with its <code>left_id</code>/<code>right_id</code> bigram connection IDs into <code>MergedModel</code>'s bigram weight matrix.</p>
+<p><code>RawModel::unigram_weight</code> computes that sum for a list of unigram feature IDs, and <code>merge</code> calls it for every label. A feature without a weight adds nothing, so it also weighs the features of an entry that was not a label in training: <code>lindera-trainer</code> uses it for the cost of a user lexicon entry.</p>
 <h3 id="forward-backward-algorithm"><a class="header" href="#forward-backward-algorithm">Forward-backward Algorithm</a></h3>
 <p>Computes alpha (forward) and beta (backward) values over the lattice. Used during training to calculate expected feature counts and gradients.</p>
 <h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>

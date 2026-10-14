@@ -665,6 +665,18 @@ EOS
 Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
 </code></pre>
 <p><code>--system-dict</code> を指定しないと、ビルドの時点では組み合わせるシステム辞書が分からないため、ユーザー辞書はそのままビルドされます。その後 <code>lindera tokenize --user-dict</code> がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を単語 ID で示すエラーで失敗します（<a href="../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。<code>lindera tokenize --user-dict</code> に <code>.csv</code> を渡すと、読み込むときに <code>--dict</code> のシステム辞書に合わせてビルドするため、<code>--system-dict</code> と同じく CSV の行番号と表層形を示すエラーになります。</p>
+<h3 id="chardef-と-unkdef-の確認"><a class="header" href="#chardef-と-unkdef-の確認">char.def と unk.def の確認</a></h3>
+<p>システム辞書をビルドするとき、<code>lindera build</code> は <code>mecab-dict-index</code> と同じく、<code>char.def</code> と <code>unk.def</code> を互いに照らし合わせて確認します：</p>
+<ul>
+<li><code>char.def</code> の範囲行が指すカテゴリは、それより前の行で定義されていること</li>
+<li>各カテゴリの定義は 1 回だけであること</li>
+<li><code>unk.def</code> の各行が、<code>char.def</code> で定義したカテゴリを指すこと</li>
+<li><code>char.def</code> の各カテゴリに、<code>unk.def</code> の行が 1 行以上あること</li>
+</ul>
+<p>どれかに反する辞書はビルドに失敗し、エラーはファイルとカテゴリを示します。<code>unk.def</code> の行がないカテゴリ以外では、行も示します。以前はこうした辞書もビルドでき、その後の <code>lindera tokenize</code> は、未定義のカテゴリの文字で panic したり、一部のカテゴリに別のカテゴリの設定を使ったり、どの単語にも未知語にも覆われない文字の手前で出力を打ち切ったり、<code>unk.def</code> の行を無視したりしていました。たとえば、<code>char.def</code> が <code>SPACE</code> カテゴリを定義し、<code>unk.def</code> に <code>SPACE</code> の行がない場合は、次のようになります：</p>
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for category SPACE, which char.def defines; every char.def category needs at least one unk.def line }
+</code></pre>
+<p><code>lindera train</code> も、学習の前に <code>--char-def</code> と <code>--unk-def</code> を同じように確認します（<a href="../development/training_pipeline.html#3-%E6%96%87%E5%AD%97%E5%AE%9A%E7%BE%A9-chardef">学習パイプライン</a>を参照）。</p>
 <h3 id="例"><a class="header" href="#例">例</a></h3>
 <h4 id="ipadic日本語辞書のビルド"><a class="header" href="#ipadic日本語辞書のビルド">IPADIC（日本語辞書）のビルド</a></h4>
 <pre><code class="language-shell"># IPADICソースファイルのダウンロードと展開

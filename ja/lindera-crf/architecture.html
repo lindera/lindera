@@ -213,6 +213,7 @@
 <li><strong>MergedModel</strong>: 推論に最適化され、素性の重みをrkyvでシリアライズ可能なコンパクトな表現にマージ。ラベルごとの要素型として<code>MergedFeatureSet</code>を使用</li>
 </ul>
 <p><code>MergedFeatureSet</code>は、ラベルの事前合計済みユニグラム<code>weight</code>と、<code>MergedModel</code>のバイグラム重み行列を参照する<code>left_id</code>/<code>right_id</code>接続IDを保持します。</p>
+<p><code>RawModel::unigram_weight</code>は、ユニグラム素性IDの並びについてこの和を計算し、<code>merge</code>はラベルごとにこれを呼びます。重みのない素性は何も足さないため、学習でラベルでなかったエントリの素性の重みも計算できます。<code>lindera-trainer</code>はユーザー辞書のエントリのコストにこれを使います。</p>
 <h3 id="前向き後向きアルゴリズム"><a class="header" href="#前向き後向きアルゴリズム">前向き・後向きアルゴリズム</a></h3>
 <p>ラティス上でアルファ（前向き）とベータ（後向き）の値を計算します。学習時に期待素性カウントと勾配の計算に使用されます。</p>
 <h2 id="feature-フラグ"><a class="header" href="#feature-フラグ">Feature フラグ</a></h2>

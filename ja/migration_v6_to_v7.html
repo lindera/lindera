@@ -229,6 +229,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong>WASM: 辞書の設定方法にかかわらず <code>TokenizerBuilder</code> の設定が適用される</strong></td><td><code>setDictionaryInstance()</code> と <code>setKeepWhitespace()</code> やフィルタ、または <code>setDictionary()</code> と <code>setUserDictionaryInstance()</code> を組み合わせる WASM のユーザー</td><td>それらの設定とユーザー辞書が効くことを前提にする。<code>char.def</code> に <code>SPACE</code> カテゴリがない辞書インスタンスでは、URI で設定した辞書と同じく <code>setKeepWhitespace(true)</code> が必要になる</td></tr>
 <tr><td><strong><code>lindera train</code> は MeCab の学習器と同じくラティスを作り、<code>unk.def</code> のすべてのエントリを保持する。<code>model.dat</code> の形式バージョンは 2.0.0</strong></td><td><code>lindera train</code>・<code>lindera export</code> と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー</td><td>7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた <code>model.dat</code> は拒否される）。<code>unk.def</code> のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す</td></tr>
 <tr><td><strong><code>lindera build</code> は <code>matrix.def</code> の範囲外の文脈 ID を拒否する</strong></td><td><code>lex.csv</code> や <code>unk.def</code> に <code>matrix.def</code> の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の <code>mecab-dict-index</code> が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる）</td><td>ID か行列を直すか、<code>metadata.json</code> の <code>skip_invalid_cost_or_id</code> でそうした <code>lex.csv</code> の行を取り除く。ユーザー辞書ではそうした ID を直す</td></tr>
+<tr><td><strong><code>lindera build</code> と <code>lindera train</code> は <code>char.def</code> と <code>unk.def</code> を照らし合わせる</strong></td><td>それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが <code>char.def</code> にあるユーザー、<code>char.def</code> と <code>unk.def</code> でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、<code>unk.def</code> の行を無視したりしていた）。MeCab の <code>mecab-dict-index</code> が受け入れる辞書は影響を受けない</td><td>各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに <code>unk.def</code> の行を書き、未定義のカテゴリの <code>unk.def</code> の行を削除する</td></tr>
 <tr><td><strong>設定 <code>normalize_details</code> の削除: <code>Metadata::new</code> と <code>CoreMetadata::new</code> の引数は 10 個、Ruby の <code>Metadata.new</code> の引数は 8 個になる</strong></td><td>辞書のメタデータを作成・参照するコード。Rust（<code>Metadata</code>・<code>lindera_binding::CoreMetadata</code>・<code>PrefixDictionaryBuilderOptions</code>）と、Python・Ruby・PHP・Node.js のバインディングの <code>Metadata</code> クラス</td><td>引数・オプション・プロパティを削除する。このキーを含む <code>metadata.json</code> もそのまま読み込め、キーは無視される</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>・<code>tokens_offset_into</code>・<code>nbest_tokens_offset</code>・<code>NBestGenerator::next</code> が <code>(start, end, WordId)</code> を返す</strong></td><td>これらの <code>lindera_dictionary</code> の関数を直接呼び出す Rust コード（<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・<code>lindera::dictionary::nbest::…</code> 経由を含む）</td><td>3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> が最良パスの BOS の添字（<code>Option&lt;usize&gt;</code>）を返す</strong></td><td><code>tokens_offset_into</code> の戻り値 <code>()</code> を値として使う Rust コード</td><td>文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する</td></tr>
@@ -1079,6 +1080,13 @@ mecab-jieba の <code>unk.def</code> の素性は 5 列で、その <code>featur
 それがなければ最初のエントリです。どの種辞書の行とも共通の列を持たない素性の
 エントリには、先頭の文字のカテゴリの <code>char.def</code> での添字を両方の ID として
 付けていました。これは文脈 ID ではありません。</li>
+<li><code>Model::write_dictionary</code> は、そうした <code>0,0,0</code> のエントリすべてに、素性に
+よらず同じコスト <code>tocost(0.8, cost_factor)</code> を付けていました。
+<code>Model::read_user_lexicon</code> は、空の文脈 ID やコストと、数でない値を <code>0</code> と
+して読み、負の文脈 ID を 16 ビットに折り返して読んでいました（<code>-1</code> は
+<code>65535</code>）。パラメータを埋めるのは 3 つとも <code>0</code> のときだけでした。そのため、
+コストが空で文脈 ID を与えたエントリはコスト <code>0</code> に、文脈 ID が空でコストを
+与えたエントリは BOS/EOS 用の ID <code>0,0</code> になっていました。</li>
 </ul>
 <p>v7.0.0 は MeCab の学習器と同じく学習します
 （<a href="development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。</p>
@@ -1120,10 +1128,18 @@ mecab-ipadic・mecab-ipadic-neologd・unidic-mecab・mecab-ko-dic・mecab-jieba�
 <code>resources/training/</code> の学習用のファイルのうち、テンプレートが最後の列より後ろを
 読む素性があるのは mecab-jieba の <code>unk.def</code> の行だけで、変わるのは mecab-jieba
 のファイルから学習したモデルだけです。</li>
-<li><code>Model::write_dictionary</code> は、<code>0,0,0</code> のユーザー辞書のエントリに、素性がその
-エントリに最も近い種辞書の行に <code>lex.csv</code> が付ける文脈 ID を付けます。どの種辞書の
-行とも共通の列を持たない素性のエントリは、<code>mecab-dict-index</code> が文脈 ID のない
-素性のユーザー辞書のエントリで失敗するのと同じくエラーになり、何も書き出しません。</li>
+<li><code>Model::write_dictionary</code> は、<code>mecab-dict-index</code> と同じく、ユーザー辞書の
+エントリのパラメータを別々に埋めます。空のコストは計算し、文脈 ID のどちらかが
+空か負の数なら、両方を推定します。<code>0,0,0</code> はこれまでどおり 3 つとも埋めます。
+空でも範囲内の数でもない文脈 ID やコストは、そのエントリを示すエラーになります。</li>
+<li>計算するコストは、MeCab の <code>calcCost</code> と同じく、エントリの unigram 素性の
+学習済みの重みの和を、<code>lex.csv</code> のコストと同じく変換したものです。そのため、
+素性と先頭の文字のカテゴリが種辞書のある行と同じエントリは、その行のコストを
+受け取ります。</li>
+<li>推定する文脈 ID は、素性がそのエントリに最も近い種辞書の行に <code>lex.csv</code> が付ける
+文脈 ID です。どの種辞書の行とも共通の列を持たない素性のエントリは、
+<code>mecab-dict-index</code> が文脈 ID のない素性のユーザー辞書のエントリで失敗するのと
+同じくエラーになり、何も書き出しません。</li>
 </ul>
 <p>すべてのラティスに種辞書の語が入るため、学習には以前より時間がかかります。学習は
 MeCab の学習器より遅く、収束する前に <code>--max-iterations</code> で
@@ -1138,7 +1154,9 @@ MeCab の学習器より遅く、収束する前に <code>--max-iterations</code
 複数のエントリを持つ <code>unk.def</code> も、そのまま学習・エクスポートできるように
 なりました。種辞書からコメント行を消してください。<code>#</code> で始まる行は 1 つの行として
 読むようになりました。どの種辞書の行とも共通の列を持たない素性のユーザー辞書の
-エントリには、文脈 ID とコストを書いてください。v6 の動作に戻す設定はありません。</p>
+エントリには、文脈 ID を書いてください。ユーザー辞書のエントリの文脈 ID とコストは、
+それぞれ数で書くか、埋めさせるなら空にしてください。v6 の動作に戻す設定は
+ありません。</p>
 <h2 id="lindera-build-は接続コスト行列の範囲外の文脈-id-を拒否する"><a class="header" href="#lindera-build-は接続コスト行列の範囲外の文脈-id-を拒否する"><code>lindera build</code> は接続コスト行列の範囲外の文脈 ID を拒否する</a></h2>
 <p>v6.2.0 までの <code>lindera build</code> は、文脈 ID が <code>matrix.def</code> の範囲外にある <code>lex.csv</code>
 の行や <code>unk.def</code> の行を受け付け、ビルドした辞書は、解析中にそうした語を引いた
@@ -1197,16 +1215,48 @@ CSV の行番号を示します（<code>at line 1</code>）。これまでは、
 文脈 ID より小さいことがあるため、失敗する場合があります。7.0.0 で学習と
 エクスポートをやり直してください（前の節を参照）。それ以外の辞書が失敗した場合は、
 <code>lex.csv</code> や <code>unk.def</code> の ID か、<code>matrix.def</code> の大きさを直してください。</p>
+<h2 id="lindera-build-と-lindera-train-は-chardef-と-unkdef-を照らし合わせる"><a class="header" href="#lindera-build-と-lindera-train-は-chardef-と-unkdef-を照らし合わせる"><code>lindera build</code> と <code>lindera train</code> は <code>char.def</code> と <code>unk.def</code> を照らし合わせる</a></h2>
+<p>v6.2.0 までの <code>lindera build</code> と <code>lindera train</code> は、MeCab の <code>mecab-dict-index</code> が
+拒否する <code>char.def</code> と <code>unk.def</code> を受け入れていました
+（<a href="https://github.com/lindera/lindera/issues/1195">#1195</a>）。</p>
+<ul>
+<li>どの行も定義していないカテゴリを指す <code>char.def</code> の範囲行。ビルドした辞書は、
+そのカテゴリの文字でパニックしました。学習も、コーパスにその文字があると
+パニックしました。</li>
+<li>カテゴリの定義より前にある範囲行や、2 回定義したカテゴリ。一部のカテゴリが
+別のカテゴリの <code>INVOKE</code>・<code>GROUP</code>・<code>LENGTH</code> の設定を使い、未知語が変わりました。</li>
+<li><code>unk.def</code> の行がない <code>char.def</code> のカテゴリ。そのカテゴリの文字のうち、
+どの単語も覆わない文字には未知語ができないため、解析はエラーを出さずに
+その手前で出力を打ち切り、学習用ラティスにはその文字を通る経路が
+ありませんでした。</li>
+<li><code>char.def</code> が定義していないカテゴリを指す <code>unk.def</code> の行。その行は使われず、
+<code>lindera export</code> はそれをそのまま書き出していました。</li>
+</ul>
+<p>v7.0.0 は、<code>mecab-dict-index</code> と同じく、これらをすべて拒否します。エラーは
+ファイルとカテゴリを示し、<code>unk.def</code> の行がないカテゴリ以外では行も示します。
+たとえば、どの行も定義していないカテゴリを指す <code>0x3005 KANJI_ITERATION</code> が
+<code>char.def</code> の 8 行目にある場合は、次のようになります：</p>
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/char.def: line 8: category KANJI_ITERATION is not defined; a range line can only name a category defined on an earlier line }
+</code></pre>
+<p><code>lindera train</code> とバインディングの学習関数も、学習の前に入力を同じように
+確認します。<code>unk.def</code> の行番号は、コメント行と空行も数えたファイル上の番号です。</p>
+<p>同梱の辞書と、<code>mecab-dict-index</code> でビルドできる辞書は、すべて確認を通ります。
+それ以外の辞書が失敗した場合は、各カテゴリを、それを指す範囲行より前で 1 回だけ
+定義し、すべてのカテゴリに <code>unk.def</code> の行を 1 行以上書き、<code>char.def</code> が定義して
+いないカテゴリの <code>unk.def</code> の行を削除してください。</p>
 <h2 id="lindera_dictionary-の-rust-api-変更"><a class="header" href="#lindera_dictionary-の-rust-api-変更"><code>lindera_dictionary</code> の Rust API 変更</a></h2>
 <p>以下は、ラティスのバックトレースを直接呼び出すコード、<code>Metadata::new</code> で辞書の
 メタデータを作成するコード、辞書の文字カテゴリを読むコード、<code>UnknownDictionary</code>
-で未知語を生成するコードにのみ影響します。対象は
+で未知語を生成するコード、<code>mecab-dict-index</code> が拒否する <code>char.def</code> と <code>unk.def</code>
+から辞書をビルドするコード（<a href="#lindera-build-%E3%81%A8-lindera-train-%E3%81%AF-chardef-%E3%81%A8-unkdef-%E3%82%92%E7%85%A7%E3%82%89%E3%81%97%E5%90%88%E3%82%8F%E3%81%9B%E3%82%8B">前の節</a>を参照）
+にのみ影響します。対象は
 <code>lindera_dictionary::viterbi::Lattice</code> と <code>lindera_dictionary::nbest::NBestGenerator</code>
 （<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・
 <code>lindera::dictionary::nbest::…</code> からも参照できます）、および
 <code>lindera_dictionary::dictionary::metadata::Metadata</code>（<code>lindera::dictionary::Metadata</code>
 からも参照できます）、<code>lindera_dictionary::dictionary::character_definition::CharacterDefinition</code>、
 <code>lindera_dictionary::dictionary::unknown_dictionary</code>（<code>lindera::dictionary::core::unknown_dictionary</code>
+からも参照できます）、<code>lindera_dictionary::builder</code>（<code>lindera::dictionary::builder</code>
 からも参照できます）です。<code>Segmenter</code>・<code>Tokenizer</code>・<code>SegmentWorker</code>・
 <code>AnalysisWorker</code> の API と CLI は影響を受けません。言語バインディングで変わるのは
 <code>Metadata</code> クラスだけです（<a href="#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>
@@ -1230,6 +1280,9 @@ CSV の行番号を示します（<code>at line 1</code>）。これまでは、
 <tr><td><code>UnknownDictionary::compatible_unk_index(sentence, start, end, feature) -&gt; Option&lt;WordIdx&gt;</code></td><td>削除</td></tr>
 <tr><td><code>unknown_dictionary::UnkWord</code> と <code>unknown_dictionary::WordIdx</code></td><td>削除</td></tr>
 <tr><td>—</td><td><code>viterbi</code> に <code>Lattice::unknown_word_candidates</code> と <code>UnknownWordCandidate</code> を追加</td></tr>
+<tr><td><code>CharacterDefinitionBuilder::build_from_str</code> と <code>build</code> は、それより前の行で定義していないカテゴリを指す範囲行と、2 回定義したカテゴリを受け入れる</td><td>行とカテゴリを示すエラーを返す</td></tr>
+<tr><td><code>DictionaryBuilder::build_dictionary</code> と <code>build_unknown_dictionary</code> は、<code>char.def</code> が定義していないカテゴリを指す <code>unk.def</code> の行と、<code>unk.def</code> の行がない <code>char.def</code> のカテゴリを受け入れる</td><td>ファイルとカテゴリを示すエラーを返す</td></tr>
+<tr><td>—</td><td><code>unknown_dictionary</code> に <code>check_unknown_word_categories</code> を追加。ビルダーと学習器が実行する、<code>char.def</code> のカテゴリと <code>unk.def</code> の照合</td></tr>
 </tbody></table>
 </div>
 <p>各トークンは <code>(start, word_id)</code> ではなく <code>(start, end, word_id)</code> になりました。
@@ -1326,6 +1379,7 @@ feature）経由で使う Rust コードにのみ影響します
 <tr><td>—</td><td><code>model</code> に <code>MODEL_FORMAT_VERSION</code> を追加</td></tr>
 <tr><td><code>TrainerConfig::dict()</code> は空の辞書とプレースホルダーの未知語辞書を持つ</td><td>種辞書（<code>system_lexicon()</code>）と <code>unk.def</code> のエントリ（<code>unk_handler()</code>）を持つ</td></tr>
 <tr><td><code>TrainerConfig::from_readers</code> はフィールドが 5 つ未満の <code>unk.def</code> の行を読み飛ばす</td><td>エラーを返す</td></tr>
+<tr><td><code>TrainerConfig::from_readers</code> は <code>mecab-dict-index</code> が拒否する <code>char.def</code> と <code>unk.def</code> を受け入れる</td><td>ファイルとカテゴリ、行があればその行を示すエラーを返す（<a href="#lindera-build-%E3%81%A8-lindera-train-%E3%81%AF-chardef-%E3%81%A8-unkdef-%E3%82%92%E7%85%A7%E3%82%89%E3%81%97%E5%90%88%E3%82%8F%E3%81%9B%E3%82%8B"><code>lindera build</code> と <code>lindera train</code> は <code>char.def</code> と <code>unk.def</code> を照らし合わせる</a>を参照）</td></tr>
 <tr><td><code>Trainer::max_grouping_len(len)</code> は未知語候補の長さを制限し、候補は 3 文字を超えない</td><td>ランタイムと同じ意味（先頭の 1 文字を除いた文字数）で未知語のグルーピングに上限を設ける。デフォルトの <code>None</code> は無制限</td></tr>
 <tr><td><code>Model::num_labels()</code> と <code>ModelMetadata::label_count</code> は <code>char.def</code> のカテゴリごとに 1 つの未知語ラベルを数える</td><td><code>unk.def</code> のエントリごとに 1 つを数える。仮想ラベルは数えない</td></tr>
 </tbody></table>
@@ -1471,6 +1525,10 @@ MeCab と同じくその空白を含むことを前提にする。</li>
 なければ、いまのそれらのファイルと同じく追加する。学習した辞書を
 <code>--keep-whitespace</code> なしで解析できるようにするため
 （<a href="https://github.com/lindera/lindera/issues/1166">#1166</a>）。</li>
+<li>学習で <code>char.def</code> や <code>unk.def</code> のカテゴリのエラーが出た場合は、各カテゴリを、
+それを指す範囲行より前で 1 回だけ定義し、すべてのカテゴリに <code>unk.def</code> の行を
+書き、未定義のカテゴリの <code>unk.def</code> の行を削除する
+（<a href="https://github.com/lindera/lindera/issues/1195">#1195</a>）。</li>
 </ul>
 <p><code>lindera build</code> でシステム辞書をビルドするすべてのユーザー:</p>
 <ul>
@@ -1479,6 +1537,10 @@ MeCab と同じくその空白を含むことを前提にする。</li>
 <code>lex.csv</code> の行を取り除く。そうした辞書は、以前はビルドでき、解析時に
 パニックしていた。v6.2.0 以前にエクスポートした辞書は、学習とエクスポートを
 やり直すのがよい。</li>
+<li>ビルドで <code>char.def</code> や <code>unk.def</code> のカテゴリのエラーが出た場合は、各カテゴリを、
+それを指す範囲行より前で 1 回だけ定義し、すべてのカテゴリに <code>unk.def</code> の行を
+書き、未定義のカテゴリの <code>unk.def</code> の行を削除する
+（<a href="https://github.com/lindera/lindera/issues/1195">#1195</a>）。</li>
 </ul>
 <p>詳細形式の見出し語を含むユーザー辞書を使うすべてのユーザー:</p>
 <ul>
