@@ -104,6 +104,30 @@ impl TrainerConfig {
             .first()
             .map(|category_id| category_id.0 as u32)
     }
+
+    /// Returns the `%t` value of a word: the default category of the first
+    /// character of its surface.
+    ///
+    /// A seed row and a user lexicon entry get theirs from here, so that an
+    /// entry whose first character is in the same category as a seed row's
+    /// gets the same `%t` features.
+    ///
+    /// # Arguments
+    ///
+    /// * `surface` - The surface of the word.
+    ///
+    /// # Returns
+    ///
+    /// The default category of the first character (see
+    /// [`default_category`](Self::default_category)), or 0 (`DEFAULT`) when
+    /// the surface is empty or the character has none.
+    pub(crate) fn surface_category(&self, surface: &str) -> u32 {
+        surface
+            .chars()
+            .next()
+            .and_then(|first_char| self.default_category(first_char))
+            .unwrap_or(0)
+    }
 }
 
 impl TrainerConfig {

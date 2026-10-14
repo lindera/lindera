@@ -165,13 +165,7 @@ impl RawModel {
         let mut right_conn_to_left_feats = vec![];
         let mut new_feature_sets = vec![];
         for feature_set in &self.provider.feature_sets {
-            let mut weight = 0.0;
-            for fid in feature_set.unigram() {
-                let fid = usize::from_u32(fid.get() - 1);
-                if let Some(widx) = self.unigram_weight_indices.get(fid).copied().flatten() {
-                    weight += self.weights[usize::from_u32(widx.get() - 1)];
-                }
-            }
+            let weight = self.unigram_weight(feature_set.unigram());
             let left_id = {
                 let new_id = u32::try_from(left_conn_to_right_feats.len() + 1)
                     .map_err(|_| RucrfError::model_scale("connection ID too large"))?;
@@ -277,6 +271,34 @@ impl RawModel {
             left_conn_to_right_feats,
             right_conn_to_left_feats,
         })
+    }
+
+    /// Returns the sum of the weights of uni-gram features: the weight that
+    /// [`merge`](Self::merge) gives a label with these features.
+    ///
+    /// A feature without a weight adds nothing: one that never appeared in a
+    /// training lattice, whose weight was pruned, or whose ID was assigned
+    /// after training, past the IDs the model knows. So the features of an
+    /// entry that was not a label in training, such as a user lexicon entry,
+    /// can be weighed as a label's are.
+    ///
+    /// # Arguments
+    ///
+    /// * `unigram` - The uni-gram feature IDs.
+    ///
+    /// # Returns
+    ///
+    /// The sum of their weights.
+    #[must_use]
+    pub fn unigram_weight(&self, unigram: &[NonZeroU32]) -> f64 {
+        let mut weight = 0.0;
+        for fid in unigram {
+            let fid = usize::from_u32(fid.get() - 1);
+            if let Some(widx) = self.unigram_weight_indices.get(fid).copied().flatten() {
+                weight += self.weights[usize::from_u32(widx.get() - 1)];
+            }
+        }
+        weight
     }
 
     /// Returns the relation between uni-gram feature IDs and weight indices.
@@ -579,6 +601,74 @@ mod tests {
             path,
         );
         assert!((194.0 - score).abs() < f64::EPSILON);
+    }
+
+    /// `unigram_weight` adds the weights of the features that have one, and
+    /// nothing for a feature mapped to no weight or past the known IDs.
+    #[test]
+    fn unigram_weight_skips_features_without_a_weight() {
+        let model = RawModel {
+            weights: vec![1.0, 2.0, 4.0, 8.0],
+            unigram_weight_indices: vec![NonZeroU32::new(1), None, NonZeroU32::new(3)],
+            bigram_weight_indices: vec![HashMap::new()],
+            provider: test_utils::generate_test_feature_provider(),
+        };
+        let ids: Vec<NonZeroU32> = [1, 2, 3, 4, 99]
+            .into_iter()
+            .map(|id| NonZeroU32::new(id).unwrap())
+            .collect();
+
+        // Feature 1 has weight 1.0 and feature 3 weight 4.0; feature 2 has no
+        // weight, and 4 and 99 are past the known IDs.
+        assert!((model.unigram_weight(&ids) - 5.0).abs() < f64::EPSILON);
+        assert!(model.unigram_weight(&[]).abs() < f64::EPSILON);
+    }
+
+    /// `merge` gives each label the weight `unigram_weight` gives its
+    /// features.
+    #[test]
+    fn merge_weighs_a_label_with_unigram_weight() {
+        let model = RawModel {
+            weights: vec![
+                1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0,
+                16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 13.0, 24.0, 5.0, 26.0, 27.0, 6.0,
+            ],
+            unigram_weight_indices: vec![
+                NonZeroU32::new(2),
+                NonZeroU32::new(4),
+                NonZeroU32::new(6),
+                NonZeroU32::new(8),
+            ],
+            bigram_weight_indices: vec![
+                hashmap![0 => 28, 1 => 0, 2 => 2, 3 => 4, 4 => 6],
+                hashmap![0 => 8, 1 => 9, 2 => 10, 3 => 11, 4 => 12],
+                hashmap![0 => 13, 1 => 14, 2 => 15, 3 => 16, 4 => 17],
+                hashmap![0 => 18, 1 => 19, 2 => 20, 3 => 21, 4 => 22],
+                hashmap![0 => 23, 1 => 24, 2 => 25, 3 => 26, 4 => 27],
+            ],
+            provider: test_utils::generate_test_feature_provider(),
+        };
+
+        let merged = model.merge().unwrap();
+
+        assert_eq!(merged.feature_sets.len(), model.provider.feature_sets.len());
+        for (merged_set, feature_set) in
+            merged.feature_sets.iter().zip(&model.provider.feature_sets)
+        {
+            let weight = model.unigram_weight(feature_set.unigram());
+            assert!(
+                (merged_set.weight - weight).abs() < f64::EPSILON,
+                "merged weight {} is not unigram_weight {weight}",
+                merged_set.weight
+            );
+        }
+        // Not all zero, so the comparison above is not vacuous.
+        assert!(
+            merged
+                .feature_sets
+                .iter()
+                .any(|set| set.weight.abs() >= f64::EPSILON)
+        );
     }
 }
 

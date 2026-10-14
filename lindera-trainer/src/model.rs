@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
-use std::num::NonZeroU32;
 
 use anyhow::Result;
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
@@ -9,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use crate::corpus::Word;
 use crate::feature_csv::{split_feature, wildcard_feature};
 use crate::lexicon_csv::{csv_field, read_lexicon_rows};
-use lindera_dictionary::viterbi::{LexType, WordEntry, WordId};
 
 /// The `metadata.version` this build writes into `model.dat` and requires
 /// when reading one. Bumped whenever the layout or the meaning of
@@ -211,6 +209,87 @@ pub struct ModelMetadata {
     pub label_count: usize,
 }
 
+/// A user lexicon entry that [`Model::read_user_lexicon`] read.
+pub(crate) struct UserEntry {
+    /// The surface and the feature, as read.
+    pub(crate) word: Word,
+    /// The left and right context ids given in the input, or `None` when
+    /// [`Model::write_dictionary`] infers them: when either was empty or
+    /// negative, or all three parameters were `0`.
+    pub(crate) context_ids: Option<(u16, u16)>,
+    /// The cost given in the input, or what it is computed from.
+    pub(crate) cost: UserEntryCost,
+}
+
+/// The cost of a [`UserEntry`].
+pub(crate) enum UserEntryCost {
+    /// The cost given in the input.
+    Given(i16),
+    /// The cost was empty, or all three parameters were `0`: the sum of the
+    /// trained weights of the entry's unigram features, which
+    /// [`Model::write_dictionary`] converts to a cost as it converts a seed
+    /// row's.
+    Weight(f64),
+}
+
+/// Reads a context id of a user lexicon entry.
+///
+/// # Arguments
+///
+/// * `surface` - The entry's surface, for the error message.
+/// * `name` - The name of the field, such as `left id`.
+/// * `value` - The field as read.
+///
+/// # Returns
+///
+/// The id, or `None` when the field is empty or a negative number, which
+/// `mecab-dict-index` reads as an id to infer. An error that names the
+/// entry when the field is anything else, such as `abc` or `65536`;
+/// `mecab-dict-index` reads `abc` with `atoi`, as `0`, but `lindera build`
+/// rejects it.
+fn parse_user_context_id(surface: &str, name: &str, value: &str) -> Result<Option<u16>> {
+    if value.is_empty() {
+        return Ok(None);
+    }
+    match value.parse::<i64>() {
+        Ok(id) if id < 0 => Ok(None),
+        Ok(id) => u16::try_from(id).map(Some).map_err(|_| {
+            anyhow::anyhow!(
+                "user lexicon entry {surface:?}: the {name} {value:?} is past the largest \
+                 context id, 65535"
+            )
+        }),
+        Err(_) => Err(anyhow::anyhow!(
+            "user lexicon entry {surface:?}: the {name} {value:?} is not a number; leave it \
+             empty to infer it"
+        )),
+    }
+}
+
+/// Reads the cost of a user lexicon entry.
+///
+/// # Arguments
+///
+/// * `surface` - The entry's surface, for the error message.
+/// * `value` - The field as read.
+///
+/// # Returns
+///
+/// The cost, or `None` when the field is empty, which `mecab-dict-index`
+/// reads as a cost to compute. An error that names the entry when the field
+/// is not a number from -32768 to 32767.
+fn parse_user_cost(surface: &str, value: &str) -> Result<Option<i16>> {
+    if value.is_empty() {
+        return Ok(None);
+    }
+    value.parse::<i16>().map(Some).map_err(|_| {
+        anyhow::anyhow!(
+            "user lexicon entry {surface:?}: the cost {value:?} is not a number from -32768 \
+             to 32767; leave it empty to compute it"
+        )
+    })
+}
+
 /// Trained model.
 pub struct Model {
     pub(crate) raw_model: lindera_crf::RawModel,
@@ -222,7 +301,9 @@ pub struct Model {
     /// `Trainer::virtual_label`) and are never exported themselves; they only
     /// name context ids in `left-id.def` and `right-id.def`.
     pub(crate) virtual_features: Vec<String>,
-    pub(crate) user_entries: Vec<(Word, WordEntry, NonZeroU32)>,
+    /// The user lexicon entries that `read_user_lexicon` read, in input
+    /// order.
+    pub(crate) user_entries: Vec<UserEntry>,
     pub(crate) merged_model: Option<lindera_crf::MergedModel>,
     pub(crate) regularization_cost: f64,
     pub(crate) max_iterations: u64,
@@ -270,20 +351,34 @@ impl Model {
 
     /// Reads the user-defined lexicon file.
     ///
-    /// If you want to assign parameters to the user-defined lexicon file, you need to call this
-    /// function before exporting the dictionary. The model overwrites the parameter only when it
-    /// is `0,0,0`. Otherwise, the parameter is used as is.
+    /// Call it before writing the dictionary, so that
+    /// [`write_dictionary`](Self::write_dictionary) fills in the parameters
+    /// an entry does not give. As in `mecab-dict-index`, the cost and the
+    /// context ids are filled in separately (#1198):
     ///
-    /// [`write_dictionary`](Self::write_dictionary) gives an entry with
-    /// `0,0,0` the context ids that `lex.csv` gives the seed row whose
-    /// feature is the most similar to the entry's (#1190). Each column that
-    /// is the same in both features, at the same position and up to the
-    /// shorter of the two, scores `(n - j) * 10`, where `n` is that length and
-    /// `j` the column, so the earlier columns, such as the part of speech,
-    /// weigh more; the first row with the highest score wins. An entry whose
-    /// feature has no column in common with any seed row makes
-    /// `write_dictionary` fail, as `mecab-dict-index` fails for a feature
-    /// without a context id; give its parameters instead.
+    /// - An empty cost is computed from the model, as MeCab's `calcCost`
+    ///   does: the sum of the trained weights of the entry's unigram
+    ///   features, converted with the cost factor of `lex.csv`. The features
+    ///   are made as a seed row's are: from the rewritten feature, the default
+    ///   category of the first character of the surface (`%t`) and the surface
+    ///   (`%w`, which MeCab does not accept in a unigram template). So an entry
+    ///   whose feature and first character's category are those of a seed row
+    ///   gets the cost `lex.csv` gives that row. A feature the model has no
+    ///   weight for adds nothing.
+    /// - When either context id is empty or negative, both are inferred: the
+    ///   ids that `lex.csv` gives the seed row whose feature is the most
+    ///   similar to the entry's (#1190). Each column that is the same in both
+    ///   features, at the same position and up to the shorter of the two,
+    ///   scores `(n - j) * 10`, where `n` is that length and `j` the column,
+    ///   so the earlier columns, such as the part of speech, weigh more; the
+    ///   first row with the highest score wins. An entry whose feature has no
+    ///   column in common with any seed row makes `write_dictionary` fail, as
+    ///   `mecab-dict-index` fails for a feature without a context id; give its
+    ///   context ids instead.
+    /// - An entry whose three parameters are all `0` gets all three filled
+    ///   in, as Vibrato's trainer does; `mecab-dict-index` keeps them.
+    ///
+    /// Any other parameter is used as it is.
     ///
     /// The file is read as the seed lexicon is (see
     /// [`TrainerConfig::from_readers`](crate::config::TrainerConfig::from_readers)):
@@ -297,87 +392,59 @@ impl Model {
     ///
     /// # Returns
     ///
-    /// `Ok(())`, or an error when the file cannot be read or a quoted field
-    /// spans lines; no entry is added then.
+    /// `Ok(())`, or an error when the file cannot be read, a quoted field
+    /// spans lines, or a context id or cost is neither empty nor a number in
+    /// its range (a negative context id is read as one to infer); the error
+    /// names the entry. `mecab-dict-index` reads such a value as a number
+    /// with `atoi`, but `lindera build` rejects it. No entry is added on an
+    /// error.
     pub fn read_user_lexicon<R: Read>(&mut self, mut rdr: R) -> Result<()> {
         self.merged_model = None;
         let mut content = String::new();
         rdr.read_to_string(&mut content)?;
 
+        let mut entries = Vec::new();
         for row in read_lexicon_rows(&content, "user lexicon")? {
             let surface = row.surface.as_str();
-            let left_id = row.left_id.parse::<i32>().unwrap_or(0);
-            let right_id = row.right_id.parse::<i32>().unwrap_or(0);
-            let cost = row.cost.parse::<i16>().unwrap_or(0);
-            let features = row.feature.as_str();
+            let feature = row.feature.as_str();
 
-            let word = Word::new(surface, features);
+            let left_id = parse_user_context_id(surface, "left id", &row.left_id)?;
+            let right_id = parse_user_context_id(surface, "right id", &row.right_id)?;
+            let mut context_ids = left_id.zip(right_id);
+            let mut cost = parse_user_cost(surface, &row.cost)?;
+            if context_ids == Some((0, 0)) && cost == Some(0) {
+                // `0,0,0` fills in all three, as Vibrato's trainer does.
+                context_ids = None;
+                cost = None;
+            }
 
-            // Create word ID for user dictionary entry
-            let word_id = WordId::new(LexType::User, self.user_entries.len() as u32);
-
-            let entry = WordEntry::new(word_id, cost, left_id as u16, right_id as u16);
-
-            // Extract features and create feature set for this user entry
-            let first_char = surface.chars().next().unwrap_or('\0');
-            let cate_id = self.get_category_id(first_char);
-
-            // Apply dictionary rewriter to get ufeature, lfeature, rfeature
-            let (ufeature, lfeature, rfeature) = self.config.dictionary_rewriter.rewrite(features);
-            // Split as MeCab splits a feature, so a quoted column with `,` in
-            // it is one column (#1184).
-            let (u_columns, l_columns, r_columns) = (
-                split_feature(&ufeature),
-                split_feature(&lfeature),
-                split_feature(&rfeature),
+            // The features of a seed row with this feature and first character
+            // category, so the weight is the one `lex.csv` gives that row. They
+            // are made for every entry, as before #1198, which registers them
+            // with the feature extractor whose features `write_left_id_def`
+            // and `write_right_id_def` list.
+            let category = self.config.surface_category(surface);
+            let feature_set = crate::label_feature_set(
+                &self.config.dictionary_rewriter,
+                &mut self.config.feature_extractor,
+                feature,
+                category,
+                Some(surface),
             );
-            let u_vec: Vec<&str> = u_columns.iter().map(|column| column.as_ref()).collect();
-            let l_vec: Vec<&str> = l_columns.iter().map(|column| column.as_ref()).collect();
-            let r_vec: Vec<&str> = r_columns.iter().map(|column| column.as_ref()).collect();
+            let cost = match cost {
+                Some(cost) => UserEntryCost::Given(cost),
+                None => UserEntryCost::Weight(self.raw_model.unigram_weight(feature_set.unigram())),
+            };
 
-            let unigram_features = self
-                .config
-                .feature_extractor
-                .extract_unigram_feature_ids(&u_vec, cate_id);
-            let left_features = self
-                .config
-                .feature_extractor
-                .extract_left_feature_ids(&l_vec);
-            let right_features = self
-                .config
-                .feature_extractor
-                .extract_right_feature_ids(&r_vec);
-
-            let _feature_set =
-                lindera_crf::FeatureSet::new(&unigram_features, &right_features, &left_features);
-            // TODO: Integrate feature_set into provider for proper user lexicon feature handling
-            // Currently, we cannot access the provider from this context, which limits
-            // the integration of user lexicon features into the trained model.
-            // This should be refactored to allow proper feature integration.
-
-            // Create a label ID without modifying the provider
-            // Since we can't clone the provider, we'll use a fixed ID based on entry count
-            let label_id = NonZeroU32::new(1000000 + self.user_entries.len() as u32 + 1)
-                .ok_or_else(|| anyhow::anyhow!("Failed to create label ID"))?;
-
-            self.user_entries.push((word, entry, label_id));
+            entries.push(UserEntry {
+                word: Word::new(surface, feature),
+                context_ids,
+                cost,
+            });
         }
 
+        self.user_entries.extend(entries);
         Ok(())
-    }
-
-    /// Returns the `%t` feature value of a character.
-    ///
-    /// # Arguments
-    ///
-    /// * `ch` - The character, usually the first character of a surface.
-    ///
-    /// # Returns
-    ///
-    /// The default category of `ch` from `char.def` (MeCab's `default_type`),
-    /// or 0 (DEFAULT) if it has none.
-    fn get_category_id(&self, ch: char) -> u32 {
-        self.config.default_category(ch).unwrap_or(0)
     }
 
     /// Writes the model to a writer.
@@ -642,11 +709,15 @@ impl Model {
     /// `matrix.def`, `unk.def` and the user lexicon that `read_user_lexicon`
     /// read.
     ///
-    /// A user lexicon entry whose left id, right id and cost are all zero
-    /// gets the context ids that `lex.csv` gives the seed row whose feature
-    /// is the most similar to its own (#1190). The user lexicon is made
-    /// before anything is written, so that nothing is written when the
-    /// context ids of one of its entries cannot be inferred.
+    /// The parameters a user lexicon entry did not give are filled in
+    /// separately, as `mecab-dict-index` does (see
+    /// [`read_user_lexicon`](Self::read_user_lexicon)): missing context ids
+    /// are those that `lex.csv` gives the seed row whose feature is the most
+    /// similar to the entry's (#1190), and a missing cost is the sum of the
+    /// weights of the entry's unigram features, converted as a seed row's
+    /// (#1198). The user lexicon is made before anything is written, so that
+    /// nothing is written when the context ids of one of its entries cannot
+    /// be inferred.
     ///
     /// # Arguments
     ///
@@ -659,9 +730,9 @@ impl Model {
     /// # Returns
     ///
     /// `Ok(())` on success, or an error when a writer fails. It is also an
-    /// error, and nothing is written, when a user lexicon entry whose left
-    /// id, right id and cost are all zero has a feature with no column in
-    /// common with any seed row, so that its context ids cannot be inferred.
+    /// error, and nothing is written, when a user lexicon entry without
+    /// context ids has a feature with no column in common with any seed row,
+    /// so that its context ids cannot be inferred.
     pub fn write_dictionary<W1, W2, W3, W4>(
         &self,
         lexicon_wtr: &mut W1,
@@ -807,17 +878,19 @@ impl Model {
         Ok(())
     }
 
-    /// Writes the user lexicon with trained parameters.
+    /// Writes the user lexicon, with the parameters its entries did not give
+    /// filled in.
     ///
     /// Entries are written in the order `read_user_lexicon` read them, so the
     /// output is byte-reproducible and diffable against the input file (#981).
-    /// An entry whose left id, right id and cost are all zero receives the
-    /// context ids of the seed row whose feature is the most similar to its
-    /// own (see `infer_context_ids`) and a trained cost; any other entry is
-    /// re-emitted with its input parameters unchanged, per the contract
-    /// documented on `read_user_lexicon`. A surface that contains `,`, `"` or
-    /// a line break is quoted, with its quotes doubled; the feature is written
-    /// as it was read (#1170).
+    /// An entry without context ids gets those of the seed row whose feature
+    /// is the most similar to its own (see `infer_context_ids`), and one
+    /// without a cost gets the sum of the weights of its unigram features,
+    /// converted with the cost factor that `lex.csv` is written with
+    /// (#1198); a parameter the entry gave is written as it is (see
+    /// `read_user_lexicon`). A surface that contains `,`, `"` or a line break
+    /// is quoted, with its quotes doubled; the feature is written as it was
+    /// read (#1170).
     ///
     /// # Arguments
     ///
@@ -836,39 +909,25 @@ impl Model {
         let merged_model = self.get_merged_model()?;
         let cost_factor = calculate_cost_factor(&merged_model);
 
-        for (word, entry, _label_id) in &self.user_entries {
-            let surface = word.surface();
-            let features = word.feature();
-            let surface_field = csv_field(surface);
-            if entry.left_id() == 0 && entry.right_id() == 0 && entry.word_cost() == 0 {
-                let (left_id, right_id) =
-                    self.infer_context_ids(&merged_model, surface, features)?;
-                let raw_cost = self.get_user_word_cost(surface) as f64 / 1000.0;
-                let cost = tocost(raw_cost, cost_factor);
-                writeln!(
-                    writer,
-                    "{surface_field},{left_id},{right_id},{cost},{features}"
-                )?;
-            } else {
-                writeln!(
-                    writer,
-                    "{},{},{},{},{}",
-                    surface_field,
-                    entry.left_id(),
-                    entry.right_id(),
-                    entry.word_cost(),
-                    features
-                )?;
-            }
+        for entry in &self.user_entries {
+            let surface = entry.word.surface();
+            let features = entry.word.feature();
+            let (left_id, right_id) = match entry.context_ids {
+                Some((left_id, right_id)) => (u32::from(left_id), u32::from(right_id)),
+                None => self.infer_context_ids(&merged_model, surface, features)?,
+            };
+            let cost = match entry.cost {
+                UserEntryCost::Given(cost) => cost,
+                UserEntryCost::Weight(weight) => tocost(weight, cost_factor),
+            };
+            writeln!(
+                writer,
+                "{},{left_id},{right_id},{cost},{features}",
+                csv_field(surface)
+            )?;
         }
 
         Ok(())
-    }
-
-    fn get_user_word_cost(&self, _surface: &str) -> i32 {
-        // Return trained cost for user lexicon words
-        // Could be based on trained model weights
-        800 // Slightly lower cost than default for user words
     }
 
     /// Returns the input cost of an unknown-word category.
@@ -901,8 +960,8 @@ impl Model {
         }
     }
 
-    /// Returns the context ids of a user lexicon entry whose left id, right
-    /// id and cost are all zero.
+    /// Returns the context ids of a user lexicon entry that did not give
+    /// them: either was empty or negative, or all three parameters were `0`.
     ///
     /// They are the ids that `lex.csv` gives the seed row whose feature is
     /// the most similar to the entry's (see `best_matching_seed_row`): those
@@ -941,7 +1000,7 @@ impl Model {
             return Err(anyhow::anyhow!(
                 "user lexicon entry {surface:?} with the feature {features:?}: no seed row \
                  has a column in common with the feature, so its context ids cannot be \
-                 inferred; give its left id, right id and cost"
+                 inferred; give its left id and right id"
             ));
         };
         let feature_set = merged_model
@@ -949,19 +1008,6 @@ impl Model {
             .get(index)
             .ok_or_else(|| anyhow::anyhow!("seed row {index} has no label in the merged model"))?;
         Ok((feature_set.left_id.get(), feature_set.right_id.get()))
-    }
-
-    /// Calculate maximum context ID from training data
-    #[allow(dead_code)]
-    fn calculate_max_context_id(&self) -> u32 {
-        let mut max_id = 0u32;
-
-        // Get maximum ID from all user_entries
-        for (_, entry, _) in &self.user_entries {
-            max_id = max_id.max(entry.left_id()).max(entry.right_id());
-        }
-
-        max_id
     }
 
     /// Calculate connection cost based on trained model
