@@ -90,24 +90,44 @@ Lindera.build_dictionary('/path/to/input_dir', '/path/to/output_dir', metadata)
 
 ### ユーザー辞書のビルド
 
-CSV ファイルからユーザー辞書をビルドします：
+組み合わせるシステム辞書に合わせて、CSV ファイルからユーザー辞書をビルドします：
+
+```ruby
+require 'lindera'
+
+dictionary = Lindera.load_dictionary('/path/to/ipadic')
+Lindera.build_user_dictionary_for('user_words.csv', '/path/to/user_dictionary.bin', dictionary)
+user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.bin', dictionary)
+```
+
+CSV はシステム辞書のメタデータでビルドし、接続コスト行列と照らして確認します。
+文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を示す `RuntimeError`
+になり、ファイルは書き出しません（[文脈 ID](../concepts/user_dictionary.md#文脈-id)
+を参照）。2 番目の引数は書き出すファイルのパスです。ローダーは拡張子で
+ユーザー辞書の読み込み方を決めるので、`.bin` で終えてください。
+
+`Lindera.build_user_dictionary(kind, input_file, output_dir, metadata)` は、
+メタデータだけでユーザー辞書をビルドします。`output_dir` も、名前に反して
+ディレクトリではなく、書き出すファイルのパスです。各行はシステム辞書と
+組み合わせるときに確認し、エラーは見出し語をその単語 ID で示します：
 
 ```ruby
 require 'lindera'
 
 metadata = Lindera::Metadata.from_json_file('metadata.json')
-Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir', metadata)
+Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', metadata)
 ```
 
 `metadata` パラメータは省略可能です。省略した場合はデフォルトのメタデータ値が使用されます：
 
 ```ruby
-Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir', nil)
+Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', nil)
 ```
 
 > [!NOTE]
 > 第一引数（`kind`、上の例では `'ipadic'`）は現時点では未使用です -- 将来の利用のために予約
 > されているだけで、ビルドには影響しません。現時点では任意の文字列を渡すことができます。
+> システム辞書に合わせてビルドするには `Lindera.build_user_dictionary_for` を使います。
 
 ## Metadata
 

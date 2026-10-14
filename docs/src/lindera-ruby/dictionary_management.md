@@ -91,24 +91,47 @@ Metadata loaded with `Lindera::Metadata.from_json_file` keeps the `space_penalty
 
 ### User Dictionary
 
-Build a user dictionary from a CSV file:
+Build a user dictionary from a CSV file for the system dictionary it is used
+with:
+
+```ruby
+require 'lindera'
+
+dictionary = Lindera.load_dictionary('/path/to/ipadic')
+Lindera.build_user_dictionary_for('user_words.csv', '/path/to/user_dictionary.bin', dictionary)
+user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.bin', dictionary)
+```
+
+The CSV is built with the system dictionary's metadata and checked against
+its connection matrix: a row whose context ID lies outside the matrix raises
+a `RuntimeError` that names its CSV line and surface, and no file is written
+(see [Context IDs](../concepts/user_dictionary.md#context-ids)). The second
+argument is the path of the file to write. End it with `.bin`, since the
+loaders choose how to load a user dictionary by its extension.
+
+`Lindera.build_user_dictionary(kind, input_file, output_dir, metadata)` builds
+a user dictionary with metadata only. Despite its name, `output_dir` is the
+path of the file to write too, not a directory. The rows are checked when the
+user dictionary is combined with the system dictionary, and the error names
+the entry by its word id:
 
 ```ruby
 require 'lindera'
 
 metadata = Lindera::Metadata.from_json_file('metadata.json')
-Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir', metadata)
+Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', metadata)
 ```
 
 The `metadata` parameter is optional. When omitted, default metadata values are used:
 
 ```ruby
-Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir', nil)
+Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', nil)
 ```
 
 > [!NOTE]
 > The first argument (`kind`, `'ipadic'` above) is currently unused -- it is reserved for
 > future use and has no effect on the build. Any string value can be passed for it today.
+> To build for a system dictionary, use `Lindera.build_user_dictionary_for`.
 
 ## Metadata
 

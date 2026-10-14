@@ -37,6 +37,7 @@ CSV のユーザー辞書をシステム辞書と一緒にビルドするとき�
 - `--system-dict` でシステム辞書を指定した `lindera build --user`（Rust API では `DictionaryBuilder::with_system_matrix`。[文脈 ID の確認](../lindera-cli/commands.md#文脈-id-の確認) を参照）
 - 設定（`Segmenter::from_config`、`TokenizerBuilder`）や `lindera tokenize --user-dict` で指定した `.csv` のユーザー辞書と、Python・Node.js・Ruby・PHP のバインディングの `TokenizerBuilder` にパスで渡した `.csv` のユーザー辞書
 - 読み込み済みのシステム辞書に合わせてユーザー辞書を読み込む関数（Rust API・Python・Ruby の `load_user_dictionary_for`、Node.js の `loadUserDictionaryFor`、PHP の `Lindera\Dictionary::loadUserFor`、WebAssembly の `loadUserDictionaryFromBytesFor`）
+- 読み込み済みのシステム辞書に合わせてユーザー辞書をビルドする関数（Python・Ruby の `build_user_dictionary_for`、Node.js の `buildUserDictionaryFor`、PHP の `Lindera\Dictionary::buildUserFor`）
 
 たとえば、1 行目が IPADIC の行列の範囲内にあり、2 行目の左文脈 ID が 60000 の `userdic.csv` では次のようになります。
 
@@ -45,7 +46,7 @@ $ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic
 Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
 ```
 
-それ以外のユーザー辞書は、システム辞書なしでビルドされます。`--system-dict` を指定せずに `lindera build --user` で書き出した `.bin` と、メタデータだけで読み込んだユーザー辞書（Rust API・Python・Ruby の `load_user_dictionary`、Node.js の `loadUserDictionary`、PHP の `Lindera\Dictionary::loadUser`、WebAssembly の `loadUserDictionaryFromBytes`）です。この場合、文脈 ID は 2 つの辞書を組み合わせるときに確認します。`Segmenter::try_new`、設定からの構築、`lindera tokenize --user-dict`、各言語バインディングの `Tokenizer` のコンストラクタとビルダーは、行列の範囲外にある最初の見出し語についてエラーを返します。エラーは、見出し語をその単語 ID（表層形の順に並べた行を 0 から数えた番号）と詳細フィールドで示します。上の `userdic.csv` からビルドした `.bin` では次のようになります。
+それ以外のユーザー辞書は、システム辞書なしでビルドされます。`--system-dict` を指定せずに `lindera build --user` で書き出した `.bin`、バインディングのビルド関数でメタデータだけを使って書き出した `.bin`（Python・Ruby の `build_user_dictionary`、Node.js の `buildUserDictionary`、PHP の `Lindera\Dictionary::buildUser`）、メタデータだけで読み込んだユーザー辞書（Rust API・Python・Ruby の `load_user_dictionary`、Node.js の `loadUserDictionary`、PHP の `Lindera\Dictionary::loadUser`、WebAssembly の `loadUserDictionaryFromBytes`）です。この場合、文脈 ID は 2 つの辞書を組み合わせるときに確認します。`Segmenter::try_new`、設定からの構築、`lindera tokenize --user-dict`、各言語バインディングの `Tokenizer` のコンストラクタとビルダーは、行列の範囲外にある最初の見出し語についてエラーを返します。エラーは、見出し語をその単語 ID（表層形の順に並べた行を 0 から数えた番号）と詳細フィールドで示します。上の `userdic.csv` からビルドした `.bin` では次のようになります。
 
 ```text
 $ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u user_dict/userdic.bin

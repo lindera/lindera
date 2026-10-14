@@ -1130,7 +1130,13 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
   PHP の `Lindera\Dictionary::loadUserFor`、WebAssembly の
   `loadUserDictionaryFromBytesFor` です
   （[#1193](https://github.com/lindera/lindera/issues/1193)）。メタデータを受け取る
-  これまでの関数は変わりません。
+  これまでの関数は変わりません。これらのバインディングのユーザー辞書のビルド関数にも、
+  読み込み済みのシステム辞書と照らして CSV の各行を確認しながらビルドするものが
+  加わりました。Python・Ruby の `build_user_dictionary_for`、Node.js の
+  `buildUserDictionaryFor`、PHP の `Lindera\Dictionary::buildUserFor` です
+  （[#1188](https://github.com/lindera/lindera/issues/1188)）。メタデータを受け取る
+  これまでのビルド関数も変わりません。その `output_dir` は、これまでどおり
+  ディレクトリではなく、書き出すファイルのパスです。
 - ユーザー辞書の行のコストや文脈 ID が数値でないときのエラーは、
   `lindera build --user` でも `.csv` のユーザー辞書の読み込みでも、その行の
   CSV の行番号を示します（`at line 1`）。これまでは、表層形の順に並べた行を

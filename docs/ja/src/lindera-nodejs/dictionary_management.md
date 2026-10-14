@@ -104,24 +104,44 @@ buildDictionary("/path/to/mecab-ko-dic", "/path/to/output_dir", metadata);
 
 ### ユーザー辞書のビルド
 
-CSV ファイルからユーザー辞書をビルドします：
+組み合わせるシステム辞書に合わせて、CSV ファイルからユーザー辞書をビルドします：
+
+```javascript
+const { buildUserDictionaryFor, loadDictionary, loadUserDictionaryFor } = require("lindera");
+
+const dictionary = loadDictionary("/path/to/ipadic");
+buildUserDictionaryFor("user_words.csv", "/path/to/user_dictionary.bin", dictionary);
+const userDict = loadUserDictionaryFor("/path/to/user_dictionary.bin", dictionary);
+```
+
+CSV はシステム辞書のメタデータでビルドし、接続コスト行列と照らして確認します。
+文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を示すエラーを投げ、
+ファイルは書き出しません（[文脈 ID](../concepts/user_dictionary.md#文脈-id)
+を参照）。2 番目の引数は書き出すファイルのパスです。ローダーは拡張子で
+ユーザー辞書の読み込み方を決めるので、`.bin` で終えてください。
+
+`buildUserDictionary(kind, inputFile, outputDir, metadata)` は、メタデータだけで
+ユーザー辞書をビルドします。`outputDir` も、名前に反してディレクトリではなく、
+書き出すファイルのパスです。各行はシステム辞書と組み合わせるときに確認し、
+エラーは見出し語をその単語 ID で示します：
 
 ```javascript
 const { buildUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
-buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata);
+buildUserDictionary("ipadic", "user_words.csv", "/path/to/user_dictionary.bin", metadata);
 ```
 
 `metadata` パラメータは省略可能です。省略した場合はデフォルトのメタデータ値が使用されます：
 
 ```javascript
-buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir");
+buildUserDictionary("ipadic", "user_words.csv", "/path/to/user_dictionary.bin");
 ```
 
 > [!NOTE]
 > 第一引数（`kind`）は現状未使用です -- 将来の拡張のために予約されており、ビルド結果には
-> 影響しません。現時点では任意の文字列を渡しても問題ありません。
+> 影響しません。現時点では任意の文字列を渡しても問題ありません。システム辞書に合わせて
+> ビルドするには `buildUserDictionaryFor` を使います。
 
 ## Metadata
 

@@ -105,24 +105,47 @@ buildDictionary("/path/to/mecab-ko-dic", "/path/to/output_dir", metadata);
 
 ### User Dictionary
 
-Build a user dictionary from a CSV file:
+Build a user dictionary from a CSV file for the system dictionary it is used
+with:
+
+```javascript
+const { buildUserDictionaryFor, loadDictionary, loadUserDictionaryFor } = require("lindera");
+
+const dictionary = loadDictionary("/path/to/ipadic");
+buildUserDictionaryFor("user_words.csv", "/path/to/user_dictionary.bin", dictionary);
+const userDict = loadUserDictionaryFor("/path/to/user_dictionary.bin", dictionary);
+```
+
+The CSV is built with the system dictionary's metadata and checked against
+its connection matrix: a row whose context ID lies outside the matrix throws
+an error that names its CSV line and surface, and no file is written (see
+[Context IDs](../concepts/user_dictionary.md#context-ids)). The second
+argument is the path of the file to write. End it with `.bin`, since the
+loaders choose how to load a user dictionary by its extension.
+
+`buildUserDictionary(kind, inputFile, outputDir, metadata)` builds a user
+dictionary with metadata only. Despite its name, `outputDir` is the path of
+the file to write too, not a directory. The rows are checked when the user
+dictionary is combined with the system dictionary, and the error names the
+entry by its word id:
 
 ```javascript
 const { buildUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
-buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata);
+buildUserDictionary("ipadic", "user_words.csv", "/path/to/user_dictionary.bin", metadata);
 ```
 
 The `metadata` parameter is optional. When omitted, default metadata values are used:
 
 ```javascript
-buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir");
+buildUserDictionary("ipadic", "user_words.csv", "/path/to/user_dictionary.bin");
 ```
 
 > [!NOTE]
 > The first argument (`kind`) is currently unused -- it is reserved for future use and has no
-> effect on the build. Any string value can be passed for it today.
+> effect on the build. Any string value can be passed for it today. To build for a system
+> dictionary, use `buildUserDictionaryFor`.
 
 ## Metadata
 
