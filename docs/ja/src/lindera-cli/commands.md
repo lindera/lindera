@@ -645,6 +645,23 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
 
 `--system-dict` を指定しないと、ビルドの時点では組み合わせるシステム辞書が分からないため、ユーザー辞書はそのままビルドされます。その後 `lindera tokenize --user-dict` がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を単語 ID で示すエラーで失敗します（[文脈 ID](../concepts/user_dictionary.md#文脈-id) を参照）。`lindera tokenize --user-dict` に `.csv` を渡すと、読み込むときに `--dict` のシステム辞書に合わせてビルドするため、`--system-dict` と同じく CSV の行番号と表層形を示すエラーになります。
 
+### char.def と unk.def の確認
+
+システム辞書をビルドするとき、`lindera build` は `mecab-dict-index` と同じく、`char.def` と `unk.def` を互いに照らし合わせて確認します：
+
+- `char.def` の範囲行が指すカテゴリは、それより前の行で定義されていること
+- 各カテゴリの定義は 1 回だけであること
+- `unk.def` の各行が、`char.def` で定義したカテゴリを指すこと
+- `char.def` の各カテゴリに、`unk.def` の行が 1 行以上あること
+
+どれかに反する辞書はビルドに失敗し、エラーはファイルとカテゴリを示します。`unk.def` の行がないカテゴリ以外では、行も示します。以前はこうした辞書もビルドでき、その後の `lindera tokenize` は、未定義のカテゴリの文字で panic したり、一部のカテゴリに別のカテゴリの設定を使ったり、どの単語にも未知語にも覆われない文字の手前で出力を打ち切ったり、`unk.def` の行を無視したりしていました。たとえば、`char.def` が `SPACE` カテゴリを定義し、`unk.def` に `SPACE` の行がない場合は、次のようになります：
+
+```text
+Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for category SPACE, which char.def defines; every char.def category needs at least one unk.def line }
+```
+
+`lindera train` も、学習の前に `--char-def` と `--unk-def` を同じように確認します（[学習パイプライン](../development/training_pipeline.md#3-文字定義-chardef)を参照）。
+
 ### 例
 
 #### IPADIC（日本語辞書）のビルド

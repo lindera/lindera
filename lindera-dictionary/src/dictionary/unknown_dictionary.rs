@@ -274,9 +274,59 @@ pub(crate) fn parse_unk_named(
     })
 }
 
+/// Checks the categories of `unk.def` against those of `char.def`, as
+/// `mecab-dict-index` does: every line must name a `char.def` category, and
+/// every `char.def` category must have at least one line.
+///
+/// A line whose category `char.def` does not define is never used. A
+/// category without a line creates no unknown word, so a character of it
+/// that no dictionary word covers leaves the lattice without a path, and the
+/// segmenter outputs only the part of the text before it. [`parse_unk`]
+/// accepts both; the dictionary builder and the trainer call this function
+/// after it.
+///
+/// # Arguments
+///
+/// * `source` - The name of the `unk.def` content, such as the path of the
+///   file, for the messages.
+/// * `categories` - The `char.def` category names, in category id order.
+/// * `lines` - The `unk.def` entry lines with their 1-based line numbers.
+///   The category is the text before the first comma.
+///
+/// # Returns
+///
+/// `Ok(())`, or an error for the first line, in line order, whose category
+/// `char.def` does not define (`{source}: line N: category X is not defined
+/// in char.def`), else for the first category, in category id order, without
+/// a line (`{source}: no line for category X, ...`), which can name no line.
+pub fn check_unknown_word_categories<'a>(
+    source: &str,
+    categories: &[String],
+    lines: impl IntoIterator<Item = (usize, &'a str)>,
+) -> LinderaResult<()> {
+    let mut has_line = vec![false; categories.len()];
+    for (line_number, line) in lines {
+        let category = line.split(',').next().unwrap_or_default();
+        let Some(category_id) = categories.iter().position(|name| name == category) else {
+            return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                "{source}: line {line_number}: category {category} is not defined in char.def"
+            )));
+        };
+        has_line[category_id] = true;
+    }
+    if let Some(category_id) = has_line.iter().position(|&found| !found) {
+        return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+            "{source}: no line for category {}, which char.def defines; every char.def \
+             category needs at least one unk.def line",
+            categories[category_id]
+        )));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{UnknownDictionary, parse_unk};
+    use super::{UnknownDictionary, check_unknown_word_categories, parse_unk};
 
     /// Builds a dictionary whose `words_data` holds `entries`, each encoded
     /// as a 4-byte LE length followed by its NUL-joined fields -- the layout
@@ -431,5 +481,68 @@ mod tests {
         assert_eq!(dict.category_references, vec![vec![0], vec![1]]);
         assert_eq!(dict.word_details(0), Some(vec!["名詞", "一般"]));
         assert_eq!(dict.word_details(1), Some(vec![""]));
+    }
+
+    /// Checks `content`'s lines, numbered from 1, against [`categories`].
+    fn check(content: &str) -> Result<(), String> {
+        check_unknown_word_categories(
+            "unk.def",
+            &categories(),
+            content
+                .lines()
+                .enumerate()
+                .map(|(index, line)| (index + 1, line)),
+        )
+        .map_err(|err| err.to_string())
+    }
+
+    /// Every line names a category, and every category has a line; a
+    /// category can have several.
+    #[test]
+    fn check_unknown_word_categories_accepts_matching_categories() {
+        assert_eq!(
+            check("DEFAULT,0,0,0,名詞,一般\nKANJI,1,1,10,名詞,一般\nKANJI,2,2,20,名詞,固有名詞\n"),
+            Ok(())
+        );
+    }
+
+    /// #1195: a line whose category `char.def` does not define is an error
+    /// naming the line and the category, as in `mecab-dict-index`.
+    #[test]
+    fn check_unknown_word_categories_rejects_an_undefined_category() {
+        let message = check("DEFAULT,0,0,0,名詞,一般\nKANJI,1,1,10,名詞\nFOO,1,1,10,名詞\n")
+            .expect_err("FOO is not a char.def category");
+
+        assert!(
+            message.contains("unk.def: line 3: category FOO is not defined in char.def"),
+            "{message}"
+        );
+    }
+
+    /// #1195: a `char.def` category without a line is an error naming the
+    /// category, as in `mecab-dict-index`. No line can be named.
+    #[test]
+    fn check_unknown_word_categories_rejects_a_category_without_a_line() {
+        let message = check("DEFAULT,0,0,0,名詞,一般\n").expect_err("KANJI has no line");
+
+        assert!(
+            message.contains(
+                "unk.def: no line for category KANJI, which char.def defines; every char.def \
+                 category needs at least one unk.def line"
+            ),
+            "{message}"
+        );
+    }
+
+    /// An undefined category is reported first, with its line, when a
+    /// category also lacks a line.
+    #[test]
+    fn check_unknown_word_categories_reports_the_undefined_category_first() {
+        let message = check("FOO,0,0,0,名詞,一般\n").expect_err("both are wrong");
+
+        assert!(
+            message.contains("unk.def: line 1: category FOO is not defined in char.def"),
+            "{message}"
+        );
     }
 }

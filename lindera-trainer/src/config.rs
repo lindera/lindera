@@ -16,7 +16,9 @@ use lindera_dictionary::dictionary::character_definition::{
 use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use lindera_dictionary::dictionary::metadata::Metadata;
 use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
-use lindera_dictionary::dictionary::unknown_dictionary::{UnknownDictionary, parse_unk};
+use lindera_dictionary::dictionary::unknown_dictionary::{
+    UnknownDictionary, check_unknown_word_categories, parse_unk,
+};
 use lindera_dictionary::viterbi::{LexType, WordEntry, WordId};
 
 /// Configuration for training.
@@ -152,7 +154,14 @@ impl TrainerConfig {
     /// # Returns
     ///
     /// The configuration, or an error when a file cannot be read or parsed,
-    /// such as a seed lexicon with a quoted field that spans lines.
+    /// such as a seed lexicon with a quoted field that spans lines. As in
+    /// `mecab-dict-index` and `lindera build`, `char.def` and `unk.def` are
+    /// checked against each other (#1195): a `char.def` range line that
+    /// names a category not defined on an earlier line, a category defined
+    /// twice, an `unk.def` line whose category `char.def` does not define and
+    /// a `char.def` category without an `unk.def` line are errors. An
+    /// `unk.def` line is named by its line in the file, comment and empty
+    /// lines counted.
     pub fn from_readers<R1, R2, R3, R4, R5>(
         lexicon_rdr: R1,
         char_prop_rdr: R2,
@@ -263,6 +272,9 @@ impl TrainerConfig {
         // dictionary builder's `parse_unk` reads every line as an entry, and
         // must number the entries as `unk_entries` does.
         let mut unk_entry_lines = String::new();
+        // The 1-based line in the file of each entry line, for the errors
+        // of the category check below.
+        let mut unk_line_numbers = Vec::new();
         for (index, line) in unk_content.lines().enumerate() {
             if line.trim().is_empty() || line.starts_with('#') {
                 continue;
@@ -302,6 +314,7 @@ impl TrainerConfig {
             unk_entries.push((category.clone(), features));
             unk_entry_lines.push_str(line);
             unk_entry_lines.push('\n');
+            unk_line_numbers.push(index + 1);
             unk_costs.insert(category, cost);
         }
 
@@ -319,6 +332,19 @@ impl TrainerConfig {
             Cursor::new(char_def_content.as_bytes()),
             Cursor::new(unk_entry_lines.as_bytes()),
         )?;
+
+        // Check the unk.def categories against the char.def ones, as
+        // `lindera build` does with the exported files (#1195), so that a
+        // mismatch fails before training rather than after it.
+        check_unknown_word_categories(
+            "unk.def",
+            dict.character_definition.categories(),
+            unk_line_numbers
+                .iter()
+                .copied()
+                .zip(unk_entry_lines.lines()),
+        )
+        .map_err(|err| anyhow::anyhow!("failed to check unk.def: {err}"))?;
 
         Ok(Self {
             dict,
@@ -607,7 +633,8 @@ mod tests {
         let seed_csv = "東京,0,0,5000,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー\n\
                         行く,1,1,4000,動詞,自立,*,*,五段・カ行促音便,基本形,行く,イク,イク\n";
         let char_def = "DEFAULT 0 1 0\nHIRAGANA 1 1 0\n0x3042..0x3096 HIRAGANA\n";
-        let unk_def = "DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n";
+        let unk_def = "DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n\
+                       HIRAGANA,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n";
         let feature_def = "UNIGRAM:%F[0]\nUNIGRAM:%F[1]\n";
         let rewrite_def = "*\tUNK\n";
 
@@ -716,7 +743,7 @@ mod tests {
         let seed_csv = "한국,0,0,5000,NNG,Korea,F,han-guk\n\
                         안녕,1,1,4000,NNG,hello,F,an-nyeong\n";
         let char_def = "DEFAULT 0 1 0\nHANGUL 1 1 0\n0xAC00..0xD7A3 HANGUL\n";
-        let unk_def = "DEFAULT,0,0,1500,NNG,unknown,F,*\n";
+        let unk_def = "DEFAULT,0,0,1500,NNG,unknown,F,*\nHANGUL,0,0,1500,NNG,unknown,F,*\n";
         let feature_def = "UNIGRAM:%F[0]\n";
         let rewrite_def = "*\tUNK\n";
 
@@ -744,7 +771,7 @@ mod tests {
         let seed_csv = "中国,0,0,5000,n,China,*,zhong1guo2\n\
                         你好,1,1,4000,x,hello,*,ni3hao3\n";
         let char_def = "DEFAULT 0 1 0\nHANZI 1 1 0\n0x4E00..0x9FFF HANZI\n";
-        let unk_def = "DEFAULT,0,0,1500,n,unknown,*,*\n";
+        let unk_def = "DEFAULT,0,0,1500,n,unknown,*,*\nHANZI,0,0,1500,n,unknown,*,*\n";
         let feature_def = "UNIGRAM:%F[0]\n";
         let rewrite_def = "*\tUNK\n";
 
@@ -771,7 +798,8 @@ mod tests {
         // UniDic format: 21 columns (simplified example)
         let seed_csv = "東京,0,0,5000,名詞,固有名詞,地名,一般,*,*,トウキョウ,東京,東京,東京,東京,東京,トウキョウ,トーキョー,東京,東京,1\n";
         let char_def = "DEFAULT 0 1 0\nKANJI 0 0 2\n0x4E00..0x9FFF KANJI\n";
-        let unk_def = "DEFAULT,0,0,1500,名詞,普通名詞,一般,*,*,*,*,*,*,*,*,*,*,*,*,*,*\n";
+        let unk_def = "DEFAULT,0,0,1500,名詞,普通名詞,一般,*,*,*,*,*,*,*,*,*,*,*,*,*,*\n\
+                       KANJI,0,0,1500,名詞,普通名詞,一般,*,*,*,*,*,*,*,*,*,*,*,*,*,*\n";
         let feature_def = "UNIGRAM:%F[0]\nUNIGRAM:%F[1]\n";
         let rewrite_def = "*\tUNK\n";
 
@@ -1049,11 +1077,21 @@ mod tests {
         }
     }
 
+    /// A configuration with `char_data` as its `char.def` and one `unk.def`
+    /// line for each category it defines, as every category needs one
+    /// (#1195).
     fn config_with_char_def(char_data: &str) -> TrainerConfig {
+        let unk_def: String = char_data
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty() && !line.starts_with("0x"))
+            .filter_map(|line| line.split_whitespace().next())
+            .map(|category| format!("{category},0,0,1500,名詞,一般,*,*,*,*,*,*,*\n"))
+            .collect();
         TrainerConfig::from_readers(
             Cursor::new("一,0,0,5000,名詞,数,*,*,*,*,一,イチ,イチ\n"),
             Cursor::new(char_data),
-            Cursor::new("DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n"),
+            Cursor::new(unk_def),
             Cursor::new("UNIGRAM:%F[0]\n"),
             Cursor::new("*\tUNK\n"),
         )
@@ -1098,5 +1136,50 @@ mod tests {
 
         assert_eq!(config.default_category('あ'), Some(0));
         assert_eq!(config.default_category('a'), None);
+    }
+
+    /// #1195: `char.def` and `unk.def` are checked as `lindera build`
+    /// checks them, so that a mismatch fails before training instead of in
+    /// the build of the exported files: an undefined category on a range
+    /// line used to panic in training, a category without an `unk.def` line
+    /// left its characters without unknown words, and an `unk.def` line of
+    /// an undefined category was exported. An `unk.def` line is named by its
+    /// line in the file, with the comment and empty lines that the trainer
+    /// skips.
+    #[test]
+    fn test_from_readers_checks_char_def_against_unk_def() {
+        let char_def = "DEFAULT 0 1 0\nHIRAGANA 1 1 0\n0x3042..0x3096 HIRAGANA\n";
+        let unk_def = "DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n\
+                       HIRAGANA,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n";
+        for (char_def, unk_def, message) in [
+            (
+                format!("{char_def}0x3041 FOO\n"),
+                unk_def.to_string(),
+                "char.def: line 4: category FOO is not defined",
+            ),
+            (
+                char_def.to_string(),
+                "DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n".to_string(),
+                "unk.def: no line for category HIRAGANA, which char.def defines",
+            ),
+            (
+                char_def.to_string(),
+                format!("# unknown words\n\n{unk_def}FOO,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n"),
+                "unk.def: line 5: category FOO is not defined in char.def",
+            ),
+        ] {
+            let result = TrainerConfig::from_readers(
+                Cursor::new("これ,0,0,1000,連体詞,*,*,*,*,*,これ,コレ,コレ\n"),
+                Cursor::new(char_def.as_str()),
+                Cursor::new(unk_def.as_str()),
+                Cursor::new("UNIGRAM:%F[0]\n"),
+                Cursor::new("*\tUNK\n"),
+            );
+            let err = match result {
+                Ok(_) => panic!("accepted: {char_def:?}, {unk_def:?}"),
+                Err(err) => err.to_string(),
+            };
+            assert!(err.contains(message), "{err}");
+        }
     }
 }

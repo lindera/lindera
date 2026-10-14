@@ -112,7 +112,13 @@ NUMERIC 1 1 0
 
 範囲行には複数のカテゴリを書くことができ（例: `0x4E00 KANJINUMERIC KANJI`）、少なくとも 1 つのカテゴリが必要です。同じコードポイントを複数の行が覆う場合は、MeCab と同じく最後の行がそのカテゴリを決めます。その行の先頭のカテゴリが文字の既定カテゴリです。未知語候補を作るのは既定カテゴリだけで、素性テンプレートの `%t` もこれを使います。
 
-`SPACE` カテゴリと、`unk.def` のその行は残してください。MeCab は、すべての `char.def` に `DEFAULT` と `SPACE` を求め、すべてのカテゴリに `unk.def` の行を 1 つ以上求めます。Segmenter は `SPACE` の文字を空白として扱い、デフォルトでは MeCab と同じく読み飛ばして出力しません。`char.def` に `SPACE` カテゴリがない辞書は、`--keep-whitespace` を指定しないと使えず、`lindera tokenize` は `SPACE category is not defined in the dictionary (char.def)` で失敗します。
+MeCab と同じく、範囲行が指せるのはそれより前の行で定義したカテゴリだけで、各カテゴリの定義は 1 回だけです。`lindera train` と `lindera build` は、これに反する `char.def` を、行とカテゴリを示すエラーで拒否します。たとえば、`KATAKANA` を定義する行より前に、`char.def` の 1 行目として `0x30FC KATAKANA` を挿入して `lindera train` を実行すると、次のようになります：
+
+```text
+Error: LinderaError { kind: Args, source: failed to parse char.def: LinderaError(kind=Content, source=char.def: line 1: category KATAKANA is not defined; a range line can only name a category defined on an earlier line) }
+```
+
+`SPACE` カテゴリと、`unk.def` のその行は残してください。MeCab は、すべての `char.def` に `DEFAULT` と `SPACE` を求めます。また、すべてのカテゴリに `unk.def` の行が 1 つ以上必要です（次の節を参照）。Segmenter は `SPACE` の文字を空白として扱い、デフォルトでは MeCab と同じく読み飛ばして出力しません。`char.def` に `SPACE` カテゴリがない辞書は、`--keep-whitespace` を指定しないと使えず、`lindera tokenize` は `SPACE category is not defined in the dictionary (char.def)` で失敗します。
 
 学習は、ランタイムと同じコード（`Lattice::unknown_word_candidates`）で未知語候補を作ります。そのため、ビルドした辞書が作る候補に対して重みを学習します。
 
@@ -145,6 +151,12 @@ NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*
 
 ```text
 Error: LinderaError { kind: Args, source: unk.def line 1: expected at least 5 fields (category, left id, right id, cost, feature), got 4 }
+```
+
+- MeCab と同じく、各行は `char.def` で定義したカテゴリを指し、`char.def` の各カテゴリには 1 行以上が必要です。`lindera train` と `lindera build` は、これに反する `unk.def` を拒否します。エラーはカテゴリを示し、`char.def` が定義していないカテゴリの行では、コメント行と空行も数えた行番号も示します。たとえば、`char.def` に `SYMBOL` カテゴリがないまま、上の `unk.def` の 9 行目に `SYMBOL,0,0,0,記号,一般,*,*,*,*,*,*,*` を追加して `lindera train` を実行すると、次のようになります：
+
+```text
+Error: LinderaError { kind: Args, source: failed to check unk.def: LinderaError(kind=Content, source=unk.def: line 9: category SYMBOL is not defined in char.def) }
 ```
 
 ### 5. 素性テンプレート (feature.def)

@@ -182,8 +182,12 @@ def test_export_with_metadata():
             "DEFAULT 0 1 0\nKATAKANA 1 1 0\n\n0x30A1..0x30F6 KATAKANA\n"
         )
 
+        # One line for each char.def category, as MeCab requires (#1195).
         unk_def_file = tmpdir / "unk.def"
-        unk_def_file.write_text("DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*\n")
+        unk_def_file.write_text(
+            "DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*\n"
+            "KATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*\n"
+        )
 
         feature_def_file = tmpdir / "feature.def"
         feature_def_file.write_text("UNIGRAM U00:%F[0]\n")

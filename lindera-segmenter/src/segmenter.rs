@@ -4783,6 +4783,31 @@ mod tests {
         }
     }
 
+    /// Removes the unknown-word entries of `category` from `dictionary`, so
+    /// that a character of it that no word covers has no node and a sentence
+    /// with it has no complete path.
+    ///
+    /// `lindera build` rejects a `char.def` category without an `unk.def`
+    /// line (#1195), so the tests build a dictionary with the line and
+    /// remove the entries after loading it, as a `Dictionary` put together
+    /// by hand can still lack them.
+    fn without_unknown_words(
+        mut dictionary: crate::dictionary::Dictionary,
+        category: &str,
+    ) -> crate::dictionary::Dictionary {
+        let category_id = dictionary
+            .character_definition
+            .category_id_by_name(category)
+            .unwrap();
+        let mut unknown_dictionary =
+            crate::dictionary::core::unknown_dictionary::UnknownDictionary::clone(
+                &dictionary.unknown_dictionary,
+            );
+        unknown_dictionary.category_references[category_id.0].clear();
+        dictionary.unknown_dictionary = std::sync::Arc::new(unknown_dictionary);
+        dictionary
+    }
+
     /// A sentence without a complete path (a character no word or unknown
     /// word covers) inside a segment: the segment ends before it, and the
     /// sentence is segmented on its own, as before the context was carried.
@@ -4790,11 +4815,13 @@ mod tests {
         use std::borrow::Cow;
         use std::fs;
 
+        use super::without_unknown_words;
         use crate::dictionary::{DictionaryBuilder, Metadata, load_fs_dictionary};
         use crate::mode::Mode;
         use crate::segmenter::{Segmenter, SentenceWalk};
 
-        /// `あ` is HIRAGANA, which has no unknown-word entry.
+        /// `あ` is HIRAGANA, whose unknown-word entry the tests remove after
+        /// loading the dictionary (see [`without_unknown_words`]).
         const CHAR_DEF: &str = "\
 DEFAULT 0 1 0
 HIRAGANA 0 1 0
@@ -4805,6 +4832,7 @@ KANJI 0 0 2
         const UNK_DEF: &str = "\
 DEFAULT,0,0,10000,補助記号,一般,*,*,*,*,*,*,*
 KANJI,0,0,10000,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,0,0,10000,名詞,一般,*,*,*,*,*,*,*
 ";
         const LEX_CSV: &str = "\
 東京,0,0,0,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トウキョウ
@@ -4824,7 +4852,8 @@ KANJI,0,0,10000,名詞,一般,*,*,*,*,*,*,*
             DictionaryBuilder::new(Metadata::default())
                 .build_dictionary(source.path(), output.path())
                 .unwrap();
-            let dictionary = load_fs_dictionary(output.path()).unwrap();
+            let dictionary =
+                without_unknown_words(load_fs_dictionary(output.path()).unwrap(), "HIRAGANA");
             (output, Segmenter::new(Mode::Normal, dictionary, None))
         }
 
@@ -4887,13 +4916,15 @@ KANJI,0,0,10000,名詞,一般,*,*,*,*,*,*,*
         use std::borrow::Cow;
         use std::fs;
 
+        use super::without_unknown_words;
         use crate::dictionary::{DictionaryBuilder, Metadata, load_fs_dictionary};
         use crate::mode::Mode;
         use crate::segmenter::Segmenter;
         use crate::token::Token;
 
-        /// `あ` is HIRAGANA, which has no unknown-word entry, so a sentence
-        /// with it has no path.
+        /// `あ` is HIRAGANA, whose unknown-word entry the tests remove after
+        /// loading the dictionary (see [`without_unknown_words`]), so a
+        /// sentence with it has no path.
         const CHAR_DEF: &str = "\
 DEFAULT 0 1 0
 HIRAGANA 0 1 0
@@ -4904,6 +4935,7 @@ KANJI 0 0 2
         const UNK_DEF: &str = "\
 DEFAULT,0,0,10000,補助記号,一般,*,*,*,*,*,*,*
 KANJI,0,0,10000,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,0,0,10000,名詞,一般,*,*,*,*,*,*,*
 ";
 
         /// Builds a dictionary with `東京` and two `、` rows (left id 1,
@@ -4932,7 +4964,8 @@ KANJI,0,0,10000,名詞,一般,*,*,*,*,*,*,*
             DictionaryBuilder::new(Metadata::default())
                 .build_dictionary(source.path(), output.path())
                 .unwrap();
-            let dictionary = load_fs_dictionary(output.path()).unwrap();
+            let dictionary =
+                without_unknown_words(load_fs_dictionary(output.path()).unwrap(), "HIRAGANA");
             (output, Segmenter::new(Mode::Normal, dictionary, None))
         }
 

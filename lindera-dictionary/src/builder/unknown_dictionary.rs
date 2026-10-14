@@ -11,7 +11,7 @@ use crate::LinderaResult;
 use crate::builder::connection_cost_matrix::MatrixSize;
 use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::context_id_map::ContextIdMap;
-use crate::dictionary::unknown_dictionary::parse_unk_named;
+use crate::dictionary::unknown_dictionary::{check_unknown_word_categories, parse_unk_named};
 use crate::error::LinderaErrorKind;
 use crate::util::{read_file_with_encoding, write_data};
 
@@ -74,6 +74,27 @@ impl UnknownDictionaryBuilderOptions {
 }
 
 impl UnknownDictionaryBuilder {
+    /// Reads `unk.def` from `input_dir` and writes `unk.bin` to
+    /// `output_dir`.
+    ///
+    /// After the lines parse, their categories are checked against those of
+    /// `chardef`, as `mecab-dict-index` does
+    /// ([`check_unknown_word_categories`]): a line whose category `char.def`
+    /// does not define and a `char.def` category without a line are errors.
+    /// A line that does not parse, such as a comment, keeps the parser's
+    /// error.
+    ///
+    /// # Arguments
+    ///
+    /// * `input_dir` - The dictionary source directory holding `unk.def`.
+    /// * `chardef` - The character definition the categories come from.
+    /// * `output_dir` - The directory to write `unk.bin` to.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())`, or an error naming the file (and the line, where there is
+    /// one) when `unk.def` cannot be read, parsed or checked, or an error
+    /// when the output cannot be written.
     pub fn build(
         &self,
         input_dir: &Path,
@@ -86,11 +107,22 @@ impl UnknownDictionaryBuilder {
         if let Some(matrix_size) = self.matrix_size {
             check_context_ids(&unk_data, matrix_size, &unk_data_path)?;
         }
+        let source = unk_data_path.display().to_string();
         let unknown_dictionary = parse_unk_named(
-            &unk_data_path.display().to_string(),
+            &source,
             chardef.categories(),
             &unk_data,
             self.context_id_remap.as_deref(),
+        )?;
+        // `parse_unk_named` reads every line as an entry, so the entry lines
+        // are all the lines.
+        check_unknown_word_categories(
+            &source,
+            chardef.categories(),
+            unk_data
+                .lines()
+                .enumerate()
+                .map(|(index, line)| (index + 1, line)),
         )?;
 
         let mut unk_buffer = Vec::new();

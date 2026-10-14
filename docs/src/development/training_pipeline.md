@@ -112,7 +112,13 @@ Parameters control the unknown words that a character's default category creates
 
 A range line can list more than one category (for example `0x4E00 KANJINUMERIC KANJI`), and every range line needs at least one. When several lines cover the same code point, the last line decides its categories, as in MeCab. The first category on that line is the character's default category: the only one that creates unknown-word candidates, and the one the `%t` feature template uses.
 
-Keep the `SPACE` category, which MeCab requires in every `char.def` along with `DEFAULT`, and its line in `unk.def`: MeCab requires at least one `unk.def` line for every category. The segmenter treats its characters as whitespace: by default it skips them, as MeCab does, and does not output them. Without `--keep-whitespace`, a dictionary whose `char.def` has no `SPACE` category cannot be used: `lindera tokenize` fails with `SPACE category is not defined in the dictionary (char.def)`.
+As in MeCab, a range line can name only categories defined on an earlier line, and each category is defined once. `lindera train` and `lindera build` reject a `char.def` that breaks either, with an error that names the line and the category. For example, `lindera train` with `0x30FC KATAKANA` inserted as the first line of `char.def`, before the line that defines `KATAKANA`:
+
+```text
+Error: LinderaError { kind: Args, source: failed to parse char.def: LinderaError(kind=Content, source=char.def: line 1: category KATAKANA is not defined; a range line can only name a category defined on an earlier line) }
+```
+
+Keep the `SPACE` category, which MeCab requires in every `char.def` along with `DEFAULT`, and its line in `unk.def`: every category needs at least one `unk.def` line (see the next section). The segmenter treats its characters as whitespace: by default it skips them, as MeCab does, and does not output them. Without `--keep-whitespace`, a dictionary whose `char.def` has no `SPACE` category cannot be used: `lindera tokenize` fails with `SPACE category is not defined in the dictionary (char.def)`.
 
 Training creates the unknown-word candidates with the runtime's own code (`Lattice::unknown_word_candidates`), so it learns weights for the candidates that the built dictionary produces:
 
@@ -145,6 +151,12 @@ NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*
 
 ```text
 Error: LinderaError { kind: Args, source: unk.def line 1: expected at least 5 fields (category, left id, right id, cost, feature), got 4 }
+```
+
+- As in MeCab, every line names a category that `char.def` defines, and every category of `char.def` has at least one line. `lindera train` and `lindera build` reject an `unk.def` that breaks either. The error names the category and, for a line whose category `char.def` does not define, the line, counted with the comment and empty lines. For example, `lindera train` with `SYMBOL,0,0,0,記号,一般,*,*,*,*,*,*,*` appended to the `unk.def` above as its ninth line, while `char.def` has no `SYMBOL` category:
+
+```text
+Error: LinderaError { kind: Args, source: failed to check unk.def: LinderaError(kind=Content, source=unk.def: line 9: category SYMBOL is not defined in char.def) }
 ```
 
 ### 5. Feature Template (feature.def)

@@ -55,6 +55,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **WASM: 辞書の設定方法にかかわらず `TokenizerBuilder` の設定が適用される** | `setDictionaryInstance()` と `setKeepWhitespace()` やフィルタ、または `setDictionary()` と `setUserDictionaryInstance()` を組み合わせる WASM のユーザー | それらの設定とユーザー辞書が効くことを前提にする。`char.def` に `SPACE` カテゴリがない辞書インスタンスでは、URI で設定した辞書と同じく `setKeepWhitespace(true)` が必要になる |
 | **`lindera train` は MeCab の学習器と同じくラティスを作り、`unk.def` のすべてのエントリを保持する。`model.dat` の形式バージョンは 2.0.0** | `lindera train`・`lindera export` と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー | 7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた `model.dat` は拒否される）。`unk.def` のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す |
 | **`lindera build` は `matrix.def` の範囲外の文脈 ID を拒否する** | `lex.csv` や `unk.def` に `matrix.def` の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の `mecab-dict-index` が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる） | ID か行列を直すか、`metadata.json` の `skip_invalid_cost_or_id` でそうした `lex.csv` の行を取り除く。ユーザー辞書ではそうした ID を直す |
+| **`lindera build` と `lindera train` は `char.def` と `unk.def` を照らし合わせる** | それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが `char.def` にあるユーザー、`char.def` と `unk.def` でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、`unk.def` の行を無視したりしていた）。MeCab の `mecab-dict-index` が受け入れる辞書は影響を受けない | 各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに `unk.def` の行を書き、未定義のカテゴリの `unk.def` の行を削除する |
 | **設定 `normalize_details` の削除: `Metadata::new` と `CoreMetadata::new` の引数は 10 個、Ruby の `Metadata.new` の引数は 8 個になる** | 辞書のメタデータを作成・参照するコード。Rust（`Metadata`・`lindera_binding::CoreMetadata`・`PrefixDictionaryBuilderOptions`）と、Python・Ruby・PHP・Node.js のバインディングの `Metadata` クラス | 引数・オプション・プロパティを削除する。このキーを含む `metadata.json` もそのまま読み込め、キーは無視される |
 | **`Lattice::tokens_offset`・`tokens_offset_into`・`nbest_tokens_offset`・`NBestGenerator::next` が `(start, end, WordId)` を返す** | これらの `lindera_dictionary` の関数を直接呼び出す Rust コード（`lindera::dictionary::viterbi::…`・`lindera::dictionary::Lattice`・`lindera::dictionary::nbest::…` 経由を含む） | 3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う |
 | **`Lattice::tokens_offset_into` が最良パスの BOS の添字（`Option<usize>`）を返す** | `tokens_offset_into` の戻り値 `()` を値として使う Rust コード | 文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する |
@@ -1176,17 +1177,55 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
 エクスポートをやり直してください（前の節を参照）。それ以外の辞書が失敗した場合は、
 `lex.csv` や `unk.def` の ID か、`matrix.def` の大きさを直してください。
 
+## `lindera build` と `lindera train` は `char.def` と `unk.def` を照らし合わせる
+
+v6.2.0 までの `lindera build` と `lindera train` は、MeCab の `mecab-dict-index` が
+拒否する `char.def` と `unk.def` を受け入れていました
+（[#1195](https://github.com/lindera/lindera/issues/1195)）。
+
+- どの行も定義していないカテゴリを指す `char.def` の範囲行。ビルドした辞書は、
+  そのカテゴリの文字でパニックしました。学習も、コーパスにその文字があると
+  パニックしました。
+- カテゴリの定義より前にある範囲行や、2 回定義したカテゴリ。一部のカテゴリが
+  別のカテゴリの `INVOKE`・`GROUP`・`LENGTH` の設定を使い、未知語が変わりました。
+- `unk.def` の行がない `char.def` のカテゴリ。そのカテゴリの文字のうち、
+  どの単語も覆わない文字には未知語ができないため、解析はエラーを出さずに
+  その手前で出力を打ち切り、学習用ラティスにはその文字を通る経路が
+  ありませんでした。
+- `char.def` が定義していないカテゴリを指す `unk.def` の行。その行は使われず、
+  `lindera export` はそれをそのまま書き出していました。
+
+v7.0.0 は、`mecab-dict-index` と同じく、これらをすべて拒否します。エラーは
+ファイルとカテゴリを示し、`unk.def` の行がないカテゴリ以外では行も示します。
+たとえば、どの行も定義していないカテゴリを指す `0x3005 KANJI_ITERATION` が
+`char.def` の 8 行目にある場合は、次のようになります：
+
+```text
+Error: LinderaError { kind: Content, source: ./dict-source/char.def: line 8: category KANJI_ITERATION is not defined; a range line can only name a category defined on an earlier line }
+```
+
+`lindera train` とバインディングの学習関数も、学習の前に入力を同じように
+確認します。`unk.def` の行番号は、コメント行と空行も数えたファイル上の番号です。
+
+同梱の辞書と、`mecab-dict-index` でビルドできる辞書は、すべて確認を通ります。
+それ以外の辞書が失敗した場合は、各カテゴリを、それを指す範囲行より前で 1 回だけ
+定義し、すべてのカテゴリに `unk.def` の行を 1 行以上書き、`char.def` が定義して
+いないカテゴリの `unk.def` の行を削除してください。
+
 ## `lindera_dictionary` の Rust API 変更
 
 以下は、ラティスのバックトレースを直接呼び出すコード、`Metadata::new` で辞書の
 メタデータを作成するコード、辞書の文字カテゴリを読むコード、`UnknownDictionary`
-で未知語を生成するコードにのみ影響します。対象は
+で未知語を生成するコード、`mecab-dict-index` が拒否する `char.def` と `unk.def`
+から辞書をビルドするコード（[前の節](#lindera-build-と-lindera-train-は-chardef-と-unkdef-を照らし合わせる)を参照）
+にのみ影響します。対象は
 `lindera_dictionary::viterbi::Lattice` と `lindera_dictionary::nbest::NBestGenerator`
 （`lindera::dictionary::viterbi::…`・`lindera::dictionary::Lattice`・
 `lindera::dictionary::nbest::…` からも参照できます）、および
 `lindera_dictionary::dictionary::metadata::Metadata`（`lindera::dictionary::Metadata`
 からも参照できます）、`lindera_dictionary::dictionary::character_definition::CharacterDefinition`、
 `lindera_dictionary::dictionary::unknown_dictionary`（`lindera::dictionary::core::unknown_dictionary`
+からも参照できます）、`lindera_dictionary::builder`（`lindera::dictionary::builder`
 からも参照できます）です。`Segmenter`・`Tokenizer`・`SegmentWorker`・
 `AnalysisWorker` の API と CLI は影響を受けません。言語バインディングで変わるのは
 `Metadata` クラスだけです（[設定 `normalize_details` の削除](#設定-normalize_details-の削除)
@@ -1212,6 +1251,9 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
 | `UnknownDictionary::compatible_unk_index(sentence, start, end, feature) -> Option<WordIdx>` | 削除 |
 | `unknown_dictionary::UnkWord` と `unknown_dictionary::WordIdx` | 削除 |
 | — | `viterbi` に `Lattice::unknown_word_candidates` と `UnknownWordCandidate` を追加 |
+| `CharacterDefinitionBuilder::build_from_str` と `build` は、それより前の行で定義していないカテゴリを指す範囲行と、2 回定義したカテゴリを受け入れる | 行とカテゴリを示すエラーを返す |
+| `DictionaryBuilder::build_dictionary` と `build_unknown_dictionary` は、`char.def` が定義していないカテゴリを指す `unk.def` の行と、`unk.def` の行がない `char.def` のカテゴリを受け入れる | ファイルとカテゴリを示すエラーを返す |
+| — | `unknown_dictionary` に `check_unknown_word_categories` を追加。ビルダーと学習器が実行する、`char.def` のカテゴリと `unk.def` の照合 |
 
 各トークンは `(start, word_id)` ではなく `(start, end, word_id)` になりました。
 オフセットは文内のバイト位置です。空白を読み飛ばすとき（v7 で追加された
@@ -1319,6 +1361,7 @@ feature）経由で使う Rust コードにのみ影響します
 | — | `model` に `MODEL_FORMAT_VERSION` を追加 |
 | `TrainerConfig::dict()` は空の辞書とプレースホルダーの未知語辞書を持つ | 種辞書（`system_lexicon()`）と `unk.def` のエントリ（`unk_handler()`）を持つ |
 | `TrainerConfig::from_readers` はフィールドが 5 つ未満の `unk.def` の行を読み飛ばす | エラーを返す |
+| `TrainerConfig::from_readers` は `mecab-dict-index` が拒否する `char.def` と `unk.def` を受け入れる | ファイルとカテゴリ、行があればその行を示すエラーを返す（[`lindera build` と `lindera train` は `char.def` と `unk.def` を照らし合わせる](#lindera-build-と-lindera-train-は-chardef-と-unkdef-を照らし合わせる)を参照） |
 | `Trainer::max_grouping_len(len)` は未知語候補の長さを制限し、候補は 3 文字を超えない | ランタイムと同じ意味（先頭の 1 文字を除いた文字数）で未知語のグルーピングに上限を設ける。デフォルトの `None` は無制限 |
 | `Model::num_labels()` と `ModelMetadata::label_count` は `char.def` のカテゴリごとに 1 つの未知語ラベルを数える | `unk.def` のエントリごとに 1 つを数える。仮想ラベルは数えない |
 
@@ -1465,6 +1508,10 @@ U+3000 や空白を含むテキストを IPADIC・IPADIC-NEologd・UniDic・Suda
   なければ、いまのそれらのファイルと同じく追加する。学習した辞書を
   `--keep-whitespace` なしで解析できるようにするため
   （[#1166](https://github.com/lindera/lindera/issues/1166)）。
+- 学習で `char.def` や `unk.def` のカテゴリのエラーが出た場合は、各カテゴリを、
+  それを指す範囲行より前で 1 回だけ定義し、すべてのカテゴリに `unk.def` の行を
+  書き、未定義のカテゴリの `unk.def` の行を削除する
+  （[#1195](https://github.com/lindera/lindera/issues/1195)）。
 
 `lindera build` でシステム辞書をビルドするすべてのユーザー:
 
@@ -1473,6 +1520,10 @@ U+3000 や空白を含むテキストを IPADIC・IPADIC-NEologd・UniDic・Suda
   `lex.csv` の行を取り除く。そうした辞書は、以前はビルドでき、解析時に
   パニックしていた。v6.2.0 以前にエクスポートした辞書は、学習とエクスポートを
   やり直すのがよい。
+- ビルドで `char.def` や `unk.def` のカテゴリのエラーが出た場合は、各カテゴリを、
+  それを指す範囲行より前で 1 回だけ定義し、すべてのカテゴリに `unk.def` の行を
+  書き、未定義のカテゴリの `unk.def` の行を削除する
+  （[#1195](https://github.com/lindera/lindera/issues/1195)）。
 
 詳細形式の見出し語を含むユーザー辞書を使うすべてのユーザー:
 
