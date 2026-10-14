@@ -1087,10 +1087,10 @@ tokenizer
 <p><code>SerializableModel</code> is the plain-data, <code>rkyv</code>-serializable counterpart returned by <code>Model::read_model</code> when loading a previously trained model back from a reader (as done by the <code>lindera export</code> CLI command). It carries the same trained information as <code>Model</code> -- feature weights, labels, POS info, connection cost matrix, the <code>unk.def</code> entries (<code>unk_entries</code>, <code>(category, feature string)</code> pairs in file order), preserved <code>char.def</code>/<code>feature.def</code>/<code>rewrite.def</code> content, cost factor, and left/right context ID maps -- as owned data, without a <code>TrainerConfig</code>, and exposes its own writer methods for producing the dictionary export files.</p>
 <h4 id="model-public-methods"><a class="header" href="#model-public-methods"><code>Model</code> public methods</a></h4>
 <div class="table-wrapper"><table><thead><tr><th>Method</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>read_user_lexicon&lt;R: Read&gt;(&amp;mut self, rdr: R) -&gt; Result&lt;()&gt;</code></td><td>Loads a user-defined lexicon (same <code>surface,left_id,right_id,cost,feature...</code> CSV format as the seed lexicon) into the model so that later exports can assign it inferred connection IDs and costs. Must be called before writing the dictionary if a user lexicon is needed.</td></tr>
+<tr><td><code>read_user_lexicon&lt;R: Read&gt;(&amp;mut self, rdr: R) -&gt; Result&lt;()&gt;</code></td><td>Loads a user-defined lexicon (same <code>surface,left_id,right_id,cost,feature...</code> CSV format as the seed lexicon) into the model so that <code>write_dictionary</code> can assign connection IDs and costs to its entries whose parameters are <code>0,0,0</code>. Must be called before writing the dictionary if a user lexicon is needed.</td></tr>
 <tr><td><code>write_model&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Serializes the full trained model (feature weights, labels, POS info, connection matrix, <code>unk.def</code> entries, preserved definition file contents, cost factor, left/right ID maps) to <code>rkyv</code> binary format, with <code>metadata.version</code> set to <code>model::MODEL_FORMAT_VERSION</code> (<code>2.0.0</code>). The stored matrix size covers every context ID of the model, whether or not a weight survived for it. The output is byte-reproducible: the connection matrix is an ordered map and the <code>unk.def</code> entries a <code>Vec</code>, so the bytes depend only on the model's contents.</td></tr>
 <tr><td><code>read_model&lt;R: Read&gt;(reader: R) -&gt; Result&lt;SerializableModel&gt;</code></td><td>Associated function. Deserializes a <code>SerializableModel</code> from data written by <code>write_model</code>. It tries <code>rkyv</code> first, and falls back to legacy JSON only when the payload actually begins a JSON object; anything else is reported as a format mismatch with the instruction to re-train. A model, in either format, whose <code>metadata.version</code> is not <code>MODEL_FORMAT_VERSION</code> is rejected with the same instruction, so every model written before 7.0.0 must be retrained. Backfills <code>feature_sets</code> from <code>feature_weights</code> for older models that predate that field.</td></tr>
-<tr><td><code>write_dictionary&lt;W1, W2, W3, W4&gt;(&amp;self, lexicon_wtr, connector_wtr, unk_handler_wtr, user_lexicon_wtr) -&gt; Result&lt;()&gt;</code></td><td>Convenience method that writes the lexicon, connection cost matrix, unknown-word dictionary, and user lexicon in one call. The user lexicon is written from the entries loaded by <code>read_user_lexicon</code>, in input order; an entry whose parameters were <code>0,0,0</code> gets inferred connection IDs and a trained cost, any other entry is re-emitted verbatim.</td></tr>
+<tr><td><code>write_dictionary&lt;W1, W2, W3, W4&gt;(&amp;self, lexicon_wtr, connector_wtr, unk_handler_wtr, user_lexicon_wtr) -&gt; Result&lt;()&gt;</code></td><td>Convenience method that writes the lexicon, connection cost matrix, unknown-word dictionary, and user lexicon in one call. The user lexicon is written from the entries loaded by <code>read_user_lexicon</code>, in input order; an entry whose parameters were <code>0,0,0</code> gets the connection IDs that <code>lex.csv</code> gives the seed row whose feature is the most similar to its own, and a trained cost, and any other entry is re-emitted verbatim. The most similar row is the one with the highest score, where each column equal to the entry's at the same position scores more the earlier it is, and the first one on a tie. An entry with <code>0,0,0</code> whose feature has no column in common with any seed row is an error, as in MeCab's <code>mecab-dict-index</code>, and nothing is written then.</td></tr>
 <tr><td><code>write_lexicon&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>lex.csv</code>-style entries (<code>surface,left_id,right_id,cost,features...</code>) for every seed vocabulary entry, using the connection IDs and costs from the merged CRF model.</td></tr>
 <tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes a dense <code>matrix.def</code>-style connection cost matrix over every <code>(right_id, left_id)</code> pair of the merged model's context IDs (including 0 for BOS/EOS); pairs never seen during training get the maximum penalty cost (<code>i16::MAX</code>) so Viterbi avoids untrained transitions.</td></tr>
 <tr><td><code>write_unknown_dictionary&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes one <code>unk.def</code> line for each <code>unk.def</code> entry the model was trained with, in file order, with the entry's category name and feature string and its learned connection IDs and cost.</td></tr>
@@ -10823,6 +10823,13 @@ learner skips the template. The <code>unk.def</code> features of mecab-jieba hav
 five columns, and its <code>feature.def</code> reads <code>%F[6]</code> to <code>%F[9]</code>, so its 11
 unknown-word labels had four features, <code>U06:*</code> to <code>U09:*</code>, that no seed
 row had.</li>
+<li><code>Model::write_dictionary</code> gave an entry of the user lexicon that
+<code>Model::read_user_lexicon</code> reads whose context IDs and cost are <code>0,0,0</code>
+the context IDs of another user lexicon entry: the one at the index of
+the seed row whose feature is the most similar to the entry's, or else
+the first one. An entry whose feature had no column in common with any
+seed row got the index of its first character's category in <code>char.def</code>
+as both IDs, which is not a context ID.</li>
 </ul>
 <p>v7.0.0 trains as MeCab's learner does (see
 <a href="development/training_pipeline.html#how-training-works">How training works</a>):</p>
@@ -10868,6 +10875,12 @@ unidic-mecab, mecab-ko-dic, mecab-jieba and <code>resources/training/</code>, on
 the <code>unk.def</code> lines of mecab-jieba have features that a template reads
 past the last column of, so only a model trained on mecab-jieba's files
 changes.</li>
+<li><code>Model::write_dictionary</code> gives a user lexicon entry with <code>0,0,0</code> the
+context IDs that <code>lex.csv</code> gives the seed row whose feature is the most
+similar to the entry's. An entry whose feature has no column in common
+with any seed row is an error, and nothing is written, as
+<code>mecab-dict-index</code> fails for a user dictionary entry whose feature has no
+context ID.</li>
 </ul>
 <p>Training takes longer, because every lattice now has the seed words. It is
 slower than MeCab's learner, and it can stop at <code>--max-iterations</code>
@@ -10882,8 +10895,9 @@ bindings' training functions, then export it and build the dictionary
 again. Give every <code>unk.def</code> line at least five fields. An <code>unk.def</code> with
 several entries per category, such as mecab-ipadic's, is now trained and
 exported as it is. Remove the comment lines from your seed lexicons: a line
-that starts with <code>#</code> is now a row. There is no setting to restore the v6
-behavior.</p>
+that starts with <code>#</code> is now a row. Give the context IDs and cost of a user
+lexicon entry whose feature has no column in common with any seed row.
+There is no setting to restore the v6 behavior.</p>
 <h2 id="lindera-build-rejects-context-ids-outside-the-connection-matrix"><a class="header" href="#lindera-build-rejects-context-ids-outside-the-connection-matrix"><code>lindera build</code> rejects context IDs outside the connection matrix</a></h2>
 <p>Up to v6.2.0, <code>lindera build</code> accepted a <code>lex.csv</code> row or an <code>unk.def</code> line
 whose context IDs fall outside <code>matrix.def</code>, and the built dictionary

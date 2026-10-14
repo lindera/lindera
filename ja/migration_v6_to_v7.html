@@ -1073,6 +1073,12 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 mecab-jieba の <code>unk.def</code> の素性は 5 列で、その <code>feature.def</code> は <code>%F[6]</code>〜
 <code>%F[9]</code> を読むため、11 個の未知語のラベルは、どの種辞書の行も持たない 4 つの
 素性 <code>U06:*</code>〜<code>U09:*</code> を持っていました。</li>
+<li><code>Model::write_dictionary</code> は、<code>Model::read_user_lexicon</code> が読むユーザー辞書の
+うち文脈 ID とコストが <code>0,0,0</code> のエントリに、別のユーザー辞書のエントリの文脈 ID
+を付けていました。素性がそのエントリに最も近い種辞書の行の添字にあるエントリか、
+それがなければ最初のエントリです。どの種辞書の行とも共通の列を持たない素性の
+エントリには、先頭の文字のカテゴリの <code>char.def</code> での添字を両方の ID として
+付けていました。これは文脈 ID ではありません。</li>
 </ul>
 <p>v7.0.0 は MeCab の学習器と同じく学習します
 （<a href="development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。</p>
@@ -1114,6 +1120,10 @@ mecab-ipadic・mecab-ipadic-neologd・unidic-mecab・mecab-ko-dic・mecab-jieba�
 <code>resources/training/</code> の学習用のファイルのうち、テンプレートが最後の列より後ろを
 読む素性があるのは mecab-jieba の <code>unk.def</code> の行だけで、変わるのは mecab-jieba
 のファイルから学習したモデルだけです。</li>
+<li><code>Model::write_dictionary</code> は、<code>0,0,0</code> のユーザー辞書のエントリに、素性がその
+エントリに最も近い種辞書の行に <code>lex.csv</code> が付ける文脈 ID を付けます。どの種辞書の
+行とも共通の列を持たない素性のエントリは、<code>mecab-dict-index</code> が文脈 ID のない
+素性のユーザー辞書のエントリで失敗するのと同じくエラーになり、何も書き出しません。</li>
 </ul>
 <p>すべてのラティスに種辞書の語が入るため、学習には以前より時間がかかります。学習は
 MeCab の学習器より遅く、収束する前に <code>--max-iterations</code> で
@@ -1127,7 +1137,8 @@ MeCab の学習器より遅く、収束する前に <code>--max-iterations</code
 行に 5 つ以上のフィールドを書いてください。mecab-ipadic のようにカテゴリごとに
 複数のエントリを持つ <code>unk.def</code> も、そのまま学習・エクスポートできるように
 なりました。種辞書からコメント行を消してください。<code>#</code> で始まる行は 1 つの行として
-読むようになりました。v6 の動作に戻す設定はありません。</p>
+読むようになりました。どの種辞書の行とも共通の列を持たない素性のユーザー辞書の
+エントリには、文脈 ID とコストを書いてください。v6 の動作に戻す設定はありません。</p>
 <h2 id="lindera-build-は接続コスト行列の範囲外の文脈-id-を拒否する"><a class="header" href="#lindera-build-は接続コスト行列の範囲外の文脈-id-を拒否する"><code>lindera build</code> は接続コスト行列の範囲外の文脈 ID を拒否する</a></h2>
 <p>v6.2.0 までの <code>lindera build</code> は、文脈 ID が <code>matrix.def</code> の範囲外にある <code>lex.csv</code>
 の行や <code>unk.def</code> の行を受け付け、ビルドした辞書は、解析中にそうした語を引いた
