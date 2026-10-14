@@ -274,6 +274,17 @@ impl Model {
     /// function before exporting the dictionary. The model overwrites the parameter only when it
     /// is `0,0,0`. Otherwise, the parameter is used as is.
     ///
+    /// [`write_dictionary`](Self::write_dictionary) gives an entry with
+    /// `0,0,0` the context ids that `lex.csv` gives the seed row whose
+    /// feature is the most similar to the entry's (#1190). Each column that
+    /// is the same in both features, at the same position and up to the
+    /// shorter of the two, scores `(n - j) * 10`, where `n` is that length and
+    /// `j` the column, so the earlier columns, such as the part of speech,
+    /// weigh more; the first row with the highest score wins. An entry whose
+    /// feature has no column in common with any seed row makes
+    /// `write_dictionary` fail, as `mecab-dict-index` fails for a feature
+    /// without a context id; give its parameters instead.
+    ///
     /// The file is read as the seed lexicon is (see
     /// [`TrainerConfig::from_readers`](crate::config::TrainerConfig::from_readers)):
     /// as CSV records, so a field may be quoted, with no comment lines, and
@@ -627,7 +638,30 @@ impl Model {
         pos_info
     }
 
-    /// Writes the dictionary files in Lindera format.
+    /// Writes the dictionary files in Lindera format: `lex.csv`,
+    /// `matrix.def`, `unk.def` and the user lexicon that `read_user_lexicon`
+    /// read.
+    ///
+    /// A user lexicon entry whose left id, right id and cost are all zero
+    /// gets the context ids that `lex.csv` gives the seed row whose feature
+    /// is the most similar to its own (#1190). The user lexicon is made
+    /// before anything is written, so that nothing is written when the
+    /// context ids of one of its entries cannot be inferred.
+    ///
+    /// # Arguments
+    ///
+    /// * `lexicon_wtr` - Write sink for `lex.csv`.
+    /// * `connector_wtr` - Write sink for `matrix.def`.
+    /// * `unk_handler_wtr` - Write sink for `unk.def`.
+    /// * `user_lexicon_wtr` - Write sink for the user lexicon, which gets
+    ///   nothing when no user lexicon was read.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success, or an error when a writer fails. It is also an
+    /// error, and nothing is written, when a user lexicon entry whose left
+    /// id, right id and cost are all zero has a feature with no column in
+    /// common with any seed row, so that its context ids cannot be inferred.
     pub fn write_dictionary<W1, W2, W3, W4>(
         &self,
         lexicon_wtr: &mut W1,
@@ -641,6 +675,11 @@ impl Model {
         W3: Write,
         W4: Write,
     {
+        // Make the user lexicon first, so that an entry whose context ids
+        // cannot be inferred fails before anything is written.
+        let mut user_lexicon = Vec::new();
+        self.write_user_lexicon(&mut user_lexicon)?;
+
         // Write lexicon with trained weights
         self.write_lexicon(lexicon_wtr)?;
 
@@ -651,7 +690,7 @@ impl Model {
         self.write_unknown_dictionary(unk_handler_wtr)?;
 
         // Write user lexicon with trained weights
-        self.write_user_lexicon(user_lexicon_wtr)?;
+        user_lexicon_wtr.write_all(&user_lexicon)?;
 
         Ok(())
     }
@@ -772,12 +811,13 @@ impl Model {
     ///
     /// Entries are written in the order `read_user_lexicon` read them, so the
     /// output is byte-reproducible and diffable against the input file (#981).
-    /// An entry whose left id, right id and cost are all zero receives
-    /// inferred context ids and a trained cost; any other entry is re-emitted
-    /// with its input parameters unchanged, per the contract documented on
-    /// `read_user_lexicon`. A surface that contains `,`, `"` or a line break
-    /// is quoted, with its quotes doubled; the feature is written as it was
-    /// read (#1170).
+    /// An entry whose left id, right id and cost are all zero receives the
+    /// context ids of the seed row whose feature is the most similar to its
+    /// own (see `infer_context_ids`) and a trained cost; any other entry is
+    /// re-emitted with its input parameters unchanged, per the contract
+    /// documented on `read_user_lexicon`. A surface that contains `,`, `"` or
+    /// a line break is quoted, with its quotes doubled; the feature is written
+    /// as it was read (#1170).
     ///
     /// # Arguments
     ///
@@ -786,6 +826,8 @@ impl Model {
     /// # Returns
     ///
     /// `Ok(())` on success; writing nothing when no user lexicon was read.
+    /// An error when the context ids of an entry cannot be inferred, after
+    /// the entries before it have been written.
     fn write_user_lexicon<W: Write>(&self, writer: &mut W) -> Result<()> {
         if self.user_entries.is_empty() {
             return Ok(());
@@ -799,7 +841,8 @@ impl Model {
             let features = word.feature();
             let surface_field = csv_field(surface);
             if entry.left_id() == 0 && entry.right_id() == 0 && entry.word_cost() == 0 {
-                let (left_id, right_id) = self.infer_context_ids(surface, features);
+                let (left_id, right_id) =
+                    self.infer_context_ids(&merged_model, surface, features)?;
                 let raw_cost = self.get_user_word_cost(surface) as f64 / 1000.0;
                 let cost = tocost(raw_cost, cost_factor);
                 writeln!(
@@ -858,46 +901,54 @@ impl Model {
         }
     }
 
-    /// Infer context IDs (left_id, right_id) from surface form and features.
-    /// Finds the most similar POS pattern from trained vocabulary and uses its ID.
-    fn infer_context_ids(&self, surface: &str, features: &str) -> (u32, u32) {
-        // Find best matching entry from trained vocabulary by comparing features
-        // Try to match increasingly general patterns:
-        // 1. Exact feature match (all fields)
-        // 2. First 2 fields match (main POS + sub POS)
-        // 3. First field match (main POS only)
-        // 4. Same character category (the default category from char.def)
-
-        // Strategy 1 & 2 & 3: Match by feature similarity, over the seed rows
-        // (the labels after them are unknown word categories)
+    /// Returns the context ids of a user lexicon entry whose left id, right
+    /// id and cost are all zero.
+    ///
+    /// They are the ids that `lex.csv` gives the seed row whose feature is
+    /// the most similar to the entry's (see `best_matching_seed_row`): those
+    /// of the row's label in the merged model. Before #1190 the index of
+    /// that row was looked up in the user lexicon instead, so the entry got
+    /// the ids of another user lexicon entry.
+    ///
+    /// An entry whose feature has no column in common with any seed row is
+    /// an error, as MeCab's `mecab-dict-index` fails for a user dictionary
+    /// entry whose rewritten feature is not in `left-id.def` or
+    /// `right-id.def`. It used to get the index of its first character's
+    /// category in `char.def` as both ids, which is not a context id.
+    ///
+    /// # Arguments
+    ///
+    /// * `merged_model` - The merged CRF model, whose feature sets are in
+    ///   label order, the seed rows first.
+    /// * `surface` - The entry's surface, for the error message.
+    /// * `features` - The entry's feature.
+    ///
+    /// # Returns
+    ///
+    /// The left and right context ids, or an error that names the entry
+    /// when no seed row has a column in common with its feature.
+    fn infer_context_ids(
+        &self,
+        merged_model: &lindera_crf::MergedModel,
+        surface: &str,
+        features: &str,
+    ) -> Result<(u32, u32)> {
+        // The labels after the seed rows are the unk.def entries and the
+        // virtual labels.
         let seed_rows = self.labels.len().min(self.config.features.len());
-        let best_match = best_matching_seed_row(features, &self.config.features[..seed_rows]);
-        let best_match_score = best_match.map_or(0, |(_, score)| score);
-
-        // If found a match from vocabulary, look up from user_entries
-        if let Some((idx, _)) = best_match {
-            // Try to find in user_entries first
-            if idx < self.user_entries.len() {
-                let (_, entry, _) = &self.user_entries[idx];
-                return (entry.left_id(), entry.right_id());
-            }
-        }
-
-        // Strategy 4: If no good match found, use the default character
-        // category (MeCab's default_type) as both left and right ID
-        if best_match_score == 0
-            && let Some(first_char) = surface.chars().next()
-            && let Some(category_id) = self.config.default_category(first_char)
-        {
-            return (category_id, category_id);
-        }
-
-        // Ultimate fallback: use first user_entry's IDs or default to 0
-        if let Some((_, entry, _)) = self.user_entries.first() {
-            (entry.left_id(), entry.right_id())
-        } else {
-            (0, 0)
-        }
+        let Some((index, _)) = best_matching_seed_row(features, &self.config.features[..seed_rows])
+        else {
+            return Err(anyhow::anyhow!(
+                "user lexicon entry {surface:?} with the feature {features:?}: no seed row \
+                 has a column in common with the feature, so its context ids cannot be \
+                 inferred; give its left id, right id and cost"
+            ));
+        };
+        let feature_set = merged_model
+            .feature_sets
+            .get(index)
+            .ok_or_else(|| anyhow::anyhow!("seed row {index} has no label in the merged model"))?;
+        Ok((feature_set.left_id.get(), feature_set.right_id.get()))
     }
 
     /// Calculate maximum context ID from training data

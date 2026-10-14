@@ -2302,3 +2302,90 @@ mod template_past_last_column_tests {
         assert!(feature_set.bigram_right()[1].is_none());
     }
 }
+
+/// A user lexicon entry with `0,0,0` gets the context ids that `lex.csv`
+/// gives the seed row whose feature is the most similar to its own, and one
+/// whose feature has no column in common with any seed row is an error
+/// (#1190).
+#[cfg(test)]
+mod user_lexicon_context_id_tests {
+    use std::collections::HashMap;
+    use std::io::Cursor;
+
+    use crate::test_fixtures::train_wide_model;
+
+    /// The result of `write_dictionary` and what it wrote: `lex.csv`,
+    /// `matrix.def`, `unk.def` and the user lexicon.
+    type Written = (anyhow::Result<()>, String, String, String, String);
+
+    fn write_dictionary(user_csv: &str) -> Written {
+        let mut model = train_wide_model(1);
+        model
+            .read_user_lexicon(Cursor::new(user_csv.as_bytes()))
+            .unwrap();
+        let (mut lex, mut matrix, mut unk, mut user) =
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+        let result = model.write_dictionary(&mut lex, &mut matrix, &mut unk, &mut user);
+        let text = |bytes: Vec<u8>| String::from_utf8(bytes).unwrap();
+        (result, text(lex), text(matrix), text(unk), text(user))
+    }
+
+    /// Maps the surface of each row of a lexicon CSV whose surfaces are not
+    /// quoted to its left and right context ids.
+    fn context_ids(csv: &str) -> HashMap<&str, (&str, &str)> {
+        csv.lines()
+            .map(|line| {
+                let fields: Vec<&str> = line.splitn(4, ',').collect();
+                (fields[0], (fields[1], fields[2]))
+            })
+            .collect()
+    }
+
+    #[test]
+    fn an_entry_gets_the_context_ids_of_its_most_similar_seed_row() {
+        // `語01` is seed row 1 and `語40` seed row 16 of `train_wide_model`.
+        // Before #1190 `Q` got the ids of `R`, the user entry at index 1, and
+        // `S` and `T` those of `Q`, the first user entry. `T`'s seventh column
+        // is that of no seed row; the `動詞,自立` rows are the most similar,
+        // and `語40` is the first of them.
+        let user_csv = "Q,0,0,0,名詞,一般,*,*,*,*,語01,カナ,カナ\n\
+                        R,7,8,912,動詞,自立,*,*,*,*,R,カナ,カナ\n\
+                        S,0,0,0,動詞,自立,*,*,*,*,語40,カナ,カナ\n\
+                        T,0,0,0,動詞,自立,*,*,*,*,T,カナ,カナ\n";
+        let (result, lex, _, _, user) = write_dictionary(user_csv);
+        result.unwrap();
+        let seed = context_ids(&lex);
+        let entries = context_ids(&user);
+
+        // The ids the old lookup gave differ from the expected ones.
+        assert_ne!(seed["語01"], ("7", "8"), "{lex}");
+        assert_ne!(seed["語40"], seed["語01"], "{lex}");
+
+        assert_eq!(entries["Q"], seed["語01"], "{user}");
+        assert_eq!(entries["S"], seed["語40"], "{user}");
+        assert_eq!(entries["T"], seed["語40"], "{user}");
+        assert_eq!(
+            user.lines().nth(1),
+            Some("R,7,8,912,動詞,自立,*,*,*,*,R,カナ,カナ")
+        );
+    }
+
+    #[test]
+    fn an_entry_with_no_column_in_common_with_any_seed_row_is_an_error() {
+        // Before #1190 `Z` got `4,4`, the index of ALPHA in char.def.
+        let user_csv = "Q,0,0,0,名詞,一般,*,*,*,*,語01,カナ,カナ\nZ,0,0,0,X\n";
+        let (result, lex, matrix, unk, user) = write_dictionary(user_csv);
+        let err = match result {
+            Ok(()) => panic!("an error was expected, got the user lexicon:\n{user}"),
+            Err(err) => err.to_string(),
+        };
+        assert!(err.contains("\"Z\"") && err.contains("\"X\""), "{err}");
+        // Nothing is written, not even the user entry before `Z`.
+        assert_eq!([lex, matrix, unk, user], ["", "", "", ""]);
+
+        // An entry whose parameters are given needs no seed row.
+        let (result, _, _, _, user) = write_dictionary("W,3,3,100,X\n");
+        result.unwrap();
+        assert_eq!(user, "W,3,3,100,X\n");
+    }
+}
