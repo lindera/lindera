@@ -1180,7 +1180,13 @@ Python・Ruby の <code>load_user_dictionary_for</code>、Node.js の <code>load
 PHP の <code>Lindera\Dictionary::loadUserFor</code>、WebAssembly の
 <code>loadUserDictionaryFromBytesFor</code> です
 （<a href="https://github.com/lindera/lindera/issues/1193">#1193</a>）。メタデータを受け取る
-これまでの関数は変わりません。</li>
+これまでの関数は変わりません。これらのバインディングのユーザー辞書のビルド関数にも、
+読み込み済みのシステム辞書と照らして CSV の各行を確認しながらビルドするものが
+加わりました。Python・Ruby の <code>build_user_dictionary_for</code>、Node.js の
+<code>buildUserDictionaryFor</code>、PHP の <code>Lindera\Dictionary::buildUserFor</code> です
+（<a href="https://github.com/lindera/lindera/issues/1188">#1188</a>）。メタデータを受け取る
+これまでのビルド関数も変わりません。その <code>output_dir</code> は、これまでどおり
+ディレクトリではなく、書き出すファイルのパスです。</li>
 <li>ユーザー辞書の行のコストや文脈 ID が数値でないときのエラーは、
 <code>lindera build --user</code> でも <code>.csv</code> のユーザー辞書の読み込みでも、その行の
 CSV の行番号を示します（<code>at line 1</code>）。これまでは、表層形の順に並べた行を

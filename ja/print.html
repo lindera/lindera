@@ -744,12 +744,13 @@ let results = tokenizer.tokenize_nbest_with_lattice(text, &amp;mut lattice, 3, f
 <li><code>--system-dict</code> でシステム辞書を指定した <code>lindera build --user</code>（Rust API では <code>DictionaryBuilder::with_system_matrix</code>。<a href="concepts/../lindera-cli/commands.html#%E6%96%87%E8%84%88-id-%E3%81%AE%E7%A2%BA%E8%AA%8D">文脈 ID の確認</a> を参照）</li>
 <li>設定（<code>Segmenter::from_config</code>、<code>TokenizerBuilder</code>）や <code>lindera tokenize --user-dict</code> で指定した <code>.csv</code> のユーザー辞書と、Python・Node.js・Ruby・PHP のバインディングの <code>TokenizerBuilder</code> にパスで渡した <code>.csv</code> のユーザー辞書</li>
 <li>読み込み済みのシステム辞書に合わせてユーザー辞書を読み込む関数（Rust API・Python・Ruby の <code>load_user_dictionary_for</code>、Node.js の <code>loadUserDictionaryFor</code>、PHP の <code>Lindera\Dictionary::loadUserFor</code>、WebAssembly の <code>loadUserDictionaryFromBytesFor</code>）</li>
+<li>読み込み済みのシステム辞書に合わせてユーザー辞書をビルドする関数（Python・Ruby の <code>build_user_dictionary_for</code>、Node.js の <code>buildUserDictionaryFor</code>、PHP の <code>Lindera\Dictionary::buildUserFor</code>）</li>
 </ul>
 <p>たとえば、1 行目が IPADIC の行列の範囲内にあり、2 行目の左文脈 ID が 60000 の <code>userdic.csv</code> では次のようになります。</p>
 <pre><code class="language-text">$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.csv
 Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
 </code></pre>
-<p>それ以外のユーザー辞書は、システム辞書なしでビルドされます。<code>--system-dict</code> を指定せずに <code>lindera build --user</code> で書き出した <code>.bin</code> と、メタデータだけで読み込んだユーザー辞書（Rust API・Python・Ruby の <code>load_user_dictionary</code>、Node.js の <code>loadUserDictionary</code>、PHP の <code>Lindera\Dictionary::loadUser</code>、WebAssembly の <code>loadUserDictionaryFromBytes</code>）です。この場合、文脈 ID は 2 つの辞書を組み合わせるときに確認します。<code>Segmenter::try_new</code>、設定からの構築、<code>lindera tokenize --user-dict</code>、各言語バインディングの <code>Tokenizer</code> のコンストラクタとビルダーは、行列の範囲外にある最初の見出し語についてエラーを返します。エラーは、見出し語をその単語 ID（表層形の順に並べた行を 0 から数えた番号）と詳細フィールドで示します。上の <code>userdic.csv</code> からビルドした <code>.bin</code> では次のようになります。</p>
+<p>それ以外のユーザー辞書は、システム辞書なしでビルドされます。<code>--system-dict</code> を指定せずに <code>lindera build --user</code> で書き出した <code>.bin</code>、バインディングのビルド関数でメタデータだけを使って書き出した <code>.bin</code>（Python・Ruby の <code>build_user_dictionary</code>、Node.js の <code>buildUserDictionary</code>、PHP の <code>Lindera\Dictionary::buildUser</code>）、メタデータだけで読み込んだユーザー辞書（Rust API・Python・Ruby の <code>load_user_dictionary</code>、Node.js の <code>loadUserDictionary</code>、PHP の <code>Lindera\Dictionary::loadUser</code>、WebAssembly の <code>loadUserDictionaryFromBytes</code>）です。この場合、文脈 ID は 2 つの辞書を組み合わせるときに確認します。<code>Segmenter::try_new</code>、設定からの構築、<code>lindera tokenize --user-dict</code>、各言語バインディングの <code>Tokenizer</code> のコンストラクタとビルダーは、行列の範囲外にある最初の見出し語についてエラーを返します。エラーは、見出し語をその単語 ID（表層形の順に並べた行を 0 から数えた番号）と詳細フィールドで示します。上の <code>userdic.csv</code> からビルドした <code>.bin</code> では次のようになります。</p>
 <pre><code class="language-text">$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u user_dict/userdic.bin
 Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary entry 1 (名詞,固有名詞,一般,*,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
 </code></pre>
@@ -3703,19 +3704,35 @@ build_dictionary("/path/to/input_dir", "/path/to/output_dir", metadata)
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
 <p><code>Metadata.from_json_file</code> で読み込んだメタデータは <code>metadata.json</code> の <code>space_penalty</code> ルールを保持し、ビルドした辞書にもそのルールが同梱されます。そのため ko-dic をビルドした場合も、左側空白ペナルティはデフォルトでオンのままです。トークナイザーごとにオフにするには <code>TokenizerBuilder.set_space_penalty(False)</code> を使います（<a href="lindera-python/./tokenizer_api.html#set_space_penaltyvalue">Tokenizer API</a> を参照）。コンストラクタで作成した <code>Metadata</code> はルールを持ちません。</p>
 <h3 id="ユーザー辞書のビルド-1"><a class="header" href="#ユーザー辞書のビルド-1">ユーザー辞書のビルド</a></h3>
-<p>CSV ファイルからユーザー辞書をビルドします：</p>
+<p>組み合わせるシステム辞書に合わせて、CSV ファイルからユーザー辞書をビルドします：</p>
+<pre><code class="language-python">from lindera import build_user_dictionary_for, load_dictionary, load_user_dictionary_for
+
+dictionary = load_dictionary("/path/to/ipadic")
+build_user_dictionary_for("user_words.csv", "/path/to/user_dictionary.bin", dictionary)
+user_dict = load_user_dictionary_for("/path/to/user_dictionary.bin", dictionary)
+</code></pre>
+<p>CSV はシステム辞書のメタデータでビルドし、接続コスト行列と照らして確認します。
+文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を示す <code>ValueError</code>
+になり、ファイルは書き出しません（<a href="lindera-python/../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a>
+を参照）。2 番目の引数は書き出すファイルのパスです。ローダーは拡張子で
+ユーザー辞書の読み込み方を決めるので、<code>.bin</code> で終えてください。</p>
+<p><code>build_user_dictionary(kind, input_file, output_dir, metadata)</code> は、メタデータ
+だけでユーザー辞書をビルドします。<code>output_dir</code> も、名前に反してディレクトリでは
+なく、書き出すファイルのパスです。各行はシステム辞書と組み合わせるときに確認し、
+エラーは見出し語をその単語 ID で示します：</p>
 <pre><code class="language-python">from lindera import build_user_dictionary, Metadata
 
 metadata = Metadata()
-build_user_dictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata)
+build_user_dictionary("ipadic", "user_words.csv", "/path/to/user_dictionary.bin", metadata)
 </code></pre>
 <p><code>metadata</code> パラメータは省略可能です。省略した場合はデフォルトのメタデータ値が使用されます：</p>
-<pre><code class="language-python">build_user_dictionary("ipadic", "user_words.csv", "/path/to/output_dir")
+<pre><code class="language-python">build_user_dictionary("ipadic", "user_words.csv", "/path/to/user_dictionary.bin")
 </code></pre>
 <p><strong>注意:</strong> 最初の引数（上記の <code>"ipadic"</code>）は現在未使用で、将来のために予約されて
 いるものです -- ビルドの選択や設定には一切影響しません。ビルドの挙動は
 <code>metadata</code>（特に <code>metadata.user_dictionary_schema</code>）によってのみ制御されます。
-現時点では任意の文字列を渡すことができます。</p>
+現時点では任意の文字列を渡すことができます。システム辞書に合わせてビルドするには
+<code>build_user_dictionary_for</code> を使います。</p>
 <h2 id="metadata"><a class="header" href="#metadata">Metadata</a></h2>
 <p><code>Metadata</code> クラスは辞書のパラメータを設定します。</p>
 <h3 id="metadata-の作成"><a class="header" href="#metadata-の作成">Metadata の作成</a></h3>
@@ -4534,19 +4551,35 @@ buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 buildDictionary("/path/to/mecab-ko-dic", "/path/to/output_dir", metadata);
 </code></pre>
 <h3 id="ユーザー辞書のビルド-2"><a class="header" href="#ユーザー辞書のビルド-2">ユーザー辞書のビルド</a></h3>
-<p>CSV ファイルからユーザー辞書をビルドします：</p>
+<p>組み合わせるシステム辞書に合わせて、CSV ファイルからユーザー辞書をビルドします：</p>
+<pre><code class="language-javascript">const { buildUserDictionaryFor, loadDictionary, loadUserDictionaryFor } = require("lindera");
+
+const dictionary = loadDictionary("/path/to/ipadic");
+buildUserDictionaryFor("user_words.csv", "/path/to/user_dictionary.bin", dictionary);
+const userDict = loadUserDictionaryFor("/path/to/user_dictionary.bin", dictionary);
+</code></pre>
+<p>CSV はシステム辞書のメタデータでビルドし、接続コスト行列と照らして確認します。
+文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を示すエラーを投げ、
+ファイルは書き出しません（<a href="lindera-nodejs/../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a>
+を参照）。2 番目の引数は書き出すファイルのパスです。ローダーは拡張子で
+ユーザー辞書の読み込み方を決めるので、<code>.bin</code> で終えてください。</p>
+<p><code>buildUserDictionary(kind, inputFile, outputDir, metadata)</code> は、メタデータだけで
+ユーザー辞書をビルドします。<code>outputDir</code> も、名前に反してディレクトリではなく、
+書き出すファイルのパスです。各行はシステム辞書と組み合わせるときに確認し、
+エラーは見出し語をその単語 ID で示します：</p>
 <pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
-buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata);
+buildUserDictionary("ipadic", "user_words.csv", "/path/to/user_dictionary.bin", metadata);
 </code></pre>
 <p><code>metadata</code> パラメータは省略可能です。省略した場合はデフォルトのメタデータ値が使用されます：</p>
-<pre><code class="language-javascript">buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir");
+<pre><code class="language-javascript">buildUserDictionary("ipadic", "user_words.csv", "/path/to/user_dictionary.bin");
 </code></pre>
 <blockquote>
 <p>[!NOTE]
 第一引数（<code>kind</code>）は現状未使用です -- 将来の拡張のために予約されており、ビルド結果には
-影響しません。現時点では任意の文字列を渡しても問題ありません。</p>
+影響しません。現時点では任意の文字列を渡しても問題ありません。システム辞書に合わせて
+ビルドするには <code>buildUserDictionaryFor</code> を使います。</p>
 </blockquote>
 <h2 id="metadata-1"><a class="header" href="#metadata-1">Metadata</a></h2>
 <p><code>Metadata</code> クラスは辞書のパラメータを設定します。</p>
@@ -5444,19 +5477,35 @@ Lindera.build_dictionary('/path/to/input_dir', '/path/to/output_dir', metadata)
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
 <p><code>Lindera::Metadata.from_json_file</code> で読み込んだメタデータは <code>metadata.json</code> の <code>space_penalty</code> ルールを保持し、ビルドした辞書にもそのルールが同梱されます。そのため ko-dic をビルドした場合も、左側空白ペナルティはデフォルトでオンのままです。トークナイザーごとにオフにするには <code>TokenizerBuilder#set_space_penalty(false)</code> を使います（<a href="lindera-ruby/./tokenizer_api.html#set_space_penaltyvalue">Tokenizer API</a> を参照）。</p>
 <h3 id="ユーザー辞書のビルド-3"><a class="header" href="#ユーザー辞書のビルド-3">ユーザー辞書のビルド</a></h3>
-<p>CSV ファイルからユーザー辞書をビルドします：</p>
+<p>組み合わせるシステム辞書に合わせて、CSV ファイルからユーザー辞書をビルドします：</p>
+<pre><code class="language-ruby">require 'lindera'
+
+dictionary = Lindera.load_dictionary('/path/to/ipadic')
+Lindera.build_user_dictionary_for('user_words.csv', '/path/to/user_dictionary.bin', dictionary)
+user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.bin', dictionary)
+</code></pre>
+<p>CSV はシステム辞書のメタデータでビルドし、接続コスト行列と照らして確認します。
+文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を示す <code>RuntimeError</code>
+になり、ファイルは書き出しません（<a href="lindera-ruby/../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a>
+を参照）。2 番目の引数は書き出すファイルのパスです。ローダーは拡張子で
+ユーザー辞書の読み込み方を決めるので、<code>.bin</code> で終えてください。</p>
+<p><code>Lindera.build_user_dictionary(kind, input_file, output_dir, metadata)</code> は、
+メタデータだけでユーザー辞書をビルドします。<code>output_dir</code> も、名前に反して
+ディレクトリではなく、書き出すファイルのパスです。各行はシステム辞書と
+組み合わせるときに確認し、エラーは見出し語をその単語 ID で示します：</p>
 <pre><code class="language-ruby">require 'lindera'
 
 metadata = Lindera::Metadata.from_json_file('metadata.json')
-Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir', metadata)
+Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', metadata)
 </code></pre>
 <p><code>metadata</code> パラメータは省略可能です。省略した場合はデフォルトのメタデータ値が使用されます：</p>
-<pre><code class="language-ruby">Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir', nil)
+<pre><code class="language-ruby">Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', nil)
 </code></pre>
 <blockquote>
 <p>[!NOTE]
 第一引数（<code>kind</code>、上の例では <code>'ipadic'</code>）は現時点では未使用です -- 将来の利用のために予約
-されているだけで、ビルドには影響しません。現時点では任意の文字列を渡すことができます。</p>
+されているだけで、ビルドには影響しません。現時点では任意の文字列を渡すことができます。
+システム辞書に合わせてビルドするには <code>Lindera.build_user_dictionary_for</code> を使います。</p>
 </blockquote>
 <h2 id="metadata-2"><a class="header" href="#metadata-2">Metadata</a></h2>
 <p><code>Lindera::Metadata</code> クラスは辞書のパラメータを設定します。</p>
@@ -6252,8 +6301,11 @@ $tokenizer = $builder-&gt;build();
 <div class="table-wrapper"><table><thead><tr><th>メソッド</th><th>戻り値</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>Dictionary::load($uri)</code></td><td><code>Dictionary</code></td><td>システム辞書を読み込む</td></tr>
 <tr><td><code>Dictionary::loadUser($path, $metadata)</code></td><td><code>UserDictionary</code></td><td>ユーザー辞書を読み込む</td></tr>
+<tr><td><code>Dictionary::loadUserFor($path, $dictionary)</code></td><td><code>UserDictionary</code></td><td>システム辞書に合わせてユーザー辞書を読み込む</td></tr>
 <tr><td><code>Dictionary::version()</code></td><td><code>string</code></td><td>Lindera のバージョン文字列を返す</td></tr>
 <tr><td><code>Dictionary::build($source, $dest, $metadata)</code></td><td><code>void</code></td><td>辞書をビルドする</td></tr>
+<tr><td><code>Dictionary::buildUser($kind, $source, $dest, $metadata)</code></td><td><code>void</code></td><td>ユーザー辞書をビルドする</td></tr>
+<tr><td><code>Dictionary::buildUserFor($source, $dest, $dictionary)</code></td><td><code>void</code></td><td>システム辞書に合わせてユーザー辞書をビルドする</td></tr>
 <tr><td><code>$dictionary-&gt;metadata()</code></td><td><code>Metadata</code></td><td>辞書のメタデータを返す</td></tr>
 <tr><td><code>$dictionary-&gt;metadataName()</code></td><td><code>string</code></td><td>辞書名を返す</td></tr>
 <tr><td><code>$dictionary-&gt;metadataEncoding()</code></td><td><code>string</code></td><td>辞書のエンコーディングを返す</td></tr>
@@ -6288,6 +6340,31 @@ Lindera\Dictionary::build(
     $metadata
 );
 </code></pre>
+<h3 id="ユーザー辞書のビルド-4"><a class="header" href="#ユーザー辞書のビルド-4">ユーザー辞書のビルド</a></h3>
+<p>組み合わせるシステム辞書に合わせて、CSV ファイルからユーザー辞書をビルドします：</p>
+<pre><code class="language-php">&lt;?php
+
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+Lindera\Dictionary::buildUserFor('user_words.csv', '/path/to/user_dictionary.bin', $dictionary);
+$userDict = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.bin', $dictionary);
+</code></pre>
+<p>CSV はシステム辞書のメタデータでビルドし、接続コスト行列と照らして確認します。
+文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を示す <code>ValueError</code>
+になり、ファイルは書き出しません（<a href="lindera-php/../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a>
+を参照）。2 番目の引数は書き出すファイルのパスです。ローダーは拡張子で
+ユーザー辞書の読み込み方を決めるので、<code>.bin</code> で終えてください。</p>
+<p><code>Lindera\Dictionary::buildUser($kind, $input_file, $output_dir, $metadata)</code> は、
+メタデータだけでユーザー辞書をビルドします。<code>$output_dir</code> も、名前に反して
+ディレクトリではなく、書き出すファイルのパスです。各行はシステム辞書と
+組み合わせるときに確認し、エラーは見出し語をその単語 ID で示します：</p>
+<pre><code class="language-php">&lt;?php
+
+$metadata = new Lindera\Metadata();
+Lindera\Dictionary::buildUser('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', $metadata);
+</code></pre>
+<p>第一引数（<code>$kind</code>、上の例では <code>'ipadic'</code>）は現時点では未使用で、将来のために
+予約されています。システム辞書に合わせてビルドするには
+<code>Lindera\Dictionary::buildUserFor</code> を使います。</p>
 <h2 id="metadata-3"><a class="header" href="#metadata-3">Metadata</a></h2>
 <p><code>Metadata</code> クラスは辞書のパラメータを設定します。</p>
 <h3 id="metadata-の作成-3"><a class="header" href="#metadata-の作成-3">Metadata の作成</a></h3>
@@ -7842,7 +7919,7 @@ main();
   --dest /tmp/lindera-ipadic-2.7.0-20250920 \
   --metadata ./lindera-ipadic/metadata.json
 </code></pre>
-<h2 id="ユーザー辞書のビルド-4"><a class="header" href="#ユーザー辞書のビルド-4">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-5"><a class="header" href="#ユーザー辞書のビルド-5">ユーザー辞書のビルド</a></h2>
 <p>CSV ファイルからユーザー辞書をビルドします:</p>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/ipadic_simple_userdic.csv \
@@ -8015,7 +8092,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
   --dest /tmp/lindera-ipadic-neologd-0.0.7-20200820 \
   --metadata ./lindera-ipadic-neologd/metadata.json
 </code></pre>
-<h2 id="ユーザー辞書のビルド-5"><a class="header" href="#ユーザー辞書のビルド-5">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-6"><a class="header" href="#ユーザー辞書のビルド-6">ユーザー辞書のビルド</a></h2>
 <p>CSV ファイルからユーザー辞書をビルドします:</p>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/ipadic_simple_userdic.csv \
@@ -8214,7 +8291,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 結果には影響しません -- この付け替えはコストを保つ全単射な再ラベル付けであり、ビルド時の最適化のみに
 関わるものであって正確性には影響しません。</p>
 </blockquote>
-<h2 id="ユーザー辞書のビルド-6"><a class="header" href="#ユーザー辞書のビルド-6">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-7"><a class="header" href="#ユーザー辞書のビルド-7">ユーザー辞書のビルド</a></h2>
 <p>CSV ファイルからユーザー辞書をビルドします:</p>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/unidic_simple_userdic.csv \
@@ -8385,7 +8462,7 @@ UniDic と同様にこの辞書でも一致します。詳細は
 上流の raw 配布物から直接ビルドする
 <a href="lindera-sudachidict/../sudachidict.html">SudachiDict（カスタムビルド）</a>を参照してください。</p>
 </blockquote>
-<h2 id="ユーザー辞書のビルド-7"><a class="header" href="#ユーザー辞書のビルド-7">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-8"><a class="header" href="#ユーザー辞書のビルド-8">ユーザー辞書のビルド</a></h2>
 <p>CSV ファイルからユーザー辞書をビルドします:</p>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/sudachidict_simple_userdic.csv \
@@ -8562,7 +8639,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 結果には影響しません -- この付け替えはコストを保つ全単射な再ラベル付けであり、ビルド時の最適化のみに
 関わるものであって正確性には影響しません。</p>
 </blockquote>
-<h2 id="ユーザー辞書のビルド-8"><a class="header" href="#ユーザー辞書のビルド-8">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-9"><a class="header" href="#ユーザー辞書のビルド-9">ユーザー辞書のビルド</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/ko-dic_simple_userdic.csv \
   --dest ./resources/user_dict \
@@ -8700,7 +8777,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
   --dest /tmp/lindera-cc-cedict-0.1.0-20200409 \
   --metadata ./lindera-cc-cedict/metadata.json
 </code></pre>
-<h2 id="ユーザー辞書のビルド-9"><a class="header" href="#ユーザー辞書のビルド-9">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-10"><a class="header" href="#ユーザー辞書のビルド-10">ユーザー辞書のビルド</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/cc-cedict_simple_userdic.csv \
   --dest ./resources/user_dict \
@@ -8832,7 +8909,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
   --dest /tmp/lindera-jieba-0.1.1 \
   --metadata ./lindera-jieba/metadata.json
 </code></pre>
-<h2 id="ユーザー辞書のビルド-10"><a class="header" href="#ユーザー辞書のビルド-10">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-11"><a class="header" href="#ユーザー辞書のビルド-11">ユーザー辞書のビルド</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/jieba_simple_userdic.csv \
   --dest ./resources/user_dict \
@@ -10697,7 +10774,13 @@ Python・Ruby の <code>load_user_dictionary_for</code>、Node.js の <code>load
 PHP の <code>Lindera\Dictionary::loadUserFor</code>、WebAssembly の
 <code>loadUserDictionaryFromBytesFor</code> です
 （<a href="https://github.com/lindera/lindera/issues/1193">#1193</a>）。メタデータを受け取る
-これまでの関数は変わりません。</li>
+これまでの関数は変わりません。これらのバインディングのユーザー辞書のビルド関数にも、
+読み込み済みのシステム辞書と照らして CSV の各行を確認しながらビルドするものが
+加わりました。Python・Ruby の <code>build_user_dictionary_for</code>、Node.js の
+<code>buildUserDictionaryFor</code>、PHP の <code>Lindera\Dictionary::buildUserFor</code> です
+（<a href="https://github.com/lindera/lindera/issues/1188">#1188</a>）。メタデータを受け取る
+これまでのビルド関数も変わりません。その <code>output_dir</code> は、これまでどおり
+ディレクトリではなく、書き出すファイルのパスです。</li>
 <li>ユーザー辞書の行のコストや文脈 ID が数値でないときのエラーは、
 <code>lindera build --user</code> でも <code>.csv</code> のユーザー辞書の読み込みでも、その行の
 CSV の行番号を示します（<code>at line 1</code>）。これまでは、表層形の順に並べた行を

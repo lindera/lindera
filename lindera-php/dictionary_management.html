@@ -258,12 +258,33 @@ Lindera\Dictionary::build(
 );
 </code></pre>
 <h3 id="user-dictionary"><a class="header" href="#user-dictionary">User Dictionary</a></h3>
-<p>Build a user dictionary from a CSV file:</p>
+<p>Build a user dictionary from a CSV file for the system dictionary it is used
+with:</p>
+<pre><code class="language-php">&lt;?php
+
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+Lindera\Dictionary::buildUserFor('user_words.csv', '/path/to/user_dictionary.bin', $dictionary);
+$userDict = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.bin', $dictionary);
+</code></pre>
+<p>The CSV is built with the system dictionary's metadata and checked against
+its connection matrix: a row whose context ID lies outside the matrix throws
+a <code>ValueError</code> that names its CSV line and surface, and no file is written
+(see <a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>). The second
+argument is the path of the file to write. End it with <code>.bin</code>, since the
+loaders choose how to load a user dictionary by its extension.</p>
+<p><code>Lindera\Dictionary::buildUser($kind, $input_file, $output_dir, $metadata)</code>
+builds a user dictionary with metadata only. Despite its name, <code>$output_dir</code>
+is the path of the file to write too, not a directory. The rows are checked
+when the user dictionary is combined with the system dictionary, and the
+error names the entry by its word id:</p>
 <pre><code class="language-php">&lt;?php
 
 $metadata = new Lindera\Metadata();
-Lindera\Dictionary::buildUser('ipadic', 'user_words.csv', '/path/to/output_dir', $metadata);
+Lindera\Dictionary::buildUser('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', $metadata);
 </code></pre>
+<p>The first argument (<code>$kind</code>, <code>'ipadic'</code> above) is currently unused and
+reserved for future use. To build for a system dictionary, use
+<code>Lindera\Dictionary::buildUserFor</code>.</p>
 <h2 id="metadata"><a class="header" href="#metadata">Metadata</a></h2>
 <p>The <code>Lindera\Metadata</code> class configures dictionary parameters.</p>
 <h3 id="creating-metadata"><a class="header" href="#creating-metadata">Creating Metadata</a></h3>

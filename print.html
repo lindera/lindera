@@ -747,12 +747,13 @@ let results = tokenizer.tokenize_nbest_with_lattice(text, &amp;mut lattice, 3, f
 <li><code>lindera build --user</code> when <code>--system-dict</code> names the system dictionary (<code>DictionaryBuilder::with_system_matrix</code> in the Rust API; see <a href="concepts/../lindera-cli/commands.html#context-id-check">Context ID check</a>)</li>
 <li>a <code>.csv</code> user dictionary that the configuration names (<code>Segmenter::from_config</code>, <code>TokenizerBuilder</code>), that <code>lindera tokenize --user-dict</code> names, or that the <code>TokenizerBuilder</code> of the Python, Node.js, Ruby and PHP bindings is given by path</li>
 <li>the loaders that load a user dictionary for a loaded system dictionary: <code>load_user_dictionary_for</code> in the Rust API, Python and Ruby, <code>loadUserDictionaryFor</code> in Node.js, <code>Lindera\Dictionary::loadUserFor</code> in PHP, and <code>loadUserDictionaryFromBytesFor</code> in WebAssembly</li>
+<li>the builders that build a user dictionary for a loaded system dictionary: <code>build_user_dictionary_for</code> in Python and Ruby, <code>buildUserDictionaryFor</code> in Node.js, and <code>Lindera\Dictionary::buildUserFor</code> in PHP</li>
 </ul>
 <p>For example, with a <code>userdic.csv</code> whose first row lies inside IPADIC's matrix and whose second row has the left context ID 60000:</p>
 <pre><code class="language-text">$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u userdic.csv
 Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
 </code></pre>
-<p>Otherwise the user dictionary is built without the system dictionary: a <code>.bin</code> that <code>lindera build --user</code> wrote without <code>--system-dict</code>, or a user dictionary loaded with metadata only (<code>load_user_dictionary</code> in the Rust API, Python and Ruby, <code>loadUserDictionary</code> in Node.js, <code>Lindera\Dictionary::loadUser</code> in PHP, <code>loadUserDictionaryFromBytes</code> in WebAssembly). Its IDs are checked when the two dictionaries are combined: <code>Segmenter::try_new</code>, the configuration path, <code>lindera tokenize --user-dict</code>, and the <code>Tokenizer</code> constructors and builders of the language bindings return an error for the first entry outside the matrix. The error names the entry by its word id, which counts the rows from 0 in the order of their surfaces, and by its detail fields. The <code>.bin</code> built from the <code>userdic.csv</code> above gives:</p>
+<p>Otherwise the user dictionary is built without the system dictionary: a <code>.bin</code> that <code>lindera build --user</code> wrote without <code>--system-dict</code> or that a builder of the bindings wrote with metadata only (<code>build_user_dictionary</code> in Python and Ruby, <code>buildUserDictionary</code> in Node.js, <code>Lindera\Dictionary::buildUser</code> in PHP), or a user dictionary loaded with metadata only (<code>load_user_dictionary</code> in the Rust API, Python and Ruby, <code>loadUserDictionary</code> in Node.js, <code>Lindera\Dictionary::loadUser</code> in PHP, <code>loadUserDictionaryFromBytes</code> in WebAssembly). Its IDs are checked when the two dictionaries are combined: <code>Segmenter::try_new</code>, the configuration path, <code>lindera tokenize --user-dict</code>, and the <code>Tokenizer</code> constructors and builders of the language bindings return an error for the first entry outside the matrix. The error names the entry by its word id, which counts the rows from 0 in the order of their surfaces, and by its detail fields. The <code>.bin</code> built from the <code>userdic.csv</code> above gives:</p>
 <pre><code class="language-text">$ echo 東京スカイツリーへ行く | lindera tokenize -d embedded://ipadic -u user_dict/userdic.bin
 Error: LinderaError { kind: Args, source: LinderaError(kind=Parse, source=failed to build tokenizer: LinderaError(kind=Content, source=user dictionary entry 1 (名詞,固有名詞,一般,*,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316)))
 </code></pre>
@@ -3699,19 +3700,38 @@ build_dictionary("/path/to/input_dir", "/path/to/output_dir", metadata)
 <p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
 <p>Metadata loaded with <code>Metadata.from_json_file</code> keeps the <code>space_penalty</code> rules of the <code>metadata.json</code>, and the built dictionary ships them. For ko-dic this means the left-space penalty stays on by default in the dictionary you build; turn it off per tokenizer with <code>TokenizerBuilder.set_space_penalty(False)</code> (see <a href="lindera-python/./tokenizer_api.html#set_space_penaltyvalue">Tokenizer API</a>). A <code>Metadata</code> created with the constructor carries no rules.</p>
 <h3 id="user-dictionary-2"><a class="header" href="#user-dictionary-2">User Dictionary</a></h3>
-<p>Build a user dictionary from a CSV file:</p>
+<p>Build a user dictionary from a CSV file for the system dictionary it is used
+with:</p>
+<pre><code class="language-python">from lindera import build_user_dictionary_for, load_dictionary, load_user_dictionary_for
+
+dictionary = load_dictionary("/path/to/ipadic")
+build_user_dictionary_for("user_words.csv", "/path/to/user_dictionary.bin", dictionary)
+user_dict = load_user_dictionary_for("/path/to/user_dictionary.bin", dictionary)
+</code></pre>
+<p>The CSV is built with the system dictionary's metadata and checked against
+its connection matrix: a row whose context ID lies outside the matrix raises
+a <code>ValueError</code> that names its CSV line and surface, and no file is written
+(see <a href="lindera-python/../concepts/user_dictionary.html#context-ids">Context IDs</a>). The second
+argument is the path of the file to write. End it with <code>.bin</code>, since the
+loaders choose how to load a user dictionary by its extension.</p>
+<p><code>build_user_dictionary(kind, input_file, output_dir, metadata)</code> builds a user
+dictionary with metadata only. Despite its name, <code>output_dir</code> is the path of
+the file to write too, not a directory. The rows are checked when the user
+dictionary is combined with the system dictionary, and the error names the
+entry by its word id:</p>
 <pre><code class="language-python">from lindera import build_user_dictionary, Metadata
 
 metadata = Metadata()
-build_user_dictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata)
+build_user_dictionary("ipadic", "user_words.csv", "/path/to/user_dictionary.bin", metadata)
 </code></pre>
 <p>The <code>metadata</code> parameter is optional. When omitted, default metadata values are used:</p>
-<pre><code class="language-python">build_user_dictionary("ipadic", "user_words.csv", "/path/to/output_dir")
+<pre><code class="language-python">build_user_dictionary("ipadic", "user_words.csv", "/path/to/user_dictionary.bin")
 </code></pre>
 <p><strong>Note:</strong> the first argument (<code>"ipadic"</code> above) is currently unused and reserved
 for future use -- it does not select or configure the build in any way. The
 build behavior is controlled entirely by <code>metadata</code> (in particular
-<code>metadata.user_dictionary_schema</code>). Any string may be passed today.</p>
+<code>metadata.user_dictionary_schema</code>). Any string may be passed today. To build
+for a system dictionary, use <code>build_user_dictionary_for</code>.</p>
 <h2 id="metadata"><a class="header" href="#metadata">Metadata</a></h2>
 <p>The <code>Metadata</code> class configures dictionary parameters.</p>
 <h3 id="creating-metadata"><a class="header" href="#creating-metadata">Creating Metadata</a></h3>
@@ -4531,19 +4551,38 @@ buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 buildDictionary("/path/to/mecab-ko-dic", "/path/to/output_dir", metadata);
 </code></pre>
 <h3 id="user-dictionary-3"><a class="header" href="#user-dictionary-3">User Dictionary</a></h3>
-<p>Build a user dictionary from a CSV file:</p>
+<p>Build a user dictionary from a CSV file for the system dictionary it is used
+with:</p>
+<pre><code class="language-javascript">const { buildUserDictionaryFor, loadDictionary, loadUserDictionaryFor } = require("lindera");
+
+const dictionary = loadDictionary("/path/to/ipadic");
+buildUserDictionaryFor("user_words.csv", "/path/to/user_dictionary.bin", dictionary);
+const userDict = loadUserDictionaryFor("/path/to/user_dictionary.bin", dictionary);
+</code></pre>
+<p>The CSV is built with the system dictionary's metadata and checked against
+its connection matrix: a row whose context ID lies outside the matrix throws
+an error that names its CSV line and surface, and no file is written (see
+<a href="lindera-nodejs/../concepts/user_dictionary.html#context-ids">Context IDs</a>). The second
+argument is the path of the file to write. End it with <code>.bin</code>, since the
+loaders choose how to load a user dictionary by its extension.</p>
+<p><code>buildUserDictionary(kind, inputFile, outputDir, metadata)</code> builds a user
+dictionary with metadata only. Despite its name, <code>outputDir</code> is the path of
+the file to write too, not a directory. The rows are checked when the user
+dictionary is combined with the system dictionary, and the error names the
+entry by its word id:</p>
 <pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
-buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata);
+buildUserDictionary("ipadic", "user_words.csv", "/path/to/user_dictionary.bin", metadata);
 </code></pre>
 <p>The <code>metadata</code> parameter is optional. When omitted, default metadata values are used:</p>
-<pre><code class="language-javascript">buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir");
+<pre><code class="language-javascript">buildUserDictionary("ipadic", "user_words.csv", "/path/to/user_dictionary.bin");
 </code></pre>
 <blockquote>
 <p>[!NOTE]
 The first argument (<code>kind</code>) is currently unused -- it is reserved for future use and has no
-effect on the build. Any string value can be passed for it today.</p>
+effect on the build. Any string value can be passed for it today. To build for a system
+dictionary, use <code>buildUserDictionaryFor</code>.</p>
 </blockquote>
 <h2 id="metadata-1"><a class="header" href="#metadata-1">Metadata</a></h2>
 <p>The <code>Metadata</code> class configures dictionary parameters.</p>
@@ -5447,19 +5486,38 @@ Lindera.build_dictionary('/path/to/input_dir', '/path/to/output_dir', metadata)
 <p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
 <p>Metadata loaded with <code>Lindera::Metadata.from_json_file</code> keeps the <code>space_penalty</code> rules of the <code>metadata.json</code>, and the built dictionary ships them. For ko-dic this means the left-space penalty stays on by default in the dictionary you build; turn it off per tokenizer with <code>TokenizerBuilder#set_space_penalty(false)</code> (see <a href="lindera-ruby/./tokenizer_api.html#set_space_penaltyvalue">Tokenizer API</a>).</p>
 <h3 id="user-dictionary-4"><a class="header" href="#user-dictionary-4">User Dictionary</a></h3>
-<p>Build a user dictionary from a CSV file:</p>
+<p>Build a user dictionary from a CSV file for the system dictionary it is used
+with:</p>
+<pre><code class="language-ruby">require 'lindera'
+
+dictionary = Lindera.load_dictionary('/path/to/ipadic')
+Lindera.build_user_dictionary_for('user_words.csv', '/path/to/user_dictionary.bin', dictionary)
+user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.bin', dictionary)
+</code></pre>
+<p>The CSV is built with the system dictionary's metadata and checked against
+its connection matrix: a row whose context ID lies outside the matrix raises
+a <code>RuntimeError</code> that names its CSV line and surface, and no file is written
+(see <a href="lindera-ruby/../concepts/user_dictionary.html#context-ids">Context IDs</a>). The second
+argument is the path of the file to write. End it with <code>.bin</code>, since the
+loaders choose how to load a user dictionary by its extension.</p>
+<p><code>Lindera.build_user_dictionary(kind, input_file, output_dir, metadata)</code> builds
+a user dictionary with metadata only. Despite its name, <code>output_dir</code> is the
+path of the file to write too, not a directory. The rows are checked when the
+user dictionary is combined with the system dictionary, and the error names
+the entry by its word id:</p>
 <pre><code class="language-ruby">require 'lindera'
 
 metadata = Lindera::Metadata.from_json_file('metadata.json')
-Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir', metadata)
+Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', metadata)
 </code></pre>
 <p>The <code>metadata</code> parameter is optional. When omitted, default metadata values are used:</p>
-<pre><code class="language-ruby">Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir', nil)
+<pre><code class="language-ruby">Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', nil)
 </code></pre>
 <blockquote>
 <p>[!NOTE]
 The first argument (<code>kind</code>, <code>'ipadic'</code> above) is currently unused -- it is reserved for
-future use and has no effect on the build. Any string value can be passed for it today.</p>
+future use and has no effect on the build. Any string value can be passed for it today.
+To build for a system dictionary, use <code>Lindera.build_user_dictionary_for</code>.</p>
 </blockquote>
 <h2 id="metadata-2"><a class="header" href="#metadata-2">Metadata</a></h2>
 <p>The <code>Lindera::Metadata</code> class configures dictionary parameters.</p>
@@ -6308,12 +6366,33 @@ Lindera\Dictionary::build(
 );
 </code></pre>
 <h3 id="user-dictionary-5"><a class="header" href="#user-dictionary-5">User Dictionary</a></h3>
-<p>Build a user dictionary from a CSV file:</p>
+<p>Build a user dictionary from a CSV file for the system dictionary it is used
+with:</p>
+<pre><code class="language-php">&lt;?php
+
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+Lindera\Dictionary::buildUserFor('user_words.csv', '/path/to/user_dictionary.bin', $dictionary);
+$userDict = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.bin', $dictionary);
+</code></pre>
+<p>The CSV is built with the system dictionary's metadata and checked against
+its connection matrix: a row whose context ID lies outside the matrix throws
+a <code>ValueError</code> that names its CSV line and surface, and no file is written
+(see <a href="lindera-php/../concepts/user_dictionary.html#context-ids">Context IDs</a>). The second
+argument is the path of the file to write. End it with <code>.bin</code>, since the
+loaders choose how to load a user dictionary by its extension.</p>
+<p><code>Lindera\Dictionary::buildUser($kind, $input_file, $output_dir, $metadata)</code>
+builds a user dictionary with metadata only. Despite its name, <code>$output_dir</code>
+is the path of the file to write too, not a directory. The rows are checked
+when the user dictionary is combined with the system dictionary, and the
+error names the entry by its word id:</p>
 <pre><code class="language-php">&lt;?php
 
 $metadata = new Lindera\Metadata();
-Lindera\Dictionary::buildUser('ipadic', 'user_words.csv', '/path/to/output_dir', $metadata);
+Lindera\Dictionary::buildUser('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', $metadata);
 </code></pre>
+<p>The first argument (<code>$kind</code>, <code>'ipadic'</code> above) is currently unused and
+reserved for future use. To build for a system dictionary, use
+<code>Lindera\Dictionary::buildUserFor</code>.</p>
 <h2 id="metadata-3"><a class="header" href="#metadata-3">Metadata</a></h2>
 <p>The <code>Lindera\Metadata</code> class configures dictionary parameters.</p>
 <h3 id="creating-metadata-3"><a class="header" href="#creating-metadata-3">Creating Metadata</a></h3>
@@ -10945,7 +11024,14 @@ bindings have such a loader for a loaded system dictionary too:
 Node.js, <code>Lindera\Dictionary::loadUserFor</code> in PHP and
 <code>loadUserDictionaryFromBytesFor</code> in WebAssembly
 (<a href="https://github.com/lindera/lindera/issues/1193">#1193</a>). The loaders that
-take metadata are unchanged.</li>
+take metadata are unchanged. The user dictionary builders of these
+bindings have such a variant as well, which checks the rows against a
+loaded system dictionary as it builds the CSV: <code>build_user_dictionary_for</code>
+in Python and Ruby, <code>buildUserDictionaryFor</code> in Node.js and
+<code>Lindera\Dictionary::buildUserFor</code> in PHP
+(<a href="https://github.com/lindera/lindera/issues/1188">#1188</a>). The builders
+that take metadata are unchanged too: their <code>output_dir</code> is, as before,
+the path of the file they write, not a directory.</li>
 <li>The errors for a user dictionary row whose cost or context ID is not a
 number, from <code>lindera build --user</code> or from loading a <code>.csv</code> user
 dictionary, name the row's CSV line (<code>at line 1</code>). Before, they counted

@@ -230,8 +230,11 @@ $tokenizer = $builder-&gt;build();
 <div class="table-wrapper"><table><thead><tr><th>メソッド</th><th>戻り値</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>Dictionary::load($uri)</code></td><td><code>Dictionary</code></td><td>システム辞書を読み込む</td></tr>
 <tr><td><code>Dictionary::loadUser($path, $metadata)</code></td><td><code>UserDictionary</code></td><td>ユーザー辞書を読み込む</td></tr>
+<tr><td><code>Dictionary::loadUserFor($path, $dictionary)</code></td><td><code>UserDictionary</code></td><td>システム辞書に合わせてユーザー辞書を読み込む</td></tr>
 <tr><td><code>Dictionary::version()</code></td><td><code>string</code></td><td>Lindera のバージョン文字列を返す</td></tr>
 <tr><td><code>Dictionary::build($source, $dest, $metadata)</code></td><td><code>void</code></td><td>辞書をビルドする</td></tr>
+<tr><td><code>Dictionary::buildUser($kind, $source, $dest, $metadata)</code></td><td><code>void</code></td><td>ユーザー辞書をビルドする</td></tr>
+<tr><td><code>Dictionary::buildUserFor($source, $dest, $dictionary)</code></td><td><code>void</code></td><td>システム辞書に合わせてユーザー辞書をビルドする</td></tr>
 <tr><td><code>$dictionary-&gt;metadata()</code></td><td><code>Metadata</code></td><td>辞書のメタデータを返す</td></tr>
 <tr><td><code>$dictionary-&gt;metadataName()</code></td><td><code>string</code></td><td>辞書名を返す</td></tr>
 <tr><td><code>$dictionary-&gt;metadataEncoding()</code></td><td><code>string</code></td><td>辞書のエンコーディングを返す</td></tr>
@@ -266,6 +269,31 @@ Lindera\Dictionary::build(
     $metadata
 );
 </code></pre>
+<h3 id="ユーザー辞書のビルド"><a class="header" href="#ユーザー辞書のビルド">ユーザー辞書のビルド</a></h3>
+<p>組み合わせるシステム辞書に合わせて、CSV ファイルからユーザー辞書をビルドします：</p>
+<pre><code class="language-php">&lt;?php
+
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+Lindera\Dictionary::buildUserFor('user_words.csv', '/path/to/user_dictionary.bin', $dictionary);
+$userDict = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.bin', $dictionary);
+</code></pre>
+<p>CSV はシステム辞書のメタデータでビルドし、接続コスト行列と照らして確認します。
+文脈 ID が行列の範囲外にある行は、その CSV の行番号と表層形を示す <code>ValueError</code>
+になり、ファイルは書き出しません（<a href="../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a>
+を参照）。2 番目の引数は書き出すファイルのパスです。ローダーは拡張子で
+ユーザー辞書の読み込み方を決めるので、<code>.bin</code> で終えてください。</p>
+<p><code>Lindera\Dictionary::buildUser($kind, $input_file, $output_dir, $metadata)</code> は、
+メタデータだけでユーザー辞書をビルドします。<code>$output_dir</code> も、名前に反して
+ディレクトリではなく、書き出すファイルのパスです。各行はシステム辞書と
+組み合わせるときに確認し、エラーは見出し語をその単語 ID で示します：</p>
+<pre><code class="language-php">&lt;?php
+
+$metadata = new Lindera\Metadata();
+Lindera\Dictionary::buildUser('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', $metadata);
+</code></pre>
+<p>第一引数（<code>$kind</code>、上の例では <code>'ipadic'</code>）は現時点では未使用で、将来のために
+予約されています。システム辞書に合わせてビルドするには
+<code>Lindera\Dictionary::buildUserFor</code> を使います。</p>
 <h2 id="metadata"><a class="header" href="#metadata">Metadata</a></h2>
 <p><code>Metadata</code> クラスは辞書のパラメータを設定します。</p>
 <h3 id="metadata-の作成"><a class="header" href="#metadata-の作成">Metadata の作成</a></h3>

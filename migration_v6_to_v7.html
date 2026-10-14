@@ -1300,7 +1300,14 @@ bindings have such a loader for a loaded system dictionary too:
 Node.js, <code>Lindera\Dictionary::loadUserFor</code> in PHP and
 <code>loadUserDictionaryFromBytesFor</code> in WebAssembly
 (<a href="https://github.com/lindera/lindera/issues/1193">#1193</a>). The loaders that
-take metadata are unchanged.</li>
+take metadata are unchanged. The user dictionary builders of these
+bindings have such a variant as well, which checks the rows against a
+loaded system dictionary as it builds the CSV: <code>build_user_dictionary_for</code>
+in Python and Ruby, <code>buildUserDictionaryFor</code> in Node.js and
+<code>Lindera\Dictionary::buildUserFor</code> in PHP
+(<a href="https://github.com/lindera/lindera/issues/1188">#1188</a>). The builders
+that take metadata are unchanged too: their <code>output_dir</code> is, as before,
+the path of the file they write, not a directory.</li>
 <li>The errors for a user dictionary row whose cost or context ID is not a
 number, from <code>lindera build --user</code> or from loading a <code>.csv</code> user
 dictionary, name the row's CSV line (<code>at line 1</code>). Before, they counted

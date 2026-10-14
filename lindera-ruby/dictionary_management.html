@@ -237,19 +237,38 @@ Lindera.build_dictionary('/path/to/input_dir', '/path/to/output_dir', metadata)
 <p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
 <p>Metadata loaded with <code>Lindera::Metadata.from_json_file</code> keeps the <code>space_penalty</code> rules of the <code>metadata.json</code>, and the built dictionary ships them. For ko-dic this means the left-space penalty stays on by default in the dictionary you build; turn it off per tokenizer with <code>TokenizerBuilder#set_space_penalty(false)</code> (see <a href="./tokenizer_api.html#set_space_penaltyvalue">Tokenizer API</a>).</p>
 <h3 id="user-dictionary"><a class="header" href="#user-dictionary">User Dictionary</a></h3>
-<p>Build a user dictionary from a CSV file:</p>
+<p>Build a user dictionary from a CSV file for the system dictionary it is used
+with:</p>
+<pre><code class="language-ruby">require 'lindera'
+
+dictionary = Lindera.load_dictionary('/path/to/ipadic')
+Lindera.build_user_dictionary_for('user_words.csv', '/path/to/user_dictionary.bin', dictionary)
+user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.bin', dictionary)
+</code></pre>
+<p>The CSV is built with the system dictionary's metadata and checked against
+its connection matrix: a row whose context ID lies outside the matrix raises
+a <code>RuntimeError</code> that names its CSV line and surface, and no file is written
+(see <a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>). The second
+argument is the path of the file to write. End it with <code>.bin</code>, since the
+loaders choose how to load a user dictionary by its extension.</p>
+<p><code>Lindera.build_user_dictionary(kind, input_file, output_dir, metadata)</code> builds
+a user dictionary with metadata only. Despite its name, <code>output_dir</code> is the
+path of the file to write too, not a directory. The rows are checked when the
+user dictionary is combined with the system dictionary, and the error names
+the entry by its word id:</p>
 <pre><code class="language-ruby">require 'lindera'
 
 metadata = Lindera::Metadata.from_json_file('metadata.json')
-Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir', metadata)
+Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', metadata)
 </code></pre>
 <p>The <code>metadata</code> parameter is optional. When omitted, default metadata values are used:</p>
-<pre><code class="language-ruby">Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir', nil)
+<pre><code class="language-ruby">Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/user_dictionary.bin', nil)
 </code></pre>
 <blockquote>
 <p>[!NOTE]
 The first argument (<code>kind</code>, <code>'ipadic'</code> above) is currently unused -- it is reserved for
-future use and has no effect on the build. Any string value can be passed for it today.</p>
+future use and has no effect on the build. Any string value can be passed for it today.
+To build for a system dictionary, use <code>Lindera.build_user_dictionary_for</code>.</p>
 </blockquote>
 <h2 id="metadata"><a class="header" href="#metadata">Metadata</a></h2>
 <p>The <code>Lindera::Metadata</code> class configures dictionary parameters.</p>
