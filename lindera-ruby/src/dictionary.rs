@@ -202,11 +202,18 @@ fn build_dictionary(
 
 /// Builds a user dictionary from a CSV file.
 ///
+/// The rows' context IDs are not checked here; they are checked when the
+/// user dictionary is combined with a system dictionary. To check them as
+/// the CSV is built, use [`build_user_dictionary_for`] with the system
+/// dictionary.
+///
 /// # Arguments
 ///
 /// * `_kind` - Dictionary kind (reserved for future use).
 /// * `input_file` - Path to the CSV file.
-/// * `output_dir` - Directory where the built user dictionary will be saved.
+/// * `output_dir` - Path of the file to write the built user dictionary to,
+///   not a directory despite its name. The user dictionary loaders choose
+///   how to load a file by its extension, so end it with `.bin`.
 /// * `metadata` - Optional metadata configuration.
 fn build_user_dictionary(
     _kind: String,
@@ -236,6 +243,41 @@ fn build_user_dictionary(
         .map_err(|e| to_magnus_error(&ruby, format!("Failed to build user dictionary: {e}")))?;
 
     Ok(())
+}
+
+/// Builds a user dictionary from a CSV file for a loaded system dictionary.
+///
+/// The CSV is built with the system dictionary's metadata, and every row's
+/// context IDs are checked against its connection matrix, so a row outside
+/// the matrix fails with an error that names its CSV line and surface, and
+/// no file is written.
+///
+/// # Arguments
+///
+/// * `ruby` - Ruby runtime handle (passed by magnus, not by the caller).
+/// * `input_file` - Path to the CSV file.
+/// * `output_file` - Path of the file to write the built user dictionary to.
+///   The user dictionary loaders choose how to load a file by its extension,
+///   so end it with `.bin`.
+/// * `dictionary` - The system dictionary the user dictionary is built for.
+///
+/// # Returns
+///
+/// `Ok(())` once the file is written, or a Ruby `RuntimeError` if the CSV
+/// cannot be read or built, a row has a context ID outside the system
+/// dictionary's connection matrix, or the file cannot be written.
+fn build_user_dictionary_for(
+    ruby: &Ruby,
+    input_file: String,
+    output_file: String,
+    dictionary: &RbDictionary,
+) -> Result<(), Error> {
+    lindera_binding::dictionary::build_user_dictionary_for(
+        Path::new(&input_file),
+        Path::new(&output_file),
+        &dictionary.inner,
+    )
+    .map_err(|e| to_magnus_error(ruby, format!("Failed to build user dictionary: {e}")))
 }
 
 /// Defines Dictionary, UserDictionary classes and module functions in the given Ruby module.
@@ -271,6 +313,10 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
     )?;
     module.define_module_function("build_dictionary", function!(build_dictionary, 3))?;
     module.define_module_function("build_user_dictionary", function!(build_user_dictionary, 4))?;
+    module.define_module_function(
+        "build_user_dictionary_for",
+        function!(build_user_dictionary_for, 3),
+    )?;
 
     Ok(())
 }

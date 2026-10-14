@@ -127,6 +127,11 @@ fn lindera(m: &Bound<'_, PyModule>) -> PyResult<()> {
         "build_user_dictionary",
         m.getattr("dictionary")?.getattr("build_user_dictionary")?,
     )?;
+    m.add(
+        "build_user_dictionary_for",
+        m.getattr("dictionary")?
+            .getattr("build_user_dictionary_for")?,
+    )?;
 
     #[cfg(feature = "train")]
     {

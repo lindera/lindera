@@ -8,6 +8,7 @@
 //! plain Rust so it can be unit-tested without any FFI toolchain.
 
 pub mod argument;
+pub mod dictionary;
 pub mod error;
 pub mod metadata;
 pub mod schema;

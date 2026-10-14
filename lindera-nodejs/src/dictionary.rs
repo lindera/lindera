@@ -88,11 +88,17 @@ pub fn build_dictionary(
 
 /// Builds a user dictionary from a CSV file.
 ///
+/// The rows' context IDs are not checked here; they are checked when the
+/// user dictionary is combined with a system dictionary. To check them as
+/// the CSV is built, use `buildUserDictionaryFor` with the system dictionary.
+///
 /// # Arguments
 ///
 /// * `kind` - Dictionary kind (reserved for future use).
 /// * `input_file` - Path to the CSV file containing user dictionary entries.
-/// * `output_dir` - Directory where the built user dictionary will be saved.
+/// * `output_dir` - Path of the file to write the built user dictionary to,
+///   not a directory despite its name. The user dictionary loaders choose
+///   how to load a file by its extension, so end it with `.bin`.
 /// * `metadata` - Optional metadata configuration. If omitted, default values are used.
 #[napi]
 pub fn build_user_dictionary(
@@ -123,6 +129,34 @@ pub fn build_user_dictionary(
         .map_err(|e| to_napi_error(format!("Failed to build user dictionary: {e}")))?;
 
     Ok(())
+}
+
+/// Builds a user dictionary from a CSV file for a loaded system dictionary.
+///
+/// The CSV is built with the system dictionary's metadata, and every row's
+/// context IDs are checked against its connection matrix, so a row outside
+/// the matrix fails with an error that names its CSV line and surface, and
+/// no file is written.
+///
+/// # Arguments
+///
+/// * `input_file` - Path to the CSV file containing user dictionary entries.
+/// * `output_file` - Path of the file to write the built user dictionary to.
+///   The user dictionary loaders choose how to load a file by its extension,
+///   so end it with `.bin`.
+/// * `dictionary` - The system dictionary the user dictionary is built for.
+#[napi]
+pub fn build_user_dictionary_for(
+    input_file: String,
+    output_file: String,
+    dictionary: &JsDictionary,
+) -> napi::Result<()> {
+    lindera_binding::dictionary::build_user_dictionary_for(
+        Path::new(&input_file),
+        Path::new(&output_file),
+        &dictionary.inner,
+    )
+    .map_err(|e| to_napi_error(format!("Failed to build user dictionary: {e}")))
 }
 
 /// Loads a dictionary from the specified URI.

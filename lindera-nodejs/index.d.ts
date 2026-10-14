@@ -452,14 +452,38 @@ export declare function buildDictionary(inputDir: string, outputDir: string, met
 /**
  * Builds a user dictionary from a CSV file.
  *
+ * The rows' context IDs are not checked here; they are checked when the
+ * user dictionary is combined with a system dictionary. To check them as
+ * the CSV is built, use `buildUserDictionaryFor` with the system dictionary.
+ *
  * # Arguments
  *
  * * `kind` - Dictionary kind (reserved for future use).
  * * `input_file` - Path to the CSV file containing user dictionary entries.
- * * `output_dir` - Directory where the built user dictionary will be saved.
+ * * `output_dir` - Path of the file to write the built user dictionary to,
+ *   not a directory despite its name. The user dictionary loaders choose
+ *   how to load a file by its extension, so end it with `.bin`.
  * * `metadata` - Optional metadata configuration. If omitted, default values are used.
  */
 export declare function buildUserDictionary(kind: string, inputFile: string, outputDir: string, metadata?: JsMetadata | undefined | null): void
+
+/**
+ * Builds a user dictionary from a CSV file for a loaded system dictionary.
+ *
+ * The CSV is built with the system dictionary's metadata, and every row's
+ * context IDs are checked against its connection matrix, so a row outside
+ * the matrix fails with an error that names its CSV line and surface, and
+ * no file is written.
+ *
+ * # Arguments
+ *
+ * * `input_file` - Path to the CSV file containing user dictionary entries.
+ * * `output_file` - Path of the file to write the built user dictionary to.
+ *   The user dictionary loaders choose how to load a file by its extension,
+ *   so end it with `.bin`.
+ * * `dictionary` - The system dictionary the user dictionary is built for.
+ */
+export declare function buildUserDictionaryFor(inputFile: string, outputFile: string, dictionary: Dictionary): void
 
 /**
  * Exports dictionary files from a trained model.

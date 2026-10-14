@@ -1,6 +1,12 @@
 import pytest
 
-from lindera import Tokenizer, load_dictionary, load_user_dictionary_for
+from lindera import (
+    Tokenizer,
+    build_user_dictionary,
+    build_user_dictionary_for,
+    load_dictionary,
+    load_user_dictionary_for,
+)
 
 # Line 1 lies inside IPADIC's 1316 x 1316 connection matrix; line 2 has the
 # context IDs 60000, far outside it.
@@ -42,3 +48,46 @@ def test_load_user_dictionary_for_loads_a_csv_inside_the_matrix(tmp_path):
     tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dictionary)
     surfaces = [token.surface for token in tokenizer.tokenize("東京スカイツリー")]
     assert surfaces == ["東京スカイツリー"]
+
+
+def test_build_user_dictionary_for_names_the_csv_line_and_surface(tmp_path):
+    dictionary = load_dictionary("embedded://ipadic")
+    csv = tmp_path / "userdic.csv"
+    csv.write_text(OUT_OF_RANGE_CSV, encoding="utf-8")
+    output = tmp_path / "userdic.bin"
+
+    with pytest.raises(ValueError) as excinfo:
+        build_user_dictionary_for(str(csv), str(output), dictionary)
+
+    message = str(excinfo.value)
+    assert "line 2 (surface: '東京スカイツリー')" in message
+    assert "left context id 60000 is out of range" in message
+    assert not output.exists()
+
+
+def test_build_user_dictionary_for_writes_the_output_file(tmp_path):
+    dictionary = load_dictionary("embedded://ipadic")
+    csv = tmp_path / "userdic.csv"
+    csv.write_text(SIMPLE_CSV, encoding="utf-8")
+    output = tmp_path / "out" / "userdic.bin"
+
+    build_user_dictionary_for(str(csv), str(output), dictionary)
+
+    assert output.is_file()
+    user_dictionary = load_user_dictionary_for(str(output), dictionary)
+    tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dictionary)
+    surfaces = [token.surface for token in tokenizer.tokenize("東京スカイツリー")]
+    assert surfaces == ["東京スカイツリー"]
+
+
+def test_build_user_dictionary_writes_the_file_it_is_given(tmp_path):
+    # `output_dir` is the path of the file to write, not a directory.
+    dictionary = load_dictionary("embedded://ipadic")
+    csv = tmp_path / "userdic.csv"
+    csv.write_text(SIMPLE_CSV, encoding="utf-8")
+    output = tmp_path / "userdic.bin"
+
+    build_user_dictionary("ipadic", str(csv), str(output))
+
+    assert output.is_file()
+    load_user_dictionary_for(str(output), dictionary)

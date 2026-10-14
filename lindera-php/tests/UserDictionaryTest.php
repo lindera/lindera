@@ -5,8 +5,8 @@ declare(strict_types=1);
 use PHPUnit\Framework\TestCase;
 
 /**
- * Loading a user dictionary for a loaded system dictionary
- * (`Lindera\Dictionary::loadUserFor`).
+ * Loading and building a user dictionary for a loaded system dictionary
+ * (`Lindera\Dictionary::loadUserFor`, `Lindera\Dictionary::buildUserFor`).
  */
 class UserDictionaryTest extends TestCase
 {
@@ -22,7 +22,8 @@ class UserDictionaryTest extends TestCase
 
     /**
      * Writes `$content` to `userdic.csv` in a new temporary directory, passes
-     * its path to `$fn` and removes the directory afterwards.
+     * its path to `$fn` and removes the directory, with what `$fn` wrote in
+     * it, afterwards.
      */
     private static function withCsv(string $content, callable $fn): mixed
     {
@@ -33,8 +34,24 @@ class UserDictionaryTest extends TestCase
             file_put_contents($csv, $content);
             return $fn($csv);
         } finally {
-            @unlink($csv);
-            rmdir($dir);
+            self::removeTree($dir);
+        }
+    }
+
+    /**
+     * Removes `$path` and, if it is a directory, everything in it.
+     */
+    private static function removeTree(string $path): void
+    {
+        if (is_dir($path) && !is_link($path)) {
+            foreach (scandir($path) ?: [] as $entry) {
+                if ($entry !== '.' && $entry !== '..') {
+                    self::removeTree($path . '/' . $entry);
+                }
+            }
+            rmdir($path);
+        } else {
+            @unlink($path);
         }
     }
 
@@ -76,5 +93,52 @@ class UserDictionaryTest extends TestCase
         );
         $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
         $this->assertSame(['東京スカイツリー'], self::surfaces($tokenizer, '東京スカイツリー'));
+    }
+
+    public function testBuildUserForNamesTheCsvLineAndSurface(): void
+    {
+        $dictionary = Lindera\Dictionary::load('embedded://ipadic');
+        [$message, $written] = self::withCsv(self::OUT_OF_RANGE_CSV, static function (string $csv) use ($dictionary): array {
+            $output = dirname($csv) . '/userdic.bin';
+            try {
+                Lindera\Dictionary::buildUserFor($csv, $output, $dictionary);
+            } catch (\ValueError $e) {
+                return [$e->getMessage(), file_exists($output)];
+            }
+            self::fail('built a user dictionary with a row outside the matrix');
+        });
+
+        $this->assertStringContainsString("line 2 (surface: '東京スカイツリー')", $message);
+        $this->assertStringContainsString('left context id 60000 is out of range', $message);
+        $this->assertFalse($written, 'the output file must not be written');
+    }
+
+    public function testBuildUserForWritesTheOutputFile(): void
+    {
+        $dictionary = Lindera\Dictionary::load('embedded://ipadic');
+        $userDictionary = self::withCsv(self::SIMPLE_CSV, static function (string $csv) use ($dictionary) {
+            $output = dirname($csv) . '/out/userdic.bin';
+            Lindera\Dictionary::buildUserFor($csv, $output, $dictionary);
+            self::assertTrue(is_file($output), "{$output} must be a file");
+            return Lindera\Dictionary::loadUserFor($output, $dictionary);
+        });
+        $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
+        $this->assertSame(['東京スカイツリー'], self::surfaces($tokenizer, '東京スカイツリー'));
+    }
+
+    /**
+     * `$output_dir` is the path of the file to write, not a directory.
+     */
+    public function testBuildUserWritesTheFileItIsGiven(): void
+    {
+        $dictionary = Lindera\Dictionary::load('embedded://ipadic');
+        $isFile = self::withCsv(self::SIMPLE_CSV, static function (string $csv) use ($dictionary): bool {
+            $output = dirname($csv) . '/userdic.bin';
+            Lindera\Dictionary::buildUser('ipadic', $csv, $output);
+            $isFile = is_file($output);
+            Lindera\Dictionary::loadUserFor($output, $dictionary);
+            return $isFile;
+        });
+        $this->assertTrue($isFile, 'the output must be a file');
     }
 }

@@ -125,11 +125,17 @@ impl PhpDictionary {
 
     /// Builds a user dictionary from a CSV file.
     ///
+    /// The rows' context IDs are not checked here; they are checked when the
+    /// user dictionary is combined with a system dictionary. To check them as
+    /// the CSV is built, use `buildUserFor` with the system dictionary.
+    ///
     /// # Arguments
     ///
     /// * `kind` - Dictionary kind (reserved for future use).
     /// * `input_file` - Path to the CSV file.
-    /// * `output_dir` - Directory where the built user dictionary will be saved.
+    /// * `output_dir` - Path of the file to write the built user dictionary
+    ///   to, not a directory despite its name. The user dictionary loaders
+    ///   choose how to load a file by its extension, so end it with `.bin`.
     /// * `metadata` - Optional metadata configuration.
     pub fn build_user(
         _kind: String,
@@ -161,6 +167,41 @@ impl PhpDictionary {
             .map_err(|e| lindera_value_err(format!("Failed to build user dictionary: {e}")))?;
 
         Ok(())
+    }
+
+    /// Builds a user dictionary from a CSV file for a loaded system
+    /// dictionary.
+    ///
+    /// The CSV is built with the system dictionary's metadata, and every
+    /// row's context IDs are checked against its connection matrix, so a row
+    /// outside the matrix fails with an error that names its CSV line and
+    /// surface, and no file is written.
+    ///
+    /// # Arguments
+    ///
+    /// * `input_file` - Path to the CSV file.
+    /// * `output_file` - Path of the file to write the built user dictionary
+    ///   to. The user dictionary loaders choose how to load a file by its
+    ///   extension, so end it with `.bin`.
+    /// * `dictionary` - The system dictionary the user dictionary is built
+    ///   for.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` once the file is written, or a `ValueError` if the CSV cannot
+    /// be read or built, a row has a context ID outside the system
+    /// dictionary's connection matrix, or the file cannot be written.
+    pub fn build_user_for(
+        input_file: String,
+        output_file: String,
+        dictionary: &PhpDictionary,
+    ) -> PhpResult<()> {
+        lindera_binding::dictionary::build_user_dictionary_for(
+            Path::new(&input_file),
+            Path::new(&output_file),
+            &dictionary.inner,
+        )
+        .map_err(|e| lindera_value_err(format!("Failed to build user dictionary: {e}")))
     }
 
     /// Returns the name of the dictionary metadata.

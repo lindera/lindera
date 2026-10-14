@@ -17,6 +17,7 @@ describe("Module structure", () => {
     assert.strictEqual(typeof lindera.loadUserDictionaryFor, "function");
     assert.strictEqual(typeof lindera.buildDictionary, "function");
     assert.strictEqual(typeof lindera.buildUserDictionary, "function");
+    assert.strictEqual(typeof lindera.buildUserDictionaryFor, "function");
     assert.strictEqual(typeof lindera.version, "function");
   });
 
