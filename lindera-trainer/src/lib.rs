@@ -74,7 +74,9 @@ pub use self::model::{Model, SerializableModel};
 /// // Create minimal training data for demonstration
 /// let seed_csv = "これ,0,0,1000,連体詞,*,*,*,*,*,これ,コレ,コレ\n";
 /// let char_def = "DEFAULT 0 1 0\nHIRAGANA 1 1 0\n0x3042..0x3096 HIRAGANA\n";
-/// let unk_def = "DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n";
+/// // One line for each char.def category, as MeCab requires.
+/// let unk_def = "DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n\
+///                HIRAGANA,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n";
 /// let feature_def = "UNIGRAM:%F[0]\nUNIGRAM:%F[1]\n";
 /// let rewrite_def = "*\tUNK\n";
 ///
@@ -328,8 +330,9 @@ impl Trainer {
 
         // One label per unk.def entry, in file order (#1110). %t is the id of
         // the entry's category, the default category of the characters whose
-        // unknown words the entry creates; an entry whose category char.def
-        // does not define never becomes a candidate, and gets 0.
+        // unknown words the entry creates. `TrainerConfig::from_readers`
+        // rejects an entry whose category char.def does not define (#1195);
+        // such an entry would never become a candidate, and gets 0.
         let mut unk_entry_labels = Vec::with_capacity(config.unk_entries.len());
         for (category, feature) in &config.unk_entries {
             let char_type = config
