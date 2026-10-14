@@ -53,6 +53,9 @@ pub struct CharacterDefinitionBuilder {
     category_definition: Vec<CategoryData>,
     category_index: HashMap<String, CategoryId>,
     char_ranges: Vec<(u32, u32, Vec<CategoryId>)>,
+    /// The 1-based line on which each category was defined, for the error
+    /// on a second definition.
+    category_lines: HashMap<String, usize>,
 }
 
 /// Options for [`CharacterDefinitionBuilder`]. Every field has a default, so
@@ -92,6 +95,7 @@ impl CharacterDefinitionBuilderOptions {
             category_definition: self.category_definition.clone().unwrap_or_default(),
             category_index: self.category_index.clone().unwrap_or_default(),
             char_ranges: self.char_ranges.clone().unwrap_or_default(),
+            category_lines: HashMap::new(),
         }
     }
 }
@@ -105,7 +109,52 @@ impl CharacterDefinitionBuilder {
             .or_insert(CategoryId(num_categories))
     }
 
-    fn parse_range(&mut self, line: &str) -> LinderaResult<()> {
+    /// Returns the id of a category that an earlier line defines, for a range
+    /// line.
+    ///
+    /// MeCab checks the categories of a range line against those defined so
+    /// far, so a range line cannot name a category that only a later line
+    /// defines: an id given out at the range line would not match the slot
+    /// of the category's data. A name that has an id but no data (from
+    /// [`Self::category_id`]) is not defined either.
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - The name of the `char.def` content, for the message.
+    /// * `line_number` - The 1-based number of the range line.
+    /// * `category` - The category name.
+    ///
+    /// # Returns
+    ///
+    /// The id, or an error naming the source, the line and the category.
+    fn defined_category_id(
+        &self,
+        source: &str,
+        line_number: usize,
+        category: &str,
+    ) -> LinderaResult<CategoryId> {
+        match self.category_index.get(category) {
+            Some(&category_id) if category_id.0 < self.category_definition.len() => Ok(category_id),
+            _ => Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                "{source}: line {line_number}: category {category} is not defined; a range line \
+                 can only name a category defined on an earlier line"
+            ))),
+        }
+    }
+
+    /// Parses a range line (`0xLOW[..0xHIGH] CATEGORY...`).
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - The name of the `char.def` content, for the messages.
+    /// * `line_number` - The 1-based number of the line.
+    /// * `line` - The line without its comment.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())`, or an error when a bound does not parse, the line has no
+    /// category, or a category is not defined on an earlier line.
+    fn parse_range(&mut self, source: &str, line_number: usize, line: &str) -> LinderaResult<()> {
         let fields: Vec<&str> = line.split_whitespace().collect();
         let range_bounds: Vec<&str> = fields[0].split("..").collect();
         let lower_bound: u32;
@@ -137,10 +186,10 @@ impl CharacterDefinitionBuilder {
                 .with_error(anyhow::anyhow!("Invalid line: {line}"))
                 .add_context("Character range requires at least one category"));
         }
-        let category_ids: Vec<CategoryId> = fields[1..]
+        let category_ids = fields[1..]
             .iter()
-            .map(|category| self.category_id(category))
-            .collect();
+            .map(|category| self.defined_category_id(source, line_number, category))
+            .collect::<LinderaResult<Vec<CategoryId>>>()?;
 
         self.char_ranges
             .push((lower_bound, higher_bound, category_ids));
@@ -148,7 +197,24 @@ impl CharacterDefinitionBuilder {
         Ok(())
     }
 
-    fn parse_category(&mut self, line: &str) -> LinderaResult<()> {
+    /// Parses a category line (`NAME INVOKE GROUP LENGTH`).
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - The name of the `char.def` content, for the messages.
+    /// * `line_number` - The 1-based number of the line.
+    /// * `line` - The line without its comment.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())`, or an error when the line does not have four fields, a
+    /// number does not parse, or the category is already defined.
+    fn parse_category(
+        &mut self,
+        source: &str,
+        line_number: usize,
+        line: &str,
+    ) -> LinderaResult<()> {
         let fields = line.split_ascii_whitespace().collect::<Vec<&str>>();
         if fields.len() != 4 {
             return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
@@ -186,15 +252,41 @@ impl CharacterDefinitionBuilder {
             group,
             length,
         };
+        // A second definition would push its data into the slot of the next
+        // category, shifting every later category's data, so it is an error,
+        // as in MeCab.
+        let name = fields[0];
+        if self.category_index.contains_key(name) {
+            let defined_on = match self.category_lines.get(name) {
+                Some(defined_on) => format!(" on line {defined_on}"),
+                None => String::new(),
+            };
+            return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                "{source}: line {line_number}: category {name} is already defined{defined_on}"
+            )));
+        }
         // force a category_id allocation
-        self.category_id(fields[0]);
+        self.category_id(name);
         self.category_definition.push(category_data);
+        self.category_lines.insert(name.to_string(), line_number);
 
         Ok(())
     }
 
-    fn parse(&mut self, content: &str) -> LinderaResult<()> {
-        for line in content.lines() {
+    /// Parses `char.def` content line by line.
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - The name of the content, such as the path of the file,
+    ///   for the messages.
+    /// * `content` - The text of a `char.def` file.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())`, or the error of the first line that cannot be parsed.
+    fn parse(&mut self, source: &str, content: &str) -> LinderaResult<()> {
+        for (index, line) in content.lines().enumerate() {
+            let line_number = index + 1;
             let line_str = line
                 .split('#')
                 .next()
@@ -208,9 +300,9 @@ impl CharacterDefinitionBuilder {
                 continue;
             }
             if line_str.starts_with("0x") {
-                self.parse_range(line_str)?;
+                self.parse_range(source, line_number, line_str)?;
             } else {
-                self.parse_category(line_str)?;
+                self.parse_category(source, line_number, line_str)?;
             }
         }
         Ok(())
@@ -367,9 +459,27 @@ impl CharacterDefinitionBuilder {
     ///
     /// # Returns
     ///
-    /// The character definition, or an error if a line cannot be parsed.
+    /// The character definition, or an error if a line cannot be parsed. As
+    /// in `mecab-dict-index`, a range line that names a category not defined
+    /// on an earlier line and a category defined twice are errors, which
+    /// name the line (`char.def: line N: ...`) and the category.
     pub fn build_from_str(&mut self, content: &str) -> LinderaResult<CharacterDefinition> {
-        self.parse(content)?;
+        self.build_named("char.def", content)
+    }
+
+    /// [`Self::build_from_str`] with the name that its error messages give
+    /// the content, so that [`Self::build`] can name the file it read.
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - The name of the content, such as the path of the file.
+    /// * `content` - The text of a `char.def` file.
+    ///
+    /// # Returns
+    ///
+    /// The character definition, or an error naming `source` and the line.
+    fn build_named(&mut self, source: &str, content: &str) -> LinderaResult<CharacterDefinition> {
+        self.parse(source, content)?;
         Ok(self.get_character_definition())
     }
 
@@ -384,7 +494,8 @@ impl CharacterDefinitionBuilder {
     /// # Returns
     ///
     /// The character definition that was written, or an error if `char.def`
-    /// cannot be read or parsed, or the output cannot be written.
+    /// cannot be read or parsed (see [`Self::build_from_str`]; the errors of
+    /// its checks name the file's path), or the output cannot be written.
     pub fn build(
         &mut self,
         input_dir: &Path,
@@ -394,7 +505,7 @@ impl CharacterDefinitionBuilder {
         debug!("reading {char_def_path:?}");
         let char_def = read_file_with_encoding(&char_def_path, &self.encoding)?;
 
-        let char_definitions = self.build_from_str(&char_def)?;
+        let char_definitions = self.build_named(&char_def_path.display().to_string(), &char_def)?;
 
         let mut chardef_buffer = Vec::new();
         let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&char_definitions).map_err(|err| {
@@ -610,6 +721,85 @@ KANJINUMERIC 1 1 0
         let result = builder.build_from_str("DEFAULT 0 1 0\n0x0041..0x005A  # no category\n");
 
         assert!(result.is_err());
+    }
+
+    /// Parses `content`, which must be rejected, and returns the message.
+    fn build_error(content: &str) -> String {
+        let mut builder = CharacterDefinitionBuilderOptions::default().builder();
+        match builder.build_from_str(content) {
+            Ok(_) => panic!("char.def content was accepted: {content:?}"),
+            Err(err) => err.to_string(),
+        }
+    }
+
+    /// #1195: a range line that names a category no line defines used to
+    /// give the category an id without data, and looking the category up
+    /// panicked at tokenization.
+    #[test]
+    fn test_range_line_with_undefined_category_is_an_error() {
+        let message =
+            build_error("DEFAULT 0 1 0\nHIRAGANA 1 1 0\n0x3041..0x3096 HIRAGANA\n0x3042 FOO\n");
+
+        assert!(
+            message.contains(
+                "char.def: line 4: category FOO is not defined; a range line can only name a \
+                 category defined on an earlier line"
+            ),
+            "{message}"
+        );
+    }
+
+    /// #1195: a range line before the definition of its category used to
+    /// take the category's id, so the categories defined in between got the
+    /// data of the next definition. MeCab checks a range line against the
+    /// categories defined so far.
+    #[test]
+    fn test_range_line_before_the_category_definition_is_an_error() {
+        let message =
+            build_error("DEFAULT 0 1 0\n0x3041..0x3096 HIRAGANA\nKANJI 0 0 2\nHIRAGANA 1 1 0\n");
+
+        assert!(
+            message.contains("char.def: line 2: category HIRAGANA is not defined"),
+            "{message}"
+        );
+    }
+
+    /// #1195: a second definition of a category used to push its data into
+    /// the slot of the next category.
+    #[test]
+    fn test_category_defined_twice_is_an_error() {
+        let message =
+            build_error("DEFAULT 0 1 0\nKANJI 0 0 2\n# KANJI again\nKANJI 1 1 0\nHIRAGANA 1 1 0\n");
+
+        assert!(
+            message.contains("char.def: line 4: category KANJI is already defined on line 2"),
+            "{message}"
+        );
+    }
+
+    /// `build` names the file it read in the messages of the checks.
+    #[test]
+    fn test_build_names_the_file() {
+        let input_dir = tempfile::tempdir().unwrap();
+        let output_dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            input_dir.path().join("char.def"),
+            "DEFAULT 0 1 0\n0x3042 FOO\n",
+        )
+        .unwrap();
+
+        let mut builder = CharacterDefinitionBuilderOptions::default().builder();
+        let message = builder
+            .build(input_dir.path(), output_dir.path())
+            .err()
+            .expect("an undefined category is rejected")
+            .to_string();
+
+        let expected = format!(
+            "{}: line 2: category FOO is not defined",
+            input_dir.path().join("char.def").display()
+        );
+        assert!(message.contains(&expected), "{message}");
     }
 
     #[test]

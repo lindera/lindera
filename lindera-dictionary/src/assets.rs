@@ -152,6 +152,12 @@ fn rename_directory(dir: &Path, new_dir: &Path) -> LinderaResult<()> {
 /// [`FetchParams::dummy_input`]).
 const DUMMY_MATRIX_DEF: &str = "1 1\n0 0 0\n";
 
+/// The `unk.def` of the dummy dictionary: one line for `DEFAULT`, the only
+/// category of the dummy `char.def`, since the dictionary builder requires a
+/// line for every category, as `mecab-dict-index` does (#1195). Its context
+/// id 0 is inside [`DUMMY_MATRIX_DEF`].
+const DUMMY_UNK_DEF: &str = "DEFAULT,0,0,0,*\n";
+
 /// Scaffold the dummy dictionary source files used for docs.rs documentation builds.
 ///
 /// The files are created in the directory the dictionary builder actually reads
@@ -226,7 +232,7 @@ fn create_dummy_dictionary_source(
         })?;
 
     // Create dummy unk.def
-    File::create(dummy_src_dir.join("unk.def")).map_err(|err| {
+    let mut dummy_unk_def = File::create(dummy_src_dir.join("unk.def")).map_err(|err| {
         LinderaErrorKind::Io
             .with_error(anyhow::anyhow!(err))
             .add_context(format!(
@@ -234,6 +240,13 @@ fn create_dummy_dictionary_source(
                 dummy_src_dir.join("unk.def")
             ))
     })?;
+    dummy_unk_def
+        .write_all(DUMMY_UNK_DEF.as_bytes())
+        .map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context("Failed to write to dummy unk.def")
+        })?;
 
     // Create dummy matrix.def
     let mut dummy_matrix_def = File::create(dummy_src_dir.join("matrix.def")).map_err(|err| {

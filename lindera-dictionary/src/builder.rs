@@ -123,6 +123,12 @@ impl DictionaryBuilder {
     /// The stage methods run on their own do not read the header, so they
     /// check only the `matrix.def` entries.
     ///
+    /// `char.def` and `unk.def` are checked as `mecab-dict-index` checks
+    /// them: a range line must name only categories defined on earlier
+    /// lines, a category must be defined once, every `unk.def` line must name
+    /// a `char.def` category, and every `char.def` category must have an
+    /// `unk.def` line. The stage methods run on their own check them too.
+    ///
     /// # Arguments
     ///
     /// * `input_dir` - Directory containing the source dictionary files.
@@ -313,7 +319,8 @@ impl DictionaryBuilder {
     ///
     /// Run on its own, the stage does not read `matrix.def`, so it does not
     /// check the entries' context ids against the connection matrix;
-    /// [`Self::build_dictionary`] does.
+    /// [`Self::build_dictionary`] does. It does check the entries'
+    /// categories against those of `chardef`.
     ///
     /// # Arguments
     ///
@@ -324,7 +331,9 @@ impl DictionaryBuilder {
     ///
     /// # Returns
     ///
-    /// `Ok(())` on success, or an error if `unk.def` cannot be read or parsed.
+    /// `Ok(())` on success, or an error if `unk.def` cannot be read or
+    /// parsed, a line names a category `chardef` does not define, or a
+    /// category of `chardef` has no line.
     pub fn build_unknown_dictionary(
         &self,
         input_dir: &Path,

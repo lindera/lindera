@@ -299,6 +299,55 @@ fn build_system_dict_requires_user() {
     assert!(stderr.contains("--user"), "got: {stderr}");
 }
 
+/// `lindera build` rejects a `char.def` category without an `unk.def` line,
+/// as `mecab-dict-index` does. Such a dictionary used to build, and its
+/// output then stopped before a character of the category that no word
+/// covers (#1195).
+#[test]
+fn build_rejects_a_char_def_category_without_an_unk_def_line() {
+    let dir = tempfile::tempdir().unwrap();
+    let source = dir.path().join("source");
+    std::fs::create_dir(&source).unwrap();
+    std::fs::write(
+        source.join("char.def"),
+        "DEFAULT 0 1 0\nSPACE 0 1 0\n0x0020 SPACE\n",
+    )
+    .unwrap();
+    std::fs::write(
+        source.join("unk.def"),
+        "DEFAULT,0,0,10000,補助記号,一般,*,*,*,*,*,*,*\n",
+    )
+    .unwrap();
+    std::fs::write(
+        source.join("lex.csv"),
+        "東京,0,0,0,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トウキョウ\n",
+    )
+    .unwrap();
+    std::fs::write(source.join("matrix.def"), "1 1\n0 0 0\n").unwrap();
+    let metadata = dir.path().join("metadata.json");
+    std::fs::write(
+        &metadata,
+        serde_json::to_vec(&lindera::dictionary::Metadata::default()).unwrap(),
+    )
+    .unwrap();
+
+    let output = lindera()
+        .args(["build", "--src", source.to_str().unwrap()])
+        .args(["--dest", dir.path().join("dict").to_str().unwrap()])
+        .args(["--metadata", metadata.to_str().unwrap()])
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(!output.status.success(), "got: {stderr}");
+    assert!(
+        stderr.contains(&format!(
+            "{}: no line for category SPACE, which char.def defines",
+            source.join("unk.def").display()
+        )),
+        "got: {stderr}"
+    );
+}
+
 #[cfg(feature = "embed-ipadic")]
 mod with_ipadic {
     use super::*;

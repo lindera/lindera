@@ -513,3 +513,106 @@ fn build_dictionary_reads_the_header_of_a_utf16_matrix() {
         .to_string();
     assert!(err.contains("matrix.def size 3 2"), "{err}");
 }
+
+/// Builds a source made of the given `char.def` and `unk.def`, the minimal
+/// lexicon and the 1x1 matrix.
+///
+/// Returns the input directory, whose paths the messages name, and the
+/// message of the build error, or `None` when the build succeeded.
+fn char_def_build_error(char_def: &str, unk_def: &str) -> (tempfile::TempDir, Option<String>) {
+    let input = tempfile::tempdir().unwrap();
+    let output = tempfile::tempdir().unwrap();
+    fs::write(input.path().join("char.def"), char_def).unwrap();
+    fs::write(input.path().join("unk.def"), unk_def).unwrap();
+    fs::write(input.path().join("lex.csv"), LEX_CSV).unwrap();
+    fs::write(input.path().join("matrix.def"), MATRIX_DEF).unwrap();
+    let err = DictionaryBuilder::new(Metadata::default())
+        .build_dictionary(input.path(), output.path())
+        .err()
+        .map(|err| err.to_string());
+    (input, err)
+}
+
+/// #1195: `char.def` and `unk.def` are checked against each other as
+/// `mecab-dict-index` does. Each pair used to build, and the dictionary then
+/// panicked, shifted the categories' settings, cut the output short or
+/// ignored a line. The error names the file, the line where there is one,
+/// and the category.
+#[test]
+fn build_dictionary_rejects_inconsistent_char_def_and_unk_def() {
+    let unk_def_with_hiragana = format!("{UNK_DEF}HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*\n");
+    for (char_def, unk_def, file, message) in [
+        // A range line names a category that no line defines.
+        (
+            format!("{CHAR_DEF}0x3042 FOO\n"),
+            UNK_DEF.to_string(),
+            "char.def",
+            "line 4: category FOO is not defined; a range line can only name a category \
+             defined on an earlier line",
+        ),
+        // A range line comes before the definition of its category.
+        (
+            "DEFAULT 0 1 0\n0x3041..0x3096 HIRAGANA\nKANJI 0 0 2\nHIRAGANA 1 1 0\n\
+             0x4E00..0x9FFF KANJI\n"
+                .to_string(),
+            unk_def_with_hiragana.clone(),
+            "char.def",
+            "line 2: category HIRAGANA is not defined",
+        ),
+        // A category is defined twice.
+        (
+            "DEFAULT 0 1 0\nKANJI 0 0 2\nKANJI 1 1 0\n0x4E00..0x9FFF KANJI\n".to_string(),
+            UNK_DEF.to_string(),
+            "char.def",
+            "line 3: category KANJI is already defined on line 2",
+        ),
+        // A char.def category has no unk.def line.
+        (
+            format!("{CHAR_DEF}HIRAGANA 1 1 0\n0x3041..0x3096 HIRAGANA\n"),
+            UNK_DEF.to_string(),
+            "unk.def",
+            "no line for category HIRAGANA, which char.def defines",
+        ),
+        // An unk.def line names a category that char.def does not define.
+        (
+            CHAR_DEF.to_string(),
+            unk_def_with_hiragana,
+            "unk.def",
+            "line 3: category HIRAGANA is not defined in char.def",
+        ),
+    ] {
+        let (input, err) = char_def_build_error(&char_def, &unk_def);
+        let err = err.unwrap_or_else(|| panic!("accepted: {char_def:?}, {unk_def:?}"));
+        let expected = format!("{}: {message}", input.path().join(file).display());
+        assert!(err.contains(&expected), "{err}");
+    }
+}
+
+/// Run on its own, the unknown-word stage checks the categories against the
+/// character definition it is given, and writes no `unk.bin`.
+#[test]
+fn build_unknown_dictionary_checks_the_categories() {
+    let input = tempfile::tempdir().unwrap();
+    let output = tempfile::tempdir().unwrap();
+    write_source_with(
+        input.path(),
+        LEX_CSV,
+        "DEFAULT,0,0,0,補助記号,一般,*,*,*,*,*,*,*\n",
+        MATRIX_DEF,
+    );
+    let builder = DictionaryBuilder::new(Metadata::default());
+    let chardef = builder
+        .build_character_definition(input.path(), output.path())
+        .unwrap();
+
+    let err = builder
+        .build_unknown_dictionary(input.path(), output.path(), &chardef, None)
+        .expect_err("KANJI has no unk.def line")
+        .to_string();
+    let expected = format!(
+        "{}: no line for category KANJI",
+        input.path().join("unk.def").display()
+    );
+    assert!(err.contains(&expected), "{err}");
+    assert!(!output.path().join("unk.bin").exists());
+}
