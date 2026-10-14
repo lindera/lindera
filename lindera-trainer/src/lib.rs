@@ -301,11 +301,7 @@ impl Trainer {
 
             // The %t feature: the default category (MeCab's default_type) of
             // the first character of the surface, or 0 (DEFAULT) if none
-            let cate_id = surface
-                .chars()
-                .next()
-                .and_then(|first_char| config.default_category(first_char))
-                .unwrap_or(0);
+            let cate_id = config.surface_category(surface);
 
             let feature_set = label_feature_set(
                 &config.dictionary_rewriter,
@@ -2143,8 +2139,8 @@ mod lexicon_csv_export_tests {
             .read_user_lexicon(Cursor::new(user_csv.as_bytes()))
             .unwrap();
         for (index, surface) in [(0, ","), (1, "\"")] {
-            let feature = model.user_entries[index].0.feature().to_string();
-            model.user_entries[index].0 = Word::new(surface, &feature);
+            let feature = model.user_entries[index].word.feature().to_string();
+            model.user_entries[index].word = Word::new(surface, &feature);
         }
 
         let (mut lex, mut conn, mut unk, mut user) =
@@ -2387,5 +2383,204 @@ mod user_lexicon_context_id_tests {
         let (result, _, _, _, user) = write_dictionary("W,3,3,100,X\n");
         result.unwrap();
         assert_eq!(user, "W,3,3,100,X\n");
+    }
+}
+
+/// A user lexicon entry without a cost gets the one `lex.csv` gives a seed
+/// row with its unigram features, and the cost and the context ids are
+/// filled in separately, as `mecab-dict-index` fills them in (#1198).
+#[cfg(test)]
+mod user_lexicon_cost_tests {
+    use std::collections::HashMap;
+    use std::io::Cursor;
+
+    use crate::model::Model;
+    use crate::test_fixtures::{fixtures, wide_seed_and_corpus};
+    use crate::{Corpus, Trainer, TrainerConfig};
+
+    /// Trains the wide fixture with a `%t` and a `%u` unigram template
+    /// added, with L2 regularization, under which the seed rows of
+    /// `名詞,一般`, `名詞,固有名詞` and `助動詞,*` get different non-zero
+    /// costs (the L1 default of `train_wide_model` gives most rows 0).
+    fn train_cost_model() -> Model {
+        let (_, char_def, unk_def, feature_def, rewrite_def, _) = fixtures();
+        let (seed, corpus) = wide_seed_and_corpus();
+        let feature_def = format!("{feature_def}UNIGRAM U02:%t\nUNIGRAM U03:%u\n");
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed.as_bytes()),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def.as_bytes()),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+        Trainer::new(config)
+            .unwrap()
+            .regularization_cost(0.01)
+            .use_l2(true)
+            .max_iter(20)
+            .num_threads(1)
+            .train(Corpus::from_reader(Cursor::new(corpus.as_bytes())).unwrap())
+            .unwrap()
+    }
+
+    /// The result of `write_dictionary` and what it wrote: `lex.csv`,
+    /// `unk.def` and the user lexicon.
+    type Written = (anyhow::Result<()>, String, String, String);
+
+    /// Reads a user lexicon into a model trained by `train_cost_model` and
+    /// returns what `write_dictionary` wrote.
+    fn write_dictionary(user_csv: &str) -> Written {
+        let mut model = train_cost_model();
+        model
+            .read_user_lexicon(Cursor::new(user_csv.as_bytes()))
+            .unwrap();
+        let (mut lex, mut matrix, mut unk, mut user) =
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+        let result = model.write_dictionary(&mut lex, &mut matrix, &mut unk, &mut user);
+        let text = |bytes: Vec<u8>| String::from_utf8(bytes).unwrap();
+        (result, text(lex), text(unk), text(user))
+    }
+
+    /// Maps the surface of each row of a lexicon CSV whose surfaces are not
+    /// quoted to its left id, right id and cost.
+    fn parameters(csv: &str) -> HashMap<&str, (&str, &str, &str)> {
+        csv.lines()
+            .map(|line| {
+                let fields: Vec<&str> = line.splitn(5, ',').collect();
+                (fields[0], (fields[1], fields[2], fields[3]))
+            })
+            .collect()
+    }
+
+    /// Returns the feature of a row of a lexicon CSV whose surfaces are not
+    /// quoted.
+    fn feature<'a>(csv: &'a str, surface: &str) -> &'a str {
+        csv.lines()
+            .find_map(|line| line.strip_prefix(&format!("{surface},")))
+            .map(|rest| rest.splitn(4, ',').nth(3).unwrap())
+            .unwrap()
+    }
+
+    #[test]
+    fn an_entry_gets_the_cost_lex_csv_gives_a_seed_row_with_its_feature() {
+        // Before #1198 every entry got `tocost(0.8, cost_factor)`. Each entry
+        // has the feature of a seed row, all its columns included so that its
+        // `%u` feature is the row's, and a surface that starts with `語`, so
+        // that its `%t` feature is the row's too.
+        let (_, lex, _, _) = write_dictionary("");
+        let seeds = ["語00", "語10", "語100", "語40"];
+        let user_csv: String = seeds
+            .iter()
+            .enumerate()
+            .map(|(i, seed)| format!("語X{i},0,0,0,{}\n", feature(&lex, seed)))
+            .collect();
+
+        let (result, lex, _, user) = write_dictionary(&user_csv);
+        result.unwrap();
+        let seed_rows = parameters(&lex);
+        let entries = parameters(&user);
+
+        // The first three rows' costs differ from each other and from 0, so
+        // that an entry cannot get its row's cost by chance.
+        let costs: Vec<&str> = seeds[..3].iter().map(|seed| seed_rows[seed].2).collect();
+        assert!(
+            costs[0] != costs[1] && costs[1] != costs[2] && costs[0] != costs[2],
+            "{lex}"
+        );
+        assert!(!costs.contains(&"0"), "{lex}");
+
+        for (i, seed) in seeds.iter().enumerate() {
+            assert_eq!(
+                entries[format!("語X{i}").as_str()],
+                seed_rows[seed],
+                "{user}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_entry_gets_the_t_feature_of_its_first_characters_category() {
+        // Every seed surface starts with `語`, so the `%t` feature of KANJI
+        // gets no weight, and the test above passes whatever `%t` an entry
+        // gets. The unknown words of NUMERIC are only on wrong paths, so its
+        // `%t` feature does get one. An `unk.def` label's features are made
+        // as a seed row's are, with its category as `%t`, so an entry with
+        // the feature of the NUMERIC line whose surface starts with a digit
+        // gets the cost the exported `unk.def` gives that line.
+        let numeric = "名詞,数,*,*,*,*,*,*,*";
+        let user_csv = format!("1語,0,0,0,{numeric}\n語1,0,0,0,{numeric}\n");
+
+        let (result, _, unk, user) = write_dictionary(&user_csv);
+        result.unwrap();
+        let numeric_cost = parameters(&unk)["NUMERIC"].2;
+        let entries = parameters(&user);
+
+        assert_eq!(entries["1語"].2, numeric_cost, "{unk}{user}");
+        // The same feature with a KANJI first character gets another cost,
+        // so the cost above does not come from the feature alone.
+        assert_ne!(entries["語1"].2, numeric_cost, "{unk}{user}");
+    }
+
+    #[test]
+    fn missing_parameters_are_filled_in_separately() {
+        let (_, lex, _, _) = write_dictionary("");
+        let row = feature(&lex, "語00").to_string();
+        let (left_id, right_id, cost) = parameters(&lex)["語00"];
+        // The given parameters below differ from the filled-in ones.
+        assert!((left_id, right_id) != ("5", "6") && (left_id, right_id) != ("0", "0"));
+        assert_ne!(cost, "0");
+
+        let user_csv = format!(
+            "語A,5,6,,{row}\n\
+             語B,,,500,{row}\n\
+             語C,-1,-1,500,{row}\n\
+             語D,5,,500,{row}\n\
+             語E,0,0,500,{row}\n\
+             語F,,,,{row}\n\
+             語G,0,0,0,{row}\n\
+             語H,5,6,0,{row}\n"
+        );
+        let (result, _, _, user) = write_dictionary(&user_csv);
+        result.unwrap();
+        let entries = parameters(&user);
+
+        // An empty cost is computed, and the given ids are kept.
+        assert_eq!(entries["語A"], ("5", "6", cost), "{user}");
+        // An empty or negative id makes both ids inferred, and the given
+        // cost is kept.
+        assert_eq!(entries["語B"], (left_id, right_id, "500"), "{user}");
+        assert_eq!(entries["語C"], (left_id, right_id, "500"), "{user}");
+        assert_eq!(entries["語D"], (left_id, right_id, "500"), "{user}");
+        // `0` ids with a non-zero cost are kept, as in MeCab.
+        assert_eq!(entries["語E"], ("0", "0", "500"), "{user}");
+        // Empty fields, and `0,0,0`, fill in all three.
+        assert_eq!(entries["語F"], (left_id, right_id, cost), "{user}");
+        assert_eq!(entries["語G"], (left_id, right_id, cost), "{user}");
+        // A cost of `0` with given ids is kept.
+        assert_eq!(entries["語H"], ("5", "6", "0"), "{user}");
+    }
+
+    #[test]
+    fn a_parameter_that_is_neither_empty_nor_a_number_in_range_is_an_error() {
+        for (fields, expected) in [
+            ("abc,1,0", "the left id \"abc\""),
+            ("1,65536,0", "the right id \"65536\""),
+            ("1,1,abc", "the cost \"abc\""),
+            ("1,1,40000", "the cost \"40000\""),
+        ] {
+            let mut model = train_cost_model();
+            let user_csv = format!("語A,0,0,0,名詞,一般\n語B,{fields},名詞,一般\n");
+            let err = match model.read_user_lexicon(Cursor::new(user_csv.as_bytes())) {
+                Ok(()) => panic!("{fields}: an error was expected"),
+                Err(err) => err.to_string(),
+            };
+            assert!(
+                err.contains("\"語B\"") && err.contains(expected),
+                "{fields}: {err}"
+            );
+            // Not even the entry before `語B` is added.
+            assert!(model.user_entries.is_empty(), "{fields}");
+        }
     }
 }
