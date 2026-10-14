@@ -1134,6 +1134,13 @@ those of MeCab's learner:
   five columns, and its `feature.def` reads `%F[6]` to `%F[9]`, so its 11
   unknown-word labels had four features, `U06:*` to `U09:*`, that no seed
   row had.
+- `Model::write_dictionary` gave an entry of the user lexicon that
+  `Model::read_user_lexicon` reads whose context IDs and cost are `0,0,0`
+  the context IDs of another user lexicon entry: the one at the index of
+  the seed row whose feature is the most similar to the entry's, or else
+  the first one. An entry whose feature had no column in common with any
+  seed row got the index of its first character's category in `char.def`
+  as both IDs, which is not a context ID.
 
 v7.0.0 trains as MeCab's learner does (see
 [How training works](development/training_pipeline.md#how-training-works)):
@@ -1179,6 +1186,12 @@ v7.0.0 trains as MeCab's learner does (see
   the `unk.def` lines of mecab-jieba have features that a template reads
   past the last column of, so only a model trained on mecab-jieba's files
   changes.
+- `Model::write_dictionary` gives a user lexicon entry with `0,0,0` the
+  context IDs that `lex.csv` gives the seed row whose feature is the most
+  similar to the entry's. An entry whose feature has no column in common
+  with any seed row is an error, and nothing is written, as
+  `mecab-dict-index` fails for a user dictionary entry whose feature has no
+  context ID.
 
 Training takes longer, because every lattice now has the seed words. It is
 slower than MeCab's learner, and it can stop at `--max-iterations`
@@ -1194,8 +1207,9 @@ bindings' training functions, then export it and build the dictionary
 again. Give every `unk.def` line at least five fields. An `unk.def` with
 several entries per category, such as mecab-ipadic's, is now trained and
 exported as it is. Remove the comment lines from your seed lexicons: a line
-that starts with `#` is now a row. There is no setting to restore the v6
-behavior.
+that starts with `#` is now a row. Give the context IDs and cost of a user
+lexicon entry whose feature has no column in common with any seed row.
+There is no setting to restore the v6 behavior.
 
 ## `lindera build` rejects context IDs outside the connection matrix
 
