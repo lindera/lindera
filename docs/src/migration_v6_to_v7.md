@@ -58,6 +58,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **WASM: the `TokenizerBuilder` settings apply whichever way the dictionary is set** | WASM users who combine `setDictionaryInstance()` with `setKeepWhitespace()` or filters, or `setDictionary()` with `setUserDictionaryInstance()` | Expect those settings and the user dictionary to take effect; a dictionary instance whose `char.def` has no `SPACE` category now needs `setKeepWhitespace(true)`, as a dictionary set by URI does |
 | **`lindera train` builds its lattices as MeCab's learner does and keeps every `unk.def` entry; `model.dat` has the format version 2.0.0** | Users of `lindera train` and `lindera export`, and of the training functions of the Python, Node.js, Ruby and PHP bindings | Train every model again with 7.0.0, then export and build it again (a `model.dat` written by v6.2.0 or earlier is rejected); give every `unk.def` line at least five fields; remove comment lines from seed lexicons |
 | **`lindera build` rejects context IDs outside `matrix.def`** | Anyone who builds a system dictionary whose `lex.csv` or `unk.def` has a context ID beyond the size of its `matrix.def` (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's `mecab-dict-index` accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic | Fix the IDs or the matrix, or set `skip_invalid_cost_or_id` in `metadata.json` to drop such `lex.csv` rows; fix such IDs in the user dictionary |
+| **`lindera build` and `lindera train` check `char.def` against `unk.def`** | Anyone whose `char.def` has a range line that names a category not defined on an earlier line, or a category defined twice, or whose `char.def` and `unk.def` do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored `unk.def` lines); not dictionaries that MeCab's `mecab-dict-index` accepts | Define each category once, before the range lines that name it; give every category an `unk.def` line, and remove the `unk.def` lines of undefined categories |
 | **The `normalize_details` setting is removed: `Metadata::new` and `CoreMetadata::new` take 10 arguments, Ruby's `Metadata.new` takes 8** | Code that creates or reads dictionary metadata: Rust (`Metadata`, `lindera_binding::CoreMetadata`, `PrefixDictionaryBuilderOptions`) and the `Metadata` classes of the Python, Ruby, PHP and Node.js bindings | Remove the argument, option or property; a `metadata.json` that still has the key loads, and the key is ignored |
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
 | **`Lattice::tokens_offset_into` returns the BOS index of the best path (`Option<usize>`)** | Rust code that uses the `()` value of `tokens_offset_into` | Nothing for a call written as a statement; otherwise ignore the new value |
@@ -1275,12 +1276,53 @@ and export it again with 7.0.0 (see the previous section). For another
 dictionary that fails, fix the IDs in `lex.csv` or `unk.def` or the size in
 `matrix.def`.
 
+## `lindera build` and `lindera train` check `char.def` against `unk.def`
+
+Up to v6.2.0, `lindera build` and `lindera train` accepted a `char.def` and
+an `unk.def` that MeCab's `mecab-dict-index` rejects
+([#1195](https://github.com/lindera/lindera/issues/1195)):
+
+- A range line of `char.def` that names a category no line defines. The
+  built dictionary panicked on a character of the category, and so did
+  training when the corpus had one.
+- A range line before the definition of its category, or a category
+  defined twice. The categories defined after it got the `INVOKE`, `GROUP`
+  and `LENGTH` settings of another category, which changed the unknown
+  words.
+- A `char.def` category without an `unk.def` line. A character of it that no
+  word covers got no unknown word, so tokenization stopped its output
+  before it, without an error, and a training lattice had no path through
+  it.
+- An `unk.def` line whose category `char.def` does not define. The line was
+  never used, and `lindera export` wrote it back.
+
+v7.0.0 rejects all of these, as `mecab-dict-index` does. The error names
+the file, the category and, except for a category without an `unk.def`
+line, the line. For example, with `0x3005 KANJI_ITERATION` on line 8 of
+`char.def`, whose category no line defines:
+
+```text
+Error: LinderaError { kind: Content, source: ./dict-source/char.def: line 8: category KANJI_ITERATION is not defined; a range line can only name a category defined on an earlier line }
+```
+
+`lindera train` and the bindings' training functions check their input in
+the same way before they train, and number the `unk.def` lines as in the
+file, comment and empty lines included.
+
+Every bundled dictionary passes, and so does a dictionary that
+`mecab-dict-index` builds. For another dictionary that fails, define each
+category once, before the range lines that name it, give every category at
+least one `unk.def` line, and remove the `unk.def` lines of categories that
+`char.def` does not define.
+
 ## Rust API changes in `lindera_dictionary`
 
 These affect only code that calls the lattice backtraces directly, that
 creates dictionary metadata with `Metadata::new`, that reads the
-character categories of a dictionary, or that generates unknown words with
-`UnknownDictionary`:
+character categories of a dictionary, that generates unknown words with
+`UnknownDictionary`, or that builds a dictionary from a `char.def` and an
+`unk.def` that `mecab-dict-index` rejects (see
+[the previous section](#lindera-build-and-lindera-train-check-chardef-against-unkdef)):
 `lindera_dictionary::viterbi::Lattice` and
 `lindera_dictionary::nbest::NBestGenerator`, also reachable as
 `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and
@@ -1289,7 +1331,9 @@ character categories of a dictionary, or that generates unknown words with
 `lindera::dictionary::Metadata`, and
 `lindera_dictionary::dictionary::character_definition::CharacterDefinition`, and
 `lindera_dictionary::dictionary::unknown_dictionary`, also reachable as
-`lindera::dictionary::core::unknown_dictionary`.
+`lindera::dictionary::core::unknown_dictionary`, and
+`lindera_dictionary::builder`, also reachable as
+`lindera::dictionary::builder`.
 The `Segmenter`, `Tokenizer`,
 `SegmentWorker` and `AnalysisWorker` APIs and the CLI are unaffected; the
 language bindings change only in their `Metadata` class (see
@@ -1315,6 +1359,9 @@ language bindings change only in their `Metadata` class (see
 | `UnknownDictionary::compatible_unk_index(sentence, start, end, feature) -> Option<WordIdx>` | Removed |
 | `unknown_dictionary::UnkWord` and `unknown_dictionary::WordIdx` | Removed |
 | — | New in `viterbi`: `Lattice::unknown_word_candidates` and `UnknownWordCandidate` |
+| `CharacterDefinitionBuilder::build_from_str` and `build` accept a range line that names a category not defined on an earlier line, and a category defined twice | Return an error that names the line and the category |
+| `DictionaryBuilder::build_dictionary` and `build_unknown_dictionary` accept an `unk.def` line whose category `char.def` does not define, and a `char.def` category without an `unk.def` line | Return an error that names the file and the category |
+| — | New in `unknown_dictionary`: `check_unknown_word_categories`, the check of `unk.def` against the `char.def` categories that the builder and the trainer run |
 
 Each token is now `(start, end, word_id)` instead of `(start, word_id)`,
 with byte offsets within the sentence. With whitespace skipped
@@ -1431,6 +1478,7 @@ These affect only Rust code that uses `lindera-trainer` directly or through
 | — | New in `model`: `MODEL_FORMAT_VERSION` |
 | `TrainerConfig::dict()` holds an empty lexicon and a placeholder unknown-word dictionary | Holds the seed lexicon (`system_lexicon()`) and the `unk.def` entries (`unk_handler()`) |
 | `TrainerConfig::from_readers` skips an `unk.def` line with fewer than five fields | Returns an error |
+| `TrainerConfig::from_readers` accepts a `char.def` and an `unk.def` that `mecab-dict-index` rejects | Returns an error that names the file, the category and, where there is one, the line (see [`lindera build` and `lindera train` check `char.def` against `unk.def`](#lindera-build-and-lindera-train-check-chardef-against-unkdef)) |
 | `Trainer::max_grouping_len(len)` bounds the unknown-word candidates, which never exceed three characters | Caps unknown-word grouping with the runtime's meaning, in characters beyond the first; `None`, the default, leaves it unbounded |
 | `Model::num_labels()` and `ModelMetadata::label_count` count one unknown-word label per `char.def` category | Count one per `unk.def` entry; the virtual labels are not counted |
 
@@ -1601,6 +1649,10 @@ Users of `lindera train`:
   and have no `SPACE` category, add it as those files now do, so that the
   trained dictionary tokenizes without `--keep-whitespace`
   ([#1166](https://github.com/lindera/lindera/issues/1166)).
+- If training reports a category of `char.def` or `unk.def`, define each
+  category once, before the range lines that name it, give every category
+  an `unk.def` line, and remove the `unk.def` lines of undefined categories
+  ([#1195](https://github.com/lindera/lindera/issues/1195)).
 
 Everyone who builds a system dictionary with `lindera build`:
 
@@ -1610,6 +1662,10 @@ Everyone who builds a system dictionary with `lindera build`:
   rows. Such a dictionary used to build and then panic at
   tokenization. A dictionary exported by v6.2.0 or earlier is best trained
   and exported again.
+- If the build reports a category of `char.def` or `unk.def`, define each
+  category once, before the range lines that name it, give every category
+  an `unk.def` line, and remove the `unk.def` lines of undefined categories
+  ([#1195](https://github.com/lindera/lindera/issues/1195)).
 
 Everyone who uses a user dictionary with detailed entries:
 
