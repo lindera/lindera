@@ -49,6 +49,8 @@ Interface for searching the best path through a lattice. Two implementations are
 
 `MergedFeatureSet` holds the pre-summed unigram `weight` for a label, along with its `left_id`/`right_id` bigram connection IDs into `MergedModel`'s bigram weight matrix.
 
+`RawModel::unigram_weight` computes that sum for a list of unigram feature IDs, and `merge` calls it for every label. A feature without a weight adds nothing, so it also weighs the features of an entry that was not a label in training: `lindera-trainer` uses it for the cost of a user lexicon entry.
+
 ### Forward-backward Algorithm
 
 Computes alpha (forward) and beta (backward) values over the lattice. Used during training to calculate expected feature counts and gradients.

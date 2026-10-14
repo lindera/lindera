@@ -1141,6 +1141,14 @@ those of MeCab's learner:
   the first one. An entry whose feature had no column in common with any
   seed row got the index of its first character's category in `char.def`
   as both IDs, which is not a context ID.
+- `Model::write_dictionary` gave every such entry with `0,0,0` the same
+  cost, `tocost(0.8, cost_factor)`, whatever its feature.
+  `Model::read_user_lexicon` read an empty context ID or cost, and a value
+  that is not a number, as `0`, and a negative context ID wrapped around to
+  16 bits (`-1` became `65535`); the parameters were filled in only when
+  all three were `0`. So an entry with an empty cost and given context IDs
+  got the cost `0`, and one with empty context IDs and a given cost got the
+  BOS/EOS IDs `0,0`.
 
 v7.0.0 trains as MeCab's learner does (see
 [How training works](development/training_pipeline.md#how-training-works)):
@@ -1186,12 +1194,20 @@ v7.0.0 trains as MeCab's learner does (see
   the `unk.def` lines of mecab-jieba have features that a template reads
   past the last column of, so only a model trained on mecab-jieba's files
   changes.
-- `Model::write_dictionary` gives a user lexicon entry with `0,0,0` the
-  context IDs that `lex.csv` gives the seed row whose feature is the most
-  similar to the entry's. An entry whose feature has no column in common
-  with any seed row is an error, and nothing is written, as
-  `mecab-dict-index` fails for a user dictionary entry whose feature has no
-  context ID.
+- `Model::write_dictionary` fills in the parameters of a user lexicon entry
+  separately, as `mecab-dict-index` does: an empty cost is computed, and
+  when either context ID is empty or negative, both are inferred. `0,0,0`
+  still fills in all three. A context ID or cost that is neither empty nor
+  a number in its range is an error that names the entry.
+- A computed cost is the one MeCab's `calcCost` computes: the sum of the
+  trained weights of the entry's unigram features, converted as the costs
+  of `lex.csv` are, so an entry whose feature and first character's
+  category are those of a seed row gets that row's cost.
+- Inferred context IDs are those that `lex.csv` gives the seed row whose
+  feature is the most similar to the entry's. An entry whose feature has
+  no column in common with any seed row is an error, and nothing is
+  written, as `mecab-dict-index` fails for a user dictionary entry whose
+  feature has no context ID.
 
 Training takes longer, because every lattice now has the seed words. It is
 slower than MeCab's learner, and it can stop at `--max-iterations`
@@ -1207,9 +1223,10 @@ bindings' training functions, then export it and build the dictionary
 again. Give every `unk.def` line at least five fields. An `unk.def` with
 several entries per category, such as mecab-ipadic's, is now trained and
 exported as it is. Remove the comment lines from your seed lexicons: a line
-that starts with `#` is now a row. Give the context IDs and cost of a user
-lexicon entry whose feature has no column in common with any seed row.
-There is no setting to restore the v6 behavior.
+that starts with `#` is now a row. Give the context IDs of a user lexicon
+entry whose feature has no column in common with any seed row. Write each
+context ID and cost of a user lexicon entry as a number, or leave it empty
+to have it filled in. There is no setting to restore the v6 behavior.
 
 ## `lindera build` rejects context IDs outside the connection matrix
 
