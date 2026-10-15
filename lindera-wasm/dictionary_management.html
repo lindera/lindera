@@ -389,7 +389,7 @@ Unlike the Python, Node.js, Ruby, and PHP bindings, the WASM <code>Metadata</cod
 <div class="table-wrapper"><table><thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>get_field_index(name)</code></td><td><code>number | undefined</code></td><td>Get field index by name</td></tr>
 <tr><td><code>field_count()</code></td><td><code>number</code></td><td>Total number of fields</td></tr>
-<tr><td><code>get_field_name(index)</code></td><td><code>string | undefined</code></td><td>Get field name by index</td></tr>
+<tr><td><code>get_field_name(index)</code></td><td><code>string | undefined</code></td><td>Get field name by index (<code>undefined</code> past the end; a negative or non-integer index throws)</td></tr>
 <tr><td><code>get_custom_fields()</code></td><td><code>string[]</code></td><td>Fields beyond index 3 (morphological features)</td></tr>
 <tr><td><code>get_all_fields()</code></td><td><code>string[]</code></td><td>All field names</td></tr>
 <tr><td><code>get_field_by_name(name)</code></td><td><code>FieldDefinition | undefined</code></td><td>Get full field definition</td></tr>

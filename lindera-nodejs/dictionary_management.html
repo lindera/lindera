@@ -301,9 +301,9 @@ const metadata = new Metadata({
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>name</code></td><td><code>string</code></td><td><code>"default"</code></td><td>Dictionary name</td></tr>
 <tr><td><code>encoding</code></td><td><code>string</code></td><td><code>"UTF-8"</code></td><td>Character encoding</td></tr>
-<tr><td><code>defaultWordCost</code></td><td><code>number</code></td><td><code>-10000</code></td><td>Default cost for unknown words</td></tr>
-<tr><td><code>defaultLeftContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>Default left context ID</td></tr>
-<tr><td><code>defaultRightContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>Default right context ID</td></tr>
+<tr><td><code>defaultWordCost</code></td><td><code>number</code></td><td><code>-10000</code></td><td>Default cost for unknown words, an integer from -32768 to 32767</td></tr>
+<tr><td><code>defaultLeftContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>Default left context ID, an integer from 0 to 65535</td></tr>
+<tr><td><code>defaultRightContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>Default right context ID, an integer from 0 to 65535</td></tr>
 <tr><td><code>defaultFieldValue</code></td><td><code>string</code></td><td><code>"*"</code></td><td>Default value for missing fields</td></tr>
 <tr><td><code>flexibleCsv</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Allow flexible CSV parsing</td></tr>
 <tr><td><code>skipInvalidCostOrId</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Skip entries with invalid cost or ID</td></tr>

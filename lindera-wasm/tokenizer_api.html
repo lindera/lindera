@@ -355,9 +355,9 @@ multiple tokenizers can be built from the same configuration.</p>
 <li><strong>Parameters</strong>:
 <ul>
 <li><code>text</code> (string) -- Text to tokenize</li>
-<li><code>n</code> (number) -- Number of results to return</li>
+<li><code>n</code> (number) -- Number of results to return, an integer of 0 or more</li>
 <li><code>unique</code> (boolean, optional) -- Deduplicate results with identical segmentation (default: <code>false</code>)</li>
-<li><code>costThreshold</code> (bigint, optional) -- Only return paths within <code>bestCost + threshold</code></li>
+<li><code>costThreshold</code> (bigint, optional) -- Only return paths within <code>bestCost + threshold</code>; it must fit in 64 bits</li>
 </ul>
 </li>
 <li><strong>Returns</strong>: Array of <code>{ tokens: Token[], cost: number }</code></li>

@@ -4477,7 +4477,7 @@ for (const { tokens, cost } of results) {
 <p><strong>パラメータ:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>text</code></td><td><code>string</code></td><td>トークナイズするテキスト</td></tr>
-<tr><td><code>n</code></td><td><code>number</code></td><td>返す結果の数</td></tr>
+<tr><td><code>n</code></td><td><code>number</code></td><td>返す結果の数。0 以上の整数</td></tr>
 <tr><td><code>unique</code></td><td><code>boolean</code></td><td>結果の重複を排除（デフォルト: <code>false</code>）</td></tr>
 <tr><td><code>costThreshold</code></td><td><code>number | undefined</code></td><td>最良パスからの最大コスト差（デフォルト: <code>undefined</code>）</td></tr>
 </tbody></table>
@@ -4652,9 +4652,9 @@ const metadata = new Metadata({
 <div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>name</code></td><td><code>string</code></td><td><code>"default"</code></td><td>辞書名</td></tr>
 <tr><td><code>encoding</code></td><td><code>string</code></td><td><code>"UTF-8"</code></td><td>文字エンコーディング</td></tr>
-<tr><td><code>defaultWordCost</code></td><td><code>number</code></td><td><code>-10000</code></td><td>未知語のデフォルトコスト</td></tr>
-<tr><td><code>defaultLeftContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>デフォルトの左文脈 ID</td></tr>
-<tr><td><code>defaultRightContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>デフォルトの右文脈 ID</td></tr>
+<tr><td><code>defaultWordCost</code></td><td><code>number</code></td><td><code>-10000</code></td><td>未知語のデフォルトコスト。-32768 から 32767 の整数</td></tr>
+<tr><td><code>defaultLeftContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>デフォルトの左文脈 ID。0 から 65535 の整数</td></tr>
+<tr><td><code>defaultRightContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>デフォルトの右文脈 ID。0 から 65535 の整数</td></tr>
 <tr><td><code>defaultFieldValue</code></td><td><code>string</code></td><td><code>"*"</code></td><td>欠損フィールドのデフォルト値</td></tr>
 <tr><td><code>flexibleCsv</code></td><td><code>boolean</code></td><td><code>false</code></td><td>柔軟な CSV パースを許可</td></tr>
 <tr><td><code>skipInvalidCostOrId</code></td><td><code>boolean</code></td><td><code>false</code></td><td>無効なコストまたは ID のエントリーをスキップ</td></tr>
@@ -5872,6 +5872,26 @@ $results = $tokenizer-&gt;tokenizeNbest('東京都', 2, cost_threshold: (int) $t
 $results = $tokenizer-&gt;tokenizeNbest('東京都', 2, cost_threshold: null);
 </code></pre>
 <p><code>new Lindera\Tokenizer(...)</code> の <code>$space_penalty</code> やフィルタのメソッドの <code>$args</code> など、<code>mixed</code> と宣言した引数は、この規則の対象外です。どの PHP の値も受け取り、値を自分で検査します。</p>
+<p><code>int</code> の引数は、その設定が保持できる値だけを受け付けます。ほとんどの設定の範囲は、PHP の 64 ビットの <code>int</code> より狭いです。<code>Lindera\Metadata</code> の <code>$default_word_cost</code> は -32768 から 32767、文脈 ID は 0 から 65535、<code>Lindera\Penalty</code> のペナルティは 32 ビットの整数を受け付けます。個数や位置は 0 以上を受け付けます。該当するのは、<code>Lindera\Penalty</code> のしきい値、<code>new Lindera\FieldDefinition(...)</code>・<code>Schema::getFieldName()</code>・<code>Token::getDetail()</code> の <code>$index</code>、<code>tokenizeNbest()</code> の <code>$n</code>、<code>Lindera\Trainer::train()</code> の <code>$max_iter</code> と <code>$max_threads</code> です。範囲外の値は、引数の名前と範囲を含む <code>ValueError</code> を投げます。末尾より先の位置は、これまでどおり <code>null</code> を返します。</p>
+<pre><code class="language-php">&lt;?php
+
+try {
+    new Lindera\Metadata(default_word_cost: 100000);
+} catch (ValueError $e) {
+    echo get_class($e), ': ', $e-&gt;getMessage(), "\n";
+    // ValueError: default_word_cost must be an integer between -32768 and 32767, got 100000
+}
+
+$dictionary = Lindera\Dictionary::load('embedded://ipadic');
+$tokenizer = new Lindera\Tokenizer($dictionary);
+
+try {
+    $tokenizer-&gt;tokenizeNbest('東京都', -1);
+} catch (ValueError $e) {
+    echo get_class($e), ': ', $e-&gt;getMessage(), "\n";
+    // ValueError: n must be an integer between 0 and 18446744073709551615, got -1
+}
+</code></pre>
 <h2 id="ドキュメント-3"><a class="header" href="#ドキュメント-3">ドキュメント</a></h2>
 <ul>
 <li><a href="./lindera-php/installation.html">インストール</a> -- 前提条件、ビルド手順、feature フラグ</li>
@@ -6220,7 +6240,7 @@ foreach ($results as $result) {
 <p><strong>パラメータ:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>$text</code></td><td><code>string</code></td><td>トークナイズするテキスト</td></tr>
-<tr><td><code>$n</code></td><td><code>int</code></td><td>返す結果の数</td></tr>
+<tr><td><code>$n</code></td><td><code>int</code></td><td>返す結果の数。0 以上</td></tr>
 <tr><td><code>$unique</code></td><td><code>bool|null</code></td><td>重複する結果を除く（デフォルト: <code>false</code>）</td></tr>
 <tr><td><code>$cost_threshold</code></td><td><code>int|null</code></td><td>最良パスとのコストの差の上限（デフォルト: <code>null</code>）</td></tr>
 </tbody></table>
@@ -6249,7 +6269,7 @@ foreach ($results as $result) {
 </div>
 <h3 id="token-メソッド-2"><a class="header" href="#token-メソッド-2">Token メソッド</a></h3>
 <h4 id="getdetailindex"><a class="header" href="#getdetailindex"><code>getDetail($index)</code></a></h4>
-<p>指定されたインデックスの詳細文字列を返します。インデックスが範囲外の場合は <code>null</code> を返します。</p>
+<p>指定されたインデックスの詳細文字列を返します。その位置に詳細がない場合は <code>null</code> を返します。負のインデックスは <code>ValueError</code> を投げます。</p>
 <pre><code class="language-php">$token = $tokenizer-&gt;tokenize('東京')[0];
 $pos = $token-&gt;getDetail(0);        // 例: "名詞"
 $subpos = $token-&gt;getDetail(1);     // 例: "固有名詞"
@@ -7162,9 +7182,9 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <li><strong>パラメータ</strong>:
 <ul>
 <li><code>text</code> (string) -- トークナイズするテキスト</li>
-<li><code>n</code> (number) -- 返す結果の数</li>
+<li><code>n</code> (number) -- 返す結果の数。0 以上の整数</li>
 <li><code>unique</code> (boolean, 省略可) -- 同一のセグメンテーション結果を重複排除（デフォルト: <code>false</code>）</li>
-<li><code>costThreshold</code> (bigint, 省略可) -- <code>bestCost + threshold</code> 以内のパスのみ返す</li>
+<li><code>costThreshold</code> (bigint, 省略可) -- <code>bestCost + threshold</code> 以内のパスのみ返す。64 ビットに収まる値</li>
 </ul>
 </li>
 <li><strong>戻り値</strong>: <code>{ tokens: Token[], cost: number }</code> の配列</li>
@@ -7523,7 +7543,7 @@ Python・Node.js・Ruby・PHP の各バインディングと異なり、WASM の
 <div class="table-wrapper"><table><thead><tr><th>メソッド</th><th>戻り値</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>get_field_index(name)</code></td><td><code>number | undefined</code></td><td>フィールド名からインデックスを取得</td></tr>
 <tr><td><code>field_count()</code></td><td><code>number</code></td><td>フィールドの総数</td></tr>
-<tr><td><code>get_field_name(index)</code></td><td><code>string | undefined</code></td><td>インデックスからフィールド名を取得</td></tr>
+<tr><td><code>get_field_name(index)</code></td><td><code>string | undefined</code></td><td>インデックスからフィールド名を取得（末尾より先は <code>undefined</code>、負や整数でないインデックスは例外）</td></tr>
 <tr><td><code>get_custom_fields()</code></td><td><code>string[]</code></td><td>インデックス 3 以降のフィールド（形態素素性）</td></tr>
 <tr><td><code>get_all_fields()</code></td><td><code>string[]</code></td><td>すべてのフィールド名</td></tr>
 <tr><td><code>get_field_by_name(name)</code></td><td><code>FieldDefinition | undefined</code></td><td>フィールド定義の完全な情報を取得</td></tr>
@@ -9906,6 +9926,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong><code>lindera tokenize</code> が各入力行から改行コードだけを取り除き、すべての行に結果を出す</strong></td><td>行頭・行末に空白がある入力を CLI に渡すユーザー、トークンのない行の wakati や N-best の出力を読むユーザー</td><td>オフセットが入力行の中の位置を指し、行頭・行末の U+3000 がトークンになり（IPADIC では <code>記号,空白</code>）、<code>--keep-whitespace</code> でそこの空白も出力され、空行や空白だけの行が wakati では空行に、N-best では結果 1 件になることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>WASM: 辞書の設定方法にかかわらず <code>TokenizerBuilder</code> の設定が適用される</strong></td><td><code>setDictionaryInstance()</code> と <code>setKeepWhitespace()</code> やフィルタ、または <code>setDictionary()</code> と <code>setUserDictionaryInstance()</code> を組み合わせる WASM のユーザー</td><td>それらの設定とユーザー辞書が効くことを前提にする。<code>char.def</code> に <code>SPACE</code> カテゴリがない辞書インスタンスでは、URI で設定した辞書と同じく <code>setKeepWhitespace(true)</code> が必要になる</td></tr>
 <tr><td><strong>PHP: 省略可能な引数に型違いの値を渡すと、既定値を使わずに例外を投げる</strong></td><td>省略可能な引数に別の型の値を渡す PHP のコード。例えば <code>Lindera\Trainer::train()</code> の <code>$max_iter</code> に数字の文字列を、<code>tokenizeNbest()</code> の <code>$unique</code> に <code>1</code> を渡すもの</td><td>宣言された型の値を渡す。<code>$argv</code> の値のような文字列は <code>(int)</code> などでキャストする。<code>null</code> を渡すか引数を省略すれば、これまでどおり既定値になる</td></tr>
+<tr><td><strong>PHP・Node.js・WASM: 設定の範囲外の整数の引数は、折り返さずに例外を投げる</strong></td><td>そのような値を渡すコード。例えば <code>Metadata</code> の既定の単語コストに <code>100000</code> を渡すもの（v6 は <code>-31072</code> を保持した）や、N-best の件数に <code>-1</code> を渡すもの（v6 はすべての分割を列挙した）。<code>getFieldName</code> と PHP の <code>getDetail</code> への負の位置。Node.js と WASM では、<code>1.5</code> や <code>NaN</code> のような整数でない数値</td><td>範囲内の整数を渡す。エラーは引数の名前と範囲を示す</td></tr>
 <tr><td><strong><code>lindera train</code> は MeCab の学習器と同じくラティスを作り、<code>unk.def</code> のすべてのエントリを保持する。<code>model.dat</code> の形式バージョンは 2.0.0</strong></td><td><code>lindera train</code>・<code>lindera export</code> と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー</td><td>7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた <code>model.dat</code> は拒否される）。<code>unk.def</code> のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す</td></tr>
 <tr><td><strong><code>lindera build</code> は <code>matrix.def</code> の範囲外の文脈 ID を拒否する</strong></td><td><code>lex.csv</code> や <code>unk.def</code> に <code>matrix.def</code> の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の <code>mecab-dict-index</code> が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる）</td><td>ID か行列を直すか、<code>metadata.json</code> の <code>skip_invalid_cost_or_id</code> でそうした <code>lex.csv</code> の行を取り除く。ユーザー辞書ではそうした ID を直す</td></tr>
 <tr><td><strong><code>lindera build</code> と <code>lindera train</code> は <code>char.def</code> と <code>unk.def</code> を照らし合わせる</strong></td><td>それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが <code>char.def</code> にあるユーザー、<code>char.def</code> と <code>unk.def</code> でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、<code>unk.def</code> の行を無視したりしていた）。MeCab の <code>mecab-dict-index</code> が受け入れる辞書は影響を受けない</td><td>各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに <code>unk.def</code> の行を書き、未定義のカテゴリの <code>unk.def</code> の行を削除する</td></tr>
@@ -9925,6 +9946,9 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 を参照）。PHP バインディングは、省略可能な引数に渡された型違いの値も拒否します。
 v6 はこの値を <code>null</code> として扱っていました
 （<a href="migration_v6_to_v7.html#php-%E7%9C%81%E7%95%A5%E5%8F%AF%E8%83%BD%E3%81%AA%E5%BC%95%E6%95%B0%E3%81%AF%E5%9E%8B%E9%81%95%E3%81%84%E3%81%AE%E5%80%A4%E3%82%92%E6%8B%92%E5%90%A6%E3%81%99%E3%82%8B">PHP: 省略可能な引数は型違いの値を拒否する</a>を参照）。
+PHP・Node.js・WASM のバインディングは、設定の範囲外の整数の引数も拒否します。
+v6 はこの値を折り返していました
+（<a href="migration_v6_to_v7.html#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0-%E7%AF%84%E5%9B%B2%E5%A4%96%E3%81%AE%E6%95%B4%E6%95%B0%E3%81%AE%E5%BC%95%E6%95%B0%E3%82%92%E6%8B%92%E5%90%A6%E3%81%99%E3%82%8B">バインディング: 範囲外の整数の引数を拒否する</a>を参照）。
 バージョン番号は 7.0.0 になります。Rust クレートと同じく、v6.2.0 以前に
 ビルドまたはダウンロードした辞書ディレクトリは読み込めなくなります
 （<a href="migration_v6_to_v7.html#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。v6.2.0 以前にバインディングの
@@ -10739,6 +10763,45 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 キャストしてください（<a href="lindera-php.html#%E5%BC%95%E6%95%B0%E3%81%AE%E5%9E%8B">引数の型</a>を参照）。<code>mixed</code> と
 宣言した引数、ほかのバインディング・CLI・ライブラリは変わりません。v6 の動作に
 戻す設定はありません。</p>
+<h2 id="バインディング-範囲外の整数の引数を拒否する"><a class="header" href="#バインディング-範囲外の整数の引数を拒否する">バインディング: 範囲外の整数の引数を拒否する</a></h2>
+<p>v6.2.0 までの PHP・Node.js・WASM のバインディングは、整数の引数を設定の型に
+変換するときに値を折り返していたため、範囲外の値が黙って別の値になっていました。
+PHP バインディングは、すべての <code>int</code> を 64 ビットの整数として受け取り、狭い型に
+キャストしていました。Node.js と WASM では、JS の数値を 32 ビットの整数に変換する
+処理（ECMAScript の ToUint32 か ToInt32）が、バインディングに届く前に値を
+折り返していました。WASM の BigInt は 2^64 を法として扱われていました。</p>
+<div class="table-wrapper"><table><thead><tr><th>呼び出し</th><th>v6.2.0</th><th>v7.0.0</th></tr></thead><tbody>
+<tr><td>PHP <code>new Lindera\Metadata(default_word_cost: 100000)</code></td><td>コスト <code>-31072</code></td><td><code>ValueError</code></td></tr>
+<tr><td>Node.js <code>new Metadata({ defaultLeftContextId: 2 ** 32 + 5 })</code></td><td>文脈 ID <code>5</code></td><td>code が <code>InvalidArg</code> の <code>Error</code></td></tr>
+<tr><td>Node.js <code>schema.getFieldName(2 ** 32)</code></td><td>先頭のフィールド <code>"surface"</code></td><td><code>null</code></td></tr>
+<tr><td>WASM <code>new Penalty(-1)</code></td><td>しきい値 <code>4294967295</code></td><td>文字列の例外</td></tr>
+<tr><td>PHP・Node.js・WASM の <code>tokenizeNbest('東京', -1)</code></td><td>33 個の分割すべて</td><td>バインディングのエラー</td></tr>
+</tbody></table>
+</div>
+<p>v7.0.0 では、このような値を拒否します。PHP バインディングは <code>ValueError</code> を、
+Node.js バインディングは code が <code>InvalidArg</code> の <code>Error</code> を、WASM バインディングは
+ほかのエラーと同じく文字列を投げます。メッセージは引数の名前と範囲を示します。例えば
+<code>default_word_cost must be an integer between -32768 and 32767, got 100000</code>
+です。対象の引数は、<code>Metadata</code> の整数の設定（既定の単語コストと文脈 ID）と
+<code>Penalty</code> の設定、<code>FieldDefinition</code>・<code>getFieldName</code>・PHP の <code>Token::getDetail</code> の
+位置、N-best の件数と Node.js・WASM の N-best のコストのしきい値、学習関数の
+反復回数とスレッド数です。検査は、コンストラクタとプロパティの setter（Node.js の
+<code>Metadata</code>、WASM の <code>Penalty</code> と <code>FieldDefinition</code>）に適用されます。</p>
+<p>これに伴い、v6 が受け付けていた次の値も例外を投げるようになります。</p>
+<ul>
+<li>負の位置。v6 は <code>null</code>（PHP・Node.js）か <code>undefined</code>（WASM）を返していました。
+末尾より先の位置は、これまでどおり <code>null</code> か <code>undefined</code> を返します。</li>
+<li>Node.js と WASM で、<code>1.5</code>・<code>NaN</code>・<code>Infinity</code> のような整数でない数値。v6 は
+切り捨てるか 0 にしていました。</li>
+<li>WASM で、64 ビットの範囲外の BigInt のコストのしきい値と、BigInt でないコストの
+しきい値。</li>
+</ul>
+<p>範囲内の整数を渡してください。Node.js と WASM のバインディングの TypeScript の
+型定義は変わりません。Python と Ruby のバインディングは、以前からこれらの値を
+<code>OverflowError</code> と <code>RangeError</code> で拒否しており、変わりません。ただし、Python の
+プロパティの setter の <code>OverflowError</code> は、注記でプロパティの名前を示すように
+なりました（<code>'cost'</code> ではなく <code>while processing 'default_word_cost'</code>）。v6 の動作に
+戻す設定はありません。</p>
 <h2 id="lindera-train-は-mecab-の学習器と同じくラティスを作る"><a class="header" href="#lindera-train-は-mecab-の学習器と同じくラティスを作る"><code>lindera train</code> は MeCab の学習器と同じくラティスを作る</a></h2>
 <p>v6.2.0 までの <code>lindera train</code> は、MeCab の学習器とは異なる学習用ラティスを
 作っていました。</p>
@@ -11160,9 +11223,11 @@ v6.2.0 以前に書かれたモデルは学習し直す必要があります。<
 <ul>
 <li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の
 各パッケージと <code>lindera-cli</code> のパッケージ名は変わらず、API も <code>Metadata</code> の設定
-<code>normalize_details</code> と、PHP の省略可能な引数の型違いの値を除いて変わりません
-（<a href="migration_v6_to_v7.html#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>と
-<a href="migration_v6_to_v7.html#php-%E7%9C%81%E7%95%A5%E5%8F%AF%E8%83%BD%E3%81%AA%E5%BC%95%E6%95%B0%E3%81%AF%E5%9E%8B%E9%81%95%E3%81%84%E3%81%AE%E5%80%A4%E3%82%92%E6%8B%92%E5%90%A6%E3%81%99%E3%82%8B">PHP: 省略可能な引数は型違いの値を拒否する</a>を参照）。
+<code>normalize_details</code> と、PHP の省略可能な引数の型違いの値と、PHP・Node.js・WASM の
+範囲外の整数の引数を除いて変わりません
+（<a href="migration_v6_to_v7.html#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>、
+<a href="migration_v6_to_v7.html#php-%E7%9C%81%E7%95%A5%E5%8F%AF%E8%83%BD%E3%81%AA%E5%BC%95%E6%95%B0%E3%81%AF%E5%9E%8B%E9%81%95%E3%81%84%E3%81%AE%E5%80%A4%E3%82%92%E6%8B%92%E5%90%A6%E3%81%99%E3%82%8B">PHP: 省略可能な引数は型違いの値を拒否する</a>、
+<a href="migration_v6_to_v7.html#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0-%E7%AF%84%E5%9B%B2%E5%A4%96%E3%81%AE%E6%95%B4%E6%95%B0%E3%81%AE%E5%BC%95%E6%95%B0%E3%82%92%E6%8B%92%E5%90%A6%E3%81%99%E3%82%8B">バインディング: 範囲外の整数の引数を拒否する</a>を参照）。
 今回の構成変更は Rust クレート内部のものです。v6.2.0 以前にビルドまたは
 ダウンロードした辞書ディレクトリは、再ビルドか再ダウンロードが必要です
 （<a href="migration_v6_to_v7.html#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。埋め込み辞書は対応不要です。
@@ -11391,12 +11456,15 @@ IPADIC-NEologd 1,085 語）が引けなくなることを前提にする。IPADI
 <li>PHP では、各引数に宣言された型の値を渡す。省略可能な引数に渡した型違いの値は、
 v6 では <code>null</code> として扱われたが、<code>Exception</code> を投げるようになる。<code>$argv</code> の値の
 ような文字列は <code>(int)</code> や <code>(float)</code> でキャストする。</li>
+<li>PHP・Node.js・WASM では、整数の引数に設定の範囲内の値を渡す。範囲外の値は、v6 では
+折り返されたが、例外を投げるようになる。負の位置と、Node.js・WASM の整数でない
+数値も同様。</li>
 <li>CLI では、文の区切り文字なしに 32 KiB を超えて文を区切ったときなどに、標準エラー
 出力に警告が出ることを前提にする。<code>RUST_LOG=error</code> で警告を消せる。</li>
 <li>それ以外は、7.0.0 リリースを取り込む以外に対応は不要（上記の辞書の再ビルド・辞書・
 空白・<code>、</code> と <code>。</code>・N-best・未知語・既定カテゴリ・ダッシュとチルダ・同点の見出し語・
 コストが同じ分割の項目、<code>lindera train</code> と <code>lindera build</code> の項目、<code>lindera tokenize</code>
-と WASM と PHP と CLI の警告の項目を除く）。</li>
+と WASM と PHP と整数の引数と CLI の警告の項目を除く）。</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="開発ガイド"><a class="header" href="#開発ガイド">開発ガイド</a></h1>
 <p>このセクションでは、Lindera のビルド、テスト、貢献に関する情報を提供します。</p>

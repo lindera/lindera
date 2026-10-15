@@ -297,9 +297,9 @@ const metadata = new Metadata({
 <div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>name</code></td><td><code>string</code></td><td><code>"default"</code></td><td>辞書名</td></tr>
 <tr><td><code>encoding</code></td><td><code>string</code></td><td><code>"UTF-8"</code></td><td>文字エンコーディング</td></tr>
-<tr><td><code>defaultWordCost</code></td><td><code>number</code></td><td><code>-10000</code></td><td>未知語のデフォルトコスト</td></tr>
-<tr><td><code>defaultLeftContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>デフォルトの左文脈 ID</td></tr>
-<tr><td><code>defaultRightContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>デフォルトの右文脈 ID</td></tr>
+<tr><td><code>defaultWordCost</code></td><td><code>number</code></td><td><code>-10000</code></td><td>未知語のデフォルトコスト。-32768 から 32767 の整数</td></tr>
+<tr><td><code>defaultLeftContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>デフォルトの左文脈 ID。0 から 65535 の整数</td></tr>
+<tr><td><code>defaultRightContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>デフォルトの右文脈 ID。0 から 65535 の整数</td></tr>
 <tr><td><code>defaultFieldValue</code></td><td><code>string</code></td><td><code>"*"</code></td><td>欠損フィールドのデフォルト値</td></tr>
 <tr><td><code>flexibleCsv</code></td><td><code>boolean</code></td><td><code>false</code></td><td>柔軟な CSV パースを許可</td></tr>
 <tr><td><code>skipInvalidCostOrId</code></td><td><code>boolean</code></td><td><code>false</code></td><td>無効なコストまたは ID のエントリーをスキップ</td></tr>

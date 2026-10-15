@@ -210,6 +210,26 @@ $results = $tokenizer-&gt;tokenizeNbest('東京都', 2, cost_threshold: (int) $t
 $results = $tokenizer-&gt;tokenizeNbest('東京都', 2, cost_threshold: null);
 </code></pre>
 <p>The parameters declared <code>mixed</code>, such as <code>$space_penalty</code> of <code>new Lindera\Tokenizer(...)</code> and <code>$args</code> of the filter methods, are not covered by this rule: they take any PHP value and check it themselves.</p>
+<p>An <code>int</code> parameter also takes only the values its setting can hold, which for most settings is a narrower range than PHP's 64-bit <code>int</code>. <code>$default_word_cost</code> of <code>Lindera\Metadata</code> takes -32768 to 32767, the context IDs 0 to 65535, and the penalties of <code>Lindera\Penalty</code> a 32-bit integer. A count or an index takes 0 or more: the thresholds of <code>Lindera\Penalty</code>, <code>$index</code> of <code>new Lindera\FieldDefinition(...)</code>, <code>Schema::getFieldName()</code> and <code>Token::getDetail()</code>, <code>$n</code> of <code>tokenizeNbest()</code>, and <code>$max_iter</code> and <code>$max_threads</code> of <code>Lindera\Trainer::train()</code>. A value outside the range throws a <code>ValueError</code> that names the parameter and the range; an index past the end still returns <code>null</code>:</p>
+<pre><code class="language-php">&lt;?php
+
+try {
+    new Lindera\Metadata(default_word_cost: 100000);
+} catch (ValueError $e) {
+    echo get_class($e), ': ', $e-&gt;getMessage(), "\n";
+    // ValueError: default_word_cost must be an integer between -32768 and 32767, got 100000
+}
+
+$dictionary = Lindera\Dictionary::load('embedded://ipadic');
+$tokenizer = new Lindera\Tokenizer($dictionary);
+
+try {
+    $tokenizer-&gt;tokenizeNbest('東京都', -1);
+} catch (ValueError $e) {
+    echo get_class($e), ': ', $e-&gt;getMessage(), "\n";
+    // ValueError: n must be an integer between 0 and 18446744073709551615, got -1
+}
+</code></pre>
 <h2 id="documentation"><a class="header" href="#documentation">Documentation</a></h2>
 <ul>
 <li><a href="./lindera-php/installation.html">Installation</a> -- Prerequisites, build instructions, and feature flags</li>

@@ -388,7 +388,7 @@ Python・Node.js・Ruby・PHP の各バインディングと異なり、WASM の
 <div class="table-wrapper"><table><thead><tr><th>メソッド</th><th>戻り値</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>get_field_index(name)</code></td><td><code>number | undefined</code></td><td>フィールド名からインデックスを取得</td></tr>
 <tr><td><code>field_count()</code></td><td><code>number</code></td><td>フィールドの総数</td></tr>
-<tr><td><code>get_field_name(index)</code></td><td><code>string | undefined</code></td><td>インデックスからフィールド名を取得</td></tr>
+<tr><td><code>get_field_name(index)</code></td><td><code>string | undefined</code></td><td>インデックスからフィールド名を取得（末尾より先は <code>undefined</code>、負や整数でないインデックスは例外）</td></tr>
 <tr><td><code>get_custom_fields()</code></td><td><code>string[]</code></td><td>インデックス 3 以降のフィールド（形態素素性）</td></tr>
 <tr><td><code>get_all_fields()</code></td><td><code>string[]</code></td><td>すべてのフィールド名</td></tr>
 <tr><td><code>get_field_by_name(name)</code></td><td><code>FieldDefinition | undefined</code></td><td>フィールド定義の完全な情報を取得</td></tr>

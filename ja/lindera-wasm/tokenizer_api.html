@@ -352,9 +352,9 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <li><strong>パラメータ</strong>:
 <ul>
 <li><code>text</code> (string) -- トークナイズするテキスト</li>
-<li><code>n</code> (number) -- 返す結果の数</li>
+<li><code>n</code> (number) -- 返す結果の数。0 以上の整数</li>
 <li><code>unique</code> (boolean, 省略可) -- 同一のセグメンテーション結果を重複排除（デフォルト: <code>false</code>）</li>
-<li><code>costThreshold</code> (bigint, 省略可) -- <code>bestCost + threshold</code> 以内のパスのみ返す</li>
+<li><code>costThreshold</code> (bigint, 省略可) -- <code>bestCost + threshold</code> 以内のパスのみ返す。64 ビットに収まる値</li>
 </ul>
 </li>
 <li><strong>戻り値</strong>: <code>{ tokens: Token[], cost: number }</code> の配列</li>

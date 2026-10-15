@@ -231,6 +231,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong><code>lindera tokenize</code> removes only the line terminator from each input line and writes a result for every line</strong></td><td>CLI users whose input lines start or end with whitespace, or who read the wakati or N-best output of lines without tokens</td><td>Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC <code>記号,空白</code>), <code>--keep-whitespace</code> to output the spaces there, and an empty line or a line of spaces to give an empty wakati line and one N-best result; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>WASM: the <code>TokenizerBuilder</code> settings apply whichever way the dictionary is set</strong></td><td>WASM users who combine <code>setDictionaryInstance()</code> with <code>setKeepWhitespace()</code> or filters, or <code>setDictionary()</code> with <code>setUserDictionaryInstance()</code></td><td>Expect those settings and the user dictionary to take effect; a dictionary instance whose <code>char.def</code> has no <code>SPACE</code> category now needs <code>setKeepWhitespace(true)</code>, as a dictionary set by URI does</td></tr>
 <tr><td><strong>PHP: an optional argument of the wrong type throws instead of selecting the default</strong></td><td>PHP code that passes a value of another type to an optional parameter, such as a numeric string for <code>$max_iter</code> of <code>Lindera\Trainer::train()</code> or <code>1</code> for <code>$unique</code> of <code>tokenizeNbest()</code></td><td>Pass the declared type, casting strings such as <code>$argv</code> values with <code>(int)</code>; <code>null</code> or leaving the argument out still selects the default</td></tr>
+<tr><td><strong>PHP, Node.js and WASM: an integer argument outside the range of its setting throws instead of wrapping</strong></td><td>Code that passes such a value, such as <code>100000</code> for the default word cost of <code>Metadata</code> (v6 stored <code>-31072</code>) or <code>-1</code> for the number of N-best results (v6 listed every segmentation); a negative index for <code>getFieldName</code> or PHP's <code>getDetail</code>; in Node.js and WASM, a number that is not an integer, such as <code>1.5</code> or <code>NaN</code></td><td>Pass an integer in the range; the error names the parameter and the range</td></tr>
 <tr><td><strong><code>lindera train</code> builds its lattices as MeCab's learner does and keeps every <code>unk.def</code> entry; <code>model.dat</code> has the format version 2.0.0</strong></td><td>Users of <code>lindera train</code> and <code>lindera export</code>, and of the training functions of the Python, Node.js, Ruby and PHP bindings</td><td>Train every model again with 7.0.0, then export and build it again (a <code>model.dat</code> written by v6.2.0 or earlier is rejected); give every <code>unk.def</code> line at least five fields; remove comment lines from seed lexicons</td></tr>
 <tr><td><strong><code>lindera build</code> rejects context IDs outside <code>matrix.def</code></strong></td><td>Anyone who builds a system dictionary whose <code>lex.csv</code> or <code>unk.def</code> has a context ID beyond the size of its <code>matrix.def</code> (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's <code>mecab-dict-index</code> accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic</td><td>Fix the IDs or the matrix, or set <code>skip_invalid_cost_or_id</code> in <code>metadata.json</code> to drop such <code>lex.csv</code> rows; fix such IDs in the user dictionary</td></tr>
 <tr><td><strong><code>lindera build</code> and <code>lindera train</code> check <code>char.def</code> against <code>unk.def</code></strong></td><td>Anyone whose <code>char.def</code> has a range line that names a category not defined on an earlier line, or a category defined twice, or whose <code>char.def</code> and <code>unk.def</code> do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored <code>unk.def</code> lines); not dictionaries that MeCab's <code>mecab-dict-index</code> accepts</td><td>Define each category once, before the range lines that name it; give every category an <code>unk.def</code> line, and remove the <code>unk.def</code> lines of undefined categories</td></tr>
@@ -250,7 +251,10 @@ expose <code>normalize_details</code> (see
 <a href="#the-normalize_details-setting-is-removed">The <code>normalize_details</code> setting is removed</a>).
 The PHP binding also rejects a value of the wrong type for an optional
 argument, which v6 read as <code>null</code> (see
-<a href="#php-optional-arguments-reject-a-value-of-the-wrong-type">PHP: optional arguments reject a value of the wrong type</a>).
+<a href="#php-optional-arguments-reject-a-value-of-the-wrong-type">PHP: optional arguments reject a value of the wrong type</a>),
+and the PHP, Node.js and WASM bindings reject an integer argument outside
+the range of its setting, which v6 wrapped (see
+<a href="#bindings-integer-arguments-outside-their-range-are-rejected">Bindings: integer arguments outside their range are rejected</a>).
 Their version number moves to 7.0.0. Like the Rust crates, they no longer
 load a dictionary directory built or downloaded with v6.2.0 or earlier (see
 <a href="#dictionary-directories-must-be-rebuilt">Dictionary directories must be rebuilt</a>).
@@ -1161,6 +1165,50 @@ strings, such as <code>(int) $argv[1]</code> (see
 <a href="lindera-php.html#argument-types">Argument types</a>). The parameters declared
 <code>mixed</code>, the other bindings, the CLI and the library do not change. No
 option restores the v6 behavior.</p>
+<h2 id="bindings-integer-arguments-outside-their-range-are-rejected"><a class="header" href="#bindings-integer-arguments-outside-their-range-are-rejected">Bindings: integer arguments outside their range are rejected</a></h2>
+<p>Up to v6.2.0, the PHP, Node.js and WASM bindings converted an integer
+argument to the type of its setting by wrapping, so a value outside the
+range silently became another value. The PHP binding took every <code>int</code> as a
+64-bit integer and cast it to the narrower type. In Node.js and WASM, the
+conversion from a JS number to a 32-bit integer (ECMAScript's ToUint32 or
+ToInt32) wrapped it before the binding saw it, and a WASM BigInt was taken
+modulo 2^64.</p>
+<div class="table-wrapper"><table><thead><tr><th>Call</th><th>v6.2.0</th><th>v7.0.0</th></tr></thead><tbody>
+<tr><td>PHP <code>new Lindera\Metadata(default_word_cost: 100000)</code></td><td>cost <code>-31072</code></td><td><code>ValueError</code></td></tr>
+<tr><td>Node.js <code>new Metadata({ defaultLeftContextId: 2 ** 32 + 5 })</code></td><td>context ID <code>5</code></td><td><code>Error</code> with the code <code>InvalidArg</code></td></tr>
+<tr><td>Node.js <code>schema.getFieldName(2 ** 32)</code></td><td><code>"surface"</code>, the first field</td><td><code>null</code></td></tr>
+<tr><td>WASM <code>new Penalty(-1)</code></td><td>threshold <code>4294967295</code></td><td>a thrown string</td></tr>
+<tr><td><code>tokenizeNbest('東京', -1)</code> in PHP, Node.js and WASM</td><td>all 33 segmentations</td><td>the binding's error</td></tr>
+</tbody></table>
+</div>
+<p>v7.0.0 rejects such a value. The PHP binding throws a <code>ValueError</code>, the
+Node.js binding an <code>Error</code> with the code <code>InvalidArg</code>, and the WASM binding a
+string, as for its other errors. The message names the parameter and the
+range, such as
+<code>default_word_cost must be an integer between -32768 and 32767, got 100000</code>.
+The parameters are the integer settings of <code>Metadata</code> (the default word cost
+and context IDs) and <code>Penalty</code>, the index of <code>FieldDefinition</code>,
+<code>getFieldName</code> and PHP's <code>Token::getDetail</code>, the number of N-best results
+and, in Node.js and WASM, the N-best cost threshold, and the iteration and
+thread counts of the training functions. The checks apply to the
+constructors and to the property setters (Node.js <code>Metadata</code>, WASM <code>Penalty</code>
+and <code>FieldDefinition</code>).</p>
+<p>With them, some values that v6 accepted now throw:</p>
+<ul>
+<li>A negative index, for which v6 returned <code>null</code> (PHP, Node.js) or
+<code>undefined</code> (WASM). An index past the end still returns <code>null</code> or
+<code>undefined</code>.</li>
+<li>In Node.js and WASM, a number that is not an integer, such as <code>1.5</code>,
+<code>NaN</code> or <code>Infinity</code>, which v6 truncated or turned into 0.</li>
+<li>In WASM, a BigInt cost threshold outside the 64-bit range, and a cost
+threshold that is not a BigInt.</li>
+</ul>
+<p>Pass an integer in the range. The TypeScript declarations of the Node.js
+and WASM bindings do not change. The Python and Ruby bindings already rejected
+these values, with <code>OverflowError</code> and <code>RangeError</code>, and do not change,
+except that the <code>OverflowError</code> of a Python property setter now names the
+property in its note (<code>while processing 'default_word_cost'</code> instead of
+<code>'cost'</code>). No option restores the v6 behavior.</p>
 <h2 id="lindera-train-builds-its-lattices-as-mecabs-learner-does"><a class="header" href="#lindera-train-builds-its-lattices-as-mecabs-learner-does"><code>lindera train</code> builds its lattices as MeCab's learner does</a></h2>
 <p>Up to v6.2.0, <code>lindera train</code> built training lattices that differ from
 those of MeCab's learner:</p>
@@ -1633,7 +1681,9 @@ PHP, and WASM packages and <code>lindera-cli</code> keep their package names, an
 their APIs apart from the <code>normalize_details</code> setting of <code>Metadata</code> (see
 <a href="#the-normalize_details-setting-is-removed">The <code>normalize_details</code> setting is removed</a>)
 and, in PHP, optional arguments of the wrong type (see
-<a href="#php-optional-arguments-reject-a-value-of-the-wrong-type">PHP: optional arguments reject a value of the wrong type</a>).
+<a href="#php-optional-arguments-reject-a-value-of-the-wrong-type">PHP: optional arguments reject a value of the wrong type</a>),
+and, in PHP, Node.js and WASM, integer arguments outside their range (see
+<a href="#bindings-integer-arguments-outside-their-range-are-rejected">Bindings: integer arguments outside their range are rejected</a>).
 The restructuring is internal to the Rust crates. A dictionary directory
 built or downloaded with v6.2.0 or earlier has to be rebuilt or downloaded
 again (see
@@ -1902,6 +1952,9 @@ appended filters to apply to a dictionary set with
 type for an optional parameter, which v6 read as <code>null</code>, now throws an
 <code>Exception</code>. Cast strings such as <code>$argv</code> values with <code>(int)</code> or
 <code>(float)</code>.</li>
+<li>With PHP, Node.js and WASM, pass integer arguments in the range of their
+setting: a value outside it, which v6 wrapped, now throws, as do a
+negative index and, in Node.js and WASM, a number that is not an integer.</li>
 <li>With the CLI, expect warnings on standard error, for example for a
 sentence cut after 32 KiB without a delimiter; set <code>RUST_LOG=error</code> to
 hide them.</li>
@@ -1909,7 +1962,7 @@ hide them.</li>
 dictionary rebuild, the dictionary, whitespace, <code>、</code> and <code>。</code>, N-best,
 unknown-word, default-category, dash and tilde, tied-entry and equal-cost
 items above, the <code>lindera train</code> and <code>lindera build</code> items, and the
-<code>lindera tokenize</code>, WASM, PHP and CLI warning items.</li>
+<code>lindera tokenize</code>, WASM, PHP, integer-argument and CLI warning items.</li>
 </ul>
 
                     </main>

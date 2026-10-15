@@ -328,7 +328,7 @@ foreach ($results as $result) {
 <p><strong>パラメータ:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>$text</code></td><td><code>string</code></td><td>トークナイズするテキスト</td></tr>
-<tr><td><code>$n</code></td><td><code>int</code></td><td>返す結果の数</td></tr>
+<tr><td><code>$n</code></td><td><code>int</code></td><td>返す結果の数。0 以上</td></tr>
 <tr><td><code>$unique</code></td><td><code>bool|null</code></td><td>重複する結果を除く（デフォルト: <code>false</code>）</td></tr>
 <tr><td><code>$cost_threshold</code></td><td><code>int|null</code></td><td>最良パスとのコストの差の上限（デフォルト: <code>null</code>）</td></tr>
 </tbody></table>
@@ -357,7 +357,7 @@ foreach ($results as $result) {
 </div>
 <h3 id="token-メソッド"><a class="header" href="#token-メソッド">Token メソッド</a></h3>
 <h4 id="getdetailindex"><a class="header" href="#getdetailindex"><code>getDetail($index)</code></a></h4>
-<p>指定されたインデックスの詳細文字列を返します。インデックスが範囲外の場合は <code>null</code> を返します。</p>
+<p>指定されたインデックスの詳細文字列を返します。その位置に詳細がない場合は <code>null</code> を返します。負のインデックスは <code>ValueError</code> を投げます。</p>
 <pre><code class="language-php">$token = $tokenizer-&gt;tokenize('東京')[0];
 $pos = $token-&gt;getDetail(0);        // 例: "名詞"
 $subpos = $token-&gt;getDetail(1);     // 例: "固有名詞"
