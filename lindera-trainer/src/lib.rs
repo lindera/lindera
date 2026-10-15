@@ -433,9 +433,9 @@ impl Trainer {
     pub fn train(mut self, corpus: Corpus) -> Result<Model> {
         let lattices = self.build_lattices_from_corpus(&corpus)?;
         let labels = self.extract_labels();
-        let crf_model = self.train_crf_model(lattices)?;
+        let (crf_model, iterations) = self.train_crf_model(lattices)?;
 
-        self.create_final_model(crf_model, labels, corpus)
+        self.create_final_model(crf_model, labels, corpus, iterations)
     }
 
     /// Build feature lattices from the training corpus
@@ -469,10 +469,18 @@ impl Trainer {
     }
 
     /// Configure and execute CRF training
+    ///
+    /// # Arguments
+    ///
+    /// * `lattices` - The training lattices.
+    ///
+    /// # Returns
+    ///
+    /// The trained CRF model and the number of L-BFGS iterations that ran.
     fn train_crf_model(
         &mut self,
         lattices: Vec<lindera_crf::Lattice>,
-    ) -> Result<lindera_crf::RawModel> {
+    ) -> Result<(lindera_crf::RawModel, u64)> {
         log_info!("Starting CRF training with {} lattices...", lattices.len());
 
         // Determine regularization type
@@ -513,11 +521,20 @@ impl Trainer {
     }
 
     /// Execute the actual CRF training with detailed logging
+    ///
+    /// # Arguments
+    ///
+    /// * `trainer` - The configured CRF trainer.
+    /// * `lattices` - The training lattices.
+    ///
+    /// # Returns
+    ///
+    /// The trained CRF model and the number of L-BFGS iterations that ran.
     fn execute_training(
         &mut self,
         trainer: lindera_crf::Trainer,
         lattices: Vec<lindera_crf::Lattice>,
-    ) -> Result<lindera_crf::RawModel> {
+    ) -> Result<(lindera_crf::RawModel, u64)> {
         println!("L-BFGS optimization starting...");
         println!(
             "Note: This may take several minutes for large datasets. Progress will be shown by L-BFGS iterations above."
@@ -528,7 +545,7 @@ impl Trainer {
 
         // Training with provider (consumes provider as per CRF training requirements)
         let provider = std::mem::take(&mut self.provider);
-        let model = trainer.train(&lattices, provider);
+        let (model, stats) = trainer.train_with_stats(&lattices, provider);
         let training_duration = start_time.elapsed();
 
         self.log_training_results(&model);
@@ -537,7 +554,7 @@ impl Trainer {
             training_duration.as_secs_f64()
         );
 
-        Ok(model)
+        Ok((model, stats.iterations))
     }
 
     /// Log detailed training results for debugging
@@ -576,11 +593,23 @@ impl Trainer {
     }
 
     /// Create the final trained model from CRF results
+    ///
+    /// # Arguments
+    ///
+    /// * `crf_model` - The trained CRF model.
+    /// * `labels` - The exported labels.
+    /// * `_corpus` - The training corpus.
+    /// * `iterations` - The number of L-BFGS iterations that ran.
+    ///
+    /// # Returns
+    ///
+    /// The trained model.
     fn create_final_model(
         mut self,
         crf_model: lindera_crf::RawModel,
         labels: Vec<String>,
         _corpus: Corpus,
+        iterations: u64,
     ) -> Result<Model> {
         // Remove unused features from feature extractor to optimize model size
         self.remove_unused_features(&crf_model);
@@ -596,7 +625,7 @@ impl Trainer {
             labels,
             self.virtual_features,
             self.regularization_cost,
-            self.max_iter,
+            iterations,
         ))
     }
 
@@ -2585,5 +2614,63 @@ mod user_lexicon_cost_tests {
             // Not even the entry before `語B` is added.
             assert!(model.user_entries.is_empty(), "{fields}");
         }
+    }
+}
+
+/// What `lindera export` and the bindings' export functions write agrees
+/// with the model (#1169).
+#[cfg(test)]
+mod export_consistency_tests {
+    use std::io::Cursor;
+
+    use crate::model::{Model, SerializableModel};
+    use crate::test_fixtures::fixtures;
+    use crate::{Corpus, Trainer, TrainerConfig};
+
+    /// Trains the tiny fixture with at most `max_iter` iterations.
+    fn train_fixture(max_iter: u64) -> Model {
+        let (seed, char_def, unk_def, feature_def, rewrite_def, corpus) = fixtures();
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+        Trainer::new(config)
+            .unwrap()
+            .regularization_cost(0.01)
+            .max_iter(max_iter)
+            .num_threads(1)
+            .train(Corpus::from_reader(Cursor::new(corpus)).unwrap())
+            .unwrap()
+    }
+
+    /// Writes the model and reads it back, as `lindera export` reads
+    /// `model.dat`.
+    fn read_back(model: &Model) -> SerializableModel {
+        let mut dat = Vec::new();
+        model.write_model(&mut dat).unwrap();
+        Model::read_model(dat.as_slice()).unwrap()
+    }
+
+    #[test]
+    fn the_model_records_the_iterations_that_ran() {
+        // The fixture converges long before a high cap...
+        let converged = read_back(&train_fixture(1000));
+        let iterations = converged.metadata.iterations;
+        assert!((1..1000).contains(&iterations), "{iterations} iterations");
+        // ...and stops at a low one.
+        assert_eq!(read_back(&train_fixture(2)).metadata.iterations, 2);
+
+        // `metadata.json` reports the same number.
+        let dir = tempfile::tempdir().unwrap();
+        let base = dir.path().join("metadata.json");
+        std::fs::write(&base, "{}").unwrap();
+        let mut json = Vec::new();
+        converged.update_metadata_json(&base, &mut json).unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&json).unwrap();
+        assert_eq!(json["model_info"]["training_iterations"], iterations);
     }
 }

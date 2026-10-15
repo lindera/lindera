@@ -85,6 +85,6 @@ Available on the value returned by `Model::read_model`, for re-exporting diction
 
 #### `ModelMetadata` and `FeatureSetInfo`
 
-`ModelMetadata` records summary information about a training run: `version` (the model format version, `MODEL_FORMAT_VERSION`), `regularization` (the cost coefficient used), `iterations` (max iterations configured), `feature_count`, and `label_count`. It is embedded in `SerializableModel::metadata`.
+`ModelMetadata` records summary information about a training run: `version` (the model format version, `MODEL_FORMAT_VERSION`), `regularization` (the cost coefficient used), `iterations` (the number of L-BFGS iterations that ran, at most the maximum set with `Trainer::max_iter`; exported as `model_info.training_iterations`), `feature_count`, and `label_count`. It is embedded in `SerializableModel::metadata`.
 
 `FeatureSetInfo` holds the per-label connection information extracted from the merged CRF model after training: `left_id`, `right_id`, and `weight`. `SerializableModel::feature_sets` stores one entry per CRF label: one for each entry of `labels`, in the same order, then one for each virtual label, which is not exported.

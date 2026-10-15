@@ -5,7 +5,7 @@ use core::num::NonZeroU32;
 use alloc::vec::Vec;
 
 use argmin::{
-    core::{CostFunction, Executor, Gradient, observers::ObserverMode},
+    core::{CostFunction, Executor, Gradient, State, observers::ObserverMode},
     solver::{
         linesearch::{BacktrackingLineSearch, MoreThuenteLineSearch, condition::ArmijoCondition},
         quasinewton::LBFGS,
@@ -36,6 +36,27 @@ impl Gradient for LatticesLoss<'_> {
     }
 }
 
+/// Minimizes the loss of the lattices with L-BFGS, or with OWL-QN when the
+/// regularization has an L1 part.
+///
+/// # Arguments
+///
+/// * `lattices` - The training lattices.
+/// * `provider` - The feature sets of the labels.
+/// * `unigram_weight_indices` - The weight index of each unigram feature.
+/// * `bigram_weight_indices` - The weight index of each bigram feature pair.
+/// * `weights_init` - The initial weights.
+/// * `regularization` - The kind of regularization.
+/// * `lambda` - The regularization coefficient.
+/// * `max_iter` - The maximum number of iterations.
+/// * `n_threads` - The number of threads that evaluate the loss.
+///
+/// # Returns
+///
+/// The optimized weights, and the number of iterations that ran: `max_iter`
+/// when the cap stopped the optimizer, fewer when it stopped earlier, for
+/// example because it converged. argmin counts every iteration that ran,
+/// including the one in which the solver stopped.
 #[allow(clippy::too_many_arguments)]
 pub fn optimize(
     lattices: &[Lattice],
@@ -47,7 +68,7 @@ pub fn optimize(
     lambda: f64,
     max_iter: u64,
     n_threads: usize,
-) -> Vec<f64> {
+) -> (Vec<f64>, u64) {
     let weights_init = weights_init.to_vec();
     let l2_lambda = match regularization {
         Regularization::L2 => Some(lambda),
@@ -75,7 +96,8 @@ pub fn optimize(
                 .add_observer(SlogLogger::term(), ObserverMode::Always)
                 .run()
                 .unwrap();
-            res.state.param.unwrap()
+            let iterations = res.state.get_iter();
+            (res.state.param.unwrap(), iterations)
         }
         Regularization::L2 => {
             let linesearch = MoreThuenteLineSearch::new().with_c(1e-4, 0.9).unwrap();
@@ -85,7 +107,8 @@ pub fn optimize(
                 .add_observer(SlogLogger::term(), ObserverMode::Always)
                 .run()
                 .unwrap();
-            res.state.param.unwrap()
+            let iterations = res.state.get_iter();
+            (res.state.param.unwrap(), iterations)
         }
         Regularization::ElasticNet { l1_ratio } => {
             // OWL-QN (L1) with L2 gradient penalty via LatticesLoss
@@ -101,7 +124,8 @@ pub fn optimize(
                 .add_observer(SlogLogger::term(), ObserverMode::Always)
                 .run()
                 .unwrap();
-            res.state.param.unwrap()
+            let iterations = res.state.get_iter();
+            (res.state.param.unwrap(), iterations)
         }
     }
 }

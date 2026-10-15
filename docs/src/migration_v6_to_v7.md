@@ -1117,6 +1117,8 @@ those of MeCab's learner:
   (`0 0` when no weight was left at all), and the built dictionary panicked
   at tokenization. `model_info.connection_matrix_size` in `metadata.json`
   was a square of the larger ID.
+- `model_info.training_iterations` in `metadata.json` was the
+  `--max-iterations` value, not the number of iterations that ran.
 - The seed lexicon was read line by line and split on `,`, and a line that
   starts with `#` was skipped as a comment. mecab-ko-dic's quoted comma
   surface `","` became the surface `"`, and `lindera export` wrote it
@@ -1171,6 +1173,9 @@ v7.0.0 trains as MeCab's learner does (see
   `lindera train` prints the counts in a `Lattice statistics:` line.
 - `matrix.def` covers every context ID, plus 0 for BOS/EOS, and
   `model_info.connection_matrix_size` gives its size, rows by columns.
+- `model_info.training_iterations` is the number of L-BFGS iterations that
+  ran: `--max-iterations` when that stopped training, fewer when it
+  converged earlier.
 - `model.dat` has the format version 2.0.0. `lindera export` and the
   bindings' export functions reject a `model.dat` of any other version,
   including every `model.dat` written by v6.2.0 or earlier, with an error

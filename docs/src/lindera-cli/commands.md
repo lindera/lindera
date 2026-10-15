@@ -1082,5 +1082,5 @@ When the `--metadata` option is provided, the export command will:
 1. **Read the base metadata.json file** to preserve existing configuration
 2. **Update specific fields** with values from the trained model:
    - `default_word_cost`: Calculated from feature weight median
-   - `model_info`: Training statistics including feature count, label count, matrix size (`connection_matrix_size`, the size of `matrix.def` as rows x columns), iterations, regularization, and the model format version. No timestamp is written, so exporting the same model twice produces identical output
+   - `model_info`: Training statistics including feature count, label count, matrix size (`connection_matrix_size`, the size of `matrix.def` as rows x columns), the number of training iterations that ran (`training_iterations`, at most `--max-iterations`), regularization, and the model format version. No timestamp is written, so exporting the same model twice produces identical output
 3. **Preserve existing settings** such as dictionary name, character encoding, schema definitions, and other user-defined configuration

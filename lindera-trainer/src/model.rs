@@ -199,13 +199,23 @@ pub struct SerializableModel {
     pub right_id_map: Vec<(u32, String)>,
 }
 
+/// Metadata of a trained model, stored in `model.dat`.
 #[derive(Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
 
 pub struct ModelMetadata {
+    /// The model format version: [`MODEL_FORMAT_VERSION`] for a model that
+    /// this version writes.
     pub version: String,
+    /// The regularization coefficient used in training.
     pub regularization: f64,
+    /// The number of L-BFGS iterations that ran: at most the maximum set with
+    /// [`Trainer::max_iter`](crate::Trainer::max_iter), fewer when training
+    /// stopped earlier (#1169). Exported as `model_info.training_iterations`.
     pub iterations: u64,
+    /// The number of seed lexicon rows, each of which has a feature weight.
     pub feature_count: usize,
+    /// The number of exported labels: the seed lexicon rows, then the
+    /// `unk.def` entries.
     pub label_count: usize,
 }
 
@@ -306,7 +316,8 @@ pub struct Model {
     pub(crate) user_entries: Vec<UserEntry>,
     pub(crate) merged_model: Option<lindera_crf::MergedModel>,
     pub(crate) regularization_cost: f64,
-    pub(crate) max_iterations: u64,
+    /// The number of L-BFGS iterations that ran.
+    pub(crate) iterations: u64,
 }
 
 impl Model {
@@ -322,7 +333,7 @@ impl Model {
     /// * `virtual_features` - The feature strings of the virtual labels,
     ///   which follow the exported labels in `raw_model`.
     /// * `regularization_cost` - The regularization coefficient used.
-    /// * `max_iterations` - The iteration limit used.
+    /// * `iterations` - The number of L-BFGS iterations that ran.
     ///
     /// # Returns
     ///
@@ -334,7 +345,7 @@ impl Model {
         labels: Vec<String>,
         virtual_features: Vec<String>,
         regularization_cost: f64,
-        max_iterations: u64,
+        iterations: u64,
     ) -> Self {
         Self {
             raw_model,
@@ -345,7 +356,7 @@ impl Model {
             user_entries: Vec::new(),
             merged_model: None,
             regularization_cost,
-            max_iterations,
+            iterations,
         }
     }
 
@@ -549,7 +560,7 @@ impl Model {
             metadata: ModelMetadata {
                 version: MODEL_FORMAT_VERSION.to_string(),
                 regularization: self.regularization_cost,
-                iterations: self.max_iterations,
+                iterations: self.iterations,
                 feature_count: self.feature_weights.len(),
                 label_count: self.labels.len(),
             },

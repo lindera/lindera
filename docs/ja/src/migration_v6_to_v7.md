@@ -1015,6 +1015,8 @@ v6.2.0 までの `lindera train` は、MeCab の学習器とは異なる学習�
   エントリの ID より小さい `matrix.def`（重みが 1 つも残らなければ `0 0`）を書き出し、
   ビルドした辞書は解析時にパニックしていました。`metadata.json` の
   `model_info.connection_matrix_size` は、大きい方の ID の正方形でした。
+- `metadata.json` の `model_info.training_iterations` は、実際に回った反復回数では
+  なく、`--max-iterations` の値でした。
 - 種辞書を 1 行ずつ `,` で分割して読み、`#` で始まる行をコメントとして読み飛ばして
   いました。mecab-ko-dic の引用符付きのカンマの表層形 `","` は表層形 `"` になり、
   `lindera export` がそれを引用符なしで書き出したため、`lindera build` は
@@ -1063,6 +1065,9 @@ v7.0.0 は MeCab の学習器と同じく学習します
   `Lattice statistics:` の行に出力します。
 - `matrix.def` はすべての文脈 ID と BOS/EOS 用の 0 を覆い、
   `model_info.connection_matrix_size` はその大きさを行数 x 列数で示します。
+- `model_info.training_iterations` は実際に回った L-BFGS の反復回数です。
+  `--max-iterations` で学習が止まったときはその値、それより前に収束したときは
+  それより少ない値になります。
 - `model.dat` の形式バージョンは 2.0.0 です。`lindera export` とバインディングの
   エクスポート関数は、v6.2.0 以前に書いたものを含め、ほかのバージョンの
   `model.dat` を「re-run `lindera train` to regenerate it」で終わるエラーで拒否

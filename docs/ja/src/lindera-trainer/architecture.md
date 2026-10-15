@@ -85,6 +85,6 @@ MeCabの3セクション形式`rewrite.def`（`[unigram rewrite]`、`[left rewri
 
 #### `ModelMetadata`と`FeatureSetInfo`
 
-`ModelMetadata`は学習実行に関する要約情報を保持します: `version`（モデルの形式バージョン`MODEL_FORMAT_VERSION`）、`regularization`（使用した正則化コスト係数）、`iterations`（設定された最大イテレーション数）、`feature_count`、`label_count`です。`SerializableModel::metadata`に格納されます。
+`ModelMetadata`は学習実行に関する要約情報を保持します: `version`（モデルの形式バージョン`MODEL_FORMAT_VERSION`）、`regularization`（使用した正則化コスト係数）、`iterations`（実際に回ったL-BFGSのイテレーション数。`Trainer::max_iter`で設定した最大値以下。`model_info.training_iterations`としてエクスポートされます）、`feature_count`、`label_count`です。`SerializableModel::metadata`に格納されます。
 
 `FeatureSetInfo`は、学習後にマージされたCRFモデルから抽出された、ラベルごとの連接情報を保持します: `left_id`、`right_id`、`weight`です。`SerializableModel::feature_sets`には、CRFのラベルごとに1エントリが格納されます。`labels`の各要素に対応するエントリが同じ順序で並び、その後にエクスポートされない仮想ラベルのエントリが続きます。
