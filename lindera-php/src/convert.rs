@@ -1,9 +1,12 @@
 //! Utility functions for PHP-Rust data conversion.
 //!
 //! This module provides helper functions for converting between PHP Zval objects
-//! and Rust data structures, particularly for working with JSON-like data.
+//! and Rust data structures, particularly for working with JSON-like data, and
+//! the argument types [`Nullable`] and [`Float`], which check a PHP argument's
+//! type as PHP does.
 
 use ext_php_rs::convert::FromZval;
+use ext_php_rs::flags::DataType;
 use ext_php_rs::prelude::*;
 use ext_php_rs::types::array::ArrayKey;
 use ext_php_rs::types::{ZendHashTable, Zval};
@@ -146,5 +149,216 @@ fn hashtable_to_value(ht: &ZendHashTable, depth: usize) -> Result<Value, Convert
             map.insert(key_str, value_at_depth(val, depth)?);
         }
         Ok(Value::Object(map))
+    }
+}
+
+/// An optional PHP argument: `null`, omitted, or a value that `T` accepts.
+///
+/// ext-php-rs converts an `Option<T>` argument with
+/// `Some(T::from_zval(zval))`, so a value that `T` rejects becomes `None`
+/// and the method silently runs with its default (lindera/lindera#1173).
+/// This conversion fails for such a value instead, so ext-php-rs throws the
+/// `Exception` ("Invalid value given for argument") it throws for a required
+/// parameter.
+///
+/// PHP sees the same parameter as for `Option<T>`, `?T $x = null`: since
+/// ext-php-rs 0.16, nullability and the `null` default come from
+/// [`FromZval::NULLABLE`] and [`FromZval::from_missing`], not from the
+/// spelling `Option<...>`. Use `Option<T>` again once ext-php-rs rejects such
+/// values itself
+/// ([extphprs/ext-php-rs#819](https://github.com/extphprs/ext-php-rs/issues/819)).
+#[derive(Debug)]
+pub struct Nullable<T>(Option<T>);
+
+impl<T> Nullable<T> {
+    /// Returns the argument's value.
+    ///
+    /// # Returns
+    ///
+    /// `None` for `null` or an omitted argument, the value otherwise.
+    pub fn into_option(self) -> Option<T> {
+        self.0
+    }
+}
+
+impl<T> From<Option<T>> for Nullable<T> {
+    /// Wraps a value for a Rust caller of a PHP method.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - `None` for `null`, or the value.
+    ///
+    /// # Returns
+    ///
+    /// The argument.
+    fn from(value: Option<T>) -> Self {
+        Self(value)
+    }
+}
+
+impl<'a, T: FromZval<'a>> FromZval<'a> for Nullable<T> {
+    /// The PHP type of `T`; [`Self::NULLABLE`] adds the `?`.
+    const TYPE: DataType = T::TYPE;
+
+    /// Lets PHP callers pass `null` or omit the argument, as for `Option<T>`.
+    const NULLABLE: bool = true;
+
+    /// Reads `null` as `None` and any other value as `T`.
+    ///
+    /// # Arguments
+    ///
+    /// * `zval` - The PHP value.
+    ///
+    /// # Returns
+    ///
+    /// The argument, or `None` (the conversion fails) for a value that `T`
+    /// does not accept.
+    fn from_zval(zval: &'a Zval) -> Option<Self> {
+        nullable_value(zval.is_null(), || T::from_zval(zval)).map(Self)
+    }
+
+    /// Reads an omitted argument as `None`.
+    ///
+    /// # Returns
+    ///
+    /// `Some` of an argument without a value.
+    fn from_missing() -> Option<Self> {
+        Some(Self(None))
+    }
+}
+
+/// Decides the value of a [`Nullable`] argument.
+///
+/// # Arguments
+///
+/// * `is_null` - Whether the PHP value is `null`.
+/// * `convert` - Converts the PHP value to `T`, giving `None` for a value
+///   that `T` does not accept. Not called for `null`.
+///
+/// # Returns
+///
+/// `Some(None)` for `null`, `Some(Some(value))` for a value that `T`
+/// accepts, and `None`, a failed conversion, for any other value.
+fn nullable_value<T>(is_null: bool, convert: impl FnOnce() -> Option<T>) -> Option<Option<T>> {
+    if is_null {
+        Some(None)
+    } else {
+        convert().map(Some)
+    }
+}
+
+/// A PHP `float` argument, which also accepts an `int`.
+///
+/// PHP widens an `int` passed to a `float` parameter, also under
+/// `strict_types`, but ext-php-rs converts an `f64` argument from a PHP
+/// `float` only.
+#[derive(Debug, Clone, Copy)]
+pub struct Float(f64);
+
+impl Float {
+    /// Returns the argument's value.
+    ///
+    /// # Returns
+    ///
+    /// The value as an `f64`.
+    pub fn into_f64(self) -> f64 {
+        self.0
+    }
+}
+
+impl FromZval<'_> for Float {
+    /// A PHP `float`.
+    const TYPE: DataType = DataType::Double;
+
+    /// Reads a PHP `float`, or an `int` widened to a float.
+    ///
+    /// # Arguments
+    ///
+    /// * `zval` - The PHP value.
+    ///
+    /// # Returns
+    ///
+    /// The argument, or `None` (the conversion fails) for a value of any
+    /// other type.
+    fn from_zval(zval: &Zval) -> Option<Self> {
+        float_value(zval.double(), zval.long()).map(Self)
+    }
+}
+
+/// Decides the value of a [`Float`] argument.
+///
+/// # Arguments
+///
+/// * `double` - The value if the PHP value is a `float`.
+/// * `long` - The value if the PHP value is an `int`.
+///
+/// # Returns
+///
+/// The float, the int widened to a float, or `None` for a value of any other
+/// type.
+fn float_value(double: Option<f64>, long: Option<i64>) -> Option<f64> {
+    double.or(long.map(|value| value as f64))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // `Zval`s are not built here: setting one calls into the PHP runtime,
+    // whose symbols this test binary does not link. PHPUnit
+    // (ArgumentTypesTest) passes real PHP values.
+
+    #[test]
+    fn test_nullable_value_reads_null_as_none_without_converting() {
+        let value = nullable_value::<i64>(true, || panic!("null must not be converted"));
+        assert_eq!(value, Some(None));
+    }
+
+    #[test]
+    fn test_nullable_value_keeps_a_value_that_t_accepts() {
+        assert_eq!(nullable_value(false, || Some(5_i64)), Some(Some(5)));
+    }
+
+    #[test]
+    fn test_nullable_value_fails_for_a_value_that_t_rejects() {
+        assert_eq!(nullable_value::<i64>(false, || None), None);
+    }
+
+    #[test]
+    fn test_nullable_is_nullable_and_optional_with_the_type_of_t() {
+        const { assert!(<Nullable<i64> as FromZval>::NULLABLE) };
+        assert_eq!(<Nullable<i64> as FromZval>::TYPE, DataType::Long);
+        assert_eq!(<Nullable<bool> as FromZval>::TYPE, DataType::Bool);
+        assert_eq!(<Nullable<String> as FromZval>::TYPE, DataType::String);
+        assert_eq!(<Nullable<Float> as FromZval>::TYPE, DataType::Double);
+        let missing = <Nullable<i64> as FromZval>::from_missing().map(Nullable::into_option);
+        assert_eq!(missing, Some(None));
+    }
+
+    #[test]
+    fn test_nullable_from_option() {
+        assert_eq!(Nullable::from(Some(5_i64)).into_option(), Some(5));
+        assert_eq!(Nullable::<i64>::from(None).into_option(), None);
+    }
+
+    #[test]
+    fn test_float_value_takes_a_float() {
+        assert_eq!(float_value(Some(0.5), None), Some(0.5));
+    }
+
+    #[test]
+    fn test_float_value_widens_an_int() {
+        assert_eq!(float_value(None, Some(1)), Some(1.0));
+    }
+
+    #[test]
+    fn test_float_value_fails_for_other_types() {
+        assert_eq!(float_value(None, None), None);
+    }
+
+    #[test]
+    fn test_float_is_a_required_php_float() {
+        assert_eq!(<Float as FromZval>::TYPE, DataType::Double);
+        const { assert!(!<Float as FromZval>::NULLABLE) };
     }
 }

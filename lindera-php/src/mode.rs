@@ -7,6 +7,7 @@ use ext_php_rs::prelude::*;
 
 use lindera::mode::{Mode as LinderaMode, Penalty as LinderaPenalty};
 
+use crate::convert::Nullable;
 use crate::error::lindera_value_err;
 
 /// Tokenization mode.
@@ -27,12 +28,13 @@ impl PhpMode {
     /// # Arguments
     ///
     /// * `mode` - Optional mode string ("normal" or "decompose"). Default: "normal".
+    ///   A value of another type throws instead of selecting the default.
     ///
     /// # Returns
     ///
     /// A new Mode instance.
-    pub fn __construct(mode: Option<String>) -> PhpResult<Self> {
-        let mode_str = mode.unwrap_or_else(|| "normal".to_string());
+    pub fn __construct(mode: Nullable<String>) -> PhpResult<Self> {
+        let mode_str = mode.into_option().unwrap_or_else(|| "normal".to_string());
         match mode_str.to_lowercase().as_str() {
             "normal" | "decompose" => Ok(Self {
                 mode: mode_str.to_lowercase(),
@@ -123,20 +125,29 @@ impl PhpPenalty {
     /// * `other_penalty_length_threshold` - Other character length threshold (default: 7).
     /// * `other_penalty_length_penalty` - Other character penalty value (default: 1700).
     ///
+    /// A value of another type than `int` or `null` throws instead of
+    /// selecting the default.
+    ///
     /// # Returns
     ///
     /// A new Penalty instance.
     pub fn __construct(
-        kanji_penalty_length_threshold: Option<i64>,
-        kanji_penalty_length_penalty: Option<i64>,
-        other_penalty_length_threshold: Option<i64>,
-        other_penalty_length_penalty: Option<i64>,
+        kanji_penalty_length_threshold: Nullable<i64>,
+        kanji_penalty_length_penalty: Nullable<i64>,
+        other_penalty_length_threshold: Nullable<i64>,
+        other_penalty_length_penalty: Nullable<i64>,
     ) -> Self {
         Self {
-            kanji_penalty_length_threshold: kanji_penalty_length_threshold.unwrap_or(2) as usize,
-            kanji_penalty_length_penalty: kanji_penalty_length_penalty.unwrap_or(3000) as i32,
-            other_penalty_length_threshold: other_penalty_length_threshold.unwrap_or(7) as usize,
-            other_penalty_length_penalty: other_penalty_length_penalty.unwrap_or(1700) as i32,
+            kanji_penalty_length_threshold: kanji_penalty_length_threshold
+                .into_option()
+                .unwrap_or(2) as usize,
+            kanji_penalty_length_penalty: kanji_penalty_length_penalty.into_option().unwrap_or(3000)
+                as i32,
+            other_penalty_length_threshold: other_penalty_length_threshold
+                .into_option()
+                .unwrap_or(7) as usize,
+            other_penalty_length_penalty: other_penalty_length_penalty.into_option().unwrap_or(1700)
+                as i32,
         }
     }
 
@@ -255,7 +266,8 @@ mod tests {
 
     #[test]
     fn test_phppenalty_default_values() {
-        let php_penalty = PhpPenalty::__construct(None, None, None, None);
+        let php_penalty =
+            PhpPenalty::__construct(None.into(), None.into(), None.into(), None.into());
         let lindera_penalty: LinderaPenalty = php_penalty.into();
         let default = LinderaPenalty::default();
         assert_eq!(

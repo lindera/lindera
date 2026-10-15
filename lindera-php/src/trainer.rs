@@ -10,6 +10,7 @@ use ext_php_rs::prelude::*;
 
 use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, TrainerConfig};
 
+use crate::convert::{Float, Nullable};
 use crate::error::lindera_value_err;
 
 /// Trainer for morphological analysis models.
@@ -32,9 +33,13 @@ impl PhpTrainer {
     /// * `feature_def` - Feature definition file path (feature.def).
     /// * `rewrite_def` - Rewrite rule definition file path (rewrite.def).
     /// * `output` - Output model file path.
-    /// * `lambda` - L1 regularization (0.0-1.0), default: 0.01.
+    /// * `lambda` - L1 regularization (0.0-1.0), default: 0.01. An `int` is
+    ///   widened to a float, as for a PHP `float` parameter.
     /// * `max_iter` - Maximum number of iterations, default: 100.
     /// * `max_threads` - Maximum number of threads (null = auto-detect CPU cores).
+    ///
+    /// A value of another type for `lambda`, `max_iter` or `max_threads`
+    /// throws instead of selecting the default.
     #[allow(clippy::too_many_arguments)]
     pub fn train(
         seed: String,
@@ -44,9 +49,9 @@ impl PhpTrainer {
         feature_def: String,
         rewrite_def: String,
         output: String,
-        lambda: Option<f64>,
-        max_iter: Option<i64>,
-        max_threads: Option<i64>,
+        lambda: Nullable<Float>,
+        max_iter: Nullable<i64>,
+        max_threads: Nullable<i64>,
     ) -> PhpResult<()> {
         let seed_path = Path::new(&seed);
         let corpus_path = Path::new(&corpus);
@@ -85,9 +90,10 @@ impl PhpTrainer {
         .map_err(|e| lindera_value_err(format!("Failed to load trainer configuration: {e}")))?;
 
         // Initialize trainer
-        let lambda_val = lambda.unwrap_or(0.01);
-        let max_iter_val = max_iter.unwrap_or(100) as u64;
+        let lambda_val = lambda.into_option().map_or(0.01, Float::into_f64);
+        let max_iter_val = max_iter.into_option().unwrap_or(100) as u64;
         let num_threads = max_threads
+            .into_option()
             .map(|t| t as usize)
             .unwrap_or_else(num_cpus::get);
 
@@ -139,14 +145,16 @@ impl PhpTrainer {
     ///
     /// * `model` - Trained model file path (.dat format).
     /// * `output` - Output directory path.
-    /// * `metadata` - Optional base metadata.json file to update.
+    /// * `metadata` - Optional base metadata.json file to update. A value of
+    ///   another type than `string` or `null` throws instead of leaving it out.
     ///
     /// # Returns
     ///
     /// `Ok(())` on success, or a `ValueError` on failure.
-    pub fn export(model: String, output: String, metadata: Option<String>) -> PhpResult<()> {
+    pub fn export(model: String, output: String, metadata: Nullable<String>) -> PhpResult<()> {
         let model_path = Path::new(&model);
         let output_path = Path::new(&output);
+        let metadata = metadata.into_option();
         let metadata_path = metadata.as_deref().map(Path::new);
 
         if !model_path.exists() {
