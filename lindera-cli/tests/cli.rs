@@ -348,6 +348,104 @@ fn build_rejects_a_char_def_category_without_an_unk_def_line() {
     );
 }
 
+/// Runs `lindera tokenize --dict <dict>` on `input`, with `RUST_LOG` set to
+/// `rust_log`, or unset when it is `None`.
+fn tokenize_with_rust_log(
+    dict: &Path,
+    input: &str,
+    rust_log: Option<&str>,
+) -> std::process::Output {
+    let mut command = lindera();
+    command
+        .args(["tokenize", "--dict", dict.to_str().unwrap()])
+        .write_stdin(input);
+    match rust_log {
+        Some(filter) => command.env("RUST_LOG", filter),
+        None => command.env_remove("RUST_LOG"),
+    };
+    command.output().unwrap()
+}
+
+/// A line without a sentence delimiter for more than 32 KiB makes the
+/// segmenter force a sentence boundary with a warning, which the CLI writes
+/// to stderr by default and hides with `RUST_LOG=error`. stdout is the same
+/// either way (#1107).
+#[test]
+fn tokenize_writes_the_forced_cut_warning_to_stderr() {
+    let dir = tempfile::tempdir().unwrap();
+    let (dict, _) = build_four_by_four_dictionary(dir.path());
+    // One forced cut, at 32 KiB.
+    let input = format!("{}\n", "a".repeat(40_000));
+    let warning = "forcing a sentence boundary";
+
+    let default = tokenize_with_rust_log(&dict, &input, None);
+    let default_stderr = String::from_utf8(default.stderr).unwrap();
+    assert!(default.status.success(), "got: {default_stderr}");
+    assert_eq!(
+        default_stderr.matches(warning).count(),
+        1,
+        "got: {default_stderr}"
+    );
+
+    let quiet = tokenize_with_rust_log(&dict, &input, Some("error"));
+    let quiet_stderr = String::from_utf8(quiet.stderr).unwrap();
+    assert!(quiet.status.success(), "got: {quiet_stderr}");
+    assert!(quiet_stderr.is_empty(), "got: {quiet_stderr}");
+
+    let stdout = String::from_utf8(default.stdout).unwrap();
+    assert!(stdout.contains("aaaa"), "got: {stdout}");
+    assert!(!stdout.contains(warning), "got: {stdout}");
+    assert_eq!(stdout.as_bytes(), quiet.stdout.as_slice());
+}
+
+/// `lindera build` accepts an `unk.def` line whose left and right context
+/// IDs differ without a warning, as `mecab-dict-index` does: every line of
+/// mecab-ko-dic's `unk.def` is such a line (#1107).
+#[test]
+fn build_accepts_unk_def_lines_with_different_left_and_right_ids_silently() {
+    let dir = tempfile::tempdir().unwrap();
+    let source = dir.path().join("source");
+    std::fs::create_dir(&source).unwrap();
+    std::fs::write(
+        source.join("char.def"),
+        "DEFAULT 0 1 0\nSPACE 0 1 0\n0x0020 SPACE\n",
+    )
+    .unwrap();
+    std::fs::write(
+        source.join("unk.def"),
+        "DEFAULT,0,1,10000,補助記号,一般,*,*,*,*,*,*,*\n\
+         SPACE,1,0,10000,空白,*,*,*,*,*,*,*,*\n",
+    )
+    .unwrap();
+    std::fs::write(
+        source.join("lex.csv"),
+        "東京,0,0,0,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トウキョウ\n",
+    )
+    .unwrap();
+    std::fs::write(
+        source.join("matrix.def"),
+        "2 2\n0 0 0\n0 1 0\n1 0 0\n1 1 0\n",
+    )
+    .unwrap();
+    let metadata = dir.path().join("metadata.json");
+    std::fs::write(
+        &metadata,
+        serde_json::to_vec(&lindera::dictionary::Metadata::default()).unwrap(),
+    )
+    .unwrap();
+
+    let output = lindera()
+        .args(["build", "--src", source.to_str().unwrap()])
+        .args(["--dest", dir.path().join("dict").to_str().unwrap()])
+        .args(["--metadata", metadata.to_str().unwrap()])
+        .env_remove("RUST_LOG")
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(output.status.success(), "got: {stderr}");
+    assert!(stderr.is_empty(), "got: {stderr}");
+}
+
 #[cfg(feature = "embed-ipadic")]
 mod with_ipadic {
     use super::*;

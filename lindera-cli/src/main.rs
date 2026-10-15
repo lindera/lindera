@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 
 use lindera::LinderaResult;
-use lindera_cli::get_version;
+use lindera_cli::{get_version, init_logger};
 
 mod commands;
 mod dictionary_registry;
@@ -39,7 +39,14 @@ enum Commands {
     Export(ExportArgs),
 }
 
+/// Installs the logger, so that the warnings of the library crates reach
+/// stderr, and runs the subcommand.
+///
+/// # Returns
+///
+/// The result of the subcommand.
 fn main() -> LinderaResult<()> {
+    init_logger();
     let args = Args::parse();
 
     match args.command {

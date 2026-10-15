@@ -48,6 +48,12 @@ default = ["mmap", "train"]
 anyhow = { workspace = true }
 clap = { version = "4.6.4", features = ["derive", "cargo"] }
 dirs = "7.0.0"
+# Logger for the `log` records of the library crates, such as their warnings.
+# Without the default `humantime` and `regex` features: no timestamps (and no
+# jiff) and no regular expressions in `RUST_LOG`.
+env_logger = { version = "0.11.11", default-features = false, features = [
+    "auto-color",
+] }
 # Deflate backend for the zip crate's `deflate-flate2` feature. `rust_backend`
 # selects miniz_oxide (MIT OR Zlib OR Apache-2.0), avoiding the Zlib-only
 # zlib-rs backend that zip's default `deflate` feature would pull in.
@@ -67,6 +73,7 @@ zip = { version = "9.0.0", default-features = false, features = [
 
 [dev-dependencies]
 assert_cmd = "2.2.2"
+log = { workspace = true }
 tempfile = "3.27.0"
 
 [[bin]]
