@@ -227,6 +227,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong>MeCab と同じく、コストが同じ分割からは最後の語が後から始まる方を選ぶ</strong></td><td>テキストを解析するすべてのユーザー。現れるのはまれ（比較したテキストでは約 54,000 行のうち 9 行）</td><td>そうした箇所が MeCab と同じ分割になることを前提にする（IPADIC の <code>腸窒扶斯</code> は <code>腸 / 窒 / 扶斯</code> ではなく <code>腸 / 窒扶 / 斯</code>）。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong><code>lindera tokenize</code> が各入力行から改行コードだけを取り除き、すべての行に結果を出す</strong></td><td>行頭・行末に空白がある入力を CLI に渡すユーザー、トークンのない行の wakati や N-best の出力を読むユーザー</td><td>オフセットが入力行の中の位置を指し、行頭・行末の U+3000 がトークンになり（IPADIC では <code>記号,空白</code>）、<code>--keep-whitespace</code> でそこの空白も出力され、空行や空白だけの行が wakati では空行に、N-best では結果 1 件になることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>WASM: 辞書の設定方法にかかわらず <code>TokenizerBuilder</code> の設定が適用される</strong></td><td><code>setDictionaryInstance()</code> と <code>setKeepWhitespace()</code> やフィルタ、または <code>setDictionary()</code> と <code>setUserDictionaryInstance()</code> を組み合わせる WASM のユーザー</td><td>それらの設定とユーザー辞書が効くことを前提にする。<code>char.def</code> に <code>SPACE</code> カテゴリがない辞書インスタンスでは、URI で設定した辞書と同じく <code>setKeepWhitespace(true)</code> が必要になる</td></tr>
+<tr><td><strong>PHP: 省略可能な引数に型違いの値を渡すと、既定値を使わずに例外を投げる</strong></td><td>省略可能な引数に別の型の値を渡す PHP のコード。例えば <code>Lindera\Trainer::train()</code> の <code>$max_iter</code> に数字の文字列を、<code>tokenizeNbest()</code> の <code>$unique</code> に <code>1</code> を渡すもの</td><td>宣言された型の値を渡す。<code>$argv</code> の値のような文字列は <code>(int)</code> などでキャストする。<code>null</code> を渡すか引数を省略すれば、これまでどおり既定値になる</td></tr>
 <tr><td><strong><code>lindera train</code> は MeCab の学習器と同じくラティスを作り、<code>unk.def</code> のすべてのエントリを保持する。<code>model.dat</code> の形式バージョンは 2.0.0</strong></td><td><code>lindera train</code>・<code>lindera export</code> と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー</td><td>7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた <code>model.dat</code> は拒否される）。<code>unk.def</code> のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す</td></tr>
 <tr><td><strong><code>lindera build</code> は <code>matrix.def</code> の範囲外の文脈 ID を拒否する</strong></td><td><code>lex.csv</code> や <code>unk.def</code> に <code>matrix.def</code> の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の <code>mecab-dict-index</code> が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる）</td><td>ID か行列を直すか、<code>metadata.json</code> の <code>skip_invalid_cost_or_id</code> でそうした <code>lex.csv</code> の行を取り除く。ユーザー辞書ではそうした ID を直す</td></tr>
 <tr><td><strong><code>lindera build</code> と <code>lindera train</code> は <code>char.def</code> と <code>unk.def</code> を照らし合わせる</strong></td><td>それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが <code>char.def</code> にあるユーザー、<code>char.def</code> と <code>unk.def</code> でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、<code>unk.def</code> の行を無視したりしていた）。MeCab の <code>mecab-dict-index</code> が受け入れる辞書は影響を受けない</td><td>各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに <code>unk.def</code> の行を書き、未定義のカテゴリの <code>unk.def</code> の行を削除する</td></tr>
@@ -242,7 +243,10 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 変わりません。API も 1 つの設定を除いて変わりません。Python・Node.js・Ruby・PHP の
 バインディングの <code>Metadata</code> クラスは、<code>normalize_details</code> を受け取らず、公開も
 しなくなりました（<a href="#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>
-を参照）。バージョン番号は 7.0.0 になります。Rust クレートと同じく、v6.2.0 以前に
+を参照）。PHP バインディングは、省略可能な引数に渡された型違いの値も拒否します。
+v6 はこの値を <code>null</code> として扱っていました
+（<a href="#php-%E7%9C%81%E7%95%A5%E5%8F%AF%E8%83%BD%E3%81%AA%E5%BC%95%E6%95%B0%E3%81%AF%E5%9E%8B%E9%81%95%E3%81%84%E3%81%AE%E5%80%A4%E3%82%92%E6%8B%92%E5%90%A6%E3%81%99%E3%82%8B">PHP: 省略可能な引数は型違いの値を拒否する</a>を参照）。
+バージョン番号は 7.0.0 になります。Rust クレートと同じく、v6.2.0 以前に
 ビルドまたはダウンロードした辞書ディレクトリは読み込めなくなります
 （<a href="#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。v6.2.0 以前にバインディングの
 学習関数や <code>lindera train</code> で書いたモデルファイルは、学習し直す必要があります
@@ -1036,6 +1040,26 @@ v6 では <code>Ｌｉｎｄｅｒａ</code> と <code>東京</code> でした�
 <code>setKeepWhitespace(true)</code> が必要になります。</p>
 <p>ほかのバインディング・CLI・ライブラリは変わらず、辞書のファイルも変わりません。
 v6 の動作に戻す設定はありません。必要なら、v6 が無視していた設定を外してください。</p>
+<h2 id="php-省略可能な引数は型違いの値を拒否する"><a class="header" href="#php-省略可能な引数は型違いの値を拒否する">PHP: 省略可能な引数は型違いの値を拒否する</a></h2>
+<p>v6.2.0 までの PHP バインディングは、省略可能な引数に渡された型違いの値を <code>null</code> と
+して扱い、<code>strict_types</code> の有無にかかわらず、黙って既定値を使っていました。例えば
+<code>$tokenizer-&gt;tokenizeNbest('東京都', 2, 'yes')</code> は重複を除かない結果を返し、
+<code>Lindera\Trainer::train(..., max_iter: $argv[1])</code> はコマンドラインの指定に
+かかわらず既定の 100 回で学習していました。必須の引数は、以前からこのような値を
+拒否していました。</p>
+<p>v7.0.0 では、省略可能な引数もこのような値を拒否します。対象は、<code>Mode</code>・<code>Penalty</code>・
+<code>Metadata</code>・<code>FieldDefinition</code>・<code>Tokenizer</code> のコンストラクタと、
+<code>Tokenizer::tokenizeNbest()</code>・<code>Trainer::train()</code>・<code>Trainer::export()</code>・
+<code>Dictionary::buildUser()</code> の省略可能な引数です。呼び出しは、必須の引数と同じ
+<code>Exception</code>（<code>Invalid value given for argument</code> に続けて引数の名前）を投げます。
+<code>null</code> を渡すか引数を省略すれば、これまでどおり既定値になります。
+<code>Trainer::train()</code> の <code>$lambda</code> は、PHP の <code>float</code> の引数と同じく、<code>float</code> に
+加えて <code>int</code> も受け付けるようになりました。v6 はここでも <code>int</code> を <code>null</code> として
+扱っていました。</p>
+<p>各引数には宣言された型の値を渡し、文字列で届く値は <code>(int) $argv[1]</code> のように
+キャストしてください（<a href="lindera-php.html#%E5%BC%95%E6%95%B0%E3%81%AE%E5%9E%8B">引数の型</a>を参照）。<code>mixed</code> と
+宣言した引数、ほかのバインディング・CLI・ライブラリは変わりません。v6 の動作に
+戻す設定はありません。</p>
 <h2 id="lindera-train-は-mecab-の学習器と同じくラティスを作る"><a class="header" href="#lindera-train-は-mecab-の学習器と同じくラティスを作る"><code>lindera train</code> は MeCab の学習器と同じくラティスを作る</a></h2>
 <p>v6.2.0 までの <code>lindera train</code> は、MeCab の学習器とは異なる学習用ラティスを
 作っていました。</p>
@@ -1436,8 +1460,9 @@ v6.2.0 以前に書かれたモデルは学習し直す必要があります。<
 <ul>
 <li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の
 各パッケージと <code>lindera-cli</code> のパッケージ名は変わらず、API も <code>Metadata</code> の設定
-<code>normalize_details</code> を除いて変わりません
-（<a href="#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>を参照）。
+<code>normalize_details</code> と、PHP の省略可能な引数の型違いの値を除いて変わりません
+（<a href="#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>と
+<a href="#php-%E7%9C%81%E7%95%A5%E5%8F%AF%E8%83%BD%E3%81%AA%E5%BC%95%E6%95%B0%E3%81%AF%E5%9E%8B%E9%81%95%E3%81%84%E3%81%AE%E5%80%A4%E3%82%92%E6%8B%92%E5%90%A6%E3%81%99%E3%82%8B">PHP: 省略可能な引数は型違いの値を拒否する</a>を参照）。
 今回の構成変更は Rust クレート内部のものです。v6.2.0 以前にビルドまたは
 ダウンロードした辞書ディレクトリは、再ビルドか再ダウンロードが必要です
 （<a href="#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。埋め込み辞書は対応不要です。
@@ -1663,12 +1688,15 @@ IPADIC-NEologd 1,085 語）が引けなくなることを前提にする。IPADI
 <code>setDictionaryInstance()</code> で設定した辞書にも、<code>setUserDictionaryInstance()</code> で
 設定したユーザー辞書が <code>setDictionary()</code> で設定した辞書にも適用されることを
 前提にする。</li>
+<li>PHP では、各引数に宣言された型の値を渡す。省略可能な引数に渡した型違いの値は、
+v6 では <code>null</code> として扱われたが、<code>Exception</code> を投げるようになる。<code>$argv</code> の値の
+ような文字列は <code>(int)</code> や <code>(float)</code> でキャストする。</li>
 <li>CLI では、文の区切り文字なしに 32 KiB を超えて文を区切ったときなどに、標準エラー
 出力に警告が出ることを前提にする。<code>RUST_LOG=error</code> で警告を消せる。</li>
 <li>それ以外は、7.0.0 リリースを取り込む以外に対応は不要（上記の辞書の再ビルド・辞書・
 空白・<code>、</code> と <code>。</code>・N-best・未知語・既定カテゴリ・ダッシュとチルダ・同点の見出し語・
 コストが同じ分割の項目、<code>lindera train</code> と <code>lindera build</code> の項目、<code>lindera tokenize</code>
-と WASM と CLI の警告の項目を除く）。</li>
+と WASM と PHP と CLI の警告の項目を除く）。</li>
 </ul>
 
                     </main>
