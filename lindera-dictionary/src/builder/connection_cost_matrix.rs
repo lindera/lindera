@@ -29,6 +29,14 @@ const UTF8_BOM: &[u8] = &[0xEF, 0xBB, 0xBF];
 #[cfg(not(target_family = "wasm"))]
 const PARALLEL_THRESHOLD: usize = 1 << 20; // 1 MiB
 
+/// The cost of a cell that `matrix.def` does not list.
+///
+/// A `matrix.def` need not list every `(forward_id, backward_id)` pair. A
+/// pair it leaves out costs 0, as in MeCab's `mecab-dict-index`, whose
+/// `Connector::compile` fills the matrix with 0 before it reads the file.
+/// Up to v6.2.0 such a cell cost `i16::MAX` (#1211).
+const MISSING_CELL_COST: i16 = 0;
+
 /// The axis sizes declared by the `matrix.def` header, `forward_size
 /// backward_size`.
 ///
@@ -147,6 +155,9 @@ impl ConnectionCostMatrixBuilderOptions {
 impl ConnectionCostMatrixBuilder {
     /// Build `matrix.mtx` from the `matrix.def` file in `input_dir`.
     ///
+    /// A cell that `matrix.def` does not list costs 0, as in MeCab's
+    /// `mecab-dict-index`.
+    ///
     /// The parser reads the raw bytes and, for ASCII-compatible encodings,
     /// parses the space-separated integers directly without decoding the whole
     /// file into a `String`. Files whose encoding is UTF-16 (by configured
@@ -199,11 +210,7 @@ impl ConnectionCostMatrixBuilder {
             )));
         }
 
-        let len = 3 + (forward_size as usize) * (backward_size as usize);
-        let mut costs = vec![i16::MAX; len];
-        costs[0] = -1; // Version flag for transposed layout
-        costs[1] = forward_size as i16;
-        costs[2] = backward_size as i16;
+        let mut costs = initial_costs(matrix_size);
 
         // Parse the data region (everything after the header line) and scatter
         // the costs into `costs`. Applied in file order so a duplicated
@@ -317,6 +324,32 @@ impl ConnectionCostMatrixBuilder {
     ) -> LinderaResult<()> {
         fill_costs_sequential(data, matrix_size, costs, self.context_id_remap.as_deref())
     }
+}
+
+/// Creates the `matrix.mtx` values before `matrix.def` is read: the
+/// transposed-layout header followed by every cell at [`MISSING_CELL_COST`].
+///
+/// The header is the version flag `-1` and the two axis sizes. The cells
+/// that `matrix.def` lists then overwrite their initial cost.
+///
+/// # Arguments
+///
+/// * `matrix_size` - The axis sizes from the `matrix.def` header.
+///
+/// # Returns
+///
+/// `3 + forward_size * backward_size` values.
+fn initial_costs(matrix_size: MatrixSize) -> Vec<i16> {
+    let MatrixSize {
+        forward_size,
+        backward_size,
+    } = matrix_size;
+    let len = 3 + (forward_size as usize) * (backward_size as usize);
+    let mut costs = vec![MISSING_CELL_COST; len];
+    costs[0] = -1; // Version flag for transposed layout
+    costs[1] = forward_size as i16;
+    costs[2] = backward_size as i16;
+    costs
 }
 
 /// Return the buffer with a leading UTF-8 BOM removed, if present.
@@ -698,7 +731,9 @@ mod tests {
     use super::*;
 
     /// Reference parser replicating the previous split_whitespace + from_str
-    /// implementation, used to assert byte-identical output.
+    /// implementation, used to assert byte-identical output. A cell that the
+    /// matrix does not list is 0, as in `mecab-dict-index`, spelled here
+    /// independently of [`MISSING_CELL_COST`].
     fn reference_costs(matrix: &str) -> Vec<i16> {
         let mut lines = Vec::new();
         for line in matrix.lines() {
@@ -713,7 +748,7 @@ mod tests {
         let forward_size = header[0] as u32;
         let backward_size = header[1] as u32;
         let len = 3 + (forward_size * backward_size) as usize;
-        let mut costs = vec![i16::MAX; len];
+        let mut costs = vec![0; len];
         costs[0] = -1;
         costs[1] = forward_size as i16;
         costs[2] = backward_size as i16;
@@ -740,11 +775,7 @@ mod tests {
             forward_size,
             backward_size,
         };
-        let len = 3 + (forward_size as usize) * (backward_size as usize);
-        let mut costs = vec![i16::MAX; len];
-        costs[0] = -1;
-        costs[1] = forward_size as i16;
-        costs[2] = backward_size as i16;
+        let mut costs = initial_costs(matrix_size);
         let data = if header_end < bytes.len() {
             &bytes[header_end + 1..]
         } else {
@@ -763,14 +794,39 @@ mod tests {
 
     #[test]
     fn test_matches_reference_sparse_and_negative() {
-        // Missing cells default to i16::MAX; negative cost round-trips via the
-        // u16 cast; multiple spaces between fields.
+        // Missing cells cost 0; negative cost round-trips via the u16 cast;
+        // multiple spaces between fields.
         let matrix = "3 2\n0  0  -1\n2 1 32767\n1 0 -32768\n";
         let new = new_costs(matrix);
         let reference = reference_costs(matrix);
         assert_eq!(new, reference);
         // Spot-check the negative cost round-trip.
         assert_eq!(new[3], -1);
+        // Spot-check a missing cell: (2, 0) is not listed.
+        assert_eq!(new[3 + 2], 0);
+    }
+
+    #[test]
+    fn test_build_gives_missing_cells_cost_zero() {
+        // A 3x2 matrix that lists 2 of its 6 cells. The other 4 cost 0, as in
+        // mecab-dict-index; they cost i16::MAX up to v6.2.0 (#1211).
+        let input = tempfile::tempdir().unwrap();
+        let output = tempfile::tempdir().unwrap();
+        std::fs::write(input.path().join("matrix.def"), "3 2\n1 0 5\n2 1 -7\n").unwrap();
+        ConnectionCostMatrixBuilderOptions::default()
+            .builder()
+            .build(input.path(), output.path())
+            .unwrap();
+
+        let bytes = std::fs::read(output.path().join("matrix.mtx")).unwrap();
+        let matrix = ConnectionCostMatrix::load(bytes).unwrap();
+        let mut costs = Vec::new();
+        for backward_id in 0..2 {
+            for forward_id in 0..3 {
+                costs.push(matrix.cost(forward_id, backward_id));
+            }
+        }
+        assert_eq!(costs, [0, 5, 0, 0, 0, -7]);
     }
 
     #[test]
@@ -806,22 +862,15 @@ mod tests {
         let bytes = matrix.as_bytes();
         let header_end = memchr(b'\n', bytes).unwrap();
         let data = &bytes[header_end + 1..];
-        let len = 3 + (forward as usize) * (backward as usize);
         let matrix_size = MatrixSize {
             forward_size: forward,
             backward_size: backward,
         };
 
-        let mut seq = vec![i16::MAX; len];
-        seq[0] = -1;
-        seq[1] = forward as i16;
-        seq[2] = backward as i16;
+        let mut seq = initial_costs(matrix_size);
         fill_costs_sequential(data, matrix_size, &mut seq, None).unwrap();
 
-        let mut par = vec![i16::MAX; len];
-        par[0] = -1;
-        par[1] = forward as i16;
-        par[2] = backward as i16;
+        let mut par = initial_costs(matrix_size);
         fill_costs_parallel(data, matrix_size, &mut par, None).unwrap();
 
         assert_eq!(seq, par);
@@ -835,11 +884,11 @@ mod tests {
         let bytes = matrix.as_bytes();
         let header_end = memchr(b'\n', bytes).unwrap();
         let data = &bytes[header_end + 1..];
-        let mut costs = vec![i16::MAX; 3 + 4];
         let matrix_size = MatrixSize {
             forward_size: 2,
             backward_size: 2,
         };
+        let mut costs = initial_costs(matrix_size);
         assert!(fill_costs_sequential(data, matrix_size, &mut costs, None).is_err());
     }
 
@@ -869,7 +918,7 @@ mod tests {
             forward_size: 3,
             backward_size: 2,
         };
-        let mut costs = vec![i16::MAX; 3 + 6];
+        let mut costs = initial_costs(size);
         let err = fill_costs_sequential(data, size, &mut costs, None)
             .unwrap_err()
             .to_string();
@@ -901,7 +950,7 @@ mod tests {
                 data.push_str(&format!("{} {} 0\n", line % 200, line / 200 % 200));
             }
         }
-        let mut costs = vec![i16::MAX; 3 + 200 * 200];
+        let mut costs = initial_costs(size);
         let err = fill_costs_parallel(data.as_bytes(), size, &mut costs, None)
             .unwrap_err()
             .to_string();

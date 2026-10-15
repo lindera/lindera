@@ -348,6 +348,74 @@ fn build_rejects_a_char_def_category_without_an_unk_def_line() {
     );
 }
 
+/// Builds a dictionary of the words `a`, `b` (context IDs 1, cost 100 each)
+/// and `ab` (context IDs 2, cost 150) with the given `matrix.def`, and
+/// returns the wakati output of `lindera tokenize` for `ab`.
+fn tokenize_ab_with_matrix_def(dir: &Path, matrix_def: &str) -> String {
+    let source = dir.join("source");
+    std::fs::create_dir(&source).unwrap();
+    std::fs::write(
+        source.join("char.def"),
+        "DEFAULT 0 1 0\nSPACE 0 1 0\n0x0020 SPACE\n",
+    )
+    .unwrap();
+    std::fs::write(
+        source.join("unk.def"),
+        "DEFAULT,1,1,10000,名詞,一般,*,*,*,*,*,*,*\n\
+         SPACE,1,1,10000,記号,空白,*,*,*,*,*,*,*\n",
+    )
+    .unwrap();
+    std::fs::write(
+        source.join("lex.csv"),
+        "a,1,1,100,名詞,一般,*,*,*,*,a,エー,エー\n\
+         b,1,1,100,名詞,一般,*,*,*,*,b,ビー,ビー\n\
+         ab,2,2,150,名詞,一般,*,*,*,*,ab,エービー,エービー\n",
+    )
+    .unwrap();
+    std::fs::write(source.join("matrix.def"), matrix_def).unwrap();
+    let metadata = dir.join("metadata.json");
+    std::fs::write(
+        &metadata,
+        serde_json::to_vec(&lindera::dictionary::Metadata::default()).unwrap(),
+    )
+    .unwrap();
+    let dict = dir.join("dict");
+    lindera()
+        .args(["build", "--src", source.to_str().unwrap()])
+        .args(["--dest", dict.to_str().unwrap()])
+        .args(["--metadata", metadata.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let output = lindera()
+        .args(["tokenize", "--dict", dict.to_str().unwrap()])
+        .args(["--output", "wakati"])
+        .write_stdin("ab\n")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    String::from_utf8(output.stdout).unwrap()
+}
+
+/// `lindera build` gives a cell that `matrix.def` leaves out the cost 0, as
+/// `mecab-dict-index` does. Such a cell cost 32767 before (#1211).
+#[test]
+fn build_gives_a_cell_missing_from_matrix_def_the_cost_0() {
+    // The matrix lists only the cells on the path `a / b`, which costs 200.
+    // The path through `ab` costs 150 plus the two cells (0, 2) and (2, 0)
+    // that it leaves out, so it wins when they cost 0. MeCab 0.996 outputs
+    // `ab` for this dictionary.
+    let sparse = "3 3\n0 1 0\n1 1 0\n1 0 0\n";
+    let dir = tempfile::tempdir().unwrap();
+    assert_eq!(tokenize_ab_with_matrix_def(dir.path(), sparse), "ab\n");
+
+    // With the two cells listed at 32767, `a / b` wins, as in MeCab: the
+    // missing cells decide the result above.
+    let listed = format!("{sparse}0 2 32767\n2 0 32767\n");
+    let dir = tempfile::tempdir().unwrap();
+    assert_eq!(tokenize_ab_with_matrix_def(dir.path(), &listed), "a b\n");
+}
+
 /// Runs `lindera tokenize --dict <dict>` on `input`, with `RUST_LOG` set to
 /// `rust_log`, or unset when it is `None`.
 fn tokenize_with_rust_log(

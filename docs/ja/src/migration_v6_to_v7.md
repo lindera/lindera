@@ -57,6 +57,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **`lindera train` は MeCab の学習器と同じくラティスを作り、`unk.def` のすべてのエントリを保持する。`model.dat` の形式バージョンは 2.0.0** | `lindera train`・`lindera export` と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー | 7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた `model.dat` は拒否される）。`unk.def` のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す |
 | **`lindera build` は `matrix.def` の範囲外の文脈 ID を拒否する** | `lex.csv` や `unk.def` に `matrix.def` の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の `mecab-dict-index` が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる） | ID か行列を直すか、`metadata.json` の `skip_invalid_cost_or_id` でそうした `lex.csv` の行を取り除く。ユーザー辞書ではそうした ID を直す |
 | **`lindera build` と `lindera train` は `char.def` と `unk.def` を照らし合わせる** | それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが `char.def` にあるユーザー、`char.def` と `unk.def` でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、`unk.def` の行を無視したりしていた）。MeCab の `mecab-dict-index` が受け入れる辞書は影響を受けない | 各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに `unk.def` の行を書き、未定義のカテゴリの `unk.def` の行を削除する |
+| **`lindera build` は、MeCab と同じく `matrix.def` にないセルのコストを 0 にする** | セルを省いた `matrix.def` からシステム辞書をビルドするユーザー。すべてのセルを列挙している同梱の辞書と、`lindera export` が書き出す `matrix.def` は対象外 | そうしたセルのコストは 32767 ではなく 0 になる。接続を高いコストのままにするには、そのセルをコスト付きで列挙する |
 | **CLI はライブラリの警告を標準エラー出力に書く** | 標準エラー出力を読む CLI のユーザー。たとえば、そこに何か出力があれば失敗とみなすスクリプト。目立つのは、文の区切り文字のないテキストが 32 KiB を超える入力と、`--context-id-freq` を指定しない ko-dic・UniDic の `lindera build` | 標準エラー出力に `[WARN …]` の行が出ることを前提にする。`RUST_LOG=error` で警告を消せる。標準出力は変わらない |
 | **設定 `normalize_details` の削除: `Metadata::new` と `CoreMetadata::new` の引数は 10 個、Ruby の `Metadata.new` の引数は 8 個になる** | 辞書のメタデータを作成・参照するコード。Rust（`Metadata`・`lindera_binding::CoreMetadata`・`PrefixDictionaryBuilderOptions`）と、Python・Ruby・PHP・Node.js のバインディングの `Metadata` クラス | 引数・オプション・プロパティを削除する。このキーを含む `metadata.json` もそのまま読み込め、キーは無視される |
 | **`Lattice::tokens_offset`・`tokens_offset_into`・`nbest_tokens_offset`・`NBestGenerator::next` が `(start, end, WordId)` を返す** | これらの `lindera_dictionary` の関数を直接呼び出す Rust コード（`lindera::dictionary::viterbi::…`・`lindera::dictionary::Lattice`・`lindera::dictionary::nbest::…` 経由を含む） | 3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う |
@@ -1263,6 +1264,20 @@ Error: LinderaError { kind: Content, source: ./dict-source/char.def: line 8: cat
 それ以外の辞書が失敗した場合は、各カテゴリを、それを指す範囲行より前で 1 回だけ
 定義し、すべてのカテゴリに `unk.def` の行を 1 行以上書き、`char.def` が定義して
 いないカテゴリの `unk.def` の行を削除してください。
+
+## `lindera build` は `matrix.def` にないセルのコストを 0 にする
+
+v6.2.0 までの `lindera build` は、`matrix.def` が列挙していないセルのコストを
+32767（`i16::MAX`）にしていたため、その接続は非常に高いコストになっていました。
+MeCab の `mecab-dict-index` はそうしたセルのコストを 0 にし、v7.0.0 も同じく
+0 にします（[#1211](https://github.com/lindera/lindera/issues/1211)。
+[matrix.def にないセル](lindera-cli/commands.md#matrixdef-にないセル)を参照）。
+
+同梱の辞書の `matrix.def` はすべてのセルを列挙しており、`lindera export` が
+書き出す `matrix.def` も同じなので、どちらも変わりません。セルを省いた
+`matrix.def` からビルドした辞書は、そうしたセルを通る接続のコストが 0 になるため、
+分割が変わることがあります。接続を高いコストのままにするには、そのセルを
+コスト付きで列挙してください。
 
 ## CLI はライブラリの警告を標準エラー出力に書く
 

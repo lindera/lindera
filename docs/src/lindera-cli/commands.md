@@ -662,6 +662,18 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: 'æ
 
 Without `--system-dict`, the build does not know the system dictionary, and the user dictionary builds. `lindera tokenize --user-dict` then checks it against the system dictionary and fails with an error that names the first entry outside the matrix by its word id (see [Context IDs](../concepts/user_dictionary.md#context-ids)). A `.csv` given to `lindera tokenize --user-dict` is built for the system dictionary of `--dict` as it is loaded, so its error names the CSV line and surface, as with `--system-dict`.
 
+### Cells missing from matrix.def
+
+A `matrix.def` does not have to list every cell. `lindera build` gives a cell that it leaves out the cost 0, as MeCab's `mecab-dict-index` does. Up to v6.2.0, such a cell cost 32767 (`i16::MAX`), which made the connection very expensive. For example, with the following `matrix.def`, the connections from the right context ID 1 to the left context IDs 0 and 1 cost 10 and 20, and the other seven cells cost 0:
+
+```text
+3 3
+1 0 10
+1 1 20
+```
+
+The bundled dictionaries and the `matrix.def` that `lindera export` writes list every cell, so this rule does not change them.
+
 ### char.def and unk.def check
 
 When it builds a system dictionary, `lindera build` also checks `char.def` and `unk.def` against each other, as `mecab-dict-index` does:

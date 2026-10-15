@@ -60,6 +60,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`lindera train` builds its lattices as MeCab's learner does and keeps every `unk.def` entry; `model.dat` has the format version 2.0.0** | Users of `lindera train` and `lindera export`, and of the training functions of the Python, Node.js, Ruby and PHP bindings | Train every model again with 7.0.0, then export and build it again (a `model.dat` written by v6.2.0 or earlier is rejected); give every `unk.def` line at least five fields; remove comment lines from seed lexicons |
 | **`lindera build` rejects context IDs outside `matrix.def`** | Anyone who builds a system dictionary whose `lex.csv` or `unk.def` has a context ID beyond the size of its `matrix.def` (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's `mecab-dict-index` accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic | Fix the IDs or the matrix, or set `skip_invalid_cost_or_id` in `metadata.json` to drop such `lex.csv` rows; fix such IDs in the user dictionary |
 | **`lindera build` and `lindera train` check `char.def` against `unk.def`** | Anyone whose `char.def` has a range line that names a category not defined on an earlier line, or a category defined twice, or whose `char.def` and `unk.def` do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored `unk.def` lines); not dictionaries that MeCab's `mecab-dict-index` accepts | Define each category once, before the range lines that name it; give every category an `unk.def` line, and remove the `unk.def` lines of undefined categories |
+| **`lindera build` gives a cell missing from `matrix.def` the cost 0, as MeCab does** | Anyone who builds a system dictionary from a `matrix.def` that leaves cells out; not the bundled dictionaries or a `matrix.def` that `lindera export` writes, which list every cell | Expect such a cell to cost 0 instead of 32767; to keep a connection expensive, list its cell with a cost |
 | **The CLI writes library warnings to standard error** | CLI users who read standard error, for example scripts that treat any output there as a failure; most visibly input with more than 32 KiB without a sentence delimiter, and `lindera build` of ko-dic or UniDic without `--context-id-freq` | Expect `[WARN …]` lines on standard error; set `RUST_LOG=error` to hide them. Standard output does not change |
 | **The `normalize_details` setting is removed: `Metadata::new` and `CoreMetadata::new` take 10 arguments, Ruby's `Metadata.new` takes 8** | Code that creates or reads dictionary metadata: Rust (`Metadata`, `lindera_binding::CoreMetadata`, `PrefixDictionaryBuilderOptions`) and the `Metadata` classes of the Python, Ruby, PHP and Node.js bindings | Remove the argument, option or property; a `metadata.json` that still has the key loads, and the key is ignored |
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
@@ -1395,6 +1396,20 @@ Every bundled dictionary passes, and so does a dictionary that
 category once, before the range lines that name it, give every category at
 least one `unk.def` line, and remove the `unk.def` lines of categories that
 `char.def` does not define.
+
+## `lindera build` gives a cell missing from `matrix.def` the cost 0
+
+Up to v6.2.0, `lindera build` gave a cell that `matrix.def` does not list
+the cost 32767 (`i16::MAX`), which made the connection very expensive.
+MeCab's `mecab-dict-index` gives such a cell the cost 0, and v7.0.0 does the
+same ([#1211](https://github.com/lindera/lindera/issues/1211); see
+[Cells missing from matrix.def](lindera-cli/commands.md#cells-missing-from-matrixdef)).
+
+The `matrix.def` of every bundled dictionary lists every cell, and so does
+the `matrix.def` that `lindera export` writes, so neither changes. A
+dictionary built from a `matrix.def` that leaves cells out can segment
+differently, since a connection through such a cell now costs 0. To keep a
+connection expensive, list its cell with a cost.
 
 ## The CLI writes library warnings to standard error
 
