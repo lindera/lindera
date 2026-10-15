@@ -662,6 +662,18 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
 
 `--system-dict` を指定しないと、ビルドの時点では組み合わせるシステム辞書が分からないため、ユーザー辞書はそのままビルドされます。その後 `lindera tokenize --user-dict` がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を単語 ID で示すエラーで失敗します（[文脈 ID](../concepts/user_dictionary.md#文脈-id) を参照）。`lindera tokenize --user-dict` に `.csv` を渡すと、読み込むときに `--dict` のシステム辞書に合わせてビルドするため、`--system-dict` と同じく CSV の行番号と表層形を示すエラーになります。
 
+### matrix.def にないセル
+
+`matrix.def` は、すべてのセルを列挙しなくてもかまいません。`lindera build` は、`matrix.def` が列挙していないセルのコストを、MeCab の `mecab-dict-index` と同じく 0 にします。v6.2.0 までは、そうしたセルのコストは 32767（`i16::MAX`）で、その接続は非常に高いコストになっていました。たとえば次の `matrix.def` では、右文脈 ID 1 から左文脈 ID 0 と 1 への接続のコストが 10 と 20 になり、残りの 7 つのセルのコストは 0 になります。
+
+```text
+3 3
+1 0 10
+1 1 20
+```
+
+同梱の辞書と、`lindera export` が書き出す `matrix.def` は、すべてのセルを列挙しているため、この規則で変わることはありません。
+
 ### char.def と unk.def の確認
 
 システム辞書をビルドするとき、`lindera build` は `mecab-dict-index` と同じく、`char.def` と `unk.def` を互いに照らし合わせて確認します：
