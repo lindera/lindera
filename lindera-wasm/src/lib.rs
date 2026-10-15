@@ -31,6 +31,7 @@
 //! });
 //! ```
 
+mod argument;
 pub mod character_filter;
 pub mod dictionary;
 pub mod error;
