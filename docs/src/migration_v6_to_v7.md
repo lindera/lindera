@@ -56,6 +56,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab** | Anyone who segments text, in rare places (9 of about 54,000 lines in the texts compared) | Expect such lines to be segmented as MeCab segments them (IPADIC `腸窒扶斯` is `腸 / 窒扶 / 斯`, not `腸 / 窒 / 扶斯`); no setting restores the v6 behavior |
 | **`lindera tokenize` removes only the line terminator from each input line and writes a result for every line** | CLI users whose input lines start or end with whitespace, or who read the wakati or N-best output of lines without tokens | Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC `記号,空白`), `--keep-whitespace` to output the spaces there, and an empty line or a line of spaces to give an empty wakati line and one N-best result; no setting restores the v6 behavior |
 | **WASM: the `TokenizerBuilder` settings apply whichever way the dictionary is set** | WASM users who combine `setDictionaryInstance()` with `setKeepWhitespace()` or filters, or `setDictionary()` with `setUserDictionaryInstance()` | Expect those settings and the user dictionary to take effect; a dictionary instance whose `char.def` has no `SPACE` category now needs `setKeepWhitespace(true)`, as a dictionary set by URI does |
+| **PHP: an optional argument of the wrong type throws instead of selecting the default** | PHP code that passes a value of another type to an optional parameter, such as a numeric string for `$max_iter` of `Lindera\Trainer::train()` or `1` for `$unique` of `tokenizeNbest()` | Pass the declared type, casting strings such as `$argv` values with `(int)`; `null` or leaving the argument out still selects the default |
 | **`lindera train` builds its lattices as MeCab's learner does and keeps every `unk.def` entry; `model.dat` has the format version 2.0.0** | Users of `lindera train` and `lindera export`, and of the training functions of the Python, Node.js, Ruby and PHP bindings | Train every model again with 7.0.0, then export and build it again (a `model.dat` written by v6.2.0 or earlier is rejected); give every `unk.def` line at least five fields; remove comment lines from seed lexicons |
 | **`lindera build` rejects context IDs outside `matrix.def`** | Anyone who builds a system dictionary whose `lex.csv` or `unk.def` has a context ID beyond the size of its `matrix.def` (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's `mecab-dict-index` accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic | Fix the IDs or the matrix, or set `skip_invalid_cost_or_id` in `metadata.json` to drop such `lex.csv` rows; fix such IDs in the user dictionary |
 | **`lindera build` and `lindera train` check `char.def` against `unk.def`** | Anyone whose `char.def` has a range line that names a category not defined on an earlier line, or a category defined twice, or whose `char.def` and `unk.def` do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored `unk.def` lines); not dictionaries that MeCab's `mecab-dict-index` accepts | Define each category once, before the range lines that name it; give every category an `unk.def` line, and remove the `unk.def` lines of undefined categories |
@@ -71,6 +72,9 @@ their package names, and their APIs apart from one setting: the `Metadata`
 classes of the Python, Node.js, Ruby and PHP bindings no longer take or
 expose `normalize_details` (see
 [The `normalize_details` setting is removed](#the-normalize_details-setting-is-removed)).
+The PHP binding also rejects a value of the wrong type for an optional
+argument, which v6 read as `null` (see
+[PHP: optional arguments reject a value of the wrong type](#php-optional-arguments-reject-a-value-of-the-wrong-type)).
 Their version number moves to 7.0.0. Like the Rust crates, they no longer
 load a dictionary directory built or downloaded with v6.2.0 or earlier (see
 [Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt)).
@@ -1089,6 +1093,32 @@ The other bindings, the CLI and the library do not change, and neither do
 the dictionary files. No option restores the v6 behavior; to get it, leave
 out the settings that v6 ignored.
 
+## PHP: optional arguments reject a value of the wrong type
+
+Up to v6.2.0, the PHP binding read a value of the wrong type for an
+optional parameter as `null`, so the call silently used the default, with
+or without `strict_types`. For example,
+`$tokenizer->tokenizeNbest('東京都', 2, 'yes')` returned results that were
+not deduplicated, and `Lindera\Trainer::train(..., max_iter: $argv[1])`
+trained for the default 100 iterations whatever the command line said. A
+required parameter already rejected such a value.
+
+v7.0.0 rejects it for the optional parameters too: those of the `Mode`,
+`Penalty`, `Metadata`, `FieldDefinition` and `Tokenizer` constructors, of
+`Tokenizer::tokenizeNbest()`, `Trainer::train()`, `Trainer::export()` and
+`Dictionary::buildUser()`. The call throws the `Exception` that a required
+parameter throws, `Invalid value given for argument` followed by the
+parameter's name. `null` and leaving the argument out still select the
+default. `$lambda` of `Trainer::train()` now takes an `int` as well as a
+`float`, as a PHP `float` parameter does; v6 read an `int` there as `null`
+too.
+
+Pass each argument its declared type, and cast values that arrive as
+strings, such as `(int) $argv[1]` (see
+[Argument types](lindera-php.md#argument-types)). The parameters declared
+`mixed`, the other bindings, the CLI and the library do not change. No
+option restores the v6 behavior.
+
 ## `lindera train` builds its lattices as MeCab's learner does
 
 Up to v6.2.0, `lindera train` built training lattices that differ from
@@ -1568,7 +1598,9 @@ with (`max_grouping_len` of the segmenter, `--max-grouping-len` of the CLI).
 - **Users of the language bindings and the CLI**: the Python, Node.js, Ruby,
   PHP, and WASM packages and `lindera-cli` keep their package names, and
   their APIs apart from the `normalize_details` setting of `Metadata` (see
-  [The `normalize_details` setting is removed](#the-normalize_details-setting-is-removed)).
+  [The `normalize_details` setting is removed](#the-normalize_details-setting-is-removed))
+  and, in PHP, optional arguments of the wrong type (see
+  [PHP: optional arguments reject a value of the wrong type](#php-optional-arguments-reject-a-value-of-the-wrong-type)).
   The restructuring is internal to the Rust crates. A dictionary directory
   built or downloaded with v6.2.0 or earlier has to be rebuilt or downloaded
   again (see
@@ -1834,6 +1866,10 @@ Language bindings and CLI:
   `setDictionaryInstance()`, and a user dictionary set with
   `setUserDictionaryInstance()` to apply to a dictionary set with
   `setDictionary()`.
+- With PHP, pass each argument its declared type: a value of the wrong
+  type for an optional parameter, which v6 read as `null`, now throws an
+  `Exception`. Cast strings such as `$argv` values with `(int)` or
+  `(float)`.
 - With the CLI, expect warnings on standard error, for example for a
   sentence cut after 32 KiB without a delimiter; set `RUST_LOG=error` to
   hide them.
@@ -1841,4 +1877,4 @@ Language bindings and CLI:
   dictionary rebuild, the dictionary, whitespace, `、` and `。`, N-best,
   unknown-word, default-category, dash and tilde, tied-entry and equal-cost
   items above, the `lindera train` and `lindera build` items, and the
-  `lindera tokenize`, WASM and CLI warning items.
+  `lindera tokenize`, WASM, PHP and CLI warning items.
