@@ -144,9 +144,18 @@ impl PyPenalty {
         self.kanji_penalty_length_threshold
     }
 
+    /// Sets the kanji length threshold.
+    ///
+    /// The argument is named after the property because pyo3 names it in
+    /// the note of the `OverflowError` for a value outside the range of `usize`
+    /// (`while processing 'kanji_penalty_length_threshold'`).
+    ///
+    /// # Arguments
+    ///
+    /// * `kanji_penalty_length_threshold` - The new value.
     #[setter]
-    pub fn set_kanji_penalty_length_threshold(&mut self, value: usize) {
-        self.kanji_penalty_length_threshold = value;
+    pub fn set_kanji_penalty_length_threshold(&mut self, kanji_penalty_length_threshold: usize) {
+        self.kanji_penalty_length_threshold = kanji_penalty_length_threshold;
     }
 
     #[getter]
@@ -154,9 +163,18 @@ impl PyPenalty {
         self.kanji_penalty_length_penalty
     }
 
+    /// Sets the kanji penalty value.
+    ///
+    /// The argument is named after the property because pyo3 names it in
+    /// the note of the `OverflowError` for a value outside the range of `i32`
+    /// (`while processing 'kanji_penalty_length_penalty'`).
+    ///
+    /// # Arguments
+    ///
+    /// * `kanji_penalty_length_penalty` - The new value.
     #[setter]
-    pub fn set_kanji_penalty_length_penalty(&mut self, value: i32) {
-        self.kanji_penalty_length_penalty = value;
+    pub fn set_kanji_penalty_length_penalty(&mut self, kanji_penalty_length_penalty: i32) {
+        self.kanji_penalty_length_penalty = kanji_penalty_length_penalty;
     }
 
     #[getter]
@@ -164,9 +182,18 @@ impl PyPenalty {
         self.other_penalty_length_threshold
     }
 
+    /// Sets the other character length threshold.
+    ///
+    /// The argument is named after the property because pyo3 names it in
+    /// the note of the `OverflowError` for a value outside the range of `usize`
+    /// (`while processing 'other_penalty_length_threshold'`).
+    ///
+    /// # Arguments
+    ///
+    /// * `other_penalty_length_threshold` - The new value.
     #[setter]
-    pub fn set_other_penalty_length_threshold(&mut self, value: usize) {
-        self.other_penalty_length_threshold = value;
+    pub fn set_other_penalty_length_threshold(&mut self, other_penalty_length_threshold: usize) {
+        self.other_penalty_length_threshold = other_penalty_length_threshold;
     }
 
     #[getter]
@@ -174,9 +201,18 @@ impl PyPenalty {
         self.other_penalty_length_penalty
     }
 
+    /// Sets the other character penalty value.
+    ///
+    /// The argument is named after the property because pyo3 names it in
+    /// the note of the `OverflowError` for a value outside the range of `i32`
+    /// (`while processing 'other_penalty_length_penalty'`).
+    ///
+    /// # Arguments
+    ///
+    /// * `other_penalty_length_penalty` - The new value.
     #[setter]
-    pub fn set_other_penalty_length_penalty(&mut self, value: i32) {
-        self.other_penalty_length_penalty = value;
+    pub fn set_other_penalty_length_penalty(&mut self, other_penalty_length_penalty: i32) {
+        self.other_penalty_length_penalty = other_penalty_length_penalty;
     }
 
     fn __str__(&self) -> String {

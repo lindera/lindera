@@ -4,6 +4,8 @@ use wasm_bindgen::prelude::*;
 
 use lindera::mode::{Mode as LinderaMode, Penalty as LinderaPenalty};
 
+use crate::argument::{integer_arg, optional_integer_arg};
+
 /// Tokenization mode.
 ///
 /// Determines how text is segmented into tokens.
@@ -53,27 +55,159 @@ impl From<LinderaMode> for JsMode {
 #[wasm_bindgen(js_name = "Penalty")]
 #[derive(Debug, Clone, Copy)]
 pub struct JsPenalty {
-    pub kanji_penalty_length_threshold: usize,
-    pub kanji_penalty_length_penalty: i32,
-    pub other_penalty_length_threshold: usize,
-    pub other_penalty_length_penalty: i32,
+    /// Length threshold for kanji sequences before applying the penalty.
+    kanji_penalty_length_threshold: usize,
+    /// Penalty value for long kanji sequences.
+    kanji_penalty_length_penalty: i32,
+    /// Length threshold for other character sequences before applying the
+    /// penalty.
+    other_penalty_length_threshold: usize,
+    /// Penalty value for long other-character sequences.
+    other_penalty_length_penalty: i32,
 }
 
+// The fields are private, with the getters and setters written out: the
+// setters wasm-bindgen generates for `pub` fields take the number through
+// `>>> 0` / `>> 0`, which wraps a value outside the field's range
+// (lindera/lindera#1209).
 #[wasm_bindgen(js_class = "Penalty")]
 impl JsPenalty {
+    /// Creates a penalty configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `kanji_penalty_length_threshold` - Kanji length threshold, an integer
+    ///   of 0 or more (default: 2).
+    /// * `kanji_penalty_length_penalty` - Kanji penalty value, a 32-bit signed
+    ///   integer (default: 3000).
+    /// * `other_penalty_length_threshold` - Other character length threshold,
+    ///   an integer of 0 or more (default: 7).
+    /// * `other_penalty_length_penalty` - Other character penalty value, a
+    ///   32-bit signed integer (default: 1700).
+    ///
+    /// # Returns
+    ///
+    /// The penalty, or a thrown string for a value that is not an integer in
+    /// its range.
     #[wasm_bindgen(constructor)]
     pub fn new(
-        kanji_penalty_length_threshold: Option<usize>,
-        kanji_penalty_length_penalty: Option<i32>,
-        other_penalty_length_threshold: Option<usize>,
-        other_penalty_length_penalty: Option<i32>,
-    ) -> Self {
-        JsPenalty {
-            kanji_penalty_length_threshold: kanji_penalty_length_threshold.unwrap_or(2),
-            kanji_penalty_length_penalty: kanji_penalty_length_penalty.unwrap_or(3000),
-            other_penalty_length_threshold: other_penalty_length_threshold.unwrap_or(7),
-            other_penalty_length_penalty: other_penalty_length_penalty.unwrap_or(1700),
-        }
+        kanji_penalty_length_threshold: Option<f64>,
+        kanji_penalty_length_penalty: Option<f64>,
+        other_penalty_length_threshold: Option<f64>,
+        other_penalty_length_penalty: Option<f64>,
+    ) -> Result<JsPenalty, JsValue> {
+        let default = LinderaPenalty::default();
+        Ok(JsPenalty {
+            kanji_penalty_length_threshold: optional_integer_arg(
+                "kanji_penalty_length_threshold",
+                kanji_penalty_length_threshold,
+            )?
+            .unwrap_or(default.kanji_penalty_length_threshold),
+            kanji_penalty_length_penalty: optional_integer_arg(
+                "kanji_penalty_length_penalty",
+                kanji_penalty_length_penalty,
+            )?
+            .unwrap_or(default.kanji_penalty_length_penalty),
+            other_penalty_length_threshold: optional_integer_arg(
+                "other_penalty_length_threshold",
+                other_penalty_length_threshold,
+            )?
+            .unwrap_or(default.other_penalty_length_threshold),
+            other_penalty_length_penalty: optional_integer_arg(
+                "other_penalty_length_penalty",
+                other_penalty_length_penalty,
+            )?
+            .unwrap_or(default.other_penalty_length_penalty),
+        })
+    }
+
+    /// Length threshold for kanji sequences before applying the penalty.
+    #[wasm_bindgen(getter)]
+    pub fn kanji_penalty_length_threshold(&self) -> usize {
+        self.kanji_penalty_length_threshold
+    }
+
+    /// Sets the kanji length threshold.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - An integer of 0 or more.
+    ///
+    /// # Returns
+    ///
+    /// Nothing, or a thrown string for any other number, which leaves the
+    /// threshold unchanged.
+    #[wasm_bindgen(setter)]
+    pub fn set_kanji_penalty_length_threshold(&mut self, value: f64) -> Result<(), JsValue> {
+        self.kanji_penalty_length_threshold = integer_arg("kanji_penalty_length_threshold", value)?;
+        Ok(())
+    }
+
+    /// Penalty value for long kanji sequences.
+    #[wasm_bindgen(getter)]
+    pub fn kanji_penalty_length_penalty(&self) -> i32 {
+        self.kanji_penalty_length_penalty
+    }
+
+    /// Sets the kanji penalty value.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - A 32-bit signed integer.
+    ///
+    /// # Returns
+    ///
+    /// Nothing, or a thrown string for any other number, which leaves the
+    /// penalty unchanged.
+    #[wasm_bindgen(setter)]
+    pub fn set_kanji_penalty_length_penalty(&mut self, value: f64) -> Result<(), JsValue> {
+        self.kanji_penalty_length_penalty = integer_arg("kanji_penalty_length_penalty", value)?;
+        Ok(())
+    }
+
+    /// Length threshold for other character sequences before applying the
+    /// penalty.
+    #[wasm_bindgen(getter)]
+    pub fn other_penalty_length_threshold(&self) -> usize {
+        self.other_penalty_length_threshold
+    }
+
+    /// Sets the other character length threshold.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - An integer of 0 or more.
+    ///
+    /// # Returns
+    ///
+    /// Nothing, or a thrown string for any other number, which leaves the
+    /// threshold unchanged.
+    #[wasm_bindgen(setter)]
+    pub fn set_other_penalty_length_threshold(&mut self, value: f64) -> Result<(), JsValue> {
+        self.other_penalty_length_threshold = integer_arg("other_penalty_length_threshold", value)?;
+        Ok(())
+    }
+
+    /// Penalty value for long other-character sequences.
+    #[wasm_bindgen(getter)]
+    pub fn other_penalty_length_penalty(&self) -> i32 {
+        self.other_penalty_length_penalty
+    }
+
+    /// Sets the other character penalty value.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - A 32-bit signed integer.
+    ///
+    /// # Returns
+    ///
+    /// Nothing, or a thrown string for any other number, which leaves the
+    /// penalty unchanged.
+    #[wasm_bindgen(setter)]
+    pub fn set_other_penalty_length_penalty(&mut self, value: f64) -> Result<(), JsValue> {
+        self.other_penalty_length_penalty = integer_arg("other_penalty_length_penalty", value)?;
+        Ok(())
     }
 }
 
@@ -109,7 +243,7 @@ mod tests {
     #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen_test]
     fn test_penalty_new_defaults_wasm() {
-        let penalty = JsPenalty::new(None, None, None, None);
+        let penalty = JsPenalty::new(None, None, None, None).unwrap();
 
         assert_eq!(penalty.kanji_penalty_length_threshold, 2);
         assert_eq!(penalty.kanji_penalty_length_penalty, 3000);
@@ -120,7 +254,7 @@ mod tests {
     #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen_test]
     fn test_penalty_new_custom_wasm() {
-        let penalty = JsPenalty::new(Some(3), Some(5000), Some(10), Some(2000));
+        let penalty = JsPenalty::new(Some(3.0), Some(5000.0), Some(10.0), Some(2000.0)).unwrap();
 
         assert_eq!(penalty.kanji_penalty_length_threshold, 3);
         assert_eq!(penalty.kanji_penalty_length_penalty, 5000);
@@ -128,9 +262,72 @@ mod tests {
         assert_eq!(penalty.other_penalty_length_penalty, 2000);
     }
 
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_penalty_new_rejects_numbers_outside_the_range_wasm() {
+        let message = |result: Result<JsPenalty, JsValue>| result.unwrap_err().as_string().unwrap();
+        assert_eq!(
+            message(JsPenalty::new(Some(-1.0), None, None, None)),
+            "kanji_penalty_length_threshold must be an integer between 0 and 4294967295, got -1"
+        );
+        assert_eq!(
+            message(JsPenalty::new(Some(4294967301.0), None, None, None)),
+            "kanji_penalty_length_threshold must be an integer between 0 and 4294967295, \
+             got 4294967301"
+        );
+        assert_eq!(
+            message(JsPenalty::new(None, Some(2147483648.0), None, None)),
+            "kanji_penalty_length_penalty must be an integer between -2147483648 and \
+             2147483647, got 2147483648"
+        );
+        assert_eq!(
+            message(JsPenalty::new(None, None, Some(f64::NAN), None)),
+            "other_penalty_length_threshold must be an integer between 0 and 4294967295, \
+             got NaN"
+        );
+        assert_eq!(
+            message(JsPenalty::new(None, None, None, Some(-2147483649.0))),
+            "other_penalty_length_penalty must be an integer between -2147483648 and \
+             2147483647, got -2147483649"
+        );
+        assert!(JsPenalty::new(Some(1.5), None, None, None).is_err());
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_penalty_setters_reject_numbers_outside_the_range_wasm() {
+        let mut penalty = JsPenalty::new(None, None, None, None).unwrap();
+        assert!(penalty.set_kanji_penalty_length_threshold(-1.0).is_err());
+        assert!(
+            penalty
+                .set_kanji_penalty_length_penalty(2147483648.0)
+                .is_err()
+        );
+        assert!(
+            penalty
+                .set_other_penalty_length_threshold(f64::INFINITY)
+                .is_err()
+        );
+        assert!(penalty.set_other_penalty_length_penalty(0.5).is_err());
+        // A rejected value leaves the setting unchanged.
+        assert_eq!(penalty.kanji_penalty_length_threshold(), 2);
+        assert_eq!(penalty.kanji_penalty_length_penalty(), 3000);
+        assert_eq!(penalty.other_penalty_length_threshold(), 7);
+        assert_eq!(penalty.other_penalty_length_penalty(), 1700);
+
+        penalty
+            .set_kanji_penalty_length_threshold(4294967295.0)
+            .unwrap();
+        penalty
+            .set_other_penalty_length_penalty(-2147483648.0)
+            .unwrap();
+        assert_eq!(penalty.kanji_penalty_length_threshold(), u32::MAX as usize);
+        assert_eq!(penalty.other_penalty_length_penalty(), i32::MIN);
+    }
+
     #[test]
     fn test_penalty_new_defaults() {
-        let penalty = JsPenalty::new(None, None, None, None);
+        let penalty = JsPenalty::new(None, None, None, None).unwrap();
 
         assert_eq!(penalty.kanji_penalty_length_threshold, 2);
         assert_eq!(penalty.kanji_penalty_length_penalty, 3000);
@@ -140,7 +337,7 @@ mod tests {
 
     #[test]
     fn test_penalty_new_custom() {
-        let penalty = JsPenalty::new(Some(3), Some(5000), Some(10), Some(2000));
+        let penalty = JsPenalty::new(Some(3.0), Some(5000.0), Some(10.0), Some(2000.0)).unwrap();
 
         assert_eq!(penalty.kanji_penalty_length_threshold, 3);
         assert_eq!(penalty.kanji_penalty_length_penalty, 5000);
@@ -178,7 +375,7 @@ mod tests {
 
     #[test]
     fn test_js_penalty_to_lindera_penalty() {
-        let js_penalty = JsPenalty::new(Some(5), Some(4000), Some(8), Some(1500));
+        let js_penalty = JsPenalty::new(Some(5.0), Some(4000.0), Some(8.0), Some(1500.0)).unwrap();
         let lindera_penalty: LinderaPenalty = js_penalty.into();
 
         assert_eq!(lindera_penalty.kanji_penalty_length_threshold, 5);

@@ -12,7 +12,7 @@ use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::error::to_napi_error;
 use crate::token::{NbestResult, Token};
-use crate::util::{JsonArg, js_value_to_serde_value};
+use crate::util::{JsonArg, integer_arg, js_value_to_serde_value, optional_integer_arg};
 
 /// Builder for creating a Tokenizer with custom configuration.
 ///
@@ -323,24 +323,29 @@ impl JsTokenizer {
     /// # Arguments
     ///
     /// * `text` - Text to tokenize.
-    /// * `n` - Number of N-best results to return.
+    /// * `n` - Number of N-best results to return, an integer of 0 or more.
     /// * `unique` - If true, deduplicate results (default: false).
-    /// * `cost_threshold` - Maximum cost difference from the best path (default: undefined).
+    /// * `cost_threshold` - Maximum cost difference from the best path, an
+    ///   integer that fits in 64 bits (default: undefined).
     ///
     /// # Returns
     ///
-    /// An array of NbestResult objects, each containing tokens and their cost.
+    /// An array of NbestResult objects, each containing tokens and their cost,
+    /// or an `InvalidArg` error when `n` or `cost_threshold` is not an integer
+    /// in its range.
     #[napi]
     pub fn tokenize_nbest(
         &self,
         text: String,
-        n: u32,
+        n: f64,
         unique: Option<bool>,
-        cost_threshold: Option<i64>,
+        cost_threshold: Option<f64>,
     ) -> napi::Result<Vec<NbestResult>> {
+        let n = integer_arg("n", n)?;
+        let cost_threshold = optional_integer_arg("costThreshold", cost_threshold)?;
         let results = self
             .inner
-            .tokenize_nbest(&text, n as usize, unique.unwrap_or(false), cost_threshold)
+            .tokenize_nbest(&text, n, unique.unwrap_or(false), cost_threshold)
             .map_err(to_napi_error)?;
 
         let js_results: Vec<NbestResult> = results

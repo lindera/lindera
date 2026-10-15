@@ -8,6 +8,7 @@ use lindera::dictionary::{FieldDefinition, FieldType, Schema};
 use lindera_binding::{CoreFieldDefinition, CoreFieldType, CoreSchema};
 
 use crate::error::to_napi_error;
+use crate::util::integer_arg;
 
 /// Field type in dictionary schema.
 ///
@@ -177,16 +178,16 @@ impl JsSchema {
     ///
     /// # Arguments
     ///
-    /// * `index` - Zero-based index.
+    /// * `index` - Zero-based index, an integer of 0 or more.
     ///
     /// # Returns
     ///
-    /// The field name, or `undefined` if the index is out of range.
+    /// The field name, `undefined` if the schema has no field at `index`, or
+    /// an `InvalidArg` error when `index` is negative or not an integer.
     #[napi]
-    pub fn get_field_name(&self, index: u32) -> Option<String> {
-        self.inner
-            .get_field_name(index as usize)
-            .map(str::to_string)
+    pub fn get_field_name(&self, index: f64) -> napi::Result<Option<String>> {
+        let index = integer_arg("index", index)?;
+        Ok(self.inner.get_field_name(index).map(str::to_string))
     }
 
     /// Returns the custom fields (index 4 and above).
@@ -313,8 +314,25 @@ mod tests {
     #[test]
     fn test_js_schema_get_field_name() {
         let schema = JsSchema::new(vec!["a".to_string(), "b".to_string()]);
-        assert_eq!(schema.get_field_name(0), Some("a".to_string()));
-        assert_eq!(schema.get_field_name(9), None);
+        assert_eq!(schema.get_field_name(0.0).unwrap(), Some("a".to_string()));
+        assert_eq!(schema.get_field_name(9.0).unwrap(), None);
+        // 2 ** 32 used to wrap to 0 and return the first field.
+        assert_eq!(schema.get_field_name(4294967296.0).unwrap(), None);
+    }
+
+    #[test]
+    fn test_js_schema_get_field_name_rejects_an_index_that_is_not_a_valid_integer() {
+        let schema = JsSchema::new(vec!["a".to_string(), "b".to_string()]);
+        let reason = |index| schema.get_field_name(index).unwrap_err().reason;
+        assert_eq!(
+            reason(-1.0),
+            format!(
+                "index must be an integer between 0 and {}, got -1",
+                usize::MAX
+            )
+        );
+        assert!(reason(0.5).ends_with("got 0.5"));
+        assert!(reason(f64::NAN).ends_with("got NaN"));
     }
 
     #[test]

@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::*;
 
 use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
+use crate::argument::{integer_arg, optional_i64_from_bigint};
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::json::json_from_js;
 use crate::token::token_view_to_js;
@@ -488,14 +489,26 @@ impl Tokenizer {
     /// Tokenizes the input text and returns N-best results.
     ///
     /// Returns an array of arrays, where each inner array contains Token JSON objects.
+    ///
+    /// `n` is an integer of 0 or more, and `cost_threshold` a BigInt that
+    /// fits in 64 bits; any other value throws. `cost_threshold` is taken as
+    /// a raw `JsValue` because wasm-bindgen would reduce a BigInt passed to
+    /// an `i64` parameter modulo 2^64 (lindera/lindera#1209). Once one
+    /// parameter carries a type attribute, every trailing optional parameter
+    /// needs `unchecked_optional_param_type` to stay optional in the
+    /// TypeScript declarations (#1076).
     #[wasm_bindgen(js_name = "tokenizeNbest")]
     pub fn tokenize_nbest(
         &self,
         input_text: &str,
-        n: usize,
-        unique: Option<bool>,
-        cost_threshold: Option<i64>,
+        n: f64,
+        #[wasm_bindgen(unchecked_optional_param_type = "boolean | null")] unique: Option<bool>,
+        #[wasm_bindgen(unchecked_optional_param_type = "bigint | null")] cost_threshold: Option<
+            JsValue,
+        >,
     ) -> Result<JsValue, JsValue> {
+        let n = integer_arg("n", n)?;
+        let cost_threshold = optional_i64_from_bigint("cost_threshold", cost_threshold)?;
         let results = self
             .inner
             .tokenize_nbest(input_text, n, unique.unwrap_or(false), cost_threshold)
@@ -521,9 +534,11 @@ impl Tokenizer {
     pub fn py_tokenize_nbest(
         &self,
         input_text: &str,
-        n: usize,
-        unique: Option<bool>,
-        cost_threshold: Option<i64>,
+        n: f64,
+        #[wasm_bindgen(unchecked_optional_param_type = "boolean | null")] unique: Option<bool>,
+        #[wasm_bindgen(unchecked_optional_param_type = "bigint | null")] cost_threshold: Option<
+            JsValue,
+        >,
     ) -> Result<JsValue, JsValue> {
         self.tokenize_nbest(input_text, n, unique, cost_threshold)
     }
@@ -826,11 +841,54 @@ mod tests {
         let tokenizer = builder.build().unwrap();
 
         let results = tokenizer
-            .tokenize_nbest("すもももももももものうち", 3, None, None)
+            .tokenize_nbest("すもももももももものうち", 3.0, None, None)
             .unwrap();
 
         assert!(!results.is_null());
         assert!(!results.is_undefined());
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_tokenize_nbest_rejects_integers_that_do_not_fit() {
+        use crate::TokenizerBuilder;
+
+        let builder = TokenizerBuilder::new().unwrap();
+        builder.set_dictionary("embedded://ipadic");
+        let tokenizer = builder.build().unwrap();
+        let message = |n, cost_threshold| {
+            tokenizer
+                .tokenize_nbest("東京", n, None, cost_threshold)
+                .unwrap_err()
+                .as_string()
+                .unwrap()
+        };
+        let bigint = |text: &str| {
+            Some(wasm_bindgen::JsValue::from(
+                js_sys::BigInt::new(&wasm_bindgen::JsValue::from_str(text)).unwrap(),
+            ))
+        };
+
+        assert_eq!(
+            message(-1.0, None),
+            "n must be an integer between 0 and 4294967295, got -1"
+        );
+        assert_eq!(
+            message(4294967297.0, None),
+            "n must be an integer between 0 and 4294967295, got 4294967297"
+        );
+        assert!(message(f64::NAN, None).ends_with("got NaN"));
+        assert!(message(1.5, None).ends_with("got 1.5"));
+        assert_eq!(
+            message(2.0, bigint("18446744073709551616")),
+            "cost_threshold must be an integer between -9223372036854775808 and \
+             9223372036854775807, got 18446744073709551616"
+        );
+        assert!(
+            tokenizer
+                .tokenize_nbest("東京", 2.0, None, bigint("-9223372036854775808"))
+                .is_ok()
+        );
     }
 
     #[cfg(target_arch = "wasm32")]

@@ -14,7 +14,7 @@ use ext_php_rs::zend::ce;
 
 use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
-use crate::convert::{ConvertError, Nullable, zval_to_value};
+use crate::convert::{ConvertError, Nullable, int_arg, zval_to_value};
 use crate::dictionary::{PhpDictionary, PhpUserDictionary};
 use crate::error::lindera_value_err;
 use crate::token::PhpToken;
@@ -361,7 +361,7 @@ impl PhpTokenizer {
     /// # Arguments
     ///
     /// * `text` - Text to tokenize.
-    /// * `n` - Number of N-best results to return.
+    /// * `n` - Number of N-best results to return, 0 or more.
     /// * `unique` - If true, only return unique segmentations. Default: false.
     /// * `cost_threshold` - Optional cost threshold for filtering results.
     ///
@@ -370,7 +370,7 @@ impl PhpTokenizer {
     ///
     /// # Returns
     ///
-    /// A list of NbestResult entries.
+    /// A list of NbestResult entries, or a `ValueError` for a negative `n`.
     pub fn tokenize_nbest(
         &self,
         text: String,
@@ -378,10 +378,11 @@ impl PhpTokenizer {
         unique: Nullable<bool>,
         cost_threshold: Nullable<i64>,
     ) -> PhpResult<Vec<PhpNbestResult>> {
+        let n = int_arg("n", n)?;
         let unique_flag = unique.into_option().unwrap_or(false);
         let results = self
             .inner
-            .tokenize_nbest(&text, n as usize, unique_flag, cost_threshold.into_option())
+            .tokenize_nbest(&text, n, unique_flag, cost_threshold.into_option())
             .map_err(lindera_value_err)?;
 
         let php_results: Vec<PhpNbestResult> = results

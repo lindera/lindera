@@ -228,7 +228,7 @@ for (const { tokens, cost } of results) {
 | 名前 | 型 | 説明 |
 | --- | --- | --- |
 | `text` | `string` | トークナイズするテキスト |
-| `n` | `number` | 返す結果の数 |
+| `n` | `number` | 返す結果の数。0 以上の整数 |
 | `unique` | `boolean` | 結果の重複を排除（デフォルト: `false`） |
 | `costThreshold` | `number \| undefined` | 最良パスからの最大コスト差（デフォルト: `undefined`） |
 

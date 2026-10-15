@@ -7,7 +7,7 @@ use ext_php_rs::prelude::*;
 
 use lindera::mode::{Mode as LinderaMode, Penalty as LinderaPenalty};
 
-use crate::convert::Nullable;
+use crate::convert::{Nullable, optional_int};
 use crate::error::lindera_value_err;
 
 /// Tokenization mode.
@@ -120,35 +120,35 @@ impl PhpPenalty {
     ///
     /// # Arguments
     ///
-    /// * `kanji_penalty_length_threshold` - Kanji length threshold (default: 2).
-    /// * `kanji_penalty_length_penalty` - Kanji penalty value (default: 3000).
-    /// * `other_penalty_length_threshold` - Other character length threshold (default: 7).
-    /// * `other_penalty_length_penalty` - Other character penalty value (default: 1700).
+    /// * `kanji_penalty_length_threshold` - Kanji length threshold, 0 or more
+    ///   (default: 2).
+    /// * `kanji_penalty_length_penalty` - Kanji penalty value, a 32-bit
+    ///   signed integer (default: 3000).
+    /// * `other_penalty_length_threshold` - Other character length threshold,
+    ///   0 or more (default: 7).
+    /// * `other_penalty_length_penalty` - Other character penalty value, a
+    ///   32-bit signed integer (default: 1700).
     ///
     /// A value of another type than `int` or `null` throws instead of
     /// selecting the default.
     ///
     /// # Returns
     ///
-    /// A new Penalty instance.
+    /// A new Penalty instance, or a `ValueError` for a value outside its
+    /// range.
     pub fn __construct(
         kanji_penalty_length_threshold: Nullable<i64>,
         kanji_penalty_length_penalty: Nullable<i64>,
         other_penalty_length_threshold: Nullable<i64>,
         other_penalty_length_penalty: Nullable<i64>,
-    ) -> Self {
-        Self {
-            kanji_penalty_length_threshold: kanji_penalty_length_threshold
-                .into_option()
-                .unwrap_or(2) as usize,
-            kanji_penalty_length_penalty: kanji_penalty_length_penalty.into_option().unwrap_or(3000)
-                as i32,
-            other_penalty_length_threshold: other_penalty_length_threshold
-                .into_option()
-                .unwrap_or(7) as usize,
-            other_penalty_length_penalty: other_penalty_length_penalty.into_option().unwrap_or(1700)
-                as i32,
-        }
+    ) -> PhpResult<Self> {
+        Self::from_args(
+            kanji_penalty_length_threshold.into_option(),
+            kanji_penalty_length_penalty.into_option(),
+            other_penalty_length_threshold.into_option(),
+            other_penalty_length_penalty.into_option(),
+        )
+        .map_err(lindera_value_err)
     }
 
     /// Returns the kanji penalty length threshold.
@@ -204,6 +204,53 @@ impl PhpPenalty {
             self.other_penalty_length_threshold,
             self.other_penalty_length_penalty
         )
+    }
+}
+
+impl PhpPenalty {
+    /// Builds a penalty from the constructor's arguments.
+    ///
+    /// The checks live here, apart from `__construct`, so that Rust tests can
+    /// call them: turning the message into a PHP exception links symbols
+    /// that only the PHP runtime provides.
+    ///
+    /// # Arguments
+    ///
+    /// The arguments of `__construct`, with `None` for `null` or an omitted
+    /// argument, which selects the core's default.
+    ///
+    /// # Returns
+    ///
+    /// The penalty, or the message for a value outside its range.
+    fn from_args(
+        kanji_penalty_length_threshold: Option<i64>,
+        kanji_penalty_length_penalty: Option<i64>,
+        other_penalty_length_threshold: Option<i64>,
+        other_penalty_length_penalty: Option<i64>,
+    ) -> Result<Self, String> {
+        let default = LinderaPenalty::default();
+        Ok(Self {
+            kanji_penalty_length_threshold: optional_int(
+                "kanji_penalty_length_threshold",
+                kanji_penalty_length_threshold,
+            )?
+            .unwrap_or(default.kanji_penalty_length_threshold),
+            kanji_penalty_length_penalty: optional_int(
+                "kanji_penalty_length_penalty",
+                kanji_penalty_length_penalty,
+            )?
+            .unwrap_or(default.kanji_penalty_length_penalty),
+            other_penalty_length_threshold: optional_int(
+                "other_penalty_length_threshold",
+                other_penalty_length_threshold,
+            )?
+            .unwrap_or(default.other_penalty_length_threshold),
+            other_penalty_length_penalty: optional_int(
+                "other_penalty_length_penalty",
+                other_penalty_length_penalty,
+            )?
+            .unwrap_or(default.other_penalty_length_penalty),
+        })
     }
 }
 
@@ -266,8 +313,7 @@ mod tests {
 
     #[test]
     fn test_phppenalty_default_values() {
-        let php_penalty =
-            PhpPenalty::__construct(None.into(), None.into(), None.into(), None.into());
+        let php_penalty = PhpPenalty::from_args(None, None, None, None).unwrap();
         let lindera_penalty: LinderaPenalty = php_penalty.into();
         let default = LinderaPenalty::default();
         assert_eq!(
@@ -286,5 +332,49 @@ mod tests {
             lindera_penalty.other_penalty_length_penalty,
             default.other_penalty_length_penalty
         );
+    }
+
+    #[test]
+    fn test_phppenalty_from_args_rejects_values_outside_the_range() {
+        let error = |result: Result<PhpPenalty, String>| result.err();
+        assert_eq!(
+            error(PhpPenalty::from_args(Some(-1), None, None, None)),
+            Some(format!(
+                "kanji_penalty_length_threshold must be an integer between 0 and {}, got -1",
+                usize::MAX
+            ))
+        );
+        assert_eq!(
+            error(PhpPenalty::from_args(None, Some(2147483648), None, None)),
+            Some(
+                "kanji_penalty_length_penalty must be an integer between -2147483648 and \
+                 2147483647, got 2147483648"
+                    .into()
+            )
+        );
+        assert_eq!(
+            error(PhpPenalty::from_args(None, None, Some(-1), None)),
+            Some(format!(
+                "other_penalty_length_threshold must be an integer between 0 and {}, got -1",
+                usize::MAX
+            ))
+        );
+        assert_eq!(
+            error(PhpPenalty::from_args(None, None, None, Some(-2147483649))),
+            Some(
+                "other_penalty_length_penalty must be an integer between -2147483648 and \
+                 2147483647, got -2147483649"
+                    .into()
+            )
+        );
+        let penalty = PhpPenalty::from_args(
+            Some(0),
+            Some(i32::MIN.into()),
+            Some(0),
+            Some(i32::MAX.into()),
+        )
+        .unwrap();
+        assert_eq!(penalty.kanji_penalty_length_penalty, i32::MIN);
+        assert_eq!(penalty.other_penalty_length_penalty, i32::MAX);
     }
 }

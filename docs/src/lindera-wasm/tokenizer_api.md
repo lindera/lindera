@@ -219,9 +219,9 @@ Returns N-best tokenization results ordered by total path cost.
 
 - **Parameters**:
   - `text` (string) -- Text to tokenize
-  - `n` (number) -- Number of results to return
+  - `n` (number) -- Number of results to return, an integer of 0 or more
   - `unique` (boolean, optional) -- Deduplicate results with identical segmentation (default: `false`)
-  - `costThreshold` (bigint, optional) -- Only return paths within `bestCost + threshold`
+  - `costThreshold` (bigint, optional) -- Only return paths within `bestCost + threshold`; it must fit in 64 bits
 - **Returns**: Array of `{ tokens: Token[], cost: number }`
 
 ```javascript

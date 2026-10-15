@@ -10,7 +10,7 @@ use ext_php_rs::prelude::*;
 
 use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, TrainerConfig};
 
-use crate::convert::{Float, Nullable};
+use crate::convert::{Float, Nullable, nullable_int_arg};
 use crate::error::lindera_value_err;
 
 /// Trainer for morphological analysis models.
@@ -39,7 +39,8 @@ impl PhpTrainer {
     /// * `max_threads` - Maximum number of threads (null = auto-detect CPU cores).
     ///
     /// A value of another type for `lambda`, `max_iter` or `max_threads`
-    /// throws instead of selecting the default.
+    /// throws instead of selecting the default, and a negative `max_iter` or
+    /// `max_threads` throws a `ValueError` before any file is read.
     #[allow(clippy::too_many_arguments)]
     pub fn train(
         seed: String,
@@ -53,6 +54,12 @@ impl PhpTrainer {
         max_iter: Nullable<i64>,
         max_threads: Nullable<i64>,
     ) -> PhpResult<()> {
+        // Check the settings before touching any file.
+        let lambda_val = lambda.into_option().map_or(0.01, Float::into_f64);
+        let max_iter_val = nullable_int_arg("max_iter", max_iter)?.unwrap_or(100);
+        let num_threads =
+            nullable_int_arg("max_threads", max_threads)?.unwrap_or_else(num_cpus::get);
+
         let seed_path = Path::new(&seed);
         let corpus_path = Path::new(&corpus);
         let char_def_path = Path::new(&char_def);
@@ -90,13 +97,6 @@ impl PhpTrainer {
         .map_err(|e| lindera_value_err(format!("Failed to load trainer configuration: {e}")))?;
 
         // Initialize trainer
-        let lambda_val = lambda.into_option().map_or(0.01, Float::into_f64);
-        let max_iter_val = max_iter.into_option().unwrap_or(100) as u64;
-        let num_threads = max_threads
-            .into_option()
-            .map(|t| t as usize)
-            .unwrap_or_else(num_cpus::get);
-
         let trainer = Trainer::new(config)
             .map_err(|e| lindera_value_err(format!("Failed to initialize trainer: {e}")))?
             .regularization_cost(lambda_val)

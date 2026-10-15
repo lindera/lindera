@@ -3,7 +3,9 @@
 //! This module provides helper functions for working with JavaScript values
 //! in the napi-rs context.
 
-use lindera_binding::argument::{MAX_ARGUMENT_DEPTH, argument_too_deep_message};
+use lindera_binding::argument::{
+    IntegerArgument, MAX_ARGUMENT_DEPTH, argument_too_deep_message, integer_argument_from_f64,
+};
 use napi::bindgen_prelude::{Array, FromNapiValue, Object};
 use napi::{Error, JsValue, Status, Unknown, ValueType, check_status, sys};
 use serde_json::{Map, Value};
@@ -125,6 +127,48 @@ unsafe fn json_from_napi(
 /// The value if present, or an empty JSON object.
 pub fn js_value_to_serde_value(value: Option<Value>) -> Value {
     value.unwrap_or_else(|| Value::Object(serde_json::Map::new()))
+}
+
+/// Converts a JS number passed as an integer argument to the type the core
+/// stores it as.
+///
+/// napi-rs reads a `u32` or `i32` parameter with ToUint32 / ToInt32, which
+/// wrap modulo 2^32 and turn `NaN`, `Infinity` and fractions into other
+/// integers before Rust sees them (lindera/lindera#1209). Integer parameters
+/// are therefore declared as `f64`, which holds every JS number exactly, and
+/// checked here.
+///
+/// # Arguments
+///
+/// * `name` - The parameter's name as JS callers write it, such as
+///   `defaultWordCost`.
+/// * `value` - The number passed.
+///
+/// # Returns
+///
+/// The value as `T`, or an `InvalidArg` error that names the parameter and
+/// the range of `T` when the number is not an integer `T` can hold.
+pub fn integer_arg<T: IntegerArgument>(name: &str, value: f64) -> napi::Result<T> {
+    integer_argument_from_f64(name, value)
+        .map_err(|message| Error::new(Status::InvalidArg, message))
+}
+
+/// Converts an optional JS number with [`integer_arg`].
+///
+/// # Arguments
+///
+/// * `name` - The parameter's name as JS callers write it.
+/// * `value` - The number passed, or `None` when it is left out.
+///
+/// # Returns
+///
+/// `None` when the number is left out, the value as `T` otherwise, or the
+/// error of [`integer_arg`].
+pub fn optional_integer_arg<T: IntegerArgument>(
+    name: &str,
+    value: Option<f64>,
+) -> napi::Result<Option<T>> {
+    value.map(|value| integer_arg(name, value)).transpose()
 }
 
 #[cfg(test)]

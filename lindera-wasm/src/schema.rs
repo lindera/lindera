@@ -3,6 +3,8 @@ use wasm_bindgen::prelude::*;
 use lindera::dictionary::{FieldDefinition, FieldType, Schema};
 use lindera_binding::{CoreFieldDefinition, CoreFieldType, CoreSchema};
 
+use crate::argument::integer_arg;
+
 /// Field type in dictionary schema.
 #[wasm_bindgen(js_name = "FieldType")]
 #[derive(Debug, Clone, Copy)]
@@ -59,7 +61,11 @@ impl From<JsFieldType> for FieldType {
 #[wasm_bindgen(js_name = "FieldDefinition")]
 #[derive(Clone)]
 pub struct JsFieldDefinition {
-    pub index: usize,
+    /// Index of the field in a record. Private, with the getter and setter
+    /// written out: the setter wasm-bindgen generates for a `pub` field takes
+    /// the number through `>>> 0`, which wraps a negative index
+    /// (lindera/lindera#1209).
+    index: usize,
     #[wasm_bindgen(getter_with_clone)]
     pub name: String,
     pub field_type: JsFieldType,
@@ -69,19 +75,54 @@ pub struct JsFieldDefinition {
 
 #[wasm_bindgen(js_class = "FieldDefinition")]
 impl JsFieldDefinition {
+    /// Creates a field definition.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - Index of the field in a record, an integer of 0 or more.
+    /// * `name` - Field name.
+    /// * `field_type` - Field type.
+    /// * `description` - Optional description.
+    ///
+    /// # Returns
+    ///
+    /// The field definition, or a thrown string when `index` is not an
+    /// integer of 0 or more.
     #[wasm_bindgen(constructor)]
     pub fn new(
-        index: usize,
+        index: f64,
         name: String,
         field_type: JsFieldType,
         description: Option<String>,
-    ) -> Self {
-        Self {
-            index,
+    ) -> Result<JsFieldDefinition, JsValue> {
+        Ok(Self {
+            index: integer_arg("index", index)?,
             name,
             field_type,
             description,
-        }
+        })
+    }
+
+    /// Index of the field in a record.
+    #[wasm_bindgen(getter)]
+    pub fn index(&self) -> usize {
+        self.index
+    }
+
+    /// Sets the index of the field in a record.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - An integer of 0 or more.
+    ///
+    /// # Returns
+    ///
+    /// Nothing, or a thrown string for any other number, which leaves the
+    /// index unchanged.
+    #[wasm_bindgen(setter)]
+    pub fn set_index(&mut self, index: f64) -> Result<(), JsValue> {
+        self.index = integer_arg("index", index)?;
+        Ok(())
     }
 }
 
@@ -153,8 +194,19 @@ impl JsSchema {
         self.inner.field_count()
     }
 
-    pub fn get_field_name(&self, index: usize) -> Option<String> {
-        self.inner.get_field_name(index).map(str::to_string)
+    /// Returns the field name at the given index.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - Zero-based index, an integer of 0 or more.
+    ///
+    /// # Returns
+    ///
+    /// The field name, `undefined` if the schema has no field at `index`, or
+    /// a thrown string when `index` is not an integer of 0 or more.
+    pub fn get_field_name(&self, index: f64) -> Result<Option<String>, JsValue> {
+        let index = integer_arg("index", index)?;
+        Ok(self.inner.get_field_name(index).map(str::to_string))
     }
 
     pub fn get_custom_fields(&self) -> Vec<String> {
@@ -237,11 +289,44 @@ mod tests {
         assert_eq!(schema.get_field_index("surface"), Some(0));
         assert_eq!(schema.get_field_index("pos"), Some(4));
         assert_eq!(schema.get_field_index("nonexistent"), None);
-        assert_eq!(schema.get_field_name(0), Some("surface".to_string()));
-        assert_eq!(schema.get_field_name(999), None);
+        assert_eq!(
+            schema.get_field_name(0.0).unwrap(),
+            Some("surface".to_string())
+        );
+        assert_eq!(schema.get_field_name(999.0).unwrap(), None);
         assert_eq!(schema.get_all_fields(), fields);
         let custom = schema.get_custom_fields();
         assert_eq!(custom, vec!["pos".to_string(), "reading".to_string()]);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_index_arguments_reject_numbers_that_do_not_fit_wasm() {
+        let message = |error: JsValue| error.as_string().unwrap();
+        let schema = JsSchema::new(vec!["surface".to_string()]);
+        assert_eq!(
+            message(schema.get_field_name(-1.0).unwrap_err()),
+            "index must be an integer between 0 and 4294967295, got -1"
+        );
+        // 2 ** 32 used to wrap to 0 and return the first field.
+        assert_eq!(
+            message(schema.get_field_name(4294967296.0).unwrap_err()),
+            "index must be an integer between 0 and 4294967295, got 4294967296"
+        );
+        assert!(schema.get_field_name(0.5).is_err());
+
+        let new = |index| JsFieldDefinition::new(index, "x".to_string(), JsFieldType::Custom, None);
+        assert_eq!(
+            message(new(-1.0).err().unwrap()),
+            "index must be an integer between 0 and 4294967295, got -1"
+        );
+        assert!(new(f64::NAN).is_err());
+        let mut field = new(4294967295.0).unwrap();
+        assert_eq!(field.index(), u32::MAX as usize);
+        assert!(field.set_index(-1.0).is_err());
+        assert_eq!(field.index(), u32::MAX as usize);
+        field.set_index(3.0).unwrap();
+        assert_eq!(field.index(), 3);
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -300,8 +385,11 @@ mod tests {
         assert_eq!(schema.get_field_index("pos"), Some(4));
         assert_eq!(schema.get_field_index("nonexistent"), None);
 
-        assert_eq!(schema.get_field_name(0), Some("surface".to_string()));
-        assert_eq!(schema.get_field_name(999), None);
+        assert_eq!(
+            schema.get_field_name(0.0).unwrap(),
+            Some("surface".to_string())
+        );
+        assert_eq!(schema.get_field_name(999.0).unwrap(), None);
 
         let all = schema.get_all_fields();
         assert_eq!(all, fields);
@@ -399,11 +487,12 @@ mod tests {
     #[test]
     fn test_field_definition_from_into_conversions() {
         let js_field = JsFieldDefinition::new(
-            4,
+            4.0,
             "pos".to_string(),
             JsFieldType::Custom,
             Some("Part of speech".to_string()),
-        );
+        )
+        .unwrap();
 
         let lindera_field: FieldDefinition = js_field.into();
         assert_eq!(lindera_field.index, 4);
@@ -430,6 +519,9 @@ mod tests {
 
         let back: JsSchema = lindera_schema.into();
         assert_eq!(back.field_count(), 4);
-        assert_eq!(back.get_field_name(0), Some("surface".to_string()));
+        assert_eq!(
+            back.get_field_name(0.0).unwrap(),
+            Some("surface".to_string())
+        );
     }
 }

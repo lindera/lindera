@@ -134,9 +134,18 @@ impl PyMetadata {
         self.inner.default_word_cost
     }
 
+    /// Sets the default word cost.
+    ///
+    /// The argument is named after the property because pyo3 names it in
+    /// the note of the `OverflowError` for a value outside -32768 to 32767
+    /// (`while processing 'default_word_cost'`).
+    ///
+    /// # Arguments
+    ///
+    /// * `default_word_cost` - The new value.
     #[setter]
-    pub fn set_default_word_cost(&mut self, cost: i16) {
-        self.inner.default_word_cost = cost;
+    pub fn set_default_word_cost(&mut self, default_word_cost: i16) {
+        self.inner.default_word_cost = default_word_cost;
     }
 
     #[getter]
@@ -144,9 +153,18 @@ impl PyMetadata {
         self.inner.default_left_context_id
     }
 
+    /// Sets the default left context ID.
+    ///
+    /// The argument is named after the property because pyo3 names it in
+    /// the note of the `OverflowError` for a value outside 0 to 65535
+    /// (`while processing 'default_left_context_id'`).
+    ///
+    /// # Arguments
+    ///
+    /// * `default_left_context_id` - The new value.
     #[setter]
-    pub fn set_default_left_context_id(&mut self, id: u16) {
-        self.inner.default_left_context_id = id;
+    pub fn set_default_left_context_id(&mut self, default_left_context_id: u16) {
+        self.inner.default_left_context_id = default_left_context_id;
     }
 
     #[getter]
@@ -154,9 +172,18 @@ impl PyMetadata {
         self.inner.default_right_context_id
     }
 
+    /// Sets the default right context ID.
+    ///
+    /// The argument is named after the property because pyo3 names it in
+    /// the note of the `OverflowError` for a value outside 0 to 65535
+    /// (`while processing 'default_right_context_id'`).
+    ///
+    /// # Arguments
+    ///
+    /// * `default_right_context_id` - The new value.
     #[setter]
-    pub fn set_default_right_context_id(&mut self, id: u16) {
-        self.inner.default_right_context_id = id;
+    pub fn set_default_right_context_id(&mut self, default_right_context_id: u16) {
+        self.inner.default_right_context_id = default_right_context_id;
     }
 
     #[getter]

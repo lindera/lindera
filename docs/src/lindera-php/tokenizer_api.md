@@ -255,7 +255,7 @@ foreach ($results as $result) {
 | Name | Type | Description |
 | --- | --- | --- |
 | `$text` | `string` | Text to tokenize |
-| `$n` | `int` | Number of results to return |
+| `$n` | `int` | Number of results to return, 0 or more |
 | `$unique` | `bool\|null` | Deduplicate results (default: `false`) |
 | `$cost_threshold` | `int\|null` | Maximum cost difference from the best path (default: `null`) |
 
@@ -292,7 +292,7 @@ foreach ($results as $result) {
 
 #### `getDetail($index)`
 
-Returns the detail string at the specified index, or `null` if the index is out of range.
+Returns the detail string at the specified index, or `null` if the token has no detail there. A negative index throws a `ValueError`.
 
 ```php
 <?php

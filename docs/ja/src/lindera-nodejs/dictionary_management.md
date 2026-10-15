@@ -175,9 +175,9 @@ const metadata = Metadata.fromJsonFile("metadata.json");
 | --- | --- | --- | --- |
 | `name` | `string` | `"default"` | 辞書名 |
 | `encoding` | `string` | `"UTF-8"` | 文字エンコーディング |
-| `defaultWordCost` | `number` | `-10000` | 未知語のデフォルトコスト |
-| `defaultLeftContextId` | `number` | `1288` | デフォルトの左文脈 ID |
-| `defaultRightContextId` | `number` | `1288` | デフォルトの右文脈 ID |
+| `defaultWordCost` | `number` | `-10000` | 未知語のデフォルトコスト。-32768 から 32767 の整数 |
+| `defaultLeftContextId` | `number` | `1288` | デフォルトの左文脈 ID。0 から 65535 の整数 |
+| `defaultRightContextId` | `number` | `1288` | デフォルトの右文脈 ID。0 から 65535 の整数 |
 | `defaultFieldValue` | `string` | `"*"` | 欠損フィールドのデフォルト値 |
 | `flexibleCsv` | `boolean` | `false` | 柔軟な CSV パースを許可 |
 | `skipInvalidCostOrId` | `boolean` | `false` | 無効なコストまたは ID のエントリーをスキップ |

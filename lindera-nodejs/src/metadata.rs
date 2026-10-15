@@ -10,6 +10,8 @@ use std::collections::HashMap;
 use lindera::dictionary::Metadata;
 use lindera_binding::CoreMetadata;
 
+use crate::util::{integer_arg, optional_integer_arg};
+
 /// Options for creating a Metadata instance.
 ///
 /// All fields are optional. When omitted, default values are used.
@@ -19,12 +21,13 @@ pub struct MetadataOptions {
     pub name: Option<String>,
     /// Character encoding (default: "UTF-8").
     pub encoding: Option<String>,
-    /// Default cost for unknown words (default: -10000).
-    pub default_word_cost: Option<i32>,
-    /// Default left context ID (default: 1288).
-    pub default_left_context_id: Option<u32>,
-    /// Default right context ID (default: 1288).
-    pub default_right_context_id: Option<u32>,
+    /// Default cost for unknown words, an integer from -32768 to 32767
+    /// (default: -10000).
+    pub default_word_cost: Option<f64>,
+    /// Default left context ID, an integer from 0 to 65535 (default: 1288).
+    pub default_left_context_id: Option<f64>,
+    /// Default right context ID, an integer from 0 to 65535 (default: 1288).
+    pub default_right_context_id: Option<f64>,
     /// Default value for missing fields (default: "*").
     pub default_field_value: Option<String>,
     /// Allow flexible CSV parsing (default: false).
@@ -50,8 +53,13 @@ impl JsMetadata {
     /// # Arguments
     ///
     /// * `options` - Optional configuration object. When omitted, all defaults are used.
+    ///
+    /// # Returns
+    ///
+    /// The metadata, or an `InvalidArg` error for a cost or context ID that
+    /// is not an integer in its range.
     #[napi(constructor)]
-    pub fn new(options: Option<MetadataOptions>) -> Self {
+    pub fn new(options: Option<MetadataOptions>) -> napi::Result<Self> {
         let opts = options.unwrap_or(MetadataOptions {
             name: None,
             encoding: None,
@@ -63,20 +71,20 @@ impl JsMetadata {
             skip_invalid_cost_or_id: None,
         });
 
-        JsMetadata {
+        Ok(JsMetadata {
             inner: CoreMetadata::new(
                 opts.name,
                 opts.encoding,
-                opts.default_word_cost.map(|c| c as i16),
-                opts.default_left_context_id.map(|id| id as u16),
-                opts.default_right_context_id.map(|id| id as u16),
+                optional_integer_arg("defaultWordCost", opts.default_word_cost)?,
+                optional_integer_arg("defaultLeftContextId", opts.default_left_context_id)?,
+                optional_integer_arg("defaultRightContextId", opts.default_right_context_id)?,
                 opts.default_field_value,
                 opts.flexible_csv,
                 opts.skip_invalid_cost_or_id,
                 None,
                 None,
             ),
-        }
+        })
     }
 
     /// Creates a Metadata with all default values.
@@ -86,7 +94,9 @@ impl JsMetadata {
     /// A Metadata instance with default configuration.
     #[napi(factory)]
     pub fn create_default() -> Self {
-        JsMetadata::new(None)
+        JsMetadata {
+            inner: CoreMetadata::new(None, None, None, None, None, None, None, None, None, None),
+        }
     }
 
     /// Loads metadata from a JSON file.
@@ -148,9 +158,19 @@ impl JsMetadata {
     }
 
     /// Sets the default word cost.
+    ///
+    /// # Arguments
+    ///
+    /// * `cost` - An integer from -32768 to 32767.
+    ///
+    /// # Returns
+    ///
+    /// Nothing, or an `InvalidArg` error for any other number, which leaves
+    /// the cost unchanged.
     #[napi(setter)]
-    pub fn set_default_word_cost(&mut self, cost: i32) {
-        self.inner.default_word_cost = cost as i16;
+    pub fn set_default_word_cost(&mut self, cost: f64) -> napi::Result<()> {
+        self.inner.default_word_cost = integer_arg("defaultWordCost", cost)?;
+        Ok(())
     }
 
     /// Default left context ID.
@@ -160,9 +180,19 @@ impl JsMetadata {
     }
 
     /// Sets the default left context ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - An integer from 0 to 65535.
+    ///
+    /// # Returns
+    ///
+    /// Nothing, or an `InvalidArg` error for any other number, which leaves
+    /// the ID unchanged.
     #[napi(setter)]
-    pub fn set_default_left_context_id(&mut self, id: u32) {
-        self.inner.default_left_context_id = id as u16;
+    pub fn set_default_left_context_id(&mut self, id: f64) -> napi::Result<()> {
+        self.inner.default_left_context_id = integer_arg("defaultLeftContextId", id)?;
+        Ok(())
     }
 
     /// Default right context ID.
@@ -172,9 +202,19 @@ impl JsMetadata {
     }
 
     /// Sets the default right context ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - An integer from 0 to 65535.
+    ///
+    /// # Returns
+    ///
+    /// Nothing, or an `InvalidArg` error for any other number, which leaves
+    /// the ID unchanged.
     #[napi(setter)]
-    pub fn set_default_right_context_id(&mut self, id: u32) {
-        self.inner.default_right_context_id = id as u16;
+    pub fn set_default_right_context_id(&mut self, id: f64) -> napi::Result<()> {
+        self.inner.default_right_context_id = integer_arg("defaultRightContextId", id)?;
+        Ok(())
     }
 
     /// Default field value for missing fields.
@@ -292,7 +332,7 @@ mod tests {
 
     #[test]
     fn test_js_metadata_to_lindera_metadata() {
-        let js_metadata = JsMetadata::new(None);
+        let js_metadata = JsMetadata::new(None).unwrap();
         let lindera_metadata: Metadata = js_metadata.into();
         assert_eq!(lindera_metadata.name, "default");
         assert_eq!(lindera_metadata.encoding, "UTF-8");
@@ -334,14 +374,14 @@ mod tests {
         let opts = MetadataOptions {
             name: Some("custom".to_string()),
             encoding: Some("Shift_JIS".to_string()),
-            default_word_cost: Some(-5000),
-            default_left_context_id: Some(100),
-            default_right_context_id: Some(200),
+            default_word_cost: Some(-5000.0),
+            default_left_context_id: Some(100.0),
+            default_right_context_id: Some(200.0),
             default_field_value: Some("-".to_string()),
             flexible_csv: Some(true),
             skip_invalid_cost_or_id: Some(true),
         };
-        let js_metadata = JsMetadata::new(Some(opts));
+        let js_metadata = JsMetadata::new(Some(opts)).unwrap();
         assert_eq!(js_metadata.name(), "custom");
         assert_eq!(js_metadata.encoding(), "Shift_JIS");
         assert_eq!(js_metadata.default_word_cost(), -5000);
@@ -353,8 +393,65 @@ mod tests {
     }
 
     #[test]
+    fn test_js_metadata_rejects_numbers_outside_the_range() {
+        let options = |cost, left, right| MetadataOptions {
+            name: None,
+            encoding: None,
+            default_word_cost: cost,
+            default_left_context_id: left,
+            default_right_context_id: right,
+            default_field_value: None,
+            flexible_csv: None,
+            skip_invalid_cost_or_id: None,
+        };
+        let reason = |options| JsMetadata::new(Some(options)).err().map(|e| e.reason);
+        assert_eq!(
+            reason(options(Some(100000.0), None, None)).as_deref(),
+            Some("defaultWordCost must be an integer between -32768 and 32767, got 100000")
+        );
+        assert_eq!(
+            reason(options(Some(1.5), None, None)).as_deref(),
+            Some("defaultWordCost must be an integer between -32768 and 32767, got 1.5")
+        );
+        assert_eq!(
+            reason(options(None, Some(4294967301.0), None)).as_deref(),
+            Some("defaultLeftContextId must be an integer between 0 and 65535, got 4294967301")
+        );
+        assert_eq!(
+            reason(options(None, None, Some(-1.0))).as_deref(),
+            Some("defaultRightContextId must be an integer between 0 and 65535, got -1")
+        );
+        assert_eq!(
+            reason(options(Some(-32768.0), Some(0.0), Some(65535.0))),
+            None
+        );
+    }
+
+    #[test]
+    fn test_js_metadata_setters_reject_numbers_outside_the_range() {
+        let mut js_metadata = JsMetadata::new(None).unwrap();
+        let error = js_metadata.set_default_word_cost(f64::NAN).unwrap_err();
+        assert_eq!(error.status, napi::Status::InvalidArg);
+        assert_eq!(
+            error.reason,
+            "defaultWordCost must be an integer between -32768 and 32767, got NaN"
+        );
+        assert!(js_metadata.set_default_left_context_id(65536.0).is_err());
+        assert!(js_metadata.set_default_right_context_id(-1.0).is_err());
+        // A rejected value leaves the setting unchanged.
+        assert_eq!(js_metadata.default_word_cost(), -10000);
+        assert_eq!(js_metadata.default_left_context_id(), 1288);
+        assert_eq!(js_metadata.default_right_context_id(), 1288);
+
+        js_metadata.set_default_word_cost(32767.0).unwrap();
+        js_metadata.set_default_left_context_id(65535.0).unwrap();
+        assert_eq!(js_metadata.default_word_cost(), 32767);
+        assert_eq!(js_metadata.default_left_context_id(), 65535);
+    }
+
+    #[test]
     fn test_to_object_omits_space_penalty_when_absent() {
-        let js_metadata = JsMetadata::new(None);
+        let js_metadata = JsMetadata::new(None).unwrap();
         assert!(!js_metadata.to_object().contains_key("spacePenalty"));
     }
 
@@ -377,7 +474,7 @@ mod tests {
 
     #[test]
     fn test_js_metadata_roundtrip() {
-        let original = JsMetadata::new(None);
+        let original = JsMetadata::new(None).unwrap();
         let lindera: Metadata = original.into();
         let roundtripped: JsMetadata = lindera.into();
         assert_eq!(roundtripped.name(), "default");
