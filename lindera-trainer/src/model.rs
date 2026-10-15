@@ -94,6 +94,44 @@ fn calculate_cost_factor(merged_model: &lindera_crf::MergedModel) -> i32 {
     }
 }
 
+/// Writes a dense `matrix.def`: the header `right_size left_size`, then one
+/// `right_id left_id cost` line for every cell, where row 0 is BOS and
+/// column 0 is EOS.
+///
+/// A cell's cost is `tocost` of its trained weight. A cell without one, whose
+/// bigram feature pairs got no weight or were all zeroed by regularization,
+/// costs `tocost(0) = 0`: the transition costs nothing in training either,
+/// and MeCab's `mecab-dict-gen` writes 0 for it too (#1168).
+///
+/// # Arguments
+///
+/// * `writer` - Write sink for `matrix.def`.
+/// * `right_size` - The number of rows: the highest right context id plus 1.
+/// * `left_size` - The number of columns: the highest left context id plus 1.
+/// * `cost_factor` - The factor that `tocost` scales a weight by.
+/// * `weight` - Returns the trained weight of the cell at a right and a left
+///   context id, or `None` when the cell has none.
+///
+/// # Returns
+///
+/// `Ok(())` on success, or an error when the writer fails.
+fn write_matrix_def<W: Write>(
+    writer: &mut W,
+    right_size: usize,
+    left_size: usize,
+    cost_factor: i32,
+    weight: impl Fn(usize, usize) -> Option<f64>,
+) -> Result<()> {
+    writeln!(writer, "{right_size} {left_size}")?;
+    for right_id in 0..right_size {
+        for left_id in 0..left_size {
+            let cost = tocost(weight(right_id, left_id).unwrap_or(0.0), cost_factor);
+            writeln!(writer, "{right_id} {left_id} {cost}")?;
+        }
+    }
+    Ok(())
+}
+
 /// Returns the seed row whose feature is the most similar to a user lexicon
 /// feature, for `Model::infer_context_ids`.
 ///
@@ -157,7 +195,9 @@ pub struct SerializableModel {
     pub pos_info: Vec<String>,
     /// Model metadata
     pub metadata: ModelMetadata,
-    /// Connection cost matrix: (right_id, left_id) -> cost.
+    /// Connection weight matrix: right_id -> left_id -> trained weight, for
+    /// the cells that kept a weight in the merge. `write_connection_costs`
+    /// turns each weight into a cost and gives a missing cell 0 (#1168).
     ///
     /// Ordered maps rather than hashed ones, at both levels. rkyv archives a
     /// `HashMap` as a SwissTable whose slot assignment resolves collisions in
@@ -771,36 +811,42 @@ impl Model {
         Ok(())
     }
 
+    /// Writes the dense connection cost matrix (MeCab-compatible `matrix.def`)
+    /// of the trained model, over every context id the merge assigned, plus
+    /// 0 for BOS/EOS. A connection without a trained weight costs 0, as in
+    /// training and in MeCab (#1168).
+    ///
+    /// It is the matrix that `SerializableModel::write_connection_costs`
+    /// writes for the model that [`write_model`](Self::write_model) writes.
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `matrix.def`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success, or an error when the model cannot be merged or
+    /// the writer fails.
     pub fn write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()> {
         let merged_model = self.get_merged_model()?;
         let cost_factor = calculate_cost_factor(&merged_model);
 
-        // Dense matrix dimensions: (right_size, left_size)
-        // +1 for BOS/EOS (id=0)
+        // +1 for BOS/EOS (id 0)
         let right_size = merged_model.right_conn_to_left_feats.len() + 1;
         let left_size = merged_model.left_conn_to_right_feats.len() + 1;
-        writeln!(writer, "{right_size} {left_size}")?;
-
-        // Dense matrix: output all (right_id, left_id) pairs
-        // Unseen pairs get maximum penalty cost to block unlearned transitions,
-        // forcing Viterbi to prefer paths through learned POS bigram connections.
-        for right_id in 0..right_size {
-            for left_id in 0..left_size {
-                let cost = if let Some(weight) = merged_model
+        write_matrix_def(
+            writer,
+            right_size,
+            left_size,
+            cost_factor,
+            |right_id, left_id| {
+                merged_model
                     .matrix
                     .get(right_id)
                     .and_then(|hm| hm.get(&(left_id as u32)))
                     .copied()
-                {
-                    tocost(weight, cost_factor)
-                } else {
-                    i16::MAX
-                };
-                writeln!(writer, "{right_id} {left_id} {cost}")?;
-            }
-        }
-
-        Ok(())
+            },
+        )
     }
 
     /// Writes `unk.def`: one line per `unk.def` entry the model was trained
@@ -1381,7 +1427,10 @@ impl SerializableModel {
     ///
     /// The matrix covers every context id of the model, plus 0 for BOS/EOS,
     /// even when no bigram weight survived training: the lexicon and unknown
-    /// entries carry those ids, and the runtime looks every transition up.
+    /// entries carry those ids, and the runtime looks every transition up. A
+    /// cell missing from `connection_matrix`, a connection without a trained
+    /// weight, costs 0, as in training and in MeCab's `mecab-dict-gen`
+    /// (#1168).
     ///
     /// # Arguments
     ///
@@ -1391,30 +1440,18 @@ impl SerializableModel {
     ///
     /// `Ok(())` on success.
     pub fn write_connection_costs<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
-        let right_size = self.max_right_id + 1;
-        let left_size = self.max_left_id + 1;
-
-        writeln!(writer, "{right_size} {left_size}")?;
-
-        // Dense matrix: all (right_id, left_id) pairs
-        // Unseen pairs get maximum penalty cost to block unlearned transitions,
-        // forcing Viterbi to prefer paths through learned POS bigram connections.
-        for right_id in 0..right_size {
-            for left_id in 0..left_size {
-                let cost = if let Some(&weight) = self
-                    .connection_matrix
+        write_matrix_def(
+            writer,
+            self.max_right_id + 1,
+            self.max_left_id + 1,
+            self.cost_factor,
+            |right_id, left_id| {
+                self.connection_matrix
                     .get(&right_id)
                     .and_then(|inner| inner.get(&left_id))
-                {
-                    tocost(weight, self.cost_factor)
-                } else {
-                    i16::MAX
-                };
-                writeln!(writer, "{right_id} {left_id} {cost}")?;
-            }
-        }
-
-        Ok(())
+                    .copied()
+            },
+        )
     }
 
     /// Update metadata.json with trained model values.
@@ -1736,6 +1773,69 @@ mod tests {
         assert_eq!(tocost(100.0, 700), i16::MIN);
         // Fractional weight
         assert_eq!(tocost(0.5, 700), -350);
+    }
+
+    #[test]
+    fn test_connection_without_a_weight_costs_zero() {
+        use super::{Model, tocost};
+
+        // #1168: a cell of matrix.def whose connection has no trained weight
+        // costs tocost(0) = 0, as the transition does in training and as
+        // MeCab writes it, not i16::MAX; a cell with a weight costs tocost of
+        // it.
+        let model = crate::test_fixtures::train_wide_model(1);
+        let mut buf = Vec::new();
+        model.write_model(&mut buf).unwrap();
+        let serializable = Model::read_model(Cursor::new(&buf)).unwrap();
+
+        let mut matrix = Vec::new();
+        serializable.write_connection_costs(&mut matrix).unwrap();
+        let matrix = String::from_utf8(matrix).unwrap();
+        let rows = serializable.max_right_id + 1;
+        let cols = serializable.max_left_id + 1;
+        let mut lines = matrix.lines();
+        assert_eq!(lines.next(), Some(format!("{rows} {cols}").as_str()));
+
+        let mut cells = 0;
+        let mut without_weight = 0;
+        let mut nonzero_with_weight = 0;
+        for line in lines {
+            let fields: Vec<&str> = line.split(' ').collect();
+            assert_eq!(fields.len(), 3, "matrix.def line: {line}");
+            let right_id: usize = fields[0].parse().unwrap();
+            let left_id: usize = fields[1].parse().unwrap();
+            let cost: i16 = fields[2].parse().unwrap();
+            let expected = match serializable
+                .connection_matrix
+                .get(&right_id)
+                .and_then(|inner| inner.get(&left_id))
+            {
+                Some(&weight) => {
+                    let cost = tocost(weight, serializable.cost_factor);
+                    if cost != 0 {
+                        nonzero_with_weight += 1;
+                    }
+                    cost
+                }
+                None => {
+                    without_weight += 1;
+                    0
+                }
+            };
+            assert_eq!(cost, expected, "cell {right_id} {left_id}");
+            cells += 1;
+        }
+        assert_eq!(cells, rows * cols, "dense matrix");
+        assert!(without_weight > 0, "precondition: a cell without a weight");
+        assert!(
+            nonzero_with_weight > 0,
+            "precondition: a cell with a non-zero cost"
+        );
+
+        // The trainer's model writes the same matrix.
+        let mut from_model = Vec::new();
+        model.write_connection_costs(&mut from_model).unwrap();
+        assert_eq!(String::from_utf8(from_model).unwrap(), matrix);
     }
 }
 

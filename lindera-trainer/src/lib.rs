@@ -1293,9 +1293,16 @@ mod tests {
             "precondition: no bigram weight"
         );
 
-        let (rows, cols) = matrix_header(&written(|w| serializable.write_connection_costs(w)));
+        let matrix = written(|w| serializable.write_connection_costs(w));
+        let (rows, cols) = matrix_header(&matrix);
         assert!(rows > 1 && cols > 1, "matrix {rows}x{cols}");
         assert_entries_inside_matrix(&serializable);
+
+        // Without a bigram weight every connection costs 0, as in training
+        // and in MeCab; it used to be i16::MAX (#1168).
+        for line in matrix.lines().skip(1) {
+            assert_eq!(line.split(' ').nth(2), Some("0"), "matrix.def line: {line}");
+        }
 
         // The model the trainer holds writes the same matrix as the one read
         // back from model.dat.

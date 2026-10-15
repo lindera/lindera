@@ -984,7 +984,11 @@ mod with_trained_dictionary {
     use super::*;
 
     /// The documented tokenize output for "これは外国人参政権です。".
-    const DOCUMENTED_OUTPUT: &str = "これは\t名詞,一般,*,*,*,*,*,*,*\n\
+    /// Training on `resources/training/` leaves no bigram weight, so every
+    /// connection costs 0 and the word costs decide: `これ` and `は` are the
+    /// seed words of the corpus, not one unknown word (#1168).
+    const DOCUMENTED_OUTPUT: &str = "これ\t名詞,代名詞,一般,*,*,*,これ,コレ,コレ\n\
+                                     は\t助詞,係助詞,*,*,*,*,は,ハ,ワ\n\
                                      外国\t名詞,一般,*,*,*,*,外国,ガイコク,ガイコク\n\
                                      人\t名詞,接尾,一般,*,*,*,人,ジン,ジン\n\
                                      参政\t名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ\n\
@@ -1069,7 +1073,7 @@ mod with_trained_dictionary {
         );
         assert_eq!(
             tokenize("これは 外国人参政権です。\n", &["--keep-whitespace"]),
-            DOCUMENTED_OUTPUT.replacen("\n", "\n \t記号,空白,*,*,*,*,*,*,*\n", 1)
+            DOCUMENTED_OUTPUT.replacen("\n外国", "\n \t記号,空白,*,*,*,*,*,*,*\n外国", 1)
         );
     }
 }

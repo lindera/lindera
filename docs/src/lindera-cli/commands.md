@@ -1006,7 +1006,7 @@ Export a trained model file to Lindera dictionary format files. This feature req
 The export command creates the following dictionary files in the output directory:
 
 - `lex.csv`: Lexicon file with learned weights (MeCab-compatible cost via `tocost()`)
-- `matrix.def`: Dense connection cost matrix covering all (right\_id, left\_id) pairs of the model's context IDs, plus 0 for BOS/EOS
+- `matrix.def`: Dense connection cost matrix covering all (right\_id, left\_id) pairs of the model's context IDs, plus 0 for BOS/EOS. A pair without a trained weight costs 0, as in training and in MeCab
 - `unk.def`: Unknown word definitions, one line for each `unk.def` entry of the training input, in the same order
 - `char.def`: Character type definitions
 - `feature.def`: Feature template definitions (copied from trained model)
@@ -1065,7 +1065,8 @@ echo "これは外国人参政権です。" | lindera tokenize -d /tmp/lindera/t
 ```
 
 ```text
-これは	名詞,一般,*,*,*,*,*,*,*
+これ	名詞,代名詞,一般,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
 外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人	名詞,接尾,一般,*,*,*,人,ジン,ジン
 参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
