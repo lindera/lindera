@@ -1103,7 +1103,7 @@ tokenizer
 <tr><td><code>read_model&lt;R: Read&gt;(reader: R) -&gt; Result&lt;SerializableModel&gt;</code></td><td>Associated function. Deserializes a <code>SerializableModel</code> from data written by <code>write_model</code>. It tries <code>rkyv</code> first, and falls back to legacy JSON only when the payload actually begins a JSON object; anything else is reported as a format mismatch with the instruction to re-train. A model, in either format, whose <code>metadata.version</code> is not <code>MODEL_FORMAT_VERSION</code> is rejected with the same instruction, so every model written before 7.0.0 must be retrained. Backfills <code>feature_sets</code> from <code>feature_weights</code> for older models that predate that field.</td></tr>
 <tr><td><code>write_dictionary&lt;W1, W2, W3, W4&gt;(&amp;self, lexicon_wtr, connector_wtr, unk_handler_wtr, user_lexicon_wtr) -&gt; Result&lt;()&gt;</code></td><td>Convenience method that writes the lexicon, connection cost matrix, unknown-word dictionary, and user lexicon in one call. The user lexicon is written from the entries loaded by <code>read_user_lexicon</code>, in input order. An entry without connection IDs gets those that <code>lex.csv</code> gives the seed row whose feature is the most similar to its own. An entry without a cost gets the one MeCab's <code>calcCost</code> computes: the sum of the trained weights of its unigram features, converted with <code>tocost</code> and the cost factor of <code>lex.csv</code>. Its features are made as a seed row's are, from the rewritten feature, the default category of its first character (<code>%t</code>) and its surface (<code>%w</code>, which MeCab does not accept in a unigram template), so an entry whose feature and first character's category are those of a seed row gets the cost <code>lex.csv</code> gives that row; a feature the model has no weight for adds nothing. A parameter the entry gives is written as it is. The most similar row is the one with the highest score, where each column equal to the entry's at the same position scores more the earlier it is, and the first one on a tie. An entry without connection IDs whose feature has no column in common with any seed row is an error, as in MeCab's <code>mecab-dict-index</code>, and nothing is written then.</td></tr>
 <tr><td><code>write_lexicon&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>lex.csv</code>-style entries (<code>surface,left_id,right_id,cost,features...</code>) for every seed vocabulary entry, using the connection IDs and costs from the merged CRF model.</td></tr>
-<tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes a dense <code>matrix.def</code>-style connection cost matrix over every <code>(right_id, left_id)</code> pair of the merged model's context IDs (including 0 for BOS/EOS); pairs never seen during training get the maximum penalty cost (<code>i16::MAX</code>) so Viterbi avoids untrained transitions.</td></tr>
+<tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes a dense <code>matrix.def</code>-style connection cost matrix over every <code>(right_id, left_id)</code> pair of the merged model's context IDs (including 0 for BOS/EOS). A pair gets its trained weight converted with <code>tocost</code>; a pair without a trained weight, because its bigram features never met in training or regularization zeroed their weights, gets 0, the cost the transition has in training and in MeCab's <code>mecab-dict-gen</code>. It is the matrix that <code>SerializableModel::write_connection_costs</code> writes for the model that <code>write_model</code> writes.</td></tr>
 <tr><td><code>write_unknown_dictionary&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes one <code>unk.def</code> line for each <code>unk.def</code> entry the model was trained with, in file order, with the entry's category name and feature string and its learned connection IDs and cost.</td></tr>
 <tr><td><code>get_unknown_word_cost(&amp;self, category: usize) -&gt; i32</code></td><td>Returns the input cost of a <code>char.def</code> category index, read from <code>unk.def</code>'s cost column rather than learned; for a category with several entries, the cost of its last line. Defaults to <code>2000</code> if the category has no configured cost.</td></tr>
 <tr><td><code>num_features(&amp;self) -&gt; usize</code></td><td>Number of feature weights held by the trained model.</td></tr>
@@ -1121,7 +1121,7 @@ tokenizer
 <div class="table-wrapper"><table><thead><tr><th>Method</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>export(&amp;self, output_dir: &amp;Path, base_metadata: Option&lt;&amp;Path&gt;) -&gt; Result&lt;Vec&lt;PathBuf&gt;&gt;</code></td><td>Writes the dictionary source files to <code>output_dir</code>, which it creates when it does not exist, with the methods below: <code>lex.csv</code>, <code>matrix.def</code>, <code>unk.def</code>, <code>char.def</code>, <code>feature.def</code>, <code>rewrite.def</code>, <code>left-id.def</code> and <code>right-id.def</code>, and <code>metadata.json</code> (<code>update_metadata_json</code>) when <code>base_metadata</code> is given. Returns the paths written, in that order. <code>lindera export</code> and the bindings' export functions call it, so they write the same files. <code>metadata.json</code> is made first, so a base <code>metadata.json</code> that cannot be read fails with no file written; an error names the file.</td></tr>
 <tr><td><code>write_lexicon&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>lex.csv</code>-style entries from the stored <code>feature_sets</code>, <code>labels</code>, and <code>pos_info</code>, skipping the <code>unk.def</code> entry labels that follow the seed rows.</td></tr>
-<tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes the dense <code>matrix.def</code>-style connection cost matrix from the stored <code>connection_matrix</code>, <code>max_left_id</code>, and <code>max_right_id</code>: <code>max_right_id + 1</code> rows by <code>max_left_id + 1</code> columns, which cover every context ID of the model even when no bigram weight survived training.</td></tr>
+<tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes the dense <code>matrix.def</code>-style connection cost matrix from the stored <code>connection_matrix</code>, <code>max_left_id</code>, and <code>max_right_id</code>: <code>max_right_id + 1</code> rows by <code>max_left_id + 1</code> columns, which cover every context ID of the model even when no bigram weight survived training. A cell missing from <code>connection_matrix</code>, a connection without a trained weight, gets 0, as in <code>Model::write_connection_costs</code>.</td></tr>
 <tr><td><code>write_unknown_dictionary&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes one <code>unk.def</code> line for each stored entry of <code>unk_entries</code>, in file order, with its category name, learned connection IDs and cost, and feature string.</td></tr>
 <tr><td><code>write_char_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes the <code>char.def</code> content preserved verbatim from the original training input.</td></tr>
 <tr><td><code>write_feature_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes the <code>feature.def</code> content preserved verbatim from the original training input.</td></tr>
@@ -3075,7 +3075,7 @@ EOS
 <p>The export command creates the following dictionary files in the output directory:</p>
 <ul>
 <li><code>lex.csv</code>: Lexicon file with learned weights (MeCab-compatible cost via <code>tocost()</code>)</li>
-<li><code>matrix.def</code>: Dense connection cost matrix covering all (right_id, left_id) pairs of the model's context IDs, plus 0 for BOS/EOS</li>
+<li><code>matrix.def</code>: Dense connection cost matrix covering all (right_id, left_id) pairs of the model's context IDs, plus 0 for BOS/EOS. A pair without a trained weight costs 0, as in training and in MeCab</li>
 <li><code>unk.def</code>: Unknown word definitions, one line for each <code>unk.def</code> entry of the training input, in the same order</li>
 <li><code>char.def</code>: Character type definitions</li>
 <li><code>feature.def</code>: Feature template definitions (copied from trained model)</li>
@@ -3116,7 +3116,8 @@ EOS
 <h4 id="4-use-trained-dictionary"><a class="header" href="#4-use-trained-dictionary">4. Use trained dictionary</a></h4>
 <pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize -d /tmp/lindera/training/compiled_dictionary
 </code></pre>
-<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+<pre><code class="language-text">これ	名詞,代名詞,一般,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
 外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人	名詞,接尾,一般,*,*,*,人,ジン,ジン
 参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
@@ -10987,6 +10988,15 @@ silently skipped.</li>
 (<code>0 0</code> when no weight was left at all), and the built dictionary panicked
 at tokenization. <code>model_info.connection_matrix_size</code> in <code>metadata.json</code>
 was a square of the larger ID.</li>
+<li><code>lindera export</code> wrote <code>32767</code> (<code>i16::MAX</code>) to <code>matrix.def</code> for a
+connection without a trained weight, whose bigram features never met in
+training or whose weights regularization zeroed. Training gives such a
+connection the cost 0, and so does MeCab's <code>mecab-dict-gen</code>, so the
+built dictionary avoided transitions that the model had learned to be
+neutral. In a five-fold cross-validation with mecab-ipadic's files and
+the default L1 regularization, writing 0 raised the boundary F1 from
+0.9552 to 0.9572 in every fold
+(<a href="https://github.com/lindera/lindera/issues/1168">#1168</a>).</li>
 <li><code>model_info.training_iterations</code> in <code>metadata.json</code> was the
 <code>--max-iterations</code> value, not the number of iterations that ran.</li>
 <li>The export functions of the Python, Node.js, Ruby and PHP bindings wrote
@@ -11049,6 +11059,8 @@ trained and not exported, as MeCab's learner adds a virtual node.
 <code>lindera train</code> prints the counts in a <code>Lattice statistics:</code> line.</li>
 <li><code>matrix.def</code> covers every context ID, plus 0 for BOS/EOS, and
 <code>model_info.connection_matrix_size</code> gives its size, rows by columns.</li>
+<li>A connection without a trained weight costs 0 in <code>matrix.def</code>, as in
+training and in MeCab.</li>
 <li><code>model_info.training_iterations</code> is the number of L-BFGS iterations that
 ran: <code>--max-iterations</code> when that stopped training, fewer when it
 converged earlier.</li>
@@ -11392,6 +11404,7 @@ positions that no path reaches. The tokenization path does not change.</p>
 <tr><td><code>Model::num_labels()</code> and <code>ModelMetadata::label_count</code> count one unknown-word label per <code>char.def</code> category</td><td>Count one per <code>unk.def</code> entry; the virtual labels are not counted</td></tr>
 <tr><td><code>Model::write_left_id_def</code> / <code>write_right_id_def</code> write the IDs of the bigram feature strings, another ID space from the context IDs of <code>lex.csv</code> and <code>matrix.def</code></td><td>Write the context IDs, as <code>SerializableModel::write_left_id_def</code> / <code>write_right_id_def</code> write them for the model that <code>Model::write_model</code> writes</td></tr>
 <tr><td><code>ModelMetadata::iterations</code> (and <code>model_info.training_iterations</code>) is the <code>max_iter</code> setting</td><td>The number of L-BFGS iterations that ran</td></tr>
+<tr><td><code>Model::write_connection_costs</code> and <code>SerializableModel::write_connection_costs</code> write <code>i16::MAX</code> for a connection without a trained weight</td><td>Write 0, the cost the connection has in training and in MeCab</td></tr>
 </tbody></table>
 </div>
 <p>A model is now written with <code>MODEL_FORMAT_VERSION</code> as its <code>metadata.version</code>,
@@ -12136,7 +12149,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <p>This produces the following files:</p>
 <div class="table-wrapper"><table><thead><tr><th>File</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>lex.csv</code></td><td>Lexicon with trained costs</td></tr>
-<tr><td><code>matrix.def</code></td><td>Connection cost matrix over every context ID, plus 0 for BOS/EOS, even when regularization leaves no bigram weight</td></tr>
+<tr><td><code>matrix.def</code></td><td>Connection cost matrix over every context ID, plus 0 for BOS/EOS, even when regularization leaves no bigram weight. A connection without a trained weight costs 0, as in training and in MeCab</td></tr>
 <tr><td><code>unk.def</code></td><td>Unknown word definition: one line for each input <code>unk.def</code> entry, in input order, with its category, trained IDs and cost, and feature</td></tr>
 <tr><td><code>char.def</code></td><td>Character definition</td></tr>
 <tr><td><code>feature.def</code></td><td>Feature template</td></tr>
@@ -12169,7 +12182,8 @@ NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
 <pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize -d ./dict-compiled
 </code></pre>
 <p>With the files in <code>resources/training/</code> as the inputs above, the output is:</p>
-<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+<pre><code class="language-text">これ	名詞,代名詞,一般,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
 外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人	名詞,接尾,一般,*,*,*,人,ジン,ジン
 参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
@@ -12179,7 +12193,8 @@ NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
 EOS
 </code></pre>
 <p>A space in the input, as in <code>これは 外国人参政権です。</code>, is skipped and gives the same output. With <code>--keep-whitespace</code>, it is output as the <code>SPACE</code> unknown word:</p>
-<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+<pre><code class="language-text">これ	名詞,代名詞,一般,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
  	記号,空白,*,*,*,*,*,*,*
 外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人	名詞,接尾,一般,*,*,*,人,ジン,ジン

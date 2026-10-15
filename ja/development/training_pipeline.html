@@ -376,7 +376,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <p>以下のファイルが生成されます：</p>
 <div class="table-wrapper"><table><thead><tr><th>ファイル</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>lex.csv</code></td><td>学習済みコスト付きレキシコン</td></tr>
-<tr><td><code>matrix.def</code></td><td>すべての文脈 ID と BOS/EOS 用の 0 を覆う連接コスト行列。正則化でバイグラムの重みが 1 つも残らない場合も同じ</td></tr>
+<tr><td><code>matrix.def</code></td><td>すべての文脈 ID と BOS/EOS 用の 0 を覆う連接コスト行列。正則化でバイグラムの重みが 1 つも残らない場合も同じ。学習した重みがない連接のコストは、学習中や MeCab と同じく 0</td></tr>
 <tr><td><code>unk.def</code></td><td>未知語定義。入力の <code>unk.def</code> のエントリごとに 1 行を入力と同じ順序で書き、カテゴリ・学習した ID とコスト・素性を持つ</td></tr>
 <tr><td><code>char.def</code></td><td>文字定義</td></tr>
 <tr><td><code>feature.def</code></td><td>素性テンプレート</td></tr>
@@ -409,7 +409,8 @@ NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
 <pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize -d ./dict-compiled
 </code></pre>
 <p>上の入力ファイルに <code>resources/training/</code> のファイルを使うと、出力は次のとおりです。</p>
-<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+<pre><code class="language-text">これ	名詞,代名詞,一般,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
 外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人	名詞,接尾,一般,*,*,*,人,ジン,ジン
 参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
@@ -419,7 +420,8 @@ NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
 EOS
 </code></pre>
 <p><code>これは 外国人参政権です。</code> のように入力に空白があっても、空白は読み飛ばされ、出力は同じです。<code>--keep-whitespace</code> を指定すると、空白は <code>SPACE</code> の未知語として出力されます。</p>
-<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+<pre><code class="language-text">これ	名詞,代名詞,一般,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
  	記号,空白,*,*,*,*,*,*,*
 外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人	名詞,接尾,一般,*,*,*,人,ジン,ジン

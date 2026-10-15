@@ -376,7 +376,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <p>This produces the following files:</p>
 <div class="table-wrapper"><table><thead><tr><th>File</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>lex.csv</code></td><td>Lexicon with trained costs</td></tr>
-<tr><td><code>matrix.def</code></td><td>Connection cost matrix over every context ID, plus 0 for BOS/EOS, even when regularization leaves no bigram weight</td></tr>
+<tr><td><code>matrix.def</code></td><td>Connection cost matrix over every context ID, plus 0 for BOS/EOS, even when regularization leaves no bigram weight. A connection without a trained weight costs 0, as in training and in MeCab</td></tr>
 <tr><td><code>unk.def</code></td><td>Unknown word definition: one line for each input <code>unk.def</code> entry, in input order, with its category, trained IDs and cost, and feature</td></tr>
 <tr><td><code>char.def</code></td><td>Character definition</td></tr>
 <tr><td><code>feature.def</code></td><td>Feature template</td></tr>
@@ -409,7 +409,8 @@ NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
 <pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize -d ./dict-compiled
 </code></pre>
 <p>With the files in <code>resources/training/</code> as the inputs above, the output is:</p>
-<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+<pre><code class="language-text">これ	名詞,代名詞,一般,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
 外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人	名詞,接尾,一般,*,*,*,人,ジン,ジン
 参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
@@ -419,7 +420,8 @@ NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
 EOS
 </code></pre>
 <p>A space in the input, as in <code>これは 外国人参政権です。</code>, is skipped and gives the same output. With <code>--keep-whitespace</code>, it is output as the <code>SPACE</code> unknown word:</p>
-<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+<pre><code class="language-text">これ	名詞,代名詞,一般,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
  	記号,空白,*,*,*,*,*,*,*
 外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人	名詞,接尾,一般,*,*,*,人,ジン,ジン

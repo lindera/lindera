@@ -1187,6 +1187,15 @@ silently skipped.</li>
 (<code>0 0</code> when no weight was left at all), and the built dictionary panicked
 at tokenization. <code>model_info.connection_matrix_size</code> in <code>metadata.json</code>
 was a square of the larger ID.</li>
+<li><code>lindera export</code> wrote <code>32767</code> (<code>i16::MAX</code>) to <code>matrix.def</code> for a
+connection without a trained weight, whose bigram features never met in
+training or whose weights regularization zeroed. Training gives such a
+connection the cost 0, and so does MeCab's <code>mecab-dict-gen</code>, so the
+built dictionary avoided transitions that the model had learned to be
+neutral. In a five-fold cross-validation with mecab-ipadic's files and
+the default L1 regularization, writing 0 raised the boundary F1 from
+0.9552 to 0.9572 in every fold
+(<a href="https://github.com/lindera/lindera/issues/1168">#1168</a>).</li>
 <li><code>model_info.training_iterations</code> in <code>metadata.json</code> was the
 <code>--max-iterations</code> value, not the number of iterations that ran.</li>
 <li>The export functions of the Python, Node.js, Ruby and PHP bindings wrote
@@ -1249,6 +1258,8 @@ trained and not exported, as MeCab's learner adds a virtual node.
 <code>lindera train</code> prints the counts in a <code>Lattice statistics:</code> line.</li>
 <li><code>matrix.def</code> covers every context ID, plus 0 for BOS/EOS, and
 <code>model_info.connection_matrix_size</code> gives its size, rows by columns.</li>
+<li>A connection without a trained weight costs 0 in <code>matrix.def</code>, as in
+training and in MeCab.</li>
 <li><code>model_info.training_iterations</code> is the number of L-BFGS iterations that
 ran: <code>--max-iterations</code> when that stopped training, fewer when it
 converged earlier.</li>
@@ -1592,6 +1603,7 @@ positions that no path reaches. The tokenization path does not change.</p>
 <tr><td><code>Model::num_labels()</code> and <code>ModelMetadata::label_count</code> count one unknown-word label per <code>char.def</code> category</td><td>Count one per <code>unk.def</code> entry; the virtual labels are not counted</td></tr>
 <tr><td><code>Model::write_left_id_def</code> / <code>write_right_id_def</code> write the IDs of the bigram feature strings, another ID space from the context IDs of <code>lex.csv</code> and <code>matrix.def</code></td><td>Write the context IDs, as <code>SerializableModel::write_left_id_def</code> / <code>write_right_id_def</code> write them for the model that <code>Model::write_model</code> writes</td></tr>
 <tr><td><code>ModelMetadata::iterations</code> (and <code>model_info.training_iterations</code>) is the <code>max_iter</code> setting</td><td>The number of L-BFGS iterations that ran</td></tr>
+<tr><td><code>Model::write_connection_costs</code> and <code>SerializableModel::write_connection_costs</code> write <code>i16::MAX</code> for a connection without a trained weight</td><td>Write 0, the cost the connection has in training and in MeCab</td></tr>
 </tbody></table>
 </div>
 <p>A model is now written with <code>MODEL_FORMAT_VERSION</code> as its <code>metadata.version</code>,

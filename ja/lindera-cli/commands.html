@@ -937,7 +937,7 @@ EOS
 <p>エクスポートコマンドは出力ディレクトリに以下の辞書ファイルを作成します：</p>
 <ul>
 <li><code>lex.csv</code>: 学習された重みを持つ語彙ファイル（MeCab互換の <code>tocost()</code> によるコスト変換）</li>
-<li><code>matrix.def</code>: モデルの文脈 ID と BOS/EOS 用の 0 の全 (right_id, left_id) ペアを網羅する密な接続コスト行列</li>
+<li><code>matrix.def</code>: モデルの文脈 ID と BOS/EOS 用の 0 の全 (right_id, left_id) ペアを網羅する密な接続コスト行列。学習した重みがないペアのコストは、学習中や MeCab と同じく 0</li>
 <li><code>unk.def</code>: 未知語定義。学習の入力の <code>unk.def</code> のエントリごとに 1 行を、同じ順序で書き出す</li>
 <li><code>char.def</code>: 文字種定義</li>
 <li><code>feature.def</code>: 素性テンプレート定義（学習済みモデルからコピー）</li>
@@ -978,7 +978,8 @@ EOS
 <h4 id="4-学習済み辞書の使用"><a class="header" href="#4-学習済み辞書の使用">4. 学習済み辞書の使用</a></h4>
 <pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize -d /tmp/lindera/training/compiled_dictionary
 </code></pre>
-<pre><code class="language-text">これは	名詞,一般,*,*,*,*,*,*,*
+<pre><code class="language-text">これ	名詞,代名詞,一般,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
 外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人	名詞,接尾,一般,*,*,*,人,ジン,ジン
 参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ

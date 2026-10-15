@@ -1083,6 +1083,14 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 エントリの ID より小さい <code>matrix.def</code>（重みが 1 つも残らなければ <code>0 0</code>）を書き出し、
 ビルドした辞書は解析時にパニックしていました。<code>metadata.json</code> の
 <code>model_info.connection_matrix_size</code> は、大きい方の ID の正方形でした。</li>
+<li><code>lindera export</code> は、学習した重みがない連接（バイグラム素性が学習中に隣り合わな
+かったか、正則化で重みが 0 になったもの）に、<code>matrix.def</code> で <code>32767</code>
+（<code>i16::MAX</code>）を書き出していました。学習ではそうした連接のコストは 0 で、MeCab の
+<code>mecab-dict-gen</code> も 0 を書き出すため、ビルドした辞書は、モデルが良くも悪くもない
+と学習した遷移を避けていました。mecab-ipadic のファイルと既定の L1 正則化で
+5 分割の交差検証をすると、0 を書き出すことで境界 F1 がすべての分割で上がり、
+0.9552 から 0.9572 になりました
+（<a href="https://github.com/lindera/lindera/issues/1168">#1168</a>）。</li>
 <li><code>metadata.json</code> の <code>model_info.training_iterations</code> は、実際に回った反復回数では
 なく、<code>--max-iterations</code> の値でした。</li>
 <li>Python・Node.js・Ruby・PHP バインディングのエクスポート関数は、<code>lex.csv</code>、
@@ -1138,6 +1146,7 @@ mecab-jieba の <code>unk.def</code> の素性は 5 列で、その <code>featur
 <code>Lattice statistics:</code> の行に出力します。</li>
 <li><code>matrix.def</code> はすべての文脈 ID と BOS/EOS 用の 0 を覆い、
 <code>model_info.connection_matrix_size</code> はその大きさを行数 x 列数で示します。</li>
+<li>学習した重みがない連接の <code>matrix.def</code> のコストは、学習中や MeCab と同じく 0 です。</li>
 <li><code>model_info.training_iterations</code> は実際に回った L-BFGS の反復回数です。
 <code>--max-iterations</code> で学習が止まったときはその値、それより前に収束したときは
 それより少ない値になります。</li>
@@ -1446,6 +1455,7 @@ feature）経由で使う Rust コードにのみ影響します
 <tr><td><code>Model::num_labels()</code> と <code>ModelMetadata::label_count</code> は <code>char.def</code> のカテゴリごとに 1 つの未知語ラベルを数える</td><td><code>unk.def</code> のエントリごとに 1 つを数える。仮想ラベルは数えない</td></tr>
 <tr><td><code>Model::write_left_id_def</code> / <code>write_right_id_def</code> はバイグラム素性の文字列の ID を書き出す。<code>lex.csv</code> や <code>matrix.def</code> の文脈 ID とは別の ID 空間</td><td>文脈 ID を書き出す。<code>Model::write_model</code> が書き出すモデルについて <code>SerializableModel::write_left_id_def</code> / <code>write_right_id_def</code> が書き出すものと同じ</td></tr>
 <tr><td><code>ModelMetadata::iterations</code>（と <code>model_info.training_iterations</code>）は <code>max_iter</code> の設定値</td><td>実際に回った L-BFGS の反復回数</td></tr>
+<tr><td><code>Model::write_connection_costs</code> と <code>SerializableModel::write_connection_costs</code> は、学習した重みがない連接に <code>i16::MAX</code> を書き出す</td><td>0 を書き出す。学習中や MeCab でのその連接のコスト</td></tr>
 </tbody></table>
 </div>
 <p>モデルは <code>MODEL_FORMAT_VERSION</code> を <code>metadata.version</code> として書き出され、
