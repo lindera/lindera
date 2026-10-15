@@ -9,6 +9,23 @@ The Lindera CLI provides six main commands:
 - **train** - Train a CRF model from annotated corpus data
 - **export** - Export a trained model to dictionary format
 
+## Warnings and log messages
+
+Every command writes its results to standard output and the warnings of the Lindera libraries to standard error. For example, when `tokenize` reads more than 32 KiB of text without a sentence delimiter, it cuts the sentence there (see [Sentence Splitting](../lindera/segmenter.md#sentence-splitting)) and warns:
+
+```shell
+% head -c 40000 /dev/zero | tr '\0' a | lindera tokenize --dict embedded://ipadic -o wakati > /dev/null
+[WARN  lindera_segmenter::segmenter] no sentence delimiter (\n, \t, 。, 、) found within 32768 bytes from offset 0; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)
+```
+
+The `RUST_LOG` environment variable selects the messages, in the syntax of [env_logger](https://docs.rs/env_logger/0.11.11/env_logger/#enabling-logging):
+
+- Not set: warnings and errors.
+- `RUST_LOG=error`: errors only, which hides the warnings. `RUST_LOG=off` writes no log messages at all.
+- `RUST_LOG=debug`: also debugging messages, such as the files `lindera build` reads and writes.
+
+The setting does not change standard output, and the error of a command that fails is written whatever the setting. The messages are colored when standard error is a terminal; `RUST_LOG_STYLE=never` turns the colors off.
+
 ## list
 
 List all known morphological analysis dictionaries and show, for each one, whether it is embedded in the binary (via the `embed-*` feature flags) and whether a pre-built copy has been downloaded locally with `lindera download`.
@@ -632,7 +649,7 @@ When it builds a system dictionary, `lindera build` checks that every context ID
 Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
 ```
 
-- If the dictionary's `metadata.json` sets `skip_invalid_cost_or_id` to `true`, such a `lex.csv` row is dropped instead, with a warning through the `log` crate that the CLI does not print yet ([#1107](https://github.com/lindera/lindera/issues/1107)). An `unk.def` line is always checked.
+- If the dictionary's `metadata.json` sets `skip_invalid_cost_or_id` to `true`, such a `lex.csv` row is dropped instead, with a warning on standard error (see [Warnings and log messages](#warnings-and-log-messages)). An `unk.def` line is always checked.
 - A `matrix.def` row whose IDs fall outside its axes is an error too, and so is an `unk.def` line with fewer than four fields.
 - A user dictionary (`--user`) is checked only when `--system-dict` names the system dictionary it is for, as described below.
 
@@ -699,7 +716,8 @@ Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for 
 % lindera build \
   --src /tmp/unidic-mecab-2.1.2 \
   --dest /tmp/lindera-unidic-2.1.2 \
-  --metadata ./lindera-unidic/metadata.json
+  --metadata ./lindera-unidic/metadata.json \
+  --context-id-freq ./lindera-unidic/context_id_freq.txt
 ```
 
 #### Build CC-CEDICT (Chinese dictionary)
@@ -735,7 +753,8 @@ Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for 
 % lindera build \
   --src /tmp/mecab-ko-dic-2.1.1-20180720 \
   --dest /tmp/lindera-ko-dic-2.1.1-20180720 \
-  --metadata ./lindera-ko-dic/metadata.json
+  --metadata ./lindera-ko-dic/metadata.json \
+  --context-id-freq ./lindera-ko-dic/context_id_freq.txt
 ```
 
 ### Build user dictionaries

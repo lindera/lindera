@@ -56,6 +56,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **`lindera train` は MeCab の学習器と同じくラティスを作り、`unk.def` のすべてのエントリを保持する。`model.dat` の形式バージョンは 2.0.0** | `lindera train`・`lindera export` と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー | 7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた `model.dat` は拒否される）。`unk.def` のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す |
 | **`lindera build` は `matrix.def` の範囲外の文脈 ID を拒否する** | `lex.csv` や `unk.def` に `matrix.def` の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の `mecab-dict-index` が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる） | ID か行列を直すか、`metadata.json` の `skip_invalid_cost_or_id` でそうした `lex.csv` の行を取り除く。ユーザー辞書ではそうした ID を直す |
 | **`lindera build` と `lindera train` は `char.def` と `unk.def` を照らし合わせる** | それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが `char.def` にあるユーザー、`char.def` と `unk.def` でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、`unk.def` の行を無視したりしていた）。MeCab の `mecab-dict-index` が受け入れる辞書は影響を受けない | 各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに `unk.def` の行を書き、未定義のカテゴリの `unk.def` の行を削除する |
+| **CLI はライブラリの警告を標準エラー出力に書く** | 標準エラー出力を読む CLI のユーザー。たとえば、そこに何か出力があれば失敗とみなすスクリプト。目立つのは、文の区切り文字のないテキストが 32 KiB を超える入力と、`--context-id-freq` を指定しない ko-dic・UniDic の `lindera build` | 標準エラー出力に `[WARN …]` の行が出ることを前提にする。`RUST_LOG=error` で警告を消せる。標準出力は変わらない |
 | **設定 `normalize_details` の削除: `Metadata::new` と `CoreMetadata::new` の引数は 10 個、Ruby の `Metadata.new` の引数は 8 個になる** | 辞書のメタデータを作成・参照するコード。Rust（`Metadata`・`lindera_binding::CoreMetadata`・`PrefixDictionaryBuilderOptions`）と、Python・Ruby・PHP・Node.js のバインディングの `Metadata` クラス | 引数・オプション・プロパティを削除する。このキーを含む `metadata.json` もそのまま読み込め、キーは無視される |
 | **`Lattice::tokens_offset`・`tokens_offset_into`・`nbest_tokens_offset`・`NBestGenerator::next` が `(start, end, WordId)` を返す** | これらの `lindera_dictionary` の関数を直接呼び出す Rust コード（`lindera::dictionary::viterbi::…`・`lindera::dictionary::Lattice`・`lindera::dictionary::nbest::…` 経由を含む） | 3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う |
 | **`Lattice::tokens_offset_into` が最良パスの BOS の添字（`Option<usize>`）を返す** | `tokens_offset_into` の戻り値 `()` を値として使う Rust コード | 文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する |
@@ -1130,8 +1131,8 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
 ```
 
 - 辞書の `metadata.json` で `skip_invalid_cost_or_id` を設定している場合は、
-  そうした `lex.csv` の行を取り除きます。`log` クレートに警告を出しますが、CLI
-  はまだそれを表示しません（[#1107](https://github.com/lindera/lindera/issues/1107)）。
+  そうした `lex.csv` の行を取り除き、警告を出します。CLI はこの警告を標準エラー
+  出力に書きます（[CLI はライブラリの警告を標準エラー出力に書く](#cli-はライブラリの警告を標準エラー出力に書く)を参照）。
   `unk.def` の行は常に確認します。
 - コメント行や空行など、フィールドが 4 つ未満の `unk.def` の行は、パニックでは
   なくエラーになります。`lindera_dictionary` の
@@ -1211,6 +1212,33 @@ Error: LinderaError { kind: Content, source: ./dict-source/char.def: line 8: cat
 それ以外の辞書が失敗した場合は、各カテゴリを、それを指す範囲行より前で 1 回だけ
 定義し、すべてのカテゴリに `unk.def` の行を 1 行以上書き、`char.def` が定義して
 いないカテゴリの `unk.def` の行を削除してください。
+
+## CLI はライブラリの警告を標準エラー出力に書く
+
+v6.2.0 までの `lindera` CLI はロガーを組み込んでいなかったため、Lindera の
+ライブラリが `log` クレートで出す警告は捨てられていました
+（[#1107](https://github.com/lindera/lindera/issues/1107)）。v7.0.0 は、既定で
+警告とエラーを標準エラー出力に書きます。標準出力は変わりません。たとえば：
+
+- `lindera tokenize` は、文の区切り文字のないテキストが 32 KiB を超えて文を
+  区切ったときに警告します。
+- `lindera build` は、`skip_invalid_cost_or_id` によって `lex.csv` の行を
+  取り除いたときと、辞書の `metadata.json` が `connection_id_mapping` を設定して
+  いて（ko-dic・UniDic）、`--context-id-freq` を指定していないときに警告します。
+  ビルドの例と同じく、辞書クレートの `context_id_freq.txt` を渡してください。
+
+```text
+[WARN  lindera_segmenter::segmenter] no sentence delimiter (\n, \t, 。, 、) found within 32768 bytes from offset 0; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)
+```
+
+環境変数 `RUST_LOG` で、出すメッセージを選べます。`RUST_LOG=error` は警告を
+消し、`RUST_LOG=debug` はデバッグ用のメッセージも出します
+（[警告とログメッセージ](./lindera-cli/commands.md#警告とログメッセージ)を参照）。
+
+`lindera build` と `lindera train` は、左文脈 ID と右文脈 ID が異なる `unk.def`
+の行を警告しなくなりました。`mecab-dict-index` はこうした行を受け入れ、
+mecab-ko-dic の `unk.def` はすべての行がこうした行です。ロガーを組み込んだ Rust
+のプログラムにも、この警告は出なくなります。
 
 ## `lindera_dictionary` の Rust API 変更
 
@@ -1398,7 +1426,8 @@ v6.2.0 以前に書かれたモデルは学習し直す必要があります。`
   順を読む場合にのみ影響する、同点の見出し語の選び方、わずかな行の分割を
   変える、コストが同じ分割の選び方、CLI だけの変化として、行頭・行末に
   空白がある行と、空行や空白だけの行の wakati・N-best の出力にのみ影響する、入力行の
-  両端の空白の扱いとトークンのない行の出力、そして WASM バインディングだけの変化
+  両端の空白の扱いとトークンのない行の出力、標準エラー出力を読むスクリプトにのみ
+  影響する、標準エラー出力の警告、そして WASM バインディングだけの変化
   として、v6 が辞書の設定方法によって無視していたビルダーの設定です。
 - **`lindera = "6"` のまま使い続けるプロジェクト**: `lindera` と `lindera-analysis`
   の 6.x は crates.io に残り、組み合わせて動作し続けます。メジャーバージョンを
@@ -1605,7 +1634,9 @@ N-best を使うユーザー:
   `setDictionaryInstance()` で設定した辞書にも、`setUserDictionaryInstance()` で
   設定したユーザー辞書が `setDictionary()` で設定した辞書にも適用されることを
   前提にする。
+- CLI では、文の区切り文字なしに 32 KiB を超えて文を区切ったときなどに、標準エラー
+  出力に警告が出ることを前提にする。`RUST_LOG=error` で警告を消せる。
 - それ以外は、7.0.0 リリースを取り込む以外に対応は不要（上記の辞書の再ビルド・辞書・
   空白・`、` と `。`・N-best・未知語・既定カテゴリ・ダッシュとチルダ・同点の見出し語・
   コストが同じ分割の項目、`lindera train` と `lindera build` の項目、`lindera tokenize`
-  と WASM の項目を除く）。
+  と WASM と CLI の警告の項目を除く）。
