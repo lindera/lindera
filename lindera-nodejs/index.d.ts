@@ -37,6 +37,11 @@ export declare class Metadata {
    * # Arguments
    *
    * * `options` - Optional configuration object. When omitted, all defaults are used.
+   *
+   * # Returns
+   *
+   * The metadata, or an `InvalidArg` error for a cost or context ID that
+   * is not an integer in its range.
    */
   constructor(options?: MetadataOptions | undefined | null)
   /**
@@ -69,15 +74,48 @@ export declare class Metadata {
   set encoding(encoding: string)
   /** Default word cost. */
   get defaultWordCost(): number
-  /** Sets the default word cost. */
+  /**
+   * Sets the default word cost.
+   *
+   * # Arguments
+   *
+   * * `cost` - An integer from -32768 to 32767.
+   *
+   * # Returns
+   *
+   * Nothing, or an `InvalidArg` error for any other number, which leaves
+   * the cost unchanged.
+   */
   set defaultWordCost(cost: number)
   /** Default left context ID. */
   get defaultLeftContextId(): number
-  /** Sets the default left context ID. */
+  /**
+   * Sets the default left context ID.
+   *
+   * # Arguments
+   *
+   * * `id` - An integer from 0 to 65535.
+   *
+   * # Returns
+   *
+   * Nothing, or an `InvalidArg` error for any other number, which leaves
+   * the ID unchanged.
+   */
   set defaultLeftContextId(id: number)
   /** Default right context ID. */
   get defaultRightContextId(): number
-  /** Sets the default right context ID. */
+  /**
+   * Sets the default right context ID.
+   *
+   * # Arguments
+   *
+   * * `id` - An integer from 0 to 65535.
+   *
+   * # Returns
+   *
+   * Nothing, or an `InvalidArg` error for any other number, which leaves
+   * the ID unchanged.
+   */
   set defaultRightContextId(id: number)
   /** Default field value for missing fields. */
   get defaultFieldValue(): string
@@ -149,11 +187,12 @@ export declare class Schema {
    *
    * # Arguments
    *
-   * * `index` - Zero-based index.
+   * * `index` - Zero-based index, an integer of 0 or more.
    *
    * # Returns
    *
-   * The field name, or `undefined` if the index is out of range.
+   * The field name, `undefined` if the schema has no field at `index`, or
+   * an `InvalidArg` error when `index` is negative or not an integer.
    */
   getFieldName(index: number): string | null
   /**
@@ -258,13 +297,16 @@ export declare class Tokenizer {
    * # Arguments
    *
    * * `text` - Text to tokenize.
-   * * `n` - Number of N-best results to return.
+   * * `n` - Number of N-best results to return, an integer of 0 or more.
    * * `unique` - If true, deduplicate results (default: false).
-   * * `cost_threshold` - Maximum cost difference from the best path (default: undefined).
+   * * `cost_threshold` - Maximum cost difference from the best path, an
+   *   integer that fits in 64 bits (default: undefined).
    *
    * # Returns
    *
-   * An array of NbestResult objects, each containing tokens and their cost.
+   * An array of NbestResult objects, each containing tokens and their cost,
+   * or an `InvalidArg` error when `n` or `cost_threshold` is not an integer
+   * in its range.
    */
   tokenizeNbest(text: string, n: number, unique?: boolean | undefined | null, costThreshold?: number | undefined | null): Array<NbestResult>
 }
@@ -633,11 +675,14 @@ export interface MetadataOptions {
   name?: string
   /** Character encoding (default: "UTF-8"). */
   encoding?: string
-  /** Default cost for unknown words (default: -10000). */
+  /**
+   * Default cost for unknown words, an integer from -32768 to 32767
+   * (default: -10000).
+   */
   defaultWordCost?: number
-  /** Default left context ID (default: 1288). */
+  /** Default left context ID, an integer from 0 to 65535 (default: 1288). */
   defaultLeftContextId?: number
-  /** Default right context ID (default: 1288). */
+  /** Default right context ID, an integer from 0 to 65535 (default: 1288). */
   defaultRightContextId?: number
   /** Default value for missing fields (default: "*"). */
   defaultFieldValue?: string
@@ -688,6 +733,11 @@ export interface Token {
  * # Arguments
  *
  * * `options` - Training options containing file paths and parameters.
+ *
+ * # Returns
+ *
+ * Nothing, or an error. A `maxIter` or `maxThreads` that is not an integer
+ * of 0 or more is an `InvalidArg` error, raised before any file is read.
  */
 export declare function train(options: TrainOptions): void
 
@@ -709,9 +759,9 @@ export interface TrainOptions {
   output: string
   /** L1 regularization cost (0.0-1.0, default: 0.01). */
   lambda?: number
-  /** Maximum number of training iterations (default: 100). */
+  /** Maximum number of training iterations, an integer (default: 100). */
   maxIter?: number
-  /** Number of threads (undefined = auto-detect CPU cores). */
+  /** Number of threads, an integer (undefined = auto-detect CPU cores). */
   maxThreads?: number
 }
 

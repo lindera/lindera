@@ -9,6 +9,7 @@ use std::path::Path;
 use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, TrainerConfig};
 
 use crate::error::to_napi_error;
+use crate::util::optional_integer_arg;
 
 /// Options for training a CRF model.
 #[napi(object)]
@@ -29,10 +30,10 @@ pub struct TrainOptions {
     pub output: String,
     /// L1 regularization cost (0.0-1.0, default: 0.01).
     pub lambda: Option<f64>,
-    /// Maximum number of training iterations (default: 100).
-    pub max_iter: Option<u32>,
-    /// Number of threads (undefined = auto-detect CPU cores).
-    pub max_threads: Option<u32>,
+    /// Maximum number of training iterations, an integer (default: 100).
+    pub max_iter: Option<f64>,
+    /// Number of threads, an integer (undefined = auto-detect CPU cores).
+    pub max_threads: Option<f64>,
 }
 
 /// Trains a morphological analysis model from an annotated corpus.
@@ -40,8 +41,19 @@ pub struct TrainOptions {
 /// # Arguments
 ///
 /// * `options` - Training options containing file paths and parameters.
+///
+/// # Returns
+///
+/// Nothing, or an error. A `maxIter` or `maxThreads` that is not an integer
+/// of 0 or more is an `InvalidArg` error, raised before any file is read.
 #[napi]
 pub fn train(options: TrainOptions) -> napi::Result<()> {
+    // Check the settings before touching any file.
+    let lambda = options.lambda.unwrap_or(0.01);
+    let max_iter = optional_integer_arg("maxIter", options.max_iter)?.unwrap_or(100);
+    let num_threads =
+        optional_integer_arg("maxThreads", options.max_threads)?.unwrap_or_else(num_cpus::get);
+
     let seed_path = Path::new(&options.seed);
     let corpus_path = Path::new(&options.corpus);
     let char_def_path = Path::new(&options.char_def);
@@ -78,13 +90,6 @@ pub fn train(options: TrainOptions) -> napi::Result<()> {
     .map_err(|e| to_napi_error(format!("Failed to load trainer configuration: {e}")))?;
 
     // Initialize trainer
-    let lambda = options.lambda.unwrap_or(0.01);
-    let max_iter = options.max_iter.unwrap_or(100) as u64;
-    let num_threads = options
-        .max_threads
-        .map(|t| t as usize)
-        .unwrap_or_else(num_cpus::get);
-
     let trainer = Trainer::new(config)
         .map_err(|e| to_napi_error(format!("Failed to initialize trainer: {e}")))?
         .regularization_cost(lambda)
