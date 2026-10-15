@@ -677,6 +677,13 @@ EOS
 Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
 </code></pre>
 <p><code>--system-dict</code> を指定しないと、ビルドの時点では組み合わせるシステム辞書が分からないため、ユーザー辞書はそのままビルドされます。その後 <code>lindera tokenize --user-dict</code> がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を単語 ID で示すエラーで失敗します（<a href="../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。<code>lindera tokenize --user-dict</code> に <code>.csv</code> を渡すと、読み込むときに <code>--dict</code> のシステム辞書に合わせてビルドするため、<code>--system-dict</code> と同じく CSV の行番号と表層形を示すエラーになります。</p>
+<h3 id="matrixdef-にないセル"><a class="header" href="#matrixdef-にないセル">matrix.def にないセル</a></h3>
+<p><code>matrix.def</code> は、すべてのセルを列挙しなくてもかまいません。<code>lindera build</code> は、<code>matrix.def</code> が列挙していないセルのコストを、MeCab の <code>mecab-dict-index</code> と同じく 0 にします。v6.2.0 までは、そうしたセルのコストは 32767（<code>i16::MAX</code>）で、その接続は非常に高いコストになっていました。たとえば次の <code>matrix.def</code> では、右文脈 ID 1 から左文脈 ID 0 と 1 への接続のコストが 10 と 20 になり、残りの 7 つのセルのコストは 0 になります。</p>
+<pre><code class="language-text">3 3
+1 0 10
+1 1 20
+</code></pre>
+<p>同梱の辞書と、<code>lindera export</code> が書き出す <code>matrix.def</code> は、すべてのセルを列挙しているため、この規則で変わることはありません。</p>
 <h3 id="chardef-と-unkdef-の確認"><a class="header" href="#chardef-と-unkdef-の確認">char.def と unk.def の確認</a></h3>
 <p>システム辞書をビルドするとき、<code>lindera build</code> は <code>mecab-dict-index</code> と同じく、<code>char.def</code> と <code>unk.def</code> を互いに照らし合わせて確認します：</p>
 <ul>

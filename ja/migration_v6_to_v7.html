@@ -231,6 +231,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong><code>lindera train</code> は MeCab の学習器と同じくラティスを作り、<code>unk.def</code> のすべてのエントリを保持する。<code>model.dat</code> の形式バージョンは 2.0.0</strong></td><td><code>lindera train</code>・<code>lindera export</code> と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー</td><td>7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた <code>model.dat</code> は拒否される）。<code>unk.def</code> のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す</td></tr>
 <tr><td><strong><code>lindera build</code> は <code>matrix.def</code> の範囲外の文脈 ID を拒否する</strong></td><td><code>lex.csv</code> や <code>unk.def</code> に <code>matrix.def</code> の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の <code>mecab-dict-index</code> が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる）</td><td>ID か行列を直すか、<code>metadata.json</code> の <code>skip_invalid_cost_or_id</code> でそうした <code>lex.csv</code> の行を取り除く。ユーザー辞書ではそうした ID を直す</td></tr>
 <tr><td><strong><code>lindera build</code> と <code>lindera train</code> は <code>char.def</code> と <code>unk.def</code> を照らし合わせる</strong></td><td>それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが <code>char.def</code> にあるユーザー、<code>char.def</code> と <code>unk.def</code> でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、<code>unk.def</code> の行を無視したりしていた）。MeCab の <code>mecab-dict-index</code> が受け入れる辞書は影響を受けない</td><td>各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに <code>unk.def</code> の行を書き、未定義のカテゴリの <code>unk.def</code> の行を削除する</td></tr>
+<tr><td><strong><code>lindera build</code> は、MeCab と同じく <code>matrix.def</code> にないセルのコストを 0 にする</strong></td><td>セルを省いた <code>matrix.def</code> からシステム辞書をビルドするユーザー。すべてのセルを列挙している同梱の辞書と、<code>lindera export</code> が書き出す <code>matrix.def</code> は対象外</td><td>そうしたセルのコストは 32767 ではなく 0 になる。接続を高いコストのままにするには、そのセルをコスト付きで列挙する</td></tr>
 <tr><td><strong>CLI はライブラリの警告を標準エラー出力に書く</strong></td><td>標準エラー出力を読む CLI のユーザー。たとえば、そこに何か出力があれば失敗とみなすスクリプト。目立つのは、文の区切り文字のないテキストが 32 KiB を超える入力と、<code>--context-id-freq</code> を指定しない ko-dic・UniDic の <code>lindera build</code></td><td>標準エラー出力に <code>[WARN …]</code> の行が出ることを前提にする。<code>RUST_LOG=error</code> で警告を消せる。標準出力は変わらない</td></tr>
 <tr><td><strong>設定 <code>normalize_details</code> の削除: <code>Metadata::new</code> と <code>CoreMetadata::new</code> の引数は 10 個、Ruby の <code>Metadata.new</code> の引数は 8 個になる</strong></td><td>辞書のメタデータを作成・参照するコード。Rust（<code>Metadata</code>・<code>lindera_binding::CoreMetadata</code>・<code>PrefixDictionaryBuilderOptions</code>）と、Python・Ruby・PHP・Node.js のバインディングの <code>Metadata</code> クラス</td><td>引数・オプション・プロパティを削除する。このキーを含む <code>metadata.json</code> もそのまま読み込め、キーは無視される</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>・<code>tokens_offset_into</code>・<code>nbest_tokens_offset</code>・<code>NBestGenerator::next</code> が <code>(start, end, WordId)</code> を返す</strong></td><td>これらの <code>lindera_dictionary</code> の関数を直接呼び出す Rust コード（<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・<code>lindera::dictionary::nbest::…</code> 経由を含む）</td><td>3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う</td></tr>
@@ -1292,6 +1293,17 @@ CSV の行番号を示します（<code>at line 1</code>）。これまでは、
 それ以外の辞書が失敗した場合は、各カテゴリを、それを指す範囲行より前で 1 回だけ
 定義し、すべてのカテゴリに <code>unk.def</code> の行を 1 行以上書き、<code>char.def</code> が定義して
 いないカテゴリの <code>unk.def</code> の行を削除してください。</p>
+<h2 id="lindera-build-は-matrixdef-にないセルのコストを-0-にする"><a class="header" href="#lindera-build-は-matrixdef-にないセルのコストを-0-にする"><code>lindera build</code> は <code>matrix.def</code> にないセルのコストを 0 にする</a></h2>
+<p>v6.2.0 までの <code>lindera build</code> は、<code>matrix.def</code> が列挙していないセルのコストを
+32767（<code>i16::MAX</code>）にしていたため、その接続は非常に高いコストになっていました。
+MeCab の <code>mecab-dict-index</code> はそうしたセルのコストを 0 にし、v7.0.0 も同じく
+0 にします（<a href="https://github.com/lindera/lindera/issues/1211">#1211</a>。
+<a href="lindera-cli/commands.html#matrixdef-%E3%81%AB%E3%81%AA%E3%81%84%E3%82%BB%E3%83%AB">matrix.def にないセル</a>を参照）。</p>
+<p>同梱の辞書の <code>matrix.def</code> はすべてのセルを列挙しており、<code>lindera export</code> が
+書き出す <code>matrix.def</code> も同じなので、どちらも変わりません。セルを省いた
+<code>matrix.def</code> からビルドした辞書は、そうしたセルを通る接続のコストが 0 になるため、
+分割が変わることがあります。接続を高いコストのままにするには、そのセルを
+コスト付きで列挙してください。</p>
 <h2 id="cli-はライブラリの警告を標準エラー出力に書く"><a class="header" href="#cli-はライブラリの警告を標準エラー出力に書く">CLI はライブラリの警告を標準エラー出力に書く</a></h2>
 <p>v6.2.0 までの <code>lindera</code> CLI はロガーを組み込んでいなかったため、Lindera の
 ライブラリが <code>log</code> クレートで出す警告は捨てられていました
