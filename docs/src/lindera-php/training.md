@@ -68,12 +68,16 @@ Lindera\Trainer::export(
 | `$output` | `string` | required | Output directory for dictionary source files |
 | `$metadata` | `string\|null` | `null` | Path to a base metadata.json file |
 
-The export creates the following files in the output directory:
+The export creates the following files in the output directory, the same files that [`lindera export`](../lindera-cli/commands.md#export) creates:
 
 - `lex.csv` -- Lexicon entries with trained costs
 - `matrix.def` -- Connection cost matrix
 - `unk.def` -- Unknown word definitions
-- `char.def` -- Character category definitions
+- `char.def` -- Character category definitions (copied from the trained model)
+- `feature.def` -- Feature template definitions (copied from the trained model)
+- `rewrite.def` -- Feature rewrite rules (copied from the trained model)
+- `left-id.def` -- Left context ID to feature string mapping
+- `right-id.def` -- Right context ID to feature string mapping
 - `metadata.json` -- Updated metadata (when `$metadata` parameter is provided)
 
 The model file must come from this version's training. A model file written by an earlier version, which includes every model file written before 7.0.0, is rejected: `Lindera\Trainer::export()` fails with an error that asks you to re-run training. Train such a model again with `Lindera\Trainer::train()`.

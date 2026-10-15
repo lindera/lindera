@@ -1119,6 +1119,12 @@ those of MeCab's learner:
   was a square of the larger ID.
 - `model_info.training_iterations` in `metadata.json` was the
   `--max-iterations` value, not the number of iterations that ran.
+- The export functions of the Python, Node.js, Ruby and PHP bindings wrote
+  `lex.csv`, `matrix.def`, `unk.def`, `metadata.json` and a fixed
+  `char.def` with the categories `DEFAULT`, `HIRAGANA`, `KATAKANA`,
+  `KANJI`, `ALPHA` and `NUMERIC`, not the `char.def` the model was trained
+  with, and no `feature.def`, `rewrite.def`, `left-id.def` or
+  `right-id.def`.
 - The seed lexicon was read line by line and split on `,`, and a line that
   starts with `#` was skipped as a comment. mecab-ko-dic's quoted comma
   surface `","` became the surface `"`, and `lindera export` wrote it
@@ -1176,6 +1182,10 @@ v7.0.0 trains as MeCab's learner does (see
 - `model_info.training_iterations` is the number of L-BFGS iterations that
   ran: `--max-iterations` when that stopped training, fewer when it
   converged earlier.
+- The export functions of the Python, Node.js, Ruby and PHP bindings write
+  the files `lindera export` writes, with the same code: the `char.def`,
+  `feature.def` and `rewrite.def` the model was trained with, and
+  `left-id.def` and `right-id.def` too.
 - `model.dat` has the format version 2.0.0. `lindera export` and the
   bindings' export functions reject a `model.dat` of any other version,
   including every `model.dat` written by v6.2.0 or earlier, with an error
@@ -1535,6 +1545,7 @@ These affect only Rust code that uses `lindera-trainer` directly or through
 | `SerializableModel::unk_category_names: Vec<String>` and `SerializableModel::unk_categories: BTreeMap<String, String>` | `SerializableModel::unk_entries: Vec<(String, String)>`, the `(category, feature string)` pairs of `unk.def` in file order |
 | `ModelMetadata::version` is `"1.0.0"`, and `Model::read_model` does not check it | `"2.0.0"`; `Model::read_model` rejects a model of any other version |
 | — | New in `model`: `MODEL_FORMAT_VERSION` |
+| — | New: `SerializableModel::export`, which writes the files of `lindera export` to a directory |
 | `TrainerConfig::dict()` holds an empty lexicon and a placeholder unknown-word dictionary | Holds the seed lexicon (`system_lexicon()`) and the `unk.def` entries (`unk_handler()`) |
 | `TrainerConfig::from_readers` skips an `unk.def` line with fewer than five fields | Returns an error |
 | `TrainerConfig::from_readers` accepts a `char.def` and an `unk.def` that `mecab-dict-index` rejects | Returns an error that names the file, the category and, where there is one, the line (see [`lindera build` and `lindera train` check `char.def` against `unk.def`](#lindera-build-and-lindera-train-check-chardef-against-unkdef)) |

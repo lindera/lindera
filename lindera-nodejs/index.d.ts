@@ -488,6 +488,11 @@ export declare function buildUserDictionaryFor(inputFile: string, outputFile: st
 /**
  * Exports dictionary files from a trained model.
  *
+ * Writes the files `lindera export` writes, with the same method
+ * (`SerializableModel::export`): `lex.csv`, `matrix.def`, `unk.def`,
+ * `char.def`, `feature.def`, `rewrite.def`, `left-id.def` and
+ * `right-id.def`, and `metadata.json` when `options.metadata` is given.
+ *
  * # Arguments
  *
  * * `options` - Export options containing file paths.

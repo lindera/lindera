@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
-use std::io::{Read, Write};
+use std::fs::File;
+use std::io::{BufWriter, Read, Write};
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
@@ -1242,7 +1244,97 @@ impl Model {
     }
 }
 
+/// Writes the content of one file that [`SerializableModel::export`] writes.
+type ExportWriter<'a> = &'a dyn Fn(&mut BufWriter<File>) -> Result<()>;
+
+/// Creates a file and writes it through a buffer.
+///
+/// # Arguments
+///
+/// * `path` - The file to create, or to overwrite.
+/// * `write` - Writes the content.
+///
+/// # Returns
+///
+/// `Ok(())`, or an error that names the file when it cannot be created or
+/// written.
+fn write_file(path: &Path, write: impl FnOnce(&mut BufWriter<File>) -> Result<()>) -> Result<()> {
+    File::create(path)
+        .map_err(anyhow::Error::from)
+        .and_then(|file| {
+            let mut writer = BufWriter::new(file);
+            write(&mut writer)?;
+            writer.flush()?;
+            Ok(())
+        })
+        .map_err(|err| anyhow::anyhow!("failed to write {}: {err}", path.display()))
+}
+
 impl SerializableModel {
+    /// Writes the dictionary source files of the model to a directory:
+    /// what `lindera export` and the export functions of the Python,
+    /// Node.js, Ruby and PHP bindings write (#1169).
+    ///
+    /// The files are `lex.csv`, `matrix.def`, `unk.def`, `char.def`,
+    /// `feature.def`, `rewrite.def`, `left-id.def` and `right-id.def`, each
+    /// written by the method for it (such as
+    /// [`write_lexicon`](Self::write_lexicon)), and `metadata.json` when a
+    /// base `metadata.json` is given (see
+    /// [`update_metadata_json`](Self::update_metadata_json)). `char.def`,
+    /// `feature.def` and `rewrite.def` are those the model was trained with.
+    /// `metadata.json` is made before anything is written, so a base
+    /// `metadata.json` that cannot be read or parsed fails with no file
+    /// written. The directory is created when it does not exist, and its
+    /// files of these names are overwritten.
+    ///
+    /// # Arguments
+    ///
+    /// * `output_dir` - The directory to write the files to.
+    /// * `base_metadata` - The `metadata.json` to update with the values of
+    ///   the model, if any.
+    ///
+    /// # Returns
+    ///
+    /// The paths of the files written, in the order above, or an error that
+    /// names the file that could not be read, created or written.
+    pub fn export(&self, output_dir: &Path, base_metadata: Option<&Path>) -> Result<Vec<PathBuf>> {
+        let metadata = match base_metadata {
+            Some(path) => {
+                let mut json = Vec::new();
+                self.update_metadata_json(path, &mut json)
+                    .map_err(|err| anyhow::anyhow!("failed to update {}: {err}", path.display()))?;
+                Some(json)
+            }
+            None => None,
+        };
+
+        std::fs::create_dir_all(output_dir)
+            .map_err(|err| anyhow::anyhow!("failed to create {}: {err}", output_dir.display()))?;
+
+        let files: [(&str, ExportWriter); 8] = [
+            ("lex.csv", &|w| self.write_lexicon(w)),
+            ("matrix.def", &|w| self.write_connection_costs(w)),
+            ("unk.def", &|w| self.write_unknown_dictionary(w)),
+            ("char.def", &|w| self.write_char_def(w)),
+            ("feature.def", &|w| self.write_feature_def(w)),
+            ("rewrite.def", &|w| self.write_rewrite_def(w)),
+            ("left-id.def", &|w| self.write_left_id_def(w)),
+            ("right-id.def", &|w| self.write_right_id_def(w)),
+        ];
+        let mut written = Vec::with_capacity(files.len() + 1);
+        for (name, write) in files {
+            let path = output_dir.join(name);
+            write_file(&path, write)?;
+            written.push(path);
+        }
+        if let Some(json) = metadata {
+            let path = output_dir.join("metadata.json");
+            write_file(&path, |w| Ok(w.write_all(&json)?))?;
+            written.push(path);
+        }
+        Ok(written)
+    }
+
     /// Generate a default feature string with appropriate number of fields
     /// based on existing entries in the dictionary
     fn generate_default_features(&self) -> String {

@@ -8,6 +8,19 @@ pytestmark = pytest.mark.skipif(
     not hasattr(__import__("lindera"), "train"), reason="train feature not available"
 )
 
+# The files `lindera export` writes besides metadata.json, which
+# `lindera.export` writes too (#1169).
+EXPORTED_FILES = [
+    "lex.csv",
+    "matrix.def",
+    "unk.def",
+    "char.def",
+    "feature.def",
+    "rewrite.def",
+    "left-id.def",
+    "right-id.def",
+]
+
 
 def test_train_basic():
     """Test basic training functionality"""
@@ -153,17 +166,15 @@ def test_export_basic():
         export_dir = tmpdir / "exported"
         lindera.export(model=str(model_file), output=str(export_dir))
 
-        # Verify exported files
-        assert (export_dir / "lex.csv").exists()
-        assert (export_dir / "matrix.def").exists()
-        assert (export_dir / "unk.def").exists()
-        assert (export_dir / "char.def").exists()
+        # Verify exported files: those of `lindera export`, none empty
+        assert sorted(p.name for p in export_dir.iterdir()) == sorted(EXPORTED_FILES)
+        for name in EXPORTED_FILES:
+            assert (export_dir / name).stat().st_size > 0, name
 
-        # Verify file contents are not empty
-        assert (export_dir / "lex.csv").stat().st_size > 0
-        assert (export_dir / "matrix.def").stat().st_size > 0
-        assert (export_dir / "unk.def").stat().st_size > 0
-        assert (export_dir / "char.def").stat().st_size > 0
+        # The definition files are those the model was trained with
+        for source in [char_def_file, feature_def_file, rewrite_def_file]:
+            exported = export_dir / source.name
+            assert exported.read_bytes() == source.read_bytes(), source.name
 
 
 def test_export_with_metadata():
@@ -224,6 +235,8 @@ def test_export_with_metadata():
             model=str(model_file), output=str(export_dir), metadata=str(metadata_file)
         )
 
-        # Verify metadata was created
-        assert (export_dir / "metadata.json").exists()
+        # Verify metadata was created, with the files of `lindera export`
+        assert sorted(p.name for p in export_dir.iterdir()) == sorted(
+            EXPORTED_FILES + ["metadata.json"]
+        )
         assert (export_dir / "metadata.json").stat().st_size > 0

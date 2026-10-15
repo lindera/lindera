@@ -2673,4 +2673,81 @@ mod export_consistency_tests {
         let json: serde_json::Value = serde_json::from_slice(&json).unwrap();
         assert_eq!(json["model_info"]["training_iterations"], iterations);
     }
+
+    /// The names of the files in a directory, sorted.
+    fn file_names(dir: &std::path::Path) -> Vec<String> {
+        let mut names: Vec<String> = std::fs::read_dir(dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+            .collect();
+        names.sort();
+        names
+    }
+
+    #[test]
+    fn export_writes_what_each_writer_writes() {
+        let model = read_back(&train_fixture(5));
+        let written = |write: &dyn Fn(&mut Vec<u8>) -> anyhow::Result<()>| {
+            let mut buf = Vec::new();
+            write(&mut buf).unwrap();
+            buf
+        };
+        let mut expected = vec![
+            ("lex.csv", written(&|w| model.write_lexicon(w))),
+            ("matrix.def", written(&|w| model.write_connection_costs(w))),
+            ("unk.def", written(&|w| model.write_unknown_dictionary(w))),
+            ("char.def", written(&|w| model.write_char_def(w))),
+            ("feature.def", written(&|w| model.write_feature_def(w))),
+            ("rewrite.def", written(&|w| model.write_rewrite_def(w))),
+            ("left-id.def", written(&|w| model.write_left_id_def(w))),
+            ("right-id.def", written(&|w| model.write_right_id_def(w))),
+        ];
+        // The definition files are those the model was trained with.
+        let (_, char_def, _, feature_def, rewrite_def, _) = fixtures();
+        assert_eq!(expected[3].1, char_def.as_bytes());
+        assert_eq!(expected[4].1, feature_def.as_bytes());
+        assert_eq!(expected[5].1, rewrite_def.as_bytes());
+
+        let dir = tempfile::tempdir().unwrap();
+        let assert_exported = |out: &std::path::Path,
+                               paths: Vec<std::path::PathBuf>,
+                               expected: &[(&str, Vec<u8>)]| {
+            let names: Vec<&str> = expected.iter().map(|(name, _)| *name).collect();
+            let expected_paths: Vec<_> = names.iter().map(|name| out.join(name)).collect();
+            assert_eq!(paths, expected_paths);
+            let mut sorted: Vec<String> = names.iter().map(|name| name.to_string()).collect();
+            sorted.sort();
+            assert_eq!(file_names(out), sorted);
+            for (name, bytes) in expected {
+                assert_eq!(&std::fs::read(out.join(name)).unwrap(), bytes, "{name}");
+            }
+        };
+
+        // Without a base `metadata.json`: the eight dictionary source files.
+        let out = dir.path().join("without_metadata");
+        let paths = model.export(&out, None).unwrap();
+        assert_exported(&out, paths, &expected);
+
+        // With one: `metadata.json` too.
+        let base = dir.path().join("base.json");
+        std::fs::write(&base, r#"{"name": "test"}"#).unwrap();
+        let mut metadata = Vec::new();
+        model.update_metadata_json(&base, &mut metadata).unwrap();
+        expected.push(("metadata.json", metadata));
+        let out = dir.path().join("with_metadata");
+        let paths = model.export(&out, Some(&base)).unwrap();
+        assert_exported(&out, paths, &expected);
+    }
+
+    #[test]
+    fn export_writes_nothing_when_the_base_metadata_cannot_be_read() {
+        let model = read_back(&train_fixture(5));
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("out");
+        let missing = dir.path().join("missing.json");
+
+        let err = model.export(&out, Some(&missing)).unwrap_err();
+        assert!(err.to_string().contains("missing.json"), "{err}");
+        assert!(!out.exists(), "{:?}", file_names(&out));
+    }
 }

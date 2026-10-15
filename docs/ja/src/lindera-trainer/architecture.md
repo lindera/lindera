@@ -69,10 +69,11 @@ MeCabの3セクション形式`rewrite.def`（`[unigram rewrite]`、`[left rewri
 
 #### `SerializableModel`のパブリックメソッド
 
-`Model::read_model`が返す値に対して利用できるメソッド群で、以前に学習・シリアライズされたモデルから辞書ソースファイルを再エクスポートするために使用します（`lindera export` CLIコマンドで利用されます）。
+`Model::read_model`が返す値に対して利用できるメソッド群で、以前に学習・シリアライズされたモデルから辞書ソースファイルを再エクスポートするために使用します（`lindera export` CLIコマンドと、Python・Node.js・Ruby・PHPバインディングのエクスポート関数で利用されます）。
 
 | メソッド | 説明 |
 | --- | --- |
+| `export(&self, output_dir: &Path, base_metadata: Option<&Path>) -> Result<Vec<PathBuf>>` | 以下のメソッドで、辞書ソースファイルを`output_dir`に書き出します（`output_dir`がなければ作成します）: `lex.csv`、`matrix.def`、`unk.def`、`char.def`、`feature.def`、`rewrite.def`、`left-id.def`、`right-id.def`と、`base_metadata`を指定したときは`metadata.json`（`update_metadata_json`）です。書き出したファイルのパスをこの順序で返します。`lindera export`とバインディングのエクスポート関数はこのメソッドを呼ぶため、同じファイルを書き出します。`metadata.json`を最初に作るため、ベースの`metadata.json`を読めないときはファイルを1つも書き出さずに失敗します。エラーはファイルを示します。 |
 | `write_lexicon<W: Write>(&self, writer: &mut W) -> Result<()>` | 保存されている`feature_sets`、`labels`、`pos_info`から、種辞書の行の後に続く`unk.def`のエントリのラベルを除いて`lex.csv`形式のエントリを書き出します。 |
 | `write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()>` | 保存されている`connection_matrix`、`max_left_id`、`max_right_id`から、密な`matrix.def`形式の連接コスト行列を書き出します。大きさは`max_right_id + 1`行×`max_left_id + 1`列で、学習でバイグラムの重みが1つも残らなかった場合もモデルのすべての文脈IDを覆います。 |
 | `write_unknown_dictionary<W: Write>(&self, writer: &mut W) -> Result<()>` | 保存されている`unk_entries`のエントリごとに、ファイル順で`unk.def`の行を1行ずつ書き出します。各行は、カテゴリ名、学習された連接IDとコスト、素性文字列を持ちます。 |

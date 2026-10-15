@@ -69,10 +69,11 @@ Once the lattices are built, it prints a `Lattice statistics:` line with the num
 
 #### `SerializableModel` public methods
 
-Available on the value returned by `Model::read_model`, for re-exporting dictionary source files from a previously trained and serialized model (used by the `lindera export` CLI command):
+Available on the value returned by `Model::read_model`, for re-exporting dictionary source files from a previously trained and serialized model (used by the `lindera export` CLI command and the export functions of the Python, Node.js, Ruby and PHP bindings):
 
 | Method | Description |
 | --- | --- |
+| `export(&self, output_dir: &Path, base_metadata: Option<&Path>) -> Result<Vec<PathBuf>>` | Writes the dictionary source files to `output_dir`, which it creates when it does not exist, with the methods below: `lex.csv`, `matrix.def`, `unk.def`, `char.def`, `feature.def`, `rewrite.def`, `left-id.def` and `right-id.def`, and `metadata.json` (`update_metadata_json`) when `base_metadata` is given. Returns the paths written, in that order. `lindera export` and the bindings' export functions call it, so they write the same files. `metadata.json` is made first, so a base `metadata.json` that cannot be read fails with no file written; an error names the file. |
 | `write_lexicon<W: Write>(&self, writer: &mut W) -> Result<()>` | Writes `lex.csv`-style entries from the stored `feature_sets`, `labels`, and `pos_info`, skipping the `unk.def` entry labels that follow the seed rows. |
 | `write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()>` | Writes the dense `matrix.def`-style connection cost matrix from the stored `connection_matrix`, `max_left_id`, and `max_right_id`: `max_right_id + 1` rows by `max_left_id + 1` columns, which cover every context ID of the model even when no bigram weight survived training. |
 | `write_unknown_dictionary<W: Write>(&self, writer: &mut W) -> Result<()>` | Writes one `unk.def` line for each stored entry of `unk_entries`, in file order, with its category name, learned connection IDs and cost, and feature string. |
