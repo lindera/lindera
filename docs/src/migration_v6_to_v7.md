@@ -1551,6 +1551,8 @@ These affect only Rust code that uses `lindera-trainer` directly or through
 | `TrainerConfig::from_readers` accepts a `char.def` and an `unk.def` that `mecab-dict-index` rejects | Returns an error that names the file, the category and, where there is one, the line (see [`lindera build` and `lindera train` check `char.def` against `unk.def`](#lindera-build-and-lindera-train-check-chardef-against-unkdef)) |
 | `Trainer::max_grouping_len(len)` bounds the unknown-word candidates, which never exceed three characters | Caps unknown-word grouping with the runtime's meaning, in characters beyond the first; `None`, the default, leaves it unbounded |
 | `Model::num_labels()` and `ModelMetadata::label_count` count one unknown-word label per `char.def` category | Count one per `unk.def` entry; the virtual labels are not counted |
+| `Model::write_left_id_def` / `write_right_id_def` write the IDs of the bigram feature strings, another ID space from the context IDs of `lex.csv` and `matrix.def` | Write the context IDs, as `SerializableModel::write_left_id_def` / `write_right_id_def` write them for the model that `Model::write_model` writes |
+| `ModelMetadata::iterations` (and `model_info.training_iterations`) is the `max_iter` setting | The number of L-BFGS iterations that ran |
 
 A model is now written with `MODEL_FORMAT_VERSION` as its `metadata.version`,
 and `Model::read_model` checks it, in both the `rkyv` and the legacy JSON

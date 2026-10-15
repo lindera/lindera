@@ -64,8 +64,8 @@ MeCabの3セクション形式`rewrite.def`（`[unigram rewrite]`、`[left rewri
 | `write_bigram_details<L: Write, R: Write, C: Write>(&self, left_wtr, right_wtr, cost_wtr) -> Result<()>` | バイグラム素性とコストを記述した3つの診断用ファイル（左側素性一覧、右側素性一覧、生のバイグラム素性ペアごとのコスト行。id 0 は`BOS`/`EOS`、名前は素性抽出器由来）を書き出します。3ファイルとも同じモデルに対してバイト単位で再現可能です。 |
 | `evaluate(&self, test_lattices: &[lindera_crf::Lattice]) -> f64` | raw modelの素性の重みの絶対値の平均を簡易的な評価スコアとして返します。引数`test_lattices`は現時点では未使用であり、保留データに対するモデルの評価はまだ行われません。 |
 | `write_dictionary_buffers(&self, lexicon, connector, unk_handler, user_lexicon: &mut Vec<u8>) -> Result<()>` | ラベル、素性の重み、ユーザーエントリ数、表層形を、それぞれ生の`rkyv`バイトバッファへシリアライズします。CSVベースの`write_dictionary`に対する、より低レベルな代替エクスポート手段です。 |
-| `write_left_id_def<W: Write>(&self, writer: &mut W) -> Result<()>` | 学習された左文脈IDをその素性文字列にマッピングした`left-id.def`を書き出します。先頭行は`0 BOS/EOS`です。 |
-| `write_right_id_def<W: Write>(&self, writer: &mut W) -> Result<()>` | 学習された右文脈IDをその素性文字列にマッピングした`right-id.def`を書き出します。先頭行は`0 BOS/EOS`です。 |
+| `write_left_id_def<W: Write>(&self, writer: &mut W) -> Result<()>` | `left-id.def`を書き出します。先頭行は`0 BOS/EOS`で、続いてマージ済みモデルの左文脈ID（`write_dictionary`が`lex.csv`・`unk.def`・`matrix.def`に書き出すID）ごとに、そのIDを持つ最初のラベルの左素性を書き出します。`write_model`が書き出すモデルについて`SerializableModel::write_left_id_def`が書き出すファイルと同じです（両者は1つの対応づけを使います）。 |
+| `write_right_id_def<W: Write>(&self, writer: &mut W) -> Result<()>` | `right-id.def`を書き出します。`write_left_id_def`と同じく、先頭行の`0 BOS/EOS`に続いて、マージ済みモデルの右文脈IDごとに、そのIDを持つ最初のラベルの右素性を書き出します。`write_model`が書き出すモデルについて`SerializableModel::write_right_id_def`が書き出すファイルと同じです。 |
 
 #### `SerializableModel`のパブリックメソッド
 

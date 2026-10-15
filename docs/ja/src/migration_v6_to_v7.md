@@ -1407,6 +1407,8 @@ feature）経由で使う Rust コードにのみ影響します
 | `TrainerConfig::from_readers` は `mecab-dict-index` が拒否する `char.def` と `unk.def` を受け入れる | ファイルとカテゴリ、行があればその行を示すエラーを返す（[`lindera build` と `lindera train` は `char.def` と `unk.def` を照らし合わせる](#lindera-build-と-lindera-train-は-chardef-と-unkdef-を照らし合わせる)を参照） |
 | `Trainer::max_grouping_len(len)` は未知語候補の長さを制限し、候補は 3 文字を超えない | ランタイムと同じ意味（先頭の 1 文字を除いた文字数）で未知語のグルーピングに上限を設ける。デフォルトの `None` は無制限 |
 | `Model::num_labels()` と `ModelMetadata::label_count` は `char.def` のカテゴリごとに 1 つの未知語ラベルを数える | `unk.def` のエントリごとに 1 つを数える。仮想ラベルは数えない |
+| `Model::write_left_id_def` / `write_right_id_def` はバイグラム素性の文字列の ID を書き出す。`lex.csv` や `matrix.def` の文脈 ID とは別の ID 空間 | 文脈 ID を書き出す。`Model::write_model` が書き出すモデルについて `SerializableModel::write_left_id_def` / `write_right_id_def` が書き出すものと同じ |
+| `ModelMetadata::iterations`（と `model_info.training_iterations`）は `max_iter` の設定値 | 実際に回った L-BFGS の反復回数 |
 
 モデルは `MODEL_FORMAT_VERSION` を `metadata.version` として書き出され、
 `Model::read_model` は `rkyv` 形式でもレガシーの JSON 形式でもこれを確認するため、

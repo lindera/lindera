@@ -2255,28 +2255,18 @@ mod feature_column_tests {
     fn user_lexicon_features_read_a_quoted_column_as_one_column() {
         // The bigram templates of the fixtures are `%L[0]` and `%R[0]`, and
         // no rule of their rewrite.def matches the entry, so its left and
-        // right features are its feature, and `write_left_id_def` and
-        // `write_right_id_def` list its first column.
+        // right features are its first column, which reading the entry
+        // registers with the feature extractor.
         let mut model = crate::test_fixtures::train_wide_model(1);
         if let Err(err) = model.read_user_lexicon(Cursor::new("X,0,0,0,\"名詞,固有\",*\n")) {
             panic!("user lexicon: {err}");
         }
-        let mut left_ids = Vec::new();
-        let mut right_ids = Vec::new();
-        if let Err(err) = model.write_left_id_def(&mut left_ids) {
-            panic!("left-id.def: {err}");
-        }
-        if let Err(err) = model.write_right_id_def(&mut right_ids) {
-            panic!("right-id.def: {err}");
-        }
 
-        for ids in [left_ids, right_ids] {
-            let ids = String::from_utf8_lossy(&ids);
-            assert!(
-                ids.lines().any(|line| line.ends_with(" 名詞,固有")),
-                "{ids}"
-            );
-            assert!(!ids.contains('"'), "{ids}");
+        let extractor = &model.config.feature_extractor;
+        for ids in [&extractor.left_feature_ids, &extractor.right_feature_ids] {
+            let features = interned(ids);
+            assert!(features.contains(&"名詞,固有"), "{features:?}");
+            assert!(features.iter().all(|f| !f.contains('"')), "{features:?}");
         }
     }
 
@@ -2624,7 +2614,7 @@ mod export_consistency_tests {
     use std::io::Cursor;
 
     use crate::model::{Model, SerializableModel};
-    use crate::test_fixtures::fixtures;
+    use crate::test_fixtures::{fixtures, wide_seed_and_corpus};
     use crate::{Corpus, Trainer, TrainerConfig};
 
     /// Trains the tiny fixture with at most `max_iter` iterations.
@@ -2749,5 +2739,48 @@ mod export_consistency_tests {
         let err = model.export(&out, Some(&missing)).unwrap_err();
         assert!(err.to_string().contains("missing.json"), "{err}");
         assert!(!out.exists(), "{:?}", file_names(&out));
+    }
+
+    /// Trains the wide fixture with L2 regularization, under which its
+    /// labels keep several context ids (the L1 default merges most of them).
+    fn train_wide_l2_model() -> Model {
+        let (_, char_def, unk_def, feature_def, rewrite_def, _) = fixtures();
+        let (seed, corpus) = wide_seed_and_corpus();
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed.as_bytes()),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+        Trainer::new(config)
+            .unwrap()
+            .regularization_cost(0.01)
+            .use_l2(true)
+            .max_iter(20)
+            .num_threads(1)
+            .train(Corpus::from_reader(Cursor::new(corpus.as_bytes())).unwrap())
+            .unwrap()
+    }
+
+    #[test]
+    fn model_id_defs_are_those_of_the_exported_model() {
+        let model = train_wide_l2_model();
+        let serializable = read_back(&model);
+        let written = |write: &dyn Fn(&mut Vec<u8>) -> anyhow::Result<()>| {
+            let mut buf = Vec::new();
+            write(&mut buf).unwrap();
+            String::from_utf8(buf).unwrap()
+        };
+
+        let left = written(&|w| model.write_left_id_def(w));
+        let right = written(&|w| model.write_right_id_def(w));
+        assert_eq!(left, written(&|w| serializable.write_left_id_def(w)));
+        assert_eq!(right, written(&|w| serializable.write_right_id_def(w)));
+        // `0 BOS/EOS` and at least two context ids, so that the files tell
+        // the ids apart.
+        assert!(left.lines().count() > 2, "{left}");
+        assert!(right.lines().count() > 2, "{right}");
     }
 }

@@ -434,8 +434,7 @@ impl Model {
             // The features of a seed row with this feature and first character
             // category, so the weight is the one `lex.csv` gives that row. They
             // are made for every entry, as before #1198, which registers them
-            // with the feature extractor whose features `write_left_id_def`
-            // and `write_right_id_def` list.
+            // with the feature extractor.
             let category = self.config.surface_category(surface);
             let feature_set = crate::label_feature_set(
                 &self.config.dictionary_rewriter,
@@ -502,58 +501,9 @@ impl Model {
             })
             .collect();
 
-        // Build left/right ID maps from merged model's connection IDs
-        // before feature_sets is moved into SerializableModel.
-        // Use feature strings (POS info), not surface forms. The labels are
-        // the seed rows, then the unk.def entries, then the virtual labels.
-        let features = &self.config.features;
-        let unk_entries = &self.config.unk_entries;
-        let unk_start_idx = self.config.surfaces.len();
-        let virtual_start_idx = unk_start_idx + unk_entries.len();
-
-        let get_feature_string = |i: usize| -> String {
-            if i < unk_start_idx {
-                features.get(i).cloned().unwrap_or_else(|| "*".to_string())
-            } else if i < virtual_start_idx {
-                unk_entries[i - unk_start_idx].1.clone()
-            } else {
-                self.virtual_features
-                    .get(i - virtual_start_idx)
-                    .cloned()
-                    .unwrap_or_else(|| "*".to_string())
-            }
-        };
-
-        let left_id_map = {
-            let mut id_to_feat: std::collections::HashMap<u32, String> =
-                std::collections::HashMap::new();
-            for (i, fs) in feature_sets.iter().enumerate() {
-                let lid = fs.left_id;
-                id_to_feat.entry(lid).or_insert_with(|| {
-                    let feat = get_feature_string(i);
-                    let (_, lfeature, _) = self.config.dictionary_rewriter.rewrite(&feat);
-                    lfeature
-                });
-            }
-            let mut entries: Vec<(u32, String)> = id_to_feat.into_iter().collect();
-            entries.sort_by_key(|&(id, _)| id);
-            entries
-        };
-        let right_id_map = {
-            let mut id_to_feat: std::collections::HashMap<u32, String> =
-                std::collections::HashMap::new();
-            for (i, fs) in feature_sets.iter().enumerate() {
-                let rid = fs.right_id;
-                id_to_feat.entry(rid).or_insert_with(|| {
-                    let feat = get_feature_string(i);
-                    let (_, _, rfeature) = self.config.dictionary_rewriter.rewrite(&feat);
-                    rfeature
-                });
-            }
-            let mut entries: Vec<(u32, String)> = id_to_feat.into_iter().collect();
-            entries.sort_by_key(|&(id, _)| id);
-            entries
-        };
+        // The context id maps of left-id.def and right-id.def, which
+        // `Model::write_left_id_def` and `write_right_id_def` make the same way.
+        let (left_id_map, right_id_map) = self.context_id_maps(&merged_model);
 
         let serializable_model = SerializableModel {
             feature_weights,
@@ -1104,8 +1054,8 @@ impl Model {
         let merged_model = self.get_merged_model()?;
         let cost_factor = self.config.cost_factor;
 
-        // Real feature names, inverted from the extractor's string-to-id maps
-        // (the same inversion write_left_id_def uses): id -> feature string.
+        // Real feature names, inverted from the extractor's string-to-id maps:
+        // id -> feature string.
         let right_features: HashMap<u32, &str> = self
             .config
             .feature_extractor
@@ -1242,6 +1192,29 @@ impl Model {
 
         Ok(())
     }
+}
+
+/// The context ids of `left-id.def` or `right-id.def`, in id order, each
+/// with its feature.
+type ContextIdMap = Vec<(u32, String)>;
+
+/// Writes `left-id.def` or `right-id.def`: `0 BOS/EOS`, then one
+/// `id feature` line for each context id of the map.
+///
+/// # Arguments
+///
+/// * `writer` - Write sink for the file.
+/// * `id_map` - The context ids, in id order, each with its feature.
+///
+/// # Returns
+///
+/// `Ok(())` on success.
+fn write_id_def<W: Write>(writer: &mut W, id_map: &[(u32, String)]) -> Result<()> {
+    writeln!(writer, "0 BOS/EOS")?;
+    for (id, feature) in id_map {
+        writeln!(writer, "{id} {feature}")?;
+    }
+    Ok(())
 }
 
 /// Writes the content of one file that [`SerializableModel::export`] writes.
@@ -1562,68 +1535,123 @@ impl SerializableModel {
         Ok(())
     }
 
-    /// Writes left-id.def: maps left context IDs to their feature strings.
+    /// Writes `left-id.def`: `0 BOS/EOS`, then each left context id with its
+    /// left feature, from `left_id_map`.
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `left-id.def`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
     pub fn write_left_id_def<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
-        writeln!(writer, "0 BOS/EOS")?;
-        for (id, feat_str) in &self.left_id_map {
-            writeln!(writer, "{id} {feat_str}")?;
-        }
-        Ok(())
+        write_id_def(writer, &self.left_id_map)
     }
 
-    /// Writes right-id.def: maps right context IDs to their feature strings.
+    /// Writes `right-id.def`: `0 BOS/EOS`, then each right context id with
+    /// its right feature, from `right_id_map`.
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `right-id.def`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
     pub fn write_right_id_def<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
-        writeln!(writer, "0 BOS/EOS")?;
-        for (id, feat_str) in &self.right_id_map {
-            writeln!(writer, "{id} {feat_str}")?;
-        }
-        Ok(())
+        write_id_def(writer, &self.right_id_map)
     }
 }
 
 impl Model {
-    /// Writes left-id.def: maps left context IDs to their feature strings.
+    /// The context id maps of `left-id.def` and `right-id.def`: each left and
+    /// each right context id of the merged model, in id order, with the left
+    /// or right feature that the rewrite rules make from the feature of the
+    /// first label with that id. The labels are the seed rows, then the
+    /// `unk.def` entries, then the virtual labels.
     ///
-    /// Format: `id feature_string` (one per line), with BOS/EOS at id=0.
-    pub fn write_left_id_def<W: Write>(&self, writer: &mut W) -> Result<()> {
-        // id=0 is reserved for BOS/EOS
-        writeln!(writer, "0 BOS/EOS")?;
+    /// # Arguments
+    ///
+    /// * `merged_model` - The merged model, whose feature sets give the
+    ///   context ids of the labels.
+    ///
+    /// # Returns
+    ///
+    /// The left and the right map, as `(id, feature)` pairs.
+    fn context_id_maps(
+        &self,
+        merged_model: &lindera_crf::MergedModel,
+    ) -> (ContextIdMap, ContextIdMap) {
+        let features = &self.config.features;
+        let unk_entries = &self.config.unk_entries;
+        let unk_start_idx = self.config.surfaces.len();
+        let virtual_start_idx = unk_start_idx + unk_entries.len();
+        let feature_string = |i: usize| -> String {
+            if i < unk_start_idx {
+                features.get(i).cloned().unwrap_or_else(|| "*".to_string())
+            } else if i < virtual_start_idx {
+                unk_entries[i - unk_start_idx].1.clone()
+            } else {
+                self.virtual_features
+                    .get(i - virtual_start_idx)
+                    .cloned()
+                    .unwrap_or_else(|| "*".to_string())
+            }
+        };
 
-        // Build reverse mapping: NonZeroU32 -> feature string
-        let left_ids = &self.config.feature_extractor.left_feature_ids;
-        let mut entries: Vec<(u32, &str)> = left_ids
-            .iter()
-            .map(|(feat_str, &id)| (id.get(), feat_str.as_str()))
-            .collect();
-        entries.sort_by_key(|&(id, _)| id);
-
-        for (id, feat_str) in entries {
-            writeln!(writer, "{id} {feat_str}")?;
+        let mut left = BTreeMap::new();
+        let mut right = BTreeMap::new();
+        for (i, feature_set) in merged_model.feature_sets.iter().enumerate() {
+            let left_id = feature_set.left_id.get();
+            let right_id = feature_set.right_id.get();
+            if left.contains_key(&left_id) && right.contains_key(&right_id) {
+                continue;
+            }
+            let (_, left_feature, right_feature) =
+                self.config.dictionary_rewriter.rewrite(&feature_string(i));
+            left.entry(left_id).or_insert(left_feature);
+            right.entry(right_id).or_insert(right_feature);
         }
-
-        Ok(())
+        (left.into_iter().collect(), right.into_iter().collect())
     }
 
-    /// Writes right-id.def: maps right context IDs to their feature strings.
+    /// Writes `left-id.def`: `0 BOS/EOS`, then each left context id of the
+    /// model with its left feature. These are the context ids that
+    /// [`write_dictionary`](Self::write_dictionary) writes to `lex.csv`,
+    /// `unk.def` and `matrix.def`, and the file is the one that
+    /// [`SerializableModel::write_left_id_def`] writes for the model that
+    /// [`write_model`](Self::write_model) writes (#1169).
     ///
-    /// Format: `id feature_string` (one per line), with BOS/EOS at id=0.
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `left-id.def`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
+    pub fn write_left_id_def<W: Write>(&self, writer: &mut W) -> Result<()> {
+        let merged_model = self.get_merged_model()?;
+        write_id_def(writer, &self.context_id_maps(&merged_model).0)
+    }
+
+    /// Writes `right-id.def`: `0 BOS/EOS`, then each right context id of the
+    /// model with its right feature. These are the context ids that
+    /// [`write_dictionary`](Self::write_dictionary) writes to `lex.csv`,
+    /// `unk.def` and `matrix.def`, and the file is the one that
+    /// [`SerializableModel::write_right_id_def`] writes for the model that
+    /// [`write_model`](Self::write_model) writes (#1169).
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `right-id.def`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
     pub fn write_right_id_def<W: Write>(&self, writer: &mut W) -> Result<()> {
-        // id=0 is reserved for BOS/EOS
-        writeln!(writer, "0 BOS/EOS")?;
-
-        // Build reverse mapping: NonZeroU32 -> feature string
-        let right_ids = &self.config.feature_extractor.right_feature_ids;
-        let mut entries: Vec<(u32, &str)> = right_ids
-            .iter()
-            .map(|(feat_str, &id)| (id.get(), feat_str.as_str()))
-            .collect();
-        entries.sort_by_key(|&(id, _)| id);
-
-        for (id, feat_str) in entries {
-            writeln!(writer, "{id} {feat_str}")?;
-        }
-
-        Ok(())
+        let merged_model = self.get_merged_model()?;
+        write_id_def(writer, &self.context_id_maps(&merged_model).1)
     }
 }
 
