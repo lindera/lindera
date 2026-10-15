@@ -262,7 +262,10 @@ NUMERIC 1 1 0
 </code></pre>
 <p>パラメータは、文字の既定カテゴリが作る未知語を制御します。辞書語が始まる位置でも未知語を作るか（<code>INVOKE</code>）、どの文字も直前の文字とカテゴリを共有する連続を 1 つのトークンにするか（<code>GROUP</code>）、どの長さまで短い候補を作るか（<code>LENGTH</code>）を指定します。</p>
 <p>範囲行には複数のカテゴリを書くことができ（例: <code>0x4E00 KANJINUMERIC KANJI</code>）、少なくとも 1 つのカテゴリが必要です。同じコードポイントを複数の行が覆う場合は、MeCab と同じく最後の行がそのカテゴリを決めます。その行の先頭のカテゴリが文字の既定カテゴリです。未知語候補を作るのは既定カテゴリだけで、素性テンプレートの <code>%t</code> もこれを使います。</p>
-<p><code>SPACE</code> カテゴリと、<code>unk.def</code> のその行は残してください。MeCab は、すべての <code>char.def</code> に <code>DEFAULT</code> と <code>SPACE</code> を求め、すべてのカテゴリに <code>unk.def</code> の行を 1 つ以上求めます。Segmenter は <code>SPACE</code> の文字を空白として扱い、デフォルトでは MeCab と同じく読み飛ばして出力しません。<code>char.def</code> に <code>SPACE</code> カテゴリがない辞書は、<code>--keep-whitespace</code> を指定しないと使えず、<code>lindera tokenize</code> は <code>SPACE category is not defined in the dictionary (char.def)</code> で失敗します。</p>
+<p>MeCab と同じく、範囲行が指せるのはそれより前の行で定義したカテゴリだけで、各カテゴリの定義は 1 回だけです。<code>lindera train</code> と <code>lindera build</code> は、これに反する <code>char.def</code> を、行とカテゴリを示すエラーで拒否します。たとえば、<code>KATAKANA</code> を定義する行より前に、<code>char.def</code> の 1 行目として <code>0x30FC KATAKANA</code> を挿入して <code>lindera train</code> を実行すると、次のようになります：</p>
+<pre><code class="language-text">Error: LinderaError { kind: Args, source: failed to parse char.def: LinderaError(kind=Content, source=char.def: line 1: category KATAKANA is not defined; a range line can only name a category defined on an earlier line) }
+</code></pre>
+<p><code>SPACE</code> カテゴリと、<code>unk.def</code> のその行は残してください。MeCab は、すべての <code>char.def</code> に <code>DEFAULT</code> と <code>SPACE</code> を求めます。また、すべてのカテゴリに <code>unk.def</code> の行が 1 つ以上必要です（次の節を参照）。Segmenter は <code>SPACE</code> の文字を空白として扱い、デフォルトでは MeCab と同じく読み飛ばして出力しません。<code>char.def</code> に <code>SPACE</code> カテゴリがない辞書は、<code>--keep-whitespace</code> を指定しないと使えず、<code>lindera tokenize</code> は <code>SPACE category is not defined in the dictionary (char.def)</code> で失敗します。</p>
 <p>学習は、ランタイムと同じコード（<code>Lattice::unknown_word_candidates</code>）で未知語候補を作ります。そのため、ビルドした辞書が作る候補に対して重みを学習します。</p>
 <ul>
 <li>各位置では、文字の既定カテゴリが候補を作ります。<code>INVOKE</code> が 0 で、その位置から種辞書の語が始まる場合は作りません。</li>
@@ -289,6 +292,11 @@ NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*
 <li><code>#</code> で始まる行と空行は読み飛ばします。フィールドが 5 つ未満（カテゴリ、2 つの ID、コスト、1 列以上の素性）の行はエラーになります。</li>
 </ul>
 <pre><code class="language-text">Error: LinderaError { kind: Args, source: unk.def line 1: expected at least 5 fields (category, left id, right id, cost, feature), got 4 }
+</code></pre>
+<ul>
+<li>MeCab と同じく、各行は <code>char.def</code> で定義したカテゴリを指し、<code>char.def</code> の各カテゴリには 1 行以上が必要です。<code>lindera train</code> と <code>lindera build</code> は、これに反する <code>unk.def</code> を拒否します。エラーはカテゴリを示し、<code>char.def</code> が定義していないカテゴリの行では、コメント行と空行も数えた行番号も示します。たとえば、<code>char.def</code> に <code>SYMBOL</code> カテゴリがないまま、上の <code>unk.def</code> の 9 行目に <code>SYMBOL,0,0,0,記号,一般,*,*,*,*,*,*,*</code> を追加して <code>lindera train</code> を実行すると、次のようになります：</li>
+</ul>
+<pre><code class="language-text">Error: LinderaError { kind: Args, source: failed to check unk.def: LinderaError(kind=Content, source=unk.def: line 9: category SYMBOL is not defined in char.def) }
 </code></pre>
 <h3 id="5-素性テンプレート-featuredef"><a class="header" href="#5-素性テンプレート-featuredef">5. 素性テンプレート (feature.def)</a></h3>
 <p>CRF モデルが学習に使用する情報を定義する MeCab 互換の素性抽出パターンです。</p>

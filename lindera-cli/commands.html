@@ -186,6 +186,18 @@
 <li><strong>train</strong> - Train a CRF model from annotated corpus data</li>
 <li><strong>export</strong> - Export a trained model to dictionary format</li>
 </ul>
+<h2 id="warnings-and-log-messages"><a class="header" href="#warnings-and-log-messages">Warnings and log messages</a></h2>
+<p>Every command writes its results to standard output and the warnings of the Lindera libraries to standard error. For example, when <code>tokenize</code> reads more than 32 KiB of text without a sentence delimiter, it cuts the sentence there (see <a href="../lindera/segmenter.html#sentence-splitting">Sentence Splitting</a>) and warns:</p>
+<pre><code class="language-shell">% head -c 40000 /dev/zero | tr '\0' a | lindera tokenize --dict embedded://ipadic -o wakati &gt; /dev/null
+[WARN  lindera_segmenter::segmenter] no sentence delimiter (\n, \t, 。, 、) found within 32768 bytes from offset 0; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)
+</code></pre>
+<p>The <code>RUST_LOG</code> environment variable selects the messages, in the syntax of <a href="https://docs.rs/env_logger/0.11.11/env_logger/#enabling-logging">env_logger</a>:</p>
+<ul>
+<li>Not set: warnings and errors.</li>
+<li><code>RUST_LOG=error</code>: errors only, which hides the warnings. <code>RUST_LOG=off</code> writes no log messages at all.</li>
+<li><code>RUST_LOG=debug</code>: also debugging messages, such as the files <code>lindera build</code> reads and writes.</li>
+</ul>
+<p>The setting does not change standard output, and the error of a command that fails is written whatever the setting. The messages are colored when standard error is a terminal; <code>RUST_LOG_STYLE=never</code> turns the colors off.</p>
 <h2 id="list"><a class="header" href="#list">list</a></h2>
 <p>List all known morphological analysis dictionaries and show, for each one, whether it is embedded in the binary (via the <code>embed-*</code> feature flags) and whether a pre-built copy has been downloaded locally with <code>lindera download</code>.</p>
 <h3 id="list-parameters"><a class="header" href="#list-parameters">List parameters</a></h3>
@@ -656,7 +668,7 @@ EOS
 <pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
 </code></pre>
 <ul>
-<li>If the dictionary's <code>metadata.json</code> sets <code>skip_invalid_cost_or_id</code> to <code>true</code>, such a <code>lex.csv</code> row is dropped instead, with a warning through the <code>log</code> crate that the CLI does not print yet (<a href="https://github.com/lindera/lindera/issues/1107">#1107</a>). An <code>unk.def</code> line is always checked.</li>
+<li>If the dictionary's <code>metadata.json</code> sets <code>skip_invalid_cost_or_id</code> to <code>true</code>, such a <code>lex.csv</code> row is dropped instead, with a warning on standard error (see <a href="#warnings-and-log-messages">Warnings and log messages</a>). An <code>unk.def</code> line is always checked.</li>
 <li>A <code>matrix.def</code> row whose IDs fall outside its axes is an error too, and so is an <code>unk.def</code> line with fewer than four fields.</li>
 <li>A user dictionary (<code>--user</code>) is checked only when <code>--system-dict</code> names the system dictionary it is for, as described below.</li>
 </ul>
@@ -665,6 +677,18 @@ EOS
 Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
 </code></pre>
 <p>Without <code>--system-dict</code>, the build does not know the system dictionary, and the user dictionary builds. <code>lindera tokenize --user-dict</code> then checks it against the system dictionary and fails with an error that names the first entry outside the matrix by its word id (see <a href="../concepts/user_dictionary.html#context-ids">Context IDs</a>). A <code>.csv</code> given to <code>lindera tokenize --user-dict</code> is built for the system dictionary of <code>--dict</code> as it is loaded, so its error names the CSV line and surface, as with <code>--system-dict</code>.</p>
+<h3 id="chardef-and-unkdef-check"><a class="header" href="#chardef-and-unkdef-check">char.def and unk.def check</a></h3>
+<p>When it builds a system dictionary, <code>lindera build</code> also checks <code>char.def</code> and <code>unk.def</code> against each other, as <code>mecab-dict-index</code> does:</p>
+<ul>
+<li>A range line of <code>char.def</code> names only categories defined on an earlier line.</li>
+<li>Each category is defined once.</li>
+<li>Every <code>unk.def</code> line names a category that <code>char.def</code> defines.</li>
+<li>Every <code>char.def</code> category has at least one <code>unk.def</code> line.</li>
+</ul>
+<p>A dictionary that breaks one of these fails to build, with an error that names the file, the category and, except for a category without an <code>unk.def</code> line, the line. Such a dictionary used to build, and then <code>lindera tokenize</code> panicked on a character of an undefined category, gave some categories the settings of others, stopped its output before a character that no word or unknown word covers, or ignored the <code>unk.def</code> line. For example, with a <code>char.def</code> that defines the <code>SPACE</code> category and an <code>unk.def</code> that has no <code>SPACE</code> line:</p>
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for category SPACE, which char.def defines; every char.def category needs at least one unk.def line }
+</code></pre>
+<p><code>lindera train</code> checks its <code>--char-def</code> and <code>--unk-def</code> in the same way before it trains (see <a href="../development/training_pipeline.html#3-character-definition-chardef">Training Pipeline</a>).</p>
 <h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
 <h4 id="build-ipadic-japanese-dictionary"><a class="header" href="#build-ipadic-japanese-dictionary">Build IPADIC (Japanese dictionary)</a></h4>
 <pre><code class="language-shell"># Download and extract IPADIC source files
@@ -693,7 +717,8 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
 % lindera build \
   --src /tmp/unidic-mecab-2.1.2 \
   --dest /tmp/lindera-unidic-2.1.2 \
-  --metadata ./lindera-unidic/metadata.json
+  --metadata ./lindera-unidic/metadata.json \
+  --context-id-freq ./lindera-unidic/context_id_freq.txt
 </code></pre>
 <h4 id="build-cc-cedict-chinese-dictionary"><a class="header" href="#build-cc-cedict-chinese-dictionary">Build CC-CEDICT (Chinese dictionary)</a></h4>
 <pre><code class="language-shell">% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz"
@@ -720,7 +745,8 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
 % lindera build \
   --src /tmp/mecab-ko-dic-2.1.1-20180720 \
   --dest /tmp/lindera-ko-dic-2.1.1-20180720 \
-  --metadata ./lindera-ko-dic/metadata.json
+  --metadata ./lindera-ko-dic/metadata.json \
+  --context-id-freq ./lindera-ko-dic/context_id_freq.txt
 </code></pre>
 <h3 id="build-user-dictionaries"><a class="header" href="#build-user-dictionaries">Build user dictionaries</a></h3>
 <h4 id="build-ipadic-user-dictionary-japanese"><a class="header" href="#build-ipadic-user-dictionary-japanese">Build IPADIC user dictionary (Japanese)</a></h4>

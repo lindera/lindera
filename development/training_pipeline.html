@@ -262,7 +262,10 @@ NUMERIC 1 1 0
 </code></pre>
 <p>Parameters control the unknown words that a character's default category creates: whether they are created even where a dictionary word starts (<code>INVOKE</code>), whether a run in which each character shares a category with the one before continues as a single token (<code>GROUP</code>), and up to which length shorter candidates are created (<code>LENGTH</code>).</p>
 <p>A range line can list more than one category (for example <code>0x4E00 KANJINUMERIC KANJI</code>), and every range line needs at least one. When several lines cover the same code point, the last line decides its categories, as in MeCab. The first category on that line is the character's default category: the only one that creates unknown-word candidates, and the one the <code>%t</code> feature template uses.</p>
-<p>Keep the <code>SPACE</code> category, which MeCab requires in every <code>char.def</code> along with <code>DEFAULT</code>, and its line in <code>unk.def</code>: MeCab requires at least one <code>unk.def</code> line for every category. The segmenter treats its characters as whitespace: by default it skips them, as MeCab does, and does not output them. Without <code>--keep-whitespace</code>, a dictionary whose <code>char.def</code> has no <code>SPACE</code> category cannot be used: <code>lindera tokenize</code> fails with <code>SPACE category is not defined in the dictionary (char.def)</code>.</p>
+<p>As in MeCab, a range line can name only categories defined on an earlier line, and each category is defined once. <code>lindera train</code> and <code>lindera build</code> reject a <code>char.def</code> that breaks either, with an error that names the line and the category. For example, <code>lindera train</code> with <code>0x30FC KATAKANA</code> inserted as the first line of <code>char.def</code>, before the line that defines <code>KATAKANA</code>:</p>
+<pre><code class="language-text">Error: LinderaError { kind: Args, source: failed to parse char.def: LinderaError(kind=Content, source=char.def: line 1: category KATAKANA is not defined; a range line can only name a category defined on an earlier line) }
+</code></pre>
+<p>Keep the <code>SPACE</code> category, which MeCab requires in every <code>char.def</code> along with <code>DEFAULT</code>, and its line in <code>unk.def</code>: every category needs at least one <code>unk.def</code> line (see the next section). The segmenter treats its characters as whitespace: by default it skips them, as MeCab does, and does not output them. Without <code>--keep-whitespace</code>, a dictionary whose <code>char.def</code> has no <code>SPACE</code> category cannot be used: <code>lindera tokenize</code> fails with <code>SPACE category is not defined in the dictionary (char.def)</code>.</p>
 <p>Training creates the unknown-word candidates with the runtime's own code (<code>Lattice::unknown_word_candidates</code>), so it learns weights for the candidates that the built dictionary produces:</p>
 <ul>
 <li>At each position, the character's default category creates the candidates. It creates none when its <code>INVOKE</code> is 0 and a seed word starts there.</li>
@@ -289,6 +292,11 @@ NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*
 <li>Lines that start with <code>#</code> and empty lines are skipped. A line with fewer than five fields (the category, the two ids, the cost and at least one feature column) is an error:</li>
 </ul>
 <pre><code class="language-text">Error: LinderaError { kind: Args, source: unk.def line 1: expected at least 5 fields (category, left id, right id, cost, feature), got 4 }
+</code></pre>
+<ul>
+<li>As in MeCab, every line names a category that <code>char.def</code> defines, and every category of <code>char.def</code> has at least one line. <code>lindera train</code> and <code>lindera build</code> reject an <code>unk.def</code> that breaks either. The error names the category and, for a line whose category <code>char.def</code> does not define, the line, counted with the comment and empty lines. For example, <code>lindera train</code> with <code>SYMBOL,0,0,0,記号,一般,*,*,*,*,*,*,*</code> appended to the <code>unk.def</code> above as its ninth line, while <code>char.def</code> has no <code>SYMBOL</code> category:</li>
+</ul>
+<pre><code class="language-text">Error: LinderaError { kind: Args, source: failed to check unk.def: LinderaError(kind=Content, source=unk.def: line 9: category SYMBOL is not defined in char.def) }
 </code></pre>
 <h3 id="5-feature-template-featuredef"><a class="header" href="#5-feature-template-featuredef">5. Feature Template (feature.def)</a></h3>
 <p>MeCab-compatible feature extraction patterns that define what information the CRF model uses for learning.</p>

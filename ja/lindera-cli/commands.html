@@ -186,6 +186,18 @@
 <li><strong>train</strong> - 注釈付きコーパスデータからCRFモデルを学習</li>
 <li><strong>export</strong> - 学習済みモデルを辞書フォーマットにエクスポート</li>
 </ul>
+<h2 id="警告とログメッセージ"><a class="header" href="#警告とログメッセージ">警告とログメッセージ</a></h2>
+<p>どのコマンドも、結果を標準出力に、Lindera のライブラリが出す警告を標準エラー出力に書きます。たとえば <code>tokenize</code> は、文の区切り文字のないテキストが 32 KiB を超えると、そこで文を区切り（<a href="../lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>を参照）、警告を出します：</p>
+<pre><code class="language-shell">% head -c 40000 /dev/zero | tr '\0' a | lindera tokenize --dict embedded://ipadic -o wakati &gt; /dev/null
+[WARN  lindera_segmenter::segmenter] no sentence delimiter (\n, \t, 。, 、) found within 32768 bytes from offset 0; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)
+</code></pre>
+<p>環境変数 <code>RUST_LOG</code> で、出すメッセージを選べます。書式は <a href="https://docs.rs/env_logger/0.11.11/env_logger/#enabling-logging">env_logger</a> のものです：</p>
+<ul>
+<li>指定なし: 警告とエラー</li>
+<li><code>RUST_LOG=error</code>: エラーだけ。警告は出しません。<code>RUST_LOG=off</code> はログメッセージを一切出しません</li>
+<li><code>RUST_LOG=debug</code>: デバッグ用のメッセージも出します。たとえば <code>lindera build</code> が読み書きするファイル</li>
+</ul>
+<p>この設定で標準出力は変わりません。また、失敗したコマンドのエラーは設定にかかわらず出します。標準エラー出力が端末のときはメッセージに色を付けます。<code>RUST_LOG_STYLE=never</code> で色を消せます。</p>
 <h2 id="list"><a class="header" href="#list">list</a></h2>
 <p>既知の形態素解析辞書の一覧を表示し、各辞書について（<code>embed-*</code> feature フラグ経由で）バイナリに埋め込まれているか、および <code>lindera download</code> で学習済み辞書がローカルにダウンロード済みかを表示します。</p>
 <h3 id="list-パラメータ"><a class="header" href="#list-パラメータ">list パラメータ</a></h3>
@@ -656,7 +668,7 @@ EOS
 <pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
 </code></pre>
 <ul>
-<li>辞書の <code>metadata.json</code> で <code>skip_invalid_cost_or_id</code> が <code>true</code> の場合は、そうした <code>lex.csv</code> の行を取り除きます。<code>log</code> クレートに警告を出しますが、CLI はまだそれを表示しません（<a href="https://github.com/lindera/lindera/issues/1107">#1107</a>）。<code>unk.def</code> の行は常に確認します。</li>
+<li>辞書の <code>metadata.json</code> で <code>skip_invalid_cost_or_id</code> が <code>true</code> の場合は、そうした <code>lex.csv</code> の行を取り除き、標準エラー出力に警告を出します（<a href="#%E8%AD%A6%E5%91%8A%E3%81%A8%E3%83%AD%E3%82%B0%E3%83%A1%E3%83%83%E3%82%BB%E3%83%BC%E3%82%B8">警告とログメッセージ</a>を参照）。<code>unk.def</code> の行は常に確認します。</li>
 <li>ID が軸の範囲外にある <code>matrix.def</code> の行もエラーになり、フィールドが 4 つ未満の <code>unk.def</code> の行もエラーになります。</li>
 <li>ユーザー辞書（<code>--user</code>）を確認するのは、組み合わせるシステム辞書を <code>--system-dict</code> で指定したときだけです（次の段落を参照）。</li>
 </ul>
@@ -665,6 +677,18 @@ EOS
 Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
 </code></pre>
 <p><code>--system-dict</code> を指定しないと、ビルドの時点では組み合わせるシステム辞書が分からないため、ユーザー辞書はそのままビルドされます。その後 <code>lindera tokenize --user-dict</code> がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を単語 ID で示すエラーで失敗します（<a href="../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。<code>lindera tokenize --user-dict</code> に <code>.csv</code> を渡すと、読み込むときに <code>--dict</code> のシステム辞書に合わせてビルドするため、<code>--system-dict</code> と同じく CSV の行番号と表層形を示すエラーになります。</p>
+<h3 id="chardef-と-unkdef-の確認"><a class="header" href="#chardef-と-unkdef-の確認">char.def と unk.def の確認</a></h3>
+<p>システム辞書をビルドするとき、<code>lindera build</code> は <code>mecab-dict-index</code> と同じく、<code>char.def</code> と <code>unk.def</code> を互いに照らし合わせて確認します：</p>
+<ul>
+<li><code>char.def</code> の範囲行が指すカテゴリは、それより前の行で定義されていること</li>
+<li>各カテゴリの定義は 1 回だけであること</li>
+<li><code>unk.def</code> の各行が、<code>char.def</code> で定義したカテゴリを指すこと</li>
+<li><code>char.def</code> の各カテゴリに、<code>unk.def</code> の行が 1 行以上あること</li>
+</ul>
+<p>どれかに反する辞書はビルドに失敗し、エラーはファイルとカテゴリを示します。<code>unk.def</code> の行がないカテゴリ以外では、行も示します。以前はこうした辞書もビルドでき、その後の <code>lindera tokenize</code> は、未定義のカテゴリの文字で panic したり、一部のカテゴリに別のカテゴリの設定を使ったり、どの単語にも未知語にも覆われない文字の手前で出力を打ち切ったり、<code>unk.def</code> の行を無視したりしていました。たとえば、<code>char.def</code> が <code>SPACE</code> カテゴリを定義し、<code>unk.def</code> に <code>SPACE</code> の行がない場合は、次のようになります：</p>
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for category SPACE, which char.def defines; every char.def category needs at least one unk.def line }
+</code></pre>
+<p><code>lindera train</code> も、学習の前に <code>--char-def</code> と <code>--unk-def</code> を同じように確認します（<a href="../development/training_pipeline.html#3-%E6%96%87%E5%AD%97%E5%AE%9A%E7%BE%A9-chardef">学習パイプライン</a>を参照）。</p>
 <h3 id="例"><a class="header" href="#例">例</a></h3>
 <h4 id="ipadic日本語辞書のビルド"><a class="header" href="#ipadic日本語辞書のビルド">IPADIC（日本語辞書）のビルド</a></h4>
 <pre><code class="language-shell"># IPADICソースファイルのダウンロードと展開
@@ -693,7 +717,8 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
 % lindera build \
   --src /tmp/unidic-mecab-2.1.2 \
   --dest /tmp/lindera-unidic-2.1.2 \
-  --metadata ./lindera-unidic/metadata.json
+  --metadata ./lindera-unidic/metadata.json \
+  --context-id-freq ./lindera-unidic/context_id_freq.txt
 </code></pre>
 <h4 id="cc-cedict中国語辞書のビルド"><a class="header" href="#cc-cedict中国語辞書のビルド">CC-CEDICT（中国語辞書）のビルド</a></h4>
 <pre><code class="language-shell">% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz"
@@ -720,7 +745,8 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
 % lindera build \
   --src /tmp/mecab-ko-dic-2.1.1-20180720 \
   --dest /tmp/lindera-ko-dic-2.1.1-20180720 \
-  --metadata ./lindera-ko-dic/metadata.json
+  --metadata ./lindera-ko-dic/metadata.json \
+  --context-id-freq ./lindera-ko-dic/context_id_freq.txt
 </code></pre>
 <h3 id="ユーザー辞書のビルド"><a class="header" href="#ユーザー辞書のビルド">ユーザー辞書のビルド</a></h3>
 <h4 id="ipadicユーザー辞書日本語のビルド"><a class="header" href="#ipadicユーザー辞書日本語のビルド">IPADICユーザー辞書（日本語）のビルド</a></h4>
