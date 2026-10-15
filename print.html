@@ -939,7 +939,7 @@ tokenizer
 <h3 id="lattice--edge--node"><a class="header" href="#lattice--edge--node">Lattice / Edge / Node</a></h3>
 <p>Lattice structure with variable-length edges for sequence labeling. <code>Edge</code> represents a candidate span with a label, while <code>Node</code> aggregates edges at a given position. The <code>Lattice</code> is constructed from input data and used by the model to find the best path.</p>
 <h3 id="trainer"><a class="header" href="#trainer">Trainer</a></h3>
-<p>Trains a CRF model using L-BFGS optimization with configurable regularization. The trainer accepts labeled lattice examples, computes gradients via the forward-backward algorithm, and iteratively updates model weights.</p>
+<p>Trains a CRF model using L-BFGS optimization with configurable regularization. The trainer accepts labeled lattice examples, computes gradients via the forward-backward algorithm, and iteratively updates model weights. <code>Trainer::train</code> returns the trained <code>RawModel</code>; <code>Trainer::train_with_stats</code> also returns a <code>TrainingStats</code> with the number of iterations that ran, which is the maximum set with <code>Trainer::max_iter</code> when that stopped training, and fewer when the optimizer stopped earlier, for example because it converged.</p>
 <h3 id="regularization"><a class="header" href="#regularization">Regularization</a></h3>
 <p>Configurable regularization strategies:</p>
 <ul>
@@ -1112,13 +1112,14 @@ tokenizer
 <tr><td><code>write_bigram_details&lt;L: Write, R: Write, C: Write&gt;(&amp;self, left_wtr, right_wtr, cost_wtr) -&gt; Result&lt;()&gt;</code></td><td>Writes three diagnostic files describing bigram features and costs (left feature list, right feature list, and one line per raw bigram feature pair with <code>BOS</code>/<code>EOS</code> for id 0 and names from the feature extractor). All three files are byte-reproducible for the same model.</td></tr>
 <tr><td><code>evaluate(&amp;self, test_lattices: &amp;[lindera_crf::Lattice]) -&gt; f64</code></td><td>Returns the mean absolute value of the raw model's feature weights as a simple evaluation score. The <code>test_lattices</code> argument is currently unused; it does not yet score the model against held-out data.</td></tr>
 <tr><td><code>write_dictionary_buffers(&amp;self, lexicon, connector, unk_handler, user_lexicon: &amp;mut Vec&lt;u8&gt;) -&gt; Result&lt;()&gt;</code></td><td>Serializes labels, feature weights, user-entry count, and surfaces into four raw <code>rkyv</code> byte buffers -- a lower-level alternative to the CSV-oriented <code>write_dictionary</code>.</td></tr>
-<tr><td><code>write_left_id_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>left-id.def</code>, mapping each learned left-context ID to its feature string, with <code>0 BOS/EOS</code> as the first line.</td></tr>
-<tr><td><code>write_right_id_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>right-id.def</code>, mapping each learned right-context ID to its feature string, with <code>0 BOS/EOS</code> as the first line.</td></tr>
+<tr><td><code>write_left_id_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>left-id.def</code>: <code>0 BOS/EOS</code>, then each left context ID of the merged model -- the IDs that <code>write_dictionary</code> writes to <code>lex.csv</code>, <code>unk.def</code> and <code>matrix.def</code> -- with the left feature of the first label with that ID. It is the file that <code>SerializableModel::write_left_id_def</code> writes for the model that <code>write_model</code> writes: both use one mapping.</td></tr>
+<tr><td><code>write_right_id_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>right-id.def</code>: <code>0 BOS/EOS</code>, then each right context ID of the merged model with the right feature of the first label with that ID, as <code>write_left_id_def</code> does for the left IDs. It is the file that <code>SerializableModel::write_right_id_def</code> writes for the model that <code>write_model</code> writes.</td></tr>
 </tbody></table>
 </div>
 <h4 id="serializablemodel-public-methods"><a class="header" href="#serializablemodel-public-methods"><code>SerializableModel</code> public methods</a></h4>
-<p>Available on the value returned by <code>Model::read_model</code>, for re-exporting dictionary source files from a previously trained and serialized model (used by the <code>lindera export</code> CLI command):</p>
+<p>Available on the value returned by <code>Model::read_model</code>, for re-exporting dictionary source files from a previously trained and serialized model (used by the <code>lindera export</code> CLI command and the export functions of the Python, Node.js, Ruby and PHP bindings):</p>
 <div class="table-wrapper"><table><thead><tr><th>Method</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>export(&amp;self, output_dir: &amp;Path, base_metadata: Option&lt;&amp;Path&gt;) -&gt; Result&lt;Vec&lt;PathBuf&gt;&gt;</code></td><td>Writes the dictionary source files to <code>output_dir</code>, which it creates when it does not exist, with the methods below: <code>lex.csv</code>, <code>matrix.def</code>, <code>unk.def</code>, <code>char.def</code>, <code>feature.def</code>, <code>rewrite.def</code>, <code>left-id.def</code> and <code>right-id.def</code>, and <code>metadata.json</code> (<code>update_metadata_json</code>) when <code>base_metadata</code> is given. Returns the paths written, in that order. <code>lindera export</code> and the bindings' export functions call it, so they write the same files. <code>metadata.json</code> is made first, so a base <code>metadata.json</code> that cannot be read fails with no file written; an error names the file.</td></tr>
 <tr><td><code>write_lexicon&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>lex.csv</code>-style entries from the stored <code>feature_sets</code>, <code>labels</code>, and <code>pos_info</code>, skipping the <code>unk.def</code> entry labels that follow the seed rows.</td></tr>
 <tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes the dense <code>matrix.def</code>-style connection cost matrix from the stored <code>connection_matrix</code>, <code>max_left_id</code>, and <code>max_right_id</code>: <code>max_right_id + 1</code> rows by <code>max_left_id + 1</code> columns, which cover every context ID of the model even when no bigram weight survived training.</td></tr>
 <tr><td><code>write_unknown_dictionary&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes one <code>unk.def</code> line for each stored entry of <code>unk_entries</code>, in file order, with its category name, learned connection IDs and cost, and feature string.</td></tr>
@@ -1131,7 +1132,7 @@ tokenizer
 </tbody></table>
 </div>
 <h4 id="modelmetadata-and-featuresetinfo"><a class="header" href="#modelmetadata-and-featuresetinfo"><code>ModelMetadata</code> and <code>FeatureSetInfo</code></a></h4>
-<p><code>ModelMetadata</code> records summary information about a training run: <code>version</code> (the model format version, <code>MODEL_FORMAT_VERSION</code>), <code>regularization</code> (the cost coefficient used), <code>iterations</code> (max iterations configured), <code>feature_count</code>, and <code>label_count</code>. It is embedded in <code>SerializableModel::metadata</code>.</p>
+<p><code>ModelMetadata</code> records summary information about a training run: <code>version</code> (the model format version, <code>MODEL_FORMAT_VERSION</code>), <code>regularization</code> (the cost coefficient used), <code>iterations</code> (the number of L-BFGS iterations that ran, at most the maximum set with <code>Trainer::max_iter</code>; exported as <code>model_info.training_iterations</code>), <code>feature_count</code>, and <code>label_count</code>. It is embedded in <code>SerializableModel::metadata</code>.</p>
 <p><code>FeatureSetInfo</code> holds the per-label connection information extracted from the merged CRF model after training: <code>left_id</code>, <code>right_id</code>, and <code>weight</code>. <code>SerializableModel::feature_sets</code> stores one entry per CRF label: one for each entry of <code>labels</code>, in the same order, then one for each virtual label, which is not exported.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="api-reference-2"><a class="header" href="#api-reference-2">API Reference</a></h1>
 <p>The API reference is available. Please see following URL:</p>
@@ -3131,7 +3132,7 @@ EOS
 <li><strong>Update specific fields</strong> with values from the trained model:
 <ul>
 <li><code>default_word_cost</code>: Calculated from feature weight median</li>
-<li><code>model_info</code>: Training statistics including feature count, label count, matrix size (<code>connection_matrix_size</code>, the size of <code>matrix.def</code> as rows x columns), iterations, regularization, and the model format version. No timestamp is written, so exporting the same model twice produces identical output</li>
+<li><code>model_info</code>: Training statistics including feature count, label count, matrix size (<code>connection_matrix_size</code>, the size of <code>matrix.def</code> as rows x columns), the number of training iterations that ran (<code>training_iterations</code>, at most <code>--max-iterations</code>), regularization, and the model format version. No timestamp is written, so exporting the same model twice produces identical output</li>
 </ul>
 </li>
 <li><strong>Preserve existing settings</strong> such as dictionary name, character encoding, schema definitions, and other user-defined configuration</li>
@@ -4077,12 +4078,16 @@ lindera.export(
 <tr><td><code>metadata</code></td><td><code>str</code> or <code>None</code></td><td><code>None</code></td><td>Path to a base metadata.json file</td></tr>
 </tbody></table>
 </div>
-<p>The export creates the following files in the output directory:</p>
+<p>The export creates the following files in the output directory, the same files that <a href="lindera-python/../lindera-cli/commands.html#export"><code>lindera export</code></a> creates:</p>
 <ul>
 <li><code>lex.csv</code> -- Lexicon entries with trained costs</li>
 <li><code>matrix.def</code> -- Connection cost matrix</li>
 <li><code>unk.def</code> -- Unknown word definitions</li>
-<li><code>char.def</code> -- Character category definitions</li>
+<li><code>char.def</code> -- Character category definitions (copied from the trained model)</li>
+<li><code>feature.def</code> -- Feature template definitions (copied from the trained model)</li>
+<li><code>rewrite.def</code> -- Feature rewrite rules (copied from the trained model)</li>
+<li><code>left-id.def</code> -- Left context ID to feature string mapping</li>
+<li><code>right-id.def</code> -- Right context ID to feature string mapping</li>
 <li><code>metadata.json</code> -- Updated metadata (when <code>metadata</code> parameter is provided)</li>
 </ul>
 <p>The model file must come from this version's training. A model file written by an earlier version, which includes every model file written before 7.0.0, is rejected: <code>lindera.export()</code> fails with an error that asks you to re-run training. Train such a model again with <code>lindera.train()</code>.</p>
@@ -4904,12 +4909,16 @@ exportModel({
 <tr><td><code>metadata</code></td><td><code>string | undefined</code></td><td><code>undefined</code></td><td>Path to a base metadata.json file</td></tr>
 </tbody></table>
 </div>
-<p>The export creates the following files in the output directory:</p>
+<p>The export creates the following files in the output directory, the same files that <a href="lindera-nodejs/../lindera-cli/commands.html#export"><code>lindera export</code></a> creates:</p>
 <ul>
 <li><code>lex.csv</code> -- Lexicon entries with trained costs</li>
 <li><code>matrix.def</code> -- Connection cost matrix</li>
 <li><code>unk.def</code> -- Unknown word definitions</li>
-<li><code>char.def</code> -- Character category definitions</li>
+<li><code>char.def</code> -- Character category definitions (copied from the trained model)</li>
+<li><code>feature.def</code> -- Feature template definitions (copied from the trained model)</li>
+<li><code>rewrite.def</code> -- Feature rewrite rules (copied from the trained model)</li>
+<li><code>left-id.def</code> -- Left context ID to feature string mapping</li>
+<li><code>right-id.def</code> -- Right context ID to feature string mapping</li>
 <li><code>metadata.json</code> -- Updated metadata (when <code>metadata</code> parameter is provided)</li>
 </ul>
 <p>The model file must come from this version's training. A model file written by an earlier version, which includes every model file written before 7.0.0, is rejected: <code>exportModel()</code> fails with an error that asks you to re-run training. Train such a model again with <code>train()</code>.</p>
@@ -5792,12 +5801,16 @@ Lindera.export(
 <tr><td>3</td><td>metadata</td><td><code>String</code> or <code>nil</code></td><td>Path to a base metadata.json file</td></tr>
 </tbody></table>
 </div>
-<p>The export creates the following files in the output directory:</p>
+<p>The export creates the following files in the output directory, the same files that <a href="lindera-ruby/../lindera-cli/commands.html#export"><code>lindera export</code></a> creates:</p>
 <ul>
 <li><code>lex.csv</code> -- Lexicon entries with trained costs</li>
 <li><code>matrix.def</code> -- Connection cost matrix</li>
 <li><code>unk.def</code> -- Unknown word definitions</li>
-<li><code>char.def</code> -- Character category definitions</li>
+<li><code>char.def</code> -- Character category definitions (copied from the trained model)</li>
+<li><code>feature.def</code> -- Feature template definitions (copied from the trained model)</li>
+<li><code>rewrite.def</code> -- Feature rewrite rules (copied from the trained model)</li>
+<li><code>left-id.def</code> -- Left context ID to feature string mapping</li>
+<li><code>right-id.def</code> -- Right context ID to feature string mapping</li>
 <li><code>metadata.json</code> -- Updated metadata (when <code>metadata</code> parameter is provided)</li>
 </ul>
 <p>The model file must come from this version's training. A model file written by an earlier version, which includes every model file written before 7.0.0, is rejected: <code>Lindera.export</code> fails with an error that asks you to re-run training. Train such a model again with <code>Lindera.train</code>.</p>
@@ -6751,12 +6764,16 @@ Lindera\Trainer::export(
 <tr><td><code>$metadata</code></td><td><code>string|null</code></td><td><code>null</code></td><td>Path to a base metadata.json file</td></tr>
 </tbody></table>
 </div>
-<p>The export creates the following files in the output directory:</p>
+<p>The export creates the following files in the output directory, the same files that <a href="lindera-php/../lindera-cli/commands.html#export"><code>lindera export</code></a> creates:</p>
 <ul>
 <li><code>lex.csv</code> -- Lexicon entries with trained costs</li>
 <li><code>matrix.def</code> -- Connection cost matrix</li>
 <li><code>unk.def</code> -- Unknown word definitions</li>
-<li><code>char.def</code> -- Character category definitions</li>
+<li><code>char.def</code> -- Character category definitions (copied from the trained model)</li>
+<li><code>feature.def</code> -- Feature template definitions (copied from the trained model)</li>
+<li><code>rewrite.def</code> -- Feature rewrite rules (copied from the trained model)</li>
+<li><code>left-id.def</code> -- Left context ID to feature string mapping</li>
+<li><code>right-id.def</code> -- Right context ID to feature string mapping</li>
 <li><code>metadata.json</code> -- Updated metadata (when <code>$metadata</code> parameter is provided)</li>
 </ul>
 <p>The model file must come from this version's training. A model file written by an earlier version, which includes every model file written before 7.0.0, is rejected: <code>Lindera\Trainer::export()</code> fails with an error that asks you to re-run training. Train such a model again with <code>Lindera\Trainer::train()</code>.</p>
@@ -10921,6 +10938,14 @@ silently skipped.</li>
 (<code>0 0</code> when no weight was left at all), and the built dictionary panicked
 at tokenization. <code>model_info.connection_matrix_size</code> in <code>metadata.json</code>
 was a square of the larger ID.</li>
+<li><code>model_info.training_iterations</code> in <code>metadata.json</code> was the
+<code>--max-iterations</code> value, not the number of iterations that ran.</li>
+<li>The export functions of the Python, Node.js, Ruby and PHP bindings wrote
+<code>lex.csv</code>, <code>matrix.def</code>, <code>unk.def</code>, <code>metadata.json</code> and a fixed
+<code>char.def</code> with the categories <code>DEFAULT</code>, <code>HIRAGANA</code>, <code>KATAKANA</code>,
+<code>KANJI</code>, <code>ALPHA</code> and <code>NUMERIC</code>, not the <code>char.def</code> the model was trained
+with, and no <code>feature.def</code>, <code>rewrite.def</code>, <code>left-id.def</code> or
+<code>right-id.def</code>.</li>
 <li>The seed lexicon was read line by line and split on <code>,</code>, and a line that
 starts with <code>#</code> was skipped as a comment. mecab-ko-dic's quoted comma
 surface <code>","</code> became the surface <code>"</code>, and <code>lindera export</code> wrote it
@@ -10975,6 +11000,13 @@ trained and not exported, as MeCab's learner adds a virtual node.
 <code>lindera train</code> prints the counts in a <code>Lattice statistics:</code> line.</li>
 <li><code>matrix.def</code> covers every context ID, plus 0 for BOS/EOS, and
 <code>model_info.connection_matrix_size</code> gives its size, rows by columns.</li>
+<li><code>model_info.training_iterations</code> is the number of L-BFGS iterations that
+ran: <code>--max-iterations</code> when that stopped training, fewer when it
+converged earlier.</li>
+<li>The export functions of the Python, Node.js, Ruby and PHP bindings write
+the files <code>lindera export</code> writes, with the same code: the <code>char.def</code>,
+<code>feature.def</code> and <code>rewrite.def</code> the model was trained with, and
+<code>left-id.def</code> and <code>right-id.def</code> too.</li>
 <li><code>model.dat</code> has the format version 2.0.0. <code>lindera export</code> and the
 bindings' export functions reject a <code>model.dat</code> of any other version,
 including every <code>model.dat</code> written by v6.2.0 or earlier, with an error
@@ -11303,11 +11335,14 @@ positions that no path reaches. The tokenization path does not change.</p>
 <tr><td><code>SerializableModel::unk_category_names: Vec&lt;String&gt;</code> and <code>SerializableModel::unk_categories: BTreeMap&lt;String, String&gt;</code></td><td><code>SerializableModel::unk_entries: Vec&lt;(String, String)&gt;</code>, the <code>(category, feature string)</code> pairs of <code>unk.def</code> in file order</td></tr>
 <tr><td><code>ModelMetadata::version</code> is <code>"1.0.0"</code>, and <code>Model::read_model</code> does not check it</td><td><code>"2.0.0"</code>; <code>Model::read_model</code> rejects a model of any other version</td></tr>
 <tr><td>—</td><td>New in <code>model</code>: <code>MODEL_FORMAT_VERSION</code></td></tr>
+<tr><td>—</td><td>New: <code>SerializableModel::export</code>, which writes the files of <code>lindera export</code> to a directory</td></tr>
 <tr><td><code>TrainerConfig::dict()</code> holds an empty lexicon and a placeholder unknown-word dictionary</td><td>Holds the seed lexicon (<code>system_lexicon()</code>) and the <code>unk.def</code> entries (<code>unk_handler()</code>)</td></tr>
 <tr><td><code>TrainerConfig::from_readers</code> skips an <code>unk.def</code> line with fewer than five fields</td><td>Returns an error</td></tr>
 <tr><td><code>TrainerConfig::from_readers</code> accepts a <code>char.def</code> and an <code>unk.def</code> that <code>mecab-dict-index</code> rejects</td><td>Returns an error that names the file, the category and, where there is one, the line (see <a href="migration_v6_to_v7.html#lindera-build-and-lindera-train-check-chardef-against-unkdef"><code>lindera build</code> and <code>lindera train</code> check <code>char.def</code> against <code>unk.def</code></a>)</td></tr>
 <tr><td><code>Trainer::max_grouping_len(len)</code> bounds the unknown-word candidates, which never exceed three characters</td><td>Caps unknown-word grouping with the runtime's meaning, in characters beyond the first; <code>None</code>, the default, leaves it unbounded</td></tr>
 <tr><td><code>Model::num_labels()</code> and <code>ModelMetadata::label_count</code> count one unknown-word label per <code>char.def</code> category</td><td>Count one per <code>unk.def</code> entry; the virtual labels are not counted</td></tr>
+<tr><td><code>Model::write_left_id_def</code> / <code>write_right_id_def</code> write the IDs of the bigram feature strings, another ID space from the context IDs of <code>lex.csv</code> and <code>matrix.def</code></td><td>Write the context IDs, as <code>SerializableModel::write_left_id_def</code> / <code>write_right_id_def</code> write them for the model that <code>Model::write_model</code> writes</td></tr>
+<tr><td><code>ModelMetadata::iterations</code> (and <code>model_info.training_iterations</code>) is the <code>max_iter</code> setting</td><td>The number of L-BFGS iterations that ran</td></tr>
 </tbody></table>
 </div>
 <p>A model is now written with <code>MODEL_FORMAT_VERSION</code> as its <code>metadata.version</code>,

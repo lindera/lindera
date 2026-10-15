@@ -994,7 +994,7 @@ EOS
 <li><strong>Update specific fields</strong> with values from the trained model:
 <ul>
 <li><code>default_word_cost</code>: Calculated from feature weight median</li>
-<li><code>model_info</code>: Training statistics including feature count, label count, matrix size (<code>connection_matrix_size</code>, the size of <code>matrix.def</code> as rows x columns), iterations, regularization, and the model format version. No timestamp is written, so exporting the same model twice produces identical output</li>
+<li><code>model_info</code>: Training statistics including feature count, label count, matrix size (<code>connection_matrix_size</code>, the size of <code>matrix.def</code> as rows x columns), the number of training iterations that ran (<code>training_iterations</code>, at most <code>--max-iterations</code>), regularization, and the model format version. No timestamp is written, so exporting the same model twice produces identical output</li>
 </ul>
 </li>
 <li><strong>Preserve existing settings</strong> such as dictionary name, character encoding, schema definitions, and other user-defined configuration</li>

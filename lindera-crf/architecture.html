@@ -198,7 +198,7 @@
 <h3 id="lattice--edge--node"><a class="header" href="#lattice--edge--node">Lattice / Edge / Node</a></h3>
 <p>Lattice structure with variable-length edges for sequence labeling. <code>Edge</code> represents a candidate span with a label, while <code>Node</code> aggregates edges at a given position. The <code>Lattice</code> is constructed from input data and used by the model to find the best path.</p>
 <h3 id="trainer"><a class="header" href="#trainer">Trainer</a></h3>
-<p>Trains a CRF model using L-BFGS optimization with configurable regularization. The trainer accepts labeled lattice examples, computes gradients via the forward-backward algorithm, and iteratively updates model weights.</p>
+<p>Trains a CRF model using L-BFGS optimization with configurable regularization. The trainer accepts labeled lattice examples, computes gradients via the forward-backward algorithm, and iteratively updates model weights. <code>Trainer::train</code> returns the trained <code>RawModel</code>; <code>Trainer::train_with_stats</code> also returns a <code>TrainingStats</code> with the number of iterations that ran, which is the maximum set with <code>Trainer::max_iter</code> when that stopped training, and fewer when the optimizer stopped earlier, for example because it converged.</p>
 <h3 id="regularization"><a class="header" href="#regularization">Regularization</a></h3>
 <p>Configurable regularization strategies:</p>
 <ul>

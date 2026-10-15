@@ -994,7 +994,7 @@ EOS
 <li><strong>特定のフィールドを学習済みモデルの値で更新</strong>します：
 <ul>
 <li><code>default_word_cost</code>: 素性重みの中央値から計算された値</li>
-<li><code>model_info</code>: 素性数、ラベル数、行列サイズ（<code>connection_matrix_size</code>。<code>matrix.def</code> の大きさを行数 x 列数で表す）、反復回数、正則化、モデルの形式バージョンを含む学習統計情報。タイムスタンプは書き込まれないため、同じモデルを 2 回エクスポートすると同一の出力になります</li>
+<li><code>model_info</code>: 素性数、ラベル数、行列サイズ（<code>connection_matrix_size</code>。<code>matrix.def</code> の大きさを行数 x 列数で表す）、実際に回った学習の反復回数（<code>training_iterations</code>。<code>--max-iterations</code> 以下）、正則化、モデルの形式バージョンを含む学習統計情報。タイムスタンプは書き込まれないため、同じモデルを 2 回エクスポートすると同一の出力になります</li>
 </ul>
 </li>
 <li><strong>既存の設定を保持</strong>します（辞書名、文字エンコード設定、スキーマ定義、その他のユーザー定義設定など）</li>

@@ -230,12 +230,16 @@ lindera.export(
 <tr><td><code>metadata</code></td><td><code>str</code> or <code>None</code></td><td><code>None</code></td><td>Path to a base metadata.json file</td></tr>
 </tbody></table>
 </div>
-<p>The export creates the following files in the output directory:</p>
+<p>The export creates the following files in the output directory, the same files that <a href="../lindera-cli/commands.html#export"><code>lindera export</code></a> creates:</p>
 <ul>
 <li><code>lex.csv</code> -- Lexicon entries with trained costs</li>
 <li><code>matrix.def</code> -- Connection cost matrix</li>
 <li><code>unk.def</code> -- Unknown word definitions</li>
-<li><code>char.def</code> -- Character category definitions</li>
+<li><code>char.def</code> -- Character category definitions (copied from the trained model)</li>
+<li><code>feature.def</code> -- Feature template definitions (copied from the trained model)</li>
+<li><code>rewrite.def</code> -- Feature rewrite rules (copied from the trained model)</li>
+<li><code>left-id.def</code> -- Left context ID to feature string mapping</li>
+<li><code>right-id.def</code> -- Right context ID to feature string mapping</li>
 <li><code>metadata.json</code> -- Updated metadata (when <code>metadata</code> parameter is provided)</li>
 </ul>
 <p>The model file must come from this version's training. A model file written by an earlier version, which includes every model file written before 7.0.0, is rejected: <code>lindera.export()</code> fails with an error that asks you to re-run training. Train such a model again with <code>lindera.train()</code>.</p>

@@ -1161,6 +1161,14 @@ silently skipped.</li>
 (<code>0 0</code> when no weight was left at all), and the built dictionary panicked
 at tokenization. <code>model_info.connection_matrix_size</code> in <code>metadata.json</code>
 was a square of the larger ID.</li>
+<li><code>model_info.training_iterations</code> in <code>metadata.json</code> was the
+<code>--max-iterations</code> value, not the number of iterations that ran.</li>
+<li>The export functions of the Python, Node.js, Ruby and PHP bindings wrote
+<code>lex.csv</code>, <code>matrix.def</code>, <code>unk.def</code>, <code>metadata.json</code> and a fixed
+<code>char.def</code> with the categories <code>DEFAULT</code>, <code>HIRAGANA</code>, <code>KATAKANA</code>,
+<code>KANJI</code>, <code>ALPHA</code> and <code>NUMERIC</code>, not the <code>char.def</code> the model was trained
+with, and no <code>feature.def</code>, <code>rewrite.def</code>, <code>left-id.def</code> or
+<code>right-id.def</code>.</li>
 <li>The seed lexicon was read line by line and split on <code>,</code>, and a line that
 starts with <code>#</code> was skipped as a comment. mecab-ko-dic's quoted comma
 surface <code>","</code> became the surface <code>"</code>, and <code>lindera export</code> wrote it
@@ -1215,6 +1223,13 @@ trained and not exported, as MeCab's learner adds a virtual node.
 <code>lindera train</code> prints the counts in a <code>Lattice statistics:</code> line.</li>
 <li><code>matrix.def</code> covers every context ID, plus 0 for BOS/EOS, and
 <code>model_info.connection_matrix_size</code> gives its size, rows by columns.</li>
+<li><code>model_info.training_iterations</code> is the number of L-BFGS iterations that
+ran: <code>--max-iterations</code> when that stopped training, fewer when it
+converged earlier.</li>
+<li>The export functions of the Python, Node.js, Ruby and PHP bindings write
+the files <code>lindera export</code> writes, with the same code: the <code>char.def</code>,
+<code>feature.def</code> and <code>rewrite.def</code> the model was trained with, and
+<code>left-id.def</code> and <code>right-id.def</code> too.</li>
 <li><code>model.dat</code> has the format version 2.0.0. <code>lindera export</code> and the
 bindings' export functions reject a <code>model.dat</code> of any other version,
 including every <code>model.dat</code> written by v6.2.0 or earlier, with an error
@@ -1543,11 +1558,14 @@ positions that no path reaches. The tokenization path does not change.</p>
 <tr><td><code>SerializableModel::unk_category_names: Vec&lt;String&gt;</code> and <code>SerializableModel::unk_categories: BTreeMap&lt;String, String&gt;</code></td><td><code>SerializableModel::unk_entries: Vec&lt;(String, String)&gt;</code>, the <code>(category, feature string)</code> pairs of <code>unk.def</code> in file order</td></tr>
 <tr><td><code>ModelMetadata::version</code> is <code>"1.0.0"</code>, and <code>Model::read_model</code> does not check it</td><td><code>"2.0.0"</code>; <code>Model::read_model</code> rejects a model of any other version</td></tr>
 <tr><td>—</td><td>New in <code>model</code>: <code>MODEL_FORMAT_VERSION</code></td></tr>
+<tr><td>—</td><td>New: <code>SerializableModel::export</code>, which writes the files of <code>lindera export</code> to a directory</td></tr>
 <tr><td><code>TrainerConfig::dict()</code> holds an empty lexicon and a placeholder unknown-word dictionary</td><td>Holds the seed lexicon (<code>system_lexicon()</code>) and the <code>unk.def</code> entries (<code>unk_handler()</code>)</td></tr>
 <tr><td><code>TrainerConfig::from_readers</code> skips an <code>unk.def</code> line with fewer than five fields</td><td>Returns an error</td></tr>
 <tr><td><code>TrainerConfig::from_readers</code> accepts a <code>char.def</code> and an <code>unk.def</code> that <code>mecab-dict-index</code> rejects</td><td>Returns an error that names the file, the category and, where there is one, the line (see <a href="#lindera-build-and-lindera-train-check-chardef-against-unkdef"><code>lindera build</code> and <code>lindera train</code> check <code>char.def</code> against <code>unk.def</code></a>)</td></tr>
 <tr><td><code>Trainer::max_grouping_len(len)</code> bounds the unknown-word candidates, which never exceed three characters</td><td>Caps unknown-word grouping with the runtime's meaning, in characters beyond the first; <code>None</code>, the default, leaves it unbounded</td></tr>
 <tr><td><code>Model::num_labels()</code> and <code>ModelMetadata::label_count</code> count one unknown-word label per <code>char.def</code> category</td><td>Count one per <code>unk.def</code> entry; the virtual labels are not counted</td></tr>
+<tr><td><code>Model::write_left_id_def</code> / <code>write_right_id_def</code> write the IDs of the bigram feature strings, another ID space from the context IDs of <code>lex.csv</code> and <code>matrix.def</code></td><td>Write the context IDs, as <code>SerializableModel::write_left_id_def</code> / <code>write_right_id_def</code> write them for the model that <code>Model::write_model</code> writes</td></tr>
+<tr><td><code>ModelMetadata::iterations</code> (and <code>model_info.training_iterations</code>) is the <code>max_iter</code> setting</td><td>The number of L-BFGS iterations that ran</td></tr>
 </tbody></table>
 </div>
 <p>A model is now written with <code>MODEL_FORMAT_VERSION</code> as its <code>metadata.version</code>,

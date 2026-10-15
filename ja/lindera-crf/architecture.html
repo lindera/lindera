@@ -198,7 +198,7 @@
 <h3 id="lattice--edge--node"><a class="header" href="#lattice--edge--node">Lattice / Edge / Node</a></h3>
 <p>系列ラベリングのための可変長エッジを持つラティス構造です。<code>Edge</code>はラベル付きの候補スパンを表し、<code>Node</code>は特定の位置にあるエッジを集約します。<code>Lattice</code>は入力データから構築され、モデルが最適パスを探索するために使用されます。</p>
 <h3 id="trainer"><a class="header" href="#trainer">Trainer</a></h3>
-<p>設定可能な正則化を用いたL-BFGS最適化によりCRFモデルを学習します。Trainerはラベル付きラティスの例を受け取り、前向き・後向きアルゴリズムで勾配を計算し、反復的にモデルの重みを更新します。</p>
+<p>設定可能な正則化を用いたL-BFGS最適化によりCRFモデルを学習します。Trainerはラベル付きラティスの例を受け取り、前向き・後向きアルゴリズムで勾配を計算し、反復的にモデルの重みを更新します。<code>Trainer::train</code>は学習した<code>RawModel</code>を返します。<code>Trainer::train_with_stats</code>は、実際に回ったイテレーション数を持つ<code>TrainingStats</code>も返します。この数は、<code>Trainer::max_iter</code>で設定した最大値で学習が止まったときはその値で、収束などでそれより前に最適化が止まったときはそれより少なくなります。</p>
 <h3 id="regularization"><a class="header" href="#regularization">Regularization</a></h3>
 <p>設定可能な正則化戦略：</p>
 <ul>

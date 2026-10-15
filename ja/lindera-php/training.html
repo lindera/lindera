@@ -230,12 +230,16 @@ Lindera\Trainer::export(
 <tr><td><code>$metadata</code></td><td><code>string</code> または <code>null</code></td><td><code>null</code></td><td>ベースとなる metadata.json ファイルのパス</td></tr>
 </tbody></table>
 </div>
-<p>エクスポートにより、出力ディレクトリに以下のファイルが作成されます：</p>
+<p>エクスポートにより、出力ディレクトリに以下のファイルが作成されます。<a href="../lindera-cli/commands.html#export"><code>lindera export</code></a> が作成するファイルと同じです：</p>
 <ul>
 <li><code>lex.csv</code> -- 学習済みコスト付きのレキシコンエントリー</li>
 <li><code>matrix.def</code> -- 連接コスト行列</li>
 <li><code>unk.def</code> -- 未知語定義</li>
-<li><code>char.def</code> -- 文字カテゴリ定義</li>
+<li><code>char.def</code> -- 文字カテゴリ定義（学習済みモデルからコピー）</li>
+<li><code>feature.def</code> -- 素性テンプレート定義（学習済みモデルからコピー）</li>
+<li><code>rewrite.def</code> -- 素性リライトルール（学習済みモデルからコピー）</li>
+<li><code>left-id.def</code> -- 左文脈IDから素性文字列へのマッピング</li>
+<li><code>right-id.def</code> -- 右文脈IDから素性文字列へのマッピング</li>
 <li><code>metadata.json</code> -- 更新されたメタデータ（<code>$metadata</code> パラメータ指定時）</li>
 </ul>
 <p>モデルファイルは、このバージョンの学習で作ったものである必要があります。それより前のバージョンで書かれたモデルファイル（7.0.0 より前に書かれたものはすべて該当）は拒否され、<code>Lindera\Trainer::export()</code> は学習のやり直しを求めるエラーで失敗します。そうしたモデルは <code>Lindera\Trainer::train()</code> で学習し直してください。</p>
