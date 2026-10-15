@@ -424,9 +424,17 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 <p>When set, each build stores two kinds of files under <code>$LINDERA_BUILD_DICTIONARY_CACHE_DIR/&lt;version&gt;-fmt&lt;format&gt;/</code> (where <code>&lt;version&gt;</code> is the dictionary crate version and <code>&lt;format&gt;</code> is the dictionary format version):</p>
 <ul>
 <li>the downloaded distribution archive (validated with MD5; invalid files are re-downloaded)</li>
-<li>the built binary dictionary that gets embedded into the crate</li>
+<li>the built binary dictionary that gets embedded into the crate, with a <code>build_inputs.json</code> that records what it was built from</li>
 </ul>
-<p>The format version is part of the path so that a cache written by a build with a different on-disk dictionary layout is a miss rather than a stale hit. A cached directory is also re-checked against its recorded format version before being reused, which covers entries left behind by an interrupted build. Directories from older format versions are not deleted automatically; remove them by hand if the cache grows.</p>
+<p>The format version is part of the path so that a cache written by a build with a different on-disk dictionary layout is a miss rather than a stale hit. A cached dictionary is reused only when all of the following match the current build, and is rebuilt otherwise:</p>
+<ul>
+<li>the dictionary format version and the contents of the crate's <code>metadata.json</code></li>
+<li>the <code>lindera-dictionary</code> crate that builds it: its version and a digest of its source, so that any change to the dictionary builder, an uncommitted one included, rebuilds the dictionary</li>
+<li>the source archive (file name and MD5) and the directory the build reads in it</li>
+<li>the context-id frequency histogram the build reads (<code>context_id_freq.txt</code>, or the file named by <code>LINDERA_CTX_FREQ_FILE</code>) when <code>connection_id_mapping</code> is enabled</li>
+</ul>
+<p>A dictionary left behind by an interrupted build, or cached by a release from before <code>build_inputs.json</code>, is rebuilt. The versions of the builder's dependencies are not compared: after upgrading a dependency of <code>lindera-dictionary</code> without a format version change, clear the cache if the built dictionaries may differ. Directories from older format versions are not deleted automatically; remove them by hand if the cache grows.</p>
+<p><code>cargo build -vv</code> shows, for each dictionary crate, whether the cached dictionary was used and why or why not, on lines that start with <code>lindera dictionary cache:</code>.</p>
 <p>This enables:</p>
 <ul>
 <li><strong>Offline builds</strong>: once cached, subsequent builds need no network access</li>
@@ -441,7 +449,8 @@ cargo build --features=embed-ipadic
 <ul>
 <li>The directory is managed automatically and is safe to delete; contents are re-downloaded and rebuilt as needed</li>
 <li>Version subdirectories accumulate across upgrades and are not garbage-collected; old ones can be removed freely</li>
-<li>Setting this variable causes dictionary crates to download and build their dictionaries even when no <code>embed-*</code> feature is enabled (useful for pre-populating the cache)</li>
+<li>Setting this variable causes dictionary crates to download and build their dictionaries even when no <code>embed-*</code> feature is enabled (useful for pre-populating the cache). Such a build embeds nothing, so it keeps a dictionary already in the cache without checking it; a build with the <code>embed-*</code> feature checks it and rebuilds it if needed</li>
+<li>Use one cache directory per checkout. Two checkouts with different builder code that share a directory rebuild each other's dictionaries, and a crate whose build script does not rerun can embed the dictionary the other checkout built. In this repository, a relative path resolves under the workspace root, which gives each checkout its own cache</li>
 <li>Builds with <code>DOCS_RS</code> set ignore this variable (see <code>DOCS_RS</code> below)</li>
 </ul>
 <h3 id="lindera_config_path"><a class="header" href="#lindera_config_path">LINDERA_CONFIG_PATH</a></h3>
