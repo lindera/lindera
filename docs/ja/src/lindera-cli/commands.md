@@ -9,6 +9,23 @@ Lindera CLI は6つのメインコマンドを提供します：
 - **train** - 注釈付きコーパスデータからCRFモデルを学習
 - **export** - 学習済みモデルを辞書フォーマットにエクスポート
 
+## 警告とログメッセージ
+
+どのコマンドも、結果を標準出力に、Lindera のライブラリが出す警告を標準エラー出力に書きます。たとえば `tokenize` は、文の区切り文字のないテキストが 32 KiB を超えると、そこで文を区切り（[文分割](../lindera/segmenter.md#文分割)を参照）、警告を出します：
+
+```shell
+% head -c 40000 /dev/zero | tr '\0' a | lindera tokenize --dict embedded://ipadic -o wakati > /dev/null
+[WARN  lindera_segmenter::segmenter] no sentence delimiter (\n, \t, 。, 、) found within 32768 bytes from offset 0; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)
+```
+
+環境変数 `RUST_LOG` で、出すメッセージを選べます。書式は [env_logger](https://docs.rs/env_logger/0.11.11/env_logger/#enabling-logging) のものです：
+
+- 指定なし: 警告とエラー
+- `RUST_LOG=error`: エラーだけ。警告は出しません。`RUST_LOG=off` はログメッセージを一切出しません
+- `RUST_LOG=debug`: デバッグ用のメッセージも出します。たとえば `lindera build` が読み書きするファイル
+
+この設定で標準出力は変わりません。また、失敗したコマンドのエラーは設定にかかわらず出します。標準エラー出力が端末のときはメッセージに色を付けます。`RUST_LOG_STYLE=never` で色を消せます。
+
 ## list
 
 既知の形態素解析辞書の一覧を表示し、各辞書について（`embed-*` feature フラグ経由で）バイナリに埋め込まれているか、および `lindera download` で学習済み辞書がローカルにダウンロード済みかを表示します。
@@ -632,7 +649,7 @@ Linderaで使用するための形態素解析辞書をCSVソースファイル�
 Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
 ```
 
-- 辞書の `metadata.json` で `skip_invalid_cost_or_id` が `true` の場合は、そうした `lex.csv` の行を取り除きます。`log` クレートに警告を出しますが、CLI はまだそれを表示しません（[#1107](https://github.com/lindera/lindera/issues/1107)）。`unk.def` の行は常に確認します。
+- 辞書の `metadata.json` で `skip_invalid_cost_or_id` が `true` の場合は、そうした `lex.csv` の行を取り除き、標準エラー出力に警告を出します（[警告とログメッセージ](#警告とログメッセージ)を参照）。`unk.def` の行は常に確認します。
 - ID が軸の範囲外にある `matrix.def` の行もエラーになり、フィールドが 4 つ未満の `unk.def` の行もエラーになります。
 - ユーザー辞書（`--user`）を確認するのは、組み合わせるシステム辞書を `--system-dict` で指定したときだけです（次の段落を参照）。
 
@@ -699,7 +716,8 @@ Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for 
 % lindera build \
   --src /tmp/unidic-mecab-2.1.2 \
   --dest /tmp/lindera-unidic-2.1.2 \
-  --metadata ./lindera-unidic/metadata.json
+  --metadata ./lindera-unidic/metadata.json \
+  --context-id-freq ./lindera-unidic/context_id_freq.txt
 ```
 
 #### CC-CEDICT（中国語辞書）のビルド
@@ -735,7 +753,8 @@ Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for 
 % lindera build \
   --src /tmp/mecab-ko-dic-2.1.1-20180720 \
   --dest /tmp/lindera-ko-dic-2.1.1-20180720 \
-  --metadata ./lindera-ko-dic/metadata.json
+  --metadata ./lindera-ko-dic/metadata.json \
+  --context-id-freq ./lindera-ko-dic/context_id_freq.txt
 ```
 
 ### ユーザー辞書のビルド

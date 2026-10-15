@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use log::warn;
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
@@ -161,6 +160,22 @@ fn make_category_references(
         .collect()
 }
 
+/// Makes the word entries of the unknown-word dictionary, one per `unk.def`
+/// line, in the order of the lines.
+///
+/// The left and right context ids of a line are kept apart, so they may
+/// differ, as `mecab-dict-index` allows: every line of mecab-ko-dic's
+/// `unk.def` has different ones.
+///
+/// # Arguments
+///
+/// * `entries` - The parsed `unk.def` lines.
+/// * `remap` - The relabeling of the connection matrix's context ids, if the
+///   dictionary has one.
+///
+/// # Returns
+///
+/// The word entries.
 fn make_costs_array(
     entries: &[UnknownDictionaryEntry],
     remap: Option<&crate::dictionary::context_id_map::ContextIdMap>,
@@ -169,11 +184,6 @@ fn make_costs_array(
         .iter()
         .enumerate()
         .map(|(i, e)| {
-            // Do not perform strict checks on left context id and right context id in unk.def.
-            // Just output a warning.
-            if e.left_id != e.right_id {
-                warn!("left id and right id are not same: {e:?}");
-            }
             let (left_id, right_id) = (e.left_id as u16, e.right_id as u16);
             // Relabel to match the remapped connection matrix. An id out of range
             // of the matrix (and so of the remap) is rejected before parsing when

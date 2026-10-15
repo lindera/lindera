@@ -59,6 +59,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`lindera train` builds its lattices as MeCab's learner does and keeps every `unk.def` entry; `model.dat` has the format version 2.0.0** | Users of `lindera train` and `lindera export`, and of the training functions of the Python, Node.js, Ruby and PHP bindings | Train every model again with 7.0.0, then export and build it again (a `model.dat` written by v6.2.0 or earlier is rejected); give every `unk.def` line at least five fields; remove comment lines from seed lexicons |
 | **`lindera build` rejects context IDs outside `matrix.def`** | Anyone who builds a system dictionary whose `lex.csv` or `unk.def` has a context ID beyond the size of its `matrix.def` (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's `mecab-dict-index` accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic | Fix the IDs or the matrix, or set `skip_invalid_cost_or_id` in `metadata.json` to drop such `lex.csv` rows; fix such IDs in the user dictionary |
 | **`lindera build` and `lindera train` check `char.def` against `unk.def`** | Anyone whose `char.def` has a range line that names a category not defined on an earlier line, or a category defined twice, or whose `char.def` and `unk.def` do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored `unk.def` lines); not dictionaries that MeCab's `mecab-dict-index` accepts | Define each category once, before the range lines that name it; give every category an `unk.def` line, and remove the `unk.def` lines of undefined categories |
+| **The CLI writes library warnings to standard error** | CLI users who read standard error, for example scripts that treat any output there as a failure; most visibly input with more than 32 KiB without a sentence delimiter, and `lindera build` of ko-dic or UniDic without `--context-id-freq` | Expect `[WARN …]` lines on standard error; set `RUST_LOG=error` to hide them. Standard output does not change |
 | **The `normalize_details` setting is removed: `Metadata::new` and `CoreMetadata::new` take 10 arguments, Ruby's `Metadata.new` takes 8** | Code that creates or reads dictionary metadata: Rust (`Metadata`, `lindera_binding::CoreMetadata`, `PrefixDictionaryBuilderOptions`) and the `Metadata` classes of the Python, Ruby, PHP and Node.js bindings | Remove the argument, option or property; a `metadata.json` that still has the key loads, and the key is ignored |
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
 | **`Lattice::tokens_offset_into` returns the BOS index of the best path (`Option<usize>`)** | Rust code that uses the `()` value of `tokens_offset_into` | Nothing for a call written as a statement; otherwise ignore the new value |
@@ -1246,10 +1247,10 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
 ```
 
 - A dictionary whose `metadata.json` sets `skip_invalid_cost_or_id` drops
-  such a `lex.csv` row instead, with a warning through the `log` crate,
-  which the CLI does not print yet
-  ([#1107](https://github.com/lindera/lindera/issues/1107)). `unk.def` lines are
-  always checked.
+  such a `lex.csv` row instead, with a warning, which the CLI writes to
+  standard error (see
+  [The CLI writes library warnings to standard error](#the-cli-writes-library-warnings-to-standard-error)).
+  `unk.def` lines are always checked.
 - An `unk.def` line with fewer than four fields, such as a comment or an
   empty line, is an error instead of a panic, also in
   `DictionaryBuilder::build_unknown_dictionary` and `parse_unk` of
@@ -1338,6 +1339,35 @@ Every bundled dictionary passes, and so does a dictionary that
 category once, before the range lines that name it, give every category at
 least one `unk.def` line, and remove the `unk.def` lines of categories that
 `char.def` does not define.
+
+## The CLI writes library warnings to standard error
+
+Up to v6.2.0, the `lindera` CLI installed no logger, so the warnings that
+the Lindera libraries report through the `log` crate were dropped
+([#1107](https://github.com/lindera/lindera/issues/1107)). v7.0.0 writes
+them to standard error, warnings and errors by default. Standard output does
+not change. For example:
+
+- `lindera tokenize` warns when it cuts a sentence because more than 32 KiB
+  of text have no sentence delimiter.
+- `lindera build` warns when it drops a `lex.csv` row because of
+  `skip_invalid_cost_or_id`, and when the dictionary's `metadata.json` sets
+  `connection_id_mapping` (ko-dic, UniDic) and `--context-id-freq` is not
+  given. Pass the `context_id_freq.txt` of the dictionary crate, as the
+  build examples do.
+
+```text
+[WARN  lindera_segmenter::segmenter] no sentence delimiter (\n, \t, 。, 、) found within 32768 bytes from offset 0; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)
+```
+
+The `RUST_LOG` environment variable selects the messages: `RUST_LOG=error`
+hides the warnings, and `RUST_LOG=debug` adds debugging messages (see
+[Warnings and log messages](./lindera-cli/commands.md#warnings-and-log-messages)).
+
+`lindera build` and `lindera train` no longer warn about an `unk.def` line
+whose left and right context IDs differ, which `mecab-dict-index` accepts:
+every line of mecab-ko-dic's `unk.def` is such a line. Rust programs that
+install a logger no longer get this warning either.
 
 ## Rust API changes in `lindera_dictionary`
 
@@ -1549,9 +1579,10 @@ with (`max_grouping_len` of the segmenter, `--max-grouping-len` of the CLI).
   segmentation of a few lines, in the CLI only, the whitespace at the
   ends of an input line and the output of lines without tokens, which
   matter only for lines that start or end with whitespace and for the
-  wakati and N-best output of empty lines and lines of spaces, and, in the
-  WASM binding only, the builder settings that v6 ignored for one way of
-  setting the dictionary.
+  wakati and N-best output of empty lines and lines of spaces, and the
+  warnings on standard error, which matter only for scripts that read it,
+  and, in the WASM binding only, the builder settings that v6 ignored for
+  one way of setting the dictionary.
 - **Projects staying on `lindera = "6"`**: the 6.x releases of `lindera` and
   `lindera-analysis` remain on crates.io and keep working together. Nothing
   changes until you bump the major version.
@@ -1785,8 +1816,11 @@ Language bindings and CLI:
   `setDictionaryInstance()`, and a user dictionary set with
   `setUserDictionaryInstance()` to apply to a dictionary set with
   `setDictionary()`.
+- With the CLI, expect warnings on standard error, for example for a
+  sentence cut after 32 KiB without a delimiter; set `RUST_LOG=error` to
+  hide them.
 - Nothing else to do beyond taking the 7.0.0 release, apart from the
   dictionary rebuild, the dictionary, whitespace, `、` and `。`, N-best,
   unknown-word, default-category, dash and tilde, tied-entry and equal-cost
   items above, the `lindera train` and `lindera build` items, and the
-  `lindera tokenize` and WASM items.
+  `lindera tokenize`, WASM and CLI warning items.
