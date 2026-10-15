@@ -179,9 +179,9 @@ const metadata = Metadata.fromJsonFile("metadata.json");
 | --- | --- | --- | --- |
 | `name` | `string` | `"default"` | Dictionary name |
 | `encoding` | `string` | `"UTF-8"` | Character encoding |
-| `defaultWordCost` | `number` | `-10000` | Default cost for unknown words |
-| `defaultLeftContextId` | `number` | `1288` | Default left context ID |
-| `defaultRightContextId` | `number` | `1288` | Default right context ID |
+| `defaultWordCost` | `number` | `-10000` | Default cost for unknown words, an integer from -32768 to 32767 |
+| `defaultLeftContextId` | `number` | `1288` | Default left context ID, an integer from 0 to 65535 |
+| `defaultRightContextId` | `number` | `1288` | Default right context ID, an integer from 0 to 65535 |
 | `defaultFieldValue` | `string` | `"*"` | Default value for missing fields |
 | `flexibleCsv` | `boolean` | `false` | Allow flexible CSV parsing |
 | `skipInvalidCostOrId` | `boolean` | `false` | Skip entries with invalid cost or ID |

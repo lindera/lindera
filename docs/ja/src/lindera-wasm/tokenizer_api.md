@@ -216,9 +216,9 @@ const surfaces = tokenizer.tokenizeSurfaces("関西国際空港");
 
 - **パラメータ**:
   - `text` (string) -- トークナイズするテキスト
-  - `n` (number) -- 返す結果の数
+  - `n` (number) -- 返す結果の数。0 以上の整数
   - `unique` (boolean, 省略可) -- 同一のセグメンテーション結果を重複排除（デフォルト: `false`）
-  - `costThreshold` (bigint, 省略可) -- `bestCost + threshold` 以内のパスのみ返す
+  - `costThreshold` (bigint, 省略可) -- `bestCost + threshold` 以内のパスのみ返す。64 ビットに収まる値
 - **戻り値**: `{ tokens: Token[], cost: number }` の配列
 
 ```javascript

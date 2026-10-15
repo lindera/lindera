@@ -57,6 +57,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`lindera tokenize` removes only the line terminator from each input line and writes a result for every line** | CLI users whose input lines start or end with whitespace, or who read the wakati or N-best output of lines without tokens | Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC `記号,空白`), `--keep-whitespace` to output the spaces there, and an empty line or a line of spaces to give an empty wakati line and one N-best result; no setting restores the v6 behavior |
 | **WASM: the `TokenizerBuilder` settings apply whichever way the dictionary is set** | WASM users who combine `setDictionaryInstance()` with `setKeepWhitespace()` or filters, or `setDictionary()` with `setUserDictionaryInstance()` | Expect those settings and the user dictionary to take effect; a dictionary instance whose `char.def` has no `SPACE` category now needs `setKeepWhitespace(true)`, as a dictionary set by URI does |
 | **PHP: an optional argument of the wrong type throws instead of selecting the default** | PHP code that passes a value of another type to an optional parameter, such as a numeric string for `$max_iter` of `Lindera\Trainer::train()` or `1` for `$unique` of `tokenizeNbest()` | Pass the declared type, casting strings such as `$argv` values with `(int)`; `null` or leaving the argument out still selects the default |
+| **PHP, Node.js and WASM: an integer argument outside the range of its setting throws instead of wrapping** | Code that passes such a value, such as `100000` for the default word cost of `Metadata` (v6 stored `-31072`) or `-1` for the number of N-best results (v6 listed every segmentation); a negative index for `getFieldName` or PHP's `getDetail`; in Node.js and WASM, a number that is not an integer, such as `1.5` or `NaN` | Pass an integer in the range; the error names the parameter and the range |
 | **`lindera train` builds its lattices as MeCab's learner does and keeps every `unk.def` entry; `model.dat` has the format version 2.0.0** | Users of `lindera train` and `lindera export`, and of the training functions of the Python, Node.js, Ruby and PHP bindings | Train every model again with 7.0.0, then export and build it again (a `model.dat` written by v6.2.0 or earlier is rejected); give every `unk.def` line at least five fields; remove comment lines from seed lexicons |
 | **`lindera build` rejects context IDs outside `matrix.def`** | Anyone who builds a system dictionary whose `lex.csv` or `unk.def` has a context ID beyond the size of its `matrix.def` (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's `mecab-dict-index` accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic | Fix the IDs or the matrix, or set `skip_invalid_cost_or_id` in `metadata.json` to drop such `lex.csv` rows; fix such IDs in the user dictionary |
 | **`lindera build` and `lindera train` check `char.def` against `unk.def`** | Anyone whose `char.def` has a range line that names a category not defined on an earlier line, or a category defined twice, or whose `char.def` and `unk.def` do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored `unk.def` lines); not dictionaries that MeCab's `mecab-dict-index` accepts | Define each category once, before the range lines that name it; give every category an `unk.def` line, and remove the `unk.def` lines of undefined categories |
@@ -74,7 +75,10 @@ expose `normalize_details` (see
 [The `normalize_details` setting is removed](#the-normalize_details-setting-is-removed)).
 The PHP binding also rejects a value of the wrong type for an optional
 argument, which v6 read as `null` (see
-[PHP: optional arguments reject a value of the wrong type](#php-optional-arguments-reject-a-value-of-the-wrong-type)).
+[PHP: optional arguments reject a value of the wrong type](#php-optional-arguments-reject-a-value-of-the-wrong-type)),
+and the PHP, Node.js and WASM bindings reject an integer argument outside
+the range of its setting, which v6 wrapped (see
+[Bindings: integer arguments outside their range are rejected](#bindings-integer-arguments-outside-their-range-are-rejected)).
 Their version number moves to 7.0.0. Like the Rust crates, they no longer
 load a dictionary directory built or downloaded with v6.2.0 or earlier (see
 [Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt)).
@@ -1119,6 +1123,54 @@ strings, such as `(int) $argv[1]` (see
 `mixed`, the other bindings, the CLI and the library do not change. No
 option restores the v6 behavior.
 
+## Bindings: integer arguments outside their range are rejected
+
+Up to v6.2.0, the PHP, Node.js and WASM bindings converted an integer
+argument to the type of its setting by wrapping, so a value outside the
+range silently became another value. The PHP binding took every `int` as a
+64-bit integer and cast it to the narrower type. In Node.js and WASM, the
+conversion from a JS number to a 32-bit integer (ECMAScript's ToUint32 or
+ToInt32) wrapped it before the binding saw it, and a WASM BigInt was taken
+modulo 2^64.
+
+| Call | v6.2.0 | v7.0.0 |
+| --- | --- | --- |
+| PHP `new Lindera\Metadata(default_word_cost: 100000)` | cost `-31072` | `ValueError` |
+| Node.js `new Metadata({ defaultLeftContextId: 2 ** 32 + 5 })` | context ID `5` | `Error` with the code `InvalidArg` |
+| Node.js `schema.getFieldName(2 ** 32)` | `"surface"`, the first field | `null` |
+| WASM `new Penalty(-1)` | threshold `4294967295` | a thrown string |
+| `tokenizeNbest('東京', -1)` in PHP, Node.js and WASM | all 33 segmentations | the binding's error |
+
+v7.0.0 rejects such a value. The PHP binding throws a `ValueError`, the
+Node.js binding an `Error` with the code `InvalidArg`, and the WASM binding a
+string, as for its other errors. The message names the parameter and the
+range, such as
+`default_word_cost must be an integer between -32768 and 32767, got 100000`.
+The parameters are the integer settings of `Metadata` (the default word cost
+and context IDs) and `Penalty`, the index of `FieldDefinition`,
+`getFieldName` and PHP's `Token::getDetail`, the number of N-best results
+and, in Node.js and WASM, the N-best cost threshold, and the iteration and
+thread counts of the training functions. The checks apply to the
+constructors and to the property setters (Node.js `Metadata`, WASM `Penalty`
+and `FieldDefinition`).
+
+With them, some values that v6 accepted now throw:
+
+- A negative index, for which v6 returned `null` (PHP, Node.js) or
+  `undefined` (WASM). An index past the end still returns `null` or
+  `undefined`.
+- In Node.js and WASM, a number that is not an integer, such as `1.5`,
+  `NaN` or `Infinity`, which v6 truncated or turned into 0.
+- In WASM, a BigInt cost threshold outside the 64-bit range, and a cost
+  threshold that is not a BigInt.
+
+Pass an integer in the range. The TypeScript declarations of the Node.js
+and WASM bindings do not change. The Python and Ruby bindings already rejected
+these values, with `OverflowError` and `RangeError`, and do not change,
+except that the `OverflowError` of a Python property setter now names the
+property in its note (`while processing 'default_word_cost'` instead of
+`'cost'`). No option restores the v6 behavior.
+
 ## `lindera train` builds its lattices as MeCab's learner does
 
 Up to v6.2.0, `lindera train` built training lattices that differ from
@@ -1612,7 +1664,9 @@ with (`max_grouping_len` of the segmenter, `--max-grouping-len` of the CLI).
   their APIs apart from the `normalize_details` setting of `Metadata` (see
   [The `normalize_details` setting is removed](#the-normalize_details-setting-is-removed))
   and, in PHP, optional arguments of the wrong type (see
-  [PHP: optional arguments reject a value of the wrong type](#php-optional-arguments-reject-a-value-of-the-wrong-type)).
+  [PHP: optional arguments reject a value of the wrong type](#php-optional-arguments-reject-a-value-of-the-wrong-type)),
+  and, in PHP, Node.js and WASM, integer arguments outside their range (see
+  [Bindings: integer arguments outside their range are rejected](#bindings-integer-arguments-outside-their-range-are-rejected)).
   The restructuring is internal to the Rust crates. A dictionary directory
   built or downloaded with v6.2.0 or earlier has to be rebuilt or downloaded
   again (see
@@ -1882,6 +1936,9 @@ Language bindings and CLI:
   type for an optional parameter, which v6 read as `null`, now throws an
   `Exception`. Cast strings such as `$argv` values with `(int)` or
   `(float)`.
+- With PHP, Node.js and WASM, pass integer arguments in the range of their
+  setting: a value outside it, which v6 wrapped, now throws, as do a
+  negative index and, in Node.js and WASM, a number that is not an integer.
 - With the CLI, expect warnings on standard error, for example for a
   sentence cut after 32 KiB without a delimiter; set `RUST_LOG=error` to
   hide them.
@@ -1889,4 +1946,4 @@ Language bindings and CLI:
   dictionary rebuild, the dictionary, whitespace, `、` and `。`, N-best,
   unknown-word, default-category, dash and tilde, tied-entry and equal-cost
   items above, the `lindera train` and `lindera build` items, and the
-  `lindera tokenize`, WASM, PHP and CLI warning items.
+  `lindera tokenize`, WASM, PHP, integer-argument and CLI warning items.

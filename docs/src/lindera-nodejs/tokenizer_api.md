@@ -226,7 +226,7 @@ for (const { tokens, cost } of results) {
 | Name | Type | Description |
 | --- | --- | --- |
 | `text` | `string` | Text to tokenize |
-| `n` | `number` | Number of results to return |
+| `n` | `number` | Number of results to return, an integer of 0 or more |
 | `unique` | `boolean` | Deduplicate results (default: `false`) |
 | `costThreshold` | `number \| undefined` | Maximum cost difference from the best path (default: `undefined`) |
 

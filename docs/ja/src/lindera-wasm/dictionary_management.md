@@ -275,7 +275,7 @@ const schema = new Schema(["surface", "left_id", "right_id", "cost", "pos", "rea
 | --- | --- | --- |
 | `get_field_index(name)` | `number \| undefined` | フィールド名からインデックスを取得 |
 | `field_count()` | `number` | フィールドの総数 |
-| `get_field_name(index)` | `string \| undefined` | インデックスからフィールド名を取得 |
+| `get_field_name(index)` | `string \| undefined` | インデックスからフィールド名を取得（末尾より先は `undefined`、負や整数でないインデックスは例外） |
 | `get_custom_fields()` | `string[]` | インデックス 3 以降のフィールド（形態素素性） |
 | `get_all_fields()` | `string[]` | すべてのフィールド名 |
 | `get_field_by_name(name)` | `FieldDefinition \| undefined` | フィールド定義の完全な情報を取得 |

@@ -276,7 +276,7 @@ const schema = new Schema(["surface", "left_id", "right_id", "cost", "pos", "rea
 | --- | --- | --- |
 | `get_field_index(name)` | `number \| undefined` | Get field index by name |
 | `field_count()` | `number` | Total number of fields |
-| `get_field_name(index)` | `string \| undefined` | Get field name by index |
+| `get_field_name(index)` | `string \| undefined` | Get field name by index (`undefined` past the end; a negative or non-integer index throws) |
 | `get_custom_fields()` | `string[]` | Fields beyond index 3 (morphological features) |
 | `get_all_fields()` | `string[]` | All field names |
 | `get_field_by_name(name)` | `FieldDefinition \| undefined` | Get full field definition |

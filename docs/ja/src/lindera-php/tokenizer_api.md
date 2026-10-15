@@ -226,7 +226,7 @@ foreach ($results as $result) {
 | 名前 | 型 | 説明 |
 | --- | --- | --- |
 | `$text` | `string` | トークナイズするテキスト |
-| `$n` | `int` | 返す結果の数 |
+| `$n` | `int` | 返す結果の数。0 以上 |
 | `$unique` | `bool\|null` | 重複する結果を除く（デフォルト: `false`） |
 | `$cost_threshold` | `int\|null` | 最良パスとのコストの差の上限（デフォルト: `null`） |
 
@@ -263,7 +263,7 @@ foreach ($results as $result) {
 
 #### `getDetail($index)`
 
-指定されたインデックスの詳細文字列を返します。インデックスが範囲外の場合は `null` を返します。
+指定されたインデックスの詳細文字列を返します。その位置に詳細がない場合は `null` を返します。負のインデックスは `ValueError` を投げます。
 
 ```php
 $token = $tokenizer->tokenize('東京')[0];
