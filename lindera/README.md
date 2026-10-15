@@ -541,9 +541,18 @@ The `LINDERA_BUILD_DICTIONARY_CACHE_DIR` environment variable designates a build
 When set, each build stores two kinds of files under `$LINDERA_BUILD_DICTIONARY_CACHE_DIR/<version>-fmt<format>/` (where `<version>` is the dictionary crate version and `<format>` is the dictionary format version):
 
 - the downloaded distribution archive (validated with MD5; invalid files are re-downloaded)
-- the built binary dictionary that gets embedded into the crate
+- the built binary dictionary that gets embedded into the crate, with a `build_inputs.json` that records what it was built from
 
-The format version is part of the path so that a cache written by a build with a different on-disk dictionary layout is a miss rather than a stale hit.
+The format version is part of the path so that a cache written by a build with a different on-disk dictionary layout is a miss rather than a stale hit. A cached dictionary is reused only when all of the following match the current build, and is rebuilt otherwise:
+
+- the dictionary format version and the contents of the crate's `metadata.json`
+- the `lindera-dictionary` crate that builds it: its version and a digest of its source, so that any change to the dictionary builder, an uncommitted one included, rebuilds the dictionary
+- the source archive (file name and MD5) and the directory the build reads in it
+- the context-id frequency histogram the build reads (`context_id_freq.txt`, or the file named by `LINDERA_CTX_FREQ_FILE`) when `connection_id_mapping` is enabled
+
+A dictionary left behind by an interrupted build, or cached by a release from before `build_inputs.json`, is rebuilt. The versions of the builder's dependencies are not compared: after upgrading a dependency of `lindera-dictionary` without a format version change, clear the cache if the built dictionaries may differ. Directories from older format versions are not deleted automatically; remove them by hand if the cache grows.
+
+`cargo build -vv` shows, for each dictionary crate, whether the cached dictionary was used and why or why not, on lines that start with `lindera dictionary cache:`.
 
 This enables:
 
@@ -562,7 +571,8 @@ Notes:
 
 - The directory is managed automatically and is safe to delete; contents are re-downloaded and rebuilt as needed
 - Version subdirectories accumulate across upgrades and are not garbage-collected; old ones can be removed freely
-- Setting this variable causes dictionary crates to download and build their dictionaries even when no `embed-*` feature is enabled (useful for pre-populating the cache)
+- Setting this variable causes dictionary crates to download and build their dictionaries even when no `embed-*` feature is enabled (useful for pre-populating the cache). Such a build embeds nothing, so it keeps a dictionary already in the cache without checking it; a build with the `embed-*` feature checks it and rebuilds it if needed
+- Use one cache directory per checkout. Two checkouts with different builder code that share a directory rebuild each other's dictionaries, and a crate whose build script does not rerun can embed the dictionary the other checkout built. In this repository, a relative path resolves under the workspace root, which gives each checkout its own cache
 - Builds with `DOCS_RS` set ignore this variable (see `DOCS_RS` below)
 
 ### LINDERA_CONFIG_PATH

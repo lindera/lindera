@@ -446,7 +446,9 @@ jobs:
           FORMAT_VERSION=$(grep -oP 'DICTIONARY_FORMAT_VERSION: u32 = \K[0-9]+' lindera-dictionary/src/dictionary/metadata.rs)
           cp ${{ matrix.dictionary.name }}/NOTICE.txt "dictionaries/${{ steps.get_version.outputs.version }}-fmt${FORMAT_VERSION}/${{ matrix.dictionary.name }}/"
           cd "dictionaries/${{ steps.get_version.outputs.version }}-fmt${FORMAT_VERSION}"
-          zip -r ../../${{ matrix.dictionary.name }}-${{ steps.get_version.outputs.version }}.zip ${{ matrix.dictionary.name }}
+          # build_inputs.json is the build cache's record of what the dictionary
+          # was built from (see BUILD_INPUTS_FILE in assets.rs), not part of it.
+          zip -r ../../${{ matrix.dictionary.name }}-${{ steps.get_version.outputs.version }}.zip ${{ matrix.dictionary.name }} -x "${{ matrix.dictionary.name }}/build_inputs.json"
 
       - name: Upload artifact
         uses: softprops/action-gh-release@v3

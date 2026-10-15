@@ -9,9 +9,10 @@
 //! is bit-identical (the remap is a bijective relabeling that preserves every cost).
 
 use std::cmp::Reverse;
+use std::ffi::OsString;
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use encoding_rs::{Encoding, UTF_8};
@@ -23,6 +24,34 @@ use crate::builder::connection_cost_matrix::{MatrixSize, read_matrix_header};
 use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::metadata::Metadata;
 use crate::error::LinderaErrorKind;
+
+/// Environment variable naming a context-ID frequency histogram that overrides
+/// the one bundled with the dictionary crate, for one build.
+pub(crate) const CTX_FREQ_FILE_ENV: &str = "LINDERA_CTX_FREQ_FILE";
+
+/// Chooses the corpus-derived frequency histogram a build ranks context IDs
+/// with: the [`CTX_FREQ_FILE_ENV`] override first, then the bundled file.
+///
+/// The remap and the dictionary build cache's record of the build inputs both
+/// call this, so the cache records the file the build actually reads.
+///
+/// # Arguments
+///
+/// * `env_override` - The value of [`CTX_FREQ_FILE_ENV`], if set.
+/// * `bundled` - The histogram bundled with the dictionary crate, if any.
+///
+/// # Returns
+///
+/// The histogram to read, or `None` when neither is given, in which case the
+/// remap falls back to the entry-count proxy.
+pub(crate) fn resolve_context_id_freq(
+    env_override: Option<OsString>,
+    bundled: Option<&Path>,
+) -> Option<PathBuf> {
+    env_override
+        .map(PathBuf::from)
+        .or_else(|| bundled.map(Path::to_path_buf))
+}
 
 /// Compute the two frequency-ordered context-ID permutations for a dictionary.
 ///
@@ -97,11 +126,10 @@ pub(crate) fn compute_context_id_remap_for_matrix(
 
     // Corpus-derived frequency (the paper's signal): a per-build env override first,
     // then the histogram bundled with the dictionary crate.
-    let env_override = std::env::var_os("LINDERA_CTX_FREQ_FILE").map(std::path::PathBuf::from);
-    let corpus_freq: Option<&Path> = env_override.as_deref().or(freq_file);
+    let corpus_freq = resolve_context_id_freq(std::env::var_os(CTX_FREQ_FILE_ENV), freq_file);
     if let Some(freq_path) = corpus_freq {
         let (hist_left, hist_right) =
-            load_freq_file(freq_path, backward_size as usize, forward_size as usize)?;
+            load_freq_file(&freq_path, backward_size as usize, forward_size as usize)?;
         return Ok(ContextIdMap {
             left: build_perm(&hist_left),
             right: build_perm(&hist_right),
@@ -387,5 +415,32 @@ mod tests {
     #[test]
     fn test_build_perm_single() {
         assert_eq!(build_perm(&[7]), vec![0]);
+    }
+
+    /// The environment override wins over the bundled histogram.
+    #[test]
+    fn test_resolve_context_id_freq_prefers_the_override() {
+        assert_eq!(
+            resolve_context_id_freq(
+                Some(OsString::from("override.txt")),
+                Some(Path::new("context_id_freq.txt"))
+            ),
+            Some(PathBuf::from("override.txt"))
+        );
+    }
+
+    /// Without an override, the bundled histogram is used.
+    #[test]
+    fn test_resolve_context_id_freq_falls_back_to_the_bundled_file() {
+        assert_eq!(
+            resolve_context_id_freq(None, Some(Path::new("context_id_freq.txt"))),
+            Some(PathBuf::from("context_id_freq.txt"))
+        );
+    }
+
+    /// With neither, there is no histogram (the entry-count proxy is used).
+    #[test]
+    fn test_resolve_context_id_freq_without_either() {
+        assert_eq!(resolve_context_id_freq(None, None), None);
     }
 }
