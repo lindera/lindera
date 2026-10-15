@@ -1015,6 +1015,14 @@ v6.2.0 までの `lindera train` は、MeCab の学習器とは異なる学習�
   エントリの ID より小さい `matrix.def`（重みが 1 つも残らなければ `0 0`）を書き出し、
   ビルドした辞書は解析時にパニックしていました。`metadata.json` の
   `model_info.connection_matrix_size` は、大きい方の ID の正方形でした。
+- `lindera export` は、学習した重みがない連接（バイグラム素性が学習中に隣り合わな
+  かったか、正則化で重みが 0 になったもの）に、`matrix.def` で `32767`
+  （`i16::MAX`）を書き出していました。学習ではそうした連接のコストは 0 で、MeCab の
+  `mecab-dict-gen` も 0 を書き出すため、ビルドした辞書は、モデルが良くも悪くもない
+  と学習した遷移を避けていました。mecab-ipadic のファイルと既定の L1 正則化で
+  5 分割の交差検証をすると、0 を書き出すことで境界 F1 がすべての分割で上がり、
+  0.9552 から 0.9572 になりました
+  （[#1168](https://github.com/lindera/lindera/issues/1168)）。
 - `metadata.json` の `model_info.training_iterations` は、実際に回った反復回数では
   なく、`--max-iterations` の値でした。
 - Python・Node.js・Ruby・PHP バインディングのエクスポート関数は、`lex.csv`、
@@ -1070,6 +1078,7 @@ v7.0.0 は MeCab の学習器と同じく学習します
   `Lattice statistics:` の行に出力します。
 - `matrix.def` はすべての文脈 ID と BOS/EOS 用の 0 を覆い、
   `model_info.connection_matrix_size` はその大きさを行数 x 列数で示します。
+- 学習した重みがない連接の `matrix.def` のコストは、学習中や MeCab と同じく 0 です。
 - `model_info.training_iterations` は実際に回った L-BFGS の反復回数です。
   `--max-iterations` で学習が止まったときはその値、それより前に収束したときは
   それより少ない値になります。
@@ -1409,6 +1418,7 @@ feature）経由で使う Rust コードにのみ影響します
 | `Model::num_labels()` と `ModelMetadata::label_count` は `char.def` のカテゴリごとに 1 つの未知語ラベルを数える | `unk.def` のエントリごとに 1 つを数える。仮想ラベルは数えない |
 | `Model::write_left_id_def` / `write_right_id_def` はバイグラム素性の文字列の ID を書き出す。`lex.csv` や `matrix.def` の文脈 ID とは別の ID 空間 | 文脈 ID を書き出す。`Model::write_model` が書き出すモデルについて `SerializableModel::write_left_id_def` / `write_right_id_def` が書き出すものと同じ |
 | `ModelMetadata::iterations`（と `model_info.training_iterations`）は `max_iter` の設定値 | 実際に回った L-BFGS の反復回数 |
+| `Model::write_connection_costs` と `SerializableModel::write_connection_costs` は、学習した重みがない連接に `i16::MAX` を書き出す | 0 を書き出す。学習中や MeCab でのその連接のコスト |
 
 モデルは `MODEL_FORMAT_VERSION` を `metadata.version` として書き出され、
 `Model::read_model` は `rkyv` 形式でもレガシーの JSON 形式でもこれを確認するため、

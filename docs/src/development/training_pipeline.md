@@ -262,7 +262,7 @@ This produces the following files:
 | File | Description |
 | --- | --- |
 | `lex.csv` | Lexicon with trained costs |
-| `matrix.def` | Connection cost matrix over every context ID, plus 0 for BOS/EOS, even when regularization leaves no bigram weight |
+| `matrix.def` | Connection cost matrix over every context ID, plus 0 for BOS/EOS, even when regularization leaves no bigram weight. A connection without a trained weight costs 0, as in training and in MeCab |
 | `unk.def` | Unknown word definition: one line for each input `unk.def` entry, in input order, with its category, trained IDs and cost, and feature |
 | `char.def` | Character definition |
 | `feature.def` | Feature template |
@@ -308,7 +308,8 @@ echo "これは外国人参政権です。" | lindera tokenize -d ./dict-compile
 With the files in `resources/training/` as the inputs above, the output is:
 
 ```text
-これは	名詞,一般,*,*,*,*,*,*,*
+これ	名詞,代名詞,一般,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
 外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人	名詞,接尾,一般,*,*,*,人,ジン,ジン
 参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
@@ -321,7 +322,8 @@ EOS
 A space in the input, as in `これは 外国人参政権です。`, is skipped and gives the same output. With `--keep-whitespace`, it is output as the `SPACE` unknown word:
 
 ```text
-これは	名詞,一般,*,*,*,*,*,*,*
+これ	名詞,代名詞,一般,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
  	記号,空白,*,*,*,*,*,*,*
 外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人	名詞,接尾,一般,*,*,*,人,ジン,ジン

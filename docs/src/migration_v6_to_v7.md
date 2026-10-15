@@ -1117,6 +1117,15 @@ those of MeCab's learner:
   (`0 0` when no weight was left at all), and the built dictionary panicked
   at tokenization. `model_info.connection_matrix_size` in `metadata.json`
   was a square of the larger ID.
+- `lindera export` wrote `32767` (`i16::MAX`) to `matrix.def` for a
+  connection without a trained weight, whose bigram features never met in
+  training or whose weights regularization zeroed. Training gives such a
+  connection the cost 0, and so does MeCab's `mecab-dict-gen`, so the
+  built dictionary avoided transitions that the model had learned to be
+  neutral. In a five-fold cross-validation with mecab-ipadic's files and
+  the default L1 regularization, writing 0 raised the boundary F1 from
+  0.9552 to 0.9572 in every fold
+  ([#1168](https://github.com/lindera/lindera/issues/1168)).
 - `model_info.training_iterations` in `metadata.json` was the
   `--max-iterations` value, not the number of iterations that ran.
 - The export functions of the Python, Node.js, Ruby and PHP bindings wrote
@@ -1179,6 +1188,8 @@ v7.0.0 trains as MeCab's learner does (see
   `lindera train` prints the counts in a `Lattice statistics:` line.
 - `matrix.def` covers every context ID, plus 0 for BOS/EOS, and
   `model_info.connection_matrix_size` gives its size, rows by columns.
+- A connection without a trained weight costs 0 in `matrix.def`, as in
+  training and in MeCab.
 - `model_info.training_iterations` is the number of L-BFGS iterations that
   ran: `--max-iterations` when that stopped training, fewer when it
   converged earlier.
@@ -1553,6 +1564,7 @@ These affect only Rust code that uses `lindera-trainer` directly or through
 | `Model::num_labels()` and `ModelMetadata::label_count` count one unknown-word label per `char.def` category | Count one per `unk.def` entry; the virtual labels are not counted |
 | `Model::write_left_id_def` / `write_right_id_def` write the IDs of the bigram feature strings, another ID space from the context IDs of `lex.csv` and `matrix.def` | Write the context IDs, as `SerializableModel::write_left_id_def` / `write_right_id_def` write them for the model that `Model::write_model` writes |
 | `ModelMetadata::iterations` (and `model_info.training_iterations`) is the `max_iter` setting | The number of L-BFGS iterations that ran |
+| `Model::write_connection_costs` and `SerializableModel::write_connection_costs` write `i16::MAX` for a connection without a trained weight | Write 0, the cost the connection has in training and in MeCab |
 
 A model is now written with `MODEL_FORMAT_VERSION` as its `metadata.version`,
 and `Model::read_model` checks it, in both the `rkyv` and the legacy JSON
