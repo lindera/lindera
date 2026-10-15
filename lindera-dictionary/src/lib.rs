@@ -7,6 +7,9 @@ pub mod loader;
 mod macros;
 pub mod mode;
 pub mod nbest;
+/// The source digest `build.rs` computes, compiled here for its unit tests.
+#[cfg(all(test, feature = "build_rs"))]
+mod source_digest;
 pub mod space_penalty;
 pub mod util;
 pub mod viterbi;

@@ -10,11 +10,13 @@ use flate2::read::GzDecoder;
 use log::{debug, error, info, warn};
 use md5::Context;
 use rand::{SeedableRng, rngs::SmallRng, seq::SliceRandom};
+use serde::{Deserialize, Serialize};
 use tar::Archive;
 use ureq::Agent;
 
 use crate::LinderaResult;
 use crate::builder::DictionaryBuilder;
+use crate::builder::context_id_remap::{CTX_FREQ_FILE_ENV, resolve_context_id_freq};
 use crate::dictionary::metadata::{DICTIONARY_FORMAT_VERSION, Metadata};
 use crate::error::LinderaErrorKind;
 
@@ -385,9 +387,10 @@ fn dictionary_cache_dir_from_env() -> Option<OsString> {
 /// The dictionary build cache directory to use, given the environment.
 ///
 /// A documentation build generates dummy dictionaries, which must stay out of
-/// the cache: an entry is keyed on the crate and format versions only, and a
-/// dummy's `metadata.json` passes [`cached_dictionary_is_current`], so a later
-/// build without `DOCS_RS` would embed the dummy (#1157). A documentation
+/// the cache: a dummy built there would carry the same record of its inputs
+/// and the same `metadata.json` as a real build, so [`cache_decision`] would
+/// accept it, and a later build without `DOCS_RS` would embed the dummy
+/// (#1157). A documentation
 /// build therefore ignores the cache, as if the variable were unset, which is
 /// how docs.rs runs it: the dummies go into `OUT_DIR`, and a crate whose embed
 /// feature is off builds nothing.
@@ -405,14 +408,292 @@ fn cache_dir_unless_docs_rs(cache_dir: Option<OsString>, docs_rs: bool) -> Optio
     cache_dir.filter(|_| !docs_rs)
 }
 
+/// Name of the file, inside a cached dictionary's output directory, that
+/// records the inputs the dictionary was built from ([`BuildInputs`]).
+///
+/// It lives inside the output directory rather than next to it, so that any
+/// code that rebuilds the dictionary -- including releases of this crate from
+/// before the file existed, which empty the directory first -- also removes
+/// the record, and a record never describes output it did not come with.
+const BUILD_INPUTS_FILE: &str = "build_inputs.json";
+
+/// Digest of this crate's source, computed by `build.rs` with the `build_rs`
+/// feature; `None` when it could not read the source.
+const BUILDER_SOURCE_DIGEST: Option<&str> = option_env!("LINDERA_DICTIONARY_SOURCE_DIGEST");
+
+/// Prefix of the lines a build script prints about the dictionary cache.
+///
+/// They are plain stdout lines, not `cargo:` directives: cargo keeps them in
+/// the build script's `output` file and shows them with `cargo build -vv`.
+const CACHE_REPORT_PREFIX: &str = "lindera dictionary cache:";
+
+/// The inputs that decide the content of a built dictionary, apart from the
+/// crate's `metadata.json` and the dictionary format version, which the cache
+/// checks separately ([`check_cached_metadata`]).
+///
+/// A cached dictionary is reused only when the record written next to it
+/// equals the inputs of the current build. Versions of the builder's
+/// dependencies are not recorded: a dependency upgrade that changes the
+/// output must bump [`DICTIONARY_FORMAT_VERSION`].
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BuildInputs {
+    /// Version of the `lindera-dictionary` crate that built the dictionary.
+    builder_version: String,
+    /// Digest of that crate's source ([`BUILDER_SOURCE_DIGEST`]).
+    builder_digest: String,
+    /// File name of the source archive ([`FetchParams::file_name`]).
+    archive_file_name: String,
+    /// MD5 of the source archive ([`FetchParams::md5_hash`]).
+    archive_md5: String,
+    /// Directory the archive extracts to ([`FetchParams::input_dir`]).
+    input_dir: String,
+    /// Sub-directory of the extracted archive the build reads
+    /// ([`FetchParams::src_subdir`]).
+    src_subdir: Option<String>,
+    /// MD5 of the context-ID frequency histogram the build ranks context IDs
+    /// with, or `None` when it reads none (`connection_id_mapping` off, or no
+    /// histogram found).
+    context_id_freq_md5: Option<String>,
+}
+
+/// What a build does with the dictionary it builds into the cache.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CachePurpose {
+    /// The dictionary is embedded, so only a current cache entry may be used.
+    Embed,
+    /// The crate's embed feature is off and the build only fills the cache,
+    /// so an existing entry is kept as it is. A build with the embed feature
+    /// on checks it before using it.
+    Prefill,
+}
+
+/// Why a cached dictionary is used.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum CacheHit {
+    /// Its recorded inputs and its `metadata.json` match the current build.
+    Current,
+    /// The build only fills the cache ([`CachePurpose::Prefill`]), and the
+    /// entry exists.
+    Kept,
+}
+
+/// Why a cached dictionary is not used.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum CacheMiss {
+    /// There is no cached dictionary yet.
+    Empty,
+    /// This crate's source digest is unavailable, so no entry can be shown to
+    /// come from the current builder.
+    DigestUnavailable,
+    /// The entry has no record of its inputs: it was built by a release from
+    /// before the record existed, or its build was interrupted.
+    NoRecord,
+    /// The record cannot be read or parsed.
+    UnreadableRecord,
+    /// The named recorded inputs differ from the current build's.
+    InputsChanged(Vec<String>),
+    /// The cached `metadata.json` cannot be read or parsed.
+    UnreadableMetadata,
+    /// The cached dictionary declares another dictionary format version.
+    FormatVersion(u32),
+    /// The cached `metadata.json` differs from the crate's.
+    MetadataChanged,
+}
+
+impl std::fmt::Display for CacheHit {
+    /// Describes the hit for [`CACHE_REPORT_PREFIX`] lines.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - The formatter to write to.
+    ///
+    /// # Returns
+    ///
+    /// The result of writing to `f`.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CacheHit::Current => write!(f, "the inputs and metadata.json are unchanged"),
+            CacheHit::Kept => write!(
+                f,
+                "the embed feature is off, so the entry is kept without a check"
+            ),
+        }
+    }
+}
+
+impl std::fmt::Display for CacheMiss {
+    /// Describes the miss for [`CACHE_REPORT_PREFIX`] lines.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - The formatter to write to.
+    ///
+    /// # Returns
+    ///
+    /// The result of writing to `f`.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CacheMiss::Empty => write!(f, "nothing is cached yet"),
+            CacheMiss::DigestUnavailable => {
+                write!(f, "the lindera-dictionary source digest is unavailable")
+            }
+            CacheMiss::NoRecord => write!(f, "{BUILD_INPUTS_FILE} is missing"),
+            CacheMiss::UnreadableRecord => write!(f, "{BUILD_INPUTS_FILE} cannot be read"),
+            CacheMiss::InputsChanged(fields) => write!(f, "changed: {}", fields.join(", ")),
+            CacheMiss::UnreadableMetadata => write!(f, "metadata.json cannot be read"),
+            CacheMiss::FormatVersion(found) => write!(
+                f,
+                "dictionary format version {found}, expected {DICTIONARY_FORMAT_VERSION}"
+            ),
+            CacheMiss::MetadataChanged => {
+                write!(f, "metadata.json differs from the crate's")
+            }
+        }
+    }
+}
+
+/// Computes the MD5 of a file, reading it in chunks.
+///
+/// # Arguments
+///
+/// * `path` - The file to hash.
+///
+/// # Returns
+///
+/// The digest as lowercase hexadecimal digits, or the I/O error.
+fn file_md5(path: &Path) -> io::Result<String> {
+    let mut file = File::open(path)?;
+    let mut context = Context::new();
+    let mut buffer = [0; 8192];
+    loop {
+        let count = file.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        context.consume(&buffer[..count]);
+    }
+    Ok(format!("{:x}", context.finalize()))
+}
+
+/// The inputs of the build `fetch` is about to run, to compare with a cached
+/// dictionary's record.
+///
+/// # Arguments
+///
+/// * `params` - The source archive and directory layout of the build.
+/// * `builder` - The builder, for its metadata and bundled histogram.
+/// * `builder_digest` - This crate's source digest ([`BUILDER_SOURCE_DIGEST`]).
+/// * `ctx_freq_env` - The value of [`CTX_FREQ_FILE_ENV`], if set.
+///
+/// # Returns
+///
+/// The inputs, `None` when `builder_digest` is `None`, or an error when the
+/// histogram the build would read cannot be read.
+fn expected_build_inputs(
+    params: &FetchParams,
+    builder: &DictionaryBuilder,
+    builder_digest: Option<&str>,
+    ctx_freq_env: Option<OsString>,
+) -> LinderaResult<Option<BuildInputs>> {
+    let Some(builder_digest) = builder_digest else {
+        return Ok(None);
+    };
+    let context_id_freq_md5 = if builder.metadata().connection_id_mapping {
+        resolve_context_id_freq(ctx_freq_env, builder.context_id_freq())
+            .map(|path| {
+                file_md5(&path).map_err(|err| {
+                    LinderaErrorKind::Io
+                        .with_error(anyhow::anyhow!(err))
+                        .add_context(format!(
+                            "Failed to read the context-id frequency file: {path:?}"
+                        ))
+                })
+            })
+            .transpose()?
+    } else {
+        None
+    };
+    Ok(Some(BuildInputs {
+        builder_version: env!("CARGO_PKG_VERSION").to_string(),
+        builder_digest: builder_digest.to_string(),
+        archive_file_name: params.file_name.to_string(),
+        archive_md5: params.md5_hash.to_string(),
+        input_dir: params.input_dir.to_string(),
+        src_subdir: params.src_subdir.map(str::to_string),
+        context_id_freq_md5,
+    }))
+}
+
+/// Names the inputs on which two records differ.
+///
+/// The comparison goes through the JSON representation, so a field added to
+/// [`BuildInputs`] is compared without changes here.
+///
+/// # Arguments
+///
+/// * `recorded` - The record of a cached dictionary.
+/// * `expected` - The inputs of the current build.
+///
+/// # Returns
+///
+/// The names of the differing fields; empty when the records are equal.
+fn changed_inputs(recorded: &BuildInputs, expected: &BuildInputs) -> Vec<String> {
+    let (Ok(serde_json::Value::Object(recorded)), Ok(serde_json::Value::Object(expected))) = (
+        serde_json::to_value(recorded),
+        serde_json::to_value(expected),
+    ) else {
+        return vec!["the whole record".to_string()];
+    };
+    expected
+        .iter()
+        .filter(|(field, value)| recorded.get(field.as_str()) != Some(value))
+        .map(|(field, _)| field.clone())
+        .collect()
+}
+
+/// The path of the record of a cached dictionary's inputs.
+///
+/// # Arguments
+///
+/// * `output_dir` - The cached dictionary's output directory.
+///
+/// # Returns
+///
+/// The path of [`BUILD_INPUTS_FILE`] in `output_dir`.
+fn build_inputs_path(output_dir: &Path) -> PathBuf {
+    output_dir.join(BUILD_INPUTS_FILE)
+}
+
+/// Records the inputs of a dictionary just built into the cache.
+///
+/// `fetch` calls this after moving the dictionary into place, so an
+/// interrupted build leaves no record, and the next build rebuilds.
+///
+/// # Arguments
+///
+/// * `output_dir` - The output directory of the dictionary.
+/// * `inputs` - The inputs it was built from.
+///
+/// # Returns
+///
+/// `Ok(())`, or an error when the record cannot be serialized or written.
+fn write_build_inputs(output_dir: &Path, inputs: &BuildInputs) -> LinderaResult<()> {
+    let path = build_inputs_path(output_dir);
+    let data = serde_json::to_vec_pretty(inputs).map_err(|err| {
+        LinderaErrorKind::Serialize
+            .with_error(anyhow::anyhow!(err))
+            .add_context("Failed to serialize the dictionary build inputs")
+    })?;
+    fs::write(&path, data).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!("Failed to write {path:?}"))
+    })
+}
+
 /// Whether a cached dictionary directory was built in the format this crate
 /// reads, from the metadata this crate ships.
-///
-/// Anything unexpected -- a missing or unreadable `metadata.json`, a version
-/// that does not match, contents that differ from the crate's `metadata.json`
-/// -- answers `false`, so the caller rebuilds. A cache is an optimization;
-/// refusing to use a questionable one costs a rebuild, whereas trusting one
-/// costs correctness.
 ///
 /// The cache directory is keyed on the crate version and the dictionary
 /// format version only, so a change to the crate's `metadata.json` that bumps
@@ -430,35 +711,62 @@ fn cache_dir_unless_docs_rs(cache_dir: Option<OsString>, docs_rs: bool) -> Optio
 ///
 /// # Returns
 ///
-/// `true` only when `metadata.json` is present, parses, declares
-/// [`DICTIONARY_FORMAT_VERSION`], and matches `source`.
-fn cached_dictionary_is_current(output_dir: &Path, source: &Metadata) -> bool {
-    let path = output_dir.join("metadata.json");
-    let Ok(data) = fs::read(&path) else {
-        debug!("Cache miss: cannot read {}", path.display());
-        return false;
-    };
-    let Ok(metadata) = serde_json::from_slice::<Metadata>(&data) else {
-        debug!("Cache miss: cannot parse {}", path.display());
-        return false;
-    };
+/// `Ok(())` only when `metadata.json` is present, parses, declares
+/// [`DICTIONARY_FORMAT_VERSION`], and matches `source`; otherwise the reason.
+fn check_cached_metadata(output_dir: &Path, source: &Metadata) -> Result<(), CacheMiss> {
+    let data =
+        fs::read(output_dir.join("metadata.json")).map_err(|_| CacheMiss::UnreadableMetadata)?;
+    let metadata =
+        serde_json::from_slice::<Metadata>(&data).map_err(|_| CacheMiss::UnreadableMetadata)?;
     if metadata.format_version != DICTIONARY_FORMAT_VERSION {
-        debug!(
-            "Cache miss: {} declares dictionary format version {}, expected {}",
-            path.display(),
-            metadata.format_version,
-            DICTIONARY_FORMAT_VERSION
-        );
-        return false;
+        return Err(CacheMiss::FormatVersion(metadata.format_version));
     }
     if !metadata_matches_source(&metadata, source) {
-        debug!(
-            "Cache miss: {} differs from the crate's metadata.json",
-            path.display()
-        );
-        return false;
+        return Err(CacheMiss::MetadataChanged);
     }
-    true
+    Ok(())
+}
+
+/// Decides whether the dictionary cached in `output_dir` may be used.
+///
+/// Anything unexpected -- a missing or unreadable record or `metadata.json`,
+/// an input or a version that does not match -- is a miss, so the caller
+/// rebuilds. A cache is an optimization; refusing to use a questionable entry
+/// costs a rebuild, whereas trusting one costs correctness.
+///
+/// # Arguments
+///
+/// * `output_dir` - The cached dictionary's output directory.
+/// * `purpose` - What the build does with the dictionary.
+/// * `expected` - The inputs of the current build ([`expected_build_inputs`]),
+///   or `None` when this crate's source digest is unavailable.
+/// * `source` - The metadata the crate ships.
+///
+/// # Returns
+///
+/// Why the entry may be used, or why not.
+fn cache_decision(
+    output_dir: &Path,
+    purpose: CachePurpose,
+    expected: Option<&BuildInputs>,
+    source: &Metadata,
+) -> Result<CacheHit, CacheMiss> {
+    if !output_dir.is_dir() {
+        return Err(CacheMiss::Empty);
+    }
+    if purpose == CachePurpose::Prefill {
+        return Ok(CacheHit::Kept);
+    }
+    let expected = expected.ok_or(CacheMiss::DigestUnavailable)?;
+    let data = fs::read(build_inputs_path(output_dir)).map_err(|_| CacheMiss::NoRecord)?;
+    let recorded =
+        serde_json::from_slice::<BuildInputs>(&data).map_err(|_| CacheMiss::UnreadableRecord)?;
+    let changed = changed_inputs(&recorded, expected);
+    if !changed.is_empty() {
+        return Err(CacheMiss::InputsChanged(changed));
+    }
+    check_cached_metadata(output_dir, source)?;
+    Ok(CacheHit::Current)
 }
 
 /// Whether a cached build's metadata equals the crate's, ignoring the fields
@@ -508,14 +816,20 @@ fn metadata_matches_source(cached: &Metadata, source: &Metadata) -> bool {
 /// to such a crate later takes effect on the next change to a watched file
 /// (such as `metadata.json`) or after a clean build.
 ///
+/// The file named by `LINDERA_CTX_FREQ_FILE` is watched too, under the same
+/// rule: only when it exists. Without that, a new histogram written to the
+/// same path would not rerun the build script, and the dictionary would keep
+/// the old ranking.
+///
 /// # Arguments
 ///
 /// * `ships_context_id_freq` - Whether the crate has a `context_id_freq.txt`.
+/// * `ctx_freq_override` - The value of `LINDERA_CTX_FREQ_FILE`, if set.
 ///
 /// # Returns
 ///
 /// The directives, one per line, in the order the build script prints them.
-fn rerun_directives(ships_context_id_freq: bool) -> Vec<String> {
+fn rerun_directives(ships_context_id_freq: bool, ctx_freq_override: Option<&Path>) -> Vec<String> {
     let mut directives = vec![
         "cargo:rerun-if-changed=build.rs".to_string(),
         "cargo:rerun-if-changed=Cargo.toml".to_string(),
@@ -527,8 +841,11 @@ fn rerun_directives(ships_context_id_freq: bool) -> Vec<String> {
     if ships_context_id_freq {
         directives.push(format!("cargo:rerun-if-changed={CONTEXT_ID_FREQ_FILE}"));
     }
+    if let Some(path) = ctx_freq_override.filter(|path| path.is_file()) {
+        directives.push(format!("cargo:rerun-if-changed={}", path.display()));
+    }
     directives.extend([
-        "cargo:rerun-if-env-changed=LINDERA_CTX_FREQ_FILE".to_string(),
+        format!("cargo:rerun-if-env-changed={CTX_FREQ_FILE_ENV}"),
         format!("cargo:rerun-if-env-changed={CACHE_DIR_ENV}"),
         format!("cargo:rerun-if-env-changed={DOCS_RS_ENV}"),
     ]);
@@ -538,9 +855,10 @@ fn rerun_directives(ships_context_id_freq: bool) -> Vec<String> {
 /// Fetch the necessary assets and then build the dictionary using `builder`.
 ///
 /// The dictionary is built under `LINDERA_BUILD_DICTIONARY_CACHE_DIR` when
-/// that variable is set, reusing a current build found there, and under the
-/// build script's `OUT_DIR` otherwise. With `DOCS_RS` set, it is a dummy built
-/// from `params.dummy_input` instead of the downloaded one, and it always goes
+/// that variable is set, reusing a cached build only when it was built from
+/// the same inputs (see `cache_decision`), and under the build script's
+/// `OUT_DIR` otherwise. With `DOCS_RS` set, it is a dummy built from
+/// `params.dummy_input` instead of the downloaded one, and it always goes
 /// under `OUT_DIR`, so that later builds never take a dummy from the cache.
 ///
 /// # Arguments
@@ -555,16 +873,39 @@ fn rerun_directives(ships_context_id_freq: bool) -> Vec<String> {
 /// `Ok(())` once the dictionary has been built into the output directory, or a
 /// `LinderaError` if the download, extraction, or build fails.
 pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
-    for directive in rerun_directives(Path::new(CONTEXT_ID_FREQ_FILE).is_file()) {
+    fetch_for(params, builder, CachePurpose::Embed)
+}
+
+/// [`fetch`] for a build whose `purpose` decides how a cached dictionary is
+/// treated.
+///
+/// # Arguments
+///
+/// * `params` - Describes the asset to fetch and the directory layout.
+/// * `builder` - Dictionary builder.
+/// * `purpose` - Whether the dictionary is embedded or only fills the cache.
+///
+/// # Returns
+///
+/// As for [`fetch`].
+fn fetch_for(
+    params: FetchParams,
+    builder: DictionaryBuilder,
+    purpose: CachePurpose,
+) -> LinderaResult<()> {
+    let ctx_freq_env = std::env::var_os(CTX_FREQ_FILE_ENV);
+    for directive in rerun_directives(
+        Path::new(CONTEXT_ID_FREQ_FILE).is_file(),
+        ctx_freq_env.as_deref().map(Path::new),
+    ) {
         println!("{directive}");
     }
 
     // Directory path for build package
     // if the cache directory variable is defined (and this is not a documentation build, see
-    // `cache_dir_unless_docs_rs`), behaves like a cache, where data is invalidated only:
-    // - on new lindera-assets version
-    // - if the cache directory changed
-    // otherwise, keeps behavior of always redownloading and rebuilding
+    // `cache_dir_unless_docs_rs`), behaves like a cache, which a build reuses only when it was
+    // built from the same inputs (see `cache_decision`); otherwise, keeps behavior of always
+    // redownloading and rebuilding
     let (build_dir, is_cache) = if let Some(path) = dictionary_cache_dir_from_env() {
         let mut cache_dir = PathBuf::from(path);
         if !cache_dir.is_absolute()
@@ -622,19 +963,38 @@ pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<(
 
     // Fast path where the data is already in cache.
     //
-    // The directory name already carries the format version, so a mismatch is
-    // normally a cache miss rather than a stale hit. This re-reads the cached
-    // `metadata.json` anyway, because two cheap failure modes are not covered
-    // by the key: an interrupted build that left a half-written directory
-    // behind (or a directory copied in by hand), and a change to the crate's
-    // `metadata.json` that bumps neither the crate nor the format version.
-    // Either would embed a stale artifact verbatim into the binary. A cache
-    // entry that fails the check is rebuilt rather than trusted.
-    if is_cache
-        && output_dir.is_dir()
-        && cached_dictionary_is_current(&output_dir, builder.metadata())
-    {
-        return Ok(());
+    // The directory name carries only the crate and format versions, which do
+    // not change when the builder code, the source archive, the context-id
+    // histogram or the crate's `metadata.json` does. `cache_decision` compares
+    // the record written with the cached dictionary, and its `metadata.json`,
+    // against the current build, and a cache entry that fails the check is
+    // rebuilt rather than trusted.
+    let expected = if is_cache {
+        expected_build_inputs(&params, &builder, BUILDER_SOURCE_DIGEST, ctx_freq_env)?
+    } else {
+        None
+    };
+    if is_cache {
+        if expected.is_none() && purpose == CachePurpose::Embed {
+            println!(
+                "cargo:warning=the lindera-dictionary source digest is unavailable, \
+                 so {} is rebuilt rather than reused",
+                output_dir.display()
+            );
+        }
+        match cache_decision(&output_dir, purpose, expected.as_ref(), builder.metadata()) {
+            Ok(hit) => {
+                println!(
+                    "{CACHE_REPORT_PREFIX} using {}: {hit}",
+                    output_dir.display()
+                );
+                return Ok(());
+            }
+            Err(miss) => println!(
+                "{CACHE_REPORT_PREFIX} building {}: {miss}",
+                output_dir.display()
+            ),
+        }
     }
 
     if is_docs_rs_build() {
@@ -651,29 +1011,13 @@ pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<(
             );
 
             // Verify MD5 hash
-            let mut file = File::open(source_path_for_build).map_err(|err| {
+            let actual_md5 = file_md5(source_path_for_build).map_err(|err| {
                 LinderaErrorKind::Io
                     .with_error(anyhow::anyhow!(err))
                     .add_context(format!(
-                        "Failed to open source file for MD5 check: {source_path_for_build:?}"
+                        "Failed to read source file for MD5 check: {source_path_for_build:?}"
                     ))
             })?;
-            let mut context = Context::new();
-            let mut buffer = [0; 8192];
-            loop {
-                let count = file.read(&mut buffer).map_err(|err| {
-                    LinderaErrorKind::Io
-                        .with_error(anyhow::anyhow!(err))
-                        .add_context(format!(
-                            "Failed to read source file for MD5 check: {source_path_for_build:?}"
-                        ))
-                })?;
-                if count == 0 {
-                    break;
-                }
-                context.consume(&buffer[..count]);
-            }
-            let actual_md5 = format!("{:x}", context.finalize());
 
             if actual_md5 == params.md5_hash {
                 debug!("MD5 check passed for cached file. Skipping download.");
@@ -830,6 +1174,12 @@ pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<(
     // Rename tmp_output_path to output_dir
     rename_directory(&tmp_output_path, &output_dir)?;
 
+    // Record the inputs last, once the dictionary is in place, so that an
+    // interrupted build leaves no record and the next build rebuilds.
+    if let Some(inputs) = &expected {
+        write_build_inputs(&output_dir, inputs)?;
+    }
+
     let _ = fs::remove_dir_all(input_dir);
 
     Ok(())
@@ -849,9 +1199,12 @@ const CONTEXT_ID_FREQ_FILE: &str = "context_id_freq.txt";
 ///
 /// When the crate's embed feature is disabled (`embed_enabled == false`) and
 /// no cache override is set via `LINDERA_BUILD_DICTIONARY_CACHE_DIR`, this is
-/// a no-op so the crate builds without downloading any data. With `DOCS_RS`
-/// set, the cache override is ignored, so this is a no-op whenever the embed
-/// feature is disabled.
+/// a no-op so the crate builds without downloading any data. With the
+/// override and the embed feature disabled, it only fills the cache: an
+/// existing entry is kept without a check (`CachePurpose::Prefill`), so
+/// that a workspace-wide `cargo check` does not rebuild every dictionary after
+/// each change to the builder. With `DOCS_RS` set, the cache override is
+/// ignored, so this is a no-op whenever the embed feature is disabled.
 ///
 /// # Arguments
 ///
@@ -883,7 +1236,12 @@ pub fn build_embedded_dictionary(
         builder = builder.with_context_id_freq(CONTEXT_ID_FREQ_FILE);
     }
 
-    fetch(params, builder)?;
+    let purpose = if embed_enabled {
+        CachePurpose::Embed
+    } else {
+        CachePurpose::Prefill
+    };
+    fetch_for(params, builder, purpose)?;
 
     Ok(())
 }
@@ -904,14 +1262,34 @@ mod tests {
     fn rerun_directives_skip_a_missing_context_id_freq_file() {
         // A missing `rerun-if-changed` path would rerun the build script,
         // and rebuild the dictionary, on every build (#1069).
-        assert_eq!(super::rerun_directives(false), ALWAYS);
+        assert_eq!(super::rerun_directives(false, None), ALWAYS);
     }
 
     #[test]
     fn rerun_directives_watch_a_shipped_context_id_freq_file() {
         let mut expected = ALWAYS.to_vec();
         expected.insert(3, "cargo:rerun-if-changed=context_id_freq.txt");
-        assert_eq!(super::rerun_directives(true), expected);
+        assert_eq!(super::rerun_directives(true, None), expected);
+    }
+
+    #[test]
+    fn rerun_directives_watch_an_existing_ctx_freq_override() {
+        // A new histogram written to the same path must rerun the build.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("freq.txt");
+        std::fs::write(&path, "").unwrap();
+        let mut expected = ALWAYS.map(String::from).to_vec();
+        expected.insert(3, format!("cargo:rerun-if-changed={}", path.display()));
+        assert_eq!(super::rerun_directives(false, Some(&path)), expected);
+    }
+
+    #[test]
+    fn rerun_directives_skip_a_missing_ctx_freq_override() {
+        // Same rule as the shipped file (#1069): a missing path would rerun
+        // the build script on every build.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("missing.txt");
+        assert_eq!(super::rerun_directives(false, Some(&path)), ALWAYS);
     }
 
     use super::*;
@@ -1022,7 +1400,10 @@ mod tests {
     #[test]
     fn cache_hit_requires_the_current_format_version() {
         let dir = cached_dir_with_format_version(DICTIONARY_FORMAT_VERSION);
-        assert!(cached_dictionary_is_current(dir.path(), &source_metadata()));
+        assert_eq!(
+            check_cached_metadata(dir.path(), &source_metadata()),
+            Ok(())
+        );
     }
 
     #[test]
@@ -1031,19 +1412,19 @@ mod tests {
         // covers the leftovers: a hand-copied directory, or one from an
         // interrupted build.
         let dir = cached_dir_with_format_version(DICTIONARY_FORMAT_VERSION + 1);
-        assert!(!cached_dictionary_is_current(
-            dir.path(),
-            &source_metadata()
-        ));
+        assert_eq!(
+            check_cached_metadata(dir.path(), &source_metadata()),
+            Err(CacheMiss::FormatVersion(DICTIONARY_FORMAT_VERSION + 1))
+        );
     }
 
     #[test]
     fn cache_without_metadata_is_a_miss() {
         let dir = tempfile::tempdir().unwrap();
-        assert!(!cached_dictionary_is_current(
-            dir.path(),
-            &source_metadata()
-        ));
+        assert_eq!(
+            check_cached_metadata(dir.path(), &source_metadata()),
+            Err(CacheMiss::UnreadableMetadata)
+        );
     }
 
     #[test]
@@ -1052,10 +1433,10 @@ mod tests {
         // trusted; rebuilding is cheap, misreading a dictionary is not.
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("metadata.json"), b"{\"name\":").unwrap();
-        assert!(!cached_dictionary_is_current(
-            dir.path(),
-            &source_metadata()
-        ));
+        assert_eq!(
+            check_cached_metadata(dir.path(), &source_metadata()),
+            Err(CacheMiss::UnreadableMetadata)
+        );
     }
 
     #[test]
@@ -1069,7 +1450,10 @@ mod tests {
             connection_id_mapping: !Metadata::default().connection_id_mapping,
             ..Metadata::default()
         };
-        assert!(!cached_dictionary_is_current(dir.path(), &source));
+        assert_eq!(
+            check_cached_metadata(dir.path(), &source),
+            Err(CacheMiss::MetadataChanged)
+        );
     }
 
     #[test]
@@ -1086,7 +1470,10 @@ mod tests {
             ..Metadata::default()
         };
         let dir = cached_dir_with(&cached);
-        assert!(cached_dictionary_is_current(dir.path(), &source_metadata()));
+        assert_eq!(
+            check_cached_metadata(dir.path(), &source_metadata()),
+            Ok(())
+        );
     }
 
     #[test]
@@ -1102,7 +1489,288 @@ mod tests {
             ..source.clone()
         };
         let dir = cached_dir_with(&cached);
-        assert!(cached_dictionary_is_current(dir.path(), &source));
+        assert_eq!(check_cached_metadata(dir.path(), &source), Ok(()));
+    }
+
+    /// The inputs of a build, standing in for [`expected_build_inputs`].
+    fn build_inputs() -> BuildInputs {
+        BuildInputs {
+            builder_version: "7.0.0".to_string(),
+            builder_digest: "0123456789abcdef0123456789abcdef".to_string(),
+            archive_file_name: "mecab-ipadic-2.7.0-20250920.tar.gz".to_string(),
+            archive_md5: "fedcba9876543210fedcba9876543210".to_string(),
+            input_dir: "mecab-ipadic-2.7.0-20250920".to_string(),
+            src_subdir: None,
+            context_id_freq_md5: None,
+        }
+    }
+
+    /// A cached dictionary of the current format version, built from
+    /// `inputs` (no record when `None`).
+    fn cached_entry(inputs: Option<&BuildInputs>) -> tempfile::TempDir {
+        let dir = cached_dir_with_format_version(DICTIONARY_FORMAT_VERSION);
+        if let Some(inputs) = inputs {
+            write_build_inputs(dir.path(), inputs).unwrap();
+        }
+        dir
+    }
+
+    /// [`cache_decision`] for a dictionary that is embedded.
+    fn decide(dir: &Path, expected: Option<&BuildInputs>) -> Result<CacheHit, CacheMiss> {
+        cache_decision(dir, CachePurpose::Embed, expected, &source_metadata())
+    }
+
+    #[test]
+    fn cache_hit_when_the_inputs_and_metadata_match() {
+        let inputs = build_inputs();
+        let dir = cached_entry(Some(&inputs));
+        assert_eq!(decide(dir.path(), Some(&inputs)), Ok(CacheHit::Current));
+    }
+
+    #[test]
+    fn each_changed_input_is_a_miss_naming_it() {
+        // #1132: the builder code, the archive and the histogram decide the
+        // output without changing the crate or format version.
+        type Mutation = fn(&mut BuildInputs);
+        let mutations: [(&str, Mutation); 7] = [
+            ("builder_version", |i| {
+                i.builder_version = "7.0.1".to_string()
+            }),
+            ("builder_digest", |i| {
+                i.builder_digest.replace_range(0..1, "f")
+            }),
+            ("archive_file_name", |i| i.archive_file_name.push('x')),
+            ("archive_md5", |i| i.archive_md5.replace_range(0..1, "0")),
+            ("input_dir", |i| i.input_dir.push('x')),
+            ("src_subdir", |i| {
+                i.src_subdir = Some("dict-src".to_string())
+            }),
+            ("context_id_freq_md5", |i| {
+                i.context_id_freq_md5 = Some("00".to_string())
+            }),
+        ];
+        let recorded = build_inputs();
+        let dir = cached_entry(Some(&recorded));
+        for (field, mutate) in mutations {
+            let mut expected = recorded.clone();
+            mutate(&mut expected);
+            assert_eq!(
+                decide(dir.path(), Some(&expected)),
+                Err(CacheMiss::InputsChanged(vec![field.to_string()])),
+                "{field}"
+            );
+        }
+    }
+
+    #[test]
+    fn cache_without_a_record_is_a_miss() {
+        // A dictionary cached before the record existed, or by an
+        // interrupted build.
+        let dir = cached_entry(None);
+        assert_eq!(
+            decide(dir.path(), Some(&build_inputs())),
+            Err(CacheMiss::NoRecord)
+        );
+    }
+
+    #[test]
+    fn cache_with_an_unparsable_record_is_a_miss() {
+        let dir = cached_entry(None);
+        fs::write(build_inputs_path(dir.path()), b"{\"builder_version\":").unwrap();
+        assert_eq!(
+            decide(dir.path(), Some(&build_inputs())),
+            Err(CacheMiss::UnreadableRecord)
+        );
+    }
+
+    #[test]
+    fn cache_without_a_source_digest_is_a_miss() {
+        // Without the digest nothing shows which builder made the entry.
+        let inputs = build_inputs();
+        let dir = cached_entry(Some(&inputs));
+        assert_eq!(decide(dir.path(), None), Err(CacheMiss::DigestUnavailable));
+    }
+
+    #[test]
+    fn matching_record_with_changed_metadata_is_a_miss() {
+        let inputs = build_inputs();
+        let dir = cached_entry(Some(&inputs));
+        let source = Metadata {
+            connection_id_mapping: !Metadata::default().connection_id_mapping,
+            ..Metadata::default()
+        };
+        assert_eq!(
+            cache_decision(dir.path(), CachePurpose::Embed, Some(&inputs), &source),
+            Err(CacheMiss::MetadataChanged)
+        );
+    }
+
+    #[test]
+    fn rebuild_by_older_code_drops_the_record() {
+        // A release from before the record existed rebuilds through
+        // `empty_directory`; the record must go with the old output rather
+        // than vouch for the new one.
+        let inputs = build_inputs();
+        let dir = cached_entry(Some(&inputs));
+        let metadata = fs::read(dir.path().join("metadata.json")).unwrap();
+        empty_directory(dir.path()).unwrap();
+        fs::write(dir.path().join("metadata.json"), metadata).unwrap();
+        assert_eq!(decide(dir.path(), Some(&inputs)), Err(CacheMiss::NoRecord));
+    }
+
+    #[test]
+    fn missing_entry_is_a_miss() {
+        let dir = tempfile::tempdir().unwrap();
+        let output_dir = dir.path().join("lindera-ipadic");
+        assert_eq!(
+            decide(&output_dir, Some(&build_inputs())),
+            Err(CacheMiss::Empty)
+        );
+        assert_eq!(
+            cache_decision(&output_dir, CachePurpose::Prefill, None, &source_metadata()),
+            Err(CacheMiss::Empty)
+        );
+    }
+
+    #[test]
+    fn prefill_keeps_an_existing_entry() {
+        // With the embed feature off nothing is embedded, so a stale entry
+        // is kept; rebuilding it would cost every workspace-wide check a
+        // rebuild of every dictionary after each builder change.
+        let dir = cached_entry(None);
+        assert_eq!(
+            cache_decision(
+                dir.path(),
+                CachePurpose::Prefill,
+                Some(&build_inputs()),
+                &source_metadata()
+            ),
+            Ok(CacheHit::Kept)
+        );
+    }
+
+    /// Writes a crate `metadata.json` with `connection_id_mapping` and a
+    /// histogram, and returns the builder and the histogram's path.
+    fn builder_with_histogram(
+        dir: &Path,
+        connection_id_mapping: bool,
+    ) -> (DictionaryBuilder, PathBuf) {
+        let histogram = dir.join("context_id_freq.txt");
+        fs::write(&histogram, "1 1 5\n").unwrap();
+        let metadata = Metadata {
+            connection_id_mapping,
+            ..Metadata::default()
+        };
+        let builder = DictionaryBuilder::new(metadata).with_context_id_freq(&histogram);
+        (builder, histogram)
+    }
+
+    /// The fetch parameters of a test build.
+    fn fetch_params() -> FetchParams {
+        FetchParams {
+            file_name: "mecab-ipadic-2.7.0-20250920.tar.gz",
+            input_dir: "mecab-ipadic-2.7.0-20250920",
+            src_subdir: None,
+            output_dir: "lindera-ipadic",
+            dummy_input: "",
+            download_urls: &[],
+            md5_hash: "fedcba9876543210fedcba9876543210",
+        }
+    }
+
+    #[test]
+    fn expected_inputs_follow_the_histogram_contents_with_mapping() {
+        let dir = tempfile::tempdir().unwrap();
+        let (builder, histogram) = builder_with_histogram(dir.path(), true);
+        let before = expected_build_inputs(&fetch_params(), &builder, Some("d"), None)
+            .unwrap()
+            .unwrap();
+        fs::write(&histogram, "1 1 6\n").unwrap();
+        let after = expected_build_inputs(&fetch_params(), &builder, Some("d"), None)
+            .unwrap()
+            .unwrap();
+        assert!(before.context_id_freq_md5.is_some());
+        assert_ne!(before.context_id_freq_md5, after.context_id_freq_md5);
+    }
+
+    #[test]
+    fn expected_inputs_follow_the_override_histogram() {
+        // The build reads `LINDERA_CTX_FREQ_FILE` before the bundled file, so
+        // the record must hash that one.
+        let dir = tempfile::tempdir().unwrap();
+        let (builder, _) = builder_with_histogram(dir.path(), true);
+        let override_path = dir.path().join("override.txt");
+        fs::write(&override_path, "1 1 7\n").unwrap();
+        let bundled = expected_build_inputs(&fetch_params(), &builder, Some("d"), None)
+            .unwrap()
+            .unwrap();
+        let overridden = expected_build_inputs(
+            &fetch_params(),
+            &builder,
+            Some("d"),
+            Some(override_path.clone().into_os_string()),
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(
+            overridden.context_id_freq_md5,
+            Some(file_md5(&override_path).unwrap())
+        );
+        assert_ne!(bundled.context_id_freq_md5, overridden.context_id_freq_md5);
+    }
+
+    #[test]
+    fn expected_inputs_ignore_the_histogram_without_mapping() {
+        // Without connection-ID mapping the build reads no histogram, so a
+        // change to it must not cost a rebuild.
+        let dir = tempfile::tempdir().unwrap();
+        let (builder, _) = builder_with_histogram(dir.path(), false);
+        let inputs = expected_build_inputs(&fetch_params(), &builder, Some("d"), None)
+            .unwrap()
+            .unwrap();
+        assert_eq!(inputs.context_id_freq_md5, None);
+    }
+
+    #[test]
+    fn expected_inputs_describe_the_build() {
+        let dir = tempfile::tempdir().unwrap();
+        let (builder, _) = builder_with_histogram(dir.path(), false);
+        let params = FetchParams {
+            src_subdir: Some("dict-src"),
+            ..fetch_params()
+        };
+        let inputs = expected_build_inputs(&params, &builder, Some("digest"), None)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            inputs,
+            BuildInputs {
+                builder_version: env!("CARGO_PKG_VERSION").to_string(),
+                builder_digest: "digest".to_string(),
+                archive_file_name: params.file_name.to_string(),
+                archive_md5: params.md5_hash.to_string(),
+                input_dir: params.input_dir.to_string(),
+                src_subdir: Some("dict-src".to_string()),
+                context_id_freq_md5: None,
+            }
+        );
+    }
+
+    #[test]
+    fn no_expected_inputs_without_a_source_digest() {
+        let dir = tempfile::tempdir().unwrap();
+        let (builder, _) = builder_with_histogram(dir.path(), true);
+        assert_eq!(
+            expected_build_inputs(&fetch_params(), &builder, None, None).unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn this_build_has_a_source_digest() {
+        // `build.rs` passes the digest under the `build_rs` feature, which
+        // this module requires; without it the cache would never be reused.
+        assert!(BUILDER_SOURCE_DIGEST.is_some_and(|digest| digest.len() == 32));
     }
 
     #[test]

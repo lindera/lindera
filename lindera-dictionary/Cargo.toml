@@ -57,6 +57,11 @@ ureq = { version = "3.3.0", default-features = false, features = [
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 rayon = "1.12.0"
 
+# `build.rs` hashes this crate's source for the dictionary build cache; only
+# the `build_rs` feature needs it, and that feature enables it.
+[build-dependencies]
+md5 = { version = "0.8.1", optional = true }
+
 [dev-dependencies]
 criterion = { version = "0.8.2", default-features = false, features = [
     "html_reports",

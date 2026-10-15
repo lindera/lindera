@@ -78,6 +78,19 @@ impl DictionaryBuilder {
         self
     }
 
+    /// Returns the bundled context-ID frequency histogram attached with
+    /// [`Self::with_context_id_freq`].
+    ///
+    /// # Returns
+    ///
+    /// The histogram's path, or `None` when none is attached. The build may
+    /// still read another file: see
+    /// [`context_id_remap::resolve_context_id_freq`].
+    #[cfg(feature = "build_rs")]
+    pub(crate) fn context_id_freq(&self) -> Option<&Path> {
+        self.context_id_freq.as_deref()
+    }
+
     /// Names the connection matrix of the system dictionary a user
     /// dictionary is built for, so that the build checks every row's context
     /// IDs against it, as MeCab's `mecab-dict-index -u` does.
