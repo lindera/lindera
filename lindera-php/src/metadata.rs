@@ -12,7 +12,7 @@ use ext_php_rs::prelude::*;
 use lindera::dictionary::Metadata;
 use lindera_binding::CoreMetadata;
 
-use crate::convert::Nullable;
+use crate::convert::{Nullable, optional_int};
 use crate::error::lindera_value_err;
 
 /// Dictionary metadata configuration.
@@ -39,16 +39,20 @@ impl PhpMetadata {
     ///
     /// * `name` - Dictionary name (default: "default").
     /// * `encoding` - Character encoding (default: "UTF-8").
-    /// * `default_word_cost` - Default word cost (default: -10000).
-    /// * `default_left_context_id` - Default left context ID (default: 1288).
-    /// * `default_right_context_id` - Default right context ID (default: 1288).
+    /// * `default_word_cost` - Default word cost, from -32768 to 32767
+    ///   (default: -10000).
+    /// * `default_left_context_id` - Default left context ID, from 0 to 65535
+    ///   (default: 1288).
+    /// * `default_right_context_id` - Default right context ID, from 0 to
+    ///   65535 (default: 1288).
     /// * `default_field_value` - Default field value (default: "*").
     /// * `flexible_csv` - Allow flexible CSV (default: false).
     /// * `skip_invalid_cost_or_id` - Skip invalid entries (default: false).
     ///
     /// # Returns
     ///
-    /// A new Metadata instance.
+    /// A new Metadata instance, or a `ValueError` for a cost or context ID
+    /// outside its range.
     #[allow(clippy::too_many_arguments)]
     pub fn __construct(
         name: Nullable<String>,
@@ -59,21 +63,18 @@ impl PhpMetadata {
         default_field_value: Nullable<String>,
         flexible_csv: Nullable<bool>,
         skip_invalid_cost_or_id: Nullable<bool>,
-    ) -> Self {
-        Self {
-            inner: CoreMetadata::new(
-                name.into_option(),
-                encoding.into_option(),
-                default_word_cost.into_option().map(|v| v as i16),
-                default_left_context_id.into_option().map(|v| v as u16),
-                default_right_context_id.into_option().map(|v| v as u16),
-                default_field_value.into_option(),
-                flexible_csv.into_option(),
-                skip_invalid_cost_or_id.into_option(),
-                None,
-                None,
-            ),
-        }
+    ) -> PhpResult<Self> {
+        Self::from_args(
+            name.into_option(),
+            encoding.into_option(),
+            default_word_cost.into_option(),
+            default_left_context_id.into_option(),
+            default_right_context_id.into_option(),
+            default_field_value.into_option(),
+            flexible_csv.into_option(),
+            skip_invalid_cost_or_id.into_option(),
+        )
+        .map_err(lindera_value_err)
     }
 
     /// Creates a Metadata with default values.
@@ -82,16 +83,9 @@ impl PhpMetadata {
     ///
     /// A new default Metadata instance.
     pub fn create_default() -> Self {
-        Self::__construct(
-            None.into(),
-            None.into(),
-            None.into(),
-            None.into(),
-            None.into(),
-            None.into(),
-            None.into(),
-            None.into(),
-        )
+        Self {
+            inner: CoreMetadata::new(None, None, None, None, None, None, None, None, None, None),
+        }
     }
 
     /// Loads Metadata from a JSON file.
@@ -269,6 +263,50 @@ impl PhpMetadata {
     }
 }
 
+impl PhpMetadata {
+    /// Builds metadata from the constructor's arguments.
+    ///
+    /// The checks live here, apart from `__construct`, so that Rust tests can
+    /// call them: turning the message into a PHP exception links symbols
+    /// that only the PHP runtime provides.
+    ///
+    /// # Arguments
+    ///
+    /// The arguments of `__construct`, with `None` for `null` or an omitted
+    /// argument.
+    ///
+    /// # Returns
+    ///
+    /// The metadata, or the message for a cost or context ID outside its
+    /// range.
+    #[allow(clippy::too_many_arguments)]
+    fn from_args(
+        name: Option<String>,
+        encoding: Option<String>,
+        default_word_cost: Option<i64>,
+        default_left_context_id: Option<i64>,
+        default_right_context_id: Option<i64>,
+        default_field_value: Option<String>,
+        flexible_csv: Option<bool>,
+        skip_invalid_cost_or_id: Option<bool>,
+    ) -> Result<Self, String> {
+        Ok(Self {
+            inner: CoreMetadata::new(
+                name,
+                encoding,
+                optional_int("default_word_cost", default_word_cost)?,
+                optional_int("default_left_context_id", default_left_context_id)?,
+                optional_int("default_right_context_id", default_right_context_id)?,
+                default_field_value,
+                flexible_csv,
+                skip_invalid_cost_or_id,
+                None,
+                None,
+            ),
+        })
+    }
+}
+
 impl From<PhpMetadata> for Metadata {
     fn from(metadata: PhpMetadata) -> Self {
         metadata.inner.into()
@@ -305,22 +343,46 @@ mod tests {
 
     #[test]
     fn test_phpmetadata_roundtrip() {
-        let meta = PhpMetadata::__construct(
-            Some("test".to_string()).into(),
-            Some("UTF-8".to_string()).into(),
-            Some(-5000).into(),
-            Some(100).into(),
-            Some(200).into(),
-            Some("N/A".to_string()).into(),
-            Some(true).into(),
-            Some(true).into(),
-        );
+        let meta = PhpMetadata::from_args(
+            Some("test".to_string()),
+            Some("UTF-8".to_string()),
+            Some(-5000),
+            Some(100),
+            Some(200),
+            Some("N/A".to_string()),
+            Some(true),
+            Some(true),
+        )
+        .unwrap();
         let lindera_meta: Metadata = meta.into();
         let roundtripped: PhpMetadata = lindera_meta.into();
         assert_eq!(roundtripped.name(), "test");
         assert_eq!(roundtripped.encoding(), "UTF-8");
         assert_eq!(roundtripped.default_word_cost(), -5000);
         assert!(roundtripped.flexible_csv());
+    }
+
+    #[test]
+    fn test_phpmetadata_from_args_rejects_values_outside_the_range() {
+        let build = |cost, left, right| {
+            PhpMetadata::from_args(None, None, cost, left, right, None, None, None)
+                .map(|meta| meta.default_word_cost())
+        };
+        assert_eq!(
+            build(Some(100000), None, None),
+            Err("default_word_cost must be an integer between -32768 and 32767, got 100000".into())
+        );
+        assert_eq!(
+            build(None, Some(-1), None),
+            Err("default_left_context_id must be an integer between 0 and 65535, got -1".into())
+        );
+        assert_eq!(
+            build(None, None, Some(65536)),
+            Err(
+                "default_right_context_id must be an integer between 0 and 65535, got 65536".into()
+            )
+        );
+        assert_eq!(build(Some(-32768), Some(0), Some(65535)), Ok(-32768));
     }
 
     #[test]

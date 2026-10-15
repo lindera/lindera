@@ -9,6 +9,8 @@ use ext_php_rs::types::ZendHashTable;
 
 use lindera::token::Token;
 
+use crate::convert::int_arg;
+
 /// Token object wrapping the Rust Token data.
 ///
 /// Provides access to token surface form, byte positions, word ID,
@@ -109,13 +111,15 @@ impl PhpToken {
     ///
     /// # Arguments
     ///
-    /// * `index` - Index of the detail to retrieve.
+    /// * `index` - Index of the detail to retrieve, 0 or more.
     ///
     /// # Returns
     ///
-    /// The detail string if found, otherwise null.
-    pub fn get_detail(&self, index: i64) -> Option<String> {
-        self.details.get(index as usize).cloned()
+    /// The detail string, null if the token has no detail at `index`, or a
+    /// `ValueError` for a negative index.
+    pub fn get_detail(&self, index: i64) -> PhpResult<Option<String>> {
+        let index: usize = int_arg("index", index)?;
+        Ok(self.details.get(index).cloned())
     }
 
     /// Returns the token as an associative array.

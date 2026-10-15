@@ -9,7 +9,7 @@ use ext_php_rs::prelude::*;
 use lindera::dictionary::{FieldDefinition, FieldType, Schema};
 use lindera_binding::{CoreFieldDefinition, CoreSchema};
 
-use crate::convert::Nullable;
+use crate::convert::{Nullable, int_arg};
 use crate::error::lindera_value_err;
 
 /// Field type in dictionary schema.
@@ -126,7 +126,7 @@ impl PhpFieldDefinition {
     ///
     /// # Arguments
     ///
-    /// * `index` - Field index.
+    /// * `index` - Field index, 0 or more.
     /// * `name` - Field name.
     /// * `field_type` - Field type string.
     /// * `description` - Optional description. A value of another type than
@@ -134,19 +134,19 @@ impl PhpFieldDefinition {
     ///
     /// # Returns
     ///
-    /// A new FieldDefinition instance.
+    /// A new FieldDefinition instance, or a `ValueError` for a negative index.
     pub fn __construct(
         index: i64,
         name: String,
         field_type: String,
         description: Nullable<String>,
-    ) -> Self {
-        Self {
-            index: index as usize,
+    ) -> PhpResult<Self> {
+        Ok(Self {
+            index: int_arg("index", index)?,
             name,
             field_type,
             description: description.into_option(),
-        }
+        })
     }
 
     /// Returns the field index.
@@ -319,15 +319,15 @@ impl PhpSchema {
     ///
     /// # Arguments
     ///
-    /// * `index` - Field index.
+    /// * `index` - Field index, 0 or more.
     ///
     /// # Returns
     ///
-    /// The field name, or null if index is out of bounds.
-    pub fn get_field_name(&self, index: i64) -> Option<String> {
-        self.inner
-            .get_field_name(index as usize)
-            .map(str::to_string)
+    /// The field name, null if the schema has no field at `index`, or a
+    /// `ValueError` for a negative index.
+    pub fn get_field_name(&self, index: i64) -> PhpResult<Option<String>> {
+        let index = int_arg("index", index)?;
+        Ok(self.inner.get_field_name(index).map(str::to_string))
     }
 
     /// Returns custom fields (fields after the first 4 standard fields).

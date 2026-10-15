@@ -1,16 +1,18 @@
 //! Utility functions for PHP-Rust data conversion.
 //!
 //! This module provides helper functions for converting between PHP Zval objects
-//! and Rust data structures, particularly for working with JSON-like data, and
-//! the argument types [`Nullable`] and [`Float`], which check a PHP argument's
-//! type as PHP does.
+//! and Rust data structures, particularly for working with JSON-like data, the
+//! argument types [`Nullable`] and [`Float`], which check a PHP argument's
+//! type as PHP does, and [`int_arg`], which checks an `int` argument's range.
 
 use ext_php_rs::convert::FromZval;
 use ext_php_rs::flags::DataType;
 use ext_php_rs::prelude::*;
 use ext_php_rs::types::array::ArrayKey;
 use ext_php_rs::types::{ZendHashTable, Zval};
-use lindera_binding::argument::{MAX_ARGUMENT_DEPTH, argument_too_deep_message};
+use lindera_binding::argument::{
+    IntegerArgument, MAX_ARGUMENT_DEPTH, argument_too_deep_message, integer_argument,
+};
 use serde_json::{Map, Value};
 
 use crate::error::lindera_value_err;
@@ -126,7 +128,7 @@ fn hashtable_to_value(ht: &ZendHashTable, depth: usize) -> Result<Value, Convert
     let is_sequential = ht
         .iter()
         .enumerate()
-        .all(|(i, (key, _))| matches!(key, ArrayKey::Long(idx) if idx as usize == i));
+        .all(|(i, (key, _))| matches!(key, ArrayKey::Long(idx) if usize::try_from(idx) == Ok(i)));
 
     if is_sequential {
         let mut arr = Vec::new();
@@ -298,6 +300,67 @@ impl FromZval<'_> for Float {
 /// type.
 fn float_value(double: Option<f64>, long: Option<i64>) -> Option<f64> {
     double.or(long.map(|value| value as f64))
+}
+
+/// Converts an `int` argument to the type the core stores it as.
+///
+/// ext-php-rs reads a PHP `int` as an `i64`, and the core keeps most integer
+/// settings in a narrower type, into which an `as` cast would wrap a value
+/// that does not fit (lindera/lindera#1209).
+///
+/// # Arguments
+///
+/// * `name` - The parameter's name as PHP callers write it, without the `$`.
+/// * `value` - The value passed.
+///
+/// # Returns
+///
+/// The value as `T`, or a `ValueError` that names the parameter and the
+/// range of `T` when `T` cannot hold the value.
+pub fn int_arg<T: IntegerArgument>(name: &str, value: i64) -> PhpResult<T> {
+    integer_argument(name, value).map_err(lindera_value_err)
+}
+
+/// Converts an optional `int` argument with [`int_arg`].
+///
+/// # Arguments
+///
+/// * `name` - The parameter's name as PHP callers write it, without the `$`.
+/// * `value` - The argument: `null`, omitted, or an `int`.
+///
+/// # Returns
+///
+/// `None` for `null` or an omitted argument, the value as `T` otherwise, or
+/// the `ValueError` of [`int_arg`].
+pub fn nullable_int_arg<T: IntegerArgument>(
+    name: &str,
+    value: Nullable<i64>,
+) -> PhpResult<Option<T>> {
+    optional_int(name, value.into_option()).map_err(lindera_value_err)
+}
+
+/// Converts an optional `int` argument to the type the core stores it as,
+/// without building a PHP exception.
+///
+/// A constructor checks its arguments with this in a function that Rust
+/// tests can call: building a PHP exception links symbols that only the PHP
+/// runtime provides, which the test binary does not have.
+///
+/// # Arguments
+///
+/// * `name` - The parameter's name as PHP callers write it, without the `$`.
+/// * `value` - The argument's value, `None` for `null` or an omitted
+///   argument.
+///
+/// # Returns
+///
+/// `None` for `None`, the value as `T` otherwise, or the message of
+/// [`integer_argument`] when `T` cannot hold the value.
+pub fn optional_int<T: IntegerArgument>(
+    name: &str,
+    value: Option<i64>,
+) -> Result<Option<T>, String> {
+    value.map(|value| integer_argument(name, value)).transpose()
 }
 
 #[cfg(test)]
