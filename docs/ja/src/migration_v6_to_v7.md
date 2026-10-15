@@ -1015,6 +1015,13 @@ v6.2.0 までの `lindera train` は、MeCab の学習器とは異なる学習�
   エントリの ID より小さい `matrix.def`（重みが 1 つも残らなければ `0 0`）を書き出し、
   ビルドした辞書は解析時にパニックしていました。`metadata.json` の
   `model_info.connection_matrix_size` は、大きい方の ID の正方形でした。
+- `metadata.json` の `model_info.training_iterations` は、実際に回った反復回数では
+  なく、`--max-iterations` の値でした。
+- Python・Node.js・Ruby・PHP バインディングのエクスポート関数は、`lex.csv`、
+  `matrix.def`、`unk.def`、`metadata.json` と、カテゴリ `DEFAULT`・`HIRAGANA`・
+  `KATAKANA`・`KANJI`・`ALPHA`・`NUMERIC` を持つ固定の `char.def` を書き出して
+  いました。学習に使った `char.def` ではなく、`feature.def`・`rewrite.def`・
+  `left-id.def`・`right-id.def` も書き出していませんでした。
 - 種辞書を 1 行ずつ `,` で分割して読み、`#` で始まる行をコメントとして読み飛ばして
   いました。mecab-ko-dic の引用符付きのカンマの表層形 `","` は表層形 `"` になり、
   `lindera export` がそれを引用符なしで書き出したため、`lindera build` は
@@ -1063,6 +1070,13 @@ v7.0.0 は MeCab の学習器と同じく学習します
   `Lattice statistics:` の行に出力します。
 - `matrix.def` はすべての文脈 ID と BOS/EOS 用の 0 を覆い、
   `model_info.connection_matrix_size` はその大きさを行数 x 列数で示します。
+- `model_info.training_iterations` は実際に回った L-BFGS の反復回数です。
+  `--max-iterations` で学習が止まったときはその値、それより前に収束したときは
+  それより少ない値になります。
+- Python・Node.js・Ruby・PHP バインディングのエクスポート関数は、`lindera export`
+  と同じコードで同じファイルを書き出します。`char.def`・`feature.def`・
+  `rewrite.def` は学習に使ったもので、`left-id.def` と `right-id.def` も書き出し
+  ます。
 - `model.dat` の形式バージョンは 2.0.0 です。`lindera export` とバインディングの
   エクスポート関数は、v6.2.0 以前に書いたものを含め、ほかのバージョンの
   `model.dat` を「re-run `lindera train` to regenerate it」で終わるエラーで拒否
@@ -1387,11 +1401,14 @@ feature）経由で使う Rust コードにのみ影響します
 | `SerializableModel::unk_category_names: Vec<String>` と `SerializableModel::unk_categories: BTreeMap<String, String>` | `SerializableModel::unk_entries: Vec<(String, String)>`。ファイル順の `unk.def` の `(カテゴリ, 素性文字列)` の組 |
 | `ModelMetadata::version` は `"1.0.0"` で、`Model::read_model` はこれを確認しない | `"2.0.0"`。`Model::read_model` はほかのバージョンのモデルを拒否する |
 | — | `model` に `MODEL_FORMAT_VERSION` を追加 |
+| — | `lindera export` のファイルをディレクトリに書き出す `SerializableModel::export` を追加 |
 | `TrainerConfig::dict()` は空の辞書とプレースホルダーの未知語辞書を持つ | 種辞書（`system_lexicon()`）と `unk.def` のエントリ（`unk_handler()`）を持つ |
 | `TrainerConfig::from_readers` はフィールドが 5 つ未満の `unk.def` の行を読み飛ばす | エラーを返す |
 | `TrainerConfig::from_readers` は `mecab-dict-index` が拒否する `char.def` と `unk.def` を受け入れる | ファイルとカテゴリ、行があればその行を示すエラーを返す（[`lindera build` と `lindera train` は `char.def` と `unk.def` を照らし合わせる](#lindera-build-と-lindera-train-は-chardef-と-unkdef-を照らし合わせる)を参照） |
 | `Trainer::max_grouping_len(len)` は未知語候補の長さを制限し、候補は 3 文字を超えない | ランタイムと同じ意味（先頭の 1 文字を除いた文字数）で未知語のグルーピングに上限を設ける。デフォルトの `None` は無制限 |
 | `Model::num_labels()` と `ModelMetadata::label_count` は `char.def` のカテゴリごとに 1 つの未知語ラベルを数える | `unk.def` のエントリごとに 1 つを数える。仮想ラベルは数えない |
+| `Model::write_left_id_def` / `write_right_id_def` はバイグラム素性の文字列の ID を書き出す。`lex.csv` や `matrix.def` の文脈 ID とは別の ID 空間 | 文脈 ID を書き出す。`Model::write_model` が書き出すモデルについて `SerializableModel::write_left_id_def` / `write_right_id_def` が書き出すものと同じ |
+| `ModelMetadata::iterations`（と `model_info.training_iterations`）は `max_iter` の設定値 | 実際に回った L-BFGS の反復回数 |
 
 モデルは `MODEL_FORMAT_VERSION` を `metadata.version` として書き出され、
 `Model::read_model` は `rkyv` 形式でもレガシーの JSON 形式でもこれを確認するため、

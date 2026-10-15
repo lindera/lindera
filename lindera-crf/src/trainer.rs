@@ -536,6 +536,18 @@ pub enum Regularization {
     },
 }
 
+/// Statistics of a training run, which [`Trainer::train_with_stats`] returns
+/// with the model.
+#[cfg_attr(docsrs, doc(cfg(feature = "train")))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct TrainingStats {
+    /// The number of iterations that ran: the maximum set with
+    /// [`Trainer::max_iter`] when it stopped the optimizer, fewer when the
+    /// optimizer stopped earlier, for example because it converged.
+    pub iterations: u64,
+}
+
 /// CRF trainer.
 #[cfg_attr(docsrs, doc(cfg(feature = "train")))]
 pub struct Trainer {
@@ -745,9 +757,43 @@ impl Trainer {
     }
 
     /// Trains a model from the given dataset.
+    ///
+    /// The same as [`train_with_stats`](Self::train_with_stats), without the
+    /// statistics of the run.
+    ///
+    /// # Arguments
+    ///
+    /// * `lattices` - The training lattices.
+    /// * `provider` - The feature sets of the labels.
+    ///
+    /// # Returns
+    ///
+    /// The trained model.
     #[allow(clippy::missing_panics_doc)]
     #[must_use]
-    pub fn train(&self, lattices: &[Lattice], mut provider: FeatureProvider) -> RawModel {
+    pub fn train(&self, lattices: &[Lattice], provider: FeatureProvider) -> RawModel {
+        self.train_with_stats(lattices, provider).0
+    }
+
+    /// Trains a model from the given dataset, and returns it with the
+    /// statistics of the run.
+    ///
+    /// # Arguments
+    ///
+    /// * `lattices` - The training lattices.
+    /// * `provider` - The feature sets of the labels.
+    ///
+    /// # Returns
+    ///
+    /// The trained model, and the statistics of the run, such as the number
+    /// of iterations that ran.
+    #[allow(clippy::missing_panics_doc)]
+    #[must_use]
+    pub fn train_with_stats(
+        &self,
+        lattices: &[Lattice],
+        mut provider: FeatureProvider,
+    ) -> (RawModel, TrainingStats) {
         let mut unigram_weight_indices = vec![];
         let mut bigram_weight_indices = vec![];
         let mut weights_init = vec![];
@@ -762,7 +808,7 @@ impl Trainer {
             );
         }
 
-        let weights = lbfgs::optimize(
+        let (weights, iterations) = lbfgs::optimize(
             lattices,
             &provider,
             &unigram_weight_indices,
@@ -833,12 +879,13 @@ impl Trainer {
             }
         }
 
-        RawModel::new(
+        let model = RawModel::new(
             new_weights,
             new_unigram_weight_indices,
             new_bigram_weight_indices,
             provider,
-        )
+        );
+        (model, TrainingStats { iterations })
     }
 }
 
@@ -1272,5 +1319,23 @@ mod tests {
             "vector fold: {}",
             acc[0]
         );
+    }
+
+    // The statistics count the iterations that ran, not the cap (#1169).
+    #[test]
+    fn train_with_stats_reports_the_iterations_that_ran() {
+        let lattices = test_utils::generate_test_lattices(24);
+        let iterations = |max_iter| {
+            let trainer = Trainer::new().max_iter(max_iter).unwrap();
+            let (_, stats) =
+                trainer.train_with_stats(&lattices, test_utils::generate_test_feature_provider());
+            stats.iterations
+        };
+
+        // The optimizer stops before a high cap...
+        let high = iterations(10_000);
+        assert!((1..10_000).contains(&high), "{high} iterations");
+        // ...and at a low one.
+        assert_eq!(iterations(1), 1);
     }
 }

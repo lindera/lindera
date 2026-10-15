@@ -68,12 +68,16 @@ Lindera\Trainer::export(
 | `$output` | `string` | 必須 | 辞書ソースファイルの出力ディレクトリ |
 | `$metadata` | `string` または `null` | `null` | ベースとなる metadata.json ファイルのパス |
 
-エクスポートにより、出力ディレクトリに以下のファイルが作成されます：
+エクスポートにより、出力ディレクトリに以下のファイルが作成されます。[`lindera export`](../lindera-cli/commands.md#export) が作成するファイルと同じです：
 
 - `lex.csv` -- 学習済みコスト付きのレキシコンエントリー
 - `matrix.def` -- 連接コスト行列
 - `unk.def` -- 未知語定義
-- `char.def` -- 文字カテゴリ定義
+- `char.def` -- 文字カテゴリ定義（学習済みモデルからコピー）
+- `feature.def` -- 素性テンプレート定義（学習済みモデルからコピー）
+- `rewrite.def` -- 素性リライトルール（学習済みモデルからコピー）
+- `left-id.def` -- 左文脈IDから素性文字列へのマッピング
+- `right-id.def` -- 右文脈IDから素性文字列へのマッピング
 - `metadata.json` -- 更新されたメタデータ（`$metadata` パラメータ指定時）
 
 モデルファイルは、このバージョンの学習で作ったものである必要があります。それより前のバージョンで書かれたモデルファイル（7.0.0 より前に書かれたものはすべて該当）は拒否され、`Lindera\Trainer::export()` は学習のやり直しを求めるエラーで失敗します。そうしたモデルは `Lindera\Trainer::train()` で学習し直してください。

@@ -134,6 +134,11 @@ pub struct ExportOptions {
 
 /// Exports dictionary files from a trained model.
 ///
+/// Writes the files `lindera export` writes, with the same method
+/// (`SerializableModel::export`): `lex.csv`, `matrix.def`, `unk.def`,
+/// `char.def`, `feature.def`, `rewrite.def`, `left-id.def` and
+/// `right-id.def`, and `metadata.json` when `options.metadata` is given.
+///
 /// # Arguments
 ///
 /// * `options` - Export options containing file paths.
@@ -141,11 +146,20 @@ pub struct ExportOptions {
 pub fn export_model(options: ExportOptions) -> napi::Result<()> {
     let model_path = Path::new(&options.model);
     let output_path = Path::new(&options.output);
+    let metadata_path = options.metadata.as_deref().map(Path::new);
 
     if !model_path.exists() {
         return Err(napi::Error::new(
             napi::Status::InvalidArg,
             format!("Model file does not exist: {}", model_path.display()),
+        ));
+    }
+    if let Some(metadata_path) = metadata_path
+        && !metadata_path.exists()
+    {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("Metadata file does not exist: {}", metadata_path.display()),
         ));
     }
 
@@ -156,107 +170,12 @@ pub fn export_model(options: ExportOptions) -> napi::Result<()> {
     let serializable_model: SerializableModel = Model::read_model(model_file)
         .map_err(|e| to_napi_error(format!("Failed to load model: {e}")))?;
 
-    // Create output directory
-    std::fs::create_dir_all(output_path)
-        .map_err(|e| to_napi_error(format!("Failed to create output directory: {e}")))?;
-
     // Export dictionary files
-    let lexicon_path = output_path.join("lex.csv");
-    let connector_path = output_path.join("matrix.def");
-    let unk_path = output_path.join("unk.def");
-    let char_def_path = output_path.join("char.def");
+    let files_created = serializable_model
+        .export(output_path, metadata_path)
+        .map_err(|e| to_napi_error(format!("Failed to export dictionary files: {e}")))?;
 
-    // Write lexicon file
-    let mut lexicon_file = File::create(&lexicon_path)
-        .map_err(|e| to_napi_error(format!("Failed to create lexicon file: {e}")))?;
-    serializable_model
-        .write_lexicon(&mut lexicon_file)
-        .map_err(|e| to_napi_error(format!("Failed to write lexicon: {e}")))?;
-
-    // Write connection matrix
-    let mut connector_file = File::create(&connector_path)
-        .map_err(|e| to_napi_error(format!("Failed to create connection matrix file: {e}")))?;
-    serializable_model
-        .write_connection_costs(&mut connector_file)
-        .map_err(|e| to_napi_error(format!("Failed to write connection costs: {e}")))?;
-
-    // Write unknown word definitions
-    let mut unk_file = File::create(&unk_path)
-        .map_err(|e| to_napi_error(format!("Failed to create unknown word file: {e}")))?;
-    serializable_model
-        .write_unknown_dictionary(&mut unk_file)
-        .map_err(|e| to_napi_error(format!("Failed to write unknown dictionary: {e}")))?;
-
-    // Write character definition file
-    let mut char_def_file = File::create(&char_def_path)
-        .map_err(|e| to_napi_error(format!("Failed to create character definition file: {e}")))?;
-
-    use std::io::Write;
-    writeln!(
-        char_def_file,
-        "# Character definition file generated from trained model"
-    )
-    .map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-    writeln!(char_def_file, "# Format: CATEGORY_NAME invoke group length")
-        .map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-    writeln!(char_def_file, "DEFAULT 0 1 0")
-        .map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-    writeln!(char_def_file, "HIRAGANA 1 1 0")
-        .map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-    writeln!(char_def_file, "KATAKANA 1 1 0")
-        .map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-    writeln!(char_def_file, "KANJI 0 0 2")
-        .map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-    writeln!(char_def_file, "ALPHA 1 1 0")
-        .map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-    writeln!(char_def_file, "NUMERIC 1 1 0")
-        .map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-    writeln!(char_def_file).map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-
-    writeln!(char_def_file, "# Character mappings")
-        .map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-    writeln!(char_def_file, "0x3041..0x3096 HIRAGANA  # Hiragana")
-        .map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-    writeln!(char_def_file, "0x30A1..0x30F6 KATAKANA  # Katakana")
-        .map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-    writeln!(
-        char_def_file,
-        "0x4E00..0x9FAF KANJI     # CJK Unified Ideographs"
-    )
-    .map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-    writeln!(char_def_file, "0x0030..0x0039 NUMERIC   # ASCII Digits")
-        .map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-    writeln!(char_def_file, "0x0041..0x005A ALPHA     # ASCII Uppercase")
-        .map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-    writeln!(char_def_file, "0x0061..0x007A ALPHA     # ASCII Lowercase")
-        .map_err(|e| to_napi_error(format!("Failed to write char.def: {e}")))?;
-
-    let mut files_created = vec![
-        lexicon_path.clone(),
-        connector_path.clone(),
-        unk_path.clone(),
-        char_def_path.clone(),
-    ];
-
-    // Handle metadata.json update if provided
-    if let Some(metadata_str) = &options.metadata {
-        let metadata_path = Path::new(metadata_str);
-        if !metadata_path.exists() {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
-                format!("Metadata file does not exist: {}", metadata_path.display()),
-            ));
-        }
-
-        let output_metadata_path = output_path.join("metadata.json");
-        let mut metadata_file = File::create(&output_metadata_path)
-            .map_err(|e| to_napi_error(format!("Failed to create metadata file: {e}")))?;
-
-        serializable_model
-            .update_metadata_json(metadata_path, &mut metadata_file)
-            .map_err(|e| to_napi_error(format!("Failed to update metadata: {e}")))?;
-
-        files_created.push(output_metadata_path);
+    if metadata_path.is_some() {
         println!("Updated metadata.json with trained model values");
     }
 

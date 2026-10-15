@@ -554,13 +554,12 @@ impl FeatureExtractor {
     }
 }
 
-// These tests pin the behavior that the exported `left-id.def` / `right-id.def`
-// depend on: which feature strings are generated, in what order, and how ids
-// are minted. Feature ids are assigned sequentially in template iteration
-// order and written out verbatim by `Model::write_left_id_def` /
-// `write_right_id_def`, so an ordering or off-by-one slip would silently
-// change a trained dictionary without failing anything. There was no coverage
-// here before (#965).
+// These tests pin which feature strings are generated, in what order, and how
+// ids are minted. Feature ids are assigned sequentially in template iteration
+// order; the trained weights are indexed by them and
+// `Model::write_bigram_details` names them, so an ordering or off-by-one slip
+// would silently change what is trained or written without failing anything.
+// There was no coverage here before (#965).
 #[cfg(test)]
 mod tests {
     use super::*;

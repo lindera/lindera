@@ -7,6 +7,19 @@ const path = require("path");
 const lindera = require("../index.js");
 const hasTrainFeature = typeof lindera.train === "function";
 
+// The files `lindera export` writes besides metadata.json, which
+// exportModel() writes too (#1169).
+const EXPORTED_FILES = [
+  "lex.csv",
+  "matrix.def",
+  "unk.def",
+  "char.def",
+  "feature.def",
+  "rewrite.def",
+  "left-id.def",
+  "right-id.def",
+];
+
 describe(
   "Trainer",
   { skip: !hasTrainFeature && "train feature not available" },
@@ -179,14 +192,40 @@ describe(
           output: exportDir,
         });
 
-        // Verify exported files
-        assert.ok(fs.existsSync(path.join(exportDir, "lex.csv")));
-        assert.ok(fs.existsSync(path.join(exportDir, "matrix.def")));
-        assert.ok(fs.existsSync(path.join(exportDir, "unk.def")));
-        assert.ok(fs.existsSync(path.join(exportDir, "char.def")));
+        // Verify exported files: those of `lindera export`, none empty
+        assert.deepStrictEqual(
+          fs.readdirSync(exportDir).sort(),
+          [...EXPORTED_FILES].sort(),
+        );
+        for (const name of EXPORTED_FILES) {
+          assert.ok(fs.statSync(path.join(exportDir, name)).size > 0, name);
+        }
 
-        assert.ok(fs.statSync(path.join(exportDir, "lex.csv")).size > 0);
-        assert.ok(fs.statSync(path.join(exportDir, "matrix.def")).size > 0);
+        // The definition files are those the model was trained with
+        for (const name of ["char.def", "feature.def", "rewrite.def"]) {
+          assert.deepStrictEqual(
+            fs.readFileSync(path.join(exportDir, name)),
+            fs.readFileSync(path.join(tmpdir, name)),
+            name,
+          );
+        }
+
+        // With a base metadata.json, metadata.json too
+        const metadataFile = path.join(tmpdir, "metadata.json");
+        fs.writeFileSync(
+          metadataFile,
+          JSON.stringify({ name: "test-dict", version: "1.0.0", encoding: "utf-8" }),
+        );
+        const exportDirWithMetadata = path.join(tmpdir, "exported-with-metadata");
+        lindera.exportModel({
+          model: modelFile,
+          output: exportDirWithMetadata,
+          metadata: metadataFile,
+        });
+        assert.deepStrictEqual(
+          fs.readdirSync(exportDirWithMetadata).sort(),
+          [...EXPORTED_FILES, "metadata.json"].sort(),
+        );
       } finally {
         fs.rmSync(tmpdir, { recursive: true, force: true });
       }

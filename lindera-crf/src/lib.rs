@@ -165,4 +165,4 @@ pub use lattice::{Edge, Lattice};
 pub use model::{MergedFeatureSet, MergedModel, Model, RawModel};
 
 #[cfg(feature = "train")]
-pub use trainer::{Regularization, Trainer};
+pub use trainer::{Regularization, Trainer, TrainingStats};

@@ -64,15 +64,16 @@ Once the lattices are built, it prints a `Lattice statistics:` line with the num
 | `write_bigram_details<L: Write, R: Write, C: Write>(&self, left_wtr, right_wtr, cost_wtr) -> Result<()>` | Writes three diagnostic files describing bigram features and costs (left feature list, right feature list, and one line per raw bigram feature pair with `BOS`/`EOS` for id 0 and names from the feature extractor). All three files are byte-reproducible for the same model. |
 | `evaluate(&self, test_lattices: &[lindera_crf::Lattice]) -> f64` | Returns the mean absolute value of the raw model's feature weights as a simple evaluation score. The `test_lattices` argument is currently unused; it does not yet score the model against held-out data. |
 | `write_dictionary_buffers(&self, lexicon, connector, unk_handler, user_lexicon: &mut Vec<u8>) -> Result<()>` | Serializes labels, feature weights, user-entry count, and surfaces into four raw `rkyv` byte buffers -- a lower-level alternative to the CSV-oriented `write_dictionary`. |
-| `write_left_id_def<W: Write>(&self, writer: &mut W) -> Result<()>` | Writes `left-id.def`, mapping each learned left-context ID to its feature string, with `0 BOS/EOS` as the first line. |
-| `write_right_id_def<W: Write>(&self, writer: &mut W) -> Result<()>` | Writes `right-id.def`, mapping each learned right-context ID to its feature string, with `0 BOS/EOS` as the first line. |
+| `write_left_id_def<W: Write>(&self, writer: &mut W) -> Result<()>` | Writes `left-id.def`: `0 BOS/EOS`, then each left context ID of the merged model -- the IDs that `write_dictionary` writes to `lex.csv`, `unk.def` and `matrix.def` -- with the left feature of the first label with that ID. It is the file that `SerializableModel::write_left_id_def` writes for the model that `write_model` writes: both use one mapping. |
+| `write_right_id_def<W: Write>(&self, writer: &mut W) -> Result<()>` | Writes `right-id.def`: `0 BOS/EOS`, then each right context ID of the merged model with the right feature of the first label with that ID, as `write_left_id_def` does for the left IDs. It is the file that `SerializableModel::write_right_id_def` writes for the model that `write_model` writes. |
 
 #### `SerializableModel` public methods
 
-Available on the value returned by `Model::read_model`, for re-exporting dictionary source files from a previously trained and serialized model (used by the `lindera export` CLI command):
+Available on the value returned by `Model::read_model`, for re-exporting dictionary source files from a previously trained and serialized model (used by the `lindera export` CLI command and the export functions of the Python, Node.js, Ruby and PHP bindings):
 
 | Method | Description |
 | --- | --- |
+| `export(&self, output_dir: &Path, base_metadata: Option<&Path>) -> Result<Vec<PathBuf>>` | Writes the dictionary source files to `output_dir`, which it creates when it does not exist, with the methods below: `lex.csv`, `matrix.def`, `unk.def`, `char.def`, `feature.def`, `rewrite.def`, `left-id.def` and `right-id.def`, and `metadata.json` (`update_metadata_json`) when `base_metadata` is given. Returns the paths written, in that order. `lindera export` and the bindings' export functions call it, so they write the same files. `metadata.json` is made first, so a base `metadata.json` that cannot be read fails with no file written; an error names the file. |
 | `write_lexicon<W: Write>(&self, writer: &mut W) -> Result<()>` | Writes `lex.csv`-style entries from the stored `feature_sets`, `labels`, and `pos_info`, skipping the `unk.def` entry labels that follow the seed rows. |
 | `write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()>` | Writes the dense `matrix.def`-style connection cost matrix from the stored `connection_matrix`, `max_left_id`, and `max_right_id`: `max_right_id + 1` rows by `max_left_id + 1` columns, which cover every context ID of the model even when no bigram weight survived training. |
 | `write_unknown_dictionary<W: Write>(&self, writer: &mut W) -> Result<()>` | Writes one `unk.def` line for each stored entry of `unk_entries`, in file order, with its category name, learned connection IDs and cost, and feature string. |
@@ -85,6 +86,6 @@ Available on the value returned by `Model::read_model`, for re-exporting diction
 
 #### `ModelMetadata` and `FeatureSetInfo`
 
-`ModelMetadata` records summary information about a training run: `version` (the model format version, `MODEL_FORMAT_VERSION`), `regularization` (the cost coefficient used), `iterations` (max iterations configured), `feature_count`, and `label_count`. It is embedded in `SerializableModel::metadata`.
+`ModelMetadata` records summary information about a training run: `version` (the model format version, `MODEL_FORMAT_VERSION`), `regularization` (the cost coefficient used), `iterations` (the number of L-BFGS iterations that ran, at most the maximum set with `Trainer::max_iter`; exported as `model_info.training_iterations`), `feature_count`, and `label_count`. It is embedded in `SerializableModel::metadata`.
 
 `FeatureSetInfo` holds the per-label connection information extracted from the merged CRF model after training: `left_id`, `right_id`, and `weight`. `SerializableModel::feature_sets` stores one entry per CRF label: one for each entry of `labels`, in the same order, then one for each virtual label, which is not exported.

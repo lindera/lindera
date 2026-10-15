@@ -433,9 +433,9 @@ impl Trainer {
     pub fn train(mut self, corpus: Corpus) -> Result<Model> {
         let lattices = self.build_lattices_from_corpus(&corpus)?;
         let labels = self.extract_labels();
-        let crf_model = self.train_crf_model(lattices)?;
+        let (crf_model, iterations) = self.train_crf_model(lattices)?;
 
-        self.create_final_model(crf_model, labels, corpus)
+        self.create_final_model(crf_model, labels, corpus, iterations)
     }
 
     /// Build feature lattices from the training corpus
@@ -469,10 +469,18 @@ impl Trainer {
     }
 
     /// Configure and execute CRF training
+    ///
+    /// # Arguments
+    ///
+    /// * `lattices` - The training lattices.
+    ///
+    /// # Returns
+    ///
+    /// The trained CRF model and the number of L-BFGS iterations that ran.
     fn train_crf_model(
         &mut self,
         lattices: Vec<lindera_crf::Lattice>,
-    ) -> Result<lindera_crf::RawModel> {
+    ) -> Result<(lindera_crf::RawModel, u64)> {
         log_info!("Starting CRF training with {} lattices...", lattices.len());
 
         // Determine regularization type
@@ -513,11 +521,20 @@ impl Trainer {
     }
 
     /// Execute the actual CRF training with detailed logging
+    ///
+    /// # Arguments
+    ///
+    /// * `trainer` - The configured CRF trainer.
+    /// * `lattices` - The training lattices.
+    ///
+    /// # Returns
+    ///
+    /// The trained CRF model and the number of L-BFGS iterations that ran.
     fn execute_training(
         &mut self,
         trainer: lindera_crf::Trainer,
         lattices: Vec<lindera_crf::Lattice>,
-    ) -> Result<lindera_crf::RawModel> {
+    ) -> Result<(lindera_crf::RawModel, u64)> {
         println!("L-BFGS optimization starting...");
         println!(
             "Note: This may take several minutes for large datasets. Progress will be shown by L-BFGS iterations above."
@@ -528,7 +545,7 @@ impl Trainer {
 
         // Training with provider (consumes provider as per CRF training requirements)
         let provider = std::mem::take(&mut self.provider);
-        let model = trainer.train(&lattices, provider);
+        let (model, stats) = trainer.train_with_stats(&lattices, provider);
         let training_duration = start_time.elapsed();
 
         self.log_training_results(&model);
@@ -537,7 +554,7 @@ impl Trainer {
             training_duration.as_secs_f64()
         );
 
-        Ok(model)
+        Ok((model, stats.iterations))
     }
 
     /// Log detailed training results for debugging
@@ -576,11 +593,23 @@ impl Trainer {
     }
 
     /// Create the final trained model from CRF results
+    ///
+    /// # Arguments
+    ///
+    /// * `crf_model` - The trained CRF model.
+    /// * `labels` - The exported labels.
+    /// * `_corpus` - The training corpus.
+    /// * `iterations` - The number of L-BFGS iterations that ran.
+    ///
+    /// # Returns
+    ///
+    /// The trained model.
     fn create_final_model(
         mut self,
         crf_model: lindera_crf::RawModel,
         labels: Vec<String>,
         _corpus: Corpus,
+        iterations: u64,
     ) -> Result<Model> {
         // Remove unused features from feature extractor to optimize model size
         self.remove_unused_features(&crf_model);
@@ -596,7 +625,7 @@ impl Trainer {
             labels,
             self.virtual_features,
             self.regularization_cost,
-            self.max_iter,
+            iterations,
         ))
     }
 
@@ -2226,28 +2255,18 @@ mod feature_column_tests {
     fn user_lexicon_features_read_a_quoted_column_as_one_column() {
         // The bigram templates of the fixtures are `%L[0]` and `%R[0]`, and
         // no rule of their rewrite.def matches the entry, so its left and
-        // right features are its feature, and `write_left_id_def` and
-        // `write_right_id_def` list its first column.
+        // right features are its first column, which reading the entry
+        // registers with the feature extractor.
         let mut model = crate::test_fixtures::train_wide_model(1);
         if let Err(err) = model.read_user_lexicon(Cursor::new("X,0,0,0,\"名詞,固有\",*\n")) {
             panic!("user lexicon: {err}");
         }
-        let mut left_ids = Vec::new();
-        let mut right_ids = Vec::new();
-        if let Err(err) = model.write_left_id_def(&mut left_ids) {
-            panic!("left-id.def: {err}");
-        }
-        if let Err(err) = model.write_right_id_def(&mut right_ids) {
-            panic!("right-id.def: {err}");
-        }
 
-        for ids in [left_ids, right_ids] {
-            let ids = String::from_utf8_lossy(&ids);
-            assert!(
-                ids.lines().any(|line| line.ends_with(" 名詞,固有")),
-                "{ids}"
-            );
-            assert!(!ids.contains('"'), "{ids}");
+        let extractor = &model.config.feature_extractor;
+        for ids in [&extractor.left_feature_ids, &extractor.right_feature_ids] {
+            let features = interned(ids);
+            assert!(features.contains(&"名詞,固有"), "{features:?}");
+            assert!(features.iter().all(|f| !f.contains('"')), "{features:?}");
         }
     }
 
@@ -2585,5 +2604,183 @@ mod user_lexicon_cost_tests {
             // Not even the entry before `語B` is added.
             assert!(model.user_entries.is_empty(), "{fields}");
         }
+    }
+}
+
+/// What `lindera export` and the bindings' export functions write agrees
+/// with the model (#1169).
+#[cfg(test)]
+mod export_consistency_tests {
+    use std::io::Cursor;
+
+    use crate::model::{Model, SerializableModel};
+    use crate::test_fixtures::{fixtures, wide_seed_and_corpus};
+    use crate::{Corpus, Trainer, TrainerConfig};
+
+    /// Trains the tiny fixture with at most `max_iter` iterations.
+    fn train_fixture(max_iter: u64) -> Model {
+        let (seed, char_def, unk_def, feature_def, rewrite_def, corpus) = fixtures();
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+        Trainer::new(config)
+            .unwrap()
+            .regularization_cost(0.01)
+            .max_iter(max_iter)
+            .num_threads(1)
+            .train(Corpus::from_reader(Cursor::new(corpus)).unwrap())
+            .unwrap()
+    }
+
+    /// Writes the model and reads it back, as `lindera export` reads
+    /// `model.dat`.
+    fn read_back(model: &Model) -> SerializableModel {
+        let mut dat = Vec::new();
+        model.write_model(&mut dat).unwrap();
+        Model::read_model(dat.as_slice()).unwrap()
+    }
+
+    #[test]
+    fn the_model_records_the_iterations_that_ran() {
+        // The fixture converges long before a high cap...
+        let converged = read_back(&train_fixture(1000));
+        let iterations = converged.metadata.iterations;
+        assert!((1..1000).contains(&iterations), "{iterations} iterations");
+        // ...and stops at a low one.
+        assert_eq!(read_back(&train_fixture(2)).metadata.iterations, 2);
+
+        // `metadata.json` reports the same number.
+        let dir = tempfile::tempdir().unwrap();
+        let base = dir.path().join("metadata.json");
+        std::fs::write(&base, "{}").unwrap();
+        let mut json = Vec::new();
+        converged.update_metadata_json(&base, &mut json).unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&json).unwrap();
+        assert_eq!(json["model_info"]["training_iterations"], iterations);
+    }
+
+    /// The names of the files in a directory, sorted.
+    fn file_names(dir: &std::path::Path) -> Vec<String> {
+        let mut names: Vec<String> = std::fs::read_dir(dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+            .collect();
+        names.sort();
+        names
+    }
+
+    #[test]
+    fn export_writes_what_each_writer_writes() {
+        let model = read_back(&train_fixture(5));
+        let written = |write: &dyn Fn(&mut Vec<u8>) -> anyhow::Result<()>| {
+            let mut buf = Vec::new();
+            write(&mut buf).unwrap();
+            buf
+        };
+        let mut expected = vec![
+            ("lex.csv", written(&|w| model.write_lexicon(w))),
+            ("matrix.def", written(&|w| model.write_connection_costs(w))),
+            ("unk.def", written(&|w| model.write_unknown_dictionary(w))),
+            ("char.def", written(&|w| model.write_char_def(w))),
+            ("feature.def", written(&|w| model.write_feature_def(w))),
+            ("rewrite.def", written(&|w| model.write_rewrite_def(w))),
+            ("left-id.def", written(&|w| model.write_left_id_def(w))),
+            ("right-id.def", written(&|w| model.write_right_id_def(w))),
+        ];
+        // The definition files are those the model was trained with.
+        let (_, char_def, _, feature_def, rewrite_def, _) = fixtures();
+        assert_eq!(expected[3].1, char_def.as_bytes());
+        assert_eq!(expected[4].1, feature_def.as_bytes());
+        assert_eq!(expected[5].1, rewrite_def.as_bytes());
+
+        let dir = tempfile::tempdir().unwrap();
+        let assert_exported = |out: &std::path::Path,
+                               paths: Vec<std::path::PathBuf>,
+                               expected: &[(&str, Vec<u8>)]| {
+            let names: Vec<&str> = expected.iter().map(|(name, _)| *name).collect();
+            let expected_paths: Vec<_> = names.iter().map(|name| out.join(name)).collect();
+            assert_eq!(paths, expected_paths);
+            let mut sorted: Vec<String> = names.iter().map(|name| name.to_string()).collect();
+            sorted.sort();
+            assert_eq!(file_names(out), sorted);
+            for (name, bytes) in expected {
+                assert_eq!(&std::fs::read(out.join(name)).unwrap(), bytes, "{name}");
+            }
+        };
+
+        // Without a base `metadata.json`: the eight dictionary source files.
+        let out = dir.path().join("without_metadata");
+        let paths = model.export(&out, None).unwrap();
+        assert_exported(&out, paths, &expected);
+
+        // With one: `metadata.json` too.
+        let base = dir.path().join("base.json");
+        std::fs::write(&base, r#"{"name": "test"}"#).unwrap();
+        let mut metadata = Vec::new();
+        model.update_metadata_json(&base, &mut metadata).unwrap();
+        expected.push(("metadata.json", metadata));
+        let out = dir.path().join("with_metadata");
+        let paths = model.export(&out, Some(&base)).unwrap();
+        assert_exported(&out, paths, &expected);
+    }
+
+    #[test]
+    fn export_writes_nothing_when_the_base_metadata_cannot_be_read() {
+        let model = read_back(&train_fixture(5));
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("out");
+        let missing = dir.path().join("missing.json");
+
+        let err = model.export(&out, Some(&missing)).unwrap_err();
+        assert!(err.to_string().contains("missing.json"), "{err}");
+        assert!(!out.exists(), "{:?}", file_names(&out));
+    }
+
+    /// Trains the wide fixture with L2 regularization, under which its
+    /// labels keep several context ids (the L1 default merges most of them).
+    fn train_wide_l2_model() -> Model {
+        let (_, char_def, unk_def, feature_def, rewrite_def, _) = fixtures();
+        let (seed, corpus) = wide_seed_and_corpus();
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed.as_bytes()),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+        Trainer::new(config)
+            .unwrap()
+            .regularization_cost(0.01)
+            .use_l2(true)
+            .max_iter(20)
+            .num_threads(1)
+            .train(Corpus::from_reader(Cursor::new(corpus.as_bytes())).unwrap())
+            .unwrap()
+    }
+
+    #[test]
+    fn model_id_defs_are_those_of_the_exported_model() {
+        let model = train_wide_l2_model();
+        let serializable = read_back(&model);
+        let written = |write: &dyn Fn(&mut Vec<u8>) -> anyhow::Result<()>| {
+            let mut buf = Vec::new();
+            write(&mut buf).unwrap();
+            String::from_utf8(buf).unwrap()
+        };
+
+        let left = written(&|w| model.write_left_id_def(w));
+        let right = written(&|w| model.write_right_id_def(w));
+        assert_eq!(left, written(&|w| serializable.write_left_id_def(w)));
+        assert_eq!(right, written(&|w| serializable.write_right_id_def(w)));
+        // `0 BOS/EOS` and at least two context ids, so that the files tell
+        // the ids apart.
+        assert!(left.lines().count() > 2, "{left}");
+        assert!(right.lines().count() > 2, "{right}");
     }
 }

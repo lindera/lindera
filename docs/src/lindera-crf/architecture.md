@@ -30,7 +30,7 @@ Lattice structure with variable-length edges for sequence labeling. `Edge` repre
 
 ### Trainer
 
-Trains a CRF model using L-BFGS optimization with configurable regularization. The trainer accepts labeled lattice examples, computes gradients via the forward-backward algorithm, and iteratively updates model weights.
+Trains a CRF model using L-BFGS optimization with configurable regularization. The trainer accepts labeled lattice examples, computes gradients via the forward-backward algorithm, and iteratively updates model weights. `Trainer::train` returns the trained `RawModel`; `Trainer::train_with_stats` also returns a `TrainingStats` with the number of iterations that ran, which is the maximum set with `Trainer::max_iter` when that stopped training, and fewer when the optimizer stopped earlier, for example because it converged.
 
 ### Regularization
 

@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
-use std::io::{Read, Write};
+use std::fs::File;
+use std::io::{BufWriter, Read, Write};
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
@@ -199,13 +201,23 @@ pub struct SerializableModel {
     pub right_id_map: Vec<(u32, String)>,
 }
 
+/// Metadata of a trained model, stored in `model.dat`.
 #[derive(Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
 
 pub struct ModelMetadata {
+    /// The model format version: [`MODEL_FORMAT_VERSION`] for a model that
+    /// this version writes.
     pub version: String,
+    /// The regularization coefficient used in training.
     pub regularization: f64,
+    /// The number of L-BFGS iterations that ran: at most the maximum set with
+    /// [`Trainer::max_iter`](crate::Trainer::max_iter), fewer when training
+    /// stopped earlier (#1169). Exported as `model_info.training_iterations`.
     pub iterations: u64,
+    /// The number of seed lexicon rows, each of which has a feature weight.
     pub feature_count: usize,
+    /// The number of exported labels: the seed lexicon rows, then the
+    /// `unk.def` entries.
     pub label_count: usize,
 }
 
@@ -306,7 +318,8 @@ pub struct Model {
     pub(crate) user_entries: Vec<UserEntry>,
     pub(crate) merged_model: Option<lindera_crf::MergedModel>,
     pub(crate) regularization_cost: f64,
-    pub(crate) max_iterations: u64,
+    /// The number of L-BFGS iterations that ran.
+    pub(crate) iterations: u64,
 }
 
 impl Model {
@@ -322,7 +335,7 @@ impl Model {
     /// * `virtual_features` - The feature strings of the virtual labels,
     ///   which follow the exported labels in `raw_model`.
     /// * `regularization_cost` - The regularization coefficient used.
-    /// * `max_iterations` - The iteration limit used.
+    /// * `iterations` - The number of L-BFGS iterations that ran.
     ///
     /// # Returns
     ///
@@ -334,7 +347,7 @@ impl Model {
         labels: Vec<String>,
         virtual_features: Vec<String>,
         regularization_cost: f64,
-        max_iterations: u64,
+        iterations: u64,
     ) -> Self {
         Self {
             raw_model,
@@ -345,7 +358,7 @@ impl Model {
             user_entries: Vec::new(),
             merged_model: None,
             regularization_cost,
-            max_iterations,
+            iterations,
         }
     }
 
@@ -421,8 +434,7 @@ impl Model {
             // The features of a seed row with this feature and first character
             // category, so the weight is the one `lex.csv` gives that row. They
             // are made for every entry, as before #1198, which registers them
-            // with the feature extractor whose features `write_left_id_def`
-            // and `write_right_id_def` list.
+            // with the feature extractor.
             let category = self.config.surface_category(surface);
             let feature_set = crate::label_feature_set(
                 &self.config.dictionary_rewriter,
@@ -489,58 +501,9 @@ impl Model {
             })
             .collect();
 
-        // Build left/right ID maps from merged model's connection IDs
-        // before feature_sets is moved into SerializableModel.
-        // Use feature strings (POS info), not surface forms. The labels are
-        // the seed rows, then the unk.def entries, then the virtual labels.
-        let features = &self.config.features;
-        let unk_entries = &self.config.unk_entries;
-        let unk_start_idx = self.config.surfaces.len();
-        let virtual_start_idx = unk_start_idx + unk_entries.len();
-
-        let get_feature_string = |i: usize| -> String {
-            if i < unk_start_idx {
-                features.get(i).cloned().unwrap_or_else(|| "*".to_string())
-            } else if i < virtual_start_idx {
-                unk_entries[i - unk_start_idx].1.clone()
-            } else {
-                self.virtual_features
-                    .get(i - virtual_start_idx)
-                    .cloned()
-                    .unwrap_or_else(|| "*".to_string())
-            }
-        };
-
-        let left_id_map = {
-            let mut id_to_feat: std::collections::HashMap<u32, String> =
-                std::collections::HashMap::new();
-            for (i, fs) in feature_sets.iter().enumerate() {
-                let lid = fs.left_id;
-                id_to_feat.entry(lid).or_insert_with(|| {
-                    let feat = get_feature_string(i);
-                    let (_, lfeature, _) = self.config.dictionary_rewriter.rewrite(&feat);
-                    lfeature
-                });
-            }
-            let mut entries: Vec<(u32, String)> = id_to_feat.into_iter().collect();
-            entries.sort_by_key(|&(id, _)| id);
-            entries
-        };
-        let right_id_map = {
-            let mut id_to_feat: std::collections::HashMap<u32, String> =
-                std::collections::HashMap::new();
-            for (i, fs) in feature_sets.iter().enumerate() {
-                let rid = fs.right_id;
-                id_to_feat.entry(rid).or_insert_with(|| {
-                    let feat = get_feature_string(i);
-                    let (_, _, rfeature) = self.config.dictionary_rewriter.rewrite(&feat);
-                    rfeature
-                });
-            }
-            let mut entries: Vec<(u32, String)> = id_to_feat.into_iter().collect();
-            entries.sort_by_key(|&(id, _)| id);
-            entries
-        };
+        // The context id maps of left-id.def and right-id.def, which
+        // `Model::write_left_id_def` and `write_right_id_def` make the same way.
+        let (left_id_map, right_id_map) = self.context_id_maps(&merged_model);
 
         let serializable_model = SerializableModel {
             feature_weights,
@@ -549,7 +512,7 @@ impl Model {
             metadata: ModelMetadata {
                 version: MODEL_FORMAT_VERSION.to_string(),
                 regularization: self.regularization_cost,
-                iterations: self.max_iterations,
+                iterations: self.iterations,
                 feature_count: self.feature_weights.len(),
                 label_count: self.labels.len(),
             },
@@ -1091,8 +1054,8 @@ impl Model {
         let merged_model = self.get_merged_model()?;
         let cost_factor = self.config.cost_factor;
 
-        // Real feature names, inverted from the extractor's string-to-id maps
-        // (the same inversion write_left_id_def uses): id -> feature string.
+        // Real feature names, inverted from the extractor's string-to-id maps:
+        // id -> feature string.
         let right_features: HashMap<u32, &str> = self
             .config
             .feature_extractor
@@ -1231,7 +1194,120 @@ impl Model {
     }
 }
 
+/// The context ids of `left-id.def` or `right-id.def`, in id order, each
+/// with its feature.
+type ContextIdMap = Vec<(u32, String)>;
+
+/// Writes `left-id.def` or `right-id.def`: `0 BOS/EOS`, then one
+/// `id feature` line for each context id of the map.
+///
+/// # Arguments
+///
+/// * `writer` - Write sink for the file.
+/// * `id_map` - The context ids, in id order, each with its feature.
+///
+/// # Returns
+///
+/// `Ok(())` on success.
+fn write_id_def<W: Write>(writer: &mut W, id_map: &[(u32, String)]) -> Result<()> {
+    writeln!(writer, "0 BOS/EOS")?;
+    for (id, feature) in id_map {
+        writeln!(writer, "{id} {feature}")?;
+    }
+    Ok(())
+}
+
+/// Writes the content of one file that [`SerializableModel::export`] writes.
+type ExportWriter<'a> = &'a dyn Fn(&mut BufWriter<File>) -> Result<()>;
+
+/// Creates a file and writes it through a buffer.
+///
+/// # Arguments
+///
+/// * `path` - The file to create, or to overwrite.
+/// * `write` - Writes the content.
+///
+/// # Returns
+///
+/// `Ok(())`, or an error that names the file when it cannot be created or
+/// written.
+fn write_file(path: &Path, write: impl FnOnce(&mut BufWriter<File>) -> Result<()>) -> Result<()> {
+    File::create(path)
+        .map_err(anyhow::Error::from)
+        .and_then(|file| {
+            let mut writer = BufWriter::new(file);
+            write(&mut writer)?;
+            writer.flush()?;
+            Ok(())
+        })
+        .map_err(|err| anyhow::anyhow!("failed to write {}: {err}", path.display()))
+}
+
 impl SerializableModel {
+    /// Writes the dictionary source files of the model to a directory:
+    /// what `lindera export` and the export functions of the Python,
+    /// Node.js, Ruby and PHP bindings write (#1169).
+    ///
+    /// The files are `lex.csv`, `matrix.def`, `unk.def`, `char.def`,
+    /// `feature.def`, `rewrite.def`, `left-id.def` and `right-id.def`, each
+    /// written by the method for it (such as
+    /// [`write_lexicon`](Self::write_lexicon)), and `metadata.json` when a
+    /// base `metadata.json` is given (see
+    /// [`update_metadata_json`](Self::update_metadata_json)). `char.def`,
+    /// `feature.def` and `rewrite.def` are those the model was trained with.
+    /// `metadata.json` is made before anything is written, so a base
+    /// `metadata.json` that cannot be read or parsed fails with no file
+    /// written. The directory is created when it does not exist, and its
+    /// files of these names are overwritten.
+    ///
+    /// # Arguments
+    ///
+    /// * `output_dir` - The directory to write the files to.
+    /// * `base_metadata` - The `metadata.json` to update with the values of
+    ///   the model, if any.
+    ///
+    /// # Returns
+    ///
+    /// The paths of the files written, in the order above, or an error that
+    /// names the file that could not be read, created or written.
+    pub fn export(&self, output_dir: &Path, base_metadata: Option<&Path>) -> Result<Vec<PathBuf>> {
+        let metadata = match base_metadata {
+            Some(path) => {
+                let mut json = Vec::new();
+                self.update_metadata_json(path, &mut json)
+                    .map_err(|err| anyhow::anyhow!("failed to update {}: {err}", path.display()))?;
+                Some(json)
+            }
+            None => None,
+        };
+
+        std::fs::create_dir_all(output_dir)
+            .map_err(|err| anyhow::anyhow!("failed to create {}: {err}", output_dir.display()))?;
+
+        let files: [(&str, ExportWriter); 8] = [
+            ("lex.csv", &|w| self.write_lexicon(w)),
+            ("matrix.def", &|w| self.write_connection_costs(w)),
+            ("unk.def", &|w| self.write_unknown_dictionary(w)),
+            ("char.def", &|w| self.write_char_def(w)),
+            ("feature.def", &|w| self.write_feature_def(w)),
+            ("rewrite.def", &|w| self.write_rewrite_def(w)),
+            ("left-id.def", &|w| self.write_left_id_def(w)),
+            ("right-id.def", &|w| self.write_right_id_def(w)),
+        ];
+        let mut written = Vec::with_capacity(files.len() + 1);
+        for (name, write) in files {
+            let path = output_dir.join(name);
+            write_file(&path, write)?;
+            written.push(path);
+        }
+        if let Some(json) = metadata {
+            let path = output_dir.join("metadata.json");
+            write_file(&path, |w| Ok(w.write_all(&json)?))?;
+            written.push(path);
+        }
+        Ok(written)
+    }
+
     /// Generate a default feature string with appropriate number of fields
     /// based on existing entries in the dictionary
     fn generate_default_features(&self) -> String {
@@ -1459,68 +1535,123 @@ impl SerializableModel {
         Ok(())
     }
 
-    /// Writes left-id.def: maps left context IDs to their feature strings.
+    /// Writes `left-id.def`: `0 BOS/EOS`, then each left context id with its
+    /// left feature, from `left_id_map`.
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `left-id.def`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
     pub fn write_left_id_def<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
-        writeln!(writer, "0 BOS/EOS")?;
-        for (id, feat_str) in &self.left_id_map {
-            writeln!(writer, "{id} {feat_str}")?;
-        }
-        Ok(())
+        write_id_def(writer, &self.left_id_map)
     }
 
-    /// Writes right-id.def: maps right context IDs to their feature strings.
+    /// Writes `right-id.def`: `0 BOS/EOS`, then each right context id with
+    /// its right feature, from `right_id_map`.
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `right-id.def`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
     pub fn write_right_id_def<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
-        writeln!(writer, "0 BOS/EOS")?;
-        for (id, feat_str) in &self.right_id_map {
-            writeln!(writer, "{id} {feat_str}")?;
-        }
-        Ok(())
+        write_id_def(writer, &self.right_id_map)
     }
 }
 
 impl Model {
-    /// Writes left-id.def: maps left context IDs to their feature strings.
+    /// The context id maps of `left-id.def` and `right-id.def`: each left and
+    /// each right context id of the merged model, in id order, with the left
+    /// or right feature that the rewrite rules make from the feature of the
+    /// first label with that id. The labels are the seed rows, then the
+    /// `unk.def` entries, then the virtual labels.
     ///
-    /// Format: `id feature_string` (one per line), with BOS/EOS at id=0.
-    pub fn write_left_id_def<W: Write>(&self, writer: &mut W) -> Result<()> {
-        // id=0 is reserved for BOS/EOS
-        writeln!(writer, "0 BOS/EOS")?;
+    /// # Arguments
+    ///
+    /// * `merged_model` - The merged model, whose feature sets give the
+    ///   context ids of the labels.
+    ///
+    /// # Returns
+    ///
+    /// The left and the right map, as `(id, feature)` pairs.
+    fn context_id_maps(
+        &self,
+        merged_model: &lindera_crf::MergedModel,
+    ) -> (ContextIdMap, ContextIdMap) {
+        let features = &self.config.features;
+        let unk_entries = &self.config.unk_entries;
+        let unk_start_idx = self.config.surfaces.len();
+        let virtual_start_idx = unk_start_idx + unk_entries.len();
+        let feature_string = |i: usize| -> String {
+            if i < unk_start_idx {
+                features.get(i).cloned().unwrap_or_else(|| "*".to_string())
+            } else if i < virtual_start_idx {
+                unk_entries[i - unk_start_idx].1.clone()
+            } else {
+                self.virtual_features
+                    .get(i - virtual_start_idx)
+                    .cloned()
+                    .unwrap_or_else(|| "*".to_string())
+            }
+        };
 
-        // Build reverse mapping: NonZeroU32 -> feature string
-        let left_ids = &self.config.feature_extractor.left_feature_ids;
-        let mut entries: Vec<(u32, &str)> = left_ids
-            .iter()
-            .map(|(feat_str, &id)| (id.get(), feat_str.as_str()))
-            .collect();
-        entries.sort_by_key(|&(id, _)| id);
-
-        for (id, feat_str) in entries {
-            writeln!(writer, "{id} {feat_str}")?;
+        let mut left = BTreeMap::new();
+        let mut right = BTreeMap::new();
+        for (i, feature_set) in merged_model.feature_sets.iter().enumerate() {
+            let left_id = feature_set.left_id.get();
+            let right_id = feature_set.right_id.get();
+            if left.contains_key(&left_id) && right.contains_key(&right_id) {
+                continue;
+            }
+            let (_, left_feature, right_feature) =
+                self.config.dictionary_rewriter.rewrite(&feature_string(i));
+            left.entry(left_id).or_insert(left_feature);
+            right.entry(right_id).or_insert(right_feature);
         }
-
-        Ok(())
+        (left.into_iter().collect(), right.into_iter().collect())
     }
 
-    /// Writes right-id.def: maps right context IDs to their feature strings.
+    /// Writes `left-id.def`: `0 BOS/EOS`, then each left context id of the
+    /// model with its left feature. These are the context ids that
+    /// [`write_dictionary`](Self::write_dictionary) writes to `lex.csv`,
+    /// `unk.def` and `matrix.def`, and the file is the one that
+    /// [`SerializableModel::write_left_id_def`] writes for the model that
+    /// [`write_model`](Self::write_model) writes (#1169).
     ///
-    /// Format: `id feature_string` (one per line), with BOS/EOS at id=0.
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `left-id.def`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
+    pub fn write_left_id_def<W: Write>(&self, writer: &mut W) -> Result<()> {
+        let merged_model = self.get_merged_model()?;
+        write_id_def(writer, &self.context_id_maps(&merged_model).0)
+    }
+
+    /// Writes `right-id.def`: `0 BOS/EOS`, then each right context id of the
+    /// model with its right feature. These are the context ids that
+    /// [`write_dictionary`](Self::write_dictionary) writes to `lex.csv`,
+    /// `unk.def` and `matrix.def`, and the file is the one that
+    /// [`SerializableModel::write_right_id_def`] writes for the model that
+    /// [`write_model`](Self::write_model) writes (#1169).
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write sink for `right-id.def`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success.
     pub fn write_right_id_def<W: Write>(&self, writer: &mut W) -> Result<()> {
-        // id=0 is reserved for BOS/EOS
-        writeln!(writer, "0 BOS/EOS")?;
-
-        // Build reverse mapping: NonZeroU32 -> feature string
-        let right_ids = &self.config.feature_extractor.right_feature_ids;
-        let mut entries: Vec<(u32, &str)> = right_ids
-            .iter()
-            .map(|(feat_str, &id)| (id.get(), feat_str.as_str()))
-            .collect();
-        entries.sort_by_key(|&(id, _)| id);
-
-        for (id, feat_str) in entries {
-            writeln!(writer, "{id} {feat_str}")?;
-        }
-
-        Ok(())
+        let merged_model = self.get_merged_model()?;
+        write_id_def(writer, &self.context_id_maps(&merged_model).1)
     }
 }
 
