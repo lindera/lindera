@@ -12,6 +12,7 @@ use ext_php_rs::prelude::*;
 use lindera::dictionary::Metadata;
 use lindera_binding::CoreMetadata;
 
+use crate::convert::Nullable;
 use crate::error::lindera_value_err;
 
 /// Dictionary metadata configuration.
@@ -30,7 +31,9 @@ pub struct PhpMetadata {
 impl PhpMetadata {
     /// Creates a new Metadata instance with optional parameters.
     ///
-    /// All parameters are optional and use sensible defaults if not provided.
+    /// All parameters are optional and use sensible defaults if not provided
+    /// or `null`. A value of another type throws instead of selecting the
+    /// default.
     ///
     /// # Arguments
     ///
@@ -48,25 +51,25 @@ impl PhpMetadata {
     /// A new Metadata instance.
     #[allow(clippy::too_many_arguments)]
     pub fn __construct(
-        name: Option<String>,
-        encoding: Option<String>,
-        default_word_cost: Option<i64>,
-        default_left_context_id: Option<i64>,
-        default_right_context_id: Option<i64>,
-        default_field_value: Option<String>,
-        flexible_csv: Option<bool>,
-        skip_invalid_cost_or_id: Option<bool>,
+        name: Nullable<String>,
+        encoding: Nullable<String>,
+        default_word_cost: Nullable<i64>,
+        default_left_context_id: Nullable<i64>,
+        default_right_context_id: Nullable<i64>,
+        default_field_value: Nullable<String>,
+        flexible_csv: Nullable<bool>,
+        skip_invalid_cost_or_id: Nullable<bool>,
     ) -> Self {
         Self {
             inner: CoreMetadata::new(
-                name,
-                encoding,
-                default_word_cost.map(|v| v as i16),
-                default_left_context_id.map(|v| v as u16),
-                default_right_context_id.map(|v| v as u16),
-                default_field_value,
-                flexible_csv,
-                skip_invalid_cost_or_id,
+                name.into_option(),
+                encoding.into_option(),
+                default_word_cost.into_option().map(|v| v as i16),
+                default_left_context_id.into_option().map(|v| v as u16),
+                default_right_context_id.into_option().map(|v| v as u16),
+                default_field_value.into_option(),
+                flexible_csv.into_option(),
+                skip_invalid_cost_or_id.into_option(),
                 None,
                 None,
             ),
@@ -79,7 +82,16 @@ impl PhpMetadata {
     ///
     /// A new default Metadata instance.
     pub fn create_default() -> Self {
-        Self::__construct(None, None, None, None, None, None, None, None)
+        Self::__construct(
+            None.into(),
+            None.into(),
+            None.into(),
+            None.into(),
+            None.into(),
+            None.into(),
+            None.into(),
+            None.into(),
+        )
     }
 
     /// Loads Metadata from a JSON file.
@@ -294,14 +306,14 @@ mod tests {
     #[test]
     fn test_phpmetadata_roundtrip() {
         let meta = PhpMetadata::__construct(
-            Some("test".to_string()),
-            Some("UTF-8".to_string()),
-            Some(-5000),
-            Some(100),
-            Some(200),
-            Some("N/A".to_string()),
-            Some(true),
-            Some(true),
+            Some("test".to_string()).into(),
+            Some("UTF-8".to_string()).into(),
+            Some(-5000).into(),
+            Some(100).into(),
+            Some(200).into(),
+            Some("N/A".to_string()).into(),
+            Some(true).into(),
+            Some(true).into(),
         );
         let lindera_meta: Metadata = meta.into();
         let roundtripped: PhpMetadata = lindera_meta.into();

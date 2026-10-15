@@ -14,6 +14,7 @@ use lindera::dictionary::{
     load_user_dictionary_for as lindera_load_user_dictionary_for,
 };
 
+use crate::convert::Nullable;
 use crate::error::lindera_value_err;
 use crate::metadata::PhpMetadata;
 
@@ -136,12 +137,14 @@ impl PhpDictionary {
     /// * `output_dir` - Path of the file to write the built user dictionary
     ///   to, not a directory despite its name. The user dictionary loaders
     ///   choose how to load a file by its extension, so end it with `.bin`.
-    /// * `metadata` - Optional metadata configuration.
+    /// * `metadata` - Optional metadata configuration. A value of another
+    ///   type than `Lindera\Metadata` or `null` throws instead of selecting
+    ///   the default metadata.
     pub fn build_user(
         _kind: String,
         input_file: String,
         output_dir: String,
-        metadata: Option<&PhpMetadata>,
+        metadata: Nullable<&PhpMetadata>,
     ) -> PhpResult<()> {
         let input_path = Path::new(&input_file);
         let output_path = Path::new(&output_dir);
@@ -152,7 +155,7 @@ impl PhpDictionary {
             )));
         }
 
-        let meta = match metadata {
+        let meta = match metadata.into_option() {
             Some(m) => {
                 let lindera_meta: Metadata = m.clone().into();
                 lindera_meta

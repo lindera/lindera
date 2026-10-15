@@ -14,7 +14,7 @@ use ext_php_rs::zend::ce;
 
 use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
-use crate::convert::{ConvertError, zval_to_value};
+use crate::convert::{ConvertError, Nullable, zval_to_value};
 use crate::dictionary::{PhpDictionary, PhpUserDictionary};
 use crate::error::lindera_value_err;
 use crate::token::PhpToken;
@@ -280,6 +280,9 @@ impl PhpTokenizer {
     ///   `TokenizerBuilder::setSpacePenalty()` accepts. `null` (the default)
     ///   keeps the rules the dictionary ships.
     ///
+    /// A value of another type for `mode` or `user_dictionary` throws instead
+    /// of selecting the default.
+    ///
     /// # Returns
     ///
     /// A new Tokenizer instance, or a `ValueError` for an invalid mode or
@@ -288,18 +291,18 @@ impl PhpTokenizer {
     /// connection matrix.
     pub fn __construct(
         dictionary: &PhpDictionary,
-        mode: Option<String>,
-        user_dictionary: Option<&PhpUserDictionary>,
+        mode: Nullable<String>,
+        user_dictionary: Nullable<&PhpUserDictionary>,
         space_penalty: Option<&Zval>,
     ) -> PhpResult<Self> {
-        let mode_str = mode.unwrap_or_else(|| "normal".to_string());
+        let mode_str = mode.into_option().unwrap_or_else(|| "normal".to_string());
         let space_penalty = match space_penalty {
             Some(value) => space_penalty_value(value)?,
             None => serde_json::Value::Null,
         };
 
         let dict = dictionary.inner.clone();
-        let user_dict = user_dictionary.map(|d| d.inner.clone());
+        let user_dict = user_dictionary.into_option().map(|d| d.inner.clone());
 
         let inner = CoreTokenizer::from_segmenter_with_space_penalty(
             &mode_str,
@@ -362,6 +365,9 @@ impl PhpTokenizer {
     /// * `unique` - If true, only return unique segmentations. Default: false.
     /// * `cost_threshold` - Optional cost threshold for filtering results.
     ///
+    /// A value of another type for `unique` or `cost_threshold` throws
+    /// instead of selecting the default.
+    ///
     /// # Returns
     ///
     /// A list of NbestResult entries.
@@ -369,13 +375,13 @@ impl PhpTokenizer {
         &self,
         text: String,
         n: i64,
-        unique: Option<bool>,
-        cost_threshold: Option<i64>,
+        unique: Nullable<bool>,
+        cost_threshold: Nullable<i64>,
     ) -> PhpResult<Vec<PhpNbestResult>> {
-        let unique_flag = unique.unwrap_or(false);
+        let unique_flag = unique.into_option().unwrap_or(false);
         let results = self
             .inner
-            .tokenize_nbest(&text, n as usize, unique_flag, cost_threshold)
+            .tokenize_nbest(&text, n as usize, unique_flag, cost_threshold.into_option())
             .map_err(lindera_value_err)?;
 
         let php_results: Vec<PhpNbestResult> = results

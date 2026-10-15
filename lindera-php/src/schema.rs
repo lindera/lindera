@@ -9,6 +9,7 @@ use ext_php_rs::prelude::*;
 use lindera::dictionary::{FieldDefinition, FieldType, Schema};
 use lindera_binding::{CoreFieldDefinition, CoreSchema};
 
+use crate::convert::Nullable;
 use crate::error::lindera_value_err;
 
 /// Field type in dictionary schema.
@@ -128,7 +129,8 @@ impl PhpFieldDefinition {
     /// * `index` - Field index.
     /// * `name` - Field name.
     /// * `field_type` - Field type string.
-    /// * `description` - Optional description.
+    /// * `description` - Optional description. A value of another type than
+    ///   `string` or `null` throws instead of leaving it out.
     ///
     /// # Returns
     ///
@@ -137,13 +139,13 @@ impl PhpFieldDefinition {
         index: i64,
         name: String,
         field_type: String,
-        description: Option<String>,
+        description: Nullable<String>,
     ) -> Self {
         Self {
             index: index as usize,
             name,
             field_type,
-            description,
+            description: description.into_option(),
         }
     }
 
