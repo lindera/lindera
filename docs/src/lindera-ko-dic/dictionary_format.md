@@ -31,7 +31,7 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 
 ## Left-space penalty
 
-mecab-ko (the MeCab fork mecab-ko-dic is built for) raises the connection cost of a word whose left side is preceded by whitespace when its `pos-id.def` id is listed in `dicrc`:
+mecab-ko (the MeCab fork mecab-ko-dic is built for) raises the connection cost of a word whose left side is preceded by skipped whitespace (whitespace that the previous word's surface does not end with) when its `pos-id.def` id is listed in `dicrc`:
 
 ```text
 left-space-penalty-factor = 100,3000,120,6000,172,3000,183,3000,184,3000,185,3000,200,3000,210,6000,220,3000,221,3000,222,3000,230,3000
