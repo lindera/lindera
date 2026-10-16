@@ -17,6 +17,7 @@ import {
   type Dictionary,
   type Token,
   type NbestResult,
+  type Penalty,
 } from "../index.js";
 
 export function checkTokenShape(text: string): void {
@@ -86,5 +87,28 @@ export function checkTokenizerConstructorForms(dictionary: Dictionary): Array<To
     new Tokenizer(dictionary, "decompose", null),
     new Tokenizer(dictionary, undefined, undefined, false),
     new Tokenizer(dictionary, "normal", null, { rules: [{ pos: ["JKS", "JX"], cost: 6000 }] }),
+    new Tokenizer(dictionary, "decompose", null, null, { kanjiPenaltyLengthPenalty: 0 }),
+    new Tokenizer(dictionary, "decompose", undefined, undefined, null),
   ];
+}
+
+// A `Penalty` is a plain object whose fields are all optional (#1215), and
+// `setMode` takes it as an optional second argument.
+export function checkSetModePenaltyForms(): void {
+  const empty: Penalty = {};
+  const full: Penalty = {
+    kanjiPenaltyLengthThreshold: 2,
+    kanjiPenaltyLengthPenalty: 3000,
+    otherPenaltyLengthThreshold: 7,
+    otherPenaltyLengthPenalty: 1700,
+  };
+  const builder: TokenizerBuilder = new TokenizerBuilder()
+    .setMode("normal")
+    .setMode("decompose", empty)
+    .setMode("decompose", full)
+    .setMode("decompose", null)
+    .setMode("decompose", undefined);
+  // @ts-expect-error -- a field is a number.
+  builder.setMode("decompose", { kanjiPenaltyLengthPenalty: "0" });
+  void builder;
 }

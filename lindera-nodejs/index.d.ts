@@ -251,12 +251,16 @@ export declare class Tokenizer {
    * * `space_penalty` - The left-space penalty, in the forms
    *   `TokenizerBuilder.setSpacePenalty` accepts. `null` or `undefined`
    *   (the default) keeps the rules the dictionary ships.
+   * * `penalty` - The `Penalty` for "decompose" mode, as
+   *   `TokenizerBuilder.setMode` takes it. `null` or `undefined` (the
+   *   default) uses the default penalty.
    *
-   * Throws for an invalid space-penalty setting, as `setSpacePenalty` and
-   * `build()` do, and for a user dictionary with a context ID outside the
-   * dictionary's connection matrix.
+   * Throws for an invalid mode, penalty or space-penalty setting, as
+   * `setMode`, `setSpacePenalty` and `build()` do, and for a user
+   * dictionary with a context ID outside the dictionary's connection
+   * matrix.
    */
-  constructor(dictionary: Dictionary, mode?: string | undefined | null, userDictionary?: UserDictionary | undefined | null, spacePenalty?: boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined)
+  constructor(dictionary: Dictionary, mode?: string | undefined | null, userDictionary?: UserDictionary | undefined | null, spacePenalty?: boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined, penalty?: Penalty | undefined | null)
   /**
    * Tokenizes the given text.
    *
@@ -339,12 +343,16 @@ export declare class TokenizerBuilder {
    * # Arguments
    *
    * * `mode` - Mode string ("normal" or "decompose").
+   * * `penalty` - The `Penalty` for "decompose" mode. `null` or
+   *   `undefined` (the default) uses the default penalty.
    *
    * # Returns
    *
-   * The builder itself (`this`), enabling method chaining.
+   * The builder itself (`this`), enabling method chaining. Throws for an
+   * invalid mode, for a penalty with "normal" mode, and, with code
+   * `InvalidArg`, for a penalty field that is not an integer in its range.
    */
-  setMode(mode: string): this
+  setMode(mode: string, penalty?: Penalty | undefined | null): this
   /**
    * Sets the dictionary path or URI.
    *
@@ -601,23 +609,6 @@ export declare const enum JsMode {
 }
 
 /**
- * Penalty configuration for decompose mode.
- *
- * Controls how aggressively compound words are decomposed based on
- * character type and length thresholds.
- */
-export interface JsPenalty {
-  /** Length threshold for kanji sequences before applying penalty (default: 2). */
-  kanjiPenaltyLengthThreshold: number
-  /** Penalty value for long kanji sequences (default: 3000). */
-  kanjiPenaltyLengthPenalty: number
-  /** Length threshold for other character sequences before applying penalty (default: 7). */
-  otherPenaltyLengthThreshold: number
-  /** Penalty value for long other-character sequences (default: 1700). */
-  otherPenaltyLengthPenalty: number
-}
-
-/**
  * Loads a dictionary from the specified URI.
  *
  * # Arguments
@@ -702,6 +693,37 @@ export interface NbestResult {
   tokens: Array<Token>
   /** Total path cost of this tokenization. */
   cost: number
+}
+
+/**
+ * Penalty configuration for decompose mode.
+ *
+ * Controls how aggressively compound words are decomposed based on
+ * character type and length thresholds. Pass it with "decompose" to
+ * `TokenizerBuilder.setMode` or to the `Tokenizer` constructor. A field
+ * left out keeps its default.
+ */
+export interface Penalty {
+  /**
+   * Length threshold for kanji sequences before applying the penalty, an
+   * integer 0 or more (default: 2).
+   */
+  kanjiPenaltyLengthThreshold?: number
+  /**
+   * Penalty value for long kanji sequences, a 32-bit signed integer
+   * (default: 3000).
+   */
+  kanjiPenaltyLengthPenalty?: number
+  /**
+   * Length threshold for other character sequences before applying the
+   * penalty, an integer 0 or more (default: 7).
+   */
+  otherPenaltyLengthThreshold?: number
+  /**
+   * Penalty value for long other-character sequences, a 32-bit signed
+   * integer (default: 1700).
+   */
+  otherPenaltyLengthPenalty?: number
 }
 
 /**

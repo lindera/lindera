@@ -9,7 +9,7 @@ const assert = require("node:assert");
 const { describe, it } = require("node:test");
 
 const lindera = require("../index.js");
-const { Metadata, Schema, Tokenizer, loadDictionary } = lindera;
+const { Metadata, Schema, Tokenizer, TokenizerBuilder, loadDictionary } = lindera;
 
 // Matches the guard in test_tokenize_ipadic.js: the embedded dictionary is behind the
 // `embed-ipadic` feature, which is not on by default.
@@ -88,6 +88,31 @@ function cases() {
       range: ["0", USIZE_MAX],
       outside: [-1],
     },
+    // The fields of a Penalty (#1215).
+    "builder.setMode(mode, {kanjiPenaltyLengthThreshold})": {
+      call: (v) => new TokenizerBuilder().setMode("decompose", { kanjiPenaltyLengthThreshold: v }),
+      name: "kanjiPenaltyLengthThreshold",
+      range: ["0", USIZE_MAX],
+      outside: [-1],
+    },
+    "builder.setMode(mode, {kanjiPenaltyLengthPenalty})": {
+      call: (v) => new TokenizerBuilder().setMode("decompose", { kanjiPenaltyLengthPenalty: v }),
+      name: "kanjiPenaltyLengthPenalty",
+      range: ["-2147483648", "2147483647"],
+      outside: [-(2 ** 31) - 1, 2 ** 31],
+    },
+    "builder.setMode(mode, {otherPenaltyLengthThreshold})": {
+      call: (v) => new TokenizerBuilder().setMode("decompose", { otherPenaltyLengthThreshold: v }),
+      name: "otherPenaltyLengthThreshold",
+      range: ["0", USIZE_MAX],
+      outside: [-1],
+    },
+    "builder.setMode(mode, {otherPenaltyLengthPenalty})": {
+      call: (v) => new TokenizerBuilder().setMode("decompose", { otherPenaltyLengthPenalty: v }),
+      name: "otherPenaltyLengthPenalty",
+      range: ["-2147483648", "2147483647"],
+      outside: [-(2 ** 31) - 1, 2 ** 31],
+    },
   };
   if (hasEmbeddedIpadic) {
     const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"));
@@ -103,6 +128,15 @@ function cases() {
         name: "costThreshold",
         range: I64_RANGE,
         outside: [1e300, -1e300],
+      },
+      "new Tokenizer(dictionary, mode, null, null, {kanjiPenaltyLengthPenalty})": {
+        call: (v) =>
+          new Tokenizer(loadDictionary("embedded://ipadic"), "decompose", null, null, {
+            kanjiPenaltyLengthPenalty: v,
+          }),
+        name: "kanjiPenaltyLengthPenalty",
+        range: ["-2147483648", "2147483647"],
+        outside: [-(2 ** 31) - 1, 2 ** 31],
       },
     });
   }
