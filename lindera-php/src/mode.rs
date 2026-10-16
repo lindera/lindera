@@ -100,9 +100,11 @@ impl PhpMode {
 /// Penalty configuration for decompose mode.
 ///
 /// Controls how aggressively compound words are decomposed based on
-/// character type and length thresholds.
+/// character type and length thresholds. Pass it with "decompose" to
+/// `TokenizerBuilder::setMode()` or to the `Tokenizer` constructor.
 #[php_class]
 #[php(name = "Lindera\\Penalty")]
+#[derive(Clone)]
 pub struct PhpPenalty {
     /// Length threshold for kanji penalty.
     kanji_penalty_length_threshold: usize,

@@ -17,6 +17,7 @@ use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 use crate::convert::{ConvertError, Nullable, int_arg, zval_to_value};
 use crate::dictionary::{PhpDictionary, PhpUserDictionary};
 use crate::error::lindera_value_err;
+use crate::mode::PhpPenalty;
 use crate::token::PhpToken;
 
 /// Converts a left-space penalty setting from PHP to JSON.
@@ -111,9 +112,22 @@ impl PhpTokenizerBuilder {
     /// # Arguments
     ///
     /// * `mode` - Mode string ("normal" or "decompose").
-    pub fn set_mode(&self, mode: String) -> PhpResult<()> {
+    /// * `penalty` - The `Lindera\Penalty` for "decompose" mode. `null` (the
+    ///   default) uses the default penalty. A value of another type throws
+    ///   instead of selecting the default.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())`, or a `ValueError` for an invalid mode or for a penalty with
+    /// "normal" mode.
+    pub fn set_mode(&self, mode: String, penalty: Nullable<&PhpPenalty>) -> PhpResult<()> {
         let mut builder = self.inner.borrow_mut();
-        builder.set_mode(&mode, None).map_err(lindera_value_err)?;
+        builder
+            .set_mode(
+                &mode,
+                penalty.into_option().map(|penalty| penalty.clone().into()),
+            )
+            .map_err(lindera_value_err)?;
         Ok(())
     }
 
@@ -279,21 +293,25 @@ impl PhpTokenizer {
     /// * `space_penalty` - The left-space penalty, in the forms
     ///   `TokenizerBuilder::setSpacePenalty()` accepts. `null` (the default)
     ///   keeps the rules the dictionary ships.
+    /// * `penalty` - The `Lindera\Penalty` for "decompose" mode, as
+    ///   `TokenizerBuilder::setMode()` takes it. `null` (the default) uses
+    ///   the default penalty.
     ///
-    /// A value of another type for `mode` or `user_dictionary` throws instead
-    /// of selecting the default.
+    /// A value of another type for `mode`, `user_dictionary` or `penalty`
+    /// throws instead of selecting the default.
     ///
     /// # Returns
     ///
-    /// A new Tokenizer instance, or a `ValueError` for an invalid mode or
-    /// space-penalty setting, as `setSpacePenalty()` and `build()` throw it,
-    /// or for a user dictionary with a context ID outside the dictionary's
-    /// connection matrix.
+    /// A new Tokenizer instance, or a `ValueError` for an invalid mode,
+    /// penalty or space-penalty setting, as `setMode()`, `setSpacePenalty()`
+    /// and `build()` throw it, or for a user dictionary with a context ID
+    /// outside the dictionary's connection matrix.
     pub fn __construct(
         dictionary: &PhpDictionary,
         mode: Nullable<String>,
         user_dictionary: Nullable<&PhpUserDictionary>,
         space_penalty: Option<&Zval>,
+        penalty: Nullable<&PhpPenalty>,
     ) -> PhpResult<Self> {
         let mode_str = mode.into_option().unwrap_or_else(|| "normal".to_string());
         let space_penalty = match space_penalty {
@@ -306,7 +324,7 @@ impl PhpTokenizer {
 
         let inner = CoreTokenizer::from_segmenter_with_space_penalty(
             &mode_str,
-            None,
+            penalty.into_option().map(|penalty| penalty.clone().into()),
             dict,
             user_dict,
             &space_penalty,
