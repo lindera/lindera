@@ -205,7 +205,8 @@ must be trained again, and <code>lindera build</code> rejects a dictionary whose
 context IDs fall outside its connection matrix, as building a tokenizer
 does for such a user dictionary. Dictionary directories built or downloaded with v6.2.0
 or earlier no longer load and must be rebuilt or downloaded again
-(dictionary format version 3).
+(dictionary format version 3). Building Lindera now takes Rust 1.89 or
+newer.
 This guide lists every breaking change and the one-line fixes for each.</p>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
@@ -216,6 +217,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>The implicit features <code>lindera-ipadic</code>, <code>lindera-ipadic-neologd</code>, <code>lindera-unidic</code>, <code>lindera-sudachidict</code>, <code>lindera-ko-dic</code>, <code>lindera-cc-cedict</code>, and <code>lindera-jieba</code> are gone</strong></td><td>Anyone enabling a dictionary crate by name in <code>features = [...]</code></td><td>Use the <code>embed-*</code> features instead</td></tr>
 <tr><td><strong><code>lindera-binding-core</code> is renamed to <code>lindera-binding</code></strong></td><td>Rust users of the binding helper crate</td><td>Depend on <code>lindera-binding</code> and replace <code>lindera_binding_core::</code> with <code>lindera_binding::</code></td></tr>
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> is removed</strong></td><td>Anyone still setting the deprecated build-cache variable</td><td>Set <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>; the old name is now ignored</td></tr>
+<tr><td><strong>Rust 1.89 or newer is required</strong></td><td>Anyone who builds Lindera with Rust 1.88, including a source build of the Python or Ruby package</td><td>Update the toolchain (<code>rustup update stable</code>)</td></tr>
 <tr><td><strong>Dictionary format version 3: dictionary directories built or downloaded with v6.2.0 or earlier no longer load</strong></td><td>Anyone who loads a dictionary from files (<code>load_dictionary</code> with a path, <code>lindera tokenize --dict &lt;dir&gt;</code>, the bindings' path and byte loaders, dictionaries saved in the WASM binding's OPFS storage); not the embedded dictionaries or user dictionaries</td><td>Rebuild with the 7.0.0 <code>lindera build</code>, or download again with the 7.0.0 <code>lindera download</code> or from the 7.0.0 release assets</td></tr>
 <tr><td><strong>IPADIC and IPADIC-NEologd: <code>conjugation_type</code> and <code>conjugation_form</code> now name the right columns</strong></td><td>Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (<code>Token::get</code>, <code>Token::as_value</code>, <code>lindera tokenize -o json</code>, binding schemas)</td><td>Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 <tr><td><strong>Dictionary entries with whitespace are kept</strong></td><td>Text with U+3000 (IPADIC, IPADIC-NEologd, UniDic), text with spaces (SudachiDict), and a few entries that ended with whitespace</td><td>Expect U+3000 to be <code>記号,空白</code> / <code>空白</code> and SudachiDict to segment spaced text much closer to Sudachi; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
@@ -475,6 +477,15 @@ export LINDERA_DICTIONARIES_PATH=/path/to/cache
 
 # v7
 export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
+</code></pre>
+<h2 id="rust-189-or-newer-is-required"><a class="header" href="#rust-189-or-newer-is-required">Rust 1.89 or newer is required</a></h2>
+<p>v7.0.0 declares <code>rust-version = "1.89"</code>; v6.2.0 declared 1.88. The build
+scripts of the dictionary crates now lock the entry of
+<code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> they write with <code>File::lock</code>, which
+Rust 1.89 stabilized, so that builds sharing the cache no longer remove each
+other's files. With an older toolchain, cargo stops with a message that
+names the required version. Update the toolchain:</p>
+<pre><code class="language-shell">rustup update stable
 </code></pre>
 <h2 id="dictionary-directories-must-be-rebuilt"><a class="header" href="#dictionary-directories-must-be-rebuilt">Dictionary directories must be rebuilt</a></h2>
 <p>v7.0.0 writes dictionaries in format version 3 and rejects a dictionary
@@ -1780,6 +1791,7 @@ add <code>skip_whitespace: None</code> or end it with <code>..Default::default()
 </ul>
 <p>Build environments:</p>
 <ul>
+<li>Use Rust 1.89 or newer.</li>
 <li>Rename <code>LINDERA_DICTIONARIES_PATH</code> to <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>
 in shell profiles, CI configuration, and container images.</li>
 </ul>

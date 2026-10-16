@@ -388,7 +388,7 @@ Output Tokens
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
 <h2 id="requirements"><a class="header" href="#requirements">Requirements</a></h2>
-<p>Rust <strong>1.88</strong> or newer. The workspace declares this as <code>rust-version</code>, so an
+<p>Rust <strong>1.89</strong> or newer. The workspace declares this as <code>rust-version</code>, so an
 older toolchain reports it as a cargo error rather than failing to compile.</p>
 <h2 id="adding-the-dependency"><a class="header" href="#adding-the-dependency">Adding the Dependency</a></h2>
 <p>Put the following in Cargo.toml:</p>
@@ -451,6 +451,7 @@ cargo build --features=embed-ipadic
 <li>Version subdirectories accumulate across upgrades and are not garbage-collected; old ones can be removed freely</li>
 <li>Setting this variable causes dictionary crates to download and build their dictionaries even when no <code>embed-*</code> feature is enabled (useful for pre-populating the cache). Such a build embeds nothing, so it keeps a dictionary already in the cache without checking it; a build with the <code>embed-*</code> feature checks it and rebuilds it if needed</li>
 <li>Use one cache directory per checkout. Two checkouts with different builder code that share a directory rebuild each other's dictionaries, and a crate whose build script does not rerun can embed the dictionary the other checkout built. In this repository, a relative path resolves under the workspace root, which gives each checkout its own cache</li>
+<li>Builds that share the directory, such as <code>cargo build</code> alongside rust-analyzer with its own target directory, write each dictionary one at a time: a build that finds another build writing the same dictionary waits for it, and then uses the dictionary it left (<code>cargo build -vv</code> shows <code>lindera dictionary cache: waiting for another build</code>). The lock is an empty <code>&lt;dictionary&gt;.lock</code> file next to the dictionary, held while a build writes it. It works between builds on one machine, and on a network file system only as far as the file system supports file locks. Where the file cannot be locked, the build prints a warning and goes on without the lock, as builds before 7.0.0 did, so two such builds can still remove each other's files</li>
 <li>Builds with <code>DOCS_RS</code> set ignore this variable (see <code>DOCS_RS</code> below)</li>
 </ul>
 <h3 id="lindera_config_path"><a class="header" href="#lindera_config_path">LINDERA_CONFIG_PATH</a></h3>
@@ -3273,7 +3274,7 @@ EOS
 <p>Pre-built wheels are available on <a href="https://pypi.org/project/lindera/">PyPI</a>:</p>
 <pre><code class="language-bash">pip install lindera
 </code></pre>
-<p>The wheels cover CPython 3.10 to 3.14 on Linux (x86_64 and aarch64, glibc), macOS (x86_64 and arm64), and Windows (x64 and arm64). On any other platform, such as musl-based Linux (Alpine), other CPU architectures, or free-threaded CPython, <code>pip install lindera</code> builds the package from the source distribution instead. That build needs the Rust toolchain 1.88 or later (install it via <a href="https://rustup.rs/">rustup</a>) and a C linker such as <code>cc</code>, and takes several minutes.</p>
+<p>The wheels cover CPython 3.10 to 3.14 on Linux (x86_64 and aarch64, glibc), macOS (x86_64 and arm64), and Windows (x64 and arm64). On any other platform, such as musl-based Linux (Alpine), other CPU architectures, or free-threaded CPython, <code>pip install lindera</code> builds the package from the source distribution instead. That build needs the Rust toolchain 1.89 or later (install it via <a href="https://rustup.rs/">rustup</a>) and a C linker such as <code>cc</code>, and takes several minutes.</p>
 <blockquote>
 <p>[!NOTE]
 The PyPI package does not include dictionaries. See <a href="lindera-python/installation.html#obtaining-dictionaries">Obtaining Dictionaries</a> below.</p>
@@ -5000,7 +5001,7 @@ for (const token of tokens) {
 <h2 id="prerequisites-3"><a class="header" href="#prerequisites-3">Prerequisites</a></h2>
 <ul>
 <li><strong>Ruby 3.1 or later</strong>, with the tools needed to build native gems (a C compiler and <code>make</code>)</li>
-<li><strong>Rust toolchain 1.88 or later</strong> -- Install via <a href="https://rustup.rs/">rustup</a></li>
+<li><strong>Rust toolchain 1.89 or later</strong> -- Install via <a href="https://rustup.rs/">rustup</a></li>
 <li><strong>libclang</strong> -- <code>libclang-dev</code> on Debian/Ubuntu; the Xcode command line tools on macOS</li>
 <li><strong>Bundler</strong> -- only to build from source (<code>gem install bundler</code>)</li>
 </ul>
@@ -10033,7 +10034,8 @@ must be trained again, and <code>lindera build</code> rejects a dictionary whose
 context IDs fall outside its connection matrix, as building a tokenizer
 does for such a user dictionary. Dictionary directories built or downloaded with v6.2.0
 or earlier no longer load and must be rebuilt or downloaded again
-(dictionary format version 3).
+(dictionary format version 3). Building Lindera now takes Rust 1.89 or
+newer.
 This guide lists every breaking change and the one-line fixes for each.</p>
 <h2 id="overview-4"><a class="header" href="#overview-4">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
@@ -10044,6 +10046,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>The implicit features <code>lindera-ipadic</code>, <code>lindera-ipadic-neologd</code>, <code>lindera-unidic</code>, <code>lindera-sudachidict</code>, <code>lindera-ko-dic</code>, <code>lindera-cc-cedict</code>, and <code>lindera-jieba</code> are gone</strong></td><td>Anyone enabling a dictionary crate by name in <code>features = [...]</code></td><td>Use the <code>embed-*</code> features instead</td></tr>
 <tr><td><strong><code>lindera-binding-core</code> is renamed to <code>lindera-binding</code></strong></td><td>Rust users of the binding helper crate</td><td>Depend on <code>lindera-binding</code> and replace <code>lindera_binding_core::</code> with <code>lindera_binding::</code></td></tr>
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> is removed</strong></td><td>Anyone still setting the deprecated build-cache variable</td><td>Set <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>; the old name is now ignored</td></tr>
+<tr><td><strong>Rust 1.89 or newer is required</strong></td><td>Anyone who builds Lindera with Rust 1.88, including a source build of the Python or Ruby package</td><td>Update the toolchain (<code>rustup update stable</code>)</td></tr>
 <tr><td><strong>Dictionary format version 3: dictionary directories built or downloaded with v6.2.0 or earlier no longer load</strong></td><td>Anyone who loads a dictionary from files (<code>load_dictionary</code> with a path, <code>lindera tokenize --dict &lt;dir&gt;</code>, the bindings' path and byte loaders, dictionaries saved in the WASM binding's OPFS storage); not the embedded dictionaries or user dictionaries</td><td>Rebuild with the 7.0.0 <code>lindera build</code>, or download again with the 7.0.0 <code>lindera download</code> or from the 7.0.0 release assets</td></tr>
 <tr><td><strong>IPADIC and IPADIC-NEologd: <code>conjugation_type</code> and <code>conjugation_form</code> now name the right columns</strong></td><td>Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (<code>Token::get</code>, <code>Token::as_value</code>, <code>lindera tokenize -o json</code>, binding schemas)</td><td>Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 <tr><td><strong>Dictionary entries with whitespace are kept</strong></td><td>Text with U+3000 (IPADIC, IPADIC-NEologd, UniDic), text with spaces (SudachiDict), and a few entries that ended with whitespace</td><td>Expect U+3000 to be <code>記号,空白</code> / <code>空白</code> and SudachiDict to segment spaced text much closer to Sudachi; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
@@ -10303,6 +10306,15 @@ export LINDERA_DICTIONARIES_PATH=/path/to/cache
 
 # v7
 export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
+</code></pre>
+<h2 id="rust-189-or-newer-is-required"><a class="header" href="#rust-189-or-newer-is-required">Rust 1.89 or newer is required</a></h2>
+<p>v7.0.0 declares <code>rust-version = "1.89"</code>; v6.2.0 declared 1.88. The build
+scripts of the dictionary crates now lock the entry of
+<code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> they write with <code>File::lock</code>, which
+Rust 1.89 stabilized, so that builds sharing the cache no longer remove each
+other's files. With an older toolchain, cargo stops with a message that
+names the required version. Update the toolchain:</p>
+<pre><code class="language-shell">rustup update stable
 </code></pre>
 <h2 id="dictionary-directories-must-be-rebuilt"><a class="header" href="#dictionary-directories-must-be-rebuilt">Dictionary directories must be rebuilt</a></h2>
 <p>v7.0.0 writes dictionaries in format version 3 and rejects a dictionary
@@ -11608,6 +11620,7 @@ add <code>skip_whitespace: None</code> or end it with <code>..Default::default()
 </ul>
 <p>Build environments:</p>
 <ul>
+<li>Use Rust 1.89 or newer.</li>
 <li>Rename <code>LINDERA_DICTIONARIES_PATH</code> to <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>
 in shell profiles, CI configuration, and container images.</li>
 </ul>

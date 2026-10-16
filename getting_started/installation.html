@@ -178,7 +178,7 @@
                     <main>
                         <h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
 <h2 id="requirements"><a class="header" href="#requirements">Requirements</a></h2>
-<p>Rust <strong>1.88</strong> or newer. The workspace declares this as <code>rust-version</code>, so an
+<p>Rust <strong>1.89</strong> or newer. The workspace declares this as <code>rust-version</code>, so an
 older toolchain reports it as a cargo error rather than failing to compile.</p>
 <h2 id="adding-the-dependency"><a class="header" href="#adding-the-dependency">Adding the Dependency</a></h2>
 <p>Put the following in Cargo.toml:</p>
@@ -241,6 +241,7 @@ cargo build --features=embed-ipadic
 <li>Version subdirectories accumulate across upgrades and are not garbage-collected; old ones can be removed freely</li>
 <li>Setting this variable causes dictionary crates to download and build their dictionaries even when no <code>embed-*</code> feature is enabled (useful for pre-populating the cache). Such a build embeds nothing, so it keeps a dictionary already in the cache without checking it; a build with the <code>embed-*</code> feature checks it and rebuilds it if needed</li>
 <li>Use one cache directory per checkout. Two checkouts with different builder code that share a directory rebuild each other's dictionaries, and a crate whose build script does not rerun can embed the dictionary the other checkout built. In this repository, a relative path resolves under the workspace root, which gives each checkout its own cache</li>
+<li>Builds that share the directory, such as <code>cargo build</code> alongside rust-analyzer with its own target directory, write each dictionary one at a time: a build that finds another build writing the same dictionary waits for it, and then uses the dictionary it left (<code>cargo build -vv</code> shows <code>lindera dictionary cache: waiting for another build</code>). The lock is an empty <code>&lt;dictionary&gt;.lock</code> file next to the dictionary, held while a build writes it. It works between builds on one machine, and on a network file system only as far as the file system supports file locks. Where the file cannot be locked, the build prints a warning and goes on without the lock, as builds before 7.0.0 did, so two such builds can still remove each other's files</li>
 <li>Builds with <code>DOCS_RS</code> set ignore this variable (see <code>DOCS_RS</code> below)</li>
 </ul>
 <h3 id="lindera_config_path"><a class="header" href="#lindera_config_path">LINDERA_CONFIG_PATH</a></h3>
