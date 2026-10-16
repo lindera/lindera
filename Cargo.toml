@@ -26,11 +26,12 @@ resolver = "2"
 [workspace.package]
 version = "7.0.0"
 edition = "2024"
-# Edition 2024 alone implies 1.85, but `slice::as_chunks` (used by the
-# WordEntry decode path in lindera-dictionary) stabilized in 1.88. Declaring it
-# turns "no method named `as_chunks`" into a clear cargo message on older
-# toolchains.
-rust-version = "1.88"
+# Edition 2024 alone implies 1.85, but lindera-dictionary uses
+# `slice::as_chunks` (the WordEntry decode path, stable since 1.88) and
+# `File::lock` (the lock on a dictionary build cache entry, stable since
+# 1.89). Declaring it turns a missing method into a clear cargo message on
+# older toolchains.
+rust-version = "1.89"
 description = "A morphological analysis libraries and command line interface."
 documentation = "https://docs.rs/lindera"
 homepage = "https://github.com/lindera/lindera"

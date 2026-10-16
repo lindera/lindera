@@ -773,7 +773,7 @@ jobs:
   # compiles it against the crates publish-crates has just released. Linux runs
   # in a bare ruby container, so a prerequisite missing from the docs would
   # fail it; macOS installs into an empty GEM_HOME. Both use a current Ruby and
-  # the latest stable Rust, so the documented minimums (Ruby 3.1, Rust 1.88)
+  # the latest stable Rust, so the documented minimums (Ruby 3.1, Rust 1.89)
   # are not tested. publish-rubygems attaches the gem to the GitHub Release and
   # pushes it to RubyGems only after every leg passes.
   test-ruby-gem:

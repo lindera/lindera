@@ -16,7 +16,7 @@ lindera-ruby provides a Ruby interface to the Lindera morphological analysis eng
 ## Requirements
 
 - Ruby >= 3.1, with a C compiler and `make` for building native gems
-- Rust >= 1.88
+- Rust >= 1.89
 - libclang (`libclang-dev` on Debian/Ubuntu; the Xcode command line tools on macOS)
 
 ## Install

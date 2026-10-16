@@ -5,7 +5,7 @@ v6.1.0 以降の lindera-ruby は、[RubyGems](https://rubygems.org/gems/lindera
 ## 前提条件
 
 - **Ruby 3.1 以降**と、ネイティブ gem のビルドに必要なツール（C コンパイラと `make`）
-- **Rust ツールチェーン 1.88 以降** -- [rustup](https://rustup.rs/) 経由でインストール
+- **Rust ツールチェーン 1.89 以降** -- [rustup](https://rustup.rs/) 経由でインストール
 - **libclang** -- Debian/Ubuntu は `libclang-dev`、macOS は Xcode コマンドラインツール
 - **Bundler** -- ソースからビルドする場合のみ（`gem install bundler`）
 

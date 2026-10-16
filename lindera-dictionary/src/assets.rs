@@ -1,6 +1,6 @@
 use std::error::Error;
 use std::ffi::OsString;
-use std::fs::{self, File, rename};
+use std::fs::{self, File, OpenOptions, TryLockError, rename};
 use std::io::{self, Cursor, Read, Write};
 use std::path::{Path, PathBuf};
 use std::thread::sleep;
@@ -665,6 +665,89 @@ fn build_inputs_path(output_dir: &Path) -> PathBuf {
     output_dir.join(BUILD_INPUTS_FILE)
 }
 
+/// Suffix of the lock file a build holds while it writes a dictionary's cache
+/// entry, named after the entry's directory ([`lock_cache_entry`]).
+const CACHE_LOCK_SUFFIX: &str = ".lock";
+
+/// Takes the lock on a dictionary's entry in the cache, waiting while another
+/// build holds it.
+///
+/// A build that writes the entry uses fixed paths next to it -- the download,
+/// the extracted archive, the input and output directories -- so two builds of
+/// the same dictionary that share the cache remove each other's files (#1206).
+/// Holding this lock from the cache check to the record lets one of them
+/// write at a time. It is an advisory lock ([`File::lock`]: `flock` on Unix,
+/// `LockFileEx` on Windows) on `<build_dir>/<output_dir>.lock`, released when
+/// the returned file is dropped or the process exits, so a build that is
+/// killed leaves no stale lock. The file stays empty and is never removed.
+///
+/// When the lock file cannot be opened, or the platform or file system cannot
+/// lock it, the build goes on without the lock, as builds did before it
+/// existed, after a `cargo:warning`. Once the lock is found taken, though,
+/// another build is known to be writing, so an error while waiting for it is
+/// returned instead.
+///
+/// # Arguments
+///
+/// * `build_dir` - The cache directory holding the entry.
+/// * `output_dir` - The entry's directory name ([`FetchParams::output_dir`]).
+///
+/// # Returns
+///
+/// The locked file, which holds the lock until it is dropped, or `None` when
+/// the build goes on without the lock; or the error that ended the wait.
+fn lock_cache_entry(build_dir: &Path, output_dir: &str) -> LinderaResult<Option<File>> {
+    let path = build_dir.join(format!("{output_dir}{CACHE_LOCK_SUFFIX}"));
+    let without_lock = |err: &dyn std::fmt::Display| {
+        println!(
+            "cargo:warning=cannot lock {}: {err}; building without the lock, so a concurrent \
+             build of the same dictionary sharing the cache can collide with this one",
+            path.display()
+        );
+    };
+    // Open for writing as well: whether a file open only for reading can be
+    // locked is unspecified, and some platforms refuse it.
+    let file = match OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&path)
+    {
+        Ok(file) => file,
+        Err(err) => {
+            without_lock(&err);
+            return Ok(None);
+        }
+    };
+    match file.try_lock() {
+        Ok(()) => Ok(Some(file)),
+        Err(TryLockError::WouldBlock) => {
+            println!(
+                "{CACHE_REPORT_PREFIX} waiting for another build ({})",
+                path.display()
+            );
+            loop {
+                match file.lock() {
+                    Ok(()) => return Ok(Some(file)),
+                    // A signal that arrives while `lock` waits ends the wait
+                    // with `Interrupted` instead of resuming it.
+                    Err(err) if err.kind() == io::ErrorKind::Interrupted => continue,
+                    Err(err) => {
+                        return Err(LinderaErrorKind::Io
+                            .with_error(anyhow::anyhow!(err))
+                            .add_context(format!("Failed to wait for the lock {path:?}")));
+                    }
+                }
+            }
+        }
+        Err(TryLockError::Error(err)) => {
+            without_lock(&err);
+            Ok(None)
+        }
+    }
+}
+
 /// Records the inputs of a dictionary just built into the cache.
 ///
 /// `fetch` calls this after moving the dictionary into place, so an
@@ -861,6 +944,10 @@ fn rerun_directives(ships_context_id_freq: bool, ctx_freq_override: Option<&Path
 /// `params.dummy_input` instead of the downloaded one, and it always goes
 /// under `OUT_DIR`, so that later builds never take a dummy from the cache.
 ///
+/// Builds that share the cache write each dictionary one at a time: a build
+/// that finds another build of the same dictionary writing it waits, and then
+/// uses the dictionary that build left in place (see `fetch_into`).
+///
 /// # Arguments
 ///
 /// * `params` - Describes the asset to fetch (archive name, mirrors, MD5 hash)
@@ -951,7 +1038,60 @@ fn fetch_for(
     // environment variable passed to dependents, that will actually be used to include the dictionary in the library
     println!("cargo::rustc-env=LINDERA_WORKDIR={}", build_dir.display());
 
-    fs::create_dir_all(&build_dir).map_err(|err| {
+    fetch_into(
+        &build_dir,
+        is_cache,
+        is_docs_rs_build(),
+        &params,
+        &builder,
+        purpose,
+        ctx_freq_env,
+    )
+}
+
+/// [`fetch_for`] once the build directory is known: fetches the source and
+/// builds the dictionary into `build_dir`, unless the cache there already
+/// holds it.
+///
+/// In a cache, one build at a time writes a dictionary's entry, from the
+/// cache check to the record of its inputs, under [`lock_cache_entry`]. The
+/// entry is checked first without the lock, so a cache hit neither waits for
+/// a build of the same dictionary nor needs a writable cache; on a miss, it
+/// is checked again once the lock is held, so a build that waited uses the
+/// dictionary the other build left instead of building it again.
+///
+/// The lock covers the writers only: the compile that embeds the dictionary
+/// reads it after the build script has exited. That is safe because a build
+/// with the same inputs never rewrites an entry that is current. A build
+/// without this crate's source digest rebuilds every time and so does rewrite
+/// it, as the `cargo:warning` it prints says; builds with different inputs
+/// rebuild each other's entries, which is why the cache directory should not
+/// be shared between checkouts.
+///
+/// # Arguments
+///
+/// * `build_dir` - The directory to build in: a cache directory, or `OUT_DIR`.
+/// * `is_cache` - Whether `build_dir` is a cache, whose entries are reused.
+/// * `docs_rs` - Whether to build a dummy dictionary from
+///   `params.dummy_input` instead of the downloaded one.
+/// * `params` - Describes the asset to fetch and the directory layout.
+/// * `builder` - Dictionary builder.
+/// * `purpose` - Whether the dictionary is embedded or only fills the cache.
+/// * `ctx_freq_env` - The value of [`CTX_FREQ_FILE_ENV`], if set.
+///
+/// # Returns
+///
+/// As for [`fetch`].
+fn fetch_into(
+    build_dir: &Path,
+    is_cache: bool,
+    docs_rs: bool,
+    params: &FetchParams,
+    builder: &DictionaryBuilder,
+    purpose: CachePurpose,
+    ctx_freq_env: Option<OsString>,
+) -> LinderaResult<()> {
+    fs::create_dir_all(build_dir).map_err(|err| {
         LinderaErrorKind::Io
             .with_error(anyhow::anyhow!(err))
             .add_context(format!("Failed to create build directory: {build_dir:?}"))
@@ -970,11 +1110,13 @@ fn fetch_for(
     // against the current build, and a cache entry that fails the check is
     // rebuilt rather than trusted.
     let expected = if is_cache {
-        expected_build_inputs(&params, &builder, BUILDER_SOURCE_DIGEST, ctx_freq_env)?
+        expected_build_inputs(params, builder, BUILDER_SOURCE_DIGEST, ctx_freq_env)?
     } else {
         None
     };
-    if is_cache {
+    // Bound to a name so that the lock is held until this function returns,
+    // after the input directory is removed.
+    let _entry_lock = if is_cache {
         if expected.is_none() && purpose == CachePurpose::Embed {
             println!(
                 "cargo:warning=the lindera-dictionary source digest is unavailable, \
@@ -982,12 +1124,22 @@ fn fetch_for(
                 output_dir.display()
             );
         }
-        match cache_decision(&output_dir, purpose, expected.as_ref(), builder.metadata()) {
+        let decide = || cache_decision(&output_dir, purpose, expected.as_ref(), builder.metadata());
+        let report_hit = |hit: CacheHit| {
+            println!(
+                "{CACHE_REPORT_PREFIX} using {}: {hit}",
+                output_dir.display()
+            );
+        };
+        if let Ok(hit) = decide() {
+            report_hit(hit);
+            return Ok(());
+        }
+        let lock = lock_cache_entry(build_dir, params.output_dir)?;
+        // Another build may have built the dictionary while this one waited.
+        match decide() {
             Ok(hit) => {
-                println!(
-                    "{CACHE_REPORT_PREFIX} using {}: {hit}",
-                    output_dir.display()
-                );
+                report_hit(hit);
                 return Ok(());
             }
             Err(miss) => println!(
@@ -995,9 +1147,12 @@ fn fetch_for(
                 output_dir.display()
             ),
         }
-    }
+        lock
+    } else {
+        None
+    };
 
-    if is_docs_rs_build() {
+    if docs_rs {
         create_dummy_dictionary_source(&input_dir, params.src_subdir, params.dummy_input)?;
     } else {
         // Source file path for build package
@@ -1795,5 +1950,219 @@ mod tests {
     fn no_cache_dir_without_the_variable() {
         assert_eq!(cache_dir_unless_docs_rs(None, false), None);
         assert_eq!(cache_dir_unless_docs_rs(None, true), None);
+    }
+
+    /// Directory the dummy archive of the cache tests extracts to.
+    const SEEDED_INPUT_DIR: &str = "mecab-test";
+
+    /// Directory of the dictionary the cache tests build.
+    const SEEDED_OUTPUT_DIR: &str = "lindera-test";
+
+    /// File name of the dummy archive.
+    const SEEDED_ARCHIVE: &str = "mecab-test.tar.gz";
+
+    /// The one entry of the dummy dictionary.
+    const SEEDED_LEXICON: &str = "テスト,0,0,-1000,名詞,固有名詞,一般,*,*,*,*,*,*\n";
+
+    /// A cache directory holding the source archive of a dummy dictionary,
+    /// as a download leaves it, so that a build needs no network; and the
+    /// archive's MD5, for [`seeded_params`].
+    fn seeded_cache() -> (tempfile::TempDir, &'static str) {
+        let cache = tempfile::tempdir().unwrap();
+        let sources = tempfile::tempdir().unwrap();
+        let source_dir = sources.path().join(SEEDED_INPUT_DIR);
+        create_dummy_dictionary_source(&source_dir, None, SEEDED_LEXICON).unwrap();
+        let archive_path = cache.path().join(SEEDED_ARCHIVE);
+        let encoder = flate2::write::GzEncoder::new(
+            File::create(&archive_path).unwrap(),
+            flate2::Compression::fast(),
+        );
+        let mut archive = tar::Builder::new(encoder);
+        archive
+            .append_dir_all(SEEDED_INPUT_DIR, &source_dir)
+            .unwrap();
+        archive.into_inner().unwrap().finish().unwrap();
+        let md5 = file_md5(&archive_path).unwrap();
+        (cache, Box::leak(md5.into_boxed_str()))
+    }
+
+    /// The parameters that build the dummy dictionary of [`seeded_cache`].
+    fn seeded_params(md5: &'static str) -> FetchParams {
+        FetchParams {
+            file_name: SEEDED_ARCHIVE,
+            input_dir: SEEDED_INPUT_DIR,
+            src_subdir: None,
+            output_dir: SEEDED_OUTPUT_DIR,
+            dummy_input: "",
+            download_urls: &[],
+            md5_hash: md5,
+        }
+    }
+
+    /// Builds the dummy dictionary into the cache `build_dir`, to embed it.
+    fn build_seeded(build_dir: &Path, md5: &'static str) -> LinderaResult<()> {
+        fetch_into(
+            build_dir,
+            true,
+            false,
+            &seeded_params(md5),
+            &DictionaryBuilder::new(source_metadata()),
+            CachePurpose::Embed,
+            None,
+        )
+    }
+
+    /// The record a build of the dummy dictionary writes.
+    fn seeded_inputs(md5: &'static str) -> BuildInputs {
+        expected_build_inputs(
+            &seeded_params(md5),
+            &DictionaryBuilder::new(source_metadata()),
+            BUILDER_SOURCE_DIGEST,
+            None,
+        )
+        .unwrap()
+        .unwrap()
+    }
+
+    /// Writes a current entry for the dummy dictionary, standing in for the
+    /// one another build leaves, with a marker file that a rebuild removes;
+    /// returns the marker's path.
+    fn write_current_entry(build_dir: &Path, md5: &'static str) -> PathBuf {
+        let output_dir = build_dir.join(SEEDED_OUTPUT_DIR);
+        fs::create_dir_all(&output_dir).unwrap();
+        let metadata = Metadata {
+            format_version: DICTIONARY_FORMAT_VERSION,
+            ..source_metadata()
+        };
+        fs::write(
+            output_dir.join("metadata.json"),
+            serde_json::to_vec_pretty(&metadata).unwrap(),
+        )
+        .unwrap();
+        write_build_inputs(&output_dir, &seeded_inputs(md5)).unwrap();
+        let marker = output_dir.join("marker");
+        fs::write(&marker, b"").unwrap();
+        marker
+    }
+
+    /// Takes the lock on the dummy dictionary's entry, as another build does.
+    fn hold_entry_lock(build_dir: &Path) -> File {
+        lock_cache_entry(build_dir, SEEDED_OUTPUT_DIR)
+            .unwrap()
+            .expect("this platform locks files")
+    }
+
+    #[test]
+    fn a_waiting_build_uses_the_entry_built_meanwhile() {
+        // #1206: a build that finds another build of the same dictionary
+        // writing it waits, and then uses what that build left.
+        let (cache, md5) = seeded_cache();
+        let build_dir = cache.path().to_path_buf();
+        let lock = hold_entry_lock(&build_dir);
+        let waiting = {
+            let build_dir = build_dir.clone();
+            std::thread::spawn(move || build_seeded(&build_dir, md5))
+        };
+        std::thread::sleep(Duration::from_millis(300));
+        assert!(
+            !waiting.is_finished(),
+            "the build did not wait for the lock"
+        );
+        for name in [
+            format!("tmp-archive-{SEEDED_INPUT_DIR}"),
+            SEEDED_INPUT_DIR.to_string(),
+            format!("tmp-output-{SEEDED_OUTPUT_DIR}"),
+            SEEDED_OUTPUT_DIR.to_string(),
+        ] {
+            assert!(
+                !build_dir.join(&name).exists(),
+                "{name} written without the lock"
+            );
+        }
+        let marker = write_current_entry(&build_dir, md5);
+        drop(lock);
+        waiting.join().unwrap().unwrap();
+        assert!(marker.exists(), "the entry was built again");
+    }
+
+    #[test]
+    fn a_cache_hit_does_not_wait_for_the_lock() {
+        // A current entry is used without the lock, so that a read-only
+        // cache works and builds that only read it do not queue up.
+        let (cache, md5) = seeded_cache();
+        let build_dir = cache.path().to_path_buf();
+        let marker = write_current_entry(&build_dir, md5);
+        let _lock = hold_entry_lock(&build_dir);
+        let build = {
+            let build_dir = build_dir.clone();
+            std::thread::spawn(move || build_seeded(&build_dir, md5))
+        };
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        while !build.is_finished() {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "a cache hit waited for the lock"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        build.join().unwrap().unwrap();
+        assert!(marker.exists(), "the entry was built again");
+    }
+
+    #[test]
+    fn concurrent_builds_leave_one_complete_entry() {
+        // #1206: builds sharing the cache removed each other's files, so
+        // some failed and the cache could end without the dictionary.
+        const BUILDS: usize = 8;
+        const ROUNDS: usize = 10;
+        for round in 0..ROUNDS {
+            let (cache, md5) = seeded_cache();
+            let barrier = std::sync::Arc::new(std::sync::Barrier::new(BUILDS));
+            let builds: Vec<_> = (0..BUILDS)
+                .map(|_| {
+                    let build_dir = cache.path().to_path_buf();
+                    let barrier = barrier.clone();
+                    std::thread::spawn(move || {
+                        barrier.wait();
+                        build_seeded(&build_dir, md5)
+                    })
+                })
+                .collect();
+            for build in builds {
+                build
+                    .join()
+                    .unwrap()
+                    .unwrap_or_else(|err| panic!("round {round}: {err}"));
+            }
+
+            let output_dir = cache.path().join(SEEDED_OUTPUT_DIR);
+            assert_eq!(
+                decide(&output_dir, Some(&seeded_inputs(md5))),
+                Ok(CacheHit::Current),
+                "round {round}"
+            );
+            let dictionary = crate::dictionary::Dictionary::load_from_path(&output_dir)
+                .unwrap_or_else(|err| panic!("round {round}: {err}"));
+            assert_eq!(
+                dictionary.prefix_dictionary.find_surface("テスト").len(),
+                1,
+                "round {round}"
+            );
+            drop(dictionary);
+            let mut left: Vec<_> = fs::read_dir(cache.path())
+                .unwrap()
+                .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+                .collect();
+            left.sort();
+            assert_eq!(
+                left,
+                [
+                    SEEDED_OUTPUT_DIR.to_string(),
+                    format!("{SEEDED_OUTPUT_DIR}{CACHE_LOCK_SUFFIX}"),
+                    SEEDED_ARCHIVE.to_string(),
+                ],
+                "round {round}"
+            );
+        }
     }
 }

@@ -16,7 +16,7 @@ lindera-ruby は、Lindera 形態素解析エンジンへの Ruby インター�
 ## 動作要件
 
 - Ruby >= 3.1（ネイティブ gem のビルド用に C コンパイラと `make` が必要）
-- Rust >= 1.88
+- Rust >= 1.89
 - libclang（Debian/Ubuntu は `libclang-dev`、macOS は Xcode コマンドラインツール）
 
 ## インストール
