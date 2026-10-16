@@ -25,7 +25,8 @@ MeCab と同じく最後の語が後から始まる方を選ぶようにし、`l
 行列の範囲外にある辞書を拒否し、トークナイザーの構築もそうしたユーザー辞書を
 拒否します。
 v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは読み込めなくなるため、
-再ビルドか再ダウンロードが必要です（辞書の形式バージョン 3）。
+再ビルドか再ダウンロードが必要です（辞書の形式バージョン 3）。Lindera の
+ビルドには Rust 1.89 以降が必要になりました。
 このガイドでは、すべての破壊的変更とその対処方法を説明します。
 
 ## 概要
@@ -39,6 +40,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **暗黙の feature `lindera-ipadic`・`lindera-ipadic-neologd`・`lindera-unidic`・`lindera-sudachidict`・`lindera-ko-dic`・`lindera-cc-cedict`・`lindera-jieba` の削除** | `features = [...]` に辞書クレート名を書いて有効化していたユーザー | 代わりに `embed-*` feature を使う |
 | **`lindera-binding-core` を `lindera-binding` に改名** | バインディング用ヘルパークレートを使う Rust ユーザー | `lindera-binding` に依存し、`lindera_binding_core::` を `lindera_binding::` に置き換える |
 | **`LINDERA_DICTIONARIES_PATH` の削除** | 非推奨のビルドキャッシュ変数をまだ設定しているユーザー | `LINDERA_BUILD_DICTIONARY_CACHE_DIR` を設定する。旧名は無視される |
+| **Rust 1.89 以降が必要** | Rust 1.88 で Lindera をビルドするユーザー（Python・Ruby パッケージのソースからのビルドを含む） | ツールチェーンを更新する（`rustup update stable`） |
 | **辞書の形式バージョン 3: v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは読み込めない** | ファイルから辞書を読み込むユーザー（パスを指定した `load_dictionary`、`lindera tokenize --dict <dir>`、バインディングのパスやバイト列からの読み込み、WASM バインディングの OPFS に保存した辞書）。埋め込み辞書とユーザー辞書は対象外 | 7.0.0 の `lindera build` で再ビルドするか、7.0.0 の `lindera download` やリリースアセットから再ダウンロードする |
 | **IPADIC・IPADIC-NEologd の `conjugation_type` と `conjugation_form` が正しい列を指すように修正** | IPADIC・IPADIC-NEologd でこの 2 フィールドを名前で読むユーザー（`Token::get`・`Token::as_value`・`lindera tokenize -o json`・バインディングのスキーマ） | 2 つの値が入れ替わることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする |
 | **空白を含む見出し語を保持** | U+3000 を含むテキスト（IPADIC・IPADIC-NEologd・UniDic）、空白を含むテキスト（SudachiDict）、末尾が空白の一部の語 | U+3000 が `記号,空白`・`空白` になり、SudachiDict の分割が Sudachi にずっと近くなることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする |
@@ -321,6 +323,18 @@ export LINDERA_DICTIONARIES_PATH=/path/to/cache
 
 # v7
 export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
+```
+
+## Rust 1.89 以降が必要
+
+v7.0.0 は `rust-version = "1.89"` を宣言します（v6.2.0 は 1.88）。辞書クレートの
+build script は、書き込む `LINDERA_BUILD_DICTIONARY_CACHE_DIR` のエントリを
+Rust 1.89 で安定化した `File::lock` でロックするようになり、キャッシュを共有する
+ビルドが互いのファイルを消さなくなりました。古いツールチェーンでは、cargo が
+必要なバージョンを示して止まります。ツールチェーンを更新してください:
+
+```shell
+rustup update stable
 ```
 
 ## 辞書ディレクトリの再ビルドが必要
@@ -1606,6 +1620,7 @@ Rust クレートのユーザー:
 
 ビルド環境:
 
+- Rust 1.89 以降を使う。
 - シェルのプロファイル・CI 設定・コンテナイメージで `LINDERA_DICTIONARIES_PATH`
   を `LINDERA_BUILD_DICTIONARY_CACHE_DIR` に改名する。
 

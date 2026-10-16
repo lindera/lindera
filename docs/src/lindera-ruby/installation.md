@@ -5,7 +5,7 @@ From v6.1.0, lindera-ruby installs from [RubyGems](https://rubygems.org/gems/lin
 ## Prerequisites
 
 - **Ruby 3.1 or later**, with the tools needed to build native gems (a C compiler and `make`)
-- **Rust toolchain 1.88 or later** -- Install via [rustup](https://rustup.rs/)
+- **Rust toolchain 1.89 or later** -- Install via [rustup](https://rustup.rs/)
 - **libclang** -- `libclang-dev` on Debian/Ubuntu; the Xcode command line tools on macOS
 - **Bundler** -- only to build from source (`gem install bundler`)
 
