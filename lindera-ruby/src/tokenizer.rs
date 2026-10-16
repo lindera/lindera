@@ -16,6 +16,7 @@ use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{RbDictionary, RbUserDictionary};
 use crate::error::to_magnus_error;
+use crate::mode::RbPenalty;
 use crate::token::RbToken;
 use crate::util::{rb_hash_to_json, rb_value_to_json};
 
@@ -64,15 +65,37 @@ impl RbTokenizerBuilder {
 
     /// Sets the tokenization mode.
     ///
+    /// Ruby signature: `set_mode(mode, penalty: nil)`.
+    ///
     /// # Arguments
     ///
-    /// * `mode` - Mode string ("normal" or "decompose").
-    fn set_mode(&self, mode: String) -> Result<(), Error> {
-        let ruby = Ruby::get().expect("Ruby runtime not initialized");
-        let mut builder = self.inner.borrow_mut();
-        builder
-            .set_mode(&mode, None)
-            .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
+    /// * `ruby` - Ruby runtime handle.
+    /// * `rb_self` - The builder.
+    /// * `args` - The Ruby arguments:
+    ///   * `mode` - Mode string ("normal" or "decompose").
+    ///   * `penalty:` - The `Lindera::Penalty` for "decompose" mode. `nil` or
+    ///     omitted uses the default penalty.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success, an `ArgumentError` for a wrong number of
+    /// arguments or an unknown keyword, a `TypeError` for a `penalty:` that
+    /// is not a `Lindera::Penalty`, or a `RuntimeError` for an invalid mode or
+    /// for a penalty with "normal" mode.
+    fn set_mode(ruby: &Ruby, rb_self: &Self, args: &[Value]) -> Result<(), Error> {
+        let args = scan_args::<(String,), (), (), (), RHash, ()>(args)?;
+        let (mode,) = args.required;
+        let keywords = get_kwargs::<_, (), (Option<Option<&RbPenalty>>,), ()>(
+            args.keywords,
+            &[],
+            &["penalty"],
+        )?;
+        let (penalty,) = keywords.optional;
+        rb_self
+            .inner
+            .borrow_mut()
+            .set_mode(&mode, penalty.flatten().map(|penalty| (*penalty).into()))
+            .map_err(|err| to_magnus_error(ruby, err.to_string()))?;
         Ok(())
     }
 
@@ -224,7 +247,7 @@ pub struct RbTokenizer {
 /// Creates a new tokenizer with the given dictionary and mode.
 ///
 /// Ruby signature: `Tokenizer.new(dictionary, mode = nil, user_dictionary = nil,
-/// space_penalty: nil)`.
+/// space_penalty: nil, penalty: nil)`.
 ///
 /// # Arguments
 ///
@@ -236,14 +259,17 @@ pub struct RbTokenizer {
 ///   * `space_penalty:` - The left-space penalty, in the forms
 ///     `TokenizerBuilder#set_space_penalty` accepts. `nil` or omitted keeps
 ///     the rules the dictionary ships.
+///   * `penalty:` - The `Lindera::Penalty` for "decompose" mode, as
+///     `TokenizerBuilder#set_mode` takes it. `nil` or omitted uses the
+///     default penalty.
 ///
 /// # Returns
 ///
 /// A new `RbTokenizer` instance, an `ArgumentError` for a wrong number of
-/// arguments or an unknown keyword, the errors `set_space_penalty` and
-/// `build` raise for an invalid space-penalty setting, or a `RuntimeError`
-/// for a user dictionary with a context ID outside the dictionary's
-/// connection matrix.
+/// arguments or an unknown keyword, the errors `set_space_penalty`,
+/// `set_mode` and `build` raise for an invalid space-penalty setting, mode
+/// or penalty, or a `RuntimeError` for a user dictionary with a context ID
+/// outside the dictionary's connection matrix.
 fn tokenizer_new(args: &[Value]) -> Result<RbTokenizer, Error> {
     let ruby = Ruby::get().expect("Ruby runtime not initialized");
     let args = scan_args::<
@@ -256,9 +282,12 @@ fn tokenizer_new(args: &[Value]) -> Result<RbTokenizer, Error> {
     >(args)?;
     let (dictionary,) = args.required;
     let (mode, user_dictionary) = args.optional;
-    let keywords =
-        get_kwargs::<_, (), (Option<Value>,), ()>(args.keywords, &[], &["space_penalty"])?;
-    let (space_penalty,) = keywords.optional;
+    let keywords = get_kwargs::<_, (), (Option<Value>, Option<Option<&RbPenalty>>), ()>(
+        args.keywords,
+        &[],
+        &["space_penalty", "penalty"],
+    )?;
+    let (space_penalty, penalty) = keywords.optional;
 
     let mode = mode.flatten();
     let user_dictionary = user_dictionary.flatten();
@@ -273,7 +302,7 @@ fn tokenizer_new(args: &[Value]) -> Result<RbTokenizer, Error> {
 
     let inner = CoreTokenizer::from_segmenter_with_space_penalty(
         mode_str,
-        None,
+        penalty.flatten().map(|penalty| (*penalty).into()),
         dict,
         user_dict,
         &space_penalty,
@@ -391,7 +420,7 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
     builder_class.define_singleton_method("new", function!(RbTokenizerBuilder::new, 0))?;
     builder_class
         .define_singleton_method("from_file", function!(RbTokenizerBuilder::from_file, 1))?;
-    builder_class.define_method("set_mode", method!(RbTokenizerBuilder::set_mode, 1))?;
+    builder_class.define_method("set_mode", method!(RbTokenizerBuilder::set_mode, -1))?;
     builder_class.define_method(
         "set_dictionary",
         method!(RbTokenizerBuilder::set_dictionary, 1),

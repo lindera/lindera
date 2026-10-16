@@ -153,7 +153,7 @@ class TestSpacePenalty < Minitest::Test
   def test_constructor_rejects_unknown_keywords_and_extra_arguments
     dictionary = Lindera.load_dictionary('embedded://ipadic')
     assert_raises(ArgumentError) { Lindera::Tokenizer.new }
-    assert_raises(ArgumentError) { Lindera::Tokenizer.new(dictionary, penalty: false) }
+    assert_raises(ArgumentError) { Lindera::Tokenizer.new(dictionary, left_space_penalty: false) }
     # space_penalty is a keyword, not a fourth positional argument.
     assert_raises(ArgumentError) { Lindera::Tokenizer.new(dictionary, 'normal', nil, false) }
   end
