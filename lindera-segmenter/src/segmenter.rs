@@ -332,7 +332,9 @@ pub struct Segmenter {
     /// nori's `computeSpacePenalty`): a candidate that starts right after
     /// whitespace and whose first part-of-speech tag matches a rule gets the
     /// rule's cost added, so e.g. a particle or ending is not chosen across
-    /// a space. [`Segmenter::new`] initializes it from the rules the
+    /// a space; as in mecab-ko, not after a word whose own surface ends with
+    /// that whitespace, such as ko-dic's `에듀` followed by a space (#1117).
+    /// [`Segmenter::new`] initializes it from the rules the
     /// dictionary ships in its metadata (`Metadata::space_penalty`; ko-dic
     /// does, the other bundled dictionaries do not), so for ko-dic the
     /// penalty is on by default; `None` adds no penalty. Together with
@@ -4144,9 +4146,12 @@ mod tests {
         use crate::token::Token;
 
         /// mecab-ko 0.996-ko-0.9.2 with mecab-ko-dic 2.1.1-20180720, the
-        /// source ko-dic is built from: `%m/%f[0]` per morpheme and the path
-        /// cost (`%pc` at EOS).
-        const MECAB_KO: [(&str, &str, i64); 14] = [
+        /// source ko-dic is built from: `%m/%f[0]` per morpheme (a space in
+        /// a surface written `␠`) and the path cost (`%pc` at EOS). The last
+        /// ones start with an entry that ends with a space, after which a
+        /// word pays no left-space penalty (#1117), unless more whitespace
+        /// follows.
+        const MECAB_KO: [(&str, &str, i64); 23] = [
             ("2년 전 대회", "2/SN 년/NNBC 전/NNG 대회/NNG", 6257),
             (
                 "전 대통령이 방문했다",
@@ -4197,6 +4202,15 @@ mod tests {
                 "기계/NNG 학습/NNG 을/JKO 활용/NNG 한/XSV+ETM 이미지/NNG 인식/NNG",
                 -971,
             ),
+            ("에듀 이", "에듀␠/NNG 이/VCP", 2219),
+            ("콜라비 이", "콜라비␠/NNG 이/VCP", 2378),
+            ("캘리 이", "캘리␠/NNG 이/VCP", 2463),
+            ("내셔날 이", "내셔날␠/NNG 이/JKS", 522),
+            ("에듀 이 잘 된다", "에듀␠/NNG 이/MM 잘/MAG 된다/VV+EC", 3993),
+            ("콜라비 를 샀다", "콜라비␠/NNG 를/JKO 샀/VV+EP 다/EC", -2007),
+            ("에듀 가 좋다", "에듀␠/NNG 가/JKS 좋/VA 다/EC", -1557),
+            ("캘리 는 예쁘다", "캘리␠/NNG 는/JX 예쁘/VA 다/EC", 1919),
+            ("에듀  이", "에듀␠/NNG 이/NR", 5003),
         ];
 
         /// Sentences without whitespace.
@@ -4264,8 +4278,10 @@ mod tests {
                 .collect()
         }
 
+        /// Splits `s` at whitespace into `surface/POS` words, reading `␠` as
+        /// a space inside a surface.
         fn words(s: &str) -> Vec<String> {
-            s.split_whitespace().map(str::to_string).collect()
+            s.split_whitespace().map(|w| w.replace('␠', " ")).collect()
         }
 
         /// Whether `c` is in ko-dic's `SPACE` category (`char.def`).
@@ -4549,9 +4565,9 @@ mod tests {
             assert_eq!(render_nbest(&segmenter(Mode::Normal), many, 1)[0].1, 5672);
         }
 
-        /// The left-space penalty still keys on the character before a
-        /// candidate, so it applies when whitespace is skipped: `이` after a
-        /// space is not read as a particle (mecab-ko: `이/IC`).
+        /// The left-space penalty applies when whitespace is skipped: `이`
+        /// after a word and a space is not read as a particle (mecab-ko:
+        /// `이/IC`).
         #[test]
         fn test_space_penalty_applies_when_skipping_whitespace() {
             let text = "검색 이 잘 된다";
@@ -4573,6 +4589,38 @@ mod tests {
                     .unwrap()
             };
             assert_eq!(cost(&on), cost(&off) + 6000);
+        }
+
+        /// #1117: with whitespace kept in the lattice, the left-space penalty
+        /// follows the same rule: `이` right after the entry `에듀` and a space
+        /// pays nothing, as in mecab-ko, and `이` after `에듀` and a `SPACE`
+        /// node pays it (3000 for `VCP`).
+        #[test]
+        fn test_space_penalty_with_whitespace_kept_spares_an_entry_that_ends_with_it() {
+            let text = "에듀 이";
+            let kept = || {
+                segmenter(Mode::Normal)
+                    .skip_whitespace(false)
+                    .keep_whitespace(true)
+            };
+            let on = kept();
+            let off = kept().space_penalty(None).unwrap();
+            let owner = words("에듀␠/NNG 이/VCP");
+            let spaced = vec![
+                "에듀/NNP".to_string(),
+                " /SP".to_string(),
+                "이/VCP".to_string(),
+            ];
+            let cost = |segmenter: &Segmenter, path: &[String]| {
+                render_nbest(segmenter, text, 100)
+                    .into_iter()
+                    .find(|(candidate, _)| candidate == path)
+                    .map(|(_, cost)| cost)
+                    .unwrap()
+            };
+            assert_eq!(cost(&on, &owner), cost(&off, &owner));
+            assert_eq!(cost(&on, &spaced), cost(&off, &spaced) + 3000);
+            assert_eq!(render(&on, text), owner);
         }
 
         /// A user-dictionary entry may contain a space: it is matched across

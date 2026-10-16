@@ -17,20 +17,25 @@
 //! dictionary's `SPACE` category (`char.def`, the set MeCab skips and
 //! `keep_whitespace` filters on); a dictionary without that category falls
 //! back to [`char::is_whitespace`]. Only characters inside the sentence
-//! count, so a candidate at the very start of a sentence is not penalized
-//! (mecab-ko's `rlength > length` test behaves the same way).
+//! count, so a candidate at the very start of a sentence is not penalized.
 //!
 //! The penalty is applied in [`Lattice`](crate::viterbi::Lattice) through a
 //! [`SpacePenaltyTable`], a per-word-id lookup precomputed once from the
 //! dictionary so the hot path never parses a part-of-speech string.
 //!
-//! The gate is the character before the candidate, not the edge the
-//! candidate connects to, so the penalty applies the same way whether
-//! whitespace is skipped in the lattice as MeCab does
-//! ([`LatticeOptions::skip_whitespace`], which the `Segmenter` enables by
-//! default) or kept in the lattice as nodes of its own. Only with whitespace
-//! skipped do the words around a space connect directly, which mecab-ko's
-//! output also depends on; the penalty alone does not reproduce it.
+//! The penalty is part of the transition into the candidate (#1117). mecab-ko
+//! adds it to a node that skipped whitespace (`rlength > length`), so a word
+//! after a word and a space pays it, and a word right after an entry whose
+//! surface ends with that space (ko-dic's `에듀` followed by a space) does
+//! not. The lattice therefore adds it to every transition into a candidate
+//! that starts after whitespace, except one from a left word whose own
+//! surface covers the whole run of whitespace. With whitespace kept in the
+//! lattice as nodes of its own, a whitespace node does not cover it as a
+//! word does, so the penalty applies the same way as with whitespace
+//! skipped as MeCab does ([`LatticeOptions::skip_whitespace`], which the
+//! `Segmenter` enables by default). Only with whitespace skipped do the
+//! words around a space connect directly, which mecab-ko's output also
+//! depends on; the penalty alone does not reproduce it.
 //!
 //! [`LatticeOptions::skip_whitespace`]: crate::viterbi::LatticeOptions::skip_whitespace
 
@@ -57,7 +62,8 @@ pub const POS_FIELD_CANDIDATES: [&str; 2] = ["part_of_speech_tag", "part_of_spee
 const COMMON_FIELD_COUNT: usize = 4;
 
 /// One penalty rule: the cost added to a candidate whose first
-/// part-of-speech tag is in `pos` when the candidate starts after whitespace.
+/// part-of-speech tag is in `pos` when the candidate starts after whitespace
+/// that the word before it does not end with.
 ///
 /// The type is `#[non_exhaustive]` so that fields can be added without a
 /// breaking change; create it with [`SpacePenaltyRule::new`] or deserialize
@@ -321,7 +327,8 @@ impl SpacePenaltyTable {
     ///
     /// # Returns
     ///
-    /// `true` when a candidate starting after `c` is subject to the penalty.
+    /// `true` when a candidate starting after `c` is subject to the penalty,
+    /// unless the word before it ends with this whitespace.
     #[inline]
     pub fn is_space(&self, c: char, char_definitions: &CharacterDefinition) -> bool {
         match &self.whitespace {
@@ -360,6 +367,48 @@ impl SpacePenaltyTable {
         };
         let rule = table.get(word_id.id() as usize).copied().unwrap_or(0);
         self.costs[rule as usize]
+    }
+}
+
+#[cfg(test)]
+impl SpacePenaltyTable {
+    /// Builds a table from per-word-id costs, for lattices built by hand in
+    /// tests, which have no part-of-speech column to build one from.
+    ///
+    /// # Arguments
+    ///
+    /// * `system` - The penalty of each system word id (0 = none).
+    /// * `unknown` - The penalty of each unknown-word entry id (0 = none).
+    /// * `whitespace` - The `SPACE`-category classifier, or `None` for
+    ///   [`char::is_whitespace`].
+    ///
+    /// # Returns
+    ///
+    /// The table, without a user lexicon.
+    pub(crate) fn from_costs(
+        system: &[i32],
+        unknown: &[i32],
+        whitespace: Option<WhitespaceClassifier>,
+    ) -> Self {
+        let mut costs = vec![0];
+        let mut rule_of = |cost: i32| -> u8 {
+            match costs.iter().position(|&c| c == cost) {
+                Some(rule) => rule as u8,
+                None => {
+                    costs.push(cost);
+                    (costs.len() - 1) as u8
+                }
+            }
+        };
+        let system = system.iter().map(|&cost| rule_of(cost)).collect();
+        let unknown = unknown.iter().map(|&cost| rule_of(cost)).collect();
+        Self {
+            system,
+            user: Vec::new(),
+            unknown,
+            costs,
+            whitespace,
+        }
     }
 }
 
