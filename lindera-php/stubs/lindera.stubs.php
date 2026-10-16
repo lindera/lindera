@@ -221,7 +221,7 @@ class Token implements \Stringable
 
 class Tokenizer
 {
-    public function __construct(Dictionary $dictionary, ?string $mode = null, ?UserDictionary $user_dictionary = null, mixed $space_penalty = null) {}
+    public function __construct(Dictionary $dictionary, ?string $mode = null, ?UserDictionary $user_dictionary = null, mixed $space_penalty = null, ?Penalty $penalty = null) {}
 
     public function tokenize(string $text): array {}
 
@@ -246,7 +246,7 @@ class TokenizerBuilder
 
     public function setKeepWhitespace(bool $keep_whitespace): void {}
 
-    public function setMode(string $mode): void {}
+    public function setMode(string $mode, ?Penalty $penalty = null): void {}
 
     public function setSkipWhitespace(mixed $skip_whitespace): void {}
 

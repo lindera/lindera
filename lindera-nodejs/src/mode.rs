@@ -4,6 +4,10 @@
 //! penalty configurations for controlling segmentation behavior.
 
 use lindera::mode::{Mode as LinderaMode, Penalty as LinderaPenalty};
+use napi::bindgen_prelude::{FromNapiValue, ValidateNapiValue};
+use napi::sys;
+
+use crate::util::optional_integer_arg;
 
 /// Tokenization mode.
 ///
@@ -40,40 +44,116 @@ impl From<LinderaMode> for JsMode {
 /// Penalty configuration for decompose mode.
 ///
 /// Controls how aggressively compound words are decomposed based on
-/// character type and length thresholds.
+/// character type and length thresholds. Pass it with "decompose" to
+/// `TokenizerBuilder.setMode` or to the `Tokenizer` constructor. A field
+/// left out keeps its default.
 #[napi(object)]
-#[derive(Debug, Clone)]
-pub struct JsPenalty {
-    /// Length threshold for kanji sequences before applying penalty (default: 2).
-    pub kanji_penalty_length_threshold: u32,
-    /// Penalty value for long kanji sequences (default: 3000).
-    pub kanji_penalty_length_penalty: i32,
-    /// Length threshold for other character sequences before applying penalty (default: 7).
-    pub other_penalty_length_threshold: u32,
-    /// Penalty value for long other-character sequences (default: 1700).
-    pub other_penalty_length_penalty: i32,
+#[derive(Debug, Clone, Default)]
+pub struct Penalty {
+    /// Length threshold for kanji sequences before applying the penalty, an
+    /// integer 0 or more (default: 2).
+    pub kanji_penalty_length_threshold: Option<f64>,
+    /// Penalty value for long kanji sequences, a 32-bit signed integer
+    /// (default: 3000).
+    pub kanji_penalty_length_penalty: Option<f64>,
+    /// Length threshold for other character sequences before applying the
+    /// penalty, an integer 0 or more (default: 7).
+    pub other_penalty_length_threshold: Option<f64>,
+    /// Penalty value for long other-character sequences, a 32-bit signed
+    /// integer (default: 1700).
+    pub other_penalty_length_penalty: Option<f64>,
 }
 
-impl From<JsPenalty> for LinderaPenalty {
-    fn from(penalty: JsPenalty) -> Self {
-        LinderaPenalty {
-            kanji_penalty_length_threshold: penalty.kanji_penalty_length_threshold as usize,
-            kanji_penalty_length_penalty: penalty.kanji_penalty_length_penalty,
-            other_penalty_length_threshold: penalty.other_penalty_length_threshold as usize,
-            other_penalty_length_penalty: penalty.other_penalty_length_penalty,
+impl TryFrom<Penalty> for LinderaPenalty {
+    type Error = napi::Error;
+
+    /// Checks each field of a JS penalty and fills the ones left out with
+    /// the defaults. A JS number is taken as `f64` and checked, because
+    /// napi-rs would wrap a value outside the range of the field (#1209).
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - The penalty passed from JS.
+    ///
+    /// # Returns
+    ///
+    /// The core penalty, or an `InvalidArg` error that names the first field
+    /// that is not an integer in its range.
+    fn try_from(penalty: Penalty) -> napi::Result<Self> {
+        let default = LinderaPenalty::default();
+        Ok(LinderaPenalty {
+            kanji_penalty_length_threshold: optional_integer_arg(
+                "kanjiPenaltyLengthThreshold",
+                penalty.kanji_penalty_length_threshold,
+            )?
+            .unwrap_or(default.kanji_penalty_length_threshold),
+            kanji_penalty_length_penalty: optional_integer_arg(
+                "kanjiPenaltyLengthPenalty",
+                penalty.kanji_penalty_length_penalty,
+            )?
+            .unwrap_or(default.kanji_penalty_length_penalty),
+            other_penalty_length_threshold: optional_integer_arg(
+                "otherPenaltyLengthThreshold",
+                penalty.other_penalty_length_threshold,
+            )?
+            .unwrap_or(default.other_penalty_length_threshold),
+            other_penalty_length_penalty: optional_integer_arg(
+                "otherPenaltyLengthPenalty",
+                penalty.other_penalty_length_penalty,
+            )?
+            .unwrap_or(default.other_penalty_length_penalty),
+        })
+    }
+}
+
+/// The penalty argument of `setMode` and the `Tokenizer` constructor.
+///
+/// napi-rs reads a `#[napi(object)]` argument without checking that the
+/// value is an object, so a number or a string would become a [`Penalty`]
+/// with every field left out, that is the default penalty. This type checks
+/// the value with napi-rs's own validation of [`Penalty`] first, as
+/// `#[napi(strict)]` would for every argument of a function.
+pub struct PenaltyArg(pub Penalty);
+
+impl FromNapiValue for PenaltyArg {
+    /// Converts a JS value to a [`Penalty`], failing for a value that is not
+    /// an object.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The environment of the current call.
+    /// * `napi_val` - The JS value to convert.
+    ///
+    /// # Returns
+    ///
+    /// The penalty, an `InvalidArg` error for a value that is not an object,
+    /// or the error napi-rs raises for a field that is not a number.
+    unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> napi::Result<Self> {
+        // SAFETY: napi-rs calls this with the environment and a value handle
+        // of the current call, which is what both calls require.
+        unsafe {
+            <Penalty as ValidateNapiValue>::validate(env, napi_val)?;
+            Penalty::from_napi_value(env, napi_val).map(PenaltyArg)
         }
     }
 }
 
-impl From<LinderaPenalty> for JsPenalty {
-    fn from(penalty: LinderaPenalty) -> Self {
-        JsPenalty {
-            kanji_penalty_length_threshold: penalty.kanji_penalty_length_threshold as u32,
-            kanji_penalty_length_penalty: penalty.kanji_penalty_length_penalty,
-            other_penalty_length_threshold: penalty.other_penalty_length_threshold as u32,
-            other_penalty_length_penalty: penalty.other_penalty_length_penalty,
-        }
-    }
+/// Converts the optional penalty argument of `setMode` and the `Tokenizer`
+/// constructor.
+///
+/// # Arguments
+///
+/// * `penalty` - The penalty passed from JS, or `None` for `null` or
+///   `undefined`.
+///
+/// # Returns
+///
+/// `None` when no penalty is passed, the core penalty otherwise, or the
+/// error of the conversion.
+pub fn optional_penalty(penalty: Option<PenaltyArg>) -> napi::Result<Option<LinderaPenalty>> {
+    penalty
+        .map(|PenaltyArg(penalty)| LinderaPenalty::try_from(penalty))
+        .transpose()
 }
 
 #[cfg(test)]
@@ -106,60 +186,94 @@ mod tests {
     }
 
     #[test]
-    fn test_js_penalty_to_lindera_penalty() {
-        let js_penalty = JsPenalty {
-            kanji_penalty_length_threshold: 3,
-            kanji_penalty_length_penalty: 5000,
-            other_penalty_length_threshold: 10,
-            other_penalty_length_penalty: 2000,
+    fn test_penalty_to_lindera_penalty() {
+        let penalty = Penalty {
+            kanji_penalty_length_threshold: Some(3.0),
+            kanji_penalty_length_penalty: Some(-5000.0),
+            other_penalty_length_threshold: Some(10.0),
+            other_penalty_length_penalty: Some(0.0),
         };
-        let lindera_penalty: LinderaPenalty = js_penalty.into();
-        assert_eq!(lindera_penalty.kanji_penalty_length_threshold, 3);
-        assert_eq!(lindera_penalty.kanji_penalty_length_penalty, 5000);
-        assert_eq!(lindera_penalty.other_penalty_length_threshold, 10);
-        assert_eq!(lindera_penalty.other_penalty_length_penalty, 2000);
+        let lindera_penalty = match LinderaPenalty::try_from(penalty) {
+            Ok(penalty) => penalty,
+            Err(err) => panic!("conversion failed: {err}"),
+        };
+        assert_eq!(
+            lindera_penalty,
+            LinderaPenalty {
+                kanji_penalty_length_threshold: 3,
+                kanji_penalty_length_penalty: -5000,
+                other_penalty_length_threshold: 10,
+                other_penalty_length_penalty: 0,
+            }
+        );
     }
 
     #[test]
-    fn test_lindera_penalty_to_js_penalty() {
-        let lindera_penalty = LinderaPenalty {
-            kanji_penalty_length_threshold: 4,
-            kanji_penalty_length_penalty: 6000,
-            other_penalty_length_threshold: 8,
-            other_penalty_length_penalty: 1500,
+    fn test_penalty_fields_left_out_keep_their_defaults() {
+        let lindera_penalty = match LinderaPenalty::try_from(Penalty {
+            kanji_penalty_length_penalty: Some(0.0),
+            ..Penalty::default()
+        }) {
+            Ok(penalty) => penalty,
+            Err(err) => panic!("conversion failed: {err}"),
         };
-        let js_penalty: JsPenalty = lindera_penalty.into();
-        assert_eq!(js_penalty.kanji_penalty_length_threshold, 4);
-        assert_eq!(js_penalty.kanji_penalty_length_penalty, 6000);
-        assert_eq!(js_penalty.other_penalty_length_threshold, 8);
-        assert_eq!(js_penalty.other_penalty_length_penalty, 1500);
+        assert_eq!(
+            lindera_penalty,
+            LinderaPenalty {
+                kanji_penalty_length_penalty: 0,
+                ..LinderaPenalty::default()
+            }
+        );
     }
 
     #[test]
-    fn test_penalty_roundtrip() {
-        let original = JsPenalty {
-            kanji_penalty_length_threshold: 2,
-            kanji_penalty_length_penalty: 3000,
-            other_penalty_length_threshold: 7,
-            other_penalty_length_penalty: 1700,
-        };
-        let lindera: LinderaPenalty = original.clone().into();
-        let roundtripped: JsPenalty = lindera.into();
+    fn test_penalty_field_outside_its_range_is_an_error() {
+        for (penalty, name) in [
+            (
+                Penalty {
+                    kanji_penalty_length_threshold: Some(-1.0),
+                    ..Penalty::default()
+                },
+                "kanjiPenaltyLengthThreshold",
+            ),
+            (
+                Penalty {
+                    kanji_penalty_length_penalty: Some(2_147_483_648.0),
+                    ..Penalty::default()
+                },
+                "kanjiPenaltyLengthPenalty",
+            ),
+            (
+                Penalty {
+                    other_penalty_length_threshold: Some(1.5),
+                    ..Penalty::default()
+                },
+                "otherPenaltyLengthThreshold",
+            ),
+            (
+                Penalty {
+                    other_penalty_length_penalty: Some(f64::NAN),
+                    ..Penalty::default()
+                },
+                "otherPenaltyLengthPenalty",
+            ),
+        ] {
+            match LinderaPenalty::try_from(penalty) {
+                Ok(penalty) => panic!("{name}: converted to {penalty:?}"),
+                Err(err) => {
+                    assert_eq!(err.status, napi::Status::InvalidArg, "{name}");
+                    assert!(err.reason.contains(name), "{name}: {}", err.reason);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_optional_penalty() {
+        assert_eq!(optional_penalty(None).ok(), Some(None));
         assert_eq!(
-            roundtripped.kanji_penalty_length_threshold,
-            original.kanji_penalty_length_threshold
-        );
-        assert_eq!(
-            roundtripped.kanji_penalty_length_penalty,
-            original.kanji_penalty_length_penalty
-        );
-        assert_eq!(
-            roundtripped.other_penalty_length_threshold,
-            original.other_penalty_length_threshold
-        );
-        assert_eq!(
-            roundtripped.other_penalty_length_penalty,
-            original.other_penalty_length_penalty
+            optional_penalty(Some(PenaltyArg(Penalty::default()))).ok(),
+            Some(Some(LinderaPenalty::default()))
         );
     }
 }

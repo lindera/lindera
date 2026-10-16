@@ -9,6 +9,7 @@ use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 use crate::argument::{integer_arg, optional_i64_from_bigint};
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::json::json_from_js;
+use crate::mode::penalty_from_js;
 use crate::token::token_view_to_js;
 
 /// Converts a JS value into a JSON value.
@@ -129,13 +130,29 @@ impl TokenizerBuilder {
 
     /// Sets the tokenization mode.
     ///
-    /// Returns a builder handle sharing this configuration, enabling method chaining.
+    /// # Arguments
+    ///
+    /// * `mode` - `"normal"` or `"decompose"`.
+    /// * `penalty` - The `Penalty` for `"decompose"`. `null` or `undefined`
+    ///   (the default) uses the default penalty. The `Penalty` stays usable,
+    ///   so the same one can be passed again.
+    ///
+    /// # Returns
+    ///
+    /// A builder handle sharing this configuration, enabling method chaining,
+    /// or an error string for an invalid mode, for a penalty with `"normal"`,
+    /// or for a value that is not a `Penalty`.
     #[wasm_bindgen(js_name = "setMode")]
-    pub fn set_mode(&self, mode: &str) -> Result<TokenizerBuilder, JsValue> {
+    pub fn set_mode(
+        &self,
+        mode: &str,
+        #[wasm_bindgen(unchecked_optional_param_type = "Penalty | null")] penalty: Option<JsValue>,
+    ) -> Result<TokenizerBuilder, JsValue> {
+        let penalty = penalty_from_js(penalty)?;
         self.state
             .borrow_mut()
             .inner
-            .set_mode(mode)
+            .set_mode(mode, penalty)
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
         Ok(self.share())
@@ -312,8 +329,12 @@ impl TokenizerBuilder {
 
     /// Sets the tokenization mode (snake_case alias).
     #[wasm_bindgen(js_name = "set_mode")]
-    pub fn py_set_mode(&self, mode: &str) -> Result<TokenizerBuilder, JsValue> {
-        self.set_mode(mode)
+    pub fn py_set_mode(
+        &self,
+        mode: &str,
+        #[wasm_bindgen(unchecked_optional_param_type = "Penalty | null")] penalty: Option<JsValue>,
+    ) -> Result<TokenizerBuilder, JsValue> {
+        self.set_mode(mode, penalty)
     }
 
     /// Sets the dictionary by URI (snake_case alias).
@@ -417,13 +438,16 @@ impl Tokenizer {
     /// * `space_penalty` - The left-space penalty, in the forms
     ///   `TokenizerBuilder.setSpacePenalty` accepts. `null` or `undefined`
     ///   (the default) keeps the rules the dictionary ships.
+    /// * `penalty` - The `Penalty` for `"decompose"`, as
+    ///   `TokenizerBuilder.setMode` takes it. `null` or `undefined` (the
+    ///   default) uses the default penalty.
     ///
     /// # Returns
     ///
-    /// The tokenizer, or an error string for an invalid mode or space-penalty
-    /// setting, as `setSpacePenalty` and `build()` report them, or for a user
-    /// dictionary with a context ID outside the dictionary's connection
-    /// matrix.
+    /// The tokenizer, or an error string for an invalid mode, penalty or
+    /// space-penalty setting, as `setMode`, `setSpacePenalty` and `build()`
+    /// report them, or for a user dictionary with a context ID outside the
+    /// dictionary's connection matrix.
     // Once one parameter carries a type attribute, wasm-bindgen marks a
     // parameter optional in the TypeScript declarations only when it uses
     // `unchecked_optional_param_type`, so every trailing optional parameter
@@ -438,15 +462,18 @@ impl Tokenizer {
             unchecked_optional_param_type = "boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null"
         )]
         space_penalty: Option<JsValue>,
+        #[wasm_bindgen(unchecked_optional_param_type = "Penalty | null")] penalty: Option<JsValue>,
     ) -> Result<Tokenizer, JsValue> {
         let space_penalty = match space_penalty {
             Some(value) => js_to_json(value)
                 .map_err(|e| JsValue::from_str(&format!("invalid space_penalty: {e}")))?,
             None => Value::Null,
         };
+        let penalty = penalty_from_js(penalty)?;
         let user_dict = user_dictionary.map(|d| d.inner);
         let inner = CoreTokenizer::from_segmenter_with_space_penalty(
             mode.as_deref().unwrap_or("normal"),
+            penalty,
             dictionary.inner,
             user_dict,
             &space_penalty,
@@ -599,7 +626,7 @@ mod tests {
         use crate::TokenizerBuilder;
 
         let builder = TokenizerBuilder::new().unwrap();
-        builder.set_mode("normal").unwrap();
+        builder.set_mode("normal", None).unwrap();
         builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
@@ -619,7 +646,7 @@ mod tests {
         use crate::TokenizerBuilder;
 
         let builder = TokenizerBuilder::new().unwrap();
-        builder.set_mode("normal").unwrap();
+        builder.set_mode("normal", None).unwrap();
         builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
@@ -649,7 +676,7 @@ mod tests {
         use crate::TokenizerBuilder;
 
         let builder = TokenizerBuilder::new().unwrap();
-        builder.set_mode("normal").unwrap();
+        builder.set_mode("normal", None).unwrap();
         builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
@@ -669,7 +696,7 @@ mod tests {
         // Chained style: every setter returns a handle sharing the same state.
         let tokenizer = TokenizerBuilder::new()
             .unwrap()
-            .set_mode("normal")
+            .set_mode("normal", None)
             .unwrap()
             .set_dictionary("embedded://ipadic")
             .build()
@@ -690,7 +717,7 @@ mod tests {
         // A setter called on a returned handle must affect the original builder,
         // and the builder must remain usable after `build()`.
         let builder = TokenizerBuilder::new().unwrap();
-        let handle = builder.set_mode("normal").unwrap();
+        let handle = builder.set_mode("normal", None).unwrap();
         handle.set_dictionary("embedded://ipadic");
 
         let first = builder.build().unwrap();
@@ -709,7 +736,7 @@ mod tests {
         use crate::TokenizerBuilder;
 
         let builder = TokenizerBuilder::new().unwrap();
-        builder.set_mode("normal").unwrap();
+        builder.set_mode("normal", None).unwrap();
         builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
@@ -737,7 +764,7 @@ mod tests {
         use crate::TokenizerBuilder;
 
         let builder = TokenizerBuilder::new().unwrap();
-        builder.set_mode("normal").unwrap();
+        builder.set_mode("normal", None).unwrap();
         builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
@@ -764,7 +791,7 @@ mod tests {
         use crate::TokenizerBuilder;
 
         let builder = TokenizerBuilder::new().unwrap();
-        builder.set_mode("normal").unwrap();
+        builder.set_mode("normal", None).unwrap();
         builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
@@ -800,7 +827,7 @@ mod tests {
         use crate::TokenizerBuilder;
 
         let builder = TokenizerBuilder::new().unwrap();
-        builder.set_mode("decompose").unwrap();
+        builder.set_mode("decompose", None).unwrap();
         builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
@@ -813,13 +840,112 @@ mod tests {
         assert_eq!(reconstructed, "関西国際空港");
     }
 
+    /// A `Penalty` passed with decompose mode reaches the segmenter through
+    /// `setMode`, its alias and the constructor, and stays usable, so one
+    /// object is passed again and again (#1215). Without length penalties,
+    /// `関西国際空港` stays whole.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_decompose_penalty_reaches_the_segmenter() {
+        use crate::dictionary::load_dictionary;
+        use crate::mode::JsPenalty;
+        use crate::{Tokenizer, TokenizerBuilder};
+        use wasm_bindgen::JsValue;
+
+        let surfaces = |tokenizer: &Tokenizer| -> Vec<String> {
+            tokenizer
+                .tokenize("関西国際空港限定トートバッグ")
+                .unwrap()
+                .iter()
+                .map(|t| token_str(t, "surface"))
+                .collect()
+        };
+        let default = vec!["関西", "国際", "空港", "限定", "トートバッグ"];
+        let no_length_penalty = vec!["関西国際空港", "限定", "トートバッグ"];
+        let penalty = JsValue::from(JsPenalty::new(None, Some(0.0), None, Some(0.0)).unwrap());
+
+        for (value, expected) in [
+            (None, &default),
+            (Some(JsValue::NULL), &default),
+            (Some(JsValue::UNDEFINED), &default),
+            (Some(penalty.clone()), &no_length_penalty),
+        ] {
+            let builder = TokenizerBuilder::new().unwrap();
+            builder.set_dictionary("embedded://ipadic");
+            builder.set_mode("decompose", value.clone()).unwrap();
+            assert_eq!(&surfaces(&builder.build().unwrap()), expected, "setMode");
+
+            let builder = TokenizerBuilder::new().unwrap();
+            builder.set_dictionary("embedded://ipadic");
+            builder.py_set_mode("decompose", value.clone()).unwrap();
+            assert_eq!(&surfaces(&builder.build().unwrap()), expected, "set_mode");
+
+            let tokenizer = Tokenizer::new(
+                load_dictionary("embedded://ipadic").unwrap(),
+                Some("decompose".to_string()),
+                None,
+                None,
+                value,
+            )
+            .unwrap();
+            assert_eq!(&surfaces(&tokenizer), expected, "constructor");
+        }
+    }
+
+    /// A penalty with normal mode, and a value that is not a `Penalty`, are
+    /// errors, not the default (#1215).
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_decompose_penalty_rejects_normal_mode_and_other_values() {
+        use crate::dictionary::load_dictionary;
+        use crate::mode::JsPenalty;
+        use crate::{Tokenizer, TokenizerBuilder};
+        use wasm_bindgen::JsValue;
+
+        let penalty = JsValue::from(JsPenalty::new(None, None, None, None).unwrap());
+        let builder = TokenizerBuilder::new().unwrap();
+        let constructor_error = |mode: &str, value: JsValue| -> String {
+            Tokenizer::new(
+                load_dictionary("embedded://ipadic").unwrap(),
+                Some(mode.to_string()),
+                None,
+                None,
+                Some(value),
+            )
+            .err()
+            .unwrap()
+            .as_string()
+            .unwrap()
+        };
+
+        let error = builder
+            .set_mode("normal", Some(penalty.clone()))
+            .err()
+            .unwrap()
+            .as_string()
+            .unwrap();
+        assert!(error.contains("decompose"), "{error}");
+        let error = constructor_error("normal", penalty);
+        assert!(error.contains("decompose"), "{error}");
+
+        let error = builder
+            .set_mode("decompose", Some(JsValue::from_str("penalty")))
+            .err()
+            .unwrap()
+            .as_string()
+            .unwrap();
+        assert!(error.contains("must be a Penalty"), "{error}");
+        let error = constructor_error("decompose", JsValue::from_f64(0.0));
+        assert!(error.contains("must be a Penalty"), "{error}");
+    }
+
     #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen_test]
     fn test_tokenize_empty_string() {
         use crate::TokenizerBuilder;
 
         let builder = TokenizerBuilder::new().unwrap();
-        builder.set_mode("normal").unwrap();
+        builder.set_mode("normal", None).unwrap();
         builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
@@ -835,7 +961,7 @@ mod tests {
         use crate::TokenizerBuilder;
 
         let builder = TokenizerBuilder::new().unwrap();
-        builder.set_mode("normal").unwrap();
+        builder.set_mode("normal", None).unwrap();
         builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
@@ -897,7 +1023,7 @@ mod tests {
         use crate::TokenizerBuilder;
 
         let builder = TokenizerBuilder::new().unwrap();
-        let result = builder.set_mode("invalid_mode");
+        let result = builder.set_mode("invalid_mode", None);
 
         assert!(result.is_err());
     }
@@ -909,7 +1035,7 @@ mod tests {
         use crate::dictionary::load_dictionary;
 
         let dict = load_dictionary("embedded://ipadic").unwrap();
-        let tokenizer = Tokenizer::new(dict, Some("normal".to_string()), None, None).unwrap();
+        let tokenizer = Tokenizer::new(dict, Some("normal".to_string()), None, None, None).unwrap();
 
         let tokens = tokenizer.tokenize("東京タワー").unwrap();
 
@@ -926,7 +1052,7 @@ mod tests {
         let dict = load_dictionary("embedded://ipadic").unwrap();
 
         let builder = TokenizerBuilder::new().unwrap();
-        builder.set_mode("normal").unwrap();
+        builder.set_mode("normal", None).unwrap();
         builder.set_dictionary_instance(dict);
 
         let tokenizer = builder.build().unwrap();
@@ -945,7 +1071,7 @@ mod tests {
         let dict = load_dictionary("embedded://ipadic").unwrap();
 
         let builder = TokenizerBuilder::new().unwrap();
-        builder.set_mode("decompose").unwrap();
+        builder.set_mode("decompose", None).unwrap();
         builder.set_dictionary_instance(dict);
 
         let tokenizer = builder.build().unwrap();
@@ -1375,11 +1501,11 @@ mod tests {
 
         // The constructor keeps the dictionary default.
         let baseline = surfaces_and_pos(
-            &Tokenizer::new(plain.clone(), None, None, None).unwrap(),
+            &Tokenizer::new(plain.clone(), None, None, None, None).unwrap(),
             SPACED_TEXT,
         );
         let penalized = surfaces_and_pos(
-            &Tokenizer::new(shipping.clone(), None, None, None).unwrap(),
+            &Tokenizer::new(shipping.clone(), None, None, None, None).unwrap(),
             SPACED_TEXT,
         );
         assert_ne!(penalized, baseline);
@@ -1599,7 +1725,8 @@ mod tests {
         let mut shipping = plain.clone();
         Arc::make_mut(&mut shipping.inner.metadata).space_penalty = Some(ipadic_rules_config());
         let tokenize = |dictionary: &JsDictionary, space_penalty: Option<JsValue>| {
-            let tokenizer = Tokenizer::new(dictionary.clone(), None, None, space_penalty).unwrap();
+            let tokenizer =
+                Tokenizer::new(dictionary.clone(), None, None, space_penalty, None).unwrap();
             surfaces_and_pos(&tokenizer, SPACED_TEXT)
         };
 
@@ -1632,7 +1759,7 @@ mod tests {
 
         let error = |space_penalty: JsValue| {
             let dictionary = load_dictionary("embedded://ipadic").unwrap();
-            match Tokenizer::new(dictionary, None, None, Some(space_penalty)) {
+            match Tokenizer::new(dictionary, None, None, Some(space_penalty), None) {
                 Ok(_) => panic!("the setting was accepted"),
                 Err(error) => error.as_string().unwrap_or_default(),
             }

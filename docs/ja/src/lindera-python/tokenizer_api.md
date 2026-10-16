@@ -31,15 +31,18 @@ builder = TokenizerBuilder().from_file("lindera.yml")
 
 すべてのセッターメソッドはメソッドチェーンのために `self` を返します。
 
-#### `set_mode(mode)`
+#### `set_mode(mode, penalty=None)`
 
 トークナイズモードを設定します。
 
 - `"normal"` -- 標準的なトークナイズ（デフォルト）
 - `"decompose"` -- 複合語をより小さな単位に分解
 
+`penalty` は `"decompose"` モードが使う [`Penalty`](#penalty) です。`None`（デフォルト）では既定のペナルティを使います。`"normal"` とペナルティを一緒に渡すと `ValueError` が、`Penalty` でない値を渡すと `TypeError` が送出されます。
+
 ```python
 builder.set_mode("normal")
+builder.set_mode("decompose", Penalty(kanji_penalty_length_penalty=0))
 ```
 
 #### `set_dictionary(path)`
@@ -148,11 +151,13 @@ tokenizer = builder.build()
 
 ### Tokenizer の作成
 
-#### `Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None)`
+#### `Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None, penalty=None)`
 
 読み込み済みの辞書から直接トークナイザーを作成します。
 
 `space_penalty` には [`TokenizerBuilder.set_space_penalty`](#set_space_penaltyvalue) と同じ値を渡せます。`None`（デフォルト）では辞書が同梱する左側空白ペナルティのルールを使うため、ko-dic ではペナルティがオンになります。オフにするには `False` を渡します。不正な設定では、`set_space_penalty` や `build()` と同じエラーが送出されます。
+
+`penalty` には、[`TokenizerBuilder.set_mode`](#set_modemode-penaltynone) と同じく `"decompose"` モードの [`Penalty`](#penalty) を渡せます。エラーも `set_mode` と同じです。
 
 ```python
 from lindera import Tokenizer, load_dictionary
@@ -224,9 +229,9 @@ for tokens, cost in results:
 
 `Mode` はトークナイズモードを表します。モードの確認や比較のためのスタンドアロンな
 ヘルパーとして提供されています。`TokenizerBuilder.set_mode()` と `Tokenizer` の
-コンストラクタは、現在は `Mode` インスタンスではなく単純なモード文字列
-（`"normal"` または `"decompose"`）のみを受け付けます（下記 `Penalty` の制限事項
-も参照）。
+コンストラクタは、`Mode` インスタンスではなく単純なモード文字列
+（`"normal"` または `"decompose"`）を受け取ります。decompose モードのペナルティは、
+それぞれの `penalty` 引数で渡します（下記 [`Penalty`](#penalty) を参照）。
 
 ### Mode の作成
 
@@ -299,11 +304,31 @@ penalty.kanji_penalty_length_threshold = 3
 print(penalty.kanji_penalty_length_threshold)  # 3
 ```
 
-**現在の制限事項:** 現時点では `Penalty` を `Tokenizer` や `TokenizerBuilder` に
-渡す方法はありません。`set_mode()` と `Tokenizer` のコンストラクタは単純な
-モード文字列のみを受け付け、内部的に `"decompose"` モードは常に `Penalty` の
-デフォルト値を使用します -- カスタムの `Penalty` インスタンスを作成しても、
-トークナイズには反映されません。
+### Penalty の使い方
+
+`Penalty` は `"decompose"` と一緒に [`TokenizerBuilder.set_mode()`](#set_modemode-penaltynone) か [`Tokenizer` のコンストラクタ](#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone) に渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。
+
+```python
+from lindera import Penalty, Tokenizer, TokenizerBuilder, load_dictionary
+
+text = "関西国際空港限定トートバッグ"
+penalty = Penalty(kanji_penalty_length_penalty=0, other_penalty_length_penalty=0)
+
+builder = TokenizerBuilder().set_dictionary("embedded://ipadic")
+tokenizer = builder.set_mode("decompose").build()
+print([token.surface for token in tokenizer.tokenize(text)])
+# ['関西', '国際', '空港', '限定', 'トートバッグ']
+
+tokenizer = builder.set_mode("decompose", penalty).build()
+print([token.surface for token in tokenizer.tokenize(text)])
+# ['関西国際空港', '限定', 'トートバッグ']
+
+tokenizer = Tokenizer(load_dictionary("embedded://ipadic"), mode="decompose", penalty=penalty)
+print([token.surface for token in tokenizer.tokenize(text)])
+# ['関西国際空港', '限定', 'トートバッグ']
+```
+
+`"normal"` モードと一緒に `Penalty` を渡すと `ValueError` が送出されます。
 
 ## Token
 

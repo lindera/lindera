@@ -13,6 +13,7 @@
 import {
   loadDictionary,
   Tokenizer,
+  Penalty,
   TokenizerBuilder,
   type Dictionary,
 } from "../pkg-node/lindera_wasm.js";
@@ -26,7 +27,25 @@ export function checkTokenizerConstructorForms(dictionary: Dictionary): Array<To
     new Tokenizer(dictionary, "decompose", null),
     new Tokenizer(dictionary, undefined, undefined, false),
     new Tokenizer(dictionary, "normal", null, { rules: [{ pos: ["JKS", "JX"], cost: 6000 }] }),
+    new Tokenizer(dictionary, "decompose", null, null, new Penalty(undefined, 0)),
+    new Tokenizer(dictionary, "decompose", undefined, undefined, null),
   ];
+}
+
+// `setMode` and its alias take a `Penalty` as an optional second argument
+// (#1215).
+export function checkSetModePenaltyForms(): void {
+  const penalty = new Penalty(undefined, 0, undefined, 0);
+  const builder: TokenizerBuilder = new TokenizerBuilder()
+    .setMode("normal")
+    .setMode("decompose", penalty)
+    .setMode("decompose", null)
+    .setMode("decompose", undefined)
+    .set_mode("decompose")
+    .set_mode("decompose", penalty);
+  // @ts-expect-error -- the penalty is a Penalty.
+  builder.setMode("decompose", { kanji_penalty_length_penalty: 0 });
+  void builder;
 }
 
 export function checkTokenize(text: string): void {

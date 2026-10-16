@@ -52,6 +52,8 @@ class ArgumentTypesTest extends TestCase
             'FieldDefinition::__construct($description)' => static fn (mixed $v) => new Lindera\FieldDefinition(0, 'surface', 'surface', $v),
             'Tokenizer::__construct($mode)' => static fn (mixed $v) => new Lindera\Tokenizer(self::dictionary(), mode: $v),
             'Tokenizer::__construct($user_dictionary)' => static fn (mixed $v) => new Lindera\Tokenizer(self::dictionary(), user_dictionary: $v),
+            'Tokenizer::__construct($penalty)' => static fn (mixed $v) => new Lindera\Tokenizer(self::dictionary(), mode: 'decompose', penalty: $v),
+            'TokenizerBuilder::setMode($penalty)' => static fn (mixed $v) => (new Lindera\TokenizerBuilder())->setMode('decompose', $v),
             'Tokenizer::tokenizeNbest($unique)' => static fn (mixed $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbest('東京都', 2, unique: $v),
             'Tokenizer::tokenizeNbest($cost_threshold)' => static fn (mixed $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbest('東京都', 2, cost_threshold: $v),
             'Dictionary::buildUser($metadata)' => static fn (mixed $v) => Lindera\Dictionary::buildUser('ipadic', $missing, $missing, $v),

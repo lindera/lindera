@@ -11,6 +11,7 @@ use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::error::to_napi_error;
+use crate::mode::{PenaltyArg, optional_penalty};
 use crate::token::{NbestResult, Token};
 use crate::util::{JsonArg, integer_arg, js_value_to_serde_value, optional_integer_arg};
 
@@ -53,13 +54,22 @@ impl JsTokenizerBuilder {
     /// # Arguments
     ///
     /// * `mode` - Mode string ("normal" or "decompose").
+    /// * `penalty` - The `Penalty` for "decompose" mode. `null` or
+    ///   `undefined` (the default) uses the default penalty.
     ///
     /// # Returns
     ///
-    /// The builder itself (`this`), enabling method chaining.
+    /// The builder itself (`this`), enabling method chaining. Throws for an
+    /// invalid mode, for a penalty with "normal" mode, and, with code
+    /// `InvalidArg`, for a penalty field that is not an integer in its range.
     #[napi]
-    pub fn set_mode(&mut self, mode: String) -> napi::Result<&Self> {
-        self.inner.set_mode(&mode).map_err(to_napi_error)?;
+    pub fn set_mode(
+        &mut self,
+        mode: String,
+        #[napi(ts_arg_type = "Penalty | undefined | null")] penalty: Option<PenaltyArg>,
+    ) -> napi::Result<&Self> {
+        let penalty = optional_penalty(penalty)?;
+        self.inner.set_mode(&mode, penalty).map_err(to_napi_error)?;
         Ok(self)
     }
 
@@ -248,10 +258,14 @@ impl JsTokenizer {
     /// * `space_penalty` - The left-space penalty, in the forms
     ///   `TokenizerBuilder.setSpacePenalty` accepts. `null` or `undefined`
     ///   (the default) keeps the rules the dictionary ships.
+    /// * `penalty` - The `Penalty` for "decompose" mode, as
+    ///   `TokenizerBuilder.setMode` takes it. `null` or `undefined` (the
+    ///   default) uses the default penalty.
     ///
-    /// Throws for an invalid space-penalty setting, as `setSpacePenalty` and
-    /// `build()` do, and for a user dictionary with a context ID outside the
-    /// dictionary's connection matrix.
+    /// Throws for an invalid mode, penalty or space-penalty setting, as
+    /// `setMode`, `setSpacePenalty` and `build()` do, and for a user
+    /// dictionary with a context ID outside the dictionary's connection
+    /// matrix.
     #[napi(constructor)]
     pub fn new(
         dictionary: &JsDictionary,
@@ -261,14 +275,17 @@ impl JsTokenizer {
             ts_arg_type = "boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined"
         )]
         space_penalty: Option<JsonArg>,
+        #[napi(ts_arg_type = "Penalty | undefined | null")] penalty: Option<PenaltyArg>,
     ) -> napi::Result<Self> {
         let mode_str = mode.unwrap_or_else(|| "normal".to_string());
         let dict = dictionary.inner.clone();
         let user_dict = user_dictionary.map(|d| d.inner.clone());
         let space_penalty = space_penalty.map_or(serde_json::Value::Null, |value| value.0);
+        let penalty = optional_penalty(penalty)?;
 
         let inner = CoreTokenizer::from_segmenter_with_space_penalty(
             &mode_str,
+            penalty,
             dict,
             user_dict,
             &space_penalty,

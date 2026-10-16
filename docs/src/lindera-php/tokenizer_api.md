@@ -29,17 +29,20 @@ $builder->fromFile('config.json');
 
 ### Configuration Methods
 
-#### `setMode($mode)`
+#### `setMode($mode, $penalty)`
 
 Sets the tokenization mode.
 
 - `"normal"` -- Standard tokenization (default)
 - `"decompose"` -- Decomposes compound words into smaller units
 
+`$penalty` is the [`Lindera\Penalty`](#penalty) that `"decompose"` mode uses; `null` (the default) uses the default penalty. A penalty with `"normal"` throws a `ValueError`, as an invalid mode does, and a value of another type throws instead of selecting the default.
+
 ```php
 <?php
 
 $builder->setMode('normal');
+$builder->setMode('decompose', new Lindera\Penalty(kanji_penalty_length_penalty: 0));
 ```
 
 #### `setDictionary($path)`
@@ -127,7 +130,7 @@ $builder->setSpacePenalty(null);
 ```
 
 > [!NOTE]
-> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `검색 이 잘 된다` reads `이` as the interjection `IC`; without the penalty, as the subject particle `JKS`. Call `$builder->setSpacePenalty(false)` to turn it off; for a tokenizer created with [`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty), pass `space_penalty: false`. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and `true` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
+> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `검색 이 잘 된다` reads `이` as the interjection `IC`; without the penalty, as the subject particle `JKS`. Call `$builder->setSpacePenalty(false)` to turn it off; for a tokenizer created with [`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty), pass `space_penalty: false`. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and `true` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
 
 #### `appendCharacterFilter($kind, $args)`
 
@@ -169,11 +172,13 @@ $tokenizer = $builder->build();
 
 ### Creating a Tokenizer
 
-#### `new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty)`
+#### `new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty, $penalty)`
 
-Creates a tokenizer directly from a loaded dictionary. `$mode`, `$user_dictionary` and `$space_penalty` are optional and default to `null`; `$mode` `null` means `'normal'`.
+Creates a tokenizer directly from a loaded dictionary. `$mode`, `$user_dictionary`, `$space_penalty` and `$penalty` are optional and default to `null`; `$mode` `null` means `'normal'`.
 
 `$space_penalty` takes the same values as [`setSpacePenalty()`](#setspacepenaltyvalue). `null` uses the left-space penalty rules the dictionary ships (ko-dic ships them); pass `false` to turn the penalty off. Pass it by name to skip the other optional arguments. An invalid setting throws a `ValueError`, as `setSpacePenalty()` and `build()` do.
+
+`$penalty` takes a [`Lindera\Penalty`](#penalty) for `"decompose"` mode, as [`setMode()`](#setmodemode-penalty) does, with the same errors.
 
 ```php
 <?php
@@ -373,8 +378,6 @@ $mode = new Lindera\Mode();  // default: 'normal'
 
 `Lindera\Penalty` configures how aggressively `decompose` mode splits compound words, based on character type and length thresholds.
 
-> **Note:** `Penalty` is not currently wired into `TokenizerBuilder` or the `Tokenizer` constructor -- there is no setter that accepts it, so constructing one has no effect on tokenization yet. `decompose` mode always uses the default penalty values shown below.
-
 ```php
 <?php
 
@@ -395,3 +398,31 @@ $penalty = new Lindera\Penalty(
 | `$kanji_penalty_length_penalty` | `int` | `3000` | Penalty applied to kanji sequences exceeding the threshold |
 | `$other_penalty_length_threshold` | `int` | `7` | Length threshold for other character sequences |
 | `$other_penalty_length_penalty` | `int` | `1700` | Penalty applied to other character sequences exceeding the threshold |
+
+### Using a Penalty
+
+Pass a `Penalty` with `'decompose'` to [`setMode()`](#setmodemode-penalty) or to the [`Tokenizer` constructor](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty). Without length penalties, decompose mode keeps long words whole:
+
+```php
+<?php
+
+$text = '関西国際空港限定トートバッグ';
+$penalty = new Lindera\Penalty(kanji_penalty_length_penalty: 0, other_penalty_length_penalty: 0);
+$surfaces = static fn (array $tokens): string => implode(' / ', array_map(static fn ($token) => $token->surface, $tokens));
+
+$builder = new Lindera\TokenizerBuilder();
+$builder->setDictionary('embedded://ipadic');
+$builder->setMode('decompose');
+echo $surfaces($builder->build()->tokenize($text)), "\n";
+// 関西 / 国際 / 空港 / 限定 / トートバッグ
+
+$builder->setMode('decompose', $penalty);
+echo $surfaces($builder->build()->tokenize($text)), "\n";
+// 関西国際空港 / 限定 / トートバッグ
+
+$tokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ipadic'), 'decompose', penalty: $penalty);
+echo $surfaces($tokenizer->tokenize($text)), "\n";
+// 関西国際空港 / 限定 / トートバッグ
+```
+
+A `Penalty` with `'normal'` mode throws a `ValueError`.

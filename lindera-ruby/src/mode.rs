@@ -124,7 +124,8 @@ impl From<LinderaMode> for RbMode {
 /// Penalty configuration for decompose mode.
 ///
 /// Controls how aggressively compound words are decomposed based on
-/// character type and length thresholds.
+/// character type and length thresholds. Pass it with "decompose" as the
+/// `penalty:` keyword of `TokenizerBuilder#set_mode` or `Tokenizer.new`.
 #[magnus::wrap(class = "Lindera::Penalty", free_immediately, size)]
 #[derive(Debug, Clone, Copy)]
 pub struct RbPenalty {

@@ -32,15 +32,18 @@ const builder = new TokenizerBuilder().fromFile("lindera.yml");
 
 すべてのセッターメソッドはビルダー自身（`this`）を返すため、メソッドチェーンでも 1 文ずつの呼び出しでも設定できます。
 
-#### `setMode(mode)`
+#### `setMode(mode, penalty?)`
 
 トークナイズモードを設定します。
 
 - `"normal"` -- 標準的なトークナイズ（デフォルト）
 - `"decompose"` -- 複合語をより小さな単位に分解
 
+`penalty` は `"decompose"` モードが使う [`Penalty`](#penalty) オブジェクトです。`null` または `undefined`（デフォルト）では既定のペナルティを使います。`"normal"` とペナルティを一緒に渡すと、不正なモードと同じくエラーを投げます。オブジェクトでない値や、範囲内の整数でないフィールドを渡すと、`InvalidArg` のエラーを投げます。
+
 ```javascript
 builder.setMode("normal");
+builder.setMode("decompose", { kanjiPenaltyLengthPenalty: 0 });
 ```
 
 #### `setDictionary(path)`
@@ -159,11 +162,13 @@ const tokenizer = builder.build();
 
 ### Tokenizer の作成
 
-#### `new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?)`
+#### `new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?, penalty?)`
 
 読み込み済みの辞書から直接トークナイザーを作成します。
 
 `spacePenalty` には [`setSpacePenalty`](#setspacepenaltyvalue) と同じ値を渡せます。`null` または `undefined`（デフォルト）では、辞書が同梱する左側空白ペナルティのルールを使います。不正な設定では、`setSpacePenalty` や `build()` と同じくエラーを投げます。
+
+`penalty` には、[`setMode`](#setmodemode-penalty) と同じく `"decompose"` モードの [`Penalty`](#penalty) を渡せます。エラーも `setMode` と同じです。
 
 ```javascript
 const { Tokenizer, loadDictionary } = require("lindera");
@@ -271,11 +276,9 @@ const reading = token.details[7];  // 例: "トウキョウ"
 
 ## Mode と Penalty
 
-`Mode` と `Penalty` は npm パッケージ `lindera` からエクスポートされていますが、**現状どの公開 API
-にも接続されていません**： `TokenizerBuilder.setMode()` / `Tokenizer` のコンストラクタは
-単純なモード文字列（`"normal"` または `"decompose"`）のみを受け取り、decompose モードは
-内部的に常にデフォルトのペナルティ設定を使用します。これらの型は完全性のためにここで
-説明していますが、JavaScript からペナルティの挙動をカスタマイズする用途にはまだ使用できません。
+`TokenizerBuilder.setMode()` と `Tokenizer` のコンストラクタは、モードを単純な文字列
+（`"normal"` または `"decompose"`）で、decompose モードのペナルティを [`Penalty`](#penalty)
+オブジェクトで受け取ります。
 
 ### `Mode`
 
@@ -286,11 +289,34 @@ const reading = token.details[7];  // 例: "トウキョウ"
 
 ### `Penalty`
 
-decompose モードで使用されるペナルティパラメータを表すオブジェクトです：
+decompose モードのペナルティパラメータを持つプレーンなオブジェクト（TypeScript の型は `Penalty`）です。フィールドはすべて省略でき、省略したフィールドはデフォルト値になります：
 
 | プロパティ | 型 | 説明 |
 | --- | --- | --- |
-| `kanjiPenaltyLengthThreshold` | `number` | ペナルティを適用する前の漢字列の長さの閾値（デフォルト: `2`） |
-| `kanjiPenaltyLengthPenalty` | `number` | 長い漢字列に対するペナルティ値（デフォルト: `3000`） |
-| `otherPenaltyLengthThreshold` | `number` | ペナルティを適用する前のその他の文字列の長さの閾値（デフォルト: `7`） |
-| `otherPenaltyLengthPenalty` | `number` | 長いその他の文字列に対するペナルティ値（デフォルト: `1700`） |
+| `kanjiPenaltyLengthThreshold` | `number` | ペナルティを適用する前の漢字列の長さの閾値。0 以上の整数（デフォルト: `2`） |
+| `kanjiPenaltyLengthPenalty` | `number` | 長い漢字列に対するペナルティ値。32 ビット符号付き整数（デフォルト: `3000`） |
+| `otherPenaltyLengthThreshold` | `number` | ペナルティを適用する前のその他の文字列の長さの閾値。0 以上の整数（デフォルト: `7`） |
+| `otherPenaltyLengthPenalty` | `number` | 長いその他の文字列に対するペナルティ値。32 ビット符号付き整数（デフォルト: `1700`） |
+
+`"decompose"` と一緒に [`setMode()`](#setmodemode-penalty) か [`Tokenizer` のコンストラクタ](#new-tokenizerdictionary-mode-userdictionary-spacepenalty-penalty) に渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります：
+
+```javascript
+const { Tokenizer, TokenizerBuilder, loadDictionary } = require("lindera");
+
+const text = "関西国際空港限定トートバッグ";
+const penalty = { kanjiPenaltyLengthPenalty: 0, otherPenaltyLengthPenalty: 0 };
+const surfaces = (tokenizer) => tokenizer.tokenize(text).map((token) => token.surface);
+
+const builder = new TokenizerBuilder().setDictionary("embedded://ipadic");
+console.log(surfaces(builder.setMode("decompose").build()));
+// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
+
+console.log(surfaces(builder.setMode("decompose", penalty).build()));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+
+const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), "decompose", null, null, penalty);
+console.log(surfaces(tokenizer));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+```
+
+`"normal"` モードと一緒にペナルティを渡すとエラーを投げます。

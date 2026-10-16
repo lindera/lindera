@@ -233,12 +233,110 @@ impl From<LinderaPenalty> for JsPenalty {
     }
 }
 
+/// Reads the optional `Penalty` argument of `setMode` and the `Tokenizer`
+/// constructor (#1215).
+///
+/// The argument is taken as a `JsValue` and read through the four getters of
+/// `Penalty`: wasm-bindgen destroys the JS object of a class argument taken
+/// by value, so the caller could not pass the same `Penalty` again.
+///
+/// # Arguments
+///
+/// * `value` - The argument, or `None` when it is left out.
+///
+/// # Returns
+///
+/// `None` for an argument that is left out, `null` or `undefined`, the core
+/// penalty otherwise, or a thrown string for a value that is not a
+/// `Penalty`: one that is not an object, or one whose properties are not
+/// integers in the range of the fields.
+pub fn penalty_from_js(value: Option<JsValue>) -> Result<Option<LinderaPenalty>, JsValue> {
+    let Some(value) = value.filter(|value| !value.is_null() && !value.is_undefined()) else {
+        return Ok(None);
+    };
+    if !value.is_object() {
+        return Err(JsValue::from_str("penalty must be a Penalty"));
+    }
+    let field = |name: &str| -> Result<f64, JsValue> {
+        js_sys::Reflect::get(&value, &JsValue::from_str(name))?
+            .as_f64()
+            .ok_or_else(|| {
+                JsValue::from_str(&format!(
+                    "penalty must be a Penalty, but its {name} is not a number"
+                ))
+            })
+    };
+    Ok(Some(LinderaPenalty {
+        kanji_penalty_length_threshold: integer_arg(
+            "kanji_penalty_length_threshold",
+            field("kanji_penalty_length_threshold")?,
+        )?,
+        kanji_penalty_length_penalty: integer_arg(
+            "kanji_penalty_length_penalty",
+            field("kanji_penalty_length_penalty")?,
+        )?,
+        other_penalty_length_threshold: integer_arg(
+            "other_penalty_length_threshold",
+            field("other_penalty_length_threshold")?,
+        )?,
+        other_penalty_length_penalty: integer_arg(
+            "other_penalty_length_penalty",
+            field("other_penalty_length_penalty")?,
+        )?,
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[cfg(target_arch = "wasm32")]
     use wasm_bindgen_test::wasm_bindgen_test;
+
+    /// A `Penalty` is read through its getters and stays usable, and `null`,
+    /// `undefined` or a left-out argument mean the default (#1215).
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_penalty_from_js_reads_a_penalty() {
+        let penalty =
+            JsValue::from(JsPenalty::new(Some(3.0), Some(-5000.0), None, Some(0.0)).unwrap());
+        let expected = LinderaPenalty {
+            kanji_penalty_length_threshold: 3,
+            kanji_penalty_length_penalty: -5000,
+            other_penalty_length_threshold: 7,
+            other_penalty_length_penalty: 0,
+        };
+        assert_eq!(
+            penalty_from_js(Some(penalty.clone())).unwrap(),
+            Some(expected.clone())
+        );
+        assert_eq!(penalty_from_js(Some(penalty)).unwrap(), Some(expected));
+
+        assert_eq!(penalty_from_js(None).unwrap(), None);
+        assert_eq!(penalty_from_js(Some(JsValue::NULL)).unwrap(), None);
+        assert_eq!(penalty_from_js(Some(JsValue::UNDEFINED)).unwrap(), None);
+    }
+
+    /// A value that is not a `Penalty` is an error, not the default.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_penalty_from_js_rejects_other_values() {
+        let partial = js_sys::Object::new();
+        js_sys::Reflect::set(&partial, &"kanji_penalty_length_penalty".into(), &0.into()).unwrap();
+        for value in [
+            JsValue::from_f64(0.0),
+            JsValue::from_str("penalty"),
+            JsValue::TRUE,
+            partial.into(),
+        ] {
+            let shown = format!("{value:?}");
+            let error = penalty_from_js(Some(value))
+                .unwrap_err()
+                .as_string()
+                .unwrap();
+            assert!(error.contains("must be a Penalty"), "{shown}: {error}");
+        }
+    }
 
     #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen_test]

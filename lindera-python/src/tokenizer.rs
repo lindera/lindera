@@ -28,6 +28,7 @@ use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{PyDictionary, PyUserDictionary};
 use crate::error::to_py_error;
+use crate::mode::PyPenalty;
 use crate::token::PyToken;
 use crate::util::{pyany_to_value, pydict_to_value};
 
@@ -136,13 +137,22 @@ impl PyTokenizerBuilder {
     /// # Arguments
     ///
     /// * `mode` - Mode string ("normal" or "decompose").
+    /// * `penalty` - The `Penalty` for "decompose" mode. `None` (the
+    ///   default) uses the default penalty.
     ///
     /// # Returns
     ///
-    /// Self for method chaining.
-    #[pyo3(signature = (mode))]
-    fn set_mode<'a>(mut slf: PyRefMut<'a, Self>, mode: &str) -> PyResult<PyRefMut<'a, Self>> {
-        slf.inner.set_mode(mode).map_err(to_py_error)?;
+    /// Self for method chaining, or `ValueError` for an invalid mode or for
+    /// a penalty with "normal" mode.
+    #[pyo3(signature = (mode, penalty=None))]
+    fn set_mode<'a>(
+        mut slf: PyRefMut<'a, Self>,
+        mode: &str,
+        penalty: Option<PyPenalty>,
+    ) -> PyResult<PyRefMut<'a, Self>> {
+        slf.inner
+            .set_mode(mode, penalty.map(Into::into))
+            .map_err(to_py_error)?;
         Ok(slf)
     }
 
@@ -351,20 +361,24 @@ impl PyTokenizer {
     /// * `space_penalty` - The left-space penalty, in the forms
     ///   `TokenizerBuilder.set_space_penalty` accepts. `None` (the default)
     ///   keeps the rules the dictionary ships.
+    /// * `penalty` - The `Penalty` for "decompose" mode, as
+    ///   `TokenizerBuilder.set_mode` takes it. `None` (the default) uses the
+    ///   default penalty.
     ///
     /// # Returns
     ///
     /// A new `Tokenizer` instance, or `ValueError` / `TypeError` for an
-    /// invalid setting, as `set_space_penalty` and `build()` raise them.
-    /// A user dictionary with a context ID outside the dictionary's
-    /// connection matrix raises `ValueError`.
+    /// invalid setting, as `set_space_penalty`, `set_mode` and `build()`
+    /// raise them. A user dictionary with a context ID outside the
+    /// dictionary's connection matrix raises `ValueError`.
     #[new]
-    #[pyo3(signature = (dictionary, mode="normal", user_dictionary=None, space_penalty=None))]
+    #[pyo3(signature = (dictionary, mode="normal", user_dictionary=None, space_penalty=None, penalty=None))]
     fn new(
         dictionary: PyDictionary,
         mode: &str,
         user_dictionary: Option<PyUserDictionary>,
         space_penalty: Option<&Bound<'_, PyAny>>,
+        penalty: Option<PyPenalty>,
     ) -> PyResult<Self> {
         let space_penalty = match space_penalty {
             Some(value) => space_penalty_value(value)?,
@@ -372,6 +386,7 @@ impl PyTokenizer {
         };
         let inner = CoreTokenizer::from_segmenter_with_space_penalty(
             mode,
+            penalty.map(Into::into),
             dictionary.inner,
             user_dictionary.map(|d| d.inner),
             &space_penalty,
