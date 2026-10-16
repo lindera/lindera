@@ -250,7 +250,7 @@ In a `SegmenterConfig`, the `space_penalty` key takes an object for explicit rul
 }
 ```
 
-The penalty keys on the character before a candidate, which is mecab-ko's test as well, so it applies the same way whether whitespace is skipped in the lattice (the default, see [Whitespace Handling](#whitespace-handling)) or kept as nodes. With whitespace skipped, the connection costs on their own already rule out some readings the penalty targets (`시` in `서울 시 에서` reads as `NNG` without it), but not all of them (`이` in `검색 이 잘 된다`).
+A candidate pays the penalty when whitespace that is not part of the word before it separates the two, which is mecab-ko's test (it penalizes a node that skipped whitespace, `rlength > length`). So a word after leading whitespace pays it, and a word right after an entry whose surface ends with the whitespace does not: ko-dic has four such entries (`내셔날`, `에듀`, `캘리` and `콜라비`, each followed by a space), and `에듀 이` reads as that entry and `이/VCP`, as in mecab-ko, while `에듀  이`, with a second space the entry does not end with, reads `이/NR`. The test is the same whether whitespace is skipped in the lattice (the default, see [Whitespace Handling](#whitespace-handling)) or kept as nodes, where a word after a whitespace node pays the penalty. With whitespace skipped, the connection costs on their own already rule out some readings the penalty targets (`시` in `서울 시 에서` reads as `NNG` without it), but not all of them (`이` in `검색 이 잘 된다`).
 
 ## N-Best Segmentation
 

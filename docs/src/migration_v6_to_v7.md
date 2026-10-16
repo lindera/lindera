@@ -457,7 +457,10 @@ The Decompose length penalty counts the entry's own whitespace, as it does
 when whitespace stays in the lattice. With `unique`, N-best results that
 differ only in that whitespace are no longer folded into one, such as
 ko-dic's `에듀` followed by the space (`NNG`) and `에듀` (`NNP`) in
-`에듀 센터`.
+`에듀 센터`. A word right after such an entry pays no left-space penalty
+(ko-dic), as in mecab-ko, whose penalty applies only after whitespace that
+the word before does not end with: `에듀 이` reads as `에듀` followed by
+the space and `이/VCP`.
 
 U+3000 is not in the `SPACE` character category, so it is a token even with
 `keep_whitespace(false)`, as in MeCab. To remove it, drop `記号,空白`

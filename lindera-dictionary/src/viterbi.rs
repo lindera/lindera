@@ -454,7 +454,9 @@ pub struct PathEntry {
     /// Index of the left edge in `ends_at[left_pos]` (`u32`, see
     /// `edge_index`).
     left_index: u32,
-    /// Total forward cost: left_edge.path_cost + conn_cost + penalty_cost
+    /// Total forward cost: left_edge.path_cost + conn_cost + penalties (the
+    /// left edge's Decompose length penalty and this transition's
+    /// left-space penalty)
     cost: i32,
 }
 
@@ -553,7 +555,8 @@ pub struct Lattice {
     penalty_cache: Vec<i32>,
     /// N-best lattice only: the cost of the transition from each left edge
     /// of the position being relaxed, in the order of the left edges, as
-    /// `relax_nbest` computed them for one incoming context id.
+    /// `relax_nbest` computed them for one incoming context id and
+    /// left-space penalty.
     /// `push_relaxed_nbest` records them for every edge that shares the
     /// relaxation (the lengths of one unknown-word entry).
     transition_costs: Vec<i32>,
@@ -583,8 +586,9 @@ pub struct Lattice {
 /// Upper bound applied to every stored `path_cost` so the relaxation loops
 /// can use plain addition: one connection cost plus one penalty per step is
 /// at most 2 * 32,767, which cannot overflow from this clamp. Costs that are
-/// not bounded by `i16` (the left-space penalty and `extra_cost`, both
-/// arbitrary `i32`) are folded in with `saturating_add` instead.
+/// not bounded by `i16` (the Decompose length penalty and the left-space
+/// penalty, both arbitrary `i32`) are folded in with `saturating_add`
+/// instead.
 const PATH_COST_CLAMP: i32 = i32::MAX - 131_072;
 
 /// One BOS (beginning-of-sentence) edge of a lattice; see
@@ -701,11 +705,20 @@ pub struct LatticeOptions<'a> {
     /// Whether to emit the unknown-word length ladder (#945).
     pub unknown_word_ladder: bool,
     /// Left-space penalty table; `None` (the default) adds no penalty. When
-    /// set, a candidate whose start position is preceded by a whitespace
-    /// character within the sentence has [`SpacePenaltyTable::cost`] added to
-    /// its path cost, in every mode and in both the 1-best and the N-best
-    /// lattice. "Whitespace" is what [`SpacePenaltyTable::is_space`] accepts:
-    /// a character carrying the dictionary's `SPACE` category, or
+    /// set, [`SpacePenaltyTable::cost`] is added to the transition into a
+    /// candidate whose start position is preceded by a whitespace character
+    /// within the sentence, unless the left word's own surface ends with the
+    /// whole run of whitespace before the candidate (#1117), in every mode
+    /// and in both the 1-best and the N-best lattice. This is mecab-ko's
+    /// test, which adds the penalty to a node that skipped whitespace
+    /// (`rlength > length`): a word after leading whitespace, or after a
+    /// word and whitespace, pays it, and a word right after an entry that
+    /// ends with that whitespace (ko-dic's `에듀` followed by a space) does
+    /// not. With whitespace kept in the lattice, a whitespace node (the
+    /// `SPACE` unknown word or a whitespace entry) does not own the
+    /// whitespace, so a word after it pays the penalty the same way.
+    /// "Whitespace" is what [`SpacePenaltyTable::is_space`] accepts: a
+    /// character carrying the dictionary's `SPACE` category, or
     /// `char::is_whitespace` for a dictionary that defines no such category.
     pub space_penalty: Option<&'a SpacePenaltyTable>,
     /// MeCab-compatible whitespace handling; `None` (the default) keeps
@@ -776,9 +789,10 @@ impl<'a> LatticeOptions<'a> {
     /// Returns the space-penalty table to consult for candidates starting
     /// at `char_idx`: the configured table when the preceding character is
     /// whitespace (`CharData::is_space`, prepared per sentence), `None`
-    /// otherwise. This is mecab-ko's `rlength > length` test: a candidate
-    /// at the very start of the sentence has no preceding character and is
-    /// not penalized.
+    /// otherwise. A candidate at the very start of the sentence has no
+    /// preceding character and is not penalized. This is the position half
+    /// of the test; which transitions into a candidate pay the penalty
+    /// depends on the left edges (see [`Lattice::space_gate`]).
     ///
     /// # Arguments
     ///
@@ -800,7 +814,9 @@ impl<'a> LatticeOptions<'a> {
 }
 
 /// Returns the space penalty for `word_entry`, or `0` when no table applies
-/// at the current position.
+/// at the current position. The penalty is the same for every left edge
+/// unless one of them owns the whitespace before the position (see
+/// [`Lattice::space_gate`]).
 ///
 /// # Arguments
 ///
@@ -814,6 +830,76 @@ impl<'a> LatticeOptions<'a> {
 #[inline]
 fn space_penalty_cost(space_penalty: Option<&SpacePenaltyTable>, word_entry: &WordEntry) -> i32 {
     space_penalty.map_or(0, |table| table.cost(word_entry.word_id()))
+}
+
+/// The left-space penalty at a start position where some left edges own
+/// the whitespace before it (see [`Lattice::space_gate`]): the table, and
+/// those left edges as the index range `owners_start..owners_end` of
+/// `ends_at[start]`, never empty.
+#[derive(Clone, Copy)]
+struct SpaceGate<'a> {
+    /// The penalty table.
+    table: &'a SpacePenaltyTable,
+    /// Index of the first left edge that owns the whitespace.
+    owners_start: u32,
+    /// Index after the last left edge that owns the whitespace.
+    owners_end: u32,
+}
+
+impl SpaceGate<'_> {
+    /// Returns the penalty of a candidate starting at this position.
+    ///
+    /// # Arguments
+    ///
+    /// * `word_entry` - The candidate entry.
+    ///
+    /// # Returns
+    ///
+    /// The candidate's penalty and the left edges exempt from it.
+    #[inline]
+    fn cost(self, word_entry: &WordEntry) -> SpaceCost {
+        SpaceCost {
+            cost: self.table.cost(word_entry.word_id()),
+            owners_start: self.owners_start,
+            owners_end: self.owners_end,
+        }
+    }
+}
+
+/// The left-space penalty of one candidate at a position with owners (see
+/// [`SpaceGate`], #1117): the transition from a left edge in
+/// `owners_start..owners_end`, which owns the whitespace before the
+/// candidate, pays nothing; every other transition into the candidate pays
+/// `cost`.
+#[derive(Clone, Copy, Debug)]
+struct SpaceCost {
+    /// The penalty; `0` when the candidate's tag has none.
+    cost: i32,
+    /// Index of the first left edge exempt from the penalty.
+    owners_start: u32,
+    /// Index after the last left edge exempt from the penalty.
+    owners_end: u32,
+}
+
+impl SpaceCost {
+    /// Returns the penalty of the transition from the left edge at `index`.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The left edge's index in the slot of the candidate's
+    ///   start.
+    ///
+    /// # Returns
+    ///
+    /// `0` for a left edge that owns the whitespace, `cost` otherwise.
+    #[inline(always)]
+    fn for_left(self, index: usize) -> i32 {
+        if (self.owners_start as usize..self.owners_end as usize).contains(&index) {
+            0
+        } else {
+            self.cost
+        }
+    }
 }
 
 /// Returns the left edge a relaxation keeps, or `None` when there is no
@@ -1582,6 +1668,9 @@ impl Lattice {
         }
 
         for char_idx in 0..n_chars {
+            // The edges that ended here before the whitespace carry-over,
+            // which own the whitespace before `char_idx` (see `space_gate`).
+            let mut own = 0;
             if self.skip_whitespace {
                 // No node starts on whitespace (MeCab skips it); the edges
                 // ending before the run that ends here are carried over, so
@@ -1591,7 +1680,7 @@ impl Lattice {
                 }
                 // Checked here so unspaced text never pays for the call.
                 if char_idx > 0 && self.char_info_buffer[char_idx - 1].is_space {
-                    self.carry_over_whitespace(char_idx, false);
+                    own = self.carry_over_whitespace(char_idx, false);
                 }
             }
 
@@ -1604,6 +1693,11 @@ impl Lattice {
             // Space penalty gate for every candidate starting here: one
             // O(1) check per reachable position, `None` when disabled.
             let space_penalty = options.space_penalty_at(&self.char_info_buffer, char_idx);
+            // The left edges that own the whitespace before `char_idx`, if
+            // any (rare): then the candidates here pay the penalty per left
+            // edge, in a relaxation of their own (#1117).
+            let space_owners =
+                space_penalty.and_then(|table| self.space_gate(table, char_idx, own));
 
             // The system dictionary: per-position common-prefix search over
             // the in-place trie, run only at lattice-reachable positions (the
@@ -1624,6 +1718,24 @@ impl Lattice {
             let found = (char_idx < self.matches_head.len()
                 && self.matches_head[char_idx] != u32::MAX)
                 || !self.sys_matches.is_empty();
+
+            // A position where a left edge owns the whitespace adds its
+            // candidates out of line, in the same order, so that this loop
+            // compiles as before #1117.
+            if let Some(gate) = space_owners {
+                self.add_candidates_owned(
+                    char_definitions,
+                    unknown_dictionary,
+                    cost_matrix,
+                    search_mode,
+                    max_grouping_len,
+                    unknown_word_ladder,
+                    gate,
+                    char_idx,
+                    found,
+                );
+                continue;
+            }
 
             // The candidates in processing order (see the method docs). First
             // the unknown words, at every reachable position, in every mode,
@@ -1721,6 +1833,142 @@ impl Lattice {
         }
     }
 
+    /// Adds the candidates starting at `char_idx` to the 1-best lattice at a
+    /// position where some left edges own the whitespace before it (see
+    /// [`Self::space_gate`]): the candidates of the main loop of
+    /// [`Self::set_text_with_options`], in the same order (the unknown
+    /// words, the system dictionary's words, the user dictionary's), each
+    /// relaxed with the left-space penalty per left edge
+    /// ([`Self::relax_owned`]). Such positions are rare, so this is kept out
+    /// of line, and the main loop compiles as before #1117.
+    ///
+    /// # Arguments
+    ///
+    /// * `char_definitions` - Character category definitions.
+    /// * `unknown_dictionary` - Source of unknown-word entries.
+    /// * `cost_matrix` - The connection cost matrix.
+    /// * `search_mode` - The segmentation mode.
+    /// * `max_grouping_len` - Unknown-word grouping cap (`None` = unbounded).
+    /// * `unknown_word_ladder` - Whether to emit the length ladder.
+    /// * `gate` - The penalty table and the left edges that own the
+    ///   whitespace.
+    /// * `char_idx` - Start position, in characters.
+    /// * `found` - Whether a dictionary word starts at `char_idx`.
+    #[allow(clippy::too_many_arguments)]
+    #[cold]
+    #[inline(never)]
+    fn add_candidates_owned(
+        &mut self,
+        char_definitions: &CharacterDefinition,
+        unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        search_mode: &Mode,
+        max_grouping_len: Option<usize>,
+        unknown_word_ladder: bool,
+        gate: SpaceGate<'_>,
+        char_idx: usize,
+        found: bool,
+    ) {
+        if self.char_info_buffer[char_idx].categories_len > 0 {
+            let category = self.get_cached_category(char_definitions, char_idx, 0);
+            self.process_unknown_word_owned(
+                char_definitions,
+                unknown_dictionary,
+                cost_matrix,
+                search_mode,
+                max_grouping_len,
+                unknown_word_ladder,
+                gate,
+                category,
+                char_idx,
+                found,
+            );
+        }
+
+        for i in (0..self.sys_matches.len()).rev() {
+            let (end_char, word_entry) = self.sys_matches[i];
+            let end_char = end_char as usize;
+            let kanji_only = self.is_kanji_all(char_idx, end_char - char_idx);
+            let edge = Self::create_edge(word_entry, char_idx, kanji_only);
+            let space = gate.cost(&word_entry);
+            self.add_edge_owned(edge, end_char, cost_matrix, search_mode, space);
+        }
+
+        if char_idx < self.matches_head.len() {
+            let mut match_idx = self.matches_head[char_idx];
+            while match_idx != u32::MAX {
+                let (end_char, word_entry, next) = self.matches_store[match_idx as usize];
+
+                let end_char = end_char as usize;
+                let kanji_only = self.is_kanji_all(char_idx, end_char - char_idx);
+                let edge = Self::create_edge(word_entry, char_idx, kanji_only);
+                let space = gate.cost(&word_entry);
+                self.add_edge_owned(edge, end_char, cost_matrix, search_mode, space);
+
+                match_idx = next;
+            }
+        }
+    }
+
+    /// [`Self::process_unknown_word`] at a position where some left edges
+    /// own the whitespace before it (see [`Self::add_candidates_owned`]):
+    /// the same edges, each entry relaxed with the left-space penalty per
+    /// left edge ([`Self::relax_owned`]), one relaxation for all its lengths.
+    ///
+    /// # Arguments
+    ///
+    /// * `char_definitions` - Character category definitions.
+    /// * `unknown_dictionary` - Source of unknown-word entries.
+    /// * `cost_matrix` - The connection cost matrix.
+    /// * `search_mode` - The segmentation mode.
+    /// * `max_grouping_len` - Unknown-word grouping cap (`None` = unbounded).
+    /// * `unknown_word_ladder` - Whether to emit the length ladder.
+    /// * `gate` - The penalty table and the left edges that own the
+    ///   whitespace.
+    /// * `category` - The default category of the char at `char_idx`.
+    /// * `char_idx` - Start position, in characters.
+    /// * `found` - Whether a dictionary word starts at `char_idx`.
+    #[allow(clippy::too_many_arguments)]
+    fn process_unknown_word_owned(
+        &mut self,
+        char_definitions: &CharacterDefinition,
+        unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        search_mode: &Mode,
+        max_grouping_len: Option<usize>,
+        unknown_word_ladder: bool,
+        gate: SpaceGate<'_>,
+        category: CategoryId,
+        char_idx: usize,
+        found: bool,
+    ) {
+        let Some((primary, ladder)) = self.unknown_word_lengths(
+            char_definitions,
+            max_grouping_len,
+            unknown_word_ladder,
+            category,
+            char_idx,
+            found,
+        ) else {
+            return;
+        };
+        for &word_id in unknown_dictionary.lookup_word_ids(category).iter().rev() {
+            let word_entry = unknown_dictionary.word_entry(word_id);
+            let space = gate.cost(&word_entry);
+            let left_id = word_entry.left_id as u32;
+            let Some(best) = self.relax_owned(char_idx, left_id, cost_matrix, search_mode, space)
+            else {
+                continue;
+            };
+            for num_chars in Self::candidate_lengths(primary, ladder) {
+                let kanji_only = self.is_kanji_all(char_idx, num_chars);
+                let edge = Self::create_edge(word_entry, char_idx, kanji_only);
+                // The penalty is part of `best` already.
+                self.push_relaxed(edge, char_idx + num_chars, best, 0);
+            }
+        }
+    }
+
     /// Returns the start of the whitespace run that ends right before
     /// `char_idx`, or `char_idx` itself when the preceding character is not
     /// whitespace (or whitespace is not being classified).
@@ -1810,6 +2058,12 @@ impl Lattice {
     /// already in `ends_at[char_idx]` covers the whole run, since no edge
     /// starts inside it.
     ///
+    /// The edges already in `ends_at[char_idx]` are the ones that own the
+    /// whitespace: a candidate starting at `char_idx` pays no left-space
+    /// penalty for the transition from them (#1117). They are the last
+    /// `own` edges of the slot, `own` being the returned count, which
+    /// [`Self::space_gate`] relies on.
+    ///
     /// Callers check that the character before `char_idx` is whitespace, so
     /// the common unspaced position never makes the call.
     ///
@@ -1817,8 +2071,13 @@ impl Lattice {
     ///
     /// * `char_idx` - The first position after the run (or `n_chars`).
     /// * `nbest` - Whether to move the N-best transitions as well.
+    ///
+    /// # Returns
+    ///
+    /// The number of edges that were in `ends_at[char_idx]` before the
+    /// call, now the last ones of the slot.
     #[inline(never)]
-    fn carry_over_whitespace(&mut self, char_idx: usize, nbest: bool) {
+    fn carry_over_whitespace(&mut self, char_idx: usize, nbest: bool) -> usize {
         let run_start = self.whitespace_run_start(char_idx);
         // Drained rather than taken so every slot keeps its allocation for
         // the next sentence.
@@ -1883,6 +2142,65 @@ impl Lattice {
                 paths.rotate_left(own_paths);
             }
         }
+        own
+    }
+
+    /// Returns the left edges of `char_idx` that own the whitespace before
+    /// it, the ones whose own surface covers the whole whitespace run
+    /// (#1117), or `None` when no left edge does. A transition from them pays
+    /// no left-space penalty, as in mecab-ko, which adds it only to a node
+    /// that skipped whitespace (`rlength > length`). Without them, which is
+    /// the rule, the penalty is the same for every left edge, and the
+    /// relaxations add it once (see [`space_penalty_cost`]).
+    ///
+    /// With whitespace skipped, they are the edges that ended at `char_idx`
+    /// before the carry-over, which [`Self::carry_over_whitespace`] puts
+    /// last; the carried edges end before `char_idx`, and so does a BOS edge
+    /// before leading whitespace. With whitespace kept, every left edge ends
+    /// at `char_idx`, and the owners are those that start before the run; a
+    /// whitespace node starts inside it. Edges are pushed into a slot in the
+    /// order of their starts, so these come first.
+    ///
+    /// # Arguments
+    ///
+    /// * `table` - The penalty table, which applies at `char_idx` (see
+    ///   [`LatticeOptions::space_penalty_at`]).
+    /// * `char_idx` - The candidates' start position, in characters.
+    /// * `own` - With whitespace skipped, the count
+    ///   [`Self::carry_over_whitespace`] returned for `char_idx`.
+    ///
+    /// # Returns
+    ///
+    /// The gate, or `None` when no left edge owns the whitespace.
+    #[inline]
+    fn space_gate<'a>(
+        &self,
+        table: &'a SpacePenaltyTable,
+        char_idx: usize,
+        own: usize,
+    ) -> Option<SpaceGate<'a>> {
+        let left_edges = &self.ends_at[char_idx];
+        let (owners_start, owners_end) = if self.skip_whitespace {
+            (left_edges.len() - own, left_edges.len())
+        } else {
+            let run_start = self.whitespace_run_start(char_idx);
+            let owners = left_edges
+                .iter()
+                .take_while(|edge| (edge.start_char as usize) < run_start)
+                .count();
+            debug_assert!(
+                left_edges[owners..]
+                    .iter()
+                    .all(|edge| edge.start_char as usize >= run_start),
+                "the edges of a slot are not in the order of their starts"
+            );
+            (0, owners)
+        };
+        (owners_start < owners_end).then_some(SpaceGate {
+            table,
+            owners_start: owners_start as u32,
+            owners_end: owners_end as u32,
+        })
     }
 
     /// Emits the unknown-word edges of `category` at `char_idx`: for every
@@ -2210,31 +2528,14 @@ impl Lattice {
         penalty: &Penalty,
         cost_matrix: &ConnectionCostMatrix,
     ) -> (i32, Option<u32>) {
-        // Penalties depend only on the left edges, and
-        // ends_at[start_char] is immutable while the main loop processes
-        // this start position (every insertion targets a later slot), so
-        // compute them once per position instead of once per (left edge,
-        // incoming edge) pair (#944).
-        let mut cache = std::mem::take(&mut self.penalty_cache);
-        if self.penalty_cache_pos != start_char {
-            cache.clear();
-            let content_end = self.content_end(start_char);
-            cache.extend(self.ends_at[start_char].iter().map(|left_edge| {
-                // The left edge's exact char span (#943 fixed the former
-                // byte-length/3 approximation): it ends where this edge
-                // starts, or, when it was carried over skipped whitespace,
-                // where the run starts plus the whitespace its own surface
-                // ends with (#1108).
-                penalty.penalty(left_edge, left_edge.char_len(content_end))
-            }));
-            self.penalty_cache_pos = start_char;
-        }
+        self.refresh_penalty_cache(start_char, penalty);
         // Matrix row hoisted like the Normal arm (#880/#944); path +
         // connection stays a plain add (bounded by PATH_COST_CLAMP + i16),
         // while the penalty addition keeps saturating_add because the
         // penalty is unbounded.
         let mut best_cost = i32::MAX;
         let mut best_left = None;
+        let cache = &self.penalty_cache;
         let left_edges = &self.ends_at[start_char];
         let cost_row = cost_matrix.row(right_left_id);
         for (i, left_edge) in left_edges.iter().enumerate() {
@@ -2246,7 +2547,6 @@ impl Lattice {
                 best_left = Some(i as u32);
             }
         }
-        self.penalty_cache = cache;
         (best_cost, best_left)
     }
 
@@ -2259,9 +2559,10 @@ impl Lattice {
     /// * `right_left_id` - The incoming edge's left context id.
     /// * `penalty` - The Decompose penalty configuration.
     /// * `cost_matrix` - The connection cost matrix.
-    /// * `extra_cost` - Position-dependent cost of the incoming edge (the
-    ///   space penalty), folded into every transition so the nbest A*
-    ///   re-derives the same totals as the forward pass.
+    /// * `extra_cost` - The left-space penalty of the incoming edge, the
+    ///   same for every left edge here (see [`Self::relax_nbest`]), folded
+    ///   into every transition so the nbest A* re-derives the same totals as
+    ///   the forward pass.
     /// * `costs` - Filled with one transition cost per left edge, in their
     ///   order; expected empty.
     ///
@@ -2282,21 +2583,11 @@ impl Lattice {
     ) -> (i32, Option<u32>) {
         // Same per-position penalty cache and hoisted row as
         // relax_decompose (#944).
-        let mut cache = std::mem::take(&mut self.penalty_cache);
-        if self.penalty_cache_pos != start_char {
-            cache.clear();
-            let content_end = self.content_end(start_char);
-            cache.extend(
-                self.ends_at[start_char]
-                    .iter()
-                    .map(|left_edge| penalty.penalty(left_edge, left_edge.char_len(content_end))),
-            );
-            self.penalty_cache_pos = start_char;
-        }
+        self.refresh_penalty_cache(start_char, penalty);
         let mut best_cost = i32::MAX;
         let mut best_left = None;
         let cost_row = cost_matrix.row(right_left_id);
-        for (i, &penalty_cost) in cache.iter().enumerate() {
+        for (i, &penalty_cost) in self.penalty_cache.iter().enumerate() {
             let left_edge = &self.ends_at[start_char][i];
             let conn_cost = cost_row[left_edge.right_id as usize] as i32;
             let total_cost = (left_edge.path_cost + conn_cost)
@@ -2311,8 +2602,168 @@ impl Lattice {
                 best_left = Some(i as u32);
             }
         }
-        self.penalty_cache = cache;
         (best_cost, best_left)
+    }
+
+    /// Fills `penalty_cache` with the Decompose length penalty of every left
+    /// edge of `start_char`, unless it holds them already. The penalties
+    /// depend only on the left edges, and `ends_at[start_char]` does not
+    /// change while the main loop processes this start position (every
+    /// insertion targets a later slot), so they are computed once per
+    /// position instead of once per (left edge, incoming edge) pair (#944).
+    ///
+    /// # Arguments
+    ///
+    /// * `start_char` - The incoming edges' start position.
+    /// * `penalty` - The Decompose penalty configuration.
+    #[inline(always)]
+    fn refresh_penalty_cache(&mut self, start_char: usize, penalty: &Penalty) {
+        if self.penalty_cache_pos == start_char {
+            return;
+        }
+        let content_end = self.content_end(start_char);
+        self.penalty_cache.clear();
+        self.penalty_cache
+            .extend(self.ends_at[start_char].iter().map(|left_edge| {
+                // The left edge's exact char span (#943 fixed the former
+                // byte-length/3 approximation): it ends where this edge
+                // starts, or, when it was carried over skipped whitespace,
+                // where the run starts plus the whitespace its own surface
+                // ends with (#1108).
+                penalty.penalty(left_edge, left_edge.char_len(content_end))
+            }));
+        self.penalty_cache_pos = start_char;
+    }
+
+    /// Returns the best `(cost, left index)` over the left edges of
+    /// `start_char` with the left-space penalty added per left edge:
+    /// `space.cost` for a transition from a left edge that does not own the
+    /// whitespace before `start_char`, nothing for one that does (see
+    /// [`Self::space_gate`]). The other relaxations add the penalty once,
+    /// which is right when it is the same for every left edge; this one
+    /// runs only at a position where it is not, which takes an entry that
+    /// ends with whitespace before the candidate (#1117). It serves the
+    /// 1-best and the N-best lattice in every mode (see
+    /// [`Self::relax_owned`] and [`Self::relax_nbest_owned`]), with the same
+    /// totals as theirs: path, connection, Decompose length penalty and
+    /// left-space penalty, in that order.
+    ///
+    /// # Arguments
+    ///
+    /// * `start_char` - The incoming edge's start position.
+    /// * `right_left_id` - The incoming edge's left context id.
+    /// * `cost_matrix` - The connection cost matrix.
+    /// * `mode` - The segmentation mode.
+    /// * `space` - The incoming edge's left-space penalty.
+    /// * `costs` - N-best lattice only: filled with one transition cost per
+    ///   left edge, in their order; expected empty.
+    ///
+    /// # Returns
+    ///
+    /// The best `(cost, left index)`, the last of equal-cost ones (see
+    /// [`Self::relax`]).
+    #[inline]
+    fn relax_per_edge(
+        &mut self,
+        start_char: usize,
+        right_left_id: u32,
+        cost_matrix: &ConnectionCostMatrix,
+        mode: &Mode,
+        space: SpaceCost,
+        mut costs: Option<&mut Vec<i32>>,
+    ) -> (i32, Option<u32>) {
+        let decompose = match mode {
+            Mode::Normal => false,
+            Mode::Decompose(penalty) => {
+                self.refresh_penalty_cache(start_char, penalty);
+                true
+            }
+        };
+        let mut best_cost = i32::MAX;
+        let mut best_left = None;
+        let cost_row = cost_matrix.row(right_left_id);
+        for (i, left_edge) in self.ends_at[start_char].iter().enumerate() {
+            let conn_cost = cost_row[left_edge.right_id as usize] as i32;
+            let mut total_cost = left_edge.path_cost + conn_cost;
+            if decompose {
+                total_cost = total_cost.saturating_add(self.penalty_cache[i]);
+            }
+            let total_cost = total_cost.saturating_add(space.for_left(i));
+
+            if let Some(costs) = costs.as_deref_mut() {
+                costs.push(total_cost);
+            }
+
+            if total_cost <= best_cost {
+                best_cost = total_cost;
+                best_left = Some(i as u32);
+            }
+        }
+        (best_cost, best_left)
+    }
+
+    /// [`Self::relax`] at a position where some left edges own the
+    /// whitespace before it (see [`Self::space_gate`]): the left-space
+    /// penalty is added per left edge (see [`Self::relax_per_edge`]). Kept
+    /// out of line, as such positions are rare, so that the common
+    /// relaxation stays as compact as before #1117.
+    ///
+    /// # Arguments
+    ///
+    /// * `start_char` - The incoming edge's start position.
+    /// * `right_left_id` - The incoming edge's left context id.
+    /// * `cost_matrix` - The connection cost matrix.
+    /// * `mode` - The segmentation mode.
+    /// * `space` - The incoming edge's left-space penalty.
+    ///
+    /// # Returns
+    ///
+    /// The best transition, the left-space penalty included and the
+    /// incoming edge's word cost not; `None` when there is no transition
+    /// (see [`connected`]).
+    #[cold]
+    #[inline(never)]
+    fn relax_owned(
+        &mut self,
+        start_char: usize,
+        right_left_id: u32,
+        cost_matrix: &ConnectionCostMatrix,
+        mode: &Mode,
+        space: SpaceCost,
+    ) -> Option<(i32, u32)> {
+        let (cost, left) =
+            self.relax_per_edge(start_char, right_left_id, cost_matrix, mode, space, None);
+        connected(cost, left).map(|left| (cost, left))
+    }
+
+    /// [`Self::add_edge_in_lattice`] at a position where some left edges own
+    /// the whitespace before it (see [`Self::relax_owned`]).
+    ///
+    /// # Arguments
+    ///
+    /// * `edge` - The edge to relax and store (path cost unset).
+    /// * `stop_char` - The edge's end position, in characters.
+    /// * `cost_matrix` - The connection cost matrix.
+    /// * `mode` - The segmentation mode.
+    /// * `space` - The edge's left-space penalty.
+    fn add_edge_owned(
+        &mut self,
+        edge: Edge,
+        stop_char: usize,
+        cost_matrix: &ConnectionCostMatrix,
+        mode: &Mode,
+        space: SpaceCost,
+    ) {
+        if let Some(best) = self.relax_owned(
+            edge.start_char as usize,
+            edge.left_id as u32,
+            cost_matrix,
+            mode,
+            space,
+        ) {
+            // The penalty is part of `best` already.
+            self.push_relaxed(edge, stop_char, best, 0);
+        }
     }
 
     /// Adds an edge ending at char position `stop_char` to the lattice and
@@ -2326,9 +2777,11 @@ impl Lattice {
     ///   carry-over may move it on.
     /// * `cost_matrix` - The connection cost matrix.
     /// * `mode` - The segmentation mode.
-    /// * `extra_cost` - Position-dependent cost of this edge (the space
-    ///   penalty; `0` when disabled). Independent of the left edge, so it
-    ///   is added once after the relaxation scan rather than per candidate.
+    /// * `extra_cost` - The left-space penalty of this edge (`0` when
+    ///   disabled or when whitespace does not precede the edge). The same
+    ///   for every left edge here (a position where some left edge owns the
+    ///   whitespace takes [`Self::add_edge_owned`]), so it is added once
+    ///   after the relaxation scan rather than per left edge.
     fn add_edge_in_lattice(
         &mut self,
         edge: Edge,
@@ -2422,8 +2875,8 @@ impl Lattice {
     /// * `edge` - The edge to store (path cost unset).
     /// * `stop_char` - The edge's end position, in characters.
     /// * `best` - The best `(path cost, left index)` of its start.
-    /// * `extra_cost` - Position-dependent cost of this edge (the space
-    ///   penalty).
+    /// * `extra_cost` - The left-space penalty of this edge, when `best`
+    ///   does not include it already.
     #[inline]
     fn push_relaxed(
         &mut self,
@@ -2727,9 +3180,11 @@ impl Lattice {
     ///   stored in, though a later whitespace carry-over may move it on.
     /// * `cost_matrix` - The connection cost matrix.
     /// * `mode` - The segmentation mode.
-    /// * `extra_cost` - Position-dependent cost of this edge (the space
-    ///   penalty; `0` when disabled). Recorded in every `PathEntry` so the
-    ///   backward A* (`nbest.rs`) sees it as part of the transition cost.
+    /// * `extra_cost` - The left-space penalty of this edge (`0` when
+    ///   disabled or when whitespace does not precede the edge), the same
+    ///   for every left edge here (see [`Self::add_edge_in_lattice`]).
+    ///   Recorded in every `PathEntry` so the backward A* (`nbest.rs`) sees
+    ///   it as part of the transition cost.
     fn add_edge_in_lattice_nbest(
         &mut self,
         edge: Edge,
@@ -2748,6 +3203,34 @@ impl Lattice {
         self.push_relaxed_nbest(edge, stop_char, best);
     }
 
+    /// [`Self::add_edge_in_lattice_nbest`] at a position where some left
+    /// edges own the whitespace before it (see [`Self::relax_nbest_owned`]).
+    ///
+    /// # Arguments
+    ///
+    /// * `edge` - The edge to relax and store (path cost unset).
+    /// * `stop_char` - The edge's end position, in characters.
+    /// * `cost_matrix` - The connection cost matrix.
+    /// * `mode` - The segmentation mode.
+    /// * `space` - The edge's left-space penalty.
+    fn add_edge_nbest_owned(
+        &mut self,
+        edge: Edge,
+        stop_char: usize,
+        cost_matrix: &ConnectionCostMatrix,
+        mode: &Mode,
+        space: SpaceCost,
+    ) {
+        let best = self.relax_nbest_owned(
+            edge.start_char as usize,
+            edge.left_id as u32,
+            cost_matrix,
+            mode,
+            space,
+        );
+        self.push_relaxed_nbest(edge, stop_char, best);
+    }
+
     /// [`Self::relax`] for the nbest lattice: also leaves the cost of the
     /// transition from every left edge of `start_char` in
     /// `transition_costs`, in the order of the left edges, for
@@ -2762,8 +3245,9 @@ impl Lattice {
     /// * `right_left_id` - The incoming edge's left context id.
     /// * `cost_matrix` - The connection cost matrix.
     /// * `mode` - The segmentation mode.
-    /// * `extra_cost` - Position-dependent cost of the incoming edge (the
-    ///   space penalty; `0` when disabled), part of every transition cost.
+    /// * `extra_cost` - The left-space penalty of the incoming edge (`0` when
+    ///   disabled), the same for every left edge here and part of every
+    ///   transition cost.
     ///
     /// # Returns
     ///
@@ -2816,6 +3300,49 @@ impl Lattice {
         connected(best_cost, best_left).map(|left| (best_cost, left))
     }
 
+    /// [`Self::relax_nbest`] at a position where some left edges own the
+    /// whitespace before it (see [`Self::space_gate`]): the left-space
+    /// penalty is added per left edge (see [`Self::relax_per_edge`]), and
+    /// so recorded in each transition. Kept out of line, as such positions
+    /// are rare.
+    ///
+    /// # Arguments
+    ///
+    /// * `start_char` - The incoming edge's start position.
+    /// * `right_left_id` - The incoming edge's left context id.
+    /// * `cost_matrix` - The connection cost matrix.
+    /// * `mode` - The segmentation mode.
+    /// * `space` - The incoming edge's left-space penalty.
+    ///
+    /// # Returns
+    ///
+    /// The best `(path cost, left index)`, the left-space penalty included
+    /// and the incoming edge's word cost not; `None` when no transition
+    /// cost is below `i32::MAX`.
+    #[cold]
+    #[inline(never)]
+    fn relax_nbest_owned(
+        &mut self,
+        start_char: usize,
+        right_left_id: u32,
+        cost_matrix: &ConnectionCostMatrix,
+        mode: &Mode,
+        space: SpaceCost,
+    ) -> Option<(i32, u32)> {
+        let mut costs = std::mem::take(&mut self.transition_costs);
+        costs.clear();
+        let (best_cost, best_left) = self.relax_per_edge(
+            start_char,
+            right_left_id,
+            cost_matrix,
+            mode,
+            space,
+            Some(&mut costs),
+        );
+        self.transition_costs = costs;
+        connected(best_cost, best_left).map(|left| (best_cost, left))
+    }
+
     /// Records the transitions [`Self::relax_nbest`] left in
     /// `transition_costs` for `edge`, then stores `edge` in slot `stop_char`
     /// with the best transition. The edge's `PathEntry`s are appended in
@@ -2847,8 +3374,8 @@ impl Lattice {
                 cost,
             },
         ));
-        // `best_cost` already includes `extra_cost` (both arms of
-        // `relax_nbest` fold it into the recorded transitions).
+        // `best_cost` already includes the left-space penalty (`relax_nbest`
+        // folds it into the recorded transitions).
         edge.path_cost = best_cost
             .saturating_add(edge.word_cost as i32)
             .min(PATH_COST_CLAMP);
@@ -3006,13 +3533,15 @@ impl Lattice {
         }
 
         for char_idx in 0..n_chars {
-            // Whitespace skipping; see set_text_with_options.
+            // Whitespace skipping, and the edges that own the whitespace;
+            // see set_text_with_options.
+            let mut own = 0;
             if self.skip_whitespace {
                 if self.char_info_buffer[char_idx].is_space {
                     continue;
                 }
                 if char_idx > 0 && self.char_info_buffer[char_idx - 1].is_space {
-                    self.carry_over_whitespace(char_idx, true);
+                    own = self.carry_over_whitespace(char_idx, true);
                 }
             }
 
@@ -3020,8 +3549,11 @@ impl Lattice {
                 continue;
             }
 
-            // Space penalty gate for this position; see set_text_with_options.
+            // Space penalty gate for this position, and the left edges that
+            // own the whitespace; see set_text_with_options.
             let space_penalty = options.space_penalty_at(&self.char_info_buffer, char_idx);
+            let space_owners =
+                space_penalty.and_then(|table| self.space_gate(table, char_idx, own));
 
             // The system dictionary's words, searched first; see
             // set_text_with_options.
@@ -3040,6 +3572,23 @@ impl Lattice {
             let found = (char_idx < self.matches_head.len()
                 && self.matches_head[char_idx] != u32::MAX)
                 || !self.sys_matches.is_empty();
+
+            // A position where a left edge owns the whitespace adds its
+            // candidates out of line, as in set_text_with_options.
+            if let Some(gate) = space_owners {
+                self.add_candidates_nbest_owned(
+                    char_definitions,
+                    unknown_dictionary,
+                    cost_matrix,
+                    search_mode,
+                    max_grouping_len,
+                    unknown_word_ladder,
+                    gate,
+                    char_idx,
+                    found,
+                );
+                continue;
+            }
 
             // The candidates in the processing order of set_text_with_options,
             // so ties resolve the same way: the unknown words of the default
@@ -3153,6 +3702,113 @@ impl Lattice {
                 self.ends_at[n_chars].push(eos_edge);
             } else {
                 self.all_paths[n_chars].truncate(eos_paths_start);
+            }
+        }
+    }
+
+    /// [`Self::add_candidates_owned`] for the nbest lattice: the candidates
+    /// of the main loop of [`Self::set_text_nbest_with_options`], in the same
+    /// order, each relaxed with the left-space penalty per left edge
+    /// ([`Self::relax_nbest_owned`]).
+    ///
+    /// # Arguments
+    ///
+    /// See [`Self::add_candidates_owned`].
+    #[allow(clippy::too_many_arguments)]
+    #[cold]
+    #[inline(never)]
+    fn add_candidates_nbest_owned(
+        &mut self,
+        char_definitions: &CharacterDefinition,
+        unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        search_mode: &Mode,
+        max_grouping_len: Option<usize>,
+        unknown_word_ladder: bool,
+        gate: SpaceGate<'_>,
+        char_idx: usize,
+        found: bool,
+    ) {
+        if self.char_info_buffer[char_idx].categories_len > 0 {
+            let category = self.get_cached_category(char_definitions, char_idx, 0);
+            self.process_unknown_word_nbest_owned(
+                char_definitions,
+                unknown_dictionary,
+                cost_matrix,
+                search_mode,
+                max_grouping_len,
+                unknown_word_ladder,
+                gate,
+                category,
+                char_idx,
+                found,
+            );
+        }
+
+        for i in (0..self.sys_matches.len()).rev() {
+            let (end_char, word_entry) = self.sys_matches[i];
+            let end_char = end_char as usize;
+            let kanji_only = self.is_kanji_all(char_idx, end_char - char_idx);
+            let edge = Self::create_edge(word_entry, char_idx, kanji_only);
+            let space = gate.cost(&word_entry);
+            self.add_edge_nbest_owned(edge, end_char, cost_matrix, search_mode, space);
+        }
+
+        if char_idx < self.matches_head.len() {
+            let mut match_idx = self.matches_head[char_idx];
+            while match_idx != u32::MAX {
+                let (end_char, word_entry, next) = self.matches_store[match_idx as usize];
+
+                let end_char = end_char as usize;
+                let kanji_only = self.is_kanji_all(char_idx, end_char - char_idx);
+                let edge = Self::create_edge(word_entry, char_idx, kanji_only);
+                let space = gate.cost(&word_entry);
+                self.add_edge_nbest_owned(edge, end_char, cost_matrix, search_mode, space);
+
+                match_idx = next;
+            }
+        }
+    }
+
+    /// [`Self::process_unknown_word_owned`] for the nbest lattice
+    /// ([`Self::relax_nbest_owned`]).
+    ///
+    /// # Arguments
+    ///
+    /// See [`Self::process_unknown_word_owned`].
+    #[allow(clippy::too_many_arguments)]
+    fn process_unknown_word_nbest_owned(
+        &mut self,
+        char_definitions: &CharacterDefinition,
+        unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        search_mode: &Mode,
+        max_grouping_len: Option<usize>,
+        unknown_word_ladder: bool,
+        gate: SpaceGate<'_>,
+        category: CategoryId,
+        char_idx: usize,
+        found: bool,
+    ) {
+        let Some((primary, ladder)) = self.unknown_word_lengths(
+            char_definitions,
+            max_grouping_len,
+            unknown_word_ladder,
+            category,
+            char_idx,
+            found,
+        ) else {
+            return;
+        };
+        for &word_id in unknown_dictionary.lookup_word_ids(category).iter().rev() {
+            let word_entry = unknown_dictionary.word_entry(word_id);
+            let space = gate.cost(&word_entry);
+            let left_id = word_entry.left_id as u32;
+            let best = self.relax_nbest_owned(char_idx, left_id, cost_matrix, search_mode, space);
+            for num_chars in Self::candidate_lengths(primary, ladder) {
+                let kanji_only = self.is_kanji_all(char_idx, num_chars);
+                let edge = Self::create_edge(word_entry, char_idx, kanji_only);
+                self.push_relaxed_nbest(edge, char_idx + num_chars, best);
             }
         }
     }
@@ -3295,6 +3951,7 @@ mod tests {
     use crate::dictionary::unknown_dictionary::UnknownDictionary;
     use crate::mode::{Mode, Penalty};
     use crate::nbest::{NBestGenerator, UniqueNBestGenerator};
+    use crate::space_penalty::SpacePenaltyTable;
     use crate::viterbi::{
         BosContext, CharData, Edge, Lattice, LatticeExit, LatticeOptions, LexType, NBestPath,
         PATH_COST_CLAMP, PathEntry, TokenOffset, WordEntry, WordId,
@@ -4336,13 +4993,14 @@ mod tests {
     /// A tiny dictionary for the whitespace tests of #1108: the entries
     /// above, `DEFAULT`/`SPACE`/`ALPHA` categories, one costly unknown-word
     /// entry per category and free connections, so a path costs the sum of
-    /// its word costs.
+    /// its word costs. No left-space penalty unless built with one.
     struct WsFixture {
         dict: PrefixDictionary,
         char_definition: CharacterDefinition,
         unknown_dictionary: UnknownDictionary,
         cost_matrix: ConnectionCostMatrix,
         classifier: WhitespaceClassifier,
+        space_penalty: Option<SpacePenaltyTable>,
     }
 
     /// The categories of the test fixtures: DEFAULT = 0, SPACE = 1 (U+0009,
@@ -4415,12 +5073,29 @@ mod tests {
                 unknown_dictionary,
                 cost_matrix,
                 classifier,
+                space_penalty: None,
+            }
+        }
+
+        /// The fixture with a left-space penalty per system word id and per
+        /// unknown-word id (0 = none).
+        fn with_space_penalty(system: &[i32], unknown: &[i32]) -> Self {
+            let fixture = Self::new();
+            let whitespace = WhitespaceClassifier::new(&fixture.char_definition).unwrap();
+            Self {
+                space_penalty: Some(SpacePenaltyTable::from_costs(
+                    system,
+                    unknown,
+                    Some(whitespace),
+                )),
+                ..fixture
             }
         }
 
         fn options<'a>(&'a self, mode: &'a Mode, skip: bool) -> LatticeOptions<'a> {
             let mut options = LatticeOptions::new(mode);
             options.skip_whitespace = skip.then_some(&self.classifier);
+            options.space_penalty = self.space_penalty.as_ref();
             options
         }
 
@@ -4769,6 +5444,200 @@ mod tests {
         );
     }
 
+    // --- #1117: the left-space penalty is part of the transition ---
+
+    /// Unknown-word id of the `ALPHA` category in [`WsFixture`].
+    const UNKNOWN_ALPHA: u32 = 2;
+
+    /// [`WsFixture`] with the left-space penalties of the #1117 tests: 5000
+    /// on `cd` (not on its costlier twin) and 7000 on the `ALPHA` unknown
+    /// word.
+    fn ws_penalized(cd_penalty: i32) -> WsFixture {
+        let mut system = [0; 7];
+        system[CD as usize] = cd_penalty;
+        let mut unknown = [0; 3];
+        unknown[UNKNOWN_ALPHA as usize] = 7000;
+        WsFixture::with_space_penalty(&system, &unknown)
+    }
+
+    /// The Decompose penalty of the #1117 tests: `ab ` (3 characters) pays
+    /// 1000, the 2-character words nothing.
+    fn ws_decompose() -> Mode {
+        Mode::Decompose(Penalty {
+            kanji_penalty_length_threshold: 2,
+            kanji_penalty_length_penalty: 3000,
+            other_penalty_length_threshold: 2,
+            other_penalty_length_penalty: 1000,
+        })
+    }
+
+    /// Returns the 1-best tokens and cost of `text`, after checking that the
+    /// N-best lattice's first path is the same, at the same cost.
+    fn ws_best(fixture: &WsFixture, text: &str, mode: &Mode, skip: bool) -> NBestPath {
+        let lattice = fixture.lattice(text, mode, skip);
+        let best = (lattice.tokens_offset(), eos_cost(&lattice));
+        let nbest = fixture
+            .nbest_lattice(text, mode, skip)
+            .nbest_tokens_offset(1, false, None);
+        assert_eq!(nbest, vec![best.clone()], "{text:?} {mode:?} skip={skip}");
+        best
+    }
+
+    /// Returns the unknown word id `id`.
+    fn unk(id: u32) -> WordId {
+        WordId::new(LexType::Unknown, id)
+    }
+
+    /// #1117: a word right after an entry that ends with the whitespace
+    /// before it pays no left-space penalty, as in mecab-ko: in `ab cd`,
+    /// `cd` after `ab ` costs its word cost alone, and `cd` after `ab` and
+    /// a skipped space pays the penalty. The same holds with whitespace
+    /// kept in the lattice, where `cd` after the `SPACE` unknown word pays
+    /// it, in both modes, in the 1-best and the N-best lattice.
+    #[test]
+    fn test_space_penalty_spares_an_entry_that_ends_with_the_whitespace() {
+        let fixture = ws_penalized(5000);
+        let ab_space_cd = vec![(0, 3, sys(AB_SPACE)), (3, 5, sys(CD))];
+        for skip in [true, false] {
+            assert_eq!(
+                ws_best(&fixture, "ab cd", &Mode::Normal, skip),
+                (ab_space_cd.clone(), 110),
+                "skip={skip}"
+            );
+            assert_eq!(
+                ws_best(&fixture, "ab cd", &ws_decompose(), skip),
+                (ab_space_cd.clone(), 100 + 1000 + 10),
+                "skip={skip}"
+            );
+        }
+
+        // Every path and its cost: only the transition from `ab ` is spared.
+        let all = |skip| {
+            let mut paths = fixture.all_paths("ab cd", &Mode::Normal, skip);
+            paths.sort_by_key(|(_, cost)| *cost);
+            paths
+        };
+        assert_eq!(
+            all(true),
+            vec![
+                (ab_space_cd.clone(), 110),
+                (vec![(0, 3, sys(AB_SPACE)), (3, 5, sys(CD_ALT))], 1100),
+                (vec![(0, 2, sys(AB)), (3, 5, sys(CD_ALT))], 3000),
+                (vec![(0, 2, sys(AB)), (3, 5, sys(CD))], 2000 + 10 + 5000),
+            ]
+        );
+        assert_eq!(
+            all(false),
+            vec![
+                (ab_space_cd.clone(), 110),
+                (vec![(0, 3, sys(AB_SPACE)), (3, 5, sys(CD_ALT))], 1100),
+                (
+                    vec![
+                        (0, 2, sys(AB)),
+                        (2, 3, unk(UNKNOWN_SPACE)),
+                        (3, 5, sys(CD_ALT))
+                    ],
+                    8000
+                ),
+                (
+                    vec![(0, 2, sys(AB)), (2, 3, unk(UNKNOWN_SPACE)), (3, 5, sys(CD))],
+                    2000 + 5000 + 10 + 5000
+                ),
+            ]
+        );
+    }
+
+    /// #1117: the unknown words that share one relaxation per entry spare
+    /// the entry that ends with the whitespace as well: `xy` (an `ALPHA`
+    /// unknown word) after `ab ` costs 5000, not 5000 + 7000.
+    #[test]
+    fn test_space_penalty_spares_the_owner_for_unknown_words() {
+        let fixture = ws_penalized(5000);
+        for skip in [true, false] {
+            for mode in [Mode::Normal, ws_decompose()] {
+                let decompose = if mode.is_search() { 1000 } else { 0 };
+                assert_eq!(
+                    ws_best(&fixture, "ab xy", &mode, skip),
+                    (
+                        vec![(0, 3, sys(AB_SPACE)), (3, 5, unk(UNKNOWN_ALPHA))],
+                        100 + decompose + 5000
+                    ),
+                    "{mode:?} skip={skip}"
+                );
+            }
+        }
+    }
+
+    /// #1117: whitespace the left word does not end with is skipped
+    /// whitespace, and the word after it pays the penalty, as in mecab-ko:
+    /// after `ab ` and one more space or tab, after leading whitespace, and
+    /// with whitespace kept, after the `SPACE` unknown word that follows
+    /// `ab `.
+    #[test]
+    fn test_space_penalty_applies_after_whitespace_the_left_word_does_not_end_with() {
+        let fixture = ws_penalized(5000);
+        for text in ["ab  cd", "ab \tcd"] {
+            assert_eq!(
+                ws_best(&fixture, text, &Mode::Normal, true),
+                (vec![(0, 3, sys(AB_SPACE)), (4, 6, sys(CD_ALT))], 1100),
+                "{text:?}"
+            );
+        }
+        assert_eq!(
+            ws_best(&fixture, "  cd", &Mode::Normal, true),
+            (vec![(2, 4, sys(CD_ALT))], 1000)
+        );
+        assert_eq!(
+            ws_best(&fixture, "ab  cd", &Mode::Normal, false),
+            (
+                vec![
+                    (0, 3, sys(AB_SPACE)),
+                    (3, 4, unk(UNKNOWN_SPACE)),
+                    (4, 6, sys(CD_ALT))
+                ],
+                100 + 5000 + 1000
+            )
+        );
+        assert_eq!(
+            ws_best(&fixture, "  cd", &Mode::Normal, false),
+            (vec![(0, 2, unk(UNKNOWN_SPACE)), (2, 4, sys(CD_ALT))], 6000)
+        );
+    }
+
+    /// #1117: ownership does not depend on `Edge::ws_tail`, which saturates
+    /// at 255: the entry `a` and 300 spaces owns the whole run, so `cd`
+    /// after it pays nothing; with a 301st space, `cd` pays the penalty.
+    #[test]
+    fn test_space_penalty_owner_with_saturated_ws_tail() {
+        let fixture = ws_penalized(5000);
+        let text = format!("a{}cd", " ".repeat(300));
+        assert_eq!(
+            ws_best(&fixture, &text, &Mode::Normal, true),
+            (vec![(0, 1 + 255, sys(A_LONG)), (301, 303, sys(CD))], 110)
+        );
+        let text = format!("a{}cd", " ".repeat(301));
+        assert_eq!(
+            ws_best(&fixture, &text, &Mode::Normal, true),
+            (
+                vec![(0, 1 + 255, sys(A_LONG)), (302, 304, sys(CD_ALT))],
+                1100
+            )
+        );
+    }
+
+    /// #1117: of the left edges that tie once the penalty is added per
+    /// transition, the last one in the slot still wins (#1135): with a
+    /// penalty of -1900 on `cd`, `ab` and a skipped space (2000 - 1900)
+    /// ties with `ab ` (100), and `ab `, which ends later, wins.
+    #[test]
+    fn test_space_penalty_tie_goes_to_the_later_left_word() {
+        let fixture = ws_penalized(-1900);
+        assert_eq!(
+            ws_best(&fixture, "ab cd", &Mode::Normal, true),
+            (vec![(0, 3, sys(AB_SPACE)), (3, 5, sys(CD))], 110)
+        );
+    }
+
     // --- #1096: several BOS edges, exits, N-best from an exit ---
 
     /// Number of context ids in [`CtxFixture`]; 0 is BOS/EOS.
@@ -4848,6 +5717,17 @@ mod tests {
     /// Texts with whitespace (built with whitespace skipped only).
     const CTX_SPACED_TEXTS: &[&str] = &["   ", " ab c", "ab  ", "b\t c", "ab b c ", "  ca", "ab\t"];
 
+    /// The left-space penalties of the #1117 tests, by word id of
+    /// [`CTX_ENTRIES`]: on some one-character words, `bc` and `ca`, and on
+    /// one of the two tied `d` entries; none on `b `, `ab` and `abc`.
+    const CTX_SPACE_PENALTY: [i32; 14] = [250, 0, 0, 400, 300, 150, 0, 200, 0, 0, 350, 0, 100, 0];
+
+    /// More texts with whitespace for the #1117 tests: `b ` followed by a
+    /// penalized word, with and without more whitespace after it.
+    const CTX_PENALTY_TEXTS: &[&str] = &[
+        "b c", "b  c", "ab c", "b ca", "  b c", "b \tc", "cb b a", "b d",
+    ];
+
     /// Runs `f` on every (text, mode, skip, BOS list) case of the #1096
     /// tests.
     fn for_each_ctx_case(mut f: impl FnMut(&str, &Mode, bool, &[BosContext])) {
@@ -4867,12 +5747,14 @@ mod tests {
 
     /// A tiny dictionary where context ids matter: the entries and
     /// connection costs above, the categories of [`test_char_definition`].
+    /// No left-space penalty unless built with one.
     struct CtxFixture {
         dict: PrefixDictionary,
         char_definition: CharacterDefinition,
         unknown_dictionary: UnknownDictionary,
         cost_matrix: ConnectionCostMatrix,
         classifier: WhitespaceClassifier,
+        space_penalty: Option<SpacePenaltyTable>,
     }
 
     impl CtxFixture {
@@ -4905,6 +5787,22 @@ mod tests {
                 unknown_dictionary: test_unknown_dictionary(),
                 cost_matrix,
                 classifier,
+                space_penalty: None,
+            }
+        }
+
+        /// The fixture with the left-space penalties of
+        /// [`CTX_SPACE_PENALTY`].
+        fn with_space_penalty() -> Self {
+            let fixture = Self::new();
+            let whitespace = WhitespaceClassifier::new(&fixture.char_definition).unwrap();
+            Self {
+                space_penalty: Some(SpacePenaltyTable::from_costs(
+                    &CTX_SPACE_PENALTY,
+                    &[],
+                    Some(whitespace),
+                )),
+                ..fixture
             }
         }
 
@@ -4916,6 +5814,7 @@ mod tests {
         ) -> LatticeOptions<'a> {
             let mut options = LatticeOptions::new(mode);
             options.skip_whitespace = skip.then_some(&self.classifier);
+            options.space_penalty = self.space_penalty.as_ref();
             options.bos = bos;
             options
         }
@@ -4974,14 +5873,38 @@ mod tests {
     }
 
     /// Enumerates every path of `text` through the [`CtxFixture`] entries
+    /// from every BOS context, by definition, without a left-space penalty
+    /// (see [`brute_paths_with`]).
+    fn brute_paths(text: &str, bos_list: &[BosContext], mode: &Mode) -> Vec<BrutePath> {
+        brute_paths_with(text, bos_list, mode, None)
+    }
+
+    /// Which words pay the left-space penalty in [`brute_paths_with`].
+    #[derive(Clone, Copy)]
+    enum SpaceRule {
+        /// mecab-ko's: a word that starts after whitespace skipped since the
+        /// previous word's end (#1117).
+        Skipped,
+        /// The test before #1117: a word whose previous character is
+        /// whitespace.
+        CharBefore,
+    }
+
+    /// Enumerates every path of `text` through the [`CtxFixture`] entries
     /// from every BOS context, by definition: a path starts after leading
     /// whitespace, each word starts where the previous one ends after the
     /// whitespace there, and a word pays its cost, the connection from the
-    /// previous right id and the Decompose penalty of the previous word (0
-    /// for BOS); the last word's penalty is part of the exit cost. Meant
-    /// for texts of `a`-`d`, spaces and tabs, with whitespace skipped (or
-    /// absent).
-    fn brute_paths(text: &str, bos_list: &[BosContext], mode: &Mode) -> Vec<BrutePath> {
+    /// previous right id, the Decompose penalty of the previous word (0
+    /// for BOS) and, with `space`, the left-space penalty of its word id
+    /// when `rule` says so; the last word's penalty is part of the exit
+    /// cost. Meant for texts of `a`-`d`, spaces and tabs, with whitespace
+    /// skipped (or absent).
+    fn brute_paths_with(
+        text: &str,
+        bos_list: &[BosContext],
+        mode: &Mode,
+        space: Option<(&[i32], SpaceRule)>,
+    ) -> Vec<BrutePath> {
         fn skip_ws(text: &str, mut pos: usize) -> usize {
             while pos < text.len() && matches!(text.as_bytes()[pos], b' ' | b'\t') {
                 pos += 1;
@@ -4993,8 +5916,10 @@ mod tests {
         fn walk(
             text: &str,
             mode: &Mode,
+            space: Option<(&[i32], SpaceRule)>,
             bos: usize,
             pos: usize,
+            prev_end: usize,
             prev_right: u16,
             prev_penalty: i64,
             cost: i64,
@@ -5022,17 +5947,31 @@ mod tests {
                         penalty.penalty(&edge, surface.chars().count()) as i64
                     }
                 };
+                let pays_space_penalty = match space {
+                    None => false,
+                    Some((_, SpaceRule::Skipped)) => pos > prev_end,
+                    Some((_, SpaceRule::CharBefore)) => {
+                        pos > 0 && matches!(text.as_bytes()[pos - 1], b' ' | b'\t')
+                    }
+                };
+                let space_penalty = match space {
+                    Some((costs, _)) if pays_space_penalty => costs[id as usize] as i64,
+                    _ => 0,
+                };
                 let end = pos + surface.len();
                 let cost = cost
                     + prev_penalty
                     + CTX_CONN[prev_right as usize][left as usize] as i64
+                    + space_penalty
                     + word_cost as i64;
                 tokens.push((pos, end, sys(id)));
                 walk(
                     text,
                     mode,
+                    space,
                     bos,
                     skip_ws(text, end),
+                    end,
                     right,
                     penalty,
                     cost,
@@ -5056,8 +5995,10 @@ mod tests {
             walk(
                 text,
                 mode,
+                space,
                 index,
                 start,
+                0,
                 context.right_id,
                 0,
                 cost,
@@ -5727,6 +6668,67 @@ mod tests {
             assert_eq!(actual, expected, "{case}");
         });
         assert!(tie_for_first, "no case has several cheapest paths");
+    }
+
+    /// #1117: with a left-space penalty, the 1-best path and every N-best
+    /// path cost what they cost by mecab-ko's definition: a word pays the
+    /// penalty when whitespace was skipped between the previous word's end
+    /// and its start, after leading whitespace too, so not right after `b `,
+    /// whose surface ends with the space. The former definition (the
+    /// character before the word is whitespace) has other cheapest paths
+    /// for some text, so the fixture tells the two apart.
+    #[test]
+    fn test_space_penalty_matches_brute_force() {
+        let fixture = CtxFixture::with_space_penalty();
+        let mut definition_matters = false;
+        let cheapest = |paths: &[BrutePath]| -> Vec<Vec<(usize, usize, u32)>> {
+            let min = paths.iter().map(BrutePath::eos_cost).min();
+            paths
+                .iter()
+                .filter(|path| Some(path.eos_cost()) == min)
+                .map(|path| token_keys(&path.tokens))
+                .collect()
+        };
+        for mode in [Mode::Normal, ctx_decompose()] {
+            for bos_list in ctx_bos_lists() {
+                let unspaced = CTX_TEXTS
+                    .iter()
+                    .flat_map(|&text| [(text, false), (text, true)]);
+                let spaced = CTX_SPACED_TEXTS
+                    .iter()
+                    .chain(CTX_PENALTY_TEXTS)
+                    .map(|&text| (text, true));
+                for (text, skip) in unspaced.chain(spaced) {
+                    let case = format!("{text:?} {mode:?} skip={skip} {bos_list:?}");
+                    let rule = |rule| Some((&CTX_SPACE_PENALTY[..], rule));
+                    let brute = brute_paths_with(text, &bos_list, &mode, rule(SpaceRule::Skipped));
+                    let lattice = fixture.lattice(text, &mode, skip, &bos_list);
+                    assert_best_is_brute_min(&lattice, &brute, &case);
+
+                    let nbest = fixture.nbest_lattice(text, &mode, skip, &bos_list);
+                    let mut generator = NBestGenerator::new(&nbest);
+                    let mut actual = Vec::new();
+                    while let Some(((tokens, cost), bos)) = generator.next_with_bos() {
+                        actual.push((cost, token_keys(&tokens), bos));
+                    }
+                    let mut expected: Vec<_> = brute
+                        .iter()
+                        .map(|path| (path.eos_cost(), token_keys(&path.tokens), path.bos))
+                        .collect();
+                    expected.sort();
+                    actual.sort();
+                    assert_eq!(actual, expected, "{case}");
+
+                    let former =
+                        brute_paths_with(text, &bos_list, &mode, rule(SpaceRule::CharBefore));
+                    definition_matters |= cheapest(&brute) != cheapest(&former);
+                }
+            }
+        }
+        assert!(
+            definition_matters,
+            "no text tells the two definitions apart"
+        );
     }
 
     /// Builds a user dictionary that holds `entries`, in CSV order, under
