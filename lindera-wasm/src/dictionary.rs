@@ -291,7 +291,7 @@ mod tests {
         let dict = load_dictionary("embedded://ipadic").unwrap();
         let csv = include_bytes!("../../resources/user_dict/ipadic_simple_userdic.csv");
 
-        let without = Tokenizer::new(dict.clone(), None, None, None).unwrap();
+        let without = Tokenizer::new(dict.clone(), None, None, None, None).unwrap();
         let baseline = without.tokenize_surfaces("東京スカイツリー").unwrap();
         assert!(
             baseline.len() > 1,
@@ -299,7 +299,7 @@ mod tests {
         );
 
         let user_dict = load_user_dictionary_from_bytes(csv, dict.metadata()).unwrap();
-        let with = Tokenizer::new(dict, None, Some(user_dict), None).unwrap();
+        let with = Tokenizer::new(dict, None, Some(user_dict), None, None).unwrap();
         let surfaces = with.tokenize_surfaces("東京スカイツリー").unwrap();
         assert_eq!(
             surfaces,
@@ -320,7 +320,7 @@ mod tests {
         let bin = include_bytes!("../../resources/user_dict/ipadic_simple_userdic.bin");
 
         let user_dict = load_user_dictionary_bin_from_bytes(bin).unwrap();
-        let tokenizer = Tokenizer::new(dict, None, Some(user_dict), None).unwrap();
+        let tokenizer = Tokenizer::new(dict, None, Some(user_dict), None, None).unwrap();
         let surfaces = tokenizer.tokenize_surfaces("東京スカイツリー").unwrap();
         assert_eq!(surfaces, vec!["東京スカイツリー".to_string()]);
     }
@@ -366,7 +366,7 @@ mod tests {
         let csv = "東京スカイツリー,カスタム名詞,トウキョウスカイツリー\n";
 
         let user_dict = load_user_dictionary_from_bytes_for(csv.as_bytes(), &dict).unwrap();
-        let tokenizer = Tokenizer::new(dict, None, Some(user_dict), None).unwrap();
+        let tokenizer = Tokenizer::new(dict, None, Some(user_dict), None, None).unwrap();
         let surfaces = tokenizer.tokenize_surfaces("東京スカイツリー").unwrap();
         assert_eq!(surfaces, vec!["東京スカイツリー".to_string()]);
     }
