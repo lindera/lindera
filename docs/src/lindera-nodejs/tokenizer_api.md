@@ -30,15 +30,18 @@ See [`lindera-nodejs/resources/lindera.yml`](https://github.com/lindera/lindera/
 
 All setter methods return the builder itself (`this`), so they can be chained or called one statement at a time.
 
-#### `setMode(mode)`
+#### `setMode(mode, penalty?)`
 
 Sets the tokenization mode.
 
 - `"normal"` -- Standard tokenization (default)
 - `"decompose"` -- Decomposes compound words into smaller units
 
+`penalty` is the [`Penalty`](#penalty) object that `"decompose"` mode uses; `null` or `undefined` (the default) uses the default penalty. A penalty with `"normal"` throws, as an invalid mode does, and a value that is not an object, or a field that is not an integer in its range, throws an `InvalidArg` error.
+
 ```javascript
 builder.setMode("normal");
+builder.setMode("decompose", { kanjiPenaltyLengthPenalty: 0 });
 ```
 
 #### `setDictionary(path)`
@@ -157,11 +160,13 @@ const tokenizer = builder.build();
 
 ### Creating a Tokenizer
 
-#### `new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?)`
+#### `new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?, penalty?)`
 
 Creates a tokenizer directly from a loaded dictionary.
 
 `spacePenalty` takes the same values as [`setSpacePenalty`](#setspacepenaltyvalue). `null` or `undefined` (the default) uses the left-space penalty rules the dictionary ships. An invalid setting throws, as `setSpacePenalty` and `build()` do.
+
+`penalty` takes a [`Penalty`](#penalty) for `"decompose"` mode, as [`setMode`](#setmodemode-penalty) does, with the same errors.
 
 ```javascript
 const { Tokenizer, loadDictionary } = require("lindera");
@@ -269,11 +274,8 @@ The structure of `details` depends on the dictionary:
 
 ## Mode and Penalty
 
-`Mode` and `Penalty` are exported from the `lindera` npm package, but they are **not currently wired into
-any public API**: `TokenizerBuilder.setMode()` / `Tokenizer`'s constructor accept only a plain
-mode string (`"normal"` or `"decompose"`), and decompose mode always uses the default penalty
-configuration internally. These types are documented here for completeness; they cannot yet be
-used to customize penalty behavior from JavaScript.
+`TokenizerBuilder.setMode()` and the `Tokenizer` constructor take the mode as a plain string
+(`"normal"` or `"decompose"`) and the penalty of decompose mode as a [`Penalty`](#penalty) object.
 
 ### `Mode`
 
@@ -284,11 +286,34 @@ A string enum with two values:
 
 ### `Penalty`
 
-An object shape describing the penalty parameters used by decompose mode:
+A plain object (the TypeScript type `Penalty`) with the penalty parameters of decompose mode. Every field is optional, and a field left out keeps its default:
 
 | Property | Type | Description |
 | --- | --- | --- |
-| `kanjiPenaltyLengthThreshold` | `number` | Length threshold for kanji sequences before a penalty is applied (default: `2`) |
-| `kanjiPenaltyLengthPenalty` | `number` | Penalty value for long kanji sequences (default: `3000`) |
-| `otherPenaltyLengthThreshold` | `number` | Length threshold for other character sequences before a penalty is applied (default: `7`) |
-| `otherPenaltyLengthPenalty` | `number` | Penalty value for long other-character sequences (default: `1700`) |
+| `kanjiPenaltyLengthThreshold` | `number` | Length threshold for kanji sequences before a penalty is applied, an integer 0 or more (default: `2`) |
+| `kanjiPenaltyLengthPenalty` | `number` | Penalty value for long kanji sequences, a 32-bit signed integer (default: `3000`) |
+| `otherPenaltyLengthThreshold` | `number` | Length threshold for other character sequences before a penalty is applied, an integer 0 or more (default: `7`) |
+| `otherPenaltyLengthPenalty` | `number` | Penalty value for long other-character sequences, a 32-bit signed integer (default: `1700`) |
+
+Pass it with `"decompose"` to [`setMode()`](#setmodemode-penalty) or to the [`Tokenizer` constructor](#new-tokenizerdictionary-mode-userdictionary-spacepenalty-penalty). Without length penalties, decompose mode keeps long words whole:
+
+```javascript
+const { Tokenizer, TokenizerBuilder, loadDictionary } = require("lindera");
+
+const text = "関西国際空港限定トートバッグ";
+const penalty = { kanjiPenaltyLengthPenalty: 0, otherPenaltyLengthPenalty: 0 };
+const surfaces = (tokenizer) => tokenizer.tokenize(text).map((token) => token.surface);
+
+const builder = new TokenizerBuilder().setDictionary("embedded://ipadic");
+console.log(surfaces(builder.setMode("decompose").build()));
+// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
+
+console.log(surfaces(builder.setMode("decompose", penalty).build()));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+
+const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), "decompose", null, null, penalty);
+console.log(surfaces(tokenizer));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+```
+
+A penalty with `"normal"` mode throws.

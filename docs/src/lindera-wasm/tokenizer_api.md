@@ -21,15 +21,20 @@ the calls can be chained (`builder.setMode("normal").setDictionary(...)`) or
 made one statement at a time. The returned handle is a new object, but it
 configures the same underlying builder.
 
-#### `setMode(mode)`
+#### `setMode(mode, penalty?)`
 
 Sets the tokenization mode.
 
-- **Parameters**: `mode` (string) -- `"normal"` or `"decompose"`
+- **Parameters**:
+  - `mode` (string) -- `"normal"` or `"decompose"`
+  - `penalty` (Penalty, optional) -- The [`Penalty`](#penalty) that `"decompose"` mode uses. `null` or `undefined` (the default) uses the default penalty. The `Penalty` stays usable, so the same one can be passed again.
 - **Returns**: `TokenizerBuilder`
+
+A penalty with `"normal"` throws an error string, as an invalid mode does, and so does a value that is not a `Penalty`.
 
 ```javascript
 builder.setMode("normal");
+builder.setMode("decompose", new Penalty(undefined, 0));
 ```
 
 #### `setDictionary(uri)`
@@ -179,7 +184,7 @@ The main tokenizer class. Can be created via `TokenizerBuilder.build()` or direc
 ### Tokenizer Constructor
 
 ```javascript
-const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
+const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty, penalty);
 ```
 
 - **Parameters**:
@@ -187,6 +192,7 @@ const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
   - `mode` (string, optional) -- Tokenization mode (`"normal"` or `"decompose"`, defaults to `"normal"`)
   - `userDictionary` (UserDictionary, optional) -- A loaded user dictionary
   - `spacePenalty` (boolean | object, optional) -- The left-space penalty, in the forms [`setSpacePenalty()`](#setspacepenaltyvalue) accepts. `null` or `undefined` (the default) uses the rules the dictionary ships. An invalid setting throws an error string, as `setSpacePenalty()` and `build()` do.
+  - `penalty` (Penalty, optional) -- The [`Penalty`](#penalty) for `"decompose"` mode, as [`setMode()`](#setmodemode-penalty) takes it, with the same errors.
 
 ### Tokenizer Methods
 
@@ -352,6 +358,30 @@ const penalty = new Penalty(
 | `kanji_penalty_length_penalty` | `number` | `3000` | Penalty cost for kanji compounds exceeding threshold |
 | `other_penalty_length_threshold` | `number` | `7` | Length threshold for non-kanji compound splitting |
 | `other_penalty_length_penalty` | `number` | `1700` | Penalty cost for non-kanji compounds exceeding threshold |
+
+Pass it with `"decompose"` to [`setMode()`](#setmodemode-penalty) or to the [`Tokenizer` constructor](#tokenizer-constructor). The `Penalty` is read, not consumed, so the same one can be passed again. Without length penalties, decompose mode keeps long words whole:
+
+```javascript
+import { Penalty, Tokenizer, TokenizerBuilder, loadDictionary } from 'lindera-wasm-ipadic';
+
+const text = "関西国際空港限定トートバッグ";
+const penalty = new Penalty(undefined, 0, undefined, 0);
+const surfaces = (tokenizer) => tokenizer.tokenize(text).map((token) => token.surface);
+
+const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+console.log(surfaces(builder.setMode("decompose").build()));
+// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
+
+console.log(surfaces(builder.setMode("decompose", penalty).build()));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+
+const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), "decompose", null, null, penalty);
+console.log(surfaces(tokenizer));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+```
+
+A penalty with `"normal"` mode throws an error string.
 
 ### LinderaError
 

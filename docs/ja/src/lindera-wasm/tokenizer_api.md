@@ -20,15 +20,20 @@ const builder = new TokenizerBuilder();
 `builder.setMode("normal").setDictionary(...)` のようにチェーンでも、1 文ずつでも記述できます。
 返されるハンドルは新しいオブジェクトですが、設定先は同一のビルダーです。
 
-#### `setMode(mode)`
+#### `setMode(mode, penalty?)`
 
 トークナイズモードを設定します。
 
-- **パラメータ**: `mode` (string) -- `"normal"` または `"decompose"`
+- **パラメータ**:
+  - `mode` (string) -- `"normal"` または `"decompose"`
+  - `penalty` (Penalty, 省略可) -- `"decompose"` モードが使う [`Penalty`](#penalty)。`null` または `undefined`（デフォルト）では既定のペナルティを使います。渡した `Penalty` はそのまま使えるので、同じものを何度でも渡せます。
 - **戻り値**: `TokenizerBuilder`
+
+`"normal"` とペナルティを一緒に渡すと、不正なモードと同じくエラー文字列が投げられます。`Penalty` でない値を渡したときも同じです。
 
 ```javascript
 builder.setMode("normal");
+builder.setMode("decompose", new Penalty(undefined, 0));
 ```
 
 #### `setDictionary(uri)`
@@ -176,7 +181,7 @@ const tokenizer = builder.build();
 ### Tokenizer コンストラクタ
 
 ```javascript
-const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
+const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty, penalty);
 ```
 
 - **パラメータ**:
@@ -184,6 +189,7 @@ const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
   - `mode` (string, 省略可) -- トークナイズモード（`"normal"` または `"decompose"`、デフォルト: `"normal"`）
   - `userDictionary` (UserDictionary, 省略可) -- 読み込み済みのユーザー辞書
   - `spacePenalty` (boolean | object, 省略可) -- 左側空白ペナルティ。[`setSpacePenalty()`](#setspacepenaltyvalue) と同じ値を渡せます。`null` または `undefined`（デフォルト）では、辞書が同梱するルールを使います。不正な設定では、`setSpacePenalty()` や `build()` と同じくエラー文字列が投げられます。
+  - `penalty` (Penalty, 省略可) -- `"decompose"` モードの [`Penalty`](#penalty)。[`setMode()`](#setmodemode-penalty) と同じものを渡せ、エラーも同じです。
 
 ### Tokenizer メソッド
 
@@ -349,6 +355,30 @@ const penalty = new Penalty(
 | `kanji_penalty_length_penalty` | `number` | `3000` | 閾値を超える漢字複合語のペナルティコスト |
 | `other_penalty_length_threshold` | `number` | `7` | 非漢字複合語分割の長さ閾値 |
 | `other_penalty_length_penalty` | `number` | `1700` | 閾値を超える非漢字複合語のペナルティコスト |
+
+`"decompose"` と一緒に [`setMode()`](#setmodemode-penalty) か [`Tokenizer` のコンストラクタ](#tokenizer-コンストラクタ) に渡します。`Penalty` は読み取られるだけで消費されないので、同じものを何度でも渡せます。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。
+
+```javascript
+import { Penalty, Tokenizer, TokenizerBuilder, loadDictionary } from 'lindera-wasm-ipadic';
+
+const text = "関西国際空港限定トートバッグ";
+const penalty = new Penalty(undefined, 0, undefined, 0);
+const surfaces = (tokenizer) => tokenizer.tokenize(text).map((token) => token.surface);
+
+const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+console.log(surfaces(builder.setMode("decompose").build()));
+// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
+
+console.log(surfaces(builder.setMode("decompose", penalty).build()));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+
+const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), "decompose", null, null, penalty);
+console.log(surfaces(tokenizer));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+```
+
+`"normal"` モードと一緒にペナルティを渡すと、エラー文字列が投げられます。
 
 ### LinderaError
 

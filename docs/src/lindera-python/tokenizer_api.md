@@ -30,15 +30,18 @@ builder = TokenizerBuilder().from_file("lindera.yml")
 
 All setter methods return `self` for method chaining.
 
-#### `set_mode(mode)`
+#### `set_mode(mode, penalty=None)`
 
 Sets the tokenization mode.
 
 - `"normal"` -- Standard tokenization (default)
 - `"decompose"` -- Decomposes compound words into smaller units
 
+`penalty` is the [`Penalty`](#penalty) that `"decompose"` mode uses; `None` (the default) uses the default penalty. A penalty with `"normal"` raises `ValueError`, and a value that is not a `Penalty` raises `TypeError`.
+
 ```python
 builder.set_mode("normal")
+builder.set_mode("decompose", Penalty(kanji_penalty_length_penalty=0))
 ```
 
 #### `set_dictionary(path)`
@@ -147,11 +150,13 @@ tokenizer = builder.build()
 
 ### Creating a Tokenizer
 
-#### `Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None)`
+#### `Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None, penalty=None)`
 
 Creates a tokenizer directly from a loaded dictionary.
 
 `space_penalty` takes the same values as [`TokenizerBuilder.set_space_penalty`](#set_space_penaltyvalue). `None` (the default) uses the left-space penalty rules the dictionary ships, so with ko-dic the penalty is on; pass `False` to turn it off. An invalid setting raises the same errors as `set_space_penalty` and `build()`.
+
+`penalty` takes a [`Penalty`](#penalty) for `"decompose"` mode, as [`TokenizerBuilder.set_mode`](#set_modemode-penaltynone) does, with the same errors.
 
 ```python
 from lindera import Tokenizer, load_dictionary
@@ -223,9 +228,9 @@ for tokens, cost in results:
 
 `Mode` represents a tokenization mode. It is provided as a standalone helper for
 inspecting or comparing modes; `TokenizerBuilder.set_mode()` and the `Tokenizer`
-constructor currently accept only a plain mode string (`"normal"` or
-`"decompose"`), not a `Mode` instance (see the limitation noted under `Penalty`
-below).
+constructor take a plain mode string (`"normal"` or `"decompose"`), not a `Mode`
+instance. The penalty of decompose mode goes in their `penalty` argument (see
+[`Penalty`](#penalty) below).
 
 ### Creating a Mode
 
@@ -297,11 +302,31 @@ penalty.kanji_penalty_length_threshold = 3
 print(penalty.kanji_penalty_length_threshold)  # 3
 ```
 
-**Current limitation:** there is currently no way to pass a `Penalty` into a
-`Tokenizer` or `TokenizerBuilder`. `set_mode()` and the `Tokenizer` constructor
-only accept a plain mode string, and internally `"decompose"` mode always uses
-`Penalty`'s default values -- constructing a custom `Penalty` instance has no
-effect on tokenization yet.
+### Using a Penalty
+
+Pass a `Penalty` with `"decompose"` to [`TokenizerBuilder.set_mode()`](#set_modemode-penaltynone) or to the [`Tokenizer` constructor](#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone). Without length penalties, decompose mode keeps long words whole:
+
+```python
+from lindera import Penalty, Tokenizer, TokenizerBuilder, load_dictionary
+
+text = "関西国際空港限定トートバッグ"
+penalty = Penalty(kanji_penalty_length_penalty=0, other_penalty_length_penalty=0)
+
+builder = TokenizerBuilder().set_dictionary("embedded://ipadic")
+tokenizer = builder.set_mode("decompose").build()
+print([token.surface for token in tokenizer.tokenize(text)])
+# ['関西', '国際', '空港', '限定', 'トートバッグ']
+
+tokenizer = builder.set_mode("decompose", penalty).build()
+print([token.surface for token in tokenizer.tokenize(text)])
+# ['関西国際空港', '限定', 'トートバッグ']
+
+tokenizer = Tokenizer(load_dictionary("embedded://ipadic"), mode="decompose", penalty=penalty)
+print([token.surface for token in tokenizer.tokenize(text)])
+# ['関西国際空港', '限定', 'トートバッグ']
+```
+
+A `Penalty` with `"normal"` mode raises `ValueError`.
 
 ## Token
 

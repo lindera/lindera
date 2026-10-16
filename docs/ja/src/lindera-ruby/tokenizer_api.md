@@ -26,15 +26,18 @@ builder = Lindera::TokenizerBuilder.from_file('config.json')
 
 ### 設定メソッド
 
-#### `set_mode(mode)`
+#### `set_mode(mode, penalty: nil)`
 
 トークナイズモードを設定します。
 
 - `"normal"` -- 標準的なトークナイズ（デフォルト）
 - `"decompose"` -- 複合語をより小さな単位に分解
 
+キーワード引数 `penalty:` には、`"decompose"` モードが使う [`Lindera::Penalty`](#penalty) を渡します。`nil`（デフォルト）では既定のペナルティを使います。`"normal"` とペナルティを一緒に渡すと、不正なモードと同じく `RuntimeError` が、`Lindera::Penalty` でない値を渡すと `TypeError` が発生します。
+
 ```ruby
 builder.set_mode('normal')
+builder.set_mode('decompose', penalty: Lindera::Penalty.new(nil, 0, nil, nil))
 ```
 
 #### `set_dictionary(path)`
@@ -143,11 +146,13 @@ tokenizer = builder.build
 
 ### Tokenizer の作成
 
-#### `Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil)`
+#### `Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil, penalty: nil)`
 
 読み込み済みの辞書から直接トークナイザーを作成します。`mode` のデフォルトは `'normal'` で、`user_dictionary` は省略できます。
 
 キーワード引数 `space_penalty:` には [`TokenizerBuilder#set_space_penalty`](#set_space_penaltyvalue) と同じ値を渡せます。`nil`（デフォルト）では辞書が同梱する左側空白ペナルティのルールを使うため、ko-dic ではペナルティがオンになります。オフにするには `false` を渡します。不正な設定では、`set_space_penalty` や `build` と同じエラーが発生します。
+
+キーワード引数 `penalty:` には、[`TokenizerBuilder#set_mode`](#set_modemode-penalty-nil) と同じく `"decompose"` モードの [`Lindera::Penalty`](#penalty) を渡せます。エラーも `set_mode` と同じです。
 
 ```ruby
 require 'lindera'
@@ -226,7 +231,7 @@ end
 
 ## Mode
 
-`Lindera::Mode` はトークナイズモードを表します。モードの確認・比較のためのスタンドアロンヘルパーとして提供されています。`TokenizerBuilder#set_mode` と `Tokenizer.new` は現在、`Mode` インスタンスではなく単純なモード文字列（`"normal"` または `"decompose"`）のみを受け付けます（下記の `Penalty` の制限事項も参照してください）。
+`Lindera::Mode` はトークナイズモードを表します。モードの確認・比較のためのスタンドアロンヘルパーとして提供されています。`TokenizerBuilder#set_mode` と `Tokenizer.new` は、`Mode` インスタンスではなく単純なモード文字列（`"normal"` または `"decompose"`）を受け取ります。decompose モードのペナルティは、それぞれのキーワード引数 `penalty:` で渡します（下記の [`Penalty`](#penalty) を参照してください）。
 
 ### Mode の作成
 
@@ -292,7 +297,33 @@ penalty = Lindera::Penalty.new(nil, nil, nil, nil)
 penalty.kanji_penalty_length_threshold  # 2
 ```
 
-**現在の制限:** 現時点では `Penalty` を `Tokenizer` や `TokenizerBuilder` に渡す方法はありません。`set_mode` と `Tokenizer.new` は単純なモード文字列のみを受け付け、内部的に `"decompose"` モードは常に `Penalty` のデフォルト値を使用します -- カスタムの `Penalty` インスタンスを作成しても、現時点ではトークナイズには反映されません。
+### Penalty の使い方
+
+`Penalty` は `"decompose"` と一緒に、[`TokenizerBuilder#set_mode`](#set_modemode-penalty-nil) か [`Tokenizer.new`](#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil) のキーワード引数 `penalty:` で渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。
+
+```ruby
+require 'lindera'
+
+text = '関西国際空港限定トートバッグ'
+penalty = Lindera::Penalty.new(nil, 0, nil, 0)
+
+builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.set_mode('decompose')
+p builder.build.tokenize(text).map(&:surface)
+# => ["関西", "国際", "空港", "限定", "トートバッグ"]
+
+builder.set_mode('decompose', penalty: penalty)
+p builder.build.tokenize(text).map(&:surface)
+# => ["関西国際空港", "限定", "トートバッグ"]
+
+dictionary = Lindera.load_dictionary('embedded://ipadic')
+tokenizer = Lindera::Tokenizer.new(dictionary, 'decompose', penalty: penalty)
+p tokenizer.tokenize(text).map(&:surface)
+# => ["関西国際空港", "限定", "トートバッグ"]
+```
+
+`"normal"` モードと一緒に `Penalty` を渡すと `RuntimeError` が発生します。
 
 ## Token
 

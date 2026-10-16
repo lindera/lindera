@@ -27,15 +27,18 @@ builder = Lindera::TokenizerBuilder.from_file('config.json')
 
 ### Configuration Methods
 
-#### `set_mode(mode)`
+#### `set_mode(mode, penalty: nil)`
 
 Sets the tokenization mode.
 
 - `"normal"` -- Standard tokenization (default)
 - `"decompose"` -- Decomposes compound words into smaller units
 
+The `penalty:` keyword takes the [`Lindera::Penalty`](#penalty) that `"decompose"` mode uses; `nil` (the default) uses the default penalty. A penalty with `"normal"` raises `RuntimeError`, as an invalid mode does, and a value that is not a `Lindera::Penalty` raises `TypeError`.
+
 ```ruby
 builder.set_mode('normal')
+builder.set_mode('decompose', penalty: Lindera::Penalty.new(nil, 0, nil, nil))
 ```
 
 #### `set_dictionary(path)`
@@ -144,11 +147,13 @@ tokenizer = builder.build
 
 ### Creating a Tokenizer
 
-#### `Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil)`
+#### `Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil, penalty: nil)`
 
 Creates a tokenizer directly from a loaded dictionary. `mode` defaults to `'normal'`, and `user_dictionary` is optional.
 
 The `space_penalty:` keyword takes the same values as [`TokenizerBuilder#set_space_penalty`](#set_space_penaltyvalue). `nil` (the default) uses the left-space penalty rules the dictionary ships, so with ko-dic the penalty is on; pass `false` to turn it off. An invalid setting raises the same errors as `set_space_penalty` and `build`.
+
+The `penalty:` keyword takes a [`Lindera::Penalty`](#penalty) for `"decompose"` mode, as [`TokenizerBuilder#set_mode`](#set_modemode-penalty-nil) does, with the same errors.
 
 ```ruby
 require 'lindera'
@@ -227,7 +232,7 @@ end
 
 ## Mode
 
-`Lindera::Mode` represents a tokenization mode. It is provided as a standalone helper for inspecting or comparing modes; `TokenizerBuilder#set_mode` and `Tokenizer.new` currently accept only a plain mode string (`"normal"` or `"decompose"`), not a `Mode` instance (see the limitation noted under `Penalty` below).
+`Lindera::Mode` represents a tokenization mode. It is provided as a standalone helper for inspecting or comparing modes; `TokenizerBuilder#set_mode` and `Tokenizer.new` take a plain mode string (`"normal"` or `"decompose"`), not a `Mode` instance. The penalty of decompose mode goes in their `penalty:` keyword (see [`Penalty`](#penalty) below).
 
 ### Creating a Mode
 
@@ -293,7 +298,33 @@ penalty = Lindera::Penalty.new(nil, nil, nil, nil)
 penalty.kanji_penalty_length_threshold  # 2
 ```
 
-**Current limitation:** there is currently no way to pass a `Penalty` into a `Tokenizer` or `TokenizerBuilder`. `set_mode` and `Tokenizer.new` only accept a plain mode string, and internally `"decompose"` mode always uses `Penalty`'s default values -- constructing a custom `Penalty` instance has no effect on tokenization yet.
+### Using a Penalty
+
+Pass a `Penalty` with `"decompose"` as the `penalty:` keyword of [`TokenizerBuilder#set_mode`](#set_modemode-penalty-nil) or [`Tokenizer.new`](#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil). Without length penalties, decompose mode keeps long words whole:
+
+```ruby
+require 'lindera'
+
+text = '関西国際空港限定トートバッグ'
+penalty = Lindera::Penalty.new(nil, 0, nil, 0)
+
+builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.set_mode('decompose')
+p builder.build.tokenize(text).map(&:surface)
+# => ["関西", "国際", "空港", "限定", "トートバッグ"]
+
+builder.set_mode('decompose', penalty: penalty)
+p builder.build.tokenize(text).map(&:surface)
+# => ["関西国際空港", "限定", "トートバッグ"]
+
+dictionary = Lindera.load_dictionary('embedded://ipadic')
+tokenizer = Lindera::Tokenizer.new(dictionary, 'decompose', penalty: penalty)
+p tokenizer.tokenize(text).map(&:surface)
+# => ["関西国際空港", "限定", "トートバッグ"]
+```
+
+A `Penalty` with `"normal"` mode raises `RuntimeError`.
 
 ## Token
 

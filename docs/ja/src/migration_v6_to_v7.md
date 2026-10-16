@@ -55,6 +55,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **WASM: 辞書の設定方法にかかわらず `TokenizerBuilder` の設定が適用される** | `setDictionaryInstance()` と `setKeepWhitespace()` やフィルタ、または `setDictionary()` と `setUserDictionaryInstance()` を組み合わせる WASM のユーザー | それらの設定とユーザー辞書が効くことを前提にする。`char.def` に `SPACE` カテゴリがない辞書インスタンスでは、URI で設定した辞書と同じく `setKeepWhitespace(true)` が必要になる |
 | **PHP: 省略可能な引数に型違いの値を渡すと、既定値を使わずに例外を投げる** | 省略可能な引数に別の型の値を渡す PHP のコード。例えば `Lindera\Trainer::train()` の `$max_iter` に数字の文字列を、`tokenizeNbest()` の `$unique` に `1` を渡すもの | 宣言された型の値を渡す。`$argv` の値のような文字列は `(int)` などでキャストする。`null` を渡すか引数を省略すれば、これまでどおり既定値になる |
 | **PHP・Node.js・WASM: 設定の範囲外の整数の引数は、折り返さずに例外を投げる** | そのような値を渡すコード。例えば `Metadata` の既定の単語コストに `100000` を渡すもの（v6 は `-31072` を保持した）や、N-best の件数に `-1` を渡すもの（v6 はすべての分割を列挙した）。`getFieldName` と PHP の `getDetail` への負の位置。Node.js と WASM では、`1.5` や `NaN` のような整数でない数値 | 範囲内の整数を渡す。エラーは引数の名前と範囲を示す |
+| **バインディング: decompose モードが `set_mode` / `setMode` と `Tokenizer` のコンストラクタで `Penalty` を受け取り、`TokenizerBuilder::set_segmenter_mode` が `Mode::Decompose` のペナルティを保つ** | decompose モードのペナルティを変えたいバインディングのユーザー。Node.js の型 `JsPenalty` を名指しする TypeScript のコード。`set_segmenter_mode` に既定でないペナルティを渡す Rust のコード。`CoreTokenizerBuilder::set_mode` や `CoreTokenizer::from_segmenter_with_space_penalty` を呼ぶバインディングの作者 | ペナルティを変えるには新しい引数に `Penalty` を渡す。`JsPenalty` を `Penalty` に改名する。`lindera-binding` の関数の新しい引数には `None` を渡す |
 | **`lindera train` は MeCab の学習器と同じくラティスを作り、`unk.def` のすべてのエントリを保持する。`model.dat` の形式バージョンは 2.0.0** | `lindera train`・`lindera export` と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー | 7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた `model.dat` は拒否される）。`unk.def` のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す |
 | **`lindera build` は `matrix.def` の範囲外の文脈 ID を拒否する** | `lex.csv` や `unk.def` に `matrix.def` の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の `mecab-dict-index` が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる） | ID か行列を直すか、`metadata.json` の `skip_invalid_cost_or_id` でそうした `lex.csv` の行を取り除く。ユーザー辞書ではそうした ID を直す |
 | **`lindera build` と `lindera train` は `char.def` と `unk.def` を照らし合わせる** | それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが `char.def` にあるユーザー、`char.def` と `unk.def` でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、`unk.def` の行を無視したりしていた）。MeCab の `mecab-dict-index` が受け入れる辞書は影響を受けない | 各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに `unk.def` の行を書き、未定義のカテゴリの `unk.def` の行を削除する |
@@ -76,6 +77,8 @@ v6 はこの値を `null` として扱っていました
 PHP・Node.js・WASM のバインディングは、設定の範囲外の整数の引数も拒否します。
 v6 はこの値を折り返していました
 （[バインディング: 範囲外の整数の引数を拒否する](#バインディング-範囲外の整数の引数を拒否する)を参照）。
+Node.js の TypeScript の型 `JsPenalty` は `Penalty` に改名しました
+（[バインディング: decompose モードが `Penalty` を受け取る](#バインディング-decompose-モードが-penalty-を受け取る)を参照）。
 バージョン番号は 7.0.0 になります。Rust クレートと同じく、v6.2.0 以前に
 ビルドまたはダウンロードした辞書ディレクトリは読み込めなくなります
 （[辞書ディレクトリの再ビルドが必要](#辞書ディレクトリの再ビルドが必要)を参照）。v6.2.0 以前にバインディングの
@@ -1067,6 +1070,47 @@ Node.js バインディングは code が `InvalidArg` の `Error` を、WASM �
 なりました（`'cost'` ではなく `while processing 'default_word_cost'`）。v6 の動作に
 戻す設定はありません。
 
+## バインディング: decompose モードが `Penalty` を受け取る
+
+v6.2.0 までは、どのバインディングにも `Penalty` がありましたが、それを受け取る関数も
+コンストラクタもありませんでした。`set_mode` / `setMode` と `Tokenizer` の
+コンストラクタはモードの文字列だけを受け取り、decompose モードは常に既定の
+ペナルティを使っていました。既定でないペナルティを使えたのは、`from_file` /
+`fromFile` で読み込む設定ファイル経由だけでした。Rust の
+`TokenizerBuilder::set_segmenter_mode` も、設定にモードの名前しか書かなかったため、
+`Mode::Decompose` のペナルティを同じように失っていました。
+
+v7.0.0 では、`set_mode` / `setMode` と `Tokenizer` のコンストラクタが、省略可能な
+引数でペナルティを受け取り、`set_segmenter_mode` はペナルティを保ちます。
+
+| バインディング | ビルダー | `Tokenizer` のコンストラクタ |
+| --- | --- | --- |
+| Python | `set_mode("decompose", penalty)` | `Tokenizer(dictionary, "decompose", penalty=penalty)` |
+| Ruby | `set_mode('decompose', penalty: penalty)` | `Lindera::Tokenizer.new(dictionary, 'decompose', penalty: penalty)` |
+| PHP | `$builder->setMode('decompose', $penalty)` | `new Lindera\Tokenizer($dictionary, 'decompose', penalty: $penalty)` |
+| Node.js | `builder.setMode("decompose", penalty)` | `new Tokenizer(dictionary, "decompose", null, null, penalty)` |
+| WASM | `builder.setMode("decompose", penalty)` | `new Tokenizer(dictionary, "decompose", null, null, penalty)` |
+
+引数を省略すると既定のペナルティになるため、既存の呼び出しは変わりません。
+`"normal"` とペナルティを一緒に渡すと、不正なモードと同じくエラーになります。
+IPADIC で長さのペナルティを 2 つとも 0 にすると、decompose モードは
+`関西国際空港限定トートバッグ` を `関西 / 国際 / 空港 / 限定 / トートバッグ` ではなく
+`関西国際空港 / 限定 / トートバッグ` と分割します。
+
+対応が必要になりうる変更は 3 つです。
+
+- **Node.js**: TypeScript の型 `JsPenalty` は `Penalty` に改名し、フィールドは
+  省略できるようになりました。省略したフィールドは既定値になります。`JsPenalty` を
+  名指しする TypeScript のコードは `Penalty` を使ってください。この型に対応する値は
+  パッケージからエクスポートされないため、JavaScript のコードは変わりません。
+- **Rust**: `TokenizerBuilder::set_segmenter_mode` に既定でないペナルティの
+  `Mode::Decompose` を渡すと、そのペナルティが適用され、出力が変わります。CLI の
+  `--mode` のように `"decompose"` から作ったモードは既定のペナルティを持つため、
+  影響はありません。
+- **バインディングの作者**: `CoreTokenizerBuilder::set_mode` と
+  `CoreTokenizer::from_segmenter_with_space_penalty` は、2 番目の引数で
+  ペナルティを受け取ります。既定のままにするには `None` を渡してください。
+
 ## `lindera train` は MeCab の学習器と同じくラティスを作る
 
 v6.2.0 までの `lindera train` は、MeCab の学習器とは異なる学習用ラティスを
@@ -1524,10 +1568,12 @@ v6.2.0 以前に書かれたモデルは学習し直す必要があります。`
 - **言語バインディングと CLI のユーザー**: Python・Node.js・Ruby・PHP・WASM の
   各パッケージと `lindera-cli` のパッケージ名は変わらず、API も `Metadata` の設定
   `normalize_details` と、PHP の省略可能な引数の型違いの値と、PHP・Node.js・WASM の
-  範囲外の整数の引数を除いて変わりません
+  範囲外の整数の引数と、Node.js の TypeScript の型 `JsPenalty`（`Penalty` に改名）を
+  除いて変わりません
   （[設定 `normalize_details` の削除](#設定-normalize_details-の削除)、
   [PHP: 省略可能な引数は型違いの値を拒否する](#php-省略可能な引数は型違いの値を拒否する)、
-  [バインディング: 範囲外の整数の引数を拒否する](#バインディング-範囲外の整数の引数を拒否する)を参照）。
+  [バインディング: 範囲外の整数の引数を拒否する](#バインディング-範囲外の整数の引数を拒否する)、
+  [バインディング: decompose モードが `Penalty` を受け取る](#バインディング-decompose-モードが-penalty-を受け取る)を参照）。
   今回の構成変更は Rust クレート内部のものです。v6.2.0 以前にビルドまたは
   ダウンロードした辞書ディレクトリは、再ビルドか再ダウンロードが必要です
   （[辞書ディレクトリの再ビルドが必要](#辞書ディレクトリの再ビルドが必要)を参照）。埋め込み辞書は対応不要です。
@@ -1594,6 +1640,8 @@ Rust クレートのユーザー:
 - `SerializableModel::unk_category_names` や `unk_categories` を読んでいる場合は
   代わりに `unk_entries` を読み、`Trainer::max_grouping_len` を設定している場合は
   辞書を使うときの上限を渡す。
+- `TokenizerBuilder::set_segmenter_mode` に既定でないペナルティの
+  `Mode::Decompose` を渡している場合は、そのペナルティが適用されることを前提にする。
 
 バインディングの作者:
 
@@ -1603,6 +1651,9 @@ Rust クレートのユーザー:
   `CoreMetadata::normalize_details` フィールドを使わないようにする。
 - すべてのフィールドを並べた構造体リテラルで `CoreMetadata` を作っている場合は、
   `skip_whitespace: None` を加えるか、最後を `..Default::default()` にする。
+- `CoreTokenizerBuilder::set_mode` と
+  `CoreTokenizer::from_segmenter_with_space_penalty` の新しい 2 番目の引数に、
+  ペナルティか `None` を渡す。
 
 ビルド環境:
 
@@ -1760,9 +1811,12 @@ N-best を使うユーザー:
 - PHP・Node.js・WASM では、整数の引数に設定の範囲内の値を渡す。範囲外の値は、v6 では
   折り返されたが、例外を投げるようになる。負の位置と、Node.js・WASM の整数でない
   数値も同様。
+- Node.js の TypeScript では、型 `JsPenalty` を `Penalty` に改名する。decompose
+  モードを調整するには、`set_mode` / `setMode` か `Tokenizer` のコンストラクタに
+  `Penalty` を渡す。
 - CLI では、文の区切り文字なしに 32 KiB を超えて文を区切ったときなどに、標準エラー
   出力に警告が出ることを前提にする。`RUST_LOG=error` で警告を消せる。
 - それ以外は、7.0.0 リリースを取り込む以外に対応は不要（上記の辞書の再ビルド・辞書・
   空白・`、` と `。`・N-best・未知語・既定カテゴリ・ダッシュとチルダ・同点の見出し語・
   コストが同じ分割の項目、`lindera train` と `lindera build` の項目、`lindera tokenize`
-  と WASM と PHP と整数の引数と CLI の警告の項目を除く）。
+  と WASM と PHP と整数の引数と `JsPenalty` と CLI の警告の項目を除く）。
