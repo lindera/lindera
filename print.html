@@ -1348,7 +1348,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Som
   }
 }
 </code></pre>
-<p>The penalty keys on the character before a candidate, which is mecab-ko's test as well, so it applies the same way whether whitespace is skipped in the lattice (the default, see <a href="lindera/segmenter.html#whitespace-handling">Whitespace Handling</a>) or kept as nodes. With whitespace skipped, the connection costs on their own already rule out some readings the penalty targets (<code>시</code> in <code>서울 시 에서</code> reads as <code>NNG</code> without it), but not all of them (<code>이</code> in <code>검색 이 잘 된다</code>).</p>
+<p>A candidate pays the penalty when whitespace that is not part of the word before it separates the two, which is mecab-ko's test (it penalizes a node that skipped whitespace, <code>rlength &gt; length</code>). So a word after leading whitespace pays it, and a word right after an entry whose surface ends with the whitespace does not: ko-dic has four such entries (<code>내셔날</code>, <code>에듀</code>, <code>캘리</code> and <code>콜라비</code>, each followed by a space), and <code>에듀 이</code> reads as that entry and <code>이/VCP</code>, as in mecab-ko, while <code>에듀  이</code>, with a second space the entry does not end with, reads <code>이/NR</code>. The test is the same whether whitespace is skipped in the lattice (the default, see <a href="lindera/segmenter.html#whitespace-handling">Whitespace Handling</a>) or kept as nodes, where a word after a whitespace node pays the penalty. With whitespace skipped, the connection costs on their own already rule out some readings the penalty targets (<code>시</code> in <code>서울 시 에서</code> reads as <code>NNG</code> without it), but not all of them (<code>이</code> in <code>검색 이 잘 된다</code>).</p>
 <h2 id="n-best-segmentation"><a class="header" href="#n-best-segmentation">N-Best Segmentation</a></h2>
 <p><code>segment_nbest</code> returns the top-<code>n</code> segmentations ordered by total path cost, each paired with its cost. Set <code>unique</code> to deduplicate results that share the same word boundaries but differ only in POS tags (each result is the cheapest path of its word boundaries, and the search does not go through the others, so it stays fast when the words of a line have many entries), and <code>cost_threshold</code> to discard paths whose cost exceeds <code>best_cost + threshold</code>:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -8910,7 +8910,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 </tbody></table>
 </div>
 <h2 id="left-space-penalty"><a class="header" href="#left-space-penalty">Left-space penalty</a></h2>
-<p>mecab-ko (the MeCab fork mecab-ko-dic is built for) raises the connection cost of a word whose left side is preceded by whitespace when its <code>pos-id.def</code> id is listed in <code>dicrc</code>:</p>
+<p>mecab-ko (the MeCab fork mecab-ko-dic is built for) raises the connection cost of a word whose left side is preceded by skipped whitespace (whitespace that the previous word's surface does not end with) when its <code>pos-id.def</code> id is listed in <code>dicrc</code>:</p>
 <pre><code class="language-text">left-space-penalty-factor = 100,3000,120,6000,172,3000,183,3000,184,3000,185,3000,200,3000,210,6000,220,3000,221,3000,222,3000,230,3000
 </code></pre>
 <p>Lindera does not store <code>pos-id.def</code> ids, but every listed id corresponds to the entry's first part-of-speech tag (for <code>Inflect</code> rows, the <code>First part-of-speech</code> column), so the same rules are written by tag. ko-dic ships them in its <code>metadata.json</code> (<code>space_penalty</code>), and <code>Segmenter::new</code> applies them by default. Opt out with <code>Segmenter::space_penalty(None)</code>, <code>"space_penalty": false</code> in the segmenter config, or <code>lindera tokenize --disable-space-penalty</code>; explicit rules go through <code>Segmenter::space_penalty</code>, a <code>space_penalty</code> object, or <code>--space-penalty-rules</code>. The shipped rules are present only in a ko-dic built by Lindera 6.1.0 or later; with a ko-dic from the v6.0.0 release the penalty silently stays off until the dictionary is rebuilt, while <code>--space-penalty-rules</code> works regardless.</p>
@@ -10520,7 +10520,10 @@ The Decompose length penalty counts the entry's own whitespace, as it does
 when whitespace stays in the lattice. With <code>unique</code>, N-best results that
 differ only in that whitespace are no longer folded into one, such as
 ko-dic's <code>에듀</code> followed by the space (<code>NNG</code>) and <code>에듀</code> (<code>NNP</code>) in
-<code>에듀 센터</code>.</p>
+<code>에듀 센터</code>. A word right after such an entry pays no left-space penalty
+(ko-dic), as in mecab-ko, whose penalty applies only after whitespace that
+the word before does not end with: <code>에듀 이</code> reads as <code>에듀</code> followed by
+the space and <code>이/VCP</code>.</p>
 <p>U+3000 is not in the <code>SPACE</code> character category, so it is a token even with
 <code>keep_whitespace(false)</code>, as in MeCab. To remove it, drop <code>記号,空白</code>
 (IPADIC) or <code>空白</code> (UniDic) with the <code>japanese_stop_tags</code> token filter, or

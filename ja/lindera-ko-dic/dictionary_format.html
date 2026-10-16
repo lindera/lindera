@@ -200,7 +200,7 @@
 </tbody></table>
 </div>
 <h2 id="左側空白ペナルティ"><a class="header" href="#左側空白ペナルティ">左側空白ペナルティ</a></h2>
-<p>mecab-ko（mecab-ko-dic が対象とする MeCab のフォーク）は、語の左側に空白がある場合、その語の <code>pos-id.def</code> の ID が <code>dicrc</code> に列挙されていれば連接コストを加算します:</p>
+<p>mecab-ko（mecab-ko-dic が対象とする MeCab のフォーク）は、語の左側に読み飛ばした空白（前の語の表層に含まれない空白）がある場合、その語の <code>pos-id.def</code> の ID が <code>dicrc</code> に列挙されていれば連接コストを加算します:</p>
 <pre><code class="language-text">left-space-penalty-factor = 100,3000,120,6000,172,3000,183,3000,184,3000,185,3000,200,3000,210,6000,220,3000,221,3000,222,3000,230,3000
 </code></pre>
 <p>Lindera は <code>pos-id.def</code> の ID を保持しませんが、列挙されている ID はすべてエントリの先頭品詞タグ（<code>Inflect</code> 行では「最初の品詞」列）に対応するため、同じルールをタグで記述できます。ko-dic はこのルールを <code>metadata.json</code>（<code>space_penalty</code>）に同梱しているので、<code>Segmenter::new</code> がデフォルトで適用します。オフにするには <code>Segmenter::space_penalty(None)</code>、セグメンター設定の <code>"space_penalty": false</code>、または <code>lindera tokenize --disable-space-penalty</code> を使います。明示的なルールは <code>Segmenter::space_penalty</code>、<code>space_penalty</code> オブジェクト、または <code>--space-penalty-rules</code> で指定します。同梱ルールは Lindera 6.1.0 以降でビルドした ko-dic にしか含まれません。v6.0.0 リリースの ko-dic にはルールがないため、辞書を再ビルドするまでペナルティは黙ってオフのままになりますが、<code>--space-penalty-rules</code> はどの ko-dic でも動作します。</p>

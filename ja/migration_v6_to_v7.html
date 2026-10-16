@@ -551,7 +551,10 @@ SudachiDict の語と同じく半角スペースで終わります。残りの 5
 Decompose の長さペナルティは、空白がラティスに残るときと同じく、語自身の空白も
 数えます。<code>unique</code> を指定した N-best では、この空白だけが異なる結果が 1 つに
 まとめられなくなります（<code>에듀 센터</code> に対する ko-dic の、半角スペースの付いた
-<code>에듀</code>（<code>NNG</code>）と <code>에듀</code>（<code>NNP</code>）など）。</p>
+<code>에듀</code>（<code>NNG</code>）と <code>에듀</code>（<code>NNP</code>）など）。このような語の直後の語は、mecab-ko と
+同じく左側空白ペナルティ（ko-dic）を受けません。mecab-ko のペナルティは、前の語の
+表層に含まれない空白の後にだけかかるためです。<code>에듀 이</code> は、半角スペースの付いた
+<code>에듀</code> と <code>이/VCP</code> になります。</p>
 <p>U+3000 は <code>SPACE</code> の文字カテゴリではないため、<code>keep_whitespace(false)</code> でも MeCab と
 同じくトークンとして出力されます。取り除くには、<code>japanese_stop_tags</code> トークンフィルタで
 <code>記号,空白</code>（IPADIC）や <code>空白</code>（UniDic）を除くか、<code>unicode_normalize</code> 文字フィルタ

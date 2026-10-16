@@ -575,7 +575,10 @@ The Decompose length penalty counts the entry's own whitespace, as it does
 when whitespace stays in the lattice. With <code>unique</code>, N-best results that
 differ only in that whitespace are no longer folded into one, such as
 ko-dic's <code>에듀</code> followed by the space (<code>NNG</code>) and <code>에듀</code> (<code>NNP</code>) in
-<code>에듀 센터</code>.</p>
+<code>에듀 센터</code>. A word right after such an entry pays no left-space penalty
+(ko-dic), as in mecab-ko, whose penalty applies only after whitespace that
+the word before does not end with: <code>에듀 이</code> reads as <code>에듀</code> followed by
+the space and <code>이/VCP</code>.</p>
 <p>U+3000 is not in the <code>SPACE</code> character category, so it is a token even with
 <code>keep_whitespace(false)</code>, as in MeCab. To remove it, drop <code>記号,空白</code>
 (IPADIC) or <code>空白</code> (UniDic) with the <code>japanese_stop_tags</code> token filter, or
