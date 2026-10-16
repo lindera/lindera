@@ -17,11 +17,9 @@
 //! # Decompose mode
 //! tokenizer = lindera.TokenizerBuilder().set_mode("decompose").build()
 //!
-//! # Custom penalty configuration
-//! penalty = lindera.Penalty(
-//!     kanji_penalty_length_threshold=2,
-//!     kanji_penalty_length_penalty=3000
-//! )
+//! # Decompose mode with a custom penalty
+//! penalty = lindera.Penalty(kanji_penalty_length_penalty=0)
+//! tokenizer = lindera.TokenizerBuilder().set_mode("decompose", penalty).build()
 //! ```
 
 use pyo3::prelude::*;
@@ -100,7 +98,8 @@ impl From<LinderaMode> for PyMode {
 /// Penalty configuration for decompose mode.
 ///
 /// Controls how aggressively compound words are decomposed based on
-/// character type and length thresholds.
+/// character type and length thresholds. Pass it with "decompose" to
+/// `TokenizerBuilder.set_mode` or to the `Tokenizer` constructor.
 ///
 /// # Examples
 ///
