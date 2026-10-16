@@ -191,13 +191,15 @@ builder = Lindera::TokenizerBuilder.new
 <pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.from_file('config.json')
 </code></pre>
 <h3 id="設定メソッド"><a class="header" href="#設定メソッド">設定メソッド</a></h3>
-<h4 id="set_modemode"><a class="header" href="#set_modemode"><code>set_mode(mode)</code></a></h4>
+<h4 id="set_modemode-penalty-nil"><a class="header" href="#set_modemode-penalty-nil"><code>set_mode(mode, penalty: nil)</code></a></h4>
 <p>トークナイズモードを設定します。</p>
 <ul>
 <li><code>"normal"</code> -- 標準的なトークナイズ（デフォルト）</li>
 <li><code>"decompose"</code> -- 複合語をより小さな単位に分解</li>
 </ul>
+<p>キーワード引数 <code>penalty:</code> には、<code>"decompose"</code> モードが使う <a href="#penalty"><code>Lindera::Penalty</code></a> を渡します。<code>nil</code>（デフォルト）では既定のペナルティを使います。<code>"normal"</code> とペナルティを一緒に渡すと、不正なモードと同じく <code>RuntimeError</code> が、<code>Lindera::Penalty</code> でない値を渡すと <code>TypeError</code> が発生します。</p>
 <pre><code class="language-ruby">builder.set_mode('normal')
+builder.set_mode('decompose', penalty: Lindera::Penalty.new(nil, 0, nil, nil))
 </code></pre>
 <h4 id="set_dictionarypath"><a class="header" href="#set_dictionarypath"><code>set_dictionary(path)</code></a></h4>
 <p>システム辞書のパスまたは URI を設定します。</p>
@@ -268,9 +270,10 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Lindera::Tokenizer</code> はテキストに対して形態素解析を行います。</p>
 <h3 id="tokenizer-の作成"><a class="header" href="#tokenizer-の作成">Tokenizer の作成</a></h3>
-<h4 id="linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><a class="header" href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil)</code></a></h4>
+<h4 id="linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><a class="header" href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><code>Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil, penalty: nil)</code></a></h4>
 <p>読み込み済みの辞書から直接トークナイザーを作成します。<code>mode</code> のデフォルトは <code>'normal'</code> で、<code>user_dictionary</code> は省略できます。</p>
 <p>キーワード引数 <code>space_penalty:</code> には <a href="#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a> と同じ値を渡せます。<code>nil</code>（デフォルト）では辞書が同梱する左側空白ペナルティのルールを使うため、ko-dic ではペナルティがオンになります。オフにするには <code>false</code> を渡します。不正な設定では、<code>set_space_penalty</code> や <code>build</code> と同じエラーが発生します。</p>
+<p>キーワード引数 <code>penalty:</code> には、<a href="#set_modemode-penalty-nil"><code>TokenizerBuilder#set_mode</code></a> と同じく <code>"decompose"</code> モードの <a href="#penalty"><code>Lindera::Penalty</code></a> を渡せます。エラーも <code>set_mode</code> と同じです。</p>
 <pre><code class="language-ruby">require 'lindera'
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
@@ -323,7 +326,7 @@ end
 </div>
 <p><strong>戻り値:</strong> <code>Array&lt;[Array&lt;Token&gt;, Integer]&gt;</code></p>
 <h2 id="mode"><a class="header" href="#mode">Mode</a></h2>
-<p><code>Lindera::Mode</code> はトークナイズモードを表します。モードの確認・比較のためのスタンドアロンヘルパーとして提供されています。<code>TokenizerBuilder#set_mode</code> と <code>Tokenizer.new</code> は現在、<code>Mode</code> インスタンスではなく単純なモード文字列（<code>"normal"</code> または <code>"decompose"</code>）のみを受け付けます（下記の <code>Penalty</code> の制限事項も参照してください）。</p>
+<p><code>Lindera::Mode</code> はトークナイズモードを表します。モードの確認・比較のためのスタンドアロンヘルパーとして提供されています。<code>TokenizerBuilder#set_mode</code> と <code>Tokenizer.new</code> は、<code>Mode</code> インスタンスではなく単純なモード文字列（<code>"normal"</code> または <code>"decompose"</code>）を受け取ります。decompose モードのペナルティは、それぞれのキーワード引数 <code>penalty:</code> で渡します（下記の <a href="#penalty"><code>Penalty</code></a> を参照してください）。</p>
 <h3 id="mode-の作成"><a class="header" href="#mode-の作成">Mode の作成</a></h3>
 <h4 id="linderamodenewmode_str"><a class="header" href="#linderamodenewmode_str"><code>Lindera::Mode.new(mode_str)</code></a></h4>
 <p><code>Mode</code> を作成します。引数は必須ですが <code>nil</code> を渡すこともできます。<code>"normal"</code> / <code>"Normal"</code>（<code>mode_str</code> が <code>nil</code> の場合に使用）または <code>"decompose"</code> / <code>"Decompose"</code> を受け付けます。それ以外の値を渡すと <code>ArgumentError</code> が発生します。</p>
@@ -369,7 +372,29 @@ penalty = Lindera::Penalty.new(nil, nil, nil, nil)  # すべてデフォルト�
 <pre><code class="language-ruby">penalty = Lindera::Penalty.new(nil, nil, nil, nil)
 penalty.kanji_penalty_length_threshold  # 2
 </code></pre>
-<p><strong>現在の制限:</strong> 現時点では <code>Penalty</code> を <code>Tokenizer</code> や <code>TokenizerBuilder</code> に渡す方法はありません。<code>set_mode</code> と <code>Tokenizer.new</code> は単純なモード文字列のみを受け付け、内部的に <code>"decompose"</code> モードは常に <code>Penalty</code> のデフォルト値を使用します -- カスタムの <code>Penalty</code> インスタンスを作成しても、現時点ではトークナイズには反映されません。</p>
+<h3 id="penalty-の使い方"><a class="header" href="#penalty-の使い方">Penalty の使い方</a></h3>
+<p><code>Penalty</code> は <code>"decompose"</code> と一緒に、<a href="#set_modemode-penalty-nil"><code>TokenizerBuilder#set_mode</code></a> か <a href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><code>Tokenizer.new</code></a> のキーワード引数 <code>penalty:</code> で渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。</p>
+<pre><code class="language-ruby">require 'lindera'
+
+text = '関西国際空港限定トートバッグ'
+penalty = Lindera::Penalty.new(nil, 0, nil, 0)
+
+builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.set_mode('decompose')
+p builder.build.tokenize(text).map(&amp;:surface)
+# =&gt; ["関西", "国際", "空港", "限定", "トートバッグ"]
+
+builder.set_mode('decompose', penalty: penalty)
+p builder.build.tokenize(text).map(&amp;:surface)
+# =&gt; ["関西国際空港", "限定", "トートバッグ"]
+
+dictionary = Lindera.load_dictionary('embedded://ipadic')
+tokenizer = Lindera::Tokenizer.new(dictionary, 'decompose', penalty: penalty)
+p tokenizer.tokenize(text).map(&amp;:surface)
+# =&gt; ["関西国際空港", "限定", "トートバッグ"]
+</code></pre>
+<p><code>"normal"</code> モードと一緒に <code>Penalty</code> を渡すと <code>RuntimeError</code> が発生します。</p>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
 <p><code>Token</code> は単一の形態素トークンを表します。</p>
 <h3 id="プロパティ"><a class="header" href="#プロパティ">プロパティ</a></h3>

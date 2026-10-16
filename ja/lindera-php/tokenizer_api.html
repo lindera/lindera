@@ -187,13 +187,15 @@
 $builder = new Lindera\TokenizerBuilder();
 </code></pre>
 <h3 id="設定メソッド"><a class="header" href="#設定メソッド">設定メソッド</a></h3>
-<h4 id="setmodemode"><a class="header" href="#setmodemode"><code>setMode($mode)</code></a></h4>
+<h4 id="setmodemode-penalty"><a class="header" href="#setmodemode-penalty"><code>setMode($mode, $penalty)</code></a></h4>
 <p>トークナイズモードを設定します。</p>
 <ul>
 <li><code>"normal"</code> -- 標準的なトークナイズ（デフォルト）</li>
 <li><code>"decompose"</code> -- 複合語をより小さな単位に分解</li>
 </ul>
+<p><code>$penalty</code> は <code>"decompose"</code> モードが使う <a href="#penalty"><code>Lindera\Penalty</code></a> です。<code>null</code>（デフォルト）では既定のペナルティを使います。<code>"normal"</code> とペナルティを一緒に渡すと、不正なモードと同じく <code>ValueError</code> をスローします。型の違う値を渡すと、デフォルトを選ぶのではなく例外をスローします。</p>
 <pre><code class="language-php">$builder-&gt;setMode('normal');
+$builder-&gt;setMode('decompose', new Lindera\Penalty(kanji_penalty_length_penalty: 0));
 </code></pre>
 <h4 id="setdictionaryuri"><a class="header" href="#setdictionaryuri"><code>setDictionary($uri)</code></a></h4>
 <p>システム辞書のパスまたは URI を設定します。</p>
@@ -250,7 +252,7 @@ $builder-&gt;setSpacePenalty(null);
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>검색 이 잘 된다</code> の <code>이</code> は感動詞 <code>IC</code> と解析されます（ペナルティがなければ主格助詞 <code>JKS</code>）。オフにするには <code>$builder-&gt;setSpacePenalty(false)</code> を呼び出してください。<a href="#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer(...)</code></a> で作成するトークナイザーでは <code>space_penalty: false</code> を渡します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>검색 이 잘 된다</code> の <code>이</code> は感動詞 <code>IC</code> と解析されます（ペナルティがなければ主格助詞 <code>JKS</code>）。オフにするには <code>$builder-&gt;setSpacePenalty(false)</code> を呼び出してください。<a href="#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty"><code>new Lindera\Tokenizer(...)</code></a> で作成するトークナイザーでは <code>space_penalty: false</code> を渡します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
 </blockquote>
 <h4 id="appendcharacterfilterkind-args"><a class="header" href="#appendcharacterfilterkind-args"><code>appendCharacterFilter($kind, $args)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
@@ -272,9 +274,10 @@ $builder-&gt;appendTokenFilter('japanese_stop_tags', [
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Tokenizer</code> はテキストに対して形態素解析を行います。</p>
 <h3 id="tokenizer-の作成"><a class="header" href="#tokenizer-の作成">Tokenizer の作成</a></h3>
-<h4 id="new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><a class="header" href="#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty)</code></a></h4>
-<p>読み込み済みの辞書から直接トークナイザーを作成します。<code>$mode</code>、<code>$user_dictionary</code>、<code>$space_penalty</code> は省略でき、デフォルトは <code>null</code> です（<code>$mode</code> の <code>null</code> は <code>'normal'</code> を意味します）。</p>
+<h4 id="new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty"><a class="header" href="#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty"><code>new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty, $penalty)</code></a></h4>
+<p>読み込み済みの辞書から直接トークナイザーを作成します。<code>$mode</code>、<code>$user_dictionary</code>、<code>$space_penalty</code>、<code>$penalty</code> は省略でき、デフォルトは <code>null</code> です（<code>$mode</code> の <code>null</code> は <code>'normal'</code> を意味します）。</p>
 <p><code>$space_penalty</code> には <a href="#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> と同じ値を渡せます。<code>null</code> では辞書が同梱する左側空白ペナルティのルール（ko-dic は同梱しています）を使います。オフにするには <code>false</code> を渡します。名前付き引数で渡せば、ほかの省略可能な引数を飛ばせます。不正な設定では、<code>setSpacePenalty()</code> や <code>build()</code> と同じく <code>ValueError</code> をスローします。</p>
+<p><code>$penalty</code> には、<a href="#setmodemode-penalty"><code>setMode()</code></a> と同じく <code>"decompose"</code> モードの <a href="#penalty"><code>Lindera\Penalty</code></a> を渡せます。エラーも <code>setMode()</code> と同じです。</p>
 <pre><code class="language-php">&lt;?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
@@ -415,9 +418,6 @@ $mode = new Lindera\Mode();  // デフォルト: 'normal'
 </div>
 <h2 id="penalty"><a class="header" href="#penalty">Penalty</a></h2>
 <p><code>Penalty</code> は、文字種と長さのしきい値に基づいて、decompose モードが複合語をどの程度積極的に分割するかを設定します。</p>
-<blockquote>
-<p><strong>注意:</strong> <code>Penalty</code> は現時点で <code>TokenizerBuilder</code> や <code>Tokenizer</code> のコンストラクタには接続されていません。これを受け取るセッターは存在しないため、インスタンスを作成してもトークナイズには影響しません。decompose モードは常に以下のデフォルト値を使用します。</p>
-</blockquote>
 <pre><code class="language-php">&lt;?php
 
 // すべてのパラメータは省略可能で、decompose モードが使用するデフォルト値になります
@@ -436,6 +436,30 @@ $penalty = new Lindera\Penalty(
 <tr><td><code>$other_penalty_length_penalty</code></td><td><code>int</code></td><td><code>1700</code></td><td>しきい値を超えたその他の文字連続に適用されるペナルティ</td></tr>
 </tbody></table>
 </div>
+<h3 id="penalty-の使い方"><a class="header" href="#penalty-の使い方">Penalty の使い方</a></h3>
+<p><code>Penalty</code> は <code>'decompose'</code> と一緒に <a href="#setmodemode-penalty"><code>setMode()</code></a> か <a href="#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty"><code>Tokenizer</code> のコンストラクタ</a> に渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。</p>
+<pre><code class="language-php">&lt;?php
+
+$text = '関西国際空港限定トートバッグ';
+$penalty = new Lindera\Penalty(kanji_penalty_length_penalty: 0, other_penalty_length_penalty: 0);
+$surfaces = static fn (array $tokens): string =&gt; implode(' / ', array_map(static fn ($token) =&gt; $token-&gt;surface, $tokens));
+
+$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setDictionary('embedded://ipadic');
+$builder-&gt;setMode('decompose');
+echo $surfaces($builder-&gt;build()-&gt;tokenize($text)), "\n";
+// 関西 / 国際 / 空港 / 限定 / トートバッグ
+
+$builder-&gt;setMode('decompose', $penalty);
+echo $surfaces($builder-&gt;build()-&gt;tokenize($text)), "\n";
+// 関西国際空港 / 限定 / トートバッグ
+
+$tokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ipadic'), 'decompose', penalty: $penalty);
+echo $surfaces($tokenizer-&gt;tokenize($text)), "\n";
+// 関西国際空港 / 限定 / トートバッグ
+</code></pre>
+<p><code>'normal'</code> モードと一緒に <code>Penalty</code> を渡すと <code>ValueError</code> をスローします。</p>
+
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">

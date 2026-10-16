@@ -192,13 +192,15 @@ method, not chained off an existing instance.</p>
 <pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.from_file('config.json')
 </code></pre>
 <h3 id="configuration-methods"><a class="header" href="#configuration-methods">Configuration Methods</a></h3>
-<h4 id="set_modemode"><a class="header" href="#set_modemode"><code>set_mode(mode)</code></a></h4>
+<h4 id="set_modemode-penalty-nil"><a class="header" href="#set_modemode-penalty-nil"><code>set_mode(mode, penalty: nil)</code></a></h4>
 <p>Sets the tokenization mode.</p>
 <ul>
 <li><code>"normal"</code> -- Standard tokenization (default)</li>
 <li><code>"decompose"</code> -- Decomposes compound words into smaller units</li>
 </ul>
+<p>The <code>penalty:</code> keyword takes the <a href="#penalty"><code>Lindera::Penalty</code></a> that <code>"decompose"</code> mode uses; <code>nil</code> (the default) uses the default penalty. A penalty with <code>"normal"</code> raises <code>RuntimeError</code>, as an invalid mode does, and a value that is not a <code>Lindera::Penalty</code> raises <code>TypeError</code>.</p>
 <pre><code class="language-ruby">builder.set_mode('normal')
+builder.set_mode('decompose', penalty: Lindera::Penalty.new(nil, 0, nil, nil))
 </code></pre>
 <h4 id="set_dictionarypath"><a class="header" href="#set_dictionarypath"><code>set_dictionary(path)</code></a></h4>
 <p>Sets the system dictionary path or URI.</p>
@@ -269,9 +271,10 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Lindera::Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer"><a class="header" href="#creating-a-tokenizer">Creating a Tokenizer</a></h3>
-<h4 id="linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><a class="header" href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil)</code></a></h4>
+<h4 id="linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><a class="header" href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><code>Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil, penalty: nil)</code></a></h4>
 <p>Creates a tokenizer directly from a loaded dictionary. <code>mode</code> defaults to <code>'normal'</code>, and <code>user_dictionary</code> is optional.</p>
 <p>The <code>space_penalty:</code> keyword takes the same values as <a href="#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a>. <code>nil</code> (the default) uses the left-space penalty rules the dictionary ships, so with ko-dic the penalty is on; pass <code>false</code> to turn it off. An invalid setting raises the same errors as <code>set_space_penalty</code> and <code>build</code>.</p>
+<p>The <code>penalty:</code> keyword takes a <a href="#penalty"><code>Lindera::Penalty</code></a> for <code>"decompose"</code> mode, as <a href="#set_modemode-penalty-nil"><code>TokenizerBuilder#set_mode</code></a> does, with the same errors.</p>
 <pre><code class="language-ruby">require 'lindera'
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
@@ -324,7 +327,7 @@ end
 </div>
 <p><strong>Returns:</strong> <code>Array&lt;Array(Array&lt;Token&gt;, Integer)&gt;</code></p>
 <h2 id="mode"><a class="header" href="#mode">Mode</a></h2>
-<p><code>Lindera::Mode</code> represents a tokenization mode. It is provided as a standalone helper for inspecting or comparing modes; <code>TokenizerBuilder#set_mode</code> and <code>Tokenizer.new</code> currently accept only a plain mode string (<code>"normal"</code> or <code>"decompose"</code>), not a <code>Mode</code> instance (see the limitation noted under <code>Penalty</code> below).</p>
+<p><code>Lindera::Mode</code> represents a tokenization mode. It is provided as a standalone helper for inspecting or comparing modes; <code>TokenizerBuilder#set_mode</code> and <code>Tokenizer.new</code> take a plain mode string (<code>"normal"</code> or <code>"decompose"</code>), not a <code>Mode</code> instance. The penalty of decompose mode goes in their <code>penalty:</code> keyword (see <a href="#penalty"><code>Penalty</code></a> below).</p>
 <h3 id="creating-a-mode"><a class="header" href="#creating-a-mode">Creating a Mode</a></h3>
 <h4 id="linderamodenewmode_str"><a class="header" href="#linderamodenewmode_str"><code>Lindera::Mode.new(mode_str)</code></a></h4>
 <p>Creates a <code>Mode</code>. The argument is required, but may be <code>nil</code>. Accepts <code>"normal"</code> / <code>"Normal"</code> (used when <code>mode_str</code> is <code>nil</code>) or <code>"decompose"</code> / <code>"Decompose"</code>; any other value raises <code>ArgumentError</code>.</p>
@@ -370,7 +373,29 @@ penalty = Lindera::Penalty.new(nil, nil, nil, nil)  # uses all defaults
 <pre><code class="language-ruby">penalty = Lindera::Penalty.new(nil, nil, nil, nil)
 penalty.kanji_penalty_length_threshold  # 2
 </code></pre>
-<p><strong>Current limitation:</strong> there is currently no way to pass a <code>Penalty</code> into a <code>Tokenizer</code> or <code>TokenizerBuilder</code>. <code>set_mode</code> and <code>Tokenizer.new</code> only accept a plain mode string, and internally <code>"decompose"</code> mode always uses <code>Penalty</code>'s default values -- constructing a custom <code>Penalty</code> instance has no effect on tokenization yet.</p>
+<h3 id="using-a-penalty"><a class="header" href="#using-a-penalty">Using a Penalty</a></h3>
+<p>Pass a <code>Penalty</code> with <code>"decompose"</code> as the <code>penalty:</code> keyword of <a href="#set_modemode-penalty-nil"><code>TokenizerBuilder#set_mode</code></a> or <a href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><code>Tokenizer.new</code></a>. Without length penalties, decompose mode keeps long words whole:</p>
+<pre><code class="language-ruby">require 'lindera'
+
+text = '関西国際空港限定トートバッグ'
+penalty = Lindera::Penalty.new(nil, 0, nil, 0)
+
+builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.set_mode('decompose')
+p builder.build.tokenize(text).map(&amp;:surface)
+# =&gt; ["関西", "国際", "空港", "限定", "トートバッグ"]
+
+builder.set_mode('decompose', penalty: penalty)
+p builder.build.tokenize(text).map(&amp;:surface)
+# =&gt; ["関西国際空港", "限定", "トートバッグ"]
+
+dictionary = Lindera.load_dictionary('embedded://ipadic')
+tokenizer = Lindera::Tokenizer.new(dictionary, 'decompose', penalty: penalty)
+p tokenizer.tokenize(text).map(&amp;:surface)
+# =&gt; ["関西国際空港", "限定", "トートバッグ"]
+</code></pre>
+<p>A <code>Penalty</code> with <code>"normal"</code> mode raises <code>RuntimeError</code>.</p>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
 <p><code>Token</code> represents a single morphological token.</p>
 <h3 id="properties"><a class="header" href="#properties">Properties</a></h3>

@@ -195,13 +195,15 @@ builder = TokenizerBuilder()
 </code></pre>
 <h3 id="設定メソッド"><a class="header" href="#設定メソッド">設定メソッド</a></h3>
 <p>すべてのセッターメソッドはメソッドチェーンのために <code>self</code> を返します。</p>
-<h4 id="set_modemode"><a class="header" href="#set_modemode"><code>set_mode(mode)</code></a></h4>
+<h4 id="set_modemode-penaltynone"><a class="header" href="#set_modemode-penaltynone"><code>set_mode(mode, penalty=None)</code></a></h4>
 <p>トークナイズモードを設定します。</p>
 <ul>
 <li><code>"normal"</code> -- 標準的なトークナイズ（デフォルト）</li>
 <li><code>"decompose"</code> -- 複合語をより小さな単位に分解</li>
 </ul>
+<p><code>penalty</code> は <code>"decompose"</code> モードが使う <a href="#penalty"><code>Penalty</code></a> です。<code>None</code>（デフォルト）では既定のペナルティを使います。<code>"normal"</code> とペナルティを一緒に渡すと <code>ValueError</code> が、<code>Penalty</code> でない値を渡すと <code>TypeError</code> が送出されます。</p>
 <pre><code class="language-python">builder.set_mode("normal")
+builder.set_mode("decompose", Penalty(kanji_penalty_length_penalty=0))
 </code></pre>
 <h4 id="set_dictionarypath"><a class="header" href="#set_dictionarypath"><code>set_dictionary(path)</code></a></h4>
 <p>システム辞書のパスまたは URI を設定します。</p>
@@ -272,9 +274,10 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Tokenizer</code> はテキストに対して形態素解析を行います。</p>
 <h3 id="tokenizer-の作成"><a class="header" href="#tokenizer-の作成">Tokenizer の作成</a></h3>
-<h4 id="tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone"><a class="header" href="#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone"><code>Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None)</code></a></h4>
+<h4 id="tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone"><a class="header" href="#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone"><code>Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None, penalty=None)</code></a></h4>
 <p>読み込み済みの辞書から直接トークナイザーを作成します。</p>
 <p><code>space_penalty</code> には <a href="#set_space_penaltyvalue"><code>TokenizerBuilder.set_space_penalty</code></a> と同じ値を渡せます。<code>None</code>（デフォルト）では辞書が同梱する左側空白ペナルティのルールを使うため、ko-dic ではペナルティがオンになります。オフにするには <code>False</code> を渡します。不正な設定では、<code>set_space_penalty</code> や <code>build()</code> と同じエラーが送出されます。</p>
+<p><code>penalty</code> には、<a href="#set_modemode-penaltynone"><code>TokenizerBuilder.set_mode</code></a> と同じく <code>"decompose"</code> モードの <a href="#penalty"><code>Penalty</code></a> を渡せます。エラーも <code>set_mode</code> と同じです。</p>
 <pre><code class="language-python">from lindera import Tokenizer, load_dictionary
 
 dictionary = load_dictionary("embedded://ipadic")
@@ -323,9 +326,9 @@ for tokens, cost in results:
 <h2 id="mode"><a class="header" href="#mode">Mode</a></h2>
 <p><code>Mode</code> はトークナイズモードを表します。モードの確認や比較のためのスタンドアロンな
 ヘルパーとして提供されています。<code>TokenizerBuilder.set_mode()</code> と <code>Tokenizer</code> の
-コンストラクタは、現在は <code>Mode</code> インスタンスではなく単純なモード文字列
-（<code>"normal"</code> または <code>"decompose"</code>）のみを受け付けます（下記 <code>Penalty</code> の制限事項
-も参照）。</p>
+コンストラクタは、<code>Mode</code> インスタンスではなく単純なモード文字列
+（<code>"normal"</code> または <code>"decompose"</code>）を受け取ります。decompose モードのペナルティは、
+それぞれの <code>penalty</code> 引数で渡します（下記 <a href="#penalty"><code>Penalty</code></a> を参照）。</p>
 <h3 id="mode-の作成"><a class="header" href="#mode-の作成">Mode の作成</a></h3>
 <h4 id="modemode_strnone"><a class="header" href="#modemode_strnone"><code>Mode(mode_str=None)</code></a></h4>
 <p><code>Mode</code> を作成します。<code>"normal"</code> / <code>"Normal"</code>（省略時のデフォルト）または
@@ -378,11 +381,27 @@ penalty = Penalty(
 <pre><code class="language-python">penalty.kanji_penalty_length_threshold = 3
 print(penalty.kanji_penalty_length_threshold)  # 3
 </code></pre>
-<p><strong>現在の制限事項:</strong> 現時点では <code>Penalty</code> を <code>Tokenizer</code> や <code>TokenizerBuilder</code> に
-渡す方法はありません。<code>set_mode()</code> と <code>Tokenizer</code> のコンストラクタは単純な
-モード文字列のみを受け付け、内部的に <code>"decompose"</code> モードは常に <code>Penalty</code> の
-デフォルト値を使用します -- カスタムの <code>Penalty</code> インスタンスを作成しても、
-トークナイズには反映されません。</p>
+<h3 id="penalty-の使い方"><a class="header" href="#penalty-の使い方">Penalty の使い方</a></h3>
+<p><code>Penalty</code> は <code>"decompose"</code> と一緒に <a href="#set_modemode-penaltynone"><code>TokenizerBuilder.set_mode()</code></a> か <a href="#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone"><code>Tokenizer</code> のコンストラクタ</a> に渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。</p>
+<pre><code class="language-python">from lindera import Penalty, Tokenizer, TokenizerBuilder, load_dictionary
+
+text = "関西国際空港限定トートバッグ"
+penalty = Penalty(kanji_penalty_length_penalty=0, other_penalty_length_penalty=0)
+
+builder = TokenizerBuilder().set_dictionary("embedded://ipadic")
+tokenizer = builder.set_mode("decompose").build()
+print([token.surface for token in tokenizer.tokenize(text)])
+# ['関西', '国際', '空港', '限定', 'トートバッグ']
+
+tokenizer = builder.set_mode("decompose", penalty).build()
+print([token.surface for token in tokenizer.tokenize(text)])
+# ['関西国際空港', '限定', 'トートバッグ']
+
+tokenizer = Tokenizer(load_dictionary("embedded://ipadic"), mode="decompose", penalty=penalty)
+print([token.surface for token in tokenizer.tokenize(text)])
+# ['関西国際空港', '限定', 'トートバッグ']
+</code></pre>
+<p><code>"normal"</code> モードと一緒に <code>Penalty</code> を渡すと <code>ValueError</code> が送出されます。</p>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
 <p><code>Token</code> は単一の形態素トークンを表します。</p>
 <h3 id="プロパティ"><a class="header" href="#プロパティ">プロパティ</a></h3>

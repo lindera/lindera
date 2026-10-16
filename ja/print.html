@@ -3426,13 +3426,15 @@ builder = TokenizerBuilder()
 </code></pre>
 <h3 id="設定メソッド"><a class="header" href="#設定メソッド">設定メソッド</a></h3>
 <p>すべてのセッターメソッドはメソッドチェーンのために <code>self</code> を返します。</p>
-<h4 id="set_modemode"><a class="header" href="#set_modemode"><code>set_mode(mode)</code></a></h4>
+<h4 id="set_modemode-penaltynone"><a class="header" href="#set_modemode-penaltynone"><code>set_mode(mode, penalty=None)</code></a></h4>
 <p>トークナイズモードを設定します。</p>
 <ul>
 <li><code>"normal"</code> -- 標準的なトークナイズ（デフォルト）</li>
 <li><code>"decompose"</code> -- 複合語をより小さな単位に分解</li>
 </ul>
+<p><code>penalty</code> は <code>"decompose"</code> モードが使う <a href="lindera-python/tokenizer_api.html#penalty"><code>Penalty</code></a> です。<code>None</code>（デフォルト）では既定のペナルティを使います。<code>"normal"</code> とペナルティを一緒に渡すと <code>ValueError</code> が、<code>Penalty</code> でない値を渡すと <code>TypeError</code> が送出されます。</p>
 <pre><code class="language-python">builder.set_mode("normal")
+builder.set_mode("decompose", Penalty(kanji_penalty_length_penalty=0))
 </code></pre>
 <h4 id="set_dictionarypath"><a class="header" href="#set_dictionarypath"><code>set_dictionary(path)</code></a></h4>
 <p>システム辞書のパスまたは URI を設定します。</p>
@@ -3503,9 +3505,10 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Tokenizer</code> はテキストに対して形態素解析を行います。</p>
 <h3 id="tokenizer-の作成"><a class="header" href="#tokenizer-の作成">Tokenizer の作成</a></h3>
-<h4 id="tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone"><a class="header" href="#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone"><code>Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None)</code></a></h4>
+<h4 id="tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone"><a class="header" href="#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone"><code>Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None, penalty=None)</code></a></h4>
 <p>読み込み済みの辞書から直接トークナイザーを作成します。</p>
 <p><code>space_penalty</code> には <a href="lindera-python/tokenizer_api.html#set_space_penaltyvalue"><code>TokenizerBuilder.set_space_penalty</code></a> と同じ値を渡せます。<code>None</code>（デフォルト）では辞書が同梱する左側空白ペナルティのルールを使うため、ko-dic ではペナルティがオンになります。オフにするには <code>False</code> を渡します。不正な設定では、<code>set_space_penalty</code> や <code>build()</code> と同じエラーが送出されます。</p>
+<p><code>penalty</code> には、<a href="lindera-python/tokenizer_api.html#set_modemode-penaltynone"><code>TokenizerBuilder.set_mode</code></a> と同じく <code>"decompose"</code> モードの <a href="lindera-python/tokenizer_api.html#penalty"><code>Penalty</code></a> を渡せます。エラーも <code>set_mode</code> と同じです。</p>
 <pre><code class="language-python">from lindera import Tokenizer, load_dictionary
 
 dictionary = load_dictionary("embedded://ipadic")
@@ -3554,9 +3557,9 @@ for tokens, cost in results:
 <h2 id="mode-1"><a class="header" href="#mode-1">Mode</a></h2>
 <p><code>Mode</code> はトークナイズモードを表します。モードの確認や比較のためのスタンドアロンな
 ヘルパーとして提供されています。<code>TokenizerBuilder.set_mode()</code> と <code>Tokenizer</code> の
-コンストラクタは、現在は <code>Mode</code> インスタンスではなく単純なモード文字列
-（<code>"normal"</code> または <code>"decompose"</code>）のみを受け付けます（下記 <code>Penalty</code> の制限事項
-も参照）。</p>
+コンストラクタは、<code>Mode</code> インスタンスではなく単純なモード文字列
+（<code>"normal"</code> または <code>"decompose"</code>）を受け取ります。decompose モードのペナルティは、
+それぞれの <code>penalty</code> 引数で渡します（下記 <a href="lindera-python/tokenizer_api.html#penalty"><code>Penalty</code></a> を参照）。</p>
 <h3 id="mode-の作成"><a class="header" href="#mode-の作成">Mode の作成</a></h3>
 <h4 id="modemode_strnone"><a class="header" href="#modemode_strnone"><code>Mode(mode_str=None)</code></a></h4>
 <p><code>Mode</code> を作成します。<code>"normal"</code> / <code>"Normal"</code>（省略時のデフォルト）または
@@ -3609,11 +3612,27 @@ penalty = Penalty(
 <pre><code class="language-python">penalty.kanji_penalty_length_threshold = 3
 print(penalty.kanji_penalty_length_threshold)  # 3
 </code></pre>
-<p><strong>現在の制限事項:</strong> 現時点では <code>Penalty</code> を <code>Tokenizer</code> や <code>TokenizerBuilder</code> に
-渡す方法はありません。<code>set_mode()</code> と <code>Tokenizer</code> のコンストラクタは単純な
-モード文字列のみを受け付け、内部的に <code>"decompose"</code> モードは常に <code>Penalty</code> の
-デフォルト値を使用します -- カスタムの <code>Penalty</code> インスタンスを作成しても、
-トークナイズには反映されません。</p>
+<h3 id="penalty-の使い方"><a class="header" href="#penalty-の使い方">Penalty の使い方</a></h3>
+<p><code>Penalty</code> は <code>"decompose"</code> と一緒に <a href="lindera-python/tokenizer_api.html#set_modemode-penaltynone"><code>TokenizerBuilder.set_mode()</code></a> か <a href="lindera-python/tokenizer_api.html#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone"><code>Tokenizer</code> のコンストラクタ</a> に渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。</p>
+<pre><code class="language-python">from lindera import Penalty, Tokenizer, TokenizerBuilder, load_dictionary
+
+text = "関西国際空港限定トートバッグ"
+penalty = Penalty(kanji_penalty_length_penalty=0, other_penalty_length_penalty=0)
+
+builder = TokenizerBuilder().set_dictionary("embedded://ipadic")
+tokenizer = builder.set_mode("decompose").build()
+print([token.surface for token in tokenizer.tokenize(text)])
+# ['関西', '国際', '空港', '限定', 'トートバッグ']
+
+tokenizer = builder.set_mode("decompose", penalty).build()
+print([token.surface for token in tokenizer.tokenize(text)])
+# ['関西国際空港', '限定', 'トートバッグ']
+
+tokenizer = Tokenizer(load_dictionary("embedded://ipadic"), mode="decompose", penalty=penalty)
+print([token.surface for token in tokenizer.tokenize(text)])
+# ['関西国際空港', '限定', 'トートバッグ']
+</code></pre>
+<p><code>"normal"</code> モードと一緒に <code>Penalty</code> を渡すと <code>ValueError</code> が送出されます。</p>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
 <p><code>Token</code> は単一の形態素トークンを表します。</p>
 <h3 id="プロパティ"><a class="header" href="#プロパティ">プロパティ</a></h3>
@@ -4349,13 +4368,15 @@ const builder = new TokenizerBuilder();
 を参照してください。</p>
 <h3 id="設定メソッド-1"><a class="header" href="#設定メソッド-1">設定メソッド</a></h3>
 <p>すべてのセッターメソッドはビルダー自身（<code>this</code>）を返すため、メソッドチェーンでも 1 文ずつの呼び出しでも設定できます。</p>
-<h4 id="setmodemode"><a class="header" href="#setmodemode"><code>setMode(mode)</code></a></h4>
+<h4 id="setmodemode-penalty"><a class="header" href="#setmodemode-penalty"><code>setMode(mode, penalty?)</code></a></h4>
 <p>トークナイズモードを設定します。</p>
 <ul>
 <li><code>"normal"</code> -- 標準的なトークナイズ（デフォルト）</li>
 <li><code>"decompose"</code> -- 複合語をより小さな単位に分解</li>
 </ul>
+<p><code>penalty</code> は <code>"decompose"</code> モードが使う <a href="lindera-nodejs/tokenizer_api.html#penalty"><code>Penalty</code></a> オブジェクトです。<code>null</code> または <code>undefined</code>（デフォルト）では既定のペナルティを使います。<code>"normal"</code> とペナルティを一緒に渡すと、不正なモードと同じくエラーを投げます。オブジェクトでない値や、範囲内の整数でないフィールドを渡すと、<code>InvalidArg</code> のエラーを投げます。</p>
 <pre><code class="language-javascript">builder.setMode("normal");
+builder.setMode("decompose", { kanjiPenaltyLengthPenalty: 0 });
 </code></pre>
 <h4 id="setdictionarypath"><a class="header" href="#setdictionarypath"><code>setDictionary(path)</code></a></h4>
 <p>システム辞書のパスまたは URI を設定します。</p>
@@ -4434,9 +4455,10 @@ v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適
 <h2 id="tokenizer-1"><a class="header" href="#tokenizer-1">Tokenizer</a></h2>
 <p><code>Tokenizer</code> はテキストに対して形態素解析を行います。</p>
 <h3 id="tokenizer-の作成-1"><a class="header" href="#tokenizer-の作成-1">Tokenizer の作成</a></h3>
-<h4 id="new-tokenizerdictionary-mode-userdictionary-spacepenalty"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary-spacepenalty"><code>new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?)</code></a></h4>
+<h4 id="new-tokenizerdictionary-mode-userdictionary-spacepenalty-penalty"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary-spacepenalty-penalty"><code>new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?, penalty?)</code></a></h4>
 <p>読み込み済みの辞書から直接トークナイザーを作成します。</p>
 <p><code>spacePenalty</code> には <a href="lindera-nodejs/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty</code></a> と同じ値を渡せます。<code>null</code> または <code>undefined</code>（デフォルト）では、辞書が同梱する左側空白ペナルティのルールを使います。不正な設定では、<code>setSpacePenalty</code> や <code>build()</code> と同じくエラーを投げます。</p>
+<p><code>penalty</code> には、<a href="lindera-nodejs/tokenizer_api.html#setmodemode-penalty"><code>setMode</code></a> と同じく <code>"decompose"</code> モードの <a href="lindera-nodejs/tokenizer_api.html#penalty"><code>Penalty</code></a> を渡せます。エラーも <code>setMode</code> と同じです。</p>
 <pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("embedded://ipadic");
@@ -4513,11 +4535,9 @@ const reading = token.details[7];  // 例: "トウキョウ"
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: 各辞書固有の詳細フォーマット</li>
 </ul>
 <h2 id="mode-と-penalty"><a class="header" href="#mode-と-penalty">Mode と Penalty</a></h2>
-<p><code>Mode</code> と <code>Penalty</code> は npm パッケージ <code>lindera</code> からエクスポートされていますが、<strong>現状どの公開 API
-にも接続されていません</strong>： <code>TokenizerBuilder.setMode()</code> / <code>Tokenizer</code> のコンストラクタは
-単純なモード文字列（<code>"normal"</code> または <code>"decompose"</code>）のみを受け取り、decompose モードは
-内部的に常にデフォルトのペナルティ設定を使用します。これらの型は完全性のためにここで
-説明していますが、JavaScript からペナルティの挙動をカスタマイズする用途にはまだ使用できません。</p>
+<p><code>TokenizerBuilder.setMode()</code> と <code>Tokenizer</code> のコンストラクタは、モードを単純な文字列
+（<code>"normal"</code> または <code>"decompose"</code>）で、decompose モードのペナルティを <a href="lindera-nodejs/tokenizer_api.html#penalty"><code>Penalty</code></a>
+オブジェクトで受け取ります。</p>
 <h3 id="mode-2"><a class="header" href="#mode-2"><code>Mode</code></a></h3>
 <p>2つの値を持つ文字列列挙型です：</p>
 <ul>
@@ -4525,14 +4545,34 @@ const reading = token.details[7];  // 例: "トウキョウ"
 <li><code>Mode.Decompose</code> -- ペナルティベースの複合語分解</li>
 </ul>
 <h3 id="penalty-1"><a class="header" href="#penalty-1"><code>Penalty</code></a></h3>
-<p>decompose モードで使用されるペナルティパラメータを表すオブジェクトです：</p>
+<p>decompose モードのペナルティパラメータを持つプレーンなオブジェクト（TypeScript の型は <code>Penalty</code>）です。フィールドはすべて省略でき、省略したフィールドはデフォルト値になります：</p>
 <div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
-<tr><td><code>kanjiPenaltyLengthThreshold</code></td><td><code>number</code></td><td>ペナルティを適用する前の漢字列の長さの閾値（デフォルト: <code>2</code>）</td></tr>
-<tr><td><code>kanjiPenaltyLengthPenalty</code></td><td><code>number</code></td><td>長い漢字列に対するペナルティ値（デフォルト: <code>3000</code>）</td></tr>
-<tr><td><code>otherPenaltyLengthThreshold</code></td><td><code>number</code></td><td>ペナルティを適用する前のその他の文字列の長さの閾値（デフォルト: <code>7</code>）</td></tr>
-<tr><td><code>otherPenaltyLengthPenalty</code></td><td><code>number</code></td><td>長いその他の文字列に対するペナルティ値（デフォルト: <code>1700</code>）</td></tr>
+<tr><td><code>kanjiPenaltyLengthThreshold</code></td><td><code>number</code></td><td>ペナルティを適用する前の漢字列の長さの閾値。0 以上の整数（デフォルト: <code>2</code>）</td></tr>
+<tr><td><code>kanjiPenaltyLengthPenalty</code></td><td><code>number</code></td><td>長い漢字列に対するペナルティ値。32 ビット符号付き整数（デフォルト: <code>3000</code>）</td></tr>
+<tr><td><code>otherPenaltyLengthThreshold</code></td><td><code>number</code></td><td>ペナルティを適用する前のその他の文字列の長さの閾値。0 以上の整数（デフォルト: <code>7</code>）</td></tr>
+<tr><td><code>otherPenaltyLengthPenalty</code></td><td><code>number</code></td><td>長いその他の文字列に対するペナルティ値。32 ビット符号付き整数（デフォルト: <code>1700</code>）</td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="辞書管理-1"><a class="header" href="#辞書管理-1">辞書管理</a></h1>
+</div>
+<p><code>"decompose"</code> と一緒に <a href="lindera-nodejs/tokenizer_api.html#setmodemode-penalty"><code>setMode()</code></a> か <a href="lindera-nodejs/tokenizer_api.html#new-tokenizerdictionary-mode-userdictionary-spacepenalty-penalty"><code>Tokenizer</code> のコンストラクタ</a> に渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります：</p>
+<pre><code class="language-javascript">const { Tokenizer, TokenizerBuilder, loadDictionary } = require("lindera");
+
+const text = "関西国際空港限定トートバッグ";
+const penalty = { kanjiPenaltyLengthPenalty: 0, otherPenaltyLengthPenalty: 0 };
+const surfaces = (tokenizer) =&gt; tokenizer.tokenize(text).map((token) =&gt; token.surface);
+
+const builder = new TokenizerBuilder().setDictionary("embedded://ipadic");
+console.log(surfaces(builder.setMode("decompose").build()));
+// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
+
+console.log(surfaces(builder.setMode("decompose", penalty).build()));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+
+const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), "decompose", null, null, penalty);
+console.log(surfaces(tokenizer));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+</code></pre>
+<p><code>"normal"</code> モードと一緒にペナルティを渡すとエラーを投げます。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="辞書管理-1"><a class="header" href="#辞書管理-1">辞書管理</a></h1>
 <p>Lindera Node.js は、形態素解析で使用する辞書の読み込み、ビルド、管理のための関数を提供します。</p>
 <h2 id="辞書の読み込み-2"><a class="header" href="#辞書の読み込み-2">辞書の読み込み</a></h2>
 <h3 id="システム辞書-1"><a class="header" href="#システム辞書-1">システム辞書</a></h3>
@@ -5162,13 +5202,15 @@ builder = Lindera::TokenizerBuilder.new
 <pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.from_file('config.json')
 </code></pre>
 <h3 id="設定メソッド-2"><a class="header" href="#設定メソッド-2">設定メソッド</a></h3>
-<h4 id="set_modemode-1"><a class="header" href="#set_modemode-1"><code>set_mode(mode)</code></a></h4>
+<h4 id="set_modemode-penalty-nil"><a class="header" href="#set_modemode-penalty-nil"><code>set_mode(mode, penalty: nil)</code></a></h4>
 <p>トークナイズモードを設定します。</p>
 <ul>
 <li><code>"normal"</code> -- 標準的なトークナイズ（デフォルト）</li>
 <li><code>"decompose"</code> -- 複合語をより小さな単位に分解</li>
 </ul>
+<p>キーワード引数 <code>penalty:</code> には、<code>"decompose"</code> モードが使う <a href="lindera-ruby/tokenizer_api.html#penalty"><code>Lindera::Penalty</code></a> を渡します。<code>nil</code>（デフォルト）では既定のペナルティを使います。<code>"normal"</code> とペナルティを一緒に渡すと、不正なモードと同じく <code>RuntimeError</code> が、<code>Lindera::Penalty</code> でない値を渡すと <code>TypeError</code> が発生します。</p>
 <pre><code class="language-ruby">builder.set_mode('normal')
+builder.set_mode('decompose', penalty: Lindera::Penalty.new(nil, 0, nil, nil))
 </code></pre>
 <h4 id="set_dictionarypath-1"><a class="header" href="#set_dictionarypath-1"><code>set_dictionary(path)</code></a></h4>
 <p>システム辞書のパスまたは URI を設定します。</p>
@@ -5239,9 +5281,10 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <h2 id="tokenizer-2"><a class="header" href="#tokenizer-2">Tokenizer</a></h2>
 <p><code>Lindera::Tokenizer</code> はテキストに対して形態素解析を行います。</p>
 <h3 id="tokenizer-の作成-2"><a class="header" href="#tokenizer-の作成-2">Tokenizer の作成</a></h3>
-<h4 id="linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><a class="header" href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil)</code></a></h4>
+<h4 id="linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><a class="header" href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><code>Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil, penalty: nil)</code></a></h4>
 <p>読み込み済みの辞書から直接トークナイザーを作成します。<code>mode</code> のデフォルトは <code>'normal'</code> で、<code>user_dictionary</code> は省略できます。</p>
 <p>キーワード引数 <code>space_penalty:</code> には <a href="lindera-ruby/tokenizer_api.html#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a> と同じ値を渡せます。<code>nil</code>（デフォルト）では辞書が同梱する左側空白ペナルティのルールを使うため、ko-dic ではペナルティがオンになります。オフにするには <code>false</code> を渡します。不正な設定では、<code>set_space_penalty</code> や <code>build</code> と同じエラーが発生します。</p>
+<p>キーワード引数 <code>penalty:</code> には、<a href="lindera-ruby/tokenizer_api.html#set_modemode-penalty-nil"><code>TokenizerBuilder#set_mode</code></a> と同じく <code>"decompose"</code> モードの <a href="lindera-ruby/tokenizer_api.html#penalty"><code>Lindera::Penalty</code></a> を渡せます。エラーも <code>set_mode</code> と同じです。</p>
 <pre><code class="language-ruby">require 'lindera'
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
@@ -5294,7 +5337,7 @@ end
 </div>
 <p><strong>戻り値:</strong> <code>Array&lt;[Array&lt;Token&gt;, Integer]&gt;</code></p>
 <h2 id="mode-3"><a class="header" href="#mode-3">Mode</a></h2>
-<p><code>Lindera::Mode</code> はトークナイズモードを表します。モードの確認・比較のためのスタンドアロンヘルパーとして提供されています。<code>TokenizerBuilder#set_mode</code> と <code>Tokenizer.new</code> は現在、<code>Mode</code> インスタンスではなく単純なモード文字列（<code>"normal"</code> または <code>"decompose"</code>）のみを受け付けます（下記の <code>Penalty</code> の制限事項も参照してください）。</p>
+<p><code>Lindera::Mode</code> はトークナイズモードを表します。モードの確認・比較のためのスタンドアロンヘルパーとして提供されています。<code>TokenizerBuilder#set_mode</code> と <code>Tokenizer.new</code> は、<code>Mode</code> インスタンスではなく単純なモード文字列（<code>"normal"</code> または <code>"decompose"</code>）を受け取ります。decompose モードのペナルティは、それぞれのキーワード引数 <code>penalty:</code> で渡します（下記の <a href="lindera-ruby/tokenizer_api.html#penalty"><code>Penalty</code></a> を参照してください）。</p>
 <h3 id="mode-の作成-1"><a class="header" href="#mode-の作成-1">Mode の作成</a></h3>
 <h4 id="linderamodenewmode_str"><a class="header" href="#linderamodenewmode_str"><code>Lindera::Mode.new(mode_str)</code></a></h4>
 <p><code>Mode</code> を作成します。引数は必須ですが <code>nil</code> を渡すこともできます。<code>"normal"</code> / <code>"Normal"</code>（<code>mode_str</code> が <code>nil</code> の場合に使用）または <code>"decompose"</code> / <code>"Decompose"</code> を受け付けます。それ以外の値を渡すと <code>ArgumentError</code> が発生します。</p>
@@ -5340,7 +5383,29 @@ penalty = Lindera::Penalty.new(nil, nil, nil, nil)  # すべてデフォルト�
 <pre><code class="language-ruby">penalty = Lindera::Penalty.new(nil, nil, nil, nil)
 penalty.kanji_penalty_length_threshold  # 2
 </code></pre>
-<p><strong>現在の制限:</strong> 現時点では <code>Penalty</code> を <code>Tokenizer</code> や <code>TokenizerBuilder</code> に渡す方法はありません。<code>set_mode</code> と <code>Tokenizer.new</code> は単純なモード文字列のみを受け付け、内部的に <code>"decompose"</code> モードは常に <code>Penalty</code> のデフォルト値を使用します -- カスタムの <code>Penalty</code> インスタンスを作成しても、現時点ではトークナイズには反映されません。</p>
+<h3 id="penalty-の使い方-1"><a class="header" href="#penalty-の使い方-1">Penalty の使い方</a></h3>
+<p><code>Penalty</code> は <code>"decompose"</code> と一緒に、<a href="lindera-ruby/tokenizer_api.html#set_modemode-penalty-nil"><code>TokenizerBuilder#set_mode</code></a> か <a href="lindera-ruby/tokenizer_api.html#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><code>Tokenizer.new</code></a> のキーワード引数 <code>penalty:</code> で渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。</p>
+<pre><code class="language-ruby">require 'lindera'
+
+text = '関西国際空港限定トートバッグ'
+penalty = Lindera::Penalty.new(nil, 0, nil, 0)
+
+builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.set_mode('decompose')
+p builder.build.tokenize(text).map(&amp;:surface)
+# =&gt; ["関西", "国際", "空港", "限定", "トートバッグ"]
+
+builder.set_mode('decompose', penalty: penalty)
+p builder.build.tokenize(text).map(&amp;:surface)
+# =&gt; ["関西国際空港", "限定", "トートバッグ"]
+
+dictionary = Lindera.load_dictionary('embedded://ipadic')
+tokenizer = Lindera::Tokenizer.new(dictionary, 'decompose', penalty: penalty)
+p tokenizer.tokenize(text).map(&amp;:surface)
+# =&gt; ["関西国際空港", "限定", "トートバッグ"]
+</code></pre>
+<p><code>"normal"</code> モードと一緒に <code>Penalty</code> を渡すと <code>RuntimeError</code> が発生します。</p>
 <h2 id="token-2"><a class="header" href="#token-2">Token</a></h2>
 <p><code>Token</code> は単一の形態素トークンを表します。</p>
 <h3 id="プロパティ-4"><a class="header" href="#プロパティ-4">プロパティ</a></h3>
@@ -6100,13 +6165,15 @@ foreach ($tokens as $token) {
 $builder = new Lindera\TokenizerBuilder();
 </code></pre>
 <h3 id="設定メソッド-3"><a class="header" href="#設定メソッド-3">設定メソッド</a></h3>
-<h4 id="setmodemode-1"><a class="header" href="#setmodemode-1"><code>setMode($mode)</code></a></h4>
+<h4 id="setmodemode-penalty-1"><a class="header" href="#setmodemode-penalty-1"><code>setMode($mode, $penalty)</code></a></h4>
 <p>トークナイズモードを設定します。</p>
 <ul>
 <li><code>"normal"</code> -- 標準的なトークナイズ（デフォルト）</li>
 <li><code>"decompose"</code> -- 複合語をより小さな単位に分解</li>
 </ul>
+<p><code>$penalty</code> は <code>"decompose"</code> モードが使う <a href="lindera-php/tokenizer_api.html#penalty"><code>Lindera\Penalty</code></a> です。<code>null</code>（デフォルト）では既定のペナルティを使います。<code>"normal"</code> とペナルティを一緒に渡すと、不正なモードと同じく <code>ValueError</code> をスローします。型の違う値を渡すと、デフォルトを選ぶのではなく例外をスローします。</p>
 <pre><code class="language-php">$builder-&gt;setMode('normal');
+$builder-&gt;setMode('decompose', new Lindera\Penalty(kanji_penalty_length_penalty: 0));
 </code></pre>
 <h4 id="setdictionaryuri"><a class="header" href="#setdictionaryuri"><code>setDictionary($uri)</code></a></h4>
 <p>システム辞書のパスまたは URI を設定します。</p>
@@ -6163,7 +6230,7 @@ $builder-&gt;setSpacePenalty(null);
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>검색 이 잘 된다</code> の <code>이</code> は感動詞 <code>IC</code> と解析されます（ペナルティがなければ主格助詞 <code>JKS</code>）。オフにするには <code>$builder-&gt;setSpacePenalty(false)</code> を呼び出してください。<a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer(...)</code></a> で作成するトークナイザーでは <code>space_penalty: false</code> を渡します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="lindera-php/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば <code>검색 이 잘 된다</code> の <code>이</code> は感動詞 <code>IC</code> と解析されます（ペナルティがなければ主格助詞 <code>JKS</code>）。オフにするには <code>$builder-&gt;setSpacePenalty(false)</code> を呼び出してください。<a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty"><code>new Lindera\Tokenizer(...)</code></a> で作成するトークナイザーでは <code>space_penalty: false</code> を渡します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで <code>true</code> はエラーになります。詳しくは <a href="lindera-php/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
 </blockquote>
 <h4 id="appendcharacterfilterkind-args-1"><a class="header" href="#appendcharacterfilterkind-args-1"><code>appendCharacterFilter($kind, $args)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
@@ -6185,9 +6252,10 @@ $builder-&gt;appendTokenFilter('japanese_stop_tags', [
 <h2 id="tokenizer-3"><a class="header" href="#tokenizer-3">Tokenizer</a></h2>
 <p><code>Tokenizer</code> はテキストに対して形態素解析を行います。</p>
 <h3 id="tokenizer-の作成-3"><a class="header" href="#tokenizer-の作成-3">Tokenizer の作成</a></h3>
-<h4 id="new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><a class="header" href="#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty)</code></a></h4>
-<p>読み込み済みの辞書から直接トークナイザーを作成します。<code>$mode</code>、<code>$user_dictionary</code>、<code>$space_penalty</code> は省略でき、デフォルトは <code>null</code> です（<code>$mode</code> の <code>null</code> は <code>'normal'</code> を意味します）。</p>
+<h4 id="new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty"><a class="header" href="#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty"><code>new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty, $penalty)</code></a></h4>
+<p>読み込み済みの辞書から直接トークナイザーを作成します。<code>$mode</code>、<code>$user_dictionary</code>、<code>$space_penalty</code>、<code>$penalty</code> は省略でき、デフォルトは <code>null</code> です（<code>$mode</code> の <code>null</code> は <code>'normal'</code> を意味します）。</p>
 <p><code>$space_penalty</code> には <a href="lindera-php/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> と同じ値を渡せます。<code>null</code> では辞書が同梱する左側空白ペナルティのルール（ko-dic は同梱しています）を使います。オフにするには <code>false</code> を渡します。名前付き引数で渡せば、ほかの省略可能な引数を飛ばせます。不正な設定では、<code>setSpacePenalty()</code> や <code>build()</code> と同じく <code>ValueError</code> をスローします。</p>
+<p><code>$penalty</code> には、<a href="lindera-php/tokenizer_api.html#setmodemode-penalty"><code>setMode()</code></a> と同じく <code>"decompose"</code> モードの <a href="lindera-php/tokenizer_api.html#penalty"><code>Lindera\Penalty</code></a> を渡せます。エラーも <code>setMode()</code> と同じです。</p>
 <pre><code class="language-php">&lt;?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
@@ -6328,9 +6396,6 @@ $mode = new Lindera\Mode();  // デフォルト: 'normal'
 </div>
 <h2 id="penalty-3"><a class="header" href="#penalty-3">Penalty</a></h2>
 <p><code>Penalty</code> は、文字種と長さのしきい値に基づいて、decompose モードが複合語をどの程度積極的に分割するかを設定します。</p>
-<blockquote>
-<p><strong>注意:</strong> <code>Penalty</code> は現時点で <code>TokenizerBuilder</code> や <code>Tokenizer</code> のコンストラクタには接続されていません。これを受け取るセッターは存在しないため、インスタンスを作成してもトークナイズには影響しません。decompose モードは常に以下のデフォルト値を使用します。</p>
-</blockquote>
 <pre><code class="language-php">&lt;?php
 
 // すべてのパラメータは省略可能で、decompose モードが使用するデフォルト値になります
@@ -6348,7 +6413,31 @@ $penalty = new Lindera\Penalty(
 <tr><td><code>$other_penalty_length_threshold</code></td><td><code>int</code></td><td><code>7</code></td><td>その他の文字連続のしきい値</td></tr>
 <tr><td><code>$other_penalty_length_penalty</code></td><td><code>int</code></td><td><code>1700</code></td><td>しきい値を超えたその他の文字連続に適用されるペナルティ</td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="辞書管理-3"><a class="header" href="#辞書管理-3">辞書管理</a></h1>
+</div>
+<h3 id="penalty-の使い方-2"><a class="header" href="#penalty-の使い方-2">Penalty の使い方</a></h3>
+<p><code>Penalty</code> は <code>'decompose'</code> と一緒に <a href="lindera-php/tokenizer_api.html#setmodemode-penalty"><code>setMode()</code></a> か <a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty"><code>Tokenizer</code> のコンストラクタ</a> に渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。</p>
+<pre><code class="language-php">&lt;?php
+
+$text = '関西国際空港限定トートバッグ';
+$penalty = new Lindera\Penalty(kanji_penalty_length_penalty: 0, other_penalty_length_penalty: 0);
+$surfaces = static fn (array $tokens): string =&gt; implode(' / ', array_map(static fn ($token) =&gt; $token-&gt;surface, $tokens));
+
+$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setDictionary('embedded://ipadic');
+$builder-&gt;setMode('decompose');
+echo $surfaces($builder-&gt;build()-&gt;tokenize($text)), "\n";
+// 関西 / 国際 / 空港 / 限定 / トートバッグ
+
+$builder-&gt;setMode('decompose', $penalty);
+echo $surfaces($builder-&gt;build()-&gt;tokenize($text)), "\n";
+// 関西国際空港 / 限定 / トートバッグ
+
+$tokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ipadic'), 'decompose', penalty: $penalty);
+echo $surfaces($tokenizer-&gt;tokenize($text)), "\n";
+// 関西国際空港 / 限定 / トートバッグ
+</code></pre>
+<p><code>'normal'</code> モードと一緒に <code>Penalty</code> を渡すと <code>ValueError</code> をスローします。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="辞書管理-3"><a class="header" href="#辞書管理-3">辞書管理</a></h1>
 <p>Lindera PHP は、形態素解析で使用する辞書の読み込み、ビルド、管理のためのクラスを提供します。</p>
 <h2 id="辞書の読み込み-4"><a class="header" href="#辞書の読み込み-4">辞書の読み込み</a></h2>
 <h3 id="システム辞書-3"><a class="header" href="#システム辞書-3">システム辞書</a></h3>
@@ -7019,13 +7108,20 @@ results.forEach((result, rank) =&gt; {
 <p>すべてのセッターは同じ設定を共有するビルダーハンドルを返すため、
 <code>builder.setMode("normal").setDictionary(...)</code> のようにチェーンでも、1 文ずつでも記述できます。
 返されるハンドルは新しいオブジェクトですが、設定先は同一のビルダーです。</p>
-<h4 id="setmodemode-2"><a class="header" href="#setmodemode-2"><code>setMode(mode)</code></a></h4>
+<h4 id="setmodemode-penalty-2"><a class="header" href="#setmodemode-penalty-2"><code>setMode(mode, penalty?)</code></a></h4>
 <p>トークナイズモードを設定します。</p>
 <ul>
-<li><strong>パラメータ</strong>: <code>mode</code> (string) -- <code>"normal"</code> または <code>"decompose"</code></li>
+<li><strong>パラメータ</strong>:
+<ul>
+<li><code>mode</code> (string) -- <code>"normal"</code> または <code>"decompose"</code></li>
+<li><code>penalty</code> (Penalty, 省略可) -- <code>"decompose"</code> モードが使う <a href="lindera-wasm/tokenizer_api.html#penalty"><code>Penalty</code></a>。<code>null</code> または <code>undefined</code>（デフォルト）では既定のペナルティを使います。渡した <code>Penalty</code> はそのまま使えるので、同じものを何度でも渡せます。</li>
+</ul>
+</li>
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
+<p><code>"normal"</code> とペナルティを一緒に渡すと、不正なモードと同じくエラー文字列が投げられます。<code>Penalty</code> でない値を渡したときも同じです。</p>
 <pre><code class="language-javascript">builder.setMode("normal");
+builder.setMode("decompose", new Penalty(undefined, 0));
 </code></pre>
 <h4 id="setdictionaryuri-1"><a class="header" href="#setdictionaryuri-1"><code>setDictionary(uri)</code></a></h4>
 <p>トークナイズに使用する辞書を設定します。<code>setDictionaryInstance()</code> で設定した辞書は、この辞書に置き換わります。</p>
@@ -7147,7 +7243,7 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <h2 id="tokenizer-4"><a class="header" href="#tokenizer-4">Tokenizer</a></h2>
 <p>メインのトークナイザークラスです。<code>TokenizerBuilder.build()</code> またはコンストラクタ経由で作成できます。</p>
 <h3 id="tokenizer-コンストラクタ"><a class="header" href="#tokenizer-コンストラクタ">Tokenizer コンストラクタ</a></h3>
-<pre><code class="language-javascript">const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
+<pre><code class="language-javascript">const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty, penalty);
 </code></pre>
 <ul>
 <li><strong>パラメータ</strong>:
@@ -7156,6 +7252,7 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <li><code>mode</code> (string, 省略可) -- トークナイズモード（<code>"normal"</code> または <code>"decompose"</code>、デフォルト: <code>"normal"</code>）</li>
 <li><code>userDictionary</code> (UserDictionary, 省略可) -- 読み込み済みのユーザー辞書</li>
 <li><code>spacePenalty</code> (boolean | object, 省略可) -- 左側空白ペナルティ。<a href="lindera-wasm/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> と同じ値を渡せます。<code>null</code> または <code>undefined</code>（デフォルト）では、辞書が同梱するルールを使います。不正な設定では、<code>setSpacePenalty()</code> や <code>build()</code> と同じくエラー文字列が投げられます。</li>
+<li><code>penalty</code> (Penalty, 省略可) -- <code>"decompose"</code> モードの <a href="lindera-wasm/tokenizer_api.html#penalty"><code>Penalty</code></a>。<a href="lindera-wasm/tokenizer_api.html#setmodemode-penalty"><code>setMode()</code></a> と同じものを渡せ、エラーも同じです。</li>
 </ul>
 </li>
 </ul>
@@ -7297,6 +7394,26 @@ console.log(version()); // 例: "7.0.0"
 <tr><td><code>other_penalty_length_penalty</code></td><td><code>number</code></td><td><code>1700</code></td><td>閾値を超える非漢字複合語のペナルティコスト</td></tr>
 </tbody></table>
 </div>
+<p><code>"decompose"</code> と一緒に <a href="lindera-wasm/tokenizer_api.html#setmodemode-penalty"><code>setMode()</code></a> か <a href="lindera-wasm/tokenizer_api.html#tokenizer-%E3%82%B3%E3%83%B3%E3%82%B9%E3%83%88%E3%83%A9%E3%82%AF%E3%82%BF"><code>Tokenizer</code> のコンストラクタ</a> に渡します。<code>Penalty</code> は読み取られるだけで消費されないので、同じものを何度でも渡せます。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。</p>
+<pre><code class="language-javascript">import { Penalty, Tokenizer, TokenizerBuilder, loadDictionary } from 'lindera-wasm-ipadic';
+
+const text = "関西国際空港限定トートバッグ";
+const penalty = new Penalty(undefined, 0, undefined, 0);
+const surfaces = (tokenizer) =&gt; tokenizer.tokenize(text).map((token) =&gt; token.surface);
+
+const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+console.log(surfaces(builder.setMode("decompose").build()));
+// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
+
+console.log(surfaces(builder.setMode("decompose", penalty).build()));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+
+const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), "decompose", null, null, penalty);
+console.log(surfaces(tokenizer));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+</code></pre>
+<p><code>"normal"</code> モードと一緒にペナルティを渡すと、エラー文字列が投げられます。</p>
 <h3 id="linderaerror-1"><a class="header" href="#linderaerror-1">LinderaError</a></h3>
 <p>Lindera 操作のエラー型です。</p>
 <pre><code class="language-javascript">const error = new LinderaError("message");
@@ -9930,6 +10047,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong>WASM: 辞書の設定方法にかかわらず <code>TokenizerBuilder</code> の設定が適用される</strong></td><td><code>setDictionaryInstance()</code> と <code>setKeepWhitespace()</code> やフィルタ、または <code>setDictionary()</code> と <code>setUserDictionaryInstance()</code> を組み合わせる WASM のユーザー</td><td>それらの設定とユーザー辞書が効くことを前提にする。<code>char.def</code> に <code>SPACE</code> カテゴリがない辞書インスタンスでは、URI で設定した辞書と同じく <code>setKeepWhitespace(true)</code> が必要になる</td></tr>
 <tr><td><strong>PHP: 省略可能な引数に型違いの値を渡すと、既定値を使わずに例外を投げる</strong></td><td>省略可能な引数に別の型の値を渡す PHP のコード。例えば <code>Lindera\Trainer::train()</code> の <code>$max_iter</code> に数字の文字列を、<code>tokenizeNbest()</code> の <code>$unique</code> に <code>1</code> を渡すもの</td><td>宣言された型の値を渡す。<code>$argv</code> の値のような文字列は <code>(int)</code> などでキャストする。<code>null</code> を渡すか引数を省略すれば、これまでどおり既定値になる</td></tr>
 <tr><td><strong>PHP・Node.js・WASM: 設定の範囲外の整数の引数は、折り返さずに例外を投げる</strong></td><td>そのような値を渡すコード。例えば <code>Metadata</code> の既定の単語コストに <code>100000</code> を渡すもの（v6 は <code>-31072</code> を保持した）や、N-best の件数に <code>-1</code> を渡すもの（v6 はすべての分割を列挙した）。<code>getFieldName</code> と PHP の <code>getDetail</code> への負の位置。Node.js と WASM では、<code>1.5</code> や <code>NaN</code> のような整数でない数値</td><td>範囲内の整数を渡す。エラーは引数の名前と範囲を示す</td></tr>
+<tr><td><strong>バインディング: decompose モードが <code>set_mode</code> / <code>setMode</code> と <code>Tokenizer</code> のコンストラクタで <code>Penalty</code> を受け取り、<code>TokenizerBuilder::set_segmenter_mode</code> が <code>Mode::Decompose</code> のペナルティを保つ</strong></td><td>decompose モードのペナルティを変えたいバインディングのユーザー。Node.js の型 <code>JsPenalty</code> を名指しする TypeScript のコード。<code>set_segmenter_mode</code> に既定でないペナルティを渡す Rust のコード。<code>CoreTokenizerBuilder::set_mode</code> や <code>CoreTokenizer::from_segmenter_with_space_penalty</code> を呼ぶバインディングの作者</td><td>ペナルティを変えるには新しい引数に <code>Penalty</code> を渡す。<code>JsPenalty</code> を <code>Penalty</code> に改名する。<code>lindera-binding</code> の関数の新しい引数には <code>None</code> を渡す</td></tr>
 <tr><td><strong><code>lindera train</code> は MeCab の学習器と同じくラティスを作り、<code>unk.def</code> のすべてのエントリを保持する。<code>model.dat</code> の形式バージョンは 2.0.0</strong></td><td><code>lindera train</code>・<code>lindera export</code> と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー</td><td>7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた <code>model.dat</code> は拒否される）。<code>unk.def</code> のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す</td></tr>
 <tr><td><strong><code>lindera build</code> は <code>matrix.def</code> の範囲外の文脈 ID を拒否する</strong></td><td><code>lex.csv</code> や <code>unk.def</code> に <code>matrix.def</code> の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の <code>mecab-dict-index</code> が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる）</td><td>ID か行列を直すか、<code>metadata.json</code> の <code>skip_invalid_cost_or_id</code> でそうした <code>lex.csv</code> の行を取り除く。ユーザー辞書ではそうした ID を直す</td></tr>
 <tr><td><strong><code>lindera build</code> と <code>lindera train</code> は <code>char.def</code> と <code>unk.def</code> を照らし合わせる</strong></td><td>それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが <code>char.def</code> にあるユーザー、<code>char.def</code> と <code>unk.def</code> でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、<code>unk.def</code> の行を無視したりしていた）。MeCab の <code>mecab-dict-index</code> が受け入れる辞書は影響を受けない</td><td>各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに <code>unk.def</code> の行を書き、未定義のカテゴリの <code>unk.def</code> の行を削除する</td></tr>
@@ -9952,6 +10070,8 @@ v6 はこの値を <code>null</code> として扱っていました
 PHP・Node.js・WASM のバインディングは、設定の範囲外の整数の引数も拒否します。
 v6 はこの値を折り返していました
 （<a href="migration_v6_to_v7.html#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0-%E7%AF%84%E5%9B%B2%E5%A4%96%E3%81%AE%E6%95%B4%E6%95%B0%E3%81%AE%E5%BC%95%E6%95%B0%E3%82%92%E6%8B%92%E5%90%A6%E3%81%99%E3%82%8B">バインディング: 範囲外の整数の引数を拒否する</a>を参照）。
+Node.js の TypeScript の型 <code>JsPenalty</code> は <code>Penalty</code> に改名しました
+（<a href="migration_v6_to_v7.html#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0-decompose-%E3%83%A2%E3%83%BC%E3%83%89%E3%81%8C-penalty-%E3%82%92%E5%8F%97%E3%81%91%E5%8F%96%E3%82%8B">バインディング: decompose モードが <code>Penalty</code> を受け取る</a>を参照）。
 バージョン番号は 7.0.0 になります。Rust クレートと同じく、v6.2.0 以前に
 ビルドまたはダウンロードした辞書ディレクトリは読み込めなくなります
 （<a href="migration_v6_to_v7.html#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。v6.2.0 以前にバインディングの
@@ -10813,6 +10933,43 @@ Node.js バインディングは code が <code>InvalidArg</code> の <code>Erro
 プロパティの setter の <code>OverflowError</code> は、注記でプロパティの名前を示すように
 なりました（<code>'cost'</code> ではなく <code>while processing 'default_word_cost'</code>）。v6 の動作に
 戻す設定はありません。</p>
+<h2 id="バインディング-decompose-モードが-penalty-を受け取る"><a class="header" href="#バインディング-decompose-モードが-penalty-を受け取る">バインディング: decompose モードが <code>Penalty</code> を受け取る</a></h2>
+<p>v6.2.0 までは、どのバインディングにも <code>Penalty</code> がありましたが、それを受け取る関数も
+コンストラクタもありませんでした。<code>set_mode</code> / <code>setMode</code> と <code>Tokenizer</code> の
+コンストラクタはモードの文字列だけを受け取り、decompose モードは常に既定の
+ペナルティを使っていました。既定でないペナルティを使えたのは、<code>from_file</code> /
+<code>fromFile</code> で読み込む設定ファイル経由だけでした。Rust の
+<code>TokenizerBuilder::set_segmenter_mode</code> も、設定にモードの名前しか書かなかったため、
+<code>Mode::Decompose</code> のペナルティを同じように失っていました。</p>
+<p>v7.0.0 では、<code>set_mode</code> / <code>setMode</code> と <code>Tokenizer</code> のコンストラクタが、省略可能な
+引数でペナルティを受け取り、<code>set_segmenter_mode</code> はペナルティを保ちます。</p>
+<div class="table-wrapper"><table><thead><tr><th>バインディング</th><th>ビルダー</th><th><code>Tokenizer</code> のコンストラクタ</th></tr></thead><tbody>
+<tr><td>Python</td><td><code>set_mode("decompose", penalty)</code></td><td><code>Tokenizer(dictionary, "decompose", penalty=penalty)</code></td></tr>
+<tr><td>Ruby</td><td><code>set_mode('decompose', penalty: penalty)</code></td><td><code>Lindera::Tokenizer.new(dictionary, 'decompose', penalty: penalty)</code></td></tr>
+<tr><td>PHP</td><td><code>$builder-&gt;setMode('decompose', $penalty)</code></td><td><code>new Lindera\Tokenizer($dictionary, 'decompose', penalty: $penalty)</code></td></tr>
+<tr><td>Node.js</td><td><code>builder.setMode("decompose", penalty)</code></td><td><code>new Tokenizer(dictionary, "decompose", null, null, penalty)</code></td></tr>
+<tr><td>WASM</td><td><code>builder.setMode("decompose", penalty)</code></td><td><code>new Tokenizer(dictionary, "decompose", null, null, penalty)</code></td></tr>
+</tbody></table>
+</div>
+<p>引数を省略すると既定のペナルティになるため、既存の呼び出しは変わりません。
+<code>"normal"</code> とペナルティを一緒に渡すと、不正なモードと同じくエラーになります。
+IPADIC で長さのペナルティを 2 つとも 0 にすると、decompose モードは
+<code>関西国際空港限定トートバッグ</code> を <code>関西 / 国際 / 空港 / 限定 / トートバッグ</code> ではなく
+<code>関西国際空港 / 限定 / トートバッグ</code> と分割します。</p>
+<p>対応が必要になりうる変更は 3 つです。</p>
+<ul>
+<li><strong>Node.js</strong>: TypeScript の型 <code>JsPenalty</code> は <code>Penalty</code> に改名し、フィールドは
+省略できるようになりました。省略したフィールドは既定値になります。<code>JsPenalty</code> を
+名指しする TypeScript のコードは <code>Penalty</code> を使ってください。この型に対応する値は
+パッケージからエクスポートされないため、JavaScript のコードは変わりません。</li>
+<li><strong>Rust</strong>: <code>TokenizerBuilder::set_segmenter_mode</code> に既定でないペナルティの
+<code>Mode::Decompose</code> を渡すと、そのペナルティが適用され、出力が変わります。CLI の
+<code>--mode</code> のように <code>"decompose"</code> から作ったモードは既定のペナルティを持つため、
+影響はありません。</li>
+<li><strong>バインディングの作者</strong>: <code>CoreTokenizerBuilder::set_mode</code> と
+<code>CoreTokenizer::from_segmenter_with_space_penalty</code> は、2 番目の引数で
+ペナルティを受け取ります。既定のままにするには <code>None</code> を渡してください。</li>
+</ul>
 <h2 id="lindera-train-は-mecab-の学習器と同じくラティスを作る"><a class="header" href="#lindera-train-は-mecab-の学習器と同じくラティスを作る"><code>lindera train</code> は MeCab の学習器と同じくラティスを作る</a></h2>
 <p>v6.2.0 までの <code>lindera train</code> は、MeCab の学習器とは異なる学習用ラティスを
 作っていました。</p>
@@ -11235,10 +11392,12 @@ v6.2.0 以前に書かれたモデルは学習し直す必要があります。<
 <li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の
 各パッケージと <code>lindera-cli</code> のパッケージ名は変わらず、API も <code>Metadata</code> の設定
 <code>normalize_details</code> と、PHP の省略可能な引数の型違いの値と、PHP・Node.js・WASM の
-範囲外の整数の引数を除いて変わりません
+範囲外の整数の引数と、Node.js の TypeScript の型 <code>JsPenalty</code>（<code>Penalty</code> に改名）を
+除いて変わりません
 （<a href="migration_v6_to_v7.html#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>、
 <a href="migration_v6_to_v7.html#php-%E7%9C%81%E7%95%A5%E5%8F%AF%E8%83%BD%E3%81%AA%E5%BC%95%E6%95%B0%E3%81%AF%E5%9E%8B%E9%81%95%E3%81%84%E3%81%AE%E5%80%A4%E3%82%92%E6%8B%92%E5%90%A6%E3%81%99%E3%82%8B">PHP: 省略可能な引数は型違いの値を拒否する</a>、
-<a href="migration_v6_to_v7.html#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0-%E7%AF%84%E5%9B%B2%E5%A4%96%E3%81%AE%E6%95%B4%E6%95%B0%E3%81%AE%E5%BC%95%E6%95%B0%E3%82%92%E6%8B%92%E5%90%A6%E3%81%99%E3%82%8B">バインディング: 範囲外の整数の引数を拒否する</a>を参照）。
+<a href="migration_v6_to_v7.html#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0-%E7%AF%84%E5%9B%B2%E5%A4%96%E3%81%AE%E6%95%B4%E6%95%B0%E3%81%AE%E5%BC%95%E6%95%B0%E3%82%92%E6%8B%92%E5%90%A6%E3%81%99%E3%82%8B">バインディング: 範囲外の整数の引数を拒否する</a>、
+<a href="migration_v6_to_v7.html#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0-decompose-%E3%83%A2%E3%83%BC%E3%83%89%E3%81%8C-penalty-%E3%82%92%E5%8F%97%E3%81%91%E5%8F%96%E3%82%8B">バインディング: decompose モードが <code>Penalty</code> を受け取る</a>を参照）。
 今回の構成変更は Rust クレート内部のものです。v6.2.0 以前にビルドまたは
 ダウンロードした辞書ディレクトリは、再ビルドか再ダウンロードが必要です
 （<a href="migration_v6_to_v7.html#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。埋め込み辞書は対応不要です。
@@ -11304,6 +11463,8 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <li><code>SerializableModel::unk_category_names</code> や <code>unk_categories</code> を読んでいる場合は
 代わりに <code>unk_entries</code> を読み、<code>Trainer::max_grouping_len</code> を設定している場合は
 辞書を使うときの上限を渡す。</li>
+<li><code>TokenizerBuilder::set_segmenter_mode</code> に既定でないペナルティの
+<code>Mode::Decompose</code> を渡している場合は、そのペナルティが適用されることを前提にする。</li>
 </ul>
 <p>バインディングの作者:</p>
 <ul>
@@ -11313,6 +11474,9 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <code>CoreMetadata::normalize_details</code> フィールドを使わないようにする。</li>
 <li>すべてのフィールドを並べた構造体リテラルで <code>CoreMetadata</code> を作っている場合は、
 <code>skip_whitespace: None</code> を加えるか、最後を <code>..Default::default()</code> にする。</li>
+<li><code>CoreTokenizerBuilder::set_mode</code> と
+<code>CoreTokenizer::from_segmenter_with_space_penalty</code> の新しい 2 番目の引数に、
+ペナルティか <code>None</code> を渡す。</li>
 </ul>
 <p>ビルド環境:</p>
 <ul>
@@ -11471,12 +11635,15 @@ v6 では <code>null</code> として扱われたが、<code>Exception</code> �
 <li>PHP・Node.js・WASM では、整数の引数に設定の範囲内の値を渡す。範囲外の値は、v6 では
 折り返されたが、例外を投げるようになる。負の位置と、Node.js・WASM の整数でない
 数値も同様。</li>
+<li>Node.js の TypeScript では、型 <code>JsPenalty</code> を <code>Penalty</code> に改名する。decompose
+モードを調整するには、<code>set_mode</code> / <code>setMode</code> か <code>Tokenizer</code> のコンストラクタに
+<code>Penalty</code> を渡す。</li>
 <li>CLI では、文の区切り文字なしに 32 KiB を超えて文を区切ったときなどに、標準エラー
 出力に警告が出ることを前提にする。<code>RUST_LOG=error</code> で警告を消せる。</li>
 <li>それ以外は、7.0.0 リリースを取り込む以外に対応は不要（上記の辞書の再ビルド・辞書・
 空白・<code>、</code> と <code>。</code>・N-best・未知語・既定カテゴリ・ダッシュとチルダ・同点の見出し語・
 コストが同じ分割の項目、<code>lindera train</code> と <code>lindera build</code> の項目、<code>lindera tokenize</code>
-と WASM と PHP と整数の引数と CLI の警告の項目を除く）。</li>
+と WASM と PHP と整数の引数と <code>JsPenalty</code> と CLI の警告の項目を除く）。</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="開発ガイド"><a class="header" href="#開発ガイド">開発ガイド</a></h1>
 <p>このセクションでは、Lindera のビルド、テスト、貢献に関する情報を提供します。</p>

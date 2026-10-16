@@ -194,13 +194,15 @@ for a complete example covering <code>segmenter</code>, <code>character_filters<
 </code></pre>
 <h3 id="configuration-methods"><a class="header" href="#configuration-methods">Configuration Methods</a></h3>
 <p>All setter methods return <code>self</code> for method chaining.</p>
-<h4 id="set_modemode"><a class="header" href="#set_modemode"><code>set_mode(mode)</code></a></h4>
+<h4 id="set_modemode-penaltynone"><a class="header" href="#set_modemode-penaltynone"><code>set_mode(mode, penalty=None)</code></a></h4>
 <p>Sets the tokenization mode.</p>
 <ul>
 <li><code>"normal"</code> -- Standard tokenization (default)</li>
 <li><code>"decompose"</code> -- Decomposes compound words into smaller units</li>
 </ul>
+<p><code>penalty</code> is the <a href="#penalty"><code>Penalty</code></a> that <code>"decompose"</code> mode uses; <code>None</code> (the default) uses the default penalty. A penalty with <code>"normal"</code> raises <code>ValueError</code>, and a value that is not a <code>Penalty</code> raises <code>TypeError</code>.</p>
 <pre><code class="language-python">builder.set_mode("normal")
+builder.set_mode("decompose", Penalty(kanji_penalty_length_penalty=0))
 </code></pre>
 <h4 id="set_dictionarypath"><a class="header" href="#set_dictionarypath"><code>set_dictionary(path)</code></a></h4>
 <p>Sets the system dictionary path or URI.</p>
@@ -271,9 +273,10 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer"><a class="header" href="#creating-a-tokenizer">Creating a Tokenizer</a></h3>
-<h4 id="tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone"><a class="header" href="#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone"><code>Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None)</code></a></h4>
+<h4 id="tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone"><a class="header" href="#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone"><code>Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None, penalty=None)</code></a></h4>
 <p>Creates a tokenizer directly from a loaded dictionary.</p>
 <p><code>space_penalty</code> takes the same values as <a href="#set_space_penaltyvalue"><code>TokenizerBuilder.set_space_penalty</code></a>. <code>None</code> (the default) uses the left-space penalty rules the dictionary ships, so with ko-dic the penalty is on; pass <code>False</code> to turn it off. An invalid setting raises the same errors as <code>set_space_penalty</code> and <code>build()</code>.</p>
+<p><code>penalty</code> takes a <a href="#penalty"><code>Penalty</code></a> for <code>"decompose"</code> mode, as <a href="#set_modemode-penaltynone"><code>TokenizerBuilder.set_mode</code></a> does, with the same errors.</p>
 <pre><code class="language-python">from lindera import Tokenizer, load_dictionary
 
 dictionary = load_dictionary("embedded://ipadic")
@@ -322,9 +325,9 @@ for tokens, cost in results:
 <h2 id="mode"><a class="header" href="#mode">Mode</a></h2>
 <p><code>Mode</code> represents a tokenization mode. It is provided as a standalone helper for
 inspecting or comparing modes; <code>TokenizerBuilder.set_mode()</code> and the <code>Tokenizer</code>
-constructor currently accept only a plain mode string (<code>"normal"</code> or
-<code>"decompose"</code>), not a <code>Mode</code> instance (see the limitation noted under <code>Penalty</code>
-below).</p>
+constructor take a plain mode string (<code>"normal"</code> or <code>"decompose"</code>), not a <code>Mode</code>
+instance. The penalty of decompose mode goes in their <code>penalty</code> argument (see
+<a href="#penalty"><code>Penalty</code></a> below).</p>
 <h3 id="creating-a-mode"><a class="header" href="#creating-a-mode">Creating a Mode</a></h3>
 <h4 id="modemode_strnone"><a class="header" href="#modemode_strnone"><code>Mode(mode_str=None)</code></a></h4>
 <p>Creates a <code>Mode</code>. Accepts <code>"normal"</code> / <code>"Normal"</code> (the default when omitted) or
@@ -376,11 +379,27 @@ penalty = Penalty(
 <pre><code class="language-python">penalty.kanji_penalty_length_threshold = 3
 print(penalty.kanji_penalty_length_threshold)  # 3
 </code></pre>
-<p><strong>Current limitation:</strong> there is currently no way to pass a <code>Penalty</code> into a
-<code>Tokenizer</code> or <code>TokenizerBuilder</code>. <code>set_mode()</code> and the <code>Tokenizer</code> constructor
-only accept a plain mode string, and internally <code>"decompose"</code> mode always uses
-<code>Penalty</code>'s default values -- constructing a custom <code>Penalty</code> instance has no
-effect on tokenization yet.</p>
+<h3 id="using-a-penalty"><a class="header" href="#using-a-penalty">Using a Penalty</a></h3>
+<p>Pass a <code>Penalty</code> with <code>"decompose"</code> to <a href="#set_modemode-penaltynone"><code>TokenizerBuilder.set_mode()</code></a> or to the <a href="#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone"><code>Tokenizer</code> constructor</a>. Without length penalties, decompose mode keeps long words whole:</p>
+<pre><code class="language-python">from lindera import Penalty, Tokenizer, TokenizerBuilder, load_dictionary
+
+text = "関西国際空港限定トートバッグ"
+penalty = Penalty(kanji_penalty_length_penalty=0, other_penalty_length_penalty=0)
+
+builder = TokenizerBuilder().set_dictionary("embedded://ipadic")
+tokenizer = builder.set_mode("decompose").build()
+print([token.surface for token in tokenizer.tokenize(text)])
+# ['関西', '国際', '空港', '限定', 'トートバッグ']
+
+tokenizer = builder.set_mode("decompose", penalty).build()
+print([token.surface for token in tokenizer.tokenize(text)])
+# ['関西国際空港', '限定', 'トートバッグ']
+
+tokenizer = Tokenizer(load_dictionary("embedded://ipadic"), mode="decompose", penalty=penalty)
+print([token.surface for token in tokenizer.tokenize(text)])
+# ['関西国際空港', '限定', 'トートバッグ']
+</code></pre>
+<p>A <code>Penalty</code> with <code>"normal"</code> mode raises <code>ValueError</code>.</p>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
 <p><code>Token</code> represents a single morphological token.</p>
 <h3 id="properties"><a class="header" href="#properties">Properties</a></h3>
