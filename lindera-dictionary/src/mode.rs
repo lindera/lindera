@@ -223,17 +223,21 @@ mod tests {
     /// result keeps the sign of the cost.
     #[test]
     fn test_penalty_saturates_a_huge_length() {
-        let branches: [(fn(i32) -> Penalty, bool); 2] = [(kanji, true), (other, false)];
-        for (penalty, kanji_only) in branches {
-            for (cost, expected) in [
-                (1, i32::MAX),
-                (1_000_000_000, i32::MAX),
-                (-1, i32::MIN),
-                (-1_000_000_000, i32::MIN),
-                (0, 0),
-            ] {
+        for (cost, expected) in [
+            (1, i32::MAX),
+            (1_000_000_000, i32::MAX),
+            (-1, i32::MIN),
+            (-1_000_000_000, i32::MIN),
+            (0, 0),
+        ] {
+            let penalty = Penalty {
+                kanji_penalty_length_penalty: cost,
+                other_penalty_length_penalty: cost,
+                ..Penalty::default()
+            };
+            for kanji_only in [true, false] {
                 assert_eq!(
-                    penalty(cost).length_penalty(kanji_only, usize::MAX),
+                    penalty.length_penalty(kanji_only, usize::MAX),
                     expected,
                     "cost {cost}, kanji only {kanji_only}"
                 );
