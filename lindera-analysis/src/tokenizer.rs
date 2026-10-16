@@ -121,8 +121,19 @@ impl TokenizerBuilder {
         })
     }
 
+    /// Sets the segmentation mode. The mode is written in the form a
+    /// configuration file uses, `"normal"` or `{"decompose": {...}}`, so the
+    /// penalty of a [`Mode::Decompose`] reaches the segmenter (#1215).
+    ///
+    /// # Arguments
+    ///
+    /// * `mode` - The mode, with its penalty for decompose mode.
+    ///
+    /// # Returns
+    ///
+    /// The builder, for chaining.
     pub fn set_segmenter_mode(&mut self, mode: &Mode) -> &mut Self {
-        self.config["segmenter"]["mode"] = json!(mode.as_str());
+        self.config["segmenter"]["mode"] = json!(mode);
         self
     }
 
@@ -774,9 +785,69 @@ impl Clone for Tokenizer {
 
 #[cfg(test)]
 mod tests {
+    use lindera_segmenter::mode::{Mode, Penalty};
     use lindera_segmenter::space_penalty::{SpacePenaltyConfig, SpacePenaltyRule};
+    use serde_json::json;
 
     use super::TokenizerBuilder;
+
+    /// The mode is written in the form a configuration file uses, so the
+    /// penalty of decompose mode is kept (#1215).
+    #[test]
+    fn test_set_segmenter_mode_writes_the_penalty() {
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_segmenter_mode(&Mode::Normal);
+        assert_eq!(builder.config["segmenter"]["mode"], "normal");
+
+        builder.set_segmenter_mode(&Mode::Decompose(Penalty {
+            kanji_penalty_length_threshold: 3,
+            kanji_penalty_length_penalty: 4000,
+            other_penalty_length_threshold: 8,
+            other_penalty_length_penalty: 0,
+        }));
+        assert_eq!(
+            builder.config["segmenter"]["mode"],
+            json!({"decompose": {
+                "kanji_penalty_length_threshold": 3,
+                "kanji_penalty_length_penalty": 4000,
+                "other_penalty_length_threshold": 8,
+                "other_penalty_length_penalty": 0
+            }})
+        );
+    }
+
+    /// A tokenizer built with a decompose penalty uses it: without length
+    /// penalties, decompose mode keeps `関西国際空港` whole (#1215).
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_set_segmenter_mode_decompose_penalty_reaches_the_segmenter() {
+        fn surfaces(mode: &Mode) -> Vec<String> {
+            let mut builder = TokenizerBuilder::new().unwrap();
+            builder
+                .set_segmenter_dictionary("embedded://ipadic")
+                .set_segmenter_mode(mode);
+            let tokenizer = builder.build().unwrap();
+            tokenizer
+                .tokenize("関西国際空港限定トートバッグ")
+                .unwrap()
+                .iter()
+                .map(|token| token.surface.to_string())
+                .collect()
+        }
+
+        assert_eq!(
+            surfaces(&Mode::Decompose(Penalty::default())),
+            ["関西", "国際", "空港", "限定", "トートバッグ"]
+        );
+        assert_eq!(
+            surfaces(&Mode::Decompose(Penalty {
+                kanji_penalty_length_penalty: 0,
+                other_penalty_length_penalty: 0,
+                ..Penalty::default()
+            })),
+            ["関西国際空港", "限定", "トートバッグ"]
+        );
+    }
 
     #[test]
     fn test_set_segmenter_use_mmap_writes_flat_key_under_segmenter() {

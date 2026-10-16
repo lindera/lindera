@@ -59,7 +59,7 @@ impl JsTokenizerBuilder {
     /// The builder itself (`this`), enabling method chaining.
     #[napi]
     pub fn set_mode(&mut self, mode: String) -> napi::Result<&Self> {
-        self.inner.set_mode(&mode).map_err(to_napi_error)?;
+        self.inner.set_mode(&mode, None).map_err(to_napi_error)?;
         Ok(self)
     }
 
@@ -269,6 +269,7 @@ impl JsTokenizer {
 
         let inner = CoreTokenizer::from_segmenter_with_space_penalty(
             &mode_str,
+            None,
             dict,
             user_dict,
             &space_penalty,

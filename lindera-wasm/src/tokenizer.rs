@@ -135,7 +135,7 @@ impl TokenizerBuilder {
         self.state
             .borrow_mut()
             .inner
-            .set_mode(mode)
+            .set_mode(mode, None)
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
         Ok(self.share())
@@ -447,6 +447,7 @@ impl Tokenizer {
         let user_dict = user_dictionary.map(|d| d.inner);
         let inner = CoreTokenizer::from_segmenter_with_space_penalty(
             mode.as_deref().unwrap_or("normal"),
+            None,
             dictionary.inner,
             user_dict,
             &space_penalty,

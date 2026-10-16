@@ -71,7 +71,7 @@ impl RbTokenizerBuilder {
         let ruby = Ruby::get().expect("Ruby runtime not initialized");
         let mut builder = self.inner.borrow_mut();
         builder
-            .set_mode(&mode)
+            .set_mode(&mode, None)
             .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
         Ok(())
     }
@@ -271,9 +271,14 @@ fn tokenizer_new(args: &[Value]) -> Result<RbTokenizer, Error> {
     let dict = dictionary.inner.clone();
     let user_dict = user_dictionary.map(|d| d.inner.clone());
 
-    let inner =
-        CoreTokenizer::from_segmenter_with_space_penalty(mode_str, dict, user_dict, &space_penalty)
-            .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
+    let inner = CoreTokenizer::from_segmenter_with_space_penalty(
+        mode_str,
+        None,
+        dict,
+        user_dict,
+        &space_penalty,
+    )
+    .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
 
     Ok(RbTokenizer { inner })
 }

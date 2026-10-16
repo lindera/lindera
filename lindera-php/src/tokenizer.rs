@@ -113,7 +113,7 @@ impl PhpTokenizerBuilder {
     /// * `mode` - Mode string ("normal" or "decompose").
     pub fn set_mode(&self, mode: String) -> PhpResult<()> {
         let mut builder = self.inner.borrow_mut();
-        builder.set_mode(&mode).map_err(lindera_value_err)?;
+        builder.set_mode(&mode, None).map_err(lindera_value_err)?;
         Ok(())
     }
 
@@ -306,6 +306,7 @@ impl PhpTokenizer {
 
         let inner = CoreTokenizer::from_segmenter_with_space_penalty(
             &mode_str,
+            None,
             dict,
             user_dict,
             &space_penalty,

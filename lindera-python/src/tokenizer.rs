@@ -142,7 +142,7 @@ impl PyTokenizerBuilder {
     /// Self for method chaining.
     #[pyo3(signature = (mode))]
     fn set_mode<'a>(mut slf: PyRefMut<'a, Self>, mode: &str) -> PyResult<PyRefMut<'a, Self>> {
-        slf.inner.set_mode(mode).map_err(to_py_error)?;
+        slf.inner.set_mode(mode, None).map_err(to_py_error)?;
         Ok(slf)
     }
 
@@ -372,6 +372,7 @@ impl PyTokenizer {
         };
         let inner = CoreTokenizer::from_segmenter_with_space_penalty(
             mode,
+            None,
             dictionary.inner,
             user_dictionary.map(|d| d.inner),
             &space_penalty,
