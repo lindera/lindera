@@ -583,12 +583,15 @@ pub struct Lattice {
     exit_penalties: Vec<i32>,
 }
 
-/// Upper bound applied to every stored `path_cost` so the relaxation loops
-/// can use plain addition: one connection cost plus one penalty per step is
-/// at most 2 * 32,767, which cannot overflow from this clamp. Costs that are
-/// not bounded by `i16` (the Decompose length penalty and the left-space
-/// penalty, both arbitrary `i32`) are folded in with `saturating_add`
-/// instead.
+/// Bound applied to every stored `path_cost` from both sides: a stored cost
+/// is clamped to `-PATH_COST_CLAMP..=PATH_COST_CLAMP`, so the relaxation
+/// loops and the EOS connections can add a connection cost (an `i16`) with
+/// plain addition, which stays within `±(PATH_COST_CLAMP + 32_768)`. Costs
+/// that are not bounded by `i16` (the Decompose length penalty and the
+/// left-space penalty, both arbitrary `i32`) are folded in with
+/// `saturating_add` instead. A negative one can take a path below
+/// `-PATH_COST_CLAMP`, so the lower bound is needed as much as the upper
+/// one (#1224).
 const PATH_COST_CLAMP: i32 = i32::MAX - 131_072;
 
 /// One BOS (beginning-of-sentence) edge of a lattice; see
@@ -2530,7 +2533,7 @@ impl Lattice {
     ) -> (i32, Option<u32>) {
         self.refresh_penalty_cache(start_char, penalty);
         // Matrix row hoisted like the Normal arm (#880/#944); path +
-        // connection stays a plain add (bounded by PATH_COST_CLAMP + i16),
+        // connection stays a plain add (within ±(PATH_COST_CLAMP + i16)),
         // while the penalty addition keeps saturating_add because the
         // penalty is unbounded.
         let mut best_cost = i32::MAX;
@@ -2868,7 +2871,8 @@ impl Lattice {
     }
 
     /// Stores `edge` in slot `stop_char` with the transition `best` found by
-    /// [`Self::relax`].
+    /// [`Self::relax`], its path cost clamped to
+    /// `-PATH_COST_CLAMP..=PATH_COST_CLAMP` (see `PATH_COST_CLAMP`).
     ///
     /// # Arguments
     ///
@@ -2889,7 +2893,7 @@ impl Lattice {
         edge.path_cost = best_cost
             .saturating_add(extra_cost)
             .saturating_add(edge.word_cost as i32)
-            .min(PATH_COST_CLAMP);
+            .clamp(-PATH_COST_CLAMP, PATH_COST_CLAMP);
         edge.left_index = best_left;
         self.ends_at[stop_char].push(edge);
     }
@@ -3352,6 +3356,7 @@ impl Lattice {
     /// binary-searches). Without a best transition neither the edge nor its
     /// entries are recorded: the entries would carry the index of the next
     /// edge stored in the slot, which would read them as its own (#1114).
+    /// The edge's path cost is clamped as in [`Self::push_relaxed`].
     ///
     /// # Arguments
     ///
@@ -3378,7 +3383,7 @@ impl Lattice {
         // folds it into the recorded transitions).
         edge.path_cost = best_cost
             .saturating_add(edge.word_cost as i32)
-            .min(PATH_COST_CLAMP);
+            .clamp(-PATH_COST_CLAMP, PATH_COST_CLAMP);
         edge.left_index = best_left;
         self.ends_at[stop_char].push(edge);
     }
@@ -7434,5 +7439,155 @@ mod tests {
         let actual = unique_paths(UniqueNBestGenerator::new(&lattice));
         assert_unique_paths("k = 6", &actual, &all);
         assert_eq!(actual.first(), all.first());
+    }
+
+    // --- #1224: stored path costs are bounded from below ---
+
+    /// Builds a system dictionary with one entry per surface, word ids in
+    /// the order of `surfaces`, each costing the lowest word cost, -32768,
+    /// with context ids 0.
+    fn lowest_cost_each(surfaces: &[&str]) -> PrefixDictionary {
+        let mut map = BTreeMap::new();
+        for (id, surface) in surfaces.iter().enumerate() {
+            map.insert(
+                surface.to_string(),
+                vec![WordEntry::new(sys(id as u32), i16::MIN, 0, 0)],
+            );
+        }
+        PrefixDictionary::from_word_entry_map(&map).unwrap()
+    }
+
+    /// Builds the 1-best or the N-best lattice of the #1224 tests: `text`
+    /// over `a`, `b` and `c` of [`lowest_cost_each`], one context id whose
+    /// connection costs -32768, and, with `space`, a left-space penalty of
+    /// `space` on `b`.
+    fn lowest_cost_lattice(text: &str, mode: &Mode, space: Option<i32>, nbest: bool) -> Lattice {
+        let char_definition = test_char_definition();
+        let unknown_dictionary = test_unknown_dictionary();
+        let dict = lowest_cost_each(&["a", "b", "c"]);
+        // Transposed-format header and a single cost of -32768 (0x8000).
+        let cost_matrix =
+            ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0x00, 0x80]).unwrap();
+        let space_penalty = space.map(|cost| {
+            let whitespace = WhitespaceClassifier::new(&char_definition).unwrap();
+            SpacePenaltyTable::from_costs(&[0, cost, 0], &[0; 3], Some(whitespace))
+        });
+        let mut options = LatticeOptions::new(mode);
+        options.space_penalty = space_penalty.as_ref();
+        let mut lattice = Lattice::default();
+        if nbest {
+            lattice.set_text_nbest_with_options(
+                &dict,
+                &None,
+                &char_definition,
+                &unknown_dictionary,
+                &cost_matrix,
+                text,
+                &options,
+            );
+        } else {
+            lattice.set_text_with_options(
+                &dict,
+                &None,
+                &char_definition,
+                &unknown_dictionary,
+                &cost_matrix,
+                text,
+                &options,
+            );
+        }
+        lattice
+    }
+
+    /// The Decompose mode of the #1224 tests: every word pays `i32::MIN`
+    /// per character, so a one-character word pays `i32::MIN` to the word
+    /// after it.
+    fn lowest_decompose() -> Mode {
+        Mode::Decompose(Penalty {
+            kanji_penalty_length_threshold: 0,
+            kanji_penalty_length_penalty: i32::MIN,
+            other_penalty_length_threshold: 0,
+            other_penalty_length_penalty: i32::MIN,
+        })
+    }
+
+    /// Asserts that EOS connects and that every other stored edge of
+    /// `lattice` has a path cost within `-PATH_COST_CLAMP..=PATH_COST_CLAMP`.
+    fn assert_path_costs_bounded(lattice: &Lattice, case: &str) {
+        let n_chars = lattice.char_len();
+        assert_eq!(
+            lattice.edges_at_char(n_chars).len(),
+            lattice.final_edges().len() + 1,
+            "{case}: EOS connects"
+        );
+        let stored = (0..n_chars)
+            .flat_map(|pos| lattice.edges_at_char(pos))
+            .chain(lattice.final_edges());
+        for edge in stored {
+            assert!(
+                (-PATH_COST_CLAMP..=PATH_COST_CLAMP).contains(&edge.path_cost()),
+                "{case}: {edge:?}"
+            );
+        }
+    }
+
+    /// The 1-best tokens of `abc` in the #1224 tests.
+    fn abc_tokens() -> Vec<TokenOffset> {
+        vec![(0, 1, sys(0)), (1, 2, sys(1)), (2, 3, sys(2))]
+    }
+
+    /// The 1-best tokens of `a b` in the #1224 tests.
+    fn a_space_b_tokens() -> Vec<TokenOffset> {
+        vec![(0, 1, sys(0)), (1, 2, unk(UNKNOWN_SPACE)), (2, 3, sys(1))]
+    }
+
+    /// #1224: a negative Decompose penalty cannot take a stored path cost
+    /// below `-PATH_COST_CLAMP`, so the plain addition of a connection cost
+    /// to it cannot overflow. Every word and connection costs -32768 and
+    /// every word pays `i32::MIN` to the word after it: the path cost of `b`
+    /// used to saturate at `i32::MIN`, and the relaxation into `c`
+    /// overflowed (a panic in the test profile).
+    #[test]
+    fn test_negative_decompose_penalty_does_not_overflow() {
+        let lattice = lowest_cost_lattice("abc", &lowest_decompose(), None, false);
+        assert_eq!(lattice.tokens_offset(), abc_tokens());
+        assert_path_costs_bounded(&lattice, "1-best");
+    }
+
+    /// #1224: [`test_negative_decompose_penalty_does_not_overflow`] in the
+    /// N-best lattice, whose relaxation into `c` overflowed the same way.
+    #[test]
+    fn test_negative_decompose_penalty_does_not_overflow_nbest() {
+        let lattice = lowest_cost_lattice("abc", &lowest_decompose(), None, true);
+        let paths = lattice.nbest_tokens_offset(10, false, None);
+        assert_eq!(paths.len(), 1, "{paths:?}");
+        assert_eq!(paths[0].0, abc_tokens());
+        assert_path_costs_bounded(&lattice, "N-best");
+    }
+
+    /// #1224: the same holds for a negative left-space penalty, which
+    /// applies in both modes: `b` after the space pays `i32::MIN`, so its
+    /// path cost used to saturate at `i32::MIN`, and the EOS connection
+    /// after it overflowed.
+    #[test]
+    fn test_negative_space_penalty_does_not_overflow() {
+        for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
+            let lattice = lowest_cost_lattice("a b", &mode, Some(i32::MIN), false);
+            assert_eq!(lattice.tokens_offset(), a_space_b_tokens(), "{mode:?}");
+            assert_path_costs_bounded(&lattice, &format!("1-best {mode:?}"));
+        }
+    }
+
+    /// #1224: [`test_negative_space_penalty_does_not_overflow`] in the
+    /// N-best lattice, whose EOS connection overflowed the same way.
+    #[test]
+    fn test_negative_space_penalty_does_not_overflow_nbest() {
+        for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
+            let lattice = lowest_cost_lattice("a b", &mode, Some(i32::MIN), true);
+            let paths = lattice.nbest_tokens_offset(10, false, None);
+            assert_eq!(paths.len(), 1, "{mode:?}: {paths:?}");
+            assert_eq!(paths[0].0, a_space_b_tokens(), "{mode:?}");
+            assert_path_costs_bounded(&lattice, &format!("N-best {mode:?}"));
+        }
     }
 }
