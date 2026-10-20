@@ -180,7 +180,7 @@
 <h2 id="es-module-インポート"><a class="header" href="#es-module-インポート">ES Module インポート</a></h2>
 <p>ブラウザ環境では、Lindera の関数を使用する前に WASM モジュールを初期化する必要があります。デフォルトエクスポートの <code>__wbg_init</code> がこの初期化を処理します。</p>
 <p>推奨される方法は、辞書を WASM バイナリに埋め込むのではなく、OPFS から読み込むことです：</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
@@ -205,7 +205,7 @@ async function main() {
 
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dictionary);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("形態素解析を行います");
@@ -222,14 +222,14 @@ main();
 <p>[!NOTE]
 ここでの <code>lindera-wasm-ipadic</code> は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm</code> のみです。このようなパッケージを自分でビルド・命名する方法は <a href="./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
 </blockquote>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
 
     const builder = new TokenizerBuilder();
     builder.setDictionary("embedded://ipadic");
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("形態素解析を行います");
@@ -255,7 +255,7 @@ main();
     &lt;pre id="output"&gt;Loading dictionary...&lt;/pre&gt;
 
     &lt;script type="module"&gt;
-        import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
+        import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
         import { downloadDictionary, loadDictionaryFiles, hasDictionary } from './pkg/opfs.js';
 
         let tokenizer;
@@ -282,7 +282,7 @@ main();
 
             const builder = new TokenizerBuilder();
             builder.setDictionaryInstance(dictionary);
-            builder.setMode("normal");
+            builder.setMode(Mode.normal());
             tokenizer = builder.build();
 
             document.getElementById('tokenize').disabled = false;
@@ -321,7 +321,7 @@ module.exports = {
 };
 </code></pre>
 <p>次に、<code>lindera-wasm</code> パッケージをインポートします。<code>web</code> ターゲットのビルドでは、使用前にデフォルトエクスポートの <code>__wbg_init()</code> を呼び出す必要があります：</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 // WASM モジュールを初期化
@@ -337,12 +337,12 @@ const dictionary = loadDictionaryFromBytes(
 
 const builder = new TokenizerBuilder();
 builder.setDictionaryInstance(dictionary);
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 </code></pre>
 <h2 id="vite--rollup-のセットアップ"><a class="header" href="#vite--rollup-のセットアップ">Vite / Rollup のセットアップ</a></h2>
 <p>Vite は <code>web</code> ターゲットの WASM をそのままサポートしています。npm からインストールした <code>lindera-wasm</code> を直接インポートできます：</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 await __wbg_init();

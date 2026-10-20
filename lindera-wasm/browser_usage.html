@@ -180,7 +180,7 @@
 <h2 id="es-module-import"><a class="header" href="#es-module-import">ES Module Import</a></h2>
 <p>In browser environments, you must initialize the WASM module before using any Lindera functions. The default export <code>__wbg_init</code> handles this initialization.</p>
 <p>The recommended approach is to load dictionaries from OPFS rather than embedding them in the WASM binary:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
@@ -204,7 +204,7 @@ async function main() {
 
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dictionary);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("形態素解析を行います");
@@ -221,14 +221,14 @@ main();
 <p>[!NOTE]
 <code>lindera-wasm-ipadic</code> is an illustrative package name here, not something published to npm. Only <code>lindera-wasm</code> is actually published; see <a href="./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a> for how to build and name a package like this yourself.</p>
 </blockquote>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
 
     const builder = new TokenizerBuilder();
     builder.setDictionary("embedded://ipadic");
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("形態素解析を行います");
@@ -254,7 +254,7 @@ main();
     &lt;pre id="output"&gt;Loading dictionary...&lt;/pre&gt;
 
     &lt;script type="module"&gt;
-        import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
+        import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
         import { downloadDictionary, loadDictionaryFiles, hasDictionary } from './pkg/opfs.js';
 
         let tokenizer;
@@ -280,7 +280,7 @@ main();
 
             const builder = new TokenizerBuilder();
             builder.setDictionaryInstance(dictionary);
-            builder.setMode("normal");
+            builder.setMode(Mode.normal());
             tokenizer = builder.build();
 
             document.getElementById('tokenize').disabled = false;
@@ -322,7 +322,7 @@ module.exports = {
 </code></pre>
 <p>Then import the package and call the default-exported async init function
 once before using any API (the web-target build requires it, bundled or not):</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 await __wbg_init();
@@ -336,14 +336,14 @@ const dictionary = loadDictionaryFromBytes(
 
 const builder = new TokenizerBuilder();
 builder.setDictionaryInstance(dictionary);
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 </code></pre>
 <h2 id="vite--rollup-setup"><a class="header" href="#vite--rollup-setup">Vite / Rollup Setup</a></h2>
 <p>Vite supports the web-target WASM build out of the box. Install <code>lindera-wasm</code>
 from npm, or place a locally built <code>pkg/</code> directory in your project and import
 directly:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
 import { loadDictionaryFiles } from './pkg/opfs.js';
 
 await __wbg_init();

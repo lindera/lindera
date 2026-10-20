@@ -192,15 +192,15 @@ method, not chained off an existing instance.</p>
 <pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.from_file('config.json')
 </code></pre>
 <h3 id="configuration-methods"><a class="header" href="#configuration-methods">Configuration Methods</a></h3>
-<h4 id="set_modemode-penalty-nil"><a class="header" href="#set_modemode-penalty-nil"><code>set_mode(mode, penalty: nil)</code></a></h4>
-<p>Sets the tokenization mode.</p>
+<h4 id="set_modemode"><a class="header" href="#set_modemode"><code>set_mode(mode)</code></a></h4>
+<p>Sets the tokenization mode. <code>mode</code> is a <a href="#mode"><code>Lindera::Mode</code></a>:</p>
 <ul>
-<li><code>"normal"</code> -- Standard tokenization (default)</li>
-<li><code>"decompose"</code> -- Decomposes compound words into smaller units</li>
+<li><code>Lindera::Mode.normal</code> -- Standard tokenization (default)</li>
+<li><code>Lindera::Mode.decompose(penalty = nil)</code> -- Decomposes compound words into smaller units, with the length penalties of a <a href="#penalty"><code>Lindera::Penalty</code></a> (the default penalty for <code>nil</code>)</li>
 </ul>
-<p>The <code>penalty:</code> keyword takes the <a href="#penalty"><code>Lindera::Penalty</code></a> that <code>"decompose"</code> mode uses; <code>nil</code> (the default) uses the default penalty. A penalty with <code>"normal"</code> raises <code>RuntimeError</code>, as an invalid mode does, and a value that is not a <code>Lindera::Penalty</code> raises <code>TypeError</code>.</p>
-<pre><code class="language-ruby">builder.set_mode('normal')
-builder.set_mode('decompose', penalty: Lindera::Penalty.new(nil, 0, nil, nil))
+<p>A value that is not a <code>Lindera::Mode</code>, such as a mode string (<code>'normal'</code>), a Symbol or <code>nil</code>, raises <code>TypeError</code>. To turn a mode name read at run time into a <code>Mode</code>, use <a href="#linderamodefrom_strname"><code>Lindera::Mode.from_str</code></a>.</p>
+<pre><code class="language-ruby">builder.set_mode(Lindera::Mode.normal)
+builder.set_mode(Lindera::Mode.decompose(Lindera::Penalty.new(nil, 0, nil, nil)))
 </code></pre>
 <h4 id="set_dictionarypath"><a class="header" href="#set_dictionarypath"><code>set_dictionary(path)</code></a></h4>
 <p>Sets the system dictionary path or URI.</p>
@@ -271,10 +271,9 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Lindera::Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer"><a class="header" href="#creating-a-tokenizer">Creating a Tokenizer</a></h3>
-<h4 id="linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><a class="header" href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><code>Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil, penalty: nil)</code></a></h4>
-<p>Creates a tokenizer directly from a loaded dictionary. <code>mode</code> defaults to <code>'normal'</code>, and <code>user_dictionary</code> is optional.</p>
+<h4 id="linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><a class="header" href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil)</code></a></h4>
+<p>Creates a tokenizer directly from a loaded dictionary. <code>mode</code> is a <a href="#mode"><code>Lindera::Mode</code></a>, as <a href="#set_modemode"><code>TokenizerBuilder#set_mode</code></a> takes it; <code>nil</code> (the default) means normal mode, and a value that is not a <code>Lindera::Mode</code>, such as a mode string (<code>'normal'</code>), raises <code>TypeError</code>. <code>user_dictionary</code> is optional.</p>
 <p>The <code>space_penalty:</code> keyword takes the same values as <a href="#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a>. <code>nil</code> (the default) uses the left-space penalty rules the dictionary ships, so with ko-dic the penalty is on; pass <code>false</code> to turn it off. An invalid setting raises the same errors as <code>set_space_penalty</code> and <code>build</code>.</p>
-<p>The <code>penalty:</code> keyword takes a <a href="#penalty"><code>Lindera::Penalty</code></a> for <code>"decompose"</code> mode, as <a href="#set_modemode-penalty-nil"><code>TokenizerBuilder#set_mode</code></a> does, with the same errors.</p>
 <pre><code class="language-ruby">require 'lindera'
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
@@ -286,7 +285,7 @@ ko_tokenizer = Lindera::Tokenizer.new(Lindera.load_dictionary('embedded://ko-dic
 <p>With a user dictionary:</p>
 <pre><code class="language-ruby">dictionary = Lindera.load_dictionary('embedded://ipadic')
 user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.normal, user_dict)
 </code></pre>
 <h3 id="tokenizer-methods"><a class="header" href="#tokenizer-methods">Tokenizer Methods</a></h3>
 <h4 id="tokenizetext"><a class="header" href="#tokenizetext"><code>tokenize(text)</code></a></h4>
@@ -327,32 +326,52 @@ end
 </div>
 <p><strong>Returns:</strong> <code>Array&lt;Array(Array&lt;Token&gt;, Integer)&gt;</code></p>
 <h2 id="mode"><a class="header" href="#mode">Mode</a></h2>
-<p><code>Lindera::Mode</code> represents a tokenization mode. It is provided as a standalone helper for inspecting or comparing modes; <code>TokenizerBuilder#set_mode</code> and <code>Tokenizer.new</code> take a plain mode string (<code>"normal"</code> or <code>"decompose"</code>), not a <code>Mode</code> instance. The penalty of decompose mode goes in their <code>penalty:</code> keyword (see <a href="#penalty"><code>Penalty</code></a> below).</p>
+<p><code>Lindera::Mode</code> is the tokenization mode that <a href="#set_modemode"><code>TokenizerBuilder#set_mode</code></a> and <a href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Tokenizer.new</code></a> take. It is the Ruby counterpart of the Rust <code>lindera::mode::Mode</code>: normal mode, or decompose mode with the <a href="#penalty"><code>Lindera::Penalty</code></a> it uses.</p>
 <h3 id="creating-a-mode"><a class="header" href="#creating-a-mode">Creating a Mode</a></h3>
-<h4 id="linderamodenewmode_str"><a class="header" href="#linderamodenewmode_str"><code>Lindera::Mode.new(mode_str)</code></a></h4>
-<p>Creates a <code>Mode</code>. The argument is required, but may be <code>nil</code>. Accepts <code>"normal"</code> / <code>"Normal"</code> (used when <code>mode_str</code> is <code>nil</code>) or <code>"decompose"</code> / <code>"Decompose"</code>; any other value raises <code>ArgumentError</code>.</p>
+<p><code>Lindera::Mode</code> has no <code>new</code> (<code>Lindera::Mode.new</code> raises <code>TypeError</code>). The following class methods create a mode.</p>
+<h4 id="linderamodenormal"><a class="header" href="#linderamodenormal"><code>Lindera::Mode.normal</code></a></h4>
+<p>Returns normal mode.</p>
+<h4 id="linderamodedecomposepenalty--nil"><a class="header" href="#linderamodedecomposepenalty--nil"><code>Lindera::Mode.decompose(penalty = nil)</code></a></h4>
+<p>Returns decompose mode with <code>penalty</code>, a <code>Lindera::Penalty</code>. <code>nil</code> or no argument uses the default penalty. A value that is not a <code>Lindera::Penalty</code> raises <code>TypeError</code>.</p>
+<h4 id="linderamodefrom_strname"><a class="header" href="#linderamodefrom_strname"><code>Lindera::Mode.from_str(name)</code></a></h4>
+<p>Returns the mode named <code>name</code>, as the Rust <code>Mode</code> parses it: <code>'normal'</code>, or <code>'decompose'</code> with the default penalty. The name is case sensitive; any other name, such as <code>'Normal'</code>, raises <code>RuntimeError</code> with an <code>Invalid mode</code> message. Use it for a mode name read at run time, such as from a setting.</p>
 <pre><code class="language-ruby">require 'lindera'
 
-mode = Lindera::Mode.new('normal')
-mode = Lindera::Mode.new('decompose')
-mode = Lindera::Mode.new(nil)  # defaults to "normal"
+normal = Lindera::Mode.normal
+decompose = Lindera::Mode.decompose
+no_length_penalty = Lindera::Mode.decompose(Lindera::Penalty.new(nil, 0, nil, 0))
+from_setting = Lindera::Mode.from_str('decompose')
 </code></pre>
 <h3 id="mode-methods"><a class="header" href="#mode-methods">Mode Methods</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>to_s</code></td><td><code>String</code></td><td><code>"normal"</code> or <code>"decompose"</code></td></tr>
-<tr><td><code>name</code></td><td><code>String</code></td><td>Same as <code>to_s</code></td></tr>
-<tr><td><code>inspect</code></td><td><code>String</code></td><td>e.g. <code>"#&lt;Lindera::Mode: decompose&gt;"</code></td></tr>
-<tr><td><code>normal?</code></td><td><code>Boolean</code></td><td><code>true</code> if the mode is <code>"normal"</code></td></tr>
-<tr><td><code>decompose?</code></td><td><code>Boolean</code></td><td><code>true</code> if the mode is <code>"decompose"</code></td></tr>
+<tr><td><code>name</code></td><td><code>String</code></td><td><code>"normal"</code> or <code>"decompose"</code></td></tr>
+<tr><td><code>to_s</code></td><td><code>String</code></td><td>Same as <code>name</code></td></tr>
+<tr><td><code>inspect</code></td><td><code>String</code></td><td>The name, followed by the penalty for decompose mode</td></tr>
+<tr><td><code>penalty</code></td><td><code>Penalty</code> or <code>nil</code></td><td>A copy of the penalty of decompose mode; <code>nil</code> for normal mode</td></tr>
+<tr><td><code>normal?</code></td><td><code>Boolean</code></td><td><code>true</code> for normal mode</td></tr>
+<tr><td><code>decompose?</code></td><td><code>Boolean</code></td><td><code>true</code> for decompose mode</td></tr>
+<tr><td><code>==</code></td><td><code>Boolean</code></td><td><code>true</code> if the other value is a <code>Mode</code> with the same name and penalty</td></tr>
 </tbody></table>
 </div>
-<pre><code class="language-ruby">mode = Lindera::Mode.new('decompose')
-mode.to_s        # "decompose"
-mode.normal?      # false
-mode.decompose?   # true
+<p>A mode cannot be changed: it has no setter methods, and <code>penalty</code> returns a copy.</p>
+<p><code>==</code> compares the name and the penalty, and returns <code>false</code> for a value of another type, such as the string <code>'normal'</code>. <code>eql?</code> and <code>hash</code> stay by identity, as the Rust <code>Mode</code> is <code>Eq</code> but not <code>Hash</code>: two equal modes are different <code>Hash</code> keys, and <code>uniq</code> keeps both.</p>
+<pre><code class="language-ruby">mode = Lindera::Mode.decompose(Lindera::Penalty.new(nil, 0, nil, 0))
+mode.name                                   # "decompose"
+mode.normal?                                # false
+mode.decompose?                             # true
+mode.penalty.kanji_penalty_length_penalty   # 0
+mode.inspect
+# "#&lt;Lindera::Mode: decompose Penalty(kanji_threshold=2, kanji_penalty=0, other_threshold=7, other_penalty=0)&gt;"
+
+Lindera::Mode.normal.inspect   # "#&lt;Lindera::Mode: normal&gt;"
+Lindera::Mode.normal.penalty   # nil
+
+Lindera::Mode.decompose == Lindera::Mode.from_str('decompose')  # true
+Lindera::Mode.decompose == mode                                 # false (the penalties differ)
+Lindera::Mode.normal == 'normal'                                # false
 </code></pre>
 <h2 id="penalty"><a class="header" href="#penalty">Penalty</a></h2>
-<p><code>Lindera::Penalty</code> configures the length-based penalty thresholds used by <code>"decompose"</code> mode segmentation.</p>
+<p><code>Lindera::Penalty</code> configures the length-based penalty thresholds used by decompose mode segmentation. Pass it to <a href="#linderamodedecomposepenalty--nil"><code>Lindera::Mode.decompose</code></a>.</p>
 <h3 id="creating-a-penalty"><a class="header" href="#creating-a-penalty">Creating a Penalty</a></h3>
 <h4 id="linderapenaltynewkanji_penalty_length_threshold-kanji_penalty_length_penalty-other_penalty_length_threshold-other_penalty_length_penalty"><a class="header" href="#linderapenaltynewkanji_penalty_length_threshold-kanji_penalty_length_penalty-other_penalty_length_threshold-other_penalty_length_penalty"><code>Lindera::Penalty.new(kanji_penalty_length_threshold, kanji_penalty_length_penalty, other_penalty_length_threshold, other_penalty_length_penalty)</code></a></h4>
 <p>All four positional arguments are required, but each may be <code>nil</code> to fall back to its default (shown below).</p>
@@ -374,7 +393,7 @@ penalty = Lindera::Penalty.new(nil, nil, nil, nil)  # uses all defaults
 penalty.kanji_penalty_length_threshold  # 2
 </code></pre>
 <h3 id="using-a-penalty"><a class="header" href="#using-a-penalty">Using a Penalty</a></h3>
-<p>Pass a <code>Penalty</code> with <code>"decompose"</code> as the <code>penalty:</code> keyword of <a href="#set_modemode-penalty-nil"><code>TokenizerBuilder#set_mode</code></a> or <a href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><code>Tokenizer.new</code></a>. Without length penalties, decompose mode keeps long words whole:</p>
+<p>Pass a <code>Penalty</code> to <a href="#linderamodedecomposepenalty--nil"><code>Lindera::Mode.decompose</code></a>, and the mode to <a href="#set_modemode"><code>TokenizerBuilder#set_mode</code></a> or <a href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Tokenizer.new</code></a>. Without length penalties, decompose mode keeps long words whole:</p>
 <pre><code class="language-ruby">require 'lindera'
 
 text = '関西国際空港限定トートバッグ'
@@ -382,20 +401,19 @@ penalty = Lindera::Penalty.new(nil, 0, nil, 0)
 
 builder = Lindera::TokenizerBuilder.new
 builder.set_dictionary('embedded://ipadic')
-builder.set_mode('decompose')
+builder.set_mode(Lindera::Mode.decompose)
 p builder.build.tokenize(text).map(&amp;:surface)
 # =&gt; ["関西", "国際", "空港", "限定", "トートバッグ"]
 
-builder.set_mode('decompose', penalty: penalty)
+builder.set_mode(Lindera::Mode.decompose(penalty))
 p builder.build.tokenize(text).map(&amp;:surface)
 # =&gt; ["関西国際空港", "限定", "トートバッグ"]
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
-tokenizer = Lindera::Tokenizer.new(dictionary, 'decompose', penalty: penalty)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.decompose(penalty))
 p tokenizer.tokenize(text).map(&amp;:surface)
 # =&gt; ["関西国際空港", "限定", "トートバッグ"]
 </code></pre>
-<p>A <code>Penalty</code> with <code>"normal"</code> mode raises <code>RuntimeError</code>.</p>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
 <p><code>Token</code> represents a single morphological token.</p>
 <h3 id="properties"><a class="header" href="#properties">Properties</a></h3>

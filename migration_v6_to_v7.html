@@ -237,7 +237,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>WASM: the <code>TokenizerBuilder</code> settings apply whichever way the dictionary is set</strong></td><td>WASM users who combine <code>setDictionaryInstance()</code> with <code>setKeepWhitespace()</code> or filters, or <code>setDictionary()</code> with <code>setUserDictionaryInstance()</code></td><td>Expect those settings and the user dictionary to take effect; a dictionary instance whose <code>char.def</code> has no <code>SPACE</code> category now needs <code>setKeepWhitespace(true)</code>, as a dictionary set by URI does</td></tr>
 <tr><td><strong>PHP: an optional argument of the wrong type throws instead of selecting the default</strong></td><td>PHP code that passes a value of another type to an optional parameter, such as a numeric string for <code>$max_iter</code> of <code>Lindera\Trainer::train()</code> or <code>1</code> for <code>$unique</code> of <code>tokenizeNbest()</code></td><td>Pass the declared type, casting strings such as <code>$argv</code> values with <code>(int)</code>; <code>null</code> or leaving the argument out still selects the default</td></tr>
 <tr><td><strong>PHP, Node.js and WASM: an integer argument outside the range of its setting throws instead of wrapping</strong></td><td>Code that passes such a value, such as <code>100000</code> for the default word cost of <code>Metadata</code> (v6 stored <code>-31072</code>) or <code>-1</code> for the number of N-best results (v6 listed every segmentation); a negative index for <code>getFieldName</code> or PHP's <code>getDetail</code>; in Node.js and WASM, a number that is not an integer, such as <code>1.5</code> or <code>NaN</code></td><td>Pass an integer in the range; the error names the parameter and the range</td></tr>
-<tr><td><strong>Bindings: decompose mode takes a <code>Penalty</code> through <code>set_mode</code> / <code>setMode</code> and the <code>Tokenizer</code> constructors, and <code>TokenizerBuilder::set_segmenter_mode</code> keeps the penalty of a <code>Mode::Decompose</code></strong></td><td>Binding users who want a custom decompose penalty; TypeScript code that names the Node.js type <code>JsPenalty</code>; Rust code that passes a custom penalty to <code>set_segmenter_mode</code>; binding authors who call <code>CoreTokenizerBuilder::set_mode</code> or <code>CoreTokenizer::from_segmenter_with_space_penalty</code></td><td>Pass a <code>Penalty</code> as the new argument to customize the penalty; rename <code>JsPenalty</code> to <code>Penalty</code>; pass <code>None</code> as the new argument of the <code>lindera-binding</code> functions</td></tr>
+<tr><td><strong>Bindings: a mode is a <code>Mode</code>, which holds the penalty of decompose mode as the Rust <code>Mode</code> does; <code>set_mode</code> / <code>setMode</code> and the <code>Tokenizer</code> constructors take a <code>Mode</code> instead of a mode name, and <code>TokenizerBuilder::set_segmenter_mode</code> keeps the penalty of a <code>Mode::Decompose</code></strong></td><td>Binding users who set a mode; code that uses a binding's <code>Mode</code>, Node.js's <code>JsMode</code> or WASM's numeric <code>Mode</code>; TypeScript code that names the Node.js type <code>JsPenalty</code>; Rust code that passes a custom penalty to <code>set_segmenter_mode</code>; binding authors who call <code>CoreTokenizerBuilder::set_mode</code> or the <code>CoreTokenizer::from_segmenter</code> functions</td><td>Pass <code>Mode.normal()</code> or <code>Mode.decompose(penalty)</code> (in Ruby <code>Lindera::Mode.normal</code>, in PHP <code>Lindera\Mode::normal()</code>) instead of <code>"normal"</code> or <code>"decompose"</code>, and turn a mode name read at run time into a <code>Mode</code> with <code>Mode.from_str</code> / <code>Mode.fromStr</code>; rename <code>JsPenalty</code> to <code>Penalty</code>; pass a <code>lindera::mode::Mode</code> to the <code>lindera-binding</code> functions</td></tr>
 <tr><td><strong><code>lindera train</code> builds its lattices as MeCab's learner does and keeps every <code>unk.def</code> entry; <code>model.dat</code> has the format version 2.0.0</strong></td><td>Users of <code>lindera train</code> and <code>lindera export</code>, and of the training functions of the Python, Node.js, Ruby and PHP bindings</td><td>Train every model again with 7.0.0, then export and build it again (a <code>model.dat</code> written by v6.2.0 or earlier is rejected); give every <code>unk.def</code> line at least five fields; remove comment lines from seed lexicons</td></tr>
 <tr><td><strong><code>lindera build</code> rejects context IDs outside <code>matrix.def</code></strong></td><td>Anyone who builds a system dictionary whose <code>lex.csv</code> or <code>unk.def</code> has a context ID beyond the size of its <code>matrix.def</code> (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's <code>mecab-dict-index</code> accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic</td><td>Fix the IDs or the matrix, or set <code>skip_invalid_cost_or_id</code> in <code>metadata.json</code> to drop such <code>lex.csv</code> rows; fix such IDs in the user dictionary</td></tr>
 <tr><td><strong><code>lindera build</code> and <code>lindera train</code> check <code>char.def</code> against <code>unk.def</code></strong></td><td>Anyone whose <code>char.def</code> has a range line that names a category not defined on an earlier line, or a category defined twice, or whose <code>char.def</code> and <code>unk.def</code> do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored <code>unk.def</code> lines); not dictionaries that MeCab's <code>mecab-dict-index</code> accepts</td><td>Define each category once, before the range lines that name it; give every category an <code>unk.def</code> line, and remove the <code>unk.def</code> lines of undefined categories</td></tr>
@@ -251,9 +251,12 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 </tbody></table>
 </div>
 <p>The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
-their package names, and their APIs apart from one setting: the <code>Metadata</code>
-classes of the Python, Node.js, Ruby and PHP bindings no longer take or
-expose <code>normalize_details</code> (see
+their package names, and their APIs apart from the mode and one setting: a
+binding takes the mode as a <code>Mode</code>, which holds the penalty of decompose
+mode as the Rust <code>Mode</code> does, instead of a mode name (see
+<a href="#bindings-a-mode-is-a-mode">Bindings: a mode is a <code>Mode</code></a>), and the
+<code>Metadata</code> classes of the Python, Node.js, Ruby and PHP bindings no longer
+take or expose <code>normalize_details</code> (see
 <a href="#the-normalize_details-setting-is-removed">The <code>normalize_details</code> setting is removed</a>).
 The PHP binding also rejects a value of the wrong type for an optional
 argument, which v6 read as <code>null</code> (see
@@ -1233,10 +1236,10 @@ or without <code>strict_types</code>. For example,
 not deduplicated, and <code>Lindera\Trainer::train(..., max_iter: $argv[1])</code>
 trained for the default 100 iterations whatever the command line said. A
 required parameter already rejected such a value.</p>
-<p>v7.0.0 rejects it for the optional parameters too: those of the <code>Mode</code>,
-<code>Penalty</code>, <code>Metadata</code>, <code>FieldDefinition</code> and <code>Tokenizer</code> constructors, of
-<code>Tokenizer::tokenizeNbest()</code>, <code>Trainer::train()</code>, <code>Trainer::export()</code> and
-<code>Dictionary::buildUser()</code>. The call throws a <code>TypeError</code>,
+<p>v7.0.0 rejects it for the optional parameters too: those of the <code>Penalty</code>,
+<code>Metadata</code>, <code>FieldDefinition</code> and <code>Tokenizer</code> constructors, of
+<code>Mode::decompose()</code>, <code>Tokenizer::tokenizeNbest()</code>, <code>Trainer::train()</code>,
+<code>Trainer::export()</code> and <code>Dictionary::buildUser()</code>. The call throws a <code>TypeError</code>,
 <code>Invalid value given for argument</code> followed by the parameter's name. A
 required parameter now throws the same <code>TypeError</code> for such a value; v6
 threw an <code>Exception</code> with the same message. <code>null</code> and leaving the argument
@@ -1294,31 +1297,57 @@ these values, with <code>OverflowError</code> and <code>RangeError</code>, and d
 except that the <code>OverflowError</code> of a Python property setter now names the
 property in its note (<code>while processing 'default_word_cost'</code> instead of
 <code>'cost'</code>). No option restores the v6 behavior.</p>
-<h2 id="bindings-decompose-mode-takes-a-penalty"><a class="header" href="#bindings-decompose-mode-takes-a-penalty">Bindings: decompose mode takes a <code>Penalty</code></a></h2>
-<p>Up to v6.2.0, every binding had a <code>Penalty</code>, but no function or constructor
-took one: <code>set_mode</code> / <code>setMode</code> and the <code>Tokenizer</code> constructors took only a
-mode string, and decompose mode always used the default penalty. A custom
+<h2 id="bindings-a-mode-is-a-mode"><a class="header" href="#bindings-a-mode-is-a-mode">Bindings: a mode is a <code>Mode</code></a></h2>
+<p>Up to v6.2.0, every binding exported a <code>Mode</code>, but no function or
+constructor took one: <code>set_mode</code> / <code>setMode</code> and the <code>Tokenizer</code>
+constructors took a mode name, and decompose mode always used the default
+penalty. Node.js exported a string enum <code>JsMode</code>, whose values <code>'Normal'</code>
+and <code>'Decompose'</code> <code>setMode</code> rejected, and WASM a numeric enum. A custom
 penalty reached the segmenter only through a configuration file loaded with
 <code>from_file</code> / <code>fromFile</code>. In Rust, <code>TokenizerBuilder::set_segmenter_mode</code>
 lost the penalty of a <code>Mode::Decompose</code> the same way, because it wrote only
 the name of the mode into the configuration.</p>
-<p>In v7.0.0, <code>set_mode</code> / <code>setMode</code> and the <code>Tokenizer</code> constructors take the
-penalty as an optional argument, and <code>set_segmenter_mode</code> keeps it:</p>
-<div class="table-wrapper"><table><thead><tr><th>Binding</th><th>Builder</th><th><code>Tokenizer</code> constructor</th></tr></thead><tbody>
-<tr><td>Python</td><td><code>set_mode("decompose", penalty)</code></td><td><code>Tokenizer(dictionary, "decompose", penalty=penalty)</code></td></tr>
-<tr><td>Ruby</td><td><code>set_mode('decompose', penalty: penalty)</code></td><td><code>Lindera::Tokenizer.new(dictionary, 'decompose', penalty: penalty)</code></td></tr>
-<tr><td>PHP</td><td><code>$builder-&gt;setMode('decompose', $penalty)</code></td><td><code>new Lindera\Tokenizer($dictionary, 'decompose', penalty: $penalty)</code></td></tr>
-<tr><td>Node.js</td><td><code>builder.setMode("decompose", penalty)</code></td><td><code>new Tokenizer(dictionary, "decompose", null, null, penalty)</code></td></tr>
-<tr><td>WASM</td><td><code>builder.setMode("decompose", penalty)</code></td><td><code>new Tokenizer(dictionary, "decompose", null, null, penalty)</code></td></tr>
+<p>In v7.0.0, the <code>Mode</code> of each binding is a copy of the Rust
+<code>lindera::mode::Mode</code>: normal mode, or decompose mode with a <code>Penalty</code>.
+<code>set_mode</code> / <code>setMode</code> and the <code>Tokenizer</code> constructors take a <code>Mode</code>, as
+<code>set_segmenter_mode</code> and <code>Segmenter::new</code> do in Rust, and no longer take a
+mode name. Leaving the mode of a constructor out, or passing <code>null</code> /
+<code>None</code> / <code>nil</code>, still means normal mode, and <code>set_segmenter_mode</code> keeps the
+penalty:</p>
+<div class="table-wrapper"><table><thead><tr><th>Binding</th><th>v6</th><th>v7</th></tr></thead><tbody>
+<tr><td>Python</td><td><code>builder.set_mode("decompose")</code></td><td><code>builder.set_mode(Mode.decompose(penalty))</code></td></tr>
+<tr><td>Ruby</td><td><code>builder.set_mode('decompose')</code></td><td><code>builder.set_mode(Lindera::Mode.decompose(penalty))</code></td></tr>
+<tr><td>PHP</td><td><code>$builder-&gt;setMode('decompose')</code></td><td><code>$builder-&gt;setMode(Lindera\Mode::decompose($penalty))</code></td></tr>
+<tr><td>Node.js</td><td><code>builder.setMode("decompose")</code></td><td><code>builder.setMode(Mode.decompose(penalty))</code></td></tr>
+<tr><td>WASM</td><td><code>builder.setMode("decompose")</code></td><td><code>builder.setMode(Mode.decompose(penalty))</code></td></tr>
 </tbody></table>
 </div>
-<p>Leaving the argument out keeps the default penalty, so existing calls do not
-change. A penalty with <code>"normal"</code> is an error, as an invalid mode is. With
-IPADIC and both length penalties 0, decompose mode segments
-<code>関西国際空港限定トートバッグ</code> as <code>関西国際空港 / 限定 / トートバッグ</code>
-instead of <code>関西 / 国際 / 空港 / 限定 / トートバッグ</code>.</p>
-<p>Three changes can need action:</p>
+<p>The <code>Tokenizer</code> constructors take the same <code>Mode</code> as their second argument,
+for example <code>Tokenizer(dictionary, Mode.normal())</code> in Python. The penalty
+is optional: <code>Mode.decompose()</code> uses the default one. With IPADIC and both
+length penalties 0, decompose mode segments <code>関西国際空港限定トートバッグ</code>
+as <code>関西国際空港 / 限定 / トートバッグ</code> instead of
+<code>関西 / 国際 / 空港 / 限定 / トートバッグ</code>.</p>
+<p>A mode name read at run time, such as a setting, becomes a <code>Mode</code> with
+<code>Mode.from_str(name)</code> (<code>Mode.fromStr</code> in PHP, Node.js and WASM). It parses
+the name as the Rust <code>Mode</code> does: <code>"normal"</code> or <code>"decompose"</code>, case
+sensitive, the latter with the default penalty; another name throws the
+error that <code>set_mode</code> threw for it in v6. A mode name, or any other value
+that is not a <code>Mode</code>, passed to <code>set_mode</code> / <code>setMode</code> or a constructor now
+throws a type error: <code>TypeError</code> in Python, Ruby and PHP, an <code>InvalidArg</code>
+error in Node.js and <code>expected instance of Mode</code> in WASM.</p>
+<p>The other changes:</p>
 <ul>
+<li><strong>The <code>Mode</code> classes</strong>: a <code>Mode</code> has no constructor; <code>Mode.normal()</code>,
+<code>Mode.decompose()</code> and <code>Mode.from_str()</code> create one. It has a <code>name</code>, a
+<code>penalty</code> (a copy, or none for normal mode), the normal and decompose
+checks, and equality of the name and the penalty (<code>==</code>, or <code>equals()</code> in
+Node.js and WASM). Python's <code>Mode(mode_str)</code> and its attributes
+<code>Mode.Normal</code> / <code>Mode.Decompose</code>, Ruby's <code>Lindera::Mode.new</code>, PHP's
+<code>new Lindera\Mode()</code>, Node.js's <code>JsMode</code> and WASM's <code>Mode.Normal</code> /
+<code>Mode.Decompose</code> are gone. The Python and Ruby constructors accepted
+<code>"Normal"</code> and <code>"Decompose"</code>, and PHP's any case; <code>from_str</code> does not. A
+Python <code>Mode</code> is not hashable, as the Rust <code>Mode</code> is not <code>Hash</code>.</li>
 <li><strong>Node.js</strong>: the TypeScript type <code>JsPenalty</code> is renamed <code>Penalty</code>, and its
 fields become optional; a field left out keeps its default. TypeScript code
 that names <code>JsPenalty</code> uses <code>Penalty</code>. The package exports no value for the
@@ -1327,9 +1356,13 @@ type, so JavaScript code does not change.</li>
 whose penalty is not the default now applies that penalty, so the output
 changes. A mode parsed from <code>"decompose"</code>, such as the one the CLI's
 <code>--mode</code> gives, carries the default penalty and is not affected.</li>
-<li><strong>Binding authors</strong>: <code>CoreTokenizerBuilder::set_mode</code> and
-<code>CoreTokenizer::from_segmenter_with_space_penalty</code> take the penalty as their
-second argument; pass <code>None</code> to keep the default.</li>
+<li><strong>Binding authors</strong>: <code>CoreTokenizerBuilder::set_mode</code>,
+<code>CoreTokenizer::from_segmenter</code> and
+<code>CoreTokenizer::from_segmenter_with_space_penalty</code> take a
+<code>lindera::mode::Mode</code> instead of the <code>&amp;str</code> that v6.2.0's
+<code>lindera-binding-core</code> took. <code>set_mode</code> no longer returns a <code>Result</code>.
+<code>lindera_binding::parse_mode</code> parses a mode name, as the bindings'
+<code>from_str</code> do.</li>
 </ul>
 <h2 id="lindera-train-builds-its-lattices-as-mecabs-learner-does"><a class="header" href="#lindera-train-builds-its-lattices-as-mecabs-learner-does"><code>lindera train</code> builds its lattices as MeCab's learner does</a></h2>
 <p>Up to v6.2.0, <code>lindera train</code> built training lattices that differ from
@@ -1806,8 +1839,9 @@ and, in PHP, optional arguments of the wrong type (see
 <a href="#php-optional-arguments-reject-a-value-of-the-wrong-type">PHP: optional arguments reject a value of the wrong type</a>),
 and, in PHP, Node.js and WASM, integer arguments outside their range (see
 <a href="#bindings-integer-arguments-outside-their-range-are-rejected">Bindings: integer arguments outside their range are rejected</a>),
-and the Node.js TypeScript type <code>JsPenalty</code>, now <code>Penalty</code> (see
-<a href="#bindings-decompose-mode-takes-a-penalty">Bindings: decompose mode takes a <code>Penalty</code></a>).
+and the mode, which they take as a <code>Mode</code> instead of a name, and the
+Node.js TypeScript type <code>JsPenalty</code>, now <code>Penalty</code> (see
+<a href="#bindings-a-mode-is-a-mode">Bindings: a mode is a <code>Mode</code></a>).
 The restructuring is internal to the Rust crates. A dictionary directory
 built or downloaded with v6.2.0 or earlier has to be rebuilt or downloaded
 again (see
@@ -1905,9 +1939,11 @@ takes 10 arguments, and stop using the <code>CoreMetadata::normalize_details</co
 field.</li>
 <li>If you build <code>CoreMetadata</code> with a struct literal that lists every field,
 add <code>skip_whitespace: None</code> or end it with <code>..Default::default()</code>.</li>
-<li>Pass the penalty, or <code>None</code>, as the new second argument of
-<code>CoreTokenizerBuilder::set_mode</code> and
-<code>CoreTokenizer::from_segmenter_with_space_penalty</code>.</li>
+<li>Pass a <code>lindera::mode::Mode</code> instead of a mode name to
+<code>CoreTokenizerBuilder::set_mode</code>, which no longer returns a <code>Result</code>, and
+to <code>CoreTokenizer::from_segmenter</code> and
+<code>CoreTokenizer::from_segmenter_with_space_penalty</code>; parse a name with
+<code>lindera_binding::parse_mode</code>.</li>
 </ul>
 <p>Build environments:</p>
 <ul>
@@ -2095,9 +2131,15 @@ type for an optional parameter, which v6 read as <code>null</code>, now throws a
 <li>With PHP, Node.js and WASM, pass integer arguments in the range of their
 setting: a value outside it, which v6 wrapped, now throws, as do a
 negative index and, in Node.js and WASM, a number that is not an integer.</li>
-<li>With Node.js and TypeScript, rename the type <code>JsPenalty</code> to <code>Penalty</code>.
-To customize decompose mode, pass a <code>Penalty</code> to <code>set_mode</code> / <code>setMode</code> or
-to the <code>Tokenizer</code> constructor.</li>
+<li>Pass a <code>Mode</code> to <code>set_mode</code> / <code>setMode</code> and to the <code>Tokenizer</code>
+constructor instead of <code>"normal"</code> or <code>"decompose"</code>: <code>Mode.normal()</code> or
+<code>Mode.decompose()</code> (Ruby <code>Lindera::Mode.normal</code>, PHP
+<code>Lindera\Mode::normal()</code>), with a <code>Penalty</code> to customize decompose mode,
+or <code>Mode.from_str(name)</code> (<code>Mode.fromStr</code> in PHP, Node.js and WASM) for a
+name read at run time. Replace uses of the old <code>Mode</code> types, such as
+Python's <code>Mode("normal")</code>, Node.js's <code>JsMode</code> and WASM's <code>Mode.Normal</code>,
+in the same way.</li>
+<li>With Node.js and TypeScript, rename the type <code>JsPenalty</code> to <code>Penalty</code>.</li>
 <li>With the CLI, expect warnings on standard error, for example for a
 sentence cut after 32 KiB without a delimiter; set <code>RUST_LOG=error</code> to
 hide them.</li>
@@ -2105,8 +2147,8 @@ hide them.</li>
 dictionary rebuild, the dictionary, whitespace, <code>、</code> and <code>。</code>, N-best,
 unknown-word, default-category, dash and tilde, tied-entry and equal-cost
 items above, the <code>lindera train</code> and <code>lindera build</code> items, and the
-<code>lindera tokenize</code>, WASM, PHP, integer-argument, <code>JsPenalty</code> and CLI
-warning items.</li>
+<code>lindera tokenize</code>, WASM, PHP, integer-argument, <code>Mode</code>, <code>JsPenalty</code> and
+CLI warning items.</li>
 </ul>
 
                     </main>

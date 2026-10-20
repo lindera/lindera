@@ -217,12 +217,12 @@ const metadata = new Metadata();
 const userDict = loadUserDictionary("/path/to/user_dictionary.csv", metadata);
 </code></pre>
 <p>Pass the user dictionary when building a tokenizer:</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionaryFor } = require("lindera");
+<pre><code class="language-javascript">const { Mode, Tokenizer, loadDictionary, loadUserDictionaryFor } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
 const userDict = loadUserDictionaryFor("/path/to/user_dictionary.csv", dictionary);
 
-const tokenizer = new Tokenizer(dictionary, "normal", userDict);
+const tokenizer = new Tokenizer(dictionary, Mode.normal(), userDict);
 </code></pre>
 <p>Or via the builder:</p>
 <pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");

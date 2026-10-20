@@ -180,10 +180,10 @@
 <p>This guide shows how to tokenize text using lindera-python.</p>
 <h2 id="basic-tokenization"><a class="header" href="#basic-tokenization">Basic Tokenization</a></h2>
 <p>The recommended way to create a tokenizer is through <code>TokenizerBuilder</code>:</p>
-<pre><code class="language-python">from lindera import TokenizerBuilder
+<pre><code class="language-python">from lindera import Mode, TokenizerBuilder
 
 builder = TokenizerBuilder()
-builder.set_mode("normal")
+builder.set_mode(Mode.normal())
 builder.set_dictionary("/path/to/ipadic")
 tokenizer = builder.build()
 
@@ -197,15 +197,15 @@ for token in tokens:
 <p>Expected output:</p>
 <pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    UNK
+トートバッグ    名詞,一般,*,*,*,*,*,*,*
 </code></pre>
 <h2 id="method-chaining"><a class="header" href="#method-chaining">Method Chaining</a></h2>
 <p><code>TokenizerBuilder</code> supports method chaining for concise configuration:</p>
-<pre><code class="language-python">from lindera import TokenizerBuilder
+<pre><code class="language-python">from lindera import Mode, TokenizerBuilder
 
 tokenizer = (
     TokenizerBuilder()
-    .set_mode("normal")
+    .set_mode(Mode.normal())
     .set_dictionary("/path/to/ipadic")
     .build()
 )

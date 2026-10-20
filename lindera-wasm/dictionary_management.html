@@ -198,7 +198,7 @@
 </li>
 <li><strong>Returns</strong>: <code>Dictionary</code></li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, Mode, TokenizerBuilder } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 // Load dictionary files from OPFS
@@ -220,7 +220,7 @@ const dictionary = loadDictionaryFromBytes(
 // Use with TokenizerBuilder
 const builder = new TokenizerBuilder();
 builder.setDictionaryInstance(dictionary);
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 </code></pre>
 <p>See <a href="./opfs.html">OPFS Dictionary Storage</a> for the full OPFS workflow including downloading and caching.</p>
@@ -247,14 +247,14 @@ const dictionary = loadDictionary("embedded://ipadic");
 <h3 id="using-with-tokenizerbuilder"><a class="header" href="#using-with-tokenizerbuilder">Using with TokenizerBuilder</a></h3>
 <pre><code class="language-javascript">const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 </code></pre>
 <h3 id="using-with-tokenizer-constructor"><a class="header" href="#using-with-tokenizer-constructor">Using with Tokenizer Constructor</a></h3>
-<pre><code class="language-javascript">import { loadDictionary, Tokenizer } from 'lindera-wasm-ipadic';
+<pre><code class="language-javascript">import { loadDictionary, Mode, Tokenizer } from 'lindera-wasm-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
-const tokenizer = new Tokenizer(dictionary, "normal");
+const tokenizer = new Tokenizer(dictionary, Mode.normal());
 </code></pre>
 <h2 id="dictionary-class"><a class="header" href="#dictionary-class">Dictionary Class</a></h2>
 <p>The <code>Dictionary</code> class represents a loaded morphological analysis dictionary.</p>
@@ -266,7 +266,7 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </tbody></table>
 </div>
 <pre><code class="language-javascript">console.log(dictionary.name);     // "ipadic"
-console.log(dictionary.encoding); // "utf-8"
+console.log(dictionary.encoding); // "UTF-8"
 </code></pre>
 <h2 id="user-dictionaries"><a class="header" href="#user-dictionaries">User Dictionaries</a></h2>
 <p>User dictionaries allow you to add custom words that are not in the system dictionary.</p>
@@ -305,7 +305,7 @@ const binBytes = new Uint8Array(await response.arrayBuffer());
 const userDict = loadUserDictionaryBinFromBytes(binBytes);
 </code></pre>
 <h3 id="using-a-user-dictionary-with-tokenizer"><a class="header" href="#using-a-user-dictionary-with-tokenizer">Using a User Dictionary with Tokenizer</a></h3>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytesFor, Tokenizer } from 'lindera-wasm';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytesFor, Mode, Tokenizer } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
@@ -316,7 +316,7 @@ const dictionary = loadDictionaryFromBytes(
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
 const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
-const tokenizer = new Tokenizer(dictionary, "normal", userDict);
+const tokenizer = new Tokenizer(dictionary, Mode.normal(), userDict);
 </code></pre>
 <h3 id="user-dictionary-csv-format"><a class="header" href="#user-dictionary-csv-format">User Dictionary CSV Format</a></h3>
 <p>The user dictionary CSV follows the same format as the Lindera user dictionary.

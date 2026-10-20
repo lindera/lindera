@@ -191,15 +191,15 @@ builder = Lindera::TokenizerBuilder.new
 <pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.from_file('config.json')
 </code></pre>
 <h3 id="設定メソッド"><a class="header" href="#設定メソッド">設定メソッド</a></h3>
-<h4 id="set_modemode-penalty-nil"><a class="header" href="#set_modemode-penalty-nil"><code>set_mode(mode, penalty: nil)</code></a></h4>
-<p>トークナイズモードを設定します。</p>
+<h4 id="set_modemode"><a class="header" href="#set_modemode"><code>set_mode(mode)</code></a></h4>
+<p>トークナイズモードを設定します。<code>mode</code> には <a href="#mode"><code>Lindera::Mode</code></a> を渡します：</p>
 <ul>
-<li><code>"normal"</code> -- 標準的なトークナイズ（デフォルト）</li>
-<li><code>"decompose"</code> -- 複合語をより小さな単位に分解</li>
+<li><code>Lindera::Mode.normal</code> -- 標準的なトークナイズ（デフォルト）</li>
+<li><code>Lindera::Mode.decompose(penalty = nil)</code> -- <a href="#penalty"><code>Lindera::Penalty</code></a> の長さのペナルティに従って、複合語をより小さな単位に分解（<code>nil</code> では既定のペナルティ）</li>
 </ul>
-<p>キーワード引数 <code>penalty:</code> には、<code>"decompose"</code> モードが使う <a href="#penalty"><code>Lindera::Penalty</code></a> を渡します。<code>nil</code>（デフォルト）では既定のペナルティを使います。<code>"normal"</code> とペナルティを一緒に渡すと、不正なモードと同じく <code>RuntimeError</code> が、<code>Lindera::Penalty</code> でない値を渡すと <code>TypeError</code> が発生します。</p>
-<pre><code class="language-ruby">builder.set_mode('normal')
-builder.set_mode('decompose', penalty: Lindera::Penalty.new(nil, 0, nil, nil))
+<p><code>Lindera::Mode</code> でない値（モード文字列 <code>'normal'</code>、Symbol、<code>nil</code> など）を渡すと <code>TypeError</code> が発生します。実行時に読み込んだモード名を <code>Mode</code> に変換するには <a href="#linderamodefrom_strname"><code>Lindera::Mode.from_str</code></a> を使います。</p>
+<pre><code class="language-ruby">builder.set_mode(Lindera::Mode.normal)
+builder.set_mode(Lindera::Mode.decompose(Lindera::Penalty.new(nil, 0, nil, nil)))
 </code></pre>
 <h4 id="set_dictionarypath"><a class="header" href="#set_dictionarypath"><code>set_dictionary(path)</code></a></h4>
 <p>システム辞書のパスまたは URI を設定します。</p>
@@ -270,10 +270,9 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Lindera::Tokenizer</code> はテキストに対して形態素解析を行います。</p>
 <h3 id="tokenizer-の作成"><a class="header" href="#tokenizer-の作成">Tokenizer の作成</a></h3>
-<h4 id="linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><a class="header" href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><code>Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil, penalty: nil)</code></a></h4>
-<p>読み込み済みの辞書から直接トークナイザーを作成します。<code>mode</code> のデフォルトは <code>'normal'</code> で、<code>user_dictionary</code> は省略できます。</p>
+<h4 id="linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><a class="header" href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil)</code></a></h4>
+<p>読み込み済みの辞書から直接トークナイザーを作成します。<code>mode</code> には、<a href="#set_modemode"><code>TokenizerBuilder#set_mode</code></a> と同じく <a href="#mode"><code>Lindera::Mode</code></a> を渡します。<code>nil</code>（デフォルト）は normal モードを表し、<code>Lindera::Mode</code> でない値（モード文字列 <code>'normal'</code> など）を渡すと <code>TypeError</code> が発生します。<code>user_dictionary</code> は省略できます。</p>
 <p>キーワード引数 <code>space_penalty:</code> には <a href="#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a> と同じ値を渡せます。<code>nil</code>（デフォルト）では辞書が同梱する左側空白ペナルティのルールを使うため、ko-dic ではペナルティがオンになります。オフにするには <code>false</code> を渡します。不正な設定では、<code>set_space_penalty</code> や <code>build</code> と同じエラーが発生します。</p>
-<p>キーワード引数 <code>penalty:</code> には、<a href="#set_modemode-penalty-nil"><code>TokenizerBuilder#set_mode</code></a> と同じく <code>"decompose"</code> モードの <a href="#penalty"><code>Lindera::Penalty</code></a> を渡せます。エラーも <code>set_mode</code> と同じです。</p>
 <pre><code class="language-ruby">require 'lindera'
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
@@ -285,7 +284,7 @@ ko_tokenizer = Lindera::Tokenizer.new(Lindera.load_dictionary('embedded://ko-dic
 <p>ユーザー辞書を使用する場合：</p>
 <pre><code class="language-ruby">dictionary = Lindera.load_dictionary('embedded://ipadic')
 user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.normal, user_dict)
 </code></pre>
 <h3 id="tokenizer-メソッド"><a class="header" href="#tokenizer-メソッド">Tokenizer メソッド</a></h3>
 <h4 id="tokenizetext"><a class="header" href="#tokenizetext"><code>tokenize(text)</code></a></h4>
@@ -326,32 +325,52 @@ end
 </div>
 <p><strong>戻り値:</strong> <code>Array&lt;[Array&lt;Token&gt;, Integer]&gt;</code></p>
 <h2 id="mode"><a class="header" href="#mode">Mode</a></h2>
-<p><code>Lindera::Mode</code> はトークナイズモードを表します。モードの確認・比較のためのスタンドアロンヘルパーとして提供されています。<code>TokenizerBuilder#set_mode</code> と <code>Tokenizer.new</code> は、<code>Mode</code> インスタンスではなく単純なモード文字列（<code>"normal"</code> または <code>"decompose"</code>）を受け取ります。decompose モードのペナルティは、それぞれのキーワード引数 <code>penalty:</code> で渡します（下記の <a href="#penalty"><code>Penalty</code></a> を参照してください）。</p>
+<p><code>Lindera::Mode</code> は、<a href="#set_modemode"><code>TokenizerBuilder#set_mode</code></a> と <a href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Tokenizer.new</code></a> が受け取るトークナイズモードです。Rust の <code>lindera::mode::Mode</code> に対応し、normal モードか、<a href="#penalty"><code>Lindera::Penalty</code></a> を持つ decompose モードのどちらかを表します。</p>
 <h3 id="mode-の作成"><a class="header" href="#mode-の作成">Mode の作成</a></h3>
-<h4 id="linderamodenewmode_str"><a class="header" href="#linderamodenewmode_str"><code>Lindera::Mode.new(mode_str)</code></a></h4>
-<p><code>Mode</code> を作成します。引数は必須ですが <code>nil</code> を渡すこともできます。<code>"normal"</code> / <code>"Normal"</code>（<code>mode_str</code> が <code>nil</code> の場合に使用）または <code>"decompose"</code> / <code>"Decompose"</code> を受け付けます。それ以外の値を渡すと <code>ArgumentError</code> が発生します。</p>
+<p><code>Lindera::Mode</code> には <code>new</code> がありません（<code>Lindera::Mode.new</code> は <code>TypeError</code> を発生させます）。次のクラスメソッドでモードを作成します。</p>
+<h4 id="linderamodenormal"><a class="header" href="#linderamodenormal"><code>Lindera::Mode.normal</code></a></h4>
+<p>normal モードを返します。</p>
+<h4 id="linderamodedecomposepenalty--nil"><a class="header" href="#linderamodedecomposepenalty--nil"><code>Lindera::Mode.decompose(penalty = nil)</code></a></h4>
+<p><code>penalty</code>（<code>Lindera::Penalty</code>）を持つ decompose モードを返します。<code>nil</code> を渡すか引数を省略すると、既定のペナルティを使います。<code>Lindera::Penalty</code> でない値を渡すと <code>TypeError</code> が発生します。</p>
+<h4 id="linderamodefrom_strname"><a class="header" href="#linderamodefrom_strname"><code>Lindera::Mode.from_str(name)</code></a></h4>
+<p><code>name</code> という名前のモードを、Rust の <code>Mode</code> と同じ規則で解析して返します。受け付ける名前は <code>'normal'</code> と <code>'decompose'</code> だけで、大文字と小文字を区別します。<code>'decompose'</code> からは既定のペナルティを持つ decompose モードができます。<code>'Normal'</code> などそれ以外の名前を渡すと、メッセージに <code>Invalid mode</code> を含む <code>RuntimeError</code> が発生します。設定などから実行時に読み込んだモード名の変換に使います。</p>
 <pre><code class="language-ruby">require 'lindera'
 
-mode = Lindera::Mode.new('normal')
-mode = Lindera::Mode.new('decompose')
-mode = Lindera::Mode.new(nil)  # デフォルトの "normal" になる
+normal = Lindera::Mode.normal
+decompose = Lindera::Mode.decompose
+no_length_penalty = Lindera::Mode.decompose(Lindera::Penalty.new(nil, 0, nil, 0))
+from_setting = Lindera::Mode.from_str('decompose')
 </code></pre>
 <h3 id="mode-メソッド"><a class="header" href="#mode-メソッド">Mode メソッド</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>メソッド</th><th>戻り値</th><th>説明</th></tr></thead><tbody>
-<tr><td><code>to_s</code></td><td><code>String</code></td><td><code>"normal"</code> または <code>"decompose"</code></td></tr>
-<tr><td><code>name</code></td><td><code>String</code></td><td><code>to_s</code> と同じ</td></tr>
-<tr><td><code>inspect</code></td><td><code>String</code></td><td>例: <code>"#&lt;Lindera::Mode: decompose&gt;"</code></td></tr>
-<tr><td><code>normal?</code></td><td><code>Boolean</code></td><td>モードが <code>"normal"</code> の場合 <code>true</code></td></tr>
-<tr><td><code>decompose?</code></td><td><code>Boolean</code></td><td>モードが <code>"decompose"</code> の場合 <code>true</code></td></tr>
+<tr><td><code>name</code></td><td><code>String</code></td><td><code>"normal"</code> または <code>"decompose"</code></td></tr>
+<tr><td><code>to_s</code></td><td><code>String</code></td><td><code>name</code> と同じ</td></tr>
+<tr><td><code>inspect</code></td><td><code>String</code></td><td>名前と、decompose モードではそのペナルティ</td></tr>
+<tr><td><code>penalty</code></td><td><code>Penalty</code> または <code>nil</code></td><td>decompose モードのペナルティのコピー。normal モードでは <code>nil</code></td></tr>
+<tr><td><code>normal?</code></td><td><code>Boolean</code></td><td>normal モードの場合 <code>true</code></td></tr>
+<tr><td><code>decompose?</code></td><td><code>Boolean</code></td><td>decompose モードの場合 <code>true</code></td></tr>
+<tr><td><code>==</code></td><td><code>Boolean</code></td><td>相手が名前とペナルティの等しい <code>Mode</code> の場合 <code>true</code></td></tr>
 </tbody></table>
 </div>
-<pre><code class="language-ruby">mode = Lindera::Mode.new('decompose')
-mode.to_s        # "decompose"
-mode.normal?      # false
-mode.decompose?   # true
+<p>モードは変更できません。setter メソッドはなく、<code>penalty</code> はペナルティのコピーを返します。</p>
+<p><code>==</code> は名前とペナルティを比較し、文字列 <code>'normal'</code> のような別の型の値には <code>false</code> を返します。<code>eql?</code> と <code>hash</code> は同一性による比較のままです。Rust の <code>Mode</code> が <code>Eq</code> を実装し、<code>Hash</code> を実装していないためです。そのため、等しい 2 つのモードも <code>Hash</code> のキーとしては別物になり、<code>uniq</code> では両方が残ります。</p>
+<pre><code class="language-ruby">mode = Lindera::Mode.decompose(Lindera::Penalty.new(nil, 0, nil, 0))
+mode.name                                   # "decompose"
+mode.normal?                                # false
+mode.decompose?                             # true
+mode.penalty.kanji_penalty_length_penalty   # 0
+mode.inspect
+# "#&lt;Lindera::Mode: decompose Penalty(kanji_threshold=2, kanji_penalty=0, other_threshold=7, other_penalty=0)&gt;"
+
+Lindera::Mode.normal.inspect   # "#&lt;Lindera::Mode: normal&gt;"
+Lindera::Mode.normal.penalty   # nil
+
+Lindera::Mode.decompose == Lindera::Mode.from_str('decompose')  # true
+Lindera::Mode.decompose == mode                                 # false（ペナルティが異なる）
+Lindera::Mode.normal == 'normal'                                # false
 </code></pre>
 <h2 id="penalty"><a class="header" href="#penalty">Penalty</a></h2>
-<p><code>Lindera::Penalty</code> は <code>"decompose"</code> モードのセグメンテーションで使用される、長さに基づくペナルティのしきい値を設定します。</p>
+<p><code>Lindera::Penalty</code> は decompose モードのセグメンテーションで使用される、長さに基づくペナルティのしきい値を設定します。<a href="#linderamodedecomposepenalty--nil"><code>Lindera::Mode.decompose</code></a> に渡して使います。</p>
 <h3 id="penalty-の作成"><a class="header" href="#penalty-の作成">Penalty の作成</a></h3>
 <h4 id="linderapenaltynewkanji_penalty_length_threshold-kanji_penalty_length_penalty-other_penalty_length_threshold-other_penalty_length_penalty"><a class="header" href="#linderapenaltynewkanji_penalty_length_threshold-kanji_penalty_length_penalty-other_penalty_length_threshold-other_penalty_length_penalty"><code>Lindera::Penalty.new(kanji_penalty_length_threshold, kanji_penalty_length_penalty, other_penalty_length_threshold, other_penalty_length_penalty)</code></a></h4>
 <p>4つの位置引数はすべて必須ですが、それぞれ <code>nil</code> を渡すとデフォルト値（下記参照）にフォールバックします。</p>
@@ -373,7 +392,7 @@ penalty = Lindera::Penalty.new(nil, nil, nil, nil)  # すべてデフォルト�
 penalty.kanji_penalty_length_threshold  # 2
 </code></pre>
 <h3 id="penalty-の使い方"><a class="header" href="#penalty-の使い方">Penalty の使い方</a></h3>
-<p><code>Penalty</code> は <code>"decompose"</code> と一緒に、<a href="#set_modemode-penalty-nil"><code>TokenizerBuilder#set_mode</code></a> か <a href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><code>Tokenizer.new</code></a> のキーワード引数 <code>penalty:</code> で渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。</p>
+<p><code>Penalty</code> は <a href="#linderamodedecomposepenalty--nil"><code>Lindera::Mode.decompose</code></a> に渡し、そのモードを <a href="#set_modemode"><code>TokenizerBuilder#set_mode</code></a> か <a href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Tokenizer.new</code></a> に渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。</p>
 <pre><code class="language-ruby">require 'lindera'
 
 text = '関西国際空港限定トートバッグ'
@@ -381,20 +400,19 @@ penalty = Lindera::Penalty.new(nil, 0, nil, 0)
 
 builder = Lindera::TokenizerBuilder.new
 builder.set_dictionary('embedded://ipadic')
-builder.set_mode('decompose')
+builder.set_mode(Lindera::Mode.decompose)
 p builder.build.tokenize(text).map(&amp;:surface)
 # =&gt; ["関西", "国際", "空港", "限定", "トートバッグ"]
 
-builder.set_mode('decompose', penalty: penalty)
+builder.set_mode(Lindera::Mode.decompose(penalty))
 p builder.build.tokenize(text).map(&amp;:surface)
 # =&gt; ["関西国際空港", "限定", "トートバッグ"]
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
-tokenizer = Lindera::Tokenizer.new(dictionary, 'decompose', penalty: penalty)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.decompose(penalty))
 p tokenizer.tokenize(text).map(&amp;:surface)
 # =&gt; ["関西国際空港", "限定", "トートバッグ"]
 </code></pre>
-<p><code>"normal"</code> モードと一緒に <code>Penalty</code> を渡すと <code>RuntimeError</code> が発生します。</p>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
 <p><code>Token</code> は単一の形態素トークンを表します。</p>
 <h3 id="プロパティ"><a class="header" href="#プロパティ">プロパティ</a></h3>

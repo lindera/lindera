@@ -198,7 +198,7 @@
 </li>
 <li><strong>戻り値</strong>: <code>Dictionary</code></li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, Mode, TokenizerBuilder } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 // OPFS から辞書ファイルを読み込む
@@ -220,7 +220,7 @@ const dictionary = loadDictionaryFromBytes(
 // TokenizerBuilder で使用
 const builder = new TokenizerBuilder();
 builder.setDictionaryInstance(dictionary);
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 </code></pre>
 <p>ダウンロードとキャッシュを含む完全なワークフローは <a href="./opfs.html">OPFS 辞書ストレージ</a> を参照してください。</p>
@@ -247,14 +247,14 @@ const dictionary = loadDictionary("embedded://ipadic");
 <h3 id="tokenizerbuilder-での使用"><a class="header" href="#tokenizerbuilder-での使用">TokenizerBuilder での使用</a></h3>
 <pre><code class="language-javascript">const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 </code></pre>
 <h3 id="tokenizer-コンストラクタでの使用"><a class="header" href="#tokenizer-コンストラクタでの使用">Tokenizer コンストラクタでの使用</a></h3>
-<pre><code class="language-javascript">import { loadDictionary, Tokenizer } from 'lindera-wasm-ipadic';
+<pre><code class="language-javascript">import { loadDictionary, Mode, Tokenizer } from 'lindera-wasm-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
-const tokenizer = new Tokenizer(dictionary, "normal");
+const tokenizer = new Tokenizer(dictionary, Mode.normal());
 </code></pre>
 <h2 id="dictionary-クラス"><a class="header" href="#dictionary-クラス">Dictionary クラス</a></h2>
 <p><code>Dictionary</code> クラスは、読み込み済みの形態素解析辞書を表します。</p>
@@ -266,7 +266,7 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </tbody></table>
 </div>
 <pre><code class="language-javascript">console.log(dictionary.name);     // "ipadic"
-console.log(dictionary.encoding); // "utf-8"
+console.log(dictionary.encoding); // "UTF-8"
 </code></pre>
 <h2 id="ユーザー辞書"><a class="header" href="#ユーザー辞書">ユーザー辞書</a></h2>
 <p>ユーザー辞書を使用すると、システム辞書にないカスタム語彙を追加できます。</p>
@@ -303,7 +303,7 @@ const binBytes = new Uint8Array(await response.arrayBuffer());
 const userDict = loadUserDictionaryBinFromBytes(binBytes);
 </code></pre>
 <h3 id="tokenizer-でのユーザー辞書の使用"><a class="header" href="#tokenizer-でのユーザー辞書の使用">Tokenizer でのユーザー辞書の使用</a></h3>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytesFor, Tokenizer } from 'lindera-wasm';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytesFor, Mode, Tokenizer } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
@@ -315,7 +315,7 @@ const dictionary = loadDictionaryFromBytes(
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
 const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
-const tokenizer = new Tokenizer(dictionary, "normal", userDict);
+const tokenizer = new Tokenizer(dictionary, Mode.normal(), userDict);
 </code></pre>
 <h3 id="ユーザー辞書の-csv-フォーマット"><a class="header" href="#ユーザー辞書の-csv-フォーマット">ユーザー辞書の CSV フォーマット</a></h3>
 <p>ユーザー辞書の CSV は Lindera ユーザー辞書と同じフォーマットに準拠します。

@@ -186,7 +186,7 @@
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 
 // Create a tokenizer
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal());
 
 // Tokenize the text
 $tokens = $tokenizer-&gt;tokenize('関西国際空港限定トートバッグ');
@@ -207,7 +207,7 @@ foreach ($tokens as $token) {
 <pre><code class="language-php">&lt;?php
 
 $builder = new Lindera\TokenizerBuilder();
-$builder-&gt;setMode('normal');
+$builder-&gt;setMode(Lindera\Mode::normal());
 $builder-&gt;setDictionary('/path/to/ipadic');
 $tokenizer = $builder-&gt;build();
 

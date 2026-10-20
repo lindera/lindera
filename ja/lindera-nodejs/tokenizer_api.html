@@ -195,15 +195,18 @@ const builder = new TokenizerBuilder();
 を参照してください。</p>
 <h3 id="設定メソッド"><a class="header" href="#設定メソッド">設定メソッド</a></h3>
 <p>すべてのセッターメソッドはビルダー自身（<code>this</code>）を返すため、メソッドチェーンでも 1 文ずつの呼び出しでも設定できます。</p>
-<h4 id="setmodemode-penalty"><a class="header" href="#setmodemode-penalty"><code>setMode(mode, penalty?)</code></a></h4>
-<p>トークナイズモードを設定します。</p>
+<h4 id="setmodemode"><a class="header" href="#setmodemode"><code>setMode(mode)</code></a></h4>
+<p>トークナイズモードを <a href="#mode"><code>Mode</code></a> で設定します。</p>
 <ul>
-<li><code>"normal"</code> -- 標準的なトークナイズ（デフォルト）</li>
-<li><code>"decompose"</code> -- 複合語をより小さな単位に分解</li>
+<li><code>Mode.normal()</code> -- 標準的なトークナイズ（デフォルト）</li>
+<li><code>Mode.decompose(penalty?)</code> -- 複合語をより小さな単位に分解。モードが持つ <a href="#penalty"><code>Penalty</code></a> を使う</li>
 </ul>
-<p><code>penalty</code> は <code>"decompose"</code> モードが使う <a href="#penalty"><code>Penalty</code></a> オブジェクトです。<code>null</code> または <code>undefined</code>（デフォルト）では既定のペナルティを使います。<code>"normal"</code> とペナルティを一緒に渡すと、不正なモードと同じくエラーを投げます。オブジェクトでない値や、範囲内の整数でないフィールドを渡すと、<code>InvalidArg</code> のエラーを投げます。</p>
-<pre><code class="language-javascript">builder.setMode("normal");
-builder.setMode("decompose", { kanjiPenaltyLengthPenalty: 0 });
+<p>モード名 <code>"normal"</code> など、<code>Mode</code> でない値を渡すと <code>InvalidArg</code> のエラーを投げます。設定から読み込んだ値のように実行時に得たモード名は、<a href="#modefromstrname"><code>Mode.fromStr()</code></a> で <code>Mode</code> に変換します。</p>
+<pre><code class="language-javascript">const { Mode } = require("lindera");
+
+builder.setMode(Mode.normal());
+builder.setMode(Mode.decompose({ kanjiPenaltyLengthPenalty: 0 }));
+builder.setMode(Mode.fromStr("decompose"));
 </code></pre>
 <h4 id="setdictionarypath"><a class="header" href="#setdictionarypath"><code>setDictionary(path)</code></a></h4>
 <p>システム辞書のパスまたは URI を設定します。</p>
@@ -263,7 +266,7 @@ builder.setSpacePenalty(null);
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適用されます。ko-dic の <code>metadata.json</code> が mecab-ko-dic のルールを同梱しているためです。これにより韓国語の出力が変わります（例: <code>검색 이 잘 된다</code> の <code>이</code> は、ペナルティがあると感動詞 <code>IC</code>、なければ主格助詞 <code>JKS</code> になる）。オフにするには <code>setSpacePenalty(false)</code> を呼び出してください。直接作成する <code>Tokenizer</code> では、4 番目の引数に <code>false</code> を渡します（<code>new Tokenizer(dictionary, "normal", null, false)</code>）。v6.0.0 リリースからダウンロードした ko-dic はルールを同梱していないため、その辞書ではペナルティはオフのままで、<code>setSpacePenalty(true)</code> を指定すると <code>build()</code> が例外を投げます。詳細は <a href="../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
+v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適用されます。ko-dic の <code>metadata.json</code> が mecab-ko-dic のルールを同梱しているためです。これにより韓国語の出力が変わります（例: <code>검색 이 잘 된다</code> の <code>이</code> は、ペナルティがあると感動詞 <code>IC</code>、なければ主格助詞 <code>JKS</code> になる）。オフにするには <code>setSpacePenalty(false)</code> を呼び出してください。直接作成する <code>Tokenizer</code> では、4 番目の引数に <code>false</code> を渡します（<code>new Tokenizer(dictionary, Mode.normal(), null, false)</code>）。v6.0.0 リリースからダウンロードした ko-dic はルールを同梱していないため、その辞書ではペナルティはオフのままで、<code>setSpacePenalty(true)</code> を指定すると <code>build()</code> が例外を投げます。詳細は <a href="../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照してください。</p>
 </blockquote>
 <h4 id="appendcharacterfilterkind-args"><a class="header" href="#appendcharacterfilterkind-args"><code>appendCharacterFilter(kind, args?)</code></a></h4>
 <p>前処理パイプラインに文字フィルタを追加します。</p>
@@ -282,17 +285,17 @@ v6.1.0 以降、ko-dic では左側空白ペナルティがデフォルトで適
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Tokenizer</code> はテキストに対して形態素解析を行います。</p>
 <h3 id="tokenizer-の作成"><a class="header" href="#tokenizer-の作成">Tokenizer の作成</a></h3>
-<h4 id="new-tokenizerdictionary-mode-userdictionary-spacepenalty-penalty"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary-spacepenalty-penalty"><code>new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?, penalty?)</code></a></h4>
+<h4 id="new-tokenizerdictionary-mode-userdictionary-spacepenalty"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary-spacepenalty"><code>new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?)</code></a></h4>
 <p>読み込み済みの辞書から直接トークナイザーを作成します。</p>
+<p><code>mode</code> には、<a href="#setmodemode"><code>setMode</code></a> と同じく <a href="#mode"><code>Mode</code></a> を渡します。エラーも <code>setMode</code> と同じです。<code>null</code> または <code>undefined</code>（デフォルト）は normal モードです。ペナルティを指定した decompose モードには <code>Mode.decompose(penalty)</code> を渡します。</p>
 <p><code>spacePenalty</code> には <a href="#setspacepenaltyvalue"><code>setSpacePenalty</code></a> と同じ値を渡せます。<code>null</code> または <code>undefined</code>（デフォルト）では、辞書が同梱する左側空白ペナルティのルールを使います。不正な設定では、<code>setSpacePenalty</code> や <code>build()</code> と同じくエラーを投げます。</p>
-<p><code>penalty</code> には、<a href="#setmodemode-penalty"><code>setMode</code></a> と同じく <code>"decompose"</code> モードの <a href="#penalty"><code>Penalty</code></a> を渡せます。エラーも <code>setMode</code> と同じです。</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera");
+<pre><code class="language-javascript">const { Mode, Tokenizer, loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("embedded://ipadic");
-const tokenizer = new Tokenizer(dictionary, "normal");
+const tokenizer = new Tokenizer(dictionary, Mode.normal());
 
 // 左側空白ペナルティなしの ko-dic
-const koTokenizer = new Tokenizer(loadDictionary("embedded://ko-dic"), "normal", null, false);
+const koTokenizer = new Tokenizer(loadDictionary("embedded://ko-dic"), Mode.normal(), null, false);
 </code></pre>
 <h3 id="tokenizer-メソッド"><a class="header" href="#tokenizer-メソッド">Tokenizer メソッド</a></h3>
 <h4 id="tokenizetext"><a class="header" href="#tokenizetext"><code>tokenize(text)</code></a></h4>
@@ -362,15 +365,68 @@ const reading = token.details[7];  // 例: "トウキョウ"
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: 各辞書固有の詳細フォーマット</li>
 </ul>
 <h2 id="mode-と-penalty"><a class="header" href="#mode-と-penalty">Mode と Penalty</a></h2>
-<p><code>TokenizerBuilder.setMode()</code> と <code>Tokenizer</code> のコンストラクタは、モードを単純な文字列
-（<code>"normal"</code> または <code>"decompose"</code>）で、decompose モードのペナルティを <a href="#penalty"><code>Penalty</code></a>
-オブジェクトで受け取ります。</p>
+<p><code>TokenizerBuilder.setMode()</code> と <code>Tokenizer</code> のコンストラクタは、モードを <a href="#mode"><code>Mode</code></a> で受け取ります。decompose モードのペナルティは、<code>Mode</code> が <a href="#penalty"><code>Penalty</code></a> として保持します。</p>
 <h3 id="mode"><a class="header" href="#mode"><code>Mode</code></a></h3>
-<p>2つの値を持つ文字列列挙型です：</p>
+<p>トークナイズモードを表すクラスです。normal モードか、<a href="#penalty"><code>Penalty</code></a> を持つ decompose モードのどちらかです。Rust の <code>lindera::mode::Mode</code> に対応し（<a href="../lindera/segmenter.html#%E3%83%88%E3%83%BC%E3%82%AF%E3%83%8A%E3%82%A4%E3%82%BA%E3%83%A2%E3%83%BC%E3%83%89">Segmenter</a> を参照）、<a href="#setmodemode"><code>setMode()</code></a> と <a href="#new-tokenizerdictionary-mode-userdictionary-spacepenalty"><code>Tokenizer</code> のコンストラクタ</a> が受け取ります：</p>
 <ul>
-<li><code>Mode.Normal</code> -- 辞書コストに基づく標準的なトークナイズ</li>
-<li><code>Mode.Decompose</code> -- ペナルティベースの複合語分解</li>
+<li>normal モード -- 辞書コストに基づく標準的なトークナイズ</li>
+<li>decompose モード -- ペナルティベースの複合語分解</li>
 </ul>
+<p><code>Mode</code> にはコンストラクタがなく、<code>new Mode()</code> はエラーを投げます。以下の静的ファクトリメソッドで作成します。作成したモードは変更できません。</p>
+<h4 id="modenormal"><a class="header" href="#modenormal"><code>Mode.normal()</code></a></h4>
+<p>normal モードを作成します。</p>
+<pre><code class="language-javascript">const { Mode } = require("lindera");
+
+const mode = Mode.normal();
+</code></pre>
+<h4 id="modedecomposepenalty"><a class="header" href="#modedecomposepenalty"><code>Mode.decompose(penalty?)</code></a></h4>
+<p><code>penalty</code> を持つ decompose モードを作成します。<code>penalty</code> は <a href="#penalty"><code>Penalty</code></a> オブジェクトです。<code>null</code> または <code>undefined</code>（デフォルト）では既定のペナルティを使い、省略したフィールドはデフォルト値になります。オブジェクトでない値や、範囲内の整数でないフィールドを渡すと、<code>InvalidArg</code> のエラーを投げます。</p>
+<pre><code class="language-javascript">const decompose = Mode.decompose(); // 既定のペナルティ
+const custom = Mode.decompose({ kanjiPenaltyLengthPenalty: 0 });
+</code></pre>
+<h4 id="modefromstrname"><a class="header" href="#modefromstrname"><code>Mode.fromStr(name)</code></a></h4>
+<p>Rust の <code>Mode</code> と同じ規則で、名前からモードを作成します。<code>"normal"</code> は normal モード、<code>"decompose"</code> は既定のペナルティを持つ decompose モードです。名前の大文字と小文字は区別し、<code>"Normal"</code> や <code>"Decompose"</code> を含むそれ以外の名前では、メッセージに <code>Invalid mode</code> を含む <code>Error</code> を投げます。設定から読み込んだ値のように、実行時に得たモード名を変換するときに使います：</p>
+<pre><code class="language-javascript">const mode = Mode.fromStr("decompose");
+console.log(mode.equals(Mode.decompose()));
+// true
+</code></pre>
+<h4 id="プロパティとメソッド"><a class="header" href="#プロパティとメソッド">プロパティとメソッド</a></h4>
+<div class="table-wrapper"><table><thead><tr><th>メンバー</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td><code>string</code></td><td>モードの名前。<code>"normal"</code> または <code>"decompose"</code>（読み取り専用のプロパティ）</td></tr>
+<tr><td><code>penalty</code></td><td><code>Penalty | null</code></td><td>decompose モードのペナルティ。すべてのフィールドを設定したコピーで、normal モードでは <code>null</code>（読み取り専用のプロパティ）。コピーを変更してもモードは変わらない</td></tr>
+<tr><td><code>isNormal()</code></td><td><code>boolean</code></td><td>normal モードかどうか</td></tr>
+<tr><td><code>isDecompose()</code></td><td><code>boolean</code></td><td>decompose モードかどうか</td></tr>
+<tr><td><code>equals(other)</code></td><td><code>boolean</code></td><td><code>other</code> と名前とペナルティが等しいかどうか。<code>Mode</code> でない値を渡すと <code>InvalidArg</code> のエラーを投げる</td></tr>
+<tr><td><code>toString()</code></td><td><code>string</code></td><td>モードの名前（<code>name</code> と同じ）</td></tr>
+</tbody></table>
+</div>
+<p><code>===</code> はモードではなくオブジェクトを比べます。<code>Mode.normal()</code> は呼び出すたびに新しいオブジェクトを返すため、モードは <code>equals</code> で比べてください。</p>
+<pre><code class="language-javascript">const { Mode } = require("lindera");
+
+const mode = Mode.decompose({ kanjiPenaltyLengthPenalty: 0 });
+console.log(mode.name, mode.isNormal(), mode.isDecompose());
+// decompose false true
+
+// すべてのフィールドを設定したコピー。省略したフィールドはデフォルト値になる
+const penalty = mode.penalty;
+console.log(penalty.kanjiPenaltyLengthPenalty, penalty.otherPenaltyLengthPenalty);
+// 0 1700
+
+// コピーを変更してもモードは変わらない
+penalty.otherPenaltyLengthPenalty = 0;
+console.log(mode.penalty.otherPenaltyLengthPenalty);
+// 1700
+
+console.log(Mode.normal().penalty);
+// null
+
+console.log(Mode.decompose().equals(Mode.fromStr("decompose")));
+// true
+console.log(mode.equals(Mode.decompose()));
+// false
+console.log(`${Mode.normal()}`);
+// normal
+</code></pre>
 <h3 id="penalty"><a class="header" href="#penalty"><code>Penalty</code></a></h3>
 <p>decompose モードのペナルティパラメータを持つプレーンなオブジェクト（TypeScript の型は <code>Penalty</code>）です。フィールドはすべて省略でき、省略したフィールドはデフォルト値になります：</p>
 <div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
@@ -380,25 +436,27 @@ const reading = token.details[7];  // 例: "トウキョウ"
 <tr><td><code>otherPenaltyLengthPenalty</code></td><td><code>number</code></td><td>長いその他の文字列に対するペナルティ値。32 ビット符号付き整数（デフォルト: <code>1700</code>）</td></tr>
 </tbody></table>
 </div>
-<p><code>"decompose"</code> と一緒に <a href="#setmodemode-penalty"><code>setMode()</code></a> か <a href="#new-tokenizerdictionary-mode-userdictionary-spacepenalty-penalty"><code>Tokenizer</code> のコンストラクタ</a> に渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります：</p>
-<pre><code class="language-javascript">const { Tokenizer, TokenizerBuilder, loadDictionary } = require("lindera");
+<p><code>Penalty</code> は <a href="#modedecomposepenalty"><code>Mode.decompose()</code></a> に渡し、作成したモードを <a href="#setmodemode"><code>setMode()</code></a> か <a href="#new-tokenizerdictionary-mode-userdictionary-spacepenalty"><code>Tokenizer</code> のコンストラクタ</a> に渡します。長さのペナルティをなくすと、decompose モードでも normal モードと同じく長い語が分割されずに残ります：</p>
+<pre><code class="language-javascript">const { Mode, Tokenizer, TokenizerBuilder, loadDictionary } = require("lindera");
 
 const text = "関西国際空港限定トートバッグ";
 const penalty = { kanjiPenaltyLengthPenalty: 0, otherPenaltyLengthPenalty: 0 };
 const surfaces = (tokenizer) =&gt; tokenizer.tokenize(text).map((token) =&gt; token.surface);
 
 const builder = new TokenizerBuilder().setDictionary("embedded://ipadic");
-console.log(surfaces(builder.setMode("decompose").build()));
-// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
-
-console.log(surfaces(builder.setMode("decompose", penalty).build()));
+console.log(surfaces(builder.setMode(Mode.normal()).build()));
 // [ '関西国際空港', '限定', 'トートバッグ' ]
 
-const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), "decompose", null, null, penalty);
+console.log(surfaces(builder.setMode(Mode.decompose()).build()));
+// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
+
+console.log(surfaces(builder.setMode(Mode.decompose(penalty)).build()));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+
+const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), Mode.decompose(penalty));
 console.log(surfaces(tokenizer));
 // [ '関西国際空港', '限定', 'トートバッグ' ]
 </code></pre>
-<p><code>"normal"</code> モードと一緒にペナルティを渡すとエラーを投げます。</p>
 
                     </main>
 

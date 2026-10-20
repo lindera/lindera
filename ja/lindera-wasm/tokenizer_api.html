@@ -186,22 +186,18 @@
 <p>デフォルト設定で新しいビルダーを作成します。</p>
 <h3 id="メソッド"><a class="header" href="#メソッド">メソッド</a></h3>
 <p>すべてのセッターは同じ設定を共有するビルダーハンドルを返すため、
-<code>builder.setMode("normal").setDictionary(...)</code> のようにチェーンでも、1 文ずつでも記述できます。
+<code>builder.setMode(Mode.normal()).setDictionary(...)</code> のようにチェーンでも、1 文ずつでも記述できます。
 返されるハンドルは新しいオブジェクトですが、設定先は同一のビルダーです。</p>
-<h4 id="setmodemode-penalty"><a class="header" href="#setmodemode-penalty"><code>setMode(mode, penalty?)</code></a></h4>
-<p>トークナイズモードを設定します。</p>
+<h4 id="setmodemode"><a class="header" href="#setmodemode"><code>setMode(mode)</code></a></h4>
+<p>トークナイズモードを設定します。モードを設定しないビルダーは normal モードを使います。</p>
 <ul>
-<li><strong>パラメータ</strong>:
-<ul>
-<li><code>mode</code> (string) -- <code>"normal"</code> または <code>"decompose"</code></li>
-<li><code>penalty</code> (Penalty, 省略可) -- <code>"decompose"</code> モードが使う <a href="#penalty"><code>Penalty</code></a>。<code>null</code> または <code>undefined</code>（デフォルト）では既定のペナルティを使います。渡した <code>Penalty</code> はそのまま使えるので、同じものを何度でも渡せます。</li>
-</ul>
-</li>
+<li><strong>パラメータ</strong>: <code>mode</code> (Mode) -- <a href="#mode"><code>Mode</code></a>。<code>Mode.normal()</code> か、decompose モードの <a href="#penalty"><code>Penalty</code></a> を指定した <code>Mode.decompose()</code> です。渡した <code>Mode</code> はそのまま使えるので、同じものを何度でも渡せます。</li>
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
-<p><code>"normal"</code> とペナルティを一緒に渡すと、不正なモードと同じくエラー文字列が投げられます。<code>Penalty</code> でない値を渡したときも同じです。</p>
-<pre><code class="language-javascript">builder.setMode("normal");
-builder.setMode("decompose", new Penalty(undefined, 0));
+<p>モード名など <code>Mode</code> でない値を渡すと、<code>Error("expected instance of Mode")</code> が投げられます。名前でモードを選ぶには、<a href="#mode"><code>Mode.fromStr()</code></a> でモードを作成してください。</p>
+<pre><code class="language-javascript">builder.setMode(Mode.normal());
+builder.setMode(Mode.decompose(new Penalty(undefined, 0)));
+builder.setMode(Mode.fromStr("decompose"));
 </code></pre>
 <h4 id="setdictionaryuri"><a class="header" href="#setdictionaryuri"><code>setDictionary(uri)</code></a></h4>
 <p>トークナイズに使用する辞書を設定します。<code>setDictionaryInstance()</code> で設定した辞書は、この辞書に置き換わります。</p>
@@ -323,16 +319,15 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p>メインのトークナイザークラスです。<code>TokenizerBuilder.build()</code> またはコンストラクタ経由で作成できます。</p>
 <h3 id="tokenizer-コンストラクタ"><a class="header" href="#tokenizer-コンストラクタ">Tokenizer コンストラクタ</a></h3>
-<pre><code class="language-javascript">const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty, penalty);
+<pre><code class="language-javascript">const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
 </code></pre>
 <ul>
 <li><strong>パラメータ</strong>:
 <ul>
 <li><code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト</li>
-<li><code>mode</code> (string, 省略可) -- トークナイズモード（<code>"normal"</code> または <code>"decompose"</code>、デフォルト: <code>"normal"</code>）</li>
+<li><code>mode</code> (Mode, 省略可) -- <a href="#setmodemode"><code>setMode()</code></a> と同じ <a href="#mode"><code>Mode</code></a>。<code>null</code> または <code>undefined</code>（デフォルト）では normal モードになります。渡した <code>Mode</code> はそのまま使えるので、同じものを複数のトークナイザーやビルダーに渡せます。<code>Mode</code> でない値を渡すと、<code>Error("expected instance of Mode")</code> が投げられます。</li>
 <li><code>userDictionary</code> (UserDictionary, 省略可) -- 読み込み済みのユーザー辞書</li>
 <li><code>spacePenalty</code> (boolean | object, 省略可) -- 左側空白ペナルティ。<a href="#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> と同じ値を渡せます。<code>null</code> または <code>undefined</code>（デフォルト）では、辞書が同梱するルールを使います。不正な設定では、<code>setSpacePenalty()</code> や <code>build()</code> と同じくエラー文字列が投げられます。</li>
-<li><code>penalty</code> (Penalty, 省略可) -- <code>"decompose"</code> モードの <a href="#penalty"><code>Penalty</code></a>。<a href="#setmodemode-penalty"><code>setMode()</code></a> と同じものを渡せ、エラーも同じです。</li>
 </ul>
 </li>
 </ul>
@@ -450,14 +445,37 @@ const dict = loadDictionary("embedded://ipadic");
 
 console.log(version()); // 例: "7.0.0"
 </code></pre>
-<h2 id="列挙型とユーティリティクラス"><a class="header" href="#列挙型とユーティリティクラス">列挙型とユーティリティクラス</a></h2>
+<h2 id="ユーティリティクラス"><a class="header" href="#ユーティリティクラス">ユーティリティクラス</a></h2>
 <h3 id="mode"><a class="header" href="#mode">Mode</a></h3>
-<p>トークナイズモードの列挙型です。</p>
-<div class="table-wrapper"><table><thead><tr><th>値</th><th>説明</th></tr></thead><tbody>
-<tr><td><code>Mode.Normal</code></td><td>辞書コストに基づく標準的なトークナイズ</td></tr>
-<tr><td><code>Mode.Decompose</code></td><td>ペナルティベースのセグメンテーションによる複合語分解</td></tr>
+<p>トークナイズモードです。normal モードか、<a href="#penalty"><code>Penalty</code></a> を持つ decompose モードを表します。Rust の <code>Mode</code>（<a href="../lindera/segmenter.html#%E3%83%88%E3%83%BC%E3%82%AF%E3%83%8A%E3%82%A4%E3%82%BA%E3%83%A2%E3%83%BC%E3%83%89">トークナイズモード</a>を参照）に対応するクラスで、<a href="#setmodemode"><code>setMode()</code></a> と <a href="#tokenizer-%E3%82%B3%E3%83%B3%E3%82%B9%E3%83%88%E3%83%A9%E3%82%AF%E3%82%BF"><code>Tokenizer</code> のコンストラクタ</a> が受け取ります。</p>
+<p><code>Mode</code> には公開のコンストラクタがありません。<code>new Mode()</code> は TypeScript ではエラーになり、JavaScript ではメソッドを呼ぶとエラーを投げるオブジェクトができます。モードは次の静的メソッドで作成します。</p>
+<div class="table-wrapper"><table><thead><tr><th>静的メソッド</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>Mode.normal()</code></td><td>normal モード。辞書コストに基づく標準的なトークナイズ</td></tr>
+<tr><td><code>Mode.decompose(penalty?)</code></td><td>decompose モード。ペナルティベースのセグメンテーションで複合語を分解します。<code>penalty</code> は <a href="#penalty"><code>Penalty</code></a> で、<code>null</code> または <code>undefined</code>（デフォルト）では既定のペナルティを使います。<code>Penalty</code> でない値を渡すと、エラー文字列（<code>penalty must be a Penalty</code>）が投げられます</td></tr>
+<tr><td><code>Mode.fromStr(name)</code></td><td><code>"normal"</code> または <code>"decompose"</code>（既定のペナルティ）という名前のモード。名前の大文字と小文字は区別され、それ以外の名前では <code>Invalid mode</code> を含むエラー文字列が投げられます</td></tr>
+</tbody></table>
+</div><div class="table-wrapper"><table><thead><tr><th>プロパティ / メソッド</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td><code>string</code></td><td><code>"normal"</code> または <code>"decompose"</code>（読み取り専用）</td></tr>
+<tr><td><code>penalty</code></td><td><code>Penalty</code> または <code>undefined</code></td><td>decompose モードのペナルティのコピー。normal モードでは <code>undefined</code>（読み取り専用）</td></tr>
+<tr><td><code>isNormal()</code></td><td><code>boolean</code></td><td>normal モードかどうか</td></tr>
+<tr><td><code>isDecompose()</code></td><td><code>boolean</code></td><td>decompose モードかどうか</td></tr>
+<tr><td><code>equals(other)</code></td><td><code>boolean</code></td><td><code>other</code> と名前とペナルティが等しいかどうか。<code>Mode</code> でない値を渡すと <code>Error("expected instance of Mode")</code> が投げられます</td></tr>
+<tr><td><code>toString()</code></td><td><code>string</code></td><td><code>name</code> と同じ名前を返す</td></tr>
 </tbody></table>
 </div>
+<p><code>Mode</code> は変更できません。<code>Mode.decompose()</code> は <code>Penalty</code> のコピーを持ち、<code>penalty</code> はさらに別のコピーを返すので、あとからどちらの <code>Penalty</code> を変更してもモードは変わりません。<code>Mode.decompose()</code> に渡した <code>Penalty</code> も、<code>setMode()</code> や <code>Tokenizer</code> のコンストラクタに渡した <code>Mode</code> も、そのまま使えます。</p>
+<pre><code class="language-javascript">import { Mode, Penalty } from 'lindera-wasm-ipadic';
+
+const mode = Mode.decompose(new Penalty(undefined, 0));
+console.log(mode.name, mode.isNormal(), mode.isDecompose());
+// decompose false true
+console.log(`${mode}`, mode.penalty.kanji_penalty_length_penalty);
+// decompose 0
+console.log(mode.equals(Mode.decompose()), Mode.fromStr("decompose").equals(Mode.decompose()));
+// false true
+console.log(Mode.normal().penalty);
+// undefined
+</code></pre>
 <h3 id="penalty"><a class="header" href="#penalty">Penalty</a></h3>
 <p>decompose モードの設定です。複合語をどの程度積極的に分解するかを制御します。</p>
 <pre><code class="language-javascript">const penalty = new Penalty(
@@ -474,26 +492,28 @@ console.log(version()); // 例: "7.0.0"
 <tr><td><code>other_penalty_length_penalty</code></td><td><code>number</code></td><td><code>1700</code></td><td>閾値を超える非漢字複合語のペナルティコスト</td></tr>
 </tbody></table>
 </div>
-<p><code>"decompose"</code> と一緒に <a href="#setmodemode-penalty"><code>setMode()</code></a> か <a href="#tokenizer-%E3%82%B3%E3%83%B3%E3%82%B9%E3%83%88%E3%83%A9%E3%82%AF%E3%82%BF"><code>Tokenizer</code> のコンストラクタ</a> に渡します。<code>Penalty</code> は読み取られるだけで消費されないので、同じものを何度でも渡せます。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。</p>
-<pre><code class="language-javascript">import { Penalty, Tokenizer, TokenizerBuilder, loadDictionary } from 'lindera-wasm-ipadic';
+<p><a href="#mode"><code>Mode.decompose()</code></a> に渡し、そのモードを <a href="#setmodemode"><code>setMode()</code></a> か <a href="#tokenizer-%E3%82%B3%E3%83%B3%E3%82%B9%E3%83%88%E3%83%A9%E3%82%AF%E3%82%BF"><code>Tokenizer</code> のコンストラクタ</a> に渡します。<code>Penalty</code> は読み取られるだけで消費されないので、同じものを何度でも渡せます。長さのペナルティをなくすと、decompose モードでも normal モードと同じく長い語が分割されずに残ります。</p>
+<pre><code class="language-javascript">import { Mode, Penalty, Tokenizer, TokenizerBuilder, loadDictionary } from 'lindera-wasm-ipadic';
 
 const text = "関西国際空港限定トートバッグ";
-const penalty = new Penalty(undefined, 0, undefined, 0);
 const surfaces = (tokenizer) =&gt; tokenizer.tokenize(text).map((token) =&gt; token.surface);
 
 const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");
-console.log(surfaces(builder.setMode("decompose").build()));
-// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
-
-console.log(surfaces(builder.setMode("decompose", penalty).build()));
+console.log(surfaces(builder.setMode(Mode.normal()).build()));
 // [ '関西国際空港', '限定', 'トートバッグ' ]
 
-const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), "decompose", null, null, penalty);
+console.log(surfaces(builder.setMode(Mode.decompose()).build()));
+// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
+
+const mode = Mode.decompose(new Penalty(undefined, 0, undefined, 0));
+console.log(surfaces(builder.setMode(mode).build()));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+
+const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), mode);
 console.log(surfaces(tokenizer));
 // [ '関西国際空港', '限定', 'トートバッグ' ]
 </code></pre>
-<p><code>"normal"</code> モードと一緒にペナルティを渡すと、エラー文字列が投げられます。</p>
 <h3 id="linderaerror"><a class="header" href="#linderaerror">LinderaError</a></h3>
 <p>Lindera 操作のエラー型です。</p>
 <pre><code class="language-javascript">const error = new LinderaError("message");
@@ -507,10 +527,10 @@ console.log(error.toString()); // "message"
 </div>
 <blockquote>
 <p>[!NOTE]
-<code>LinderaError</code> はユーティリティクラスとしてエクスポートされていますが、<code>TokenizerBuilder</code>・<code>Tokenizer</code>・辞書読み込み関数（<code>lindera-wasm/src/tokenizer.rs</code>、<code>lindera-wasm/src/dictionary.rs</code>）の実際のエラーパスはすべて <code>JsValue::from_str(...)</code> で reject しており、<code>JsLinderaError</code>/<code>LinderaError</code> のインスタンスではありません。そのため、これらの API が投げるエラーは JavaScript 側では単なる文字列として現れます。<code>catch (e) { ... }</code> で捕捉する際は、<code>e</code> を <code>LinderaError</code> インスタンスではなく <code>string</code> として扱ってください。</p>
+<code>LinderaError</code> はユーティリティクラスとしてエクスポートされていますが、<code>TokenizerBuilder</code>・<code>Tokenizer</code>・<code>Mode</code>・辞書読み込み関数（<code>lindera-wasm/src/tokenizer.rs</code>、<code>lindera-wasm/src/mode.rs</code>、<code>lindera-wasm/src/dictionary.rs</code>）の実際のエラーパスはすべて <code>JsValue::from_str(...)</code> で reject しており、<code>JsLinderaError</code>/<code>LinderaError</code> のインスタンスではありません。そのため、これらの API が投げるエラーは JavaScript 側では単なる文字列として現れます。例外は、メソッドが受け取るクラスのインスタンスでない引数（<code>setMode()</code> に渡したモード名など）です。JS グルーが Rust を呼ぶ前にこれを確かめ、<code>expected instance of &lt;クラス名&gt;</code>（この例では <code>expected instance of Mode</code>）というメッセージの <code>Error</code> を投げます。<code>catch (e) { ... }</code> で捕捉する際は、<code>e</code> を <code>LinderaError</code> インスタンスではなく <code>string</code> か <code>Error</code> として扱ってください。</p>
 </blockquote>
 <h2 id="snake_case-エイリアス"><a class="header" href="#snake_case-エイリアス">snake_case エイリアス</a></h2>
-<p>Python API との一貫性のため、すべてのメソッドは snake_case 形式でも利用可能です：</p>
+<p>Python API との一貫性のため、次のメソッドは snake_case 形式でも利用可能です：</p>
 <div class="table-wrapper"><table><thead><tr><th>camelCase</th><th>snake_case</th></tr></thead><tbody>
 <tr><td><code>setMode()</code></td><td><code>set_mode()</code></td></tr>
 <tr><td><code>setDictionary()</code></td><td><code>set_dictionary()</code></td></tr>
@@ -530,6 +550,8 @@ console.log(error.toString()); // "message"
 <tr><td><code>loadUserDictionaryBinFromBytes()</code></td><td><code>load_user_dictionary_bin_from_bytes()</code></td></tr>
 </tbody></table>
 </div>
+<p><code>Mode</code> のメソッド（<code>fromStr()</code>、<code>isNormal()</code>、<code>isDecompose()</code>）には snake_case のエイリアスはありません。</p>
+
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">

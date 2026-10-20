@@ -285,7 +285,7 @@ console.log(names); // e.g., ["ipadic", "unidic"]
 </code></pre>
 <h2 id="complete-workflow"><a class="header" href="#complete-workflow">Complete Workflow</a></h2>
 <p>A typical workflow for using OPFS-based dictionaries:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
@@ -315,7 +315,7 @@ async function main() {
     // Build tokenizer
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dictionary);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     // Tokenize

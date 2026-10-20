@@ -3342,10 +3342,10 @@ print(lindera.version())
 <p>This guide shows how to tokenize text using lindera-python.</p>
 <h2 id="basic-tokenization"><a class="header" href="#basic-tokenization">Basic Tokenization</a></h2>
 <p>The recommended way to create a tokenizer is through <code>TokenizerBuilder</code>:</p>
-<pre><code class="language-python">from lindera import TokenizerBuilder
+<pre><code class="language-python">from lindera import Mode, TokenizerBuilder
 
 builder = TokenizerBuilder()
-builder.set_mode("normal")
+builder.set_mode(Mode.normal())
 builder.set_dictionary("/path/to/ipadic")
 tokenizer = builder.build()
 
@@ -3359,15 +3359,15 @@ for token in tokens:
 <p>Expected output:</p>
 <pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    UNK
+トートバッグ    名詞,一般,*,*,*,*,*,*,*
 </code></pre>
 <h2 id="method-chaining"><a class="header" href="#method-chaining">Method Chaining</a></h2>
 <p><code>TokenizerBuilder</code> supports method chaining for concise configuration:</p>
-<pre><code class="language-python">from lindera import TokenizerBuilder
+<pre><code class="language-python">from lindera import Mode, TokenizerBuilder
 
 tokenizer = (
     TokenizerBuilder()
-    .set_mode("normal")
+    .set_mode(Mode.normal())
     .set_dictionary("/path/to/ipadic")
     .build()
 )
@@ -3421,15 +3421,18 @@ for a complete example covering <code>segmenter</code>, <code>character_filters<
 </code></pre>
 <h3 id="configuration-methods"><a class="header" href="#configuration-methods">Configuration Methods</a></h3>
 <p>All setter methods return <code>self</code> for method chaining.</p>
-<h4 id="set_modemode-penaltynone"><a class="header" href="#set_modemode-penaltynone"><code>set_mode(mode, penalty=None)</code></a></h4>
-<p>Sets the tokenization mode.</p>
+<h4 id="set_modemode"><a class="header" href="#set_modemode"><code>set_mode(mode)</code></a></h4>
+<p>Sets the tokenization mode. <code>mode</code> is a <a href="lindera-python/tokenizer_api.html#mode"><code>Mode</code></a>:</p>
 <ul>
-<li><code>"normal"</code> -- Standard tokenization (default)</li>
-<li><code>"decompose"</code> -- Decomposes compound words into smaller units</li>
+<li><code>Mode.normal()</code> -- Standard tokenization (default)</li>
+<li><code>Mode.decompose(penalty=None)</code> -- Decomposes compound words into smaller units, with the length penalties of a <a href="lindera-python/tokenizer_api.html#penalty"><code>Penalty</code></a>; <code>None</code> uses the default penalty</li>
 </ul>
-<p><code>penalty</code> is the <a href="lindera-python/tokenizer_api.html#penalty"><code>Penalty</code></a> that <code>"decompose"</code> mode uses; <code>None</code> (the default) uses the default penalty. A penalty with <code>"normal"</code> raises <code>ValueError</code>, and a value that is not a <code>Penalty</code> raises <code>TypeError</code>.</p>
-<pre><code class="language-python">builder.set_mode("normal")
-builder.set_mode("decompose", Penalty(kanji_penalty_length_penalty=0))
+<p>A value that is not a <code>Mode</code>, such as the string <code>"normal"</code>, raises <code>TypeError</code>. To set a mode from its name, such as a configuration value, create it with <a href="lindera-python/tokenizer_api.html#modefrom_strname"><code>Mode.from_str()</code></a>.</p>
+<pre><code class="language-python">from lindera import Mode, Penalty
+
+builder.set_mode(Mode.normal())
+builder.set_mode(Mode.decompose(Penalty(kanji_penalty_length_penalty=0)))
+builder.set_mode(Mode.from_str("decompose"))
 </code></pre>
 <h4 id="set_dictionarypath"><a class="header" href="#set_dictionarypath"><code>set_dictionary(path)</code></a></h4>
 <p>Sets the system dictionary path or URI.</p>
@@ -3500,14 +3503,14 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer"><a class="header" href="#creating-a-tokenizer">Creating a Tokenizer</a></h3>
-<h4 id="tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone"><a class="header" href="#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone"><code>Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None, penalty=None)</code></a></h4>
+<h4 id="tokenizerdictionary-modenone-user_dictionarynone-space_penaltynone"><a class="header" href="#tokenizerdictionary-modenone-user_dictionarynone-space_penaltynone"><code>Tokenizer(dictionary, mode=None, user_dictionary=None, space_penalty=None)</code></a></h4>
 <p>Creates a tokenizer directly from a loaded dictionary.</p>
+<p><code>mode</code> takes a <a href="lindera-python/tokenizer_api.html#mode"><code>Mode</code></a>, as <a href="lindera-python/tokenizer_api.html#set_modemode"><code>TokenizerBuilder.set_mode</code></a> does; <code>None</code> (the default) is normal mode. Any other value, such as the string <code>"normal"</code>, raises <code>TypeError</code>.</p>
 <p><code>space_penalty</code> takes the same values as <a href="lindera-python/tokenizer_api.html#set_space_penaltyvalue"><code>TokenizerBuilder.set_space_penalty</code></a>. <code>None</code> (the default) uses the left-space penalty rules the dictionary ships, so with ko-dic the penalty is on; pass <code>False</code> to turn it off. An invalid setting raises the same errors as <code>set_space_penalty</code> and <code>build()</code>.</p>
-<p><code>penalty</code> takes a <a href="lindera-python/tokenizer_api.html#penalty"><code>Penalty</code></a> for <code>"decompose"</code> mode, as <a href="lindera-python/tokenizer_api.html#set_modemode-penaltynone"><code>TokenizerBuilder.set_mode</code></a> does, with the same errors.</p>
-<pre><code class="language-python">from lindera import Tokenizer, load_dictionary
+<pre><code class="language-python">from lindera import Mode, Tokenizer, load_dictionary
 
 dictionary = load_dictionary("embedded://ipadic")
-tokenizer = Tokenizer(dictionary, mode="normal")
+tokenizer = Tokenizer(dictionary, mode=Mode.normal())
 
 # ko-dic without the left-space penalty
 ko_tokenizer = Tokenizer(load_dictionary("embedded://ko-dic"), space_penalty=False)
@@ -3550,38 +3553,62 @@ for tokens, cost in results:
 </div>
 <p><strong>Returns:</strong> <code>list[tuple[list[Token], int]]</code></p>
 <h2 id="mode-1"><a class="header" href="#mode-1">Mode</a></h2>
-<p><code>Mode</code> represents a tokenization mode. It is provided as a standalone helper for
-inspecting or comparing modes; <code>TokenizerBuilder.set_mode()</code> and the <code>Tokenizer</code>
-constructor take a plain mode string (<code>"normal"</code> or <code>"decompose"</code>), not a <code>Mode</code>
-instance. The penalty of decompose mode goes in their <code>penalty</code> argument (see
-<a href="lindera-python/tokenizer_api.html#penalty"><code>Penalty</code></a> below).</p>
+<p><code>Mode</code> is the tokenization mode that <a href="lindera-python/tokenizer_api.html#set_modemode"><code>TokenizerBuilder.set_mode()</code></a> and the <a href="lindera-python/tokenizer_api.html#tokenizerdictionary-modenone-user_dictionarynone-space_penaltynone"><code>Tokenizer</code> constructor</a> take. It is the counterpart of the Rust <code>lindera::mode::Mode</code>: normal mode, or decompose mode with its <a href="lindera-python/tokenizer_api.html#penalty"><code>Penalty</code></a>.</p>
 <h3 id="creating-a-mode"><a class="header" href="#creating-a-mode">Creating a Mode</a></h3>
-<h4 id="modemode_strnone"><a class="header" href="#modemode_strnone"><code>Mode(mode_str=None)</code></a></h4>
-<p>Creates a <code>Mode</code>. Accepts <code>"normal"</code> / <code>"Normal"</code> (the default when omitted) or
-<code>"decompose"</code> / <code>"Decompose"</code>; any other value raises <code>ValueError</code>.</p>
-<pre><code class="language-python">from lindera import Mode
+<p><code>Mode</code> has no constructor, so <code>Mode()</code> raises <code>TypeError</code>, and it has no <code>Mode.Normal</code> or <code>Mode.Decompose</code> attributes. Create a mode with one of the following static methods.</p>
+<h4 id="modenormal-1"><a class="header" href="#modenormal-1"><code>Mode.normal()</code></a></h4>
+<p>Returns normal mode: standard tokenization.</p>
+<h4 id="modedecomposepenaltynone"><a class="header" href="#modedecomposepenaltynone"><code>Mode.decompose(penalty=None)</code></a></h4>
+<p>Returns decompose mode, which adds the length penalties of <code>penalty</code> to the cost of long words, so that compound words are decomposed into smaller units. <code>None</code> (the default) uses the default penalty, <code>Penalty()</code>. A value that is not a <code>Penalty</code> raises <code>TypeError</code>.</p>
+<h4 id="modefrom_strname"><a class="header" href="#modefrom_strname"><code>Mode.from_str(name)</code></a></h4>
+<p>Returns the mode named <code>name</code>, as the Rust <code>Mode</code> parses a name: <code>"normal"</code> for normal mode, and <code>"decompose"</code> for decompose mode with the default penalty. Use it for a mode name read at run time, such as a configuration value. The name is case sensitive: any other name, such as <code>"Normal"</code>, raises <code>ValueError</code> with the message <code>Invalid mode</code>. A value that is not a <code>str</code> raises <code>TypeError</code>.</p>
+<pre><code class="language-python">from lindera import Mode, Penalty
 
-mode = Mode("normal")
-mode = Mode("decompose")
-mode = Mode()  # defaults to "normal"
+normal = Mode.normal()
+decompose = Mode.decompose()
+whole_words = Mode.decompose(Penalty(kanji_penalty_length_penalty=0, other_penalty_length_penalty=0))
+from_name = Mode.from_str("decompose")  # equal to Mode.decompose()
 </code></pre>
-<h3 id="methods"><a class="header" href="#methods">Methods</a></h3>
-<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>__str__()</code></td><td><code>str</code></td><td><code>"normal"</code> or <code>"decompose"</code></td></tr>
-<tr><td><code>__repr__()</code></td><td><code>str</code></td><td>e.g. <code>"Mode.Normal"</code></td></tr>
-<tr><td><code>is_normal()</code></td><td><code>bool</code></td><td><code>True</code> if the mode is <code>"normal"</code></td></tr>
-<tr><td><code>is_decompose()</code></td><td><code>bool</code></td><td><code>True</code> if the mode is <code>"decompose"</code></td></tr>
+<h3 id="mode-properties"><a class="header" href="#mode-properties">Mode Properties</a></h3>
+<p>Both properties are read-only:</p>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td><code>str</code></td><td><code>"normal"</code> or <code>"decompose"</code></td></tr>
+<tr><td><code>penalty</code></td><td><code>Penalty</code> or <code>None</code></td><td>A copy of the penalty of decompose mode; <code>None</code> for normal mode</td></tr>
 </tbody></table>
 </div>
-<pre><code class="language-python">mode = Mode("decompose")
-str(mode)            # "decompose"
-repr(mode)           # "Mode.Decompose"
-mode.is_normal()      # False
-mode.is_decompose()   # True
+<h3 id="methods"><a class="header" href="#methods">Methods</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>__str__()</code></td><td><code>str</code></td><td>The name: <code>"normal"</code> or <code>"decompose"</code></td></tr>
+<tr><td><code>__repr__()</code></td><td><code>str</code></td><td><code>"Mode.normal()"</code>, or <code>Mode.decompose(...)</code> with the penalty</td></tr>
+<tr><td><code>__eq__(other)</code></td><td><code>bool</code></td><td><code>True</code> if <code>other</code> is a <code>Mode</code> with the same name and penalty</td></tr>
+<tr><td><code>is_normal()</code></td><td><code>bool</code></td><td><code>True</code> for normal mode</td></tr>
+<tr><td><code>is_decompose()</code></td><td><code>bool</code></td><td><code>True</code> for decompose mode</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-python">mode = Mode.decompose()
+mode.name              # 'decompose'
+mode.penalty           # Penalty(kanji_threshold=2, kanji_penalty=3000, other_threshold=7, other_penalty=1700)
+str(mode)              # 'decompose'
+repr(mode)             # 'Mode.decompose(Penalty(kanji_threshold=2, kanji_penalty=3000, other_threshold=7, other_penalty=1700))'
+mode.is_normal()       # False
+mode.is_decompose()    # True
+Mode.normal().penalty  # None
+repr(Mode.normal())    # 'Mode.normal()'
+</code></pre>
+<p>Two modes are equal when their names and penalties are, as the Rust <code>Mode</code> compares them. A <code>Mode</code> is never equal to a value of another type, such as the string <code>"normal"</code>:</p>
+<pre><code class="language-python">Mode.from_str("decompose") == Mode.decompose()                               # True
+Mode.decompose() == Mode.decompose(Penalty(kanji_penalty_length_penalty=0))  # False
+Mode.normal() == "normal"                                                    # False
+</code></pre>
+<p>A <code>Mode</code> cannot be changed. Setting a property raises <code>AttributeError</code>, and <code>penalty</code> returns a copy, so changing the returned <code>Penalty</code> leaves the mode as it was; <code>Mode.decompose()</code> keeps a copy of the <code>Penalty</code> it is given as well. A <code>Mode</code> is not hashable, as the Rust <code>Mode</code> implements <code>Eq</code> but not <code>Hash</code>: <code>hash(mode)</code> raises <code>TypeError</code>, so a <code>Mode</code> cannot be a <code>dict</code> key or a <code>set</code> member.</p>
+<pre><code class="language-python">mode = Mode.decompose()
+penalty = mode.penalty
+penalty.kanji_penalty_length_penalty = 0
+mode.penalty.kanji_penalty_length_penalty  # 3000
 </code></pre>
 <h2 id="penalty"><a class="header" href="#penalty">Penalty</a></h2>
-<p><code>Penalty</code> configures the length-based penalty thresholds used by <code>"decompose"</code>
-mode segmentation.</p>
+<p><code>Penalty</code> configures the length-based penalty thresholds used by decompose mode
+segmentation.</p>
 <h3 id="creating-a-penalty"><a class="header" href="#creating-a-penalty">Creating a Penalty</a></h3>
 <h4 id="penaltykanji_penalty_length_threshold2-kanji_penalty_length_penalty3000-other_penalty_length_threshold7-other_penalty_length_penalty1700"><a class="header" href="#penaltykanji_penalty_length_threshold2-kanji_penalty_length_penalty3000-other_penalty_length_threshold7-other_penalty_length_penalty1700"><code>Penalty(kanji_penalty_length_threshold=2, kanji_penalty_length_penalty=3000, other_penalty_length_threshold=7, other_penalty_length_penalty=1700)</code></a></h4>
 <p>All arguments are optional and default to the values shown above.</p>
@@ -3607,26 +3634,26 @@ penalty = Penalty(
 print(penalty.kanji_penalty_length_threshold)  # 3
 </code></pre>
 <h3 id="using-a-penalty"><a class="header" href="#using-a-penalty">Using a Penalty</a></h3>
-<p>Pass a <code>Penalty</code> with <code>"decompose"</code> to <a href="lindera-python/tokenizer_api.html#set_modemode-penaltynone"><code>TokenizerBuilder.set_mode()</code></a> or to the <a href="lindera-python/tokenizer_api.html#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone"><code>Tokenizer</code> constructor</a>. Without length penalties, decompose mode keeps long words whole:</p>
-<pre><code class="language-python">from lindera import Penalty, Tokenizer, TokenizerBuilder, load_dictionary
+<p>Pass a <code>Penalty</code> to <a href="lindera-python/tokenizer_api.html#modedecomposepenaltynone"><code>Mode.decompose()</code></a>, and the mode to <a href="lindera-python/tokenizer_api.html#set_modemode"><code>TokenizerBuilder.set_mode()</code></a> or to the <a href="lindera-python/tokenizer_api.html#tokenizerdictionary-modenone-user_dictionarynone-space_penaltynone"><code>Tokenizer</code> constructor</a>. Without length penalties, decompose mode keeps long words whole:</p>
+<pre><code class="language-python">from lindera import Mode, Penalty, Tokenizer, TokenizerBuilder, load_dictionary
 
 text = "関西国際空港限定トートバッグ"
 penalty = Penalty(kanji_penalty_length_penalty=0, other_penalty_length_penalty=0)
 
 builder = TokenizerBuilder().set_dictionary("embedded://ipadic")
-tokenizer = builder.set_mode("decompose").build()
+tokenizer = builder.set_mode(Mode.decompose()).build()
 print([token.surface for token in tokenizer.tokenize(text)])
 # ['関西', '国際', '空港', '限定', 'トートバッグ']
 
-tokenizer = builder.set_mode("decompose", penalty).build()
+tokenizer = builder.set_mode(Mode.decompose(penalty)).build()
 print([token.surface for token in tokenizer.tokenize(text)])
 # ['関西国際空港', '限定', 'トートバッグ']
 
-tokenizer = Tokenizer(load_dictionary("embedded://ipadic"), mode="decompose", penalty=penalty)
+tokenizer = Tokenizer(load_dictionary("embedded://ipadic"), mode=Mode.decompose(penalty))
 print([token.surface for token in tokenizer.tokenize(text)])
 # ['関西国際空港', '限定', 'トートバッグ']
 </code></pre>
-<p>A <code>Penalty</code> with <code>"normal"</code> mode raises <code>ValueError</code>.</p>
+<p>Normal mode has no penalty: <code>Mode.normal()</code> takes no arguments.</p>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
 <p><code>Token</code> represents a single morphological token.</p>
 <h3 id="properties"><a class="header" href="#properties">Properties</a></h3>
@@ -3737,12 +3764,12 @@ metadata = Metadata()
 user_dict = load_user_dictionary("/path/to/user_dictionary.csv", metadata)
 </code></pre>
 <p>Pass the user dictionary when building a tokenizer:</p>
-<pre><code class="language-python">from lindera import Tokenizer, load_dictionary, load_user_dictionary_for
+<pre><code class="language-python">from lindera import Mode, Tokenizer, load_dictionary, load_user_dictionary_for
 
 dictionary = load_dictionary("/path/to/ipadic")
 user_dict = load_user_dictionary_for("/path/to/user_dictionary.csv", dictionary)
 
-tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dict)
+tokenizer = Tokenizer(dictionary, mode=Mode.normal(), user_dictionary=user_dict)
 </code></pre>
 <p>Or via the builder:</p>
 <pre><code class="language-python">from lindera import TokenizerBuilder
@@ -4019,11 +4046,11 @@ tokenizer = (
 </code></pre>
 <h2 id="complete-pipeline-example"><a class="header" href="#complete-pipeline-example">Complete Pipeline Example</a></h2>
 <p>The following example combines multiple character filters and token filters into a single pipeline:</p>
-<pre><code class="language-python">from lindera import TokenizerBuilder
+<pre><code class="language-python">from lindera import Mode, TokenizerBuilder
 
 tokenizer = (
     TokenizerBuilder()
-    .set_mode("normal")
+    .set_mode(Mode.normal())
     .set_dictionary("embedded://ipadic")
     # Preprocessing
     .append_character_filter("unicode_normalize", {"kind": "nfkc"})
@@ -4151,7 +4178,7 @@ lindera.build_dictionary("/tmp/dictionary_source", "/tmp/dictionary", metadata)
 tokenizer = (
     lindera.TokenizerBuilder()
     .set_dictionary("/tmp/dictionary")
-    .set_mode("normal")
+    .set_mode(lindera.Mode.normal())
     .build()
 )
 
@@ -4265,10 +4292,10 @@ console.log(typeof TokenizerBuilder); // "function"
 <p>This guide shows how to tokenize text using lindera-nodejs.</p>
 <h2 id="basic-tokenization-1"><a class="header" href="#basic-tokenization-1">Basic Tokenization</a></h2>
 <p>The recommended way to create a tokenizer is through <code>TokenizerBuilder</code>:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { Mode, TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("/path/to/ipadic");
 const tokenizer = builder.build();
 
@@ -4288,10 +4315,10 @@ for (const token of tokens) {
 <h2 id="method-chaining-1"><a class="header" href="#method-chaining-1">Method Chaining</a></h2>
 <p>Every setter returns the builder itself (<code>this</code>), so the configuration can be
 chained:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { Mode, TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
-  .setMode("normal")
+  .setMode(Mode.normal())
   .setDictionary("/path/to/ipadic")
   .build();
 
@@ -4338,10 +4365,10 @@ for (const { tokens, cost } of results) {
 <h2 id="typescript"><a class="header" href="#typescript">TypeScript</a></h2>
 <p>Lindera Node.js includes TypeScript type definitions, so all classes and functions are fully typed. The package's <code>exports</code> map serves both <code>require</code> and <code>import</code>, and the following sample compiles under <code>moduleResolution: node16</code> with <code>strict</code> enabled:</p>
 <pre><code class="language-typescript">import type { Token } from "lindera";
-import { TokenizerBuilder } from "lindera";
+import { Mode, TokenizerBuilder } from "lindera";
 
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("/path/to/ipadic");
 const tokenizer = builder.build();
 
@@ -4367,15 +4394,18 @@ const builder = new TokenizerBuilder();
 <p>See <a href="https://github.com/lindera/lindera/blob/main/lindera-nodejs/resources/lindera.yml"><code>lindera-nodejs/resources/lindera.yml</code></a> for a complete example configuration file, including dictionary, character filter, and token filter settings.</p>
 <h3 id="configuration-methods-1"><a class="header" href="#configuration-methods-1">Configuration Methods</a></h3>
 <p>All setter methods return the builder itself (<code>this</code>), so they can be chained or called one statement at a time.</p>
-<h4 id="setmodemode-penalty"><a class="header" href="#setmodemode-penalty"><code>setMode(mode, penalty?)</code></a></h4>
-<p>Sets the tokenization mode.</p>
+<h4 id="setmodemode"><a class="header" href="#setmodemode"><code>setMode(mode)</code></a></h4>
+<p>Sets the tokenization mode, a <a href="lindera-nodejs/tokenizer_api.html#mode"><code>Mode</code></a>:</p>
 <ul>
-<li><code>"normal"</code> -- Standard tokenization (default)</li>
-<li><code>"decompose"</code> -- Decomposes compound words into smaller units</li>
+<li><code>Mode.normal()</code> -- Standard tokenization (default)</li>
+<li><code>Mode.decompose(penalty?)</code> -- Decomposes compound words into smaller units, with the <a href="lindera-nodejs/tokenizer_api.html#penalty"><code>Penalty</code></a> the mode holds</li>
 </ul>
-<p><code>penalty</code> is the <a href="lindera-nodejs/tokenizer_api.html#penalty"><code>Penalty</code></a> object that <code>"decompose"</code> mode uses; <code>null</code> or <code>undefined</code> (the default) uses the default penalty. A penalty with <code>"normal"</code> throws, as an invalid mode does, and a value that is not an object, or a field that is not an integer in its range, throws an <code>InvalidArg</code> error.</p>
-<pre><code class="language-javascript">builder.setMode("normal");
-builder.setMode("decompose", { kanjiPenaltyLengthPenalty: 0 });
+<p>A value that is not a <code>Mode</code>, such as the mode name <code>"normal"</code>, throws an <code>InvalidArg</code> error. A mode name read at run time, such as a setting, becomes a <code>Mode</code> with <a href="lindera-nodejs/tokenizer_api.html#modefromstrname"><code>Mode.fromStr()</code></a>.</p>
+<pre><code class="language-javascript">const { Mode } = require("lindera");
+
+builder.setMode(Mode.normal());
+builder.setMode(Mode.decompose({ kanjiPenaltyLengthPenalty: 0 }));
+builder.setMode(Mode.fromStr("decompose"));
 </code></pre>
 <h4 id="setdictionarypath"><a class="header" href="#setdictionarypath"><code>setDictionary(path)</code></a></h4>
 <p>Sets the system dictionary path or URI.</p>
@@ -4435,7 +4465,7 @@ builder.setSpacePenalty(null);
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Since v6.1.0, ko-dic applies the left-space penalty by default, because its <code>metadata.json</code> ships mecab-ko-dic's rules. This changes the Korean output (for example, <code>이</code> in <code>검색 이 잘 된다</code> is the interjection <code>IC</code> with the penalty and the subject particle <code>JKS</code> without it). Call <code>setSpacePenalty(false)</code> to turn it off. For a <code>Tokenizer</code> created directly, pass <code>false</code> as the fourth argument: <code>new Tokenizer(dictionary, "normal", null, false)</code>. A ko-dic downloaded from the v6.0.0 release ships no rules, so with it the penalty stays off and <code>setSpacePenalty(true)</code> makes <code>build()</code> throw. See <a href="lindera-nodejs/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+Since v6.1.0, ko-dic applies the left-space penalty by default, because its <code>metadata.json</code> ships mecab-ko-dic's rules. This changes the Korean output (for example, <code>이</code> in <code>검색 이 잘 된다</code> is the interjection <code>IC</code> with the penalty and the subject particle <code>JKS</code> without it). Call <code>setSpacePenalty(false)</code> to turn it off. For a <code>Tokenizer</code> created directly, pass <code>false</code> as the fourth argument: <code>new Tokenizer(dictionary, Mode.normal(), null, false)</code>. A ko-dic downloaded from the v6.0.0 release ships no rules, so with it the penalty stays off and <code>setSpacePenalty(true)</code> makes <code>build()</code> throw. See <a href="lindera-nodejs/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
 </blockquote>
 <h4 id="appendcharacterfilterkind-args"><a class="header" href="#appendcharacterfilterkind-args"><code>appendCharacterFilter(kind, args?)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
@@ -4454,17 +4484,17 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, because its <cod
 <h2 id="tokenizer-1"><a class="header" href="#tokenizer-1">Tokenizer</a></h2>
 <p><code>Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer-1"><a class="header" href="#creating-a-tokenizer-1">Creating a Tokenizer</a></h3>
-<h4 id="new-tokenizerdictionary-mode-userdictionary-spacepenalty-penalty"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary-spacepenalty-penalty"><code>new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?, penalty?)</code></a></h4>
+<h4 id="new-tokenizerdictionary-mode-userdictionary-spacepenalty"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary-spacepenalty"><code>new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?)</code></a></h4>
 <p>Creates a tokenizer directly from a loaded dictionary.</p>
+<p><code>mode</code> takes a <a href="lindera-nodejs/tokenizer_api.html#mode"><code>Mode</code></a>, as <a href="lindera-nodejs/tokenizer_api.html#setmodemode"><code>setMode</code></a> does, with the same errors. <code>null</code> or <code>undefined</code> (the default) is normal mode. For decompose mode with a custom penalty, pass <code>Mode.decompose(penalty)</code>.</p>
 <p><code>spacePenalty</code> takes the same values as <a href="lindera-nodejs/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty</code></a>. <code>null</code> or <code>undefined</code> (the default) uses the left-space penalty rules the dictionary ships. An invalid setting throws, as <code>setSpacePenalty</code> and <code>build()</code> do.</p>
-<p><code>penalty</code> takes a <a href="lindera-nodejs/tokenizer_api.html#penalty"><code>Penalty</code></a> for <code>"decompose"</code> mode, as <a href="lindera-nodejs/tokenizer_api.html#setmodemode-penalty"><code>setMode</code></a> does, with the same errors.</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera");
+<pre><code class="language-javascript">const { Mode, Tokenizer, loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("embedded://ipadic");
-const tokenizer = new Tokenizer(dictionary, "normal");
+const tokenizer = new Tokenizer(dictionary, Mode.normal());
 
 // ko-dic without the left-space penalty
-const koTokenizer = new Tokenizer(loadDictionary("embedded://ko-dic"), "normal", null, false);
+const koTokenizer = new Tokenizer(loadDictionary("embedded://ko-dic"), Mode.normal(), null, false);
 </code></pre>
 <h3 id="tokenizer-methods-1"><a class="header" href="#tokenizer-methods-1">Tokenizer Methods</a></h3>
 <h4 id="tokenizetext-1"><a class="header" href="#tokenizetext-1"><code>tokenize(text)</code></a></h4>
@@ -4534,14 +4564,68 @@ const reading = token.details[7];  // e.g., "トウキョウ"
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: Dictionary-specific detail formats</li>
 </ul>
 <h2 id="mode-and-penalty"><a class="header" href="#mode-and-penalty">Mode and Penalty</a></h2>
-<p><code>TokenizerBuilder.setMode()</code> and the <code>Tokenizer</code> constructor take the mode as a plain string
-(<code>"normal"</code> or <code>"decompose"</code>) and the penalty of decompose mode as a <a href="lindera-nodejs/tokenizer_api.html#penalty"><code>Penalty</code></a> object.</p>
+<p><code>TokenizerBuilder.setMode()</code> and the <code>Tokenizer</code> constructor take the mode as a <a href="lindera-nodejs/tokenizer_api.html#mode"><code>Mode</code></a>, which holds the penalty of decompose mode as a <a href="lindera-nodejs/tokenizer_api.html#penalty"><code>Penalty</code></a>.</p>
 <h3 id="mode-2"><a class="header" href="#mode-2"><code>Mode</code></a></h3>
-<p>A string enum with two values:</p>
+<p>The tokenization mode: normal, or decompose with a <a href="lindera-nodejs/tokenizer_api.html#penalty"><code>Penalty</code></a>. It is the counterpart of the Rust <code>lindera::mode::Mode</code> (see <a href="lindera-nodejs/../lindera/segmenter.html#tokenization-modes">Segmenter</a>), and <a href="lindera-nodejs/tokenizer_api.html#setmodemode"><code>setMode()</code></a> and the <a href="lindera-nodejs/tokenizer_api.html#new-tokenizerdictionary-mode-userdictionary-spacepenalty"><code>Tokenizer</code> constructor</a> take it:</p>
 <ul>
-<li><code>Mode.Normal</code> -- standard dictionary-cost-based tokenization</li>
-<li><code>Mode.Decompose</code> -- penalty-based decomposition of compound words</li>
+<li>Normal mode -- standard dictionary-cost-based tokenization</li>
+<li>Decompose mode -- penalty-based decomposition of compound words</li>
 </ul>
+<p><code>Mode</code> has no constructor, so <code>new Mode()</code> throws; the static factories below create a mode. A mode cannot be changed.</p>
+<h4 id="modenormal-2"><a class="header" href="#modenormal-2"><code>Mode.normal()</code></a></h4>
+<p>Creates normal mode.</p>
+<pre><code class="language-javascript">const { Mode } = require("lindera");
+
+const mode = Mode.normal();
+</code></pre>
+<h4 id="modedecomposepenalty"><a class="header" href="#modedecomposepenalty"><code>Mode.decompose(penalty?)</code></a></h4>
+<p>Creates decompose mode with <code>penalty</code>, a <a href="lindera-nodejs/tokenizer_api.html#penalty"><code>Penalty</code></a> object. <code>null</code> or <code>undefined</code> (the default) uses the default penalty, and a field left out keeps its default. A value that is not an object, or a field that is not an integer in its range, throws an <code>InvalidArg</code> error.</p>
+<pre><code class="language-javascript">const decompose = Mode.decompose(); // the default penalty
+const custom = Mode.decompose({ kanjiPenaltyLengthPenalty: 0 });
+</code></pre>
+<h4 id="modefromstrname"><a class="header" href="#modefromstrname"><code>Mode.fromStr(name)</code></a></h4>
+<p>Creates a mode from its name, as the Rust <code>Mode</code> parses one: <code>"normal"</code> is normal mode, and <code>"decompose"</code> is decompose mode with the default penalty. The name is case sensitive; any other name, including <code>"Normal"</code> and <code>"Decompose"</code>, throws an <code>Error</code> whose message contains <code>Invalid mode</code>. Use it for a mode name read at run time, such as a setting:</p>
+<pre><code class="language-javascript">const mode = Mode.fromStr("decompose");
+console.log(mode.equals(Mode.decompose()));
+// true
+</code></pre>
+<h4 id="properties-and-methods"><a class="header" href="#properties-and-methods">Properties and Methods</a></h4>
+<div class="table-wrapper"><table><thead><tr><th>Member</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td><code>string</code></td><td>The name of the mode, <code>"normal"</code> or <code>"decompose"</code> (a read-only property)</td></tr>
+<tr><td><code>penalty</code></td><td><code>Penalty | null</code></td><td>The penalty of decompose mode, as a copy with every field set, or <code>null</code> for normal mode (a read-only property). Changing the copy does not change the mode</td></tr>
+<tr><td><code>isNormal()</code></td><td><code>boolean</code></td><td>Whether this is normal mode</td></tr>
+<tr><td><code>isDecompose()</code></td><td><code>boolean</code></td><td>Whether this is decompose mode</td></tr>
+<tr><td><code>equals(other)</code></td><td><code>boolean</code></td><td>Whether <code>other</code> has the same name and penalty. A value that is not a <code>Mode</code> throws an <code>InvalidArg</code> error</td></tr>
+<tr><td><code>toString()</code></td><td><code>string</code></td><td>The name of the mode, as <code>name</code></td></tr>
+</tbody></table>
+</div>
+<p><code>===</code> compares objects, not modes: each call of <code>Mode.normal()</code> returns a new object, so compare modes with <code>equals</code>.</p>
+<pre><code class="language-javascript">const { Mode } = require("lindera");
+
+const mode = Mode.decompose({ kanjiPenaltyLengthPenalty: 0 });
+console.log(mode.name, mode.isNormal(), mode.isDecompose());
+// decompose false true
+
+// A copy with every field set: the field left out has its default
+const penalty = mode.penalty;
+console.log(penalty.kanjiPenaltyLengthPenalty, penalty.otherPenaltyLengthPenalty);
+// 0 1700
+
+// Changing the copy does not change the mode
+penalty.otherPenaltyLengthPenalty = 0;
+console.log(mode.penalty.otherPenaltyLengthPenalty);
+// 1700
+
+console.log(Mode.normal().penalty);
+// null
+
+console.log(Mode.decompose().equals(Mode.fromStr("decompose")));
+// true
+console.log(mode.equals(Mode.decompose()));
+// false
+console.log(`${Mode.normal()}`);
+// normal
+</code></pre>
 <h3 id="penalty-1"><a class="header" href="#penalty-1"><code>Penalty</code></a></h3>
 <p>A plain object (the TypeScript type <code>Penalty</code>) with the penalty parameters of decompose mode. Every field is optional, and a field left out keeps its default:</p>
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
@@ -4551,25 +4635,27 @@ const reading = token.details[7];  // e.g., "トウキョウ"
 <tr><td><code>otherPenaltyLengthPenalty</code></td><td><code>number</code></td><td>Penalty value for long other-character sequences, a 32-bit signed integer (default: <code>1700</code>)</td></tr>
 </tbody></table>
 </div>
-<p>Pass it with <code>"decompose"</code> to <a href="lindera-nodejs/tokenizer_api.html#setmodemode-penalty"><code>setMode()</code></a> or to the <a href="lindera-nodejs/tokenizer_api.html#new-tokenizerdictionary-mode-userdictionary-spacepenalty-penalty"><code>Tokenizer</code> constructor</a>. Without length penalties, decompose mode keeps long words whole:</p>
-<pre><code class="language-javascript">const { Tokenizer, TokenizerBuilder, loadDictionary } = require("lindera");
+<p>Pass it to <a href="lindera-nodejs/tokenizer_api.html#modedecomposepenalty"><code>Mode.decompose()</code></a>, and the mode to <a href="lindera-nodejs/tokenizer_api.html#setmodemode"><code>setMode()</code></a> or to the <a href="lindera-nodejs/tokenizer_api.html#new-tokenizerdictionary-mode-userdictionary-spacepenalty"><code>Tokenizer</code> constructor</a>. Without length penalties, decompose mode keeps long words whole, as normal mode does:</p>
+<pre><code class="language-javascript">const { Mode, Tokenizer, TokenizerBuilder, loadDictionary } = require("lindera");
 
 const text = "関西国際空港限定トートバッグ";
 const penalty = { kanjiPenaltyLengthPenalty: 0, otherPenaltyLengthPenalty: 0 };
 const surfaces = (tokenizer) =&gt; tokenizer.tokenize(text).map((token) =&gt; token.surface);
 
 const builder = new TokenizerBuilder().setDictionary("embedded://ipadic");
-console.log(surfaces(builder.setMode("decompose").build()));
-// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
-
-console.log(surfaces(builder.setMode("decompose", penalty).build()));
+console.log(surfaces(builder.setMode(Mode.normal()).build()));
 // [ '関西国際空港', '限定', 'トートバッグ' ]
 
-const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), "decompose", null, null, penalty);
+console.log(surfaces(builder.setMode(Mode.decompose()).build()));
+// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
+
+console.log(surfaces(builder.setMode(Mode.decompose(penalty)).build()));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+
+const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), Mode.decompose(penalty));
 console.log(surfaces(tokenizer));
 // [ '関西国際空港', '限定', 'トートバッグ' ]
 </code></pre>
-<p>A penalty with <code>"normal"</code> mode throws.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="dictionary-management-1"><a class="header" href="#dictionary-management-1">Dictionary Management</a></h1>
 <p>Lindera Node.js provides functions for loading, building, and managing dictionaries used in morphological analysis.</p>
 <h2 id="loading-dictionaries-1"><a class="header" href="#loading-dictionaries-1">Loading Dictionaries</a></h2>
@@ -4611,12 +4697,12 @@ const metadata = new Metadata();
 const userDict = loadUserDictionary("/path/to/user_dictionary.csv", metadata);
 </code></pre>
 <p>Pass the user dictionary when building a tokenizer:</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionaryFor } = require("lindera");
+<pre><code class="language-javascript">const { Mode, Tokenizer, loadDictionary, loadUserDictionaryFor } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
 const userDict = loadUserDictionaryFor("/path/to/user_dictionary.csv", dictionary);
 
-const tokenizer = new Tokenizer(dictionary, "normal", userDict);
+const tokenizer = new Tokenizer(dictionary, Mode.normal(), userDict);
 </code></pre>
 <p>Or via the builder:</p>
 <pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
@@ -4863,10 +4949,10 @@ const tokenizer = builder.build();
 </code></pre>
 <h2 id="complete-pipeline-example-1"><a class="header" href="#complete-pipeline-example-1">Complete Pipeline Example</a></h2>
 <p>The following example combines multiple character filters and token filters into a single pipeline:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { Mode, TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("embedded://ipadic");
 // Preprocessing
 builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
@@ -4977,6 +5063,7 @@ exportModel({
   exportModel,
   buildDictionary,
   Metadata,
+  Mode,
   TokenizerBuilder,
 } = require("lindera");
 
@@ -5007,7 +5094,7 @@ buildDictionary("/tmp/dictionary_source", "/tmp/dictionary", metadata);
 // Step 4: Use the trained dictionary
 const builder = new TokenizerBuilder();
 builder.setDictionary("/tmp/dictionary");
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 
 const tokens = tokenizer.tokenize("形態素解析のテスト");
@@ -5127,7 +5214,7 @@ puts Lindera.version
 <pre><code class="language-ruby">require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
-builder.set_mode('normal')
+builder.set_mode(Lindera::Mode.normal)
 builder.set_dictionary('/path/to/ipadic')
 tokenizer = builder.build
 
@@ -5149,7 +5236,7 @@ end
 <pre><code class="language-ruby">require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
-builder.set_mode('normal')
+builder.set_mode(Lindera::Mode.normal)
 builder.set_dictionary('/path/to/ipadic')
 tokenizer = builder.build
 
@@ -5209,15 +5296,15 @@ method, not chained off an existing instance.</p>
 <pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.from_file('config.json')
 </code></pre>
 <h3 id="configuration-methods-2"><a class="header" href="#configuration-methods-2">Configuration Methods</a></h3>
-<h4 id="set_modemode-penalty-nil"><a class="header" href="#set_modemode-penalty-nil"><code>set_mode(mode, penalty: nil)</code></a></h4>
-<p>Sets the tokenization mode.</p>
+<h4 id="set_modemode-1"><a class="header" href="#set_modemode-1"><code>set_mode(mode)</code></a></h4>
+<p>Sets the tokenization mode. <code>mode</code> is a <a href="lindera-ruby/tokenizer_api.html#mode"><code>Lindera::Mode</code></a>:</p>
 <ul>
-<li><code>"normal"</code> -- Standard tokenization (default)</li>
-<li><code>"decompose"</code> -- Decomposes compound words into smaller units</li>
+<li><code>Lindera::Mode.normal</code> -- Standard tokenization (default)</li>
+<li><code>Lindera::Mode.decompose(penalty = nil)</code> -- Decomposes compound words into smaller units, with the length penalties of a <a href="lindera-ruby/tokenizer_api.html#penalty"><code>Lindera::Penalty</code></a> (the default penalty for <code>nil</code>)</li>
 </ul>
-<p>The <code>penalty:</code> keyword takes the <a href="lindera-ruby/tokenizer_api.html#penalty"><code>Lindera::Penalty</code></a> that <code>"decompose"</code> mode uses; <code>nil</code> (the default) uses the default penalty. A penalty with <code>"normal"</code> raises <code>RuntimeError</code>, as an invalid mode does, and a value that is not a <code>Lindera::Penalty</code> raises <code>TypeError</code>.</p>
-<pre><code class="language-ruby">builder.set_mode('normal')
-builder.set_mode('decompose', penalty: Lindera::Penalty.new(nil, 0, nil, nil))
+<p>A value that is not a <code>Lindera::Mode</code>, such as a mode string (<code>'normal'</code>), a Symbol or <code>nil</code>, raises <code>TypeError</code>. To turn a mode name read at run time into a <code>Mode</code>, use <a href="lindera-ruby/tokenizer_api.html#linderamodefrom_strname"><code>Lindera::Mode.from_str</code></a>.</p>
+<pre><code class="language-ruby">builder.set_mode(Lindera::Mode.normal)
+builder.set_mode(Lindera::Mode.decompose(Lindera::Penalty.new(nil, 0, nil, nil)))
 </code></pre>
 <h4 id="set_dictionarypath-1"><a class="header" href="#set_dictionarypath-1"><code>set_dictionary(path)</code></a></h4>
 <p>Sets the system dictionary path or URI.</p>
@@ -5288,10 +5375,9 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does
 <h2 id="tokenizer-2"><a class="header" href="#tokenizer-2">Tokenizer</a></h2>
 <p><code>Lindera::Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer-2"><a class="header" href="#creating-a-tokenizer-2">Creating a Tokenizer</a></h3>
-<h4 id="linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><a class="header" href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><code>Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil, penalty: nil)</code></a></h4>
-<p>Creates a tokenizer directly from a loaded dictionary. <code>mode</code> defaults to <code>'normal'</code>, and <code>user_dictionary</code> is optional.</p>
+<h4 id="linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><a class="header" href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil)</code></a></h4>
+<p>Creates a tokenizer directly from a loaded dictionary. <code>mode</code> is a <a href="lindera-ruby/tokenizer_api.html#mode"><code>Lindera::Mode</code></a>, as <a href="lindera-ruby/tokenizer_api.html#set_modemode"><code>TokenizerBuilder#set_mode</code></a> takes it; <code>nil</code> (the default) means normal mode, and a value that is not a <code>Lindera::Mode</code>, such as a mode string (<code>'normal'</code>), raises <code>TypeError</code>. <code>user_dictionary</code> is optional.</p>
 <p>The <code>space_penalty:</code> keyword takes the same values as <a href="lindera-ruby/tokenizer_api.html#set_space_penaltyvalue"><code>TokenizerBuilder#set_space_penalty</code></a>. <code>nil</code> (the default) uses the left-space penalty rules the dictionary ships, so with ko-dic the penalty is on; pass <code>false</code> to turn it off. An invalid setting raises the same errors as <code>set_space_penalty</code> and <code>build</code>.</p>
-<p>The <code>penalty:</code> keyword takes a <a href="lindera-ruby/tokenizer_api.html#penalty"><code>Lindera::Penalty</code></a> for <code>"decompose"</code> mode, as <a href="lindera-ruby/tokenizer_api.html#set_modemode-penalty-nil"><code>TokenizerBuilder#set_mode</code></a> does, with the same errors.</p>
 <pre><code class="language-ruby">require 'lindera'
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
@@ -5303,7 +5389,7 @@ ko_tokenizer = Lindera::Tokenizer.new(Lindera.load_dictionary('embedded://ko-dic
 <p>With a user dictionary:</p>
 <pre><code class="language-ruby">dictionary = Lindera.load_dictionary('embedded://ipadic')
 user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.normal, user_dict)
 </code></pre>
 <h3 id="tokenizer-methods-2"><a class="header" href="#tokenizer-methods-2">Tokenizer Methods</a></h3>
 <h4 id="tokenizetext-2"><a class="header" href="#tokenizetext-2"><code>tokenize(text)</code></a></h4>
@@ -5344,32 +5430,52 @@ end
 </div>
 <p><strong>Returns:</strong> <code>Array&lt;Array(Array&lt;Token&gt;, Integer)&gt;</code></p>
 <h2 id="mode-3"><a class="header" href="#mode-3">Mode</a></h2>
-<p><code>Lindera::Mode</code> represents a tokenization mode. It is provided as a standalone helper for inspecting or comparing modes; <code>TokenizerBuilder#set_mode</code> and <code>Tokenizer.new</code> take a plain mode string (<code>"normal"</code> or <code>"decompose"</code>), not a <code>Mode</code> instance. The penalty of decompose mode goes in their <code>penalty:</code> keyword (see <a href="lindera-ruby/tokenizer_api.html#penalty"><code>Penalty</code></a> below).</p>
+<p><code>Lindera::Mode</code> is the tokenization mode that <a href="lindera-ruby/tokenizer_api.html#set_modemode"><code>TokenizerBuilder#set_mode</code></a> and <a href="lindera-ruby/tokenizer_api.html#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Tokenizer.new</code></a> take. It is the Ruby counterpart of the Rust <code>lindera::mode::Mode</code>: normal mode, or decompose mode with the <a href="lindera-ruby/tokenizer_api.html#penalty"><code>Lindera::Penalty</code></a> it uses.</p>
 <h3 id="creating-a-mode-1"><a class="header" href="#creating-a-mode-1">Creating a Mode</a></h3>
-<h4 id="linderamodenewmode_str"><a class="header" href="#linderamodenewmode_str"><code>Lindera::Mode.new(mode_str)</code></a></h4>
-<p>Creates a <code>Mode</code>. The argument is required, but may be <code>nil</code>. Accepts <code>"normal"</code> / <code>"Normal"</code> (used when <code>mode_str</code> is <code>nil</code>) or <code>"decompose"</code> / <code>"Decompose"</code>; any other value raises <code>ArgumentError</code>.</p>
+<p><code>Lindera::Mode</code> has no <code>new</code> (<code>Lindera::Mode.new</code> raises <code>TypeError</code>). The following class methods create a mode.</p>
+<h4 id="linderamodenormal"><a class="header" href="#linderamodenormal"><code>Lindera::Mode.normal</code></a></h4>
+<p>Returns normal mode.</p>
+<h4 id="linderamodedecomposepenalty--nil"><a class="header" href="#linderamodedecomposepenalty--nil"><code>Lindera::Mode.decompose(penalty = nil)</code></a></h4>
+<p>Returns decompose mode with <code>penalty</code>, a <code>Lindera::Penalty</code>. <code>nil</code> or no argument uses the default penalty. A value that is not a <code>Lindera::Penalty</code> raises <code>TypeError</code>.</p>
+<h4 id="linderamodefrom_strname"><a class="header" href="#linderamodefrom_strname"><code>Lindera::Mode.from_str(name)</code></a></h4>
+<p>Returns the mode named <code>name</code>, as the Rust <code>Mode</code> parses it: <code>'normal'</code>, or <code>'decompose'</code> with the default penalty. The name is case sensitive; any other name, such as <code>'Normal'</code>, raises <code>RuntimeError</code> with an <code>Invalid mode</code> message. Use it for a mode name read at run time, such as from a setting.</p>
 <pre><code class="language-ruby">require 'lindera'
 
-mode = Lindera::Mode.new('normal')
-mode = Lindera::Mode.new('decompose')
-mode = Lindera::Mode.new(nil)  # defaults to "normal"
+normal = Lindera::Mode.normal
+decompose = Lindera::Mode.decompose
+no_length_penalty = Lindera::Mode.decompose(Lindera::Penalty.new(nil, 0, nil, 0))
+from_setting = Lindera::Mode.from_str('decompose')
 </code></pre>
 <h3 id="mode-methods"><a class="header" href="#mode-methods">Mode Methods</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>to_s</code></td><td><code>String</code></td><td><code>"normal"</code> or <code>"decompose"</code></td></tr>
-<tr><td><code>name</code></td><td><code>String</code></td><td>Same as <code>to_s</code></td></tr>
-<tr><td><code>inspect</code></td><td><code>String</code></td><td>e.g. <code>"#&lt;Lindera::Mode: decompose&gt;"</code></td></tr>
-<tr><td><code>normal?</code></td><td><code>Boolean</code></td><td><code>true</code> if the mode is <code>"normal"</code></td></tr>
-<tr><td><code>decompose?</code></td><td><code>Boolean</code></td><td><code>true</code> if the mode is <code>"decompose"</code></td></tr>
+<tr><td><code>name</code></td><td><code>String</code></td><td><code>"normal"</code> or <code>"decompose"</code></td></tr>
+<tr><td><code>to_s</code></td><td><code>String</code></td><td>Same as <code>name</code></td></tr>
+<tr><td><code>inspect</code></td><td><code>String</code></td><td>The name, followed by the penalty for decompose mode</td></tr>
+<tr><td><code>penalty</code></td><td><code>Penalty</code> or <code>nil</code></td><td>A copy of the penalty of decompose mode; <code>nil</code> for normal mode</td></tr>
+<tr><td><code>normal?</code></td><td><code>Boolean</code></td><td><code>true</code> for normal mode</td></tr>
+<tr><td><code>decompose?</code></td><td><code>Boolean</code></td><td><code>true</code> for decompose mode</td></tr>
+<tr><td><code>==</code></td><td><code>Boolean</code></td><td><code>true</code> if the other value is a <code>Mode</code> with the same name and penalty</td></tr>
 </tbody></table>
 </div>
-<pre><code class="language-ruby">mode = Lindera::Mode.new('decompose')
-mode.to_s        # "decompose"
-mode.normal?      # false
-mode.decompose?   # true
+<p>A mode cannot be changed: it has no setter methods, and <code>penalty</code> returns a copy.</p>
+<p><code>==</code> compares the name and the penalty, and returns <code>false</code> for a value of another type, such as the string <code>'normal'</code>. <code>eql?</code> and <code>hash</code> stay by identity, as the Rust <code>Mode</code> is <code>Eq</code> but not <code>Hash</code>: two equal modes are different <code>Hash</code> keys, and <code>uniq</code> keeps both.</p>
+<pre><code class="language-ruby">mode = Lindera::Mode.decompose(Lindera::Penalty.new(nil, 0, nil, 0))
+mode.name                                   # "decompose"
+mode.normal?                                # false
+mode.decompose?                             # true
+mode.penalty.kanji_penalty_length_penalty   # 0
+mode.inspect
+# "#&lt;Lindera::Mode: decompose Penalty(kanji_threshold=2, kanji_penalty=0, other_threshold=7, other_penalty=0)&gt;"
+
+Lindera::Mode.normal.inspect   # "#&lt;Lindera::Mode: normal&gt;"
+Lindera::Mode.normal.penalty   # nil
+
+Lindera::Mode.decompose == Lindera::Mode.from_str('decompose')  # true
+Lindera::Mode.decompose == mode                                 # false (the penalties differ)
+Lindera::Mode.normal == 'normal'                                # false
 </code></pre>
 <h2 id="penalty-2"><a class="header" href="#penalty-2">Penalty</a></h2>
-<p><code>Lindera::Penalty</code> configures the length-based penalty thresholds used by <code>"decompose"</code> mode segmentation.</p>
+<p><code>Lindera::Penalty</code> configures the length-based penalty thresholds used by decompose mode segmentation. Pass it to <a href="lindera-ruby/tokenizer_api.html#linderamodedecomposepenalty--nil"><code>Lindera::Mode.decompose</code></a>.</p>
 <h3 id="creating-a-penalty-1"><a class="header" href="#creating-a-penalty-1">Creating a Penalty</a></h3>
 <h4 id="linderapenaltynewkanji_penalty_length_threshold-kanji_penalty_length_penalty-other_penalty_length_threshold-other_penalty_length_penalty"><a class="header" href="#linderapenaltynewkanji_penalty_length_threshold-kanji_penalty_length_penalty-other_penalty_length_threshold-other_penalty_length_penalty"><code>Lindera::Penalty.new(kanji_penalty_length_threshold, kanji_penalty_length_penalty, other_penalty_length_threshold, other_penalty_length_penalty)</code></a></h4>
 <p>All four positional arguments are required, but each may be <code>nil</code> to fall back to its default (shown below).</p>
@@ -5391,7 +5497,7 @@ penalty = Lindera::Penalty.new(nil, nil, nil, nil)  # uses all defaults
 penalty.kanji_penalty_length_threshold  # 2
 </code></pre>
 <h3 id="using-a-penalty-1"><a class="header" href="#using-a-penalty-1">Using a Penalty</a></h3>
-<p>Pass a <code>Penalty</code> with <code>"decompose"</code> as the <code>penalty:</code> keyword of <a href="lindera-ruby/tokenizer_api.html#set_modemode-penalty-nil"><code>TokenizerBuilder#set_mode</code></a> or <a href="lindera-ruby/tokenizer_api.html#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil"><code>Tokenizer.new</code></a>. Without length penalties, decompose mode keeps long words whole:</p>
+<p>Pass a <code>Penalty</code> to <a href="lindera-ruby/tokenizer_api.html#linderamodedecomposepenalty--nil"><code>Lindera::Mode.decompose</code></a>, and the mode to <a href="lindera-ruby/tokenizer_api.html#set_modemode"><code>TokenizerBuilder#set_mode</code></a> or <a href="lindera-ruby/tokenizer_api.html#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Tokenizer.new</code></a>. Without length penalties, decompose mode keeps long words whole:</p>
 <pre><code class="language-ruby">require 'lindera'
 
 text = '関西国際空港限定トートバッグ'
@@ -5399,20 +5505,19 @@ penalty = Lindera::Penalty.new(nil, 0, nil, 0)
 
 builder = Lindera::TokenizerBuilder.new
 builder.set_dictionary('embedded://ipadic')
-builder.set_mode('decompose')
+builder.set_mode(Lindera::Mode.decompose)
 p builder.build.tokenize(text).map(&amp;:surface)
 # =&gt; ["関西", "国際", "空港", "限定", "トートバッグ"]
 
-builder.set_mode('decompose', penalty: penalty)
+builder.set_mode(Lindera::Mode.decompose(penalty))
 p builder.build.tokenize(text).map(&amp;:surface)
 # =&gt; ["関西国際空港", "限定", "トートバッグ"]
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
-tokenizer = Lindera::Tokenizer.new(dictionary, 'decompose', penalty: penalty)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.decompose(penalty))
 p tokenizer.tokenize(text).map(&amp;:surface)
 # =&gt; ["関西国際空港", "限定", "トートバッグ"]
 </code></pre>
-<p>A <code>Penalty</code> with <code>"normal"</code> mode raises <code>RuntimeError</code>.</p>
 <h2 id="token-2"><a class="header" href="#token-2">Token</a></h2>
 <p><code>Token</code> represents a single morphological token.</p>
 <h3 id="properties-4"><a class="header" href="#properties-4">Properties</a></h3>
@@ -5583,7 +5688,7 @@ user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary.csv', metadat
 dictionary = Lindera.load_dictionary('/path/to/ipadic')
 user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
 
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.normal, user_dict)
 </code></pre>
 <p>Or via the builder:</p>
 <pre><code class="language-ruby">require 'lindera'
@@ -5787,7 +5892,7 @@ tokenizer = builder.build
 <pre><code class="language-ruby">require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
-builder.set_mode('normal')
+builder.set_mode(Lindera::Mode.normal)
 builder.set_dictionary('embedded://ipadic')
 
 # Preprocessing
@@ -5919,7 +6024,7 @@ Lindera.build_dictionary('/tmp/dictionary_source', '/tmp/dictionary', metadata)
 # Step 4: Use the trained dictionary
 builder = Lindera::TokenizerBuilder.new
 builder.set_dictionary('/tmp/dictionary')
-builder.set_mode('normal')
+builder.set_mode(Lindera::Mode.normal)
 tokenizer = builder.build
 
 tokens = tokenizer.tokenize('形態素解析のテスト')
@@ -6097,7 +6202,7 @@ parameters:
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 
 // Create a tokenizer
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal());
 
 // Tokenize the text
 $tokens = $tokenizer-&gt;tokenize('関西国際空港限定トートバッグ');
@@ -6118,7 +6223,7 @@ foreach ($tokens as $token) {
 <pre><code class="language-php">&lt;?php
 
 $builder = new Lindera\TokenizerBuilder();
-$builder-&gt;setMode('normal');
+$builder-&gt;setMode(Lindera\Mode::normal());
 $builder-&gt;setDictionary('/path/to/ipadic');
 $tokenizer = $builder-&gt;build();
 
@@ -6178,17 +6283,17 @@ $builder = new Lindera\TokenizerBuilder();
 $builder-&gt;fromFile('config.json');
 </code></pre>
 <h3 id="configuration-methods-3"><a class="header" href="#configuration-methods-3">Configuration Methods</a></h3>
-<h4 id="setmodemode-penalty-1"><a class="header" href="#setmodemode-penalty-1"><code>setMode($mode, $penalty)</code></a></h4>
-<p>Sets the tokenization mode.</p>
+<h4 id="setmodemode-1"><a class="header" href="#setmodemode-1"><code>setMode($mode)</code></a></h4>
+<p>Sets the tokenization mode, a <a href="lindera-php/tokenizer_api.html#mode"><code>Lindera\Mode</code></a>:</p>
 <ul>
-<li><code>"normal"</code> -- Standard tokenization (default)</li>
-<li><code>"decompose"</code> -- Decomposes compound words into smaller units</li>
+<li><code>Lindera\Mode::normal()</code> -- Standard tokenization (default)</li>
+<li><code>Lindera\Mode::decompose($penalty)</code> -- Decomposes compound words into smaller units, with a <a href="lindera-php/tokenizer_api.html#penalty"><code>Lindera\Penalty</code></a> or, without one, the default penalty</li>
 </ul>
-<p><code>$penalty</code> is the <a href="lindera-php/tokenizer_api.html#penalty"><code>Lindera\Penalty</code></a> that <code>"decompose"</code> mode uses; <code>null</code> (the default) uses the default penalty. A penalty with <code>"normal"</code> throws a <code>ValueError</code>, as an invalid mode does, and a value of another type throws instead of selecting the default.</p>
+<p><code>$mode</code> takes only a <code>Lindera\Mode</code>: a string such as <code>'normal'</code>, <code>null</code> or an object of another class throws a <code>TypeError</code>. To select a mode by its name, pass <a href="lindera-php/tokenizer_api.html#creating-a-mode"><code>Lindera\Mode::fromStr($name)</code></a>.</p>
 <pre><code class="language-php">&lt;?php
 
-$builder-&gt;setMode('normal');
-$builder-&gt;setMode('decompose', new Lindera\Penalty(kanji_penalty_length_penalty: 0));
+$builder-&gt;setMode(Lindera\Mode::normal());
+$builder-&gt;setMode(Lindera\Mode::decompose(new Lindera\Penalty(kanji_penalty_length_penalty: 0)));
 </code></pre>
 <h4 id="setdictionarypath-1"><a class="header" href="#setdictionarypath-1"><code>setDictionary($path)</code></a></h4>
 <p>Sets the system dictionary path or URI.</p>
@@ -6255,7 +6360,7 @@ $builder-&gt;setSpacePenalty(null);
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>검색 이 잘 된다</code> reads <code>이</code> as the interjection <code>IC</code>; without the penalty, as the subject particle <code>JKS</code>. Call <code>$builder-&gt;setSpacePenalty(false)</code> to turn it off; for a tokenizer created with <a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty"><code>new Lindera\Tokenizer(...)</code></a>, pass <code>space_penalty: false</code>. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-php/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
+Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, <code>검색 이 잘 된다</code> reads <code>이</code> as the interjection <code>IC</code>; without the penalty, as the subject particle <code>JKS</code>. Call <code>$builder-&gt;setSpacePenalty(false)</code> to turn it off; for a tokenizer created with <a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer(...)</code></a>, pass <code>space_penalty: false</code>. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and <code>true</code> fails until the dictionary is rebuilt. See <a href="lindera-php/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> for details.</p>
 </blockquote>
 <h4 id="appendcharacterfilterkind-args-1"><a class="header" href="#appendcharacterfilterkind-args-1"><code>appendCharacterFilter($kind, $args)</code></a></h4>
 <p>Appends a character filter to the preprocessing pipeline.</p>
@@ -6280,14 +6385,14 @@ $tokenizer = $builder-&gt;build();
 <h2 id="tokenizer-3"><a class="header" href="#tokenizer-3">Tokenizer</a></h2>
 <p><code>Lindera\Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer-3"><a class="header" href="#creating-a-tokenizer-3">Creating a Tokenizer</a></h3>
-<h4 id="new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty"><a class="header" href="#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty"><code>new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty, $penalty)</code></a></h4>
-<p>Creates a tokenizer directly from a loaded dictionary. <code>$mode</code>, <code>$user_dictionary</code>, <code>$space_penalty</code> and <code>$penalty</code> are optional and default to <code>null</code>; <code>$mode</code> <code>null</code> means <code>'normal'</code>.</p>
+<h4 id="new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><a class="header" href="#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty)</code></a></h4>
+<p>Creates a tokenizer directly from a loaded dictionary. <code>$mode</code>, <code>$user_dictionary</code> and <code>$space_penalty</code> are optional and default to <code>null</code>.</p>
+<p><code>$mode</code> takes a <a href="lindera-php/tokenizer_api.html#mode"><code>Lindera\Mode</code></a>, as <a href="lindera-php/tokenizer_api.html#setmodemode"><code>setMode()</code></a> does; <code>null</code> means normal mode. A value of another type, such as the string <code>'normal'</code>, throws a <code>TypeError</code>.</p>
 <p><code>$space_penalty</code> takes the same values as <a href="lindera-php/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a>. <code>null</code> uses the left-space penalty rules the dictionary ships (ko-dic ships them); pass <code>false</code> to turn the penalty off. Pass it by name to skip the other optional arguments. An invalid setting throws a <code>ValueError</code>, as <code>setSpacePenalty()</code> and <code>build()</code> do.</p>
-<p><code>$penalty</code> takes a <a href="lindera-php/tokenizer_api.html#penalty"><code>Lindera\Penalty</code></a> for <code>"decompose"</code> mode, as <a href="lindera-php/tokenizer_api.html#setmodemode-penalty"><code>setMode()</code></a> does, with the same errors.</p>
 <pre><code class="language-php">&lt;?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal());
 
 // ko-dic without the left-space penalty
 $koTokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ko-dic'), space_penalty: false);
@@ -6297,7 +6402,7 @@ $koTokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ko-dic
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
 $userDict = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDict);
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal(), $userDict);
 </code></pre>
 <h3 id="tokenizer-methods-3"><a class="header" href="#tokenizer-methods-3">Tokenizer Methods</a></h3>
 <h4 id="tokenizetext-3"><a class="header" href="#tokenizetext-3"><code>tokenize($text)</code></a></h4>
@@ -6411,25 +6516,72 @@ object straight to <code>json_encode</code> does not produce these fields -- cal
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: Dictionary-specific detail formats</li>
 </ul>
 <h2 id="mode-4"><a class="header" href="#mode-4">Mode</a></h2>
-<p><code>Lindera\Mode</code> represents the tokenization mode.</p>
+<p><code>Lindera\Mode</code> is the tokenization mode: normal, or decompose with a <a href="lindera-php/tokenizer_api.html#penalty"><code>Lindera\Penalty</code></a>. It is the counterpart of the Rust <a href="lindera-php/../lindera/segmenter.html#tokenization-modes"><code>lindera::mode::Mode</code></a>, and <a href="lindera-php/tokenizer_api.html#setmodemode"><code>setMode()</code></a> and the <a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>Tokenizer</code> constructor</a> take it.</p>
 <h3 id="creating-a-mode-2"><a class="header" href="#creating-a-mode-2">Creating a Mode</a></h3>
+<p><code>Lindera\Mode</code> has no public constructor: <code>new Lindera\Mode()</code> throws an <code>Exception</code> (<code>You cannot instantiate this class from PHP.</code>). Create a mode with a static factory:</p>
+<ul>
+<li><code>Lindera\Mode::normal()</code> -- Normal mode.</li>
+<li><code>Lindera\Mode::decompose($penalty)</code> -- Decompose mode with <code>$penalty</code>, a <a href="lindera-php/tokenizer_api.html#penalty"><code>Lindera\Penalty</code></a>. <code>null</code> (the default) uses the default penalty; a value of another type throws a <code>TypeError</code>.</li>
+<li><code>Lindera\Mode::fromStr($name)</code> -- The mode named <code>$name</code>: <code>'normal'</code>, or <code>'decompose'</code> with the default penalty. The name is case sensitive, as the Rust <code>Mode</code> parses it: any other name, such as <code>'Normal'</code>, throws a <code>ValueError</code>.</li>
+</ul>
 <pre><code class="language-php">&lt;?php
 
-$mode = new Lindera\Mode('normal');
-$mode = new Lindera\Mode('decompose');
-$mode = new Lindera\Mode();  // default: 'normal'
+$normal = Lindera\Mode::normal();
+$decompose = Lindera\Mode::decompose();  // the default penalty
+$custom = Lindera\Mode::decompose(new Lindera\Penalty(kanji_penalty_length_penalty: 0));
+$parsed = Lindera\Mode::fromStr('decompose');  // the default penalty
+
+try {
+    Lindera\Mode::fromStr('Normal');
+} catch (ValueError $e) {
+    echo get_class($e), ': ', $e-&gt;getMessage(), "\n";
+    // ValueError: LinderaError(kind=Mode, source=Invalid mode: Normal)
+}
 </code></pre>
-<h3 id="mode-properties"><a class="header" href="#mode-properties">Mode Properties</a></h3>
+<h3 id="mode-properties-1"><a class="header" href="#mode-properties-1">Mode Properties</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>$name</code></td><td><code>string</code></td><td>The mode name (<code>"normal"</code> or <code>"decompose"</code>)</td></tr>
+<tr><td><code>$penalty</code></td><td><code>Penalty|null</code></td><td>The penalty of decompose mode; <code>null</code> for normal mode</td></tr>
 </tbody></table>
 </div>
+<p>A mode cannot be changed: assigning a property throws an <code>Exception</code>. <code>$penalty</code> returns a new copy each time it is read, so it is <code>==</code> to the <code>Lindera\Penalty</code> passed to <code>decompose()</code> but not <code>===</code>.</p>
 <h3 id="mode-methods-1"><a class="header" href="#mode-methods-1">Mode Methods</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Method</th><th>Return Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>isNormal()</code></td><td><code>bool</code></td><td><code>true</code> if the mode is normal</td></tr>
 <tr><td><code>isDecompose()</code></td><td><code>bool</code></td><td><code>true</code> if the mode is decompose</td></tr>
+<tr><td><code>__toString()</code></td><td><code>string</code></td><td>The mode name, as <code>$name</code></td></tr>
 </tbody></table>
 </div>
+<pre><code class="language-php">&lt;?php
+
+$penalty = new Lindera\Penalty(kanji_penalty_length_penalty: 0);
+$mode = Lindera\Mode::decompose($penalty);
+echo $mode-&gt;name, ' ', $mode-&gt;penalty-&gt;kanji_penalty_length_penalty, "\n";
+// decompose 0
+var_dump($mode-&gt;penalty == $penalty, $mode-&gt;penalty === $penalty);
+// bool(true)
+// bool(false)
+echo Lindera\Mode::normal(), "\n";
+// normal
+var_dump(Lindera\Mode::normal()-&gt;penalty);
+// NULL
+</code></pre>
+<h3 id="comparing-modes"><a class="header" href="#comparing-modes">Comparing Modes</a></h3>
+<p><code>==</code> compares the name and the penalty, as <code>==</code> of the Rust <code>Mode</code> does; <code>===</code> holds only for the same object. Because a mode converts to its name, <code>==</code> with a string compares the name alone: a decompose mode with any penalty is <code>==</code> to <code>'decompose'</code>. An object of another class is never <code>==</code> to a mode.</p>
+<pre><code class="language-php">&lt;?php
+
+$decompose = Lindera\Mode::decompose();
+$custom = Lindera\Mode::decompose(new Lindera\Penalty(kanji_penalty_length_penalty: 0));
+
+var_dump(Lindera\Mode::fromStr('decompose') == $decompose);
+// bool(true)
+var_dump($custom == $decompose);
+// bool(false)
+var_dump($custom == 'decompose');
+// bool(true)
+var_dump(Lindera\Mode::normal() === Lindera\Mode::normal());
+// bool(false)
+</code></pre>
 <h2 id="penalty-3"><a class="header" href="#penalty-3">Penalty</a></h2>
 <p><code>Lindera\Penalty</code> configures how aggressively <code>decompose</code> mode splits compound words, based on character type and length thresholds.</p>
 <pre><code class="language-php">&lt;?php
@@ -6451,7 +6603,7 @@ $penalty = new Lindera\Penalty(
 </tbody></table>
 </div>
 <h3 id="using-a-penalty-2"><a class="header" href="#using-a-penalty-2">Using a Penalty</a></h3>
-<p>Pass a <code>Penalty</code> with <code>'decompose'</code> to <a href="lindera-php/tokenizer_api.html#setmodemode-penalty"><code>setMode()</code></a> or to the <a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty"><code>Tokenizer</code> constructor</a>. Without length penalties, decompose mode keeps long words whole:</p>
+<p>Pass a <code>Penalty</code> to <a href="lindera-php/tokenizer_api.html#creating-a-mode"><code>Lindera\Mode::decompose()</code></a>, and the mode to <a href="lindera-php/tokenizer_api.html#setmodemode"><code>setMode()</code></a> or to the <a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>Tokenizer</code> constructor</a>. Without length penalties, decompose mode keeps long words whole:</p>
 <pre><code class="language-php">&lt;?php
 
 $text = '関西国際空港限定トートバッグ';
@@ -6460,19 +6612,18 @@ $surfaces = static fn (array $tokens): string =&gt; implode(' / ', array_map(sta
 
 $builder = new Lindera\TokenizerBuilder();
 $builder-&gt;setDictionary('embedded://ipadic');
-$builder-&gt;setMode('decompose');
+$builder-&gt;setMode(Lindera\Mode::decompose());
 echo $surfaces($builder-&gt;build()-&gt;tokenize($text)), "\n";
 // 関西 / 国際 / 空港 / 限定 / トートバッグ
 
-$builder-&gt;setMode('decompose', $penalty);
+$builder-&gt;setMode(Lindera\Mode::decompose($penalty));
 echo $surfaces($builder-&gt;build()-&gt;tokenize($text)), "\n";
 // 関西国際空港 / 限定 / トートバッグ
 
-$tokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ipadic'), 'decompose', penalty: $penalty);
+$tokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ipadic'), Lindera\Mode::decompose($penalty));
 echo $surfaces($tokenizer-&gt;tokenize($text)), "\n";
 // 関西国際空港 / 限定 / トートバッグ
 </code></pre>
-<p>A <code>Penalty</code> with <code>'normal'</code> mode throws a <code>ValueError</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="dictionary-management-3"><a class="header" href="#dictionary-management-3">Dictionary Management</a></h1>
 <p>Lindera PHP provides static methods on the <code>Lindera\Dictionary</code> class for loading, building, and managing dictionaries used in morphological analysis.</p>
 <h2 id="loading-dictionaries-3"><a class="header" href="#loading-dictionaries-3">Loading Dictionaries</a></h2>
@@ -6515,7 +6666,7 @@ $userDict = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $metada
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 $userDict = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
 
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDict);
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal(), $userDict);
 </code></pre>
 <p>Or via the builder:</p>
 <pre><code class="language-php">&lt;?php
@@ -6797,7 +6948,7 @@ $tokenizer = $builder-&gt;build();
 $builder = new Lindera\TokenizerBuilder();
 
 // Set mode and dictionary
-$builder-&gt;setMode('normal');
+$builder-&gt;setMode(Lindera\Mode::normal());
 $builder-&gt;setDictionary('embedded://ipadic');
 
 // Preprocessing
@@ -6948,7 +7099,7 @@ Lindera\Dictionary::build('/tmp/dictionary_source', '/tmp/dictionary', $metadata
 // Step 4: Use the trained dictionary
 $builder = new Lindera\TokenizerBuilder();
 $builder-&gt;setDictionary('/tmp/dictionary');
-$builder-&gt;setMode('normal');
+$builder-&gt;setMode(Lindera\Mode::normal());
 $tokenizer = $builder-&gt;build();
 
 $tokens = $tokenizer-&gt;tokenize('形態素解析のテスト');
@@ -7101,7 +7252,7 @@ The npm package does not include dictionaries. Use the OPFS helpers to download 
 <div style="break-before: page; page-break-before: always;"></div><h1 id="quick-start-5"><a class="header" href="#quick-start-5">Quick Start</a></h1>
 <h2 id="web-browser----opfs-dictionary-loading"><a class="header" href="#web-browser----opfs-dictionary-loading">Web (Browser) -- OPFS Dictionary Loading</a></h2>
 <p>The recommended approach is to download dictionaries at runtime using the OPFS helpers:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
@@ -7125,7 +7276,7 @@ async function main() {
     // Build tokenizer
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dictionary);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
@@ -7140,7 +7291,7 @@ main();
 <p><strong>Note:</strong> Download a pre-built dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a>. See <a href="lindera-wasm/./opfs.html">OPFS Dictionary Storage</a> for the full workflow.</p>
 </blockquote>
 <p>Expected output:</p>
-<pre><code class="language-text">関西国際空港    名詞,固有名詞,一般,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
+<pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
 トートバッグ    名詞,一般,*,*,*,*,*,*,*
 </code></pre>
@@ -7150,14 +7301,14 @@ main();
 <p>[!NOTE]
 <code>lindera-wasm-ipadic</code> is an illustrative package name here, not something published to npm. Only <code>lindera-wasm</code> is actually published; see <a href="lindera-wasm/./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a> for how to build and name a package like this yourself.</p>
 </blockquote>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
 
     const builder = new TokenizerBuilder();
     builder.setDictionary("embedded://ipadic");
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
@@ -7170,7 +7321,7 @@ main();
 </code></pre>
 <h2 id="using-filters"><a class="header" href="#using-filters">Using Filters</a></h2>
 <p>You can add character filters and token filters to the tokenization pipeline:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 async function main() {
@@ -7185,7 +7336,7 @@ async function main() {
 
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dictionary);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
 
     // Add Unicode NFKC normalization
     builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
@@ -7224,23 +7375,19 @@ results.forEach((result, rank) =&gt; {
 <p>Creates a new builder with default settings.</p>
 <h3 id="methods-1"><a class="header" href="#methods-1">Methods</a></h3>
 <p>Every setter returns a builder handle that shares the same configuration, so
-the calls can be chained (<code>builder.setMode("normal").setDictionary(...)</code>) or
+the calls can be chained (<code>builder.setMode(Mode.normal()).setDictionary(...)</code>) or
 made one statement at a time. The returned handle is a new object, but it
 configures the same underlying builder.</p>
-<h4 id="setmodemode-penalty-2"><a class="header" href="#setmodemode-penalty-2"><code>setMode(mode, penalty?)</code></a></h4>
-<p>Sets the tokenization mode.</p>
+<h4 id="setmodemode-2"><a class="header" href="#setmodemode-2"><code>setMode(mode)</code></a></h4>
+<p>Sets the tokenization mode. A builder that is not given one uses normal mode.</p>
 <ul>
-<li><strong>Parameters</strong>:
-<ul>
-<li><code>mode</code> (string) -- <code>"normal"</code> or <code>"decompose"</code></li>
-<li><code>penalty</code> (Penalty, optional) -- The <a href="lindera-wasm/tokenizer_api.html#penalty"><code>Penalty</code></a> that <code>"decompose"</code> mode uses. <code>null</code> or <code>undefined</code> (the default) uses the default penalty. The <code>Penalty</code> stays usable, so the same one can be passed again.</li>
-</ul>
-</li>
+<li><strong>Parameters</strong>: <code>mode</code> (Mode) -- The <a href="lindera-wasm/tokenizer_api.html#mode"><code>Mode</code></a>: <code>Mode.normal()</code>, or <code>Mode.decompose()</code> with the <a href="lindera-wasm/tokenizer_api.html#penalty"><code>Penalty</code></a> of decompose mode. The <code>Mode</code> stays usable, so the same one can be passed again.</li>
 <li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
-<p>A penalty with <code>"normal"</code> throws an error string, as an invalid mode does, and so does a value that is not a <code>Penalty</code>.</p>
-<pre><code class="language-javascript">builder.setMode("normal");
-builder.setMode("decompose", new Penalty(undefined, 0));
+<p>A value that is not a <code>Mode</code>, such as a mode name, throws <code>Error("expected instance of Mode")</code>. To select a mode by its name, create it with <a href="lindera-wasm/tokenizer_api.html#mode"><code>Mode.fromStr()</code></a>.</p>
+<pre><code class="language-javascript">builder.setMode(Mode.normal());
+builder.setMode(Mode.decompose(new Penalty(undefined, 0)));
+builder.setMode(Mode.fromStr("decompose"));
 </code></pre>
 <h4 id="setdictionaryuri"><a class="header" href="#setdictionaryuri"><code>setDictionary(uri)</code></a></h4>
 <p>Sets the dictionary to use for tokenization. It replaces a dictionary set with <code>setDictionaryInstance()</code>.</p>
@@ -7364,16 +7511,15 @@ multiple tokenizers can be built from the same configuration.</p>
 <h2 id="tokenizer-4"><a class="header" href="#tokenizer-4">Tokenizer</a></h2>
 <p>The main tokenizer class. Can be created via <code>TokenizerBuilder.build()</code> or directly via the constructor.</p>
 <h3 id="tokenizer-constructor"><a class="header" href="#tokenizer-constructor">Tokenizer Constructor</a></h3>
-<pre><code class="language-javascript">const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty, penalty);
+<pre><code class="language-javascript">const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
 </code></pre>
 <ul>
 <li><strong>Parameters</strong>:
 <ul>
 <li><code>dictionary</code> (Dictionary) -- A loaded dictionary object</li>
-<li><code>mode</code> (string, optional) -- Tokenization mode (<code>"normal"</code> or <code>"decompose"</code>, defaults to <code>"normal"</code>)</li>
+<li><code>mode</code> (Mode, optional) -- The <a href="lindera-wasm/tokenizer_api.html#mode"><code>Mode</code></a>, as <a href="lindera-wasm/tokenizer_api.html#setmodemode"><code>setMode()</code></a> takes it. <code>null</code> or <code>undefined</code> (the default) is normal mode. The <code>Mode</code> stays usable, so the same one can be passed to several tokenizers and builders. A value that is not a <code>Mode</code> throws <code>Error("expected instance of Mode")</code>.</li>
 <li><code>userDictionary</code> (UserDictionary, optional) -- A loaded user dictionary</li>
 <li><code>spacePenalty</code> (boolean | object, optional) -- The left-space penalty, in the forms <a href="lindera-wasm/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> accepts. <code>null</code> or <code>undefined</code> (the default) uses the rules the dictionary ships. An invalid setting throws an error string, as <code>setSpacePenalty()</code> and <code>build()</code> do.</li>
-<li><code>penalty</code> (Penalty, optional) -- The <a href="lindera-wasm/tokenizer_api.html#penalty"><code>Penalty</code></a> for <code>"decompose"</code> mode, as <a href="lindera-wasm/tokenizer_api.html#setmodemode-penalty"><code>setMode()</code></a> takes it, with the same errors.</li>
 </ul>
 </li>
 </ul>
@@ -7491,14 +7637,37 @@ const dict = loadDictionary("embedded://ipadic");
 
 console.log(version()); // e.g., "7.0.0"
 </code></pre>
-<h2 id="enums-and-utility-classes"><a class="header" href="#enums-and-utility-classes">Enums and Utility Classes</a></h2>
+<h2 id="utility-classes"><a class="header" href="#utility-classes">Utility Classes</a></h2>
 <h3 id="mode-5"><a class="header" href="#mode-5">Mode</a></h3>
-<p>Tokenization mode enum.</p>
-<div class="table-wrapper"><table><thead><tr><th>Value</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>Mode.Normal</code></td><td>Standard tokenization based on dictionary cost</td></tr>
-<tr><td><code>Mode.Decompose</code></td><td>Decompose compound words using penalty-based segmentation</td></tr>
+<p>The tokenization mode: normal, or decompose with a <a href="lindera-wasm/tokenizer_api.html#penalty"><code>Penalty</code></a>. It is the counterpart of the Rust <code>Mode</code> (see <a href="lindera-wasm/../lindera/segmenter.html#tokenization-modes">Tokenization Modes</a>), and <a href="lindera-wasm/tokenizer_api.html#setmodemode"><code>setMode()</code></a> and the <a href="lindera-wasm/tokenizer_api.html#tokenizer-constructor"><code>Tokenizer</code> constructor</a> take it.</p>
+<p><code>Mode</code> has no public constructor: <code>new Mode()</code> is a TypeScript error, and in JavaScript it creates an object whose methods throw. Create a mode with a static method instead:</p>
+<div class="table-wrapper"><table><thead><tr><th>Static method</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>Mode.normal()</code></td><td>Normal mode: standard tokenization based on dictionary cost</td></tr>
+<tr><td><code>Mode.decompose(penalty?)</code></td><td>Decompose mode: compound words are decomposed using penalty-based segmentation. <code>penalty</code> is a <a href="lindera-wasm/tokenizer_api.html#penalty"><code>Penalty</code></a>; <code>null</code> or <code>undefined</code> (the default) uses the default penalty. A value that is not a <code>Penalty</code> throws an error string (<code>penalty must be a Penalty</code>)</td></tr>
+<tr><td><code>Mode.fromStr(name)</code></td><td>The mode named <code>"normal"</code> or <code>"decompose"</code> (with the default penalty). The name is case sensitive; any other name throws an error string that contains <code>Invalid mode</code></td></tr>
+</tbody></table>
+</div><div class="table-wrapper"><table><thead><tr><th>Property / Method</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td><code>string</code></td><td><code>"normal"</code> or <code>"decompose"</code> (read-only)</td></tr>
+<tr><td><code>penalty</code></td><td><code>Penalty</code> or <code>undefined</code></td><td>A copy of the penalty of decompose mode, or <code>undefined</code> for normal mode (read-only)</td></tr>
+<tr><td><code>isNormal()</code></td><td><code>boolean</code></td><td>Whether this is normal mode</td></tr>
+<tr><td><code>isDecompose()</code></td><td><code>boolean</code></td><td>Whether this is decompose mode</td></tr>
+<tr><td><code>equals(other)</code></td><td><code>boolean</code></td><td>Whether <code>other</code> has the same name and penalty. A value that is not a <code>Mode</code> throws <code>Error("expected instance of Mode")</code></td></tr>
+<tr><td><code>toString()</code></td><td><code>string</code></td><td>The name, as <code>name</code> returns it</td></tr>
 </tbody></table>
 </div>
+<p>A <code>Mode</code> cannot be changed. <code>Mode.decompose()</code> keeps its own copy of the <code>Penalty</code>, and <code>penalty</code> returns another copy, so changing either <code>Penalty</code> afterwards does not change the mode. The <code>Penalty</code> passed to <code>Mode.decompose()</code> stays usable, and so does a <code>Mode</code> passed to <code>setMode()</code> or to the <code>Tokenizer</code> constructor.</p>
+<pre><code class="language-javascript">import { Mode, Penalty } from 'lindera-wasm-ipadic';
+
+const mode = Mode.decompose(new Penalty(undefined, 0));
+console.log(mode.name, mode.isNormal(), mode.isDecompose());
+// decompose false true
+console.log(`${mode}`, mode.penalty.kanji_penalty_length_penalty);
+// decompose 0
+console.log(mode.equals(Mode.decompose()), Mode.fromStr("decompose").equals(Mode.decompose()));
+// false true
+console.log(Mode.normal().penalty);
+// undefined
+</code></pre>
 <h3 id="penalty-4"><a class="header" href="#penalty-4">Penalty</a></h3>
 <p>Configuration for decompose mode. Controls how aggressively compound words are decomposed.</p>
 <pre><code class="language-javascript">const penalty = new Penalty(
@@ -7515,26 +7684,28 @@ console.log(version()); // e.g., "7.0.0"
 <tr><td><code>other_penalty_length_penalty</code></td><td><code>number</code></td><td><code>1700</code></td><td>Penalty cost for non-kanji compounds exceeding threshold</td></tr>
 </tbody></table>
 </div>
-<p>Pass it with <code>"decompose"</code> to <a href="lindera-wasm/tokenizer_api.html#setmodemode-penalty"><code>setMode()</code></a> or to the <a href="lindera-wasm/tokenizer_api.html#tokenizer-constructor"><code>Tokenizer</code> constructor</a>. The <code>Penalty</code> is read, not consumed, so the same one can be passed again. Without length penalties, decompose mode keeps long words whole:</p>
-<pre><code class="language-javascript">import { Penalty, Tokenizer, TokenizerBuilder, loadDictionary } from 'lindera-wasm-ipadic';
+<p>Pass it to <a href="lindera-wasm/tokenizer_api.html#mode"><code>Mode.decompose()</code></a>, and the mode to <a href="lindera-wasm/tokenizer_api.html#setmodemode"><code>setMode()</code></a> or to the <a href="lindera-wasm/tokenizer_api.html#tokenizer-constructor"><code>Tokenizer</code> constructor</a>. The <code>Penalty</code> is read, not consumed, so the same one can be passed again. Without length penalties, decompose mode keeps long words whole, as normal mode does:</p>
+<pre><code class="language-javascript">import { Mode, Penalty, Tokenizer, TokenizerBuilder, loadDictionary } from 'lindera-wasm-ipadic';
 
 const text = "関西国際空港限定トートバッグ";
-const penalty = new Penalty(undefined, 0, undefined, 0);
 const surfaces = (tokenizer) =&gt; tokenizer.tokenize(text).map((token) =&gt; token.surface);
 
 const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");
-console.log(surfaces(builder.setMode("decompose").build()));
-// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
-
-console.log(surfaces(builder.setMode("decompose", penalty).build()));
+console.log(surfaces(builder.setMode(Mode.normal()).build()));
 // [ '関西国際空港', '限定', 'トートバッグ' ]
 
-const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), "decompose", null, null, penalty);
+console.log(surfaces(builder.setMode(Mode.decompose()).build()));
+// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
+
+const mode = Mode.decompose(new Penalty(undefined, 0, undefined, 0));
+console.log(surfaces(builder.setMode(mode).build()));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+
+const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), mode);
 console.log(surfaces(tokenizer));
 // [ '関西国際空港', '限定', 'トートバッグ' ]
 </code></pre>
-<p>A penalty with <code>"normal"</code> mode throws an error string.</p>
 <h3 id="linderaerror-1"><a class="header" href="#linderaerror-1">LinderaError</a></h3>
 <p>Error type for Lindera operations.</p>
 <pre><code class="language-javascript">const error = new LinderaError("message");
@@ -7548,10 +7719,10 @@ console.log(error.toString()); // "message"
 </div>
 <blockquote>
 <p>[!NOTE]
-<code>LinderaError</code> is exported as a utility class, but the current error paths in <code>TokenizerBuilder</code>, <code>Tokenizer</code>, and the dictionary-loading functions (<code>lindera-wasm/src/tokenizer.rs</code>, <code>lindera-wasm/src/dictionary.rs</code>) all reject with <code>JsValue::from_str(...)</code>, not a <code>JsLinderaError</code>/<code>LinderaError</code> instance. In practice, failures thrown by these APIs surface in JavaScript as plain strings, so catch them with <code>catch (e) { ... }</code> and treat <code>e</code> as a <code>string</code>, not as a <code>LinderaError</code> instance.</p>
+<code>LinderaError</code> is exported as a utility class, but the current error paths in <code>TokenizerBuilder</code>, <code>Tokenizer</code>, <code>Mode</code>, and the dictionary-loading functions (<code>lindera-wasm/src/tokenizer.rs</code>, <code>lindera-wasm/src/mode.rs</code>, <code>lindera-wasm/src/dictionary.rs</code>) all reject with <code>JsValue::from_str(...)</code>, not a <code>JsLinderaError</code>/<code>LinderaError</code> instance. In practice, failures thrown by these APIs surface in JavaScript as plain strings. The exception is an argument that is not an instance of the class a method takes, such as a mode name passed to <code>setMode()</code>: the JS glue checks it before calling into Rust and throws an <code>Error</code> whose message is <code>expected instance of &lt;class&gt;</code> (here, <code>expected instance of Mode</code>). Catch them with <code>catch (e) { ... }</code> and treat <code>e</code> as a <code>string</code> or an <code>Error</code>, not as a <code>LinderaError</code> instance.</p>
 </blockquote>
 <h2 id="snake-case-aliases"><a class="header" href="#snake-case-aliases">Snake-Case Aliases</a></h2>
-<p>For consistency with the Python API, all methods are also available in snake_case form:</p>
+<p>For consistency with the Python API, these methods are also available in snake_case form:</p>
 <div class="table-wrapper"><table><thead><tr><th>camelCase</th><th>snake_case</th></tr></thead><tbody>
 <tr><td><code>setMode()</code></td><td><code>set_mode()</code></td></tr>
 <tr><td><code>setDictionary()</code></td><td><code>set_dictionary()</code></td></tr>
@@ -7570,7 +7741,9 @@ console.log(error.toString()); // "message"
 <tr><td><code>loadUserDictionaryFromBytesFor()</code></td><td><code>load_user_dictionary_from_bytes_for()</code></td></tr>
 <tr><td><code>loadUserDictionaryBinFromBytes()</code></td><td><code>load_user_dictionary_bin_from_bytes()</code></td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="dictionary-management-4"><a class="header" href="#dictionary-management-4">Dictionary Management</a></h1>
+</div>
+<p>The methods of <code>Mode</code> (<code>fromStr()</code>, <code>isNormal()</code>, <code>isDecompose()</code>) have no snake_case aliases.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="dictionary-management-4"><a class="header" href="#dictionary-management-4">Dictionary Management</a></h1>
 <h2 id="loading-dictionaries-from-opfs"><a class="header" href="#loading-dictionaries-from-opfs">Loading Dictionaries from OPFS</a></h2>
 <p>The recommended way to use dictionaries in WASM is to download them from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> and load them via OPFS. This avoids embedding large dictionaries in the WASM binary.</p>
 <h3 id="loading-from-bytes"><a class="header" href="#loading-from-bytes">Loading from Bytes</a></h3>
@@ -7592,7 +7765,7 @@ console.log(error.toString()); // "message"
 </li>
 <li><strong>Returns</strong>: <code>Dictionary</code></li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, Mode, TokenizerBuilder } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 // Load dictionary files from OPFS
@@ -7614,7 +7787,7 @@ const dictionary = loadDictionaryFromBytes(
 // Use with TokenizerBuilder
 const builder = new TokenizerBuilder();
 builder.setDictionaryInstance(dictionary);
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 </code></pre>
 <p>See <a href="lindera-wasm/./opfs.html">OPFS Dictionary Storage</a> for the full OPFS workflow including downloading and caching.</p>
@@ -7641,14 +7814,14 @@ const dictionary = loadDictionary("embedded://ipadic");
 <h3 id="using-with-tokenizerbuilder"><a class="header" href="#using-with-tokenizerbuilder">Using with TokenizerBuilder</a></h3>
 <pre><code class="language-javascript">const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 </code></pre>
 <h3 id="using-with-tokenizer-constructor"><a class="header" href="#using-with-tokenizer-constructor">Using with Tokenizer Constructor</a></h3>
-<pre><code class="language-javascript">import { loadDictionary, Tokenizer } from 'lindera-wasm-ipadic';
+<pre><code class="language-javascript">import { loadDictionary, Mode, Tokenizer } from 'lindera-wasm-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
-const tokenizer = new Tokenizer(dictionary, "normal");
+const tokenizer = new Tokenizer(dictionary, Mode.normal());
 </code></pre>
 <h2 id="dictionary-class"><a class="header" href="#dictionary-class">Dictionary Class</a></h2>
 <p>The <code>Dictionary</code> class represents a loaded morphological analysis dictionary.</p>
@@ -7660,7 +7833,7 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </tbody></table>
 </div>
 <pre><code class="language-javascript">console.log(dictionary.name);     // "ipadic"
-console.log(dictionary.encoding); // "utf-8"
+console.log(dictionary.encoding); // "UTF-8"
 </code></pre>
 <h2 id="user-dictionaries-4"><a class="header" href="#user-dictionaries-4">User Dictionaries</a></h2>
 <p>User dictionaries allow you to add custom words that are not in the system dictionary.</p>
@@ -7699,7 +7872,7 @@ const binBytes = new Uint8Array(await response.arrayBuffer());
 const userDict = loadUserDictionaryBinFromBytes(binBytes);
 </code></pre>
 <h3 id="using-a-user-dictionary-with-tokenizer"><a class="header" href="#using-a-user-dictionary-with-tokenizer">Using a User Dictionary with Tokenizer</a></h3>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytesFor, Tokenizer } from 'lindera-wasm';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytesFor, Mode, Tokenizer } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
@@ -7710,7 +7883,7 @@ const dictionary = loadDictionaryFromBytes(
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
 const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
-const tokenizer = new Tokenizer(dictionary, "normal", userDict);
+const tokenizer = new Tokenizer(dictionary, Mode.normal(), userDict);
 </code></pre>
 <h3 id="user-dictionary-csv-format"><a class="header" href="#user-dictionary-csv-format">User Dictionary CSV Format</a></h3>
 <p>The user dictionary CSV follows the same format as the Lindera user dictionary.
@@ -7809,7 +7982,7 @@ Unlike the Python, Node.js, Ruby, and PHP bindings, the WASM <code>Metadata</cod
 <h2 id="es-module-import"><a class="header" href="#es-module-import">ES Module Import</a></h2>
 <p>In browser environments, you must initialize the WASM module before using any Lindera functions. The default export <code>__wbg_init</code> handles this initialization.</p>
 <p>The recommended approach is to load dictionaries from OPFS rather than embedding them in the WASM binary:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
@@ -7833,7 +8006,7 @@ async function main() {
 
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dictionary);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("形態素解析を行います");
@@ -7850,14 +8023,14 @@ main();
 <p>[!NOTE]
 <code>lindera-wasm-ipadic</code> is an illustrative package name here, not something published to npm. Only <code>lindera-wasm</code> is actually published; see <a href="lindera-wasm/./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a> for how to build and name a package like this yourself.</p>
 </blockquote>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
 
     const builder = new TokenizerBuilder();
     builder.setDictionary("embedded://ipadic");
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("形態素解析を行います");
@@ -7883,7 +8056,7 @@ main();
     &lt;pre id="output"&gt;Loading dictionary...&lt;/pre&gt;
 
     &lt;script type="module"&gt;
-        import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
+        import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
         import { downloadDictionary, loadDictionaryFiles, hasDictionary } from './pkg/opfs.js';
 
         let tokenizer;
@@ -7909,7 +8082,7 @@ main();
 
             const builder = new TokenizerBuilder();
             builder.setDictionaryInstance(dictionary);
-            builder.setMode("normal");
+            builder.setMode(Mode.normal());
             tokenizer = builder.build();
 
             document.getElementById('tokenize').disabled = false;
@@ -7951,7 +8124,7 @@ module.exports = {
 </code></pre>
 <p>Then import the package and call the default-exported async init function
 once before using any API (the web-target build requires it, bundled or not):</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 await __wbg_init();
@@ -7965,14 +8138,14 @@ const dictionary = loadDictionaryFromBytes(
 
 const builder = new TokenizerBuilder();
 builder.setDictionaryInstance(dictionary);
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 </code></pre>
 <h2 id="vite--rollup-setup"><a class="header" href="#vite--rollup-setup">Vite / Rollup Setup</a></h2>
 <p>Vite supports the web-target WASM build out of the box. Install <code>lindera-wasm</code>
 from npm, or place a locally built <code>pkg/</code> directory in your project and import
 directly:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
 import { loadDictionaryFiles } from './pkg/opfs.js';
 
 await __wbg_init();
@@ -8111,7 +8284,7 @@ console.log(names); // e.g., ["ipadic", "unidic"]
 </code></pre>
 <h2 id="complete-workflow-4"><a class="header" href="#complete-workflow-4">Complete Workflow</a></h2>
 <p>A typical workflow for using OPFS-based dictionaries:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
@@ -8141,7 +8314,7 @@ async function main() {
     // Build tokenizer
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dictionary);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     // Tokenize
@@ -10182,7 +10355,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>WASM: the <code>TokenizerBuilder</code> settings apply whichever way the dictionary is set</strong></td><td>WASM users who combine <code>setDictionaryInstance()</code> with <code>setKeepWhitespace()</code> or filters, or <code>setDictionary()</code> with <code>setUserDictionaryInstance()</code></td><td>Expect those settings and the user dictionary to take effect; a dictionary instance whose <code>char.def</code> has no <code>SPACE</code> category now needs <code>setKeepWhitespace(true)</code>, as a dictionary set by URI does</td></tr>
 <tr><td><strong>PHP: an optional argument of the wrong type throws instead of selecting the default</strong></td><td>PHP code that passes a value of another type to an optional parameter, such as a numeric string for <code>$max_iter</code> of <code>Lindera\Trainer::train()</code> or <code>1</code> for <code>$unique</code> of <code>tokenizeNbest()</code></td><td>Pass the declared type, casting strings such as <code>$argv</code> values with <code>(int)</code>; <code>null</code> or leaving the argument out still selects the default</td></tr>
 <tr><td><strong>PHP, Node.js and WASM: an integer argument outside the range of its setting throws instead of wrapping</strong></td><td>Code that passes such a value, such as <code>100000</code> for the default word cost of <code>Metadata</code> (v6 stored <code>-31072</code>) or <code>-1</code> for the number of N-best results (v6 listed every segmentation); a negative index for <code>getFieldName</code> or PHP's <code>getDetail</code>; in Node.js and WASM, a number that is not an integer, such as <code>1.5</code> or <code>NaN</code></td><td>Pass an integer in the range; the error names the parameter and the range</td></tr>
-<tr><td><strong>Bindings: decompose mode takes a <code>Penalty</code> through <code>set_mode</code> / <code>setMode</code> and the <code>Tokenizer</code> constructors, and <code>TokenizerBuilder::set_segmenter_mode</code> keeps the penalty of a <code>Mode::Decompose</code></strong></td><td>Binding users who want a custom decompose penalty; TypeScript code that names the Node.js type <code>JsPenalty</code>; Rust code that passes a custom penalty to <code>set_segmenter_mode</code>; binding authors who call <code>CoreTokenizerBuilder::set_mode</code> or <code>CoreTokenizer::from_segmenter_with_space_penalty</code></td><td>Pass a <code>Penalty</code> as the new argument to customize the penalty; rename <code>JsPenalty</code> to <code>Penalty</code>; pass <code>None</code> as the new argument of the <code>lindera-binding</code> functions</td></tr>
+<tr><td><strong>Bindings: a mode is a <code>Mode</code>, which holds the penalty of decompose mode as the Rust <code>Mode</code> does; <code>set_mode</code> / <code>setMode</code> and the <code>Tokenizer</code> constructors take a <code>Mode</code> instead of a mode name, and <code>TokenizerBuilder::set_segmenter_mode</code> keeps the penalty of a <code>Mode::Decompose</code></strong></td><td>Binding users who set a mode; code that uses a binding's <code>Mode</code>, Node.js's <code>JsMode</code> or WASM's numeric <code>Mode</code>; TypeScript code that names the Node.js type <code>JsPenalty</code>; Rust code that passes a custom penalty to <code>set_segmenter_mode</code>; binding authors who call <code>CoreTokenizerBuilder::set_mode</code> or the <code>CoreTokenizer::from_segmenter</code> functions</td><td>Pass <code>Mode.normal()</code> or <code>Mode.decompose(penalty)</code> (in Ruby <code>Lindera::Mode.normal</code>, in PHP <code>Lindera\Mode::normal()</code>) instead of <code>"normal"</code> or <code>"decompose"</code>, and turn a mode name read at run time into a <code>Mode</code> with <code>Mode.from_str</code> / <code>Mode.fromStr</code>; rename <code>JsPenalty</code> to <code>Penalty</code>; pass a <code>lindera::mode::Mode</code> to the <code>lindera-binding</code> functions</td></tr>
 <tr><td><strong><code>lindera train</code> builds its lattices as MeCab's learner does and keeps every <code>unk.def</code> entry; <code>model.dat</code> has the format version 2.0.0</strong></td><td>Users of <code>lindera train</code> and <code>lindera export</code>, and of the training functions of the Python, Node.js, Ruby and PHP bindings</td><td>Train every model again with 7.0.0, then export and build it again (a <code>model.dat</code> written by v6.2.0 or earlier is rejected); give every <code>unk.def</code> line at least five fields; remove comment lines from seed lexicons</td></tr>
 <tr><td><strong><code>lindera build</code> rejects context IDs outside <code>matrix.def</code></strong></td><td>Anyone who builds a system dictionary whose <code>lex.csv</code> or <code>unk.def</code> has a context ID beyond the size of its <code>matrix.def</code> (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's <code>mecab-dict-index</code> accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic</td><td>Fix the IDs or the matrix, or set <code>skip_invalid_cost_or_id</code> in <code>metadata.json</code> to drop such <code>lex.csv</code> rows; fix such IDs in the user dictionary</td></tr>
 <tr><td><strong><code>lindera build</code> and <code>lindera train</code> check <code>char.def</code> against <code>unk.def</code></strong></td><td>Anyone whose <code>char.def</code> has a range line that names a category not defined on an earlier line, or a category defined twice, or whose <code>char.def</code> and <code>unk.def</code> do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored <code>unk.def</code> lines); not dictionaries that MeCab's <code>mecab-dict-index</code> accepts</td><td>Define each category once, before the range lines that name it; give every category an <code>unk.def</code> line, and remove the <code>unk.def</code> lines of undefined categories</td></tr>
@@ -10196,9 +10369,12 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 </tbody></table>
 </div>
 <p>The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
-their package names, and their APIs apart from one setting: the <code>Metadata</code>
-classes of the Python, Node.js, Ruby and PHP bindings no longer take or
-expose <code>normalize_details</code> (see
+their package names, and their APIs apart from the mode and one setting: a
+binding takes the mode as a <code>Mode</code>, which holds the penalty of decompose
+mode as the Rust <code>Mode</code> does, instead of a mode name (see
+<a href="migration_v6_to_v7.html#bindings-a-mode-is-a-mode">Bindings: a mode is a <code>Mode</code></a>), and the
+<code>Metadata</code> classes of the Python, Node.js, Ruby and PHP bindings no longer
+take or expose <code>normalize_details</code> (see
 <a href="migration_v6_to_v7.html#the-normalize_details-setting-is-removed">The <code>normalize_details</code> setting is removed</a>).
 The PHP binding also rejects a value of the wrong type for an optional
 argument, which v6 read as <code>null</code> (see
@@ -11178,10 +11354,10 @@ or without <code>strict_types</code>. For example,
 not deduplicated, and <code>Lindera\Trainer::train(..., max_iter: $argv[1])</code>
 trained for the default 100 iterations whatever the command line said. A
 required parameter already rejected such a value.</p>
-<p>v7.0.0 rejects it for the optional parameters too: those of the <code>Mode</code>,
-<code>Penalty</code>, <code>Metadata</code>, <code>FieldDefinition</code> and <code>Tokenizer</code> constructors, of
-<code>Tokenizer::tokenizeNbest()</code>, <code>Trainer::train()</code>, <code>Trainer::export()</code> and
-<code>Dictionary::buildUser()</code>. The call throws a <code>TypeError</code>,
+<p>v7.0.0 rejects it for the optional parameters too: those of the <code>Penalty</code>,
+<code>Metadata</code>, <code>FieldDefinition</code> and <code>Tokenizer</code> constructors, of
+<code>Mode::decompose()</code>, <code>Tokenizer::tokenizeNbest()</code>, <code>Trainer::train()</code>,
+<code>Trainer::export()</code> and <code>Dictionary::buildUser()</code>. The call throws a <code>TypeError</code>,
 <code>Invalid value given for argument</code> followed by the parameter's name. A
 required parameter now throws the same <code>TypeError</code> for such a value; v6
 threw an <code>Exception</code> with the same message. <code>null</code> and leaving the argument
@@ -11239,31 +11415,57 @@ these values, with <code>OverflowError</code> and <code>RangeError</code>, and d
 except that the <code>OverflowError</code> of a Python property setter now names the
 property in its note (<code>while processing 'default_word_cost'</code> instead of
 <code>'cost'</code>). No option restores the v6 behavior.</p>
-<h2 id="bindings-decompose-mode-takes-a-penalty"><a class="header" href="#bindings-decompose-mode-takes-a-penalty">Bindings: decompose mode takes a <code>Penalty</code></a></h2>
-<p>Up to v6.2.0, every binding had a <code>Penalty</code>, but no function or constructor
-took one: <code>set_mode</code> / <code>setMode</code> and the <code>Tokenizer</code> constructors took only a
-mode string, and decompose mode always used the default penalty. A custom
+<h2 id="bindings-a-mode-is-a-mode"><a class="header" href="#bindings-a-mode-is-a-mode">Bindings: a mode is a <code>Mode</code></a></h2>
+<p>Up to v6.2.0, every binding exported a <code>Mode</code>, but no function or
+constructor took one: <code>set_mode</code> / <code>setMode</code> and the <code>Tokenizer</code>
+constructors took a mode name, and decompose mode always used the default
+penalty. Node.js exported a string enum <code>JsMode</code>, whose values <code>'Normal'</code>
+and <code>'Decompose'</code> <code>setMode</code> rejected, and WASM a numeric enum. A custom
 penalty reached the segmenter only through a configuration file loaded with
 <code>from_file</code> / <code>fromFile</code>. In Rust, <code>TokenizerBuilder::set_segmenter_mode</code>
 lost the penalty of a <code>Mode::Decompose</code> the same way, because it wrote only
 the name of the mode into the configuration.</p>
-<p>In v7.0.0, <code>set_mode</code> / <code>setMode</code> and the <code>Tokenizer</code> constructors take the
-penalty as an optional argument, and <code>set_segmenter_mode</code> keeps it:</p>
-<div class="table-wrapper"><table><thead><tr><th>Binding</th><th>Builder</th><th><code>Tokenizer</code> constructor</th></tr></thead><tbody>
-<tr><td>Python</td><td><code>set_mode("decompose", penalty)</code></td><td><code>Tokenizer(dictionary, "decompose", penalty=penalty)</code></td></tr>
-<tr><td>Ruby</td><td><code>set_mode('decompose', penalty: penalty)</code></td><td><code>Lindera::Tokenizer.new(dictionary, 'decompose', penalty: penalty)</code></td></tr>
-<tr><td>PHP</td><td><code>$builder-&gt;setMode('decompose', $penalty)</code></td><td><code>new Lindera\Tokenizer($dictionary, 'decompose', penalty: $penalty)</code></td></tr>
-<tr><td>Node.js</td><td><code>builder.setMode("decompose", penalty)</code></td><td><code>new Tokenizer(dictionary, "decompose", null, null, penalty)</code></td></tr>
-<tr><td>WASM</td><td><code>builder.setMode("decompose", penalty)</code></td><td><code>new Tokenizer(dictionary, "decompose", null, null, penalty)</code></td></tr>
+<p>In v7.0.0, the <code>Mode</code> of each binding is a copy of the Rust
+<code>lindera::mode::Mode</code>: normal mode, or decompose mode with a <code>Penalty</code>.
+<code>set_mode</code> / <code>setMode</code> and the <code>Tokenizer</code> constructors take a <code>Mode</code>, as
+<code>set_segmenter_mode</code> and <code>Segmenter::new</code> do in Rust, and no longer take a
+mode name. Leaving the mode of a constructor out, or passing <code>null</code> /
+<code>None</code> / <code>nil</code>, still means normal mode, and <code>set_segmenter_mode</code> keeps the
+penalty:</p>
+<div class="table-wrapper"><table><thead><tr><th>Binding</th><th>v6</th><th>v7</th></tr></thead><tbody>
+<tr><td>Python</td><td><code>builder.set_mode("decompose")</code></td><td><code>builder.set_mode(Mode.decompose(penalty))</code></td></tr>
+<tr><td>Ruby</td><td><code>builder.set_mode('decompose')</code></td><td><code>builder.set_mode(Lindera::Mode.decompose(penalty))</code></td></tr>
+<tr><td>PHP</td><td><code>$builder-&gt;setMode('decompose')</code></td><td><code>$builder-&gt;setMode(Lindera\Mode::decompose($penalty))</code></td></tr>
+<tr><td>Node.js</td><td><code>builder.setMode("decompose")</code></td><td><code>builder.setMode(Mode.decompose(penalty))</code></td></tr>
+<tr><td>WASM</td><td><code>builder.setMode("decompose")</code></td><td><code>builder.setMode(Mode.decompose(penalty))</code></td></tr>
 </tbody></table>
 </div>
-<p>Leaving the argument out keeps the default penalty, so existing calls do not
-change. A penalty with <code>"normal"</code> is an error, as an invalid mode is. With
-IPADIC and both length penalties 0, decompose mode segments
-<code>関西国際空港限定トートバッグ</code> as <code>関西国際空港 / 限定 / トートバッグ</code>
-instead of <code>関西 / 国際 / 空港 / 限定 / トートバッグ</code>.</p>
-<p>Three changes can need action:</p>
+<p>The <code>Tokenizer</code> constructors take the same <code>Mode</code> as their second argument,
+for example <code>Tokenizer(dictionary, Mode.normal())</code> in Python. The penalty
+is optional: <code>Mode.decompose()</code> uses the default one. With IPADIC and both
+length penalties 0, decompose mode segments <code>関西国際空港限定トートバッグ</code>
+as <code>関西国際空港 / 限定 / トートバッグ</code> instead of
+<code>関西 / 国際 / 空港 / 限定 / トートバッグ</code>.</p>
+<p>A mode name read at run time, such as a setting, becomes a <code>Mode</code> with
+<code>Mode.from_str(name)</code> (<code>Mode.fromStr</code> in PHP, Node.js and WASM). It parses
+the name as the Rust <code>Mode</code> does: <code>"normal"</code> or <code>"decompose"</code>, case
+sensitive, the latter with the default penalty; another name throws the
+error that <code>set_mode</code> threw for it in v6. A mode name, or any other value
+that is not a <code>Mode</code>, passed to <code>set_mode</code> / <code>setMode</code> or a constructor now
+throws a type error: <code>TypeError</code> in Python, Ruby and PHP, an <code>InvalidArg</code>
+error in Node.js and <code>expected instance of Mode</code> in WASM.</p>
+<p>The other changes:</p>
 <ul>
+<li><strong>The <code>Mode</code> classes</strong>: a <code>Mode</code> has no constructor; <code>Mode.normal()</code>,
+<code>Mode.decompose()</code> and <code>Mode.from_str()</code> create one. It has a <code>name</code>, a
+<code>penalty</code> (a copy, or none for normal mode), the normal and decompose
+checks, and equality of the name and the penalty (<code>==</code>, or <code>equals()</code> in
+Node.js and WASM). Python's <code>Mode(mode_str)</code> and its attributes
+<code>Mode.Normal</code> / <code>Mode.Decompose</code>, Ruby's <code>Lindera::Mode.new</code>, PHP's
+<code>new Lindera\Mode()</code>, Node.js's <code>JsMode</code> and WASM's <code>Mode.Normal</code> /
+<code>Mode.Decompose</code> are gone. The Python and Ruby constructors accepted
+<code>"Normal"</code> and <code>"Decompose"</code>, and PHP's any case; <code>from_str</code> does not. A
+Python <code>Mode</code> is not hashable, as the Rust <code>Mode</code> is not <code>Hash</code>.</li>
 <li><strong>Node.js</strong>: the TypeScript type <code>JsPenalty</code> is renamed <code>Penalty</code>, and its
 fields become optional; a field left out keeps its default. TypeScript code
 that names <code>JsPenalty</code> uses <code>Penalty</code>. The package exports no value for the
@@ -11272,9 +11474,13 @@ type, so JavaScript code does not change.</li>
 whose penalty is not the default now applies that penalty, so the output
 changes. A mode parsed from <code>"decompose"</code>, such as the one the CLI's
 <code>--mode</code> gives, carries the default penalty and is not affected.</li>
-<li><strong>Binding authors</strong>: <code>CoreTokenizerBuilder::set_mode</code> and
-<code>CoreTokenizer::from_segmenter_with_space_penalty</code> take the penalty as their
-second argument; pass <code>None</code> to keep the default.</li>
+<li><strong>Binding authors</strong>: <code>CoreTokenizerBuilder::set_mode</code>,
+<code>CoreTokenizer::from_segmenter</code> and
+<code>CoreTokenizer::from_segmenter_with_space_penalty</code> take a
+<code>lindera::mode::Mode</code> instead of the <code>&amp;str</code> that v6.2.0's
+<code>lindera-binding-core</code> took. <code>set_mode</code> no longer returns a <code>Result</code>.
+<code>lindera_binding::parse_mode</code> parses a mode name, as the bindings'
+<code>from_str</code> do.</li>
 </ul>
 <h2 id="lindera-train-builds-its-lattices-as-mecabs-learner-does"><a class="header" href="#lindera-train-builds-its-lattices-as-mecabs-learner-does"><code>lindera train</code> builds its lattices as MeCab's learner does</a></h2>
 <p>Up to v6.2.0, <code>lindera train</code> built training lattices that differ from
@@ -11751,8 +11957,9 @@ and, in PHP, optional arguments of the wrong type (see
 <a href="migration_v6_to_v7.html#php-optional-arguments-reject-a-value-of-the-wrong-type">PHP: optional arguments reject a value of the wrong type</a>),
 and, in PHP, Node.js and WASM, integer arguments outside their range (see
 <a href="migration_v6_to_v7.html#bindings-integer-arguments-outside-their-range-are-rejected">Bindings: integer arguments outside their range are rejected</a>),
-and the Node.js TypeScript type <code>JsPenalty</code>, now <code>Penalty</code> (see
-<a href="migration_v6_to_v7.html#bindings-decompose-mode-takes-a-penalty">Bindings: decompose mode takes a <code>Penalty</code></a>).
+and the mode, which they take as a <code>Mode</code> instead of a name, and the
+Node.js TypeScript type <code>JsPenalty</code>, now <code>Penalty</code> (see
+<a href="migration_v6_to_v7.html#bindings-a-mode-is-a-mode">Bindings: a mode is a <code>Mode</code></a>).
 The restructuring is internal to the Rust crates. A dictionary directory
 built or downloaded with v6.2.0 or earlier has to be rebuilt or downloaded
 again (see
@@ -11850,9 +12057,11 @@ takes 10 arguments, and stop using the <code>CoreMetadata::normalize_details</co
 field.</li>
 <li>If you build <code>CoreMetadata</code> with a struct literal that lists every field,
 add <code>skip_whitespace: None</code> or end it with <code>..Default::default()</code>.</li>
-<li>Pass the penalty, or <code>None</code>, as the new second argument of
-<code>CoreTokenizerBuilder::set_mode</code> and
-<code>CoreTokenizer::from_segmenter_with_space_penalty</code>.</li>
+<li>Pass a <code>lindera::mode::Mode</code> instead of a mode name to
+<code>CoreTokenizerBuilder::set_mode</code>, which no longer returns a <code>Result</code>, and
+to <code>CoreTokenizer::from_segmenter</code> and
+<code>CoreTokenizer::from_segmenter_with_space_penalty</code>; parse a name with
+<code>lindera_binding::parse_mode</code>.</li>
 </ul>
 <p>Build environments:</p>
 <ul>
@@ -12040,9 +12249,15 @@ type for an optional parameter, which v6 read as <code>null</code>, now throws a
 <li>With PHP, Node.js and WASM, pass integer arguments in the range of their
 setting: a value outside it, which v6 wrapped, now throws, as do a
 negative index and, in Node.js and WASM, a number that is not an integer.</li>
-<li>With Node.js and TypeScript, rename the type <code>JsPenalty</code> to <code>Penalty</code>.
-To customize decompose mode, pass a <code>Penalty</code> to <code>set_mode</code> / <code>setMode</code> or
-to the <code>Tokenizer</code> constructor.</li>
+<li>Pass a <code>Mode</code> to <code>set_mode</code> / <code>setMode</code> and to the <code>Tokenizer</code>
+constructor instead of <code>"normal"</code> or <code>"decompose"</code>: <code>Mode.normal()</code> or
+<code>Mode.decompose()</code> (Ruby <code>Lindera::Mode.normal</code>, PHP
+<code>Lindera\Mode::normal()</code>), with a <code>Penalty</code> to customize decompose mode,
+or <code>Mode.from_str(name)</code> (<code>Mode.fromStr</code> in PHP, Node.js and WASM) for a
+name read at run time. Replace uses of the old <code>Mode</code> types, such as
+Python's <code>Mode("normal")</code>, Node.js's <code>JsMode</code> and WASM's <code>Mode.Normal</code>,
+in the same way.</li>
+<li>With Node.js and TypeScript, rename the type <code>JsPenalty</code> to <code>Penalty</code>.</li>
 <li>With the CLI, expect warnings on standard error, for example for a
 sentence cut after 32 KiB without a delimiter; set <code>RUST_LOG=error</code> to
 hide them.</li>
@@ -12050,8 +12265,8 @@ hide them.</li>
 dictionary rebuild, the dictionary, whitespace, <code>、</code> and <code>。</code>, N-best,
 unknown-word, default-category, dash and tilde, tied-entry and equal-cost
 items above, the <code>lindera train</code> and <code>lindera build</code> items, and the
-<code>lindera tokenize</code>, WASM, PHP, integer-argument, <code>JsPenalty</code> and CLI
-warning items.</li>
+<code>lindera tokenize</code>, WASM, PHP, integer-argument, <code>Mode</code>, <code>JsPenalty</code> and
+CLI warning items.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="development-guide"><a class="header" href="#development-guide">Development Guide</a></h1>
 <p>This section provides information for developers who want to build, test, or contribute to Lindera.</p>

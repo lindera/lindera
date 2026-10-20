@@ -218,7 +218,7 @@ $userDict = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $metada
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 $userDict = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
 
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDict);
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal(), $userDict);
 </code></pre>
 <p>Or via the builder:</p>
 <pre><code class="language-php">&lt;?php

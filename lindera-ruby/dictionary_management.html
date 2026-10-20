@@ -216,7 +216,7 @@ user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary.csv', metadat
 dictionary = Lindera.load_dictionary('/path/to/ipadic')
 user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
 
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.normal, user_dict)
 </code></pre>
 <p>Or via the builder:</p>
 <pre><code class="language-ruby">require 'lindera'

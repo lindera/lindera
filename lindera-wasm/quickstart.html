@@ -179,7 +179,7 @@
                         <h1 id="quick-start"><a class="header" href="#quick-start">Quick Start</a></h1>
 <h2 id="web-browser----opfs-dictionary-loading"><a class="header" href="#web-browser----opfs-dictionary-loading">Web (Browser) -- OPFS Dictionary Loading</a></h2>
 <p>The recommended approach is to download dictionaries at runtime using the OPFS helpers:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
@@ -203,7 +203,7 @@ async function main() {
     // Build tokenizer
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dictionary);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
@@ -218,7 +218,7 @@ main();
 <p><strong>Note:</strong> Download a pre-built dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a>. See <a href="./opfs.html">OPFS Dictionary Storage</a> for the full workflow.</p>
 </blockquote>
 <p>Expected output:</p>
-<pre><code class="language-text">関西国際空港    名詞,固有名詞,一般,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
+<pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
 トートバッグ    名詞,一般,*,*,*,*,*,*,*
 </code></pre>
@@ -228,14 +228,14 @@ main();
 <p>[!NOTE]
 <code>lindera-wasm-ipadic</code> is an illustrative package name here, not something published to npm. Only <code>lindera-wasm</code> is actually published; see <a href="./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a> for how to build and name a package like this yourself.</p>
 </blockquote>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
 
     const builder = new TokenizerBuilder();
     builder.setDictionary("embedded://ipadic");
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
@@ -248,7 +248,7 @@ main();
 </code></pre>
 <h2 id="using-filters"><a class="header" href="#using-filters">Using Filters</a></h2>
 <p>You can add character filters and token filters to the tokenization pipeline:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 async function main() {
@@ -263,7 +263,7 @@ async function main() {
 
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dictionary);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
 
     // Add Unicode NFKC normalization
     builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });

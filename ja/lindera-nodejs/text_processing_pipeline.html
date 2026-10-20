@@ -265,10 +265,10 @@ const tokenizer = builder.build();
 </code></pre>
 <h2 id="パイプラインの完全な例"><a class="header" href="#パイプラインの完全な例">パイプラインの完全な例</a></h2>
 <p>以下の例では、複数の文字フィルタとトークンフィルタを1つのパイプラインに組み合わせています：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { Mode, TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("embedded://ipadic");
 // Preprocessing
 builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });

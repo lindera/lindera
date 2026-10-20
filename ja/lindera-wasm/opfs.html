@@ -285,7 +285,7 @@ console.log(names); // 例: ["ipadic", "unidic"]
 </code></pre>
 <h2 id="完全なワークフロー"><a class="header" href="#完全なワークフロー">完全なワークフロー</a></h2>
 <p>OPFS ベースの辞書を使用する一般的なワークフロー:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+<pre><code class="language-javascript">import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
@@ -316,7 +316,7 @@ async function main() {
     // トークナイザーを構築
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dictionary);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     // トークナイズ

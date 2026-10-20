@@ -234,7 +234,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong>WASM: 辞書の設定方法にかかわらず <code>TokenizerBuilder</code> の設定が適用される</strong></td><td><code>setDictionaryInstance()</code> と <code>setKeepWhitespace()</code> やフィルタ、または <code>setDictionary()</code> と <code>setUserDictionaryInstance()</code> を組み合わせる WASM のユーザー</td><td>それらの設定とユーザー辞書が効くことを前提にする。<code>char.def</code> に <code>SPACE</code> カテゴリがない辞書インスタンスでは、URI で設定した辞書と同じく <code>setKeepWhitespace(true)</code> が必要になる</td></tr>
 <tr><td><strong>PHP: 省略可能な引数に型違いの値を渡すと、既定値を使わずに例外を投げる</strong></td><td>省略可能な引数に別の型の値を渡す PHP のコード。例えば <code>Lindera\Trainer::train()</code> の <code>$max_iter</code> に数字の文字列を、<code>tokenizeNbest()</code> の <code>$unique</code> に <code>1</code> を渡すもの</td><td>宣言された型の値を渡す。<code>$argv</code> の値のような文字列は <code>(int)</code> などでキャストする。<code>null</code> を渡すか引数を省略すれば、これまでどおり既定値になる</td></tr>
 <tr><td><strong>PHP・Node.js・WASM: 設定の範囲外の整数の引数は、折り返さずに例外を投げる</strong></td><td>そのような値を渡すコード。例えば <code>Metadata</code> の既定の単語コストに <code>100000</code> を渡すもの（v6 は <code>-31072</code> を保持した）や、N-best の件数に <code>-1</code> を渡すもの（v6 はすべての分割を列挙した）。<code>getFieldName</code> と PHP の <code>getDetail</code> への負の位置。Node.js と WASM では、<code>1.5</code> や <code>NaN</code> のような整数でない数値</td><td>範囲内の整数を渡す。エラーは引数の名前と範囲を示す</td></tr>
-<tr><td><strong>バインディング: decompose モードが <code>set_mode</code> / <code>setMode</code> と <code>Tokenizer</code> のコンストラクタで <code>Penalty</code> を受け取り、<code>TokenizerBuilder::set_segmenter_mode</code> が <code>Mode::Decompose</code> のペナルティを保つ</strong></td><td>decompose モードのペナルティを変えたいバインディングのユーザー。Node.js の型 <code>JsPenalty</code> を名指しする TypeScript のコード。<code>set_segmenter_mode</code> に既定でないペナルティを渡す Rust のコード。<code>CoreTokenizerBuilder::set_mode</code> や <code>CoreTokenizer::from_segmenter_with_space_penalty</code> を呼ぶバインディングの作者</td><td>ペナルティを変えるには新しい引数に <code>Penalty</code> を渡す。<code>JsPenalty</code> を <code>Penalty</code> に改名する。<code>lindera-binding</code> の関数の新しい引数には <code>None</code> を渡す</td></tr>
+<tr><td><strong>バインディング: モードは、Rust の <code>Mode</code> と同じく decompose モードのペナルティを持つ <code>Mode</code> で表す。<code>set_mode</code> / <code>setMode</code> と <code>Tokenizer</code> のコンストラクタはモードの名前ではなく <code>Mode</code> を受け取り、<code>TokenizerBuilder::set_segmenter_mode</code> は <code>Mode::Decompose</code> のペナルティを保つ</strong></td><td>モードを設定するバインディングのユーザー。バインディングの <code>Mode</code>、Node.js の <code>JsMode</code>、WASM の数値の <code>Mode</code> を使うコード。Node.js の型 <code>JsPenalty</code> を名指しする TypeScript のコード。<code>set_segmenter_mode</code> に既定でないペナルティを渡す Rust のコード。<code>CoreTokenizerBuilder::set_mode</code> や <code>CoreTokenizer::from_segmenter</code> の関数を呼ぶバインディングの作者</td><td><code>"normal"</code> や <code>"decompose"</code> の代わりに <code>Mode.normal()</code> や <code>Mode.decompose(penalty)</code>（Ruby では <code>Lindera::Mode.normal</code>、PHP では <code>Lindera\Mode::normal()</code>）を渡す。実行時に読んだモードの名前は <code>Mode.from_str</code> / <code>Mode.fromStr</code> で <code>Mode</code> にする。<code>JsPenalty</code> を <code>Penalty</code> に改名する。<code>lindera-binding</code> の関数には <code>lindera::mode::Mode</code> を渡す</td></tr>
 <tr><td><strong><code>lindera train</code> は MeCab の学習器と同じくラティスを作り、<code>unk.def</code> のすべてのエントリを保持する。<code>model.dat</code> の形式バージョンは 2.0.0</strong></td><td><code>lindera train</code>・<code>lindera export</code> と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー</td><td>7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた <code>model.dat</code> は拒否される）。<code>unk.def</code> のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す</td></tr>
 <tr><td><strong><code>lindera build</code> は <code>matrix.def</code> の範囲外の文脈 ID を拒否する</strong></td><td><code>lex.csv</code> や <code>unk.def</code> に <code>matrix.def</code> の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の <code>mecab-dict-index</code> が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる）</td><td>ID か行列を直すか、<code>metadata.json</code> の <code>skip_invalid_cost_or_id</code> でそうした <code>lex.csv</code> の行を取り除く。ユーザー辞書ではそうした ID を直す</td></tr>
 <tr><td><strong><code>lindera build</code> と <code>lindera train</code> は <code>char.def</code> と <code>unk.def</code> を照らし合わせる</strong></td><td>それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが <code>char.def</code> にあるユーザー、<code>char.def</code> と <code>unk.def</code> でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、<code>unk.def</code> の行を無視したりしていた）。MeCab の <code>mecab-dict-index</code> が受け入れる辞書は影響を受けない</td><td>各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに <code>unk.def</code> の行を書き、未定義のカテゴリの <code>unk.def</code> の行を削除する</td></tr>
@@ -248,7 +248,9 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 </tbody></table>
 </div>
 <p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI のパッケージ名は
-変わりません。API も 1 つの設定を除いて変わりません。Python・Node.js・Ruby・PHP の
+変わりません。API も、モードと 1 つの設定を除いて変わりません。バインディングは、
+モードを名前ではなく、Rust の <code>Mode</code> と同じく decompose モードのペナルティを持つ
+<code>Mode</code> で受け取ります（<a href="#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0-%E3%83%A2%E3%83%BC%E3%83%89%E3%81%AF-mode-%E3%81%A7%E8%A1%A8%E3%81%99">バインディング: モードは <code>Mode</code> で表す</a>を参照）。Python・Node.js・Ruby・PHP の
 バインディングの <code>Metadata</code> クラスは、<code>normalize_details</code> を受け取らず、公開も
 しなくなりました（<a href="#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>
 を参照）。PHP バインディングは、省略可能な引数に渡された型違いの値も拒否します。
@@ -258,7 +260,7 @@ PHP・Node.js・WASM のバインディングは、設定の範囲外の整数�
 v6 はこの値を折り返していました
 （<a href="#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0-%E7%AF%84%E5%9B%B2%E5%A4%96%E3%81%AE%E6%95%B4%E6%95%B0%E3%81%AE%E5%BC%95%E6%95%B0%E3%82%92%E6%8B%92%E5%90%A6%E3%81%99%E3%82%8B">バインディング: 範囲外の整数の引数を拒否する</a>を参照）。
 Node.js の TypeScript の型 <code>JsPenalty</code> は <code>Penalty</code> に改名しました
-（<a href="#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0-decompose-%E3%83%A2%E3%83%BC%E3%83%89%E3%81%8C-penalty-%E3%82%92%E5%8F%97%E3%81%91%E5%8F%96%E3%82%8B">バインディング: decompose モードが <code>Penalty</code> を受け取る</a>を参照）。
+（<a href="#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0-%E3%83%A2%E3%83%BC%E3%83%89%E3%81%AF-mode-%E3%81%A7%E8%A1%A8%E3%81%99">バインディング: モードは <code>Mode</code> で表す</a>を参照）。
 バージョン番号は 7.0.0 になります。Rust クレートと同じく、v6.2.0 以前に
 ビルドまたはダウンロードした辞書ディレクトリは読み込めなくなります
 （<a href="#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。v6.2.0 以前にバインディングの
@@ -1123,10 +1125,10 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 <code>Lindera\Trainer::train(..., max_iter: $argv[1])</code> はコマンドラインの指定に
 かかわらず既定の 100 回で学習していました。必須の引数は、以前からこのような値を
 拒否していました。</p>
-<p>v7.0.0 では、省略可能な引数もこのような値を拒否します。対象は、<code>Mode</code>・<code>Penalty</code>・
+<p>v7.0.0 では、省略可能な引数もこのような値を拒否します。対象は、<code>Penalty</code>・
 <code>Metadata</code>・<code>FieldDefinition</code>・<code>Tokenizer</code> のコンストラクタと、
-<code>Tokenizer::tokenizeNbest()</code>・<code>Trainer::train()</code>・<code>Trainer::export()</code>・
-<code>Dictionary::buildUser()</code> の省略可能な引数です。呼び出しは <code>TypeError</code>
+<code>Mode::decompose()</code>・<code>Tokenizer::tokenizeNbest()</code>・<code>Trainer::train()</code>・
+<code>Trainer::export()</code>・<code>Dictionary::buildUser()</code> の省略可能な引数です。呼び出しは <code>TypeError</code>
 （<code>Invalid value given for argument</code> に続けて引数の名前）を投げます。必須の引数も、
 このような値には同じ <code>TypeError</code> を投げるようになりました。v6 は同じメッセージの
 <code>Exception</code> を投げていました。
@@ -1179,31 +1181,55 @@ Node.js バインディングは code が <code>InvalidArg</code> の <code>Erro
 プロパティの setter の <code>OverflowError</code> は、注記でプロパティの名前を示すように
 なりました（<code>'cost'</code> ではなく <code>while processing 'default_word_cost'</code>）。v6 の動作に
 戻す設定はありません。</p>
-<h2 id="バインディング-decompose-モードが-penalty-を受け取る"><a class="header" href="#バインディング-decompose-モードが-penalty-を受け取る">バインディング: decompose モードが <code>Penalty</code> を受け取る</a></h2>
-<p>v6.2.0 までは、どのバインディングにも <code>Penalty</code> がありましたが、それを受け取る関数も
-コンストラクタもありませんでした。<code>set_mode</code> / <code>setMode</code> と <code>Tokenizer</code> の
-コンストラクタはモードの文字列だけを受け取り、decompose モードは常に既定の
-ペナルティを使っていました。既定でないペナルティを使えたのは、<code>from_file</code> /
-<code>fromFile</code> で読み込む設定ファイル経由だけでした。Rust の
-<code>TokenizerBuilder::set_segmenter_mode</code> も、設定にモードの名前しか書かなかったため、
-<code>Mode::Decompose</code> のペナルティを同じように失っていました。</p>
-<p>v7.0.0 では、<code>set_mode</code> / <code>setMode</code> と <code>Tokenizer</code> のコンストラクタが、省略可能な
-引数でペナルティを受け取り、<code>set_segmenter_mode</code> はペナルティを保ちます。</p>
-<div class="table-wrapper"><table><thead><tr><th>バインディング</th><th>ビルダー</th><th><code>Tokenizer</code> のコンストラクタ</th></tr></thead><tbody>
-<tr><td>Python</td><td><code>set_mode("decompose", penalty)</code></td><td><code>Tokenizer(dictionary, "decompose", penalty=penalty)</code></td></tr>
-<tr><td>Ruby</td><td><code>set_mode('decompose', penalty: penalty)</code></td><td><code>Lindera::Tokenizer.new(dictionary, 'decompose', penalty: penalty)</code></td></tr>
-<tr><td>PHP</td><td><code>$builder-&gt;setMode('decompose', $penalty)</code></td><td><code>new Lindera\Tokenizer($dictionary, 'decompose', penalty: $penalty)</code></td></tr>
-<tr><td>Node.js</td><td><code>builder.setMode("decompose", penalty)</code></td><td><code>new Tokenizer(dictionary, "decompose", null, null, penalty)</code></td></tr>
-<tr><td>WASM</td><td><code>builder.setMode("decompose", penalty)</code></td><td><code>new Tokenizer(dictionary, "decompose", null, null, penalty)</code></td></tr>
+<h2 id="バインディング-モードは-mode-で表す"><a class="header" href="#バインディング-モードは-mode-で表す">バインディング: モードは <code>Mode</code> で表す</a></h2>
+<p>v6.2.0 までは、どのバインディングも <code>Mode</code> をエクスポートしていましたが、それを
+受け取る関数もコンストラクタもありませんでした。<code>set_mode</code> / <code>setMode</code> と
+<code>Tokenizer</code> のコンストラクタはモードの名前を受け取り、decompose モードは常に既定の
+ペナルティを使っていました。Node.js は文字列の enum <code>JsMode</code> をエクスポートして
+いましたが、その値 <code>'Normal'</code> と <code>'Decompose'</code> は <code>setMode</code> に拒否されました。WASM は
+数値の enum でした。既定でないペナルティを使えたのは、<code>from_file</code> / <code>fromFile</code> で
+読み込む設定ファイル経由だけでした。Rust の <code>TokenizerBuilder::set_segmenter_mode</code>
+も、設定にモードの名前しか書かなかったため、<code>Mode::Decompose</code> のペナルティを同じ
+ように失っていました。</p>
+<p>v7.0.0 では、各バインディングの <code>Mode</code> は Rust の <code>lindera::mode::Mode</code> の写しです。
+normal モードか、<code>Penalty</code> を持つ decompose モードを表します。<code>set_mode</code> / <code>setMode</code>
+と <code>Tokenizer</code> のコンストラクタは、Rust の <code>set_segmenter_mode</code> と <code>Segmenter::new</code>
+と同じく <code>Mode</code> を受け取り、モードの名前は受け取りません。コンストラクタのモードを
+省略するか、<code>null</code> / <code>None</code> / <code>nil</code> を渡すと、これまでどおり normal モードになります。
+<code>set_segmenter_mode</code> はペナルティを保ちます。</p>
+<div class="table-wrapper"><table><thead><tr><th>バインディング</th><th>v6</th><th>v7</th></tr></thead><tbody>
+<tr><td>Python</td><td><code>builder.set_mode("decompose")</code></td><td><code>builder.set_mode(Mode.decompose(penalty))</code></td></tr>
+<tr><td>Ruby</td><td><code>builder.set_mode('decompose')</code></td><td><code>builder.set_mode(Lindera::Mode.decompose(penalty))</code></td></tr>
+<tr><td>PHP</td><td><code>$builder-&gt;setMode('decompose')</code></td><td><code>$builder-&gt;setMode(Lindera\Mode::decompose($penalty))</code></td></tr>
+<tr><td>Node.js</td><td><code>builder.setMode("decompose")</code></td><td><code>builder.setMode(Mode.decompose(penalty))</code></td></tr>
+<tr><td>WASM</td><td><code>builder.setMode("decompose")</code></td><td><code>builder.setMode(Mode.decompose(penalty))</code></td></tr>
 </tbody></table>
 </div>
-<p>引数を省略すると既定のペナルティになるため、既存の呼び出しは変わりません。
-<code>"normal"</code> とペナルティを一緒に渡すと、不正なモードと同じくエラーになります。
-IPADIC で長さのペナルティを 2 つとも 0 にすると、decompose モードは
-<code>関西国際空港限定トートバッグ</code> を <code>関西 / 国際 / 空港 / 限定 / トートバッグ</code> ではなく
-<code>関西国際空港 / 限定 / トートバッグ</code> と分割します。</p>
-<p>対応が必要になりうる変更は 3 つです。</p>
+<p><code>Tokenizer</code> のコンストラクタは、同じ <code>Mode</code> を 2 番目の引数で受け取ります（Python
+なら <code>Tokenizer(dictionary, Mode.normal())</code>）。ペナルティは省略でき、
+<code>Mode.decompose()</code> は既定のペナルティを使います。IPADIC で長さのペナルティを 2 つとも
+0 にすると、decompose モードは <code>関西国際空港限定トートバッグ</code> を
+<code>関西 / 国際 / 空港 / 限定 / トートバッグ</code> ではなく <code>関西国際空港 / 限定 / トートバッグ</code>
+と分割します。</p>
+<p>設定のように実行時に読んだモードの名前は、<code>Mode.from_str(name)</code>（PHP・Node.js・WASM
+では <code>Mode.fromStr</code>）で <code>Mode</code> にします。名前の読み方は Rust の <code>Mode</code> と同じで、
+<code>"normal"</code> か <code>"decompose"</code> を大文字小文字を区別して受け付け、後者は既定の
+ペナルティを持ちます。それ以外の名前は、v6 の <code>set_mode</code> がその名前に投げたのと同じ
+エラーになります。<code>set_mode</code> / <code>setMode</code> やコンストラクタにモードの名前など <code>Mode</code>
+でない値を渡すと、型のエラーになります。Python・Ruby・PHP では <code>TypeError</code>、
+Node.js では <code>InvalidArg</code> のエラー、WASM では <code>expected instance of Mode</code> です。</p>
+<p>そのほかの変更は次のとおりです。</p>
 <ul>
+<li><strong><code>Mode</code> クラス</strong>: <code>Mode</code> にはコンストラクタがなく、<code>Mode.normal()</code>・
+<code>Mode.decompose()</code>・<code>Mode.from_str()</code> で作ります。名前（<code>name</code>）、ペナルティ
+（<code>penalty</code>。写しで、normal モードにはない）、normal か decompose かの判定、名前と
+ペナルティによる等価比較（<code>==</code>。Node.js と WASM では <code>equals()</code>）を持ちます。
+Python の <code>Mode(mode_str)</code> と属性 <code>Mode.Normal</code> / <code>Mode.Decompose</code>、Ruby の
+<code>Lindera::Mode.new</code>、PHP の <code>new Lindera\Mode()</code>、Node.js の <code>JsMode</code>、WASM の
+<code>Mode.Normal</code> / <code>Mode.Decompose</code> はなくなりました。Python と Ruby の
+コンストラクタは <code>"Normal"</code> と <code>"Decompose"</code> を、PHP のコンストラクタは大文字小文字を
+問わず受け付けていましたが、<code>from_str</code> は受け付けません。Rust の <code>Mode</code> が <code>Hash</code>
+でないのと同じく、Python の <code>Mode</code> はハッシュできません。</li>
 <li><strong>Node.js</strong>: TypeScript の型 <code>JsPenalty</code> は <code>Penalty</code> に改名し、フィールドは
 省略できるようになりました。省略したフィールドは既定値になります。<code>JsPenalty</code> を
 名指しする TypeScript のコードは <code>Penalty</code> を使ってください。この型に対応する値は
@@ -1212,9 +1238,12 @@ IPADIC で長さのペナルティを 2 つとも 0 にすると、decompose モ
 <code>Mode::Decompose</code> を渡すと、そのペナルティが適用され、出力が変わります。CLI の
 <code>--mode</code> のように <code>"decompose"</code> から作ったモードは既定のペナルティを持つため、
 影響はありません。</li>
-<li><strong>バインディングの作者</strong>: <code>CoreTokenizerBuilder::set_mode</code> と
-<code>CoreTokenizer::from_segmenter_with_space_penalty</code> は、2 番目の引数で
-ペナルティを受け取ります。既定のままにするには <code>None</code> を渡してください。</li>
+<li><strong>バインディングの作者</strong>: <code>CoreTokenizerBuilder::set_mode</code>・
+<code>CoreTokenizer::from_segmenter</code>・<code>CoreTokenizer::from_segmenter_with_space_penalty</code>
+は、v6.2.0 の <code>lindera-binding-core</code> が受け取っていた <code>&amp;str</code> の代わりに
+<code>lindera::mode::Mode</code> を受け取ります。<code>set_mode</code> は <code>Result</code> を返さなくなりました。
+<code>lindera_binding::parse_mode</code> は、バインディングの <code>from_str</code> と同じくモードの名前を
+読みます。</li>
 </ul>
 <h2 id="lindera-train-は-mecab-の学習器と同じくラティスを作る"><a class="header" href="#lindera-train-は-mecab-の学習器と同じくラティスを作る"><code>lindera train</code> は MeCab の学習器と同じくラティスを作る</a></h2>
 <p>v6.2.0 までの <code>lindera train</code> は、MeCab の学習器とは異なる学習用ラティスを
@@ -1638,12 +1667,12 @@ v6.2.0 以前に書かれたモデルは学習し直す必要があります。<
 <li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の
 各パッケージと <code>lindera-cli</code> のパッケージ名は変わらず、API も <code>Metadata</code> の設定
 <code>normalize_details</code> と、PHP の省略可能な引数の型違いの値と、PHP・Node.js・WASM の
-範囲外の整数の引数と、Node.js の TypeScript の型 <code>JsPenalty</code>（<code>Penalty</code> に改名）を
-除いて変わりません
+範囲外の整数の引数と、名前ではなく <code>Mode</code> で受け取るようになったモードと、Node.js の
+TypeScript の型 <code>JsPenalty</code>（<code>Penalty</code> に改名）を除いて変わりません
 （<a href="#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>、
 <a href="#php-%E7%9C%81%E7%95%A5%E5%8F%AF%E8%83%BD%E3%81%AA%E5%BC%95%E6%95%B0%E3%81%AF%E5%9E%8B%E9%81%95%E3%81%84%E3%81%AE%E5%80%A4%E3%82%92%E6%8B%92%E5%90%A6%E3%81%99%E3%82%8B">PHP: 省略可能な引数は型違いの値を拒否する</a>、
 <a href="#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0-%E7%AF%84%E5%9B%B2%E5%A4%96%E3%81%AE%E6%95%B4%E6%95%B0%E3%81%AE%E5%BC%95%E6%95%B0%E3%82%92%E6%8B%92%E5%90%A6%E3%81%99%E3%82%8B">バインディング: 範囲外の整数の引数を拒否する</a>、
-<a href="#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0-decompose-%E3%83%A2%E3%83%BC%E3%83%89%E3%81%8C-penalty-%E3%82%92%E5%8F%97%E3%81%91%E5%8F%96%E3%82%8B">バインディング: decompose モードが <code>Penalty</code> を受け取る</a>を参照）。
+<a href="#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0-%E3%83%A2%E3%83%BC%E3%83%89%E3%81%AF-mode-%E3%81%A7%E8%A1%A8%E3%81%99">バインディング: モードは <code>Mode</code> で表す</a>を参照）。
 今回の構成変更は Rust クレート内部のものです。v6.2.0 以前にビルドまたは
 ダウンロードした辞書ディレクトリは、再ビルドか再ダウンロードが必要です
 （<a href="#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。埋め込み辞書は対応不要です。
@@ -1721,9 +1750,10 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <code>CoreMetadata::normalize_details</code> フィールドを使わないようにする。</li>
 <li>すべてのフィールドを並べた構造体リテラルで <code>CoreMetadata</code> を作っている場合は、
 <code>skip_whitespace: None</code> を加えるか、最後を <code>..Default::default()</code> にする。</li>
-<li><code>CoreTokenizerBuilder::set_mode</code> と
-<code>CoreTokenizer::from_segmenter_with_space_penalty</code> の新しい 2 番目の引数に、
-ペナルティか <code>None</code> を渡す。</li>
+<li><code>CoreTokenizerBuilder::set_mode</code>（<code>Result</code> を返さなくなった）と
+<code>CoreTokenizer::from_segmenter</code>・<code>CoreTokenizer::from_segmenter_with_space_penalty</code>
+に、モードの名前の代わりに <code>lindera::mode::Mode</code> を渡す。名前は
+<code>lindera_binding::parse_mode</code> で読む。</li>
 </ul>
 <p>ビルド環境:</p>
 <ul>
@@ -1890,15 +1920,20 @@ v6 では <code>null</code> として扱われたが、<code>Exception</code> �
 <li>PHP・Node.js・WASM では、整数の引数に設定の範囲内の値を渡す。範囲外の値は、v6 では
 折り返されたが、例外を投げるようになる。負の位置と、Node.js・WASM の整数でない
 数値も同様。</li>
-<li>Node.js の TypeScript では、型 <code>JsPenalty</code> を <code>Penalty</code> に改名する。decompose
-モードを調整するには、<code>set_mode</code> / <code>setMode</code> か <code>Tokenizer</code> のコンストラクタに
-<code>Penalty</code> を渡す。</li>
+<li><code>set_mode</code> / <code>setMode</code> と <code>Tokenizer</code> のコンストラクタには、<code>"normal"</code> や
+<code>"decompose"</code> の代わりに <code>Mode</code> を渡す。<code>Mode.normal()</code> か <code>Mode.decompose()</code>
+（Ruby では <code>Lindera::Mode.normal</code>、PHP では <code>Lindera\Mode::normal()</code>）を使い、
+decompose モードを調整するには <code>Penalty</code> を渡す。実行時に読んだ名前には
+<code>Mode.from_str(name)</code>（PHP・Node.js・WASM では <code>Mode.fromStr</code>）を使う。Python の
+<code>Mode("normal")</code>、Node.js の <code>JsMode</code>、WASM の <code>Mode.Normal</code> のような古い <code>Mode</code> の
+使い方も、同じように置き換える。</li>
+<li>Node.js の TypeScript では、型 <code>JsPenalty</code> を <code>Penalty</code> に改名する。</li>
 <li>CLI では、文の区切り文字なしに 32 KiB を超えて文を区切ったときなどに、標準エラー
 出力に警告が出ることを前提にする。<code>RUST_LOG=error</code> で警告を消せる。</li>
 <li>それ以外は、7.0.0 リリースを取り込む以外に対応は不要（上記の辞書の再ビルド・辞書・
 空白・<code>、</code> と <code>。</code>・N-best・未知語・既定カテゴリ・ダッシュとチルダ・同点の見出し語・
 コストが同じ分割の項目、<code>lindera train</code> と <code>lindera build</code> の項目、<code>lindera tokenize</code>
-と WASM と PHP と整数の引数と <code>JsPenalty</code> と CLI の警告の項目を除く）。</li>
+と WASM と PHP と整数の引数と <code>Mode</code> と <code>JsPenalty</code> と CLI の警告の項目を除く）。</li>
 </ul>
 
                     </main>

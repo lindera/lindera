@@ -194,15 +194,18 @@ for a complete example covering <code>segmenter</code>, <code>character_filters<
 </code></pre>
 <h3 id="configuration-methods"><a class="header" href="#configuration-methods">Configuration Methods</a></h3>
 <p>All setter methods return <code>self</code> for method chaining.</p>
-<h4 id="set_modemode-penaltynone"><a class="header" href="#set_modemode-penaltynone"><code>set_mode(mode, penalty=None)</code></a></h4>
-<p>Sets the tokenization mode.</p>
+<h4 id="set_modemode"><a class="header" href="#set_modemode"><code>set_mode(mode)</code></a></h4>
+<p>Sets the tokenization mode. <code>mode</code> is a <a href="#mode"><code>Mode</code></a>:</p>
 <ul>
-<li><code>"normal"</code> -- Standard tokenization (default)</li>
-<li><code>"decompose"</code> -- Decomposes compound words into smaller units</li>
+<li><code>Mode.normal()</code> -- Standard tokenization (default)</li>
+<li><code>Mode.decompose(penalty=None)</code> -- Decomposes compound words into smaller units, with the length penalties of a <a href="#penalty"><code>Penalty</code></a>; <code>None</code> uses the default penalty</li>
 </ul>
-<p><code>penalty</code> is the <a href="#penalty"><code>Penalty</code></a> that <code>"decompose"</code> mode uses; <code>None</code> (the default) uses the default penalty. A penalty with <code>"normal"</code> raises <code>ValueError</code>, and a value that is not a <code>Penalty</code> raises <code>TypeError</code>.</p>
-<pre><code class="language-python">builder.set_mode("normal")
-builder.set_mode("decompose", Penalty(kanji_penalty_length_penalty=0))
+<p>A value that is not a <code>Mode</code>, such as the string <code>"normal"</code>, raises <code>TypeError</code>. To set a mode from its name, such as a configuration value, create it with <a href="#modefrom_strname"><code>Mode.from_str()</code></a>.</p>
+<pre><code class="language-python">from lindera import Mode, Penalty
+
+builder.set_mode(Mode.normal())
+builder.set_mode(Mode.decompose(Penalty(kanji_penalty_length_penalty=0)))
+builder.set_mode(Mode.from_str("decompose"))
 </code></pre>
 <h4 id="set_dictionarypath"><a class="header" href="#set_dictionarypath"><code>set_dictionary(path)</code></a></h4>
 <p>Sets the system dictionary path or URI.</p>
@@ -273,14 +276,14 @@ Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does
 <h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
 <p><code>Tokenizer</code> performs morphological analysis on text.</p>
 <h3 id="creating-a-tokenizer"><a class="header" href="#creating-a-tokenizer">Creating a Tokenizer</a></h3>
-<h4 id="tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone"><a class="header" href="#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone"><code>Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None, penalty=None)</code></a></h4>
+<h4 id="tokenizerdictionary-modenone-user_dictionarynone-space_penaltynone"><a class="header" href="#tokenizerdictionary-modenone-user_dictionarynone-space_penaltynone"><code>Tokenizer(dictionary, mode=None, user_dictionary=None, space_penalty=None)</code></a></h4>
 <p>Creates a tokenizer directly from a loaded dictionary.</p>
+<p><code>mode</code> takes a <a href="#mode"><code>Mode</code></a>, as <a href="#set_modemode"><code>TokenizerBuilder.set_mode</code></a> does; <code>None</code> (the default) is normal mode. Any other value, such as the string <code>"normal"</code>, raises <code>TypeError</code>.</p>
 <p><code>space_penalty</code> takes the same values as <a href="#set_space_penaltyvalue"><code>TokenizerBuilder.set_space_penalty</code></a>. <code>None</code> (the default) uses the left-space penalty rules the dictionary ships, so with ko-dic the penalty is on; pass <code>False</code> to turn it off. An invalid setting raises the same errors as <code>set_space_penalty</code> and <code>build()</code>.</p>
-<p><code>penalty</code> takes a <a href="#penalty"><code>Penalty</code></a> for <code>"decompose"</code> mode, as <a href="#set_modemode-penaltynone"><code>TokenizerBuilder.set_mode</code></a> does, with the same errors.</p>
-<pre><code class="language-python">from lindera import Tokenizer, load_dictionary
+<pre><code class="language-python">from lindera import Mode, Tokenizer, load_dictionary
 
 dictionary = load_dictionary("embedded://ipadic")
-tokenizer = Tokenizer(dictionary, mode="normal")
+tokenizer = Tokenizer(dictionary, mode=Mode.normal())
 
 # ko-dic without the left-space penalty
 ko_tokenizer = Tokenizer(load_dictionary("embedded://ko-dic"), space_penalty=False)
@@ -323,38 +326,62 @@ for tokens, cost in results:
 </div>
 <p><strong>Returns:</strong> <code>list[tuple[list[Token], int]]</code></p>
 <h2 id="mode"><a class="header" href="#mode">Mode</a></h2>
-<p><code>Mode</code> represents a tokenization mode. It is provided as a standalone helper for
-inspecting or comparing modes; <code>TokenizerBuilder.set_mode()</code> and the <code>Tokenizer</code>
-constructor take a plain mode string (<code>"normal"</code> or <code>"decompose"</code>), not a <code>Mode</code>
-instance. The penalty of decompose mode goes in their <code>penalty</code> argument (see
-<a href="#penalty"><code>Penalty</code></a> below).</p>
+<p><code>Mode</code> is the tokenization mode that <a href="#set_modemode"><code>TokenizerBuilder.set_mode()</code></a> and the <a href="#tokenizerdictionary-modenone-user_dictionarynone-space_penaltynone"><code>Tokenizer</code> constructor</a> take. It is the counterpart of the Rust <code>lindera::mode::Mode</code>: normal mode, or decompose mode with its <a href="#penalty"><code>Penalty</code></a>.</p>
 <h3 id="creating-a-mode"><a class="header" href="#creating-a-mode">Creating a Mode</a></h3>
-<h4 id="modemode_strnone"><a class="header" href="#modemode_strnone"><code>Mode(mode_str=None)</code></a></h4>
-<p>Creates a <code>Mode</code>. Accepts <code>"normal"</code> / <code>"Normal"</code> (the default when omitted) or
-<code>"decompose"</code> / <code>"Decompose"</code>; any other value raises <code>ValueError</code>.</p>
-<pre><code class="language-python">from lindera import Mode
+<p><code>Mode</code> has no constructor, so <code>Mode()</code> raises <code>TypeError</code>, and it has no <code>Mode.Normal</code> or <code>Mode.Decompose</code> attributes. Create a mode with one of the following static methods.</p>
+<h4 id="modenormal"><a class="header" href="#modenormal"><code>Mode.normal()</code></a></h4>
+<p>Returns normal mode: standard tokenization.</p>
+<h4 id="modedecomposepenaltynone"><a class="header" href="#modedecomposepenaltynone"><code>Mode.decompose(penalty=None)</code></a></h4>
+<p>Returns decompose mode, which adds the length penalties of <code>penalty</code> to the cost of long words, so that compound words are decomposed into smaller units. <code>None</code> (the default) uses the default penalty, <code>Penalty()</code>. A value that is not a <code>Penalty</code> raises <code>TypeError</code>.</p>
+<h4 id="modefrom_strname"><a class="header" href="#modefrom_strname"><code>Mode.from_str(name)</code></a></h4>
+<p>Returns the mode named <code>name</code>, as the Rust <code>Mode</code> parses a name: <code>"normal"</code> for normal mode, and <code>"decompose"</code> for decompose mode with the default penalty. Use it for a mode name read at run time, such as a configuration value. The name is case sensitive: any other name, such as <code>"Normal"</code>, raises <code>ValueError</code> with the message <code>Invalid mode</code>. A value that is not a <code>str</code> raises <code>TypeError</code>.</p>
+<pre><code class="language-python">from lindera import Mode, Penalty
 
-mode = Mode("normal")
-mode = Mode("decompose")
-mode = Mode()  # defaults to "normal"
+normal = Mode.normal()
+decompose = Mode.decompose()
+whole_words = Mode.decompose(Penalty(kanji_penalty_length_penalty=0, other_penalty_length_penalty=0))
+from_name = Mode.from_str("decompose")  # equal to Mode.decompose()
 </code></pre>
-<h3 id="methods"><a class="header" href="#methods">Methods</a></h3>
-<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>__str__()</code></td><td><code>str</code></td><td><code>"normal"</code> or <code>"decompose"</code></td></tr>
-<tr><td><code>__repr__()</code></td><td><code>str</code></td><td>e.g. <code>"Mode.Normal"</code></td></tr>
-<tr><td><code>is_normal()</code></td><td><code>bool</code></td><td><code>True</code> if the mode is <code>"normal"</code></td></tr>
-<tr><td><code>is_decompose()</code></td><td><code>bool</code></td><td><code>True</code> if the mode is <code>"decompose"</code></td></tr>
+<h3 id="mode-properties"><a class="header" href="#mode-properties">Mode Properties</a></h3>
+<p>Both properties are read-only:</p>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td><code>str</code></td><td><code>"normal"</code> or <code>"decompose"</code></td></tr>
+<tr><td><code>penalty</code></td><td><code>Penalty</code> or <code>None</code></td><td>A copy of the penalty of decompose mode; <code>None</code> for normal mode</td></tr>
 </tbody></table>
 </div>
-<pre><code class="language-python">mode = Mode("decompose")
-str(mode)            # "decompose"
-repr(mode)           # "Mode.Decompose"
-mode.is_normal()      # False
-mode.is_decompose()   # True
+<h3 id="methods"><a class="header" href="#methods">Methods</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>__str__()</code></td><td><code>str</code></td><td>The name: <code>"normal"</code> or <code>"decompose"</code></td></tr>
+<tr><td><code>__repr__()</code></td><td><code>str</code></td><td><code>"Mode.normal()"</code>, or <code>Mode.decompose(...)</code> with the penalty</td></tr>
+<tr><td><code>__eq__(other)</code></td><td><code>bool</code></td><td><code>True</code> if <code>other</code> is a <code>Mode</code> with the same name and penalty</td></tr>
+<tr><td><code>is_normal()</code></td><td><code>bool</code></td><td><code>True</code> for normal mode</td></tr>
+<tr><td><code>is_decompose()</code></td><td><code>bool</code></td><td><code>True</code> for decompose mode</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-python">mode = Mode.decompose()
+mode.name              # 'decompose'
+mode.penalty           # Penalty(kanji_threshold=2, kanji_penalty=3000, other_threshold=7, other_penalty=1700)
+str(mode)              # 'decompose'
+repr(mode)             # 'Mode.decompose(Penalty(kanji_threshold=2, kanji_penalty=3000, other_threshold=7, other_penalty=1700))'
+mode.is_normal()       # False
+mode.is_decompose()    # True
+Mode.normal().penalty  # None
+repr(Mode.normal())    # 'Mode.normal()'
+</code></pre>
+<p>Two modes are equal when their names and penalties are, as the Rust <code>Mode</code> compares them. A <code>Mode</code> is never equal to a value of another type, such as the string <code>"normal"</code>:</p>
+<pre><code class="language-python">Mode.from_str("decompose") == Mode.decompose()                               # True
+Mode.decompose() == Mode.decompose(Penalty(kanji_penalty_length_penalty=0))  # False
+Mode.normal() == "normal"                                                    # False
+</code></pre>
+<p>A <code>Mode</code> cannot be changed. Setting a property raises <code>AttributeError</code>, and <code>penalty</code> returns a copy, so changing the returned <code>Penalty</code> leaves the mode as it was; <code>Mode.decompose()</code> keeps a copy of the <code>Penalty</code> it is given as well. A <code>Mode</code> is not hashable, as the Rust <code>Mode</code> implements <code>Eq</code> but not <code>Hash</code>: <code>hash(mode)</code> raises <code>TypeError</code>, so a <code>Mode</code> cannot be a <code>dict</code> key or a <code>set</code> member.</p>
+<pre><code class="language-python">mode = Mode.decompose()
+penalty = mode.penalty
+penalty.kanji_penalty_length_penalty = 0
+mode.penalty.kanji_penalty_length_penalty  # 3000
 </code></pre>
 <h2 id="penalty"><a class="header" href="#penalty">Penalty</a></h2>
-<p><code>Penalty</code> configures the length-based penalty thresholds used by <code>"decompose"</code>
-mode segmentation.</p>
+<p><code>Penalty</code> configures the length-based penalty thresholds used by decompose mode
+segmentation.</p>
 <h3 id="creating-a-penalty"><a class="header" href="#creating-a-penalty">Creating a Penalty</a></h3>
 <h4 id="penaltykanji_penalty_length_threshold2-kanji_penalty_length_penalty3000-other_penalty_length_threshold7-other_penalty_length_penalty1700"><a class="header" href="#penaltykanji_penalty_length_threshold2-kanji_penalty_length_penalty3000-other_penalty_length_threshold7-other_penalty_length_penalty1700"><code>Penalty(kanji_penalty_length_threshold=2, kanji_penalty_length_penalty=3000, other_penalty_length_threshold=7, other_penalty_length_penalty=1700)</code></a></h4>
 <p>All arguments are optional and default to the values shown above.</p>
@@ -380,26 +407,26 @@ penalty = Penalty(
 print(penalty.kanji_penalty_length_threshold)  # 3
 </code></pre>
 <h3 id="using-a-penalty"><a class="header" href="#using-a-penalty">Using a Penalty</a></h3>
-<p>Pass a <code>Penalty</code> with <code>"decompose"</code> to <a href="#set_modemode-penaltynone"><code>TokenizerBuilder.set_mode()</code></a> or to the <a href="#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone"><code>Tokenizer</code> constructor</a>. Without length penalties, decompose mode keeps long words whole:</p>
-<pre><code class="language-python">from lindera import Penalty, Tokenizer, TokenizerBuilder, load_dictionary
+<p>Pass a <code>Penalty</code> to <a href="#modedecomposepenaltynone"><code>Mode.decompose()</code></a>, and the mode to <a href="#set_modemode"><code>TokenizerBuilder.set_mode()</code></a> or to the <a href="#tokenizerdictionary-modenone-user_dictionarynone-space_penaltynone"><code>Tokenizer</code> constructor</a>. Without length penalties, decompose mode keeps long words whole:</p>
+<pre><code class="language-python">from lindera import Mode, Penalty, Tokenizer, TokenizerBuilder, load_dictionary
 
 text = "関西国際空港限定トートバッグ"
 penalty = Penalty(kanji_penalty_length_penalty=0, other_penalty_length_penalty=0)
 
 builder = TokenizerBuilder().set_dictionary("embedded://ipadic")
-tokenizer = builder.set_mode("decompose").build()
+tokenizer = builder.set_mode(Mode.decompose()).build()
 print([token.surface for token in tokenizer.tokenize(text)])
 # ['関西', '国際', '空港', '限定', 'トートバッグ']
 
-tokenizer = builder.set_mode("decompose", penalty).build()
+tokenizer = builder.set_mode(Mode.decompose(penalty)).build()
 print([token.surface for token in tokenizer.tokenize(text)])
 # ['関西国際空港', '限定', 'トートバッグ']
 
-tokenizer = Tokenizer(load_dictionary("embedded://ipadic"), mode="decompose", penalty=penalty)
+tokenizer = Tokenizer(load_dictionary("embedded://ipadic"), mode=Mode.decompose(penalty))
 print([token.surface for token in tokenizer.tokenize(text)])
 # ['関西国際空港', '限定', 'トートバッグ']
 </code></pre>
-<p>A <code>Penalty</code> with <code>"normal"</code> mode raises <code>ValueError</code>.</p>
+<p>Normal mode has no penalty: <code>Mode.normal()</code> takes no arguments.</p>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
 <p><code>Token</code> represents a single morphological token.</p>
 <h3 id="properties"><a class="header" href="#properties">Properties</a></h3>

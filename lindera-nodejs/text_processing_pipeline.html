@@ -269,10 +269,10 @@ const tokenizer = builder.build();
 </code></pre>
 <h2 id="complete-pipeline-example"><a class="header" href="#complete-pipeline-example">Complete Pipeline Example</a></h2>
 <p>The following example combines multiple character filters and token filters into a single pipeline:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { Mode, TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("embedded://ipadic");
 // Preprocessing
 builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
