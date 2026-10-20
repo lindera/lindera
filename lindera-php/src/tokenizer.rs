@@ -45,9 +45,9 @@ fn space_penalty_value(value: &Zval) -> PhpResult<serde_json::Value> {
 
 /// Converts a whitespace-skipping setting from PHP.
 ///
-/// ext-php-rs reads a value of another type as `null` for an `Option<bool>`
-/// parameter, which would silently restore the dictionary's default, so the
-/// setter takes the raw value and this checks it.
+/// ext-php-rs before 0.16.3 read a value of another type as `null` for an
+/// `Option<bool>` parameter, which would silently restore the dictionary's
+/// default, so the setter takes the raw value and this checks it.
 ///
 /// # Arguments
 ///

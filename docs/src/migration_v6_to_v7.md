@@ -1130,16 +1130,19 @@ required parameter already rejected such a value.
 v7.0.0 rejects it for the optional parameters too: those of the `Mode`,
 `Penalty`, `Metadata`, `FieldDefinition` and `Tokenizer` constructors, of
 `Tokenizer::tokenizeNbest()`, `Trainer::train()`, `Trainer::export()` and
-`Dictionary::buildUser()`. The call throws the `Exception` that a required
-parameter throws, `Invalid value given for argument` followed by the
-parameter's name. `null` and leaving the argument out still select the
-default. `$lambda` of `Trainer::train()` now takes an `int` as well as a
-`float`, as a PHP `float` parameter does; v6 read an `int` there as `null`
-too.
+`Dictionary::buildUser()`. The call throws a `TypeError`,
+`Invalid value given for argument` followed by the parameter's name. A
+required parameter now throws the same `TypeError` for such a value; v6
+threw an `Exception` with the same message. `null` and leaving the argument
+out still select the default. `$lambda` of `Trainer::train()` now takes an
+`int` as well as a `float`, as a PHP `float` parameter does; v6 read an
+`int` there as `null` too.
 
 Pass each argument its declared type, and cast values that arrive as
 strings, such as `(int) $argv[1]` (see
-[Argument types](lindera-php.md#argument-types)). The parameters declared
+[Argument types](lindera-php.md#argument-types)). Code that catches such a
+value with `catch (Exception $e)` must catch `TypeError` instead: a
+`TypeError` is an `Error`, not an `Exception`. The parameters declared
 `mixed`, the other bindings, the CLI and the library do not change. No
 option restores the v6 behavior.
 

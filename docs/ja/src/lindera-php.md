@@ -13,7 +13,7 @@ Lindera PHP は、[ext-php-rs](https://github.com/davidcole1340/ext-php-rs) を�
 
 ## 引数の型
 
-型を宣言した引数は、`declare(strict_types=1)` の有無にかかわらず、その型の値だけを受け付けます。`int` の引数は `int` を受け付け、数字の文字列や float は受け付けません。`?Metadata` の引数は `Lindera\Metadata` を受け付けます。`float` の引数は `int` も受け付けます。`?int $cost_threshold = null` のような省略可能な引数では、`null` を渡すか引数を省略すると既定値になります。それ以外の値は、引数の名前を含む `Exception` を投げます。コマンドライン引数のように文字列で届く値は、宣言された型にキャストしてから渡してください。
+型を宣言した引数は、`declare(strict_types=1)` の有無にかかわらず、その型の値だけを受け付けます。`int` の引数は `int` を受け付け、数字の文字列や float は受け付けません。`?Metadata` の引数は `Lindera\Metadata` を受け付けます。`float` の引数は `int` も受け付けます。`?int $cost_threshold = null` のような省略可能な引数では、`null` を渡すか引数を省略すると既定値になります。それ以外の値は、引数の名前を含む `TypeError` を投げます。コマンドライン引数のように文字列で届く値は、宣言された型にキャストしてから渡してください。
 
 ```php
 <?php
@@ -25,9 +25,9 @@ $threshold = '5000'; // 例えば $argv や設定ファイルから
 
 try {
     $tokenizer->tokenizeNbest('東京都', 2, cost_threshold: $threshold);
-} catch (Exception $e) {
+} catch (TypeError $e) {
     echo get_class($e), ': ', $e->getMessage(), "\n";
-    // Exception: Invalid value given for argument `cost_threshold`.
+    // TypeError: Invalid value given for argument `cost_threshold`.
 }
 
 // 宣言された型にキャストする
