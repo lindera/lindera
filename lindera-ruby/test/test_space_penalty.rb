@@ -118,14 +118,15 @@ class TestSpacePenalty < Minitest::Test
 
   def test_constructor_keeps_the_default_without_a_space_penalty
     assert_equal DEFAULT_TOKENS, constructor_tokens
-    assert_equal DEFAULT_TOKENS, constructor_tokens('normal', nil)
-    assert_equal DEFAULT_TOKENS, constructor_tokens('normal', nil, space_penalty: nil)
+    assert_equal DEFAULT_TOKENS, constructor_tokens(Lindera::Mode.normal, nil)
+    assert_equal DEFAULT_TOKENS, constructor_tokens(Lindera::Mode.normal, nil, space_penalty: nil)
     assert_equal DEFAULT_TOKENS, constructor_tokens(space_penalty: false)
   end
 
   def test_constructor_applies_space_penalty_rules
     refute_equal DEFAULT_TOKENS, constructor_tokens(space_penalty: PARTICLE_RULES)
-    assert_equal tokens_after(PARTICLE_RULES), constructor_tokens('normal', nil, space_penalty: PARTICLE_RULES)
+    assert_equal tokens_after(PARTICLE_RULES),
+                 constructor_tokens(Lindera::Mode.normal, nil, space_penalty: PARTICLE_RULES)
   end
 
   def test_constructor_space_penalty_true_fails_on_ipadic
@@ -145,7 +146,7 @@ class TestSpacePenalty < Minitest::Test
 
   def test_constructor_takes_mode_and_user_dictionary_as_optional_arguments
     dictionary = Lindera.load_dictionary('embedded://ipadic')
-    [[], ['normal'], ['decompose', nil], [nil, nil]].each do |args|
+    [[], [Lindera::Mode.normal], [Lindera::Mode.decompose, nil], [nil, nil]].each do |args|
       refute_empty Lindera::Tokenizer.new(dictionary, *args).tokenize(TEXT), args.inspect
     end
   end
@@ -155,6 +156,6 @@ class TestSpacePenalty < Minitest::Test
     assert_raises(ArgumentError) { Lindera::Tokenizer.new }
     assert_raises(ArgumentError) { Lindera::Tokenizer.new(dictionary, left_space_penalty: false) }
     # space_penalty is a keyword, not a fourth positional argument.
-    assert_raises(ArgumentError) { Lindera::Tokenizer.new(dictionary, 'normal', nil, false) }
+    assert_raises(ArgumentError) { Lindera::Tokenizer.new(dictionary, Lindera::Mode.normal, nil, false) }
   end
 end

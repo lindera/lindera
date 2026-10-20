@@ -12,7 +12,7 @@ user_dictionary_path = File.join(project_root, 'resources', 'ipadic_simple_userd
 user_dictionary = Lindera.load_user_dictionary_for(user_dictionary_path, dictionary)
 
 # Create a tokenizer
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dictionary)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.normal, user_dictionary)
 
 text = '関西国際空港限定トートバッグを東京スカイツリーの最寄り駅であるとうきょうスカイツリー駅で買う'
 puts "text: #{text}\n\n"

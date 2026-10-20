@@ -11,7 +11,7 @@ use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::error::to_napi_error;
-use crate::mode::{PenaltyArg, optional_penalty};
+use crate::mode::Mode;
 use crate::token::{NbestResult, Token};
 use crate::util::{JsonArg, integer_arg, js_value_to_serde_value, optional_integer_arg};
 
@@ -53,24 +53,16 @@ impl JsTokenizerBuilder {
     ///
     /// # Arguments
     ///
-    /// * `mode` - Mode string ("normal" or "decompose").
-    /// * `penalty` - The `Penalty` for "decompose" mode. `null` or
-    ///   `undefined` (the default) uses the default penalty.
+    /// * `mode` - The `Mode`, with its penalty for decompose mode.
     ///
     /// # Returns
     ///
-    /// The builder itself (`this`), enabling method chaining. Throws for an
-    /// invalid mode, for a penalty with "normal" mode, and, with code
-    /// `InvalidArg`, for a penalty field that is not an integer in its range.
+    /// The builder itself (`this`), enabling method chaining. Throws, with
+    /// code `InvalidArg`, for a value that is not a `Mode`.
     #[napi]
-    pub fn set_mode(
-        &mut self,
-        mode: String,
-        #[napi(ts_arg_type = "Penalty | undefined | null")] penalty: Option<PenaltyArg>,
-    ) -> napi::Result<&Self> {
-        let penalty = optional_penalty(penalty)?;
-        self.inner.set_mode(&mode, penalty).map_err(to_napi_error)?;
-        Ok(self)
+    pub fn set_mode(&mut self, mode: &Mode) -> &Self {
+        self.inner.set_mode(mode.as_lindera());
+        self
     }
 
     /// Sets the dictionary path or URI.
@@ -253,44 +245,37 @@ impl JsTokenizer {
     /// # Arguments
     ///
     /// * `dictionary` - Dictionary to use for tokenization.
-    /// * `mode` - Tokenization mode ("normal" or "decompose"). Default: "normal".
+    /// * `mode` - The `Mode`, as `TokenizerBuilder.setMode` takes it. `null`
+    ///   or `undefined` (the default) is normal mode.
     /// * `user_dictionary` - Optional user dictionary for custom words.
     /// * `space_penalty` - The left-space penalty, in the forms
     ///   `TokenizerBuilder.setSpacePenalty` accepts. `null` or `undefined`
     ///   (the default) keeps the rules the dictionary ships.
-    /// * `penalty` - The `Penalty` for "decompose" mode, as
-    ///   `TokenizerBuilder.setMode` takes it. `null` or `undefined` (the
-    ///   default) uses the default penalty.
     ///
-    /// Throws for an invalid mode, penalty or space-penalty setting, as
-    /// `setMode`, `setSpacePenalty` and `build()` do, and for a user
+    /// Throws for a `mode` that is not a `Mode`, for an invalid space-penalty
+    /// setting, as `setSpacePenalty` and `build()` do, and for a user
     /// dictionary with a context ID outside the dictionary's connection
     /// matrix.
     #[napi(constructor)]
     pub fn new(
         dictionary: &JsDictionary,
-        mode: Option<String>,
+        mode: Option<&Mode>,
         user_dictionary: Option<&JsUserDictionary>,
         #[napi(
             ts_arg_type = "boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined"
         )]
         space_penalty: Option<JsonArg>,
-        #[napi(ts_arg_type = "Penalty | undefined | null")] penalty: Option<PenaltyArg>,
     ) -> napi::Result<Self> {
-        let mode_str = mode.unwrap_or_else(|| "normal".to_string());
+        let mode = mode.map_or(lindera::mode::Mode::Normal, |mode| {
+            mode.as_lindera().clone()
+        });
         let dict = dictionary.inner.clone();
         let user_dict = user_dictionary.map(|d| d.inner.clone());
         let space_penalty = space_penalty.map_or(serde_json::Value::Null, |value| value.0);
-        let penalty = optional_penalty(penalty)?;
 
-        let inner = CoreTokenizer::from_segmenter_with_space_penalty(
-            &mode_str,
-            penalty,
-            dict,
-            user_dict,
-            &space_penalty,
-        )
-        .map_err(to_napi_error)?;
+        let inner =
+            CoreTokenizer::from_segmenter_with_space_penalty(mode, dict, user_dict, &space_penalty)
+                .map_err(to_napi_error)?;
 
         Ok(Self { inner })
     }

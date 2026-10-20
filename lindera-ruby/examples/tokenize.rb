@@ -6,7 +6,7 @@ require 'lindera'
 dictionary = Lindera.load_dictionary('embedded://ipadic')
 
 # Create a tokenizer
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', nil)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.normal, nil)
 
 text = '関西国際空港限定トートバッグを東京スカイツリーの最寄り駅であるとうきょうスカイツリー駅で買う'
 puts "text: #{text}\n\n"

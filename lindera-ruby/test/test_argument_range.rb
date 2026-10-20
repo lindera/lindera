@@ -18,7 +18,7 @@ class TestArgumentRange < Minitest::Test
   end
 
   def self.tokenizer
-    Lindera::Tokenizer.new(Lindera.load_dictionary('embedded://ipadic'), 'normal', nil)
+    Lindera::Tokenizer.new(Lindera.load_dictionary('embedded://ipadic'), Lindera::Mode.normal, nil)
   end
 
   def self.train(max_iter, max_threads)

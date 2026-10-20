@@ -8,7 +8,7 @@ class TestTokenizeIpadic < Minitest::Test
   end
 
   def test_basic_tokenize
-    tokenizer = Lindera::Tokenizer.new(@dictionary, 'normal', nil)
+    tokenizer = Lindera::Tokenizer.new(@dictionary, Lindera::Mode.normal, nil)
     tokens = tokenizer.tokenize('すもももももももものうち')
 
     assert_equal 7, tokens.length
@@ -23,7 +23,7 @@ class TestTokenizeIpadic < Minitest::Test
 
   def test_tokenize_with_builder
     builder = Lindera::TokenizerBuilder.new
-    builder.set_mode('normal')
+    builder.set_mode(Lindera::Mode.normal)
     builder.set_dictionary('embedded://ipadic')
     tokenizer = builder.build
 
@@ -33,7 +33,7 @@ class TestTokenizeIpadic < Minitest::Test
   end
 
   def test_tokenize_nbest
-    tokenizer = Lindera::Tokenizer.new(@dictionary, 'normal', nil)
+    tokenizer = Lindera::Tokenizer.new(@dictionary, Lindera::Mode.normal, nil)
     results = tokenizer.tokenize_nbest('すもももももももものうち', 3, false, nil)
 
     assert results.length.positive?
@@ -46,7 +46,7 @@ class TestTokenizeIpadic < Minitest::Test
   end
 
   def test_tokenize_surfaces_matches_tokenize
-    tokenizer = Lindera::Tokenizer.new(@dictionary, 'normal', nil)
+    tokenizer = Lindera::Tokenizer.new(@dictionary, Lindera::Mode.normal, nil)
 
     ['すもももももももものうち', '関西国際空港限定トートバッグ', ''].each do |text|
       expected = tokenizer.tokenize(text).map(&:surface)
@@ -60,7 +60,7 @@ class TestTokenizeIpadic < Minitest::Test
   def test_tokenize_repeated_calls_are_stable
     # The tokenizer reuses an internal lattice across calls; repeated calls
     # on one instance must keep producing identical output.
-    tokenizer = Lindera::Tokenizer.new(@dictionary, 'normal', nil)
+    tokenizer = Lindera::Tokenizer.new(@dictionary, Lindera::Mode.normal, nil)
     text = 'すもももももももものうち'
     first = tokenizer.tokenize_surfaces(text)
 

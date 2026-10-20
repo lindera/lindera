@@ -12,6 +12,7 @@
 
 import {
   loadDictionary,
+  Mode,
   Tokenizer,
   TokenizerBuilder,
   type Dictionary,
@@ -22,7 +23,7 @@ import {
 
 export function checkTokenShape(text: string): void {
   const dictionary = loadDictionary("embedded://ipadic");
-  const tokenizer = new Tokenizer(dictionary, "normal");
+  const tokenizer = new Tokenizer(dictionary, Mode.normal());
 
   // `tokenize` yields plain token objects (#953).
   const tokens: Array<Token> = tokenizer.tokenize(text);
@@ -83,18 +84,20 @@ export function checkSkipWhitespaceForms(): void {
 export function checkTokenizerConstructorForms(dictionary: Dictionary): Array<Tokenizer> {
   return [
     new Tokenizer(dictionary),
-    new Tokenizer(dictionary, "normal"),
-    new Tokenizer(dictionary, "decompose", null),
+    new Tokenizer(dictionary, Mode.normal()),
+    new Tokenizer(dictionary, Mode.decompose(), null),
+    new Tokenizer(dictionary, null),
     new Tokenizer(dictionary, undefined, undefined, false),
-    new Tokenizer(dictionary, "normal", null, { rules: [{ pos: ["JKS", "JX"], cost: 6000 }] }),
-    new Tokenizer(dictionary, "decompose", null, null, { kanjiPenaltyLengthPenalty: 0 }),
-    new Tokenizer(dictionary, "decompose", undefined, undefined, null),
+    new Tokenizer(dictionary, Mode.normal(), null, { rules: [{ pos: ["JKS", "JX"], cost: 6000 }] }),
+    // @ts-expect-error -- a mode is a Mode, not its name (#1218).
+    new Tokenizer(dictionary, "normal"),
   ];
 }
 
-// A `Penalty` is a plain object whose fields are all optional (#1215), and
-// `setMode` takes it as an optional second argument.
-export function checkSetModePenaltyForms(): void {
+// A `Mode` holds the penalty of decompose mode, as the Rust `Mode` does
+// (#1218). A `Penalty` is a plain object whose fields are all optional
+// (#1215).
+export function checkModeForms(): void {
   const empty: Penalty = {};
   const full: Penalty = {
     kanjiPenaltyLengthThreshold: 2,
@@ -102,13 +105,29 @@ export function checkSetModePenaltyForms(): void {
     otherPenaltyLengthThreshold: 7,
     otherPenaltyLengthPenalty: 1700,
   };
+  const modes: Array<Mode> = [
+    Mode.normal(),
+    Mode.decompose(),
+    Mode.decompose(empty),
+    Mode.decompose(full),
+    Mode.decompose(null),
+    Mode.decompose(undefined),
+    Mode.fromStr("decompose"),
+  ];
+  const name: string = modes[0].name;
+  const penalty: Penalty | null = modes[1].penalty;
+  const kinds: Array<boolean> = [modes[0].isNormal(), modes[0].isDecompose(), modes[0].equals(modes[1])];
+  const text: string = modes[0].toString();
+  void [name, penalty, kinds, text];
+
   const builder: TokenizerBuilder = new TokenizerBuilder()
-    .setMode("normal")
-    .setMode("decompose", empty)
-    .setMode("decompose", full)
-    .setMode("decompose", null)
-    .setMode("decompose", undefined);
+    .setMode(Mode.normal())
+    .setMode(Mode.decompose(full));
   // @ts-expect-error -- a field is a number.
-  builder.setMode("decompose", { kanjiPenaltyLengthPenalty: "0" });
+  Mode.decompose({ kanjiPenaltyLengthPenalty: "0" });
+  // @ts-expect-error -- a mode is a Mode, not its name.
+  builder.setMode("decompose");
+  // @ts-expect-error -- the penalty goes in the Mode.
+  builder.setMode(Mode.decompose(), full);
   void builder;
 }

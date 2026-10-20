@@ -36,11 +36,11 @@ class TestUserDictionary < Minitest::Test
   end
 
   def test_load_user_dictionary_for_loads_a_csv_inside_the_matrix
-    baseline = Lindera::Tokenizer.new(@dictionary, 'normal', nil).tokenize('東京スカイツリー').map(&:surface)
+    baseline = Lindera::Tokenizer.new(@dictionary, Lindera::Mode.normal, nil).tokenize('東京スカイツリー').map(&:surface)
     assert baseline.length > 1, "fixture assumption: #{baseline}"
 
     user_dictionary = with_csv(SIMPLE_CSV) { |csv| Lindera.load_user_dictionary_for(csv, @dictionary) }
-    tokenizer = Lindera::Tokenizer.new(@dictionary, 'normal', user_dictionary)
+    tokenizer = Lindera::Tokenizer.new(@dictionary, Lindera::Mode.normal, user_dictionary)
     assert_equal ['東京スカイツリー'], tokenizer.tokenize('東京スカイツリー').map(&:surface)
   end
 
@@ -61,7 +61,7 @@ class TestUserDictionary < Minitest::Test
       assert File.file?(output), "#{output} must be a file"
       Lindera.load_user_dictionary_for(output, @dictionary)
     end
-    tokenizer = Lindera::Tokenizer.new(@dictionary, 'normal', user_dictionary)
+    tokenizer = Lindera::Tokenizer.new(@dictionary, Lindera::Mode.normal, user_dictionary)
     assert_equal ['東京スカイツリー'], tokenizer.tokenize('東京スカイツリー').map(&:surface)
   end
 

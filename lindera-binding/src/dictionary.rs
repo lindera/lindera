@@ -53,6 +53,7 @@ mod tests {
         use std::path::{Path, PathBuf};
 
         use lindera::dictionary::{Dictionary, load_dictionary, load_user_dictionary_for};
+        use lindera::mode::Mode;
 
         use super::super::build_user_dictionary_for;
         use crate::tokenizer::CoreTokenizer;
@@ -122,10 +123,11 @@ mod tests {
             let output = dir.path().join("out").join("userdic.bin");
             let dictionary = ipadic();
 
-            let baseline = match CoreTokenizer::from_segmenter("normal", dictionary.clone(), None) {
-                Ok(tokenizer) => surfaces(&tokenizer, "東京スカイツリー"),
-                Err(err) => panic!("failed to build the tokenizer: {err}"),
-            };
+            let baseline =
+                match CoreTokenizer::from_segmenter(Mode::Normal, dictionary.clone(), None) {
+                    Ok(tokenizer) => surfaces(&tokenizer, "東京スカイツリー"),
+                    Err(err) => panic!("failed to build the tokenizer: {err}"),
+                };
             assert!(baseline.len() > 1, "fixture assumption: {baseline:?}");
 
             if let Err(err) = build_user_dictionary_for(&csv, &output, &dictionary) {
@@ -141,11 +143,14 @@ mod tests {
                 Ok(user_dictionary) => user_dictionary,
                 Err(err) => panic!("failed to load {output:?}: {err}"),
             };
-            let tokenizer =
-                match CoreTokenizer::from_segmenter("normal", dictionary, Some(user_dictionary)) {
-                    Ok(tokenizer) => tokenizer,
-                    Err(err) => panic!("failed to build the tokenizer: {err}"),
-                };
+            let tokenizer = match CoreTokenizer::from_segmenter(
+                Mode::Normal,
+                dictionary,
+                Some(user_dictionary),
+            ) {
+                Ok(tokenizer) => tokenizer,
+                Err(err) => panic!("failed to build the tokenizer: {err}"),
+            };
             assert_eq!(
                 surfaces(&tokenizer, "東京スカイツリー"),
                 ["東京スカイツリー"]

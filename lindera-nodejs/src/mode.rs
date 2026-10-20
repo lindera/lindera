@@ -1,52 +1,147 @@
 //! Tokenization modes and penalty configurations.
 //!
 //! This module defines the different tokenization modes available and their
-//! penalty configurations for controlling segmentation behavior.
+//! penalty configurations for controlling segmentation behavior. A `Mode`
+//! holds the penalty of decompose mode, as the Rust `lindera::mode::Mode`
+//! does, and is what `TokenizerBuilder.setMode` and the `Tokenizer`
+//! constructor take (#1218).
 
 use lindera::mode::{Mode as LinderaMode, Penalty as LinderaPenalty};
 use napi::bindgen_prelude::{FromNapiValue, ValidateNapiValue};
 use napi::sys;
 
+use crate::error::to_napi_error;
 use crate::util::optional_integer_arg;
 
-/// Tokenization mode.
+/// Tokenization mode: normal, or decompose with a `Penalty`.
 ///
-/// Determines how text is segmented into tokens.
-///
-/// - `Normal`: Standard tokenization based on dictionary cost.
-/// - `Decompose`: Decomposes compound words using penalty-based segmentation.
-#[napi(string_enum)]
-pub enum JsMode {
-    /// Standard tokenization based on dictionary cost
-    Normal,
-    /// Decompose compound words using penalty-based segmentation
-    Decompose,
+/// The JS counterpart of the Rust `lindera::mode::Mode`. It has no
+/// constructor; `Mode.normal()`, `Mode.decompose()` and `Mode.fromStr()`
+/// create one. A mode cannot be changed, and `equals` compares its name and
+/// penalty.
+// The Rust name is `Mode`, not `JsMode`: napi-rs also exports a class `JsX`
+// with `js_name = "X"` as `JsX`.
+#[napi]
+#[derive(Debug, Clone, PartialEq)]
+pub struct Mode {
+    /// The mode, with its penalty for decompose mode.
+    inner: LinderaMode,
 }
 
-impl From<JsMode> for LinderaMode {
-    fn from(mode: JsMode) -> Self {
-        match mode {
-            JsMode::Normal => LinderaMode::Normal,
-            JsMode::Decompose => LinderaMode::Decompose(LinderaPenalty::default()),
+impl Mode {
+    /// Returns the wrapped `lindera::mode::Mode`.
+    pub fn as_lindera(&self) -> &LinderaMode {
+        &self.inner
+    }
+
+    /// Creates decompose mode with `penalty`, or with the default penalty for
+    /// `None`.
+    fn decompose_with(penalty: Option<LinderaPenalty>) -> Self {
+        Self {
+            inner: LinderaMode::Decompose(penalty.unwrap_or_default()),
         }
     }
 }
 
-impl From<LinderaMode> for JsMode {
-    fn from(mode: LinderaMode) -> Self {
-        match mode {
-            LinderaMode::Normal => JsMode::Normal,
-            LinderaMode::Decompose(_) => JsMode::Decompose,
+#[napi]
+impl Mode {
+    /// Creates normal mode.
+    ///
+    /// # Returns
+    ///
+    /// Normal mode.
+    #[napi(factory)]
+    pub fn normal() -> Self {
+        Self {
+            inner: LinderaMode::Normal,
         }
+    }
+
+    /// Creates decompose mode.
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - The `Penalty`. `null` or `undefined` (the default) uses
+    ///   the default penalty; a field left out keeps its default.
+    ///
+    /// # Returns
+    ///
+    /// Decompose mode with the penalty. Throws, with code `InvalidArg`, for
+    /// a penalty that is not an object or a field that is not an integer in
+    /// its range.
+    #[napi(factory)]
+    pub fn decompose(
+        #[napi(ts_arg_type = "Penalty | undefined | null")] penalty: Option<PenaltyArg>,
+    ) -> napi::Result<Self> {
+        Ok(Self::decompose_with(optional_penalty(penalty)?))
+    }
+
+    /// Creates a mode from its name, as the Rust `Mode` parses one.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - `"normal"` or `"decompose"`, case sensitive.
+    ///
+    /// # Returns
+    ///
+    /// The mode, with the default penalty for `"decompose"`. Throws for any
+    /// other name, as `setMode` did for it in v6.
+    #[napi(factory, js_name = "fromStr")]
+    pub fn parse(name: String) -> napi::Result<Self> {
+        let inner = lindera_binding::parse_mode(&name).map_err(to_napi_error)?;
+        Ok(Self { inner })
+    }
+
+    /// The name of the mode: `"normal"` or `"decompose"`.
+    #[napi(getter)]
+    pub fn name(&self) -> String {
+        self.inner.as_str().to_string()
+    }
+
+    /// The penalty of decompose mode, as a copy with every field set, or
+    /// `null` for normal mode.
+    #[napi(getter)]
+    pub fn penalty(&self) -> Option<Penalty> {
+        match &self.inner {
+            LinderaMode::Normal => None,
+            LinderaMode::Decompose(penalty) => Some(penalty.clone().into()),
+        }
+    }
+
+    /// Returns whether this is normal mode.
+    #[napi]
+    pub fn is_normal(&self) -> bool {
+        matches!(self.inner, LinderaMode::Normal)
+    }
+
+    /// Returns whether this is decompose mode.
+    #[napi]
+    pub fn is_decompose(&self) -> bool {
+        matches!(self.inner, LinderaMode::Decompose(_))
+    }
+
+    /// Returns whether `other` has the same name and penalty.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - Another `Mode`. A value that is not a `Mode` throws.
+    #[napi]
+    pub fn equals(&self, other: &Mode) -> bool {
+        self == other
+    }
+
+    /// Returns the name of the mode, as `name` does.
+    #[napi(js_name = "toString")]
+    pub fn js_to_string(&self) -> String {
+        self.name()
     }
 }
 
 /// Penalty configuration for decompose mode.
 ///
 /// Controls how aggressively compound words are decomposed based on
-/// character type and length thresholds. Pass it with "decompose" to
-/// `TokenizerBuilder.setMode` or to the `Tokenizer` constructor. A field
-/// left out keeps its default.
+/// character type and length thresholds. Pass it to `Mode.decompose`. A
+/// field left out keeps its default.
 #[napi(object)]
 #[derive(Debug, Clone, Default)]
 pub struct Penalty {
@@ -106,7 +201,19 @@ impl TryFrom<Penalty> for LinderaPenalty {
     }
 }
 
-/// The penalty argument of `setMode` and the `Tokenizer` constructor.
+impl From<LinderaPenalty> for Penalty {
+    /// Converts a core penalty to a JS penalty with every field set.
+    fn from(penalty: LinderaPenalty) -> Self {
+        Self {
+            kanji_penalty_length_threshold: Some(penalty.kanji_penalty_length_threshold as f64),
+            kanji_penalty_length_penalty: Some(penalty.kanji_penalty_length_penalty.into()),
+            other_penalty_length_threshold: Some(penalty.other_penalty_length_threshold as f64),
+            other_penalty_length_penalty: Some(penalty.other_penalty_length_penalty.into()),
+        }
+    }
+}
+
+/// The penalty argument of `Mode.decompose`.
 ///
 /// napi-rs reads a `#[napi(object)]` argument without checking that the
 /// value is an object, so a number or a string would become a [`Penalty`]
@@ -138,8 +245,7 @@ impl FromNapiValue for PenaltyArg {
     }
 }
 
-/// Converts the optional penalty argument of `setMode` and the `Tokenizer`
-/// constructor.
+/// Converts the optional penalty argument of `Mode.decompose`.
 ///
 /// # Arguments
 ///
@@ -161,28 +267,44 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_js_mode_normal_to_lindera_mode() {
-        let lindera_mode: LinderaMode = JsMode::Normal.into();
-        assert!(matches!(lindera_mode, LinderaMode::Normal));
+    fn test_mode_factories() {
+        assert_eq!(Mode::normal().as_lindera(), &LinderaMode::Normal);
+        assert_eq!(
+            Mode::decompose_with(None).as_lindera(),
+            &LinderaMode::Decompose(LinderaPenalty::default())
+        );
+        let penalty = LinderaPenalty {
+            kanji_penalty_length_threshold: 3,
+            kanji_penalty_length_penalty: 0,
+            other_penalty_length_threshold: 4,
+            other_penalty_length_penalty: 3000,
+        };
+        let mode = Mode::decompose_with(Some(penalty.clone()));
+        assert_eq!(mode.as_lindera(), &LinderaMode::Decompose(penalty.clone()));
+        let back = match mode.penalty().map(LinderaPenalty::try_from) {
+            Some(Ok(back)) => back,
+            other => panic!("decompose mode gave the penalty {other:?}"),
+        };
+        assert_eq!(back, penalty);
+        assert!(Mode::normal().penalty().is_none());
     }
 
     #[test]
-    fn test_js_mode_decompose_to_lindera_mode() {
-        let lindera_mode: LinderaMode = JsMode::Decompose.into();
-        assert!(matches!(lindera_mode, LinderaMode::Decompose(_)));
-    }
-
-    #[test]
-    fn test_lindera_mode_normal_to_js_mode() {
-        let js_mode: JsMode = LinderaMode::Normal.into();
-        assert!(matches!(js_mode, JsMode::Normal));
-    }
-
-    #[test]
-    fn test_lindera_mode_decompose_to_js_mode() {
-        let penalty = LinderaPenalty::default();
-        let js_mode: JsMode = LinderaMode::Decompose(penalty).into();
-        assert!(matches!(js_mode, JsMode::Decompose));
+    fn test_mode_names_kinds_and_equality() {
+        let normal = Mode::normal();
+        let decompose = Mode::decompose_with(None);
+        assert_eq!(normal.name(), "normal");
+        assert_eq!(decompose.js_to_string(), "decompose");
+        assert!(normal.is_normal() && !normal.is_decompose());
+        assert!(decompose.is_decompose() && !decompose.is_normal());
+        assert!(decompose.equals(&Mode::decompose_with(None)));
+        assert!(
+            !decompose.equals(&Mode::decompose_with(Some(LinderaPenalty {
+                kanji_penalty_length_penalty: 0,
+                ..LinderaPenalty::default()
+            })))
+        );
+        assert!(!normal.equals(&decompose));
     }
 
     #[test]

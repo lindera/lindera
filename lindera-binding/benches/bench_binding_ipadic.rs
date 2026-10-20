@@ -6,6 +6,8 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 
 #[cfg(feature = "embed-ipadic")]
+use lindera::mode::Mode;
+#[cfg(feature = "embed-ipadic")]
 use lindera_binding::tokenizer::CoreTokenizer;
 
 #[cfg(feature = "embed-ipadic")]
@@ -14,7 +16,7 @@ const SHORT_TEXT: &str = "すもももももももものうち";
 #[cfg(feature = "embed-ipadic")]
 fn build_tokenizer() -> CoreTokenizer {
     let dictionary = lindera::dictionary::load_dictionary("embedded://ipadic").unwrap();
-    CoreTokenizer::from_segmenter("normal", dictionary, None).unwrap()
+    CoreTokenizer::from_segmenter(Mode::Normal, dictionary, None).unwrap()
 }
 
 #[cfg(feature = "embed-ipadic")]

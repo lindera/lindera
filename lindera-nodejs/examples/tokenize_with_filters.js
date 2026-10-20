@@ -1,11 +1,11 @@
-const { TokenizerBuilder } = require("../index.js");
+const { Mode, TokenizerBuilder } = require("../index.js");
 
 function main() {
   // create a tokenizer builder
   const builder = new TokenizerBuilder();
 
   // set mode and dictionary
-  builder.setMode("normal");
+  builder.setMode(Mode.normal());
   builder.setDictionary("embedded://ipadic");
 
   // append character filters

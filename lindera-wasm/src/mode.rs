@@ -1,57 +1,191 @@
-use std::str::FromStr;
+//! Tokenization modes and penalty configurations.
+//!
+//! A `Mode` holds the penalty of decompose mode, as the Rust
+//! `lindera::mode::Mode` does, and is what `TokenizerBuilder.setMode` and the
+//! `Tokenizer` constructor take (#1218).
 
+use wasm_bindgen::JsCast;
+use wasm_bindgen::convert::TryFromJsValue;
 use wasm_bindgen::prelude::*;
 
 use lindera::mode::{Mode as LinderaMode, Penalty as LinderaPenalty};
 
 use crate::argument::{integer_arg, optional_integer_arg};
 
-/// Tokenization mode.
+/// Tokenization mode: normal, or decompose with a `Penalty`.
 ///
-/// Determines how text is segmented into tokens.
+/// The JS counterpart of the Rust `lindera::mode::Mode`. It has no
+/// constructor; `Mode.normal()`, `Mode.decompose()` and `Mode.fromStr()`
+/// create one. A mode cannot be changed, and `equals` compares its name and
+/// penalty.
 #[wasm_bindgen(js_name = "Mode")]
-#[derive(Debug, Clone, Copy)]
-pub enum JsMode {
-    /// Standard tokenization based on dictionary cost
-    Normal,
-    /// Decompose compound words using penalty-based segmentation
-    Decompose,
+#[derive(Debug, Clone, PartialEq)]
+pub struct JsMode {
+    /// The mode, with its penalty for decompose mode.
+    inner: LinderaMode,
 }
 
-impl FromStr for JsMode {
-    type Err = String;
+impl JsMode {
+    /// Returns the wrapped `lindera::mode::Mode`.
+    pub fn as_lindera(&self) -> &LinderaMode {
+        &self.inner
+    }
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "normal" => Ok(JsMode::Normal),
-            "decompose" => Ok(JsMode::Decompose),
-            _ => Err(format!("Invalid mode: {s}")),
+    /// Creates decompose mode with `penalty`, or with the default penalty for
+    /// `None`.
+    fn decompose_with(penalty: Option<LinderaPenalty>) -> Self {
+        Self {
+            inner: LinderaMode::Decompose(penalty.unwrap_or_default()),
         }
     }
 }
 
-impl From<JsMode> for LinderaMode {
-    fn from(mode: JsMode) -> Self {
-        match mode {
-            JsMode::Normal => LinderaMode::Normal,
-            JsMode::Decompose => LinderaMode::Decompose(LinderaPenalty::default()),
+#[wasm_bindgen(js_class = "Mode")]
+impl JsMode {
+    /// Creates normal mode.
+    ///
+    /// # Returns
+    ///
+    /// Normal mode.
+    pub fn normal() -> JsMode {
+        Self {
+            inner: LinderaMode::Normal,
         }
+    }
+
+    /// Creates decompose mode.
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - The `Penalty`. `null` or `undefined` (the default) uses
+    ///   the default penalty. The `Penalty` stays usable, so the same one can
+    ///   be passed again.
+    ///
+    /// # Returns
+    ///
+    /// Decompose mode with the penalty, or a thrown string for a value that
+    /// is not a `Penalty`.
+    pub fn decompose(
+        #[wasm_bindgen(unchecked_optional_param_type = "Penalty | null")] penalty: Option<JsValue>,
+    ) -> Result<JsMode, JsValue> {
+        Ok(Self::decompose_with(penalty_from_js(penalty)?))
+    }
+
+    /// Creates a mode from its name, as the Rust `Mode` parses one.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - `"normal"` or `"decompose"`, case sensitive.
+    ///
+    /// # Returns
+    ///
+    /// The mode, with the default penalty for `"decompose"`, or a thrown
+    /// string for any other name, as `setMode` threw for it in v6.
+    #[wasm_bindgen(js_name = "fromStr")]
+    pub fn parse(name: &str) -> Result<JsMode, JsValue> {
+        let inner =
+            lindera_binding::parse_mode(name).map_err(|e| JsValue::from_str(&e.to_string()))?;
+        Ok(Self { inner })
+    }
+
+    /// The name of the mode: `"normal"` or `"decompose"`.
+    #[wasm_bindgen(getter)]
+    pub fn name(&self) -> String {
+        self.inner.as_str().to_string()
+    }
+
+    /// The penalty of decompose mode, as a copy, or `undefined` for normal
+    /// mode.
+    #[wasm_bindgen(getter)]
+    pub fn penalty(&self) -> Option<JsPenalty> {
+        match &self.inner {
+            LinderaMode::Normal => None,
+            LinderaMode::Decompose(penalty) => Some(penalty.clone().into()),
+        }
+    }
+
+    /// Returns whether this is normal mode.
+    #[wasm_bindgen(js_name = "isNormal")]
+    pub fn is_normal(&self) -> bool {
+        matches!(self.inner, LinderaMode::Normal)
+    }
+
+    /// Returns whether this is decompose mode.
+    #[wasm_bindgen(js_name = "isDecompose")]
+    pub fn is_decompose(&self) -> bool {
+        matches!(self.inner, LinderaMode::Decompose(_))
+    }
+
+    /// Returns whether `other` has the same name and penalty.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - Another `Mode`. A value that is not a `Mode` throws.
+    pub fn equals(&self, other: &JsMode) -> bool {
+        self == other
+    }
+
+    /// Returns the name of the mode, as `name` does.
+    #[wasm_bindgen(js_name = "toString")]
+    pub fn js_to_string(&self) -> String {
+        self.name()
+    }
+
+    /// Returns a copy of `mode`, for [`mode_from_js`]; hidden from the
+    /// TypeScript declarations.
+    ///
+    /// Called through the JS glue, which checks that `mode` is a `Mode` and,
+    /// as `mode` is a reference, leaves it usable.
+    #[wasm_bindgen(js_name = "__copyOf", skip_typescript)]
+    pub fn copy_of(mode: &JsMode) -> JsMode {
+        mode.clone()
     }
 }
 
-impl From<LinderaMode> for JsMode {
-    fn from(mode: LinderaMode) -> Self {
-        match mode {
-            LinderaMode::Normal => JsMode::Normal,
-            LinderaMode::Decompose(_) => JsMode::Decompose,
-        }
-    }
+thread_local! {
+    /// `Mode.__copyOf`, taken from the `Mode` class of a mode created once.
+    static COPY_OF: js_sys::Function = {
+        let class = js_sys::Reflect::get(&JsValue::from(JsMode::normal()), &"constructor".into())
+            .expect("a Mode has a constructor");
+        js_sys::Reflect::get(&class, &"__copyOf".into())
+            .expect("Mode has __copyOf")
+            .unchecked_into()
+    };
+}
+
+/// Reads the optional `Mode` argument of the `Tokenizer` constructor
+/// (#1218).
+///
+/// wasm-bindgen takes no `Option<&Mode>`, and an `Option<Mode>` destroys the
+/// JS object of the argument, so the caller could not pass the same `Mode`
+/// again. The argument is taken as a `JsValue` and passed to
+/// `Mode.__copyOf` through the JS glue instead: the glue throws for a value
+/// that is not a `Mode`, as for the argument of `setMode`, and only the copy
+/// is taken by value.
+///
+/// # Arguments
+///
+/// * `value` - The argument, or `None` when it is left out.
+///
+/// # Returns
+///
+/// Normal mode for an argument that is left out, `null` or `undefined`, the
+/// mode otherwise, or the error the glue throws for a value that is not a
+/// `Mode`.
+pub fn mode_from_js(value: Option<JsValue>) -> Result<LinderaMode, JsValue> {
+    let Some(value) = value.filter(|value| !value.is_null() && !value.is_undefined()) else {
+        return Ok(LinderaMode::Normal);
+    };
+    let copy = COPY_OF.with(|copy_of| copy_of.call1(&JsValue::UNDEFINED, &value))?;
+    let mode = JsMode::try_from_js_value(copy)
+        .map_err(|_| JsValue::from_str("Mode.__copyOf did not return a Mode"))?;
+    Ok(mode.inner)
 }
 
 /// Penalty configuration for decompose mode.
 ///
 /// Controls how aggressively compound words are decomposed based on
-/// character type and length thresholds.
+/// character type and length thresholds. Pass it to `Mode.decompose`.
 #[wasm_bindgen(js_name = "Penalty")]
 #[derive(Debug, Clone, Copy)]
 pub struct JsPenalty {
@@ -233,8 +367,7 @@ impl From<LinderaPenalty> for JsPenalty {
     }
 }
 
-/// Reads the optional `Penalty` argument of `setMode` and the `Tokenizer`
-/// constructor (#1215).
+/// Reads the optional `Penalty` argument of `Mode.decompose` (#1215).
 ///
 /// The argument is taken as a `JsValue` and read through the four getters of
 /// `Penalty`: wasm-bindgen destroys the JS object of a class argument taken
@@ -444,31 +577,112 @@ mod tests {
     }
 
     #[test]
-    fn test_js_mode_from_str() {
-        assert!(matches!(JsMode::from_str("normal"), Ok(JsMode::Normal)));
-        assert!(matches!(
-            JsMode::from_str("decompose"),
-            Ok(JsMode::Decompose)
-        ));
-        assert!(JsMode::from_str("invalid").is_err());
+    fn test_js_mode_factories() {
+        assert_eq!(JsMode::normal().as_lindera(), &LinderaMode::Normal);
+        assert_eq!(
+            JsMode::decompose_with(None).as_lindera(),
+            &LinderaMode::Decompose(LinderaPenalty::default())
+        );
+        let penalty = LinderaPenalty {
+            kanji_penalty_length_threshold: 3,
+            kanji_penalty_length_penalty: 0,
+            other_penalty_length_threshold: 4,
+            other_penalty_length_penalty: 3000,
+        };
+        let mode = JsMode::decompose_with(Some(penalty.clone()));
+        assert_eq!(mode.as_lindera(), &LinderaMode::Decompose(penalty.clone()));
+        let Some(back) = mode.penalty() else {
+            panic!("decompose mode has no penalty");
+        };
+        assert_eq!(LinderaPenalty::from(back), penalty);
+        assert!(JsMode::normal().penalty().is_none());
     }
 
     #[test]
-    fn test_js_mode_to_lindera_mode() {
-        let normal: LinderaMode = JsMode::Normal.into();
-        assert!(matches!(normal, LinderaMode::Normal));
-
-        let decompose: LinderaMode = JsMode::Decompose.into();
-        assert!(matches!(decompose, LinderaMode::Decompose(_)));
+    fn test_js_mode_names_kinds_and_equality() {
+        let normal = JsMode::normal();
+        let decompose = JsMode::decompose_with(None);
+        assert_eq!(normal.name(), "normal");
+        assert_eq!(decompose.js_to_string(), "decompose");
+        assert!(normal.is_normal() && !normal.is_decompose());
+        assert!(decompose.is_decompose() && !decompose.is_normal());
+        assert!(decompose.equals(&JsMode::decompose_with(None)));
+        assert!(
+            !decompose.equals(&JsMode::decompose_with(Some(LinderaPenalty {
+                kanji_penalty_length_penalty: 0,
+                ..LinderaPenalty::default()
+            })))
+        );
+        assert!(!normal.equals(&decompose));
+        assert_eq!(JsMode::copy_of(&decompose), decompose);
     }
 
     #[test]
-    fn test_lindera_mode_to_js_mode() {
-        let normal: JsMode = LinderaMode::Normal.into();
-        assert!(matches!(normal, JsMode::Normal));
+    fn test_js_mode_parse() {
+        assert_eq!(JsMode::parse("normal").ok(), Some(JsMode::normal()));
+        assert_eq!(
+            JsMode::parse("decompose").ok(),
+            Some(JsMode::decompose_with(None))
+        );
+    }
 
-        let decompose: JsMode = LinderaMode::Decompose(LinderaPenalty::default()).into();
-        assert!(matches!(decompose, JsMode::Decompose));
+    #[test]
+    fn test_mode_from_js_without_a_mode_is_normal() {
+        assert_eq!(mode_from_js(None).ok(), Some(LinderaMode::Normal));
+    }
+
+    /// `mode_from_js` reads a `Mode` through the JS glue and leaves it usable,
+    /// and `null` or `undefined` mean normal mode (#1218).
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_mode_from_js_reads_a_mode() {
+        let penalty = LinderaPenalty {
+            other_penalty_length_threshold: 4,
+            other_penalty_length_penalty: 3000,
+            ..LinderaPenalty::default()
+        };
+        let mode = JsValue::from(JsMode::decompose_with(Some(penalty.clone())));
+        let expected = LinderaMode::Decompose(penalty);
+        assert_eq!(mode_from_js(Some(mode.clone())).unwrap(), expected);
+        assert_eq!(mode_from_js(Some(mode)).unwrap(), expected);
+
+        assert_eq!(
+            mode_from_js(Some(JsValue::NULL)).unwrap(),
+            LinderaMode::Normal
+        );
+        assert_eq!(
+            mode_from_js(Some(JsValue::UNDEFINED)).unwrap(),
+            LinderaMode::Normal
+        );
+    }
+
+    /// A value that is not a `Mode` is an error, not normal mode.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_mode_from_js_rejects_other_values() {
+        let named = js_sys::Object::new();
+        js_sys::Reflect::set(&named, &"name".into(), &"decompose".into()).unwrap();
+        for value in [
+            JsValue::from_str("decompose"),
+            JsValue::from_f64(0.0),
+            JsValue::TRUE,
+            named.into(),
+            JsValue::from(JsPenalty::new(None, None, None, None).unwrap()),
+        ] {
+            let shown = format!("{value:?}");
+            assert!(mode_from_js(Some(value)).is_err(), "{shown}");
+        }
+    }
+
+    /// An error of `fromStr`, which touches a `JsValue`, can only run on
+    /// wasm32.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_js_mode_parse_rejects_other_names() {
+        for name in ["Normal", "Decompose", "DECOMPOSE", "", "invalid"] {
+            let error = JsMode::parse(name).unwrap_err().as_string().unwrap();
+            assert!(error.contains("Invalid mode"), "{name:?}: {error}");
+        }
     }
 
     #[test]

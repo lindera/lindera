@@ -144,6 +144,74 @@ export declare class Metadata {
 export type JsMetadata = Metadata
 
 /**
+ * Tokenization mode: normal, or decompose with a `Penalty`.
+ *
+ * The JS counterpart of the Rust `lindera::mode::Mode`. It has no
+ * constructor; `Mode.normal()`, `Mode.decompose()` and `Mode.fromStr()`
+ * create one. A mode cannot be changed, and `equals` compares its name and
+ * penalty.
+ */
+export declare class Mode {
+  /**
+   * Creates normal mode.
+   *
+   * # Returns
+   *
+   * Normal mode.
+   */
+  static normal(): Mode
+  /**
+   * Creates decompose mode.
+   *
+   * # Arguments
+   *
+   * * `penalty` - The `Penalty`. `null` or `undefined` (the default) uses
+   *   the default penalty; a field left out keeps its default.
+   *
+   * # Returns
+   *
+   * Decompose mode with the penalty. Throws, with code `InvalidArg`, for
+   * a penalty that is not an object or a field that is not an integer in
+   * its range.
+   */
+  static decompose(penalty?: Penalty | undefined | null): Mode
+  /**
+   * Creates a mode from its name, as the Rust `Mode` parses one.
+   *
+   * # Arguments
+   *
+   * * `name` - `"normal"` or `"decompose"`, case sensitive.
+   *
+   * # Returns
+   *
+   * The mode, with the default penalty for `"decompose"`. Throws for any
+   * other name, as `setMode` did for it in v6.
+   */
+  static fromStr(name: string): Mode
+  /** The name of the mode: `"normal"` or `"decompose"`. */
+  get name(): string
+  /**
+   * The penalty of decompose mode, as a copy with every field set, or
+   * `null` for normal mode.
+   */
+  get penalty(): Penalty | null
+  /** Returns whether this is normal mode. */
+  isNormal(): boolean
+  /** Returns whether this is decompose mode. */
+  isDecompose(): boolean
+  /**
+   * Returns whether `other` has the same name and penalty.
+   *
+   * # Arguments
+   *
+   * * `other` - Another `Mode`. A value that is not a `Mode` throws.
+   */
+  equals(other: Mode): boolean
+  /** Returns the name of the mode, as `name` does. */
+  toString(): string
+}
+
+/**
  * Dictionary schema definition.
  *
  * A thin napi wrapper over [`lindera_binding::CoreSchema`], which owns the
@@ -246,21 +314,19 @@ export declare class Tokenizer {
    * # Arguments
    *
    * * `dictionary` - Dictionary to use for tokenization.
-   * * `mode` - Tokenization mode ("normal" or "decompose"). Default: "normal".
+   * * `mode` - The `Mode`, as `TokenizerBuilder.setMode` takes it. `null`
+   *   or `undefined` (the default) is normal mode.
    * * `user_dictionary` - Optional user dictionary for custom words.
    * * `space_penalty` - The left-space penalty, in the forms
    *   `TokenizerBuilder.setSpacePenalty` accepts. `null` or `undefined`
    *   (the default) keeps the rules the dictionary ships.
-   * * `penalty` - The `Penalty` for "decompose" mode, as
-   *   `TokenizerBuilder.setMode` takes it. `null` or `undefined` (the
-   *   default) uses the default penalty.
    *
-   * Throws for an invalid mode, penalty or space-penalty setting, as
-   * `setMode`, `setSpacePenalty` and `build()` do, and for a user
+   * Throws for a `mode` that is not a `Mode`, for an invalid space-penalty
+   * setting, as `setSpacePenalty` and `build()` do, and for a user
    * dictionary with a context ID outside the dictionary's connection
    * matrix.
    */
-  constructor(dictionary: Dictionary, mode?: string | undefined | null, userDictionary?: UserDictionary | undefined | null, spacePenalty?: boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined, penalty?: Penalty | undefined | null)
+  constructor(dictionary: Dictionary, mode?: Mode | undefined | null, userDictionary?: UserDictionary | undefined | null, spacePenalty?: boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined)
   /**
    * Tokenizes the given text.
    *
@@ -342,17 +408,14 @@ export declare class TokenizerBuilder {
    *
    * # Arguments
    *
-   * * `mode` - Mode string ("normal" or "decompose").
-   * * `penalty` - The `Penalty` for "decompose" mode. `null` or
-   *   `undefined` (the default) uses the default penalty.
+   * * `mode` - The `Mode`, with its penalty for decompose mode.
    *
    * # Returns
    *
-   * The builder itself (`this`), enabling method chaining. Throws for an
-   * invalid mode, for a penalty with "normal" mode, and, with code
-   * `InvalidArg`, for a penalty field that is not an integer in its range.
+   * The builder itself (`this`), enabling method chaining. Throws, with
+   * code `InvalidArg`, for a value that is not a `Mode`.
    */
-  setMode(mode: string, penalty?: Penalty | undefined | null): this
+  setMode(mode: Mode): this
   /**
    * Sets the dictionary path or URI.
    *
@@ -594,21 +657,6 @@ export declare const enum JsFieldType {
 }
 
 /**
- * Tokenization mode.
- *
- * Determines how text is segmented into tokens.
- *
- * - `Normal`: Standard tokenization based on dictionary cost.
- * - `Decompose`: Decomposes compound words using penalty-based segmentation.
- */
-export declare const enum JsMode {
-  /** Standard tokenization based on dictionary cost */
-  Normal = 'Normal',
-  /** Decompose compound words using penalty-based segmentation */
-  Decompose = 'Decompose',
-}
-
-/**
  * Loads a dictionary from the specified URI.
  *
  * # Arguments
@@ -699,9 +747,8 @@ export interface NbestResult {
  * Penalty configuration for decompose mode.
  *
  * Controls how aggressively compound words are decomposed based on
- * character type and length thresholds. Pass it with "decompose" to
- * `TokenizerBuilder.setMode` or to the `Tokenizer` constructor. A field
- * left out keeps its default.
+ * character type and length thresholds. Pass it to `Mode.decompose`. A
+ * field left out keeps its default.
  */
 export interface Penalty {
   /**

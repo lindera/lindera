@@ -36,7 +36,7 @@ class ArgumentTypesTest extends TestCase
     {
         $missing = self::MISSING;
         $calls = [
-            'Mode::__construct($mode)' => static fn (mixed $v) => new Lindera\Mode($v),
+            'Mode::decompose($penalty)' => static fn (mixed $v) => Lindera\Mode::decompose($v),
             'Penalty::__construct($kanji_penalty_length_threshold)' => static fn (mixed $v) => new Lindera\Penalty(kanji_penalty_length_threshold: $v),
             'Penalty::__construct($kanji_penalty_length_penalty)' => static fn (mixed $v) => new Lindera\Penalty(kanji_penalty_length_penalty: $v),
             'Penalty::__construct($other_penalty_length_threshold)' => static fn (mixed $v) => new Lindera\Penalty(other_penalty_length_threshold: $v),
@@ -52,8 +52,6 @@ class ArgumentTypesTest extends TestCase
             'FieldDefinition::__construct($description)' => static fn (mixed $v) => new Lindera\FieldDefinition(0, 'surface', 'surface', $v),
             'Tokenizer::__construct($mode)' => static fn (mixed $v) => new Lindera\Tokenizer(self::dictionary(), mode: $v),
             'Tokenizer::__construct($user_dictionary)' => static fn (mixed $v) => new Lindera\Tokenizer(self::dictionary(), user_dictionary: $v),
-            'Tokenizer::__construct($penalty)' => static fn (mixed $v) => new Lindera\Tokenizer(self::dictionary(), mode: 'decompose', penalty: $v),
-            'TokenizerBuilder::setMode($penalty)' => static fn (mixed $v) => (new Lindera\TokenizerBuilder())->setMode('decompose', $v),
             'Tokenizer::tokenizeNbest($unique)' => static fn (mixed $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbest('東京都', 2, unique: $v),
             'Tokenizer::tokenizeNbest($cost_threshold)' => static fn (mixed $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbest('東京都', 2, cost_threshold: $v),
             'Dictionary::buildUser($metadata)' => static fn (mixed $v) => Lindera\Dictionary::buildUser('ipadic', $missing, $missing, $v),
@@ -116,7 +114,7 @@ class ArgumentTypesTest extends TestCase
             default => [
                 'x',
                 new stdClass(),
-                $type->getName() === Lindera\Mode::class ? new Lindera\Penalty() : new Lindera\Mode(),
+                $type->getName() === Lindera\Mode::class ? new Lindera\Penalty() : Lindera\Mode::normal(),
             ],
         };
     }
@@ -204,7 +202,10 @@ class ArgumentTypesTest extends TestCase
         $this->assertSame('default', $metadata->name);
         $this->assertFalse($metadata->flexible_csv);
 
-        $this->assertTrue((new Lindera\Mode(null))->isNormal());
+        $penalty = Lindera\Mode::decompose(null)->penalty;
+        $this->assertSame(3000, $penalty->kanji_penalty_length_penalty);
+        $this->assertSame(1700, $penalty->other_penalty_length_penalty);
+
         $this->assertNull((new Lindera\FieldDefinition(0, 'surface', 'surface', null))->description);
     }
 

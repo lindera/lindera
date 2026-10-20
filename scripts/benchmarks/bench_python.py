@@ -10,7 +10,7 @@ import os
 import sys
 import time
 
-from lindera import Tokenizer, load_dictionary
+from lindera import Mode, Tokenizer, load_dictionary
 
 TEXT = os.environ.get("BENCH_TEXT", "すもももももももものうち")
 CALLS = int(os.environ.get("BENCH_CALLS", "2000"))
@@ -30,7 +30,7 @@ def min_us(fn):
 
 def main():
     dictionary = load_dictionary("embedded://ipadic")
-    tokenizer = Tokenizer(dictionary, mode="normal")
+    tokenizer = Tokenizer(dictionary, mode=Mode.normal())
 
     has_surfaces = hasattr(tokenizer, "tokenize_surfaces")
 

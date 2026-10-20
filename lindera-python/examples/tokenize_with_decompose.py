@@ -1,5 +1,4 @@
-from lindera import load_dictionary
-from lindera import Tokenizer
+from lindera import Mode, Tokenizer, load_dictionary
 
 
 def main():
@@ -7,7 +6,7 @@ def main():
     dictionary = load_dictionary("embedded://ipadic")
 
     # create a tokenizer
-    tokenizer = Tokenizer(dictionary, mode="decompose")
+    tokenizer = Tokenizer(dictionary, mode=Mode.decompose())
 
     text = "関西国際空港限定トートバッグを東京スカイツリーの最寄り駅であるとうきょうスカイツリー駅で買う"
     print(f"text: {text}\n")

@@ -26,7 +26,7 @@ def min_us(calls, inner, &block)
 end
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', nil)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.normal, nil)
 has_surfaces = tokenizer.respond_to?(:tokenize_surfaces)
 
 if ARGV.include?('--verify')

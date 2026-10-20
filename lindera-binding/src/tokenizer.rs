@@ -8,7 +8,6 @@
 //! (`serde_json::Value` ⇔ the host language's argument type) and a thin wrapper.
 
 use std::path::Path;
-use std::str::FromStr;
 use std::sync::{Mutex, MutexGuard};
 
 use serde_json::Value;
@@ -16,7 +15,7 @@ use serde_json::Value;
 use lindera::analysis::tokenizer::{Tokenizer, TokenizerBuilder};
 use lindera::analysis::worker::AnalysisWorker;
 use lindera::dictionary::{Dictionary, UserDictionary};
-use lindera::mode::{Mode, Penalty};
+use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
 use lindera::space_penalty::SpacePenaltyConfig;
 
@@ -86,28 +85,6 @@ impl SpacePenaltySetting {
     }
 }
 
-/// Builds the segmentation mode from the mode name the bindings pass and the
-/// penalty they may pass with it (#1215).
-///
-/// # Arguments
-///
-/// * `mode` - `"normal"` or `"decompose"`.
-/// * `penalty` - The penalty for decompose mode, or `None` for the default.
-///
-/// # Returns
-///
-/// The mode, or an invalid-argument error for an unknown mode name or for a
-/// penalty with `"normal"`, which has no use for one.
-fn mode_with_penalty(mode: &str, penalty: Option<Penalty>) -> CoreResult<Mode> {
-    match (Mode::from_str(mode)?, penalty) {
-        (Mode::Decompose(_), Some(penalty)) => Ok(Mode::Decompose(penalty)),
-        (Mode::Normal, Some(_)) => Err(CoreError::invalid_argument(
-            "a penalty applies only to decompose mode, got mode \"normal\"",
-        )),
-        (mode, None) => Ok(mode),
-    }
-}
-
 /// Builder that orchestrates tokenizer configuration on behalf of the bindings.
 ///
 /// Wraps [`lindera::analysis::tokenizer::TokenizerBuilder`]; filter arguments are passed
@@ -133,22 +110,19 @@ impl CoreTokenizerBuilder {
         })
     }
 
-    /// Sets the segmenter mode from a string and, for decompose mode, an
-    /// optional penalty.
+    /// Sets the segmenter mode, with its penalty for decompose mode, as
+    /// [`TokenizerBuilder::set_segmenter_mode`] does.
     ///
     /// # Arguments
     ///
-    /// * `mode` - `"normal"` or `"decompose"`.
-    /// * `penalty` - The penalty for `"decompose"`; `None` keeps the default.
+    /// * `mode` - The mode.
     ///
     /// # Returns
     ///
-    /// The builder, or an invalid-argument error for an unknown mode or for a
-    /// penalty with `"normal"`.
-    pub fn set_mode(&mut self, mode: &str, penalty: Option<Penalty>) -> CoreResult<&mut Self> {
-        let mode = mode_with_penalty(mode, penalty)?;
-        self.inner.set_segmenter_mode(&mode);
-        Ok(self)
+    /// The builder, for chaining.
+    pub fn set_mode(&mut self, mode: &Mode) -> &mut Self {
+        self.inner.set_segmenter_mode(mode);
+        self
     }
 
     /// Sets the segmenter dictionary URI / path.
@@ -351,7 +325,7 @@ fn lock_worker(mutex: &Mutex<AnalysisWorker>) -> MutexGuard<'_, AnalysisWorker> 
 }
 
 impl CoreTokenizer {
-    /// Builds a tokenizer from segmenter parts, parsing `mode` from a string.
+    /// Builds a tokenizer from segmenter parts.
     ///
     /// The user dictionary is checked against the dictionary's connection
     /// matrix ([`Segmenter::try_new`]), so a user dictionary written for
@@ -360,21 +334,19 @@ impl CoreTokenizer {
     ///
     /// # Arguments
     ///
-    /// * `mode` - `"normal"` or `"decompose"`.
+    /// * `mode` - The mode, with its penalty for decompose mode.
     /// * `dictionary` - The system dictionary.
     /// * `user_dictionary` - An optional user dictionary.
     ///
     /// # Returns
     ///
-    /// The tokenizer, or an error for an invalid mode or for a user
-    /// dictionary with a context ID outside the dictionary's connection
-    /// matrix.
+    /// The tokenizer, or an error for a user dictionary with a context ID
+    /// outside the dictionary's connection matrix.
     pub fn from_segmenter(
-        mode: &str,
+        mode: Mode,
         dictionary: Dictionary,
         user_dictionary: Option<UserDictionary>,
     ) -> CoreResult<Self> {
-        let mode = Mode::from_str(mode)?;
         let segmenter = Segmenter::try_new(mode, dictionary, user_dictionary)?;
         Ok(Self::from_tokenizer(Tokenizer::new(segmenter)))
     }
@@ -386,10 +358,7 @@ impl CoreTokenizer {
     ///
     /// # Arguments
     ///
-    /// * `mode` - `"normal"` or `"decompose"`.
-    /// * `penalty` - The penalty for `"decompose"`, as
-    ///   [`CoreTokenizerBuilder::set_mode`] takes it; `None` keeps the
-    ///   default.
+    /// * `mode` - The mode, with its penalty for decompose mode.
     /// * `dictionary` - The system dictionary.
     /// * `user_dictionary` - An optional user dictionary, checked against
     ///   the dictionary's connection matrix as in [`Self::from_segmenter`].
@@ -399,20 +368,17 @@ impl CoreTokenizer {
     ///
     /// # Returns
     ///
-    /// The tokenizer, or an error for an invalid mode or setting, for a
-    /// penalty with `"normal"`, for `true` with a dictionary that ships no
-    /// rules, for rules that cannot be applied to the dictionary, or for a
-    /// user dictionary with a context ID outside the dictionary's connection
-    /// matrix.
+    /// The tokenizer, or an error for an invalid setting, for `true` with a
+    /// dictionary that ships no rules, for rules that cannot be applied to
+    /// the dictionary, or for a user dictionary with a context ID outside the
+    /// dictionary's connection matrix.
     pub fn from_segmenter_with_space_penalty(
-        mode: &str,
-        penalty: Option<Penalty>,
+        mode: Mode,
         dictionary: Dictionary,
         user_dictionary: Option<UserDictionary>,
         space_penalty: &Value,
     ) -> CoreResult<Self> {
         let setting = SpacePenaltySetting::from_value(space_penalty)?;
-        let mode = mode_with_penalty(mode, penalty)?;
         let mut segmenter = Segmenter::try_new(mode, dictionary, user_dictionary)?;
         setting.apply(&mut segmenter)?;
         Ok(Self::from_tokenizer(Tokenizer::new(segmenter)))
@@ -487,52 +453,6 @@ mod tests {
     }
 
     #[test]
-    fn set_mode_accepts_known_modes() {
-        let mut builder = CoreTokenizerBuilder::new().expect("builder");
-        assert!(builder.set_mode("normal", None).is_ok());
-        assert!(builder.set_mode("decompose", None).is_ok());
-    }
-
-    #[test]
-    fn set_mode_rejects_unknown_mode() {
-        let mut builder = CoreTokenizerBuilder::new().expect("builder");
-        assert!(builder.set_mode("definitely-not-a-mode", None).is_err());
-    }
-
-    /// A penalty goes with decompose mode, and is an invalid argument with
-    /// normal mode, which has no use for one (#1215).
-    #[test]
-    fn mode_with_penalty_combines_the_mode_and_the_penalty() {
-        let penalty = Penalty {
-            kanji_penalty_length_threshold: 3,
-            kanji_penalty_length_penalty: 4000,
-            other_penalty_length_threshold: 8,
-            other_penalty_length_penalty: 0,
-        };
-        assert_eq!(mode_with_penalty("normal", None).ok(), Some(Mode::Normal));
-        assert_eq!(
-            mode_with_penalty("decompose", None).ok(),
-            Some(Mode::Decompose(Penalty::default()))
-        );
-        assert_eq!(
-            mode_with_penalty("decompose", Some(penalty.clone())).ok(),
-            Some(Mode::Decompose(penalty.clone()))
-        );
-        match mode_with_penalty("normal", Some(penalty.clone())) {
-            Ok(mode) => panic!("a penalty with normal mode gave {mode:?}"),
-            Err(err) => assert_eq!(err.kind(), crate::error::ErrorKind::InvalidArgument),
-        }
-        assert!(mode_with_penalty("definitely-not-a-mode", Some(penalty)).is_err());
-
-        let mut builder = CoreTokenizerBuilder::new().expect("builder");
-        assert!(
-            builder
-                .set_mode("normal", Some(Penalty::default()))
-                .is_err()
-        );
-    }
-
-    #[test]
     fn infallible_setters_chain() {
         let mut builder = CoreTokenizerBuilder::new().expect("builder");
         builder
@@ -592,6 +512,8 @@ mod tests {
 
     #[cfg(feature = "embed-ipadic")]
     mod with_ipadic {
+        use lindera::mode::Penalty;
+
         use super::super::*;
 
         fn ipadic_tokenizer() -> CoreTokenizer {
@@ -599,7 +521,7 @@ mod tests {
                 Ok(dictionary) => dictionary,
                 Err(err) => panic!("failed to load embedded IPADIC: {err}"),
             };
-            match CoreTokenizer::from_segmenter("normal", dictionary, None) {
+            match CoreTokenizer::from_segmenter(Mode::Normal, dictionary, None) {
                 Ok(tokenizer) => tokenizer,
                 Err(err) => panic!("failed to build CoreTokenizer: {err}"),
             }
@@ -768,7 +690,10 @@ mod tests {
                     Err(err) => panic!("failed to load embedded IPADIC: {err}"),
                 };
                 let result = CoreTokenizer::from_segmenter_with_space_penalty(
-                    "normal", None, dictionary, None, &value,
+                    Mode::Normal,
+                    dictionary,
+                    None,
+                    &value,
                 );
                 assert_eq!(result.is_ok(), should_build, "value {value}");
             }
@@ -800,8 +725,8 @@ mod tests {
             }
         }
 
-        /// A penalty passed with decompose mode reaches the segmenter, through
-        /// the builder and through the constructor path (#1215): without
+        /// The penalty of a decompose mode reaches the segmenter, through the
+        /// builder and through the constructor path (#1215, #1218): without
         /// length penalties, `関西国際空港` stays whole.
         #[test]
         fn decompose_penalty_reaches_the_segmenter() {
@@ -811,23 +736,35 @@ mod tests {
                 other_penalty_length_penalty: 0,
                 ..Penalty::default()
             };
-            for (penalty, expected) in [
-                (None, vec!["関西", "国際", "空港", "限定", "トートバッグ"]),
+            // The output of this penalty differs from both normal mode's and
+            // the default penalty's, so a decompose mode that loses its
+            // penalty, or is read as normal mode, fails here.
+            let short_katakana_threshold = Penalty {
+                other_penalty_length_threshold: 4,
+                other_penalty_length_penalty: 3000,
+                ..Penalty::default()
+            };
+            for (mode, expected) in [
+                (Mode::Normal, vec!["関西国際空港", "限定", "トートバッグ"]),
                 (
-                    Some(no_length_penalty),
+                    Mode::Decompose(Penalty::default()),
+                    vec!["関西", "国際", "空港", "限定", "トートバッグ"],
+                ),
+                (
+                    Mode::Decompose(no_length_penalty),
                     vec!["関西国際空港", "限定", "トートバッグ"],
+                ),
+                (
+                    Mode::Decompose(short_katakana_threshold),
+                    vec!["関西", "国際", "空港", "限定", "トー", "トバッグ"],
                 ),
             ] {
                 let mut builder = CoreTokenizerBuilder::new().expect("builder");
-                builder
-                    .set_dictionary("embedded://ipadic")
-                    .set_mode("decompose", penalty.clone())
-                    .expect("valid mode");
+                builder.set_dictionary("embedded://ipadic").set_mode(&mode);
                 assert_eq!(surfaces(&builder, None, None, text), expected, "builder");
 
                 let tokenizer = match CoreTokenizer::from_segmenter_with_space_penalty(
-                    "decompose",
-                    penalty,
+                    mode,
                     ipadic(),
                     None,
                     &Value::Null,
@@ -849,8 +786,7 @@ mod tests {
         fn build_with_dictionaries_applies_the_builder_settings() {
             let mut builder = CoreTokenizerBuilder::new().expect("builder");
             builder
-                .set_mode("normal", None)
-                .expect("valid mode")
+                .set_mode(&Mode::Normal)
                 .set_keep_whitespace(true)
                 .append_character_filter(
                     "unicode_normalize",
@@ -911,14 +847,13 @@ mod tests {
         fn user_dictionary_outside_the_matrix_is_an_error() {
             let results = [
                 CoreTokenizer::from_segmenter(
-                    "normal",
+                    Mode::Normal,
                     ipadic(),
                     Some(out_of_range_user_dictionary()),
                 )
                 .err(),
                 CoreTokenizer::from_segmenter_with_space_penalty(
-                    "normal",
-                    None,
+                    Mode::Normal,
                     ipadic(),
                     Some(out_of_range_user_dictionary()),
                     &Value::Null,
@@ -1176,7 +1111,10 @@ mod tests {
                     Err(err) => panic!("failed to load embedded ko-dic: {err}"),
                 };
                 let tokenizer = match CoreTokenizer::from_segmenter_with_space_penalty(
-                    "normal", None, dictionary, None, &value,
+                    Mode::Normal,
+                    dictionary,
+                    None,
+                    &value,
                 ) {
                     Ok(tokenizer) => tokenizer,
                     Err(err) => panic!("build failed for {value}: {err}"),

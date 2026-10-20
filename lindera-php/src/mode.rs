@@ -10,49 +10,85 @@ use lindera::mode::{Mode as LinderaMode, Penalty as LinderaPenalty};
 use crate::convert::{Nullable, optional_int};
 use crate::error::lindera_value_err;
 
-/// Tokenization mode.
+/// Tokenization mode: normal, or decompose with a `Lindera\Penalty`.
 ///
-/// Determines how text is segmented into tokens.
-/// Accepts "normal" or "decompose" (case-insensitive).
+/// The PHP counterpart of `lindera::mode::Mode`, which `TokenizerBuilder::setMode()`
+/// and the `Tokenizer` constructor take. It has no public constructor;
+/// `Mode::normal()`, `Mode::decompose()` and `Mode::fromStr()` create one. A
+/// mode cannot be changed, and `==` compares its name and penalty.
 #[php_class]
 #[php(name = "Lindera\\Mode")]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PhpMode {
-    /// The mode name ("normal" or "decompose").
-    mode: String,
+    /// The mode, with its penalty for decompose mode.
+    inner: LinderaMode,
 }
 
 #[php_impl]
 impl PhpMode {
-    /// Creates a new Mode instance.
-    ///
-    /// # Arguments
-    ///
-    /// * `mode` - Optional mode string ("normal" or "decompose"). Default: "normal".
-    ///   A value of another type throws instead of selecting the default.
+    /// Creates normal mode.
     ///
     /// # Returns
     ///
-    /// A new Mode instance.
-    pub fn __construct(mode: Nullable<String>) -> PhpResult<Self> {
-        let mode_str = mode.into_option().unwrap_or_else(|| "normal".to_string());
-        match mode_str.to_lowercase().as_str() {
-            "normal" | "decompose" => Ok(Self {
-                mode: mode_str.to_lowercase(),
-            }),
-            _ => Err(lindera_value_err(format!(
-                "Invalid mode: {mode_str}. Must be 'normal' or 'decompose'"
-            ))),
+    /// Normal mode.
+    pub fn normal() -> Self {
+        Self {
+            inner: LinderaMode::Normal,
         }
+    }
+
+    /// Creates decompose mode.
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - The `Lindera\Penalty`. `null` (the default) uses the
+    ///   default penalty. A value of another type throws instead of
+    ///   selecting the default.
+    ///
+    /// # Returns
+    ///
+    /// Decompose mode with the penalty.
+    pub fn decompose(penalty: Option<&PhpPenalty>) -> Self {
+        Self::decompose_with(penalty.map(|penalty| penalty.clone().into()))
+    }
+
+    /// Creates a mode from its name, as the Rust `Mode` parses one.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - `"normal"` or `"decompose"`, case sensitive.
+    ///
+    /// # Returns
+    ///
+    /// The mode, with the default penalty for `"decompose"`, or a
+    /// `ValueError` for any other name, as `setMode()` threw for it in v6.
+    #[php(name = "fromStr")]
+    pub fn parse(name: String) -> PhpResult<Self> {
+        let inner = lindera_binding::parse_mode(&name).map_err(lindera_value_err)?;
+        Ok(Self { inner })
     }
 
     /// Returns the mode name.
     ///
     /// # Returns
     ///
-    /// The mode name string.
+    /// `"normal"` or `"decompose"`.
     #[php(getter, change_case = "snake_case")]
     pub fn name(&self) -> String {
-        self.mode.clone()
+        self.inner.as_str().to_string()
+    }
+
+    /// Returns the penalty of decompose mode.
+    ///
+    /// # Returns
+    ///
+    /// A copy of the penalty, or `null` for normal mode.
+    #[php(getter, change_case = "snake_case")]
+    pub fn penalty(&self) -> Option<PhpPenalty> {
+        match &self.inner {
+            LinderaMode::Normal => None,
+            LinderaMode::Decompose(penalty) => Some(penalty.clone().into()),
+        }
     }
 
     /// Returns whether this is the normal mode.
@@ -61,7 +97,7 @@ impl PhpMode {
     ///
     /// True if the mode is normal.
     pub fn is_normal(&self) -> bool {
-        self.mode == "normal"
+        matches!(self.inner, LinderaMode::Normal)
     }
 
     /// Returns whether this is the decompose mode.
@@ -70,7 +106,7 @@ impl PhpMode {
     ///
     /// True if the mode is decompose.
     pub fn is_decompose(&self) -> bool {
-        self.mode == "decompose"
+        matches!(self.inner, LinderaMode::Decompose(_))
     }
 
     /// Returns a string representation of the mode.
@@ -79,20 +115,21 @@ impl PhpMode {
     ///
     /// The mode name.
     pub fn __to_string(&self) -> String {
-        self.mode.clone()
+        self.name()
     }
 }
 
 impl PhpMode {
-    /// Converts this PhpMode to a Lindera Mode.
-    ///
-    /// # Returns
-    ///
-    /// The corresponding LinderaMode.
-    pub fn to_lindera_mode(&self) -> LinderaMode {
-        match self.mode.as_str() {
-            "decompose" => LinderaMode::Decompose(LinderaPenalty::default()),
-            _ => LinderaMode::Normal,
+    /// Returns the wrapped `lindera::mode::Mode`.
+    pub fn as_lindera(&self) -> &LinderaMode {
+        &self.inner
+    }
+
+    /// Creates decompose mode with `penalty`, or with the default penalty for
+    /// `None`.
+    fn decompose_with(penalty: Option<LinderaPenalty>) -> Self {
+        Self {
+            inner: LinderaMode::Decompose(penalty.unwrap_or_default()),
         }
     }
 }
@@ -100,8 +137,7 @@ impl PhpMode {
 /// Penalty configuration for decompose mode.
 ///
 /// Controls how aggressively compound words are decomposed based on
-/// character type and length thresholds. Pass it with "decompose" to
-/// `TokenizerBuilder::setMode()` or to the `Tokenizer` constructor.
+/// character type and length thresholds. Pass it to `Mode::decompose()`.
 #[php_class]
 #[php(name = "Lindera\\Penalty")]
 #[derive(Clone)]
@@ -281,7 +317,39 @@ impl From<LinderaPenalty> for PhpPenalty {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lindera::mode::Penalty as LinderaPenalty;
+
+    #[test]
+    fn test_phpmode_factories() {
+        assert_eq!(PhpMode::normal().as_lindera(), &LinderaMode::Normal);
+        assert_eq!(
+            PhpMode::decompose_with(None).as_lindera(),
+            &LinderaMode::Decompose(LinderaPenalty::default())
+        );
+        let penalty = LinderaPenalty {
+            kanji_penalty_length_threshold: 3,
+            kanji_penalty_length_penalty: 0,
+            other_penalty_length_threshold: 4,
+            other_penalty_length_penalty: 3000,
+        };
+        let mode = PhpMode::decompose_with(Some(penalty.clone()));
+        assert_eq!(mode.as_lindera(), &LinderaMode::Decompose(penalty));
+        let Some(back) = mode.penalty() else {
+            panic!("decompose mode has no penalty");
+        };
+        assert_eq!(back.kanji_penalty_length_threshold, 3);
+        assert_eq!(back.other_penalty_length_penalty, 3000);
+        assert!(PhpMode::normal().penalty().is_none());
+    }
+
+    #[test]
+    fn test_phpmode_names_and_kinds() {
+        let normal = PhpMode::normal();
+        let decompose = PhpMode::decompose_with(None);
+        assert_eq!(normal.name(), "normal");
+        assert_eq!(decompose.__to_string(), "decompose");
+        assert!(normal.is_normal() && !normal.is_decompose());
+        assert!(decompose.is_decompose() && !decompose.is_normal());
+    }
 
     #[test]
     fn test_phppenalty_to_lindera_penalty() {

@@ -11,12 +11,14 @@ pub mod argument;
 pub mod dictionary;
 pub mod error;
 pub mod metadata;
+pub mod mode;
 pub mod schema;
 pub mod token;
 pub mod tokenizer;
 
 pub use error::{CoreError, CoreResult, ErrorKind};
 pub use metadata::CoreMetadata;
+pub use mode::parse_mode;
 pub use schema::{CoreFieldDefinition, CoreFieldType, CoreSchema};
 pub use token::TokenView;
 pub use tokenizer::{CoreTokenizer, CoreTokenizerBuilder};

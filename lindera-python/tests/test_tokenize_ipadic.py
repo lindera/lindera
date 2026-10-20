@@ -1,9 +1,9 @@
-from lindera import Tokenizer, load_dictionary
+from lindera import Mode, Tokenizer, load_dictionary
 
 
 def test_tokenize_with_ipadic():
     dictionary = load_dictionary("embedded://ipadic")
-    tokenizer = Tokenizer(dictionary, mode="normal")
+    tokenizer = Tokenizer(dictionary, mode=Mode.normal())
 
     text = "すもももももももものうち"
     print(text)
@@ -24,7 +24,7 @@ def test_tokenize_with_ipadic():
 
 def test_tokenize_surfaces_matches_tokenize():
     dictionary = load_dictionary("embedded://ipadic")
-    tokenizer = Tokenizer(dictionary, mode="normal")
+    tokenizer = Tokenizer(dictionary, mode=Mode.normal())
 
     for text in ["すもももももももものうち", "関西国際空港限定トートバッグ", ""]:
         expected = [token.surface for token in tokenizer.tokenize(text)]
@@ -37,11 +37,15 @@ def test_tokenize_repeated_calls_are_stable():
     # The tokenizer reuses an internal lattice across calls; repeated calls
     # on one instance must keep producing identical output.
     dictionary = load_dictionary("embedded://ipadic")
-    tokenizer = Tokenizer(dictionary, mode="normal")
+    tokenizer = Tokenizer(dictionary, mode=Mode.normal())
 
     text = "すもももももももものうち"
-    first_tokens = [(t.surface, t.byte_start, t.byte_end) for t in tokenizer.tokenize(text)]
+    first_tokens = [
+        (t.surface, t.byte_start, t.byte_end) for t in tokenizer.tokenize(text)
+    ]
     first_surfaces = tokenizer.tokenize_surfaces(text)
     for _ in range(100):
-        assert [(t.surface, t.byte_start, t.byte_end) for t in tokenizer.tokenize(text)] == first_tokens
+        assert [
+            (t.surface, t.byte_start, t.byte_end) for t in tokenizer.tokenize(text)
+        ] == first_tokens
         assert tokenizer.tokenize_surfaces(text) == first_surfaces

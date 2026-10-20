@@ -10,7 +10,7 @@
 //! ```python
 //! # Create a tokenizer with custom configuration
 //! tokenizer = (lindera.TokenizerBuilder()
-//!     .set_mode("normal")
+//!     .set_mode(lindera.Mode.normal())
 //!     .append_token_filter("japanese_stop_tags", {"tags": ["助詞"]})
 //!     .build())
 //!
@@ -28,7 +28,7 @@ use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{PyDictionary, PyUserDictionary};
 use crate::error::to_py_error;
-use crate::mode::PyPenalty;
+use crate::mode::PyMode;
 use crate::token::PyToken;
 use crate::util::{pyany_to_value, pydict_to_value};
 
@@ -89,7 +89,7 @@ fn space_penalty_value(value: &Bound<'_, PyAny>) -> PyResult<serde_json::Value> 
 ///
 /// ```python
 /// builder = lindera.TokenizerBuilder()
-/// builder.set_mode("normal")
+/// builder.set_mode(lindera.Mode.normal())
 /// builder.set_dictionary("/path/to/dict")
 /// tokenizer = builder.build()
 /// ```
@@ -136,24 +136,16 @@ impl PyTokenizerBuilder {
     ///
     /// # Arguments
     ///
-    /// * `mode` - Mode string ("normal" or "decompose").
-    /// * `penalty` - The `Penalty` for "decompose" mode. `None` (the
-    ///   default) uses the default penalty.
+    /// * `mode` - The `Mode`, with its penalty for decompose mode.
     ///
     /// # Returns
     ///
-    /// Self for method chaining, or `ValueError` for an invalid mode or for
-    /// a penalty with "normal" mode.
-    #[pyo3(signature = (mode, penalty=None))]
-    fn set_mode<'a>(
-        mut slf: PyRefMut<'a, Self>,
-        mode: &str,
-        penalty: Option<PyPenalty>,
-    ) -> PyResult<PyRefMut<'a, Self>> {
-        slf.inner
-            .set_mode(mode, penalty.map(Into::into))
-            .map_err(to_py_error)?;
-        Ok(slf)
+    /// Self for method chaining, or `TypeError` for a value that is not a
+    /// `Mode`.
+    #[pyo3(signature = (mode))]
+    fn set_mode<'a>(mut slf: PyRefMut<'a, Self>, mode: PyMode) -> PyRefMut<'a, Self> {
+        slf.inner.set_mode(mode.as_lindera());
+        slf
     }
 
     /// Sets the dictionary path.
@@ -342,7 +334,7 @@ impl PyTokenizerBuilder {
 ///
 /// # Or create directly with a dictionary
 /// dictionary = lindera.load_dictionary("ipadic")
-/// tokenizer = lindera.Tokenizer(dictionary, mode="normal")
+/// tokenizer = lindera.Tokenizer(dictionary, mode=lindera.Mode.normal())
 /// ```
 #[pyclass(name = "Tokenizer")]
 pub struct PyTokenizer {
@@ -356,14 +348,12 @@ impl PyTokenizer {
     /// # Arguments
     ///
     /// * `dictionary` - Dictionary to use for tokenization.
-    /// * `mode` - Tokenization mode ("normal" or "decompose"). Default: "normal".
+    /// * `mode` - The `Mode`, as `TokenizerBuilder.set_mode` takes it.
+    ///   `None` (the default) is normal mode.
     /// * `user_dictionary` - Optional user dictionary for custom words.
     /// * `space_penalty` - The left-space penalty, in the forms
     ///   `TokenizerBuilder.set_space_penalty` accepts. `None` (the default)
     ///   keeps the rules the dictionary ships.
-    /// * `penalty` - The `Penalty` for "decompose" mode, as
-    ///   `TokenizerBuilder.set_mode` takes it. `None` (the default) uses the
-    ///   default penalty.
     ///
     /// # Returns
     ///
@@ -372,21 +362,20 @@ impl PyTokenizer {
     /// raise them. A user dictionary with a context ID outside the
     /// dictionary's connection matrix raises `ValueError`.
     #[new]
-    #[pyo3(signature = (dictionary, mode="normal", user_dictionary=None, space_penalty=None, penalty=None))]
+    #[pyo3(signature = (dictionary, mode=None, user_dictionary=None, space_penalty=None))]
     fn new(
         dictionary: PyDictionary,
-        mode: &str,
+        mode: Option<PyMode>,
         user_dictionary: Option<PyUserDictionary>,
         space_penalty: Option<&Bound<'_, PyAny>>,
-        penalty: Option<PyPenalty>,
     ) -> PyResult<Self> {
         let space_penalty = match space_penalty {
             Some(value) => space_penalty_value(value)?,
             None => serde_json::Value::Null,
         };
+        let mode = mode.unwrap_or_else(PyMode::normal);
         let inner = CoreTokenizer::from_segmenter_with_space_penalty(
-            mode,
-            penalty.map(Into::into),
+            mode.as_lindera().clone(),
             dictionary.inner,
             user_dictionary.map(|d| d.inner),
             &space_penalty,

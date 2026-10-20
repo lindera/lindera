@@ -18,12 +18,12 @@
 //! ### Web (Browser)
 //!
 //! ```javascript
-//! import __wbg_init, { TokenizerBuilder } from 'lindera-wasm';
+//! import __wbg_init, { Mode, TokenizerBuilder } from 'lindera-wasm';
 //!
 //! __wbg_init().then(() => {
 //!     const builder = new TokenizerBuilder();
 //!     builder.set_dictionary("embedded://ipadic");
-//!     builder.set_mode("normal");
+//!     builder.set_mode(Mode.normal());
 //!
 //!     const tokenizer = builder.build();
 //!     const tokens = tokenizer.tokenize("関西国際空港");

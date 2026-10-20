@@ -12,6 +12,7 @@
 
 import {
   loadDictionary,
+  Mode,
   Tokenizer,
   Penalty,
   TokenizerBuilder,
@@ -23,28 +24,46 @@ import {
 export function checkTokenizerConstructorForms(dictionary: Dictionary): Array<Tokenizer> {
   return [
     new Tokenizer(dictionary),
-    new Tokenizer(dictionary, "normal"),
-    new Tokenizer(dictionary, "decompose", null),
+    new Tokenizer(dictionary, Mode.normal()),
+    new Tokenizer(dictionary, Mode.decompose(), null),
+    new Tokenizer(dictionary, null),
     new Tokenizer(dictionary, undefined, undefined, false),
-    new Tokenizer(dictionary, "normal", null, { rules: [{ pos: ["JKS", "JX"], cost: 6000 }] }),
-    new Tokenizer(dictionary, "decompose", null, null, new Penalty(undefined, 0)),
-    new Tokenizer(dictionary, "decompose", undefined, undefined, null),
+    new Tokenizer(dictionary, Mode.normal(), null, { rules: [{ pos: ["JKS", "JX"], cost: 6000 }] }),
+    // @ts-expect-error -- a mode is a Mode, not its name (#1218).
+    new Tokenizer(dictionary, "normal"),
   ];
 }
 
-// `setMode` and its alias take a `Penalty` as an optional second argument
-// (#1215).
-export function checkSetModePenaltyForms(): void {
+// A `Mode` holds the penalty of decompose mode, as the Rust `Mode` does
+// (#1218); `setMode` and its alias take it.
+export function checkModeForms(): void {
   const penalty = new Penalty(undefined, 0, undefined, 0);
+  const modes: Array<Mode> = [
+    Mode.normal(),
+    Mode.decompose(),
+    Mode.decompose(penalty),
+    Mode.decompose(null),
+    Mode.decompose(undefined),
+    Mode.fromStr("decompose"),
+  ];
+  const name: string = modes[0].name;
+  const modePenalty: Penalty | undefined = modes[1].penalty;
+  const kinds: Array<boolean> = [modes[0].isNormal(), modes[0].isDecompose(), modes[0].equals(modes[1])];
+  const text: string = modes[0].toString();
+  void [name, modePenalty, kinds, text];
+
   const builder: TokenizerBuilder = new TokenizerBuilder()
-    .setMode("normal")
-    .setMode("decompose", penalty)
-    .setMode("decompose", null)
-    .setMode("decompose", undefined)
-    .set_mode("decompose")
-    .set_mode("decompose", penalty);
+    .setMode(Mode.normal())
+    .setMode(Mode.decompose(penalty))
+    .set_mode(Mode.decompose());
   // @ts-expect-error -- the penalty is a Penalty.
-  builder.setMode("decompose", { kanji_penalty_length_penalty: 0 });
+  Mode.decompose({ kanji_penalty_length_penalty: 0 });
+  // @ts-expect-error -- a mode is a Mode, not its name.
+  builder.setMode("decompose");
+  // @ts-expect-error -- the penalty goes in the Mode.
+  builder.setMode(Mode.decompose(), penalty);
+  // @ts-expect-error -- the copy function is hidden from TypeScript.
+  Mode.__copyOf(Mode.normal());
   void builder;
 }
 

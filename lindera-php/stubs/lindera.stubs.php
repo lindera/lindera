@@ -118,13 +118,23 @@ class Mode implements \Stringable
     /** @var string */
     public $name;
 
-    public function __construct(?string $mode = null) {}
+    /** @var Penalty|null */
+    public $penalty;
+
+    /** Not constructible from PHP: instances come from the extension. */
+    private function __construct() {}
 
     public function __toString(): string {}
+
+    public static function decompose(?Penalty $penalty = null): Mode {}
+
+    public static function fromStr(string $name): Mode {}
 
     public function isDecompose(): bool {}
 
     public function isNormal(): bool {}
+
+    public static function normal(): Mode {}
 }
 
 class NbestResult implements \Stringable
@@ -221,7 +231,7 @@ class Token implements \Stringable
 
 class Tokenizer
 {
-    public function __construct(Dictionary $dictionary, ?string $mode = null, ?UserDictionary $user_dictionary = null, mixed $space_penalty = null, ?Penalty $penalty = null) {}
+    public function __construct(Dictionary $dictionary, ?Mode $mode = null, ?UserDictionary $user_dictionary = null, mixed $space_penalty = null) {}
 
     public function tokenize(string $text): array {}
 
@@ -246,7 +256,7 @@ class TokenizerBuilder
 
     public function setKeepWhitespace(bool $keep_whitespace): void {}
 
-    public function setMode(string $mode, ?Penalty $penalty = null): void {}
+    public function setMode(Mode $mode): void {}
 
     public function setSkipWhitespace(mixed $skip_whitespace): void {}
 
