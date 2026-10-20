@@ -181,7 +181,7 @@
 <p>Pre-built wheels are available on <a href="https://pypi.org/project/lindera/">PyPI</a>:</p>
 <pre><code class="language-bash">pip install lindera
 </code></pre>
-<p>The wheels cover CPython 3.10 to 3.14 on Linux (x86_64 and aarch64, glibc), macOS (x86_64 and arm64), and Windows (x64 and arm64). On any other platform, such as musl-based Linux (Alpine), other CPU architectures, or free-threaded CPython, <code>pip install lindera</code> builds the package from the source distribution instead. That build needs the Rust toolchain 1.89 or later (install it via <a href="https://rustup.rs/">rustup</a>) and a C linker such as <code>cc</code>, and takes several minutes.</p>
+<p>The wheels cover CPython 3.10 to 3.15 on Linux (x86_64 and aarch64, glibc), macOS (x86_64 and arm64), and Windows (x64 and arm64). On any other platform, such as musl-based Linux (Alpine), other CPU architectures, or free-threaded CPython, <code>pip install lindera</code> builds the package from the source distribution instead. That build needs the Rust toolchain 1.89 or later (install it via <a href="https://rustup.rs/">rustup</a>) and a C linker such as <code>cc</code>, and takes several minutes.</p>
 <blockquote>
 <p>[!NOTE]
 The PyPI package does not include dictionaries. See <a href="#obtaining-dictionaries">Obtaining Dictionaries</a> below.</p>
@@ -197,7 +197,7 @@ unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 <h2 id="building-from-source"><a class="header" href="#building-from-source">Building from Source</a></h2>
 <p>If you need to build from source (e.g., to enable specific feature flags), the following prerequisites are required:</p>
 <ul>
-<li><strong>Python 3.10 or later</strong> (up to 3.14)</li>
+<li><strong>Python 3.10 or later</strong> (up to 3.15)</li>
 <li><strong>Rust toolchain</strong> -- Install via <a href="https://rustup.rs/">rustup</a></li>
 <li><strong>maturin</strong> -- Python package for building Rust-based Python extensions</li>
 </ul>

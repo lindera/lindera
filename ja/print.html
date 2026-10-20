@@ -3278,7 +3278,7 @@ EOS
 <p>ビルド済みホイールが <a href="https://pypi.org/project/lindera/">PyPI</a> で公開されています：</p>
 <pre><code class="language-bash">pip install lindera
 </code></pre>
-<p>ホイールの対象は、CPython 3.10〜3.14 の Linux（x86_64 と aarch64、glibc）、macOS（x86_64 と arm64）、Windows（x64 と arm64）です。それ以外の環境（musl ベースの Linux（Alpine）、ほかの CPU アーキテクチャ、free-threaded 版 CPython など）では、<code>pip install lindera</code> がソース配布物（sdist）からパッケージをビルドします。このビルドには Rust ツールチェーン 1.89 以降（<a href="https://rustup.rs/">rustup</a> でインストール）と <code>cc</code> などの C リンカが必要で、数分かかります。</p>
+<p>ホイールの対象は、CPython 3.10〜3.15 の Linux（x86_64 と aarch64、glibc）、macOS（x86_64 と arm64）、Windows（x64 と arm64）です。それ以外の環境（musl ベースの Linux（Alpine）、ほかの CPU アーキテクチャ、free-threaded 版 CPython など）では、<code>pip install lindera</code> がソース配布物（sdist）からパッケージをビルドします。このビルドには Rust ツールチェーン 1.89 以降（<a href="https://rustup.rs/">rustup</a> でインストール）と <code>cc</code> などの C リンカが必要で、数分かかります。</p>
 <blockquote>
 <p>[!NOTE]
 PyPI パッケージには辞書が含まれていません。下記の<a href="lindera-python/installation.html#%E8%BE%9E%E6%9B%B8%E3%81%AE%E5%85%A5%E6%89%8B">辞書の入手</a>を参照してください。</p>
@@ -3294,7 +3294,7 @@ unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 <h2 id="ソースからのビルド"><a class="header" href="#ソースからのビルド">ソースからのビルド</a></h2>
 <p>特定の feature フラグを有効にする必要がある場合など、ソースからビルドするには以下の前提条件が必要です：</p>
 <ul>
-<li><strong>Python 3.10 以降</strong>（3.14 まで）</li>
+<li><strong>Python 3.10 以降</strong>（3.15 まで）</li>
 <li><strong>Rust ツールチェーン</strong> -- <a href="https://rustup.rs/">rustup</a> 経由でインストール</li>
 <li><strong>maturin</strong> -- Rust ベースの Python 拡張をビルドするための Python パッケージ</li>
 </ul>
