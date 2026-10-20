@@ -1,6 +1,7 @@
 import pytest
 
 from lindera import (
+    Mode,
     Tokenizer,
     build_user_dictionary,
     build_user_dictionary_for,
@@ -37,7 +38,9 @@ def test_load_user_dictionary_for_loads_a_csv_inside_the_matrix(tmp_path):
     dictionary = load_dictionary("embedded://ipadic")
     baseline = [
         token.surface
-        for token in Tokenizer(dictionary, mode="normal").tokenize("東京スカイツリー")
+        for token in Tokenizer(dictionary, mode=Mode.normal()).tokenize(
+            "東京スカイツリー"
+        )
     ]
     assert len(baseline) > 1, f"fixture assumption: {baseline}"
 
@@ -45,7 +48,9 @@ def test_load_user_dictionary_for_loads_a_csv_inside_the_matrix(tmp_path):
     csv.write_text(SIMPLE_CSV, encoding="utf-8")
     user_dictionary = load_user_dictionary_for(str(csv), dictionary)
 
-    tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dictionary)
+    tokenizer = Tokenizer(
+        dictionary, mode=Mode.normal(), user_dictionary=user_dictionary
+    )
     surfaces = [token.surface for token in tokenizer.tokenize("東京スカイツリー")]
     assert surfaces == ["東京スカイツリー"]
 
@@ -75,7 +80,9 @@ def test_build_user_dictionary_for_writes_the_output_file(tmp_path):
 
     assert output.is_file()
     user_dictionary = load_user_dictionary_for(str(output), dictionary)
-    tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dictionary)
+    tokenizer = Tokenizer(
+        dictionary, mode=Mode.normal(), user_dictionary=user_dictionary
+    )
     surfaces = [token.surface for token in tokenizer.tokenize("東京スカイツリー")]
     assert surfaces == ["東京スカイツリー"]
 

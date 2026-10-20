@@ -60,7 +60,7 @@ Pass the user dictionary when creating a tokenizer directly:
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 $userDict = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
 
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDict);
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal(), $userDict);
 ```
 
 Or via the builder:

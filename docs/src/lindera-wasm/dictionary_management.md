@@ -23,7 +23,7 @@ Use `loadDictionaryFromBytes()` to construct a `Dictionary` from raw byte arrays
 - **Returns**: `Dictionary`
 
 ```javascript
-import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm';
+import { loadDictionaryFromBytes, Mode, TokenizerBuilder } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 // Load dictionary files from OPFS
@@ -45,7 +45,7 @@ const dictionary = loadDictionaryFromBytes(
 // Use with TokenizerBuilder
 const builder = new TokenizerBuilder();
 builder.setDictionaryInstance(dictionary);
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 ```
 
@@ -81,17 +81,17 @@ Available embedded dictionary URIs (depending on which features were enabled at 
 ```javascript
 const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 ```
 
 ### Using with Tokenizer Constructor
 
 ```javascript
-import { loadDictionary, Tokenizer } from 'lindera-wasm-ipadic';
+import { loadDictionary, Mode, Tokenizer } from 'lindera-wasm-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
-const tokenizer = new Tokenizer(dictionary, "normal");
+const tokenizer = new Tokenizer(dictionary, Mode.normal());
 ```
 
 ## Dictionary Class
@@ -108,7 +108,7 @@ The `Dictionary` class represents a loaded morphological analysis dictionary.
 
 ```javascript
 console.log(dictionary.name);     // "ipadic"
-console.log(dictionary.encoding); // "utf-8"
+console.log(dictionary.encoding); // "UTF-8"
 ```
 
 ## User Dictionaries
@@ -166,7 +166,7 @@ const userDict = loadUserDictionaryBinFromBytes(binBytes);
 ### Using a User Dictionary with Tokenizer
 
 ```javascript
-import { loadDictionaryFromBytes, loadUserDictionaryFromBytesFor, Tokenizer } from 'lindera-wasm';
+import { loadDictionaryFromBytes, loadUserDictionaryFromBytesFor, Mode, Tokenizer } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
@@ -177,7 +177,7 @@ const dictionary = loadDictionaryFromBytes(
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
 const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
-const tokenizer = new Tokenizer(dictionary, "normal", userDict);
+const tokenizer = new Tokenizer(dictionary, Mode.normal(), userDict);
 ```
 
 ### User Dictionary CSV Format

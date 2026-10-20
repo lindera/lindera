@@ -5,7 +5,7 @@ require_relative 'test_helper'
 class TestToken < Minitest::Test
   def setup
     dictionary = Lindera.load_dictionary('embedded://ipadic')
-    tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', nil)
+    tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.normal, nil)
     @tokens = tokenizer.tokenize('関西国際空港')
   end
 

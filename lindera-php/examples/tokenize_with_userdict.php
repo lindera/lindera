@@ -18,7 +18,7 @@ $userDictionaryPath = $projectRoot . '/resources/ipadic_simple_userdic.csv';
 $userDictionary = Lindera\Dictionary::loadUserFor($userDictionaryPath, $dictionary);
 
 // Create a tokenizer
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal(), $userDictionary);
 
 $text = '関西国際空港限定トートバッグを東京スカイツリーの最寄り駅であるとうきょうスカイツリー駅で買う';
 echo "text: {$text}\n\n";

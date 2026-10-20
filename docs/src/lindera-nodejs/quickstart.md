@@ -7,10 +7,10 @@ This guide shows how to tokenize text using lindera-nodejs.
 The recommended way to create a tokenizer is through `TokenizerBuilder`:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { Mode, TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("/path/to/ipadic");
 const tokenizer = builder.build();
 
@@ -36,10 +36,10 @@ Every setter returns the builder itself (`this`), so the configuration can be
 chained:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { Mode, TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
-  .setMode("normal")
+  .setMode(Mode.normal())
   .setDictionary("/path/to/ipadic")
   .build();
 
@@ -99,10 +99,10 @@ Lindera Node.js includes TypeScript type definitions, so all classes and functio
 
 ```typescript
 import type { Token } from "lindera";
-import { TokenizerBuilder } from "lindera";
+import { Mode, TokenizerBuilder } from "lindera";
 
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("/path/to/ipadic");
 const tokenizer = builder.build();
 

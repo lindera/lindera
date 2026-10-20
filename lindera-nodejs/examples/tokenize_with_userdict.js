@@ -2,6 +2,7 @@ const path = require("path");
 const {
   loadDictionary,
   loadUserDictionaryFor,
+  Mode,
   Tokenizer,
 } = require("../index.js");
 
@@ -20,7 +21,7 @@ function main() {
   const userDictionary = loadUserDictionaryFor(userDictionaryPath, dictionary);
 
   // create a tokenizer
-  const tokenizer = new Tokenizer(dictionary, "normal", userDictionary);
+  const tokenizer = new Tokenizer(dictionary, Mode.normal(), userDictionary);
 
   const text =
     "関西国際空港限定トートバッグを東京スカイツリーの最寄り駅であるとうきょうスカイツリー駅で買う";

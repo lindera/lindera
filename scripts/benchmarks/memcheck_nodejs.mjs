@@ -39,7 +39,7 @@ const TEXT = SENTENCE.repeat(Math.ceil(CHARS / SENTENCE.length)).slice(
 );
 
 const dictionary = lindera.loadDictionary("embedded://ipadic");
-const tokenizer = new lindera.Tokenizer(dictionary, "normal");
+const tokenizer = new lindera.Tokenizer(dictionary, lindera.Mode.normal());
 
 // Sanity check: the loop below must actually produce tokens, otherwise the
 // measurement would pass trivially.

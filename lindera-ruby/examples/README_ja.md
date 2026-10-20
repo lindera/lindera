@@ -33,7 +33,7 @@ LINDERA_FEATURES="embed-ipadic,train" bundle exec rake compile
 bundle exec ruby examples/tokenize.rb
 ```
 
-埋め込み IPADIC 辞書を使用し、"normal" モードで日本語テキストをトークナイズします。
+埋め込み IPADIC 辞書を使用し、normal モード（`Lindera::Mode.normal`）で日本語テキストをトークナイズします。
 
 ### Decompose モード
 
@@ -41,7 +41,7 @@ bundle exec ruby examples/tokenize.rb
 bundle exec ruby examples/tokenize_with_decompose.rb
 ```
 
-"decompose" モードでトークナイズし、複合形態素を分解します。
+decompose モード（`Lindera::Mode.decompose`）でトークナイズし、複合形態素を分解します。
 
 ### フィルター付きトークナイズ
 

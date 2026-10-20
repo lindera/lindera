@@ -1,4 +1,5 @@
 import __wbg_init, {
+  Mode,
   TokenizerBuilder,
   loadDictionaryFromBytes,
   getVersion,
@@ -177,7 +178,7 @@ async function loadTokenizer(dictName) {
 
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dict);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     tokenizer = builder.build();
 
     setStatus(`Tokenizer ready (dictionary: ${dictName})`);

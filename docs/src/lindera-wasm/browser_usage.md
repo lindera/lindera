@@ -7,7 +7,7 @@ In browser environments, you must initialize the WASM module before using any Li
 The recommended approach is to load dictionaries from OPFS rather than embedding them in the WASM binary:
 
 ```javascript
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
@@ -31,7 +31,7 @@ async function main() {
 
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dictionary);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("形態素解析を行います");
@@ -51,14 +51,14 @@ If you built with an `embed-*` feature flag, you can use embedded dictionaries i
 > `lindera-wasm-ipadic` is an illustrative package name here, not something published to npm. Only `lindera-wasm` is actually published; see [NPM Package Naming Convention](./installation.md#npm-package-naming-convention) for how to build and name a package like this yourself.
 
 ```javascript
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
+import __wbg_init, { Mode, TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
 
     const builder = new TokenizerBuilder();
     builder.setDictionary("embedded://ipadic");
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("形態素解析を行います");
@@ -88,7 +88,7 @@ A minimal HTML page using lindera-wasm with OPFS dictionary loading:
     <pre id="output">Loading dictionary...</pre>
 
     <script type="module">
-        import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
+        import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
         import { downloadDictionary, loadDictionaryFiles, hasDictionary } from './pkg/opfs.js';
 
         let tokenizer;
@@ -114,7 +114,7 @@ A minimal HTML page using lindera-wasm with OPFS dictionary loading:
 
             const builder = new TokenizerBuilder();
             builder.setDictionaryInstance(dictionary);
-            builder.setMode("normal");
+            builder.setMode(Mode.normal());
             tokenizer = builder.build();
 
             document.getElementById('tokenize').disabled = false;
@@ -163,7 +163,7 @@ Then import the package and call the default-exported async init function
 once before using any API (the web-target build requires it, bundled or not):
 
 ```javascript
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 await __wbg_init();
@@ -177,7 +177,7 @@ const dictionary = loadDictionaryFromBytes(
 
 const builder = new TokenizerBuilder();
 builder.setDictionaryInstance(dictionary);
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 ```
 
@@ -188,7 +188,7 @@ from npm, or place a locally built `pkg/` directory in your project and import
 directly:
 
 ```javascript
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
+import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
 import { loadDictionaryFiles } from './pkg/opfs.js';
 
 await __wbg_init();

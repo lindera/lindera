@@ -17,23 +17,22 @@ const builder = new TokenizerBuilder();
 ### メソッド
 
 すべてのセッターは同じ設定を共有するビルダーハンドルを返すため、
-`builder.setMode("normal").setDictionary(...)` のようにチェーンでも、1 文ずつでも記述できます。
+`builder.setMode(Mode.normal()).setDictionary(...)` のようにチェーンでも、1 文ずつでも記述できます。
 返されるハンドルは新しいオブジェクトですが、設定先は同一のビルダーです。
 
-#### `setMode(mode, penalty?)`
+#### `setMode(mode)`
 
-トークナイズモードを設定します。
+トークナイズモードを設定します。モードを設定しないビルダーは normal モードを使います。
 
-- **パラメータ**:
-  - `mode` (string) -- `"normal"` または `"decompose"`
-  - `penalty` (Penalty, 省略可) -- `"decompose"` モードが使う [`Penalty`](#penalty)。`null` または `undefined`（デフォルト）では既定のペナルティを使います。渡した `Penalty` はそのまま使えるので、同じものを何度でも渡せます。
+- **パラメータ**: `mode` (Mode) -- [`Mode`](#mode)。`Mode.normal()` か、decompose モードの [`Penalty`](#penalty) を指定した `Mode.decompose()` です。渡した `Mode` はそのまま使えるので、同じものを何度でも渡せます。
 - **戻り値**: `TokenizerBuilder`
 
-`"normal"` とペナルティを一緒に渡すと、不正なモードと同じくエラー文字列が投げられます。`Penalty` でない値を渡したときも同じです。
+モード名など `Mode` でない値を渡すと、`Error("expected instance of Mode")` が投げられます。名前でモードを選ぶには、[`Mode.fromStr()`](#mode) でモードを作成してください。
 
 ```javascript
-builder.setMode("normal");
-builder.setMode("decompose", new Penalty(undefined, 0));
+builder.setMode(Mode.normal());
+builder.setMode(Mode.decompose(new Penalty(undefined, 0)));
+builder.setMode(Mode.fromStr("decompose"));
 ```
 
 #### `setDictionary(uri)`
@@ -181,15 +180,14 @@ const tokenizer = builder.build();
 ### Tokenizer コンストラクタ
 
 ```javascript
-const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty, penalty);
+const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
 ```
 
 - **パラメータ**:
   - `dictionary` (Dictionary) -- 読み込み済みの辞書オブジェクト
-  - `mode` (string, 省略可) -- トークナイズモード（`"normal"` または `"decompose"`、デフォルト: `"normal"`）
+  - `mode` (Mode, 省略可) -- [`setMode()`](#setmodemode) と同じ [`Mode`](#mode)。`null` または `undefined`（デフォルト）では normal モードになります。渡した `Mode` はそのまま使えるので、同じものを複数のトークナイザーやビルダーに渡せます。`Mode` でない値を渡すと、`Error("expected instance of Mode")` が投げられます。
   - `userDictionary` (UserDictionary, 省略可) -- 読み込み済みのユーザー辞書
   - `spacePenalty` (boolean | object, 省略可) -- 左側空白ペナルティ。[`setSpacePenalty()`](#setspacepenaltyvalue) と同じ値を渡せます。`null` または `undefined`（デフォルト）では、辞書が同梱するルールを使います。不正な設定では、`setSpacePenalty()` や `build()` と同じくエラー文字列が投げられます。
-  - `penalty` (Penalty, 省略可) -- `"decompose"` モードの [`Penalty`](#penalty)。[`setMode()`](#setmodemode-penalty) と同じものを渡せ、エラーも同じです。
 
 ### Tokenizer メソッド
 
@@ -325,16 +323,44 @@ import { version } from 'lindera-wasm-ipadic';
 console.log(version()); // 例: "7.0.0"
 ```
 
-## 列挙型とユーティリティクラス
+## ユーティリティクラス
 
 ### Mode
 
-トークナイズモードの列挙型です。
+トークナイズモードです。normal モードか、[`Penalty`](#penalty) を持つ decompose モードを表します。Rust の `Mode`（[トークナイズモード](../lindera/segmenter.md#トークナイズモード)を参照）に対応するクラスで、[`setMode()`](#setmodemode) と [`Tokenizer` のコンストラクタ](#tokenizer-コンストラクタ) が受け取ります。
 
-| 値 | 説明 |
+`Mode` には公開のコンストラクタがありません。`new Mode()` は TypeScript ではエラーになり、JavaScript ではメソッドを呼ぶとエラーを投げるオブジェクトができます。モードは次の静的メソッドで作成します。
+
+| 静的メソッド | 説明 |
 | --- | --- |
-| `Mode.Normal` | 辞書コストに基づく標準的なトークナイズ |
-| `Mode.Decompose` | ペナルティベースのセグメンテーションによる複合語分解 |
+| `Mode.normal()` | normal モード。辞書コストに基づく標準的なトークナイズ |
+| `Mode.decompose(penalty?)` | decompose モード。ペナルティベースのセグメンテーションで複合語を分解します。`penalty` は [`Penalty`](#penalty) で、`null` または `undefined`（デフォルト）では既定のペナルティを使います。`Penalty` でない値を渡すと、エラー文字列（`penalty must be a Penalty`）が投げられます |
+| `Mode.fromStr(name)` | `"normal"` または `"decompose"`（既定のペナルティ）という名前のモード。名前の大文字と小文字は区別され、それ以外の名前では `Invalid mode` を含むエラー文字列が投げられます |
+
+| プロパティ / メソッド | 型 | 説明 |
+| --- | --- | --- |
+| `name` | `string` | `"normal"` または `"decompose"`（読み取り専用） |
+| `penalty` | `Penalty` または `undefined` | decompose モードのペナルティのコピー。normal モードでは `undefined`（読み取り専用） |
+| `isNormal()` | `boolean` | normal モードかどうか |
+| `isDecompose()` | `boolean` | decompose モードかどうか |
+| `equals(other)` | `boolean` | `other` と名前とペナルティが等しいかどうか。`Mode` でない値を渡すと `Error("expected instance of Mode")` が投げられます |
+| `toString()` | `string` | `name` と同じ名前を返す |
+
+`Mode` は変更できません。`Mode.decompose()` は `Penalty` のコピーを持ち、`penalty` はさらに別のコピーを返すので、あとからどちらの `Penalty` を変更してもモードは変わりません。`Mode.decompose()` に渡した `Penalty` も、`setMode()` や `Tokenizer` のコンストラクタに渡した `Mode` も、そのまま使えます。
+
+```javascript
+import { Mode, Penalty } from 'lindera-wasm-ipadic';
+
+const mode = Mode.decompose(new Penalty(undefined, 0));
+console.log(mode.name, mode.isNormal(), mode.isDecompose());
+// decompose false true
+console.log(`${mode}`, mode.penalty.kanji_penalty_length_penalty);
+// decompose 0
+console.log(mode.equals(Mode.decompose()), Mode.fromStr("decompose").equals(Mode.decompose()));
+// false true
+console.log(Mode.normal().penalty);
+// undefined
+```
 
 ### Penalty
 
@@ -356,29 +382,30 @@ const penalty = new Penalty(
 | `other_penalty_length_threshold` | `number` | `7` | 非漢字複合語分割の長さ閾値 |
 | `other_penalty_length_penalty` | `number` | `1700` | 閾値を超える非漢字複合語のペナルティコスト |
 
-`"decompose"` と一緒に [`setMode()`](#setmodemode-penalty) か [`Tokenizer` のコンストラクタ](#tokenizer-コンストラクタ) に渡します。`Penalty` は読み取られるだけで消費されないので、同じものを何度でも渡せます。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。
+[`Mode.decompose()`](#mode) に渡し、そのモードを [`setMode()`](#setmodemode) か [`Tokenizer` のコンストラクタ](#tokenizer-コンストラクタ) に渡します。`Penalty` は読み取られるだけで消費されないので、同じものを何度でも渡せます。長さのペナルティをなくすと、decompose モードでも normal モードと同じく長い語が分割されずに残ります。
 
 ```javascript
-import { Penalty, Tokenizer, TokenizerBuilder, loadDictionary } from 'lindera-wasm-ipadic';
+import { Mode, Penalty, Tokenizer, TokenizerBuilder, loadDictionary } from 'lindera-wasm-ipadic';
 
 const text = "関西国際空港限定トートバッグ";
-const penalty = new Penalty(undefined, 0, undefined, 0);
 const surfaces = (tokenizer) => tokenizer.tokenize(text).map((token) => token.surface);
 
 const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");
-console.log(surfaces(builder.setMode("decompose").build()));
-// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
-
-console.log(surfaces(builder.setMode("decompose", penalty).build()));
+console.log(surfaces(builder.setMode(Mode.normal()).build()));
 // [ '関西国際空港', '限定', 'トートバッグ' ]
 
-const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), "decompose", null, null, penalty);
+console.log(surfaces(builder.setMode(Mode.decompose()).build()));
+// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
+
+const mode = Mode.decompose(new Penalty(undefined, 0, undefined, 0));
+console.log(surfaces(builder.setMode(mode).build()));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+
+const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), mode);
 console.log(surfaces(tokenizer));
 // [ '関西国際空港', '限定', 'トートバッグ' ]
 ```
-
-`"normal"` モードと一緒にペナルティを渡すと、エラー文字列が投げられます。
 
 ### LinderaError
 
@@ -396,11 +423,11 @@ console.log(error.toString()); // "message"
 | `toString()` | `string` | エラーメッセージを返す |
 
 > [!NOTE]
-> `LinderaError` はユーティリティクラスとしてエクスポートされていますが、`TokenizerBuilder`・`Tokenizer`・辞書読み込み関数（`lindera-wasm/src/tokenizer.rs`、`lindera-wasm/src/dictionary.rs`）の実際のエラーパスはすべて `JsValue::from_str(...)` で reject しており、`JsLinderaError`/`LinderaError` のインスタンスではありません。そのため、これらの API が投げるエラーは JavaScript 側では単なる文字列として現れます。`catch (e) { ... }` で捕捉する際は、`e` を `LinderaError` インスタンスではなく `string` として扱ってください。
+> `LinderaError` はユーティリティクラスとしてエクスポートされていますが、`TokenizerBuilder`・`Tokenizer`・`Mode`・辞書読み込み関数（`lindera-wasm/src/tokenizer.rs`、`lindera-wasm/src/mode.rs`、`lindera-wasm/src/dictionary.rs`）の実際のエラーパスはすべて `JsValue::from_str(...)` で reject しており、`JsLinderaError`/`LinderaError` のインスタンスではありません。そのため、これらの API が投げるエラーは JavaScript 側では単なる文字列として現れます。例外は、メソッドが受け取るクラスのインスタンスでない引数（`setMode()` に渡したモード名など）です。JS グルーが Rust を呼ぶ前にこれを確かめ、`expected instance of <クラス名>`（この例では `expected instance of Mode`）というメッセージの `Error` を投げます。`catch (e) { ... }` で捕捉する際は、`e` を `LinderaError` インスタンスではなく `string` か `Error` として扱ってください。
 
 ## snake\_case エイリアス
 
-Python API との一貫性のため、すべてのメソッドは snake\_case 形式でも利用可能です：
+Python API との一貫性のため、次のメソッドは snake\_case 形式でも利用可能です：
 
 | camelCase | snake\_case |
 | --- | --- |
@@ -420,3 +447,5 @@ Python API との一貫性のため、すべてのメソッドは snake\_case �
 | `loadUserDictionaryFromBytes()` | `load_user_dictionary_from_bytes()` |
 | `loadUserDictionaryFromBytesFor()` | `load_user_dictionary_from_bytes_for()` |
 | `loadUserDictionaryBinFromBytes()` | `load_user_dictionary_bin_from_bytes()` |
+
+`Mode` のメソッド（`fromStr()`、`isNormal()`、`isDecompose()`）には snake\_case のエイリアスはありません。

@@ -13,7 +13,7 @@
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 
 // Create a tokenizer
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal());
 
 // Tokenize the text
 $tokens = $tokenizer->tokenize('関西国際空港限定トートバッグ');
@@ -40,7 +40,7 @@ foreach ($tokens as $token) {
 <?php
 
 $builder = new Lindera\TokenizerBuilder();
-$builder->setMode('normal');
+$builder->setMode(Lindera\Mode::normal());
 $builder->setDictionary('/path/to/ipadic');
 $tokenizer = $builder->build();
 
@@ -58,7 +58,7 @@ foreach ($tokens as $token) {
 <?php
 
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal());
 $tokens = $tokenizer->tokenize('東京タワー');
 
 foreach ($tokens as $token) {
@@ -98,7 +98,7 @@ Decompose モードでは、複合語をより小さな単位に分解します�
 <?php
 
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
-$tokenizer = new Lindera\Tokenizer($dictionary, 'decompose');
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::decompose());
 
 $tokens = $tokenizer->tokenize('関西国際空港限定トートバッグ');
 foreach ($tokens as $token) {

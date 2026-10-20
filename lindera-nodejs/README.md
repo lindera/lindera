@@ -81,20 +81,20 @@ The examples below use CommonJS. The package is also importable from ESM — the
 same named exports are available:
 
 ```javascript
-import { loadDictionary, Tokenizer } from "lindera";
+import { loadDictionary, Mode, Tokenizer } from "lindera";
 ```
 
 ### Basic Tokenization
 
 ```javascript
-const { loadDictionary, Tokenizer } = require("lindera");
+const { loadDictionary, Mode, Tokenizer } = require("lindera");
 
 // Load dictionary
 // Load dictionary from a local path (download from GitHub Releases)
 const dictionary = loadDictionary("/path/to/ipadic");
 
 // Create a tokenizer
-const tokenizer = new Tokenizer(dictionary, "normal");
+const tokenizer = new Tokenizer(dictionary, Mode.normal());
 
 // Tokenize Japanese text
 const text = "すもももももももものうち";
@@ -130,11 +130,11 @@ instances (out-of-range reads now yield `undefined` rather than `null`).
 ### Using Character Filters
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { Mode, TokenizerBuilder } = require("lindera");
 
 // Create tokenizer builder
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("/path/to/ipadic");
 
 // Add character filters
@@ -150,11 +150,11 @@ const tokens = tokenizer.tokenize(text); // Will apply filters automatically
 ### Using Token Filters
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { Mode, TokenizerBuilder } = require("lindera");
 
 // Create tokenizer builder
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("/path/to/ipadic");
 
 // Add token filters
@@ -172,11 +172,11 @@ const tokens = tokenizer.tokenize("テキストの解析");
 ### Integrated Pipeline
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { Mode, TokenizerBuilder } = require("lindera");
 
 // Build tokenizer with integrated filters
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("/path/to/ipadic");
 
 // Add character filters
@@ -329,6 +329,7 @@ See `examples/train_and_export.js` for a complete example.
 
 - `TokenizerBuilder`: Fluent builder for tokenizer configuration
 - `Tokenizer`: Main tokenization engine
+- `Mode`: Tokenization mode, normal or decompose with a `Penalty`
 - `Dictionary`: A loaded system dictionary
 - `UserDictionary`: A loaded user dictionary
 - `Metadata`: Dictionary metadata and configuration

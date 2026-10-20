@@ -8,98 +8,154 @@
 //! - **Normal**: Standard tokenization based on dictionary cost
 //! - **Decompose**: Decomposes compound words with penalty-based control
 //!
+//! A `Mode` holds the penalty of decompose mode, as the Rust
+//! `lindera::mode::Mode` does, and is what `TokenizerBuilder.set_mode` and
+//! the `Tokenizer` constructor take.
+//!
 //! # Examples
 //!
 //! ```python
 //! # Normal mode
-//! tokenizer = lindera.TokenizerBuilder().set_mode("normal").build()
+//! tokenizer = lindera.TokenizerBuilder().set_mode(lindera.Mode.normal()).build()
 //!
 //! # Decompose mode
-//! tokenizer = lindera.TokenizerBuilder().set_mode("decompose").build()
+//! tokenizer = lindera.TokenizerBuilder().set_mode(lindera.Mode.decompose()).build()
 //!
 //! # Decompose mode with a custom penalty
 //! penalty = lindera.Penalty(kanji_penalty_length_penalty=0)
-//! tokenizer = lindera.TokenizerBuilder().set_mode("decompose", penalty).build()
+//! tokenizer = lindera.TokenizerBuilder().set_mode(lindera.Mode.decompose(penalty)).build()
+//!
+//! # A mode from its name, such as a configuration value
+//! mode = lindera.Mode.from_str("decompose")
 //! ```
 
 use pyo3::prelude::*;
 
 use lindera::mode::{Mode as LinderaMode, Penalty as LinderaPenalty};
 
-/// Tokenization mode.
+use crate::error::to_py_error;
+
+/// Tokenization mode: normal, or decompose with a `Penalty`.
 ///
-/// Determines how text is segmented into tokens.
-#[pyclass(name = "Mode", from_py_object)]
-#[derive(Debug, Clone, Copy)]
-pub enum PyMode {
-    /// Standard tokenization based on dictionary cost
-    Normal,
-    /// Decompose compound words using penalty-based segmentation
-    Decompose,
+/// The Python counterpart of `lindera::mode::Mode`. It has no constructor;
+/// `Mode.normal()`, `Mode.decompose()` and `Mode.from_str()` create one. A
+/// `Mode` cannot be changed, and two modes are equal when their names and
+/// penalties are. Like the Rust `Mode`, it is not hashable.
+#[pyclass(name = "Mode", frozen, eq, from_py_object)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct PyMode {
+    /// The mode, with its penalty for decompose mode.
+    inner: LinderaMode,
+}
+
+impl PyMode {
+    /// Returns the wrapped `lindera::mode::Mode`.
+    pub fn as_lindera(&self) -> &LinderaMode {
+        &self.inner
+    }
 }
 
 #[pymethods]
 impl PyMode {
-    #[new]
-    #[pyo3(signature = (mode_str=None))]
-    pub fn new(mode_str: Option<&str>) -> PyResult<Self> {
-        match mode_str {
-            Some("decompose") | Some("Decompose") => Ok(PyMode::Decompose),
-            Some("normal") | Some("Normal") | None => Ok(PyMode::Normal),
-            Some(s) => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                "Invalid mode: {s}. Must be 'normal' or 'decompose'"
-            ))),
+    /// Creates normal mode.
+    ///
+    /// # Returns
+    ///
+    /// Normal mode.
+    #[staticmethod]
+    pub fn normal() -> Self {
+        Self {
+            inner: LinderaMode::Normal,
         }
+    }
+
+    /// Creates decompose mode.
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - The `Penalty`. `None` (the default) uses the default
+    ///   penalty.
+    ///
+    /// # Returns
+    ///
+    /// Decompose mode with the penalty.
+    #[staticmethod]
+    #[pyo3(signature = (penalty=None))]
+    pub fn decompose(penalty: Option<PyPenalty>) -> Self {
+        Self {
+            inner: LinderaMode::Decompose(penalty.map(Into::into).unwrap_or_default()),
+        }
+    }
+
+    /// Creates a mode from its name, as the Rust `Mode` parses one.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - `"normal"` or `"decompose"`, case sensitive.
+    ///
+    /// # Returns
+    ///
+    /// The mode, with the default penalty for `"decompose"`, or `ValueError`
+    /// for any other name.
+    #[staticmethod]
+    #[pyo3(name = "from_str", signature = (name))]
+    pub fn parse(name: &str) -> PyResult<Self> {
+        let inner = lindera_binding::parse_mode(name).map_err(to_py_error)?;
+        Ok(Self { inner })
+    }
+
+    /// The name of the mode: `"normal"` or `"decompose"`.
+    #[getter]
+    pub fn name(&self) -> &str {
+        self.inner.as_str()
+    }
+
+    /// The penalty of decompose mode, as a copy, or `None` for normal mode.
+    #[getter]
+    pub fn penalty(&self) -> Option<PyPenalty> {
+        match &self.inner {
+            LinderaMode::Normal => None,
+            LinderaMode::Decompose(penalty) => Some(penalty.clone().into()),
+        }
+    }
+
+    /// Returns whether this is normal mode.
+    pub fn is_normal(&self) -> bool {
+        matches!(self.inner, LinderaMode::Normal)
+    }
+
+    /// Returns whether this is decompose mode.
+    pub fn is_decompose(&self) -> bool {
+        matches!(self.inner, LinderaMode::Decompose(_))
     }
 
     fn __str__(&self) -> &str {
-        match self {
-            PyMode::Normal => "normal",
-            PyMode::Decompose => "decompose",
-        }
+        self.inner.as_str()
     }
 
     fn __repr__(&self) -> String {
-        format!("Mode.{self:?}")
-    }
-
-    #[getter]
-    pub fn name(&self) -> &str {
-        self.__str__()
-    }
-
-    pub fn is_normal(&self) -> bool {
-        matches!(self, PyMode::Normal)
-    }
-
-    pub fn is_decompose(&self) -> bool {
-        matches!(self, PyMode::Decompose)
-    }
-}
-
-impl From<PyMode> for LinderaMode {
-    fn from(mode: PyMode) -> Self {
-        match mode {
-            PyMode::Normal => LinderaMode::Normal,
-            PyMode::Decompose => LinderaMode::Decompose(LinderaPenalty::default()),
+        match &self.inner {
+            LinderaMode::Normal => "Mode.normal()".to_string(),
+            LinderaMode::Decompose(penalty) => {
+                format!(
+                    "Mode.decompose({})",
+                    PyPenalty::from(penalty.clone()).__repr__()
+                )
+            }
         }
     }
 }
 
 impl From<LinderaMode> for PyMode {
-    fn from(mode: LinderaMode) -> Self {
-        match mode {
-            LinderaMode::Normal => PyMode::Normal,
-            LinderaMode::Decompose(_) => PyMode::Decompose,
-        }
+    fn from(inner: LinderaMode) -> Self {
+        Self { inner }
     }
 }
 
 /// Penalty configuration for decompose mode.
 ///
 /// Controls how aggressively compound words are decomposed based on
-/// character type and length thresholds. Pass it with "decompose" to
-/// `TokenizerBuilder.set_mode` or to the `Tokenizer` constructor.
+/// character type and length thresholds. Pass it to `Mode.decompose`.
 ///
 /// # Examples
 ///
@@ -266,31 +322,56 @@ mod tests {
     use lindera::mode::{Mode as LinderaMode, Penalty as LinderaPenalty};
 
     #[test]
-    fn test_pymode_normal_to_lindera_mode() {
-        let py_mode = PyMode::Normal;
-        let lindera_mode: LinderaMode = py_mode.into();
-        assert!(matches!(lindera_mode, LinderaMode::Normal));
+    fn test_pymode_factories() {
+        assert_eq!(PyMode::normal().as_lindera(), &LinderaMode::Normal);
+        assert_eq!(
+            PyMode::decompose(None).as_lindera(),
+            &LinderaMode::Decompose(LinderaPenalty::default())
+        );
+        let penalty = PyPenalty {
+            kanji_penalty_length_threshold: 3,
+            kanji_penalty_length_penalty: 0,
+            other_penalty_length_threshold: 4,
+            other_penalty_length_penalty: 3000,
+        };
+        let mode = PyMode::decompose(Some(penalty));
+        assert_eq!(
+            mode.as_lindera(),
+            &LinderaMode::Decompose(LinderaPenalty::from(penalty))
+        );
+        let Some(back) = mode.penalty() else {
+            panic!("decompose mode has no penalty");
+        };
+        assert_eq!(back.kanji_penalty_length_threshold, 3);
+        assert_eq!(back.other_penalty_length_penalty, 3000);
+        assert!(PyMode::normal().penalty().is_none());
     }
 
     #[test]
-    fn test_pymode_decompose_to_lindera_mode() {
-        let py_mode = PyMode::Decompose;
-        let lindera_mode: LinderaMode = py_mode.into();
-        assert!(matches!(lindera_mode, LinderaMode::Decompose(_)));
+    fn test_pymode_names_and_kinds() {
+        let normal = PyMode::normal();
+        let decompose = PyMode::decompose(None);
+        assert_eq!(normal.name(), "normal");
+        assert_eq!(decompose.name(), "decompose");
+        assert!(normal.is_normal() && !normal.is_decompose());
+        assert!(decompose.is_decompose() && !decompose.is_normal());
+        assert_eq!(normal.__repr__(), "Mode.normal()");
+        assert!(decompose.__repr__().starts_with("Mode.decompose(Penalty("));
     }
 
+    /// Two modes are equal when their names and penalties are, as the Rust
+    /// `Mode` compares.
     #[test]
-    fn test_lindera_mode_normal_to_pymode() {
-        let lindera_mode = LinderaMode::Normal;
-        let py_mode: PyMode = lindera_mode.into();
-        assert!(matches!(py_mode, PyMode::Normal));
-    }
-
-    #[test]
-    fn test_lindera_mode_decompose_to_pymode() {
-        let lindera_mode = LinderaMode::Decompose(LinderaPenalty::default());
-        let py_mode: PyMode = lindera_mode.into();
-        assert!(matches!(py_mode, PyMode::Decompose));
+    fn test_pymode_equality_compares_the_penalty() {
+        let zero = PyPenalty {
+            kanji_penalty_length_threshold: 2,
+            kanji_penalty_length_penalty: 0,
+            other_penalty_length_threshold: 7,
+            other_penalty_length_penalty: 0,
+        };
+        assert_eq!(PyMode::decompose(None), PyMode::decompose(None));
+        assert_ne!(PyMode::decompose(None), PyMode::decompose(Some(zero)));
+        assert_ne!(PyMode::normal(), PyMode::decompose(None));
     }
 
     #[test]

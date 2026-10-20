@@ -16,7 +16,7 @@ use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{RbDictionary, RbUserDictionary};
 use crate::error::to_magnus_error;
-use crate::mode::RbPenalty;
+use crate::mode::RbMode;
 use crate::token::RbToken;
 use crate::util::{rb_hash_to_json, rb_value_to_json};
 
@@ -65,38 +65,14 @@ impl RbTokenizerBuilder {
 
     /// Sets the tokenization mode.
     ///
-    /// Ruby signature: `set_mode(mode, penalty: nil)`.
+    /// Ruby signature: `set_mode(mode)`. magnus raises a `TypeError` for a
+    /// `mode` that is not a `Lindera::Mode`.
     ///
     /// # Arguments
     ///
-    /// * `ruby` - Ruby runtime handle.
-    /// * `rb_self` - The builder.
-    /// * `args` - The Ruby arguments:
-    ///   * `mode` - Mode string ("normal" or "decompose").
-    ///   * `penalty:` - The `Lindera::Penalty` for "decompose" mode. `nil` or
-    ///     omitted uses the default penalty.
-    ///
-    /// # Returns
-    ///
-    /// `Ok(())` on success, an `ArgumentError` for a wrong number of
-    /// arguments or an unknown keyword, a `TypeError` for a `penalty:` that
-    /// is not a `Lindera::Penalty`, or a `RuntimeError` for an invalid mode or
-    /// for a penalty with "normal" mode.
-    fn set_mode(ruby: &Ruby, rb_self: &Self, args: &[Value]) -> Result<(), Error> {
-        let args = scan_args::<(String,), (), (), (), RHash, ()>(args)?;
-        let (mode,) = args.required;
-        let keywords = get_kwargs::<_, (), (Option<Option<&RbPenalty>>,), ()>(
-            args.keywords,
-            &[],
-            &["penalty"],
-        )?;
-        let (penalty,) = keywords.optional;
-        rb_self
-            .inner
-            .borrow_mut()
-            .set_mode(&mode, penalty.flatten().map(|penalty| (*penalty).into()))
-            .map_err(|err| to_magnus_error(ruby, err.to_string()))?;
-        Ok(())
+    /// * `mode` - The `Lindera::Mode`, with its penalty for decompose mode.
+    fn set_mode(&self, mode: &RbMode) {
+        self.inner.borrow_mut().set_mode(mode.as_lindera());
     }
 
     /// Sets the dictionary path.
@@ -247,34 +223,31 @@ pub struct RbTokenizer {
 /// Creates a new tokenizer with the given dictionary and mode.
 ///
 /// Ruby signature: `Tokenizer.new(dictionary, mode = nil, user_dictionary = nil,
-/// space_penalty: nil, penalty: nil)`.
+/// space_penalty: nil)`.
 ///
 /// # Arguments
 ///
 /// * `args` - The Ruby arguments:
 ///   * `dictionary` - Dictionary to use.
-///   * `mode` - Tokenization mode ("normal" or "decompose"). `nil` or
-///     omitted means "normal".
+///   * `mode` - The `Lindera::Mode`, as `TokenizerBuilder#set_mode` takes
+///     it. `nil` or omitted means normal mode.
 ///   * `user_dictionary` - Optional user dictionary.
 ///   * `space_penalty:` - The left-space penalty, in the forms
 ///     `TokenizerBuilder#set_space_penalty` accepts. `nil` or omitted keeps
 ///     the rules the dictionary ships.
-///   * `penalty:` - The `Lindera::Penalty` for "decompose" mode, as
-///     `TokenizerBuilder#set_mode` takes it. `nil` or omitted uses the
-///     default penalty.
 ///
 /// # Returns
 ///
 /// A new `RbTokenizer` instance, an `ArgumentError` for a wrong number of
-/// arguments or an unknown keyword, the errors `set_space_penalty`,
-/// `set_mode` and `build` raise for an invalid space-penalty setting, mode
-/// or penalty, or a `RuntimeError` for a user dictionary with a context ID
-/// outside the dictionary's connection matrix.
+/// arguments or an unknown keyword, a `TypeError` for a `mode` that is not a
+/// `Lindera::Mode`, the errors `set_space_penalty` and `build` raise for an
+/// invalid space-penalty setting, or a `RuntimeError` for a user dictionary
+/// with a context ID outside the dictionary's connection matrix.
 fn tokenizer_new(args: &[Value]) -> Result<RbTokenizer, Error> {
     let ruby = Ruby::get().expect("Ruby runtime not initialized");
     let args = scan_args::<
         (&RbDictionary,),
-        (Option<Option<String>>, Option<Option<&RbUserDictionary>>),
+        (Option<Option<&RbMode>>, Option<Option<&RbUserDictionary>>),
         (),
         (),
         RHash,
@@ -282,16 +255,14 @@ fn tokenizer_new(args: &[Value]) -> Result<RbTokenizer, Error> {
     >(args)?;
     let (dictionary,) = args.required;
     let (mode, user_dictionary) = args.optional;
-    let keywords = get_kwargs::<_, (), (Option<Value>, Option<Option<&RbPenalty>>), ()>(
-        args.keywords,
-        &[],
-        &["space_penalty", "penalty"],
-    )?;
-    let (space_penalty, penalty) = keywords.optional;
+    let keywords =
+        get_kwargs::<_, (), (Option<Value>,), ()>(args.keywords, &[], &["space_penalty"])?;
+    let (space_penalty,) = keywords.optional;
 
-    let mode = mode.flatten();
+    let mode = mode.flatten().map_or(lindera::mode::Mode::Normal, |mode| {
+        mode.as_lindera().clone()
+    });
     let user_dictionary = user_dictionary.flatten();
-    let mode_str = mode.as_deref().unwrap_or("normal");
     let space_penalty = match space_penalty {
         Some(value) => rb_value_to_json(&ruby, value)?,
         None => serde_json::Value::Null,
@@ -300,14 +271,9 @@ fn tokenizer_new(args: &[Value]) -> Result<RbTokenizer, Error> {
     let dict = dictionary.inner.clone();
     let user_dict = user_dictionary.map(|d| d.inner.clone());
 
-    let inner = CoreTokenizer::from_segmenter_with_space_penalty(
-        mode_str,
-        penalty.flatten().map(|penalty| (*penalty).into()),
-        dict,
-        user_dict,
-        &space_penalty,
-    )
-    .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
+    let inner =
+        CoreTokenizer::from_segmenter_with_space_penalty(mode, dict, user_dict, &space_penalty)
+            .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
 
     Ok(RbTokenizer { inner })
 }
@@ -420,7 +386,7 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
     builder_class.define_singleton_method("new", function!(RbTokenizerBuilder::new, 0))?;
     builder_class
         .define_singleton_method("from_file", function!(RbTokenizerBuilder::from_file, 1))?;
-    builder_class.define_method("set_mode", method!(RbTokenizerBuilder::set_mode, -1))?;
+    builder_class.define_method("set_mode", method!(RbTokenizerBuilder::set_mode, 1))?;
     builder_class.define_method(
         "set_dictionary",
         method!(RbTokenizerBuilder::set_dictionary, 1),

@@ -19,7 +19,7 @@ describe(
   () => {
     it("should tokenize Japanese text correctly", () => {
       const dictionary = lindera.loadDictionary("embedded://ipadic");
-      const tokenizer = new lindera.Tokenizer(dictionary, "normal");
+      const tokenizer = new lindera.Tokenizer(dictionary, lindera.Mode.normal());
 
       const tokens = tokenizer.tokenize("すもももももももものうち");
 
@@ -36,7 +36,7 @@ describe(
 
     it("should tokenize using TokenizerBuilder", () => {
       const builder = new lindera.TokenizerBuilder();
-      builder.setMode("normal");
+      builder.setMode(lindera.Mode.normal());
       builder.setDictionary("embedded://ipadic");
       const tokenizer = builder.build();
 
@@ -47,7 +47,7 @@ describe(
 
     it("should return the same surfaces from tokenizeSurfaces as tokenize", () => {
       const dictionary = lindera.loadDictionary("embedded://ipadic");
-      const tokenizer = new lindera.Tokenizer(dictionary, "normal");
+      const tokenizer = new lindera.Tokenizer(dictionary, lindera.Mode.normal());
 
       for (const text of ["すもももももももものうち", "関西国際空港限定トートバッグ", ""]) {
         const expected = tokenizer.tokenize(text).map((t) => t.surface);
@@ -60,7 +60,7 @@ describe(
       // The tokenizer reuses an internal lattice across calls; repeated
       // calls on one instance must keep producing identical output.
       const dictionary = lindera.loadDictionary("embedded://ipadic");
-      const tokenizer = new lindera.Tokenizer(dictionary, "normal");
+      const tokenizer = new lindera.Tokenizer(dictionary, lindera.Mode.normal());
 
       const text = "すもももももももものうち";
       const first = tokenizer.tokenizeSurfaces(text);
@@ -71,7 +71,7 @@ describe(
 
     it("should support N-best tokenization", () => {
       const dictionary = lindera.loadDictionary("embedded://ipadic");
-      const tokenizer = new lindera.Tokenizer(dictionary, "normal");
+      const tokenizer = new lindera.Tokenizer(dictionary, lindera.Mode.normal());
 
       const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
 

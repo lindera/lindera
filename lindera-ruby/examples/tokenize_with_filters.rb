@@ -6,7 +6,7 @@ require 'lindera'
 builder = Lindera::TokenizerBuilder.new
 
 # Set mode and dictionary
-builder.set_mode('normal')
+builder.set_mode(Lindera::Mode.normal)
 builder.set_dictionary('embedded://ipadic')
 
 # Append character filters

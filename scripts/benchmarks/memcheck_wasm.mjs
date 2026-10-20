@@ -41,7 +41,7 @@ const TEXT = SENTENCE.repeat(Math.ceil(CHARS / SENTENCE.length)).slice(
 );
 
 const builder = new lindera.TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(lindera.Mode.normal());
 builder.setDictionary("embedded://ipadic");
 const tokenizer = builder.build();
 

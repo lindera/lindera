@@ -1,131 +1,171 @@
 //! Tokenization modes and penalty configurations.
 //!
 //! This module defines the different tokenization modes available and their
-//! penalty configurations for controlling segmentation behavior.
+//! penalty configurations for controlling segmentation behavior. A
+//! `Lindera::Mode` holds the penalty of decompose mode, as the Rust
+//! `lindera::mode::Mode` does, and is what `TokenizerBuilder#set_mode` and
+//! `Tokenizer.new` take (#1218).
 
 use magnus::prelude::*;
-use magnus::{Error, Ruby, function, method};
+use magnus::scan_args::scan_args;
+use magnus::{Error, Ruby, TryConvert, Value, function, method};
 
 use lindera::mode::{Mode as LinderaMode, Penalty as LinderaPenalty};
 
-/// Tokenization mode.
-///
-/// Determines how text is segmented into tokens.
-#[magnus::wrap(class = "Lindera::Mode", free_immediately, size)]
-#[derive(Debug, Clone, Copy)]
-pub struct RbMode {
-    /// Internal mode variant.
-    inner: RbModeKind,
-}
+use crate::error::to_magnus_error;
 
-/// Internal enum for mode kind.
-#[derive(Debug, Clone, Copy)]
-enum RbModeKind {
-    /// Standard tokenization based on dictionary cost.
-    Normal,
-    /// Decompose compound words using penalty-based segmentation.
-    Decompose,
+/// Tokenization mode: normal, or decompose with a `Lindera::Penalty`.
+///
+/// The Ruby counterpart of `lindera::mode::Mode`. It has no `new`;
+/// `Mode.normal`, `Mode.decompose` and `Mode.from_str` create one. A mode
+/// cannot be changed, and `==` compares the name and the penalty. Like the
+/// Rust `Mode`, it does not define `eql?` and `hash`.
+#[magnus::wrap(class = "Lindera::Mode", free_immediately, size)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct RbMode {
+    /// The mode, with its penalty for decompose mode.
+    inner: LinderaMode,
 }
 
 impl RbMode {
-    /// Creates a new `RbMode` from a mode string.
-    ///
-    /// # Arguments
-    ///
-    /// * `mode_str` - Mode string ("normal" or "decompose"). Defaults to "normal" if None.
-    ///
-    /// # Returns
-    ///
-    /// A new `RbMode` instance.
-    fn new(mode_str: Option<String>) -> Result<Self, Error> {
-        let ruby = Ruby::get().expect("Ruby runtime not initialized");
-        let kind = match mode_str.as_deref() {
-            Some("decompose") | Some("Decompose") => RbModeKind::Decompose,
-            Some("normal") | Some("Normal") | None => RbModeKind::Normal,
-            Some(s) => {
-                return Err(Error::new(
-                    ruby.exception_arg_error(),
-                    format!("Invalid mode: {s}. Must be 'normal' or 'decompose'"),
-                ));
-            }
-        };
-        Ok(Self { inner: kind })
+    /// Returns the wrapped `lindera::mode::Mode`.
+    pub fn as_lindera(&self) -> &LinderaMode {
+        &self.inner
     }
 
-    /// Returns the string representation of the mode.
+    /// Creates normal mode.
+    ///
+    /// Ruby signature: `Mode.normal`.
     ///
     /// # Returns
     ///
-    /// A string slice representing the mode.
-    #[allow(clippy::wrong_self_convention)]
-    fn to_s(&self) -> &str {
-        match self.inner {
-            RbModeKind::Normal => "normal",
-            RbModeKind::Decompose => "decompose",
+    /// Normal mode.
+    fn normal() -> Self {
+        Self {
+            inner: LinderaMode::Normal,
         }
     }
 
-    /// Returns the inspect representation of the mode.
+    /// Creates decompose mode.
+    ///
+    /// Ruby signature: `Mode.decompose(penalty = nil)`.
+    ///
+    /// # Arguments
+    ///
+    /// * `args` - The Ruby arguments:
+    ///   * `penalty` - The `Lindera::Penalty`. `nil` or omitted uses the
+    ///     default penalty.
     ///
     /// # Returns
     ///
-    /// A string with the mode inspect representation.
-    fn inspect(&self) -> String {
-        format!("#<Lindera::Mode: {}>", self.to_s())
+    /// Decompose mode with the penalty, an `ArgumentError` for more than one
+    /// argument, or a `TypeError` for a penalty that is not a
+    /// `Lindera::Penalty`.
+    fn decompose(args: &[Value]) -> Result<Self, Error> {
+        let args = scan_args::<(), (Option<Option<&RbPenalty>>,), (), (), (), ()>(args)?;
+        let (penalty,) = args.optional;
+        Ok(Self::decompose_with(
+            penalty.flatten().map(|penalty| (*penalty).into()),
+        ))
     }
 
-    /// Returns the name of the mode.
+    /// Creates decompose mode with `penalty`, or with the default penalty for
+    /// `None`.
+    fn decompose_with(penalty: Option<LinderaPenalty>) -> Self {
+        Self {
+            inner: LinderaMode::Decompose(penalty.unwrap_or_default()),
+        }
+    }
+
+    /// Creates a mode from its name, as the Rust `Mode` parses one.
+    ///
+    /// Ruby signature: `Mode.from_str(name)`.
+    ///
+    /// # Arguments
+    ///
+    /// * `ruby` - Ruby runtime handle.
+    /// * `name` - `"normal"` or `"decompose"`, case sensitive.
     ///
     /// # Returns
     ///
-    /// A string slice with the mode name.
+    /// The mode, with the default penalty for `"decompose"`, or a
+    /// `RuntimeError` for any other name, as `set_mode` raised for it in v6.
+    fn parse(ruby: &Ruby, name: String) -> Result<Self, Error> {
+        let inner = lindera_binding::parse_mode(&name)
+            .map_err(|err| to_magnus_error(ruby, err.to_string()))?;
+        Ok(Self { inner })
+    }
+
+    /// Returns the name of the mode: `"normal"` or `"decompose"`.
     fn name(&self) -> &str {
-        self.to_s()
+        self.inner.as_str()
+    }
+
+    /// Returns the name of the mode, as `name` does.
+    #[allow(clippy::wrong_self_convention)]
+    fn to_s(&self) -> &str {
+        self.name()
+    }
+
+    /// Returns the inspect representation of the mode, with the penalty of
+    /// decompose mode.
+    fn inspect(&self) -> String {
+        match &self.inner {
+            LinderaMode::Normal => "#<Lindera::Mode: normal>".to_string(),
+            LinderaMode::Decompose(penalty) => format!(
+                "#<Lindera::Mode: decompose {}>",
+                RbPenalty::from(penalty.clone()).to_s()
+            ),
+        }
+    }
+
+    /// Returns the penalty of decompose mode, as a copy, or `nil` for normal
+    /// mode.
+    fn penalty(&self) -> Option<RbPenalty> {
+        match &self.inner {
+            LinderaMode::Normal => None,
+            LinderaMode::Decompose(penalty) => Some(penalty.clone().into()),
+        }
     }
 
     /// Returns true if the mode is normal.
-    ///
-    /// # Returns
-    ///
-    /// A boolean indicating if this is normal mode.
     fn is_normal(&self) -> bool {
-        matches!(self.inner, RbModeKind::Normal)
+        matches!(self.inner, LinderaMode::Normal)
     }
 
     /// Returns true if the mode is decompose.
+    fn is_decompose(&self) -> bool {
+        matches!(self.inner, LinderaMode::Decompose(_))
+    }
+
+    /// Ruby's `==`: whether `other` is a `Lindera::Mode` with the same name
+    /// and penalty.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - Any Ruby value.
     ///
     /// # Returns
     ///
-    /// A boolean indicating if this is decompose mode.
-    fn is_decompose(&self) -> bool {
-        matches!(self.inner, RbModeKind::Decompose)
-    }
-}
-
-impl From<RbMode> for LinderaMode {
-    fn from(mode: RbMode) -> Self {
-        match mode.inner {
-            RbModeKind::Normal => LinderaMode::Normal,
-            RbModeKind::Decompose => LinderaMode::Decompose(LinderaPenalty::default()),
+    /// `true` for an equal mode, `false` otherwise, other types included.
+    fn is_equal(&self, other: Value) -> bool {
+        match <&RbMode>::try_convert(other) {
+            Ok(other) => self == other,
+            Err(_) => false,
         }
     }
 }
 
 impl From<LinderaMode> for RbMode {
-    fn from(mode: LinderaMode) -> Self {
-        let kind = match mode {
-            LinderaMode::Normal => RbModeKind::Normal,
-            LinderaMode::Decompose(_) => RbModeKind::Decompose,
-        };
-        RbMode { inner: kind }
+    fn from(inner: LinderaMode) -> Self {
+        Self { inner }
     }
 }
 
 /// Penalty configuration for decompose mode.
 ///
 /// Controls how aggressively compound words are decomposed based on
-/// character type and length thresholds. Pass it with "decompose" as the
-/// `penalty:` keyword of `TokenizerBuilder#set_mode` or `Tokenizer.new`.
+/// character type and length thresholds. Pass it to `Mode.decompose`.
 #[magnus::wrap(class = "Lindera::Penalty", free_immediately, size)]
 #[derive(Debug, Clone, Copy)]
 pub struct RbPenalty {
@@ -238,12 +278,19 @@ impl From<LinderaPenalty> for RbPenalty {
 /// `Ok(())` on success, or a Magnus `Error` on failure.
 pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
     let mode_class = module.define_class("Mode", ruby.class_object())?;
-    mode_class.define_singleton_method("new", function!(RbMode::new, 1))?;
+    // magnus undefines the allocator only when the class first wraps a
+    // value, so until then `Mode.new` would return an empty object.
+    mode_class.undef_default_alloc_func();
+    mode_class.define_singleton_method("normal", function!(RbMode::normal, 0))?;
+    mode_class.define_singleton_method("decompose", function!(RbMode::decompose, -1))?;
+    mode_class.define_singleton_method("from_str", function!(RbMode::parse, 1))?;
     mode_class.define_method("to_s", method!(RbMode::to_s, 0))?;
     mode_class.define_method("inspect", method!(RbMode::inspect, 0))?;
     mode_class.define_method("name", method!(RbMode::name, 0))?;
+    mode_class.define_method("penalty", method!(RbMode::penalty, 0))?;
     mode_class.define_method("normal?", method!(RbMode::is_normal, 0))?;
     mode_class.define_method("decompose?", method!(RbMode::is_decompose, 0))?;
+    mode_class.define_method("==", method!(RbMode::is_equal, 1))?;
 
     let penalty_class = module.define_class("Penalty", ruby.class_object())?;
     penalty_class.define_singleton_method("new", function!(RbPenalty::new, 4))?;
@@ -274,54 +321,59 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_rb_mode_normal_to_lindera_mode() {
-        let rb_mode = RbMode {
-            inner: RbModeKind::Normal,
+    fn test_rb_mode_factories() {
+        assert_eq!(RbMode::normal().as_lindera(), &LinderaMode::Normal);
+        assert_eq!(
+            RbMode::decompose_with(None).as_lindera(),
+            &LinderaMode::Decompose(LinderaPenalty::default())
+        );
+        let penalty = LinderaPenalty {
+            kanji_penalty_length_threshold: 3,
+            kanji_penalty_length_penalty: 0,
+            other_penalty_length_threshold: 4,
+            other_penalty_length_penalty: 3000,
         };
-        let lindera_mode: LinderaMode = rb_mode.into();
-        assert!(matches!(lindera_mode, LinderaMode::Normal));
-    }
-
-    #[test]
-    fn test_rb_mode_decompose_to_lindera_mode() {
-        let rb_mode = RbMode {
-            inner: RbModeKind::Decompose,
+        let mode = RbMode::decompose_with(Some(penalty.clone()));
+        assert_eq!(mode.as_lindera(), &LinderaMode::Decompose(penalty));
+        let Some(back) = mode.penalty() else {
+            panic!("decompose mode has no penalty");
         };
-        let lindera_mode: LinderaMode = rb_mode.into();
-        assert!(matches!(lindera_mode, LinderaMode::Decompose(_)));
-        if let LinderaMode::Decompose(penalty) = lindera_mode {
-            let default_penalty = LinderaPenalty::default();
-            assert_eq!(
-                penalty.kanji_penalty_length_threshold,
-                default_penalty.kanji_penalty_length_threshold
-            );
-            assert_eq!(
-                penalty.kanji_penalty_length_penalty,
-                default_penalty.kanji_penalty_length_penalty
-            );
-            assert_eq!(
-                penalty.other_penalty_length_threshold,
-                default_penalty.other_penalty_length_threshold
-            );
-            assert_eq!(
-                penalty.other_penalty_length_penalty,
-                default_penalty.other_penalty_length_penalty
-            );
-        }
+        assert_eq!(back.kanji_penalty_length_threshold, 3);
+        assert_eq!(back.other_penalty_length_penalty, 3000);
+        assert!(RbMode::normal().penalty().is_none());
     }
 
     #[test]
-    fn test_lindera_mode_normal_to_rb_mode() {
-        let lindera_mode = LinderaMode::Normal;
-        let rb_mode: RbMode = lindera_mode.into();
-        assert!(matches!(rb_mode.inner, RbModeKind::Normal));
+    fn test_rb_mode_names_and_kinds() {
+        let normal = RbMode::normal();
+        let decompose = RbMode::decompose_with(None);
+        assert_eq!(normal.name(), "normal");
+        assert_eq!(decompose.to_s(), "decompose");
+        assert!(normal.is_normal() && !normal.is_decompose());
+        assert!(decompose.is_decompose() && !decompose.is_normal());
+        assert_eq!(normal.inspect(), "#<Lindera::Mode: normal>");
+        assert!(
+            decompose
+                .inspect()
+                .starts_with("#<Lindera::Mode: decompose Penalty(")
+        );
     }
 
+    /// Two modes are equal when their names and penalties are, as the Rust
+    /// `Mode` compares.
     #[test]
-    fn test_lindera_mode_decompose_to_rb_mode() {
-        let lindera_mode = LinderaMode::Decompose(LinderaPenalty::default());
-        let rb_mode: RbMode = lindera_mode.into();
-        assert!(matches!(rb_mode.inner, RbModeKind::Decompose));
+    fn test_rb_mode_equality_compares_the_penalty() {
+        let zero = LinderaPenalty {
+            kanji_penalty_length_penalty: 0,
+            other_penalty_length_penalty: 0,
+            ..LinderaPenalty::default()
+        };
+        assert_eq!(RbMode::decompose_with(None), RbMode::decompose_with(None));
+        assert_ne!(
+            RbMode::decompose_with(None),
+            RbMode::decompose_with(Some(zero))
+        );
+        assert_ne!(RbMode::normal(), RbMode::decompose_with(None));
     }
 
     #[test]
@@ -375,28 +427,5 @@ mod tests {
             roundtripped.other_penalty_length_penalty,
             default_lindera.other_penalty_length_penalty
         );
-    }
-
-    #[test]
-    fn test_mode_roundtrip_normal() {
-        let original = LinderaMode::Normal;
-        let rb: RbMode = original.into();
-        let back: LinderaMode = rb.into();
-        assert!(matches!(back, LinderaMode::Normal));
-    }
-
-    #[test]
-    fn test_mode_roundtrip_decompose() {
-        let penalty = LinderaPenalty {
-            kanji_penalty_length_threshold: 5,
-            kanji_penalty_length_penalty: 4000,
-            other_penalty_length_threshold: 9,
-            other_penalty_length_penalty: 2000,
-        };
-        let original = LinderaMode::Decompose(penalty);
-        let rb: RbMode = original.into();
-        let back: LinderaMode = rb.into();
-        // Note: RbMode loses the penalty details, so Decompose uses default penalty.
-        assert!(matches!(back, LinderaMode::Decompose(_)));
     }
 }

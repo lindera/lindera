@@ -62,12 +62,12 @@ const userDict = loadUserDictionary("/path/to/user_dictionary.csv", metadata);
 Pass the user dictionary when building a tokenizer:
 
 ```javascript
-const { Tokenizer, loadDictionary, loadUserDictionaryFor } = require("lindera");
+const { Mode, Tokenizer, loadDictionary, loadUserDictionaryFor } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
 const userDict = loadUserDictionaryFor("/path/to/user_dictionary.csv", dictionary);
 
-const tokenizer = new Tokenizer(dictionary, "normal", userDict);
+const tokenizer = new Tokenizer(dictionary, Mode.normal(), userDict);
 ```
 
 Or via the builder:

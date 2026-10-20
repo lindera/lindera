@@ -38,7 +38,7 @@ cd lindera-php
 php -d extension=../target/debug/liblindera_php.so examples/tokenize.php
 ```
 
-Tokenizes Japanese text using the embedded IPADIC dictionary in "normal" mode.
+Tokenizes Japanese text using the embedded IPADIC dictionary in normal mode (`Lindera\Mode::normal()`).
 
 ### Decompose mode
 
@@ -46,7 +46,7 @@ Tokenizes Japanese text using the embedded IPADIC dictionary in "normal" mode.
 php -d extension=../target/debug/liblindera_php.so examples/tokenize_with_decompose.php
 ```
 
-Tokenizes text in "decompose" mode, which decomposes compound morphemes.
+Tokenizes text in decompose mode (`Lindera\Mode::decompose()`), which decomposes compound morphemes.
 
 ### Tokenization with filters
 
@@ -89,4 +89,4 @@ Trains a CRF model from a sample corpus and exports dictionary files.
 php -d extension=../target/debug/liblindera_php.so -S localhost:8080 examples/tokenize_app.php
 ```
 
-Then open <http://localhost:8080> in your browser. Provides an interactive web UI for morphological analysis with mode selection (normal/decompose).
+Then open <http://localhost:8080> in your browser. Provides an interactive web UI for morphological analysis with mode selection (normal/decompose), which it passes to `Lindera\Mode::fromStr()`.

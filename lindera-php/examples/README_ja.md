@@ -38,7 +38,7 @@ cd lindera-php
 php -d extension=../target/debug/liblindera_php.so examples/tokenize.php
 ```
 
-埋め込み IPADIC 辞書を使用し、"normal" モードで日本語テキストをトークナイズします。
+埋め込み IPADIC 辞書を使用し、normal モード（`Lindera\Mode::normal()`）で日本語テキストをトークナイズします。
 
 ### Decompose モード
 
@@ -46,7 +46,7 @@ php -d extension=../target/debug/liblindera_php.so examples/tokenize.php
 php -d extension=../target/debug/liblindera_php.so examples/tokenize_with_decompose.php
 ```
 
-"decompose" モードでトークナイズし、複合形態素を分解します。
+decompose モード（`Lindera\Mode::decompose()`）でトークナイズし、複合形態素を分解します。
 
 ### フィルター付きトークナイズ
 
@@ -89,4 +89,4 @@ php -d extension=../target/debug/liblindera_php.so examples/train_and_export.php
 php -d extension=../target/debug/liblindera_php.so -S localhost:8080 examples/tokenize_app.php
 ```
 
-ブラウザで <http://localhost:8080> を開きます。モード選択（normal/decompose）付きのインタラクティブな形態素解析 Web UI を提供します。
+ブラウザで <http://localhost:8080> を開きます。モード選択（normal/decompose）付きのインタラクティブな形態素解析 Web UI を提供します。選択したモード名は `Lindera\Mode::fromStr()` に渡します。

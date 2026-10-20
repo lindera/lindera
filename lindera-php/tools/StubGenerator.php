@@ -68,6 +68,7 @@ final class StubGenerator
         ],
         'Lindera\Mode' => [
             'name' => 'string',
+            'penalty' => 'Penalty|null',
         ],
         'Lindera\NbestResult' => [
             'cost' => 'int',

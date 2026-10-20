@@ -12,7 +12,7 @@
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
 
 // Create a tokenizer
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal());
 
 $text = '関西国際空港限定トートバッグを東京スカイツリーの最寄り駅であるとうきょうスカイツリー駅で買う';
 echo "text: {$text}\n\n";

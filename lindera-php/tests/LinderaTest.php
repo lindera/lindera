@@ -13,33 +13,6 @@ class LinderaTest extends TestCase
         $this->assertNotEmpty($version);
     }
 
-    public function testModeNormal(): void
-    {
-        $mode = new Lindera\Mode('normal');
-        $this->assertTrue($mode->isNormal());
-        $this->assertFalse($mode->isDecompose());
-        $this->assertEquals('normal', $mode->name);
-    }
-
-    public function testModeDecompose(): void
-    {
-        $mode = new Lindera\Mode('decompose');
-        $this->assertTrue($mode->isDecompose());
-        $this->assertFalse($mode->isNormal());
-    }
-
-    public function testModeDefault(): void
-    {
-        $mode = new Lindera\Mode();
-        $this->assertTrue($mode->isNormal());
-    }
-
-    public function testModeInvalid(): void
-    {
-        $this->expectException(\ValueError::class);
-        new Lindera\Mode('invalid');
-    }
-
     public function testPenaltyDefault(): void
     {
         $penalty = new Lindera\Penalty();
@@ -260,7 +233,7 @@ class LinderaTest extends TestCase
     {
         $builder = new Lindera\TokenizerBuilder();
         $builder->setDictionary('embedded://ipadic');
-        $builder->setMode('normal');
+        $builder->setMode(Lindera\Mode::normal());
         $tokenizer = $builder->build();
 
         $tokens = $tokenizer->tokenize('関西国際空港');
@@ -271,7 +244,7 @@ class LinderaTest extends TestCase
     {
         $builder = new Lindera\TokenizerBuilder();
         $builder->setDictionary('embedded://ipadic');
-        $builder->setMode('decompose');
+        $builder->setMode(Lindera\Mode::decompose());
         $tokenizer = $builder->build();
 
         $tokens = $tokenizer->tokenize('関西国際空港');
@@ -466,13 +439,13 @@ class LinderaTest extends TestCase
 
         $default = $analyze();
         $this->assertContains('は/助詞', $default);
-        $this->assertSame($default, $analyze('normal', null, null));
+        $this->assertSame($default, $analyze(Lindera\Mode::normal(), null, null));
         $this->assertSame($default, $analyze(space_penalty: false));
 
         $penalized = $analyze(space_penalty: $rules);
         $this->assertNotEmpty($penalized);
         $this->assertNotContains('は/助詞', $penalized);
-        $this->assertSame($penalized, $analyze('normal', null, $rules));
+        $this->assertSame($penalized, $analyze(Lindera\Mode::normal(), null, $rules));
     }
 
     public function testTokenizerConstructorRejectsInvalidSpacePenalty(): void
@@ -498,7 +471,7 @@ class LinderaTest extends TestCase
     public function testTokenizerDirect(): void
     {
         $dict = Lindera\Dictionary::load('embedded://ipadic');
-        $tokenizer = new Lindera\Tokenizer($dict, 'normal');
+        $tokenizer = new Lindera\Tokenizer($dict, Lindera\Mode::normal());
 
         $tokens = $tokenizer->tokenize('すもももももももものうち');
         $this->assertGreaterThan(0, count($tokens));

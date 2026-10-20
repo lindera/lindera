@@ -17,24 +17,23 @@ Creates a new builder with default settings.
 ### Methods
 
 Every setter returns a builder handle that shares the same configuration, so
-the calls can be chained (`builder.setMode("normal").setDictionary(...)`) or
+the calls can be chained (`builder.setMode(Mode.normal()).setDictionary(...)`) or
 made one statement at a time. The returned handle is a new object, but it
 configures the same underlying builder.
 
-#### `setMode(mode, penalty?)`
+#### `setMode(mode)`
 
-Sets the tokenization mode.
+Sets the tokenization mode. A builder that is not given one uses normal mode.
 
-- **Parameters**:
-  - `mode` (string) -- `"normal"` or `"decompose"`
-  - `penalty` (Penalty, optional) -- The [`Penalty`](#penalty) that `"decompose"` mode uses. `null` or `undefined` (the default) uses the default penalty. The `Penalty` stays usable, so the same one can be passed again.
+- **Parameters**: `mode` (Mode) -- The [`Mode`](#mode): `Mode.normal()`, or `Mode.decompose()` with the [`Penalty`](#penalty) of decompose mode. The `Mode` stays usable, so the same one can be passed again.
 - **Returns**: `TokenizerBuilder`
 
-A penalty with `"normal"` throws an error string, as an invalid mode does, and so does a value that is not a `Penalty`.
+A value that is not a `Mode`, such as a mode name, throws `Error("expected instance of Mode")`. To select a mode by its name, create it with [`Mode.fromStr()`](#mode).
 
 ```javascript
-builder.setMode("normal");
-builder.setMode("decompose", new Penalty(undefined, 0));
+builder.setMode(Mode.normal());
+builder.setMode(Mode.decompose(new Penalty(undefined, 0)));
+builder.setMode(Mode.fromStr("decompose"));
 ```
 
 #### `setDictionary(uri)`
@@ -184,15 +183,14 @@ The main tokenizer class. Can be created via `TokenizerBuilder.build()` or direc
 ### Tokenizer Constructor
 
 ```javascript
-const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty, penalty);
+const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
 ```
 
 - **Parameters**:
   - `dictionary` (Dictionary) -- A loaded dictionary object
-  - `mode` (string, optional) -- Tokenization mode (`"normal"` or `"decompose"`, defaults to `"normal"`)
+  - `mode` (Mode, optional) -- The [`Mode`](#mode), as [`setMode()`](#setmodemode) takes it. `null` or `undefined` (the default) is normal mode. The `Mode` stays usable, so the same one can be passed to several tokenizers and builders. A value that is not a `Mode` throws `Error("expected instance of Mode")`.
   - `userDictionary` (UserDictionary, optional) -- A loaded user dictionary
   - `spacePenalty` (boolean | object, optional) -- The left-space penalty, in the forms [`setSpacePenalty()`](#setspacepenaltyvalue) accepts. `null` or `undefined` (the default) uses the rules the dictionary ships. An invalid setting throws an error string, as `setSpacePenalty()` and `build()` do.
-  - `penalty` (Penalty, optional) -- The [`Penalty`](#penalty) for `"decompose"` mode, as [`setMode()`](#setmodemode-penalty) takes it, with the same errors.
 
 ### Tokenizer Methods
 
@@ -328,16 +326,44 @@ import { version } from 'lindera-wasm-ipadic';
 console.log(version()); // e.g., "7.0.0"
 ```
 
-## Enums and Utility Classes
+## Utility Classes
 
 ### Mode
 
-Tokenization mode enum.
+The tokenization mode: normal, or decompose with a [`Penalty`](#penalty). It is the counterpart of the Rust `Mode` (see [Tokenization Modes](../lindera/segmenter.md#tokenization-modes)), and [`setMode()`](#setmodemode) and the [`Tokenizer` constructor](#tokenizer-constructor) take it.
 
-| Value | Description |
+`Mode` has no public constructor: `new Mode()` is a TypeScript error, and in JavaScript it creates an object whose methods throw. Create a mode with a static method instead:
+
+| Static method | Description |
 | --- | --- |
-| `Mode.Normal` | Standard tokenization based on dictionary cost |
-| `Mode.Decompose` | Decompose compound words using penalty-based segmentation |
+| `Mode.normal()` | Normal mode: standard tokenization based on dictionary cost |
+| `Mode.decompose(penalty?)` | Decompose mode: compound words are decomposed using penalty-based segmentation. `penalty` is a [`Penalty`](#penalty); `null` or `undefined` (the default) uses the default penalty. A value that is not a `Penalty` throws an error string (`penalty must be a Penalty`) |
+| `Mode.fromStr(name)` | The mode named `"normal"` or `"decompose"` (with the default penalty). The name is case sensitive; any other name throws an error string that contains `Invalid mode` |
+
+| Property / Method | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | `"normal"` or `"decompose"` (read-only) |
+| `penalty` | `Penalty` or `undefined` | A copy of the penalty of decompose mode, or `undefined` for normal mode (read-only) |
+| `isNormal()` | `boolean` | Whether this is normal mode |
+| `isDecompose()` | `boolean` | Whether this is decompose mode |
+| `equals(other)` | `boolean` | Whether `other` has the same name and penalty. A value that is not a `Mode` throws `Error("expected instance of Mode")` |
+| `toString()` | `string` | The name, as `name` returns it |
+
+A `Mode` cannot be changed. `Mode.decompose()` keeps its own copy of the `Penalty`, and `penalty` returns another copy, so changing either `Penalty` afterwards does not change the mode. The `Penalty` passed to `Mode.decompose()` stays usable, and so does a `Mode` passed to `setMode()` or to the `Tokenizer` constructor.
+
+```javascript
+import { Mode, Penalty } from 'lindera-wasm-ipadic';
+
+const mode = Mode.decompose(new Penalty(undefined, 0));
+console.log(mode.name, mode.isNormal(), mode.isDecompose());
+// decompose false true
+console.log(`${mode}`, mode.penalty.kanji_penalty_length_penalty);
+// decompose 0
+console.log(mode.equals(Mode.decompose()), Mode.fromStr("decompose").equals(Mode.decompose()));
+// false true
+console.log(Mode.normal().penalty);
+// undefined
+```
 
 ### Penalty
 
@@ -359,29 +385,30 @@ const penalty = new Penalty(
 | `other_penalty_length_threshold` | `number` | `7` | Length threshold for non-kanji compound splitting |
 | `other_penalty_length_penalty` | `number` | `1700` | Penalty cost for non-kanji compounds exceeding threshold |
 
-Pass it with `"decompose"` to [`setMode()`](#setmodemode-penalty) or to the [`Tokenizer` constructor](#tokenizer-constructor). The `Penalty` is read, not consumed, so the same one can be passed again. Without length penalties, decompose mode keeps long words whole:
+Pass it to [`Mode.decompose()`](#mode), and the mode to [`setMode()`](#setmodemode) or to the [`Tokenizer` constructor](#tokenizer-constructor). The `Penalty` is read, not consumed, so the same one can be passed again. Without length penalties, decompose mode keeps long words whole, as normal mode does:
 
 ```javascript
-import { Penalty, Tokenizer, TokenizerBuilder, loadDictionary } from 'lindera-wasm-ipadic';
+import { Mode, Penalty, Tokenizer, TokenizerBuilder, loadDictionary } from 'lindera-wasm-ipadic';
 
 const text = "関西国際空港限定トートバッグ";
-const penalty = new Penalty(undefined, 0, undefined, 0);
 const surfaces = (tokenizer) => tokenizer.tokenize(text).map((token) => token.surface);
 
 const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");
-console.log(surfaces(builder.setMode("decompose").build()));
-// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
-
-console.log(surfaces(builder.setMode("decompose", penalty).build()));
+console.log(surfaces(builder.setMode(Mode.normal()).build()));
 // [ '関西国際空港', '限定', 'トートバッグ' ]
 
-const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), "decompose", null, null, penalty);
+console.log(surfaces(builder.setMode(Mode.decompose()).build()));
+// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
+
+const mode = Mode.decompose(new Penalty(undefined, 0, undefined, 0));
+console.log(surfaces(builder.setMode(mode).build()));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+
+const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), mode);
 console.log(surfaces(tokenizer));
 // [ '関西国際空港', '限定', 'トートバッグ' ]
 ```
-
-A penalty with `"normal"` mode throws an error string.
 
 ### LinderaError
 
@@ -399,11 +426,11 @@ console.log(error.toString()); // "message"
 | `toString()` | `string` | Returns the error message |
 
 > [!NOTE]
-> `LinderaError` is exported as a utility class, but the current error paths in `TokenizerBuilder`, `Tokenizer`, and the dictionary-loading functions (`lindera-wasm/src/tokenizer.rs`, `lindera-wasm/src/dictionary.rs`) all reject with `JsValue::from_str(...)`, not a `JsLinderaError`/`LinderaError` instance. In practice, failures thrown by these APIs surface in JavaScript as plain strings, so catch them with `catch (e) { ... }` and treat `e` as a `string`, not as a `LinderaError` instance.
+> `LinderaError` is exported as a utility class, but the current error paths in `TokenizerBuilder`, `Tokenizer`, `Mode`, and the dictionary-loading functions (`lindera-wasm/src/tokenizer.rs`, `lindera-wasm/src/mode.rs`, `lindera-wasm/src/dictionary.rs`) all reject with `JsValue::from_str(...)`, not a `JsLinderaError`/`LinderaError` instance. In practice, failures thrown by these APIs surface in JavaScript as plain strings. The exception is an argument that is not an instance of the class a method takes, such as a mode name passed to `setMode()`: the JS glue checks it before calling into Rust and throws an `Error` whose message is `expected instance of <class>` (here, `expected instance of Mode`). Catch them with `catch (e) { ... }` and treat `e` as a `string` or an `Error`, not as a `LinderaError` instance.
 
 ## Snake-Case Aliases
 
-For consistency with the Python API, all methods are also available in snake\_case form:
+For consistency with the Python API, these methods are also available in snake\_case form:
 
 | camelCase | snake\_case |
 | --- | --- |
@@ -423,3 +450,5 @@ For consistency with the Python API, all methods are also available in snake\_ca
 | `loadUserDictionaryFromBytes()` | `load_user_dictionary_from_bytes()` |
 | `loadUserDictionaryFromBytesFor()` | `load_user_dictionary_from_bytes_for()` |
 | `loadUserDictionaryBinFromBytes()` | `load_user_dictionary_bin_from_bytes()` |
+
+The methods of `Mode` (`fromStr()`, `isNormal()`, `isDecompose()`) have no snake\_case aliases.

@@ -90,14 +90,13 @@ lindera-python は、Lindera 3.0.0 形態素解析エンジンへの包括的な
 ### 基本的なトークナイズ
 
 ```python
-from lindera.dictionary import load_dictionary
-from lindera.tokenizer import Tokenizer
+from lindera import Mode, Tokenizer, load_dictionary
 
 # Load dictionary from a local path (download from GitHub Releases)
 dictionary = load_dictionary("/path/to/ipadic")
 
 # Create a tokenizer
-tokenizer = Tokenizer(dictionary, mode="normal")
+tokenizer = Tokenizer(dictionary, mode=Mode.normal())
 
 # Tokenize Japanese text
 text = "すもももももももものうち"
@@ -125,11 +124,11 @@ json.dumps([token.to_dict() for token in tokens])
 ### 文字フィルタの使用
 
 ```python
-from lindera import TokenizerBuilder
+from lindera import Mode, TokenizerBuilder
 
 # Create tokenizer builder
 builder = TokenizerBuilder()
-builder.set_mode("normal")
+builder.set_mode(Mode.normal())
 builder.set_dictionary("/path/to/ipadic")
 
 # Add character filters
@@ -145,11 +144,11 @@ tokens = tokenizer.tokenize(text)  # Will apply filters automatically
 ### トークンフィルタの使用
 
 ```python
-from lindera import TokenizerBuilder
+from lindera import Mode, TokenizerBuilder
 
 # Create tokenizer builder
 builder = TokenizerBuilder()
-builder.set_mode("normal")
+builder.set_mode(Mode.normal())
 builder.set_dictionary("/path/to/ipadic")
 
 # Add token filters
@@ -167,11 +166,11 @@ tokens = tokenizer.tokenize("テキストの解析")
 ### 統合パイプライン
 
 ```python
-from lindera import TokenizerBuilder
+from lindera import Mode, TokenizerBuilder
 
 # Build tokenizer with integrated filters
 builder = TokenizerBuilder()
-builder.set_mode("normal")
+builder.set_mode(Mode.normal())
 builder.set_dictionary("/path/to/ipadic")
 
 # Add character filters
@@ -326,6 +325,7 @@ lindera.trainer.export(
 
 - `TokenizerBuilder`: トークナイザ設定のための Fluent ビルダー
 - `Tokenizer`: メインのトークナイズエンジン
+- `Mode`: トークナイズモード（normal、または `Penalty` を持つ decompose）
 - `Token`: テキスト、位置、言語的特徴を持つ個々のトークン
 - `CharacterFilter`: テキスト前処理フィルタ
 - `TokenFilter`: トークン後処理フィルタ

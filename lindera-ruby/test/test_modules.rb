@@ -73,12 +73,12 @@ class TestModules < Minitest::Test
   end
 
   def test_mode
-    mode = Lindera::Mode.new('normal')
+    mode = Lindera::Mode.normal
     assert mode.normal?
     refute mode.decompose?
     assert_equal 'normal', mode.name
 
-    mode2 = Lindera::Mode.new('decompose')
+    mode2 = Lindera::Mode.decompose
     refute mode2.normal?
     assert mode2.decompose?
   end

@@ -39,7 +39,7 @@ function minUs(fn) {
 }
 
 const dictionary = lindera.loadDictionary("embedded://ipadic");
-const tokenizer = new lindera.Tokenizer(dictionary, "normal");
+const tokenizer = new lindera.Tokenizer(dictionary, lindera.Mode.normal());
 const hasSurfaces = typeof tokenizer.tokenizeSurfaces === "function";
 
 if (process.argv.includes("--verify")) {

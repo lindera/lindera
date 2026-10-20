@@ -12,7 +12,7 @@ abort 'lindera was not loaded from an installed gem' unless spec
 puts "lindera gem #{spec.version} (#{spec.full_gem_path}), Lindera.version #{Lindera.version}"
 
 dictionary = Lindera.load_dictionary(ARGV.fetch(0, 'embedded://ipadic'))
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', nil)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.normal, nil)
 surfaces = tokenizer.tokenize('関西国際空港限定トートバッグ').map(&:surface)
 puts surfaces.join(' / ')
 

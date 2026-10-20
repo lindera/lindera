@@ -5,7 +5,7 @@
 推奨される方法は、OPFS ヘルパーを使用して辞書を実行時にダウンロードすることです：
 
 ```javascript
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
@@ -30,7 +30,7 @@ async function main() {
     // トークナイザーを構築
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dictionary);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
@@ -47,7 +47,7 @@ main();
 期待される出力：
 
 ```text
-関西国際空港    名詞,固有名詞,一般,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
+関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
 トートバッグ    名詞,一般,*,*,*,*,*,*,*
 ```
@@ -60,14 +60,14 @@ main();
 > ここでの `lindera-wasm-ipadic` は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは `lindera-wasm` のみです。このようなパッケージを自分でビルド・命名する方法は [npm パッケージの命名規則](./installation.md#npm-パッケージの命名規則) を参照してください。
 
 ```javascript
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
+import __wbg_init, { Mode, TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
 
     const builder = new TokenizerBuilder();
     builder.setDictionary("embedded://ipadic");
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
@@ -84,7 +84,7 @@ main();
 トークナイズパイプラインに文字フィルタやトークンフィルタを追加できます：
 
 ```javascript
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 async function main() {
@@ -100,7 +100,7 @@ async function main() {
 
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dictionary);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
 
     // Add Unicode NFKC normalization
     builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });

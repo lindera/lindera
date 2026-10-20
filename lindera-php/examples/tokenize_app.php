@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['CONTENT_TYPE']) && 
 
     try {
         $dict = Lindera\Dictionary::load($dictionary);
-        $tokenizer = new Lindera\Tokenizer($dict, $mode);
+        $tokenizer = new Lindera\Tokenizer($dict, Lindera\Mode::fromStr($mode));
         $tokens = $tokenizer->tokenize($text);
 
         $results = [];

@@ -27,7 +27,7 @@ default-exported async init function (`__wbg_init`) once before using any API.
 Dictionaries are loaded at runtime from a local path or downloaded from [GitHub Releases](https://github.com/lindera/lindera/releases) using the OPFS API.
 
 ```js
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { downloadDictionary, loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 async function main() {
@@ -45,7 +45,7 @@ async function main() {
 
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dict);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("すもももももももものうち");

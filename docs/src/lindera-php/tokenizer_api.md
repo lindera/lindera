@@ -29,20 +29,20 @@ $builder->fromFile('config.json');
 
 ### Configuration Methods
 
-#### `setMode($mode, $penalty)`
+#### `setMode($mode)`
 
-Sets the tokenization mode.
+Sets the tokenization mode, a [`Lindera\Mode`](#mode):
 
-- `"normal"` -- Standard tokenization (default)
-- `"decompose"` -- Decomposes compound words into smaller units
+- `Lindera\Mode::normal()` -- Standard tokenization (default)
+- `Lindera\Mode::decompose($penalty)` -- Decomposes compound words into smaller units, with a [`Lindera\Penalty`](#penalty) or, without one, the default penalty
 
-`$penalty` is the [`Lindera\Penalty`](#penalty) that `"decompose"` mode uses; `null` (the default) uses the default penalty. A penalty with `"normal"` throws a `ValueError`, as an invalid mode does, and a value of another type throws instead of selecting the default.
+`$mode` takes only a `Lindera\Mode`: a string such as `'normal'`, `null` or an object of another class throws a `TypeError`. To select a mode by its name, pass [`Lindera\Mode::fromStr($name)`](#creating-a-mode).
 
 ```php
 <?php
 
-$builder->setMode('normal');
-$builder->setMode('decompose', new Lindera\Penalty(kanji_penalty_length_penalty: 0));
+$builder->setMode(Lindera\Mode::normal());
+$builder->setMode(Lindera\Mode::decompose(new Lindera\Penalty(kanji_penalty_length_penalty: 0)));
 ```
 
 #### `setDictionary($path)`
@@ -130,7 +130,7 @@ $builder->setSpacePenalty(null);
 ```
 
 > [!NOTE]
-> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `검색 이 잘 된다` reads `이` as the interjection `IC`; without the penalty, as the subject particle `JKS`. Call `$builder->setSpacePenalty(false)` to turn it off; for a tokenizer created with [`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty), pass `space_penalty: false`. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and `true` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
+> Since v6.1.0, ko-dic applies the left-space penalty by default, as mecab-ko does. For example, `검색 이 잘 된다` reads `이` as the interjection `IC`; without the penalty, as the subject particle `JKS`. Call `$builder->setSpacePenalty(false)` to turn it off; for a tokenizer created with [`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty), pass `space_penalty: false`. Only a ko-dic built by Lindera 6.1.0 or later ships the rules; with a ko-dic from the v6.0.0 release the penalty stays off and `true` fails until the dictionary is rebuilt. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
 
 #### `appendCharacterFilter($kind, $args)`
 
@@ -172,19 +172,19 @@ $tokenizer = $builder->build();
 
 ### Creating a Tokenizer
 
-#### `new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty, $penalty)`
+#### `new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty)`
 
-Creates a tokenizer directly from a loaded dictionary. `$mode`, `$user_dictionary`, `$space_penalty` and `$penalty` are optional and default to `null`; `$mode` `null` means `'normal'`.
+Creates a tokenizer directly from a loaded dictionary. `$mode`, `$user_dictionary` and `$space_penalty` are optional and default to `null`.
+
+`$mode` takes a [`Lindera\Mode`](#mode), as [`setMode()`](#setmodemode) does; `null` means normal mode. A value of another type, such as the string `'normal'`, throws a `TypeError`.
 
 `$space_penalty` takes the same values as [`setSpacePenalty()`](#setspacepenaltyvalue). `null` uses the left-space penalty rules the dictionary ships (ko-dic ships them); pass `false` to turn the penalty off. Pass it by name to skip the other optional arguments. An invalid setting throws a `ValueError`, as `setSpacePenalty()` and `build()` do.
-
-`$penalty` takes a [`Lindera\Penalty`](#penalty) for `"decompose"` mode, as [`setMode()`](#setmodemode-penalty) does, with the same errors.
 
 ```php
 <?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal());
 
 // ko-dic without the left-space penalty
 $koTokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ko-dic'), space_penalty: false);
@@ -197,7 +197,7 @@ With a user dictionary:
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
 $userDict = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDict);
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal(), $userDict);
 ```
 
 ### Tokenizer Methods
@@ -349,16 +349,30 @@ The structure of `details` depends on the dictionary:
 
 ## Mode
 
-`Lindera\Mode` represents the tokenization mode.
+`Lindera\Mode` is the tokenization mode: normal, or decompose with a [`Lindera\Penalty`](#penalty). It is the counterpart of the Rust [`lindera::mode::Mode`](../lindera/segmenter.md#tokenization-modes), and [`setMode()`](#setmodemode) and the [`Tokenizer` constructor](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty) take it.
 
 ### Creating a Mode
+
+`Lindera\Mode` has no public constructor: `new Lindera\Mode()` throws an `Exception` (`You cannot instantiate this class from PHP.`). Create a mode with a static factory:
+
+- `Lindera\Mode::normal()` -- Normal mode.
+- `Lindera\Mode::decompose($penalty)` -- Decompose mode with `$penalty`, a [`Lindera\Penalty`](#penalty). `null` (the default) uses the default penalty; a value of another type throws a `TypeError`.
+- `Lindera\Mode::fromStr($name)` -- The mode named `$name`: `'normal'`, or `'decompose'` with the default penalty. The name is case sensitive, as the Rust `Mode` parses it: any other name, such as `'Normal'`, throws a `ValueError`.
 
 ```php
 <?php
 
-$mode = new Lindera\Mode('normal');
-$mode = new Lindera\Mode('decompose');
-$mode = new Lindera\Mode();  // default: 'normal'
+$normal = Lindera\Mode::normal();
+$decompose = Lindera\Mode::decompose();  // the default penalty
+$custom = Lindera\Mode::decompose(new Lindera\Penalty(kanji_penalty_length_penalty: 0));
+$parsed = Lindera\Mode::fromStr('decompose');  // the default penalty
+
+try {
+    Lindera\Mode::fromStr('Normal');
+} catch (ValueError $e) {
+    echo get_class($e), ': ', $e->getMessage(), "\n";
+    // ValueError: LinderaError(kind=Mode, source=Invalid mode: Normal)
+}
 ```
 
 ### Mode Properties
@@ -366,6 +380,9 @@ $mode = new Lindera\Mode();  // default: 'normal'
 | Property | Type | Description |
 | --- | --- | --- |
 | `$name` | `string` | The mode name (`"normal"` or `"decompose"`) |
+| `$penalty` | `Penalty\|null` | The penalty of decompose mode; `null` for normal mode |
+
+A mode cannot be changed: assigning a property throws an `Exception`. `$penalty` returns a new copy each time it is read, so it is `==` to the `Lindera\Penalty` passed to `decompose()` but not `===`.
 
 ### Mode Methods
 
@@ -373,6 +390,43 @@ $mode = new Lindera\Mode();  // default: 'normal'
 | --- | --- | --- |
 | `isNormal()` | `bool` | `true` if the mode is normal |
 | `isDecompose()` | `bool` | `true` if the mode is decompose |
+| `__toString()` | `string` | The mode name, as `$name` |
+
+```php
+<?php
+
+$penalty = new Lindera\Penalty(kanji_penalty_length_penalty: 0);
+$mode = Lindera\Mode::decompose($penalty);
+echo $mode->name, ' ', $mode->penalty->kanji_penalty_length_penalty, "\n";
+// decompose 0
+var_dump($mode->penalty == $penalty, $mode->penalty === $penalty);
+// bool(true)
+// bool(false)
+echo Lindera\Mode::normal(), "\n";
+// normal
+var_dump(Lindera\Mode::normal()->penalty);
+// NULL
+```
+
+### Comparing Modes
+
+`==` compares the name and the penalty, as `==` of the Rust `Mode` does; `===` holds only for the same object. Because a mode converts to its name, `==` with a string compares the name alone: a decompose mode with any penalty is `==` to `'decompose'`. An object of another class is never `==` to a mode.
+
+```php
+<?php
+
+$decompose = Lindera\Mode::decompose();
+$custom = Lindera\Mode::decompose(new Lindera\Penalty(kanji_penalty_length_penalty: 0));
+
+var_dump(Lindera\Mode::fromStr('decompose') == $decompose);
+// bool(true)
+var_dump($custom == $decompose);
+// bool(false)
+var_dump($custom == 'decompose');
+// bool(true)
+var_dump(Lindera\Mode::normal() === Lindera\Mode::normal());
+// bool(false)
+```
 
 ## Penalty
 
@@ -401,7 +455,7 @@ $penalty = new Lindera\Penalty(
 
 ### Using a Penalty
 
-Pass a `Penalty` with `'decompose'` to [`setMode()`](#setmodemode-penalty) or to the [`Tokenizer` constructor](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty). Without length penalties, decompose mode keeps long words whole:
+Pass a `Penalty` to [`Lindera\Mode::decompose()`](#creating-a-mode), and the mode to [`setMode()`](#setmodemode) or to the [`Tokenizer` constructor](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty). Without length penalties, decompose mode keeps long words whole:
 
 ```php
 <?php
@@ -412,17 +466,15 @@ $surfaces = static fn (array $tokens): string => implode(' / ', array_map(static
 
 $builder = new Lindera\TokenizerBuilder();
 $builder->setDictionary('embedded://ipadic');
-$builder->setMode('decompose');
+$builder->setMode(Lindera\Mode::decompose());
 echo $surfaces($builder->build()->tokenize($text)), "\n";
 // 関西 / 国際 / 空港 / 限定 / トートバッグ
 
-$builder->setMode('decompose', $penalty);
+$builder->setMode(Lindera\Mode::decompose($penalty));
 echo $surfaces($builder->build()->tokenize($text)), "\n";
 // 関西国際空港 / 限定 / トートバッグ
 
-$tokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ipadic'), 'decompose', penalty: $penalty);
+$tokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ipadic'), Lindera\Mode::decompose($penalty));
 echo $surfaces($tokenizer->tokenize($text)), "\n";
 // 関西国際空港 / 限定 / トートバッグ
 ```
-
-A `Penalty` with `'normal'` mode throws a `ValueError`.

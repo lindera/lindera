@@ -84,14 +84,14 @@ class UserDictionaryTest extends TestCase
     public function testLoadUserForLoadsACsvInsideTheMatrix(): void
     {
         $dictionary = Lindera\Dictionary::load('embedded://ipadic');
-        $baseline = self::surfaces(new Lindera\Tokenizer($dictionary, 'normal'), '東京スカイツリー');
+        $baseline = self::surfaces(new Lindera\Tokenizer($dictionary, Lindera\Mode::normal()), '東京スカイツリー');
         $this->assertGreaterThan(1, count($baseline), 'fixture assumption: ' . implode(' / ', $baseline));
 
         $userDictionary = self::withCsv(
             self::SIMPLE_CSV,
             static fn(string $csv) => Lindera\Dictionary::loadUserFor($csv, $dictionary),
         );
-        $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
+        $tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal(), $userDictionary);
         $this->assertSame(['東京スカイツリー'], self::surfaces($tokenizer, '東京スカイツリー'));
     }
 
@@ -122,7 +122,7 @@ class UserDictionaryTest extends TestCase
             self::assertTrue(is_file($output), "{$output} must be a file");
             return Lindera\Dictionary::loadUserFor($output, $dictionary);
         });
-        $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
+        $tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal(), $userDictionary);
         $this->assertSame(['東京スカイツリー'], self::surfaces($tokenizer, '東京スカイツリー'));
     }
 

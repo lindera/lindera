@@ -1,4 +1,4 @@
-from lindera import TokenizerBuilder
+from lindera import Mode, TokenizerBuilder
 
 
 def main():
@@ -6,7 +6,7 @@ def main():
     builder = TokenizerBuilder()
 
     # set mode and dictionary
-    builder.set_mode("normal")
+    builder.set_mode(Mode.normal())
     builder.set_dictionary("embedded://ipadic")
 
     # append character filters

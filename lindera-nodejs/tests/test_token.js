@@ -21,7 +21,7 @@ describe(
 
     before(() => {
       const dictionary = lindera.loadDictionary("embedded://ipadic");
-      tokenizer = new lindera.Tokenizer(dictionary, "normal");
+      tokenizer = new lindera.Tokenizer(dictionary, lindera.Mode.normal());
     });
 
     it("should return Token objects from tokenize", () => {

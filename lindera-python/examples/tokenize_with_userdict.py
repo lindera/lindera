@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lindera import Tokenizer, load_dictionary, load_user_dictionary_for
+from lindera import Mode, Tokenizer, load_dictionary, load_user_dictionary_for
 
 project_root = Path(__file__).resolve().parent.parent
 
@@ -16,7 +16,9 @@ def main():
     user_dictionary = load_user_dictionary_for(user_dictionary_path, dictionary)
 
     # create a tokenizer
-    tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dictionary)
+    tokenizer = Tokenizer(
+        dictionary, mode=Mode.normal(), user_dictionary=user_dictionary
+    )
 
     text = "関西国際空港限定トートバッグを東京スカイツリーの最寄り駅であるとうきょうスカイツリー駅で買う"
     print(f"text: {text}\n")

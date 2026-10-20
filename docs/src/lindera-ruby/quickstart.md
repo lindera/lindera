@@ -10,7 +10,7 @@ The recommended way to create a tokenizer is through `Lindera::TokenizerBuilder`
 require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
-builder.set_mode('normal')
+builder.set_mode(Lindera::Mode.normal)
 builder.set_dictionary('/path/to/ipadic')
 tokenizer = builder.build
 
@@ -38,7 +38,7 @@ Expected output:
 require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
-builder.set_mode('normal')
+builder.set_mode(Lindera::Mode.normal)
 builder.set_dictionary('/path/to/ipadic')
 tokenizer = builder.build
 

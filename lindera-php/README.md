@@ -55,7 +55,7 @@ The extension does not embed a dictionary. Download a pre-built one (for example
 
 ```php
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal());
 $tokens = $tokenizer->tokenize('関西国際空港');
 
 foreach ($tokens as $token) {
@@ -87,7 +87,7 @@ object straight to `json_encode` does not produce these fields — call
 ```php
 $builder = new Lindera\TokenizerBuilder();
 $builder->setDictionary('/path/to/ipadic');
-$builder->setMode('decompose');
+$builder->setMode(Lindera\Mode::decompose());
 $tokenizer = $builder->build();
 ```
 
@@ -127,8 +127,8 @@ All classes live in the `Lindera` namespace; the extension registers no function
 | `Lindera\NbestResult` | N-best tokenization result |
 | `Lindera\Dictionary` | Morphological dictionary: `load()`, `loadUser()`, `loadUserFor()`, `build()`, `buildUser()`, `buildUserFor()`, `version()` |
 | `Lindera\UserDictionary` | User-defined dictionary |
-| `Lindera\Mode` | Tokenization mode |
-| `Lindera\Penalty` | Decompose mode penalty |
+| `Lindera\Mode` | Tokenization mode: `normal()`, `decompose()`, `fromStr()` |
+| `Lindera\Penalty` | Decompose mode penalty, passed to `Mode::decompose()` |
 | `Lindera\Metadata` | Dictionary metadata |
 | `Lindera\Schema` | Dictionary schema |
 | `Lindera\FieldDefinition` | Schema field definition |

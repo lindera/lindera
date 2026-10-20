@@ -12,7 +12,7 @@
 $builder = new Lindera\TokenizerBuilder();
 
 // Set mode and dictionary
-$builder->setMode('normal');
+$builder->setMode(Lindera\Mode::normal());
 $builder->setDictionary('embedded://ipadic');
 
 // Append character filters

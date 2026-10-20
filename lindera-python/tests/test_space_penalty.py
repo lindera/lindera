@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from lindera import Metadata, Tokenizer, TokenizerBuilder, load_dictionary
+from lindera import Metadata, Mode, Tokenizer, TokenizerBuilder, load_dictionary
 
 KO_DIC_METADATA = (
     Path(__file__).resolve().parents[2] / "lindera-ko-dic" / "metadata.json"
@@ -142,7 +142,7 @@ def test_constructor_space_penalty_reaches_the_segmenter_on_ipadic(
 
 
 def test_constructor_takes_space_penalty_positionally():
-    assert _constructor_particle_pos("normal", None, PARTICLE_RULES) != "助詞"
+    assert _constructor_particle_pos(Mode.normal(), None, PARTICLE_RULES) != "助詞"
 
 
 def test_constructor_space_penalty_true_fails_on_ipadic():

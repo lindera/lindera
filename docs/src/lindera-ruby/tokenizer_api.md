@@ -27,18 +27,18 @@ builder = Lindera::TokenizerBuilder.from_file('config.json')
 
 ### Configuration Methods
 
-#### `set_mode(mode, penalty: nil)`
+#### `set_mode(mode)`
 
-Sets the tokenization mode.
+Sets the tokenization mode. `mode` is a [`Lindera::Mode`](#mode):
 
-- `"normal"` -- Standard tokenization (default)
-- `"decompose"` -- Decomposes compound words into smaller units
+- `Lindera::Mode.normal` -- Standard tokenization (default)
+- `Lindera::Mode.decompose(penalty = nil)` -- Decomposes compound words into smaller units, with the length penalties of a [`Lindera::Penalty`](#penalty) (the default penalty for `nil`)
 
-The `penalty:` keyword takes the [`Lindera::Penalty`](#penalty) that `"decompose"` mode uses; `nil` (the default) uses the default penalty. A penalty with `"normal"` raises `RuntimeError`, as an invalid mode does, and a value that is not a `Lindera::Penalty` raises `TypeError`.
+A value that is not a `Lindera::Mode`, such as a mode string (`'normal'`), a Symbol or `nil`, raises `TypeError`. To turn a mode name read at run time into a `Mode`, use [`Lindera::Mode.from_str`](#linderamodefrom_strname).
 
 ```ruby
-builder.set_mode('normal')
-builder.set_mode('decompose', penalty: Lindera::Penalty.new(nil, 0, nil, nil))
+builder.set_mode(Lindera::Mode.normal)
+builder.set_mode(Lindera::Mode.decompose(Lindera::Penalty.new(nil, 0, nil, nil)))
 ```
 
 #### `set_dictionary(path)`
@@ -147,13 +147,11 @@ tokenizer = builder.build
 
 ### Creating a Tokenizer
 
-#### `Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil, penalty: nil)`
+#### `Lindera::Tokenizer.new(dictionary, mode = nil, user_dictionary = nil, space_penalty: nil)`
 
-Creates a tokenizer directly from a loaded dictionary. `mode` defaults to `'normal'`, and `user_dictionary` is optional.
+Creates a tokenizer directly from a loaded dictionary. `mode` is a [`Lindera::Mode`](#mode), as [`TokenizerBuilder#set_mode`](#set_modemode) takes it; `nil` (the default) means normal mode, and a value that is not a `Lindera::Mode`, such as a mode string (`'normal'`), raises `TypeError`. `user_dictionary` is optional.
 
 The `space_penalty:` keyword takes the same values as [`TokenizerBuilder#set_space_penalty`](#set_space_penaltyvalue). `nil` (the default) uses the left-space penalty rules the dictionary ships, so with ko-dic the penalty is on; pass `false` to turn it off. An invalid setting raises the same errors as `set_space_penalty` and `build`.
-
-The `penalty:` keyword takes a [`Lindera::Penalty`](#penalty) for `"decompose"` mode, as [`TokenizerBuilder#set_mode`](#set_modemode-penalty-nil) does, with the same errors.
 
 ```ruby
 require 'lindera'
@@ -170,7 +168,7 @@ With a user dictionary:
 ```ruby
 dictionary = Lindera.load_dictionary('embedded://ipadic')
 user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.normal, user_dict)
 ```
 
 ### Tokenizer Methods
@@ -232,42 +230,69 @@ end
 
 ## Mode
 
-`Lindera::Mode` represents a tokenization mode. It is provided as a standalone helper for inspecting or comparing modes; `TokenizerBuilder#set_mode` and `Tokenizer.new` take a plain mode string (`"normal"` or `"decompose"`), not a `Mode` instance. The penalty of decompose mode goes in their `penalty:` keyword (see [`Penalty`](#penalty) below).
+`Lindera::Mode` is the tokenization mode that [`TokenizerBuilder#set_mode`](#set_modemode) and [`Tokenizer.new`](#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil) take. It is the Ruby counterpart of the Rust `lindera::mode::Mode`: normal mode, or decompose mode with the [`Lindera::Penalty`](#penalty) it uses.
 
 ### Creating a Mode
 
-#### `Lindera::Mode.new(mode_str)`
+`Lindera::Mode` has no `new` (`Lindera::Mode.new` raises `TypeError`). The following class methods create a mode.
 
-Creates a `Mode`. The argument is required, but may be `nil`. Accepts `"normal"` / `"Normal"` (used when `mode_str` is `nil`) or `"decompose"` / `"Decompose"`; any other value raises `ArgumentError`.
+#### `Lindera::Mode.normal`
+
+Returns normal mode.
+
+#### `Lindera::Mode.decompose(penalty = nil)`
+
+Returns decompose mode with `penalty`, a `Lindera::Penalty`. `nil` or no argument uses the default penalty. A value that is not a `Lindera::Penalty` raises `TypeError`.
+
+#### `Lindera::Mode.from_str(name)`
+
+Returns the mode named `name`, as the Rust `Mode` parses it: `'normal'`, or `'decompose'` with the default penalty. The name is case sensitive; any other name, such as `'Normal'`, raises `RuntimeError` with an `Invalid mode` message. Use it for a mode name read at run time, such as from a setting.
 
 ```ruby
 require 'lindera'
 
-mode = Lindera::Mode.new('normal')
-mode = Lindera::Mode.new('decompose')
-mode = Lindera::Mode.new(nil)  # defaults to "normal"
+normal = Lindera::Mode.normal
+decompose = Lindera::Mode.decompose
+no_length_penalty = Lindera::Mode.decompose(Lindera::Penalty.new(nil, 0, nil, 0))
+from_setting = Lindera::Mode.from_str('decompose')
 ```
 
 ### Mode Methods
 
 | Method | Returns | Description |
 | --- | --- | --- |
-| `to_s` | `String` | `"normal"` or `"decompose"` |
-| `name` | `String` | Same as `to_s` |
-| `inspect` | `String` | e.g. `"#<Lindera::Mode: decompose>"` |
-| `normal?` | `Boolean` | `true` if the mode is `"normal"` |
-| `decompose?` | `Boolean` | `true` if the mode is `"decompose"` |
+| `name` | `String` | `"normal"` or `"decompose"` |
+| `to_s` | `String` | Same as `name` |
+| `inspect` | `String` | The name, followed by the penalty for decompose mode |
+| `penalty` | `Penalty` or `nil` | A copy of the penalty of decompose mode; `nil` for normal mode |
+| `normal?` | `Boolean` | `true` for normal mode |
+| `decompose?` | `Boolean` | `true` for decompose mode |
+| `==` | `Boolean` | `true` if the other value is a `Mode` with the same name and penalty |
+
+A mode cannot be changed: it has no setter methods, and `penalty` returns a copy.
+
+`==` compares the name and the penalty, and returns `false` for a value of another type, such as the string `'normal'`. `eql?` and `hash` stay by identity, as the Rust `Mode` is `Eq` but not `Hash`: two equal modes are different `Hash` keys, and `uniq` keeps both.
 
 ```ruby
-mode = Lindera::Mode.new('decompose')
-mode.to_s        # "decompose"
-mode.normal?      # false
-mode.decompose?   # true
+mode = Lindera::Mode.decompose(Lindera::Penalty.new(nil, 0, nil, 0))
+mode.name                                   # "decompose"
+mode.normal?                                # false
+mode.decompose?                             # true
+mode.penalty.kanji_penalty_length_penalty   # 0
+mode.inspect
+# "#<Lindera::Mode: decompose Penalty(kanji_threshold=2, kanji_penalty=0, other_threshold=7, other_penalty=0)>"
+
+Lindera::Mode.normal.inspect   # "#<Lindera::Mode: normal>"
+Lindera::Mode.normal.penalty   # nil
+
+Lindera::Mode.decompose == Lindera::Mode.from_str('decompose')  # true
+Lindera::Mode.decompose == mode                                 # false (the penalties differ)
+Lindera::Mode.normal == 'normal'                                # false
 ```
 
 ## Penalty
 
-`Lindera::Penalty` configures the length-based penalty thresholds used by `"decompose"` mode segmentation.
+`Lindera::Penalty` configures the length-based penalty thresholds used by decompose mode segmentation. Pass it to [`Lindera::Mode.decompose`](#linderamodedecomposepenalty--nil).
 
 ### Creating a Penalty
 
@@ -300,7 +325,7 @@ penalty.kanji_penalty_length_threshold  # 2
 
 ### Using a Penalty
 
-Pass a `Penalty` with `"decompose"` as the `penalty:` keyword of [`TokenizerBuilder#set_mode`](#set_modemode-penalty-nil) or [`Tokenizer.new`](#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil-penalty-nil). Without length penalties, decompose mode keeps long words whole:
+Pass a `Penalty` to [`Lindera::Mode.decompose`](#linderamodedecomposepenalty--nil), and the mode to [`TokenizerBuilder#set_mode`](#set_modemode) or [`Tokenizer.new`](#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil). Without length penalties, decompose mode keeps long words whole:
 
 ```ruby
 require 'lindera'
@@ -310,21 +335,19 @@ penalty = Lindera::Penalty.new(nil, 0, nil, 0)
 
 builder = Lindera::TokenizerBuilder.new
 builder.set_dictionary('embedded://ipadic')
-builder.set_mode('decompose')
+builder.set_mode(Lindera::Mode.decompose)
 p builder.build.tokenize(text).map(&:surface)
 # => ["関西", "国際", "空港", "限定", "トートバッグ"]
 
-builder.set_mode('decompose', penalty: penalty)
+builder.set_mode(Lindera::Mode.decompose(penalty))
 p builder.build.tokenize(text).map(&:surface)
 # => ["関西国際空港", "限定", "トートバッグ"]
 
 dictionary = Lindera.load_dictionary('embedded://ipadic')
-tokenizer = Lindera::Tokenizer.new(dictionary, 'decompose', penalty: penalty)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.decompose(penalty))
 p tokenizer.tokenize(text).map(&:surface)
 # => ["関西国際空港", "限定", "トートバッグ"]
 ```
-
-A `Penalty` with `"normal"` mode raises `RuntimeError`.
 
 ## Token
 

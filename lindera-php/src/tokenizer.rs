@@ -17,7 +17,7 @@ use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 use crate::convert::{ConvertError, Nullable, int_arg, zval_to_value};
 use crate::dictionary::{PhpDictionary, PhpUserDictionary};
 use crate::error::lindera_value_err;
-use crate::mode::PhpPenalty;
+use crate::mode::PhpMode;
 use crate::token::PhpToken;
 
 /// Converts a left-space penalty setting from PHP to JSON.
@@ -111,24 +111,10 @@ impl PhpTokenizerBuilder {
     ///
     /// # Arguments
     ///
-    /// * `mode` - Mode string ("normal" or "decompose").
-    /// * `penalty` - The `Lindera\Penalty` for "decompose" mode. `null` (the
-    ///   default) uses the default penalty. A value of another type throws
-    ///   instead of selecting the default.
-    ///
-    /// # Returns
-    ///
-    /// `Ok(())`, or a `ValueError` for an invalid mode or for a penalty with
-    /// "normal" mode.
-    pub fn set_mode(&self, mode: String, penalty: Nullable<&PhpPenalty>) -> PhpResult<()> {
-        let mut builder = self.inner.borrow_mut();
-        builder
-            .set_mode(
-                &mode,
-                penalty.into_option().map(|penalty| penalty.clone().into()),
-            )
-            .map_err(lindera_value_err)?;
-        Ok(())
+    /// * `mode` - The `Lindera\Mode`, with its penalty for decompose mode.
+    ///   A value of another type throws a `TypeError`.
+    pub fn set_mode(&self, mode: &PhpMode) {
+        self.inner.borrow_mut().set_mode(mode.as_lindera());
     }
 
     /// Sets the dictionary path.
@@ -288,32 +274,31 @@ impl PhpTokenizer {
     /// # Arguments
     ///
     /// * `dictionary` - Dictionary to use for tokenization.
-    /// * `mode` - Tokenization mode ("normal" or "decompose"). Default: "normal".
+    /// * `mode` - The `Lindera\Mode`, as `TokenizerBuilder::setMode()` takes
+    ///   it. `null` (the default) is normal mode.
     /// * `user_dictionary` - Optional user dictionary for custom words.
     /// * `space_penalty` - The left-space penalty, in the forms
     ///   `TokenizerBuilder::setSpacePenalty()` accepts. `null` (the default)
     ///   keeps the rules the dictionary ships.
-    /// * `penalty` - The `Lindera\Penalty` for "decompose" mode, as
-    ///   `TokenizerBuilder::setMode()` takes it. `null` (the default) uses
-    ///   the default penalty.
     ///
-    /// A value of another type for `mode`, `user_dictionary` or `penalty`
-    /// throws instead of selecting the default.
+    /// A value of another type for `mode` or `user_dictionary` throws instead
+    /// of selecting the default.
     ///
     /// # Returns
     ///
-    /// A new Tokenizer instance, or a `ValueError` for an invalid mode,
-    /// penalty or space-penalty setting, as `setMode()`, `setSpacePenalty()`
-    /// and `build()` throw it, or for a user dictionary with a context ID
-    /// outside the dictionary's connection matrix.
+    /// A new Tokenizer instance, or a `ValueError` for an invalid
+    /// space-penalty setting, as `setSpacePenalty()` and `build()` throw it,
+    /// or for a user dictionary with a context ID outside the dictionary's
+    /// connection matrix.
     pub fn __construct(
         dictionary: &PhpDictionary,
-        mode: Nullable<String>,
+        mode: Option<&PhpMode>,
         user_dictionary: Nullable<&PhpUserDictionary>,
         space_penalty: Option<&Zval>,
-        penalty: Nullable<&PhpPenalty>,
     ) -> PhpResult<Self> {
-        let mode_str = mode.into_option().unwrap_or_else(|| "normal".to_string());
+        let mode = mode.map_or(lindera::mode::Mode::Normal, |mode| {
+            mode.as_lindera().clone()
+        });
         let space_penalty = match space_penalty {
             Some(value) => space_penalty_value(value)?,
             None => serde_json::Value::Null,
@@ -322,14 +307,9 @@ impl PhpTokenizer {
         let dict = dictionary.inner.clone();
         let user_dict = user_dictionary.into_option().map(|d| d.inner.clone());
 
-        let inner = CoreTokenizer::from_segmenter_with_space_penalty(
-            &mode_str,
-            penalty.into_option().map(|penalty| penalty.clone().into()),
-            dict,
-            user_dict,
-            &space_penalty,
-        )
-        .map_err(lindera_value_err)?;
+        let inner =
+            CoreTokenizer::from_segmenter_with_space_penalty(mode, dict, user_dict, &space_penalty)
+                .map_err(lindera_value_err)?;
 
         Ok(Self { inner })
     }

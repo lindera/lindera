@@ -4,6 +4,7 @@ const { describe, it } = require("node:test");
 
 const {
   Metadata,
+  Mode,
   Tokenizer,
   TokenizerBuilder,
   loadDictionary,
@@ -195,10 +196,10 @@ describe("Tokenizer constructor space penalty", () => {
     { skip: !hasEmbeddedIpadic && "embedded://ipadic not available" },
     () => {
       assert.strictEqual(particlePos(), "助詞", "omitted");
-      assert.strictEqual(particlePos("normal", null, undefined), "助詞", "undefined");
-      assert.strictEqual(particlePos("normal", null, null), "助詞", "null");
-      assert.strictEqual(particlePos("normal", null, false), "助詞", "false");
-      assert.notStrictEqual(particlePos("normal", null, PARTICLE_RULES), "助詞", "rules");
+      assert.strictEqual(particlePos(Mode.normal(), null, undefined), "助詞", "undefined");
+      assert.strictEqual(particlePos(Mode.normal(), null, null), "助詞", "null");
+      assert.strictEqual(particlePos(Mode.normal(), null, false), "助詞", "false");
+      assert.notStrictEqual(particlePos(Mode.normal(), null, PARTICLE_RULES), "助詞", "rules");
     },
   );
 
@@ -206,7 +207,7 @@ describe("Tokenizer constructor space penalty", () => {
     "fails like build() when it requires rules IPADIC does not ship",
     { skip: !hasEmbeddedIpadic && "embedded://ipadic not available" },
     () => {
-      assert.throws(() => new Tokenizer(loadDictionary("embedded://ipadic"), "normal", null, true), {
+      assert.throws(() => new Tokenizer(loadDictionary("embedded://ipadic"), Mode.normal(), null, true), {
         name: "Error",
         message: /ships no space_penalty rules/,
       });
@@ -219,7 +220,7 @@ describe("Tokenizer constructor space penalty", () => {
     () => {
       for (const value of [1, "false", { rules: "JKS" }]) {
         assert.throws(
-          () => new Tokenizer(loadDictionary("embedded://ipadic"), "normal", null, value),
+          () => new Tokenizer(loadDictionary("embedded://ipadic"), Mode.normal(), null, value),
           { name: "Error", message: /space_penalty/ },
           `value ${JSON.stringify(value)}`,
         );
@@ -238,7 +239,7 @@ describe("Tokenizer constructor space penalty", () => {
         return token.details[0];
       };
       assert.strictEqual(posOfI(), "IC", "default");
-      assert.strictEqual(posOfI("normal", null, false), "JKS", "false");
+      assert.strictEqual(posOfI(Mode.normal(), null, false), "JKS", "false");
     },
   );
 });

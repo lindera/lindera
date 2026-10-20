@@ -1,11 +1,11 @@
-const { loadDictionary, Tokenizer } = require("../index.js");
+const { loadDictionary, Mode, Tokenizer } = require("../index.js");
 
 function main() {
   // load the dictionary
   const dictionary = loadDictionary("embedded://ipadic");
 
   // create a tokenizer
-  const tokenizer = new Tokenizer(dictionary, "normal");
+  const tokenizer = new Tokenizer(dictionary, Mode.normal());
 
   const text =
     "関西国際空港限定トートバッグを東京スカイツリーの最寄り駅であるとうきょうスカイツリー駅で買う";

@@ -33,7 +33,7 @@ maturin develop --release --features embed-ipadic
 python examples/tokenize.py
 ```
 
-埋め込み IPADIC 辞書を使用し、"normal" モードで日本語テキストをトークナイズします。
+埋め込み IPADIC 辞書を使用し、normal モード（`Mode.normal()`）で日本語テキストをトークナイズします。
 
 ### Decompose モード
 
@@ -41,7 +41,7 @@ python examples/tokenize.py
 python examples/tokenize_with_decompose.py
 ```
 
-"decompose" モードでトークナイズし、複合形態素を分解します。
+decompose モード（`Mode.decompose()`）でトークナイズし、複合形態素を分解します。
 
 ### フィルター付きトークナイズ
 
