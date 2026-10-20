@@ -81,20 +81,20 @@ npm run build
 インポートできます:
 
 ```javascript
-import { loadDictionary, Tokenizer } from "lindera";
+import { loadDictionary, Mode, Tokenizer } from "lindera";
 ```
 
 ### 基本的なトークナイズ
 
 ```javascript
-const { loadDictionary, Tokenizer } = require("lindera");
+const { loadDictionary, Mode, Tokenizer } = require("lindera");
 
 // Load dictionary
 // Load dictionary from a local path (download from GitHub Releases)
 const dictionary = loadDictionary("/path/to/ipadic");
 
 // Create a tokenizer
-const tokenizer = new Tokenizer(dictionary, "normal");
+const tokenizer = new Tokenizer(dictionary, Mode.normal());
 
 // Tokenize Japanese text
 const text = "すもももももももものうち";
@@ -131,11 +131,11 @@ structuredClone(tokens);  // worker へ安全に送れる
 ### 文字フィルタの使用
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { Mode, TokenizerBuilder } = require("lindera");
 
 // Create tokenizer builder
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("/path/to/ipadic");
 
 // Add character filters
@@ -151,11 +151,11 @@ const tokens = tokenizer.tokenize(text); // Will apply filters automatically
 ### トークンフィルタの使用
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { Mode, TokenizerBuilder } = require("lindera");
 
 // Create tokenizer builder
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("/path/to/ipadic");
 
 // Add token filters
@@ -173,11 +173,11 @@ const tokens = tokenizer.tokenize("テキストの解析");
 ### 統合パイプライン
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { Mode, TokenizerBuilder } = require("lindera");
 
 // Build tokenizer with integrated filters
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("/path/to/ipadic");
 
 // Add character filters
@@ -330,6 +330,7 @@ exportModel({
 
 - `TokenizerBuilder`: トークナイザ設定のための Fluent ビルダー
 - `Tokenizer`: メインのトークナイズエンジン
+- `Mode`: トークナイズモード（normal、または `Penalty` を持つ decompose）
 - `Dictionary`: ロード済みのシステム辞書
 - `UserDictionary`: ロード済みのユーザー辞書
 - `Metadata`: 辞書メタデータと設定

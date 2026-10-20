@@ -143,7 +143,7 @@ The following example combines multiple character filters and token filters into
 require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
-builder.set_mode('normal')
+builder.set_mode(Lindera::Mode.normal)
 builder.set_dictionary('embedded://ipadic')
 
 # Preprocessing

@@ -18,18 +18,18 @@ $builder = new Lindera\TokenizerBuilder();
 
 ### 設定メソッド
 
-#### `setMode($mode, $penalty)`
+#### `setMode($mode)`
 
-トークナイズモードを設定します。
+トークナイズモードを [`Lindera\Mode`](#mode) で設定します。
 
-- `"normal"` -- 標準的なトークナイズ（デフォルト）
-- `"decompose"` -- 複合語をより小さな単位に分解
+- `Lindera\Mode::normal()` -- 標準的なトークナイズ（デフォルト）
+- `Lindera\Mode::decompose($penalty)` -- 複合語をより小さな単位に分解。[`Lindera\Penalty`](#penalty) を省略すると既定のペナルティを使います
 
-`$penalty` は `"decompose"` モードが使う [`Lindera\Penalty`](#penalty) です。`null`（デフォルト）では既定のペナルティを使います。`"normal"` とペナルティを一緒に渡すと、不正なモードと同じく `ValueError` をスローします。型の違う値を渡すと、デフォルトを選ぶのではなく例外をスローします。
+`$mode` には `Lindera\Mode` だけを渡せます。`'normal'` のような文字列、`null`、ほかのクラスのオブジェクトを渡すと `TypeError` をスローします。モードを名前で選ぶには [`Lindera\Mode::fromStr($name)`](#mode-の作成) を渡します。
 
 ```php
-$builder->setMode('normal');
-$builder->setMode('decompose', new Lindera\Penalty(kanji_penalty_length_penalty: 0));
+$builder->setMode(Lindera\Mode::normal());
+$builder->setMode(Lindera\Mode::decompose(new Lindera\Penalty(kanji_penalty_length_penalty: 0)));
 ```
 
 #### `setDictionary($uri)`
@@ -107,7 +107,7 @@ $builder->setSpacePenalty(null);
 ```
 
 > [!NOTE]
-> v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば `검색 이 잘 된다` の `이` は感動詞 `IC` と解析されます（ペナルティがなければ主格助詞 `JKS`）。オフにするには `$builder->setSpacePenalty(false)` を呼び出してください。[`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty) で作成するトークナイザーでは `space_penalty: false` を渡します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで `true` はエラーになります。詳しくは [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
+> v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティがデフォルトで適用されます。たとえば `검색 이 잘 된다` の `이` は感動詞 `IC` と解析されます（ペナルティがなければ主格助詞 `JKS`）。オフにするには `$builder->setSpacePenalty(false)` を呼び出してください。[`new Lindera\Tokenizer(...)`](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty) で作成するトークナイザーでは `space_penalty: false` を渡します。ルールを同梱しているのは Lindera 6.1.0 以降でビルドした ko-dic だけです。v6.0.0 リリースの ko-dic ではペナルティはオフのままで、辞書を再ビルドするまで `true` はエラーになります。詳しくは [Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照してください。
 
 #### `appendCharacterFilter($kind, $args)`
 
@@ -146,19 +146,19 @@ $tokenizer = $builder->build();
 
 ### Tokenizer の作成
 
-#### `new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty, $penalty)`
+#### `new Lindera\Tokenizer($dictionary, $mode, $user_dictionary, $space_penalty)`
 
-読み込み済みの辞書から直接トークナイザーを作成します。`$mode`、`$user_dictionary`、`$space_penalty`、`$penalty` は省略でき、デフォルトは `null` です（`$mode` の `null` は `'normal'` を意味します）。
+読み込み済みの辞書から直接トークナイザーを作成します。`$mode`、`$user_dictionary`、`$space_penalty` は省略でき、デフォルトは `null` です。
+
+`$mode` には、[`setMode()`](#setmodemode) と同じく [`Lindera\Mode`](#mode) を渡します。`null` は normal モードを意味します。文字列 `'normal'` など、型の違う値を渡すと `TypeError` をスローします。
 
 `$space_penalty` には [`setSpacePenalty()`](#setspacepenaltyvalue) と同じ値を渡せます。`null` では辞書が同梱する左側空白ペナルティのルール（ko-dic は同梱しています）を使います。オフにするには `false` を渡します。名前付き引数で渡せば、ほかの省略可能な引数を飛ばせます。不正な設定では、`setSpacePenalty()` や `build()` と同じく `ValueError` をスローします。
-
-`$penalty` には、[`setMode()`](#setmodemode-penalty) と同じく `"decompose"` モードの [`Lindera\Penalty`](#penalty) を渡せます。エラーも `setMode()` と同じです。
 
 ```php
 <?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal());
 
 // 左側空白ペナルティなしの ko-dic
 $koTokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ko-dic'), space_penalty: false);
@@ -172,7 +172,7 @@ $koTokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ko-dic
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
 $userDictionary = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
 
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal(), $userDictionary);
 ```
 
 ### Tokenizer メソッド
@@ -316,16 +316,30 @@ echo json_encode(array_map(fn($t) => $t->toArray(), $tokens));
 
 ## Mode
 
-`Mode` はトークナイズの動作モードを表します。
+`Lindera\Mode` はトークナイズモードを表します。normal モードか、[`Lindera\Penalty`](#penalty) を持つ decompose モードのどちらかです。Rust の [`lindera::mode::Mode`](../lindera/segmenter.md#トークナイズモード) に対応するクラスで、[`setMode()`](#setmodemode) と [`Tokenizer` のコンストラクタ](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty) が受け取ります。
 
 ### Mode の作成
 
-#### `new Lindera\Mode($name)`
+`Lindera\Mode` には公開のコンストラクタがありません。`new Lindera\Mode()` は `Exception`（`You cannot instantiate this class from PHP.`）をスローします。モードは静的ファクトリメソッドで作成します：
+
+- `Lindera\Mode::normal()` -- normal モード。
+- `Lindera\Mode::decompose($penalty)` -- `$penalty`（[`Lindera\Penalty`](#penalty)）を使う decompose モード。`null`（デフォルト）では既定のペナルティを使います。型の違う値を渡すと `TypeError` をスローします。
+- `Lindera\Mode::fromStr($name)` -- 名前が `$name` のモード。`'normal'` か、既定のペナルティを使う `'decompose'` です。Rust の `Mode` と同じく大文字と小文字を区別し、`'Normal'` などほかの名前では `ValueError` をスローします。
 
 ```php
-$mode = new Lindera\Mode('normal');
-$mode = new Lindera\Mode('decompose');
-$mode = new Lindera\Mode();  // デフォルト: 'normal'
+<?php
+
+$normal = Lindera\Mode::normal();
+$decompose = Lindera\Mode::decompose();  // 既定のペナルティ
+$custom = Lindera\Mode::decompose(new Lindera\Penalty(kanji_penalty_length_penalty: 0));
+$parsed = Lindera\Mode::fromStr('decompose');  // 既定のペナルティ
+
+try {
+    Lindera\Mode::fromStr('Normal');
+} catch (ValueError $e) {
+    echo get_class($e), ': ', $e->getMessage(), "\n";
+    // ValueError: LinderaError(kind=Mode, source=Invalid mode: Normal)
+}
 ```
 
 ### Mode プロパティ
@@ -333,6 +347,9 @@ $mode = new Lindera\Mode();  // デフォルト: 'normal'
 | プロパティ | 型 | 説明 |
 | --- | --- | --- |
 | `name` | `string` | モード名（`"normal"` または `"decompose"`） |
+| `penalty` | `Penalty\|null` | decompose モードのペナルティ。normal モードでは `null` |
+
+モードは変更できません。プロパティに代入すると `Exception` をスローします。`$penalty` は読み出すたびに新しいコピーを返すため、`decompose()` に渡した `Lindera\Penalty` とは `==` で等しくなりますが、`===` では等しくなりません。
 
 ### Mode メソッド
 
@@ -340,6 +357,43 @@ $mode = new Lindera\Mode();  // デフォルト: 'normal'
 | --- | --- | --- |
 | `isNormal()` | `bool` | Normal モードの場合 `true` |
 | `isDecompose()` | `bool` | Decompose モードの場合 `true` |
+| `__toString()` | `string` | モード名（`$name` と同じ） |
+
+```php
+<?php
+
+$penalty = new Lindera\Penalty(kanji_penalty_length_penalty: 0);
+$mode = Lindera\Mode::decompose($penalty);
+echo $mode->name, ' ', $mode->penalty->kanji_penalty_length_penalty, "\n";
+// decompose 0
+var_dump($mode->penalty == $penalty, $mode->penalty === $penalty);
+// bool(true)
+// bool(false)
+echo Lindera\Mode::normal(), "\n";
+// normal
+var_dump(Lindera\Mode::normal()->penalty);
+// NULL
+```
+
+### Mode の比較
+
+`==` は、Rust の `Mode` の `==` と同じく、名前とペナルティを比べます。`===` が成り立つのは同じオブジェクトどうしだけです。モードは名前に変換されるため、文字列との `==` は名前だけを比べます。decompose モードは、ペナルティによらず `'decompose'` と `==` で等しくなります。ほかのクラスのオブジェクトは、モードと `==` で等しくなりません。
+
+```php
+<?php
+
+$decompose = Lindera\Mode::decompose();
+$custom = Lindera\Mode::decompose(new Lindera\Penalty(kanji_penalty_length_penalty: 0));
+
+var_dump(Lindera\Mode::fromStr('decompose') == $decompose);
+// bool(true)
+var_dump($custom == $decompose);
+// bool(false)
+var_dump($custom == 'decompose');
+// bool(true)
+var_dump(Lindera\Mode::normal() === Lindera\Mode::normal());
+// bool(false)
+```
 
 ## Penalty
 
@@ -368,7 +422,7 @@ $penalty = new Lindera\Penalty(
 
 ### Penalty の使い方
 
-`Penalty` は `'decompose'` と一緒に [`setMode()`](#setmodemode-penalty) か [`Tokenizer` のコンストラクタ](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty-penalty) に渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。
+`Penalty` は [`Lindera\Mode::decompose()`](#mode-の作成) に渡し、そのモードを [`setMode()`](#setmodemode) か [`Tokenizer` のコンストラクタ](#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty) に渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。
 
 ```php
 <?php
@@ -379,17 +433,15 @@ $surfaces = static fn (array $tokens): string => implode(' / ', array_map(static
 
 $builder = new Lindera\TokenizerBuilder();
 $builder->setDictionary('embedded://ipadic');
-$builder->setMode('decompose');
+$builder->setMode(Lindera\Mode::decompose());
 echo $surfaces($builder->build()->tokenize($text)), "\n";
 // 関西 / 国際 / 空港 / 限定 / トートバッグ
 
-$builder->setMode('decompose', $penalty);
+$builder->setMode(Lindera\Mode::decompose($penalty));
 echo $surfaces($builder->build()->tokenize($text)), "\n";
 // 関西国際空港 / 限定 / トートバッグ
 
-$tokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ipadic'), 'decompose', penalty: $penalty);
+$tokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('embedded://ipadic'), Lindera\Mode::decompose($penalty));
 echo $surfaces($tokenizer->tokenize($text)), "\n";
 // 関西国際空港 / 限定 / トートバッグ
 ```
-
-`'normal'` モードと一緒に `Penalty` を渡すと `ValueError` をスローします。

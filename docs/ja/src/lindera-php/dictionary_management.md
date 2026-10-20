@@ -58,7 +58,7 @@ $userDictionary = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 $userDictionary = Lindera\Dictionary::loadUserFor('/path/to/user_dictionary.csv', $dictionary);
 
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal(), $userDictionary);
 ```
 
 または、ビルダー経由で設定します：

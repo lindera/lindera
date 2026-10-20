@@ -28,7 +28,7 @@ Lindera の WebAssembly 版
 パッケージは `web` ターゲットでビルドされているため、使用前にデフォルトエクスポートの非同期初期化関数（下記の `__wbg_init`）を必ず呼び出してください。
 
 ```js
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import __wbg_init, { Mode, TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 import { downloadDictionary, loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 async function main() {
@@ -46,7 +46,7 @@ async function main() {
 
     const builder = new TokenizerBuilder();
     builder.setDictionaryInstance(dict);
-    builder.setMode("normal");
+    builder.setMode(Mode.normal());
     const tokenizer = builder.build();
 
     const tokens = tokenizer.tokenize("すもももももももものうち");

@@ -55,7 +55,7 @@ php -d extension=/path/to/liblindera_php.so your_script.php
 
 ```php
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal());
 $tokens = $tokenizer->tokenize('関西国際空港');
 
 foreach ($tokens as $token) {
@@ -87,7 +87,7 @@ echo json_encode(array_map(fn($t) => $t->toArray(), $tokens));
 ```php
 $builder = new Lindera\TokenizerBuilder();
 $builder->setDictionary('/path/to/ipadic');
-$builder->setMode('decompose');
+$builder->setMode(Lindera\Mode::decompose());
 $tokenizer = $builder->build();
 ```
 
@@ -129,8 +129,8 @@ foreach ($results as $result) {
 | `Lindera\NbestResult` | N-Best トークナイズ結果 |
 | `Lindera\Dictionary` | 形態素辞書: `load()`、`loadUser()`、`loadUserFor()`、`build()`、`buildUser()`、`buildUserFor()`、`version()` |
 | `Lindera\UserDictionary` | ユーザー定義辞書 |
-| `Lindera\Mode` | トークナイズモード |
-| `Lindera\Penalty` | Decompose モードのペナルティ |
+| `Lindera\Mode` | トークナイズモード: `normal()`、`decompose()`、`fromStr()` |
+| `Lindera\Penalty` | Decompose モードのペナルティ（`Mode::decompose()` に渡す） |
 | `Lindera\Metadata` | 辞書メタデータ |
 | `Lindera\Schema` | 辞書スキーマ |
 | `Lindera\FieldDefinition` | スキーマフィールド定義 |

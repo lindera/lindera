@@ -111,7 +111,7 @@ Lindera.build_dictionary('/tmp/dictionary_source', '/tmp/dictionary', metadata)
 # Step 4: Use the trained dictionary
 builder = Lindera::TokenizerBuilder.new
 builder.set_dictionary('/tmp/dictionary')
-builder.set_mode('normal')
+builder.set_mode(Lindera::Mode.normal)
 tokenizer = builder.build
 
 tokens = tokenizer.tokenize('形態素解析のテスト')

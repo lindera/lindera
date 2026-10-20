@@ -57,7 +57,7 @@ require "lindera"
 dictionary = Lindera.load_dictionary("/path/to/ipadic")
 
 # Create a tokenizer
-tokenizer = Lindera::Tokenizer.new(dictionary, "normal", nil)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.normal, nil)
 
 # Tokenize text
 tokens = tokenizer.tokenize("関西国際空港")
@@ -87,7 +87,7 @@ JSON.generate(tokens.map(&:to_h))
 require "lindera"
 
 builder = Lindera::TokenizerBuilder.new
-builder.set_mode("normal")
+builder.set_mode(Lindera::Mode.normal)
 builder.set_dictionary("/path/to/ipadic")
 
 # Add filters

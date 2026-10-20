@@ -125,10 +125,10 @@ const tokenizer = builder.build();
 以下の例では、複数の文字フィルタとトークンフィルタを1つのパイプラインに組み合わせています：
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { Mode, TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("embedded://ipadic");
 // Preprocessing
 builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });

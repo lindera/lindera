@@ -117,7 +117,7 @@ lindera.build_dictionary("/tmp/dictionary_source", "/tmp/dictionary", metadata)
 tokenizer = (
     lindera.TokenizerBuilder()
     .set_dictionary("/tmp/dictionary")
-    .set_mode("normal")
+    .set_mode(lindera.Mode.normal())
     .build()
 )
 

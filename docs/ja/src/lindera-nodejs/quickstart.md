@@ -7,10 +7,10 @@
 トークナイザーの作成には `TokenizerBuilder` の使用を推奨します：
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { Mode, TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("/path/to/ipadic");
 const tokenizer = builder.build();
 
@@ -35,10 +35,10 @@ for (const token of tokens) {
 すべてのセッターはビルダー自身（`this`）を返すため、設定をチェーンして記述できます：
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { Mode, TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
-  .setMode("normal")
+  .setMode(Mode.normal())
   .setDictionary("/path/to/ipadic")
   .build();
 
@@ -97,10 +97,10 @@ Lindera Node.js には TypeScript の型定義が同梱されています。す�
 
 ```typescript
 import type { Token } from "lindera";
-import { TokenizerBuilder } from "lindera";
+import { Mode, TokenizerBuilder } from "lindera";
 
 const builder = new TokenizerBuilder();
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 builder.setDictionary("/path/to/ipadic");
 const tokenizer = builder.build();
 

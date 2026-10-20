@@ -57,7 +57,7 @@ require 'lindera'
 dictionary = Lindera.load_dictionary('/path/to/ipadic')
 user_dict = Lindera.load_user_dictionary_for('/path/to/user_dictionary.csv', dictionary)
 
-tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
+tokenizer = Lindera::Tokenizer.new(dictionary, Lindera::Mode.normal, user_dict)
 ```
 
 または、ビルダー経由で設定します：

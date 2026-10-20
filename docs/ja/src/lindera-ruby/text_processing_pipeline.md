@@ -139,7 +139,7 @@ tokenizer = builder.build
 require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
-builder.set_mode('normal')
+builder.set_mode(Lindera::Mode.normal)
 builder.set_dictionary('embedded://ipadic')
 
 # Preprocessing

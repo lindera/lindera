@@ -65,12 +65,12 @@ user_dict = load_user_dictionary("/path/to/user_dictionary.csv", metadata)
 トークナイザーのビルド時にユーザー辞書を渡します：
 
 ```python
-from lindera import Tokenizer, load_dictionary, load_user_dictionary_for
+from lindera import Mode, Tokenizer, load_dictionary, load_user_dictionary_for
 
 dictionary = load_dictionary("/path/to/ipadic")
 user_dict = load_user_dictionary_for("/path/to/user_dictionary.csv", dictionary)
 
-tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dict)
+tokenizer = Tokenizer(dictionary, mode=Mode.normal(), user_dictionary=user_dict)
 ```
 
 または、ビルダー経由で設定します：

@@ -90,14 +90,13 @@ This command builds the library with development settings (debug build).
 ### Basic Tokenization
 
 ```python
-from lindera.dictionary import load_dictionary
-from lindera.tokenizer import Tokenizer
+from lindera import Mode, Tokenizer, load_dictionary
 
 # Load dictionary from a local path (download from GitHub Releases)
 dictionary = load_dictionary("/path/to/ipadic")
 
 # Create a tokenizer
-tokenizer = Tokenizer(dictionary, mode="normal")
+tokenizer = Tokenizer(dictionary, mode=Mode.normal())
 
 # Tokenize Japanese text
 text = "すもももももももものうち"
@@ -125,11 +124,11 @@ json.dumps([token.to_dict() for token in tokens])
 ### Using Character Filters
 
 ```python
-from lindera import TokenizerBuilder
+from lindera import Mode, TokenizerBuilder
 
 # Create tokenizer builder
 builder = TokenizerBuilder()
-builder.set_mode("normal")
+builder.set_mode(Mode.normal())
 builder.set_dictionary("/path/to/ipadic")
 
 # Add character filters
@@ -145,11 +144,11 @@ tokens = tokenizer.tokenize(text)  # Will apply filters automatically
 ### Using Token Filters
 
 ```python
-from lindera import TokenizerBuilder
+from lindera import Mode, TokenizerBuilder
 
 # Create tokenizer builder
 builder = TokenizerBuilder()
-builder.set_mode("normal")
+builder.set_mode(Mode.normal())
 builder.set_dictionary("/path/to/ipadic")
 
 # Add token filters
@@ -167,11 +166,11 @@ tokens = tokenizer.tokenize("テキストの解析")
 ### Integrated Pipeline
 
 ```python
-from lindera import TokenizerBuilder
+from lindera import Mode, TokenizerBuilder
 
 # Build tokenizer with integrated filters
 builder = TokenizerBuilder()
-builder.set_mode("normal")
+builder.set_mode(Mode.normal())
 builder.set_dictionary("/path/to/ipadic")
 
 # Add character filters
@@ -326,6 +325,7 @@ See `examples/train_and_export.py` for a complete example.
 
 - `TokenizerBuilder`: Fluent builder for tokenizer configuration
 - `Tokenizer`: Main tokenization engine
+- `Mode`: Tokenization mode: normal, or decompose with a `Penalty`
 - `Token`: Individual token with text, position, and linguistic features
 - `CharacterFilter`: Text preprocessing filters
 - `TokenFilter`: Token post-processing filters

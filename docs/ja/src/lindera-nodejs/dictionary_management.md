@@ -61,12 +61,12 @@ const userDict = loadUserDictionary("/path/to/user_dictionary.csv", metadata);
 トークナイザーのビルド時にユーザー辞書を渡します：
 
 ```javascript
-const { Tokenizer, loadDictionary, loadUserDictionaryFor } = require("lindera");
+const { Mode, Tokenizer, loadDictionary, loadUserDictionaryFor } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
 const userDict = loadUserDictionaryFor("/path/to/user_dictionary.csv", dictionary);
 
-const tokenizer = new Tokenizer(dictionary, "normal", userDict);
+const tokenizer = new Tokenizer(dictionary, Mode.normal(), userDict);
 ```
 
 または、ビルダー経由で設定します：

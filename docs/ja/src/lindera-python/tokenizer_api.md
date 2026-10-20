@@ -31,18 +31,21 @@ builder = TokenizerBuilder().from_file("lindera.yml")
 
 すべてのセッターメソッドはメソッドチェーンのために `self` を返します。
 
-#### `set_mode(mode, penalty=None)`
+#### `set_mode(mode)`
 
-トークナイズモードを設定します。
+トークナイズモードを設定します。`mode` は [`Mode`](#mode) です：
 
-- `"normal"` -- 標準的なトークナイズ（デフォルト）
-- `"decompose"` -- 複合語をより小さな単位に分解
+- `Mode.normal()` -- 標準的なトークナイズ（デフォルト）
+- `Mode.decompose(penalty=None)` -- [`Penalty`](#penalty) の長さのペナルティを使い、複合語をより小さな単位に分解。`None` では既定のペナルティを使います
 
-`penalty` は `"decompose"` モードが使う [`Penalty`](#penalty) です。`None`（デフォルト）では既定のペナルティを使います。`"normal"` とペナルティを一緒に渡すと `ValueError` が、`Penalty` でない値を渡すと `TypeError` が送出されます。
+文字列 `"normal"` など `Mode` でない値を渡すと `TypeError` が送出されます。設定値のようにモードを名前で指定するときは、[`Mode.from_str()`](#modefrom_strname) で `Mode` を作成します。
 
 ```python
-builder.set_mode("normal")
-builder.set_mode("decompose", Penalty(kanji_penalty_length_penalty=0))
+from lindera import Mode, Penalty
+
+builder.set_mode(Mode.normal())
+builder.set_mode(Mode.decompose(Penalty(kanji_penalty_length_penalty=0)))
+builder.set_mode(Mode.from_str("decompose"))
 ```
 
 #### `set_dictionary(path)`
@@ -151,19 +154,19 @@ tokenizer = builder.build()
 
 ### Tokenizer の作成
 
-#### `Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None, penalty=None)`
+#### `Tokenizer(dictionary, mode=None, user_dictionary=None, space_penalty=None)`
 
 読み込み済みの辞書から直接トークナイザーを作成します。
 
+`mode` には、[`TokenizerBuilder.set_mode`](#set_modemode) と同じく [`Mode`](#mode) を渡します。`None`（デフォルト）は normal モードです。文字列 `"normal"` などそれ以外の値を渡すと `TypeError` が送出されます。
+
 `space_penalty` には [`TokenizerBuilder.set_space_penalty`](#set_space_penaltyvalue) と同じ値を渡せます。`None`（デフォルト）では辞書が同梱する左側空白ペナルティのルールを使うため、ko-dic ではペナルティがオンになります。オフにするには `False` を渡します。不正な設定では、`set_space_penalty` や `build()` と同じエラーが送出されます。
 
-`penalty` には、[`TokenizerBuilder.set_mode`](#set_modemode-penaltynone) と同じく `"decompose"` モードの [`Penalty`](#penalty) を渡せます。エラーも `set_mode` と同じです。
-
 ```python
-from lindera import Tokenizer, load_dictionary
+from lindera import Mode, Tokenizer, load_dictionary
 
 dictionary = load_dictionary("embedded://ipadic")
-tokenizer = Tokenizer(dictionary, mode="normal")
+tokenizer = Tokenizer(dictionary, mode=Mode.normal())
 
 # 左側空白ペナルティなしの ko-dic
 ko_tokenizer = Tokenizer(load_dictionary("embedded://ko-dic"), space_penalty=False)
@@ -227,48 +230,84 @@ for tokens, cost in results:
 
 ## Mode
 
-`Mode` はトークナイズモードを表します。モードの確認や比較のためのスタンドアロンな
-ヘルパーとして提供されています。`TokenizerBuilder.set_mode()` と `Tokenizer` の
-コンストラクタは、`Mode` インスタンスではなく単純なモード文字列
-（`"normal"` または `"decompose"`）を受け取ります。decompose モードのペナルティは、
-それぞれの `penalty` 引数で渡します（下記 [`Penalty`](#penalty) を参照）。
+`Mode` は、[`TokenizerBuilder.set_mode()`](#set_modemode) と [`Tokenizer` のコンストラクタ](#tokenizerdictionary-modenone-user_dictionarynone-space_penaltynone) が受け取るトークナイズモードです。Rust の `lindera::mode::Mode` に対応し、normal モードか、[`Penalty`](#penalty) を持つ decompose モードのどちらかを表します。
 
 ### Mode の作成
 
-#### `Mode(mode_str=None)`
+`Mode` にはコンストラクタがないため、`Mode()` は `TypeError` を送出します。`Mode.Normal` や `Mode.Decompose` という属性もありません。モードは次のスタティックメソッドで作成します。
 
-`Mode` を作成します。`"normal"` / `"Normal"`（省略時のデフォルト）または
-`"decompose"` / `"Decompose"` を受け付けます。それ以外の値を指定すると
-`ValueError` が発生します。
+#### `Mode.normal()`
+
+normal モード（標準的なトークナイズ）を返します。
+
+#### `Mode.decompose(penalty=None)`
+
+decompose モードを返します。decompose モードは長い語のコストに `penalty` の長さのペナルティを加算し、複合語をより小さな単位に分解します。`None`（デフォルト）では既定のペナルティ `Penalty()` を使います。`Penalty` でない値を渡すと `TypeError` が送出されます。
+
+#### `Mode.from_str(name)`
+
+Rust の `Mode` と同じ規則で名前を解釈し、`name` という名前のモードを返します。`"normal"` は normal モード、`"decompose"` は既定のペナルティを持つ decompose モードです。設定値のように実行時に読み込むモード名に使います。名前は大文字と小文字を区別し、`"Normal"` などそれ以外の名前ではメッセージに `Invalid mode` を含む `ValueError` が送出されます。`str` でない値を渡すと `TypeError` が送出されます。
 
 ```python
-from lindera import Mode
+from lindera import Mode, Penalty
 
-mode = Mode("normal")
-mode = Mode("decompose")
-mode = Mode()  # デフォルトは "normal"
+normal = Mode.normal()
+decompose = Mode.decompose()
+whole_words = Mode.decompose(Penalty(kanji_penalty_length_penalty=0, other_penalty_length_penalty=0))
+from_name = Mode.from_str("decompose")  # Mode.decompose() と等しい
 ```
+
+### Mode のプロパティ
+
+どちらのプロパティも読み取り専用です：
+
+| プロパティ | 型 | 説明 |
+| --- | --- | --- |
+| `name` | `str` | `"normal"` または `"decompose"` |
+| `penalty` | `Penalty` または `None` | decompose モードのペナルティのコピー。normal モードでは `None` |
 
 ### メソッド
 
 | メソッド | 戻り値 | 説明 |
 | --- | --- | --- |
-| `__str__()` | `str` | `"normal"` または `"decompose"` |
-| `__repr__()` | `str` | 例: `"Mode.Normal"` |
-| `is_normal()` | `bool` | モードが `"normal"` の場合 `True` |
-| `is_decompose()` | `bool` | モードが `"decompose"` の場合 `True` |
+| `__str__()` | `str` | モードの名前（`"normal"` または `"decompose"`） |
+| `__repr__()` | `str` | `"Mode.normal()"`、またはペナルティを含む `Mode.decompose(...)` |
+| `__eq__(other)` | `bool` | `other` が名前とペナルティの等しい `Mode` の場合 `True` |
+| `is_normal()` | `bool` | normal モードの場合 `True` |
+| `is_decompose()` | `bool` | decompose モードの場合 `True` |
 
 ```python
-mode = Mode("decompose")
-str(mode)            # "decompose"
-repr(mode)           # "Mode.Decompose"
-mode.is_normal()      # False
-mode.is_decompose()   # True
+mode = Mode.decompose()
+mode.name              # 'decompose'
+mode.penalty           # Penalty(kanji_threshold=2, kanji_penalty=3000, other_threshold=7, other_penalty=1700)
+str(mode)              # 'decompose'
+repr(mode)             # 'Mode.decompose(Penalty(kanji_threshold=2, kanji_penalty=3000, other_threshold=7, other_penalty=1700))'
+mode.is_normal()       # False
+mode.is_decompose()    # True
+Mode.normal().penalty  # None
+repr(Mode.normal())    # 'Mode.normal()'
+```
+
+2 つのモードは、Rust の `Mode` と同じく、名前とペナルティが等しいときに等しくなります。文字列 `"normal"` など、ほかの型の値とは等しくなりません：
+
+```python
+Mode.from_str("decompose") == Mode.decompose()                               # True
+Mode.decompose() == Mode.decompose(Penalty(kanji_penalty_length_penalty=0))  # False
+Mode.normal() == "normal"                                                    # False
+```
+
+`Mode` は変更できません。プロパティに代入すると `AttributeError` が送出されます。`penalty` はコピーを返すため、返された `Penalty` を変更してもモードは変わりません。`Mode.decompose()` も、受け取った `Penalty` のコピーを保持します。また、Rust の `Mode` が `Eq` を実装し `Hash` を実装しないのと同じく、`Mode` はハッシュ化できません。`hash(mode)` は `TypeError` を送出するため、`Mode` を `dict` のキーや `set` の要素にはできません。
+
+```python
+mode = Mode.decompose()
+penalty = mode.penalty
+penalty.kanji_penalty_length_penalty = 0
+mode.penalty.kanji_penalty_length_penalty  # 3000
 ```
 
 ## Penalty
 
-`Penalty` は `"decompose"` モードのセグメンテーションで使用される、長さに基づく
+`Penalty` は decompose モードのセグメンテーションで使用される、長さに基づく
 ペナルティの閾値を設定します。
 
 ### Penalty の作成
@@ -306,29 +345,29 @@ print(penalty.kanji_penalty_length_threshold)  # 3
 
 ### Penalty の使い方
 
-`Penalty` は `"decompose"` と一緒に [`TokenizerBuilder.set_mode()`](#set_modemode-penaltynone) か [`Tokenizer` のコンストラクタ](#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone) に渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。
+`Penalty` は [`Mode.decompose()`](#modedecomposepenaltynone) に渡し、そのモードを [`TokenizerBuilder.set_mode()`](#set_modemode) か [`Tokenizer` のコンストラクタ](#tokenizerdictionary-modenone-user_dictionarynone-space_penaltynone) に渡します。長さのペナルティをなくすと、decompose モードでも長い語が分割されずに残ります。
 
 ```python
-from lindera import Penalty, Tokenizer, TokenizerBuilder, load_dictionary
+from lindera import Mode, Penalty, Tokenizer, TokenizerBuilder, load_dictionary
 
 text = "関西国際空港限定トートバッグ"
 penalty = Penalty(kanji_penalty_length_penalty=0, other_penalty_length_penalty=0)
 
 builder = TokenizerBuilder().set_dictionary("embedded://ipadic")
-tokenizer = builder.set_mode("decompose").build()
+tokenizer = builder.set_mode(Mode.decompose()).build()
 print([token.surface for token in tokenizer.tokenize(text)])
 # ['関西', '国際', '空港', '限定', 'トートバッグ']
 
-tokenizer = builder.set_mode("decompose", penalty).build()
+tokenizer = builder.set_mode(Mode.decompose(penalty)).build()
 print([token.surface for token in tokenizer.tokenize(text)])
 # ['関西国際空港', '限定', 'トートバッグ']
 
-tokenizer = Tokenizer(load_dictionary("embedded://ipadic"), mode="decompose", penalty=penalty)
+tokenizer = Tokenizer(load_dictionary("embedded://ipadic"), mode=Mode.decompose(penalty))
 print([token.surface for token in tokenizer.tokenize(text)])
 # ['関西国際空港', '限定', 'トートバッグ']
 ```
 
-`"normal"` モードと一緒に `Penalty` を渡すと `ValueError` が送出されます。
+normal モードはペナルティを持ちません。`Mode.normal()` は引数を取りません。
 
 ## Token
 

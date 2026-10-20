@@ -23,7 +23,7 @@ OPFS やその他のブラウザストレージに保存された辞書を `load
 - **戻り値**: `Dictionary`
 
 ```javascript
-import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm';
+import { loadDictionaryFromBytes, Mode, TokenizerBuilder } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 // OPFS から辞書ファイルを読み込む
@@ -45,7 +45,7 @@ const dictionary = loadDictionaryFromBytes(
 // TokenizerBuilder で使用
 const builder = new TokenizerBuilder();
 builder.setDictionaryInstance(dictionary);
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 ```
 
@@ -81,17 +81,17 @@ const dictionary = loadDictionary("embedded://ipadic");
 ```javascript
 const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 ```
 
 ### Tokenizer コンストラクタでの使用
 
 ```javascript
-import { loadDictionary, Tokenizer } from 'lindera-wasm-ipadic';
+import { loadDictionary, Mode, Tokenizer } from 'lindera-wasm-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
-const tokenizer = new Tokenizer(dictionary, "normal");
+const tokenizer = new Tokenizer(dictionary, Mode.normal());
 ```
 
 ## Dictionary クラス
@@ -108,7 +108,7 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 
 ```javascript
 console.log(dictionary.name);     // "ipadic"
-console.log(dictionary.encoding); // "utf-8"
+console.log(dictionary.encoding); // "UTF-8"
 ```
 
 ## ユーザー辞書
@@ -164,7 +164,7 @@ const userDict = loadUserDictionaryBinFromBytes(binBytes);
 ### Tokenizer でのユーザー辞書の使用
 
 ```javascript
-import { loadDictionaryFromBytes, loadUserDictionaryFromBytesFor, Tokenizer } from 'lindera-wasm';
+import { loadDictionaryFromBytes, loadUserDictionaryFromBytesFor, Mode, Tokenizer } from 'lindera-wasm';
 import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
@@ -176,7 +176,7 @@ const dictionary = loadDictionaryFromBytes(
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
 const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
-const tokenizer = new Tokenizer(dictionary, "normal", userDict);
+const tokenizer = new Tokenizer(dictionary, Mode.normal(), userDict);
 ```
 
 ### ユーザー辞書の CSV フォーマット

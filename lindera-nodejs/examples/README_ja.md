@@ -40,7 +40,7 @@ cd lindera-nodejs
 node examples/tokenize.js
 ```
 
-埋め込み IPADIC 辞書を使用し、"normal" モードで日本語テキストをトークナイズします。
+埋め込み IPADIC 辞書を使用し、normal モード（`Mode.normal()`）で日本語テキストをトークナイズします。
 
 ### Decompose モード
 
@@ -48,7 +48,7 @@ node examples/tokenize.js
 node examples/tokenize_with_decompose.js
 ```
 
-"decompose" モードでトークナイズし、複合形態素を分解します。
+decompose モード（`Mode.decompose()`）でトークナイズし、複合形態素を分解します。
 
 ### フィルター付きトークナイズ
 

@@ -99,6 +99,7 @@ const {
   exportModel,
   buildDictionary,
   Metadata,
+  Mode,
   TokenizerBuilder,
 } = require("lindera");
 
@@ -129,7 +130,7 @@ buildDictionary("/tmp/dictionary_source", "/tmp/dictionary", metadata);
 // Step 4: Use the trained dictionary
 const builder = new TokenizerBuilder();
 builder.setDictionary("/tmp/dictionary");
-builder.setMode("normal");
+builder.setMode(Mode.normal());
 const tokenizer = builder.build();
 
 const tokens = tokenizer.tokenize("形態素解析のテスト");

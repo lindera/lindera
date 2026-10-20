@@ -7,10 +7,10 @@
 トークナイザーの作成には `TokenizerBuilder` の使用を推奨します：
 
 ```python
-from lindera import TokenizerBuilder
+from lindera import Mode, TokenizerBuilder
 
 builder = TokenizerBuilder()
-builder.set_mode("normal")
+builder.set_mode(Mode.normal())
 builder.set_dictionary("/path/to/ipadic")
 tokenizer = builder.build()
 
@@ -26,7 +26,7 @@ for token in tokens:
 ```text
 関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    UNK
+トートバッグ    名詞,一般,*,*,*,*,*,*,*
 ```
 
 ## メソッドチェーン
@@ -34,11 +34,11 @@ for token in tokens:
 `TokenizerBuilder` は簡潔な設定のためにメソッドチェーンをサポートしています：
 
 ```python
-from lindera import TokenizerBuilder
+from lindera import Mode, TokenizerBuilder
 
 tokenizer = (
     TokenizerBuilder()
-    .set_mode("normal")
+    .set_mode(Mode.normal())
     .set_dictionary("/path/to/ipadic")
     .build()
 )

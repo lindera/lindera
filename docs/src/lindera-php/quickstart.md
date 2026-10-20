@@ -13,7 +13,7 @@ Load a dictionary, create a tokenizer, and tokenize text:
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 
 // Create a tokenizer
-$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+$tokenizer = new Lindera\Tokenizer($dictionary, Lindera\Mode::normal());
 
 // Tokenize the text
 $tokens = $tokenizer->tokenize('関西国際空港限定トートバッグ');
@@ -40,7 +40,7 @@ Expected output:
 <?php
 
 $builder = new Lindera\TokenizerBuilder();
-$builder->setMode('normal');
+$builder->setMode(Lindera\Mode::normal());
 $builder->setDictionary('/path/to/ipadic');
 $tokenizer = $builder->build();
 

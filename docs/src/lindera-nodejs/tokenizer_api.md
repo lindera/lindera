@@ -30,18 +30,21 @@ See [`lindera-nodejs/resources/lindera.yml`](https://github.com/lindera/lindera/
 
 All setter methods return the builder itself (`this`), so they can be chained or called one statement at a time.
 
-#### `setMode(mode, penalty?)`
+#### `setMode(mode)`
 
-Sets the tokenization mode.
+Sets the tokenization mode, a [`Mode`](#mode):
 
-- `"normal"` -- Standard tokenization (default)
-- `"decompose"` -- Decomposes compound words into smaller units
+- `Mode.normal()` -- Standard tokenization (default)
+- `Mode.decompose(penalty?)` -- Decomposes compound words into smaller units, with the [`Penalty`](#penalty) the mode holds
 
-`penalty` is the [`Penalty`](#penalty) object that `"decompose"` mode uses; `null` or `undefined` (the default) uses the default penalty. A penalty with `"normal"` throws, as an invalid mode does, and a value that is not an object, or a field that is not an integer in its range, throws an `InvalidArg` error.
+A value that is not a `Mode`, such as the mode name `"normal"`, throws an `InvalidArg` error. A mode name read at run time, such as a setting, becomes a `Mode` with [`Mode.fromStr()`](#modefromstrname).
 
 ```javascript
-builder.setMode("normal");
-builder.setMode("decompose", { kanjiPenaltyLengthPenalty: 0 });
+const { Mode } = require("lindera");
+
+builder.setMode(Mode.normal());
+builder.setMode(Mode.decompose({ kanjiPenaltyLengthPenalty: 0 }));
+builder.setMode(Mode.fromStr("decompose"));
 ```
 
 #### `setDictionary(path)`
@@ -124,7 +127,7 @@ builder.setSpacePenalty(null);
 ```
 
 > [!NOTE]
-> Since v6.1.0, ko-dic applies the left-space penalty by default, because its `metadata.json` ships mecab-ko-dic's rules. This changes the Korean output (for example, `이` in `검색 이 잘 된다` is the interjection `IC` with the penalty and the subject particle `JKS` without it). Call `setSpacePenalty(false)` to turn it off. For a `Tokenizer` created directly, pass `false` as the fourth argument: `new Tokenizer(dictionary, "normal", null, false)`. A ko-dic downloaded from the v6.0.0 release ships no rules, so with it the penalty stays off and `setSpacePenalty(true)` makes `build()` throw. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
+> Since v6.1.0, ko-dic applies the left-space penalty by default, because its `metadata.json` ships mecab-ko-dic's rules. This changes the Korean output (for example, `이` in `검색 이 잘 된다` is the interjection `IC` with the penalty and the subject particle `JKS` without it). Call `setSpacePenalty(false)` to turn it off. For a `Tokenizer` created directly, pass `false` as the fourth argument: `new Tokenizer(dictionary, Mode.normal(), null, false)`. A ko-dic downloaded from the v6.0.0 release ships no rules, so with it the penalty stays off and `setSpacePenalty(true)` makes `build()` throw. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) for details.
 
 #### `appendCharacterFilter(kind, args?)`
 
@@ -160,22 +163,22 @@ const tokenizer = builder.build();
 
 ### Creating a Tokenizer
 
-#### `new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?, penalty?)`
+#### `new Tokenizer(dictionary, mode?, userDictionary?, spacePenalty?)`
 
 Creates a tokenizer directly from a loaded dictionary.
 
+`mode` takes a [`Mode`](#mode), as [`setMode`](#setmodemode) does, with the same errors. `null` or `undefined` (the default) is normal mode. For decompose mode with a custom penalty, pass `Mode.decompose(penalty)`.
+
 `spacePenalty` takes the same values as [`setSpacePenalty`](#setspacepenaltyvalue). `null` or `undefined` (the default) uses the left-space penalty rules the dictionary ships. An invalid setting throws, as `setSpacePenalty` and `build()` do.
 
-`penalty` takes a [`Penalty`](#penalty) for `"decompose"` mode, as [`setMode`](#setmodemode-penalty) does, with the same errors.
-
 ```javascript
-const { Tokenizer, loadDictionary } = require("lindera");
+const { Mode, Tokenizer, loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("embedded://ipadic");
-const tokenizer = new Tokenizer(dictionary, "normal");
+const tokenizer = new Tokenizer(dictionary, Mode.normal());
 
 // ko-dic without the left-space penalty
-const koTokenizer = new Tokenizer(loadDictionary("embedded://ko-dic"), "normal", null, false);
+const koTokenizer = new Tokenizer(loadDictionary("embedded://ko-dic"), Mode.normal(), null, false);
 ```
 
 ### Tokenizer Methods
@@ -274,15 +277,86 @@ The structure of `details` depends on the dictionary:
 
 ## Mode and Penalty
 
-`TokenizerBuilder.setMode()` and the `Tokenizer` constructor take the mode as a plain string
-(`"normal"` or `"decompose"`) and the penalty of decompose mode as a [`Penalty`](#penalty) object.
+`TokenizerBuilder.setMode()` and the `Tokenizer` constructor take the mode as a [`Mode`](#mode), which holds the penalty of decompose mode as a [`Penalty`](#penalty).
 
 ### `Mode`
 
-A string enum with two values:
+The tokenization mode: normal, or decompose with a [`Penalty`](#penalty). It is the counterpart of the Rust `lindera::mode::Mode` (see [Segmenter](../lindera/segmenter.md#tokenization-modes)), and [`setMode()`](#setmodemode) and the [`Tokenizer` constructor](#new-tokenizerdictionary-mode-userdictionary-spacepenalty) take it:
 
-- `Mode.Normal` -- standard dictionary-cost-based tokenization
-- `Mode.Decompose` -- penalty-based decomposition of compound words
+- Normal mode -- standard dictionary-cost-based tokenization
+- Decompose mode -- penalty-based decomposition of compound words
+
+`Mode` has no constructor, so `new Mode()` throws; the static factories below create a mode. A mode cannot be changed.
+
+#### `Mode.normal()`
+
+Creates normal mode.
+
+```javascript
+const { Mode } = require("lindera");
+
+const mode = Mode.normal();
+```
+
+#### `Mode.decompose(penalty?)`
+
+Creates decompose mode with `penalty`, a [`Penalty`](#penalty) object. `null` or `undefined` (the default) uses the default penalty, and a field left out keeps its default. A value that is not an object, or a field that is not an integer in its range, throws an `InvalidArg` error.
+
+```javascript
+const decompose = Mode.decompose(); // the default penalty
+const custom = Mode.decompose({ kanjiPenaltyLengthPenalty: 0 });
+```
+
+#### `Mode.fromStr(name)`
+
+Creates a mode from its name, as the Rust `Mode` parses one: `"normal"` is normal mode, and `"decompose"` is decompose mode with the default penalty. The name is case sensitive; any other name, including `"Normal"` and `"Decompose"`, throws an `Error` whose message contains `Invalid mode`. Use it for a mode name read at run time, such as a setting:
+
+```javascript
+const mode = Mode.fromStr("decompose");
+console.log(mode.equals(Mode.decompose()));
+// true
+```
+
+#### Properties and Methods
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | The name of the mode, `"normal"` or `"decompose"` (a read-only property) |
+| `penalty` | `Penalty \| null` | The penalty of decompose mode, as a copy with every field set, or `null` for normal mode (a read-only property). Changing the copy does not change the mode |
+| `isNormal()` | `boolean` | Whether this is normal mode |
+| `isDecompose()` | `boolean` | Whether this is decompose mode |
+| `equals(other)` | `boolean` | Whether `other` has the same name and penalty. A value that is not a `Mode` throws an `InvalidArg` error |
+| `toString()` | `string` | The name of the mode, as `name` |
+
+`===` compares objects, not modes: each call of `Mode.normal()` returns a new object, so compare modes with `equals`.
+
+```javascript
+const { Mode } = require("lindera");
+
+const mode = Mode.decompose({ kanjiPenaltyLengthPenalty: 0 });
+console.log(mode.name, mode.isNormal(), mode.isDecompose());
+// decompose false true
+
+// A copy with every field set: the field left out has its default
+const penalty = mode.penalty;
+console.log(penalty.kanjiPenaltyLengthPenalty, penalty.otherPenaltyLengthPenalty);
+// 0 1700
+
+// Changing the copy does not change the mode
+penalty.otherPenaltyLengthPenalty = 0;
+console.log(mode.penalty.otherPenaltyLengthPenalty);
+// 1700
+
+console.log(Mode.normal().penalty);
+// null
+
+console.log(Mode.decompose().equals(Mode.fromStr("decompose")));
+// true
+console.log(mode.equals(Mode.decompose()));
+// false
+console.log(`${Mode.normal()}`);
+// normal
+```
 
 ### `Penalty`
 
@@ -295,25 +369,26 @@ A plain object (the TypeScript type `Penalty`) with the penalty parameters of de
 | `otherPenaltyLengthThreshold` | `number` | Length threshold for other character sequences before a penalty is applied, an integer 0 or more (default: `7`) |
 | `otherPenaltyLengthPenalty` | `number` | Penalty value for long other-character sequences, a 32-bit signed integer (default: `1700`) |
 
-Pass it with `"decompose"` to [`setMode()`](#setmodemode-penalty) or to the [`Tokenizer` constructor](#new-tokenizerdictionary-mode-userdictionary-spacepenalty-penalty). Without length penalties, decompose mode keeps long words whole:
+Pass it to [`Mode.decompose()`](#modedecomposepenalty), and the mode to [`setMode()`](#setmodemode) or to the [`Tokenizer` constructor](#new-tokenizerdictionary-mode-userdictionary-spacepenalty). Without length penalties, decompose mode keeps long words whole, as normal mode does:
 
 ```javascript
-const { Tokenizer, TokenizerBuilder, loadDictionary } = require("lindera");
+const { Mode, Tokenizer, TokenizerBuilder, loadDictionary } = require("lindera");
 
 const text = "関西国際空港限定トートバッグ";
 const penalty = { kanjiPenaltyLengthPenalty: 0, otherPenaltyLengthPenalty: 0 };
 const surfaces = (tokenizer) => tokenizer.tokenize(text).map((token) => token.surface);
 
 const builder = new TokenizerBuilder().setDictionary("embedded://ipadic");
-console.log(surfaces(builder.setMode("decompose").build()));
-// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
-
-console.log(surfaces(builder.setMode("decompose", penalty).build()));
+console.log(surfaces(builder.setMode(Mode.normal()).build()));
 // [ '関西国際空港', '限定', 'トートバッグ' ]
 
-const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), "decompose", null, null, penalty);
+console.log(surfaces(builder.setMode(Mode.decompose()).build()));
+// [ '関西', '国際', '空港', '限定', 'トートバッグ' ]
+
+console.log(surfaces(builder.setMode(Mode.decompose(penalty)).build()));
+// [ '関西国際空港', '限定', 'トートバッグ' ]
+
+const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), Mode.decompose(penalty));
 console.log(surfaces(tokenizer));
 // [ '関西国際空港', '限定', 'トートバッグ' ]
 ```
-
-A penalty with `"normal"` mode throws.

@@ -30,18 +30,21 @@ builder = TokenizerBuilder().from_file("lindera.yml")
 
 All setter methods return `self` for method chaining.
 
-#### `set_mode(mode, penalty=None)`
+#### `set_mode(mode)`
 
-Sets the tokenization mode.
+Sets the tokenization mode. `mode` is a [`Mode`](#mode):
 
-- `"normal"` -- Standard tokenization (default)
-- `"decompose"` -- Decomposes compound words into smaller units
+- `Mode.normal()` -- Standard tokenization (default)
+- `Mode.decompose(penalty=None)` -- Decomposes compound words into smaller units, with the length penalties of a [`Penalty`](#penalty); `None` uses the default penalty
 
-`penalty` is the [`Penalty`](#penalty) that `"decompose"` mode uses; `None` (the default) uses the default penalty. A penalty with `"normal"` raises `ValueError`, and a value that is not a `Penalty` raises `TypeError`.
+A value that is not a `Mode`, such as the string `"normal"`, raises `TypeError`. To set a mode from its name, such as a configuration value, create it with [`Mode.from_str()`](#modefrom_strname).
 
 ```python
-builder.set_mode("normal")
-builder.set_mode("decompose", Penalty(kanji_penalty_length_penalty=0))
+from lindera import Mode, Penalty
+
+builder.set_mode(Mode.normal())
+builder.set_mode(Mode.decompose(Penalty(kanji_penalty_length_penalty=0)))
+builder.set_mode(Mode.from_str("decompose"))
 ```
 
 #### `set_dictionary(path)`
@@ -150,19 +153,19 @@ tokenizer = builder.build()
 
 ### Creating a Tokenizer
 
-#### `Tokenizer(dictionary, mode="normal", user_dictionary=None, space_penalty=None, penalty=None)`
+#### `Tokenizer(dictionary, mode=None, user_dictionary=None, space_penalty=None)`
 
 Creates a tokenizer directly from a loaded dictionary.
 
+`mode` takes a [`Mode`](#mode), as [`TokenizerBuilder.set_mode`](#set_modemode) does; `None` (the default) is normal mode. Any other value, such as the string `"normal"`, raises `TypeError`.
+
 `space_penalty` takes the same values as [`TokenizerBuilder.set_space_penalty`](#set_space_penaltyvalue). `None` (the default) uses the left-space penalty rules the dictionary ships, so with ko-dic the penalty is on; pass `False` to turn it off. An invalid setting raises the same errors as `set_space_penalty` and `build()`.
 
-`penalty` takes a [`Penalty`](#penalty) for `"decompose"` mode, as [`TokenizerBuilder.set_mode`](#set_modemode-penaltynone) does, with the same errors.
-
 ```python
-from lindera import Tokenizer, load_dictionary
+from lindera import Mode, Tokenizer, load_dictionary
 
 dictionary = load_dictionary("embedded://ipadic")
-tokenizer = Tokenizer(dictionary, mode="normal")
+tokenizer = Tokenizer(dictionary, mode=Mode.normal())
 
 # ko-dic without the left-space penalty
 ko_tokenizer = Tokenizer(load_dictionary("embedded://ko-dic"), space_penalty=False)
@@ -226,48 +229,85 @@ for tokens, cost in results:
 
 ## Mode
 
-`Mode` represents a tokenization mode. It is provided as a standalone helper for
-inspecting or comparing modes; `TokenizerBuilder.set_mode()` and the `Tokenizer`
-constructor take a plain mode string (`"normal"` or `"decompose"`), not a `Mode`
-instance. The penalty of decompose mode goes in their `penalty` argument (see
-[`Penalty`](#penalty) below).
+`Mode` is the tokenization mode that [`TokenizerBuilder.set_mode()`](#set_modemode) and the [`Tokenizer` constructor](#tokenizerdictionary-modenone-user_dictionarynone-space_penaltynone) take. It is the counterpart of the Rust `lindera::mode::Mode`: normal mode, or decompose mode with its [`Penalty`](#penalty).
 
 ### Creating a Mode
 
-#### `Mode(mode_str=None)`
+`Mode` has no constructor, so `Mode()` raises `TypeError`, and it has no `Mode.Normal` or `Mode.Decompose` attributes. Create a mode with one of the following static methods.
 
-Creates a `Mode`. Accepts `"normal"` / `"Normal"` (the default when omitted) or
-`"decompose"` / `"Decompose"`; any other value raises `ValueError`.
+#### `Mode.normal()`
+
+Returns normal mode: standard tokenization.
+
+#### `Mode.decompose(penalty=None)`
+
+Returns decompose mode, which adds the length penalties of `penalty` to the cost of long words, so that compound words are decomposed into smaller units. `None` (the default) uses the default penalty, `Penalty()`. A value that is not a `Penalty` raises `TypeError`.
+
+#### `Mode.from_str(name)`
+
+Returns the mode named `name`, as the Rust `Mode` parses a name: `"normal"` for normal mode, and `"decompose"` for decompose mode with the default penalty. Use it for a mode name read at run time, such as a configuration value. The name is case sensitive: any other name, such as `"Normal"`, raises `ValueError` with the message `Invalid mode`. A value that is not a `str` raises `TypeError`.
 
 ```python
-from lindera import Mode
+from lindera import Mode, Penalty
 
-mode = Mode("normal")
-mode = Mode("decompose")
-mode = Mode()  # defaults to "normal"
+normal = Mode.normal()
+decompose = Mode.decompose()
+whole_words = Mode.decompose(Penalty(kanji_penalty_length_penalty=0, other_penalty_length_penalty=0))
+from_name = Mode.from_str("decompose")  # equal to Mode.decompose()
 ```
+
+### Mode Properties
+
+Both properties are read-only:
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `name` | `str` | `"normal"` or `"decompose"` |
+| `penalty` | `Penalty` or `None` | A copy of the penalty of decompose mode; `None` for normal mode |
 
 ### Methods
 
 | Method | Returns | Description |
 | --- | --- | --- |
-| `__str__()` | `str` | `"normal"` or `"decompose"` |
-| `__repr__()` | `str` | e.g. `"Mode.Normal"` |
-| `is_normal()` | `bool` | `True` if the mode is `"normal"` |
-| `is_decompose()` | `bool` | `True` if the mode is `"decompose"` |
+| `__str__()` | `str` | The name: `"normal"` or `"decompose"` |
+| `__repr__()` | `str` | `"Mode.normal()"`, or `Mode.decompose(...)` with the penalty |
+| `__eq__(other)` | `bool` | `True` if `other` is a `Mode` with the same name and penalty |
+| `is_normal()` | `bool` | `True` for normal mode |
+| `is_decompose()` | `bool` | `True` for decompose mode |
 
 ```python
-mode = Mode("decompose")
-str(mode)            # "decompose"
-repr(mode)           # "Mode.Decompose"
-mode.is_normal()      # False
-mode.is_decompose()   # True
+mode = Mode.decompose()
+mode.name              # 'decompose'
+mode.penalty           # Penalty(kanji_threshold=2, kanji_penalty=3000, other_threshold=7, other_penalty=1700)
+str(mode)              # 'decompose'
+repr(mode)             # 'Mode.decompose(Penalty(kanji_threshold=2, kanji_penalty=3000, other_threshold=7, other_penalty=1700))'
+mode.is_normal()       # False
+mode.is_decompose()    # True
+Mode.normal().penalty  # None
+repr(Mode.normal())    # 'Mode.normal()'
+```
+
+Two modes are equal when their names and penalties are, as the Rust `Mode` compares them. A `Mode` is never equal to a value of another type, such as the string `"normal"`:
+
+```python
+Mode.from_str("decompose") == Mode.decompose()                               # True
+Mode.decompose() == Mode.decompose(Penalty(kanji_penalty_length_penalty=0))  # False
+Mode.normal() == "normal"                                                    # False
+```
+
+A `Mode` cannot be changed. Setting a property raises `AttributeError`, and `penalty` returns a copy, so changing the returned `Penalty` leaves the mode as it was; `Mode.decompose()` keeps a copy of the `Penalty` it is given as well. A `Mode` is not hashable, as the Rust `Mode` implements `Eq` but not `Hash`: `hash(mode)` raises `TypeError`, so a `Mode` cannot be a `dict` key or a `set` member.
+
+```python
+mode = Mode.decompose()
+penalty = mode.penalty
+penalty.kanji_penalty_length_penalty = 0
+mode.penalty.kanji_penalty_length_penalty  # 3000
 ```
 
 ## Penalty
 
-`Penalty` configures the length-based penalty thresholds used by `"decompose"`
-mode segmentation.
+`Penalty` configures the length-based penalty thresholds used by decompose mode
+segmentation.
 
 ### Creating a Penalty
 
@@ -304,29 +344,29 @@ print(penalty.kanji_penalty_length_threshold)  # 3
 
 ### Using a Penalty
 
-Pass a `Penalty` with `"decompose"` to [`TokenizerBuilder.set_mode()`](#set_modemode-penaltynone) or to the [`Tokenizer` constructor](#tokenizerdictionary-modenormal-user_dictionarynone-space_penaltynone-penaltynone). Without length penalties, decompose mode keeps long words whole:
+Pass a `Penalty` to [`Mode.decompose()`](#modedecomposepenaltynone), and the mode to [`TokenizerBuilder.set_mode()`](#set_modemode) or to the [`Tokenizer` constructor](#tokenizerdictionary-modenone-user_dictionarynone-space_penaltynone). Without length penalties, decompose mode keeps long words whole:
 
 ```python
-from lindera import Penalty, Tokenizer, TokenizerBuilder, load_dictionary
+from lindera import Mode, Penalty, Tokenizer, TokenizerBuilder, load_dictionary
 
 text = "関西国際空港限定トートバッグ"
 penalty = Penalty(kanji_penalty_length_penalty=0, other_penalty_length_penalty=0)
 
 builder = TokenizerBuilder().set_dictionary("embedded://ipadic")
-tokenizer = builder.set_mode("decompose").build()
+tokenizer = builder.set_mode(Mode.decompose()).build()
 print([token.surface for token in tokenizer.tokenize(text)])
 # ['関西', '国際', '空港', '限定', 'トートバッグ']
 
-tokenizer = builder.set_mode("decompose", penalty).build()
+tokenizer = builder.set_mode(Mode.decompose(penalty)).build()
 print([token.surface for token in tokenizer.tokenize(text)])
 # ['関西国際空港', '限定', 'トートバッグ']
 
-tokenizer = Tokenizer(load_dictionary("embedded://ipadic"), mode="decompose", penalty=penalty)
+tokenizer = Tokenizer(load_dictionary("embedded://ipadic"), mode=Mode.decompose(penalty))
 print([token.surface for token in tokenizer.tokenize(text)])
 # ['関西国際空港', '限定', 'トートバッグ']
 ```
 
-A `Penalty` with `"normal"` mode raises `ValueError`.
+Normal mode has no penalty: `Mode.normal()` takes no arguments.
 
 ## Token
 

@@ -132,11 +132,11 @@ tokenizer = (
 以下の例では、複数の文字フィルタとトークンフィルタを1つのパイプラインに組み合わせています：
 
 ```python
-from lindera import TokenizerBuilder
+from lindera import Mode, TokenizerBuilder
 
 tokenizer = (
     TokenizerBuilder()
-    .set_mode("normal")
+    .set_mode(Mode.normal())
     .set_dictionary("embedded://ipadic")
     # Preprocessing
     .append_character_filter("unicode_normalize", {"kind": "nfkc"})

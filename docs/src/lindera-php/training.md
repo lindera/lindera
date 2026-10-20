@@ -116,7 +116,7 @@ Lindera\Dictionary::build('/tmp/dictionary_source', '/tmp/dictionary', $metadata
 // Step 4: Use the trained dictionary
 $builder = new Lindera\TokenizerBuilder();
 $builder->setDictionary('/tmp/dictionary');
-$builder->setMode('normal');
+$builder->setMode(Lindera\Mode::normal());
 $tokenizer = $builder->build();
 
 $tokens = $tokenizer->tokenize('形態素解析のテスト');

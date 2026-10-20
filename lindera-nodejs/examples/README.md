@@ -40,7 +40,7 @@ cd lindera-nodejs
 node examples/tokenize.js
 ```
 
-Tokenizes Japanese text using the embedded IPADIC dictionary in "normal" mode.
+Tokenizes Japanese text using the embedded IPADIC dictionary in normal mode (`Mode.normal()`).
 
 ### Decompose mode
 
@@ -48,7 +48,7 @@ Tokenizes Japanese text using the embedded IPADIC dictionary in "normal" mode.
 node examples/tokenize_with_decompose.js
 ```
 
-Tokenizes text in "decompose" mode, which decomposes compound morphemes.
+Tokenizes text in decompose mode (`Mode.decompose()`), which decomposes compound morphemes.
 
 ### Tokenization with filters
 
