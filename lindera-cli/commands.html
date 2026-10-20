@@ -351,7 +351,7 @@ EOS
 </code></pre>
 <h4 id="tokenize-with-external-cc-cedict-chinese-dictionary"><a class="header" href="#tokenize-with-external-cc-cedict-chinese-dictionary">Tokenize with external CC-CEDICT (Chinese dictionary)</a></h4>
 <pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
-  --dict /tmp/lindera-cc-cedict-0.1.0-20200409
+  --dict /tmp/lindera-cc-cedict-0.1.0-20261021
 </code></pre>
 <pre><code class="language-text">可以    *,*,*,*,ke3 yi3,可以,可以,can/may/possible/able to/not bad/pretty good/
 进行    *,*,*,*,jin4 xing2,進行,进行,to advance/to conduct/underway/in progress/to do/to carry out/to carry on/to execute/
@@ -728,12 +728,12 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
   --context-id-freq ./lindera-unidic/context_id_freq.txt
 </code></pre>
 <h4 id="build-cc-cedict-chinese-dictionary"><a class="header" href="#build-cc-cedict-chinese-dictionary">Build CC-CEDICT (Chinese dictionary)</a></h4>
-<pre><code class="language-shell">% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz"
-% tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz -C /tmp
+<pre><code class="language-shell">% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz"
+% tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz -C /tmp
 
 % lindera build \
-  --src /tmp/CC-CEDICT-MeCab-0.1.0-20200409 \
-  --dest /tmp/lindera-cc-cedict-0.1.0-20200409 \
+  --src /tmp/CC-CEDICT-MeCab-0.1.0-20261021 \
+  --dest /tmp/lindera-cc-cedict-0.1.0-20261021 \
   --metadata ./lindera-cc-cedict/metadata.json
 </code></pre>
 <h4 id="build-jieba-chinese-dictionary"><a class="header" href="#build-jieba-chinese-dictionary">Build Jieba (Chinese dictionary)</a></h4>
