@@ -156,19 +156,20 @@ fn hashtable_to_value(ht: &ZendHashTable, depth: usize) -> Result<Value, Convert
 
 /// An optional PHP argument: `null`, omitted, or a value that `T` accepts.
 ///
-/// ext-php-rs converts an `Option<T>` argument with
-/// `Some(T::from_zval(zval))`, so a value that `T` rejects becomes `None`
-/// and the method silently runs with its default (lindera/lindera#1173).
+/// ext-php-rs before 0.16.3 converted an `Option<T>` argument with
+/// `Some(T::from_zval(zval))`, so a value that `T` rejects became `None`
+/// and the method silently ran with its default (lindera/lindera#1173).
 /// This conversion fails for such a value instead, so ext-php-rs throws the
-/// `Exception` ("Invalid value given for argument") it throws for a required
+/// `TypeError` ("Invalid value given for argument") it throws for a required
 /// parameter.
 ///
 /// PHP sees the same parameter as for `Option<T>`, `?T $x = null`: since
 /// ext-php-rs 0.16, nullability and the `null` default come from
 /// [`FromZval::NULLABLE`] and [`FromZval::from_missing`], not from the
-/// spelling `Option<...>`. Use `Option<T>` again once ext-php-rs rejects such
-/// values itself
-/// ([extphprs/ext-php-rs#819](https://github.com/extphprs/ext-php-rs/issues/819)).
+/// spelling `Option<...>`. ext-php-rs 0.16.3 rejects such values for
+/// `Option<T>` itself
+/// ([extphprs/ext-php-rs#819](https://github.com/extphprs/ext-php-rs/issues/819)),
+/// so `Option<T>` can replace this type.
 #[derive(Debug)]
 pub struct Nullable<T>(Option<T>);
 

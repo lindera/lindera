@@ -1032,17 +1032,21 @@ v6.2.0 までの PHP バインディングは、省略可能な引数に渡さ�
 v7.0.0 では、省略可能な引数もこのような値を拒否します。対象は、`Mode`・`Penalty`・
 `Metadata`・`FieldDefinition`・`Tokenizer` のコンストラクタと、
 `Tokenizer::tokenizeNbest()`・`Trainer::train()`・`Trainer::export()`・
-`Dictionary::buildUser()` の省略可能な引数です。呼び出しは、必須の引数と同じ
-`Exception`（`Invalid value given for argument` に続けて引数の名前）を投げます。
+`Dictionary::buildUser()` の省略可能な引数です。呼び出しは `TypeError`
+（`Invalid value given for argument` に続けて引数の名前）を投げます。必須の引数も、
+このような値には同じ `TypeError` を投げるようになりました。v6 は同じメッセージの
+`Exception` を投げていました。
 `null` を渡すか引数を省略すれば、これまでどおり既定値になります。
 `Trainer::train()` の `$lambda` は、PHP の `float` の引数と同じく、`float` に
 加えて `int` も受け付けるようになりました。v6 はここでも `int` を `null` として
 扱っていました。
 
 各引数には宣言された型の値を渡し、文字列で届く値は `(int) $argv[1]` のように
-キャストしてください（[引数の型](lindera-php.md#引数の型)を参照）。`mixed` と
-宣言した引数、ほかのバインディング・CLI・ライブラリは変わりません。v6 の動作に
-戻す設定はありません。
+キャストしてください（[引数の型](lindera-php.md#引数の型)を参照）。このような値を
+`catch (Exception $e)` で扱っていたコードは、`TypeError` を捕まえるように
+書き換えてください。`TypeError` は `Error` の子クラスで、`Exception` の子クラスでは
+ありません。`mixed` と宣言した引数、ほかのバインディング・CLI・ライブラリは
+変わりません。v6 の動作に戻す設定はありません。
 
 ## バインディング: 範囲外の整数の引数を拒否する
 

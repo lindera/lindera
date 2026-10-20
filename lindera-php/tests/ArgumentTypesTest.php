@@ -7,12 +7,12 @@ use PHPUnit\Framework\TestCase;
 /**
  * Typed optional parameters reject a value of another type (lindera/lindera#1173).
  *
- * ext-php-rs reads such a value as `null` for an `Option<T>` parameter, so a
- * mistyped argument used to select the default silently. lindera-php declares
- * these parameters as `Nullable<T>`, which fails the conversion instead:
- * ext-php-rs then throws the `Exception` it throws for a required parameter
- * ("Invalid value given for argument"). `null` and an omitted argument still
- * select the default.
+ * ext-php-rs before 0.16.3 read such a value as `null` for an `Option<T>`
+ * parameter, so a mistyped argument used to select the default silently.
+ * lindera-php declares these parameters as `Nullable<T>`, which fails the
+ * conversion instead: ext-php-rs then throws the `TypeError` it throws for a
+ * required parameter ("Invalid value given for argument"). `null` and an
+ * omitted argument still select the default.
  */
 class ArgumentTypesTest extends TestCase
 {
@@ -161,10 +161,10 @@ class ArgumentTypesTest extends TestCase
                     $calls[$key]($value);
                     $failures[] = "{$label}: accepted";
                 } catch (\Throwable $e) {
-                    // Exactly Exception, as for a required parameter; not an
-                    // Error such as the ValueError of the missing files, which
-                    // would mean the argument was taken.
-                    if ($e::class !== \Exception::class || !str_contains($e->getMessage(), $expected)) {
+                    // Exactly TypeError, as for a required parameter; not
+                    // another Error such as the ValueError of the missing
+                    // files, which would mean the argument was taken.
+                    if ($e::class !== \TypeError::class || !str_contains($e->getMessage(), $expected)) {
                         $failures[] = "{$label}: " . $e::class . ': ' . $e->getMessage();
                     }
                 }
