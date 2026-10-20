@@ -4,11 +4,11 @@ Lindera Morphological Analyzer
 
 This software includes a binary and/or source version of data from
 
-  CC-CEDICT-MeCab-0.1.0-20200409
+  CC-CEDICT-MeCab-0.1.0-20261021
 
 which can be obtained from
 
-  https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz
+  https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz
 
 ===========================================================================
 CC-CEDICT-MeCab Notice
