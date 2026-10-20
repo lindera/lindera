@@ -4,7 +4,7 @@
 
 ```shell
 % echo "可以进行中文形态学分析。" | lindera tokenize \
-  --dict /tmp/lindera-cc-cedict-0.1.0-20200409
+  --dict /tmp/lindera-cc-cedict-0.1.0-20261021
 ```
 
 ```text

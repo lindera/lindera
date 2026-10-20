@@ -4087,6 +4087,61 @@ mod tests {
         assert_skip_whitespace_keeps_output("embedded://cc-cedict");
     }
 
+    /// #1128: CC-CEDICT keeps a run of Latin letters, kana or digits in one
+    /// word. Its unknown words cost 400, so more of them cost more, and its
+    /// entries made only of Latin letters or only of digits (`T`, `cos`,
+    /// `PK`, `88`) cost one less, so they win only for exactly their own
+    /// characters. Before, every unknown word cost -3200 and such an entry
+    /// ended inside longer runs: `The` gave `T he` and `カラオケ` four
+    /// one-character words. The expected tokens are MeCab's with the same
+    /// dictionary.
+    #[test]
+    #[cfg(feature = "embed-cc-cedict")]
+    fn test_cc_cedict_keeps_runs_of_latin_letters_kana_and_digits() {
+        use std::borrow::Cow;
+
+        use crate::dictionary::load_dictionary;
+        use crate::mode::Mode;
+        use crate::segmenter::Segmenter;
+
+        let dictionary = load_dictionary("embedded://cc-cedict").unwrap();
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+        let cases: [(&str, &[&str]); 9] = [
+            ("The", &["The"]),
+            ("TBS", &["TBS"]),
+            ("Python", &["Python"]),
+            ("カラオケ", &["カラオケ"]),
+            (
+                "这个cost太高了。",
+                &["这个", "cost", "太", "高", "了", "。"],
+            ),
+            ("他花了8800元。", &["他", "花", "了", "8800", "元", "。"]),
+            // An entry that mixes a Latin letter and a character beats the
+            // unknown letter next to the character.
+            ("他穿着一件T恤。", &["他", "穿着", "一", "件", "T恤", "。"]),
+            // The entry `〇` beats the unknown symbol that groups `〇` with
+            // the numerals after it (#1162).
+            ("二〇二六年", &["二", "〇", "二", "六", "年"]),
+            (
+                "两个队PK了一场。",
+                &["两", "个", "队", "PK", "了", "一", "场", "。"],
+            ),
+        ];
+        for (text, expected) in cases {
+            let tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
+            let surfaces: Vec<&str> = tokens.iter().map(|token| token.surface.as_ref()).collect();
+            assert_eq!(surfaces, expected, "{text:?}");
+        }
+
+        // `PK` is the dictionary entry, with its pinyin, not an unknown word.
+        let mut tokens = segmenter
+            .segment(Cow::Borrowed("两个队PK了一场。"))
+            .unwrap();
+        let pk = &mut tokens[3];
+        assert!(!pk.word_id.is_unknown());
+        assert_eq!(pk.details()[4], "P K");
+    }
+
     /// SudachiDict keeps whitespace in the lattice by default, as Sudachi
     /// does and as its costs assume: its metadata sets `skip_whitespace` to
     /// `false`. A multi-word entry such as `caramel man` then stays one

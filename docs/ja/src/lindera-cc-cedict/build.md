@@ -5,11 +5,11 @@
 CC-CEDICT-MeCab のソースファイルをダウンロード・展開し、辞書をビルドします:
 
 ```shell
-% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz"
-% tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz -C /tmp
+% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz"
+% tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz -C /tmp
 % lindera build \
-  --src /tmp/CC-CEDICT-MeCab-0.1.0-20200409 \
-  --dest /tmp/lindera-cc-cedict-0.1.0-20200409 \
+  --src /tmp/CC-CEDICT-MeCab-0.1.0-20261021 \
+  --dest /tmp/lindera-cc-cedict-0.1.0-20261021 \
   --metadata ./lindera-cc-cedict/metadata.json
 ```
 

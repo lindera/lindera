@@ -4,13 +4,13 @@ use lindera_dictionary::assets::{FetchParams, build_embedded_dictionary};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let fetch_params = FetchParams {
-        file_name: "CC-CEDICT-MeCab-0.1.0-20200409.tar.gz",
-        input_dir: "CC-CEDICT-MeCab-0.1.0-20200409",
+        file_name: "CC-CEDICT-MeCab-0.1.0-20261021.tar.gz",
+        input_dir: "CC-CEDICT-MeCab-0.1.0-20261021",
         src_subdir: None,
         output_dir: "lindera-cc-cedict",
         dummy_input: "测试,0,0,-1131,*,*,*,*,ce4 shi4,測試,测试,to test (machinery etc)/to test (students)/test/quiz/exam/beta (software)/\n",
-        download_urls: &["https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz"],
-        md5_hash: "aba9748b70f37feede97b70c5d37f8a0",
+        download_urls: &["https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz"],
+        md5_hash: "0b369904e0af2318b0b2ee3bdc9030f7",
     };
 
     build_embedded_dictionary(cfg!(feature = "embed-cc-cedict"), fetch_params)
