@@ -1169,15 +1169,18 @@ required parameter already rejected such a value.</p>
 <p>v7.0.0 rejects it for the optional parameters too: those of the <code>Mode</code>,
 <code>Penalty</code>, <code>Metadata</code>, <code>FieldDefinition</code> and <code>Tokenizer</code> constructors, of
 <code>Tokenizer::tokenizeNbest()</code>, <code>Trainer::train()</code>, <code>Trainer::export()</code> and
-<code>Dictionary::buildUser()</code>. The call throws the <code>Exception</code> that a required
-parameter throws, <code>Invalid value given for argument</code> followed by the
-parameter's name. <code>null</code> and leaving the argument out still select the
-default. <code>$lambda</code> of <code>Trainer::train()</code> now takes an <code>int</code> as well as a
-<code>float</code>, as a PHP <code>float</code> parameter does; v6 read an <code>int</code> there as <code>null</code>
-too.</p>
+<code>Dictionary::buildUser()</code>. The call throws a <code>TypeError</code>,
+<code>Invalid value given for argument</code> followed by the parameter's name. A
+required parameter now throws the same <code>TypeError</code> for such a value; v6
+threw an <code>Exception</code> with the same message. <code>null</code> and leaving the argument
+out still select the default. <code>$lambda</code> of <code>Trainer::train()</code> now takes an
+<code>int</code> as well as a <code>float</code>, as a PHP <code>float</code> parameter does; v6 read an
+<code>int</code> there as <code>null</code> too.</p>
 <p>Pass each argument its declared type, and cast values that arrive as
 strings, such as <code>(int) $argv[1]</code> (see
-<a href="lindera-php.html#argument-types">Argument types</a>). The parameters declared
+<a href="lindera-php.html#argument-types">Argument types</a>). Code that catches such a
+value with <code>catch (Exception $e)</code> must catch <code>TypeError</code> instead: a
+<code>TypeError</code> is an <code>Error</code>, not an <code>Exception</code>. The parameters declared
 <code>mixed</code>, the other bindings, the CLI and the library do not change. No
 option restores the v6 behavior.</p>
 <h2 id="bindings-integer-arguments-outside-their-range-are-rejected"><a class="header" href="#bindings-integer-arguments-outside-their-range-are-rejected">Bindings: integer arguments outside their range are rejected</a></h2>

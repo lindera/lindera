@@ -1071,16 +1071,20 @@ v6 の動作に戻す設定はありません。必要なら、v6 が無視し�
 <p>v7.0.0 では、省略可能な引数もこのような値を拒否します。対象は、<code>Mode</code>・<code>Penalty</code>・
 <code>Metadata</code>・<code>FieldDefinition</code>・<code>Tokenizer</code> のコンストラクタと、
 <code>Tokenizer::tokenizeNbest()</code>・<code>Trainer::train()</code>・<code>Trainer::export()</code>・
-<code>Dictionary::buildUser()</code> の省略可能な引数です。呼び出しは、必須の引数と同じ
-<code>Exception</code>（<code>Invalid value given for argument</code> に続けて引数の名前）を投げます。
+<code>Dictionary::buildUser()</code> の省略可能な引数です。呼び出しは <code>TypeError</code>
+（<code>Invalid value given for argument</code> に続けて引数の名前）を投げます。必須の引数も、
+このような値には同じ <code>TypeError</code> を投げるようになりました。v6 は同じメッセージの
+<code>Exception</code> を投げていました。
 <code>null</code> を渡すか引数を省略すれば、これまでどおり既定値になります。
 <code>Trainer::train()</code> の <code>$lambda</code> は、PHP の <code>float</code> の引数と同じく、<code>float</code> に
 加えて <code>int</code> も受け付けるようになりました。v6 はここでも <code>int</code> を <code>null</code> として
 扱っていました。</p>
 <p>各引数には宣言された型の値を渡し、文字列で届く値は <code>(int) $argv[1]</code> のように
-キャストしてください（<a href="lindera-php.html#%E5%BC%95%E6%95%B0%E3%81%AE%E5%9E%8B">引数の型</a>を参照）。<code>mixed</code> と
-宣言した引数、ほかのバインディング・CLI・ライブラリは変わりません。v6 の動作に
-戻す設定はありません。</p>
+キャストしてください（<a href="lindera-php.html#%E5%BC%95%E6%95%B0%E3%81%AE%E5%9E%8B">引数の型</a>を参照）。このような値を
+<code>catch (Exception $e)</code> で扱っていたコードは、<code>TypeError</code> を捕まえるように
+書き換えてください。<code>TypeError</code> は <code>Error</code> の子クラスで、<code>Exception</code> の子クラスでは
+ありません。<code>mixed</code> と宣言した引数、ほかのバインディング・CLI・ライブラリは
+変わりません。v6 の動作に戻す設定はありません。</p>
 <h2 id="バインディング-範囲外の整数の引数を拒否する"><a class="header" href="#バインディング-範囲外の整数の引数を拒否する">バインディング: 範囲外の整数の引数を拒否する</a></h2>
 <p>v6.2.0 までの PHP・Node.js・WASM のバインディングは、整数の引数を設定の型に
 変換するときに値を折り返していたため、範囲外の値が黙って別の値になっていました。

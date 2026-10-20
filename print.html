@@ -5939,7 +5939,7 @@ end
 <li><strong>User dictionaries</strong>: Extend system dictionaries with custom vocabulary</li>
 </ul>
 <h2 id="argument-types"><a class="header" href="#argument-types">Argument types</a></h2>
-<p>A parameter with a declared type takes a value of that type only, with or without <code>declare(strict_types=1)</code>: an <code>int</code> parameter takes an <code>int</code>, not a numeric string or a float, and a <code>?Metadata</code> parameter takes a <code>Lindera\Metadata</code>. A <code>float</code> parameter also takes an <code>int</code>. For an optional parameter, such as <code>?int $cost_threshold = null</code>, <code>null</code> or leaving the argument out selects the default. Any other value throws an <code>Exception</code> that names the parameter. Cast values that arrive as strings, such as command-line arguments, to the declared type:</p>
+<p>A parameter with a declared type takes a value of that type only, with or without <code>declare(strict_types=1)</code>: an <code>int</code> parameter takes an <code>int</code>, not a numeric string or a float, and a <code>?Metadata</code> parameter takes a <code>Lindera\Metadata</code>. A <code>float</code> parameter also takes an <code>int</code>. For an optional parameter, such as <code>?int $cost_threshold = null</code>, <code>null</code> or leaving the argument out selects the default. Any other value throws a <code>TypeError</code> that names the parameter. Cast values that arrive as strings, such as command-line arguments, to the declared type:</p>
 <pre><code class="language-php">&lt;?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
@@ -5949,9 +5949,9 @@ $threshold = '5000'; // for example, from $argv or a configuration file
 
 try {
     $tokenizer-&gt;tokenizeNbest('東京都', 2, cost_threshold: $threshold);
-} catch (Exception $e) {
+} catch (TypeError $e) {
     echo get_class($e), ': ', $e-&gt;getMessage(), "\n";
-    // Exception: Invalid value given for argument `cost_threshold`.
+    // TypeError: Invalid value given for argument `cost_threshold`.
 }
 
 // Cast it to the declared type
@@ -11114,15 +11114,18 @@ required parameter already rejected such a value.</p>
 <p>v7.0.0 rejects it for the optional parameters too: those of the <code>Mode</code>,
 <code>Penalty</code>, <code>Metadata</code>, <code>FieldDefinition</code> and <code>Tokenizer</code> constructors, of
 <code>Tokenizer::tokenizeNbest()</code>, <code>Trainer::train()</code>, <code>Trainer::export()</code> and
-<code>Dictionary::buildUser()</code>. The call throws the <code>Exception</code> that a required
-parameter throws, <code>Invalid value given for argument</code> followed by the
-parameter's name. <code>null</code> and leaving the argument out still select the
-default. <code>$lambda</code> of <code>Trainer::train()</code> now takes an <code>int</code> as well as a
-<code>float</code>, as a PHP <code>float</code> parameter does; v6 read an <code>int</code> there as <code>null</code>
-too.</p>
+<code>Dictionary::buildUser()</code>. The call throws a <code>TypeError</code>,
+<code>Invalid value given for argument</code> followed by the parameter's name. A
+required parameter now throws the same <code>TypeError</code> for such a value; v6
+threw an <code>Exception</code> with the same message. <code>null</code> and leaving the argument
+out still select the default. <code>$lambda</code> of <code>Trainer::train()</code> now takes an
+<code>int</code> as well as a <code>float</code>, as a PHP <code>float</code> parameter does; v6 read an
+<code>int</code> there as <code>null</code> too.</p>
 <p>Pass each argument its declared type, and cast values that arrive as
 strings, such as <code>(int) $argv[1]</code> (see
-<a href="lindera-php.html#argument-types">Argument types</a>). The parameters declared
+<a href="lindera-php.html#argument-types">Argument types</a>). Code that catches such a
+value with <code>catch (Exception $e)</code> must catch <code>TypeError</code> instead: a
+<code>TypeError</code> is an <code>Error</code>, not an <code>Exception</code>. The parameters declared
 <code>mixed</code>, the other bindings, the CLI and the library do not change. No
 option restores the v6 behavior.</p>
 <h2 id="bindings-integer-arguments-outside-their-range-are-rejected"><a class="header" href="#bindings-integer-arguments-outside-their-range-are-rejected">Bindings: integer arguments outside their range are rejected</a></h2>
