@@ -213,7 +213,7 @@ builder.setMode(Mode.fromStr("decompose"));
 Use this when the dictionary has been loaded from bytes (e.g., via <code>loadDictionaryFromBytes()</code>) instead of from a URI.
 It replaces a dictionary set with <code>setDictionary()</code>: whichever of the two is called last sets the dictionary. Every other setting of the builder (the mode, <code>setUserDictionaryInstance()</code>, <code>setKeepWhitespace()</code>, <code>setSkipWhitespace()</code>, <code>setSpacePenalty()</code> and the appended filters) applies to it as to a dictionary set by URI.</p>
 <ul>
-<li><strong>Parameters</strong>: <code>dictionary</code> (Dictionary) -- A loaded dictionary object</li>
+<li><strong>Parameters</strong>: <code>dictionary</code> (Dictionary) -- A loaded dictionary object. It stays usable, so the same one can be passed to several tokenizers and builders.</li>
 <li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm';
@@ -230,7 +230,7 @@ builder.setDictionaryInstance(dictionary);
 <h4 id="setuserdictionaryinstanceuserdictionary"><a class="header" href="#setuserdictionaryinstanceuserdictionary"><code>setUserDictionaryInstance(userDictionary)</code></a></h4>
 <p>Sets a pre-loaded user dictionary instance. Load one from bytes with <code>loadUserDictionaryFromBytesFor()</code> or <code>loadUserDictionaryFromBytes()</code> (CSV) or <code>loadUserDictionaryBinFromBytes()</code> (prebuilt <code>.bin</code>); URI-based user dictionaries are not available on WebAssembly. The user dictionary applies to a dictionary set with either <code>setDictionary()</code> or <code>setDictionaryInstance()</code>.</p>
 <ul>
-<li><strong>Parameters</strong>: <code>userDictionary</code> (UserDictionary) -- A loaded user dictionary object</li>
+<li><strong>Parameters</strong>: <code>userDictionary</code> (UserDictionary) -- A loaded user dictionary object. It stays usable, so the same one can be passed to several tokenizers and builders.</li>
 <li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <h4 id="setkeepwhitespacekeep"><a class="header" href="#setkeepwhitespacekeep"><code>setKeepWhitespace(keep)</code></a></h4>
@@ -327,9 +327,9 @@ multiple tokenizers can be built from the same configuration.</p>
 <ul>
 <li><strong>Parameters</strong>:
 <ul>
-<li><code>dictionary</code> (Dictionary) -- A loaded dictionary object</li>
+<li><code>dictionary</code> (Dictionary) -- A loaded dictionary object. It stays usable, so the same one can be passed to several tokenizers and builders.</li>
 <li><code>mode</code> (Mode, optional) -- The <a href="#mode"><code>Mode</code></a>, as <a href="#setmodemode"><code>setMode()</code></a> takes it. <code>null</code> or <code>undefined</code> (the default) is normal mode. The <code>Mode</code> stays usable, so the same one can be passed to several tokenizers and builders. A value that is not a <code>Mode</code> throws <code>Error("expected instance of Mode")</code>.</li>
-<li><code>userDictionary</code> (UserDictionary, optional) -- A loaded user dictionary</li>
+<li><code>userDictionary</code> (UserDictionary, optional) -- A loaded user dictionary, or <code>null</code> or <code>undefined</code> (the default) for none. It stays usable, as <code>dictionary</code> does. A value that is not a <code>UserDictionary</code> throws <code>Error("expected instance of UserDictionary")</code>.</li>
 <li><code>spacePenalty</code> (boolean | object, optional) -- The left-space penalty, in the forms <a href="#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> accepts. <code>null</code> or <code>undefined</code> (the default) uses the rules the dictionary ships. An invalid setting throws an error string, as <code>setSpacePenalty()</code> and <code>build()</code> do.</li>
 </ul>
 </li>
@@ -417,7 +417,7 @@ const dict = loadDictionary("embedded://ipadic");
 <li><strong>Parameters</strong>:
 <ul>
 <li><code>csv</code> (Uint8Array) -- The user dictionary CSV content</li>
-<li><code>metadata</code> (Metadata) -- Metadata of the system dictionary the user dictionary will be used with (e.g. <code>dictionary.metadata</code>)</li>
+<li><code>metadata</code> (Metadata) -- Metadata of the system dictionary the user dictionary will be used with (e.g. <code>dictionary.metadata</code>). It stays usable, so the same one can be passed again.</li>
 </ul>
 </li>
 <li><strong>Returns</strong>: <code>UserDictionary</code></li>

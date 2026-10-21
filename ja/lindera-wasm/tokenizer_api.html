@@ -212,7 +212,7 @@ builder.setMode(Mode.fromStr("decompose"));
 URI の代わりにバイトデータから読み込んだ辞書（例: <code>loadDictionaryFromBytes()</code> 経由）を使用する場合に使います。
 <code>setDictionary()</code> で設定した辞書は、この辞書に置き換わります（2 つのうち最後に呼んだ方の辞書が使われます）。ビルダーのほかの設定（モード、<code>setUserDictionaryInstance()</code>、<code>setKeepWhitespace()</code>、<code>setSkipWhitespace()</code>、<code>setSpacePenalty()</code>、追加したフィルタ）は、URI で設定した辞書と同じようにこの辞書にも適用されます。</p>
 <ul>
-<li><strong>パラメータ</strong>: <code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト</li>
+<li><strong>パラメータ</strong>: <code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト。渡した辞書はそのまま使えるので、同じものを複数のトークナイザーやビルダーに渡せます。</li>
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm';
@@ -230,7 +230,7 @@ builder.setDictionaryInstance(dictionary);
 <h4 id="setuserdictionaryinstanceuserdictionary"><a class="header" href="#setuserdictionaryinstanceuserdictionary"><code>setUserDictionaryInstance(userDictionary)</code></a></h4>
 <p>読み込み済みのユーザー辞書インスタンスを設定します。<code>loadUserDictionaryFromBytesFor()</code> か <code>loadUserDictionaryFromBytes()</code>（CSV）、または <code>loadUserDictionaryBinFromBytes()</code>（ビルド済み <code>.bin</code>）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。ユーザー辞書は、<code>setDictionary()</code> と <code>setDictionaryInstance()</code> のどちらで設定した辞書にも適用されます。</p>
 <ul>
-<li><strong>パラメータ</strong>: <code>userDictionary</code> (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト</li>
+<li><strong>パラメータ</strong>: <code>userDictionary</code> (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト。渡したユーザー辞書はそのまま使えるので、同じものを複数のトークナイザーやビルダーに渡せます。</li>
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <h4 id="setkeepwhitespacekeep"><a class="header" href="#setkeepwhitespacekeep"><code>setKeepWhitespace(keep)</code></a></h4>
@@ -324,9 +324,9 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <ul>
 <li><strong>パラメータ</strong>:
 <ul>
-<li><code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト</li>
+<li><code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト。渡した辞書はそのまま使えるので、同じものを複数のトークナイザーやビルダーに渡せます。</li>
 <li><code>mode</code> (Mode, 省略可) -- <a href="#setmodemode"><code>setMode()</code></a> と同じ <a href="#mode"><code>Mode</code></a>。<code>null</code> または <code>undefined</code>（デフォルト）では normal モードになります。渡した <code>Mode</code> はそのまま使えるので、同じものを複数のトークナイザーやビルダーに渡せます。<code>Mode</code> でない値を渡すと、<code>Error("expected instance of Mode")</code> が投げられます。</li>
-<li><code>userDictionary</code> (UserDictionary, 省略可) -- 読み込み済みのユーザー辞書</li>
+<li><code>userDictionary</code> (UserDictionary, 省略可) -- 読み込み済みのユーザー辞書。<code>null</code> または <code>undefined</code>（デフォルト）では、ユーザー辞書を使いません。<code>dictionary</code> と同じく、渡したユーザー辞書はそのまま使えます。<code>UserDictionary</code> でない値を渡すと、<code>Error("expected instance of UserDictionary")</code> が投げられます。</li>
 <li><code>spacePenalty</code> (boolean | object, 省略可) -- 左側空白ペナルティ。<a href="#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> と同じ値を渡せます。<code>null</code> または <code>undefined</code>（デフォルト）では、辞書が同梱するルールを使います。不正な設定では、<code>setSpacePenalty()</code> や <code>build()</code> と同じくエラー文字列が投げられます。</li>
 </ul>
 </li>
@@ -414,7 +414,7 @@ const dict = loadDictionary("embedded://ipadic");
 <li><strong>パラメータ</strong>:
 <ul>
 <li><code>csv</code> (Uint8Array) -- ユーザー辞書 CSV の内容</li>
-<li><code>metadata</code> (Metadata) -- 組み合わせるシステム辞書のメタデータ（例: <code>dictionary.metadata</code>）</li>
+<li><code>metadata</code> (Metadata) -- 組み合わせるシステム辞書のメタデータ（例: <code>dictionary.metadata</code>）。渡したメタデータはそのまま使えるので、同じものを何度でも渡せます。</li>
 </ul>
 </li>
 <li><strong>戻り値</strong>: <code>UserDictionary</code></li>

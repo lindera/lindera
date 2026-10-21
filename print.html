@@ -7422,7 +7422,7 @@ builder.setMode(Mode.fromStr("decompose"));
 Use this when the dictionary has been loaded from bytes (e.g., via <code>loadDictionaryFromBytes()</code>) instead of from a URI.
 It replaces a dictionary set with <code>setDictionary()</code>: whichever of the two is called last sets the dictionary. Every other setting of the builder (the mode, <code>setUserDictionaryInstance()</code>, <code>setKeepWhitespace()</code>, <code>setSkipWhitespace()</code>, <code>setSpacePenalty()</code> and the appended filters) applies to it as to a dictionary set by URI.</p>
 <ul>
-<li><strong>Parameters</strong>: <code>dictionary</code> (Dictionary) -- A loaded dictionary object</li>
+<li><strong>Parameters</strong>: <code>dictionary</code> (Dictionary) -- A loaded dictionary object. It stays usable, so the same one can be passed to several tokenizers and builders.</li>
 <li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm';
@@ -7439,7 +7439,7 @@ builder.setDictionaryInstance(dictionary);
 <h4 id="setuserdictionaryinstanceuserdictionary"><a class="header" href="#setuserdictionaryinstanceuserdictionary"><code>setUserDictionaryInstance(userDictionary)</code></a></h4>
 <p>Sets a pre-loaded user dictionary instance. Load one from bytes with <code>loadUserDictionaryFromBytesFor()</code> or <code>loadUserDictionaryFromBytes()</code> (CSV) or <code>loadUserDictionaryBinFromBytes()</code> (prebuilt <code>.bin</code>); URI-based user dictionaries are not available on WebAssembly. The user dictionary applies to a dictionary set with either <code>setDictionary()</code> or <code>setDictionaryInstance()</code>.</p>
 <ul>
-<li><strong>Parameters</strong>: <code>userDictionary</code> (UserDictionary) -- A loaded user dictionary object</li>
+<li><strong>Parameters</strong>: <code>userDictionary</code> (UserDictionary) -- A loaded user dictionary object. It stays usable, so the same one can be passed to several tokenizers and builders.</li>
 <li><strong>Returns</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <h4 id="setkeepwhitespacekeep-2"><a class="header" href="#setkeepwhitespacekeep-2"><code>setKeepWhitespace(keep)</code></a></h4>
@@ -7536,9 +7536,9 @@ multiple tokenizers can be built from the same configuration.</p>
 <ul>
 <li><strong>Parameters</strong>:
 <ul>
-<li><code>dictionary</code> (Dictionary) -- A loaded dictionary object</li>
+<li><code>dictionary</code> (Dictionary) -- A loaded dictionary object. It stays usable, so the same one can be passed to several tokenizers and builders.</li>
 <li><code>mode</code> (Mode, optional) -- The <a href="lindera-wasm/tokenizer_api.html#mode"><code>Mode</code></a>, as <a href="lindera-wasm/tokenizer_api.html#setmodemode"><code>setMode()</code></a> takes it. <code>null</code> or <code>undefined</code> (the default) is normal mode. The <code>Mode</code> stays usable, so the same one can be passed to several tokenizers and builders. A value that is not a <code>Mode</code> throws <code>Error("expected instance of Mode")</code>.</li>
-<li><code>userDictionary</code> (UserDictionary, optional) -- A loaded user dictionary</li>
+<li><code>userDictionary</code> (UserDictionary, optional) -- A loaded user dictionary, or <code>null</code> or <code>undefined</code> (the default) for none. It stays usable, as <code>dictionary</code> does. A value that is not a <code>UserDictionary</code> throws <code>Error("expected instance of UserDictionary")</code>.</li>
 <li><code>spacePenalty</code> (boolean | object, optional) -- The left-space penalty, in the forms <a href="lindera-wasm/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> accepts. <code>null</code> or <code>undefined</code> (the default) uses the rules the dictionary ships. An invalid setting throws an error string, as <code>setSpacePenalty()</code> and <code>build()</code> do.</li>
 </ul>
 </li>
@@ -7626,7 +7626,7 @@ const dict = loadDictionary("embedded://ipadic");
 <li><strong>Parameters</strong>:
 <ul>
 <li><code>csv</code> (Uint8Array) -- The user dictionary CSV content</li>
-<li><code>metadata</code> (Metadata) -- Metadata of the system dictionary the user dictionary will be used with (e.g. <code>dictionary.metadata</code>)</li>
+<li><code>metadata</code> (Metadata) -- Metadata of the system dictionary the user dictionary will be used with (e.g. <code>dictionary.metadata</code>). It stays usable, so the same one can be passed again.</li>
 </ul>
 </li>
 <li><strong>Returns</strong>: <code>UserDictionary</code></li>
@@ -7905,6 +7905,10 @@ const csvBytes = new Uint8Array(await response.arrayBuffer());
 const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
 const tokenizer = new Tokenizer(dictionary, Mode.normal(), userDict);
 </code></pre>
+<p>The dictionary and the user dictionary stay usable after they are passed to
+the <code>Tokenizer</code> constructor, <code>setDictionaryInstance()</code> or
+<code>setUserDictionaryInstance()</code>, so one loaded dictionary can serve several
+tokenizers and builders.</p>
 <h3 id="user-dictionary-csv-format"><a class="header" href="#user-dictionary-csv-format">User Dictionary CSV Format</a></h3>
 <p>The user dictionary CSV follows the same format as the Lindera user dictionary.
 For IPADIC the simple format is:</p>
@@ -7958,6 +7962,8 @@ metadata.name = "custom_dict";
 metadata.encoding = "EUC-JP";
 console.log(metadata.name); // "custom_dict"
 </code></pre>
+<p>Setting <code>dictionary_schema</code> or <code>user_dictionary_schema</code> stores a copy of the
+<code>Schema</code>, which stays usable, so one schema can be set on several <code>Metadata</code>.</p>
 <blockquote>
 <p>[!NOTE]
 Unlike the Python, Node.js, Ruby, and PHP bindings, the WASM <code>Metadata</code> class does not expose <code>default_word_cost</code>, <code>default_left_context_id</code>, <code>default_right_context_id</code>, <code>default_field_value</code>, <code>flexible_csv</code>, or <code>skip_invalid_cost_or_id</code> as gettable/settable properties (see <code>lindera-wasm/src/metadata.rs</code>). These always fall back to the shared binding defaults (word cost <code>-10000</code>, context IDs <code>1288</code>, field value <code>"*"</code>, flags <code>false</code>) and cannot be customized from JavaScript. The <code>space_penalty</code> rules are not exposed either. They take effect only through the dictionary they were loaded with (see <a href="lindera-wasm/./tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a>); passing <code>dictionary.metadata</code> on, for example to <code>loadUserDictionaryFromBytes()</code>, does not apply them anywhere else.</p>

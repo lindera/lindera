@@ -7302,7 +7302,7 @@ builder.setMode(Mode.fromStr("decompose"));
 URI の代わりにバイトデータから読み込んだ辞書（例: <code>loadDictionaryFromBytes()</code> 経由）を使用する場合に使います。
 <code>setDictionary()</code> で設定した辞書は、この辞書に置き換わります（2 つのうち最後に呼んだ方の辞書が使われます）。ビルダーのほかの設定（モード、<code>setUserDictionaryInstance()</code>、<code>setKeepWhitespace()</code>、<code>setSkipWhitespace()</code>、<code>setSpacePenalty()</code>、追加したフィルタ）は、URI で設定した辞書と同じようにこの辞書にも適用されます。</p>
 <ul>
-<li><strong>パラメータ</strong>: <code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト</li>
+<li><strong>パラメータ</strong>: <code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト。渡した辞書はそのまま使えるので、同じものを複数のトークナイザーやビルダーに渡せます。</li>
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm';
@@ -7320,7 +7320,7 @@ builder.setDictionaryInstance(dictionary);
 <h4 id="setuserdictionaryinstanceuserdictionary"><a class="header" href="#setuserdictionaryinstanceuserdictionary"><code>setUserDictionaryInstance(userDictionary)</code></a></h4>
 <p>読み込み済みのユーザー辞書インスタンスを設定します。<code>loadUserDictionaryFromBytesFor()</code> か <code>loadUserDictionaryFromBytes()</code>（CSV）、または <code>loadUserDictionaryBinFromBytes()</code>（ビルド済み <code>.bin</code>）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。ユーザー辞書は、<code>setDictionary()</code> と <code>setDictionaryInstance()</code> のどちらで設定した辞書にも適用されます。</p>
 <ul>
-<li><strong>パラメータ</strong>: <code>userDictionary</code> (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト</li>
+<li><strong>パラメータ</strong>: <code>userDictionary</code> (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト。渡したユーザー辞書はそのまま使えるので、同じものを複数のトークナイザーやビルダーに渡せます。</li>
 <li><strong>戻り値</strong>: <code>TokenizerBuilder</code></li>
 </ul>
 <h4 id="setkeepwhitespacekeep-2"><a class="header" href="#setkeepwhitespacekeep-2"><code>setKeepWhitespace(keep)</code></a></h4>
@@ -7414,9 +7414,9 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 <ul>
 <li><strong>パラメータ</strong>:
 <ul>
-<li><code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト</li>
+<li><code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト。渡した辞書はそのまま使えるので、同じものを複数のトークナイザーやビルダーに渡せます。</li>
 <li><code>mode</code> (Mode, 省略可) -- <a href="lindera-wasm/tokenizer_api.html#setmodemode"><code>setMode()</code></a> と同じ <a href="lindera-wasm/tokenizer_api.html#mode"><code>Mode</code></a>。<code>null</code> または <code>undefined</code>（デフォルト）では normal モードになります。渡した <code>Mode</code> はそのまま使えるので、同じものを複数のトークナイザーやビルダーに渡せます。<code>Mode</code> でない値を渡すと、<code>Error("expected instance of Mode")</code> が投げられます。</li>
-<li><code>userDictionary</code> (UserDictionary, 省略可) -- 読み込み済みのユーザー辞書</li>
+<li><code>userDictionary</code> (UserDictionary, 省略可) -- 読み込み済みのユーザー辞書。<code>null</code> または <code>undefined</code>（デフォルト）では、ユーザー辞書を使いません。<code>dictionary</code> と同じく、渡したユーザー辞書はそのまま使えます。<code>UserDictionary</code> でない値を渡すと、<code>Error("expected instance of UserDictionary")</code> が投げられます。</li>
 <li><code>spacePenalty</code> (boolean | object, 省略可) -- 左側空白ペナルティ。<a href="lindera-wasm/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> と同じ値を渡せます。<code>null</code> または <code>undefined</code>（デフォルト）では、辞書が同梱するルールを使います。不正な設定では、<code>setSpacePenalty()</code> や <code>build()</code> と同じくエラー文字列が投げられます。</li>
 </ul>
 </li>
@@ -7504,7 +7504,7 @@ const dict = loadDictionary("embedded://ipadic");
 <li><strong>パラメータ</strong>:
 <ul>
 <li><code>csv</code> (Uint8Array) -- ユーザー辞書 CSV の内容</li>
-<li><code>metadata</code> (Metadata) -- 組み合わせるシステム辞書のメタデータ（例: <code>dictionary.metadata</code>）</li>
+<li><code>metadata</code> (Metadata) -- 組み合わせるシステム辞書のメタデータ（例: <code>dictionary.metadata</code>）。渡したメタデータはそのまま使えるので、同じものを何度でも渡せます。</li>
 </ul>
 </li>
 <li><strong>戻り値</strong>: <code>UserDictionary</code></li>
@@ -7782,6 +7782,9 @@ const csvBytes = new Uint8Array(await response.arrayBuffer());
 const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
 const tokenizer = new Tokenizer(dictionary, Mode.normal(), userDict);
 </code></pre>
+<p>辞書とユーザー辞書は、<code>Tokenizer</code> のコンストラクタ、<code>setDictionaryInstance()</code>、
+<code>setUserDictionaryInstance()</code> に渡したあともそのまま使えます。一度読み込んだ辞書を、
+複数のトークナイザーやビルダーで使えます。</p>
 <h3 id="ユーザー辞書の-csv-フォーマット"><a class="header" href="#ユーザー辞書の-csv-フォーマット">ユーザー辞書の CSV フォーマット</a></h3>
 <p>ユーザー辞書の CSV は Lindera ユーザー辞書と同じフォーマットに準拠します。
 IPADIC のシンプル形式は以下のとおりです：</p>
@@ -7835,6 +7838,9 @@ metadata.name = "custom_dict";
 metadata.encoding = "EUC-JP";
 console.log(metadata.name); // "custom_dict"
 </code></pre>
+<p><code>dictionary_schema</code> や <code>user_dictionary_schema</code> に設定すると、<code>Schema</code> のコピーが
+保存されます。設定した <code>Schema</code> はそのまま使えるので、同じスキーマを複数の
+<code>Metadata</code> に設定できます。</p>
 <blockquote>
 <p>[!NOTE]
 Python・Node.js・Ruby・PHP の各バインディングと異なり、WASM の <code>Metadata</code> クラスは <code>default_word_cost</code>、<code>default_left_context_id</code>、<code>default_right_context_id</code>、<code>default_field_value</code>、<code>flexible_csv</code>、<code>skip_invalid_cost_or_id</code> を取得・設定可能なプロパティとして公開していません（<code>lindera-wasm/src/metadata.rs</code> 参照）。これらは常にバインディング共通のデフォルト値（コスト <code>-10000</code>、文脈 ID <code>1288</code>、フィールド値 <code>"*"</code>、フラグはすべて <code>false</code>）にフォールバックし、JavaScript から変更することはできません。<code>space_penalty</code> ルールも公開していません。ルールが効くのは、そのルールと一緒に読み込んだ辞書だけです（<a href="lindera-wasm/./tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty()</code></a> を参照）。<code>dictionary.metadata</code> を <code>loadUserDictionaryFromBytes()</code> などに渡しても、ほかの場所でルールが適用されることはありません。</p>
