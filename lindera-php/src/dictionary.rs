@@ -14,7 +14,6 @@ use lindera::dictionary::{
     load_user_dictionary_for as lindera_load_user_dictionary_for,
 };
 
-use crate::convert::Nullable;
 use crate::error::lindera_value_err;
 use crate::metadata::PhpMetadata;
 
@@ -144,7 +143,7 @@ impl PhpDictionary {
         _kind: String,
         input_file: String,
         output_dir: String,
-        metadata: Nullable<&PhpMetadata>,
+        metadata: Option<&PhpMetadata>,
     ) -> PhpResult<()> {
         let input_path = Path::new(&input_file);
         let output_path = Path::new(&output_dir);
@@ -155,7 +154,7 @@ impl PhpDictionary {
             )));
         }
 
-        let meta = match metadata.into_option() {
+        let meta = match metadata {
             Some(m) => {
                 let lindera_meta: Metadata = m.clone().into();
                 lindera_meta

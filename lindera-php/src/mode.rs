@@ -7,7 +7,7 @@ use ext_php_rs::prelude::*;
 
 use lindera::mode::{Mode as LinderaMode, Penalty as LinderaPenalty};
 
-use crate::convert::{Nullable, optional_int};
+use crate::convert::optional_int;
 use crate::error::lindera_value_err;
 
 /// Tokenization mode: normal, or decompose with a `Lindera\Penalty`.
@@ -175,16 +175,16 @@ impl PhpPenalty {
     /// A new Penalty instance, or a `ValueError` for a value outside its
     /// range.
     pub fn __construct(
-        kanji_penalty_length_threshold: Nullable<i64>,
-        kanji_penalty_length_penalty: Nullable<i64>,
-        other_penalty_length_threshold: Nullable<i64>,
-        other_penalty_length_penalty: Nullable<i64>,
+        kanji_penalty_length_threshold: Option<i64>,
+        kanji_penalty_length_penalty: Option<i64>,
+        other_penalty_length_threshold: Option<i64>,
+        other_penalty_length_penalty: Option<i64>,
     ) -> PhpResult<Self> {
         Self::from_args(
-            kanji_penalty_length_threshold.into_option(),
-            kanji_penalty_length_penalty.into_option(),
-            other_penalty_length_threshold.into_option(),
-            other_penalty_length_penalty.into_option(),
+            kanji_penalty_length_threshold,
+            kanji_penalty_length_penalty,
+            other_penalty_length_threshold,
+            other_penalty_length_penalty,
         )
         .map_err(lindera_value_err)
     }

@@ -14,7 +14,7 @@ use ext_php_rs::zend::ce;
 
 use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
-use crate::convert::{ConvertError, Nullable, int_arg, zval_to_value};
+use crate::convert::{ConvertError, int_arg, zval_to_value};
 use crate::dictionary::{PhpDictionary, PhpUserDictionary};
 use crate::error::lindera_value_err;
 use crate::mode::PhpMode;
@@ -45,9 +45,11 @@ fn space_penalty_value(value: &Zval) -> PhpResult<serde_json::Value> {
 
 /// Converts a whitespace-skipping setting from PHP.
 ///
-/// ext-php-rs before 0.16.3 read a value of another type as `null` for an
-/// `Option<bool>` parameter, which would silently restore the dictionary's
-/// default, so the setter takes the raw value and this checks it.
+/// The setter takes the raw value rather than an `Option<bool>` to keep its
+/// argument required, as in the other bindings and as for `setSpacePenalty`:
+/// ext-php-rs makes a trailing parameter whose type accepts `null` optional,
+/// with a `null` default, so `setSkipWhitespace()` would silently restore the
+/// dictionary's default.
 ///
 /// # Arguments
 ///
@@ -293,7 +295,7 @@ impl PhpTokenizer {
     pub fn __construct(
         dictionary: &PhpDictionary,
         mode: Option<&PhpMode>,
-        user_dictionary: Nullable<&PhpUserDictionary>,
+        user_dictionary: Option<&PhpUserDictionary>,
         space_penalty: Option<&Zval>,
     ) -> PhpResult<Self> {
         let mode = mode.map_or(lindera::mode::Mode::Normal, |mode| {
@@ -305,7 +307,7 @@ impl PhpTokenizer {
         };
 
         let dict = dictionary.inner.clone();
-        let user_dict = user_dictionary.into_option().map(|d| d.inner.clone());
+        let user_dict = user_dictionary.map(|d| d.inner.clone());
 
         let inner =
             CoreTokenizer::from_segmenter_with_space_penalty(mode, dict, user_dict, &space_penalty)
@@ -374,14 +376,14 @@ impl PhpTokenizer {
         &self,
         text: String,
         n: i64,
-        unique: Nullable<bool>,
-        cost_threshold: Nullable<i64>,
+        unique: Option<bool>,
+        cost_threshold: Option<i64>,
     ) -> PhpResult<Vec<PhpNbestResult>> {
         let n = int_arg("n", n)?;
-        let unique_flag = unique.into_option().unwrap_or(false);
+        let unique_flag = unique.unwrap_or(false);
         let results = self
             .inner
-            .tokenize_nbest(&text, n, unique_flag, cost_threshold.into_option())
+            .tokenize_nbest(&text, n, unique_flag, cost_threshold)
             .map_err(lindera_value_err)?;
 
         let php_results: Vec<PhpNbestResult> = results
