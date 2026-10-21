@@ -36,12 +36,14 @@ pub type SegmenterConfig = Value;
 ///
 /// Without this bound, delimiter-free input (e.g. minified or line-joined
 /// machine-generated text) builds one ever-growing lattice for the whole
-/// input. Past a content-dependent point, the accumulated path cost
-/// saturates `i32::MAX` and the lattice silently stops accepting edges,
-/// collapsing the remainder of the input into a single giant token with no
-/// error or warning (see <https://github.com/lindera/lindera/issues/871>).
-/// 32 KiB stays well under both that saturation point and downstream
-/// consumers' own token-length limits (e.g. tantivy's `MAX_TOKEN_LEN`).
+/// input. Past a content-dependent point, the accumulated path cost used to
+/// saturate `i32::MAX` and the lattice then silently stopped accepting
+/// edges, collapsing the remainder of the input into a single giant token
+/// with no error or warning (see <https://github.com/lindera/lindera/issues/871>).
+/// The lattice now clamps its path costs and connects every transition
+/// (#1223), but the costs past the clamp are not exact, so 32 KiB still keeps
+/// sentences well under that point, and under downstream consumers' own
+/// token-length limits (e.g. tantivy's `MAX_TOKEN_LEN`).
 pub(crate) const MAX_SENTENCE_BYTES: usize = 32 * 1024;
 
 /// Finds the end of the next sentence starting at `sentence_start`, scanning
@@ -1083,7 +1085,7 @@ impl Segmenter {
     /// 2. **Lattice Processing**:
     ///    - For each sentence, a lattice structure is set up using the main dictionary and, if available, the user dictionary. The lattice helps identify possible token boundaries within the sentence.
     ///    - The cost matrix is used to calculate the best path (i.e., the optimal sequence of tokens) through the lattice based on the mode.
-    ///    - A sentence that continues a segment starts from the exits of the previous sentence (the right context ids of the words that end it), and the EOS connection is paid only at the end of the segment, so the best path of a segment is the one that a single lattice over the segment gives, except that no dictionary entry or unknown-word group spans a cut and a word that starts right at a forced cut never pays the left-space penalty.
+    ///    - A sentence that continues a segment starts from the exits of the previous sentence (the right context ids of the words that end it), and the EOS connection is paid only at the end of the segment, so the best path of a segment is the one that a single lattice over the segment gives, except that no dictionary entry or unknown-word group spans a cut, a word that starts right at a forced cut never pays the left-space penalty, and the Decompose length penalty is bounded per sentence rather than per segment (see [`Penalty`](crate::mode::Penalty)).
     ///
     /// 3. **Token Generation**:
     ///    - For each word of the best path, a token is generated using the byte offsets. The tokens contain the original text (in `Cow::Owned` form to ensure safe return), byte start/end positions, token positions, and dictionary references.
@@ -1126,7 +1128,7 @@ impl Segmenter {
     /// 2. **Lattice Processing**:
     ///    - For each sentence, a lattice structure is set up using the main dictionary and, if available, the user dictionary. The lattice helps identify possible token boundaries within the sentence.
     ///    - The cost matrix is used to calculate the best path (i.e., the optimal sequence of tokens) through the lattice based on the mode.
-    ///    - A sentence that continues a segment starts from the exits of the previous sentence (the right context ids of the words that end it), and the EOS connection is paid only at the end of the segment, so the best path of a segment is the one that a single lattice over the segment gives, except that no dictionary entry or unknown-word group spans a cut and a word that starts right at a forced cut never pays the left-space penalty.
+    ///    - A sentence that continues a segment starts from the exits of the previous sentence (the right context ids of the words that end it), and the EOS connection is paid only at the end of the segment, so the best path of a segment is the one that a single lattice over the segment gives, except that no dictionary entry or unknown-word group spans a cut, a word that starts right at a forced cut never pays the left-space penalty, and the Decompose length penalty is bounded per sentence rather than per segment (see [`Penalty`](crate::mode::Penalty)).
     ///
     /// 3. **Token Generation**:
     ///    - For each word of the best path, a token is generated using the byte offsets. The tokens contain the original text (in `Cow::Owned` form to ensure safe return), byte start/end positions, token positions, and dictionary references.

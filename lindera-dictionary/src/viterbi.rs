@@ -8,7 +8,7 @@ use crate::dictionary::character_definition::{CategoryId, CharacterDefinition};
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use crate::dictionary::prefix_dictionary::{PrefixDictionary, UserPrefixDictionary};
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
-use crate::mode::{Mode, Penalty};
+use crate::mode::{Mode, Penalty, SENTENCE_PENALTY_BUDGET};
 use crate::space_penalty::SpacePenaltyTable;
 use crate::whitespace::WhitespaceClassifier;
 
@@ -592,7 +592,23 @@ pub struct Lattice {
 /// `saturating_add` instead. A negative one can take a path below
 /// `-PATH_COST_CLAMP`, so the lower bound is needed as much as the upper
 /// one (#1224).
+///
+/// A clamped or saturated cost loses what the path pays after it, so the
+/// costs of the paths through it are no longer exact. A transition whose
+/// cost saturates still connects, though, so that the path goes on and the
+/// text is never cut short (#1223). The length penalty is bounded per
+/// sentence (see [`SENTENCE_PENALTY_BUDGET`]) so that it cannot get a path
+/// there: from a BOS edge of cost 0, a path through a sentence of at most
+/// 24,573 characters stays within the clamp without a left-space penalty,
+/// as a word and a connection cost at most 32,768 each in absolute value
+/// (asserted below). A left-space penalty or a costly BOS edge still can.
 const PATH_COST_CLAMP: i32 = i32::MAX - 131_072;
+
+/// The guarantee of [`PATH_COST_CLAMP`]: the words of a sentence of 24,573
+/// characters and the connections into them, the EOS connection and the
+/// length penalties fit within the clamp.
+const _: () =
+    assert!(65_536 * 24_573 + 32_768 + SENTENCE_PENALTY_BUDGET as i64 <= PATH_COST_CLAMP as i64);
 
 /// One BOS (beginning-of-sentence) edge of a lattice; see
 /// [`LatticeOptions::bos`].
@@ -903,26 +919,6 @@ impl SpaceCost {
             self.cost
         }
     }
-}
-
-/// Returns the left edge a relaxation keeps, or `None` when there is no
-/// transition: no left edge, or a lowest cost saturated at `i32::MAX` (by a
-/// Decompose penalty or a space penalty that large). The relaxations keep
-/// the last of equal-cost left edges with `<=` (#1135), which also takes a
-/// saturated cost; such a transition is still dropped, as when they kept
-/// the first one with a strict `<` against the initial `i32::MAX`.
-///
-/// # Arguments
-///
-/// * `best_cost` - The lowest transition cost found, `i32::MAX` initially.
-/// * `best_left` - The index of the left edge with that cost.
-///
-/// # Returns
-///
-/// The index of the left edge, or `None`.
-#[inline(always)]
-fn connected(best_cost: i32, best_left: Option<u32>) -> Option<u32> {
-    best_left.filter(|_| best_cost < i32::MAX)
 }
 
 /// Flag bit on `CharData::categories_start` marking that the offset indexes
@@ -1580,6 +1576,13 @@ impl Lattice {
     /// the system dictionary up first and would pick the system entry)
     /// (#1131).
     ///
+    /// Every transition between two adjacent candidates connects, however
+    /// costly: a penalty makes a path expensive, never impossible, so the
+    /// lattice has a complete path unless a character is covered by no word
+    /// and no unknown word (#1223). In Decompose mode, the costs per
+    /// character of the length penalty are bounded for the sentence (see
+    /// [`Penalty`]).
+    ///
     /// # Arguments
     ///
     /// * `dict` - The system prefix dictionary.
@@ -1602,7 +1605,6 @@ impl Lattice {
         text: &str,
         options: &LatticeOptions,
     ) {
-        let search_mode = options.mode;
         let max_grouping_len = options.max_grouping_len;
         let unknown_word_ladder = options.unknown_word_ladder;
         // Clear the previous sentence's slots (bounded by its char count),
@@ -1618,6 +1620,10 @@ impl Lattice {
             "set_text: sentence has {n_chars} characters, exceeding the u16::MAX-1 limit; \
              split the input into sentences (the Segmenter does this automatically)"
         );
+        // The length penalty bounded for this sentence (#1223), once per
+        // sentence; every penalty below goes through `search_mode`.
+        let sentence_mode = options.mode.for_sentence(n_chars);
+        let search_mode: &Mode = &sentence_mode;
         self.record_and_grow(n_chars);
         self.penalty_cache_pos = usize::MAX;
         self.skip_whitespace = options.skip_whitespace.is_some();
@@ -1828,7 +1834,9 @@ impl Lattice {
                     best_left = Some(i as u32);
                 }
             }
-            if let Some(left_idx) = connected(best_cost, best_left) {
+            // Every edge here compares `<=` with the initial `i32::MAX`, so
+            // EOS connects even when its cost saturates (#1223).
+            if let Some(left_idx) = best_left {
                 eos_edge.left_index = left_idx;
                 eos_edge.path_cost = best_cost;
                 self.ends_at[n_chars].push(eos_edge);
@@ -2241,9 +2249,9 @@ impl Lattice {
     ) {
         for &word_id in unknown_dictionary.lookup_word_ids(category).iter().rev() {
             let word_entry = unknown_dictionary.word_entry(word_id);
-            // No transition: none of this entry's edges is stored, as
-            // `add_edge_in_lattice` would store none. Another entry, with
-            // another left id, may still connect.
+            // No transition (no edge ends at `char_idx`): none of this
+            // entry's edges is stored, as `add_edge_in_lattice` would store
+            // none.
             let Some(best) = self.relax(
                 char_idx,
                 word_entry.left_id as u32,
@@ -2534,8 +2542,9 @@ impl Lattice {
         self.refresh_penalty_cache(start_char, penalty);
         // Matrix row hoisted like the Normal arm (#880/#944); path +
         // connection stays a plain add (within ±(PATH_COST_CLAMP + i16)),
-        // while the penalty addition keeps saturating_add because the
-        // penalty is unbounded.
+        // while the penalty addition keeps saturating_add: the penalty is
+        // bounded per sentence, but a path near the clamp (from a costly
+        // BOS edge or a left-space penalty) can still pass `i32::MAX`.
         let mut best_cost = i32::MAX;
         let mut best_left = None;
         let cache = &self.penalty_cache;
@@ -2722,8 +2731,8 @@ impl Lattice {
     /// # Returns
     ///
     /// The best transition, the left-space penalty included and the
-    /// incoming edge's word cost not; `None` when there is no transition
-    /// (see [`connected`]).
+    /// incoming edge's word cost not; `None` when no edge ends at
+    /// `start_char` (see [`Self::relax`]).
     #[cold]
     #[inline(never)]
     fn relax_owned(
@@ -2736,7 +2745,7 @@ impl Lattice {
     ) -> Option<(i32, u32)> {
         let (cost, left) =
             self.relax_per_edge(start_char, right_left_id, cost_matrix, mode, space, None);
-        connected(cost, left).map(|left| (cost, left))
+        left.map(|left| (cost, left))
     }
 
     /// [`Self::add_edge_in_lattice`] at a position where some left edges own
@@ -2805,16 +2814,17 @@ impl Lattice {
 
     /// Returns the best `(path cost, left index)` over the left edges of
     /// `start_char` for an edge with left context id `right_left_id`, or
-    /// `None` when there is no transition (see [`connected`]). The result does
-    /// not depend on the incoming edge otherwise (its length, cost or right
-    /// id), so edges that share the start and the left id can share one
-    /// relaxation.
+    /// `None` when no edge ends at `start_char`. The result does not depend
+    /// on the incoming edge otherwise (its length, cost or right id), so
+    /// edges that share the start and the left id can share one relaxation.
     ///
     /// Of the left edges that tie on cost, the last one in the slot wins
     /// (`<=`): the slot holds them in MeCab's processing order, so it is the
     /// one MeCab keeps (see [`Self::set_text_with_options`], #1135). The
     /// comparison compiles to conditional moves, keeping the loop free of
-    /// branches that depend on the costs.
+    /// branches that depend on the costs. A cost saturated at `i32::MAX`
+    /// still ties with the initial best cost, so a transition connects
+    /// however large a penalty makes it (#1223).
     ///
     /// # Arguments
     ///
@@ -2856,14 +2866,10 @@ impl Lattice {
                         best_left = Some(i as u32);
                     }
                 }
-                // Below `i32::MAX`, so `connected` is not needed.
-                debug_assert!(best_cost < i32::MAX);
             }
             Mode::Decompose(penalty) => {
-                let (cost, left) =
+                (best_cost, best_left) =
                     self.relax_decompose(start_char, right_left_id, penalty, cost_matrix);
-                best_cost = cost;
-                best_left = connected(cost, left);
             }
         }
 
@@ -2906,9 +2912,10 @@ impl Lattice {
     ///
     /// # Returns
     ///
-    /// A freshly allocated offsets vector; empty when the lattice holds no
-    /// complete path. Prefer [`Lattice::tokens_offset_into`] in per-sentence
-    /// loops to reuse one allocation across sentences.
+    /// A freshly allocated offsets vector; when the lattice holds no complete
+    /// path, the partial path [`Lattice::tokens_offset_into`] describes.
+    /// Prefer [`Lattice::tokens_offset_into`] in per-sentence loops to reuse
+    /// one allocation across sentences.
     pub fn tokens_offset(&self) -> Vec<TokenOffset> {
         let mut offsets = Vec::new();
         self.tokens_offset_into(&mut offsets);
@@ -2922,14 +2929,17 @@ impl Lattice {
     ///
     /// * `offsets` - The buffer to fill with `(start_byte_offset,
     ///   end_byte_offset, word_id)` in reading order (BOS/EOS excluded; ends
-    ///   as in [`Lattice::tokens_offset`]). Cleared on entry; left empty
-    ///   when the lattice holds no complete path.
+    ///   as in [`Lattice::tokens_offset`]). Cleared on entry. When the
+    ///   lattice holds no complete path, it gets the path to the last edge
+    ///   of the last slot that holds edges, that edge excluded.
     ///
     /// # Returns
     ///
     /// The BOS index of the best path: the index in [`LatticeOptions::bos`]
     /// of the context it starts from, always 0 for the default single BOS
-    /// edge. `None` when the lattice holds no complete path (no EOS edge).
+    /// edge. `None` when the lattice holds no complete path (no EOS edge),
+    /// which a penalty cannot cause: only a character that no word and no
+    /// unknown word covers (#1223).
     pub fn tokens_offset_into(&self, offsets: &mut Vec<TokenOffset>) -> Option<usize> {
         offsets.clear();
 
@@ -2951,9 +2961,10 @@ impl Lattice {
             return None;
         }
         // The EOS edge is the only edge whose start is the slot holding it.
-        // Without one (no complete path), the scan above stops at some
-        // other edge, which is dropped like EOS and whose path is still
-        // returned, as before; it has no BOS index to report.
+        // Without one (no complete path: a character no candidate covers),
+        // the scan above stops at some other edge, which is dropped like
+        // EOS and whose path is still returned, as before; it has no BOS
+        // index to report.
         let complete = last_idx == self.last_n_chars && edge.start_char as usize == last_idx;
         let bos = self.backtrace_into(edge.start_char as usize, edge.left_index as usize, offsets);
         complete.then_some(bos)
@@ -3257,7 +3268,7 @@ impl Lattice {
     ///
     /// The best `(path cost, left index)`, `extra_cost` included and the
     /// incoming edge's word cost not; `None` when no edge ends at
-    /// `start_char` or no transition cost is below `i32::MAX`.
+    /// `start_char` (a saturated cost still connects, see [`Self::relax`]).
     #[inline]
     fn relax_nbest(
         &mut self,
@@ -3301,7 +3312,7 @@ impl Lattice {
             ),
         };
         self.transition_costs = costs;
-        connected(best_cost, best_left).map(|left| (best_cost, left))
+        best_left.map(|left| (best_cost, left))
     }
 
     /// [`Self::relax_nbest`] at a position where some left edges own the
@@ -3321,8 +3332,8 @@ impl Lattice {
     /// # Returns
     ///
     /// The best `(path cost, left index)`, the left-space penalty included
-    /// and the incoming edge's word cost not; `None` when no transition
-    /// cost is below `i32::MAX`.
+    /// and the incoming edge's word cost not; `None` when no edge ends at
+    /// `start_char` (a saturated cost still connects, see [`Self::relax`]).
     #[cold]
     #[inline(never)]
     fn relax_nbest_owned(
@@ -3344,7 +3355,7 @@ impl Lattice {
             Some(&mut costs),
         );
         self.transition_costs = costs;
-        connected(best_cost, best_left).map(|left| (best_cost, left))
+        best_left.map(|left| (best_cost, left))
     }
 
     /// Records the transitions [`Self::relax_nbest`] left in
@@ -3353,7 +3364,8 @@ impl Lattice {
     /// one go, before any other edge can push into the slot, and carry the
     /// index the edge gets there, so each edge's entries form one
     /// contiguous run in ascending edge order (which `nbest.rs`
-    /// binary-searches). Without a best transition neither the edge nor its
+    /// binary-searches). Without a best transition, which only an empty
+    /// start slot gives (the builders skip one), neither the edge nor its
     /// entries are recorded: the entries would carry the index of the next
     /// edge stored in the slot, which would read them as its own (#1114).
     /// The edge's path cost is clamped as in [`Self::push_relaxed`].
@@ -3482,7 +3494,6 @@ impl Lattice {
         text: &str,
         options: &LatticeOptions,
     ) {
-        let search_mode = options.mode;
         let max_grouping_len = options.max_grouping_len;
         let unknown_word_ladder = options.unknown_word_ladder;
         // Same clear -> prepare -> grow sequence as set_text.
@@ -3495,6 +3506,9 @@ impl Lattice {
             "set_text_nbest: sentence has {n_chars} characters, exceeding the u16::MAX-1 limit; \
              split the input into sentences (the Segmenter does this automatically)"
         );
+        // The length penalty bounded for this sentence, as in set_text.
+        let sentence_mode = options.mode.for_sentence(n_chars);
+        let search_mode: &Mode = &sentence_mode;
         self.record_and_grow_nbest(n_chars);
         self.penalty_cache_pos = usize::MAX;
         self.skip_whitespace = options.skip_whitespace.is_some();
@@ -3670,9 +3684,6 @@ impl Lattice {
             let cost_row = cost_matrix.row(0); // EOS default left_id
             // The edges before EOS are the sentence's exits (`exits_into`).
             self.final_edge_count = self.ends_at[n_chars].len();
-            // Where EOS's transitions start, to drop them if EOS does not
-            // connect (see `push_relaxed_nbest`).
-            let eos_paths_start = self.all_paths[n_chars].len();
 
             for i in 0..self.ends_at[n_chars].len() {
                 let left_edge = &self.ends_at[n_chars][i];
@@ -3701,12 +3712,13 @@ impl Lattice {
                     best_left = Some(i as u32);
                 }
             }
-            if let Some(left_idx) = connected(best_cost, best_left) {
+            // EOS connects whenever an edge reaches the end, even at a
+            // saturated cost (see set_text), so the transitions recorded
+            // above always belong to the EOS edge (#1223).
+            if let Some(left_idx) = best_left {
                 eos_edge.left_index = left_idx;
                 eos_edge.path_cost = best_cost;
                 self.ends_at[n_chars].push(eos_edge);
-            } else {
-                self.all_paths[n_chars].truncate(eos_paths_start);
             }
         }
     }
@@ -3820,8 +3832,8 @@ impl Lattice {
 
     /// Returns the index of the EOS edge in the last slot
     /// (`edges_at_char(char_len())`): the last edge, pushed after the final
-    /// edges, if EOS connected. Without it the lattice has no complete path,
-    /// and the last edge of the slot is a final edge, not EOS.
+    /// edges, as EOS connects whenever there are any. Without final edges (a
+    /// character that no candidate covers) the lattice has no complete path.
     ///
     /// # Returns
     ///
@@ -3834,7 +3846,10 @@ impl Lattice {
     /// Returns the top-N paths through the lattice.
     /// Each result is a (path, cost) pair where path is a Vec of (byte_start, byte_end, WordId)
     /// triples, with the ends of [`Lattice::tokens_offset`].
-    /// The first result (index 0) is the 1-best path.
+    /// The first result (index 0) is the 1-best path, unless the costs
+    /// reach the bound of the lattice's 32-bit path costs, past which they
+    /// are not exact: a huge left-space penalty or BOS cost can take a path
+    /// there, the length penalty cannot (see [`Penalty`]).
     /// If `unique` is true, the results have distinct segmentations (sequences
     /// of (byte_start, byte_end) pairs): they are the cheapest path of each
     /// segmentation, from
@@ -3954,7 +3969,7 @@ mod tests {
     use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
     use crate::dictionary::prefix_dictionary::{PrefixDictionary, UserPrefixDictionary};
     use crate::dictionary::unknown_dictionary::UnknownDictionary;
-    use crate::mode::{Mode, Penalty};
+    use crate::mode::{Mode, Penalty, SENTENCE_PENALTY_BUDGET};
     use crate::nbest::{NBestGenerator, UniqueNBestGenerator};
     use crate::space_penalty::SpacePenaltyTable;
     use crate::viterbi::{
@@ -5693,6 +5708,19 @@ mod tests {
         })
     }
 
+    /// A Decompose penalty of the #1223 tests on the #1096 fixture: every
+    /// entry longer than one character pays `cost` per extra character,
+    /// far beyond what the lattice keeps of it for a sentence (see
+    /// [`Penalty::for_sentence`]).
+    fn ctx_huge_decompose(cost: i32) -> Mode {
+        Mode::Decompose(Penalty {
+            kanji_penalty_length_threshold: 1,
+            kanji_penalty_length_penalty: cost,
+            other_penalty_length_threshold: 1,
+            other_penalty_length_penalty: cost,
+        })
+    }
+
     fn bos_ctx(right_id: u16, cost: i32) -> BosContext {
         BosContext { right_id, cost }
     }
@@ -5734,9 +5762,17 @@ mod tests {
     ];
 
     /// Runs `f` on every (text, mode, skip, BOS list) case of the #1096
-    /// tests.
+    /// tests. The modes include penalties of `i32::MAX` and `i32::MIN`,
+    /// which the lattice bounds for the sentence, so that the comparisons
+    /// with [`brute_paths`] check the bound in every relaxation, EOS
+    /// connection and exit of both lattices (#1223).
     fn for_each_ctx_case(mut f: impl FnMut(&str, &Mode, bool, &[BosContext])) {
-        for mode in [Mode::Normal, ctx_decompose()] {
+        for mode in [
+            Mode::Normal,
+            ctx_decompose(),
+            ctx_huge_decompose(i32::MAX),
+            ctx_huge_decompose(i32::MIN),
+        ] {
             for bos_list in ctx_bos_lists() {
                 for &text in CTX_TEXTS {
                     for skip in [false, true] {
@@ -5900,16 +5936,19 @@ mod tests {
     /// whitespace, each word starts where the previous one ends after the
     /// whitespace there, and a word pays its cost, the connection from the
     /// previous right id, the Decompose penalty of the previous word (0
-    /// for BOS) and, with `space`, the left-space penalty of its word id
-    /// when `rule` says so; the last word's penalty is part of the exit
-    /// cost. Meant for texts of `a`-`d`, spaces and tabs, with whitespace
-    /// skipped (or absent).
+    /// for BOS; with the costs bounded for the text, #1223) and, with
+    /// `space`, the left-space penalty of its word id when `rule` says so;
+    /// the last word's penalty is part of the exit cost. Meant for texts of
+    /// `a`-`d`, spaces and tabs, with whitespace skipped (or absent).
     fn brute_paths_with(
         text: &str,
         bos_list: &[BosContext],
         mode: &Mode,
         space: Option<(&[i32], SpaceRule)>,
     ) -> Vec<BrutePath> {
+        let bounded = mode.for_sentence(text.chars().count());
+        let mode: &Mode = &bounded;
+
         fn skip_ws(text: &str, mut pos: usize) -> usize {
             while pos < text.len() && matches!(text.as_bytes()[pos], b' ' | b'\t') {
                 pos += 1;
@@ -7015,16 +7054,15 @@ mod tests {
         }
     }
 
-    /// #1135: the relaxations keep the last of equal-cost left edges with
-    /// `<=`, but a transition whose cost saturates at `i32::MAX` is still
-    /// none, as with the former strict `<`: with a Decompose penalty of
-    /// `i32::MAX` on every word, nothing connects after `a`, so `ab` has no
-    /// complete path, in the 1-best and the N-best lattice.
+    /// #1223: a Decompose penalty of `i32::MAX` on every word is bounded for
+    /// the sentence, so `ab` has a complete path at its exact cost in the
+    /// 1-best and the N-best lattice: each word costs 100 and pays the bound
+    /// of a sentence of two characters to the word or the EOS after it. The
+    /// relaxations keep the last of equal-cost left edges with `<=` (#1135),
+    /// and a transition whose cost saturated at `i32::MAX` used to be none,
+    /// as with the former strict `<`, so nothing connected after `a`.
     #[test]
-    fn test_saturated_transition_does_not_connect() {
-        let char_definition = test_char_definition();
-        let unknown_dictionary = test_unknown_dictionary();
-        let cost_matrix = ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0, 0]).unwrap();
+    fn test_huge_penalty_is_bounded_for_the_sentence() {
         let dict = hundred_each(&["a", "b"]);
         let mode = Mode::Decompose(Penalty {
             kanji_penalty_length_threshold: 0,
@@ -7032,44 +7070,63 @@ mod tests {
             other_penalty_length_threshold: 0,
             other_penalty_length_penalty: i32::MAX,
         });
-        let options = LatticeOptions::new(&mode);
-        let mut lattice = Lattice::default();
-        lattice.set_text_with_options(
-            &dict,
-            &None,
-            &char_definition,
-            &unknown_dictionary,
-            &cost_matrix,
-            "ab",
-            &options,
+        let tokens = vec![(0, 1, sys(0)), (1, 2, sys(1))];
+        let cost = 200 + 2 * i64::from(SENTENCE_PENALTY_BUDGET / 2);
+        let lattice = lattice_with(&dict, &free_matrix(), "ab", &mode);
+        assert_eq!(best_path(&lattice), (tokens.clone(), Some(0), cost));
+        let lattice = nbest_lattice_with(&dict, &free_matrix(), "ab", &mode);
+        assert_eq!(
+            lattice.nbest_tokens_offset(10, false, None),
+            vec![(tokens, cost)]
         );
-        assert!(lattice.edges_at_char(2).is_empty());
-        let mut offsets = Vec::new();
-        assert_eq!(lattice.tokens_offset_into(&mut offsets), None);
-
-        lattice.set_text_nbest_with_options(
-            &dict,
-            &None,
-            &char_definition,
-            &unknown_dictionary,
-            &cost_matrix,
-            "ab",
-            &options,
-        );
-        assert!(lattice.edges_at_char(2).is_empty());
-        assert!(lattice.nbest_tokens_offset(10, false, None).is_empty());
     }
 
-    /// The Decompose mode of the saturation tests below: a kanji-only word
-    /// of two or more characters pays `i32::MAX` to the word after it (and
-    /// to EOS), any other word nothing.
-    fn saturating_kanji_decompose() -> Mode {
+    /// The Decompose mode of the bound tests below: a kanji-only word of two
+    /// or more characters pays `cost` per character beyond one to the word
+    /// after it (and to EOS), before the lattice bounds it for the sentence;
+    /// any other word pays nothing.
+    fn huge_kanji_decompose(cost: i32) -> Mode {
         Mode::Decompose(Penalty {
             kanji_penalty_length_threshold: 1,
-            kanji_penalty_length_penalty: i32::MAX,
+            kanji_penalty_length_penalty: cost,
             other_penalty_length_threshold: 100,
             other_penalty_length_penalty: 0,
         })
+    }
+
+    /// Builds a system dictionary with one entry per (surface, cost), word
+    /// ids in the order of `entries`, with context ids 0.
+    fn dict_of(entries: &[(&str, i16)]) -> PrefixDictionary {
+        let mut map = BTreeMap::new();
+        for (id, &(surface, cost)) in entries.iter().enumerate() {
+            map.insert(
+                surface.to_string(),
+                vec![WordEntry::new(sys(id as u32), cost, 0, 0)],
+            );
+        }
+        PrefixDictionary::from_word_entry_map(&map).unwrap()
+    }
+
+    /// Builds the 1-best lattice of `text` over `dict` with the categories
+    /// and unknown words of [`test_char_definition`] and `matrix`.
+    fn lattice_with(
+        dict: &PrefixDictionary,
+        matrix: &ConnectionCostMatrix,
+        text: &str,
+        mode: &Mode,
+    ) -> Lattice {
+        let options = LatticeOptions::new(mode);
+        let mut lattice = Lattice::default();
+        lattice.set_text_with_options(
+            dict,
+            &None,
+            &test_char_definition(),
+            &test_unknown_dictionary(),
+            matrix,
+            text,
+            &options,
+        );
+        lattice
     }
 
     /// Builds the N-best lattice of `text` over `dict` with the categories
@@ -7099,38 +7156,188 @@ mod tests {
         ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0, 0]).unwrap()
     }
 
-    /// Builds the N-best lattice of `text` over `dict` in
-    /// [`saturating_kanji_decompose`] mode.
-    fn saturating_nbest_lattice(dict: &PrefixDictionary, text: &str) -> Lattice {
-        nbest_lattice_with(dict, &free_matrix(), text, &saturating_kanji_decompose())
-    }
-
-    /// #1114: an edge whose every transition saturates is not stored, and
-    /// neither are its transitions. In `漢字b`, `b` follows only `漢字`,
-    /// which pays `i32::MAX`, so `b` is not stored; its transitions used to
-    /// be recorded under the index EOS then took in the slot, so the N-best
-    /// search also found `漢字` alone, a path that stops before `b`.
+    /// #1114, #1223: in `漢字b`, `b` follows only `漢字`, which pays a huge
+    /// penalty, bounded for the sentence: `b` is stored with its transition,
+    /// and the N-best search finds both paths at their exact costs, as does
+    /// a search over unique segmentations. The transition into `b` used to
+    /// saturate, so `b` was not stored; its transitions then had to be
+    /// dropped as well (#1114), or the search would have read them as EOS's
+    /// and found `漢字` alone. In `漢字`, the only word pays the bound to EOS,
+    /// which used to saturate too and leave the lattice without EOS.
     #[test]
-    fn test_saturated_edge_records_no_transitions() {
+    fn test_penalized_edge_records_its_transitions() {
         let dict = hundred_each(&["漢字", "漢字b", "b"]);
-        let lattice = saturating_nbest_lattice(&dict, "漢字b");
+        let mode = huge_kanji_decompose(i32::MAX);
+        let lattice = nbest_lattice_with(&dict, &free_matrix(), "漢字b", &mode);
+        let bound = i64::from(SENTENCE_PENALTY_BUDGET / 3);
         let paths = lattice.nbest_tokens_offset(10, false, None);
-        assert_eq!(paths, vec![(vec![(0, 7, sys(1))], 100)]);
+        assert_eq!(
+            paths,
+            vec![
+                (vec![(0, 7, sys(1))], 100),
+                (vec![(0, 6, sys(0)), (6, 7, sys(2))], 200 + bound),
+            ]
+        );
         assert_eq!(lattice.nbest_tokens_offset(10, true, None), paths);
+
+        let lattice = nbest_lattice_with(&dict, &free_matrix(), "漢字", &mode);
+        let bound = i64::from(SENTENCE_PENALTY_BUDGET / 2);
+        assert_eq!(
+            lattice.nbest_tokens_offset(10, false, None),
+            vec![(vec![(0, 6, sys(0))], 100 + bound)]
+        );
     }
 
-    /// #1114: without an EOS edge there is no N-best path. In `漢字`, the
-    /// only final edge pays `i32::MAX` to EOS, so EOS does not connect and
-    /// the 1-best backtrace finds nothing; the N-best search used to take
-    /// the final edge for EOS and return `漢字` without the EOS connection.
+    /// #1114: without an EOS edge there is no N-best path. In `ab!`, no word
+    /// and no unknown word covers `!` (its category, `DEFAULT`, has no
+    /// unknown-word entry here), so no edge reaches the end of the sentence
+    /// and EOS does not connect. The 1-best backtrace reports no complete
+    /// path and returns the path to the last word stored, that word
+    /// excluded (`a`), and the N-best search finds no path; it used to take
+    /// a final edge for EOS. Since #1223, only such a character, not a
+    /// penalty, leaves a lattice without EOS.
     #[test]
     fn test_nbest_without_eos_has_no_path() {
-        let dict = hundred_each(&["漢字"]);
-        let lattice = saturating_nbest_lattice(&dict, "漢字");
-        assert_eq!(lattice.tokens_offset_into(&mut Vec::new()), None);
+        let dict = hundred_each(&["a", "b"]);
+        let mut unknown_dictionary = test_unknown_dictionary();
+        unknown_dictionary.category_references[0].clear();
+        let options = LatticeOptions::new(&Mode::Normal);
+        let mut lattice = Lattice::default();
+        lattice.set_text_with_options(
+            &dict,
+            &None,
+            &test_char_definition(),
+            &unknown_dictionary,
+            &free_matrix(),
+            "ab!",
+            &options,
+        );
+        let mut tokens = Vec::new();
+        assert_eq!(lattice.tokens_offset_into(&mut tokens), None);
+        assert_eq!(tokens, vec![(0, 1, sys(0))]);
+
+        lattice.set_text_nbest_with_options(
+            &dict,
+            &None,
+            &test_char_definition(),
+            &unknown_dictionary,
+            &free_matrix(),
+            "ab!",
+            &options,
+        );
+        assert!(lattice.edges_at_char(3).is_empty());
         assert!(lattice.nbest_tokens_offset(10, false, None).is_empty());
         assert!(lattice.nbest_tokens_offset(10, true, None).is_empty());
         assert!(NBestGenerator::new(&lattice).next_with_bos().is_none());
+    }
+
+    /// #1223: of two paths whose penalties are huge, the one with the lower
+    /// exact cost wins, in the 1-best lattice and as the first N-best path:
+    /// in `漢字ab`, `漢字` pays the bound to the word after it whatever the
+    /// split, and `ab` (-1000) beats `a` (100) and `b` (-50). Without the
+    /// bound, the transitions out of `漢字` saturated (`i32::MAX`) or took
+    /// the paths below the lower clamp (`i32::MIN`); the costs after them
+    /// were lost, and the 1-best lattice kept `a` and `b`.
+    #[test]
+    fn test_huge_penalty_ranks_by_exact_costs() {
+        let dict = dict_of(&[("漢字", 100), ("ab", -1000), ("a", 100), ("b", -50)]);
+        for (penalty, bound) in [
+            (i32::MAX, SENTENCE_PENALTY_BUDGET / 4),
+            (i32::MIN, -(SENTENCE_PENALTY_BUDGET / 4)),
+        ] {
+            let mode = huge_kanji_decompose(penalty);
+            let split = vec![(0, 6, sys(0)), (6, 8, sys(1))];
+            let cost = -900 + i64::from(bound);
+            let lattice = lattice_with(&dict, &free_matrix(), "漢字ab", &mode);
+            assert_eq!(
+                best_path(&lattice),
+                (split.clone(), Some(0), cost),
+                "{penalty}"
+            );
+            let lattice = nbest_lattice_with(&dict, &free_matrix(), "漢字ab", &mode);
+            assert_eq!(
+                lattice.nbest_tokens_offset(10, false, None),
+                vec![
+                    (split, cost),
+                    (
+                        vec![(0, 6, sys(0)), (6, 7, sys(2)), (7, 8, sys(3))],
+                        cost + 1050
+                    ),
+                ],
+                "{penalty}"
+            );
+        }
+    }
+
+    /// #1223: a transition whose cost saturates at `i32::MAX` still
+    /// connects, in every relaxation and EOS connection of both lattices,
+    /// so that a path goes on to the end of the sentence. The bound on the
+    /// length penalty keeps it from saturating a path by itself; a costly
+    /// BOS edge still can. Here the only one costs `i32::MAX` (clamped to
+    /// `PATH_COST_CLAMP`), and every word pays 1000000 per character to the
+    /// word after it, which takes every transition out of a word past
+    /// `i32::MAX`: `a` saturates at EOS only, `cab` (no entry spans it) in
+    /// relaxations too, and `b c`, with whitespace skipped, in the
+    /// relaxation of a position where `b ` owns the space before it
+    /// (`relax_owned`, `relax_nbest_owned`). Each used to have no complete
+    /// path.
+    #[test]
+    fn test_saturated_transitions_connect() {
+        let mode = Mode::Decompose(Penalty {
+            kanji_penalty_length_threshold: 0,
+            kanji_penalty_length_penalty: 1_000_000,
+            other_penalty_length_threshold: 0,
+            other_penalty_length_penalty: 1_000_000,
+        });
+        let bos = [bos_ctx(1, i32::MAX)];
+        let plain = CtxFixture::new();
+        let spaced = CtxFixture::with_space_penalty();
+        for (fixture, text, skip) in [
+            (&plain, "a", false),
+            (&plain, "cab", false),
+            (&spaced, "b c", true),
+        ] {
+            let lattice = fixture.lattice(text, &mode, skip, &bos);
+            let mut tokens = Vec::new();
+            let bos_index = lattice.tokens_offset_into(&mut tokens);
+            assert_eq!(bos_index, Some(0), "{text:?}: 1-best");
+            assert_eq!(tokens.last().map(|t| t.1), Some(text.len()), "{text:?}");
+            assert!(!exits_of(&lattice).is_empty(), "{text:?}: exits");
+
+            let lattice = fixture.nbest_lattice(text, &mode, skip, &bos);
+            let paths = lattice.nbest_tokens_offset(10, false, None);
+            assert!(!paths.is_empty(), "{text:?}: N-best");
+            for (path, _) in &paths {
+                assert_eq!(path.last().map(|t| t.1), Some(text.len()), "{text:?}");
+            }
+        }
+    }
+
+    /// #1223: a left-space penalty of `i32::MAX` on `cd` saturates every
+    /// transition into it in `a cd`. The 1-best lattice kept them, as it adds
+    /// the penalty after the relaxation, but the N-best lattice folds it into
+    /// the relaxation and dropped them, so its search found no path. Both
+    /// now give the same segmentation, in both modes, with whitespace kept
+    /// or skipped.
+    #[test]
+    fn test_saturated_space_penalty_connects_in_nbest() {
+        let mut system = [0; 7];
+        system[CD as usize] = i32::MAX;
+        system[CD_ALT as usize] = i32::MAX;
+        let fixture = WsFixture::with_space_penalty(&system, &[]);
+        let bounds = |tokens: &[TokenOffset]| -> Vec<(usize, usize)> {
+            tokens.iter().map(|&(start, end, _)| (start, end)).collect()
+        };
+        for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
+            for skip in [false, true] {
+                let case = format!("{mode:?} skip={skip}");
+                let tokens = fixture.lattice("a cd", &mode, skip).tokens_offset();
+                assert_eq!(tokens.last().map(|t| t.1), Some(4), "{case}");
+                let paths = fixture.all_paths("a cd", &mode, skip);
+                assert!(!paths.is_empty(), "{case}");
+                assert_eq!(bounds(&paths[0].0), bounds(&tokens), "{case}");
+            }
+        }
     }
 
     /// A path as the unique N-best tests compare it: cost, tokens with
@@ -7501,7 +7708,8 @@ mod tests {
 
     /// The Decompose mode of the #1224 tests: every word pays `i32::MIN`
     /// per character, so a one-character word pays `i32::MIN` to the word
-    /// after it.
+    /// after it, before the lattice bounds the penalty for the sentence
+    /// (#1223).
     fn lowest_decompose() -> Mode {
         Mode::Decompose(Penalty {
             kanji_penalty_length_threshold: 0,
@@ -7536,9 +7744,21 @@ mod tests {
         vec![(0, 1, sys(0)), (1, 2, sys(1)), (2, 3, sys(2))]
     }
 
-    /// The 1-best tokens of `a b` in the #1224 tests.
-    fn a_space_b_tokens() -> Vec<TokenOffset> {
-        vec![(0, 1, sys(0)), (1, 2, unk(UNKNOWN_SPACE)), (2, 3, sys(1))]
+    /// The texts of the left-space tests of #1224 and their 1-best tokens:
+    /// `a b`, where the EOS connection follows `b`, and `a bc`, where the
+    /// relaxation into `c` does.
+    fn space_cases() -> [(&'static str, Vec<TokenOffset>); 2] {
+        let a_space_b = vec![(0, 1, sys(0)), (1, 2, unk(UNKNOWN_SPACE)), (2, 3, sys(1))];
+        let mut a_space_bc = a_space_b.clone();
+        a_space_bc.push((3, 4, sys(2)));
+        [("a b", a_space_b), ("a bc", a_space_bc)]
+    }
+
+    /// The cost of `abc` in [`lowest_decompose`] mode: three words and four
+    /// connections at -32768 each, and three penalties at the bound of a
+    /// sentence of three characters (#1223).
+    fn lowest_abc_cost() -> i64 {
+        -7 * 32768 - 3 * i64::from(SENTENCE_PENALTY_BUDGET / 3)
     }
 
     /// #1224: a negative Decompose penalty cannot take a stored path cost
@@ -7546,11 +7766,14 @@ mod tests {
     /// to it cannot overflow. Every word and connection costs -32768 and
     /// every word pays `i32::MIN` to the word after it: the path cost of `b`
     /// used to saturate at `i32::MIN`, and the relaxation into `c`
-    /// overflowed (a panic in the test profile).
+    /// overflowed (a panic in the test profile). Since #1223 the penalty is
+    /// bounded for the sentence, so the path keeps its exact cost, far from
+    /// the clamp; the left-space tests below still reach it.
     #[test]
     fn test_negative_decompose_penalty_does_not_overflow() {
         let lattice = lowest_cost_lattice("abc", &lowest_decompose(), None, false);
         assert_eq!(lattice.tokens_offset(), abc_tokens());
+        assert_eq!(eos_cost(&lattice), lowest_abc_cost());
         assert_path_costs_bounded(&lattice, "1-best");
     }
 
@@ -7560,34 +7783,40 @@ mod tests {
     fn test_negative_decompose_penalty_does_not_overflow_nbest() {
         let lattice = lowest_cost_lattice("abc", &lowest_decompose(), None, true);
         let paths = lattice.nbest_tokens_offset(10, false, None);
-        assert_eq!(paths.len(), 1, "{paths:?}");
-        assert_eq!(paths[0].0, abc_tokens());
+        assert_eq!(paths, vec![(abc_tokens(), lowest_abc_cost())]);
         assert_path_costs_bounded(&lattice, "N-best");
     }
 
     /// #1224: the same holds for a negative left-space penalty, which
     /// applies in both modes: `b` after the space pays `i32::MIN`, so its
-    /// path cost used to saturate at `i32::MIN`, and the EOS connection
-    /// after it overflowed.
+    /// path cost used to saturate at `i32::MIN`, and the EOS connection or
+    /// the relaxation into `c` after it overflowed.
     #[test]
     fn test_negative_space_penalty_does_not_overflow() {
         for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
-            let lattice = lowest_cost_lattice("a b", &mode, Some(i32::MIN), false);
-            assert_eq!(lattice.tokens_offset(), a_space_b_tokens(), "{mode:?}");
-            assert_path_costs_bounded(&lattice, &format!("1-best {mode:?}"));
+            for (text, tokens) in space_cases() {
+                let case = format!("{text:?} 1-best {mode:?}");
+                let lattice = lowest_cost_lattice(text, &mode, Some(i32::MIN), false);
+                assert_eq!(lattice.tokens_offset(), tokens, "{case}");
+                assert_path_costs_bounded(&lattice, &case);
+            }
         }
     }
 
     /// #1224: [`test_negative_space_penalty_does_not_overflow`] in the
-    /// N-best lattice, whose EOS connection overflowed the same way.
+    /// N-best lattice, whose EOS connection and relaxation overflowed the
+    /// same way.
     #[test]
     fn test_negative_space_penalty_does_not_overflow_nbest() {
         for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
-            let lattice = lowest_cost_lattice("a b", &mode, Some(i32::MIN), true);
-            let paths = lattice.nbest_tokens_offset(10, false, None);
-            assert_eq!(paths.len(), 1, "{mode:?}: {paths:?}");
-            assert_eq!(paths[0].0, a_space_b_tokens(), "{mode:?}");
-            assert_path_costs_bounded(&lattice, &format!("N-best {mode:?}"));
+            for (text, tokens) in space_cases() {
+                let case = format!("{text:?} N-best {mode:?}");
+                let lattice = lowest_cost_lattice(text, &mode, Some(i32::MIN), true);
+                let paths = lattice.nbest_tokens_offset(10, false, None);
+                assert_eq!(paths.len(), 1, "{case}: {paths:?}");
+                assert_eq!(paths[0].0, tokens, "{case}");
+                assert_path_costs_bounded(&lattice, &case);
+            }
         }
     }
 }

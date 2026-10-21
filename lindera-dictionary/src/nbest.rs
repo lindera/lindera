@@ -180,8 +180,8 @@ impl<'a> NBestGenerator<'a> {
     }
 
     /// Seeds the queue with the EOS edge of the lattice, if any: a lattice
-    /// whose EOS did not connect has no complete path, even when words end
-    /// at the end of the sentence.
+    /// without one (no word reaches the end of the sentence, see
+    /// [`Lattice::eos_index`]) has no complete path.
     fn init(&mut self) {
         let char_len = self.lattice.char_len();
         let Some(eos_index) = self.lattice.eos_index() else {
@@ -571,7 +571,9 @@ struct Way {
 /// context ids a result holds is deterministic but not otherwise specified.
 ///
 /// The costs are exact unless a forward path cost was clamped at the
-/// lattice's limit, which only absurd penalties reach.
+/// lattice's limit, which only absurd costs reach: a huge left-space
+/// penalty or BOS cost (the length penalty is bounded per sentence so as
+/// not to, see [`Penalty`](crate::mode::Penalty)).
 pub struct UniqueNBestGenerator<'a> {
     /// The N-best lattice the paths are taken from.
     lattice: &'a Lattice,
