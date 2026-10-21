@@ -9,10 +9,11 @@ use PHPUnit\Framework\TestCase;
  *
  * ext-php-rs before 0.16.3 read such a value as `null` for an `Option<T>`
  * parameter, so a mistyped argument used to select the default silently.
- * lindera-php declares these parameters as `Nullable<T>`, which fails the
- * conversion instead: ext-php-rs then throws the `TypeError` it throws for a
- * required parameter ("Invalid value given for argument"). `null` and an
- * omitted argument still select the default.
+ * Since 0.16.3, the conversion of `Option<T>` fails for a value that `T`
+ * rejects, and ext-php-rs throws the `TypeError` it throws for a required
+ * parameter ("Invalid value given for argument"). lindera-php declares these
+ * parameters as `Option<T>` and relies on that, so it requires ext-php-rs
+ * 0.16.3 or later. `null` and an omitted argument still select the default.
  */
 class ArgumentTypesTest extends TestCase
 {

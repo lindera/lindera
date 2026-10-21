@@ -10,7 +10,7 @@ use ext_php_rs::prelude::*;
 
 use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, TrainerConfig};
 
-use crate::convert::{Float, Nullable, nullable_int_arg};
+use crate::convert::nullable_int_arg;
 use crate::error::lindera_value_err;
 
 /// Trainer for morphological analysis models.
@@ -50,12 +50,12 @@ impl PhpTrainer {
         feature_def: String,
         rewrite_def: String,
         output: String,
-        lambda: Nullable<Float>,
-        max_iter: Nullable<i64>,
-        max_threads: Nullable<i64>,
+        lambda: Option<f64>,
+        max_iter: Option<i64>,
+        max_threads: Option<i64>,
     ) -> PhpResult<()> {
         // Check the settings before touching any file.
-        let lambda_val = lambda.into_option().map_or(0.01, Float::into_f64);
+        let lambda_val = lambda.unwrap_or(0.01);
         let max_iter_val = nullable_int_arg("max_iter", max_iter)?.unwrap_or(100);
         let num_threads =
             nullable_int_arg("max_threads", max_threads)?.unwrap_or_else(num_cpus::get);
@@ -151,10 +151,9 @@ impl PhpTrainer {
     /// # Returns
     ///
     /// `Ok(())` on success, or a `ValueError` on failure.
-    pub fn export(model: String, output: String, metadata: Nullable<String>) -> PhpResult<()> {
+    pub fn export(model: String, output: String, metadata: Option<String>) -> PhpResult<()> {
         let model_path = Path::new(&model);
         let output_path = Path::new(&output);
-        let metadata = metadata.into_option();
         let metadata_path = metadata.as_deref().map(Path::new);
 
         if !model_path.exists() {

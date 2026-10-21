@@ -12,7 +12,7 @@ use ext_php_rs::prelude::*;
 use lindera::dictionary::Metadata;
 use lindera_binding::CoreMetadata;
 
-use crate::convert::{Nullable, optional_int};
+use crate::convert::optional_int;
 use crate::error::lindera_value_err;
 
 /// Dictionary metadata configuration.
@@ -55,24 +55,24 @@ impl PhpMetadata {
     /// outside its range.
     #[allow(clippy::too_many_arguments)]
     pub fn __construct(
-        name: Nullable<String>,
-        encoding: Nullable<String>,
-        default_word_cost: Nullable<i64>,
-        default_left_context_id: Nullable<i64>,
-        default_right_context_id: Nullable<i64>,
-        default_field_value: Nullable<String>,
-        flexible_csv: Nullable<bool>,
-        skip_invalid_cost_or_id: Nullable<bool>,
+        name: Option<String>,
+        encoding: Option<String>,
+        default_word_cost: Option<i64>,
+        default_left_context_id: Option<i64>,
+        default_right_context_id: Option<i64>,
+        default_field_value: Option<String>,
+        flexible_csv: Option<bool>,
+        skip_invalid_cost_or_id: Option<bool>,
     ) -> PhpResult<Self> {
         Self::from_args(
-            name.into_option(),
-            encoding.into_option(),
-            default_word_cost.into_option(),
-            default_left_context_id.into_option(),
-            default_right_context_id.into_option(),
-            default_field_value.into_option(),
-            flexible_csv.into_option(),
-            skip_invalid_cost_or_id.into_option(),
+            name,
+            encoding,
+            default_word_cost,
+            default_left_context_id,
+            default_right_context_id,
+            default_field_value,
+            flexible_csv,
+            skip_invalid_cost_or_id,
         )
         .map_err(lindera_value_err)
     }
