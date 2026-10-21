@@ -1148,8 +1148,11 @@ Node.js バインディングは code が `InvalidArg` の `Error` を、WASM �
 
 範囲内の整数を渡してください。Node.js と WASM のバインディングの TypeScript の
 型定義は変わりません。Python と Ruby のバインディングは、以前からこれらの値を
-`OverflowError` と `RangeError` で拒否しており、変わりません。ただし、Python の
-プロパティの setter の `OverflowError` は、注記でプロパティの名前を示すように
+`OverflowError` と `RangeError` で拒否しており、これからも拒否します。Ruby の
+バインディングの `RangeError` は、上と同じ、引数の名前と範囲を示すメッセージに
+なりました。v6 は Rust の型だけを示していました（``fixnum too big to convert into `i16` ``）。
+N-best のコストのしきい値に 64 ビットの範囲外の `Integer` を渡したときも同じです。
+Python のプロパティの setter の `OverflowError` は、注記でプロパティの名前を示すように
 なりました（`'cost'` ではなく `while processing 'default_word_cost'`）。v6 の動作に
 戻す設定はありません。
 

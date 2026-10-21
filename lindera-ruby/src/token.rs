@@ -3,9 +3,11 @@
 //! This module wraps Lindera tokens for use in Ruby.
 
 use magnus::prelude::*;
-use magnus::{Error, RHash, Ruby, method};
+use magnus::{Error, Integer, RHash, Ruby, method};
 
 use lindera::token::Token;
+
+use crate::util::integer_arg;
 
 /// Token object wrapping the Rust Token data.
 ///
@@ -102,13 +104,18 @@ impl RbToken {
     ///
     /// # Arguments
     ///
-    /// * `index` - Index of the detail to retrieve.
+    /// * `ruby` - Ruby runtime handle (passed by magnus, not by the caller).
+    /// * `rb_self` - The token.
+    /// * `index` - Index of the detail to retrieve, 0 or more.
     ///
     /// # Returns
     ///
-    /// The detail string if found, otherwise nil.
-    fn get_detail(&self, index: usize) -> Option<String> {
-        self.details.get(index).cloned()
+    /// The detail string if found, nil if the index is past the last detail,
+    /// or a `RangeError` for an index that is negative or larger than a
+    /// `usize` holds.
+    fn get_detail(ruby: &Ruby, rb_self: &Self, index: Integer) -> Result<Option<String>, Error> {
+        let index: usize = integer_arg(ruby, "index", index)?;
+        Ok(rb_self.details.get(index).cloned())
     }
 
     /// Returns the token as a plain Hash keyed by Symbols.

@@ -1,11 +1,73 @@
 //! Utility functions for Ruby-Rust data conversion.
 //!
 //! This module provides helper functions for converting between Ruby objects
-//! and Rust data structures, particularly for working with JSON-like data.
+//! and Rust data structures, particularly for working with JSON-like data,
+//! and for checking integer arguments against the range of their setting.
 
-use lindera_binding::argument::{MAX_ARGUMENT_DEPTH, argument_too_deep_message};
+use lindera_binding::argument::{
+    IntegerArgument, MAX_ARGUMENT_DEPTH, argument_too_deep_message, integer_argument_message,
+};
 use magnus::prelude::*;
-use magnus::{Error, RArray, RHash, Ruby, TryConvert, Value};
+use magnus::{Error, Integer, RArray, RHash, Ruby, TryConvert, Value};
+
+/// Converts an `Integer` argument to the type the core stores it as.
+///
+/// A function that declared the core's type (`i16`, `usize`, ...) would have
+/// magnus convert the argument, but magnus's `RangeError` names only the Rust
+/// type (``fixnum too big to convert into `i16` ``), not the parameter or the
+/// range (lindera/lindera#1216). Such a function takes an `Integer` instead,
+/// which magnus converts as it does for the core's type (calling `to_int` on
+/// any other value), and checks the range with this.
+///
+/// # Arguments
+///
+/// * `ruby` - Ruby runtime handle.
+/// * `name` - The parameter's name, as the documentation names it.
+/// * `value` - The value passed, of any size.
+///
+/// # Returns
+///
+/// The value as `T`, or a `RangeError` with the message of
+/// [`integer_argument_message`] when `T` cannot hold the value.
+pub fn integer_arg<T: IntegerArgument>(
+    ruby: &Ruby,
+    name: &str,
+    value: Integer,
+) -> Result<T, Error> {
+    // An Integer beyond `i128` is outside every implementing type's range.
+    value
+        .to_i128()
+        .ok()
+        .and_then(|wide| T::try_from(wide).ok())
+        .ok_or_else(|| {
+            Error::new(
+                ruby.exception_range_error(),
+                integer_argument_message::<T>(name, value),
+            )
+        })
+}
+
+/// Converts an optional `Integer` argument with [`integer_arg`].
+///
+/// # Arguments
+///
+/// * `ruby` - Ruby runtime handle.
+/// * `name` - The parameter's name, as the documentation names it.
+/// * `value` - The value passed, `None` for `nil`.
+///
+/// # Returns
+///
+/// `None` for `nil`, the value as `T` otherwise, or the `RangeError` of
+/// [`integer_arg`].
+pub fn optional_integer_arg<T: IntegerArgument>(
+    ruby: &Ruby,
+    name: &str,
+    value: Option<Integer>,
+) -> Result<Option<T>, Error> {
+    value
+        .map(|value| integer_arg(ruby, name, value))
+        .transpose()
+}
 
 /// Converts a Ruby value to a serde_json::Value.
 ///
