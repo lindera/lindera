@@ -5105,6 +5105,26 @@ for (const token of tokens) {
 <li><strong>N-best トークナイズ</strong>: コスト順にランク付けされた複数のトークナイズ候補を取得</li>
 <li><strong>ユーザー辞書</strong>: システム辞書をカスタム語彙で拡張</li>
 </ul>
+<h2 id="整数の引数"><a class="header" href="#整数の引数">整数の引数</a></h2>
+<p>整数の引数は、その設定が保持できる値だけを受け付けます。<code>Lindera::Metadata.new</code> の <code>default_word_cost</code> は -32768 から 32767、文脈 ID は 0 から 65535、<code>Lindera::Penalty.new</code> のペナルティは 32 ビットの整数を受け付けます。個数や位置は 0 以上を受け付けます。該当するのは、<code>Lindera::Penalty.new</code> のしきい値、<code>Schema#get_field_name</code> と <code>Token#get_detail</code> の <code>index</code>、<code>Tokenizer#tokenize_nbest</code> の <code>n</code>、<code>Lindera.train</code> の <code>max_iter</code> と <code>max_threads</code> です。<code>Tokenizer#tokenize_nbest</code> の <code>cost_threshold</code> は 64 ビットの整数を受け付けます。範囲外の値は、引数の名前と範囲を含む <code>RangeError</code> を投げます。末尾より先の位置は、これまでどおり <code>nil</code> を返します。</p>
+<pre><code class="language-ruby">require 'lindera'
+
+begin
+  Lindera::Metadata.new(nil, nil, 100_000, nil, nil, nil, nil, nil)
+rescue RangeError =&gt; e
+  puts "#{e.class}: #{e.message}"
+  # RangeError: default_word_cost must be an integer between -32768 and 32767, got 100000
+end
+
+tokenizer = Lindera::Tokenizer.new(Lindera.load_dictionary('embedded://ipadic'))
+
+begin
+  tokenizer.tokenize_nbest('東京都', -1, nil, nil)
+rescue RangeError =&gt; e
+  puts "#{e.class}: #{e.message}"
+  # RangeError: n must be an integer between 0 and 18446744073709551615, got -1
+end
+</code></pre>
 <h2 id="ドキュメント-2"><a class="header" href="#ドキュメント-2">ドキュメント</a></h2>
 <ul>
 <li><a href="./lindera-ruby/installation.html">インストール</a> -- 前提条件、ビルド手順、feature フラグ</li>
@@ -5526,7 +5546,7 @@ p tokenizer.tokenize(text).map(&amp;:surface)
 </code></pre>
 <h3 id="token-メソッド-1"><a class="header" href="#token-メソッド-1">Token メソッド</a></h3>
 <h4 id="get_detailindex-1"><a class="header" href="#get_detailindex-1"><code>get_detail(index)</code></a></h4>
-<p>指定されたインデックスの詳細文字列を返します。インデックスが範囲外の場合は <code>nil</code> を返します。</p>
+<p>指定されたインデックスの詳細文字列を返します。インデックスが最後の詳細より先の場合は <code>nil</code> を返します。負のインデックスは <code>RangeError</code> を投げます（<a href="lindera-ruby/../lindera-ruby.html#%E6%95%B4%E6%95%B0%E3%81%AE%E5%BC%95%E6%95%B0">整数の引数</a>を参照）。</p>
 <pre><code class="language-ruby">token = tokenizer.tokenize('東京')[0]
 pos = token.get_detail(0)        # 例: "名詞"
 subpos = token.get_detail(1)     # 例: "固有名詞"
@@ -11165,8 +11185,11 @@ Node.js バインディングは code が <code>InvalidArg</code> の <code>Erro
 </ul>
 <p>範囲内の整数を渡してください。Node.js と WASM のバインディングの TypeScript の
 型定義は変わりません。Python と Ruby のバインディングは、以前からこれらの値を
-<code>OverflowError</code> と <code>RangeError</code> で拒否しており、変わりません。ただし、Python の
-プロパティの setter の <code>OverflowError</code> は、注記でプロパティの名前を示すように
+<code>OverflowError</code> と <code>RangeError</code> で拒否しており、これからも拒否します。Ruby の
+バインディングの <code>RangeError</code> は、上と同じ、引数の名前と範囲を示すメッセージに
+なりました。v6 は Rust の型だけを示していました（<code>fixnum too big to convert into `i16` </code>）。
+N-best のコストのしきい値に 64 ビットの範囲外の <code>Integer</code> を渡したときも同じです。
+Python のプロパティの setter の <code>OverflowError</code> は、注記でプロパティの名前を示すように
 なりました（<code>'cost'</code> ではなく <code>while processing 'default_word_cost'</code>）。v6 の動作に
 戻す設定はありません。</p>
 <h2 id="バインディング-モードは-mode-で表す"><a class="header" href="#バインディング-モードは-mode-で表す">バインディング: モードは <code>Mode</code> で表す</a></h2>

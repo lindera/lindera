@@ -1293,10 +1293,14 @@ threshold that is not a BigInt.</li>
 </ul>
 <p>Pass an integer in the range. The TypeScript declarations of the Node.js
 and WASM bindings do not change. The Python and Ruby bindings already rejected
-these values, with <code>OverflowError</code> and <code>RangeError</code>, and do not change,
-except that the <code>OverflowError</code> of a Python property setter now names the
-property in its note (<code>while processing 'default_word_cost'</code> instead of
-<code>'cost'</code>). No option restores the v6 behavior.</p>
+these values, with <code>OverflowError</code> and <code>RangeError</code>, and still do. The
+<code>RangeError</code> of the Ruby binding now has the message above, which names the
+parameter and the range, where v6 named only the Rust type
+(<code>fixnum too big to convert into `i16` </code>); this covers the N-best cost
+threshold too, for an <code>Integer</code> outside the 64-bit range. The
+<code>OverflowError</code> of a Python property setter now names the property in its
+note (<code>while processing 'default_word_cost'</code> instead of <code>'cost'</code>). No option
+restores the v6 behavior.</p>
 <h2 id="bindings-a-mode-is-a-mode"><a class="header" href="#bindings-a-mode-is-a-mode">Bindings: a mode is a <code>Mode</code></a></h2>
 <p>Up to v6.2.0, every binding exported a <code>Mode</code>, but no function or
 constructor took one: <code>set_mode</code> / <code>setMode</code> and the <code>Tokenizer</code>

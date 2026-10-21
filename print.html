@@ -5113,6 +5113,26 @@ for (const token of tokens) {
 <li><strong>N-best tokenization</strong>: Retrieve multiple tokenization candidates ranked by cost</li>
 <li><strong>User dictionaries</strong>: Extend system dictionaries with custom vocabulary</li>
 </ul>
+<h2 id="integer-arguments"><a class="header" href="#integer-arguments">Integer arguments</a></h2>
+<p>An integer parameter takes only the values its setting can hold. <code>default_word_cost</code> of <code>Lindera::Metadata.new</code> takes -32768 to 32767, the context IDs 0 to 65535, and the penalties of <code>Lindera::Penalty.new</code> a 32-bit integer. A count or an index takes 0 or more: the thresholds of <code>Lindera::Penalty.new</code>, <code>index</code> of <code>Schema#get_field_name</code> and <code>Token#get_detail</code>, <code>n</code> of <code>Tokenizer#tokenize_nbest</code>, and <code>max_iter</code> and <code>max_threads</code> of <code>Lindera.train</code>. <code>cost_threshold</code> of <code>Tokenizer#tokenize_nbest</code> takes a 64-bit integer. A value outside the range raises a <code>RangeError</code> that names the parameter and the range; an index past the end still returns <code>nil</code>:</p>
+<pre><code class="language-ruby">require 'lindera'
+
+begin
+  Lindera::Metadata.new(nil, nil, 100_000, nil, nil, nil, nil, nil)
+rescue RangeError =&gt; e
+  puts "#{e.class}: #{e.message}"
+  # RangeError: default_word_cost must be an integer between -32768 and 32767, got 100000
+end
+
+tokenizer = Lindera::Tokenizer.new(Lindera.load_dictionary('embedded://ipadic'))
+
+begin
+  tokenizer.tokenize_nbest('東京都', -1, nil, nil)
+rescue RangeError =&gt; e
+  puts "#{e.class}: #{e.message}"
+  # RangeError: n must be an integer between 0 and 18446744073709551615, got -1
+end
+</code></pre>
 <h2 id="documentation-2"><a class="header" href="#documentation-2">Documentation</a></h2>
 <ul>
 <li><a href="./lindera-ruby/installation.html">Installation</a> -- Prerequisites, build instructions, and feature flags</li>
@@ -5535,7 +5555,7 @@ p tokenizer.tokenize(text).map(&amp;:surface)
 </code></pre>
 <h3 id="token-methods-1"><a class="header" href="#token-methods-1">Token Methods</a></h3>
 <h4 id="get_detailindex-1"><a class="header" href="#get_detailindex-1"><code>get_detail(index)</code></a></h4>
-<p>Returns the detail string at the specified index, or <code>nil</code> if the index is out of range.</p>
+<p>Returns the detail string at the specified index, or <code>nil</code> if the index is past the last detail. A negative index raises <code>RangeError</code> (see <a href="lindera-ruby/../lindera-ruby.html#integer-arguments">Integer arguments</a>).</p>
 <pre><code class="language-ruby">token = tokenizer.tokenize('東京')[0]
 pos = token.get_detail(0)        # e.g., "名詞"
 subpos = token.get_detail(1)     # e.g., "固有名詞"
@@ -11411,10 +11431,14 @@ threshold that is not a BigInt.</li>
 </ul>
 <p>Pass an integer in the range. The TypeScript declarations of the Node.js
 and WASM bindings do not change. The Python and Ruby bindings already rejected
-these values, with <code>OverflowError</code> and <code>RangeError</code>, and do not change,
-except that the <code>OverflowError</code> of a Python property setter now names the
-property in its note (<code>while processing 'default_word_cost'</code> instead of
-<code>'cost'</code>). No option restores the v6 behavior.</p>
+these values, with <code>OverflowError</code> and <code>RangeError</code>, and still do. The
+<code>RangeError</code> of the Ruby binding now has the message above, which names the
+parameter and the range, where v6 named only the Rust type
+(<code>fixnum too big to convert into `i16` </code>); this covers the N-best cost
+threshold too, for an <code>Integer</code> outside the 64-bit range. The
+<code>OverflowError</code> of a Python property setter now names the property in its
+note (<code>while processing 'default_word_cost'</code> instead of <code>'cost'</code>). No option
+restores the v6 behavior.</p>
 <h2 id="bindings-a-mode-is-a-mode"><a class="header" href="#bindings-a-mode-is-a-mode">Bindings: a mode is a <code>Mode</code></a></h2>
 <p>Up to v6.2.0, every binding exported a <code>Mode</code>, but no function or
 constructor took one: <code>set_mode</code> / <code>setMode</code> and the <code>Tokenizer</code>

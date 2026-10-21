@@ -1177,8 +1177,11 @@ Node.js バインディングは code が <code>InvalidArg</code> の <code>Erro
 </ul>
 <p>範囲内の整数を渡してください。Node.js と WASM のバインディングの TypeScript の
 型定義は変わりません。Python と Ruby のバインディングは、以前からこれらの値を
-<code>OverflowError</code> と <code>RangeError</code> で拒否しており、変わりません。ただし、Python の
-プロパティの setter の <code>OverflowError</code> は、注記でプロパティの名前を示すように
+<code>OverflowError</code> と <code>RangeError</code> で拒否しており、これからも拒否します。Ruby の
+バインディングの <code>RangeError</code> は、上と同じ、引数の名前と範囲を示すメッセージに
+なりました。v6 は Rust の型だけを示していました（<code>fixnum too big to convert into `i16` </code>）。
+N-best のコストのしきい値に 64 ビットの範囲外の <code>Integer</code> を渡したときも同じです。
+Python のプロパティの setter の <code>OverflowError</code> は、注記でプロパティの名前を示すように
 なりました（<code>'cost'</code> ではなく <code>while processing 'default_word_cost'</code>）。v6 の動作に
 戻す設定はありません。</p>
 <h2 id="バインディング-モードは-mode-で表す"><a class="header" href="#バインディング-モードは-mode-で表す">バインディング: モードは <code>Mode</code> で表す</a></h2>

@@ -431,7 +431,7 @@ p tokenizer.tokenize(text).map(&amp;:surface)
 </code></pre>
 <h3 id="token-methods"><a class="header" href="#token-methods">Token Methods</a></h3>
 <h4 id="get_detailindex"><a class="header" href="#get_detailindex"><code>get_detail(index)</code></a></h4>
-<p>Returns the detail string at the specified index, or <code>nil</code> if the index is out of range.</p>
+<p>Returns the detail string at the specified index, or <code>nil</code> if the index is past the last detail. A negative index raises <code>RangeError</code> (see <a href="../lindera-ruby.html#integer-arguments">Integer arguments</a>).</p>
 <pre><code class="language-ruby">token = tokenizer.tokenize('東京')[0]
 pos = token.get_detail(0)        # e.g., "名詞"
 subpos = token.get_detail(1)     # e.g., "固有名詞"

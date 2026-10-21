@@ -430,7 +430,7 @@ p tokenizer.tokenize(text).map(&amp;:surface)
 </code></pre>
 <h3 id="token-メソッド"><a class="header" href="#token-メソッド">Token メソッド</a></h3>
 <h4 id="get_detailindex"><a class="header" href="#get_detailindex"><code>get_detail(index)</code></a></h4>
-<p>指定されたインデックスの詳細文字列を返します。インデックスが範囲外の場合は <code>nil</code> を返します。</p>
+<p>指定されたインデックスの詳細文字列を返します。インデックスが最後の詳細より先の場合は <code>nil</code> を返します。負のインデックスは <code>RangeError</code> を投げます（<a href="../lindera-ruby.html#%E6%95%B4%E6%95%B0%E3%81%AE%E5%BC%95%E6%95%B0">整数の引数</a>を参照）。</p>
 <pre><code class="language-ruby">token = tokenizer.tokenize('東京')[0]
 pos = token.get_detail(0)        # 例: "名詞"
 subpos = token.get_detail(1)     # 例: "固有名詞"
