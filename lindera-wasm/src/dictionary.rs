@@ -1,5 +1,8 @@
+use std::rc::Rc;
 use std::sync::Arc;
 
+use wasm_bindgen::JsCast;
+use wasm_bindgen::convert::TryFromJsValue;
 use wasm_bindgen::prelude::*;
 
 use lindera::dictionary::core::character_definition::CharacterDefinition;
@@ -39,16 +42,85 @@ impl JsDictionary {
 }
 
 /// A user-defined dictionary for custom words.
+///
+/// It stays usable when it is passed to the `Tokenizer` constructor or to
+/// `TokenizerBuilder.setUserDictionaryInstance()`, so one user dictionary can
+/// serve several tokenizers and builders (#1238).
 #[wasm_bindgen(js_name = "UserDictionary")]
 #[derive(Clone)]
 pub struct JsUserDictionary {
-    pub(crate) inner: UserDictionary,
+    /// The user dictionary, shared with the builders it is set on and with
+    /// the copies `__copyOf` returns. A clone of a `UserDictionary` copies
+    /// its automaton and data, unlike one of a `Dictionary`.
+    pub(crate) inner: Rc<UserDictionary>,
 }
 
 impl JsUserDictionary {
+    /// Wraps a user dictionary.
     pub fn new(inner: UserDictionary) -> Self {
-        Self { inner }
+        Self {
+            inner: Rc::new(inner),
+        }
     }
+
+    /// Returns a copy of the user dictionary, for a tokenizer, whose
+    /// segmenter owns its user dictionary.
+    pub(crate) fn to_lindera(&self) -> UserDictionary {
+        UserDictionary::clone(&self.inner)
+    }
+}
+
+#[wasm_bindgen(js_class = "UserDictionary")]
+impl JsUserDictionary {
+    /// Returns a handle sharing the payload of `user_dictionary`, for
+    /// [`user_dictionary_from_js`]; hidden from the TypeScript declarations.
+    ///
+    /// Called through the JS glue, which checks that `user_dictionary` is a
+    /// `UserDictionary` and, as it is a reference, leaves it usable.
+    #[wasm_bindgen(js_name = "__copyOf", skip_typescript)]
+    pub fn copy_of(user_dictionary: &JsUserDictionary) -> JsUserDictionary {
+        user_dictionary.clone()
+    }
+}
+
+/// Reads the optional `UserDictionary` argument of the `Tokenizer`
+/// constructor (#1238).
+///
+/// wasm-bindgen takes no `Option<&UserDictionary>`, and an
+/// `Option<UserDictionary>` destroys the JS object of the argument, so the
+/// caller could not pass the same `UserDictionary` again. The argument is
+/// taken as a `JsValue` and passed to `UserDictionary.__copyOf` through the
+/// JS glue instead, as [`crate::mode::mode_from_js`] does for a `Mode`, and
+/// only the copy is taken by value. `__copyOf` is found through the
+/// argument's `constructor`, as no `UserDictionary` can be created cheaply to
+/// reach the class from. The copy is checked to be a `UserDictionary`, so a
+/// value of another class with a `__copyOf`, such as a `Mode`, is rejected.
+///
+/// # Arguments
+///
+/// * `value` - The argument, or `None` when it is left out.
+///
+/// # Returns
+///
+/// `None` for an argument that is left out, `null` or `undefined`, a copy of
+/// the user dictionary otherwise, or `Error("expected instance of
+/// UserDictionary")`, which the glue throws for any other class argument, for
+/// a value that is not a `UserDictionary`.
+pub fn user_dictionary_from_js(value: Option<JsValue>) -> Result<Option<UserDictionary>, JsValue> {
+    let Some(value) = value.filter(|value| !value.is_null() && !value.is_undefined()) else {
+        return Ok(None);
+    };
+    let expected = || JsValue::from(js_sys::Error::new("expected instance of UserDictionary"));
+    // `Reflect.get` throws for a value that is not an object, and for one
+    // whose `constructor` is not.
+    let copy_of = js_sys::Reflect::get(&value, &"constructor".into())
+        .and_then(|class| js_sys::Reflect::get(&class, &"__copyOf".into()))
+        .ok()
+        .and_then(|copy_of| copy_of.dyn_into::<js_sys::Function>().ok())
+        .ok_or_else(expected)?;
+    let copy = copy_of.call1(&JsValue::UNDEFINED, &value)?;
+    let user_dictionary = JsUserDictionary::try_from_js_value(copy).map_err(|_| expected())?;
+    Ok(Some(user_dictionary.to_lindera()))
 }
 
 /// Loads a dictionary from the specified URI.
@@ -157,17 +229,27 @@ pub fn load_dictionary_from_bytes(
 ///
 /// The result feeds `Tokenizer`'s user-dictionary argument or
 /// `TokenizerBuilder.setUserDictionaryInstance()`.
+///
+/// # Arguments
+///
+/// * `csv` - The user dictionary CSV content (UTF-8).
+/// * `metadata` - The metadata the CSV is built with. It is borrowed, so it
+///   stays usable and can be passed again (#1238).
+///
+/// # Returns
+///
+/// The user dictionary, or an error if the CSV cannot be built.
 #[wasm_bindgen(js_name = "loadUserDictionaryFromBytes")]
 pub fn load_user_dictionary_from_bytes(
     csv: &[u8],
-    metadata: JsMetadata,
+    metadata: &JsMetadata,
 ) -> Result<JsUserDictionary, JsValue> {
-    let meta: Metadata = metadata.into();
+    let meta: Metadata = metadata.clone().into();
     let builder = DictionaryBuilder::new(meta);
     let dict = builder
         .build_user_dict_from_reader(csv)
         .map_err(|e| JsValue::from_str(&format!("user_dict csv: {e:?}")))?;
-    Ok(JsUserDictionary { inner: dict })
+    Ok(JsUserDictionary::new(dict))
 }
 
 /// Builds a user dictionary from CSV bytes for a loaded system dictionary.
@@ -200,7 +282,7 @@ pub fn load_user_dictionary_from_bytes_for(
     let dict = builder
         .build_user_dict_from_reader(csv)
         .map_err(|e| JsValue::from_str(&format!("user_dict csv: {e:?}")))?;
-    Ok(JsUserDictionary { inner: dict })
+    Ok(JsUserDictionary::new(dict))
 }
 
 /// Loads a prebuilt user dictionary (`.bin`) from bytes.
@@ -211,7 +293,7 @@ pub fn load_user_dictionary_from_bytes_for(
 pub fn load_user_dictionary_bin_from_bytes(bytes: &[u8]) -> Result<JsUserDictionary, JsValue> {
     let dict = UserDictionary::load(bytes)
         .map_err(|e| JsValue::from_str(&format!("user_dict bin: {e}")))?;
-    Ok(JsUserDictionary { inner: dict })
+    Ok(JsUserDictionary::new(dict))
 }
 
 #[cfg(test)]
@@ -291,15 +373,15 @@ mod tests {
         let dict = load_dictionary("embedded://ipadic").unwrap();
         let csv = include_bytes!("../../resources/user_dict/ipadic_simple_userdic.csv");
 
-        let without = Tokenizer::new(dict.clone(), None, None, None).unwrap();
+        let without = Tokenizer::new(&dict, None, None, None).unwrap();
         let baseline = without.tokenize_surfaces("東京スカイツリー").unwrap();
         assert!(
             baseline.len() > 1,
             "fixture assumption: 東京スカイツリー must split under bare IPADIC: {baseline:?}"
         );
 
-        let user_dict = load_user_dictionary_from_bytes(csv, dict.metadata()).unwrap();
-        let with = Tokenizer::new(dict, None, Some(user_dict), None).unwrap();
+        let user_dict = load_user_dictionary_from_bytes(csv, &dict.metadata()).unwrap();
+        let with = Tokenizer::new(&dict, None, Some(user_dict.into()), None).unwrap();
         let surfaces = with.tokenize_surfaces("東京スカイツリー").unwrap();
         assert_eq!(
             surfaces,
@@ -320,7 +402,7 @@ mod tests {
         let bin = include_bytes!("../../resources/user_dict/ipadic_simple_userdic.bin");
 
         let user_dict = load_user_dictionary_bin_from_bytes(bin).unwrap();
-        let tokenizer = Tokenizer::new(dict, None, Some(user_dict), None).unwrap();
+        let tokenizer = Tokenizer::new(&dict, None, Some(user_dict.into()), None).unwrap();
         let surfaces = tokenizer.tokenize_surfaces("東京スカイツリー").unwrap();
         assert_eq!(surfaces, vec!["東京スカイツリー".to_string()]);
     }
@@ -366,7 +448,7 @@ mod tests {
         let csv = "東京スカイツリー,カスタム名詞,トウキョウスカイツリー\n";
 
         let user_dict = load_user_dictionary_from_bytes_for(csv.as_bytes(), &dict).unwrap();
-        let tokenizer = Tokenizer::new(dict, None, Some(user_dict), None).unwrap();
+        let tokenizer = Tokenizer::new(&dict, None, Some(user_dict.into()), None).unwrap();
         let surfaces = tokenizer.tokenize_surfaces("東京スカイツリー").unwrap();
         assert_eq!(surfaces, vec!["東京スカイツリー".to_string()]);
     }
@@ -379,7 +461,7 @@ mod tests {
         use super::{load_dictionary, load_user_dictionary_from_bytes};
 
         let dict = load_dictionary("embedded://ipadic").unwrap();
-        let result = load_user_dictionary_from_bytes("東京,1288\n".as_bytes(), dict.metadata());
+        let result = load_user_dictionary_from_bytes("東京,1288\n".as_bytes(), &dict.metadata());
         assert!(result.is_err(), "a 2-field row must be rejected, not panic");
     }
 
@@ -393,5 +475,113 @@ mod tests {
         let result = load_dictionary_from_bytes(metadata, &[], &[], &[], &[], &[], &[], &[], &[]);
 
         assert!(result.is_err());
+    }
+
+    /// `user_dictionary_from_js` reads a `UserDictionary` through the JS glue
+    /// and leaves it usable, and `null`, `undefined` or a left-out argument
+    /// mean none (#1238).
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_user_dictionary_from_js_reads_a_user_dictionary() {
+        use wasm_bindgen::JsValue;
+
+        use super::{load_user_dictionary_bin_from_bytes, user_dictionary_from_js};
+
+        let bin = include_bytes!("../../resources/user_dict/ipadic_simple_userdic.bin");
+        let loaded = load_user_dictionary_bin_from_bytes(bin).unwrap();
+        let words = loaded.inner.dict.words_data.to_vec();
+        let user_dictionary = JsValue::from(loaded);
+        for attempt in 0..2 {
+            let Some(read) = user_dictionary_from_js(Some(user_dictionary.clone())).unwrap() else {
+                panic!("attempt {attempt}: no user dictionary was read");
+            };
+            assert_eq!(*read.dict.words_data, *words, "attempt {attempt}");
+        }
+
+        assert!(user_dictionary_from_js(None).unwrap().is_none());
+        assert!(
+            user_dictionary_from_js(Some(JsValue::NULL))
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            user_dictionary_from_js(Some(JsValue::UNDEFINED))
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    /// A value that is not a `UserDictionary` is an error, not none, with the
+    /// message the JS glue gives for a class argument. A `Mode` has a
+    /// `__copyOf` too, and is rejected all the same (#1238).
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_user_dictionary_from_js_rejects_other_values() {
+        use wasm_bindgen::{JsCast, JsValue};
+
+        use super::{load_dictionary, user_dictionary_from_js};
+        use crate::metadata::JsMetadata;
+        use crate::mode::JsMode;
+
+        let without_constructor: js_sys::Object =
+            js_sys::Object::create(&JsValue::NULL.unchecked_into());
+        for value in [
+            JsValue::from_str("user_dictionary"),
+            JsValue::from_f64(0.0),
+            JsValue::TRUE,
+            js_sys::Object::new().into(),
+            without_constructor.into(),
+            JsValue::from(JsMode::normal()),
+            JsValue::from(JsMetadata::create_default()),
+            JsValue::from(load_dictionary("embedded://ipadic").unwrap()),
+        ] {
+            let shown = format!("{value:?}");
+            let message = match user_dictionary_from_js(Some(value)) {
+                Ok(read) => panic!("{shown} was read: {}", read.is_some()),
+                Err(error) => error
+                    .dyn_into::<js_sys::Error>()
+                    .map(|error| String::from(error.message()))
+                    .unwrap_or_else(|error| format!("not an Error: {error:?}")),
+            };
+            assert_eq!(message, "expected instance of UserDictionary", "{shown}");
+        }
+    }
+
+    /// `loadUserDictionaryFromBytes` and its alias borrow the metadata, so
+    /// one `Metadata` can be passed to several calls (#1238). A test cannot
+    /// call a free function through the JS glue; the glue leaves an argument
+    /// usable because the function takes a reference, which these calls
+    /// need to compile.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_load_user_dictionary_from_bytes_borrows_the_metadata() {
+        use super::{load_dictionary, load_user_dictionary_from_bytes};
+
+        let metadata = load_dictionary("embedded://ipadic").unwrap().metadata();
+        let csv = "東京スカイツリー,カスタム名詞,トウキョウスカイツリー\n".as_bytes();
+        for attempt in 0..2 {
+            assert!(
+                load_user_dictionary_from_bytes(csv, &metadata).is_ok(),
+                "attempt {attempt}"
+            );
+            assert!(
+                crate::py_load_user_dictionary_from_bytes(csv, &metadata).is_ok(),
+                "alias, attempt {attempt}"
+            );
+        }
+    }
+
+    /// A copy made by `__copyOf` shares the user dictionary instead of
+    /// copying its automaton and data (#1238).
+    #[test]
+    fn test_copy_of_shares_the_user_dictionary() {
+        use std::rc::Rc;
+
+        use super::{JsUserDictionary, load_user_dictionary_bin_from_bytes};
+
+        let bin = include_bytes!("../../resources/user_dict/ipadic_simple_userdic.bin");
+        let user_dictionary = load_user_dictionary_bin_from_bytes(bin).unwrap();
+        let copy = JsUserDictionary::copy_of(&user_dictionary);
+        assert!(Rc::ptr_eq(&copy.inner, &user_dictionary.inner));
     }
 }

@@ -52,7 +52,7 @@ builder.setDictionary("embedded://ipadic");
 URI の代わりにバイトデータから読み込んだ辞書（例: `loadDictionaryFromBytes()` 経由）を使用する場合に使います。
 `setDictionary()` で設定した辞書は、この辞書に置き換わります（2 つのうち最後に呼んだ方の辞書が使われます）。ビルダーのほかの設定（モード、`setUserDictionaryInstance()`、`setKeepWhitespace()`、`setSkipWhitespace()`、`setSpacePenalty()`、追加したフィルタ）は、URI で設定した辞書と同じようにこの辞書にも適用されます。
 
-- **パラメータ**: `dictionary` (Dictionary) -- 読み込み済みの辞書オブジェクト
+- **パラメータ**: `dictionary` (Dictionary) -- 読み込み済みの辞書オブジェクト。渡した辞書はそのまま使えるので、同じものを複数のトークナイザーやビルダーに渡せます。
 - **戻り値**: `TokenizerBuilder`
 
 ```javascript
@@ -73,7 +73,7 @@ builder.setDictionaryInstance(dictionary);
 
 読み込み済みのユーザー辞書インスタンスを設定します。`loadUserDictionaryFromBytesFor()` か `loadUserDictionaryFromBytes()`（CSV）、または `loadUserDictionaryBinFromBytes()`（ビルド済み `.bin`）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。ユーザー辞書は、`setDictionary()` と `setDictionaryInstance()` のどちらで設定した辞書にも適用されます。
 
-- **パラメータ**: `userDictionary` (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト
+- **パラメータ**: `userDictionary` (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト。渡したユーザー辞書はそのまま使えるので、同じものを複数のトークナイザーやビルダーに渡せます。
 - **戻り値**: `TokenizerBuilder`
 
 #### `setKeepWhitespace(keep)`
@@ -184,9 +184,9 @@ const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
 ```
 
 - **パラメータ**:
-  - `dictionary` (Dictionary) -- 読み込み済みの辞書オブジェクト
+  - `dictionary` (Dictionary) -- 読み込み済みの辞書オブジェクト。渡した辞書はそのまま使えるので、同じものを複数のトークナイザーやビルダーに渡せます。
   - `mode` (Mode, 省略可) -- [`setMode()`](#setmodemode) と同じ [`Mode`](#mode)。`null` または `undefined`（デフォルト）では normal モードになります。渡した `Mode` はそのまま使えるので、同じものを複数のトークナイザーやビルダーに渡せます。`Mode` でない値を渡すと、`Error("expected instance of Mode")` が投げられます。
-  - `userDictionary` (UserDictionary, 省略可) -- 読み込み済みのユーザー辞書
+  - `userDictionary` (UserDictionary, 省略可) -- 読み込み済みのユーザー辞書。`null` または `undefined`（デフォルト）では、ユーザー辞書を使いません。`dictionary` と同じく、渡したユーザー辞書はそのまま使えます。`UserDictionary` でない値を渡すと、`Error("expected instance of UserDictionary")` が投げられます。
   - `spacePenalty` (boolean | object, 省略可) -- 左側空白ペナルティ。[`setSpacePenalty()`](#setspacepenaltyvalue) と同じ値を渡せます。`null` または `undefined`（デフォルト）では、辞書が同梱するルールを使います。不正な設定では、`setSpacePenalty()` や `build()` と同じくエラー文字列が投げられます。
 
 ### Tokenizer メソッド
@@ -292,7 +292,7 @@ CSV バイト列（UTF-8）からユーザー辞書をビルドします。バ�
 
 - **パラメータ**:
   - `csv` (Uint8Array) -- ユーザー辞書 CSV の内容
-  - `metadata` (Metadata) -- 組み合わせるシステム辞書のメタデータ（例: `dictionary.metadata`）
+  - `metadata` (Metadata) -- 組み合わせるシステム辞書のメタデータ（例: `dictionary.metadata`）。渡したメタデータはそのまま使えるので、同じものを何度でも渡せます。
 - **戻り値**: `UserDictionary`
 
 ### `loadUserDictionaryFromBytesFor(csv, dictionary)`

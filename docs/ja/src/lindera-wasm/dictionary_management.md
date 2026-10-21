@@ -179,6 +179,10 @@ const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
 const tokenizer = new Tokenizer(dictionary, Mode.normal(), userDict);
 ```
 
+辞書とユーザー辞書は、`Tokenizer` のコンストラクタ、`setDictionaryInstance()`、
+`setUserDictionaryInstance()` に渡したあともそのまま使えます。一度読み込んだ辞書を、
+複数のトークナイザーやビルダーで使えます。
+
 ### ユーザー辞書の CSV フォーマット
 
 ユーザー辞書の CSV は Lindera ユーザー辞書と同じフォーマットに準拠します。
@@ -249,6 +253,10 @@ metadata.name = "custom_dict";
 metadata.encoding = "EUC-JP";
 console.log(metadata.name); // "custom_dict"
 ```
+
+`dictionary_schema` や `user_dictionary_schema` に設定すると、`Schema` のコピーが
+保存されます。設定した `Schema` はそのまま使えるので、同じスキーマを複数の
+`Metadata` に設定できます。
 
 > [!NOTE]
 > Python・Node.js・Ruby・PHP の各バインディングと異なり、WASM の `Metadata` クラスは `default_word_cost`、`default_left_context_id`、`default_right_context_id`、`default_field_value`、`flexible_csv`、`skip_invalid_cost_or_id` を取得・設定可能なプロパティとして公開していません（`lindera-wasm/src/metadata.rs` 参照）。これらは常にバインディング共通のデフォルト値（コスト `-10000`、文脈 ID `1288`、フィールド値 `"*"`、フラグはすべて `false`）にフォールバックし、JavaScript から変更することはできません。`space_penalty` ルールも公開していません。ルールが効くのは、そのルールと一緒に読み込んだ辞書だけです（[`setSpacePenalty()`](./tokenizer_api.md#setspacepenaltyvalue) を参照）。`dictionary.metadata` を `loadUserDictionaryFromBytes()` などに渡しても、ほかの場所でルールが適用されることはありません。

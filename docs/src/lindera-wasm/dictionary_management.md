@@ -180,6 +180,11 @@ const userDict = loadUserDictionaryFromBytesFor(csvBytes, dictionary);
 const tokenizer = new Tokenizer(dictionary, Mode.normal(), userDict);
 ```
 
+The dictionary and the user dictionary stay usable after they are passed to
+the `Tokenizer` constructor, `setDictionaryInstance()` or
+`setUserDictionaryInstance()`, so one loaded dictionary can serve several
+tokenizers and builders.
+
 ### User Dictionary CSV Format
 
 The user dictionary CSV follows the same format as the Lindera user dictionary.
@@ -250,6 +255,9 @@ metadata.name = "custom_dict";
 metadata.encoding = "EUC-JP";
 console.log(metadata.name); // "custom_dict"
 ```
+
+Setting `dictionary_schema` or `user_dictionary_schema` stores a copy of the
+`Schema`, which stays usable, so one schema can be set on several `Metadata`.
 
 > [!NOTE]
 > Unlike the Python, Node.js, Ruby, and PHP bindings, the WASM `Metadata` class does not expose `default_word_cost`, `default_left_context_id`, `default_right_context_id`, `default_field_value`, `flexible_csv`, or `skip_invalid_cost_or_id` as gettable/settable properties (see `lindera-wasm/src/metadata.rs`). These always fall back to the shared binding defaults (word cost `-10000`, context IDs `1288`, field value `"*"`, flags `false`) and cannot be customized from JavaScript. The `space_penalty` rules are not exposed either. They take effect only through the dictionary they were loaded with (see [`setSpacePenalty()`](./tokenizer_api.md#setspacepenaltyvalue)); passing `dictionary.metadata` on, for example to `loadUserDictionaryFromBytes()`, does not apply them anywhere else.

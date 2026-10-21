@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::argument::{integer_arg, optional_i64_from_bigint};
-use crate::dictionary::{JsDictionary, JsUserDictionary};
+use crate::dictionary::{JsDictionary, JsUserDictionary, user_dictionary_from_js};
 use crate::json::json_from_js;
 use crate::mode::{JsMode, mode_from_js};
 use crate::token::token_view_to_js;
@@ -107,12 +107,13 @@ impl TokenizerBuilder {
     /// dictionary cannot be loaded, or a setting or filter is invalid.
     pub fn build(&self) -> Result<Tokenizer, JsValue> {
         let state = self.state.borrow();
-        // Dictionaries are cheap to clone: their payload is shared.
+        // A dictionary is cheap to clone, as its payload is shared; the user
+        // dictionary is copied, as the tokenizer's segmenter owns it.
         let dictionary = state.dictionary_instance.as_ref().map(|d| d.inner.clone());
         let user_dictionary = state
             .user_dictionary_instance
             .as_ref()
-            .map(|d| d.inner.clone());
+            .map(JsUserDictionary::to_lindera);
         let inner = state
             .inner
             .build_with_dictionaries(dictionary, user_dictionary)
@@ -167,10 +168,17 @@ impl TokenizerBuilder {
     /// replaces a dictionary set by `setDictionary()`, and every other
     /// setting of the builder applies to it as to a dictionary set by URI.
     ///
-    /// Returns a builder handle sharing this configuration, enabling method chaining.
+    /// # Arguments
+    ///
+    /// * `dictionary` - The dictionary. It is borrowed, so it stays usable
+    ///   and can be passed to other tokenizers and builders (#1238).
+    ///
+    /// # Returns
+    ///
+    /// A builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "setDictionaryInstance")]
-    pub fn set_dictionary_instance(&self, dictionary: JsDictionary) -> TokenizerBuilder {
-        self.state.borrow_mut().dictionary_instance = Some(dictionary);
+    pub fn set_dictionary_instance(&self, dictionary: &JsDictionary) -> TokenizerBuilder {
+        self.state.borrow_mut().dictionary_instance = Some(dictionary.clone());
 
         self.share()
     }
@@ -183,13 +191,21 @@ impl TokenizerBuilder {
     /// It applies to a dictionary set by `setDictionary()` or by
     /// `setDictionaryInstance()`.
     ///
-    /// Returns a builder handle sharing this configuration, enabling method chaining.
+    /// # Arguments
+    ///
+    /// * `user_dictionary` - The user dictionary. It is borrowed, so it stays
+    ///   usable and can be passed to other tokenizers and builders (#1238);
+    ///   the builder shares its payload until `build()` copies it.
+    ///
+    /// # Returns
+    ///
+    /// A builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "setUserDictionaryInstance")]
     pub fn set_user_dictionary_instance(
         &self,
-        user_dictionary: JsUserDictionary,
+        user_dictionary: &JsUserDictionary,
     ) -> TokenizerBuilder {
-        self.state.borrow_mut().user_dictionary_instance = Some(user_dictionary);
+        self.state.borrow_mut().user_dictionary_instance = Some(user_dictionary.clone());
 
         self.share()
     }
@@ -328,7 +344,7 @@ impl TokenizerBuilder {
 
     /// Sets a pre-loaded dictionary instance (snake_case alias).
     #[wasm_bindgen(js_name = "set_dictionary_instance")]
-    pub fn py_set_dictionary_instance(&self, dictionary: JsDictionary) -> TokenizerBuilder {
+    pub fn py_set_dictionary_instance(&self, dictionary: &JsDictionary) -> TokenizerBuilder {
         self.set_dictionary_instance(dictionary)
     }
 
@@ -336,7 +352,7 @@ impl TokenizerBuilder {
     #[wasm_bindgen(js_name = "set_user_dictionary_instance")]
     pub fn py_set_user_dictionary_instance(
         &self,
-        user_dictionary: JsUserDictionary,
+        user_dictionary: &JsUserDictionary,
     ) -> TokenizerBuilder {
         self.set_user_dictionary_instance(user_dictionary)
     }
@@ -415,11 +431,14 @@ impl Tokenizer {
     ///
     /// # Arguments
     ///
-    /// * `dictionary` - The system dictionary.
+    /// * `dictionary` - The system dictionary. It is borrowed, so it stays
+    ///   usable and can be passed to other tokenizers and builders (#1238).
     /// * `mode` - The `Mode`, as `TokenizerBuilder.setMode` takes it. `null`
     ///   or `undefined` (the default) is normal mode. The `Mode` stays
     ///   usable, so the same one can be passed again.
-    /// * `user_dictionary` - An optional user dictionary.
+    /// * `user_dictionary` - The `UserDictionary`, or `null` or `undefined`
+    ///   (the default) for none. It stays usable, as `dictionary` does; the
+    ///   tokenizer takes a copy of it.
     /// * `space_penalty` - The left-space penalty, in the forms
     ///   `TokenizerBuilder.setSpacePenalty` accepts. `null` or `undefined`
     ///   (the default) keeps the rules the dictionary ships.
@@ -427,35 +446,37 @@ impl Tokenizer {
     /// # Returns
     ///
     /// The tokenizer, the error the JS glue throws for a `mode` that is not
-    /// a `Mode`, or an error string for an invalid space-penalty setting, as
-    /// `setSpacePenalty` and `build()` report it, or for a user dictionary
-    /// with a context ID outside the dictionary's connection matrix.
+    /// a `Mode`, `Error("expected instance of UserDictionary")` for a
+    /// `user_dictionary` that is not a `UserDictionary`, or an error string
+    /// for an invalid space-penalty setting, as `setSpacePenalty` and
+    /// `build()` report it, or for a user dictionary with a context ID
+    /// outside the dictionary's connection matrix.
     // Once one parameter carries a type attribute, wasm-bindgen marks a
     // parameter optional in the TypeScript declarations only when it uses
     // `unchecked_optional_param_type`, so every trailing optional parameter
     // needs one; otherwise `new Tokenizer(dictionary)` stops compiling (#1076).
     #[wasm_bindgen(constructor)]
     pub fn new(
-        dictionary: JsDictionary,
+        dictionary: &JsDictionary,
         #[wasm_bindgen(unchecked_optional_param_type = "Mode | null")] mode: Option<JsValue>,
         #[wasm_bindgen(unchecked_optional_param_type = "UserDictionary | null")]
-        user_dictionary: Option<JsUserDictionary>,
+        user_dictionary: Option<JsValue>,
         #[wasm_bindgen(
             unchecked_optional_param_type = "boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null"
         )]
         space_penalty: Option<JsValue>,
     ) -> Result<Tokenizer, JsValue> {
         let mode = mode_from_js(mode)?;
+        let user_dictionary = user_dictionary_from_js(user_dictionary)?;
         let space_penalty = match space_penalty {
             Some(value) => js_to_json(value)
                 .map_err(|e| JsValue::from_str(&format!("invalid space_penalty: {e}")))?,
             None => Value::Null,
         };
-        let user_dict = user_dictionary.map(|d| d.inner);
         let inner = CoreTokenizer::from_segmenter_with_space_penalty(
             mode,
-            dictionary.inner,
-            user_dict,
+            dictionary.inner.clone(),
+            user_dictionary,
             &space_penalty,
         )
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
@@ -888,7 +909,7 @@ mod tests {
             let mode = JsValue::from(mode);
             for _ in 0..2 {
                 let tokenizer = Tokenizer::new(
-                    load_dictionary("embedded://ipadic").unwrap(),
+                    &load_dictionary("embedded://ipadic").unwrap(),
                     Some(mode.clone()),
                     None,
                     None,
@@ -913,7 +934,7 @@ mod tests {
 
         let build = |mode: Option<JsValue>| {
             Tokenizer::new(
-                load_dictionary("embedded://ipadic").unwrap(),
+                &load_dictionary("embedded://ipadic").unwrap(),
                 mode,
                 None,
                 None,
@@ -1018,7 +1039,7 @@ mod tests {
         use crate::dictionary::load_dictionary;
 
         let dict = load_dictionary("embedded://ipadic").unwrap();
-        let tokenizer = Tokenizer::new(dict, Some(JsMode::normal().into()), None, None).unwrap();
+        let tokenizer = Tokenizer::new(&dict, Some(JsMode::normal().into()), None, None).unwrap();
 
         let tokens = tokenizer.tokenize("東京タワー").unwrap();
 
@@ -1036,7 +1057,7 @@ mod tests {
 
         let builder = TokenizerBuilder::new().unwrap();
         builder.set_mode(&JsMode::normal());
-        builder.set_dictionary_instance(dict);
+        builder.set_dictionary_instance(&dict);
 
         let tokenizer = builder.build().unwrap();
         let tokens = tokenizer.tokenize("東京タワー").unwrap();
@@ -1055,7 +1076,7 @@ mod tests {
 
         let builder = TokenizerBuilder::new().unwrap();
         builder.set_mode(&JsMode::decompose(None).unwrap());
-        builder.set_dictionary_instance(dict);
+        builder.set_dictionary_instance(&dict);
 
         let tokenizer = builder.build().unwrap();
         let tokens = tokenizer.tokenize("関西国際空港").unwrap();
@@ -1074,7 +1095,7 @@ mod tests {
         let dict = load_dictionary("embedded://ipadic").unwrap();
 
         let builder = TokenizerBuilder::new().unwrap();
-        builder.set_dictionary_instance(dict);
+        builder.set_dictionary_instance(&dict);
 
         let tokenizer = builder.build().unwrap();
         let tokens = tokenizer.tokenize("すもも").unwrap();
@@ -1120,7 +1141,7 @@ mod tests {
         let builder = crate::TokenizerBuilder::new().unwrap();
         if by_instance {
             builder.set_dictionary_instance(
-                crate::dictionary::load_dictionary("embedded://ipadic").unwrap(),
+                &crate::dictionary::load_dictionary("embedded://ipadic").unwrap(),
             );
         } else {
             builder.set_dictionary("embedded://ipadic");
@@ -1184,7 +1205,7 @@ mod tests {
         builder.set_dictionary(unloadable);
         assert!(builder.build().is_err());
 
-        builder.set_dictionary_instance(load_dictionary("embedded://ipadic").unwrap());
+        builder.set_dictionary_instance(&load_dictionary("embedded://ipadic").unwrap());
         let tokenizer = builder.build().unwrap();
         assert_eq!(
             tokenizer.tokenize_surfaces("関西国際空港").unwrap(),
@@ -1210,7 +1231,7 @@ mod tests {
         for by_instance in [false, true] {
             let builder = TokenizerBuilder::new().unwrap();
             if by_instance {
-                builder.set_dictionary_instance(dictionary.clone());
+                builder.set_dictionary_instance(&dictionary);
             } else {
                 builder.set_dictionary("embedded://ipadic");
             }
@@ -1227,7 +1248,7 @@ mod tests {
             );
 
             builder.set_user_dictionary_instance(
-                load_user_dictionary_from_bytes(csv, dictionary.metadata()).unwrap(),
+                &load_user_dictionary_from_bytes(csv, &dictionary.metadata()).unwrap(),
             );
             let with_user_dictionary = surfaces(&builder);
             if with_user_dictionary != ["東京スカイツリー"] {
@@ -1359,7 +1380,7 @@ mod tests {
                 let shown = format!("{value:?} (instance: {by_instance})");
                 let builder = TokenizerBuilder::new().unwrap();
                 if by_instance {
-                    builder.set_dictionary_instance(load_dictionary("embedded://ipadic").unwrap());
+                    builder.set_dictionary_instance(&load_dictionary("embedded://ipadic").unwrap());
                 } else {
                     builder.set_dictionary("embedded://ipadic");
                 }
@@ -1429,7 +1450,7 @@ mod tests {
         for by_instance in [false, true] {
             let builder = TokenizerBuilder::new().unwrap();
             if by_instance {
-                builder.set_dictionary_instance(load_dictionary("embedded://ipadic").unwrap());
+                builder.set_dictionary_instance(&load_dictionary("embedded://ipadic").unwrap());
             } else {
                 builder.set_dictionary("embedded://ipadic");
             }
@@ -1484,17 +1505,17 @@ mod tests {
 
         // The constructor keeps the dictionary default.
         let baseline = surfaces_and_pos(
-            &Tokenizer::new(plain.clone(), None, None, None).unwrap(),
+            &Tokenizer::new(&plain, None, None, None).unwrap(),
             SPACED_TEXT,
         );
         let penalized = surfaces_and_pos(
-            &Tokenizer::new(shipping.clone(), None, None, None).unwrap(),
+            &Tokenizer::new(&shipping, None, None, None).unwrap(),
             SPACED_TEXT,
         );
         assert_ne!(penalized, baseline);
 
         let builder = TokenizerBuilder::new().unwrap();
-        builder.set_dictionary_instance(shipping.clone());
+        builder.set_dictionary_instance(&shipping);
         for (value, expected) in [
             (JsValue::NULL, &penalized),
             (JsValue::FALSE, &baseline),
@@ -1514,7 +1535,7 @@ mod tests {
 
         // Explicit rules apply to a dictionary that ships none.
         let builder = TokenizerBuilder::new().unwrap();
-        builder.set_dictionary_instance(plain);
+        builder.set_dictionary_instance(&plain);
         builder.set_space_penalty(ipadic_rules()).unwrap();
         assert_eq!(build_and_tokenize(&builder), penalized);
     }
@@ -1539,7 +1560,7 @@ mod tests {
         for by_instance in [false, true] {
             let builder = TokenizerBuilder::new().unwrap();
             if by_instance {
-                builder.set_dictionary_instance(load_dictionary("embedded://ipadic").unwrap());
+                builder.set_dictionary_instance(&load_dictionary("embedded://ipadic").unwrap());
             } else {
                 builder.set_dictionary("embedded://ipadic");
             }
@@ -1565,7 +1586,7 @@ mod tests {
             .to_vec(),
         );
         let builder = TokenizerBuilder::new().unwrap();
-        builder.set_dictionary_instance(dict);
+        builder.set_dictionary_instance(&dict);
         assert!(builder.build().is_ok());
 
         builder.set_space_penalty(ipadic_rules()).unwrap();
@@ -1708,7 +1729,7 @@ mod tests {
         let mut shipping = plain.clone();
         Arc::make_mut(&mut shipping.inner.metadata).space_penalty = Some(ipadic_rules_config());
         let tokenize = |dictionary: &JsDictionary, space_penalty: Option<JsValue>| {
-            let tokenizer = Tokenizer::new(dictionary.clone(), None, None, space_penalty).unwrap();
+            let tokenizer = Tokenizer::new(dictionary, None, None, space_penalty).unwrap();
             surfaces_and_pos(&tokenizer, SPACED_TEXT)
         };
 
@@ -1741,7 +1762,7 @@ mod tests {
 
         let error = |space_penalty: JsValue| {
             let dictionary = load_dictionary("embedded://ipadic").unwrap();
-            match Tokenizer::new(dictionary, None, None, Some(space_penalty)) {
+            match Tokenizer::new(&dictionary, None, None, Some(space_penalty)) {
                 Ok(_) => panic!("the setting was accepted"),
                 Err(error) => error.as_string().unwrap_or_default(),
             }
@@ -1757,5 +1778,185 @@ mod tests {
             let shown = format!("{value:?}");
             assert!(error(value).contains("space_penalty"), "value {shown}");
         }
+    }
+
+    /// `setUserDictionaryInstance()` shares the user dictionary with the
+    /// caller's object instead of copying its automaton and data; `build()`
+    /// copies it for the tokenizer (#1238).
+    #[test]
+    fn test_set_user_dictionary_instance_shares_the_user_dictionary() {
+        use std::rc::Rc;
+
+        use crate::TokenizerBuilder;
+        use crate::dictionary::load_user_dictionary_bin_from_bytes;
+
+        let bin = include_bytes!("../../resources/user_dict/ipadic_simple_userdic.bin");
+        let user_dictionary = load_user_dictionary_bin_from_bytes(bin).unwrap();
+        let builder = TokenizerBuilder::new().unwrap();
+        builder.set_user_dictionary_instance(&user_dictionary);
+        let state = builder.state.borrow();
+        let Some(set) = &state.user_dictionary_instance else {
+            panic!("no user dictionary was set");
+        };
+        assert!(Rc::ptr_eq(&set.inner, &user_dictionary.inner));
+    }
+
+    /// The user dictionary of the tests that pass one dictionary object to
+    /// several calls: it keeps `東京スカイツリー` in one token, which IPADIC
+    /// splits.
+    #[cfg(target_arch = "wasm32")]
+    const SKYTREE_CSV: &str = "東京スカイツリー,カスタム名詞,トウキョウスカイツリー\n";
+
+    /// Builds a tokenizer with IPADIC set by URI, for [`construct_like`] to
+    /// reach the `Tokenizer` class from.
+    ///
+    /// [`construct_like`]: crate::test_utils::construct_like
+    #[cfg(target_arch = "wasm32")]
+    fn any_tokenizer() -> wasm_bindgen::JsValue {
+        let builder = crate::TokenizerBuilder::new().unwrap();
+        builder.set_dictionary("embedded://ipadic");
+        builder.build().unwrap().into()
+    }
+
+    /// Tokenizes `text` with a JS tokenizer through JS.
+    #[cfg(target_arch = "wasm32")]
+    fn js_surfaces(
+        tokenizer: Result<wasm_bindgen::JsValue, wasm_bindgen::JsValue>,
+        text: &str,
+    ) -> Result<Vec<String>, wasm_bindgen::JsValue> {
+        use crate::test_utils::{call_method, strings};
+
+        let surfaces = call_method(&tokenizer?, "tokenizeSurfaces", &[&text.into()])?;
+        Ok(strings(&surfaces))
+    }
+
+    /// The constructor leaves its dictionary usable, so one dictionary serves
+    /// several tokenizers (#1238). Called through JS: the JS glue, which a
+    /// call from Rust skips, destroyed a dictionary taken by value.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_constructor_leaves_the_dictionary_usable() {
+        use wasm_bindgen::JsValue;
+
+        use crate::dictionary::load_dictionary;
+        use crate::test_utils::construct_like;
+
+        let any_tokenizer = any_tokenizer();
+        let dictionary = JsValue::from(load_dictionary("embedded://ipadic").unwrap());
+        let mut failures = Vec::new();
+        for attempt in 0..2 {
+            let tokenizer = construct_like(&any_tokenizer, &[&dictionary]);
+            let surfaces = js_surfaces(tokenizer, "関西国際空港");
+            if !matches!(&surfaces, Ok(surfaces) if surfaces == &["関西国際空港"]) {
+                failures.push(format!("attempt {attempt}: {surfaces:?}"));
+            }
+        }
+        if let Err(error) = js_sys::Reflect::get(&dictionary, &"name".into()) {
+            failures.push(format!("dictionary.name afterwards: {error:?}"));
+        }
+        assert!(failures.is_empty(), "{failures:#?}");
+    }
+
+    /// The constructor leaves its user dictionary usable, so one user
+    /// dictionary serves several tokenizers, and applies in each (#1238).
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_constructor_leaves_the_user_dictionary_usable() {
+        use wasm_bindgen::JsValue;
+
+        use crate::dictionary::{load_dictionary, load_user_dictionary_from_bytes_for};
+        use crate::test_utils::construct_like;
+
+        let any_tokenizer = any_tokenizer();
+        let user_dictionary = JsValue::from(
+            load_user_dictionary_from_bytes_for(
+                SKYTREE_CSV.as_bytes(),
+                &load_dictionary("embedded://ipadic").unwrap(),
+            )
+            .unwrap(),
+        );
+        let mut failures = Vec::new();
+        for attempt in 0..2 {
+            // A new dictionary each time: only the user dictionary is passed
+            // again.
+            let dictionary = JsValue::from(load_dictionary("embedded://ipadic").unwrap());
+            let tokenizer = construct_like(
+                &any_tokenizer,
+                &[&dictionary, &JsValue::UNDEFINED, &user_dictionary],
+            );
+            let surfaces = js_surfaces(tokenizer, "東京スカイツリー");
+            if !matches!(&surfaces, Ok(surfaces) if surfaces == &["東京スカイツリー"]) {
+                failures.push(format!("attempt {attempt}: {surfaces:?}"));
+            }
+        }
+        assert!(failures.is_empty(), "{failures:#?}");
+    }
+
+    /// `setDictionaryInstance()` and its alias leave their dictionary usable,
+    /// so one dictionary serves several builders (#1238).
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_set_dictionary_instance_leaves_the_dictionary_usable() {
+        use wasm_bindgen::JsValue;
+
+        use crate::TokenizerBuilder;
+        use crate::dictionary::load_dictionary;
+        use crate::test_utils::call_method;
+
+        let mut failures = Vec::new();
+        for method in ["setDictionaryInstance", "set_dictionary_instance"] {
+            let dictionary = JsValue::from(load_dictionary("embedded://ipadic").unwrap());
+            for attempt in 0..2 {
+                let builder = JsValue::from(TokenizerBuilder::new().unwrap());
+                let tokenizer = call_method(&builder, method, &[&dictionary])
+                    .and_then(|_| call_method(&builder, "build", &[]));
+                let surfaces = js_surfaces(tokenizer, "関西国際空港");
+                if !matches!(&surfaces, Ok(surfaces) if surfaces == &["関西国際空港"]) {
+                    failures.push(format!("{method}, attempt {attempt}: {surfaces:?}"));
+                }
+            }
+            if let Err(error) = js_sys::Reflect::get(&dictionary, &"name".into()) {
+                failures.push(format!("dictionary.name after {method}: {error:?}"));
+            }
+        }
+        assert!(failures.is_empty(), "{failures:#?}");
+    }
+
+    /// `setUserDictionaryInstance()` and its alias leave their user
+    /// dictionary usable, so one user dictionary serves several builders,
+    /// and applies in each (#1238).
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_set_user_dictionary_instance_leaves_the_user_dictionary_usable() {
+        use wasm_bindgen::JsValue;
+
+        use crate::TokenizerBuilder;
+        use crate::dictionary::{load_dictionary, load_user_dictionary_from_bytes_for};
+        use crate::test_utils::call_method;
+
+        let mut failures = Vec::new();
+        for method in ["setUserDictionaryInstance", "set_user_dictionary_instance"] {
+            let user_dictionary = JsValue::from(
+                load_user_dictionary_from_bytes_for(
+                    SKYTREE_CSV.as_bytes(),
+                    &load_dictionary("embedded://ipadic").unwrap(),
+                )
+                .unwrap(),
+            );
+            for attempt in 0..2 {
+                // The dictionary is set by URI: only the user dictionary is
+                // passed again.
+                let builder = TokenizerBuilder::new().unwrap();
+                builder.set_dictionary("embedded://ipadic");
+                let builder = JsValue::from(builder);
+                let tokenizer = call_method(&builder, method, &[&user_dictionary])
+                    .and_then(|_| call_method(&builder, "build", &[]));
+                let surfaces = js_surfaces(tokenizer, "東京スカイツリー");
+                if !matches!(&surfaces, Ok(surfaces) if surfaces == &["東京スカイツリー"]) {
+                    failures.push(format!("{method}, attempt {attempt}: {surfaces:?}"));
+                }
+            }
+        }
+        assert!(failures.is_empty(), "{failures:#?}");
     }
 }
