@@ -5,10 +5,12 @@
 //! [`lindera_binding::CoreSchema`]; this module only adds the magnus wrappers.
 
 use magnus::prelude::*;
-use magnus::{Error, RArray, Ruby, function, method};
+use magnus::{Error, Integer, RArray, Ruby, function, method};
 
 use lindera::dictionary::{FieldDefinition, FieldType, Schema};
 use lindera_binding::{CoreFieldDefinition, CoreFieldType, CoreSchema};
+
+use crate::util::integer_arg;
 
 /// Field type in dictionary schema.
 ///
@@ -244,13 +246,22 @@ impl RbSchema {
     ///
     /// # Arguments
     ///
-    /// * `index` - Index of the field.
+    /// * `ruby` - Ruby runtime handle (passed by magnus, not by the caller).
+    /// * `rb_self` - The schema.
+    /// * `index` - Index of the field, 0 or more.
     ///
     /// # Returns
     ///
-    /// The field name, or None if the index is out of bounds.
-    fn get_field_name(&self, index: usize) -> Option<String> {
-        self.inner.get_field_name(index).map(str::to_string)
+    /// The field name, `None` if the index is past the last field, or a
+    /// `RangeError` for an index that is negative or larger than a `usize`
+    /// holds.
+    fn get_field_name(
+        ruby: &Ruby,
+        rb_self: &Self,
+        index: Integer,
+    ) -> Result<Option<String>, Error> {
+        let index = integer_arg(ruby, "index", index)?;
+        Ok(rb_self.inner.get_field_name(index).map(str::to_string))
     }
 
     /// Returns the custom fields (fields after the first 4 standard fields).

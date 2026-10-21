@@ -1264,10 +1264,14 @@ With them, some values that v6 accepted now throw:
 
 Pass an integer in the range. The TypeScript declarations of the Node.js
 and WASM bindings do not change. The Python and Ruby bindings already rejected
-these values, with `OverflowError` and `RangeError`, and do not change,
-except that the `OverflowError` of a Python property setter now names the
-property in its note (`while processing 'default_word_cost'` instead of
-`'cost'`). No option restores the v6 behavior.
+these values, with `OverflowError` and `RangeError`, and still do. The
+`RangeError` of the Ruby binding now has the message above, which names the
+parameter and the range, where v6 named only the Rust type
+(``fixnum too big to convert into `i16` ``); this covers the N-best cost
+threshold too, for an `Integer` outside the 64-bit range. The
+`OverflowError` of a Python property setter now names the property in its
+note (`while processing 'default_word_cost'` instead of `'cost'`). No option
+restores the v6 behavior.
 
 ## Bindings: a mode is a `Mode`
 

@@ -8,10 +8,12 @@
 use std::collections::HashMap;
 
 use magnus::prelude::*;
-use magnus::{Error, Ruby, function, method};
+use magnus::{Error, Integer, Ruby, function, method};
 
 use lindera::dictionary::Metadata;
 use lindera_binding::CoreMetadata;
+
+use crate::util::optional_integer_arg;
 
 /// Dictionary metadata configuration.
 ///
@@ -29,9 +31,10 @@ impl RbMetadata {
     ///
     /// # Arguments
     ///
-    /// Ruby passes the eight arguments positionally, in this order; `nil`
-    /// selects the default.
+    /// Ruby passes the eight arguments after `ruby` positionally, in this
+    /// order; `nil` selects the default.
     ///
+    /// * `ruby` - Ruby runtime handle (passed by magnus, not by the caller).
     /// * `name` - Dictionary name (default: "default").
     /// * `encoding` - Character encoding (default: "UTF-8").
     /// * `default_word_cost` - Default word cost (default: -10000).
@@ -43,32 +46,34 @@ impl RbMetadata {
     ///
     /// # Returns
     ///
-    /// A new `RbMetadata` instance.
+    /// A new `RbMetadata` instance, or a `RangeError` for a cost outside
+    /// -32768 to 32767 or a context ID outside 0 to 65535.
     #[allow(clippy::too_many_arguments)]
     fn new(
+        ruby: &Ruby,
         name: Option<String>,
         encoding: Option<String>,
-        default_word_cost: Option<i16>,
-        default_left_context_id: Option<u16>,
-        default_right_context_id: Option<u16>,
+        default_word_cost: Option<Integer>,
+        default_left_context_id: Option<Integer>,
+        default_right_context_id: Option<Integer>,
         default_field_value: Option<String>,
         flexible_csv: Option<bool>,
         skip_invalid_cost_or_id: Option<bool>,
-    ) -> Self {
-        RbMetadata {
+    ) -> Result<Self, Error> {
+        Ok(RbMetadata {
             inner: CoreMetadata::new(
                 name,
                 encoding,
-                default_word_cost,
-                default_left_context_id,
-                default_right_context_id,
+                optional_integer_arg(ruby, "default_word_cost", default_word_cost)?,
+                optional_integer_arg(ruby, "default_left_context_id", default_left_context_id)?,
+                optional_integer_arg(ruby, "default_right_context_id", default_right_context_id)?,
                 default_field_value,
                 flexible_csv,
                 skip_invalid_cost_or_id,
                 None,
                 None,
             ),
-        }
+        })
     }
 
     /// Creates a default metadata instance.
@@ -77,7 +82,9 @@ impl RbMetadata {
     ///
     /// A new `RbMetadata` with default values.
     fn create_default() -> Self {
-        RbMetadata::new(None, None, None, None, None, None, None, None)
+        RbMetadata {
+            inner: CoreMetadata::create_default(),
+        }
     }
 
     /// Loads metadata from a JSON file.

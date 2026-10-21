@@ -6,16 +6,18 @@
 use std::fs::File;
 use std::path::Path;
 
-use magnus::{Error, Ruby, function};
+use magnus::{Error, Integer, Ruby, function};
 
 use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, TrainerConfig};
 
 use crate::error::to_magnus_error;
+use crate::util::optional_integer_arg;
 
 /// Trains a morphological analysis model from an annotated corpus.
 ///
 /// # Arguments
 ///
+/// * `ruby` - Ruby runtime handle (passed by magnus, not by the caller).
 /// * `seed` - Seed lexicon file path (CSV format).
 /// * `corpus` - Training corpus file path (annotated text).
 /// * `char_def` - Character definition file path (char.def).
@@ -24,10 +26,18 @@ use crate::error::to_magnus_error;
 /// * `rewrite_def` - Rewrite rule definition file path (rewrite.def).
 /// * `output` - Output model file path.
 /// * `lambda` - L1 regularization (0.0-1.0), default: 0.01.
-/// * `max_iter` - Maximum number of iterations, default: 100.
-/// * `max_threads` - Maximum number of threads (nil = auto-detect CPU cores).
+/// * `max_iter` - Maximum number of iterations, 0 or more, default: 100.
+/// * `max_threads` - Maximum number of threads, 0 or more (nil = auto-detect
+///   CPU cores).
+///
+/// # Returns
+///
+/// `Ok(())` on success, a `RangeError` for a `max_iter` or `max_threads`
+/// outside its range (checked before the files), an `ArgumentError` for a
+/// missing input file, or a `RuntimeError` when training fails.
 #[allow(clippy::too_many_arguments)]
 fn train(
+    ruby: &Ruby,
     seed: String,
     corpus: String,
     char_def: String,
@@ -36,10 +46,11 @@ fn train(
     rewrite_def: String,
     output: String,
     lambda: Option<f64>,
-    max_iter: Option<u64>,
-    max_threads: Option<usize>,
+    max_iter: Option<Integer>,
+    max_threads: Option<Integer>,
 ) -> Result<(), Error> {
-    let ruby = Ruby::get().expect("Ruby runtime not initialized");
+    let max_iter: Option<u64> = optional_integer_arg(ruby, "max_iter", max_iter)?;
+    let max_threads: Option<usize> = optional_integer_arg(ruby, "max_threads", max_threads)?;
 
     let seed_path = Path::new(&seed);
     let corpus_path = Path::new(&corpus);
@@ -74,7 +85,7 @@ fn train(
         feature_def_path,
         rewrite_def_path,
     )
-    .map_err(|e| to_magnus_error(&ruby, format!("Failed to load trainer configuration: {e}")))?;
+    .map_err(|e| to_magnus_error(ruby, format!("Failed to load trainer configuration: {e}")))?;
 
     // Initialize trainer
     let num_threads = max_threads.unwrap_or_else(num_cpus::get);
@@ -82,37 +93,37 @@ fn train(
     let max_iter_val = max_iter.unwrap_or(100);
 
     let trainer = Trainer::new(config)
-        .map_err(|e| to_magnus_error(&ruby, format!("Failed to initialize trainer: {e}")))?
+        .map_err(|e| to_magnus_error(ruby, format!("Failed to initialize trainer: {e}")))?
         .regularization_cost(lambda_val)
         .max_iter(max_iter_val)
         .num_threads(num_threads);
 
     // Load corpus
     let corpus_file = File::open(corpus_path)
-        .map_err(|e| to_magnus_error(&ruby, format!("Failed to open corpus file: {e}")))?;
+        .map_err(|e| to_magnus_error(ruby, format!("Failed to open corpus file: {e}")))?;
     let corpus_data = Corpus::from_reader(corpus_file)
-        .map_err(|e| to_magnus_error(&ruby, format!("Failed to load corpus: {e}")))?;
+        .map_err(|e| to_magnus_error(ruby, format!("Failed to load corpus: {e}")))?;
 
     println!("Training with {} examples...", corpus_data.len());
 
     // Train model
     let model = trainer
         .train(corpus_data)
-        .map_err(|e| to_magnus_error(&ruby, format!("Training failed: {e}")))?;
+        .map_err(|e| to_magnus_error(ruby, format!("Training failed: {e}")))?;
 
     // Save model
     if let Some(parent) = output_path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| {
-            to_magnus_error(&ruby, format!("Failed to create output directory: {e}"))
+            to_magnus_error(ruby, format!("Failed to create output directory: {e}"))
         })?;
     }
 
     let mut output_file = File::create(output_path)
-        .map_err(|e| to_magnus_error(&ruby, format!("Failed to create output file: {e}")))?;
+        .map_err(|e| to_magnus_error(ruby, format!("Failed to create output file: {e}")))?;
 
     model
         .write_model(&mut output_file)
-        .map_err(|e| to_magnus_error(&ruby, format!("Failed to write model: {e}")))?;
+        .map_err(|e| to_magnus_error(ruby, format!("Failed to write model: {e}")))?;
 
     println!("Model saved to {}", output_path.display());
     Ok(())

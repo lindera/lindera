@@ -10,7 +10,7 @@ use std::path::Path;
 
 use magnus::prelude::*;
 use magnus::scan_args::{get_kwargs, scan_args};
-use magnus::{Error, RArray, RHash, Ruby, Value, function, method};
+use magnus::{Error, Integer, RArray, RHash, Ruby, Value, function, method};
 
 use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
@@ -18,7 +18,7 @@ use crate::dictionary::{RbDictionary, RbUserDictionary};
 use crate::error::to_magnus_error;
 use crate::mode::RbMode;
 use crate::token::RbToken;
-use crate::util::{rb_hash_to_json, rb_value_to_json};
+use crate::util::{integer_arg, optional_integer_arg, rb_hash_to_json, rb_value_to_json};
 
 /// Builder for creating a `Tokenizer` with custom configuration.
 ///
@@ -334,26 +334,31 @@ impl RbTokenizer {
     ///
     /// # Arguments
     ///
+    /// * `ruby` - Ruby runtime handle (passed by magnus, not by the caller).
+    /// * `rb_self` - The tokenizer.
     /// * `text` - Text to tokenize.
-    /// * `n` - Number of N-best results.
+    /// * `n` - Number of N-best results, 0 or more.
     /// * `unique` - Whether to deduplicate results (default: false).
-    /// * `cost_threshold` - Optional cost threshold.
+    /// * `cost_threshold` - Optional cost threshold, a 64-bit integer.
     ///
     /// # Returns
     ///
-    /// An array of [tokens, cost] pairs.
+    /// An array of [tokens, cost] pairs, or a `RangeError` for an `n` or a
+    /// `cost_threshold` outside its range.
     fn tokenize_nbest(
-        &self,
+        ruby: &Ruby,
+        rb_self: &Self,
         text: String,
-        n: usize,
+        n: Integer,
         unique: Option<bool>,
-        cost_threshold: Option<i64>,
+        cost_threshold: Option<Integer>,
     ) -> Result<RArray, Error> {
-        let ruby = Ruby::get().expect("Ruby runtime not initialized");
-        let results = self
+        let n = integer_arg(ruby, "n", n)?;
+        let cost_threshold = optional_integer_arg(ruby, "cost_threshold", cost_threshold)?;
+        let results = rb_self
             .inner
             .tokenize_nbest(&text, n, unique.unwrap_or(false), cost_threshold)
-            .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
+            .map_err(|err| to_magnus_error(ruby, err.to_string()))?;
 
         let rb_results = ruby.ary_new_capa(results.len());
         for (views, cost) in results {

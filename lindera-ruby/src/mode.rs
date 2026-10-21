@@ -8,11 +8,12 @@
 
 use magnus::prelude::*;
 use magnus::scan_args::scan_args;
-use magnus::{Error, Ruby, TryConvert, Value, function, method};
+use magnus::{Error, Integer, Ruby, TryConvert, Value, function, method};
 
 use lindera::mode::{Mode as LinderaMode, Penalty as LinderaPenalty};
 
 use crate::error::to_magnus_error;
+use crate::util::optional_integer_arg;
 
 /// Tokenization mode: normal, or decompose with a `Lindera::Penalty`.
 ///
@@ -184,26 +185,53 @@ impl RbPenalty {
     ///
     /// # Arguments
     ///
-    /// * `kanji_threshold` - Kanji penalty length threshold (default: 2).
-    /// * `kanji_penalty` - Kanji penalty value (default: 3000).
-    /// * `other_threshold` - Other penalty length threshold (default: 7).
-    /// * `other_penalty` - Other penalty value (default: 1700).
+    /// * `ruby` - Ruby runtime handle (passed by magnus, not by the caller).
+    /// * `kanji_penalty_length_threshold` - Kanji penalty length threshold,
+    ///   0 or more (default: 2).
+    /// * `kanji_penalty_length_penalty` - Kanji penalty value, a 32-bit
+    ///   integer (default: 3000).
+    /// * `other_penalty_length_threshold` - Other penalty length threshold,
+    ///   0 or more (default: 7).
+    /// * `other_penalty_length_penalty` - Other penalty value, a 32-bit
+    ///   integer (default: 1700).
     ///
     /// # Returns
     ///
-    /// A new `RbPenalty` instance.
+    /// A new `RbPenalty` instance, or a `RangeError` for a value outside the
+    /// range of its setting.
     fn new(
-        kanji_threshold: Option<usize>,
-        kanji_penalty: Option<i32>,
-        other_threshold: Option<usize>,
-        other_penalty: Option<i32>,
-    ) -> Self {
-        Self {
-            kanji_penalty_length_threshold: kanji_threshold.unwrap_or(2),
-            kanji_penalty_length_penalty: kanji_penalty.unwrap_or(3000),
-            other_penalty_length_threshold: other_threshold.unwrap_or(7),
-            other_penalty_length_penalty: other_penalty.unwrap_or(1700),
-        }
+        ruby: &Ruby,
+        kanji_penalty_length_threshold: Option<Integer>,
+        kanji_penalty_length_penalty: Option<Integer>,
+        other_penalty_length_threshold: Option<Integer>,
+        other_penalty_length_penalty: Option<Integer>,
+    ) -> Result<Self, Error> {
+        Ok(Self {
+            kanji_penalty_length_threshold: optional_integer_arg(
+                ruby,
+                "kanji_penalty_length_threshold",
+                kanji_penalty_length_threshold,
+            )?
+            .unwrap_or(2),
+            kanji_penalty_length_penalty: optional_integer_arg(
+                ruby,
+                "kanji_penalty_length_penalty",
+                kanji_penalty_length_penalty,
+            )?
+            .unwrap_or(3000),
+            other_penalty_length_threshold: optional_integer_arg(
+                ruby,
+                "other_penalty_length_threshold",
+                other_penalty_length_threshold,
+            )?
+            .unwrap_or(7),
+            other_penalty_length_penalty: optional_integer_arg(
+                ruby,
+                "other_penalty_length_penalty",
+                other_penalty_length_penalty,
+            )?
+            .unwrap_or(1700),
+        })
     }
 
     /// Returns the kanji penalty length threshold.

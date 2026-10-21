@@ -373,7 +373,7 @@ token.unknown?  # => false
 
 #### `get_detail(index)`
 
-指定されたインデックスの詳細文字列を返します。インデックスが範囲外の場合は `nil` を返します。
+指定されたインデックスの詳細文字列を返します。インデックスが最後の詳細より先の場合は `nil` を返します。負のインデックスは `RangeError` を投げます（[整数の引数](../lindera-ruby.md#整数の引数)を参照）。
 
 ```ruby
 token = tokenizer.tokenize('東京')[0]

@@ -374,7 +374,7 @@ token.unknown?  # => false
 
 #### `get_detail(index)`
 
-Returns the detail string at the specified index, or `nil` if the index is out of range.
+Returns the detail string at the specified index, or `nil` if the index is past the last detail. A negative index raises `RangeError` (see [Integer arguments](../lindera-ruby.md#integer-arguments)).
 
 ```ruby
 token = tokenizer.tokenize('東京')[0]
