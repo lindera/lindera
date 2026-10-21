@@ -10,6 +10,7 @@
 CLAUDE.md
 .serena/
 .mcp.json
+/.claude/worktrees/
 
 # Rust
 target
