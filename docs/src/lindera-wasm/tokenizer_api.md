@@ -53,7 +53,7 @@ Sets a pre-loaded dictionary instance for tokenization.
 Use this when the dictionary has been loaded from bytes (e.g., via `loadDictionaryFromBytes()`) instead of from a URI.
 It replaces a dictionary set with `setDictionary()`: whichever of the two is called last sets the dictionary. Every other setting of the builder (the mode, `setUserDictionaryInstance()`, `setKeepWhitespace()`, `setSkipWhitespace()`, `setSpacePenalty()` and the appended filters) applies to it as to a dictionary set by URI.
 
-- **Parameters**: `dictionary` (Dictionary) -- A loaded dictionary object
+- **Parameters**: `dictionary` (Dictionary) -- A loaded dictionary object. It stays usable, so the same one can be passed to several tokenizers and builders.
 - **Returns**: `TokenizerBuilder`
 
 ```javascript
@@ -73,7 +73,7 @@ builder.setDictionaryInstance(dictionary);
 
 Sets a pre-loaded user dictionary instance. Load one from bytes with `loadUserDictionaryFromBytesFor()` or `loadUserDictionaryFromBytes()` (CSV) or `loadUserDictionaryBinFromBytes()` (prebuilt `.bin`); URI-based user dictionaries are not available on WebAssembly. The user dictionary applies to a dictionary set with either `setDictionary()` or `setDictionaryInstance()`.
 
-- **Parameters**: `userDictionary` (UserDictionary) -- A loaded user dictionary object
+- **Parameters**: `userDictionary` (UserDictionary) -- A loaded user dictionary object. It stays usable, so the same one can be passed to several tokenizers and builders.
 - **Returns**: `TokenizerBuilder`
 
 #### `setKeepWhitespace(keep)`
@@ -187,9 +187,9 @@ const tokenizer = new Tokenizer(dictionary, mode, userDictionary, spacePenalty);
 ```
 
 - **Parameters**:
-  - `dictionary` (Dictionary) -- A loaded dictionary object
+  - `dictionary` (Dictionary) -- A loaded dictionary object. It stays usable, so the same one can be passed to several tokenizers and builders.
   - `mode` (Mode, optional) -- The [`Mode`](#mode), as [`setMode()`](#setmodemode) takes it. `null` or `undefined` (the default) is normal mode. The `Mode` stays usable, so the same one can be passed to several tokenizers and builders. A value that is not a `Mode` throws `Error("expected instance of Mode")`.
-  - `userDictionary` (UserDictionary, optional) -- A loaded user dictionary
+  - `userDictionary` (UserDictionary, optional) -- A loaded user dictionary, or `null` or `undefined` (the default) for none. It stays usable, as `dictionary` does. A value that is not a `UserDictionary` throws `Error("expected instance of UserDictionary")`.
   - `spacePenalty` (boolean | object, optional) -- The left-space penalty, in the forms [`setSpacePenalty()`](#setspacepenaltyvalue) accepts. `null` or `undefined` (the default) uses the rules the dictionary ships. An invalid setting throws an error string, as `setSpacePenalty()` and `build()` do.
 
 ### Tokenizer Methods
@@ -295,7 +295,7 @@ Builds a user dictionary from CSV bytes (UTF-8), obtained via `fetch`, a file in
 
 - **Parameters**:
   - `csv` (Uint8Array) -- The user dictionary CSV content
-  - `metadata` (Metadata) -- Metadata of the system dictionary the user dictionary will be used with (e.g. `dictionary.metadata`)
+  - `metadata` (Metadata) -- Metadata of the system dictionary the user dictionary will be used with (e.g. `dictionary.metadata`). It stays usable, so the same one can be passed again.
 - **Returns**: `UserDictionary`
 
 ### `loadUserDictionaryFromBytesFor(csv, dictionary)`

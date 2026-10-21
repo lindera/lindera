@@ -59,9 +59,15 @@ impl JsMetadata {
         JsSchema::from(self.inner.dictionary_schema.clone())
     }
 
+    /// Sets the schema of the system dictionary to a copy of `schema`.
+    ///
+    /// # Arguments
+    ///
+    /// * `schema` - The schema. It is borrowed, so it stays usable and can be
+    ///   set again (#1238).
     #[wasm_bindgen(setter)]
-    pub fn set_dictionary_schema(&mut self, schema: JsSchema) {
-        self.inner.dictionary_schema = schema.into();
+    pub fn set_dictionary_schema(&mut self, schema: &JsSchema) {
+        self.inner.dictionary_schema = schema.inner.clone();
     }
 
     #[wasm_bindgen(getter)]
@@ -69,9 +75,15 @@ impl JsMetadata {
         JsSchema::from(self.inner.user_dictionary_schema.clone())
     }
 
+    /// Sets the schema of user dictionaries to a copy of `schema`.
+    ///
+    /// # Arguments
+    ///
+    /// * `schema` - The schema. It is borrowed, so it stays usable and can be
+    ///   set again (#1238).
     #[wasm_bindgen(setter)]
-    pub fn set_user_dictionary_schema(&mut self, schema: JsSchema) {
-        self.inner.user_dictionary_schema = schema.into();
+    pub fn set_user_dictionary_schema(&mut self, schema: &JsSchema) {
+        self.inner.user_dictionary_schema = schema.inner.clone();
     }
 }
 
@@ -170,7 +182,7 @@ mod tests {
         let mut metadata = JsMetadata::create_default();
 
         let custom_schema = JsSchema::new(vec!["surface".to_string(), "reading".to_string()]);
-        metadata.set_dictionary_schema(custom_schema);
+        metadata.set_dictionary_schema(&custom_schema);
         assert_eq!(metadata.dictionary_schema().field_count(), 2);
 
         let user_schema = JsSchema::new(vec![
@@ -178,8 +190,42 @@ mod tests {
             "reading".to_string(),
             "pronunciation".to_string(),
         ]);
-        metadata.set_user_dictionary_schema(user_schema);
+        metadata.set_user_dictionary_schema(&user_schema);
         assert_eq!(metadata.user_dictionary_schema().field_count(), 3);
+    }
+
+    /// The schema setters leave their schema usable, so one schema can be
+    /// set on several `Metadata` (#1238). Set through JS: the JS glue, which
+    /// a call from Rust skips, destroyed a schema taken by value.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_schema_setters_leave_the_schema_usable() {
+        use crate::test_utils::call_method;
+
+        let field_count = |schema: Result<JsValue, JsValue>| {
+            schema.and_then(|schema| call_method(&schema, "field_count", &[]))
+        };
+        let mut failures = Vec::new();
+        for property in ["dictionary_schema", "user_dictionary_schema"] {
+            let schema = JsValue::from(JsSchema::new(vec![
+                "surface".to_string(),
+                "reading".to_string(),
+            ]));
+            for attempt in 0..2 {
+                let metadata = JsValue::from(JsMetadata::create_default());
+                let set = js_sys::Reflect::set(&metadata, &property.into(), &schema)
+                    .and_then(|_| js_sys::Reflect::get(&metadata, &property.into()));
+                let count = field_count(set);
+                if count.as_ref().ok().and_then(JsValue::as_f64) != Some(2.0) {
+                    failures.push(format!("{property}, attempt {attempt}: {count:?}"));
+                }
+            }
+            let count = field_count(Ok(schema));
+            if count.as_ref().ok().and_then(JsValue::as_f64) != Some(2.0) {
+                failures.push(format!("the schema after {property}: {count:?}"));
+            }
+        }
+        assert!(failures.is_empty(), "{failures:#?}");
     }
 
     #[test]

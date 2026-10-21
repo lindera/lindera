@@ -17,11 +17,16 @@ import {
   Penalty,
   TokenizerBuilder,
   type Dictionary,
+  type UserDictionary,
 } from "../pkg-node/lindera_wasm.js";
 
 // Every documented form of the constructor: the arguments after the
-// dictionary are optional.
-export function checkTokenizerConstructorForms(dictionary: Dictionary): Array<Tokenizer> {
+// dictionary are optional. The user dictionary is taken as a `JsValue`, so
+// that it stays usable (#1238), and is typed `UserDictionary` all the same.
+export function checkTokenizerConstructorForms(
+  dictionary: Dictionary,
+  userDictionary: UserDictionary,
+): Array<Tokenizer> {
   return [
     new Tokenizer(dictionary),
     new Tokenizer(dictionary, Mode.normal()),
@@ -29,8 +34,12 @@ export function checkTokenizerConstructorForms(dictionary: Dictionary): Array<To
     new Tokenizer(dictionary, null),
     new Tokenizer(dictionary, undefined, undefined, false),
     new Tokenizer(dictionary, Mode.normal(), null, { rules: [{ pos: ["JKS", "JX"], cost: 6000 }] }),
+    new Tokenizer(dictionary, null, userDictionary),
+    new Tokenizer(dictionary, undefined, userDictionary, false),
     // @ts-expect-error -- a mode is a Mode, not its name (#1218).
     new Tokenizer(dictionary, "normal"),
+    // @ts-expect-error -- a user dictionary is a UserDictionary, not a path.
+    new Tokenizer(dictionary, null, "user_dict.csv"),
   ];
 }
 

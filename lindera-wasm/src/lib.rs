@@ -39,6 +39,8 @@ mod json;
 pub mod metadata;
 pub mod mode;
 pub mod schema;
+#[cfg(all(test, target_arch = "wasm32"))]
+mod test_utils;
 pub mod token;
 pub mod token_filter;
 pub mod tokenizer;
@@ -86,10 +88,22 @@ pub fn py_load_dictionary_from_bytes(
     )
 }
 
+/// Snake-case alias of `loadUserDictionaryFromBytes`
+/// ([`crate::dictionary::load_user_dictionary_from_bytes`]).
+///
+/// # Arguments
+///
+/// * `csv` - The user dictionary CSV content (UTF-8).
+/// * `metadata` - The metadata the CSV is built with. It is borrowed, so it
+///   stays usable and can be passed again (#1238).
+///
+/// # Returns
+///
+/// The user dictionary, or an error if the CSV cannot be built.
 #[wasm_bindgen(js_name = "load_user_dictionary_from_bytes")]
 pub fn py_load_user_dictionary_from_bytes(
     csv: &[u8],
-    metadata: Metadata,
+    metadata: &Metadata,
 ) -> Result<UserDictionary, JsValue> {
     crate::dictionary::load_user_dictionary_from_bytes(csv, metadata)
 }
