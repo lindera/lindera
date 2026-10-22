@@ -74,6 +74,8 @@ cargo fmt --all -- --check
 cargo fmt --all
 ```
 
+> 注意: `cargo fmt` が整形するのは Rust のコードだけです。言語バインディングでは、`make format-lindera-<binding>` がバインディングの Python・JavaScript・Ruby・PHP のコードも整形します。使うツールと版は、`make lint-lindera-<binding>` が検査に使うものと同じです（下記を参照）。
+
 ### リント
 
 Clippy を警告をエラーとして扱うモードで実行します：
@@ -83,6 +85,8 @@ cargo clippy -- -D warnings
 ```
 
 > 注意: CI は各クレートに対して、そのクレートのテストと同じ feature で `cargo clippy --all-targets -- -D warnings` を実行します（`.github/workflows/test-crate.yml` と、`.github/workflows/regression.yml` の言語バインディングのジョブを参照）。そのため、テストのコードも lint されます。`make lint-<crate>` は同じ clippy のコマンドを実行します。PR を開く前にローカルで（例えば `make lint` 経由で）clippy を実行してください。
+>
+> 言語バインディングでは、`make lint-lindera-<binding>` が続けて、そのバインディングの CI ジョブと同じく言語側の linter を実行します。Python は ruff、Node.js と WASM は Prettier、Ruby は RuboCop、PHP は PHP CS Fixer です。これらの版は固定してあるので（ruff と Prettier は `Makefile`、RuboCop は `lindera-ruby/Gemfile`、PHP CS Fixer は `composer.json`）、ツールの新しいリリースが、変更していないコードで CI を失敗させることはありません。ターゲットは固定した版を自分でインストールするので、その言語のツールチェーン（Python 3、npx の使える Node.js、Bundler、Composer）とネットワークへの接続が必要です。
 
 ## ドキュメント
 
