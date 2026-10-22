@@ -230,10 +230,11 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>Unknown words start at every position, as in MeCab</strong></td><td>Anyone who segments text with runs of katakana, symbols or Latin letters in normal mode, most visibly katakana joined by <code>・</code> and Korean sentence-final punctuation such as <code>."</code></td><td>Expect such runs to be split where MeCab splits them, and katakana- and Latin-heavy text to take about 13% more instructions; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>Unknown words come from each character's default category and group the characters that share a category, as in MeCab</strong></td><td>Anyone who segments text where a character with several categories meets other characters; in the bundled dictionaries, a hanja numeral followed by hanja with ko-dic, and <code>〇</code> (U+3007) with ko-dic; Rust code that relies on the order of <code>CharacterDefinition::lookup_categories</code></td><td>Expect such text to be segmented as MeCab segments it (ko-dic <code>三國史記</code> is one <code>SH</code> word, <code>〇〇〇</code> one <code>SY</code> word); no setting restores the v6 behavior</td></tr>
 <tr><td><strong>CC-CEDICT: unknown words cost 400, and the entries made only of Latin letters or only of digits 399</strong></td><td>Anyone who segments text with CC-CEDICT, most visibly entries that mix Latin letters or digits with Chinese characters, such as <code>T恤</code>; anyone who reads its N-best costs</td><td>Expect such entries to be one word, <code>〇</code> and entries such as <code>PK</code> to come with their pinyin and definition, Latin words, kana and numbers to stay one word as in v6, and the costs of paths to change; build a CC-CEDICT dictionary directory from the <code>CC-CEDICT-MeCab-0.1.0-20261021</code> archive</td></tr>
-<tr><td><strong>Jieba: <code>〇</code> is a numeral entry</strong></td><td>Anyone who segments text with <code>〇</code> (U+3007) with Jieba</td><td>Expect each <code>〇</code> to be one numeral word (<code>m</code>, pinyin <code>ling2</code>) instead of part of an unknown word, as MeCab segments it with the same dictionary; build a Jieba dictionary directory from the <code>mecab-jieba-0.1.2</code> archive</td></tr>
+<tr><td><strong>Jieba: <code>〇</code> is a numeral entry</strong></td><td>Anyone who segments text with <code>〇</code> (U+3007) with Jieba</td><td>Expect each <code>〇</code> to be one numeral word (<code>m</code>, pinyin <code>ling2</code>) instead of part of an unknown word, as MeCab segments it with the same dictionary; build a Jieba dictionary directory from the <code>mecab-jieba-0.1.3</code> archive</td></tr>
+<tr><td><strong>Jieba: costs retrained on UD Chinese GSD</strong></td><td>Anyone who segments text with Jieba; users of simple Jieba user dictionaries</td><td>Expect Chinese text to be segmented as UD Chinese GSD segments it, finer than jieba (<code>中华 / 人民 / 共和 / 国</code>, <code>这 / 个</code>; segmentation F1 on its test split 77.3 → 87.7), and simple user dictionary words to cost −32768; build a Jieba dictionary directory from the <code>mecab-jieba-0.1.3</code> archive</td></tr>
 <tr><td><strong>IPADIC and IPADIC-NEologd: dashes and tildes in dictionary entries are kept as written, as in MeCab</strong></td><td>Anyone who segments text with <code>―</code> (U+2015), <code>—</code> (U+2014), <code>～</code> (U+FF5E) or <code>〜</code> (U+301C) with IPADIC or IPADIC-NEologd</td><td>Expect entries spelled with <code>―</code> or <code>～</code> to match text spelled the same way, and text with <code>—</code> or <code>〜</code> to miss the 12 IPADIC and 1,085 IPADIC-NEologd entries it found only through the old rewrite (a <code>mapping</code> character filter can fold the spellings); rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 <tr><td><strong>Entries with the same surface, context IDs and cost: the first CSV row is output, as in MeCab</strong></td><td>Anyone who reads token details such as the reading or the base form with IPADIC, IPADIC-NEologd, UniDic or ko-dic, or with a user dictionary that has such entries; N-best users</td><td>Expect such words to get MeCab's details (IPADIC <code>狡い</code> reads <code>ズルイ</code>, not <code>コスイ</code>), a user entry to still win a tie with a system entry, and the first N-best result to always be the 1-best; no setting restores the v6 behavior</td></tr>
-<tr><td><strong>Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab</strong></td><td>Anyone who segments text: rarely with the Japanese and Korean dictionaries (9 of about 54,000 lines in the texts compared), but in about a quarter of the sentences with CC-CEDICT and Jieba (1,267 and 1,186 of the 4,997 sentences of UD Chinese GSD)</td><td>Expect such lines to be segmented as MeCab segments them (IPADIC <code>腸窒扶斯</code> is <code>腸 / 窒扶 / 斯</code>, not <code>腸 / 窒 / 扶斯</code>, and CC-CEDICT <code>電視台上班</code> is <code>電視 / 台上 / 班</code>, not <code>電視 / 台 / 上班</code>); no setting restores the v6 behavior</td></tr>
+<tr><td><strong>Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab</strong></td><td>Anyone who segments text: rarely with the Japanese and Korean dictionaries (9 of about 54,000 lines in the texts compared), but in about a quarter of the sentences with CC-CEDICT (1,267 of the 4,997 sentences of UD Chinese GSD; 3 with Jieba)</td><td>Expect such lines to be segmented as MeCab segments them (IPADIC <code>腸窒扶斯</code> is <code>腸 / 窒扶 / 斯</code>, not <code>腸 / 窒 / 扶斯</code>, and CC-CEDICT <code>電視台上班</code> is <code>電視 / 台上 / 班</code>, not <code>電視 / 台 / 上班</code>); no setting restores the v6 behavior</td></tr>
 <tr><td><strong><code>lindera tokenize</code> removes only the line terminator from each input line and writes a result for every line</strong></td><td>CLI users whose input lines start or end with whitespace, or who read the wakati or N-best output of lines without tokens</td><td>Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC <code>記号,空白</code>), <code>--keep-whitespace</code> to output the spaces there, and an empty line or a line of spaces to give an empty wakati line and one N-best result; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>WASM: the <code>TokenizerBuilder</code> settings apply whichever way the dictionary is set</strong></td><td>WASM users who combine <code>setDictionaryInstance()</code> with <code>setKeepWhitespace()</code> or filters, or <code>setDictionary()</code> with <code>setUserDictionaryInstance()</code></td><td>Expect those settings and the user dictionary to take effect; a dictionary instance whose <code>char.def</code> has no <code>SPACE</code> category now needs <code>setKeepWhitespace(true)</code>, as a dictionary set by URI does</td></tr>
 <tr><td><strong>PHP: an optional argument of the wrong type throws instead of selecting the default</strong></td><td>PHP code that passes a value of another type to an optional parameter, such as a numeric string for <code>$max_iter</code> of <code>Lindera\Trainer::train()</code> or <code>1</code> for <code>$unique</code> of <code>tokenizeNbest()</code></td><td>Pass the declared type, casting strings such as <code>$argv</code> values with <code>(int)</code>; <code>null</code> or leaving the argument out still selects the default</td></tr>
@@ -300,12 +301,14 @@ of the last, as in MeCab, which changes the reading, the base form or other
 details of such words, and the first N-best result is always the 1-best.
 When two segmentations cost exactly the same, the one whose last word starts
 later is chosen, as in MeCab, which changes the segmentation of a few lines
-with the Japanese and Korean dictionaries and of about a quarter of the
-sentences with CC-CEDICT and Jieba.
+with the Japanese and Korean dictionaries and Jieba and of about a quarter
+of the sentences with CC-CEDICT.
 With CC-CEDICT, unknown words no longer cost less than dictionary words,
 which makes entries such as <code>T恤</code> one word and gives <code>〇</code> and entries such
-as <code>PK</code> their pinyin and definition. With Jieba, <code>〇</code> is a numeral entry,
-one word with its pinyin instead of part of an unknown word.
+as <code>PK</code> their pinyin and definition. Jieba's costs are trained again on UD
+Chinese GSD, which segments Chinese text as that treebank does and raises
+segmentation F1 on its test split from 77.3 to 87.7, and <code>〇</code> is a numeral
+entry, one word with its pinyin instead of part of an unknown word.
 And <code>lindera tokenize</code> removes only the line terminator from each input line
 instead of all the whitespace at its ends, which keeps U+3000 at the start
 or end of a line and makes the offsets index the line, and it writes a
@@ -619,7 +622,8 @@ sentence directly.</p>
 <tr><td>ko-dic</td><td>Spaced Korean text now follows mecab-ko</td><td><code>2년 전 대회</code>: <code>전</code> is <code>NNG</code>, not <code>저/NP + ㄴ/JX</code>; <code>하고 있다</code>: <code>있</code> is <code>VX</code>, not <code>VV</code></td></tr>
 <tr><td>IPADIC, IPADIC-NEologd, UniDic</td><td>A word after a half-width space connects to the word before it, as in MeCab</td><td>IPADIC <code>Google が 新しい</code>: <code>が</code> is a case particle, not a conjunction; <code>東京 都</code>: <code>都</code> is a suffix, as in MeCab</td></tr>
 <tr><td>SudachiDict</td><td>No change: its <code>metadata.json</code> sets <code>skip_whitespace</code> to <code>false</code>, because Sudachi keeps whitespace in the lattice and the costs assume it</td><td>—</td></tr>
-<tr><td>CC-CEDICT, Jieba</td><td>No change in the best path (these dictionaries have no connection costs); N-best costs no longer include the whitespace nodes</td><td>—</td></tr>
+<tr><td>CC-CEDICT</td><td>No change in the best path (the dictionary has no connection costs); N-best costs no longer include the whitespace nodes</td><td>—</td></tr>
+<tr><td>Jieba</td><td>No change in the best path on the 247 sentences with a space of UD Chinese GSD and of the GSDSimp dev and test splits; N-best costs no longer include the whitespace nodes</td><td>—</td></tr>
 </tbody></table>
 </div>
 <p>The default comes from the dictionary's <code>metadata.json</code>; a dictionary that
@@ -795,8 +799,10 @@ the unknown symbols after it.</li>
 <li><strong>Korean</strong>: a sentence-final <code>."</code>, <code>?"</code>, <code>!"</code> or <code>.'</code> was one symbol
 (<code>SY</code>). Now <code>.</code>, <code>?</code> and <code>!</code> are sentence-final punctuation (<code>SF</code>), as in
 MeCab, and the ending before them can change with it, as in <code>"좋아."</code>.</li>
-<li><strong>Chinese</strong>: Jieba is not affected, and CC-CEDICT keeps Latin words and
-runs of kana in one word, as in v6. With the costs of the CC-CEDICT
+<li><strong>Chinese</strong>: Jieba was not affected with the <code>mecab-jieba-0.1.2</code>
+dictionary (not measured with <code>0.1.3</code>, see
+<a href="#jieba-costs-retrained-on-ud-chinese-gsd">Jieba: costs retrained on UD Chinese GSD</a>),
+and CC-CEDICT keeps Latin words and runs of kana in one word, as in v6. With the costs of the CC-CEDICT
 dictionary of v6 (<code>CC-CEDICT-MeCab-0.1.0-20200409</code>), the change would
 split them, as MeCab does with that dictionary: every unknown word costs
 −3,200 whatever its length, so a path with more words costs less, and
@@ -953,11 +959,12 @@ keeps the old costs (and has to be rebuilt anyway, see
 build it from the <code>0.1.0-20261021</code> archive, as <code>lindera-cc-cedict</code> and the
 7.0.0 release assets do. There is no setting to restore the old costs.</p>
 <h2 id="jieba-〇-is-a-numeral-entry"><a class="header" href="#jieba-〇-is-a-numeral-entry">Jieba: <code>〇</code> is a numeral entry</a></h2>
-<p>v7.0.0 builds the Jieba dictionary from <code>mecab-jieba-0.1.2</code> instead of
-<code>mecab-jieba-0.1.1</code>
-(<a href="https://github.com/lindera/lindera/issues/1162">#1162</a>). It reads <code>〇</code>
-(U+3007 IDEOGRAPHIC NUMBER ZERO) as a numeral, like <code>一</code> to <code>兆</code>, and the
-other entries and costs are the same:</p>
+<p>v7.0.0 builds the Jieba dictionary from <code>mecab-jieba-0.1.3</code> instead of
+<code>mecab-jieba-0.1.1</code>. Since <code>0.1.2</code>
+(<a href="https://github.com/lindera/lindera/issues/1162">#1162</a>), it reads <code>〇</code>
+(U+3007 IDEOGRAPHIC NUMBER ZERO) as a numeral, like <code>一</code> to <code>兆</code>; <code>0.1.3</code>
+trains the costs again (see
+<a href="#jieba-costs-retrained-on-ud-chinese-gsd">Jieba: costs retrained on UD Chinese GSD</a>):</p>
 <ul>
 <li>In <code>char.def</code>, <code>〇</code> is <code>CHINESENUMERIC CHINESE</code>, the categories of the
 other numerals, instead of <code>SYMBOL CHINESENUMERIC</code>.</li>
@@ -970,30 +977,81 @@ its <code>SYMBOL</code> group went on through the numerals, which are <code>CHIN
 and the Chinese characters after them, as in MeCab: <code>二〇〇八年北京奧運會</code>
 was <code>二</code> and <code>〇〇八年北京奧運會</code> (<code>w</code>). An entry alone would not stop the
 group: <code>SYMBOL</code> makes unknown words even where an entry starts, and with
-Jieba's connection costs one unknown word over <code>〇〇八年北京奧運會</code> costs
+the connection costs of <code>0.1.1</code> one unknown word over <code>〇〇八年北京奧運會</code> costs
 less than the path through <code>北京奧運</code> and <code>會</code>, because entering or leaving
 their context ID costs 32,767. With the numeral categories, which make no
 unknown word where an entry starts, and the entry, no unknown word starts
 at <code>〇</code>:</p>
 <div class="table-wrapper"><table><thead><tr><th>Input</th><th>v6</th><th>v7</th></tr></thead><tbody>
-<tr><td><code>二〇〇八年北京奧運會</code></td><td><code>二</code>, <code>〇〇</code> (unknown), <code>八</code>, <code>年</code>, <code>北京奧運</code> and <code>會</code></td><td><code>二</code>, <code>〇</code>, <code>〇</code>, <code>八</code>, <code>年</code>, <code>北京奧運</code> and <code>會</code></td></tr>
+<tr><td><code>二〇〇八年北京奧運會</code></td><td><code>二</code>, <code>〇〇</code> (unknown), <code>八</code>, <code>年</code>, <code>北京奧運</code> and <code>會</code></td><td><code>二</code>, <code>〇</code>, <code>〇</code>, <code>八</code>, <code>年</code>, <code>北京</code>, <code>奧運</code> and <code>會</code></td></tr>
 <tr><td><code>编号〇〇七的特工</code></td><td><code>编号</code>, <code>〇〇</code> (unknown), <code>七</code>, <code>的</code> and <code>特工</code></td><td><code>编号</code>, <code>〇</code>, <code>〇</code>, <code>七</code>, <code>的</code> and <code>特工</code></td></tr>
 <tr><td><code>第二〇章</code></td><td><code>第二</code> and <code>〇章</code> (unknown)</td><td><code>第二</code>, <code>〇</code> and <code>章</code></td></tr>
 </tbody></table>
 </div>
-<p>Only text with <code>〇</code> changes. None of the 4,997 sentences of UD Chinese GSD
-has <code>〇</code>, and they are segmented as with the <code>0.1.1</code> dictionary. Lindera
-and MeCab segment the same way with the new dictionary: 28 hand-written
-lines, 2,160 generated lines around the numerals and <code>〇</code>, the 8,064
-generated sentences around the characters with several categories, and the
-same 4,951 GSD sentences as with the old dictionary. As with the other
-numerals, a character that starts no entry and the <code>〇</code> after it can make
-one unknown word, as in MeCab: <code>頻〇頻</code> is <code>頻〇</code> and <code>頻</code>.</p>
+<p>With <code>0.1.2</code>, only text with <code>〇</code> changed: none of the 4,997 sentences of UD
+Chinese GSD has <code>〇</code>. Lindera and MeCab segment the same way with the
+<code>0.1.3</code> dictionary: 28 hand-written lines, 2,160 generated lines around the
+numerals and <code>〇</code>, the 8,064 generated sentences around the characters with
+several categories, and 4,951 of the 4,997 GSD sentences, as many as with
+the older dictionaries. As with the other numerals, a character that starts
+no entry and the <code>〇</code> after it can make one unknown word, as in MeCab:
+<code>両〇頻</code> is <code>両〇</code> and <code>頻</code>.</p>
 <p>A Jieba dictionary directory built from the <code>0.1.1</code> archive keeps <code>〇</code> as a
 symbol (and has to be rebuilt anyway, see
 <a href="#dictionary-directories-must-be-rebuilt">Dictionary directories must be rebuilt</a>):
-build it from the <code>0.1.2</code> archive, as <code>lindera-jieba</code> and the 7.0.0 release
+build it from the <code>0.1.3</code> archive, as <code>lindera-jieba</code> and the 7.0.0 release
 assets do.</p>
+<h2 id="jieba-costs-retrained-on-ud-chinese-gsd"><a class="header" href="#jieba-costs-retrained-on-ud-chinese-gsd">Jieba: costs retrained on UD Chinese GSD</a></h2>
+<p>v7.0.0 builds the Jieba dictionary from <code>mecab-jieba-0.1.3</code>, whose word and
+connection costs are trained again
+(<a href="https://github.com/lindera/lindera/issues/1250">#1250</a>). Up to <code>0.1.2</code>,
+every connection into or out of context ID 2, which 52 of the 55 parts of
+speech shared (362,085 of the 584,430 entries, such as every <code>v</code>, <code>nr</code> and
+<code>ns</code>), cost 32,767. Three defects added up: the training corpus never made
+a gold word a dictionary word, the trainer of lindera 2.3.3 put no
+dictionary words in its lattices, and its export wrote 32,767 for a
+connection without a trained weight. The best path was the one with the
+fewest such connections, close to longest match, and the word costs had
+never been trained against each other. <code>0.1.3</code> is trained with the
+trainer of v7.0.0 on the training splits of UD Chinese GSD and of the same
+sentences in simplified script (GSDSimp), with each gold word that is in
+the dictionary given the features of a dictionary entry. Every part of
+speech has its own context ID (a 56 × 56 matrix), and no connection costs
+32,767.</p>
+<p>Jieba now segments text as UD Chinese GSD does, which is finer than jieba
+and than <code>0.1.2</code>. Both columns are v7.0.0; MeCab segments every line the
+same way with the same dictionary:</p>
+<div class="table-wrapper"><table><thead><tr><th>Input</th><th><code>0.1.2</code></th><th><code>0.1.3</code> (as MeCab)</th></tr></thead><tbody>
+<tr><td><code>北京是中华人民共和国的首都。</code></td><td><code>北京 / 是 / 中华人民共和国 / 的 / 首都 / 。</code></td><td><code>北京 / 是 / 中华 / 人民 / 共和 / 国 / 的 / 首都 / 。</code></td></tr>
+<tr><td><code>可以进行中文形态学分析。</code></td><td><code>可以 / 进行 / 中文 / 形态 / 学分 / 析 / 。</code></td><td><code>可以 / 进行 / 中文 / 形态 / 学 / 分析 / 。</code></td></tr>
+<tr><td><code>这个问题很重要。</code></td><td><code>这个 / 问题 / 很重 / 要 / 。</code></td><td><code>这 / 个 / 问题 / 很 / 重要 / 。</code></td></tr>
+<tr><td><code>武汉市解除离汉离鄂通道管控措施</code></td><td><code>武汉市 / 解除 / 离 / 汉 / 离 / 鄂 / 通道 / 管控 / 措施</code></td><td><code>武汉 / 市 / 解除 / 离 / 汉 / 离 / 鄂 / 通道 / 管控 / 措施</code></td></tr>
+</tbody></table>
+</div>
+<p>GSD's gold segmentation has <code>中華 / 人民 / 共和 / 國</code> (54 times) and
+<code>這 / 個</code> (69 times, never <code>這個</code>). Segmentation F1 over word spans, with
+models trained on the training splits only:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th style="text-align: right">GSD dev</th><th style="text-align: right">GSD test</th><th style="text-align: right">GSDSimp dev</th><th style="text-align: right">GSDSimp test</th></tr></thead><tbody>
+<tr><td><code>0.1.2</code></td><td style="text-align: right">77.09</td><td style="text-align: right">77.31</td><td style="text-align: right">77.07</td><td style="text-align: right">77.70</td></tr>
+<tr><td><code>0.1.3</code></td><td style="text-align: right">88.84</td><td style="text-align: right">87.71</td><td style="text-align: right">89.59</td><td style="text-align: right">88.75</td></tr>
+</tbody></table>
+</div>
+<p>MeCab 0.996 with the same dictionaries gives the same F1 within 0.09, and
+segments 4,951 of the 4,997 GSD sentences as Lindera does, with either
+dictionary. The parts of speech are jieba's, as before.</p>
+<p>A simple user dictionary row (a surface, a part of speech and a pinyin)
+costs the <code>default_word_cost</code> of <code>metadata.json</code>. The trained word costs go
+down to −25,149, so <code>lindera-jieba</code> sets it to −32768 instead of 1625:
+with 1625, or with the −10000 of the other dictionaries, the user word
+<code>羽田机场</code> lost to <code>羽田</code> and <code>机场</code>. Of user words made of two adjacent GSD
+words that are not in the dictionary, one per sentence of the test splits,
+−32768 keeps 99.4% as one word, −10000 53% to 58% and 1625 4%. A detailed
+row gives its own context IDs and cost: the IDs of <code>0.1.2</code> (0 to 6) name
+other parts of speech in <code>0.1.3</code>, so take them from the <code>left-id.def</code> and
+<code>right-id.def</code> of the <code>0.1.3</code> archive.</p>
+<p>A Jieba dictionary directory built from an older archive has to be rebuilt
+from <code>mecab-jieba-0.1.3</code>, as <code>lindera-jieba</code> and the 7.0.0 release assets
+are. There is no setting to restore the old costs.</p>
 <h2 id="dash-and-tilde-spellings-are-kept-as-written"><a class="header" href="#dash-and-tilde-spellings-are-kept-as-written">Dash and tilde spellings are kept as written</a></h2>
 <p>Japanese text spells the dash and the tilde in two ways each: the dash as
 <code>―</code> (U+2015, HORIZONTAL BAR) or <code>—</code> (U+2014, EM DASH), the tilde as <code>～</code>
@@ -1174,7 +1232,7 @@ MeCab does:</p>
 <tr><td><code>家系譜</code> (UniDic)</td><td><code>家 / 系譜</code></td><td><code>家系 / 譜</code></td></tr>
 <tr><td><code>차나 마셔</code> (ko-dic)</td><td><code>차나 / 마셔</code></td><td><code>차 / 나 / 마셔</code></td></tr>
 <tr><td><code>電視台上班</code> (CC-CEDICT)</td><td><code>電視 / 台 / 上班</code></td><td><code>電視 / 台上 / 班</code></td></tr>
-<tr><td><code>兩個人</code> (Jieba)</td><td><code>兩 / 個人</code></td><td><code>兩個 / 人</code></td></tr>
+<tr><td><code>二十二年</code> (Jieba)</td><td><code>二 / 十二 / 年</code></td><td><code>二十 / 二 / 年</code></td></tr>
 </tbody></table>
 </div>
 <p>Both segmentations of <code>腸窒扶斯</code> cost 28,382. With the Japanese and Korean
@@ -1185,26 +1243,28 @@ IPADIC-NEologd and UniDic, and the 7,759 lines of <em>Sangnoksu</em> with ko-dic
 about 54,000 lines in all. 9 of them change, all to MeCab's segmentation,
 and none moves away from it. In Decompose mode, which MeCab does not have,
 0 to 2 lines per text change in the same way.</p>
-<p>With CC-CEDICT and Jieba, ties are common, because their costs take few
-values. CC-CEDICT has no connection costs, and an entry of <code>len</code>
+<p>With CC-CEDICT, ties are common, because its costs take few values.
+CC-CEDICT has no connection costs, and an entry of <code>len</code>
 characters costs <code>max(-36000, -400 * len ** 1.5)</code> (except the 22 entries
 made only of Latin letters or only of digits, see
 <a href="#cc-cedict-unknown-words-no-longer-cost-less-than-dictionary-words">CC-CEDICT: unknown words no longer cost less than dictionary words</a>),
 so two segmentations into entries of the same lengths cost the same, such
-as <code>電視 / 台 / 上班</code> and <code>電視 / 台上 / 班</code>. The 584,430 entries of Jieba
-have 12 distinct costs and 4 context IDs, so two segmentations into words
-of the same costs and context IDs, in the same order, cost the same, such
-as <code>兩 / 個人</code> and <code>兩個 / 人</code>. About a quarter of the 4,997 sentences of UD
-Chinese GSD change, compared with v7.0.0 changed to keep the
-earlier-starting word on ties:</p>
+as <code>電視 / 台 / 上班</code> and <code>電視 / 台上 / 班</code>. Jieba's costs are trained
+(see
+<a href="#jieba-costs-retrained-on-ud-chinese-gsd">Jieba: costs retrained on UD Chinese GSD</a>),
+so ties are rare with it; with the <code>mecab-jieba-0.1.2</code> dictionary, whose
+584,430 entries had 12 distinct costs and 4 context IDs, 1,186 sentences
+changed. Compared with v7.0.0 changed to keep the earlier-starting word on
+ties, about a quarter of the 4,997 sentences of UD Chinese GSD change with
+CC-CEDICT:</p>
 <div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th style="text-align: right">Sentences that change</th><th>Closer to / farther from the gold segmentation</th><th>Sentences segmented as MeCab, before → after</th></tr></thead><tbody>
 <tr><td>CC-CEDICT</td><td style="text-align: right">1,267</td><td>634 / 455 (sign test p = 6.5 × 10⁻⁸)</td><td>3,694 → 4,951</td></tr>
-<tr><td>Jieba</td><td style="text-align: right">1,186</td><td>549 / 451 (p = 0.0021)</td><td>3,777 → 4,951</td></tr>
+<tr><td>Jieba</td><td style="text-align: right">3</td><td>1 / 1</td><td>4,948 → 4,951</td></tr>
 </tbody></table>
 </div>
 <p>The other sentences that change come neither closer to the gold
 segmentation nor farther from it, and segmentation F1 rises from 77.94 to
-78.30 with CC-CEDICT and from 76.93 to 77.13 with Jieba. Every sentence that
+78.30 with CC-CEDICT and stays 88.79 with Jieba. Every sentence that
 changes costs the same either way.</p>
 <p>When whitespace is skipped (see
 <a href="#whitespace-is-skipped-in-the-lattice">Whitespace is skipped in the lattice</a>),
@@ -1939,14 +1999,16 @@ category, which matter for ko-dic hanja numerals followed by hanja and for
 <code>〇</code> with ko-dic, the new costs of CC-CEDICT, which matter for
 its entries that mix Latin letters or digits with Chinese characters and
 for its N-best costs, the <code>〇</code> entry of Jieba, which matters only for text
-with <code>〇</code>, the dash and tilde spellings, which
+with <code>〇</code>, the retrained costs of Jieba, which change the segmentation of
+most Chinese text with Jieba and the cost of simple Jieba user dictionary
+words, the dash and tilde spellings, which
 matter only for text with <code>―</code>, <code>—</code>, <code>～</code> or <code>〜</code> with IPADIC or
 IPADIC-NEologd, the choice among
 tied entries, which matters only if you read token details such as the
 reading or the base form, or the order of N-best results with the same
 cost, the choice between segmentations of equal cost, which changes the
 segmentation of a few lines with the Japanese and Korean dictionaries and
-of about a quarter of the sentences with CC-CEDICT and Jieba, in the CLI
+Jieba and of about a quarter of the sentences with CC-CEDICT, in the CLI
 only, the whitespace at the
 ends of an input line and the output of lines without tokens, which
 matter only for lines that start or end with whitespace and for the
@@ -2162,7 +2224,17 @@ cost 400 instead of −3,200.</li>
 <ul>
 <li>Expect each <code>〇</code> to be one numeral word (<code>m</code>, pinyin <code>ling2</code>) instead of
 part of an unknown word, as MeCab segments it with the same dictionary.</li>
-<li>Build a Jieba dictionary directory from the <code>mecab-jieba-0.1.2</code> archive.</li>
+<li>Build a Jieba dictionary directory from the <code>mecab-jieba-0.1.3</code> archive.</li>
+</ul>
+<p>Users of Jieba:</p>
+<ul>
+<li>Expect Chinese text to be segmented as UD Chinese GSD segments it, finer
+than jieba (<code>中华 / 人民 / 共和 / 国</code>, <code>这 / 个</code>), and as MeCab segments it
+with the same dictionary.</li>
+<li>Expect simple user dictionary words to cost −32768. Take the context IDs
+of detailed user dictionary rows from the <code>left-id.def</code> and
+<code>right-id.def</code> of <code>mecab-jieba-0.1.3</code>.</li>
+<li>Build a Jieba dictionary directory from the <code>mecab-jieba-0.1.3</code> archive.</li>
 </ul>
 <p>Users of IPADIC or IPADIC-NEologd with text that contains <code>―</code>, <code>—</code>, <code>～</code> or
 <code>〜</code>:</p>
@@ -2184,8 +2256,8 @@ entry still wins a tie with a system entry, unlike in MeCab.</li>
 <p>Everyone who compares the segmentation with v6 or with MeCab:</p>
 <ul>
 <li>Expect the places where two segmentations cost exactly the same, few with
-the Japanese and Korean dictionaries but about a quarter of the sentences
-with CC-CEDICT and Jieba, to be segmented as MeCab segments them, with the
+the Japanese and Korean dictionaries and Jieba but about a quarter of the
+sentences with CC-CEDICT, to be segmented as MeCab segments them, with the
 last word that starts later (IPADIC <code>腸窒扶斯</code> is <code>腸 / 窒扶 / 斯</code>,
 CC-CEDICT <code>電視台上班</code> is <code>電視 / 台上 / 班</code>). No setting restores the v6
 output.</li>
