@@ -1,5 +1,6 @@
 //! Module for L-BFGS optimizer.
 
+use core::cell::{Cell, RefCell};
 use core::num::NonZeroU32;
 
 use alloc::vec::Vec;
@@ -18,21 +19,119 @@ use crate::feature::FeatureProvider;
 use crate::lattice::Lattice;
 use crate::trainer::{LatticesLoss, Regularization};
 
-impl CostFunction for LatticesLoss<'_> {
+/// The loss and the gradient of one evaluation, with the parameter vector
+/// they were computed at.
+struct Evaluation {
+    param: Vec<f64>,
+    cost: f64,
+    gradient: Vec<f64>,
+}
+
+/// Returns whether two parameter vectors are equal bit for bit.
+///
+/// `==` on `f64` treats `-0.0` and `+0.0` as equal and NaN as unequal to
+/// itself, while the evaluation depends on the exact bits.
+///
+/// # Arguments
+///
+/// * `a` - A parameter vector.
+/// * `b` - Another parameter vector.
+///
+/// # Returns
+///
+/// `true` when both have the same length and the same bits in every
+/// component.
+fn same_bits(a: &[f64], b: &[f64]) -> bool {
+    a.len() == b.len() && a.iter().zip(b).all(|(x, y)| x.to_bits() == y.to_bits())
+}
+
+/// The training objective as argmin sees it.
+///
+/// Each evaluation computes the loss and the gradient in one pass over the
+/// lattices ([`LatticesLoss::evaluate`]), and the result for the last
+/// parameter vector is kept. argmin's L-BFGS asks for the cost and the
+/// gradient in separate calls, and asks for the gradient at the parameter
+/// vector of the preceding cost call: in `init`, at the point the
+/// backtracking line search of OWL-QN accepted (projected with the same
+/// expression as in the line search), and at every trial point of the
+/// More-Thuente line search, the last of which is the accepted point. The
+/// gradient call is therefore answered from the kept result, and each point
+/// costs one forward-backward pass instead of two or three.
+pub(crate) struct CachedLoss<'a> {
+    /// The objective.
+    loss: LatticesLoss<'a>,
+    /// The last evaluation.
+    last: RefCell<Option<Evaluation>>,
+    /// Counts the evaluations computed, outside the problem so that it can
+    /// be read after argmin has dropped the problem.
+    evaluations: &'a Cell<u64>,
+}
+
+impl<'a> CachedLoss<'a> {
+    /// Creates the objective.
+    ///
+    /// # Arguments
+    ///
+    /// * `loss` - The objective to evaluate.
+    /// * `evaluations` - The counter of the evaluations computed.
+    ///
+    /// # Returns
+    ///
+    /// The objective, with nothing evaluated yet.
+    pub(crate) const fn new(loss: LatticesLoss<'a>, evaluations: &'a Cell<u64>) -> Self {
+        Self {
+            loss,
+            last: RefCell::new(None),
+            evaluations,
+        }
+    }
+
+    /// Calls `f` with the evaluation at `param`, computing it unless it is
+    /// the kept one.
+    ///
+    /// # Arguments
+    ///
+    /// * `param` - The parameter vector.
+    /// * `f` - Reads what the caller needs from the evaluation.
+    ///
+    /// # Returns
+    ///
+    /// What `f` returns.
+    fn with_evaluation<T>(&self, param: &[f64], f: impl FnOnce(&Evaluation) -> T) -> T {
+        let mut last = self.last.borrow_mut();
+        let evaluation = match last.take() {
+            Some(kept) if same_bits(&kept.param, param) => kept,
+            _ => {
+                let (cost, gradient) = self.loss.evaluate(param);
+                self.evaluations.set(self.evaluations.get() + 1);
+                Evaluation {
+                    param: param.to_vec(),
+                    cost,
+                    gradient,
+                }
+            }
+        };
+        let result = f(&evaluation);
+        *last = Some(evaluation);
+        result
+    }
+}
+
+impl CostFunction for CachedLoss<'_> {
     type Param = Vec<f64>;
     type Output = f64;
 
     fn cost(&self, param: &Self::Param) -> Result<Self::Output, argmin::core::Error> {
-        Ok(LatticesLoss::cost(self, param))
+        Ok(self.with_evaluation(param, |evaluation| evaluation.cost))
     }
 }
 
-impl Gradient for LatticesLoss<'_> {
+impl Gradient for CachedLoss<'_> {
     type Param = Vec<f64>;
     type Gradient = Vec<f64>;
 
     fn gradient(&self, param: &Self::Param) -> Result<Self::Gradient, argmin::core::Error> {
-        Ok(self.gradient_partial(param))
+        Ok(self.with_evaluation(param, |evaluation| evaluation.gradient.clone()))
     }
 }
 
@@ -64,6 +163,36 @@ fn final_param(state: &mut IterState<Vec<f64>, Vec<f64>, (), (), (), f64>) -> Ve
         .expect("L-BFGS kept no parameter vector, so the initial cost was NaN")
 }
 
+/// Returns the L2 strength the objective adds itself: all of it for L2, the
+/// L2 part for Elastic Net, none for L1, whose penalty OWL-QN applies.
+///
+/// # Arguments
+///
+/// * `regularization` - The kind of regularization.
+/// * `lambda` - The regularization coefficient.
+///
+/// # Returns
+///
+/// The L2 strength, if any.
+pub(crate) fn l2_lambda(regularization: Regularization, lambda: f64) -> Option<f64> {
+    match regularization {
+        Regularization::L2 => Some(lambda),
+        Regularization::ElasticNet { l1_ratio } => Some(lambda * (1.0 - l1_ratio)),
+        Regularization::L1 => None,
+    }
+}
+
+/// The result of [`optimize`].
+pub struct Optimized {
+    /// The optimized weights.
+    pub weights: Vec<f64>,
+    /// The number of iterations that ran, as described for [`minimize`].
+    pub iterations: u64,
+    /// The number of evaluations of the loss and its gradient: one for every
+    /// point at which argmin asked for either of them.
+    pub evaluations: u64,
+}
+
 /// Minimizes the loss of the lattices with L-BFGS, or with OWL-QN when the
 /// regularization has an L1 part.
 ///
@@ -81,12 +210,8 @@ fn final_param(state: &mut IterState<Vec<f64>, Vec<f64>, (), (), (), f64>) -> Ve
 ///
 /// # Returns
 ///
-/// The optimized weights, and the number of iterations that ran: `max_iter`
-/// when the cap stopped the optimizer, fewer when it stopped earlier, for
-/// example because it converged. argmin counts every iteration that ran,
-/// including the one in which the solver stopped. When the line search of an
-/// iteration fails, that iteration is counted, and the weights are the best
-/// ones of the run (see [`final_param`]).
+/// The optimized weights, the number of iterations that ran and the number of
+/// evaluations.
 #[allow(clippy::too_many_arguments)]
 pub fn optimize(
     lattices: &[Lattice],
@@ -98,21 +223,61 @@ pub fn optimize(
     lambda: f64,
     max_iter: u64,
     n_threads: usize,
-) -> (Vec<f64>, u64) {
-    let weights_init = weights_init.to_vec();
-    let l2_lambda = match regularization {
-        Regularization::L2 => Some(lambda),
-        Regularization::ElasticNet { l1_ratio } => Some(lambda * (1.0 - l1_ratio)),
-        Regularization::L1 => None,
-    };
-    let loss_function = LatticesLoss::new(
+) -> Optimized {
+    let loss = LatticesLoss::new(
         lattices,
         provider,
         unigram_weight_indices,
         bigram_weight_indices,
         n_threads,
-        l2_lambda,
+        l2_lambda(regularization, lambda),
     );
+    let evaluations = Cell::new(0);
+    let (weights, iterations) = minimize(
+        CachedLoss::new(loss, &evaluations),
+        weights_init.to_vec(),
+        regularization,
+        lambda,
+        max_iter,
+    );
+    Optimized {
+        weights,
+        iterations,
+        evaluations: evaluations.get(),
+    }
+}
+
+/// Runs L-BFGS, or OWL-QN when the regularization has an L1 part, on
+/// `problem` from `weights_init`.
+///
+/// # Arguments
+///
+/// * `problem` - The objective, which must already include the L2 part of
+///   the regularization (see [`l2_lambda`]).
+/// * `weights_init` - The initial weights.
+/// * `regularization` - The kind of regularization.
+/// * `lambda` - The regularization coefficient.
+/// * `max_iter` - The maximum number of iterations.
+///
+/// # Returns
+///
+/// The optimized weights, and the number of iterations that ran: `max_iter`
+/// when the cap stopped the optimizer, fewer when it stopped earlier, for
+/// example because it converged. argmin counts every iteration that ran,
+/// including the one in which the solver stopped. When the line search of an
+/// iteration fails, that iteration is counted, and the weights are the best
+/// ones of the run (see [`final_param`]).
+pub(crate) fn minimize<P>(
+    problem: P,
+    weights_init: Vec<f64>,
+    regularization: Regularization,
+    lambda: f64,
+    max_iter: u64,
+) -> (Vec<f64>, u64)
+where
+    P: CostFunction<Param = Vec<f64>, Output = f64>
+        + Gradient<Param = Vec<f64>, Gradient = Vec<f64>>,
+{
     match regularization {
         Regularization::L1 => {
             let linesearch = BacktrackingLineSearch::new(ArmijoCondition::new(1e-4).unwrap())
@@ -121,7 +286,7 @@ pub fn optimize(
             let solver = LBFGS::new(linesearch, 7)
                 .with_l1_regularization(lambda)
                 .unwrap();
-            let mut res = Executor::new(loss_function, solver)
+            let mut res = Executor::new(problem, solver)
                 .configure(|state| state.param(weights_init).max_iters(max_iter))
                 .add_observer(SlogLogger::term(), ObserverMode::Always)
                 .run()
@@ -132,7 +297,7 @@ pub fn optimize(
         Regularization::L2 => {
             let linesearch = MoreThuenteLineSearch::new().with_c(1e-4, 0.9).unwrap();
             let solver = LBFGS::new(linesearch, 7);
-            let mut res = Executor::new(loss_function, solver)
+            let mut res = Executor::new(problem, solver)
                 .configure(|state| state.param(weights_init).max_iters(max_iter))
                 .add_observer(SlogLogger::term(), ObserverMode::Always)
                 .run()
@@ -149,7 +314,7 @@ pub fn optimize(
             let solver = LBFGS::new(linesearch, 7)
                 .with_l1_regularization(l1_lambda)
                 .unwrap();
-            let mut res = Executor::new(loss_function, solver)
+            let mut res = Executor::new(problem, solver)
                 .configure(|state| state.param(weights_init).max_iters(max_iter))
                 .add_observer(SlogLogger::term(), ObserverMode::Always)
                 .run()

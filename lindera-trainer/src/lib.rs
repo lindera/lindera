@@ -550,6 +550,10 @@ impl Trainer {
 
         self.log_training_results(&model);
         println!(
+            "L-BFGS ran {} iterations and {} evaluations of the loss and its gradient",
+            stats.iterations, stats.evaluations
+        );
+        println!(
             "Training completed successfully in {:.2}s!",
             training_duration.as_secs_f64()
         );
