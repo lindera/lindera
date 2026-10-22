@@ -11,6 +11,18 @@ Metrics/AbcSize:
   Exclude:
     - "test/**/*"
 
+# Tests define their cases in blocks and classes, and examples spell out their
+# input data, so the length limits are for the library code.
+Metrics/BlockLength:
+  Exclude:
+    - "test/**/*"
+    - "examples/**/*"
+
+Metrics/ClassLength:
+  Exclude:
+    - "test/**/*"
+
 Metrics/MethodLength:
   Exclude:
     - "test/**/*"
+    - "examples/**/*"

@@ -61,8 +61,14 @@ describe(
       const userDictionary = withCsv(SIMPLE_CSV, (csv) =>
         lindera.loadUserDictionaryFor(csv, dictionary),
       );
-      const tokenizer = new lindera.Tokenizer(dictionary, lindera.Mode.normal(), userDictionary);
-      const surfaces = tokenizer.tokenize("東京スカイツリー").map((token) => token.surface);
+      const tokenizer = new lindera.Tokenizer(
+        dictionary,
+        lindera.Mode.normal(),
+        userDictionary,
+      );
+      const surfaces = tokenizer
+        .tokenize("東京スカイツリー")
+        .map((token) => token.surface);
       assert.deepStrictEqual(surfaces, ["東京スカイツリー"]);
     });
   },
@@ -92,8 +98,14 @@ describe(
         assert.ok(fs.statSync(output).isFile());
         return lindera.loadUserDictionaryFor(output, dictionary);
       });
-      const tokenizer = new lindera.Tokenizer(dictionary, lindera.Mode.normal(), userDictionary);
-      const surfaces = tokenizer.tokenize("東京スカイツリー").map((token) => token.surface);
+      const tokenizer = new lindera.Tokenizer(
+        dictionary,
+        lindera.Mode.normal(),
+        userDictionary,
+      );
+      const surfaces = tokenizer
+        .tokenize("東京スカイツリー")
+        .map((token) => token.surface);
       assert.deepStrictEqual(surfaces, ["東京スカイツリー"]);
     });
   },

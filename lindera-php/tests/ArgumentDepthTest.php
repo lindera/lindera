@@ -24,13 +24,13 @@ class ArgumentDepthTest extends TestCase
     {
         return [
             'setSpacePenalty' => [
-                static fn (Lindera\TokenizerBuilder $builder, mixed $value) => $builder->setSpacePenalty($value),
+                static fn(Lindera\TokenizerBuilder $builder, mixed $value) => $builder->setSpacePenalty($value),
             ],
             'appendCharacterFilter' => [
-                static fn (Lindera\TokenizerBuilder $builder, mixed $value) => $builder->appendCharacterFilter('unicode_normalize', $value),
+                static fn(Lindera\TokenizerBuilder $builder, mixed $value) => $builder->appendCharacterFilter('unicode_normalize', $value),
             ],
             'appendTokenFilter' => [
-                static fn (Lindera\TokenizerBuilder $builder, mixed $value) => $builder->appendTokenFilter('lowercase', $value),
+                static fn(Lindera\TokenizerBuilder $builder, mixed $value) => $builder->appendTokenFilter('lowercase', $value),
             ],
         ];
     }

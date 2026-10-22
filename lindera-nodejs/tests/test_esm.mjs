@@ -7,7 +7,13 @@ import { describe, it } from "node:test";
 //
 // Without the `import` condition this file fails with ERR_PACKAGE_PATH_NOT_EXPORTED when the
 // package is consumed by name — the reason ESM users previously needed a `createRequire` shim.
-import lindera, { Mode, Tokenizer, TokenizerBuilder, loadDictionary, version } from "../index.js";
+import lindera, {
+  Mode,
+  Tokenizer,
+  TokenizerBuilder,
+  loadDictionary,
+  version,
+} from "../index.js";
 
 // Matches the guard in test_tokenize_ipadic.js: the embedded dictionary is behind the
 // `embed-ipadic` feature, which is not on by default.
@@ -33,15 +39,19 @@ describe("ESM interop", () => {
     assert.strictEqual(lindera.loadDictionary, loadDictionary);
   });
 
-  it("can tokenize through an ESM-imported binding", {
-    skip: !hasEmbeddedIpadic && "embedded://ipadic not available"
-  }, () => {
-    const builder = new TokenizerBuilder();
-    builder.setMode(Mode.normal());
-    builder.setDictionary("embedded://ipadic");
-    const tokenizer = builder.build();
-    const tokens = tokenizer.tokenize("東京タワー");
-    assert.ok(tokens.length > 0);
-    assert.strictEqual(tokens[0].surface, "東京");
-  });
+  it(
+    "can tokenize through an ESM-imported binding",
+    {
+      skip: !hasEmbeddedIpadic && "embedded://ipadic not available",
+    },
+    () => {
+      const builder = new TokenizerBuilder();
+      builder.setMode(Mode.normal());
+      builder.setDictionary("embedded://ipadic");
+      const tokenizer = builder.build();
+      const tokens = tokenizer.tokenize("東京タワー");
+      assert.ok(tokens.length > 0);
+      assert.strictEqual(tokens[0].surface, "東京");
+    },
+  );
 });

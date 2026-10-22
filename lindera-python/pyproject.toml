@@ -55,5 +55,12 @@ max-line-length = 119
 profile = "black"
 line_length = 119
 
+# ruff, which `make lint-lindera-python` runs (#1178). Any [tool.ruff] table
+# makes this file ruff's configuration, so ruff targets the lowest Python in
+# requires-python and takes this directory as the project root. `lindera` is
+# the extension module this crate builds, which ruff cannot find from here.
+[tool.ruff.lint.isort]
+known-first-party = ["lindera"]
+
 [tool.mypy]
 ignore_missing_imports = true

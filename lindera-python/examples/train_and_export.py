@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Example: Train a morphological analysis model and export dictionary files
 

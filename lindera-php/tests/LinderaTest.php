@@ -156,7 +156,7 @@ class LinderaTest extends TestCase
 
         foreach (['すもももももももものうち', '関西国際空港限定トートバッグ', ''] as $text) {
             $expected = array_map(
-                static fn ($token) => $token->surface,
+                static fn($token) => $token->surface,
                 $tokenizer->tokenize($text)
             );
             $surfaces = $tokenizer->tokenizeSurfaces($text);

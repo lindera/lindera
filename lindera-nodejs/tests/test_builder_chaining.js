@@ -23,39 +23,54 @@ describe("TokenizerBuilder method chaining", () => {
     assert.strictEqual(builder.setKeepWhitespace(true), builder);
     assert.strictEqual(builder.setSkipWhitespace(false), builder);
     assert.strictEqual(builder.setSpacePenalty(false), builder);
-    assert.strictEqual(builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" }), builder);
+    assert.strictEqual(
+      builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" }),
+      builder,
+    );
     assert.strictEqual(builder.appendTokenFilter("lowercase", {}), builder);
   });
 
   it("setMode rejects a value that is not a Mode even when chained", () => {
     const builder = new TokenizerBuilder();
-    assert.throws(() => builder.setMode("no_such_mode"), { code: "InvalidArg" });
+    assert.throws(() => builder.setMode("no_such_mode"), {
+      code: "InvalidArg",
+    });
   });
 
-  it("builds and tokenizes through a full chain", {
-    skip: !hasEmbeddedIpadic && "embedded://ipadic not available"
-  }, () => {
-    const tokenizer = new TokenizerBuilder()
-      .setMode(Mode.normal())
-      .setDictionary("embedded://ipadic")
-      .appendTokenFilter("japanese_stop_tags", {
-        tags: ["助詞,係助詞", "助詞,連体化"],
-      })
-      .build();
+  it(
+    "builds and tokenizes through a full chain",
+    {
+      skip: !hasEmbeddedIpadic && "embedded://ipadic not available",
+    },
+    () => {
+      const tokenizer = new TokenizerBuilder()
+        .setMode(Mode.normal())
+        .setDictionary("embedded://ipadic")
+        .appendTokenFilter("japanese_stop_tags", {
+          tags: ["助詞,係助詞", "助詞,連体化"],
+        })
+        .build();
 
-    const surfaces = tokenizer.tokenize("すもももももももものうち").map((t) => t.surface);
-    assert.deepStrictEqual(surfaces, ["すもも", "もも", "もも", "うち"]);
-  });
+      const surfaces = tokenizer
+        .tokenize("すもももももももものうち")
+        .map((t) => t.surface);
+      assert.deepStrictEqual(surfaces, ["すもも", "もも", "もも", "うち"]);
+    },
+  );
 
-  it("keeps the sequential (non-chained) style working", {
-    skip: !hasEmbeddedIpadic && "embedded://ipadic not available"
-  }, () => {
-    const builder = new TokenizerBuilder();
-    builder.setMode(Mode.normal());
-    builder.setDictionary("embedded://ipadic");
-    const tokenizer = builder.build();
+  it(
+    "keeps the sequential (non-chained) style working",
+    {
+      skip: !hasEmbeddedIpadic && "embedded://ipadic not available",
+    },
+    () => {
+      const builder = new TokenizerBuilder();
+      builder.setMode(Mode.normal());
+      builder.setDictionary("embedded://ipadic");
+      const tokenizer = builder.build();
 
-    const surfaces = tokenizer.tokenize("日本語").map((t) => t.surface);
-    assert.ok(surfaces.length > 0);
-  });
+      const surfaces = tokenizer.tokenize("日本語").map((t) => t.surface);
+      assert.ok(surfaces.length > 0);
+    },
+  );
 });

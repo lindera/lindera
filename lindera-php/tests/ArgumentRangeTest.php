@@ -48,23 +48,23 @@ class ArgumentRangeTest extends TestCase
     {
         $unsigned = self::UNSIGNED_MAX;
         $cases = [
-            'Metadata::__construct($default_word_cost)' => [static fn (int $v) => new Lindera\Metadata(default_word_cost: $v), -32768, 32767],
-            'Metadata::__construct($default_left_context_id)' => [static fn (int $v) => new Lindera\Metadata(default_left_context_id: $v), 0, 65535],
-            'Metadata::__construct($default_right_context_id)' => [static fn (int $v) => new Lindera\Metadata(default_right_context_id: $v), 0, 65535],
-            'Penalty::__construct($kanji_penalty_length_threshold)' => [static fn (int $v) => new Lindera\Penalty(kanji_penalty_length_threshold: $v), 0, $unsigned],
-            'Penalty::__construct($kanji_penalty_length_penalty)' => [static fn (int $v) => new Lindera\Penalty(kanji_penalty_length_penalty: $v), -2147483648, 2147483647],
-            'Penalty::__construct($other_penalty_length_threshold)' => [static fn (int $v) => new Lindera\Penalty(other_penalty_length_threshold: $v), 0, $unsigned],
-            'Penalty::__construct($other_penalty_length_penalty)' => [static fn (int $v) => new Lindera\Penalty(other_penalty_length_penalty: $v), -2147483648, 2147483647],
-            'FieldDefinition::__construct($index)' => [static fn (int $v) => new Lindera\FieldDefinition($v, 'surface', 'surface'), 0, $unsigned],
-            'Schema::getFieldName($index)' => [static fn (int $v) => Lindera\Schema::createDefault()->getFieldName($v), 0, $unsigned],
-            'Token::getDetail($index)' => [static fn (int $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenize('東京')[0]->getDetail($v), 0, $unsigned],
-            'Tokenizer::tokenizeNbest($n)' => [static fn (int $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbest('東京', $v), 0, $unsigned],
+            'Metadata::__construct($default_word_cost)' => [static fn(int $v) => new Lindera\Metadata(default_word_cost: $v), -32768, 32767],
+            'Metadata::__construct($default_left_context_id)' => [static fn(int $v) => new Lindera\Metadata(default_left_context_id: $v), 0, 65535],
+            'Metadata::__construct($default_right_context_id)' => [static fn(int $v) => new Lindera\Metadata(default_right_context_id: $v), 0, 65535],
+            'Penalty::__construct($kanji_penalty_length_threshold)' => [static fn(int $v) => new Lindera\Penalty(kanji_penalty_length_threshold: $v), 0, $unsigned],
+            'Penalty::__construct($kanji_penalty_length_penalty)' => [static fn(int $v) => new Lindera\Penalty(kanji_penalty_length_penalty: $v), -2147483648, 2147483647],
+            'Penalty::__construct($other_penalty_length_threshold)' => [static fn(int $v) => new Lindera\Penalty(other_penalty_length_threshold: $v), 0, $unsigned],
+            'Penalty::__construct($other_penalty_length_penalty)' => [static fn(int $v) => new Lindera\Penalty(other_penalty_length_penalty: $v), -2147483648, 2147483647],
+            'FieldDefinition::__construct($index)' => [static fn(int $v) => new Lindera\FieldDefinition($v, 'surface', 'surface'), 0, $unsigned],
+            'Schema::getFieldName($index)' => [static fn(int $v) => Lindera\Schema::createDefault()->getFieldName($v), 0, $unsigned],
+            'Token::getDetail($index)' => [static fn(int $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenize('東京')[0]->getDetail($v), 0, $unsigned],
+            'Tokenizer::tokenizeNbest($n)' => [static fn(int $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbest('東京', $v), 0, $unsigned],
         ];
         if (class_exists(Lindera\Trainer::class)) {
             $missing = self::MISSING;
             $cases += [
-                'Trainer::train($max_iter)' => [static fn (int $v) => Lindera\Trainer::train($missing, $missing, $missing, $missing, $missing, $missing, $missing, max_iter: $v), 0, $unsigned],
-                'Trainer::train($max_threads)' => [static fn (int $v) => Lindera\Trainer::train($missing, $missing, $missing, $missing, $missing, $missing, $missing, max_threads: $v), 0, $unsigned],
+                'Trainer::train($max_iter)' => [static fn(int $v) => Lindera\Trainer::train($missing, $missing, $missing, $missing, $missing, $missing, $missing, max_iter: $v), 0, $unsigned],
+                'Trainer::train($max_threads)' => [static fn(int $v) => Lindera\Trainer::train($missing, $missing, $missing, $missing, $missing, $missing, $missing, max_threads: $v), 0, $unsigned],
             ];
         }
         return $cases;
@@ -105,7 +105,7 @@ class ArgumentRangeTest extends TestCase
     public static function parameters(): array
     {
         $keys = array_keys(self::cases());
-        return array_combine($keys, array_map(static fn (string $key) => [$key], $keys));
+        return array_combine($keys, array_map(static fn(string $key) => [$key], $keys));
     }
 
     private static function parameterName(string $key): string

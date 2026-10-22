@@ -185,8 +185,13 @@ describe("Tokenizer constructor space penalty", () => {
   // Returns the part of speech of "に" for a Tokenizer built directly with
   // these trailing constructor arguments.
   const particlePos = (...args) => {
-    const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"), ...args);
-    const token = tokenizer.tokenize("東京 に 行く").find((t) => t.surface === "に");
+    const tokenizer = new Tokenizer(
+      loadDictionary("embedded://ipadic"),
+      ...args,
+    );
+    const token = tokenizer
+      .tokenize("東京 に 行く")
+      .find((t) => t.surface === "に");
     assert.ok(token, "no token with surface に");
     return token.details[0];
   };
@@ -196,10 +201,26 @@ describe("Tokenizer constructor space penalty", () => {
     { skip: !hasEmbeddedIpadic && "embedded://ipadic not available" },
     () => {
       assert.strictEqual(particlePos(), "助詞", "omitted");
-      assert.strictEqual(particlePos(Mode.normal(), null, undefined), "助詞", "undefined");
-      assert.strictEqual(particlePos(Mode.normal(), null, null), "助詞", "null");
-      assert.strictEqual(particlePos(Mode.normal(), null, false), "助詞", "false");
-      assert.notStrictEqual(particlePos(Mode.normal(), null, PARTICLE_RULES), "助詞", "rules");
+      assert.strictEqual(
+        particlePos(Mode.normal(), null, undefined),
+        "助詞",
+        "undefined",
+      );
+      assert.strictEqual(
+        particlePos(Mode.normal(), null, null),
+        "助詞",
+        "null",
+      );
+      assert.strictEqual(
+        particlePos(Mode.normal(), null, false),
+        "助詞",
+        "false",
+      );
+      assert.notStrictEqual(
+        particlePos(Mode.normal(), null, PARTICLE_RULES),
+        "助詞",
+        "rules",
+      );
     },
   );
 
@@ -207,10 +228,19 @@ describe("Tokenizer constructor space penalty", () => {
     "fails like build() when it requires rules IPADIC does not ship",
     { skip: !hasEmbeddedIpadic && "embedded://ipadic not available" },
     () => {
-      assert.throws(() => new Tokenizer(loadDictionary("embedded://ipadic"), Mode.normal(), null, true), {
-        name: "Error",
-        message: /ships no space_penalty rules/,
-      });
+      assert.throws(
+        () =>
+          new Tokenizer(
+            loadDictionary("embedded://ipadic"),
+            Mode.normal(),
+            null,
+            true,
+          ),
+        {
+          name: "Error",
+          message: /ships no space_penalty rules/,
+        },
+      );
     },
   );
 
@@ -220,7 +250,13 @@ describe("Tokenizer constructor space penalty", () => {
     () => {
       for (const value of [1, "false", { rules: "JKS" }]) {
         assert.throws(
-          () => new Tokenizer(loadDictionary("embedded://ipadic"), Mode.normal(), null, value),
+          () =>
+            new Tokenizer(
+              loadDictionary("embedded://ipadic"),
+              Mode.normal(),
+              null,
+              value,
+            ),
           { name: "Error", message: /space_penalty/ },
           `value ${JSON.stringify(value)}`,
         );
@@ -233,8 +269,13 @@ describe("Tokenizer constructor space penalty", () => {
     { skip: !hasEmbeddedKoDic && "embedded://ko-dic not available" },
     () => {
       const posOfI = (...args) => {
-        const tokenizer = new Tokenizer(loadDictionary("embedded://ko-dic"), ...args);
-        const token = tokenizer.tokenize("검색 이 잘 된다").find((t) => t.surface === "이");
+        const tokenizer = new Tokenizer(
+          loadDictionary("embedded://ko-dic"),
+          ...args,
+        );
+        const token = tokenizer
+          .tokenize("검색 이 잘 된다")
+          .find((t) => t.surface === "이");
         assert.ok(token, "no token with surface 이");
         return token.details[0];
       };

@@ -11,7 +11,10 @@ const DEFAULT_PENALTY = {
   otherPenaltyLengthThreshold: 7,
   otherPenaltyLengthPenalty: 1700,
 };
-const SHORT_KATAKANA_THRESHOLD = { otherPenaltyLengthThreshold: 4, otherPenaltyLengthPenalty: 3000 };
+const SHORT_KATAKANA_THRESHOLD = {
+  otherPenaltyLengthThreshold: 4,
+  otherPenaltyLengthPenalty: 3000,
+};
 
 describe("Mode", () => {
   it("is exported as Mode, and not as JsMode", () => {
@@ -31,7 +34,12 @@ describe("Mode", () => {
   });
 
   it("decompose with the default penalty", () => {
-    for (const mode of [Mode.decompose(), Mode.decompose(undefined), Mode.decompose(null), Mode.decompose({})]) {
+    for (const mode of [
+      Mode.decompose(),
+      Mode.decompose(undefined),
+      Mode.decompose(null),
+      Mode.decompose({}),
+    ]) {
       assert.strictEqual(mode.name, "decompose");
       assert.strictEqual(mode.toString(), "decompose");
       assert.strictEqual(mode.isDecompose(), true);
@@ -66,7 +74,10 @@ describe("Mode", () => {
         `value ${JSON.stringify(value)}`,
       );
     }
-    for (const value of [{ kanjiPenaltyLengthPenalty: "0" }, { kanjiPenaltyLengthPenalty: null }]) {
+    for (const value of [
+      { kanjiPenaltyLengthPenalty: "0" },
+      { kanjiPenaltyLengthPenalty: null },
+    ]) {
       assert.throws(
         () => Mode.decompose(value),
         { code: "NumberExpected", message: /kanjiPenaltyLengthPenalty/ },
@@ -86,7 +97,11 @@ describe("Mode", () => {
 
   it("fromStr rejects other names, case sensitive as the Rust Mode parses", () => {
     for (const name of ["Normal", "Decompose", "DECOMPOSE", "", "invalid"]) {
-      assert.throws(() => Mode.fromStr(name), { message: /Invalid mode/ }, `name ${JSON.stringify(name)}`);
+      assert.throws(
+        () => Mode.fromStr(name),
+        { message: /Invalid mode/ },
+        `name ${JSON.stringify(name)}`,
+      );
     }
     assert.throws(() => Mode.fromStr(0), { code: "StringExpected" });
   });
@@ -95,8 +110,14 @@ describe("Mode", () => {
     assert.ok(Mode.normal().equals(Mode.normal()));
     assert.ok(Mode.decompose().equals(Mode.decompose({})));
     assert.ok(Mode.decompose().equals(Mode.decompose(DEFAULT_PENALTY)));
-    assert.ok(Mode.decompose(SHORT_KATAKANA_THRESHOLD).equals(Mode.decompose(SHORT_KATAKANA_THRESHOLD)));
-    assert.ok(!Mode.decompose().equals(Mode.decompose(SHORT_KATAKANA_THRESHOLD)));
+    assert.ok(
+      Mode.decompose(SHORT_KATAKANA_THRESHOLD).equals(
+        Mode.decompose(SHORT_KATAKANA_THRESHOLD),
+      ),
+    );
+    assert.ok(
+      !Mode.decompose().equals(Mode.decompose(SHORT_KATAKANA_THRESHOLD)),
+    );
     assert.ok(!Mode.normal().equals(Mode.decompose()));
     const mode = Mode.normal();
     assert.ok(mode.equals(mode));
@@ -105,7 +126,11 @@ describe("Mode", () => {
 
   it("equals rejects a value that is not a Mode", () => {
     for (const value of ["normal", 0, null, undefined, {}, DEFAULT_PENALTY]) {
-      assert.throws(() => Mode.normal().equals(value), { code: "InvalidArg" }, `value ${JSON.stringify(value)}`);
+      assert.throws(
+        () => Mode.normal().equals(value),
+        { code: "InvalidArg" },
+        `value ${JSON.stringify(value)}`,
+      );
     }
   });
 
