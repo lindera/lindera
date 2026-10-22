@@ -10,6 +10,7 @@ PYTHON          := $(PYTHON_VENV_DIR)/bin/python
 PIP             := $(PYTHON_VENV_DIR)/bin/pip
 MATURIN         := $(PYTHON_VENV_DIR)/bin/maturin
 PYTEST          := $(PYTHON_VENV_DIR)/bin/pytest
+RUFF            := $(PYTHON_VENV_DIR)/bin/ruff
 
 # ── WASM ────────────────────────────────────────────────────────────────────
 WASM_FEATURES = embed-ipadic
@@ -23,6 +24,23 @@ NODEJS_TEST_FEATURES = embed-ipadic,embed-ko-dic
 # Run a cargo command with RbConfig values exported, as the Ruby binding build
 # expects (used by lint, test and check-docs for lindera-ruby).
 CARGO_TEST_WITH_RBCONFIG = ruby -rrbconfig -e 'RbConfig::CONFIG.each { |k, v| ENV["RBCONFIG_\#{k.upcase}"] = v }; exec(*ARGV)' --
+
+# ── Language-side linters ───────────────────────────────────────────────────
+# The versions of the linters and formatters that lint-lindera-<binding> and
+# format-lindera-<binding> run on the bindings' Python, JavaScript, Ruby and PHP
+# code, locally and in CI (#1178). They are pinned because a new release can
+# enable new rules, which would fail CI on unchanged code: update a version
+# together with the fixes the new release asks for. Dependabot does not see the
+# two below, so they are updated by hand. rubocop is pinned in
+# lindera-ruby/Gemfile and php-cs-fixer in composer.json, where Dependabot
+# proposes the updates.
+RUFF_VERSION     = 0.17.1
+PRETTIER_VERSION = 3.9.10
+
+# prettier reads the .gitignore of the directory it runs in, not the nested
+# ones, so the targets run it from the binding's directory (lindera-wasm's
+# .gitignore leaves out the example's build output).
+PRETTIER = npx --yes prettier@$(PRETTIER_VERSION)
 
 # ── Per-crate configuration ───────────────────────────────────────────────────
 #
@@ -96,6 +114,9 @@ $(PYTHON_VENV_DIR):
 setup-venv: $(PYTHON_VENV_DIR) ## Create lindera-python venv and install dev dependencies
 	$(PIP) install --quiet maturin pytest isort black flake8 mypy
 
+setup-ruff: $(PYTHON_VENV_DIR) ## Install the pinned ruff into the lindera-python venv
+	$(PIP) install --quiet ruff==$(RUFF_VERSION)
+
 clean-venv: ## Remove the lindera-python venv
 	rm -rf $(PYTHON_VENV_DIR)
 
@@ -157,26 +178,27 @@ clean: ## Clean all build artifacts (removes the whole target directory)
 format-%:
 	cargo fmt -p $*
 
-format-lindera-python: ## Format lindera-python
+format-lindera-python: setup-ruff ## Format lindera-python
 	cargo fmt -p lindera-python
-	ruff format lindera-python/tests/ lindera-python/examples/
-	ruff check --fix lindera-python/tests/ lindera-python/examples/
+	$(RUFF) format lindera-python/tests/ lindera-python/examples/
+	$(RUFF) check --fix lindera-python/tests/ lindera-python/examples/
 
 format-lindera-nodejs: ## Format lindera-nodejs
 	cargo fmt -p lindera-nodejs
-	prettier --write lindera-nodejs/tests/ lindera-nodejs/examples/
+	cd lindera-nodejs && $(PRETTIER) --write tests/ examples/
 
 format-lindera-ruby: ## Format lindera-ruby
 	cargo fmt -p lindera-ruby
-	rubocop -a lindera-ruby/test/ lindera-ruby/examples/ lindera-ruby/lib/
+	cd lindera-ruby && bundle install --quiet && bundle exec rubocop -a test/ examples/ lib/
 
 format-lindera-php: ## Format lindera-php
 	cargo fmt -p lindera-php
+	composer install --quiet --no-interaction
 	vendor/bin/php-cs-fixer fix --config=lindera-php/.php-cs-fixer.dist.php
 
 format-lindera-wasm: ## Format lindera-wasm
 	cargo fmt -p lindera-wasm
-	prettier --write lindera-wasm/js/ lindera-wasm/example/
+	cd lindera-wasm && $(PRETTIER) --write js/ example/
 
 format: ## Format all crates
 	$(foreach c,$(ALL_CRATES),make format-$(c) &&) true
@@ -186,25 +208,27 @@ format: ## Format all crates
 lint-%:
 	cargo clippy -p $* $(call test_features,$*) --all-targets -- -D warnings
 
-lint-lindera-python: ## Lint lindera-python
+lint-lindera-python: setup-ruff ## Lint lindera-python
 	cargo clippy -p lindera-python --all-targets -- -D warnings
-	ruff format --check lindera-python/tests/ lindera-python/examples/
-	ruff check lindera-python/tests/ lindera-python/examples/
+	$(RUFF) format --check lindera-python/tests/ lindera-python/examples/
+	$(RUFF) check lindera-python/tests/ lindera-python/examples/
 
 lint-lindera-nodejs: ## Lint lindera-nodejs
 	cargo clippy -p lindera-nodejs --all-targets -- -D warnings
-	prettier --check lindera-nodejs/tests/ lindera-nodejs/examples/
+	cd lindera-nodejs && $(PRETTIER) --check tests/ examples/
 
 lint-lindera-ruby: ## Lint lindera-ruby
 	$(CARGO_TEST_WITH_RBCONFIG) cargo clippy -p lindera-ruby --all-targets -- -D warnings
-	rubocop lindera-ruby/test/ lindera-ruby/examples/ lindera-ruby/lib/
+	cd lindera-ruby && bundle install --quiet && bundle exec rubocop test/ examples/ lib/
 
 lint-lindera-php: ## Lint lindera-php
 	cargo clippy -p lindera-php --all-targets -- -D warnings
+	composer install --quiet --no-interaction
+	vendor/bin/php-cs-fixer fix --dry-run --diff --config=lindera-php/.php-cs-fixer.dist.php
 
 lint-lindera-wasm: ## Lint lindera-wasm (wasm32 target)
 	cargo clippy -p lindera-wasm --target wasm32-unknown-unknown --all-targets --features=$(WASM_FEATURES) -- -D warnings
-	prettier --check lindera-wasm/js/ lindera-wasm/example/
+	cd lindera-wasm && $(PRETTIER) --check js/ example/
 
 lint: ## Lint all crates
 	$(foreach c,$(ALL_CRATES),make lint-$(c) &&) true
