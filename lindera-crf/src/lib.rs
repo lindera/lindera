@@ -149,6 +149,8 @@ mod model;
 mod utils;
 
 #[cfg(feature = "train")]
+mod bigram_table;
+#[cfg(feature = "train")]
 mod forward_backward;
 #[cfg(feature = "train")]
 mod math;

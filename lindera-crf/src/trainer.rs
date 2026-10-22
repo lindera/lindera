@@ -8,9 +8,10 @@ use std::thread;
 
 use hashbrown::{HashMap, HashSet, hash_map::RawEntryMut};
 
+use crate::bigram_table::BigramTable;
 use crate::errors::{Result, RucrfError};
 use crate::feature::FeatureProvider;
-use crate::forward_backward::{self, Alpha, Beta};
+use crate::forward_backward::{self, Alpha, Beta, Features};
 use crate::lattice::Lattice;
 use crate::model::RawModel;
 use crate::optimizers::lbfgs;
@@ -168,13 +169,13 @@ fn join_or_resume<T>(handle: thread::ScopedJoinHandle<'_, T>) -> T {
 /// never its result.
 pub struct LatticesLoss<'a> {
     /// Lattices of the training corpus.
-    pub lattices: &'a [Lattice],
+    lattices: &'a [Lattice],
     /// Provider of per-label feature sets.
     provider: &'a FeatureProvider,
     /// Maps unigram feature ids to weight indices.
     unigram_weight_indices: &'a [Option<NonZeroU32>],
-    /// Maps bigram feature id pairs to weight indices.
-    bigram_weight_indices: &'a [HashMap<u32, u32>],
+    /// The bigram weight indices of every pair of edges in `lattices`.
+    bigrams: BigramTable,
     /// Maximum number of worker threads; a pure performance knob.
     n_threads: usize,
     /// L2 regularization strength, when enabled.
@@ -183,6 +184,10 @@ pub struct LatticesLoss<'a> {
 
 impl<'a> LatticesLoss<'a> {
     /// Creates a new loss function over the given lattices.
+    ///
+    /// Looks up the bigram weight indices of every pair of edges in the
+    /// lattices once, so that the evaluations read them from a table (see
+    /// [`BigramTable`]).
     ///
     /// # Arguments
     ///
@@ -197,11 +202,11 @@ impl<'a> LatticesLoss<'a> {
     /// # Returns
     ///
     /// The loss function.
-    pub const fn new(
+    pub fn new(
         lattices: &'a [Lattice],
         provider: &'a FeatureProvider,
         unigram_weight_indices: &'a [Option<NonZeroU32>],
-        bigram_weight_indices: &'a [HashMap<u32, u32>],
+        bigram_weight_indices: &[HashMap<u32, u32>],
         n_threads: usize,
         l2_lambda: Option<f64>,
     ) -> Self {
@@ -209,7 +214,7 @@ impl<'a> LatticesLoss<'a> {
             lattices,
             provider,
             unigram_weight_indices,
-            bigram_weight_indices,
+            bigrams: BigramTable::new(lattices, provider, bigram_weight_indices),
             n_threads,
             l2_lambda,
         }
@@ -245,36 +250,22 @@ impl<'a> LatticesLoss<'a> {
         betas: &mut Vec<Vec<Beta>>,
         out: &mut [f64],
     ) -> f64 {
+        let features = Features {
+            provider: self.provider,
+            unigram_weight_indices: self.unigram_weight_indices,
+            bigrams: &self.bigrams,
+        };
         let mut total = 0.0;
-        for lattice in &self.lattices[range] {
+        for index in range {
+            let lattice = &self.lattices[index];
+            let pairs = self.bigrams.lattice(index);
             let z = forward_backward::calculate_alphas_betas(
-                lattice,
-                self.provider,
-                param,
-                self.unigram_weight_indices,
-                self.bigram_weight_indices,
-                alphas,
-                betas,
+                lattice, pairs, &features, param, alphas, betas,
             );
             forward_backward::update_gradient(
-                lattice,
-                self.provider,
-                param,
-                self.unigram_weight_indices,
-                self.bigram_weight_indices,
-                alphas,
-                betas,
-                z,
-                out,
+                lattice, pairs, &features, param, alphas, betas, z, out,
             );
-            total += forward_backward::calculate_loss(
-                lattice,
-                self.provider,
-                param,
-                self.unigram_weight_indices,
-                self.bigram_weight_indices,
-                z,
-            );
+            total += forward_backward::calculate_loss(lattice, pairs, &features, param, z);
         }
         total
     }
@@ -1289,7 +1280,7 @@ mod tests {
         for index in 0..chunks {
             let mut total = 0.0;
             for lattice in &lattices[chunk_range(lattices.len(), chunks, index)] {
-                let z = forward_backward::calculate_alphas_betas(
+                let z = forward_backward::reference::calculate_alphas_betas(
                     lattice,
                     provider,
                     param,
@@ -1298,7 +1289,9 @@ mod tests {
                     &mut alphas,
                     &mut betas,
                 );
-                total += forward_backward::calculate_loss(lattice, provider, param, uni, bi, z);
+                total += forward_backward::reference::calculate_loss(
+                    lattice, provider, param, uni, bi, z,
+                );
             }
             loss_total += total;
         }
@@ -1308,7 +1301,7 @@ mod tests {
         for index in 0..chunks {
             partial.fill(0.0);
             for lattice in &lattices[chunk_range(lattices.len(), chunks, index)] {
-                let z = forward_backward::calculate_alphas_betas(
+                let z = forward_backward::reference::calculate_alphas_betas(
                     lattice,
                     provider,
                     param,
@@ -1317,7 +1310,7 @@ mod tests {
                     &mut alphas,
                     &mut betas,
                 );
-                forward_backward::update_gradient(
+                forward_backward::reference::update_gradient(
                     lattice,
                     provider,
                     param,
@@ -1359,32 +1352,57 @@ mod tests {
 
     #[test]
     fn evaluation_matches_the_reference_bit_for_bit() {
-        let provider = test_utils::generate_test_feature_provider();
-        let lattices = test_utils::generate_test_lattices(200);
         let (uni, bi) = wide_fixture_tables();
-        assert!(
-            chunk_count(lattices.len(), 29) > 1,
-            "fixture too small to span several chunks"
-        );
+        // The regular lattices, and lattices with parallel edges, a dead end,
+        // a node without incoming edges, empty bigram slots and a label
+        // without a feature set.
+        let fixtures = [
+            (
+                "regular",
+                test_utils::generate_test_feature_provider(),
+                test_utils::generate_test_lattices(200),
+            ),
+            (
+                "irregular",
+                test_utils::generate_irregular_feature_provider(),
+                test_utils::generate_irregular_lattices(60),
+            ),
+        ];
+        for (fixture, provider, lattices) in &fixtures {
+            assert!(
+                chunk_count(lattices.len(), 29) > 1,
+                "{fixture}: fixture too small to span several chunks"
+            );
+            evaluation_matches_the_reference(fixture, provider, lattices, &uni, &bi);
+        }
+    }
 
+    fn evaluation_matches_the_reference(
+        fixture: &str,
+        provider: &FeatureProvider,
+        lattices: &[Lattice],
+        uni: &[Option<NonZeroU32>],
+        bi: &[HashMap<u32, u32>],
+    ) {
         for param in evaluation_params() {
             for l2_lambda in [None, Some(0.01)] {
                 let (cost, gradient) =
-                    reference_evaluation(&lattices, &provider, &uni, &bi, l2_lambda, &param);
+                    reference_evaluation(lattices, provider, uni, bi, l2_lambda, &param);
                 for n_threads in [1, 2, 3, 8] {
                     let (got_cost, got_gradient) =
-                        LatticesLoss::new(&lattices, &provider, &uni, &bi, n_threads, l2_lambda)
+                        LatticesLoss::new(lattices, provider, uni, bi, n_threads, l2_lambda)
                             .evaluate(&param);
                     assert_eq!(
                         got_cost.to_bits(),
                         cost.to_bits(),
-                        "cost at n_threads={n_threads}, l2={l2_lambda:?}: {got_cost} vs {cost}"
+                        "{fixture}: cost at n_threads={n_threads}, l2={l2_lambda:?}: \
+                         {got_cost} vs {cost}"
                     );
                     for (k, (a, b)) in got_gradient.iter().zip(&gradient).enumerate() {
                         assert_eq!(
                             a.to_bits(),
                             b.to_bits(),
-                            "gradient component {k} at n_threads={n_threads}, \
+                            "{fixture}: gradient component {k} at n_threads={n_threads}, \
                              l2={l2_lambda:?}: {a} vs {b}"
                         );
                     }

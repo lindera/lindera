@@ -125,6 +125,55 @@ pub fn generate_test_lattices(count: usize) -> Vec<Lattice> {
         .collect()
 }
 
+/// Generates `count` lattices of 6 characters with the shapes that
+/// `generate_test_lattices` avoids: parallel edges (same start and end,
+/// different labels), a dead end (node 2 has incoming edges but none
+/// leaving it), and a node without incoming edges (node 4). The positive
+/// path is 0 → 1 → 3 → 6. Labels are in `1..=9` and shift with the lattice
+/// index, so `generate_irregular_feature_provider()` gives some of them
+/// feature sets with empty bigram slots (label 8) or no feature set at all
+/// (label 9).
+pub fn generate_irregular_lattices(count: usize) -> Vec<Lattice> {
+    (0..count)
+        .map(|i| {
+            let label = |x: usize| NonZeroU32::new(1 + ((x + i) % 9) as u32).unwrap();
+            let mut lattice = Lattice::new(6).unwrap();
+            // The first edge at each start is the positive one.
+            let edges = [
+                (0, 1, 0),
+                (0, 1, 1),
+                (0, 2, 2),
+                (1, 3, 3),
+                (1, 3, 4),
+                (1, 2, 5),
+                (3, 6, 6),
+                (3, 5, 7),
+                (4, 6, 8),
+                (5, 6, 0),
+            ];
+            for (start, end, x) in edges {
+                lattice.add_edge(start, Edge::new(end, label(x))).unwrap();
+            }
+            lattice
+        })
+        .collect()
+}
+
+/// Returns `generate_test_feature_provider()` with an eighth feature set
+/// whose bigram ids have empty slots on both sides. Label 9 has no feature
+/// set.
+pub fn generate_irregular_feature_provider() -> FeatureProvider {
+    let mut feature_provider = generate_test_feature_provider();
+    feature_provider
+        .add_feature_set(FeatureSet::new(
+            &[NonZeroU32::new(1).unwrap(), NonZeroU32::new(2).unwrap()],
+            &[None, NonZeroU32::new(2)],
+            &[NonZeroU32::new(3), None],
+        ))
+        .unwrap();
+    feature_provider
+}
+
 pub fn generate_test_feature_provider() -> FeatureProvider {
     let mut feature_provider = FeatureProvider::new();
     feature_provider
