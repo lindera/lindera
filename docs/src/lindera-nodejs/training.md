@@ -50,7 +50,7 @@ train({
 | `rewriteDef` | `string` | required | Path to the rewrite rule definition file (rewrite.def) |
 | `output` | `string` | required | Output path for the trained model file |
 | `lambda` | `number` | `0.01` | L1 regularization cost (0.0--1.0) |
-| `maxIter` | `number` | `100` | Maximum number of training iterations |
+| `maxIter` | `number` | `100` | Maximum number of training iterations; training stops earlier once the objective converges (its relative change stays below 5e-5 for 3 iterations in a row) |
 | `maxThreads` | `number \| undefined` | `undefined` | Number of threads (undefined = auto-detect CPU cores) |
 
 ## Exporting a Trained Model

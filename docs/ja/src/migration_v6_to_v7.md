@@ -1379,6 +1379,11 @@ v6.2.0 までの `lindera train` は、MeCab の学習器とは異なる学習�
   （[#1168](https://github.com/lindera/lindera/issues/1168)）。
 - `metadata.json` の `model_info.training_iterations` は、実際に回った反復回数では
   なく、`--max-iterations` の値でした。
+- 学習は、argmin 自身の判定（勾配のノルムが計算機イプシロンの平方根を下回る、
+  または反復で目的関数が変わらない）が成り立たない限り、`--max-iterations` まで
+  回りました。目的関数は数百から数千の大きさなので、前者は事実上成り立たず、学習は
+  上限まで回っていました。L2 の学習は、ライン探索が失敗するとパニックしていました
+  （[#1167](https://github.com/lindera/lindera/issues/1167)）。
 - Python・Node.js・Ruby・PHP バインディングのエクスポート関数は、`lex.csv`、
   `matrix.def`、`unk.def`、`metadata.json` と、カテゴリ `DEFAULT`・`HIRAGANA`・
   `KATAKANA`・`KANJI`・`ALPHA`・`NUMERIC` を持つ固定の `char.def` を書き出して
@@ -1436,6 +1441,12 @@ v7.0.0 は MeCab の学習器と同じく学習します
 - `model_info.training_iterations` は実際に回った L-BFGS の反復回数です。
   `--max-iterations` で学習が止まったときはその値、それより前に収束したときは
   それより少ない値になります。
+- 目的関数の相対変化が `--eta`（`Trainer::eta`。デフォルトは MeCab の学習器と
+  同じ 0.00005）を 3 回続けて下回ったときにも、学習は止まります。`--eta 0` で
+  この判定を切ります。バインディングはデフォルトの値を使います。`lindera train`
+  は、最適化が止まった理由を、反復回数と損失・勾配の評価回数とともに出力し、反復で
+  目的関数が変わらなかったときとライン探索が失敗したときは警告を出します。L2 の
+  学習でライン探索が失敗したときは、その学習で最良の重みを使います。
 - Python・Node.js・Ruby・PHP バインディングのエクスポート関数は、`lindera export`
   と同じコードで同じファイルを書き出します。`char.def`・`feature.def`・
   `rewrite.def` は学習に使ったもので、`left-id.def` と `right-id.def` も書き出し
@@ -1475,9 +1486,13 @@ v7.0.0 は MeCab の学習器と同じく学習します
   `mecab-dict-index` が文脈 ID のない素性のユーザー辞書のエントリで失敗するのと
   同じくエラーになり、何も書き出しません。
 
-すべてのラティスに種辞書の語が入るため、学習には以前より時間がかかります。学習は
-MeCab の学習器より遅く、収束する前に `--max-iterations` で
-止まることがあります（[#1167](https://github.com/lindera/lindera/issues/1167)）。
+すべてのラティスに種辞書の語が入ります。[#1110](https://github.com/lindera/lindera/issues/1110) の mecab-ipadic のデータでは、
+デフォルトの L1 正則化はまだ目的関数が収束する前に `--max-iterations` に達し、
+`--lambda 1.0` の L2（MeCab の `-c 1.0`）は MeCab の学習器とほぼ同じ反復回数で
+収束します（[#1167](https://github.com/lindera/lindera/issues/1167)）。このデータ
+での学習時間は MeCab の学習器の約 2 倍で、その約 3 分の 2 は最適化の外、つまり
+最適化を始める前（[#1263](https://github.com/lindera/lindera/issues/1263)）と
+終えた後にかかります。
 `resources/training/` のファイルは、`char.def` に `SPACE` カテゴリを、`unk.def`
 に `SPACE` の行を持つようになりました。そのため、これらから学習した辞書は、v6 では
 必要だった `--keep-whitespace` なしで解析できます
@@ -1786,6 +1801,7 @@ feature）経由で使う Rust コードにのみ影響します
 | `Model::num_labels()` と `ModelMetadata::label_count` は `char.def` のカテゴリごとに 1 つの未知語ラベルを数える | `unk.def` のエントリごとに 1 つを数える。仮想ラベルは数えない |
 | `Model::write_left_id_def` / `write_right_id_def` はバイグラム素性の文字列の ID を書き出す。`lex.csv` や `matrix.def` の文脈 ID とは別の ID 空間 | 文脈 ID を書き出す。`Model::write_model` が書き出すモデルについて `SerializableModel::write_left_id_def` / `write_right_id_def` が書き出すものと同じ |
 | `ModelMetadata::iterations`（と `model_info.training_iterations`）は `max_iter` の設定値 | 実際に回った L-BFGS の反復回数 |
+| — | 新規: 収束判定の許容値を設定する `Trainer::eta` と `Trainer::get_eta`、そのデフォルトの `DEFAULT_ETA`（`5e-5`）。`lindera-crf` にも同じ `Trainer::eta` と `DEFAULT_ETA` と、`StopReason`、`TrainingStats::evaluations`、`TrainingStats::stop_reason` を追加 |
 | `Model::write_connection_costs` と `SerializableModel::write_connection_costs` は、学習した重みがない連接に `i16::MAX` を書き出す | 0 を書き出す。学習中や MeCab でのその連接のコスト |
 
 モデルは `MODEL_FORMAT_VERSION` を `metadata.version` として書き出され、
@@ -1953,6 +1969,10 @@ U+3000 や空白を含むテキストを IPADIC・IPADIC-NEologd・UniDic・Suda
   それを指す範囲行より前で 1 回だけ定義し、すべてのカテゴリに `unk.def` の行を
   書き、未定義のカテゴリの `unk.def` の行を削除する
   （[#1195](https://github.com/lindera/lindera/issues/1195)）。
+- 目的関数が収束すると、学習が `--max-iterations` より前に止まることを前提にし、
+  止まった理由は `lindera train` が出力する行で確かめる。v6 と同じく上限と最適化
+  自身の判定だけで止めるには、`--eta 0`（Rust では `Trainer::eta(0.0)`）を渡す
+  （[#1167](https://github.com/lindera/lindera/issues/1167)）。
 
 `lindera build` でシステム辞書をビルドするすべてのユーザー:
 

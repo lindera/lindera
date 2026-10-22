@@ -45,7 +45,7 @@ Parameters are passed as positional arguments in the following order:
 | 6 | rewrite_def | `String` | Path to the rewrite rule definition file (rewrite.def) |
 | 7 | output | `String` | Output path for the trained model file |
 | 8 | lambda | `Float` | L1 regularization cost (0.0--1.0) |
-| 9 | max_iter | `Integer` | Maximum number of training iterations |
+| 9 | max_iter | `Integer` | Maximum number of training iterations; training stops earlier once the objective converges (its relative change stays below 5e-5 for 3 iterations in a row) |
 | 10 | max_threads | `Integer` or `nil` | Number of threads (`nil` = auto-detect CPU cores) |
 
 ## Exporting a Trained Model

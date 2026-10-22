@@ -50,7 +50,7 @@ train({
 | `rewriteDef` | `string` | 必須 | 書き換えルール定義ファイルのパス（rewrite.def） |
 | `output` | `string` | 必須 | 学習済みモデルファイルの出力パス |
 | `lambda` | `number` | `0.01` | L1 正則化コスト（0.0--1.0） |
-| `maxIter` | `number` | `100` | 最大学習イテレーション数 |
+| `maxIter` | `number` | `100` | 最大学習イテレーション数。目的関数が収束すると（相対変化が 3 回続けて 5e-5 を下回ると）、それより前に止まります |
 | `maxThreads` | `number \| undefined` | `undefined` | スレッド数（undefined = CPU コア数を自動検出） |
 
 ## 学習済みモデルのエクスポート

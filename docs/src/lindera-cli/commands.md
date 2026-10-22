@@ -926,6 +926,7 @@ Train a new morphological analysis model from annotated corpus data. To use this
 - `--regularization` / `-R`: Regularization type: `l1`, `l2`, or `elasticnet` (default: `l1`)
 - `--elastic-net-l1-ratio`: L1 ratio for Elastic Net regularization (0.0-1.0), only used with `--regularization elasticnet` (default: 0.5)
 - `--max-iterations` / `-i`: Maximum number of iterations for training (default: 100)
+- `--eta` / `-e`: Tolerance of the convergence test: training stops before `--max-iterations` once the relative change of the objective stays below this value for 3 iterations in a row; `0` disables the test (default: 0.00005, the default of MeCab's learner)
 - `--max-threads` / `-t`: Maximum number of threads (defaults to CPU core count; affects only speed, never the trained model)
 
 ### Basic workflow
@@ -993,6 +994,12 @@ lindera train \
 
 ```text
 Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+```
+
+Once training stops, it prints why, with the number of iterations and of evaluations of the loss and its gradient (see `--eta` above):
+
+```text
+L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
 ```
 
 The trained model contains:

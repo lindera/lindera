@@ -5,10 +5,11 @@
 ```text
 lindera-crf/src/
 ├── lib.rs                # Public API re-exports
+├── bigram_table.rs       # Bigram weight indices of the training lattices
 ├── feature.rs            # FeatureSet, FeatureProvider
 ├── lattice.rs            # Edge, Node, Lattice
 ├── model.rs              # RawModel, MergedModel, Model trait
-├── trainer.rs            # Trainer, Regularization enum
+├── trainer.rs            # Trainer, Regularization, StopReason, TrainingStats
 ├── errors.rs             # Error types
 ├── forward_backward.rs   # Forward-backward algorithm
 ├── math.rs               # Mathematical utilities (logsumexp)
@@ -30,7 +31,18 @@ Lattice structure with variable-length edges for sequence labeling. `Edge` repre
 
 ### Trainer
 
-Trains a CRF model using L-BFGS optimization with configurable regularization. The trainer accepts labeled lattice examples, computes gradients via the forward-backward algorithm, and iteratively updates model weights. `Trainer::train` returns the trained `RawModel`; `Trainer::train_with_stats` also returns a `TrainingStats` with the number of iterations that ran, which is the maximum set with `Trainer::max_iter` when that stopped training, and fewer when the optimizer stopped earlier, for example because it converged.
+Trains a CRF model using L-BFGS optimization (OWL-QN when the regularization has an L1 part) with configurable regularization. The trainer accepts labeled lattice examples, computes the loss and its gradient via the forward-backward algorithm, and iteratively updates model weights. `Trainer::train` returns the trained `RawModel`; `Trainer::train_with_stats` also returns a `TrainingStats` with:
+
+- `iterations`: the number of iterations that ran, which is the maximum set with `Trainer::max_iter` when that stopped training, and fewer when the optimizer stopped earlier.
+- `evaluations`: the number of evaluations of the loss and its gradient, each one forward-backward pass over every lattice, line-search trials included.
+- `stop_reason`: why the optimizer stopped, a `StopReason`.
+
+The optimizer stops at the first of these:
+
+- `StopReason::Converged`: the relative change of the objective, `|previous - current| / |previous|`, stayed below the tolerance set with `Trainer::eta` for 3 iterations in a row, or the gradient vanished. The default tolerance, `DEFAULT_ETA` (`5e-5`), is the default `eta` of MeCab's learner, which applies the same test to every evaluation, line-search trials included, where Lindera counts iterations. `Trainer::eta(0.0)` turns the test off.
+- `StopReason::NoProgress`: an iteration left the objective unchanged. When this happens after a few iterations, the model is barely trained.
+- `StopReason::MaxIterations`: the cap set with `Trainer::max_iter`.
+- `StopReason::LineSearchFailed`: the line search of an iteration failed. The weights are the best ones of the run.
 
 ### Regularization
 
@@ -53,7 +65,9 @@ Interface for searching the best path through a lattice. Two implementations are
 
 ### Forward-backward Algorithm
 
-Computes alpha (forward) and beta (backward) values over the lattice. Used during training to calculate expected feature counts and gradients.
+Computes alpha (forward) and beta (backward) values over the lattice. Used during training to calculate the loss and the expected feature counts. One pass over a lattice yields both its loss and its share of the gradient. The optimizer keeps the result for the last parameter vector, because argmin's L-BFGS asks for the cost and the gradient of the same point in two calls.
+
+Before the optimizer starts, a bigram table records, for every pair of edges that meet in the lattices, the weight indices of their bigram features, in the order the evaluation adds them; labels with the same bigram feature IDs share the entries. The evaluations read the indices from the table instead of looking each bigram feature up in a map, and add the same weights in the same order, so the trained weights do not change.
 
 ## Feature Flags
 

@@ -30,6 +30,19 @@ Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels
 
 `gold_lexicon`・`gold_unknown`・`gold_virtual` は上の 3 つの段階それぞれでラベルを付けた正解トークンの数、`virtual_labels` は仮想ラベルの数、`negative_lexicon` と `negative_unknown` は種辞書と未知語候補それぞれから作った負例の辺の数です。
 
+その後、CRF を L-BFGS（正則化に L1 の部分があるときは OWL-QN）で学習します。学習は、次のうち最初に当てはまったもので止まります。
+
+- `converged`: 目的関数の相対変化 `|previous - current| / |previous|` が `eta` を 3 回続けて下回った。`eta` のデフォルトは MeCab の学習器と同じです。MeCab はライン探索の試行を含めた評価ごとに同じ判定を行い、Lindera はイテレーションごとに行います。
+- `no progress`: あるイテレーションで目的関数が変わらなかった。数イテレーションでこれが起きたときは、モデルはほとんど学習されていないので、`lindera train` は警告を出します。
+- あるイテレーションのライン探索が失敗した。モデルはその学習で最良の重みを使い、警告が出ます。
+- 目的関数が収束する前に `max-iterations` に達した。
+
+`lindera train` は、どれで止まったかを、イテレーション数と評価回数とともに出力します。1 回の評価は、全ラティスの前向き・後向きの 1 回分です。`resources/training/` のファイルでは次のとおりです。
+
+```text
+L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
+```
+
 ## 必要な入力ファイル
 
 ### 1. 種辞書 (seed.csv)
@@ -224,9 +237,10 @@ MeCab 互換の3セクション形式による素性正規化ルールです。�
 | `regularization` | 正則化の種類: `l1`、`l2`、`elasticnet` のいずれか | `l1` |
 | `elastic-net-l1-ratio` | Elastic Net 正則化の L1 比率（0.0-1.0、`--regularization elasticnet` の場合のみ使用） | 0.5 |
 | `max-iterations` | 最大学習イテレーション数 | 100 |
+| `eta` | 収束判定の許容値（[学習のしくみ](#学習のしくみ)を参照）。`0` で判定を切ります | 0.00005 |
 | `max-threads` | 並列処理スレッド数 | CPU コア数 |
 
-学習は MeCab の学習器より遅く、収束する前に `max-iterations` で止まることがあります（[#1167](https://github.com/lindera/lindera/issues/1167)）。
+[#1110](https://github.com/lindera/lindera/issues/1110) の mecab-ipadic の交差検証データでは、デフォルトの L1 正則化はまだ目的関数が収束する前に `max-iterations` に達します。一方、MeCab のデフォルトの `-c 1.0` に当たる L2 の `lambda` 1.0 は、MeCab の学習器とほぼ同じイテレーション数で収束します（[#1167](https://github.com/lindera/lindera/issues/1167)）。このデータでの学習時間は MeCab の学習器の約 2 倍で、その約 3 分の 2 は最適化の外、つまり最適化を始める前（[#1263](https://github.com/lindera/lindera/issues/1263)）と終えた後にかかります。
 
 ## CLI の使用
 
@@ -274,11 +288,11 @@ lindera export \
 たとえば上の `unk.def` で、最初の `KANJI` の行の後に 2 つ目の `KANJI` の行 `KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*` を加えると、エクスポートした `unk.def` は両方の行を入力と同じ順序で持ちます。
 
 ```csv
-DEFAULT,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+DEFAULT,1,1,32764,名詞,一般,*,*,*,*,*,*,*
 SPACE,1,1,0,記号,空白,*,*,*,*,*,*,*
-HIRAGANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
-KATAKANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
-KANJI,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,32764,名詞,一般,*,*,*,*,*,*,*
 KANJI,1,1,0,名詞,サ変接続,*,*,*,*,*,*,*
 ALPHA,1,1,0,名詞,固有名詞,一般,*,*,*,*,*,*
 NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
