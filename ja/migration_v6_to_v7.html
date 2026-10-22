@@ -225,8 +225,9 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong>MeCab と同じく、行の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぐ</strong></td><td>行の中に <code>、</code> や <code>。</code> を含む日本語のテキストを分割するユーザー</td><td><code>、</code> や <code>。</code> の直後の語の解析が一部変わり（多くは MeCab と同じ解析になる）、そうした行の N-best のコストが変わることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>N-best: 各結果が入力全体を覆う</strong></td><td>複数の文を含む入力で N-best（<code>segment_nbest</code>・<code>tokenize_nbest</code>・<code>lindera tokenize -N</code>・バインディングの N-best メソッド）を使うユーザー</td><td>2 件目以降が入力全体のコストの小さい分割になり、空の入力がトークンのない結果を 1 件返すことを前提にする。コストの閾値は入力全体に対して適用される</td></tr>
 <tr><td><strong>MeCab と同じく、どの位置からも未知語が始まる</strong></td><td>カタカナ・記号・英字が続くテキストを通常モードで分割するユーザー。特に <code>・</code> でつないだカタカナと、<code>."</code> のような韓国語の文末の句読点</td><td>そうした連続が MeCab と同じ位置で分かれること、カタカナや英字の多いテキストで命令数が 13% 程度増えることを前提にする。v6 の動作に戻す設定はない</td></tr>
-<tr><td><strong>MeCab と同じく、未知語は文字の既定カテゴリから作り、カテゴリを共有する文字をまとめる</strong></td><td>複数のカテゴリを持つ文字がほかの文字と並ぶテキストを分割するユーザー。同梱の辞書では、ko-dic の漢数字に続く漢字と、ko-dic・Jieba の <code>〇</code>（U+3007）。<code>CharacterDefinition::lookup_categories</code> の順序に依存する Rust コード</td><td>そうしたテキストが MeCab と同じ分割になることを前提にする（ko-dic の <code>三國史記</code> は 1 つの <code>SH</code>、Jieba の <code>二〇〇八年北京奧運會</code> は <code>二 / 〇〇八年北京奧運會</code>）。v6 の動作に戻す設定はない</td></tr>
+<tr><td><strong>MeCab と同じく、未知語は文字の既定カテゴリから作り、カテゴリを共有する文字をまとめる</strong></td><td>複数のカテゴリを持つ文字がほかの文字と並ぶテキストを分割するユーザー。同梱の辞書では、ko-dic の漢数字に続く漢字と、ko-dic の <code>〇</code>（U+3007）。<code>CharacterDefinition::lookup_categories</code> の順序に依存する Rust コード</td><td>そうしたテキストが MeCab と同じ分割になることを前提にする（ko-dic の <code>三國史記</code> は 1 つの <code>SH</code>、<code>〇〇〇</code> は 1 つの <code>SY</code>）。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>CC-CEDICT: 未知語のコストは 400、英字だけ・数字だけの見出し語のコストは 399</strong></td><td>CC-CEDICT でテキストを分割するユーザー。特に <code>T恤</code> のように英字や数字と漢字が混ざる見出し語。CC-CEDICT の N-best のコストを読むユーザー</td><td>そうした見出し語が 1 語になること、<code>〇</code> や <code>PK</code> のような見出し語がピンインと定義つきで出ること、英単語・仮名・数字は v6 と同じく 1 語のままであること、パスのコストが変わることを前提にする。CC-CEDICT の辞書ディレクトリは <code>CC-CEDICT-MeCab-0.1.0-20261021</code> のアーカイブからビルドする</td></tr>
+<tr><td><strong>Jieba: <code>〇</code> は数字の見出し語</strong></td><td>Jieba で <code>〇</code>（U+3007）を含むテキストを分割するユーザー</td><td>各 <code>〇</code> が未知語の一部ではなく、数字の 1 語（<code>m</code>、ピンイン <code>ling2</code>）になることを前提にする（同じ辞書の MeCab と同じ）。Jieba の辞書ディレクトリは <code>mecab-jieba-0.1.2</code> のアーカイブからビルドする</td></tr>
 <tr><td><strong>IPADIC・IPADIC-NEologd: MeCab と同じく、見出し語のダッシュとチルダを書かれたとおりに保持する</strong></td><td>IPADIC・IPADIC-NEologd で <code>―</code>（U+2015）・<code>—</code>（U+2014）・<code>～</code>（U+FF5E）・<code>〜</code>（U+301C）を含むテキストを分割するユーザー</td><td><code>―</code> や <code>～</code> で書かれた語が同じ綴りのテキストに一致し、<code>—</code> や <code>〜</code> で書いたテキストからは、以前の書き換えでしか引けなかった語（IPADIC 12 語、IPADIC-NEologd 1,085 語）が引けなくなることを前提にする（<code>mapping</code> 文字フィルタで綴りをそろえられる）。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする</td></tr>
 <tr><td><strong>MeCab と同じく、表層形・文脈 ID・コストが同じ見出し語からは CSV で先の行を出力する</strong></td><td>IPADIC・IPADIC-NEologd・UniDic・ko-dic、またはそうした見出し語を持つユーザー辞書で、読みや原形などのトークンの詳細情報を読むユーザー。N-best を使うユーザー</td><td>そうした語の詳細情報が MeCab と同じになり（IPADIC の <code>狡い</code> の読みは <code>コスイ</code> ではなく <code>ズルイ</code>）、ユーザー辞書の見出し語が引き続きシステム辞書の同点の見出し語に勝ち、N-best の 1 件目が常に 1-best と同じになることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>MeCab と同じく、コストが同じ分割からは最後の語が後から始まる方を選ぶ</strong></td><td>テキストを解析するすべてのユーザー。現れるのはまれ（比較したテキストでは約 54,000 行のうち 9 行）</td><td>そうした箇所が MeCab と同じ分割になることを前提にする（IPADIC の <code>腸窒扶斯</code> は <code>腸 / 窒 / 扶斯</code> ではなく <code>腸 / 窒扶 / 斯</code>）。v6 の動作に戻す設定はない</td></tr>
@@ -281,7 +282,7 @@ Node.js の TypeScript の型 <code>JsPenalty</code> は <code>Penalty</code> �
 MeCab と同じく未知語が始まるため、カタカナ・記号・英字の連続の一部が分かれます。
 未知語は MeCab と同じく文字の既定カテゴリから作り、グルーピングした未知語は
 どの文字も直前の文字とカテゴリを共有する間続くため、ko-dic では漢数字と後ろの
-漢字が 1 語になり、ko-dic・Jieba では <code>〇</code> が記号になります。
+漢字が 1 語になり、ko-dic では <code>〇</code> が記号になります。
 IPADIC・IPADIC-NEologd では、<code>―</code> や <code>～</code> で書かれた見出し語を MeCab と同じく
 その綴りで引けるようになるため、<code>―</code>・<code>—</code>・<code>～</code>・<code>〜</code> を含むテキストの分割が
 変わります。表層形・文脈 ID・コストが同じ見出し語からは、MeCab と同じく CSV で
@@ -290,7 +291,8 @@ IPADIC・IPADIC-NEologd では、<code>―</code> や <code>～</code> で書か
 2 つの分割からは、MeCab と同じく最後の語が後から始まる方を選ぶため、わずかな行の
 分割が変わります。CC-CEDICT では未知語が辞書語より安くならなくなるため、<code>T恤</code> の
 ような見出し語が 1 語になり、<code>〇</code> や <code>PK</code> のような見出し語がピンインと定義つきで
-出ます。そして <code>lindera tokenize</code> は、各入力行の両端の空白をすべて
+出ます。Jieba では <code>〇</code> が数字の見出し語になり、未知語の一部ではなく、ピンインつきの
+1 語になります。そして <code>lindera tokenize</code> は、各入力行の両端の空白をすべて
 取り除くのをやめて改行コードだけを取り除くため、行頭・行末の U+3000 が残り、
 オフセットが入力行の中の位置を指すようになり、wakati 形式や <code>-N</code> でもすべての行に
 結果を出します。また、WASM バインディングの <code>TokenizerBuilder</code> は、v6 では辞書の
@@ -773,8 +775,8 @@ v6 より前の Lindera の出力は再現しなくなりました。</p>
 <h2 id="mecab-と同じく未知語は既定カテゴリから作る"><a class="header" href="#mecab-と同じく未知語は既定カテゴリから作る">MeCab と同じく、未知語は既定カテゴリから作る</a></h2>
 <p><code>char.def</code> では、1 つの文字が複数のカテゴリを持つことがあります。漢数字は
 IPADIC と UniDic では <code>KANJINUMERIC KANJI</code>、ko-dic では <code>HANJANUMERIC HANJA</code>、CC-CEDICT と
-Jieba では <code>CHINESENUMERIC CHINESE</code> で、<code>〇</code>（U+3007）は <code>SYMBOL</code> と数字の
-カテゴリを持ちます。その文字のカテゴリを決める行の先頭のカテゴリを、その文字の
+Jieba では <code>CHINESENUMERIC CHINESE</code> で、<code>〇</code>（U+3007）は Jieba 以外では <code>SYMBOL</code> と数字の
+カテゴリを持ちます（<a href="#jieba-%E3%80%87-%E3%81%AF%E6%95%B0%E5%AD%97%E3%81%AE%E8%A6%8B%E5%87%BA%E3%81%97%E8%AA%9E">Jieba: <code>〇</code> は数字の見出し語</a>を参照）。その文字のカテゴリを決める行の先頭のカテゴリを、その文字の
 「既定カテゴリ」と呼びます。v6.2.0 までの Lindera は、文字のカテゴリごとに未知語
 候補を作り、グルーピングした未知語は、次の文字がカテゴリの並びの同じ位置に同じ
 カテゴリを持つ間だけ続けていました。v7.0.0 は MeCab に合わせます:</p>
@@ -789,7 +791,6 @@ Jieba では <code>CHINESENUMERIC CHINESE</code> で、<code>〇</code>（U+3007
 <tr><td><code>十人十色</code>（ko-dic）</td><td><code>十</code>（<code>SH</code>）・<code>人</code>（<code>NNG</code>）・<code>十</code>（<code>SH</code>）・<code>色</code>（<code>NNG</code>）</td><td><code>十人十色</code>（<code>SH</code>）</td></tr>
 <tr><td><code>二十歲</code>（ko-dic）</td><td><code>二十</code>（<code>SH</code>）・<code>歲</code>（<code>SH</code>）</td><td><code>二十歲</code>（<code>SH</code>）</td></tr>
 <tr><td><code>〇〇〇</code>（ko-dic）</td><td><code>〇〇〇</code>（<code>SH</code>）</td><td><code>〇〇〇</code>（<code>SY</code>）</td></tr>
-<tr><td><code>二〇〇八年北京奧運會</code>（Jieba）</td><td><code>二</code>・<code>〇〇</code>・<code>八</code>・<code>年</code>・<code>北京奧運</code>・<code>會</code></td><td><code>二</code>・<code>〇〇八年北京奧運會</code>（<code>w</code>）</td></tr>
 </tbody></table>
 </div>
 <ul>
@@ -797,11 +798,11 @@ Jieba では <code>CHINESENUMERIC CHINESE</code> で、<code>〇</code>（U+3007
 カテゴリ <code>HANJANUMERIC</code> はグルーピングするため、MeCab と同じく漢数字と後ろの
 漢字が 1 つの <code>SH</code> になります。</li>
 <li><strong><code>〇</code></strong>: 既定カテゴリの <code>SYMBOL</code> は辞書語が始まる位置でも未知語を作るため、
-記号になります（ko-dic は <code>SY</code>、Jieba は <code>w</code>）。Jieba では、MeCab でも同じく、
-そのグループが後ろの数字と漢字まで続きます。Jieba の <code>char.def</code> の修正は
-<a href="https://github.com/lindera/lindera/issues/1162">#1162</a> で扱います。CC-CEDICT は
-<code>〇</code> を見出し語に持ち、v7.0.0 の辞書のコストではそれがこのグループに勝つため、
-<code>二〇二六年</code> は <code>二</code>・<code>〇</code>・<code>二</code>・<code>六</code>・<code>年</code> のままです（<a href="#cc-cedict-%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%AF%E8%BE%9E%E6%9B%B8%E8%AA%9E%E3%82%88%E3%82%8A%E5%AE%89%E3%81%8F%E3%81%AA%E3%82%89%E3%81%AA%E3%81%84">CC-CEDICT: 未知語は辞書語より安くならない</a>を参照）。</li>
+ko-dic では記号（<code>SY</code>）になります。CC-CEDICT は <code>〇</code> を見出し語に持ち、
+v7.0.0 の辞書のコストではそれがこのグループに勝つため、
+<code>二〇二六年</code> は <code>二</code>・<code>〇</code>・<code>二</code>・<code>六</code>・<code>年</code> のままです（<a href="#cc-cedict-%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%AF%E8%BE%9E%E6%9B%B8%E8%AA%9E%E3%82%88%E3%82%8A%E5%AE%89%E3%81%8F%E3%81%AA%E3%82%89%E3%81%AA%E3%81%84">CC-CEDICT: 未知語は辞書語より安くならない</a>を参照）。
+グループが後ろの数字と漢字まで続いていた Jieba では、<code>〇</code> は数字の見出し語に
+なりました（<a href="#jieba-%E3%80%87-%E3%81%AF%E6%95%B0%E5%AD%97%E3%81%AE%E8%A6%8B%E5%87%BA%E3%81%97%E8%AA%9E">Jieba: <code>〇</code> は数字の見出し語</a>を参照）。</li>
 <li><strong>日本語</strong>: IPADIC・IPADIC-NEologd・UniDic では漢数字と <code>〇</code> が辞書語で、比較した
 テキストでは 1 行も変わりません。SudachiDict は比較していません。</li>
 </ul>
@@ -867,6 +868,42 @@ GSDSimp でも件数は同じです。Lindera と MeCab は、どちらの辞書
 ままです（いずれにしても再ビルドが必要です。<a href="#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>
 を参照）。<code>lindera-cc-cedict</code> と 7.0.0 のリリースアセットと同じく、
 <code>0.1.0-20261021</code> のアーカイブからビルドしてください。古いコストに戻す設定はありません。</p>
+<h2 id="jieba-〇-は数字の見出し語"><a class="header" href="#jieba-〇-は数字の見出し語">Jieba: <code>〇</code> は数字の見出し語</a></h2>
+<p>v7.0.0 は Jieba 辞書を <code>mecab-jieba-0.1.1</code> ではなく <code>mecab-jieba-0.1.2</code> から
+ビルドします（<a href="https://github.com/lindera/lindera/issues/1162">#1162</a>）。この版は
+<code>〇</code>（U+3007 IDEOGRAPHIC NUMBER ZERO）を <code>一</code>〜<code>兆</code> と同じ数字として扱い、ほかの
+見出し語とコストは同じです。</p>
+<ul>
+<li><code>char.def</code> で、<code>〇</code> は <code>SYMBOL CHINESENUMERIC</code> ではなく、ほかの数字と同じ
+<code>CHINESENUMERIC CHINESE</code> になります。</li>
+<li><code>〇</code> は <code>零</code> と同じような見出し語になります。品詞は <code>m</code>、ピンインは <code>ling2</code>、
+定義は <code>zero</code> です。</li>
+</ul>
+<p><code>0.1.1</code> の辞書では、<code>〇</code> は未知語でした。
+<a href="#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%AF%E6%97%A2%E5%AE%9A%E3%82%AB%E3%83%86%E3%82%B4%E3%83%AA%E3%81%8B%E3%82%89%E4%BD%9C%E3%82%8B">未知語は既定カテゴリから作る</a>ため、
+<code>SYMBOL</code> のグループが、<code>CHINESE</code> も持つ数字と、その後ろの漢字まで続いていました
+（MeCab も同じ）。<code>二〇〇八年北京奧運會</code> は <code>二</code> と <code>〇〇八年北京奧運會</code>（<code>w</code>）に
+なっていました。見出し語を足すだけではこのグループは止まりません。<code>SYMBOL</code> は
+見出し語が始まる位置でも未知語を作り、Jieba の連接コストでは、<code>北京奧運</code> と <code>會</code> の
+文脈 ID への出入りが 32,767 かかるため、<code>〇〇八年北京奧運會</code> を覆う未知語 1 語の
+ほうが、それらを通る経路より安くなるためです。見出し語が始まる位置で未知語を作らない
+数字のカテゴリと見出し語の両方によって、<code>〇</code> から始まる未知語はなくなります。</p>
+<div class="table-wrapper"><table><thead><tr><th>入力</th><th>v6</th><th>v7</th></tr></thead><tbody>
+<tr><td><code>二〇〇八年北京奧運會</code></td><td><code>二</code>・<code>〇〇</code>（未知語）・<code>八</code>・<code>年</code>・<code>北京奧運</code>・<code>會</code></td><td><code>二</code>・<code>〇</code>・<code>〇</code>・<code>八</code>・<code>年</code>・<code>北京奧運</code>・<code>會</code></td></tr>
+<tr><td><code>编号〇〇七的特工</code></td><td><code>编号</code>・<code>〇〇</code>（未知語）・<code>七</code>・<code>的</code>・<code>特工</code></td><td><code>编号</code>・<code>〇</code>・<code>〇</code>・<code>七</code>・<code>的</code>・<code>特工</code></td></tr>
+<tr><td><code>第二〇章</code></td><td><code>第二</code>・<code>〇章</code>（未知語）</td><td><code>第二</code>・<code>〇</code>・<code>章</code></td></tr>
+</tbody></table>
+</div>
+<p>変わるのは <code>〇</code> を含むテキストだけです。UD Chinese GSD の 4,997 文には <code>〇</code> がなく、
+<code>0.1.1</code> の辞書と同じに分割されます。新しい辞書では、手で書いた 28 行、数字と <code>〇</code> の
+周りで作った 2,160 行、複数のカテゴリを持つ文字の周りで作った 8,064 文のすべてと、
+古い辞書と同じ GSD の 4,951 文で、Lindera と MeCab の分割が一致します。ほかの数字と
+同じく、見出し語が始まらない文字は、後ろの <code>〇</code> と 1 つの未知語になることがあります
+（MeCab も同じ）。<code>頻〇頻</code> は <code>頻〇</code> と <code>頻</code> になります。</p>
+<p><code>0.1.1</code> のアーカイブからビルドした Jieba の辞書ディレクトリでは、<code>〇</code> は記号のままです
+（いずれにしても再ビルドが必要です。<a href="#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>
+を参照）。<code>lindera-jieba</code> と 7.0.0 のリリースアセットと同じく、<code>0.1.2</code> のアーカイブから
+ビルドしてください。</p>
 <h2 id="ダッシュとチルダを辞書に書かれたとおりに保持する"><a class="header" href="#ダッシュとチルダを辞書に書かれたとおりに保持する">ダッシュとチルダを辞書に書かれたとおりに保持する</a></h2>
 <p>日本語のテキストでは、ダッシュとチルダにそれぞれ 2 通りの文字が使われます。
 ダッシュは <code>―</code>（U+2015、HORIZONTAL BAR）か <code>—</code>（U+2014、EM DASH）、チルダは
@@ -1687,9 +1724,10 @@ v6.2.0 以前に学習したモデルファイルは学習し直す必要があ�
 テキストにのみ影響する <code>char.def</code> の修正、行の中に <code>、</code> や <code>。</code> を含むテキストに
 のみ影響する <code>、</code>・<code>。</code> をまたぐ文脈の引き継ぎ、複数の文を含む入力や空の入力の
 N-best にのみ影響する N-best の修正、通常モードでのカタカナ・記号・英字の連続に
-影響する、どの位置からも始まる未知語、ko-dic の漢数字に続く漢字と、ko-dic・
-Jieba の <code>〇</code> に影響する、既定カテゴリから作る未知語、英字や数字と漢字が混ざる
-見出し語と N-best のコストに影響する、CC-CEDICT の新しいコスト、IPADIC・IPADIC-NEologd で
+影響する、どの位置からも始まる未知語、ko-dic の漢数字に続く漢字と、ko-dic の
+<code>〇</code> に影響する、既定カテゴリから作る未知語、英字や数字と漢字が混ざる
+見出し語と N-best のコストに影響する、CC-CEDICT の新しいコスト、<code>〇</code> を含む
+テキストにのみ影響する、Jieba の <code>〇</code> の見出し語、IPADIC・IPADIC-NEologd で
 <code>―</code>・<code>—</code>・<code>～</code>・<code>〜</code> を含むテキストにのみ影響する、ダッシュとチルダの綴りの
 保持、読みや原形などのトークンの詳細情報や、コストが同じ N-best の結果の
 順を読む場合にのみ影響する、同点の見出し語の選び方、わずかな行の分割を
@@ -1863,11 +1901,10 @@ ID を直し、<code>.bin</code> を使う場合はビルドし直す。そう�
 <li>カタカナや英字の多いテキストで命令数が 13% 程度増え、カタカナの非常に長い連続の
 N-best では時間とメモリが大きく増えることを前提にする。</li>
 </ul>
-<p>漢数字や <code>〇</code> を含むテキストを ko-dic・Jieba で解析するユーザー:</p>
+<p>漢数字や <code>〇</code> を含むテキストを ko-dic で解析するユーザー:</p>
 <ul>
-<li>ko-dic の漢数字と後ろの漢字が 1 つの未知語になり（<code>三國史記</code> は 1 つの <code>SH</code>）、
-<code>〇</code> が記号になり（ko-dic は <code>SY</code>、Jieba は <code>w</code>）、Jieba ではそのグループが後ろの
-数字と漢字まで続くことを、MeCab と同じく前提にする。v6 の出力に戻す設定はない。</li>
+<li>漢数字と後ろの漢字が 1 つの未知語になり（<code>三國史記</code> は 1 つの <code>SH</code>）、<code>〇</code> が
+記号（<code>SY</code>）になることを、MeCab と同じく前提にする。v6 の出力に戻す設定はない。</li>
 </ul>
 <p>CC-CEDICT のユーザー:</p>
 <ul>
@@ -1878,6 +1915,12 @@ N-best では時間とメモリが大きく増えることを前提にする。<
 変わることを前提にする。</li>
 <li>CC-CEDICT の辞書ディレクトリは <code>CC-CEDICT-MeCab-0.1.0-20261021</code> のアーカイブから
 ビルドする。</li>
+</ul>
+<p><code>〇</code> を含むテキストを Jieba で解析するユーザー:</p>
+<ul>
+<li>各 <code>〇</code> が未知語の一部ではなく、数字の 1 語（<code>m</code>、ピンイン <code>ling2</code>）になることを、
+同じ辞書の MeCab と同じく前提にする。</li>
+<li>Jieba の辞書ディレクトリは <code>mecab-jieba-0.1.2</code> のアーカイブからビルドする。</li>
 </ul>
 <p><code>―</code>・<code>—</code>・<code>～</code>・<code>〜</code> を含むテキストを IPADIC・IPADIC-NEologd で解析するユーザー:</p>
 <ul>
