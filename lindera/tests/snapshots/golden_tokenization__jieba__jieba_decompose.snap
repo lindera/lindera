@@ -1,23 +1,26 @@
 ---
 source: lindera/tests/golden_tokenization.rs
-expression: "render(& tokenizer, CHINESE_TEXTS)"
+expression: "render(& segmenter, CHINESE_TEXTS)"
 ---
 ## 可以进行中文形态学分析。
 可以	0..6	0:1	c,CHINESE,ke3 yi3,可以,可以,can/may/possible/able to/not bad/pretty good,2,可,以,high
 进行	6..12	1:1	v,CHINESE,jin4 xing2,進行,进行,(of a process etc) to proceed; to be in progress; to be underway/(of people) to carry out; to conduct (an investigation or discussion etc)/(of an army etc) to be on the march; to advance,2,进,行,high
 中文	12..18	2:1	nz,CHINESE,Zhong1 wen2,中文,中文,Chinese language,2,中,文,high
 形态	18..24	3:1	n,CHINESE,xing2 tai4,形態,形态,shape/form/pattern/morphology,2,形,态,high
-学分	24..30	4:1	n,CHINESE,xue2 fen1,學分,学分,course credit,2,学,分,mid
-析	30..33	5:1	vg,CHINESE,xi1,析,析,to separate/to divide/to analyze,1,析,析,mid
+学	24..27	4:1	n,CHINESE,xue2,學,学,to learn/to study/to imitate/science/-ology,1,学,学,high
+分析	27..33	5:1	vn,CHINESE,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4],2,分,析,high
 。	33..36	6:1	w,*,*,*,*,*,*,*,*,*
 
 ## 北京是中华人民共和国的首都。
 北京	0..6	0:1	ns,CHINESE,Bei3 jing1,北京,北京,Beijing municipality, capital of the People's Republic of China (short name 京[Jing1]),2,北,京,high
 是	6..9	1:1	v,CHINESE,shi4,是,是,to be (followed by substantives only)/correct; right; true/(respectful acknowledgement of a command) very well/(adverb for emphatic assertion) / variant of 是[shi4],1,是,是,high
-中华人民共和国	9..30	2:1	ns,CHINESE,Zhong1 hua2 Ren2 min2 Gong4 he2 guo2,中華人民共和國,中华人民共和国,People's Republic of China,4+,中,国,high
-的	30..33	3:1	uj,CHINESE,de5,的,的,of; ~'s (possessive particle)/(used after an attribute when it modifies a noun)/(used at the end of a declarative sentence for emphasis)/(used after a noun, verb or adjective to form a nominal expression, as in 皮革的[pi2 ge2 de5] "one made of leather" or 跑堂兒的|跑堂儿的[pao3 tang2 r5 de5] "a waiter (literally, one who runs back and forth in a restaurant)" or 新的[xin1 de5] "new one")/also pr. [di4] or [di5] in poetry and songs / a taxi; a cab (abbr. for 的士[di1 shi4]) / really and truly / (bound form) bull's-eye; target,1,的,的,high
-首都	33..39	4:1	d,CHINESE,shou3 du1,首都,首都,capital (city)/CL:個|个[ge4],2,首,都,high
-。	39..42	5:1	w,*,*,*,*,*,*,*,*,*
+中华	9..15	2:1	nz,CHINESE,Zhong1 hua2,中華,中华,Zhonghua, historical and cultural term for China, often used to denote Chinese civilization and identity (as in 中華文化|中华文化[Zhong1 hua2 wen2 hua4] "Chinese culture")/used in the official name of the Republic of China, 中華民國|中华民国[Zhong1 hua2 Min2 guo2],2,中,华,high
+人民	15..21	3:1	n,CHINESE,ren2 min2,人民,人民,the people,2,人,民,high
+共和	21..27	4:1	nz,CHINESE,gong4 he2,共和,共和,republic/republicanism,2,共,和,high
+国	27..30	5:1	n,CHINESE,Guo2,國,国,surname Guo / country; nation; state/(bound form) national,1,国,国,high
+的	30..33	6:1	uj,CHINESE,de5,的,的,of; ~'s (possessive particle)/(used after an attribute when it modifies a noun)/(used at the end of a declarative sentence for emphasis)/(used after a noun, verb or adjective to form a nominal expression, as in 皮革的[pi2 ge2 de5] "one made of leather" or 跑堂兒的|跑堂儿的[pao3 tang2 r5 de5] "a waiter (literally, one who runs back and forth in a restaurant)" or 新的[xin1 de5] "new one")/also pr. [di4] or [di5] in poetry and songs / a taxi; a cab (abbr. for 的士[di1 shi4]) / really and truly / (bound form) bull's-eye; target,1,的,的,high
+首都	33..39	7:1	d,CHINESE,shou3 du1,首都,首都,capital (city)/CL:個|个[ge4],2,首,都,high
+。	39..42	8:1	w,*,*,*,*,*,*,*,*,*
 
 ## 我喜欢吃苹果和香蕉。
 我	0..3	0:1	r,CHINESE,wo3,我,我,I; me; my,1,我,我,high

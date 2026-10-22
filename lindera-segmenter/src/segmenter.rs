@@ -4047,8 +4047,13 @@ mod tests {
         }
     }
 
-    /// Jieba and CC-CEDICT carry no connection costs (a 1x1 matrix), so
-    /// whitespace skipping cannot change their 1-best output on spaced text.
+    /// Whitespace skipping keeps the 1-best output of the Chinese
+    /// dictionaries on spaced text. CC-CEDICT carries no connection costs (a
+    /// 1x1 matrix), so skipping cannot change it. Jieba's connection costs
+    /// are trained (mecab-jieba 0.1.3, #1250), so this pins what was
+    /// measured: on these lines, and on the 247 sentences with a space of UD
+    /// Chinese GSD and of the GSDSimp dev and test splits, skipping on and
+    /// off give the same output.
     #[cfg(any(feature = "embed-jieba", feature = "embed-cc-cedict"))]
     fn assert_skip_whitespace_keeps_output(uri: &str) {
         use std::borrow::Cow;
@@ -4148,9 +4153,11 @@ mod tests {
     /// `SYMBOL` and it had no entry, so an unknown word started at `〇` and
     /// its group ran on through the numerals (`CHINESENUMERIC CHINESE`) and
     /// the Chinese characters after them: `二〇〇八年北京奧運會` gave `二` and
-    /// `〇〇八年北京奧運會`. mecab-jieba 0.1.2 gives `〇` the categories of
-    /// the other numerals and an entry like `零`, so no unknown word starts
-    /// at it. The expected tokens are MeCab's with the same dictionary.
+    /// `〇〇八年北京奧運會`. Since mecab-jieba 0.1.2, `〇` has the categories
+    /// of the other numerals and an entry like `零`, so no unknown word
+    /// starts at it. The expected tokens are MeCab's with the same dictionary
+    /// (mecab-jieba 0.1.3, whose retrained costs split `北京奧運會` as UD
+    /// Chinese GSD does, #1250).
     #[test]
     #[cfg(feature = "embed-jieba")]
     fn test_jieba_reads_zero_as_a_numeral() {
@@ -4165,7 +4172,7 @@ mod tests {
         let cases: [(&str, &[&str]); 3] = [
             (
                 "二〇〇八年北京奧運會",
-                &["二", "〇", "〇", "八", "年", "北京奧運", "會"],
+                &["二", "〇", "〇", "八", "年", "北京", "奧運", "會"],
             ),
             ("二〇二六年", &["二", "〇", "二六", "年"]),
             (
@@ -4185,6 +4192,43 @@ mod tests {
         assert!(!zero.word_id.is_unknown());
         assert_eq!(zero.details()[0], "m");
         assert_eq!(zero.details()[2], "ling2");
+    }
+
+    /// #1250: a word of a simple Jieba user dictionary stays one token. A
+    /// simple row costs the dictionary's `default_word_cost`; mecab-jieba
+    /// 0.1.3's trained word costs go down to -25,149, so with 1625 or with
+    /// the -10000 of the other dictionaries `羽田机场` lost to `羽田` (-2,415)
+    /// and `机场` (-7,446). The `.bin` is built with the same metadata, so it
+    /// is checked too.
+    #[test]
+    #[cfg(feature = "embed-jieba")]
+    fn test_jieba_keeps_a_simple_user_dictionary_word() {
+        use std::borrow::Cow;
+        use std::path::PathBuf;
+
+        use crate::segmenter::Segmenter;
+
+        for file in ["jieba_simple_userdic.csv", "jieba_simple_userdic.bin"] {
+            let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../resources")
+                .join("user_dict")
+                .join(file);
+            let config = serde_json::json!({
+                "dictionary": "embedded://jieba",
+                "user_dictionary": userdic_file.to_str().unwrap(),
+                "mode": "normal"
+            });
+            let segmenter = Segmenter::from_config(&config).unwrap();
+
+            let mut tokens = segmenter
+                .segment(Cow::Borrowed("我从羽田机场出发"))
+                .unwrap();
+            let surfaces: Vec<&str> = tokens.iter().map(|token| token.surface.as_ref()).collect();
+            assert_eq!(surfaces, ["我", "从", "羽田机场", "出发"], "{file}");
+            let airport = &mut tokens[2];
+            assert_eq!(airport.details()[0], "ns", "{file}");
+            assert_eq!(airport.details()[2], "Yu3 tian2 ji1 chang3", "{file}");
+        }
     }
 
     /// SudachiDict keeps whitespace in the lattice by default, as Sudachi
