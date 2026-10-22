@@ -6,7 +6,10 @@ use core::num::NonZeroU32;
 use alloc::vec::Vec;
 
 use argmin::{
-    core::{CostFunction, Executor, Gradient, IterState, State, observers::ObserverMode},
+    core::{
+        CostFunction, Executor, Gradient, IterState, KV, Problem, Solver, State, TerminationReason,
+        TerminationStatus, observers::ObserverMode,
+    },
     solver::{
         linesearch::{BacktrackingLineSearch, MoreThuenteLineSearch, condition::ArmijoCondition},
         quasinewton::LBFGS,
@@ -17,7 +20,7 @@ use hashbrown::HashMap;
 
 use crate::feature::FeatureProvider;
 use crate::lattice::Lattice;
-use crate::trainer::{LatticesLoss, Regularization};
+use crate::trainer::{LatticesLoss, Regularization, StopReason};
 
 /// The loss and the gradient of one evaluation, with the parameter vector
 /// they were computed at.
@@ -182,6 +185,191 @@ pub(crate) fn l2_lambda(regularization: Regularization, lambda: f64) -> Option<f
     }
 }
 
+/// MeCab's convergence test: the relative change of the cost stays below a
+/// tolerance for [`Self::STREAK`] iterations in a row.
+struct RelativeChange {
+    /// The tolerance; `0.0` never passes.
+    eta: f64,
+    /// The number of iterations in a row that passed so far.
+    passed: u32,
+}
+
+impl RelativeChange {
+    /// The number of iterations in a row that must pass; MeCab's learner
+    /// uses 3 too.
+    const STREAK: u32 = 3;
+
+    /// Creates the test.
+    ///
+    /// # Arguments
+    ///
+    /// * `eta` - The tolerance.
+    ///
+    /// # Returns
+    ///
+    /// The test, with no iteration passed.
+    const fn new(eta: f64) -> Self {
+        Self { eta, passed: 0 }
+    }
+
+    /// Records the cost of one more iteration.
+    ///
+    /// The iteration passes when `|prev - cost| / |prev| < eta`. An infinite
+    /// or zero previous cost, or a NaN cost, gives an infinite or NaN ratio,
+    /// which fails the comparison; so does the first call, whose previous
+    /// cost argmin keeps at infinity. A failing iteration restarts the count.
+    ///
+    /// # Arguments
+    ///
+    /// * `prev` - The cost of the previous iteration.
+    /// * `cost` - The cost of this iteration.
+    ///
+    /// # Returns
+    ///
+    /// `true` once [`Self::STREAK`] iterations in a row have passed.
+    fn record(&mut self, prev: f64, cost: f64) -> bool {
+        let passes = (prev - cost).abs() / prev.abs() < self.eta;
+        self.passed = if passes { self.passed + 1 } else { 0 };
+        self.passed >= Self::STREAK
+    }
+}
+
+/// How the wrapped solver's run ended, as far as [`ConvergenceTest`] saw it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Convergence {
+    /// The relative change passed, or argmin's L-BFGS found a vanishing
+    /// gradient.
+    Converged,
+    /// argmin's L-BFGS stopped because an iteration left the cost unchanged.
+    NoProgress,
+}
+
+/// The gradient norm under which argmin's L-BFGS stops, its default
+/// `tol_grad`.
+fn argmin_tol_grad() -> f64 {
+    f64::EPSILON.sqrt()
+}
+
+/// argmin's L-BFGS with the convergence test of `lindera train` added.
+///
+/// argmin's L-BFGS stops when the norm of the gradient falls below `√ε` or
+/// when the cost changes by less than `ε` in absolute terms. For a training
+/// loss in the hundreds or thousands the first practically never holds, and
+/// the second only when an iteration left the cost unchanged. This solver
+/// keeps both, records which of them stopped the run, and adds MeCab's test
+/// on the relative change ([`RelativeChange`]). It delegates everything else
+/// to the wrapped solver, so the steps and the log lines are argmin's.
+struct ConvergenceTest<S> {
+    /// The wrapped L-BFGS solver.
+    solver: S,
+    /// The relative-change test.
+    relative: RelativeChange,
+    /// Set when one of the tests stopped the run.
+    convergence: Option<Convergence>,
+}
+
+impl<S> ConvergenceTest<S> {
+    /// Wraps a solver.
+    ///
+    /// # Arguments
+    ///
+    /// * `solver` - argmin's L-BFGS solver.
+    /// * `eta` - The tolerance of the relative-change test.
+    ///
+    /// # Returns
+    ///
+    /// The wrapped solver.
+    const fn new(solver: S, eta: f64) -> Self {
+        Self {
+            solver,
+            relative: RelativeChange::new(eta),
+            convergence: None,
+        }
+    }
+}
+
+/// The state of every L-BFGS run here.
+type LbfgsState = IterState<Vec<f64>, Vec<f64>, (), (), (), f64>;
+
+impl<O, S> Solver<O, LbfgsState> for ConvergenceTest<S>
+where
+    S: Solver<O, LbfgsState>,
+{
+    fn name(&self) -> &str {
+        self.solver.name()
+    }
+
+    fn init(
+        &mut self,
+        problem: &mut Problem<O>,
+        state: LbfgsState,
+    ) -> Result<(LbfgsState, Option<KV>), argmin::core::Error> {
+        self.solver.init(problem, state)
+    }
+
+    fn next_iter(
+        &mut self,
+        problem: &mut Problem<O>,
+        state: LbfgsState,
+    ) -> Result<(LbfgsState, Option<KV>), argmin::core::Error> {
+        self.solver.next_iter(problem, state)
+    }
+
+    fn terminate(&mut self, state: &LbfgsState) -> TerminationStatus {
+        let status = self.solver.terminate(state);
+        if status.terminated() {
+            let gradient_vanished = state
+                .get_gradient()
+                .is_some_and(|g| g.iter().map(|x| x * x).sum::<f64>().sqrt() < argmin_tol_grad());
+            self.convergence = Some(if gradient_vanished {
+                Convergence::Converged
+            } else {
+                Convergence::NoProgress
+            });
+            return status;
+        }
+        if self
+            .relative
+            .record(state.get_prev_cost(), state.get_cost())
+        {
+            self.convergence = Some(Convergence::Converged);
+            return TerminationStatus::Terminated(TerminationReason::SolverConverged);
+        }
+        TerminationStatus::NotTerminated
+    }
+}
+
+/// Tells why a run stopped, from its final termination status and what
+/// [`ConvergenceTest`] recorded.
+///
+/// The run sets no target cost and no timeout, and turns argmin's Ctrl-C
+/// handling off, so it cannot end with `TargetCostReached`, `Timeout` or
+/// `Interrupt`; those statuses, which would also come with a `None`, are
+/// reported as [`StopReason::Converged`] only because nothing else is left.
+///
+/// # Arguments
+///
+/// * `status` - The final termination status.
+/// * `convergence` - What the convergence tests recorded.
+///
+/// # Returns
+///
+/// The reason.
+fn stop_reason(status: &TerminationStatus, convergence: Option<Convergence>) -> StopReason {
+    match status {
+        TerminationStatus::Terminated(TerminationReason::MaxItersReached) => {
+            StopReason::MaxIterations
+        }
+        TerminationStatus::Terminated(TerminationReason::SolverExit(_)) => {
+            StopReason::LineSearchFailed
+        }
+        _ => match convergence {
+            Some(Convergence::NoProgress) => StopReason::NoProgress,
+            Some(Convergence::Converged) | None => StopReason::Converged,
+        },
+    }
+}
+
 /// The result of [`optimize`].
 pub struct Optimized {
     /// The optimized weights.
@@ -191,6 +379,18 @@ pub struct Optimized {
     /// The number of evaluations of the loss and its gradient: one for every
     /// point at which argmin asked for either of them.
     pub evaluations: u64,
+    /// Why the optimizer stopped.
+    pub stop_reason: StopReason,
+}
+
+/// The result of [`minimize`].
+pub(crate) struct Minimized {
+    /// The optimized weights.
+    pub weights: Vec<f64>,
+    /// The number of iterations that ran, as described for [`minimize`].
+    pub iterations: u64,
+    /// Why the optimizer stopped.
+    pub stop_reason: StopReason,
 }
 
 /// Minimizes the loss of the lattices with L-BFGS, or with OWL-QN when the
@@ -206,12 +406,14 @@ pub struct Optimized {
 /// * `regularization` - The kind of regularization.
 /// * `lambda` - The regularization coefficient.
 /// * `max_iter` - The maximum number of iterations.
+/// * `eta` - The tolerance of the convergence test (see
+///   [`ConvergenceTest`]).
 /// * `n_threads` - The number of threads that evaluate the loss.
 ///
 /// # Returns
 ///
-/// The optimized weights, the number of iterations that ran and the number of
-/// evaluations.
+/// The optimized weights, the number of iterations that ran, the number of
+/// evaluations and why the optimizer stopped.
 #[allow(clippy::too_many_arguments)]
 pub fn optimize(
     lattices: &[Lattice],
@@ -222,6 +424,7 @@ pub fn optimize(
     regularization: Regularization,
     lambda: f64,
     max_iter: u64,
+    eta: f64,
     n_threads: usize,
 ) -> Optimized {
     let loss = LatticesLoss::new(
@@ -233,17 +436,55 @@ pub fn optimize(
         l2_lambda(regularization, lambda),
     );
     let evaluations = Cell::new(0);
-    let (weights, iterations) = minimize(
+    let Minimized {
+        weights,
+        iterations,
+        stop_reason,
+    } = minimize(
         CachedLoss::new(loss, &evaluations),
         weights_init.to_vec(),
         regularization,
         lambda,
         max_iter,
+        eta,
     );
     Optimized {
         weights,
         iterations,
         evaluations: evaluations.get(),
+        stop_reason,
+    }
+}
+
+/// Runs a wrapped L-BFGS solver on `problem` from `weights_init`.
+///
+/// # Arguments
+///
+/// * `problem` - The objective.
+/// * `solver` - argmin's L-BFGS solver, with its line search.
+/// * `weights_init` - The initial weights.
+/// * `max_iter` - The maximum number of iterations.
+/// * `eta` - The tolerance of the convergence test.
+///
+/// # Returns
+///
+/// The result, as described for [`minimize`].
+fn run<P, S>(problem: P, solver: S, weights_init: Vec<f64>, max_iter: u64, eta: f64) -> Minimized
+where
+    S: Solver<P, LbfgsState>,
+{
+    let mut res = Executor::new(problem, ConvergenceTest::new(solver, eta))
+        .configure(|state| state.param(weights_init).max_iters(max_iter))
+        .ctrlc(false)
+        .add_observer(SlogLogger::term(), ObserverMode::Always)
+        .run()
+        .unwrap();
+    let iterations = res.state.get_iter();
+    let stop_reason = stop_reason(res.state.get_termination_status(), res.solver.convergence);
+    Minimized {
+        weights: final_param(&mut res.state),
+        iterations,
+        stop_reason,
     }
 }
 
@@ -258,22 +499,26 @@ pub fn optimize(
 /// * `regularization` - The kind of regularization.
 /// * `lambda` - The regularization coefficient.
 /// * `max_iter` - The maximum number of iterations.
+/// * `eta` - The tolerance of the convergence test (see
+///   [`ConvergenceTest`]).
 ///
 /// # Returns
 ///
-/// The optimized weights, and the number of iterations that ran: `max_iter`
-/// when the cap stopped the optimizer, fewer when it stopped earlier, for
-/// example because it converged. argmin counts every iteration that ran,
-/// including the one in which the solver stopped. When the line search of an
-/// iteration fails, that iteration is counted, and the weights are the best
-/// ones of the run (see [`final_param`]).
+/// The optimized weights, the number of iterations that ran, and why the
+/// optimizer stopped. The iterations are `max_iter` when the cap stopped the
+/// optimizer, fewer when it stopped earlier, for example because it
+/// converged. argmin counts every iteration that ran, including the one in
+/// which the solver stopped. When the line search of an iteration fails,
+/// that iteration is counted, and the weights are the best ones of the run
+/// (see [`final_param`]).
 pub(crate) fn minimize<P>(
     problem: P,
     weights_init: Vec<f64>,
     regularization: Regularization,
     lambda: f64,
     max_iter: u64,
-) -> (Vec<f64>, u64)
+    eta: f64,
+) -> Minimized
 where
     P: CostFunction<Param = Vec<f64>, Output = f64>
         + Gradient<Param = Vec<f64>, Gradient = Vec<f64>>,
@@ -286,24 +531,12 @@ where
             let solver = LBFGS::new(linesearch, 7)
                 .with_l1_regularization(lambda)
                 .unwrap();
-            let mut res = Executor::new(problem, solver)
-                .configure(|state| state.param(weights_init).max_iters(max_iter))
-                .add_observer(SlogLogger::term(), ObserverMode::Always)
-                .run()
-                .unwrap();
-            let iterations = res.state.get_iter();
-            (final_param(&mut res.state), iterations)
+            run(problem, solver, weights_init, max_iter, eta)
         }
         Regularization::L2 => {
             let linesearch = MoreThuenteLineSearch::new().with_c(1e-4, 0.9).unwrap();
             let solver = LBFGS::new(linesearch, 7);
-            let mut res = Executor::new(problem, solver)
-                .configure(|state| state.param(weights_init).max_iters(max_iter))
-                .add_observer(SlogLogger::term(), ObserverMode::Always)
-                .run()
-                .unwrap();
-            let iterations = res.state.get_iter();
-            (final_param(&mut res.state), iterations)
+            run(problem, solver, weights_init, max_iter, eta)
         }
         Regularization::ElasticNet { l1_ratio } => {
             // OWL-QN (L1) with L2 gradient penalty via LatticesLoss
@@ -314,13 +547,7 @@ where
             let solver = LBFGS::new(linesearch, 7)
                 .with_l1_regularization(l1_lambda)
                 .unwrap();
-            let mut res = Executor::new(problem, solver)
-                .configure(|state| state.param(weights_init).max_iters(max_iter))
-                .add_observer(SlogLogger::term(), ObserverMode::Always)
-                .run()
-                .unwrap();
-            let iterations = res.state.get_iter();
-            (final_param(&mut res.state), iterations)
+            run(problem, solver, weights_init, max_iter, eta)
         }
     }
 }
@@ -365,5 +592,115 @@ mod tests {
         let _ = state.take_param();
 
         assert_eq!(final_param(&mut state), vec![4.0, 5.0]);
+    }
+
+    #[test]
+    fn relative_change_passes_after_three_iterations_in_a_row() {
+        let mut test = RelativeChange::new(1e-3);
+        // The first check: argmin keeps the previous cost at infinity.
+        assert!(!test.record(f64::INFINITY, 100.0));
+        assert!(!test.record(100.0, 99.95));
+        assert!(!test.record(99.95, 99.9));
+        // A large change restarts the count...
+        assert!(!test.record(99.9, 90.0));
+        assert!(!test.record(90.0, 89.99));
+        assert!(!test.record(89.99, 89.98));
+        // ...and the third small change in a row passes.
+        assert!(test.record(89.98, 89.97));
+    }
+
+    #[test]
+    fn relative_change_needs_a_finite_nonzero_previous_cost() {
+        for prev in [f64::INFINITY, f64::NAN, 0.0] {
+            let mut test = RelativeChange::new(1.0);
+            for _ in 0..5 {
+                assert!(!test.record(prev, 0.0), "previous cost {prev}");
+            }
+        }
+        // A NaN ratio restarts the count.
+        let mut test = RelativeChange::new(1.0);
+        assert!(!test.record(1.0, 1.0));
+        assert!(!test.record(1.0, 1.0));
+        assert!(!test.record(1.0, f64::NAN));
+        assert!(!test.record(1.0, 1.0));
+        assert!(!test.record(1.0, 1.0));
+        assert!(test.record(1.0, 1.0));
+    }
+
+    #[test]
+    fn relative_change_with_eta_zero_never_passes() {
+        let mut test = RelativeChange::new(0.0);
+        for _ in 0..10 {
+            assert!(!test.record(1.0, 1.0));
+        }
+    }
+
+    /// A solver whose own test stops the run at once, standing in for
+    /// argmin's L-BFGS when one of its tests holds.
+    struct StopsAtOnce;
+
+    impl<O> Solver<O, LbfgsState> for StopsAtOnce {
+        fn name(&self) -> &str {
+            "stops at once"
+        }
+
+        fn next_iter(
+            &mut self,
+            _problem: &mut Problem<O>,
+            state: LbfgsState,
+        ) -> Result<(LbfgsState, Option<KV>), argmin::core::Error> {
+            Ok((state, None))
+        }
+
+        fn terminate(&mut self, _state: &LbfgsState) -> TerminationStatus {
+            TerminationStatus::Terminated(TerminationReason::SolverConverged)
+        }
+    }
+
+    #[test]
+    fn a_stop_by_argmin_is_told_apart_by_the_gradient() {
+        let classify = |gradient: Vec<f64>| {
+            let mut test = ConvergenceTest::new(StopsAtOnce, 0.0);
+            let state = LbfgsState::new().param(vec![0.0, 0.0]).gradient(gradient);
+            let status = Solver::<(), LbfgsState>::terminate(&mut test, &state);
+            assert!(status.terminated());
+            test.convergence
+        };
+        // A gradient norm below argmin's tolerance: converged.
+        assert_eq!(classify(vec![1e-9, 0.0]), Some(Convergence::Converged));
+        // Otherwise argmin stopped because the cost did not change.
+        assert_eq!(classify(vec![1.0, 0.0]), Some(Convergence::NoProgress));
+    }
+
+    #[test]
+    fn stop_reason_follows_the_termination_status() {
+        let terminated = TerminationStatus::Terminated;
+        assert_eq!(
+            stop_reason(&terminated(TerminationReason::MaxItersReached), None),
+            StopReason::MaxIterations
+        );
+        assert_eq!(
+            stop_reason(
+                &terminated(TerminationReason::SolverExit(
+                    "Line search terminated with: ...".into()
+                )),
+                None
+            ),
+            StopReason::LineSearchFailed
+        );
+        assert_eq!(
+            stop_reason(
+                &terminated(TerminationReason::SolverConverged),
+                Some(Convergence::Converged)
+            ),
+            StopReason::Converged
+        );
+        assert_eq!(
+            stop_reason(
+                &terminated(TerminationReason::SolverConverged),
+                Some(Convergence::NoProgress)
+            ),
+            StopReason::NoProgress
+        );
     }
 }

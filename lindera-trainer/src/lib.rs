@@ -50,6 +50,10 @@ pub use self::config::TrainerConfig;
 pub use self::corpus::{Corpus, Example, Word};
 pub use self::model::{Model, SerializableModel};
 
+/// The default tolerance of the convergence test, set with
+/// [`Trainer::eta`]: `5e-5`, the default `eta` of MeCab's learner.
+pub use lindera_crf::DEFAULT_ETA;
+
 /// CRF-based morphological analysis trainer for Japanese text
 ///
 /// This trainer implements standard CRF-based morphological analysis training,
@@ -136,6 +140,7 @@ pub struct Trainer {
     use_l2: bool,
     elastic_net_l1_ratio: Option<f64>,
     max_iter: u64,
+    eta: f64,
     num_threads: usize,
 
     /// Counts gathered while the training lattices are built, logged once
@@ -359,6 +364,7 @@ impl Trainer {
             use_l2: false,
             elastic_net_l1_ratio: None,
             max_iter: 100,
+            eta: DEFAULT_ETA,
             num_threads: 8,
             stats: LatticeStats::default(),
         })
@@ -387,6 +393,24 @@ impl Trainer {
     /// Sets the maximum number of iterations.
     pub fn max_iter(mut self, iter: u64) -> Self {
         self.max_iter = iter;
+        self
+    }
+
+    /// Sets the tolerance of the convergence test: training stops when the
+    /// relative change of the objective stays below `eta` for 3 iterations
+    /// in a row, before the cap set with [`Self::max_iter`]. The default is
+    /// [`DEFAULT_ETA`]; `0.0` turns the test off. The value is checked when
+    /// training starts: it must be finite and >= 0.
+    ///
+    /// # Arguments
+    ///
+    /// * `eta` - The tolerance.
+    ///
+    /// # Returns
+    ///
+    /// The trainer.
+    pub fn eta(mut self, eta: f64) -> Self {
+        self.eta = eta;
         self
     }
 
@@ -422,6 +446,11 @@ impl Trainer {
     /// Get the maximum number of iterations
     pub fn get_max_iter(&self) -> u64 {
         self.max_iter
+    }
+
+    /// Get the tolerance of the convergence test
+    pub fn get_eta(&self) -> f64 {
+        self.eta
     }
 
     /// Get the number of threads
@@ -486,26 +515,29 @@ impl Trainer {
         // Determine regularization type
         let reg_type = if let Some(l1_ratio) = self.elastic_net_l1_ratio {
             log_info!(
-                "Training parameters: regularization={} (ElasticNet, l1_ratio={}), max_iter={}, threads={}",
+                "Training parameters: regularization={} (ElasticNet, l1_ratio={}), max_iter={}, eta={}, threads={}",
                 self.regularization_cost,
                 l1_ratio,
                 self.max_iter,
+                self.eta,
                 self.num_threads
             );
             lindera_crf::Regularization::ElasticNet { l1_ratio }
         } else if self.use_l2 {
             log_info!(
-                "Training parameters: regularization={} (L2), max_iter={}, threads={}",
+                "Training parameters: regularization={} (L2), max_iter={}, eta={}, threads={}",
                 self.regularization_cost,
                 self.max_iter,
+                self.eta,
                 self.num_threads
             );
             lindera_crf::Regularization::L2
         } else {
             log_info!(
-                "Training parameters: regularization={} (L1), max_iter={}, threads={}",
+                "Training parameters: regularization={} (L1), max_iter={}, eta={}, threads={}",
                 self.regularization_cost,
                 self.max_iter,
+                self.eta,
                 self.num_threads
             );
             lindera_crf::Regularization::L1
@@ -515,6 +547,7 @@ impl Trainer {
         let trainer = lindera_crf::Trainer::new()
             .regularization(reg_type, self.regularization_cost)?
             .max_iter(self.max_iter)?
+            .eta(self.eta)?
             .n_threads(self.num_threads)?;
 
         self.execute_training(trainer, lattices)
@@ -550,9 +583,18 @@ impl Trainer {
 
         self.log_training_results(&model);
         println!(
-            "L-BFGS ran {} iterations and {} evaluations of the loss and its gradient",
-            stats.iterations, stats.evaluations
+            "L-BFGS stopped after {} iterations and {} evaluations of the loss and its gradient: {}",
+            stats.iterations, stats.evaluations, stats.stop_reason
         );
+        match stats.stop_reason {
+            lindera_crf::StopReason::NoProgress => println!(
+                "Warning: the optimizer could not make progress; after few iterations the model is barely trained"
+            ),
+            lindera_crf::StopReason::LineSearchFailed => println!(
+                "Warning: the line search failed; the model has the best weights the optimizer reached"
+            ),
+            _ => {}
+        }
         println!(
             "Training completed successfully in {:.2}s!",
             training_duration.as_secs_f64()
@@ -2673,6 +2715,35 @@ mod export_consistency_tests {
         converged.update_metadata_json(&base, &mut json).unwrap();
         let json: serde_json::Value = serde_json::from_slice(&json).unwrap();
         assert_eq!(json["model_info"]["training_iterations"], iterations);
+    }
+
+    #[test]
+    fn eta_reaches_the_optimizer() {
+        let train = |eta: f64| {
+            let (seed, char_def, unk_def, feature_def, rewrite_def, corpus) = fixtures();
+            let config = TrainerConfig::from_readers(
+                Cursor::new(seed),
+                Cursor::new(char_def),
+                Cursor::new(unk_def),
+                Cursor::new(feature_def),
+                Cursor::new(rewrite_def),
+            )
+            .unwrap();
+            Trainer::new(config)
+                .unwrap()
+                .regularization_cost(0.01)
+                .max_iter(1000)
+                .eta(eta)
+                .num_threads(1)
+                .train(Corpus::from_reader(Cursor::new(corpus)).unwrap())
+        };
+
+        // A loose tolerance passes from the first iteration on, so the
+        // convergence test stops training at its third check...
+        let loose = train(1.0).unwrap();
+        assert_eq!(read_back(&loose).metadata.iterations, 3);
+        // ...and an invalid one is rejected when training starts.
+        assert!(train(-1.0).is_err());
     }
 
     /// The names of the files in a directory, sorted.

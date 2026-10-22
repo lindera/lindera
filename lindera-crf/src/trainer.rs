@@ -437,6 +437,43 @@ pub enum Regularization {
     },
 }
 
+/// The default tolerance of the convergence test, set with [`Trainer::eta`]:
+/// `5e-5`, the default `eta` of MeCab's learner.
+#[cfg_attr(docsrs, doc(cfg(feature = "train")))]
+pub const DEFAULT_ETA: f64 = 5e-5;
+
+/// Why the optimizer stopped.
+#[cfg_attr(docsrs, doc(cfg(feature = "train")))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum StopReason {
+    /// The objective converged: its relative change stayed below the
+    /// tolerance set with [`Trainer::eta`] for 3 iterations in a row, or its
+    /// gradient vanished.
+    Converged,
+    /// An iteration left the objective unchanged, so the optimizer could not
+    /// make progress. The model can be barely trained when this happens
+    /// after a few iterations.
+    NoProgress,
+    /// The cap set with [`Trainer::max_iter`] stopped the optimizer before it
+    /// converged.
+    MaxIterations,
+    /// The line search of the last iteration failed. The weights are the best
+    /// ones of the run.
+    LineSearchFailed,
+}
+
+impl core::fmt::Display for StopReason {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(match self {
+            Self::Converged => "converged",
+            Self::NoProgress => "no progress: an iteration left the objective unchanged",
+            Self::MaxIterations => "reached the iteration cap before converging",
+            Self::LineSearchFailed => "the line search failed",
+        })
+    }
+}
+
 /// Statistics of a training run, which [`Trainer::train_with_stats`] returns
 /// with the model.
 #[cfg_attr(docsrs, doc(cfg(feature = "train")))]
@@ -451,6 +488,8 @@ pub struct TrainingStats {
     /// one forward-backward pass over every lattice: one per point at which
     /// the optimizer needed them, line-search trials included.
     pub evaluations: u64,
+    /// Why the optimizer stopped.
+    pub stop_reason: StopReason,
 }
 
 /// CRF trainer.
@@ -460,6 +499,7 @@ pub struct Trainer {
     n_threads: usize,
     regularization: Regularization,
     lambda: f64,
+    eta: f64,
 }
 
 impl Trainer {
@@ -471,7 +511,28 @@ impl Trainer {
             n_threads: 1,
             regularization: Regularization::L1,
             lambda: 0.1,
+            eta: DEFAULT_ETA,
         }
+    }
+
+    /// Sets the tolerance of the convergence test: the optimizer stops when
+    /// the relative change of the objective, `|previous - current| /
+    /// |previous|`, stays below `eta` for 3 iterations in a row. The default
+    /// is [`DEFAULT_ETA`], the default of MeCab's learner; MeCab counts
+    /// every evaluation, line-search trials included, where this test counts
+    /// iterations. `0.0` disables the test, so that only the iteration cap
+    /// and the optimizer's own tests (a vanishing gradient, an unchanged
+    /// objective) stop it.
+    ///
+    /// # Errors
+    ///
+    /// `eta` must be finite and >= 0.
+    pub fn eta(mut self, eta: f64) -> Result<Self> {
+        if !(eta.is_finite() && eta >= 0.0) {
+            return Err(RucrfError::invalid_argument("eta must be finite and >= 0"));
+        }
+        self.eta = eta;
+        Ok(self)
     }
 
     /// Sets the maximum number of iterations.
@@ -717,6 +778,7 @@ impl Trainer {
             weights,
             iterations,
             evaluations,
+            stop_reason,
         } = lbfgs::optimize(
             lattices,
             &provider,
@@ -726,6 +788,7 @@ impl Trainer {
             self.regularization,
             self.lambda,
             self.max_iter,
+            self.eta,
             self.n_threads,
         );
 
@@ -799,6 +862,7 @@ impl Trainer {
             TrainingStats {
                 iterations,
                 evaluations,
+                stop_reason,
             },
         )
     }
@@ -1260,6 +1324,66 @@ mod tests {
         assert_eq!(iterations(1), 1);
     }
 
+    // The convergence test (#1167) stops training before the cap once the
+    // relative change of the objective has stayed below eta for 3
+    // iterations, and eta = 0 turns it off.
+    #[test]
+    fn eta_stops_training_once_the_objective_converges() {
+        let lattices = test_utils::generate_test_lattices(24);
+        let run = |eta, max_iter| {
+            let trainer = Trainer::new().max_iter(max_iter).unwrap().eta(eta).unwrap();
+            trainer
+                .train_with_stats(&lattices, test_utils::generate_test_feature_provider())
+                .1
+        };
+
+        // A loose tolerance passes from the first iteration on, so the third
+        // check after the initial one stops the run.
+        let loose = run(1.0, 1000);
+        assert_eq!(loose.stop_reason, StopReason::Converged);
+        assert_eq!(loose.iterations, 3);
+
+        // Without the test, a cap below where argmin's own tests stop this
+        // fixture is what stops it.
+        let off = run(0.0, 5);
+        assert_eq!(off.stop_reason, StopReason::MaxIterations);
+        assert_eq!(off.iterations, 5);
+    }
+
+    #[test]
+    fn eta_must_be_finite_and_not_negative() {
+        for eta in [-1e-9, f64::NAN, f64::INFINITY] {
+            assert!(Trainer::new().eta(eta).is_err(), "eta {eta}");
+        }
+        for eta in [0.0, DEFAULT_ETA, 1.0] {
+            assert!(Trainer::new().eta(eta).is_ok(), "eta {eta}");
+        }
+    }
+
+    // The L1 run of the wide fixture from zero weights reaches an iteration
+    // that leaves the cost unchanged, as the run of #1260 did; the reason
+    // says so instead of claiming convergence.
+    #[test]
+    fn an_unchanged_objective_is_reported_as_no_progress() {
+        let provider = test_utils::generate_test_feature_provider();
+        let lattices = test_utils::generate_test_lattices(200);
+        let (uni, bi) = wide_fixture_tables();
+        let evaluations = Cell::new(0);
+        let result = lbfgs::minimize(
+            lbfgs::CachedLoss::new(
+                LatticesLoss::new(&lattices, &provider, &uni, &bi, 1, None),
+                &evaluations,
+            ),
+            vec![0.0; 29],
+            Regularization::L1,
+            0.01,
+            100,
+            0.0,
+        );
+        assert_eq!(result.stop_reason, StopReason::NoProgress);
+        assert!(result.iterations < 100, "{} iterations", result.iterations);
+    }
+
     // The evaluation as `cost` and `gradient_partial` computed it before they
     // shared one pass (#1167): a forward-backward pass of its own for the
     // loss and for the gradient, over the same chunks, each folded in
@@ -1489,7 +1613,12 @@ mod tests {
             ("Elastic Net", Regularization::ElasticNet { l1_ratio: 0.5 }),
         ] {
             let l2_lambda = lbfgs::l2_lambda(regularization, lambda);
-            let (expected, expected_iterations) = lbfgs::minimize(
+            // eta = 0 leaves the cap to stop both runs.
+            let lbfgs::Minimized {
+                weights: expected,
+                iterations: expected_iterations,
+                ..
+            } = lbfgs::minimize(
                 Uncached(LatticesLoss::new(
                     &lattices, &provider, &uni, &bi, 1, l2_lambda,
                 )),
@@ -1497,6 +1626,7 @@ mod tests {
                 regularization,
                 lambda,
                 max_iter,
+                0.0,
             );
 
             let evaluations = Cell::new(0);
@@ -1506,7 +1636,11 @@ mod tests {
                 LatticesLoss::new(&lattices, &provider, &uni, &bi, 1, l2_lambda),
                 &evaluations,
             );
-            let (weights, iterations) = lbfgs::minimize(
+            let lbfgs::Minimized {
+                weights,
+                iterations,
+                ..
+            } = lbfgs::minimize(
                 Counting {
                     inner: cached,
                     evaluations: &evaluations,
@@ -1517,6 +1651,7 @@ mod tests {
                 regularization,
                 lambda,
                 max_iter,
+                0.0,
             );
 
             assert_eq!(iterations, expected_iterations, "{name}");
