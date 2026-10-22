@@ -198,6 +198,16 @@
 <pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
 </code></pre>
 <p><code>gold_lexicon</code>・<code>gold_unknown</code>・<code>gold_virtual</code> は上の 3 つの段階それぞれでラベルを付けた正解トークンの数、<code>virtual_labels</code> は仮想ラベルの数、<code>negative_lexicon</code> と <code>negative_unknown</code> は種辞書と未知語候補それぞれから作った負例の辺の数です。</p>
+<p>その後、CRF を L-BFGS（正則化に L1 の部分があるときは OWL-QN）で学習します。学習は、次のうち最初に当てはまったもので止まります。</p>
+<ul>
+<li><code>converged</code>: 目的関数の相対変化 <code>|previous - current| / |previous|</code> が <code>eta</code> を 3 回続けて下回った。<code>eta</code> のデフォルトは MeCab の学習器と同じです。MeCab はライン探索の試行を含めた評価ごとに同じ判定を行い、Lindera はイテレーションごとに行います。</li>
+<li><code>no progress</code>: あるイテレーションで目的関数が変わらなかった。数イテレーションでこれが起きたときは、モデルはほとんど学習されていないので、<code>lindera train</code> は警告を出します。</li>
+<li>あるイテレーションのライン探索が失敗した。モデルはその学習で最良の重みを使い、警告が出ます。</li>
+<li>目的関数が収束する前に <code>max-iterations</code> に達した。</li>
+</ul>
+<p><code>lindera train</code> は、どれで止まったかを、イテレーション数と評価回数とともに出力します。1 回の評価は、全ラティスの前向き・後向きの 1 回分です。<code>resources/training/</code> のファイルでは次のとおりです。</p>
+<pre><code class="language-text">L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
+</code></pre>
 <h2 id="必要な入力ファイル"><a class="header" href="#必要な入力ファイル">必要な入力ファイル</a></h2>
 <h3 id="1-種辞書-seedcsv"><a class="header" href="#1-種辞書-seedcsv">1. 種辞書 (seed.csv)</a></h3>
 <p>MeCab CSV 形式のベース語彙辞書です。</p>
@@ -348,10 +358,11 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>regularization</code></td><td>正則化の種類: <code>l1</code>、<code>l2</code>、<code>elasticnet</code> のいずれか</td><td><code>l1</code></td></tr>
 <tr><td><code>elastic-net-l1-ratio</code></td><td>Elastic Net 正則化の L1 比率（0.0-1.0、<code>--regularization elasticnet</code> の場合のみ使用）</td><td>0.5</td></tr>
 <tr><td><code>max-iterations</code></td><td>最大学習イテレーション数</td><td>100</td></tr>
+<tr><td><code>eta</code></td><td>収束判定の許容値（<a href="#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。<code>0</code> で判定を切ります</td><td>0.00005</td></tr>
 <tr><td><code>max-threads</code></td><td>並列処理スレッド数</td><td>CPU コア数</td></tr>
 </tbody></table>
 </div>
-<p>学習は MeCab の学習器より遅く、収束する前に <code>max-iterations</code> で止まることがあります（<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>）。</p>
+<p><a href="https://github.com/lindera/lindera/issues/1110">#1110</a> の mecab-ipadic の交差検証データでは、デフォルトの L1 正則化はまだ目的関数が収束する前に <code>max-iterations</code> に達します。一方、MeCab のデフォルトの <code>-c 1.0</code> に当たる L2 の <code>lambda</code> 1.0 は、MeCab の学習器とほぼ同じイテレーション数で収束します（<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>）。このデータでの学習時間は MeCab の学習器の約 2 倍で、その約 3 分の 2 は最適化の外、つまり最適化を始める前（<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>）と終えた後にかかります。</p>
 <h2 id="cli-の使用"><a class="header" href="#cli-の使用">CLI の使用</a></h2>
 <h3 id="train"><a class="header" href="#train">Train</a></h3>
 <pre><code class="language-bash">lindera train \
@@ -387,11 +398,11 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </tbody></table>
 </div>
 <p>たとえば上の <code>unk.def</code> で、最初の <code>KANJI</code> の行の後に 2 つ目の <code>KANJI</code> の行 <code>KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*</code> を加えると、エクスポートした <code>unk.def</code> は両方の行を入力と同じ順序で持ちます。</p>
-<pre><code class="language-csv">DEFAULT,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+<pre><code class="language-csv">DEFAULT,1,1,32764,名詞,一般,*,*,*,*,*,*,*
 SPACE,1,1,0,記号,空白,*,*,*,*,*,*,*
-HIRAGANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
-KATAKANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
-KANJI,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,32764,名詞,一般,*,*,*,*,*,*,*
 KANJI,1,1,0,名詞,サ変接続,*,*,*,*,*,*,*
 ALPHA,1,1,0,名詞,固有名詞,一般,*,*,*,*,*,*
 NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*

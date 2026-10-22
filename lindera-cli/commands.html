@@ -874,6 +874,7 @@ Downloaded dictionary 'ipadic'
 <li><code>--regularization</code> / <code>-R</code>: Regularization type: <code>l1</code>, <code>l2</code>, or <code>elasticnet</code> (default: <code>l1</code>)</li>
 <li><code>--elastic-net-l1-ratio</code>: L1 ratio for Elastic Net regularization (0.0-1.0), only used with <code>--regularization elasticnet</code> (default: 0.5)</li>
 <li><code>--max-iterations</code> / <code>-i</code>: Maximum number of iterations for training (default: 100)</li>
+<li><code>--eta</code> / <code>-e</code>: Tolerance of the convergence test: training stops before <code>--max-iterations</code> once the relative change of the objective stays below this value for 3 iterations in a row; <code>0</code> disables the test (default: 0.00005, the default of MeCab's learner)</li>
 <li><code>--max-threads</code> / <code>-t</code>: Maximum number of threads (defaults to CPU core count; affects only speed, never the trained model)</li>
 </ul>
 <h3 id="basic-workflow"><a class="header" href="#basic-workflow">Basic workflow</a></h3>
@@ -924,6 +925,9 @@ EOS
 <h4 id="3-training-results"><a class="header" href="#3-training-results">3. Training results</a></h4>
 <p><code>lindera train</code> writes the model to the <code>--output</code> file. Once it has built the training lattices, it prints how the gold tokens of the corpus were labelled (see <a href="../development/training_pipeline.html#how-training-works">How training works</a>). With the files in <code>./resources/training/</code>:</p>
 <pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+</code></pre>
+<p>Once training stops, it prints why, with the number of iterations and of evaluations of the loss and its gradient (see <code>--eta</code> above):</p>
+<pre><code class="language-text">L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
 </code></pre>
 <p>The trained model contains:</p>
 <ul>

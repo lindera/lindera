@@ -918,10 +918,11 @@ tokenizer
 <h2 id="モジュール構成"><a class="header" href="#モジュール構成">モジュール構成</a></h2>
 <pre><code class="language-text">lindera-crf/src/
 ├── lib.rs                # パブリックAPIの再エクスポート
+├── bigram_table.rs       # 学習ラティスのバイグラム重みの添字
 ├── feature.rs            # FeatureSet, FeatureProvider
 ├── lattice.rs            # Edge, Node, Lattice
 ├── model.rs              # RawModel, MergedModel, Model trait
-├── trainer.rs            # Trainer, Regularization enum
+├── trainer.rs            # Trainer, Regularization, StopReason, TrainingStats
 ├── errors.rs             # エラー型
 ├── forward_backward.rs   # 前向き・後向きアルゴリズム
 ├── math.rs               # 数学ユーティリティ (logsumexp)
@@ -936,7 +937,19 @@ tokenizer
 <h3 id="lattice--edge--node"><a class="header" href="#lattice--edge--node">Lattice / Edge / Node</a></h3>
 <p>系列ラベリングのための可変長エッジを持つラティス構造です。<code>Edge</code>はラベル付きの候補スパンを表し、<code>Node</code>は特定の位置にあるエッジを集約します。<code>Lattice</code>は入力データから構築され、モデルが最適パスを探索するために使用されます。</p>
 <h3 id="trainer"><a class="header" href="#trainer">Trainer</a></h3>
-<p>設定可能な正則化を用いたL-BFGS最適化によりCRFモデルを学習します。Trainerはラベル付きラティスの例を受け取り、前向き・後向きアルゴリズムで勾配を計算し、反復的にモデルの重みを更新します。<code>Trainer::train</code>は学習した<code>RawModel</code>を返します。<code>Trainer::train_with_stats</code>は、実際に回ったイテレーション数を持つ<code>TrainingStats</code>も返します。この数は、<code>Trainer::max_iter</code>で設定した最大値で学習が止まったときはその値で、収束などでそれより前に最適化が止まったときはそれより少なくなります。</p>
+<p>設定可能な正則化を用いたL-BFGS最適化（正則化にL1の部分があるときはOWL-QN）によりCRFモデルを学習します。Trainerはラベル付きラティスの例を受け取り、前向き・後向きアルゴリズムで損失とその勾配を計算し、反復的にモデルの重みを更新します。<code>Trainer::train</code>は学習した<code>RawModel</code>を返します。<code>Trainer::train_with_stats</code>は、次の値を持つ<code>TrainingStats</code>も返します。</p>
+<ul>
+<li><code>iterations</code>: 実際に回ったイテレーション数。<code>Trainer::max_iter</code>で設定した最大値で学習が止まったときはその値で、それより前に最適化が止まったときはそれより少なくなります。</li>
+<li><code>evaluations</code>: 損失とその勾配を評価した回数。1回の評価は全ラティスの前向き・後向きの1回分で、ライン探索の試行も含みます。</li>
+<li><code>stop_reason</code>: 最適化が止まった理由（<code>StopReason</code>）。</li>
+</ul>
+<p>最適化は、次のうち最初に当てはまったもので止まります。</p>
+<ul>
+<li><code>StopReason::Converged</code>: 目的関数の相対変化<code>|previous - current| / |previous|</code>が<code>Trainer::eta</code>で設定した許容値を3回続けて下回ったか、勾配がほぼ0になった。デフォルトの許容値<code>DEFAULT_ETA</code>（<code>5e-5</code>）は、MeCabの学習器の<code>eta</code>のデフォルトと同じです。MeCabはライン探索の試行を含めた評価ごとに同じ判定を行い、Linderaはイテレーションごとに行います。<code>Trainer::eta(0.0)</code>で判定を切ります。</li>
+<li><code>StopReason::NoProgress</code>: あるイテレーションで目的関数が変わらなかった。数イテレーションでこれが起きたときは、モデルはほとんど学習されていません。</li>
+<li><code>StopReason::MaxIterations</code>: <code>Trainer::max_iter</code>で設定した上限に達した。</li>
+<li><code>StopReason::LineSearchFailed</code>: あるイテレーションのライン探索が失敗した。重みは、その学習で最良だったものです。</li>
+</ul>
 <h3 id="regularization"><a class="header" href="#regularization">Regularization</a></h3>
 <p>設定可能な正則化戦略：</p>
 <ul>
@@ -953,7 +966,8 @@ tokenizer
 <p><code>MergedFeatureSet</code>は、ラベルの事前合計済みユニグラム<code>weight</code>と、<code>MergedModel</code>のバイグラム重み行列を参照する<code>left_id</code>/<code>right_id</code>接続IDを保持します。</p>
 <p><code>RawModel::unigram_weight</code>は、ユニグラム素性IDの並びについてこの和を計算し、<code>merge</code>はラベルごとにこれを呼びます。重みのない素性は何も足さないため、学習でラベルでなかったエントリの素性の重みも計算できます。<code>lindera-trainer</code>はユーザー辞書のエントリのコストにこれを使います。</p>
 <h3 id="前向き後向きアルゴリズム"><a class="header" href="#前向き後向きアルゴリズム">前向き・後向きアルゴリズム</a></h3>
-<p>ラティス上でアルファ（前向き）とベータ（後向き）の値を計算します。学習時に期待素性カウントと勾配の計算に使用されます。</p>
+<p>ラティス上でアルファ（前向き）とベータ（後向き）の値を計算します。学習時に損失と期待素性カウントの計算に使用されます。ラティス1つにつき1回のパスで、その損失と勾配への寄与の両方を求めます。argminのL-BFGSは同じ点のコストと勾配を2回の呼び出しで求めるので、最適化は直前のパラメータベクトルでの結果を保持します。</p>
+<p>最適化を始める前に、ラティスで接するすべての辺の対について、そのバイグラム素性の重みの添字を、評価で足す順に表に記録します。バイグラム素性IDが同じラベルは、表の項目を共有します。評価はバイグラム素性ごとにマップを引く代わりにこの表から添字を読み、同じ重みを同じ順に足すので、学習した重みは変わりません。</p>
 <h2 id="feature-フラグ"><a class="header" href="#feature-フラグ">Feature フラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>alloc</code></td><td><code>no_std</code>向けのallocサポート</td><td>No*</td></tr>
@@ -1089,7 +1103,7 @@ tokenizer
 <li>正解の各トークンには、範囲と素性文字列全体が同じ最初の種辞書の行のラベルを付けます。なければ、範囲が同じ未知語候補の<code>unk.def</code>エントリのうち、<code>*</code>以外の素性の列がすべて正解トークンの列と一致するファイル順で最初のエントリのラベルを付けます（どちらの列も<code>rewrite()</code>と同じく分けます）。それもなければ、MeCabの学習器が仮想ノードを追加するのと同じく、正解の素性文字列から作る仮想ラベル（<code>%t</code>は0、<code>%w</code>なし、素性文字列ごとに1つ）を付けます。仮想ラベルはほかのラベルの後に並び、学習されますが、エクスポートされることはありません。</li>
 <li>それ以外の候補はすべて負例の辺になります。</li>
 </ul>
-<p>ラティスを作り終えると、<code>Lattice statistics:</code>の行を出力します。各方法でラベルを付けた正解トークンの数（<code>gold_lexicon</code>・<code>gold_unknown</code>・<code>gold_virtual</code>）、仮想ラベルの数（<code>virtual_labels</code>）、種辞書と未知語候補それぞれから作った負例の辺の数（<code>negative_lexicon</code>・<code>negative_unknown</code>）です。<code>Trainer::max_grouping_len</code>は、ランタイムと同じ意味（先頭の1文字を除いた文字数。デフォルトの<code>None</code>は無制限）で未知語のグルーピングの長さに上限を設けます。ほかのビルダーメソッドは、正則化・イテレーション数の上限・スレッド数を設定します。</p>
+<p>ラティスを作り終えると、<code>Lattice statistics:</code>の行を出力します。各方法でラベルを付けた正解トークンの数（<code>gold_lexicon</code>・<code>gold_unknown</code>・<code>gold_virtual</code>）、仮想ラベルの数（<code>virtual_labels</code>）、種辞書と未知語候補それぞれから作った負例の辺の数（<code>negative_lexicon</code>・<code>negative_unknown</code>）です。<code>Trainer::max_grouping_len</code>は、ランタイムと同じ意味（先頭の1文字を除いた文字数。デフォルトの<code>None</code>は無制限）で未知語のグルーピングの長さに上限を設けます。ほかのビルダーメソッドは、正則化・イテレーション数の上限・収束判定の許容値（<code>Trainer::eta</code>。デフォルトは<code>DEFAULT_ETA</code>の<code>5e-5</code>。<a href="lindera-trainer/../lindera-crf/architecture.html#trainer">lindera-crfのアーキテクチャ</a>を参照）・スレッド数を設定します。学習の後に、最適化が止まった理由を、イテレーション数と損失・勾配の評価回数とともに出力します。あるイテレーションで目的関数が変わらなかったときと、ライン探索が失敗したときは、警告も出力します。</p>
 <h3 id="model--serializablemodel"><a class="header" href="#model--serializablemodel">Model / SerializableModel</a></h3>
 <p><code>Model</code>は<code>Trainer::train</code>が生成する学習済みモデルです。学習された<code>lindera_crf::RawModel</code>、学習に用いた<code>TrainerConfig</code>、抽出済みの素性の重みとラベル、仮想ラベルの素性文字列、そして学習後に<code>read_user_lexicon</code>で追加されたユーザー辞書エントリを保持します。学習されたCRFの重みは、MeCab互換の整数コストに変換されます（<code>tocost(weight, cost_factor) = clamp(round(-weight * cost_factor), i16::MIN, i16::MAX)</code>、すなわち<code>[-32768, 32767]</code>の範囲にクランプされます）。この際のコストファクターは、<code>i16</code>の値域を最大限活用できるよう計算されます（<code>calculate_cost_factor</code>）。<code>Model</code>は自身をシリアライズでき（<code>write_model</code>）、辞書ソースファイルを直接エクスポートすることもできます。</p>
 <p><code>SerializableModel</code>は、<code>Model::read_model</code>がリーダーから以前学習したモデルを読み込んだ際に返される、<code>rkyv</code>でシリアライズ可能な素のデータ型です（<code>lindera export</code> CLIコマンドで使用されます）。<code>Model</code>と同じ学習結果の情報――素性の重み、ラベル、品詞情報、連接コスト行列、<code>unk.def</code>のエントリ（<code>unk_entries</code>。ファイル順の<code>(カテゴリ, 素性文字列)</code>の組）、保存されている<code>char.def</code> / <code>feature.def</code> / <code>rewrite.def</code>の内容、コストファクター、左右文脈IDマッピング――を<code>TrainerConfig</code>を持たない所有データとして保持し、辞書エクスポートファイルを生成するための独自のライターメソッド群を提供します。</p>
@@ -3017,6 +3031,7 @@ Downloaded dictionary 'ipadic'
 <li><code>--regularization</code> / <code>-R</code>: 正則化の種類: <code>l1</code>, <code>l2</code>, または <code>elasticnet</code> (デフォルト: <code>l1</code>)</li>
 <li><code>--elastic-net-l1-ratio</code>: Elastic Net 正則化時のL1比率 (0.0-1.0)。<code>--regularization elasticnet</code> を指定した場合のみ使用されます (デフォルト: 0.5)</li>
 <li><code>--max-iterations</code> / <code>-i</code>: 学習の最大反復回数 (デフォルト: 100)</li>
+<li><code>--eta</code> / <code>-e</code>: 収束判定の許容値。目的関数の相対変化がこの値を 3 回続けて下回ると、<code>--max-iterations</code> より前に学習を止めます。<code>0</code> で判定を切ります (デフォルト: 0.00005。MeCab の学習器のデフォルトと同じ)</li>
 <li><code>--max-threads</code> / <code>-t</code>: 最大スレッド数 (デフォルトはCPUコア数。速度のみに影響し、学習結果は変わりません)</li>
 </ul>
 <h3 id="基本的なワークフロー"><a class="header" href="#基本的なワークフロー">基本的なワークフロー</a></h3>
@@ -3067,6 +3082,9 @@ EOS
 <h4 id="3-学習結果"><a class="header" href="#3-学習結果">3. 学習結果</a></h4>
 <p><code>lindera train</code> はモデルを <code>--output</code> のファイルに書き出します。学習用のラティスを作り終えると、コーパスの正解トークンのラベルの付き方を出力します（<a href="lindera-cli/../development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。<code>./resources/training/</code> のファイルでは次のとおりです：</p>
 <pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+</code></pre>
+<p>学習が止まると、止まった理由を、イテレーション数と損失・勾配の評価回数とともに出力します（上の <code>--eta</code> を参照）：</p>
+<pre><code class="language-text">L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
 </code></pre>
 <p>学習済みモデルには以下が含まれます：</p>
 <ul>
@@ -4112,7 +4130,7 @@ lindera.train(
 <tr><td><code>rewrite_def</code></td><td><code>str</code></td><td>必須</td><td>書き換えルール定義ファイルのパス（rewrite.def）</td></tr>
 <tr><td><code>output</code></td><td><code>str</code></td><td>必須</td><td>学習済みモデルファイルの出力パス</td></tr>
 <tr><td><code>lambda_</code></td><td><code>float</code></td><td><code>0.01</code></td><td>L1 正則化コスト（0.0--1.0）</td></tr>
-<tr><td><code>max_iter</code></td><td><code>int</code></td><td><code>100</code></td><td>最大学習イテレーション数</td></tr>
+<tr><td><code>max_iter</code></td><td><code>int</code></td><td><code>100</code></td><td>最大学習イテレーション数。目的関数が収束すると（相対変化が 3 回続けて 5e-5 を下回ると）、それより前に止まります</td></tr>
 <tr><td><code>max_threads</code></td><td><code>int</code> または <code>None</code></td><td><code>None</code></td><td>スレッド数（None = CPU コア数を自動検出）</td></tr>
 </tbody></table>
 </div>
@@ -5014,7 +5032,7 @@ train({
 <tr><td><code>rewriteDef</code></td><td><code>string</code></td><td>必須</td><td>書き換えルール定義ファイルのパス（rewrite.def）</td></tr>
 <tr><td><code>output</code></td><td><code>string</code></td><td>必須</td><td>学習済みモデルファイルの出力パス</td></tr>
 <tr><td><code>lambda</code></td><td><code>number</code></td><td><code>0.01</code></td><td>L1 正則化コスト（0.0--1.0）</td></tr>
-<tr><td><code>maxIter</code></td><td><code>number</code></td><td><code>100</code></td><td>最大学習イテレーション数</td></tr>
+<tr><td><code>maxIter</code></td><td><code>number</code></td><td><code>100</code></td><td>最大学習イテレーション数。目的関数が収束すると（相対変化が 3 回続けて 5e-5 を下回ると）、それより前に止まります</td></tr>
 <tr><td><code>maxThreads</code></td><td><code>number | undefined</code></td><td><code>undefined</code></td><td>スレッド数（undefined = CPU コア数を自動検出）</td></tr>
 </tbody></table>
 </div>
@@ -5961,7 +5979,7 @@ Lindera.train(
 <tr><td>6</td><td>rewrite_def</td><td><code>String</code></td><td>書き換えルール定義ファイルのパス（rewrite.def）</td></tr>
 <tr><td>7</td><td>output</td><td><code>String</code></td><td>学習済みモデルファイルの出力パス</td></tr>
 <tr><td>8</td><td>lambda</td><td><code>Float</code></td><td>L1 正則化コスト（0.0--1.0）</td></tr>
-<tr><td>9</td><td>max_iter</td><td><code>Integer</code></td><td>最大学習イテレーション数</td></tr>
+<tr><td>9</td><td>max_iter</td><td><code>Integer</code></td><td>最大学習イテレーション数。目的関数が収束すると（相対変化が 3 回続けて 5e-5 を下回ると）、それより前に止まります</td></tr>
 <tr><td>10</td><td>max_threads</td><td><code>Integer</code> または <code>nil</code></td><td>スレッド数（<code>nil</code> = CPU コア数を自動検出）</td></tr>
 </tbody></table>
 </div>
@@ -6972,7 +6990,7 @@ Lindera\Trainer::train(
 <tr><td><code>$rewriteDef</code></td><td><code>string</code></td><td>必須</td><td>書き換えルール定義ファイルのパス（rewrite.def）</td></tr>
 <tr><td><code>$output</code></td><td><code>string</code></td><td>必須</td><td>学習済みモデルファイルの出力パス</td></tr>
 <tr><td><code>$lambda</code></td><td><code>float</code></td><td><code>0.01</code></td><td>L1 正則化コスト（0.0--1.0）</td></tr>
-<tr><td><code>$maxIter</code></td><td><code>int</code></td><td><code>100</code></td><td>最大学習イテレーション数</td></tr>
+<tr><td><code>$maxIter</code></td><td><code>int</code></td><td><code>100</code></td><td>最大学習イテレーション数。目的関数が収束すると（相対変化が 3 回続けて 5e-5 を下回ると）、それより前に止まります</td></tr>
 <tr><td><code>$maxThreads</code></td><td><code>int</code> または <code>null</code></td><td><code>null</code></td><td>スレッド数（null = CPU コア数を自動検出）</td></tr>
 </tbody></table>
 </div>
@@ -11402,6 +11420,11 @@ Python の <code>Mode(mode_str)</code> と属性 <code>Mode.Normal</code> / <cod
 （<a href="https://github.com/lindera/lindera/issues/1168">#1168</a>）。</li>
 <li><code>metadata.json</code> の <code>model_info.training_iterations</code> は、実際に回った反復回数では
 なく、<code>--max-iterations</code> の値でした。</li>
+<li>学習は、argmin 自身の判定（勾配のノルムが計算機イプシロンの平方根を下回る、
+または反復で目的関数が変わらない）が成り立たない限り、<code>--max-iterations</code> まで
+回りました。目的関数は数百から数千の大きさなので、前者は事実上成り立たず、学習は
+上限まで回っていました。L2 の学習は、ライン探索が失敗するとパニックしていました
+（<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>）。</li>
 <li>Python・Node.js・Ruby・PHP バインディングのエクスポート関数は、<code>lex.csv</code>、
 <code>matrix.def</code>、<code>unk.def</code>、<code>metadata.json</code> と、カテゴリ <code>DEFAULT</code>・<code>HIRAGANA</code>・
 <code>KATAKANA</code>・<code>KANJI</code>・<code>ALPHA</code>・<code>NUMERIC</code> を持つ固定の <code>char.def</code> を書き出して
@@ -11459,6 +11482,12 @@ mecab-jieba の <code>unk.def</code> の素性は 5 列で、その <code>featur
 <li><code>model_info.training_iterations</code> は実際に回った L-BFGS の反復回数です。
 <code>--max-iterations</code> で学習が止まったときはその値、それより前に収束したときは
 それより少ない値になります。</li>
+<li>目的関数の相対変化が <code>--eta</code>（<code>Trainer::eta</code>。デフォルトは MeCab の学習器と
+同じ 0.00005）を 3 回続けて下回ったときにも、学習は止まります。<code>--eta 0</code> で
+この判定を切ります。バインディングはデフォルトの値を使います。<code>lindera train</code>
+は、最適化が止まった理由を、反復回数と損失・勾配の評価回数とともに出力し、反復で
+目的関数が変わらなかったときとライン探索が失敗したときは警告を出します。L2 の
+学習でライン探索が失敗したときは、その学習で最良の重みを使います。</li>
 <li>Python・Node.js・Ruby・PHP バインディングのエクスポート関数は、<code>lindera export</code>
 と同じコードで同じファイルを書き出します。<code>char.def</code>・<code>feature.def</code>・
 <code>rewrite.def</code> は学習に使ったもので、<code>left-id.def</code> と <code>right-id.def</code> も書き出し
@@ -11498,9 +11527,13 @@ mecab-ipadic・mecab-ipadic-neologd・unidic-mecab・mecab-ko-dic・mecab-jieba�
 <code>mecab-dict-index</code> が文脈 ID のない素性のユーザー辞書のエントリで失敗するのと
 同じくエラーになり、何も書き出しません。</li>
 </ul>
-<p>すべてのラティスに種辞書の語が入るため、学習には以前より時間がかかります。学習は
-MeCab の学習器より遅く、収束する前に <code>--max-iterations</code> で
-止まることがあります（<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>）。
+<p>すべてのラティスに種辞書の語が入ります。<a href="https://github.com/lindera/lindera/issues/1110">#1110</a> の mecab-ipadic のデータでは、
+デフォルトの L1 正則化はまだ目的関数が収束する前に <code>--max-iterations</code> に達し、
+<code>--lambda 1.0</code> の L2（MeCab の <code>-c 1.0</code>）は MeCab の学習器とほぼ同じ反復回数で
+収束します（<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>）。このデータ
+での学習時間は MeCab の学習器の約 2 倍で、その約 3 分の 2 は最適化の外、つまり
+最適化を始める前（<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>）と
+終えた後にかかります。
 <code>resources/training/</code> のファイルは、<code>char.def</code> に <code>SPACE</code> カテゴリを、<code>unk.def</code>
 に <code>SPACE</code> の行を持つようになりました。そのため、これらから学習した辞書は、v6 では
 必要だった <code>--keep-whitespace</code> なしで解析できます
@@ -11775,6 +11808,7 @@ feature）経由で使う Rust コードにのみ影響します
 <tr><td><code>Model::num_labels()</code> と <code>ModelMetadata::label_count</code> は <code>char.def</code> のカテゴリごとに 1 つの未知語ラベルを数える</td><td><code>unk.def</code> のエントリごとに 1 つを数える。仮想ラベルは数えない</td></tr>
 <tr><td><code>Model::write_left_id_def</code> / <code>write_right_id_def</code> はバイグラム素性の文字列の ID を書き出す。<code>lex.csv</code> や <code>matrix.def</code> の文脈 ID とは別の ID 空間</td><td>文脈 ID を書き出す。<code>Model::write_model</code> が書き出すモデルについて <code>SerializableModel::write_left_id_def</code> / <code>write_right_id_def</code> が書き出すものと同じ</td></tr>
 <tr><td><code>ModelMetadata::iterations</code>（と <code>model_info.training_iterations</code>）は <code>max_iter</code> の設定値</td><td>実際に回った L-BFGS の反復回数</td></tr>
+<tr><td>—</td><td>新規: 収束判定の許容値を設定する <code>Trainer::eta</code> と <code>Trainer::get_eta</code>、そのデフォルトの <code>DEFAULT_ETA</code>（<code>5e-5</code>）。<code>lindera-crf</code> にも同じ <code>Trainer::eta</code> と <code>DEFAULT_ETA</code> と、<code>StopReason</code>、<code>TrainingStats::evaluations</code>、<code>TrainingStats::stop_reason</code> を追加</td></tr>
 <tr><td><code>Model::write_connection_costs</code> と <code>SerializableModel::write_connection_costs</code> は、学習した重みがない連接に <code>i16::MAX</code> を書き出す</td><td>0 を書き出す。学習中や MeCab でのその連接のコスト</td></tr>
 </tbody></table>
 </div>
@@ -11941,6 +11975,10 @@ MeCab と同じくその空白を含むことを前提にする。</li>
 それを指す範囲行より前で 1 回だけ定義し、すべてのカテゴリに <code>unk.def</code> の行を
 書き、未定義のカテゴリの <code>unk.def</code> の行を削除する
 （<a href="https://github.com/lindera/lindera/issues/1195">#1195</a>）。</li>
+<li>目的関数が収束すると、学習が <code>--max-iterations</code> より前に止まることを前提にし、
+止まった理由は <code>lindera train</code> が出力する行で確かめる。v6 と同じく上限と最適化
+自身の判定だけで止めるには、<code>--eta 0</code>（Rust では <code>Trainer::eta(0.0)</code>）を渡す
+（<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>）。</li>
 </ul>
 <p><code>lindera build</code> でシステム辞書をビルドするすべてのユーザー:</p>
 <ul>
@@ -12353,6 +12391,16 @@ cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 <pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
 </code></pre>
 <p><code>gold_lexicon</code>・<code>gold_unknown</code>・<code>gold_virtual</code> は上の 3 つの段階それぞれでラベルを付けた正解トークンの数、<code>virtual_labels</code> は仮想ラベルの数、<code>negative_lexicon</code> と <code>negative_unknown</code> は種辞書と未知語候補それぞれから作った負例の辺の数です。</p>
+<p>その後、CRF を L-BFGS（正則化に L1 の部分があるときは OWL-QN）で学習します。学習は、次のうち最初に当てはまったもので止まります。</p>
+<ul>
+<li><code>converged</code>: 目的関数の相対変化 <code>|previous - current| / |previous|</code> が <code>eta</code> を 3 回続けて下回った。<code>eta</code> のデフォルトは MeCab の学習器と同じです。MeCab はライン探索の試行を含めた評価ごとに同じ判定を行い、Lindera はイテレーションごとに行います。</li>
+<li><code>no progress</code>: あるイテレーションで目的関数が変わらなかった。数イテレーションでこれが起きたときは、モデルはほとんど学習されていないので、<code>lindera train</code> は警告を出します。</li>
+<li>あるイテレーションのライン探索が失敗した。モデルはその学習で最良の重みを使い、警告が出ます。</li>
+<li>目的関数が収束する前に <code>max-iterations</code> に達した。</li>
+</ul>
+<p><code>lindera train</code> は、どれで止まったかを、イテレーション数と評価回数とともに出力します。1 回の評価は、全ラティスの前向き・後向きの 1 回分です。<code>resources/training/</code> のファイルでは次のとおりです。</p>
+<pre><code class="language-text">L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
+</code></pre>
 <h2 id="必要な入力ファイル"><a class="header" href="#必要な入力ファイル">必要な入力ファイル</a></h2>
 <h3 id="1-種辞書-seedcsv"><a class="header" href="#1-種辞書-seedcsv">1. 種辞書 (seed.csv)</a></h3>
 <p>MeCab CSV 形式のベース語彙辞書です。</p>
@@ -12503,10 +12551,11 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>regularization</code></td><td>正則化の種類: <code>l1</code>、<code>l2</code>、<code>elasticnet</code> のいずれか</td><td><code>l1</code></td></tr>
 <tr><td><code>elastic-net-l1-ratio</code></td><td>Elastic Net 正則化の L1 比率（0.0-1.0、<code>--regularization elasticnet</code> の場合のみ使用）</td><td>0.5</td></tr>
 <tr><td><code>max-iterations</code></td><td>最大学習イテレーション数</td><td>100</td></tr>
+<tr><td><code>eta</code></td><td>収束判定の許容値（<a href="development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。<code>0</code> で判定を切ります</td><td>0.00005</td></tr>
 <tr><td><code>max-threads</code></td><td>並列処理スレッド数</td><td>CPU コア数</td></tr>
 </tbody></table>
 </div>
-<p>学習は MeCab の学習器より遅く、収束する前に <code>max-iterations</code> で止まることがあります（<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>）。</p>
+<p><a href="https://github.com/lindera/lindera/issues/1110">#1110</a> の mecab-ipadic の交差検証データでは、デフォルトの L1 正則化はまだ目的関数が収束する前に <code>max-iterations</code> に達します。一方、MeCab のデフォルトの <code>-c 1.0</code> に当たる L2 の <code>lambda</code> 1.0 は、MeCab の学習器とほぼ同じイテレーション数で収束します（<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>）。このデータでの学習時間は MeCab の学習器の約 2 倍で、その約 3 分の 2 は最適化の外、つまり最適化を始める前（<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>）と終えた後にかかります。</p>
 <h2 id="cli-の使用"><a class="header" href="#cli-の使用">CLI の使用</a></h2>
 <h3 id="train-1"><a class="header" href="#train-1">Train</a></h3>
 <pre><code class="language-bash">lindera train \
@@ -12542,11 +12591,11 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </tbody></table>
 </div>
 <p>たとえば上の <code>unk.def</code> で、最初の <code>KANJI</code> の行の後に 2 つ目の <code>KANJI</code> の行 <code>KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*</code> を加えると、エクスポートした <code>unk.def</code> は両方の行を入力と同じ順序で持ちます。</p>
-<pre><code class="language-csv">DEFAULT,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+<pre><code class="language-csv">DEFAULT,1,1,32764,名詞,一般,*,*,*,*,*,*,*
 SPACE,1,1,0,記号,空白,*,*,*,*,*,*,*
-HIRAGANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
-KATAKANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
-KANJI,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,32764,名詞,一般,*,*,*,*,*,*,*
 KANJI,1,1,0,名詞,サ変接続,*,*,*,*,*,*,*
 ALPHA,1,1,0,名詞,固有名詞,一般,*,*,*,*,*,*
 NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*

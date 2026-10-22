@@ -922,10 +922,11 @@ tokenizer
 <h2 id="module-structure"><a class="header" href="#module-structure">Module Structure</a></h2>
 <pre><code class="language-text">lindera-crf/src/
 ├── lib.rs                # Public API re-exports
+├── bigram_table.rs       # Bigram weight indices of the training lattices
 ├── feature.rs            # FeatureSet, FeatureProvider
 ├── lattice.rs            # Edge, Node, Lattice
 ├── model.rs              # RawModel, MergedModel, Model trait
-├── trainer.rs            # Trainer, Regularization enum
+├── trainer.rs            # Trainer, Regularization, StopReason, TrainingStats
 ├── errors.rs             # Error types
 ├── forward_backward.rs   # Forward-backward algorithm
 ├── math.rs               # Mathematical utilities (logsumexp)
@@ -940,7 +941,19 @@ tokenizer
 <h3 id="lattice--edge--node"><a class="header" href="#lattice--edge--node">Lattice / Edge / Node</a></h3>
 <p>Lattice structure with variable-length edges for sequence labeling. <code>Edge</code> represents a candidate span with a label, while <code>Node</code> aggregates edges at a given position. The <code>Lattice</code> is constructed from input data and used by the model to find the best path.</p>
 <h3 id="trainer"><a class="header" href="#trainer">Trainer</a></h3>
-<p>Trains a CRF model using L-BFGS optimization with configurable regularization. The trainer accepts labeled lattice examples, computes gradients via the forward-backward algorithm, and iteratively updates model weights. <code>Trainer::train</code> returns the trained <code>RawModel</code>; <code>Trainer::train_with_stats</code> also returns a <code>TrainingStats</code> with the number of iterations that ran, which is the maximum set with <code>Trainer::max_iter</code> when that stopped training, and fewer when the optimizer stopped earlier, for example because it converged.</p>
+<p>Trains a CRF model using L-BFGS optimization (OWL-QN when the regularization has an L1 part) with configurable regularization. The trainer accepts labeled lattice examples, computes the loss and its gradient via the forward-backward algorithm, and iteratively updates model weights. <code>Trainer::train</code> returns the trained <code>RawModel</code>; <code>Trainer::train_with_stats</code> also returns a <code>TrainingStats</code> with:</p>
+<ul>
+<li><code>iterations</code>: the number of iterations that ran, which is the maximum set with <code>Trainer::max_iter</code> when that stopped training, and fewer when the optimizer stopped earlier.</li>
+<li><code>evaluations</code>: the number of evaluations of the loss and its gradient, each one forward-backward pass over every lattice, line-search trials included.</li>
+<li><code>stop_reason</code>: why the optimizer stopped, a <code>StopReason</code>.</li>
+</ul>
+<p>The optimizer stops at the first of these:</p>
+<ul>
+<li><code>StopReason::Converged</code>: the relative change of the objective, <code>|previous - current| / |previous|</code>, stayed below the tolerance set with <code>Trainer::eta</code> for 3 iterations in a row, or the gradient vanished. The default tolerance, <code>DEFAULT_ETA</code> (<code>5e-5</code>), is the default <code>eta</code> of MeCab's learner, which applies the same test to every evaluation, line-search trials included, where Lindera counts iterations. <code>Trainer::eta(0.0)</code> turns the test off.</li>
+<li><code>StopReason::NoProgress</code>: an iteration left the objective unchanged. When this happens after a few iterations, the model is barely trained.</li>
+<li><code>StopReason::MaxIterations</code>: the cap set with <code>Trainer::max_iter</code>.</li>
+<li><code>StopReason::LineSearchFailed</code>: the line search of an iteration failed. The weights are the best ones of the run.</li>
+</ul>
 <h3 id="regularization"><a class="header" href="#regularization">Regularization</a></h3>
 <p>Configurable regularization strategies:</p>
 <ul>
@@ -957,7 +970,8 @@ tokenizer
 <p><code>MergedFeatureSet</code> holds the pre-summed unigram <code>weight</code> for a label, along with its <code>left_id</code>/<code>right_id</code> bigram connection IDs into <code>MergedModel</code>'s bigram weight matrix.</p>
 <p><code>RawModel::unigram_weight</code> computes that sum for a list of unigram feature IDs, and <code>merge</code> calls it for every label. A feature without a weight adds nothing, so it also weighs the features of an entry that was not a label in training: <code>lindera-trainer</code> uses it for the cost of a user lexicon entry.</p>
 <h3 id="forward-backward-algorithm"><a class="header" href="#forward-backward-algorithm">Forward-backward Algorithm</a></h3>
-<p>Computes alpha (forward) and beta (backward) values over the lattice. Used during training to calculate expected feature counts and gradients.</p>
+<p>Computes alpha (forward) and beta (backward) values over the lattice. Used during training to calculate the loss and the expected feature counts. One pass over a lattice yields both its loss and its share of the gradient. The optimizer keeps the result for the last parameter vector, because argmin's L-BFGS asks for the cost and the gradient of the same point in two calls.</p>
+<p>Before the optimizer starts, a bigram table records, for every pair of edges that meet in the lattices, the weight indices of their bigram features, in the order the evaluation adds them; labels with the same bigram feature IDs share the entries. The evaluations read the indices from the table instead of looking each bigram feature up in a map, and add the same weights in the same order, so the trained weights do not change.</p>
 <h2 id="feature-flags-1"><a class="header" href="#feature-flags-1">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>alloc</code></td><td>Alloc support for <code>no_std</code></td><td>No*</td></tr>
@@ -1093,7 +1107,7 @@ tokenizer
 <li>Each gold token gets the label of the first seed row with the same span and the same whole feature string; else that of the first <code>unk.def</code> entry, in file order, of an unknown-word candidate with the same span whose feature columns other than <code>*</code> all equal the gold token's (both split as <code>rewrite()</code> splits a feature); else a virtual label built from the gold feature string (<code>%t</code> 0, no <code>%w</code>, one per distinct feature string), as MeCab's learner adds a virtual node. Virtual labels follow the other labels, are trained, and are never exported.</li>
 <li>Every other candidate becomes a negative edge.</li>
 </ul>
-<p>Once the lattices are built, it prints a <code>Lattice statistics:</code> line with the number of gold tokens labelled each way (<code>gold_lexicon</code>, <code>gold_unknown</code>, <code>gold_virtual</code>), the number of virtual labels (<code>virtual_labels</code>), and the negative edges from the seed lexicon and from the unknown-word candidates (<code>negative_lexicon</code>, <code>negative_unknown</code>). <code>Trainer::max_grouping_len</code> caps unknown-word grouping with the runtime's meaning (characters beyond the first; <code>None</code>, the default, leaves it unbounded); the other builder methods set the regularization, the iteration cap and the thread count.</p>
+<p>Once the lattices are built, it prints a <code>Lattice statistics:</code> line with the number of gold tokens labelled each way (<code>gold_lexicon</code>, <code>gold_unknown</code>, <code>gold_virtual</code>), the number of virtual labels (<code>virtual_labels</code>), and the negative edges from the seed lexicon and from the unknown-word candidates (<code>negative_lexicon</code>, <code>negative_unknown</code>). <code>Trainer::max_grouping_len</code> caps unknown-word grouping with the runtime's meaning (characters beyond the first; <code>None</code>, the default, leaves it unbounded); the other builder methods set the regularization, the iteration cap, the tolerance of the convergence test (<code>Trainer::eta</code>, default <code>DEFAULT_ETA</code>, <code>5e-5</code>; see the <a href="lindera-trainer/../lindera-crf/architecture.html#trainer">lindera-crf architecture</a>) and the thread count. After training it prints why the optimizer stopped, with the number of iterations and of evaluations of the loss and its gradient, and a warning when an iteration left the objective unchanged or the line search failed.</p>
 <h3 id="model--serializablemodel"><a class="header" href="#model--serializablemodel">Model / SerializableModel</a></h3>
 <p><code>Model</code> is the trained model produced by <code>Trainer::train</code>. It owns the trained <code>lindera_crf::RawModel</code>, the <code>TrainerConfig</code> used to train it, the extracted feature weights and labels, the feature strings of the virtual labels, and any user lexicon entries added afterward via <code>read_user_lexicon</code>. It converts learned CRF weights into MeCab-compatible integer costs (<code>tocost(weight, cost_factor) = clamp(round(-weight * cost_factor), i16::MIN, i16::MAX)</code>, i.e. clamped to <code>[-32768, 32767]</code>), with the cost factor computed to make full use of the <code>i16</code> range (<code>calculate_cost_factor</code>). <code>Model</code> can serialize itself (<code>write_model</code>) and export dictionary source files directly.</p>
 <p><code>SerializableModel</code> is the plain-data, <code>rkyv</code>-serializable counterpart returned by <code>Model::read_model</code> when loading a previously trained model back from a reader (as done by the <code>lindera export</code> CLI command). It carries the same trained information as <code>Model</code> -- feature weights, labels, POS info, connection cost matrix, the <code>unk.def</code> entries (<code>unk_entries</code>, <code>(category, feature string)</code> pairs in file order), preserved <code>char.def</code>/<code>feature.def</code>/<code>rewrite.def</code> content, cost factor, and left/right context ID maps -- as owned data, without a <code>TrainerConfig</code>, and exposes its own writer methods for producing the dictionary export files.</p>
@@ -3013,6 +3027,7 @@ Downloaded dictionary 'ipadic'
 <li><code>--regularization</code> / <code>-R</code>: Regularization type: <code>l1</code>, <code>l2</code>, or <code>elasticnet</code> (default: <code>l1</code>)</li>
 <li><code>--elastic-net-l1-ratio</code>: L1 ratio for Elastic Net regularization (0.0-1.0), only used with <code>--regularization elasticnet</code> (default: 0.5)</li>
 <li><code>--max-iterations</code> / <code>-i</code>: Maximum number of iterations for training (default: 100)</li>
+<li><code>--eta</code> / <code>-e</code>: Tolerance of the convergence test: training stops before <code>--max-iterations</code> once the relative change of the objective stays below this value for 3 iterations in a row; <code>0</code> disables the test (default: 0.00005, the default of MeCab's learner)</li>
 <li><code>--max-threads</code> / <code>-t</code>: Maximum number of threads (defaults to CPU core count; affects only speed, never the trained model)</li>
 </ul>
 <h3 id="basic-workflow"><a class="header" href="#basic-workflow">Basic workflow</a></h3>
@@ -3063,6 +3078,9 @@ EOS
 <h4 id="3-training-results"><a class="header" href="#3-training-results">3. Training results</a></h4>
 <p><code>lindera train</code> writes the model to the <code>--output</code> file. Once it has built the training lattices, it prints how the gold tokens of the corpus were labelled (see <a href="lindera-cli/../development/training_pipeline.html#how-training-works">How training works</a>). With the files in <code>./resources/training/</code>:</p>
 <pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+</code></pre>
+<p>Once training stops, it prints why, with the number of iterations and of evaluations of the loss and its gradient (see <code>--eta</code> above):</p>
+<pre><code class="language-text">L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
 </code></pre>
 <p>The trained model contains:</p>
 <ul>
@@ -4112,7 +4130,7 @@ lindera.train(
 <tr><td><code>rewrite_def</code></td><td><code>str</code></td><td>required</td><td>Path to the rewrite rule definition file (rewrite.def)</td></tr>
 <tr><td><code>output</code></td><td><code>str</code></td><td>required</td><td>Output path for the trained model file</td></tr>
 <tr><td><code>lambda_</code></td><td><code>float</code></td><td><code>0.01</code></td><td>L1 regularization cost (0.0--1.0)</td></tr>
-<tr><td><code>max_iter</code></td><td><code>int</code></td><td><code>100</code></td><td>Maximum number of training iterations</td></tr>
+<tr><td><code>max_iter</code></td><td><code>int</code></td><td><code>100</code></td><td>Maximum number of training iterations; training stops earlier once the objective converges (its relative change stays below 5e-5 for 3 iterations in a row)</td></tr>
 <tr><td><code>max_threads</code></td><td><code>int</code> or <code>None</code></td><td><code>None</code></td><td>Number of threads (None = auto-detect CPU cores)</td></tr>
 </tbody></table>
 </div>
@@ -5022,7 +5040,7 @@ train({
 <tr><td><code>rewriteDef</code></td><td><code>string</code></td><td>required</td><td>Path to the rewrite rule definition file (rewrite.def)</td></tr>
 <tr><td><code>output</code></td><td><code>string</code></td><td>required</td><td>Output path for the trained model file</td></tr>
 <tr><td><code>lambda</code></td><td><code>number</code></td><td><code>0.01</code></td><td>L1 regularization cost (0.0--1.0)</td></tr>
-<tr><td><code>maxIter</code></td><td><code>number</code></td><td><code>100</code></td><td>Maximum number of training iterations</td></tr>
+<tr><td><code>maxIter</code></td><td><code>number</code></td><td><code>100</code></td><td>Maximum number of training iterations; training stops earlier once the objective converges (its relative change stays below 5e-5 for 3 iterations in a row)</td></tr>
 <tr><td><code>maxThreads</code></td><td><code>number | undefined</code></td><td><code>undefined</code></td><td>Number of threads (undefined = auto-detect CPU cores)</td></tr>
 </tbody></table>
 </div>
@@ -5978,7 +5996,7 @@ Lindera.train(
 <tr><td>6</td><td>rewrite_def</td><td><code>String</code></td><td>Path to the rewrite rule definition file (rewrite.def)</td></tr>
 <tr><td>7</td><td>output</td><td><code>String</code></td><td>Output path for the trained model file</td></tr>
 <tr><td>8</td><td>lambda</td><td><code>Float</code></td><td>L1 regularization cost (0.0--1.0)</td></tr>
-<tr><td>9</td><td>max_iter</td><td><code>Integer</code></td><td>Maximum number of training iterations</td></tr>
+<tr><td>9</td><td>max_iter</td><td><code>Integer</code></td><td>Maximum number of training iterations; training stops earlier once the objective converges (its relative change stays below 5e-5 for 3 iterations in a row)</td></tr>
 <tr><td>10</td><td>max_threads</td><td><code>Integer</code> or <code>nil</code></td><td>Number of threads (<code>nil</code> = auto-detect CPU cores)</td></tr>
 </tbody></table>
 </div>
@@ -7054,7 +7072,7 @@ Lindera\Trainer::train(
 <tr><td><code>$rewrite_def</code></td><td><code>string</code></td><td>required</td><td>Path to the rewrite rule definition file (rewrite.def)</td></tr>
 <tr><td><code>$output</code></td><td><code>string</code></td><td>required</td><td>Output path for the trained model file</td></tr>
 <tr><td><code>$lambda</code></td><td><code>float</code></td><td><code>0.01</code></td><td>L1 regularization cost (0.0--1.0)</td></tr>
-<tr><td><code>$max_iter</code></td><td><code>int</code></td><td><code>100</code></td><td>Maximum number of training iterations</td></tr>
+<tr><td><code>$max_iter</code></td><td><code>int</code></td><td><code>100</code></td><td>Maximum number of training iterations; training stops earlier once the objective converges (its relative change stays below 5e-5 for 3 iterations in a row)</td></tr>
 <tr><td><code>$max_threads</code></td><td><code>int|null</code></td><td><code>null</code></td><td>Number of threads (<code>null</code> = auto-detect CPU cores)</td></tr>
 </tbody></table>
 </div>
@@ -11681,6 +11699,12 @@ the default L1 regularization, writing 0 raised the boundary F1 from
 (<a href="https://github.com/lindera/lindera/issues/1168">#1168</a>).</li>
 <li><code>model_info.training_iterations</code> in <code>metadata.json</code> was the
 <code>--max-iterations</code> value, not the number of iterations that ran.</li>
+<li>Training stopped at <code>--max-iterations</code> unless one of argmin's own tests
+held: a gradient norm below the square root of the machine epsilon, or an
+iteration that left the objective unchanged. With an objective in the
+hundreds or thousands the first practically never holds, so training ran
+to the cap. An L2 run whose line search failed panicked
+(<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>).</li>
 <li>The export functions of the Python, Node.js, Ruby and PHP bindings wrote
 <code>lex.csv</code>, <code>matrix.def</code>, <code>unk.def</code>, <code>metadata.json</code> and a fixed
 <code>char.def</code> with the categories <code>DEFAULT</code>, <code>HIRAGANA</code>, <code>KATAKANA</code>,
@@ -11746,6 +11770,14 @@ training and in MeCab.</li>
 <li><code>model_info.training_iterations</code> is the number of L-BFGS iterations that
 ran: <code>--max-iterations</code> when that stopped training, fewer when it
 converged earlier.</li>
+<li>Training also stops once the relative change of the objective has stayed
+below <code>--eta</code> (<code>Trainer::eta</code>; default 0.00005, the default of MeCab's
+learner) for 3 iterations in a row; <code>--eta 0</code> turns the test off. The
+bindings use the default. <code>lindera train</code> prints why the optimizer
+stopped, with the number of iterations and of evaluations of the loss and
+its gradient, and warns when an iteration left the objective unchanged or
+the line search failed. An L2 run whose line search fails keeps the best
+weights of the run.</li>
 <li>The export functions of the Python, Node.js, Ruby and PHP bindings write
 the files <code>lindera export</code> writes, with the same code: the <code>char.def</code>,
 <code>feature.def</code> and <code>rewrite.def</code> the model was trained with, and
@@ -11790,10 +11822,15 @@ no column in common with any seed row is an error, and nothing is
 written, as <code>mecab-dict-index</code> fails for a user dictionary entry whose
 feature has no context ID.</li>
 </ul>
-<p>Training takes longer, because every lattice now has the seed words. It is
-slower than MeCab's learner, and it can stop at <code>--max-iterations</code>
-before it converges
-(<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>). The files in
+<p>Every lattice now has the seed words. On the mecab-ipadic data of <a href="https://github.com/lindera/lindera/issues/1110">#1110</a>,
+the default L1 regularization still reaches <code>--max-iterations</code> before the
+objective converges, while L2 with <code>--lambda 1.0</code> (MeCab's <code>-c 1.0</code>)
+converges in about as many iterations as MeCab's learner
+(<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>); training there
+takes about twice as long as MeCab's learner, about two thirds of it
+outside the optimizer: before it starts
+(<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>) and after it
+stops. The files in
 <code>resources/training/</code> now define a <code>SPACE</code> category in <code>char.def</code> and a
 <code>SPACE</code> line in <code>unk.def</code>, so a dictionary trained from them tokenizes
 without <code>--keep-whitespace</code>, which it needed in v6
@@ -12097,6 +12134,7 @@ positions that no path reaches. The tokenization path does not change.</p>
 <tr><td><code>Model::num_labels()</code> and <code>ModelMetadata::label_count</code> count one unknown-word label per <code>char.def</code> category</td><td>Count one per <code>unk.def</code> entry; the virtual labels are not counted</td></tr>
 <tr><td><code>Model::write_left_id_def</code> / <code>write_right_id_def</code> write the IDs of the bigram feature strings, another ID space from the context IDs of <code>lex.csv</code> and <code>matrix.def</code></td><td>Write the context IDs, as <code>SerializableModel::write_left_id_def</code> / <code>write_right_id_def</code> write them for the model that <code>Model::write_model</code> writes</td></tr>
 <tr><td><code>ModelMetadata::iterations</code> (and <code>model_info.training_iterations</code>) is the <code>max_iter</code> setting</td><td>The number of L-BFGS iterations that ran</td></tr>
+<tr><td>—</td><td>New: <code>Trainer::eta</code> and <code>Trainer::get_eta</code>, the tolerance of the convergence test, and <code>DEFAULT_ETA</code> (<code>5e-5</code>), its default; <code>lindera-crf</code> adds the same <code>Trainer::eta</code> and <code>DEFAULT_ETA</code>, and <code>StopReason</code> with <code>TrainingStats::evaluations</code> and <code>TrainingStats::stop_reason</code></td></tr>
 <tr><td><code>Model::write_connection_costs</code> and <code>SerializableModel::write_connection_costs</code> write <code>i16::MAX</code> for a connection without a trained weight</td><td>Write 0, the cost the connection has in training and in MeCab</td></tr>
 </tbody></table>
 </div>
@@ -12292,6 +12330,11 @@ trained dictionary tokenizes without <code>--keep-whitespace</code>
 category once, before the range lines that name it, give every category
 an <code>unk.def</code> line, and remove the <code>unk.def</code> lines of undefined categories
 (<a href="https://github.com/lindera/lindera/issues/1195">#1195</a>).</li>
+<li>Expect training to stop before <code>--max-iterations</code> once the objective
+converges, and read the line <code>lindera train</code> prints to see why it
+stopped; pass <code>--eta 0</code> (<code>Trainer::eta(0.0)</code> in Rust) to stop only at the
+cap and on the optimizer's own tests, as v6 did
+(<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>).</li>
 </ul>
 <p>Everyone who builds a system dictionary with <code>lindera build</code>:</p>
 <ul>
@@ -12727,6 +12770,16 @@ cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 <pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
 </code></pre>
 <p><code>gold_lexicon</code>, <code>gold_unknown</code> and <code>gold_virtual</code> count the gold tokens labelled by each of the three steps, <code>virtual_labels</code> counts the virtual labels, and <code>negative_lexicon</code> and <code>negative_unknown</code> count the negative edges from the seed lexicon and from the unknown-word candidates.</p>
+<p>The CRF is then trained with L-BFGS (OWL-QN when the regularization has an L1 part). Training stops at the first of these:</p>
+<ul>
+<li><code>converged</code>: the relative change of the objective, <code>|previous - current| / |previous|</code>, stayed below <code>eta</code> for 3 iterations in a row. The default <code>eta</code> is that of MeCab's learner, which applies the same test to every evaluation, line-search trials included, where Lindera counts iterations.</li>
+<li><code>no progress</code>: an iteration left the objective unchanged. When this happens after a few iterations, the model is barely trained, and <code>lindera train</code> warns about it.</li>
+<li>The line search of an iteration failed; the model keeps the best weights of the run, with a warning.</li>
+<li><code>max-iterations</code> was reached before the objective converged.</li>
+</ul>
+<p><code>lindera train</code> prints which one stopped it, with the number of iterations and of evaluations, each evaluation being one forward-backward pass over every lattice; with the files in <code>resources/training/</code>:</p>
+<pre><code class="language-text">L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
+</code></pre>
 <h2 id="required-input-files"><a class="header" href="#required-input-files">Required Input Files</a></h2>
 <h3 id="1-seed-lexicon-seedcsv"><a class="header" href="#1-seed-lexicon-seedcsv">1. Seed Lexicon (seed.csv)</a></h3>
 <p>Base vocabulary dictionary in MeCab CSV format.</p>
@@ -12877,10 +12930,11 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>regularization</code></td><td>Regularization type: <code>l1</code>, <code>l2</code>, or <code>elasticnet</code></td><td><code>l1</code></td></tr>
 <tr><td><code>elastic-net-l1-ratio</code></td><td>L1 ratio for Elastic Net regularization (0.0-1.0, only used with <code>--regularization elasticnet</code>)</td><td>0.5</td></tr>
 <tr><td><code>max-iterations</code></td><td>Maximum number of training iterations</td><td>100</td></tr>
+<tr><td><code>eta</code></td><td>Tolerance of the convergence test (see <a href="development/training_pipeline.html#how-training-works">How training works</a>); <code>0</code> disables the test</td><td>0.00005</td></tr>
 <tr><td><code>max-threads</code></td><td>Number of parallel processing threads</td><td>CPU core count</td></tr>
 </tbody></table>
 </div>
-<p>Training is slower than MeCab's learner, and it can stop at <code>max-iterations</code> before it converges (<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>).</p>
+<p>On the mecab-ipadic cross-validation data of <a href="https://github.com/lindera/lindera/issues/1110">#1110</a>, the default L1 regularization still reaches <code>max-iterations</code> before the objective converges, while L2 with <code>lambda</code> 1.0, which is MeCab's default <code>-c 1.0</code>, converges in about as many iterations as MeCab's learner (<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>). Training there takes about twice as long as MeCab's learner, and about two thirds of the time is spent outside the optimizer: before it starts (<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>) and after it stops.</p>
 <h2 id="cli-usage"><a class="header" href="#cli-usage">CLI Usage</a></h2>
 <h3 id="train-1"><a class="header" href="#train-1">Train</a></h3>
 <pre><code class="language-bash">lindera train \
@@ -12916,11 +12970,11 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </tbody></table>
 </div>
 <p>For example, if the <code>unk.def</code> above has a second <code>KANJI</code> line, <code>KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*</code>, after the first one, the exported <code>unk.def</code> keeps both, in input order:</p>
-<pre><code class="language-csv">DEFAULT,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+<pre><code class="language-csv">DEFAULT,1,1,32764,名詞,一般,*,*,*,*,*,*,*
 SPACE,1,1,0,記号,空白,*,*,*,*,*,*,*
-HIRAGANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
-KATAKANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
-KANJI,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,32764,名詞,一般,*,*,*,*,*,*,*
 KANJI,1,1,0,名詞,サ変接続,*,*,*,*,*,*,*
 ALPHA,1,1,0,名詞,固有名詞,一般,*,*,*,*,*,*
 NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*

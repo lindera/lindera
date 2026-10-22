@@ -874,6 +874,7 @@ Downloaded dictionary 'ipadic'
 <li><code>--regularization</code> / <code>-R</code>: 正則化の種類: <code>l1</code>, <code>l2</code>, または <code>elasticnet</code> (デフォルト: <code>l1</code>)</li>
 <li><code>--elastic-net-l1-ratio</code>: Elastic Net 正則化時のL1比率 (0.0-1.0)。<code>--regularization elasticnet</code> を指定した場合のみ使用されます (デフォルト: 0.5)</li>
 <li><code>--max-iterations</code> / <code>-i</code>: 学習の最大反復回数 (デフォルト: 100)</li>
+<li><code>--eta</code> / <code>-e</code>: 収束判定の許容値。目的関数の相対変化がこの値を 3 回続けて下回ると、<code>--max-iterations</code> より前に学習を止めます。<code>0</code> で判定を切ります (デフォルト: 0.00005。MeCab の学習器のデフォルトと同じ)</li>
 <li><code>--max-threads</code> / <code>-t</code>: 最大スレッド数 (デフォルトはCPUコア数。速度のみに影響し、学習結果は変わりません)</li>
 </ul>
 <h3 id="基本的なワークフロー"><a class="header" href="#基本的なワークフロー">基本的なワークフロー</a></h3>
@@ -924,6 +925,9 @@ EOS
 <h4 id="3-学習結果"><a class="header" href="#3-学習結果">3. 学習結果</a></h4>
 <p><code>lindera train</code> はモデルを <code>--output</code> のファイルに書き出します。学習用のラティスを作り終えると、コーパスの正解トークンのラベルの付き方を出力します（<a href="../development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。<code>./resources/training/</code> のファイルでは次のとおりです：</p>
 <pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+</code></pre>
+<p>学習が止まると、止まった理由を、イテレーション数と損失・勾配の評価回数とともに出力します（上の <code>--eta</code> を参照）：</p>
+<pre><code class="language-text">L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
 </code></pre>
 <p>学習済みモデルには以下が含まれます：</p>
 <ul>
