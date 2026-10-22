@@ -10,7 +10,7 @@
 //! intentional behavior change, run:
 //!
 //! ```sh
-//! INSTA_UPDATE=always cargo test -p lindera --features embed-ipadic,embed-ko-dic --test golden_tokenization
+//! INSTA_UPDATE=always cargo test -p lindera --features embed-ipadic,embed-ko-dic,embed-jieba --test golden_tokenization
 //! cargo insta review  # or inspect the diff manually
 //! ```
 

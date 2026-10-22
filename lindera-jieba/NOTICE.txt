@@ -4,11 +4,11 @@ Lindera Morphological Analyzer
 
 This software includes a binary and/or source version of data from
 
-  mecab-jieba-0.1.2
+  mecab-jieba-0.1.3
 
 which can be obtained from
 
-  https://lindera.dev/mecab-jieba-0.1.2.tar.gz
+  https://lindera.dev/mecab-jieba-0.1.3.tar.gz
 
 The mecab-jieba dictionary is built from jieba's word frequency dictionary
 (dict.txt.big) and enriched with CC-CEDICT data (pinyin, traditional and

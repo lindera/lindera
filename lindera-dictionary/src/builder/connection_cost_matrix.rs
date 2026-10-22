@@ -24,7 +24,7 @@ const UTF8_BOM: &[u8] = &[0xEF, 0xBB, 0xBF];
 
 /// Minimum `matrix.def` data size (in bytes, excluding the header line) at
 /// which the parser switches to the parallel path. Small connection matrices
-/// (e.g. CC-CEDICT's 1x1, Jieba's 7x6) are parsed sequentially to avoid
+/// (e.g. CC-CEDICT's 1x1, Jieba's 56x56) are parsed sequentially to avoid
 /// thread-pool overhead.
 #[cfg(not(target_family = "wasm"))]
 const PARALLEL_THRESHOLD: usize = 1 << 20; // 1 MiB
