@@ -27,7 +27,7 @@ Thank you for your interest in contributing to Lindera! This page provides guide
     make check-docs
     ```
 
-    > Note: CI enforces all four: it checks formatting, runs clippy (warnings as errors) and the tests for each crate with the features it tests that crate with, and fails on rustdoc warnings in any crate. `make check-docs` leaves out the language bindings, which need their languages' toolchains to build; if you change one, also run `make check-docs-lindera-<binding>`, as that binding's CI job does. `make lint` and `make test` apply the same per-crate features, and `make lint-lindera-<binding>` also runs the language-side linter that the binding's CI job runs; see [Build & Test](build_and_test.md).
+    > Note: CI enforces all four: it checks formatting, runs clippy (warnings as errors) and the tests for each crate with the features it tests that crate with, and fails on rustdoc warnings in any crate. `make check-docs` leaves out the language bindings, which need their languages' toolchains to build; if you change one, also run `make check-docs-lindera-<binding>`, as that binding's CI job does. `make lint` and `make test` apply the same per-crate features, and `make lint-lindera-<binding>` also runs the language-side linter that the binding's CI job runs. `make lint` ends with `make lint-scripts`, which lints the scripts outside the crates as the `Lint scripts` CI job does; see [Build & Test](build_and_test.md).
 
 5. Commit and push your changes, then open a pull request.
 

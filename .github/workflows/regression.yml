@@ -63,6 +63,7 @@ jobs:
       lindera-php: ${{ steps.filter.outputs.lindera-php }}
       lindera-wasm: ${{ steps.filter.outputs.lindera-wasm }}
       docs: ${{ steps.filter.outputs.docs }}
+      scripts: ${{ steps.filter.outputs.scripts }}
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -238,6 +239,7 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              - 'scripts/benchmarks/memcheck_common.mjs'
               - 'scripts/benchmarks/memcheck_nodejs.mjs'
               - *shared-workspace
               - *shared-make
@@ -300,6 +302,7 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              - 'scripts/benchmarks/memcheck_common.mjs'
               - 'scripts/benchmarks/memcheck_wasm.mjs'
               - *shared-workspace
               - *shared-make
@@ -322,6 +325,20 @@ jobs:
               - 'lindera-binding/**'
               - 'lindera-cli/**'
               - *shared-workspace
+              - *shared-make
+            # The files `make lint-scripts` lints, and where the rules and
+            # versions it applies to them live, in the bindings.
+            scripts:
+              - 'scripts/benchmarks/**'
+              - 'docs/mermaid-init.js'
+              - 'docs/ja/mermaid-init.js'
+              - 'lindera-python/pyproject.toml'
+              - 'lindera-ruby/.rubocop.yml'
+              - 'lindera-ruby/Gemfile'
+              - 'lindera-ruby/lindera.gemspec'
+              - 'lindera-php/.php-cs-fixer.dist.php'
+              - 'composer.json'
+              - '.github/workflows/regression.yml'
               - *shared-make
 
   test-lindera-crf:
@@ -960,3 +977,45 @@ jobs:
       # clippy's check builds of the crates.io dependencies.
       - name: Check docs
         run: make check-docs-lindera-wasm
+
+  # The benchmark harness in scripts/benchmarks/, which the bindings share, and
+  # the JavaScript the docs load belong to no binding, so no binding job lints
+  # them (#1251). `make lint-scripts` checks each file with the pinned linter
+  # and the rules of the binding written in its language, so this job sets up
+  # the four languages, at the versions the binding jobs use, and builds no
+  # Rust.
+  lint-scripts:
+    name: Lint scripts
+    needs: [detect-changes]
+    if: github.event_name != 'pull_request' || needs.detect-changes.outputs.scripts == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: 3.x
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+
+      # RuboCop comes from lindera-ruby/Gemfile, as in the Ruby binding job.
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+          working-directory: lindera-ruby
+
+      # PHP CS Fixer comes from composer.json, as in the PHP binding job.
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+
+      - name: Run lint
+        run: make lint-scripts

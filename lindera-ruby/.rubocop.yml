@@ -3,6 +3,14 @@ AllCops:
   TargetRubyVersion: 3.1
   SuggestExtensions: false
 
+# The cop asks the gemspec to set `rubygems_mfa_required`, which requires every
+# owner of the gem to have MFA on RubyGems and, depending on their MFA level,
+# an OTP for each push. That is a decision about how releases are published
+# (release.yml pushes with an API key and passes no OTP), not a style fix
+# (#1251).
+Gemspec/RequireMFA:
+  Enabled: false
+
 Style/Documentation:
   Exclude:
     - "test/**/*"

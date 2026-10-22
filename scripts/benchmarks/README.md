@@ -49,23 +49,23 @@ against two build output directories via `BENCH_LINDERA_DIR`).
 
 ## Per-language notes
 
-| Language | Build per side | Bench script |
-| --- | --- | --- |
-| Python | `maturin develop --release --features embed-ipadic` into a per-side venv | `bench_python.py` |
-| Node.js | `npx napi build --platform --release --features embed-ipadic` per side; point `BENCH_LINDERA_DIR` at the checkout | `bench_nodejs.mjs` |
-| Ruby | `bundle exec rake compile` per side (`LINDERA_FEATURES=embed-ipadic`) | `bench_ruby.rb` |
-| PHP | `cargo build -p lindera-php --release --features embed-ipadic`; pass the extension path via `BENCH_PHP_EXT` | `bench_php.php` |
-| WASM | not measured in a browser (noise-dominated); covered by the Rust-level `lindera-binding` criterion bench instead | — |
+| Language | Build per side                                                                                                    | Bench script       |
+| -------- | ----------------------------------------------------------------------------------------------------------------- | ------------------ |
+| Python   | `maturin develop --release --features embed-ipadic` into a per-side venv                                          | `bench_python.py`  |
+| Node.js  | `npx napi build --platform --release --features embed-ipadic` per side; point `BENCH_LINDERA_DIR` at the checkout | `bench_nodejs.mjs` |
+| Ruby     | `bundle exec rake compile` per side (`LINDERA_FEATURES=embed-ipadic`)                                             | `bench_ruby.rb`    |
+| PHP      | `cargo build -p lindera-php --release --features embed-ipadic`; pass the extension path via `BENCH_PHP_EXT`       | `bench_php.php`    |
+| WASM     | not measured in a browser (noise-dominated); covered by the Rust-level `lindera-binding` criterion bench instead  | —                  |
 
 ## Environment variables
 
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `BENCH_TEXT` | `すもももももももものうち` | Input text (short, per-call workload) |
-| `BENCH_CALLS` | `2000` | Calls per timing sample |
-| `BENCH_INNER` | `10` | Samples per invocation; the minimum is reported |
-| `BENCH_LINDERA_DIR` | — | (Node.js) checkout directory whose build artifacts to load |
-| `BENCH_PHP_EXT` | — | (PHP) path to `liblindera_php.so` |
+| Variable            | Default                    | Meaning                                                    |
+| ------------------- | -------------------------- | ---------------------------------------------------------- |
+| `BENCH_TEXT`        | `すもももももももものうち` | Input text (short, per-call workload)                      |
+| `BENCH_CALLS`       | `2000`                     | Calls per timing sample                                    |
+| `BENCH_INNER`       | `10`                       | Samples per invocation; the minimum is reported            |
+| `BENCH_LINDERA_DIR` | —                          | (Node.js) checkout directory whose build artifacts to load |
+| `BENCH_PHP_EXT`     | —                          | (PHP) path to `liblindera_php.so`                          |
 
 Each bench script prints one TSV line per workload: `<workload>\t<min µs/call>`.
 With `--verify` it instead prints the token surfaces for the input, one

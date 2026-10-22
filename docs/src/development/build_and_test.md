@@ -74,7 +74,7 @@ To auto-fix formatting:
 cargo fmt --all
 ```
 
-> Note: `cargo fmt` formats the Rust code only. For a language binding, `make format-lindera-<binding>` also formats the binding's Python, JavaScript, Ruby or PHP code, with the tools and versions `make lint-lindera-<binding>` checks it with (see below).
+> Note: `cargo fmt` formats the Rust code only. For a language binding, `make format-lindera-<binding>` also formats the binding's Python, JavaScript, Ruby or PHP code, with the tools and versions `make lint-lindera-<binding>` checks it with (see below). `make format-scripts` does the same for the files outside the crates that `make lint-scripts` checks.
 
 ### Lint
 
@@ -87,6 +87,8 @@ cargo clippy -- -D warnings
 > Note: CI runs `cargo clippy --all-targets -- -D warnings` for each crate, with the features it tests that crate with (see `.github/workflows/test-crate.yml`, and the language binding jobs in `.github/workflows/regression.yml`), so the test code is linted too. `make lint-<crate>` runs the same clippy command. Run clippy locally (e.g. via `make lint`) before opening a PR.
 >
 > For a language binding, `make lint-lindera-<binding>` then runs the binding's language-side linter, as the binding's CI job does: ruff for Python, Prettier for Node.js and WASM, RuboCop for Ruby, and PHP CS Fixer for PHP. Their versions are pinned (ruff and Prettier in the `Makefile`, RuboCop in `lindera-ruby/Gemfile`, PHP CS Fixer in `composer.json`), so a new release of a tool cannot fail CI on unchanged code. The targets install the pinned versions themselves, which needs the language's toolchain (Python 3, Node.js with npx, Bundler, Composer) and network access.
+>
+> `make lint-scripts` lints the hand-written files that belong to no binding, as the `Lint scripts` CI job does: the benchmark harness in `scripts/benchmarks/`, which the bindings share, and the JavaScript the docs load (`docs/mermaid-init.js`). It runs the same pinned tools, and checks each file with the rules of the binding written in its language, so it needs all four toolchains. `make lint` runs it after the crates.
 
 ## Documentation
 

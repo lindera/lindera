@@ -746,12 +746,14 @@ jobs:
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
 
+      # The gemspec's string literals are single-quoted, as RuboCop
+      # (`make lint-lindera-ruby`) keeps them.
       - name: Update gem version
         working-directory: lindera-ruby
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          sed -i.bak "s/spec.version = \".*\"/spec.version = \"${VERSION}\"/" lindera.gemspec
+          sed -i.bak "s/spec.version = '.*'/spec.version = '${VERSION}'/" lindera.gemspec
           rm -f lindera.gemspec.bak
 
       # Fails when the gem version (from the tag) differs from the crate version.

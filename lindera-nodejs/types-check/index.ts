@@ -81,14 +81,18 @@ export function checkSkipWhitespaceForms(): void {
 // Every documented form of the constructor: the arguments after the
 // dictionary are optional. The WASM declarations lost their `?` once (#1076);
 // this guards the Node.js ones the same way.
-export function checkTokenizerConstructorForms(dictionary: Dictionary): Array<Tokenizer> {
+export function checkTokenizerConstructorForms(
+  dictionary: Dictionary,
+): Array<Tokenizer> {
   return [
     new Tokenizer(dictionary),
     new Tokenizer(dictionary, Mode.normal()),
     new Tokenizer(dictionary, Mode.decompose(), null),
     new Tokenizer(dictionary, null),
     new Tokenizer(dictionary, undefined, undefined, false),
-    new Tokenizer(dictionary, Mode.normal(), null, { rules: [{ pos: ["JKS", "JX"], cost: 6000 }] }),
+    new Tokenizer(dictionary, Mode.normal(), null, {
+      rules: [{ pos: ["JKS", "JX"], cost: 6000 }],
+    }),
     // @ts-expect-error -- a mode is a Mode, not its name (#1218).
     new Tokenizer(dictionary, "normal"),
   ];
@@ -116,7 +120,11 @@ export function checkModeForms(): void {
   ];
   const name: string = modes[0].name;
   const penalty: Penalty | null = modes[1].penalty;
-  const kinds: Array<boolean> = [modes[0].isNormal(), modes[0].isDecompose(), modes[0].equals(modes[1])];
+  const kinds: Array<boolean> = [
+    modes[0].isNormal(),
+    modes[0].isDecompose(),
+    modes[0].equals(modes[1]),
+  ];
   const text: string = modes[0].toString();
   void [name, penalty, kinds, text];
 

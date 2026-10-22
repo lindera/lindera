@@ -33,7 +33,9 @@ export function checkTokenizerConstructorForms(
     new Tokenizer(dictionary, Mode.decompose(), null),
     new Tokenizer(dictionary, null),
     new Tokenizer(dictionary, undefined, undefined, false),
-    new Tokenizer(dictionary, Mode.normal(), null, { rules: [{ pos: ["JKS", "JX"], cost: 6000 }] }),
+    new Tokenizer(dictionary, Mode.normal(), null, {
+      rules: [{ pos: ["JKS", "JX"], cost: 6000 }],
+    }),
     new Tokenizer(dictionary, null, userDictionary),
     new Tokenizer(dictionary, undefined, userDictionary, false),
     // @ts-expect-error -- a mode is a Mode, not its name (#1218).
@@ -57,7 +59,11 @@ export function checkModeForms(): void {
   ];
   const name: string = modes[0].name;
   const modePenalty: Penalty | undefined = modes[1].penalty;
-  const kinds: Array<boolean> = [modes[0].isNormal(), modes[0].isDecompose(), modes[0].equals(modes[1])];
+  const kinds: Array<boolean> = [
+    modes[0].isNormal(),
+    modes[0].isDecompose(),
+    modes[0].equals(modes[1]),
+  ];
   const text: string = modes[0].toString();
   void [name, modePenalty, kinds, text];
 
@@ -77,7 +83,9 @@ export function checkModeForms(): void {
 }
 
 export function checkTokenize(text: string): void {
-  const tokenizer: Tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"));
+  const tokenizer: Tokenizer = new Tokenizer(
+    loadDictionary("embedded://ipadic"),
+  );
   const tokens: Array<unknown> = tokenizer.tokenize(text);
   const surfaces: Array<string> = tokenizer.tokenizeSurfaces(text);
   void [tokens, surfaces];
