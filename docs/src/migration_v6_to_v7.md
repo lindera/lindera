@@ -54,8 +54,9 @@ This guide lists every breaking change and the one-line fixes for each.
 | **The context is carried across `、` and `。` within a line, as in MeCab** | Anyone who segments Japanese text with `、` or `。` inside a line | Expect some words after `、` or `。` to be read differently, mostly as MeCab reads them, and the N-best costs of such lines to change; no setting restores the v6 behavior |
 | **N-best: every result covers the whole input** | Anyone who asks for N-best results (`segment_nbest`, `tokenize_nbest`, `lindera tokenize -N`, the bindings' N-best methods) for input with more than one sentence | Expect the cheapest segmentations of the whole input from the second result on, and one result without tokens for an empty input; a cost threshold now applies to the whole input |
 | **Unknown words start at every position, as in MeCab** | Anyone who segments text with runs of katakana, symbols or Latin letters in normal mode, most visibly katakana joined by `・` and Korean sentence-final punctuation such as `."` | Expect such runs to be split where MeCab splits them, and katakana- and Latin-heavy text to take about 13% more instructions; no setting restores the v6 behavior |
-| **Unknown words come from each character's default category and group the characters that share a category, as in MeCab** | Anyone who segments text where a character with several categories meets other characters; in the bundled dictionaries, a hanja numeral followed by hanja with ko-dic, and `〇` (U+3007) with ko-dic and Jieba; Rust code that relies on the order of `CharacterDefinition::lookup_categories` | Expect such text to be segmented as MeCab segments it (ko-dic `三國史記` is one `SH` word, Jieba `二〇〇八年北京奧運會` is `二 / 〇〇八年北京奧運會`); no setting restores the v6 behavior |
+| **Unknown words come from each character's default category and group the characters that share a category, as in MeCab** | Anyone who segments text where a character with several categories meets other characters; in the bundled dictionaries, a hanja numeral followed by hanja with ko-dic, and `〇` (U+3007) with ko-dic; Rust code that relies on the order of `CharacterDefinition::lookup_categories` | Expect such text to be segmented as MeCab segments it (ko-dic `三國史記` is one `SH` word, `〇〇〇` one `SY` word); no setting restores the v6 behavior |
 | **CC-CEDICT: unknown words cost 400, and the entries made only of Latin letters or only of digits 399** | Anyone who segments text with CC-CEDICT, most visibly entries that mix Latin letters or digits with Chinese characters, such as `T恤`; anyone who reads its N-best costs | Expect such entries to be one word, `〇` and entries such as `PK` to come with their pinyin and definition, Latin words, kana and numbers to stay one word as in v6, and the costs of paths to change; build a CC-CEDICT dictionary directory from the `CC-CEDICT-MeCab-0.1.0-20261021` archive |
+| **Jieba: `〇` is a numeral entry** | Anyone who segments text with `〇` (U+3007) with Jieba | Expect each `〇` to be one numeral word (`m`, pinyin `ling2`) instead of part of an unknown word, as MeCab segments it with the same dictionary; build a Jieba dictionary directory from the `mecab-jieba-0.1.2` archive |
 | **IPADIC and IPADIC-NEologd: dashes and tildes in dictionary entries are kept as written, as in MeCab** | Anyone who segments text with `―` (U+2015), `—` (U+2014), `～` (U+FF5E) or `〜` (U+301C) with IPADIC or IPADIC-NEologd | Expect entries spelled with `―` or `～` to match text spelled the same way, and text with `—` or `〜` to miss the 12 IPADIC and 1,085 IPADIC-NEologd entries it found only through the old rewrite (a `mapping` character filter can fold the spellings); rebuild or re-download dictionaries made with v6.2.0 or earlier |
 | **Entries with the same surface, context IDs and cost: the first CSV row is output, as in MeCab** | Anyone who reads token details such as the reading or the base form with IPADIC, IPADIC-NEologd, UniDic or ko-dic, or with a user dictionary that has such entries; N-best users | Expect such words to get MeCab's details (IPADIC `狡い` reads `ズルイ`, not `コスイ`), a user entry to still win a tie with a system entry, and the first N-best result to always be the 1-best; no setting restores the v6 behavior |
 | **Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab** | Anyone who segments text, in rare places (9 of about 54,000 lines in the texts compared) | Expect such lines to be segmented as MeCab segments them (IPADIC `腸窒扶斯` is `腸 / 窒扶 / 斯`, not `腸 / 窒 / 扶斯`); no setting restores the v6 behavior |
@@ -115,7 +116,7 @@ which splits some runs of katakana, symbols and Latin letters. Unknown words
 come from each character's default category, and a grouped unknown word
 goes on while each character shares a category with the one before it, as
 in MeCab, which makes a ko-dic hanja numeral and the hanja after it one
-word and `〇` a symbol with ko-dic and Jieba. With IPADIC
+word and `〇` a symbol with ko-dic. With IPADIC
 and IPADIC-NEologd, the entries spelled with `―` or `～` are found under
 that spelling, as in MeCab, which changes the segmentation of text that
 contains `―`, `—`, `～` or `〜`. Among dictionary entries that share the
@@ -126,7 +127,8 @@ When two segmentations cost exactly the same, the one whose last word starts
 later is chosen, as in MeCab, which changes the segmentation of a few lines.
 With CC-CEDICT, unknown words no longer cost less than dictionary words,
 which makes entries such as `T恤` one word and gives `〇` and entries such
-as `PK` their pinyin and definition.
+as `PK` their pinyin and definition. With Jieba, `〇` is a numeral entry,
+one word with its pinyin instead of part of an unknown word.
 And `lindera tokenize` removes only the line terminator from each input line
 instead of all the whitespace at its ends, which keeps U+3000 at the start
 or end of a line and makes the offsets index the line, and it writes a
@@ -748,7 +750,9 @@ candidates, but no longer reproduces the output of Lindera before v6.
 A character can have more than one category in `char.def`: the kanji
 numerals are `KANJINUMERIC KANJI` in IPADIC and UniDic,
 `HANJANUMERIC HANJA` in ko-dic and `CHINESENUMERIC CHINESE` in CC-CEDICT
-and Jieba, and `〇` (U+3007) is `SYMBOL` plus the numeral category. The first category of the line that
+and Jieba, and `〇` (U+3007) is `SYMBOL` plus the numeral category in all
+of them but Jieba (see
+[Jieba: `〇` is a numeral entry](#jieba-〇-is-a-numeral-entry)). The first category of the line that
 decides a character's categories is its *default category*. Up to v6.2.0,
 Lindera created unknown-word candidates for every category of a character,
 and went on with a grouped unknown word only while the next character had
@@ -768,20 +772,19 @@ follows MeCab:
 | `十人十色` (ko-dic) | `十` (`SH`), `人` (`NNG`), `十` (`SH`) and `色` (`NNG`) | `十人十色` (`SH`) |
 | `二十歲` (ko-dic) | `二十` (`SH`) and `歲` (`SH`) | `二十歲` (`SH`) |
 | `〇〇〇` (ko-dic) | `〇〇〇` (`SH`) | `〇〇〇` (`SY`) |
-| `二〇〇八年北京奧運會` (Jieba) | `二`, `〇〇`, `八`, `年`, `北京奧運` and `會` | `二` and `〇〇八年北京奧運會` (`w`) |
 
 - **Korean**: many ko-dic numerals, such as `三` and `十`, are not
   dictionary words, and their default category `HANJANUMERIC` groups, so a
   numeral and the hanja after it become one `SH` word, as in MeCab.
 - **`〇`**: its default category is `SYMBOL`, which creates unknown words
-  even where a dictionary word starts, so it is a symbol (ko-dic `SY`,
-  Jieba `w`). With Jieba, its group runs on through the numerals and the
-  Chinese characters after it, also in MeCab; a fix of Jieba's `char.def`
-  is tracked in [#1162](https://github.com/lindera/lindera/issues/1162).
-  CC-CEDICT has `〇` as an entry, which beats such a group with the costs
-  of the v7.0.0 dictionary, so `二〇二六年` stays `二`, `〇`, `二`, `六`
-  and `年` (see
+  even where a dictionary word starts, so it is a symbol with ko-dic
+  (`SY`). CC-CEDICT has `〇` as an entry, which beats such a group with the
+  costs of the v7.0.0 dictionary, so `二〇二六年` stays `二`, `〇`, `二`,
+  `六` and `年` (see
   [CC-CEDICT: unknown words no longer cost less than dictionary words](#cc-cedict-unknown-words-no-longer-cost-less-than-dictionary-words)).
+  With Jieba, whose group ran on through the numerals and the Chinese
+  characters after them, `〇` is now a numeral entry (see
+  [Jieba: `〇` is a numeral entry](#jieba-〇-is-a-numeral-entry)).
 - **Japanese**: IPADIC, IPADIC-NEologd and UniDic have the kanji numerals
   and `〇` as dictionary words, and no line of the texts compared changes.
   SudachiDict was not compared.
@@ -869,6 +872,52 @@ keeps the old costs (and has to be rebuilt anyway, see
 [Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt)):
 build it from the `0.1.0-20261021` archive, as `lindera-cc-cedict` and the
 7.0.0 release assets do. There is no setting to restore the old costs.
+
+## Jieba: `〇` is a numeral entry
+
+v7.0.0 builds the Jieba dictionary from `mecab-jieba-0.1.2` instead of
+`mecab-jieba-0.1.1`
+([#1162](https://github.com/lindera/lindera/issues/1162)). It reads `〇`
+(U+3007 IDEOGRAPHIC NUMBER ZERO) as a numeral, like `一` to `兆`, and the
+other entries and costs are the same:
+
+- In `char.def`, `〇` is `CHINESENUMERIC CHINESE`, the categories of the
+  other numerals, instead of `SYMBOL CHINESENUMERIC`.
+- `〇` is an entry like `零`: part of speech `m`, pinyin `ling2` and
+  definition `zero`.
+
+With the `0.1.1` dictionary, `〇` was an unknown word. Since
+[unknown words come from the default category](#unknown-words-come-from-the-default-category-as-in-mecab),
+its `SYMBOL` group went on through the numerals, which are `CHINESE` too,
+and the Chinese characters after them, as in MeCab: `二〇〇八年北京奧運會`
+was `二` and `〇〇八年北京奧運會` (`w`). An entry alone would not stop the
+group: `SYMBOL` makes unknown words even where an entry starts, and with
+Jieba's connection costs one unknown word over `〇〇八年北京奧運會` costs
+less than the path through `北京奧運` and `會`, because entering or leaving
+their context ID costs 32,767. With the numeral categories, which make no
+unknown word where an entry starts, and the entry, no unknown word starts
+at `〇`:
+
+| Input | v6 | v7 |
+| --- | --- | --- |
+| `二〇〇八年北京奧運會` | `二`, `〇〇` (unknown), `八`, `年`, `北京奧運` and `會` | `二`, `〇`, `〇`, `八`, `年`, `北京奧運` and `會` |
+| `编号〇〇七的特工` | `编号`, `〇〇` (unknown), `七`, `的` and `特工` | `编号`, `〇`, `〇`, `七`, `的` and `特工` |
+| `第二〇章` | `第二` and `〇章` (unknown) | `第二`, `〇` and `章` |
+
+Only text with `〇` changes. None of the 4,997 sentences of UD Chinese GSD
+has `〇`, and they are segmented as with the `0.1.1` dictionary. Lindera
+and MeCab segment the same way with the new dictionary: 28 hand-written
+lines, 2,160 generated lines around the numerals and `〇`, the 8,064
+generated sentences around the characters with several categories, and the
+same 4,951 GSD sentences as with the old dictionary. As with the other
+numerals, a character that starts no entry and the `〇` after it can make
+one unknown word, as in MeCab: `頻〇頻` is `頻〇` and `頻`.
+
+A Jieba dictionary directory built from the `0.1.1` archive keeps `〇` as a
+symbol (and has to be rebuilt anyway, see
+[Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt)):
+build it from the `0.1.2` archive, as `lindera-jieba` and the 7.0.0 release
+assets do.
 
 ## Dash and tilde spellings are kept as written
 
@@ -1877,9 +1926,10 @@ with (`max_grouping_len` of the segmenter, `--max-grouping-len` of the CLI).
   start at every position, which matter for runs of katakana, symbols or
   Latin letters in normal mode, the unknown words made from the default
   category, which matter for ko-dic hanja numerals followed by hanja and for
-  `〇` with ko-dic and Jieba, the new costs of CC-CEDICT, which matter for
+  `〇` with ko-dic, the new costs of CC-CEDICT, which matter for
   its entries that mix Latin letters or digits with Chinese characters and
-  for its N-best costs, the dash and tilde spellings, which
+  for its N-best costs, the `〇` entry of Jieba, which matters only for text
+  with `〇`, the dash and tilde spellings, which
   matter only for text with `―`, `—`, `～` or `〜` with IPADIC or
   IPADIC-NEologd, the choice among
   tied entries, which matters only if you read token details such as the
@@ -2080,12 +2130,11 @@ letters:
   instructions, and very long katakana runs in N-best to take much more
   time and memory.
 
-Users of ko-dic or Jieba with text that has hanja numerals or `〇`:
+Users of ko-dic with text that has hanja numerals or `〇`:
 
 - Expect a ko-dic hanja numeral and the hanja after it to be one unknown
-  word (`三國史記` is one `SH` word), and `〇` to be a symbol (ko-dic `SY`,
-  Jieba `w`) whose group, with Jieba, runs on through the numerals and
-  characters after it, as in MeCab. No setting restores the v6 output.
+  word (`三國史記` is one `SH` word), and `〇` to be a symbol (`SY`), as in
+  MeCab. No setting restores the v6 output.
 
 Users of CC-CEDICT:
 
@@ -2097,6 +2146,12 @@ Users of CC-CEDICT:
   cost 400 instead of −3,200.
 - Build a CC-CEDICT dictionary directory from the
   `CC-CEDICT-MeCab-0.1.0-20261021` archive.
+
+Users of Jieba with text that has `〇`:
+
+- Expect each `〇` to be one numeral word (`m`, pinyin `ling2`) instead of
+  part of an unknown word, as MeCab segments it with the same dictionary.
+- Build a Jieba dictionary directory from the `mecab-jieba-0.1.2` archive.
 
 Users of IPADIC or IPADIC-NEologd with text that contains `―`, `—`, `～` or
 `〜`:
