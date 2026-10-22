@@ -571,9 +571,10 @@ struct Way {
 /// context ids a result holds is deterministic but not otherwise specified.
 ///
 /// The costs are exact unless a forward path cost was clamped at the
-/// lattice's limit, which only absurd costs reach: a huge left-space
-/// penalty or BOS cost (the length penalty is bounded per sentence so as
-/// not to, see [`Penalty`](crate::mode::Penalty)).
+/// lattice's limit, which only absurd costs reach: a huge BOS cost (the
+/// penalties are bounded per sentence so as not to, see
+/// [`Penalty`](crate::mode::Penalty) and
+/// [`SpacePenaltyConfig`](crate::space_penalty::SpacePenaltyConfig)).
 pub struct UniqueNBestGenerator<'a> {
     /// The N-best lattice the paths are taken from.
     lattice: &'a Lattice,

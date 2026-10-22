@@ -6,12 +6,17 @@ use serde::{Deserialize, Serialize};
 use crate::error::{LinderaError, LinderaErrorKind};
 use crate::viterbi::Edge;
 
-/// Bound, in absolute value, on the sum of the length penalties along any
-/// path of one sentence: the lattice segments a sentence of `n` characters
-/// with costs per character of at most `SENTENCE_PENALTY_BUDGET / n` (see
-/// [`Penalty::for_sentence`]), and the characters beyond the thresholds of
-/// the words of a path add up to at most `n`, as a word's excess is at most
-/// its length and the words of a path do not overlap (#1223).
+/// Bound, in absolute value, on the sum of the penalties of each kind along
+/// any path of one sentence. The lattice segments a sentence of `n`
+/// characters with length penalties of at most `SENTENCE_PENALTY_BUDGET / n`
+/// per character (see [`Penalty::for_sentence`]), and the characters beyond
+/// the thresholds of the words of a path add up to at most `n`, as a word's
+/// excess is at most its length and the words of a path do not overlap
+/// (#1223). It bounds the left-space penalty rules the same way (see
+/// [`SpacePenaltyTable::for_sentence`]), which a path pays at most once per
+/// word, so at most `n` times (#1245).
+///
+/// [`SpacePenaltyTable::for_sentence`]: crate::space_penalty::SpacePenaltyTable::for_sentence
 pub(crate) const SENTENCE_PENALTY_BUDGET: i32 = 1 << 29;
 
 /// The bound leaves the default costs (3000 and 1700) as they are for every
