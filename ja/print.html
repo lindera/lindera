@@ -12068,7 +12068,7 @@ decompose モードを調整するには <code>Penalty</code> を渡す。実行
 <pre><code class="language-bash">cargo fmt --all
 </code></pre>
 <blockquote>
-<p>注意: <code>cargo fmt</code> が整形するのは Rust のコードだけです。言語バインディングでは、<code>make format-lindera-&lt;binding&gt;</code> がバインディングの Python・JavaScript・Ruby・PHP のコードも整形します。使うツールと版は、<code>make lint-lindera-&lt;binding&gt;</code> が検査に使うものと同じです（下記を参照）。</p>
+<p>注意: <code>cargo fmt</code> が整形するのは Rust のコードだけです。言語バインディングでは、<code>make format-lindera-&lt;binding&gt;</code> がバインディングの Python・JavaScript・Ruby・PHP のコードも整形します。使うツールと版は、<code>make lint-lindera-&lt;binding&gt;</code> が検査に使うものと同じです（下記を参照）。<code>make lint-scripts</code> が検査する、クレートの外のファイルは、<code>make format-scripts</code> が同じように整形します。</p>
 </blockquote>
 <h3 id="リント"><a class="header" href="#リント">リント</a></h3>
 <p>Clippy を警告をエラーとして扱うモードで実行します：</p>
@@ -12077,6 +12077,7 @@ decompose モードを調整するには <code>Penalty</code> を渡す。実行
 <blockquote>
 <p>注意: CI は各クレートに対して、そのクレートのテストと同じ feature で <code>cargo clippy --all-targets -- -D warnings</code> を実行します（<code>.github/workflows/test-crate.yml</code> と、<code>.github/workflows/regression.yml</code> の言語バインディングのジョブを参照）。そのため、テストのコードも lint されます。<code>make lint-&lt;crate&gt;</code> は同じ clippy のコマンドを実行します。PR を開く前にローカルで（例えば <code>make lint</code> 経由で）clippy を実行してください。</p>
 <p>言語バインディングでは、<code>make lint-lindera-&lt;binding&gt;</code> が続けて、そのバインディングの CI ジョブと同じく言語側の linter を実行します。Python は ruff、Node.js と WASM は Prettier、Ruby は RuboCop、PHP は PHP CS Fixer です。これらの版は固定してあるので（ruff と Prettier は <code>Makefile</code>、RuboCop は <code>lindera-ruby/Gemfile</code>、PHP CS Fixer は <code>composer.json</code>）、ツールの新しいリリースが、変更していないコードで CI を失敗させることはありません。ターゲットは固定した版を自分でインストールするので、その言語のツールチェーン（Python 3、npx の使える Node.js、Bundler、Composer）とネットワークへの接続が必要です。</p>
+<p><code>make lint-scripts</code> は、どのバインディングにも属さない手書きのファイルを、CI の <code>Lint scripts</code> ジョブと同じく lint します。対象は、バインディングが共有する <code>scripts/benchmarks/</code> のベンチマーク一式と、docs が読み込む JavaScript（<code>docs/mermaid-init.js</code>）です。同じ固定版のツールを使い、各ファイルにはその言語のバインディングの規則を当てるので、4 つの言語のツールチェーンがすべて必要です。<code>make lint</code> は、クレートの後にこれも実行します。</p>
 </blockquote>
 <h2 id="ドキュメント-4"><a class="header" href="#ドキュメント-4">ドキュメント</a></h2>
 <h3 id="api-ドキュメント"><a class="header" href="#api-ドキュメント">API ドキュメント</a></h3>
@@ -12630,7 +12631,7 @@ cargo test
 make check-docs
 </code></pre>
 <blockquote>
-<p>注意: CI はこの 4 つをすべて検査します。フォーマットを確認し、各クレートに対してそのクレートのテストと同じ feature で clippy（警告はエラー扱い）とテストを実行し、どのクレートでも rustdoc に警告があれば失敗します。<code>make check-docs</code> は、ビルドにそれぞれの言語のツールチェーンが必要な言語バインディングを対象にしません。バインディングを変更した場合は、そのバインディングの CI ジョブと同じく <code>make check-docs-lindera-&lt;binding&gt;</code> も実行してください。<code>make lint</code> と <code>make test</code> はクレートごとに同じ feature を使い、<code>make lint-lindera-&lt;binding&gt;</code> はそのバインディングの CI ジョブが実行する言語側の linter も実行します。詳しくは<a href="development/build_and_test.html">ビルドとテスト</a>を参照してください。</p>
+<p>注意: CI はこの 4 つをすべて検査します。フォーマットを確認し、各クレートに対してそのクレートのテストと同じ feature で clippy（警告はエラー扱い）とテストを実行し、どのクレートでも rustdoc に警告があれば失敗します。<code>make check-docs</code> は、ビルドにそれぞれの言語のツールチェーンが必要な言語バインディングを対象にしません。バインディングを変更した場合は、そのバインディングの CI ジョブと同じく <code>make check-docs-lindera-&lt;binding&gt;</code> も実行してください。<code>make lint</code> と <code>make test</code> はクレートごとに同じ feature を使い、<code>make lint-lindera-&lt;binding&gt;</code> はそのバインディングの CI ジョブが実行する言語側の linter も実行します。<code>make lint</code> は最後に <code>make lint-scripts</code> を実行し、クレートの外のスクリプトを CI の <code>Lint scripts</code> ジョブと同じく lint します。詳しくは<a href="development/build_and_test.html">ビルドとテスト</a>を参照してください。</p>
 </blockquote>
 </li>
 <li>
