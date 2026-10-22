@@ -588,25 +588,33 @@ pub struct Lattice {
 /// loops and the EOS connections can add a connection cost (an `i16`) with
 /// plain addition, which stays within `±(PATH_COST_CLAMP + 32_768)`. Costs
 /// that are not bounded by `i16` (the Decompose length penalty and the
-/// left-space penalty, both arbitrary `i32`) are folded in with
-/// `saturating_add` instead. A negative one can take a path below
+/// left-space penalty, bounded per sentence only) are folded in with
+/// `saturating_add` instead. Negative costs can take a path below
 /// `-PATH_COST_CLAMP`, so the lower bound is needed as much as the upper
 /// one (#1224).
 ///
 /// A clamped or saturated cost loses what the path pays after it, so the
 /// costs of the paths through it are no longer exact. A transition whose
 /// cost saturates still connects, though, so that the path goes on and the
-/// text is never cut short (#1223). The length penalty is bounded per
-/// sentence (see [`SENTENCE_PENALTY_BUDGET`]) so that it cannot get a path
-/// there: from a BOS edge of cost 0, a path through a sentence of at most
-/// 24,573 characters stays within the clamp without a left-space penalty,
-/// as a word and a connection cost at most 32,768 each in absolute value
-/// (asserted below). A left-space penalty or a costly BOS edge still can.
+/// text is never cut short (#1223). Both penalties are bounded per sentence
+/// (see [`SENTENCE_PENALTY_BUDGET`]) so that they cannot get a path there
+/// (#1223, #1245): from a BOS edge of cost 0, a path through a sentence of
+/// at most 16,381 characters stays within the clamp, and of at most 24,573
+/// characters with one of the two penalties, as a word and a connection
+/// cost at most 32,768 each in absolute value (asserted below). A longer
+/// sentence or a costly BOS edge still can.
 const PATH_COST_CLAMP: i32 = i32::MAX - 131_072;
 
-/// The guarantee of [`PATH_COST_CLAMP`]: the words of a sentence of 24,573
-/// characters and the connections into them, the EOS connection and the
-/// length penalties fit within the clamp.
+/// The guarantee of [`PATH_COST_CLAMP`] with both penalties: the words of a
+/// sentence of 16,381 characters and the connections into them, the EOS
+/// connection, the length penalties and the left-space penalties fit within
+/// the clamp.
+const _: () = assert!(
+    65_536 * 16_381 + 32_768 + 2 * SENTENCE_PENALTY_BUDGET as i64 <= PATH_COST_CLAMP as i64
+);
+
+/// The guarantee of [`PATH_COST_CLAMP`] with one of the two penalties: the
+/// same for a sentence of 24,573 characters.
 const _: () =
     assert!(65_536 * 24_573 + 32_768 + SENTENCE_PENALTY_BUDGET as i64 <= PATH_COST_CLAMP as i64);
 
@@ -739,6 +747,8 @@ pub struct LatticeOptions<'a> {
     /// "Whitespace" is what [`SpacePenaltyTable::is_space`] accepts: a
     /// character carrying the dictionary's `SPACE` category, or
     /// `char::is_whitespace` for a dictionary that defines no such category.
+    /// The lattice bounds the rule costs per sentence (see
+    /// [`SpacePenaltyConfig`](crate::space_penalty::SpacePenaltyConfig)).
     pub space_penalty: Option<&'a SpacePenaltyTable>,
     /// MeCab-compatible whitespace handling; `None` (the default) keeps
     /// whitespace in the lattice. When set, no node starts on a character
@@ -829,6 +839,23 @@ impl<'a> LatticeOptions<'a> {
     ) -> Option<&'a SpacePenaltyTable> {
         let table = self.space_penalty?;
         (char_idx > 0 && char_info[char_idx - 1].is_space).then_some(table)
+    }
+
+    /// Returns the space-penalty table the lattice segments `text` with,
+    /// when it differs from the configured one: the table bounded for the
+    /// sentence (see `SpacePenaltyTable::for_sentence`, #1245).
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - The sentence.
+    ///
+    /// # Returns
+    ///
+    /// The bounded table, or `None` when the configured table (or none) is
+    /// the one to use.
+    fn space_penalty_for_sentence(&self, text: &str) -> Option<SpacePenaltyTable> {
+        let table = self.space_penalty?;
+        table.for_sentence(text.chars().count())
     }
 }
 
@@ -1579,9 +1606,10 @@ impl Lattice {
     /// Every transition between two adjacent candidates connects, however
     /// costly: a penalty makes a path expensive, never impossible, so the
     /// lattice has a complete path unless a character is covered by no word
-    /// and no unknown word (#1223). In Decompose mode, the costs per
-    /// character of the length penalty are bounded for the sentence (see
-    /// [`Penalty`]).
+    /// and no unknown word (#1223). The costs per character of the Decompose
+    /// length penalty and the rule costs of the left-space penalty are
+    /// bounded for the sentence (see [`Penalty`] and
+    /// [`SpacePenaltyConfig`](crate::space_penalty::SpacePenaltyConfig)).
     ///
     /// # Arguments
     ///
@@ -1593,9 +1621,55 @@ impl Lattice {
     /// * `text` - One sentence (fewer than `u16::MAX` characters).
     /// * `options` - Mode, unknown-word knobs, the optional space penalty and
     ///   whitespace skipping, and the BOS edges (see [`LatticeOptions`]).
-    #[inline(never)]
     #[allow(clippy::too_many_arguments)]
     pub fn set_text_with_options(
+        &mut self,
+        dict: &PrefixDictionary,
+        user_dict: &Option<&UserPrefixDictionary>,
+        char_definitions: &CharacterDefinition,
+        unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        text: &str,
+        options: &LatticeOptions,
+    ) {
+        match options.space_penalty_for_sentence(text) {
+            Some(table) => self.set_text_bounded(
+                dict,
+                user_dict,
+                char_definitions,
+                unknown_dictionary,
+                cost_matrix,
+                text,
+                &LatticeOptions {
+                    space_penalty: Some(&table),
+                    ..*options
+                },
+            ),
+            None => self.set_text_bounded(
+                dict,
+                user_dict,
+                char_definitions,
+                unknown_dictionary,
+                cost_matrix,
+                text,
+                options,
+            ),
+        }
+    }
+
+    /// The body of [`Lattice::set_text_with_options`], with the left-space
+    /// penalty of `options` already bounded for the sentence (see
+    /// [`LatticeOptions::space_penalty_for_sentence`]). Bounding it here
+    /// instead changed how the main loop compiles: tokenizing took 2.3% more
+    /// instructions with IPADIC, which has no left-space penalty, and 3.5%
+    /// more with ko-dic (#1245).
+    ///
+    /// # Arguments
+    ///
+    /// See [`Lattice::set_text_with_options`].
+    #[inline(never)]
+    #[allow(clippy::too_many_arguments)]
+    fn set_text_bounded(
         &mut self,
         dict: &PrefixDictionary,
         user_dict: &Option<&UserPrefixDictionary>,
@@ -2544,7 +2618,7 @@ impl Lattice {
         // connection stays a plain add (within ±(PATH_COST_CLAMP + i16)),
         // while the penalty addition keeps saturating_add: the penalty is
         // bounded per sentence, but a path near the clamp (from a costly
-        // BOS edge or a left-space penalty) can still pass `i32::MAX`.
+        // BOS edge or a long sentence) can still pass `i32::MAX`.
         let mut best_cost = i32::MAX;
         let mut best_left = None;
         let cache = &self.penalty_cache;
@@ -3482,9 +3556,52 @@ impl Lattice {
     /// # Arguments
     ///
     /// See [`Lattice::set_text_with_options`].
-    #[inline(never)]
     #[allow(clippy::too_many_arguments)]
     pub fn set_text_nbest_with_options(
+        &mut self,
+        dict: &PrefixDictionary,
+        user_dict: &Option<&UserPrefixDictionary>,
+        char_definitions: &CharacterDefinition,
+        unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        text: &str,
+        options: &LatticeOptions,
+    ) {
+        match options.space_penalty_for_sentence(text) {
+            Some(table) => self.set_text_nbest_bounded(
+                dict,
+                user_dict,
+                char_definitions,
+                unknown_dictionary,
+                cost_matrix,
+                text,
+                &LatticeOptions {
+                    space_penalty: Some(&table),
+                    ..*options
+                },
+            ),
+            None => self.set_text_nbest_bounded(
+                dict,
+                user_dict,
+                char_definitions,
+                unknown_dictionary,
+                cost_matrix,
+                text,
+                options,
+            ),
+        }
+    }
+
+    /// The body of [`Lattice::set_text_nbest_with_options`], with the
+    /// left-space penalty of `options` already bounded for the sentence, as
+    /// for [`Lattice::set_text_bounded`].
+    ///
+    /// # Arguments
+    ///
+    /// See [`Lattice::set_text_with_options`].
+    #[inline(never)]
+    #[allow(clippy::too_many_arguments)]
+    fn set_text_nbest_bounded(
         &mut self,
         dict: &PrefixDictionary,
         user_dict: &Option<&UserPrefixDictionary>,
@@ -3848,8 +3965,9 @@ impl Lattice {
     /// triples, with the ends of [`Lattice::tokens_offset`].
     /// The first result (index 0) is the 1-best path, unless the costs
     /// reach the bound of the lattice's 32-bit path costs, past which they
-    /// are not exact: a huge left-space penalty or BOS cost can take a path
-    /// there, the length penalty cannot (see [`Penalty`]).
+    /// are not exact: a huge BOS cost or a very long sentence can take a
+    /// path there, the penalties cannot (see [`Penalty`] and
+    /// [`SpacePenaltyConfig`](crate::space_penalty::SpacePenaltyConfig)).
     /// If `unique` is true, the results have distinct segmentations (sequences
     /// of (byte_start, byte_end) pairs): they are the cheapest path of each
     /// segmentation, from
@@ -5755,6 +5873,27 @@ mod tests {
     /// one of the two tied `d` entries; none on `b `, `ab` and `abc`.
     const CTX_SPACE_PENALTY: [i32; 14] = [250, 0, 0, 400, 300, 150, 0, 200, 0, 0, 350, 0, 100, 0];
 
+    /// Left-space penalties far beyond the bound of any sentence, which the
+    /// lattice bounds for each one (#1245): `i32::MAX` and `i32::MIN` on
+    /// different readings of `a`, `b`, `c`, `bc`, `ca` and `d`, so that the
+    /// readings at one position pay different penalties, or none.
+    const CTX_HUGE_SPACE_PENALTY: [i32; 14] = [
+        i32::MAX,
+        0,
+        0,
+        i32::MIN,
+        i32::MAX,
+        i32::MIN,
+        0,
+        i32::MAX,
+        0,
+        0,
+        i32::MIN,
+        0,
+        i32::MAX,
+        i32::MIN,
+    ];
+
     /// More texts with whitespace for the #1117 tests: `b ` followed by a
     /// penalized word, with and without more whitespace after it.
     const CTX_PENALTY_TEXTS: &[&str] = &[
@@ -5832,17 +5971,13 @@ mod tests {
             }
         }
 
-        /// The fixture with the left-space penalties of
-        /// [`CTX_SPACE_PENALTY`].
-        fn with_space_penalty() -> Self {
+        /// The fixture with left-space penalties by word id of
+        /// [`CTX_ENTRIES`], such as [`CTX_SPACE_PENALTY`].
+        fn with_space_penalty(costs: &[i32]) -> Self {
             let fixture = Self::new();
             let whitespace = WhitespaceClassifier::new(&fixture.char_definition).unwrap();
             Self {
-                space_penalty: Some(SpacePenaltyTable::from_costs(
-                    &CTX_SPACE_PENALTY,
-                    &[],
-                    Some(whitespace),
-                )),
+                space_penalty: Some(SpacePenaltyTable::from_costs(costs, &[], Some(whitespace))),
                 ..fixture
             }
         }
@@ -5937,17 +6072,28 @@ mod tests {
     /// whitespace there, and a word pays its cost, the connection from the
     /// previous right id, the Decompose penalty of the previous word (0
     /// for BOS; with the costs bounded for the text, #1223) and, with
-    /// `space`, the left-space penalty of its word id when `rule` says so;
-    /// the last word's penalty is part of the exit cost. Meant for texts of
-    /// `a`-`d`, spaces and tabs, with whitespace skipped (or absent).
+    /// `space`, the left-space penalty of its word id when `rule` says so
+    /// (bounded for the text as well, to `±(2^29 / n)` for `n` characters,
+    /// #1245); the last word's penalty is part of the exit cost. Meant for
+    /// texts of `a`-`d`, spaces and tabs, with whitespace skipped (or
+    /// absent).
     fn brute_paths_with(
         text: &str,
         bos_list: &[BosContext],
         mode: &Mode,
         space: Option<(&[i32], SpaceRule)>,
     ) -> Vec<BrutePath> {
-        let bounded = mode.for_sentence(text.chars().count());
+        let n_chars = text.chars().count();
+        let bounded = mode.for_sentence(n_chars);
         let mode: &Mode = &bounded;
+        let bound = SENTENCE_PENALTY_BUDGET / n_chars.max(1) as i32;
+        let bounded_space: Option<(Vec<i32>, SpaceRule)> = space.map(|(costs, rule)| {
+            let costs = costs.iter().map(|&cost| cost.clamp(-bound, bound));
+            (costs.collect(), rule)
+        });
+        let space = bounded_space
+            .as_ref()
+            .map(|(costs, rule)| (&costs[..], *rule));
 
         fn skip_ws(text: &str, mut pos: usize) -> usize {
             while pos < text.len() && matches!(text.as_bytes()[pos], b' ' | b'\t') {
@@ -6720,10 +6866,12 @@ mod tests {
     /// and its start, after leading whitespace too, so not right after `b `,
     /// whose surface ends with the space. The former definition (the
     /// character before the word is whitespace) has other cheapest paths
-    /// for some text, so the fixture tells the two apart.
+    /// for some text, so the fixture tells the two apart. #1245: so do
+    /// penalties of `i32::MAX` and `i32::MIN`, which the lattice bounds for
+    /// the sentence, through the relaxations of the left edges that own the
+    /// whitespace too (`b ` before a penalized word).
     #[test]
     fn test_space_penalty_matches_brute_force() {
-        let fixture = CtxFixture::with_space_penalty();
         let mut definition_matters = false;
         let cheapest = |paths: &[BrutePath]| -> Vec<Vec<(usize, usize, u32)>> {
             let min = paths.iter().map(BrutePath::eos_cost).min();
@@ -6733,39 +6881,43 @@ mod tests {
                 .map(|path| token_keys(&path.tokens))
                 .collect()
         };
-        for mode in [Mode::Normal, ctx_decompose()] {
-            for bos_list in ctx_bos_lists() {
-                let unspaced = CTX_TEXTS
-                    .iter()
-                    .flat_map(|&text| [(text, false), (text, true)]);
-                let spaced = CTX_SPACED_TEXTS
-                    .iter()
-                    .chain(CTX_PENALTY_TEXTS)
-                    .map(|&text| (text, true));
-                for (text, skip) in unspaced.chain(spaced) {
-                    let case = format!("{text:?} {mode:?} skip={skip} {bos_list:?}");
-                    let rule = |rule| Some((&CTX_SPACE_PENALTY[..], rule));
-                    let brute = brute_paths_with(text, &bos_list, &mode, rule(SpaceRule::Skipped));
-                    let lattice = fixture.lattice(text, &mode, skip, &bos_list);
-                    assert_best_is_brute_min(&lattice, &brute, &case);
-
-                    let nbest = fixture.nbest_lattice(text, &mode, skip, &bos_list);
-                    let mut generator = NBestGenerator::new(&nbest);
-                    let mut actual = Vec::new();
-                    while let Some(((tokens, cost), bos)) = generator.next_with_bos() {
-                        actual.push((cost, token_keys(&tokens), bos));
-                    }
-                    let mut expected: Vec<_> = brute
+        for costs in [CTX_SPACE_PENALTY, CTX_HUGE_SPACE_PENALTY] {
+            let fixture = CtxFixture::with_space_penalty(&costs);
+            for mode in [Mode::Normal, ctx_decompose()] {
+                for bos_list in ctx_bos_lists() {
+                    let unspaced = CTX_TEXTS
                         .iter()
-                        .map(|path| (path.eos_cost(), token_keys(&path.tokens), path.bos))
-                        .collect();
-                    expected.sort();
-                    actual.sort();
-                    assert_eq!(actual, expected, "{case}");
+                        .flat_map(|&text| [(text, false), (text, true)]);
+                    let spaced = CTX_SPACED_TEXTS
+                        .iter()
+                        .chain(CTX_PENALTY_TEXTS)
+                        .map(|&text| (text, true));
+                    for (text, skip) in unspaced.chain(spaced) {
+                        let case = format!("{text:?} {costs:?} {mode:?} skip={skip} {bos_list:?}");
+                        let rule = |rule| Some((&costs[..], rule));
+                        let brute =
+                            brute_paths_with(text, &bos_list, &mode, rule(SpaceRule::Skipped));
+                        let lattice = fixture.lattice(text, &mode, skip, &bos_list);
+                        assert_best_is_brute_min(&lattice, &brute, &case);
 
-                    let former =
-                        brute_paths_with(text, &bos_list, &mode, rule(SpaceRule::CharBefore));
-                    definition_matters |= cheapest(&brute) != cheapest(&former);
+                        let nbest = fixture.nbest_lattice(text, &mode, skip, &bos_list);
+                        let mut generator = NBestGenerator::new(&nbest);
+                        let mut actual = Vec::new();
+                        while let Some(((tokens, cost), bos)) = generator.next_with_bos() {
+                            actual.push((cost, token_keys(&tokens), bos));
+                        }
+                        let mut expected: Vec<_> = brute
+                            .iter()
+                            .map(|path| (path.eos_cost(), token_keys(&path.tokens), path.bos))
+                            .collect();
+                        expected.sort();
+                        actual.sort();
+                        assert_eq!(actual, expected, "{case}");
+
+                        let former =
+                            brute_paths_with(text, &bos_list, &mode, rule(SpaceRule::CharBefore));
+                        definition_matters |= cheapest(&brute) != cheapest(&former);
+                    }
                 }
             }
         }
@@ -7291,7 +7443,7 @@ mod tests {
         });
         let bos = [bos_ctx(1, i32::MAX)];
         let plain = CtxFixture::new();
-        let spaced = CtxFixture::with_space_penalty();
+        let spaced = CtxFixture::with_space_penalty(&CTX_SPACE_PENALTY);
         for (fixture, text, skip) in [
             (&plain, "a", false),
             (&plain, "cab", false),
@@ -7313,29 +7465,114 @@ mod tests {
         }
     }
 
-    /// #1223: a left-space penalty of `i32::MAX` on `cd` saturates every
-    /// transition into it in `a cd`. The 1-best lattice kept them, as it adds
-    /// the penalty after the relaxation, but the N-best lattice folds it into
-    /// the relaxation and dropped them, so its search found no path. Both
-    /// now give the same segmentation, in both modes, with whitespace kept
-    /// or skipped.
+    /// #1223, #1245: a left-space penalty of `i32::MAX` on `cd` in `a cd` is
+    /// bounded for the sentence, so the 1-best path and the first N-best
+    /// path reach EOS at their exact cost, in both modes, with whitespace
+    /// kept or skipped: the unknown word `a` (5000), the space when kept
+    /// (5000), and `cd` (10) with the bound of a sentence of four
+    /// characters. Without the bound, every transition into `cd` saturated:
+    /// the 1-best path ended at the clamp, and before #1223 the N-best
+    /// lattice, which folds the penalty into the relaxation, dropped them
+    /// and found no path.
     #[test]
-    fn test_saturated_space_penalty_connects_in_nbest() {
+    fn test_huge_space_penalty_is_bounded_for_the_sentence() {
         let mut system = [0; 7];
         system[CD as usize] = i32::MAX;
         system[CD_ALT as usize] = i32::MAX;
         let fixture = WsFixture::with_space_penalty(&system, &[]);
-        let bounds = |tokens: &[TokenOffset]| -> Vec<(usize, usize)> {
-            tokens.iter().map(|&(start, end, _)| (start, end)).collect()
-        };
+        let bound = i64::from(SENTENCE_PENALTY_BUDGET / 4);
+        let a = (0, 1, unk(UNKNOWN_ALPHA));
+        let cd = (2, 4, sys(CD));
         for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
-            for skip in [false, true] {
+            for (skip, tokens, cost) in [
+                (
+                    false,
+                    vec![a, (1, 2, unk(UNKNOWN_SPACE)), cd],
+                    10_010 + bound,
+                ),
+                (true, vec![a, cd], 5010 + bound),
+            ] {
                 let case = format!("{mode:?} skip={skip}");
-                let tokens = fixture.lattice("a cd", &mode, skip).tokens_offset();
-                assert_eq!(tokens.last().map(|t| t.1), Some(4), "{case}");
+                let lattice = fixture.lattice("a cd", &mode, skip);
+                assert_eq!(
+                    best_path(&lattice),
+                    (tokens.clone(), Some(0), cost),
+                    "{case}"
+                );
                 let paths = fixture.all_paths("a cd", &mode, skip);
-                assert!(!paths.is_empty(), "{case}");
-                assert_eq!(bounds(&paths[0].0), bounds(&tokens), "{case}");
+                assert_eq!(paths.first(), Some(&(tokens, cost)), "{case}");
+            }
+        }
+    }
+
+    /// #1245: of two paths that pay a huge left-space penalty, the one with
+    /// the lower exact cost wins, in the 1-best lattice and as the first
+    /// N-best path: in `漢字 ab`, the word that starts after the space pays
+    /// the bound of a sentence of five characters whatever the split, and
+    /// `ab` (-1000) beats `a` (100) and `b` (-50). Without the bound, the
+    /// transitions into `ab` and `a` saturated (`i32::MAX`) or took the
+    /// paths to the lower clamp (`i32::MIN`); the costs after them were
+    /// lost, and the 1-best lattice kept `a` and `b`. The same holds in both
+    /// modes, with whitespace kept (the space is then a `SPACE` unknown word
+    /// of cost 5000) or skipped.
+    #[test]
+    fn test_huge_space_penalty_ranks_by_exact_costs() {
+        let dict = dict_of(&[("漢字", 100), ("ab", -1000), ("a", 100), ("b", -50)]);
+        let char_definition = test_char_definition();
+        let unknown_dictionary = test_unknown_dictionary();
+        let classifier = WhitespaceClassifier::new(&char_definition).unwrap();
+        let bound = SENTENCE_PENALTY_BUDGET / 5;
+        for (penalty, bounded) in [(i32::MAX, bound), (i32::MIN, -bound)] {
+            let table = SpacePenaltyTable::from_costs(
+                &[0, penalty, penalty, 0],
+                &[],
+                Some(classifier.clone()),
+            );
+            for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
+                let mut options = LatticeOptions::new(&mode);
+                options.space_penalty = Some(&table);
+                for skip in [false, true] {
+                    let case = format!("{penalty} {mode:?} skip={skip}");
+                    options.skip_whitespace = skip.then_some(&classifier);
+                    let mut head = vec![(0, 6, sys(0))];
+                    let mut cost = -900 + i64::from(bounded);
+                    if !skip {
+                        head.push((6, 7, unk(UNKNOWN_SPACE)));
+                        cost += 5000;
+                    }
+                    let whole = [head.clone(), vec![(7, 9, sys(1))]].concat();
+                    let split = [head, vec![(7, 8, sys(2)), (8, 9, sys(3))]].concat();
+
+                    let mut lattice = Lattice::default();
+                    lattice.set_text_with_options(
+                        &dict,
+                        &None,
+                        &char_definition,
+                        &unknown_dictionary,
+                        &free_matrix(),
+                        "漢字 ab",
+                        &options,
+                    );
+                    assert_eq!(
+                        best_path(&lattice),
+                        (whole.clone(), Some(0), cost),
+                        "{case}"
+                    );
+                    lattice.set_text_nbest_with_options(
+                        &dict,
+                        &None,
+                        &char_definition,
+                        &unknown_dictionary,
+                        &free_matrix(),
+                        "漢字 ab",
+                        &options,
+                    );
+                    assert_eq!(
+                        lattice.nbest_tokens_offset(10, false, None),
+                        vec![(whole, cost), (split, cost + 1050)],
+                        "{case}"
+                    );
+                }
             }
         }
     }
@@ -7667,7 +7904,7 @@ mod tests {
     /// Builds the 1-best or the N-best lattice of the #1224 tests: `text`
     /// over `a`, `b` and `c` of [`lowest_cost_each`], one context id whose
     /// connection costs -32768, and, with `space`, a left-space penalty of
-    /// `space` on `b`.
+    /// `space` on `b`, which the lattice bounds for the sentence (#1245).
     fn lowest_cost_lattice(text: &str, mode: &Mode, space: Option<i32>, nbest: bool) -> Lattice {
         let char_definition = test_char_definition();
         let unknown_dictionary = test_unknown_dictionary();
@@ -7744,14 +7981,20 @@ mod tests {
         vec![(0, 1, sys(0)), (1, 2, sys(1)), (2, 3, sys(2))]
     }
 
-    /// The texts of the left-space tests of #1224 and their 1-best tokens:
-    /// `a b`, where the EOS connection follows `b`, and `a bc`, where the
-    /// relaxation into `c` does.
-    fn space_cases() -> [(&'static str, Vec<TokenOffset>); 2] {
+    /// The texts of the left-space tests of #1224, their 1-best tokens and
+    /// the cost of that path with a penalty of `i32::MIN` on `b`: `a b`,
+    /// where the EOS connection follows `b`, and `a bc`, where the
+    /// relaxation into `c` does. Every word and connection costs -32768, the
+    /// space 5000, and `b` pays the bound of the sentence (#1245).
+    fn space_cases() -> [(&'static str, Vec<TokenOffset>, i64); 2] {
         let a_space_b = vec![(0, 1, sys(0)), (1, 2, unk(UNKNOWN_SPACE)), (2, 3, sys(1))];
         let mut a_space_bc = a_space_b.clone();
         a_space_bc.push((3, 4, sys(2)));
-        [("a b", a_space_b), ("a bc", a_space_bc)]
+        let bound = |n_chars: i32| i64::from(SENTENCE_PENALTY_BUDGET / n_chars);
+        [
+            ("a b", a_space_b, -6 * 32768 + 5000 - bound(3)),
+            ("a bc", a_space_bc, -8 * 32768 + 5000 - bound(4)),
+        ]
     }
 
     /// The cost of `abc` in [`lowest_decompose`] mode: three words and four
@@ -7768,7 +8011,9 @@ mod tests {
     /// used to saturate at `i32::MIN`, and the relaxation into `c`
     /// overflowed (a panic in the test profile). Since #1223 the penalty is
     /// bounded for the sentence, so the path keeps its exact cost, far from
-    /// the clamp; the left-space tests below still reach it.
+    /// the clamp, as with the left-space penalty below since #1245; a long
+    /// sentence still reaches it
+    /// ([`test_long_sentence_reaches_the_lower_clamp`]).
     #[test]
     fn test_negative_decompose_penalty_does_not_overflow() {
         let lattice = lowest_cost_lattice("abc", &lowest_decompose(), None, false);
@@ -7790,14 +8035,16 @@ mod tests {
     /// #1224: the same holds for a negative left-space penalty, which
     /// applies in both modes: `b` after the space pays `i32::MIN`, so its
     /// path cost used to saturate at `i32::MIN`, and the EOS connection or
-    /// the relaxation into `c` after it overflowed.
+    /// the relaxation into `c` after it overflowed. Since #1245 the penalty
+    /// is bounded for the sentence, so the path keeps its exact cost.
     #[test]
     fn test_negative_space_penalty_does_not_overflow() {
         for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
-            for (text, tokens) in space_cases() {
+            for (text, tokens, cost) in space_cases() {
                 let case = format!("{text:?} 1-best {mode:?}");
                 let lattice = lowest_cost_lattice(text, &mode, Some(i32::MIN), false);
                 assert_eq!(lattice.tokens_offset(), tokens, "{case}");
+                assert_eq!(eos_cost(&lattice), cost, "{case}");
                 assert_path_costs_bounded(&lattice, &case);
             }
         }
@@ -7809,14 +8056,45 @@ mod tests {
     #[test]
     fn test_negative_space_penalty_does_not_overflow_nbest() {
         for mode in [Mode::Normal, Mode::Decompose(Penalty::default())] {
-            for (text, tokens) in space_cases() {
+            for (text, tokens, cost) in space_cases() {
                 let case = format!("{text:?} N-best {mode:?}");
                 let lattice = lowest_cost_lattice(text, &mode, Some(i32::MIN), true);
                 let paths = lattice.nbest_tokens_offset(10, false, None);
-                assert_eq!(paths.len(), 1, "{case}: {paths:?}");
-                assert_eq!(paths[0].0, tokens, "{case}");
+                assert_eq!(paths, vec![(tokens, cost)], "{case}");
                 assert_path_costs_bounded(&lattice, &case);
             }
+        }
+    }
+
+    /// #1224, #1245: the lower clamp still guards a sentence long enough to
+    /// reach it without any penalty. Every word and connection costs
+    /// -32768, so the path cost of the 32,766th `a` is below
+    /// `-PATH_COST_CLAMP`; it is clamped, so that the plain addition of the
+    /// next connection cost to it cannot overflow, in both lattices. Since
+    /// both penalties are bounded per sentence and a BOS cost is at least 0,
+    /// nothing else takes a path there.
+    #[test]
+    fn test_long_sentence_reaches_the_lower_clamp() {
+        let text = "a".repeat(32_770);
+        for nbest in [false, true] {
+            let case = if nbest { "N-best" } else { "1-best" };
+            let lattice = lowest_cost_lattice(&text, &Mode::Normal, None, nbest);
+            let tokens = if nbest {
+                let mut paths = lattice.nbest_tokens_offset(1, false, None);
+                assert_eq!(paths.len(), 1, "{case}");
+                paths.remove(0).0
+            } else {
+                lattice.tokens_offset()
+            };
+            assert_eq!(tokens.len(), 32_770, "{case}");
+            assert!(
+                lattice
+                    .final_edges()
+                    .iter()
+                    .all(|edge| edge.path_cost() == -PATH_COST_CLAMP),
+                "{case}"
+            );
+            assert_path_costs_bounded(&lattice, case);
         }
     }
 }

@@ -21,7 +21,8 @@
 //!
 //! The penalty is applied in [`Lattice`](crate::viterbi::Lattice) through a
 //! [`SpacePenaltyTable`], a per-word-id lookup precomputed once from the
-//! dictionary so the hot path never parses a part-of-speech string.
+//! dictionary so the hot path never parses a part-of-speech string. The
+//! lattice bounds the rule costs per sentence (see [`SpacePenaltyConfig`]).
 //!
 //! The penalty is part of the transition into the candidate (#1117). mecab-ko
 //! adds it to a node that skipped whitespace (`rlength > length`), so a word
@@ -40,6 +41,7 @@
 //! [`LatticeOptions::skip_whitespace`]: crate::viterbi::LatticeOptions::skip_whitespace
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
@@ -49,6 +51,7 @@ use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::schema::Schema;
 use crate::dictionary::{Dictionary, UserDictionary};
 use crate::error::LinderaErrorKind;
+use crate::mode::SENTENCE_PENALTY_BUDGET;
 use crate::viterbi::{LexType, WordId};
 use crate::whitespace::WhitespaceClassifier;
 
@@ -75,7 +78,9 @@ const COMMON_FIELD_COUNT: usize = 4;
 pub struct SpacePenaltyRule {
     /// First part-of-speech tags this rule applies to (e.g. `["JKS", "JX"]`).
     pub pos: Vec<String>,
-    /// Cost added to the candidate's path cost.
+    /// Cost added to the candidate's path cost. Any `i32`, bounded per
+    /// sentence (see [`SpacePenaltyConfig`]); a negative cost favors the
+    /// candidate.
     pub cost: i32,
 }
 
@@ -112,6 +117,16 @@ impl SpacePenaltyRule {
 ///   ]
 /// }
 /// ```
+///
+/// The lattice bounds the rule costs per sentence: for a sentence of `n`
+/// characters, a cost beyond `±(2^29 / n)` counts as that bound, which is at
+/// least 8192 for the longest sentence a lattice accepts, above mecab-ko-dic's
+/// 3000 and 6000. A path pays the penalty at most once per word, and the
+/// words of a path do not overlap, so its penalties add up to at most `2^29`
+/// in absolute value: however large the costs, the penalties alone cannot
+/// take the cost of a path to the bound of the lattice's 32-bit costs, past
+/// which costs are no longer exact and the paths are no longer ranked by them
+/// (#1245). A cost beyond the bound penalizes as much as the bound does.
 ///
 /// The type is `#[non_exhaustive]` so that fields can be added without a
 /// breaking change; create it with [`SpacePenaltyConfig::new`],
@@ -211,7 +226,9 @@ pub fn pos_detail_index(schema: &Schema) -> LinderaResult<usize> {
 ///
 /// Each lexicon stores one byte per word id: the 1-based index of the
 /// matching rule, or `0` for "no penalty". The rule costs live in a separate
-/// small vector, so a lookup is two loads.
+/// small vector, so a lookup is two loads. The rule indexes are shared, so
+/// that the copy the lattice bounds for a sentence (see
+/// [`SpacePenaltyConfig`]) copies only the costs.
 ///
 /// The table also carries the whitespace classifier the penalty is gated on
 /// (see [`SpacePenaltyTable::is_space`]), since that is per-dictionary state
@@ -219,11 +236,11 @@ pub fn pos_detail_index(schema: &Schema) -> LinderaResult<usize> {
 #[derive(Clone, Debug)]
 pub struct SpacePenaltyTable {
     /// Rule index per system word id.
-    system: Vec<u8>,
+    system: Arc<[u8]>,
     /// Rule index per user word id (empty without a user dictionary).
-    user: Vec<u8>,
+    user: Arc<[u8]>,
     /// Rule index per unknown-word entry id.
-    unknown: Vec<u8>,
+    unknown: Arc<[u8]>,
     /// `costs[0] == 0`; `costs[i]` is the cost of rule `i - 1`.
     costs: Vec<i32>,
     /// The dictionary's `SPACE`-category classifier; `None` when the
@@ -286,7 +303,7 @@ impl SpacePenaltyTable {
             .map(|id| rule_for(dictionary.word_details_iter(id).nth(pos_index)))
             .collect();
 
-        let user = user_dictionary.map_or_else(Vec::new, |ud| {
+        let user = user_dictionary.map_or_else(Arc::default, |ud| {
             (0..ud.dict.word_count())
                 .map(|id| rule_for(ud.word_details_iter(id).nth(pos_index)))
                 .collect()
@@ -368,6 +385,37 @@ impl SpacePenaltyTable {
         let rule = table.get(word_id.id() as usize).copied().unwrap_or(0);
         self.costs[rule as usize]
     }
+
+    /// Returns the table the lattice segments a sentence of `n_chars`
+    /// characters with, when it differs from this one: each rule cost
+    /// clamped to `±(SENTENCE_PENALTY_BUDGET / n_chars)`, so that the
+    /// left-space penalties of any path of the sentence add up to at most
+    /// [`SENTENCE_PENALTY_BUDGET`] in absolute value (see
+    /// [`SpacePenaltyConfig`]). The copy shares the rule indexes.
+    ///
+    /// # Arguments
+    ///
+    /// * `n_chars` - The sentence's length in characters.
+    ///
+    /// # Returns
+    ///
+    /// The bounded table, or `None` when every cost is within the bound.
+    pub(crate) fn for_sentence(&self, n_chars: usize) -> Option<SpacePenaltyTable> {
+        let bound =
+            i32::try_from(n_chars.max(1)).map_or(0, |n_chars| SENTENCE_PENALTY_BUDGET / n_chars);
+        let within = |cost: &i32| (-bound..=bound).contains(cost);
+        (!self.costs.iter().all(within)).then(|| SpacePenaltyTable {
+            system: Arc::clone(&self.system),
+            user: Arc::clone(&self.user),
+            unknown: Arc::clone(&self.unknown),
+            costs: self
+                .costs
+                .iter()
+                .map(|&cost| cost.clamp(-bound, bound))
+                .collect(),
+            whitespace: self.whitespace.clone(),
+        })
+    }
 }
 
 #[cfg(test)]
@@ -404,7 +452,7 @@ impl SpacePenaltyTable {
         let unknown = unknown.iter().map(|&cost| rule_of(cost)).collect();
         Self {
             system,
-            user: Vec::new(),
+            user: Arc::default(),
             unknown,
             costs,
             whitespace,
@@ -490,6 +538,52 @@ mod tests {
         let empty = SpacePenaltyConfig::default();
         assert!(empty.rules.is_empty());
         assert_eq!(empty.cost_for_tag("JKS"), 0);
+    }
+
+    /// #1245: mecab-ko-dic's costs are within the bound of every sentence a
+    /// lattice accepts, so the lattice segments with the table as it is.
+    #[test]
+    fn for_sentence_leaves_ko_dic_costs() {
+        let table = SpacePenaltyTable::from_costs(&[3000, 6000, 0], &[6000], None);
+        for n_chars in [0, 1, 2, 1000, 32771, u16::MAX as usize - 1] {
+            assert!(table.for_sentence(n_chars).is_none(), "{n_chars}");
+        }
+    }
+
+    /// #1245: the costs beyond the bound of the sentence are clamped to it,
+    /// on either side, and the others stay; the copy looks every word id up
+    /// through the same rule indexes. A sentence without characters counts
+    /// as one, and one longer than `i32` allows leaves no cost at all.
+    #[test]
+    fn for_sentence_clamps_the_costs() {
+        let bound = SENTENCE_PENALTY_BUDGET / 10;
+        let system = |id| WordId::new(LexType::System, id);
+        let unknown = WordId::new(LexType::Unknown, 0);
+        let table = SpacePenaltyTable::from_costs(
+            &[i32::MAX, 3000, i32::MIN, bound, -bound - 1],
+            &[bound + 1],
+            None,
+        );
+
+        let bounded = table.for_sentence(10).unwrap();
+        let costs: Vec<i32> = (0..5).map(|id| bounded.cost(system(id))).collect();
+        assert_eq!(costs, vec![bound, 3000, -bound, bound, -bound]);
+        assert_eq!(bounded.cost(unknown), bound);
+        assert!(Arc::ptr_eq(&bounded.system, &table.system));
+        assert!(Arc::ptr_eq(&bounded.unknown, &table.unknown));
+
+        let within = SpacePenaltyTable::from_costs(&[bound, -bound], &[], None);
+        assert!(within.for_sentence(10).is_none());
+        assert_eq!(
+            within.for_sentence(11).unwrap().cost(system(0)),
+            SENTENCE_PENALTY_BUDGET / 11
+        );
+
+        let empty = table.for_sentence(0).unwrap();
+        assert_eq!(empty.cost(system(0)), SENTENCE_PENALTY_BUDGET);
+        let huge = table.for_sentence(usize::MAX).unwrap();
+        assert!((0..5).all(|id| huge.cost(system(id)) == 0));
+        assert_eq!(huge.cost(unknown), 0);
     }
 
     #[test]
