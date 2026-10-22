@@ -12347,12 +12347,16 @@ CLI warning items.</li>
 <p>To auto-fix formatting:</p>
 <pre><code class="language-bash">cargo fmt --all
 </code></pre>
+<blockquote>
+<p>Note: <code>cargo fmt</code> formats the Rust code only. For a language binding, <code>make format-lindera-&lt;binding&gt;</code> also formats the binding's Python, JavaScript, Ruby or PHP code, with the tools and versions <code>make lint-lindera-&lt;binding&gt;</code> checks it with (see below).</p>
+</blockquote>
 <h3 id="lint"><a class="header" href="#lint">Lint</a></h3>
 <p>Run Clippy with warnings treated as errors:</p>
 <pre><code class="language-bash">cargo clippy -- -D warnings
 </code></pre>
 <blockquote>
 <p>Note: CI runs <code>cargo clippy --all-targets -- -D warnings</code> for each crate, with the features it tests that crate with (see <code>.github/workflows/test-crate.yml</code>, and the language binding jobs in <code>.github/workflows/regression.yml</code>), so the test code is linted too. <code>make lint-&lt;crate&gt;</code> runs the same clippy command. Run clippy locally (e.g. via <code>make lint</code>) before opening a PR.</p>
+<p>For a language binding, <code>make lint-lindera-&lt;binding&gt;</code> then runs the binding's language-side linter, as the binding's CI job does: ruff for Python, Prettier for Node.js and WASM, RuboCop for Ruby, and PHP CS Fixer for PHP. Their versions are pinned (ruff and Prettier in the <code>Makefile</code>, RuboCop in <code>lindera-ruby/Gemfile</code>, PHP CS Fixer in <code>composer.json</code>), so a new release of a tool cannot fail CI on unchanged code. The targets install the pinned versions themselves, which needs the language's toolchain (Python 3, Node.js with npx, Bundler, Composer) and network access.</p>
 </blockquote>
 <h2 id="documentation-4"><a class="header" href="#documentation-4">Documentation</a></h2>
 <h3 id="api-documentation"><a class="header" href="#api-documentation">API Documentation</a></h3>
@@ -12907,7 +12911,7 @@ cargo test
 make check-docs
 </code></pre>
 <blockquote>
-<p>Note: CI enforces all four: it checks formatting, runs clippy (warnings as errors) and the tests for each crate with the features it tests that crate with, and fails on rustdoc warnings in any crate. <code>make check-docs</code> leaves out the language bindings, which need their languages' toolchains to build; if you change one, also run <code>make check-docs-lindera-&lt;binding&gt;</code>, as that binding's CI job does. <code>make lint</code> and <code>make test</code> apply the same per-crate features; see <a href="development/build_and_test.html">Build &amp; Test</a>.</p>
+<p>Note: CI enforces all four: it checks formatting, runs clippy (warnings as errors) and the tests for each crate with the features it tests that crate with, and fails on rustdoc warnings in any crate. <code>make check-docs</code> leaves out the language bindings, which need their languages' toolchains to build; if you change one, also run <code>make check-docs-lindera-&lt;binding&gt;</code>, as that binding's CI job does. <code>make lint</code> and <code>make test</code> apply the same per-crate features, and <code>make lint-lindera-&lt;binding&gt;</code> also runs the language-side linter that the binding's CI job runs; see <a href="development/build_and_test.html">Build &amp; Test</a>.</p>
 </blockquote>
 </li>
 <li>
