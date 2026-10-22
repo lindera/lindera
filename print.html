@@ -10377,7 +10377,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>Jieba: <code>〇</code> is a numeral entry</strong></td><td>Anyone who segments text with <code>〇</code> (U+3007) with Jieba</td><td>Expect each <code>〇</code> to be one numeral word (<code>m</code>, pinyin <code>ling2</code>) instead of part of an unknown word, as MeCab segments it with the same dictionary; build a Jieba dictionary directory from the <code>mecab-jieba-0.1.2</code> archive</td></tr>
 <tr><td><strong>IPADIC and IPADIC-NEologd: dashes and tildes in dictionary entries are kept as written, as in MeCab</strong></td><td>Anyone who segments text with <code>―</code> (U+2015), <code>—</code> (U+2014), <code>～</code> (U+FF5E) or <code>〜</code> (U+301C) with IPADIC or IPADIC-NEologd</td><td>Expect entries spelled with <code>―</code> or <code>～</code> to match text spelled the same way, and text with <code>—</code> or <code>〜</code> to miss the 12 IPADIC and 1,085 IPADIC-NEologd entries it found only through the old rewrite (a <code>mapping</code> character filter can fold the spellings); rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
 <tr><td><strong>Entries with the same surface, context IDs and cost: the first CSV row is output, as in MeCab</strong></td><td>Anyone who reads token details such as the reading or the base form with IPADIC, IPADIC-NEologd, UniDic or ko-dic, or with a user dictionary that has such entries; N-best users</td><td>Expect such words to get MeCab's details (IPADIC <code>狡い</code> reads <code>ズルイ</code>, not <code>コスイ</code>), a user entry to still win a tie with a system entry, and the first N-best result to always be the 1-best; no setting restores the v6 behavior</td></tr>
-<tr><td><strong>Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab</strong></td><td>Anyone who segments text, in rare places (9 of about 54,000 lines in the texts compared)</td><td>Expect such lines to be segmented as MeCab segments them (IPADIC <code>腸窒扶斯</code> is <code>腸 / 窒扶 / 斯</code>, not <code>腸 / 窒 / 扶斯</code>); no setting restores the v6 behavior</td></tr>
+<tr><td><strong>Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab</strong></td><td>Anyone who segments text: rarely with the Japanese and Korean dictionaries (9 of about 54,000 lines in the texts compared), but in about a quarter of the sentences with CC-CEDICT and Jieba (1,267 and 1,186 of the 4,997 sentences of UD Chinese GSD)</td><td>Expect such lines to be segmented as MeCab segments them (IPADIC <code>腸窒扶斯</code> is <code>腸 / 窒扶 / 斯</code>, not <code>腸 / 窒 / 扶斯</code>, and CC-CEDICT <code>電視台上班</code> is <code>電視 / 台上 / 班</code>, not <code>電視 / 台 / 上班</code>); no setting restores the v6 behavior</td></tr>
 <tr><td><strong><code>lindera tokenize</code> removes only the line terminator from each input line and writes a result for every line</strong></td><td>CLI users whose input lines start or end with whitespace, or who read the wakati or N-best output of lines without tokens</td><td>Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC <code>記号,空白</code>), <code>--keep-whitespace</code> to output the spaces there, and an empty line or a line of spaces to give an empty wakati line and one N-best result; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>WASM: the <code>TokenizerBuilder</code> settings apply whichever way the dictionary is set</strong></td><td>WASM users who combine <code>setDictionaryInstance()</code> with <code>setKeepWhitespace()</code> or filters, or <code>setDictionary()</code> with <code>setUserDictionaryInstance()</code></td><td>Expect those settings and the user dictionary to take effect; a dictionary instance whose <code>char.def</code> has no <code>SPACE</code> category now needs <code>setKeepWhitespace(true)</code>, as a dictionary set by URI does</td></tr>
 <tr><td><strong>PHP: an optional argument of the wrong type throws instead of selecting the default</strong></td><td>PHP code that passes a value of another type to an optional parameter, such as a numeric string for <code>$max_iter</code> of <code>Lindera\Trainer::train()</code> or <code>1</code> for <code>$unique</code> of <code>tokenizeNbest()</code></td><td>Pass the declared type, casting strings such as <code>$argv</code> values with <code>(int)</code>; <code>null</code> or leaving the argument out still selects the default</td></tr>
@@ -10443,7 +10443,9 @@ surface, the context IDs and the cost, the first CSV row is output instead
 of the last, as in MeCab, which changes the reading, the base form or other
 details of such words, and the first N-best result is always the 1-best.
 When two segmentations cost exactly the same, the one whose last word starts
-later is chosen, as in MeCab, which changes the segmentation of a few lines.
+later is chosen, as in MeCab, which changes the segmentation of a few lines
+with the Japanese and Korean dictionaries and of about a quarter of the
+sentences with CC-CEDICT and Jieba.
 With CC-CEDICT, unknown words no longer cost less than dictionary words,
 which makes entries such as <code>T恤</code> one word and gives <code>〇</code> and entries such
 as <code>PK</code> their pinyin and definition. With Jieba, <code>〇</code> is a numeral entry,
@@ -11315,15 +11317,39 @@ MeCab does:</p>
 <tr><td><code>にフリーホイールダイオードや</code> (IPADIC)</td><td><code>フリーホイールダイオード</code> (one unknown word)</td><td><code>フリー / ホイール / ダイオード</code></td></tr>
 <tr><td><code>家系譜</code> (UniDic)</td><td><code>家 / 系譜</code></td><td><code>家系 / 譜</code></td></tr>
 <tr><td><code>차나 마셔</code> (ko-dic)</td><td><code>차나 / 마셔</code></td><td><code>차 / 나 / 마셔</code></td></tr>
+<tr><td><code>電視台上班</code> (CC-CEDICT)</td><td><code>電視 / 台 / 上班</code></td><td><code>電視 / 台上 / 班</code></td></tr>
+<tr><td><code>兩個人</code> (Jieba)</td><td><code>兩 / 個人</code></td><td><code>兩個 / 人</code></td></tr>
 </tbody></table>
 </div>
-<p>Both segmentations of <code>腸窒扶斯</code> cost 28,382. Such ties are rare. The texts
-compared are <em>Botchan</em> (as one file, as paragraphs and as sentences), the
-3,587 paragraphs of <em>Kokoro</em> and <em>I Am a Cat</em> and the 8,100 sentences of UD
-Japanese GSD, each with IPADIC, IPADIC-NEologd and UniDic, and the 7,759
-lines of <em>Sangnoksu</em> with ko-dic: about 54,000 lines in all. 9 of them
-change, all to MeCab's segmentation, and none moves away from it. In Decompose mode, which MeCab does not have, 0 to 2 lines
-per text change in the same way.</p>
+<p>Both segmentations of <code>腸窒扶斯</code> cost 28,382. With the Japanese and Korean
+dictionaries, such ties are rare. The texts compared are <em>Botchan</em> (as one
+file, as paragraphs and as sentences), the 3,587 paragraphs of <em>Kokoro</em> and
+<em>I Am a Cat</em> and the 8,100 sentences of UD Japanese GSD, each with IPADIC,
+IPADIC-NEologd and UniDic, and the 7,759 lines of <em>Sangnoksu</em> with ko-dic:
+about 54,000 lines in all. 9 of them change, all to MeCab's segmentation,
+and none moves away from it. In Decompose mode, which MeCab does not have,
+0 to 2 lines per text change in the same way.</p>
+<p>With CC-CEDICT and Jieba, ties are common, because their costs take few
+values. CC-CEDICT has no connection costs, and an entry of <code>len</code>
+characters costs <code>max(-36000, -400 * len ** 1.5)</code> (except the 22 entries
+made only of Latin letters or only of digits, see
+<a href="migration_v6_to_v7.html#cc-cedict-unknown-words-no-longer-cost-less-than-dictionary-words">CC-CEDICT: unknown words no longer cost less than dictionary words</a>),
+so two segmentations into entries of the same lengths cost the same, such
+as <code>電視 / 台 / 上班</code> and <code>電視 / 台上 / 班</code>. The 584,430 entries of Jieba
+have 12 distinct costs and 4 context IDs, so two segmentations into words
+of the same costs and context IDs, in the same order, cost the same, such
+as <code>兩 / 個人</code> and <code>兩個 / 人</code>. About a quarter of the 4,997 sentences of UD
+Chinese GSD change, compared with v7.0.0 changed to keep the
+earlier-starting word on ties:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th style="text-align: right">Sentences that change</th><th>Closer to / farther from the gold segmentation</th><th>Sentences segmented as MeCab, before → after</th></tr></thead><tbody>
+<tr><td>CC-CEDICT</td><td style="text-align: right">1,267</td><td>634 / 455 (sign test p = 6.5 × 10⁻⁸)</td><td>3,694 → 4,951</td></tr>
+<tr><td>Jieba</td><td style="text-align: right">1,186</td><td>549 / 451 (p = 0.0021)</td><td>3,777 → 4,951</td></tr>
+</tbody></table>
+</div>
+<p>The other sentences that change come neither closer to the gold
+segmentation nor farther from it, and segmentation F1 rises from 77.94 to
+78.30 with CC-CEDICT and from 76.93 to 77.13 with Jieba. Every sentence that
+changes costs the same either way.</p>
 <p>When whitespace is skipped (see
 <a href="migration_v6_to_v7.html#whitespace-is-skipped-in-the-lattice">Whitespace is skipped in the lattice</a>),
 the word that ends later wins first, as in MeCab, which looks the next word
@@ -12063,7 +12089,9 @@ IPADIC-NEologd, the choice among
 tied entries, which matters only if you read token details such as the
 reading or the base form, or the order of N-best results with the same
 cost, the choice between segmentations of equal cost, which changes the
-segmentation of a few lines, in the CLI only, the whitespace at the
+segmentation of a few lines with the Japanese and Korean dictionaries and
+of about a quarter of the sentences with CC-CEDICT and Jieba, in the CLI
+only, the whitespace at the
 ends of an input line and the output of lines without tokens, which
 matter only for lines that start or end with whitespace and for the
 wakati and N-best output of empty lines and lines of spaces, and the
@@ -12299,9 +12327,11 @@ entry still wins a tie with a system entry, unlike in MeCab.</li>
 </ul>
 <p>Everyone who compares the segmentation with v6 or with MeCab:</p>
 <ul>
-<li>Expect the few places where two segmentations cost exactly the same to be
-segmented as MeCab segments them, with the last word that starts later
-(IPADIC <code>腸窒扶斯</code> is <code>腸 / 窒扶 / 斯</code>). No setting restores the v6
+<li>Expect the places where two segmentations cost exactly the same, few with
+the Japanese and Korean dictionaries but about a quarter of the sentences
+with CC-CEDICT and Jieba, to be segmented as MeCab segments them, with the
+last word that starts later (IPADIC <code>腸窒扶斯</code> is <code>腸 / 窒扶 / 斯</code>,
+CC-CEDICT <code>電視台上班</code> is <code>電視 / 台上 / 班</code>). No setting restores the v6
 output.</li>
 </ul>
 <p>Language bindings and CLI:</p>
