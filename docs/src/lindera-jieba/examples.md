@@ -4,7 +4,7 @@
 
 ```shell
 % echo "可以进行中文形态学分析。" | lindera tokenize \
-  --dict /tmp/lindera-jieba-0.1.1
+  --dict /tmp/lindera-jieba-0.1.2
 ```
 
 ```text
@@ -12,8 +12,8 @@
 进行    v,CHINESE,jin4 xing2,進行,进行,(of a process etc) to proceed; to be in progress; to be underway/(of people) to carry out; to conduct (an investigation or discussion etc)/(of an army etc) to be on the march; to advance,2,进,行,high
 中文    nz,CHINESE,Zhong1 wen2,中文,中文,Chinese language,2,中,文,high
 形态    n,CHINESE,xing2 tai4,形態,形态,shape/form/pattern/morphology,2,形,态,high
-学      n,CHINESE,xue2,學,学,to learn/to study/to imitate/science/-ology,1,学,学,high
-分析    vn,CHINESE,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4],2,分,析,high
+学分    n,CHINESE,xue2 fen1,學分,学分,course credit,2,学,分,mid
+析      vg,CHINESE,xi1,析,析,to separate/to divide/to analyze,1,析,析,mid
 。      w,*,*,*,*,*,*,*,*,*
 EOS
 ```
@@ -30,8 +30,8 @@ EOS
 进行    v,CHINESE,jin4 xing2,進行,进行,(of a process etc) to proceed; to be in progress; to be underway/(of people) to carry out; to conduct (an investigation or discussion etc)/(of an army etc) to be on the march; to advance,2,进,行,high
 中文    nz,CHINESE,Zhong1 wen2,中文,中文,Chinese language,2,中,文,high
 形态    n,CHINESE,xing2 tai4,形態,形态,shape/form/pattern/morphology,2,形,态,high
-学      n,CHINESE,xue2,學,学,to learn/to study/to imitate/science/-ology,1,学,学,high
-分析    vn,CHINESE,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4],2,分,析,high
+学分    n,CHINESE,xue2 fen1,學分,学分,course credit,2,学,分,mid
+析      vg,CHINESE,xi1,析,析,to separate/to divide/to analyze,1,析,析,mid
 。      w,*,*,*,*,*,*,*,*,*
 EOS
 ```

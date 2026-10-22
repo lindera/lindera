@@ -4144,6 +4144,49 @@ mod tests {
         assert_eq!(pk.details()[4], "P K");
     }
 
+    /// #1162: Jieba reads `〇` as a numeral. Its `char.def` made `〇` a
+    /// `SYMBOL` and it had no entry, so an unknown word started at `〇` and
+    /// its group ran on through the numerals (`CHINESENUMERIC CHINESE`) and
+    /// the Chinese characters after them: `二〇〇八年北京奧運會` gave `二` and
+    /// `〇〇八年北京奧運會`. mecab-jieba 0.1.2 gives `〇` the categories of
+    /// the other numerals and an entry like `零`, so no unknown word starts
+    /// at it. The expected tokens are MeCab's with the same dictionary.
+    #[test]
+    #[cfg(feature = "embed-jieba")]
+    fn test_jieba_reads_zero_as_a_numeral() {
+        use std::borrow::Cow;
+
+        use crate::dictionary::load_dictionary;
+        use crate::mode::Mode;
+        use crate::segmenter::Segmenter;
+
+        let dictionary = load_dictionary("embedded://jieba").unwrap();
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+        let cases: [(&str, &[&str]); 3] = [
+            (
+                "二〇〇八年北京奧運會",
+                &["二", "〇", "〇", "八", "年", "北京奧運", "會"],
+            ),
+            ("二〇二六年", &["二", "〇", "二六", "年"]),
+            (
+                "编号〇〇七的特工",
+                &["编号", "〇", "〇", "七", "的", "特工"],
+            ),
+        ];
+        for (text, expected) in cases {
+            let tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
+            let surfaces: Vec<&str> = tokens.iter().map(|token| token.surface.as_ref()).collect();
+            assert_eq!(surfaces, expected, "{text:?}");
+        }
+
+        // `〇` is the numeral entry (`m`), with its pinyin, not an unknown word.
+        let mut tokens = segmenter.segment(Cow::Borrowed("二〇二六年")).unwrap();
+        let zero = &mut tokens[1];
+        assert!(!zero.word_id.is_unknown());
+        assert_eq!(zero.details()[0], "m");
+        assert_eq!(zero.details()[2], "ling2");
+    }
+
     /// SudachiDict keeps whitespace in the lattice by default, as Sudachi
     /// does and as its costs assume: its metadata sets `skip_whitespace` to
     /// `false`. A multi-word entry such as `caramel man` then stays one

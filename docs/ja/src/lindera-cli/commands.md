@@ -224,7 +224,7 @@ EOS
 
 ```shell
 % echo "可以进行中文形态学分析。" | lindera tokenize \
-  --dict /tmp/lindera-jieba-0.1.1
+  --dict /tmp/lindera-jieba-0.1.2
 ```
 
 ### 埋め込み辞書を使用した例
@@ -747,12 +747,12 @@ Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for 
 #### Jieba（中国語辞書）のビルド
 
 ```shell
-% curl -L -o /tmp/mecab-jieba-0.1.1.tar.gz "https://lindera.dev/mecab-jieba-0.1.1.tar.gz"
-% tar zxvf /tmp/mecab-jieba-0.1.1.tar.gz -C /tmp
+% curl -L -o /tmp/mecab-jieba-0.1.2.tar.gz "https://lindera.dev/mecab-jieba-0.1.2.tar.gz"
+% tar zxvf /tmp/mecab-jieba-0.1.2.tar.gz -C /tmp
 
 % lindera build \
-  --src /tmp/mecab-jieba-0.1.1/dict-src \
-  --dest /tmp/lindera-jieba-0.1.1 \
+  --src /tmp/mecab-jieba-0.1.2/dict-src \
+  --dest /tmp/lindera-jieba-0.1.2 \
   --metadata ./lindera-jieba/metadata.json
 ```
 
