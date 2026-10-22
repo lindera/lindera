@@ -15,9 +15,9 @@ TEXT = ENV.fetch('BENCH_TEXT', 'すもももももももものうち')
 CALLS = ENV.fetch('BENCH_CALLS', '2000').to_i
 INNER = ENV.fetch('BENCH_INNER', '10').to_i
 
-def us_per_call(calls)
+def us_per_call(calls, &)
   start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-  calls.times { yield }
+  calls.times(&)
   (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) / calls * 1_000_000
 end
 
@@ -34,7 +34,5 @@ if ARGV.include?('--verify')
   puts "surfaces\t#{tokenizer.tokenize_surfaces(TEXT).join("\t")}" if has_surfaces
 else
   puts format("tokenize\t%.3f", min_us(CALLS, INNER) { tokenizer.tokenize(TEXT) })
-  if has_surfaces
-    puts format("surfaces\t%.3f", min_us(CALLS, INNER) { tokenizer.tokenize_surfaces(TEXT) })
-  end
+  puts format("surfaces\t%.3f", min_us(CALLS, INNER) { tokenizer.tokenize_surfaces(TEXT) }) if has_surfaces
 end

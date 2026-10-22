@@ -12,8 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const linderaDir =
-  process.env.BENCH_LINDERA_DIR ?? path.join(here, "..", "..");
+const linderaDir = process.env.BENCH_LINDERA_DIR ?? path.join(here, "..", "..");
 const require = createRequire(import.meta.url);
 const lindera = require(path.join(linderaDir, "lindera-nodejs", "index.js"));
 

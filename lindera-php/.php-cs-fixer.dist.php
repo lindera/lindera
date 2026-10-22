@@ -4,7 +4,8 @@ $finder = PhpCsFixer\Finder::create()
     ->in(__DIR__ . '/examples')
     ->in(__DIR__ . '/tests')
     ->in(__DIR__ . '/tools')
-    ->name('*.php');
+    ->name('*.php')
+    ->append([__FILE__]);
 
 // Run from the repository root (`make format-lindera-php`), where composer.json
 // and vendor/ live; the cache stays next to this file.

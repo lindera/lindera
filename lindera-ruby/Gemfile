@@ -1,8 +1,15 @@
 # frozen_string_literal: true
 
-source "https://rubygems.org"
+source 'https://rubygems.org'
 gemspec
+
+# What the Rakefile's tasks (compile, test, build) need. Development
+# dependencies belong here rather than in the gemspec, which lists what
+# `gem install` needs (#1251).
+gem 'minitest', '~> 5.0'
+gem 'rake', '~> 13.0'
+gem 'rake-compiler', '~> 1.2'
 
 # The linter `make lint-lindera-ruby` runs, locally and in CI (#1178). Pinned,
 # as a new release can enable new cops; Dependabot proposes the updates.
-gem "rubocop", "1.92.0", require: false
+gem 'rubocop', '1.92.0', require: false

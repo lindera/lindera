@@ -38,14 +38,14 @@ $tokenizer = $builder->build();
 $hasSurfaces = method_exists($tokenizer, 'tokenizeSurfaces');
 
 if (in_array('--verify', $argv, true)) {
-    $surfaces = array_map(static fn ($t) => $t->surface, $tokenizer->tokenize($text));
+    $surfaces = array_map(static fn($t) => $t->surface, $tokenizer->tokenize($text));
     echo "tokenize\t" . implode("\t", $surfaces) . "\n";
     if ($hasSurfaces) {
         echo "surfaces\t" . implode("\t", $tokenizer->tokenizeSurfaces($text)) . "\n";
     }
 } else {
-    printf("tokenize\t%.3f\n", minUs(static fn ($t) => $tokenizer->tokenize($t), $text, $calls, $inner));
+    printf("tokenize\t%.3f\n", minUs(static fn($t) => $tokenizer->tokenize($t), $text, $calls, $inner));
     if ($hasSurfaces) {
-        printf("surfaces\t%.3f\n", minUs(static fn ($t) => $tokenizer->tokenizeSurfaces($t), $text, $calls, $inner));
+        printf("surfaces\t%.3f\n", minUs(static fn($t) => $tokenizer->tokenizeSurfaces($t), $text, $calls, $inner));
     }
 }

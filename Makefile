@@ -28,7 +28,8 @@ CARGO_TEST_WITH_RBCONFIG = ruby -rrbconfig -e 'RbConfig::CONFIG.each { |k, v| EN
 # ── Language-side linters ───────────────────────────────────────────────────
 # The versions of the linters and formatters that lint-lindera-<binding> and
 # format-lindera-<binding> run on the bindings' Python, JavaScript, Ruby and PHP
-# code, locally and in CI (#1178). They are pinned because a new release can
+# code, and lint-scripts and format-scripts on the scripts outside the crates,
+# locally and in CI (#1178, #1251). They are pinned because a new release can
 # enable new rules, which would fail CI on unchanged code: update a version
 # together with the fixes the new release asks for. Dependabot does not see the
 # two below, so they are updated by hand. rubocop is pinned in
@@ -41,6 +42,11 @@ PRETTIER_VERSION = 3.9.10
 # ones, so the targets run it from the binding's directory (lindera-wasm's
 # .gitignore leaves out the example's build output).
 PRETTIER = npx --yes prettier@$(PRETTIER_VERSION)
+
+# The Ruby files lint-lindera-ruby and format-lindera-ruby check, relative to
+# lindera-ruby/. Listed rather than the whole directory, which would also check
+# the copies of these files that `rake build` stages in pkg/.
+RUBOCOP_PATHS = Gemfile Rakefile lindera.gemspec extconf.rb test/ examples/ lib/
 
 # ── Per-crate configuration ───────────────────────────────────────────────────
 #
@@ -185,11 +191,11 @@ format-lindera-python: setup-ruff ## Format lindera-python
 
 format-lindera-nodejs: ## Format lindera-nodejs
 	cargo fmt -p lindera-nodejs
-	cd lindera-nodejs && $(PRETTIER) --write tests/ examples/
+	cd lindera-nodejs && $(PRETTIER) --write tests/ examples/ types-check/
 
 format-lindera-ruby: ## Format lindera-ruby
 	cargo fmt -p lindera-ruby
-	cd lindera-ruby && bundle install --quiet && bundle exec rubocop -a test/ examples/ lib/
+	cd lindera-ruby && bundle install --quiet && bundle exec rubocop -a $(RUBOCOP_PATHS)
 
 format-lindera-php: ## Format lindera-php
 	cargo fmt -p lindera-php
@@ -198,10 +204,10 @@ format-lindera-php: ## Format lindera-php
 
 format-lindera-wasm: ## Format lindera-wasm
 	cargo fmt -p lindera-wasm
-	cd lindera-wasm && $(PRETTIER) --write js/ example/
+	cd lindera-wasm && $(PRETTIER) --write js/ example/ types-check/
 
-format: ## Format all crates
-	$(foreach c,$(ALL_CRATES),make format-$(c) &&) true
+format: ## Format all crates and the scripts outside them
+	$(foreach c,$(ALL_CRATES),make format-$(c) &&) make format-scripts
 
 # ── Lint ────────────────────────────────────────────────────────────────────
 
@@ -215,11 +221,11 @@ lint-lindera-python: setup-ruff ## Lint lindera-python
 
 lint-lindera-nodejs: ## Lint lindera-nodejs
 	cargo clippy -p lindera-nodejs --all-targets -- -D warnings
-	cd lindera-nodejs && $(PRETTIER) --check tests/ examples/
+	cd lindera-nodejs && $(PRETTIER) --check tests/ examples/ types-check/
 
 lint-lindera-ruby: ## Lint lindera-ruby
 	$(CARGO_TEST_WITH_RBCONFIG) cargo clippy -p lindera-ruby --all-targets -- -D warnings
-	cd lindera-ruby && bundle install --quiet && bundle exec rubocop test/ examples/ lib/
+	cd lindera-ruby && bundle install --quiet && bundle exec rubocop $(RUBOCOP_PATHS)
 
 lint-lindera-php: ## Lint lindera-php
 	cargo clippy -p lindera-php --all-targets -- -D warnings
@@ -228,10 +234,37 @@ lint-lindera-php: ## Lint lindera-php
 
 lint-lindera-wasm: ## Lint lindera-wasm (wasm32 target)
 	cargo clippy -p lindera-wasm --target wasm32-unknown-unknown --all-targets --features=$(WASM_FEATURES) -- -D warnings
-	cd lindera-wasm && $(PRETTIER) --check js/ example/
+	cd lindera-wasm && $(PRETTIER) --check js/ example/ types-check/
 
-lint: ## Lint all crates
-	$(foreach c,$(ALL_CRATES),make lint-$(c) &&) true
+lint: ## Lint all crates and the scripts outside them
+	$(foreach c,$(ALL_CRATES),make lint-$(c) &&) make lint-scripts
+
+# ── Scripts outside the crates ──────────────────────────────────────────────
+
+# The benchmark harness, which the bindings share, and the JavaScript the docs
+# load belong to no binding, so the binding targets above do not lint them
+# (#1251). Each file is checked with the rules of the binding written in its
+# language: the ruff configuration in lindera-python, RuboCop's in lindera-ruby
+# and PHP CS Fixer's in lindera-php (given explicitly, as none of them is found
+# from scripts/). CI runs lint-scripts in the "Lint scripts" job.
+SCRIPTS_DIR = scripts/benchmarks/
+DOCS_JS     = docs/mermaid-init.js docs/ja/mermaid-init.js
+
+format-scripts: setup-ruff ## Format the scripts outside the crates
+	$(RUFF) format --config lindera-python/pyproject.toml $(SCRIPTS_DIR)
+	$(RUFF) check --fix --config lindera-python/pyproject.toml $(SCRIPTS_DIR)
+	$(PRETTIER) --write $(SCRIPTS_DIR) $(DOCS_JS)
+	cd lindera-ruby && bundle install --quiet && bundle exec rubocop -a --config .rubocop.yml ../$(SCRIPTS_DIR)
+	composer install --quiet --no-interaction
+	vendor/bin/php-cs-fixer fix --config=lindera-php/.php-cs-fixer.dist.php $(SCRIPTS_DIR)
+
+lint-scripts: setup-ruff ## Lint the scripts outside the crates
+	$(RUFF) format --check --config lindera-python/pyproject.toml $(SCRIPTS_DIR)
+	$(RUFF) check --config lindera-python/pyproject.toml $(SCRIPTS_DIR)
+	$(PRETTIER) --check $(SCRIPTS_DIR) $(DOCS_JS)
+	cd lindera-ruby && bundle install --quiet && bundle exec rubocop --config .rubocop.yml ../$(SCRIPTS_DIR)
+	composer install --quiet --no-interaction
+	vendor/bin/php-cs-fixer fix --dry-run --diff --config=lindera-php/.php-cs-fixer.dist.php $(SCRIPTS_DIR)
 
 # ── Docs ────────────────────────────────────────────────────────────────────
 
