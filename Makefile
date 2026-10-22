@@ -111,8 +111,8 @@ $(PYTHON_VENV_DIR):
 	python3 -m venv $(PYTHON_VENV_DIR)
 	$(PIP) install --quiet --upgrade pip
 
-setup-venv: $(PYTHON_VENV_DIR) ## Create lindera-python venv and install dev dependencies
-	$(PIP) install --quiet maturin pytest isort black flake8 mypy
+setup-venv: $(PYTHON_VENV_DIR) ## Create lindera-python venv and install maturin and pytest
+	$(PIP) install --quiet maturin pytest
 
 setup-ruff: $(PYTHON_VENV_DIR) ## Install the pinned ruff into the lindera-python venv
 	$(PIP) install --quiet ruff==$(RUFF_VERSION)

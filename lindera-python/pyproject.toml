@@ -33,27 +33,10 @@ patchelf = "^0.19.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.1.1"
-black = "^26.10.1"
-isort = "^9.0.2"
-autopep8 = "^2.3.2"
-flake8 = "^7.4.1"
-flake8-pyproject = "^1.2.4"
-mypy = "^2.4.0"
 
 [build-system]
 requires = ["maturin>=1.9.3,<2.0"]
 build-backend = "maturin"
-
-[tool.black]
-line-length = 119
-
-[tool.flake8]
-ignore = "E203,E501"
-max-line-length = 119
-
-[tool.isort]
-profile = "black"
-line_length = 119
 
 # ruff, which `make lint-lindera-python` runs (#1178). Any [tool.ruff] table
 # makes this file ruff's configuration, so ruff targets the lowest Python in
@@ -61,6 +44,3 @@ line_length = 119
 # the extension module this crate builds, which ruff cannot find from here.
 [tool.ruff.lint.isort]
 known-first-party = ["lindera"]
-
-[tool.mypy]
-ignore_missing_imports = true
