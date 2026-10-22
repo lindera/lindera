@@ -88,7 +88,9 @@ async function getDictUrl(name, version) {
   // On GitHub Pages: look up filename from manifest
   const manifest = await fetchManifest();
   if (manifest && manifest[name]) {
-    return { url: new URL(`dict/${manifest[name]}`, window.location.href).href };
+    return {
+      url: new URL(`dict/${manifest[name]}`, window.location.href).href,
+    };
   }
 
   // Fallback: guess filename using WASM version

@@ -1,5 +1,5 @@
-from lindera import Token
 import lindera
+from lindera import Token
 
 
 def test_tokenize_returns_token_objects():
@@ -11,7 +11,7 @@ def test_tokenize_returns_token_objects():
     except Exception as e:
         print(f"Failed to load dictionary: {e}")
         # Fallback for testing environment if ipadic is not embedded
-        raise e
+        raise
 
     # TokenizerBuilder approach (alternative)
     # tokenizer = TokenizerBuilder().set_segmenter_dictionary("ipadic").build()
@@ -95,6 +95,3 @@ if __name__ == "__main__":
         test_tokenize_returns_token_objects()
     except ImportError:
         print("Lindera package not installed or built correctly.")
-    except Exception as e:
-        print(f"Test failed: {e}")
-        exit(1)

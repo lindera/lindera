@@ -214,9 +214,16 @@ describe(
         const metadataFile = path.join(tmpdir, "metadata.json");
         fs.writeFileSync(
           metadataFile,
-          JSON.stringify({ name: "test-dict", version: "1.0.0", encoding: "utf-8" }),
+          JSON.stringify({
+            name: "test-dict",
+            version: "1.0.0",
+            encoding: "utf-8",
+          }),
         );
-        const exportDirWithMetadata = path.join(tmpdir, "exported-with-metadata");
+        const exportDirWithMetadata = path.join(
+          tmpdir,
+          "exported-with-metadata",
+        );
         lindera.exportModel({
           model: modelFile,
           output: exportDirWithMetadata,

@@ -43,7 +43,7 @@ def _has_embedded_ipadic():
     try:
         lindera.load_dictionary("embedded://ipadic")
         return True
-    except Exception:
+    except ValueError:
         return False
 
 

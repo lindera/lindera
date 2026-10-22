@@ -175,7 +175,7 @@ Dir.mktmpdir('lindera-train-') do |tmpdir|
   Lindera.export(model_file, export_dir, files[:metadata])
 
   puts "\nStep 4: Exported files:"
-  Dir.glob(File.join(export_dir, '*')).sort.each do |file|
+  Dir.glob(File.join(export_dir, '*')).each do |file|
     size = File.size(file).to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
     puts "  - #{File.basename(file)} (#{size} bytes)"
   end

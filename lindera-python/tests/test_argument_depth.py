@@ -102,6 +102,7 @@ def test_rejects_without_crashing_the_interpreter(method, name):
     )
     result = subprocess.run(
         [sys.executable, "-c", script],
+        check=False,
         capture_output=True,
         text=True,
         timeout=60,

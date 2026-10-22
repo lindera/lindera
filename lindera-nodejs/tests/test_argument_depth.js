@@ -93,12 +93,18 @@ describe("argument nesting limit", () => {
 
       it("keeps the builder usable after rejecting an argument", () => {
         const builder = new TokenizerBuilder();
-        assert.throws(() => CALLS[method](builder, nestedObjects(129)), TOO_DEEP);
+        assert.throws(
+          () => CALLS[method](builder, nestedObjects(129)),
+          TOO_DEEP,
+        );
         assert.doesNotThrow(() => CALLS[method](builder, null));
       });
 
       for (const [name, valueSource] of [
-        ["a value that contains itself", "(() => { const o = { rules: [] }; o.self = o; return o; })()"],
+        [
+          "a value that contains itself",
+          "(() => { const o = { rules: [] }; o.self = o; return o; })()",
+        ],
         ["10,000 levels", "nestedObjects(10000)"],
       ]) {
         it(`rejects ${name} without crashing the process`, () => {
@@ -126,14 +132,18 @@ describe("argument nesting limit", () => {
 
     it("rejects an undefined array element as before", () => {
       assert.throws(
-        () => new TokenizerBuilder().appendTokenFilter("lowercase", { a: [undefined] }),
+        () =>
+          new TokenizerBuilder().appendTokenFilter("lowercase", {
+            a: [undefined],
+          }),
         /undefined cannot be represented as a serde_json::Value/,
       );
     });
 
     it("rejects a function as before", () => {
       assert.throws(
-        () => new TokenizerBuilder().appendTokenFilter("lowercase", { a: () => 1 }),
+        () =>
+          new TokenizerBuilder().appendTokenFilter("lowercase", { a: () => 1 }),
         /JS functions cannot be represented as a serde_json::Value/,
       );
     });

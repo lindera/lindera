@@ -43,7 +43,7 @@ class DecomposePenaltyTest extends TestCase
      */
     private static function surfaces(array $tokens): array
     {
-        return array_map(static fn (Lindera\Token $token): string => $token->surface, $tokens);
+        return array_map(static fn(Lindera\Token $token): string => $token->surface, $tokens);
     }
 
     /**
