@@ -45,7 +45,7 @@ Lindera.train(
 | 6 | rewrite_def | `String` | 書き換えルール定義ファイルのパス（rewrite.def） |
 | 7 | output | `String` | 学習済みモデルファイルの出力パス |
 | 8 | lambda | `Float` | L1 正則化コスト（0.0--1.0） |
-| 9 | max_iter | `Integer` | 最大学習イテレーション数 |
+| 9 | max_iter | `Integer` | 最大学習イテレーション数。目的関数が収束すると（相対変化が 3 回続けて 5e-5 を下回ると）、それより前に止まります |
 | 10 | max_threads | `Integer` または `nil` | スレッド数（`nil` = CPU コア数を自動検出） |
 
 ## 学習済みモデルのエクスポート

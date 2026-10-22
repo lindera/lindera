@@ -1528,6 +1528,12 @@ those of MeCab's learner:
   ([#1168](https://github.com/lindera/lindera/issues/1168)).
 - `model_info.training_iterations` in `metadata.json` was the
   `--max-iterations` value, not the number of iterations that ran.
+- Training stopped at `--max-iterations` unless one of argmin's own tests
+  held: a gradient norm below the square root of the machine epsilon, or an
+  iteration that left the objective unchanged. With an objective in the
+  hundreds or thousands the first practically never holds, so training ran
+  to the cap. An L2 run whose line search failed panicked
+  ([#1167](https://github.com/lindera/lindera/issues/1167)).
 - The export functions of the Python, Node.js, Ruby and PHP bindings wrote
   `lex.csv`, `matrix.def`, `unk.def`, `metadata.json` and a fixed
   `char.def` with the categories `DEFAULT`, `HIRAGANA`, `KATAKANA`,
@@ -1593,6 +1599,14 @@ v7.0.0 trains as MeCab's learner does (see
 - `model_info.training_iterations` is the number of L-BFGS iterations that
   ran: `--max-iterations` when that stopped training, fewer when it
   converged earlier.
+- Training also stops once the relative change of the objective has stayed
+  below `--eta` (`Trainer::eta`; default 0.00005, the default of MeCab's
+  learner) for 3 iterations in a row; `--eta 0` turns the test off. The
+  bindings use the default. `lindera train` prints why the optimizer
+  stopped, with the number of iterations and of evaluations of the loss and
+  its gradient, and warns when an iteration left the objective unchanged or
+  the line search failed. An L2 run whose line search fails keeps the best
+  weights of the run.
 - The export functions of the Python, Node.js, Ruby and PHP bindings write
   the files `lindera export` writes, with the same code: the `char.def`,
   `feature.def` and `rewrite.def` the model was trained with, and
@@ -1637,10 +1651,15 @@ v7.0.0 trains as MeCab's learner does (see
   written, as `mecab-dict-index` fails for a user dictionary entry whose
   feature has no context ID.
 
-Training takes longer, because every lattice now has the seed words. It is
-slower than MeCab's learner, and it can stop at `--max-iterations`
-before it converges
-([#1167](https://github.com/lindera/lindera/issues/1167)). The files in
+Every lattice now has the seed words. On the mecab-ipadic data of [#1110](https://github.com/lindera/lindera/issues/1110),
+the default L1 regularization still reaches `--max-iterations` before the
+objective converges, while L2 with `--lambda 1.0` (MeCab's `-c 1.0`)
+converges in about as many iterations as MeCab's learner
+([#1167](https://github.com/lindera/lindera/issues/1167)); training there
+takes about twice as long as MeCab's learner, about two thirds of it
+outside the optimizer: before it starts
+([#1263](https://github.com/lindera/lindera/issues/1263)) and after it
+stops. The files in
 `resources/training/` now define a `SPACE` category in `char.def` and a
 `SPACE` line in `unk.def`, so a dictionary trained from them tokenizes
 without `--keep-whitespace`, which it needed in v6
@@ -1978,6 +1997,7 @@ These affect only Rust code that uses `lindera-trainer` directly or through
 | `Model::num_labels()` and `ModelMetadata::label_count` count one unknown-word label per `char.def` category | Count one per `unk.def` entry; the virtual labels are not counted |
 | `Model::write_left_id_def` / `write_right_id_def` write the IDs of the bigram feature strings, another ID space from the context IDs of `lex.csv` and `matrix.def` | Write the context IDs, as `SerializableModel::write_left_id_def` / `write_right_id_def` write them for the model that `Model::write_model` writes |
 | `ModelMetadata::iterations` (and `model_info.training_iterations`) is the `max_iter` setting | The number of L-BFGS iterations that ran |
+| — | New: `Trainer::eta` and `Trainer::get_eta`, the tolerance of the convergence test, and `DEFAULT_ETA` (`5e-5`), its default; `lindera-crf` adds the same `Trainer::eta` and `DEFAULT_ETA`, and `StopReason` with `TrainingStats::evaluations` and `TrainingStats::stop_reason` |
 | `Model::write_connection_costs` and `SerializableModel::write_connection_costs` write `i16::MAX` for a connection without a trained weight | Write 0, the cost the connection has in training and in MeCab |
 
 A model is now written with `MODEL_FORMAT_VERSION` as its `metadata.version`,
@@ -2174,6 +2194,11 @@ Users of `lindera train`:
   category once, before the range lines that name it, give every category
   an `unk.def` line, and remove the `unk.def` lines of undefined categories
   ([#1195](https://github.com/lindera/lindera/issues/1195)).
+- Expect training to stop before `--max-iterations` once the objective
+  converges, and read the line `lindera train` prints to see why it
+  stopped; pass `--eta 0` (`Trainer::eta(0.0)` in Rust) to stop only at the
+  cap and on the optimizer's own tests, as v6 did
+  ([#1167](https://github.com/lindera/lindera/issues/1167)).
 
 Everyone who builds a system dictionary with `lindera build`:
 

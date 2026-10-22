@@ -30,6 +30,19 @@ Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels
 
 `gold_lexicon`, `gold_unknown` and `gold_virtual` count the gold tokens labelled by each of the three steps, `virtual_labels` counts the virtual labels, and `negative_lexicon` and `negative_unknown` count the negative edges from the seed lexicon and from the unknown-word candidates.
 
+The CRF is then trained with L-BFGS (OWL-QN when the regularization has an L1 part). Training stops at the first of these:
+
+- `converged`: the relative change of the objective, `|previous - current| / |previous|`, stayed below `eta` for 3 iterations in a row. The default `eta` is that of MeCab's learner, which applies the same test to every evaluation, line-search trials included, where Lindera counts iterations.
+- `no progress`: an iteration left the objective unchanged. When this happens after a few iterations, the model is barely trained, and `lindera train` warns about it.
+- The line search of an iteration failed; the model keeps the best weights of the run, with a warning.
+- `max-iterations` was reached before the objective converged.
+
+`lindera train` prints which one stopped it, with the number of iterations and of evaluations, each evaluation being one forward-backward pass over every lattice; with the files in `resources/training/`:
+
+```text
+L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
+```
+
 ## Required Input Files
 
 ### 1. Seed Lexicon (seed.csv)
@@ -224,9 +237,10 @@ The pattern, the replacement and the feature are split into columns as described
 | `regularization` | Regularization type: `l1`, `l2`, or `elasticnet` | `l1` |
 | `elastic-net-l1-ratio` | L1 ratio for Elastic Net regularization (0.0-1.0, only used with `--regularization elasticnet`) | 0.5 |
 | `max-iterations` | Maximum number of training iterations | 100 |
+| `eta` | Tolerance of the convergence test (see [How training works](#how-training-works)); `0` disables the test | 0.00005 |
 | `max-threads` | Number of parallel processing threads | CPU core count |
 
-Training is slower than MeCab's learner, and it can stop at `max-iterations` before it converges ([#1167](https://github.com/lindera/lindera/issues/1167)).
+On the mecab-ipadic cross-validation data of [#1110](https://github.com/lindera/lindera/issues/1110), the default L1 regularization still reaches `max-iterations` before the objective converges, while L2 with `lambda` 1.0, which is MeCab's default `-c 1.0`, converges in about as many iterations as MeCab's learner ([#1167](https://github.com/lindera/lindera/issues/1167)). Training there takes about twice as long as MeCab's learner, and about two thirds of the time is spent outside the optimizer: before it starts ([#1263](https://github.com/lindera/lindera/issues/1263)) and after it stops.
 
 ## CLI Usage
 
@@ -274,11 +288,11 @@ This produces the following files:
 For example, if the `unk.def` above has a second `KANJI` line, `KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*`, after the first one, the exported `unk.def` keeps both, in input order:
 
 ```csv
-DEFAULT,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+DEFAULT,1,1,32764,名詞,一般,*,*,*,*,*,*,*
 SPACE,1,1,0,記号,空白,*,*,*,*,*,*,*
-HIRAGANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
-KATAKANA,1,1,32761,名詞,一般,*,*,*,*,*,*,*
-KANJI,1,1,32761,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,32764,名詞,一般,*,*,*,*,*,*,*
 KANJI,1,1,0,名詞,サ変接続,*,*,*,*,*,*,*
 ALPHA,1,1,0,名詞,固有名詞,一般,*,*,*,*,*,*
 NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*

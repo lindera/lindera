@@ -5,10 +5,11 @@
 ```text
 lindera-crf/src/
 ├── lib.rs                # パブリックAPIの再エクスポート
+├── bigram_table.rs       # 学習ラティスのバイグラム重みの添字
 ├── feature.rs            # FeatureSet, FeatureProvider
 ├── lattice.rs            # Edge, Node, Lattice
 ├── model.rs              # RawModel, MergedModel, Model trait
-├── trainer.rs            # Trainer, Regularization enum
+├── trainer.rs            # Trainer, Regularization, StopReason, TrainingStats
 ├── errors.rs             # エラー型
 ├── forward_backward.rs   # 前向き・後向きアルゴリズム
 ├── math.rs               # 数学ユーティリティ (logsumexp)
@@ -30,7 +31,18 @@ lindera-crf/src/
 
 ### Trainer
 
-設定可能な正則化を用いたL-BFGS最適化によりCRFモデルを学習します。Trainerはラベル付きラティスの例を受け取り、前向き・後向きアルゴリズムで勾配を計算し、反復的にモデルの重みを更新します。`Trainer::train`は学習した`RawModel`を返します。`Trainer::train_with_stats`は、実際に回ったイテレーション数を持つ`TrainingStats`も返します。この数は、`Trainer::max_iter`で設定した最大値で学習が止まったときはその値で、収束などでそれより前に最適化が止まったときはそれより少なくなります。
+設定可能な正則化を用いたL-BFGS最適化（正則化にL1の部分があるときはOWL-QN）によりCRFモデルを学習します。Trainerはラベル付きラティスの例を受け取り、前向き・後向きアルゴリズムで損失とその勾配を計算し、反復的にモデルの重みを更新します。`Trainer::train`は学習した`RawModel`を返します。`Trainer::train_with_stats`は、次の値を持つ`TrainingStats`も返します。
+
+- `iterations`: 実際に回ったイテレーション数。`Trainer::max_iter`で設定した最大値で学習が止まったときはその値で、それより前に最適化が止まったときはそれより少なくなります。
+- `evaluations`: 損失とその勾配を評価した回数。1回の評価は全ラティスの前向き・後向きの1回分で、ライン探索の試行も含みます。
+- `stop_reason`: 最適化が止まった理由（`StopReason`）。
+
+最適化は、次のうち最初に当てはまったもので止まります。
+
+- `StopReason::Converged`: 目的関数の相対変化`|previous - current| / |previous|`が`Trainer::eta`で設定した許容値を3回続けて下回ったか、勾配がほぼ0になった。デフォルトの許容値`DEFAULT_ETA`（`5e-5`）は、MeCabの学習器の`eta`のデフォルトと同じです。MeCabはライン探索の試行を含めた評価ごとに同じ判定を行い、Linderaはイテレーションごとに行います。`Trainer::eta(0.0)`で判定を切ります。
+- `StopReason::NoProgress`: あるイテレーションで目的関数が変わらなかった。数イテレーションでこれが起きたときは、モデルはほとんど学習されていません。
+- `StopReason::MaxIterations`: `Trainer::max_iter`で設定した上限に達した。
+- `StopReason::LineSearchFailed`: あるイテレーションのライン探索が失敗した。重みは、その学習で最良だったものです。
 
 ### Regularization
 
@@ -53,7 +65,9 @@ lindera-crf/src/
 
 ### 前向き・後向きアルゴリズム
 
-ラティス上でアルファ（前向き）とベータ（後向き）の値を計算します。学習時に期待素性カウントと勾配の計算に使用されます。
+ラティス上でアルファ（前向き）とベータ（後向き）の値を計算します。学習時に損失と期待素性カウントの計算に使用されます。ラティス1つにつき1回のパスで、その損失と勾配への寄与の両方を求めます。argminのL-BFGSは同じ点のコストと勾配を2回の呼び出しで求めるので、最適化は直前のパラメータベクトルでの結果を保持します。
+
+最適化を始める前に、ラティスで接するすべての辺の対について、そのバイグラム素性の重みの添字を、評価で足す順に表に記録します。バイグラム素性IDが同じラベルは、表の項目を共有します。評価はバイグラム素性ごとにマップを引く代わりにこの表から添字を読み、同じ重みを同じ順に足すので、学習した重みは変わりません。
 
 ## Feature フラグ
 

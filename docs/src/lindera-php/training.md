@@ -43,7 +43,7 @@ Lindera\Trainer::train(
 | `$rewrite_def` | `string` | required | Path to the rewrite rule definition file (rewrite.def) |
 | `$output` | `string` | required | Output path for the trained model file |
 | `$lambda` | `float` | `0.01` | L1 regularization cost (0.0--1.0) |
-| `$max_iter` | `int` | `100` | Maximum number of training iterations |
+| `$max_iter` | `int` | `100` | Maximum number of training iterations; training stops earlier once the objective converges (its relative change stays below 5e-5 for 3 iterations in a row) |
 | `$max_threads` | `int\|null` | `null` | Number of threads (`null` = auto-detect CPU cores) |
 
 ## Exporting a Trained Model

@@ -926,6 +926,7 @@ Downloaded dictionary 'ipadic'
 - `--regularization` / `-R`: 正則化の種類: `l1`, `l2`, または `elasticnet` (デフォルト: `l1`)
 - `--elastic-net-l1-ratio`: Elastic Net 正則化時のL1比率 (0.0-1.0)。`--regularization elasticnet` を指定した場合のみ使用されます (デフォルト: 0.5)
 - `--max-iterations` / `-i`: 学習の最大反復回数 (デフォルト: 100)
+- `--eta` / `-e`: 収束判定の許容値。目的関数の相対変化がこの値を 3 回続けて下回ると、`--max-iterations` より前に学習を止めます。`0` で判定を切ります (デフォルト: 0.00005。MeCab の学習器のデフォルトと同じ)
 - `--max-threads` / `-t`: 最大スレッド数 (デフォルトはCPUコア数。速度のみに影響し、学習結果は変わりません)
 
 ### 基本的なワークフロー
@@ -993,6 +994,12 @@ lindera train \
 
 ```text
 Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
+```
+
+学習が止まると、止まった理由を、イテレーション数と損失・勾配の評価回数とともに出力します（上の `--eta` を参照）：
+
+```text
+L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
 ```
 
 学習済みモデルには以下が含まれます：

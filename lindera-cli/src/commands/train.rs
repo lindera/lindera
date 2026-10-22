@@ -90,6 +90,13 @@ pub struct TrainArgs {
     )]
     iter: u64,
     #[clap(
+        short = 'e',
+        long = "eta",
+        default_value_t = lindera::dictionary::trainer::DEFAULT_ETA,
+        help = "Tolerance of the convergence test: training stops before --max-iterations once the relative change of the objective stays below this value for 3 iterations in a row (0 disables the test)"
+    )]
+    eta: f64,
+    #[clap(
         short = 't',
         long = "max-threads",
         help = "Maximum number of threads (defaults to CPU core count; affects only speed, never the trained model)"
@@ -116,6 +123,7 @@ pub fn train(args: TrainArgs) -> LinderaResult<()> {
         .map_err(|err| LinderaErrorKind::Args.with_error(err))?
         .regularization_cost(args.lambda)
         .max_iter(args.iter)
+        .eta(args.eta)
         .num_threads(args.max_threads.unwrap_or_else(num_cpus::get));
 
     match args.regularization.to_lowercase().as_str() {
