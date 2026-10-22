@@ -12,7 +12,8 @@ which can be obtained from
 
 The mecab-jieba dictionary is built from jieba's word frequency dictionary
 (dict.txt.big) and enriched with CC-CEDICT data (pinyin, traditional and
-simplified forms, English definitions).
+simplified forms, English definitions). Its word and connection costs are
+trained on the UD Chinese GSD and UD Chinese GSDSimp treebanks.
 
 ===========================================================================
 mecab-jieba Notice
@@ -79,5 +80,21 @@ CC-CEDICT is a continuation of the CEDICT project, published by MDBG.
 
 This work is licensed under a Creative Commons Attribution-ShareAlike 4.0
 International License
+
+  https://creativecommons.org/licenses/by-sa/4.0/
+
+===========================================================================
+UD Chinese GSD and UD Chinese GSDSimp Notice
+===========================================================================
+
+The word and connection costs of mecab-jieba are trained on the training
+splits of the Universal Dependencies treebanks UD Chinese GSD and UD Chinese
+GSDSimp (the same sentences in simplified script)
+
+  https://github.com/UniversalDependencies/UD_Chinese-GSD
+  https://github.com/UniversalDependencies/UD_Chinese-GSDSimp
+
+The treebanks are licensed under a Creative Commons Attribution-ShareAlike
+4.0 International License
 
   https://creativecommons.org/licenses/by-sa/4.0/
