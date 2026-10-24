@@ -28,15 +28,37 @@ class TestTrainer < Minitest::Test
     skip 'train feature not available' unless Lindera.respond_to?(:train)
   end
 
-  # Writes INPUTS to a new temporary directory, trains a model from them and
-  # yields the directory and the model file.
-  def with_model
+  # Writes INPUTS to a new temporary directory and yields the directory and
+  # the input files in the order Lindera.train takes them.
+  def with_inputs
     Dir.mktmpdir('lindera-trainer-') do |dir|
       INPUTS.each { |name, content| File.write(File.join(dir, name), content, encoding: 'UTF-8') }
       inputs = %w[seed.csv corpus.txt char.def unk.def feature.def rewrite.def].map { |name| File.join(dir, name) }
+      yield dir, inputs
+    end
+  end
+
+  # Writes INPUTS to a new temporary directory, trains a model from them and
+  # yields the directory and the model file.
+  def with_model
+    with_inputs do |dir, inputs|
       model = File.join(dir, 'model.dat')
       Lindera.train(*inputs, model, 0.01, 5, 1)
       yield dir, model
+    end
+  end
+
+  # A nil lambda trains with 1.0, the L2 coefficient of MeCab's -c 1.0
+  # (#1261): the model is byte-identical to one trained with 1.0.
+  def test_train_with_nil_lambda_uses_one
+    with_inputs do |dir, inputs|
+      default = File.join(dir, 'default.dat')
+      explicit = File.join(dir, 'explicit.dat')
+      Lindera.train(*inputs, default, nil, 5, 1)
+      Lindera.train(*inputs, explicit, 1.0, 5, 1)
+
+      assert_predicate File.size(default), :positive?
+      assert_equal File.binread(default), File.binread(explicit)
     end
   end
 

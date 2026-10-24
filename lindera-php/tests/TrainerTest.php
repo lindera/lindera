@@ -48,11 +48,11 @@ class TrainerTest extends TestCase
     }
 
     /**
-     * Writes the training inputs to a new temporary directory, trains a model
-     * from them, passes the directory and the model file to `$fn` and removes
-     * the directory, with what `$fn` wrote in it, afterwards.
+     * Writes the training inputs to a new temporary directory, passes the
+     * directory to `$fn` and removes the directory, with what `$fn` wrote in
+     * it, afterwards.
      */
-    private static function withModel(callable $fn): void
+    private static function withInputs(callable $fn): void
     {
         $dir = sys_get_temp_dir() . '/lindera-trainer-' . bin2hex(random_bytes(8));
         mkdir($dir);
@@ -60,23 +60,62 @@ class TrainerTest extends TestCase
             foreach (self::INPUTS as $name => $content) {
                 file_put_contents($dir . '/' . $name, $content);
             }
-            $model = $dir . '/model.dat';
-            Lindera\Trainer::train(
-                $dir . '/seed.csv',
-                $dir . '/corpus.txt',
-                $dir . '/char.def',
-                $dir . '/unk.def',
-                $dir . '/feature.def',
-                $dir . '/rewrite.def',
-                $model,
-                0.01,
-                5,
-                1,
-            );
-            $fn($dir, $model);
+            $fn($dir);
         } finally {
             self::removeTree($dir);
         }
+    }
+
+    /**
+     * Trains a model from the inputs in `$dir` into `$model`, with `$lambda`,
+     * 5 iterations and 1 thread.
+     */
+    private static function train(string $dir, string $model, ?float $lambda): void
+    {
+        Lindera\Trainer::train(
+            $dir . '/seed.csv',
+            $dir . '/corpus.txt',
+            $dir . '/char.def',
+            $dir . '/unk.def',
+            $dir . '/feature.def',
+            $dir . '/rewrite.def',
+            $model,
+            $lambda,
+            5,
+            1,
+        );
+    }
+
+    /**
+     * Writes the training inputs to a new temporary directory, trains a model
+     * from them, passes the directory and the model file to `$fn` and removes
+     * the directory, with what `$fn` wrote in it, afterwards.
+     */
+    private static function withModel(callable $fn): void
+    {
+        self::withInputs(function (string $dir) use ($fn): void {
+            $model = $dir . '/model.dat';
+            self::train($dir, $model, 0.01);
+            $fn($dir, $model);
+        });
+    }
+
+    /**
+     * A `null` lambda trains with 1.0, the L2 coefficient of MeCab's
+     * `-c 1.0` (#1261): the model is byte-identical to one trained with 1.0.
+     */
+    public function testTrainWithNullLambdaUsesOne(): void
+    {
+        self::withInputs(function (string $dir): void {
+            self::train($dir, $dir . '/default.dat', null);
+            self::train($dir, $dir . '/explicit.dat', 1.0);
+
+            $this->assertGreaterThan(0, filesize($dir . '/default.dat'));
+            $this->assertSame(
+                file_get_contents($dir . '/default.dat'),
+                file_get_contents($dir . '/explicit.dat'),
+            );
+        });
     }
 
     /**

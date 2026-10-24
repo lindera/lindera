@@ -27,7 +27,9 @@ use crate::util::optional_integer_arg;
 /// * `feature_def` - Feature definition file path (feature.def).
 /// * `rewrite_def` - Rewrite rule definition file path (rewrite.def).
 /// * `output` - Output model file path.
-/// * `lambda` - L1 regularization (0.0-1.0), default: 0.01.
+/// * `lambda` - L2 regularization coefficient (>= 0), default (also for
+///   `nil`): 1.0, MeCab's `-c 1.0`. The bindings train with L2
+///   regularization; the type cannot be chosen yet (#1262).
 /// * `max_iter` - Maximum number of iterations, 0 or more, default: 100.
 /// * `max_threads` - Maximum number of threads, 0 or more (nil = auto-detect
 ///   CPU cores).

@@ -15,7 +15,7 @@
 //!     feature_def="feature.def",
 //!     rewrite_def="rewrite.def",
 //!     output="model.bin",
-//!     lambda_=0.01,
+//!     lambda_=1.0,
 //!     max_iter=100
 //! )
 //!
@@ -53,7 +53,9 @@ const _: () = assert!(
 /// * `feature_def` - Feature definition file path (feature.def)
 /// * `rewrite_def` - Rewrite rule definition file path (rewrite.def)
 /// * `output` - Output model file path
-/// * `lambda_` - L1 regularization (0.0-1.0), default: 0.01
+/// * `lambda_` - L2 regularization coefficient (>= 0), default: 1.0,
+///   MeCab's `-c 1.0`. The bindings train with L2 regularization; the type
+///   cannot be chosen yet (#1262).
 /// * `max_iter` - Maximum number of iterations, default: 100
 /// * `max_threads` - Maximum number of threads (None = auto-detect CPU cores)
 ///

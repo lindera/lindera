@@ -240,3 +240,63 @@ def test_export_with_metadata():
             EXPORTED_FILES + ["metadata.json"]
         )
         assert (export_dir / "metadata.json").stat().st_size > 0
+
+
+def test_train_default_lambda_is_l2_coefficient_1():
+    """Leaving lambda_ out trains with 1.0, the L2 coefficient of MeCab's
+    -c 1.0 (#1261): the model is byte-identical to one trained with
+    lambda_=1.0."""
+    import lindera
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+        inputs = {
+            "seed": (
+                "seed.csv",
+                (
+                    "これ,0,0,0,名詞,代名詞,一般,*,*,*,これ,コレ,コレ\n"
+                    "は,0,0,0,助詞,係助詞,*,*,*,*,は,ハ,ワ\n"
+                ),
+            ),
+            "corpus": (
+                "corpus.txt",
+                (
+                    "これ\t名詞,代名詞,一般,*,*,*,これ,コレ,コレ\n"
+                    "は\t助詞,係助詞,*,*,*,*,は,ハ,ワ\n"
+                    "EOS\n"
+                ),
+            ),
+            "char_def": (
+                "char.def",
+                "DEFAULT 0 1 0\nHIRAGANA 1 1 0\n\n0x3041..0x3096 HIRAGANA\n",
+            ),
+            "unk_def": (
+                "unk.def",
+                (
+                    "DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*\n"
+                    "HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*\n"
+                ),
+            ),
+            "feature_def": (
+                "feature.def",
+                "UNIGRAM U00:%F[0]\nBIGRAM B00:%L[0]/%R[0]\n",
+            ),
+            "rewrite_def": ("rewrite.def", "名詞,一般\tNOUN\n"),
+        }
+        paths = {}
+        for key, (name, content) in inputs.items():
+            path = tmpdir / name
+            path.write_text(content)
+            paths[key] = str(path)
+
+        def train(name, **kwargs):
+            output = tmpdir / name
+            lindera.train(
+                **paths, output=str(output), max_iter=5, max_threads=1, **kwargs
+            )
+            return output.read_bytes()
+
+        default = train("default.dat")
+        explicit = train("explicit.dat", lambda_=1.0)
+        assert default
+        assert default == explicit

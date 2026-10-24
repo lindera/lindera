@@ -35,8 +35,10 @@ impl PhpTrainer {
     /// * `feature_def` - Feature definition file path (feature.def).
     /// * `rewrite_def` - Rewrite rule definition file path (rewrite.def).
     /// * `output` - Output model file path.
-    /// * `lambda` - L1 regularization (0.0-1.0), default: 0.01. An `int` is
-    ///   widened to a float, as for a PHP `float` parameter.
+    /// * `lambda` - L2 regularization coefficient (>= 0), default: 1.0,
+    ///   MeCab's `-c 1.0`. An `int` is widened to a float, as for a PHP
+    ///   `float` parameter. The bindings train with L2 regularization; the
+    ///   type cannot be chosen yet (#1262).
     /// * `max_iter` - Maximum number of iterations, default: 100.
     /// * `max_threads` - Maximum number of threads (null = auto-detect CPU cores).
     ///
