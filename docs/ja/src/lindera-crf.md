@@ -19,5 +19,6 @@ Lindera CRFは、[rucrf](https://github.com/daac-tools/rucrf)からフォーク�
 
 - **シリアライゼーションバックエンド**: ゼロコピーデシリアライゼーションのため、`bincode`から`rkyv`に変更
 - **Elastic Net正則化**: L1とL2のペナルティを組み合わせた`Regularization::ElasticNet`を追加
+- **デフォルトの正則化**: `Trainer::new`はL2と`DEFAULT_LAMBDA`（1.0）で正則化します。MeCabの学習器のデフォルト`-c 1.0`と同じ目的関数です。rucrfのデフォルトはL1と0.1です
 - **Rust 2024 edition**: Rust 2024 editionに更新
 - **依存クレートの更新**: `argmin`、`argmin-math`、`hashbrown`などを更新

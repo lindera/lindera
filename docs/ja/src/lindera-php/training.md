@@ -25,7 +25,7 @@ Lindera\Trainer::train(
     '/path/to/feature.def',      // feature_def: 素性定義ファイル
     '/path/to/rewrite.def',      // rewrite_def: 書き換えルール定義ファイル
     '/tmp/model.dat',            // output: 学習済みモデルの出力パス
-    0.01,                        // lambda: L1 正則化コスト
+    1.0,                         // lambda: L2 正則化係数
     100,                         // max_iter: 最大イテレーション数
     null                         // max_threads: スレッド数（null = 自動検出）
 );
@@ -42,7 +42,7 @@ Lindera\Trainer::train(
 | `$featureDef` | `string` | 必須 | 素性定義ファイルのパス（feature.def） |
 | `$rewriteDef` | `string` | 必須 | 書き換えルール定義ファイルのパス（rewrite.def） |
 | `$output` | `string` | 必須 | 学習済みモデルファイルの出力パス |
-| `$lambda` | `float` | `0.01` | L1 正則化コスト（0.0--1.0） |
+| `$lambda` | `float` | `1.0` | L2 正則化係数（0 以上。1.0 は MeCab の `-c 1.0`）。バインディングは L2 正則化で学習し、正則化の種類はまだ選べません（[#1262](https://github.com/lindera/lindera/issues/1262)） |
 | `$maxIter` | `int` | `100` | 最大学習イテレーション数。目的関数が収束すると（相対変化が 3 回続けて 5e-5 を下回ると）、それより前に止まります |
 | `$maxThreads` | `int` または `null` | `null` | スレッド数（null = CPU コア数を自動検出） |
 
@@ -98,7 +98,7 @@ Lindera\Trainer::train(
     'resources/training/feature.def',
     'resources/training/rewrite.def',
     '/tmp/model.dat',
-    0.01,   // lambda
+    1.0,    // lambda
     100,    // max_iter
     null    // max_threads
 );

@@ -52,6 +52,8 @@ Configurable regularization strategies:
 - **L2**: Smooth models via L2 penalty
 - **ElasticNet**: Combines L1 and L2 with a configurable `l1_ratio`
 
+`Trainer::new` uses L2 with `DEFAULT_LAMBDA` (1.0): the objective of MeCab's learner with its default `-c 1.0`. MeCab adds `‖w‖² / (2C)`, so the coefficient is `1 / C` in general.
+
 ### Model (trait)
 
 Interface for searching the best path through a lattice. Two implementations are provided:

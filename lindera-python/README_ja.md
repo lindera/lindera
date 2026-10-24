@@ -292,7 +292,7 @@ lindera.trainer.train(
     feature_def="path/to/feature.def", # Feature templates
     rewrite_def="path/to/rewrite.def", # Rewrite rules
     output="model.dat",                # Output model file
-    lambda_=0.01,                      # L1 regularization
+    lambda_=1.0,                       # L2 regularization coefficient (the default)
     max_iter=100,                      # Max iterations
     max_threads=None                   # Auto-detect CPU cores
 )

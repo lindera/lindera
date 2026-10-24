@@ -295,7 +295,7 @@ train({
   featureDef: "path/to/feature.def",
   rewriteDef: "path/to/rewrite.def",
   output: "model.dat",
-  lambda: 0.01,
+  lambda: 1.0,
   maxIter: 100,
 });
 ```

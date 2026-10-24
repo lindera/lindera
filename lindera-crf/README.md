@@ -14,6 +14,7 @@ This library supports:
 
 - **Serialization backend replaced**: Switched from `bincode` to [`rkyv`](https://github.com/rkyv/rkyv) for zero-copy deserialization, enabling faster model loading
 - **Elastic Net regularization**: Added `Regularization::ElasticNet` that combines L1 and L2 penalties with a configurable `l1_ratio` parameter
+- **Default regularization**: `Trainer::new` regularizes with L2 and `DEFAULT_LAMBDA` (1.0), the objective of MeCab's learner with its default `-c 1.0`; rucrf's default is L1 with 0.1
 - **Rust 2024 edition**: Updated to Rust 2024 edition
 - **Dependency updates**: Updated `argmin` (0.10 -> 0.11), `argmin-math` (0.4 -> 0.5), `argmin-observer-slog` (0.1 -> 0.2), `hashbrown` (0.15 -> 0.16)
 

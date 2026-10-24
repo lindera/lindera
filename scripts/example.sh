@@ -35,7 +35,6 @@ cat ~/tmp/mecab-ipadic-2.7.0-20250920/*.csv > ~/tmp/seed.csv
   --feature-def ~/tmp/mecab-ipadic-2.7.0-20250920/feature.def \
   --rewrite-def ~/tmp/mecab-ipadic-2.7.0-20250920/rewrite.def \
   --output ~/tmp/lindera.model \
-  --lambda 0.01 \
   --max-iterations 100
 
 # Export trained dictionary
