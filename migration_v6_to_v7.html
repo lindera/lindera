@@ -1600,7 +1600,10 @@ the same whole feature string; else that of the first <code>unk.def</code> entry
 an unknown-word candidate with the same span whose feature columns other
 than <code>*</code> all equal the gold token's; else a virtual label, which is
 trained and not exported, as MeCab's learner adds a virtual node.
-<code>lindera train</code> prints the counts in a <code>Lattice statistics:</code> line.</li>
+<code>lindera train</code> prints the counts in a <code>Lattice statistics:</code> line, and
+warns on stderr when no gold token is a seed word, or fewer than half of
+the gold tokens whose surface has seed rows are, with the first gold
+token whose surface has seed rows but none with its feature string.</li>
 <li><code>matrix.def</code> covers every context ID, plus 0 for BOS/EOS, and
 <code>model_info.connection_matrix_size</code> gives its size, rows by columns.</li>
 <li>A connection without a trained weight costs 0 in <code>matrix.def</code>, as in

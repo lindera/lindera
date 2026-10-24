@@ -1103,7 +1103,7 @@ tokenizer
 <li>正解の各トークンには、範囲と素性文字列全体が同じ最初の種辞書の行のラベルを付けます。なければ、範囲が同じ未知語候補の<code>unk.def</code>エントリのうち、<code>*</code>以外の素性の列がすべて正解トークンの列と一致するファイル順で最初のエントリのラベルを付けます（どちらの列も<code>rewrite()</code>と同じく分けます）。それもなければ、MeCabの学習器が仮想ノードを追加するのと同じく、正解の素性文字列から作る仮想ラベル（<code>%t</code>は0、<code>%w</code>なし、素性文字列ごとに1つ）を付けます。仮想ラベルはほかのラベルの後に並び、学習されますが、エクスポートされることはありません。</li>
 <li>それ以外の候補はすべて負例の辺になります。</li>
 </ul>
-<p>ラティスを作り終えると、<code>Lattice statistics:</code>の行を出力します。各方法でラベルを付けた正解トークンの数（<code>gold_lexicon</code>・<code>gold_unknown</code>・<code>gold_virtual</code>）、仮想ラベルの数（<code>virtual_labels</code>）、種辞書と未知語候補それぞれから作った負例の辺の数（<code>negative_lexicon</code>・<code>negative_unknown</code>）です。<code>Trainer::max_grouping_len</code>は、ランタイムと同じ意味（先頭の1文字を除いた文字数。デフォルトの<code>None</code>は無制限）で未知語のグルーピングの長さに上限を設けます。ほかのビルダーメソッドは、正則化・イテレーション数の上限・収束判定の許容値（<code>Trainer::eta</code>。デフォルトは<code>DEFAULT_ETA</code>の<code>5e-5</code>。<a href="lindera-trainer/../lindera-crf/architecture.html#trainer">lindera-crfのアーキテクチャ</a>を参照）・スレッド数を設定します。学習の後に、最適化が止まった理由を、イテレーション数と損失・勾配の評価回数とともに出力します。あるイテレーションで目的関数が変わらなかったときと、ライン探索が失敗したときは、警告も出力します。</p>
+<p>ラティスを作り終えると、<code>Lattice statistics:</code>の行を出力します。各方法でラベルを付けた正解トークンの数（<code>gold_lexicon</code>・<code>gold_unknown</code>・<code>gold_virtual</code>）、仮想ラベルの数（<code>virtual_labels</code>）、種辞書と未知語候補それぞれから作った負例の辺の数（<code>negative_lexicon</code>・<code>negative_unknown</code>）です。正解トークンがあり、種辞書の語であるものが1つもないとき、または表層を持つ種辞書の行はあるものの素性文字列が一致する行がない正解トークンが種辞書の語より多いときは、続けて標準エラーに警告を書きます。バインディングは<code>log</code>クレートのロガーを設定しないので、<code>log</code>クレートではなく<code>eprintln!</code>で書きます。警告には、そうした最初の正解トークンと、その表層を持つ種辞書の行のうち最初の5行の素性文字列が並びます。<code>Trainer::max_grouping_len</code>は、ランタイムと同じ意味（先頭の1文字を除いた文字数。デフォルトの<code>None</code>は無制限）で未知語のグルーピングの長さに上限を設けます。ほかのビルダーメソッドは、正則化・イテレーション数の上限・収束判定の許容値（<code>Trainer::eta</code>。デフォルトは<code>DEFAULT_ETA</code>の<code>5e-5</code>。<a href="lindera-trainer/../lindera-crf/architecture.html#trainer">lindera-crfのアーキテクチャ</a>を参照）・スレッド数を設定します。学習の後に、最適化が止まった理由を、イテレーション数と損失・勾配の評価回数とともに出力します。あるイテレーションで目的関数が変わらなかったときと、ライン探索が失敗したときは、警告も出力します。</p>
 <h3 id="model--serializablemodel"><a class="header" href="#model--serializablemodel">Model / SerializableModel</a></h3>
 <p><code>Model</code>は<code>Trainer::train</code>が生成する学習済みモデルです。学習された<code>lindera_crf::RawModel</code>、学習に用いた<code>TrainerConfig</code>、抽出済みの素性の重みとラベル、仮想ラベルの素性文字列、そして学習後に<code>read_user_lexicon</code>で追加されたユーザー辞書エントリを保持します。学習されたCRFの重みは、MeCab互換の整数コストに変換されます（<code>tocost(weight, cost_factor) = clamp(round(-weight * cost_factor), i16::MIN, i16::MAX)</code>、すなわち<code>[-32768, 32767]</code>の範囲にクランプされます）。この際のコストファクターは、<code>i16</code>の値域を最大限活用できるよう計算されます（<code>calculate_cost_factor</code>）。<code>Model</code>は自身をシリアライズでき（<code>write_model</code>）、辞書ソースファイルを直接エクスポートすることもできます。</p>
 <p><code>SerializableModel</code>は、<code>Model::read_model</code>がリーダーから以前学習したモデルを読み込んだ際に返される、<code>rkyv</code>でシリアライズ可能な素のデータ型です（<code>lindera export</code> CLIコマンドで使用されます）。<code>Model</code>と同じ学習結果の情報――素性の重み、ラベル、品詞情報、連接コスト行列、<code>unk.def</code>のエントリ（<code>unk_entries</code>。ファイル順の<code>(カテゴリ, 素性文字列)</code>の組）、保存されている<code>char.def</code> / <code>feature.def</code> / <code>rewrite.def</code>の内容、コストファクター、左右文脈IDマッピング――を<code>TrainerConfig</code>を持たない所有データとして保持し、辞書エクスポートファイルを生成するための独自のライターメソッド群を提供します。</p>
@@ -3083,6 +3083,7 @@ EOS
 <p><code>lindera train</code> はモデルを <code>--output</code> のファイルに書き出します。学習用のラティスを作り終えると、コーパスの正解トークンのラベルの付き方を出力します（<a href="lindera-cli/../development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。<code>./resources/training/</code> のファイルでは次のとおりです：</p>
 <pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
 </code></pre>
+<p>種辞書の語である正解トークンが 1 つもないとき、または表層を持つ種辞書の行がある正解トークンのうち種辞書の語であるものが半分に満たないときは、続けて標準エラーに警告を書きます。警告には、表層を持つ種辞書の行はあるものの素性文字列が一致する行がない最初の正解トークンと、その表層を持つ種辞書の行が並びます（<a href="lindera-cli/../development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。</p>
 <p>学習が止まると、止まった理由を、イテレーション数と損失・勾配の評価回数とともに出力します（上の <code>--eta</code> を参照）：</p>
 <pre><code class="language-text">L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
 </code></pre>
@@ -11478,7 +11479,10 @@ mecab-jieba の <code>unk.def</code> の素性は 5 列で、その <code>featur
 素性の列がすべて正解トークンの列と一致する最初のエントリのラベルを付けます。
 それもなければ、MeCab の学習器が仮想ノードを追加するのと同じく、学習はされる
 もののエクスポートされない仮想ラベルを付けます。<code>lindera train</code> はこれらの数を
-<code>Lattice statistics:</code> の行に出力します。</li>
+<code>Lattice statistics:</code> の行に出力します。種辞書の語である正解トークンが 1 つも
+ないとき、または表層を持つ種辞書の行がある正解トークンのうち種辞書の語である
+ものが半分に満たないときは、表層を持つ種辞書の行はあるものの素性文字列が一致
+する行がない最初の正解トークンとともに、標準エラーに警告を出します。</li>
 <li><code>matrix.def</code> はすべての文脈 ID と BOS/EOS 用の 0 を覆い、
 <code>model_info.connection_matrix_size</code> はその大きさを行数 x 列数で示します。</li>
 <li>学習した重みがない連接の <code>matrix.def</code> のコストは、学習中や MeCab と同じく 0 です。</li>
@@ -12394,6 +12398,12 @@ cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 <pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
 </code></pre>
 <p><code>gold_lexicon</code>・<code>gold_unknown</code>・<code>gold_virtual</code> は上の 3 つの段階それぞれでラベルを付けた正解トークンの数、<code>virtual_labels</code> は仮想ラベルの数、<code>negative_lexicon</code> と <code>negative_unknown</code> は種辞書と未知語候補それぞれから作った負例の辺の数です。</p>
+<p>どの正解トークンのラベルにもならなかった種辞書の行は、負例としてしか学習されません。そのため <code>lindera train</code> は、種辞書の語である正解トークンが 1 つもないとき、または表層を持つ種辞書の行がある正解トークンのうち種辞書の語であるものが半分に満たないときに、標準エラーに警告を出します。コーパスが正解トークンに種辞書の行の素性文字列を付けていない場合がこれに当たります。警告には、表層を持つ種辞書の行はあるものの素性文字列が一致する行がない最初の正解トークンと、その表層を持つ種辞書の行のうち最初の 5 行の素性文字列が並びます。学習はそのまま続きます。たとえば <code>resources/training/corpus.txt</code> の素性をすべて先頭の 6 列に切り詰め、原形と読みを除くと、次のようになります。</p>
+<pre><code class="language-text">Warning: 0 of the 14 gold tokens are seed words, and 14 are not although seed rows have their surface. A gold token is a seed word only when a seed row has its surface and its whole feature string, as the seed lexicon writes it; otherwise the seed rows with its surface are only wrong candidates at its position. The first such gold token, and the seed rows with its surface:
+  gold token: 外国	名詞,一般,*,*,*,*
+  seed row:   外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+</code></pre>
+<p>表層を持つ種辞書の行がない正解トークンは警告の判定に数えないので、コーパスの一部しか覆わない種辞書では警告は出ません。</p>
 <p>その後、CRF を L-BFGS（正則化に L1 の部分があるときは OWL-QN）で学習します。学習は、次のうち最初に当てはまったもので止まります。</p>
 <ul>
 <li><code>converged</code>: 目的関数の相対変化 <code>|previous - current| / |previous|</code> が <code>eta</code> を 3 回続けて下回った。<code>eta</code> のデフォルトは MeCab の学習器と同じです。MeCab はライン探索の試行を含めた評価ごとに同じ判定を行い、Lindera はイテレーションごとに行います。</li>
@@ -12441,6 +12451,7 @@ EOS
 テスト	名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
 EOS
 </code></pre>
+<p>正解トークンが種辞書の語になるのは、その表層と素性文字列全体を持つ種辞書の行があるときだけです。素性文字列は、引用符も含めて種辞書に書かれたとおりに比べます。上の例では、各素性は同じ表層の種辞書の行の素性です。読みなど、どれか 1 列でも素性が異なる正解トークンは未知語か仮想ラベルとして学習され、その表層を持つ種辞書の行はその位置の負例になります。正解トークンの多くがこうなっているときは、<code>lindera train</code> が警告を出します（<a href="development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。</p>
 <p>学習の品質はこのコーパスの量と質に大きく依存します。</p>
 <h3 id="3-文字定義-chardef"><a class="header" href="#3-文字定義-chardef">3. 文字定義 (char.def)</a></h3>
 <p>文字タイプのカテゴリと Unicode コードポイント範囲を定義します。</p>

@@ -926,6 +926,7 @@ EOS
 <p><code>lindera train</code> writes the model to the <code>--output</code> file. Once it has built the training lattices, it prints how the gold tokens of the corpus were labelled (see <a href="../development/training_pipeline.html#how-training-works">How training works</a>). With the files in <code>./resources/training/</code>:</p>
 <pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
 </code></pre>
+<p>When no gold token is a seed word, or fewer than half of the gold tokens whose surface has seed rows are, it then writes a warning on stderr, with the first gold token whose surface has seed rows but none with its feature string, next to those rows (see <a href="../development/training_pipeline.html#how-training-works">How training works</a>).</p>
 <p>Once training stops, it prints why, with the number of iterations and of evaluations of the loss and its gradient (see <code>--eta</code> above):</p>
 <pre><code class="language-text">L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
 </code></pre>

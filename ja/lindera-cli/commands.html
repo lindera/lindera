@@ -926,6 +926,7 @@ EOS
 <p><code>lindera train</code> はモデルを <code>--output</code> のファイルに書き出します。学習用のラティスを作り終えると、コーパスの正解トークンのラベルの付き方を出力します（<a href="../development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。<code>./resources/training/</code> のファイルでは次のとおりです：</p>
 <pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
 </code></pre>
+<p>種辞書の語である正解トークンが 1 つもないとき、または表層を持つ種辞書の行がある正解トークンのうち種辞書の語であるものが半分に満たないときは、続けて標準エラーに警告を書きます。警告には、表層を持つ種辞書の行はあるものの素性文字列が一致する行がない最初の正解トークンと、その表層を持つ種辞書の行が並びます（<a href="../development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。</p>
 <p>学習が止まると、止まった理由を、イテレーション数と損失・勾配の評価回数とともに出力します（上の <code>--eta</code> を参照）：</p>
 <pre><code class="language-text">L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
 </code></pre>
