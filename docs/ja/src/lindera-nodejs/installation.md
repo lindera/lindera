@@ -53,7 +53,7 @@ npm run build
 または、プロジェクトの Makefile を使用します：
 
 ```bash
-make nodejs-develop
+make build-lindera-nodejs
 ```
 
 ### 学習機能付きビルド

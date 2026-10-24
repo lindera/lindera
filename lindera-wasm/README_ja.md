@@ -143,23 +143,23 @@ export default defineConfig({
 ### プロジェクトのビルド
 
 ```shell
-% make wasm-build
+% make build-lindera-wasm
 ```
 
 ### テストの実行
 
 ```shell
-% make wasm-test
+% make test-lindera-wasm
 ```
 
 ### サンプル Web アプリケーションのビルド
 
 ```shell
-% cd example && npm install && npm run build && cp index.html dist/index.html
+% make build-lindera-wasm-example
 ```
 
 ### サンプル Web アプリケーションの実行
 
 ```shell
-% cd example && npm run start
+% make run-lindera-wasm-example
 ```
