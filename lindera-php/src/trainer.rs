@@ -8,7 +8,9 @@ use std::path::Path;
 
 use ext_php_rs::prelude::*;
 
-use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, TrainerConfig};
+use lindera::dictionary::trainer::{
+    Corpus, DEFAULT_LAMBDA, Model, SerializableModel, Trainer, TrainerConfig,
+};
 
 use crate::convert::nullable_int_arg;
 use crate::error::lindera_value_err;
@@ -55,7 +57,7 @@ impl PhpTrainer {
         max_threads: Option<i64>,
     ) -> PhpResult<()> {
         // Check the settings before touching any file.
-        let lambda_val = lambda.unwrap_or(0.01);
+        let lambda_val = lambda.unwrap_or(DEFAULT_LAMBDA);
         let max_iter_val = nullable_int_arg("max_iter", max_iter)?.unwrap_or(100);
         let num_threads =
             nullable_int_arg("max_threads", max_threads)?.unwrap_or_else(num_cpus::get);

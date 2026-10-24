@@ -8,7 +8,9 @@ use std::path::Path;
 
 use magnus::{Error, Integer, Ruby, function};
 
-use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, TrainerConfig};
+use lindera::dictionary::trainer::{
+    Corpus, DEFAULT_LAMBDA, Model, SerializableModel, Trainer, TrainerConfig,
+};
 
 use crate::error::to_magnus_error;
 use crate::util::optional_integer_arg;
@@ -89,7 +91,7 @@ fn train(
 
     // Initialize trainer
     let num_threads = max_threads.unwrap_or_else(num_cpus::get);
-    let lambda_val = lambda.unwrap_or(0.01);
+    let lambda_val = lambda.unwrap_or(DEFAULT_LAMBDA);
     let max_iter_val = max_iter.unwrap_or(100);
 
     let trainer = Trainer::new(config)

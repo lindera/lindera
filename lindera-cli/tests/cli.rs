@@ -1052,9 +1052,10 @@ mod with_trained_dictionary {
     use super::*;
 
     /// The documented tokenize output for "これは外国人参政権です。".
-    /// Training on `resources/training/` leaves no bigram weight, so every
-    /// connection costs 0 and the word costs decide: `これ` and `は` are the
-    /// seed words of the corpus, not one unknown word (#1168).
+    /// `これ` and `は` are the seed words of the corpus, not one unknown
+    /// word (#1168). The default L2 regularization keeps bigram weights
+    /// (#1261); v6's default, L1 with lambda 0.01, left none and gives the
+    /// same output.
     const DOCUMENTED_OUTPUT: &str = "これ\t名詞,代名詞,一般,*,*,*,これ,コレ,コレ\n\
                                      は\t助詞,係助詞,*,*,*,*,は,ハ,ワ\n\
                                      外国\t名詞,一般,*,*,*,*,外国,ガイコク,ガイコク\n\
@@ -1085,6 +1086,14 @@ mod with_trained_dictionary {
     /// `resources/training/` with `corpus` as the corpus, writing the model
     /// to `model`.
     fn train_command(corpus: &Path, model: &Path) -> Command {
+        let mut command = train_inputs_command(corpus, model);
+        command.args(["--max-iterations", "100"]);
+        command
+    }
+
+    /// `lindera train` with the files in `resources/training/` and `corpus`
+    /// as the corpus, writing the model to `model`, without any other flag.
+    fn train_inputs_command(corpus: &Path, model: &Path) -> Command {
         let training = training_dir();
         let input = |name: &str| training.join(name).to_str().unwrap().to_string();
         let mut command = lindera();
@@ -1096,9 +1105,38 @@ mod with_trained_dictionary {
             .args(["--char-def", &input("char.def")])
             .args(["--feature-def", &input("feature.def")])
             .args(["--rewrite-def", &input("rewrite.def")])
-            .args(["--output", model.to_str().unwrap()])
-            .args(["--lambda", "0.01", "--max-iterations", "100"]);
+            .args(["--output", model.to_str().unwrap()]);
         command
+    }
+
+    /// `lindera train` regularizes with L2 and lambda 1.0 by default, and
+    /// `--regularization` chooses the type with the same coefficient
+    /// (#1261). The parameters are printed before the optimizer starts, so
+    /// one iteration is enough.
+    #[test]
+    fn train_regularizes_with_l2_and_lambda_1_by_default() {
+        let dir = tempfile::tempdir().unwrap();
+        let corpus = training_dir().join("corpus.txt");
+        let model = dir.path().join("model.dat");
+        let cases: [(&[&str], &str); 3] = [
+            (&[], "Training parameters: regularization=1 (L2),"),
+            (
+                &["--regularization", "l1"],
+                "Training parameters: regularization=1 (L1),",
+            ),
+            (
+                &["--regularization", "elasticnet"],
+                "Training parameters: regularization=1 (ElasticNet, l1_ratio=0.5),",
+            ),
+        ];
+        for (args, expected) in cases {
+            let stdout = stdout_of(
+                train_inputs_command(&corpus, &model)
+                    .args(["--max-iterations", "1"])
+                    .args(args),
+            );
+            assert!(stdout.contains(expected), "{args:?}: {stdout}");
+        }
     }
 
     /// Trains, exports and builds a dictionary from `resources/training/` in

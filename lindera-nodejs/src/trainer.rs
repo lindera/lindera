@@ -6,7 +6,9 @@
 use std::fs::File;
 use std::path::Path;
 
-use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, TrainerConfig};
+use lindera::dictionary::trainer::{
+    Corpus, DEFAULT_LAMBDA, Model, SerializableModel, Trainer, TrainerConfig,
+};
 
 use crate::error::to_napi_error;
 use crate::util::optional_integer_arg;
@@ -49,7 +51,7 @@ pub struct TrainOptions {
 #[napi]
 pub fn train(options: TrainOptions) -> napi::Result<()> {
     // Check the settings before touching any file.
-    let lambda = options.lambda.unwrap_or(0.01);
+    let lambda = options.lambda.unwrap_or(DEFAULT_LAMBDA);
     let max_iter = optional_integer_arg("maxIter", options.max_iter)?.unwrap_or(100);
     let num_threads =
         optional_integer_arg("maxThreads", options.max_threads)?.unwrap_or_else(num_cpus::get);

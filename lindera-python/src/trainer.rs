@@ -31,7 +31,16 @@ use std::path::Path;
 
 use pyo3::{exceptions::PyValueError, prelude::*};
 
-use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, TrainerConfig};
+use lindera::dictionary::trainer::{
+    Corpus, DEFAULT_LAMBDA, Model, SerializableModel, Trainer, TrainerConfig,
+};
+
+// The default of `lambda_` in the signature below is a literal, which
+// `help()` shows; it must be `DEFAULT_LAMBDA`.
+const _: () = assert!(
+    DEFAULT_LAMBDA == 1.0,
+    "update the default of lambda_ in the signature of train"
+);
 
 /// Trains a morphological analysis model from an annotated corpus.
 ///
@@ -52,7 +61,7 @@ use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, Tr
 ///
 /// * `PyResult<()>` - Returns Ok(()) on success
 #[pyfunction]
-#[pyo3(signature = (seed, corpus, char_def, unk_def, feature_def, rewrite_def, output, lambda_=0.01, max_iter=100, max_threads=None))]
+#[pyo3(signature = (seed, corpus, char_def, unk_def, feature_def, rewrite_def, output, lambda_=1.0, max_iter=100, max_threads=None))]
 #[allow(clippy::too_many_arguments)]
 pub fn train(
     seed: &str,

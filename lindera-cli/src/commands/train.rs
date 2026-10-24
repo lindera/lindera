@@ -65,14 +65,14 @@ pub struct TrainArgs {
     #[clap(
         short = 'l',
         long = "lambda",
-        default_value = "0.01",
-        help = "Regularization coefficient (0.0-1.0)"
+        default_value_t = lindera::dictionary::trainer::DEFAULT_LAMBDA,
+        help = "Regularization coefficient (>= 0); with l2, MeCab's learner's -c C is 1 / C"
     )]
     lambda: f64,
     #[clap(
         short = 'R',
         long = "regularization",
-        default_value = "l1",
+        default_value = "l2",
         help = "Regularization type: l1, l2, or elasticnet"
     )]
     regularization: String,
@@ -127,7 +127,9 @@ pub fn train(args: TrainArgs) -> LinderaResult<()> {
         .num_threads(args.max_threads.unwrap_or_else(num_cpus::get));
 
     match args.regularization.to_lowercase().as_str() {
-        "l1" => {}
+        "l1" => {
+            trainer = trainer.use_l2(false);
+        }
         "l2" => {
             trainer = trainer.use_l2(true);
         }
