@@ -39,7 +39,7 @@ $results = $tokenizer->tokenizeNbest('東京都', 2, cost_threshold: null);
 
 `new Lindera\Tokenizer(...)` の `$space_penalty` やフィルタのメソッドの `$args` など、`mixed` と宣言した引数は、この規則の対象外です。どの PHP の値も受け取り、値を自分で検査します。
 
-`int` の引数は、その設定が保持できる値だけを受け付けます。ほとんどの設定の範囲は、PHP の 64 ビットの `int` より狭いです。`Lindera\Metadata` の `$default_word_cost` は -32768 から 32767、文脈 ID は 0 から 65535、`Lindera\Penalty` のペナルティは 32 ビットの整数を受け付けます。個数や位置は 0 以上を受け付けます。該当するのは、`Lindera\Penalty` のしきい値、`new Lindera\FieldDefinition(...)`・`Schema::getFieldName()`・`Token::getDetail()` の `$index`、`tokenizeNbest()` の `$n`、`Lindera\Trainer::train()` の `$max_iter` と `$max_threads` です。範囲外の値は、引数の名前と範囲を含む `ValueError` を投げます。末尾より先の位置は、これまでどおり `null` を返します。
+`int` の引数は、その設定が保持できる値だけを受け付けます。ほとんどの設定の範囲は、PHP の 64 ビットの `int` より狭いです。`Lindera\Metadata` の `$default_word_cost` は -32768 から 32767、文脈 ID は 0 から 65535、`Lindera\Penalty` のペナルティは 32 ビットの整数を受け付けます。個数や位置は 0 以上を受け付けます。該当するのは、`Lindera\Penalty` のしきい値、`new Lindera\FieldDefinition(...)`・`Schema::getFieldName()`・`Token::getDetail()` の `$index`、`tokenizeNbest()` の `$n` です。`Lindera\Trainer::train()` の `$max_iter` と `$max_threads` は 1 以上を受け付けます。範囲外の値は、引数の名前と範囲を含む `ValueError` を投げます。末尾より先の位置は、これまでどおり `null` を返します。
 
 ```php
 <?php

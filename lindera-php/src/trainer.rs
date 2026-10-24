@@ -12,7 +12,7 @@ use lindera::dictionary::trainer::{
     Corpus, DEFAULT_ELASTIC_NET_L1_RATIO, DEFAULT_ETA, DEFAULT_LAMBDA, Model,
     ParseRegularizationTypeError, RegularizationType, SerializableModel, Trainer, TrainerConfig,
 };
-use lindera_binding::argument::{non_negative_float_argument, unit_interval_argument};
+use lindera_binding::argument::{Positive, non_negative_float_argument, unit_interval_argument};
 
 use crate::convert::nullable_int_arg;
 use crate::error::lindera_value_err;
@@ -40,8 +40,9 @@ impl PhpTrainer {
     /// * `lambda` - Regularization coefficient, finite and >= 0, default:
     ///   1.0; with L2, MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0`.
     ///   An `int` is widened to a float, as for a PHP `float` parameter.
-    /// * `max_iter` - Maximum number of iterations, default: 100.
-    /// * `max_threads` - Maximum number of threads (null = auto-detect CPU cores).
+    /// * `max_iter` - Maximum number of iterations, 1 or more, default: 100.
+    /// * `max_threads` - Maximum number of threads, 1 or more (null =
+    ///   auto-detect CPU cores).
     /// * `regularization` - Regularization type: `'l1'`, `'l2'` or
     ///   `'elasticnet'` (in any case; also `'elastic_net'` or
     ///   `'elastic-net'`), default: `'l2'`.
@@ -53,8 +54,8 @@ impl PhpTrainer {
     ///   disables the test.
     ///
     /// `null` selects the default of each optional parameter. A value of
-    /// another type throws instead of selecting the default, and a negative
-    /// `max_iter` or `max_threads`, an unknown `regularization`, and a
+    /// another type throws instead of selecting the default, and a `max_iter`
+    /// or `max_threads` below 1, an unknown `regularization`, and a
     /// `lambda`, `elastic_net_l1_ratio` or `eta` outside its range throw a
     /// `ValueError` before any file is read.
     #[allow(clippy::too_many_arguments)]
@@ -89,9 +90,10 @@ impl PhpTrainer {
         .map_err(lindera_value_err)?;
         let eta = non_negative_float_argument("eta", eta.unwrap_or(DEFAULT_ETA))
             .map_err(lindera_value_err)?;
-        let max_iter_val = nullable_int_arg("max_iter", max_iter)?.unwrap_or(100);
-        let num_threads =
-            nullable_int_arg("max_threads", max_threads)?.unwrap_or_else(num_cpus::get);
+        let max_iter_val =
+            nullable_int_arg::<Positive<u64>>("max_iter", max_iter)?.map_or(100, |Positive(n)| n);
+        let num_threads = nullable_int_arg::<Positive<usize>>("max_threads", max_threads)?
+            .map_or_else(num_cpus::get, |Positive(n)| n);
 
         let seed_path = Path::new(&seed);
         let corpus_path = Path::new(&corpus);

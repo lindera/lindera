@@ -248,9 +248,9 @@ MeCab 互換の3セクション形式による素性正規化ルールです。�
 | `lambda` | 正則化係数（過学習の制御）。有限の 0 以上の値。`l2` では MeCab の `-c C` が `1 / C` に当たる | 1.0 |
 | `regularization` | 正則化の種類: `l1`、`l2`、`elasticnet` のいずれか。大文字・小文字は区別しない（`elastic_net`・`elastic-net` も Elastic Net を選ぶ） | `l2` |
 | `elastic-net-l1-ratio` | Elastic Net 正則化の L1 比率（0.0-1.0、`--regularization elasticnet` の場合のみ使用） | 0.5 |
-| `max-iterations` | 最大学習イテレーション数 | 100 |
+| `max-iterations` | 最大学習イテレーション数（1 以上） | 100 |
 | `eta` | 収束判定の許容値（[学習のしくみ](#学習のしくみ)を参照）。`0` で判定を切ります | 0.00005 |
-| `max-threads` | 並列処理スレッド数 | CPU コア数 |
+| `max-threads` | 並列処理スレッド数（1 以上） | CPU コア数 |
 
 デフォルトは MeCab の学習器と同じです。L2 正則化の `lambda` 1.0 は、MeCab の `-c 1.0` の目的関数に当たります。[#1110](https://github.com/lindera/lindera/issues/1110) の mecab-ipadic の交差検証データでは、MeCab の学習器と同じスコアになり、ほぼ同じイテレーション数（81〜87）で収束します（[#1261](https://github.com/lindera/lindera/issues/1261)）。5 分割の平均で、境界 F1 は 0.9613、span + 品詞（4 列）F1 は 0.9398 です。v6 のデフォルトの L1・`lambda` 0.01 は、すべての分割で `max-iterations` に達し、0.9572 と 0.9344 でした。L1 は多くの重みを 0 にし、`lindera export` は重みの等しいラベルに 1 つの文脈 ID を与えるので、L1 の `matrix.def` は小さくなります。このデータでは L2 の 18.9 MB に対して 8.7 MB で、L2 ではビルドした辞書が 3.8 % 大きくなります。このデータでの学習時間は MeCab の学習器の約 2 倍で、その約 3 分の 2 は最適化の外、つまり最適化を始める前（[#1263](https://github.com/lindera/lindera/issues/1263)）と終えた後にかかります。
 

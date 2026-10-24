@@ -1269,6 +1269,10 @@ Node.js バインディングは code が `InvalidArg` の `Error` を、WASM �
   切り捨てるか 0 にしていました。
 - WASM で、64 ビットの範囲外の BigInt のコストのしきい値と、BigInt でないコストの
   しきい値。
+- 学習関数の反復回数とスレッド数の 0。v6 は trainer まで渡し、コーパスを読んで
+  すべてのラティスを作った後に学習が失敗していました。この 2 つは 1 以上を受け付け、
+  Python と Ruby のバインディングも 0 を `ValueError` と `RangeError` で拒否します
+  （[#1275](https://github.com/lindera/lindera/issues/1275)）。
 
 範囲内の整数を渡してください。Node.js と WASM のバインディングの TypeScript の
 型定義は変わりません。Python と Ruby のバインディングは、以前からこれらの値を

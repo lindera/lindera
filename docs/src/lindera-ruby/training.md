@@ -45,8 +45,8 @@ The first seven parameters are required positional arguments. `lambda`, `max_ite
 | 6 | rewrite_def | `String` | Path to the rewrite rule definition file (rewrite.def) |
 | 7 | output | `String` | Output path for the trained model file |
 | 8 | lambda | `Float` or `nil` | Regularization coefficient, finite and >= 0, default 1.0; with L2, MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0` |
-| 9 | max_iter | `Integer` or `nil` | Maximum number of training iterations, default 100; training stops earlier once the objective converges (see `eta:`) |
-| 10 | max_threads | `Integer` or `nil` | Number of threads (`nil` = auto-detect CPU cores) |
+| 9 | max_iter | `Integer` or `nil` | Maximum number of training iterations, 1 or more, default 100; training stops earlier once the objective converges (see `eta:`) |
+| 10 | max_threads | `Integer` or `nil` | Number of threads, 1 or more (`nil` = auto-detect CPU cores) |
 | keyword | regularization: | `String` or `nil` | Regularization type, default `'l2'`: `'l1'`, `'l2'` or `'elasticnet'`, in any case (`'elastic_net'` and `'elastic-net'` also select Elastic Net), as `lindera train --regularization` takes it |
 | keyword | elastic_net_l1_ratio: | `Float` or `nil` | L1 ratio of Elastic Net regularization, between 0 and 1, default 0.5; used only with `'elasticnet'` |
 | keyword | eta: | `Float` or `nil` | Tolerance of the convergence test, finite and >= 0, default 5e-5: training stops before `max_iter` once the relative change of the objective stays below it for 3 iterations in a row; `0` disables the test |
