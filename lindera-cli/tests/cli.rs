@@ -8,6 +8,7 @@
 //! ```
 
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use assert_cmd::Command;
 
@@ -1170,11 +1171,15 @@ mod with_trained_dictionary {
                 &corpus,
             ),
         ] {
+            // Without the check, training with a NaN lambda never ends, even
+            // with one iteration; the timeout kills it, so that the message
+            // check fails instead of the test hanging.
             let output = train_inputs_command(corpus, &model)
                 .args(["--max-iterations", "1"])
                 .args(args)
+                .timeout(Duration::from_secs(120))
                 .output()
-                .unwrap();
+                .unwrap_or_else(|err| panic!("{args:?}: {err}"));
             let stderr = String::from_utf8(output.stderr).unwrap();
             assert!(!output.status.success(), "{args:?}: {stderr}");
             assert!(stderr.contains(expected), "{args:?}: {stderr}");
