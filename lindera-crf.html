@@ -195,6 +195,7 @@
 <ul>
 <li><strong>Serialization backend</strong>: Switched from <code>bincode</code> to <code>rkyv</code> for zero-copy deserialization</li>
 <li><strong>Elastic Net regularization</strong>: Added <code>Regularization::ElasticNet</code> combining L1 and L2 penalties</li>
+<li><strong>Default regularization</strong>: <code>Trainer::new</code> regularizes with L2 and <code>DEFAULT_LAMBDA</code> (1.0), the objective of MeCab's learner with its default <code>-c 1.0</code>; rucrf's default is L1 with 0.1</li>
 <li><strong>Rust 2024 edition</strong>: Updated to Rust 2024 edition</li>
 <li><strong>Dependency updates</strong>: Updated <code>argmin</code>, <code>argmin-math</code>, <code>hashbrown</code>, etc.</li>
 </ul>

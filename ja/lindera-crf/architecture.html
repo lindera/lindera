@@ -219,6 +219,7 @@
 <li><strong>L2</strong>: L2ペナルティによる滑らかなモデル</li>
 <li><strong>ElasticNet</strong>: L1とL2を設定可能な<code>l1_ratio</code>で組み合わせ</li>
 </ul>
+<p><code>Trainer::new</code>は、L2と<code>DEFAULT_LAMBDA</code>（1.0）を使います。MeCabの学習器のデフォルト<code>-c 1.0</code>と同じ目的関数です。MeCabは<code>‖w‖² / (2C)</code>を足すので、係数は一般に<code>1 / C</code>に当たります。</p>
 <h3 id="model-trait"><a class="header" href="#model-trait">Model (trait)</a></h3>
 <p>ラティスを通じて最適パスを探索するためのインターフェースです。2つの実装が提供されています：</p>
 <ul>

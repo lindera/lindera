@@ -202,7 +202,7 @@ train({
   featureDef: "resources/training/feature.def",
   rewriteDef: "resources/training/rewrite.def",
   output: "/tmp/model.dat",
-  lambda: 0.01,
+  lambda: 1.0,
   maxIter: 100,
   maxThreads: 4,
 });
@@ -216,7 +216,7 @@ train({
 <tr><td><code>featureDef</code></td><td><code>string</code></td><td>必須</td><td>素性定義ファイルのパス（feature.def）</td></tr>
 <tr><td><code>rewriteDef</code></td><td><code>string</code></td><td>必須</td><td>書き換えルール定義ファイルのパス（rewrite.def）</td></tr>
 <tr><td><code>output</code></td><td><code>string</code></td><td>必須</td><td>学習済みモデルファイルの出力パス</td></tr>
-<tr><td><code>lambda</code></td><td><code>number</code></td><td><code>0.01</code></td><td>L1 正則化コスト（0.0--1.0）</td></tr>
+<tr><td><code>lambda</code></td><td><code>number</code></td><td><code>1.0</code></td><td>L2 正則化係数（0 以上。1.0 は MeCab の <code>-c 1.0</code>）。バインディングは L2 正則化で学習し、正則化の種類はまだ選べません（<a href="https://github.com/lindera/lindera/issues/1262">#1262</a>）</td></tr>
 <tr><td><code>maxIter</code></td><td><code>number</code></td><td><code>100</code></td><td>最大学習イテレーション数。目的関数が収束すると（相対変化が 3 回続けて 5e-5 を下回ると）、それより前に止まります</td></tr>
 <tr><td><code>maxThreads</code></td><td><code>number | undefined</code></td><td><code>undefined</code></td><td>スレッド数（undefined = CPU コア数を自動検出）</td></tr>
 </tbody></table>
@@ -271,7 +271,7 @@ train({
   featureDef: "resources/training/feature.def",
   rewriteDef: "resources/training/rewrite.def",
   output: "/tmp/model.dat",
-  lambda: 0.01,
+  lambda: 1.0,
   maxIter: 100,
 });
 

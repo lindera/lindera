@@ -202,7 +202,7 @@ train({
   featureDef: "resources/training/feature.def",
   rewriteDef: "resources/training/rewrite.def",
   output: "/tmp/model.dat",
-  lambda: 0.01,
+  lambda: 1.0,
   maxIter: 100,
   maxThreads: 4,
 });
@@ -216,7 +216,7 @@ train({
 <tr><td><code>featureDef</code></td><td><code>string</code></td><td>required</td><td>Path to the feature definition file (feature.def)</td></tr>
 <tr><td><code>rewriteDef</code></td><td><code>string</code></td><td>required</td><td>Path to the rewrite rule definition file (rewrite.def)</td></tr>
 <tr><td><code>output</code></td><td><code>string</code></td><td>required</td><td>Output path for the trained model file</td></tr>
-<tr><td><code>lambda</code></td><td><code>number</code></td><td><code>0.01</code></td><td>L1 regularization cost (0.0--1.0)</td></tr>
+<tr><td><code>lambda</code></td><td><code>number</code></td><td><code>1.0</code></td><td>L2 regularization coefficient, &gt;= 0 (1.0 is MeCab's <code>-c 1.0</code>); the bindings train with L2 regularization, whose type cannot be chosen yet (<a href="https://github.com/lindera/lindera/issues/1262">#1262</a>)</td></tr>
 <tr><td><code>maxIter</code></td><td><code>number</code></td><td><code>100</code></td><td>Maximum number of training iterations; training stops earlier once the objective converges (its relative change stays below 5e-5 for 3 iterations in a row)</td></tr>
 <tr><td><code>maxThreads</code></td><td><code>number | undefined</code></td><td><code>undefined</code></td><td>Number of threads (undefined = auto-detect CPU cores)</td></tr>
 </tbody></table>
@@ -271,7 +271,7 @@ train({
   featureDef: "resources/training/feature.def",
   rewriteDef: "resources/training/rewrite.def",
   output: "/tmp/model.dat",
-  lambda: 0.01,
+  lambda: 1.0,
   maxIter: 100,
 });
 

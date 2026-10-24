@@ -219,6 +219,7 @@
 <li><strong>L2</strong>: Smooth models via L2 penalty</li>
 <li><strong>ElasticNet</strong>: Combines L1 and L2 with a configurable <code>l1_ratio</code></li>
 </ul>
+<p><code>Trainer::new</code> uses L2 with <code>DEFAULT_LAMBDA</code> (1.0): the objective of MeCab's learner with its default <code>-c 1.0</code>. MeCab adds <code>‖w‖² / (2C)</code>, so the coefficient is <code>1 / C</code> in general.</p>
 <h3 id="model-trait"><a class="header" href="#model-trait">Model (trait)</a></h3>
 <p>Interface for searching the best path through a lattice. Two implementations are provided:</p>
 <ul>

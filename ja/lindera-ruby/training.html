@@ -194,7 +194,7 @@ Lindera.train(
   'resources/training/feature.def',
   'resources/training/rewrite.def',
   '/tmp/model.dat',
-  0.01,   # lambda (L1 regularization)
+  1.0,    # lambda (L2 regularization coefficient)
   100,    # max_iter
   nil     # max_threads (nil = auto-detect)
 )
@@ -209,7 +209,7 @@ Lindera.train(
 <tr><td>5</td><td>feature_def</td><td><code>String</code></td><td>素性定義ファイルのパス（feature.def）</td></tr>
 <tr><td>6</td><td>rewrite_def</td><td><code>String</code></td><td>書き換えルール定義ファイルのパス（rewrite.def）</td></tr>
 <tr><td>7</td><td>output</td><td><code>String</code></td><td>学習済みモデルファイルの出力パス</td></tr>
-<tr><td>8</td><td>lambda</td><td><code>Float</code></td><td>L1 正則化コスト（0.0--1.0）</td></tr>
+<tr><td>8</td><td>lambda</td><td><code>Float</code> または <code>nil</code></td><td>L2 正則化係数（0 以上。1.0 は MeCab の <code>-c 1.0</code>）。バインディングは L2 正則化で学習し、正則化の種類はまだ選べません（<a href="https://github.com/lindera/lindera/issues/1262">#1262</a>）。<code>nil</code> はデフォルトの 1.0</td></tr>
 <tr><td>9</td><td>max_iter</td><td><code>Integer</code></td><td>最大学習イテレーション数。目的関数が収束すると（相対変化が 3 回続けて 5e-5 を下回ると）、それより前に止まります</td></tr>
 <tr><td>10</td><td>max_threads</td><td><code>Integer</code> または <code>nil</code></td><td>スレッド数（<code>nil</code> = CPU コア数を自動検出）</td></tr>
 </tbody></table>
@@ -253,7 +253,7 @@ Lindera.train(
   'resources/training/feature.def',
   'resources/training/rewrite.def',
   '/tmp/model.dat',
-  0.01,  # lambda
+  1.0,   # lambda
   100,   # max_iter
   nil    # max_threads
 )

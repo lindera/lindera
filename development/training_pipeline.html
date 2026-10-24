@@ -212,7 +212,7 @@
 <li><code>max-iterations</code> was reached before the objective converged.</li>
 </ul>
 <p><code>lindera train</code> prints which one stopped it, with the number of iterations and of evaluations, each evaluation being one forward-backward pass over every lattice; with the files in <code>resources/training/</code>:</p>
-<pre><code class="language-text">L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
+<pre><code class="language-text">L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradient: converged
 </code></pre>
 <h2 id="required-input-files"><a class="header" href="#required-input-files">Required Input Files</a></h2>
 <h3 id="1-seed-lexicon-seedcsv"><a class="header" href="#1-seed-lexicon-seedcsv">1. Seed Lexicon (seed.csv)</a></h3>
@@ -361,15 +361,15 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <p>The pattern, the replacement and the feature are split into columns as described in <a href="#1-seed-lexicon-seedcsv">Seed Lexicon</a>, so a quoted column with <code>,</code> in it is one column. As MeCab does, the rewritten columns are joined with <code>,</code>, and a column that contains <code>,</code> or <code>"</code> is quoted, with its quotes doubled: with the left rule <code>* $5</code>, the feature <code>n,dian4,店,店,"shop, store",1</code> is rewritten to <code>"shop, store"</code>.</p>
 <h2 id="training-parameters"><a class="header" href="#training-parameters">Training Parameters</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Parameter</th><th>Description</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>lambda</code></td><td>Regularization coefficient (controls overfitting)</td><td>0.01</td></tr>
-<tr><td><code>regularization</code></td><td>Regularization type: <code>l1</code>, <code>l2</code>, or <code>elasticnet</code></td><td><code>l1</code></td></tr>
+<tr><td><code>lambda</code></td><td>Regularization coefficient (controls overfitting), &gt;= 0; with <code>l2</code>, MeCab's <code>-c C</code> is <code>1 / C</code></td><td>1.0</td></tr>
+<tr><td><code>regularization</code></td><td>Regularization type: <code>l1</code>, <code>l2</code>, or <code>elasticnet</code></td><td><code>l2</code></td></tr>
 <tr><td><code>elastic-net-l1-ratio</code></td><td>L1 ratio for Elastic Net regularization (0.0-1.0, only used with <code>--regularization elasticnet</code>)</td><td>0.5</td></tr>
 <tr><td><code>max-iterations</code></td><td>Maximum number of training iterations</td><td>100</td></tr>
 <tr><td><code>eta</code></td><td>Tolerance of the convergence test (see <a href="#how-training-works">How training works</a>); <code>0</code> disables the test</td><td>0.00005</td></tr>
 <tr><td><code>max-threads</code></td><td>Number of parallel processing threads</td><td>CPU core count</td></tr>
 </tbody></table>
 </div>
-<p>On the mecab-ipadic cross-validation data of <a href="https://github.com/lindera/lindera/issues/1110">#1110</a>, the default L1 regularization still reaches <code>max-iterations</code> before the objective converges, while L2 with <code>lambda</code> 1.0, which is MeCab's default <code>-c 1.0</code>, converges in about as many iterations as MeCab's learner (<a href="https://github.com/lindera/lindera/issues/1167">#1167</a>). Training there takes about twice as long as MeCab's learner, and about two thirds of the time is spent outside the optimizer: before it starts (<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>) and after it stops.</p>
+<p>The defaults are those of MeCab's learner: L2 regularization with <code>lambda</code> 1.0 is its objective with <code>-c 1.0</code>. On the mecab-ipadic cross-validation data of <a href="https://github.com/lindera/lindera/issues/1110">#1110</a>, they score as MeCab's learner does and converge in about as many iterations, 81 to 87 (<a href="https://github.com/lindera/lindera/issues/1261">#1261</a>): boundary F1 0.9613 and span + POS (4 columns) F1 0.9398 on average over 5 folds, where v6's default, L1 with <code>lambda</code> 0.01, reached <code>max-iterations</code> on every fold with 0.9572 and 0.9344. L1 sets many weights to 0, and <code>lindera export</code> gives labels with equal weights one context ID, so the L1 <code>matrix.def</code> is smaller: 8.7 MB there against 18.9 MB with L2, which makes the built dictionary 3.8 % larger. Training there takes about twice as long as MeCab's learner, and about two thirds of the time is spent outside the optimizer: before it starts (<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>) and after it stops.</p>
 <h2 id="cli-usage"><a class="header" href="#cli-usage">CLI Usage</a></h2>
 <h3 id="train"><a class="header" href="#train">Train</a></h3>
 <pre><code class="language-bash">lindera train \
@@ -379,7 +379,6 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
     --unk-def unk.def \
     --feature-def feature.def \
     --rewrite-def rewrite.def \
-    --lambda 0.01 \
     --max-iterations 100 \
     --max-threads 4 \
     --output model.dat
@@ -405,14 +404,14 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </tbody></table>
 </div>
 <p>For example, if the <code>unk.def</code> above has a second <code>KANJI</code> line, <code>KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*</code>, after the first one, the exported <code>unk.def</code> keeps both, in input order:</p>
-<pre><code class="language-csv">DEFAULT,1,1,32764,名詞,一般,*,*,*,*,*,*,*
-SPACE,1,1,0,記号,空白,*,*,*,*,*,*,*
-HIRAGANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
-KATAKANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
-KANJI,1,1,32764,名詞,一般,*,*,*,*,*,*,*
-KANJI,1,1,0,名詞,サ変接続,*,*,*,*,*,*,*
-ALPHA,1,1,0,名詞,固有名詞,一般,*,*,*,*,*,*
-NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
+<pre><code class="language-csv">DEFAULT,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+SPACE,10,7,0,記号,空白,*,*,*,*,*,*,*
+HIRAGANA,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+KANJI,3,3,4179,名詞,サ変接続,*,*,*,*,*,*,*
+ALPHA,11,10,10957,名詞,固有名詞,一般,*,*,*,*,*,*
+NUMERIC,11,10,10957,名詞,数,*,*,*,*,*,*,*
 </code></pre>
 <h3 id="build"><a class="header" href="#build">Build</a></h3>
 <p>Compile the exported source files into a binary dictionary:</p>
@@ -488,7 +487,6 @@ let config = TrainerConfig::from_readers(
 
 // Initialize and configure trainer
 let trainer = Trainer::new(config)?
-    .regularization_cost(0.01)
     .max_iter(100)
     .num_threads(4);
 

@@ -870,8 +870,8 @@ Downloaded dictionary 'ipadic'
 <li><code>--feature-def</code> / <code>-f</code>: 素性定義ファイル (feature.def)</li>
 <li><code>--rewrite-def</code> / <code>-r</code>: 書換えルール定義ファイル (rewrite.def)</li>
 <li><code>--output</code> / <code>-o</code>: 出力モデルファイル</li>
-<li><code>--lambda</code> / <code>-l</code>: 正則化係数 (0.0-1.0) (デフォルト: 0.01)</li>
-<li><code>--regularization</code> / <code>-R</code>: 正則化の種類: <code>l1</code>, <code>l2</code>, または <code>elasticnet</code> (デフォルト: <code>l1</code>)</li>
+<li><code>--lambda</code> / <code>-l</code>: 正則化係数。0 以上。<code>l2</code> では MeCab の学習器の <code>-c C</code> が <code>1 / C</code> に当たります (デフォルト: 1.0。MeCab の <code>-c 1.0</code>)</li>
+<li><code>--regularization</code> / <code>-R</code>: 正則化の種類: <code>l1</code>, <code>l2</code>, または <code>elasticnet</code> (デフォルト: <code>l2</code>)</li>
 <li><code>--elastic-net-l1-ratio</code>: Elastic Net 正則化時のL1比率 (0.0-1.0)。<code>--regularization elasticnet</code> を指定した場合のみ使用されます (デフォルト: 0.5)</li>
 <li><code>--max-iterations</code> / <code>-i</code>: 学習の最大反復回数 (デフォルト: 100)</li>
 <li><code>--eta</code> / <code>-e</code>: 収束判定の許容値。目的関数の相対変化がこの値を 3 回続けて下回ると、<code>--max-iterations</code> より前に学習を止めます。<code>0</code> で判定を切ります (デフォルト: 0.00005。MeCab の学習器のデフォルトと同じ)</li>
@@ -919,7 +919,6 @@ EOS
   --feature-def ./resources/training/feature.def \
   --rewrite-def ./resources/training/rewrite.def \
   --output /tmp/lindera/training/model.dat \
-  --lambda 0.01 \
   --max-iterations 100
 </code></pre>
 <h4 id="3-学習結果"><a class="header" href="#3-学習結果">3. 学習結果</a></h4>
@@ -928,7 +927,7 @@ EOS
 </code></pre>
 <p>種辞書の語である正解トークンが 1 つもないとき、または表層を持つ種辞書の行がある正解トークンのうち種辞書の語であるものが半分に満たないときは、続けて標準エラーに警告を書きます。警告には、表層を持つ種辞書の行はあるものの素性文字列が一致する行がない最初の正解トークンと、その表層を持つ種辞書の行が並びます（<a href="../development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。</p>
 <p>学習が止まると、止まった理由を、イテレーション数と損失・勾配の評価回数とともに出力します（上の <code>--eta</code> を参照）：</p>
-<pre><code class="language-text">L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
+<pre><code class="language-text">L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradient: converged
 </code></pre>
 <p>学習済みモデルには以下が含まれます：</p>
 <ul>
@@ -972,7 +971,6 @@ EOS
   --feature-def ./resources/training/feature.def \
   --rewrite-def ./resources/training/rewrite.def \
   --output /tmp/lindera/training/model.dat \
-  --lambda 0.01 \
   --max-iterations 100
 </code></pre>
 <h4 id="2-辞書フォーマットへのエクスポート"><a class="header" href="#2-辞書フォーマットへのエクスポート">2. 辞書フォーマットへのエクスポート</a></h4>
