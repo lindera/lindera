@@ -1076,27 +1076,41 @@ mod with_trained_dictionary {
         String::from_utf8(output.stdout).unwrap()
     }
 
+    /// The directory of the training files, `resources/training/`.
+    fn training_dir() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../resources/training")
+    }
+
+    /// The documented `lindera train` command: the files in
+    /// `resources/training/` with `corpus` as the corpus, writing the model
+    /// to `model`.
+    fn train_command(corpus: &Path, model: &Path) -> Command {
+        let training = training_dir();
+        let input = |name: &str| training.join(name).to_str().unwrap().to_string();
+        let mut command = lindera();
+        command
+            .arg("train")
+            .args(["--seed", &input("seed.csv")])
+            .args(["--corpus", corpus.to_str().unwrap()])
+            .args(["--unk-def", &input("unk.def")])
+            .args(["--char-def", &input("char.def")])
+            .args(["--feature-def", &input("feature.def")])
+            .args(["--rewrite-def", &input("rewrite.def")])
+            .args(["--output", model.to_str().unwrap()])
+            .args(["--lambda", "0.01", "--max-iterations", "100"]);
+        command
+    }
+
     /// Trains, exports and builds a dictionary from `resources/training/` in
     /// `dir`, and returns the built dictionary directory.
     fn build_trained_dictionary(dir: &Path) -> PathBuf {
-        let training = Path::new(env!("CARGO_MANIFEST_DIR")).join("../resources/training");
+        let training = training_dir();
         let input = |name: &str| training.join(name).to_str().unwrap().to_string();
         let model = dir.join("model.dat");
         let source = dir.join("dictionary");
         let dict = dir.join("compiled_dictionary");
 
-        stdout_of(
-            lindera()
-                .arg("train")
-                .args(["--seed", &input("seed.csv")])
-                .args(["--corpus", &input("corpus.txt")])
-                .args(["--unk-def", &input("unk.def")])
-                .args(["--char-def", &input("char.def")])
-                .args(["--feature-def", &input("feature.def")])
-                .args(["--rewrite-def", &input("rewrite.def")])
-                .args(["--output", model.to_str().unwrap()])
-                .args(["--lambda", "0.01", "--max-iterations", "100"]),
-        );
+        stdout_of(&mut train_command(&training.join("corpus.txt"), &model));
         stdout_of(
             lindera()
                 .arg("export")
@@ -1143,5 +1157,60 @@ mod with_trained_dictionary {
             tokenize("これは 外国人参政権です。\n", &["--keep-whitespace"]),
             DOCUMENTED_OUTPUT.replacen("\n外国", "\n \t記号,空白,*,*,*,*,*,*,*\n外国", 1)
         );
+    }
+
+    /// `lindera train` warns on stderr, not on stdout, when no gold token
+    /// is a seed word, and still trains (#1259). With every feature of
+    /// `resources/training/corpus.txt` cut to its first six columns, no
+    /// seed row has the whole feature string of a gold token, though each
+    /// gold token has the surface of one. The files as they are give no
+    /// warning.
+    #[test]
+    fn train_warns_on_stderr_when_no_gold_token_is_a_seed_word() {
+        let dir = tempfile::tempdir().unwrap();
+        let corpus = training_dir().join("corpus.txt");
+
+        let output = train_command(&corpus, &dir.path().join("model.dat"))
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(output.status.success(), "got: {stderr}");
+        assert!(!stderr.contains("seed word"), "got: {stderr}");
+
+        let cut: String = std::fs::read_to_string(&corpus)
+            .unwrap()
+            .lines()
+            .map(|line| match line.split_once('\t') {
+                Some((surface, feature)) => {
+                    let columns: Vec<&str> = feature.split(',').take(6).collect();
+                    format!("{surface}\t{}\n", columns.join(","))
+                }
+                None => format!("{line}\n"),
+            })
+            .collect();
+        let cut_corpus = dir.path().join("corpus.txt");
+        std::fs::write(&cut_corpus, cut).unwrap();
+        let model = dir.path().join("cut.dat");
+
+        let output = train_command(&cut_corpus, &model).output().unwrap();
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(output.status.success(), "got: {stderr}");
+        assert!(
+            stderr.contains(
+                "Warning: 0 of the 14 gold tokens are seed words, and 14 are not although seed \
+                 rows have their surface."
+            ),
+            "got: {stderr}"
+        );
+        assert!(
+            stderr.contains(
+                "\n  gold token: 外国\t名詞,一般,*,*,*,*\n  \
+                 seed row:   外国\t名詞,一般,*,*,*,*,外国,ガイコク,ガイコク\n"
+            ),
+            "got: {stderr}"
+        );
+        assert!(!stdout.contains("seed word"), "got: {stdout}");
+        assert!(model.is_file());
     }
 }

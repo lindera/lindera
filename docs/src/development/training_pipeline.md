@@ -30,6 +30,16 @@ Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels
 
 `gold_lexicon`, `gold_unknown` and `gold_virtual` count the gold tokens labelled by each of the three steps, `virtual_labels` counts the virtual labels, and `negative_lexicon` and `negative_unknown` count the negative edges from the seed lexicon and from the unknown-word candidates.
 
+A seed row that no gold token is labelled with is only ever a negative example. So `lindera train` warns on standard error when no gold token is a seed word, or when fewer than half of the gold tokens whose surface has seed rows are seed words, as when the corpus does not give its gold tokens the feature strings of the seed rows. The warning shows the first gold token whose surface has seed rows but none with its feature string, next to the feature strings of the first five of those rows, and training goes on. For example, with every feature of `resources/training/corpus.txt` cut to its first six columns, without the base form and the readings:
+
+```text
+Warning: 0 of the 14 gold tokens are seed words, and 14 are not although seed rows have their surface. A gold token is a seed word only when a seed row has its surface and its whole feature string, as the seed lexicon writes it; otherwise the seed rows with its surface are only wrong candidates at its position. The first such gold token, and the seed rows with its surface:
+  gold token: 外国	名詞,一般,*,*,*,*
+  seed row:   外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+```
+
+Gold tokens whose surface no seed row has do not count toward the warning, so a seed lexicon that covers little of the corpus gives none.
+
 The CRF is then trained with L-BFGS (OWL-QN when the regularization has an L1 part). Training stops at the first of these:
 
 - `converged`: the relative change of the objective, `|previous - current| / |previous|`, stayed below `eta` for 3 iterations in a row. The default `eta` is that of MeCab's learner, which applies the same test to every evaluation, line-search trials included, where Lindera counts iterations.
@@ -90,6 +100,8 @@ EOS
 テスト	名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
 EOS
 ```
+
+A gold token is a seed word only when a seed row has its surface and its whole feature string, as the seed lexicon writes it, quotes included. In the example above, each feature is that of the seed row with the same surface. A gold token whose feature differs in any column, the reading for instance, is learned as an unknown word or a virtual label, and the seed rows with its surface become negative examples at its position; `lindera train` warns when most gold tokens are like this (see [How training works](#how-training-works)).
 
 Training quality depends heavily on the quantity and quality of this corpus.
 

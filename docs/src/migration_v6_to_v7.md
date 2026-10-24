@@ -1591,7 +1591,10 @@ v7.0.0 trains as MeCab's learner does (see
   an unknown-word candidate with the same span whose feature columns other
   than `*` all equal the gold token's; else a virtual label, which is
   trained and not exported, as MeCab's learner adds a virtual node.
-  `lindera train` prints the counts in a `Lattice statistics:` line.
+  `lindera train` prints the counts in a `Lattice statistics:` line, and
+  warns on stderr when no gold token is a seed word, or fewer than half of
+  the gold tokens whose surface has seed rows are, with the first gold
+  token whose surface has seed rows but none with its feature string.
 - `matrix.def` covers every context ID, plus 0 for BOS/EOS, and
   `model_info.connection_matrix_size` gives its size, rows by columns.
 - A connection without a trained weight costs 0 in `matrix.def`, as in

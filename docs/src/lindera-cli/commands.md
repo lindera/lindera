@@ -996,6 +996,8 @@ lindera train \
 Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
 ```
 
+When no gold token is a seed word, or fewer than half of the gold tokens whose surface has seed rows are, it then writes a warning on stderr, with the first gold token whose surface has seed rows but none with its feature string, next to those rows (see [How training works](../development/training_pipeline.md#how-training-works)).
+
 Once training stops, it prints why, with the number of iterations and of evaluations of the loss and its gradient (see `--eta` above):
 
 ```text

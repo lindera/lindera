@@ -996,6 +996,8 @@ lindera train \
 Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
 ```
 
+種辞書の語である正解トークンが 1 つもないとき、または表層を持つ種辞書の行がある正解トークンのうち種辞書の語であるものが半分に満たないときは、続けて標準エラーに警告を書きます。警告には、表層を持つ種辞書の行はあるものの素性文字列が一致する行がない最初の正解トークンと、その表層を持つ種辞書の行が並びます（[学習のしくみ](../development/training_pipeline.md#学習のしくみ)を参照）。
+
 学習が止まると、止まった理由を、イテレーション数と損失・勾配の評価回数とともに出力します（上の `--eta` を参照）：
 
 ```text

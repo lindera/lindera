@@ -30,6 +30,16 @@ Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels
 
 `gold_lexicon`・`gold_unknown`・`gold_virtual` は上の 3 つの段階それぞれでラベルを付けた正解トークンの数、`virtual_labels` は仮想ラベルの数、`negative_lexicon` と `negative_unknown` は種辞書と未知語候補それぞれから作った負例の辺の数です。
 
+どの正解トークンのラベルにもならなかった種辞書の行は、負例としてしか学習されません。そのため `lindera train` は、種辞書の語である正解トークンが 1 つもないとき、または表層を持つ種辞書の行がある正解トークンのうち種辞書の語であるものが半分に満たないときに、標準エラーに警告を出します。コーパスが正解トークンに種辞書の行の素性文字列を付けていない場合がこれに当たります。警告には、表層を持つ種辞書の行はあるものの素性文字列が一致する行がない最初の正解トークンと、その表層を持つ種辞書の行のうち最初の 5 行の素性文字列が並びます。学習はそのまま続きます。たとえば `resources/training/corpus.txt` の素性をすべて先頭の 6 列に切り詰め、原形と読みを除くと、次のようになります。
+
+```text
+Warning: 0 of the 14 gold tokens are seed words, and 14 are not although seed rows have their surface. A gold token is a seed word only when a seed row has its surface and its whole feature string, as the seed lexicon writes it; otherwise the seed rows with its surface are only wrong candidates at its position. The first such gold token, and the seed rows with its surface:
+  gold token: 外国	名詞,一般,*,*,*,*
+  seed row:   外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+```
+
+表層を持つ種辞書の行がない正解トークンは警告の判定に数えないので、コーパスの一部しか覆わない種辞書では警告は出ません。
+
 その後、CRF を L-BFGS（正則化に L1 の部分があるときは OWL-QN）で学習します。学習は、次のうち最初に当てはまったもので止まります。
 
 - `converged`: 目的関数の相対変化 `|previous - current| / |previous|` が `eta` を 3 回続けて下回った。`eta` のデフォルトは MeCab の学習器と同じです。MeCab はライン探索の試行を含めた評価ごとに同じ判定を行い、Lindera はイテレーションごとに行います。
@@ -90,6 +100,8 @@ EOS
 テスト	名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
 EOS
 ```
+
+正解トークンが種辞書の語になるのは、その表層と素性文字列全体を持つ種辞書の行があるときだけです。素性文字列は、引用符も含めて種辞書に書かれたとおりに比べます。上の例では、各素性は同じ表層の種辞書の行の素性です。読みなど、どれか 1 列でも素性が異なる正解トークンは未知語か仮想ラベルとして学習され、その表層を持つ種辞書の行はその位置の負例になります。正解トークンの多くがこうなっているときは、`lindera train` が警告を出します（[学習のしくみ](#学習のしくみ)を参照）。
 
 学習の品質はこのコーパスの量と質に大きく依存します。
 
