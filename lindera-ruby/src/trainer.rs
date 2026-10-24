@@ -6,55 +6,114 @@
 use std::fs::File;
 use std::path::Path;
 
-use magnus::{Error, Integer, Ruby, function};
+use magnus::scan_args::{get_kwargs, scan_args};
+use magnus::{Error, Integer, RHash, Ruby, Value, function};
 
 use lindera::dictionary::trainer::{
-    Corpus, DEFAULT_LAMBDA, Model, SerializableModel, Trainer, TrainerConfig,
+    Corpus, DEFAULT_ELASTIC_NET_L1_RATIO, DEFAULT_ETA, DEFAULT_LAMBDA, Model,
+    ParseRegularizationTypeError, RegularizationType, SerializableModel, Trainer, TrainerConfig,
 };
+use lindera_binding::argument::{non_negative_float_argument, unit_interval_argument};
 
 use crate::error::to_magnus_error;
 use crate::util::optional_integer_arg;
 
 /// Trains a morphological analysis model from an annotated corpus.
 ///
+/// Ruby signature: `Lindera.train(seed, corpus, char_def, unk_def,
+/// feature_def, rewrite_def, output, lambda = nil, max_iter = nil,
+/// max_threads = nil, regularization: nil, elastic_net_l1_ratio: nil,
+/// eta: nil)`.
+///
 /// # Arguments
 ///
 /// * `ruby` - Ruby runtime handle (passed by magnus, not by the caller).
-/// * `seed` - Seed lexicon file path (CSV format).
-/// * `corpus` - Training corpus file path (annotated text).
-/// * `char_def` - Character definition file path (char.def).
-/// * `unk_def` - Unknown word definition file path (unk.def).
-/// * `feature_def` - Feature definition file path (feature.def).
-/// * `rewrite_def` - Rewrite rule definition file path (rewrite.def).
-/// * `output` - Output model file path.
-/// * `lambda` - L2 regularization coefficient (>= 0), default (also for
-///   `nil`): 1.0, MeCab's `-c 1.0`. The bindings train with L2
-///   regularization; the type cannot be chosen yet (#1262).
-/// * `max_iter` - Maximum number of iterations, 0 or more, default: 100.
-/// * `max_threads` - Maximum number of threads, 0 or more (nil = auto-detect
-///   CPU cores).
+/// * `args` - The Ruby arguments:
+///   * `seed` - Seed lexicon file path (CSV format).
+///   * `corpus` - Training corpus file path (annotated text).
+///   * `char_def` - Character definition file path (char.def).
+///   * `unk_def` - Unknown word definition file path (unk.def).
+///   * `feature_def` - Feature definition file path (feature.def).
+///   * `rewrite_def` - Rewrite rule definition file path (rewrite.def).
+///   * `output` - Output model file path.
+///   * `lambda` - Regularization coefficient, finite and >= 0, default
+///     (also for `nil`): 1.0; with L2, MeCab's `-c C` is `1 / C`, so 1.0 is
+///     MeCab's `-c 1.0`.
+///   * `max_iter` - Maximum number of iterations, 0 or more, default: 100.
+///   * `max_threads` - Maximum number of threads, 0 or more (nil =
+///     auto-detect CPU cores).
+///   * `regularization:` - Regularization type: `"l1"`, `"l2"` or
+///     `"elasticnet"` (in any case; also `"elastic_net"` or
+///     `"elastic-net"`), default (also for `nil`): `"l2"`.
+///   * `elastic_net_l1_ratio:` - L1 ratio of Elastic Net regularization,
+///     between 0 and 1, default (also for `nil`): 0.5; used only with
+///     `"elasticnet"`.
+///   * `eta:` - Tolerance of the convergence test, finite and >= 0, default
+///     (also for `nil`): 5e-5: training stops before `max_iter` once the
+///     relative change of the objective stays below it for 3 iterations in
+///     a row; 0 disables the test.
 ///
 /// # Returns
 ///
-/// `Ok(())` on success, a `RangeError` for a `max_iter` or `max_threads`
-/// outside its range (checked before the files), an `ArgumentError` for a
-/// missing input file, or a `RuntimeError` when training fails.
-#[allow(clippy::too_many_arguments)]
-fn train(
-    ruby: &Ruby,
-    seed: String,
-    corpus: String,
-    char_def: String,
-    unk_def: String,
-    feature_def: String,
-    rewrite_def: String,
-    output: String,
-    lambda: Option<f64>,
-    max_iter: Option<Integer>,
-    max_threads: Option<Integer>,
-) -> Result<(), Error> {
-    let max_iter: Option<u64> = optional_integer_arg(ruby, "max_iter", max_iter)?;
-    let max_threads: Option<usize> = optional_integer_arg(ruby, "max_threads", max_threads)?;
+/// `Ok(())` on success; checked before the files, an `ArgumentError` for a
+/// wrong number of arguments, an unknown keyword or an unknown
+/// `regularization`, and a `RangeError` for a `lambda`, `max_iter`,
+/// `max_threads`, `elastic_net_l1_ratio` or `eta` outside its range; then an
+/// `ArgumentError` for a missing input file, or a `RuntimeError` when
+/// training fails.
+fn train(ruby: &Ruby, args: &[Value]) -> Result<(), Error> {
+    let args = scan_args::<
+        (String, String, String, String, String, String, String),
+        (
+            Option<Option<f64>>,
+            Option<Option<Integer>>,
+            Option<Option<Integer>>,
+        ),
+        (),
+        (),
+        RHash,
+        (),
+    >(args)?;
+    let (seed, corpus, char_def, unk_def, feature_def, rewrite_def, output) = args.required;
+    let (lambda, max_iter, max_threads) = args.optional;
+    let keywords = get_kwargs::<
+        _,
+        (),
+        (
+            Option<Option<String>>,
+            Option<Option<f64>>,
+            Option<Option<f64>>,
+        ),
+        (),
+    >(
+        args.keywords,
+        &[],
+        &["regularization", "elastic_net_l1_ratio", "eta"],
+    )?;
+    let (regularization, elastic_net_l1_ratio, eta) = keywords.optional;
+
+    let range_error = |message: String| Error::new(ruby.exception_range_error(), message);
+    let regularization = match regularization.flatten() {
+        Some(name) => name.parse().map_err(|e: ParseRegularizationTypeError| {
+            Error::new(ruby.exception_arg_error(), e.to_string())
+        })?,
+        None => RegularizationType::default(),
+    };
+    let lambda_val =
+        non_negative_float_argument("lambda", lambda.flatten().unwrap_or(DEFAULT_LAMBDA))
+            .map_err(range_error)?;
+    let elastic_net_l1_ratio = unit_interval_argument(
+        "elastic_net_l1_ratio",
+        elastic_net_l1_ratio
+            .flatten()
+            .unwrap_or(DEFAULT_ELASTIC_NET_L1_RATIO),
+    )
+    .map_err(range_error)?;
+    let eta = non_negative_float_argument("eta", eta.flatten().unwrap_or(DEFAULT_ETA))
+        .map_err(range_error)?;
+    let max_iter: Option<u64> = optional_integer_arg(ruby, "max_iter", max_iter.flatten())?;
+    let max_threads: Option<usize> =
+        optional_integer_arg(ruby, "max_threads", max_threads.flatten())?;
 
     let seed_path = Path::new(&seed);
     let corpus_path = Path::new(&corpus);
@@ -93,13 +152,14 @@ fn train(
 
     // Initialize trainer
     let num_threads = max_threads.unwrap_or_else(num_cpus::get);
-    let lambda_val = lambda.unwrap_or(DEFAULT_LAMBDA);
     let max_iter_val = max_iter.unwrap_or(100);
 
     let trainer = Trainer::new(config)
         .map_err(|e| to_magnus_error(ruby, format!("Failed to initialize trainer: {e}")))?
         .regularization_cost(lambda_val)
+        .regularization_type(regularization, elastic_net_l1_ratio)
         .max_iter(max_iter_val)
+        .eta(eta)
         .num_threads(num_threads);
 
     // Load corpus
@@ -211,7 +271,7 @@ fn export(
 ///
 /// `Ok(())` on success, or a Magnus `Error` on failure.
 pub fn define(_ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
-    module.define_module_function("train", function!(train, 10))?;
+    module.define_module_function("train", function!(train, -1))?;
     module.define_module_function("export", function!(export, 3))?;
     Ok(())
 }

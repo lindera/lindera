@@ -806,7 +806,9 @@ export interface Token {
  * # Returns
  *
  * Nothing, or an error. A `maxIter` or `maxThreads` that is not an integer
- * of 0 or more is an `InvalidArg` error, raised before any file is read.
+ * of 0 or more, and a `regularization`, `lambda`, `elasticNetL1Ratio` or
+ * `eta` that is not accepted, are an `InvalidArg` error, raised before any
+ * file is read.
  */
 export declare function train(options: TrainOptions): void
 
@@ -827,15 +829,31 @@ export interface TrainOptions {
   /** Output path for the trained model file. */
   output: string
   /**
-   * L2 regularization coefficient (>= 0, default: 1.0, MeCab's `-c 1.0`).
-   * The bindings train with L2 regularization; the type cannot be
-   * chosen yet (#1262).
+   * Regularization coefficient, finite and >= 0 (default: 1.0); with L2,
+   * MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0`.
    */
   lambda?: number
   /** Maximum number of training iterations, an integer (default: 100). */
   maxIter?: number
   /** Number of threads, an integer (undefined = auto-detect CPU cores). */
   maxThreads?: number
+  /**
+   * Regularization type: `"l1"`, `"l2"` or `"elasticnet"` (in any case;
+   * also `"elastic_net"` or `"elastic-net"`) (default: `"l2"`).
+   */
+  regularization?: string
+  /**
+   * L1 ratio of Elastic Net regularization, between 0 and 1 (default:
+   * 0.5); used only with `"elasticnet"`.
+   */
+  elasticNetL1Ratio?: number
+  /**
+   * Tolerance of the convergence test, finite and >= 0 (default: 5e-5):
+   * training stops before `maxIter` once the relative change of the
+   * objective stays below it for 3 iterations in a row; 0 disables the
+   * test.
+   */
+  eta?: number
 }
 
 /** Returns the version of the lindera-nodejs package. */

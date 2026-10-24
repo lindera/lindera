@@ -16,7 +16,8 @@
 //!     rewrite_def="rewrite.def",
 //!     output="model.bin",
 //!     lambda_=1.0,
-//!     max_iter=100
+//!     max_iter=100,
+//!     regularization="l2",
 //! )
 //!
 //! # Export trained model
@@ -32,14 +33,25 @@ use std::path::Path;
 use pyo3::{exceptions::PyValueError, prelude::*};
 
 use lindera::dictionary::trainer::{
-    Corpus, DEFAULT_LAMBDA, Model, SerializableModel, Trainer, TrainerConfig,
+    Corpus, DEFAULT_ELASTIC_NET_L1_RATIO, DEFAULT_ETA, DEFAULT_LAMBDA, Model,
+    ParseRegularizationTypeError, RegularizationType, SerializableModel, Trainer, TrainerConfig,
 };
+use lindera_binding::argument::{non_negative_float_argument, unit_interval_argument};
 
-// The default of `lambda_` in the signature below is a literal, which
-// `help()` shows; it must be `DEFAULT_LAMBDA`.
+// The defaults of `lambda_`, `elastic_net_l1_ratio` and `eta` in the
+// signature below are literals, which `help()` shows; they must be the
+// core's.
 const _: () = assert!(
     DEFAULT_LAMBDA == 1.0,
     "update the default of lambda_ in the signature of train"
+);
+const _: () = assert!(
+    DEFAULT_ELASTIC_NET_L1_RATIO == 0.5,
+    "update the default of elastic_net_l1_ratio in the signature of train"
+);
+const _: () = assert!(
+    DEFAULT_ETA == 5e-5,
+    "update the default of eta in the signature of train"
 );
 
 /// Trains a morphological analysis model from an annotated corpus.
@@ -53,17 +65,27 @@ const _: () = assert!(
 /// * `feature_def` - Feature definition file path (feature.def)
 /// * `rewrite_def` - Rewrite rule definition file path (rewrite.def)
 /// * `output` - Output model file path
-/// * `lambda_` - L2 regularization coefficient (>= 0), default: 1.0,
-///   MeCab's `-c 1.0`. The bindings train with L2 regularization; the type
-///   cannot be chosen yet (#1262).
+/// * `lambda_` - Regularization coefficient, finite and >= 0, default: 1.0;
+///   with L2, MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0`.
 /// * `max_iter` - Maximum number of iterations, default: 100
 /// * `max_threads` - Maximum number of threads (None = auto-detect CPU cores)
+/// * `regularization` - Regularization type: `"l1"`, `"l2"` or
+///   `"elasticnet"` (in any case; also `"elastic_net"` or `"elastic-net"`),
+///   default: `"l2"`.
+/// * `elastic_net_l1_ratio` - L1 ratio of Elastic Net regularization,
+///   between 0 and 1, default: 0.5; used only with `"elasticnet"`.
+/// * `eta` - Tolerance of the convergence test, finite and >= 0, default:
+///   5e-5: training stops before `max_iter` once the relative change of the
+///   objective stays below it for 3 iterations in a row; 0 disables the
+///   test.
 ///
 /// # Returns
 ///
-/// * `PyResult<()>` - Returns Ok(()) on success
+/// * `PyResult<()>` - Returns Ok(()) on success, or a `ValueError`, raised
+///   before any file is read for a `regularization`, `lambda_`,
+///   `elastic_net_l1_ratio` or `eta` that is not accepted.
 #[pyfunction]
-#[pyo3(signature = (seed, corpus, char_def, unk_def, feature_def, rewrite_def, output, lambda_=1.0, max_iter=100, max_threads=None))]
+#[pyo3(signature = (seed, corpus, char_def, unk_def, feature_def, rewrite_def, output, lambda_=1.0, max_iter=100, max_threads=None, regularization="l2", elastic_net_l1_ratio=0.5, eta=5e-5))]
 #[allow(clippy::too_many_arguments)]
 pub fn train(
     seed: &str,
@@ -76,7 +98,19 @@ pub fn train(
     lambda_: f64,
     max_iter: u64,
     max_threads: Option<usize>,
+    regularization: &str,
+    elastic_net_l1_ratio: f64,
+    eta: f64,
 ) -> PyResult<()> {
+    // Check the settings before touching any file.
+    let regularization: RegularizationType = regularization
+        .parse()
+        .map_err(|e: ParseRegularizationTypeError| PyValueError::new_err(e.to_string()))?;
+    let lambda_ = non_negative_float_argument("lambda_", lambda_).map_err(PyValueError::new_err)?;
+    let elastic_net_l1_ratio = unit_interval_argument("elastic_net_l1_ratio", elastic_net_l1_ratio)
+        .map_err(PyValueError::new_err)?;
+    let eta = non_negative_float_argument("eta", eta).map_err(PyValueError::new_err)?;
+
     let seed_path = Path::new(seed);
     let corpus_path = Path::new(corpus);
     let char_def_path = Path::new(char_def);
@@ -118,7 +152,9 @@ pub fn train(
     let trainer = Trainer::new(config)
         .map_err(|e| PyValueError::new_err(format!("Failed to initialize trainer: {e}")))?
         .regularization_cost(lambda_)
+        .regularization_type(regularization, elastic_net_l1_ratio)
         .max_iter(max_iter)
+        .eta(eta)
         .num_threads(num_threads);
 
     // Load corpus

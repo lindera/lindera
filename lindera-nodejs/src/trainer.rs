@@ -7,8 +7,10 @@ use std::fs::File;
 use std::path::Path;
 
 use lindera::dictionary::trainer::{
-    Corpus, DEFAULT_LAMBDA, Model, SerializableModel, Trainer, TrainerConfig,
+    Corpus, DEFAULT_ELASTIC_NET_L1_RATIO, DEFAULT_ETA, DEFAULT_LAMBDA, Model,
+    ParseRegularizationTypeError, RegularizationType, SerializableModel, Trainer, TrainerConfig,
 };
+use lindera_binding::argument::{non_negative_float_argument, unit_interval_argument};
 
 use crate::error::to_napi_error;
 use crate::util::optional_integer_arg;
@@ -30,14 +32,24 @@ pub struct TrainOptions {
     pub rewrite_def: String,
     /// Output path for the trained model file.
     pub output: String,
-    /// L2 regularization coefficient (>= 0, default: 1.0, MeCab's `-c 1.0`).
-    /// The bindings train with L2 regularization; the type cannot be
-    /// chosen yet (#1262).
+    /// Regularization coefficient, finite and >= 0 (default: 1.0); with L2,
+    /// MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0`.
     pub lambda: Option<f64>,
     /// Maximum number of training iterations, an integer (default: 100).
     pub max_iter: Option<f64>,
     /// Number of threads, an integer (undefined = auto-detect CPU cores).
     pub max_threads: Option<f64>,
+    /// Regularization type: `"l1"`, `"l2"` or `"elasticnet"` (in any case;
+    /// also `"elastic_net"` or `"elastic-net"`) (default: `"l2"`).
+    pub regularization: Option<String>,
+    /// L1 ratio of Elastic Net regularization, between 0 and 1 (default:
+    /// 0.5); used only with `"elasticnet"`.
+    pub elastic_net_l1_ratio: Option<f64>,
+    /// Tolerance of the convergence test, finite and >= 0 (default: 5e-5):
+    /// training stops before `maxIter` once the relative change of the
+    /// objective stays below it for 3 iterations in a row; 0 disables the
+    /// test.
+    pub eta: Option<f64>,
 }
 
 /// Trains a morphological analysis model from an annotated corpus.
@@ -49,11 +61,30 @@ pub struct TrainOptions {
 /// # Returns
 ///
 /// Nothing, or an error. A `maxIter` or `maxThreads` that is not an integer
-/// of 0 or more is an `InvalidArg` error, raised before any file is read.
+/// of 0 or more, and a `regularization`, `lambda`, `elasticNetL1Ratio` or
+/// `eta` that is not accepted, are an `InvalidArg` error, raised before any
+/// file is read.
 #[napi]
 pub fn train(options: TrainOptions) -> napi::Result<()> {
     // Check the settings before touching any file.
-    let lambda = options.lambda.unwrap_or(DEFAULT_LAMBDA);
+    let invalid_arg = |message: String| napi::Error::new(napi::Status::InvalidArg, message);
+    let regularization = match options.regularization.as_deref() {
+        Some(name) => name
+            .parse()
+            .map_err(|e: ParseRegularizationTypeError| invalid_arg(e.to_string()))?,
+        None => RegularizationType::default(),
+    };
+    let lambda = non_negative_float_argument("lambda", options.lambda.unwrap_or(DEFAULT_LAMBDA))
+        .map_err(invalid_arg)?;
+    let elastic_net_l1_ratio = unit_interval_argument(
+        "elasticNetL1Ratio",
+        options
+            .elastic_net_l1_ratio
+            .unwrap_or(DEFAULT_ELASTIC_NET_L1_RATIO),
+    )
+    .map_err(invalid_arg)?;
+    let eta = non_negative_float_argument("eta", options.eta.unwrap_or(DEFAULT_ETA))
+        .map_err(invalid_arg)?;
     let max_iter = optional_integer_arg("maxIter", options.max_iter)?.unwrap_or(100);
     let num_threads =
         optional_integer_arg("maxThreads", options.max_threads)?.unwrap_or_else(num_cpus::get);
@@ -97,7 +128,9 @@ pub fn train(options: TrainOptions) -> napi::Result<()> {
     let trainer = Trainer::new(config)
         .map_err(|e| to_napi_error(format!("Failed to initialize trainer: {e}")))?
         .regularization_cost(lambda)
+        .regularization_type(regularization, elastic_net_l1_ratio)
         .max_iter(max_iter)
+        .eta(eta)
         .num_threads(num_threads);
 
     // Load corpus

@@ -35,6 +35,8 @@ rescue RangeError => e
 end
 ```
 
+`Lindera.train` の浮動小数点の設定も、ファイルを読む前に同じように検査されます。`lambda` と `eta:` は有限の 0 以上の値、`elastic_net_l1_ratio:` は 0 以上 1 以下の値を受け付けます（[学習](./lindera-ruby/training.md)を参照）。
+
 ## ドキュメント
 
 - [インストール](./lindera-ruby/installation.md) -- 前提条件、ビルド手順、feature フラグ

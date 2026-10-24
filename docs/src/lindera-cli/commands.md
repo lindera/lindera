@@ -922,8 +922,8 @@ Train a new morphological analysis model from annotated corpus data. To use this
 - `--feature-def` / `-f`: Feature definition file (feature.def)
 - `--rewrite-def` / `-r`: Rewrite rule definition file (rewrite.def)
 - `--output` / `-o`: Output model file
-- `--lambda` / `-l`: Regularization coefficient, >= 0; with `l2`, MeCab's learner's `-c C` is `1 / C` (default: 1.0, MeCab's `-c 1.0`)
-- `--regularization` / `-R`: Regularization type: `l1`, `l2`, or `elasticnet` (default: `l2`)
+- `--lambda` / `-l`: Regularization coefficient, finite and >= 0; with `l2`, MeCab's learner's `-c C` is `1 / C` (default: 1.0, MeCab's `-c 1.0`)
+- `--regularization` / `-R`: Regularization type: `l1`, `l2`, or `elasticnet`, in any case; `elastic_net` and `elastic-net` also select Elastic Net (default: `l2`)
 - `--elastic-net-l1-ratio`: L1 ratio for Elastic Net regularization (0.0-1.0), only used with `--regularization elasticnet` (default: 0.5)
 - `--max-iterations` / `-i`: Maximum number of iterations for training (default: 100)
 - `--eta` / `-e`: Tolerance of the convergence test: training stops before `--max-iterations` once the relative change of the objective stays below this value for 3 iterations in a row; `0` disables the test (default: 0.00005, the default of MeCab's learner)

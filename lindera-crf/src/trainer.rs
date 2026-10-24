@@ -564,10 +564,13 @@ impl Trainer {
     ///
     /// # Errors
     ///
-    /// `lambda` must be >= 0. For `ElasticNet`, `l1_ratio` must be in [0, 1].
+    /// `lambda` must be finite and >= 0. For `ElasticNet`, `l1_ratio` must be
+    /// in [0, 1].
     pub fn regularization(mut self, regularization: Regularization, lambda: f64) -> Result<Self> {
-        if lambda < 0.0 {
-            return Err(RucrfError::invalid_argument("lambda must be >= 0"));
+        if !(lambda.is_finite() && lambda >= 0.0) {
+            return Err(RucrfError::invalid_argument(
+                "lambda must be finite and >= 0",
+            ));
         }
         if let Regularization::ElasticNet { l1_ratio } = regularization
             && !(0.0..=1.0).contains(&l1_ratio)
@@ -1369,6 +1372,34 @@ mod tests {
         }
         for eta in [0.0, DEFAULT_ETA, 1.0] {
             assert!(Trainer::new().eta(eta).is_ok(), "eta {eta}");
+        }
+    }
+
+    // A NaN coefficient passed the old `lambda < 0.0` test, and so did
+    // +inf; neither gives an objective to minimize (#1262).
+    #[test]
+    fn lambda_must_be_finite_and_not_negative() {
+        for (name, regularization) in [
+            ("L1", Regularization::L1),
+            ("L2", Regularization::L2),
+            ("Elastic Net", Regularization::ElasticNet { l1_ratio: 0.5 }),
+        ] {
+            for lambda in [-1e-9, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+                assert!(
+                    Trainer::new()
+                        .regularization(regularization, lambda)
+                        .is_err(),
+                    "{name} lambda {lambda}"
+                );
+            }
+            for lambda in [0.0, DEFAULT_LAMBDA, 1e300] {
+                assert!(
+                    Trainer::new()
+                        .regularization(regularization, lambda)
+                        .is_ok(),
+                    "{name} lambda {lambda}"
+                );
+            }
         }
     }
 

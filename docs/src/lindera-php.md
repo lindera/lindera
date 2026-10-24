@@ -62,6 +62,8 @@ try {
 }
 ```
 
+The float settings of `Lindera\Trainer::train()` are checked the same way, before any file is read: `$lambda` and `$eta` take a finite number of 0 or more, and `$elastic_net_l1_ratio` a number between 0 and 1 (see [Training](./lindera-php/training.md)).
+
 ## Documentation
 
 - [Installation](./lindera-php/installation.md) -- Prerequisites, build instructions, and feature flags

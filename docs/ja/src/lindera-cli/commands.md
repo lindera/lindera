@@ -922,8 +922,8 @@ Downloaded dictionary 'ipadic'
 - `--feature-def` / `-f`: 素性定義ファイル (feature.def)
 - `--rewrite-def` / `-r`: 書換えルール定義ファイル (rewrite.def)
 - `--output` / `-o`: 出力モデルファイル
-- `--lambda` / `-l`: 正則化係数。0 以上。`l2` では MeCab の学習器の `-c C` が `1 / C` に当たります (デフォルト: 1.0。MeCab の `-c 1.0`)
-- `--regularization` / `-R`: 正則化の種類: `l1`, `l2`, または `elasticnet` (デフォルト: `l2`)
+- `--lambda` / `-l`: 正則化係数。有限の 0 以上の値。`l2` では MeCab の学習器の `-c C` が `1 / C` に当たります (デフォルト: 1.0。MeCab の `-c 1.0`)
+- `--regularization` / `-R`: 正則化の種類: `l1`, `l2`, または `elasticnet`。大文字・小文字は区別せず、`elastic_net` と `elastic-net` も Elastic Net を選びます (デフォルト: `l2`)
 - `--elastic-net-l1-ratio`: Elastic Net 正則化時のL1比率 (0.0-1.0)。`--regularization elasticnet` を指定した場合のみ使用されます (デフォルト: 0.5)
 - `--max-iterations` / `-i`: 学習の最大反復回数 (デフォルト: 100)
 - `--eta` / `-e`: 収束判定の許容値。目的関数の相対変化がこの値を 3 回続けて下回ると、`--max-iterations` より前に学習を止めます。`0` で判定を切ります (デフォルト: 0.00005。MeCab の学習器のデフォルトと同じ)

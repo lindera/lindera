@@ -62,6 +62,9 @@ class ArgumentTypesTest extends TestCase
                 'Trainer::train($lambda)' => static fn(mixed $v) => Lindera\Trainer::train($missing, $missing, $missing, $missing, $missing, $missing, $missing, lambda: $v),
                 'Trainer::train($max_iter)' => static fn(mixed $v) => Lindera\Trainer::train($missing, $missing, $missing, $missing, $missing, $missing, $missing, max_iter: $v),
                 'Trainer::train($max_threads)' => static fn(mixed $v) => Lindera\Trainer::train($missing, $missing, $missing, $missing, $missing, $missing, $missing, max_threads: $v),
+                'Trainer::train($regularization)' => static fn(mixed $v) => Lindera\Trainer::train($missing, $missing, $missing, $missing, $missing, $missing, $missing, regularization: $v),
+                'Trainer::train($elastic_net_l1_ratio)' => static fn(mixed $v) => Lindera\Trainer::train($missing, $missing, $missing, $missing, $missing, $missing, $missing, elastic_net_l1_ratio: $v),
+                'Trainer::train($eta)' => static fn(mixed $v) => Lindera\Trainer::train($missing, $missing, $missing, $missing, $missing, $missing, $missing, eta: $v),
                 'Trainer::export($metadata)' => static fn(mixed $v) => Lindera\Trainer::export($missing, $missing, $v),
             ];
         }

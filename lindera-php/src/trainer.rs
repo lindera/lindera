@@ -9,8 +9,10 @@ use std::path::Path;
 use ext_php_rs::prelude::*;
 
 use lindera::dictionary::trainer::{
-    Corpus, DEFAULT_LAMBDA, Model, SerializableModel, Trainer, TrainerConfig,
+    Corpus, DEFAULT_ELASTIC_NET_L1_RATIO, DEFAULT_ETA, DEFAULT_LAMBDA, Model,
+    ParseRegularizationTypeError, RegularizationType, SerializableModel, Trainer, TrainerConfig,
 };
+use lindera_binding::argument::{non_negative_float_argument, unit_interval_argument};
 
 use crate::convert::nullable_int_arg;
 use crate::error::lindera_value_err;
@@ -35,16 +37,26 @@ impl PhpTrainer {
     /// * `feature_def` - Feature definition file path (feature.def).
     /// * `rewrite_def` - Rewrite rule definition file path (rewrite.def).
     /// * `output` - Output model file path.
-    /// * `lambda` - L2 regularization coefficient (>= 0), default: 1.0,
-    ///   MeCab's `-c 1.0`. An `int` is widened to a float, as for a PHP
-    ///   `float` parameter. The bindings train with L2 regularization; the
-    ///   type cannot be chosen yet (#1262).
+    /// * `lambda` - Regularization coefficient, finite and >= 0, default:
+    ///   1.0; with L2, MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0`.
+    ///   An `int` is widened to a float, as for a PHP `float` parameter.
     /// * `max_iter` - Maximum number of iterations, default: 100.
     /// * `max_threads` - Maximum number of threads (null = auto-detect CPU cores).
+    /// * `regularization` - Regularization type: `'l1'`, `'l2'` or
+    ///   `'elasticnet'` (in any case; also `'elastic_net'` or
+    ///   `'elastic-net'`), default: `'l2'`.
+    /// * `elastic_net_l1_ratio` - L1 ratio of Elastic Net regularization,
+    ///   between 0 and 1, default: 0.5; used only with `'elasticnet'`.
+    /// * `eta` - Tolerance of the convergence test, finite and >= 0,
+    ///   default: 5e-5: training stops before `max_iter` once the relative
+    ///   change of the objective stays below it for 3 iterations in a row; 0
+    ///   disables the test.
     ///
-    /// A value of another type for `lambda`, `max_iter` or `max_threads`
-    /// throws instead of selecting the default, and a negative `max_iter` or
-    /// `max_threads` throws a `ValueError` before any file is read.
+    /// `null` selects the default of each optional parameter. A value of
+    /// another type throws instead of selecting the default, and a negative
+    /// `max_iter` or `max_threads`, an unknown `regularization`, and a
+    /// `lambda`, `elastic_net_l1_ratio` or `eta` outside its range throw a
+    /// `ValueError` before any file is read.
     #[allow(clippy::too_many_arguments)]
     pub fn train(
         seed: String,
@@ -57,9 +69,26 @@ impl PhpTrainer {
         lambda: Option<f64>,
         max_iter: Option<i64>,
         max_threads: Option<i64>,
+        regularization: Option<String>,
+        elastic_net_l1_ratio: Option<f64>,
+        eta: Option<f64>,
     ) -> PhpResult<()> {
         // Check the settings before touching any file.
-        let lambda_val = lambda.unwrap_or(DEFAULT_LAMBDA);
+        let regularization = match regularization.as_deref() {
+            Some(name) => name
+                .parse()
+                .map_err(|e: ParseRegularizationTypeError| lindera_value_err(e.to_string()))?,
+            None => RegularizationType::default(),
+        };
+        let lambda_val = non_negative_float_argument("lambda", lambda.unwrap_or(DEFAULT_LAMBDA))
+            .map_err(lindera_value_err)?;
+        let elastic_net_l1_ratio = unit_interval_argument(
+            "elastic_net_l1_ratio",
+            elastic_net_l1_ratio.unwrap_or(DEFAULT_ELASTIC_NET_L1_RATIO),
+        )
+        .map_err(lindera_value_err)?;
+        let eta = non_negative_float_argument("eta", eta.unwrap_or(DEFAULT_ETA))
+            .map_err(lindera_value_err)?;
         let max_iter_val = nullable_int_arg("max_iter", max_iter)?.unwrap_or(100);
         let num_threads =
             nullable_int_arg("max_threads", max_threads)?.unwrap_or_else(num_cpus::get);
@@ -104,7 +133,9 @@ impl PhpTrainer {
         let trainer = Trainer::new(config)
             .map_err(|e| lindera_value_err(format!("Failed to initialize trainer: {e}")))?
             .regularization_cost(lambda_val)
+            .regularization_type(regularization, elastic_net_l1_ratio)
             .max_iter(max_iter_val)
+            .eta(eta)
             .num_threads(num_threads);
 
         // Load corpus

@@ -19,6 +19,16 @@
 //! with [`integer_argument`] or [`integer_argument_from_f64`], which reject a
 //! value the target type cannot hold instead of wrapping it, and name the
 //! parameter and the accepted range in the message.
+//!
+//! # Float range
+//!
+//! A float argument of training, such as the coefficient `lambda`, the
+//! convergence tolerance `eta` or the Elastic Net L1 ratio, is checked by
+//! the core only when training starts, after the corpus is read and every
+//! lattice is built. A binding checks it first, with
+//! [`non_negative_float_argument`] or [`unit_interval_argument`], before it
+//! reads any file, so that a wrong value fails at once with a message that
+//! names the parameter as the caller writes it.
 
 use std::fmt;
 
@@ -135,7 +145,57 @@ pub fn integer_argument_message<T: IntegerArgument>(
     )
 }
 
-/// An `f64` displayed as JavaScript writes a number, for error messages.
+/// Checks a float argument that must be finite and >= 0, such as `lambda`
+/// and `eta` of training.
+///
+/// # Arguments
+///
+/// * `name` - The parameter's name, as the caller writes it (for example
+///   `lambda_` in Python).
+/// * `value` - The value passed.
+///
+/// # Returns
+///
+/// The value, or a message such as `eta must be a finite number >= 0, got
+/// -1` when it is negative, `NaN` or infinite.
+pub fn non_negative_float_argument(name: &str, value: f64) -> Result<f64, String> {
+    if value.is_finite() && value >= 0.0 {
+        Ok(value)
+    } else {
+        Err(format!(
+            "{name} must be a finite number >= 0, got {}",
+            JsNumber(value)
+        ))
+    }
+}
+
+/// Checks a float argument that must be between 0 and 1, both included,
+/// such as the Elastic Net L1 ratio of training.
+///
+/// # Arguments
+///
+/// * `name` - The parameter's name, as the caller writes it (for example
+///   `elasticNetL1Ratio` in Node.js).
+/// * `value` - The value passed.
+///
+/// # Returns
+///
+/// The value, or a message such as `elastic_net_l1_ratio must be a number
+/// between 0 and 1, got 1.5` when it is outside the range or `NaN`.
+pub fn unit_interval_argument(name: &str, value: f64) -> Result<f64, String> {
+    if (0.0..=1.0).contains(&value) {
+        Ok(value)
+    } else {
+        Err(format!(
+            "{name} must be a number between 0 and 1, got {}",
+            JsNumber(value)
+        ))
+    }
+}
+
+/// An `f64` displayed as JavaScript writes a number, for error messages:
+/// those of a JS number passed as an integer, and those of a float argument
+/// in every binding.
 struct JsNumber(f64);
 
 impl fmt::Display for JsNumber {
@@ -300,6 +360,61 @@ mod tests {
             )
         );
         assert!(integer_argument_from_f64::<usize>("n", 0.5).is_err());
+    }
+
+    #[test]
+    fn test_non_negative_float_argument_accepts_finite_values_from_zero() {
+        for value in [0.0, -0.0, 5e-5, 1.0, 1e300] {
+            assert_eq!(
+                non_negative_float_argument("eta", value).map(f64::to_bits),
+                Ok(value.to_bits())
+            );
+        }
+    }
+
+    #[test]
+    fn test_non_negative_float_argument_rejects_negative_and_non_finite_values() {
+        for (value, shown) in [
+            (-1.0, "-1"),
+            (-1e-9, "-0.000000001"),
+            (f64::NAN, "NaN"),
+            (f64::INFINITY, "Infinity"),
+            (f64::NEG_INFINITY, "-Infinity"),
+        ] {
+            assert_eq!(
+                non_negative_float_argument("lambda_", value),
+                Err(format!("lambda_ must be a finite number >= 0, got {shown}"))
+            );
+        }
+    }
+
+    #[test]
+    fn test_unit_interval_argument_accepts_values_from_zero_to_one() {
+        for value in [0.0, -0.0, 0.5, 1.0] {
+            assert_eq!(
+                unit_interval_argument("elastic_net_l1_ratio", value).map(f64::to_bits),
+                Ok(value.to_bits())
+            );
+        }
+    }
+
+    #[test]
+    fn test_unit_interval_argument_rejects_values_outside_the_range() {
+        for (value, shown) in [
+            (-0.1, "-0.1"),
+            (1.5, "1.5"),
+            (1.0000000000000002, "1.0000000000000002"),
+            (f64::NAN, "NaN"),
+            (f64::INFINITY, "Infinity"),
+            (f64::NEG_INFINITY, "-Infinity"),
+        ] {
+            assert_eq!(
+                unit_interval_argument("elasticNetL1Ratio", value),
+                Err(format!(
+                    "elasticNetL1Ratio must be a number between 0 and 1, got {shown}"
+                ))
+            );
+        }
     }
 
     #[test]

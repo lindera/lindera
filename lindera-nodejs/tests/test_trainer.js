@@ -297,5 +297,183 @@ describe(
         fs.rmSync(tmpdir, { recursive: true, force: true });
       }
     });
+
+    // regularization, elasticNetL1Ratio and eta reach the trainer, with the
+    // CLI's defaults (#1262). On the repository's training files the default
+    // converges before 100 iterations, so every setting below trains a
+    // different model, eta 0 included.
+    it("should take the regularization type, the ratio and eta", () => {
+      const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "lindera-test-"));
+      const training = path.join(
+        __dirname,
+        "..",
+        "..",
+        "resources",
+        "training",
+      );
+
+      try {
+        const train = (name, options) => {
+          const output = path.join(tmpdir, name);
+          lindera.train({
+            seed: path.join(training, "seed.csv"),
+            corpus: path.join(training, "corpus.txt"),
+            charDef: path.join(training, "char.def"),
+            unkDef: path.join(training, "unk.def"),
+            featureDef: path.join(training, "feature.def"),
+            rewriteDef: path.join(training, "rewrite.def"),
+            output,
+            maxIter: 100,
+            maxThreads: 1,
+            ...options,
+          });
+          return fs.readFileSync(output).toString("base64");
+        };
+
+        const byDefault = train("default.dat", {});
+        assert.strictEqual(
+          train("explicit.dat", {
+            regularization: "l2",
+            elasticNetL1Ratio: 0.5,
+            eta: 5e-5,
+          }),
+          byDefault,
+        );
+        // A ratio is used only with elasticnet.
+        assert.strictEqual(
+          train("l2-ratio.dat", {
+            regularization: "l2",
+            elasticNetL1Ratio: 0.2,
+          }),
+          byDefault,
+        );
+        const models = {
+          default: byDefault,
+          l1: train("l1.dat", { regularization: "l1" }),
+          "elasticnet 0.2": train("en02.dat", {
+            regularization: "elasticnet",
+            elasticNetL1Ratio: 0.2,
+          }),
+          "elasticnet 0.8": train("en08.dat", {
+            regularization: "elasticnet",
+            elasticNetL1Ratio: 0.8,
+          }),
+          "eta 0": train("eta0.dat", { eta: 0 }),
+        };
+        const same = Object.keys(models).filter(
+          (name) =>
+            Object.values(models).filter((model) => model === models[name])
+              .length > 1,
+        );
+        assert.deepStrictEqual(
+          same,
+          [],
+          "these settings trained the same model",
+        );
+      } finally {
+        fs.rmSync(tmpdir, { recursive: true, force: true });
+      }
+    });
+  },
+);
+
+describe(
+  "Training settings",
+  { skip: !hasTrainFeature && "train feature not available" },
+  () => {
+    // A path that does not exist: the settings are checked before any file.
+    const MISSING = "/nonexistent/issue1262";
+    const train = (options) =>
+      lindera.train({
+        seed: MISSING,
+        corpus: MISSING,
+        charDef: MISSING,
+        unkDef: MISSING,
+        featureDef: MISSING,
+        rewriteDef: MISSING,
+        output: MISSING,
+        ...options,
+      });
+
+    // A setting the trainer would reject when training starts is an
+    // InvalidArg error that names it, raised before any file is read.
+    it("rejects a setting before reading any file", () => {
+      const cases = [
+        [
+          { regularization: "l3" },
+          "regularization must be 'l1', 'l2' or 'elasticnet', got 'l3'",
+        ],
+        [{ lambda: -1 }, "lambda must be a finite number >= 0, got -1"],
+        [{ lambda: NaN }, "lambda must be a finite number >= 0, got NaN"],
+        [
+          { lambda: Infinity },
+          "lambda must be a finite number >= 0, got Infinity",
+        ],
+        [{ eta: -1 }, "eta must be a finite number >= 0, got -1"],
+        [{ eta: NaN }, "eta must be a finite number >= 0, got NaN"],
+        [{ eta: Infinity }, "eta must be a finite number >= 0, got Infinity"],
+        [
+          { elasticNetL1Ratio: -0.1 },
+          "elasticNetL1Ratio must be a number between 0 and 1, got -0.1",
+        ],
+        [
+          { elasticNetL1Ratio: 1.5 },
+          "elasticNetL1Ratio must be a number between 0 and 1, got 1.5",
+        ],
+        [
+          { elasticNetL1Ratio: NaN },
+          "elasticNetL1Ratio must be a number between 0 and 1, got NaN",
+        ],
+      ];
+      for (const [options, message] of cases) {
+        assert.throws(
+          () => train(options),
+          (error) => {
+            assert.strictEqual(error.code, "InvalidArg", message);
+            assert.strictEqual(error.message, message);
+            return true;
+          },
+          `accepted ${JSON.stringify(options)}`,
+        );
+      }
+    });
+
+    // The bounds and the other spellings pass the checks, so the missing
+    // seed file is what fails.
+    it("accepts the bounds of each setting", () => {
+      for (const options of [
+        { lambda: 0 },
+        { eta: 0 },
+        { elasticNetL1Ratio: 0 },
+        { elasticNetL1Ratio: 1 },
+        { regularization: "ElasticNet" },
+        { regularization: "elastic-net" },
+      ]) {
+        assert.throws(
+          () => train(options),
+          /seed file does not exist/,
+          JSON.stringify(options),
+        );
+      }
+    });
+
+    // napi-rs checks the type of each field: a value of another type is an
+    // error, not the default.
+    it("rejects a setting of another type", () => {
+      for (const options of [
+        { regularization: 1 },
+        { regularization: null },
+        { elasticNetL1Ratio: "0.5" },
+        { elasticNetL1Ratio: null },
+        { eta: "0" },
+        { eta: null },
+      ]) {
+        assert.throws(
+          () => train(options),
+          (error) => !/does not exist/.test(error.message),
+          JSON.stringify(options),
+        );
+      }
+    });
   },
 );

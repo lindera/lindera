@@ -68,7 +68,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **PHP, Node.js and WASM: an integer argument outside the range of its setting throws instead of wrapping** | Code that passes such a value, such as `100000` for the default word cost of `Metadata` (v6 stored `-31072`) or `-1` for the number of N-best results (v6 listed every segmentation); a negative index for `getFieldName` or PHP's `getDetail`; in Node.js and WASM, a number that is not an integer, such as `1.5` or `NaN` | Pass an integer in the range; the error names the parameter and the range |
 | **Bindings: a mode is a `Mode`, which holds the penalty of decompose mode as the Rust `Mode` does; `set_mode` / `setMode` and the `Tokenizer` constructors take a `Mode` instead of a mode name, and `TokenizerBuilder::set_segmenter_mode` keeps the penalty of a `Mode::Decompose`** | Binding users who set a mode; code that uses a binding's `Mode`, Node.js's `JsMode` or WASM's numeric `Mode`; TypeScript code that names the Node.js type `JsPenalty`; Rust code that passes a custom penalty to `set_segmenter_mode`; binding authors who call `CoreTokenizerBuilder::set_mode` or the `CoreTokenizer::from_segmenter` functions | Pass `Mode.normal()` or `Mode.decompose(penalty)` (in Ruby `Lindera::Mode.normal`, in PHP `Lindera\Mode::normal()`) instead of `"normal"` or `"decompose"`, and turn a mode name read at run time into a `Mode` with `Mode.from_str` / `Mode.fromStr`; rename `JsPenalty` to `Penalty`; pass a `lindera::mode::Mode` to the `lindera-binding` functions |
 | **`lindera train` builds its lattices as MeCab's learner does and keeps every `unk.def` entry; `model.dat` has the format version 2.0.0** | Users of `lindera train` and `lindera export`, and of the training functions of the Python, Node.js, Ruby and PHP bindings | Train every model again with 7.0.0, then export and build it again (a `model.dat` written by v6.2.0 or earlier is rejected); give every `unk.def` line at least five fields; remove comment lines from seed lexicons |
-| **`lindera train` regularizes with L2 and a coefficient of 1.0 by default, as MeCab's learner does** | Users of `lindera train`, of `Trainer::new` in `lindera_trainer` and `lindera_crf`, and of the training functions of the Python, Node.js, Ruby and PHP bindings, who do not give both the regularization type and the coefficient | Expect more accurate models and a larger `matrix.def`; pass `--regularization l1 --lambda 0.01` (`.use_l2(false).regularization_cost(0.01)` in Rust) to train as v6 did. The bindings cannot select L1 until [#1262](https://github.com/lindera/lindera/issues/1262) |
+| **`lindera train` regularizes with L2 and a coefficient of 1.0 by default, as MeCab's learner does** | Users of `lindera train`, of `Trainer::new` in `lindera_trainer` and `lindera_crf`, and of the training functions of the Python, Node.js, Ruby and PHP bindings, who do not give both the regularization type and the coefficient | Expect more accurate models and a larger `matrix.def`; pass `--regularization l1 --lambda 0.01` (`.use_l2(false).regularization_cost(0.01)` in Rust, `regularization` `l1` and `lambda` 0.01 in the bindings, [#1262](https://github.com/lindera/lindera/issues/1262)) to train as v6 did |
 | **`lindera build` rejects context IDs outside `matrix.def`** | Anyone who builds a system dictionary whose `lex.csv` or `unk.def` has a context ID beyond the size of its `matrix.def` (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's `mecab-dict-index` accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic | Fix the IDs or the matrix, or set `skip_invalid_cost_or_id` in `metadata.json` to drop such `lex.csv` rows; fix such IDs in the user dictionary |
 | **`lindera build` and `lindera train` check `char.def` against `unk.def`** | Anyone whose `char.def` has a range line that names a category not defined on an earlier line, or a category defined twice, or whose `char.def` and `unk.def` do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored `unk.def` lines); not dictionaries that MeCab's `mecab-dict-index` accepts | Define each category once, before the range lines that name it; give every category an `unk.def` line, and remove the `unk.def` lines of undefined categories |
 | **`lindera build` gives a cell missing from `matrix.def` the cost 0, as MeCab does** | Anyone who builds a system dictionary from a `matrix.def` that leaves cells out; not the bundled dictionaries or a `matrix.def` that `lindera export` writes, which list every cell | Expect such a cell to cost 0 instead of 32767; to keep a connection expensive, list its cell with a cost |
@@ -1733,10 +1733,18 @@ To stop as v6 did, also pass `--eta 0` (see
 In Rust, call `.use_l2(false).regularization_cost(0.01)` on
 `lindera_trainer::Trainer::new(config)?`, and
 `.regularization(Regularization::L1, 0.1)?` on `lindera_crf::Trainer::new()`.
-The bindings' `lambda` is the L2 coefficient; they cannot choose the type
-until [#1262](https://github.com/lindera/lindera/issues/1262). A model
-records the coefficient but not the type
+The bindings take the type, the Elastic Net ratio and `eta` as the CLI does
+([#1262](https://github.com/lindera/lindera/issues/1262)): pass
+`regularization="l1", lambda_=0.01` in Python, `regularization: "l1",
+lambda: 0.01` in Node.js, a `lambda` of 0.01 and `regularization: 'l1'` in
+Ruby, and `regularization: 'l1', lambda: 0.01` in PHP. A model records the
+coefficient but not the type
 ([#1272](https://github.com/lindera/lindera/issues/1272)).
+
+A `lambda` that is NaN or infinite is now rejected: `lindera train` and
+`lindera_crf::Trainer::regularization` fail with `lambda must be finite and
+>= 0`, where v6 accepted it, and the bindings raise before they read any
+file ([#1262](https://github.com/lindera/lindera/issues/1262)).
 
 ## `lindera build` rejects context IDs outside the connection matrix
 
@@ -2273,9 +2281,11 @@ Users of `lindera train`:
   (`.use_l2(false).regularization_cost(0.01)` in Rust) to train as v6 did.
   If you pass only `--lambda` (`lambda` in the bindings), it is now the L2
   coefficient; with `--regularization l1` only, the coefficient is 1.0. The
-  bindings train with L2 until
-  [#1262](https://github.com/lindera/lindera/issues/1262) lets them choose
-  the type ([#1261](https://github.com/lindera/lindera/issues/1261)).
+  bindings take the type as `regularization`
+  ([#1261](https://github.com/lindera/lindera/issues/1261),
+  [#1262](https://github.com/lindera/lindera/issues/1262)).
+- Expect a NaN or infinite `lambda` to be rejected
+  ([#1262](https://github.com/lindera/lindera/issues/1262)).
 
 Everyone who builds a system dictionary with `lindera build`:
 
