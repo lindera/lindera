@@ -272,7 +272,7 @@ class Trainer
 
     public static function export(string $model, string $output, ?string $metadata = null): void {}
 
-    public static function train(string $seed, string $corpus, string $char_def, string $unk_def, string $feature_def, string $rewrite_def, string $output, ?float $lambda = null, ?int $max_iter = null, ?int $max_threads = null): void {}
+    public static function train(string $seed, string $corpus, string $char_def, string $unk_def, string $feature_def, string $rewrite_def, string $output, ?float $lambda = null, ?int $max_iter = null, ?int $max_threads = null, ?string $regularization = null, ?float $elastic_net_l1_ratio = null, ?float $eta = null): void {}
 }
 
 class UserDictionary implements \Stringable

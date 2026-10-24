@@ -8,6 +8,7 @@
 //! ```
 
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use assert_cmd::Command;
 
@@ -1136,6 +1137,52 @@ mod with_trained_dictionary {
                     .args(args),
             );
             assert!(stdout.contains(expected), "{args:?}: {stdout}");
+        }
+    }
+
+    /// `--regularization` takes the names of `RegularizationType`, which the
+    /// bindings share, in any case; another name fails before any file is
+    /// read, and so does a NaN `--lambda` once training starts (#1262).
+    #[test]
+    fn train_rejects_an_unknown_regularization_and_a_nan_lambda() {
+        let dir = tempfile::tempdir().unwrap();
+        let corpus = training_dir().join("corpus.txt");
+        let model = dir.path().join("model.dat");
+        let stdout = stdout_of(
+            train_inputs_command(&corpus, &model)
+                .args(["--max-iterations", "1"])
+                .args(["--regularization", "Elastic-Net"]),
+        );
+        assert!(
+            stdout.contains("Training parameters: regularization=1 (ElasticNet, l1_ratio=0.5),"),
+            "{stdout}"
+        );
+
+        let missing = dir.path().join("missing.txt");
+        for (args, expected, corpus) in [
+            (
+                ["--regularization", "l3"],
+                "regularization must be 'l1', 'l2' or 'elasticnet', got 'l3'",
+                &missing,
+            ),
+            (
+                ["--lambda", "NaN"],
+                "lambda must be finite and >= 0",
+                &corpus,
+            ),
+        ] {
+            // Without the check, training with a NaN lambda never ends, even
+            // with one iteration; the timeout kills it, so that the message
+            // check fails instead of the test hanging.
+            let output = train_inputs_command(corpus, &model)
+                .args(["--max-iterations", "1"])
+                .args(args)
+                .timeout(Duration::from_secs(120))
+                .output()
+                .unwrap_or_else(|err| panic!("{args:?}: {err}"));
+            let stderr = String::from_utf8(output.stderr).unwrap();
+            assert!(!output.status.success(), "{args:?}: {stderr}");
+            assert!(stderr.contains(expected), "{args:?}: {stderr}");
         }
     }
 

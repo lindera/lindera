@@ -245,8 +245,8 @@ MeCab 互換の3セクション形式による素性正規化ルールです。�
 
 | パラメータ | 説明 | デフォルト |
 | --- | --- | --- |
-| `lambda` | 正則化係数（過学習の制御）。0 以上。`l2` では MeCab の `-c C` が `1 / C` に当たる | 1.0 |
-| `regularization` | 正則化の種類: `l1`、`l2`、`elasticnet` のいずれか | `l2` |
+| `lambda` | 正則化係数（過学習の制御）。有限の 0 以上の値。`l2` では MeCab の `-c C` が `1 / C` に当たる | 1.0 |
+| `regularization` | 正則化の種類: `l1`、`l2`、`elasticnet` のいずれか。大文字・小文字は区別しない（`elastic_net`・`elastic-net` も Elastic Net を選ぶ） | `l2` |
 | `elastic-net-l1-ratio` | Elastic Net 正則化の L1 比率（0.0-1.0、`--regularization elasticnet` の場合のみ使用） | 0.5 |
 | `max-iterations` | 最大学習イテレーション数 | 100 |
 | `eta` | 収束判定の許容値（[学習のしくみ](#学習のしくみ)を参照）。`0` で判定を切ります | 0.00005 |

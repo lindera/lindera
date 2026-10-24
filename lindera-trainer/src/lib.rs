@@ -13,6 +13,7 @@ pub mod feature_extractor;
 pub mod feature_rewriter;
 mod lexicon_csv;
 pub mod model;
+mod regularization;
 
 use std::collections::HashMap;
 use std::num::NonZeroU32;
@@ -59,6 +60,9 @@ macro_rules! log_warn {
 pub use self::config::TrainerConfig;
 pub use self::corpus::{Corpus, Example, Word};
 pub use self::model::{Model, SerializableModel};
+pub use self::regularization::{
+    DEFAULT_ELASTIC_NET_L1_RATIO, ParseRegularizationTypeError, RegularizationType,
+};
 
 /// The default tolerance of the convergence test, set with
 /// [`Trainer::eta`]: `5e-5`, the default `eta` of MeCab's learner.
@@ -485,6 +489,40 @@ impl Trainer {
     /// l1_ratio=1.0 is pure L1, l1_ratio=0.0 is pure L2.
     pub fn elastic_net_l1_ratio(mut self, ratio: f64) -> Self {
         self.elastic_net_l1_ratio = Some(ratio);
+        self
+    }
+
+    /// Sets the regularization type, as `lindera train --regularization`
+    /// and the bindings do: [`RegularizationType::L1`] and
+    /// [`RegularizationType::L2`] set [`Self::use_l2`] and clear an Elastic
+    /// Net ratio set before, and [`RegularizationType::ElasticNet`] sets
+    /// [`Self::elastic_net_l1_ratio`]. The ratio is checked when training
+    /// starts: it must be between 0.0 and 1.0.
+    ///
+    /// # Arguments
+    ///
+    /// * `kind` - The type.
+    /// * `elastic_net_l1_ratio` - The L1 ratio, used only with
+    ///   [`RegularizationType::ElasticNet`]; [`DEFAULT_ELASTIC_NET_L1_RATIO`]
+    ///   is the default of the CLI and the bindings.
+    ///
+    /// # Returns
+    ///
+    /// The trainer.
+    pub fn regularization_type(
+        mut self,
+        kind: RegularizationType,
+        elastic_net_l1_ratio: f64,
+    ) -> Self {
+        match kind {
+            RegularizationType::L1 | RegularizationType::L2 => {
+                self.use_l2 = kind == RegularizationType::L2;
+                self.elastic_net_l1_ratio = None;
+            }
+            RegularizationType::ElasticNet => {
+                self.elastic_net_l1_ratio = Some(elastic_net_l1_ratio);
+            }
+        }
         self
     }
 
@@ -1176,6 +1214,46 @@ impl Trainer {
 mod tests {
     use super::*;
     use std::io::Cursor;
+
+    // `regularization_type` maps each type to the settings that
+    // `train_crf_model` reads: L1 and L2 clear a ratio set before, so the
+    // last call decides the type, as the CLI's one flag does (#1262).
+    #[test]
+    fn test_regularization_type_sets_the_type_and_the_ratio() {
+        let trainer = || {
+            let config = TrainerConfig::from_readers(
+                Cursor::new("これ,0,0,1000,連体詞,*,*,*,*,*,これ,コレ,コレ\n"),
+                Cursor::new("DEFAULT 0 1 0\nHIRAGANA 1 1 0\n0x3042..0x3096 HIRAGANA\n"),
+                Cursor::new(
+                    "DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n\
+                     HIRAGANA,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n",
+                ),
+                Cursor::new("UNIGRAM:%F[0]\n"),
+                Cursor::new("*\tUNK\n"),
+            )
+            .unwrap();
+            Trainer::new(config).unwrap()
+        };
+
+        let l1 = trainer().regularization_type(RegularizationType::L1, 0.3);
+        assert!(!l1.use_l2);
+        assert_eq!(l1.elastic_net_l1_ratio, None);
+
+        let l2 = trainer()
+            .use_l2(false)
+            .regularization_type(RegularizationType::L2, 0.3);
+        assert!(l2.use_l2);
+        assert_eq!(l2.elastic_net_l1_ratio, None);
+
+        let elastic_net = trainer().regularization_type(RegularizationType::ElasticNet, 0.3);
+        assert_eq!(elastic_net.elastic_net_l1_ratio, Some(0.3));
+
+        let back_to_l1 = trainer()
+            .regularization_type(RegularizationType::ElasticNet, 0.3)
+            .regularization_type(RegularizationType::L1, 0.3);
+        assert!(!back_to_l1.use_l2);
+        assert_eq!(back_to_l1.elastic_net_l1_ratio, None);
+    }
 
     #[test]
     fn test_train_with_bigram_template() {

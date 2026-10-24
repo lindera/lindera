@@ -25,7 +25,7 @@ Lindera.train(
   'resources/training/feature.def',
   'resources/training/rewrite.def',
   '/tmp/model.dat',
-  1.0,    # lambda (L2 regularization coefficient)
+  1.0,    # lambda (regularization coefficient)
   100,    # max_iter
   nil     # max_threads (nil = auto-detect)
 )
@@ -33,7 +33,7 @@ Lindera.train(
 
 ### 学習パラメータ
 
-`Lindera.train` の引数は位置引数として順番に渡します：
+最初の 7 つは必須の位置引数です。`lambda`・`max_iter`・`max_threads` はその後ろの省略できる位置引数で、正則化の種類・Elastic Net の比率・`eta` はキーワード引数です。`nil` を渡すか引数を省くと、デフォルトになります：
 
 | 順番 | パラメータ | 型 | 説明 |
 | --- | --- | --- | --- |
@@ -44,9 +44,18 @@ Lindera.train(
 | 5 | feature_def | `String` | 素性定義ファイルのパス（feature.def） |
 | 6 | rewrite_def | `String` | 書き換えルール定義ファイルのパス（rewrite.def） |
 | 7 | output | `String` | 学習済みモデルファイルの出力パス |
-| 8 | lambda | `Float` または `nil` | L2 正則化係数（0 以上。1.0 は MeCab の `-c 1.0`）。バインディングは L2 正則化で学習し、正則化の種類はまだ選べません（[#1262](https://github.com/lindera/lindera/issues/1262)）。`nil` はデフォルトの 1.0 |
-| 9 | max_iter | `Integer` | 最大学習イテレーション数。目的関数が収束すると（相対変化が 3 回続けて 5e-5 を下回ると）、それより前に止まります |
+| 8 | lambda | `Float` または `nil` | 正則化係数（有限の 0 以上の値）。デフォルトは 1.0。L2 では MeCab の `-c C` が `1 / C` にあたり、1.0 は MeCab の `-c 1.0` |
+| 9 | max_iter | `Integer` または `nil` | 最大学習イテレーション数。デフォルトは 100。目的関数が収束すると、それより前に止まります（`eta:` を参照） |
 | 10 | max_threads | `Integer` または `nil` | スレッド数（`nil` = CPU コア数を自動検出） |
+| キーワード | regularization: | `String` または `nil` | 正則化の種類。デフォルトは `'l2'`。`lindera train --regularization` と同じく `'l1'`・`'l2'`・`'elasticnet'` のいずれかで、大文字・小文字は区別しません（`'elastic_net'`・`'elastic-net'` も Elastic Net を選びます） |
+| キーワード | elastic_net_l1_ratio: | `Float` または `nil` | Elastic Net 正則化の L1 の比率（0 以上 1 以下）。デフォルトは 0.5。`'elasticnet'` のときだけ使います |
+| キーワード | eta: | `Float` または `nil` | 収束判定の許容値（有限の 0 以上の値）。デフォルトは 5e-5。目的関数の相対変化が 3 回続けてこの値を下回ると、`max_iter` より前に止まります。`0` で判定を無効にします |
+
+設定の値は、ファイルを読む前に検査されます。知らない `regularization:` は `ArgumentError`、範囲の外の `lambda`・`elastic_net_l1_ratio:`・`eta:` は `RangeError` になります。v6 のデフォルトと同じく学習するには、`lambda` に 0.01 を、`regularization:` に `'l1'` を渡し、`max_iter` だけで止めるには `eta: 0` も渡します：
+
+```ruby
+Lindera.train(*inputs, '/tmp/model.dat', 0.01, regularization: 'l1', eta: 0)
+```
 
 ## 学習済みモデルのエクスポート
 

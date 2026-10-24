@@ -300,3 +300,142 @@ def test_train_default_lambda_is_l2_coefficient_1():
         explicit = train("explicit.dat", lambda_=1.0)
         assert default
         assert default == explicit
+
+
+# The training files of the repository, on which every setting below trains
+# a different model: the default converges before 100 iterations, so eta=0
+# changes where it stops (#1262).
+TRAINING = Path(__file__).resolve().parents[2] / "resources" / "training"
+
+# A path that does not exist: the settings are checked before any file.
+MISSING = "/nonexistent/issue1262"
+
+
+def _train_resources(output, **kwargs):
+    import lindera
+
+    lindera.train(
+        seed=str(TRAINING / "seed.csv"),
+        corpus=str(TRAINING / "corpus.txt"),
+        char_def=str(TRAINING / "char.def"),
+        unk_def=str(TRAINING / "unk.def"),
+        feature_def=str(TRAINING / "feature.def"),
+        rewrite_def=str(TRAINING / "rewrite.def"),
+        output=str(output),
+        max_iter=100,
+        max_threads=1,
+        **kwargs,
+    )
+    return Path(output).read_bytes()
+
+
+def test_train_takes_the_regularization_type_the_ratio_and_eta():
+    """regularization, elastic_net_l1_ratio and eta reach the trainer, with
+    the CLI's defaults (#1262): giving the defaults trains the default model,
+    a ratio is ignored without elasticnet, and each other setting trains a
+    different model."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+        default = _train_resources(tmpdir / "default.dat")
+        assert default == _train_resources(
+            tmpdir / "explicit.dat",
+            regularization="l2",
+            elastic_net_l1_ratio=0.5,
+            eta=5e-5,
+        )
+        assert default == _train_resources(
+            tmpdir / "l2_ratio.dat", regularization="l2", elastic_net_l1_ratio=0.2
+        )
+        models = {
+            "default": default,
+            "l1": _train_resources(tmpdir / "l1.dat", regularization="l1"),
+            "elasticnet 0.2": _train_resources(
+                tmpdir / "en02.dat",
+                regularization="elasticnet",
+                elastic_net_l1_ratio=0.2,
+            ),
+            "elasticnet 0.8": _train_resources(
+                tmpdir / "en08.dat",
+                regularization="elasticnet",
+                elastic_net_l1_ratio=0.8,
+            ),
+            "eta 0": _train_resources(tmpdir / "eta0.dat", eta=0.0),
+        }
+        same = sorted(
+            name
+            for name, model in models.items()
+            if list(models.values()).count(model) > 1
+        )
+        assert not same, f"these settings trained the same model: {same}"
+
+
+def _train_missing(**kwargs):
+    import lindera
+
+    lindera.train(
+        seed=MISSING,
+        corpus=MISSING,
+        char_def=MISSING,
+        unk_def=MISSING,
+        feature_def=MISSING,
+        rewrite_def=MISSING,
+        output=MISSING,
+        **kwargs,
+    )
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        (
+            {"regularization": "l3"},
+            "regularization must be 'l1', 'l2' or 'elasticnet', got 'l3'",
+        ),
+        ({"lambda_": -1.0}, "lambda_ must be a finite number >= 0, got -1"),
+        ({"lambda_": float("nan")}, "lambda_ must be a finite number >= 0, got NaN"),
+        (
+            {"lambda_": float("inf")},
+            "lambda_ must be a finite number >= 0, got Infinity",
+        ),
+        ({"eta": -1.0}, "eta must be a finite number >= 0, got -1"),
+        ({"eta": float("nan")}, "eta must be a finite number >= 0, got NaN"),
+        ({"eta": float("inf")}, "eta must be a finite number >= 0, got Infinity"),
+        (
+            {"elastic_net_l1_ratio": -0.1},
+            "elastic_net_l1_ratio must be a number between 0 and 1, got -0.1",
+        ),
+        (
+            {"elastic_net_l1_ratio": 1.5},
+            "elastic_net_l1_ratio must be a number between 0 and 1, got 1.5",
+        ),
+        (
+            {"elastic_net_l1_ratio": float("nan")},
+            "elastic_net_l1_ratio must be a number between 0 and 1, got NaN",
+        ),
+    ],
+)
+def test_train_rejects_a_setting_before_reading_any_file(kwargs, message):
+    """A setting the trainer would reject when training starts raises a
+    ValueError that names it, before any file is read (#1262)."""
+    with pytest.raises(ValueError) as excinfo:
+        _train_missing(**kwargs)
+    assert str(excinfo.value) == message
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"lambda_": 0.0},
+        {"eta": 0.0},
+        {"elastic_net_l1_ratio": 0.0},
+        {"elastic_net_l1_ratio": 1.0},
+        {"regularization": "ElasticNet"},
+        {"regularization": "elastic-net"},
+    ],
+)
+def test_train_accepts_the_bounds_of_each_setting(kwargs):
+    """The bounds and the other spellings pass the checks, so the missing
+    seed file is what fails."""
+    with pytest.raises(ValueError) as excinfo:
+        _train_missing(**kwargs)
+    assert "seed file does not exist" in str(excinfo.value)

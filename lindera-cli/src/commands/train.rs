@@ -66,19 +66,19 @@ pub struct TrainArgs {
         short = 'l',
         long = "lambda",
         default_value_t = lindera::dictionary::trainer::DEFAULT_LAMBDA,
-        help = "Regularization coefficient (>= 0); with l2, MeCab's learner's -c C is 1 / C"
+        help = "Regularization coefficient (finite, >= 0); with l2, MeCab's learner's -c C is 1 / C"
     )]
     lambda: f64,
     #[clap(
         short = 'R',
         long = "regularization",
         default_value = "l2",
-        help = "Regularization type: l1, l2, or elasticnet"
+        help = "Regularization type: l1, l2, or elasticnet (case-insensitive; also elastic_net or elastic-net)"
     )]
     regularization: String,
     #[clap(
         long = "elastic-net-l1-ratio",
-        default_value = "0.5",
+        default_value_t = lindera::dictionary::trainer::DEFAULT_ELASTIC_NET_L1_RATIO,
         help = "L1 ratio for Elastic Net regularization (0.0-1.0, only used with --regularization elasticnet)"
     )]
     elastic_net_l1_ratio: f64,
@@ -105,8 +105,14 @@ pub struct TrainArgs {
 }
 
 pub fn train(args: TrainArgs) -> LinderaResult<()> {
-    use lindera::dictionary::trainer::{Corpus, Trainer, TrainerConfig};
+    use lindera::dictionary::trainer::{Corpus, RegularizationType, Trainer, TrainerConfig};
     use std::fs::File;
+
+    // Check the regularization type before reading any file
+    let regularization: RegularizationType = args
+        .regularization
+        .parse()
+        .map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
     // Load configuration
     let config = TrainerConfig::from_paths(
@@ -118,30 +124,14 @@ pub fn train(args: TrainArgs) -> LinderaResult<()> {
     )
     .map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
-    // Parse regularization type and initialize trainer
-    let mut trainer = Trainer::new(config)
+    // Initialize trainer
+    let trainer = Trainer::new(config)
         .map_err(|err| LinderaErrorKind::Args.with_error(err))?
         .regularization_cost(args.lambda)
+        .regularization_type(regularization, args.elastic_net_l1_ratio)
         .max_iter(args.iter)
         .eta(args.eta)
         .num_threads(args.max_threads.unwrap_or_else(num_cpus::get));
-
-    match args.regularization.to_lowercase().as_str() {
-        "l1" => {
-            trainer = trainer.use_l2(false);
-        }
-        "l2" => {
-            trainer = trainer.use_l2(true);
-        }
-        "elasticnet" | "elastic_net" | "elastic-net" => {
-            trainer = trainer.elastic_net_l1_ratio(args.elastic_net_l1_ratio);
-        }
-        _ => {
-            return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
-                "regularization must be 'l1', 'l2', or 'elasticnet'"
-            )));
-        }
-    };
 
     // Load corpus
     let corpus_file = File::open(&args.corpus).map_err(io_err)?;

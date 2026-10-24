@@ -35,6 +35,8 @@ rescue RangeError => e
 end
 ```
 
+The float settings of `Lindera.train` are checked the same way, before any file is read: `lambda` and `eta:` take a finite number of 0 or more, and `elastic_net_l1_ratio:` a number between 0 and 1 (see [Training](./lindera-ruby/training.md)).
+
 ## Documentation
 
 - [Installation](./lindera-ruby/installation.md) -- Prerequisites, build instructions, and feature flags

@@ -42,9 +42,14 @@ Lindera\Trainer::train(
 | `$feature_def` | `string` | required | Path to the feature definition file (feature.def) |
 | `$rewrite_def` | `string` | required | Path to the rewrite rule definition file (rewrite.def) |
 | `$output` | `string` | required | Output path for the trained model file |
-| `$lambda` | `float` | `1.0` | L2 regularization coefficient, >= 0 (1.0 is MeCab's `-c 1.0`); the bindings train with L2 regularization, whose type cannot be chosen yet ([#1262](https://github.com/lindera/lindera/issues/1262)) |
-| `$max_iter` | `int` | `100` | Maximum number of training iterations; training stops earlier once the objective converges (its relative change stays below 5e-5 for 3 iterations in a row) |
+| `$lambda` | `float` | `1.0` | Regularization coefficient, finite and >= 0; with L2, MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0` |
+| `$max_iter` | `int` | `100` | Maximum number of training iterations; training stops earlier once the objective converges (see `$eta`) |
 | `$max_threads` | `int\|null` | `null` | Number of threads (`null` = auto-detect CPU cores) |
+| `$regularization` | `string\|null` | `'l2'` | Regularization type: `'l1'`, `'l2'` or `'elasticnet'`, in any case (`'elastic_net'` and `'elastic-net'` also select Elastic Net), as `lindera train --regularization` takes it |
+| `$elastic_net_l1_ratio` | `float\|null` | `0.5` | L1 ratio of Elastic Net regularization, between 0 and 1; used only with `'elasticnet'` |
+| `$eta` | `float\|null` | `5e-5` | Tolerance of the convergence test, finite and >= 0: training stops before `$max_iter` once the relative change of the objective stays below it for 3 iterations in a row; `0` disables the test |
+
+`null` selects the default of each optional parameter. The settings are checked before any file is read: an unknown `$regularization`, or a `$lambda`, `$elastic_net_l1_ratio` or `$eta` outside its range, throws a `ValueError`. To train as v6 did by default, pass `regularization: 'l1'` and `lambda: 0.01`, and `eta: 0` to stop only at `$max_iter`.
 
 ## Exporting a Trained Model
 

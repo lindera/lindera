@@ -245,8 +245,8 @@ The pattern, the replacement and the feature are split into columns as described
 
 | Parameter | Description | Default |
 | --- | --- | --- |
-| `lambda` | Regularization coefficient (controls overfitting), >= 0; with `l2`, MeCab's `-c C` is `1 / C` | 1.0 |
-| `regularization` | Regularization type: `l1`, `l2`, or `elasticnet` | `l2` |
+| `lambda` | Regularization coefficient (controls overfitting), finite and >= 0; with `l2`, MeCab's `-c C` is `1 / C` | 1.0 |
+| `regularization` | Regularization type: `l1`, `l2`, or `elasticnet`, in any case (`elastic_net` and `elastic-net` also select Elastic Net) | `l2` |
 | `elastic-net-l1-ratio` | L1 ratio for Elastic Net regularization (0.0-1.0, only used with `--regularization elasticnet`) | 0.5 |
 | `max-iterations` | Maximum number of training iterations | 100 |
 | `eta` | Tolerance of the convergence test (see [How training works](#how-training-works)); `0` disables the test | 0.00005 |
