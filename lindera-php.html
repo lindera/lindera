@@ -230,6 +230,7 @@ try {
     // ValueError: n must be an integer between 0 and 18446744073709551615, got -1
 }
 </code></pre>
+<p>The float settings of <code>Lindera\Trainer::train()</code> are checked the same way, before any file is read: <code>$lambda</code> and <code>$eta</code> take a finite number of 0 or more, and <code>$elastic_net_l1_ratio</code> a number between 0 and 1 (see <a href="./lindera-php/training.html">Training</a>).</p>
 <h2 id="documentation"><a class="header" href="#documentation">Documentation</a></h2>
 <ul>
 <li><a href="./lindera-php/installation.html">Installation</a> -- Prerequisites, build instructions, and feature flags</li>

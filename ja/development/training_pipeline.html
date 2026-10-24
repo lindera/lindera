@@ -361,8 +361,8 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <p>パターン・置換・素性は<a href="#1-%E7%A8%AE%E8%BE%9E%E6%9B%B8-seedcsv">種辞書</a>で説明したとおりに列に分けるので、<code>,</code> を含む引用付きの列は 1 つの列です。MeCab と同じく、書き換えた列は <code>,</code> でつなぎ、<code>,</code> か <code>"</code> を含む列は引用符で囲み、中の <code>"</code> を二重にします。たとえば左の規則 <code>* $5</code> は、素性 <code>n,dian4,店,店,"shop, store",1</code> を <code>"shop, store"</code> に書き換えます。</p>
 <h2 id="学習パラメータ"><a class="header" href="#学習パラメータ">学習パラメータ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
-<tr><td><code>lambda</code></td><td>正則化係数（過学習の制御）。0 以上。<code>l2</code> では MeCab の <code>-c C</code> が <code>1 / C</code> に当たる</td><td>1.0</td></tr>
-<tr><td><code>regularization</code></td><td>正則化の種類: <code>l1</code>、<code>l2</code>、<code>elasticnet</code> のいずれか</td><td><code>l2</code></td></tr>
+<tr><td><code>lambda</code></td><td>正則化係数（過学習の制御）。有限の 0 以上の値。<code>l2</code> では MeCab の <code>-c C</code> が <code>1 / C</code> に当たる</td><td>1.0</td></tr>
+<tr><td><code>regularization</code></td><td>正則化の種類: <code>l1</code>、<code>l2</code>、<code>elasticnet</code> のいずれか。大文字・小文字は区別しない（<code>elastic_net</code>・<code>elastic-net</code> も Elastic Net を選ぶ）</td><td><code>l2</code></td></tr>
 <tr><td><code>elastic-net-l1-ratio</code></td><td>Elastic Net 正則化の L1 比率（0.0-1.0、<code>--regularization elasticnet</code> の場合のみ使用）</td><td>0.5</td></tr>
 <tr><td><code>max-iterations</code></td><td>最大学習イテレーション数</td><td>100</td></tr>
 <tr><td><code>eta</code></td><td>収束判定の許容値（<a href="#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。<code>0</code> で判定を切ります</td><td>0.00005</td></tr>

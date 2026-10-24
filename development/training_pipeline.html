@@ -361,8 +361,8 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <p>The pattern, the replacement and the feature are split into columns as described in <a href="#1-seed-lexicon-seedcsv">Seed Lexicon</a>, so a quoted column with <code>,</code> in it is one column. As MeCab does, the rewritten columns are joined with <code>,</code>, and a column that contains <code>,</code> or <code>"</code> is quoted, with its quotes doubled: with the left rule <code>* $5</code>, the feature <code>n,dian4,店,店,"shop, store",1</code> is rewritten to <code>"shop, store"</code>.</p>
 <h2 id="training-parameters"><a class="header" href="#training-parameters">Training Parameters</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Parameter</th><th>Description</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>lambda</code></td><td>Regularization coefficient (controls overfitting), &gt;= 0; with <code>l2</code>, MeCab's <code>-c C</code> is <code>1 / C</code></td><td>1.0</td></tr>
-<tr><td><code>regularization</code></td><td>Regularization type: <code>l1</code>, <code>l2</code>, or <code>elasticnet</code></td><td><code>l2</code></td></tr>
+<tr><td><code>lambda</code></td><td>Regularization coefficient (controls overfitting), finite and &gt;= 0; with <code>l2</code>, MeCab's <code>-c C</code> is <code>1 / C</code></td><td>1.0</td></tr>
+<tr><td><code>regularization</code></td><td>Regularization type: <code>l1</code>, <code>l2</code>, or <code>elasticnet</code>, in any case (<code>elastic_net</code> and <code>elastic-net</code> also select Elastic Net)</td><td><code>l2</code></td></tr>
 <tr><td><code>elastic-net-l1-ratio</code></td><td>L1 ratio for Elastic Net regularization (0.0-1.0, only used with <code>--regularization elasticnet</code>)</td><td>0.5</td></tr>
 <tr><td><code>max-iterations</code></td><td>Maximum number of training iterations</td><td>100</td></tr>
 <tr><td><code>eta</code></td><td>Tolerance of the convergence test (see <a href="#how-training-works">How training works</a>); <code>0</code> disables the test</td><td>0.00005</td></tr>
