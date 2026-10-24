@@ -53,7 +53,6 @@ lindera-python は、Lindera 3.0.0 形態素解析エンジンへの包括的な
 ## プロジェクト依存関係のインストール
 
 - pyenv : <https://github.com/pyenv/pyenv?tab=readme-ov-file#installation>
-- Poetry : <https://python-poetry.org/docs/#installation>
 - Rust : <https://www.rust-lang.org/tools/install>
 
 ## Python のインストール
@@ -70,11 +69,11 @@ lindera-python は、Lindera 3.0.0 形態素解析エンジンへの包括的な
 % git clone git@github.com:lindera/lindera.git
 % cd lindera
 
-# Create Python virtual environment and initialize
-% make init
+# Create the Python virtual environment lindera-python/.venv with maturin and pytest
+% make setup-venv
 
 # Activate Python virtual environment
-% source .venv/bin/activate
+% source lindera-python/.venv/bin/activate
 ```
 
 ## 仮想環境への lindera-python のインストール
@@ -82,7 +81,8 @@ lindera-python は、Lindera 3.0.0 形態素解析エンジンへの包括的な
 このコマンドは開発設定（デバッグビルド）でライブラリをビルドします。
 
 ```shell
-(.venv) % make python-develop
+(.venv) % cd lindera-python
+(.venv) % maturin develop
 ```
 
 ## クイックスタート

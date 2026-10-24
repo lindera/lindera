@@ -142,23 +142,23 @@ And set the `content_security_policy` to contain `wasm-unsafe-eval` in manifest.
 ### Build project
 
 ```shell
-% make wasm-build
+% make build-lindera-wasm
 ```
 
 ### Run tests
 
 ```shell
-% make wasm-test
+% make test-lindera-wasm
 ```
 
 ### Build example web application
 
 ```shell
-% cd example && npm install && npm run build && cp index.html dist/index.html
+% make build-lindera-wasm-example
 ```
 
 ### Run example web application
 
 ```shell
-% cd example && npm run start
+% make run-lindera-wasm-example
 ```

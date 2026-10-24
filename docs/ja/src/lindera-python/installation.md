@@ -50,10 +50,13 @@ cd lindera-python
 maturin develop
 ```
 
-または、プロジェクトの Makefile を使用します：
+または、`maturin develop` のインストール先の仮想環境を、プロジェクトの Makefile で作ります。`make setup-venv` は、maturin と pytest を入れた `lindera-python/.venv` を作ります：
 
 ```bash
-make python-develop
+make setup-venv
+source lindera-python/.venv/bin/activate
+cd lindera-python
+maturin develop
 ```
 
 #### 学習機能付きビルド

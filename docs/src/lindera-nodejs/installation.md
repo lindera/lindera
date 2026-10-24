@@ -53,7 +53,7 @@ npm run build
 Or use the project Makefile:
 
 ```bash
-make nodejs-develop
+make build-lindera-nodejs
 ```
 
 ### Build with Training Support

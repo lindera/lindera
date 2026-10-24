@@ -50,10 +50,13 @@ cd lindera-python
 maturin develop
 ```
 
-Or use the project Makefile:
+Or let the project Makefile create the virtual environment that `maturin develop` installs into: `make setup-venv` creates `lindera-python/.venv` with maturin and pytest installed:
 
 ```bash
-make python-develop
+make setup-venv
+source lindera-python/.venv/bin/activate
+cd lindera-python
+maturin develop
 ```
 
 #### Build with Training Support

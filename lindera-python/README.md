@@ -53,7 +53,6 @@ Download a dictionary archive (e.g. `lindera-ipadic-*.zip`) and specify the extr
 ## Install project dependencies
 
 - pyenv : <https://github.com/pyenv/pyenv?tab=readme-ov-file#installation>
-- Poetry : <https://python-poetry.org/docs/#installation>
 - Rust : <https://www.rust-lang.org/tools/install>
 
 ## Install Python
@@ -70,11 +69,11 @@ Download a dictionary archive (e.g. `lindera-ipadic-*.zip`) and specify the extr
 % git clone git@github.com:lindera/lindera.git
 % cd lindera
 
-# Create Python virtual environment and initialize
-% make init
+# Create the Python virtual environment lindera-python/.venv with maturin and pytest
+% make setup-venv
 
 # Activate Python virtual environment
-% source .venv/bin/activate
+% source lindera-python/.venv/bin/activate
 ```
 
 ## Install lindera-python in the virtual environment
@@ -82,7 +81,8 @@ Download a dictionary archive (e.g. `lindera-ipadic-*.zip`) and specify the extr
 This command builds the library with development settings (debug build).
 
 ```shell
-(.venv) % make python-develop
+(.venv) % cd lindera-python
+(.venv) % maturin develop
 ```
 
 ## Quick Start
