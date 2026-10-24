@@ -19,6 +19,7 @@ use std::num::NonZeroU32;
 
 use anyhow::Result;
 
+use lindera_dictionary::dictionary::prefix_dictionary::Match;
 use lindera_dictionary::viterbi::UnknownWordCandidate;
 
 use self::feature_csv::{split_feature, wildcard_feature};
@@ -43,6 +44,15 @@ macro_rules! log_debug {
 macro_rules! log_progress {
     ($($arg:tt)*) => {
         println!($($arg)*)
+    };
+}
+
+/// Writes a warning on stderr, apart from the progress on stdout. It does
+/// not go through the `log` crate, for which the bindings install no logger,
+/// so that their users see it too (#1259).
+macro_rules! log_warn {
+    ($($arg:tt)*) => {
+        eprintln!($($arg)*)
     };
 }
 
@@ -183,6 +193,86 @@ struct LatticeStats {
     negative_lexicon: usize,
     /// Negative edges from the unknown-word candidates.
     negative_unknown: usize,
+    /// Gold tokens that are not seed words although seed rows with their
+    /// span start at their position: seed rows have their surface, but none
+    /// has their whole feature string. They are also counted in
+    /// `gold_unknown` or `gold_virtual`.
+    gold_feature_mismatch: usize,
+    /// The first of the `gold_feature_mismatch` tokens, in corpus order.
+    first_feature_mismatch: Option<FeatureMismatch>,
+}
+
+/// The most seed rows [`LatticeStats::seed_word_warning`] shows next to a
+/// gold token.
+const MAX_SHOWN_SEED_ROWS: usize = 5;
+
+/// A gold token whose surface has seed rows, none of which has its whole
+/// feature string.
+#[derive(Debug)]
+struct FeatureMismatch {
+    /// The gold token's surface.
+    surface: String,
+    /// The gold token's feature string.
+    feature: String,
+    /// The feature strings of the first seed rows with the token's surface,
+    /// at most [`MAX_SHOWN_SEED_ROWS`], in seed lexicon order.
+    seed_features: Vec<String>,
+    /// The number of seed rows with the token's surface.
+    seed_rows: usize,
+}
+
+impl LatticeStats {
+    /// Returns the warning that few gold tokens are seed words, as when the
+    /// corpus does not give its gold tokens the feature strings of the seed
+    /// rows (#1259).
+    ///
+    /// There is one when there are gold tokens and either none is a seed
+    /// word, or the gold tokens whose surface has seed rows but none of
+    /// their feature strings (`gold_feature_mismatch`) outnumber the seed
+    /// words: fewer than half of the gold tokens whose surface is a seed
+    /// word are seed words. The share of all the gold tokens is not the
+    /// test, since it is also small when the seed lexicon covers little of
+    /// the corpus.
+    ///
+    /// # Returns
+    ///
+    /// The warning, in lines without a trailing line break, or `None`.
+    fn seed_word_warning(&self) -> Option<String> {
+        let gold = self.gold_lexicon + self.gold_unknown + self.gold_virtual;
+        if gold == 0 || (self.gold_lexicon > 0 && self.gold_feature_mismatch <= self.gold_lexicon) {
+            return None;
+        }
+        // `first_feature_mismatch` is set exactly when
+        // `gold_feature_mismatch` is not 0.
+        let Some(mismatch) = &self.first_feature_mismatch else {
+            return Some(format!(
+                "Warning: none of the {gold} gold tokens is a seed word, and no seed row has the \
+                 surface of one. The seed rows are only wrong candidates in training."
+            ));
+        };
+        let mut lines = vec![
+            format!(
+                "Warning: {} of the {gold} gold tokens are seed words, and {} are not although \
+                 seed rows have their surface. A gold token is a seed word only when a seed row \
+                 has its surface and its whole feature string, as the seed lexicon writes it; \
+                 otherwise the seed rows with its surface are only wrong candidates at its \
+                 position. The first such gold token, and the seed rows with its surface:",
+                self.gold_lexicon, self.gold_feature_mismatch
+            ),
+            format!("  gold token: {}\t{}", mismatch.surface, mismatch.feature),
+        ];
+        lines.extend(
+            mismatch
+                .seed_features
+                .iter()
+                .map(|feature| format!("  seed row:   {}\t{feature}", mismatch.surface)),
+        );
+        let others = mismatch.seed_rows - mismatch.seed_features.len();
+        if others > 0 {
+            lines.push(format!("  and {others} more"));
+        }
+        Some(lines.join("\n"))
+    }
 }
 
 /// The `%t` value of a virtual label: MeCab allocates its virtual node
@@ -459,6 +549,12 @@ impl Trainer {
     }
 
     /// Trains a model from the given corpus.
+    ///
+    /// Once the training lattices are built, it prints how their gold tokens
+    /// were labelled, and warns on stderr when none of them, or fewer than
+    /// half of those whose surface has seed rows, are seed words: a gold
+    /// token is a seed word only when a seed row has its surface and its
+    /// whole feature string (#1259).
     pub fn train(mut self, corpus: Corpus) -> Result<Model> {
         let lattices = self.build_lattices_from_corpus(&corpus)?;
         let labels = self.extract_labels();
@@ -493,6 +589,9 @@ impl Trainer {
             stats.negative_lexicon,
             stats.negative_unknown
         );
+        if let Some(warning) = stats.seed_word_warning() {
+            log_warn!("{warning}");
+        }
 
         Ok(lattices)
     }
@@ -785,6 +884,44 @@ impl Trainer {
         Ok(label)
     }
 
+    /// Counts a gold token that no seed row labels, in
+    /// `LatticeStats::gold_feature_mismatch`, when seed rows with its span
+    /// start at its position, and keeps the first such token with the
+    /// feature strings of those rows (#1259).
+    ///
+    /// # Arguments
+    ///
+    /// * `matches` - The seed words that start at the token's position.
+    /// * `token` - The gold token.
+    /// * `token_len` - The token's length, in characters.
+    fn count_feature_mismatch(&mut self, matches: &[Match], token: &Word, token_len: usize) {
+        // The training lexicon lists the rows of a surface in seed order.
+        let same_span = || matches.iter().filter(move |m| m.end_char == token_len);
+        let seed_rows = same_span().count();
+        if seed_rows == 0 {
+            return;
+        }
+        self.stats.gold_feature_mismatch += 1;
+        if self.stats.first_feature_mismatch.is_some() {
+            return;
+        }
+        let seed_features = same_span()
+            .take(MAX_SHOWN_SEED_ROWS)
+            .filter_map(|m| {
+                self.config
+                    .features
+                    .get(m.word_idx.word_id as usize)
+                    .cloned()
+            })
+            .collect();
+        self.stats.first_feature_mismatch = Some(FeatureMismatch {
+            surface: token.surface().to_string(),
+            feature: token.feature().to_string(),
+            seed_features,
+            seed_rows,
+        });
+    }
+
     /// Builds the CRF lattice of one example, as MeCab's learner builds its
     /// lattice (#1110).
     ///
@@ -796,7 +933,9 @@ impl Trainer {
     /// same span whose entry accepts the gold feature string
     /// ([`unk_entry_accepts`]; the first such entry in `unk.def` order, the
     /// node MeCab's learner takes), else with a virtual label built from the
-    /// gold feature string. Every other candidate is a negative edge.
+    /// gold feature string. Every other candidate is a negative edge. A gold
+    /// token that no seed row labels although seed rows with its span start
+    /// at its position is counted for [`LatticeStats::seed_word_warning`].
     ///
     /// # Arguments
     ///
@@ -861,6 +1000,9 @@ impl Trainer {
                 self.stats.gold_lexicon += 1;
                 lexicon_label(m.word_idx.word_id as usize)?
             } else {
+                if let Some(matches) = lexicon.get(pos) {
+                    self.count_feature_mismatch(matches, token, token_len);
+                }
                 // Otherwise an unknown-word candidate of the same span whose
                 // entry accepts the gold feature string: the first such
                 // entry in unk.def order. MeCab's learner takes the matching
@@ -1826,8 +1968,13 @@ mod unk_def_entry_tests {
     const HOGE: &str = "感動詞,*,*,*,*,*,ほげ,ホゲ,ホゲ";
 
     fn trainer() -> Trainer {
+        trainer_with_seed(SEED)
+    }
+
+    /// The fixture's trainer with another seed lexicon.
+    fn trainer_with_seed(seed: &str) -> Trainer {
         let config = match TrainerConfig::from_readers(
-            Cursor::new(SEED),
+            Cursor::new(seed),
             Cursor::new(CHAR_DEF),
             Cursor::new(UNK_DEF),
             Cursor::new(FEATURE_DEF),
@@ -1975,6 +2122,63 @@ mod unk_def_entry_tests {
             (stats.gold_lexicon, stats.gold_unknown, stats.gold_virtual),
             (2, 3, 2)
         );
+        assert_eq!(stats.gold_feature_mismatch, 0);
+        assert!(stats.first_feature_mismatch.is_none());
+    }
+
+    /// A gold token whose surface has seed rows but none with its feature
+    /// string is counted, and the first one in corpus order is kept with
+    /// the feature strings of the first five of those rows, in seed order,
+    /// and their number (#1259). A token without a seed row of its surface
+    /// is not counted.
+    #[test]
+    fn lattice_counts_gold_tokens_whose_surface_has_seed_rows_of_other_features() {
+        // は, then six rows of 東.
+        let east = [
+            "名詞,固有名詞,地域,一般,*,*,東,ヒガシ,ヒガシ",
+            "名詞,固有名詞,人名,姓,*,*,東,アズマ,アズマ",
+            "名詞,固有名詞,人名,名,*,*,東,アズマ,アズマ",
+            "名詞,一般,*,*,*,*,東,ヒガシ,ヒガシ",
+            "名詞,固有名詞,地域,一般,*,*,東,トウ,トウ",
+            "名詞,固有名詞,組織,*,*,*,東,トウ,トウ",
+        ];
+        let seed: String = std::iter::once("は,0,0,0,助詞,係助詞,*,*,*,*,は,ハ,ワ\n".to_string())
+            .chain(east.iter().map(|feature| format!("東,0,0,0,{feature}\n")))
+            .collect();
+        let mut trainer = trainer_with_seed(&seed);
+
+        // 東 without its base form and readings: no 東 row has the feature.
+        build(
+            &mut trainer,
+            &example(&[
+                ("は", "助詞,係助詞,*,*,*,*,は,ハ,ワ"),
+                ("東", "名詞,一般,*,*,*,*"),
+            ]),
+        );
+        // は without them, a seed word 東, and 山田, which no seed row has.
+        build(
+            &mut trainer,
+            &example(&[
+                ("は", "助詞,係助詞,*,*,*,*"),
+                ("東", east[3]),
+                ("山田", "名詞,固有名詞,人名,姓,*,*,山田,ヤマダ,ヤマダ"),
+            ]),
+        );
+
+        let stats = &trainer.stats;
+        assert_eq!((stats.gold_lexicon, stats.gold_feature_mismatch), (2, 2));
+        let Some(mismatch) = &stats.first_feature_mismatch else {
+            panic!("no gold token was kept");
+        };
+        assert_eq!(
+            (
+                mismatch.surface.as_str(),
+                mismatch.feature.as_str(),
+                mismatch.seed_rows
+            ),
+            ("東", "名詞,一般,*,*,*,*", 6)
+        );
+        assert_eq!(mismatch.seed_features, east[..5]);
     }
 
     /// `Trainer::max_grouping_len` caps grouping as the runtime option does:
@@ -2069,6 +2273,105 @@ mod unk_def_entry_tests {
             .filter_map(|line| line.split(',').next())
             .collect();
         assert_eq!(surfaces, ["は", "東"]);
+    }
+}
+
+/// The warning that few gold tokens are seed words (#1259).
+#[cfg(test)]
+mod seed_word_warning_tests {
+    use crate::{FeatureMismatch, LatticeStats};
+
+    /// Statistics with `lexicon` seed words, `virtual_` virtual labels and
+    /// `mismatch` of them whose surface has seed rows of other feature
+    /// strings; the first of those is `東`, with `seed_rows` rows.
+    fn stats(lexicon: usize, virtual_: usize, mismatch: usize, seed_rows: usize) -> LatticeStats {
+        let seed_features = (0..seed_rows.min(5))
+            .map(|row| format!("名詞,固有名詞,地域,一般,*,*,東,ヒガシ,{row}"))
+            .collect();
+        LatticeStats {
+            gold_lexicon: lexicon,
+            gold_virtual: virtual_,
+            gold_feature_mismatch: mismatch,
+            first_feature_mismatch: (mismatch > 0).then(|| FeatureMismatch {
+                surface: "東".to_string(),
+                feature: "名詞,一般,*,*,*,*".to_string(),
+                seed_features,
+                seed_rows,
+            }),
+            ..LatticeStats::default()
+        }
+    }
+
+    #[test]
+    fn no_warning_without_gold_tokens() {
+        assert_eq!(stats(0, 0, 0, 0).seed_word_warning(), None);
+    }
+
+    /// No gold token is a seed word, and none has the surface of a seed row.
+    #[test]
+    fn warns_when_no_gold_token_has_the_surface_of_a_seed_row() {
+        let stats = LatticeStats {
+            gold_unknown: 1,
+            ..stats(0, 2, 0, 0)
+        };
+        assert_eq!(
+            stats.seed_word_warning().as_deref(),
+            Some(
+                "Warning: none of the 3 gold tokens is a seed word, and no seed row has the \
+                 surface of one. The seed rows are only wrong candidates in training."
+            )
+        );
+    }
+
+    /// No gold token is a seed word: the warning shows the first one whose
+    /// surface has seed rows, next to the first five of them.
+    #[test]
+    fn warns_with_the_first_mismatch_when_no_gold_token_is_a_seed_word() {
+        assert_eq!(
+            stats(0, 4, 3, 6).seed_word_warning().as_deref(),
+            Some(
+                "Warning: 0 of the 4 gold tokens are seed words, and 3 are not although seed \
+                 rows have their surface. A gold token is a seed word only when a seed row has \
+                 its surface and its whole feature string, as the seed lexicon writes it; \
+                 otherwise the seed rows with its surface are only wrong candidates at its \
+                 position. The first such gold token, and the seed rows with its surface:\n  \
+                 gold token: 東\t名詞,一般,*,*,*,*\n  \
+                 seed row:   東\t名詞,固有名詞,地域,一般,*,*,東,ヒガシ,0\n  \
+                 seed row:   東\t名詞,固有名詞,地域,一般,*,*,東,ヒガシ,1\n  \
+                 seed row:   東\t名詞,固有名詞,地域,一般,*,*,東,ヒガシ,2\n  \
+                 seed row:   東\t名詞,固有名詞,地域,一般,*,*,東,ヒガシ,3\n  \
+                 seed row:   東\t名詞,固有名詞,地域,一般,*,*,東,ヒガシ,4\n  \
+                 and 1 more"
+            )
+        );
+    }
+
+    /// Some gold tokens are seed words, but fewer than those whose surface
+    /// has seed rows of other feature strings. Every seed row is shown.
+    #[test]
+    fn warns_when_mismatches_outnumber_seed_words() {
+        let Some(warning) = stats(2, 3, 3, 2).seed_word_warning() else {
+            panic!("no warning");
+        };
+        assert!(
+            warning.starts_with(
+                "Warning: 2 of the 5 gold tokens are seed words, and 3 are not although seed \
+                 rows have their surface."
+            ),
+            "got: {warning}"
+        );
+        assert!(
+            warning.ends_with("\n  seed row:   東\t名詞,固有名詞,地域,一般,*,*,東,ヒガシ,1"),
+            "got: {warning}"
+        );
+    }
+
+    /// Half or more of the gold tokens whose surface has seed rows are seed
+    /// words.
+    #[test]
+    fn no_warning_when_half_or_more_are_seed_words() {
+        assert_eq!(stats(3, 3, 3, 1).seed_word_warning(), None);
+        assert_eq!(stats(3, 0, 0, 0).seed_word_warning(), None);
     }
 }
 
