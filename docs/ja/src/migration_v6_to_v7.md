@@ -23,7 +23,8 @@ MeCab と同じく最後の語が後から始まる方を選ぶようにし、`l
 数字の連続が 1 語のままになるようにしました。
 `lindera train` は MeCab の学習器と同じく、種辞書の語とランタイムが作る未知語で
 ラティスを作り、`unk.def` のすべてのエントリを保持するため、以前のバージョンで
-学習したモデルは学習し直す必要があります。`lindera build` は、文脈 ID が接続コスト
+学習したモデルは学習し直す必要があります。デフォルトの正則化は、MeCab の学習器と
+同じく係数 1.0 の L2 になりました。`lindera build` は、文脈 ID が接続コスト
 行列の範囲外にある辞書を拒否し、トークナイザーの構築もそうしたユーザー辞書を
 拒否します。
 v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは読み込めなくなるため、
@@ -64,6 +65,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **PHP・Node.js・WASM: 設定の範囲外の整数の引数は、折り返さずに例外を投げる** | そのような値を渡すコード。例えば `Metadata` の既定の単語コストに `100000` を渡すもの（v6 は `-31072` を保持した）や、N-best の件数に `-1` を渡すもの（v6 はすべての分割を列挙した）。`getFieldName` と PHP の `getDetail` への負の位置。Node.js と WASM では、`1.5` や `NaN` のような整数でない数値 | 範囲内の整数を渡す。エラーは引数の名前と範囲を示す |
 | **バインディング: モードは、Rust の `Mode` と同じく decompose モードのペナルティを持つ `Mode` で表す。`set_mode` / `setMode` と `Tokenizer` のコンストラクタはモードの名前ではなく `Mode` を受け取り、`TokenizerBuilder::set_segmenter_mode` は `Mode::Decompose` のペナルティを保つ** | モードを設定するバインディングのユーザー。バインディングの `Mode`、Node.js の `JsMode`、WASM の数値の `Mode` を使うコード。Node.js の型 `JsPenalty` を名指しする TypeScript のコード。`set_segmenter_mode` に既定でないペナルティを渡す Rust のコード。`CoreTokenizerBuilder::set_mode` や `CoreTokenizer::from_segmenter` の関数を呼ぶバインディングの作者 | `"normal"` や `"decompose"` の代わりに `Mode.normal()` や `Mode.decompose(penalty)`（Ruby では `Lindera::Mode.normal`、PHP では `Lindera\Mode::normal()`）を渡す。実行時に読んだモードの名前は `Mode.from_str` / `Mode.fromStr` で `Mode` にする。`JsPenalty` を `Penalty` に改名する。`lindera-binding` の関数には `lindera::mode::Mode` を渡す |
 | **`lindera train` は MeCab の学習器と同じくラティスを作り、`unk.def` のすべてのエントリを保持する。`model.dat` の形式バージョンは 2.0.0** | `lindera train`・`lindera export` と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー | 7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた `model.dat` は拒否される）。`unk.def` のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す |
+| **`lindera train` のデフォルトの正則化は、MeCab の学習器と同じく係数 1.0 の L2** | `lindera train`、`lindera_trainer` と `lindera_crf` の `Trainer::new`、Python・Node.js・Ruby・PHP のバインディングの学習関数を、正則化の種類と係数の両方を渡さずに使うユーザー | 精度が上がり、`matrix.def` が大きくなる。v6 と同じく学習するには `--regularization l1 --lambda 0.01`（Rust では `.use_l2(false).regularization_cost(0.01)`）を渡す。バインディングは [#1262](https://github.com/lindera/lindera/issues/1262) まで L1 を選べない |
 | **`lindera build` は `matrix.def` の範囲外の文脈 ID を拒否する** | `lex.csv` や `unk.def` に `matrix.def` の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の `mecab-dict-index` が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる） | ID か行列を直すか、`metadata.json` の `skip_invalid_cost_or_id` でそうした `lex.csv` の行を取り除く。ユーザー辞書ではそうした ID を直す |
 | **`lindera build` と `lindera train` は `char.def` と `unk.def` を照らし合わせる** | それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが `char.def` にあるユーザー、`char.def` と `unk.def` でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、`unk.def` の行を無視したりしていた）。MeCab の `mecab-dict-index` が受け入れる辞書は影響を受けない | 各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに `unk.def` の行を書き、未定義のカテゴリの `unk.def` の行を削除する |
 | **`lindera build` は、MeCab と同じく `matrix.def` にないセルのコストを 0 にする** | セルを省いた `matrix.def` からシステム辞書をビルドするユーザー。すべてのセルを列挙している同梱の辞書と、`lindera export` が書き出す `matrix.def` は対象外 | そうしたセルのコストは 32767 ではなく 0 になる。接続を高いコストのままにするには、そのセルをコスト付きで列挙する |
@@ -88,6 +90,8 @@ v6 はこの値を折り返していました
 （[バインディング: 範囲外の整数の引数を拒否する](#バインディング-範囲外の整数の引数を拒否する)を参照）。
 Node.js の TypeScript の型 `JsPenalty` は `Penalty` に改名しました
 （[バインディング: モードは `Mode` で表す](#バインディング-モードは-mode-で表す)を参照）。
+学習関数と `lindera train` のデフォルトの正則化は、v6 の係数 0.01 の L1 から、
+係数 1.0 の L2 になりました（[`lindera train` の既定の正則化は L2](#lindera-train-の既定の正則化は-l2)を参照）。
 バージョン番号は 7.0.0 になります。Rust クレートと同じく、v6.2.0 以前に
 ビルドまたはダウンロードした辞書ディレクトリは読み込めなくなります
 （[辞書ディレクトリの再ビルドが必要](#辞書ディレクトリの再ビルドが必要)を参照）。v6.2.0 以前にバインディングの
@@ -1373,7 +1377,8 @@ v6.2.0 までの `lindera train` は、MeCab の学習器とは異なる学習�
   かったか、正則化で重みが 0 になったもの）に、`matrix.def` で `32767`
   （`i16::MAX`）を書き出していました。学習ではそうした連接のコストは 0 で、MeCab の
   `mecab-dict-gen` も 0 を書き出すため、ビルドした辞書は、モデルが良くも悪くもない
-  と学習した遷移を避けていました。mecab-ipadic のファイルと既定の L1 正則化で
+  と学習した遷移を避けていました。mecab-ipadic のファイルと v6 のデフォルトの正則化
+（`--lambda 0.01` の L1）で
   5 分割の交差検証をすると、0 を書き出すことで境界 F1 がすべての分割で上がり、
   0.9552 から 0.9572 になりました
   （[#1168](https://github.com/lindera/lindera/issues/1168)）。
@@ -1490,9 +1495,9 @@ v7.0.0 は MeCab の学習器と同じく学習します
   同じくエラーになり、何も書き出しません。
 
 すべてのラティスに種辞書の語が入ります。[#1110](https://github.com/lindera/lindera/issues/1110) の mecab-ipadic のデータでは、
-デフォルトの L1 正則化はまだ目的関数が収束する前に `--max-iterations` に達し、
-`--lambda 1.0` の L2（MeCab の `-c 1.0`）は MeCab の学習器とほぼ同じ反復回数で
-収束します（[#1167](https://github.com/lindera/lindera/issues/1167)）。このデータ
+新しいデフォルトの `--lambda 1.0` の L2（MeCab の `-c 1.0`）は MeCab の学習器と
+ほぼ同じ反復回数で収束し（[`lindera train` の既定の正則化は L2](#lindera-train-の既定の正則化は-l2)を参照）、v6 の `--lambda 0.01` の L1 は
+`--max-iterations` に達します（[#1167](https://github.com/lindera/lindera/issues/1167)）。このデータ
 での学習時間は MeCab の学習器の約 2 倍で、その約 3 分の 2 は最適化の外、つまり
 最適化を始める前（[#1263](https://github.com/lindera/lindera/issues/1263)）と
 終えた後にかかります。
@@ -1510,6 +1515,56 @@ v7.0.0 は MeCab の学習器と同じく学習します
 エントリには、文脈 ID を書いてください。ユーザー辞書のエントリの文脈 ID とコストは、
 それぞれ数で書くか、埋めさせるなら空にしてください。v6 の動作に戻す設定は
 ありません。
+
+## `lindera train` の既定の正則化は L2
+
+`lindera train`、`lindera_trainer` と `lindera_crf` の `Trainer::new`、
+Python・Node.js・Ruby・PHP のバインディングの学習関数は、デフォルトで係数 1.0 の
+L2 正則化を使います。MeCab の学習器のデフォルト `-c 1.0` と同じ目的関数です
+（[#1261](https://github.com/lindera/lindera/issues/1261)）。v6 は係数 0.01 の L1 で、
+`lindera_crf::Trainer::new` は係数 0.1 の L1 でした。MeCab の学習器は損失に
+`‖w‖² / (2C)` を足すので、係数 `--lambda` は一般に `1 / C` に当たります（`-c 0.5`
+は `--lambda 2.0`）。ヘルプからは、検査されていなかった 0.0 から 1.0 という範囲を
+外しました。デフォルトの係数は、`lindera_trainer` と `lindera_crf` の新しい定数
+`DEFAULT_LAMBDA` にあります。
+
+mecab-ipadic のファイルを使った 5 分割の交差検証（[#1110](https://github.com/lindera/lindera/issues/1110)）
+で、デフォルトの上限 100 反復のとき、分割の平均は次のとおりです。
+
+| 正則化 | 反復回数 | 境界 F1 | span + 品詞（4 列）F1 | `matrix.def` |
+| --- | --- | ---: | ---: | ---: |
+| L2、`--lambda 1.0`（v7 のデフォルト） | 81〜87 で収束 | 0.9613 | 0.9398 | 18.9 MB |
+| L1、`--lambda 0.01`（v6 のデフォルト） | 上限の 100 | 0.9572 | 0.9344 | 8.7 MB |
+| L2、`--lambda 0.01`（`--lambda 0.01` だけを指定） | 上限の 100 | 0.9581 | 0.9358 | 19.0 MB |
+| L1、`--lambda 1.0`（`--regularization l1` だけを指定） | 上限の 100 | 0.9607 | 0.9381 | 3.3 MB |
+| MeCab の学習器、`-c 1.0` | 75〜83 回の評価で収束 | 0.9611 | 0.9398 | 22.5 MB（分割 0） |
+
+`lindera export` は、重みの等しいラベルに 1 つの文脈 ID を与えます。L1 は多くの
+重みを 0 にするので、多くのラベルが ID を共有します。L2 はどの重みも 0 にせず、
+このデータの `matrix.def` は約 1,200 × 1,200 の ID を持ちます。mecab-ipadic 自身の
+1316 × 1316 に近い大きさです。このデータでは、ビルドした辞書が v6 のデフォルトより
+3.8 % 大きくなります（分割 0）。
+`resources/training/` では、学習は 15 回ではなく 9 回の反復で止まり、エクスポート
+される `unk.def` の文脈 ID とコストが変わります。ドキュメントの解析結果は変わりません。
+
+対処方法: v6 と同じく学習するには、両方の設定を渡してください。片方だけを渡すと、
+渡した値はそのままで、もう片方は新しいデフォルトになります。
+
+| v6 での指定 | v7 での意味 | v6 と同じく学習するには |
+| --- | --- | --- |
+| 正則化の指定なし | L2、`--lambda 1.0` | `--regularization l1 --lambda 0.01` |
+| `--lambda X` だけ | L2、`--lambda X` | `--regularization l1` を足す |
+| `--regularization l1` だけ | L1、`--lambda 1.0` | `--lambda 0.01` を足す |
+| 両方 | 変わらない | — |
+
+v6 と同じく止めるには、`--eta 0` も渡してください
+（[`lindera train` は MeCab の学習器と同じくラティスを作る](#lindera-train-は-mecab-の学習器と同じくラティスを作る)を参照）。
+Rust では、`lindera_trainer::Trainer::new(config)?` に
+`.use_l2(false).regularization_cost(0.01)` を、`lindera_crf::Trainer::new()` に
+`.regularization(Regularization::L1, 0.1)?` を呼びます。バインディングの `lambda` は
+L2 の係数で、[#1262](https://github.com/lindera/lindera/issues/1262) までは正則化の種類を
+選べません。モデルには係数だけが記録され、種類は記録されません
+（[#1272](https://github.com/lindera/lindera/issues/1272)）。
 
 ## `lindera build` は接続コスト行列の範囲外の文脈 ID を拒否する
 
@@ -1806,6 +1861,8 @@ feature）経由で使う Rust コードにのみ影響します
 | `ModelMetadata::iterations`（と `model_info.training_iterations`）は `max_iter` の設定値 | 実際に回った L-BFGS の反復回数 |
 | — | 新規: 収束判定の許容値を設定する `Trainer::eta` と `Trainer::get_eta`、そのデフォルトの `DEFAULT_ETA`（`5e-5`）。`lindera-crf` にも同じ `Trainer::eta` と `DEFAULT_ETA` と、`StopReason`、`TrainingStats::evaluations`、`TrainingStats::stop_reason` を追加 |
 | `Model::write_connection_costs` と `SerializableModel::write_connection_costs` は、学習した重みがない連接に `i16::MAX` を書き出す | 0 を書き出す。学習中や MeCab でのその連接のコスト |
+| `Trainer::new` は L1（`use_l2` が false）と `regularization_cost` 0.01 で正則化する | L2 と `DEFAULT_LAMBDA`（1.0）で正則化する。`use_l2(false)` で L1 を選ぶ（[`lindera train` の既定の正則化は L2](#lindera-train-の既定の正則化は-l2)を参照） |
+| — | 新規: デフォルトの係数 `DEFAULT_LAMBDA`（`1.0`）。`lindera_crf` にも同じ定数を追加し、その `Trainer::new` は `Regularization::L1` と 0.1 ではなく、`Regularization::L2` とこの定数で正則化する |
 
 モデルは `MODEL_FORMAT_VERSION` を `metadata.version` として書き出され、
 `Model::read_model` は `rkyv` 形式でもレガシーの JSON 形式でもこれを確認するため、
@@ -1831,7 +1888,9 @@ v6.2.0 以前に書かれたモデルは学習し直す必要があります。`
   ダウンロードした辞書ディレクトリは、再ビルドか再ダウンロードが必要です
   （[辞書ディレクトリの再ビルドが必要](#辞書ディレクトリの再ビルドが必要)を参照）。埋め込み辞書は対応不要です。
   v6.2.0 以前に学習したモデルファイルは学習し直す必要があります
-  （[`lindera train` は MeCab の学習器と同じくラティスを作る](#lindera-train-は-mecab-の学習器と同じくラティスを作る)を参照）。出力の変化は、この 2 フィールドを
+  （[`lindera train` は MeCab の学習器と同じくラティスを作る](#lindera-train-は-mecab-の学習器と同じくラティスを作る)を参照）。
+  正則化の種類と係数の両方を渡さない学習は、係数 1.0 の L2 で正則化します
+  （[`lindera train` の既定の正則化は L2](#lindera-train-の既定の正則化は-l2)を参照）。出力の変化は、この 2 フィールドを
   名前で読む場合にのみ影響する IPADIC の活用フィールドの修正、U+3000 を含む
   テキスト（IPADIC・IPADIC-NEologd・UniDic）や空白を含むテキスト（SudachiDict）に
   のみ影響する空白の見出し語、空白を含むテキストの分割、`Ð`・`々`・`〇` を含む
@@ -1976,6 +2035,12 @@ U+3000 や空白を含むテキストを IPADIC・IPADIC-NEologd・UniDic・Suda
   止まった理由は `lindera train` が出力する行で確かめる。v6 と同じく上限と最適化
   自身の判定だけで止めるには、`--eta 0`（Rust では `Trainer::eta(0.0)`）を渡す
   （[#1167](https://github.com/lindera/lindera/issues/1167)）。
+- 正則化の種類と係数の両方を渡さないと、係数 1.0 の L2 で正則化することを想定する。
+  v6 と同じく学習するには `--regularization l1 --lambda 0.01`（Rust では
+  `.use_l2(false).regularization_cost(0.01)`）を渡す。`--lambda`（バインディングでは
+  `lambda`）だけを渡すと L2 の係数になり、`--regularization l1` だけでは係数は 1.0
+  になる。バインディングは、[#1262](https://github.com/lindera/lindera/issues/1262) で
+  種類を選べるようになるまで L2 で学習する（[#1261](https://github.com/lindera/lindera/issues/1261)）。
 
 `lindera build` でシステム辞書をビルドするすべてのユーザー:
 

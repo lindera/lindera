@@ -8,7 +8,9 @@ use std::path::Path;
 
 use ext_php_rs::prelude::*;
 
-use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, TrainerConfig};
+use lindera::dictionary::trainer::{
+    Corpus, DEFAULT_LAMBDA, Model, SerializableModel, Trainer, TrainerConfig,
+};
 
 use crate::convert::nullable_int_arg;
 use crate::error::lindera_value_err;
@@ -33,8 +35,10 @@ impl PhpTrainer {
     /// * `feature_def` - Feature definition file path (feature.def).
     /// * `rewrite_def` - Rewrite rule definition file path (rewrite.def).
     /// * `output` - Output model file path.
-    /// * `lambda` - L1 regularization (0.0-1.0), default: 0.01. An `int` is
-    ///   widened to a float, as for a PHP `float` parameter.
+    /// * `lambda` - L2 regularization coefficient (>= 0), default: 1.0,
+    ///   MeCab's `-c 1.0`. An `int` is widened to a float, as for a PHP
+    ///   `float` parameter. The bindings train with L2 regularization; the
+    ///   type cannot be chosen yet (#1262).
     /// * `max_iter` - Maximum number of iterations, default: 100.
     /// * `max_threads` - Maximum number of threads (null = auto-detect CPU cores).
     ///
@@ -55,7 +59,7 @@ impl PhpTrainer {
         max_threads: Option<i64>,
     ) -> PhpResult<()> {
         // Check the settings before touching any file.
-        let lambda_val = lambda.unwrap_or(0.01);
+        let lambda_val = lambda.unwrap_or(DEFAULT_LAMBDA);
         let max_iter_val = nullable_int_arg("max_iter", max_iter)?.unwrap_or(100);
         let num_threads =
             nullable_int_arg("max_threads", max_threads)?.unwrap_or_else(num_cpus::get);

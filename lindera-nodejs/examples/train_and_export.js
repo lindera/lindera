@@ -190,7 +190,7 @@ function main() {
       featureDef: files.featureDef,
       rewriteDef: files.rewriteDef,
       output: modelFile,
-      lambda: 0.01,
+      lambda: 1.0,
       maxIter: 10,
     });
 

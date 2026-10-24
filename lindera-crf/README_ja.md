@@ -14,6 +14,7 @@
 
 - **シリアライゼーションバックエンドの置換**: `bincode` から [`rkyv`](https://github.com/rkyv/rkyv) に切り替え、ゼロコピーデシリアライゼーションによりモデル読み込みの高速化を実現
 - **Elastic Net 正則化**: L1 と L2 のペナルティを組み合わせた `Regularization::ElasticNet` を追加。`l1_ratio` パラメータで設定可能
+- **デフォルトの正則化**: `Trainer::new` は L2 と `DEFAULT_LAMBDA`（1.0）で正則化する。MeCab の学習器のデフォルト `-c 1.0` と同じ目的関数。rucrf のデフォルトは L1 と 0.1
 - **Rust 2024 edition**: Rust 2024 edition に更新
 - **依存関係の更新**: `argmin` (0.10 -> 0.11)、`argmin-math` (0.4 -> 0.5)、`argmin-observer-slog` (0.1 -> 0.2)、`hashbrown` (0.15 -> 0.16) を更新
 

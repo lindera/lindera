@@ -161,7 +161,7 @@ Dir.mktmpdir('lindera-train-') do |tmpdir|
     files[:feature_def],
     files[:rewrite_def],
     model_file,
-    0.01,  # lambda (L1 regularization)
+    1.0,   # lambda (L2 regularization coefficient, the default)
     10,    # max_iter
     nil    # max_threads (auto-detect)
   )

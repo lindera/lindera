@@ -50,7 +50,7 @@ The CRF is then trained with L-BFGS (OWL-QN when the regularization has an L1 pa
 `lindera train` prints which one stopped it, with the number of iterations and of evaluations, each evaluation being one forward-backward pass over every lattice; with the files in `resources/training/`:
 
 ```text
-L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
+L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradient: converged
 ```
 
 ## Required Input Files
@@ -245,14 +245,14 @@ The pattern, the replacement and the feature are split into columns as described
 
 | Parameter | Description | Default |
 | --- | --- | --- |
-| `lambda` | Regularization coefficient (controls overfitting) | 0.01 |
-| `regularization` | Regularization type: `l1`, `l2`, or `elasticnet` | `l1` |
+| `lambda` | Regularization coefficient (controls overfitting), >= 0; with `l2`, MeCab's `-c C` is `1 / C` | 1.0 |
+| `regularization` | Regularization type: `l1`, `l2`, or `elasticnet` | `l2` |
 | `elastic-net-l1-ratio` | L1 ratio for Elastic Net regularization (0.0-1.0, only used with `--regularization elasticnet`) | 0.5 |
 | `max-iterations` | Maximum number of training iterations | 100 |
 | `eta` | Tolerance of the convergence test (see [How training works](#how-training-works)); `0` disables the test | 0.00005 |
 | `max-threads` | Number of parallel processing threads | CPU core count |
 
-On the mecab-ipadic cross-validation data of [#1110](https://github.com/lindera/lindera/issues/1110), the default L1 regularization still reaches `max-iterations` before the objective converges, while L2 with `lambda` 1.0, which is MeCab's default `-c 1.0`, converges in about as many iterations as MeCab's learner ([#1167](https://github.com/lindera/lindera/issues/1167)). Training there takes about twice as long as MeCab's learner, and about two thirds of the time is spent outside the optimizer: before it starts ([#1263](https://github.com/lindera/lindera/issues/1263)) and after it stops.
+The defaults are those of MeCab's learner: L2 regularization with `lambda` 1.0 is its objective with `-c 1.0`. On the mecab-ipadic cross-validation data of [#1110](https://github.com/lindera/lindera/issues/1110), they score as MeCab's learner does and converge in about as many iterations, 81 to 87 ([#1261](https://github.com/lindera/lindera/issues/1261)): boundary F1 0.9613 and span + POS (4 columns) F1 0.9398 on average over 5 folds, where v6's default, L1 with `lambda` 0.01, reached `max-iterations` on every fold with 0.9572 and 0.9344. L1 sets many weights to 0, and `lindera export` gives labels with equal weights one context ID, so the L1 `matrix.def` is smaller: 8.7 MB there against 18.9 MB with L2, which makes the built dictionary 3.8 % larger. Training there takes about twice as long as MeCab's learner, and about two thirds of the time is spent outside the optimizer: before it starts ([#1263](https://github.com/lindera/lindera/issues/1263)) and after it stops.
 
 ## CLI Usage
 
@@ -266,7 +266,6 @@ lindera train \
     --unk-def unk.def \
     --feature-def feature.def \
     --rewrite-def rewrite.def \
-    --lambda 0.01 \
     --max-iterations 100 \
     --max-threads 4 \
     --output model.dat
@@ -300,14 +299,14 @@ This produces the following files:
 For example, if the `unk.def` above has a second `KANJI` line, `KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*`, after the first one, the exported `unk.def` keeps both, in input order:
 
 ```csv
-DEFAULT,1,1,32764,名詞,一般,*,*,*,*,*,*,*
-SPACE,1,1,0,記号,空白,*,*,*,*,*,*,*
-HIRAGANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
-KATAKANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
-KANJI,1,1,32764,名詞,一般,*,*,*,*,*,*,*
-KANJI,1,1,0,名詞,サ変接続,*,*,*,*,*,*,*
-ALPHA,1,1,0,名詞,固有名詞,一般,*,*,*,*,*,*
-NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
+DEFAULT,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+SPACE,10,7,0,記号,空白,*,*,*,*,*,*,*
+HIRAGANA,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+KANJI,3,3,4179,名詞,サ変接続,*,*,*,*,*,*,*
+ALPHA,11,10,10957,名詞,固有名詞,一般,*,*,*,*,*,*
+NUMERIC,11,10,10957,名詞,数,*,*,*,*,*,*,*
 ```
 
 ### Build
@@ -403,7 +402,6 @@ let config = TrainerConfig::from_readers(
 
 // Initialize and configure trainer
 let trainer = Trainer::new(config)?
-    .regularization_cost(0.01)
     .max_iter(100)
     .num_threads(4);
 

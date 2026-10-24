@@ -237,5 +237,65 @@ describe(
         fs.rmSync(tmpdir, { recursive: true, force: true });
       }
     });
+
+    // Leaving lambda out trains with 1.0, the L2 coefficient of MeCab's
+    // -c 1.0 (#1261): the model is byte-identical to one trained with
+    // lambda 1.0.
+    it("should train with lambda 1.0 by default", () => {
+      const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "lindera-test-"));
+
+      try {
+        const inputs = {
+          seed: [
+            "seed.csv",
+            "これ,0,0,0,名詞,代名詞,一般,*,*,*,これ,コレ,コレ\n" +
+              "は,0,0,0,助詞,係助詞,*,*,*,*,は,ハ,ワ\n",
+          ],
+          corpus: [
+            "corpus.txt",
+            "これ\t名詞,代名詞,一般,*,*,*,これ,コレ,コレ\n" +
+              "は\t助詞,係助詞,*,*,*,*,は,ハ,ワ\n" +
+              "EOS\n",
+          ],
+          charDef: [
+            "char.def",
+            "DEFAULT 0 1 0\nHIRAGANA 1 1 0\n\n0x3041..0x3096 HIRAGANA\n",
+          ],
+          unkDef: [
+            "unk.def",
+            "DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*\n" +
+              "HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*\n",
+          ],
+          featureDef: [
+            "feature.def",
+            "UNIGRAM U00:%F[0]\nBIGRAM B00:%L[0]/%R[0]\n",
+          ],
+          rewriteDef: ["rewrite.def", "名詞,一般\tNOUN\n"],
+        };
+        const paths = {};
+        for (const [key, [name, content]] of Object.entries(inputs)) {
+          paths[key] = path.join(tmpdir, name);
+          fs.writeFileSync(paths[key], content);
+        }
+        const train = (name, options) => {
+          const output = path.join(tmpdir, name);
+          lindera.train({
+            ...paths,
+            output,
+            maxIter: 5,
+            maxThreads: 1,
+            ...options,
+          });
+          return fs.readFileSync(output);
+        };
+
+        const byDefault = train("default.dat", {});
+        const explicit = train("explicit.dat", { lambda: 1.0 });
+        assert.ok(byDefault.length > 0);
+        assert.deepStrictEqual(byDefault, explicit);
+      } finally {
+        fs.rmSync(tmpdir, { recursive: true, force: true });
+      }
+    });
   },
 );

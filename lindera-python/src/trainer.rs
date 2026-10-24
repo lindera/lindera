@@ -15,7 +15,7 @@
 //!     feature_def="feature.def",
 //!     rewrite_def="rewrite.def",
 //!     output="model.bin",
-//!     lambda_=0.01,
+//!     lambda_=1.0,
 //!     max_iter=100
 //! )
 //!
@@ -31,7 +31,16 @@ use std::path::Path;
 
 use pyo3::{exceptions::PyValueError, prelude::*};
 
-use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, TrainerConfig};
+use lindera::dictionary::trainer::{
+    Corpus, DEFAULT_LAMBDA, Model, SerializableModel, Trainer, TrainerConfig,
+};
+
+// The default of `lambda_` in the signature below is a literal, which
+// `help()` shows; it must be `DEFAULT_LAMBDA`.
+const _: () = assert!(
+    DEFAULT_LAMBDA == 1.0,
+    "update the default of lambda_ in the signature of train"
+);
 
 /// Trains a morphological analysis model from an annotated corpus.
 ///
@@ -44,7 +53,9 @@ use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, Tr
 /// * `feature_def` - Feature definition file path (feature.def)
 /// * `rewrite_def` - Rewrite rule definition file path (rewrite.def)
 /// * `output` - Output model file path
-/// * `lambda_` - L1 regularization (0.0-1.0), default: 0.01
+/// * `lambda_` - L2 regularization coefficient (>= 0), default: 1.0,
+///   MeCab's `-c 1.0`. The bindings train with L2 regularization; the type
+///   cannot be chosen yet (#1262).
 /// * `max_iter` - Maximum number of iterations, default: 100
 /// * `max_threads` - Maximum number of threads (None = auto-detect CPU cores)
 ///
@@ -52,7 +63,7 @@ use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, Tr
 ///
 /// * `PyResult<()>` - Returns Ok(()) on success
 #[pyfunction]
-#[pyo3(signature = (seed, corpus, char_def, unk_def, feature_def, rewrite_def, output, lambda_=0.01, max_iter=100, max_threads=None))]
+#[pyo3(signature = (seed, corpus, char_def, unk_def, feature_def, rewrite_def, output, lambda_=1.0, max_iter=100, max_threads=None))]
 #[allow(clippy::too_many_arguments)]
 pub fn train(
     seed: &str,

@@ -25,7 +25,7 @@ Lindera\Trainer::train(
     feature_def: 'resources/training/feature.def',
     rewrite_def: 'resources/training/rewrite.def',
     output: '/tmp/model.dat',
-    lambda: 0.01,
+    lambda: 1.0,
     max_iter: 100,
     max_threads: null,
 );
@@ -42,7 +42,7 @@ Lindera\Trainer::train(
 | `$feature_def` | `string` | required | Path to the feature definition file (feature.def) |
 | `$rewrite_def` | `string` | required | Path to the rewrite rule definition file (rewrite.def) |
 | `$output` | `string` | required | Output path for the trained model file |
-| `$lambda` | `float` | `0.01` | L1 regularization cost (0.0--1.0) |
+| `$lambda` | `float` | `1.0` | L2 regularization coefficient, >= 0 (1.0 is MeCab's `-c 1.0`); the bindings train with L2 regularization, whose type cannot be chosen yet ([#1262](https://github.com/lindera/lindera/issues/1262)) |
 | `$max_iter` | `int` | `100` | Maximum number of training iterations; training stops earlier once the objective converges (its relative change stays below 5e-5 for 3 iterations in a row) |
 | `$max_threads` | `int\|null` | `null` | Number of threads (`null` = auto-detect CPU cores) |
 
@@ -98,7 +98,7 @@ Lindera\Trainer::train(
     feature_def: 'resources/training/feature.def',
     rewrite_def: 'resources/training/rewrite.def',
     output: '/tmp/model.dat',
-    lambda: 0.01,
+    lambda: 1.0,
     max_iter: 100,
 );
 

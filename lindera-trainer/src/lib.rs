@@ -64,6 +64,12 @@ pub use self::model::{Model, SerializableModel};
 /// [`Trainer::eta`]: `5e-5`, the default `eta` of MeCab's learner.
 pub use lindera_crf::DEFAULT_ETA;
 
+/// The default regularization coefficient, set with
+/// [`Trainer::regularization_cost`]: `1.0`. With L2 regularization, the
+/// default type, it gives the objective of MeCab's learner with its default
+/// `-c 1.0`; in general the coefficient is `1 / C`.
+pub use lindera_crf::DEFAULT_LAMBDA;
+
 /// CRF-based morphological analysis trainer for Japanese text
 ///
 /// This trainer implements standard CRF-based morphological analysis training,
@@ -103,7 +109,6 @@ pub use lindera_crf::DEFAULT_ETA;
 /// ).unwrap();
 ///
 /// let trainer = Trainer::new(config).unwrap()
-///     .regularization_cost(0.01)
 ///     .max_iter(10); // Reduced for doc test
 ///
 /// // Note: In practice, you would load an actual corpus file
@@ -450,8 +455,8 @@ impl Trainer {
             virtual_features: Vec::new(),
             candidate_lattice: lindera_dictionary::viterbi::Lattice::default(),
             unknown_candidates: Vec::new(),
-            regularization_cost: 0.01,
-            use_l2: false,
+            regularization_cost: DEFAULT_LAMBDA,
+            use_l2: true,
             elastic_net_l1_ratio: None,
             max_iter: 100,
             eta: DEFAULT_ETA,
@@ -460,20 +465,23 @@ impl Trainer {
         })
     }
 
-    /// Sets the regularization cost coefficient.
+    /// Sets the regularization cost coefficient (>= 0). The default is
+    /// [`DEFAULT_LAMBDA`], whatever the regularization type.
     pub fn regularization_cost(mut self, cost: f64) -> Self {
         self.regularization_cost = cost;
         self
     }
 
-    /// Sets whether to use L2 regularization (default: L1).
+    /// Sets whether to use L2 regularization (default: `true`); `false`
+    /// selects L1.
     pub fn use_l2(mut self, l2: bool) -> Self {
         self.use_l2 = l2;
         self
     }
 
-    /// Sets the Elastic Net L1 ratio (0.0 to 1.0).
-    /// When set, uses Elastic Net regularization instead of pure L1 or L2.
+    /// Sets the Elastic Net L1 ratio (0.0 to 1.0). Unset by default.
+    /// When set, uses Elastic Net regularization instead of pure L1 or L2,
+    /// whatever [`Self::use_l2`] says.
     /// l1_ratio=1.0 is pure L1, l1_ratio=0.0 is pure L2.
     pub fn elastic_net_l1_ratio(mut self, ratio: f64) -> Self {
         self.elastic_net_l1_ratio = Some(ratio);
@@ -1190,6 +1198,7 @@ mod tests {
         let trainer = Trainer::new(config)
             .unwrap()
             .regularization_cost(0.01)
+            .use_l2(false)
             .max_iter(5)
             .num_threads(1);
 
@@ -1421,6 +1430,7 @@ mod tests {
         let trainer = Trainer::new(config)
             .unwrap()
             .regularization_cost(0.01)
+            .use_l2(false)
             .max_iter(5)
             .num_threads(1);
         let corpus = Corpus::from_reader(Cursor::new(corpus_text)).unwrap();
@@ -1468,10 +1478,10 @@ mod tests {
 
     #[test]
     fn test_exported_matrix_covers_every_context_id_without_bigram_weights() {
-        // Without a BIGRAM template no bigram weight exists: the state L1
-        // reaches on `resources/training/` once every bigram weight is
-        // zeroed. The entries still carry context ids, so the matrix must
-        // cover them; it used to be written as `0 0`.
+        // Without a BIGRAM template no bigram weight exists: the state that
+        // L1 with lambda 0.01, v6's default, reaches on `resources/training/`
+        // once every bigram weight is zeroed. The entries still carry context
+        // ids, so the matrix must cover them; it used to be written as `0 0`.
         let model = train_fixture_with_feature_def("UNIGRAM U00:%F[0]\n");
         let mut buf = Vec::new();
         model.write_model(&mut buf).unwrap();
@@ -1658,8 +1668,20 @@ pub(crate) mod test_fixtures {
     }
 
     /// Trains the wide fixture with the given thread count and returns the
-    /// model.
+    /// model, with L1 regularization and lambda 0.01, the settings the tests
+    /// that use it were written for.
     pub(crate) fn train_wide_model(threads: usize) -> crate::model::Model {
+        train_wide_model_with(threads, |trainer| {
+            trainer.use_l2(false).regularization_cost(0.01)
+        })
+    }
+
+    /// Trains the wide fixture for 5 iterations with the given thread count,
+    /// after `configure` has set up the trainer, and returns the model.
+    pub(crate) fn train_wide_model_with(
+        threads: usize,
+        configure: impl FnOnce(Trainer) -> Trainer,
+    ) -> crate::model::Model {
         let (_, char_def, unk_def, feature_def, rewrite_def, _) = fixtures();
         let (seed, corpus_text) = wide_seed_and_corpus();
 
@@ -1675,10 +1697,9 @@ pub(crate) mod test_fixtures {
         };
 
         let trainer = match Trainer::new(config) {
-            Ok(trainer) => trainer,
+            Ok(trainer) => configure(trainer),
             Err(err) => panic!("failed to build trainer: {err}"),
         }
-        .regularization_cost(0.01)
         .max_iter(5)
         .num_threads(threads);
 
@@ -1830,12 +1851,42 @@ mod train_determinism_tests {
     /// how many workers run (`lindera-crf`'s `LatticesLoss`), which
     /// `training_is_identical_across_thread_counts` pins end to end.
     fn train_and_serialize(threads: usize) -> Vec<u8> {
-        let model = crate::test_fixtures::train_wide_model(threads);
+        serialize(&crate::test_fixtures::train_wide_model(threads))
+    }
+
+    /// Serializes `model` and returns the bytes.
+    fn serialize(model: &crate::model::Model) -> Vec<u8> {
         let mut buf = Vec::new();
         if let Err(err) = model.write_model(&mut buf) {
             panic!("failed to serialize model: {err}");
         }
         buf
+    }
+
+    /// The default trainer regularizes with L2 and `DEFAULT_LAMBDA` (1.0),
+    /// MeCab's default `-c 1.0` (#1261): it trains the bytes that the
+    /// explicit settings train. The other tests here train with L1, so this
+    /// one also pins the L2 path, with its own line search, across thread
+    /// counts.
+    #[test]
+    fn the_default_trains_with_l2_and_lambda_1() {
+        use crate::test_fixtures::train_wide_model_with;
+
+        let default = serialize(&train_wide_model_with(1, |trainer| trainer));
+        let explicit = serialize(&train_wide_model_with(1, |trainer| {
+            trainer.use_l2(true).regularization_cost(1.0)
+        }));
+        let parallel = serialize(&train_wide_model_with(4, |trainer| trainer));
+
+        assert!(!default.is_empty(), "serialized model must not be empty");
+        assert_eq!(
+            default, explicit,
+            "the default must train as L2 with lambda 1.0 does"
+        );
+        assert_eq!(
+            default, parallel,
+            "1-thread and 4-thread L2 training must produce identical bytes"
+        );
     }
 
     /// Two independent training runs over identical inputs must serialize to
@@ -1894,6 +1945,7 @@ mod train_determinism_tests {
             Err(err) => panic!("failed to build trainer: {err}"),
         }
         .regularization_cost(0.01)
+        .use_l2(false)
         .max_iter(5)
         .num_threads(1);
         let corpus = match Corpus::from_reader(Cursor::new(corpus_text)) {
@@ -2423,6 +2475,7 @@ mod lexicon_csv_export_tests {
         let trainer = Trainer::new(config)
             .unwrap()
             .regularization_cost(0.01)
+            .use_l2(false)
             .max_iter(5)
             .num_threads(1);
         let corpus = Corpus::from_reader(Cursor::new(corpus_text.as_bytes())).unwrap();
@@ -2779,7 +2832,7 @@ mod user_lexicon_cost_tests {
     /// Trains the wide fixture with a `%t` and a `%u` unigram template
     /// added, with L2 regularization, under which the seed rows of
     /// `名詞,一般`, `名詞,固有名詞` and `助動詞,*` get different non-zero
-    /// costs (the L1 default of `train_wide_model` gives most rows 0).
+    /// costs (the L1 of `train_wide_model` gives most rows 0).
     fn train_cost_model() -> Model {
         let (_, char_def, unk_def, feature_def, rewrite_def, _) = fixtures();
         let (seed, corpus) = wide_seed_and_corpus();
@@ -2987,6 +3040,7 @@ mod export_consistency_tests {
         Trainer::new(config)
             .unwrap()
             .regularization_cost(0.01)
+            .use_l2(false)
             .max_iter(max_iter)
             .num_threads(1)
             .train(Corpus::from_reader(Cursor::new(corpus)).unwrap())
@@ -3035,6 +3089,7 @@ mod export_consistency_tests {
             Trainer::new(config)
                 .unwrap()
                 .regularization_cost(0.01)
+                .use_l2(false)
                 .max_iter(1000)
                 .eta(eta)
                 .num_threads(1)
@@ -3127,7 +3182,8 @@ mod export_consistency_tests {
     }
 
     /// Trains the wide fixture with L2 regularization, under which its
-    /// labels keep several context ids (the L1 default merges most of them).
+    /// labels keep several context ids (the L1 of `train_wide_model` merges
+    /// most of them).
     fn train_wide_l2_model() -> Model {
         let (_, char_def, unk_def, feature_def, rewrite_def, _) = fixtures();
         let (seed, corpus) = wide_seed_and_corpus();

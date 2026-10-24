@@ -19,5 +19,6 @@ Lindera CRF is a pure Rust implementation of Conditional Random Fields (CRFs), f
 
 - **Serialization backend**: Switched from `bincode` to `rkyv` for zero-copy deserialization
 - **Elastic Net regularization**: Added `Regularization::ElasticNet` combining L1 and L2 penalties
+- **Default regularization**: `Trainer::new` regularizes with L2 and `DEFAULT_LAMBDA` (1.0), the objective of MeCab's learner with its default `-c 1.0`; rucrf's default is L1 with 0.1
 - **Rust 2024 edition**: Updated to Rust 2024 edition
 - **Dependency updates**: Updated `argmin`, `argmin-math`, `hashbrown`, etc.

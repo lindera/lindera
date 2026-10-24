@@ -50,7 +50,7 @@ Warning: 0 of the 14 gold tokens are seed words, and 14 are not although seed ro
 `lindera train` は、どれで止まったかを、イテレーション数と評価回数とともに出力します。1 回の評価は、全ラティスの前向き・後向きの 1 回分です。`resources/training/` のファイルでは次のとおりです。
 
 ```text
-L-BFGS stopped after 15 iterations and 40 evaluations of the loss and its gradient: converged
+L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradient: converged
 ```
 
 ## 必要な入力ファイル
@@ -245,14 +245,14 @@ MeCab 互換の3セクション形式による素性正規化ルールです。�
 
 | パラメータ | 説明 | デフォルト |
 | --- | --- | --- |
-| `lambda` | 正則化係数（過学習の制御） | 0.01 |
-| `regularization` | 正則化の種類: `l1`、`l2`、`elasticnet` のいずれか | `l1` |
+| `lambda` | 正則化係数（過学習の制御）。0 以上。`l2` では MeCab の `-c C` が `1 / C` に当たる | 1.0 |
+| `regularization` | 正則化の種類: `l1`、`l2`、`elasticnet` のいずれか | `l2` |
 | `elastic-net-l1-ratio` | Elastic Net 正則化の L1 比率（0.0-1.0、`--regularization elasticnet` の場合のみ使用） | 0.5 |
 | `max-iterations` | 最大学習イテレーション数 | 100 |
 | `eta` | 収束判定の許容値（[学習のしくみ](#学習のしくみ)を参照）。`0` で判定を切ります | 0.00005 |
 | `max-threads` | 並列処理スレッド数 | CPU コア数 |
 
-[#1110](https://github.com/lindera/lindera/issues/1110) の mecab-ipadic の交差検証データでは、デフォルトの L1 正則化はまだ目的関数が収束する前に `max-iterations` に達します。一方、MeCab のデフォルトの `-c 1.0` に当たる L2 の `lambda` 1.0 は、MeCab の学習器とほぼ同じイテレーション数で収束します（[#1167](https://github.com/lindera/lindera/issues/1167)）。このデータでの学習時間は MeCab の学習器の約 2 倍で、その約 3 分の 2 は最適化の外、つまり最適化を始める前（[#1263](https://github.com/lindera/lindera/issues/1263)）と終えた後にかかります。
+デフォルトは MeCab の学習器と同じです。L2 正則化の `lambda` 1.0 は、MeCab の `-c 1.0` の目的関数に当たります。[#1110](https://github.com/lindera/lindera/issues/1110) の mecab-ipadic の交差検証データでは、MeCab の学習器と同じスコアになり、ほぼ同じイテレーション数（81〜87）で収束します（[#1261](https://github.com/lindera/lindera/issues/1261)）。5 分割の平均で、境界 F1 は 0.9613、span + 品詞（4 列）F1 は 0.9398 です。v6 のデフォルトの L1・`lambda` 0.01 は、すべての分割で `max-iterations` に達し、0.9572 と 0.9344 でした。L1 は多くの重みを 0 にし、`lindera export` は重みの等しいラベルに 1 つの文脈 ID を与えるので、L1 の `matrix.def` は小さくなります。このデータでは L2 の 18.9 MB に対して 8.7 MB で、L2 ではビルドした辞書が 3.8 % 大きくなります。このデータでの学習時間は MeCab の学習器の約 2 倍で、その約 3 分の 2 は最適化の外、つまり最適化を始める前（[#1263](https://github.com/lindera/lindera/issues/1263)）と終えた後にかかります。
 
 ## CLI の使用
 
@@ -266,7 +266,6 @@ lindera train \
     --unk-def unk.def \
     --feature-def feature.def \
     --rewrite-def rewrite.def \
-    --lambda 0.01 \
     --max-iterations 100 \
     --max-threads 4 \
     --output model.dat
@@ -300,14 +299,14 @@ lindera export \
 たとえば上の `unk.def` で、最初の `KANJI` の行の後に 2 つ目の `KANJI` の行 `KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*` を加えると、エクスポートした `unk.def` は両方の行を入力と同じ順序で持ちます。
 
 ```csv
-DEFAULT,1,1,32764,名詞,一般,*,*,*,*,*,*,*
-SPACE,1,1,0,記号,空白,*,*,*,*,*,*,*
-HIRAGANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
-KATAKANA,1,1,32764,名詞,一般,*,*,*,*,*,*,*
-KANJI,1,1,32764,名詞,一般,*,*,*,*,*,*,*
-KANJI,1,1,0,名詞,サ変接続,*,*,*,*,*,*,*
-ALPHA,1,1,0,名詞,固有名詞,一般,*,*,*,*,*,*
-NUMERIC,1,1,0,名詞,数,*,*,*,*,*,*,*
+DEFAULT,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+SPACE,10,7,0,記号,空白,*,*,*,*,*,*,*
+HIRAGANA,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+KANJI,3,3,4179,名詞,サ変接続,*,*,*,*,*,*,*
+ALPHA,11,10,10957,名詞,固有名詞,一般,*,*,*,*,*,*
+NUMERIC,11,10,10957,名詞,数,*,*,*,*,*,*,*
 ```
 
 ### Build
@@ -403,7 +402,6 @@ let config = TrainerConfig::from_readers(
 
 // Initialize and configure trainer
 let trainer = Trainer::new(config)?
-    .regularization_cost(0.01)
     .max_iter(100)
     .num_threads(4);
 

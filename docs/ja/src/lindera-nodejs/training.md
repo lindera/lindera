@@ -32,7 +32,7 @@ train({
   featureDef: "resources/training/feature.def",
   rewriteDef: "resources/training/rewrite.def",
   output: "/tmp/model.dat",
-  lambda: 0.01,
+  lambda: 1.0,
   maxIter: 100,
   maxThreads: 4,
 });
@@ -49,7 +49,7 @@ train({
 | `featureDef` | `string` | 必須 | 素性定義ファイルのパス（feature.def） |
 | `rewriteDef` | `string` | 必須 | 書き換えルール定義ファイルのパス（rewrite.def） |
 | `output` | `string` | 必須 | 学習済みモデルファイルの出力パス |
-| `lambda` | `number` | `0.01` | L1 正則化コスト（0.0--1.0） |
+| `lambda` | `number` | `1.0` | L2 正則化係数（0 以上。1.0 は MeCab の `-c 1.0`）。バインディングは L2 正則化で学習し、正則化の種類はまだ選べません（[#1262](https://github.com/lindera/lindera/issues/1262)） |
 | `maxIter` | `number` | `100` | 最大学習イテレーション数。目的関数が収束すると（相対変化が 3 回続けて 5e-5 を下回ると）、それより前に止まります |
 | `maxThreads` | `number \| undefined` | `undefined` | スレッド数（undefined = CPU コア数を自動検出） |
 
@@ -112,7 +112,7 @@ train({
   featureDef: "resources/training/feature.def",
   rewriteDef: "resources/training/rewrite.def",
   output: "/tmp/model.dat",
-  lambda: 0.01,
+  lambda: 1.0,
   maxIter: 100,
 });
 

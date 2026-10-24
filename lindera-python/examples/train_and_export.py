@@ -174,7 +174,7 @@ def main():
             feature_def=str(files["feature_def"]),
             rewrite_def=str(files["rewrite_def"]),
             output=str(model_file),
-            lambda_=0.01,  # L1 regularization
+            lambda_=1.0,  # L2 regularization coefficient (the default)
             max_iter=10,  # Number of training iterations
             max_threads=None,  # Auto-detect CPU cores
         )

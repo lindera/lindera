@@ -8,7 +8,9 @@ use std::path::Path;
 
 use magnus::{Error, Integer, Ruby, function};
 
-use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, TrainerConfig};
+use lindera::dictionary::trainer::{
+    Corpus, DEFAULT_LAMBDA, Model, SerializableModel, Trainer, TrainerConfig,
+};
 
 use crate::error::to_magnus_error;
 use crate::util::optional_integer_arg;
@@ -25,7 +27,9 @@ use crate::util::optional_integer_arg;
 /// * `feature_def` - Feature definition file path (feature.def).
 /// * `rewrite_def` - Rewrite rule definition file path (rewrite.def).
 /// * `output` - Output model file path.
-/// * `lambda` - L1 regularization (0.0-1.0), default: 0.01.
+/// * `lambda` - L2 regularization coefficient (>= 0), default (also for
+///   `nil`): 1.0, MeCab's `-c 1.0`. The bindings train with L2
+///   regularization; the type cannot be chosen yet (#1262).
 /// * `max_iter` - Maximum number of iterations, 0 or more, default: 100.
 /// * `max_threads` - Maximum number of threads, 0 or more (nil = auto-detect
 ///   CPU cores).
@@ -89,7 +93,7 @@ fn train(
 
     // Initialize trainer
     let num_threads = max_threads.unwrap_or_else(num_cpus::get);
-    let lambda_val = lambda.unwrap_or(0.01);
+    let lambda_val = lambda.unwrap_or(DEFAULT_LAMBDA);
     let max_iter_val = max_iter.unwrap_or(100);
 
     let trainer = Trainer::new(config)

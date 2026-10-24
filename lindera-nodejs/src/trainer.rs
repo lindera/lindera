@@ -6,7 +6,9 @@
 use std::fs::File;
 use std::path::Path;
 
-use lindera::dictionary::trainer::{Corpus, Model, SerializableModel, Trainer, TrainerConfig};
+use lindera::dictionary::trainer::{
+    Corpus, DEFAULT_LAMBDA, Model, SerializableModel, Trainer, TrainerConfig,
+};
 
 use crate::error::to_napi_error;
 use crate::util::optional_integer_arg;
@@ -28,7 +30,9 @@ pub struct TrainOptions {
     pub rewrite_def: String,
     /// Output path for the trained model file.
     pub output: String,
-    /// L1 regularization cost (0.0-1.0, default: 0.01).
+    /// L2 regularization coefficient (>= 0, default: 1.0, MeCab's `-c 1.0`).
+    /// The bindings train with L2 regularization; the type cannot be
+    /// chosen yet (#1262).
     pub lambda: Option<f64>,
     /// Maximum number of training iterations, an integer (default: 100).
     pub max_iter: Option<f64>,
@@ -49,7 +53,7 @@ pub struct TrainOptions {
 #[napi]
 pub fn train(options: TrainOptions) -> napi::Result<()> {
     // Check the settings before touching any file.
-    let lambda = options.lambda.unwrap_or(0.01);
+    let lambda = options.lambda.unwrap_or(DEFAULT_LAMBDA);
     let max_iter = optional_integer_arg("maxIter", options.max_iter)?.unwrap_or(100);
     let num_threads =
         optional_integer_arg("maxThreads", options.max_threads)?.unwrap_or_else(num_cpus::get);

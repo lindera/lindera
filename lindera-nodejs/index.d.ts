@@ -826,7 +826,11 @@ export interface TrainOptions {
   rewriteDef: string
   /** Output path for the trained model file. */
   output: string
-  /** L1 regularization cost (0.0-1.0, default: 0.01). */
+  /**
+   * L2 regularization coefficient (>= 0, default: 1.0, MeCab's `-c 1.0`).
+   * The bindings train with L2 regularization; the type cannot be
+   * chosen yet (#1262).
+   */
   lambda?: number
   /** Maximum number of training iterations, an integer (default: 100). */
   maxIter?: number
