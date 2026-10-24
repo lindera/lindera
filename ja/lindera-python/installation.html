@@ -209,8 +209,11 @@ unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 <pre><code class="language-bash">cd lindera-python
 maturin develop
 </code></pre>
-<p>または、プロジェクトの Makefile を使用します：</p>
-<pre><code class="language-bash">make python-develop
+<p>または、<code>maturin develop</code> のインストール先の仮想環境を、プロジェクトの Makefile で作ります。<code>make setup-venv</code> は、maturin と pytest を入れた <code>lindera-python/.venv</code> を作ります：</p>
+<pre><code class="language-bash">make setup-venv
+source lindera-python/.venv/bin/activate
+cd lindera-python
+maturin develop
 </code></pre>
 <h4 id="学習機能付きビルド"><a class="header" href="#学習機能付きビルド">学習機能付きビルド</a></h4>
 <p><code>train</code> feature を有効にすると、CRF ベースの辞書学習機能が利用可能になります。デフォルトで有効になっています：</p>

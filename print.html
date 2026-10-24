@@ -3320,8 +3320,11 @@ unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 <pre><code class="language-bash">cd lindera-python
 maturin develop
 </code></pre>
-<p>Or use the project Makefile:</p>
-<pre><code class="language-bash">make python-develop
+<p>Or let the project Makefile create the virtual environment that <code>maturin develop</code> installs into: <code>make setup-venv</code> creates <code>lindera-python/.venv</code> with maturin and pytest installed:</p>
+<pre><code class="language-bash">make setup-venv
+source lindera-python/.venv/bin/activate
+cd lindera-python
+maturin develop
 </code></pre>
 <h4 id="build-with-training-support"><a class="header" href="#build-with-training-support">Build with Training Support</a></h4>
 <p>The <code>train</code> feature enables CRF-based dictionary training functionality. It is enabled by default:</p>
@@ -4260,7 +4263,7 @@ npm install
 npm run build
 </code></pre>
 <p>Or use the project Makefile:</p>
-<pre><code class="language-bash">make nodejs-develop
+<pre><code class="language-bash">make build-lindera-nodejs
 </code></pre>
 <h3 id="build-with-training-support-1"><a class="header" href="#build-with-training-support-1">Build with Training Support</a></h3>
 <p>The <code>train</code> feature enables CRF-based dictionary training functionality. It is enabled by default:</p>
