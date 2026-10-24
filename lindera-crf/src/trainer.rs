@@ -442,6 +442,15 @@ pub enum Regularization {
 #[cfg_attr(docsrs, doc(cfg(feature = "train")))]
 pub const DEFAULT_ETA: f64 = 5e-5;
 
+/// The default regularization coefficient, set with
+/// [`Trainer::regularization`]: `1.0`. With [`Regularization::L2`], the
+/// default type, the objective is the training loss plus
+/// `lambda * ‖w‖² / 2`, which is that of MeCab's learner with its default
+/// `-c 1.0`. MeCab adds `‖w‖² / (2C)`, so `lambda` is `1 / C` in general:
+/// `-c 0.5` is `lambda` 2.0.
+#[cfg_attr(docsrs, doc(cfg(feature = "train")))]
+pub const DEFAULT_LAMBDA: f64 = 1.0;
+
 /// Why the optimizer stopped.
 #[cfg_attr(docsrs, doc(cfg(feature = "train")))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -503,14 +512,16 @@ pub struct Trainer {
 }
 
 impl Trainer {
-    /// Creates a new trainer.
+    /// Creates a new trainer: L2 regularization with [`DEFAULT_LAMBDA`], at
+    /// most 100 iterations, the convergence test with [`DEFAULT_ETA`], and
+    /// one thread.
     #[must_use]
     pub const fn new() -> Self {
         Self {
             max_iter: 100,
             n_threads: 1,
-            regularization: Regularization::L1,
-            lambda: 0.1,
+            regularization: Regularization::L2,
+            lambda: DEFAULT_LAMBDA,
             eta: DEFAULT_ETA,
         }
     }
@@ -548,7 +559,8 @@ impl Trainer {
         Ok(self)
     }
 
-    /// Sets regularization settings.
+    /// Sets regularization settings. The default is
+    /// [`Regularization::L2`] with [`DEFAULT_LAMBDA`].
     ///
     /// # Errors
     ///
@@ -1358,6 +1370,16 @@ mod tests {
         for eta in [0.0, DEFAULT_ETA, 1.0] {
             assert!(Trainer::new().eta(eta).is_ok(), "eta {eta}");
         }
+    }
+
+    // A new trainer regularizes with L2 and DEFAULT_LAMBDA, 1.0, the
+    // objective of MeCab's learner with its default -c 1.0 (#1261).
+    #[test]
+    fn new_defaults_to_l2_with_the_default_lambda() {
+        let trainer = Trainer::new();
+        assert!(trainer.regularization == Regularization::L2);
+        assert_eq!(trainer.lambda.to_bits(), DEFAULT_LAMBDA.to_bits());
+        assert_eq!(DEFAULT_LAMBDA.to_bits(), 1.0f64.to_bits());
     }
 
     // The L1 run of the wide fixture from zero weights reaches an iteration
