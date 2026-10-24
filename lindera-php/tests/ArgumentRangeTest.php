@@ -62,9 +62,11 @@ class ArgumentRangeTest extends TestCase
         ];
         if (class_exists(Lindera\Trainer::class)) {
             $missing = self::MISSING;
+            // The counts of training start at 1: the trainer rejected 0 only
+            // after building every lattice (#1275).
             $cases += [
-                'Trainer::train($max_iter)' => [static fn(int $v) => Lindera\Trainer::train($missing, $missing, $missing, $missing, $missing, $missing, $missing, max_iter: $v), 0, $unsigned],
-                'Trainer::train($max_threads)' => [static fn(int $v) => Lindera\Trainer::train($missing, $missing, $missing, $missing, $missing, $missing, $missing, max_threads: $v), 0, $unsigned],
+                'Trainer::train($max_iter)' => [static fn(int $v) => Lindera\Trainer::train($missing, $missing, $missing, $missing, $missing, $missing, $missing, max_iter: $v), 1, $unsigned],
+                'Trainer::train($max_threads)' => [static fn(int $v) => Lindera\Trainer::train($missing, $missing, $missing, $missing, $missing, $missing, $missing, max_threads: $v), 1, $unsigned],
             ];
         }
         return $cases;

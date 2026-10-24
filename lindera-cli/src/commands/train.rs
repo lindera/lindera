@@ -86,7 +86,8 @@ pub struct TrainArgs {
         short = 'i',
         long = "max-iterations",
         default_value = "100",
-        help = "Maximum number of iterations for training"
+        value_parser = clap::value_parser!(u64).range(1..),
+        help = "Maximum number of iterations for training (1 or more)"
     )]
     iter: u64,
     #[clap(
@@ -99,7 +100,8 @@ pub struct TrainArgs {
     #[clap(
         short = 't',
         long = "max-threads",
-        help = "Maximum number of threads (defaults to CPU core count; affects only speed, never the trained model)"
+        value_parser = clap::builder::RangedU64ValueParser::<usize>::new().range(1..),
+        help = "Maximum number of threads, 1 or more (defaults to CPU core count; affects only speed, never the trained model)"
     )]
     max_threads: Option<usize>,
 }

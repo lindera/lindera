@@ -141,18 +141,20 @@ function cases() {
       rewriteDef: MISSING,
       output: MISSING,
     };
+    // The counts of training start at 1: the trainer rejected 0 only after
+    // building every lattice (#1275).
     Object.assign(result, {
       "train({maxIter})": {
         call: (v) => lindera.train({ ...options, maxIter: v }),
         name: "maxIter",
-        range: ["0", "18446744073709551615"],
-        outside: [-1],
+        range: ["1", "18446744073709551615"],
+        outside: [-1, 0],
       },
       "train({maxThreads})": {
         call: (v) => lindera.train({ ...options, maxThreads: v }),
         name: "maxThreads",
-        range: ["0", USIZE_MAX],
-        outside: [-1],
+        range: ["1", USIZE_MAX],
+        outside: [-1, 0],
       },
     });
   }

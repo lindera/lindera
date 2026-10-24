@@ -18,7 +18,9 @@
 //! binding that receives a wider value (PHP's `int`, a JS number) converts it
 //! with [`integer_argument`] or [`integer_argument_from_f64`], which reject a
 //! value the target type cannot hold instead of wrapping it, and name the
-//! parameter and the accepted range in the message.
+//! parameter and the accepted range in the message. A count that must be 1
+//! or more, such as the number of training iterations, is converted to
+//! [`Positive<T>`], whose range starts at 1.
 //!
 //! # Float range
 //!
@@ -79,6 +81,44 @@ macro_rules! impl_integer_argument {
 }
 
 impl_integer_argument!(i16, u16, i32, u32, i64, u64, usize);
+
+/// A count of 1 or more that `T` holds, such as the number of training
+/// iterations or threads, which the core rejects as 0 only when training
+/// starts.
+///
+/// A binding converts such an argument to `Positive<T>` instead of `T`, so
+/// that [`integer_argument`] and [`integer_argument_from_f64`] reject 0 as
+/// well as a negative value, with the range from 1 in the message:
+/// `max_iter must be an integer between 1 and 18446744073709551615, got 0`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Positive<T>(pub T);
+
+impl<T: IntegerArgument> TryFrom<i128> for Positive<T> {
+    type Error = ();
+
+    /// Converts `value` to `T` when it is 1 or more.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The value.
+    ///
+    /// # Returns
+    ///
+    /// The value, or `Err(())` when it is below 1 or `T` cannot hold it.
+    fn try_from(value: i128) -> Result<Self, ()> {
+        if value < 1 {
+            return Err(());
+        }
+        T::try_from(value).map(Self).map_err(|_| ())
+    }
+}
+
+impl<T: IntegerArgument> IntegerArgument for Positive<T> {
+    /// 1, the smallest count.
+    const MIN: i128 = 1;
+    /// `T`'s `MAX`.
+    const MAX: i128 = T::MAX;
+}
 
 /// Converts an integer argument to the type the core stores it as.
 ///
@@ -360,6 +400,58 @@ mod tests {
             )
         );
         assert!(integer_argument_from_f64::<usize>("n", 0.5).is_err());
+    }
+
+    #[test]
+    fn test_positive_accepts_one_to_the_maximum_of_its_type() {
+        assert_eq!(
+            integer_argument::<Positive<u64>>("max_iter", 1),
+            Ok(Positive(1))
+        );
+        assert_eq!(
+            integer_argument::<Positive<u64>>("max_iter", i64::MAX),
+            Ok(Positive(i64::MAX as u64))
+        );
+        assert_eq!(Positive::<u16>::try_from(65535), Ok(Positive(u16::MAX)));
+        assert_eq!(
+            integer_argument_from_f64::<Positive<usize>>("maxThreads", 1.0),
+            Ok(Positive(1))
+        );
+        assert_eq!(
+            integer_argument_from_f64::<Positive<u64>>("maxIter", 9007199254740991.0),
+            Ok(Positive(9007199254740991))
+        );
+    }
+
+    #[test]
+    fn test_positive_rejects_zero_and_negative_values_with_the_range_from_one() {
+        for value in [0, -1, i64::MIN] {
+            assert_eq!(
+                integer_argument::<Positive<u64>>("max_iter", value),
+                Err(format!(
+                    "max_iter must be an integer between 1 and {}, got {value}",
+                    u64::MAX
+                ))
+            );
+        }
+        for (value, shown) in [(0.0, "0"), (-0.0, "0"), (0.5, "0.5"), (-1.0, "-1")] {
+            assert_eq!(
+                integer_argument_from_f64::<Positive<usize>>("maxThreads", value),
+                Err(format!(
+                    "maxThreads must be an integer between 1 and {}, got {shown}",
+                    usize::MAX
+                ))
+            );
+        }
+    }
+
+    #[test]
+    fn test_positive_rejects_values_its_type_cannot_hold() {
+        assert_eq!(Positive::<u16>::try_from(65536), Err(()));
+        assert_eq!(
+            integer_argument::<Positive<u16>>("n", 65536),
+            Err("n must be an integer between 1 and 65535, got 65536".into())
+        );
     }
 
     #[test]

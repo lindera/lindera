@@ -1410,6 +1410,11 @@ With them, some values that v6 accepted now throw:
   `NaN` or `Infinity`, which v6 truncated or turned into 0.
 - In WASM, a BigInt cost threshold outside the 64-bit range, and a cost
   threshold that is not a BigInt.
+- An iteration or thread count of 0 for the training functions, which v6
+  passed to the trainer: training then failed only after the corpus was
+  read and every lattice was built. The counts take 1 or more, and the
+  Python and Ruby bindings reject 0 too, with a `ValueError` and a
+  `RangeError` ([#1275](https://github.com/lindera/lindera/issues/1275)).
 
 Pass an integer in the range. The TypeScript declarations of the Node.js
 and WASM bindings do not change. The Python and Ruby bindings already rejected

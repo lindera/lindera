@@ -13,7 +13,7 @@ Lindera Ruby provides Ruby bindings for the Lindera morphological analysis engin
 
 ## Integer arguments
 
-An integer parameter takes only the values its setting can hold. `default_word_cost` of `Lindera::Metadata.new` takes -32768 to 32767, the context IDs 0 to 65535, and the penalties of `Lindera::Penalty.new` a 32-bit integer. A count or an index takes 0 or more: the thresholds of `Lindera::Penalty.new`, `index` of `Schema#get_field_name` and `Token#get_detail`, `n` of `Tokenizer#tokenize_nbest`, and `max_iter` and `max_threads` of `Lindera.train`. `cost_threshold` of `Tokenizer#tokenize_nbest` takes a 64-bit integer. A value outside the range raises a `RangeError` that names the parameter and the range; an index past the end still returns `nil`:
+An integer parameter takes only the values its setting can hold. `default_word_cost` of `Lindera::Metadata.new` takes -32768 to 32767, the context IDs 0 to 65535, and the penalties of `Lindera::Penalty.new` a 32-bit integer. A count or an index takes 0 or more: the thresholds of `Lindera::Penalty.new`, `index` of `Schema#get_field_name` and `Token#get_detail`, and `n` of `Tokenizer#tokenize_nbest`. `max_iter` and `max_threads` of `Lindera.train` take 1 or more. `cost_threshold` of `Tokenizer#tokenize_nbest` takes a 64-bit integer. A value outside the range raises a `RangeError` that names the parameter and the range; an index past the end still returns `nil`:
 
 ```ruby
 require 'lindera'

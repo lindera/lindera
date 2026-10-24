@@ -248,9 +248,9 @@ The pattern, the replacement and the feature are split into columns as described
 | `lambda` | Regularization coefficient (controls overfitting), finite and >= 0; with `l2`, MeCab's `-c C` is `1 / C` | 1.0 |
 | `regularization` | Regularization type: `l1`, `l2`, or `elasticnet`, in any case (`elastic_net` and `elastic-net` also select Elastic Net) | `l2` |
 | `elastic-net-l1-ratio` | L1 ratio for Elastic Net regularization (0.0-1.0, only used with `--regularization elasticnet`) | 0.5 |
-| `max-iterations` | Maximum number of training iterations | 100 |
+| `max-iterations` | Maximum number of training iterations, 1 or more | 100 |
 | `eta` | Tolerance of the convergence test (see [How training works](#how-training-works)); `0` disables the test | 0.00005 |
-| `max-threads` | Number of parallel processing threads | CPU core count |
+| `max-threads` | Number of parallel processing threads, 1 or more | CPU core count |
 
 The defaults are those of MeCab's learner: L2 regularization with `lambda` 1.0 is its objective with `-c 1.0`. On the mecab-ipadic cross-validation data of [#1110](https://github.com/lindera/lindera/issues/1110), they score as MeCab's learner does and converge in about as many iterations, 81 to 87 ([#1261](https://github.com/lindera/lindera/issues/1261)): boundary F1 0.9613 and span + POS (4 columns) F1 0.9398 on average over 5 folds, where v6's default, L1 with `lambda` 0.01, reached `max-iterations` on every fold with 0.9572 and 0.9344. L1 sets many weights to 0, and `lindera export` gives labels with equal weights one context ID, so the L1 `matrix.def` is smaller: 8.7 MB there against 18.9 MB with L2, which makes the built dictionary 3.8 % larger. Training there takes about twice as long as MeCab's learner, and about two thirds of the time is spent outside the optimizer: before it starts ([#1263](https://github.com/lindera/lindera/issues/1263)) and after it stops.
 

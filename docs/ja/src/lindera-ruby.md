@@ -13,7 +13,7 @@ Lindera Ruby は、[Magnus](https://github.com/matsadler/magnus) と [rb-sys](ht
 
 ## 整数の引数
 
-整数の引数は、その設定が保持できる値だけを受け付けます。`Lindera::Metadata.new` の `default_word_cost` は -32768 から 32767、文脈 ID は 0 から 65535、`Lindera::Penalty.new` のペナルティは 32 ビットの整数を受け付けます。個数や位置は 0 以上を受け付けます。該当するのは、`Lindera::Penalty.new` のしきい値、`Schema#get_field_name` と `Token#get_detail` の `index`、`Tokenizer#tokenize_nbest` の `n`、`Lindera.train` の `max_iter` と `max_threads` です。`Tokenizer#tokenize_nbest` の `cost_threshold` は 64 ビットの整数を受け付けます。範囲外の値は、引数の名前と範囲を含む `RangeError` を投げます。末尾より先の位置は、これまでどおり `nil` を返します。
+整数の引数は、その設定が保持できる値だけを受け付けます。`Lindera::Metadata.new` の `default_word_cost` は -32768 から 32767、文脈 ID は 0 から 65535、`Lindera::Penalty.new` のペナルティは 32 ビットの整数を受け付けます。個数や位置は 0 以上を受け付けます。該当するのは、`Lindera::Penalty.new` のしきい値、`Schema#get_field_name` と `Token#get_detail` の `index`、`Tokenizer#tokenize_nbest` の `n` です。`Lindera.train` の `max_iter` と `max_threads` は 1 以上を受け付けます。`Tokenizer#tokenize_nbest` の `cost_threshold` は 64 ビットの整数を受け付けます。範囲外の値は、引数の名前と範囲を含む `RangeError` を投げます。末尾より先の位置は、これまでどおり `nil` を返します。
 
 ```ruby
 require 'lindera'
