@@ -929,6 +929,7 @@ EOS
 <p>学習が止まると、止まった理由を、イテレーション数と損失・勾配の評価回数とともに出力します（上の <code>--eta</code> を参照）：</p>
 <pre><code class="language-text">L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradient: converged
 </code></pre>
+<p>あるイテレーションで目的関数が変わらなかったとき、またはライン探索が失敗したときは、続けて標準エラーに警告を書きます（<a href="../development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。</p>
 <p>学習済みモデルには以下が含まれます：</p>
 <ul>
 <li><strong>シード辞書の語</strong>: シード辞書のすべてのレコード（学習された重みと文脈 ID 付き）</li>

@@ -207,8 +207,8 @@
 <p>The CRF is then trained with L-BFGS (OWL-QN when the regularization has an L1 part). Training stops at the first of these:</p>
 <ul>
 <li><code>converged</code>: the relative change of the objective, <code>|previous - current| / |previous|</code>, stayed below <code>eta</code> for 3 iterations in a row. The default <code>eta</code> is that of MeCab's learner, which applies the same test to every evaluation, line-search trials included, where Lindera counts iterations.</li>
-<li><code>no progress</code>: an iteration left the objective unchanged. When this happens after a few iterations, the model is barely trained, and <code>lindera train</code> warns about it.</li>
-<li>The line search of an iteration failed; the model keeps the best weights of the run, with a warning.</li>
+<li><code>no progress</code>: an iteration left the objective unchanged. When this happens after a few iterations, the model is barely trained. <code>lindera train</code> writes a warning on standard error whenever training stops this way, after any number of iterations.</li>
+<li>The line search of an iteration failed; the model keeps the best weights of the run, and <code>lindera train</code> writes a warning on standard error.</li>
 <li><code>max-iterations</code> was reached before the objective converged.</li>
 </ul>
 <p><code>lindera train</code> prints which one stopped it, with the number of iterations and of evaluations, each evaluation being one forward-backward pass over every lattice; with the files in <code>resources/training/</code>:</p>
