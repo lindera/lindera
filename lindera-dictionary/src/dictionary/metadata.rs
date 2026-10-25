@@ -94,6 +94,16 @@ pub struct ModelInfo {
     pub training_iterations: u64,
     /// Regularization coefficient used during training.
     pub regularization: f64,
+    /// Regularization type used during training: `l1`, `l2` or `elasticnet`
+    /// (#1272). Absent from a `model_info` that `lindera export` wrote before
+    /// it recorded the type, and then left out when the metadata is written
+    /// again.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub regularization_type: Option<String>,
+    /// L1 ratio of Elastic Net regularization, present only when
+    /// `regularization_type` is `elasticnet` (#1272).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub elastic_net_l1_ratio: Option<f64>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
@@ -461,6 +471,49 @@ mod tests {
         });
         let info: ModelInfo = serde_json::from_value(json).unwrap();
         assert_eq!(info.training_iterations, 10);
+    }
+
+    /// A `model_info` written before the regularization type was recorded
+    /// still parses, and writing it back does not add the new fields, so the
+    /// `metadata.json` of a dictionary built from it stays as it was (#1272).
+    #[test]
+    fn model_info_without_the_regularization_type_parses_and_stays_without_it() {
+        let json = serde_json::json!({
+            "feature_count": 4,
+            "label_count": 1,
+            "max_left_context_id": 63,
+            "max_right_context_id": 63,
+            "connection_matrix_size": "64x64",
+            "version": "2.0.0",
+            "training_iterations": 10,
+            "regularization": 0.01,
+        });
+        let info: ModelInfo = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(info.regularization_type, None);
+        assert_eq!(info.elastic_net_l1_ratio, None);
+        assert_eq!(serde_json::to_value(&info).unwrap(), json);
+    }
+
+    /// A `model_info` that records the regularization type, and the Elastic
+    /// Net ratio, keeps both through a JSON round trip (#1272).
+    #[test]
+    fn model_info_keeps_the_regularization_type_and_the_ratio() {
+        let json = serde_json::json!({
+            "feature_count": 4,
+            "label_count": 1,
+            "max_left_context_id": 63,
+            "max_right_context_id": 63,
+            "connection_matrix_size": "64x64",
+            "version": "3.0.0",
+            "training_iterations": 10,
+            "regularization": 1.0,
+            "regularization_type": "elasticnet",
+            "elastic_net_l1_ratio": 0.3,
+        });
+        let info: ModelInfo = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(info.regularization_type.as_deref(), Some("elasticnet"));
+        assert_eq!(info.elastic_net_l1_ratio, Some(0.3));
+        assert_eq!(serde_json::to_value(&info).unwrap(), json);
     }
 
     /// The version must survive a JSON round trip; a `skip_serializing_if`

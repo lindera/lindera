@@ -7,6 +7,7 @@ use anyhow::Result;
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
+use crate::RegularizationType;
 use crate::corpus::Word;
 use crate::feature_csv::{split_feature, wildcard_feature};
 use crate::lexicon_csv::{csv_field, read_lexicon_rows};
@@ -14,8 +15,10 @@ use crate::lexicon_csv::{csv_field, read_lexicon_rows};
 /// The `metadata.version` this build writes into `model.dat` and requires
 /// when reading one. Bumped whenever the layout or the meaning of
 /// [`SerializableModel`] changes; 2.0.0 keeps every `unk.def` line as its own
-/// entry (`SerializableModel::unk_entries`, #1110).
-pub const MODEL_FORMAT_VERSION: &str = "2.0.0";
+/// entry (`SerializableModel::unk_entries`, #1110), and 3.0.0 records the
+/// regularization type and the Elastic Net ratio in [`ModelMetadata`]
+/// (#1272).
+pub const MODEL_FORMAT_VERSION: &str = "3.0.0";
 
 /// Checks that a model was written in the format this build reads.
 ///
@@ -250,6 +253,13 @@ pub struct ModelMetadata {
     pub version: String,
     /// The regularization coefficient used in training.
     pub regularization: f64,
+    /// The regularization type used in training (#1272). Exported as
+    /// `model_info.regularization_type`.
+    pub regularization_type: RegularizationType,
+    /// The L1 ratio of Elastic Net regularization, `None` for L1 and L2
+    /// (#1272). Exported as `model_info.elastic_net_l1_ratio`, for Elastic
+    /// Net only.
+    pub elastic_net_l1_ratio: Option<f64>,
     /// The number of L-BFGS iterations that ran: at most the maximum set with
     /// [`Trainer::max_iter`](crate::Trainer::max_iter), fewer when training
     /// stopped earlier (#1169). Exported as `model_info.training_iterations`.
@@ -357,6 +367,8 @@ pub struct Model {
     /// order.
     pub(crate) user_entries: Vec<UserEntry>,
     pub(crate) merged_model: Option<lindera_crf::MergedModel>,
+    /// The regularization training used, with the Elastic Net ratio.
+    pub(crate) regularization: lindera_crf::Regularization,
     pub(crate) regularization_cost: f64,
     /// The number of L-BFGS iterations that ran.
     pub(crate) iterations: u64,
@@ -374,18 +386,22 @@ impl Model {
     ///   of every `unk.def` entry.
     /// * `virtual_features` - The feature strings of the virtual labels,
     ///   which follow the exported labels in `raw_model`.
+    /// * `regularization` - The regularization used, with the Elastic Net
+    ///   ratio.
     /// * `regularization_cost` - The regularization coefficient used.
     /// * `iterations` - The number of L-BFGS iterations that ran.
     ///
     /// # Returns
     ///
     /// The model.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new_with_metadata(
         raw_model: lindera_crf::RawModel,
         config: super::config::TrainerConfig,
         feature_weights: Vec<f64>,
         labels: Vec<String>,
         virtual_features: Vec<String>,
+        regularization: lindera_crf::Regularization,
         regularization_cost: f64,
         iterations: u64,
     ) -> Self {
@@ -397,6 +413,7 @@ impl Model {
             virtual_features,
             user_entries: Vec::new(),
             merged_model: None,
+            regularization,
             regularization_cost,
             iterations,
         }
@@ -544,6 +561,8 @@ impl Model {
         // The context id maps of left-id.def and right-id.def, which
         // `Model::write_left_id_def` and `write_right_id_def` make the same way.
         let (left_id_map, right_id_map) = self.context_id_maps(&merged_model);
+        let (regularization_type, elastic_net_l1_ratio) =
+            RegularizationType::split(self.regularization);
 
         let serializable_model = SerializableModel {
             feature_weights,
@@ -552,6 +571,8 @@ impl Model {
             metadata: ModelMetadata {
                 version: MODEL_FORMAT_VERSION.to_string(),
                 regularization: self.regularization_cost,
+                regularization_type,
+                elastic_net_l1_ratio,
                 iterations: self.iterations,
                 feature_count: self.feature_weights.len(),
                 label_count: self.labels.len(),
@@ -1499,8 +1520,10 @@ impl SerializableModel {
 
         // Add model_info section with training statistics. The matrix size is
         // the one `write_connection_costs` writes: rows are right ids, columns
-        // left ids, each with 0 for BOS/EOS.
-        metadata["model_info"] = serde_json::json!({
+        // left ids, each with 0 for BOS/EOS. `regularization` is the
+        // coefficient, next to the type, and the Elastic Net ratio only for
+        // Elastic Net (#1272).
+        let mut model_info = serde_json::json!({
             "feature_count": self.feature_weights.len(),
             "label_count": self.labels.len(),
             "max_left_context_id": self.max_left_id,
@@ -1509,7 +1532,12 @@ impl SerializableModel {
             "version": self.metadata.version,
             "training_iterations": self.metadata.iterations,
             "regularization": self.metadata.regularization,
+            "regularization_type": self.metadata.regularization_type,
         });
+        if let Some(ratio) = self.metadata.elastic_net_l1_ratio {
+            model_info["elastic_net_l1_ratio"] = serde_json::json!(ratio);
+        }
+        metadata["model_info"] = model_info;
 
         // Write updated metadata
         let formatted = serde_json::to_string_pretty(&metadata)?;
@@ -1872,6 +1900,8 @@ mod determinism_tests {
             metadata: ModelMetadata {
                 version: MODEL_FORMAT_VERSION.to_string(),
                 regularization: 0.01,
+                regularization_type: crate::RegularizationType::ElasticNet,
+                elastic_net_l1_ratio: Some(0.3),
                 iterations: 10,
                 feature_count: 4,
                 label_count: 1,
