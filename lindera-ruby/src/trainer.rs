@@ -13,7 +13,7 @@ use lindera::dictionary::trainer::{
     Corpus, DEFAULT_ELASTIC_NET_L1_RATIO, DEFAULT_ETA, DEFAULT_LAMBDA, Model,
     ParseRegularizationTypeError, RegularizationType, SerializableModel, Trainer, TrainerConfig,
 };
-use lindera_binding::argument::{non_negative_float_argument, unit_interval_argument};
+use lindera_binding::argument::{Positive, non_negative_float_argument, unit_interval_argument};
 
 use crate::error::to_magnus_error;
 use crate::util::optional_integer_arg;
@@ -39,8 +39,8 @@ use crate::util::optional_integer_arg;
 ///   * `lambda` - Regularization coefficient, finite and >= 0, default
 ///     (also for `nil`): 1.0; with L2, MeCab's `-c C` is `1 / C`, so 1.0 is
 ///     MeCab's `-c 1.0`.
-///   * `max_iter` - Maximum number of iterations, 0 or more, default: 100.
-///   * `max_threads` - Maximum number of threads, 0 or more (nil =
+///   * `max_iter` - Maximum number of iterations, 1 or more, default: 100.
+///   * `max_threads` - Maximum number of threads, 1 or more (nil =
 ///     auto-detect CPU cores).
 ///   * `regularization:` - Regularization type: `"l1"`, `"l2"` or
 ///     `"elasticnet"` (in any case; also `"elastic_net"` or
@@ -111,8 +111,9 @@ fn train(ruby: &Ruby, args: &[Value]) -> Result<(), Error> {
     .map_err(range_error)?;
     let eta = non_negative_float_argument("eta", eta.flatten().unwrap_or(DEFAULT_ETA))
         .map_err(range_error)?;
-    let max_iter: Option<u64> = optional_integer_arg(ruby, "max_iter", max_iter.flatten())?;
-    let max_threads: Option<usize> =
+    let max_iter: Option<Positive<u64>> =
+        optional_integer_arg(ruby, "max_iter", max_iter.flatten())?;
+    let max_threads: Option<Positive<usize>> =
         optional_integer_arg(ruby, "max_threads", max_threads.flatten())?;
 
     let seed_path = Path::new(&seed);
@@ -151,8 +152,8 @@ fn train(ruby: &Ruby, args: &[Value]) -> Result<(), Error> {
     .map_err(|e| to_magnus_error(ruby, format!("Failed to load trainer configuration: {e}")))?;
 
     // Initialize trainer
-    let num_threads = max_threads.unwrap_or_else(num_cpus::get);
-    let max_iter_val = max_iter.unwrap_or(100);
+    let num_threads = max_threads.map_or_else(num_cpus::get, |Positive(n)| n);
+    let max_iter_val = max_iter.map_or(100, |Positive(n)| n);
 
     let trainer = Trainer::new(config)
         .map_err(|e| to_magnus_error(ruby, format!("Failed to initialize trainer: {e}")))?

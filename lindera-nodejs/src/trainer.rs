@@ -10,7 +10,7 @@ use lindera::dictionary::trainer::{
     Corpus, DEFAULT_ELASTIC_NET_L1_RATIO, DEFAULT_ETA, DEFAULT_LAMBDA, Model,
     ParseRegularizationTypeError, RegularizationType, SerializableModel, Trainer, TrainerConfig,
 };
-use lindera_binding::argument::{non_negative_float_argument, unit_interval_argument};
+use lindera_binding::argument::{Positive, non_negative_float_argument, unit_interval_argument};
 
 use crate::error::to_napi_error;
 use crate::util::optional_integer_arg;
@@ -35,9 +35,11 @@ pub struct TrainOptions {
     /// Regularization coefficient, finite and >= 0 (default: 1.0); with L2,
     /// MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0`.
     pub lambda: Option<f64>,
-    /// Maximum number of training iterations, an integer (default: 100).
+    /// Maximum number of training iterations, an integer of 1 or more
+    /// (default: 100).
     pub max_iter: Option<f64>,
-    /// Number of threads, an integer (undefined = auto-detect CPU cores).
+    /// Number of threads, an integer of 1 or more (undefined = auto-detect
+    /// CPU cores).
     pub max_threads: Option<f64>,
     /// Regularization type: `"l1"`, `"l2"` or `"elasticnet"` (in any case;
     /// also `"elastic_net"` or `"elastic-net"`) (default: `"l2"`).
@@ -61,7 +63,7 @@ pub struct TrainOptions {
 /// # Returns
 ///
 /// Nothing, or an error. A `maxIter` or `maxThreads` that is not an integer
-/// of 0 or more, and a `regularization`, `lambda`, `elasticNetL1Ratio` or
+/// of 1 or more, and a `regularization`, `lambda`, `elasticNetL1Ratio` or
 /// `eta` that is not accepted, are an `InvalidArg` error, raised before any
 /// file is read.
 #[napi]
@@ -85,9 +87,10 @@ pub fn train(options: TrainOptions) -> napi::Result<()> {
     .map_err(invalid_arg)?;
     let eta = non_negative_float_argument("eta", options.eta.unwrap_or(DEFAULT_ETA))
         .map_err(invalid_arg)?;
-    let max_iter = optional_integer_arg("maxIter", options.max_iter)?.unwrap_or(100);
-    let num_threads =
-        optional_integer_arg("maxThreads", options.max_threads)?.unwrap_or_else(num_cpus::get);
+    let max_iter = optional_integer_arg::<Positive<u64>>("maxIter", options.max_iter)?
+        .map_or(100, |Positive(n)| n);
+    let num_threads = optional_integer_arg::<Positive<usize>>("maxThreads", options.max_threads)?
+        .map_or_else(num_cpus::get, |Positive(n)| n);
 
     let seed_path = Path::new(&options.seed);
     let corpus_path = Path::new(&options.corpus);

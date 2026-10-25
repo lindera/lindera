@@ -1186,6 +1186,32 @@ mod with_trained_dictionary {
         }
     }
 
+    /// `--max-iterations` and `--max-threads` take 1 or more: clap rejects
+    /// 0 while it parses the arguments, so a missing corpus is never read,
+    /// where the trainer rejected 0 only after building every lattice
+    /// (#1275).
+    #[test]
+    fn train_rejects_zero_iterations_and_zero_threads() {
+        let dir = tempfile::tempdir().unwrap();
+        let missing = dir.path().join("missing.txt");
+        let model = dir.path().join("model.dat");
+        for flag in ["--max-iterations", "--max-threads"] {
+            let output = train_inputs_command(&missing, &model)
+                .args([flag, "0"])
+                .output()
+                .unwrap();
+            let stderr = String::from_utf8(output.stderr).unwrap();
+            assert!(!output.status.success(), "{flag}: {stderr}");
+            // clap's message, such as "invalid value '0' for
+            // '--max-iterations <ITER>': 0 is not in 1..18446744073709551615".
+            assert!(
+                stderr.contains(&format!("invalid value '0' for '{flag} ")),
+                "{flag}: {stderr}"
+            );
+            assert!(stderr.contains("0 is not in 1.."), "{flag}: {stderr}");
+        }
+    }
+
     /// Trains, exports and builds a dictionary from `resources/training/` in
     /// `dir`, and returns the built dictionary directory.
     fn build_trained_dictionary(dir: &Path) -> PathBuf {

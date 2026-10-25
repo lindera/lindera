@@ -806,7 +806,7 @@ export interface Token {
  * # Returns
  *
  * Nothing, or an error. A `maxIter` or `maxThreads` that is not an integer
- * of 0 or more, and a `regularization`, `lambda`, `elasticNetL1Ratio` or
+ * of 1 or more, and a `regularization`, `lambda`, `elasticNetL1Ratio` or
  * `eta` that is not accepted, are an `InvalidArg` error, raised before any
  * file is read.
  */
@@ -833,9 +833,15 @@ export interface TrainOptions {
    * MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0`.
    */
   lambda?: number
-  /** Maximum number of training iterations, an integer (default: 100). */
+  /**
+   * Maximum number of training iterations, an integer of 1 or more
+   * (default: 100).
+   */
   maxIter?: number
-  /** Number of threads, an integer (undefined = auto-detect CPU cores). */
+  /**
+   * Number of threads, an integer of 1 or more (undefined = auto-detect
+   * CPU cores).
+   */
   maxThreads?: number
   /**
    * Regularization type: `"l1"`, `"l2"` or `"elasticnet"` (in any case;

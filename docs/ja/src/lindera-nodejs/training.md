@@ -50,8 +50,8 @@ train({
 | `rewriteDef` | `string` | 必須 | 書き換えルール定義ファイルのパス（rewrite.def） |
 | `output` | `string` | 必須 | 学習済みモデルファイルの出力パス |
 | `lambda` | `number` | `1.0` | 正則化係数（有限の 0 以上の値）。L2 では MeCab の `-c C` が `1 / C` にあたり、1.0 は MeCab の `-c 1.0` |
-| `maxIter` | `number` | `100` | 最大学習イテレーション数。目的関数が収束すると、それより前に止まります（`eta` を参照） |
-| `maxThreads` | `number \| undefined` | `undefined` | スレッド数（undefined = CPU コア数を自動検出） |
+| `maxIter` | `number` | `100` | 最大学習イテレーション数（1 以上）。目的関数が収束すると、それより前に止まります（`eta` を参照） |
+| `maxThreads` | `number \| undefined` | `undefined` | スレッド数（1 以上。undefined = CPU コア数を自動検出） |
 | `regularization` | `string` | `"l2"` | 正則化の種類。`lindera train --regularization` と同じく `"l1"`・`"l2"`・`"elasticnet"` のいずれかで、大文字・小文字は区別しません（`"elastic_net"`・`"elastic-net"` も Elastic Net を選びます） |
 | `elasticNetL1Ratio` | `number` | `0.5` | Elastic Net 正則化の L1 の比率（0 以上 1 以下）。`"elasticnet"` のときだけ使います |
 | `eta` | `number` | `5e-5` | 収束判定の許容値（有限の 0 以上の値）。目的関数の相対変化が 3 回続けてこの値を下回ると、`maxIter` より前に止まります。`0` で判定を無効にします |

@@ -14,6 +14,9 @@ class TestArgumentRange < Minitest::Test
   I64 = [-(2**63), (2**63) - 1].freeze
   # usize and u64, which are both 64 bits wide on the platforms CI runs on.
   U64 = [0, (2**64) - 1].freeze
+  # The counts of training, which start at 1: the trainer rejected 0 only
+  # after building every lattice (#1275).
+  COUNT = [1, (2**64) - 1].freeze
 
   # Added to a bound, takes a value past the 128-bit integers the binding
   # widens an argument to.
@@ -49,8 +52,8 @@ class TestArgumentRange < Minitest::Test
     'Token#get_detail(index)' => [->(v) { tokenizer.tokenize('東京')[0].get_detail(v) }, *U64],
     'Tokenizer#tokenize_nbest(n)' => [->(v) { tokenizer.tokenize_nbest('東京', v, nil, nil) }, *U64],
     'Tokenizer#tokenize_nbest(cost_threshold)' => [->(v) { tokenizer.tokenize_nbest('東京', 1, nil, v) }, *I64],
-    'Lindera.train(max_iter)' => [->(v) { train(v, 1) }, *U64],
-    'Lindera.train(max_threads)' => [->(v) { train(1, v) }, *U64]
+    'Lindera.train(max_iter)' => [->(v) { train(v, 1) }, *COUNT],
+    'Lindera.train(max_threads)' => [->(v) { train(1, v) }, *COUNT]
   }.freeze
 
   CASES.each do |label, (call, min, max)|

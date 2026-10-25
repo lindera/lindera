@@ -36,7 +36,9 @@ use lindera::dictionary::trainer::{
     Corpus, DEFAULT_ELASTIC_NET_L1_RATIO, DEFAULT_ETA, DEFAULT_LAMBDA, Model,
     ParseRegularizationTypeError, RegularizationType, SerializableModel, Trainer, TrainerConfig,
 };
-use lindera_binding::argument::{non_negative_float_argument, unit_interval_argument};
+use lindera_binding::argument::{
+    Positive, integer_argument_message, non_negative_float_argument, unit_interval_argument,
+};
 
 // The defaults of `lambda_`, `elastic_net_l1_ratio` and `eta` in the
 // signature below are literals, which `help()` shows; they must be the
@@ -67,8 +69,9 @@ const _: () = assert!(
 /// * `output` - Output model file path
 /// * `lambda_` - Regularization coefficient, finite and >= 0, default: 1.0;
 ///   with L2, MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0`.
-/// * `max_iter` - Maximum number of iterations, default: 100
-/// * `max_threads` - Maximum number of threads (None = auto-detect CPU cores)
+/// * `max_iter` - Maximum number of iterations, 1 or more, default: 100
+/// * `max_threads` - Maximum number of threads, 1 or more (None =
+///   auto-detect CPU cores)
 /// * `regularization` - Regularization type: `"l1"`, `"l2"` or
 ///   `"elasticnet"` (in any case; also `"elastic_net"` or `"elastic-net"`),
 ///   default: `"l2"`.
@@ -82,8 +85,10 @@ const _: () = assert!(
 /// # Returns
 ///
 /// * `PyResult<()>` - Returns Ok(()) on success, or a `ValueError`, raised
-///   before any file is read for a `regularization`, `lambda_`,
-///   `elastic_net_l1_ratio` or `eta` that is not accepted.
+///   before any file is read for a `max_iter` or `max_threads` of 0 and a
+///   `regularization`, `lambda_`, `elastic_net_l1_ratio` or `eta` that is
+///   not accepted. A negative `max_iter` or `max_threads` is pyo3's
+///   `OverflowError`.
 #[pyfunction]
 #[pyo3(signature = (seed, corpus, char_def, unk_def, feature_def, rewrite_def, output, lambda_=1.0, max_iter=100, max_threads=None, regularization="l2", elastic_net_l1_ratio=0.5, eta=5e-5))]
 #[allow(clippy::too_many_arguments)]
@@ -110,6 +115,18 @@ pub fn train(
     let elastic_net_l1_ratio = unit_interval_argument("elastic_net_l1_ratio", elastic_net_l1_ratio)
         .map_err(PyValueError::new_err)?;
     let eta = non_negative_float_argument("eta", eta).map_err(PyValueError::new_err)?;
+    // pyo3 rejects a negative count; the trainer would reject 0 only after
+    // reading the corpus and building every lattice.
+    if max_iter == 0 {
+        return Err(PyValueError::new_err(integer_argument_message::<
+            Positive<u64>,
+        >("max_iter", 0)));
+    }
+    if max_threads == Some(0) {
+        return Err(PyValueError::new_err(integer_argument_message::<
+            Positive<usize>,
+        >("max_threads", 0)));
+    }
 
     let seed_path = Path::new(seed);
     let corpus_path = Path::new(corpus);

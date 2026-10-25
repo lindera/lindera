@@ -174,6 +174,20 @@ def test_a_value_outside_the_range_raises_overflow_error(label):
             )
 
 
+@pytest.mark.skipif(not hasattr(lindera, "train"), reason="train feature not available")
+@pytest.mark.parametrize("name", ["max_iter", "max_threads"])
+def test_a_training_count_of_zero_raises_value_error(name):
+    """The counts of training start at 1: 0 raises before any file is read,
+    where the trainer rejected it only after building every lattice
+    (lindera/lindera#1275)."""
+    with pytest.raises(ValueError) as excinfo:
+        _train(**{name: 0})
+    assert (
+        str(excinfo.value)
+        == f"{name} must be an integer between 1 and {USIZE_MAX}, got 0"
+    )
+
+
 def test_an_accepted_value_is_kept_unchanged():
     metadata = lindera.Metadata(default_word_cost=-32768, default_left_context_id=65535)
     assert metadata.default_word_cost == -32768
