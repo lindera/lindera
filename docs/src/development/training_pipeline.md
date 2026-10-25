@@ -43,8 +43,8 @@ Gold tokens whose surface no seed row has do not count toward the warning, so a 
 The CRF is then trained with L-BFGS (OWL-QN when the regularization has an L1 part). Training stops at the first of these:
 
 - `converged`: the relative change of the objective, `|previous - current| / |previous|`, stayed below `eta` for 3 iterations in a row. The default `eta` is that of MeCab's learner, which applies the same test to every evaluation, line-search trials included, where Lindera counts iterations.
-- `no progress`: an iteration left the objective unchanged. When this happens after a few iterations, the model is barely trained, and `lindera train` warns about it.
-- The line search of an iteration failed; the model keeps the best weights of the run, with a warning.
+- `no progress`: an iteration left the objective unchanged. When this happens after a few iterations, the model is barely trained. `lindera train` writes a warning on standard error whenever training stops this way, after any number of iterations.
+- The line search of an iteration failed; the model keeps the best weights of the run, and `lindera train` writes a warning on standard error.
 - `max-iterations` was reached before the objective converged.
 
 `lindera train` prints which one stopped it, with the number of iterations and of evaluations, each evaluation being one forward-backward pass over every lattice; with the files in `resources/training/`:

@@ -375,6 +375,30 @@ fn label_feature_set(
     lindera_crf::FeatureSet::new(&unigram_ids, &right_ids, &left_ids)
 }
 
+/// Returns the warning that training writes on stderr after the optimizer
+/// stopped for `stop_reason`, if any (#1268).
+///
+/// # Arguments
+///
+/// * `stop_reason` - Why the optimizer stopped.
+///
+/// # Returns
+///
+/// The warning when an iteration left the objective unchanged or the line
+/// search failed, and `None` when the optimizer converged or reached the
+/// iteration cap.
+fn optimizer_warning(stop_reason: lindera_crf::StopReason) -> Option<&'static str> {
+    match stop_reason {
+        lindera_crf::StopReason::NoProgress => Some(
+            "Warning: the optimizer could not make progress; after few iterations the model is barely trained",
+        ),
+        lindera_crf::StopReason::LineSearchFailed => Some(
+            "Warning: the line search failed; the model has the best weights the optimizer reached",
+        ),
+        _ => None,
+    }
+}
+
 impl Trainer {
     /// Creates a new [`Trainer`] using the specified configuration.
     ///
@@ -600,7 +624,9 @@ impl Trainer {
     /// were labelled, and warns on stderr when none of them, or fewer than
     /// half of those whose surface has seed rows, are seed words: a gold
     /// token is a seed word only when a seed row has its surface and its
-    /// whole feature string (#1259).
+    /// whole feature string (#1259). Once the optimizer stops, it prints why,
+    /// and warns on stderr when an iteration left the objective unchanged or
+    /// the line search failed (#1268).
     pub fn train(mut self, corpus: Corpus) -> Result<Model> {
         let lattices = self.build_lattices_from_corpus(&corpus)?;
         let labels = self.extract_labels();
@@ -732,14 +758,8 @@ impl Trainer {
             "L-BFGS stopped after {} iterations and {} evaluations of the loss and its gradient: {}",
             stats.iterations, stats.evaluations, stats.stop_reason
         );
-        match stats.stop_reason {
-            lindera_crf::StopReason::NoProgress => println!(
-                "Warning: the optimizer could not make progress; after few iterations the model is barely trained"
-            ),
-            lindera_crf::StopReason::LineSearchFailed => println!(
-                "Warning: the line search failed; the model has the best weights the optimizer reached"
-            ),
-            _ => {}
+        if let Some(warning) = optimizer_warning(stats.stop_reason) {
+            log_warn!("{warning}");
         }
         println!(
             "Training completed successfully in {:.2}s!",
@@ -2522,6 +2542,42 @@ mod seed_word_warning_tests {
     fn no_warning_when_half_or_more_are_seed_words() {
         assert_eq!(stats(3, 3, 3, 1).seed_word_warning(), None);
         assert_eq!(stats(3, 0, 0, 0).seed_word_warning(), None);
+    }
+}
+
+/// The warnings after the optimizer stopped (#1268).
+#[cfg(test)]
+mod optimizer_warning_tests {
+    use lindera_crf::StopReason;
+
+    use crate::optimizer_warning;
+
+    #[test]
+    fn warns_when_an_iteration_left_the_objective_unchanged() {
+        assert_eq!(
+            optimizer_warning(StopReason::NoProgress),
+            Some(
+                "Warning: the optimizer could not make progress; after few iterations the model \
+                 is barely trained"
+            )
+        );
+    }
+
+    #[test]
+    fn warns_when_the_line_search_failed() {
+        assert_eq!(
+            optimizer_warning(StopReason::LineSearchFailed),
+            Some(
+                "Warning: the line search failed; the model has the best weights the optimizer \
+                 reached"
+            )
+        );
+    }
+
+    #[test]
+    fn no_warning_when_it_converged_or_reached_the_cap() {
+        assert_eq!(optimizer_warning(StopReason::Converged), None);
+        assert_eq!(optimizer_warning(StopReason::MaxIterations), None);
     }
 }
 

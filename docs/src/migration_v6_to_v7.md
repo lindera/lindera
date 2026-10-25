@@ -1618,9 +1618,9 @@ v7.0.0 trains as MeCab's learner does (see
   learner) for 3 iterations in a row; `--eta 0` turns the test off. The
   bindings use the default. `lindera train` prints why the optimizer
   stopped, with the number of iterations and of evaluations of the loss and
-  its gradient, and warns when an iteration left the objective unchanged or
-  the line search failed. An L2 run whose line search fails keeps the best
-  weights of the run.
+  its gradient, and warns on standard error when an iteration left the
+  objective unchanged or the line search failed. An L2 run whose line search
+  fails keeps the best weights of the run.
 - The export functions of the Python, Node.js, Ruby and PHP bindings write
   the files `lindera export` writes, with the same code: the `char.def`,
   `feature.def` and `rewrite.def` the model was trained with, and
