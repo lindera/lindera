@@ -367,9 +367,9 @@ EOS
 - ラベルセット（種辞書の行、続いて `unk.def` のエントリ）
 - 品詞情報
 - ファイル順の `unk.def` のエントリと、`char.def`・`feature.def`・`rewrite.def` の内容
-- 学習メタデータ（形式バージョン、正則化、イテレーション数、素性・ラベル数）
+- 学習メタデータ（形式バージョン、正則化の係数・種類・Elastic Net の比率、イテレーション数、素性・ラベル数）
 
-形式バージョンは `2.0.0`（`lindera_trainer::model::MODEL_FORMAT_VERSION`）で、モデルの構造や意味が変わるたびに変わります。`lindera export` は、別のバージョンで書かれた `model.dat`（7.0.0 より前に書かれたものはすべて該当）を、「re-run `lindera train` to regenerate it」で終わるエラーで拒否します。そうしたモデルは現在のバージョンで学習し直してください。
+形式バージョンは `3.0.0`（`lindera_trainer::model::MODEL_FORMAT_VERSION`）で、モデルの構造や意味が変わるたびに変わります。`lindera export` は、別のバージョンで書かれた `model.dat`（7.0.0 より前に書かれたものはすべて該当）を、「re-run `lindera train` to regenerate it」で終わるエラーで拒否します。そうしたモデルは現在のバージョンで学習し直してください。
 
 出力はバイト単位で再現可能です。同じ入力・同じフラグで 2 回学習すると
 `model.dat` のバイト列が一致するため、チェックサムの取得や差分比較ができます。

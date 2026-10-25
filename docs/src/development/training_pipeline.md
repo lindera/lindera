@@ -367,9 +367,9 @@ The trained model is serialized in `rkyv` binary format for fast loading. It con
 - Label set (the seed rows, then the `unk.def` entries)
 - Part-of-speech information
 - The `unk.def` entries, in file order, and the content of `char.def`, `feature.def` and `rewrite.def`
-- Training metadata (format version, regularization, iterations, feature/label counts)
+- Training metadata (format version, the regularization coefficient, type and Elastic Net ratio, iterations, feature/label counts)
 
-The format version is `2.0.0` (`lindera_trainer::model::MODEL_FORMAT_VERSION`), and it changes whenever the layout or the meaning of the model changes. `lindera export` rejects a `model.dat` written by another version, including every `model.dat` written before 7.0.0, with an error that ends in "re-run `lindera train` to regenerate it". Train such a model again with the current version.
+The format version is `3.0.0` (`lindera_trainer::model::MODEL_FORMAT_VERSION`), and it changes whenever the layout or the meaning of the model changes. `lindera export` rejects a `model.dat` written by another version, including every `model.dat` written before 7.0.0, with an error that ends in "re-run `lindera train` to regenerate it". Train such a model again with the current version.
 
 The output is byte-reproducible: training the same inputs twice with the same
 flags produces identical `model.dat` bytes, so the artifact can be checksummed

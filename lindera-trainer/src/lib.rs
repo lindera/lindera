@@ -642,6 +642,22 @@ impl Trainer {
         Ok(lattices)
     }
 
+    /// Returns the regularization training uses, as lindera-crf takes it:
+    /// Elastic Net when a ratio was set with [`Self::elastic_net_l1_ratio`]
+    /// or [`Self::regularization_type`], whatever [`Self::use_l2`] says, and
+    /// otherwise L2 or L1. The trained model records it (#1272).
+    ///
+    /// # Returns
+    ///
+    /// The regularization, with the Elastic Net L1 ratio.
+    fn regularization(&self) -> lindera_crf::Regularization {
+        match self.elastic_net_l1_ratio {
+            Some(l1_ratio) => lindera_crf::Regularization::ElasticNet { l1_ratio },
+            None if self.use_l2 => lindera_crf::Regularization::L2,
+            None => lindera_crf::Regularization::L1,
+        }
+    }
+
     /// Configure and execute CRF training
     ///
     /// # Arguments
@@ -657,36 +673,21 @@ impl Trainer {
     ) -> Result<(lindera_crf::RawModel, u64)> {
         log_info!("Starting CRF training with {} lattices...", lattices.len());
 
-        // Determine regularization type
-        let reg_type = if let Some(l1_ratio) = self.elastic_net_l1_ratio {
-            log_info!(
-                "Training parameters: regularization={} (ElasticNet, l1_ratio={}), max_iter={}, eta={}, threads={}",
-                self.regularization_cost,
-                l1_ratio,
-                self.max_iter,
-                self.eta,
-                self.num_threads
-            );
-            lindera_crf::Regularization::ElasticNet { l1_ratio }
-        } else if self.use_l2 {
-            log_info!(
-                "Training parameters: regularization={} (L2), max_iter={}, eta={}, threads={}",
-                self.regularization_cost,
-                self.max_iter,
-                self.eta,
-                self.num_threads
-            );
-            lindera_crf::Regularization::L2
-        } else {
-            log_info!(
-                "Training parameters: regularization={} (L1), max_iter={}, eta={}, threads={}",
-                self.regularization_cost,
-                self.max_iter,
-                self.eta,
-                self.num_threads
-            );
-            lindera_crf::Regularization::L1
+        let reg_type = self.regularization();
+        let described = match reg_type {
+            lindera_crf::Regularization::L1 => "L1".to_string(),
+            lindera_crf::Regularization::L2 => "L2".to_string(),
+            lindera_crf::Regularization::ElasticNet { l1_ratio } => {
+                format!("ElasticNet, l1_ratio={l1_ratio}")
+            }
         };
+        log_info!(
+            "Training parameters: regularization={} ({described}), max_iter={}, eta={}, threads={}",
+            self.regularization_cost,
+            self.max_iter,
+            self.eta,
+            self.num_threads
+        );
 
         // Configure the CRF trainer
         let trainer = lindera_crf::Trainer::new()
@@ -809,12 +810,14 @@ impl Trainer {
         let feature_weights = self.extract_feature_weights(&crf_model);
 
         // Create final model with metadata
+        let regularization = self.regularization();
         Ok(Model::new_with_metadata(
             crf_model,
             self.config,
             feature_weights,
             labels,
             self.virtual_features,
+            regularization,
             self.regularization_cost,
             iterations,
         ))
@@ -1238,21 +1241,38 @@ mod tests {
         let l1 = trainer().regularization_type(RegularizationType::L1, 0.3);
         assert!(!l1.use_l2);
         assert_eq!(l1.elastic_net_l1_ratio, None);
+        assert!(matches!(
+            l1.regularization(),
+            lindera_crf::Regularization::L1
+        ));
 
         let l2 = trainer()
             .use_l2(false)
             .regularization_type(RegularizationType::L2, 0.3);
         assert!(l2.use_l2);
         assert_eq!(l2.elastic_net_l1_ratio, None);
+        assert!(matches!(
+            l2.regularization(),
+            lindera_crf::Regularization::L2
+        ));
 
         let elastic_net = trainer().regularization_type(RegularizationType::ElasticNet, 0.3);
         assert_eq!(elastic_net.elastic_net_l1_ratio, Some(0.3));
+        // Elastic Net wins over `use_l2`, which a new trainer sets.
+        assert!(matches!(
+            elastic_net.regularization(),
+            lindera_crf::Regularization::ElasticNet { l1_ratio } if l1_ratio == 0.3
+        ));
 
         let back_to_l1 = trainer()
             .regularization_type(RegularizationType::ElasticNet, 0.3)
             .regularization_type(RegularizationType::L1, 0.3);
         assert!(!back_to_l1.use_l2);
         assert_eq!(back_to_l1.elastic_net_l1_ratio, None);
+        assert!(matches!(
+            back_to_l1.regularization(),
+            lindera_crf::Regularization::L1
+        ));
     }
 
     #[test]
@@ -3150,6 +3170,67 @@ mod export_consistency_tests {
         converged.update_metadata_json(&base, &mut json).unwrap();
         let json: serde_json::Value = serde_json::from_slice(&json).unwrap();
         assert_eq!(json["model_info"]["training_iterations"], iterations);
+    }
+
+    // The model records the regularization type, and the Elastic Net ratio,
+    // next to the coefficient: in `model.dat`, and in the `model_info` of
+    // `metadata.json`, which lindera-dictionary reads back (#1272).
+    #[test]
+    fn the_model_records_the_regularization_type_and_the_ratio() {
+        let train = |kind, ratio| {
+            let (seed, char_def, unk_def, feature_def, rewrite_def, corpus) = fixtures();
+            let config = TrainerConfig::from_readers(
+                Cursor::new(seed),
+                Cursor::new(char_def),
+                Cursor::new(unk_def),
+                Cursor::new(feature_def),
+                Cursor::new(rewrite_def),
+            )
+            .unwrap();
+            Trainer::new(config)
+                .unwrap()
+                .regularization_cost(0.01)
+                .regularization_type(kind, ratio)
+                .max_iter(3)
+                .num_threads(1)
+                .train(Corpus::from_reader(Cursor::new(corpus)).unwrap())
+                .unwrap()
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let base = dir.path().join("metadata.json");
+        std::fs::write(&base, "{}").unwrap();
+
+        for (kind, recorded, name) in [
+            (crate::RegularizationType::L1, None, "l1"),
+            (crate::RegularizationType::L2, None, "l2"),
+            (
+                crate::RegularizationType::ElasticNet,
+                Some(0.3),
+                "elasticnet",
+            ),
+        ] {
+            let model = read_back(&train(kind, 0.3));
+            assert_eq!(model.metadata.regularization, 0.01, "{name}");
+            assert_eq!(model.metadata.regularization_type, kind, "{name}");
+            assert_eq!(model.metadata.elastic_net_l1_ratio, recorded, "{name}");
+
+            let mut json = Vec::new();
+            model.update_metadata_json(&base, &mut json).unwrap();
+            let json: serde_json::Value = serde_json::from_slice(&json).unwrap();
+            let info = &json["model_info"];
+            assert_eq!(info["regularization"], 0.01, "{name}");
+            assert_eq!(info["regularization_type"], name, "{name}");
+            assert_eq!(
+                info.get("elastic_net_l1_ratio")
+                    .and_then(serde_json::Value::as_f64),
+                recorded,
+                "{name}"
+            );
+            let parsed: lindera_dictionary::dictionary::metadata::ModelInfo =
+                serde_json::from_value(info.clone()).unwrap();
+            assert_eq!(parsed.regularization_type.as_deref(), Some(name));
+            assert_eq!(parsed.elastic_net_l1_ratio, recorded, "{name}");
+        }
     }
 
     #[test]

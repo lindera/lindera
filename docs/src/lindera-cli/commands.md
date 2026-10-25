@@ -1037,7 +1037,7 @@ The export command creates the following dictionary files in the output director
 
 ### Model format version
 
-`lindera export` reads a model of the current format version (2.0.0) only. A `model.dat` written by an earlier version, which includes every `model.dat` written before 7.0.0, is rejected, and has to be trained again with `lindera train`. For a model trained with the 6.1.0 CLI:
+`lindera export` reads a model of the current format version (3.0.0) only. A `model.dat` written by an earlier version, which includes every `model.dat` written before 7.0.0, is rejected, and has to be trained again with `lindera train`. For a model trained with the 6.1.0 CLI:
 
 ```text
 Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera train` to regenerate it. }
@@ -1102,5 +1102,5 @@ When the `--metadata` option is provided, the export command will:
 1. **Read the base metadata.json file** to preserve existing configuration
 2. **Update specific fields** with values from the trained model:
    - `default_word_cost`: Calculated from feature weight median
-   - `model_info`: Training statistics including feature count, label count, matrix size (`connection_matrix_size`, the size of `matrix.def` as rows x columns), the number of training iterations that ran (`training_iterations`, at most `--max-iterations`), regularization, and the model format version. No timestamp is written, so exporting the same model twice produces identical output
+   - `model_info`: Training statistics including feature count, label count, matrix size (`connection_matrix_size`, the size of `matrix.def` as rows x columns), the number of training iterations that ran (`training_iterations`, at most `--max-iterations`), the regularization coefficient (`regularization`), its type (`regularization_type`: `l1`, `l2` or `elasticnet`) and, for Elastic Net only, its L1 ratio (`elastic_net_l1_ratio`), and the model format version. No timestamp is written, so exporting the same model twice produces identical output
 3. **Preserve existing settings** such as dictionary name, character encoding, schema definitions, and other user-defined configuration

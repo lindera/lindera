@@ -32,6 +32,7 @@
     "max_left_context_id": 55,
     "max_right_context_id": 55,
     "regularization": 0.01,
+    "regularization_type": "l2",
     "training_iterations": 100,
     "version": "2.0.0"
   },

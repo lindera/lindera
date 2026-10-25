@@ -1037,7 +1037,7 @@ L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradien
 
 ### モデルの形式バージョン
 
-`lindera export` が読み込めるのは、現在の形式バージョン（2.0.0）のモデルだけです。それより前のバージョンで書かれた `model.dat`（7.0.0 より前に書かれたものはすべて該当）は拒否されるため、`lindera train` で学習し直す必要があります。6.1.0 の CLI で学習したモデルでは次のとおりです：
+`lindera export` が読み込めるのは、現在の形式バージョン（3.0.0）のモデルだけです。それより前のバージョンで書かれた `model.dat`（7.0.0 より前に書かれたものはすべて該当）は拒否されるため、`lindera train` で学習し直す必要があります。6.1.0 の CLI で学習したモデルでは次のとおりです：
 
 ```text
 Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera train` to regenerate it. }
@@ -1102,5 +1102,5 @@ EOS
 1. **ベースとなる metadata.json ファイルを読み込み**、既存の設定を保持します
 2. **特定のフィールドを学習済みモデルの値で更新**します：
    - `default_word_cost`: 素性重みの中央値から計算された値
-   - `model_info`: 素性数、ラベル数、行列サイズ（`connection_matrix_size`。`matrix.def` の大きさを行数 x 列数で表す）、実際に回った学習の反復回数（`training_iterations`。`--max-iterations` 以下）、正則化、モデルの形式バージョンを含む学習統計情報。タイムスタンプは書き込まれないため、同じモデルを 2 回エクスポートすると同一の出力になります
+   - `model_info`: 素性数、ラベル数、行列サイズ（`connection_matrix_size`。`matrix.def` の大きさを行数 x 列数で表す）、実際に回った学習の反復回数（`training_iterations`。`--max-iterations` 以下）、正則化の係数（`regularization`）とその種類（`regularization_type`。`l1`・`l2`・`elasticnet` のいずれか）、Elastic Net のときだけその L1 の比率（`elastic_net_l1_ratio`）、モデルの形式バージョンを含む学習統計情報。タイムスタンプは書き込まれないため、同じモデルを 2 回エクスポートすると同一の出力になります
 3. **既存の設定を保持**します（辞書名、文字エンコード設定、スキーマ定義、その他のユーザー定義設定など）

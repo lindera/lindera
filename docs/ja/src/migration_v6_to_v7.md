@@ -64,7 +64,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **PHP: 省略可能な引数に型違いの値を渡すと、既定値を使わずに例外を投げる** | 省略可能な引数に別の型の値を渡す PHP のコード。例えば `Lindera\Trainer::train()` の `$max_iter` に数字の文字列を、`tokenizeNbest()` の `$unique` に `1` を渡すもの | 宣言された型の値を渡す。`$argv` の値のような文字列は `(int)` などでキャストする。`null` を渡すか引数を省略すれば、これまでどおり既定値になる |
 | **PHP・Node.js・WASM: 設定の範囲外の整数の引数は、折り返さずに例外を投げる** | そのような値を渡すコード。例えば `Metadata` の既定の単語コストに `100000` を渡すもの（v6 は `-31072` を保持した）や、N-best の件数に `-1` を渡すもの（v6 はすべての分割を列挙した）。`getFieldName` と PHP の `getDetail` への負の位置。Node.js と WASM では、`1.5` や `NaN` のような整数でない数値 | 範囲内の整数を渡す。エラーは引数の名前と範囲を示す |
 | **バインディング: モードは、Rust の `Mode` と同じく decompose モードのペナルティを持つ `Mode` で表す。`set_mode` / `setMode` と `Tokenizer` のコンストラクタはモードの名前ではなく `Mode` を受け取り、`TokenizerBuilder::set_segmenter_mode` は `Mode::Decompose` のペナルティを保つ** | モードを設定するバインディングのユーザー。バインディングの `Mode`、Node.js の `JsMode`、WASM の数値の `Mode` を使うコード。Node.js の型 `JsPenalty` を名指しする TypeScript のコード。`set_segmenter_mode` に既定でないペナルティを渡す Rust のコード。`CoreTokenizerBuilder::set_mode` や `CoreTokenizer::from_segmenter` の関数を呼ぶバインディングの作者 | `"normal"` や `"decompose"` の代わりに `Mode.normal()` や `Mode.decompose(penalty)`（Ruby では `Lindera::Mode.normal`、PHP では `Lindera\Mode::normal()`）を渡す。実行時に読んだモードの名前は `Mode.from_str` / `Mode.fromStr` で `Mode` にする。`JsPenalty` を `Penalty` に改名する。`lindera-binding` の関数には `lindera::mode::Mode` を渡す |
-| **`lindera train` は MeCab の学習器と同じくラティスを作り、`unk.def` のすべてのエントリを保持する。`model.dat` の形式バージョンは 2.0.0** | `lindera train`・`lindera export` と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー | 7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた `model.dat` は拒否される）。`unk.def` のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す |
+| **`lindera train` は MeCab の学習器と同じくラティスを作り、`unk.def` のすべてのエントリを保持する。`model.dat` の形式バージョンは 3.0.0** | `lindera train`・`lindera export` と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー | 7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた `model.dat` は拒否される）。`unk.def` のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す |
 | **`lindera train` のデフォルトの正則化は、MeCab の学習器と同じく係数 1.0 の L2** | `lindera train`、`lindera_trainer` と `lindera_crf` の `Trainer::new`、Python・Node.js・Ruby・PHP のバインディングの学習関数を、正則化の種類と係数の両方を渡さずに使うユーザー | 精度が上がり、`matrix.def` が大きくなる。v6 と同じく学習するには `--regularization l1 --lambda 0.01`（Rust では `.use_l2(false).regularization_cost(0.01)`、バインディングでは `regularization` に `l1`、`lambda` に 0.01。[#1262](https://github.com/lindera/lindera/issues/1262)）を渡す |
 | **`lindera build` は `matrix.def` の範囲外の文脈 ID を拒否する** | `lex.csv` や `unk.def` に `matrix.def` の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の `mecab-dict-index` が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる） | ID か行列を直すか、`metadata.json` の `skip_invalid_cost_or_id` でそうした `lex.csv` の行を取り除く。ユーザー辞書ではそうした ID を直す |
 | **`lindera build` と `lindera train` は `char.def` と `unk.def` を照らし合わせる** | それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが `char.def` にあるユーザー、`char.def` と `unk.def` でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、`unk.def` の行を無視したりしていた）。MeCab の `mecab-dict-index` が受け入れる辞書は影響を受けない | 各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに `unk.def` の行を書き、未定義のカテゴリの `unk.def` の行を削除する |
@@ -1463,7 +1463,7 @@ v7.0.0 は MeCab の学習器と同じく学習します
   と同じコードで同じファイルを書き出します。`char.def`・`feature.def`・
   `rewrite.def` は学習に使ったもので、`left-id.def` と `right-id.def` も書き出し
   ます。
-- `model.dat` の形式バージョンは 2.0.0 です。`lindera export` とバインディングの
+- `model.dat` の形式バージョンは 3.0.0 です。`lindera export` とバインディングの
   エクスポート関数は、v6.2.0 以前に書いたものを含め、ほかのバージョンの
   `model.dat` を「re-run `lindera train` to regenerate it」で終わるエラーで拒否
   します。
@@ -1570,8 +1570,10 @@ Rust では、`lindera_trainer::Trainer::new(config)?` に
 （[#1262](https://github.com/lindera/lindera/issues/1262)）。Python では
 `regularization="l1", lambda_=0.01`、Node.js では `regularization: "l1", lambda: 0.01`、
 Ruby では `lambda` に 0.01 と `regularization: 'l1'`、PHP では
-`regularization: 'l1', lambda: 0.01` を渡します。モデルには係数だけが記録され、種類は
-記録されません（[#1272](https://github.com/lindera/lindera/issues/1272)）。
+`regularization: 'l1', lambda: 0.01` を渡します。モデルは、係数と並べて種類と
+Elastic Net の比率も記録します。`model.dat` に記録し、エクスポートした `metadata.json`
+の `model_info` には `regularization_type` と `elastic_net_l1_ratio` として書き出します
+（[#1272](https://github.com/lindera/lindera/issues/1272)）。
 
 NaN や無限大の `lambda` は拒否されるようになりました。v6 では受け付けていましたが、
 `lindera train` と `lindera_crf::Trainer::regularization` は
@@ -1861,7 +1863,7 @@ feature）経由で使う Rust コードにのみ影響します
 | v6 | v7 |
 | --- | --- |
 | `SerializableModel::unk_category_names: Vec<String>` と `SerializableModel::unk_categories: BTreeMap<String, String>` | `SerializableModel::unk_entries: Vec<(String, String)>`。ファイル順の `unk.def` の `(カテゴリ, 素性文字列)` の組 |
-| `ModelMetadata::version` は `"1.0.0"` で、`Model::read_model` はこれを確認しない | `"2.0.0"`。`Model::read_model` はほかのバージョンのモデルを拒否する |
+| `ModelMetadata::version` は `"1.0.0"` で、`Model::read_model` はこれを確認しない | `"3.0.0"`。`Model::read_model` はほかのバージョンのモデルを拒否する |
 | — | `model` に `MODEL_FORMAT_VERSION` を追加 |
 | — | `lindera export` のファイルをディレクトリに書き出す `SerializableModel::export` を追加 |
 | `TrainerConfig::dict()` は空の辞書とプレースホルダーの未知語辞書を持つ | 種辞書（`system_lexicon()`）と `unk.def` のエントリ（`unk_handler()`）を持つ |
@@ -1871,6 +1873,7 @@ feature）経由で使う Rust コードにのみ影響します
 | `Model::num_labels()` と `ModelMetadata::label_count` は `char.def` のカテゴリごとに 1 つの未知語ラベルを数える | `unk.def` のエントリごとに 1 つを数える。仮想ラベルは数えない |
 | `Model::write_left_id_def` / `write_right_id_def` はバイグラム素性の文字列の ID を書き出す。`lex.csv` や `matrix.def` の文脈 ID とは別の ID 空間 | 文脈 ID を書き出す。`Model::write_model` が書き出すモデルについて `SerializableModel::write_left_id_def` / `write_right_id_def` が書き出すものと同じ |
 | `ModelMetadata::iterations`（と `model_info.training_iterations`）は `max_iter` の設定値 | 実際に回った L-BFGS の反復回数 |
+| `ModelMetadata` は正則化の係数だけを記録する | `ModelMetadata::regularization_type`（`RegularizationType`）と `ModelMetadata::elastic_net_l1_ratio`（Elastic Net のときだけ `Some`）を追加。`model_info.regularization_type` と `model_info.elastic_net_l1_ratio` としてエクスポートされる（[#1272](https://github.com/lindera/lindera/issues/1272)） |
 | — | 新規: 収束判定の許容値を設定する `Trainer::eta` と `Trainer::get_eta`、そのデフォルトの `DEFAULT_ETA`（`5e-5`）。`lindera-crf` にも同じ `Trainer::eta` と `DEFAULT_ETA` と、`StopReason`、`TrainingStats::evaluations`、`TrainingStats::stop_reason` を追加 |
 | `Model::write_connection_costs` と `SerializableModel::write_connection_costs` は、学習した重みがない連接に `i16::MAX` を書き出す | 0 を書き出す。学習中や MeCab でのその連接のコスト |
 | `Trainer::new` は L1（`use_l2` が false）と `regularization_cost` 0.01 で正則化する | L2 と `DEFAULT_LAMBDA`（1.0）で正則化する。`use_l2(false)` で L1 を選ぶ（[`lindera train` の既定の正則化は L2](#lindera-train-の既定の正則化は-l2)を参照） |

@@ -1212,6 +1212,60 @@ mod with_trained_dictionary {
         }
     }
 
+    /// `lindera export --metadata` records the regularization type next to
+    /// the coefficient in `model_info`, and the Elastic Net ratio only for
+    /// Elastic Net (#1272).
+    #[test]
+    fn export_records_the_regularization_type_in_model_info() {
+        let dir = tempfile::tempdir().unwrap();
+        let corpus = training_dir().join("corpus.txt");
+        let metadata = training_dir().join("metadata.json");
+        let cases: [(&str, &[&str], &str, Option<f64>); 3] = [
+            ("default", &[], "l2", None),
+            ("l1", &["--regularization", "l1"], "l1", None),
+            (
+                "elasticnet",
+                &[
+                    "--regularization",
+                    "elasticnet",
+                    "--elastic-net-l1-ratio",
+                    "0.3",
+                ],
+                "elasticnet",
+                Some(0.3),
+            ),
+        ];
+        for (label, args, expected, ratio) in cases {
+            let model = dir.path().join(format!("{label}.dat"));
+            let output = dir.path().join(label);
+            stdout_of(
+                train_inputs_command(&corpus, &model)
+                    .args(["--max-iterations", "3"])
+                    .args(args),
+            );
+            stdout_of(
+                lindera()
+                    .arg("export")
+                    .args(["--model", model.to_str().unwrap()])
+                    .args(["--metadata", metadata.to_str().unwrap()])
+                    .args(["--output", output.to_str().unwrap()]),
+            );
+            let exported: serde_json::Value =
+                serde_json::from_slice(&std::fs::read(output.join("metadata.json")).unwrap())
+                    .unwrap();
+            let info = &exported["model_info"];
+            assert_eq!(info["regularization_type"], expected, "{label}: {info}");
+            assert_eq!(info["regularization"], 1.0, "{label}: {info}");
+            assert_eq!(
+                info.get("elastic_net_l1_ratio")
+                    .and_then(serde_json::Value::as_f64),
+                ratio,
+                "{label}: {info}"
+            );
+            assert_eq!(info["version"], "3.0.0", "{label}: {info}");
+        }
+    }
+
     /// Trains, exports and builds a dictionary from `resources/training/` in
     /// `dir`, and returns the built dictionary directory.
     fn build_trained_dictionary(dir: &Path) -> PathBuf {
