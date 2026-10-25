@@ -873,9 +873,9 @@ Downloaded dictionary 'ipadic'
 <li><code>--lambda</code> / <code>-l</code>: 正則化係数。有限の 0 以上の値。<code>l2</code> では MeCab の学習器の <code>-c C</code> が <code>1 / C</code> に当たります (デフォルト: 1.0。MeCab の <code>-c 1.0</code>)</li>
 <li><code>--regularization</code> / <code>-R</code>: 正則化の種類: <code>l1</code>, <code>l2</code>, または <code>elasticnet</code>。大文字・小文字は区別せず、<code>elastic_net</code> と <code>elastic-net</code> も Elastic Net を選びます (デフォルト: <code>l2</code>)</li>
 <li><code>--elastic-net-l1-ratio</code>: Elastic Net 正則化時のL1比率 (0.0-1.0)。<code>--regularization elasticnet</code> を指定した場合のみ使用されます (デフォルト: 0.5)</li>
-<li><code>--max-iterations</code> / <code>-i</code>: 学習の最大反復回数 (デフォルト: 100)</li>
+<li><code>--max-iterations</code> / <code>-i</code>: 学習の最大反復回数。1 以上 (デフォルト: 100)</li>
 <li><code>--eta</code> / <code>-e</code>: 収束判定の許容値。目的関数の相対変化がこの値を 3 回続けて下回ると、<code>--max-iterations</code> より前に学習を止めます。<code>0</code> で判定を切ります (デフォルト: 0.00005。MeCab の学習器のデフォルトと同じ)</li>
-<li><code>--max-threads</code> / <code>-t</code>: 最大スレッド数 (デフォルトはCPUコア数。速度のみに影響し、学習結果は変わりません)</li>
+<li><code>--max-threads</code> / <code>-t</code>: 最大スレッド数。1 以上 (デフォルトはCPUコア数。速度のみに影響し、学習結果は変わりません)</li>
 </ul>
 <h3 id="基本的なワークフロー"><a class="header" href="#基本的なワークフロー">基本的なワークフロー</a></h3>
 <h4 id="1-学習用ファイルの準備"><a class="header" href="#1-学習用ファイルの準備">1. 学習用ファイルの準備</a></h4>

@@ -364,9 +364,9 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>lambda</code></td><td>正則化係数（過学習の制御）。有限の 0 以上の値。<code>l2</code> では MeCab の <code>-c C</code> が <code>1 / C</code> に当たる</td><td>1.0</td></tr>
 <tr><td><code>regularization</code></td><td>正則化の種類: <code>l1</code>、<code>l2</code>、<code>elasticnet</code> のいずれか。大文字・小文字は区別しない（<code>elastic_net</code>・<code>elastic-net</code> も Elastic Net を選ぶ）</td><td><code>l2</code></td></tr>
 <tr><td><code>elastic-net-l1-ratio</code></td><td>Elastic Net 正則化の L1 比率（0.0-1.0、<code>--regularization elasticnet</code> の場合のみ使用）</td><td>0.5</td></tr>
-<tr><td><code>max-iterations</code></td><td>最大学習イテレーション数</td><td>100</td></tr>
+<tr><td><code>max-iterations</code></td><td>最大学習イテレーション数（1 以上）</td><td>100</td></tr>
 <tr><td><code>eta</code></td><td>収束判定の許容値（<a href="#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。<code>0</code> で判定を切ります</td><td>0.00005</td></tr>
-<tr><td><code>max-threads</code></td><td>並列処理スレッド数</td><td>CPU コア数</td></tr>
+<tr><td><code>max-threads</code></td><td>並列処理スレッド数（1 以上）</td><td>CPU コア数</td></tr>
 </tbody></table>
 </div>
 <p>デフォルトは MeCab の学習器と同じです。L2 正則化の <code>lambda</code> 1.0 は、MeCab の <code>-c 1.0</code> の目的関数に当たります。<a href="https://github.com/lindera/lindera/issues/1110">#1110</a> の mecab-ipadic の交差検証データでは、MeCab の学習器と同じスコアになり、ほぼ同じイテレーション数（81〜87）で収束します（<a href="https://github.com/lindera/lindera/issues/1261">#1261</a>）。5 分割の平均で、境界 F1 は 0.9613、span + 品詞（4 列）F1 は 0.9398 です。v6 のデフォルトの L1・<code>lambda</code> 0.01 は、すべての分割で <code>max-iterations</code> に達し、0.9572 と 0.9344 でした。L1 は多くの重みを 0 にし、<code>lindera export</code> は重みの等しいラベルに 1 つの文脈 ID を与えるので、L1 の <code>matrix.def</code> は小さくなります。このデータでは L2 の 18.9 MB に対して 8.7 MB で、L2 ではビルドした辞書が 3.8 % 大きくなります。このデータでの学習時間は MeCab の学習器の約 2 倍で、その約 3 分の 2 は最適化の外、つまり最適化を始める前（<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>）と終えた後にかかります。</p>

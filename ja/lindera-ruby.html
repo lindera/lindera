@@ -188,7 +188,7 @@
 <li><strong>ユーザー辞書</strong>: システム辞書をカスタム語彙で拡張</li>
 </ul>
 <h2 id="整数の引数"><a class="header" href="#整数の引数">整数の引数</a></h2>
-<p>整数の引数は、その設定が保持できる値だけを受け付けます。<code>Lindera::Metadata.new</code> の <code>default_word_cost</code> は -32768 から 32767、文脈 ID は 0 から 65535、<code>Lindera::Penalty.new</code> のペナルティは 32 ビットの整数を受け付けます。個数や位置は 0 以上を受け付けます。該当するのは、<code>Lindera::Penalty.new</code> のしきい値、<code>Schema#get_field_name</code> と <code>Token#get_detail</code> の <code>index</code>、<code>Tokenizer#tokenize_nbest</code> の <code>n</code>、<code>Lindera.train</code> の <code>max_iter</code> と <code>max_threads</code> です。<code>Tokenizer#tokenize_nbest</code> の <code>cost_threshold</code> は 64 ビットの整数を受け付けます。範囲外の値は、引数の名前と範囲を含む <code>RangeError</code> を投げます。末尾より先の位置は、これまでどおり <code>nil</code> を返します。</p>
+<p>整数の引数は、その設定が保持できる値だけを受け付けます。<code>Lindera::Metadata.new</code> の <code>default_word_cost</code> は -32768 から 32767、文脈 ID は 0 から 65535、<code>Lindera::Penalty.new</code> のペナルティは 32 ビットの整数を受け付けます。個数や位置は 0 以上を受け付けます。該当するのは、<code>Lindera::Penalty.new</code> のしきい値、<code>Schema#get_field_name</code> と <code>Token#get_detail</code> の <code>index</code>、<code>Tokenizer#tokenize_nbest</code> の <code>n</code> です。<code>Lindera.train</code> の <code>max_iter</code> と <code>max_threads</code> は 1 以上を受け付けます。<code>Tokenizer#tokenize_nbest</code> の <code>cost_threshold</code> は 64 ビットの整数を受け付けます。範囲外の値は、引数の名前と範囲を含む <code>RangeError</code> を投げます。末尾より先の位置は、これまでどおり <code>nil</code> を返します。</p>
 <pre><code class="language-ruby">require 'lindera'
 
 begin

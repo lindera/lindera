@@ -210,8 +210,8 @@ Lindera.train(
 <tr><td>6</td><td>rewrite_def</td><td><code>String</code></td><td>書き換えルール定義ファイルのパス（rewrite.def）</td></tr>
 <tr><td>7</td><td>output</td><td><code>String</code></td><td>学習済みモデルファイルの出力パス</td></tr>
 <tr><td>8</td><td>lambda</td><td><code>Float</code> または <code>nil</code></td><td>正則化係数（有限の 0 以上の値）。デフォルトは 1.0。L2 では MeCab の <code>-c C</code> が <code>1 / C</code> にあたり、1.0 は MeCab の <code>-c 1.0</code></td></tr>
-<tr><td>9</td><td>max_iter</td><td><code>Integer</code> または <code>nil</code></td><td>最大学習イテレーション数。デフォルトは 100。目的関数が収束すると、それより前に止まります（<code>eta:</code> を参照）</td></tr>
-<tr><td>10</td><td>max_threads</td><td><code>Integer</code> または <code>nil</code></td><td>スレッド数（<code>nil</code> = CPU コア数を自動検出）</td></tr>
+<tr><td>9</td><td>max_iter</td><td><code>Integer</code> または <code>nil</code></td><td>最大学習イテレーション数（1 以上）。デフォルトは 100。目的関数が収束すると、それより前に止まります（<code>eta:</code> を参照）</td></tr>
+<tr><td>10</td><td>max_threads</td><td><code>Integer</code> または <code>nil</code></td><td>スレッド数（1 以上。<code>nil</code> = CPU コア数を自動検出）</td></tr>
 <tr><td>キーワード</td><td>regularization:</td><td><code>String</code> または <code>nil</code></td><td>正則化の種類。デフォルトは <code>'l2'</code>。<code>lindera train --regularization</code> と同じく <code>'l1'</code>・<code>'l2'</code>・<code>'elasticnet'</code> のいずれかで、大文字・小文字は区別しません（<code>'elastic_net'</code>・<code>'elastic-net'</code> も Elastic Net を選びます）</td></tr>
 <tr><td>キーワード</td><td>elastic_net_l1_ratio:</td><td><code>Float</code> または <code>nil</code></td><td>Elastic Net 正則化の L1 の比率（0 以上 1 以下）。デフォルトは 0.5。<code>'elasticnet'</code> のときだけ使います</td></tr>
 <tr><td>キーワード</td><td>eta:</td><td><code>Float</code> または <code>nil</code></td><td>収束判定の許容値（有限の 0 以上の値）。デフォルトは 5e-5。目的関数の相対変化が 3 回続けてこの値を下回ると、<code>max_iter</code> より前に止まります。<code>0</code> で判定を無効にします</td></tr>

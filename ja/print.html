@@ -3032,9 +3032,9 @@ Downloaded dictionary 'ipadic'
 <li><code>--lambda</code> / <code>-l</code>: 正則化係数。有限の 0 以上の値。<code>l2</code> では MeCab の学習器の <code>-c C</code> が <code>1 / C</code> に当たります (デフォルト: 1.0。MeCab の <code>-c 1.0</code>)</li>
 <li><code>--regularization</code> / <code>-R</code>: 正則化の種類: <code>l1</code>, <code>l2</code>, または <code>elasticnet</code>。大文字・小文字は区別せず、<code>elastic_net</code> と <code>elastic-net</code> も Elastic Net を選びます (デフォルト: <code>l2</code>)</li>
 <li><code>--elastic-net-l1-ratio</code>: Elastic Net 正則化時のL1比率 (0.0-1.0)。<code>--regularization elasticnet</code> を指定した場合のみ使用されます (デフォルト: 0.5)</li>
-<li><code>--max-iterations</code> / <code>-i</code>: 学習の最大反復回数 (デフォルト: 100)</li>
+<li><code>--max-iterations</code> / <code>-i</code>: 学習の最大反復回数。1 以上 (デフォルト: 100)</li>
 <li><code>--eta</code> / <code>-e</code>: 収束判定の許容値。目的関数の相対変化がこの値を 3 回続けて下回ると、<code>--max-iterations</code> より前に学習を止めます。<code>0</code> で判定を切ります (デフォルト: 0.00005。MeCab の学習器のデフォルトと同じ)</li>
-<li><code>--max-threads</code> / <code>-t</code>: 最大スレッド数 (デフォルトはCPUコア数。速度のみに影響し、学習結果は変わりません)</li>
+<li><code>--max-threads</code> / <code>-t</code>: 最大スレッド数。1 以上 (デフォルトはCPUコア数。速度のみに影響し、学習結果は変わりません)</li>
 </ul>
 <h3 id="基本的なワークフロー"><a class="header" href="#基本的なワークフロー">基本的なワークフロー</a></h3>
 <h4 id="1-学習用ファイルの準備"><a class="header" href="#1-学習用ファイルの準備">1. 学習用ファイルの準備</a></h4>
@@ -4134,8 +4134,8 @@ lindera.train(
 <tr><td><code>rewrite_def</code></td><td><code>str</code></td><td>必須</td><td>書き換えルール定義ファイルのパス（rewrite.def）</td></tr>
 <tr><td><code>output</code></td><td><code>str</code></td><td>必須</td><td>学習済みモデルファイルの出力パス</td></tr>
 <tr><td><code>lambda_</code></td><td><code>float</code></td><td><code>1.0</code></td><td>正則化係数（有限の 0 以上の値）。L2 では MeCab の <code>-c C</code> が <code>1 / C</code> にあたり、1.0 は MeCab の <code>-c 1.0</code></td></tr>
-<tr><td><code>max_iter</code></td><td><code>int</code></td><td><code>100</code></td><td>最大学習イテレーション数。目的関数が収束すると、それより前に止まります（<code>eta</code> を参照）</td></tr>
-<tr><td><code>max_threads</code></td><td><code>int</code> または <code>None</code></td><td><code>None</code></td><td>スレッド数（None = CPU コア数を自動検出）</td></tr>
+<tr><td><code>max_iter</code></td><td><code>int</code></td><td><code>100</code></td><td>最大学習イテレーション数（1 以上）。目的関数が収束すると、それより前に止まります（<code>eta</code> を参照）</td></tr>
+<tr><td><code>max_threads</code></td><td><code>int</code> または <code>None</code></td><td><code>None</code></td><td>スレッド数（1 以上。None = CPU コア数を自動検出）</td></tr>
 <tr><td><code>regularization</code></td><td><code>str</code></td><td><code>"l2"</code></td><td>正則化の種類。<code>lindera train --regularization</code> と同じく <code>"l1"</code>・<code>"l2"</code>・<code>"elasticnet"</code> のいずれかで、大文字・小文字は区別しません（<code>"elastic_net"</code>・<code>"elastic-net"</code> も Elastic Net を選びます）</td></tr>
 <tr><td><code>elastic_net_l1_ratio</code></td><td><code>float</code></td><td><code>0.5</code></td><td>Elastic Net 正則化の L1 の比率（0 以上 1 以下）。<code>"elasticnet"</code> のときだけ使います</td></tr>
 <tr><td><code>eta</code></td><td><code>float</code></td><td><code>5e-5</code></td><td>収束判定の許容値（有限の 0 以上の値）。目的関数の相対変化が 3 回続けてこの値を下回ると、<code>max_iter</code> より前に止まります。<code>0</code> で判定を無効にします</td></tr>
@@ -5040,8 +5040,8 @@ train({
 <tr><td><code>rewriteDef</code></td><td><code>string</code></td><td>必須</td><td>書き換えルール定義ファイルのパス（rewrite.def）</td></tr>
 <tr><td><code>output</code></td><td><code>string</code></td><td>必須</td><td>学習済みモデルファイルの出力パス</td></tr>
 <tr><td><code>lambda</code></td><td><code>number</code></td><td><code>1.0</code></td><td>正則化係数（有限の 0 以上の値）。L2 では MeCab の <code>-c C</code> が <code>1 / C</code> にあたり、1.0 は MeCab の <code>-c 1.0</code></td></tr>
-<tr><td><code>maxIter</code></td><td><code>number</code></td><td><code>100</code></td><td>最大学習イテレーション数。目的関数が収束すると、それより前に止まります（<code>eta</code> を参照）</td></tr>
-<tr><td><code>maxThreads</code></td><td><code>number | undefined</code></td><td><code>undefined</code></td><td>スレッド数（undefined = CPU コア数を自動検出）</td></tr>
+<tr><td><code>maxIter</code></td><td><code>number</code></td><td><code>100</code></td><td>最大学習イテレーション数（1 以上）。目的関数が収束すると、それより前に止まります（<code>eta</code> を参照）</td></tr>
+<tr><td><code>maxThreads</code></td><td><code>number | undefined</code></td><td><code>undefined</code></td><td>スレッド数（1 以上。undefined = CPU コア数を自動検出）</td></tr>
 <tr><td><code>regularization</code></td><td><code>string</code></td><td><code>"l2"</code></td><td>正則化の種類。<code>lindera train --regularization</code> と同じく <code>"l1"</code>・<code>"l2"</code>・<code>"elasticnet"</code> のいずれかで、大文字・小文字は区別しません（<code>"elastic_net"</code>・<code>"elastic-net"</code> も Elastic Net を選びます）</td></tr>
 <tr><td><code>elasticNetL1Ratio</code></td><td><code>number</code></td><td><code>0.5</code></td><td>Elastic Net 正則化の L1 の比率（0 以上 1 以下）。<code>"elasticnet"</code> のときだけ使います</td></tr>
 <tr><td><code>eta</code></td><td><code>number</code></td><td><code>5e-5</code></td><td>収束判定の許容値（有限の 0 以上の値）。目的関数の相対変化が 3 回続けてこの値を下回ると、<code>maxIter</code> より前に止まります。<code>0</code> で判定を無効にします</td></tr>
@@ -5136,7 +5136,7 @@ for (const token of tokens) {
 <li><strong>ユーザー辞書</strong>: システム辞書をカスタム語彙で拡張</li>
 </ul>
 <h2 id="整数の引数"><a class="header" href="#整数の引数">整数の引数</a></h2>
-<p>整数の引数は、その設定が保持できる値だけを受け付けます。<code>Lindera::Metadata.new</code> の <code>default_word_cost</code> は -32768 から 32767、文脈 ID は 0 から 65535、<code>Lindera::Penalty.new</code> のペナルティは 32 ビットの整数を受け付けます。個数や位置は 0 以上を受け付けます。該当するのは、<code>Lindera::Penalty.new</code> のしきい値、<code>Schema#get_field_name</code> と <code>Token#get_detail</code> の <code>index</code>、<code>Tokenizer#tokenize_nbest</code> の <code>n</code>、<code>Lindera.train</code> の <code>max_iter</code> と <code>max_threads</code> です。<code>Tokenizer#tokenize_nbest</code> の <code>cost_threshold</code> は 64 ビットの整数を受け付けます。範囲外の値は、引数の名前と範囲を含む <code>RangeError</code> を投げます。末尾より先の位置は、これまでどおり <code>nil</code> を返します。</p>
+<p>整数の引数は、その設定が保持できる値だけを受け付けます。<code>Lindera::Metadata.new</code> の <code>default_word_cost</code> は -32768 から 32767、文脈 ID は 0 から 65535、<code>Lindera::Penalty.new</code> のペナルティは 32 ビットの整数を受け付けます。個数や位置は 0 以上を受け付けます。該当するのは、<code>Lindera::Penalty.new</code> のしきい値、<code>Schema#get_field_name</code> と <code>Token#get_detail</code> の <code>index</code>、<code>Tokenizer#tokenize_nbest</code> の <code>n</code> です。<code>Lindera.train</code> の <code>max_iter</code> と <code>max_threads</code> は 1 以上を受け付けます。<code>Tokenizer#tokenize_nbest</code> の <code>cost_threshold</code> は 64 ビットの整数を受け付けます。範囲外の値は、引数の名前と範囲を含む <code>RangeError</code> を投げます。末尾より先の位置は、これまでどおり <code>nil</code> を返します。</p>
 <pre><code class="language-ruby">require 'lindera'
 
 begin
@@ -5992,8 +5992,8 @@ Lindera.train(
 <tr><td>6</td><td>rewrite_def</td><td><code>String</code></td><td>書き換えルール定義ファイルのパス（rewrite.def）</td></tr>
 <tr><td>7</td><td>output</td><td><code>String</code></td><td>学習済みモデルファイルの出力パス</td></tr>
 <tr><td>8</td><td>lambda</td><td><code>Float</code> または <code>nil</code></td><td>正則化係数（有限の 0 以上の値）。デフォルトは 1.0。L2 では MeCab の <code>-c C</code> が <code>1 / C</code> にあたり、1.0 は MeCab の <code>-c 1.0</code></td></tr>
-<tr><td>9</td><td>max_iter</td><td><code>Integer</code> または <code>nil</code></td><td>最大学習イテレーション数。デフォルトは 100。目的関数が収束すると、それより前に止まります（<code>eta:</code> を参照）</td></tr>
-<tr><td>10</td><td>max_threads</td><td><code>Integer</code> または <code>nil</code></td><td>スレッド数（<code>nil</code> = CPU コア数を自動検出）</td></tr>
+<tr><td>9</td><td>max_iter</td><td><code>Integer</code> または <code>nil</code></td><td>最大学習イテレーション数（1 以上）。デフォルトは 100。目的関数が収束すると、それより前に止まります（<code>eta:</code> を参照）</td></tr>
+<tr><td>10</td><td>max_threads</td><td><code>Integer</code> または <code>nil</code></td><td>スレッド数（1 以上。<code>nil</code> = CPU コア数を自動検出）</td></tr>
 <tr><td>キーワード</td><td>regularization:</td><td><code>String</code> または <code>nil</code></td><td>正則化の種類。デフォルトは <code>'l2'</code>。<code>lindera train --regularization</code> と同じく <code>'l1'</code>・<code>'l2'</code>・<code>'elasticnet'</code> のいずれかで、大文字・小文字は区別しません（<code>'elastic_net'</code>・<code>'elastic-net'</code> も Elastic Net を選びます）</td></tr>
 <tr><td>キーワード</td><td>elastic_net_l1_ratio:</td><td><code>Float</code> または <code>nil</code></td><td>Elastic Net 正則化の L1 の比率（0 以上 1 以下）。デフォルトは 0.5。<code>'elasticnet'</code> のときだけ使います</td></tr>
 <tr><td>キーワード</td><td>eta:</td><td><code>Float</code> または <code>nil</code></td><td>収束判定の許容値（有限の 0 以上の値）。デフォルトは 5e-5。目的関数の相対変化が 3 回続けてこの値を下回ると、<code>max_iter</code> より前に止まります。<code>0</code> で判定を無効にします</td></tr>
@@ -6098,7 +6098,7 @@ $results = $tokenizer-&gt;tokenizeNbest('東京都', 2, cost_threshold: (int) $t
 $results = $tokenizer-&gt;tokenizeNbest('東京都', 2, cost_threshold: null);
 </code></pre>
 <p><code>new Lindera\Tokenizer(...)</code> の <code>$space_penalty</code> やフィルタのメソッドの <code>$args</code> など、<code>mixed</code> と宣言した引数は、この規則の対象外です。どの PHP の値も受け取り、値を自分で検査します。</p>
-<p><code>int</code> の引数は、その設定が保持できる値だけを受け付けます。ほとんどの設定の範囲は、PHP の 64 ビットの <code>int</code> より狭いです。<code>Lindera\Metadata</code> の <code>$default_word_cost</code> は -32768 から 32767、文脈 ID は 0 から 65535、<code>Lindera\Penalty</code> のペナルティは 32 ビットの整数を受け付けます。個数や位置は 0 以上を受け付けます。該当するのは、<code>Lindera\Penalty</code> のしきい値、<code>new Lindera\FieldDefinition(...)</code>・<code>Schema::getFieldName()</code>・<code>Token::getDetail()</code> の <code>$index</code>、<code>tokenizeNbest()</code> の <code>$n</code>、<code>Lindera\Trainer::train()</code> の <code>$max_iter</code> と <code>$max_threads</code> です。範囲外の値は、引数の名前と範囲を含む <code>ValueError</code> を投げます。末尾より先の位置は、これまでどおり <code>null</code> を返します。</p>
+<p><code>int</code> の引数は、その設定が保持できる値だけを受け付けます。ほとんどの設定の範囲は、PHP の 64 ビットの <code>int</code> より狭いです。<code>Lindera\Metadata</code> の <code>$default_word_cost</code> は -32768 から 32767、文脈 ID は 0 から 65535、<code>Lindera\Penalty</code> のペナルティは 32 ビットの整数を受け付けます。個数や位置は 0 以上を受け付けます。該当するのは、<code>Lindera\Penalty</code> のしきい値、<code>new Lindera\FieldDefinition(...)</code>・<code>Schema::getFieldName()</code>・<code>Token::getDetail()</code> の <code>$index</code>、<code>tokenizeNbest()</code> の <code>$n</code> です。<code>Lindera\Trainer::train()</code> の <code>$max_iter</code> と <code>$max_threads</code> は 1 以上を受け付けます。範囲外の値は、引数の名前と範囲を含む <code>ValueError</code> を投げます。末尾より先の位置は、これまでどおり <code>null</code> を返します。</p>
 <pre><code class="language-php">&lt;?php
 
 try {
@@ -7010,8 +7010,8 @@ Lindera\Trainer::train(
 <tr><td><code>$rewrite_def</code></td><td><code>string</code></td><td>必須</td><td>書き換えルール定義ファイルのパス（rewrite.def）</td></tr>
 <tr><td><code>$output</code></td><td><code>string</code></td><td>必須</td><td>学習済みモデルファイルの出力パス</td></tr>
 <tr><td><code>$lambda</code></td><td><code>float</code></td><td><code>1.0</code></td><td>正則化係数（有限の 0 以上の値）。L2 では MeCab の <code>-c C</code> が <code>1 / C</code> にあたり、1.0 は MeCab の <code>-c 1.0</code></td></tr>
-<tr><td><code>$max_iter</code></td><td><code>int</code></td><td><code>100</code></td><td>最大学習イテレーション数。目的関数が収束すると、それより前に止まります（<code>$eta</code> を参照）</td></tr>
-<tr><td><code>$max_threads</code></td><td><code>int</code> または <code>null</code></td><td><code>null</code></td><td>スレッド数（null = CPU コア数を自動検出）</td></tr>
+<tr><td><code>$max_iter</code></td><td><code>int</code></td><td><code>100</code></td><td>最大学習イテレーション数（1 以上）。目的関数が収束すると、それより前に止まります（<code>$eta</code> を参照）</td></tr>
+<tr><td><code>$max_threads</code></td><td><code>int</code> または <code>null</code></td><td><code>null</code></td><td>スレッド数（1 以上。null = CPU コア数を自動検出）</td></tr>
 <tr><td><code>$regularization</code></td><td><code>string</code> または <code>null</code></td><td><code>'l2'</code></td><td>正則化の種類。<code>lindera train --regularization</code> と同じく <code>'l1'</code>・<code>'l2'</code>・<code>'elasticnet'</code> のいずれかで、大文字・小文字は区別しません（<code>'elastic_net'</code>・<code>'elastic-net'</code> も Elastic Net を選びます）</td></tr>
 <tr><td><code>$elastic_net_l1_ratio</code></td><td><code>float</code> または <code>null</code></td><td><code>0.5</code></td><td>Elastic Net 正則化の L1 の比率（0 以上 1 以下）。<code>'elasticnet'</code> のときだけ使います</td></tr>
 <tr><td><code>$eta</code></td><td><code>float</code> または <code>null</code></td><td><code>5e-5</code></td><td>収束判定の許容値（有限の 0 以上の値）。目的関数の相対変化が 3 回続けてこの値を下回ると、<code>$max_iter</code> より前に止まります。<code>0</code> で判定を無効にします</td></tr>
@@ -11341,6 +11341,10 @@ Node.js バインディングは code が <code>InvalidArg</code> の <code>Erro
 切り捨てるか 0 にしていました。</li>
 <li>WASM で、64 ビットの範囲外の BigInt のコストのしきい値と、BigInt でないコストの
 しきい値。</li>
+<li>学習関数の反復回数とスレッド数の 0。v6 は trainer まで渡し、コーパスを読んで
+すべてのラティスを作った後に学習が失敗していました。この 2 つは 1 以上を受け付け、
+Python と Ruby のバインディングも 0 を <code>ValueError</code> と <code>RangeError</code> で拒否します
+（<a href="https://github.com/lindera/lindera/issues/1275">#1275</a>）。</li>
 </ul>
 <p>範囲内の整数を渡してください。Node.js と WASM のバインディングの TypeScript の
 型定義は変わりません。Python と Ruby のバインディングは、以前からこれらの値を
@@ -12653,9 +12657,9 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>lambda</code></td><td>正則化係数（過学習の制御）。有限の 0 以上の値。<code>l2</code> では MeCab の <code>-c C</code> が <code>1 / C</code> に当たる</td><td>1.0</td></tr>
 <tr><td><code>regularization</code></td><td>正則化の種類: <code>l1</code>、<code>l2</code>、<code>elasticnet</code> のいずれか。大文字・小文字は区別しない（<code>elastic_net</code>・<code>elastic-net</code> も Elastic Net を選ぶ）</td><td><code>l2</code></td></tr>
 <tr><td><code>elastic-net-l1-ratio</code></td><td>Elastic Net 正則化の L1 比率（0.0-1.0、<code>--regularization elasticnet</code> の場合のみ使用）</td><td>0.5</td></tr>
-<tr><td><code>max-iterations</code></td><td>最大学習イテレーション数</td><td>100</td></tr>
+<tr><td><code>max-iterations</code></td><td>最大学習イテレーション数（1 以上）</td><td>100</td></tr>
 <tr><td><code>eta</code></td><td>収束判定の許容値（<a href="development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。<code>0</code> で判定を切ります</td><td>0.00005</td></tr>
-<tr><td><code>max-threads</code></td><td>並列処理スレッド数</td><td>CPU コア数</td></tr>
+<tr><td><code>max-threads</code></td><td>並列処理スレッド数（1 以上）</td><td>CPU コア数</td></tr>
 </tbody></table>
 </div>
 <p>デフォルトは MeCab の学習器と同じです。L2 正則化の <code>lambda</code> 1.0 は、MeCab の <code>-c 1.0</code> の目的関数に当たります。<a href="https://github.com/lindera/lindera/issues/1110">#1110</a> の mecab-ipadic の交差検証データでは、MeCab の学習器と同じスコアになり、ほぼ同じイテレーション数（81〜87）で収束します（<a href="https://github.com/lindera/lindera/issues/1261">#1261</a>）。5 分割の平均で、境界 F1 は 0.9613、span + 品詞（4 列）F1 は 0.9398 です。v6 のデフォルトの L1・<code>lambda</code> 0.01 は、すべての分割で <code>max-iterations</code> に達し、0.9572 と 0.9344 でした。L1 は多くの重みを 0 にし、<code>lindera export</code> は重みの等しいラベルに 1 つの文脈 ID を与えるので、L1 の <code>matrix.def</code> は小さくなります。このデータでは L2 の 18.9 MB に対して 8.7 MB で、L2 ではビルドした辞書が 3.8 % 大きくなります。このデータでの学習時間は MeCab の学習器の約 2 倍で、その約 3 分の 2 は最適化の外、つまり最適化を始める前（<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>）と終えた後にかかります。</p>

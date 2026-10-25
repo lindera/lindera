@@ -3028,9 +3028,9 @@ Downloaded dictionary 'ipadic'
 <li><code>--lambda</code> / <code>-l</code>: Regularization coefficient, finite and &gt;= 0; with <code>l2</code>, MeCab's learner's <code>-c C</code> is <code>1 / C</code> (default: 1.0, MeCab's <code>-c 1.0</code>)</li>
 <li><code>--regularization</code> / <code>-R</code>: Regularization type: <code>l1</code>, <code>l2</code>, or <code>elasticnet</code>, in any case; <code>elastic_net</code> and <code>elastic-net</code> also select Elastic Net (default: <code>l2</code>)</li>
 <li><code>--elastic-net-l1-ratio</code>: L1 ratio for Elastic Net regularization (0.0-1.0), only used with <code>--regularization elasticnet</code> (default: 0.5)</li>
-<li><code>--max-iterations</code> / <code>-i</code>: Maximum number of iterations for training (default: 100)</li>
+<li><code>--max-iterations</code> / <code>-i</code>: Maximum number of iterations for training, 1 or more (default: 100)</li>
 <li><code>--eta</code> / <code>-e</code>: Tolerance of the convergence test: training stops before <code>--max-iterations</code> once the relative change of the objective stays below this value for 3 iterations in a row; <code>0</code> disables the test (default: 0.00005, the default of MeCab's learner)</li>
-<li><code>--max-threads</code> / <code>-t</code>: Maximum number of threads (defaults to CPU core count; affects only speed, never the trained model)</li>
+<li><code>--max-threads</code> / <code>-t</code>: Maximum number of threads, 1 or more (defaults to CPU core count; affects only speed, never the trained model)</li>
 </ul>
 <h3 id="basic-workflow"><a class="header" href="#basic-workflow">Basic workflow</a></h3>
 <h4 id="1-prepare-training-files"><a class="header" href="#1-prepare-training-files">1. Prepare training files</a></h4>
@@ -4134,8 +4134,8 @@ lindera.train(
 <tr><td><code>rewrite_def</code></td><td><code>str</code></td><td>required</td><td>Path to the rewrite rule definition file (rewrite.def)</td></tr>
 <tr><td><code>output</code></td><td><code>str</code></td><td>required</td><td>Output path for the trained model file</td></tr>
 <tr><td><code>lambda_</code></td><td><code>float</code></td><td><code>1.0</code></td><td>Regularization coefficient, finite and &gt;= 0; with L2, MeCab's <code>-c C</code> is <code>1 / C</code>, so 1.0 is MeCab's <code>-c 1.0</code></td></tr>
-<tr><td><code>max_iter</code></td><td><code>int</code></td><td><code>100</code></td><td>Maximum number of training iterations; training stops earlier once the objective converges (see <code>eta</code>)</td></tr>
-<tr><td><code>max_threads</code></td><td><code>int</code> or <code>None</code></td><td><code>None</code></td><td>Number of threads (None = auto-detect CPU cores)</td></tr>
+<tr><td><code>max_iter</code></td><td><code>int</code></td><td><code>100</code></td><td>Maximum number of training iterations, 1 or more; training stops earlier once the objective converges (see <code>eta</code>)</td></tr>
+<tr><td><code>max_threads</code></td><td><code>int</code> or <code>None</code></td><td><code>None</code></td><td>Number of threads, 1 or more (None = auto-detect CPU cores)</td></tr>
 <tr><td><code>regularization</code></td><td><code>str</code></td><td><code>"l2"</code></td><td>Regularization type: <code>"l1"</code>, <code>"l2"</code> or <code>"elasticnet"</code>, in any case (<code>"elastic_net"</code> and <code>"elastic-net"</code> also select Elastic Net), as <code>lindera train --regularization</code> takes it</td></tr>
 <tr><td><code>elastic_net_l1_ratio</code></td><td><code>float</code></td><td><code>0.5</code></td><td>L1 ratio of Elastic Net regularization, between 0 and 1; used only with <code>"elasticnet"</code></td></tr>
 <tr><td><code>eta</code></td><td><code>float</code></td><td><code>5e-5</code></td><td>Tolerance of the convergence test, finite and &gt;= 0: training stops before <code>max_iter</code> once the relative change of the objective stays below it for 3 iterations in a row; <code>0</code> disables the test</td></tr>
@@ -5048,8 +5048,8 @@ train({
 <tr><td><code>rewriteDef</code></td><td><code>string</code></td><td>required</td><td>Path to the rewrite rule definition file (rewrite.def)</td></tr>
 <tr><td><code>output</code></td><td><code>string</code></td><td>required</td><td>Output path for the trained model file</td></tr>
 <tr><td><code>lambda</code></td><td><code>number</code></td><td><code>1.0</code></td><td>Regularization coefficient, finite and &gt;= 0; with L2, MeCab's <code>-c C</code> is <code>1 / C</code>, so 1.0 is MeCab's <code>-c 1.0</code></td></tr>
-<tr><td><code>maxIter</code></td><td><code>number</code></td><td><code>100</code></td><td>Maximum number of training iterations; training stops earlier once the objective converges (see <code>eta</code>)</td></tr>
-<tr><td><code>maxThreads</code></td><td><code>number | undefined</code></td><td><code>undefined</code></td><td>Number of threads (undefined = auto-detect CPU cores)</td></tr>
+<tr><td><code>maxIter</code></td><td><code>number</code></td><td><code>100</code></td><td>Maximum number of training iterations, 1 or more; training stops earlier once the objective converges (see <code>eta</code>)</td></tr>
+<tr><td><code>maxThreads</code></td><td><code>number | undefined</code></td><td><code>undefined</code></td><td>Number of threads, 1 or more (undefined = auto-detect CPU cores)</td></tr>
 <tr><td><code>regularization</code></td><td><code>string</code></td><td><code>"l2"</code></td><td>Regularization type: <code>"l1"</code>, <code>"l2"</code> or <code>"elasticnet"</code>, in any case (<code>"elastic_net"</code> and <code>"elastic-net"</code> also select Elastic Net), as <code>lindera train --regularization</code> takes it</td></tr>
 <tr><td><code>elasticNetL1Ratio</code></td><td><code>number</code></td><td><code>0.5</code></td><td>L1 ratio of Elastic Net regularization, between 0 and 1; used only with <code>"elasticnet"</code></td></tr>
 <tr><td><code>eta</code></td><td><code>number</code></td><td><code>5e-5</code></td><td>Tolerance of the convergence test, finite and &gt;= 0: training stops before <code>maxIter</code> once the relative change of the objective stays below it for 3 iterations in a row; <code>0</code> disables the test</td></tr>
@@ -5144,7 +5144,7 @@ for (const token of tokens) {
 <li><strong>User dictionaries</strong>: Extend system dictionaries with custom vocabulary</li>
 </ul>
 <h2 id="integer-arguments"><a class="header" href="#integer-arguments">Integer arguments</a></h2>
-<p>An integer parameter takes only the values its setting can hold. <code>default_word_cost</code> of <code>Lindera::Metadata.new</code> takes -32768 to 32767, the context IDs 0 to 65535, and the penalties of <code>Lindera::Penalty.new</code> a 32-bit integer. A count or an index takes 0 or more: the thresholds of <code>Lindera::Penalty.new</code>, <code>index</code> of <code>Schema#get_field_name</code> and <code>Token#get_detail</code>, <code>n</code> of <code>Tokenizer#tokenize_nbest</code>, and <code>max_iter</code> and <code>max_threads</code> of <code>Lindera.train</code>. <code>cost_threshold</code> of <code>Tokenizer#tokenize_nbest</code> takes a 64-bit integer. A value outside the range raises a <code>RangeError</code> that names the parameter and the range; an index past the end still returns <code>nil</code>:</p>
+<p>An integer parameter takes only the values its setting can hold. <code>default_word_cost</code> of <code>Lindera::Metadata.new</code> takes -32768 to 32767, the context IDs 0 to 65535, and the penalties of <code>Lindera::Penalty.new</code> a 32-bit integer. A count or an index takes 0 or more: the thresholds of <code>Lindera::Penalty.new</code>, <code>index</code> of <code>Schema#get_field_name</code> and <code>Token#get_detail</code>, and <code>n</code> of <code>Tokenizer#tokenize_nbest</code>. <code>max_iter</code> and <code>max_threads</code> of <code>Lindera.train</code> take 1 or more. <code>cost_threshold</code> of <code>Tokenizer#tokenize_nbest</code> takes a 64-bit integer. A value outside the range raises a <code>RangeError</code> that names the parameter and the range; an index past the end still returns <code>nil</code>:</p>
 <pre><code class="language-ruby">require 'lindera'
 
 begin
@@ -6009,8 +6009,8 @@ Lindera.train(
 <tr><td>6</td><td>rewrite_def</td><td><code>String</code></td><td>Path to the rewrite rule definition file (rewrite.def)</td></tr>
 <tr><td>7</td><td>output</td><td><code>String</code></td><td>Output path for the trained model file</td></tr>
 <tr><td>8</td><td>lambda</td><td><code>Float</code> or <code>nil</code></td><td>Regularization coefficient, finite and &gt;= 0, default 1.0; with L2, MeCab's <code>-c C</code> is <code>1 / C</code>, so 1.0 is MeCab's <code>-c 1.0</code></td></tr>
-<tr><td>9</td><td>max_iter</td><td><code>Integer</code> or <code>nil</code></td><td>Maximum number of training iterations, default 100; training stops earlier once the objective converges (see <code>eta:</code>)</td></tr>
-<tr><td>10</td><td>max_threads</td><td><code>Integer</code> or <code>nil</code></td><td>Number of threads (<code>nil</code> = auto-detect CPU cores)</td></tr>
+<tr><td>9</td><td>max_iter</td><td><code>Integer</code> or <code>nil</code></td><td>Maximum number of training iterations, 1 or more, default 100; training stops earlier once the objective converges (see <code>eta:</code>)</td></tr>
+<tr><td>10</td><td>max_threads</td><td><code>Integer</code> or <code>nil</code></td><td>Number of threads, 1 or more (<code>nil</code> = auto-detect CPU cores)</td></tr>
 <tr><td>keyword</td><td>regularization:</td><td><code>String</code> or <code>nil</code></td><td>Regularization type, default <code>'l2'</code>: <code>'l1'</code>, <code>'l2'</code> or <code>'elasticnet'</code>, in any case (<code>'elastic_net'</code> and <code>'elastic-net'</code> also select Elastic Net), as <code>lindera train --regularization</code> takes it</td></tr>
 <tr><td>keyword</td><td>elastic_net_l1_ratio:</td><td><code>Float</code> or <code>nil</code></td><td>L1 ratio of Elastic Net regularization, between 0 and 1, default 0.5; used only with <code>'elasticnet'</code></td></tr>
 <tr><td>keyword</td><td>eta:</td><td><code>Float</code> or <code>nil</code></td><td>Tolerance of the convergence test, finite and &gt;= 0, default 5e-5: training stops before <code>max_iter</code> once the relative change of the objective stays below it for 3 iterations in a row; <code>0</code> disables the test</td></tr>
@@ -6123,7 +6123,7 @@ $results = $tokenizer-&gt;tokenizeNbest('東京都', 2, cost_threshold: (int) $t
 $results = $tokenizer-&gt;tokenizeNbest('東京都', 2, cost_threshold: null);
 </code></pre>
 <p>The parameters declared <code>mixed</code>, such as <code>$space_penalty</code> of <code>new Lindera\Tokenizer(...)</code> and <code>$args</code> of the filter methods, are not covered by this rule: they take any PHP value and check it themselves.</p>
-<p>An <code>int</code> parameter also takes only the values its setting can hold, which for most settings is a narrower range than PHP's 64-bit <code>int</code>. <code>$default_word_cost</code> of <code>Lindera\Metadata</code> takes -32768 to 32767, the context IDs 0 to 65535, and the penalties of <code>Lindera\Penalty</code> a 32-bit integer. A count or an index takes 0 or more: the thresholds of <code>Lindera\Penalty</code>, <code>$index</code> of <code>new Lindera\FieldDefinition(...)</code>, <code>Schema::getFieldName()</code> and <code>Token::getDetail()</code>, <code>$n</code> of <code>tokenizeNbest()</code>, and <code>$max_iter</code> and <code>$max_threads</code> of <code>Lindera\Trainer::train()</code>. A value outside the range throws a <code>ValueError</code> that names the parameter and the range; an index past the end still returns <code>null</code>:</p>
+<p>An <code>int</code> parameter also takes only the values its setting can hold, which for most settings is a narrower range than PHP's 64-bit <code>int</code>. <code>$default_word_cost</code> of <code>Lindera\Metadata</code> takes -32768 to 32767, the context IDs 0 to 65535, and the penalties of <code>Lindera\Penalty</code> a 32-bit integer. A count or an index takes 0 or more: the thresholds of <code>Lindera\Penalty</code>, <code>$index</code> of <code>new Lindera\FieldDefinition(...)</code>, <code>Schema::getFieldName()</code> and <code>Token::getDetail()</code>, and <code>$n</code> of <code>tokenizeNbest()</code>. <code>$max_iter</code> and <code>$max_threads</code> of <code>Lindera\Trainer::train()</code> take 1 or more. A value outside the range throws a <code>ValueError</code> that names the parameter and the range; an index past the end still returns <code>null</code>:</p>
 <pre><code class="language-php">&lt;?php
 
 try {
@@ -7092,8 +7092,8 @@ Lindera\Trainer::train(
 <tr><td><code>$rewrite_def</code></td><td><code>string</code></td><td>required</td><td>Path to the rewrite rule definition file (rewrite.def)</td></tr>
 <tr><td><code>$output</code></td><td><code>string</code></td><td>required</td><td>Output path for the trained model file</td></tr>
 <tr><td><code>$lambda</code></td><td><code>float</code></td><td><code>1.0</code></td><td>Regularization coefficient, finite and &gt;= 0; with L2, MeCab's <code>-c C</code> is <code>1 / C</code>, so 1.0 is MeCab's <code>-c 1.0</code></td></tr>
-<tr><td><code>$max_iter</code></td><td><code>int</code></td><td><code>100</code></td><td>Maximum number of training iterations; training stops earlier once the objective converges (see <code>$eta</code>)</td></tr>
-<tr><td><code>$max_threads</code></td><td><code>int|null</code></td><td><code>null</code></td><td>Number of threads (<code>null</code> = auto-detect CPU cores)</td></tr>
+<tr><td><code>$max_iter</code></td><td><code>int</code></td><td><code>100</code></td><td>Maximum number of training iterations, 1 or more; training stops earlier once the objective converges (see <code>$eta</code>)</td></tr>
+<tr><td><code>$max_threads</code></td><td><code>int|null</code></td><td><code>null</code></td><td>Number of threads, 1 or more (<code>null</code> = auto-detect CPU cores)</td></tr>
 <tr><td><code>$regularization</code></td><td><code>string|null</code></td><td><code>'l2'</code></td><td>Regularization type: <code>'l1'</code>, <code>'l2'</code> or <code>'elasticnet'</code>, in any case (<code>'elastic_net'</code> and <code>'elastic-net'</code> also select Elastic Net), as <code>lindera train --regularization</code> takes it</td></tr>
 <tr><td><code>$elastic_net_l1_ratio</code></td><td><code>float|null</code></td><td><code>0.5</code></td><td>L1 ratio of Elastic Net regularization, between 0 and 1; used only with <code>'elasticnet'</code></td></tr>
 <tr><td><code>$eta</code></td><td><code>float|null</code></td><td><code>5e-5</code></td><td>Tolerance of the convergence test, finite and &gt;= 0: training stops before <code>$max_iter</code> once the relative change of the objective stays below it for 3 iterations in a row; <code>0</code> disables the test</td></tr>
@@ -11612,6 +11612,11 @@ and <code>FieldDefinition</code>).</p>
 <code>NaN</code> or <code>Infinity</code>, which v6 truncated or turned into 0.</li>
 <li>In WASM, a BigInt cost threshold outside the 64-bit range, and a cost
 threshold that is not a BigInt.</li>
+<li>An iteration or thread count of 0 for the training functions, which v6
+passed to the trainer: training then failed only after the corpus was
+read and every lattice was built. The counts take 1 or more, and the
+Python and Ruby bindings reject 0 too, with a <code>ValueError</code> and a
+<code>RangeError</code> (<a href="https://github.com/lindera/lindera/issues/1275">#1275</a>).</li>
 </ul>
 <p>Pass an integer in the range. The TypeScript declarations of the Node.js
 and WASM bindings do not change. The Python and Ruby bindings already rejected
@@ -13041,9 +13046,9 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>lambda</code></td><td>Regularization coefficient (controls overfitting), finite and &gt;= 0; with <code>l2</code>, MeCab's <code>-c C</code> is <code>1 / C</code></td><td>1.0</td></tr>
 <tr><td><code>regularization</code></td><td>Regularization type: <code>l1</code>, <code>l2</code>, or <code>elasticnet</code>, in any case (<code>elastic_net</code> and <code>elastic-net</code> also select Elastic Net)</td><td><code>l2</code></td></tr>
 <tr><td><code>elastic-net-l1-ratio</code></td><td>L1 ratio for Elastic Net regularization (0.0-1.0, only used with <code>--regularization elasticnet</code>)</td><td>0.5</td></tr>
-<tr><td><code>max-iterations</code></td><td>Maximum number of training iterations</td><td>100</td></tr>
+<tr><td><code>max-iterations</code></td><td>Maximum number of training iterations, 1 or more</td><td>100</td></tr>
 <tr><td><code>eta</code></td><td>Tolerance of the convergence test (see <a href="development/training_pipeline.html#how-training-works">How training works</a>); <code>0</code> disables the test</td><td>0.00005</td></tr>
-<tr><td><code>max-threads</code></td><td>Number of parallel processing threads</td><td>CPU core count</td></tr>
+<tr><td><code>max-threads</code></td><td>Number of parallel processing threads, 1 or more</td><td>CPU core count</td></tr>
 </tbody></table>
 </div>
 <p>The defaults are those of MeCab's learner: L2 regularization with <code>lambda</code> 1.0 is its objective with <code>-c 1.0</code>. On the mecab-ipadic cross-validation data of <a href="https://github.com/lindera/lindera/issues/1110">#1110</a>, they score as MeCab's learner does and converge in about as many iterations, 81 to 87 (<a href="https://github.com/lindera/lindera/issues/1261">#1261</a>): boundary F1 0.9613 and span + POS (4 columns) F1 0.9398 on average over 5 folds, where v6's default, L1 with <code>lambda</code> 0.01, reached <code>max-iterations</code> on every fold with 0.9572 and 0.9344. L1 sets many weights to 0, and <code>lindera export</code> gives labels with equal weights one context ID, so the L1 <code>matrix.def</code> is smaller: 8.7 MB there against 18.9 MB with L2, which makes the built dictionary 3.8 % larger. Training there takes about twice as long as MeCab's learner, and about two thirds of the time is spent outside the optimizer: before it starts (<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>) and after it stops.</p>
