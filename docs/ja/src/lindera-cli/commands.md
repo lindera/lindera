@@ -1003,6 +1003,8 @@ Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels
 L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradient: converged
 ```
 
+あるイテレーションで目的関数が変わらなかったとき、またはライン探索が失敗したときは、続けて標準エラーに警告を書きます（[学習のしくみ](../development/training_pipeline.md#学習のしくみ)を参照）。
+
 学習済みモデルには以下が含まれます：
 
 - **シード辞書の語**: シード辞書のすべてのレコード（学習された重みと文脈 ID 付き）

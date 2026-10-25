@@ -1003,6 +1003,8 @@ Once training stops, it prints why, with the number of iterations and of evaluat
 L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradient: converged
 ```
 
+When an iteration left the objective unchanged or the line search failed, it then writes a warning on stderr (see [How training works](../development/training_pipeline.md#how-training-works)).
+
 The trained model contains:
 
 - **Seed words**: every seed lexicon row, with a learned weight and context IDs

@@ -1324,12 +1324,38 @@ mod with_trained_dictionary {
         );
     }
 
+    /// Writes `resources/training/corpus.txt` with every feature cut to its
+    /// first six columns, without the base form and the readings, into
+    /// `dir`. No seed row has the whole feature string of one of its gold
+    /// tokens, though each gold token has the surface of one.
+    ///
+    /// # Arguments
+    ///
+    /// * `dir` - The directory to write `corpus.txt` into.
+    ///
+    /// # Returns
+    ///
+    /// The path of the corpus.
+    fn cut_corpus(dir: &Path) -> PathBuf {
+        let cut: String = std::fs::read_to_string(training_dir().join("corpus.txt"))
+            .unwrap()
+            .lines()
+            .map(|line| match line.split_once('\t') {
+                Some((surface, feature)) => {
+                    let columns: Vec<&str> = feature.split(',').take(6).collect();
+                    format!("{surface}\t{}\n", columns.join(","))
+                }
+                None => format!("{line}\n"),
+            })
+            .collect();
+        let path = dir.join("corpus.txt");
+        std::fs::write(&path, cut).unwrap();
+        path
+    }
+
     /// `lindera train` warns on stderr, not on stdout, when no gold token
-    /// is a seed word, and still trains (#1259). With every feature of
-    /// `resources/training/corpus.txt` cut to its first six columns, no
-    /// seed row has the whole feature string of a gold token, though each
-    /// gold token has the surface of one. The files as they are give no
-    /// warning.
+    /// is a seed word, and still trains (#1259), as on the corpus of
+    /// `cut_corpus`. The files as they are give no warning.
     #[test]
     fn train_warns_on_stderr_when_no_gold_token_is_a_seed_word() {
         let dir = tempfile::tempdir().unwrap();
@@ -1342,19 +1368,7 @@ mod with_trained_dictionary {
         assert!(output.status.success(), "got: {stderr}");
         assert!(!stderr.contains("seed word"), "got: {stderr}");
 
-        let cut: String = std::fs::read_to_string(&corpus)
-            .unwrap()
-            .lines()
-            .map(|line| match line.split_once('\t') {
-                Some((surface, feature)) => {
-                    let columns: Vec<&str> = feature.split(',').take(6).collect();
-                    format!("{surface}\t{}\n", columns.join(","))
-                }
-                None => format!("{line}\n"),
-            })
-            .collect();
-        let cut_corpus = dir.path().join("corpus.txt");
-        std::fs::write(&cut_corpus, cut).unwrap();
+        let cut_corpus = cut_corpus(dir.path());
         let model = dir.path().join("cut.dat");
 
         let output = train_command(&cut_corpus, &model).output().unwrap();
@@ -1376,6 +1390,43 @@ mod with_trained_dictionary {
             "got: {stderr}"
         );
         assert!(!stdout.contains("seed word"), "got: {stdout}");
+        assert!(model.is_file());
+    }
+
+    /// `lindera train` warns on stderr, not on stdout, when the optimizer
+    /// stops because an iteration left the objective unchanged, and still
+    /// writes the model (#1268). On the corpus of `cut_corpus`, `--lambda
+    /// 100` with the convergence test turned off (`--eta 0`) stops so after
+    /// 6 iterations. The line that says why stays on stdout. The warning of
+    /// a failed line search is written by the same call.
+    #[test]
+    fn train_warns_on_stderr_when_the_optimizer_makes_no_progress() {
+        let dir = tempfile::tempdir().unwrap();
+        let corpus = cut_corpus(dir.path());
+        let model = dir.path().join("model.dat");
+
+        let output = train_command(&corpus, &model)
+            .args(["--lambda", "100", "--eta", "0"])
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(output.status.success(), "got: {stderr}");
+        assert!(
+            stdout.lines().any(|line| {
+                line.starts_with("L-BFGS stopped after ")
+                    && line.ends_with(": no progress: an iteration left the objective unchanged")
+            }),
+            "got: {stdout}"
+        );
+        let warning = "Warning: the optimizer could not make progress; after few iterations the \
+                       model is barely trained";
+        assert_eq!(
+            stderr.lines().filter(|line| *line == warning).count(),
+            1,
+            "got: {stderr}"
+        );
+        assert!(!stdout.contains("could not make progress"), "got: {stdout}");
         assert!(model.is_file());
     }
 }
