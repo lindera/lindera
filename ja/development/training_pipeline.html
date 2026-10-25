@@ -455,9 +455,9 @@ EOS
 <li>ラベルセット（種辞書の行、続いて <code>unk.def</code> のエントリ）</li>
 <li>品詞情報</li>
 <li>ファイル順の <code>unk.def</code> のエントリと、<code>char.def</code>・<code>feature.def</code>・<code>rewrite.def</code> の内容</li>
-<li>学習メタデータ（形式バージョン、正則化、イテレーション数、素性・ラベル数）</li>
+<li>学習メタデータ（形式バージョン、正則化の係数・種類・Elastic Net の比率、イテレーション数、素性・ラベル数）</li>
 </ul>
-<p>形式バージョンは <code>2.0.0</code>（<code>lindera_trainer::model::MODEL_FORMAT_VERSION</code>）で、モデルの構造や意味が変わるたびに変わります。<code>lindera export</code> は、別のバージョンで書かれた <code>model.dat</code>（7.0.0 より前に書かれたものはすべて該当）を、「re-run <code>lindera train</code> to regenerate it」で終わるエラーで拒否します。そうしたモデルは現在のバージョンで学習し直してください。</p>
+<p>形式バージョンは <code>3.0.0</code>（<code>lindera_trainer::model::MODEL_FORMAT_VERSION</code>）で、モデルの構造や意味が変わるたびに変わります。<code>lindera export</code> は、別のバージョンで書かれた <code>model.dat</code>（7.0.0 より前に書かれたものはすべて該当）を、「re-run <code>lindera train</code> to regenerate it」で終わるエラーで拒否します。そうしたモデルは現在のバージョンで学習し直してください。</p>
 <p>出力はバイト単位で再現可能です。同じ入力・同じフラグで 2 回学習すると
 <code>model.dat</code> のバイト列が一致するため、チェックサムの取得や差分比較ができます。
 これは <code>--max-threads</code> の値によらず成り立ちます。勾配と損失は学習データの

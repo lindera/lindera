@@ -958,7 +958,7 @@ EOS
 <li><code>metadata.json</code>: Updated metadata file (if <code>--metadata</code> option is provided)</li>
 </ul>
 <h3 id="model-format-version"><a class="header" href="#model-format-version">Model format version</a></h3>
-<p><code>lindera export</code> reads a model of the current format version (2.0.0) only. A <code>model.dat</code> written by an earlier version, which includes every <code>model.dat</code> written before 7.0.0, is rejected, and has to be trained again with <code>lindera train</code>. For a model trained with the 6.1.0 CLI:</p>
+<p><code>lindera export</code> reads a model of the current format version (3.0.0) only. A <code>model.dat</code> written by an earlier version, which includes every <code>model.dat</code> written before 7.0.0, is rejected, and has to be trained again with <code>lindera train</code>. For a model trained with the 6.1.0 CLI:</p>
 <pre><code class="language-text">Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera train` to regenerate it. }
 </code></pre>
 <h3 id="complete-workflow-example"><a class="header" href="#complete-workflow-example">Complete workflow example</a></h3>
@@ -1005,7 +1005,7 @@ EOS
 <li><strong>Update specific fields</strong> with values from the trained model:
 <ul>
 <li><code>default_word_cost</code>: Calculated from feature weight median</li>
-<li><code>model_info</code>: Training statistics including feature count, label count, matrix size (<code>connection_matrix_size</code>, the size of <code>matrix.def</code> as rows x columns), the number of training iterations that ran (<code>training_iterations</code>, at most <code>--max-iterations</code>), regularization, and the model format version. No timestamp is written, so exporting the same model twice produces identical output</li>
+<li><code>model_info</code>: Training statistics including feature count, label count, matrix size (<code>connection_matrix_size</code>, the size of <code>matrix.def</code> as rows x columns), the number of training iterations that ran (<code>training_iterations</code>, at most <code>--max-iterations</code>), the regularization coefficient (<code>regularization</code>), its type (<code>regularization_type</code>: <code>l1</code>, <code>l2</code> or <code>elasticnet</code>) and, for Elastic Net only, its L1 ratio (<code>elastic_net_l1_ratio</code>), and the model format version. No timestamp is written, so exporting the same model twice produces identical output</li>
 </ul>
 </li>
 <li><strong>Preserve existing settings</strong> such as dictionary name, character encoding, schema definitions, and other user-defined configuration</li>

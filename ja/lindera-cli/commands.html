@@ -958,7 +958,7 @@ EOS
 <li><code>metadata.json</code>: 更新されたメタデータファイル（<code>--metadata</code> オプションが指定された場合）</li>
 </ul>
 <h3 id="モデルの形式バージョン"><a class="header" href="#モデルの形式バージョン">モデルの形式バージョン</a></h3>
-<p><code>lindera export</code> が読み込めるのは、現在の形式バージョン（2.0.0）のモデルだけです。それより前のバージョンで書かれた <code>model.dat</code>（7.0.0 より前に書かれたものはすべて該当）は拒否されるため、<code>lindera train</code> で学習し直す必要があります。6.1.0 の CLI で学習したモデルでは次のとおりです：</p>
+<p><code>lindera export</code> が読み込めるのは、現在の形式バージョン（3.0.0）のモデルだけです。それより前のバージョンで書かれた <code>model.dat</code>（7.0.0 より前に書かれたものはすべて該当）は拒否されるため、<code>lindera train</code> で学習し直す必要があります。6.1.0 の CLI で学習したモデルでは次のとおりです：</p>
 <pre><code class="language-text">Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera train` to regenerate it. }
 </code></pre>
 <h3 id="完全なワークフロー例"><a class="header" href="#完全なワークフロー例">完全なワークフロー例</a></h3>
@@ -1005,7 +1005,7 @@ EOS
 <li><strong>特定のフィールドを学習済みモデルの値で更新</strong>します：
 <ul>
 <li><code>default_word_cost</code>: 素性重みの中央値から計算された値</li>
-<li><code>model_info</code>: 素性数、ラベル数、行列サイズ（<code>connection_matrix_size</code>。<code>matrix.def</code> の大きさを行数 x 列数で表す）、実際に回った学習の反復回数（<code>training_iterations</code>。<code>--max-iterations</code> 以下）、正則化、モデルの形式バージョンを含む学習統計情報。タイムスタンプは書き込まれないため、同じモデルを 2 回エクスポートすると同一の出力になります</li>
+<li><code>model_info</code>: 素性数、ラベル数、行列サイズ（<code>connection_matrix_size</code>。<code>matrix.def</code> の大きさを行数 x 列数で表す）、実際に回った学習の反復回数（<code>training_iterations</code>。<code>--max-iterations</code> 以下）、正則化の係数（<code>regularization</code>）とその種類（<code>regularization_type</code>。<code>l1</code>・<code>l2</code>・<code>elasticnet</code> のいずれか）、Elastic Net のときだけその L1 の比率（<code>elastic_net_l1_ratio</code>）、モデルの形式バージョンを含む学習統計情報。タイムスタンプは書き込まれないため、同じモデルを 2 回エクスポートすると同一の出力になります</li>
 </ul>
 </li>
 <li><strong>既存の設定を保持</strong>します（辞書名、文字エンコード設定、スキーマ定義、その他のユーザー定義設定など）</li>
