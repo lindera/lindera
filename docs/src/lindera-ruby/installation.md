@@ -46,7 +46,7 @@ unzip lindera-ipadic-<version>.zip -d /path/to/ipadic
 
 ## Development Build
 
-Build and install lindera-ruby in development mode:
+Build the native extension of lindera-ruby in release mode. Rake puts it in `lindera-ruby/lib/lindera/` and does not install the gem; Ruby run with `bundle exec` from `lindera-ruby/` loads it from there:
 
 ```bash
 cd lindera-ruby
@@ -54,7 +54,9 @@ bundle install
 bundle exec rake compile
 ```
 
-Or use the project Makefile:
+For a debug build, run `bundle exec rake compile:dev` instead of `bundle exec rake compile`.
+
+Or use the project Makefile, which makes the same release build with the `embed-ipadic` and `train` features:
 
 ```bash
 make build-lindera-ruby
