@@ -96,12 +96,24 @@ class TestTrainer < Minitest::Test
   MISSING = '/nonexistent/issue1262'
 
   # Trains from TRAINING into `dir/name` with at most 100 iterations, the
-  # positional `lambda` left out, and returns the model.
-  def train_resources(dir, name, **settings)
+  # optional positional `lambda`, and returns the model.
+  def train_resources(dir, name, coefficient: nil, **settings)
     inputs = %w[seed.csv corpus.txt char.def unk.def feature.def rewrite.def].map { |file| File.join(TRAINING, file) }
     model = File.join(dir, name)
-    Lindera.train(*inputs, model, nil, 100, 1, **settings)
+    Lindera.train(*inputs, model, coefficient, 100, 1, **settings)
     File.binread(model)
+  end
+
+  # A zero effective L1 coefficient trains instead of panicking in OWL-QN.
+  def test_train_with_zero_l1_coefficient
+    Dir.mktmpdir('lindera-trainer-') do |dir|
+      cases = [['l1', 0.0, 0.5], ['elasticnet', 0.0, 0.5], ['elasticnet', 1.0, 0.0]]
+      cases.each_with_index do |(kind, coefficient, ratio), i|
+        model = train_resources(dir, "zero-l1-#{i}.dat", coefficient: coefficient,
+                                regularization: kind, elastic_net_l1_ratio: ratio)
+        refute_empty model
+      end
+    end
   end
 
   # regularization:, elastic_net_l1_ratio: and eta: reach the trainer, with

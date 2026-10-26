@@ -523,32 +523,25 @@ where
     P: CostFunction<Param = Vec<f64>, Output = f64>
         + Gradient<Param = Vec<f64>, Gradient = Vec<f64>>,
 {
-    match regularization {
-        Regularization::L1 => {
-            let linesearch = BacktrackingLineSearch::new(ArmijoCondition::new(1e-4).unwrap())
-                .rho(0.5)
-                .unwrap();
-            let solver = LBFGS::new(linesearch, 7)
-                .with_l1_regularization(lambda)
-                .unwrap();
-            run(problem, solver, weights_init, max_iter, eta)
-        }
-        Regularization::L2 => {
-            let linesearch = MoreThuenteLineSearch::new().with_c(1e-4, 0.9).unwrap();
-            let solver = LBFGS::new(linesearch, 7);
-            run(problem, solver, weights_init, max_iter, eta)
-        }
-        Regularization::ElasticNet { l1_ratio } => {
-            // OWL-QN (L1) with L2 gradient penalty via LatticesLoss
-            let l1_lambda = lambda * l1_ratio;
-            let linesearch = BacktrackingLineSearch::new(ArmijoCondition::new(1e-4).unwrap())
-                .rho(0.5)
-                .unwrap();
-            let solver = LBFGS::new(linesearch, 7)
-                .with_l1_regularization(l1_lambda)
-                .unwrap();
-            run(problem, solver, weights_init, max_iter, eta)
-        }
+    let l1_lambda = match regularization {
+        Regularization::L1 => lambda,
+        Regularization::L2 => 0.0,
+        Regularization::ElasticNet { l1_ratio } => lambda * l1_ratio,
+    };
+    // OWL-QN requires a positive L1 coefficient. With no L1 penalty, use
+    // ordinary L-BFGS; the objective already includes any L2 penalty.
+    if l1_lambda > 0.0 {
+        let linesearch = BacktrackingLineSearch::new(ArmijoCondition::new(1e-4).unwrap())
+            .rho(0.5)
+            .unwrap();
+        let solver = LBFGS::new(linesearch, 7)
+            .with_l1_regularization(l1_lambda)
+            .unwrap();
+        run(problem, solver, weights_init, max_iter, eta)
+    } else {
+        let linesearch = MoreThuenteLineSearch::new().with_c(1e-4, 0.9).unwrap();
+        let solver = LBFGS::new(linesearch, 7);
+        run(problem, solver, weights_init, max_iter, eta)
     }
 }
 
