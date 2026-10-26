@@ -189,13 +189,10 @@ For browser/WASM usage, see <a href="../lindera-wasm/installation.html">lindera-
 <h2 id="building-from-source"><a class="header" href="#building-from-source">Building from Source</a></h2>
 <h3 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h3>
 <ul>
-<li><strong>Node.js 18 or later</strong> (LTS versions recommended)</li>
+<li><strong>Node.js</strong> <code>^20.17.0 || ^22.13.0 || &gt;= 23.5.0</code> -- The <code>engines</code> range of <code>lindera-nodejs/package.json</code> (LTS versions recommended)</li>
 <li><strong>Rust toolchain</strong> -- Install via <a href="https://rustup.rs/">rustup</a></li>
-<li><strong>NAPI-RS CLI</strong> -- CLI tool for building native Node.js addons in Rust</li>
 </ul>
-<p>Install the NAPI-RS CLI globally:</p>
-<pre><code class="language-bash">npm install -g @napi-rs/cli
-</code></pre>
+<p>The NAPI-RS CLI (<code>@napi-rs/cli</code>), which builds the native addon, needs no global install: it is a devDependency of <code>lindera-nodejs</code>, which <code>npm install</code> installs (see <a href="#development-build">Development Build</a>).</p>
 <h2 id="obtaining-dictionaries"><a class="header" href="#obtaining-dictionaries">Obtaining Dictionaries</a></h2>
 <p>Lindera does not bundle dictionaries with the package. You need to obtain a pre-built dictionary separately.</p>
 <h3 id="download-from-github-releases"><a class="header" href="#download-from-github-releases">Download from GitHub Releases</a></h3>
@@ -205,12 +202,13 @@ curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/li
 unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 </code></pre>
 <h2 id="development-build"><a class="header" href="#development-build">Development Build</a></h2>
-<p>Build lindera-nodejs in development mode:</p>
+<p>Build lindera-nodejs in release mode. <code>npm install</code> also installs the NAPI-RS CLI (<code>@napi-rs/cli</code>) at the version <code>package.json</code> pins, which <code>npm run build</code> runs:</p>
 <pre><code class="language-bash">cd lindera-nodejs
 npm install
 npm run build
 </code></pre>
-<p>Or use the project Makefile:</p>
+<p>For a debug build, run <code>npm run build:debug</code> instead of <code>npm run build</code>.</p>
+<p>Or use the project Makefile, which makes the same release build:</p>
 <pre><code class="language-bash">make build-lindera-nodejs
 </code></pre>
 <h3 id="build-with-training-support"><a class="header" href="#build-with-training-support">Build with Training Support</a></h3>

@@ -4214,7 +4214,7 @@ for token in tokens:
     print(f"{token.surface}\t{','.join(token.details)}")
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-nodejs"><a class="header" href="#lindera-nodejs">Lindera Node.js</a></h1>
-<p>Lindera Node.js provides Node.js bindings for the Lindera morphological analysis engine, built with <a href="https://napi.rs/">NAPI-RS</a>. It brings Lindera's high-performance tokenization capabilities to the Node.js ecosystem with support for Node.js 18 and later.</p>
+<p>Lindera Node.js provides Node.js bindings for the Lindera morphological analysis engine, built with <a href="https://napi.rs/">NAPI-RS</a>. It brings Lindera's high-performance tokenization capabilities to the Node.js ecosystem, on the Node.js versions <code>^20.17.0 || ^22.13.0 || &gt;= 23.5.0</code>.</p>
 <h2 id="features-1"><a class="header" href="#features-1">Features</a></h2>
 <ul>
 <li><strong>Multi-language support</strong>: Tokenize Japanese (IPADIC, IPADIC NEologd, UniDic), Korean (ko-dic), and Chinese (CC-CEDICT, Jieba) text</li>
@@ -4247,13 +4247,10 @@ For browser/WASM usage, see <a href="lindera-nodejs/../lindera-wasm/installation
 <h2 id="building-from-source-1"><a class="header" href="#building-from-source-1">Building from Source</a></h2>
 <h3 id="prerequisites-1"><a class="header" href="#prerequisites-1">Prerequisites</a></h3>
 <ul>
-<li><strong>Node.js 18 or later</strong> (LTS versions recommended)</li>
+<li><strong>Node.js</strong> <code>^20.17.0 || ^22.13.0 || &gt;= 23.5.0</code> -- The <code>engines</code> range of <code>lindera-nodejs/package.json</code> (LTS versions recommended)</li>
 <li><strong>Rust toolchain</strong> -- Install via <a href="https://rustup.rs/">rustup</a></li>
-<li><strong>NAPI-RS CLI</strong> -- CLI tool for building native Node.js addons in Rust</li>
 </ul>
-<p>Install the NAPI-RS CLI globally:</p>
-<pre><code class="language-bash">npm install -g @napi-rs/cli
-</code></pre>
+<p>The NAPI-RS CLI (<code>@napi-rs/cli</code>), which builds the native addon, needs no global install: it is a devDependency of <code>lindera-nodejs</code>, which <code>npm install</code> installs (see <a href="lindera-nodejs/installation.html#development-build">Development Build</a>).</p>
 <h2 id="obtaining-dictionaries-3"><a class="header" href="#obtaining-dictionaries-3">Obtaining Dictionaries</a></h2>
 <p>Lindera does not bundle dictionaries with the package. You need to obtain a pre-built dictionary separately.</p>
 <h3 id="download-from-github-releases-2"><a class="header" href="#download-from-github-releases-2">Download from GitHub Releases</a></h3>
@@ -4263,12 +4260,13 @@ curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/li
 unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 </code></pre>
 <h2 id="development-build-1"><a class="header" href="#development-build-1">Development Build</a></h2>
-<p>Build lindera-nodejs in development mode:</p>
+<p>Build lindera-nodejs in release mode. <code>npm install</code> also installs the NAPI-RS CLI (<code>@napi-rs/cli</code>) at the version <code>package.json</code> pins, which <code>npm run build</code> runs:</p>
 <pre><code class="language-bash">cd lindera-nodejs
 npm install
 npm run build
 </code></pre>
-<p>Or use the project Makefile:</p>
+<p>For a debug build, run <code>npm run build:debug</code> instead of <code>npm run build</code>.</p>
+<p>Or use the project Makefile, which makes the same release build:</p>
 <pre><code class="language-bash">make build-lindera-nodejs
 </code></pre>
 <h3 id="build-with-training-support-1"><a class="header" href="#build-with-training-support-1">Build with Training Support</a></h3>

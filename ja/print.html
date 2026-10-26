@@ -4214,7 +4214,7 @@ for token in tokens:
     print(f"{token.surface}\t{','.join(token.details)}")
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-nodejs"><a class="header" href="#lindera-nodejs">Lindera Node.js</a></h1>
-<p>Lindera Node.js は、<a href="https://napi.rs/">NAPI-RS</a> を使用して構築された Lindera 形態素解析エンジンの Node.js バインディングです。Node.js 18 以降をサポートし、Lindera の高性能なトークナイズ機能を Node.js エコシステムに提供します。</p>
+<p>Lindera Node.js は、<a href="https://napi.rs/">NAPI-RS</a> を使用して構築された Lindera 形態素解析エンジンの Node.js バインディングです。Node.js <code>^20.17.0 || ^22.13.0 || &gt;= 23.5.0</code> をサポートし、Lindera の高性能なトークナイズ機能を Node.js エコシステムに提供します。</p>
 <h2 id="特徴-1"><a class="header" href="#特徴-1">特徴</a></h2>
 <ul>
 <li><strong>多言語対応</strong>: 日本語（IPADIC、IPADIC NEologd、UniDic）、韓国語（ko-dic）、中国語（CC-CEDICT、Jieba）のテキストをトークナイズ</li>
@@ -4247,13 +4247,10 @@ npm パッケージには辞書が含まれていません。下記の<a href="l
 <h2 id="ソースからのビルド-1"><a class="header" href="#ソースからのビルド-1">ソースからのビルド</a></h2>
 <h3 id="前提条件-1"><a class="header" href="#前提条件-1">前提条件</a></h3>
 <ul>
-<li><strong>Node.js 18 以降</strong>（LTS バージョン推奨）</li>
+<li><strong>Node.js</strong> <code>^20.17.0 || ^22.13.0 || &gt;= 23.5.0</code> -- <code>lindera-nodejs/package.json</code> の <code>engines</code> の範囲（LTS バージョン推奨）</li>
 <li><strong>Rust ツールチェーン</strong> -- <a href="https://rustup.rs/">rustup</a> 経由でインストール</li>
-<li><strong>NAPI-RS CLI</strong> -- Rust で Node.js ネイティブアドオンをビルドするための CLI ツール</li>
 </ul>
-<p>NAPI-RS CLI をグローバルにインストールします：</p>
-<pre><code class="language-bash">npm install -g @napi-rs/cli
-</code></pre>
+<p>ネイティブアドオンをビルドする NAPI-RS CLI（<code>@napi-rs/cli</code>）は、グローバルにインストールする必要はありません。<code>lindera-nodejs</code> の devDependency なので、<code>npm install</code> がインストールします（<a href="lindera-nodejs/installation.html#%E9%96%8B%E7%99%BA%E3%83%93%E3%83%AB%E3%83%89">開発ビルド</a>を参照）。</p>
 <h2 id="辞書の入手-2"><a class="header" href="#辞書の入手-2">辞書の入手</a></h2>
 <p>Lindera はパッケージに辞書を同梱していません。ビルド済み辞書を別途入手する必要があります。</p>
 <h3 id="github-releases-からのダウンロード-1"><a class="header" href="#github-releases-からのダウンロード-1">GitHub Releases からのダウンロード</a></h3>
@@ -4263,12 +4260,13 @@ curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/li
 unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 </code></pre>
 <h2 id="開発ビルド-1"><a class="header" href="#開発ビルド-1">開発ビルド</a></h2>
-<p>lindera-nodejs を開発モードでビルドします：</p>
+<p>lindera-nodejs をリリースモードでビルドします。<code>npm install</code> は、<code>package.json</code> が版を固定している NAPI-RS CLI（<code>@napi-rs/cli</code>）もインストールし、<code>npm run build</code> はこの CLI を実行します：</p>
 <pre><code class="language-bash">cd lindera-nodejs
 npm install
 npm run build
 </code></pre>
-<p>または、プロジェクトの Makefile を使用します：</p>
+<p>デバッグビルドには、<code>npm run build</code> の代わりに <code>npm run build:debug</code> を実行します。</p>
+<p>または、プロジェクトの Makefile でも同じリリースビルドができます：</p>
 <pre><code class="language-bash">make build-lindera-nodejs
 </code></pre>
 <h3 id="学習機能付きビルド-1"><a class="header" href="#学習機能付きビルド-1">学習機能付きビルド</a></h3>
