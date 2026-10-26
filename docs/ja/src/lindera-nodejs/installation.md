@@ -16,15 +16,10 @@ npm install lindera
 
 ### 前提条件
 
-- **Node.js 18 以降**（LTS バージョン推奨）
+- **Node.js** `^20.17.0 || ^22.13.0 || >= 23.5.0` -- `lindera-nodejs/package.json` の `engines` の範囲（LTS バージョン推奨）
 - **Rust ツールチェーン** -- [rustup](https://rustup.rs/) 経由でインストール
-- **NAPI-RS CLI** -- Rust で Node.js ネイティブアドオンをビルドするための CLI ツール
 
-NAPI-RS CLI をグローバルにインストールします：
-
-```bash
-npm install -g @napi-rs/cli
-```
+ネイティブアドオンをビルドする NAPI-RS CLI（`@napi-rs/cli`）は、グローバルにインストールする必要はありません。`lindera-nodejs` の devDependency なので、`npm install` がインストールします（[開発ビルド](#開発ビルド)を参照）。
 
 ## 辞書の入手
 
@@ -42,7 +37,7 @@ unzip lindera-ipadic-<version>.zip -d /path/to/ipadic
 
 ## 開発ビルド
 
-lindera-nodejs を開発モードでビルドします：
+lindera-nodejs をリリースモードでビルドします。`npm install` は、`package.json` が版を固定している NAPI-RS CLI（`@napi-rs/cli`）もインストールし、`npm run build` はこの CLI を実行します：
 
 ```bash
 cd lindera-nodejs
@@ -50,7 +45,9 @@ npm install
 npm run build
 ```
 
-または、プロジェクトの Makefile を使用します：
+デバッグビルドには、`npm run build` の代わりに `npm run build:debug` を実行します。
+
+または、プロジェクトの Makefile でも同じリリースビルドができます：
 
 ```bash
 make build-lindera-nodejs

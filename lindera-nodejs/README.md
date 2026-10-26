@@ -55,7 +55,6 @@ Download a dictionary archive (e.g. `lindera-ipadic-*.zip`) and specify the extr
 
 - Node.js `^20.17.0 || ^22.13.0 || >= 23.5.0` : <https://nodejs.org/>
 - Rust : <https://www.rust-lang.org/tools/install>
-- @napi-rs/cli : `npm install -g @napi-rs/cli`
 
 ## Setup repository
 
@@ -67,13 +66,15 @@ cd lindera
 
 ## Install lindera-nodejs
 
-This command builds the library with development settings (debug build).
+These commands install the npm dependencies and build the library in release mode. The dependencies include the NAPI-RS CLI (`@napi-rs/cli`) at the version `package.json` pins, which `npm run build` runs.
 
 ```shell
 cd lindera-nodejs
 npm install
 npm run build
 ```
+
+For a debug build, run `npm run build:debug` instead of `npm run build`.
 
 ## Quick Start
 

@@ -1,6 +1,6 @@
 # Lindera Node.js
 
-Lindera Node.js provides Node.js bindings for the Lindera morphological analysis engine, built with [NAPI-RS](https://napi.rs/). It brings Lindera's high-performance tokenization capabilities to the Node.js ecosystem with support for Node.js 18 and later.
+Lindera Node.js provides Node.js bindings for the Lindera morphological analysis engine, built with [NAPI-RS](https://napi.rs/). It brings Lindera's high-performance tokenization capabilities to the Node.js ecosystem, on the Node.js versions `^20.17.0 || ^22.13.0 || >= 23.5.0`.
 
 ## Features
 

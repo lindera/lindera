@@ -16,15 +16,10 @@ npm install lindera
 
 ### Prerequisites
 
-- **Node.js 18 or later** (LTS versions recommended)
+- **Node.js** `^20.17.0 || ^22.13.0 || >= 23.5.0` -- The `engines` range of `lindera-nodejs/package.json` (LTS versions recommended)
 - **Rust toolchain** -- Install via [rustup](https://rustup.rs/)
-- **NAPI-RS CLI** -- CLI tool for building native Node.js addons in Rust
 
-Install the NAPI-RS CLI globally:
-
-```bash
-npm install -g @napi-rs/cli
-```
+The NAPI-RS CLI (`@napi-rs/cli`), which builds the native addon, needs no global install: it is a devDependency of `lindera-nodejs`, which `npm install` installs (see [Development Build](#development-build)).
 
 ## Obtaining Dictionaries
 
@@ -42,7 +37,7 @@ unzip lindera-ipadic-<version>.zip -d /path/to/ipadic
 
 ## Development Build
 
-Build lindera-nodejs in development mode:
+Build lindera-nodejs in release mode. `npm install` also installs the NAPI-RS CLI (`@napi-rs/cli`) at the version `package.json` pins, which `npm run build` runs:
 
 ```bash
 cd lindera-nodejs
@@ -50,7 +45,9 @@ npm install
 npm run build
 ```
 
-Or use the project Makefile:
+For a debug build, run `npm run build:debug` instead of `npm run build`.
+
+Or use the project Makefile, which makes the same release build:
 
 ```bash
 make build-lindera-nodejs

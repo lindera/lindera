@@ -2,15 +2,14 @@
 
 ## Prerequisites
 
-- Node.js (v18+)
+- Node.js `^20.17.0 || ^22.13.0 || >= 23.5.0`
 - Rust toolchain
-- NAPI CLI (`npm install -g @napi-rs/cli`)
 
 All commands below should be run from the repository root (`lindera/`) unless otherwise noted.
 
 ## Build
 
-Install npm dependencies and build the native module:
+Install npm dependencies and build the native module. The dependencies include the NAPI-RS CLI (`@napi-rs/cli`) that `npx napi` runs:
 
 ```bash
 cd lindera-nodejs
