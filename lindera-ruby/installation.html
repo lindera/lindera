@@ -207,12 +207,13 @@ curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/li
 unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 </code></pre>
 <h2 id="development-build"><a class="header" href="#development-build">Development Build</a></h2>
-<p>Build and install lindera-ruby in development mode:</p>
+<p>Build the native extension of lindera-ruby in release mode. Rake puts it in <code>lindera-ruby/lib/lindera/</code> and does not install the gem; Ruby run with <code>bundle exec</code> from <code>lindera-ruby/</code> loads it from there:</p>
 <pre><code class="language-bash">cd lindera-ruby
 bundle install
 bundle exec rake compile
 </code></pre>
-<p>Or use the project Makefile:</p>
+<p>For a debug build, run <code>bundle exec rake compile:dev</code> instead of <code>bundle exec rake compile</code>.</p>
+<p>Or use the project Makefile, which makes the same release build with the <code>embed-ipadic</code> and <code>train</code> features:</p>
 <pre><code class="language-bash">make build-lindera-ruby
 </code></pre>
 <p>Run <code>make test-lindera-ruby</code> to run both the Rust unit tests and the Ruby

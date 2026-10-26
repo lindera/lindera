@@ -207,12 +207,13 @@ curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/li
 unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 </code></pre>
 <h2 id="開発ビルド"><a class="header" href="#開発ビルド">開発ビルド</a></h2>
-<p>lindera-ruby を開発モードでビルドしてインストールします：</p>
+<p>lindera-ruby のネイティブ拡張をリリースモードでビルドします。拡張は Rake が <code>lindera-ruby/lib/lindera/</code> に配置し、gem はインストールしません。<code>lindera-ruby/</code> で <code>bundle exec</code> を付けて実行した Ruby は、ここから拡張を読み込みます：</p>
 <pre><code class="language-bash">cd lindera-ruby
 bundle install
 bundle exec rake compile
 </code></pre>
-<p>または、プロジェクトの Makefile を使用します：</p>
+<p>デバッグビルドには、<code>bundle exec rake compile</code> の代わりに <code>bundle exec rake compile:dev</code> を実行します。</p>
+<p>または、プロジェクトの Makefile でも、<code>embed-ipadic</code> と <code>train</code> の feature を有効にして同じリリースビルドができます：</p>
 <pre><code class="language-bash">make build-lindera-ruby
 </code></pre>
 <p><code>make test-lindera-ruby</code> を実行すると、Rust のユニットテストと Ruby の minitest
