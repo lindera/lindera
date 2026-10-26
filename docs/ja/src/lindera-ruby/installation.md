@@ -46,7 +46,7 @@ unzip lindera-ipadic-<version>.zip -d /path/to/ipadic
 
 ## 開発ビルド
 
-lindera-ruby を開発モードでビルドしてインストールします：
+lindera-ruby のネイティブ拡張をリリースモードでビルドします。拡張は Rake が `lindera-ruby/lib/lindera/` に配置し、gem はインストールしません。`lindera-ruby/` で `bundle exec` を付けて実行した Ruby は、ここから拡張を読み込みます：
 
 ```bash
 cd lindera-ruby
@@ -54,7 +54,9 @@ bundle install
 bundle exec rake compile
 ```
 
-または、プロジェクトの Makefile を使用します：
+デバッグビルドには、`bundle exec rake compile` の代わりに `bundle exec rake compile:dev` を実行します。
+
+または、プロジェクトの Makefile でも、`embed-ipadic` と `train` の feature を有効にして同じリリースビルドができます：
 
 ```bash
 make build-lindera-ruby
