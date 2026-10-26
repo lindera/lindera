@@ -55,7 +55,6 @@ lindera-nodejs は、Lindera 形態素解析エンジンへの包括的な Node.
 
 - Node.js `^20.17.0 || ^22.13.0 || >= 23.5.0` : <https://nodejs.org/>
 - Rust : <https://www.rust-lang.org/tools/install>
-- @napi-rs/cli : `npm install -g @napi-rs/cli`
 
 ## リポジトリのセットアップ
 
@@ -67,13 +66,15 @@ cd lindera
 
 ## lindera-nodejs のインストール
 
-このコマンドは開発設定（デバッグビルド）でライブラリをビルドします。
+これらのコマンドは、npm の依存パッケージをインストールし、ライブラリをリリースビルドします。依存パッケージには `package.json` が版を固定している NAPI-RS CLI（`@napi-rs/cli`）が含まれ、`npm run build` はこの CLI を実行します。
 
 ```shell
 cd lindera-nodejs
 npm install
 npm run build
 ```
+
+デバッグビルドには、`npm run build` の代わりに `npm run build:debug` を実行します。
 
 ## クイックスタート
 

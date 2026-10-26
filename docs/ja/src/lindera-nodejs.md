@@ -1,6 +1,6 @@
 # Lindera Node.js
 
-Lindera Node.js は、[NAPI-RS](https://napi.rs/) を使用して構築された Lindera 形態素解析エンジンの Node.js バインディングです。Node.js 18 以降をサポートし、Lindera の高性能なトークナイズ機能を Node.js エコシステムに提供します。
+Lindera Node.js は、[NAPI-RS](https://napi.rs/) を使用して構築された Lindera 形態素解析エンジンの Node.js バインディングです。Node.js `^20.17.0 || ^22.13.0 || >= 23.5.0` をサポートし、Lindera の高性能なトークナイズ機能を Node.js エコシステムに提供します。
 
 ## 特徴
 

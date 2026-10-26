@@ -2,15 +2,14 @@
 
 ## 事前準備
 
-- Node.js (v18以上)
+- Node.js `^20.17.0 || ^22.13.0 || >= 23.5.0`
 - Rust ツールチェイン
-- NAPI CLI (`npm install -g @napi-rs/cli`)
 
 以下のコマンドは、特に記載がない限りリポジトリのルート（`lindera/`）で実行してください。
 
 ## ビルド
 
-npm 依存パッケージをインストールし、ネイティブモジュールをビルドします:
+npm 依存パッケージをインストールし、ネイティブモジュールをビルドします。依存パッケージには、`npx napi` が実行する NAPI-RS CLI（`@napi-rs/cli`）が含まれます:
 
 ```bash
 cd lindera-nodejs
