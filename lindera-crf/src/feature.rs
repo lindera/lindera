@@ -1,5 +1,6 @@
 use core::num::NonZeroU32;
 
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use hashbrown::HashMap;
@@ -69,15 +70,20 @@ pub fn apply_bigram<F>(
 }
 
 /// Manages a set of features for each label.
+///
+/// The bi-gram feature IDs are held in [`Arc`]s, so labels with the same
+/// bi-gram features can share one list (see [`Self::with_shared_bigrams`]).
+/// Many labels do: the bi-gram features of a dictionary entry usually depend
+/// on its part of speech only (#1263).
 #[derive(Debug, Default, Archive, RkyvSerialize, RkyvDeserialize)]
 pub struct FeatureSet {
     pub(crate) unigram: Vec<NonZeroU32>,
-    pub(crate) bigram_right: Vec<Option<NonZeroU32>>,
-    pub(crate) bigram_left: Vec<Option<NonZeroU32>>,
+    pub(crate) bigram_right: Arc<[Option<NonZeroU32>]>,
+    pub(crate) bigram_left: Arc<[Option<NonZeroU32>]>,
 }
 
 impl FeatureSet {
-    /// Creates a new [`FeatureSet`].
+    /// Creates a new [`FeatureSet`], copying the given feature IDs.
     #[inline(always)]
     #[must_use]
     pub fn new(
@@ -87,8 +93,37 @@ impl FeatureSet {
     ) -> Self {
         Self {
             unigram: unigram.to_vec(),
-            bigram_right: bigram_right.to_vec(),
-            bigram_left: bigram_left.to_vec(),
+            bigram_right: bigram_right.into(),
+            bigram_left: bigram_left.into(),
+        }
+    }
+
+    /// Creates a new [`FeatureSet`] that shares the given bi-gram feature IDs.
+    ///
+    /// The feature sets made from clones of the same [`Arc`]s hold one copy
+    /// of the lists between them, and `Trainer::train` keeps them shared
+    /// when it drops the unused features.
+    ///
+    /// # Arguments
+    ///
+    /// * `unigram` - The uni-gram feature IDs, which are copied.
+    /// * `bigram_right` - The right bi-gram feature IDs.
+    /// * `bigram_left` - The left bi-gram feature IDs.
+    ///
+    /// # Returns
+    ///
+    /// The feature set.
+    #[inline(always)]
+    #[must_use]
+    pub fn with_shared_bigrams(
+        unigram: &[NonZeroU32],
+        bigram_right: Arc<[Option<NonZeroU32>]>,
+        bigram_left: Arc<[Option<NonZeroU32>]>,
+    ) -> Self {
+        Self {
+            unigram: unigram.to_vec(),
+            bigram_right,
+            bigram_left,
         }
     }
 

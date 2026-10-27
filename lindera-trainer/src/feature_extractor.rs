@@ -1,8 +1,11 @@
 use regex::Regex;
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::num::NonZeroU32;
 use std::ops::Range;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
+
+use crate::feature_csv::split_feature;
 
 /// Feature template patterns, compiled once on first use.
 ///
@@ -52,6 +55,11 @@ pub struct TemplateContext<'a> {
     pub rfeature: Option<&'a str>,
 }
 
+/// The left or right context feature IDs of a label, one per template, `None`
+/// where the template was skipped; shared by the labels with the same
+/// rewritten left and right features (#1263).
+pub(crate) type BigramFeatureIds = Arc<[Option<NonZeroU32>]>;
+
 /// Feature extractor for training with advanced capabilities.
 pub struct FeatureExtractor {
     unigram_templates: Vec<ParsedTemplate>,
@@ -63,6 +71,14 @@ pub struct FeatureExtractor {
     unigram_next_id: u32,
     left_next_id: u32,
     right_next_id: u32,
+    /// The left and right context feature IDs by rewritten left feature, then
+    /// by rewritten right feature (see [`Self::bigram_feature_ids`]). Nested
+    /// so that a lookup takes the two `&str` as they are.
+    bigram_feature_ids: HashMap<String, HashMap<String, (BigramFeatureIds, BigramFeatureIds)>>,
+    /// The buffer that `apply_parsed_template` expands a template into, kept
+    /// so that a feature string is allocated only when it is interned
+    /// (#1263).
+    expansion: String,
 }
 
 impl Default for FeatureExtractor {
@@ -84,6 +100,8 @@ impl FeatureExtractor {
             unigram_next_id: 0,
             left_next_id: 0,
             right_next_id: 0,
+            bigram_feature_ids: HashMap::new(),
+            expansion: String::new(),
         }
     }
 
@@ -262,14 +280,23 @@ impl FeatureExtractor {
             unigram_next_id: 1, // Start from 1 (0 reserved)
             left_next_id: 1,
             right_next_id: 1,
+            bigram_feature_ids: HashMap::new(),
+            expansion: String::new(),
         }
     }
 
-    /// Applies a parsed template to produce its generated feature string.
+    /// Applies a parsed template, writing its generated feature string into
+    /// `out`.
     ///
     /// An associated function rather than a method: it reads nothing from the
     /// extractor, and keeping `&self` off it is part of what lets the extract
     /// loops borrow the template vector and the id map disjointly (#965).
+    ///
+    /// The template is written front to back, each part of it once: the
+    /// captures are in template order. Writing into a buffer that the caller
+    /// keeps, rather than building a `String` per template and another per
+    /// substituted value, is what lets the caller allocate only for a feature
+    /// string it has not interned yet (#1263).
     ///
     /// # Arguments
     ///
@@ -277,50 +304,58 @@ impl FeatureExtractor {
     /// * `features` - The entry's feature fields, indexed by `%F`/`%L`/`%R`.
     /// * `cate_id` - The character category id substituted for `%t`.
     /// * `ctx` - Surface and full-feature strings for `%w`/`%u`/`%l`/`%r`.
+    /// * `out` - Cleared, then given the generated feature string.
     ///
     /// # Returns
     ///
-    /// The generated feature string, or `None` when the template does not
-    /// apply to this entry: a `?`-marked field is `*` or empty, or a
-    /// `%F[n]` / `%L[n]` / `%R[n]` reads past the last column, with or
-    /// without `?`. MeCab's learner skips the template in both cases
+    /// `true` when `out` holds the generated feature string, or `false` when
+    /// the template does not apply to this entry: a `?`-marked field is `*`
+    /// or empty, or a `%F[n]` / `%L[n]` / `%R[n]` reads past the last column,
+    /// with or without `?`. MeCab's learner skips the template in both cases
     /// (`getIndex` in `feature_index.cpp`) (#1189).
     fn apply_parsed_template(
         template: &ParsedTemplate,
         features: &[&str],
         cate_id: u32,
         ctx: &TemplateContext,
-    ) -> Option<String> {
+        out: &mut String,
+    ) -> bool {
         // Check required indices (for conditional features like %F?)
         for &required_idx in &template.required_indices {
             if required_idx >= features.len() {
-                return None; // Index out of bounds
+                return false; // Index out of bounds
             }
             let feature_val = features[required_idx];
             if feature_val == "*" || feature_val.is_empty() {
-                return None; // Skip if required feature is undefined
+                return false; // Skip if required feature is undefined
             }
         }
 
-        let mut result = template.raw_template.clone();
-
-        // Process captures in reverse order to maintain string positions
-        for (range, feature_type) in template.captures.iter().rev() {
-            let replacement = match feature_type {
+        out.clear();
+        let mut copied_to = 0;
+        for (range, feature_type) in &template.captures {
+            out.push_str(&template.raw_template[copied_to..range.start]);
+            match feature_type {
                 // An index past the last column skips the template rather
                 // than reading as `*`, as MeCab's learner does (#1189).
-                FeatureType::Index(idx) => features.get(*idx)?.to_string(),
-                FeatureType::CharacterType => cate_id.to_string(),
-                FeatureType::SurfaceForm => ctx.surface.unwrap_or("").to_string(),
-                FeatureType::AllUnigramFeature => ctx.ufeature.unwrap_or("").to_string(),
-                FeatureType::AllLeftFeature => ctx.lfeature.unwrap_or("").to_string(),
-                FeatureType::AllRightFeature => ctx.rfeature.unwrap_or("").to_string(),
-            };
-
-            result.replace_range(range.clone(), &replacement);
+                FeatureType::Index(idx) => match features.get(*idx) {
+                    Some(value) => out.push_str(value),
+                    None => return false,
+                },
+                // Writing to a `String` cannot fail.
+                FeatureType::CharacterType => {
+                    let _ = write!(out, "{cate_id}");
+                }
+                FeatureType::SurfaceForm => out.push_str(ctx.surface.unwrap_or("")),
+                FeatureType::AllUnigramFeature => out.push_str(ctx.ufeature.unwrap_or("")),
+                FeatureType::AllLeftFeature => out.push_str(ctx.lfeature.unwrap_or("")),
+                FeatureType::AllRightFeature => out.push_str(ctx.rfeature.unwrap_or("")),
+            }
+            copied_to = range.end;
         }
+        out.push_str(&template.raw_template[copied_to..]);
 
-        Some(result)
+        true
     }
 
     /// Get or create feature ID (with NonZeroU32)
@@ -417,6 +452,7 @@ impl FeatureExtractor {
             unigram_templates,
             unigram_feature_ids,
             unigram_next_id,
+            expansion,
             ..
         } = self;
 
@@ -426,12 +462,11 @@ impl FeatureExtractor {
             // last column is skipped entirely, so the result is shorter than
             // the template list. The left/right variants below deliberately
             // differ.
-            if let Some(feature_str) = Self::apply_parsed_template(template, features, cate_id, ctx)
-            {
+            if Self::apply_parsed_template(template, features, cate_id, ctx, expansion) {
                 feature_ids.push(Self::intern_feature_id(
                     unigram_feature_ids,
                     unigram_next_id,
-                    &feature_str,
+                    expansion,
                 ));
             }
         }
@@ -474,6 +509,7 @@ impl FeatureExtractor {
             left_templates,
             left_feature_ids,
             left_next_id,
+            expansion,
             ..
         } = self;
 
@@ -482,11 +518,11 @@ impl FeatureExtractor {
             // Unlike unigram extraction, a skipped template pushes `None`
             // rather than being dropped, so the result stays index-aligned
             // with the template list. Callers depend on that alignment.
-            if let Some(feature_str) = Self::apply_parsed_template(template, features, 0, ctx) {
+            if Self::apply_parsed_template(template, features, 0, ctx, expansion) {
                 feature_ids.push(Some(Self::intern_feature_id(
                     left_feature_ids,
                     left_next_id,
-                    &feature_str,
+                    expansion,
                 )));
             } else {
                 feature_ids.push(None);
@@ -531,6 +567,7 @@ impl FeatureExtractor {
             right_templates,
             right_feature_ids,
             right_next_id,
+            expansion,
             ..
         } = self;
 
@@ -539,11 +576,11 @@ impl FeatureExtractor {
             // Unlike unigram extraction, a skipped template pushes `None`
             // rather than being dropped, so the result stays index-aligned
             // with the template list. Callers depend on that alignment.
-            if let Some(feature_str) = Self::apply_parsed_template(template, features, 0, ctx) {
+            if Self::apply_parsed_template(template, features, 0, ctx, expansion) {
                 feature_ids.push(Some(Self::intern_feature_id(
                     right_feature_ids,
                     right_next_id,
-                    &feature_str,
+                    expansion,
                 )));
             } else {
                 feature_ids.push(None);
@@ -551,6 +588,85 @@ impl FeatureExtractor {
         }
 
         feature_ids
+    }
+
+    /// Returns the left and right context feature IDs of a label from its
+    /// rewritten left and right features, computing them once per pair of
+    /// features.
+    ///
+    /// The left and right templates read the columns of the two features
+    /// (`%L[n]`, `%R[n]`) and the whole features (`%l`, `%r`), and nothing
+    /// else: their patterns match no `%w`, `%t` or `%u`. The two features
+    /// therefore decide the IDs, and the labels with the same pair share one
+    /// copy of them. A dictionary has few such pairs, as its rewrite rules
+    /// reduce the two features to little more than the part of speech: the
+    /// 347,344 rows of mecab-ipadic have 1,329. Expanding the templates of
+    /// every label took most of the time before training, and a copy of the
+    /// IDs per label took 146 MiB (#1263).
+    ///
+    /// The first time a pair comes, the left and then the right IDs are made
+    /// by [`Self::extract_left_feature_ids_with_ctx`] and
+    /// [`Self::extract_right_feature_ids_with_ctx`], from the features split
+    /// as MeCab splits them (#1184), so new IDs are minted in the order they
+    /// always were.
+    ///
+    /// # Arguments
+    ///
+    /// * `lfeature` - The rewritten left feature.
+    /// * `rfeature` - The rewritten right feature.
+    ///
+    /// # Returns
+    ///
+    /// The left and the right context feature IDs, one per template, `None`
+    /// where the template was skipped.
+    pub(crate) fn bigram_feature_ids(
+        &mut self,
+        lfeature: &str,
+        rfeature: &str,
+    ) -> (BigramFeatureIds, BigramFeatureIds) {
+        if let Some((left, right)) = self
+            .bigram_feature_ids
+            .get(lfeature)
+            .and_then(|by_rfeature| by_rfeature.get(rfeature))
+        {
+            return (Arc::clone(left), Arc::clone(right));
+        }
+        let (l_columns, r_columns) = (split_feature(lfeature), split_feature(rfeature));
+        let l_vec: Vec<&str> = l_columns.iter().map(|column| column.as_ref()).collect();
+        let r_vec: Vec<&str> = r_columns.iter().map(|column| column.as_ref()).collect();
+        let ctx = TemplateContext {
+            lfeature: Some(lfeature),
+            rfeature: Some(rfeature),
+            ..TemplateContext::default()
+        };
+        let left: BigramFeatureIds = self.extract_left_feature_ids_with_ctx(&l_vec, &ctx).into();
+        let right: BigramFeatureIds = self.extract_right_feature_ids_with_ctx(&r_vec, &ctx).into();
+        self.bigram_feature_ids
+            .entry(lfeature.to_string())
+            .or_default()
+            .insert(
+                rfeature.to_string(),
+                (Arc::clone(&left), Arc::clone(&right)),
+            );
+        (left, right)
+    }
+
+    /// Forgets the left and right context feature IDs that
+    /// [`Self::bigram_feature_ids`] computed so far.
+    ///
+    /// Called once the unused features are removed from the ID maps after
+    /// training, so that the cache never holds an ID whose feature string the
+    /// maps no longer have: a label made later interns its left and right
+    /// features again, as it did before the IDs were cached (#1263).
+    pub(crate) fn forget_bigram_feature_ids(&mut self) {
+        self.bigram_feature_ids = HashMap::new();
+    }
+
+    /// Returns the number of pairs of left and right features whose IDs
+    /// [`Self::bigram_feature_ids`] holds.
+    #[cfg(test)]
+    pub(crate) fn cached_bigram_feature_id_pairs(&self) -> usize {
+        self.bigram_feature_ids.values().map(HashMap::len).sum()
     }
 }
 
@@ -778,6 +894,26 @@ mod tests {
         fe.extract_unigram_feature_ids(&features(&["名詞", "一般"]), 0);
 
         assert_eq!(unigram_strings_in_id_order(&fe), vec!["M:名詞/一般/名詞"]);
+    }
+
+    /// A template is written front to back into a reused buffer (#1263):
+    /// a capture at the start, captures with nothing between them, and the
+    /// text after the last capture all come out in place, and a template
+    /// does not keep anything of the one written before it.
+    #[test]
+    fn captures_at_the_ends_and_side_by_side() {
+        let mut fe = extractor(&["%F[0]%F[1]", "%t%F[0]-", "a%w%tz", "%F[1]"], &[]);
+        let ctx = TemplateContext {
+            surface: Some("東京"),
+            ..TemplateContext::default()
+        };
+
+        fe.extract_unigram_feature_ids_with_ctx(&features(&["名詞", "一般"]), 3, &ctx);
+
+        assert_eq!(
+            unigram_strings_in_id_order(&fe),
+            vec!["名詞一般", "3名詞-", "a東京3z", "一般"]
+        );
     }
 
     /// An extractor with no templates yields no ids and mints nothing --

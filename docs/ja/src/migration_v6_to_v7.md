@@ -1878,6 +1878,7 @@ feature）経由で使う Rust コードにのみ影響します
 | `Model::write_connection_costs` と `SerializableModel::write_connection_costs` は、学習した重みがない連接に `i16::MAX` を書き出す | 0 を書き出す。学習中や MeCab でのその連接のコスト |
 | `Trainer::new` は L1（`use_l2` が false）と `regularization_cost` 0.01 で正則化する | L2 と `DEFAULT_LAMBDA`（1.0）で正則化する。`use_l2(false)` で L1 を選ぶ（[`lindera train` の既定の正則化は L2](#lindera-train-の既定の正則化は-l2)を参照） |
 | — | 新規: デフォルトの係数 `DEFAULT_LAMBDA`（`1.0`）。`lindera_crf` にも同じ定数を追加し、その `Trainer::new` は `Regularization::L1` と 0.1 ではなく、`Regularization::L2` とこの定数で正則化する |
+| — | 新規: `lindera_crf` の `FeatureSet::with_shared_bigrams`。バイグラムの素性 ID を `Arc<[Option<NonZeroU32>]>` で受け取り、ラベルの間で共有できるようにする。`FeatureSet` はバイグラムの素性 ID をこの形で持つため、`FeatureSet`・`FeatureProvider`・`RawModel` の rkyv でのアーカイブの形が変わる。`model.dat` はこれらを持たない（[#1263](https://github.com/lindera/lindera/issues/1263)） |
 
 モデルは `MODEL_FORMAT_VERSION` を `metadata.version` として書き出され、
 `Model::read_model` は `rkyv` 形式でもレガシーの JSON 形式でもこれを確認するため、

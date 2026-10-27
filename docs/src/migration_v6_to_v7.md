@@ -2080,6 +2080,7 @@ These affect only Rust code that uses `lindera-trainer` directly or through
 | `Model::write_connection_costs` and `SerializableModel::write_connection_costs` write `i16::MAX` for a connection without a trained weight | Write 0, the cost the connection has in training and in MeCab |
 | `Trainer::new` regularizes with L1 (`use_l2` false) and `regularization_cost` 0.01 | With L2 and `DEFAULT_LAMBDA` (1.0); `use_l2(false)` selects L1 (see [`lindera train` regularizes with L2 by default](#lindera-train-regularizes-with-l2-by-default)) |
 | — | New: `DEFAULT_LAMBDA` (`1.0`), the default coefficient; `lindera_crf` adds the same constant, and its `Trainer::new` regularizes with `Regularization::L2` and it instead of `Regularization::L1` and 0.1 |
+| — | New in `lindera_crf`: `FeatureSet::with_shared_bigrams`, which takes the bigram feature IDs as `Arc<[Option<NonZeroU32>]>` so that labels can share them. `FeatureSet` holds them this way, which changes the rkyv archive of `FeatureSet`, `FeatureProvider` and `RawModel`; `model.dat` does not hold them ([#1263](https://github.com/lindera/lindera/issues/1263)) |
 
 A model is now written with `MODEL_FORMAT_VERSION` as its `metadata.version`,
 and `Model::read_model` checks it, in both the `rkyv` and the legacy JSON

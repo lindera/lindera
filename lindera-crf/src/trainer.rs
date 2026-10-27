@@ -2,6 +2,7 @@ use core::num::NonZeroU32;
 use core::ops::Range;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use std::thread;
@@ -841,6 +842,8 @@ impl Trainer {
             new_bigram_weight_indices.push(new_fids);
         }
 
+        let mut filtered_left = HashMap::new();
+        let mut filtered_right = HashMap::new();
         for feature_set in &mut provider.feature_sets {
             let mut new_unigram = vec![];
             for &fid in feature_set.unigram() {
@@ -854,16 +857,14 @@ impl Trainer {
                 }
             }
             feature_set.unigram = new_unigram;
-            for fid in &mut feature_set.bigram_left {
-                *fid = fid.filter(|fid| {
-                    !new_bigram_weight_indices
-                        .get(usize::from_u32(fid.get()))
-                        .is_none_or(HashMap::is_empty)
-                });
-            }
-            for fid in &mut feature_set.bigram_right {
-                *fid = fid.filter(|fid| right_id_used.contains(&fid.get()));
-            }
+            filter_bigram_ids(&mut feature_set.bigram_left, &mut filtered_left, |fid| {
+                !new_bigram_weight_indices
+                    .get(usize::from_u32(fid.get()))
+                    .is_none_or(HashMap::is_empty)
+            });
+            filter_bigram_ids(&mut feature_set.bigram_right, &mut filtered_right, |fid| {
+                right_id_used.contains(&fid.get())
+            });
         }
 
         let model = RawModel::new(
@@ -889,6 +890,47 @@ impl Default for Trainer {
     }
 }
 
+/// The bi-gram feature lists filtered so far, by the address of the list
+/// they were filtered from: (that list, the filtered list).
+///
+/// The map holds the list it was filtered from, so the list stays alive and
+/// no new list can take its address while the map is in use.
+type FilteredBigramIds =
+    HashMap<*const Option<NonZeroU32>, (Arc<[Option<NonZeroU32>]>, Arc<[Option<NonZeroU32>]>)>;
+
+/// Turns the bi-gram feature IDs of `ids` that `keep` rejects into `None`.
+///
+/// A list that no other feature set holds is filtered in place. A list that
+/// several feature sets share is filtered once, through `filtered`, and the
+/// feature sets that shared it share the filtered list: filtering a copy for
+/// each of them would bring back the memory the sharing saves (#1263).
+///
+/// # Arguments
+///
+/// * `ids` - The bi-gram feature IDs of a feature set; replaced by the
+///   filtered list.
+/// * `filtered` - The lists filtered so far.
+/// * `keep` - Whether a feature ID is kept.
+fn filter_bigram_ids<F>(
+    ids: &mut Arc<[Option<NonZeroU32>]>,
+    filtered: &mut FilteredBigramIds,
+    keep: F,
+) where
+    F: Fn(NonZeroU32) -> bool,
+{
+    if let Some(ids) = Arc::get_mut(ids) {
+        for fid in ids {
+            *fid = fid.filter(|&fid| keep(fid));
+        }
+        return;
+    }
+    let (_, result) = filtered.entry(ids.as_ptr()).or_insert_with(|| {
+        let result = ids.iter().map(|fid| fid.filter(|&fid| keep(fid))).collect();
+        (Arc::clone(ids), result)
+    });
+    *ids = Arc::clone(result);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -897,6 +939,7 @@ mod tests {
 
     use argmin::core::{CostFunction, Gradient};
 
+    use crate::feature::FeatureSet;
     use crate::test_utils::{self, hashmap, logsumexp};
 
     // 0     1     2     3     4     5
@@ -1719,6 +1762,91 @@ mod tests {
                 "{name}: {} of {} gradient calls computed an evaluation",
                 gradient_misses.get(),
                 gradients.get()
+            );
+        }
+    }
+
+    // Labels that share their bigram id lists still share them once the
+    // unused features are dropped, and get the lists that labels holding
+    // copies of them get (#1263).
+    #[test]
+    fn shared_bigram_ids_stay_shared_after_training() {
+        let ids = |ids: [u32; 2]| -> Vec<Option<NonZeroU32>> {
+            ids.into_iter().map(NonZeroU32::new).collect()
+        };
+        // Two (right, left) pairs, given to the 7 labels of the test
+        // lattices in turn: labels 1, 3, 5 and 7 hold the first, and labels
+        // 2, 4 and 6 the second.
+        let pairs = [(ids([1, 2]), ids([1, 2])), (ids([4, 3]), ids([3, 4]))];
+        let shared_pairs: Vec<(Arc<[_]>, Arc<[_]>)> = pairs
+            .iter()
+            .map(|(right, left)| (right.as_slice().into(), left.as_slice().into()))
+            .collect();
+        let unigram = |label: u32| [NonZeroU32::new(label).unwrap()];
+        let mut copied = FeatureProvider::new();
+        let mut shared = FeatureProvider::new();
+        for label in 1..=7 {
+            let (right, left) = &pairs[usize::from_u32(label - 1) % 2];
+            copied
+                .add_feature_set(FeatureSet::new(&unigram(label), right, left))
+                .unwrap();
+            let (right, left) = &shared_pairs[usize::from_u32(label - 1) % 2];
+            shared
+                .add_feature_set(FeatureSet::with_shared_bigrams(
+                    &unigram(label),
+                    Arc::clone(right),
+                    Arc::clone(left),
+                ))
+                .unwrap();
+        }
+
+        // L1 with this coefficient sets some bigram weights to 0, so that
+        // dropping the unused features turns some ids of the lists, not
+        // all, into `None`.
+        let lattices = test_utils::generate_test_lattices(24);
+        let trainer = Trainer::new()
+            .regularization(Regularization::L1, 10.0)
+            .unwrap();
+        let mut copied = trainer.train(&lattices, copied);
+        let mut shared = trainer.train(&lattices, shared);
+        let copied = &copied.feature_provider().feature_sets;
+        let shared = &shared.feature_provider().feature_sets;
+
+        let fids: Vec<_> = copied
+            .iter()
+            .flat_map(|set| set.bigram_right().iter().chain(set.bigram_left()))
+            .collect();
+        let dropped = fids.iter().filter(|fid| fid.is_none()).count();
+        assert!(
+            (1..fids.len()).contains(&dropped),
+            "{dropped} of {} bigram ids were dropped",
+            fids.len()
+        );
+        for (k, (copied, shared)) in copied.iter().zip(shared).enumerate() {
+            assert_eq!(
+                copied.bigram_right(),
+                shared.bigram_right(),
+                "label {}",
+                k + 1
+            );
+            assert_eq!(
+                copied.bigram_left(),
+                shared.bigram_left(),
+                "label {}",
+                k + 1
+            );
+        }
+        for k in 2..7 {
+            let (first, set) = (&shared[k % 2], &shared[k]);
+            assert!(
+                Arc::ptr_eq(&first.bigram_right, &set.bigram_right),
+                "label {} has its own right list",
+                k + 1
+            );
+            assert!(
+                Arc::ptr_eq(&first.bigram_left, &set.bigram_left),
+                "label {} has its own left list",
+                k + 1
             );
         }
     }
