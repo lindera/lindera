@@ -369,6 +369,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>max-threads</code></td><td>並列処理スレッド数（1 以上）</td><td>CPU コア数</td></tr>
 </tbody></table>
 </div>
+<p><code>lambda</code> が 0 の場合、どの種類でも正則化を無効にします。Elastic Net の比率が 0 の場合は L2 のみ、1 の場合は L1 のみを使用します。</p>
 <p>デフォルトは MeCab の学習器と同じです。L2 正則化の <code>lambda</code> 1.0 は、MeCab の <code>-c 1.0</code> の目的関数に当たります。<a href="https://github.com/lindera/lindera/issues/1110">#1110</a> の mecab-ipadic の交差検証データでは、MeCab の学習器と同じスコアになり、ほぼ同じイテレーション数（81〜87）で収束します（<a href="https://github.com/lindera/lindera/issues/1261">#1261</a>）。5 分割の平均で、境界 F1 は 0.9613、span + 品詞（4 列）F1 は 0.9398 です。v6 のデフォルトの L1・<code>lambda</code> 0.01 は、すべての分割で <code>max-iterations</code> に達し、0.9572 と 0.9344 でした。L1 は多くの重みを 0 にし、<code>lindera export</code> は重みの等しいラベルに 1 つの文脈 ID を与えるので、L1 の <code>matrix.def</code> は小さくなります。このデータでは L2 の 18.9 MB に対して 8.7 MB で、L2 ではビルドした辞書が 3.8 % 大きくなります。このデータでの学習時間は MeCab の学習器の約 2 倍で、その約 3 分の 2 は最適化の外、つまり最適化を始める前（<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>）と終えた後にかかります。</p>
 <h2 id="cli-の使用"><a class="header" href="#cli-の使用">CLI の使用</a></h2>
 <h3 id="train"><a class="header" href="#train">Train</a></h3>
