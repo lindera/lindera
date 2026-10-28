@@ -109,8 +109,8 @@ class TestTrainer < Minitest::Test
     Dir.mktmpdir('lindera-trainer-') do |dir|
       cases = [['l1', 0.0, 0.5], ['elasticnet', 0.0, 0.5], ['elasticnet', 1.0, 0.0]]
       cases.each_with_index do |(kind, coefficient, ratio), i|
-        model = train_resources(dir, "zero-l1-#{i}.dat", coefficient: coefficient,
-                                regularization: kind, elastic_net_l1_ratio: ratio)
+        model = train_resources(dir, "zero-l1-#{i}.dat",
+                                coefficient: coefficient, regularization: kind, elastic_net_l1_ratio: ratio)
         refute_empty model
       end
     end
