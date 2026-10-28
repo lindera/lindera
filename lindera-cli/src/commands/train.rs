@@ -66,7 +66,7 @@ pub struct TrainArgs {
         short = 'l',
         long = "lambda",
         default_value_t = lindera::dictionary::trainer::DEFAULT_LAMBDA,
-        help = "Regularization coefficient (finite, >= 0); with l2, MeCab's learner's -c C is 1 / C"
+        help = "Regularization coefficient (finite, >= 0; 0 disables regularization); with l2, MeCab's learner's -c C is 1 / C"
     )]
     lambda: f64,
     #[clap(
@@ -79,7 +79,7 @@ pub struct TrainArgs {
     #[clap(
         long = "elastic-net-l1-ratio",
         default_value_t = lindera::dictionary::trainer::DEFAULT_ELASTIC_NET_L1_RATIO,
-        help = "L1 ratio for Elastic Net regularization (0.0-1.0, only used with --regularization elasticnet)"
+        help = "L1 ratio for Elastic Net regularization (0.0-1.0, 0 uses only L2, 1 uses only L1; only used with --regularization elasticnet)"
     )]
     elastic_net_l1_ratio: f64,
     #[clap(

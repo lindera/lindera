@@ -329,6 +329,21 @@ def _train_resources(output, **kwargs):
     return Path(output).read_bytes()
 
 
+@pytest.mark.parametrize(
+    "regularization,lambda_,ratio",
+    [("l1", 0.0, 0.5), ("elasticnet", 0.0, 0.5), ("elasticnet", 1.0, 0.0)],
+)
+def test_train_with_zero_l1_coefficient(tmp_path, regularization, lambda_, ratio):
+    """A zero effective L1 coefficient trains through the shared Rust optimizer."""
+    model = _train_resources(
+        tmp_path / "zero_l1.dat",
+        regularization=regularization,
+        lambda_=lambda_,
+        elastic_net_l1_ratio=ratio,
+    )
+    assert model
+
+
 def test_train_takes_the_regularization_type_the_ratio_and_eta():
     """regularization, elastic_net_l1_ratio and eta reach the trainer, with
     the CLI's defaults (#1262): giving the defaults trains the default model,

@@ -298,6 +298,42 @@ describe(
       }
     });
 
+    it("should train with a zero effective L1 coefficient", () => {
+      const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "lindera-zero-l1-"));
+      const training = path.join(
+        __dirname,
+        "..",
+        "..",
+        "resources",
+        "training",
+      );
+      try {
+        const cases = [
+          { regularization: "l1", lambda: 0 },
+          { regularization: "elasticnet", lambda: 0 },
+          { regularization: "elasticnet", lambda: 1, elasticNetL1Ratio: 0 },
+        ];
+        for (const [i, options] of cases.entries()) {
+          const output = path.join(tmpdir, `zero-l1-${i}.dat`);
+          lindera.train({
+            seed: path.join(training, "seed.csv"),
+            corpus: path.join(training, "corpus.txt"),
+            charDef: path.join(training, "char.def"),
+            unkDef: path.join(training, "unk.def"),
+            featureDef: path.join(training, "feature.def"),
+            rewriteDef: path.join(training, "rewrite.def"),
+            output,
+            maxIter: 5,
+            maxThreads: 1,
+            ...options,
+          });
+          assert.ok(fs.statSync(output).size > 0);
+        }
+      } finally {
+        fs.rmSync(tmpdir, { recursive: true, force: true });
+      }
+    });
+
     // regularization, elasticNetL1Ratio and eta reach the trainer, with the
     // CLI's defaults (#1262). On the repository's training files the default
     // converges before 100 iterations, so every setting below trains a

@@ -231,6 +231,24 @@ class TrainerTest extends TestCase
     }
 
     /**
+     * A zero effective L1 coefficient trains instead of panicking in OWL-QN.
+     */
+    public function testTrainWithZeroL1Coefficient(): void
+    {
+        self::withInputs(function (string $dir): void {
+            $cases = [['l1', 0.0, 0.5], ['elasticnet', 0.0, 0.5], ['elasticnet', 1.0, 0.0]];
+            foreach ($cases as $i => [$kind, $lambda, $ratio]) {
+                $model = self::trainResources($dir, "zero-l1-{$i}.dat", [
+                    'regularization' => $kind,
+                    'lambda' => $lambda,
+                    'elastic_net_l1_ratio' => $ratio,
+                ]);
+                $this->assertNotEmpty($model);
+            }
+        });
+    }
+
+    /**
      * `$regularization`, `$elastic_net_l1_ratio` and `$eta` reach the
      * trainer, with the CLI's defaults: giving the defaults trains the
      * default model, a ratio is ignored without `elasticnet`, and each other

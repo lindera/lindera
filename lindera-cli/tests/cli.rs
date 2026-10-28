@@ -1110,6 +1110,34 @@ mod with_trained_dictionary {
         command
     }
 
+    /// The CLI accepts zero L1 penalties without passing them to OWL-QN.
+    #[test]
+    fn train_with_zero_l1_coefficient() {
+        let dir = tempfile::tempdir().unwrap();
+        let corpus = training_dir().join("corpus.txt");
+        let cases: [&[&str]; 3] = [
+            &["--regularization", "l1", "--lambda", "0"],
+            &["--regularization", "elasticnet", "--lambda", "0"],
+            &[
+                "--regularization",
+                "elasticnet",
+                "--lambda",
+                "1",
+                "--elastic-net-l1-ratio",
+                "0",
+            ],
+        ];
+        for (i, args) in cases.iter().enumerate() {
+            let model = dir.path().join(format!("zero-l1-{i}.dat"));
+            train_inputs_command(&corpus, &model)
+                .args(["--max-iterations", "5", "--max-threads", "1"])
+                .args(*args)
+                .assert()
+                .success();
+            assert!(std::fs::metadata(model).unwrap().len() > 0);
+        }
+    }
+
     /// `lindera train` regularizes with L2 and lambda 1.0 by default, and
     /// `--regularization` chooses the type with the same coefficient
     /// (#1261). The parameters are printed before the optimizer starts, so

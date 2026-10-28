@@ -561,7 +561,8 @@ impl Trainer {
     }
 
     /// Sets regularization settings. The default is
-    /// [`Regularization::L2`] with [`DEFAULT_LAMBDA`].
+    /// [`Regularization::L2`] with [`DEFAULT_LAMBDA`]. A zero `lambda` disables
+    /// regularization. Elastic Net with `l1_ratio` zero uses only L2.
     ///
     /// # Errors
     ///
@@ -1444,6 +1445,48 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// Checks that training without an L1 penalty matches its L2-only objective.
+    ///
+    /// # Arguments
+    ///
+    /// * `regularization` - A regularization with a zero L1 coefficient.
+    /// * `lambda` - Its regularization coefficient.
+    /// * `l2_lambda` - The equivalent L2 coefficient.
+    fn assert_zero_l1_matches_l2(regularization: Regularization, lambda: f64, l2_lambda: f64) {
+        let lattices = test_utils::generate_test_lattices(24);
+        let train = |regularization, lambda| {
+            Trainer::new()
+                .regularization(regularization, lambda)
+                .unwrap()
+                .max_iter(5)
+                .unwrap()
+                .train_with_stats(&lattices, test_utils::generate_test_feature_provider())
+        };
+        let (expected, expected_stats) = train(Regularization::L2, l2_lambda);
+        let (actual, actual_stats) = train(regularization, lambda);
+
+        assert!(!actual.weights().is_empty());
+        assert!(actual.weights().iter().all(|weight| weight.is_finite()));
+        assert!(actual.weights().iter().any(|weight| *weight != 0.0));
+        assert_eq!(actual.weights(), expected.weights());
+        assert_eq!(actual_stats, expected_stats);
+    }
+
+    #[test]
+    fn zero_l1_coefficient_trains_without_regularization() {
+        assert_zero_l1_matches_l2(Regularization::L1, 0.0, 0.0);
+    }
+
+    #[test]
+    fn zero_l1_coefficient_from_elastic_net_lambda_trains_without_regularization() {
+        assert_zero_l1_matches_l2(Regularization::ElasticNet { l1_ratio: 0.5 }, 0.0, 0.0);
+    }
+
+    #[test]
+    fn zero_l1_coefficient_from_elastic_net_ratio_preserves_l2() {
+        assert_zero_l1_matches_l2(Regularization::ElasticNet { l1_ratio: 0.0 }, 1.0, 1.0);
     }
 
     // A new trainer regularizes with L2 and DEFAULT_LAMBDA, 1.0, the
