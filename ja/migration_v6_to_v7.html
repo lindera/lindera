@@ -1846,6 +1846,7 @@ feature）経由で使う Rust コードにのみ影響します
 <tr><td><code>Model::write_connection_costs</code> と <code>SerializableModel::write_connection_costs</code> は、学習した重みがない連接に <code>i16::MAX</code> を書き出す</td><td>0 を書き出す。学習中や MeCab でのその連接のコスト</td></tr>
 <tr><td><code>Trainer::new</code> は L1（<code>use_l2</code> が false）と <code>regularization_cost</code> 0.01 で正則化する</td><td>L2 と <code>DEFAULT_LAMBDA</code>（1.0）で正則化する。<code>use_l2(false)</code> で L1 を選ぶ（<a href="#lindera-train-%E3%81%AE%E6%97%A2%E5%AE%9A%E3%81%AE%E6%AD%A3%E5%89%87%E5%8C%96%E3%81%AF-l2"><code>lindera train</code> の既定の正則化は L2</a>を参照）</td></tr>
 <tr><td>—</td><td>新規: デフォルトの係数 <code>DEFAULT_LAMBDA</code>（<code>1.0</code>）。<code>lindera_crf</code> にも同じ定数を追加し、その <code>Trainer::new</code> は <code>Regularization::L1</code> と 0.1 ではなく、<code>Regularization::L2</code> とこの定数で正則化する</td></tr>
+<tr><td>—</td><td>新規: <code>lindera_crf</code> の <code>FeatureSet::with_shared_bigrams</code>。バイグラムの素性 ID を <code>Arc&lt;[Option&lt;NonZeroU32&gt;]&gt;</code> で受け取り、ラベルの間で共有できるようにする。<code>FeatureSet</code> はバイグラムの素性 ID をこの形で持つため、<code>FeatureSet</code>・<code>FeatureProvider</code>・<code>RawModel</code> の rkyv でのアーカイブの形が変わる。<code>model.dat</code> はこれらを持たない（<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>）</td></tr>
 </tbody></table>
 </div>
 <p>モデルは <code>MODEL_FORMAT_VERSION</code> を <code>metadata.version</code> として書き出され、

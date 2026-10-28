@@ -196,6 +196,7 @@
 <h2 id="主要コンポーネント"><a class="header" href="#主要コンポーネント">主要コンポーネント</a></h2>
 <h3 id="featureprovider--featureset"><a class="header" href="#featureprovider--featureset">FeatureProvider / FeatureSet</a></h3>
 <p>ラベルごとの素性セットを管理します。各<code>FeatureSet</code>は、指定されたラベルのユニグラム素性と左右のバイグラム素性を保持します（保持するのは素性IDのみで、重みは持ちません）。<code>FeatureProvider</code>はラベルIDを<code>FeatureSet</code>インスタンスにマッピングします。重みは<code>RawModel</code>側で別途保持されます（<code>weights</code>、<code>unigram_weight_indices</code>、<code>bigram_weight_indices</code>）。</p>
+<p>バイグラムの素性IDは<code>Arc&lt;[Option&lt;NonZeroU32&gt;]&gt;</code>で保持するため、同じバイグラム素性を持つラベルは1つのリストを共有できます。<code>FeatureSet::with_shared_bigrams</code>はリストを<code>Arc</code>で受け取り、<code>FeatureSet::new</code>は渡されたスライスを写します。学習で使われない素性を落とすときは、共有されたリストを1度だけ絞り込み、そのリストを共有していたラベルは絞り込んだリストを共有します。<code>lindera-trainer</code>は、書き換え後の左文脈と右文脈の素性が同じラベルの間でリストを共有します（<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>）。</p>
 <h3 id="lattice--edge--node"><a class="header" href="#lattice--edge--node">Lattice / Edge / Node</a></h3>
 <p>系列ラベリングのための可変長エッジを持つラティス構造です。<code>Edge</code>はラベル付きの候補スパンを表し、<code>Node</code>は特定の位置にあるエッジを集約します。<code>Lattice</code>は入力データから構築され、モデルが最適パスを探索するために使用されます。</p>
 <h3 id="trainer"><a class="header" href="#trainer">Trainer</a></h3>
