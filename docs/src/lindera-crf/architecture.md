@@ -25,6 +25,8 @@ lindera-crf/src/
 
 Manage per-label feature sets. Each `FeatureSet` holds unigram features and left/right bigram features for a given label (feature IDs only, no weights). `FeatureProvider` maps label IDs to `FeatureSet` instances. Weights are held separately, on `RawModel` (`weights`, `unigram_weight_indices`, `bigram_weight_indices`).
 
+The bigram feature IDs are held in `Arc<[Option<NonZeroU32>]>`, so labels with the same bigram features can share one list: `FeatureSet::with_shared_bigrams` takes the lists as `Arc`s, while `FeatureSet::new` copies the slices it is given. When training drops the unused features, it filters each shared list once, and the labels that shared the list share the filtered one. `lindera-trainer` shares the lists among the labels whose rewritten left and right features are the same ([#1263](https://github.com/lindera/lindera/issues/1263)).
+
 ### Lattice / Edge / Node
 
 Lattice structure with variable-length edges for sequence labeling. `Edge` represents a candidate span with a label, while `Node` aggregates edges at a given position. The `Lattice` is constructed from input data and used by the model to find the best path.

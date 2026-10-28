@@ -342,7 +342,9 @@ fn candidates_at(candidates: &[UnknownWordCandidate], pos: usize) -> &[UnknownWo
 ///
 /// # Returns
 ///
-/// The feature set.
+/// The feature set. Its left and right IDs are shared with the other labels
+/// that have the same rewritten left and right features (see
+/// `FeatureExtractor::bigram_feature_ids`, #1263).
 fn label_feature_set(
     rewriter: &DictionaryRewriter,
     extractor: &mut FeatureExtractor,
@@ -350,19 +352,15 @@ fn label_feature_set(
     char_type: u32,
     surface: Option<&str>,
 ) -> lindera_crf::FeatureSet {
-    // Uncached on purpose: real feature strings are unique per seed row, so
-    // a cache keyed on them never hits (#975).
+    // The rewrite is uncached on purpose: real feature strings are unique per
+    // seed row, so a cache keyed on them never hits (#975). The rewritten
+    // left and right features are not unique, and the IDs made from them are
+    // cached by `bigram_feature_ids`.
     let (ufeature, lfeature, rfeature) = rewriter.rewrite(feature);
     // Split as MeCab splits the rewritten features for its templates, so a
     // quoted column with `,` in it is one column (#1184).
-    let (u_columns, l_columns, r_columns) = (
-        split_feature(&ufeature),
-        split_feature(&lfeature),
-        split_feature(&rfeature),
-    );
+    let u_columns = split_feature(&ufeature);
     let u_vec: Vec<&str> = u_columns.iter().map(|column| column.as_ref()).collect();
-    let l_vec: Vec<&str> = l_columns.iter().map(|column| column.as_ref()).collect();
-    let r_vec: Vec<&str> = r_columns.iter().map(|column| column.as_ref()).collect();
     let ctx = TemplateContext {
         surface,
         ufeature: Some(&ufeature),
@@ -370,9 +368,8 @@ fn label_feature_set(
         rfeature: Some(&rfeature),
     };
     let unigram_ids = extractor.extract_unigram_feature_ids_with_ctx(&u_vec, char_type, &ctx);
-    let left_ids = extractor.extract_left_feature_ids_with_ctx(&l_vec, &ctx);
-    let right_ids = extractor.extract_right_feature_ids_with_ctx(&r_vec, &ctx);
-    lindera_crf::FeatureSet::new(&unigram_ids, &right_ids, &left_ids)
+    let (left_ids, right_ids) = extractor.bigram_feature_ids(&lfeature, &rfeature);
+    lindera_crf::FeatureSet::with_shared_bigrams(&unigram_ids, right_ids, left_ids)
 }
 
 /// Returns the warning that training writes on stderr after the optimizer
@@ -1228,6 +1225,9 @@ impl Trainer {
                 self.config.feature_extractor.right_feature_ids.remove(k);
             }
         }
+
+        // The cached left and right IDs may name the features just removed.
+        self.config.feature_extractor.forget_bigram_feature_ids();
 
         println!("Feature cleanup completed");
     }
@@ -2842,6 +2842,173 @@ mod feature_column_tests {
         // A quoted column of the entry is compared whole.
         assert!(unk_entry_accepts("n,*,*,*,\"shop, store\",*", FEATURE));
         assert!(!unk_entry_accepts("n,*,*,*,shop,*", FEATURE));
+    }
+}
+
+/// The left and right feature IDs of a label are computed once per pair of
+/// rewritten left and right features, and shared by the labels with that
+/// pair (#1263).
+#[cfg(test)]
+mod bigram_feature_id_sharing_tests {
+    use std::collections::HashMap;
+    use std::io::Cursor;
+    use std::num::NonZeroU32;
+
+    use crate::feature_csv::split_feature;
+    use crate::feature_extractor::{FeatureExtractor, TemplateContext};
+    use crate::feature_rewriter::DictionaryRewriter;
+    use crate::label_feature_set;
+
+    /// The left feature is the first column, and the right feature the first
+    /// two, so `n,a,x` and `n,a,y` have the same pair, and `n,b,z` the same
+    /// left feature with another right one.
+    const REWRITE_DEF: &str = "\
+[unigram rewrite]
+* $1,$2,$3
+
+[left rewrite]
+* $1
+
+[right rewrite]
+* $1,$2
+";
+
+    fn rewriter() -> DictionaryRewriter {
+        match DictionaryRewriter::from_reader(Cursor::new(REWRITE_DEF)) {
+            Ok(rewriter) => rewriter,
+            Err(err) => panic!("rewrite.def: {err}"),
+        }
+    }
+
+    /// Each side reads its own columns, its whole feature, and the whole
+    /// feature of the other side.
+    fn extractor() -> FeatureExtractor {
+        FeatureExtractor::from_templates(
+            &["U0:%F[0]", "U2:%F[2]"],
+            &[
+                ("L0:%L[0]", "R1:%R[1]"),
+                ("LL:%l", "RR:%r"),
+                ("LR:%r", "RL:%l"),
+            ],
+        )
+    }
+
+    /// Returns the feature strings of `ids`, in order, from `map`.
+    fn names(ids: &[Option<NonZeroU32>], map: &HashMap<String, NonZeroU32>) -> Vec<String> {
+        ids.iter()
+            .map(|id| {
+                map.iter()
+                    .find(|(_, mapped)| Some(**mapped) == *id)
+                    .map_or_else(|| format!("{id:?}"), |(name, _)| name.clone())
+            })
+            .collect()
+    }
+
+    #[test]
+    fn labels_with_the_same_left_and_right_features_share_their_ids() {
+        let rewriter = rewriter();
+        let mut extractor = extractor();
+
+        let first = label_feature_set(&rewriter, &mut extractor, "n,a,x", 0, None);
+        let second = label_feature_set(&rewriter, &mut extractor, "n,a,y", 0, None);
+        let other_right = label_feature_set(&rewriter, &mut extractor, "n,b,z", 0, None);
+
+        assert!(std::ptr::eq(
+            first.bigram_left().as_ptr(),
+            second.bigram_left().as_ptr()
+        ));
+        assert!(std::ptr::eq(
+            first.bigram_right().as_ptr(),
+            second.bigram_right().as_ptr()
+        ));
+        let (left_ids, right_ids) = (&extractor.left_feature_ids, &extractor.right_feature_ids);
+        assert_eq!(
+            names(first.bigram_left(), left_ids),
+            ["L0:n", "LL:n", "LR:n,a"]
+        );
+        assert_eq!(
+            names(first.bigram_right(), right_ids),
+            ["R1:a", "RR:n,a", "RL:n"]
+        );
+        // The same left feature with another right one: the left template
+        // `%r` reads the right feature, so the pair, not the left feature
+        // alone, decides both lists.
+        assert_eq!(
+            names(other_right.bigram_left(), left_ids),
+            ["L0:n", "LL:n", "LR:n,b"]
+        );
+        assert_eq!(
+            names(other_right.bigram_right(), right_ids),
+            ["R1:b", "RR:n,b", "RL:n"]
+        );
+    }
+
+    #[test]
+    fn cached_ids_are_the_ids_of_the_uncached_extraction() {
+        let rewriter = rewriter();
+        let rows = ["n,a,x", "v,c,y", "n,a,y", "n,b,z", "v,c,w", "n,a,x"];
+
+        let mut cached = extractor();
+        let sets: Vec<_> = rows
+            .iter()
+            .map(|row| label_feature_set(&rewriter, &mut cached, row, 0, Some("s")))
+            .collect();
+
+        // What `label_feature_set` did before the IDs were cached: every
+        // template of every row, in the order unigram, left, right.
+        let mut uncached = extractor();
+        for (row, set) in rows.iter().zip(&sets) {
+            let (ufeature, lfeature, rfeature) = rewriter.rewrite(row);
+            let columns = |feature: &str| -> Vec<String> {
+                split_feature(feature)
+                    .into_iter()
+                    .map(|column| column.into_owned())
+                    .collect()
+            };
+            let (u, l, r) = (columns(&ufeature), columns(&lfeature), columns(&rfeature));
+            fn as_strs(columns: &[String]) -> Vec<&str> {
+                columns.iter().map(String::as_str).collect()
+            }
+            let ctx = TemplateContext {
+                surface: Some("s"),
+                ufeature: Some(&ufeature),
+                lfeature: Some(&lfeature),
+                rfeature: Some(&rfeature),
+            };
+            let unigram = uncached.extract_unigram_feature_ids_with_ctx(&as_strs(&u), 0, &ctx);
+            let left = uncached.extract_left_feature_ids_with_ctx(&as_strs(&l), &ctx);
+            let right = uncached.extract_right_feature_ids_with_ctx(&as_strs(&r), &ctx);
+            assert_eq!(set.unigram(), unigram.as_slice(), "{row}");
+            assert_eq!(set.bigram_left(), left.as_slice(), "{row}");
+            assert_eq!(set.bigram_right(), right.as_slice(), "{row}");
+        }
+        assert_eq!(cached.unigram_feature_ids, uncached.unigram_feature_ids);
+        assert_eq!(cached.left_feature_ids, uncached.left_feature_ids);
+        assert_eq!(cached.right_feature_ids, uncached.right_feature_ids);
+    }
+
+    // Training removes the unused features from the ID maps, and then
+    // forgets the cached IDs, which may name them.
+    #[test]
+    fn training_forgets_the_cached_ids() {
+        let model = crate::test_fixtures::train_wide_model_with(1, |trainer| {
+            assert!(
+                trainer
+                    .config
+                    .feature_extractor
+                    .cached_bigram_feature_id_pairs()
+                    > 0
+            );
+            trainer
+        });
+
+        assert_eq!(
+            model
+                .config
+                .feature_extractor
+                .cached_bigram_feature_id_pairs(),
+            0
+        );
     }
 }
 

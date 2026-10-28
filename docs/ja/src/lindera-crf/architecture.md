@@ -25,6 +25,8 @@ lindera-crf/src/
 
 ラベルごとの素性セットを管理します。各`FeatureSet`は、指定されたラベルのユニグラム素性と左右のバイグラム素性を保持します（保持するのは素性IDのみで、重みは持ちません）。`FeatureProvider`はラベルIDを`FeatureSet`インスタンスにマッピングします。重みは`RawModel`側で別途保持されます（`weights`、`unigram_weight_indices`、`bigram_weight_indices`）。
 
+バイグラムの素性IDは`Arc<[Option<NonZeroU32>]>`で保持するため、同じバイグラム素性を持つラベルは1つのリストを共有できます。`FeatureSet::with_shared_bigrams`はリストを`Arc`で受け取り、`FeatureSet::new`は渡されたスライスを写します。学習で使われない素性を落とすときは、共有されたリストを1度だけ絞り込み、そのリストを共有していたラベルは絞り込んだリストを共有します。`lindera-trainer`は、書き換え後の左文脈と右文脈の素性が同じラベルの間でリストを共有します（[#1263](https://github.com/lindera/lindera/issues/1263)）。
+
 ### Lattice / Edge / Node
 
 系列ラベリングのための可変長エッジを持つラティス構造です。`Edge`はラベル付きの候補スパンを表し、`Node`は特定の位置にあるエッジを集約します。`Lattice`は入力データから構築され、モデルが最適パスを探索するために使用されます。
