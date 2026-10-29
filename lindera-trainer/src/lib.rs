@@ -1955,6 +1955,223 @@ mod export_determinism_tests {
     }
 }
 
+// The feature ids that the extractor hands out, pinned at each step of a run
+// (#1286). The SHA-256 of `model.dat` cannot catch a change of these ids:
+// lindera-crf gives the weights their slots in the order the lattices meet
+// the features, so renumbered ids can still give the same file. Neither the
+// CLI nor the bindings call `read_user_lexicon` or `write_bigram_details`, so
+// only these tests cover the ids they see.
+#[cfg(test)]
+mod feature_id_tests {
+    use crate::feature_extractor::FeatureExtractor;
+    use crate::test_fixtures::{fixtures, wide_seed_and_corpus};
+    use crate::{Corpus, Trainer, TrainerConfig};
+    use std::io::Cursor;
+
+    /// The (id, feature) pairs of the unigram, left and right maps, each in
+    /// ascending id order.
+    type IdTables = [Vec<(u32, String)>; 3];
+
+    /// Returns the (id, feature) pairs of the extractor's three maps.
+    ///
+    /// # Arguments
+    ///
+    /// * `extractor` - The feature extractor.
+    ///
+    /// # Returns
+    ///
+    /// The unigram, left and right pairs, each sorted by id.
+    fn id_tables(extractor: &FeatureExtractor) -> IdTables {
+        [
+            &extractor.unigram_feature_ids,
+            &extractor.left_feature_ids,
+            &extractor.right_feature_ids,
+        ]
+        .map(|map| {
+            let mut pairs: Vec<_> = map.iter().map(|(s, id)| (id.get(), s.clone())).collect();
+            pairs.sort();
+            pairs
+        })
+    }
+
+    /// Turns pairs written as literals into [`IdTables`].
+    ///
+    /// # Arguments
+    ///
+    /// * `tables` - The unigram, left and right pairs.
+    ///
+    /// # Returns
+    ///
+    /// The same pairs with owned strings.
+    fn owned(tables: [&[(u32, &str)]; 3]) -> IdTables {
+        tables.map(|pairs| pairs.iter().map(|&(id, s)| (id, s.to_string())).collect())
+    }
+
+    /// Returns a trainer for the wide fixture, as `train_wide_model` builds
+    /// it, before any training.
+    ///
+    /// # Returns
+    ///
+    /// The trainer.
+    fn wide_trainer() -> Trainer {
+        let (_, char_def, unk_def, feature_def, rewrite_def, _) = fixtures();
+        let (seed, _) = wide_seed_and_corpus();
+        let config = match TrainerConfig::from_readers(
+            Cursor::new(seed.as_bytes()),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        ) {
+            Ok(config) => config,
+            Err(err) => panic!("failed to build config: {err}"),
+        };
+        match Trainer::new(config) {
+            Ok(trainer) => trainer,
+            Err(err) => panic!("failed to build trainer: {err}"),
+        }
+    }
+
+    /// The ids after `Trainer::new`: the seed rows, then the `unk.def`
+    /// entries, give each map's strings consecutive ids from 1, in the order
+    /// the labels first meet them.
+    #[test]
+    fn ids_follow_first_use_after_trainer_new() {
+        let trainer = wide_trainer();
+
+        assert_eq!(
+            id_tables(&trainer.config.feature_extractor),
+            owned([
+                &[
+                    (1, "名詞"),
+                    (2, "名詞,一般"),
+                    (3, "名詞,固有名詞"),
+                    (4, "名詞,サ変接続"),
+                    (5, "名詞,代名詞"),
+                    (6, "動詞"),
+                    (7, "動詞,自立"),
+                    (8, "動詞,非自立"),
+                    (9, "形容詞"),
+                    (10, "形容詞,自立"),
+                    (11, "副詞"),
+                    (12, "副詞,一般"),
+                    (13, "助詞"),
+                    (14, "助詞,係助詞"),
+                    (15, "助詞,格助詞"),
+                    (16, "助動詞"),
+                    (17, "接続詞"),
+                    (18, "名詞,数"),
+                ],
+                &[
+                    (1, "名詞"),
+                    (2, "動詞"),
+                    (3, "形容詞"),
+                    (4, "副詞"),
+                    (5, "助詞"),
+                    (6, "助動詞"),
+                    (7, "接続詞"),
+                ],
+                &[
+                    (1, "NOUN"),
+                    (2, "名詞"),
+                    (3, "動詞"),
+                    (4, "形容詞"),
+                    (5, "副詞"),
+                    (6, "助詞"),
+                    (7, "助動詞"),
+                    (8, "接続詞"),
+                ],
+            ])
+        );
+    }
+
+    /// Training removes the unused features and keeps the ids of the others;
+    /// `write_bigram_details` names the kept left and right features; and a
+    /// user lexicon entry interns a removed feature again under a new id,
+    /// after the last id the map ever gave out, not after its live count.
+    ///
+    /// Which features are unused depends on the weights that the 5 L1
+    /// iterations reach; the expected values were taken on x86_64 Linux,
+    /// where the CI runs these tests.
+    #[test]
+    fn removal_keeps_ids_and_reinterning_gets_new_ids() {
+        let (_, corpus_text) = wide_seed_and_corpus();
+        let corpus = match Corpus::from_reader(Cursor::new(corpus_text.as_bytes())) {
+            Ok(corpus) => corpus,
+            Err(err) => panic!("failed to read corpus: {err}"),
+        };
+        let trainer = wide_trainer()
+            .use_l2(false)
+            .regularization_cost(0.01)
+            .max_iter(5)
+            .num_threads(1);
+        let mut model = match trainer.train(corpus) {
+            Ok(model) => model,
+            Err(err) => panic!("training failed: {err}"),
+        };
+
+        assert_eq!(
+            id_tables(&model.config.feature_extractor),
+            owned([
+                &[
+                    (1, "名詞"),
+                    (3, "名詞,固有名詞"),
+                    (16, "助動詞"),
+                    (17, "接続詞"),
+                    (18, "名詞,数"),
+                ],
+                &[(1, "名詞"), (6, "助動詞"), (7, "接続詞")],
+                &[(2, "名詞"), (7, "助動詞"), (8, "接続詞")],
+            ]),
+            "after training"
+        );
+
+        let (mut left, mut right, mut cost) = (Vec::new(), Vec::new(), Vec::new());
+        if let Err(err) = model.write_bigram_details(&mut left, &mut right, &mut cost) {
+            panic!("write_bigram_details failed: {err}");
+        }
+        assert_eq!(
+            String::from_utf8_lossy(&left),
+            "1\t*\n2\t\"名詞\"\n3\t\"助動詞\"\n4\t\"接続詞\"\n"
+        );
+        assert_eq!(
+            String::from_utf8_lossy(&right),
+            "1\t\"名詞\"\n2\t*\n3\t\"助動詞\"\n4\t\"接続詞\"\n"
+        );
+
+        // `名詞,一般` (unigram id 2) and `NOUN` (right id 1) were removed;
+        // `感動詞` is new to every map.
+        let user_csv = "外食,0,0,0,名詞,一般,*,*,*,*,外食,ガイショク,ガイショク\n\
+                        感嘆,0,0,0,感動詞,*,*,*,*,*,感嘆,カンタン,カンタン\n";
+        if let Err(err) = model.read_user_lexicon(Cursor::new(user_csv.as_bytes())) {
+            panic!("read_user_lexicon failed: {err}");
+        }
+        assert_eq!(
+            id_tables(&model.config.feature_extractor),
+            owned([
+                &[
+                    (1, "名詞"),
+                    (3, "名詞,固有名詞"),
+                    (16, "助動詞"),
+                    (17, "接続詞"),
+                    (18, "名詞,数"),
+                    (19, "名詞,一般"),
+                    (20, "感動詞"),
+                ],
+                &[(1, "名詞"), (6, "助動詞"), (7, "接続詞"), (8, "感動詞")],
+                &[
+                    (2, "名詞"),
+                    (7, "助動詞"),
+                    (8, "接続詞"),
+                    (9, "NOUN"),
+                    (10, "感動詞"),
+                ],
+            ]),
+            "after the user lexicon"
+        );
+    }
+}
+
 #[cfg(test)]
 mod train_determinism_tests {
     use crate::test_fixtures::fixtures;
