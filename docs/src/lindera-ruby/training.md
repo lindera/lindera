@@ -44,11 +44,11 @@ The first seven parameters are required positional arguments. `lambda`, `max_ite
 | 5 | feature_def | `String` | Path to the feature definition file (feature.def) |
 | 6 | rewrite_def | `String` | Path to the rewrite rule definition file (rewrite.def) |
 | 7 | output | `String` | Output path for the trained model file |
-| 8 | lambda | `Float` or `nil` | Regularization coefficient, finite and >= 0, default 1.0; with L2, MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0` |
+| 8 | lambda | `Float` or `nil` | Regularization coefficient, finite and >= 0, default 1.0; `0` disables regularization for every type; with L2, MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0` |
 | 9 | max_iter | `Integer` or `nil` | Maximum number of training iterations, 1 or more, default 100; training stops earlier once the objective converges (see `eta:`) |
 | 10 | max_threads | `Integer` or `nil` | Number of threads, 1 or more (`nil` = auto-detect CPU cores) |
 | keyword | regularization: | `String` or `nil` | Regularization type, default `'l2'`: `'l1'`, `'l2'` or `'elasticnet'`, in any case (`'elastic_net'` and `'elastic-net'` also select Elastic Net), as `lindera train --regularization` takes it |
-| keyword | elastic_net_l1_ratio: | `Float` or `nil` | L1 ratio of Elastic Net regularization, between 0 and 1, default 0.5; used only with `'elasticnet'` |
+| keyword | elastic_net_l1_ratio: | `Float` or `nil` | L1 ratio of Elastic Net regularization, between 0 and 1, default 0.5; `0` uses only L2, `1` uses only L1; used only with `'elasticnet'` |
 | keyword | eta: | `Float` or `nil` | Tolerance of the convergence test, finite and >= 0, default 5e-5: training stops before `max_iter` once the relative change of the objective stays below it for 3 iterations in a row; `0` disables the test |
 
 The settings are checked before any file is read: an unknown `regularization:` raises an `ArgumentError`, and a `lambda`, `elastic_net_l1_ratio:` or `eta:` outside its range a `RangeError`. To train as v6 did by default, pass a `lambda` of 0.01 and `regularization: 'l1'`, and `eta: 0` to stop only at `max_iter`:

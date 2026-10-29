@@ -39,6 +39,7 @@ use crate::util::optional_integer_arg;
 ///   * `lambda` - Regularization coefficient, finite and >= 0, default
 ///     (also for `nil`): 1.0; with L2, MeCab's `-c C` is `1 / C`, so 1.0 is
 ///     MeCab's `-c 1.0`.
+///     Zero disables regularization for every type.
 ///   * `max_iter` - Maximum number of iterations, 1 or more, default: 100.
 ///   * `max_threads` - Maximum number of threads, 1 or more (nil =
 ///     auto-detect CPU cores).
@@ -48,6 +49,7 @@ use crate::util::optional_integer_arg;
 ///   * `elastic_net_l1_ratio:` - L1 ratio of Elastic Net regularization,
 ///     between 0 and 1, default (also for `nil`): 0.5; used only with
 ///     `"elasticnet"`.
+///     Zero uses only L2; one uses only L1.
 ///   * `eta:` - Tolerance of the convergence test, finite and >= 0, default
 ///     (also for `nil`): 5e-5: training stops before `max_iter` once the
 ///     relative change of the objective stays below it for 3 iterations in

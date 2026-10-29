@@ -42,11 +42,11 @@ Lindera\Trainer::train(
 | `$feature_def` | `string` | 必須 | 素性定義ファイルのパス（feature.def） |
 | `$rewrite_def` | `string` | 必須 | 書き換えルール定義ファイルのパス（rewrite.def） |
 | `$output` | `string` | 必須 | 学習済みモデルファイルの出力パス |
-| `$lambda` | `float` | `1.0` | 正則化係数（有限の 0 以上の値）。L2 では MeCab の `-c C` が `1 / C` にあたり、1.0 は MeCab の `-c 1.0` |
+| `$lambda` | `float` | `1.0` | 正則化係数（有限の 0 以上の値）。`0` でどの種類でも正則化を無効にします。L2 では MeCab の `-c C` が `1 / C` にあたり、1.0 は MeCab の `-c 1.0` |
 | `$max_iter` | `int` | `100` | 最大学習イテレーション数（1 以上）。目的関数が収束すると、それより前に止まります（`$eta` を参照） |
 | `$max_threads` | `int` または `null` | `null` | スレッド数（1 以上。null = CPU コア数を自動検出） |
 | `$regularization` | `string` または `null` | `'l2'` | 正則化の種類。`lindera train --regularization` と同じく `'l1'`・`'l2'`・`'elasticnet'` のいずれかで、大文字・小文字は区別しません（`'elastic_net'`・`'elastic-net'` も Elastic Net を選びます） |
-| `$elastic_net_l1_ratio` | `float` または `null` | `0.5` | Elastic Net 正則化の L1 の比率（0 以上 1 以下）。`'elasticnet'` のときだけ使います |
+| `$elastic_net_l1_ratio` | `float` または `null` | `0.5` | Elastic Net 正則化の L1 の比率（0 以上 1 以下）。`0` は L2 のみ、`1` は L1 のみを使用します。`'elasticnet'` のときだけ使います |
 | `$eta` | `float` または `null` | `5e-5` | 収束判定の許容値（有限の 0 以上の値）。目的関数の相対変化が 3 回続けてこの値を下回ると、`$max_iter` より前に止まります。`0` で判定を無効にします |
 
 省略できる引数は、`null` を渡すとデフォルトになります。設定の値は、ファイルを読む前に検査されます。知らない `$regularization` や、範囲の外の `$lambda`・`$elastic_net_l1_ratio`・`$eta` は `ValueError` になります。v6 のデフォルトと同じく学習するには、`regularization: 'l1'` と `lambda: 0.01` を渡し、`$max_iter` だけで止めるには `eta: 0` も渡します。

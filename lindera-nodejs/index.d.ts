@@ -831,6 +831,7 @@ export interface TrainOptions {
   /**
    * Regularization coefficient, finite and >= 0 (default: 1.0); with L2,
    * MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0`.
+   * Zero disables regularization for every type.
    */
   lambda?: number
   /**
@@ -851,6 +852,7 @@ export interface TrainOptions {
   /**
    * L1 ratio of Elastic Net regularization, between 0 and 1 (default:
    * 0.5); used only with `"elasticnet"`.
+   * Zero uses only L2; one uses only L1.
    */
   elasticNetL1Ratio?: number
   /**
