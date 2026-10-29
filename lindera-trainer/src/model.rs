@@ -499,7 +499,7 @@ impl Model {
                 feature,
                 category,
                 Some(surface),
-            );
+            )?;
             let cost = match cost {
                 Some(cost) => UserEntryCost::Given(cost),
                 None => UserEntryCost::Weight(self.raw_model.unigram_weight(feature_set.unigram())),
@@ -1114,29 +1114,23 @@ impl Model {
         R: Write,
         C: Write,
     {
-        use std::collections::HashMap;
         use std::io::BufWriter;
 
         // Get merged model for detailed analysis
         let merged_model = self.get_merged_model()?;
         let cost_factor = self.config.cost_factor;
 
-        // Real feature names, inverted from the extractor's string-to-id maps:
-        // id -> feature string.
-        let right_features: HashMap<u32, &str> = self
-            .config
-            .feature_extractor
-            .right_feature_ids
-            .iter()
-            .map(|(s, &id)| (id.get(), s.as_str()))
-            .collect();
-        let left_features: HashMap<u32, &str> = self
-            .config
-            .feature_extractor
-            .left_feature_ids
-            .iter()
-            .map(|(s, &id)| (id.get(), s.as_str()))
-            .collect();
+        /// Returns the feature of an id in one of the extractor's maps, or `*`
+        /// for an id whose feature was removed.
+        fn feature_name(ids: &crate::feature_extractor::FeatureIdMap, id: u32) -> &str {
+            std::num::NonZeroU32::new(id)
+                .and_then(|id| ids.resolve(id))
+                .unwrap_or("*")
+        }
+
+        // Real feature names, looked up by id in the extractor's maps.
+        let right_ids = self.config.feature_extractor.right_feature_ids();
+        let left_ids = self.config.feature_extractor.left_feature_ids();
 
         // Write left features
         let mut left_wtr = BufWriter::new(left_wtr);
@@ -1147,7 +1141,7 @@ impl Model {
                     write!(&mut left_wtr, ",")?;
                 }
                 if let Some(feat_id) = feat_id {
-                    let feat_str = right_features.get(&feat_id.get()).copied().unwrap_or("*");
+                    let feat_str = feature_name(right_ids, feat_id.get());
                     write!(&mut left_wtr, "\"{feat_str}\"")?;
                 } else {
                     write!(&mut left_wtr, "*")?;
@@ -1165,7 +1159,7 @@ impl Model {
                     write!(&mut right_wtr, ",")?;
                 }
                 if let Some(feat_id) = feat_id {
-                    let feat_str = left_features.get(&feat_id.get()).copied().unwrap_or("*");
+                    let feat_str = feature_name(left_ids, feat_id.get());
                     write!(&mut right_wtr, "\"{feat_str}\"")?;
                 } else {
                     write!(&mut right_wtr, "*")?;
@@ -1184,10 +1178,7 @@ impl Model {
             let left_feat_str = if left_feat_id == 0 {
                 "BOS"
             } else {
-                left_features
-                    .get(&(left_feat_id as u32))
-                    .copied()
-                    .unwrap_or("*")
+                feature_name(left_ids, left_feat_id as u32)
             };
             let mut entries: Vec<(u32, u32)> = hm.iter().map(|(&k, &v)| (k, v)).collect();
             entries.sort_unstable_by_key(|&(k, _)| k);
@@ -1195,7 +1186,7 @@ impl Model {
                 let right_feat_str = if right_feat_id == 0 {
                     "EOS"
                 } else {
-                    right_features.get(&right_feat_id).copied().unwrap_or("*")
+                    feature_name(right_ids, right_feat_id)
                 };
                 let weight = self
                     .raw_model

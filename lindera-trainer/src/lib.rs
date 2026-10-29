@@ -10,6 +10,7 @@ pub mod config;
 pub mod corpus;
 mod feature_csv;
 pub mod feature_extractor;
+mod feature_id_map;
 pub mod feature_rewriter;
 mod lexicon_csv;
 pub mod model;
@@ -345,13 +346,18 @@ fn candidates_at(candidates: &[UnknownWordCandidate], pos: usize) -> &[UnknownWo
 /// The feature set. Its left and right IDs are shared with the other labels
 /// that have the same rewritten left and right features (see
 /// `FeatureExtractor::bigram_feature_ids`, #1263).
+///
+/// # Errors
+///
+/// Returns an error when a feature id map of `extractor` has given out all
+/// the ids of `u32` and had none for a new feature (#1286).
 fn label_feature_set(
     rewriter: &DictionaryRewriter,
     extractor: &mut FeatureExtractor,
     feature: &str,
     char_type: u32,
     surface: Option<&str>,
-) -> lindera_crf::FeatureSet {
+) -> Result<lindera_crf::FeatureSet> {
     // The rewrite is uncached on purpose: real feature strings are unique per
     // seed row, so a cache keyed on them never hits (#975). The rewritten
     // left and right features are not unique, and the IDs made from them are
@@ -369,7 +375,17 @@ fn label_feature_set(
     };
     let unigram_ids = extractor.extract_unigram_feature_ids_with_ctx(&u_vec, char_type, &ctx);
     let (left_ids, right_ids) = extractor.bigram_feature_ids(&lfeature, &rfeature);
-    lindera_crf::FeatureSet::with_shared_bigrams(&unigram_ids, right_ids, left_ids)
+    if extractor.ids_exhausted() {
+        return Err(anyhow::anyhow!(
+            "too many distinct features: a feature id map has given out all {} ids",
+            u32::MAX
+        ));
+    }
+    Ok(lindera_crf::FeatureSet::with_shared_bigrams(
+        &unigram_ids,
+        right_ids,
+        left_ids,
+    ))
 }
 
 /// Returns the warning that training writes on stderr after the optimizer
@@ -436,7 +452,7 @@ impl Trainer {
                 feature_str,
                 cate_id,
                 Some(surface),
-            );
+            )?;
 
             // Add feature set to provider and get label ID. `build_lattice`
             // finds a seed row by its word id in the training lexicon, the
@@ -467,7 +483,7 @@ impl Trainer {
                 feature,
                 char_type,
                 None,
-            );
+            )?;
             unk_entry_labels.push(provider.add_feature_set(feature_set)?);
         }
 
@@ -943,7 +959,7 @@ impl Trainer {
             feature,
             VIRTUAL_CHAR_TYPE,
             None,
-        );
+        )?;
         let label = self.provider.add_feature_set(feature_set)?;
         self.virtual_labels.insert(feature.to_string(), label);
         self.virtual_features.push(feature.to_string());
@@ -1147,87 +1163,36 @@ impl Trainer {
 
         use std::collections::HashSet;
 
-        let mut used_right_features = HashSet::new();
-
-        // Collect all feature keys to check
-        let unigram_feature_keys: Vec<_> = self
-            .config
-            .feature_extractor
-            .unigram_feature_ids
-            .keys()
-            .cloned()
-            .collect();
-        let left_feature_keys: Vec<_> = self
-            .config
-            .feature_extractor
-            .left_feature_ids
-            .keys()
-            .cloned()
-            .collect();
-        let right_feature_keys: Vec<_> = self
-            .config
-            .feature_extractor
-            .right_feature_ids
-            .keys()
-            .cloned()
-            .collect();
-
-        // Remove unused unigram features to reduce model complexity
-        for k in &unigram_feature_keys {
-            let id = self
-                .config
-                .feature_extractor
-                .unigram_feature_ids
-                .get(k)
-                .unwrap();
-            if model
-                .unigram_weight_indices()
-                .get((id.get() - 1) as usize)
-                .cloned()
-                .flatten()
-                .is_none()
-            {
-                self.config.feature_extractor.unigram_feature_ids.remove(k);
-            }
-        }
-
         // Collect used right features from bigram weights
+        let mut used_right_features = HashSet::new();
         for feature_ids in model.bigram_weight_indices() {
             for (feature_id, _) in feature_ids {
                 used_right_features.insert(*feature_id);
             }
         }
 
-        // Remove unused left features
-        for k in &left_feature_keys {
-            let id = self
-                .config
-                .feature_extractor
-                .left_feature_ids
-                .get(k)
-                .unwrap();
-            if let Some(x) = model.bigram_weight_indices().get(id.get() as usize)
-                && x.is_empty()
-            {
-                self.config.feature_extractor.left_feature_ids.remove(k);
-            }
-        }
-
-        // Remove unused right features
-        for k in &right_feature_keys {
-            let id = self
-                .config
-                .feature_extractor
-                .right_feature_ids
-                .get(k)
-                .unwrap();
-            if !used_right_features.contains(&id.get()) {
-                self.config.feature_extractor.right_feature_ids.remove(k);
-            }
-        }
-
-        // The cached left and right IDs may name the features just removed.
-        self.config.feature_extractor.forget_bigram_feature_ids();
+        // A unigram feature is unused when it has no weight. A left feature
+        // is unused when its row of bigram weights is empty; one past the
+        // rows is kept. A right feature is unused when no row names it. The
+        // cached left and right IDs, which may name the features removed, are
+        // forgotten in the same call.
+        self.config.feature_extractor.retain_features(
+            |id| {
+                model
+                    .unigram_weight_indices()
+                    .get((id.get() - 1) as usize)
+                    .copied()
+                    .flatten()
+                    .is_some()
+            },
+            |id| {
+                !model
+                    .bigram_weight_indices()
+                    .get(id.get() as usize)
+                    .is_some_and(|row| row.is_empty())
+            },
+            |id| used_right_features.contains(&id.get()),
+        );
 
         println!("Feature cleanup completed");
     }
@@ -1980,17 +1945,18 @@ mod feature_id_tests {
     ///
     /// # Returns
     ///
-    /// The unigram, left and right pairs, each sorted by id.
+    /// The unigram, left and right pairs, each in the order the map lists
+    /// them, which is ascending id order.
     fn id_tables(extractor: &FeatureExtractor) -> IdTables {
         [
-            &extractor.unigram_feature_ids,
-            &extractor.left_feature_ids,
-            &extractor.right_feature_ids,
+            extractor.unigram_feature_ids(),
+            extractor.left_feature_ids(),
+            extractor.right_feature_ids(),
         ]
         .map(|map| {
-            let mut pairs: Vec<_> = map.iter().map(|(s, id)| (id.get(), s.clone())).collect();
-            pairs.sort();
-            pairs
+            map.iter()
+                .map(|(s, id)| (id.get(), s.to_string()))
+                .collect()
         })
     }
 
@@ -2169,6 +2135,33 @@ mod feature_id_tests {
             ]),
             "after the user lexicon"
         );
+    }
+
+    /// A label that needs a new feature after a map has given out its
+    /// largest id is an error, not a label with the feature skipped: the
+    /// error reaches `Trainer::new`, `virtual_label` and `read_user_lexicon`.
+    #[test]
+    fn running_out_of_feature_ids_is_an_error() {
+        let rewriter =
+            match crate::feature_rewriter::DictionaryRewriter::from_reader(Cursor::new("")) {
+                Ok(rewriter) => rewriter,
+                Err(err) => panic!("rewrite.def: {err}"),
+            };
+        let mut extractor =
+            FeatureExtractor::from_templates(&["U0:%F[0]"], &[("L0:%L[0]", "R0:%R[0]")])
+                .with_max_feature_id(1);
+
+        if let Err(err) = crate::label_feature_set(&rewriter, &mut extractor, "a", 0, None) {
+            panic!("the first label fits: {err}");
+        }
+        // `U0:b` would need unigram id 2.
+        match crate::label_feature_set(&rewriter, &mut extractor, "b", 0, None) {
+            Ok(_) => panic!("a label with no id left for its feature was built"),
+            Err(err) => assert!(
+                err.to_string().contains("too many distinct features"),
+                "{err}"
+            ),
+        }
     }
 }
 
@@ -2979,11 +2972,9 @@ mod lexicon_csv_export_tests {
 /// templates and for unknown-word matching (#1184).
 #[cfg(test)]
 mod feature_column_tests {
-    use std::collections::HashMap;
     use std::io::Cursor;
-    use std::num::NonZeroU32;
 
-    use crate::feature_extractor::FeatureExtractor;
+    use crate::feature_extractor::{FeatureExtractor, FeatureIdMap};
     use crate::feature_rewriter::DictionaryRewriter;
     use crate::{label_feature_set, unk_entry_accepts};
 
@@ -2992,8 +2983,8 @@ mod feature_column_tests {
     const FEATURE: &str = "n,dian4,店,店,\"shop, store\",1";
 
     /// Returns the feature strings an extractor has interned, sorted.
-    fn interned(ids: &HashMap<String, NonZeroU32>) -> Vec<&str> {
-        let mut features: Vec<&str> = ids.keys().map(String::as_str).collect();
+    fn interned(ids: &FeatureIdMap) -> Vec<&str> {
+        let mut features: Vec<&str> = ids.iter().map(|(feature, _)| feature).collect();
         features.sort_unstable();
         features
     }
@@ -3019,16 +3010,18 @@ mod feature_column_tests {
             &[("L1:%L[1]", "R1:%R[1]")],
         );
 
-        label_feature_set(&rewriter, &mut extractor, FEATURE, 0, None);
+        if let Err(err) = label_feature_set(&rewriter, &mut extractor, FEATURE, 0, None) {
+            panic!("label_feature_set: {err}");
+        }
 
         // MeCab's learner gives `U04:shop, store` and `U05:1` for the same
         // feature and unigram rule.
         assert_eq!(
-            interned(&extractor.unigram_feature_ids),
+            interned(extractor.unigram_feature_ids()),
             ["U04:shop, store", "U05:1"]
         );
-        assert_eq!(interned(&extractor.left_feature_ids), ["L1:shop, store"]);
-        assert_eq!(interned(&extractor.right_feature_ids), ["R1:1"]);
+        assert_eq!(interned(extractor.left_feature_ids()), ["L1:shop, store"]);
+        assert_eq!(interned(extractor.right_feature_ids()), ["R1:1"]);
     }
 
     #[test]
@@ -3043,7 +3036,7 @@ mod feature_column_tests {
         }
 
         let extractor = &model.config.feature_extractor;
-        for ids in [&extractor.left_feature_ids, &extractor.right_feature_ids] {
+        for ids in [extractor.left_feature_ids(), extractor.right_feature_ids()] {
             let features = interned(ids);
             assert!(features.contains(&"名詞,固有"), "{features:?}");
             assert!(features.iter().all(|f| !f.contains('"')), "{features:?}");
@@ -3067,12 +3060,11 @@ mod feature_column_tests {
 /// pair (#1263).
 #[cfg(test)]
 mod bigram_feature_id_sharing_tests {
-    use std::collections::HashMap;
     use std::io::Cursor;
     use std::num::NonZeroU32;
 
     use crate::feature_csv::split_feature;
-    use crate::feature_extractor::{FeatureExtractor, TemplateContext};
+    use crate::feature_extractor::{FeatureExtractor, FeatureIdMap, TemplateContext};
     use crate::feature_rewriter::DictionaryRewriter;
     use crate::label_feature_set;
 
@@ -3111,14 +3103,26 @@ mod bigram_feature_id_sharing_tests {
     }
 
     /// Returns the feature strings of `ids`, in order, from `map`.
-    fn names(ids: &[Option<NonZeroU32>], map: &HashMap<String, NonZeroU32>) -> Vec<String> {
+    fn names(ids: &[Option<NonZeroU32>], map: &FeatureIdMap) -> Vec<String> {
         ids.iter()
             .map(|id| {
-                map.iter()
-                    .find(|(_, mapped)| Some(**mapped) == *id)
-                    .map_or_else(|| format!("{id:?}"), |(name, _)| name.clone())
+                id.and_then(|id| map.resolve(id))
+                    .map_or_else(|| format!("{id:?}"), str::to_string)
             })
             .collect()
+    }
+
+    /// Returns the feature set of a label, as `Trainer::new` builds it.
+    fn feature_set(
+        rewriter: &DictionaryRewriter,
+        extractor: &mut FeatureExtractor,
+        feature: &str,
+        surface: Option<&str>,
+    ) -> lindera_crf::FeatureSet {
+        match label_feature_set(rewriter, extractor, feature, 0, surface) {
+            Ok(feature_set) => feature_set,
+            Err(err) => panic!("label_feature_set({feature}): {err}"),
+        }
     }
 
     #[test]
@@ -3126,9 +3130,9 @@ mod bigram_feature_id_sharing_tests {
         let rewriter = rewriter();
         let mut extractor = extractor();
 
-        let first = label_feature_set(&rewriter, &mut extractor, "n,a,x", 0, None);
-        let second = label_feature_set(&rewriter, &mut extractor, "n,a,y", 0, None);
-        let other_right = label_feature_set(&rewriter, &mut extractor, "n,b,z", 0, None);
+        let first = feature_set(&rewriter, &mut extractor, "n,a,x", None);
+        let second = feature_set(&rewriter, &mut extractor, "n,a,y", None);
+        let other_right = feature_set(&rewriter, &mut extractor, "n,b,z", None);
 
         assert!(std::ptr::eq(
             first.bigram_left().as_ptr(),
@@ -3138,7 +3142,7 @@ mod bigram_feature_id_sharing_tests {
             first.bigram_right().as_ptr(),
             second.bigram_right().as_ptr()
         ));
-        let (left_ids, right_ids) = (&extractor.left_feature_ids, &extractor.right_feature_ids);
+        let (left_ids, right_ids) = (extractor.left_feature_ids(), extractor.right_feature_ids());
         assert_eq!(
             names(first.bigram_left(), left_ids),
             ["L0:n", "LL:n", "LR:n,a"]
@@ -3168,7 +3172,7 @@ mod bigram_feature_id_sharing_tests {
         let mut cached = extractor();
         let sets: Vec<_> = rows
             .iter()
-            .map(|row| label_feature_set(&rewriter, &mut cached, row, 0, Some("s")))
+            .map(|row| feature_set(&rewriter, &mut cached, row, Some("s")))
             .collect();
 
         // What `label_feature_set` did before the IDs were cached: every
@@ -3199,9 +3203,9 @@ mod bigram_feature_id_sharing_tests {
             assert_eq!(set.bigram_left(), left.as_slice(), "{row}");
             assert_eq!(set.bigram_right(), right.as_slice(), "{row}");
         }
-        assert_eq!(cached.unigram_feature_ids, uncached.unigram_feature_ids);
-        assert_eq!(cached.left_feature_ids, uncached.left_feature_ids);
-        assert_eq!(cached.right_feature_ids, uncached.right_feature_ids);
+        assert_eq!(cached.unigram_feature_ids(), uncached.unigram_feature_ids());
+        assert_eq!(cached.left_feature_ids(), uncached.left_feature_ids());
+        assert_eq!(cached.right_feature_ids(), uncached.right_feature_ids());
     }
 
     // Training removes the unused features from the ID maps, and then
@@ -3254,7 +3258,10 @@ mod template_past_last_column_tests {
             &[("%L[0]", "%R[0]"), ("%L[6]", "%R[6]")],
         );
 
-        let feature_set = label_feature_set(&rewriter, &mut extractor, "n,*,*,*,*", 0, None);
+        let feature_set = match label_feature_set(&rewriter, &mut extractor, "n,*,*,*,*", 0, None) {
+            Ok(feature_set) => feature_set,
+            Err(err) => panic!("label_feature_set: {err}"),
+        };
 
         // MeCab's learner gives this label `U00:n` and the first bigram
         // template only; the CRF drops a bigram slot that is `None`.

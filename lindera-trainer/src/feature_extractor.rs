@@ -7,6 +7,8 @@ use std::sync::{Arc, LazyLock};
 
 use crate::feature_csv::split_feature;
 
+pub use crate::feature_id_map::FeatureIdMap;
+
 /// Feature template patterns, compiled once on first use.
 ///
 /// `%F[n]`, `%F?[n]`, `%t`, `%w` (surface), `%u` (all ufeature)
@@ -65,12 +67,15 @@ pub struct FeatureExtractor {
     unigram_templates: Vec<ParsedTemplate>,
     left_templates: Vec<ParsedTemplate>,
     right_templates: Vec<ParsedTemplate>,
-    pub unigram_feature_ids: HashMap<String, NonZeroU32>,
-    pub left_feature_ids: HashMap<String, NonZeroU32>,
-    pub right_feature_ids: HashMap<String, NonZeroU32>,
-    unigram_next_id: u32,
-    left_next_id: u32,
-    right_next_id: u32,
+    /// The ids of the unigram features (see [`Self::unigram_feature_ids`]).
+    unigram_feature_ids: FeatureIdMap,
+    /// The ids of the left context features.
+    left_feature_ids: FeatureIdMap,
+    /// The ids of the right context features.
+    right_feature_ids: FeatureIdMap,
+    /// Set when a map had no id left for a new feature, which was then
+    /// skipped (see [`Self::ids_exhausted`]).
+    ids_exhausted: bool,
     /// The left and right context feature IDs by rewritten left feature, then
     /// by rewritten right feature (see [`Self::bigram_feature_ids`]). Nested
     /// so that a lookup takes the two `&str` as they are.
@@ -94,12 +99,10 @@ impl FeatureExtractor {
             unigram_templates: Vec::new(),
             left_templates: Vec::new(),
             right_templates: Vec::new(),
-            unigram_feature_ids: HashMap::new(),
-            left_feature_ids: HashMap::new(),
-            right_feature_ids: HashMap::new(),
-            unigram_next_id: 0,
-            left_next_id: 0,
-            right_next_id: 0,
+            unigram_feature_ids: FeatureIdMap::default(),
+            left_feature_ids: FeatureIdMap::default(),
+            right_feature_ids: FeatureIdMap::default(),
+            ids_exhausted: false,
             bigram_feature_ids: HashMap::new(),
             expansion: String::new(),
         }
@@ -274,12 +277,10 @@ impl FeatureExtractor {
             unigram_templates: parsed_unigram_templates,
             left_templates: parsed_left_templates,
             right_templates: parsed_right_templates,
-            unigram_feature_ids: HashMap::new(),
-            left_feature_ids: HashMap::new(),
-            right_feature_ids: HashMap::new(),
-            unigram_next_id: 1, // Start from 1 (0 reserved)
-            left_next_id: 1,
-            right_next_id: 1,
+            unigram_feature_ids: FeatureIdMap::default(),
+            left_feature_ids: FeatureIdMap::default(),
+            right_feature_ids: FeatureIdMap::default(),
+            ids_exhausted: false,
             bigram_feature_ids: HashMap::new(),
             expansion: String::new(),
         }
@@ -358,51 +359,31 @@ impl FeatureExtractor {
         true
     }
 
-    /// Get or create feature ID (with NonZeroU32)
-    /// Interns `feature_str` in `ids`, minting the next id from `next_id` on
-    /// a miss.
+    /// Interns `feature_str` in `ids`, which gives a new feature the next id.
     ///
-    /// Takes the map and the counter as separate arguments rather than
+    /// Takes the map and the flag as separate arguments rather than
     /// `&mut self` so the callers can hold a shared borrow of their template
     /// vector at the same time; that disjointness is what lets the extract
     /// loops iterate the templates in place instead of cloning them (#965).
     ///
-    /// The `get` lookup on the hit path matters: the `entry` API needs an
-    /// owned key, so going straight to it allocated a `String` on *every*
-    /// call, and the ids are interned precisely because the same feature
-    /// strings recur across lexicon entries.
-    ///
     /// # Arguments
     ///
-    /// * `ids` - The feature-string to id map to intern into.
-    /// * `next_id` - The counter for this id space; incremented on a miss.
+    /// * `ids` - The map to intern into.
+    /// * `exhausted` - Set when `ids` has no id left for a new feature.
     /// * `feature_str` - The generated feature string to intern.
     ///
     /// # Returns
     ///
-    /// The existing id, or the newly minted one.
+    /// The id, or `None` when the feature is new and `ids` has given out its
+    /// largest id; the caller then skips the feature as it skips a template.
     fn intern_feature_id(
-        ids: &mut HashMap<String, NonZeroU32>,
-        next_id: &mut u32,
+        ids: &mut FeatureIdMap,
+        exhausted: &mut bool,
         feature_str: &str,
-    ) -> NonZeroU32 {
-        if let Some(&id) = ids.get(feature_str) {
-            return id;
-        }
-        // `from_templates` starts the counters at 1, but `new()` starts them
-        // at 0, where `NonZeroU32::new` yields `None`. The retired helpers
-        // called `.unwrap()` there and would have panicked; clamping to 1
-        // instead keeps the production path free of `unwrap()` per CLAUDE.md.
-        // Advancing from the id actually minted -- rather than from
-        // `*next_id` -- is what keeps ids distinct in that case, instead of
-        // handing out 1 twice. Unreachable today (the template vectors are
-        // private and only `from_templates` fills them, so a `new()`-built
-        // extractor has nothing to iterate), but the helper is correct for
-        // any starting value rather than relying on that.
-        let new_id = NonZeroU32::new(*next_id).unwrap_or(NonZeroU32::MIN);
-        ids.insert(feature_str.to_string(), new_id);
-        *next_id = new_id.get().saturating_add(1);
-        new_id
+    ) -> Option<NonZeroU32> {
+        let id = ids.intern(feature_str);
+        *exhausted |= id.is_none();
+        id
     }
 
     /// Extracts unigram feature IDs from features.
@@ -451,7 +432,7 @@ impl FeatureExtractor {
         let Self {
             unigram_templates,
             unigram_feature_ids,
-            unigram_next_id,
+            ids_exhausted,
             expansion,
             ..
         } = self;
@@ -462,12 +443,11 @@ impl FeatureExtractor {
             // last column is skipped entirely, so the result is shorter than
             // the template list. The left/right variants below deliberately
             // differ.
-            if Self::apply_parsed_template(template, features, cate_id, ctx, expansion) {
-                feature_ids.push(Self::intern_feature_id(
-                    unigram_feature_ids,
-                    unigram_next_id,
-                    expansion,
-                ));
+            if Self::apply_parsed_template(template, features, cate_id, ctx, expansion)
+                && let Some(id) =
+                    Self::intern_feature_id(unigram_feature_ids, ids_exhausted, expansion)
+            {
+                feature_ids.push(id);
             }
         }
 
@@ -508,7 +488,7 @@ impl FeatureExtractor {
         let Self {
             left_templates,
             left_feature_ids,
-            left_next_id,
+            ids_exhausted,
             expansion,
             ..
         } = self;
@@ -519,11 +499,11 @@ impl FeatureExtractor {
             // rather than being dropped, so the result stays index-aligned
             // with the template list. Callers depend on that alignment.
             if Self::apply_parsed_template(template, features, 0, ctx, expansion) {
-                feature_ids.push(Some(Self::intern_feature_id(
+                feature_ids.push(Self::intern_feature_id(
                     left_feature_ids,
-                    left_next_id,
+                    ids_exhausted,
                     expansion,
-                )));
+                ));
             } else {
                 feature_ids.push(None);
             }
@@ -566,7 +546,7 @@ impl FeatureExtractor {
         let Self {
             right_templates,
             right_feature_ids,
-            right_next_id,
+            ids_exhausted,
             expansion,
             ..
         } = self;
@@ -577,11 +557,11 @@ impl FeatureExtractor {
             // rather than being dropped, so the result stays index-aligned
             // with the template list. Callers depend on that alignment.
             if Self::apply_parsed_template(template, features, 0, ctx, expansion) {
-                feature_ids.push(Some(Self::intern_feature_id(
+                feature_ids.push(Self::intern_feature_id(
                     right_feature_ids,
-                    right_next_id,
+                    ids_exhausted,
                     expansion,
-                )));
+                ));
             } else {
                 feature_ids.push(None);
             }
@@ -651,14 +631,76 @@ impl FeatureExtractor {
         (left, right)
     }
 
-    /// Forgets the left and right context feature IDs that
+    /// Returns the ids of the unigram features.
+    ///
+    /// The k-th feature string that the unigram templates generate gets id k,
+    /// from 1. Training removes the features that no weight uses; a removed
+    /// feature that a later label generates again gets a new id.
+    pub fn unigram_feature_ids(&self) -> &FeatureIdMap {
+        &self.unigram_feature_ids
+    }
+
+    /// Returns the ids of the left context features, which the left side of
+    /// the bigram templates generates; numbered as the unigram features are
+    /// (see [`Self::unigram_feature_ids`]).
+    pub fn left_feature_ids(&self) -> &FeatureIdMap {
+        &self.left_feature_ids
+    }
+
+    /// Returns the ids of the right context features, which the right side of
+    /// the bigram templates generates; numbered as the unigram features are
+    /// (see [`Self::unigram_feature_ids`]).
+    pub fn right_feature_ids(&self) -> &FeatureIdMap {
+        &self.right_feature_ids
+    }
+
+    /// Returns whether a map had no id left for a new feature, which was then
+    /// skipped; the caller turns it into an error.
+    pub(crate) fn ids_exhausted(&self) -> bool {
+        self.ids_exhausted
+    }
+    /// Makes the three maps, which must still be empty, give out ids up to
+    /// `max_id` only, so that tests can run out of ids.
+    ///
+    /// # Arguments
+    ///
+    /// * `max_id` - The largest id to give out.
+    ///
+    /// # Returns
+    ///
+    /// The extractor.
+    #[cfg(test)]
+    pub(crate) fn with_max_feature_id(mut self, max_id: u32) -> Self {
+        self.unigram_feature_ids = FeatureIdMap::with_max_id(max_id);
+        self.left_feature_ids = FeatureIdMap::with_max_id(max_id);
+        self.right_feature_ids = FeatureIdMap::with_max_id(max_id);
+        self
+    }
+
+    /// Removes the features whose ids the given functions reject, then
+    /// forgets the left and right context feature IDs that
     /// [`Self::bigram_feature_ids`] computed so far.
     ///
-    /// Called once the unused features are removed from the ID maps after
-    /// training, so that the cache never holds an ID whose feature string the
-    /// maps no longer have: a label made later interns its left and right
-    /// features again, as it did before the IDs were cached (#1263).
-    pub(crate) fn forget_bigram_feature_ids(&mut self) {
+    /// Called once the unused features are known after training. Forgetting
+    /// the cached IDs in the same call keeps the cache from ever holding an
+    /// ID whose feature the maps no longer have: a label made later interns
+    /// its left and right features again, as it did before the IDs were
+    /// cached (#1263).
+    ///
+    /// # Arguments
+    ///
+    /// * `keep_unigram` - Returns whether to keep a unigram feature id.
+    /// * `keep_left` - Returns whether to keep a left context feature id.
+    /// * `keep_right` - Returns whether to keep a right context feature id.
+    pub(crate) fn retain_features(
+        &mut self,
+        keep_unigram: impl FnMut(NonZeroU32) -> bool,
+        keep_left: impl FnMut(NonZeroU32) -> bool,
+        keep_right: impl FnMut(NonZeroU32) -> bool,
+    ) {
+        self.unigram_feature_ids.retain(keep_unigram);
+        self.left_feature_ids.retain(keep_left);
+        self.right_feature_ids.retain(keep_right);
         self.bigram_feature_ids = HashMap::new();
     }
 
@@ -691,15 +733,12 @@ mod tests {
     }
 
     /// The ids an extractor hands out are 1-based and assigned in template
-    /// order, so the generated strings can be recovered by inverting the map.
+    /// order, and the map lists its features in id order.
     fn unigram_strings_in_id_order(fe: &FeatureExtractor) -> Vec<String> {
-        let mut pairs: Vec<(u32, &String)> = fe
-            .unigram_feature_ids
+        fe.unigram_feature_ids()
             .iter()
-            .map(|(k, v)| (v.get(), k))
-            .collect();
-        pairs.sort_by_key(|(id, _)| *id);
-        pairs.into_iter().map(|(_, k)| k.clone()).collect()
+            .map(|(feature, _)| feature.to_string())
+            .collect()
     }
 
     /// Unigram templates are applied in declaration order, and each distinct
