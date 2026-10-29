@@ -78,6 +78,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`Lattice::tokens_offset_into` returns the BOS index of the best path (`Option<usize>`)** | Rust code that uses the `()` value of `tokens_offset_into` | Nothing for a call written as a statement; otherwise ignore the new value |
 | **`UnknownDictionary::gen_unk_words`, `UnknownDictionary::compatible_unk_index`, `UnkWord` and `WordIdx` are removed** | Rust code that uses them from `lindera_dictionary::dictionary::unknown_dictionary` (also `lindera::dictionary::core::unknown_dictionary`) | Use `Lattice::unknown_word_candidates`, which lists the unknown words that the runtime creates |
 | **`lindera_trainer`: `SerializableModel::unk_category_names` and `unk_categories` are replaced by `unk_entries`, and `Trainer::max_grouping_len` takes the runtime's meaning** | Rust code that uses `lindera-trainer` (also `lindera::dictionary::trainer`) | Read `unk_entries`, the `unk.def` entries in file order; pass `max_grouping_len` the cap the dictionary will be used with |
+| **`lindera_trainer`: `FeatureExtractor`'s feature ID maps are read through a `FeatureIdMap`, and `TrainerConfig::surface_features()` is removed** | Rust code that uses `lindera-trainer` (also `lindera::dictionary::trainer`) and reads the ID maps of a `FeatureExtractor` it builds, or calls `surface_features()` | Call `unigram_feature_ids()`, `left_feature_ids()` and `right_feature_ids()` instead of reading the fields; rebuild the map from `surfaces()` and `features()` (see [Rust API changes in `lindera_trainer`](#rust-api-changes-in-lindera_trainer)) |
 
 The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
 their package names, and their APIs apart from the mode and one setting: a
@@ -2081,6 +2082,8 @@ These affect only Rust code that uses `lindera-trainer` directly or through
 | `Trainer::new` regularizes with L1 (`use_l2` false) and `regularization_cost` 0.01 | With L2 and `DEFAULT_LAMBDA` (1.0); `use_l2(false)` selects L1 (see [`lindera train` regularizes with L2 by default](#lindera-train-regularizes-with-l2-by-default)) |
 | — | New: `DEFAULT_LAMBDA` (`1.0`), the default coefficient; `lindera_crf` adds the same constant, and its `Trainer::new` regularizes with `Regularization::L2` and it instead of `Regularization::L1` and 0.1 |
 | — | New in `lindera_crf`: `FeatureSet::with_shared_bigrams`, which takes the bigram feature IDs as `Arc<[Option<NonZeroU32>]>` so that labels can share them. `FeatureSet` holds them this way, which changes the rkyv archive of `FeatureSet`, `FeatureProvider` and `RawModel`; `model.dat` does not hold them ([#1263](https://github.com/lindera/lindera/issues/1263)) |
+| `FeatureExtractor::unigram_feature_ids`, `left_feature_ids` and `right_feature_ids` are public `HashMap<String, NonZeroU32>` fields | Private; the methods `unigram_feature_ids()`, `left_feature_ids()` and `right_feature_ids()` return a `&FeatureIdMap`, new in `feature_extractor` and read-only: `len`, `is_empty`, `get`, `contains_key`, `resolve` (the feature of an ID) and `iter`, which lists the features in ascending ID order ([#1286](https://github.com/lindera/lindera/issues/1286)) |
+| `TrainerConfig::surface_features()` returns a `HashMap<String, String>` of the seed rows' features by surface | Removed; `TrainerConfig::features()` returns the seed rows' feature strings next to `surfaces()`, and `get_features` still returns the feature of the last seed row with the surface ([#1286](https://github.com/lindera/lindera/issues/1286)) |
 
 A model is now written with `MODEL_FORMAT_VERSION` as its `metadata.version`,
 and `Model::read_model` checks it, in both the `rkyv` and the legacy JSON
@@ -2090,6 +2093,21 @@ Code that reads `unk_category_names` or `unk_categories` reads
 included, in the order of the exported `unk.def`. If you set
 `Trainer::max_grouping_len`, pass the cap that the dictionary will be used
 with (`max_grouping_len` of the segmenter, `--max-grouping-len` of the CLI).
+
+A `FeatureIdMap` keeps the feature strings in one buffer and only the IDs in
+its hash table, which takes less memory than a `HashMap` for the millions of
+features of a full dictionary; only the extractor adds to it. Code that used
+`surface_features()` can build the same map, where the last seed row with a
+surface wins:
+
+```rust
+let surface_features: HashMap<&str, &str> = config
+    .surfaces()
+    .iter()
+    .map(String::as_str)
+    .zip(config.features().iter().map(String::as_str))
+    .collect();
+```
 
 ## Who does not need to act
 

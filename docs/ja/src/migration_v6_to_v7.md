@@ -75,6 +75,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **`Lattice::tokens_offset_into` が最良パスの BOS の添字（`Option<usize>`）を返す** | `tokens_offset_into` の戻り値 `()` を値として使う Rust コード | 文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する |
 | **`UnknownDictionary::gen_unk_words`・`UnknownDictionary::compatible_unk_index`・`UnkWord`・`WordIdx` の削除** | これらを `lindera_dictionary::dictionary::unknown_dictionary`（`lindera::dictionary::core::unknown_dictionary` 経由を含む）から使う Rust コード | ランタイムが作る未知語を列挙する `Lattice::unknown_word_candidates` を使う |
 | **`lindera_trainer`: `SerializableModel::unk_category_names` と `unk_categories` は `unk_entries` に置き換わり、`Trainer::max_grouping_len` はランタイムと同じ意味になる** | `lindera-trainer`（`lindera::dictionary::trainer` 経由を含む）を使う Rust コード | ファイル順の `unk.def` のエントリである `unk_entries` を読む。`max_grouping_len` には辞書を使うときの上限を渡す |
+| **`lindera_trainer`: `FeatureExtractor` の素性 ID の表は `FeatureIdMap` を通して読み、`TrainerConfig::surface_features()` は削除される** | `lindera-trainer`（`lindera::dictionary::trainer` 経由を含む）を使い、自分で作った `FeatureExtractor` の ID の表を読む、または `surface_features()` を呼ぶ Rust コード | フィールドを読む代わりに `unigram_feature_ids()`・`left_feature_ids()`・`right_feature_ids()` を呼ぶ。表は `surfaces()` と `features()` から作り直す（[`lindera_trainer` の Rust API 変更](#lindera_trainer-の-rust-api-変更)を参照） |
 
 言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI のパッケージ名は
 変わりません。API も、モードと 1 つの設定を除いて変わりません。バインディングは、
@@ -1879,6 +1880,8 @@ feature）経由で使う Rust コードにのみ影響します
 | `Trainer::new` は L1（`use_l2` が false）と `regularization_cost` 0.01 で正則化する | L2 と `DEFAULT_LAMBDA`（1.0）で正則化する。`use_l2(false)` で L1 を選ぶ（[`lindera train` の既定の正則化は L2](#lindera-train-の既定の正則化は-l2)を参照） |
 | — | 新規: デフォルトの係数 `DEFAULT_LAMBDA`（`1.0`）。`lindera_crf` にも同じ定数を追加し、その `Trainer::new` は `Regularization::L1` と 0.1 ではなく、`Regularization::L2` とこの定数で正則化する |
 | — | 新規: `lindera_crf` の `FeatureSet::with_shared_bigrams`。バイグラムの素性 ID を `Arc<[Option<NonZeroU32>]>` で受け取り、ラベルの間で共有できるようにする。`FeatureSet` はバイグラムの素性 ID をこの形で持つため、`FeatureSet`・`FeatureProvider`・`RawModel` の rkyv でのアーカイブの形が変わる。`model.dat` はこれらを持たない（[#1263](https://github.com/lindera/lindera/issues/1263)） |
+| `FeatureExtractor::unigram_feature_ids`・`left_feature_ids`・`right_feature_ids` は公開の `HashMap<String, NonZeroU32>` のフィールド | 非公開。メソッド `unigram_feature_ids()`・`left_feature_ids()`・`right_feature_ids()` が、`feature_extractor` に追加した読み取り専用の `&FeatureIdMap` を返す。`FeatureIdMap` には `len`・`is_empty`・`get`・`contains_key`・`resolve`（ID の素性）と、素性を ID の昇順に並べる `iter` がある（[#1286](https://github.com/lindera/lindera/issues/1286)） |
+| `TrainerConfig::surface_features()` は、種辞書の行の素性を表層ごとに持つ `HashMap<String, String>` を返す | 削除。`TrainerConfig::features()` が `surfaces()` と対になる種辞書の行の素性文字列を返す。`get_features` は引き続き、その表層を持つ最後の行の素性を返す（[#1286](https://github.com/lindera/lindera/issues/1286)） |
 
 モデルは `MODEL_FORMAT_VERSION` を `metadata.version` として書き出され、
 `Model::read_model` は `rkyv` 形式でもレガシーの JSON 形式でもこれを確認するため、
@@ -1888,6 +1891,20 @@ v6.2.0 以前に書かれたモデルは学習し直す必要があります。`
 される `unk.def` と同じ順序です。`Trainer::max_grouping_len` を設定している場合は、
 辞書を使うときの上限（Segmenter の `max_grouping_len`、CLI の
 `--max-grouping-len`）を渡してください。
+
+`FeatureIdMap` は、素性文字列を 1 つのバッファに並べ、ハッシュ表には ID だけを
+持つため、辞書全体の数百万の素性でも `HashMap` より少ないメモリで済みます。
+表に追加するのは抽出器だけです。`surface_features()` を使っていたコードは、
+同じ表を次のように作れます。同じ表層の行が複数あるときは最後の行が残ります。
+
+```rust
+let surface_features: HashMap<&str, &str> = config
+    .surfaces()
+    .iter()
+    .map(String::as_str)
+    .zip(config.features().iter().map(String::as_str))
+    .collect();
+```
 
 ## 対応が不要なケース
 
