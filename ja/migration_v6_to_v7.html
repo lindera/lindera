@@ -249,6 +249,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong><code>Lattice::tokens_offset_into</code> が最良パスの BOS の添字（<code>Option&lt;usize&gt;</code>）を返す</strong></td><td><code>tokens_offset_into</code> の戻り値 <code>()</code> を値として使う Rust コード</td><td>文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する</td></tr>
 <tr><td><strong><code>UnknownDictionary::gen_unk_words</code>・<code>UnknownDictionary::compatible_unk_index</code>・<code>UnkWord</code>・<code>WordIdx</code> の削除</strong></td><td>これらを <code>lindera_dictionary::dictionary::unknown_dictionary</code>（<code>lindera::dictionary::core::unknown_dictionary</code> 経由を含む）から使う Rust コード</td><td>ランタイムが作る未知語を列挙する <code>Lattice::unknown_word_candidates</code> を使う</td></tr>
 <tr><td><strong><code>lindera_trainer</code>: <code>SerializableModel::unk_category_names</code> と <code>unk_categories</code> は <code>unk_entries</code> に置き換わり、<code>Trainer::max_grouping_len</code> はランタイムと同じ意味になる</strong></td><td><code>lindera-trainer</code>（<code>lindera::dictionary::trainer</code> 経由を含む）を使う Rust コード</td><td>ファイル順の <code>unk.def</code> のエントリである <code>unk_entries</code> を読む。<code>max_grouping_len</code> には辞書を使うときの上限を渡す</td></tr>
+<tr><td><strong><code>lindera_trainer</code>: <code>FeatureExtractor</code> の素性 ID の表は <code>FeatureIdMap</code> を通して読み、<code>TrainerConfig::surface_features()</code> は削除される</strong></td><td><code>lindera-trainer</code>（<code>lindera::dictionary::trainer</code> 経由を含む）を使い、自分で作った <code>FeatureExtractor</code> の ID の表を読む、または <code>surface_features()</code> を呼ぶ Rust コード</td><td>フィールドを読む代わりに <code>unigram_feature_ids()</code>・<code>left_feature_ids()</code>・<code>right_feature_ids()</code> を呼ぶ。表は <code>surfaces()</code> と <code>features()</code> から作り直す（<a href="#lindera_trainer-%E3%81%AE-rust-api-%E5%A4%89%E6%9B%B4"><code>lindera_trainer</code> の Rust API 変更</a>を参照）</td></tr>
 </tbody></table>
 </div>
 <p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI のパッケージ名は
@@ -1847,6 +1848,8 @@ feature）経由で使う Rust コードにのみ影響します
 <tr><td><code>Trainer::new</code> は L1（<code>use_l2</code> が false）と <code>regularization_cost</code> 0.01 で正則化する</td><td>L2 と <code>DEFAULT_LAMBDA</code>（1.0）で正則化する。<code>use_l2(false)</code> で L1 を選ぶ（<a href="#lindera-train-%E3%81%AE%E6%97%A2%E5%AE%9A%E3%81%AE%E6%AD%A3%E5%89%87%E5%8C%96%E3%81%AF-l2"><code>lindera train</code> の既定の正則化は L2</a>を参照）</td></tr>
 <tr><td>—</td><td>新規: デフォルトの係数 <code>DEFAULT_LAMBDA</code>（<code>1.0</code>）。<code>lindera_crf</code> にも同じ定数を追加し、その <code>Trainer::new</code> は <code>Regularization::L1</code> と 0.1 ではなく、<code>Regularization::L2</code> とこの定数で正則化する</td></tr>
 <tr><td>—</td><td>新規: <code>lindera_crf</code> の <code>FeatureSet::with_shared_bigrams</code>。バイグラムの素性 ID を <code>Arc&lt;[Option&lt;NonZeroU32&gt;]&gt;</code> で受け取り、ラベルの間で共有できるようにする。<code>FeatureSet</code> はバイグラムの素性 ID をこの形で持つため、<code>FeatureSet</code>・<code>FeatureProvider</code>・<code>RawModel</code> の rkyv でのアーカイブの形が変わる。<code>model.dat</code> はこれらを持たない（<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>）</td></tr>
+<tr><td><code>FeatureExtractor::unigram_feature_ids</code>・<code>left_feature_ids</code>・<code>right_feature_ids</code> は公開の <code>HashMap&lt;String, NonZeroU32&gt;</code> のフィールド</td><td>非公開。メソッド <code>unigram_feature_ids()</code>・<code>left_feature_ids()</code>・<code>right_feature_ids()</code> が、<code>feature_extractor</code> に追加した読み取り専用の <code>&amp;FeatureIdMap</code> を返す。<code>FeatureIdMap</code> には <code>len</code>・<code>is_empty</code>・<code>get</code>・<code>contains_key</code>・<code>resolve</code>（ID の素性）と、素性を ID の昇順に並べる <code>iter</code> がある（<a href="https://github.com/lindera/lindera/issues/1286">#1286</a>）</td></tr>
+<tr><td><code>TrainerConfig::surface_features()</code> は、種辞書の行の素性を表層ごとに持つ <code>HashMap&lt;String, String&gt;</code> を返す</td><td>削除。<code>TrainerConfig::features()</code> が <code>surfaces()</code> と対になる種辞書の行の素性文字列を返す。<code>get_features</code> は引き続き、その表層を持つ最後の行の素性を返す（<a href="https://github.com/lindera/lindera/issues/1286">#1286</a>）</td></tr>
 </tbody></table>
 </div>
 <p>モデルは <code>MODEL_FORMAT_VERSION</code> を <code>metadata.version</code> として書き出され、
@@ -1857,6 +1860,19 @@ v6.2.0 以前に書かれたモデルは学習し直す必要があります。<
 される <code>unk.def</code> と同じ順序です。<code>Trainer::max_grouping_len</code> を設定している場合は、
 辞書を使うときの上限（Segmenter の <code>max_grouping_len</code>、CLI の
 <code>--max-grouping-len</code>）を渡してください。</p>
+<p><code>FeatureIdMap</code> は、素性文字列を 1 つのバッファに並べ、ハッシュ表には ID だけを
+持つため、辞書全体の数百万の素性でも <code>HashMap</code> より少ないメモリで済みます。
+表に追加するのは抽出器だけです。<code>surface_features()</code> を使っていたコードは、
+同じ表を次のように作れます。同じ表層の行が複数あるときは最後の行が残ります。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let surface_features: HashMap&lt;&amp;str, &amp;str&gt; = config
+    .surfaces()
+    .iter()
+    .map(String::as_str)
+    .zip(config.features().iter().map(String::as_str))
+    .collect();
+<span class="boring">}</span></code></pre></pre>
 <h2 id="対応が不要なケース"><a class="header" href="#対応が不要なケース">対応が不要なケース</a></h2>
 <ul>
 <li><strong>言語バインディングと CLI のユーザー</strong>: Python・Node.js・Ruby・PHP・WASM の

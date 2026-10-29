@@ -252,6 +252,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> returns the BOS index of the best path (<code>Option&lt;usize&gt;</code>)</strong></td><td>Rust code that uses the <code>()</code> value of <code>tokens_offset_into</code></td><td>Nothing for a call written as a statement; otherwise ignore the new value</td></tr>
 <tr><td><strong><code>UnknownDictionary::gen_unk_words</code>, <code>UnknownDictionary::compatible_unk_index</code>, <code>UnkWord</code> and <code>WordIdx</code> are removed</strong></td><td>Rust code that uses them from <code>lindera_dictionary::dictionary::unknown_dictionary</code> (also <code>lindera::dictionary::core::unknown_dictionary</code>)</td><td>Use <code>Lattice::unknown_word_candidates</code>, which lists the unknown words that the runtime creates</td></tr>
 <tr><td><strong><code>lindera_trainer</code>: <code>SerializableModel::unk_category_names</code> and <code>unk_categories</code> are replaced by <code>unk_entries</code>, and <code>Trainer::max_grouping_len</code> takes the runtime's meaning</strong></td><td>Rust code that uses <code>lindera-trainer</code> (also <code>lindera::dictionary::trainer</code>)</td><td>Read <code>unk_entries</code>, the <code>unk.def</code> entries in file order; pass <code>max_grouping_len</code> the cap the dictionary will be used with</td></tr>
+<tr><td><strong><code>lindera_trainer</code>: <code>FeatureExtractor</code>'s feature ID maps are read through a <code>FeatureIdMap</code>, and <code>TrainerConfig::surface_features()</code> is removed</strong></td><td>Rust code that uses <code>lindera-trainer</code> (also <code>lindera::dictionary::trainer</code>) and reads the ID maps of a <code>FeatureExtractor</code> it builds, or calls <code>surface_features()</code></td><td>Call <code>unigram_feature_ids()</code>, <code>left_feature_ids()</code> and <code>right_feature_ids()</code> instead of reading the fields; rebuild the map from <code>surfaces()</code> and <code>features()</code> (see <a href="#rust-api-changes-in-lindera_trainer">Rust API changes in <code>lindera_trainer</code></a>)</td></tr>
 </tbody></table>
 </div>
 <p>The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI keep
@@ -2050,6 +2051,8 @@ positions that no path reaches. The tokenization path does not change.</p>
 <tr><td><code>Trainer::new</code> regularizes with L1 (<code>use_l2</code> false) and <code>regularization_cost</code> 0.01</td><td>With L2 and <code>DEFAULT_LAMBDA</code> (1.0); <code>use_l2(false)</code> selects L1 (see <a href="#lindera-train-regularizes-with-l2-by-default"><code>lindera train</code> regularizes with L2 by default</a>)</td></tr>
 <tr><td>—</td><td>New: <code>DEFAULT_LAMBDA</code> (<code>1.0</code>), the default coefficient; <code>lindera_crf</code> adds the same constant, and its <code>Trainer::new</code> regularizes with <code>Regularization::L2</code> and it instead of <code>Regularization::L1</code> and 0.1</td></tr>
 <tr><td>—</td><td>New in <code>lindera_crf</code>: <code>FeatureSet::with_shared_bigrams</code>, which takes the bigram feature IDs as <code>Arc&lt;[Option&lt;NonZeroU32&gt;]&gt;</code> so that labels can share them. <code>FeatureSet</code> holds them this way, which changes the rkyv archive of <code>FeatureSet</code>, <code>FeatureProvider</code> and <code>RawModel</code>; <code>model.dat</code> does not hold them (<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>)</td></tr>
+<tr><td><code>FeatureExtractor::unigram_feature_ids</code>, <code>left_feature_ids</code> and <code>right_feature_ids</code> are public <code>HashMap&lt;String, NonZeroU32&gt;</code> fields</td><td>Private; the methods <code>unigram_feature_ids()</code>, <code>left_feature_ids()</code> and <code>right_feature_ids()</code> return a <code>&amp;FeatureIdMap</code>, new in <code>feature_extractor</code> and read-only: <code>len</code>, <code>is_empty</code>, <code>get</code>, <code>contains_key</code>, <code>resolve</code> (the feature of an ID) and <code>iter</code>, which lists the features in ascending ID order (<a href="https://github.com/lindera/lindera/issues/1286">#1286</a>)</td></tr>
+<tr><td><code>TrainerConfig::surface_features()</code> returns a <code>HashMap&lt;String, String&gt;</code> of the seed rows' features by surface</td><td>Removed; <code>TrainerConfig::features()</code> returns the seed rows' feature strings next to <code>surfaces()</code>, and <code>get_features</code> still returns the feature of the last seed row with the surface (<a href="https://github.com/lindera/lindera/issues/1286">#1286</a>)</td></tr>
 </tbody></table>
 </div>
 <p>A model is now written with <code>MODEL_FORMAT_VERSION</code> as its <code>metadata.version</code>,
@@ -2060,6 +2063,20 @@ Code that reads <code>unk_category_names</code> or <code>unk_categories</code> r
 included, in the order of the exported <code>unk.def</code>. If you set
 <code>Trainer::max_grouping_len</code>, pass the cap that the dictionary will be used
 with (<code>max_grouping_len</code> of the segmenter, <code>--max-grouping-len</code> of the CLI).</p>
+<p>A <code>FeatureIdMap</code> keeps the feature strings in one buffer and only the IDs in
+its hash table, which takes less memory than a <code>HashMap</code> for the millions of
+features of a full dictionary; only the extractor adds to it. Code that used
+<code>surface_features()</code> can build the same map, where the last seed row with a
+surface wins:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let surface_features: HashMap&lt;&amp;str, &amp;str&gt; = config
+    .surfaces()
+    .iter()
+    .map(String::as_str)
+    .zip(config.features().iter().map(String::as_str))
+    .collect();
+<span class="boring">}</span></code></pre></pre>
 <h2 id="who-does-not-need-to-act"><a class="header" href="#who-does-not-need-to-act">Who does not need to act</a></h2>
 <ul>
 <li><strong>Users of the language bindings and the CLI</strong>: the Python, Node.js, Ruby,
