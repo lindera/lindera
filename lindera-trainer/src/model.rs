@@ -474,6 +474,7 @@ impl Model {
         rdr.read_to_string(&mut content)?;
 
         let mut entries = Vec::new();
+        let mut rewrite_buffers = crate::feature_rewriter::RewriteBuffers::default();
         for row in read_lexicon_rows(&content, "user lexicon")? {
             let surface = row.surface.as_str();
             let feature = row.feature.as_str();
@@ -495,6 +496,7 @@ impl Model {
             let category = self.config.surface_category(surface);
             let feature_set = crate::label_feature_set(
                 &self.config.dictionary_rewriter,
+                &mut rewrite_buffers,
                 &mut self.config.feature_extractor,
                 feature,
                 category,

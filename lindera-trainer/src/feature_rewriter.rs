@@ -1,7 +1,7 @@
 use regex::Regex;
 use std::collections::HashSet;
 
-use crate::feature_csv::{join_feature, split_feature};
+use crate::feature_csv::{push_column, split_feature};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Pattern {
@@ -14,6 +14,24 @@ enum Pattern {
 enum Rewrite {
     Reference(usize),
     Text(String),
+}
+
+/// Returns the column that one part of a rewrite rule writes.
+///
+/// # Arguments
+///
+/// * `rewrite` - The part of the rule.
+/// * `features` - The columns of the feature string being rewritten.
+///
+/// # Returns
+///
+/// The referenced column, empty when the features have no such column, or
+/// the text.
+fn rewrite_column<'a, S: AsRef<str>>(rewrite: &'a Rewrite, features: &'a [S]) -> &'a str {
+    match rewrite {
+        Rewrite::Reference(idx) => features.get(*idx).map_or("", AsRef::as_ref),
+        Rewrite::Text(text) => text,
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -151,6 +169,58 @@ impl FeatureRewriter {
     where
         S: AsRef<str>,
     {
+        let rule = self.find_rule(features)?;
+        Some(
+            rule.iter()
+                .map(|rewrite| rewrite_column(rewrite, features).to_string())
+                .collect(),
+        )
+    }
+
+    /// Writes the rewritten features into `out`, joined with `,` and each
+    /// written by [`push_column`], if a rule matches; the same as joining
+    /// what [`Self::rewrite`] returns, without a `String` per column.
+    ///
+    /// # Arguments
+    ///
+    /// * `features` - The columns of the feature string.
+    /// * `out` - Cleared and given the rewritten feature string when a rule
+    ///   matches; left as it is otherwise.
+    ///
+    /// # Returns
+    ///
+    /// Whether a rule matched.
+    pub(crate) fn rewrite_into<S>(&self, features: &[S], out: &mut String) -> bool
+    where
+        S: AsRef<str>,
+    {
+        let Some(rule) = self.find_rule(features) else {
+            return false;
+        };
+        out.clear();
+        for (index, rewrite) in rule.iter().enumerate() {
+            if index > 0 {
+                out.push(',');
+            }
+            push_column(out, rewrite_column(rewrite, features));
+        }
+        true
+    }
+
+    /// Returns the rule of the first registered pattern that the features
+    /// match.
+    ///
+    /// # Arguments
+    ///
+    /// * `features` - The columns of the feature string.
+    ///
+    /// # Returns
+    ///
+    /// The rule, or `None` if no pattern matches.
+    fn find_rule<S>(&self, features: &[S]) -> Option<&[Rewrite]>
+    where
+        S: AsRef<str>,
+    {
         let mut stack = vec![(0, 0)];
         'a: while let Some((node_idx, edge_idx)) = stack.pop() {
             for (i, action) in self.nodes[node_idx]
@@ -175,24 +245,7 @@ impl FeatureRewriter {
                             }
                         }
                     }
-                    Action::Rewrite(rule) => {
-                        let mut result = Vec::with_capacity(rule.len());
-                        for rewrite in rule {
-                            match rewrite {
-                                Rewrite::Reference(idx) => {
-                                    if let Some(f) = features.get(*idx) {
-                                        result.push(f.as_ref().to_string());
-                                    } else {
-                                        result.push(String::new());
-                                    }
-                                }
-                                Rewrite::Text(text) => {
-                                    result.push(text.clone());
-                                }
-                            }
-                        }
-                        return Some(result);
-                    }
+                    Action::Rewrite(rule) => return Some(rule),
                 }
             }
         }
@@ -248,6 +301,19 @@ pub struct DictionaryRewriter {
     unigram_rewriter: FeatureRewriter,
     left_rewriter: FeatureRewriter,
     right_rewriter: FeatureRewriter,
+}
+
+/// The unigram, left and right features that
+/// [`DictionaryRewriter::rewrite_into`] writes, kept from one feature to the
+/// next.
+#[derive(Default)]
+pub(crate) struct RewriteBuffers {
+    /// The rewritten unigram feature.
+    pub(crate) ufeature: String,
+    /// The rewritten left feature.
+    pub(crate) lfeature: String,
+    /// The rewritten right feature.
+    pub(crate) rfeature: String,
 }
 
 impl Default for DictionaryRewriter {
@@ -368,27 +434,36 @@ impl DictionaryRewriter {
     ///
     /// The unigram, left and right features.
     pub fn rewrite(&self, feature: &str) -> (String, String, String) {
-        let fields = split_feature(feature);
-
-        let ufeature = self
-            .unigram_rewriter
-            .rewrite(&fields)
-            .map(|v| join_feature(&v))
-            .unwrap_or_else(|| feature.to_string());
-
-        let lfeature = self
-            .left_rewriter
-            .rewrite(&fields)
-            .map(|v| join_feature(&v))
-            .unwrap_or_else(|| feature.to_string());
-
-        let rfeature = self
-            .right_rewriter
-            .rewrite(&fields)
-            .map(|v| join_feature(&v))
-            .unwrap_or_else(|| feature.to_string());
-
+        let mut buffers = RewriteBuffers::default();
+        self.rewrite_into(feature, &mut buffers);
+        let RewriteBuffers {
+            ufeature,
+            lfeature,
+            rfeature,
+        } = buffers;
         (ufeature, lfeature, rfeature)
+    }
+
+    /// Rewrites a feature as [`Self::rewrite`] does, into buffers that the
+    /// caller reuses from one feature to the next, so that the rewrite
+    /// allocates only when a buffer has to grow (#1286).
+    ///
+    /// # Arguments
+    ///
+    /// * `feature` - The feature string.
+    /// * `buffers` - Given the unigram, left and right features.
+    pub(crate) fn rewrite_into(&self, feature: &str, buffers: &mut RewriteBuffers) {
+        let fields = split_feature(feature);
+        for (rewriter, out) in [
+            (&self.unigram_rewriter, &mut buffers.ufeature),
+            (&self.left_rewriter, &mut buffers.lfeature),
+            (&self.right_rewriter, &mut buffers.rfeature),
+        ] {
+            if !rewriter.rewrite_into(&fields, out) {
+                out.clear();
+                out.push_str(feature);
+            }
+        }
     }
 
     /// Returns the unigram rewriter (for direct access when needed).
@@ -410,6 +485,7 @@ impl DictionaryRewriter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::feature_csv::join_feature;
     use std::io::Cursor;
 
     #[test]
@@ -632,5 +708,63 @@ mod tests {
         assert_eq!(u, "名詞,一般");
         assert_eq!(l, "名詞,一般");
         assert_eq!(r, "NOUN,GENERAL");
+    }
+
+    /// `rewrite_into` writes what joining the columns of `rewrite` gives, and
+    /// leaves the buffer as it is when no rule matches (#1286).
+    #[test]
+    fn rewrite_into_writes_the_joined_rewrite() {
+        // `$3` is past the last column of `a,1`; the second rule writes a
+        // quote and an empty column, and copies a column with `,` in it; the
+        // third writes text with `,` in it.
+        let rewrite_def = "a,*\t$1,$3,$2\nb,*\t\"x\"\"y\",,$2\nc\t\"p,q\"\n";
+        let rewriter = FeatureRewriter::from_reader(Cursor::new(rewrite_def.as_bytes())).unwrap();
+
+        for features in [
+            vec!["a", "1"],
+            vec!["b", "shop, store"],
+            vec!["c"],
+            vec!["d", "1"],
+        ] {
+            let expected = rewriter
+                .rewrite(&features)
+                .map(|columns| join_feature(&columns));
+            let mut out = String::from("untouched");
+            let matched = rewriter.rewrite_into(&features, &mut out);
+            assert_eq!(matched, expected.is_some(), "{features:?}");
+            assert_eq!(
+                out,
+                expected.unwrap_or_else(|| "untouched".to_string()),
+                "{features:?}"
+            );
+        }
+        let mut out = String::new();
+        rewriter.rewrite_into(&["b", "shop, store"], &mut out);
+        assert_eq!(out, "\"x\"\"y\",,\"shop, store\"");
+    }
+
+    /// The buffers that `DictionaryRewriter::rewrite_into` reuses hold only
+    /// the rewrite of the last feature, however long the one before was,
+    /// whether a rule rewrote it or it passed through.
+    #[test]
+    fn rewrite_into_leaves_nothing_of_the_previous_feature() {
+        let rewrite_def = "[unigram rewrite]\n*,*\t$1\n\n[left rewrite]\nlong,*\t$2,$2\n\n[right rewrite]\nlong,*\t$2\n";
+        let rewriter =
+            DictionaryRewriter::from_reader(Cursor::new(rewrite_def.as_bytes())).unwrap();
+        let mut buffers = RewriteBuffers::default();
+
+        rewriter.rewrite_into("long,abcdefghijklmnop", &mut buffers);
+        rewriter.rewrite_into("s,t", &mut buffers);
+
+        let RewriteBuffers {
+            ufeature,
+            lfeature,
+            rfeature,
+        } = buffers;
+        assert_eq!((ufeature, lfeature, rfeature), rewriter.rewrite("s,t"));
+        assert_eq!(
+            rewriter.rewrite("s,t"),
+            ("s".to_string(), "s,t".to_string(), "s,t".to_string())
+        );
     }
 }

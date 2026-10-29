@@ -26,7 +26,7 @@ use lindera_dictionary::viterbi::UnknownWordCandidate;
 
 use self::feature_csv::{split_feature, wildcard_feature};
 use self::feature_extractor::{FeatureExtractor, TemplateContext};
-use self::feature_rewriter::DictionaryRewriter;
+use self::feature_rewriter::{DictionaryRewriter, RewriteBuffers};
 
 /// Logging macros for training process
 macro_rules! log_info {
@@ -155,6 +155,10 @@ pub struct Trainer {
 
     /// Reusable buffer for the unknown-word candidates of a sentence.
     unknown_candidates: Vec<UnknownWordCandidate>,
+
+    /// Reusable buffers for the rewritten features of a label
+    /// (`label_feature_set`).
+    rewrite_buffers: RewriteBuffers,
 
     regularization_cost: f64,
     use_l2: bool,
@@ -335,6 +339,9 @@ fn candidates_at(candidates: &[UnknownWordCandidate], pos: usize) -> &[UnknownWo
 ///
 /// * `rewriter` - Rewrites the feature string into its unigram, left and
 ///   right forms.
+/// * `buffers` - Where the rewritten features go; reused from one label to
+///   the next, so that the rewrite allocates only when a buffer grows
+///   (#1286).
 /// * `extractor` - Expands the feature templates; it assigns ids to the
 ///   features it has not seen.
 /// * `feature` - The label's feature string.
@@ -353,6 +360,7 @@ fn candidates_at(candidates: &[UnknownWordCandidate], pos: usize) -> &[UnknownWo
 /// the ids of `u32` and had none for a new feature (#1286).
 fn label_feature_set(
     rewriter: &DictionaryRewriter,
+    buffers: &mut RewriteBuffers,
     extractor: &mut FeatureExtractor,
     feature: &str,
     char_type: u32,
@@ -362,19 +370,24 @@ fn label_feature_set(
     // seed row, so a cache keyed on them never hits (#975). The rewritten
     // left and right features are not unique, and the IDs made from them are
     // cached by `bigram_feature_ids`.
-    let (ufeature, lfeature, rfeature) = rewriter.rewrite(feature);
+    rewriter.rewrite_into(feature, buffers);
+    let RewriteBuffers {
+        ufeature,
+        lfeature,
+        rfeature,
+    } = &*buffers;
     // Split as MeCab splits the rewritten features for its templates, so a
     // quoted column with `,` in it is one column (#1184).
-    let u_columns = split_feature(&ufeature);
+    let u_columns = split_feature(ufeature);
     let u_vec: Vec<&str> = u_columns.iter().map(|column| column.as_ref()).collect();
     let ctx = TemplateContext {
         surface,
-        ufeature: Some(&ufeature),
-        lfeature: Some(&lfeature),
-        rfeature: Some(&rfeature),
+        ufeature: Some(ufeature.as_str()),
+        lfeature: Some(lfeature.as_str()),
+        rfeature: Some(rfeature.as_str()),
     };
     let unigram_ids = extractor.extract_unigram_feature_ids_with_ctx(&u_vec, char_type, &ctx);
-    let (left_ids, right_ids) = extractor.bigram_feature_ids(&lfeature, &rfeature);
+    let (left_ids, right_ids) = extractor.bigram_feature_ids(lfeature, rfeature);
     if extractor.ids_exhausted() {
         return Err(anyhow::anyhow!(
             "too many distinct features: a feature id map has given out all {} ids",
@@ -428,6 +441,7 @@ impl Trainer {
     /// The trainer, or an error when a label cannot be created.
     pub fn new(mut config: TrainerConfig) -> Result<Self> {
         let mut provider = lindera_crf::FeatureProvider::default();
+        let mut rewrite_buffers = RewriteBuffers::default();
 
         // Generate default features based on dictionary schema
         let default_features = config.features.first().map_or_else(
@@ -448,6 +462,7 @@ impl Trainer {
 
             let feature_set = label_feature_set(
                 &config.dictionary_rewriter,
+                &mut rewrite_buffers,
                 &mut config.feature_extractor,
                 feature_str,
                 cate_id,
@@ -479,6 +494,7 @@ impl Trainer {
                 .map_or(0, |category_id| category_id.0 as u32);
             let feature_set = label_feature_set(
                 &config.dictionary_rewriter,
+                &mut rewrite_buffers,
                 &mut config.feature_extractor,
                 feature,
                 char_type,
@@ -496,6 +512,7 @@ impl Trainer {
             virtual_features: Vec::new(),
             candidate_lattice: lindera_dictionary::viterbi::Lattice::default(),
             unknown_candidates: Vec::new(),
+            rewrite_buffers,
             regularization_cost: DEFAULT_LAMBDA,
             use_l2: true,
             elastic_net_l1_ratio: None,
@@ -955,6 +972,7 @@ impl Trainer {
         }
         let feature_set = label_feature_set(
             &self.config.dictionary_rewriter,
+            &mut self.rewrite_buffers,
             &mut self.config.feature_extractor,
             feature,
             VIRTUAL_CHAR_TYPE,
@@ -1929,6 +1947,7 @@ mod export_determinism_tests {
 #[cfg(test)]
 mod feature_id_tests {
     use crate::feature_extractor::FeatureExtractor;
+    use crate::feature_rewriter::{DictionaryRewriter, RewriteBuffers};
     use crate::test_fixtures::{fixtures, wide_seed_and_corpus};
     use crate::{Corpus, Trainer, TrainerConfig};
     use std::io::Cursor;
@@ -2142,20 +2161,33 @@ mod feature_id_tests {
     /// error reaches `Trainer::new`, `virtual_label` and `read_user_lexicon`.
     #[test]
     fn running_out_of_feature_ids_is_an_error() {
-        let rewriter =
-            match crate::feature_rewriter::DictionaryRewriter::from_reader(Cursor::new("")) {
-                Ok(rewriter) => rewriter,
-                Err(err) => panic!("rewrite.def: {err}"),
-            };
+        let rewriter = match DictionaryRewriter::from_reader(Cursor::new("")) {
+            Ok(rewriter) => rewriter,
+            Err(err) => panic!("rewrite.def: {err}"),
+        };
         let mut extractor =
             FeatureExtractor::from_templates(&["U0:%F[0]"], &[("L0:%L[0]", "R0:%R[0]")])
                 .with_max_feature_id(1);
 
-        if let Err(err) = crate::label_feature_set(&rewriter, &mut extractor, "a", 0, None) {
+        if let Err(err) = crate::label_feature_set(
+            &rewriter,
+            &mut RewriteBuffers::default(),
+            &mut extractor,
+            "a",
+            0,
+            None,
+        ) {
             panic!("the first label fits: {err}");
         }
         // `U0:b` would need unigram id 2.
-        match crate::label_feature_set(&rewriter, &mut extractor, "b", 0, None) {
+        match crate::label_feature_set(
+            &rewriter,
+            &mut RewriteBuffers::default(),
+            &mut extractor,
+            "b",
+            0,
+            None,
+        ) {
             Ok(_) => panic!("a label with no id left for its feature was built"),
             Err(err) => assert!(
                 err.to_string().contains("too many distinct features"),
@@ -2975,7 +3007,7 @@ mod feature_column_tests {
     use std::io::Cursor;
 
     use crate::feature_extractor::{FeatureExtractor, FeatureIdMap};
-    use crate::feature_rewriter::DictionaryRewriter;
+    use crate::feature_rewriter::{DictionaryRewriter, RewriteBuffers};
     use crate::{label_feature_set, unk_entry_accepts};
 
     /// The feature of the issue's reproduction: Jieba-like columns whose
@@ -3010,7 +3042,14 @@ mod feature_column_tests {
             &[("L1:%L[1]", "R1:%R[1]")],
         );
 
-        if let Err(err) = label_feature_set(&rewriter, &mut extractor, FEATURE, 0, None) {
+        if let Err(err) = label_feature_set(
+            &rewriter,
+            &mut RewriteBuffers::default(),
+            &mut extractor,
+            FEATURE,
+            0,
+            None,
+        ) {
             panic!("label_feature_set: {err}");
         }
 
@@ -3065,7 +3104,7 @@ mod bigram_feature_id_sharing_tests {
 
     use crate::feature_csv::split_feature;
     use crate::feature_extractor::{FeatureExtractor, FeatureIdMap, TemplateContext};
-    use crate::feature_rewriter::DictionaryRewriter;
+    use crate::feature_rewriter::{DictionaryRewriter, RewriteBuffers};
     use crate::label_feature_set;
 
     /// The left feature is the first column, and the right feature the first
@@ -3119,7 +3158,14 @@ mod bigram_feature_id_sharing_tests {
         feature: &str,
         surface: Option<&str>,
     ) -> lindera_crf::FeatureSet {
-        match label_feature_set(rewriter, extractor, feature, 0, surface) {
+        match label_feature_set(
+            rewriter,
+            &mut RewriteBuffers::default(),
+            extractor,
+            feature,
+            0,
+            surface,
+        ) {
             Ok(feature_set) => feature_set,
             Err(err) => panic!("label_feature_set({feature}): {err}"),
         }
@@ -3240,7 +3286,7 @@ mod template_past_last_column_tests {
     use std::io::Cursor;
 
     use crate::feature_extractor::FeatureExtractor;
-    use crate::feature_rewriter::DictionaryRewriter;
+    use crate::feature_rewriter::{DictionaryRewriter, RewriteBuffers};
     use crate::label_feature_set;
 
     #[test]
@@ -3258,7 +3304,14 @@ mod template_past_last_column_tests {
             &[("%L[0]", "%R[0]"), ("%L[6]", "%R[6]")],
         );
 
-        let feature_set = match label_feature_set(&rewriter, &mut extractor, "n,*,*,*,*", 0, None) {
+        let feature_set = match label_feature_set(
+            &rewriter,
+            &mut RewriteBuffers::default(),
+            &mut extractor,
+            "n,*,*,*,*",
+            0,
+            None,
+        ) {
             Ok(feature_set) => feature_set,
             Err(err) => panic!("label_feature_set: {err}"),
         };
