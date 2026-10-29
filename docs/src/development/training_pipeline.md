@@ -40,7 +40,7 @@ Warning: 0 of the 14 gold tokens are seed words, and 14 are not although seed ro
 
 Gold tokens whose surface no seed row has do not count toward the warning, so a seed lexicon that covers little of the corpus gives none.
 
-The CRF is then trained with L-BFGS (OWL-QN when the regularization has an L1 part). Training stops at the first of these:
+The CRF is then trained with L-BFGS (OWL-QN when the regularization has an L1 part). As in MeCab's learner and libLBFGS, the first line search starts at a step of `1 / |d|`, `d` being the first search direction, so that its first trial point lies at unit distance from the initial weights, and every later one at a step of 1 ([#1290](https://github.com/lindera/lindera/issues/1290)). Training stops at the first of these:
 
 - `converged`: the relative change of the objective, `|previous - current| / |previous|`, stayed below `eta` for 3 iterations in a row. The default `eta` is that of MeCab's learner, which applies the same test to every evaluation, line-search trials included, where Lindera counts iterations.
 - `no progress`: an iteration left the objective unchanged. When this happens after a few iterations, the model is barely trained. `lindera train` writes a warning on standard error whenever training stops this way, after any number of iterations.
@@ -50,7 +50,7 @@ The CRF is then trained with L-BFGS (OWL-QN when the regularization has an L1 pa
 `lindera train` prints which one stopped it, with the number of iterations and of evaluations, each evaluation being one forward-backward pass over every lattice; with the files in `resources/training/`:
 
 ```text
-L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradient: converged
+L-BFGS stopped after 8 iterations and 9 evaluations of the loss and its gradient: converged
 ```
 
 ## Required Input Files
@@ -254,7 +254,7 @@ The pattern, the replacement and the feature are split into columns as described
 
 A `lambda` of 0 disables regularization for every type. For Elastic Net, a ratio of 0 uses only L2, and a ratio of 1 uses only L1.
 
-The defaults are those of MeCab's learner: L2 regularization with `lambda` 1.0 is its objective with `-c 1.0`. On the mecab-ipadic cross-validation data of [#1110](https://github.com/lindera/lindera/issues/1110), they score as MeCab's learner does and converge in about as many iterations, 81 to 87 ([#1261](https://github.com/lindera/lindera/issues/1261)): boundary F1 0.9613 and span + POS (4 columns) F1 0.9398 on average over 5 folds, where v6's default, L1 with `lambda` 0.01, reached `max-iterations` on every fold with 0.9572 and 0.9344. L1 sets many weights to 0, and `lindera export` gives labels with equal weights one context ID, so the L1 `matrix.def` is smaller: 8.7 MB there against 18.9 MB with L2, which makes the built dictionary 3.8 % larger. Training there takes about twice as long as MeCab's learner, and about two thirds of the time is spent outside the optimizer: before it starts ([#1263](https://github.com/lindera/lindera/issues/1263)) and after it stops.
+The defaults are those of MeCab's learner: L2 regularization with `lambda` 1.0 is its objective with `-c 1.0`. On the mecab-ipadic cross-validation data of [#1110](https://github.com/lindera/lindera/issues/1110), they score as MeCab's learner does and converge in about as many iterations, 77 to 82 ([#1261](https://github.com/lindera/lindera/issues/1261), [#1290](https://github.com/lindera/lindera/issues/1290)): boundary F1 0.9613 and span + POS (4 columns) F1 0.9397 on average over 5 folds, where v6's default settings, L1 with `lambda` 0.01, reached `max-iterations` on every fold with 0.9578 and 0.9350. L1 sets many weights to 0, and `lindera export` gives labels with equal weights one context ID, so the L1 `matrix.def` is smaller: 8.3 MB there against 18.9 MB with L2, which makes the built dictionary 4.0 % larger. Training there takes about twice as long as MeCab's learner, and about two thirds of the time is spent outside the optimizer: before it starts ([#1263](https://github.com/lindera/lindera/issues/1263)) and after it stops.
 
 ## CLI Usage
 
@@ -301,11 +301,11 @@ This produces the following files:
 For example, if the `unk.def` above has a second `KANJI` line, `KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*`, after the first one, the exported `unk.def` keeps both, in input order:
 
 ```csv
-DEFAULT,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+DEFAULT,1,1,31699,名詞,一般,*,*,*,*,*,*,*
 SPACE,10,7,0,記号,空白,*,*,*,*,*,*,*
-HIRAGANA,1,1,31698,名詞,一般,*,*,*,*,*,*,*
-KATAKANA,1,1,31698,名詞,一般,*,*,*,*,*,*,*
-KANJI,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,1,1,31699,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,31699,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,31699,名詞,一般,*,*,*,*,*,*,*
 KANJI,3,3,4179,名詞,サ変接続,*,*,*,*,*,*,*
 ALPHA,11,10,10957,名詞,固有名詞,一般,*,*,*,*,*,*
 NUMERIC,11,10,10957,名詞,数,*,*,*,*,*,*,*

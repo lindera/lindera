@@ -51,7 +51,7 @@ Lindera.train(
 | キーワード | elastic_net_l1_ratio: | `Float` または `nil` | Elastic Net 正則化の L1 の比率（0 以上 1 以下）。`0` は L2 のみ、`1` は L1 のみを使用します。デフォルトは 0.5。`'elasticnet'` のときだけ使います |
 | キーワード | eta: | `Float` または `nil` | 収束判定の許容値（有限の 0 以上の値）。デフォルトは 5e-5。目的関数の相対変化が 3 回続けてこの値を下回ると、`max_iter` より前に止まります。`0` で判定を無効にします |
 
-設定の値は、ファイルを読む前に検査されます。知らない `regularization:` は `ArgumentError`、範囲の外の `lambda`・`elastic_net_l1_ratio:`・`eta:` は `RangeError` になります。v6 のデフォルトと同じく学習するには、`lambda` に 0.01 を、`regularization:` に `'l1'` を渡し、`max_iter` だけで止めるには `eta: 0` も渡します：
+設定の値は、ファイルを読む前に検査されます。知らない `regularization:` は `ArgumentError`、範囲の外の `lambda`・`elastic_net_l1_ratio:`・`eta:` は `RangeError` になります。v6 のデフォルトの設定で学習するには（最初のライン探索が変わったので、モデルは v6 と一致しません。[#1290](https://github.com/lindera/lindera/issues/1290)）、`lambda` に 0.01 を、`regularization:` に `'l1'` を渡し、`max_iter` だけで止めるには `eta: 0` も渡します：
 
 ```ruby
 Lindera.train(*inputs, '/tmp/model.dat', 0.01, regularization: 'l1', eta: 0)

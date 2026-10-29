@@ -1000,7 +1000,7 @@ When no gold token is a seed word, or fewer than half of the gold tokens whose s
 Once training stops, it prints why, with the number of iterations and of evaluations of the loss and its gradient (see `--eta` above):
 
 ```text
-L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradient: converged
+L-BFGS stopped after 8 iterations and 9 evaluations of the loss and its gradient: converged
 ```
 
 When an iteration left the objective unchanged or the line search failed, it then writes a warning on stderr (see [How training works](../development/training_pipeline.md#how-training-works)).
