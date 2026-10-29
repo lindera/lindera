@@ -208,11 +208,11 @@ Lindera\Trainer::train(
 <tr><td><code>$feature_def</code></td><td><code>string</code></td><td>required</td><td>Path to the feature definition file (feature.def)</td></tr>
 <tr><td><code>$rewrite_def</code></td><td><code>string</code></td><td>required</td><td>Path to the rewrite rule definition file (rewrite.def)</td></tr>
 <tr><td><code>$output</code></td><td><code>string</code></td><td>required</td><td>Output path for the trained model file</td></tr>
-<tr><td><code>$lambda</code></td><td><code>float</code></td><td><code>1.0</code></td><td>Regularization coefficient, finite and &gt;= 0; with L2, MeCab's <code>-c C</code> is <code>1 / C</code>, so 1.0 is MeCab's <code>-c 1.0</code></td></tr>
+<tr><td><code>$lambda</code></td><td><code>float</code></td><td><code>1.0</code></td><td>Regularization coefficient, finite and &gt;= 0; <code>0</code> disables regularization for every type; with L2, MeCab's <code>-c C</code> is <code>1 / C</code>, so 1.0 is MeCab's <code>-c 1.0</code></td></tr>
 <tr><td><code>$max_iter</code></td><td><code>int</code></td><td><code>100</code></td><td>Maximum number of training iterations, 1 or more; training stops earlier once the objective converges (see <code>$eta</code>)</td></tr>
 <tr><td><code>$max_threads</code></td><td><code>int|null</code></td><td><code>null</code></td><td>Number of threads, 1 or more (<code>null</code> = auto-detect CPU cores)</td></tr>
 <tr><td><code>$regularization</code></td><td><code>string|null</code></td><td><code>'l2'</code></td><td>Regularization type: <code>'l1'</code>, <code>'l2'</code> or <code>'elasticnet'</code>, in any case (<code>'elastic_net'</code> and <code>'elastic-net'</code> also select Elastic Net), as <code>lindera train --regularization</code> takes it</td></tr>
-<tr><td><code>$elastic_net_l1_ratio</code></td><td><code>float|null</code></td><td><code>0.5</code></td><td>L1 ratio of Elastic Net regularization, between 0 and 1; used only with <code>'elasticnet'</code></td></tr>
+<tr><td><code>$elastic_net_l1_ratio</code></td><td><code>float|null</code></td><td><code>0.5</code></td><td>L1 ratio of Elastic Net regularization, between 0 and 1; <code>0</code> uses only L2, <code>1</code> uses only L1; used only with <code>'elasticnet'</code></td></tr>
 <tr><td><code>$eta</code></td><td><code>float|null</code></td><td><code>5e-5</code></td><td>Tolerance of the convergence test, finite and &gt;= 0: training stops before <code>$max_iter</code> once the relative change of the objective stays below it for 3 iterations in a row; <code>0</code> disables the test</td></tr>
 </tbody></table>
 </div>
