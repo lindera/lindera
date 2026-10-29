@@ -49,11 +49,11 @@ train({
 | `featureDef` | `string` | required | Path to the feature definition file (feature.def) |
 | `rewriteDef` | `string` | required | Path to the rewrite rule definition file (rewrite.def) |
 | `output` | `string` | required | Output path for the trained model file |
-| `lambda` | `number` | `1.0` | Regularization coefficient, finite and >= 0; with L2, MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0` |
+| `lambda` | `number` | `1.0` | Regularization coefficient, finite and >= 0; `0` disables regularization for every type; with L2, MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0` |
 | `maxIter` | `number` | `100` | Maximum number of training iterations, 1 or more; training stops earlier once the objective converges (see `eta`) |
 | `maxThreads` | `number \| undefined` | `undefined` | Number of threads, 1 or more (undefined = auto-detect CPU cores) |
 | `regularization` | `string` | `"l2"` | Regularization type: `"l1"`, `"l2"` or `"elasticnet"`, in any case (`"elastic_net"` and `"elastic-net"` also select Elastic Net), as `lindera train --regularization` takes it |
-| `elasticNetL1Ratio` | `number` | `0.5` | L1 ratio of Elastic Net regularization, between 0 and 1; used only with `"elasticnet"` |
+| `elasticNetL1Ratio` | `number` | `0.5` | L1 ratio of Elastic Net regularization, between 0 and 1; `0` uses only L2, `1` uses only L1; used only with `"elasticnet"` |
 | `eta` | `number` | `5e-5` | Tolerance of the convergence test, finite and >= 0: training stops before `maxIter` once the relative change of the objective stays below it for 3 iterations in a row; `0` disables the test |
 
 The settings are checked before any file is read: an unknown `regularization`, or a `lambda`, `elasticNetL1Ratio` or `eta` outside its range, throws an `InvalidArg` error. To train as v6 did by default, pass `regularization: "l1"` and `lambda: 0.01`, and `eta: 0` to stop only at `maxIter`.

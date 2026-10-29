@@ -34,6 +34,7 @@ pub struct TrainOptions {
     pub output: String,
     /// Regularization coefficient, finite and >= 0 (default: 1.0); with L2,
     /// MeCab's `-c C` is `1 / C`, so 1.0 is MeCab's `-c 1.0`.
+    /// Zero disables regularization for every type.
     pub lambda: Option<f64>,
     /// Maximum number of training iterations, an integer of 1 or more
     /// (default: 100).
@@ -46,6 +47,7 @@ pub struct TrainOptions {
     pub regularization: Option<String>,
     /// L1 ratio of Elastic Net regularization, between 0 and 1 (default:
     /// 0.5); used only with `"elasticnet"`.
+    /// Zero uses only L2; one uses only L1.
     pub elastic_net_l1_ratio: Option<f64>,
     /// Tolerance of the convergence test, finite and >= 0 (default: 5e-5):
     /// training stops before `maxIter` once the relative change of the
