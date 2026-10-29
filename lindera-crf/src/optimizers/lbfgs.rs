@@ -11,7 +11,9 @@ use argmin::{
         TerminationStatus, observers::ObserverMode,
     },
     solver::{
-        linesearch::{BacktrackingLineSearch, MoreThuenteLineSearch, condition::ArmijoCondition},
+        linesearch::{
+            BacktrackingLineSearch, LineSearch, MoreThuenteLineSearch, condition::ArmijoCondition,
+        },
         quasinewton::LBFGS,
     },
 };
@@ -339,6 +341,116 @@ where
     }
 }
 
+/// A line search whose first search starts at a step of `1 / |d|`, `d` being
+/// its search direction, and every later search at a step of 1.
+///
+/// argmin's L-BFGS has no curvature pair in its first iteration and searches
+/// along the negative gradient (the negative pseudo-gradient, projected, for
+/// OWL-QN), and both of its line searches start at a step of 1. The first
+/// trial point therefore lies as far from the initial weights as the gradient
+/// is long: 1.1e5 on the
+/// corpus of #1260, where the first search went so far that the loss was
+/// rounding error and OWL-QN stopped after 3 iterations (#1290). As in
+/// MeCab's learner (`mecab/src/lbfgs.cpp` at `61b90ba6`, lines 463 and
+/// 531–534) and libLBFGS (`lib/lbfgs.c` at `5ad02fbe`, lines 436–460 and
+/// 618), the first search starts at `1 / |d|`, so that its first trial point
+/// lies at unit distance. For L-BFGS `|d|` is the length of the gradient, as
+/// in both; for OWL-QN it is that of the projected pseudo-gradient, as in
+/// libLBFGS, where MeCab takes the length of the gradient without the L1
+/// term.
+///
+/// argmin's L-BFGS calls [`LineSearch::search_direction`] on its own line
+/// search and then runs a clone of it, so the step is recorded with the
+/// direction and handed to the inner line search in [`Solver::init`], on the
+/// clone. The More-Thuente line search clamps its steps to `√ε` and more, so
+/// for a direction longer than about 6.7e7 the first step is `√ε`.
+#[derive(Clone)]
+struct UnitFirstStep<L> {
+    /// The wrapped line search.
+    inner: L,
+    /// The step the coming search starts at.
+    step: f64,
+    /// Set once the first search direction has been given.
+    started: bool,
+}
+
+impl<L> UnitFirstStep<L> {
+    /// Wraps a line search.
+    ///
+    /// # Arguments
+    ///
+    /// * `inner` - The line search to wrap.
+    ///
+    /// # Returns
+    ///
+    /// The wrapped line search, before its first search.
+    const fn new(inner: L) -> Self {
+        Self {
+            inner,
+            step: 1.0,
+            started: false,
+        }
+    }
+}
+
+impl<L> LineSearch<Vec<f64>, f64> for UnitFirstStep<L>
+where
+    L: LineSearch<Vec<f64>, f64>,
+{
+    /// Sets the search direction, and the step the search starts at:
+    /// `1 / |direction|` for the first search, 1 for every later one. A
+    /// direction whose length is 0 or not finite gets 1 too.
+    fn search_direction(&mut self, direction: Vec<f64>) {
+        self.step = 1.0;
+        if !self.started {
+            self.started = true;
+            let norm = direction.iter().map(|x| x * x).sum::<f64>().sqrt();
+            if norm.is_finite() && norm > 0.0 {
+                self.step = 1.0 / norm;
+            }
+        }
+        self.inner.search_direction(direction);
+    }
+
+    /// Sets the step the coming search starts at, which the inner line search
+    /// checks.
+    fn initial_step_length(&mut self, step_length: f64) -> Result<(), argmin::core::Error> {
+        self.inner.initial_step_length(step_length)?;
+        self.step = step_length;
+        Ok(())
+    }
+}
+
+impl<O, L> Solver<O, LbfgsState> for UnitFirstStep<L>
+where
+    L: LineSearch<Vec<f64>, f64> + Solver<O, LbfgsState>,
+{
+    fn name(&self) -> &str {
+        self.inner.name()
+    }
+
+    fn init(
+        &mut self,
+        problem: &mut Problem<O>,
+        state: LbfgsState,
+    ) -> Result<(LbfgsState, Option<KV>), argmin::core::Error> {
+        self.inner.initial_step_length(self.step)?;
+        self.inner.init(problem, state)
+    }
+
+    fn next_iter(
+        &mut self,
+        problem: &mut Problem<O>,
+        state: LbfgsState,
+    ) -> Result<(LbfgsState, Option<KV>), argmin::core::Error> {
+        self.inner.next_iter(problem, state)
+    }
+
+    fn terminate(&mut self, state: &LbfgsState) -> TerminationStatus {
+        self.inner.terminate(state)
+    }
+}
+
 /// Tells why a run stopped, from its final termination status and what
 /// [`ConvergenceTest`] recorded.
 ///
@@ -529,18 +641,19 @@ where
         Regularization::ElasticNet { l1_ratio } => lambda * l1_ratio,
     };
     // OWL-QN requires a positive L1 coefficient. With no L1 penalty, use
-    // ordinary L-BFGS; the objective already includes any L2 penalty.
+    // ordinary L-BFGS; the objective already includes any L2 penalty. Either
+    // way the first line search starts at a unit step (see UnitFirstStep).
     if l1_lambda > 0.0 {
         let linesearch = BacktrackingLineSearch::new(ArmijoCondition::new(1e-4).unwrap())
             .rho(0.5)
             .unwrap();
-        let solver = LBFGS::new(linesearch, 7)
+        let solver = LBFGS::new(UnitFirstStep::new(linesearch), 7)
             .with_l1_regularization(l1_lambda)
             .unwrap();
         run(problem, solver, weights_init, max_iter, eta)
     } else {
         let linesearch = MoreThuenteLineSearch::new().with_c(1e-4, 0.9).unwrap();
-        let solver = LBFGS::new(linesearch, 7);
+        let solver = LBFGS::new(UnitFirstStep::new(linesearch), 7);
         run(problem, solver, weights_init, max_iter, eta)
     }
 }
@@ -663,6 +776,154 @@ mod tests {
         assert_eq!(classify(vec![1e-9, 0.0]), Some(Convergence::Converged));
         // Otherwise argmin stopped because the cost did not change.
         assert_eq!(classify(vec![1.0, 0.0]), Some(Convergence::NoProgress));
+    }
+
+    /// A line search that records the step each search starts at, in a list
+    /// that its clones share, standing in for argmin's line searches.
+    #[derive(Clone, Default)]
+    struct RecordsSteps {
+        steps: alloc::rc::Rc<RefCell<Vec<f64>>>,
+    }
+
+    impl LineSearch<Vec<f64>, f64> for RecordsSteps {
+        fn search_direction(&mut self, _direction: Vec<f64>) {}
+
+        fn initial_step_length(&mut self, step_length: f64) -> Result<(), argmin::core::Error> {
+            self.steps.borrow_mut().push(step_length);
+            Ok(())
+        }
+    }
+
+    impl Solver<(), LbfgsState> for RecordsSteps {
+        fn name(&self) -> &str {
+            "records steps"
+        }
+
+        fn next_iter(
+            &mut self,
+            _problem: &mut Problem<()>,
+            state: LbfgsState,
+        ) -> Result<(LbfgsState, Option<KV>), argmin::core::Error> {
+            Ok((state, None))
+        }
+    }
+
+    /// Runs one search along `direction` as argmin's L-BFGS does: sets the
+    /// direction on its own line search, then initializes a clone of it.
+    fn search(line_search: &mut UnitFirstStep<RecordsSteps>, direction: Vec<f64>) {
+        line_search.search_direction(direction);
+        let mut clone = line_search.clone();
+        Solver::<(), LbfgsState>::init(&mut clone, &mut Problem::new(()), LbfgsState::new())
+            .unwrap();
+    }
+
+    #[test]
+    fn the_first_search_starts_at_one_over_the_length_of_the_direction() {
+        let inner = RecordsSteps::default();
+        let steps = alloc::rc::Rc::clone(&inner.steps);
+        let mut line_search = UnitFirstStep::new(inner);
+
+        search(&mut line_search, vec![3.0, 4.0]);
+        search(&mut line_search, vec![30.0, 40.0]);
+        search(&mut line_search, vec![0.3, 0.4]);
+
+        // 1 / |[3, 4]| for the first search, 1 for the later ones.
+        assert_eq!(*steps.borrow(), vec![0.2, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn a_first_direction_of_no_finite_length_starts_at_one() {
+        // The length of [1e200, 1e200] overflows.
+        let wrong: Vec<(Vec<f64>, Vec<f64>)> = [
+            vec![0.0, 0.0],
+            vec![f64::NAN, 1.0],
+            vec![f64::INFINITY, 1.0],
+            vec![1e200, 1e200],
+        ]
+        .into_iter()
+        .filter_map(|direction| {
+            let inner = RecordsSteps::default();
+            let steps = alloc::rc::Rc::clone(&inner.steps);
+            let mut line_search = UnitFirstStep::new(inner);
+            search(&mut line_search, direction.clone());
+            let steps = steps.borrow().clone();
+            (steps != [1.0]).then_some((direction, steps))
+        })
+        .collect();
+
+        assert!(wrong.is_empty(), "(direction, steps): {wrong:?}");
+    }
+
+    /// `scale / 2 * |w - center|²`, which records every point at which its
+    /// cost or gradient is asked for.
+    struct RecordedQuadratic<'a> {
+        scale: f64,
+        center: Vec<f64>,
+        points: &'a RefCell<Vec<Vec<f64>>>,
+    }
+
+    impl CostFunction for RecordedQuadratic<'_> {
+        type Param = Vec<f64>;
+        type Output = f64;
+
+        fn cost(&self, param: &Self::Param) -> Result<Self::Output, argmin::core::Error> {
+            self.points.borrow_mut().push(param.clone());
+            let squared: f64 = param
+                .iter()
+                .zip(&self.center)
+                .map(|(w, c)| (w - c) * (w - c))
+                .sum();
+            Ok(self.scale / 2.0 * squared)
+        }
+    }
+
+    impl Gradient for RecordedQuadratic<'_> {
+        type Param = Vec<f64>;
+        type Gradient = Vec<f64>;
+
+        fn gradient(&self, param: &Self::Param) -> Result<Self::Gradient, argmin::core::Error> {
+            self.points.borrow_mut().push(param.clone());
+            Ok(param
+                .iter()
+                .zip(&self.center)
+                .map(|(w, c)| self.scale * (w - c))
+                .collect())
+        }
+    }
+
+    /// Returns how far from the origin the first point other than the origin
+    /// lies at which `minimize` evaluates a quadratic whose gradient at the
+    /// origin is 5e4 long, starting from the origin.
+    fn first_trial_distance(regularization: Regularization, lambda: f64) -> f64 {
+        let points = RefCell::new(Vec::new());
+        let problem = RecordedQuadratic {
+            scale: 1e4,
+            center: vec![3.0, 4.0],
+            points: &points,
+        };
+        minimize(problem, vec![0.0, 0.0], regularization, lambda, 1, 0.0);
+        let points = points.into_inner();
+        let trial = points
+            .iter()
+            .find(|point| point.iter().any(|x| *x != 0.0))
+            .expect("minimize evaluated only the origin");
+        trial.iter().map(|x| x * x).sum::<f64>().sqrt()
+    }
+
+    #[test]
+    fn the_first_trial_point_of_l_bfgs_lies_at_unit_distance() {
+        // More-Thuente starting at a step of 1 would first try the point 5e4
+        // away.
+        let distance = first_trial_distance(Regularization::L2, 0.0);
+        assert!((distance - 1.0).abs() < 1e-12, "distance {distance}");
+    }
+
+    #[test]
+    fn the_first_trial_point_of_owl_qn_lies_at_unit_distance() {
+        // The pseudo-gradient at the origin is the gradient moved by lambda
+        // toward 0; backtracking from a step of 1 would first try it whole.
+        let distance = first_trial_distance(Regularization::L1, 1.0);
+        assert!((distance - 1.0).abs() < 1e-12, "distance {distance}");
     }
 
     #[test]
