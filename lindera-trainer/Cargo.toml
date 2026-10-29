@@ -15,6 +15,7 @@ license = { workspace = true }
 [dependencies]
 anyhow = { workspace = true }
 csv-core = { workspace = true }
+hashbrown = { workspace = true }
 lindera-crf = { workspace = true }
 lindera-dictionary = { workspace = true }
 regex = { workspace = true }

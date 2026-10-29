@@ -33,8 +33,6 @@ pub struct TrainerConfig {
     pub(crate) surfaces: Vec<String>,
     /// Feature strings for each entry (parallel to surfaces)
     pub(crate) features: Vec<String>,
-    /// Maps surface forms to their original feature strings from the lexicon
-    pub(crate) surface_features: HashMap<String, String>,
     /// User lexicon entries for additional vocabulary
     pub(crate) user_lexicon: HashMap<String, String>,
     pub(crate) feature_extractor: FeatureExtractor,
@@ -179,7 +177,6 @@ impl TrainerConfig {
         // Parse lexicon to extract surfaces and features
         let mut surfaces = Vec::new();
         let mut features = Vec::new();
-        let mut surface_features = HashMap::new();
         let mut lexicon_content = String::new();
         {
             let mut lexicon_reader = BufReader::new(lexicon_rdr);
@@ -195,9 +192,8 @@ impl TrainerConfig {
         // The rows are CSV records, read as `lindera build` reads `lex.csv`,
         // and their order gives the seed labels their ids (#1170).
         for row in read_lexicon_rows(&lexicon_content, "seed lexicon")? {
-            surfaces.push(row.surface.clone());
-            features.push(row.feature.clone());
-            surface_features.insert(row.surface, row.feature);
+            surfaces.push(row.surface);
+            features.push(row.feature);
         }
 
         // Create feature extractor from templates
@@ -351,7 +347,6 @@ impl TrainerConfig {
             default_categories,
             surfaces,
             features,
-            surface_features,
             user_lexicon: HashMap::new(), // Initialize empty user lexicon
             feature_extractor,
             dictionary_rewriter,
@@ -370,9 +365,16 @@ impl TrainerConfig {
         &self.surfaces
     }
 
-    /// Get the surface features mapping
-    pub fn surface_features(&self) -> &HashMap<String, String> {
-        &self.surface_features
+    /// Returns the feature strings of the seed rows, as the seed lexicon
+    /// writes them, in row order: the feature of the row whose surface is
+    /// `surfaces()[i]` is `features()[i]`, rows with the same surface
+    /// included.
+    ///
+    /// # Returns
+    ///
+    /// The feature strings.
+    pub fn features(&self) -> &[String] {
+        &self.features
     }
 
     /// Get the user lexicon mapping.
@@ -403,13 +405,26 @@ impl TrainerConfig {
         self.user_lexicon.insert(surface, features);
     }
 
-    /// Get features for a given surface form
+    /// Returns the feature string of a surface form: the user lexicon's
+    /// first, then that of the last seed row with the surface.
+    ///
+    /// The seed rows are not indexed by surface, to save their memory in
+    /// training (#1286), so a lookup scans them from the end.
+    ///
+    /// # Arguments
+    ///
+    /// * `surface` - The surface form.
+    ///
+    /// # Returns
+    ///
+    /// The feature string, or `None` if neither has the surface.
     pub fn get_features(&self, surface: &str) -> Option<String> {
-        // First check user lexicon, then surface features
-        self.user_lexicon
-            .get(surface)
-            .or_else(|| self.surface_features.get(surface))
-            .cloned()
+        self.user_lexicon.get(surface).cloned().or_else(|| {
+            self.surfaces
+                .iter()
+                .rposition(|row_surface| row_surface == surface)
+                .and_then(|row| self.features.get(row).cloned())
+        })
     }
 
     /// Load user lexicon from CSV content.
@@ -652,7 +667,7 @@ mod tests {
         assert!(config.surfaces().contains(&"行く".to_string()));
 
         // Verify features are correctly extracted (9 fields after surface,left_id,right_id,cost)
-        let tokyo_features = config.surface_features().get("東京").unwrap();
+        let tokyo_features = config.get_features("東京").unwrap();
         assert_eq!(
             tokyo_features,
             "名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー"
@@ -761,7 +776,7 @@ mod tests {
         assert!(config.surfaces().contains(&"안녕".to_string()));
 
         // Verify features (4 fields after surface,left_id,right_id,cost)
-        let korea_features = config.surface_features().get("한국").unwrap();
+        let korea_features = config.get_features("한국").unwrap();
         assert_eq!(korea_features, "NNG,Korea,F,han-guk");
     }
 
@@ -789,7 +804,7 @@ mod tests {
         assert!(config.surfaces().contains(&"你好".to_string()));
 
         // Verify features (4 fields after surface,left_id,right_id,cost)
-        let china_features = config.surface_features().get("中国").unwrap();
+        let china_features = config.get_features("中国").unwrap();
         assert_eq!(china_features, "n,China,*,zhong1guo2");
     }
 
@@ -816,7 +831,7 @@ mod tests {
         assert!(config.surfaces().contains(&"東京".to_string()));
 
         // Verify features (17 fields after surface,left_id,right_id,cost)
-        let tokyo_features = config.surface_features().get("東京").unwrap();
+        let tokyo_features = config.get_features("東京").unwrap();
         assert_eq!(
             tokyo_features,
             "名詞,固有名詞,地名,一般,*,*,トウキョウ,東京,東京,東京,東京,東京,トウキョウ,トーキョー,東京,東京,1"
@@ -847,17 +862,49 @@ mod tests {
 
         // Each row has different number of feature fields, all should be accepted
         assert_eq!(
-            config.surface_features().get("東京").unwrap(),
+            config.get_features("東京").unwrap(),
             "名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー"
         );
+        assert_eq!(config.get_features("한국").unwrap(), "NNG,Korea,F,han-guk");
+        assert_eq!(config.get_features("中国").unwrap(), "n,China,*,zhong1guo2");
+    }
+
+    /// `features()` follows the seed rows one for one, rows with the same
+    /// surface included, and `get_features` returns the last such row's
+    /// feature unless the user lexicon has the surface, as when the rows were
+    /// kept in a map by surface (#1286).
+    #[test]
+    #[allow(deprecated)]
+    fn features_follow_the_rows_and_the_last_row_of_a_surface_wins() {
+        let seed_csv = "橋,0,0,0,名詞,一般,*,*,*,*,橋,ハシ,ハシ\n\
+                        箸,0,0,0,名詞,一般,*,*,*,*,箸,ハシ,ハシ\n\
+                        橋,0,0,0,名詞,固有名詞,地域,一般,*,*,橋,ハシ,ハシ\n";
+        let mut config = TrainerConfig::from_readers(
+            Cursor::new(seed_csv),
+            Cursor::new("DEFAULT 0 1 0\n"),
+            Cursor::new("DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n"),
+            Cursor::new("UNIGRAM:%F[0]\n"),
+            Cursor::new("*\tUNK\n"),
+        )
+        .unwrap();
+
+        assert_eq!(config.surfaces(), ["橋", "箸", "橋"]);
         assert_eq!(
-            config.surface_features().get("한국").unwrap(),
-            "NNG,Korea,F,han-guk"
+            config.features(),
+            [
+                "名詞,一般,*,*,*,*,橋,ハシ,ハシ",
+                "名詞,一般,*,*,*,*,箸,ハシ,ハシ",
+                "名詞,固有名詞,地域,一般,*,*,橋,ハシ,ハシ",
+            ]
         );
         assert_eq!(
-            config.surface_features().get("中国").unwrap(),
-            "n,China,*,zhong1guo2"
+            config.get_features("橋").as_deref(),
+            Some("名詞,固有名詞,地域,一般,*,*,橋,ハシ,ハシ")
         );
+        assert_eq!(config.get_features("端"), None);
+
+        config.add_user_lexicon_entry("橋".to_string(), "名詞,サ変接続".to_string());
+        assert_eq!(config.get_features("橋").as_deref(), Some("名詞,サ変接続"));
     }
 
     #[test]

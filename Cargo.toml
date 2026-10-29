@@ -52,6 +52,7 @@ csv-core = "0.1.13"
 # loudly if the layout changes; review it before moving this pin.
 crawdad = "=0.4.1"
 daachorse = "5.0.0"
+hashbrown = "0.17.1"
 lindera = { version = "7.0.0", path = "lindera" }
 lindera-analysis = { version = "7.0.0", path = "lindera-analysis", default-features = false }
 lindera-binding = { version = "7.0.0", path = "lindera-binding" }

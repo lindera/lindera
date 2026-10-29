@@ -129,8 +129,8 @@ fn quoted_column(feature: &str, start: usize) -> (Cow<'_, str>, usize) {
     (column, (end + 1).min(bytes.len()))
 }
 
-/// Joins columns into a feature string, as MeCab's rewriter joins the
-/// columns it rewrites.
+/// Appends one column to a feature string, as MeCab's rewriter writes each
+/// column it rewrites; the caller puts a `,` between the columns.
 ///
 /// A column that contains `,` or `"` is quoted, with its quotes doubled, as
 /// MeCab's `escape_csv_element` does, so that [`split_feature`] reads it back
@@ -139,27 +139,16 @@ fn quoted_column(feature: &str, start: usize) -> (Cow<'_, str>, usize) {
 ///
 /// # Arguments
 ///
-/// * `columns` - The columns.
-///
-/// # Returns
-///
-/// The columns joined with `,`.
-pub(crate) fn join_feature<S: AsRef<str>>(columns: &[S]) -> String {
-    let mut feature = String::new();
-    for (index, column) in columns.iter().enumerate() {
-        if index > 0 {
-            feature.push(',');
-        }
-        let column = column.as_ref();
-        if column.contains([',', '"']) {
-            feature.push('"');
-            feature.push_str(&column.replace('"', "\"\""));
-            feature.push('"');
-        } else {
-            feature.push_str(column);
-        }
+/// * `feature` - The feature string to append to.
+/// * `column` - The column.
+pub(crate) fn push_column(feature: &mut String, column: &str) {
+    if column.contains([',', '"']) {
+        feature.push('"');
+        feature.push_str(&column.replace('"', "\"\""));
+        feature.push('"');
+    } else {
+        feature.push_str(column);
     }
-    feature
 }
 
 /// Returns a feature string of `*` columns, as many as `feature` has, for a
@@ -175,6 +164,28 @@ pub(crate) fn join_feature<S: AsRef<str>>(columns: &[S]) -> String {
 /// One `*` per column of `feature`, at least one, joined with `,`.
 pub(crate) fn wildcard_feature(feature: &str) -> String {
     vec!["*"; split_feature(feature).len().max(1)].join(",")
+}
+
+/// Joins columns into a feature string, each written by [`push_column`]: the
+/// reference that the tests of the rewriting compare with.
+///
+/// # Arguments
+///
+/// * `columns` - The columns.
+///
+/// # Returns
+///
+/// The columns joined with `,`.
+#[cfg(test)]
+pub(crate) fn join_feature<S: AsRef<str>>(columns: &[S]) -> String {
+    let mut feature = String::new();
+    for (index, column) in columns.iter().enumerate() {
+        if index > 0 {
+            feature.push(',');
+        }
+        push_column(&mut feature, column.as_ref());
+    }
+    feature
 }
 
 #[cfg(test)]

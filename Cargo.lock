@@ -1790,6 +1790,7 @@ dependencies = [
  "anyhow",
  "csv",
  "csv-core",
+ "hashbrown 0.17.1",
  "lindera-crf",
  "lindera-dictionary",
  "regex",
