@@ -244,18 +244,16 @@ cargo build --features=embed-ipadic
 <li>Builds that share the directory, such as <code>cargo build</code> alongside rust-analyzer with its own target directory, write each dictionary one at a time: a build that finds another build writing the same dictionary waits for it, and then uses the dictionary it left (<code>cargo build -vv</code> shows <code>lindera dictionary cache: waiting for another build</code>). The lock is an empty <code>&lt;dictionary&gt;.lock</code> file next to the dictionary, held while a build writes it. It works between builds on one machine, and on a network file system only as far as the file system supports file locks. Where the file cannot be locked, the build prints a warning and goes on without the lock, as builds before 7.0.0 did, so two such builds can still remove each other's files</li>
 <li>Builds with <code>DOCS_RS</code> set ignore this variable (see <code>DOCS_RS</code> below)</li>
 </ul>
-<h3 id="lindera_config_path"><a class="header" href="#lindera_config_path">LINDERA_CONFIG_PATH</a></h3>
-<p>The <code>LINDERA_CONFIG_PATH</code> environment variable specifies the path to a YAML configuration file for the tokenizer. This allows you to configure tokenizer behavior without modifying Rust code.</p>
-<pre><code class="language-shell">export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+<h3 id="lindera_config_file"><a class="header" href="#lindera_config_file">LINDERA_CONFIG_FILE</a></h3>
+<p>The <code>LINDERA_CONFIG_FILE</code> environment variable names a YAML configuration file for the tokenizer, which <code>TokenizerBuilder::new()</code> reads. This allows you to configure tokenizer behavior without modifying Rust code.</p>
+<pre><code class="language-shell">export LINDERA_CONFIG_FILE=./resources/config/lindera.yml
 </code></pre>
+<p><code>LINDERA_CONFIG_PATH</code>, the name of this variable up to v6, still works until v8.0.0, with a deprecation warning on standard error. When both are set, <code>LINDERA_CONFIG_FILE</code> is used.</p>
 <p>See the <a href="../lindera-analysis/configuration.html">Configuration</a> section for details on the configuration format.</p>
 <h3 id="docs_rs"><a class="header" href="#docs_rs">DOCS_RS</a></h3>
 <p>The <code>DOCS_RS</code> environment variable is automatically set by docs.rs when building documentation. When this variable is detected, Lindera creates dummy dictionary files instead of downloading actual dictionary data, allowing documentation to be built without network access or large file downloads.</p>
 <p>Such a build ignores <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>: the dummy dictionaries are built in the build script's output directory, never in the cache, so a later build without <code>DOCS_RS</code> does not embed them.</p>
 <p>This is primarily used internally by docs.rs and typically doesn't need to be set by users.</p>
-<h3 id="lindera_workdir"><a class="header" href="#lindera_workdir">LINDERA_WORKDIR</a></h3>
-<p>The <code>LINDERA_WORKDIR</code> environment variable is automatically set during the build process by the lindera-dictionary crate. It points to the directory containing the built dictionary data files and is used internally by dictionary crates to locate their data files.</p>
-<p>This variable is set automatically and should not be modified by users.</p>
 
                     </main>
 

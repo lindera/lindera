@@ -178,7 +178,7 @@
                     <main>
                         <h1 id="設定"><a class="header" href="#設定">設定</a></h1>
 <p>LinderaはYAML形式の設定ファイルを読み込むことができます。
-環境変数 <code>LINDERA_CONFIG_PATH</code> にファイルのパスを指定してください。Rustコードでトークナイザーの動作をコーディングすることなく、簡単に利用できます。</p>
+環境変数 <code>LINDERA_CONFIG_FILE</code> にファイルのパスを指定してください。Rustコードでトークナイザーの動作をコーディングすることなく、簡単に利用できます。</p>
 <pre><code class="language-yaml">segmenter:
   mode: "normal"
   dictionary: "embedded://ipadic"
@@ -262,7 +262,7 @@ token_filters:
 <tr><td><code>space_penalty</code></td><td>bool または object</td><td><em>(辞書同梱のルール、あれば)</em></td><td>左側空白ペナルティ（mecab-ko の <code>left-space-penalty-factor</code>）。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する。省略または <code>null</code> で辞書が <code>metadata.json</code> に同梱するルールを使用（ko-dic は mecab-ko-dic のルールを同梱するため ko-dic ではデフォルトでオン。他の同梱辞書はルールを持たない）、<code>false</code> でオフ、<code>true</code> で辞書のルールを要求（同梱しない辞書ではエラー）、オブジェクト <code>{"rules": [{"pos": [...], "cost": n}, ...]}</code> で明示的なルールを指定。<a href="../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照</td></tr>
 </tbody></table>
 </div>
-<pre><code class="language-shell">% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+<pre><code class="language-shell">% export LINDERA_CONFIG_FILE=./resources/config/lindera.yml
 </code></pre>
 <pre><pre class="playground"><code class="language-rust">use std::path::PathBuf;
 

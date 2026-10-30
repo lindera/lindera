@@ -178,7 +178,7 @@
                     <main>
                         <h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <p>Lindera is able to read YAML format configuration files.
-Specify the path to the following file in the environment variable <code>LINDERA_CONFIG_PATH</code>. You can use it easily without having to code the behavior of the tokenizer in Rust code.</p>
+Specify the path to the following file in the environment variable <code>LINDERA_CONFIG_FILE</code>. You can use it easily without having to code the behavior of the tokenizer in Rust code.</p>
 <pre><code class="language-yaml">segmenter:
   mode: "normal"
   dictionary: "embedded://ipadic"
@@ -262,7 +262,7 @@ token_filters:
 <tr><td><code>space_penalty</code></td><td>bool or object</td><td><em>(the dictionary's rules, if any)</em></td><td>Left-space penalty (mecab-ko's <code>left-space-penalty-factor</code>): a candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added. Omitted or <code>null</code> keeps the rules the dictionary ships in its <code>metadata.json</code> (ko-dic ships mecab-ko-dic's, so the penalty is on by default for ko-dic; the other bundled dictionaries ship none); <code>false</code> turns it off; <code>true</code> requires the dictionary's rules (an error when it ships none); an object <code>{"rules": [{"pos": [...], "cost": n}, ...]}</code> gives explicit rules. See <a href="../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a></td></tr>
 </tbody></table>
 </div>
-<pre><code class="language-shell">% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+<pre><code class="language-shell">% export LINDERA_CONFIG_FILE=./resources/config/lindera.yml
 </code></pre>
 <pre><pre class="playground"><code class="language-rust">use std::path::PathBuf;
 

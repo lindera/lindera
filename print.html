@@ -454,18 +454,16 @@ cargo build --features=embed-ipadic
 <li>Builds that share the directory, such as <code>cargo build</code> alongside rust-analyzer with its own target directory, write each dictionary one at a time: a build that finds another build writing the same dictionary waits for it, and then uses the dictionary it left (<code>cargo build -vv</code> shows <code>lindera dictionary cache: waiting for another build</code>). The lock is an empty <code>&lt;dictionary&gt;.lock</code> file next to the dictionary, held while a build writes it. It works between builds on one machine, and on a network file system only as far as the file system supports file locks. Where the file cannot be locked, the build prints a warning and goes on without the lock, as builds before 7.0.0 did, so two such builds can still remove each other's files</li>
 <li>Builds with <code>DOCS_RS</code> set ignore this variable (see <code>DOCS_RS</code> below)</li>
 </ul>
-<h3 id="lindera_config_path"><a class="header" href="#lindera_config_path">LINDERA_CONFIG_PATH</a></h3>
-<p>The <code>LINDERA_CONFIG_PATH</code> environment variable specifies the path to a YAML configuration file for the tokenizer. This allows you to configure tokenizer behavior without modifying Rust code.</p>
-<pre><code class="language-shell">export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+<h3 id="lindera_config_file"><a class="header" href="#lindera_config_file">LINDERA_CONFIG_FILE</a></h3>
+<p>The <code>LINDERA_CONFIG_FILE</code> environment variable names a YAML configuration file for the tokenizer, which <code>TokenizerBuilder::new()</code> reads. This allows you to configure tokenizer behavior without modifying Rust code.</p>
+<pre><code class="language-shell">export LINDERA_CONFIG_FILE=./resources/config/lindera.yml
 </code></pre>
+<p><code>LINDERA_CONFIG_PATH</code>, the name of this variable up to v6, still works until v8.0.0, with a deprecation warning on standard error. When both are set, <code>LINDERA_CONFIG_FILE</code> is used.</p>
 <p>See the <a href="getting_started/../lindera-analysis/configuration.html">Configuration</a> section for details on the configuration format.</p>
 <h3 id="docs_rs"><a class="header" href="#docs_rs">DOCS_RS</a></h3>
 <p>The <code>DOCS_RS</code> environment variable is automatically set by docs.rs when building documentation. When this variable is detected, Lindera creates dummy dictionary files instead of downloading actual dictionary data, allowing documentation to be built without network access or large file downloads.</p>
 <p>Such a build ignores <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>: the dummy dictionaries are built in the build script's output directory, never in the cache, so a later build without <code>DOCS_RS</code> does not embed them.</p>
 <p>This is primarily used internally by docs.rs and typically doesn't need to be set by users.</p>
-<h3 id="lindera_workdir"><a class="header" href="#lindera_workdir">LINDERA_WORKDIR</a></h3>
-<p>The <code>LINDERA_WORKDIR</code> environment variable is automatically set during the build process by the lindera-dictionary crate. It points to the directory containing the built dictionary data files and is used internally by dictionary crates to locate their data files.</p>
-<p>This variable is set automatically and should not be modified by users.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="quick-start"><a class="header" href="#quick-start">Quick Start</a></h1>
 <p>This example covers the basic usage of Lindera.</p>
 <p>It will:</p>
@@ -1514,7 +1512,7 @@ let content = std::fs::read_to_string("config.yml")
 <ul>
 <li><strong>Character filters</strong> that transform input text before segmentation, with automatic byte-offset correction back to the original text</li>
 <li><strong>Token filters</strong> that transform, merge, filter, or reorder the tokens produced by the segmenter</li>
-<li><strong><code>Tokenizer</code> / <code>TokenizerBuilder</code></strong> to assemble a full analysis pipeline, either in Rust code or from a YAML file (<code>LINDERA_CONFIG_PATH</code>)</li>
+<li><strong><code>Tokenizer</code> / <code>TokenizerBuilder</code></strong> to assemble a full analysis pipeline, either in Rust code or from a YAML file (<code>LINDERA_CONFIG_FILE</code>)</li>
 <li>Built-in filters covering Japanese, Korean, and general-purpose text normalization</li>
 </ul>
 <h2 id="dependency"><a class="header" href="#dependency">Dependency</a></h2>
@@ -1546,7 +1544,7 @@ lindera-analysis = "7"
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <p>Lindera is able to read YAML format configuration files.
-Specify the path to the following file in the environment variable <code>LINDERA_CONFIG_PATH</code>. You can use it easily without having to code the behavior of the tokenizer in Rust code.</p>
+Specify the path to the following file in the environment variable <code>LINDERA_CONFIG_FILE</code>. You can use it easily without having to code the behavior of the tokenizer in Rust code.</p>
 <pre><code class="language-yaml">segmenter:
   mode: "normal"
   dictionary: "embedded://ipadic"
@@ -1630,7 +1628,7 @@ token_filters:
 <tr><td><code>space_penalty</code></td><td>bool or object</td><td><em>(the dictionary's rules, if any)</em></td><td>Left-space penalty (mecab-ko's <code>left-space-penalty-factor</code>): a candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added. Omitted or <code>null</code> keeps the rules the dictionary ships in its <code>metadata.json</code> (ko-dic ships mecab-ko-dic's, so the penalty is on by default for ko-dic; the other bundled dictionaries ship none); <code>false</code> turns it off; <code>true</code> requires the dictionary's rules (an error when it ships none); an object <code>{"rules": [{"pos": [...], "cost": n}, ...]}</code> gives explicit rules. See <a href="lindera-analysis/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a></td></tr>
 </tbody></table>
 </div>
-<pre><code class="language-shell">% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+<pre><code class="language-shell">% export LINDERA_CONFIG_FILE=./resources/config/lindera.yml
 </code></pre>
 <pre><pre class="playground"><code class="language-rust">use std::path::PathBuf;
 
@@ -2231,7 +2229,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <p>A trait for filters that post-process the tokens produced by the segmenter. Each implementation provides a <code>name()</code> and an <code>apply(&amp;self, tokens: &amp;mut Vec&lt;Token&lt;'_&gt;&gt;) -&gt; LinderaResult&lt;()&gt;</code> method that modifies, merges, reorders, or removes tokens in place. <code>BoxTokenFilter</code> wraps any <code>TokenFilter</code> implementation as a boxed, cloneable trait object, and <code>TokenFilterLoader</code> builds one from a <code>kind</code> string plus a <code>serde_json::Value</code> of arguments, mirroring <code>CharacterFilterLoader</code>.</p>
 <h3 id="tokenizer--tokenizerbuilder"><a class="header" href="#tokenizer--tokenizerbuilder">Tokenizer / TokenizerBuilder</a></h3>
 <p><code>Tokenizer</code> composes character filters, a <a href="lindera-analysis/../lindera/segmenter.html"><code>lindera::segmenter::Segmenter</code></a>, and token filters into a single analysis pipeline. Calling <code>tokenize</code> runs the character filters over the input text, segments the filtered text, applies the token filters to the resulting tokens, and finally corrects each token's byte offsets back to the original text via the recorded <code>OffsetMapping</code>s.</p>
-<p><code>TokenizerBuilder</code> assembles a <code>Tokenizer</code> from a <code>TokenizerConfig</code> (a <code>serde_json::Value</code>), which can be constructed programmatically, loaded from a YAML file (via <code>TokenizerBuilder::from_file</code>, or automatically from the <code>LINDERA_CONFIG_PATH</code> environment variable via <code>TokenizerBuilder::new</code>), or built up incrementally with <code>set_segmenter_mode</code>, <code>set_segmenter_dictionary</code>, <code>append_character_filter</code>, and <code>append_token_filter</code>. See <a href="lindera-analysis/./configuration.html">Configuration</a> for the YAML file format and <a href="lindera-analysis/./filters.html">Filters</a> for the full filter reference.</p>
+<p><code>TokenizerBuilder</code> assembles a <code>Tokenizer</code> from a <code>TokenizerConfig</code> (a <code>serde_json::Value</code>), which can be constructed programmatically, loaded from a YAML file (via <code>TokenizerBuilder::from_file</code>, or automatically from the <code>LINDERA_CONFIG_FILE</code> environment variable via <code>TokenizerBuilder::new</code>), or built up incrementally with <code>set_segmenter_mode</code>, <code>set_segmenter_dictionary</code>, <code>append_character_filter</code>, and <code>append_token_filter</code>. See <a href="lindera-analysis/./configuration.html">Configuration</a> for the YAML file format and <a href="lindera-analysis/./filters.html">Filters</a> for the full filter reference.</p>
 <p><code>TokenizerBuilder::build</code> loads the dictionaries the configuration names. <code>TokenizerBuilder::build_with_dictionaries</code> (and <code>Tokenizer::from_config_with_dictionaries</code>) takes already-loaded dictionaries instead, such as ones loaded from bytes, and applies every other setting of the configuration to them, filters included; see <a href="lindera-analysis/../lindera/segmenter.html#building-from-config">Building from Config</a> for how the given dictionaries replace the configured ones. The WASM binding's <code>TokenizerBuilder</code> builds its tokenizers this way, with the dictionaries set by <code>setDictionaryInstance()</code> and <code>setUserDictionaryInstance()</code>.</p>
 <h3 id="analysisworker"><a class="header" href="#analysisworker">AnalysisWorker</a></h3>
 <p><code>AnalysisWorker</code> (created with <code>Tokenizer::new_worker</code> or <code>Tokenizer::into_worker</code>) is a reusable session over the full analysis chain. It owns every per-call buffer — the Viterbi lattice and backtrace scratch (via <code>SegmentWorker</code>), the normalized-text buffer the character filters operate on, and the offset-mapping scratch — so repeated <code>tokenize</code> calls avoid the per-call allocations <code>Tokenizer::tokenize</code> pays. When character filters are configured, token surfaces borrow the worker's buffer instead of being copied into per-token <code>String</code>s. Returned tokens borrow the worker and must be consumed before the next call; for multi-threaded use, create one worker per thread (or guard one with a <code>Mutex</code>, as <code>lindera-binding</code> does). See the <a href="lindera-analysis/../lindera/segmenter.html">Segmenter</a> page for the underlying <code>SegmentWorker</code> and its automatic memory-shrink policy.</p>
@@ -10371,7 +10369,9 @@ the new <code>analysis</code> feature, on by default — the analysis chain of
 <code>lindera-analysis</code> as <code>lindera::analysis</code>. One dependency line gives you the
 <code>Segmenter</code>, the <code>Tokenizer</code>, and every filter. The release also renames
 <code>lindera-binding-core</code> to <code>lindera-binding</code> and removes the deprecated
-<code>LINDERA_DICTIONARIES_PATH</code> fallback, as announced in v5.0.0, corrects
+<code>LINDERA_DICTIONARIES_PATH</code> fallback, as announced in v5.0.0, renames
+<code>LINDERA_CONFIG_PATH</code> to <code>LINDERA_CONFIG_FILE</code>, keeping the old name with a
+deprecation warning until v8.0.0, corrects
 the IPADIC schema, which had the <code>conjugation_type</code> and <code>conjugation_form</code>
 names swapped, keeps dictionary entries whose surface is whitespace or
 starts or ends with it, skips whitespace in the lattice as MeCab does
@@ -10408,6 +10408,8 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>The implicit features <code>lindera-ipadic</code>, <code>lindera-ipadic-neologd</code>, <code>lindera-unidic</code>, <code>lindera-sudachidict</code>, <code>lindera-ko-dic</code>, <code>lindera-cc-cedict</code>, and <code>lindera-jieba</code> are gone</strong></td><td>Anyone enabling a dictionary crate by name in <code>features = [...]</code></td><td>Use the <code>embed-*</code> features instead</td></tr>
 <tr><td><strong><code>lindera-binding-core</code> is renamed to <code>lindera-binding</code></strong></td><td>Rust users of the binding helper crate</td><td>Depend on <code>lindera-binding</code> and replace <code>lindera_binding_core::</code> with <code>lindera_binding::</code></td></tr>
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> is removed</strong></td><td>Anyone still setting the deprecated build-cache variable</td><td>Set <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>; the old name is now ignored</td></tr>
+<tr><td><strong><code>LINDERA_CONFIG_PATH</code> is renamed to <code>LINDERA_CONFIG_FILE</code></strong></td><td>Anyone who sets <code>LINDERA_CONFIG_PATH</code> for <code>TokenizerBuilder::new()</code>, <code>lindera tokenize</code> or a language binding</td><td>Set <code>LINDERA_CONFIG_FILE</code>; the old name works with a deprecation warning until v8.0.0</td></tr>
+<tr><td><code>LINDERA_WORKDIR</code> is renamed to <code>LINDERA_WORK_DIR</code></td><td>Only a dictionary crate whose own build script sets <code>LINDERA_WORKDIR</code> for <code>embedded_dictionary!</code></td><td>Set <code>LINDERA_WORK_DIR</code>; a crate that uses <code>build_embedded_dictionary</code> needs nothing</td></tr>
 <tr><td><strong>Rust 1.89 or newer is required</strong></td><td>Anyone who builds Lindera with Rust 1.88, including a source build of the Python or Ruby package</td><td>Update the toolchain (<code>rustup update stable</code>)</td></tr>
 <tr><td><strong>Dictionary format version 3: dictionary directories built or downloaded with v6.2.0 or earlier no longer load</strong></td><td>Anyone who loads a dictionary from files (<code>load_dictionary</code> with a path, <code>lindera tokenize --dict &lt;dir&gt;</code>, the bindings' path and byte loaders, dictionaries saved in the WASM binding's OPFS storage); not the embedded dictionaries or user dictionaries</td><td>Rebuild with the 7.0.0 <code>lindera build</code>, or download again with the 7.0.0 <code>lindera download</code> or from the 7.0.0 release assets</td></tr>
 <tr><td><strong>IPADIC and IPADIC-NEologd: <code>conjugation_type</code> and <code>conjugation_form</code> now name the right columns</strong></td><td>Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (<code>Token::get</code>, <code>Token::as_value</code>, <code>lindera tokenize -o json</code>, binding schemas)</td><td>Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier</td></tr>
@@ -10690,6 +10692,51 @@ export LINDERA_DICTIONARIES_PATH=/path/to/cache
 # v7
 export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 </code></pre>
+<h2 id="lindera_config_path-renamed-to-lindera_config_file"><a class="header" href="#lindera_config_path-renamed-to-lindera_config_file">LINDERA_CONFIG_PATH renamed to LINDERA_CONFIG_FILE</a></h2>
+<p><code>TokenizerBuilder::new()</code>, which <code>lindera tokenize</code> and every language
+binding call, reads the YAML configuration file named by
+<code>LINDERA_CONFIG_FILE</code>, so that the environment variables name a file with
+<code>_FILE</code> and a directory with <code>_DIR</code>
+(<a href="https://github.com/lindera/lindera/issues/1304">#1304</a>). The old name,
+<code>LINDERA_CONFIG_PATH</code>, keeps working until v8.0.0:</p>
+<ul>
+<li>
+<p>With only <code>LINDERA_CONFIG_PATH</code> set, the file it names is read, and a
+warning goes to standard error, once per process:</p>
+<pre><code class="language-text">Warning: LINDERA_CONFIG_PATH is deprecated and will be removed in v8.0.0; set LINDERA_CONFIG_FILE instead
+</code></pre>
+</li>
+<li>
+<p>With both set, the file of <code>LINDERA_CONFIG_FILE</code> is read, and the warning
+says that <code>LINDERA_CONFIG_PATH</code> is ignored.</p>
+</li>
+</ul>
+<p>The warning is written to standard error directly, not through the <code>log</code>
+crate, so that the users of the language bindings, which install no logger,
+see it too. Rename the variable wherever it is set (shell profiles, CI
+configuration, container images):</p>
+<pre><code class="language-shell"># v6
+export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+
+# v7
+export LINDERA_CONFIG_FILE=./resources/config/lindera.yml
+</code></pre>
+<h2 id="lindera_workdir-renamed-to-lindera_work_dir"><a class="header" href="#lindera_workdir-renamed-to-lindera_work_dir">LINDERA_WORKDIR renamed to LINDERA_WORK_DIR</a></h2>
+<p>The build script of a dictionary crate passes the directory of the
+dictionary it built to the compiler as <code>LINDERA_WORK_DIR</code>, and
+<code>embedded_dictionary!</code> embeds the dictionary from there; up to v6 the
+variable was <code>LINDERA_WORKDIR</code>
+(<a href="https://github.com/lindera/lindera/issues/1304">#1304</a>). Both the code that
+sets it (<code>build_embedded_dictionary</code>) and the macro are in
+<code>lindera-dictionary</code>, so a dictionary crate that uses them, as the bundled
+ones do, needs no change. Only a crate whose own build script sets
+<code>LINDERA_WORKDIR</code> for <code>embedded_dictionary!</code> has to set <code>LINDERA_WORK_DIR</code>
+instead; otherwise it fails to compile:</p>
+<pre><code class="language-text">error: environment variable `LINDERA_WORK_DIR` not defined at compile time
+</code></pre>
+<p>Users do not set this variable, and the environment variables of the
+<a href="./getting_started/installation.html#environment-variables">installation page</a>
+no longer list it.</p>
 <h2 id="rust-189-or-newer-is-required"><a class="header" href="#rust-189-or-newer-is-required">Rust 1.89 or newer is required</a></h2>
 <p>v7.0.0 declares <code>rust-version = "1.89"</code>; v6.2.0 declared 1.88. The build
 scripts of the dictionary crates now lock the entry of
@@ -12316,7 +12363,10 @@ and, in PHP, Node.js and WASM, integer arguments outside their range (see
 and the mode, which they take as a <code>Mode</code> instead of a name, and the
 Node.js TypeScript type <code>JsPenalty</code>, now <code>Penalty</code> (see
 <a href="migration_v6_to_v7.html#bindings-a-mode-is-a-mode">Bindings: a mode is a <code>Mode</code></a>).
-The restructuring is internal to the Rust crates. A dictionary directory
+The restructuring is internal to the Rust crates. <code>LINDERA_CONFIG_PATH</code>
+works with a deprecation warning until v8.0.0 (see
+<a href="migration_v6_to_v7.html#lindera_config_path-renamed-to-lindera_config_file">LINDERA_CONFIG_PATH renamed to LINDERA_CONFIG_FILE</a>).
+A dictionary directory
 built or downloaded with v6.2.0 or earlier has to be rebuilt or downloaded
 again (see
 <a href="migration_v6_to_v7.html#dictionary-directories-must-be-rebuilt">Dictionary directories must be rebuilt</a>);
@@ -12432,6 +12482,14 @@ to <code>CoreTokenizer::from_segmenter</code> and
 <li>Use Rust 1.89 or newer.</li>
 <li>Rename <code>LINDERA_DICTIONARIES_PATH</code> to <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>
 in shell profiles, CI configuration, and container images.</li>
+<li>If the build script of your own dictionary crate sets <code>LINDERA_WORKDIR</code>
+for <code>embedded_dictionary!</code>, set <code>LINDERA_WORK_DIR</code> instead.</li>
+</ul>
+<p>Everyone who sets <code>LINDERA_CONFIG_PATH</code>:</p>
+<ul>
+<li>Rename it to <code>LINDERA_CONFIG_FILE</code> in shell profiles, CI configuration,
+and container images. The old name works with a deprecation warning
+until v8.0.0.</li>
 </ul>
 <p>Everyone who loads a dictionary from files:</p>
 <ul>

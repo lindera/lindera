@@ -244,18 +244,16 @@ cargo build --features=embed-ipadic
 <li>このディレクトリを共有するビルド（たとえば <code>cargo build</code> と、別のターゲットディレクトリを使う rust-analyzer）は、辞書を 1 つずつ書き込みます。同じ辞書を別のビルドが書き込んでいれば、それが終わるのを待ち、そのビルドが残した辞書を使います（<code>cargo build -vv</code> に <code>lindera dictionary cache: waiting for another build</code> と表示されます）。ロックは辞書の隣にある空の <code>&lt;辞書&gt;.lock</code> ファイルで、ビルドが辞書を書き込む間だけ保持します。ロックが効くのは 1 台のマシンの中のビルド同士で、ネットワークファイルシステムでは、そのファイルシステムがファイルロックに対応する範囲に限られます。ファイルをロックできないときは、ビルドは警告を出し、7.0.0 より前と同じくロックなしで続けるので、そうしたビルド同士は互いのファイルを消すことがあります</li>
 <li><code>DOCS_RS</code> を設定したビルドは、この変数を無視します（後述の <code>DOCS_RS</code> を参照）</li>
 </ul>
-<h3 id="lindera_config_path"><a class="header" href="#lindera_config_path">LINDERA_CONFIG_PATH</a></h3>
-<p><code>LINDERA_CONFIG_PATH</code> 環境変数は、トークナイザーの設定ファイル（YAML形式）へのパスを指定します。これにより、Rustコードを変更せずにトークナイザーの動作を設定できます。</p>
-<pre><code class="language-shell">export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+<h3 id="lindera_config_file"><a class="header" href="#lindera_config_file">LINDERA_CONFIG_FILE</a></h3>
+<p><code>LINDERA_CONFIG_FILE</code> 環境変数は、<code>TokenizerBuilder::new()</code> が読むトークナイザーの設定ファイル（YAML形式）を指定します。これにより、Rustコードを変更せずにトークナイザーの動作を設定できます。</p>
+<pre><code class="language-shell">export LINDERA_CONFIG_FILE=./resources/config/lindera.yml
 </code></pre>
+<p>v6 までの名前 <code>LINDERA_CONFIG_PATH</code> も v8.0.0 までは使えますが、標準エラー出力に非推奨の警告が出ます。両方を設定すると <code>LINDERA_CONFIG_FILE</code> が使われます。</p>
 <p>設定フォーマットの詳細は <a href="../lindera-analysis/configuration.html">設定</a> セクションを参照してください。</p>
 <h3 id="docs_rs"><a class="header" href="#docs_rs">DOCS_RS</a></h3>
 <p><code>DOCS_RS</code> 環境変数は、docs.rsでドキュメントをビルドする際に自動的に設定されます。この変数が検出されると、Linderaは実際の辞書データをダウンロードする代わりにダミーの辞書ファイルを作成します。これにより、ネットワークアクセスや大容量ファイルのダウンロードなしでドキュメントをビルドできます。</p>
 <p>このビルドは <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を無視します。ダミーの辞書は build script の出力ディレクトリに作られ、キャッシュには入らないので、後で <code>DOCS_RS</code> なしにビルドしても埋め込まれません。</p>
 <p>これは主にdocs.rs内部で使用されるものであり、通常ユーザーが設定する必要はありません。</p>
-<h3 id="lindera_workdir"><a class="header" href="#lindera_workdir">LINDERA_WORKDIR</a></h3>
-<p><code>LINDERA_WORKDIR</code> 環境変数は、ビルドプロセス中に lindera-dictionary クレートによって自動的に設定されます。これはビルドされた辞書データファイルを含むディレクトリを指し、辞書クレートがデータファイルの場所を特定するために内部で使用されます。</p>
-<p>この変数は自動的に設定されるため、ユーザーが変更する必要はありません。</p>
 
                     </main>
 
