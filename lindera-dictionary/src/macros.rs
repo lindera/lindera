@@ -54,7 +54,7 @@ macro_rules! include_bytes_aligned {
 /// Generates the embedded-dictionary loader for a dictionary crate.
 ///
 /// The dictionary data is baked into the binary with `include_bytes!`,
-/// reading from the `LINDERA_WORKDIR` directory populated by the crate's
+/// reading from the `LINDERA_WORK_DIR` directory populated by the crate's
 /// build script.
 ///
 /// Each file except `matrix.mtx` is returned from a private `fn` rather than
@@ -67,7 +67,7 @@ macro_rules! include_bytes_aligned {
 /// metadata in release builds. `matrix.mtx` needs a const-evaluated aligned
 /// wrapper (see [`include_bytes_aligned!`]), so it stays in the metadata.
 ///
-/// * `$dir` — the dictionary subdirectory inside `LINDERA_WORKDIR`
+/// * `$dir` — the dictionary subdirectory inside `LINDERA_WORK_DIR`
 ///   (e.g. `"/lindera-ipadic"`).
 /// * `$loader` — the public loader struct name (e.g. `EmbeddedIPADICLoader`).
 ///
@@ -81,47 +81,47 @@ macro_rules! embedded_dictionary {
     ($dir:literal, $loader:ident) => {
         /// Returns the dictionary's char_def.bin bytes.
         fn char_definition_data() -> &'static [u8] {
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/char_def.bin"))
+            include_bytes!(concat!(env!("LINDERA_WORK_DIR"), $dir, "/char_def.bin"))
         }
 
         // Aligned so `ConnectionCostMatrix::load` can view the payload as
         // `[i16]` in place instead of decoding it into an owned buffer.
         static CONNECTION_DATA: &[u8] =
-            $crate::include_bytes_aligned!(concat!(env!("LINDERA_WORKDIR"), $dir, "/matrix.mtx"));
+            $crate::include_bytes_aligned!(concat!(env!("LINDERA_WORK_DIR"), $dir, "/matrix.mtx"));
 
         /// Returns the dictionary's dict.trie bytes.
         fn trie_data() -> &'static [u8] {
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.trie"))
+            include_bytes!(concat!(env!("LINDERA_WORK_DIR"), $dir, "/dict.trie"))
         }
 
         /// Returns the dictionary's dict.valsidx bytes.
         fn vals_idx_data() -> &'static [u8] {
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.valsidx"))
+            include_bytes!(concat!(env!("LINDERA_WORK_DIR"), $dir, "/dict.valsidx"))
         }
 
         /// Returns the dictionary's dict.vals bytes.
         fn vals_data() -> &'static [u8] {
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.vals"))
+            include_bytes!(concat!(env!("LINDERA_WORK_DIR"), $dir, "/dict.vals"))
         }
 
         /// Returns the dictionary's unk.bin bytes.
         fn unknown_data() -> &'static [u8] {
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/unk.bin"))
+            include_bytes!(concat!(env!("LINDERA_WORK_DIR"), $dir, "/unk.bin"))
         }
 
         /// Returns the dictionary's dict.wordsidx bytes.
         fn words_idx_data() -> &'static [u8] {
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.wordsidx"))
+            include_bytes!(concat!(env!("LINDERA_WORK_DIR"), $dir, "/dict.wordsidx"))
         }
 
         /// Returns the dictionary's dict.words bytes.
         fn words_data() -> &'static [u8] {
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.words"))
+            include_bytes!(concat!(env!("LINDERA_WORK_DIR"), $dir, "/dict.words"))
         }
 
         /// Returns the dictionary's metadata.json bytes.
         fn metadata_data() -> &'static [u8] {
-            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/metadata.json"))
+            include_bytes!(concat!(env!("LINDERA_WORK_DIR"), $dir, "/metadata.json"))
         }
 
         /// Loads the embedded dictionary from data baked into the binary.

@@ -6,7 +6,7 @@ Lindera Analysis layers a Lucene-style text analysis chain on top of the morphol
 
 - **Character filters** that transform input text before segmentation, with automatic byte-offset correction back to the original text
 - **Token filters** that transform, merge, filter, or reorder the tokens produced by the segmenter
-- **`Tokenizer` / `TokenizerBuilder`** to assemble a full analysis pipeline, either in Rust code or from a YAML file (`LINDERA_CONFIG_PATH`)
+- **`Tokenizer` / `TokenizerBuilder`** to assemble a full analysis pipeline, either in Rust code or from a YAML file (`LINDERA_CONFIG_FILE`)
 - Built-in filters covering Japanese, Korean, and general-purpose text normalization
 
 ## Dependency

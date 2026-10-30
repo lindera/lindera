@@ -6,7 +6,9 @@ the new `analysis` feature, on by default — the analysis chain of
 `lindera-analysis` as `lindera::analysis`. One dependency line gives you the
 `Segmenter`, the `Tokenizer`, and every filter. The release also renames
 `lindera-binding-core` to `lindera-binding` and removes the deprecated
-`LINDERA_DICTIONARIES_PATH` fallback, as announced in v5.0.0, corrects
+`LINDERA_DICTIONARIES_PATH` fallback, as announced in v5.0.0, renames
+`LINDERA_CONFIG_PATH` to `LINDERA_CONFIG_FILE`, keeping the old name with a
+deprecation warning until v8.0.0, corrects
 the IPADIC schema, which had the `conjugation_type` and `conjugation_form`
 names swapped, keeps dictionary entries whose surface is whitespace or
 starts or ends with it, skips whitespace in the lattice as MeCab does
@@ -46,6 +48,8 @@ This guide lists every breaking change and the one-line fixes for each.
 | **The implicit features `lindera-ipadic`, `lindera-ipadic-neologd`, `lindera-unidic`, `lindera-sudachidict`, `lindera-ko-dic`, `lindera-cc-cedict`, and `lindera-jieba` are gone** | Anyone enabling a dictionary crate by name in `features = [...]` | Use the `embed-*` features instead |
 | **`lindera-binding-core` is renamed to `lindera-binding`** | Rust users of the binding helper crate | Depend on `lindera-binding` and replace `lindera_binding_core::` with `lindera_binding::` |
 | **`LINDERA_DICTIONARIES_PATH` is removed** | Anyone still setting the deprecated build-cache variable | Set `LINDERA_BUILD_DICTIONARY_CACHE_DIR`; the old name is now ignored |
+| **`LINDERA_CONFIG_PATH` is renamed to `LINDERA_CONFIG_FILE`** | Anyone who sets `LINDERA_CONFIG_PATH` for `TokenizerBuilder::new()`, `lindera tokenize` or a language binding | Set `LINDERA_CONFIG_FILE`; the old name works with a deprecation warning until v8.0.0 |
+| `LINDERA_WORKDIR` is renamed to `LINDERA_WORK_DIR` | Only a dictionary crate whose own build script sets `LINDERA_WORKDIR` for `embedded_dictionary!` | Set `LINDERA_WORK_DIR`; a crate that uses `build_embedded_dictionary` needs nothing |
 | **Rust 1.89 or newer is required** | Anyone who builds Lindera with Rust 1.88, including a source build of the Python or Ruby package | Update the toolchain (`rustup update stable`) |
 | **Dictionary format version 3: dictionary directories built or downloaded with v6.2.0 or earlier no longer load** | Anyone who loads a dictionary from files (`load_dictionary` with a path, `lindera tokenize --dict <dir>`, the bindings' path and byte loaders, dictionaries saved in the WASM binding's OPFS storage); not the embedded dictionaries or user dictionaries | Rebuild with the 7.0.0 `lindera build`, or download again with the 7.0.0 `lindera download` or from the 7.0.0 release assets |
 | **IPADIC and IPADIC-NEologd: `conjugation_type` and `conjugation_form` now name the right columns** | Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (`Token::get`, `Token::as_value`, `lindera tokenize -o json`, binding schemas) | Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier |
@@ -366,6 +370,59 @@ export LINDERA_DICTIONARIES_PATH=/path/to/cache
 # v7
 export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 ```
+
+## LINDERA_CONFIG_PATH renamed to LINDERA_CONFIG_FILE
+
+`TokenizerBuilder::new()`, which `lindera tokenize` and every language
+binding call, reads the YAML configuration file named by
+`LINDERA_CONFIG_FILE`, so that the environment variables name a file with
+`_FILE` and a directory with `_DIR`
+([#1304](https://github.com/lindera/lindera/issues/1304)). The old name,
+`LINDERA_CONFIG_PATH`, keeps working until v8.0.0:
+
+- With only `LINDERA_CONFIG_PATH` set, the file it names is read, and a
+  warning goes to standard error, once per process:
+
+  ```text
+  Warning: LINDERA_CONFIG_PATH is deprecated and will be removed in v8.0.0; set LINDERA_CONFIG_FILE instead
+  ```
+
+- With both set, the file of `LINDERA_CONFIG_FILE` is read, and the warning
+  says that `LINDERA_CONFIG_PATH` is ignored.
+
+The warning is written to standard error directly, not through the `log`
+crate, so that the users of the language bindings, which install no logger,
+see it too. Rename the variable wherever it is set (shell profiles, CI
+configuration, container images):
+
+```shell
+# v6
+export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+
+# v7
+export LINDERA_CONFIG_FILE=./resources/config/lindera.yml
+```
+
+## LINDERA_WORKDIR renamed to LINDERA_WORK_DIR
+
+The build script of a dictionary crate passes the directory of the
+dictionary it built to the compiler as `LINDERA_WORK_DIR`, and
+`embedded_dictionary!` embeds the dictionary from there; up to v6 the
+variable was `LINDERA_WORKDIR`
+([#1304](https://github.com/lindera/lindera/issues/1304)). Both the code that
+sets it (`build_embedded_dictionary`) and the macro are in
+`lindera-dictionary`, so a dictionary crate that uses them, as the bundled
+ones do, needs no change. Only a crate whose own build script sets
+`LINDERA_WORKDIR` for `embedded_dictionary!` has to set `LINDERA_WORK_DIR`
+instead; otherwise it fails to compile:
+
+```text
+error: environment variable `LINDERA_WORK_DIR` not defined at compile time
+```
+
+Users do not set this variable, and the environment variables of the
+[installation page](./getting_started/installation.md#environment-variables)
+no longer list it.
 
 ## Rust 1.89 or newer is required
 
@@ -2165,7 +2222,10 @@ let surface_features: HashMap<&str, &str> = config
   and the mode, which they take as a `Mode` instead of a name, and the
   Node.js TypeScript type `JsPenalty`, now `Penalty` (see
   [Bindings: a mode is a `Mode`](#bindings-a-mode-is-a-mode)).
-  The restructuring is internal to the Rust crates. A dictionary directory
+  The restructuring is internal to the Rust crates. `LINDERA_CONFIG_PATH`
+  works with a deprecation warning until v8.0.0 (see
+  [LINDERA_CONFIG_PATH renamed to LINDERA_CONFIG_FILE](#lindera_config_path-renamed-to-lindera_config_file)).
+  A dictionary directory
   built or downloaded with v6.2.0 or earlier has to be rebuilt or downloaded
   again (see
   [Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt));
@@ -2282,6 +2342,14 @@ Build environments:
 - Use Rust 1.89 or newer.
 - Rename `LINDERA_DICTIONARIES_PATH` to `LINDERA_BUILD_DICTIONARY_CACHE_DIR`
   in shell profiles, CI configuration, and container images.
+- If the build script of your own dictionary crate sets `LINDERA_WORKDIR`
+  for `embedded_dictionary!`, set `LINDERA_WORK_DIR` instead.
+
+Everyone who sets `LINDERA_CONFIG_PATH`:
+
+- Rename it to `LINDERA_CONFIG_FILE` in shell profiles, CI configuration,
+  and container images. The old name works with a deprecation warning
+  until v8.0.0.
 
 Everyone who loads a dictionary from files:
 

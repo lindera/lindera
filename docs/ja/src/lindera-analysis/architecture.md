@@ -56,7 +56,7 @@ Segmenterが生成したトークンを後処理するフィルタのtraitです
 
 `Tokenizer`は、文字フィルタ、[`lindera::segmenter::Segmenter`](../lindera/segmenter.md)、トークンフィルタを1つの解析パイプラインとして組み合わせます。`tokenize`を呼び出すと、入力テキストに文字フィルタを適用し、フィルタ後のテキストをセグメンテーションし、得られたトークンにトークンフィルタを適用したうえで、記録済みの`OffsetMapping`を使って各トークンのバイトオフセットを元のテキストに対する値へ補正します。
 
-`TokenizerBuilder`は`TokenizerConfig`（`serde_json::Value`）から`Tokenizer`を組み立てます。この設定はプログラムから直接構築することも、YAMLファイルから読み込むこと（`TokenizerBuilder::from_file`、または環境変数`LINDERA_CONFIG_PATH`経由で自動的に読み込む`TokenizerBuilder::new`）も、`set_segmenter_mode`・`set_segmenter_dictionary`・`append_character_filter`・`append_token_filter`で段階的に組み立てることもできます。YAMLファイルの形式は[設定](./configuration.md)を、フィルタの完全なリファレンスは[フィルタ](./filters.md)を参照してください。
+`TokenizerBuilder`は`TokenizerConfig`（`serde_json::Value`）から`Tokenizer`を組み立てます。この設定はプログラムから直接構築することも、YAMLファイルから読み込むこと（`TokenizerBuilder::from_file`、または環境変数`LINDERA_CONFIG_FILE`経由で自動的に読み込む`TokenizerBuilder::new`）も、`set_segmenter_mode`・`set_segmenter_dictionary`・`append_character_filter`・`append_token_filter`で段階的に組み立てることもできます。YAMLファイルの形式は[設定](./configuration.md)を、フィルタの完全なリファレンスは[フィルタ](./filters.md)を参照してください。
 
 `TokenizerBuilder::build`は、設定が指す辞書を読み込みます。`TokenizerBuilder::build_with_dictionaries`（と`Tokenizer::from_config_with_dictionaries`）は、代わりにバイト列から読み込んだ辞書などの読み込み済みの辞書を受け取り、フィルタを含む設定のほかの項目をすべてその辞書に適用します。渡した辞書が設定の辞書をどう置き換えるかは[Config からの構築](../lindera/segmenter.md#config-からの構築)を参照してください。WASMバインディングの`TokenizerBuilder`は、`setDictionaryInstance()`と`setUserDictionaryInstance()`で設定した辞書を渡して、この方法でトークナイザーをビルドします。
 

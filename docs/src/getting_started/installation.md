@@ -82,13 +82,15 @@ Notes:
 - Builds that share the directory, such as `cargo build` alongside rust-analyzer with its own target directory, write each dictionary one at a time: a build that finds another build writing the same dictionary waits for it, and then uses the dictionary it left (`cargo build -vv` shows `lindera dictionary cache: waiting for another build`). The lock is an empty `<dictionary>.lock` file next to the dictionary, held while a build writes it. It works between builds on one machine, and on a network file system only as far as the file system supports file locks. Where the file cannot be locked, the build prints a warning and goes on without the lock, as builds before 7.0.0 did, so two such builds can still remove each other's files
 - Builds with `DOCS_RS` set ignore this variable (see `DOCS_RS` below)
 
-### LINDERA_CONFIG_PATH
+### LINDERA_CONFIG_FILE
 
-The `LINDERA_CONFIG_PATH` environment variable specifies the path to a YAML configuration file for the tokenizer. This allows you to configure tokenizer behavior without modifying Rust code.
+The `LINDERA_CONFIG_FILE` environment variable names a YAML configuration file for the tokenizer, which `TokenizerBuilder::new()` reads. This allows you to configure tokenizer behavior without modifying Rust code.
 
 ```shell
-export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+export LINDERA_CONFIG_FILE=./resources/config/lindera.yml
 ```
+
+`LINDERA_CONFIG_PATH`, the name of this variable up to v6, still works until v8.0.0, with a deprecation warning on standard error. When both are set, `LINDERA_CONFIG_FILE` is used.
 
 See the [Configuration](../lindera-analysis/configuration.md) section for details on the configuration format.
 
@@ -99,9 +101,3 @@ The `DOCS_RS` environment variable is automatically set by docs.rs when building
 Such a build ignores `LINDERA_BUILD_DICTIONARY_CACHE_DIR`: the dummy dictionaries are built in the build script's output directory, never in the cache, so a later build without `DOCS_RS` does not embed them.
 
 This is primarily used internally by docs.rs and typically doesn't need to be set by users.
-
-### LINDERA_WORKDIR
-
-The `LINDERA_WORKDIR` environment variable is automatically set during the build process by the lindera-dictionary crate. It points to the directory containing the built dictionary data files and is used internally by dictionary crates to locate their data files.
-
-This variable is set automatically and should not be modified by users.

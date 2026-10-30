@@ -6,7 +6,8 @@ Lindera v7.0.0 では `lindera` クレートがファサード（facade）にな
 分析チェーンを `lindera::analysis` として提供します。依存 1 行で
 `Segmenter`・`Tokenizer`・すべてのフィルタが使えます。あわせて
 `lindera-binding-core` を `lindera-binding` に改名し、v5.0.0 で予告していた
-`LINDERA_DICTIONARIES_PATH` のフォールバックを削除し、IPADIC のスキーマで
+`LINDERA_DICTIONARIES_PATH` のフォールバックを削除し、`LINDERA_CONFIG_PATH` を
+`LINDERA_CONFIG_FILE` に改名し（旧名は v8.0.0 まで非推奨の警告付きで使える）、IPADIC のスキーマで
 `conjugation_type` と `conjugation_form` の名前が逆になっていた誤りを
 修正し、表層形が空白だけの見出し語や先頭・末尾が空白の見出し語を保持し、
 MeCab と同様に空白をラティス上で読み飛ばし（Sudachi と同じく空白を残す SudachiDict
@@ -43,6 +44,8 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **暗黙の feature `lindera-ipadic`・`lindera-ipadic-neologd`・`lindera-unidic`・`lindera-sudachidict`・`lindera-ko-dic`・`lindera-cc-cedict`・`lindera-jieba` の削除** | `features = [...]` に辞書クレート名を書いて有効化していたユーザー | 代わりに `embed-*` feature を使う |
 | **`lindera-binding-core` を `lindera-binding` に改名** | バインディング用ヘルパークレートを使う Rust ユーザー | `lindera-binding` に依存し、`lindera_binding_core::` を `lindera_binding::` に置き換える |
 | **`LINDERA_DICTIONARIES_PATH` の削除** | 非推奨のビルドキャッシュ変数をまだ設定しているユーザー | `LINDERA_BUILD_DICTIONARY_CACHE_DIR` を設定する。旧名は無視される |
+| **`LINDERA_CONFIG_PATH` を `LINDERA_CONFIG_FILE` に改名** | `TokenizerBuilder::new()`・`lindera tokenize`・言語バインディングのために `LINDERA_CONFIG_PATH` を設定しているユーザー | `LINDERA_CONFIG_FILE` を設定する。旧名も v8.0.0 までは非推奨の警告付きで使える |
+| `LINDERA_WORKDIR` を `LINDERA_WORK_DIR` に改名 | 自前の build script で `embedded_dictionary!` のために `LINDERA_WORKDIR` を設定している辞書クレートだけ | `LINDERA_WORK_DIR` を設定する。`build_embedded_dictionary` を使うクレートは対応不要 |
 | **Rust 1.89 以降が必要** | Rust 1.88 で Lindera をビルドするユーザー（Python・Ruby パッケージのソースからのビルドを含む） | ツールチェーンを更新する（`rustup update stable`） |
 | **辞書の形式バージョン 3: v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは読み込めない** | ファイルから辞書を読み込むユーザー（パスを指定した `load_dictionary`、`lindera tokenize --dict <dir>`、バインディングのパスやバイト列からの読み込み、WASM バインディングの OPFS に保存した辞書）。埋め込み辞書とユーザー辞書は対象外 | 7.0.0 の `lindera build` で再ビルドするか、7.0.0 の `lindera download` やリリースアセットから再ダウンロードする |
 | **IPADIC・IPADIC-NEologd の `conjugation_type` と `conjugation_form` が正しい列を指すように修正** | IPADIC・IPADIC-NEologd でこの 2 フィールドを名前で読むユーザー（`Token::get`・`Token::as_value`・`lindera tokenize -o json`・バインディングのスキーマ） | 2 つの値が入れ替わることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする |
@@ -346,6 +349,56 @@ export LINDERA_DICTIONARIES_PATH=/path/to/cache
 # v7
 export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 ```
+
+## `LINDERA_CONFIG_PATH` を `LINDERA_CONFIG_FILE` に改名
+
+`lindera tokenize` と各言語バインディングが呼ぶ `TokenizerBuilder::new()` は、
+`LINDERA_CONFIG_FILE` で指定された YAML の設定ファイルを読むようになりました。
+環境変数の名前を、ファイルを指すものは `_FILE`、ディレクトリを指すものは `_DIR`
+にそろえるためです（[#1304](https://github.com/lindera/lindera/issues/1304)）。
+旧名 `LINDERA_CONFIG_PATH` も v8.0.0 までは使えます:
+
+- `LINDERA_CONFIG_PATH` だけを設定すると、指定したファイルを読み、標準エラー出力に
+  警告を 1 プロセスにつき 1 回出します:
+
+  ```text
+  Warning: LINDERA_CONFIG_PATH is deprecated and will be removed in v8.0.0; set LINDERA_CONFIG_FILE instead
+  ```
+
+- 両方を設定すると `LINDERA_CONFIG_FILE` のファイルを読み、`LINDERA_CONFIG_PATH`
+  は無視されると警告します。
+
+警告は `log` クレートを通さず標準エラー出力に直接書くので、ロガーを入れていない
+言語バインディングの利用者にも表示されます。設定しているすべての場所（シェルの
+プロファイル・CI 設定・コンテナイメージ）で変数名を変更してください:
+
+```shell
+# v6
+export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+
+# v7
+export LINDERA_CONFIG_FILE=./resources/config/lindera.yml
+```
+
+## `LINDERA_WORKDIR` を `LINDERA_WORK_DIR` に改名
+
+辞書クレートの build script は、ビルドした辞書のディレクトリを
+`LINDERA_WORK_DIR` としてコンパイラに渡し、`embedded_dictionary!` がそこから
+辞書を埋め込みます。v6 まではこの変数の名前は `LINDERA_WORKDIR` でした
+（[#1304](https://github.com/lindera/lindera/issues/1304)）。値を渡すコード
+（`build_embedded_dictionary`）とマクロはどちらも `lindera-dictionary` にあるので、
+これらを使う辞書クレートは、同梱の辞書クレートと同じく対応不要です。自前の
+build script で `embedded_dictionary!` のために `LINDERA_WORKDIR` を設定している
+クレートだけは、代わりに `LINDERA_WORK_DIR` を設定してください。設定しないと
+コンパイルできません:
+
+```text
+error: environment variable `LINDERA_WORK_DIR` not defined at compile time
+```
+
+利用者が設定する変数ではないので、
+[インストールのページ](./getting_started/installation.md#環境変数)の環境変数の
+一覧からは外しました。
 
 ## Rust 1.89 以降が必要
 
@@ -1955,7 +2008,10 @@ let surface_features: HashMap<&str, &str> = config
   [PHP: 省略可能な引数は型違いの値を拒否する](#php-省略可能な引数は型違いの値を拒否する)、
   [バインディング: 範囲外の整数の引数を拒否する](#バインディング-範囲外の整数の引数を拒否する)、
   [バインディング: モードは `Mode` で表す](#バインディング-モードは-mode-で表す)を参照）。
-  今回の構成変更は Rust クレート内部のものです。v6.2.0 以前にビルドまたは
+  今回の構成変更は Rust クレート内部のものです。`LINDERA_CONFIG_PATH` は
+  v8.0.0 まで非推奨の警告付きで使えます
+  （[`LINDERA_CONFIG_PATH` を `LINDERA_CONFIG_FILE` に改名](#lindera_config_path-を-lindera_config_file-に改名)を参照）。
+  v6.2.0 以前にビルドまたは
   ダウンロードした辞書ディレクトリは、再ビルドか再ダウンロードが必要です
   （[辞書ディレクトリの再ビルドが必要](#辞書ディレクトリの再ビルドが必要)を参照）。埋め込み辞書は対応不要です。
   v6.2.0 以前に学習したモデルファイルは学習し直す必要があります
@@ -2049,6 +2105,13 @@ Rust クレートのユーザー:
 - Rust 1.89 以降を使う。
 - シェルのプロファイル・CI 設定・コンテナイメージで `LINDERA_DICTIONARIES_PATH`
   を `LINDERA_BUILD_DICTIONARY_CACHE_DIR` に改名する。
+- 自前の辞書クレートの build script で `embedded_dictionary!` のために
+  `LINDERA_WORKDIR` を設定している場合は、代わりに `LINDERA_WORK_DIR` を設定する。
+
+`LINDERA_CONFIG_PATH` を設定しているすべてのユーザー:
+
+- シェルのプロファイル・CI 設定・コンテナイメージで `LINDERA_CONFIG_PATH` を
+  `LINDERA_CONFIG_FILE` に改名する。旧名も v8.0.0 までは非推奨の警告付きで使える。
 
 ファイルから辞書を読み込むすべてのユーザー:
 

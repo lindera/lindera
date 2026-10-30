@@ -6,7 +6,7 @@ Lindera Analysisは、`lindera-segmenter`クレートが提供する形態素セ
 
 - **文字フィルタ**: セグメンテーション前に入力テキストを変換し、バイトオフセットは元のテキストに対して自動的に補正される
 - **トークンフィルタ**: Segmenterが生成したトークンの変換・結合・除去・並べ替えを行う
-- **`Tokenizer` / `TokenizerBuilder`**: Rustコード、またはYAMLファイル（`LINDERA_CONFIG_PATH`）から解析パイプライン全体を組み立てる
+- **`Tokenizer` / `TokenizerBuilder`**: Rustコード、またはYAMLファイル（`LINDERA_CONFIG_FILE`）から解析パイプライン全体を組み立てる
 - 日本語・韓国語・汎用のテキスト正規化をカバーする豊富な組み込みフィルタ
 
 ## 依存関係
