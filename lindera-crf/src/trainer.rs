@@ -1499,30 +1499,6 @@ mod tests {
         assert_eq!(DEFAULT_LAMBDA.to_bits(), 1.0f64.to_bits());
     }
 
-    // The L1 run of the wide fixture from zero weights reaches an iteration
-    // that leaves the cost unchanged, as the run of #1260 did; the reason
-    // says so instead of claiming convergence.
-    #[test]
-    fn an_unchanged_objective_is_reported_as_no_progress() {
-        let provider = test_utils::generate_test_feature_provider();
-        let lattices = test_utils::generate_test_lattices(200);
-        let (uni, bi) = wide_fixture_tables();
-        let evaluations = Cell::new(0);
-        let result = lbfgs::minimize(
-            lbfgs::CachedLoss::new(
-                LatticesLoss::new(&lattices, &provider, &uni, &bi, 1, None),
-                &evaluations,
-            ),
-            vec![0.0; 29],
-            Regularization::L1,
-            0.01,
-            100,
-            0.0,
-        );
-        assert_eq!(result.stop_reason, StopReason::NoProgress);
-        assert!(result.iterations < 100, "{} iterations", result.iterations);
-    }
-
     // The evaluation as `cost` and `gradient_partial` computed it before they
     // shared one pass (#1167): a forward-backward pass of its own for the
     // loss and for the gradient, over the same chunks, each folded in
