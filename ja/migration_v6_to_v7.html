@@ -1467,9 +1467,12 @@ mecab-jieba の <code>unk.def</code> の素性は 5 列で、その <code>featur
 <li>目的関数の相対変化が <code>--eta</code>（<code>Trainer::eta</code>。デフォルトは MeCab の学習器と
 同じ 0.00005）を 3 回続けて下回ったときにも、学習は止まります。<code>--eta 0</code> で
 この判定を切ります。バインディングはデフォルトの値を使います。<code>lindera train</code>
-は、最適化が止まった理由を、反復回数と損失・勾配の評価回数とともに出力し、反復で
-目的関数が変わらなかったときとライン探索が失敗したときは、標準エラーに警告を
-書きます。L2 の学習でライン探索が失敗したときは、その学習で最良の重みを使います。</li>
+は、最適化が止まった理由を、反復回数と損失・勾配の評価回数とともに出力し、最適点
+から遠いところで反復で目的関数が変わらなかったときとライン探索が失敗したときは、
+標準エラーに警告を書きます。最適点の近くでは、2 つのどちらが起きるかが
+プラットフォームによって変わるので、収束したと報告します
+（<a href="https://github.com/lindera/lindera/issues/1300">#1300</a>）。L2 の学習でライン探索が
+失敗したときは、その学習で最良の重みを使います。</li>
 <li>Python・Node.js・Ruby・PHP バインディングのエクスポート関数は、<code>lindera export</code>
 と同じコードで同じファイルを書き出します。<code>char.def</code>・<code>feature.def</code>・
 <code>rewrite.def</code> は学習に使ったもので、<code>left-id.def</code> と <code>right-id.def</code> も書き出し

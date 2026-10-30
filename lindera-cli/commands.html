@@ -929,7 +929,7 @@ EOS
 <p>Once training stops, it prints why, with the number of iterations and of evaluations of the loss and its gradient (see <code>--eta</code> above):</p>
 <pre><code class="language-text">L-BFGS stopped after 8 iterations and 9 evaluations of the loss and its gradient: converged
 </code></pre>
-<p>When an iteration left the objective unchanged or the line search failed, it then writes a warning on stderr (see <a href="../development/training_pipeline.html#how-training-works">How training works</a>).</p>
+<p>When an iteration left the objective unchanged or the line search failed far from the optimum, it then writes a warning on stderr (see <a href="../development/training_pipeline.html#how-training-works">How training works</a>).</p>
 <p>The trained model contains:</p>
 <ul>
 <li><strong>Seed words</strong>: every seed lexicon row, with a learned weight and context IDs</li>

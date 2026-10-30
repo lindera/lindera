@@ -208,10 +208,10 @@
 </ul>
 <p>The optimizer stops at the first of these:</p>
 <ul>
-<li><code>StopReason::Converged</code>: the relative change of the objective, <code>|previous - current| / |previous|</code>, stayed below the tolerance set with <code>Trainer::eta</code> for 3 iterations in a row, or the gradient vanished. The default tolerance, <code>DEFAULT_ETA</code> (<code>5e-5</code>), is the default <code>eta</code> of MeCab's learner, which applies the same test to every evaluation, line-search trials included, where Lindera counts iterations. <code>Trainer::eta(0.0)</code> turns the test off.</li>
-<li><code>StopReason::NoProgress</code>: an iteration left the objective unchanged. When this happens after a few iterations, the model is barely trained.</li>
+<li><code>StopReason::Converged</code>: the relative change of the objective, <code>|previous - current| / |previous|</code>, stayed below the tolerance set with <code>Trainer::eta</code> for 3 iterations in a row, or the optimizer stopped near the optimum, where the norm of the gradient (the pseudo-gradient for OWL-QN) is under <code>1e-5</code> times its norm at the initial weights, or vanishes. The default tolerance, <code>DEFAULT_ETA</code> (<code>5e-5</code>), is the default <code>eta</code> of MeCab's learner, which applies the same test to every evaluation, line-search trials included, where Lindera counts iterations. <code>Trainer::eta(0.0)</code> turns the test off. Near the optimum the objective changes by less than its rounding, and whether an iteration then leaves it unchanged or a line search fails depends on the platform; either is <code>Converged</code> there.</li>
+<li><code>StopReason::NoProgress</code>: an iteration left the objective unchanged far from the optimum, where the norm of the gradient was still at least <code>1e-5</code> times its norm at the initial weights. When this happens after a few iterations, the model is barely trained.</li>
 <li><code>StopReason::MaxIterations</code>: the cap set with <code>Trainer::max_iter</code>.</li>
-<li><code>StopReason::LineSearchFailed</code>: the line search of an iteration failed. The weights are the best ones of the run.</li>
+<li><code>StopReason::LineSearchFailed</code>: the line search of an iteration failed far from the optimum, where the norm of the gradient at the best weights of the run was still at least <code>1e-5</code> times its norm at the initial weights. The weights are the best ones of the run.</li>
 </ul>
 <h3 id="regularization"><a class="header" href="#regularization">Regularization</a></h3>
 <p>Configurable regularization strategies:</p>

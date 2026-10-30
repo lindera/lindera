@@ -206,9 +206,9 @@
 <p>表層を持つ種辞書の行がない正解トークンは警告の判定に数えないので、コーパスの一部しか覆わない種辞書では警告は出ません。</p>
 <p>その後、CRF を L-BFGS（正則化に L1 の部分があるときは OWL-QN）で学習します。MeCab の学習器や libLBFGS と同じく、最初のライン探索は刻み幅 <code>1 / |d|</code>（<code>d</code> は最初の探索方向）から始まり、最初に試す点は初期の重みから距離 1 になります。2 回目からのライン探索は刻み幅 1 から始まります（<a href="https://github.com/lindera/lindera/issues/1290">#1290</a>）。学習は、次のうち最初に当てはまったもので止まります。</p>
 <ul>
-<li><code>converged</code>: 目的関数の相対変化 <code>|previous - current| / |previous|</code> が <code>eta</code> を 3 回続けて下回った。<code>eta</code> のデフォルトは MeCab の学習器と同じです。MeCab はライン探索の試行を含めた評価ごとに同じ判定を行い、Lindera はイテレーションごとに行います。</li>
-<li><code>no progress</code>: あるイテレーションで目的関数が変わらなかった。数イテレーションでこれが起きたときは、モデルはほとんど学習されていません。この理由で学習が止まると、イテレーション数にかかわらず、<code>lindera train</code> は標準エラーに警告を書きます。</li>
-<li>あるイテレーションのライン探索が失敗した。モデルはその学習で最良の重みを使い、<code>lindera train</code> は標準エラーに警告を書きます。</li>
+<li><code>converged</code>: 目的関数の相対変化 <code>|previous - current| / |previous|</code> が <code>eta</code> を 3 回続けて下回った。<code>eta</code> のデフォルトは MeCab の学習器と同じです。MeCab はライン探索の試行を含めた評価ごとに同じ判定を行い、Lindera はイテレーションごとに行います。下の 2 つのどちらかで止まっても、最適点の近くなら収束とします。最適点の近くとは、勾配のノルムが初期の重みでのノルムの <code>1e-5</code> 倍未満のところです。そこでは目的関数の変化が丸め誤差より小さくなり、2 つのどちらが先に起きるかはプラットフォームによって変わります（<a href="https://github.com/lindera/lindera/issues/1300">#1300</a>）。</li>
+<li><code>no progress</code>: 最適点から遠いところで、あるイテレーションで目的関数が変わらなかった。最適点から遠いとは、勾配のノルムがまだ初期の重みでのノルムの <code>1e-5</code> 倍以上あるところです。数イテレーションでこれが起きたときは、モデルはほとんど学習されていません。この理由で学習が止まると、イテレーション数にかかわらず、<code>lindera train</code> は標準エラーに警告を書きます。</li>
+<li>最適点から遠いところで、あるイテレーションのライン探索が失敗した。モデルはその学習で最良の重みを使い、<code>lindera train</code> は標準エラーに警告を書きます。</li>
 <li>目的関数が収束する前に <code>max-iterations</code> に達した。</li>
 </ul>
 <p><code>lindera train</code> は、どれで止まったかを、イテレーション数と評価回数とともに出力します。1 回の評価は、全ラティスの前向き・後向きの 1 回分です。<code>resources/training/</code> のファイルでは次のとおりです。</p>

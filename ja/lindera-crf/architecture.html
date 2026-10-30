@@ -208,10 +208,10 @@
 </ul>
 <p>最適化は、次のうち最初に当てはまったもので止まります。</p>
 <ul>
-<li><code>StopReason::Converged</code>: 目的関数の相対変化<code>|previous - current| / |previous|</code>が<code>Trainer::eta</code>で設定した許容値を3回続けて下回ったか、勾配がほぼ0になった。デフォルトの許容値<code>DEFAULT_ETA</code>（<code>5e-5</code>）は、MeCabの学習器の<code>eta</code>のデフォルトと同じです。MeCabはライン探索の試行を含めた評価ごとに同じ判定を行い、Linderaはイテレーションごとに行います。<code>Trainer::eta(0.0)</code>で判定を切ります。</li>
-<li><code>StopReason::NoProgress</code>: あるイテレーションで目的関数が変わらなかった。数イテレーションでこれが起きたときは、モデルはほとんど学習されていません。</li>
+<li><code>StopReason::Converged</code>: 目的関数の相対変化<code>|previous - current| / |previous|</code>が<code>Trainer::eta</code>で設定した許容値を3回続けて下回ったか、最適点の近くで止まった。最適点の近くとは、勾配（OWL-QNでは擬似勾配）のノルムが、初期の重みでのノルムの<code>1e-5</code>倍未満か、ほぼ0のところです。デフォルトの許容値<code>DEFAULT_ETA</code>（<code>5e-5</code>）は、MeCabの学習器の<code>eta</code>のデフォルトと同じです。MeCabはライン探索の試行を含めた評価ごとに同じ判定を行い、Linderaはイテレーションごとに行います。<code>Trainer::eta(0.0)</code>で判定を切ります。最適点の近くでは目的関数の変化が丸め誤差より小さくなり、そこで目的関数が変わらなくなるか、ライン探索が失敗するかはプラットフォームによって変わります。どちらも<code>Converged</code>になります。</li>
+<li><code>StopReason::NoProgress</code>: 最適点から遠いところで、あるイテレーションで目的関数が変わらなかった。最適点から遠いとは、勾配のノルムがまだ初期の重みでのノルムの<code>1e-5</code>倍以上あるところです。数イテレーションでこれが起きたときは、モデルはほとんど学習されていません。</li>
 <li><code>StopReason::MaxIterations</code>: <code>Trainer::max_iter</code>で設定した上限に達した。</li>
-<li><code>StopReason::LineSearchFailed</code>: あるイテレーションのライン探索が失敗した。重みは、その学習で最良だったものです。</li>
+<li><code>StopReason::LineSearchFailed</code>: 最適点から遠いところで、あるイテレーションのライン探索が失敗した。最適点から遠いとは、その学習で最良の重みでの勾配のノルムが、まだ初期の重みでのノルムの<code>1e-5</code>倍以上あるところです。重みは、その学習で最良だったものです。</li>
 </ul>
 <h3 id="regularization"><a class="header" href="#regularization">Regularization</a></h3>
 <p>設定可能な正則化戦略：</p>
