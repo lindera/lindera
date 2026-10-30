@@ -1,8 +1,10 @@
 use std::borrow::Cow;
 use std::env;
+use std::ffi::OsString;
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::Once;
 
 use serde_json::{Value, json};
 
@@ -91,19 +93,114 @@ fn ensure_keys(mut config: Value) -> Value {
     config
 }
 
+/// Environment variable naming the YAML configuration file that
+/// [`TokenizerBuilder::new`] reads.
+const CONFIG_FILE_ENV: &str = "LINDERA_CONFIG_FILE";
+
+/// The former name of [`CONFIG_FILE_ENV`], read with a deprecation warning
+/// when that is not set, until v8.0.0 (#1304).
+const DEPRECATED_CONFIG_PATH_ENV: &str = "LINDERA_CONFIG_PATH";
+
+/// The warning for a configuration file named by
+/// [`DEPRECATED_CONFIG_PATH_ENV`] alone.
+const CONFIG_PATH_DEPRECATED_WARNING: &str = "Warning: LINDERA_CONFIG_PATH is deprecated and will be removed in v8.0.0; set LINDERA_CONFIG_FILE instead";
+
+/// The warning for [`DEPRECATED_CONFIG_PATH_ENV`] set next to
+/// [`CONFIG_FILE_ENV`].
+const CONFIG_PATH_IGNORED_WARNING: &str = "Warning: LINDERA_CONFIG_PATH is ignored because LINDERA_CONFIG_FILE is set; LINDERA_CONFIG_PATH is deprecated and will be removed in v8.0.0";
+
+/// The configuration file [`TokenizerBuilder::new`] reads, and the warning
+/// it writes about [`DEPRECATED_CONFIG_PATH_ENV`].
+#[derive(Debug, PartialEq, Eq)]
+struct ConfigFileChoice {
+    /// The configuration file to read, or `None` for an empty configuration.
+    path: Option<PathBuf>,
+    /// The warning to write, if the deprecated variable is set.
+    warning: Option<&'static str>,
+}
+
+/// Chooses the configuration file from the values of [`CONFIG_FILE_ENV`]
+/// and [`DEPRECATED_CONFIG_PATH_ENV`]. The caller reads the environment, so
+/// that every combination can be tested without changing it.
+///
+/// # Arguments
+///
+/// * `config_file` - The value of `LINDERA_CONFIG_FILE`, if set.
+/// * `config_path` - The value of `LINDERA_CONFIG_PATH`, if set.
+///
+/// # Returns
+///
+/// `LINDERA_CONFIG_FILE` when it is set, with a warning that
+/// `LINDERA_CONFIG_PATH` is ignored if that is set too; otherwise
+/// `LINDERA_CONFIG_PATH`, with a deprecation warning; and no file when
+/// neither is set.
+fn choose_config_file(
+    config_file: Option<OsString>,
+    config_path: Option<OsString>,
+) -> ConfigFileChoice {
+    match (config_file, config_path) {
+        (Some(file), path) => ConfigFileChoice {
+            path: Some(PathBuf::from(file)),
+            warning: path.map(|_| CONFIG_PATH_IGNORED_WARNING),
+        },
+        (None, Some(path)) => ConfigFileChoice {
+            path: Some(PathBuf::from(path)),
+            warning: Some(CONFIG_PATH_DEPRECATED_WARNING),
+        },
+        (None, None) => ConfigFileChoice {
+            path: None,
+            warning: None,
+        },
+    }
+}
+
+/// Writes a warning about the configuration variables on stderr, at most
+/// once per process, however often [`TokenizerBuilder::new`] is called. It
+/// does not go through the `log` crate, for which the bindings install no
+/// logger, so that their users see it too, as `lindera-trainer` does (#1259).
+///
+/// # Arguments
+///
+/// * `warning` - The warning to write.
+fn warn_once_about_config_variables(warning: &str) {
+    static WARNED: Once = Once::new();
+    WARNED.call_once(|| eprintln!("{warning}"));
+}
+
 #[derive(Debug)]
 pub struct TokenizerBuilder {
     config: TokenizerConfig,
 }
 
 impl TokenizerBuilder {
+    /// Creates a builder from the YAML configuration file named by the
+    /// `LINDERA_CONFIG_FILE` environment variable, or with an empty
+    /// configuration when it is not set.
+    ///
+    /// The former name, `LINDERA_CONFIG_PATH`, is read when
+    /// `LINDERA_CONFIG_FILE` is not set, with a deprecation warning on
+    /// stderr; it will be removed in v8.0.0. When both are set,
+    /// `LINDERA_CONFIG_FILE` is read, and the warning says that
+    /// `LINDERA_CONFIG_PATH` is ignored. The warning is written at most once
+    /// per process.
+    ///
+    /// # Returns
+    ///
+    /// The builder, or an error if the configuration file cannot be read or
+    /// is not a YAML mapping.
     pub fn new() -> LinderaResult<Self> {
-        if let Ok(config_path) = env::var("LINDERA_CONFIG_PATH") {
-            Self::from_file(Path::new(&config_path))
-        } else {
-            Ok(Self {
+        let choice = choose_config_file(
+            env::var_os(CONFIG_FILE_ENV),
+            env::var_os(DEPRECATED_CONFIG_PATH_ENV),
+        );
+        if let Some(warning) = choice.warning {
+            warn_once_about_config_variables(warning);
+        }
+        match choice.path {
+            Some(path) => Self::from_file(&path),
+            None => Ok(Self {
                 config: empty_config(),
-            })
+            }),
         }
     }
 
@@ -791,6 +888,41 @@ mod tests {
 
     use super::TokenizerBuilder;
 
+    /// `LINDERA_CONFIG_FILE` names the configuration file, without a
+    /// warning (#1304).
+    #[test]
+    fn the_config_file_variable_names_the_file() {
+        let choice = super::choose_config_file(Some("new.yml".into()), None);
+        assert_eq!(choice.path, Some(std::path::PathBuf::from("new.yml")));
+        assert_eq!(choice.warning, None);
+    }
+
+    /// The deprecated `LINDERA_CONFIG_PATH` alone still names the file, with
+    /// a deprecation warning (#1304).
+    #[test]
+    fn the_deprecated_config_path_variable_names_the_file_with_a_warning() {
+        let choice = super::choose_config_file(None, Some("old.yml".into()));
+        assert_eq!(choice.path, Some(std::path::PathBuf::from("old.yml")));
+        assert_eq!(choice.warning, Some(super::CONFIG_PATH_DEPRECATED_WARNING));
+    }
+
+    /// When both are set, `LINDERA_CONFIG_FILE` wins, and the warning says
+    /// that `LINDERA_CONFIG_PATH` is ignored (#1304).
+    #[test]
+    fn the_config_file_variable_wins_over_the_deprecated_one() {
+        let choice = super::choose_config_file(Some("new.yml".into()), Some("old.yml".into()));
+        assert_eq!(choice.path, Some(std::path::PathBuf::from("new.yml")));
+        assert_eq!(choice.warning, Some(super::CONFIG_PATH_IGNORED_WARNING));
+    }
+
+    /// Without either variable, there is no file and no warning.
+    #[test]
+    fn no_config_variable_means_no_file_and_no_warning() {
+        let choice = super::choose_config_file(None, None);
+        assert_eq!(choice.path, None);
+        assert_eq!(choice.warning, None);
+    }
+
     /// The mode is written in the form a configuration file uses, so the
     /// penalty of decompose mode is kept (#1215).
     #[test]
@@ -956,9 +1088,9 @@ mod tests {
             .collect()
     }
 
-    /// Returns a builder, independent of `LINDERA_CONFIG_PATH`, that keeps
-    /// whitespace and has an NFKC character filter and a lowercase token
-    /// filter, but no dictionary.
+    /// Returns a builder, independent of `LINDERA_CONFIG_FILE` and
+    /// `LINDERA_CONFIG_PATH`, that keeps whitespace and has an NFKC
+    /// character filter and a lowercase token filter, but no dictionary.
     #[cfg(feature = "embed-ipadic")]
     fn builder_with_filters() -> TokenizerBuilder {
         let mut builder = TokenizerBuilder::from_config(serde_json::json!({})).unwrap();

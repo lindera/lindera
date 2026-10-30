@@ -565,6 +565,101 @@ mod with_ipadic {
         assert!(stdout.contains("EOS"), "got: {stdout}");
     }
 
+    /// Writes a configuration file named `name` in `dir` whose only token
+    /// filter is `kind`, and returns its path.
+    fn write_config_with_token_filter(dir: &Path, name: &str, kind: &str) -> PathBuf {
+        let path = dir.join(name);
+        std::fs::write(
+            &path,
+            format!("token_filters:\n  - kind: \"{kind}\"\n    args: {{}}\n"),
+        )
+        .unwrap();
+        path
+    }
+
+    /// Returns the wakati output and the stderr of `lindera tokenize` for
+    /// `Lindera`, with the configuration variables set as in `vars` and
+    /// unset otherwise.
+    fn tokenize_with_config_variables(vars: &[(&str, &Path)]) -> (String, String) {
+        let mut command = lindera();
+        command
+            .env_remove("LINDERA_CONFIG_FILE")
+            .env_remove("LINDERA_CONFIG_PATH")
+            .env_remove("RUST_LOG");
+        for (name, value) in vars {
+            command.env(name, value);
+        }
+        let output = command
+            .args([
+                "tokenize",
+                "--dict",
+                "embedded://ipadic",
+                "--output",
+                "wakati",
+            ])
+            .write_stdin("Lindera\n")
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(output.status.success(), "got: {stderr}");
+        (stdout.trim().to_string(), stderr)
+    }
+
+    /// `LINDERA_CONFIG_FILE` names the configuration file, without a
+    /// warning (#1304).
+    #[test]
+    fn tokenize_reads_the_config_file_variable() {
+        let dir = tempfile::tempdir().unwrap();
+        let lower = write_config_with_token_filter(dir.path(), "lower.yml", "lowercase");
+
+        let (stdout, _) = tokenize_with_config_variables(&[]);
+        assert_eq!(stdout, "Lindera");
+
+        let (stdout, stderr) = tokenize_with_config_variables(&[("LINDERA_CONFIG_FILE", &lower)]);
+        assert_eq!(stdout, "lindera");
+        assert!(!stderr.contains("LINDERA_CONFIG"), "got: {stderr}");
+    }
+
+    /// The deprecated `LINDERA_CONFIG_PATH` alone still names the
+    /// configuration file, with a deprecation warning on stderr (#1304).
+    #[test]
+    fn tokenize_reads_the_deprecated_config_path_variable_with_a_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let lower = write_config_with_token_filter(dir.path(), "lower.yml", "lowercase");
+
+        let (stdout, stderr) = tokenize_with_config_variables(&[("LINDERA_CONFIG_PATH", &lower)]);
+        assert_eq!(stdout, "lindera");
+        assert!(
+            stderr.contains(
+                "Warning: LINDERA_CONFIG_PATH is deprecated and will be removed in v8.0.0; set \
+                 LINDERA_CONFIG_FILE instead"
+            ),
+            "got: {stderr}"
+        );
+    }
+
+    /// With both variables set, the file of `LINDERA_CONFIG_FILE` is read,
+    /// and stderr says that `LINDERA_CONFIG_PATH` is ignored (#1304).
+    #[test]
+    fn tokenize_prefers_the_config_file_variable_over_the_deprecated_one() {
+        let dir = tempfile::tempdir().unwrap();
+        let lower = write_config_with_token_filter(dir.path(), "lower.yml", "lowercase");
+        let upper = write_config_with_token_filter(dir.path(), "upper.yml", "uppercase");
+
+        let (stdout, stderr) = tokenize_with_config_variables(&[
+            ("LINDERA_CONFIG_FILE", &upper),
+            ("LINDERA_CONFIG_PATH", &lower),
+        ]);
+        assert_eq!(stdout, "LINDERA");
+        assert!(
+            stderr.contains(
+                "Warning: LINDERA_CONFIG_PATH is ignored because LINDERA_CONFIG_FILE is set"
+            ),
+            "got: {stderr}"
+        );
+    }
+
     #[test]
     fn tokenize_wakati_output() {
         let output = lindera()
