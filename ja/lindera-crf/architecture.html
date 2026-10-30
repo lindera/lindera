@@ -200,7 +200,7 @@
 <h3 id="lattice--edge--node"><a class="header" href="#lattice--edge--node">Lattice / Edge / Node</a></h3>
 <p>系列ラベリングのための可変長エッジを持つラティス構造です。<code>Edge</code>はラベル付きの候補スパンを表し、<code>Node</code>は特定の位置にあるエッジを集約します。<code>Lattice</code>は入力データから構築され、モデルが最適パスを探索するために使用されます。</p>
 <h3 id="trainer"><a class="header" href="#trainer">Trainer</a></h3>
-<p>設定可能な正則化を用いたL-BFGS最適化（正則化にL1の部分があるときはOWL-QN）によりCRFモデルを学習します。Trainerはラベル付きラティスの例を受け取り、前向き・後向きアルゴリズムで損失とその勾配を計算し、反復的にモデルの重みを更新します。<code>Trainer::train</code>は学習した<code>RawModel</code>を返します。<code>Trainer::train_with_stats</code>は、次の値を持つ<code>TrainingStats</code>も返します。</p>
+<p>設定可能な正則化を用いたL-BFGS最適化（正則化にL1の部分があるときはOWL-QN）によりCRFモデルを学習します。MeCabの学習器やlibLBFGSと同じく、最初のライン探索は刻み幅<code>1 / |d|</code>（<code>d</code>は最初の探索方向）から、2回目以降は刻み幅1から始まります。Trainerはラベル付きラティスの例を受け取り、前向き・後向きアルゴリズムで損失とその勾配を計算し、反復的にモデルの重みを更新します。<code>Trainer::train</code>は学習した<code>RawModel</code>を返します。<code>Trainer::train_with_stats</code>は、次の値を持つ<code>TrainingStats</code>も返します。</p>
 <ul>
 <li><code>iterations</code>: 実際に回ったイテレーション数。<code>Trainer::max_iter</code>で設定した最大値で学習が止まったときはその値で、それより前に最適化が止まったときはそれより少なくなります。</li>
 <li><code>evaluations</code>: 損失とその勾配を評価した回数。1回の評価は全ラティスの前向き・後向きの1回分で、ライン探索の試行も含みます。</li>

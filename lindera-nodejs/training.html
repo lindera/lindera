@@ -224,7 +224,7 @@ train({
 <tr><td><code>eta</code></td><td><code>number</code></td><td><code>5e-5</code></td><td>Tolerance of the convergence test, finite and &gt;= 0: training stops before <code>maxIter</code> once the relative change of the objective stays below it for 3 iterations in a row; <code>0</code> disables the test</td></tr>
 </tbody></table>
 </div>
-<p>The settings are checked before any file is read: an unknown <code>regularization</code>, or a <code>lambda</code>, <code>elasticNetL1Ratio</code> or <code>eta</code> outside its range, throws an <code>InvalidArg</code> error. To train as v6 did by default, pass <code>regularization: "l1"</code> and <code>lambda: 0.01</code>, and <code>eta: 0</code> to stop only at <code>maxIter</code>.</p>
+<p>The settings are checked before any file is read: an unknown <code>regularization</code>, or a <code>lambda</code>, <code>elasticNetL1Ratio</code> or <code>eta</code> outside its range, throws an <code>InvalidArg</code> error. To train with v6's default settings (the model still differs from v6's, since the first line search changed in <a href="https://github.com/lindera/lindera/issues/1290">#1290</a>), pass <code>regularization: "l1"</code> and <code>lambda: 0.01</code>, and <code>eta: 0</code> to stop only at <code>maxIter</code>.</p>
 <h2 id="exporting-a-trained-model"><a class="header" href="#exporting-a-trained-model">Exporting a Trained Model</a></h2>
 <p>After training, export the model to dictionary source files using <code>exportModel()</code>:</p>
 <pre><code class="language-javascript">const { exportModel } = require("lindera");

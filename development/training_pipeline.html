@@ -204,7 +204,7 @@
   seed row:   外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 </code></pre>
 <p>Gold tokens whose surface no seed row has do not count toward the warning, so a seed lexicon that covers little of the corpus gives none.</p>
-<p>The CRF is then trained with L-BFGS (OWL-QN when the regularization has an L1 part). Training stops at the first of these:</p>
+<p>The CRF is then trained with L-BFGS (OWL-QN when the regularization has an L1 part). As in MeCab's learner and libLBFGS, the first line search starts at a step of <code>1 / |d|</code>, <code>d</code> being the first search direction, so that its first trial point lies at unit distance from the initial weights, and every later one at a step of 1 (<a href="https://github.com/lindera/lindera/issues/1290">#1290</a>). Training stops at the first of these:</p>
 <ul>
 <li><code>converged</code>: the relative change of the objective, <code>|previous - current| / |previous|</code>, stayed below <code>eta</code> for 3 iterations in a row. The default <code>eta</code> is that of MeCab's learner, which applies the same test to every evaluation, line-search trials included, where Lindera counts iterations.</li>
 <li><code>no progress</code>: an iteration left the objective unchanged. When this happens after a few iterations, the model is barely trained. <code>lindera train</code> writes a warning on standard error whenever training stops this way, after any number of iterations.</li>
@@ -212,7 +212,7 @@
 <li><code>max-iterations</code> was reached before the objective converged.</li>
 </ul>
 <p><code>lindera train</code> prints which one stopped it, with the number of iterations and of evaluations, each evaluation being one forward-backward pass over every lattice; with the files in <code>resources/training/</code>:</p>
-<pre><code class="language-text">L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradient: converged
+<pre><code class="language-text">L-BFGS stopped after 8 iterations and 9 evaluations of the loss and its gradient: converged
 </code></pre>
 <h2 id="required-input-files"><a class="header" href="#required-input-files">Required Input Files</a></h2>
 <h3 id="1-seed-lexicon-seedcsv"><a class="header" href="#1-seed-lexicon-seedcsv">1. Seed Lexicon (seed.csv)</a></h3>
@@ -370,7 +370,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </tbody></table>
 </div>
 <p>A <code>lambda</code> of 0 disables regularization for every type. For Elastic Net, a ratio of 0 uses only L2, and a ratio of 1 uses only L1.</p>
-<p>The defaults are those of MeCab's learner: L2 regularization with <code>lambda</code> 1.0 is its objective with <code>-c 1.0</code>. On the mecab-ipadic cross-validation data of <a href="https://github.com/lindera/lindera/issues/1110">#1110</a>, they score as MeCab's learner does and converge in about as many iterations, 81 to 87 (<a href="https://github.com/lindera/lindera/issues/1261">#1261</a>): boundary F1 0.9613 and span + POS (4 columns) F1 0.9398 on average over 5 folds, where v6's default, L1 with <code>lambda</code> 0.01, reached <code>max-iterations</code> on every fold with 0.9572 and 0.9344. L1 sets many weights to 0, and <code>lindera export</code> gives labels with equal weights one context ID, so the L1 <code>matrix.def</code> is smaller: 8.7 MB there against 18.9 MB with L2, which makes the built dictionary 3.8 % larger. Training there takes about twice as long as MeCab's learner, and about two thirds of the time is spent outside the optimizer: before it starts (<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>) and after it stops.</p>
+<p>The defaults are those of MeCab's learner: L2 regularization with <code>lambda</code> 1.0 is its objective with <code>-c 1.0</code>. On the mecab-ipadic cross-validation data of <a href="https://github.com/lindera/lindera/issues/1110">#1110</a>, they score as MeCab's learner does and converge in about as many iterations, 77 to 82 (<a href="https://github.com/lindera/lindera/issues/1261">#1261</a>, <a href="https://github.com/lindera/lindera/issues/1290">#1290</a>): boundary F1 0.9613 and span + POS (4 columns) F1 0.9397 on average over 5 folds, where v6's default settings, L1 with <code>lambda</code> 0.01, reached <code>max-iterations</code> on every fold with 0.9578 and 0.9350. L1 sets many weights to 0, and <code>lindera export</code> gives labels with equal weights one context ID, so the L1 <code>matrix.def</code> is smaller: 8.3 MB there against 18.9 MB with L2, which makes the built dictionary 4.0 % larger. Training there takes about twice as long as MeCab's learner, and about two thirds of the time is spent outside the optimizer: before it starts (<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>) and after it stops.</p>
 <h2 id="cli-usage"><a class="header" href="#cli-usage">CLI Usage</a></h2>
 <h3 id="train"><a class="header" href="#train">Train</a></h3>
 <pre><code class="language-bash">lindera train \
@@ -405,11 +405,11 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </tbody></table>
 </div>
 <p>For example, if the <code>unk.def</code> above has a second <code>KANJI</code> line, <code>KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*</code>, after the first one, the exported <code>unk.def</code> keeps both, in input order:</p>
-<pre><code class="language-csv">DEFAULT,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+<pre><code class="language-csv">DEFAULT,1,1,31699,名詞,一般,*,*,*,*,*,*,*
 SPACE,10,7,0,記号,空白,*,*,*,*,*,*,*
-HIRAGANA,1,1,31698,名詞,一般,*,*,*,*,*,*,*
-KATAKANA,1,1,31698,名詞,一般,*,*,*,*,*,*,*
-KANJI,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,1,1,31699,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,31699,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,31699,名詞,一般,*,*,*,*,*,*,*
 KANJI,3,3,4179,名詞,サ変接続,*,*,*,*,*,*,*
 ALPHA,11,10,10957,名詞,固有名詞,一般,*,*,*,*,*,*
 NUMERIC,11,10,10957,名詞,数,*,*,*,*,*,*,*

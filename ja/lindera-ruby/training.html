@@ -217,7 +217,7 @@ Lindera.train(
 <tr><td>キーワード</td><td>eta:</td><td><code>Float</code> または <code>nil</code></td><td>収束判定の許容値（有限の 0 以上の値）。デフォルトは 5e-5。目的関数の相対変化が 3 回続けてこの値を下回ると、<code>max_iter</code> より前に止まります。<code>0</code> で判定を無効にします</td></tr>
 </tbody></table>
 </div>
-<p>設定の値は、ファイルを読む前に検査されます。知らない <code>regularization:</code> は <code>ArgumentError</code>、範囲の外の <code>lambda</code>・<code>elastic_net_l1_ratio:</code>・<code>eta:</code> は <code>RangeError</code> になります。v6 のデフォルトと同じく学習するには、<code>lambda</code> に 0.01 を、<code>regularization:</code> に <code>'l1'</code> を渡し、<code>max_iter</code> だけで止めるには <code>eta: 0</code> も渡します：</p>
+<p>設定の値は、ファイルを読む前に検査されます。知らない <code>regularization:</code> は <code>ArgumentError</code>、範囲の外の <code>lambda</code>・<code>elastic_net_l1_ratio:</code>・<code>eta:</code> は <code>RangeError</code> になります。v6 のデフォルトの設定で学習するには（最初のライン探索が変わったので、モデルは v6 と一致しません。<a href="https://github.com/lindera/lindera/issues/1290">#1290</a>）、<code>lambda</code> に 0.01 を、<code>regularization:</code> に <code>'l1'</code> を渡し、<code>max_iter</code> だけで止めるには <code>eta: 0</code> も渡します：</p>
 <pre><code class="language-ruby">Lindera.train(*inputs, '/tmp/model.dat', 0.01, regularization: 'l1', eta: 0)
 </code></pre>
 <h2 id="学習済みモデルのエクスポート"><a class="header" href="#学習済みモデルのエクスポート">学習済みモデルのエクスポート</a></h2>

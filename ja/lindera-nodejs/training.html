@@ -224,7 +224,7 @@ train({
 <tr><td><code>eta</code></td><td><code>number</code></td><td><code>5e-5</code></td><td>収束判定の許容値（有限の 0 以上の値）。目的関数の相対変化が 3 回続けてこの値を下回ると、<code>maxIter</code> より前に止まります。<code>0</code> で判定を無効にします</td></tr>
 </tbody></table>
 </div>
-<p>設定の値は、ファイルを読む前に検査されます。知らない <code>regularization</code> や、範囲の外の <code>lambda</code>・<code>elasticNetL1Ratio</code>・<code>eta</code> は <code>InvalidArg</code> のエラーになります。v6 のデフォルトと同じく学習するには、<code>regularization: "l1"</code> と <code>lambda: 0.01</code> を渡し、<code>maxIter</code> だけで止めるには <code>eta: 0</code> も渡します。</p>
+<p>設定の値は、ファイルを読む前に検査されます。知らない <code>regularization</code> や、範囲の外の <code>lambda</code>・<code>elasticNetL1Ratio</code>・<code>eta</code> は <code>InvalidArg</code> のエラーになります。v6 のデフォルトの設定で学習するには（最初のライン探索が変わったので、モデルは v6 と一致しません。<a href="https://github.com/lindera/lindera/issues/1290">#1290</a>）、<code>regularization: "l1"</code> と <code>lambda: 0.01</code> を渡し、<code>maxIter</code> だけで止めるには <code>eta: 0</code> も渡します。</p>
 <h2 id="学習済みモデルのエクスポート"><a class="header" href="#学習済みモデルのエクスポート">学習済みモデルのエクスポート</a></h2>
 <p>学習後、<code>exportModel()</code> を使用してモデルを辞書ソースファイルにエクスポートします：</p>
 <pre><code class="language-javascript">const { exportModel } = require("lindera");

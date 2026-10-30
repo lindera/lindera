@@ -927,7 +927,7 @@ EOS
 </code></pre>
 <p>When no gold token is a seed word, or fewer than half of the gold tokens whose surface has seed rows are, it then writes a warning on stderr, with the first gold token whose surface has seed rows but none with its feature string, next to those rows (see <a href="../development/training_pipeline.html#how-training-works">How training works</a>).</p>
 <p>Once training stops, it prints why, with the number of iterations and of evaluations of the loss and its gradient (see <code>--eta</code> above):</p>
-<pre><code class="language-text">L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradient: converged
+<pre><code class="language-text">L-BFGS stopped after 8 iterations and 9 evaluations of the loss and its gradient: converged
 </code></pre>
 <p>When an iteration left the objective unchanged or the line search failed, it then writes a warning on stderr (see <a href="../development/training_pipeline.html#how-training-works">How training works</a>).</p>
 <p>The trained model contains:</p>

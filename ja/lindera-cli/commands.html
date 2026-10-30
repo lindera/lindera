@@ -927,7 +927,7 @@ EOS
 </code></pre>
 <p>種辞書の語である正解トークンが 1 つもないとき、または表層を持つ種辞書の行がある正解トークンのうち種辞書の語であるものが半分に満たないときは、続けて標準エラーに警告を書きます。警告には、表層を持つ種辞書の行はあるものの素性文字列が一致する行がない最初の正解トークンと、その表層を持つ種辞書の行が並びます（<a href="../development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。</p>
 <p>学習が止まると、止まった理由を、イテレーション数と損失・勾配の評価回数とともに出力します（上の <code>--eta</code> を参照）：</p>
-<pre><code class="language-text">L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradient: converged
+<pre><code class="language-text">L-BFGS stopped after 8 iterations and 9 evaluations of the loss and its gradient: converged
 </code></pre>
 <p>あるイテレーションで目的関数が変わらなかったとき、またはライン探索が失敗したときは、続けて標準エラーに警告を書きます（<a href="../development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。</p>
 <p>学習済みモデルには以下が含まれます：</p>

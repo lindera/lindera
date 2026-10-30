@@ -943,7 +943,7 @@ tokenizer
 <h3 id="lattice--edge--node"><a class="header" href="#lattice--edge--node">Lattice / Edge / Node</a></h3>
 <p>Lattice structure with variable-length edges for sequence labeling. <code>Edge</code> represents a candidate span with a label, while <code>Node</code> aggregates edges at a given position. The <code>Lattice</code> is constructed from input data and used by the model to find the best path.</p>
 <h3 id="trainer"><a class="header" href="#trainer">Trainer</a></h3>
-<p>Trains a CRF model using L-BFGS optimization (OWL-QN when the regularization has an L1 part) with configurable regularization. The trainer accepts labeled lattice examples, computes the loss and its gradient via the forward-backward algorithm, and iteratively updates model weights. <code>Trainer::train</code> returns the trained <code>RawModel</code>; <code>Trainer::train_with_stats</code> also returns a <code>TrainingStats</code> with:</p>
+<p>Trains a CRF model using L-BFGS optimization (OWL-QN when the regularization has an L1 part) with configurable regularization. As in MeCab's learner and libLBFGS, the first line search starts at a step of <code>1 / |d|</code>, <code>d</code> being the first search direction, and every later one at a step of 1. The trainer accepts labeled lattice examples, computes the loss and its gradient via the forward-backward algorithm, and iteratively updates model weights. <code>Trainer::train</code> returns the trained <code>RawModel</code>; <code>Trainer::train_with_stats</code> also returns a <code>TrainingStats</code> with:</p>
 <ul>
 <li><code>iterations</code>: the number of iterations that ran, which is the maximum set with <code>Trainer::max_iter</code> when that stopped training, and fewer when the optimizer stopped earlier.</li>
 <li><code>evaluations</code>: the number of evaluations of the loss and its gradient, each one forward-backward pass over every lattice, line-search trials included.</li>
@@ -3084,7 +3084,7 @@ EOS
 </code></pre>
 <p>When no gold token is a seed word, or fewer than half of the gold tokens whose surface has seed rows are, it then writes a warning on stderr, with the first gold token whose surface has seed rows but none with its feature string, next to those rows (see <a href="lindera-cli/../development/training_pipeline.html#how-training-works">How training works</a>).</p>
 <p>Once training stops, it prints why, with the number of iterations and of evaluations of the loss and its gradient (see <code>--eta</code> above):</p>
-<pre><code class="language-text">L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradient: converged
+<pre><code class="language-text">L-BFGS stopped after 8 iterations and 9 evaluations of the loss and its gradient: converged
 </code></pre>
 <p>When an iteration left the objective unchanged or the line search failed, it then writes a warning on stderr (see <a href="lindera-cli/../development/training_pipeline.html#how-training-works">How training works</a>).</p>
 <p>The trained model contains:</p>
@@ -4144,7 +4144,7 @@ lindera.train(
 <tr><td><code>eta</code></td><td><code>float</code></td><td><code>5e-5</code></td><td>Tolerance of the convergence test, finite and &gt;= 0: training stops before <code>max_iter</code> once the relative change of the objective stays below it for 3 iterations in a row; <code>0</code> disables the test</td></tr>
 </tbody></table>
 </div>
-<p>The settings are checked before any file is read: an unknown <code>regularization</code>, or a <code>lambda_</code>, <code>elastic_net_l1_ratio</code> or <code>eta</code> outside its range, raises a <code>ValueError</code>. To train as v6 did by default, pass <code>regularization="l1"</code> and <code>lambda_=0.01</code>, and <code>eta=0</code> to stop only at <code>max_iter</code>.</p>
+<p>The settings are checked before any file is read: an unknown <code>regularization</code>, or a <code>lambda_</code>, <code>elastic_net_l1_ratio</code> or <code>eta</code> outside its range, raises a <code>ValueError</code>. To train with v6's default settings (the model still differs from v6's, since the first line search changed in <a href="https://github.com/lindera/lindera/issues/1290">#1290</a>), pass <code>regularization="l1"</code> and <code>lambda_=0.01</code>, and <code>eta=0</code> to stop only at <code>max_iter</code>.</p>
 <h2 id="exporting-a-trained-model"><a class="header" href="#exporting-a-trained-model">Exporting a Trained Model</a></h2>
 <p>After training, export the model to dictionary source files using <code>lindera.export()</code>:</p>
 <pre><code class="language-python">import lindera
@@ -5056,7 +5056,7 @@ train({
 <tr><td><code>eta</code></td><td><code>number</code></td><td><code>5e-5</code></td><td>Tolerance of the convergence test, finite and &gt;= 0: training stops before <code>maxIter</code> once the relative change of the objective stays below it for 3 iterations in a row; <code>0</code> disables the test</td></tr>
 </tbody></table>
 </div>
-<p>The settings are checked before any file is read: an unknown <code>regularization</code>, or a <code>lambda</code>, <code>elasticNetL1Ratio</code> or <code>eta</code> outside its range, throws an <code>InvalidArg</code> error. To train as v6 did by default, pass <code>regularization: "l1"</code> and <code>lambda: 0.01</code>, and <code>eta: 0</code> to stop only at <code>maxIter</code>.</p>
+<p>The settings are checked before any file is read: an unknown <code>regularization</code>, or a <code>lambda</code>, <code>elasticNetL1Ratio</code> or <code>eta</code> outside its range, throws an <code>InvalidArg</code> error. To train with v6's default settings (the model still differs from v6's, since the first line search changed in <a href="https://github.com/lindera/lindera/issues/1290">#1290</a>), pass <code>regularization: "l1"</code> and <code>lambda: 0.01</code>, and <code>eta: 0</code> to stop only at <code>maxIter</code>.</p>
 <h2 id="exporting-a-trained-model-1"><a class="header" href="#exporting-a-trained-model-1">Exporting a Trained Model</a></h2>
 <p>After training, export the model to dictionary source files using <code>exportModel()</code>:</p>
 <pre><code class="language-javascript">const { exportModel } = require("lindera");
@@ -6018,7 +6018,7 @@ Lindera.train(
 <tr><td>keyword</td><td>eta:</td><td><code>Float</code> or <code>nil</code></td><td>Tolerance of the convergence test, finite and &gt;= 0, default 5e-5: training stops before <code>max_iter</code> once the relative change of the objective stays below it for 3 iterations in a row; <code>0</code> disables the test</td></tr>
 </tbody></table>
 </div>
-<p>The settings are checked before any file is read: an unknown <code>regularization:</code> raises an <code>ArgumentError</code>, and a <code>lambda</code>, <code>elastic_net_l1_ratio:</code> or <code>eta:</code> outside its range a <code>RangeError</code>. To train as v6 did by default, pass a <code>lambda</code> of 0.01 and <code>regularization: 'l1'</code>, and <code>eta: 0</code> to stop only at <code>max_iter</code>:</p>
+<p>The settings are checked before any file is read: an unknown <code>regularization:</code> raises an <code>ArgumentError</code>, and a <code>lambda</code>, <code>elastic_net_l1_ratio:</code> or <code>eta:</code> outside its range a <code>RangeError</code>. To train with v6's default settings (the model still differs from v6's, since the first line search changed in <a href="https://github.com/lindera/lindera/issues/1290">#1290</a>), pass a <code>lambda</code> of 0.01 and <code>regularization: 'l1'</code>, and <code>eta: 0</code> to stop only at <code>max_iter</code>:</p>
 <pre><code class="language-ruby">Lindera.train(*inputs, '/tmp/model.dat', 0.01, regularization: 'l1', eta: 0)
 </code></pre>
 <h2 id="exporting-a-trained-model-2"><a class="header" href="#exporting-a-trained-model-2">Exporting a Trained Model</a></h2>
@@ -7101,7 +7101,7 @@ Lindera\Trainer::train(
 <tr><td><code>$eta</code></td><td><code>float|null</code></td><td><code>5e-5</code></td><td>Tolerance of the convergence test, finite and &gt;= 0: training stops before <code>$max_iter</code> once the relative change of the objective stays below it for 3 iterations in a row; <code>0</code> disables the test</td></tr>
 </tbody></table>
 </div>
-<p><code>null</code> selects the default of each optional parameter. The settings are checked before any file is read: an unknown <code>$regularization</code>, or a <code>$lambda</code>, <code>$elastic_net_l1_ratio</code> or <code>$eta</code> outside its range, throws a <code>ValueError</code>. To train as v6 did by default, pass <code>regularization: 'l1'</code> and <code>lambda: 0.01</code>, and <code>eta: 0</code> to stop only at <code>$max_iter</code>.</p>
+<p><code>null</code> selects the default of each optional parameter. The settings are checked before any file is read: an unknown <code>$regularization</code>, or a <code>$lambda</code>, <code>$elastic_net_l1_ratio</code> or <code>$eta</code> outside its range, throws a <code>ValueError</code>. To train with v6's default settings (the model still differs from v6's, since the first line search changed in <a href="https://github.com/lindera/lindera/issues/1290">#1290</a>), pass <code>regularization: 'l1'</code> and <code>lambda: 0.01</code>, and <code>eta: 0</code> to stop only at <code>$max_iter</code>.</p>
 <h2 id="exporting-a-trained-model-3"><a class="header" href="#exporting-a-trained-model-3">Exporting a Trained Model</a></h2>
 <p>After training, export the model to dictionary source files using <code>Lindera\Trainer::export()</code>:</p>
 <pre><code class="language-php">&lt;?php
@@ -10430,7 +10430,8 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>PHP, Node.js and WASM: an integer argument outside the range of its setting throws instead of wrapping</strong></td><td>Code that passes such a value, such as <code>100000</code> for the default word cost of <code>Metadata</code> (v6 stored <code>-31072</code>) or <code>-1</code> for the number of N-best results (v6 listed every segmentation); a negative index for <code>getFieldName</code> or PHP's <code>getDetail</code>; in Node.js and WASM, a number that is not an integer, such as <code>1.5</code> or <code>NaN</code></td><td>Pass an integer in the range; the error names the parameter and the range</td></tr>
 <tr><td><strong>Bindings: a mode is a <code>Mode</code>, which holds the penalty of decompose mode as the Rust <code>Mode</code> does; <code>set_mode</code> / <code>setMode</code> and the <code>Tokenizer</code> constructors take a <code>Mode</code> instead of a mode name, and <code>TokenizerBuilder::set_segmenter_mode</code> keeps the penalty of a <code>Mode::Decompose</code></strong></td><td>Binding users who set a mode; code that uses a binding's <code>Mode</code>, Node.js's <code>JsMode</code> or WASM's numeric <code>Mode</code>; TypeScript code that names the Node.js type <code>JsPenalty</code>; Rust code that passes a custom penalty to <code>set_segmenter_mode</code>; binding authors who call <code>CoreTokenizerBuilder::set_mode</code> or the <code>CoreTokenizer::from_segmenter</code> functions</td><td>Pass <code>Mode.normal()</code> or <code>Mode.decompose(penalty)</code> (in Ruby <code>Lindera::Mode.normal</code>, in PHP <code>Lindera\Mode::normal()</code>) instead of <code>"normal"</code> or <code>"decompose"</code>, and turn a mode name read at run time into a <code>Mode</code> with <code>Mode.from_str</code> / <code>Mode.fromStr</code>; rename <code>JsPenalty</code> to <code>Penalty</code>; pass a <code>lindera::mode::Mode</code> to the <code>lindera-binding</code> functions</td></tr>
 <tr><td><strong><code>lindera train</code> builds its lattices as MeCab's learner does and keeps every <code>unk.def</code> entry; <code>model.dat</code> has the format version 3.0.0</strong></td><td>Users of <code>lindera train</code> and <code>lindera export</code>, and of the training functions of the Python, Node.js, Ruby and PHP bindings</td><td>Train every model again with 7.0.0, then export and build it again (a <code>model.dat</code> written by v6.2.0 or earlier is rejected); give every <code>unk.def</code> line at least five fields; remove comment lines from seed lexicons</td></tr>
-<tr><td><strong><code>lindera train</code> regularizes with L2 and a coefficient of 1.0 by default, as MeCab's learner does</strong></td><td>Users of <code>lindera train</code>, of <code>Trainer::new</code> in <code>lindera_trainer</code> and <code>lindera_crf</code>, and of the training functions of the Python, Node.js, Ruby and PHP bindings, who do not give both the regularization type and the coefficient</td><td>Expect more accurate models and a larger <code>matrix.def</code>; pass <code>--regularization l1 --lambda 0.01</code> (<code>.use_l2(false).regularization_cost(0.01)</code> in Rust, <code>regularization</code> <code>l1</code> and <code>lambda</code> 0.01 in the bindings, <a href="https://github.com/lindera/lindera/issues/1262">#1262</a>) to train as v6 did</td></tr>
+<tr><td><strong><code>lindera train</code> regularizes with L2 and a coefficient of 1.0 by default, as MeCab's learner does</strong></td><td>Users of <code>lindera train</code>, of <code>Trainer::new</code> in <code>lindera_trainer</code> and <code>lindera_crf</code>, and of the training functions of the Python, Node.js, Ruby and PHP bindings, who do not give both the regularization type and the coefficient</td><td>Expect more accurate models and a larger <code>matrix.def</code>; pass <code>--regularization l1 --lambda 0.01</code> (<code>.use_l2(false).regularization_cost(0.01)</code> in Rust, <code>regularization</code> <code>l1</code> and <code>lambda</code> 0.01 in the bindings, <a href="https://github.com/lindera/lindera/issues/1262">#1262</a>) to use v6's default settings</td></tr>
+<tr><td><strong><code>lindera train</code> starts its first line search at a unit step, as MeCab's learner and libLBFGS do</strong></td><td>Users of <code>lindera train</code>, of <code>Trainer</code> in <code>lindera_trainer</code> and <code>lindera_crf</code>, and of the training functions of the Python, Node.js, Ruby and PHP bindings</td><td>Nothing; expect every trained model to differ from v6's, even with v6's settings, and L1 on separable data to keep training where it stopped after a few iterations</td></tr>
 <tr><td><strong><code>lindera build</code> rejects context IDs outside <code>matrix.def</code></strong></td><td>Anyone who builds a system dictionary whose <code>lex.csv</code> or <code>unk.def</code> has a context ID beyond the size of its <code>matrix.def</code> (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's <code>mecab-dict-index</code> accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic</td><td>Fix the IDs or the matrix, or set <code>skip_invalid_cost_or_id</code> in <code>metadata.json</code> to drop such <code>lex.csv</code> rows; fix such IDs in the user dictionary</td></tr>
 <tr><td><strong><code>lindera build</code> and <code>lindera train</code> check <code>char.def</code> against <code>unk.def</code></strong></td><td>Anyone whose <code>char.def</code> has a range line that names a category not defined on an earlier line, or a category defined twice, or whose <code>char.def</code> and <code>unk.def</code> do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored <code>unk.def</code> lines); not dictionaries that MeCab's <code>mecab-dict-index</code> accepts</td><td>Define each category once, before the range lines that name it; give every category an <code>unk.def</code> line, and remove the <code>unk.def</code> lines of undefined categories</td></tr>
 <tr><td><strong><code>lindera build</code> gives a cell missing from <code>matrix.def</code> the cost 0, as MeCab does</strong></td><td>Anyone who builds a system dictionary from a <code>matrix.def</code> that leaves cells out; not the bundled dictionaries or a <code>matrix.def</code> that <code>lindera export</code> writes, which list every cell</td><td>Expect such a cell to cost 0 instead of 32767; to keep a connection expensive, list its cell with a cost</td></tr>
@@ -11901,30 +11902,33 @@ general (<code>-c 0.5</code> is <code>--lambda 2.0</code>); its help no longer g
 (<a href="https://github.com/lindera/lindera/issues/1110">#1110</a>), with the default
 cap of 100 iterations, means over the folds:</p>
 <div class="table-wrapper"><table><thead><tr><th>Regularization</th><th>Iterations</th><th style="text-align: right">Boundary F1</th><th style="text-align: right">Span + POS (4 columns) F1</th><th style="text-align: right"><code>matrix.def</code></th></tr></thead><tbody>
-<tr><td>L2, <code>--lambda 1.0</code> (v7's default)</td><td>81 to 87, converged</td><td style="text-align: right">0.9613</td><td style="text-align: right">0.9398</td><td style="text-align: right">18.9 MB</td></tr>
-<tr><td>L1, <code>--lambda 0.01</code> (v6's default)</td><td>100, the cap</td><td style="text-align: right">0.9572</td><td style="text-align: right">0.9344</td><td style="text-align: right">8.7 MB</td></tr>
-<tr><td>L2, <code>--lambda 0.01</code> (<code>--lambda 0.01</code> only)</td><td>100, the cap</td><td style="text-align: right">0.9581</td><td style="text-align: right">0.9358</td><td style="text-align: right">19.0 MB</td></tr>
-<tr><td>L1, <code>--lambda 1.0</code> (<code>--regularization l1</code> only)</td><td>100, the cap</td><td style="text-align: right">0.9607</td><td style="text-align: right">0.9381</td><td style="text-align: right">3.3 MB</td></tr>
+<tr><td>L2, <code>--lambda 1.0</code> (v7's default)</td><td>77 to 82, converged</td><td style="text-align: right">0.9613</td><td style="text-align: right">0.9397</td><td style="text-align: right">18.9 MB</td></tr>
+<tr><td>L1, <code>--lambda 0.01</code> (v6's default)</td><td>100, the cap</td><td style="text-align: right">0.9578</td><td style="text-align: right">0.9350</td><td style="text-align: right">8.3 MB</td></tr>
+<tr><td>L2, <code>--lambda 0.01</code> (<code>--lambda 0.01</code> only)</td><td>100, the cap</td><td style="text-align: right">0.9582</td><td style="text-align: right">0.9361</td><td style="text-align: right">19.0 MB</td></tr>
+<tr><td>L1, <code>--lambda 1.0</code> (<code>--regularization l1</code> only)</td><td>100, the cap</td><td style="text-align: right">0.9605</td><td style="text-align: right">0.9380</td><td style="text-align: right">3.3 MB</td></tr>
 <tr><td>MeCab's learner, <code>-c 1.0</code></td><td>75 to 83 evaluations, converged</td><td style="text-align: right">0.9611</td><td style="text-align: right">0.9398</td><td style="text-align: right">22.5 MB (fold 0)</td></tr>
 </tbody></table>
 </div>
 <p><code>lindera export</code> gives labels with equal weights one context ID. L1 sets
 many weights to 0, so many labels share an ID; L2 sets none to 0, and its
 <code>matrix.def</code> there has about 1,200 by 1,200 IDs, close to the 1316 by 1316
-of mecab-ipadic's own. The built dictionary is 3.8 % larger than with v6's
-default there (fold 0). On <code>resources/training/</code>, training stops after 9
-iterations instead of 15, and the exported <code>unk.def</code> gets other context
-IDs and costs; the tokenize output in the docs does not change.</p>
-<p>What you do: to train as v6 did, give both settings. A setting given alone
-keeps its value, and the other one takes the new default:</p>
-<div class="table-wrapper"><table><thead><tr><th>v6 invocation</th><th>Meaning in v7</th><th>To train as v6 did</th></tr></thead><tbody>
+of mecab-ipadic's own. The built dictionary is 4.0 % larger than with v6's
+default settings there (fold 0). On <code>resources/training/</code>, training stops
+after 8 iterations instead of 15, and the exported <code>unk.def</code> gets other
+context IDs and costs; the tokenize output in the docs does not change.
+These numbers include the first line search of
+<a href="migration_v6_to_v7.html#lindera-train-starts-its-first-line-search-at-a-unit-step"><code>lindera train</code> starts its first line search at a unit step</a>.</p>
+<p>What you do: to use v6's default settings, give both. A setting given
+alone keeps its value, and the other one takes the new default:</p>
+<div class="table-wrapper"><table><thead><tr><th>v6 invocation</th><th>Meaning in v7</th><th>To use v6's settings</th></tr></thead><tbody>
 <tr><td>No regularization flag</td><td>L2, <code>--lambda 1.0</code></td><td><code>--regularization l1 --lambda 0.01</code></td></tr>
 <tr><td><code>--lambda X</code> only</td><td>L2, <code>--lambda X</code></td><td>Add <code>--regularization l1</code></td></tr>
 <tr><td><code>--regularization l1</code> only</td><td>L1, <code>--lambda 1.0</code></td><td>Add <code>--lambda 0.01</code></td></tr>
 <tr><td>Both</td><td>Unchanged</td><td>—</td></tr>
 </tbody></table>
 </div>
-<p>To stop as v6 did, also pass <code>--eta 0</code> (see
+<p>The model still differs from v6's, since the first line search starts at
+another step (see the next section). To stop as v6 did, also pass <code>--eta 0</code> (see
 <a href="migration_v6_to_v7.html#lindera-train-builds-its-lattices-as-mecabs-learner-does"><code>lindera train</code> builds its lattices as MeCab's learner does</a>).
 In Rust, call <code>.use_l2(false).regularization_cost(0.01)</code> on
 <code>lindera_trainer::Trainer::new(config)?</code>, and
@@ -11943,6 +11947,37 @@ the exported <code>metadata.json</code>
 <p>= 0`, where v6 accepted it, and the bindings raise before they read any
 file (<a href="https://github.com/lindera/lindera/issues/1262">#1262</a>).</p>
 </blockquote>
+<h2 id="lindera-train-starts-its-first-line-search-at-a-unit-step"><a class="header" href="#lindera-train-starts-its-first-line-search-at-a-unit-step"><code>lindera train</code> starts its first line search at a unit step</a></h2>
+<p>The first line search of the L-BFGS and OWL-QN optimizers of <code>lindera train</code>, of <code>Trainer</code> in <code>lindera_trainer</code> and <code>lindera_crf</code>, and of the
+training functions of the Python, Node.js, Ruby and PHP bindings starts at
+a step of <code>1 / |d|</code>, <code>d</code> being the first search direction, so that its
+first trial point lies at unit distance from the initial weights, as in
+MeCab's learner and libLBFGS; every later one starts at a step of 1, as
+before (<a href="https://github.com/lindera/lindera/issues/1290">#1290</a>). v6
+started the first one at 1 too, so its first trial point lay as far from
+the initial weights as the gradient was long: 1.1e5 on the corpus of
+<a href="https://github.com/lindera/lindera/issues/1260">#1260</a>, where, with L1
+and <code>--lambda 0.01</code>, the first search went so far that the loss became
+rounding error and training stopped with "no progress" after 3
+iterations. It now converges after 53.</p>
+<p>Every trained model changes, with every regularization type. On the
+cross-validation of the previous section, the accuracy stays within the
+spread between folds, and the first line search takes 1 evaluation
+instead of about 7 with L2 and 13 with L1 (means over the folds, the same
+build with each first step):</p>
+<div class="table-wrapper"><table><thead><tr><th>Regularization</th><th>First step</th><th style="text-align: right">Iterations</th><th style="text-align: right">Evaluations</th><th style="text-align: right">Boundary F1</th><th style="text-align: right">Span + POS (4 columns) F1</th></tr></thead><tbody>
+<tr><td>L2, <code>--lambda 1.0</code></td><td>1</td><td style="text-align: right">84.4</td><td style="text-align: right">94.2</td><td style="text-align: right">0.9613</td><td style="text-align: right">0.9398</td></tr>
+<tr><td>L2, <code>--lambda 1.0</code></td><td><code>1 / |d|</code></td><td style="text-align: right">79.4</td><td style="text-align: right">83.8</td><td style="text-align: right">0.9613</td><td style="text-align: right">0.9397</td></tr>
+<tr><td>L1, <code>--lambda 0.01</code></td><td>1</td><td style="text-align: right">100</td><td style="text-align: right">113.8</td><td style="text-align: right">0.9572</td><td style="text-align: right">0.9344</td></tr>
+<tr><td>L1, <code>--lambda 0.01</code></td><td><code>1 / |d|</code></td><td style="text-align: right">100</td><td style="text-align: right">101.4</td><td style="text-align: right">0.9578</td><td style="text-align: right">0.9350</td></tr>
+<tr><td>L1, <code>--lambda 1.0</code></td><td>1</td><td style="text-align: right">100</td><td style="text-align: right">112.8</td><td style="text-align: right">0.9607</td><td style="text-align: right">0.9381</td></tr>
+<tr><td>L1, <code>--lambda 1.0</code></td><td><code>1 / |d|</code></td><td style="text-align: right">100</td><td style="text-align: right">101.2</td><td style="text-align: right">0.9605</td><td style="text-align: right">0.9380</td></tr>
+<tr><td>Elastic Net, <code>--lambda 1.0</code></td><td>1</td><td style="text-align: right">97.6</td><td style="text-align: right">110.4</td><td style="text-align: right">0.9614</td><td style="text-align: right">0.9393</td></tr>
+<tr><td>Elastic Net, <code>--lambda 1.0</code></td><td><code>1 / |d|</code></td><td style="text-align: right">98.8</td><td style="text-align: right">100.0</td><td style="text-align: right">0.9612</td><td style="text-align: right">0.9391</td></tr>
+</tbody></table>
+</div>
+<p>What you do: nothing. With v6's settings (see the previous section), a
+model is no longer v6's byte for byte.</p>
 <h2 id="lindera-build-rejects-context-ids-outside-the-connection-matrix"><a class="header" href="#lindera-build-rejects-context-ids-outside-the-connection-matrix"><code>lindera build</code> rejects context IDs outside the connection matrix</a></h2>
 <p>Up to v6.2.0, <code>lindera build</code> accepted a <code>lex.csv</code> row or an <code>unk.def</code> line
 whose context IDs fall outside <code>matrix.def</code>, and the built dictionary
@@ -12460,12 +12495,15 @@ cap and on the optimizer's own tests, as v6 did
 <li>Expect training to regularize with L2 and a coefficient of 1.0 unless
 you give both the type and the coefficient; pass
 <code>--regularization l1 --lambda 0.01</code>
-(<code>.use_l2(false).regularization_cost(0.01)</code> in Rust) to train as v6 did.
-If you pass only <code>--lambda</code> (<code>lambda</code> in the bindings), it is now the L2
-coefficient; with <code>--regularization l1</code> only, the coefficient is 1.0. The
-bindings take the type as <code>regularization</code>
+(<code>.use_l2(false).regularization_cost(0.01)</code> in Rust) to use v6's default
+settings. If you pass only <code>--lambda</code> (<code>lambda</code> in the bindings), it is
+now the L2 coefficient; with <code>--regularization l1</code> only, the coefficient
+is 1.0. The bindings take the type as <code>regularization</code>
 (<a href="https://github.com/lindera/lindera/issues/1261">#1261</a>,
 <a href="https://github.com/lindera/lindera/issues/1262">#1262</a>).</li>
+<li>Expect every trained model to differ from v6's, even with v6's settings,
+since the first line search starts at a unit step
+(<a href="https://github.com/lindera/lindera/issues/1290">#1290</a>).</li>
 <li>Expect a NaN or infinite <code>lambda</code> to be rejected
 (<a href="https://github.com/lindera/lindera/issues/1262">#1262</a>).</li>
 </ul>
@@ -12909,7 +12947,7 @@ cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
   seed row:   外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 </code></pre>
 <p>Gold tokens whose surface no seed row has do not count toward the warning, so a seed lexicon that covers little of the corpus gives none.</p>
-<p>The CRF is then trained with L-BFGS (OWL-QN when the regularization has an L1 part). Training stops at the first of these:</p>
+<p>The CRF is then trained with L-BFGS (OWL-QN when the regularization has an L1 part). As in MeCab's learner and libLBFGS, the first line search starts at a step of <code>1 / |d|</code>, <code>d</code> being the first search direction, so that its first trial point lies at unit distance from the initial weights, and every later one at a step of 1 (<a href="https://github.com/lindera/lindera/issues/1290">#1290</a>). Training stops at the first of these:</p>
 <ul>
 <li><code>converged</code>: the relative change of the objective, <code>|previous - current| / |previous|</code>, stayed below <code>eta</code> for 3 iterations in a row. The default <code>eta</code> is that of MeCab's learner, which applies the same test to every evaluation, line-search trials included, where Lindera counts iterations.</li>
 <li><code>no progress</code>: an iteration left the objective unchanged. When this happens after a few iterations, the model is barely trained. <code>lindera train</code> writes a warning on standard error whenever training stops this way, after any number of iterations.</li>
@@ -12917,7 +12955,7 @@ cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 <li><code>max-iterations</code> was reached before the objective converged.</li>
 </ul>
 <p><code>lindera train</code> prints which one stopped it, with the number of iterations and of evaluations, each evaluation being one forward-backward pass over every lattice; with the files in <code>resources/training/</code>:</p>
-<pre><code class="language-text">L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradient: converged
+<pre><code class="language-text">L-BFGS stopped after 8 iterations and 9 evaluations of the loss and its gradient: converged
 </code></pre>
 <h2 id="required-input-files"><a class="header" href="#required-input-files">Required Input Files</a></h2>
 <h3 id="1-seed-lexicon-seedcsv"><a class="header" href="#1-seed-lexicon-seedcsv">1. Seed Lexicon (seed.csv)</a></h3>
@@ -13075,7 +13113,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </tbody></table>
 </div>
 <p>A <code>lambda</code> of 0 disables regularization for every type. For Elastic Net, a ratio of 0 uses only L2, and a ratio of 1 uses only L1.</p>
-<p>The defaults are those of MeCab's learner: L2 regularization with <code>lambda</code> 1.0 is its objective with <code>-c 1.0</code>. On the mecab-ipadic cross-validation data of <a href="https://github.com/lindera/lindera/issues/1110">#1110</a>, they score as MeCab's learner does and converge in about as many iterations, 81 to 87 (<a href="https://github.com/lindera/lindera/issues/1261">#1261</a>): boundary F1 0.9613 and span + POS (4 columns) F1 0.9398 on average over 5 folds, where v6's default, L1 with <code>lambda</code> 0.01, reached <code>max-iterations</code> on every fold with 0.9572 and 0.9344. L1 sets many weights to 0, and <code>lindera export</code> gives labels with equal weights one context ID, so the L1 <code>matrix.def</code> is smaller: 8.7 MB there against 18.9 MB with L2, which makes the built dictionary 3.8 % larger. Training there takes about twice as long as MeCab's learner, and about two thirds of the time is spent outside the optimizer: before it starts (<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>) and after it stops.</p>
+<p>The defaults are those of MeCab's learner: L2 regularization with <code>lambda</code> 1.0 is its objective with <code>-c 1.0</code>. On the mecab-ipadic cross-validation data of <a href="https://github.com/lindera/lindera/issues/1110">#1110</a>, they score as MeCab's learner does and converge in about as many iterations, 77 to 82 (<a href="https://github.com/lindera/lindera/issues/1261">#1261</a>, <a href="https://github.com/lindera/lindera/issues/1290">#1290</a>): boundary F1 0.9613 and span + POS (4 columns) F1 0.9397 on average over 5 folds, where v6's default settings, L1 with <code>lambda</code> 0.01, reached <code>max-iterations</code> on every fold with 0.9578 and 0.9350. L1 sets many weights to 0, and <code>lindera export</code> gives labels with equal weights one context ID, so the L1 <code>matrix.def</code> is smaller: 8.3 MB there against 18.9 MB with L2, which makes the built dictionary 4.0 % larger. Training there takes about twice as long as MeCab's learner, and about two thirds of the time is spent outside the optimizer: before it starts (<a href="https://github.com/lindera/lindera/issues/1263">#1263</a>) and after it stops.</p>
 <h2 id="cli-usage"><a class="header" href="#cli-usage">CLI Usage</a></h2>
 <h3 id="train-1"><a class="header" href="#train-1">Train</a></h3>
 <pre><code class="language-bash">lindera train \
@@ -13110,11 +13148,11 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </tbody></table>
 </div>
 <p>For example, if the <code>unk.def</code> above has a second <code>KANJI</code> line, <code>KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*</code>, after the first one, the exported <code>unk.def</code> keeps both, in input order:</p>
-<pre><code class="language-csv">DEFAULT,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+<pre><code class="language-csv">DEFAULT,1,1,31699,名詞,一般,*,*,*,*,*,*,*
 SPACE,10,7,0,記号,空白,*,*,*,*,*,*,*
-HIRAGANA,1,1,31698,名詞,一般,*,*,*,*,*,*,*
-KATAKANA,1,1,31698,名詞,一般,*,*,*,*,*,*,*
-KANJI,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,1,1,31699,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,31699,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,31699,名詞,一般,*,*,*,*,*,*,*
 KANJI,3,3,4179,名詞,サ変接続,*,*,*,*,*,*,*
 ALPHA,11,10,10957,名詞,固有名詞,一般,*,*,*,*,*,*
 NUMERIC,11,10,10957,名詞,数,*,*,*,*,*,*,*
