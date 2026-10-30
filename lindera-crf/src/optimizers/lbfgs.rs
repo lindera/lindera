@@ -468,6 +468,16 @@ where
 /// direction and handed to the inner line search in [`Solver::init`], on the
 /// clone. The More-Thuente line search clamps its steps to `√ε` and more, so
 /// for a direction longer than about 6.7e7 the first step is `√ε`.
+///
+/// It also fails a search along a direction with a component that is not
+/// finite, before the wrapped search evaluates any point (#1301). argmin's
+/// L-BFGS builds such a direction from a curvature pair whose gradient did
+/// not change, `y = 0`, as after a step too small to change the gradient by
+/// a bit: its `gamma = s·y / y·y` is then 0/0. Every trial point along it is
+/// NaN, and neither wrapped search ends: the backtracking one stops only on
+/// the Armijo condition, which a NaN cost never meets, and the More-Thuente
+/// one checks for a descent direction with a comparison that NaN passes.
+/// argmin ends the run on the error, as on any failed line search.
 #[derive(Clone)]
 struct UnitFirstStep<L> {
     /// The wrapped line search.
@@ -476,6 +486,8 @@ struct UnitFirstStep<L> {
     step: f64,
     /// Set once the first search direction has been given.
     started: bool,
+    /// Whether every component of the coming search's direction is finite.
+    finite: bool,
 }
 
 impl<L> UnitFirstStep<L> {
@@ -493,6 +505,7 @@ impl<L> UnitFirstStep<L> {
             inner,
             step: 1.0,
             started: false,
+            finite: true,
         }
     }
 }
@@ -503,8 +516,11 @@ where
 {
     /// Sets the search direction, and the step the search starts at:
     /// `1 / |direction|` for the first search, 1 for every later one. A
-    /// direction whose length is 0 or not finite gets 1 too.
+    /// direction whose length is 0 or not finite gets 1 too. Records whether
+    /// every component is finite: not whether the length is, which overflows
+    /// for huge but finite components, along which a search can go.
     fn search_direction(&mut self, direction: Vec<f64>) {
+        self.finite = direction.iter().all(|x| x.is_finite());
         self.step = 1.0;
         if !self.started {
             self.started = true;
@@ -533,11 +549,20 @@ where
         self.inner.name()
     }
 
+    /// Starts the wrapped search at the recorded step, or fails, before it
+    /// evaluates any point, when the direction has a component that is not
+    /// finite.
     fn init(
         &mut self,
         problem: &mut Problem<O>,
         state: LbfgsState,
     ) -> Result<(LbfgsState, Option<KV>), argmin::core::Error> {
+        if !self.finite {
+            return Err(argmin::argmin_error!(
+                ConditionViolated,
+                "the search direction has a component that is not finite"
+            ));
+        }
         self.inner.initial_step_length(self.step)?;
         self.inner.init(problem, state)
     }
@@ -1020,25 +1045,58 @@ mod tests {
 
     #[test]
     fn a_first_direction_of_no_finite_length_starts_at_one() {
-        // The length of [1e200, 1e200] overflows.
-        let wrong: Vec<(Vec<f64>, Vec<f64>)> = [
-            vec![0.0, 0.0],
-            vec![f64::NAN, 1.0],
-            vec![f64::INFINITY, 1.0],
-            vec![1e200, 1e200],
-        ]
-        .into_iter()
-        .filter_map(|direction| {
+        // The length of [1e200, 1e200] overflows. A direction with a
+        // component that is not finite fails the search instead (see
+        // `a_direction_that_is_not_finite_fails_the_line_search`).
+        let wrong: Vec<(Vec<f64>, Vec<f64>)> = [vec![0.0, 0.0], vec![1e200, 1e200]]
+            .into_iter()
+            .filter_map(|direction| {
+                let inner = RecordsSteps::default();
+                let steps = alloc::rc::Rc::clone(&inner.steps);
+                let mut line_search = UnitFirstStep::new(inner);
+                search(&mut line_search, direction.clone());
+                let steps = steps.borrow().clone();
+                (steps != [1.0]).then_some((direction, steps))
+            })
+            .collect();
+
+        assert!(wrong.is_empty(), "(direction, steps): {wrong:?}");
+    }
+
+    #[test]
+    fn a_direction_that_is_not_finite_fails_the_line_search() {
+        // Whether the search starts along `direction`; the inner search is
+        // set up only when it does.
+        let starts = |direction: Vec<f64>| {
             let inner = RecordsSteps::default();
             let steps = alloc::rc::Rc::clone(&inner.steps);
             let mut line_search = UnitFirstStep::new(inner);
-            search(&mut line_search, direction.clone());
-            let steps = steps.borrow().clone();
-            (steps != [1.0]).then_some((direction, steps))
-        })
+            line_search.search_direction(direction);
+            let mut clone = line_search.clone();
+            let started = Solver::<(), LbfgsState>::init(
+                &mut clone,
+                &mut Problem::new(()),
+                LbfgsState::new(),
+            )
+            .is_ok();
+            assert_eq!(steps.borrow().len(), usize::from(started));
+            started
+        };
+        let wrong: Vec<(Vec<f64>, bool)> = [
+            (vec![f64::NAN, 1.0], false),
+            (vec![1.0, f64::INFINITY], false),
+            (vec![f64::NEG_INFINITY, 1.0], false),
+            // Finite, though its length overflows.
+            (vec![1e200, 1e200], true),
+        ]
+        .into_iter()
+        .filter(|(direction, expected)| starts(direction.clone()) != *expected)
         .collect();
 
-        assert!(wrong.is_empty(), "(direction, steps): {wrong:?}");
+        assert!(
+            wrong.is_empty(),
+            "(direction, expected to start): {wrong:?}"
+        );
     }
 
     /// `scale / 2 * |w - center|²`, which records every point at which its
@@ -1158,6 +1216,78 @@ mod tests {
         let result = minimize(Quartic, vec![0.1], Regularization::L1, 0.01, 100, 0.0);
         assert_eq!(result.stop_reason, StopReason::NoProgress);
         assert_eq!(result.iterations, 2);
+    }
+
+    /// `|w − 10|` of a single weight, whose gradient is −1 everywhere below
+    /// 10.
+    struct Vee;
+
+    impl CostFunction for Vee {
+        type Param = Vec<f64>;
+        type Output = f64;
+
+        fn cost(&self, param: &Self::Param) -> Result<Self::Output, argmin::core::Error> {
+            Ok((param[0] - 10.0).abs())
+        }
+    }
+
+    impl Gradient for Vee {
+        type Param = Vec<f64>;
+        type Gradient = Vec<f64>;
+
+        fn gradient(&self, param: &Self::Param) -> Result<Self::Gradient, argmin::core::Error> {
+            Ok(vec![(param[0] - 10.0).signum()])
+        }
+    }
+
+    // A step that leaves the gradient as it was, bit for bit, gives argmin's
+    // L-BFGS a curvature pair with `y = 0`, from which it builds a NaN
+    // direction, and no line search along it ended (#1301). From 0, the first
+    // iteration on `Vee` stays below 10, at 1 with L1 and at 10 − 7.8e-11
+    // with L2, where the gradient is still −1, so the second iteration has
+    // such a pair. Both runs end there, as failed line searches far from the
+    // optimum. Each runs in a thread that the test waits for a limited time,
+    // so that a run that does not end fails the test instead of hanging it.
+    #[test]
+    fn a_curvature_pair_whose_gradient_did_not_change_ends_the_run() {
+        let limit = std::time::Duration::from_secs(30);
+        let runs: Vec<_> = [
+            ("L1", Regularization::L1, 0.1),
+            ("L2", Regularization::L2, 0.0),
+        ]
+        .into_iter()
+        .map(|(case, regularization, lambda)| {
+            let (sender, receiver) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                let _ = sender.send(minimize(Vee, vec![0.0], regularization, lambda, 100, 0.0));
+            });
+            (case, receiver)
+        })
+        .collect();
+        let deadline = std::time::Instant::now() + limit;
+
+        let wrong: Vec<String> = runs
+            .into_iter()
+            .filter_map(|(case, receiver)| {
+                let left = deadline.saturating_duration_since(std::time::Instant::now());
+                match receiver.recv_timeout(left) {
+                    Ok(result)
+                        if result.stop_reason == StopReason::LineSearchFailed
+                            && result.iterations == 2
+                            && result.weights.iter().all(|w| w.is_finite()) =>
+                    {
+                        None
+                    }
+                    Ok(result) => Some(format!(
+                        "{case}: {:?} after {} iterations, weights {:?}",
+                        result.stop_reason, result.iterations, result.weights
+                    )),
+                    Err(_) => Some(format!("{case}: did not end within {limit:?}")),
+                }
+            })
+            .collect();
+
+        assert!(wrong.is_empty(), "{wrong:?}");
     }
 
     #[test]

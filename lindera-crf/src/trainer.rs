@@ -476,7 +476,9 @@ pub enum StopReason {
     /// The line search of the last iteration failed far from the optimum,
     /// where the norm of the gradient at the best weights of the run was
     /// still at least `1e-5` times its norm at the initial weights. The
-    /// weights are the best ones of the run.
+    /// weights are the best ones of the run. A search direction with a
+    /// component that is not finite, which the optimizer builds from a step
+    /// that left the gradient unchanged, fails the line search too.
     LineSearchFailed,
 }
 
