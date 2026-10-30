@@ -239,33 +239,75 @@ impl RelativeChange {
 /// How the wrapped solver's run ended, as far as [`ConvergenceTest`] saw it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Convergence {
-    /// The relative change passed, or argmin's L-BFGS found a vanishing
-    /// gradient.
+    /// The relative change passed, or argmin's L-BFGS stopped near the
+    /// optimum ([`ConvergenceTest::near_optimum`]), whether by its own tests
+    /// or because a line search failed.
     Converged,
-    /// argmin's L-BFGS stopped because an iteration left the cost unchanged.
+    /// argmin's L-BFGS stopped far from the optimum because an iteration
+    /// left the cost unchanged.
     NoProgress,
 }
 
 /// The gradient norm under which argmin's L-BFGS stops, its default
-/// `tol_grad`.
+/// `tol_grad`. A gradient under it is near the optimum whatever the initial
+/// gradient ([`ConvergenceTest::near_optimum`]).
 fn argmin_tol_grad() -> f64 {
     f64::EPSILON.sqrt()
+}
+
+/// The ratio of a gradient norm to the one at the initial weights under
+/// which the weights are near the optimum ([`ConvergenceTest::near_optimum`]):
+/// `1e-5`, the default `epsilon` of libLBFGS's gradient test
+/// (`lib/lbfgs.c` at `5ad02fbe`, lines 114 and 505–508).
+///
+/// The loss is a sum over the lattices, so its gradient grows with the
+/// corpus, while the ratio does not. The runs of #1300 that stopped near the
+/// optimum did so at 2.2e-8 of the initial gradient and below, and the stops
+/// far from it known, of the wide fixture before #1294 and of the quartic in
+/// the tests, at 1.7e-4 and above.
+const NEAR_OPTIMUM_GRADIENT_RATIO: f64 = 1e-5;
+
+/// Returns the Euclidean norm of a vector.
+///
+/// # Arguments
+///
+/// * `v` - The vector.
+///
+/// # Returns
+///
+/// The norm.
+fn norm(v: &[f64]) -> f64 {
+    v.iter().map(|x| x * x).sum::<f64>().sqrt()
 }
 
 /// argmin's L-BFGS with the convergence test of `lindera train` added.
 ///
 /// argmin's L-BFGS stops when the norm of the gradient falls below `√ε` or
-/// when the cost changes by less than `ε` in absolute terms. For a training
-/// loss in the hundreds or thousands the first practically never holds, and
-/// the second only when an iteration left the cost unchanged. This solver
-/// keeps both, records which of them stopped the run, and adds MeCab's test
-/// on the relative change ([`RelativeChange`]). It delegates everything else
-/// to the wrapped solver, so the steps and the log lines are argmin's.
+/// when the cost changes by less than `ε` in absolute terms, and when a line
+/// search fails. Near the optimum the loss changes by less than its
+/// rounding, and which of these comes first is decided by the last bits of
+/// the libm results, which differ between platforms (#1289, #1300). This
+/// solver therefore tells a stop by where it leaves the weights, not by
+/// which test held: near the optimum ([`Self::near_optimum`]) the run
+/// converged, and only a stop far from it is reported as one that made no
+/// progress or whose line search failed. It adds MeCab's test on the
+/// relative change ([`RelativeChange`]), and delegates everything else to
+/// the wrapped solver, so the steps and the log lines are argmin's.
 struct ConvergenceTest<S> {
     /// The wrapped L-BFGS solver.
     solver: S,
     /// The relative-change test.
     relative: RelativeChange,
+    /// The norm of the gradient that argmin's `init` leaves in the state: at
+    /// the initial weights, without the L1 term for OWL-QN. It sets the
+    /// scale of the problem for [`Self::near_optimum`]; 0 until `init`.
+    initial_gradient_norm: f64,
+    /// The lowest cost of the run so far.
+    best_cost: f64,
+    /// The norm of the gradient at the weights of [`Self::best_cost`], which
+    /// a run whose line search failed returns (see [`final_param`]); NaN
+    /// until [`Solver::terminate`] has seen them.
+    best_gradient_norm: f64,
     /// Set when one of the tests stopped the run.
     convergence: Option<Convergence>,
 }
@@ -285,9 +327,46 @@ impl<S> ConvergenceTest<S> {
         Self {
             solver,
             relative: RelativeChange::new(eta),
+            initial_gradient_norm: 0.0,
+            best_cost: f64::INFINITY,
+            best_gradient_norm: f64::NAN,
             convergence: None,
         }
     }
+
+    /// Returns whether weights with a gradient of the given norm are near
+    /// the optimum: the norm is under argmin's `tol_grad`, or under
+    /// [`NEAR_OPTIMUM_GRADIENT_RATIO`] times the norm at the initial
+    /// weights. A NaN norm is not.
+    ///
+    /// # Arguments
+    ///
+    /// * `gradient_norm` - The norm of the gradient (the pseudo-gradient for
+    ///   OWL-QN) at the weights.
+    ///
+    /// # Returns
+    ///
+    /// `true` when the weights are near the optimum.
+    fn near_optimum(&self, gradient_norm: f64) -> bool {
+        gradient_norm < argmin_tol_grad()
+            || gradient_norm < NEAR_OPTIMUM_GRADIENT_RATIO * self.initial_gradient_norm
+    }
+}
+
+/// Returns the norm of the gradient in a state, or NaN when the state holds
+/// none.
+///
+/// # Arguments
+///
+/// * `state` - The state.
+///
+/// # Returns
+///
+/// The norm.
+fn gradient_norm(state: &LbfgsState) -> f64 {
+    state
+        .get_gradient()
+        .map_or(f64::NAN, |gradient| norm(gradient))
 }
 
 /// The state of every L-BFGS run here.
@@ -301,29 +380,54 @@ where
         self.solver.name()
     }
 
+    /// Initializes the wrapped solver, and records the norm of the gradient
+    /// it leaves in the state.
     fn init(
         &mut self,
         problem: &mut Problem<O>,
         state: LbfgsState,
     ) -> Result<(LbfgsState, Option<KV>), argmin::core::Error> {
-        self.solver.init(problem, state)
+        let (state, kv) = self.solver.init(problem, state)?;
+        self.initial_gradient_norm = gradient_norm(&state);
+        Ok((state, kv))
     }
 
+    /// Runs an iteration of the wrapped solver. When its line search fails,
+    /// argmin's L-BFGS ends the run here, and the executor does not call
+    /// [`Solver::terminate`] again, so the run is classified here, by the
+    /// gradient at the best weights, which it returns.
     fn next_iter(
         &mut self,
         problem: &mut Problem<O>,
         state: LbfgsState,
     ) -> Result<(LbfgsState, Option<KV>), argmin::core::Error> {
-        self.solver.next_iter(problem, state)
+        let (state, kv) = self.solver.next_iter(problem, state)?;
+        if matches!(
+            state.get_termination_status(),
+            TerminationStatus::Terminated(TerminationReason::SolverExit(_))
+        ) && self.near_optimum(self.best_gradient_norm)
+        {
+            self.convergence = Some(Convergence::Converged);
+        }
+        Ok((state, kv))
     }
 
+    /// Records the gradient at the best weights so far, and classifies a
+    /// stop by argmin's own tests by the gradient in the state.
+    ///
+    /// The executor calls this after every update of the state, which makes
+    /// the current weights the best ones only on a strictly lower cost; a
+    /// lower best cost therefore means that the gradient in the state is the
+    /// one at the best weights.
     fn terminate(&mut self, state: &LbfgsState) -> TerminationStatus {
+        let current = gradient_norm(state);
+        if state.get_best_cost() < self.best_cost {
+            self.best_cost = state.get_best_cost();
+            self.best_gradient_norm = current;
+        }
         let status = self.solver.terminate(state);
         if status.terminated() {
-            let gradient_vanished = state
-                .get_gradient()
-                .is_some_and(|g| g.iter().map(|x| x * x).sum::<f64>().sqrt() < argmin_tol_grad());
-            self.convergence = Some(if gradient_vanished {
+            self.convergence = Some(if self.near_optimum(current) {
                 Convergence::Converged
             } else {
                 Convergence::NoProgress
@@ -404,9 +508,9 @@ where
         self.step = 1.0;
         if !self.started {
             self.started = true;
-            let norm = direction.iter().map(|x| x * x).sum::<f64>().sqrt();
-            if norm.is_finite() && norm > 0.0 {
-                self.step = 1.0 / norm;
+            let length = norm(&direction);
+            if length.is_finite() && length > 0.0 {
+                self.step = 1.0 / length;
             }
         }
         self.inner.search_direction(direction);
@@ -454,6 +558,10 @@ where
 /// Tells why a run stopped, from its final termination status and what
 /// [`ConvergenceTest`] recorded.
 ///
+/// A failed line search (`SolverExit`) is [`StopReason::Converged`] when
+/// [`ConvergenceTest`] found the best weights near the optimum, and
+/// [`StopReason::LineSearchFailed`] otherwise.
+///
 /// The run sets no target cost and no timeout, and turns argmin's Ctrl-C
 /// handling off, so it cannot end with `TargetCostReached`, `Timeout` or
 /// `Interrupt`; those statuses, which would also come with a `None`, are
@@ -472,9 +580,10 @@ fn stop_reason(status: &TerminationStatus, convergence: Option<Convergence>) -> 
         TerminationStatus::Terminated(TerminationReason::MaxItersReached) => {
             StopReason::MaxIterations
         }
-        TerminationStatus::Terminated(TerminationReason::SolverExit(_)) => {
-            StopReason::LineSearchFailed
-        }
+        TerminationStatus::Terminated(TerminationReason::SolverExit(_)) => match convergence {
+            Some(Convergence::Converged) => StopReason::Converged,
+            _ => StopReason::LineSearchFailed,
+        },
         _ => match convergence {
             Some(Convergence::NoProgress) => StopReason::NoProgress,
             Some(Convergence::Converged) | None => StopReason::Converged,
@@ -765,17 +874,95 @@ mod tests {
 
     #[test]
     fn a_stop_by_argmin_is_told_apart_by_the_gradient() {
-        let classify = |gradient: Vec<f64>| {
+        // Initializes the test with `initial` as the gradient at the initial
+        // weights, then stops with `gradient`.
+        let classify = |initial: Vec<f64>, gradient: Vec<f64>| {
             let mut test = ConvergenceTest::new(StopsAtOnce, 0.0);
-            let state = LbfgsState::new().param(vec![0.0, 0.0]).gradient(gradient);
+            let state = LbfgsState::new().param(vec![0.0, 0.0]).gradient(initial);
+            let (state, _) =
+                Solver::<(), LbfgsState>::init(&mut test, &mut Problem::new(()), state).unwrap();
+            let state = state.gradient(gradient);
             let status = Solver::<(), LbfgsState>::terminate(&mut test, &state);
             assert!(status.terminated());
             test.convergence
         };
-        // A gradient norm below argmin's tolerance: converged.
-        assert_eq!(classify(vec![1e-9, 0.0]), Some(Convergence::Converged));
-        // Otherwise argmin stopped because the cost did not change.
-        assert_eq!(classify(vec![1.0, 0.0]), Some(Convergence::NoProgress));
+        // Under 1e-5 times the initial gradient, though far over argmin's
+        // tolerance: near the optimum, converged.
+        assert_eq!(
+            classify(vec![3e3, 4e3], vec![0.03, 0.0]),
+            Some(Convergence::Converged)
+        );
+        // Under argmin's tolerance: converged, however small the initial
+        // gradient.
+        assert_eq!(
+            classify(vec![1e-6, 0.0], vec![1e-9, 0.0]),
+            Some(Convergence::Converged)
+        );
+        // Otherwise argmin stopped far from the optimum because the cost did
+        // not change.
+        assert_eq!(
+            classify(vec![3e3, 4e3], vec![0.06, 0.0]),
+            Some(Convergence::NoProgress)
+        );
+    }
+
+    /// A solver that moves, iteration by iteration, to points of the given
+    /// costs and gradients, and then fails as argmin's L-BFGS does when its
+    /// line search fails: it takes the weights and the gradient out of the
+    /// state and ends the run with `SolverExit`.
+    struct StepsThenFails {
+        steps: Vec<(f64, Vec<f64>)>,
+    }
+
+    impl<O> Solver<O, LbfgsState> for StepsThenFails {
+        fn name(&self) -> &str {
+            "steps then fails"
+        }
+
+        fn next_iter(
+            &mut self,
+            _problem: &mut Problem<O>,
+            mut state: LbfgsState,
+        ) -> Result<(LbfgsState, Option<KV>), argmin::core::Error> {
+            if self.steps.is_empty() {
+                let _ = state.take_param();
+                let _ = state.take_gradient();
+                let reason =
+                    TerminationReason::SolverExit("Line search terminated with: ...".into());
+                return Ok((state.terminate_with(reason), None));
+            }
+            let (cost, gradient) = self.steps.remove(0);
+            Ok((state.cost(cost).gradient(gradient), None))
+        }
+    }
+
+    #[test]
+    fn a_failed_line_search_is_told_apart_by_the_gradient_at_the_best_weights() {
+        // From a cost of 10 and an initial gradient 5e3 long, the run moves
+        // to the best weights, at a cost of 1, then to a point of cost 2,
+        // whose line search fails. The run returns the best weights, so their
+        // gradient decides.
+        let run = |best: Vec<f64>, last: Vec<f64>| {
+            let solver = StepsThenFails {
+                steps: vec![(1.0, best), (2.0, last)],
+            };
+            let res = Executor::new((), ConvergenceTest::new(solver, 0.0))
+                .configure(|state| {
+                    state
+                        .param(vec![0.0, 0.0])
+                        .gradient(vec![3e3, 4e3])
+                        .cost(10.0)
+                })
+                .ctrlc(false)
+                .run()
+                .unwrap();
+            stop_reason(res.state.get_termination_status(), res.solver.convergence)
+        };
+        assert_eq!(run(vec![0.03, 0.0], vec![1.0, 0.0]), StopReason::Converged);
+        assert_eq!(
+            run(vec![1.0, 0.0], vec![0.03, 0.0]),
+            StopReason::LineSearchFailed
+        );
     }
 
     /// A line search that records the step each search starts at, in a list
@@ -988,6 +1175,16 @@ mod tests {
                 None
             ),
             StopReason::LineSearchFailed
+        );
+        // A line search that failed near the optimum.
+        assert_eq!(
+            stop_reason(
+                &terminated(TerminationReason::SolverExit(
+                    "Line search terminated with: ...".into()
+                )),
+                Some(Convergence::Converged)
+            ),
+            StopReason::Converged
         );
         assert_eq!(
             stop_reason(

@@ -1003,7 +1003,7 @@ Once training stops, it prints why, with the number of iterations and of evaluat
 L-BFGS stopped after 8 iterations and 9 evaluations of the loss and its gradient: converged
 ```
 
-When an iteration left the objective unchanged or the line search failed, it then writes a warning on stderr (see [How training works](../development/training_pipeline.md#how-training-works)).
+When an iteration left the objective unchanged or the line search failed far from the optimum, it then writes a warning on stderr (see [How training works](../development/training_pipeline.md#how-training-works)).
 
 The trained model contains:
 

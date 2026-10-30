@@ -1421,15 +1421,16 @@ mod with_trained_dictionary {
         assert!(model.is_file());
     }
 
-    /// `lindera train` warns on stderr, not on stdout, when the optimizer
-    /// stops because an iteration left the objective unchanged, and still
-    /// writes the model (#1268). On the corpus of `cut_corpus`, L1 with
-    /// `--lambda 1` and the convergence test turned off (`--eta 0`) stops
-    /// so, whether the first line search starts at a step of 1 or at a unit
-    /// step (#1290). The line that says why stays on stdout. The warning of
-    /// a failed line search is written by the same call.
+    /// `lindera train` reports a stop near the optimum as converged, without
+    /// a warning of the optimizer, and writes the model (#1300). On the
+    /// corpus of `cut_corpus`, L1 with `--lambda 1` and the convergence test
+    /// turned off (`--eta 0`) runs until the objective changes by less than
+    /// its rounding; on macOS arm64 an iteration then left it unchanged, with
+    /// a gradient 2.2e-8 times its initial norm, and `lindera train` warned
+    /// that the optimizer could not make progress. Which way such a run
+    /// stops depends on the platform.
     #[test]
-    fn train_warns_on_stderr_when_the_optimizer_makes_no_progress() {
+    fn train_reports_a_stop_near_the_optimum_as_converged() {
         let dir = tempfile::tempdir().unwrap();
         let corpus = cut_corpus(dir.path());
         let model = dir.path().join("model.dat");
@@ -1443,19 +1444,16 @@ mod with_trained_dictionary {
         assert!(output.status.success(), "got: {stderr}");
         assert!(
             stdout.lines().any(|line| {
-                line.starts_with("L-BFGS stopped after ")
-                    && line.ends_with(": no progress: an iteration left the objective unchanged")
+                line.starts_with("L-BFGS stopped after ") && line.ends_with(": converged")
             }),
             "got: {stdout}"
         );
-        let warning = "Warning: the optimizer could not make progress; after few iterations the \
-                       model is barely trained";
-        assert_eq!(
-            stderr.lines().filter(|line| *line == warning).count(),
-            1,
-            "got: {stderr}"
-        );
-        assert!(!stdout.contains("could not make progress"), "got: {stdout}");
+        for warning in [
+            "Warning: the optimizer could not make progress",
+            "Warning: the line search failed",
+        ] {
+            assert!(!stderr.contains(warning), "got: {stderr}");
+        }
         assert!(model.is_file());
     }
 }

@@ -1621,8 +1621,11 @@ v7.0.0 trains as MeCab's learner does (see
   bindings use the default. `lindera train` prints why the optimizer
   stopped, with the number of iterations and of evaluations of the loss and
   its gradient, and warns on standard error when an iteration left the
-  objective unchanged or the line search failed. An L2 run whose line search
-  fails keeps the best weights of the run.
+  objective unchanged or the line search failed far from the optimum. Near
+  the optimum, where which of the two happens depends on the platform, it
+  reports that training converged
+  ([#1300](https://github.com/lindera/lindera/issues/1300)). An L2 run whose
+  line search fails keeps the best weights of the run.
 - The export functions of the Python, Node.js, Ruby and PHP bindings write
   the files `lindera export` writes, with the same code: the `char.def`,
   `feature.def` and `rewrite.def` the model was trained with, and

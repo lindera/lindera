@@ -41,10 +41,10 @@ Trains a CRF model using L-BFGS optimization (OWL-QN when the regularization has
 
 The optimizer stops at the first of these:
 
-- `StopReason::Converged`: the relative change of the objective, `|previous - current| / |previous|`, stayed below the tolerance set with `Trainer::eta` for 3 iterations in a row, or the gradient vanished. The default tolerance, `DEFAULT_ETA` (`5e-5`), is the default `eta` of MeCab's learner, which applies the same test to every evaluation, line-search trials included, where Lindera counts iterations. `Trainer::eta(0.0)` turns the test off.
-- `StopReason::NoProgress`: an iteration left the objective unchanged. When this happens after a few iterations, the model is barely trained.
+- `StopReason::Converged`: the relative change of the objective, `|previous - current| / |previous|`, stayed below the tolerance set with `Trainer::eta` for 3 iterations in a row, or the optimizer stopped near the optimum, where the norm of the gradient (the pseudo-gradient for OWL-QN) is under `1e-5` times its norm at the initial weights, or vanishes. The default tolerance, `DEFAULT_ETA` (`5e-5`), is the default `eta` of MeCab's learner, which applies the same test to every evaluation, line-search trials included, where Lindera counts iterations. `Trainer::eta(0.0)` turns the test off. Near the optimum the objective changes by less than its rounding, and whether an iteration then leaves it unchanged or a line search fails depends on the platform; either is `Converged` there.
+- `StopReason::NoProgress`: an iteration left the objective unchanged far from the optimum, where the norm of the gradient was still at least `1e-5` times its norm at the initial weights. When this happens after a few iterations, the model is barely trained.
 - `StopReason::MaxIterations`: the cap set with `Trainer::max_iter`.
-- `StopReason::LineSearchFailed`: the line search of an iteration failed. The weights are the best ones of the run.
+- `StopReason::LineSearchFailed`: the line search of an iteration failed far from the optimum, where the norm of the gradient at the best weights of the run was still at least `1e-5` times its norm at the initial weights. The weights are the best ones of the run.
 
 ### Regularization
 

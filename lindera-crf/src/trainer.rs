@@ -458,18 +458,25 @@ pub const DEFAULT_LAMBDA: f64 = 1.0;
 #[non_exhaustive]
 pub enum StopReason {
     /// The objective converged: its relative change stayed below the
-    /// tolerance set with [`Trainer::eta`] for 3 iterations in a row, or its
-    /// gradient vanished.
+    /// tolerance set with [`Trainer::eta`] for 3 iterations in a row, or the
+    /// optimizer stopped near the optimum, where the norm of the gradient
+    /// was under `1e-5` times its norm at the initial weights or vanished.
+    /// Near the optimum the objective changes by less than its rounding, so
+    /// whether an iteration left it unchanged or a line search failed there
+    /// depends on the platform; either is reported as converged.
     Converged,
-    /// An iteration left the objective unchanged, so the optimizer could not
-    /// make progress. The model can be barely trained when this happens
-    /// after a few iterations.
+    /// An iteration left the objective unchanged far from the optimum, where
+    /// the norm of the gradient was still at least `1e-5` times its norm at
+    /// the initial weights, so the optimizer could not make progress. The
+    /// model can be barely trained when this happens after a few iterations.
     NoProgress,
     /// The cap set with [`Trainer::max_iter`] stopped the optimizer before it
     /// converged.
     MaxIterations,
-    /// The line search of the last iteration failed. The weights are the best
-    /// ones of the run.
+    /// The line search of the last iteration failed far from the optimum,
+    /// where the norm of the gradient at the best weights of the run was
+    /// still at least `1e-5` times its norm at the initial weights. The
+    /// weights are the best ones of the run.
     LineSearchFailed,
 }
 
@@ -1407,6 +1414,65 @@ mod tests {
         let off = run(0.0, 5);
         assert_eq!(off.stop_reason, StopReason::MaxIterations);
         assert_eq!(off.iterations, 5);
+    }
+
+    // Without the relative-change test, a run goes on until the objective
+    // changes by less than its rounding near the optimum. There an iteration
+    // leaves it unchanged, a line search fails or the gradient vanishes,
+    // whichever comes first as the last bits of the libm results decide
+    // (#1300). These runs stopped at 2e-9 times their initial gradient and
+    // below, on macOS arm64 and Linux aarch64, and are converged on every
+    // platform. Before #1300 the 24-lattice run was reported as making no
+    // progress on macOS arm64 and as a failed line search on Linux, the L1
+    // run as making no progress and the L2 run as a failed line search on
+    // both.
+    #[test]
+    fn a_stop_near_the_optimum_is_reported_as_converged() {
+        let mut wrong = vec![];
+
+        let lattices = test_utils::generate_test_lattices(24);
+        let trainer = Trainer::new().max_iter(1000).unwrap().eta(0.0).unwrap();
+        let (_, stats) =
+            trainer.train_with_stats(&lattices, test_utils::generate_test_feature_provider());
+        if stats.stop_reason != StopReason::Converged {
+            wrong.push(("24 lattices, L2", stats.stop_reason, stats.iterations));
+        }
+
+        let provider = test_utils::generate_test_feature_provider();
+        let lattices = test_utils::generate_test_lattices(200);
+        let (uni, bi) = wide_fixture_tables();
+        for (case, regularization, lambda, max_iter) in [
+            ("wide fixture, L1", Regularization::L1, 0.01, 100),
+            ("wide fixture, L2", Regularization::L2, 1.0, 1000),
+        ] {
+            let evaluations = Cell::new(0);
+            let result = lbfgs::minimize(
+                lbfgs::CachedLoss::new(
+                    LatticesLoss::new(
+                        &lattices,
+                        &provider,
+                        &uni,
+                        &bi,
+                        1,
+                        lbfgs::l2_lambda(regularization, lambda),
+                    ),
+                    &evaluations,
+                ),
+                vec![0.0; 29],
+                regularization,
+                lambda,
+                max_iter,
+                0.0,
+            );
+            if result.stop_reason != StopReason::Converged {
+                wrong.push((case, result.stop_reason, result.iterations));
+            }
+        }
+
+        assert!(
+            wrong.is_empty(),
+            "(case, stop reason, iterations): {wrong:?}"
+        );
     }
 
     #[test]
