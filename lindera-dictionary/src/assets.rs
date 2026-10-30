@@ -1036,7 +1036,7 @@ fn fetch_for(
     };
 
     // environment variable passed to dependents, that will actually be used to include the dictionary in the library
-    println!("cargo::rustc-env=LINDERA_WORKDIR={}", build_dir.display());
+    println!("cargo::rustc-env=LINDERA_WORK_DIR={}", build_dir.display());
 
     fetch_into(
         &build_dir,
@@ -1350,7 +1350,7 @@ const CONTEXT_ID_FREQ_FILE: &str = "context_id_freq.txt";
 ///
 /// Reads `metadata.json` from the crate root, fetches and builds the
 /// dictionary described by `params`, and embeds the result under
-/// `LINDERA_WORKDIR`.
+/// `LINDERA_WORK_DIR`.
 ///
 /// When the crate's embed feature is disabled (`embed_enabled == false`) and
 /// no cache override is set via `LINDERA_BUILD_DICTIONARY_CACHE_DIR`, this is
