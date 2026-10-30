@@ -12,4 +12,4 @@ gem 'rake-compiler', '~> 1.2'
 
 # The linter `make lint-lindera-ruby` runs, locally and in CI (#1178). Pinned,
 # as a new release can enable new cops; Dependabot proposes the updates.
-gem 'rubocop', '1.92.0', require: false
+gem 'rubocop', '1.92.1', require: false
