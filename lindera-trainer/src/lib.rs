@@ -411,8 +411,9 @@ fn label_feature_set(
 /// # Returns
 ///
 /// The warning when an iteration left the objective unchanged or the line
-/// search failed, and `None` when the optimizer converged or reached the
-/// iteration cap.
+/// search failed far from the optimum, and `None` when the optimizer
+/// converged, near the optimum included (#1300), or reached the iteration
+/// cap.
 fn optimizer_warning(stop_reason: lindera_crf::StopReason) -> Option<&'static str> {
     match stop_reason {
         lindera_crf::StopReason::NoProgress => Some(
@@ -656,7 +657,7 @@ impl Trainer {
     /// token is a seed word only when a seed row has its surface and its
     /// whole feature string (#1259). Once the optimizer stops, it prints why,
     /// and warns on stderr when an iteration left the objective unchanged or
-    /// the line search failed (#1268).
+    /// the line search failed far from the optimum (#1268, #1300).
     pub fn train(mut self, corpus: Corpus) -> Result<Model> {
         let lattices = self.build_lattices_from_corpus(&corpus)?;
         let labels = self.extract_labels();
