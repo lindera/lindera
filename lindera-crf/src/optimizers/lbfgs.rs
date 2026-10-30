@@ -926,6 +926,53 @@ mod tests {
         assert!((distance - 1.0).abs() < 1e-12, "distance {distance}");
     }
 
+    /// `w⁴ / 4 − w²` of a single weight, concave on (−√(2/3), √(2/3)).
+    ///
+    /// It is computed with `+`, `−`, `×` and `÷` only, whose results IEEE 754
+    /// fixes, unlike those of libm's `exp` and `log1p`, so a run on it is the
+    /// same on every platform (#1289).
+    struct Quartic;
+
+    impl CostFunction for Quartic {
+        type Param = Vec<f64>;
+        type Output = f64;
+
+        fn cost(&self, param: &Self::Param) -> Result<Self::Output, argmin::core::Error> {
+            let w = param[0];
+            Ok(w * w * w * w / 4.0 - w * w)
+        }
+    }
+
+    impl Gradient for Quartic {
+        type Param = Vec<f64>;
+        type Gradient = Vec<f64>;
+
+        fn gradient(&self, param: &Self::Param) -> Result<Self::Gradient, argmin::core::Error> {
+            let w = param[0];
+            Ok(vec![w * w * w - 2.0 * w])
+        }
+    }
+
+    // An iteration that cannot move the weights leaves the cost unchanged and
+    // argmin's L-BFGS stops; the reason says so instead of claiming
+    // convergence (#1260). From 0.1, OWL-QN's first step goes a unit distance,
+    // to 1.1. The quartic is concave in between, so the gradient falls, from
+    // −0.199 to −0.869, and the curvature pair has `s·y < 0`. The inverse
+    // Hessian that L-BFGS builds from it, `s / y` in one dimension, is
+    // negative, so the next direction goes against the pseudo-gradient, and
+    // OWL-QN's sign projection zeroes it. The second iteration leaves the
+    // weight where it is, with a pseudo-gradient of −0.859, far from argmin's
+    // tolerance. The L1 run of the wide fixture stopped the same way on Linux
+    // before #1294, with a curvature pair of rounding error that came out
+    // otherwise on macOS, so a test on that run depended on the platform
+    // (#1289).
+    #[test]
+    fn an_unchanged_objective_is_reported_as_no_progress() {
+        let result = minimize(Quartic, vec![0.1], Regularization::L1, 0.01, 100, 0.0);
+        assert_eq!(result.stop_reason, StopReason::NoProgress);
+        assert_eq!(result.iterations, 2);
+    }
+
     #[test]
     fn stop_reason_follows_the_termination_status() {
         let terminated = TerminationStatus::Terminated;
