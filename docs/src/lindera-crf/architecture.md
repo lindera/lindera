@@ -33,7 +33,7 @@ Lattice structure with variable-length edges for sequence labeling. `Edge` repre
 
 ### Trainer
 
-Trains a CRF model using L-BFGS optimization (OWL-QN when the regularization has an L1 part) with configurable regularization. The trainer accepts labeled lattice examples, computes the loss and its gradient via the forward-backward algorithm, and iteratively updates model weights. `Trainer::train` returns the trained `RawModel`; `Trainer::train_with_stats` also returns a `TrainingStats` with:
+Trains a CRF model using L-BFGS optimization (OWL-QN when the regularization has an L1 part) with configurable regularization. As in MeCab's learner and libLBFGS, the first line search starts at a step of `1 / |d|`, `d` being the first search direction, and every later one at a step of 1. The trainer accepts labeled lattice examples, computes the loss and its gradient via the forward-backward algorithm, and iteratively updates model weights. `Trainer::train` returns the trained `RawModel`; `Trainer::train_with_stats` also returns a `TrainingStats` with:
 
 - `iterations`: the number of iterations that ran, which is the maximum set with `Trainer::max_iter` when that stopped training, and fewer when the optimizer stopped earlier.
 - `evaluations`: the number of evaluations of the loss and its gradient, each one forward-backward pass over every lattice, line-search trials included.

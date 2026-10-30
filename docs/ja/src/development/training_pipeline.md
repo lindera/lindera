@@ -40,7 +40,7 @@ Warning: 0 of the 14 gold tokens are seed words, and 14 are not although seed ro
 
 表層を持つ種辞書の行がない正解トークンは警告の判定に数えないので、コーパスの一部しか覆わない種辞書では警告は出ません。
 
-その後、CRF を L-BFGS（正則化に L1 の部分があるときは OWL-QN）で学習します。学習は、次のうち最初に当てはまったもので止まります。
+その後、CRF を L-BFGS（正則化に L1 の部分があるときは OWL-QN）で学習します。MeCab の学習器や libLBFGS と同じく、最初のライン探索は刻み幅 `1 / |d|`（`d` は最初の探索方向）から始まり、最初に試す点は初期の重みから距離 1 になります。2 回目からのライン探索は刻み幅 1 から始まります（[#1290](https://github.com/lindera/lindera/issues/1290)）。学習は、次のうち最初に当てはまったもので止まります。
 
 - `converged`: 目的関数の相対変化 `|previous - current| / |previous|` が `eta` を 3 回続けて下回った。`eta` のデフォルトは MeCab の学習器と同じです。MeCab はライン探索の試行を含めた評価ごとに同じ判定を行い、Lindera はイテレーションごとに行います。
 - `no progress`: あるイテレーションで目的関数が変わらなかった。数イテレーションでこれが起きたときは、モデルはほとんど学習されていません。この理由で学習が止まると、イテレーション数にかかわらず、`lindera train` は標準エラーに警告を書きます。
@@ -50,7 +50,7 @@ Warning: 0 of the 14 gold tokens are seed words, and 14 are not although seed ro
 `lindera train` は、どれで止まったかを、イテレーション数と評価回数とともに出力します。1 回の評価は、全ラティスの前向き・後向きの 1 回分です。`resources/training/` のファイルでは次のとおりです。
 
 ```text
-L-BFGS stopped after 9 iterations and 11 evaluations of the loss and its gradient: converged
+L-BFGS stopped after 8 iterations and 9 evaluations of the loss and its gradient: converged
 ```
 
 ## 必要な入力ファイル
@@ -254,7 +254,7 @@ MeCab 互換の3セクション形式による素性正規化ルールです。�
 
 `lambda` が 0 の場合、どの種類でも正則化を無効にします。Elastic Net の比率が 0 の場合は L2 のみ、1 の場合は L1 のみを使用します。
 
-デフォルトは MeCab の学習器と同じです。L2 正則化の `lambda` 1.0 は、MeCab の `-c 1.0` の目的関数に当たります。[#1110](https://github.com/lindera/lindera/issues/1110) の mecab-ipadic の交差検証データでは、MeCab の学習器と同じスコアになり、ほぼ同じイテレーション数（81〜87）で収束します（[#1261](https://github.com/lindera/lindera/issues/1261)）。5 分割の平均で、境界 F1 は 0.9613、span + 品詞（4 列）F1 は 0.9398 です。v6 のデフォルトの L1・`lambda` 0.01 は、すべての分割で `max-iterations` に達し、0.9572 と 0.9344 でした。L1 は多くの重みを 0 にし、`lindera export` は重みの等しいラベルに 1 つの文脈 ID を与えるので、L1 の `matrix.def` は小さくなります。このデータでは L2 の 18.9 MB に対して 8.7 MB で、L2 ではビルドした辞書が 3.8 % 大きくなります。このデータでの学習時間は MeCab の学習器の約 2 倍で、その約 3 分の 2 は最適化の外、つまり最適化を始める前（[#1263](https://github.com/lindera/lindera/issues/1263)）と終えた後にかかります。
+デフォルトは MeCab の学習器と同じです。L2 正則化の `lambda` 1.0 は、MeCab の `-c 1.0` の目的関数に当たります。[#1110](https://github.com/lindera/lindera/issues/1110) の mecab-ipadic の交差検証データでは、MeCab の学習器と同じスコアになり、ほぼ同じイテレーション数（77〜82）で収束します（[#1261](https://github.com/lindera/lindera/issues/1261)、[#1290](https://github.com/lindera/lindera/issues/1290)）。5 分割の平均で、境界 F1 は 0.9613、span + 品詞（4 列）F1 は 0.9397 です。v6 のデフォルトの設定の L1・`lambda` 0.01 は、すべての分割で `max-iterations` に達し、0.9578 と 0.9350 でした。L1 は多くの重みを 0 にし、`lindera export` は重みの等しいラベルに 1 つの文脈 ID を与えるので、L1 の `matrix.def` は小さくなります。このデータでは L2 の 18.9 MB に対して 8.3 MB で、L2 ではビルドした辞書が 4.0 % 大きくなります。このデータでの学習時間は MeCab の学習器の約 2 倍で、その約 3 分の 2 は最適化の外、つまり最適化を始める前（[#1263](https://github.com/lindera/lindera/issues/1263)）と終えた後にかかります。
 
 ## CLI の使用
 
@@ -301,11 +301,11 @@ lindera export \
 たとえば上の `unk.def` で、最初の `KANJI` の行の後に 2 つ目の `KANJI` の行 `KANJI,0,0,0,名詞,サ変接続,*,*,*,*,*,*,*` を加えると、エクスポートした `unk.def` は両方の行を入力と同じ順序で持ちます。
 
 ```csv
-DEFAULT,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+DEFAULT,1,1,31699,名詞,一般,*,*,*,*,*,*,*
 SPACE,10,7,0,記号,空白,*,*,*,*,*,*,*
-HIRAGANA,1,1,31698,名詞,一般,*,*,*,*,*,*,*
-KATAKANA,1,1,31698,名詞,一般,*,*,*,*,*,*,*
-KANJI,1,1,31698,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,1,1,31699,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,1,1,31699,名詞,一般,*,*,*,*,*,*,*
+KANJI,1,1,31699,名詞,一般,*,*,*,*,*,*,*
 KANJI,3,3,4179,名詞,サ変接続,*,*,*,*,*,*,*
 ALPHA,11,10,10957,名詞,固有名詞,一般,*,*,*,*,*,*
 NUMERIC,11,10,10957,名詞,数,*,*,*,*,*,*,*

@@ -65,7 +65,8 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **PHP・Node.js・WASM: 設定の範囲外の整数の引数は、折り返さずに例外を投げる** | そのような値を渡すコード。例えば `Metadata` の既定の単語コストに `100000` を渡すもの（v6 は `-31072` を保持した）や、N-best の件数に `-1` を渡すもの（v6 はすべての分割を列挙した）。`getFieldName` と PHP の `getDetail` への負の位置。Node.js と WASM では、`1.5` や `NaN` のような整数でない数値 | 範囲内の整数を渡す。エラーは引数の名前と範囲を示す |
 | **バインディング: モードは、Rust の `Mode` と同じく decompose モードのペナルティを持つ `Mode` で表す。`set_mode` / `setMode` と `Tokenizer` のコンストラクタはモードの名前ではなく `Mode` を受け取り、`TokenizerBuilder::set_segmenter_mode` は `Mode::Decompose` のペナルティを保つ** | モードを設定するバインディングのユーザー。バインディングの `Mode`、Node.js の `JsMode`、WASM の数値の `Mode` を使うコード。Node.js の型 `JsPenalty` を名指しする TypeScript のコード。`set_segmenter_mode` に既定でないペナルティを渡す Rust のコード。`CoreTokenizerBuilder::set_mode` や `CoreTokenizer::from_segmenter` の関数を呼ぶバインディングの作者 | `"normal"` や `"decompose"` の代わりに `Mode.normal()` や `Mode.decompose(penalty)`（Ruby では `Lindera::Mode.normal`、PHP では `Lindera\Mode::normal()`）を渡す。実行時に読んだモードの名前は `Mode.from_str` / `Mode.fromStr` で `Mode` にする。`JsPenalty` を `Penalty` に改名する。`lindera-binding` の関数には `lindera::mode::Mode` を渡す |
 | **`lindera train` は MeCab の学習器と同じくラティスを作り、`unk.def` のすべてのエントリを保持する。`model.dat` の形式バージョンは 3.0.0** | `lindera train`・`lindera export` と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー | 7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた `model.dat` は拒否される）。`unk.def` のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す |
-| **`lindera train` のデフォルトの正則化は、MeCab の学習器と同じく係数 1.0 の L2** | `lindera train`、`lindera_trainer` と `lindera_crf` の `Trainer::new`、Python・Node.js・Ruby・PHP のバインディングの学習関数を、正則化の種類と係数の両方を渡さずに使うユーザー | 精度が上がり、`matrix.def` が大きくなる。v6 と同じく学習するには `--regularization l1 --lambda 0.01`（Rust では `.use_l2(false).regularization_cost(0.01)`、バインディングでは `regularization` に `l1`、`lambda` に 0.01。[#1262](https://github.com/lindera/lindera/issues/1262)）を渡す |
+| **`lindera train` のデフォルトの正則化は、MeCab の学習器と同じく係数 1.0 の L2** | `lindera train`、`lindera_trainer` と `lindera_crf` の `Trainer::new`、Python・Node.js・Ruby・PHP のバインディングの学習関数を、正則化の種類と係数の両方を渡さずに使うユーザー | 精度が上がり、`matrix.def` が大きくなる。v6 のデフォルトの設定を使うには `--regularization l1 --lambda 0.01`（Rust では `.use_l2(false).regularization_cost(0.01)`、バインディングでは `regularization` に `l1`、`lambda` に 0.01。[#1262](https://github.com/lindera/lindera/issues/1262)）を渡す |
+| **`lindera train` は、MeCab の学習器や libLBFGS と同じく、最初のライン探索を長さ 1 の刻みから始める** | `lindera train`、`lindera_trainer` と `lindera_crf` の `Trainer`、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー | 対処は不要。v6 の設定でも、学習したモデルはすべて v6 と変わる。分離可能なデータの L1 は、数回の反復で止まらずに学習を続ける |
 | **`lindera build` は `matrix.def` の範囲外の文脈 ID を拒否する** | `lex.csv` や `unk.def` に `matrix.def` の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の `mecab-dict-index` が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる） | ID か行列を直すか、`metadata.json` の `skip_invalid_cost_or_id` でそうした `lex.csv` の行を取り除く。ユーザー辞書ではそうした ID を直す |
 | **`lindera build` と `lindera train` は `char.def` と `unk.def` を照らし合わせる** | それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが `char.def` にあるユーザー、`char.def` と `unk.def` でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、`unk.def` の行を無視したりしていた）。MeCab の `mecab-dict-index` が受け入れる辞書は影響を受けない | 各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに `unk.def` の行を書き、未定義のカテゴリの `unk.def` の行を削除する |
 | **`lindera build` は、MeCab と同じく `matrix.def` にないセルのコストを 0 にする** | セルを省いた `matrix.def` からシステム辞書をビルドするユーザー。すべてのセルを列挙している同梱の辞書と、`lindera export` が書き出す `matrix.def` は対象外 | そうしたセルのコストは 32767 ではなく 0 になる。接続を高いコストのままにするには、そのセルをコスト付きで列挙する |
@@ -1538,31 +1539,34 @@ mecab-ipadic のファイルを使った 5 分割の交差検証（[#1110](https
 
 | 正則化 | 反復回数 | 境界 F1 | span + 品詞（4 列）F1 | `matrix.def` |
 | --- | --- | ---: | ---: | ---: |
-| L2、`--lambda 1.0`（v7 のデフォルト） | 81〜87 で収束 | 0.9613 | 0.9398 | 18.9 MB |
-| L1、`--lambda 0.01`（v6 のデフォルト） | 上限の 100 | 0.9572 | 0.9344 | 8.7 MB |
-| L2、`--lambda 0.01`（`--lambda 0.01` だけを指定） | 上限の 100 | 0.9581 | 0.9358 | 19.0 MB |
-| L1、`--lambda 1.0`（`--regularization l1` だけを指定） | 上限の 100 | 0.9607 | 0.9381 | 3.3 MB |
+| L2、`--lambda 1.0`（v7 のデフォルト） | 77〜82 で収束 | 0.9613 | 0.9397 | 18.9 MB |
+| L1、`--lambda 0.01`（v6 のデフォルト） | 上限の 100 | 0.9578 | 0.9350 | 8.3 MB |
+| L2、`--lambda 0.01`（`--lambda 0.01` だけを指定） | 上限の 100 | 0.9582 | 0.9361 | 19.0 MB |
+| L1、`--lambda 1.0`（`--regularization l1` だけを指定） | 上限の 100 | 0.9605 | 0.9380 | 3.3 MB |
 | MeCab の学習器、`-c 1.0` | 75〜83 回の評価で収束 | 0.9611 | 0.9398 | 22.5 MB（分割 0） |
 
 `lindera export` は、重みの等しいラベルに 1 つの文脈 ID を与えます。L1 は多くの
 重みを 0 にするので、多くのラベルが ID を共有します。L2 はどの重みも 0 にせず、
 このデータの `matrix.def` は約 1,200 × 1,200 の ID を持ちます。mecab-ipadic 自身の
-1316 × 1316 に近い大きさです。このデータでは、ビルドした辞書が v6 のデフォルトより
-3.8 % 大きくなります（分割 0）。
-`resources/training/` では、学習は 15 回ではなく 9 回の反復で止まり、エクスポート
+1316 × 1316 に近い大きさです。このデータでは、ビルドした辞書が v6 のデフォルトの
+設定より 4.0 % 大きくなります（分割 0）。
+`resources/training/` では、学習は 15 回ではなく 8 回の反復で止まり、エクスポート
 される `unk.def` の文脈 ID とコストが変わります。ドキュメントの解析結果は変わりません。
+これらの数値は、[`lindera train` は最初のライン探索を長さ 1 の刻みから始める](#lindera-train-は最初のライン探索を長さ-1-の刻みから始める)
+の最初のライン探索を含みます。
 
-対処方法: v6 と同じく学習するには、両方の設定を渡してください。片方だけを渡すと、
-渡した値はそのままで、もう片方は新しいデフォルトになります。
+対処方法: v6 のデフォルトの設定を使うには、両方の設定を渡してください。片方だけを
+渡すと、渡した値はそのままで、もう片方は新しいデフォルトになります。
 
-| v6 での指定 | v7 での意味 | v6 と同じく学習するには |
+| v6 での指定 | v7 での意味 | v6 の設定を使うには |
 | --- | --- | --- |
 | 正則化の指定なし | L2、`--lambda 1.0` | `--regularization l1 --lambda 0.01` |
 | `--lambda X` だけ | L2、`--lambda X` | `--regularization l1` を足す |
 | `--regularization l1` だけ | L1、`--lambda 1.0` | `--lambda 0.01` を足す |
 | 両方 | 変わらない | — |
 
-v6 と同じく止めるには、`--eta 0` も渡してください
+最初のライン探索の刻み幅が変わったので、モデルは v6 と同じにはなりません（次の節を
+参照）。v6 と同じく止めるには、`--eta 0` も渡してください
 （[`lindera train` は MeCab の学習器と同じくラティスを作る](#lindera-train-は-mecab-の学習器と同じくラティスを作る)を参照）。
 Rust では、`lindera_trainer::Trainer::new(config)?` に
 `.use_l2(false).regularization_cost(0.01)` を、`lindera_crf::Trainer::new()` に
@@ -1580,6 +1584,37 @@ NaN や無限大の `lambda` は拒否されるようになりました。v6 で
 `lindera train` と `lindera_crf::Trainer::regularization` は
 `lambda must be finite and >= 0` で失敗し、バインディングはファイルを読む前にエラーに
 します（[#1262](https://github.com/lindera/lindera/issues/1262)）。
+
+## `lindera train` は最初のライン探索を長さ 1 の刻みから始める
+
+`lindera train`、`lindera_trainer` と `lindera_crf` の `Trainer`、Python・Node.js・
+Ruby・PHP のバインディングの学習関数は、L-BFGS と OWL-QN の最初のライン探索を刻み幅
+`1 / |d|`（`d` は最初の探索方向）から始めます。最初に試す点は初期の重みから距離 1
+になり、MeCab の学習器や libLBFGS と同じです。2 回目からのライン探索は、これまでと
+同じく刻み幅 1 から始まります（[#1290](https://github.com/lindera/lindera/issues/1290)）。
+v6 は最初のライン探索も刻み幅 1 から始めたので、最初に試す点は、勾配の長さだけ初期の
+重みから離れていました。[#1260](https://github.com/lindera/lindera/issues/1260) の
+コーパスでは勾配の長さが 1.1e5 で、L1・`--lambda 0.01` では最初のライン探索が遠くまで
+進みすぎて損失が丸め誤差になり、学習は 3 回の反復で「no progress」で止まりました。今は
+53 回の反復で収束します。
+
+学習したモデルは、どの正則化でもすべて変わります。前の節の交差検証では、精度の差は
+分割の間のばらつきの中に収まり、最初のライン探索の評価は、L2 で約 7 回、L1 で約 13
+回から 1 回になりました（分割の平均。同じビルドで最初の刻み幅だけを変えたもの）。
+
+| 正則化 | 最初の刻み幅 | 反復回数 | 評価回数 | 境界 F1 | span + 品詞（4 列）F1 |
+| --- | --- | ---: | ---: | ---: | ---: |
+| L2、`--lambda 1.0` | 1 | 84.4 | 94.2 | 0.9613 | 0.9398 |
+| L2、`--lambda 1.0` | `1 / \|d\|` | 79.4 | 83.8 | 0.9613 | 0.9397 |
+| L1、`--lambda 0.01` | 1 | 100 | 113.8 | 0.9572 | 0.9344 |
+| L1、`--lambda 0.01` | `1 / \|d\|` | 100 | 101.4 | 0.9578 | 0.9350 |
+| L1、`--lambda 1.0` | 1 | 100 | 112.8 | 0.9607 | 0.9381 |
+| L1、`--lambda 1.0` | `1 / \|d\|` | 100 | 101.2 | 0.9605 | 0.9380 |
+| Elastic Net、`--lambda 1.0` | 1 | 97.6 | 110.4 | 0.9614 | 0.9393 |
+| Elastic Net、`--lambda 1.0` | `1 / \|d\|` | 98.8 | 100.0 | 0.9612 | 0.9391 |
+
+対処方法: 対処は不要です。v6 の設定（前の節を参照）でも、モデルはバイト単位では v6 と
+同じになりません。
 
 ## `lindera build` は接続コスト行列の範囲外の文脈 ID を拒否する
 
@@ -2069,12 +2104,15 @@ U+3000 や空白を含むテキストを IPADIC・IPADIC-NEologd・UniDic・Suda
   自身の判定だけで止めるには、`--eta 0`（Rust では `Trainer::eta(0.0)`）を渡す
   （[#1167](https://github.com/lindera/lindera/issues/1167)）。
 - 正則化の種類と係数の両方を渡さないと、係数 1.0 の L2 で正則化することを想定する。
-  v6 と同じく学習するには `--regularization l1 --lambda 0.01`（Rust では
+  v6 のデフォルトの設定を使うには `--regularization l1 --lambda 0.01`（Rust では
   `.use_l2(false).regularization_cost(0.01)`）を渡す。`--lambda`（バインディングでは
   `lambda`）だけを渡すと L2 の係数になり、`--regularization l1` だけでは係数は 1.0
   になる。バインディングでは種類を `regularization` で渡す
   （[#1261](https://github.com/lindera/lindera/issues/1261)、
   [#1262](https://github.com/lindera/lindera/issues/1262)）。
+- 最初のライン探索が長さ 1 の刻みから始まるので、v6 の設定でも、学習したモデルが
+  すべて v6 と変わることを想定する
+  （[#1290](https://github.com/lindera/lindera/issues/1290)）。
 - NaN や無限大の `lambda` が拒否されることを想定する
   （[#1262](https://github.com/lindera/lindera/issues/1262)）。
 

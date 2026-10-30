@@ -49,7 +49,7 @@ lindera.train(
 | `elastic_net_l1_ratio` | `float` | `0.5` | L1 ratio of Elastic Net regularization, between 0 and 1; `0` uses only L2, `1` uses only L1; used only with `"elasticnet"` |
 | `eta` | `float` | `5e-5` | Tolerance of the convergence test, finite and >= 0: training stops before `max_iter` once the relative change of the objective stays below it for 3 iterations in a row; `0` disables the test |
 
-The settings are checked before any file is read: an unknown `regularization`, or a `lambda_`, `elastic_net_l1_ratio` or `eta` outside its range, raises a `ValueError`. To train as v6 did by default, pass `regularization="l1"` and `lambda_=0.01`, and `eta=0` to stop only at `max_iter`.
+The settings are checked before any file is read: an unknown `regularization`, or a `lambda_`, `elastic_net_l1_ratio` or `eta` outside its range, raises a `ValueError`. To train with v6's default settings (the model still differs from v6's, since the first line search changed in [#1290](https://github.com/lindera/lindera/issues/1290)), pass `regularization="l1"` and `lambda_=0.01`, and `eta=0` to stop only at `max_iter`.
 
 ## Exporting a Trained Model
 

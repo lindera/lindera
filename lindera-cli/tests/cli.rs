@@ -1423,9 +1423,10 @@ mod with_trained_dictionary {
 
     /// `lindera train` warns on stderr, not on stdout, when the optimizer
     /// stops because an iteration left the objective unchanged, and still
-    /// writes the model (#1268). On the corpus of `cut_corpus`, `--lambda
-    /// 100` with the convergence test turned off (`--eta 0`) stops so after
-    /// 6 iterations. The line that says why stays on stdout. The warning of
+    /// writes the model (#1268). On the corpus of `cut_corpus`, L1 with
+    /// `--lambda 1` and the convergence test turned off (`--eta 0`) stops
+    /// so, whether the first line search starts at a step of 1 or at a unit
+    /// step (#1290). The line that says why stays on stdout. The warning of
     /// a failed line search is written by the same call.
     #[test]
     fn train_warns_on_stderr_when_the_optimizer_makes_no_progress() {
@@ -1434,7 +1435,7 @@ mod with_trained_dictionary {
         let model = dir.path().join("model.dat");
 
         let output = train_command(&corpus, &model)
-            .args(["--lambda", "100", "--eta", "0"])
+            .args(["--regularization", "l1", "--lambda", "1", "--eta", "0"])
             .output()
             .unwrap();
         let stderr = String::from_utf8(output.stderr).unwrap();

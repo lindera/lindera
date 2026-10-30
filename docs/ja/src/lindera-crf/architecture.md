@@ -33,7 +33,7 @@ lindera-crf/src/
 
 ### Trainer
 
-設定可能な正則化を用いたL-BFGS最適化（正則化にL1の部分があるときはOWL-QN）によりCRFモデルを学習します。Trainerはラベル付きラティスの例を受け取り、前向き・後向きアルゴリズムで損失とその勾配を計算し、反復的にモデルの重みを更新します。`Trainer::train`は学習した`RawModel`を返します。`Trainer::train_with_stats`は、次の値を持つ`TrainingStats`も返します。
+設定可能な正則化を用いたL-BFGS最適化（正則化にL1の部分があるときはOWL-QN）によりCRFモデルを学習します。MeCabの学習器やlibLBFGSと同じく、最初のライン探索は刻み幅`1 / |d|`（`d`は最初の探索方向）から、2回目以降は刻み幅1から始まります。Trainerはラベル付きラティスの例を受け取り、前向き・後向きアルゴリズムで損失とその勾配を計算し、反復的にモデルの重みを更新します。`Trainer::train`は学習した`RawModel`を返します。`Trainer::train_with_stats`は、次の値を持つ`TrainingStats`も返します。
 
 - `iterations`: 実際に回ったイテレーション数。`Trainer::max_iter`で設定した最大値で学習が止まったときはその値で、それより前に最適化が止まったときはそれより少なくなります。
 - `evaluations`: 損失とその勾配を評価した回数。1回の評価は全ラティスの前向き・後向きの1回分で、ライン探索の試行も含みます。

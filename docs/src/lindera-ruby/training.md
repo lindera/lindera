@@ -51,7 +51,7 @@ The first seven parameters are required positional arguments. `lambda`, `max_ite
 | keyword | elastic_net_l1_ratio: | `Float` or `nil` | L1 ratio of Elastic Net regularization, between 0 and 1, default 0.5; `0` uses only L2, `1` uses only L1; used only with `'elasticnet'` |
 | keyword | eta: | `Float` or `nil` | Tolerance of the convergence test, finite and >= 0, default 5e-5: training stops before `max_iter` once the relative change of the objective stays below it for 3 iterations in a row; `0` disables the test |
 
-The settings are checked before any file is read: an unknown `regularization:` raises an `ArgumentError`, and a `lambda`, `elastic_net_l1_ratio:` or `eta:` outside its range a `RangeError`. To train as v6 did by default, pass a `lambda` of 0.01 and `regularization: 'l1'`, and `eta: 0` to stop only at `max_iter`:
+The settings are checked before any file is read: an unknown `regularization:` raises an `ArgumentError`, and a `lambda`, `elastic_net_l1_ratio:` or `eta:` outside its range a `RangeError`. To train with v6's default settings (the model still differs from v6's, since the first line search changed in [#1290](https://github.com/lindera/lindera/issues/1290)), pass a `lambda` of 0.01 and `regularization: 'l1'`, and `eta: 0` to stop only at `max_iter`:
 
 ```ruby
 Lindera.train(*inputs, '/tmp/model.dat', 0.01, regularization: 'l1', eta: 0)

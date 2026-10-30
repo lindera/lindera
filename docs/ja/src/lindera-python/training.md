@@ -49,7 +49,7 @@ lindera.train(
 | `elastic_net_l1_ratio` | `float` | `0.5` | Elastic Net 正則化の L1 の比率（0 以上 1 以下）。`0` は L2 のみ、`1` は L1 のみを使用します。`"elasticnet"` のときだけ使います |
 | `eta` | `float` | `5e-5` | 収束判定の許容値（有限の 0 以上の値）。目的関数の相対変化が 3 回続けてこの値を下回ると、`max_iter` より前に止まります。`0` で判定を無効にします |
 
-設定の値は、ファイルを読む前に検査されます。知らない `regularization` や、範囲の外の `lambda_`・`elastic_net_l1_ratio`・`eta` は `ValueError` になります。v6 のデフォルトと同じく学習するには、`regularization="l1"` と `lambda_=0.01` を渡し、`max_iter` だけで止めるには `eta=0` も渡します。
+設定の値は、ファイルを読む前に検査されます。知らない `regularization` や、範囲の外の `lambda_`・`elastic_net_l1_ratio`・`eta` は `ValueError` になります。v6 のデフォルトの設定で学習するには（最初のライン探索が変わったので、モデルは v6 と一致しません。[#1290](https://github.com/lindera/lindera/issues/1290)）、`regularization="l1"` と `lambda_=0.01` を渡し、`max_iter` だけで止めるには `eta=0` も渡します。
 
 ## 学習済みモデルのエクスポート
 
