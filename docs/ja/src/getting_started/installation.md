@@ -82,13 +82,15 @@ cargo build --features=embed-ipadic
 - このディレクトリを共有するビルド（たとえば `cargo build` と、別のターゲットディレクトリを使う rust-analyzer）は、辞書を 1 つずつ書き込みます。同じ辞書を別のビルドが書き込んでいれば、それが終わるのを待ち、そのビルドが残した辞書を使います（`cargo build -vv` に `lindera dictionary cache: waiting for another build` と表示されます）。ロックは辞書の隣にある空の `<辞書>.lock` ファイルで、ビルドが辞書を書き込む間だけ保持します。ロックが効くのは 1 台のマシンの中のビルド同士で、ネットワークファイルシステムでは、そのファイルシステムがファイルロックに対応する範囲に限られます。ファイルをロックできないときは、ビルドは警告を出し、7.0.0 より前と同じくロックなしで続けるので、そうしたビルド同士は互いのファイルを消すことがあります
 - `DOCS_RS` を設定したビルドは、この変数を無視します（後述の `DOCS_RS` を参照）
 
-### LINDERA_CONFIG_PATH
+### LINDERA_CONFIG_FILE
 
-`LINDERA_CONFIG_PATH` 環境変数は、トークナイザーの設定ファイル（YAML形式）へのパスを指定します。これにより、Rustコードを変更せずにトークナイザーの動作を設定できます。
+`LINDERA_CONFIG_FILE` 環境変数は、`TokenizerBuilder::new()` が読むトークナイザーの設定ファイル（YAML形式）を指定します。これにより、Rustコードを変更せずにトークナイザーの動作を設定できます。
 
 ```shell
-export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+export LINDERA_CONFIG_FILE=./resources/config/lindera.yml
 ```
+
+v6 までの名前 `LINDERA_CONFIG_PATH` も v8.0.0 までは使えますが、標準エラー出力に非推奨の警告が出ます。両方を設定すると `LINDERA_CONFIG_FILE` が使われます。
 
 設定フォーマットの詳細は [設定](../lindera-analysis/configuration.md) セクションを参照してください。
 
@@ -99,9 +101,3 @@ export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 このビルドは `LINDERA_BUILD_DICTIONARY_CACHE_DIR` を無視します。ダミーの辞書は build script の出力ディレクトリに作られ、キャッシュには入らないので、後で `DOCS_RS` なしにビルドしても埋め込まれません。
 
 これは主にdocs.rs内部で使用されるものであり、通常ユーザーが設定する必要はありません。
-
-### LINDERA_WORKDIR
-
-`LINDERA_WORKDIR` 環境変数は、ビルドプロセス中に lindera-dictionary クレートによって自動的に設定されます。これはビルドされた辞書データファイルを含むディレクトリを指し、辞書クレートがデータファイルの場所を特定するために内部で使用されます。
-
-この変数は自動的に設定されるため、ユーザーが変更する必要はありません。

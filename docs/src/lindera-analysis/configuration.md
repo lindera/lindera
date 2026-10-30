@@ -1,7 +1,7 @@
 # Configuration
 
 Lindera is able to read YAML format configuration files.
-Specify the path to the following file in the environment variable `LINDERA_CONFIG_PATH`. You can use it easily without having to code the behavior of the tokenizer in Rust code.
+Specify the path to the following file in the environment variable `LINDERA_CONFIG_FILE`. You can use it easily without having to code the behavior of the tokenizer in Rust code.
 
 ```yaml
 segmenter:
@@ -90,7 +90,7 @@ token_filters:
 | `space_penalty` | bool or object | *(the dictionary's rules, if any)* | Left-space penalty (mecab-ko's `left-space-penalty-factor`): a candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added. Omitted or `null` keeps the rules the dictionary ships in its `metadata.json` (ko-dic ships mecab-ko-dic's, so the penalty is on by default for ko-dic; the other bundled dictionaries ship none); `false` turns it off; `true` requires the dictionary's rules (an error when it ships none); an object `{"rules": [{"pos": [...], "cost": n}, ...]}` gives explicit rules. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) |
 
 ```shell
-% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+% export LINDERA_CONFIG_FILE=./resources/config/lindera.yml
 ```
 
 ```rust

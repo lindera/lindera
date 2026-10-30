@@ -1,7 +1,7 @@
 # 設定
 
 LinderaはYAML形式の設定ファイルを読み込むことができます。
-環境変数 `LINDERA_CONFIG_PATH` にファイルのパスを指定してください。Rustコードでトークナイザーの動作をコーディングすることなく、簡単に利用できます。
+環境変数 `LINDERA_CONFIG_FILE` にファイルのパスを指定してください。Rustコードでトークナイザーの動作をコーディングすることなく、簡単に利用できます。
 
 ```yaml
 segmenter:
@@ -90,7 +90,7 @@ token_filters:
 | `space_penalty` | bool または object | *(辞書同梱のルール、あれば)* | 左側空白ペナルティ（mecab-ko の `left-space-penalty-factor`）。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する。省略または `null` で辞書が `metadata.json` に同梱するルールを使用（ko-dic は mecab-ko-dic のルールを同梱するため ko-dic ではデフォルトでオン。他の同梱辞書はルールを持たない）、`false` でオフ、`true` で辞書のルールを要求（同梱しない辞書ではエラー）、オブジェクト `{"rules": [{"pos": [...], "cost": n}, ...]}` で明示的なルールを指定。[Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照 |
 
 ```shell
-% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+% export LINDERA_CONFIG_FILE=./resources/config/lindera.yml
 ```
 
 ```rust
