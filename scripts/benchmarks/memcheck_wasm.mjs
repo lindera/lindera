@@ -10,10 +10,10 @@
 //   node --expose-gc scripts/benchmarks/memcheck_wasm.mjs
 //
 // Environment:
-//   MEMCHECK_WASM_PKG  package directory to load (default: lindera-wasm/pkg-node)
-//   MEMCHECK_ITER      measured iterations (default 24)
-//   MEMCHECK_WARMUP    warmup iterations (default 4)
-//   MEMCHECK_CHARS     size of the generated input text (default 100000)
+//   MEMCHECK_WASM_PKG_DIR  package directory to load (default: lindera-wasm/pkg-node)
+//   MEMCHECK_ITER          measured iterations (default 24)
+//   MEMCHECK_WARMUP        warmup iterations (default 4)
+//   MEMCHECK_CHARS         size of the generated input text (default 100000)
 
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -24,7 +24,7 @@ import { measureRssGrowth, reportVerdict } from "./memcheck_common.mjs";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(here, "..", "..");
 const pkgDir =
-  process.env.MEMCHECK_WASM_PKG ??
+  process.env.MEMCHECK_WASM_PKG_DIR ??
   path.join(repoRoot, "lindera-wasm", "pkg-node");
 
 const require = createRequire(import.meta.url);
