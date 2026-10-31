@@ -18,21 +18,21 @@ Verify the installation:
 
 ## 2. Download a dictionary
 
-Download the pre-built IPADIC dictionary from the GitHub releases page. It is installed under the OS-standard application data directory:
+Download the pre-built IPADIC dictionary from the GitHub releases page. It is installed in the dictionaries directory (`~/.local/share/lindera/dictionaries/ipadic` on Linux), and `lindera download` prints its path, kept here in `DICT_DIR` for the steps below:
 
 ```shell
-% lindera download ipadic
+% DICT_DIR=$(lindera download ipadic)
 ```
 
 See [Commands](commands.md#download) for the available dictionary names and storage locations.
 
 ## 3. Basic tokenization
 
-Tokenize Japanese text using the downloaded IPADIC dictionary, referencing it by name:
+Tokenize Japanese text using the downloaded IPADIC dictionary, referencing it by its path:
 
 ```shell
 % echo "東京は日本の首都です。" | lindera tokenize \
-  --dict ipadic
+  --dict "$DICT_DIR"
 ```
 
 Expected output:
@@ -54,7 +54,7 @@ EOS
 
 ```shell
 % echo "東京は日本の首都です。" | lindera tokenize \
-  --dict ipadic \
+  --dict "$DICT_DIR" \
   --output wakati
 ```
 
@@ -68,7 +68,7 @@ Expected output:
 
 ```shell
 % echo "東京は日本の首都です。" | lindera tokenize \
-  --dict ipadic \
+  --dict "$DICT_DIR" \
   --output json
 ```
 
@@ -80,7 +80,7 @@ Decompose mode splits compound nouns into their constituent parts:
 
 ```shell
 % echo "関西国際空港限定トートバッグ" | lindera tokenize \
-  --dict ipadic \
+  --dict "$DICT_DIR" \
   --mode decompose
 ```
 
@@ -103,7 +103,7 @@ Use Unicode normalization and keep only common nouns:
 
 ```shell
 % echo "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。" | lindera tokenize \
-  --dict ipadic \
+  --dict "$DICT_DIR" \
   --char-filter 'unicode_normalize:{"kind":"nfkc"}' \
   --token-filter 'japanese_keep_tags:{"tags":["名詞,一般","名詞,サ変接続","名詞,固有名詞,組織"]}'
 ```
@@ -124,7 +124,7 @@ You can also combine multiple filters:
 
 ```shell
 % echo "すもももももももものうち" | lindera tokenize \
-  --dict ipadic \
+  --dict "$DICT_DIR" \
   --token-filter 'japanese_stop_tags:{"tags":["助詞,格助詞,一般","助詞,係助詞","助詞,連体化","助動詞"]}'
 ```
 
@@ -140,7 +140,7 @@ Tokenize with the user dictionary:
 
 ```shell
 % echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
-  --dict ipadic \
+  --dict "$DICT_DIR" \
   --user-dict ./my_dict.csv
 ```
 
@@ -150,7 +150,7 @@ For pre-built user dictionary examples, see:
 
 ```shell
 % echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
-  --dict ipadic \
+  --dict "$DICT_DIR" \
   --user-dict ./resources/user_dict/ipadic_simple_userdic.csv
 ```
 

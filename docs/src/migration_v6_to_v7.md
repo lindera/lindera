@@ -8,7 +8,9 @@ the new `analysis` feature, on by default — the analysis chain of
 `lindera-binding-core` to `lindera-binding` and removes the deprecated
 `LINDERA_DICTIONARIES_PATH` fallback, as announced in v5.0.0, renames
 `LINDERA_CONFIG_PATH` to `LINDERA_CONFIG_FILE`, keeping the old name with a
-deprecation warning until v8.0.0, corrects
+deprecation warning until v8.0.0, has `lindera download` put dictionaries in
+`LINDERA_DICTIONARIES_DIR/<name>`, which replaces `LINDERA_DATA_DIR` in the
+same way, and has `lindera tokenize --dict` take only URIs and paths, corrects
 the IPADIC schema, which had the `conjugation_type` and `conjugation_form`
 names swapped, keeps dictionary entries whose surface is whitespace or
 starts or ends with it, skips whitespace in the lattice as MeCab does
@@ -50,6 +52,8 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`LINDERA_DICTIONARIES_PATH` is removed** | Anyone still setting the deprecated build-cache variable | Set `LINDERA_BUILD_DICTIONARY_CACHE_DIR`; the old name is now ignored |
 | **`LINDERA_CONFIG_PATH` is renamed to `LINDERA_CONFIG_FILE`** | Anyone who sets `LINDERA_CONFIG_PATH` for `TokenizerBuilder::new()`, `lindera tokenize` or a language binding | Set `LINDERA_CONFIG_FILE`; the old name works with a deprecation warning until v8.0.0 |
 | `LINDERA_WORKDIR` is renamed to `LINDERA_WORK_DIR` | Only a dictionary crate whose own build script sets `LINDERA_WORKDIR` for `embedded_dictionary!` | Set `LINDERA_WORK_DIR`; a crate that uses `build_embedded_dictionary` needs nothing |
+| **`lindera download` puts dictionaries in `LINDERA_DICTIONARIES_DIR/<name>`, which replaces `LINDERA_DATA_DIR`** | Users of `lindera download` and `lindera list`, and anyone who sets `LINDERA_DATA_DIR` | Download the dictionaries again; set `LINDERA_DICTIONARIES_DIR` (the old name works, as `<dir>/dictionaries`, with a deprecation warning until v8.0.0) |
+| **`--dict` and `--system-dict` no longer take a dictionary name** | Anyone who runs `lindera tokenize --dict ipadic` or `lindera build --system-dict ipadic` | Pass the path that `lindera download` prints, or `embedded://ipadic` |
 | **Rust 1.89 or newer is required** | Anyone who builds Lindera with Rust 1.88, including a source build of the Python or Ruby package | Update the toolchain (`rustup update stable`) |
 | **Dictionary format version 3: dictionary directories built or downloaded with v6.2.0 or earlier no longer load** | Anyone who loads a dictionary from files (`load_dictionary` with a path, `lindera tokenize --dict <dir>`, the bindings' path and byte loaders, dictionaries saved in the WASM binding's OPFS storage); not the embedded dictionaries or user dictionaries | Rebuild with the 7.0.0 `lindera build`, or download again with the 7.0.0 `lindera download` or from the 7.0.0 release assets |
 | **IPADIC and IPADIC-NEologd: `conjugation_type` and `conjugation_form` now name the right columns** | Anyone who reads these two fields by name with IPADIC or IPADIC-NEologd (`Token::get`, `Token::as_value`, `lindera tokenize -o json`, binding schemas) | Expect the two values to trade places; rebuild or re-download dictionaries made with v6.2.0 or earlier |
@@ -424,6 +428,94 @@ Users do not set this variable, and the environment variables of the
 [installation page](./getting_started/installation.md#environment-variables)
 no longer list it.
 
+## `lindera download` puts dictionaries in LINDERA_DICTIONARIES_DIR
+
+`lindera download <name>` installs a dictionary in
+`<LINDERA_DICTIONARIES_DIR>/<name>/` and prints that path
+([#1303](https://github.com/lindera/lindera/issues/1303)); up to v6 it
+installed it in `<LINDERA_DATA_DIR>/dictionaries/<version>/lindera-<name>/`.
+Without the variable, the dictionaries directory is `lindera/dictionaries` in
+the OS's local data directory, the directory that held the version
+directories, so on Linux the IPADIC dictionary moves as follows:
+
+| Version | Path of the downloaded IPADIC |
+| --- | --- |
+| v6.2.0 | `~/.local/share/lindera/dictionaries/6.2.0/lindera-ipadic` |
+| v7.0.0 | `~/.local/share/lindera/dictionaries/ipadic` |
+
+`LINDERA_DATA_DIR` keeps working until v8.0.0: a value `<dir>` is read as
+`LINDERA_DICTIONARIES_DIR=<dir>/dictionaries`, and a warning goes to
+standard error, here for `LINDERA_DATA_DIR=/home/user/.local/share/lindera`:
+
+```text
+Warning: LINDERA_DATA_DIR is deprecated and will be removed in v8.0.0; set LINDERA_DICTIONARIES_DIR=/home/user/.local/share/lindera/dictionaries instead
+```
+
+With both set, `LINDERA_DICTIONARIES_DIR` is used, and the warning says that
+`LINDERA_DATA_DIR` is ignored. Do not confuse `LINDERA_DICTIONARIES_DIR`
+with `LINDERA_DICTIONARIES_PATH`, the name of the build cache variable
+before v5.0.0, which v7.0.0 ignores (see
+[LINDERA_DICTIONARIES_PATH removed](#lindera_dictionaries_path-removed)).
+Rename the variable wherever it is set:
+
+```shell
+# v6
+export LINDERA_DATA_DIR=/data/lindera
+
+# v7
+export LINDERA_DICTIONARIES_DIR=/data/lindera/dictionaries
+```
+
+The dictionaries downloaded with v6.2.0 or earlier are not used, and could
+not be loaded anyway (see
+[Dictionary directories must be rebuilt](#dictionary-directories-must-be-rebuilt)):
+download them again, and remove the version directories, such as
+`~/.local/share/lindera/dictionaries/6.2.0`.
+
+The `metadata.json` of a dictionary built by v7.0.0 records `lindera_version`,
+the version of Lindera that built it. `lindera download` keeps a dictionary
+in place only when the CLI's version built it, and downloads it again
+otherwise, without `--force`. `lindera list` shows the embedded dictionaries
+and those in `LINDERA_DICTIONARIES_DIR`, with that version and the value to
+pass to `--dict`, instead of a row for each of the seven downloadable names,
+and reports the old version directories on standard error:
+
+```text
+Skipped /home/user/.local/share/lindera/dictionaries/6.2.0: not a dictionary (no metadata.json)
+NAME    VERSION  STATUS  DICT
+ipadic  7.0.0    ok      embedded://ipadic
+ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
+```
+
+## `--dict` takes only URIs and paths
+
+`lindera tokenize --dict` and `lindera build --system-dict` no longer
+resolve a dictionary name such as `ipadic` to the downloaded dictionary
+([#1303](https://github.com/lindera/lindera/issues/1303)): a name was
+ambiguous with a directory of that name, which was read instead, never
+chose the embedded dictionary, and was known only to the CLI, as the
+library and the bindings read it as a path. Both options take
+`embedded://<kind>`, `file://<path>` or a path. A dictionary name that is
+not an existing path fails with an error that points to both ways to name
+the dictionary:
+
+```text
+Error: LinderaError { kind: Args, source: --dict takes a URI or a path, and 'ipadic' names a dictionary: pass embedded://ipadic for the dictionary embedded in the CLI, or the path of a downloaded one, /home/user/.local/share/lindera/dictionaries/ipadic }
+```
+
+Pass the path that `lindera download` prints, which it also prints when the
+dictionary is already there:
+
+```shell
+# v6
+lindera download ipadic
+echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict ipadic
+
+# v7
+DICT_DIR=$(lindera download ipadic)
+echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict "$DICT_DIR"
+```
+
 ## Rust 1.89 or newer is required
 
 v7.0.0 declares `rust-version = "1.89"`; v6.2.0 declared 1.88. The build
@@ -462,7 +554,7 @@ and [the dash and tilde spellings](#dash-and-tilde-spellings-are-kept-as-written
 | Dictionary | What you do |
 | --- | --- |
 | Embedded (`embed-*` features) | Nothing: it is built when the crate is compiled |
-| Downloaded with `lindera download` | Download it again with the 7.0.0 CLI, which stores it under a directory of its own version |
+| Downloaded with `lindera download` | Download it again with the 7.0.0 CLI, which puts it in `LINDERA_DICTIONARIES_DIR/<name>` (see [`lindera download` puts dictionaries in LINDERA_DICTIONARIES_DIR](#lindera-download-puts-dictionaries-in-lindera_dictionaries_dir)) |
 | Built with `lindera build` | Build it again with the 7.0.0 CLI |
 | Downloaded from the release assets | Download the 7.0.0 asset |
 | Saved in the WASM binding's OPFS storage | Remove it with `removeDictionary()` and download the 7.0.0 asset with `downloadDictionary()`; a `hasDictionary()` check alone keeps the old one |
@@ -1100,7 +1192,7 @@ with a dash with `―` and all those with a tilde with `〜`, so map `—` to `�
 and `～` to `〜`:
 
 ```sh
-lindera tokenize --dict ipadic --char-filter 'mapping:{"mapping":{"—":"―","～":"〜"}}'
+lindera tokenize --dict embedded://ipadic --char-filter 'mapping:{"mapping":{"—":"―","～":"〜"}}'
 ```
 
 ```yaml
@@ -2045,6 +2137,7 @@ language bindings change only in their `Metadata` class (see
 | `Metadata::normalize_details` | Removed |
 | `PrefixDictionaryBuilderOptions::normalize_details(value)` | Removed |
 | — | New public field `Metadata::skip_whitespace: Option<bool>` (also `lindera_binding::CoreMetadata::skip_whitespace`) |
+| — | New public field `Metadata::lindera_version: Option<String>` |
 | `CharacterDefinition::lookup_categories(c)` returns the categories of every line that covers `c` | Returns the categories of the last line that covers `c`, its default category first and the others in category id order |
 | `DICTIONARY_FORMAT_VERSION` is `2` | `3` |
 | `UnknownDictionary::gen_unk_words(sentence, start_pos, has_matched, max_grouping_len, callback)` | Removed |
@@ -2137,6 +2230,15 @@ and so does `lindera_binding::CoreMetadata`. Neither struct is
 with `..Default::default()`. `Metadata::new` and `CoreMetadata::new` set it
 to `None`, which skips whitespace.
 
+`Metadata` also gains the public field `lindera_version: Option<String>`,
+the version of Lindera that built the dictionary (see
+[`lindera download` puts dictionaries in LINDERA_DICTIONARIES_DIR](#lindera-download-puts-dictionaries-in-lindera_dictionaries_dir)).
+`DictionaryBuilder` writes it into the `metadata.json` of every dictionary
+it builds, over any value in the source `metadata.json`; it is `None` for a
+dictionary built before v7.0.0, and `Metadata::new` sets it to `None`. A
+struct literal that lists every field needs `lindera_version: None` too.
+`lindera_binding::CoreMetadata` does not have the field.
+
 `CharacterDefinition::lookup_categories` keeps its signature. Its first
 category is the one that creates unknown words (see
 [Unknown words come from the default category, as in MeCab](#unknown-words-come-from-the-default-category-as-in-mecab));
@@ -2225,6 +2327,10 @@ let surface_features: HashMap<&str, &str> = config
   The restructuring is internal to the Rust crates. `LINDERA_CONFIG_PATH`
   works with a deprecation warning until v8.0.0 (see
   [LINDERA_CONFIG_PATH renamed to LINDERA_CONFIG_FILE](#lindera_config_path-renamed-to-lindera_config_file)).
+  The CLI puts downloaded dictionaries in `LINDERA_DICTIONARIES_DIR/<name>`
+  and no longer takes a dictionary name for `--dict` (see
+  [`lindera download` puts dictionaries in LINDERA_DICTIONARIES_DIR](#lindera-download-puts-dictionaries-in-lindera_dictionaries_dir)
+  and [`--dict` takes only URIs and paths](#--dict-takes-only-uris-and-paths)).
   A dictionary directory
   built or downloaded with v6.2.0 or earlier has to be rebuilt or downloaded
   again (see
@@ -2310,7 +2416,8 @@ Rust crate users:
   `normalize_details`, and stop using the `Metadata::normalize_details`
   field and `PrefixDictionaryBuilderOptions::normalize_details`.
 - If you build `Metadata` with a struct literal that lists every field, add
-  `skip_whitespace: None` or end it with `..Default::default()`.
+  `skip_whitespace: None` and `lindera_version: None`, or end it with
+  `..Default::default()`.
 - If you read `CharacterDefinition::lookup_categories`, expect the default
   category first and the others in category id order.
 - If you call `UnknownDictionary::gen_unk_words` or
@@ -2350,6 +2457,19 @@ Everyone who sets `LINDERA_CONFIG_PATH`:
 - Rename it to `LINDERA_CONFIG_FILE` in shell profiles, CI configuration,
   and container images. The old name works with a deprecation warning
   until v8.0.0.
+
+Users of `lindera download` and the CLI:
+
+- Download the dictionaries again with the 7.0.0 `lindera download`, and
+  remove the version directories of v6, such as
+  `~/.local/share/lindera/dictionaries/6.2.0`.
+- Replace `LINDERA_DATA_DIR=<dir>` with
+  `LINDERA_DICTIONARIES_DIR=<dir>/dictionaries`. The old name works with a
+  deprecation warning until v8.0.0.
+- Replace a dictionary name given to `--dict` or `--system-dict` with the
+  path that `lindera download` prints, or with `embedded://<name>`.
+- If you parse the output of `lindera list`, expect the columns `NAME`,
+  `VERSION`, `STATUS` and `DICT`, and only the dictionaries in place.
 
 Everyone who loads a dictionary from files:
 
