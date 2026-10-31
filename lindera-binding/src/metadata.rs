@@ -41,10 +41,12 @@ fn default_user_dictionary_schema() -> CoreSchema {
 /// Converts to and from [`lindera::dictionary::Metadata`]; the optional
 /// `model_info` carried by the lindera type is not retained (the bindings do
 /// not expose it), nor is `lindera_version`, which the dictionary builder
-/// stamps when it writes a dictionary (#1303), while `space_penalty` and
-/// `skip_whitespace` are, so a
+/// stamps when it writes a dictionary (#1303), nor `context_id_map`, which
+/// the builder writes into a dictionary it relabels. `space_penalty`,
+/// `skip_whitespace` and `connection_id_mapping` are retained, so a
 /// dictionary built from a `metadata.json` that ships left-space penalty
-/// rules (ko-dic) or turns whitespace skipping off (SudachiDict) keeps them.
+/// rules (ko-dic), turns whitespace skipping off (SudachiDict) or enables
+/// the relabelling of context IDs (ko-dic, UniDic) keeps them.
 #[derive(Debug, Clone)]
 pub struct CoreMetadata {
     /// Dictionary name.
@@ -73,6 +75,10 @@ pub struct CoreMetadata {
     /// The dictionary's whitespace-skipping default (`false` for
     /// SudachiDict); `None` when it sets none, which means skipping.
     pub skip_whitespace: Option<bool>,
+    /// Whether a system dictionary build relabels the connection matrix's
+    /// context IDs by access frequency (`true` for ko-dic and UniDic); see
+    /// `DictionaryBuilder::with_context_id_freq`.
+    pub connection_id_mapping: bool,
 }
 
 impl CoreMetadata {
@@ -93,7 +99,8 @@ impl CoreMetadata {
     ///
     /// # Returns
     ///
-    /// The new `CoreMetadata`, with no `space_penalty` and no `skip_whitespace` setting.
+    /// The new `CoreMetadata`, with no `space_penalty` and no `skip_whitespace`
+    /// setting, and `connection_id_mapping` off.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: Option<String>,
@@ -122,6 +129,7 @@ impl CoreMetadata {
                 .unwrap_or_else(default_user_dictionary_schema),
             space_penalty: None,
             skip_whitespace: None,
+            connection_id_mapping: false,
         }
     }
 
@@ -156,7 +164,8 @@ impl Default for CoreMetadata {
 
 impl From<Metadata> for CoreMetadata {
     /// Converts a lindera [`Metadata`] into a [`CoreMetadata`] (dropping
-    /// `model_info`, keeping `space_penalty` and `skip_whitespace`).
+    /// `model_info`, `lindera_version` and `context_id_map`, keeping
+    /// `space_penalty`, `skip_whitespace` and `connection_id_mapping`).
     fn from(metadata: Metadata) -> Self {
         Self {
             name: metadata.name,
@@ -171,16 +180,19 @@ impl From<Metadata> for CoreMetadata {
             user_dictionary_schema: metadata.user_dictionary_schema.into(),
             space_penalty: metadata.space_penalty,
             skip_whitespace: metadata.skip_whitespace,
+            connection_id_mapping: metadata.connection_id_mapping,
         }
     }
 }
 
 impl From<CoreMetadata> for Metadata {
-    /// Converts a [`CoreMetadata`] into a lindera [`Metadata`] (`model_info` is
-    /// `None`; `space_penalty` and `skip_whitespace` are carried over).
+    /// Converts a [`CoreMetadata`] into a lindera [`Metadata`] (`model_info`,
+    /// `lindera_version` and `context_id_map` are `None`; `space_penalty`,
+    /// `skip_whitespace` and `connection_id_mapping` are carried over).
     fn from(metadata: CoreMetadata) -> Self {
         let space_penalty = metadata.space_penalty;
         let skip_whitespace = metadata.skip_whitespace;
+        let connection_id_mapping = metadata.connection_id_mapping;
         let mut converted = Metadata::new(
             metadata.name,
             metadata.encoding,
@@ -195,6 +207,7 @@ impl From<CoreMetadata> for Metadata {
         );
         converted.space_penalty = space_penalty;
         converted.skip_whitespace = skip_whitespace;
+        converted.connection_id_mapping = connection_id_mapping;
         converted
     }
 }
@@ -251,6 +264,7 @@ mod tests {
         assert_eq!(lindera.name, "default");
         assert_eq!(lindera.default_left_context_id, 1288);
         assert_eq!(lindera.user_dictionary_schema.field_count(), 3);
+        assert!(!lindera.connection_id_mapping);
 
         let back: CoreMetadata = lindera.into();
         assert_eq!(back.name, "default");
@@ -258,6 +272,7 @@ mod tests {
         assert!(back.space_penalty.is_none());
         assert!(back.space_penalty_json().is_none());
         assert!(back.skip_whitespace.is_none());
+        assert!(!back.connection_id_mapping);
     }
 
     /// ko-dic's `metadata.json` ships left-space penalty rules; loading it the
@@ -296,5 +311,20 @@ mod tests {
         assert_eq!(core.skip_whitespace, Some(false));
         let rebuilt: Metadata = core.into();
         assert_eq!(rebuilt.skip_whitespace, Some(false));
+    }
+
+    /// ko-dic's `metadata.json` enables `connection_id_mapping`; the setting
+    /// must survive the same round trip, so that a dictionary the bindings
+    /// build from it relabels its context IDs as `lindera build` does (#1309).
+    #[test]
+    fn keeps_connection_id_mapping_from_ko_dic_metadata() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../lindera-ko-dic/metadata.json");
+        let json = std::fs::read_to_string(&path).unwrap();
+        let metadata: Metadata = serde_json::from_str(&json).unwrap();
+        assert!(metadata.connection_id_mapping);
+
+        let rebuilt: Metadata = CoreMetadata::from(metadata).into();
+        assert!(rebuilt.connection_id_mapping);
     }
 }

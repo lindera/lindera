@@ -55,6 +55,7 @@ class ArgumentTypesTest extends TestCase
             'Tokenizer::__construct($user_dictionary)' => static fn(mixed $v) => new Lindera\Tokenizer(self::dictionary(), user_dictionary: $v),
             'Tokenizer::tokenizeNbest($unique)' => static fn(mixed $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbest('東京都', 2, unique: $v),
             'Tokenizer::tokenizeNbest($cost_threshold)' => static fn(mixed $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbest('東京都', 2, cost_threshold: $v),
+            'Dictionary::build($context_id_freq)' => static fn(mixed $v) => Lindera\Dictionary::build($missing, $missing, new Lindera\Metadata(), $v),
             'Dictionary::buildUser($metadata)' => static fn(mixed $v) => Lindera\Dictionary::buildUser('ipadic', $missing, $missing, $v),
         ];
         if (class_exists(Lindera\Trainer::class)) {
@@ -183,8 +184,8 @@ class ArgumentTypesTest extends TestCase
             try {
                 $call(null);
             } catch (\ValueError $e) {
-                // Trainer and buildUser take their arguments, then reject the
-                // missing files.
+                // Trainer, build and buildUser take their arguments, then
+                // reject the missing files.
                 if (!str_contains($e->getMessage(), 'does not exist')) {
                     $failures[] = "{$key} <- null: ValueError: " . $e->getMessage();
                 }

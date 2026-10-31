@@ -20,7 +20,7 @@ class Dictionary implements \Stringable
 
     public function __toString(): string {}
 
-    public static function build(string $input_dir, string $output_dir, Metadata $metadata): void {}
+    public static function build(string $input_dir, string $output_dir, Metadata $metadata, ?string $context_id_freq = null): void {}
 
     public static function buildUser(string $_kind, string $input_file, string $output_dir, ?Metadata $metadata = null): void {}
 

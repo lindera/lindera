@@ -554,13 +554,23 @@ export type JsUserDictionary = UserDictionary
 /**
  * Builds a dictionary from source files.
  *
+ * When the metadata enables `connection_id_mapping`, as the `metadata.json`
+ * of ko-dic and UniDic does, the build relabels the connection matrix's
+ * context IDs by access frequency: by the counts of `context_id_freq`, or,
+ * without it, by the count of dictionary entries. The relabelling changes
+ * the speed of tokenization, never its result.
+ *
  * # Arguments
  *
  * * `input_dir` - Directory containing dictionary source files.
  * * `output_dir` - Directory where the built dictionary will be saved.
  * * `metadata` - Metadata configuration for the dictionary.
+ * * `context_id_freq` - Optional path of a context-ID frequency histogram,
+ *   such as the `context_id_freq.txt` of a dictionary crate, as `lindera
+ *   build --context-id-freq` takes it. Read only with
+ *   `connection_id_mapping`.
  */
-export declare function buildDictionary(inputDir: string, outputDir: string, metadata: JsMetadata): void
+export declare function buildDictionary(inputDir: string, outputDir: string, metadata: JsMetadata, contextIdFreq?: string | undefined | null): void
 
 /**
  * Builds a user dictionary from a CSV file.

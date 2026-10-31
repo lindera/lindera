@@ -6,7 +6,8 @@
 use std::path::Path;
 
 use magnus::prelude::*;
-use magnus::{Error, Ruby, function, method};
+use magnus::scan_args::{get_kwargs, scan_args};
+use magnus::{Error, RHash, Ruby, Value, function, method};
 
 use lindera::dictionary::{
     Dictionary, DictionaryBuilder, Metadata, UserDictionary,
@@ -171,17 +172,44 @@ fn load_user_dictionary_for(
 
 /// Builds a dictionary from source files.
 ///
+/// Ruby signature: `Lindera.build_dictionary(input_dir, output_dir, metadata,
+/// context_id_freq: nil)`.
+///
+/// When the metadata enables `connection_id_mapping`, as the `metadata.json`
+/// of ko-dic and UniDic does, the build relabels the connection matrix's
+/// context IDs by access frequency: by the counts of `context_id_freq`, or,
+/// without it, by the count of dictionary entries. The relabelling changes
+/// the speed of tokenization, never its result.
+///
 /// # Arguments
 ///
-/// * `input_dir` - Directory containing dictionary source files.
-/// * `output_dir` - Directory where the built dictionary will be saved.
-/// * `metadata` - Metadata configuration for the dictionary.
-fn build_dictionary(
-    input_dir: String,
-    output_dir: String,
-    metadata: &RbMetadata,
-) -> Result<(), Error> {
-    let ruby = Ruby::get().expect("Ruby runtime not initialized");
+/// * `ruby` - Ruby runtime handle.
+/// * `args` - The Ruby arguments:
+///   * `input_dir` - Directory containing dictionary source files.
+///   * `output_dir` - Directory where the built dictionary will be saved.
+///   * `metadata` - Metadata configuration for the dictionary.
+///   * `context_id_freq:` - Path of a context-ID frequency histogram, such
+///     as the `context_id_freq.txt` of a dictionary crate, as `lindera
+///     build --context-id-freq` takes it. `nil` or omitted means none. Read
+///     only with `connection_id_mapping`.
+///
+/// # Returns
+///
+/// `Ok(())` on success, an `ArgumentError` for a wrong number of arguments,
+/// an unknown keyword or a missing input directory, a `TypeError` for an
+/// argument of the wrong type, or a `RuntimeError` when the build fails,
+/// including when the histogram cannot be read.
+fn build_dictionary(ruby: &Ruby, args: &[Value]) -> Result<(), Error> {
+    let args = scan_args::<(String, String, &RbMetadata), (), (), (), RHash, ()>(args)?;
+    let (input_dir, output_dir, metadata) = args.required;
+    let keywords = get_kwargs::<_, (), (Option<Option<String>>,), ()>(
+        args.keywords,
+        &[],
+        &["context_id_freq"],
+    )?;
+    let (context_id_freq,) = keywords.optional;
+    let context_id_freq = context_id_freq.flatten();
+
     let input_path = Path::new(&input_dir);
     let output_path = Path::new(&output_dir);
 
@@ -192,10 +220,13 @@ fn build_dictionary(
         ));
     }
 
-    let builder = DictionaryBuilder::new(metadata.clone().into());
-    builder
-        .build_dictionary(input_path, output_path)
-        .map_err(|e| to_magnus_error(&ruby, format!("Failed to build dictionary: {e}")))?;
+    lindera_binding::dictionary::build_dictionary(
+        input_path,
+        output_path,
+        metadata.clone().into(),
+        context_id_freq.as_deref().map(Path::new),
+    )
+    .map_err(|e| to_magnus_error(ruby, format!("Failed to build dictionary: {e}")))?;
 
     Ok(())
 }
@@ -311,7 +342,7 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
         "load_user_dictionary_for",
         function!(load_user_dictionary_for, 2),
     )?;
-    module.define_module_function("build_dictionary", function!(build_dictionary, 3))?;
+    module.define_module_function("build_dictionary", function!(build_dictionary, -1))?;
     module.define_module_function("build_user_dictionary", function!(build_user_dictionary, 4))?;
     module.define_module_function(
         "build_user_dictionary_for",

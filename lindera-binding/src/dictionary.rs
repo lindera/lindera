@@ -1,4 +1,8 @@
-//! User dictionary building shared by the bindings.
+//! Dictionary building shared by the bindings.
+//!
+//! [`build_dictionary`] builds a system dictionary from its source files,
+//! with an optional context-ID frequency histogram, as `lindera build
+//! --context-id-freq` does.
 //!
 //! The bindings' standalone user dictionary builders take metadata only, so
 //! a CSV row whose context ID lies outside the system dictionary's
@@ -11,7 +15,44 @@
 use std::path::Path;
 
 use lindera::LinderaResult;
-use lindera::dictionary::{Dictionary, DictionaryBuilder};
+use lindera::dictionary::{Dictionary, DictionaryBuilder, Metadata};
+
+/// Builds a system dictionary from its source files, as `lindera build`
+/// does.
+///
+/// When the metadata enables `connection_id_mapping`, as that of ko-dic and
+/// UniDic does, the build relabels the connection matrix's context IDs by
+/// access frequency: by the counts of `context_id_freq`, or, without it, by
+/// the count of dictionary entries, with a warning in the log. The
+/// relabelling changes the speed of tokenization, never its result. Without
+/// `connection_id_mapping`, `context_id_freq` is not read.
+///
+/// # Arguments
+///
+/// * `input_dir` - Directory containing the dictionary source files.
+/// * `output_dir` - Directory to write the built dictionary to.
+/// * `metadata` - Metadata of the dictionary, such as that of its
+///   `metadata.json`.
+/// * `context_id_freq` - Context-ID frequency histogram, such as the
+///   `context_id_freq.txt` of a dictionary crate or a file written by the
+///   `ctxfreq_dump` example of the `lindera` crate.
+///
+/// # Returns
+///
+/// `Ok(())` once the dictionary is written, or an error if the source files
+/// or the histogram cannot be read, or the source fails to build.
+pub fn build_dictionary(
+    input_dir: &Path,
+    output_dir: &Path,
+    metadata: Metadata,
+    context_id_freq: Option<&Path>,
+) -> LinderaResult<()> {
+    let mut builder = DictionaryBuilder::new(metadata);
+    if let Some(path) = context_id_freq {
+        builder = builder.with_context_id_freq(path);
+    }
+    builder.build_dictionary(input_dir, output_dir)
+}
 
 /// Builds a user dictionary from a CSV file for a system dictionary and
 /// writes it to a file.
@@ -48,6 +89,112 @@ pub fn build_user_dictionary_for(
 
 #[cfg(test)]
 mod tests {
+    /// `build_dictionary` on `resources/connection_id_mapping`, the source of
+    /// a dictionary with a 4x4 connection matrix and `connection_id_mapping`,
+    /// whose one entry has the context IDs 2.
+    mod system_dictionary {
+        use std::path::{Path, PathBuf};
+
+        use lindera::dictionary::Metadata;
+
+        use super::super::build_dictionary;
+
+        fn fixture() -> PathBuf {
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../resources/connection_id_mapping")
+        }
+
+        fn fixture_metadata() -> Metadata {
+            let path = fixture().join("metadata.json");
+            let json = match std::fs::read_to_string(&path) {
+                Ok(json) => json,
+                Err(err) => panic!("failed to read {path:?}: {err}"),
+            };
+            match serde_json::from_str(&json) {
+                Ok(metadata) => metadata,
+                Err(err) => panic!("failed to parse {path:?}: {err}"),
+            }
+        }
+
+        /// Builds the fixture into `output` with `context_id_freq`, and
+        /// returns the `context_id_map` of the built `metadata.json`.
+        fn built_context_id_map(
+            output: &Path,
+            context_id_freq: Option<&Path>,
+        ) -> serde_json::Value {
+            if let Err(err) = build_dictionary(
+                &fixture().join("source"),
+                output,
+                fixture_metadata(),
+                context_id_freq,
+            ) {
+                panic!("failed to build the fixture: {err}");
+            }
+            let path = output.join("metadata.json");
+            let json = match std::fs::read_to_string(&path) {
+                Ok(json) => json,
+                Err(err) => panic!("failed to read {path:?}: {err}"),
+            };
+            match serde_json::from_str::<serde_json::Value>(&json) {
+                Ok(metadata) => metadata["context_id_map"].clone(),
+                Err(err) => panic!("failed to parse {path:?}: {err}"),
+            }
+        }
+
+        /// Without a histogram, the IDs other than 0 are ranked by the count
+        /// of dictionary entries, ties by ID: 2 (the entry's), then 1 and 3.
+        #[test]
+        fn build_dictionary_ranks_context_ids_by_entry_counts_without_a_histogram() {
+            let dir = match tempfile::tempdir() {
+                Ok(dir) => dir,
+                Err(err) => panic!("failed to create a temporary directory: {err}"),
+            };
+            let map = built_context_id_map(dir.path(), None);
+            assert_eq!(
+                map,
+                serde_json::json!({ "left": [0, 2, 1, 3], "right": [0, 2, 1, 3] })
+            );
+        }
+
+        /// The histogram counts 1, 3 and 2 for IDs 1, 2 and 3, so they are
+        /// ranked 2, 3, 1, unlike the entry counts.
+        #[test]
+        fn build_dictionary_ranks_context_ids_by_the_histogram() {
+            let dir = match tempfile::tempdir() {
+                Ok(dir) => dir,
+                Err(err) => panic!("failed to create a temporary directory: {err}"),
+            };
+            let histogram = fixture().join("context_id_freq.txt");
+            let map = built_context_id_map(dir.path(), Some(&histogram));
+            assert_eq!(
+                map,
+                serde_json::json!({ "left": [0, 3, 1, 2], "right": [0, 3, 1, 2] })
+            );
+        }
+
+        #[test]
+        fn build_dictionary_fails_for_a_missing_histogram() {
+            let dir = match tempfile::tempdir() {
+                Ok(dir) => dir,
+                Err(err) => panic!("failed to create a temporary directory: {err}"),
+            };
+            let missing = dir.path().join("missing.txt");
+            let result = build_dictionary(
+                &fixture().join("source"),
+                &dir.path().join("dict"),
+                fixture_metadata(),
+                Some(&missing),
+            );
+            match result {
+                Ok(()) => panic!("built with a histogram that does not exist"),
+                Err(err) => assert!(
+                    err.to_string()
+                        .contains("Failed to read context-id frequency file"),
+                    "got: {err}"
+                ),
+            }
+        }
+    }
+
     #[cfg(feature = "embed-ipadic")]
     mod with_ipadic {
         use std::path::{Path, PathBuf};

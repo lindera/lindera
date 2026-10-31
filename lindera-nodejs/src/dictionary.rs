@@ -55,16 +55,27 @@ pub struct JsUserDictionary {
 
 /// Builds a dictionary from source files.
 ///
+/// When the metadata enables `connection_id_mapping`, as the `metadata.json`
+/// of ko-dic and UniDic does, the build relabels the connection matrix's
+/// context IDs by access frequency: by the counts of `context_id_freq`, or,
+/// without it, by the count of dictionary entries. The relabelling changes
+/// the speed of tokenization, never its result.
+///
 /// # Arguments
 ///
 /// * `input_dir` - Directory containing dictionary source files.
 /// * `output_dir` - Directory where the built dictionary will be saved.
 /// * `metadata` - Metadata configuration for the dictionary.
+/// * `context_id_freq` - Optional path of a context-ID frequency histogram,
+///   such as the `context_id_freq.txt` of a dictionary crate, as `lindera
+///   build --context-id-freq` takes it. Read only with
+///   `connection_id_mapping`.
 #[napi]
 pub fn build_dictionary(
     input_dir: String,
     output_dir: String,
     metadata: &JsMetadata,
+    context_id_freq: Option<String>,
 ) -> napi::Result<()> {
     let input_path = Path::new(&input_dir);
     let output_path = Path::new(&output_dir);
@@ -77,11 +88,13 @@ pub fn build_dictionary(
     }
 
     let meta: Metadata = JsMetadata::to_lindera_metadata(metadata);
-    let builder = DictionaryBuilder::new(meta);
-
-    builder
-        .build_dictionary(input_path, output_path)
-        .map_err(|e| to_napi_error(format!("Failed to build dictionary: {e}")))?;
+    lindera_binding::dictionary::build_dictionary(
+        input_path,
+        output_path,
+        meta,
+        context_id_freq.as_deref().map(Path::new),
+    )
+    .map_err(|e| to_napi_error(format!("Failed to build dictionary: {e}")))?;
 
     Ok(())
 }

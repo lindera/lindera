@@ -184,6 +184,8 @@ jobs:
               - 'lindera-dictionary/**'
               - 'lindera-ipadic/**'
               - 'lindera-ko-dic/**'
+              # The dictionary build tests build this source.
+              - 'resources/connection_id_mapping/**'
               - *shared-workspace
               - *shared-crate-workflow
             lindera-cli:
@@ -221,6 +223,8 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              # The dictionary build tests build this source.
+              - 'resources/connection_id_mapping/**'
               - *shared-workspace
               - *shared-make
             lindera-nodejs:
@@ -241,6 +245,8 @@ jobs:
               - 'lindera-jieba/**'
               - 'scripts/benchmarks/memcheck_common.mjs'
               - 'scripts/benchmarks/memcheck_nodejs.mjs'
+              # The dictionary build tests build this source.
+              - 'resources/connection_id_mapping/**'
               - *shared-workspace
               - *shared-make
             lindera-ruby:
@@ -259,6 +265,8 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              # The dictionary build tests build this source.
+              - 'resources/connection_id_mapping/**'
               - *shared-workspace
               - *shared-make
             # Gem packaging: the crate as `cargo package` normalizes it (which
@@ -285,6 +293,8 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              # The dictionary build tests build this source.
+              - 'resources/connection_id_mapping/**'
               - *shared-workspace
               - *shared-make
             lindera-wasm:

@@ -70,7 +70,7 @@ export LINDERA_BUILD_CONTEXT_ID_FREQ_FILE=/path/to/context_id_freq.txt
 cargo build --features=embed-unidic
 ```
 
-Only the build scripts read it: `lindera build` takes the histogram from its `--context-id-freq` option, and the functions of the bindings that build a dictionary take none. Changing the variable, or the file it names, reruns the build script, and the cache of `LINDERA_BUILD_DICTIONARY_CACHE_DIR` compares the histogram's contents.
+Only the build scripts read it: `lindera build` takes the histogram from its `--context-id-freq` option, and the functions of the bindings that build a dictionary take it as an optional argument, `context_id_freq` (`contextIdFreq` in Node.js). Changing the variable, or the file it names, reruns the build script, and the cache of `LINDERA_BUILD_DICTIONARY_CACHE_DIR` compares the histogram's contents.
 
 `LINDERA_CTX_FREQ_FILE`, the name of this variable up to v6, still works until v8.0.0, with a deprecation warning:
 
