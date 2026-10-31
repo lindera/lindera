@@ -7,6 +7,7 @@
 
 - [はじめる](./getting_started.md)
     - [インストール](./getting_started/installation.md)
+    - [環境変数](./getting_started/environment_variables.md)
     - [クイックスタート](./getting_started/quickstart.md)
     - [サンプル](./getting_started/examples.md)
 
