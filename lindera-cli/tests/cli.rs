@@ -68,6 +68,9 @@ fn write_dictionary_files(dir: &Path) {
     }
 }
 
+/// With an empty dictionaries directory, `lindera list` shows the embedded
+/// dictionaries, each with the CLI's version, and says on stderr that the
+/// directory holds none (#1303).
 #[test]
 fn list_succeeds() {
     let dictionaries_dir = tempfile::tempdir().unwrap();
@@ -76,15 +79,75 @@ fn list_succeeds() {
         .output()
         .unwrap();
     assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stdout.starts_with("NAME") && stdout.contains("DICT"),
+        "got: {stdout}"
+    );
+    assert!(
+        stderr.contains(&format!(
+            "No dictionaries in {}",
+            dictionaries_dir.path().display()
+        )),
+        "got: {stderr}"
+    );
 
     #[cfg(feature = "embed-ipadic")]
     {
-        let stdout = String::from_utf8(output.stdout).unwrap();
-        assert!(
-            stdout.contains("ipadic"),
-            "embedded ipadic should be listed, got: {stdout}"
+        let line = stdout
+            .lines()
+            .find(|line| line.ends_with("embedded://ipadic"))
+            .unwrap_or_else(|| panic!("embedded ipadic should be listed, got: {stdout}"));
+        let cells: Vec<&str> = line.split_whitespace().collect();
+        assert_eq!(
+            cells,
+            [
+                "ipadic",
+                env!("CARGO_PKG_VERSION"),
+                "ok",
+                "embedded://ipadic"
+            ],
+            "got: {stdout}"
         );
     }
+}
+
+/// `lindera list` shows a dictionary built by `lindera build` in the
+/// dictionaries directory with the CLI's version, and reports a
+/// subdirectory without `metadata.json` on stderr instead (#1303).
+#[test]
+fn list_shows_a_built_dictionary_with_its_version() {
+    let dir = tempfile::tempdir().unwrap();
+    // `dict` is the dictionary; `source` holds its CSV files, no
+    // metadata.json.
+    let (dict, _) = build_four_by_four_dictionary(dir.path());
+
+    let output = lindera_with_dictionaries_dir(dir.path())
+        .arg("list")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    let dict = dict.display().to_string();
+    let line = stdout
+        .lines()
+        .find(|line| line.ends_with(&dict))
+        .unwrap_or_else(|| panic!("the built dictionary should be listed, got: {stdout}"));
+    let cells: Vec<&str> = line.split_whitespace().collect();
+    assert_eq!(
+        cells,
+        ["dict", env!("CARGO_PKG_VERSION"), "ok", dict.as_str()],
+        "got: {stdout}"
+    );
+    assert!(
+        stderr.contains(&format!(
+            "Skipped {}: not a dictionary (no metadata.json)",
+            dir.path().join("source").display()
+        )),
+        "got: {stderr}"
+    );
 }
 
 #[test]
