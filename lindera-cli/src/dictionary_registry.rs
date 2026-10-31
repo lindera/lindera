@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use lindera::LinderaResult;
-use lindera::dictionary::Metadata;
+use lindera::dictionary::{DictionaryKind, Metadata};
 use lindera::error::LinderaErrorKind;
 
 /// Dictionary names accepted by `lindera download`.
@@ -242,60 +242,79 @@ pub(crate) fn is_complete_dictionary_dir(dir: &Path) -> bool {
     missing_dictionary_files(dir).is_empty()
 }
 
-/// Resolves the `--dict` argument of `lindera tokenize`.
+/// Returns the names of the dictionaries embedded in the binary.
 ///
-/// Resolution order, preserving backward compatibility:
+/// # Returns
+///
+/// The names of the `embed-*` features the CLI was built with, such as
+/// `ipadic`, in [`DictionaryKind::contained_variants`] order.
+pub(crate) fn embedded_dictionary_names() -> Vec<String> {
+    DictionaryKind::contained_variants()
+        .iter()
+        .map(|kind| kind.as_str().to_string())
+        .collect()
+}
+
+/// Checks the dictionary argument of `lindera tokenize --dict` and
+/// `lindera build --system-dict`, which takes `embedded://<kind>`,
+/// `file://<path>` or a path, but no longer a dictionary name (#1303).
 ///
 /// 1. A URI containing `://` is returned unchanged (e.g. `embedded://ipadic`).
-/// 2. An existing filesystem path is returned unchanged (paths always win
-///    over dictionary names).
-/// 3. A downloadable dictionary name resolves to its downloaded directory; a
-///    missing or incomplete directory produces an error suggesting
-///    `lindera download`.
+/// 2. An existing filesystem path is returned unchanged, even when it is
+///    spelled like a dictionary name (a directory `./ipadic`).
+/// 3. A dictionary name (downloadable or embedded) fails with an error
+///    that points to `embedded://<name>` and to the directory where
+///    `lindera download <name>` puts the dictionary.
 /// 4. Anything else is returned unchanged and handled by the dictionary
 ///    loader downstream.
 ///
 /// # Arguments
 ///
-/// * `dict` - Raw `--dict` argument value.
+/// * `value` - Raw argument value.
+/// * `option` - The option the value was given to, for the error message
+///   (`--dict` or `--system-dict`).
+/// * `embedded` - Names of the dictionaries embedded in the binary (see
+///   [`embedded_dictionary_names`]).
 /// * `dictionaries_dir` - Resolves the directory that holds the
 ///   dictionaries (see [`dictionaries_dir`]); called only for a dictionary
 ///   name.
 ///
 /// # Returns
 ///
-/// The dictionary URI or path to pass to the tokenizer builder.
+/// The dictionary URI or path to pass to the loader, or an `Args` error for
+/// a dictionary name.
 pub(crate) fn resolve_dictionary_arg(
-    dict: &str,
+    value: &str,
+    option: &str,
+    embedded: &[String],
     dictionaries_dir: impl FnOnce() -> LinderaResult<PathBuf>,
 ) -> LinderaResult<String> {
-    if dict.contains("://") || Path::new(dict).exists() || !is_downloadable_dictionary(dict) {
-        return Ok(dict.to_string());
+    let is_embedded = embedded.iter().any(|name| name.as_str() == value);
+    let is_name = is_downloadable_dictionary(value) || is_embedded;
+    if value.contains("://") || Path::new(value).exists() || !is_name {
+        return Ok(value.to_string());
     }
 
-    let dir = dictionary_dir(&dictionaries_dir()?, dict);
-    let missing = missing_dictionary_files(&dir);
-    if missing.is_empty() {
-        return dir.into_os_string().into_string().map_err(|path| {
-            LinderaErrorKind::Io.with_error(anyhow::anyhow!(
-                "dictionary path is not valid UTF-8: {}",
-                PathBuf::from(path).display()
-            ))
-        });
-    }
-
-    if dir.is_dir() {
-        Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
-            "dictionary '{dict}' at {} is incomplete (missing: {}). Run 'lindera download {dict} --force' to re-download it.",
-            dir.display(),
-            missing.join(", ")
-        )))
+    let embedded_note = if is_embedded {
+        ""
     } else {
-        Err(LinderaErrorKind::NotFound.with_error(anyhow::anyhow!(
-            "dictionary '{dict}' is not downloaded (looked in {}). Run 'lindera download {dict}' to fetch it.",
-            dir.display()
-        )))
-    }
+        " (this build does not embed it)"
+    };
+    let (dir, download_note) = match dictionaries_dir() {
+        Ok(dir) => {
+            let dir = dictionary_dir(&dir, value);
+            let note = if is_complete_dictionary_dir(&dir) || !is_downloadable_dictionary(value) {
+                String::new()
+            } else {
+                format!(" (not downloaded yet; run 'lindera download {value}')")
+            };
+            (dir.display().to_string(), note)
+        }
+        Err(_) => (format!("<{DICTIONARIES_DIR_ENV}>/{value}"), String::new()),
+    };
+    Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+        "{option} takes a URI or a path, and '{value}' names a dictionary: pass embedded://{value} for the dictionary embedded in the CLI{embedded_note}, or the path of a downloaded one, {dir}{download_note}"
+    )))
 }
 
 #[cfg(test)]
@@ -468,54 +487,109 @@ mod tests {
 
     #[test]
     fn resolve_passes_uri_through_unchanged() {
-        let resolved = resolve_dictionary_arg("embedded://ipadic", no_dictionaries_dir).unwrap();
+        let resolved =
+            resolve_dictionary_arg("embedded://ipadic", "--dict", &[], no_dictionaries_dir)
+                .unwrap();
         assert_eq!(resolved, "embedded://ipadic");
     }
 
     #[test]
-    fn resolve_prefers_existing_filesystem_path() {
+    fn resolve_passes_existing_filesystem_path_through_unchanged() {
         let tmp = tempfile::tempdir().unwrap();
         let path = tmp.path().join("ipadic");
         fs::create_dir_all(&path).unwrap();
         let arg = path.to_str().unwrap();
-        let resolved = resolve_dictionary_arg(arg, no_dictionaries_dir).unwrap();
+        // The path is also given as an embedded name, as `./ipadic` would
+        // equal the name `ipadic`: an existing path wins over a name.
+        let resolved =
+            resolve_dictionary_arg(arg, "--dict", &[arg.to_string()], no_dictionaries_dir).unwrap();
         assert_eq!(resolved, arg);
     }
 
     #[test]
-    fn resolve_returns_downloaded_dictionary_path() {
-        let tmp = tempfile::tempdir().unwrap();
-        let dir = dictionary_dir(tmp.path(), "ipadic");
-        create_files(&dir, &REQUIRED_DICTIONARY_FILES);
-        let resolved = resolve_dictionary_arg("ipadic", || Ok(tmp.path().to_path_buf())).unwrap();
-        assert_eq!(resolved, dir.to_str().unwrap());
+    fn resolve_passes_unknown_name_through_unchanged() {
+        let resolved =
+            resolve_dictionary_arg("no-such-dictionary", "--dict", &[], no_dictionaries_dir)
+                .unwrap();
+        assert_eq!(resolved, "no-such-dictionary");
+    }
+
+    /// The message of the error for a dictionary name.
+    fn name_error(
+        value: &str,
+        option: &str,
+        embedded: &[String],
+        dictionaries_dir: &Path,
+    ) -> String {
+        let err = resolve_dictionary_arg(value, option, embedded, || {
+            Ok(dictionaries_dir.to_path_buf())
+        })
+        .unwrap_err();
+        assert!(
+            matches!(err.kind(), LinderaErrorKind::Args),
+            "{:?}",
+            err.kind()
+        );
+        err.to_string()
     }
 
     #[test]
-    fn resolve_suggests_download_when_not_downloaded() {
+    fn resolve_rejects_a_dictionary_name_with_both_ways_to_name_it() {
         let tmp = tempfile::tempdir().unwrap();
-        let err = resolve_dictionary_arg("ipadic", || Ok(tmp.path().to_path_buf())).unwrap_err();
-        let message = format!("{err}");
+        let message = name_error("ipadic", "--dict", &[], tmp.path());
+        assert!(message.contains("--dict"), "{message}");
+        assert!(message.contains("embedded://ipadic"), "{message}");
+        assert!(
+            message.contains("this build does not embed it"),
+            "{message}"
+        );
+        let dir = dictionary_dir(tmp.path(), "ipadic");
+        assert!(message.contains(&dir.display().to_string()), "{message}");
         assert!(message.contains("lindera download ipadic"), "{message}");
     }
 
     #[test]
-    fn resolve_suggests_force_when_incomplete() {
+    fn resolve_rejects_an_embedded_and_downloaded_name_without_the_notes() {
         let tmp = tempfile::tempdir().unwrap();
-        let dir = dictionary_dir(tmp.path(), "ipadic");
-        create_files(&dir, &["metadata.json"]);
-        let err = resolve_dictionary_arg("ipadic", || Ok(tmp.path().to_path_buf())).unwrap_err();
-        let message = format!("{err}");
-        assert!(
-            message.contains("lindera download ipadic --force"),
-            "{message}"
+        create_files(
+            &dictionary_dir(tmp.path(), "ipadic"),
+            &REQUIRED_DICTIONARY_FILES,
         );
-        assert!(message.contains("unk.bin"), "{message}");
+        let message = name_error(
+            "ipadic",
+            "--system-dict",
+            &["ipadic".to_string()],
+            tmp.path(),
+        );
+        assert!(message.contains("--system-dict"), "{message}");
+        assert!(message.contains("embedded://ipadic"), "{message}");
+        assert!(!message.contains("does not embed"), "{message}");
+        assert!(!message.contains("lindera download"), "{message}");
     }
 
     #[test]
-    fn resolve_passes_unknown_name_through_unchanged() {
-        let resolved = resolve_dictionary_arg("no-such-dictionary", no_dictionaries_dir).unwrap();
-        assert_eq!(resolved, "no-such-dictionary");
+    fn resolve_rejects_an_embedded_name_that_is_not_downloadable() {
+        let tmp = tempfile::tempdir().unwrap();
+        let message = name_error(
+            "custom-dic",
+            "--dict",
+            &["custom-dic".to_string()],
+            tmp.path(),
+        );
+        assert!(message.contains("embedded://custom-dic"), "{message}");
+        assert!(!message.contains("lindera download"), "{message}");
+    }
+
+    #[test]
+    fn resolve_names_the_variable_when_the_dictionaries_directory_is_unknown() {
+        let err = resolve_dictionary_arg("ipadic", "--dict", &[], || {
+            Err(LinderaErrorKind::Io.with_error(anyhow::anyhow!("no local data directory")))
+        })
+        .unwrap_err();
+        let message = err.to_string();
+        assert!(
+            message.contains("<LINDERA_DICTIONARIES_DIR>/ipadic"),
+            "{message}"
+        );
     }
 }

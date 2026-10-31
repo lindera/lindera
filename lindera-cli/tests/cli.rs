@@ -119,8 +119,10 @@ fn download_with_invalid_name_fails() {
     assert!(stderr.contains("ipadic"), "got: {stderr}");
 }
 
+/// `--dict` takes a URI or a path; a dictionary name fails with the two ways
+/// to name the dictionary (#1303).
 #[test]
-fn tokenize_with_undownloaded_name_suggests_download() {
+fn tokenize_rejects_a_dictionary_name() {
     let dictionaries_dir = tempfile::tempdir().unwrap();
     let output = lindera_with_dictionaries_dir(dictionaries_dir.path())
         .args(["tokenize", "--dict", "ipadic"])
@@ -129,7 +131,57 @@ fn tokenize_with_undownloaded_name_suggests_download() {
         .unwrap();
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("lindera download ipadic"), "got: {stderr}");
+    assert!(
+        stderr.contains("--dict takes a URI or a path"),
+        "got: {stderr}"
+    );
+    assert!(stderr.contains("embedded://ipadic"), "got: {stderr}");
+    let dictionary = dictionaries_dir.path().join("ipadic");
+    assert!(
+        stderr.contains(&dictionary.display().to_string()),
+        "got: {stderr}"
+    );
+}
+
+/// `--system-dict` takes what `--dict` takes, so a dictionary name fails in
+/// the same way, before the user dictionary is built (#1303).
+#[test]
+fn build_user_rejects_a_dictionary_name_for_the_system_dictionary() {
+    let dir = tempfile::tempdir().unwrap();
+    let metadata = dir.path().join("metadata.json");
+    std::fs::write(
+        &metadata,
+        serde_json::to_vec(&lindera::dictionary::Metadata::default()).unwrap(),
+    )
+    .unwrap();
+    let user_csv = dir.path().join("userdic.csv");
+    std::fs::write(
+        &user_csv,
+        "東京タワー,0,0,-1000,名詞,固有名詞,一般,*,*,*,東京タワー,トウキョウタワー,トウキョウタワー\n",
+    )
+    .unwrap();
+    let user_dest = dir.path().join("user");
+    let dictionaries_dir = dir.path().join("dictionaries");
+
+    let output = lindera_with_dictionaries_dir(&dictionaries_dir)
+        .args(["build", "--user", "--src", user_csv.to_str().unwrap()])
+        .args(["--dest", user_dest.to_str().unwrap()])
+        .args(["--metadata", metadata.to_str().unwrap()])
+        .args(["--system-dict", "ipadic"])
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(!output.status.success(), "got: {stderr}");
+    assert!(
+        stderr.contains("--system-dict takes a URI or a path"),
+        "got: {stderr}"
+    );
+    assert!(stderr.contains("embedded://ipadic"), "got: {stderr}");
+    assert!(
+        stderr.contains(&dictionaries_dir.join("ipadic").display().to_string()),
+        "got: {stderr}"
+    );
+    assert!(!user_dest.join("userdic.bin").exists());
 }
 
 #[test]

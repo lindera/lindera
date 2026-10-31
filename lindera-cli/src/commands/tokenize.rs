@@ -26,7 +26,7 @@ pub struct TokenizeArgs {
         short = 'd',
         long = "dict",
         required = true,
-        help = "Dictionary directory path, URI, or downloaded dictionary name (e.g., embedded://ipadic, /path/to/dictionary, ipadic)"
+        help = "Dictionary URI or directory path (e.g., embedded://ipadic, /path/to/dictionary; lindera download prints the path of a downloaded one)"
     )]
     dict: String,
     #[clap(
@@ -280,11 +280,13 @@ fn strip_line_terminator(line: &str) -> &str {
 pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     let mut builder = TokenizerBuilder::new()?;
 
-    // Set dictionary directory URI. A bare downloadable dictionary name
-    // (e.g. `ipadic`) resolves to its downloaded directory; URIs and
-    // existing filesystem paths are passed through unchanged.
+    // Set dictionary directory URI. URIs and paths are passed through
+    // unchanged; a bare dictionary name (e.g. `ipadic`) is rejected with a
+    // hint to `embedded://ipadic` and to the downloaded directory.
     let dict_uri = crate::dictionary_registry::resolve_dictionary_arg(
         args.dict.as_str(),
+        "--dict",
+        &crate::dictionary_registry::embedded_dictionary_names(),
         crate::dictionary_registry::dictionaries_dir,
     )?;
     builder.set_segmenter_dictionary(dict_uri.as_str());

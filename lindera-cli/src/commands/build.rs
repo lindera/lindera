@@ -44,7 +44,7 @@ pub struct BuildArgs {
     #[clap(
         long = "system-dict",
         requires = "user",
-        help = "System dictionary the user dictionary is for: a directory path, URI, or downloaded dictionary name (e.g., embedded://ipadic, /path/to/dictionary, ipadic). Every row's context IDs are then checked against its connection matrix, and a row outside it fails the build with an error naming its line and surface. Only with --user; without it, the IDs are checked when the user dictionary is used"
+        help = "System dictionary the user dictionary is for: a URI or directory path (e.g., embedded://ipadic, /path/to/dictionary). Every row's context IDs are then checked against its connection matrix, and a row outside it fails the build with an error naming its line and surface. Only with --user; without it, the IDs are checked when the user dictionary is used"
     )]
     system_dict: Option<String>,
     #[clap(
@@ -69,6 +69,8 @@ pub fn build(args: BuildArgs) -> LinderaResult<()> {
     if let Some(system_dict) = &args.system_dict {
         let system_dict_uri = crate::dictionary_registry::resolve_dictionary_arg(
             system_dict,
+            "--system-dict",
+            &crate::dictionary_registry::embedded_dictionary_names(),
             crate::dictionary_registry::dictionaries_dir,
         )?;
         let dictionary = load_dictionary(&system_dict_uri)?;
