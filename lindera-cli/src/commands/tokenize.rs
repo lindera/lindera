@@ -285,8 +285,7 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     // existing filesystem paths are passed through unchanged.
     let dict_uri = crate::dictionary_registry::resolve_dictionary_arg(
         args.dict.as_str(),
-        std::env::var_os(crate::dictionary_registry::DATA_DIR_ENV).map(PathBuf::from),
-        get_version(),
+        crate::dictionary_registry::dictionaries_dir,
     )?;
     builder.set_segmenter_dictionary(dict_uri.as_str());
 

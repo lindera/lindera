@@ -5,8 +5,7 @@ use lindera::dictionary::DictionaryKind;
 use lindera_cli::get_version;
 
 use crate::dictionary_registry::{
-    DATA_DIR_ENV, DOWNLOADABLE_DICTIONARIES, base_data_dir, dictionary_dir,
-    is_complete_dictionary_dir,
+    DOWNLOADABLE_DICTIONARIES, dictionaries_dir, dictionary_dir, is_complete_dictionary_dir,
 };
 
 /// Column headers of the dictionary listing table.
@@ -59,15 +58,14 @@ struct DictionaryRow {
 ///
 /// # Returns
 ///
-/// `Ok(())` when the listing is printed. An `Io` error when the application
-/// data directory cannot be determined.
+/// `Ok(())` when the listing is printed. An `Io` error when the dictionaries
+/// directory cannot be determined.
 pub fn list(_args: ListArgs) -> LinderaResult<()> {
     let embedded: Vec<String> = DictionaryKind::contained_variants()
         .iter()
         .map(|kind| kind.as_str().to_string())
         .collect();
-    let base = base_data_dir(std::env::var_os(DATA_DIR_ENV).map(PathBuf::from))?;
-    let rows = dictionary_rows(&embedded, &base, get_version());
+    let rows = dictionary_rows(&embedded, &dictionaries_dir()?);
     print!("{}", render_rows(&rows));
     Ok(())
 }
@@ -75,21 +73,19 @@ pub fn list(_args: ListArgs) -> LinderaResult<()> {
 /// Collects the listing rows for all known dictionaries.
 ///
 /// The listed set is the union of [`DOWNLOADABLE_DICTIONARIES`] and the
-/// embedded dictionary names. Download detection only considers the given
-/// CLI version's installation directory, matching how `tokenize --dict`
-/// resolves dictionary names.
+/// embedded dictionary names, each looked for in the dictionaries
+/// directory.
 ///
 /// # Arguments
 ///
 /// * `embedded` - Names of the dictionaries embedded in the binary.
-/// * `base` - Base application data directory (see `base_data_dir`).
-/// * `version` - Crate version of the running CLI.
+/// * `dictionaries_dir` - The directory that holds the dictionaries.
 ///
 /// # Returns
 ///
 /// One row per known dictionary, in [`DOWNLOADABLE_DICTIONARIES`] order with
 /// any extra embedded names appended.
-fn dictionary_rows(embedded: &[String], base: &Path, version: &str) -> Vec<DictionaryRow> {
+fn dictionary_rows(embedded: &[String], dictionaries_dir: &Path) -> Vec<DictionaryRow> {
     let mut names: Vec<String> = DOWNLOADABLE_DICTIONARIES
         .iter()
         .map(|name| (*name).to_string())
@@ -103,7 +99,7 @@ fn dictionary_rows(embedded: &[String], base: &Path, version: &str) -> Vec<Dicti
     names
         .into_iter()
         .map(|name| {
-            let dir = dictionary_dir(base, version, &name);
+            let dir = dictionary_dir(dictionaries_dir, &name);
             let download = if is_complete_dictionary_dir(&dir) {
                 DownloadState::Downloaded(dir)
             } else if dir.is_dir() {
@@ -204,7 +200,7 @@ mod tests {
     #[test]
     fn rows_cover_all_downloadable_dictionaries() {
         let tmp = tempfile::tempdir().unwrap();
-        let rows = dictionary_rows(&[], tmp.path(), "5.1.0");
+        let rows = dictionary_rows(&[], tmp.path());
         let names: Vec<&str> = rows.iter().map(|row| row.name.as_str()).collect();
         assert_eq!(names, DOWNLOADABLE_DICTIONARIES.to_vec());
         assert!(
@@ -216,10 +212,10 @@ mod tests {
     #[test]
     fn complete_installation_is_reported_with_path() {
         let tmp = tempfile::tempdir().unwrap();
-        let dir = dictionary_dir(tmp.path(), "5.1.0", "ipadic");
+        let dir = dictionary_dir(tmp.path(), "ipadic");
         create_files(&dir, &REQUIRED_DICTIONARY_FILES);
 
-        let rows = dictionary_rows(&[], tmp.path(), "5.1.0");
+        let rows = dictionary_rows(&[], tmp.path());
         assert_eq!(
             row_by_name(&rows, "ipadic").download,
             DownloadState::Downloaded(dir)
@@ -229,10 +225,10 @@ mod tests {
     #[test]
     fn incomplete_installation_is_reported() {
         let tmp = tempfile::tempdir().unwrap();
-        let dir = dictionary_dir(tmp.path(), "5.1.0", "unidic");
+        let dir = dictionary_dir(tmp.path(), "unidic");
         create_files(&dir, &["metadata.json"]);
 
-        let rows = dictionary_rows(&[], tmp.path(), "5.1.0");
+        let rows = dictionary_rows(&[], tmp.path());
         assert_eq!(
             row_by_name(&rows, "unidic").download,
             DownloadState::Incomplete(dir)
@@ -240,23 +236,10 @@ mod tests {
     }
 
     #[test]
-    fn other_version_installation_is_not_reported() {
-        let tmp = tempfile::tempdir().unwrap();
-        let dir = dictionary_dir(tmp.path(), "5.0.0", "ipadic");
-        create_files(&dir, &REQUIRED_DICTIONARY_FILES);
-
-        let rows = dictionary_rows(&[], tmp.path(), "5.1.0");
-        assert_eq!(
-            row_by_name(&rows, "ipadic").download,
-            DownloadState::NotDownloaded
-        );
-    }
-
-    #[test]
     fn embedded_flag_follows_embedded_names() {
         let tmp = tempfile::tempdir().unwrap();
         let embedded = vec!["ipadic".to_string()];
-        let rows = dictionary_rows(&embedded, tmp.path(), "5.1.0");
+        let rows = dictionary_rows(&embedded, tmp.path());
         assert!(row_by_name(&rows, "ipadic").embedded);
         assert!(!row_by_name(&rows, "unidic").embedded);
     }
@@ -265,7 +248,7 @@ mod tests {
     fn embedded_name_outside_downloadable_set_is_appended() {
         let tmp = tempfile::tempdir().unwrap();
         let embedded = vec!["custom-dic".to_string()];
-        let rows = dictionary_rows(&embedded, tmp.path(), "5.1.0");
+        let rows = dictionary_rows(&embedded, tmp.path());
         let row = row_by_name(&rows, "custom-dic");
         assert!(row.embedded);
         assert_eq!(rows.len(), DOWNLOADABLE_DICTIONARIES.len() + 1);

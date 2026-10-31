@@ -69,8 +69,7 @@ pub fn build(args: BuildArgs) -> LinderaResult<()> {
     if let Some(system_dict) = &args.system_dict {
         let system_dict_uri = crate::dictionary_registry::resolve_dictionary_arg(
             system_dict,
-            std::env::var_os(crate::dictionary_registry::DATA_DIR_ENV).map(PathBuf::from),
-            get_version(),
+            crate::dictionary_registry::dictionaries_dir,
         )?;
         let dictionary = load_dictionary(&system_dict_uri)?;
         builder = builder.with_system_matrix(&dictionary.connection_cost_matrix);

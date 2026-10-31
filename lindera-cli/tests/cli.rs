@@ -35,9 +35,46 @@ fn version_matches_crate() {
     assert!(stdout.contains(env!("CARGO_PKG_VERSION")));
 }
 
+/// Returns the command with the dictionaries directory set to `dir` and
+/// `LINDERA_DATA_DIR` removed, so that the user's environment and default
+/// directory do not leak into the test.
+fn lindera_with_dictionaries_dir(dir: &Path) -> Command {
+    let mut command = lindera();
+    command
+        .env("LINDERA_DICTIONARIES_DIR", dir)
+        .env_remove("LINDERA_DATA_DIR");
+    command
+}
+
+/// The files of a complete pre-built dictionary directory, with dummy
+/// content: what `lindera download` checks, not a loadable dictionary.
+const DICTIONARY_FILES: [&str; 9] = [
+    "metadata.json",
+    "char_def.bin",
+    "matrix.mtx",
+    "dict.trie",
+    "dict.valsidx",
+    "dict.vals",
+    "dict.wordsidx",
+    "dict.words",
+    "unk.bin",
+];
+
+/// Writes [`DICTIONARY_FILES`] into `dir`, creating it.
+fn write_dictionary_files(dir: &Path) {
+    std::fs::create_dir_all(dir).unwrap();
+    for file in DICTIONARY_FILES {
+        std::fs::write(dir.join(file), b"test").unwrap();
+    }
+}
+
 #[test]
 fn list_succeeds() {
-    let output = lindera().arg("list").output().unwrap();
+    let dictionaries_dir = tempfile::tempdir().unwrap();
+    let output = lindera_with_dictionaries_dir(dictionaries_dir.path())
+        .arg("list")
+        .output()
+        .unwrap();
     assert!(output.status.success());
 
     #[cfg(feature = "embed-ipadic")]
@@ -84,9 +121,8 @@ fn download_with_invalid_name_fails() {
 
 #[test]
 fn tokenize_with_undownloaded_name_suggests_download() {
-    let data_dir = tempfile::tempdir().unwrap();
-    let output = lindera()
-        .env("LINDERA_DATA_DIR", data_dir.path())
+    let dictionaries_dir = tempfile::tempdir().unwrap();
+    let output = lindera_with_dictionaries_dir(dictionaries_dir.path())
         .args(["tokenize", "--dict", "ipadic"])
         .write_stdin("テスト\n")
         .output()
@@ -94,6 +130,83 @@ fn tokenize_with_undownloaded_name_suggests_download() {
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(stderr.contains("lindera download ipadic"), "got: {stderr}");
+}
+
+#[test]
+fn list_reads_the_dictionaries_dir_variable() {
+    let dictionaries_dir = tempfile::tempdir().unwrap();
+    let dictionary = dictionaries_dir.path().join("ipadic");
+    write_dictionary_files(&dictionary);
+
+    let output = lindera_with_dictionaries_dir(dictionaries_dir.path())
+        .arg("list")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stdout.contains(&dictionary.display().to_string()),
+        "got: {stdout}"
+    );
+    assert!(!stderr.contains("Warning"), "got: {stderr}");
+}
+
+#[test]
+fn list_reads_the_deprecated_data_dir_variable_with_a_warning() {
+    let data_dir = tempfile::tempdir().unwrap();
+    let dictionary = data_dir.path().join("dictionaries").join("ipadic");
+    write_dictionary_files(&dictionary);
+
+    let output = lindera()
+        .env("LINDERA_DATA_DIR", data_dir.path())
+        .env_remove("LINDERA_DICTIONARIES_DIR")
+        .arg("list")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stdout.contains(&dictionary.display().to_string()),
+        "got: {stdout}"
+    );
+    assert!(
+        stderr.contains("Warning: LINDERA_DATA_DIR is deprecated"),
+        "got: {stderr}"
+    );
+}
+
+#[test]
+fn list_prefers_the_dictionaries_dir_variable_over_the_deprecated_one() {
+    let dictionaries_dir = tempfile::tempdir().unwrap();
+    let dictionary = dictionaries_dir.path().join("ipadic");
+    write_dictionary_files(&dictionary);
+    let data_dir = tempfile::tempdir().unwrap();
+    let ignored = data_dir.path().join("dictionaries").join("ipadic");
+    write_dictionary_files(&ignored);
+
+    let output = lindera()
+        .env("LINDERA_DICTIONARIES_DIR", dictionaries_dir.path())
+        .env("LINDERA_DATA_DIR", data_dir.path())
+        .arg("list")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stdout.contains(&dictionary.display().to_string()),
+        "got: {stdout}"
+    );
+    assert!(
+        !stdout.contains(&ignored.display().to_string()),
+        "got: {stdout}"
+    );
+    assert!(
+        stderr.contains("Warning: LINDERA_DATA_DIR is ignored"),
+        "got: {stderr}"
+    );
 }
 
 /// Builds a hand-made system dictionary with a 4x4 connection matrix

@@ -9,8 +9,8 @@ use lindera_cli::get_version;
 
 use super::io_err;
 use crate::dictionary_registry::{
-    DATA_DIR_ENV, DOWNLOADABLE_DICTIONARIES, base_data_dir, dictionary_dir, download_url,
-    is_complete_dictionary_dir, missing_dictionary_files,
+    DOWNLOADABLE_DICTIONARIES, dictionaries_dir, dictionary_dir, download_url,
+    installed_lindera_version, is_complete_dictionary_dir, missing_dictionary_files,
 };
 
 /// Buffer size for streaming the downloaded archive to disk.
@@ -103,7 +103,17 @@ impl Fetcher for UreqFetcher {
 pub(crate) enum DownloadOutcome {
     /// The dictionary was downloaded and installed at the contained path.
     Installed(PathBuf),
-    /// A complete dictionary already existed at the contained path.
+    /// The dictionary was downloaded and replaced a complete one at `path`:
+    /// one built by another version of Lindera, or any with `--force`.
+    Replaced {
+        /// The dictionary directory.
+        path: PathBuf,
+        /// The version of Lindera that built the replaced dictionary, or
+        /// `None` when its `metadata.json` does not say.
+        previous_version: Option<String>,
+    },
+    /// A complete dictionary built by the CLI's version already existed at
+    /// the contained path.
     AlreadyPresent(PathBuf),
 }
 
@@ -132,9 +142,10 @@ pub struct DownloadArgs {
 /// Runs the `download` subcommand.
 ///
 /// Downloads the pre-built dictionary archive matching the CLI's own version
-/// from the GitHub releases page and installs it under the application data
-/// directory. The installed path is printed to stdout; progress and notices go
-/// to stderr.
+/// from the GitHub releases page and installs it in
+/// `<LINDERA_DICTIONARIES_DIR>/<name>` (see `dictionaries_dir`). The
+/// installed path, the value to pass to `--dict`, is printed to stdout;
+/// progress and notices go to stderr.
 ///
 /// # Arguments
 ///
@@ -144,7 +155,7 @@ pub struct DownloadArgs {
 ///
 /// `Ok(())` when the dictionary is installed (or already present).
 pub fn download(args: DownloadArgs) -> LinderaResult<()> {
-    let base = base_data_dir(std::env::var_os(DATA_DIR_ENV).map(PathBuf::from))?;
+    let dictionaries_dir = dictionaries_dir()?;
     let version = get_version();
     let fetcher = UreqFetcher::new();
     let mut progress = progress_renderer(download_url(&args.name, version));
@@ -153,18 +164,36 @@ pub fn download(args: DownloadArgs) -> LinderaResult<()> {
         &fetcher,
         &args.name,
         version,
-        &base,
+        &dictionaries_dir,
         args.force,
         &mut progress,
     )?;
 
+    if matches!(
+        outcome,
+        DownloadOutcome::Installed(_) | DownloadOutcome::Replaced { .. }
+    ) && io::stderr().is_terminal()
+    {
+        // Terminate the `\r`-rewritten progress line.
+        eprintln!();
+    }
     match outcome {
         DownloadOutcome::Installed(path) => {
-            if io::stderr().is_terminal() {
-                // Terminate the `\r`-rewritten progress line.
-                eprintln!();
-            }
             eprintln!("Downloaded dictionary '{}'", args.name);
+            println!("{}", path.display());
+        }
+        DownloadOutcome::Replaced {
+            path,
+            previous_version,
+        } => {
+            let previous = match previous_version {
+                Some(previous) => format!("Lindera {previous}"),
+                None => "an unknown version of Lindera".to_string(),
+            };
+            eprintln!(
+                "Downloaded dictionary '{}', replacing the one built by {previous}",
+                args.name
+            );
             println!("{}", path.display());
         }
         DownloadOutcome::AlreadyPresent(path) => {
@@ -233,6 +262,9 @@ fn progress_renderer(url: String) -> impl FnMut(u64, Option<u64>) {
 
 /// Downloads and installs a pre-built dictionary.
 ///
+/// A complete dictionary already in place is kept when its `metadata.json`
+/// says that the CLI's version built it, and replaced otherwise, including
+/// when it does not say, as for a dictionary built before v7.0.0 (#1303).
 /// Streams the release archive to a temporary file, extracts it to a
 /// temporary directory, validates the required dictionary files, and
 /// atomically renames the result into place. Temporary files are removed on
@@ -243,8 +275,9 @@ fn progress_renderer(url: String) -> impl FnMut(u64, Option<u64>) {
 /// * `fetcher` - HTTP fetch implementation.
 /// * `name` - Downloadable dictionary name.
 /// * `version` - Crate version of the running CLI (selects the release tag).
-/// * `base_dir` - Base application data directory.
-/// * `force` - Re-download even when a complete dictionary is present.
+/// * `dictionaries_dir` - The directory that holds the dictionaries.
+/// * `force` - Re-download even when a complete dictionary of the CLI's
+///   version is present.
 /// * `progress` - Callback receiving `(bytes_downloaded, total_bytes)`.
 ///
 /// # Returns
@@ -254,27 +287,28 @@ pub(crate) fn download_dictionary(
     fetcher: &dyn Fetcher,
     name: &str,
     version: &str,
-    base_dir: &Path,
+    dictionaries_dir: &Path,
     force: bool,
     progress: &mut dyn FnMut(u64, Option<u64>),
 ) -> LinderaResult<DownloadOutcome> {
-    let target = dictionary_dir(base_dir, version, name);
-    if !force && is_complete_dictionary_dir(&target) {
+    let target = dictionary_dir(dictionaries_dir, name);
+    // The version of a complete dictionary in place, `Some(None)` when its
+    // metadata.json does not say.
+    let installed = is_complete_dictionary_dir(&target).then(|| installed_lindera_version(&target));
+    if !force
+        && installed
+            .as_ref()
+            .is_some_and(|v| v.as_deref() == Some(version))
+    {
         return Ok(DownloadOutcome::AlreadyPresent(target));
     }
 
-    let version_dir = target.parent().map(Path::to_path_buf).ok_or_else(|| {
-        LinderaErrorKind::Io.with_error(anyhow::anyhow!(
-            "dictionary directory has no parent: {}",
-            target.display()
-        ))
-    })?;
-    fs::create_dir_all(&version_dir).map_err(io_err)?;
-    sweep_stale_temps(&version_dir, name);
+    fs::create_dir_all(dictionaries_dir).map_err(io_err)?;
+    sweep_stale_temps(dictionaries_dir, name);
 
     let pid = std::process::id();
-    let zip_tmp = version_dir.join(format!(".tmp-lindera-{name}-{pid}.zip"));
-    let extract_tmp = version_dir.join(format!(".tmp-lindera-{name}-{pid}.extract"));
+    let zip_tmp = dictionaries_dir.join(format!(".tmp-lindera-{name}-{pid}.zip"));
+    let extract_tmp = dictionaries_dir.join(format!(".tmp-lindera-{name}-{pid}.extract"));
 
     let result = download_and_install(
         fetcher,
@@ -290,7 +324,13 @@ pub(crate) fn download_dictionary(
     let _ = fs::remove_file(&zip_tmp);
     let _ = fs::remove_dir_all(&extract_tmp);
 
-    result.map(DownloadOutcome::Installed)
+    result.map(|path| match installed {
+        Some(previous_version) => DownloadOutcome::Replaced {
+            path,
+            previous_version,
+        },
+        None => DownloadOutcome::Installed(path),
+    })
 }
 
 /// Performs the fetch → stream → extract → validate → install sequence.
@@ -466,8 +506,9 @@ fn install_extracted(root: &Path, target: &Path) -> LinderaResult<()> {
         fs::remove_dir_all(target).map_err(io_err)?;
     }
 
-    // `root` and `target` share the same parent version directory, so the
-    // rename is atomic on the same filesystem.
+    // `root` (inside a temporary directory there) and `target` are both in
+    // the dictionaries directory, so the rename is atomic on the same
+    // filesystem.
     match fs::rename(root, target) {
         Ok(()) => Ok(()),
         Err(err) => {
@@ -491,11 +532,11 @@ fn install_extracted(root: &Path, target: &Path) -> LinderaResult<()> {
 ///
 /// # Arguments
 ///
-/// * `version_dir` - Version directory holding dictionary installations.
+/// * `dictionaries_dir` - The directory that holds the dictionaries.
 /// * `name` - Downloadable dictionary name whose temporaries are swept.
-fn sweep_stale_temps(version_dir: &Path, name: &str) {
+fn sweep_stale_temps(dictionaries_dir: &Path, name: &str) {
     let prefix = format!(".tmp-lindera-{name}-");
-    let Ok(entries) = fs::read_dir(version_dir) else {
+    let Ok(entries) = fs::read_dir(dictionaries_dir) else {
         return;
     };
     for entry in entries.flatten() {
@@ -519,6 +560,7 @@ mod tests {
     use std::cell::Cell;
     use std::io::Cursor;
 
+    use lindera::dictionary::Metadata;
     use zip::write::SimpleFileOptions;
 
     use crate::dictionary_registry::REQUIRED_DICTIONARY_FILES;
@@ -619,12 +661,13 @@ mod tests {
         |_, _| {}
     }
 
-    /// Asserts that no temporary download entries remain in a version dir.
-    fn assert_no_temps(version_dir: &Path) {
-        if !version_dir.exists() {
+    /// Asserts that no temporary download entries remain in a dictionaries
+    /// directory.
+    fn assert_no_temps(dictionaries_dir: &Path) {
+        if !dictionaries_dir.exists() {
             return;
         }
-        for entry in fs::read_dir(version_dir).unwrap().flatten() {
+        for entry in fs::read_dir(dictionaries_dir).unwrap().flatten() {
             let name = entry.file_name();
             assert!(
                 !name.to_string_lossy().starts_with(".tmp-lindera-"),
@@ -650,19 +693,36 @@ mod tests {
         let DownloadOutcome::Installed(path) = outcome else {
             panic!("expected Installed outcome");
         };
-        assert_eq!(path, tmp.path().join("dictionaries/9.9.9/lindera-ipadic"));
+        assert_eq!(path, tmp.path().join("ipadic"));
         assert!(is_complete_dictionary_dir(&path));
-        assert_no_temps(path.parent().unwrap());
+        assert_no_temps(tmp.path());
+    }
+
+    /// Writes a complete dictionary into `target`, its `metadata.json` saying
+    /// that `version` built it (nothing when `None`), and a marker file that
+    /// a download replacing the directory removes.
+    fn write_installed(target: &Path, version: Option<&str>) {
+        fs::create_dir_all(target).unwrap();
+        for file in REQUIRED_DICTIONARY_FILES {
+            fs::write(target.join(file), b"existing").unwrap();
+        }
+        let metadata = Metadata {
+            lindera_version: version.map(str::to_string),
+            ..Metadata::default()
+        };
+        fs::write(
+            target.join("metadata.json"),
+            serde_json::to_vec(&metadata).unwrap(),
+        )
+        .unwrap();
+        fs::write(target.join("marker.txt"), b"marker").unwrap();
     }
 
     #[test]
     fn already_downloaded_short_circuits_without_fetching() {
         let tmp = tempfile::tempdir().unwrap();
-        let target = dictionary_dir(tmp.path(), "9.9.9", "ipadic");
-        fs::create_dir_all(&target).unwrap();
-        for file in REQUIRED_DICTIONARY_FILES {
-            fs::write(target.join(file), b"existing").unwrap();
-        }
+        let target = dictionary_dir(tmp.path(), "ipadic");
+        write_installed(&target, Some("9.9.9"));
 
         let fetcher = MockFetcher::new(200, make_dictionary_zip(Some("lindera-ipadic")));
         let outcome = download_dictionary(
@@ -677,18 +737,75 @@ mod tests {
 
         assert!(matches!(outcome, DownloadOutcome::AlreadyPresent(_)));
         assert_eq!(fetcher.calls.get(), 0);
-        assert_eq!(fs::read(target.join("metadata.json")).unwrap(), b"existing");
+        assert!(target.join("marker.txt").exists());
+    }
+
+    #[test]
+    fn dictionary_of_another_version_is_downloaded_again() {
+        let tmp = tempfile::tempdir().unwrap();
+        let target = dictionary_dir(tmp.path(), "ipadic");
+        write_installed(&target, Some("9.9.8"));
+
+        let fetcher = MockFetcher::new(200, make_dictionary_zip(Some("lindera-ipadic")));
+        let outcome = download_dictionary(
+            &fetcher,
+            "ipadic",
+            "9.9.9",
+            tmp.path(),
+            false,
+            &mut no_progress(),
+        )
+        .unwrap();
+
+        let DownloadOutcome::Replaced {
+            path,
+            previous_version,
+        } = outcome
+        else {
+            panic!("expected Replaced outcome, got {outcome:?}");
+        };
+        assert_eq!(path, target);
+        assert_eq!(previous_version.as_deref(), Some("9.9.8"));
+        assert_eq!(fetcher.calls.get(), 1);
+        assert!(!target.join("marker.txt").exists());
+    }
+
+    #[test]
+    fn dictionary_without_a_version_is_downloaded_again() {
+        let tmp = tempfile::tempdir().unwrap();
+        let target = dictionary_dir(tmp.path(), "ipadic");
+        write_installed(&target, None);
+
+        let fetcher = MockFetcher::new(200, make_dictionary_zip(Some("lindera-ipadic")));
+        let outcome = download_dictionary(
+            &fetcher,
+            "ipadic",
+            "9.9.9",
+            tmp.path(),
+            false,
+            &mut no_progress(),
+        )
+        .unwrap();
+
+        assert!(
+            matches!(
+                outcome,
+                DownloadOutcome::Replaced {
+                    previous_version: None,
+                    ..
+                }
+            ),
+            "{outcome:?}"
+        );
+        assert_eq!(fetcher.calls.get(), 1);
+        assert!(!target.join("marker.txt").exists());
     }
 
     #[test]
     fn force_replaces_existing_dictionary() {
         let tmp = tempfile::tempdir().unwrap();
-        let target = dictionary_dir(tmp.path(), "9.9.9", "ipadic");
-        fs::create_dir_all(&target).unwrap();
-        for file in REQUIRED_DICTIONARY_FILES {
-            fs::write(target.join(file), b"existing").unwrap();
-        }
-        fs::write(target.join("marker.txt"), b"marker").unwrap();
+        let target = dictionary_dir(tmp.path(), "ipadic");
+        write_installed(&target, Some("9.9.9"));
 
         let fetcher = MockFetcher::new(200, make_dictionary_zip(Some("lindera-ipadic")));
         let outcome = download_dictionary(
@@ -701,7 +818,16 @@ mod tests {
         )
         .unwrap();
 
-        assert!(matches!(outcome, DownloadOutcome::Installed(_)));
+        assert!(
+            matches!(
+                outcome,
+                DownloadOutcome::Replaced {
+                    ref previous_version,
+                    ..
+                } if previous_version.as_deref() == Some("9.9.9")
+            ),
+            "{outcome:?}"
+        );
         assert_eq!(fetcher.calls.get(), 1);
         assert_eq!(fs::read(target.join("metadata.json")).unwrap(), b"test");
         assert!(!target.join("marker.txt").exists());
@@ -759,9 +885,8 @@ mod tests {
         .unwrap_err();
 
         assert!(format!("{err}").contains("simulated mid-stream failure"));
-        let target = dictionary_dir(tmp.path(), "9.9.9", "ipadic");
-        assert!(!target.exists());
-        assert_no_temps(target.parent().unwrap());
+        assert!(!dictionary_dir(tmp.path(), "ipadic").exists());
+        assert_no_temps(tmp.path());
     }
 
     #[test]
@@ -779,9 +904,8 @@ mod tests {
         .unwrap_err();
 
         assert!(format!("{err}").contains("archive"), "{err}");
-        let target = dictionary_dir(tmp.path(), "9.9.9", "ipadic");
-        assert!(!target.exists());
-        assert_no_temps(target.parent().unwrap());
+        assert!(!dictionary_dir(tmp.path(), "ipadic").exists());
+        assert_no_temps(tmp.path());
     }
 
     #[test]
@@ -798,11 +922,12 @@ mod tests {
             .collect();
 
         let fetcher = MockFetcher::new(200, make_zip(&borrowed));
+        let dictionaries_dir = tmp.path().join("dictionaries");
         let result = download_dictionary(
             &fetcher,
             "ipadic",
             "9.9.9",
-            tmp.path(),
+            &dictionaries_dir,
             false,
             &mut no_progress(),
         );
@@ -810,10 +935,9 @@ mod tests {
         // The zip crate rejects entries escaping the extraction directory, so
         // the download fails; the malicious entry must not land anywhere.
         assert!(result.is_err());
-        let version_dir = tmp.path().join("dictionaries/9.9.9");
-        assert!(!version_dir.join("evil.txt").exists());
+        assert!(!dictionaries_dir.join("evil.txt").exists());
         assert!(!tmp.path().join("evil.txt").exists());
-        assert_no_temps(&version_dir);
+        assert_no_temps(&dictionaries_dir);
     }
 
     #[test]
@@ -854,7 +978,7 @@ mod tests {
             panic!("expected Installed outcome");
         };
         assert!(is_complete_dictionary_dir(&path));
-        assert_eq!(path, tmp.path().join("dictionaries/9.9.9/lindera-ipadic"));
+        assert_eq!(path, tmp.path().join("ipadic"));
     }
 
     #[test]
@@ -909,10 +1033,13 @@ mod tests {
     #[test]
     fn stale_temps_are_swept_before_download() {
         let tmp = tempfile::tempdir().unwrap();
-        let version_dir = tmp.path().join("dictionaries/9.9.9");
-        fs::create_dir_all(&version_dir).unwrap();
-        fs::write(version_dir.join(".tmp-lindera-ipadic-12345.zip"), b"stale").unwrap();
-        fs::create_dir_all(version_dir.join(".tmp-lindera-ipadic-12345.extract")).unwrap();
+        let dictionaries_dir = tmp.path();
+        fs::write(
+            dictionaries_dir.join(".tmp-lindera-ipadic-12345.zip"),
+            b"stale",
+        )
+        .unwrap();
+        fs::create_dir_all(dictionaries_dir.join(".tmp-lindera-ipadic-12345.extract")).unwrap();
 
         let fetcher = MockFetcher::new(200, make_dictionary_zip(Some("lindera-ipadic")));
         download_dictionary(
@@ -925,6 +1052,6 @@ mod tests {
         )
         .unwrap();
 
-        assert_no_temps(&version_dir);
+        assert_no_temps(dictionaries_dir);
     }
 }
