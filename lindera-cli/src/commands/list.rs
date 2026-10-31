@@ -1,57 +1,90 @@
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use lindera::LinderaResult;
-use lindera::dictionary::DictionaryKind;
+use lindera::dictionary::load_dictionary;
 use lindera_cli::get_version;
 
+use super::io_err;
 use crate::dictionary_registry::{
-    DATA_DIR_ENV, DOWNLOADABLE_DICTIONARIES, base_data_dir, dictionary_dir,
+    dictionaries_dir, embedded_dictionary_names, installed_lindera_version,
     is_complete_dictionary_dir,
 };
 
 /// Column headers of the dictionary listing table.
-const HEADERS: [&str; 4] = ["NAME", "EMBEDDED", "DOWNLOADED", "PATH"];
+const HEADERS: [&str; 4] = ["NAME", "VERSION", "STATUS", "DICT"];
 
-/// Placeholder shown in the `PATH` column when no installation directory
-/// exists.
-const NO_PATH: &str = "-";
+/// Shown in the `VERSION` column when the dictionary does not say which
+/// version of Lindera built it, as a dictionary built before v7.0.0 does.
+const UNKNOWN_VERSION: &str = "unknown";
 
 #[derive(Debug, clap::Args)]
 #[clap(
     author,
-    about = "List morphological analysis dictionaries and their status",
+    about = "List the embedded dictionaries and those in LINDERA_DICTIONARIES_DIR",
     version = get_version(),
 )]
 /// Arguments for the `list` subcommand.
 pub struct ListArgs {}
 
-/// Local download state of a dictionary.
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum DownloadState {
-    /// No installation directory exists.
-    NotDownloaded,
-    /// A complete installation exists at the contained path.
-    Downloaded(PathBuf),
-    /// An installation directory exists but required files are missing.
-    Incomplete(PathBuf),
+/// State of a listed dictionary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Status {
+    /// Complete, and built by the CLI's version.
+    Ok,
+    /// Required files are missing.
+    Incomplete,
+    /// Complete, but built by another version of Lindera, or by one that
+    /// does not say.
+    OtherVersion,
+}
+
+impl Status {
+    /// Returns the text of the `STATUS` column.
+    ///
+    /// # Returns
+    ///
+    /// `ok`, `incomplete` or `other version`.
+    fn as_str(self) -> &'static str {
+        match self {
+            Status::Ok => "ok",
+            Status::Incomplete => "incomplete",
+            Status::OtherVersion => "other version",
+        }
+    }
 }
 
 /// One row of the dictionary listing.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 struct DictionaryRow {
-    /// Dictionary name (e.g. `ipadic`).
+    /// Dictionary name: the embedded kind (e.g. `ipadic`), or the name of the
+    /// directory in the dictionaries directory.
     name: String,
-    /// Whether the dictionary is embedded in the binary.
-    embedded: bool,
-    /// Local download state of the dictionary.
-    download: DownloadState,
+    /// Version of Lindera that built the dictionary, if it says.
+    version: Option<String>,
+    /// State of the dictionary.
+    status: Status,
+    /// The value to pass to `--dict`: `embedded://<name>` or the directory.
+    dict: String,
+}
+
+/// The dictionaries found in the dictionaries directory.
+#[derive(Debug, Default, PartialEq, Eq)]
+struct DirectoryListing {
+    /// One row per dictionary, by name.
+    rows: Vec<DictionaryRow>,
+    /// Subdirectories without `metadata.json`, by name.
+    skipped: Vec<PathBuf>,
 }
 
 /// Runs the `list` subcommand.
 ///
-/// Prints a table of all known dictionaries showing whether each one is
-/// embedded in the binary (via `embed-*` cargo features) and whether a
-/// pre-built copy is downloaded locally (see `lindera download`).
+/// Prints a table of the dictionaries embedded in the binary (via `embed-*`
+/// cargo features) and of those in `LINDERA_DICTIONARIES_DIR` (see
+/// `lindera download`), each with the version of Lindera that built it, its
+/// state, and the value to pass to `--dict` (#1303). Subdirectories without
+/// `metadata.json` are reported on stderr instead, as is a dictionaries
+/// directory without dictionaries.
 ///
 /// # Arguments
 ///
@@ -59,65 +92,135 @@ struct DictionaryRow {
 ///
 /// # Returns
 ///
-/// `Ok(())` when the listing is printed. An `Io` error when the application
-/// data directory cannot be determined.
+/// `Ok(())` when the listing is printed. An error when an embedded
+/// dictionary cannot be loaded, or when the dictionaries directory cannot be
+/// determined or read.
 pub fn list(_args: ListArgs) -> LinderaResult<()> {
-    let embedded: Vec<String> = DictionaryKind::contained_variants()
-        .iter()
-        .map(|kind| kind.as_str().to_string())
-        .collect();
-    let base = base_data_dir(std::env::var_os(DATA_DIR_ENV).map(PathBuf::from))?;
-    let rows = dictionary_rows(&embedded, &base, get_version());
+    let cli_version = get_version();
+    let mut rows = Vec::new();
+    for name in embedded_dictionary_names() {
+        let dictionary = load_dictionary(&format!("embedded://{name}"))?;
+        rows.push(embedded_row(
+            name,
+            dictionary.metadata.lindera_version.clone(),
+            cli_version,
+        ));
+    }
+
+    let dir = dictionaries_dir()?;
+    let listing = directory_listing(&dir, cli_version)?;
+    for skipped in &listing.skipped {
+        eprintln!(
+            "Skipped {}: not a dictionary (no metadata.json)",
+            skipped.display()
+        );
+    }
+    if listing.rows.is_empty() {
+        eprintln!(
+            "No dictionaries in {}; run 'lindera download <name>' to download one",
+            dir.display()
+        );
+    }
+    rows.extend(listing.rows);
+
     print!("{}", render_rows(&rows));
     Ok(())
 }
 
-/// Collects the listing rows for all known dictionaries.
-///
-/// The listed set is the union of [`DOWNLOADABLE_DICTIONARIES`] and the
-/// embedded dictionary names. Download detection only considers the given
-/// CLI version's installation directory, matching how `tokenize --dict`
-/// resolves dictionary names.
+/// Decides the state of a dictionary.
 ///
 /// # Arguments
 ///
-/// * `embedded` - Names of the dictionaries embedded in the binary.
-/// * `base` - Base application data directory (see `base_data_dir`).
-/// * `version` - Crate version of the running CLI.
+/// * `complete` - Whether all required files are present.
+/// * `version` - Version of Lindera that built the dictionary, if it says.
+/// * `cli_version` - Crate version of the running CLI.
 ///
 /// # Returns
 ///
-/// One row per known dictionary, in [`DOWNLOADABLE_DICTIONARIES`] order with
-/// any extra embedded names appended.
-fn dictionary_rows(embedded: &[String], base: &Path, version: &str) -> Vec<DictionaryRow> {
-    let mut names: Vec<String> = DOWNLOADABLE_DICTIONARIES
-        .iter()
-        .map(|name| (*name).to_string())
-        .collect();
-    for name in embedded {
-        if !names.contains(name) {
-            names.push(name.clone());
-        }
+/// [`Status::Incomplete`] when files are missing, [`Status::Ok`] when the
+/// CLI's version built it, and [`Status::OtherVersion`] otherwise.
+fn status(complete: bool, version: Option<&str>, cli_version: &str) -> Status {
+    if !complete {
+        Status::Incomplete
+    } else if version == Some(cli_version) {
+        Status::Ok
+    } else {
+        Status::OtherVersion
+    }
+}
+
+/// Builds the row of an embedded dictionary.
+///
+/// # Arguments
+///
+/// * `name` - Name of the embedded dictionary (e.g. `ipadic`).
+/// * `version` - The `lindera_version` of its metadata.
+/// * `cli_version` - Crate version of the running CLI.
+///
+/// # Returns
+///
+/// The row, with `embedded://<name>` as the value for `--dict`.
+fn embedded_row(name: String, version: Option<String>, cli_version: &str) -> DictionaryRow {
+    DictionaryRow {
+        status: status(true, version.as_deref(), cli_version),
+        dict: format!("embedded://{name}"),
+        name,
+        version,
+    }
+}
+
+/// Collects the dictionaries in the dictionaries directory.
+///
+/// Every subdirectory with a `metadata.json` is a dictionary, complete or
+/// not. Entries whose name starts with `.` (the temporary files of a
+/// download) and files are skipped silently; subdirectories without
+/// `metadata.json`, such as the version directories of the layout before
+/// v7.0.0, are returned as skipped.
+///
+/// # Arguments
+///
+/// * `dir` - The directory that holds the dictionaries.
+/// * `cli_version` - Crate version of the running CLI.
+///
+/// # Returns
+///
+/// The rows and the skipped subdirectories, each by name; both empty when
+/// `dir` does not exist. An `Io` error when `dir` cannot be read.
+fn directory_listing(dir: &Path, cli_version: &str) -> LinderaResult<DirectoryListing> {
+    if !dir.is_dir() {
+        return Ok(DirectoryListing::default());
     }
 
-    names
-        .into_iter()
-        .map(|name| {
-            let dir = dictionary_dir(base, version, &name);
-            let download = if is_complete_dictionary_dir(&dir) {
-                DownloadState::Downloaded(dir)
-            } else if dir.is_dir() {
-                DownloadState::Incomplete(dir)
-            } else {
-                DownloadState::NotDownloaded
-            };
-            DictionaryRow {
-                embedded: embedded.contains(&name),
-                name,
-                download,
-            }
-        })
-        .collect()
+    let mut entries = Vec::new();
+    for entry in fs::read_dir(dir).map_err(io_err)? {
+        let entry = entry.map_err(io_err)?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let path = entry.path();
+        if !name.starts_with('.') && path.is_dir() {
+            entries.push((name, path));
+        }
+    }
+    entries.sort();
+
+    let mut listing = DirectoryListing::default();
+    for (name, path) in entries {
+        if !path.join("metadata.json").is_file() {
+            listing.skipped.push(path);
+            continue;
+        }
+        let version = installed_lindera_version(&path);
+        listing.rows.push(DictionaryRow {
+            status: status(
+                is_complete_dictionary_dir(&path),
+                version.as_deref(),
+                cli_version,
+            ),
+            dict: path.display().to_string(),
+            name,
+            version,
+        });
+    }
+    Ok(listing)
 }
 
 /// Renders listing rows as a column-aligned table.
@@ -129,21 +232,21 @@ fn dictionary_rows(embedded: &[String], base: &Path, version: &str) -> Vec<Dicti
 /// # Returns
 ///
 /// The table as a string with a header line and one line per row, each
-/// terminated by a newline. Columns are separated by two spaces; the `PATH`
-/// column shows [`NO_PATH`] when no installation directory exists.
+/// terminated by a newline. Columns are separated by two spaces; the
+/// `VERSION` column shows [`UNKNOWN_VERSION`] when the dictionary does not
+/// say.
 fn render_rows(rows: &[DictionaryRow]) -> String {
     let cells: Vec<[String; 4]> = rows
         .iter()
         .map(|row| {
-            let (downloaded, path) = match &row.download {
-                DownloadState::NotDownloaded => ("no".to_string(), NO_PATH.to_string()),
-                DownloadState::Downloaded(dir) => ("yes".to_string(), dir.display().to_string()),
-                DownloadState::Incomplete(dir) => {
-                    ("incomplete".to_string(), dir.display().to_string())
-                }
-            };
-            let embedded = if row.embedded { "yes" } else { "no" };
-            [row.name.clone(), embedded.to_string(), downloaded, path]
+            [
+                row.name.clone(),
+                row.version
+                    .clone()
+                    .unwrap_or_else(|| UNKNOWN_VERSION.to_string()),
+                row.status.as_str().to_string(),
+                row.dict.clone(),
+            ]
         })
         .collect();
 
@@ -180,122 +283,138 @@ fn render_line(output: &mut String, cells: &[String; 4], widths: &[usize; 3]) {
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
+    use lindera::dictionary::Metadata;
 
     use crate::dictionary_registry::REQUIRED_DICTIONARY_FILES;
 
     use super::*;
 
-    /// Creates the given files (with dummy content) inside a directory.
-    fn create_files(dir: &Path, files: &[&str]) {
+    /// Writes the required files into `dir`, creating it, with a
+    /// `metadata.json` that says `version` built it (nothing when `None`).
+    fn write_dictionary(dir: &Path, files: &[&str], version: Option<&str>) {
         fs::create_dir_all(dir).unwrap();
         for file in files {
             fs::write(dir.join(file), b"test").unwrap();
         }
-    }
-
-    /// Returns the row with the given name, panicking when absent.
-    fn row_by_name<'a>(rows: &'a [DictionaryRow], name: &str) -> &'a DictionaryRow {
-        rows.iter()
-            .find(|row| row.name == name)
-            .unwrap_or_else(|| panic!("row {name} not found"))
-    }
-
-    #[test]
-    fn rows_cover_all_downloadable_dictionaries() {
-        let tmp = tempfile::tempdir().unwrap();
-        let rows = dictionary_rows(&[], tmp.path(), "5.1.0");
-        let names: Vec<&str> = rows.iter().map(|row| row.name.as_str()).collect();
-        assert_eq!(names, DOWNLOADABLE_DICTIONARIES.to_vec());
-        assert!(
-            rows.iter()
-                .all(|row| !row.embedded && row.download == DownloadState::NotDownloaded)
-        );
+        let metadata = Metadata {
+            lindera_version: version.map(str::to_string),
+            ..Metadata::default()
+        };
+        fs::write(
+            dir.join("metadata.json"),
+            serde_json::to_vec(&metadata).unwrap(),
+        )
+        .unwrap();
     }
 
     #[test]
-    fn complete_installation_is_reported_with_path() {
-        let tmp = tempfile::tempdir().unwrap();
-        let dir = dictionary_dir(tmp.path(), "5.1.0", "ipadic");
-        create_files(&dir, &REQUIRED_DICTIONARY_FILES);
+    fn status_follows_the_files_and_the_version() {
+        assert_eq!(status(true, Some("7.0.0"), "7.0.0"), Status::Ok);
+        assert_eq!(status(true, Some("6.2.0"), "7.0.0"), Status::OtherVersion);
+        assert_eq!(status(true, None, "7.0.0"), Status::OtherVersion);
+        assert_eq!(status(false, Some("7.0.0"), "7.0.0"), Status::Incomplete);
+    }
 
-        let rows = dictionary_rows(&[], tmp.path(), "5.1.0");
+    #[test]
+    fn embedded_row_names_the_embedded_uri() {
         assert_eq!(
-            row_by_name(&rows, "ipadic").download,
-            DownloadState::Downloaded(dir)
+            embedded_row("ipadic".to_string(), Some("7.0.0".to_string()), "7.0.0"),
+            DictionaryRow {
+                name: "ipadic".to_string(),
+                version: Some("7.0.0".to_string()),
+                status: Status::Ok,
+                dict: "embedded://ipadic".to_string(),
+            }
         );
     }
 
     #[test]
-    fn incomplete_installation_is_reported() {
+    fn missing_dictionaries_directory_lists_nothing() {
         let tmp = tempfile::tempdir().unwrap();
-        let dir = dictionary_dir(tmp.path(), "5.1.0", "unidic");
-        create_files(&dir, &["metadata.json"]);
+        let listing = directory_listing(&tmp.path().join("nonexistent"), "7.0.0").unwrap();
+        assert_eq!(listing, DirectoryListing::default());
+    }
 
-        let rows = dictionary_rows(&[], tmp.path(), "5.1.0");
+    #[test]
+    fn directory_listing_lists_dictionaries_by_name_and_skips_the_rest() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path();
+        write_dictionary(
+            &dir.join("unidic"),
+            &REQUIRED_DICTIONARY_FILES,
+            Some("6.2.0"),
+        );
+        write_dictionary(
+            &dir.join("ipadic"),
+            &REQUIRED_DICTIONARY_FILES,
+            Some("7.0.0"),
+        );
+        write_dictionary(&dir.join("mydic"), &["metadata.json"], Some("7.0.0"));
+        write_dictionary(&dir.join("olddic"), &REQUIRED_DICTIONARY_FILES, None);
+        // The version directory of the old layout, a temporary directory of
+        // a download, and a file.
+        fs::create_dir_all(dir.join("6.2.0").join("lindera-ipadic")).unwrap();
+        write_dictionary(
+            &dir.join(".tmp-lindera-ipadic-1.extract"),
+            &REQUIRED_DICTIONARY_FILES,
+            Some("7.0.0"),
+        );
+        fs::write(dir.join("notes.txt"), b"notes").unwrap();
+
+        let listing = directory_listing(dir, "7.0.0").unwrap();
+        let rows: Vec<(&str, Option<&str>, Status, String)> = listing
+            .rows
+            .iter()
+            .map(|row| {
+                (
+                    row.name.as_str(),
+                    row.version.as_deref(),
+                    row.status,
+                    row.dict.clone(),
+                )
+            })
+            .collect();
+        let path = |name: &str| dir.join(name).display().to_string();
         assert_eq!(
-            row_by_name(&rows, "unidic").download,
-            DownloadState::Incomplete(dir)
+            rows,
+            vec![
+                ("ipadic", Some("7.0.0"), Status::Ok, path("ipadic")),
+                ("mydic", Some("7.0.0"), Status::Incomplete, path("mydic")),
+                ("olddic", None, Status::OtherVersion, path("olddic")),
+                (
+                    "unidic",
+                    Some("6.2.0"),
+                    Status::OtherVersion,
+                    path("unidic")
+                ),
+            ]
         );
-    }
-
-    #[test]
-    fn other_version_installation_is_not_reported() {
-        let tmp = tempfile::tempdir().unwrap();
-        let dir = dictionary_dir(tmp.path(), "5.0.0", "ipadic");
-        create_files(&dir, &REQUIRED_DICTIONARY_FILES);
-
-        let rows = dictionary_rows(&[], tmp.path(), "5.1.0");
-        assert_eq!(
-            row_by_name(&rows, "ipadic").download,
-            DownloadState::NotDownloaded
-        );
-    }
-
-    #[test]
-    fn embedded_flag_follows_embedded_names() {
-        let tmp = tempfile::tempdir().unwrap();
-        let embedded = vec!["ipadic".to_string()];
-        let rows = dictionary_rows(&embedded, tmp.path(), "5.1.0");
-        assert!(row_by_name(&rows, "ipadic").embedded);
-        assert!(!row_by_name(&rows, "unidic").embedded);
-    }
-
-    #[test]
-    fn embedded_name_outside_downloadable_set_is_appended() {
-        let tmp = tempfile::tempdir().unwrap();
-        let embedded = vec!["custom-dic".to_string()];
-        let rows = dictionary_rows(&embedded, tmp.path(), "5.1.0");
-        let row = row_by_name(&rows, "custom-dic");
-        assert!(row.embedded);
-        assert_eq!(rows.len(), DOWNLOADABLE_DICTIONARIES.len() + 1);
+        assert_eq!(listing.skipped, vec![dir.join("6.2.0")]);
     }
 
     #[test]
     fn render_aligns_columns_and_marks_states() {
         let rows = vec![
+            embedded_row("ipadic".to_string(), Some("7.0.0".to_string()), "7.0.0"),
             DictionaryRow {
-                name: "ipadic".to_string(),
-                embedded: true,
-                download: DownloadState::Downloaded(PathBuf::from("/data/lindera-ipadic")),
+                name: "mydic".to_string(),
+                version: Some("7.0.0".to_string()),
+                status: Status::Incomplete,
+                dict: "/data/mydic".to_string(),
             },
             DictionaryRow {
-                name: "ipadic-neologd".to_string(),
-                embedded: false,
-                download: DownloadState::NotDownloaded,
-            },
-            DictionaryRow {
-                name: "unidic".to_string(),
-                embedded: false,
-                download: DownloadState::Incomplete(PathBuf::from("/data/lindera-unidic")),
+                name: "olddic".to_string(),
+                version: None,
+                status: Status::OtherVersion,
+                dict: "/data/olddic".to_string(),
             },
         ];
 
         let expected = "\
-NAME            EMBEDDED  DOWNLOADED  PATH
-ipadic          yes       yes         /data/lindera-ipadic
-ipadic-neologd  no        no          -
-unidic          no        incomplete  /data/lindera-unidic
+NAME    VERSION  STATUS         DICT
+ipadic  7.0.0    ok             embedded://ipadic
+mydic   7.0.0    incomplete     /data/mydic
+olddic  unknown  other version  /data/olddic
 ";
         assert_eq!(render_rows(&rows), expected);
     }

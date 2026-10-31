@@ -28,11 +28,11 @@ The setting does not change standard output, and the error of a command that fai
 
 ## list
 
-List all known morphological analysis dictionaries and show, for each one, whether it is embedded in the binary (via the `embed-*` feature flags) and whether a pre-built copy has been downloaded locally with `lindera download`.
+List the dictionaries that `--dict` can take: those embedded in the binary (via the `embed-*` feature flags) and those in the dictionaries directory, where `lindera download` puts them, each with the version of Lindera that built it.
 
 ### List parameters
 
-This command takes no arguments. The `LINDERA_DATA_DIR` environment variable overrides the application data directory searched for downloaded dictionaries, exactly as it does for `lindera download`.
+This command takes no arguments. It looks for dictionaries in the directory named by `LINDERA_DICTIONARIES_DIR`, as `lindera download` does (see [Storage location](#storage-location)).
 
 ### List usage
 
@@ -41,21 +41,20 @@ This command takes no arguments. The `LINDERA_DATA_DIR` environment variable ove
 ```
 
 ```text
-NAME            EMBEDDED  DOWNLOADED  PATH
-ipadic          yes       yes         /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
-ipadic-neologd  no        no          -
-unidic          no        incomplete  /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-unidic
-sudachidict     no        no          -
-ko-dic          no        no          -
-cc-cedict       no        no          -
-jieba           no        no          -
+Skipped /home/user/.local/share/lindera/dictionaries/6.2.0: not a dictionary (no metadata.json)
+NAME    VERSION  STATUS  DICT
+ipadic  7.0.0    ok      embedded://ipadic
+ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 ```
 
-The output contains one dictionary per line:
+The table, on stdout, has one dictionary per line: the embedded dictionaries first, then the subdirectories of the dictionaries directory, by name.
 
-- `EMBEDDED` is `yes` when the dictionary was embedded at build time (e.g. `--features=embed-ipadic`).
-- `DOWNLOADED` is `yes` when a complete dictionary installed by `lindera download` exists for the running CLI version, and `incomplete` when the installation directory exists but required files are missing (re-download it with `lindera download <name> --force`).
-- `PATH` shows the installation directory when it exists, and `-` otherwise.
+- `NAME` is the kind of the embedded dictionary, or the name of the directory.
+- `VERSION` is the version of Lindera that built the dictionary (`lindera_version` in its `metadata.json`), or `unknown` for a dictionary built before v7.0.0.
+- `STATUS` is `ok`; `incomplete` when required files are missing (download it again with `lindera download <name> --force`); or `other version` when another version of Lindera built the dictionary, or one that does not say (for a downloadable dictionary, `lindera download <name>` replaces it).
+- `DICT` is the value to pass to `--dict`.
+
+Messages go to stderr: a subdirectory without `metadata.json`, such as the `6.2.0/` above, where a CLI before v7.0.0 put its downloads, is skipped with a line, and a dictionaries directory without dictionaries is reported with a hint to run `lindera download`. Entries whose name starts with `.` are skipped silently.
 
 ## tokenize
 
@@ -63,10 +62,15 @@ Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean te
 
 ### Parameters
 
-- `--dict` / `-d`: Dictionary path, URI, or downloaded dictionary name (required)
-  - File path: `/path/to/dictionary`
+- `--dict` / `-d`: Dictionary URI or path (required)
+  - File path: `/path/to/dictionary`, such as the path that `lindera download` prints, or `file:///path/to/dictionary`
   - Embedded: `embedded://ipadic`, `embedded://unidic`, etc.
-  - Downloaded dictionary name: `ipadic`, `unidic`, etc. — resolved to the dictionary installed by `lindera download`. An existing filesystem path with the same name takes precedence.
+  - A dictionary name alone, such as `ipadic`, is not accepted, unless a directory of that name exists. The error points to the embedded dictionary and to the directory of the downloaded one:
+
+    ```text
+    Error: LinderaError { kind: Args, source: --dict takes a URI or a path, and 'ipadic' names a dictionary: pass embedded://ipadic for the dictionary embedded in the CLI, or the path of a downloaded one, /home/user/.local/share/lindera/dictionaries/ipadic }
+    ```
+
 - `--output` / `-o`: Output format (default: mecab)
   - `mecab`: MeCab-compatible format with part-of-speech info
   - `wakati`: Space-separated tokens only, one line per input line (an empty line for a line without tokens)
@@ -623,7 +627,7 @@ Build (compile) a morphological analysis dictionary from source CSV files for us
 - `--dest` / `-d`: Destination directory for compiled dictionary output
 - `--metadata` / `-m`: Metadata configuration file (metadata.json) that defines dictionary structure
 - `--user` / `-u`: Build user dictionary instead of system dictionary (optional flag)
-- `--system-dict`: The system dictionary the user dictionary is for, as a directory path, URI, or downloaded dictionary name, the forms `tokenize --dict` accepts (optional; only with `--user`). The build then checks every row's context IDs against its connection matrix (see [Context ID check](#context-id-check))
+- `--system-dict`: The system dictionary the user dictionary is for, as a URI or a directory path, the forms `tokenize --dict` accepts (optional; only with `--user`). The build then checks every row's context IDs against its connection matrix (see [Context ID check](#context-id-check))
 - `--context-id-freq` / `-f`: Context-ID access-frequency file used to reorder connection-cost IDs (optional; only meaningful when the dictionary's `metadata.json` sets `connection_id_mapping: true`)
 
 ### Dictionary types
@@ -859,24 +863,34 @@ For more details about user dictionary format please refer to the following URL:
 
 ## download
 
-Download the pre-built dictionary archive matching the CLI version from the [GitHub releases page](https://github.com/lindera/lindera/releases) and install it under the OS-standard application data directory.
+Download the pre-built dictionary archive matching the CLI version from the [GitHub releases page](https://github.com/lindera/lindera/releases) and install it in the dictionaries directory.
 
 ### Download parameters
 
 - Dictionary name (required): one of `ipadic`, `ipadic-neologd`, `unidic`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba`
-- `--force`: Re-download and replace an existing dictionary
+- `--force`: Re-download and replace the dictionary even when the CLI's version built it
 
 ### Storage location
 
-Dictionaries are installed under a versioned layout `<data dir>/dictionaries/<version>/lindera-<name>/`. The default base directory per OS:
+`lindera download <name>` installs the dictionary in `<dictionaries directory>/<name>/` and prints that path, the value to pass to `--dict`. The `LINDERA_DICTIONARIES_DIR` environment variable names the dictionaries directory; without it, the directory is `lindera/dictionaries` in the OS's local data directory:
 
 | OS | Default location |
 | --- | --- |
-| Linux | `~/.local/share/lindera` |
-| macOS | `~/Library/Application Support/lindera` |
-| Windows | `%LOCALAPPDATA%\lindera` |
+| Linux | `~/.local/share/lindera/dictionaries` |
+| macOS | `~/Library/Application Support/lindera/dictionaries` |
+| Windows | `%LOCALAPPDATA%\lindera\dictionaries` |
 
-Set the `LINDERA_DATA_DIR` environment variable to override the base directory. This variable is unrelated to the build-time source cache variable `LINDERA_BUILD_DICTIONARY_CACHE_DIR`.
+For example, with `LINDERA_DICTIONARIES_DIR=/var/lindera/dict`, `lindera download ipadic` installs to `/var/lindera/dict/ipadic/`. `lindera list` lists the dictionaries in the same directory.
+
+`LINDERA_DATA_DIR`, the variable of the CLI before v7.0.0, keeps working until v8.0.0, with a warning on stderr: a value `<dir>` is read as `LINDERA_DICTIONARIES_DIR=<dir>/dictionaries`. For example, with `LINDERA_DATA_DIR=/home/user/.local/share/lindera`:
+
+```text
+Warning: LINDERA_DATA_DIR is deprecated and will be removed in v8.0.0; set LINDERA_DICTIONARIES_DIR=/home/user/.local/share/lindera/dictionaries instead
+```
+
+When both are set, `LINDERA_DICTIONARIES_DIR` is used, and the warning says that `LINDERA_DATA_DIR` is ignored. Neither variable has to do with the build-time source cache variable `LINDERA_BUILD_DICTIONARY_CACHE_DIR`, or with `LINDERA_DICTIONARIES_PATH`, its former name, which v7.0.0 removed.
+
+A complete dictionary already in place is kept when the CLI's version built it, as the `lindera_version` of its `metadata.json` says. When another version of Lindera built it, or its `metadata.json` does not say, as for a dictionary built before v7.0.0, `lindera download` downloads it again without `--force`, and says so on stderr, for example `Downloaded dictionary 'ipadic', replacing the one built by an unknown version of Lindera`.
 
 ### Download usage
 
@@ -885,22 +899,16 @@ Set the `LINDERA_DATA_DIR` environment variable to override the base directory. 
 ```
 
 ```text
-Downloading https://github.com/lindera/lindera/releases/download/v5.1.0/lindera-ipadic-5.1.0.zip
-100% (15.1/15.1 MiB)
+Downloading https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-ipadic-7.0.0.zip
 Downloaded dictionary 'ipadic'
-/home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
+/home/user/.local/share/lindera/dictionaries/ipadic
 ```
 
-The installed path is printed to stdout (progress and notices go to stderr), so it can be captured in scripts:
+On a terminal, a progress line follows the first line. The installed path is printed to stdout (progress and notices go to stderr), also when the dictionary is already there, so it can be captured in scripts and passed to `tokenize`:
 
 ```shell
 % DICT_DIR=$(lindera download ipadic)
-```
-
-After downloading, the dictionary can be referenced by name in `tokenize`:
-
-```shell
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict ipadic
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict "$DICT_DIR"
 ```
 
 Notes:

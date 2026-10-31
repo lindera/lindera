@@ -18,21 +18,21 @@ Lindera CLIをインストールします：
 
 ## 2. 辞書のダウンロード
 
-GitHub リリースページからビルド済みの IPADIC 辞書をダウンロードします。辞書は OS 標準のアプリケーションデータディレクトリにインストールされます：
+GitHub リリースページからビルド済みの IPADIC 辞書をダウンロードします。辞書は辞書ディレクトリ（Linux では `~/.local/share/lindera/dictionaries/ipadic`）にインストールされ、`lindera download` がそのパスを表示します。以降の手順のために `DICT_DIR` に受け取ります：
 
 ```shell
-% lindera download ipadic
+% DICT_DIR=$(lindera download ipadic)
 ```
 
 利用可能な辞書名と保存場所については[コマンド](commands.md#download)を参照してください。
 
 ## 3. 基本的なトークナイズ
 
-ダウンロードした IPADIC 辞書を辞書名で参照して、日本語テキストをトークナイズします：
+ダウンロードした IPADIC 辞書をパスで参照して、日本語テキストをトークナイズします：
 
 ```shell
 % echo "東京は日本の首都です。" | lindera tokenize \
-  --dict ipadic
+  --dict "$DICT_DIR"
 ```
 
 期待される出力：
@@ -54,7 +54,7 @@ EOS
 
 ```shell
 % echo "東京は日本の首都です。" | lindera tokenize \
-  --dict ipadic \
+  --dict "$DICT_DIR" \
   --output wakati
 ```
 
@@ -68,7 +68,7 @@ EOS
 
 ```shell
 % echo "東京は日本の首都です。" | lindera tokenize \
-  --dict ipadic \
+  --dict "$DICT_DIR" \
   --output json
 ```
 
@@ -80,7 +80,7 @@ Decompose モードは複合名詞を構成要素に分解します：
 
 ```shell
 % echo "関西国際空港限定トートバッグ" | lindera tokenize \
-  --dict ipadic \
+  --dict "$DICT_DIR" \
   --mode decompose
 ```
 
@@ -103,7 +103,7 @@ Unicode正規化を行い、一般名詞のみを保持します：
 
 ```shell
 % echo "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。" | lindera tokenize \
-  --dict ipadic \
+  --dict "$DICT_DIR" \
   --char-filter 'unicode_normalize:{"kind":"nfkc"}' \
   --token-filter 'japanese_keep_tags:{"tags":["名詞,一般","名詞,サ変接続","名詞,固有名詞,組織"]}'
 ```
@@ -124,7 +124,7 @@ Unicode正規化により全角文字が半角に変換され、Token Filter に
 
 ```shell
 % echo "すもももももももものうち" | lindera tokenize \
-  --dict ipadic \
+  --dict "$DICT_DIR" \
   --token-filter 'japanese_stop_tags:{"tags":["助詞,格助詞,一般","助詞,係助詞","助詞,連体化","助動詞"]}'
 ```
 
@@ -140,7 +140,7 @@ Unicode正規化により全角文字が半角に変換され、Token Filter に
 
 ```shell
 % echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
-  --dict ipadic \
+  --dict "$DICT_DIR" \
   --user-dict ./my_dict.csv
 ```
 
@@ -150,7 +150,7 @@ Unicode正規化により全角文字が半角に変換され、Token Filter に
 
 ```shell
 % echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
-  --dict ipadic \
+  --dict "$DICT_DIR" \
   --user-dict ./resources/user_dict/ipadic_simple_userdic.csv
 ```
 

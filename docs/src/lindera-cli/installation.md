@@ -16,19 +16,14 @@ Alternatively, you can download a pre-built binary from the release page:
 
 ## Obtaining Dictionaries
 
-Lindera does not bundle dictionaries with the binary. The easiest way to obtain one is the `download` subcommand, which fetches the pre-built dictionary matching the CLI version and installs it under the OS-standard application data directory:
+Lindera does not bundle dictionaries with the binary. The easiest way to obtain one is the `download` subcommand, which fetches the pre-built dictionary matching the CLI version, installs it in the dictionaries directory (`~/.local/share/lindera/dictionaries/ipadic` on Linux) and prints its path, which `--dict` takes:
 
 ```shell
-% lindera download ipadic
+% DICT_DIR=$(lindera download ipadic)
+% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict "$DICT_DIR"
 ```
 
-After downloading, the dictionary can be referenced by name:
-
-```shell
-% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict ipadic
-```
-
-See [Commands](commands.md#download) for the available dictionary names and storage locations.
+See [Commands](commands.md#download) for the available dictionary names and storage locations, and [`lindera list`](commands.md#list) for the dictionaries in place.
 
 Alternatively, you can download a pre-built dictionary manually from the [GitHub Releases](https://github.com/lindera/lindera/releases) page:
 

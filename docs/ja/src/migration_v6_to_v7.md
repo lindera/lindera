@@ -7,7 +7,10 @@ Lindera v7.0.0 では `lindera` クレートがファサード（facade）にな
 `Segmenter`・`Tokenizer`・すべてのフィルタが使えます。あわせて
 `lindera-binding-core` を `lindera-binding` に改名し、v5.0.0 で予告していた
 `LINDERA_DICTIONARIES_PATH` のフォールバックを削除し、`LINDERA_CONFIG_PATH` を
-`LINDERA_CONFIG_FILE` に改名し（旧名は v8.0.0 まで非推奨の警告付きで使える）、IPADIC のスキーマで
+`LINDERA_CONFIG_FILE` に改名し（旧名は v8.0.0 まで非推奨の警告付きで使える）、
+`lindera download` が辞書を `LINDERA_DICTIONARIES_DIR/<name>` に置くようにして
+`LINDERA_DATA_DIR` を同じく置き換え、`lindera tokenize --dict` が URI とパスだけを
+受け付けるようにし、IPADIC のスキーマで
 `conjugation_type` と `conjugation_form` の名前が逆になっていた誤りを
 修正し、表層形が空白だけの見出し語や先頭・末尾が空白の見出し語を保持し、
 MeCab と同様に空白をラティス上で読み飛ばし（Sudachi と同じく空白を残す SudachiDict
@@ -46,6 +49,8 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **`LINDERA_DICTIONARIES_PATH` の削除** | 非推奨のビルドキャッシュ変数をまだ設定しているユーザー | `LINDERA_BUILD_DICTIONARY_CACHE_DIR` を設定する。旧名は無視される |
 | **`LINDERA_CONFIG_PATH` を `LINDERA_CONFIG_FILE` に改名** | `TokenizerBuilder::new()`・`lindera tokenize`・言語バインディングのために `LINDERA_CONFIG_PATH` を設定しているユーザー | `LINDERA_CONFIG_FILE` を設定する。旧名も v8.0.0 までは非推奨の警告付きで使える |
 | `LINDERA_WORKDIR` を `LINDERA_WORK_DIR` に改名 | 自前の build script で `embedded_dictionary!` のために `LINDERA_WORKDIR` を設定している辞書クレートだけ | `LINDERA_WORK_DIR` を設定する。`build_embedded_dictionary` を使うクレートは対応不要 |
+| **`lindera download` は辞書を `LINDERA_DICTIONARIES_DIR/<name>` に置き、`LINDERA_DATA_DIR` を置き換える** | `lindera download` と `lindera list` のユーザー、`LINDERA_DATA_DIR` を設定しているユーザー | 辞書を再ダウンロードする。`LINDERA_DICTIONARIES_DIR` を設定する（旧名も v8.0.0 までは `<dir>/dictionaries` として非推奨の警告付きで使える） |
+| **`--dict` と `--system-dict` は辞書名を受け付けない** | `lindera tokenize --dict ipadic` や `lindera build --system-dict ipadic` を実行しているユーザー | `lindera download` が表示するパスか、`embedded://ipadic` を渡す |
 | **Rust 1.89 以降が必要** | Rust 1.88 で Lindera をビルドするユーザー（Python・Ruby パッケージのソースからのビルドを含む） | ツールチェーンを更新する（`rustup update stable`） |
 | **辞書の形式バージョン 3: v6.2.0 以前にビルドまたはダウンロードした辞書ディレクトリは読み込めない** | ファイルから辞書を読み込むユーザー（パスを指定した `load_dictionary`、`lindera tokenize --dict <dir>`、バインディングのパスやバイト列からの読み込み、WASM バインディングの OPFS に保存した辞書）。埋め込み辞書とユーザー辞書は対象外 | 7.0.0 の `lindera build` で再ビルドするか、7.0.0 の `lindera download` やリリースアセットから再ダウンロードする |
 | **IPADIC・IPADIC-NEologd の `conjugation_type` と `conjugation_form` が正しい列を指すように修正** | IPADIC・IPADIC-NEologd でこの 2 フィールドを名前で読むユーザー（`Token::get`・`Token::as_value`・`lindera tokenize -o json`・バインディングのスキーマ） | 2 つの値が入れ替わることを前提にする。v6.2.0 以前に作った辞書は再ビルドまたは再ダウンロードする |
@@ -400,6 +405,91 @@ error: environment variable `LINDERA_WORK_DIR` not defined at compile time
 [インストールのページ](./getting_started/installation.md#環境変数)の環境変数の
 一覧からは外しました。
 
+## `lindera download` は辞書を `LINDERA_DICTIONARIES_DIR` に置く
+
+`lindera download <name>` は辞書を `<LINDERA_DICTIONARIES_DIR>/<name>/` に
+インストールし、そのパスを表示します
+（[#1303](https://github.com/lindera/lindera/issues/1303)）。v6 までは
+`<LINDERA_DATA_DIR>/dictionaries/<version>/lindera-<name>/` にインストールしていました。
+変数を設定しない場合の辞書ディレクトリは、OS のローカルデータディレクトリの
+`lindera/dictionaries`（バージョンのディレクトリを置いていたディレクトリ）なので、
+Linux では IPADIC の辞書の場所が次のように変わります:
+
+| バージョン | ダウンロードした IPADIC のパス |
+| --- | --- |
+| v6.2.0 | `~/.local/share/lindera/dictionaries/6.2.0/lindera-ipadic` |
+| v7.0.0 | `~/.local/share/lindera/dictionaries/ipadic` |
+
+`LINDERA_DATA_DIR` は v8.0.0 まで使えます。値 `<dir>` を
+`LINDERA_DICTIONARIES_DIR=<dir>/dictionaries` として読み、標準エラー出力に警告を
+出します。`LINDERA_DATA_DIR=/home/user/.local/share/lindera` の場合は次のとおりです:
+
+```text
+Warning: LINDERA_DATA_DIR is deprecated and will be removed in v8.0.0; set LINDERA_DICTIONARIES_DIR=/home/user/.local/share/lindera/dictionaries instead
+```
+
+両方を設定すると `LINDERA_DICTIONARIES_DIR` を使い、`LINDERA_DATA_DIR` は
+無視されると警告します。`LINDERA_DICTIONARIES_DIR` を、v5.0.0 より前のビルド
+キャッシュの変数の名前で、v7.0.0 では無視される `LINDERA_DICTIONARIES_PATH` と
+取り違えないでください（[`LINDERA_DICTIONARIES_PATH` の削除](#lindera_dictionaries_path-の削除)を参照）。
+変数を設定しているすべての場所で改名してください:
+
+```shell
+# v6
+export LINDERA_DATA_DIR=/data/lindera
+
+# v7
+export LINDERA_DICTIONARIES_DIR=/data/lindera/dictionaries
+```
+
+v6.2.0 以前にダウンロードした辞書は使われません。そもそも読み込めないので
+（[辞書ディレクトリの再ビルドが必要](#辞書ディレクトリの再ビルドが必要)を参照）、
+再ダウンロードし、`~/.local/share/lindera/dictionaries/6.2.0` のような
+バージョンのディレクトリは削除してください。
+
+v7.0.0 がビルドした辞書の `metadata.json` には、その辞書をビルドした Lindera の
+バージョンが `lindera_version` として記録されます。`lindera download` は、
+CLI のバージョンがビルドした辞書だけをそのまま使い、それ以外は `--force` が
+なくても再ダウンロードします。`lindera list` は、ダウンロードできる 7 つの辞書名の
+行の代わりに、埋め込みの辞書と `LINDERA_DICTIONARIES_DIR` にある辞書を、
+そのバージョンと `--dict` に渡す値とともに表示し、古いバージョンのディレクトリは
+標準エラー出力に出します:
+
+```text
+Skipped /home/user/.local/share/lindera/dictionaries/6.2.0: not a dictionary (no metadata.json)
+NAME    VERSION  STATUS  DICT
+ipadic  7.0.0    ok      embedded://ipadic
+ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
+```
+
+## `--dict` は URI とパスだけを受け付ける
+
+`lindera tokenize --dict` と `lindera build --system-dict` は、`ipadic` のような
+辞書名をダウンロードした辞書に解決しなくなりました
+（[#1303](https://github.com/lindera/lindera/issues/1303)）。辞書名は同名の
+ディレクトリと区別できず（ディレクトリのほうが読まれていた）、埋め込みの辞書を
+選ぶこともなく、ライブラリとバインディングはパスとして読むため、CLI だけが知る
+名前でした。どちらのオプションも `embedded://<kind>`・`file://<path>`・パスを
+受け付けます。実在するパスでない辞書名は、辞書の 2 通りの指定方法を案内する
+エラーになります:
+
+```text
+Error: LinderaError { kind: Args, source: --dict takes a URI or a path, and 'ipadic' names a dictionary: pass embedded://ipadic for the dictionary embedded in the CLI, or the path of a downloaded one, /home/user/.local/share/lindera/dictionaries/ipadic }
+```
+
+`lindera download` が表示するパスを渡してください。辞書がすでにある場合も
+パスを表示します:
+
+```shell
+# v6
+lindera download ipadic
+echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict ipadic
+
+# v7
+DICT_DIR=$(lindera download ipadic)
+echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict "$DICT_DIR"
+```
+
 ## Rust 1.89 以降が必要
 
 v7.0.0 は `rust-version = "1.89"` を宣言します（v6.2.0 は 1.88）。辞書クレートの
@@ -434,7 +524,7 @@ Dictionary 'ipadic' has format version 2, but this build of Lindera reads format
 | 辞書 | 対処方法 |
 | --- | --- |
 | 埋め込み辞書（`embed-*` feature） | 対応不要。クレートのコンパイル時にビルドされる |
-| `lindera download` でダウンロードした辞書 | 7.0.0 の CLI で再ダウンロードする。CLI は辞書を自身のバージョンのディレクトリに保存する |
+| `lindera download` でダウンロードした辞書 | 7.0.0 の CLI で再ダウンロードする。CLI は辞書を `LINDERA_DICTIONARIES_DIR/<name>` に置く（[`lindera download` は辞書を `LINDERA_DICTIONARIES_DIR` に置く](#lindera-download-は辞書を-lindera_dictionaries_dir-に置く)を参照） |
 | `lindera build` でビルドした辞書 | 7.0.0 の CLI で再ビルドする |
 | リリースアセットからダウンロードした辞書 | 7.0.0 のアセットをダウンロードする |
 | WASM バインディングの OPFS に保存した辞書 | `removeDictionary()` で削除し、`downloadDictionary()` で 7.0.0 のアセットをダウンロードする。`hasDictionary()` で確かめるだけでは古い辞書が残る |
@@ -993,7 +1083,7 @@ IPADIC-NEologd はチルダを含む語のほとんどを両方の綴りで持�
 すべて `〜` で書いているので、`—` を `―` に、`～` を `〜` に置き換えます:
 
 ```sh
-lindera tokenize --dict ipadic --char-filter 'mapping:{"mapping":{"—":"―","～":"〜"}}'
+lindera tokenize --dict embedded://ipadic --char-filter 'mapping:{"mapping":{"—":"―","～":"〜"}}'
 ```
 
 ```yaml
@@ -1843,6 +1933,7 @@ mecab-ko-dic の `unk.def` はすべての行がこうした行です。ロガ�
 | `Metadata::normalize_details` | 削除 |
 | `PrefixDictionaryBuilderOptions::normalize_details(value)` | 削除 |
 | — | 公開フィールド `Metadata::skip_whitespace: Option<bool>` を追加（`lindera_binding::CoreMetadata::skip_whitespace` も） |
+| — | 公開フィールド `Metadata::lindera_version: Option<String>` を追加 |
 | `CharacterDefinition::lookup_categories(c)` は `c` を覆うすべての行のカテゴリを返す | `c` を覆う最後の行のカテゴリを、既定カテゴリを先頭に、残りをカテゴリ ID 順に返す |
 | `DICTIONARY_FORMAT_VERSION` は `2` | `3` |
 | `UnknownDictionary::gen_unk_words(sentence, start_pos, has_matched, max_grouping_len, callback)` | 削除 |
@@ -1929,6 +2020,14 @@ BOS の辺の、`LatticeOptions::bos` での添字です。デフォルトの単
 リテラルの最後を `..Default::default()` にしてください。`Metadata::new` と
 `CoreMetadata::new` はこれを `None`（読み飛ばす）にします。
 
+`Metadata` には、その辞書をビルドした Lindera のバージョンを表す公開フィールド
+`lindera_version: Option<String>` も加わりました（[`lindera download` は辞書を `LINDERA_DICTIONARIES_DIR` に置く](#lindera-download-は辞書を-lindera_dictionaries_dir-に置く)
+を参照）。`DictionaryBuilder` は、ビルドするすべての辞書の `metadata.json` に、
+ソースの `metadata.json` の値を上書きしてこれを書き込みます。v7.0.0 より前に
+ビルドした辞書では `None` で、`Metadata::new` も `None` にします。すべての
+フィールドを並べた構造体リテラルには `lindera_version: None` も必要です。
+`lindera_binding::CoreMetadata` にはこのフィールドはありません。
+
 `CharacterDefinition::lookup_categories` のシグネチャは変わりません。先頭のカテゴリ
 が未知語を作るカテゴリです（[MeCab と同じく、未知語は既定カテゴリから作る](#mecab-と同じく未知語は既定カテゴリから作る)を参照）。文字があるカテゴリを持つかどうかだけを
 調べるコードには影響しません。ビルダーが書き出し、読み込み時に受け付ける
@@ -2011,6 +2110,10 @@ let surface_features: HashMap<&str, &str> = config
   今回の構成変更は Rust クレート内部のものです。`LINDERA_CONFIG_PATH` は
   v8.0.0 まで非推奨の警告付きで使えます
   （[`LINDERA_CONFIG_PATH` を `LINDERA_CONFIG_FILE` に改名](#lindera_config_path-を-lindera_config_file-に改名)を参照）。
+  CLI はダウンロードした辞書を `LINDERA_DICTIONARIES_DIR/<name>` に置き、`--dict` に
+  辞書名を受け付けなくなりました
+  （[`lindera download` は辞書を `LINDERA_DICTIONARIES_DIR` に置く](#lindera-download-は辞書を-lindera_dictionaries_dir-に置く)と
+  [`--dict` は URI とパスだけを受け付ける](#--dict-は-uri-とパスだけを受け付ける)を参照）。
   v6.2.0 以前にビルドまたは
   ダウンロードした辞書ディレクトリは、再ビルドか再ダウンロードが必要です
   （[辞書ディレクトリの再ビルドが必要](#辞書ディレクトリの再ビルドが必要)を参照）。埋め込み辞書は対応不要です。
@@ -2075,7 +2178,8 @@ Rust クレートのユーザー:
   削除し、`Metadata::normalize_details` フィールドと
   `PrefixDictionaryBuilderOptions::normalize_details` を使わないようにする。
 - すべてのフィールドを並べた構造体リテラルで `Metadata` を作っている場合は、
-  `skip_whitespace: None` を加えるか、最後を `..Default::default()` にする。
+  `skip_whitespace: None` と `lindera_version: None` を加えるか、最後を
+  `..Default::default()` にする。
 - `CharacterDefinition::lookup_categories` を読んでいる場合は、既定カテゴリが先頭で、
   残りがカテゴリ ID 順になることを前提にする。
 - `UnknownDictionary::gen_unk_words` や `UnknownDictionary::compatible_unk_index` を
@@ -2112,6 +2216,18 @@ Rust クレートのユーザー:
 
 - シェルのプロファイル・CI 設定・コンテナイメージで `LINDERA_CONFIG_PATH` を
   `LINDERA_CONFIG_FILE` に改名する。旧名も v8.0.0 までは非推奨の警告付きで使える。
+
+`lindera download` と CLI のユーザー:
+
+- 7.0.0 の `lindera download` で辞書を再ダウンロードし、
+  `~/.local/share/lindera/dictionaries/6.2.0` のような v6 のバージョンの
+  ディレクトリを削除する。
+- `LINDERA_DATA_DIR=<dir>` を `LINDERA_DICTIONARIES_DIR=<dir>/dictionaries` に
+  置き換える。旧名も v8.0.0 までは非推奨の警告付きで使える。
+- `--dict` や `--system-dict` に渡している辞書名を、`lindera download` が表示する
+  パスか `embedded://<name>` に置き換える。
+- `lindera list` の出力を解析している場合は、列が `NAME`・`VERSION`・`STATUS`・`DICT`
+  になり、置いてある辞書だけが並ぶことを前提にする。
 
 ファイルから辞書を読み込むすべてのユーザー:
 

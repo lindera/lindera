@@ -117,6 +117,16 @@ pub struct Metadata {
     /// before the field existed; both read back as the legacy version, 1.
     #[serde(default = "legacy_format_version")]
     pub format_version: u32,
+    /// Version of Lindera that built the dictionary directory this metadata
+    /// was written into, such as `7.0.0` (#1303). `lindera list` shows it,
+    /// and `lindera download` downloads a dictionary again when it differs
+    /// from the CLI's version.
+    ///
+    /// Absent from source `metadata.json` files and from dictionaries built
+    /// before v7.0.0, which read back as `None`, and omitted from the file
+    /// when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lindera_version: Option<String>,
     pub name: String,                  // Name of the dictionary
     pub encoding: String,              // Character encoding
     pub default_word_cost: i16,        // Word cost for simple user dictionary
@@ -191,8 +201,9 @@ impl Default for Metadata {
 
 impl Metadata {
     /// Creates metadata for a dictionary in the current on-disk format, with
-    /// every optional setting (`connection_id_mapping`, `context_id_map`,
-    /// `model_info`, `space_penalty`, `skip_whitespace`) left unset.
+    /// `lindera_version` and every optional setting (`connection_id_mapping`,
+    /// `context_id_map`, `model_info`, `space_penalty`, `skip_whitespace`)
+    /// left unset.
     ///
     /// # Arguments
     ///
@@ -226,6 +237,7 @@ impl Metadata {
     ) -> Self {
         Self {
             format_version: DICTIONARY_FORMAT_VERSION,
+            lindera_version: None,
             encoding,
             default_word_cost: simple_word_cost,
             default_left_context_id,
@@ -375,6 +387,26 @@ mod tests {
             let parsed: Metadata = serde_json::from_str(&json).unwrap();
             assert_eq!(parsed.skip_whitespace, Some(value));
         }
+    }
+
+    /// `lindera_version` is absent from source `metadata.json` files and from
+    /// dictionaries built before v7.0.0: absent it reads as `None` and is not
+    /// written back; present, it round-trips (#1303).
+    #[test]
+    fn lindera_version_is_optional_and_round_trips() {
+        let without = serde_json::to_string(&Metadata::default()).unwrap();
+        assert!(!without.contains("lindera_version"), "{without}");
+        let parsed = Metadata::load(without.as_bytes()).unwrap();
+        assert_eq!(parsed.lindera_version, None);
+
+        let metadata = Metadata {
+            lindera_version: Some("7.0.0".to_string()),
+            ..Metadata::default()
+        };
+        let json = serde_json::to_string(&metadata).unwrap();
+        assert!(json.contains("\"lindera_version\":\"7.0.0\""), "{json}");
+        let parsed = Metadata::load(json.as_bytes()).unwrap();
+        assert_eq!(parsed.lindera_version.as_deref(), Some("7.0.0"));
     }
 
     /// A source `metadata.json` -- the hand-written kind checked into each

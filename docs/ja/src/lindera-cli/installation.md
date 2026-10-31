@@ -16,19 +16,14 @@ cargo経由でバイナリをインストールできます：
 
 ## 辞書の入手
 
-Lindera はバイナリに辞書を同梱していません。最も簡単な入手方法は `download` サブコマンドで、CLI と同じバージョンのビルド済み辞書を取得して OS 標準のアプリケーションデータディレクトリにインストールします：
+Lindera はバイナリに辞書を同梱していません。最も簡単な入手方法は `download` サブコマンドで、CLI と同じバージョンのビルド済み辞書を取得して辞書ディレクトリ（Linux では `~/.local/share/lindera/dictionaries/ipadic`）にインストールし、`--dict` に渡すパスを表示します：
 
 ```shell
-% lindera download ipadic
+% DICT_DIR=$(lindera download ipadic)
+% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict "$DICT_DIR"
 ```
 
-ダウンロード後は辞書名で参照できます：
-
-```shell
-% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict ipadic
-```
-
-利用可能な辞書名と保存場所については[コマンド](commands.md#download)を参照してください。
+利用可能な辞書名と保存場所については[コマンド](commands.md#download)を、置いてある辞書の一覧については [`lindera list`](commands.md#list) を参照してください。
 
 または、[GitHub Releases](https://github.com/lindera/lindera/releases) ページからビルド済み辞書を手動でダウンロードすることもできます：
 

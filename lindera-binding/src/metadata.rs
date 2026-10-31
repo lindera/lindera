@@ -40,7 +40,9 @@ fn default_user_dictionary_schema() -> CoreSchema {
 /// `CoreMetadata` instead of re-declaring the same defaults and conversions.
 /// Converts to and from [`lindera::dictionary::Metadata`]; the optional
 /// `model_info` carried by the lindera type is not retained (the bindings do
-/// not expose it), while `space_penalty` and `skip_whitespace` are, so a
+/// not expose it), nor is `lindera_version`, which the dictionary builder
+/// stamps when it writes a dictionary (#1303), while `space_penalty` and
+/// `skip_whitespace` are, so a
 /// dictionary built from a `metadata.json` that ships left-space penalty
 /// rules (ko-dic) or turns whitespace skipping off (SudachiDict) keeps them.
 #[derive(Debug, Clone)]

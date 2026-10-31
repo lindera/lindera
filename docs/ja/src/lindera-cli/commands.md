@@ -28,11 +28,11 @@ Lindera CLI は6つのメインコマンドを提供します：
 
 ## list
 
-既知の形態素解析辞書の一覧を表示し、各辞書について（`embed-*` feature フラグ経由で）バイナリに埋め込まれているか、および `lindera download` で学習済み辞書がローカルにダウンロード済みかを表示します。
+`--dict` に渡せる辞書の一覧を表示します。（`embed-*` feature フラグ経由で）バイナリに埋め込まれた辞書と、`lindera download` が辞書を置く辞書ディレクトリにある辞書を、それぞれをビルドした Lindera のバージョンとともに表示します。
 
 ### list パラメータ
 
-このコマンドは引数を取りません。環境変数 `LINDERA_DATA_DIR` を設定すると、ダウンロード済み辞書を探すアプリケーションデータディレクトリを上書きできます（`lindera download` と同じ挙動です）。
+このコマンドは引数を取りません。`lindera download` と同じく、環境変数 `LINDERA_DICTIONARIES_DIR` が指すディレクトリから辞書を探します（[保存場所](#保存場所) を参照）。
 
 ### list の使用方法
 
@@ -41,21 +41,20 @@ Lindera CLI は6つのメインコマンドを提供します：
 ```
 
 ```text
-NAME            EMBEDDED  DOWNLOADED  PATH
-ipadic          yes       yes         /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
-ipadic-neologd  no        no          -
-unidic          no        incomplete  /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-unidic
-sudachidict     no        no          -
-ko-dic          no        no          -
-cc-cedict       no        no          -
-jieba           no        no          -
+Skipped /home/user/.local/share/lindera/dictionaries/6.2.0: not a dictionary (no metadata.json)
+NAME    VERSION  STATUS  DICT
+ipadic  7.0.0    ok      embedded://ipadic
+ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 ```
 
-出力は1行につき1辞書です：
+標準出力の表は 1 行につき 1 辞書です。埋め込みの辞書を先に、続けて辞書ディレクトリのサブディレクトリを名前順に並べます。
 
-- `EMBEDDED` は、ビルド時に辞書が埋め込まれている場合（例: `--features=embed-ipadic`）に `yes` になります。
-- `DOWNLOADED` は、実行中の CLI バージョンに対応する `lindera download` でインストールされた完全な辞書が存在する場合に `yes`、インストールディレクトリは存在するが必要なファイルが欠けている場合に `incomplete` になります（`lindera download <name> --force` で再ダウンロードしてください）。
-- `PATH` は、インストールディレクトリが存在する場合はそのパス、存在しない場合は `-` を表示します。
+- `NAME` は、埋め込みの辞書の種類、またはディレクトリの名前です。
+- `VERSION` は、その辞書をビルドした Lindera のバージョン（`metadata.json` の `lindera_version`）です。v7.0.0 より前にビルドした辞書では `unknown` になります。
+- `STATUS` は `ok`、必要なファイルが欠けている場合は `incomplete`（`lindera download <name> --force` で再ダウンロードしてください）、別のバージョンの Lindera がビルドした辞書や、バージョンの記録がない辞書では `other version`（ダウンロードできる辞書なら `lindera download <name>` で置き換わります）になります。
+- `DICT` は `--dict` に渡す値です。
+
+メッセージは標準エラー出力に出ます。上の例の `6.2.0/`（v7.0.0 より前の CLI がダウンロードした辞書を置いたディレクトリ）のように `metadata.json` のないサブディレクトリは、1 行のメッセージとともに飛ばします。辞書ディレクトリに辞書が 1 つもない場合は、`lindera download` の案内を出します。名前が `.` で始まる項目は、メッセージなしで飛ばします。
 
 ## tokenize
 
@@ -63,10 +62,15 @@ jieba           no        no          -
 
 ### パラメータ
 
-- `--dict` / `-d`: 辞書のパス、URI、またはダウンロード済み辞書名（必須）
-  - ファイルパス: `/path/to/dictionary`
+- `--dict` / `-d`: 辞書の URI またはパス（必須）
+  - ファイルパス: `/path/to/dictionary`（`lindera download` が表示するパスなど）、または `file:///path/to/dictionary`
   - 埋め込み: `embedded://ipadic`, `embedded://unidic`, etc.
-  - ダウンロード済み辞書名: `ipadic`, `unidic` など。`lindera download` でインストールした辞書に解決されます。同名のファイルパスが実在する場合はパスが優先されます。
+  - `ipadic` のような辞書名だけの指定は、同名のディレクトリがない限り受け付けません。エラーは、埋め込みの辞書の指定と、ダウンロードした辞書のディレクトリを案内します：
+
+    ```text
+    Error: LinderaError { kind: Args, source: --dict takes a URI or a path, and 'ipadic' names a dictionary: pass embedded://ipadic for the dictionary embedded in the CLI, or the path of a downloaded one, /home/user/.local/share/lindera/dictionaries/ipadic }
+    ```
+
 - `--output` / `-o`: 出力形式 (デフォルト: mecab)
   - `mecab`: 品詞情報を含むMeCab互換形式
   - `wakati`: スペース区切りのトークンのみ。入力 1 行につき 1 行（トークンのない行は空行）
@@ -623,7 +627,7 @@ Linderaで使用するための形態素解析辞書をCSVソースファイル�
 - `--dest` / `-d`: コンパイルされた辞書の出力先ディレクトリ
 - `--metadata` / `-m`: 辞書構造を定義するメタデータ設定ファイル (metadata.json)
 - `--user` / `-u`: システム辞書の代わりにユーザー辞書をビルドする（オプションフラグ）
-- `--system-dict`: ユーザー辞書を組み合わせるシステム辞書。ディレクトリのパス、URI、ダウンロード済みの辞書名のいずれかで、`tokenize --dict` と同じ形で指定する（オプション。`--user` のときだけ）。指定すると、各行の文脈 ID をそのシステム辞書の接続コスト行列と照らし合わせて確認します（[文脈 ID の確認](#文脈-id-の確認) を参照）
+- `--system-dict`: ユーザー辞書を組み合わせるシステム辞書。URI かディレクトリのパスで、`tokenize --dict` と同じ形で指定する（オプション。`--user` のときだけ）。指定すると、各行の文脈 ID をそのシステム辞書の接続コスト行列と照らし合わせて確認します（[文脈 ID の確認](#文脈-id-の確認) を参照）
 - `--context-id-freq` / `-f`: 接続コストIDの並び替えに使用するコンテキストID アクセス頻度ファイル（オプション。辞書の `metadata.json` で `connection_id_mapping: true` が設定されている場合にのみ意味を持ちます）
 
 ### 辞書の種類
@@ -859,24 +863,34 @@ Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for 
 
 ## download
 
-CLI と同じバージョンの学習済み辞書アーカイブを [GitHub リリースページ](https://github.com/lindera/lindera/releases)からダウンロードし、OS 標準のアプリケーションデータディレクトリにインストールします。
+CLI と同じバージョンの学習済み辞書アーカイブを [GitHub リリースページ](https://github.com/lindera/lindera/releases)からダウンロードし、辞書ディレクトリにインストールします。
 
 ### download パラメータ
 
 - 辞書名（必須）: `ipadic`, `ipadic-neologd`, `unidic`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba` のいずれか
-- `--force`: 既存の辞書を再ダウンロードして置き換える
+- `--force`: CLI のバージョンがビルドした辞書でも、再ダウンロードして置き換える
 
 ### 保存場所
 
-辞書はバージョン付きレイアウト `<データディレクトリ>/dictionaries/<バージョン>/lindera-<辞書名>/` にインストールされます。OS ごとのデフォルトのベースディレクトリ：
+`lindera download <辞書名>` は辞書を `<辞書ディレクトリ>/<辞書名>/` にインストールし、そのパス（`--dict` に渡す値）を表示します。辞書ディレクトリは環境変数 `LINDERA_DICTIONARIES_DIR` で指定します。指定しない場合は、OS のローカルデータディレクトリの `lindera/dictionaries` になります：
 
 | OS | デフォルトの場所 |
 | --- | --- |
-| Linux | `~/.local/share/lindera` |
-| macOS | `~/Library/Application Support/lindera` |
-| Windows | `%LOCALAPPDATA%\lindera` |
+| Linux | `~/.local/share/lindera/dictionaries` |
+| macOS | `~/Library/Application Support/lindera/dictionaries` |
+| Windows | `%LOCALAPPDATA%\lindera\dictionaries` |
 
-環境変数 `LINDERA_DATA_DIR` を設定するとベースディレクトリを上書きできます。この変数はビルド時のソースキャッシュ用変数 `LINDERA_BUILD_DICTIONARY_CACHE_DIR` とは無関係です。
+たとえば `LINDERA_DICTIONARIES_DIR=/var/lindera/dict` なら、`lindera download ipadic` は `/var/lindera/dict/ipadic/` にインストールします。`lindera list` も同じディレクトリの辞書を表示します。
+
+v7.0.0 より前の CLI の変数 `LINDERA_DATA_DIR` は、v8.0.0 まで標準エラー出力への警告つきで使えます。値 `<dir>` は `LINDERA_DICTIONARIES_DIR=<dir>/dictionaries` として読みます。たとえば `LINDERA_DATA_DIR=/home/user/.local/share/lindera` なら次のように警告します：
+
+```text
+Warning: LINDERA_DATA_DIR is deprecated and will be removed in v8.0.0; set LINDERA_DICTIONARIES_DIR=/home/user/.local/share/lindera/dictionaries instead
+```
+
+両方を設定した場合は `LINDERA_DICTIONARIES_DIR` を使い、`LINDERA_DATA_DIR` は無視されると警告します。どちらの変数も、ビルド時のソースキャッシュ用変数 `LINDERA_BUILD_DICTIONARY_CACHE_DIR` や、v7.0.0 で削除されたその旧名 `LINDERA_DICTIONARIES_PATH` とは無関係です。
+
+すでに置いてある完全な辞書は、`metadata.json` の `lindera_version` が CLI のバージョンと同じなら、そのまま使います。別のバージョンの Lindera がビルドした辞書や、v7.0.0 より前にビルドした辞書のように `metadata.json` にバージョンの記録がない辞書は、`--force` がなくても再ダウンロードし、標準エラー出力にそう表示します（例: `Downloaded dictionary 'ipadic', replacing the one built by an unknown version of Lindera`）。
 
 ### download の使用方法
 
@@ -885,22 +899,16 @@ CLI と同じバージョンの学習済み辞書アーカイブを [GitHub リ�
 ```
 
 ```text
-Downloading https://github.com/lindera/lindera/releases/download/v5.1.0/lindera-ipadic-5.1.0.zip
-100% (15.1/15.1 MiB)
+Downloading https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-ipadic-7.0.0.zip
 Downloaded dictionary 'ipadic'
-/home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
+/home/user/.local/share/lindera/dictionaries/ipadic
 ```
 
-インストール先のパスは標準出力に出力されるため（進捗や通知は標準エラー出力）、スクリプトで取得できます：
+端末では、1 行目の後に進捗の行が出ます。インストール先のパスは、辞書がすでにある場合も標準出力に出力されるため（進捗や通知は標準エラー出力）、スクリプトで受け取って `tokenize` に渡せます：
 
 ```shell
 % DICT_DIR=$(lindera download ipadic)
-```
-
-ダウンロード後は `tokenize` で辞書名を指定して参照できます：
-
-```shell
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict ipadic
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict "$DICT_DIR"
 ```
 
 注意事項：

@@ -178,6 +178,30 @@ fn build_dictionary_stamps_the_current_format_version() {
     Dictionary::load_from_path(output.path()).expect("a freshly built dictionary should load");
 }
 
+/// The builder stamps the version of Lindera that built the dictionary, over
+/// whatever the source metadata says, as it does the format version (#1303).
+#[test]
+fn build_dictionary_stamps_the_lindera_version() {
+    let input = tempfile::tempdir().unwrap();
+    let output = tempfile::tempdir().unwrap();
+    write_source(input.path());
+
+    let metadata = Metadata {
+        lindera_version: Some("0.0.1".to_string()),
+        ..Metadata::default()
+    };
+
+    DictionaryBuilder::new(metadata)
+        .build_dictionary(input.path(), output.path())
+        .unwrap();
+
+    let written = Metadata::load(&fs::read(output.path().join("metadata.json")).unwrap()).unwrap();
+    assert_eq!(
+        written.lindera_version.as_deref(),
+        Some(lindera_dictionary::get_version())
+    );
+}
+
 /// A dictionary from an incompatible format must be refused at load. Every
 /// other artifact is a headerless raw array, so without this check a stale
 /// directory of a plausible size decodes into garbage costs instead of

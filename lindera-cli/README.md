@@ -23,12 +23,14 @@ Alternatively, you can download a binary from the following release page:
 
 ## Dictionary
 
-The easiest way to obtain a dictionary is the `download` subcommand, which installs the pre-built dictionary matching the CLI version under the OS-standard application data directory:
+The easiest way to obtain a dictionary is the `download` subcommand, which installs the pre-built dictionary matching the CLI version in the dictionaries directory (`LINDERA_DICTIONARIES_DIR`, by default `~/.local/share/lindera/dictionaries` on Linux) and prints its path, which `--dict` takes:
 
 ```shell script
-% lindera download ipadic
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict ipadic
+% DICT_DIR=$(lindera download ipadic)
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict "$DICT_DIR"
 ```
+
+`lindera list` shows the dictionaries in place and those embedded in the binary.
 
 Available dictionary names: `ipadic`, `ipadic-neologd`, `unidic`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba`.
 

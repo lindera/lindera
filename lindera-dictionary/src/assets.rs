@@ -856,9 +856,13 @@ fn cache_decision(
 /// the build derives.
 ///
 /// `DictionaryBuilder::build_metadata` writes the crate's metadata into the
-/// output directory with two changes: it stamps `format_version` (which the
-/// caller checks separately) and, when `connection_id_mapping` is on, embeds
-/// the computed `context_id_map`. Everything else is copied verbatim, so any
+/// output directory with three changes: it stamps `format_version` (which the
+/// caller checks separately) and `lindera_version` (#1303), and, when
+/// `connection_id_mapping` is on, embeds the computed `context_id_map`. A
+/// cache built by another Lindera version is a miss already, as its
+/// directory is named `<version>-fmt<format>` and `build_inputs.json`
+/// records `builder_version`, so `lindera_version` needs no check of its
+/// own. Everything else is copied verbatim, so any
 /// other difference means the crate's `metadata.json` changed after the cache
 /// was built. The comparison goes through the JSON representation so that
 /// optional fields are treated identically on both sides and `Metadata` needs
@@ -875,7 +879,7 @@ fn cache_decision(
 /// serialization failure answers `false`, i.e. a cache miss.
 fn metadata_matches_source(cached: &Metadata, source: &Metadata) -> bool {
     /// Fields `DictionaryBuilder::build_metadata` sets at build time.
-    const BUILD_DERIVED_FIELDS: [&str; 2] = ["format_version", "context_id_map"];
+    const BUILD_DERIVED_FIELDS: [&str; 3] = ["format_version", "lindera_version", "context_id_map"];
 
     let strip = |metadata: &Metadata| -> Option<serde_json::Value> {
         let mut value = serde_json::to_value(metadata).ok()?;
@@ -1613,11 +1617,12 @@ mod tests {
 
     #[test]
     fn cache_ignores_build_derived_fields() {
-        // The build stamps `format_version` and, with connection-ID mapping,
-        // embeds the computed `context_id_map`; neither is in the crate's
-        // metadata.json, so neither may count as a difference.
+        // The build stamps `format_version` and `lindera_version` and, with
+        // connection-ID mapping, embeds the computed `context_id_map`; none
+        // is in the crate's metadata.json, so none may count as a difference.
         let cached = Metadata {
             format_version: DICTIONARY_FORMAT_VERSION,
+            lindera_version: Some(crate::get_version().to_string()),
             context_id_map: Some(ContextIdMap {
                 left: vec![1, 0],
                 right: vec![0, 1],
