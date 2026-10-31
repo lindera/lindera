@@ -324,12 +324,11 @@ fn list_prefers_the_dictionaries_dir_variable_over_the_deprecated_one() {
     );
 }
 
-/// Builds a hand-made system dictionary with a 4x4 connection matrix
-/// (context IDs 0 to 3) in `dir`, so that no embedded dictionary is needed.
+/// Writes the source of a hand-made system dictionary with a 4x4 connection
+/// matrix (context IDs 0 to 3) into `dir/source`, in the IPADIC layout.
 ///
-/// Returns the built dictionary directory and its `metadata.json`, the
-/// default metadata, which has the IPADIC layout.
-fn build_four_by_four_dictionary(dir: &Path) -> (PathBuf, PathBuf) {
+/// Returns the source directory.
+fn write_four_by_four_source(dir: &Path) -> PathBuf {
     let source = dir.join("source");
     std::fs::create_dir(&source).unwrap();
     std::fs::write(
@@ -356,6 +355,16 @@ fn build_four_by_four_dictionary(dir: &Path) -> (PathBuf, PathBuf) {
         }
     }
     std::fs::write(source.join("matrix.def"), matrix_def).unwrap();
+    source
+}
+
+/// Builds a hand-made system dictionary with a 4x4 connection matrix
+/// (context IDs 0 to 3) in `dir`, so that no embedded dictionary is needed.
+///
+/// Returns the built dictionary directory and its `metadata.json`, the
+/// default metadata, which has the IPADIC layout.
+fn build_four_by_four_dictionary(dir: &Path) -> (PathBuf, PathBuf) {
+    let source = write_four_by_four_source(dir);
     let metadata = dir.join("metadata.json");
     std::fs::write(
         &metadata,
@@ -526,6 +535,45 @@ fn build_system_dict_requires_user() {
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(!output.status.success(), "got: {stderr}");
     assert!(stderr.contains("--user"), "got: {stderr}");
+}
+
+/// `lindera build` takes the context-ID frequency histogram of a dictionary
+/// with `connection_id_mapping` from `--context-id-freq` alone. The variables
+/// that the dictionary crates' build scripts read, here naming a file that
+/// does not exist, are not read: they took precedence over the option and
+/// failed the build before #1308.
+#[test]
+fn build_takes_the_context_id_freq_from_the_option_alone() {
+    let dir = tempfile::tempdir().unwrap();
+    let source = write_four_by_four_source(dir.path());
+    let metadata = dir.path().join("metadata.json");
+    std::fs::write(
+        &metadata,
+        serde_json::to_vec(&lindera::dictionary::Metadata {
+            connection_id_mapping: true,
+            ..Default::default()
+        })
+        .unwrap(),
+    )
+    .unwrap();
+    let histogram = dir.path().join("context_id_freq.txt");
+    std::fs::write(&histogram, "4 4\n0 1 3 2\n0 1 3 2\n").unwrap();
+    let missing = dir.path().join("missing.txt");
+
+    let output = lindera()
+        .args(["build", "--src", source.to_str().unwrap()])
+        .args(["--dest", dir.path().join("dict").to_str().unwrap()])
+        .args(["--metadata", metadata.to_str().unwrap()])
+        .args(["--context-id-freq", histogram.to_str().unwrap()])
+        .env("LINDERA_BUILD_CONTEXT_ID_FREQ_FILE", &missing)
+        .env("LINDERA_CTX_FREQ_FILE", &missing)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "got: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 /// `lindera build` rejects a `char.def` category without an `unk.def` line,

@@ -9,10 +9,9 @@
 //! is bit-identical (the remap is a bijective relabeling that preserves every cost).
 
 use std::cmp::Reverse;
-use std::ffi::OsString;
 use std::fs::File;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::str::FromStr;
 
 use encoding_rs::{Encoding, UTF_8};
@@ -25,45 +24,19 @@ use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::metadata::Metadata;
 use crate::error::LinderaErrorKind;
 
-/// Environment variable naming a context-ID frequency histogram that overrides
-/// the one bundled with the dictionary crate, for one build.
-pub(crate) const CTX_FREQ_FILE_ENV: &str = "LINDERA_CTX_FREQ_FILE";
-
-/// Chooses the corpus-derived frequency histogram a build ranks context IDs
-/// with: the [`CTX_FREQ_FILE_ENV`] override first, then the bundled file.
-///
-/// The remap and the dictionary build cache's record of the build inputs both
-/// call this, so the cache records the file the build actually reads.
-///
-/// # Arguments
-///
-/// * `env_override` - The value of [`CTX_FREQ_FILE_ENV`], if set.
-/// * `bundled` - The histogram bundled with the dictionary crate, if any.
-///
-/// # Returns
-///
-/// The histogram to read, or `None` when neither is given, in which case the
-/// remap falls back to the entry-count proxy.
-pub(crate) fn resolve_context_id_freq(
-    env_override: Option<OsString>,
-    bundled: Option<&Path>,
-) -> Option<PathBuf> {
-    env_override
-        .map(PathBuf::from)
-        .or_else(|| bundled.map(Path::to_path_buf))
-}
-
 /// Compute the two frequency-ordered context-ID permutations for a dictionary.
 ///
 /// IDs are ranked most-frequent-first and assigned dense small new IDs; ID 0 is
 /// pinned to 0 (reserved for BOS/EOS). The frequency signal is chosen in this order:
 ///
-/// 1. `LINDERA_CTX_FREQ_FILE` environment variable (per-build override).
-/// 2. `freq_file` — the histogram bundled with the dictionary crate.
-/// 3. Fallback: a zero-corpus entry-count proxy (each lexicon row increments its
+/// 1. `freq_file` — a corpus-derived histogram: the one bundled with the
+///    dictionary crate, or the file named by `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`,
+///    which the dictionary crates' build scripts read and pass in its place. This
+///    function does not read the environment.
+/// 2. Fallback: a zero-corpus entry-count proxy (each lexicon row increments its
 ///    `left_context_id` / `right_context_id` bucket).
 ///
-/// Only corpus-derived frequency (1 or 2) actually improves cache locality; the
+/// Only corpus-derived frequency (1) actually improves cache locality; the
 /// entry-count fallback measured ~0% because it mis-ranks high-frequency function
 /// words, which have few dictionary entries. It is kept as a safe default and logs a
 /// warning. Ranking never affects correctness — the remap is a bijective relabeling —
@@ -73,7 +46,7 @@ pub(crate) fn resolve_context_id_freq(
 ///
 /// * `input_dir` - Directory containing `matrix.def` and the lexicon `*.csv` files.
 /// * `metadata` - Dictionary metadata (encoding, schema, `flexible_csv`).
-/// * `freq_file` - Optional bundled context-ID frequency histogram.
+/// * `freq_file` - Optional corpus-derived context-ID frequency histogram.
 ///
 /// # Returns
 ///
@@ -97,7 +70,7 @@ pub fn compute_context_id_remap(
 ///
 /// * `input_dir` - Directory containing the lexicon `*.csv` files.
 /// * `metadata` - Dictionary metadata (encoding, schema, `flexible_csv`).
-/// * `freq_file` - Optional bundled context-ID frequency histogram.
+/// * `freq_file` - Optional corpus-derived context-ID frequency histogram.
 /// * `matrix_size` - The axis sizes read from the `matrix.def` header.
 ///
 /// # Returns
@@ -124,12 +97,10 @@ pub(crate) fn compute_context_id_remap_for_matrix(
         )));
     }
 
-    // Corpus-derived frequency (the paper's signal): a per-build env override first,
-    // then the histogram bundled with the dictionary crate.
-    let corpus_freq = resolve_context_id_freq(std::env::var_os(CTX_FREQ_FILE_ENV), freq_file);
-    if let Some(freq_path) = corpus_freq {
+    // Corpus-derived frequency (the paper's signal).
+    if let Some(freq_path) = freq_file {
         let (hist_left, hist_right) =
-            load_freq_file(&freq_path, backward_size as usize, forward_size as usize)?;
+            load_freq_file(freq_path, backward_size as usize, forward_size as usize)?;
         return Ok(ContextIdMap {
             left: build_perm(&hist_left),
             right: build_perm(&hist_right),
@@ -302,7 +273,7 @@ fn load_freq_file(
 /// Enabled by the `ctxfreq` feature only; normal builds compile none of this and the
 /// `cost()` hot path is untouched. Used to derive a corpus-frequency remap: run a
 /// tokenization over a corpus, then [`dump_ctx_freq`] the histograms and point
-/// `LINDERA_CTX_FREQ_FILE` at them when building the dictionary.
+/// `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` at them when building the dictionary.
 #[cfg(feature = "ctxfreq")]
 mod ctxfreq {
     use std::cell::RefCell;
@@ -415,32 +386,5 @@ mod tests {
     #[test]
     fn test_build_perm_single() {
         assert_eq!(build_perm(&[7]), vec![0]);
-    }
-
-    /// The environment override wins over the bundled histogram.
-    #[test]
-    fn test_resolve_context_id_freq_prefers_the_override() {
-        assert_eq!(
-            resolve_context_id_freq(
-                Some(OsString::from("override.txt")),
-                Some(Path::new("context_id_freq.txt"))
-            ),
-            Some(PathBuf::from("override.txt"))
-        );
-    }
-
-    /// Without an override, the bundled histogram is used.
-    #[test]
-    fn test_resolve_context_id_freq_falls_back_to_the_bundled_file() {
-        assert_eq!(
-            resolve_context_id_freq(None, Some(Path::new("context_id_freq.txt"))),
-            Some(PathBuf::from("context_id_freq.txt"))
-        );
-    }
-
-    /// With neither, there is no histogram (the entry-count proxy is used).
-    #[test]
-    fn test_resolve_context_id_freq_without_either() {
-        assert_eq!(resolve_context_id_freq(None, None), None);
     }
 }

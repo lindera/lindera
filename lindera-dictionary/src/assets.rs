@@ -16,7 +16,6 @@ use ureq::Agent;
 
 use crate::LinderaResult;
 use crate::builder::DictionaryBuilder;
-use crate::builder::context_id_remap::{CTX_FREQ_FILE_ENV, resolve_context_id_freq};
 use crate::dictionary::metadata::{DICTIONARY_FORMAT_VERSION, Metadata};
 use crate::error::LinderaErrorKind;
 
@@ -408,6 +407,98 @@ fn cache_dir_unless_docs_rs(cache_dir: Option<OsString>, docs_rs: bool) -> Optio
     cache_dir.filter(|_| !docs_rs)
 }
 
+/// Environment variable naming a context-ID frequency histogram that a
+/// dictionary crate's build reads in place of the bundled
+/// [`CONTEXT_ID_FREQ_FILE`], when `connection_id_mapping` is enabled.
+///
+/// Only the build scripts read it ([`fetch_for`]): [`DictionaryBuilder`]
+/// reads no environment variable, so `lindera build` takes the histogram from
+/// its `--context-id-freq` option alone (#1308).
+const CONTEXT_ID_FREQ_FILE_ENV: &str = "LINDERA_BUILD_CONTEXT_ID_FREQ_FILE";
+
+/// The former name of [`CONTEXT_ID_FREQ_FILE_ENV`], read with a deprecation
+/// warning when that is not set, until v8.0.0 (#1308).
+const DEPRECATED_CTX_FREQ_FILE_ENV: &str = "LINDERA_CTX_FREQ_FILE";
+
+/// The warning for a histogram named by [`DEPRECATED_CTX_FREQ_FILE_ENV`]
+/// alone. Cargo shows it after `warning: <crate>@<version>:`, so it does not
+/// start with `Warning:` as the runtime warnings of the other renames do.
+const CTX_FREQ_FILE_DEPRECATED_WARNING: &str = "LINDERA_CTX_FREQ_FILE is deprecated and will be removed in v8.0.0; set LINDERA_BUILD_CONTEXT_ID_FREQ_FILE instead";
+
+/// The warning for [`DEPRECATED_CTX_FREQ_FILE_ENV`] set next to
+/// [`CONTEXT_ID_FREQ_FILE_ENV`].
+const CTX_FREQ_FILE_IGNORED_WARNING: &str = "LINDERA_CTX_FREQ_FILE is ignored because LINDERA_BUILD_CONTEXT_ID_FREQ_FILE is set; LINDERA_CTX_FREQ_FILE is deprecated and will be removed in v8.0.0";
+
+/// The histogram a dictionary crate's build reads in place of the bundled
+/// one, and the warning it prints about [`DEPRECATED_CTX_FREQ_FILE_ENV`].
+#[derive(Debug, PartialEq, Eq)]
+struct ContextIdFreqFileChoice {
+    /// The histogram to read, or `None` to keep the bundled one, if any.
+    path: Option<PathBuf>,
+    /// The warning to print, if the deprecated variable is set.
+    warning: Option<&'static str>,
+}
+
+/// Chooses the histogram that replaces the bundled one from the values of
+/// [`CONTEXT_ID_FREQ_FILE_ENV`] and [`DEPRECATED_CTX_FREQ_FILE_ENV`]. The
+/// caller reads the environment, so that every combination can be tested
+/// without changing it.
+///
+/// # Arguments
+///
+/// * `context_id_freq_file` - The value of
+///   `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`, if set.
+/// * `ctx_freq_file` - The value of `LINDERA_CTX_FREQ_FILE`, if set.
+///
+/// # Returns
+///
+/// `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` when it is set, with a warning that
+/// `LINDERA_CTX_FREQ_FILE` is ignored if that is set too; otherwise
+/// `LINDERA_CTX_FREQ_FILE`, with a deprecation warning; and no file when
+/// neither is set.
+fn choose_context_id_freq_file(
+    context_id_freq_file: Option<OsString>,
+    ctx_freq_file: Option<OsString>,
+) -> ContextIdFreqFileChoice {
+    match (context_id_freq_file, ctx_freq_file) {
+        (Some(file), old) => ContextIdFreqFileChoice {
+            path: Some(PathBuf::from(file)),
+            warning: old.map(|_| CTX_FREQ_FILE_IGNORED_WARNING),
+        },
+        (None, Some(old)) => ContextIdFreqFileChoice {
+            path: Some(PathBuf::from(old)),
+            warning: Some(CTX_FREQ_FILE_DEPRECATED_WARNING),
+        },
+        (None, None) => ContextIdFreqFileChoice {
+            path: None,
+            warning: None,
+        },
+    }
+}
+
+/// Attaches the histogram chosen from the environment to `builder`, in place
+/// of the bundled one.
+///
+/// # Arguments
+///
+/// * `builder` - The dictionary builder, with the bundled histogram if the
+///   crate ships one.
+/// * `path` - The histogram chosen by [`choose_context_id_freq_file`], if any.
+///
+/// # Returns
+///
+/// `builder` reading `path` when it is given, and `builder` unchanged
+/// otherwise.
+fn with_context_id_freq_override(
+    builder: DictionaryBuilder,
+    path: Option<PathBuf>,
+) -> DictionaryBuilder {
+    match path {
+        Some(path) => builder.with_context_id_freq(path),
+        None => builder,
+    }
+}
+
 /// Name of the file, inside a cached dictionary's output directory, that
 /// records the inputs the dictionary was built from ([`BuildInputs`]).
 ///
@@ -582,9 +673,9 @@ fn file_md5(path: &Path) -> io::Result<String> {
 /// # Arguments
 ///
 /// * `params` - The source archive and directory layout of the build.
-/// * `builder` - The builder, for its metadata and bundled histogram.
+/// * `builder` - The builder, for its metadata and the histogram it reads:
+///   the bundled one, or the one [`fetch_for`] attached in its place.
 /// * `builder_digest` - This crate's source digest ([`BUILDER_SOURCE_DIGEST`]).
-/// * `ctx_freq_env` - The value of [`CTX_FREQ_FILE_ENV`], if set.
 ///
 /// # Returns
 ///
@@ -594,15 +685,15 @@ fn expected_build_inputs(
     params: &FetchParams,
     builder: &DictionaryBuilder,
     builder_digest: Option<&str>,
-    ctx_freq_env: Option<OsString>,
 ) -> LinderaResult<Option<BuildInputs>> {
     let Some(builder_digest) = builder_digest else {
         return Ok(None);
     };
     let context_id_freq_md5 = if builder.metadata().connection_id_mapping {
-        resolve_context_id_freq(ctx_freq_env, builder.context_id_freq())
+        builder
+            .context_id_freq()
             .map(|path| {
-                file_md5(&path).map_err(|err| {
+                file_md5(path).map_err(|err| {
                     LinderaErrorKind::Io
                         .with_error(anyhow::anyhow!(err))
                         .add_context(format!(
@@ -903,15 +994,18 @@ fn metadata_matches_source(cached: &Metadata, source: &Metadata) -> bool {
 /// to such a crate later takes effect on the next change to a watched file
 /// (such as `metadata.json`) or after a clean build.
 ///
-/// The file named by `LINDERA_CTX_FREQ_FILE` is watched too, under the same
+/// The file that replaces it, named by `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`
+/// or its former name `LINDERA_CTX_FREQ_FILE`, is watched too, under the same
 /// rule: only when it exists. Without that, a new histogram written to the
 /// same path would not rerun the build script, and the dictionary would keep
-/// the old ranking.
+/// the old ranking. Both variable names are watched, so that setting or
+/// changing either reruns it.
 ///
 /// # Arguments
 ///
 /// * `ships_context_id_freq` - Whether the crate has a `context_id_freq.txt`.
-/// * `ctx_freq_override` - The value of `LINDERA_CTX_FREQ_FILE`, if set.
+/// * `ctx_freq_override` - The histogram chosen by
+///   [`choose_context_id_freq_file`], if any.
 ///
 /// # Returns
 ///
@@ -932,7 +1026,8 @@ fn rerun_directives(ships_context_id_freq: bool, ctx_freq_override: Option<&Path
         directives.push(format!("cargo:rerun-if-changed={}", path.display()));
     }
     directives.extend([
-        format!("cargo:rerun-if-env-changed={CTX_FREQ_FILE_ENV}"),
+        format!("cargo:rerun-if-env-changed={CONTEXT_ID_FREQ_FILE_ENV}"),
+        format!("cargo:rerun-if-env-changed={DEPRECATED_CTX_FREQ_FILE_ENV}"),
         format!("cargo:rerun-if-env-changed={CACHE_DIR_ENV}"),
         format!("cargo:rerun-if-env-changed={DOCS_RS_ENV}"),
     ]);
@@ -951,6 +1046,12 @@ fn rerun_directives(ships_context_id_freq: bool, ctx_freq_override: Option<&Path
 /// Builds that share the cache write each dictionary one at a time: a build
 /// that finds another build of the same dictionary writing it waits, and then
 /// uses the dictionary that build left in place (see `fetch_into`).
+///
+/// With `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` set, the builder reads the
+/// context-ID frequency histogram it names, in place of the one attached to
+/// `builder`. `LINDERA_CTX_FREQ_FILE`, its former name, is read when it is
+/// not set, until v8.0.0, with a `cargo:warning` that cargo shows only for a
+/// path dependency.
 ///
 /// # Arguments
 ///
@@ -984,13 +1085,20 @@ fn fetch_for(
     builder: DictionaryBuilder,
     purpose: CachePurpose,
 ) -> LinderaResult<()> {
-    let ctx_freq_env = std::env::var_os(CTX_FREQ_FILE_ENV);
+    let ctx_freq = choose_context_id_freq_file(
+        std::env::var_os(CONTEXT_ID_FREQ_FILE_ENV),
+        std::env::var_os(DEPRECATED_CTX_FREQ_FILE_ENV),
+    );
+    if let Some(warning) = ctx_freq.warning {
+        println!("cargo:warning={warning}");
+    }
     for directive in rerun_directives(
         Path::new(CONTEXT_ID_FREQ_FILE).is_file(),
-        ctx_freq_env.as_deref().map(Path::new),
+        ctx_freq.path.as_deref(),
     ) {
         println!("{directive}");
     }
+    let builder = with_context_id_freq_override(builder, ctx_freq.path);
 
     // Directory path for build package
     // if the cache directory variable is defined (and this is not a documentation build, see
@@ -1049,7 +1157,6 @@ fn fetch_for(
         &params,
         &builder,
         purpose,
-        ctx_freq_env,
     )
 }
 
@@ -1079,9 +1186,8 @@ fn fetch_for(
 /// * `docs_rs` - Whether to build a dummy dictionary from
 ///   `params.dummy_input` instead of the downloaded one.
 /// * `params` - Describes the asset to fetch and the directory layout.
-/// * `builder` - Dictionary builder.
+/// * `builder` - Dictionary builder, with the histogram the build reads.
 /// * `purpose` - Whether the dictionary is embedded or only fills the cache.
-/// * `ctx_freq_env` - The value of [`CTX_FREQ_FILE_ENV`], if set.
 ///
 /// # Returns
 ///
@@ -1093,7 +1199,6 @@ fn fetch_into(
     params: &FetchParams,
     builder: &DictionaryBuilder,
     purpose: CachePurpose,
-    ctx_freq_env: Option<OsString>,
 ) -> LinderaResult<()> {
     fs::create_dir_all(build_dir).map_err(|err| {
         LinderaErrorKind::Io
@@ -1114,7 +1219,7 @@ fn fetch_into(
     // against the current build, and a cache entry that fails the check is
     // rebuilt rather than trusted.
     let expected = if is_cache {
-        expected_build_inputs(params, builder, BUILDER_SOURCE_DIGEST, ctx_freq_env)?
+        expected_build_inputs(params, builder, BUILDER_SOURCE_DIGEST)?
     } else {
         None
     };
@@ -1347,7 +1452,8 @@ fn fetch_into(
 /// Name of the optional per-dictionary context-ID access-frequency histogram,
 /// shipped in the dictionary crate root next to `metadata.json`. Produced by the
 /// `ctxfreq` instrumentation (see the `ctxfreq_dump` example) and consumed when
-/// `connection_id_mapping` is enabled.
+/// `connection_id_mapping` is enabled, unless [`CONTEXT_ID_FREQ_FILE_ENV`]
+/// names another file for the build.
 const CONTEXT_ID_FREQ_FILE: &str = "context_id_freq.txt";
 
 /// Shared body of every per-dictionary crate's `build.rs`.
@@ -1408,14 +1514,88 @@ pub fn build_embedded_dictionary(
 #[cfg(test)]
 mod tests {
     /// The directives every dictionary crate registers, in order.
-    const ALWAYS: [&str; 6] = [
+    const ALWAYS: [&str; 7] = [
         "cargo:rerun-if-changed=build.rs",
         "cargo:rerun-if-changed=Cargo.toml",
         "cargo:rerun-if-changed=metadata.json",
+        "cargo:rerun-if-env-changed=LINDERA_BUILD_CONTEXT_ID_FREQ_FILE",
         "cargo:rerun-if-env-changed=LINDERA_CTX_FREQ_FILE",
         "cargo:rerun-if-env-changed=LINDERA_BUILD_DICTIONARY_CACHE_DIR",
         "cargo:rerun-if-env-changed=DOCS_RS",
     ];
+
+    #[test]
+    fn context_id_freq_file_takes_the_new_name() {
+        assert_eq!(
+            super::choose_context_id_freq_file(Some("new.txt".into()), None),
+            super::ContextIdFreqFileChoice {
+                path: Some("new.txt".into()),
+                warning: None,
+            }
+        );
+    }
+
+    #[test]
+    fn context_id_freq_file_takes_the_deprecated_name_with_a_warning() {
+        assert_eq!(
+            super::choose_context_id_freq_file(None, Some("old.txt".into())),
+            super::ContextIdFreqFileChoice {
+                path: Some("old.txt".into()),
+                warning: Some(
+                    "LINDERA_CTX_FREQ_FILE is deprecated and will be removed in v8.0.0; \
+                     set LINDERA_BUILD_CONTEXT_ID_FREQ_FILE instead"
+                ),
+            }
+        );
+    }
+
+    #[test]
+    fn context_id_freq_file_prefers_the_new_name_and_warns_about_the_old_one() {
+        assert_eq!(
+            super::choose_context_id_freq_file(Some("new.txt".into()), Some("old.txt".into())),
+            super::ContextIdFreqFileChoice {
+                path: Some("new.txt".into()),
+                warning: Some(
+                    "LINDERA_CTX_FREQ_FILE is ignored because \
+                     LINDERA_BUILD_CONTEXT_ID_FREQ_FILE is set; LINDERA_CTX_FREQ_FILE is \
+                     deprecated and will be removed in v8.0.0"
+                ),
+            }
+        );
+    }
+
+    #[test]
+    fn context_id_freq_file_without_either_name() {
+        assert_eq!(
+            super::choose_context_id_freq_file(None, None),
+            super::ContextIdFreqFileChoice {
+                path: None,
+                warning: None,
+            }
+        );
+    }
+
+    #[test]
+    fn context_id_freq_override_replaces_the_bundled_histogram() {
+        let builder = super::DictionaryBuilder::new(super::Metadata::default())
+            .with_context_id_freq("context_id_freq.txt");
+        let builder = super::with_context_id_freq_override(builder, Some("override.txt".into()));
+        assert_eq!(
+            builder.context_id_freq(),
+            Some(std::path::Path::new("override.txt"))
+        );
+    }
+
+    #[test]
+    fn no_context_id_freq_override_keeps_the_bundled_histogram() {
+        let builder = super::DictionaryBuilder::new(super::Metadata::default())
+            .with_context_id_freq("context_id_freq.txt");
+        let builder = super::with_context_id_freq_override(builder, None);
+        assert_eq!(
+            builder.context_id_freq(),
+            Some(std::path::Path::new("context_id_freq.txt"))
+        );
+    }
 
     #[test]
     fn rerun_directives_skip_a_missing_context_id_freq_file() {
@@ -1842,11 +2022,11 @@ mod tests {
     fn expected_inputs_follow_the_histogram_contents_with_mapping() {
         let dir = tempfile::tempdir().unwrap();
         let (builder, histogram) = builder_with_histogram(dir.path(), true);
-        let before = expected_build_inputs(&fetch_params(), &builder, Some("d"), None)
+        let before = expected_build_inputs(&fetch_params(), &builder, Some("d"))
             .unwrap()
             .unwrap();
         fs::write(&histogram, "1 1 6\n").unwrap();
-        let after = expected_build_inputs(&fetch_params(), &builder, Some("d"), None)
+        let after = expected_build_inputs(&fetch_params(), &builder, Some("d"))
             .unwrap()
             .unwrap();
         assert!(before.context_id_freq_md5.is_some());
@@ -1855,23 +2035,19 @@ mod tests {
 
     #[test]
     fn expected_inputs_follow_the_override_histogram() {
-        // The build reads `LINDERA_CTX_FREQ_FILE` before the bundled file, so
-        // the record must hash that one.
+        // The build reads `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` in place of the
+        // bundled file, so the record must hash that one.
         let dir = tempfile::tempdir().unwrap();
         let (builder, _) = builder_with_histogram(dir.path(), true);
         let override_path = dir.path().join("override.txt");
         fs::write(&override_path, "1 1 7\n").unwrap();
-        let bundled = expected_build_inputs(&fetch_params(), &builder, Some("d"), None)
+        let bundled = expected_build_inputs(&fetch_params(), &builder, Some("d"))
             .unwrap()
             .unwrap();
-        let overridden = expected_build_inputs(
-            &fetch_params(),
-            &builder,
-            Some("d"),
-            Some(override_path.clone().into_os_string()),
-        )
-        .unwrap()
-        .unwrap();
+        let builder = with_context_id_freq_override(builder, Some(override_path.clone()));
+        let overridden = expected_build_inputs(&fetch_params(), &builder, Some("d"))
+            .unwrap()
+            .unwrap();
         assert_eq!(
             overridden.context_id_freq_md5,
             Some(file_md5(&override_path).unwrap())
@@ -1885,7 +2061,7 @@ mod tests {
         // change to it must not cost a rebuild.
         let dir = tempfile::tempdir().unwrap();
         let (builder, _) = builder_with_histogram(dir.path(), false);
-        let inputs = expected_build_inputs(&fetch_params(), &builder, Some("d"), None)
+        let inputs = expected_build_inputs(&fetch_params(), &builder, Some("d"))
             .unwrap()
             .unwrap();
         assert_eq!(inputs.context_id_freq_md5, None);
@@ -1899,7 +2075,7 @@ mod tests {
             src_subdir: Some("dict-src"),
             ..fetch_params()
         };
-        let inputs = expected_build_inputs(&params, &builder, Some("digest"), None)
+        let inputs = expected_build_inputs(&params, &builder, Some("digest"))
             .unwrap()
             .unwrap();
         assert_eq!(
@@ -1921,7 +2097,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let (builder, _) = builder_with_histogram(dir.path(), true);
         assert_eq!(
-            expected_build_inputs(&fetch_params(), &builder, None, None).unwrap(),
+            expected_build_inputs(&fetch_params(), &builder, None).unwrap(),
             None
         );
     }
@@ -2013,7 +2189,6 @@ mod tests {
             &seeded_params(md5),
             &DictionaryBuilder::new(source_metadata()),
             CachePurpose::Embed,
-            None,
         )
     }
 
@@ -2023,7 +2198,6 @@ mod tests {
             &seeded_params(md5),
             &DictionaryBuilder::new(source_metadata()),
             BUILDER_SOURCE_DIGEST,
-            None,
         )
         .unwrap()
         .unwrap()

@@ -2,7 +2,8 @@
 //!
 //! Used to build a corpus-frequency context-id remap (the paper's "Mapped" signal),
 //! as opposed to the zero-corpus entry-count proxy. Run it against a corpus, then
-//! point `LINDERA_CTX_FREQ_FILE` at the output when building the dictionary.
+//! point `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` at the output when building the
+//! dictionary crate, or pass it to `lindera build --context-id-freq`.
 //!
 //! ```text
 //! cargo run --release --example ctxfreq_dump \
