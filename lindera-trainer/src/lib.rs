@@ -7,8 +7,8 @@
 //! [`lindera_dictionary`] and the CRF core of [`lindera_crf`].
 
 // The progress goes through `console`, which does not panic when a standard
-// stream is full or closed, as `println!` does (#1312).
-#![cfg_attr(not(test), deny(clippy::print_stdout, clippy::print_stderr))]
+// stream is full or closed, as `println!` does (#1312). `clippy.toml`
+// disallows the print macros, also inside the log macros below.
 
 pub mod config;
 pub mod corpus;

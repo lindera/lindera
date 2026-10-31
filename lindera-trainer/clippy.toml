@@ -1,0 +1,11 @@
+# The trainer writes its progress and warnings through lindera_crf::console,
+# which does not panic when a standard stream is full or closed, as println!
+# does (#1312). clippy::print_stdout and clippy::print_stderr do not see a
+# println! inside this crate's own log macros, so the print macros are
+# disallowed by path instead.
+disallowed-macros = [
+    { path = "std::print", reason = "write through lindera_crf::console, which does not panic (#1312)" },
+    { path = "std::println", reason = "write through lindera_crf::console, which does not panic (#1312)" },
+    { path = "std::eprint", reason = "write through lindera_crf::console, which does not panic (#1312)" },
+    { path = "std::eprintln", reason = "write through lindera_crf::console, which does not panic (#1312)" },
+]
