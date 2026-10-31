@@ -133,25 +133,49 @@ impl PyUserDictionary {
 
 /// Builds a dictionary from source files.
 ///
+/// When the metadata enables `connection_id_mapping`, as the `metadata.json`
+/// of ko-dic and UniDic does, the build relabels the connection matrix's
+/// context IDs by access frequency: by the counts of `context_id_freq`, or,
+/// without it, by the count of dictionary entries. The relabelling changes
+/// the speed of tokenization, never its result.
+///
 /// # Arguments
 ///
 /// * `input_dir` - Directory containing dictionary source files.
 /// * `output_dir` - Directory where the built dictionary will be saved.
 /// * `metadata` - Metadata configuration for the dictionary.
+/// * `context_id_freq` - Optional path of a context-ID frequency histogram,
+///   such as the `context_id_freq.txt` of a dictionary crate, as `lindera
+///   build --context-id-freq` takes it. Read only with
+///   `connection_id_mapping`.
 ///
 /// # Errors
 ///
-/// Returns an error if the input directory doesn't exist or if the build fails.
+/// Returns an error if the input directory doesn't exist or if the build
+/// fails, including when the histogram cannot be read.
 ///
 /// # Examples
 ///
 /// ```python
 /// metadata = lindera.Metadata(name="custom", encoding="UTF-8")
 /// lindera.build_dictionary("/path/to/input", "/path/to/output", metadata)
+///
+/// metadata = lindera.Metadata.from_json_file("lindera-ko-dic/metadata.json")
+/// lindera.build_dictionary(
+///     "/path/to/mecab-ko-dic",
+///     "/path/to/output",
+///     metadata,
+///     context_id_freq="lindera-ko-dic/context_id_freq.txt",
+/// )
 /// ```
 #[pyfunction]
-#[pyo3(signature = (input_dir, output_dir, metadata))]
-pub fn build_dictionary(input_dir: &str, output_dir: &str, metadata: PyMetadata) -> PyResult<()> {
+#[pyo3(signature = (input_dir, output_dir, metadata, context_id_freq=None))]
+pub fn build_dictionary(
+    input_dir: &str,
+    output_dir: &str,
+    metadata: PyMetadata,
+    context_id_freq: Option<&str>,
+) -> PyResult<()> {
     let input_path = Path::new(input_dir);
     let output_path = Path::new(output_dir);
 
@@ -161,11 +185,13 @@ pub fn build_dictionary(input_dir: &str, output_dir: &str, metadata: PyMetadata)
         )));
     }
 
-    let builder = DictionaryBuilder::new(metadata.into());
-
-    builder
-        .build_dictionary(input_path, output_path)
-        .map_err(|e| PyValueError::new_err(format!("Failed to build dictionary: {e}")))?;
+    lindera_binding::dictionary::build_dictionary(
+        input_path,
+        output_path,
+        metadata.into(),
+        context_id_freq.map(Path::new),
+    )
+    .map_err(|e| PyValueError::new_err(format!("Failed to build dictionary: {e}")))?;
 
     Ok(())
 }

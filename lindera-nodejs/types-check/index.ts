@@ -11,7 +11,9 @@
 // exposes does not resolve. It is never executed; only type-checked.
 
 import {
+  buildDictionary,
   loadDictionary,
+  Metadata,
   Mode,
   Tokenizer,
   TokenizerBuilder,
@@ -96,6 +98,21 @@ export function checkTokenizerConstructorForms(
     // @ts-expect-error -- a mode is a Mode, not its name (#1218).
     new Tokenizer(dictionary, "normal"),
   ];
+}
+
+// The histogram of `buildDictionary` is optional, so the calls written before
+// it was added keep compiling (#1309).
+export function checkBuildDictionaryForms(metadata: Metadata): void {
+  buildDictionary("/path/to/source", "/path/to/output", metadata);
+  buildDictionary("/path/to/source", "/path/to/output", metadata, null);
+  buildDictionary(
+    "/path/to/source",
+    "/path/to/output",
+    metadata,
+    "/path/to/context_id_freq.txt",
+  );
+  // @ts-expect-error -- the histogram is a path.
+  buildDictionary("/path/to/source", "/path/to/output", metadata, 0);
 }
 
 // A `Mode` holds the penalty of decompose mode, as the Rust `Mode` does
