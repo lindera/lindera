@@ -6,6 +6,10 @@
 //! binary dictionary. It builds on the runtime types of
 //! [`lindera_dictionary`] and the CRF core of [`lindera_crf`].
 
+// The progress goes through `console`, which does not panic when a standard
+// stream is full or closed, as `println!` does (#1312).
+#![cfg_attr(not(test), deny(clippy::print_stdout, clippy::print_stderr))]
+
 pub mod config;
 pub mod corpus;
 mod feature_csv;
@@ -28,33 +32,40 @@ use self::feature_csv::{split_feature, wildcard_feature};
 use self::feature_extractor::{FeatureExtractor, TemplateContext};
 use self::feature_rewriter::{DictionaryRewriter, RewriteBuffers};
 
-/// Logging macros for training process
+/// Logging macros for training process. They write the progress to stdout
+/// through [`console::write_line`], which waits while the stream is full and
+/// drops a line it can no longer take, instead of panicking as `println!`
+/// does (#1312).
 macro_rules! log_info {
     ($($arg:tt)*) => {
-        println!($($arg)*)
+        $crate::console::write_line($crate::console::Stream::Stdout, format_args!($($arg)*))
     };
 }
 
 macro_rules! log_debug {
     ($($arg:tt)*) => {
         if cfg!(debug_assertions) {
-            println!("DEBUG: {}", format!($($arg)*))
+            $crate::console::write_line(
+                $crate::console::Stream::Stdout,
+                format_args!("DEBUG: {}", format_args!($($arg)*)),
+            )
         }
     };
 }
 
 macro_rules! log_progress {
     ($($arg:tt)*) => {
-        println!($($arg)*)
+        $crate::console::write_line($crate::console::Stream::Stdout, format_args!($($arg)*))
     };
 }
 
-/// Writes a warning on stderr, apart from the progress on stdout. It does
-/// not go through the `log` crate, for which the bindings install no logger,
-/// so that their users see it too (#1259).
+/// Writes a warning on stderr, apart from the progress on stdout, through
+/// [`console::write_line`] as well. It does not go through the `log` crate,
+/// for which the bindings install no logger, so that their users see it too
+/// (#1259).
 macro_rules! log_warn {
     ($($arg:tt)*) => {
-        eprintln!($($arg)*)
+        $crate::console::write_line($crate::console::Stream::Stderr, format_args!($($arg)*))
     };
 }
 
@@ -74,6 +85,11 @@ pub use lindera_crf::DEFAULT_ETA;
 /// default type, it gives the objective of MeCab's learner with its default
 /// `-c 1.0`; in general the coefficient is `1 / C`.
 pub use lindera_crf::DEFAULT_LAMBDA;
+
+/// Writing progress lines to the standard output and the standard error
+/// without panicking, which the trainer uses for its progress and warnings,
+/// and the bindings for the lines of their training functions.
+pub use lindera_crf::console;
 
 /// CRF-based morphological analysis trainer for Japanese text
 ///
@@ -771,11 +787,11 @@ impl Trainer {
         trainer: lindera_crf::Trainer,
         lattices: Vec<lindera_crf::Lattice>,
     ) -> Result<(lindera_crf::RawModel, u64)> {
-        println!("L-BFGS optimization starting...");
-        println!(
-            "Note: This may take several minutes for large datasets. Progress will be shown by L-BFGS iterations above."
+        log_info!("L-BFGS optimization starting...");
+        log_info!(
+            "Note: This may take several minutes for large datasets. Progress will be shown by L-BFGS iterations below."
         );
-        println!("Each 'iter:' line indicates training progress. Please wait...");
+        log_info!("Each 'iter:' line indicates training progress. Please wait...");
 
         let start_time = std::time::Instant::now();
 
@@ -785,14 +801,16 @@ impl Trainer {
         let training_duration = start_time.elapsed();
 
         self.log_training_results(&model);
-        println!(
+        log_info!(
             "L-BFGS stopped after {} iterations and {} evaluations of the loss and its gradient: {}",
-            stats.iterations, stats.evaluations, stats.stop_reason
+            stats.iterations,
+            stats.evaluations,
+            stats.stop_reason
         );
         if let Some(warning) = optimizer_warning(stats.stop_reason) {
             log_warn!("{warning}");
         }
-        println!(
+        log_info!(
             "Training completed successfully in {:.2}s!",
             training_duration.as_secs_f64()
         );
@@ -1178,7 +1196,7 @@ impl Trainer {
 
     /// Remove unused features from the feature extractor to optimize the model size and performance
     fn remove_unused_features(&mut self, model: &lindera_crf::RawModel) {
-        println!("Removing unused features...");
+        log_info!("Removing unused features...");
 
         use std::collections::HashSet;
 
@@ -1213,7 +1231,7 @@ impl Trainer {
             |id| used_right_features.contains(&id.get()),
         );
 
-        println!("Feature cleanup completed");
+        log_info!("Feature cleanup completed");
     }
 }
 

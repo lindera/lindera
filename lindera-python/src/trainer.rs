@@ -27,6 +27,10 @@
 //! )
 //! ```
 
+// The lines go through `console`, which does not panic when a standard stream
+// is full or closed, as `println!` does (#1312).
+#![cfg_attr(not(test), deny(clippy::print_stdout, clippy::print_stderr))]
+
 use std::fs::File;
 use std::path::Path;
 
@@ -35,6 +39,7 @@ use pyo3::{exceptions::PyValueError, prelude::*};
 use lindera::dictionary::trainer::{
     Corpus, DEFAULT_ELASTIC_NET_L1_RATIO, DEFAULT_ETA, DEFAULT_LAMBDA, Model,
     ParseRegularizationTypeError, RegularizationType, SerializableModel, Trainer, TrainerConfig,
+    console::{self, Stream},
 };
 use lindera_binding::argument::{
     Positive, integer_argument_message, non_negative_float_argument, unit_interval_argument,
@@ -182,7 +187,10 @@ pub fn train(
     let corpus = Corpus::from_reader(corpus_file)
         .map_err(|e| PyValueError::new_err(format!("Failed to load corpus: {e}")))?;
 
-    println!("Training with {} examples...", corpus.len());
+    console::write_line(
+        Stream::Stdout,
+        format_args!("Training with {} examples...", corpus.len()),
+    );
 
     // Train model
     let model = trainer
@@ -203,7 +211,10 @@ pub fn train(
         .write_model(&mut output_file)
         .map_err(|e| PyValueError::new_err(format!("Failed to write model: {e}")))?;
 
-    println!("Model saved to {}", output_path.display());
+    console::write_line(
+        Stream::Stdout,
+        format_args!("Model saved to {}", output_path.display()),
+    );
     Ok(())
 }
 
@@ -259,13 +270,19 @@ pub fn export(model: &str, output: &str, metadata: Option<&str>) -> PyResult<()>
         .map_err(|e| PyValueError::new_err(format!("Failed to export dictionary files: {e}")))?;
 
     if metadata_path.is_some() {
-        println!("Updated metadata.json with trained model values");
+        console::write_line(
+            Stream::Stdout,
+            format_args!("Updated metadata.json with trained model values"),
+        );
     }
 
-    println!("Dictionary files exported to: {}", output_path.display());
-    println!("Files created:");
+    console::write_line(
+        Stream::Stdout,
+        format_args!("Dictionary files exported to: {}", output_path.display()),
+    );
+    console::write_line(Stream::Stdout, format_args!("Files created:"));
     for file in &files_created {
-        println!("  - {}", file.display());
+        console::write_line(Stream::Stdout, format_args!("  - {}", file.display()));
     }
 
     Ok(())

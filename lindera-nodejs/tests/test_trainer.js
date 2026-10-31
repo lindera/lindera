@@ -1,4 +1,5 @@
 const assert = require("assert");
+const { spawn } = require("child_process");
 const { describe, it } = require("node:test");
 const fs = require("fs");
 const os = require("os");
@@ -509,6 +510,117 @@ describe(
           (error) => !/does not exist/.test(error.message),
           JSON.stringify(options),
         );
+      }
+    });
+  },
+);
+
+// Node.js makes the standard streams of a `node --test` child non-blocking,
+// and the training used to panic on a write that would block, which aborted
+// Node.js (#1312). Each child below fills one of its streams until a write
+// fails with EAGAIN and then trains, while this process reads nothing for 5
+// seconds: the training must wait for the stream, not abort or lose a line.
+describe(
+  "Training with a full standard stream",
+  {
+    skip: !hasTrainFeature
+      ? "train feature not available"
+      : process.platform === "win32" &&
+        "the standard streams are not non-blocking on Windows",
+  },
+  () => {
+    const index = path.join(__dirname, "..", "index.js");
+    const training = path.join(__dirname, "..", "..", "resources", "training");
+
+    // The script of a child that fills `fd` and then trains into `output`.
+    // It exits with 3 if 64 MiB went through without EAGAIN, so that a
+    // stream that blocks cannot pass the test.
+    const childScript = (fd, output) => `
+      const fs = require("fs");
+      const path = require("path");
+      const lindera = require(${JSON.stringify(index)});
+      // Node.js opens the streams as non-blocking pipes, as for a test file.
+      void process.stdout;
+      void process.stderr;
+      const chunk = Buffer.alloc(64 * 1024, "x");
+      let filled = false;
+      for (let total = 0; total < 64 * 1024 * 1024 && !filled; total += chunk.length) {
+        try {
+          fs.writeSync(${fd}, chunk);
+        } catch (error) {
+          if (error.code !== "EAGAIN") throw error;
+          filled = true;
+        }
+      }
+      if (!filled) process.exit(3);
+      const training = ${JSON.stringify(training)};
+      lindera.train({
+        seed: path.join(training, "seed.csv"),
+        corpus: path.join(training, "corpus.txt"),
+        charDef: path.join(training, "char.def"),
+        unkDef: path.join(training, "unk.def"),
+        featureDef: path.join(training, "feature.def"),
+        rewriteDef: path.join(training, "rewrite.def"),
+        output: ${JSON.stringify(output)},
+        maxIter: 5,
+        maxThreads: 1,
+      });
+    `;
+
+    // Starts a child that fills `fd` (1 or 2), the other stream going to
+    // the null device, and resolves with how it ended and what it wrote to
+    // `fd`.
+    const run = (fd, output) => {
+      const stdio = ["ignore", "ignore", "ignore"];
+      stdio[fd] = "pipe";
+      const child = spawn(process.execPath, ["-e", childScript(fd, output)], {
+        stdio,
+        timeout: 60_000,
+      });
+      const chunks = [];
+      child.stdio[fd].on("data", (chunk) => chunks.push(chunk));
+      return new Promise((resolve) => {
+        child.on("close", (code, signal) =>
+          resolve({ code, signal, text: Buffer.concat(chunks).toString() }),
+        );
+      });
+    };
+
+    it("waits until the stream takes the progress lines", async () => {
+      const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "lindera-test-"));
+      try {
+        const stdoutModel = path.join(tmpdir, "stdout.dat");
+        const stderrModel = path.join(tmpdir, "stderr.dat");
+        const runs = [run(1, stdoutModel), run(2, stderrModel)];
+        // Read nothing for 5 seconds, while the children fill their stream
+        // and start training.
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5000);
+        const [stdout, stderr] = await Promise.all(runs);
+
+        const tail = (text) => text.slice(-2000);
+        assert.deepStrictEqual(
+          { code: stdout.code, signal: stdout.signal },
+          { code: 0, signal: null },
+          `the child that filled stdout: ${tail(stdout.text)}`,
+        );
+        assert.deepStrictEqual(
+          { code: stderr.code, signal: stderr.signal },
+          { code: 0, signal: null },
+          `the child that filled stderr: ${tail(stderr.text)}`,
+        );
+        // The first and the last line of the binding on stdout, and the
+        // first lines of the L-BFGS observer on stderr, each right after
+        // the bytes that filled the stream.
+        assert.match(stdout.text, /x+Training with \d+ examples\.\.\.\n/);
+        assert.ok(
+          stdout.text.endsWith(`Model saved to ${stdoutModel}\n`),
+          tail(stdout.text),
+        );
+        assert.match(stderr.text, /x+L-BFGS\niter: 0, cost: /);
+        assert.ok(fs.existsSync(stdoutModel));
+        assert.ok(fs.existsSync(stderrModel));
+      } finally {
+        fs.rmSync(tmpdir, { recursive: true, force: true });
       }
     });
   },

@@ -133,6 +133,9 @@ assert_eq!(vec![
 "
 )]
 #![deny(missing_docs)]
+// The progress goes through `console`, which does not panic when a standard
+// stream is full or closed, as `println!` does (#1312).
+#![cfg_attr(not(test), deny(clippy::print_stdout, clippy::print_stderr))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
