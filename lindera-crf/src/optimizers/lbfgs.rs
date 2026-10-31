@@ -3,12 +3,14 @@
 use core::cell::{Cell, RefCell};
 use core::num::NonZeroU32;
 
+use alloc::string::String;
 use alloc::vec::Vec;
 
 use argmin::{
     core::{
         CostFunction, Executor, Gradient, IterState, KV, Problem, Solver, State, TerminationReason,
-        TerminationStatus, observers::ObserverMode,
+        TerminationStatus,
+        observers::{Observe, ObserverMode},
     },
     solver::{
         linesearch::{
@@ -17,9 +19,9 @@ use argmin::{
         quasinewton::LBFGS,
     },
 };
-use argmin_observer_slog::SlogLogger;
 use hashbrown::HashMap;
 
+use crate::console::{self, Stream};
 use crate::feature::FeatureProvider;
 use crate::lattice::Lattice;
 use crate::trainer::{LatticesLoss, Regularization, StopReason};
@@ -292,7 +294,8 @@ fn norm(v: &[f64]) -> f64 {
 /// converged, and only a stop far from it is reported as one that made no
 /// progress or whose line search failed. It adds MeCab's test on the
 /// relative change ([`RelativeChange`]), and delegates everything else to
-/// the wrapped solver, so the steps and the log lines are argmin's.
+/// the wrapped solver, so the steps, and the key-value pairs that
+/// [`IterationLog`] writes after each iteration, are argmin's.
 struct ConvergenceTest<S> {
     /// The wrapped L-BFGS solver.
     solver: S,
@@ -702,6 +705,96 @@ pub fn optimize(
     }
 }
 
+/// Writes the progress of an L-BFGS run to the standard error: the
+/// solver's name when the run starts, and a line per iteration with its
+/// number, its cost, the best cost so far and the solver's key-value pairs,
+/// such as `iter: 6, cost: 2.45, best_cost: 2.45, gamma: 0.24`.
+///
+/// It writes on the training thread through [`console::write_line`], which
+/// waits while the stream is full and drops a line the stream can no longer
+/// take, and it always returns `Ok(())`, since [`run`] unwraps the result of
+/// the run. argmin-observer-slog's terminal logger, used before, wrote from
+/// a thread of its own and panicked when a write failed, which aborted
+/// Node.js (#1312).
+struct IterationLog;
+
+impl Observe<LbfgsState> for IterationLog {
+    fn observe_init(
+        &mut self,
+        name: &str,
+        _state: &LbfgsState,
+        kv: &KV,
+    ) -> Result<(), argmin::core::Error> {
+        console::write_line(Stream::Stderr, format_args!("{}", init_line(name, kv)));
+        Ok(())
+    }
+
+    fn observe_iter(&mut self, state: &LbfgsState, kv: &KV) -> Result<(), argmin::core::Error> {
+        let line = iteration_line(
+            state.get_iter(),
+            state.get_cost(),
+            state.get_best_cost(),
+            kv,
+        );
+        console::write_line(Stream::Stderr, format_args!("{line}"));
+        Ok(())
+    }
+}
+
+/// Formats the key-value pairs of a solver as `, key: value` for each,
+/// sorted by key, since argmin keeps them in a hash map.
+///
+/// # Arguments
+///
+/// * `kv` - The key-value pairs.
+///
+/// # Returns
+///
+/// The pairs, or an empty string when there are none.
+fn key_values(kv: &KV) -> String {
+    let mut pairs: Vec<_> = kv.kv.iter().collect();
+    pairs.sort_unstable_by(|a, b| a.0.cmp(b.0));
+    pairs
+        .into_iter()
+        .map(|(key, value)| format!(", {key}: {value}"))
+        .collect()
+}
+
+/// Formats the line written when a run starts.
+///
+/// # Arguments
+///
+/// * `name` - The solver's name.
+/// * `kv` - The solver's key-value pairs.
+///
+/// # Returns
+///
+/// The name, followed by the pairs as [`key_values`] formats them.
+fn init_line(name: &str, kv: &KV) -> String {
+    format!("{name}{}", key_values(kv))
+}
+
+/// Formats the line written after an iteration, with the keys and the
+/// number format of argmin-observer-slog's lines.
+///
+/// # Arguments
+///
+/// * `iter` - The number of the iteration, from 0.
+/// * `cost` - The cost at the iteration.
+/// * `best_cost` - The best cost so far.
+/// * `kv` - The solver's key-value pairs.
+///
+/// # Returns
+///
+/// `iter: <iter>, cost: <cost>, best_cost: <best_cost>`, followed by the
+/// pairs as [`key_values`] formats them.
+fn iteration_line(iter: u64, cost: f64, best_cost: f64, kv: &KV) -> String {
+    format!(
+        "iter: {iter}, cost: {cost}, best_cost: {best_cost}{}",
+        key_values(kv)
+    )
+}
+
 /// Runs a wrapped L-BFGS solver on `problem` from `weights_init`.
 ///
 /// # Arguments
@@ -722,7 +815,7 @@ where
     let mut res = Executor::new(problem, ConvergenceTest::new(solver, eta))
         .configure(|state| state.param(weights_init).max_iters(max_iter))
         .ctrlc(false)
-        .add_observer(SlogLogger::term(), ObserverMode::Always)
+        .add_observer(IterationLog, ObserverMode::Always)
         .run()
         .unwrap();
     let iterations = res.state.get_iter();
@@ -805,6 +898,30 @@ mod tests {
         let mut state = IterState::new().param(param).cost(cost);
         state.update();
         state
+    }
+
+    #[test]
+    fn iteration_line_sorts_the_solver_pairs_by_key() {
+        // Nine keys, inserted out of order: a hash map gives them back
+        // sorted by chance once in 9! = 362,880 orders.
+        let mut kv = KV::new();
+        for key in ["h", "c", "f", "a", "g", "d", "b", "e"] {
+            kv.insert(key, argmin::core::KvValue::Uint(1));
+        }
+        kv.insert("gamma", argmin::core::KvValue::Float(0.25));
+        assert_eq!(
+            iteration_line(6, 2.5, 2.25, &kv),
+            "iter: 6, cost: 2.5, best_cost: 2.25, a: 1, b: 1, c: 1, d: 1, e: 1, f: 1, g: 1, \
+             gamma: 0.25, h: 1"
+        );
+    }
+
+    #[test]
+    fn init_line_is_the_solver_name_alone_without_pairs() {
+        assert_eq!(init_line("L-BFGS", &KV::new()), "L-BFGS");
+        let mut kv = KV::new();
+        kv.insert("m", argmin::core::KvValue::Uint(7));
+        assert_eq!(init_line("L-BFGS", &kv), "L-BFGS, m: 7");
     }
 
     #[test]
