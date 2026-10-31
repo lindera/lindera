@@ -80,7 +80,7 @@ $tokenizer = $builder->build();
 | `Dictionary::loadUser($path, $metadata)` | `UserDictionary` | ユーザー辞書を読み込む |
 | `Dictionary::loadUserFor($path, $dictionary)` | `UserDictionary` | システム辞書に合わせてユーザー辞書を読み込む |
 | `Dictionary::version()` | `string` | Lindera のバージョン文字列を返す |
-| `Dictionary::build($source, $dest, $metadata)` | `void` | 辞書をビルドする |
+| `Dictionary::build($source, $dest, $metadata, $context_id_freq = null)` | `void` | 辞書をビルドする |
 | `Dictionary::buildUser($kind, $source, $dest, $metadata)` | `void` | ユーザー辞書をビルドする |
 | `Dictionary::buildUserFor($source, $dest, $dictionary)` | `void` | システム辞書に合わせてユーザー辞書をビルドする |
 | `$dictionary->metadata()` | `Metadata` | 辞書のメタデータを返す |
@@ -103,6 +103,20 @@ Lindera\Dictionary::build('/path/to/input_dir', '/path/to/output_dir', $metadata
 入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。
 
 `Lindera\Metadata::fromJsonFile` で読み込んだメタデータは `metadata.json` の `space_penalty` ルールを保持し、ビルドした辞書にもそのルールが同梱されます。そのため ko-dic をビルドした場合も、左側空白ペナルティはデフォルトでオンのままです。トークナイザーごとにオフにするには `TokenizerBuilder::setSpacePenalty(false)` を使います（[Tokenizer API](./tokenizer_api.md#setspacepenaltyvalue) を参照）。コンストラクタで作成した `Metadata` はルールを持ちません。
+
+`Lindera\Metadata::fromJsonFile` で読み込んだメタデータは、ko-dic と UniDic の `metadata.json` が有効にしている `connection_id_mapping` も保持します。このときビルドは、`lindera build` と同じく連接コスト行列の文脈 ID を参照頻度の順に付け替え、連接コストを引くときのキャッシュ局所性を高めます。トークナイズの結果は変わりません。4 番目の引数 `$context_id_freq` に文脈 ID の頻度表（辞書クレートの `context_id_freq.txt` など）を渡すと、`lindera build --context-id-freq` と同じく、コーパスでの頻度で ID を並べます。渡さなければ、辞書の項目の数で並べます。これは頻度の代わりとしてはずっと弱いものです。`connection_id_mapping` のない辞書は頻度表を読みません。
+
+```php
+<?php
+
+$metadata = Lindera\Metadata::fromJsonFile('/path/to/lindera-ko-dic/metadata.json');
+Lindera\Dictionary::build(
+    '/path/to/mecab-ko-dic',
+    '/path/to/output_dir',
+    $metadata,
+    '/path/to/lindera-ko-dic/context_id_freq.txt'
+);
+```
 
 以下は IPADIC 辞書をダウンロードしてビルドする例です：
 

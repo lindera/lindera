@@ -49,7 +49,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **`LINDERA_DICTIONARIES_PATH` の削除** | 非推奨のビルドキャッシュ変数をまだ設定しているユーザー | `LINDERA_BUILD_DICTIONARY_CACHE_DIR` を設定する。旧名は無視される |
 | **`LINDERA_CONFIG_PATH` を `LINDERA_CONFIG_FILE` に改名** | `TokenizerBuilder::new()`・`lindera tokenize`・言語バインディングのために `LINDERA_CONFIG_PATH` を設定しているユーザー | `LINDERA_CONFIG_FILE` を設定する。旧名も v8.0.0 までは非推奨の警告付きで使える |
 | `LINDERA_WORKDIR` を `LINDERA_WORK_DIR` に改名 | 自前の build script で `embedded_dictionary!` のために `LINDERA_WORKDIR` を設定している辞書クレートだけ | `LINDERA_WORK_DIR` を設定する。`build_embedded_dictionary` を使うクレートは対応不要 |
-| `LINDERA_CTX_FREQ_FILE` を `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` に改名し、辞書クレートの build script だけが読む | UniDic や ko-dic のように `connection_id_mapping` を有効にした辞書のために `LINDERA_CTX_FREQ_FILE` を設定しているユーザー | `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` を設定する（旧名も build script では v8.0.0 まで非推奨の警告付きで使える）。`lindera build` には `--context-id-freq` で頻度表を渡す |
+| `LINDERA_CTX_FREQ_FILE` を `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` に改名し、辞書クレートの build script だけが読む | UniDic や ko-dic のように `connection_id_mapping` を有効にした辞書のために `LINDERA_CTX_FREQ_FILE` を設定しているユーザー | `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` を設定する（旧名も build script では v8.0.0 まで非推奨の警告付きで使える）。`lindera build` には `--context-id-freq` で、バインディングのビルド関数には `context_id_freq` で頻度表を渡す |
 | **`lindera download` は辞書を `LINDERA_DICTIONARIES_DIR/<name>` に置き、`LINDERA_DATA_DIR` を置き換える** | `lindera download` と `lindera list` のユーザー、`LINDERA_DATA_DIR` を設定しているユーザー | 辞書を再ダウンロードする。`LINDERA_DICTIONARIES_DIR` を設定する（旧名も v8.0.0 までは `<dir>/dictionaries` として非推奨の警告付きで使える） |
 | **`--dict` と `--system-dict` は辞書名を受け付けない** | `lindera tokenize --dict ipadic` や `lindera build --system-dict ipadic` を実行しているユーザー | `lindera download` が表示するパスか、`embedded://ipadic` を渡す |
 | **Rust 1.89 以降が必要** | Rust 1.88 で Lindera をビルドするユーザー（Python・Ruby パッケージのソースからのビルドを含む） | ツールチェーンを更新する（`rustup update stable`） |
@@ -412,14 +412,18 @@ error: environment variable `LINDERA_WORK_DIR` not defined at compile time
 `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` が指す文脈 ID の頻度表を読みます
 （[#1308](https://github.com/lindera/lindera/issues/1308)）。v6 まではこの変数の
 名前は `LINDERA_CTX_FREQ_FILE` で、`DictionaryBuilder` 自身が読んでいたので、
-`lindera build`（`--context-id-freq` より優先されていました）と、バインディングの
-辞書をビルドする関数にも効いていました。v7 では次のようになります。
+`lindera build` にも効いていました（`--context-id-freq` より優先されていました）。
+v7 では次のようになります。
 
 - この変数を読むのは build script だけで、`DictionaryBuilder` は環境変数を
   読みません。`lindera build` は `--context-id-freq` だけで頻度表を受け取り、
-  バインディングの辞書をビルドする関数は頻度表を受け取らないので、これらが
-  `connection_id_mapping` を有効にしてビルドする辞書は、辞書の項目の数で文脈 ID を
-  並べます。
+  バインディングの辞書をビルドする関数は省略可能な引数 `context_id_freq`
+  （Node.js では `contextIdFreq`）で受け取ります
+  （[#1309](https://github.com/lindera/lindera/issues/1309)）。
+- バインディングの `Metadata` は、読み込んだ `metadata.json` の
+  `connection_id_mapping` を保持します。v6 まではこの設定を落としていたので、
+  バインディングは UniDic と ko-dic を文脈 ID を付け替えずにビルドしていて、
+  この変数も効いていませんでした。
 - `LINDERA_CTX_FREQ_FILE` も、build script では v8.0.0 まで非推奨の警告付きで
   使えます。`LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` も設定されていれば無視され、
   その旨の警告が出ます:

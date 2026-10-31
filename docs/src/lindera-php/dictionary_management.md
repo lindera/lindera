@@ -91,6 +91,20 @@ The input directory should contain the dictionary source files (CSV lexicon, mat
 
 Metadata loaded with `Lindera\Metadata::fromJsonFile` keeps the `space_penalty` rules of the `metadata.json`, and the built dictionary ships them. For ko-dic this means the left-space penalty stays on by default in the dictionary you build; turn it off per tokenizer with `TokenizerBuilder::setSpacePenalty(false)` (see [Tokenizer API](./tokenizer_api.md#setspacepenaltyvalue)). Metadata created with the constructor carries no rules.
 
+Metadata loaded with `Lindera\Metadata::fromJsonFile` also keeps `connection_id_mapping`, which the `metadata.json` of ko-dic and UniDic enables. The build then relabels the context IDs of the connection matrix by access frequency, as `lindera build` does, to improve the cache locality of connection-cost lookups; the results of tokenization do not change. Pass a context-ID frequency histogram as the fourth argument, `$context_id_freq`, such as the `context_id_freq.txt` of the dictionary crate, to rank the IDs by their frequency in a corpus, as `lindera build --context-id-freq` does. Without one, the IDs are ranked by the count of dictionary entries, a much weaker proxy. A dictionary without `connection_id_mapping` does not read the histogram.
+
+```php
+<?php
+
+$metadata = Lindera\Metadata::fromJsonFile('/path/to/lindera-ko-dic/metadata.json');
+Lindera\Dictionary::build(
+    '/path/to/mecab-ko-dic',
+    '/path/to/output_dir',
+    $metadata,
+    '/path/to/lindera-ko-dic/context_id_freq.txt'
+);
+```
+
 Here is an example that downloads and builds the IPADIC dictionary:
 
 ```php

@@ -70,7 +70,7 @@ export LINDERA_BUILD_CONTEXT_ID_FREQ_FILE=/path/to/context_id_freq.txt
 cargo build --features=embed-unidic
 ```
 
-この変数を読むのは build script だけです。`lindera build` は `--context-id-freq` オプションで頻度表を受け取り、バインディングの辞書をビルドする関数は頻度表を受け取りません。変数や、変数が指すファイルを変えると build script が再実行され、`LINDERA_BUILD_DICTIONARY_CACHE_DIR` のキャッシュは頻度表の内容を比べます。
+この変数を読むのは build script だけです。`lindera build` は `--context-id-freq` オプションで頻度表を受け取り、バインディングの辞書をビルドする関数は省略可能な引数 `context_id_freq`（Node.js では `contextIdFreq`）で受け取ります。変数や、変数が指すファイルを変えると build script が再実行され、`LINDERA_BUILD_DICTIONARY_CACHE_DIR` のキャッシュは頻度表の内容を比べます。
 
 v6 までの名前 `LINDERA_CTX_FREQ_FILE` も v8.0.0 までは使えますが、非推奨の警告が出ます：
 
