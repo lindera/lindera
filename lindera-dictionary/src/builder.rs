@@ -34,10 +34,11 @@ use crate::error::LinderaErrorKind;
 #[derive(Clone)]
 pub struct DictionaryBuilder {
     metadata: Metadata,
-    /// Optional path to a bundled context-ID access-frequency histogram, used to
-    /// rank context IDs when `metadata.connection_id_mapping` is enabled. Shipped
-    /// alongside `metadata.json` in the dictionary crate; see
-    /// [`context_id_remap::compute_context_id_remap`] for the precedence rules.
+    /// Optional path to a context-ID access-frequency histogram, used to rank
+    /// context IDs when `metadata.connection_id_mapping` is enabled: the one
+    /// shipped alongside `metadata.json` in the dictionary crate, or the one a
+    /// build script passes in its place; see
+    /// [`context_id_remap::compute_context_id_remap`].
     context_id_freq: Option<std::path::PathBuf>,
     /// The connection matrix size of the system dictionary a user dictionary
     /// is built for, set by [`Self::with_system_matrix`]. `None` builds a
@@ -63,8 +64,13 @@ impl DictionaryBuilder {
         &self.metadata
     }
 
-    /// Attach a bundled context-ID frequency histogram used for the connection-cost
-    /// remap ranking.
+    /// Attach a context-ID frequency histogram used for the connection-cost
+    /// remap ranking, replacing any attached before.
+    ///
+    /// The builder does not read the environment: the dictionary crates' build
+    /// scripts attach the file named by `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`
+    /// with this method, in place of the bundled `context_id_freq.txt`, and
+    /// `lindera build` attaches the file of `--context-id-freq`.
     ///
     /// # Arguments
     ///
@@ -78,14 +84,12 @@ impl DictionaryBuilder {
         self
     }
 
-    /// Returns the bundled context-ID frequency histogram attached with
-    /// [`Self::with_context_id_freq`].
+    /// Returns the context-ID frequency histogram attached with
+    /// [`Self::with_context_id_freq`], the one the build reads.
     ///
     /// # Returns
     ///
-    /// The histogram's path, or `None` when none is attached. The build may
-    /// still read another file: see
-    /// [`context_id_remap::resolve_context_id_freq`].
+    /// The histogram's path, or `None` when none is attached.
     #[cfg(feature = "build_rs")]
     pub(crate) fn context_id_freq(&self) -> Option<&Path> {
         self.context_id_freq.as_deref()

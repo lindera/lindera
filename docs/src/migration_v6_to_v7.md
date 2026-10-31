@@ -52,6 +52,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`LINDERA_DICTIONARIES_PATH` is removed** | Anyone still setting the deprecated build-cache variable | Set `LINDERA_BUILD_DICTIONARY_CACHE_DIR`; the old name is now ignored |
 | **`LINDERA_CONFIG_PATH` is renamed to `LINDERA_CONFIG_FILE`** | Anyone who sets `LINDERA_CONFIG_PATH` for `TokenizerBuilder::new()`, `lindera tokenize` or a language binding | Set `LINDERA_CONFIG_FILE`; the old name works with a deprecation warning until v8.0.0 |
 | `LINDERA_WORKDIR` is renamed to `LINDERA_WORK_DIR` | Only a dictionary crate whose own build script sets `LINDERA_WORKDIR` for `embedded_dictionary!` | Set `LINDERA_WORK_DIR`; a crate that uses `build_embedded_dictionary` needs nothing |
+| `LINDERA_CTX_FREQ_FILE` is renamed to `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`, which only the build scripts of the dictionary crates read | Anyone who sets `LINDERA_CTX_FREQ_FILE` for a dictionary with `connection_id_mapping`, such as UniDic and ko-dic | Set `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` (the old name works in the build scripts with a deprecation warning until v8.0.0); give `lindera build` the histogram with `--context-id-freq` |
 | **`lindera download` puts dictionaries in `LINDERA_DICTIONARIES_DIR/<name>`, which replaces `LINDERA_DATA_DIR`** | Users of `lindera download` and `lindera list`, and anyone who sets `LINDERA_DATA_DIR` | Download the dictionaries again; set `LINDERA_DICTIONARIES_DIR` (the old name works, as `<dir>/dictionaries`, with a deprecation warning until v8.0.0) |
 | **`--dict` and `--system-dict` no longer take a dictionary name** | Anyone who runs `lindera tokenize --dict ipadic` or `lindera build --system-dict ipadic` | Pass the path that `lindera download` prints, or `embedded://ipadic` |
 | **Rust 1.89 or newer is required** | Anyone who builds Lindera with Rust 1.88, including a source build of the Python or Ruby package | Update the toolchain (`rustup update stable`) |
@@ -424,9 +425,53 @@ instead; otherwise it fails to compile:
 error: environment variable `LINDERA_WORK_DIR` not defined at compile time
 ```
 
-Users do not set this variable, and the environment variables of the
-[installation page](./getting_started/installation.md#environment-variables)
-no longer list it.
+Users do not set this variable, and the
+[Environment Variables](./getting_started/environment_variables.md) page does
+not list it.
+
+## LINDERA_CTX_FREQ_FILE renamed to LINDERA_BUILD_CONTEXT_ID_FREQ_FILE
+
+The build scripts of the dictionary crates read the context-ID frequency
+histogram named by `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` in place of the
+`context_id_freq.txt` bundled with the crate, when `metadata.json` enables
+`connection_id_mapping`, as it does for UniDic and ko-dic
+([#1308](https://github.com/lindera/lindera/issues/1308)). Up to v6 the
+variable was `LINDERA_CTX_FREQ_FILE`, and `DictionaryBuilder` read it itself,
+so it also applied to `lindera build`, where it took precedence over
+`--context-id-freq`, and to the functions of the bindings that build a
+dictionary. In v7:
+
+- Only the build scripts read the variable, and `DictionaryBuilder` reads no
+  environment variable. `lindera build` takes the histogram from
+  `--context-id-freq` alone, and the functions of the bindings that build a
+  dictionary take none, so a dictionary they build with
+  `connection_id_mapping` ranks its context IDs by the count of dictionary
+  entries.
+- `LINDERA_CTX_FREQ_FILE` keeps working in the build scripts until v8.0.0,
+  with a deprecation warning, and is ignored, with a warning, when
+  `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` is set too:
+
+  ```text
+  warning: lindera-ko-dic@7.0.0: LINDERA_CTX_FREQ_FILE is deprecated and will be removed in v8.0.0; set LINDERA_BUILD_CONTEXT_ID_FREQ_FILE instead
+  ```
+
+  Cargo shows these warnings for a dictionary crate built from a path, such
+  as a checkout of this repository; for one from crates.io, it shows them
+  only when the build fails or runs with `cargo build -vv`.
+
+The histogram changes the speed of tokenization, never its result. Rename the
+variable wherever it is set, and give `lindera build` the histogram with its
+option:
+
+```shell
+# v6
+export LINDERA_CTX_FREQ_FILE=/path/to/context_id_freq.txt
+
+# v7
+export LINDERA_BUILD_CONTEXT_ID_FREQ_FILE=/path/to/context_id_freq.txt
+lindera build --src <source dir> --dest <output dir> --metadata metadata.json \
+  --context-id-freq /path/to/context_id_freq.txt
+```
 
 ## `lindera download` puts dictionaries in LINDERA_DICTIONARIES_DIR
 
@@ -2451,6 +2496,9 @@ Build environments:
   in shell profiles, CI configuration, and container images.
 - If the build script of your own dictionary crate sets `LINDERA_WORKDIR`
   for `embedded_dictionary!`, set `LINDERA_WORK_DIR` instead.
+- Rename `LINDERA_CTX_FREQ_FILE` to `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`. The
+  old name works with a deprecation warning until v8.0.0. `lindera build`
+  no longer reads either; give it the histogram with `--context-id-freq`.
 
 Everyone who sets `LINDERA_CONFIG_PATH`:
 

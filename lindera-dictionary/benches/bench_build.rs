@@ -7,7 +7,7 @@
 //! - `LINDERA_BENCH_DICTIONARY_SOURCE_DIR` (required): directory containing
 //!   the lexicon CSV files, `matrix.def`, `char.def`, and `unk.def`
 //!   (e.g. a mecab-ipadic checkout converted to UTF-8).
-//! - `LINDERA_BENCH_DICTIONARY_METADATA` (optional): path to a
+//! - `LINDERA_BENCH_DICTIONARY_METADATA_FILE` (optional): path to a
 //!   `metadata.json` matching the source. Defaults to the IPADIC metadata
 //!   bundled in this workspace (`lindera-ipadic/metadata.json`).
 //!
@@ -50,10 +50,10 @@ fn source_dir() -> Option<PathBuf> {
     }
 }
 
-/// Loads the dictionary metadata from `LINDERA_BENCH_DICTIONARY_METADATA`,
+/// Loads the dictionary metadata from `LINDERA_BENCH_DICTIONARY_METADATA_FILE`,
 /// falling back to the IPADIC metadata bundled in this workspace.
 fn load_metadata() -> Metadata {
-    let metadata_path = std::env::var_os("LINDERA_BENCH_DICTIONARY_METADATA")
+    let metadata_path = std::env::var_os("LINDERA_BENCH_DICTIONARY_METADATA_FILE")
         .map(PathBuf::from)
         .unwrap_or_else(|| {
             PathBuf::from(env!("CARGO_MANIFEST_DIR"))

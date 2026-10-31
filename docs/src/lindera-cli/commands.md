@@ -18,13 +18,7 @@ Every command writes its results to standard output and the warnings of the Lind
 [WARN  lindera_segmenter::segmenter] no sentence delimiter (\n, \t, 。, 、) found within 32768 bytes from offset 0; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)
 ```
 
-The `RUST_LOG` environment variable selects the messages, in the syntax of [env_logger](https://docs.rs/env_logger/0.11.11/env_logger/#enabling-logging):
-
-- Not set: warnings and errors.
-- `RUST_LOG=error`: errors only, which hides the warnings. `RUST_LOG=off` writes no log messages at all.
-- `RUST_LOG=debug`: also debugging messages, such as the files `lindera build` reads and writes.
-
-The setting does not change standard output, and the error of a command that fails is written whatever the setting. The messages are colored when standard error is a terminal; `RUST_LOG_STYLE=never` turns the colors off.
+The `RUST_LOG` environment variable selects the messages, for example `RUST_LOG=error` for errors only, and `RUST_LOG_STYLE=never` turns their colors off; see [RUST_LOG](../getting_started/environment_variables.md#rust_log).
 
 ## list
 
@@ -872,23 +866,7 @@ Download the pre-built dictionary archive matching the CLI version from the [Git
 
 ### Storage location
 
-`lindera download <name>` installs the dictionary in `<dictionaries directory>/<name>/` and prints that path, the value to pass to `--dict`. The `LINDERA_DICTIONARIES_DIR` environment variable names the dictionaries directory; without it, the directory is `lindera/dictionaries` in the OS's local data directory:
-
-| OS | Default location |
-| --- | --- |
-| Linux | `~/.local/share/lindera/dictionaries` |
-| macOS | `~/Library/Application Support/lindera/dictionaries` |
-| Windows | `%LOCALAPPDATA%\lindera\dictionaries` |
-
-For example, with `LINDERA_DICTIONARIES_DIR=/var/lindera/dict`, `lindera download ipadic` installs to `/var/lindera/dict/ipadic/`. `lindera list` lists the dictionaries in the same directory.
-
-`LINDERA_DATA_DIR`, the variable of the CLI before v7.0.0, keeps working until v8.0.0, with a warning on stderr: a value `<dir>` is read as `LINDERA_DICTIONARIES_DIR=<dir>/dictionaries`. For example, with `LINDERA_DATA_DIR=/home/user/.local/share/lindera`:
-
-```text
-Warning: LINDERA_DATA_DIR is deprecated and will be removed in v8.0.0; set LINDERA_DICTIONARIES_DIR=/home/user/.local/share/lindera/dictionaries instead
-```
-
-When both are set, `LINDERA_DICTIONARIES_DIR` is used, and the warning says that `LINDERA_DATA_DIR` is ignored. Neither variable has to do with the build-time source cache variable `LINDERA_BUILD_DICTIONARY_CACHE_DIR`, or with `LINDERA_DICTIONARIES_PATH`, its former name, which v7.0.0 removed.
+`lindera download <name>` installs the dictionary in `<dictionaries directory>/<name>/` and prints that path, the value to pass to `--dict`. The `LINDERA_DICTIONARIES_DIR` environment variable names the dictionaries directory, by default `lindera/dictionaries` in the OS's local data directory; see [LINDERA_DICTIONARIES_DIR](../getting_started/environment_variables.md#lindera_dictionaries_dir) for the default location on each OS and for `LINDERA_DATA_DIR`, the variable before v7.0.0.
 
 A complete dictionary already in place is kept when the CLI's version built it, as the `lindera_version` of its `metadata.json` says. When another version of Lindera built it, or its `metadata.json` does not say, as for a dictionary built before v7.0.0, `lindera download` downloads it again without `--force`, and says so on stderr, for example `Downloaded dictionary 'ipadic', replacing the one built by an unknown version of Lindera`.
 

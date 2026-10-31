@@ -5,7 +5,7 @@
 // Prints one TSV line per workload: "<workload>\t<min microseconds/call>".
 // With --verify, prints the token surfaces instead (for the byte-identical
 // correctness gate). Run with the extension loaded, e.g.:
-//   php -d extension=$BENCH_PHP_EXT scripts/benchmarks/bench_php.php
+//   php -d extension=$BENCH_PHP_EXT_FILE scripts/benchmarks/bench_php.php
 // See scripts/benchmarks/README.md for the protocol.
 
 $text = getenv('BENCH_TEXT') ?: 'すもももももももものうち';

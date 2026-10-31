@@ -18,13 +18,7 @@ Lindera CLI は6つのメインコマンドを提供します：
 [WARN  lindera_segmenter::segmenter] no sentence delimiter (\n, \t, 。, 、) found within 32768 bytes from offset 0; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)
 ```
 
-環境変数 `RUST_LOG` で、出すメッセージを選べます。書式は [env_logger](https://docs.rs/env_logger/0.11.11/env_logger/#enabling-logging) のものです：
-
-- 指定なし: 警告とエラー
-- `RUST_LOG=error`: エラーだけ。警告は出しません。`RUST_LOG=off` はログメッセージを一切出しません
-- `RUST_LOG=debug`: デバッグ用のメッセージも出します。たとえば `lindera build` が読み書きするファイル
-
-この設定で標準出力は変わりません。また、失敗したコマンドのエラーは設定にかかわらず出します。標準エラー出力が端末のときはメッセージに色を付けます。`RUST_LOG_STYLE=never` で色を消せます。
+環境変数 `RUST_LOG` で出すメッセージを選べ（たとえば `RUST_LOG=error` ならエラーだけ）、`RUST_LOG_STYLE=never` で色を消せます。[RUST_LOG](../getting_started/environment_variables.md#rust_log) を参照してください。
 
 ## list
 
@@ -872,23 +866,7 @@ CLI と同じバージョンの学習済み辞書アーカイブを [GitHub リ�
 
 ### 保存場所
 
-`lindera download <辞書名>` は辞書を `<辞書ディレクトリ>/<辞書名>/` にインストールし、そのパス（`--dict` に渡す値）を表示します。辞書ディレクトリは環境変数 `LINDERA_DICTIONARIES_DIR` で指定します。指定しない場合は、OS のローカルデータディレクトリの `lindera/dictionaries` になります：
-
-| OS | デフォルトの場所 |
-| --- | --- |
-| Linux | `~/.local/share/lindera/dictionaries` |
-| macOS | `~/Library/Application Support/lindera/dictionaries` |
-| Windows | `%LOCALAPPDATA%\lindera\dictionaries` |
-
-たとえば `LINDERA_DICTIONARIES_DIR=/var/lindera/dict` なら、`lindera download ipadic` は `/var/lindera/dict/ipadic/` にインストールします。`lindera list` も同じディレクトリの辞書を表示します。
-
-v7.0.0 より前の CLI の変数 `LINDERA_DATA_DIR` は、v8.0.0 まで標準エラー出力への警告つきで使えます。値 `<dir>` は `LINDERA_DICTIONARIES_DIR=<dir>/dictionaries` として読みます。たとえば `LINDERA_DATA_DIR=/home/user/.local/share/lindera` なら次のように警告します：
-
-```text
-Warning: LINDERA_DATA_DIR is deprecated and will be removed in v8.0.0; set LINDERA_DICTIONARIES_DIR=/home/user/.local/share/lindera/dictionaries instead
-```
-
-両方を設定した場合は `LINDERA_DICTIONARIES_DIR` を使い、`LINDERA_DATA_DIR` は無視されると警告します。どちらの変数も、ビルド時のソースキャッシュ用変数 `LINDERA_BUILD_DICTIONARY_CACHE_DIR` や、v7.0.0 で削除されたその旧名 `LINDERA_DICTIONARIES_PATH` とは無関係です。
+`lindera download <辞書名>` は辞書を `<辞書ディレクトリ>/<辞書名>/` にインストールし、そのパス（`--dict` に渡す値）を表示します。辞書ディレクトリは環境変数 `LINDERA_DICTIONARIES_DIR` で指定し、デフォルトは OS のローカルデータディレクトリの `lindera/dictionaries` です。OS ごとのデフォルトの場所と、v7.0.0 より前の変数 `LINDERA_DATA_DIR` については [LINDERA_DICTIONARIES_DIR](../getting_started/environment_variables.md#lindera_dictionaries_dir) を参照してください。
 
 すでに置いてある完全な辞書は、`metadata.json` の `lindera_version` が CLI のバージョンと同じなら、そのまま使います。別のバージョンの Lindera がビルドした辞書や、v7.0.0 より前にビルドした辞書のように `metadata.json` にバージョンの記録がない辞書は、`--force` がなくても再ダウンロードし、標準エラー出力にそう表示します（例: `Downloaded dictionary 'ipadic', replacing the one built by an unknown version of Lindera`）。
 

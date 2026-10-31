@@ -7,6 +7,7 @@
 
 - [Getting Started](./getting_started.md)
     - [Installation](./getting_started/installation.md)
+    - [Environment Variables](./getting_started/environment_variables.md)
     - [Quick Start](./getting_started/quickstart.md)
     - [Examples](./getting_started/examples.md)
 
