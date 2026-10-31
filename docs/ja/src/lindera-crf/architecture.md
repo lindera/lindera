@@ -6,6 +6,7 @@
 lindera-crf/src/
 ├── lib.rs                # パブリックAPIの再エクスポート
 ├── bigram_table.rs       # 学習ラティスのバイグラム重みの添字
+├── console.rs            # panic しない進捗の行の書き込み（write_line）
 ├── feature.rs            # FeatureSet, FeatureProvider
 ├── lattice.rs            # Edge, Node, Lattice
 ├── model.rs              # RawModel, MergedModel, Model trait
@@ -46,6 +47,8 @@ lindera-crf/src/
 - `StopReason::MaxIterations`: `Trainer::max_iter`で設定した上限に達した。
 - `StopReason::LineSearchFailed`: 最適点から遠いところで、あるイテレーションのライン探索が失敗した。最適点から遠いとは、その学習で最良の重みでの勾配のノルムが、まだ初期の重みでのノルムの`1e-5`倍以上あるところです。重みは、その学習で最良だったものです。勾配を変えなかった歩幅の後に最適化が作る、有限でない成分を持つ探索方向も、ライン探索の失敗になります。
 
+学習の間、最適化はソルバーの名前（`L-BFGS`）を、続けてイテレーションごとに 1 行を標準エラーに書きます。`iter: 1, cost: 0.5948643217470097, best_cost: 0.5948643217470097, gamma: 0.47689090558496994`のように、イテレーションの番号、そのコスト、それまでの最良のコスト、ソルバーのキーと値の組（キーの順）です。行は学習のスレッドで`console::write_line`を使い、ブロッキングのストリームに書くのと同じように書きます。Node.js が`node --test`の子プロセスで行うように、ストリームが非ブロッキングで一杯のときは、1 ms から 50 ms まで倍にしながら待って、ストリームが行を受け取るまで書き直します。読み手が終わったパイプのように、もう受け取れないストリームへの行は捨てます。panic しないので、出力がどうなっても学習の結果は変わりません（[#1312](https://github.com/lindera/lindera/issues/1312)）。`lindera_trainer`も、進捗と警告を同じ関数で書きます。
+
 ### Regularization
 
 設定可能な正則化戦略：
@@ -79,6 +82,6 @@ lindera-crf/src/
 | --------- | ------ | ----------- |
 | `alloc` | `no_std`向けのallocサポート | No* |
 | `std` | 標準ライブラリサポート（`alloc`を含む） | No* |
-| `train` | 学習機能（L-BFGS、マルチスレッド、ログ出力） | Yes |
+| `train` | 学習機能（L-BFGS、マルチスレッド、進捗の行） | Yes |
 
 \* `default`に直接列挙されているわけではありませんが、デフォルトで有効な`train`が`std`を有効化し、`std`がさらに`alloc`を有効化するため、実際にはデフォルトビルドで`alloc`／`std`は有効になっています。

@@ -76,6 +76,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **`lindera train` は MeCab の学習器と同じくラティスを作り、`unk.def` のすべてのエントリを保持する。`model.dat` の形式バージョンは 3.0.0** | `lindera train`・`lindera export` と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー | 7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた `model.dat` は拒否される）。`unk.def` のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す |
 | **`lindera train` のデフォルトの正則化は、MeCab の学習器と同じく係数 1.0 の L2** | `lindera train`、`lindera_trainer` と `lindera_crf` の `Trainer::new`、Python・Node.js・Ruby・PHP のバインディングの学習関数を、正則化の種類と係数の両方を渡さずに使うユーザー | 精度が上がり、`matrix.def` が大きくなる。v6 のデフォルトの設定を使うには `--regularization l1 --lambda 0.01`（Rust では `.use_l2(false).regularization_cost(0.01)`、バインディングでは `regularization` に `l1`、`lambda` に 0.01。[#1262](https://github.com/lindera/lindera/issues/1262)）を渡す |
 | **`lindera train` は、MeCab の学習器や libLBFGS と同じく、最初のライン探索を長さ 1 の刻みから始める** | `lindera train`、`lindera_trainer` と `lindera_crf` の `Trainer`、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー | 対処は不要。v6 の設定でも、学習したモデルはすべて v6 と変わる。分離可能なデータの L1 は、数回の反復で止まらずに学習を続ける |
+| 学習の反復の行から日時とレベルがなくなり、標準出力の進捗と順に並び、一杯のストリームでは panic せずに待つ | `lindera train` やバインディングの学習関数の標準エラーを読むスクリプト。Node.js のテストのファイルのように、非ブロッキングの標準ストリームで学習するプログラム | `<日時> INFO` の付かない `iter: N, cost: …` の行として読む。学習する子プロセスの両方のストリームを読み続ける |
 | **`lindera build` は `matrix.def` の範囲外の文脈 ID を拒否する** | `lex.csv` や `unk.def` に `matrix.def` の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の `mecab-dict-index` が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる） | ID か行列を直すか、`metadata.json` の `skip_invalid_cost_or_id` でそうした `lex.csv` の行を取り除く。ユーザー辞書ではそうした ID を直す |
 | **`lindera build` と `lindera train` は `char.def` と `unk.def` を照らし合わせる** | それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが `char.def` にあるユーザー、`char.def` と `unk.def` でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、`unk.def` の行を無視したりしていた）。MeCab の `mecab-dict-index` が受け入れる辞書は影響を受けない | 各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに `unk.def` の行を書き、未定義のカテゴリの `unk.def` の行を削除する |
 | **`lindera build` は、MeCab と同じく `matrix.def` にないセルのコストを 0 にする** | セルを省いた `matrix.def` からシステム辞書をビルドするユーザー。すべてのセルを列挙している同梱の辞書と、`lindera export` が書き出す `matrix.def` は対象外 | そうしたセルのコストは 32767 ではなく 0 になる。接続を高いコストのままにするには、そのセルをコスト付きで列挙する |
@@ -1806,6 +1807,33 @@ v6 は最初のライン探索も刻み幅 1 から始めたので、最初に�
 対処方法: 対処は不要です。v6 の設定（前の節を参照）でも、モデルはバイト単位では v6 と
 同じになりません。
 
+## 学習の反復の行から日時がなくなる
+
+`lindera train`、`lindera_trainer` と `lindera_crf` の `Trainer`、Python・Node.js・Ruby・PHP
+のバインディングの学習関数は、L-BFGS のイテレーションごとに 1 行を標準エラーに書きます。
+v6.2.0 までは argmin-observer-slog が日時とレベルを付けて書いていました。v7.0.0 は自分で書き、
+どちらも付けません（[#1312](https://github.com/lindera/lindera/issues/1312)）。
+
+```text
+# v6
+Oct 31 16:30:11.900 INFO iter: 1, cost: 2.7104295458825787, best_cost: 2.7104295458825787, gamma: 0.21819781851100348
+# v7
+iter: 1, cost: 2.7104295458825787, best_cost: 2.7104295458825787, gamma: 0.21819781851100348
+```
+
+キー・その順・数値は以前と同じです。`gamma` などのソルバー自身の組はキーの順に並び、ソルバーの
+名前の行（`L-BFGS`）が最初に来るのも同じです。行は学習のスレッドで書くので、ログのスレッドが
+書けたときではなく、標準出力の `Each 'iter:' line indicates training progress. Please wait...`
+の後に来ます。
+
+学習は、進捗を書けなくても panic しなくなりました。Node.js が `node --test` の子プロセスで
+行うように、非ブロッキングで一杯の標準ストリームには、行を受け取るまで待って書きます。v6.2.0
+までは、同じ書き込みで Node.js が `failed to initiate panic, error 5` で abort することがあり、
+Python・Ruby・PHP は例外を投げました。読み手が終わったパイプのように、もう受け取れない
+ストリームへの行は捨て、学習を続けます。ただし `lindera` コマンド自身の最後の行は今も失敗します。
+`lindera train` の標準出力を、終わった読み手へのパイプにつなぐと、モデルを書いた後に
+`failed printing to stdout: Broken pipe` を出して終了コード 101 で終わります。
+
 ## `lindera build` は接続コスト行列の範囲外の文脈 ID を拒否する
 
 v6.2.0 までの `lindera build` は、文脈 ID が `matrix.def` の範囲外にある `lex.csv`
@@ -2344,6 +2372,8 @@ U+3000 や空白を含むテキストを IPADIC・IPADIC-NEologd・UniDic・Suda
   （[#1290](https://github.com/lindera/lindera/issues/1290)）。
 - NaN や無限大の `lambda` が拒否されることを想定する
   （[#1262](https://github.com/lindera/lindera/issues/1262)）。
+- 学習が標準エラーに書く反復の行をスクリプトで読むなら、日時と `INFO` の付かない
+  `iter: N, cost: …` の行として読む（[#1312](https://github.com/lindera/lindera/issues/1312)）。
 
 `lindera build` でシステム辞書をビルドするすべてのユーザー:
 

@@ -51,6 +51,10 @@ Lindera\Trainer::train(
 
 省略できる引数は、`null` を渡すとデフォルトになります。設定の値は、ファイルを読む前に検査されます。知らない `$regularization` や、範囲の外の `$lambda`・`$elastic_net_l1_ratio`・`$eta` は `ValueError` になります。v6 のデフォルトの設定で学習するには（最初のライン探索が変わったので、モデルは v6 と一致しません。[#1290](https://github.com/lindera/lindera/issues/1290)）、`regularization: 'l1'` と `lambda: 0.01` を渡し、`$max_iter` だけで止めるには `eta: 0` も渡します。
 
+### 進捗の出力
+
+`Lindera\Trainer::train()` は進捗を標準出力に、L-BFGS のイテレーションごとに 1 行（`iter: 1, cost: 0.5948643217470097, best_cost: 0.5948643217470097, gamma: 0.47689090558496994` など）を標準エラーに書きます。`Lindera\Trainer::export()` は作ったファイルを標準出力に書きます。ブロッキングのストリームと同じように書きます。ストリームが一杯のあいだは行を受け取るまで待ち、読み手が終わったパイプのように、もう受け取れないストリームへの行は捨てて学習を続けます（[#1312](https://github.com/lindera/lindera/issues/1312)）。子プロセスで学習するプログラムは、子の両方のストリームを読み続けてください。読まないと学習が待ち続けます。
+
 ## 学習済みモデルのエクスポート
 
 学習後、`Lindera\Trainer::export()` を使用してモデルを辞書ソースファイルにエクスポートします：
