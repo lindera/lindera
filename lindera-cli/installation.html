@@ -187,13 +187,11 @@
 <li><a href="https://github.com/lindera/lindera/releases">https://github.com/lindera/lindera/releases</a></li>
 </ul>
 <h2 id="obtaining-dictionaries"><a class="header" href="#obtaining-dictionaries">Obtaining Dictionaries</a></h2>
-<p>Lindera does not bundle dictionaries with the binary. The easiest way to obtain one is the <code>download</code> subcommand, which fetches the pre-built dictionary matching the CLI version and installs it under the OS-standard application data directory:</p>
-<pre><code class="language-shell">% lindera download ipadic
+<p>Lindera does not bundle dictionaries with the binary. The easiest way to obtain one is the <code>download</code> subcommand, which fetches the pre-built dictionary matching the CLI version, installs it in the dictionaries directory (<code>~/.local/share/lindera/dictionaries/ipadic</code> on Linux) and prints its path, which <code>--dict</code> takes:</p>
+<pre><code class="language-shell">% DICT_DIR=$(lindera download ipadic)
+% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict "$DICT_DIR"
 </code></pre>
-<p>After downloading, the dictionary can be referenced by name:</p>
-<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict ipadic
-</code></pre>
-<p>See <a href="commands.html#download">Commands</a> for the available dictionary names and storage locations.</p>
+<p>See <a href="commands.html#download">Commands</a> for the available dictionary names and storage locations, and <a href="commands.html#list"><code>lindera list</code></a> for the dictionaries in place.</p>
 <p>Alternatively, you can download a pre-built dictionary manually from the <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> page:</p>
 <pre><code class="language-shell"># Example: download and extract the IPADIC dictionary
 % curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
