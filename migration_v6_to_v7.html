@@ -226,7 +226,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> is removed</strong></td><td>Anyone still setting the deprecated build-cache variable</td><td>Set <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>; the old name is now ignored</td></tr>
 <tr><td><strong><code>LINDERA_CONFIG_PATH</code> is renamed to <code>LINDERA_CONFIG_FILE</code></strong></td><td>Anyone who sets <code>LINDERA_CONFIG_PATH</code> for <code>TokenizerBuilder::new()</code>, <code>lindera tokenize</code> or a language binding</td><td>Set <code>LINDERA_CONFIG_FILE</code>; the old name works with a deprecation warning until v8.0.0</td></tr>
 <tr><td><code>LINDERA_WORKDIR</code> is renamed to <code>LINDERA_WORK_DIR</code></td><td>Only a dictionary crate whose own build script sets <code>LINDERA_WORKDIR</code> for <code>embedded_dictionary!</code></td><td>Set <code>LINDERA_WORK_DIR</code>; a crate that uses <code>build_embedded_dictionary</code> needs nothing</td></tr>
-<tr><td><code>LINDERA_CTX_FREQ_FILE</code> is renamed to <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code>, which only the build scripts of the dictionary crates read</td><td>Anyone who sets <code>LINDERA_CTX_FREQ_FILE</code> for a dictionary with <code>connection_id_mapping</code>, such as UniDic and ko-dic</td><td>Set <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> (the old name works in the build scripts with a deprecation warning until v8.0.0); give <code>lindera build</code> the histogram with <code>--context-id-freq</code></td></tr>
+<tr><td><code>LINDERA_CTX_FREQ_FILE</code> is renamed to <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code>, which only the build scripts of the dictionary crates read</td><td>Anyone who sets <code>LINDERA_CTX_FREQ_FILE</code> for a dictionary with <code>connection_id_mapping</code>, such as UniDic and ko-dic</td><td>Set <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> (the old name works in the build scripts with a deprecation warning until v8.0.0); give <code>lindera build</code> the histogram with <code>--context-id-freq</code>, and the build functions of the bindings with <code>context_id_freq</code></td></tr>
 <tr><td><strong><code>lindera download</code> puts dictionaries in <code>LINDERA_DICTIONARIES_DIR/&lt;name&gt;</code>, which replaces <code>LINDERA_DATA_DIR</code></strong></td><td>Users of <code>lindera download</code> and <code>lindera list</code>, and anyone who sets <code>LINDERA_DATA_DIR</code></td><td>Download the dictionaries again; set <code>LINDERA_DICTIONARIES_DIR</code> (the old name works, as <code>&lt;dir&gt;/dictionaries</code>, with a deprecation warning until v8.0.0)</td></tr>
 <tr><td><strong><code>--dict</code> and <code>--system-dict</code> no longer take a dictionary name</strong></td><td>Anyone who runs <code>lindera tokenize --dict ipadic</code> or <code>lindera build --system-dict ipadic</code></td><td>Pass the path that <code>lindera download</code> prints, or <code>embedded://ipadic</code></td></tr>
 <tr><td><strong>Rust 1.89 or newer is required</strong></td><td>Anyone who builds Lindera with Rust 1.88, including a source build of the Python or Ruby package</td><td>Update the toolchain (<code>rustup update stable</code>)</td></tr>
@@ -564,16 +564,21 @@ histogram named by <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> in place of t
 (<a href="https://github.com/lindera/lindera/issues/1308">#1308</a>). Up to v6 the
 variable was <code>LINDERA_CTX_FREQ_FILE</code>, and <code>DictionaryBuilder</code> read it itself,
 so it also applied to <code>lindera build</code>, where it took precedence over
-<code>--context-id-freq</code>, and to the functions of the bindings that build a
-dictionary. In v7:</p>
+<code>--context-id-freq</code>. In v7:</p>
 <ul>
 <li>
 <p>Only the build scripts read the variable, and <code>DictionaryBuilder</code> reads no
 environment variable. <code>lindera build</code> takes the histogram from
 <code>--context-id-freq</code> alone, and the functions of the bindings that build a
-dictionary take none, so a dictionary they build with
-<code>connection_id_mapping</code> ranks its context IDs by the count of dictionary
-entries.</p>
+dictionary take it as an optional argument, <code>context_id_freq</code>
+(<code>contextIdFreq</code> in Node.js)
+(<a href="https://github.com/lindera/lindera/issues/1309">#1309</a>).</p>
+</li>
+<li>
+<p>The bindings' <code>Metadata</code> keeps <code>connection_id_mapping</code> of the
+<code>metadata.json</code> it is loaded from. Up to v6 it dropped the setting, so the
+bindings built UniDic and ko-dic without relabelling their context IDs,
+and the variable did not apply to them.</p>
 </li>
 <li>
 <p><code>LINDERA_CTX_FREQ_FILE</code> keeps working in the build scripts until v8.0.0,

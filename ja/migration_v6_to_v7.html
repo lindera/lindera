@@ -223,7 +223,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> の削除</strong></td><td>非推奨のビルドキャッシュ変数をまだ設定しているユーザー</td><td><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を設定する。旧名は無視される</td></tr>
 <tr><td><strong><code>LINDERA_CONFIG_PATH</code> を <code>LINDERA_CONFIG_FILE</code> に改名</strong></td><td><code>TokenizerBuilder::new()</code>・<code>lindera tokenize</code>・言語バインディングのために <code>LINDERA_CONFIG_PATH</code> を設定しているユーザー</td><td><code>LINDERA_CONFIG_FILE</code> を設定する。旧名も v8.0.0 までは非推奨の警告付きで使える</td></tr>
 <tr><td><code>LINDERA_WORKDIR</code> を <code>LINDERA_WORK_DIR</code> に改名</td><td>自前の build script で <code>embedded_dictionary!</code> のために <code>LINDERA_WORKDIR</code> を設定している辞書クレートだけ</td><td><code>LINDERA_WORK_DIR</code> を設定する。<code>build_embedded_dictionary</code> を使うクレートは対応不要</td></tr>
-<tr><td><code>LINDERA_CTX_FREQ_FILE</code> を <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> に改名し、辞書クレートの build script だけが読む</td><td>UniDic や ko-dic のように <code>connection_id_mapping</code> を有効にした辞書のために <code>LINDERA_CTX_FREQ_FILE</code> を設定しているユーザー</td><td><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> を設定する（旧名も build script では v8.0.0 まで非推奨の警告付きで使える）。<code>lindera build</code> には <code>--context-id-freq</code> で頻度表を渡す</td></tr>
+<tr><td><code>LINDERA_CTX_FREQ_FILE</code> を <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> に改名し、辞書クレートの build script だけが読む</td><td>UniDic や ko-dic のように <code>connection_id_mapping</code> を有効にした辞書のために <code>LINDERA_CTX_FREQ_FILE</code> を設定しているユーザー</td><td><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> を設定する（旧名も build script では v8.0.0 まで非推奨の警告付きで使える）。<code>lindera build</code> には <code>--context-id-freq</code> で、バインディングのビルド関数には <code>context_id_freq</code> で頻度表を渡す</td></tr>
 <tr><td><strong><code>lindera download</code> は辞書を <code>LINDERA_DICTIONARIES_DIR/&lt;name&gt;</code> に置き、<code>LINDERA_DATA_DIR</code> を置き換える</strong></td><td><code>lindera download</code> と <code>lindera list</code> のユーザー、<code>LINDERA_DATA_DIR</code> を設定しているユーザー</td><td>辞書を再ダウンロードする。<code>LINDERA_DICTIONARIES_DIR</code> を設定する（旧名も v8.0.0 までは <code>&lt;dir&gt;/dictionaries</code> として非推奨の警告付きで使える）</td></tr>
 <tr><td><strong><code>--dict</code> と <code>--system-dict</code> は辞書名を受け付けない</strong></td><td><code>lindera tokenize --dict ipadic</code> や <code>lindera build --system-dict ipadic</code> を実行しているユーザー</td><td><code>lindera download</code> が表示するパスか、<code>embedded://ipadic</code> を渡す</td></tr>
 <tr><td><strong>Rust 1.89 以降が必要</strong></td><td>Rust 1.88 で Lindera をビルドするユーザー（Python・Ruby パッケージのソースからのビルドを含む）</td><td>ツールチェーンを更新する（<code>rustup update stable</code>）</td></tr>
@@ -538,15 +538,21 @@ build script で <code>embedded_dictionary!</code> のために <code>LINDERA_WO
 <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> が指す文脈 ID の頻度表を読みます
 （<a href="https://github.com/lindera/lindera/issues/1308">#1308</a>）。v6 まではこの変数の
 名前は <code>LINDERA_CTX_FREQ_FILE</code> で、<code>DictionaryBuilder</code> 自身が読んでいたので、
-<code>lindera build</code>（<code>--context-id-freq</code> より優先されていました）と、バインディングの
-辞書をビルドする関数にも効いていました。v7 では次のようになります。</p>
+<code>lindera build</code> にも効いていました（<code>--context-id-freq</code> より優先されていました）。
+v7 では次のようになります。</p>
 <ul>
 <li>
 <p>この変数を読むのは build script だけで、<code>DictionaryBuilder</code> は環境変数を
 読みません。<code>lindera build</code> は <code>--context-id-freq</code> だけで頻度表を受け取り、
-バインディングの辞書をビルドする関数は頻度表を受け取らないので、これらが
-<code>connection_id_mapping</code> を有効にしてビルドする辞書は、辞書の項目の数で文脈 ID を
-並べます。</p>
+バインディングの辞書をビルドする関数は省略可能な引数 <code>context_id_freq</code>
+（Node.js では <code>contextIdFreq</code>）で受け取ります
+（<a href="https://github.com/lindera/lindera/issues/1309">#1309</a>）。</p>
+</li>
+<li>
+<p>バインディングの <code>Metadata</code> は、読み込んだ <code>metadata.json</code> の
+<code>connection_id_mapping</code> を保持します。v6 まではこの設定を落としていたので、
+バインディングは UniDic と ko-dic を文脈 ID を付け替えずにビルドしていて、
+この変数も効いていませんでした。</p>
 </li>
 <li>
 <p><code>LINDERA_CTX_FREQ_FILE</code> も、build script では v8.0.0 まで非推奨の警告付きで

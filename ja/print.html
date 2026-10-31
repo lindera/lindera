@@ -477,7 +477,7 @@ cargo build --features=embed-ipadic
 <pre><code class="language-shell">export LINDERA_BUILD_CONTEXT_ID_FREQ_FILE=/path/to/context_id_freq.txt
 cargo build --features=embed-unidic
 </code></pre>
-<p>この変数を読むのは build script だけです。<code>lindera build</code> は <code>--context-id-freq</code> オプションで頻度表を受け取り、バインディングの辞書をビルドする関数は頻度表を受け取りません。変数や、変数が指すファイルを変えると build script が再実行され、<code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> のキャッシュは頻度表の内容を比べます。</p>
+<p>この変数を読むのは build script だけです。<code>lindera build</code> は <code>--context-id-freq</code> オプションで頻度表を受け取り、バインディングの辞書をビルドする関数は省略可能な引数 <code>context_id_freq</code>（Node.js では <code>contextIdFreq</code>）で受け取ります。変数や、変数が指すファイルを変えると build script が再実行され、<code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> のキャッシュは頻度表の内容を比べます。</p>
 <p>v6 までの名前 <code>LINDERA_CTX_FREQ_FILE</code> も v8.0.0 までは使えますが、非推奨の警告が出ます：</p>
 <pre><code class="language-text">warning: lindera-ko-dic@7.0.0: LINDERA_CTX_FREQ_FILE is deprecated and will be removed in v8.0.0; set LINDERA_BUILD_CONTEXT_ID_FREQ_FILE instead
 </code></pre>
@@ -3896,6 +3896,15 @@ build_dictionary("/path/to/input_dir", "/path/to/output_dir", metadata)
 </code></pre>
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
 <p><code>Metadata.from_json_file</code> で読み込んだメタデータは <code>metadata.json</code> の <code>space_penalty</code> ルールを保持し、ビルドした辞書にもそのルールが同梱されます。そのため ko-dic をビルドした場合も、左側空白ペナルティはデフォルトでオンのままです。トークナイザーごとにオフにするには <code>TokenizerBuilder.set_space_penalty(False)</code> を使います（<a href="lindera-python/./tokenizer_api.html#set_space_penaltyvalue">Tokenizer API</a> を参照）。コンストラクタで作成した <code>Metadata</code> はルールを持ちません。</p>
+<p><code>Metadata.from_json_file</code> で読み込んだメタデータは、ko-dic と UniDic の <code>metadata.json</code> が有効にしている <code>connection_id_mapping</code> も保持します。このときビルドは、<code>lindera build</code> と同じく連接コスト行列の文脈 ID を参照頻度の順に付け替え、連接コストを引くときのキャッシュ局所性を高めます。トークナイズの結果は変わりません。<code>context_id_freq</code> に文脈 ID の頻度表（辞書クレートの <code>context_id_freq.txt</code> など）を渡すと、<code>lindera build --context-id-freq</code> と同じく、コーパスでの頻度で ID を並べます。渡さなければ、辞書の項目の数で並べます。これは頻度の代わりとしてはずっと弱いものです。<code>connection_id_mapping</code> のない辞書は頻度表を読みません。</p>
+<pre><code class="language-python">metadata = Metadata.from_json_file("/path/to/lindera-ko-dic/metadata.json")
+build_dictionary(
+    "/path/to/mecab-ko-dic",
+    "/path/to/output_dir",
+    metadata,
+    context_id_freq="/path/to/lindera-ko-dic/context_id_freq.txt",
+)
+</code></pre>
 <h3 id="ユーザー辞書のビルド-1"><a class="header" href="#ユーザー辞書のビルド-1">ユーザー辞書のビルド</a></h3>
 <p>組み合わせるシステム辞書に合わせて、CSV ファイルからユーザー辞書をビルドします：</p>
 <pre><code class="language-python">from lindera import build_user_dictionary_for, load_dictionary, load_user_dictionary_for
@@ -4827,6 +4836,14 @@ buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 <p>辞書の <code>metadata.json</code> に含まれる設定のままビルドするには、<code>Metadata.fromJsonFile()</code> でファイルを読み込み、その結果を渡します。ファイルの <code>space_penalty</code> ルールは保持されるため、この方法でビルドした ko-dic では左側空白ペナルティがデフォルトで適用されます（<a href="lindera-nodejs/tokenizer_api.html#setspacepenaltyvalue"><code>setSpacePenalty</code></a> を参照）。<code>new Metadata(...)</code> で作成した <code>Metadata</code> はルールを持ちません。</p>
 <pre><code class="language-javascript">const metadata = Metadata.fromJsonFile("/path/to/lindera-ko-dic/metadata.json");
 buildDictionary("/path/to/mecab-ko-dic", "/path/to/output_dir", metadata);
+</code></pre>
+<p><code>Metadata.fromJsonFile()</code> で読み込んだメタデータは、ko-dic と UniDic の <code>metadata.json</code> が有効にしている <code>connection_id_mapping</code> も保持します。このときビルドは、<code>lindera build</code> と同じく連接コスト行列の文脈 ID を参照頻度の順に付け替え、連接コストを引くときのキャッシュ局所性を高めます。トークナイズの結果は変わりません。4 番目の引数 <code>contextIdFreq</code> に文脈 ID の頻度表（辞書クレートの <code>context_id_freq.txt</code> など）を渡すと、<code>lindera build --context-id-freq</code> と同じく、コーパスでの頻度で ID を並べます。渡さなければ、辞書の項目の数で並べます。これは頻度の代わりとしてはずっと弱いものです。<code>connection_id_mapping</code> のない辞書は頻度表を読みません。</p>
+<pre><code class="language-javascript">buildDictionary(
+  "/path/to/mecab-ko-dic",
+  "/path/to/output_dir",
+  metadata,
+  "/path/to/lindera-ko-dic/context_id_freq.txt",
+);
 </code></pre>
 <h3 id="ユーザー辞書のビルド-2"><a class="header" href="#ユーザー辞書のビルド-2">ユーザー辞書のビルド</a></h3>
 <p>組み合わせるシステム辞書に合わせて、CSV ファイルからユーザー辞書をビルドします：</p>
@@ -5828,6 +5845,11 @@ Lindera.build_dictionary('/path/to/input_dir', '/path/to/output_dir', metadata)
 </code></pre>
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
 <p><code>Lindera::Metadata.from_json_file</code> で読み込んだメタデータは <code>metadata.json</code> の <code>space_penalty</code> ルールを保持し、ビルドした辞書にもそのルールが同梱されます。そのため ko-dic をビルドした場合も、左側空白ペナルティはデフォルトでオンのままです。トークナイザーごとにオフにするには <code>TokenizerBuilder#set_space_penalty(false)</code> を使います（<a href="lindera-ruby/./tokenizer_api.html#set_space_penaltyvalue">Tokenizer API</a> を参照）。</p>
+<p><code>Lindera::Metadata.from_json_file</code> で読み込んだメタデータは、ko-dic と UniDic の <code>metadata.json</code> が有効にしている <code>connection_id_mapping</code> も保持します。このときビルドは、<code>lindera build</code> と同じく連接コスト行列の文脈 ID を参照頻度の順に付け替え、連接コストを引くときのキャッシュ局所性を高めます。トークナイズの結果は変わりません。キーワード引数 <code>context_id_freq:</code> に文脈 ID の頻度表（辞書クレートの <code>context_id_freq.txt</code> など）を渡すと、<code>lindera build --context-id-freq</code> と同じく、コーパスでの頻度で ID を並べます。渡さなければ、辞書の項目の数で並べます。これは頻度の代わりとしてはずっと弱いものです。<code>connection_id_mapping</code> のない辞書は頻度表を読みません。</p>
+<pre><code class="language-ruby">metadata = Lindera::Metadata.from_json_file('/path/to/lindera-ko-dic/metadata.json')
+Lindera.build_dictionary('/path/to/mecab-ko-dic', '/path/to/output_dir', metadata,
+                         context_id_freq: '/path/to/lindera-ko-dic/context_id_freq.txt')
+</code></pre>
 <h3 id="ユーザー辞書のビルド-3"><a class="header" href="#ユーザー辞書のビルド-3">ユーザー辞書のビルド</a></h3>
 <p>組み合わせるシステム辞書に合わせて、CSV ファイルからユーザー辞書をビルドします：</p>
 <pre><code class="language-ruby">require 'lindera'
@@ -6780,7 +6802,7 @@ $tokenizer = $builder-&gt;build();
 <tr><td><code>Dictionary::loadUser($path, $metadata)</code></td><td><code>UserDictionary</code></td><td>ユーザー辞書を読み込む</td></tr>
 <tr><td><code>Dictionary::loadUserFor($path, $dictionary)</code></td><td><code>UserDictionary</code></td><td>システム辞書に合わせてユーザー辞書を読み込む</td></tr>
 <tr><td><code>Dictionary::version()</code></td><td><code>string</code></td><td>Lindera のバージョン文字列を返す</td></tr>
-<tr><td><code>Dictionary::build($source, $dest, $metadata)</code></td><td><code>void</code></td><td>辞書をビルドする</td></tr>
+<tr><td><code>Dictionary::build($source, $dest, $metadata, $context_id_freq = null)</code></td><td><code>void</code></td><td>辞書をビルドする</td></tr>
 <tr><td><code>Dictionary::buildUser($kind, $source, $dest, $metadata)</code></td><td><code>void</code></td><td>ユーザー辞書をビルドする</td></tr>
 <tr><td><code>Dictionary::buildUserFor($source, $dest, $dictionary)</code></td><td><code>void</code></td><td>システム辞書に合わせてユーザー辞書をビルドする</td></tr>
 <tr><td><code>$dictionary-&gt;metadata()</code></td><td><code>Metadata</code></td><td>辞書のメタデータを返す</td></tr>
@@ -6798,6 +6820,17 @@ Lindera\Dictionary::build('/path/to/input_dir', '/path/to/output_dir', $metadata
 </code></pre>
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
 <p><code>Lindera\Metadata::fromJsonFile</code> で読み込んだメタデータは <code>metadata.json</code> の <code>space_penalty</code> ルールを保持し、ビルドした辞書にもそのルールが同梱されます。そのため ko-dic をビルドした場合も、左側空白ペナルティはデフォルトでオンのままです。トークナイザーごとにオフにするには <code>TokenizerBuilder::setSpacePenalty(false)</code> を使います（<a href="lindera-php/./tokenizer_api.html#setspacepenaltyvalue">Tokenizer API</a> を参照）。コンストラクタで作成した <code>Metadata</code> はルールを持ちません。</p>
+<p><code>Lindera\Metadata::fromJsonFile</code> で読み込んだメタデータは、ko-dic と UniDic の <code>metadata.json</code> が有効にしている <code>connection_id_mapping</code> も保持します。このときビルドは、<code>lindera build</code> と同じく連接コスト行列の文脈 ID を参照頻度の順に付け替え、連接コストを引くときのキャッシュ局所性を高めます。トークナイズの結果は変わりません。4 番目の引数 <code>$context_id_freq</code> に文脈 ID の頻度表（辞書クレートの <code>context_id_freq.txt</code> など）を渡すと、<code>lindera build --context-id-freq</code> と同じく、コーパスでの頻度で ID を並べます。渡さなければ、辞書の項目の数で並べます。これは頻度の代わりとしてはずっと弱いものです。<code>connection_id_mapping</code> のない辞書は頻度表を読みません。</p>
+<pre><code class="language-php">&lt;?php
+
+$metadata = Lindera\Metadata::fromJsonFile('/path/to/lindera-ko-dic/metadata.json');
+Lindera\Dictionary::build(
+    '/path/to/mecab-ko-dic',
+    '/path/to/output_dir',
+    $metadata,
+    '/path/to/lindera-ko-dic/context_id_freq.txt'
+);
+</code></pre>
 <p>以下は IPADIC 辞書をダウンロードしてビルドする例です：</p>
 <pre><code class="language-php">&lt;?php
 
@@ -8827,10 +8860,12 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <code>lindera-unidic/metadata.json</code> は <code>connection_id_mapping: true</code> を設定しているため、ビルダーは
 連接コスト行列の文脈 ID を使用頻度順に付け替え、連接コスト参照時のキャッシュ局所性を改善します。
 <code>--context-id-freq</code> / <code>-f</code> に同梱の <code>context_id_freq.txt</code> ヒストグラムを渡すことで、この付け替えに
-実際のコーパス頻度データを与えて ID をランク付けできます。このフラグを省略してもビルドは失敗せず、
-精度の低いエントリ数ベースのフォールバックに黙って切り替わるだけです。いずれの場合もトークン化の
-結果には影響しません -- この付け替えはコストを保つ全単射な再ラベル付けであり、ビルド時の最適化のみに
-関わるものであって正確性には影響しません。</p>
+実際のコーパス頻度データを与えて ID をランク付けできます。このフラグを省略してもビルドは失敗しませんが、
+精度の低いエントリ数ベースのフォールバックに切り替わり、標準エラーに次の警告を出します：</p>
+<pre><code class="language-text">[WARN  lindera_dictionary::builder::context_id_remap] connection_id_mapping is enabled but no context-id frequency file was found; falling back to the entry-count proxy, which measured ~0% improvement. Bundle a corpus-derived histogram (see the ctxfreq_dump example) for the real gain.
+</code></pre>
+<p>いずれの場合もトークン化の結果には影響しません -- この付け替えはコストを保つ全単射な再ラベル付けであり、
+ビルド時の最適化のみに関わるものであって正確性には影響しません。</p>
 </blockquote>
 <h2 id="ユーザー辞書のビルド-7"><a class="header" href="#ユーザー辞書のビルド-7">ユーザー辞書のビルド</a></h2>
 <p>CSV ファイルからユーザー辞書をビルドします:</p>
@@ -9175,10 +9210,12 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <code>lindera-ko-dic/metadata.json</code> は <code>connection_id_mapping: true</code> を設定しているため、ビルダーは
 連接コスト行列の文脈 ID を使用頻度順に付け替え、連接コスト参照時のキャッシュ局所性を改善します。
 <code>--context-id-freq</code> / <code>-f</code> に同梱の <code>context_id_freq.txt</code> ヒストグラムを渡すことで、この付け替えに
-実際のコーパス頻度データを与えて ID をランク付けできます。このフラグを省略してもビルドは失敗せず、
-精度の低いエントリ数ベースのフォールバックに黙って切り替わるだけです。いずれの場合もトークン化の
-結果には影響しません -- この付け替えはコストを保つ全単射な再ラベル付けであり、ビルド時の最適化のみに
-関わるものであって正確性には影響しません。</p>
+実際のコーパス頻度データを与えて ID をランク付けできます。このフラグを省略してもビルドは失敗しませんが、
+精度の低いエントリ数ベースのフォールバックに切り替わり、標準エラーに次の警告を出します：</p>
+<pre><code class="language-text">[WARN  lindera_dictionary::builder::context_id_remap] connection_id_mapping is enabled but no context-id frequency file was found; falling back to the entry-count proxy, which measured ~0% improvement. Bundle a corpus-derived histogram (see the ctxfreq_dump example) for the real gain.
+</code></pre>
+<p>いずれの場合もトークン化の結果には影響しません -- この付け替えはコストを保つ全単射な再ラベル付けであり、
+ビルド時の最適化のみに関わるものであって正確性には影響しません。</p>
 </blockquote>
 <h2 id="ユーザー辞書のビルド-9"><a class="header" href="#ユーザー辞書のビルド-9">ユーザー辞書のビルド</a></h2>
 <pre><code class="language-shell">% lindera build \
@@ -10358,7 +10395,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> の削除</strong></td><td>非推奨のビルドキャッシュ変数をまだ設定しているユーザー</td><td><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を設定する。旧名は無視される</td></tr>
 <tr><td><strong><code>LINDERA_CONFIG_PATH</code> を <code>LINDERA_CONFIG_FILE</code> に改名</strong></td><td><code>TokenizerBuilder::new()</code>・<code>lindera tokenize</code>・言語バインディングのために <code>LINDERA_CONFIG_PATH</code> を設定しているユーザー</td><td><code>LINDERA_CONFIG_FILE</code> を設定する。旧名も v8.0.0 までは非推奨の警告付きで使える</td></tr>
 <tr><td><code>LINDERA_WORKDIR</code> を <code>LINDERA_WORK_DIR</code> に改名</td><td>自前の build script で <code>embedded_dictionary!</code> のために <code>LINDERA_WORKDIR</code> を設定している辞書クレートだけ</td><td><code>LINDERA_WORK_DIR</code> を設定する。<code>build_embedded_dictionary</code> を使うクレートは対応不要</td></tr>
-<tr><td><code>LINDERA_CTX_FREQ_FILE</code> を <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> に改名し、辞書クレートの build script だけが読む</td><td>UniDic や ko-dic のように <code>connection_id_mapping</code> を有効にした辞書のために <code>LINDERA_CTX_FREQ_FILE</code> を設定しているユーザー</td><td><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> を設定する（旧名も build script では v8.0.0 まで非推奨の警告付きで使える）。<code>lindera build</code> には <code>--context-id-freq</code> で頻度表を渡す</td></tr>
+<tr><td><code>LINDERA_CTX_FREQ_FILE</code> を <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> に改名し、辞書クレートの build script だけが読む</td><td>UniDic や ko-dic のように <code>connection_id_mapping</code> を有効にした辞書のために <code>LINDERA_CTX_FREQ_FILE</code> を設定しているユーザー</td><td><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> を設定する（旧名も build script では v8.0.0 まで非推奨の警告付きで使える）。<code>lindera build</code> には <code>--context-id-freq</code> で、バインディングのビルド関数には <code>context_id_freq</code> で頻度表を渡す</td></tr>
 <tr><td><strong><code>lindera download</code> は辞書を <code>LINDERA_DICTIONARIES_DIR/&lt;name&gt;</code> に置き、<code>LINDERA_DATA_DIR</code> を置き換える</strong></td><td><code>lindera download</code> と <code>lindera list</code> のユーザー、<code>LINDERA_DATA_DIR</code> を設定しているユーザー</td><td>辞書を再ダウンロードする。<code>LINDERA_DICTIONARIES_DIR</code> を設定する（旧名も v8.0.0 までは <code>&lt;dir&gt;/dictionaries</code> として非推奨の警告付きで使える）</td></tr>
 <tr><td><strong><code>--dict</code> と <code>--system-dict</code> は辞書名を受け付けない</strong></td><td><code>lindera tokenize --dict ipadic</code> や <code>lindera build --system-dict ipadic</code> を実行しているユーザー</td><td><code>lindera download</code> が表示するパスか、<code>embedded://ipadic</code> を渡す</td></tr>
 <tr><td><strong>Rust 1.89 以降が必要</strong></td><td>Rust 1.88 で Lindera をビルドするユーザー（Python・Ruby パッケージのソースからのビルドを含む）</td><td>ツールチェーンを更新する（<code>rustup update stable</code>）</td></tr>
@@ -10673,15 +10710,21 @@ build script で <code>embedded_dictionary!</code> のために <code>LINDERA_WO
 <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> が指す文脈 ID の頻度表を読みます
 （<a href="https://github.com/lindera/lindera/issues/1308">#1308</a>）。v6 まではこの変数の
 名前は <code>LINDERA_CTX_FREQ_FILE</code> で、<code>DictionaryBuilder</code> 自身が読んでいたので、
-<code>lindera build</code>（<code>--context-id-freq</code> より優先されていました）と、バインディングの
-辞書をビルドする関数にも効いていました。v7 では次のようになります。</p>
+<code>lindera build</code> にも効いていました（<code>--context-id-freq</code> より優先されていました）。
+v7 では次のようになります。</p>
 <ul>
 <li>
 <p>この変数を読むのは build script だけで、<code>DictionaryBuilder</code> は環境変数を
 読みません。<code>lindera build</code> は <code>--context-id-freq</code> だけで頻度表を受け取り、
-バインディングの辞書をビルドする関数は頻度表を受け取らないので、これらが
-<code>connection_id_mapping</code> を有効にしてビルドする辞書は、辞書の項目の数で文脈 ID を
-並べます。</p>
+バインディングの辞書をビルドする関数は省略可能な引数 <code>context_id_freq</code>
+（Node.js では <code>contextIdFreq</code>）で受け取ります
+（<a href="https://github.com/lindera/lindera/issues/1309">#1309</a>）。</p>
+</li>
+<li>
+<p>バインディングの <code>Metadata</code> は、読み込んだ <code>metadata.json</code> の
+<code>connection_id_mapping</code> を保持します。v6 まではこの設定を落としていたので、
+バインディングは UniDic と ko-dic を文脈 ID を付け替えずにビルドしていて、
+この変数も効いていませんでした。</p>
 </li>
 <li>
 <p><code>LINDERA_CTX_FREQ_FILE</code> も、build script では v8.0.0 まで非推奨の警告付きで

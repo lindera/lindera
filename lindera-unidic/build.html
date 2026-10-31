@@ -195,10 +195,12 @@
 the connection-cost matrix's context IDs by access frequency to improve cache locality when
 looking up connection costs. Passing <code>--context-id-freq</code> / <code>-f</code> with the bundled
 <code>context_id_freq.txt</code> histogram gives this remapping real corpus frequency data to rank IDs
-by. Omitting the flag silently falls back to a much weaker entry-count-based proxy instead of
-failing, so the build still succeeds but without the full benefit. Either way, tokenization
-output is unaffected -- the remap is a bijective relabeling that only changes a build-time
-optimization, never correctness.</p>
+by. Without the flag, the build still succeeds, but falls back to a much weaker
+entry-count-based proxy and writes this warning to standard error:</p>
+<pre><code class="language-text">[WARN  lindera_dictionary::builder::context_id_remap] connection_id_mapping is enabled but no context-id frequency file was found; falling back to the entry-count proxy, which measured ~0% improvement. Bundle a corpus-derived histogram (see the ctxfreq_dump example) for the real gain.
+</code></pre>
+<p>Either way, tokenization output is unaffected -- the remap is a bijective relabeling that
+only changes a build-time optimization, never correctness.</p>
 </blockquote>
 <h2 id="build-user-dictionary"><a class="header" href="#build-user-dictionary">Build user dictionary</a></h2>
 <p>Build a user dictionary from a CSV file:</p>

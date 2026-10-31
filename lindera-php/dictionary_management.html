@@ -238,6 +238,17 @@ Lindera\Dictionary::build('/path/to/input_dir', '/path/to/output_dir', $metadata
 </code></pre>
 <p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
 <p>Metadata loaded with <code>Lindera\Metadata::fromJsonFile</code> keeps the <code>space_penalty</code> rules of the <code>metadata.json</code>, and the built dictionary ships them. For ko-dic this means the left-space penalty stays on by default in the dictionary you build; turn it off per tokenizer with <code>TokenizerBuilder::setSpacePenalty(false)</code> (see <a href="./tokenizer_api.html#setspacepenaltyvalue">Tokenizer API</a>). Metadata created with the constructor carries no rules.</p>
+<p>Metadata loaded with <code>Lindera\Metadata::fromJsonFile</code> also keeps <code>connection_id_mapping</code>, which the <code>metadata.json</code> of ko-dic and UniDic enables. The build then relabels the context IDs of the connection matrix by access frequency, as <code>lindera build</code> does, to improve the cache locality of connection-cost lookups; the results of tokenization do not change. Pass a context-ID frequency histogram as the fourth argument, <code>$context_id_freq</code>, such as the <code>context_id_freq.txt</code> of the dictionary crate, to rank the IDs by their frequency in a corpus, as <code>lindera build --context-id-freq</code> does. Without one, the IDs are ranked by the count of dictionary entries, a much weaker proxy. A dictionary without <code>connection_id_mapping</code> does not read the histogram.</p>
+<pre><code class="language-php">&lt;?php
+
+$metadata = Lindera\Metadata::fromJsonFile('/path/to/lindera-ko-dic/metadata.json');
+Lindera\Dictionary::build(
+    '/path/to/mecab-ko-dic',
+    '/path/to/output_dir',
+    $metadata,
+    '/path/to/lindera-ko-dic/context_id_freq.txt'
+);
+</code></pre>
 <p>Here is an example that downloads and builds the IPADIC dictionary:</p>
 <pre><code class="language-php">&lt;?php
 

@@ -232,7 +232,7 @@ cargo build --features=embed-ipadic
 <pre><code class="language-shell">export LINDERA_BUILD_CONTEXT_ID_FREQ_FILE=/path/to/context_id_freq.txt
 cargo build --features=embed-unidic
 </code></pre>
-<p>Only the build scripts read it: <code>lindera build</code> takes the histogram from its <code>--context-id-freq</code> option, and the functions of the bindings that build a dictionary take none. Changing the variable, or the file it names, reruns the build script, and the cache of <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> compares the histogram's contents.</p>
+<p>Only the build scripts read it: <code>lindera build</code> takes the histogram from its <code>--context-id-freq</code> option, and the functions of the bindings that build a dictionary take it as an optional argument, <code>context_id_freq</code> (<code>contextIdFreq</code> in Node.js). Changing the variable, or the file it names, reruns the build script, and the cache of <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> compares the histogram's contents.</p>
 <p><code>LINDERA_CTX_FREQ_FILE</code>, the name of this variable up to v6, still works until v8.0.0, with a deprecation warning:</p>
 <pre><code class="language-text">warning: lindera-ko-dic@7.0.0: LINDERA_CTX_FREQ_FILE is deprecated and will be removed in v8.0.0; set LINDERA_BUILD_CONTEXT_ID_FREQ_FILE instead
 </code></pre>

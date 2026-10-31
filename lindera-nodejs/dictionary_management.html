@@ -245,6 +245,14 @@ buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 <pre><code class="language-javascript">const metadata = Metadata.fromJsonFile("/path/to/lindera-ko-dic/metadata.json");
 buildDictionary("/path/to/mecab-ko-dic", "/path/to/output_dir", metadata);
 </code></pre>
+<p><code>Metadata.fromJsonFile()</code> also keeps <code>connection_id_mapping</code>, which the <code>metadata.json</code> of ko-dic and UniDic enables. The build then relabels the context IDs of the connection matrix by access frequency, as <code>lindera build</code> does, to improve the cache locality of connection-cost lookups; the results of tokenization do not change. Pass a context-ID frequency histogram as the fourth argument, <code>contextIdFreq</code>, such as the <code>context_id_freq.txt</code> of the dictionary crate, to rank the IDs by their frequency in a corpus, as <code>lindera build --context-id-freq</code> does. Without one, the IDs are ranked by the count of dictionary entries, a much weaker proxy. A dictionary without <code>connection_id_mapping</code> does not read the histogram.</p>
+<pre><code class="language-javascript">buildDictionary(
+  "/path/to/mecab-ko-dic",
+  "/path/to/output_dir",
+  metadata,
+  "/path/to/lindera-ko-dic/context_id_freq.txt",
+);
+</code></pre>
 <h3 id="user-dictionary"><a class="header" href="#user-dictionary">User Dictionary</a></h3>
 <p>Build a user dictionary from a CSV file for the system dictionary it is used
 with:</p>

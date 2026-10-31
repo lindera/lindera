@@ -232,7 +232,7 @@ cargo build --features=embed-ipadic
 <pre><code class="language-shell">export LINDERA_BUILD_CONTEXT_ID_FREQ_FILE=/path/to/context_id_freq.txt
 cargo build --features=embed-unidic
 </code></pre>
-<p>この変数を読むのは build script だけです。<code>lindera build</code> は <code>--context-id-freq</code> オプションで頻度表を受け取り、バインディングの辞書をビルドする関数は頻度表を受け取りません。変数や、変数が指すファイルを変えると build script が再実行され、<code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> のキャッシュは頻度表の内容を比べます。</p>
+<p>この変数を読むのは build script だけです。<code>lindera build</code> は <code>--context-id-freq</code> オプションで頻度表を受け取り、バインディングの辞書をビルドする関数は省略可能な引数 <code>context_id_freq</code>（Node.js では <code>contextIdFreq</code>）で受け取ります。変数や、変数が指すファイルを変えると build script が再実行され、<code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> のキャッシュは頻度表の内容を比べます。</p>
 <p>v6 までの名前 <code>LINDERA_CTX_FREQ_FILE</code> も v8.0.0 までは使えますが、非推奨の警告が出ます：</p>
 <pre><code class="language-text">warning: lindera-ko-dic@7.0.0: LINDERA_CTX_FREQ_FILE is deprecated and will be removed in v8.0.0; set LINDERA_BUILD_CONTEXT_ID_FREQ_FILE instead
 </code></pre>

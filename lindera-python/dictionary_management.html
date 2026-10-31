@@ -247,6 +247,15 @@ build_dictionary("/path/to/input_dir", "/path/to/output_dir", metadata)
 </code></pre>
 <p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
 <p>Metadata loaded with <code>Metadata.from_json_file</code> keeps the <code>space_penalty</code> rules of the <code>metadata.json</code>, and the built dictionary ships them. For ko-dic this means the left-space penalty stays on by default in the dictionary you build; turn it off per tokenizer with <code>TokenizerBuilder.set_space_penalty(False)</code> (see <a href="./tokenizer_api.html#set_space_penaltyvalue">Tokenizer API</a>). A <code>Metadata</code> created with the constructor carries no rules.</p>
+<p>Metadata loaded with <code>Metadata.from_json_file</code> also keeps <code>connection_id_mapping</code>, which the <code>metadata.json</code> of ko-dic and UniDic enables. The build then relabels the context IDs of the connection matrix by access frequency, as <code>lindera build</code> does, to improve the cache locality of connection-cost lookups; the results of tokenization do not change. Pass a context-ID frequency histogram as <code>context_id_freq</code>, such as the <code>context_id_freq.txt</code> of the dictionary crate, to rank the IDs by their frequency in a corpus, as <code>lindera build --context-id-freq</code> does. Without one, the IDs are ranked by the count of dictionary entries, a much weaker proxy. A dictionary without <code>connection_id_mapping</code> does not read the histogram.</p>
+<pre><code class="language-python">metadata = Metadata.from_json_file("/path/to/lindera-ko-dic/metadata.json")
+build_dictionary(
+    "/path/to/mecab-ko-dic",
+    "/path/to/output_dir",
+    metadata,
+    context_id_freq="/path/to/lindera-ko-dic/context_id_freq.txt",
+)
+</code></pre>
 <h3 id="user-dictionary"><a class="header" href="#user-dictionary">User Dictionary</a></h3>
 <p>Build a user dictionary from a CSV file for the system dictionary it is used
 with:</p>
