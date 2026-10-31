@@ -286,15 +286,17 @@ impl DictionaryBuilder {
         })
     }
 
-    /// Write `metadata.json`, stamping the dictionary format version and
-    /// embedding the context-ID permutation when one was applied.
+    /// Write `metadata.json`, stamping the dictionary format version and the
+    /// Lindera version, and embedding the context-ID permutation when one was
+    /// applied.
     ///
     /// The format version is taken from
     /// [`DICTIONARY_FORMAT_VERSION`] rather than from the source metadata:
     /// it describes the artifacts this builder just wrote, so the builder is
     /// the only thing that can state it truthfully. A source `metadata.json`
     /// carrying a stale (or invented) version must not be able to mislabel a
-    /// freshly built dictionary.
+    /// freshly built dictionary. `lindera_version` is this crate's version
+    /// for the same reason (#1303).
     ///
     /// Persisting the permutation is what lets a user dictionary compiled later be
     /// relabeled into the same ID space (see
@@ -311,6 +313,7 @@ impl DictionaryBuilder {
     ) -> LinderaResult<()> {
         let mut metadata = self.metadata.clone();
         metadata.format_version = DICTIONARY_FORMAT_VERSION;
+        metadata.lindera_version = Some(crate::get_version().to_string());
         if let Some(map) = remap {
             metadata.context_id_map = Some(ContextIdMap::clone(map));
         }
