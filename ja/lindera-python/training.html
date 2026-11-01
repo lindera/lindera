@@ -217,6 +217,8 @@ lindera.train(
 </tbody></table>
 </div>
 <p>設定の値は、ファイルを読む前に検査されます。知らない <code>regularization</code> や、範囲の外の <code>lambda_</code>・<code>elastic_net_l1_ratio</code>・<code>eta</code> は <code>ValueError</code> になります。v6 のデフォルトの設定で学習するには（最初のライン探索が変わったので、モデルは v6 と一致しません。<a href="https://github.com/lindera/lindera/issues/1290">#1290</a>）、<code>regularization="l1"</code> と <code>lambda_=0.01</code> を渡し、<code>max_iter</code> だけで止めるには <code>eta=0</code> も渡します。</p>
+<h3 id="進捗の出力"><a class="header" href="#進捗の出力">進捗の出力</a></h3>
+<p><code>lindera.train()</code> は進捗を標準出力に、L-BFGS のイテレーションごとに 1 行（<code>iter: 1, cost: 0.5948643217470097, best_cost: 0.5948643217470097, gamma: 0.47689090558496994</code> など）を標準エラーに書きます。<code>lindera.export()</code> は作ったファイルを標準出力に書きます。ブロッキングのストリームと同じように書きます。ストリームが一杯のあいだは行を受け取るまで待ち、読み手が終わったパイプのように、もう受け取れないストリームへの行は捨てて学習を続けます（<a href="https://github.com/lindera/lindera/issues/1312">#1312</a>）。子プロセスで学習するプログラムは、子の両方のストリームを読み続けてください。読まないと学習が待ち続けます。</p>
 <h2 id="学習済みモデルのエクスポート"><a class="header" href="#学習済みモデルのエクスポート">学習済みモデルのエクスポート</a></h2>
 <p>学習後、<code>lindera.export()</code> を使用してモデルを辞書ソースファイルにエクスポートします：</p>
 <pre><code class="language-python">import lindera

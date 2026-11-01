@@ -181,6 +181,7 @@
 <pre><code class="language-text">lindera-crf/src/
 ├── lib.rs                # Public API re-exports
 ├── bigram_table.rs       # Bigram weight indices of the training lattices
+├── console.rs            # Progress lines written without panicking (write_line)
 ├── feature.rs            # FeatureSet, FeatureProvider
 ├── lattice.rs            # Edge, Node, Lattice
 ├── model.rs              # RawModel, MergedModel, Model trait
@@ -213,6 +214,7 @@
 <li><code>StopReason::MaxIterations</code>: the cap set with <code>Trainer::max_iter</code>.</li>
 <li><code>StopReason::LineSearchFailed</code>: the line search of an iteration failed far from the optimum, where the norm of the gradient at the best weights of the run was still at least <code>1e-5</code> times its norm at the initial weights. The weights are the best ones of the run. A search direction with a component that is not finite, which the optimizer builds from a step that left the gradient unchanged, fails the line search too.</li>
 </ul>
+<p>While it trains, the optimizer writes the solver's name, <code>L-BFGS</code>, and then a line per iteration to standard error, such as <code>iter: 1, cost: 0.5948643217470097, best_cost: 0.5948643217470097, gamma: 0.47689090558496994</code>: the number of the iteration, its cost, the best cost so far, and the solver's key-value pairs, sorted by key. It writes them on the training thread through <code>console::write_line</code>, as a write to a blocking stream would: while the stream is full and non-blocking, as Node.js makes the standard streams of a <code>node --test</code> child, it waits until the stream takes the line, trying again after 1 ms, doubling up to 50 ms, and a line that the stream can no longer take, such as a pipe whose reader has exited, is dropped. It never panics, so the training gives the same result whatever happens to its output (<a href="https://github.com/lindera/lindera/issues/1312">#1312</a>). <code>lindera_trainer</code> writes its progress and warnings with the same function.</p>
 <h3 id="regularization"><a class="header" href="#regularization">Regularization</a></h3>
 <p>Configurable regularization strategies:</p>
 <ul>
@@ -236,7 +238,7 @@
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>alloc</code></td><td>Alloc support for <code>no_std</code></td><td>No*</td></tr>
 <tr><td><code>std</code></td><td>Standard library support (implies <code>alloc</code>)</td><td>No*</td></tr>
-<tr><td><code>train</code></td><td>Training functionality (L-BFGS, multi-threading, logging)</td><td>Yes</td></tr>
+<tr><td><code>train</code></td><td>Training functionality (L-BFGS, multi-threading, progress lines)</td><td>Yes</td></tr>
 </tbody></table>
 </div>
 <p>* Not listed directly in <code>default</code>, but transitively enabled by <code>train</code> (which is on by default and enables <code>std</code>, which in turn enables <code>alloc</code>) -- so <code>alloc</code>/<code>std</code> are active in a default build.</p>

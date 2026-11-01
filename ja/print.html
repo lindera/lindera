@@ -976,6 +976,7 @@ tokenizer
 <pre><code class="language-text">lindera-crf/src/
 ├── lib.rs                # パブリックAPIの再エクスポート
 ├── bigram_table.rs       # 学習ラティスのバイグラム重みの添字
+├── console.rs            # panic しない進捗の行の書き込み（write_line）
 ├── feature.rs            # FeatureSet, FeatureProvider
 ├── lattice.rs            # Edge, Node, Lattice
 ├── model.rs              # RawModel, MergedModel, Model trait
@@ -1008,6 +1009,7 @@ tokenizer
 <li><code>StopReason::MaxIterations</code>: <code>Trainer::max_iter</code>で設定した上限に達した。</li>
 <li><code>StopReason::LineSearchFailed</code>: 最適点から遠いところで、あるイテレーションのライン探索が失敗した。最適点から遠いとは、その学習で最良の重みでの勾配のノルムが、まだ初期の重みでのノルムの<code>1e-5</code>倍以上あるところです。重みは、その学習で最良だったものです。勾配を変えなかった歩幅の後に最適化が作る、有限でない成分を持つ探索方向も、ライン探索の失敗になります。</li>
 </ul>
+<p>学習の間、最適化はソルバーの名前（<code>L-BFGS</code>）を、続けてイテレーションごとに 1 行を標準エラーに書きます。<code>iter: 1, cost: 0.5948643217470097, best_cost: 0.5948643217470097, gamma: 0.47689090558496994</code>のように、イテレーションの番号、そのコスト、それまでの最良のコスト、ソルバーのキーと値の組（キーの順）です。行は学習のスレッドで<code>console::write_line</code>を使い、ブロッキングのストリームに書くのと同じように書きます。Node.js が<code>node --test</code>の子プロセスで行うように、ストリームが非ブロッキングで一杯のときは、1 ms から 50 ms まで倍にしながら待って、ストリームが行を受け取るまで書き直します。読み手が終わったパイプのように、もう受け取れないストリームへの行は捨てます。panic しないので、出力がどうなっても学習の結果は変わりません（<a href="https://github.com/lindera/lindera/issues/1312">#1312</a>）。<code>lindera_trainer</code>も、進捗と警告を同じ関数で書きます。</p>
 <h3 id="regularization"><a class="header" href="#regularization">Regularization</a></h3>
 <p>設定可能な正則化戦略：</p>
 <ul>
@@ -1031,7 +1033,7 @@ tokenizer
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>alloc</code></td><td><code>no_std</code>向けのallocサポート</td><td>No*</td></tr>
 <tr><td><code>std</code></td><td>標準ライブラリサポート（<code>alloc</code>を含む）</td><td>No*</td></tr>
-<tr><td><code>train</code></td><td>学習機能（L-BFGS、マルチスレッド、ログ出力）</td><td>Yes</td></tr>
+<tr><td><code>train</code></td><td>学習機能（L-BFGS、マルチスレッド、進捗の行）</td><td>Yes</td></tr>
 </tbody></table>
 </div>
 <p>* <code>default</code>に直接列挙されているわけではありませんが、デフォルトで有効な<code>train</code>が<code>std</code>を有効化し、<code>std</code>がさらに<code>alloc</code>を有効化するため、実際にはデフォルトビルドで<code>alloc</code>／<code>std</code>は有効になっています。</p>
@@ -1164,7 +1166,7 @@ tokenizer
 <li>正解の各トークンには、範囲と素性文字列全体が同じ最初の種辞書の行のラベルを付けます。なければ、範囲が同じ未知語候補の<code>unk.def</code>エントリのうち、<code>*</code>以外の素性の列がすべて正解トークンの列と一致するファイル順で最初のエントリのラベルを付けます（どちらの列も<code>rewrite()</code>と同じく分けます）。それもなければ、MeCabの学習器が仮想ノードを追加するのと同じく、正解の素性文字列から作る仮想ラベル（<code>%t</code>は0、<code>%w</code>なし、素性文字列ごとに1つ）を付けます。仮想ラベルはほかのラベルの後に並び、学習されますが、エクスポートされることはありません。</li>
 <li>それ以外の候補はすべて負例の辺になります。</li>
 </ul>
-<p>ラティスを作り終えると、<code>Lattice statistics:</code>の行を出力します。各方法でラベルを付けた正解トークンの数（<code>gold_lexicon</code>・<code>gold_unknown</code>・<code>gold_virtual</code>）、仮想ラベルの数（<code>virtual_labels</code>）、種辞書と未知語候補それぞれから作った負例の辺の数（<code>negative_lexicon</code>・<code>negative_unknown</code>）です。正解トークンがあり、種辞書の語であるものが1つもないとき、または表層を持つ種辞書の行はあるものの素性文字列が一致する行がない正解トークンが種辞書の語より多いときは、続けて標準エラーに警告を書きます。バインディングは<code>log</code>クレートのロガーを設定しないので、<code>log</code>クレートではなく<code>eprintln!</code>で書きます。警告には、そうした最初の正解トークンと、その表層を持つ種辞書の行のうち最初の5行の素性文字列が並びます。<code>Trainer::max_grouping_len</code>は、ランタイムと同じ意味（先頭の1文字を除いた文字数。デフォルトの<code>None</code>は無制限）で未知語のグルーピングの長さに上限を設けます。ほかのビルダーメソッドは、正則化（デフォルトはL2と<code>DEFAULT_LAMBDA</code>の1.0。<code>use_l2(false)</code>でL1）・イテレーション数の上限・収束判定の許容値（<code>Trainer::eta</code>。デフォルトは<code>DEFAULT_ETA</code>の<code>5e-5</code>。<a href="lindera-trainer/../lindera-crf/architecture.html#trainer">lindera-crfのアーキテクチャ</a>を参照）・スレッド数を設定します。学習の後に、最適化が止まった理由を、イテレーション数と損失・勾配の評価回数とともに出力します。最適点から遠いところで、あるイテレーションで目的関数が変わらなかったときと、ライン探索が失敗したときは、続けて標準エラーに警告を書きます。種辞書の語の警告と同じく<code>eprintln!</code>で書きます。</p>
+<p>ラティスを作り終えると、<code>Lattice statistics:</code>の行を出力します。各方法でラベルを付けた正解トークンの数（<code>gold_lexicon</code>・<code>gold_unknown</code>・<code>gold_virtual</code>）、仮想ラベルの数（<code>virtual_labels</code>）、種辞書と未知語候補それぞれから作った負例の辺の数（<code>negative_lexicon</code>・<code>negative_unknown</code>）です。正解トークンがあり、種辞書の語であるものが1つもないとき、または表層を持つ種辞書の行はあるものの素性文字列が一致する行がない正解トークンが種辞書の語より多いときは、続けて標準エラーに警告を書きます。バインディングは<code>log</code>クレートのロガーを設定しないので、<code>log</code>クレートではなく<code>lindera_crf::console</code>で書きます。警告には、そうした最初の正解トークンと、その表層を持つ種辞書の行のうち最初の5行の素性文字列が並びます。<code>Trainer::max_grouping_len</code>は、ランタイムと同じ意味（先頭の1文字を除いた文字数。デフォルトの<code>None</code>は無制限）で未知語のグルーピングの長さに上限を設けます。ほかのビルダーメソッドは、正則化（デフォルトはL2と<code>DEFAULT_LAMBDA</code>の1.0。<code>use_l2(false)</code>でL1）・イテレーション数の上限・収束判定の許容値（<code>Trainer::eta</code>。デフォルトは<code>DEFAULT_ETA</code>の<code>5e-5</code>。<a href="lindera-trainer/../lindera-crf/architecture.html#trainer">lindera-crfのアーキテクチャ</a>を参照）・スレッド数を設定します。学習の後に、最適化が止まった理由を、イテレーション数と損失・勾配の評価回数とともに出力します。最適点から遠いところで、あるイテレーションで目的関数が変わらなかったときと、ライン探索が失敗したときは、続けて標準エラーに警告を書きます。種辞書の語の警告と同じく<code>lindera_crf::console</code>で書きます。</p>
 <h3 id="model--serializablemodel"><a class="header" href="#model--serializablemodel">Model / SerializableModel</a></h3>
 <p><code>Model</code>は<code>Trainer::train</code>が生成する学習済みモデルです。学習された<code>lindera_crf::RawModel</code>、学習に用いた<code>TrainerConfig</code>、抽出済みの素性の重みとラベル、仮想ラベルの素性文字列、そして学習後に<code>read_user_lexicon</code>で追加されたユーザー辞書エントリを保持します。学習されたCRFの重みは、MeCab互換の整数コストに変換されます（<code>tocost(weight, cost_factor) = clamp(round(-weight * cost_factor), i16::MIN, i16::MAX)</code>、すなわち<code>[-32768, 32767]</code>の範囲にクランプされます）。この際のコストファクターは、<code>i16</code>の値域を最大限活用できるよう計算されます（<code>calculate_cost_factor</code>）。<code>Model</code>は自身をシリアライズでき（<code>write_model</code>）、辞書ソースファイルを直接エクスポートすることもできます。</p>
 <p><code>SerializableModel</code>は、<code>Model::read_model</code>がリーダーから以前学習したモデルを読み込んだ際に返される、<code>rkyv</code>でシリアライズ可能な素のデータ型です（<code>lindera export</code> CLIコマンドで使用されます）。<code>Model</code>と同じ学習結果の情報――素性の重み、ラベル、品詞情報、連接コスト行列、<code>unk.def</code>のエントリ（<code>unk_entries</code>。ファイル順の<code>(カテゴリ, 素性文字列)</code>の組）、保存されている<code>char.def</code> / <code>feature.def</code> / <code>rewrite.def</code>の内容、コストファクター、左右文脈IDマッピング――を<code>TrainerConfig</code>を持たない所有データとして保持し、辞書エクスポートファイルを生成するための独自のライターメソッド群を提供します。</p>
@@ -4231,6 +4233,8 @@ lindera.train(
 </tbody></table>
 </div>
 <p>設定の値は、ファイルを読む前に検査されます。知らない <code>regularization</code> や、範囲の外の <code>lambda_</code>・<code>elastic_net_l1_ratio</code>・<code>eta</code> は <code>ValueError</code> になります。v6 のデフォルトの設定で学習するには（最初のライン探索が変わったので、モデルは v6 と一致しません。<a href="https://github.com/lindera/lindera/issues/1290">#1290</a>）、<code>regularization="l1"</code> と <code>lambda_=0.01</code> を渡し、<code>max_iter</code> だけで止めるには <code>eta=0</code> も渡します。</p>
+<h3 id="進捗の出力"><a class="header" href="#進捗の出力">進捗の出力</a></h3>
+<p><code>lindera.train()</code> は進捗を標準出力に、L-BFGS のイテレーションごとに 1 行（<code>iter: 1, cost: 0.5948643217470097, best_cost: 0.5948643217470097, gamma: 0.47689090558496994</code> など）を標準エラーに書きます。<code>lindera.export()</code> は作ったファイルを標準出力に書きます。ブロッキングのストリームと同じように書きます。ストリームが一杯のあいだは行を受け取るまで待ち、読み手が終わったパイプのように、もう受け取れないストリームへの行は捨てて学習を続けます（<a href="https://github.com/lindera/lindera/issues/1312">#1312</a>）。子プロセスで学習するプログラムは、子の両方のストリームを読み続けてください。読まないと学習が待ち続けます。</p>
 <h2 id="学習済みモデルのエクスポート"><a class="header" href="#学習済みモデルのエクスポート">学習済みモデルのエクスポート</a></h2>
 <p>学習後、<code>lindera.export()</code> を使用してモデルを辞書ソースファイルにエクスポートします：</p>
 <pre><code class="language-python">import lindera
@@ -5143,6 +5147,8 @@ train({
 </tbody></table>
 </div>
 <p>設定の値は、ファイルを読む前に検査されます。知らない <code>regularization</code> や、範囲の外の <code>lambda</code>・<code>elasticNetL1Ratio</code>・<code>eta</code> は <code>InvalidArg</code> のエラーになります。v6 のデフォルトの設定で学習するには（最初のライン探索が変わったので、モデルは v6 と一致しません。<a href="https://github.com/lindera/lindera/issues/1290">#1290</a>）、<code>regularization: "l1"</code> と <code>lambda: 0.01</code> を渡し、<code>maxIter</code> だけで止めるには <code>eta: 0</code> も渡します。</p>
+<h3 id="進捗の出力-1"><a class="header" href="#進捗の出力-1">進捗の出力</a></h3>
+<p><code>train()</code> は進捗を標準出力に、L-BFGS のイテレーションごとに 1 行（<code>iter: 1, cost: 0.5948643217470097, best_cost: 0.5948643217470097, gamma: 0.47689090558496994</code> など）を標準エラーに書きます。<code>exportModel()</code> は作ったファイルを標準出力に書きます。Node.js が <code>node --test</code> のようにストリームを非ブロッキングにしていても、ブロッキングのストリームと同じように書きます。ストリームが一杯のあいだは行を受け取るまで待ち、読み手が終わったパイプのように、もう受け取れないストリームへの行は捨てて学習を続けます（<a href="https://github.com/lindera/lindera/issues/1312">#1312</a>）。子プロセスで学習するプログラムは、子の両方のストリームを読み続けてください。読まないと学習が待ち続けます。</p>
 <h2 id="学習済みモデルのエクスポート-1"><a class="header" href="#学習済みモデルのエクスポート-1">学習済みモデルのエクスポート</a></h2>
 <p>学習後、<code>exportModel()</code> を使用してモデルを辞書ソースファイルにエクスポートします：</p>
 <pre><code class="language-javascript">const { exportModel } = require("lindera");
@@ -6103,6 +6109,8 @@ Lindera.train(
 <p>設定の値は、ファイルを読む前に検査されます。知らない <code>regularization:</code> は <code>ArgumentError</code>、範囲の外の <code>lambda</code>・<code>elastic_net_l1_ratio:</code>・<code>eta:</code> は <code>RangeError</code> になります。v6 のデフォルトの設定で学習するには（最初のライン探索が変わったので、モデルは v6 と一致しません。<a href="https://github.com/lindera/lindera/issues/1290">#1290</a>）、<code>lambda</code> に 0.01 を、<code>regularization:</code> に <code>'l1'</code> を渡し、<code>max_iter</code> だけで止めるには <code>eta: 0</code> も渡します：</p>
 <pre><code class="language-ruby">Lindera.train(*inputs, '/tmp/model.dat', 0.01, regularization: 'l1', eta: 0)
 </code></pre>
+<h3 id="進捗の出力-2"><a class="header" href="#進捗の出力-2">進捗の出力</a></h3>
+<p><code>Lindera.train</code> は進捗を標準出力に、L-BFGS のイテレーションごとに 1 行（<code>iter: 1, cost: 0.5948643217470097, best_cost: 0.5948643217470097, gamma: 0.47689090558496994</code> など）を標準エラーに書きます。<code>Lindera.export</code> は作ったファイルを標準出力に書きます。ブロッキングのストリームと同じように書きます。ストリームが一杯のあいだは行を受け取るまで待ち、読み手が終わったパイプのように、もう受け取れないストリームへの行は捨てて学習を続けます（<a href="https://github.com/lindera/lindera/issues/1312">#1312</a>）。子プロセスで学習するプログラムは、子の両方のストリームを読み続けてください。読まないと学習が待ち続けます。</p>
 <h2 id="学習済みモデルのエクスポート-2"><a class="header" href="#学習済みモデルのエクスポート-2">学習済みモデルのエクスポート</a></h2>
 <p>学習後、<code>Lindera.export</code> を使用してモデルを辞書ソースファイルにエクスポートします：</p>
 <pre><code class="language-ruby">require 'lindera'
@@ -7130,6 +7138,8 @@ Lindera\Trainer::train(
 </tbody></table>
 </div>
 <p>省略できる引数は、<code>null</code> を渡すとデフォルトになります。設定の値は、ファイルを読む前に検査されます。知らない <code>$regularization</code> や、範囲の外の <code>$lambda</code>・<code>$elastic_net_l1_ratio</code>・<code>$eta</code> は <code>ValueError</code> になります。v6 のデフォルトの設定で学習するには（最初のライン探索が変わったので、モデルは v6 と一致しません。<a href="https://github.com/lindera/lindera/issues/1290">#1290</a>）、<code>regularization: 'l1'</code> と <code>lambda: 0.01</code> を渡し、<code>$max_iter</code> だけで止めるには <code>eta: 0</code> も渡します。</p>
+<h3 id="進捗の出力-3"><a class="header" href="#進捗の出力-3">進捗の出力</a></h3>
+<p><code>Lindera\Trainer::train()</code> は進捗を標準出力に、L-BFGS のイテレーションごとに 1 行（<code>iter: 1, cost: 0.5948643217470097, best_cost: 0.5948643217470097, gamma: 0.47689090558496994</code> など）を標準エラーに書きます。<code>Lindera\Trainer::export()</code> は作ったファイルを標準出力に書きます。ブロッキングのストリームと同じように書きます。ストリームが一杯のあいだは行を受け取るまで待ち、読み手が終わったパイプのように、もう受け取れないストリームへの行は捨てて学習を続けます（<a href="https://github.com/lindera/lindera/issues/1312">#1312</a>）。子プロセスで学習するプログラムは、子の両方のストリームを読み続けてください。読まないと学習が待ち続けます。</p>
 <h2 id="学習済みモデルのエクスポート-3"><a class="header" href="#学習済みモデルのエクスポート-3">学習済みモデルのエクスポート</a></h2>
 <p>学習後、<code>Lindera\Trainer::export()</code> を使用してモデルを辞書ソースファイルにエクスポートします：</p>
 <pre><code class="language-php">&lt;?php
@@ -10422,6 +10432,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong><code>lindera train</code> は MeCab の学習器と同じくラティスを作り、<code>unk.def</code> のすべてのエントリを保持する。<code>model.dat</code> の形式バージョンは 3.0.0</strong></td><td><code>lindera train</code>・<code>lindera export</code> と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー</td><td>7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた <code>model.dat</code> は拒否される）。<code>unk.def</code> のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す</td></tr>
 <tr><td><strong><code>lindera train</code> のデフォルトの正則化は、MeCab の学習器と同じく係数 1.0 の L2</strong></td><td><code>lindera train</code>、<code>lindera_trainer</code> と <code>lindera_crf</code> の <code>Trainer::new</code>、Python・Node.js・Ruby・PHP のバインディングの学習関数を、正則化の種類と係数の両方を渡さずに使うユーザー</td><td>精度が上がり、<code>matrix.def</code> が大きくなる。v6 のデフォルトの設定を使うには <code>--regularization l1 --lambda 0.01</code>（Rust では <code>.use_l2(false).regularization_cost(0.01)</code>、バインディングでは <code>regularization</code> に <code>l1</code>、<code>lambda</code> に 0.01。<a href="https://github.com/lindera/lindera/issues/1262">#1262</a>）を渡す</td></tr>
 <tr><td><strong><code>lindera train</code> は、MeCab の学習器や libLBFGS と同じく、最初のライン探索を長さ 1 の刻みから始める</strong></td><td><code>lindera train</code>、<code>lindera_trainer</code> と <code>lindera_crf</code> の <code>Trainer</code>、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー</td><td>対処は不要。v6 の設定でも、学習したモデルはすべて v6 と変わる。分離可能なデータの L1 は、数回の反復で止まらずに学習を続ける</td></tr>
+<tr><td>学習の反復の行から日時とレベルがなくなり、標準出力の進捗と順に並び、一杯のストリームでは panic せずに待つ</td><td><code>lindera train</code> やバインディングの学習関数の標準エラーを読むスクリプト。Node.js のテストのファイルのように、非ブロッキングの標準ストリームで学習するプログラム</td><td><code>&lt;日時&gt; INFO</code> の付かない <code>iter: N, cost: …</code> の行として読む。学習する子プロセスの両方のストリームを読み続ける</td></tr>
 <tr><td><strong><code>lindera build</code> は <code>matrix.def</code> の範囲外の文脈 ID を拒否する</strong></td><td><code>lex.csv</code> や <code>unk.def</code> に <code>matrix.def</code> の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の <code>mecab-dict-index</code> が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる）</td><td>ID か行列を直すか、<code>metadata.json</code> の <code>skip_invalid_cost_or_id</code> でそうした <code>lex.csv</code> の行を取り除く。ユーザー辞書ではそうした ID を直す</td></tr>
 <tr><td><strong><code>lindera build</code> と <code>lindera train</code> は <code>char.def</code> と <code>unk.def</code> を照らし合わせる</strong></td><td>それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが <code>char.def</code> にあるユーザー、<code>char.def</code> と <code>unk.def</code> でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、<code>unk.def</code> の行を無視したりしていた）。MeCab の <code>mecab-dict-index</code> が受け入れる辞書は影響を受けない</td><td>各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに <code>unk.def</code> の行を書き、未定義のカテゴリの <code>unk.def</code> の行を削除する</td></tr>
 <tr><td><strong><code>lindera build</code> は、MeCab と同じく <code>matrix.def</code> にないセルのコストを 0 にする</strong></td><td>セルを省いた <code>matrix.def</code> からシステム辞書をビルドするユーザー。すべてのセルを列挙している同梱の辞書と、<code>lindera export</code> が書き出す <code>matrix.def</code> は対象外</td><td>そうしたセルのコストは 32767 ではなく 0 になる。接続を高いコストのままにするには、そのセルをコスト付きで列挙する</td></tr>
@@ -11946,6 +11957,27 @@ v6 は最初のライン探索も刻み幅 1 から始めたので、最初に�
 </div>
 <p>対処方法: 対処は不要です。v6 の設定（前の節を参照）でも、モデルはバイト単位では v6 と
 同じになりません。</p>
+<h2 id="学習の反復の行から日時がなくなる"><a class="header" href="#学習の反復の行から日時がなくなる">学習の反復の行から日時がなくなる</a></h2>
+<p><code>lindera train</code>、<code>lindera_trainer</code> と <code>lindera_crf</code> の <code>Trainer</code>、Python・Node.js・Ruby・PHP
+のバインディングの学習関数は、L-BFGS のイテレーションごとに 1 行を標準エラーに書きます。
+v6.2.0 までは argmin-observer-slog が日時とレベルを付けて書いていました。v7.0.0 は自分で書き、
+どちらも付けません（<a href="https://github.com/lindera/lindera/issues/1312">#1312</a>）。</p>
+<pre><code class="language-text"># v6
+Oct 31 16:30:11.900 INFO iter: 1, cost: 2.7104295458825787, best_cost: 2.7104295458825787, gamma: 0.21819781851100348
+# v7
+iter: 1, cost: 2.7104295458825787, best_cost: 2.7104295458825787, gamma: 0.21819781851100348
+</code></pre>
+<p>キー・その順・数値は以前と同じです。<code>gamma</code> などのソルバー自身の組はキーの順に並び、ソルバーの
+名前の行（<code>L-BFGS</code>）が最初に来るのも同じです。行は学習のスレッドで書くので、ログのスレッドが
+書けたときではなく、標準出力の <code>Each 'iter:' line indicates training progress. Please wait...</code>
+の後に来ます。</p>
+<p>学習は、進捗を書けなくても panic しなくなりました。Node.js が <code>node --test</code> の子プロセスで
+行うように、非ブロッキングで一杯の標準ストリームには、行を受け取るまで待って書きます。v6.2.0
+までは、同じ書き込みで Node.js が <code>failed to initiate panic, error 5</code> で abort することがあり、
+Python・Ruby・PHP は例外を投げました。読み手が終わったパイプのように、もう受け取れない
+ストリームへの行は捨て、学習を続けます。ただし <code>lindera</code> コマンド自身の最後の行は今も失敗します。
+<code>lindera train</code> の標準出力を、終わった読み手へのパイプにつなぐと、モデルを書いた後に
+<code>failed printing to stdout: Broken pipe</code> を出して終了コード 101 で終わります。</p>
 <h2 id="lindera-build-は接続コスト行列の範囲外の文脈-id-を拒否する"><a class="header" href="#lindera-build-は接続コスト行列の範囲外の文脈-id-を拒否する"><code>lindera build</code> は接続コスト行列の範囲外の文脈 ID を拒否する</a></h2>
 <p>v6.2.0 までの <code>lindera build</code> は、文脈 ID が <code>matrix.def</code> の範囲外にある <code>lex.csv</code>
 の行や <code>unk.def</code> の行を受け付け、ビルドした辞書は、解析中にそうした語を引いた
@@ -12449,6 +12481,8 @@ v6 のデフォルトの設定を使うには <code>--regularization l1 --lambda
 （<a href="https://github.com/lindera/lindera/issues/1290">#1290</a>）。</li>
 <li>NaN や無限大の <code>lambda</code> が拒否されることを想定する
 （<a href="https://github.com/lindera/lindera/issues/1262">#1262</a>）。</li>
+<li>学習が標準エラーに書く反復の行をスクリプトで読むなら、日時と <code>INFO</code> の付かない
+<code>iter: N, cost: …</code> の行として読む（<a href="https://github.com/lindera/lindera/issues/1312">#1312</a>）。</li>
 </ul>
 <p><code>lindera build</code> でシステム辞書をビルドするすべてのユーザー:</p>
 <ul>
