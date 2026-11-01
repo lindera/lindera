@@ -1493,6 +1493,7 @@ dependencies = [
  "criterion",
  "daachorse",
  "kanaria",
+ "lindera-crf",
  "lindera-dictionary",
  "lindera-segmenter",
  "log",

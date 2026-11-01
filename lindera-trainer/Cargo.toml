@@ -16,7 +16,7 @@ license = { workspace = true }
 anyhow = { workspace = true }
 csv-core = { workspace = true }
 hashbrown = { workspace = true }
-lindera-crf = { workspace = true }
+lindera-crf = { workspace = true, features = ["train"] }
 lindera-dictionary = { workspace = true }
 regex = { workspace = true }
 rkyv = { workspace = true }
