@@ -164,7 +164,12 @@ fn choose_config_file(
 /// * `warning` - The warning to write.
 fn warn_once_about_config_variables(warning: &str) {
     static WARNED: Once = Once::new();
-    WARNED.call_once(|| eprintln!("{warning}"));
+    WARNED.call_once(|| {
+        lindera_crf::console::write_line(
+            lindera_crf::console::Stream::Stderr,
+            format_args!("{warning}"),
+        );
+    });
 }
 
 #[derive(Debug)]

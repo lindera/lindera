@@ -22,8 +22,9 @@ argmin-math = { version = "0.5.1", optional = true }
 default = ["train"]
 alloc = []
 std = ["alloc"]
+console = ["std"]
 train = [
-    "std",
+    "console",
     "argmin",
     "argmin-math",
 ]
