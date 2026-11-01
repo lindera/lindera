@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'open3'
 require 'tmpdir'
 require_relative 'test_helper'
 
@@ -210,5 +211,55 @@ class TestTrainer < Minitest::Test
     assert_raises(TypeError) { train_missing(regularization: :l1) }
     assert_raises(TypeError) { train_missing(eta: '0') }
     assert_raises(TypeError) { train_missing(elastic_net_l1_ratio: '0.5') }
+  end
+
+  # A child that makes its standard output non-blocking, fills it until a
+  # write fails with EAGAIN, and then trains from the directory and into the
+  # file it is given. It exits with 3 if 64 MiB went through without EAGAIN,
+  # so that a stream that blocks cannot pass the test.
+  FULL_STDOUT_CHILD = <<~RUBY
+    require 'io/nonblock'
+    require 'lindera'
+
+    training, output = ARGV
+    $stdout.nonblock = true
+    chunk = 'x' * 65_536
+    filled = false
+    1024.times do
+      $stdout.write_nonblock(chunk)
+    rescue IO::WaitWritable
+      filled = true
+      break
+    end
+    exit 3 unless filled
+    inputs = %w[seed.csv corpus.txt char.def unk.def feature.def rewrite.def].map { |file| File.join(training, file) }
+    Lindera.train(*inputs, output, nil, 5, 1)
+  RUBY
+
+  # The training and the binding write their progress to standard output
+  # without panicking when it is full and non-blocking: they wait until it
+  # takes the lines, as on a blocking stream (#1312). This process reads
+  # nothing for 3 seconds while the child trains.
+  def test_train_waits_for_a_full_stdout
+    skip 'needs a non-blocking pipe' if Gem.win_platform?
+
+    Dir.mktmpdir('lindera-trainer-') do |dir|
+      output = File.join(dir, 'model.dat')
+      lib = File.expand_path('../lib', __dir__)
+      command = [RbConfig.ruby, '-I', lib, '-e', FULL_STDOUT_CHILD, TRAINING, output]
+      stdout, stderr, status = Open3.popen3(*command) do |stdin, out, err, wait|
+        stdin.close
+        sleep 3
+        [out.read, err.read, wait.value]
+      end
+      report = "stdout: #{stdout[-2000..] || stdout}\nstderr: #{stderr[-2000..] || stderr}"
+
+      assert_predicate status, :success?, report
+      # The binding's first and last lines, right after the bytes that
+      # filled the stream.
+      assert_match(/x+Training with \d+ examples\.\.\.\n/, stdout, report)
+      assert stdout.end_with?("Model saved to #{output}\n"), report
+      assert_path_exists output
+    end
   end
 end

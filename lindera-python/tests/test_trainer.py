@@ -1,4 +1,8 @@
+import re
+import subprocess
+import sys
 import tempfile
+import time
 from pathlib import Path
 
 import pytest
@@ -454,3 +458,62 @@ def test_train_accepts_the_bounds_of_each_setting(kwargs):
     with pytest.raises(ValueError) as excinfo:
         _train_missing(**kwargs)
     assert "seed file does not exist" in str(excinfo.value)
+
+
+# A child that makes its standard output non-blocking, fills it until a
+# write fails with EAGAIN, and then trains from the directory and into the
+# file it is given. It exits with 3 if 64 MiB went through without EAGAIN,
+# so that a stream that blocks cannot pass the test.
+_FULL_STDOUT_CHILD = """
+import os
+import sys
+
+import lindera
+
+training, output = sys.argv[1], sys.argv[2]
+os.set_blocking(1, False)
+chunk = b"x" * 65536
+for _ in range(1024):
+    try:
+        os.write(1, chunk)
+    except BlockingIOError:
+        break
+else:
+    sys.exit(3)
+lindera.train(
+    seed=os.path.join(training, "seed.csv"),
+    corpus=os.path.join(training, "corpus.txt"),
+    char_def=os.path.join(training, "char.def"),
+    unk_def=os.path.join(training, "unk.def"),
+    feature_def=os.path.join(training, "feature.def"),
+    rewrite_def=os.path.join(training, "rewrite.def"),
+    output=output,
+    max_iter=5,
+    max_threads=1,
+)
+"""
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="needs a non-blocking pipe")
+def test_train_waits_for_a_full_stdout():
+    """The training and the binding write their progress to standard output
+    without panicking when it is full and non-blocking: they wait until it
+    takes the lines, as on a blocking stream (#1312). This process reads
+    nothing for 3 seconds while the child trains."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output = Path(tmpdir) / "model.dat"
+        child = subprocess.Popen(
+            [sys.executable, "-c", _FULL_STDOUT_CHILD, str(TRAINING), str(output)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        time.sleep(3)
+        stdout, stderr = child.communicate(timeout=60)
+        text = stdout.decode()
+        report = f"stdout: {text[-2000:]}\nstderr: {stderr.decode()[-2000:]}"
+        assert child.returncode == 0, report
+        # The binding's first and last lines, right after the bytes that
+        # filled the stream.
+        assert re.search(r"x+Training with \d+ examples\.\.\.\n", text), report
+        assert text.endswith(f"Model saved to {output}\n"), report
+        assert output.exists()

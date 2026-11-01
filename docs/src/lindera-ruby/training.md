@@ -57,6 +57,10 @@ The settings are checked before any file is read: an unknown `regularization:` r
 Lindera.train(*inputs, '/tmp/model.dat', 0.01, regularization: 'l1', eta: 0)
 ```
 
+### Progress Output
+
+`Lindera.train` writes its progress to standard output and a line per L-BFGS iteration to standard error, such as `iter: 1, cost: 0.5948643217470097, best_cost: 0.5948643217470097, gamma: 0.47689090558496994`, and `Lindera.export` writes the files it created to standard output. They are written as to a blocking stream: while a stream is full, the call waits until it takes the line, and a line that a stream can no longer take, such as a pipe whose reader has exited, is dropped while the training goes on ([#1312](https://github.com/lindera/lindera/issues/1312)). A program that trains in a child process must keep reading both streams of the child, or the training waits.
+
 ## Exporting a Trained Model
 
 After training, export the model to dictionary source files using `Lindera.export`:

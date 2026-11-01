@@ -3,6 +3,10 @@
 //! This module provides the PhpTrainer class with static methods for training
 //! custom morphological analysis models from annotated corpora.
 
+// The lines go through `console`, which does not panic when a standard stream
+// is full or closed, as `println!` does (#1312).
+#![cfg_attr(not(test), deny(clippy::print_stdout, clippy::print_stderr))]
+
 use std::fs::File;
 use std::path::Path;
 
@@ -11,6 +15,7 @@ use ext_php_rs::prelude::*;
 use lindera::dictionary::trainer::{
     Corpus, DEFAULT_ELASTIC_NET_L1_RATIO, DEFAULT_ETA, DEFAULT_LAMBDA, Model,
     ParseRegularizationTypeError, RegularizationType, SerializableModel, Trainer, TrainerConfig,
+    console::{self, Stream},
 };
 use lindera_binding::argument::{Positive, non_negative_float_argument, unit_interval_argument};
 
@@ -148,7 +153,10 @@ impl PhpTrainer {
         let corpus_data = Corpus::from_reader(corpus_file)
             .map_err(|e| lindera_value_err(format!("Failed to load corpus: {e}")))?;
 
-        println!("Training with {} examples...", corpus_data.len());
+        console::write_line(
+            Stream::Stdout,
+            format_args!("Training with {} examples...", corpus_data.len()),
+        );
 
         // Train model
         let model = trainer
@@ -169,7 +177,10 @@ impl PhpTrainer {
             .write_model(&mut output_file)
             .map_err(|e| lindera_value_err(format!("Failed to write model: {e}")))?;
 
-        println!("Model saved to {}", output_path.display());
+        console::write_line(
+            Stream::Stdout,
+            format_args!("Model saved to {}", output_path.display()),
+        );
         Ok(())
     }
 
@@ -223,13 +234,19 @@ impl PhpTrainer {
             .map_err(|e| lindera_value_err(format!("Failed to export dictionary files: {e}")))?;
 
         if metadata_path.is_some() {
-            println!("Updated metadata.json with trained model values");
+            console::write_line(
+                Stream::Stdout,
+                format_args!("Updated metadata.json with trained model values"),
+            );
         }
 
-        println!("Dictionary files exported to: {}", output_path.display());
-        println!("Files created:");
+        console::write_line(
+            Stream::Stdout,
+            format_args!("Dictionary files exported to: {}", output_path.display()),
+        );
+        console::write_line(Stream::Stdout, format_args!("Files created:"));
         for file in &files_created {
-            println!("  - {}", file.display());
+            console::write_line(Stream::Stdout, format_args!("  - {}", file.display()));
         }
 
         Ok(())

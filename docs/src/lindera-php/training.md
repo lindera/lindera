@@ -51,6 +51,10 @@ Lindera\Trainer::train(
 
 `null` selects the default of each optional parameter. The settings are checked before any file is read: an unknown `$regularization`, or a `$lambda`, `$elastic_net_l1_ratio` or `$eta` outside its range, throws a `ValueError`. To train with v6's default settings (the model still differs from v6's, since the first line search changed in [#1290](https://github.com/lindera/lindera/issues/1290)), pass `regularization: 'l1'` and `lambda: 0.01`, and `eta: 0` to stop only at `$max_iter`.
 
+### Progress Output
+
+`Lindera\Trainer::train()` writes its progress to standard output and a line per L-BFGS iteration to standard error, such as `iter: 1, cost: 0.5948643217470097, best_cost: 0.5948643217470097, gamma: 0.47689090558496994`, and `Lindera\Trainer::export()` writes the files it created to standard output. They are written as to a blocking stream: while a stream is full, the call waits until it takes the line, and a line that a stream can no longer take, such as a pipe whose reader has exited, is dropped while the training goes on ([#1312](https://github.com/lindera/lindera/issues/1312)). A program that trains in a child process must keep reading both streams of the child, or the training waits.
+
 ## Exporting a Trained Model
 
 After training, export the model to dictionary source files using `Lindera\Trainer::export()`:

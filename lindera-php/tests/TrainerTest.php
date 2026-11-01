@@ -347,4 +347,73 @@ class TrainerTest extends TestCase
             }
         }
     }
+
+    /**
+     * A child that makes its standard output non-blocking, fills it until a
+     * write fails with EAGAIN, and then trains from the directory and into
+     * the file it is given. It exits with 3 if 64 MiB went through without
+     * EAGAIN, so that a stream that blocks cannot pass the test.
+     */
+    private const FULL_STDOUT_CHILD = <<<'PHP'
+        [, $training, $output] = $argv;
+        stream_set_blocking(STDOUT, false);
+        $chunk = str_repeat('x', 65536);
+        $filled = false;
+        for ($i = 0; $i < 1024 && !$filled; $i++) {
+            $written = @fwrite(STDOUT, $chunk);
+            $filled = $written === false || $written === 0;
+        }
+        if (!$filled) {
+            exit(3);
+        }
+        Lindera\Trainer::train(
+            "$training/seed.csv",
+            "$training/corpus.txt",
+            "$training/char.def",
+            "$training/unk.def",
+            "$training/feature.def",
+            "$training/rewrite.def",
+            $output,
+            max_iter: 5,
+            max_threads: 1,
+        );
+        PHP;
+
+    /**
+     * The training and the binding write their progress to standard output
+     * without panicking when it is full and non-blocking: they wait until
+     * it takes the lines, as on a blocking stream (#1312). This process
+     * reads nothing for 3 seconds while the child trains. The child loads
+     * the extension this process loaded, found in `/proc/self/maps`.
+     */
+    public function testTrainWaitsForAFullStdout(): void
+    {
+        $maps = @file_get_contents('/proc/self/maps');
+        if ($maps === false || preg_match('/\s(\/\S*liblindera_php\.so)$/m', $maps, $match) !== 1) {
+            $this->markTestSkipped('needs /proc/self/maps to find the extension');
+        }
+        self::withInputs(function (string $dir) use ($match): void {
+            $output = $dir . '/model.dat';
+            $command = [
+                PHP_BINARY, '-n', '-d', 'extension=' . $match[1],
+                '-r', self::FULL_STDOUT_CHILD, '--', self::TRAINING, $output,
+            ];
+            $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+            $this->assertIsResource($process);
+            sleep(3);
+            $stdout = (string) stream_get_contents($pipes[1]);
+            $stderr = (string) stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            $status = proc_close($process);
+            $report = 'stdout: ' . substr($stdout, -2000) . "\nstderr: " . substr($stderr, -2000);
+
+            $this->assertSame(0, $status, $report);
+            // The binding's first and last lines, right after the bytes that
+            // filled the stream.
+            $this->assertMatchesRegularExpression('/x+Training with \d+ examples\.\.\.\n/', $stdout, $report);
+            $this->assertStringEndsWith("Model saved to $output\n", $stdout, $report);
+            $this->assertFileExists($output);
+        });
+    }
 }

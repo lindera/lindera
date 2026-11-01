@@ -79,6 +79,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`lindera train` builds its lattices as MeCab's learner does and keeps every `unk.def` entry; `model.dat` has the format version 3.0.0** | Users of `lindera train` and `lindera export`, and of the training functions of the Python, Node.js, Ruby and PHP bindings | Train every model again with 7.0.0, then export and build it again (a `model.dat` written by v6.2.0 or earlier is rejected); give every `unk.def` line at least five fields; remove comment lines from seed lexicons |
 | **`lindera train` regularizes with L2 and a coefficient of 1.0 by default, as MeCab's learner does** | Users of `lindera train`, of `Trainer::new` in `lindera_trainer` and `lindera_crf`, and of the training functions of the Python, Node.js, Ruby and PHP bindings, who do not give both the regularization type and the coefficient | Expect more accurate models and a larger `matrix.def`; pass `--regularization l1 --lambda 0.01` (`.use_l2(false).regularization_cost(0.01)` in Rust, `regularization` `l1` and `lambda` 0.01 in the bindings, [#1262](https://github.com/lindera/lindera/issues/1262)) to use v6's default settings |
 | **`lindera train` starts its first line search at a unit step, as MeCab's learner and libLBFGS do** | Users of `lindera train`, of `Trainer` in `lindera_trainer` and `lindera_crf`, and of the training functions of the Python, Node.js, Ruby and PHP bindings | Nothing; expect every trained model to differ from v6's, even with v6's settings, and L1 on separable data to keep training where it stopped after a few iterations |
+| The training's iteration lines lose their timestamp and level, come in order with the progress on standard output, and wait for a full stream instead of panicking | Scripts that parse the standard error of `lindera train` or of the bindings' training functions; programs that train with a non-blocking standard stream, such as a Node.js test file | Match `iter: N, cost: …` lines without the `<timestamp> INFO` prefix; keep reading both streams of a child process that trains |
 | **`lindera build` rejects context IDs outside `matrix.def`** | Anyone who builds a system dictionary whose `lex.csv` or `unk.def` has a context ID beyond the size of its `matrix.def` (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's `mecab-dict-index` accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic | Fix the IDs or the matrix, or set `skip_invalid_cost_or_id` in `metadata.json` to drop such `lex.csv` rows; fix such IDs in the user dictionary |
 | **`lindera build` and `lindera train` check `char.def` against `unk.def`** | Anyone whose `char.def` has a range line that names a category not defined on an earlier line, or a category defined twice, or whose `char.def` and `unk.def` do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored `unk.def` lines); not dictionaries that MeCab's `mecab-dict-index` accepts | Define each category once, before the range lines that name it; give every category an `unk.def` line, and remove the `unk.def` lines of undefined categories |
 | **`lindera build` gives a cell missing from `matrix.def` the cost 0, as MeCab does** | Anyone who builds a system dictionary from a `matrix.def` that leaves cells out; not the bundled dictionaries or a `matrix.def` that `lindera export` writes, which list every cell | Expect such a cell to cost 0 instead of 32767; to keep a connection expensive, list its cell with a cost |
@@ -1994,6 +1995,40 @@ build with each first step):
 What you do: nothing. With v6's settings (see the previous section), a
 model is no longer v6's byte for byte.
 
+## The training's iteration lines lose their timestamp
+
+`lindera train`, `Trainer` in `lindera_trainer` and `lindera_crf`, and the
+training functions of the Python, Node.js, Ruby and PHP bindings write a
+line per L-BFGS iteration to standard error. Up to v6.2.0,
+argmin-observer-slog wrote them with a timestamp and a level; v7.0.0 writes
+them itself, without either
+([#1312](https://github.com/lindera/lindera/issues/1312)):
+
+```text
+# v6
+Oct 31 16:30:11.900 INFO iter: 1, cost: 2.7104295458825787, best_cost: 2.7104295458825787, gamma: 0.21819781851100348
+# v7
+iter: 1, cost: 2.7104295458825787, best_cost: 2.7104295458825787, gamma: 0.21819781851100348
+```
+
+The keys, their order and the numbers are as before, the solver's own
+pairs, such as `gamma`, come sorted by key, and the line that names the
+solver, `L-BFGS`, still comes first. The lines are now written on the
+training thread, so they come after `Each 'iter:' line indicates training
+progress. Please wait...` on standard output, not whenever a logging thread
+got to them.
+
+The training no longer panics when it cannot write its progress. A standard
+stream that is full and non-blocking, as Node.js makes the streams of a
+`node --test` child, is waited on until it takes the line: up to v6.2.0, the
+same writes could abort Node.js with `failed to initiate panic, error 5`,
+and made Python, Ruby and PHP raise an exception. A line that a stream can
+no longer take, such as a pipe whose reader has exited, is dropped, and the
+training goes on. The `lindera` command itself still fails on its own last
+line: with the standard output of `lindera train` piped into a reader that
+has exited, it writes the model and then ends with exit code 101 and
+`failed printing to stdout: Broken pipe`.
+
 ## `lindera build` rejects context IDs outside the connection matrix
 
 Up to v6.2.0, `lindera build` accepted a `lex.csv` row or an `unk.def` line
@@ -2598,6 +2633,9 @@ Users of `lindera train`:
   ([#1290](https://github.com/lindera/lindera/issues/1290)).
 - Expect a NaN or infinite `lambda` to be rejected
   ([#1262](https://github.com/lindera/lindera/issues/1262)).
+- If a script reads the iteration lines that the training writes to
+  standard error, match `iter: N, cost: …` without the timestamp and
+  `INFO` before it ([#1312](https://github.com/lindera/lindera/issues/1312)).
 
 Everyone who builds a system dictionary with `lindera build`:
 
