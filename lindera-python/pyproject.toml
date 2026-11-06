@@ -32,7 +32,7 @@ maturin = "^1.15.0"
 patchelf = "^0.19.1.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^9.1.1"
+pytest = "^9.2.0"
 
 [build-system]
 requires = ["maturin>=1.9.3,<2.0"]
