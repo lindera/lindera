@@ -6268,7 +6268,7 @@ try {
 <ul>
 <li><strong>PHP 8.1 or later</strong> on Linux or macOS. Windows is not supported.</li>
 <li><strong>PIE 1.4 or later</strong> and <code>unzip</code> -- see the <a href="https://github.com/php/pie/blob/main/docs/usage.md">PIE installation guide</a>. Older PIE versions cannot read this package's metadata; run <code>pie self-update</code>.</li>
-<li>Only when PIE falls back to building from source: a <strong>Rust toolchain</strong> (<a href="https://rustup.rs/">rustup</a>), <strong>libclang</strong> (<code>libclang-dev</code> on Debian/Ubuntu; the Xcode command line tools or <code>brew install llvm</code> on macOS) and the usual PHP extension build tools (<code>autoconf</code>, <code>libtool</code>, <code>make</code>)</li>
+<li>Only when PIE falls back to building from source: a <strong>Rust toolchain</strong> (<a href="https://rustup.rs/">rustup</a>), <strong>libclang</strong> (<code>libclang-dev</code> on Debian/Ubuntu; the Xcode command line tools or <code>brew install llvm</code> on macOS; with several LLVM versions installed, see <a href="lindera-php/installation.html#several-llvm-versions">Several LLVM Versions</a>) and the usual PHP extension build tools (<code>autoconf</code>, <code>libtool</code>, <code>make</code>)</li>
 </ul>
 <h2 id="install-with-pie"><a class="header" href="#install-with-pie">Install with PIE</a></h2>
 <pre><code class="language-bash">pie install lindera/lindera
@@ -6307,6 +6307,16 @@ unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 <h3 id="build-with-training-support-3"><a class="header" href="#build-with-training-support-3">Build with Training Support</a></h3>
 <p>The <code>train</code> feature enables CRF-based dictionary training functionality:</p>
 <pre><code class="language-bash">cargo build -p lindera-php --features train
+</code></pre>
+<h3 id="several-llvm-versions"><a class="header" href="#several-llvm-versions">Several LLVM Versions</a></h3>
+<p>The build generates the PHP bindings with bindgen. bindgen parses the PHP headers with libclang, the newest one it finds unless <code>LIBCLANG_PATH</code> names one, and takes the system include paths, clang's own headers among them, from a <code>clang</code> executable: <code>CLANG_PATH</code>, else the one in <code>llvm-config --bindir</code>, else the one on <code>PATH</code>. When several LLVM versions are installed, the two can come from different versions, and the build stops with errors in clang's headers, followed by <code>Unable to generate bindings for PHP</code>:</p>
+<pre><code class="language-text">/usr/lib/llvm-21/lib/clang/21/include/xmmintrin.h:245:10: error: invalid conversion between vector type '__m128' (vector of 4 'float' values) and integer type 'int' of different size
+/usr/lib/llvm-21/lib/clang/21/include/emmintrin.h:253:11: error: initializing '__m128d' (vector of 2 'double' values) with an expression of incompatible type 'int'
+Error: Unable to generate bindings for PHP
+</code></pre>
+<p>Point both at one LLVM version, then run <code>pie install lindera/lindera</code> or <code>cargo build -p lindera-php</code> again in the same shell. On Debian and Ubuntu, LLVM 21 for example:</p>
+<pre><code class="language-bash">export LIBCLANG_PATH=/usr/lib/llvm-21/lib
+export CLANG_PATH=/usr/lib/llvm-21/bin/clang
 </code></pre>
 <h2 id="feature-flags-7"><a class="header" href="#feature-flags-7">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
