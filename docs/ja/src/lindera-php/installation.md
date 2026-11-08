@@ -6,7 +6,7 @@ lindera-php は PHP 拡張です。[Packagist](https://packagist.org/packages/li
 
 - **PHP 8.1 以降**（Linux または macOS）。Windows は非対応です
 - **PIE 1.4 以降**と `unzip` -- [PIE のインストール方法](https://github.com/php/pie/blob/main/docs/usage.md)を参照。それより古い PIE はこのパッケージのメタデータを読めないため、`pie self-update` で更新してください
-- PIE がソースからのビルドにフォールバックする場合のみ、**Rust ツールチェーン**（[rustup](https://rustup.rs/)）、**libclang**（Debian/Ubuntu は `libclang-dev`、macOS は Xcode コマンドラインツールまたは `brew install llvm`）、および PHP 拡張の標準的なビルドツール（`autoconf`、`libtool`、`make`）が必要です
+- PIE がソースからのビルドにフォールバックする場合のみ、**Rust ツールチェーン**（[rustup](https://rustup.rs/)）、**libclang**（Debian/Ubuntu は `libclang-dev`、macOS は Xcode コマンドラインツールまたは `brew install llvm`。複数の LLVM が入っている場合は[複数の LLVM が入っている環境](#複数の-llvm-が入っている環境)を参照）、および PHP 拡張の標準的なビルドツール（`autoconf`、`libtool`、`make`）が必要です
 
 ## PIE でのインストール
 
@@ -64,6 +64,23 @@ make build-lindera-php
 
 ```bash
 cargo build -p lindera-php --features train
+```
+
+### 複数の LLVM が入っている環境
+
+ビルドでは、bindgen が PHP のバインディングを生成します。bindgen は PHP のヘッダを libclang で解析し、その libclang には、`LIBCLANG_PATH` で指定しない限り、見つかったうちで一番新しいものを使います。一方、clang 自身のヘッダを含むシステムのインクルードパスは、`clang` の実行ファイル（`CLANG_PATH`、なければ `llvm-config --bindir` にあるもの、それもなければ `PATH` にあるもの）から取得します。複数の LLVM が入っていると、この 2 つが別のバージョンになることがあり、その場合は clang のヘッダでエラーが出たあと、`Unable to generate bindings for PHP` でビルドが止まります：
+
+```text
+/usr/lib/llvm-21/lib/clang/21/include/xmmintrin.h:245:10: error: invalid conversion between vector type '__m128' (vector of 4 'float' values) and integer type 'int' of different size
+/usr/lib/llvm-21/lib/clang/21/include/emmintrin.h:253:11: error: initializing '__m128d' (vector of 2 'double' values) with an expression of incompatible type 'int'
+Error: Unable to generate bindings for PHP
+```
+
+両方を同じバージョンの LLVM に合わせてから、同じシェルで `pie install lindera/lindera` または `cargo build -p lindera-php` をもう一度実行してください。Debian や Ubuntu で LLVM 21 に合わせる例：
+
+```bash
+export LIBCLANG_PATH=/usr/lib/llvm-21/lib
+export CLANG_PATH=/usr/lib/llvm-21/bin/clang
 ```
 
 ### PHP 拡張の読み込み
