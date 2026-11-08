@@ -33,14 +33,15 @@ lib_dir="${llvm_dir}/lib"
 
 # The file names that clang-sys accepts when it opens libclang at run time.
 # Each candidate is checked, since a pattern that matches nothing, and the
-# plain `libclang.so`, stay in the list as they are written.
+# plain `libclang.so`, stay in the list as they are written. Like clang-sys,
+# skip libclang-cpp, the C++ library, whose name matches `libclang-*.so.*`.
 libraries=()
 for library in \
     "${lib_dir}"/libclang.so \
     "${lib_dir}"/libclang-*.so \
     "${lib_dir}"/libclang.so.* \
     "${lib_dir}"/libclang-*.so.*; do
-    if [ -e "${library}" ]; then
+    if [ -e "${library}" ] && [[ "${library##*/}" != *-cpp.* ]]; then
         libraries+=("${library}")
     fi
 done
