@@ -63,7 +63,10 @@ section "Installed LLVM"
 for dir in /usr/lib/llvm-*; do
     echo "${dir}:"
     find "${dir}/bin" -maxdepth 1 -name clang -printf '  %p -> %l\n'
-    find "${dir}/lib" -maxdepth 1 -name 'libclang.so*' -printf '  %p -> %l\n'
+    stat -c '  %N (%F)' "${dir}/lib"
+    for library in "${dir}"/lib/libclang*; do
+        [ -e "${library}" ] && stat -c '  %N' "${library}"
+    done
 done
 echo "libclang in the library directories clang-sys searches:"
 find /usr/lib/x86_64-linux-gnu /usr/lib -maxdepth 1 -name 'libclang*' -printf '  %p -> %l\n'
@@ -88,6 +91,11 @@ echo "clang that bindgen asks for the include paths: ${bindgen_clang}"
 echo "its LLVM: ${bindgen_llvm}"
 
 run_case default
+# The default case again, with the dynamic loader logging the files each
+# process opens, to see which libclang the build script dlopens.
+run_case default-traced LD_DEBUG=files LD_DEBUG_OUTPUT=/tmp/diag-lddebug
+echo "libclang opened in the default-traced case:"
+grep -h 'file=.*libclang' /tmp/diag-lddebug.* 2>/dev/null | sed -E 's/^ *[0-9]+: */  /' | sort -u || echo "  (none)"
 run_case libclang-of-bindgen-clang LIBCLANG_PATH="${bindgen_llvm}/lib"
 for dir in /usr/lib/llvm-*; do
     version=${dir##*/llvm-}

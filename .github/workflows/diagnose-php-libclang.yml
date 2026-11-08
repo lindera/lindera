@@ -32,3 +32,15 @@ jobs:
       - name: Diagnose
         shell: bash
         run: bash scripts/diagnose-php-libclang.sh
+
+      # The fix: the action sets CLANG_PATH and LIBCLANG_PATH for the next
+      # steps, which build ext-php-rs with the pair it chose.
+      - name: Pair libclang with clang
+        uses: ./.github/actions/setup-libclang
+
+      - name: Build ext-php-rs with the pair
+        shell: bash
+        run: |
+          echo "CLANG_PATH=${CLANG_PATH} LIBCLANG_PATH=${LIBCLANG_PATH}"
+          CARGO_TARGET_DIR=/tmp/diag-target-action cargo build --locked -p ext-php-rs
+          echo "ACTION_PAIR_BUILD_OK"
