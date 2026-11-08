@@ -1,0 +1,34 @@
+# Temporary diagnosis for #1326 on the ubuntu-latest (Ubuntu 26.04) runner:
+# which libclang and which clang the ext-php-rs build script uses, and
+# whether a matching pair generates the PHP bindings. It runs only on pushes
+# to the fix branch and is removed before the fix is reviewed.
+name: Diagnose PHP libclang
+
+on:
+  push:
+    branches:
+      - fix/php-bindgen-ubuntu-2604
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    name: Diagnose libclang for ext-php-rs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+
+      # The same PHP as the Test lindera-php job in regression.yml.
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+
+      - name: Diagnose
+        shell: bash
+        run: bash scripts/diagnose-php-libclang.sh
