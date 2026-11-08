@@ -21,6 +21,8 @@ PIE 1.4 or later is required (older versions cannot read the package metadata; r
 
 On other platforms (Alpine and other musl systems, Intel Macs) the same command falls back to building from source, which needs a Rust toolchain (<https://rustup.rs/>), libclang (`libclang-dev` on Debian/Ubuntu; the Xcode command line tools or `brew install llvm` on macOS) and PIE's usual build tools (`autoconf`, `libtool`, `make`).
 
+If a source build stops with `Unable to generate bindings for PHP` after errors in clang's `xmmintrin.h` or `emmintrin.h`, several LLVM versions are installed, and bindgen took libclang from one of them and clang's headers from another. Set `LIBCLANG_PATH` and `CLANG_PATH` to one version (on Debian and Ubuntu, for example `/usr/lib/llvm-21/lib` and `/usr/lib/llvm-21/bin/clang`) and build again.
+
 PIE does not check the glibc version: on glibc older than 2.35 (e.g. Ubuntu 20.04, Debian 11, RHEL 8) it installs the prebuilt binary anyway, and the extension fails to load. Build from source there instead, with `pie install --suppress-download-url-method=pre-packaged-binary lindera/lindera` (PIE 1.5 or later) or manually as below.
 
 ### Manual build

@@ -6,7 +6,7 @@ lindera-php is a PHP extension. It is published on [Packagist](https://packagist
 
 - **PHP 8.1 or later** on Linux or macOS. Windows is not supported.
 - **PIE 1.4 or later** and `unzip` -- see the [PIE installation guide](https://github.com/php/pie/blob/main/docs/usage.md). Older PIE versions cannot read this package's metadata; run `pie self-update`.
-- Only when PIE falls back to building from source: a **Rust toolchain** ([rustup](https://rustup.rs/)), **libclang** (`libclang-dev` on Debian/Ubuntu; the Xcode command line tools or `brew install llvm` on macOS) and the usual PHP extension build tools (`autoconf`, `libtool`, `make`)
+- Only when PIE falls back to building from source: a **Rust toolchain** ([rustup](https://rustup.rs/)), **libclang** (`libclang-dev` on Debian/Ubuntu; the Xcode command line tools or `brew install llvm` on macOS; with several LLVM versions installed, see [Several LLVM Versions](#several-llvm-versions)) and the usual PHP extension build tools (`autoconf`, `libtool`, `make`)
 
 ## Install with PIE
 
@@ -64,6 +64,23 @@ The `train` feature enables CRF-based dictionary training functionality:
 
 ```bash
 cargo build -p lindera-php --features train
+```
+
+### Several LLVM Versions
+
+The build generates the PHP bindings with bindgen. bindgen parses the PHP headers with libclang, the newest one it finds unless `LIBCLANG_PATH` names one, and takes the system include paths, clang's own headers among them, from a `clang` executable: `CLANG_PATH`, else the one in `llvm-config --bindir`, else the one on `PATH`. When several LLVM versions are installed, the two can come from different versions, and the build stops with errors in clang's headers, followed by `Unable to generate bindings for PHP`:
+
+```text
+/usr/lib/llvm-21/lib/clang/21/include/xmmintrin.h:245:10: error: invalid conversion between vector type '__m128' (vector of 4 'float' values) and integer type 'int' of different size
+/usr/lib/llvm-21/lib/clang/21/include/emmintrin.h:253:11: error: initializing '__m128d' (vector of 2 'double' values) with an expression of incompatible type 'int'
+Error: Unable to generate bindings for PHP
+```
+
+Point both at one LLVM version, then run `pie install lindera/lindera` or `cargo build -p lindera-php` again in the same shell. On Debian and Ubuntu, LLVM 21 for example:
+
+```bash
+export LIBCLANG_PATH=/usr/lib/llvm-21/lib
+export CLANG_PATH=/usr/lib/llvm-21/bin/clang
 ```
 
 ## Feature Flags

@@ -886,6 +886,12 @@ jobs:
         with:
           php-version: "8.5"
 
+      # bindgen in the ext-php-rs build script must parse clang's headers with
+      # the libclang of the same LLVM, and the runner image ships several
+      # (#1326). Every later step builds ext-php-rs with this pair.
+      - name: Pair libclang with clang
+        uses: ./.github/actions/setup-libclang
+
       - name: Run PHP test
         shell: bash
         run: |
