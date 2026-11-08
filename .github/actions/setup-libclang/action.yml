@@ -1,0 +1,14 @@
+name: "Pair libclang with clang"
+description: >-
+  Set CLANG_PATH and LIBCLANG_PATH to the LLVM of the clang on PATH for the
+  rest of the job, so that bindgen parses clang's headers with the libclang of
+  the same version (#1326). Fails when that LLVM has no libclang. Does nothing
+  outside Linux.
+
+runs:
+  using: "composite"
+  steps:
+    - name: Pair libclang with the clang on PATH
+      if: runner.os == 'Linux'
+      shell: bash
+      run: bash "${{ github.action_path }}/pair-libclang.sh"
