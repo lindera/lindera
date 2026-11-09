@@ -93,6 +93,8 @@ jobs:
             lindera-dictionary:
               - 'lindera-dictionary/**'
               - 'lindera-crf/**'
+              # The user dictionary loader and builder tests read these files.
+              - 'resources/user_dict/**'
               - *shared-workspace
               - *shared-crate-workflow
             lindera-trainer:
@@ -148,6 +150,10 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              # The user dictionary tests and doc examples load these files.
+              - 'resources/user_dict/**'
+              # The long-text tests segment this text.
+              - 'resources/bocchan.txt'
               - *shared-workspace
               - *shared-crate-workflow
             lindera:
@@ -164,6 +170,8 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              # The golden tokenization tests load a user dictionary from here.
+              - 'resources/user_dict/**'
               - *shared-workspace
               - *shared-crate-workflow
             lindera-analysis:
@@ -173,6 +181,14 @@ jobs:
               - 'lindera-dictionary/**'
               - 'lindera-ipadic/**'
               - 'lindera-ko-dic/**'
+              # The tokenizer and token filter tests load these configurations
+              # and user dictionaries.
+              - 'resources/config/**'
+              - 'resources/user_dict/**'
+              # A tokenizer test checks that these samples equal the shipped
+              # resources/config/lindera.yml.
+              - 'lindera-python/resources/lindera.yml'
+              - 'lindera-nodejs/resources/lindera.yml'
               - *shared-workspace
               - *shared-crate-workflow
             lindera-binding:
@@ -188,6 +204,8 @@ jobs:
               - 'resources/connection_id_mapping/**'
               # A tokenizer test loads a user dictionary from here.
               - 'resources/user_dict/**'
+              # A metadata test reads SudachiDict's metadata.
+              - 'lindera-sudachidict/metadata.json'
               - *shared-workspace
               - *shared-crate-workflow
             lindera-cli:
