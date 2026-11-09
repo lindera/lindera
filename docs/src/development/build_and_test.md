@@ -51,6 +51,8 @@ cargo test -p <crate> --all-features
 ```
 
 > Note: CI does not use `--all-features` -- it runs each crate with a curated, crate-specific feature combination (see `.github/workflows/regression.yml`). The Makefile's per-crate pattern targets (`make test-<crate>`, `make lint-<crate>`) apply the same feature combinations CI uses and are the closest local equivalent. CI also tests `lindera-segmenter` and `lindera` once more with every dictionary embedded (on Linux only), which runs the tests gated on the other dictionaries; to do the same locally, run `cargo test -p lindera --features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba` (and likewise for `lindera-segmenter`).
+>
+> Note: The dictionary crates build their dictionaries in their build scripts, which takes from seconds to minutes per dictionary. CI keeps the built dictionaries between runs with `actions/cache`, one entry per dictionary (`.github/actions/dictionary-cache`), so a run whose `lindera-dictionary`, dictionary crates and `Cargo.lock` are unchanged does not build them again. Locally, set `LINDERA_BUILD_DICTIONARY_CACHE_DIR` to share them across target directories and worktrees, under the conditions in [Environment Variables](../getting_started/environment_variables.md#lindera_build_dictionary_cache_dir).
 
 ### Workspace-Wide Tests
 

@@ -51,6 +51,8 @@ cargo test -p <crate> --all-features
 ```
 
 > 注意: CI では `--all-features` は使用されません。各クレートに対してキュレートされた個別の feature の組み合わせでテストを実行します（`.github/workflows/regression.yml` を参照）。Makefile のクレート別パターンターゲット（`make test-<crate>`、`make lint-<crate>`）は CI と同じ feature の組み合わせを適用するため、ローカルでの実行方法としては最も近い代替手段です。CI はさらに、`lindera-segmenter` と `lindera` をすべての辞書を埋め込んだ状態でもう一度テストし（Linux のみ）、ほかの辞書の feature でだけ有効になるテストも実行します。ローカルで同じことをするには、`cargo test -p lindera --features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba` を実行します（`lindera-segmenter` も同様）。
+>
+> 注意: 辞書クレートは build script で辞書を作り、辞書ごとに数秒から数分かかります。CI は作った辞書を `actions/cache` で実行をまたいで残し、辞書ごとに 1 つのエントリにします（`.github/actions/dictionary-cache`）。そのため、`lindera-dictionary`・辞書クレート・`Cargo.lock` が変わらない実行では、辞書を作り直しません。ローカルでは `LINDERA_BUILD_DICTIONARY_CACHE_DIR` を設定すると、ターゲットディレクトリや worktree をまたいで共有できます。条件は[環境変数](../getting_started/environment_variables.md#lindera_build_dictionary_cache_dir)を参照してください。
 
 ### ワークスペース全体のテスト
 

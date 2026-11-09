@@ -46,6 +46,11 @@ on:
         required: false
         type: boolean
         default: false
+      dictionaries:
+        description: "Dictionaries the features embed, separated by spaces (e.g. \"ipadic ko-dic\"), to keep in the dictionary cache (.github/actions/dictionary-cache); empty for none. regression.yml sets it; release.yml builds from source (#1337)."
+        required: false
+        type: string
+        default: ""
 
 jobs:
   test:
@@ -72,6 +77,13 @@ jobs:
         with:
           key: ${{ inputs.cache-key }}
 
+      - name: Restore the built dictionaries
+        if: ${{ inputs.dictionaries != '' }}
+        uses: ./.github/actions/dictionary-cache
+        with:
+          dictionaries: ${{ inputs.dictionaries }}
+          mode: restore
+
       - name: Run test
         run: cargo test -p ${{ inputs.crate }} ${{ inputs.features }}${{ inputs.target != '' && format(' --target {0}', inputs.target) || '' }}
 
@@ -83,3 +95,10 @@ jobs:
       - name: Run clippy
         if: ${{ inputs.lint }}
         run: cargo clippy -p ${{ inputs.crate }} ${{ inputs.features }} --all-targets${{ inputs.target != '' && format(' --target {0}', inputs.target) || '' }} -- -D warnings
+
+      - name: Save the built dictionaries
+        if: ${{ inputs.dictionaries != '' }}
+        uses: ./.github/actions/dictionary-cache
+        with:
+          dictionaries: ${{ inputs.dictionaries }}
+          mode: save

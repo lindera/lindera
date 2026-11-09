@@ -52,12 +52,25 @@ export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 cargo build --features=embed-ipadic
 ```
 
+To share one directory among every target directory and worktree (see the conditions below), set an absolute path once: in the shell profile, as above, or in `~/.cargo/config.toml`, which cargo passes to the build scripts:
+
+```toml
+[env]
+LINDERA_BUILD_DICTIONARY_CACHE_DIR = "/path/to/cache"
+```
+
+Changing the value under `[env]` reruns the build scripts, as changing the variable does, and a variable set in the shell takes precedence over `[env]`.
+
 Notes:
 
 - The directory is managed automatically and is safe to delete; contents are re-downloaded and rebuilt as needed
 - Version subdirectories accumulate across upgrades and are not garbage-collected; old ones can be removed freely
 - Setting this variable causes dictionary crates to download and build their dictionaries even when no `embed-*` feature is enabled (useful for pre-populating the cache). Such a build embeds nothing, so it keeps a dictionary already in the cache without checking it; a build with the `embed-*` feature checks it and rebuilds it if needed
-- Use one cache directory per checkout. Two checkouts with different builder code that share a directory rebuild each other's dictionaries, and a crate whose build script does not rerun can embed the dictionary the other checkout built. In this repository, a relative path resolves under the workspace root, which gives each checkout its own cache
+- Share a directory only among builds with the same `lindera-dictionary` code. The crates embed the files of the cache directory itself, so two checkouts with different builder code that share it rebuild each other's dictionaries, and a crate whose build script does not rerun can embed the dictionary the other checkout built ([#1343](https://github.com/lindera/lindera/issues/1343) is about lifting this condition):
+  - the target directories of one checkout, such as another `--target-dir`, rust-analyzer's or another profile's, can always share it;
+  - worktrees can share it while they build with the same `lindera-dictionary`; give a worktree that changes the builder a directory of its own, for example by setting the variable in its shell, which takes precedence over `[env]`;
+  - in this repository, a relative path resolves under the workspace root, which gives each checkout its own cache
+- A cache kept between CI runs, for example with `actions/cache`, needs a key that changes with `Cargo.lock` as well as with `lindera-dictionary` and the dictionary crate, since the versions of the builder's dependencies are not compared. This repository's CI keeps one entry per dictionary under such a key (`.github/actions/dictionary-cache`)
 - Builds that share the directory, such as `cargo build` alongside rust-analyzer with its own target directory, write each dictionary one at a time: a build that finds another build writing the same dictionary waits for it, and then uses the dictionary it left (`cargo build -vv` shows `lindera dictionary cache: waiting for another build`). The lock is an empty `<dictionary>.lock` file next to the dictionary, held while a build writes it. It works between builds on one machine, and on a network file system only as far as the file system supports file locks. Where the file cannot be locked, the build prints a warning and goes on without the lock, as builds before 7.0.0 did, so two such builds can still remove each other's files
 - Builds with `DOCS_RS` set ignore this variable (see `DOCS_RS` below)
 
