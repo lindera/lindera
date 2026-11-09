@@ -86,7 +86,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`lindera build` gives a cell missing from `matrix.def` the cost 0, as MeCab does** | Anyone who builds a system dictionary from a `matrix.def` that leaves cells out; not the bundled dictionaries or a `matrix.def` that `lindera export` writes, which list every cell | Expect such a cell to cost 0 instead of 32767; to keep a connection expensive, list its cell with a cost |
 | **`embed-*` builds download the published dictionary instead of building it from source** | Anyone who builds with an `embed-*` feature, most visibly where the build may reach `lindera.dev` but not `github.com` | Allow `github.com` and `release-assets.githubusercontent.com`, or set `LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1` to build from source as before |
 | **The CLI writes library warnings to standard error** | CLI users who read standard error, for example scripts that treat any output there as a failure; most visibly input with more than 32 KiB without a sentence delimiter, and `lindera build` of ko-dic or UniDic without `--context-id-freq` | Expect `[WARN …]` lines on standard error; set `RUST_LOG=error` to hide them. Standard output does not change |
-| The commands end quietly, with exit code 0, when their standard output has no reader | Scripts that pipe the standard output of `lindera` into a program that may exit first, such as `head`, and check the exit code | Expect exit code 0 where `lindera tokenize` ended with 1 and the other commands panicked with 101; `lindera train` and `lindera export` now write the model or the files |
+| The commands end quietly, with exit code 0, when their standard output has no reader, and go on without their messages when their standard error has none | Scripts that pipe the standard output or the standard error of `lindera` into a program that may exit first, such as `head`, and check the exit code | Expect exit code 0 where `lindera tokenize` ended with 1 and the other commands panicked with 101; `lindera train` and `lindera export` now write the model or the files, and `lindera download` its path |
 | **The `normalize_details` setting is removed: `Metadata::new` and `CoreMetadata::new` take 10 arguments, Ruby's `Metadata.new` takes 8** | Code that creates or reads dictionary metadata: Rust (`Metadata`, `lindera_binding::CoreMetadata`, `PrefixDictionaryBuilderOptions`) and the `Metadata` classes of the Python, Ruby, PHP and Node.js bindings | Remove the argument, option or property; a `metadata.json` that still has the key loads, and the key is ignored |
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
 | **`Lattice::tokens_offset_into` returns the BOS index of the best path (`Option<usize>`)** | Rust code that uses the `()` value of `tokens_offset_into` | Nothing for a call written as a statement; otherwise ignore the new value |
@@ -2251,6 +2251,15 @@ v7.0.0 ends them with exit code 0 and no message
 
 A script that checks the exit code of such a pipeline, for example with
 `set -o pipefail`, now sees a success where it saw a failure.
+
+The commands' own messages on standard error no longer make them fail
+either ([#1338](https://github.com/lindera/lindera/issues/1338)). Up to
+v6.2.0, `lindera download` panicked with exit code 101 on its first message
+when standard error had no reader, and so wrote no path to standard output.
+In v7.0.0, a message that cannot be written is dropped, and the command
+writes its result and ends as it would otherwise: the progress and notices of
+`lindera download`, the notices of `lindera list` about the dictionaries
+directory, and the warning about `LINDERA_DATA_DIR`.
 
 ## Rust API changes in `lindera_dictionary`
 

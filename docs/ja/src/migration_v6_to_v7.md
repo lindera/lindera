@@ -83,7 +83,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **`lindera build` は、MeCab と同じく `matrix.def` にないセルのコストを 0 にする** | セルを省いた `matrix.def` からシステム辞書をビルドするユーザー。すべてのセルを列挙している同梱の辞書と、`lindera export` が書き出す `matrix.def` は対象外 | そうしたセルのコストは 32767 ではなく 0 になる。接続を高いコストのままにするには、そのセルをコスト付きで列挙する |
 | **`embed-*` のビルドは、辞書をソースからビルドせずに公開済みの辞書をダウンロードする** | `embed-*` feature を付けてビルドするユーザー。目立つのは、ビルドが `lindera.dev` には接続できて `github.com` には接続できない環境 | `github.com` と `release-assets.githubusercontent.com` への接続を許すか、`LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1` を設定して、これまでどおりソースからビルドする |
 | **CLI はライブラリの警告を標準エラー出力に書く** | 標準エラー出力を読む CLI のユーザー。たとえば、そこに何か出力があれば失敗とみなすスクリプト。目立つのは、文の区切り文字のないテキストが 32 KiB を超える入力と、`--context-id-freq` を指定しない ko-dic・UniDic の `lindera build` | 標準エラー出力に `[WARN …]` の行が出ることを前提にする。`RUST_LOG=error` で警告を消せる。標準出力は変わらない |
-| コマンドは、標準出力に読み手がいないとき終了コード 0 で静かに終わる | `lindera` の標準出力を、`head` のように先に終わりうるプログラムにパイプでつなぎ、終了コードを確かめるスクリプト | `lindera tokenize` が 1 で、ほかのコマンドが 101 で panic して終わっていたところが 0 になる。`lindera train` と `lindera export` はモデルやファイルを書くようになった |
+| コマンドは、標準出力に読み手がいないとき終了コード 0 で静かに終わり、標準エラー出力に読み手がいないときはメッセージを捨てて続ける | `lindera` の標準出力や標準エラー出力を、`head` のように先に終わりうるプログラムにパイプでつなぎ、終了コードを確かめるスクリプト | `lindera tokenize` が 1 で、ほかのコマンドが 101 で panic して終わっていたところが 0 になる。`lindera train` と `lindera export` はモデルやファイルを、`lindera download` はパスを書くようになった |
 | **設定 `normalize_details` の削除: `Metadata::new` と `CoreMetadata::new` の引数は 10 個、Ruby の `Metadata.new` の引数は 8 個になる** | 辞書のメタデータを作成・参照するコード。Rust（`Metadata`・`lindera_binding::CoreMetadata`・`PrefixDictionaryBuilderOptions`）と、Python・Ruby・PHP・Node.js のバインディングの `Metadata` クラス | 引数・オプション・プロパティを削除する。このキーを含む `metadata.json` もそのまま読み込め、キーは無視される |
 | **`Lattice::tokens_offset`・`tokens_offset_into`・`nbest_tokens_offset`・`NBestGenerator::next` が `(start, end, WordId)` を返す** | これらの `lindera_dictionary` の関数を直接呼び出す Rust コード（`lindera::dictionary::viterbi::…`・`lindera::dictionary::Lattice`・`lindera::dictionary::nbest::…` 経由を含む） | 3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う |
 | **`Lattice::tokens_offset_into` が最良パスの BOS の添字（`Option<usize>`）を返す** | `tokens_offset_into` の戻り値 `()` を値として使う Rust コード | 文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する |
@@ -2039,6 +2039,14 @@ v7.0.0 は、終了コード 0 で、メッセージを出さずに終わりま�
 
 こうしたパイプラインの終了コードを（`set -o pipefail` などで）確かめるスクリプト
 には、失敗だったところが成功に見えるようになります。
+
+コマンド自身が標準エラー出力に書くメッセージでも、失敗しなくなりました
+（[#1338](https://github.com/lindera/lindera/issues/1338)）。v6.2.0 までは、
+標準エラー出力に読み手がいないと、`lindera download` は最初のメッセージで終了
+コード 101 で panic し、標準出力にパスを書きませんでした。v7.0.0 は、書けない
+メッセージを捨て、ほかのときと同じく結果を書いて終わります。対象は、
+`lindera download` の進捗と通知、辞書ディレクトリについての `lindera list` の
+通知、`LINDERA_DATA_DIR` についての警告です。
 
 ## `lindera_dictionary` の Rust API 変更
 

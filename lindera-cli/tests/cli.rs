@@ -1007,6 +1007,104 @@ fn tokenize_ends_quietly_at_the_final_flush_without_a_stdout_reader() {
     tokenize_without_stdout_reader(&[], Input::Closed("東京\n".to_string()));
 }
 
+// The commands with a stderr that has no reader: their own messages there are
+// dropped, and they write their result and end with exit code 0 (#1338).
+
+/// Runs `command` with its stderr on a pipe without a reader, and asserts
+/// that it ends with exit code 0. A panic, which `eprintln!` raises on such a
+/// stderr, ends it with 101.
+///
+/// # Arguments
+///
+/// * `command` - The command, with its arguments and environment.
+///
+/// # Returns
+///
+/// What the command wrote to stdout.
+fn run_without_stderr_reader(mut command: std::process::Command) -> String {
+    command
+        .stderr(pipe_without_reader())
+        .stdout(Stdio::piped())
+        .stdin(Stdio::null());
+    let mut child = command.spawn().unwrap();
+    let mut stdout = child.stdout.take().unwrap();
+    let stdout_reader = thread::spawn(move || {
+        let mut text = String::new();
+        stdout.read_to_string(&mut text).unwrap();
+        text
+    });
+
+    let deadline = Instant::now() + NO_READER_TIMEOUT;
+    let status = loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            break status;
+        }
+        if Instant::now() >= deadline {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            panic!("{command:?} did not end within {NO_READER_TIMEOUT:?}");
+        }
+        thread::sleep(Duration::from_millis(10));
+    };
+    let stdout = stdout_reader.join().unwrap();
+    assert!(
+        status.success(),
+        "{command:?} ended with {status}; stdout: {stdout}"
+    );
+    stdout
+}
+
+/// `lindera list` writes `Skipped …` for a subdirectory without
+/// `metadata.json` and `No dictionaries in …` for a directory without
+/// dictionaries to stderr, and its table to stdout.
+#[test]
+fn list_writes_its_table_without_a_stderr_reader() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir(dir.path().join("not-a-dictionary")).unwrap();
+    let mut command = lindera_process();
+    command
+        .arg("list")
+        .env("LINDERA_DICTIONARIES_DIR", dir.path())
+        .env_remove("LINDERA_DATA_DIR");
+    let stdout = run_without_stderr_reader(command);
+    assert!(stdout.starts_with("NAME"), "got: {stdout}");
+}
+
+/// `lindera list` with only the deprecated `LINDERA_DATA_DIR` set writes its
+/// deprecation warning to stderr.
+#[test]
+fn list_with_the_deprecated_data_dir_without_a_stderr_reader() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut command = lindera_process();
+    command
+        .arg("list")
+        .env("LINDERA_DATA_DIR", dir.path())
+        .env_remove("LINDERA_DICTIONARIES_DIR");
+    let stdout = run_without_stderr_reader(command);
+    assert!(stdout.starts_with("NAME"), "got: {stdout}");
+}
+
+/// `lindera download` writes its notice to stderr and the path of the
+/// dictionary to stdout. The dictionary is in place and built by this
+/// version, so nothing is downloaded.
+#[test]
+fn download_writes_the_path_without_a_stderr_reader() {
+    let dir = tempfile::tempdir().unwrap();
+    let (dict, _) = build_four_by_four_dictionary(dir.path());
+    let dictionaries = dir.path().join("dictionaries");
+    std::fs::create_dir(&dictionaries).unwrap();
+    let ipadic = dictionaries.join("ipadic");
+    std::fs::rename(&dict, &ipadic).unwrap();
+
+    let mut command = lindera_process();
+    command
+        .args(["download", "ipadic"])
+        .env("LINDERA_DICTIONARIES_DIR", &dictionaries)
+        .env_remove("LINDERA_DATA_DIR");
+    let stdout = run_without_stderr_reader(command);
+    assert_eq!(stdout, format!("{}\n", ipadic.display()));
+}
+
 #[cfg(feature = "embed-ipadic")]
 mod with_ipadic {
     use super::*;

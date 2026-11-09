@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use lindera::LinderaResult;
 use lindera::error::LinderaErrorKind;
-use lindera_cli::get_version;
+use lindera_cli::{get_version, write_stderr, write_stderr_line};
 
 use super::{io_err, write_stdout};
 use crate::dictionary_registry::{
@@ -177,12 +177,11 @@ pub fn download(args: DownloadArgs) -> LinderaResult<()> {
     ) && io::stderr().is_terminal()
     {
         // Terminate the `\r`-rewritten progress line.
-        eprintln!();
+        write_stderr_line(format_args!(""));
     }
-    let path = match outcome {
+    let (notice, path) = match outcome {
         DownloadOutcome::Installed(path) => {
-            eprintln!("Downloaded dictionary '{}'", args.name);
-            path
+            (format!("Downloaded dictionary '{}'", args.name), path)
         }
         DownloadOutcome::Replaced {
             path,
@@ -192,23 +191,27 @@ pub fn download(args: DownloadArgs) -> LinderaResult<()> {
                 Some(previous) => format!("Lindera {previous}"),
                 None => "an unknown version of Lindera".to_string(),
             };
-            eprintln!(
-                "Downloaded dictionary '{}', replacing the one built by {previous}",
-                args.name
-            );
-            path
+            (
+                format!(
+                    "Downloaded dictionary '{}', replacing the one built by {previous}",
+                    args.name
+                ),
+                path,
+            )
         }
-        DownloadOutcome::AlreadyPresent(path) => {
-            eprintln!(
+        DownloadOutcome::AlreadyPresent(path) => (
+            format!(
                 "Dictionary '{}' is already downloaded; use --force to re-download it",
                 args.name
-            );
-            path
-        }
+            ),
+            path,
+        ),
     };
 
-    // Written in one place for the three outcomes, so that a standard output
-    // without a reader ends each of them quietly (#1316).
+    // The notice and the path are each written in one place for the three
+    // outcomes, so that a stderr without a reader (#1338) and a stdout without
+    // a reader (#1316) end each of them as the tests check for one.
+    write_stderr_line(format_args!("{notice}"));
     write_stdout(&format!("{}\n", path.display()))
 }
 
@@ -239,7 +242,7 @@ fn progress_renderer(url: String) -> impl FnMut(u64, Option<u64>) {
     move |bytes, total| {
         if !started {
             started = true;
-            eprintln!("Downloading {url}");
+            write_stderr_line(format_args!("Downloading {url}"));
         }
         if !is_terminal {
             return;
@@ -249,18 +252,21 @@ fn progress_renderer(url: String) -> impl FnMut(u64, Option<u64>) {
                 let percent = bytes * 100 / total;
                 if last_rendered != Some(percent) {
                     last_rendered = Some(percent);
-                    eprint!("\r{percent}% ({:.1}/{:.1} MiB)", mib(bytes), mib(total));
+                    write_stderr(format_args!(
+                        "\r{percent}% ({:.1}/{:.1} MiB)",
+                        mib(bytes),
+                        mib(total)
+                    ));
                 }
             }
             _ => {
                 let whole_mib = bytes / (1024 * 1024);
                 if last_rendered != Some(whole_mib) {
                     last_rendered = Some(whole_mib);
-                    eprint!("\r{:.1} MiB", mib(bytes));
+                    write_stderr(format_args!("\r{:.1} MiB", mib(bytes)));
                 }
             }
         }
-        let _ = io::stderr().flush();
     }
 }
 
