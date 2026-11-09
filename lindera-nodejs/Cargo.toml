@@ -54,7 +54,7 @@ serde_json = { workspace = true }
 [dev-dependencies]
 # Parses the sources in the test that every `#[napi]` function and method
 # carries `catch_unwind` (src/lib.rs).
-syn = { version = "2.0", features = ["full"] }
+syn = { version = "3.0", features = ["full"] }
 
 [build-dependencies]
 napi-build = "2.3.2"
