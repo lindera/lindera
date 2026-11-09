@@ -467,12 +467,24 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 <pre><code class="language-shell">export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 cargo build --features=embed-ipadic
 </code></pre>
+<p>すべてのターゲットディレクトリと worktree で 1 つのディレクトリを共有するには（後述の条件を参照）、絶対パスを一度だけ設定します。上のようにシェルのプロファイルに書くか、cargo が build script に渡す <code>~/.cargo/config.toml</code> に書きます：</p>
+<pre><code class="language-toml">[env]
+LINDERA_BUILD_DICTIONARY_CACHE_DIR = "/path/to/cache"
+</code></pre>
+<p><code>[env]</code> の値を変えると、変数を変えたときと同じく build script が再実行されます。シェルで設定した変数は <code>[env]</code> より優先されます。</p>
 <p>注意点：</p>
 <ul>
 <li>このディレクトリは自動管理されており、削除しても安全です（必要に応じて再ダウンロード・再ビルドされます）</li>
 <li>バージョンごとのサブディレクトリはアップグレードのたびに蓄積され、自動削除されません。古いものは自由に削除できます</li>
 <li>この変数を設定すると、<code>embed-*</code> feature が無効でも辞書クレートはダウンロードとビルドを実行します（キャッシュの事前準備に便利です）。このビルドは辞書を埋め込まないので、キャッシュにすでにある辞書は確かめずにそのまま残します。<code>embed-*</code> feature を有効にしたビルドが確かめ、必要なら作り直します</li>
-<li>キャッシュディレクトリは checkout ごとに 1 つ使ってください。辞書ビルダーのコードが異なる 2 つの checkout が同じディレクトリを共有すると、互いの辞書を作り直し合います。さらに、build script が再実行されなかったクレートは、もう一方の checkout が作った辞書を埋め込むことがあります。このリポジトリでは相対パスがワークスペースのルートを基準に解決されるので、checkout ごとに別のキャッシュになります</li>
+<li>ディレクトリを共有するのは、<code>lindera-dictionary</code> のコードが同じビルドどうしに限ってください。クレートはキャッシュディレクトリのファイルそのものを埋め込むので、辞書ビルダーのコードが異なる 2 つの checkout が共有すると、互いの辞書を作り直し合います。さらに、build script が再実行されなかったクレートは、もう一方の checkout が作った辞書を埋め込むことがあります（この条件をなくす作業は <a href="https://github.com/lindera/lindera/issues/1343">#1343</a>）：
+<ul>
+<li>1 つの checkout のターゲットディレクトリ（別の <code>--target-dir</code>、rust-analyzer や別のプロファイルのもの）は、いつでも共有できます</li>
+<li>worktree は、同じ <code>lindera-dictionary</code> でビルドする間は共有できます。辞書ビルダーを変える worktree には、別のディレクトリを使ってください。たとえば、その worktree のシェルで変数を設定すれば、<code>[env]</code> より優先されます</li>
+<li>このリポジトリでは相対パスがワークスペースのルートを基準に解決されるので、checkout ごとに別のキャッシュになります</li>
+</ul>
+</li>
+<li>CI の実行をまたいでキャッシュを残す（たとえば <code>actions/cache</code> で）ときは、<code>lindera-dictionary</code> と辞書クレートに加えて <code>Cargo.lock</code> でも変わるキーにしてください。ビルダーが依存するクレートのバージョンは比較しないためです。このリポジトリの CI は、こうしたキーで辞書ごとに 1 つのエントリを残します（<code>.github/actions/dictionary-cache</code>）</li>
 <li>このディレクトリを共有するビルド（たとえば <code>cargo build</code> と、別のターゲットディレクトリを使う rust-analyzer）は、辞書を 1 つずつ書き込みます。同じ辞書を別のビルドが書き込んでいれば、それが終わるのを待ち、そのビルドが残した辞書を使います（<code>cargo build -vv</code> に <code>lindera dictionary cache: waiting for another build</code> と表示されます）。ロックは辞書の隣にある空の <code>&lt;辞書&gt;.lock</code> ファイルで、ビルドが辞書を書き込む間だけ保持します。ロックが効くのは 1 台のマシンの中のビルド同士で、ネットワークファイルシステムでは、そのファイルシステムがファイルロックに対応する範囲に限られます。ファイルをロックできないときは、ビルドは警告を出し、7.0.0 より前と同じくロックなしで続けるので、そうしたビルド同士は互いのファイルを消すことがあります</li>
 <li><code>DOCS_RS</code> を設定したビルドは、この変数を無視します（後述の <code>DOCS_RS</code> を参照）</li>
 </ul>
@@ -12765,6 +12777,7 @@ decompose モードを調整するには <code>Penalty</code> を渡す。実行
 </code></pre>
 <blockquote>
 <p>注意: CI では <code>--all-features</code> は使用されません。各クレートに対してキュレートされた個別の feature の組み合わせでテストを実行します（<code>.github/workflows/regression.yml</code> を参照）。Makefile のクレート別パターンターゲット（<code>make test-&lt;crate&gt;</code>、<code>make lint-&lt;crate&gt;</code>）は CI と同じ feature の組み合わせを適用するため、ローカルでの実行方法としては最も近い代替手段です。CI はさらに、<code>lindera-segmenter</code> と <code>lindera</code> をすべての辞書を埋め込んだ状態でもう一度テストし（Linux のみ）、ほかの辞書の feature でだけ有効になるテストも実行します。ローカルで同じことをするには、<code>cargo test -p lindera --features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba</code> を実行します（<code>lindera-segmenter</code> も同様）。</p>
+<p>注意: 辞書クレートは build script で辞書を作り、辞書ごとに数秒から数分かかります。CI は作った辞書を <code>actions/cache</code> で実行をまたいで残し、辞書ごとに 1 つのエントリにします（<code>.github/actions/dictionary-cache</code>）。そのため、<code>lindera-dictionary</code>・辞書クレート・<code>Cargo.lock</code> が変わらない実行では、辞書を作り直しません。ローカルでは <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を設定すると、ターゲットディレクトリや worktree をまたいで共有できます。条件は<a href="development/../getting_started/environment_variables.html#lindera_build_dictionary_cache_dir">環境変数</a>を参照してください。</p>
 </blockquote>
 <h3 id="ワークスペース全体のテスト"><a class="header" href="#ワークスペース全体のテスト">ワークスペース全体のテスト</a></h3>
 <pre><code class="language-bash">cargo test
