@@ -4326,6 +4326,16 @@ for token in tokens:
 <li><a href="./lindera-nodejs/text_processing_pipeline.html">テキスト処理パイプライン</a> -- 文字フィルタとトークンフィルタ</li>
 <li><a href="./lindera-nodejs/training.html">学習</a> -- カスタム CRF モデルの学習と辞書のエクスポート</li>
 </ul>
+<h2 id="エラー"><a class="header" href="#エラー">エラー</a></h2>
+<p>失敗した関数・メソッドは <code>Error</code> を投げます。<code>message</code> は何が起きたかを示し、<code>code</code> は失敗の種類を表します。</p>
+<div class="table-wrapper"><table><thead><tr><th><code>code</code></th><th>失敗</th><th>例</th></tr></thead><tbody>
+<tr><td><code>StringExpected</code> や <code>ArrayExpected</code> など、期待した型</td><td>型の違う引数</td><td><code>loadDictionary(123)</code>、<code>new Schema("a")</code></td></tr>
+<tr><td><code>InvalidArg</code></td><td>期待したクラスのインスタンスでない引数、設定の範囲外の数値</td><td><code>setMode("normal")</code>、<code>new Metadata({ defaultLeftContextId: 2 ** 32 + 5 })</code></td></tr>
+<tr><td><code>GenericFailure</code></td><td>ほかの多くの失敗と、panic（後述）</td><td><code>loadDictionary("/nonexistent/dictionary")</code>、<code>Mode.fromStr("Normal")</code></td></tr>
+</tbody></table>
+</div>
+<p>Lindera の Rust のコードの panic（Lindera のバグです）も、呼んだ関数・メソッドから <code>Error</code> として投げられ、Node.js は動き続けます。v6.2.0 までは、panic で Node.js が <code>fatal runtime error: failed to initiate panic, error 5, aborting</code> を出して abort していました（<a href="https://github.com/lindera/lindera/issues/1314">#1314</a>）。panic の <code>Error</code> の <code>code</code> は、ほかの多くの失敗と同じ <code>GenericFailure</code> で、<code>message</code> は panic のメッセージです。Rust は、panic が起きたソースコードの位置とメッセージを標準エラーにも書きます。</p>
+<p>メソッドが panic したオブジェクトは、panic の前にメソッドが変えた状態を持っていることがあるので、使い続けずに作り直してください。panic は、メッセージと原因になった入力を添えて <a href="https://github.com/lindera/lindera/issues">GitHub Issues</a> に報告してください。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="インストール-3"><a class="header" href="#インストール-3">インストール</a></h1>
 <h2 id="npm-からのインストール"><a class="header" href="#npm-からのインストール">npm からのインストール</a></h2>
 <p>ビルド済みパッケージが npm で公開予定です：</p>
@@ -10439,6 +10449,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong>PHP: 省略可能な引数に型違いの値を渡すと、既定値を使わずに例外を投げる</strong></td><td>省略可能な引数に別の型の値を渡す PHP のコード。例えば <code>Lindera\Trainer::train()</code> の <code>$max_iter</code> に数字の文字列を、<code>tokenizeNbest()</code> の <code>$unique</code> に <code>1</code> を渡すもの</td><td>宣言された型の値を渡す。<code>$argv</code> の値のような文字列は <code>(int)</code> などでキャストする。<code>null</code> を渡すか引数を省略すれば、これまでどおり既定値になる</td></tr>
 <tr><td><strong>PHP・Node.js・WASM: 設定の範囲外の整数の引数は、折り返さずに例外を投げる</strong></td><td>そのような値を渡すコード。例えば <code>Metadata</code> の既定の単語コストに <code>100000</code> を渡すもの（v6 は <code>-31072</code> を保持した）や、N-best の件数に <code>-1</code> を渡すもの（v6 はすべての分割を列挙した）。<code>getFieldName</code> と PHP の <code>getDetail</code> への負の位置。Node.js と WASM では、<code>1.5</code> や <code>NaN</code> のような整数でない数値</td><td>範囲内の整数を渡す。エラーは引数の名前と範囲を示す</td></tr>
 <tr><td><strong>バインディング: モードは、Rust の <code>Mode</code> と同じく decompose モードのペナルティを持つ <code>Mode</code> で表す。<code>set_mode</code> / <code>setMode</code> と <code>Tokenizer</code> のコンストラクタはモードの名前ではなく <code>Mode</code> を受け取り、<code>TokenizerBuilder::set_segmenter_mode</code> は <code>Mode::Decompose</code> のペナルティを保つ</strong></td><td>モードを設定するバインディングのユーザー。バインディングの <code>Mode</code>、Node.js の <code>JsMode</code>、WASM の数値の <code>Mode</code> を使うコード。Node.js の型 <code>JsPenalty</code> を名指しする TypeScript のコード。<code>set_segmenter_mode</code> に既定でないペナルティを渡す Rust のコード。<code>CoreTokenizerBuilder::set_mode</code> や <code>CoreTokenizer::from_segmenter</code> の関数を呼ぶバインディングの作者</td><td><code>"normal"</code> や <code>"decompose"</code> の代わりに <code>Mode.normal()</code> や <code>Mode.decompose(penalty)</code>（Ruby では <code>Lindera::Mode.normal</code>、PHP では <code>Lindera\Mode::normal()</code>）を渡す。実行時に読んだモードの名前は <code>Mode.from_str</code> / <code>Mode.fromStr</code> で <code>Mode</code> にする。<code>JsPenalty</code> を <code>Penalty</code> に改名する。<code>lindera-binding</code> の関数には <code>lindera::mode::Mode</code> を渡す</td></tr>
+<tr><td>Node.js: panic は Node.js を abort させずに <code>Error</code> を投げる</td><td>Lindera の panic（バグ）に当たる Node.js のプログラム</td><td>変更は不要。バインディングのほかのエラーと同じところで <code>Error</code>（<code>code</code> は <code>GenericFailure</code>）を捕まえ、メソッドが panic したオブジェクトは作り直し、panic を報告する</td></tr>
 <tr><td><strong><code>lindera train</code> は MeCab の学習器と同じくラティスを作り、<code>unk.def</code> のすべてのエントリを保持する。<code>model.dat</code> の形式バージョンは 3.0.0</strong></td><td><code>lindera train</code>・<code>lindera export</code> と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー</td><td>7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた <code>model.dat</code> は拒否される）。<code>unk.def</code> のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す</td></tr>
 <tr><td><strong><code>lindera train</code> のデフォルトの正則化は、MeCab の学習器と同じく係数 1.0 の L2</strong></td><td><code>lindera train</code>、<code>lindera_trainer</code> と <code>lindera_crf</code> の <code>Trainer::new</code>、Python・Node.js・Ruby・PHP のバインディングの学習関数を、正則化の種類と係数の両方を渡さずに使うユーザー</td><td>精度が上がり、<code>matrix.def</code> が大きくなる。v6 のデフォルトの設定を使うには <code>--regularization l1 --lambda 0.01</code>（Rust では <code>.use_l2(false).regularization_cost(0.01)</code>、バインディングでは <code>regularization</code> に <code>l1</code>、<code>lambda</code> に 0.01。<a href="https://github.com/lindera/lindera/issues/1262">#1262</a>）を渡す</td></tr>
 <tr><td><strong><code>lindera train</code> は、MeCab の学習器や libLBFGS と同じく、最初のライン探索を長さ 1 の刻みから始める</strong></td><td><code>lindera train</code>、<code>lindera_trainer</code> と <code>lindera_crf</code> の <code>Trainer</code>、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー</td><td>対処は不要。v6 の設定でも、学習したモデルはすべて v6 と変わる。分離可能なデータの L1 は、数回の反復で止まらずに学習を続ける</td></tr>
@@ -11717,6 +11728,17 @@ Python の <code>Mode(mode_str)</code> と属性 <code>Mode.Normal</code> / <cod
 <code>lindera_binding::parse_mode</code> は、バインディングの <code>from_str</code> と同じくモードの名前を
 読みます。</li>
 </ul>
+<h2 id="nodejs-panic-は-nodejs-を-abort-させずに-error-を投げる"><a class="header" href="#nodejs-panic-は-nodejs-を-abort-させずに-error-を投げる">Node.js: panic は Node.js を abort させずに <code>Error</code> を投げる</a></h2>
+<p>v6.2.0 までは、Node.js バインディングの Rust のコードの panic（Lindera のバグです）が
+napi-rs のコールバックまで巻き戻り、Node.js が
+<code>fatal runtime error: failed to initiate panic, error 5, aborting</code> を出して abort して
+いました。v7.0.0 は、バインディングのすべての関数・メソッドで panic を捕まえます
+（<a href="https://github.com/lindera/lindera/issues/1314">#1314</a>）。呼び出しは、ほかの多くの
+失敗と同じく <code>code</code> が <code>GenericFailure</code> で、<code>message</code> が panic のメッセージの <code>Error</code> を
+投げ、Node.js は動き続けます。Rust は今も、panic が起きた位置とメッセージを標準エラーに
+書きます。メソッドが panic したオブジェクトは、panic の前にメソッドが変えた状態を
+持っていることがあるので、作り直してください。Node.js バインディングの
+<a href="lindera-nodejs.html#%E3%82%A8%E3%83%A9%E3%83%BC">エラー</a>も参照してください。</p>
 <h2 id="lindera-train-は-mecab-の学習器と同じくラティスを作る"><a class="header" href="#lindera-train-は-mecab-の学習器と同じくラティスを作る"><code>lindera train</code> は MeCab の学習器と同じくラティスを作る</a></h2>
 <p>v6.2.0 までの <code>lindera train</code> は、MeCab の学習器とは異なる学習用ラティスを
 作っていました。</p>

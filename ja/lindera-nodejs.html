@@ -197,6 +197,16 @@
 <li><a href="./lindera-nodejs/text_processing_pipeline.html">テキスト処理パイプライン</a> -- 文字フィルタとトークンフィルタ</li>
 <li><a href="./lindera-nodejs/training.html">学習</a> -- カスタム CRF モデルの学習と辞書のエクスポート</li>
 </ul>
+<h2 id="エラー"><a class="header" href="#エラー">エラー</a></h2>
+<p>失敗した関数・メソッドは <code>Error</code> を投げます。<code>message</code> は何が起きたかを示し、<code>code</code> は失敗の種類を表します。</p>
+<div class="table-wrapper"><table><thead><tr><th><code>code</code></th><th>失敗</th><th>例</th></tr></thead><tbody>
+<tr><td><code>StringExpected</code> や <code>ArrayExpected</code> など、期待した型</td><td>型の違う引数</td><td><code>loadDictionary(123)</code>、<code>new Schema("a")</code></td></tr>
+<tr><td><code>InvalidArg</code></td><td>期待したクラスのインスタンスでない引数、設定の範囲外の数値</td><td><code>setMode("normal")</code>、<code>new Metadata({ defaultLeftContextId: 2 ** 32 + 5 })</code></td></tr>
+<tr><td><code>GenericFailure</code></td><td>ほかの多くの失敗と、panic（後述）</td><td><code>loadDictionary("/nonexistent/dictionary")</code>、<code>Mode.fromStr("Normal")</code></td></tr>
+</tbody></table>
+</div>
+<p>Lindera の Rust のコードの panic（Lindera のバグです）も、呼んだ関数・メソッドから <code>Error</code> として投げられ、Node.js は動き続けます。v6.2.0 までは、panic で Node.js が <code>fatal runtime error: failed to initiate panic, error 5, aborting</code> を出して abort していました（<a href="https://github.com/lindera/lindera/issues/1314">#1314</a>）。panic の <code>Error</code> の <code>code</code> は、ほかの多くの失敗と同じ <code>GenericFailure</code> で、<code>message</code> は panic のメッセージです。Rust は、panic が起きたソースコードの位置とメッセージを標準エラーにも書きます。</p>
+<p>メソッドが panic したオブジェクトは、panic の前にメソッドが変えた状態を持っていることがあるので、使い続けずに作り直してください。panic は、メッセージと原因になった入力を添えて <a href="https://github.com/lindera/lindera/issues">GitHub Issues</a> に報告してください。</p>
 
                     </main>
 

@@ -197,6 +197,16 @@
 <li><a href="./lindera-nodejs/text_processing_pipeline.html">Text Processing Pipeline</a> -- Character filters and token filters</li>
 <li><a href="./lindera-nodejs/training.html">Training</a> -- Training custom CRF models and exporting dictionaries</li>
 </ul>
+<h2 id="errors"><a class="header" href="#errors">Errors</a></h2>
+<p>A function or method that fails throws an <code>Error</code>. Its <code>message</code> says what went wrong, and its <code>code</code> tells the kind of failure:</p>
+<div class="table-wrapper"><table><thead><tr><th><code>code</code></th><th>Failure</th><th>Example</th></tr></thead><tbody>
+<tr><td>The type expected, such as <code>StringExpected</code> or <code>ArrayExpected</code></td><td>An argument of another type</td><td><code>loadDictionary(123)</code>, <code>new Schema("a")</code></td></tr>
+<tr><td><code>InvalidArg</code></td><td>An argument that is not an instance of the class expected, or a number outside the range of its setting</td><td><code>setMode("normal")</code>, <code>new Metadata({ defaultLeftContextId: 2 ** 32 + 5 })</code></td></tr>
+<tr><td><code>GenericFailure</code></td><td>Most other failures, and a panic (below)</td><td><code>loadDictionary("/nonexistent/dictionary")</code>, <code>Mode.fromStr("Normal")</code></td></tr>
+</tbody></table>
+</div>
+<p>A panic in Lindera's Rust code, which is a bug, throws an <code>Error</code> too, from the function or method that was called, and Node.js goes on running. Up to v6.2.0, a panic aborted Node.js with <code>fatal runtime error: failed to initiate panic, error 5, aborting</code> (<a href="https://github.com/lindera/lindera/issues/1314">#1314</a>). The <code>Error</code> of a panic has the <code>code</code> <code>GenericFailure</code>, as most other failures do, and the panic's message as its <code>message</code>. Rust also writes the place of the panic in its source code and the message to standard error.</p>
+<p>An object whose method panicked may keep what the method changed before the panic, so create it again instead of using it further. Please report a panic at <a href="https://github.com/lindera/lindera/issues">GitHub Issues</a>, with its message and the input that caused it.</p>
 
                     </main>
 
