@@ -1565,6 +1565,7 @@ dependencies = [
  "rkyv",
  "serde",
  "serde_json",
+ "sha2",
  "strum",
  "strum_macros",
  "tar",

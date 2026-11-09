@@ -5,6 +5,7 @@ Lindera は次の環境変数を読みます。どれも設定しなくても動
 | 変数 | 読むもの | 値 | 設定しないとき |
 | --- | --- | --- | --- |
 | [`LINDERA_BUILD_DICTIONARY_CACHE_DIR`](#lindera_build_dictionary_cache_dir) | 辞書クレートの build script | ディレクトリ | ビルドごとに、その出力ディレクトリで辞書をダウンロードしてビルドする |
+| [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source) | 辞書クレートの build script | `1` か `true` | 辞書クレートは固定した公開済みの辞書をダウンロードし、それを使えないときだけソースからビルドする |
 | [`LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`](#lindera_build_context_id_freq_file) | 辞書クレートの build script | ファイル | 辞書クレートに同梱の頻度表（あれば） |
 | [`DOCS_RS`](#docs_rs) | 辞書クレートの build script | docs.rs が設定する | 本物の辞書をビルドする |
 | [`LINDERA_CONFIG_FILE`](#lindera_config_file) | `TokenizerBuilder::new()`（`lindera tokenize` とバインディングも） | ファイル | 空の設定 |
@@ -35,6 +36,8 @@ Lindera は次の環境変数を読みます。どれも設定しなくても動
 - ソースアーカイブ（ファイル名と MD5）と、ビルドがその中で読むディレクトリ
 - `connection_id_mapping` が有効なとき、ビルドが読む文脈 ID の頻度表（`context_id_freq.txt`、または `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` が指すファイル）
 
+ビルドせずにダウンロードした公開済みの辞書（[`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source) を参照）も同じ場所にキャッシュし、`build_inputs.json` には上の入力に加えて、その辞書の鍵と SHA-256 を記録します。同じ公開済みの辞書をダウンロードするはずの次のビルドは、キャッシュした辞書を使います。公開済みの辞書とソースからのビルドを切り替えたビルドは、作り直します。
+
 中断されたビルドが残した辞書や、`build_inputs.json` より前のリリースがキャッシュした辞書は作り直します。ビルダーが依存するクレートのバージョンは比較しません。フォーマットバージョンを変えずに `lindera-dictionary` の依存クレートを更新したときは、ビルドした辞書が変わりうるならキャッシュを削除してください。古いフォーマットバージョンのディレクトリは自動削除されないため、キャッシュが肥大化する場合は手動で削除してください。
 
 `cargo build -vv` を実行すると、辞書クレートごとに、キャッシュした辞書を使ったかどうかとその理由が `lindera dictionary cache:` で始まる行に表示されます。
@@ -61,6 +64,31 @@ cargo build --features=embed-ipadic
 - このディレクトリを共有するビルド（たとえば `cargo build` と、別のターゲットディレクトリを使う rust-analyzer）は、辞書を 1 つずつ書き込みます。同じ辞書を別のビルドが書き込んでいれば、それが終わるのを待ち、そのビルドが残した辞書を使います（`cargo build -vv` に `lindera dictionary cache: waiting for another build` と表示されます）。ロックは辞書の隣にある空の `<辞書>.lock` ファイルで、ビルドが辞書を書き込む間だけ保持します。ロックが効くのは 1 台のマシンの中のビルド同士で、ネットワークファイルシステムでは、そのファイルシステムがファイルロックに対応する範囲に限られます。ファイルをロックできないときは、ビルドは警告を出し、7.0.0 より前と同じくロックなしで続けるので、そうしたビルド同士は互いのファイルを消すことがあります
 - `DOCS_RS` を設定したビルドは、この変数を無視します（後述の `DOCS_RS` を参照）
 
+### LINDERA_BUILD_DICTIONARY_FROM_SOURCE
+
+公式の 7 つの辞書は、入力が変わるたびに一度だけビルドし、辞書と版ごとに 1 つの GitHub のリリースとして公開します。公開したリリースは置き換えません。各辞書クレートは、`metadata.json` の隣の `prebuilt.json` で、公開済みの辞書を URL と SHA-256 で固定しています。build script は、ソースのアーカイブを取って辞書をビルドする代わりに、そのアーカイブをダウンロードし、SHA-256 を確かめて埋め込みます。アーカイブの中身はソースからビルドしたものと同じで、違うのは `metadata.json` の `lindera_version` だけです。これは、その辞書をビルドした Lindera の版を表します。公開の手順は[辞書のリリース](../development/dictionary_release.md)にあります。
+
+ダウンロードの失敗、SHA-256 の違うアーカイブ、ファイルが欠けているかクレートの `metadata.json` に合わないアーカイブは、何が起きたかを示すエラーでビルドを止めます。確かめられなかったものは埋め込まず、ソースからのビルドにも切り替えません。
+
+build script は、次の場合に v6 までと同じくソースから辞書をビルドします。
+
+- `LINDERA_BUILD_DICTIONARY_FROM_SOURCE` が `1` か `true` のとき。`0`、`false`、空の値は、build script の判断に任せます。ほかの値は、警告を出したうえで `1` とみなします。
+- `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` が頻度表を指すとき。辞書が公開済みのものと変わるためです。
+- 公開済みの辞書の辞書フォーマットバージョンが、このビルドの読むものと違うとき。開発中のブランチで、フォーマットを変えてから新しい辞書を公開するまでの間がこれにあたります。
+- `prebuilt.json` がまだ SHA-256 を固定していないとき。新しい辞書が公開を待っている間です。
+
+はじめの 3 つの場合は、build script が理由を警告で示します。たとえば次のとおりです。
+
+```text
+warning: lindera-ipadic@7.0.0: building the ipadic dictionary from source, because LINDERA_BUILD_DICTIONARY_FROM_SOURCE is set
+```
+
+Cargo がこの警告を表示するのは、このリポジトリの checkout のように、パスから辞書クレートをビルドするときです。crates.io の辞書クレートでは、ビルドが失敗したときと `cargo build -vv` を付けたときだけ表示します。変数や `prebuilt.json` を変えると、build script が再実行されます。`DOCS_RS` を設定したビルドは、どちらもせずにダミーの辞書を使います（後述の `DOCS_RS` を参照）。
+
+```shell
+LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1 cargo build --features=embed-ipadic
+```
+
 ### LINDERA_BUILD_CONTEXT_ID_FREQ_FILE
 
 `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` 環境変数は、辞書クレートの build script が、クレートに同梱の `context_id_freq.txt` の代わりに読む文脈 ID の頻度表を指定します。効くのは `metadata.json` で `connection_id_mapping` を有効にした辞書（同梱の辞書では UniDic と ko-dic）だけで、実行時の動作には影響しません。頻度表は、よく使う文脈 ID が近くに並ぶように連接コスト行列の文脈 ID を並べ替えるためのもので、トークナイズの速さは変わりますが、結果は変わりません。`lindera` クレートの例 `ctxfreq_dump` で、コーパスから頻度表を作れます。
@@ -70,7 +98,7 @@ export LINDERA_BUILD_CONTEXT_ID_FREQ_FILE=/path/to/context_id_freq.txt
 cargo build --features=embed-unidic
 ```
 
-この変数を読むのは build script だけです。`lindera build` は `--context-id-freq` オプションで頻度表を受け取り、バインディングの辞書をビルドする関数は省略可能な引数 `context_id_freq`（Node.js では `contextIdFreq`）で受け取ります。変数や、変数が指すファイルを変えると build script が再実行され、`LINDERA_BUILD_DICTIONARY_CACHE_DIR` のキャッシュは頻度表の内容を比べます。
+この変数を読むのは build script だけです。`lindera build` は `--context-id-freq` オプションで頻度表を受け取り、バインディングの辞書をビルドする関数は省略可能な引数 `context_id_freq`（Node.js では `contextIdFreq`）で受け取ります。変数や、変数が指すファイルを変えると build script が再実行され、`LINDERA_BUILD_DICTIONARY_CACHE_DIR` のキャッシュは頻度表の内容を比べます。この変数を設定すると、build script は公開済みの辞書をダウンロードせずに、ソースから辞書をビルドします（[`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source) を参照）。
 
 v6 までの名前 `LINDERA_CTX_FREQ_FILE` も v8.0.0 までは使えますが、非推奨の警告が出ます：
 

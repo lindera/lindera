@@ -36,8 +36,12 @@ let dictionary = load_dictionary("/path/to/ipadic")?;
 > let dictionary = load_dictionary("embedded://ipadic")?;
 > ```
 >
+> `embed-*` のビルドは、辞書クレートのために Lindera が GitHub で公開している辞書をダウンロードし、SHA-256 を確かめて埋め込みます。辞書をソースからビルドしなくなったので、ビルドには `lindera.dev` ではなく `github.com`（ファイルは `release-assets.githubusercontent.com` から配られます）への接続が要ります。`LINDERA_BUILD_DICTIONARY_CACHE_DIR` を設定すれば、2 回目からのビルドはダウンロードした辞書を使い、ネットワークに接続しません。build script がソースからビルドする場合は、[`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](./environment_variables.md#lindera_build_dictionary_from_source) を参照してください。
+>
+> 埋め込めるのは同梱の辞書だけです。自分の辞書は `lindera build` でビルドし、実行時にそのディレクトリから読み込んでください。
+>
 > 詳細は [Feature フラグ](../development/feature_flags.md) を参照してください。
 
 ## 環境変数
 
-辞書クレートの build script は `LINDERA_BUILD_DICTIONARY_CACHE_DIR`・`LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`・`DOCS_RS` を、`TokenizerBuilder::new()` は `LINDERA_CONFIG_FILE` を読みます。これらを含め、Lindera が読む環境変数は[環境変数](./environment_variables.md)を参照してください。
+辞書クレートの build script は `LINDERA_BUILD_DICTIONARY_CACHE_DIR`・`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`・`LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`・`DOCS_RS` を、`TokenizerBuilder::new()` は `LINDERA_CONFIG_FILE` を読みます。これらを含め、Lindera が読む環境変数は[環境変数](./environment_variables.md)を参照してください。

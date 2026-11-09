@@ -270,20 +270,98 @@ fn create_dummy_dictionary_source(
 }
 
 /// Dictionary archives run to hundreds of megabytes, so the 10 MB default body
-/// limit does not apply here. The MD5 check below is what guards against a
+/// limit does not apply here. The digest check below is what guards against a
 /// truncated or substituted download.
 const BODY_LIMIT: u64 = u64::MAX;
 
+/// The digest a downloaded file must have.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ExpectedDigest<'a> {
+    /// The MD5 that a dictionary crate pins for its source archive
+    /// ([`FetchParams::md5_hash`]).
+    Md5(&'a str),
+    /// The SHA-256 that a dictionary crate pins for its published dictionary
+    /// ([`PrebuiltDictionary::sha256`]).
+    Sha256(&'a str),
+}
+
+impl ExpectedDigest<'_> {
+    /// Checks `content` against the digest.
+    ///
+    /// # Arguments
+    ///
+    /// * `content` - The downloaded bytes.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` when the digest matches, ignoring the case of the hexadecimal
+    /// digits, or a message that names the algorithm and both digests.
+    fn check(&self, content: &[u8]) -> Result<(), String> {
+        let (algorithm, expected, actual) = match self {
+            ExpectedDigest::Md5(expected) => {
+                let mut context = Context::new();
+                context.consume(content);
+                ("MD5", *expected, format!("{:x}", context.finalize()))
+            }
+            ExpectedDigest::Sha256(expected) => ("SHA-256", *expected, sha256_hex(content)),
+        };
+        if actual.eq_ignore_ascii_case(expected) {
+            Ok(())
+        } else {
+            Err(format!(
+                "{algorithm} mismatch: expected {expected}, got {actual}"
+            ))
+        }
+    }
+}
+
+/// Computes the SHA-256 of `content`.
+///
+/// # Arguments
+///
+/// * `content` - The bytes to hash.
+///
+/// # Returns
+///
+/// The digest as lowercase hexadecimal digits.
+fn sha256_hex(content: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+
+    Sha256::digest(content)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
+/// Downloads a file from one of `download_urls` and checks its digest.
+///
+/// Each round tries every URL once, in a random order, and a response that
+/// fails (a request error, a non-2xx status, a body that cannot be read or a
+/// digest that does not match) moves on to the next URL.
+///
+/// # Arguments
+///
+/// * `agent` - The HTTP agent, with `http_status_as_error` off.
+/// * `download_urls` - The URLs to try.
+/// * `max_rounds` - How many times to go through the URLs.
+/// * `expected` - The digest the file must have.
+///
+/// # Returns
+///
+/// The content of the first response with the expected digest, or an error
+/// that gives the reason the last attempt failed.
 fn download_with_retry(
     agent: &Agent,
     download_urls: Vec<&str>,
     max_rounds: usize,
-    expected_md5: &str,
+    expected: ExpectedDigest<'_>,
 ) -> Result<Vec<u8>, Box<dyn Error>> {
     if download_urls.is_empty() {
         return Err("No download URLs provided".into());
     }
 
+    // The reason the latest attempt failed, for the final error.
+    let mut last_failure = String::new();
     for round in 0..max_rounds {
         let mut urls = download_urls.clone();
 
@@ -314,47 +392,49 @@ fn download_with_retry(
                         .limit(BODY_LIMIT)
                         .read_to_vec()
                     {
-                        Ok(content) => {
-                            // Calculate MD5 hash
-                            let mut context = Context::new();
-                            context.consume(&content);
-                            let actual_md5 = format!("{:x}", context.finalize());
-
-                            debug!("Expected MD5: {expected_md5}");
-                            debug!("Actual   MD5: {actual_md5}");
-
-                            if actual_md5 == expected_md5 {
-                                debug!("MD5 check passed from {url}");
+                        Ok(content) => match expected.check(&content) {
+                            Ok(()) => {
+                                debug!("Digest check passed from {url}");
                                 return Ok(content);
-                            } else {
-                                warn!(
-                                    "MD5 mismatch from {url}, Expected {expected_md5}, got {actual_md5}"
-                                );
+                            }
+                            Err(mismatch) => {
+                                warn!("{mismatch} from {url}");
+                                last_failure = format!("{mismatch} from {url}");
                                 // continue to next url
                             }
-                        }
+                        },
                         Err(e) => {
                             warn!("Failed to download content from {url}: {e}");
+                            last_failure = format!("failed to read the response from {url}: {e}");
                             // continue to next url
                         }
                     }
                 }
                 Ok(resp) => {
                     warn!("HTTP download failed from {}: HTTP {}", url, resp.status());
+                    last_failure = format!("HTTP {} from {url}", resp.status());
                     // continue to next url
                 }
                 Err(e) => {
                     warn!("Request error from {url}: {e}");
+                    last_failure = format!("request to {url} failed: {e}");
                     // continue to next url
                 }
             }
         }
 
-        sleep(Duration::from_secs(1));
+        // No pause after the last round, which only reports the failure.
+        if round + 1 < max_rounds {
+            sleep(Duration::from_secs(1));
+        }
     }
 
     error!("All {max_rounds} attempts failed");
-    Err("Failed to download a valid file from all sources".into())
+    Err(format!(
+        "Failed to download a valid file from all sources in {max_rounds} rounds; \
+         the last attempt: {last_failure}"
+    )
+    .into())
 }
 
 /// Environment variable that designates the dictionary build cache directory.
@@ -499,6 +579,219 @@ fn with_context_id_freq_override(
     }
 }
 
+/// Name of the file, in a dictionary crate's root next to `metadata.json`, that
+/// pins the crate's published dictionary ([`PrebuiltDictionary`], #1336).
+const PREBUILT_FILE: &str = "prebuilt.json";
+
+/// Environment variable that makes a dictionary crate build its dictionary
+/// from source even when it pins a published one (#1336).
+const FROM_SOURCE_ENV: &str = "LINDERA_BUILD_DICTIONARY_FROM_SOURCE";
+
+/// The files of a built dictionary that `embedded_dictionary!` includes.
+const DICTIONARY_FILES: [&str; 9] = [
+    "char_def.bin",
+    "matrix.mtx",
+    "dict.trie",
+    "dict.valsidx",
+    "dict.vals",
+    "dict.wordsidx",
+    "dict.words",
+    "unk.bin",
+    "metadata.json",
+];
+
+/// A dictionary crate's published dictionary, as its [`PREBUILT_FILE`] pins
+/// it.
+///
+/// The official dictionaries are built once per change of their inputs and
+/// published as GitHub releases, one per artifact; an `embed-*` build
+/// downloads the pinned archive and checks its SHA-256 instead of building the
+/// dictionary from source ([`choose_dictionary_source`]).
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PrebuiltDictionary {
+    /// Name of the artifact: the dictionary, the version of its source, the
+    /// dictionary format version and a revision, such as
+    /// `ipadic-2.7.0-20250920-fmt3-r1`. The archive holds one directory of
+    /// that name.
+    key: String,
+    /// The dictionary format version the artifact was built in.
+    format_version: u32,
+    /// The URL the archive's path is relative to; kept apart from `path` so
+    /// that a mirror can replace it (#584).
+    base_url: String,
+    /// The path of the archive under `base_url`.
+    path: String,
+    /// The SHA-256 of the archive, or `None` until it is published; without
+    /// it, the dictionary is built from source.
+    sha256: Option<String>,
+}
+
+impl PrebuiltDictionary {
+    /// The URL of the archive.
+    ///
+    /// # Returns
+    ///
+    /// `base_url` and `path` joined by a single `/`.
+    fn url(&self) -> String {
+        format!(
+            "{}/{}",
+            self.base_url.trim_end_matches('/'),
+            self.path.trim_start_matches('/')
+        )
+    }
+}
+
+/// Reads a dictionary crate's [`PREBUILT_FILE`].
+///
+/// # Arguments
+///
+/// * `path` - The file to read.
+///
+/// # Returns
+///
+/// The pin, `None` when the file does not exist, or an error when it cannot
+/// be read or parsed.
+fn read_prebuilt(path: &Path) -> LinderaResult<Option<PrebuiltDictionary>> {
+    let data = match fs::read_to_string(path) {
+        Ok(data) => data,
+        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(err) => {
+            return Err(LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!("Failed to read {path:?}")));
+        }
+    };
+    serde_json::from_str(&data).map(Some).map_err(|err| {
+        LinderaErrorKind::Deserialize
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!("Failed to parse {path:?}"))
+    })
+}
+
+/// Reads [`FROM_SOURCE_ENV`].
+///
+/// # Arguments
+///
+/// * `value` - The value of the variable, if set.
+///
+/// # Returns
+///
+/// Whether the build from source is forced: `true` for `1` and `true` (in any
+/// case), `false` when the variable is unset, empty, `0` or `false`. Any
+/// other value is taken as `true`, with a warning to print.
+fn from_source_requested(value: Option<OsString>) -> (bool, Option<String>) {
+    let Some(value) = value else {
+        return (false, None);
+    };
+    let text = value.to_string_lossy();
+    match text.trim().to_ascii_lowercase().as_str() {
+        "1" | "true" => (true, None),
+        "" | "0" | "false" => (false, None),
+        _ => (
+            true,
+            Some(format!(
+                "{FROM_SOURCE_ENV}={text} is taken as 1; set it to 1 or true to build the \
+                 dictionary from source, or to 0 or false (or unset it) not to"
+            )),
+        ),
+    }
+}
+
+/// How a build gets the dictionary it embeds.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum DictionarySource {
+    /// A dummy dictionary from [`FetchParams::dummy_input`], for docs.rs.
+    Dummy,
+    /// The published dictionary, downloaded from `url` and checked against
+    /// `sha256`.
+    Published {
+        /// The artifact's name ([`PrebuiltDictionary::key`]).
+        key: String,
+        /// Where to download it.
+        url: String,
+        /// The SHA-256 it must have.
+        sha256: String,
+    },
+    /// Built from the source archive. `reason` says why the published
+    /// dictionary is not used, when the crate pins one; the build prints it
+    /// as a `cargo:warning`.
+    Source {
+        /// Why the published dictionary is not used, if one is pinned.
+        reason: Option<String>,
+    },
+}
+
+/// Decides how a build gets its dictionary (#1336).
+///
+/// A build uses the published dictionary when the crate pins one with its
+/// SHA-256 and nothing asks for another: a docs.rs build uses a dummy, as it
+/// has no network; a build that forces the build from source
+/// ([`FROM_SOURCE_ENV`]), one that ranks context IDs with another histogram
+/// ([`CONTEXT_ID_FREQ_FILE_ENV`]), whose output differs from the published
+/// dictionary, and one whose format version differs from the pinned one, as
+/// on `main` between a format change and the publication of new dictionaries,
+/// build from source.
+///
+/// # Arguments
+///
+/// * `docs_rs` - Whether this is a docs.rs build ([`DOCS_RS_ENV`]).
+/// * `from_source` - Whether [`FROM_SOURCE_ENV`] asks for the build from
+///   source.
+/// * `context_id_freq_override` - Whether a histogram other than the bundled
+///   one is set.
+/// * `prebuilt` - The crate's pin, if it has a [`PREBUILT_FILE`].
+/// * `name` - The dictionary's name, for the reason.
+///
+/// # Returns
+///
+/// The way to get the dictionary.
+fn choose_dictionary_source(
+    docs_rs: bool,
+    from_source: bool,
+    context_id_freq_override: bool,
+    prebuilt: Option<&PrebuiltDictionary>,
+    name: &str,
+) -> DictionarySource {
+    if docs_rs {
+        return DictionarySource::Dummy;
+    }
+    let Some((prebuilt, sha256)) =
+        prebuilt.and_then(|prebuilt| prebuilt.sha256.as_ref().map(|sha256| (prebuilt, sha256)))
+    else {
+        return DictionarySource::Source { reason: None };
+    };
+    let reason = if from_source {
+        Some(format!(
+            "building the {name} dictionary from source, because {FROM_SOURCE_ENV} is set"
+        ))
+    } else if context_id_freq_override {
+        Some(format!(
+            "building the {name} dictionary from source, because {CONTEXT_ID_FREQ_FILE_ENV} \
+             names another context-ID frequency file, with which the dictionary differs from \
+             the published one"
+        ))
+    } else if prebuilt.format_version != DICTIONARY_FORMAT_VERSION {
+        Some(format!(
+            "building the {name} dictionary from source: the published dictionary {} has \
+             format version {}, and this build reads format version {DICTIONARY_FORMAT_VERSION}",
+            prebuilt.key, prebuilt.format_version
+        ))
+    } else {
+        None
+    };
+    match reason {
+        Some(reason) => DictionarySource::Source {
+            reason: Some(reason),
+        },
+        None => DictionarySource::Published {
+            key: prebuilt.key.clone(),
+            url: prebuilt.url(),
+            sha256: sha256.clone(),
+        },
+    }
+}
+
 /// Name of the file, inside a cached dictionary's output directory, that
 /// records the inputs the dictionary was built from ([`BuildInputs`]).
 ///
@@ -546,6 +839,22 @@ struct BuildInputs {
     /// with, or `None` when it reads none (`connection_id_mapping` off, or no
     /// histogram found).
     context_id_freq_md5: Option<String>,
+    /// The published dictionary the entry was downloaded as, or `None` when
+    /// it was built from source (#1336). Always written, also as `null`, so
+    /// that a build from source never takes an entry that was downloaded,
+    /// and the other way round. A record from before the field reads as
+    /// `None`, since serde reads a missing `Option` field as `None`.
+    published: Option<PublishedRecord>,
+}
+
+/// The published dictionary that a cache entry was downloaded as.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PublishedRecord {
+    /// The artifact's name ([`PrebuiltDictionary::key`]).
+    key: String,
+    /// The SHA-256 of its archive.
+    sha256: String,
 }
 
 /// What a build does with the dictionary it builds into the cache.
@@ -676,6 +985,8 @@ fn file_md5(path: &Path) -> io::Result<String> {
 /// * `builder` - The builder, for its metadata and the histogram it reads:
 ///   the bundled one, or the one [`fetch_for`] attached in its place.
 /// * `builder_digest` - This crate's source digest ([`BUILDER_SOURCE_DIGEST`]).
+/// * `source` - How the build gets the dictionary; a published dictionary is
+///   recorded by its key and SHA-256.
 ///
 /// # Returns
 ///
@@ -685,6 +996,7 @@ fn expected_build_inputs(
     params: &FetchParams,
     builder: &DictionaryBuilder,
     builder_digest: Option<&str>,
+    source: &DictionarySource,
 ) -> LinderaResult<Option<BuildInputs>> {
     let Some(builder_digest) = builder_digest else {
         return Ok(None);
@@ -713,6 +1025,13 @@ fn expected_build_inputs(
         input_dir: params.input_dir.to_string(),
         src_subdir: params.src_subdir.map(str::to_string),
         context_id_freq_md5,
+        published: match source {
+            DictionarySource::Published { key, sha256, .. } => Some(PublishedRecord {
+                key: key.clone(),
+                sha256: sha256.to_ascii_lowercase(),
+            }),
+            DictionarySource::Dummy | DictionarySource::Source { .. } => None,
+        },
     }))
 }
 
@@ -1010,7 +1329,11 @@ fn metadata_matches_source(cached: &Metadata, source: &Metadata) -> bool {
 /// # Returns
 ///
 /// The directives, one per line, in the order the build script prints them.
-fn rerun_directives(ships_context_id_freq: bool, ctx_freq_override: Option<&Path>) -> Vec<String> {
+fn rerun_directives(
+    ships_context_id_freq: bool,
+    ships_prebuilt: bool,
+    ctx_freq_override: Option<&Path>,
+) -> Vec<String> {
     let mut directives = vec![
         "cargo:rerun-if-changed=build.rs".to_string(),
         "cargo:rerun-if-changed=Cargo.toml".to_string(),
@@ -1022,6 +1345,11 @@ fn rerun_directives(ships_context_id_freq: bool, ctx_freq_override: Option<&Path
     if ships_context_id_freq {
         directives.push(format!("cargo:rerun-if-changed={CONTEXT_ID_FREQ_FILE}"));
     }
+    // A new pin means another published dictionary, or the build from
+    // source once its SHA-256 is cleared.
+    if ships_prebuilt {
+        directives.push(format!("cargo:rerun-if-changed={PREBUILT_FILE}"));
+    }
     if let Some(path) = ctx_freq_override.filter(|path| path.is_file()) {
         directives.push(format!("cargo:rerun-if-changed={}", path.display()));
     }
@@ -1030,6 +1358,7 @@ fn rerun_directives(ships_context_id_freq: bool, ctx_freq_override: Option<&Path
         format!("cargo:rerun-if-env-changed={DEPRECATED_CTX_FREQ_FILE_ENV}"),
         format!("cargo:rerun-if-env-changed={CACHE_DIR_ENV}"),
         format!("cargo:rerun-if-env-changed={DOCS_RS_ENV}"),
+        format!("cargo:rerun-if-env-changed={FROM_SOURCE_ENV}"),
     ]);
     directives
 }
@@ -1094,9 +1423,29 @@ fn fetch_for(
     }
     for directive in rerun_directives(
         Path::new(CONTEXT_ID_FREQ_FILE).is_file(),
+        Path::new(PREBUILT_FILE).is_file(),
         ctx_freq.path.as_deref(),
     ) {
         println!("{directive}");
+    }
+    let (from_source, from_source_warning) =
+        from_source_requested(std::env::var_os(FROM_SOURCE_ENV));
+    if let Some(warning) = from_source_warning {
+        println!("cargo:warning={warning}");
+    }
+    let prebuilt = read_prebuilt(Path::new(PREBUILT_FILE))?;
+    let source = choose_dictionary_source(
+        is_docs_rs_build(),
+        from_source,
+        ctx_freq.path.is_some(),
+        prebuilt.as_ref(),
+        &builder.metadata().name,
+    );
+    if let DictionarySource::Source {
+        reason: Some(reason),
+    } = &source
+    {
+        println!("cargo:warning={reason}");
     }
     let builder = with_context_id_freq_override(builder, ctx_freq.path);
 
@@ -1150,14 +1499,7 @@ fn fetch_for(
     // environment variable passed to dependents, that will actually be used to include the dictionary in the library
     println!("cargo::rustc-env=LINDERA_WORK_DIR={}", build_dir.display());
 
-    fetch_into(
-        &build_dir,
-        is_cache,
-        is_docs_rs_build(),
-        &params,
-        &builder,
-        purpose,
-    )
+    fetch_into(&build_dir, is_cache, &source, &params, &builder, purpose)
 }
 
 /// [`fetch_for`] once the build directory is known: fetches the source and
@@ -1183,8 +1525,9 @@ fn fetch_for(
 ///
 /// * `build_dir` - The directory to build in: a cache directory, or `OUT_DIR`.
 /// * `is_cache` - Whether `build_dir` is a cache, whose entries are reused.
-/// * `docs_rs` - Whether to build a dummy dictionary from
-///   `params.dummy_input` instead of the downloaded one.
+/// * `source` - How to get the dictionary ([`choose_dictionary_source`]):
+///   download the published one, build a dummy from `params.dummy_input`, or
+///   build it from the source archive.
 /// * `params` - Describes the asset to fetch and the directory layout.
 /// * `builder` - Dictionary builder, with the histogram the build reads.
 /// * `purpose` - Whether the dictionary is embedded or only fills the cache.
@@ -1195,7 +1538,7 @@ fn fetch_for(
 fn fetch_into(
     build_dir: &Path,
     is_cache: bool,
-    docs_rs: bool,
+    source: &DictionarySource,
     params: &FetchParams,
     builder: &DictionaryBuilder,
     purpose: CachePurpose,
@@ -1219,7 +1562,7 @@ fn fetch_into(
     // against the current build, and a cache entry that fails the check is
     // rebuilt rather than trusted.
     let expected = if is_cache {
-        expected_build_inputs(params, builder, BUILDER_SOURCE_DIGEST)?
+        expected_build_inputs(params, builder, BUILDER_SOURCE_DIGEST, source)?
     } else {
         None
     };
@@ -1261,7 +1604,16 @@ fn fetch_into(
         None
     };
 
-    if docs_rs {
+    if let DictionarySource::Published { key, url, sha256 } = source {
+        fetch_published(build_dir, &output_dir, key, url, sha256, builder.metadata())?;
+        // As below, the record goes last, once the dictionary is in place.
+        if let Some(inputs) = &expected {
+            write_build_inputs(&output_dir, inputs)?;
+        }
+        return Ok(());
+    }
+
+    if *source == DictionarySource::Dummy {
         create_dummy_dictionary_source(&input_dir, params.src_subdir, params.dummy_input)?;
     } else {
         // Source file path for build package
@@ -1332,7 +1684,7 @@ fn fetch_into(
                 &agent,
                 params.download_urls.to_vec(),
                 MAX_ROUND,
-                params.md5_hash,
+                ExpectedDigest::Md5(params.md5_hash),
             )
             .map_err(|err| {
                 LinderaErrorKind::Io
@@ -1449,6 +1801,122 @@ fn fetch_into(
     Ok(())
 }
 
+/// Downloads a published dictionary, checks it, and moves it into
+/// `output_dir` (#1336).
+///
+/// Nothing reaches `output_dir` unless the archive has the pinned SHA-256 and
+/// holds a directory named `key` with every file that `embedded_dictionary!`
+/// includes and a `metadata.json` of this build's format version that
+/// matches the crate's (apart from the fields the build derives). Any failure
+/// stops the build: a dictionary that cannot be checked is never embedded,
+/// and the build does not fall back to the source, so that a problem with the
+/// published dictionaries shows instead of slowing every build down.
+///
+/// # Arguments
+///
+/// * `build_dir` - The build directory, for the temporary files.
+/// * `output_dir` - Where the dictionary goes.
+/// * `key` - The artifact's name, which is also the directory in the archive.
+/// * `url` - Where to download the archive.
+/// * `sha256` - The SHA-256 the archive must have.
+/// * `source_metadata` - The metadata the crate ships.
+///
+/// # Returns
+///
+/// `Ok(())` once the dictionary is in `output_dir`, or the error.
+fn fetch_published(
+    build_dir: &Path,
+    output_dir: &Path,
+    key: &str,
+    url: &str,
+    sha256: &str,
+    source_metadata: &Metadata,
+) -> LinderaResult<()> {
+    let hint = format!("set {FROM_SOURCE_ENV}=1 to build the dictionary from source instead");
+
+    let agent: Agent = Agent::config_builder()
+        .user_agent(format!("Lindera/{}", env!("CARGO_PKG_VERSION")))
+        .http_status_as_error(false)
+        .build()
+        .into();
+    debug!("Downloading the published dictionary {key} from {url}");
+    // One message rather than a context: `LinderaError` displays only the
+    // outermost one, and the reason must show.
+    let content = download_with_retry(&agent, vec![url], MAX_ROUND, ExpectedDigest::Sha256(sha256))
+        .map_err(|err| {
+            LinderaErrorKind::Io.with_error(anyhow::anyhow!(
+                "Failed to download the published dictionary {key} from {url}: {err}; {hint}"
+            ))
+        })?;
+
+    let tmp_extract_path = build_dir.join(format!("tmp-published-{key}"));
+    let _ = fs::remove_dir_all(&tmp_extract_path);
+    fs::create_dir_all(&tmp_extract_path).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!(
+                "Failed to create temporary extraction directory: {tmp_extract_path:?}"
+            ))
+    })?;
+    let result = unpack_published(&content, &tmp_extract_path, key, source_metadata, &hint)
+        .and_then(|unpacked| {
+            empty_directory(output_dir)?;
+            rename_directory(&unpacked, output_dir)
+        });
+    let _ = fs::remove_dir_all(&tmp_extract_path);
+    result?;
+    info!("Using the published dictionary {key} from {url}");
+    Ok(())
+}
+
+/// Unpacks a published dictionary's archive and checks what it holds.
+///
+/// # Arguments
+///
+/// * `content` - The archive, already checked against its SHA-256.
+/// * `extract_dir` - An empty directory to unpack into.
+/// * `key` - The artifact's name: the directory the archive must hold.
+/// * `source_metadata` - The metadata the crate ships.
+/// * `hint` - How to build the dictionary from source, for the errors.
+///
+/// # Returns
+///
+/// The unpacked dictionary directory, or an error naming what is wrong.
+fn unpack_published(
+    content: &[u8],
+    extract_dir: &Path,
+    key: &str,
+    source_metadata: &Metadata,
+    hint: &str,
+) -> LinderaResult<PathBuf> {
+    Archive::new(GzDecoder::new(Cursor::new(content)))
+        .unpack(extract_dir)
+        .map_err(|err| {
+            LinderaErrorKind::Io.with_error(anyhow::anyhow!(
+                "Failed to unpack the published dictionary {key}: {err}; {hint}"
+            ))
+        })?;
+    let dictionary_dir = extract_dir.join(key);
+    let missing: Vec<&str> = DICTIONARY_FILES
+        .into_iter()
+        .filter(|file| !dictionary_dir.join(file).is_file())
+        .collect();
+    if !missing.is_empty() {
+        return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+            "The published dictionary {key} has no {} in its directory {key}/; {hint}",
+            missing.join(", ")
+        )));
+    }
+    check_cached_metadata(&dictionary_dir, source_metadata).map_err(|mismatch| {
+        LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+            "The published dictionary {key} does not fit this crate ({mismatch}): give the \
+             dictionary a new revision in {PREBUILT_FILE} and clear its sha256 until it is \
+             published, or {hint}"
+        ))
+    })?;
+    Ok(dictionary_dir)
+}
+
 /// Name of the optional per-dictionary context-ID access-frequency histogram,
 /// shipped in the dictionary crate root next to `metadata.json`. Produced by the
 /// `ctxfreq` instrumentation (see the `ctxfreq_dump` example) and consumed when
@@ -1514,7 +1982,7 @@ pub fn build_embedded_dictionary(
 #[cfg(test)]
 mod tests {
     /// The directives every dictionary crate registers, in order.
-    const ALWAYS: [&str; 7] = [
+    const ALWAYS: [&str; 8] = [
         "cargo:rerun-if-changed=build.rs",
         "cargo:rerun-if-changed=Cargo.toml",
         "cargo:rerun-if-changed=metadata.json",
@@ -1522,6 +1990,7 @@ mod tests {
         "cargo:rerun-if-env-changed=LINDERA_CTX_FREQ_FILE",
         "cargo:rerun-if-env-changed=LINDERA_BUILD_DICTIONARY_CACHE_DIR",
         "cargo:rerun-if-env-changed=DOCS_RS",
+        "cargo:rerun-if-env-changed=LINDERA_BUILD_DICTIONARY_FROM_SOURCE",
     ];
 
     #[test]
@@ -1601,14 +2070,22 @@ mod tests {
     fn rerun_directives_skip_a_missing_context_id_freq_file() {
         // A missing `rerun-if-changed` path would rerun the build script,
         // and rebuild the dictionary, on every build (#1069).
-        assert_eq!(super::rerun_directives(false, None), ALWAYS);
+        assert_eq!(super::rerun_directives(false, false, None), ALWAYS);
     }
 
     #[test]
     fn rerun_directives_watch_a_shipped_context_id_freq_file() {
         let mut expected = ALWAYS.to_vec();
         expected.insert(3, "cargo:rerun-if-changed=context_id_freq.txt");
-        assert_eq!(super::rerun_directives(true, None), expected);
+        assert_eq!(super::rerun_directives(true, false, None), expected);
+    }
+
+    #[test]
+    fn rerun_directives_watch_a_shipped_prebuilt_file() {
+        // #1336: a new pin, or a cleared SHA-256, must rerun the build.
+        let mut expected = ALWAYS.to_vec();
+        expected.insert(3, "cargo:rerun-if-changed=prebuilt.json");
+        assert_eq!(super::rerun_directives(false, true, None), expected);
     }
 
     #[test]
@@ -1619,7 +2096,7 @@ mod tests {
         std::fs::write(&path, "").unwrap();
         let mut expected = ALWAYS.map(String::from).to_vec();
         expected.insert(3, format!("cargo:rerun-if-changed={}", path.display()));
-        assert_eq!(super::rerun_directives(false, Some(&path)), expected);
+        assert_eq!(super::rerun_directives(false, false, Some(&path)), expected);
     }
 
     #[test]
@@ -1628,11 +2105,13 @@ mod tests {
         // the build script on every build.
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("missing.txt");
-        assert_eq!(super::rerun_directives(false, Some(&path)), ALWAYS);
+        assert_eq!(super::rerun_directives(false, false, Some(&path)), ALWAYS);
     }
 
     use super::*;
     use crate::dictionary::context_id_map::ContextIdMap;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
     fn test_create_dummy_dictionary_source_without_subdir() {
@@ -1842,6 +2321,7 @@ mod tests {
             input_dir: "mecab-ipadic-2.7.0-20250920".to_string(),
             src_subdir: None,
             context_id_freq_md5: None,
+            published: None,
         }
     }
 
@@ -2022,13 +2502,23 @@ mod tests {
     fn expected_inputs_follow_the_histogram_contents_with_mapping() {
         let dir = tempfile::tempdir().unwrap();
         let (builder, histogram) = builder_with_histogram(dir.path(), true);
-        let before = expected_build_inputs(&fetch_params(), &builder, Some("d"))
-            .unwrap()
-            .unwrap();
+        let before = expected_build_inputs(
+            &fetch_params(),
+            &builder,
+            Some("d"),
+            &DictionarySource::Source { reason: None },
+        )
+        .unwrap()
+        .unwrap();
         fs::write(&histogram, "1 1 6\n").unwrap();
-        let after = expected_build_inputs(&fetch_params(), &builder, Some("d"))
-            .unwrap()
-            .unwrap();
+        let after = expected_build_inputs(
+            &fetch_params(),
+            &builder,
+            Some("d"),
+            &DictionarySource::Source { reason: None },
+        )
+        .unwrap()
+        .unwrap();
         assert!(before.context_id_freq_md5.is_some());
         assert_ne!(before.context_id_freq_md5, after.context_id_freq_md5);
     }
@@ -2041,13 +2531,23 @@ mod tests {
         let (builder, _) = builder_with_histogram(dir.path(), true);
         let override_path = dir.path().join("override.txt");
         fs::write(&override_path, "1 1 7\n").unwrap();
-        let bundled = expected_build_inputs(&fetch_params(), &builder, Some("d"))
-            .unwrap()
-            .unwrap();
+        let bundled = expected_build_inputs(
+            &fetch_params(),
+            &builder,
+            Some("d"),
+            &DictionarySource::Source { reason: None },
+        )
+        .unwrap()
+        .unwrap();
         let builder = with_context_id_freq_override(builder, Some(override_path.clone()));
-        let overridden = expected_build_inputs(&fetch_params(), &builder, Some("d"))
-            .unwrap()
-            .unwrap();
+        let overridden = expected_build_inputs(
+            &fetch_params(),
+            &builder,
+            Some("d"),
+            &DictionarySource::Source { reason: None },
+        )
+        .unwrap()
+        .unwrap();
         assert_eq!(
             overridden.context_id_freq_md5,
             Some(file_md5(&override_path).unwrap())
@@ -2061,9 +2561,14 @@ mod tests {
         // change to it must not cost a rebuild.
         let dir = tempfile::tempdir().unwrap();
         let (builder, _) = builder_with_histogram(dir.path(), false);
-        let inputs = expected_build_inputs(&fetch_params(), &builder, Some("d"))
-            .unwrap()
-            .unwrap();
+        let inputs = expected_build_inputs(
+            &fetch_params(),
+            &builder,
+            Some("d"),
+            &DictionarySource::Source { reason: None },
+        )
+        .unwrap()
+        .unwrap();
         assert_eq!(inputs.context_id_freq_md5, None);
     }
 
@@ -2075,9 +2580,14 @@ mod tests {
             src_subdir: Some("dict-src"),
             ..fetch_params()
         };
-        let inputs = expected_build_inputs(&params, &builder, Some("digest"))
-            .unwrap()
-            .unwrap();
+        let inputs = expected_build_inputs(
+            &params,
+            &builder,
+            Some("digest"),
+            &DictionarySource::Source { reason: None },
+        )
+        .unwrap()
+        .unwrap();
         assert_eq!(
             inputs,
             BuildInputs {
@@ -2088,6 +2598,7 @@ mod tests {
                 input_dir: params.input_dir.to_string(),
                 src_subdir: Some("dict-src".to_string()),
                 context_id_freq_md5: None,
+                published: None,
             }
         );
     }
@@ -2097,7 +2608,13 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let (builder, _) = builder_with_histogram(dir.path(), true);
         assert_eq!(
-            expected_build_inputs(&fetch_params(), &builder, None).unwrap(),
+            expected_build_inputs(
+                &fetch_params(),
+                &builder,
+                None,
+                &DictionarySource::Source { reason: None }
+            )
+            .unwrap(),
             None
         );
     }
@@ -2185,7 +2702,7 @@ mod tests {
         fetch_into(
             build_dir,
             true,
-            false,
+            &DictionarySource::Source { reason: None },
             &seeded_params(md5),
             &DictionaryBuilder::new(source_metadata()),
             CachePurpose::Embed,
@@ -2198,6 +2715,7 @@ mod tests {
             &seeded_params(md5),
             &DictionaryBuilder::new(source_metadata()),
             BUILDER_SOURCE_DIGEST,
+            &DictionarySource::Source { reason: None },
         )
         .unwrap()
         .unwrap()
@@ -2343,5 +2861,423 @@ mod tests {
                 "round {round}"
             );
         }
+    }
+
+    // The published dictionaries (#1336).
+
+    /// The SHA-256 of `abc`.
+    const SHA256_OF_ABC: &str = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+
+    /// The key of the test's published dictionary.
+    const PUBLISHED_KEY: &str = "test-1.0-fmt3-r1";
+
+    /// A pin of the test's published dictionary.
+    fn pin(format_version: u32, sha256: Option<&str>) -> PrebuiltDictionary {
+        PrebuiltDictionary {
+            key: PUBLISHED_KEY.to_string(),
+            format_version,
+            base_url: "https://example.com/releases/download/".to_string(),
+            path: "/dictionary-test-1.0-fmt3-r1/test-1.0-fmt3-r1.tar.gz".to_string(),
+            sha256: sha256.map(str::to_string),
+        }
+    }
+
+    /// The reason of a build from source, panicking on any other choice.
+    fn source_reason(source: DictionarySource) -> String {
+        match source {
+            DictionarySource::Source {
+                reason: Some(reason),
+            } => reason,
+            other => panic!("expected a build from source with a reason, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_pinned_dictionary_is_used_by_default() {
+        let pinned = pin(DICTIONARY_FORMAT_VERSION, Some(SHA256_OF_ABC));
+        assert_eq!(
+            choose_dictionary_source(false, false, false, Some(&pinned), "test"),
+            DictionarySource::Published {
+                key: PUBLISHED_KEY.to_string(),
+                url: "https://example.com/releases/download/dictionary-test-1.0-fmt3-r1/\
+                      test-1.0-fmt3-r1.tar.gz"
+                    .to_string(),
+                sha256: SHA256_OF_ABC.to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn docs_rs_builds_a_dummy_even_with_a_pin() {
+        let pinned = pin(DICTIONARY_FORMAT_VERSION, Some(SHA256_OF_ABC));
+        assert_eq!(
+            choose_dictionary_source(true, false, false, Some(&pinned), "test"),
+            DictionarySource::Dummy
+        );
+    }
+
+    #[test]
+    fn without_a_pinned_sha256_the_build_is_from_source_without_a_warning() {
+        let unpublished = pin(DICTIONARY_FORMAT_VERSION, None);
+        for (prebuilt, from_source, context_id_freq_override) in [
+            (None, false, false),
+            (Some(&unpublished), false, false),
+            (None, true, true),
+            (Some(&unpublished), true, true),
+        ] {
+            assert_eq!(
+                choose_dictionary_source(
+                    false,
+                    from_source,
+                    context_id_freq_override,
+                    prebuilt,
+                    "test"
+                ),
+                DictionarySource::Source { reason: None },
+                "{prebuilt:?}, {from_source}, {context_id_freq_override}"
+            );
+        }
+    }
+
+    #[test]
+    fn forcing_the_build_from_source_says_so() {
+        let pinned = pin(DICTIONARY_FORMAT_VERSION, Some(SHA256_OF_ABC));
+        let reason = source_reason(choose_dictionary_source(
+            false,
+            true,
+            false,
+            Some(&pinned),
+            "test",
+        ));
+        assert!(reason.contains(FROM_SOURCE_ENV), "{reason}");
+    }
+
+    #[test]
+    fn another_context_id_histogram_builds_from_source() {
+        let pinned = pin(DICTIONARY_FORMAT_VERSION, Some(SHA256_OF_ABC));
+        let reason = source_reason(choose_dictionary_source(
+            false,
+            false,
+            true,
+            Some(&pinned),
+            "test",
+        ));
+        assert!(reason.contains(CONTEXT_ID_FREQ_FILE_ENV), "{reason}");
+    }
+
+    #[test]
+    fn another_format_version_builds_from_source() {
+        let pinned = pin(DICTIONARY_FORMAT_VERSION + 1, Some(SHA256_OF_ABC));
+        let reason = source_reason(choose_dictionary_source(
+            false,
+            false,
+            false,
+            Some(&pinned),
+            "test",
+        ));
+        assert!(
+            reason.contains(&format!(
+                "{PUBLISHED_KEY} has format version {}, and this build reads format version \
+                 {DICTIONARY_FORMAT_VERSION}",
+                DICTIONARY_FORMAT_VERSION + 1
+            )),
+            "{reason}"
+        );
+    }
+
+    #[test]
+    fn the_build_from_source_is_forced_by_1_and_true() {
+        for (value, expected) in [
+            (None, false),
+            (Some("1"), true),
+            (Some("true"), true),
+            (Some("TRUE"), true),
+            (Some(""), false),
+            (Some("0"), false),
+            (Some("false"), false),
+        ] {
+            assert_eq!(
+                from_source_requested(value.map(OsString::from)),
+                (expected, None),
+                "{value:?}"
+            );
+        }
+        let (forced, warning) = from_source_requested(Some(OsString::from("yes")));
+        assert!(forced);
+        assert!(
+            warning
+                .as_deref()
+                .is_some_and(|warning| warning.contains("=yes")),
+            "{warning:?}"
+        );
+    }
+
+    #[test]
+    fn a_pin_is_read_and_a_missing_one_is_none() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(PREBUILT_FILE);
+        assert_eq!(read_prebuilt(&path).unwrap(), None);
+        fs::write(
+            &path,
+            r#"{"key": "k", "format_version": 3, "base_url": "https://b", "path": "p.tar.gz", "sha256": null}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            read_prebuilt(&path).unwrap(),
+            Some(PrebuiltDictionary {
+                key: "k".to_string(),
+                format_version: 3,
+                base_url: "https://b".to_string(),
+                path: "p.tar.gz".to_string(),
+                sha256: None,
+            })
+        );
+        // A misspelled field must not pass as a pin without a SHA-256.
+        fs::write(
+            &path,
+            r#"{"key": "k", "format_version": 3, "base_url": "https://b", "path": "p", "sha_256": "x"}"#,
+        )
+        .unwrap();
+        assert!(read_prebuilt(&path).is_err());
+    }
+
+    #[test]
+    fn digests_are_checked_with_their_algorithm() {
+        assert_eq!(ExpectedDigest::Sha256(SHA256_OF_ABC).check(b"abc"), Ok(()));
+        assert_eq!(
+            ExpectedDigest::Sha256(&SHA256_OF_ABC.to_ascii_uppercase()).check(b"abc"),
+            Ok(())
+        );
+        let mismatch = ExpectedDigest::Sha256(SHA256_OF_ABC)
+            .check(b"abd")
+            .unwrap_err();
+        assert!(
+            mismatch.starts_with(&format!("SHA-256 mismatch: expected {SHA256_OF_ABC}, got ")),
+            "{mismatch}"
+        );
+        let md5_of_abc = "900150983cd24fb0d6963f7d28e17f72";
+        assert_eq!(ExpectedDigest::Md5(md5_of_abc).check(b"abc"), Ok(()));
+        let mismatch = ExpectedDigest::Md5(md5_of_abc).check(b"abd").unwrap_err();
+        assert!(mismatch.starts_with("MD5 mismatch: "), "{mismatch}");
+    }
+
+    #[test]
+    fn a_record_from_before_the_published_field_reads_as_built_from_source() {
+        let mut record = serde_json::to_value(build_inputs()).unwrap();
+        record.as_object_mut().unwrap().remove("published");
+        let record: BuildInputs = serde_json::from_value(record).unwrap();
+        assert_eq!(record.published, None);
+        assert!(changed_inputs(&record, &build_inputs()).is_empty());
+    }
+
+    /// Serves `body` with `status` to every request on 127.0.0.1.
+    ///
+    /// # Returns
+    ///
+    /// The server's base URL and the number of requests it has answered.
+    fn serve(status: u16, body: Vec<u8>) -> (String, Arc<AtomicUsize>) {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let requests = Arc::new(AtomicUsize::new(0));
+        let answered = Arc::clone(&requests);
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(mut stream) = stream else { continue };
+                // Read the request's head before answering.
+                let mut head = Vec::new();
+                let mut byte = [0u8; 1];
+                while !head.ends_with(b"\r\n\r\n") {
+                    match stream.read(&mut byte) {
+                        Ok(1) => head.push(byte[0]),
+                        _ => break,
+                    }
+                }
+                answered.fetch_add(1, Ordering::SeqCst);
+                let _ = write!(
+                    stream,
+                    "HTTP/1.1 {status} Status\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    body.len()
+                );
+                let _ = stream.write_all(&body);
+            }
+        });
+        (format!("http://{address}"), requests)
+    }
+
+    /// Builds the dummy dictionary from source and packs `files` of it as a
+    /// published dictionary is packed: in one directory named
+    /// [`PUBLISHED_KEY`].
+    ///
+    /// # Returns
+    ///
+    /// The archive, and the cache that holds the dictionary built from
+    /// source, in [`SEEDED_OUTPUT_DIR`].
+    fn published_archive(files: &[&str]) -> (Vec<u8>, tempfile::TempDir) {
+        let (cache, md5) = seeded_cache();
+        build_seeded(cache.path(), md5).unwrap();
+        let built = cache.path().join(SEEDED_OUTPUT_DIR);
+        let encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+        let mut archive = tar::Builder::new(encoder);
+        for file in files {
+            archive
+                .append_path_with_name(built.join(file), format!("{PUBLISHED_KEY}/{file}"))
+                .unwrap();
+        }
+        (archive.into_inner().unwrap().finish().unwrap(), cache)
+    }
+
+    /// Gets the published dictionary at `url` into the cache `build_dir`, for
+    /// a crate that ships `metadata`.
+    fn fetch_published_into(
+        build_dir: &Path,
+        url: &str,
+        sha256: &str,
+        metadata: Metadata,
+    ) -> LinderaResult<()> {
+        fetch_into(
+            build_dir,
+            true,
+            &DictionarySource::Published {
+                key: PUBLISHED_KEY.to_string(),
+                url: url.to_string(),
+                sha256: sha256.to_string(),
+            },
+            &seeded_params("unused"),
+            &DictionaryBuilder::new(metadata),
+            CachePurpose::Embed,
+        )
+    }
+
+    /// The text of a failed fetch, with its whole chain of causes.
+    fn failure(result: LinderaResult<()>) -> String {
+        format!("{:?}", result.expect_err("the fetch must fail"))
+    }
+
+    #[test]
+    fn a_published_dictionary_is_downloaded_checked_and_cached() {
+        let (archive, built) = published_archive(&DICTIONARY_FILES);
+        let sha256 = sha256_hex(&archive);
+        let (base, requests) = serve(200, archive);
+        let url = format!("{base}/{PUBLISHED_KEY}.tar.gz");
+        let cache = tempfile::tempdir().unwrap();
+        fetch_published_into(cache.path(), &url, &sha256, source_metadata()).unwrap();
+
+        let output = cache.path().join(SEEDED_OUTPUT_DIR);
+        for file in DICTIONARY_FILES {
+            assert_eq!(
+                fs::read(output.join(file)).unwrap(),
+                fs::read(built.path().join(SEEDED_OUTPUT_DIR).join(file)).unwrap(),
+                "{file}"
+            );
+        }
+        crate::dictionary::Dictionary::load_from_path(&output).unwrap();
+        let record: BuildInputs =
+            serde_json::from_slice(&fs::read(build_inputs_path(&output)).unwrap()).unwrap();
+        assert_eq!(
+            record.published,
+            Some(PublishedRecord {
+                key: PUBLISHED_KEY.to_string(),
+                sha256: sha256.clone(),
+            })
+        );
+        assert_eq!(requests.load(Ordering::SeqCst), 1);
+
+        // The next build uses the cached entry without downloading it again.
+        fetch_published_into(cache.path(), &url, &sha256, source_metadata()).unwrap();
+        assert_eq!(requests.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn a_published_dictionary_with_another_sha256_stops_the_build() {
+        let (archive, _built) = published_archive(&DICTIONARY_FILES);
+        let (base, requests) = serve(200, archive);
+        let url = format!("{base}/{PUBLISHED_KEY}.tar.gz");
+        let cache = tempfile::tempdir().unwrap();
+        let other = "0".repeat(64);
+        let failure = failure(fetch_published_into(
+            cache.path(),
+            &url,
+            &other,
+            source_metadata(),
+        ));
+        assert!(
+            failure.contains(&format!("SHA-256 mismatch: expected {other}")),
+            "{failure}"
+        );
+        assert!(failure.contains(FROM_SOURCE_ENV), "{failure}");
+        assert!(!cache.path().join(SEEDED_OUTPUT_DIR).exists());
+        assert_eq!(requests.load(Ordering::SeqCst), MAX_ROUND);
+    }
+
+    #[test]
+    fn a_failed_download_stops_the_build() {
+        let (base, _requests) = serve(404, b"Not Found".to_vec());
+        let url = format!("{base}/{PUBLISHED_KEY}.tar.gz");
+        let cache = tempfile::tempdir().unwrap();
+        let failure = failure(fetch_published_into(
+            cache.path(),
+            &url,
+            SHA256_OF_ABC,
+            source_metadata(),
+        ));
+        assert!(failure.contains("HTTP 404"), "{failure}");
+        assert!(failure.contains(&url), "{failure}");
+        assert!(!cache.path().join(SEEDED_OUTPUT_DIR).exists());
+    }
+
+    #[test]
+    fn a_published_dictionary_without_a_file_stops_the_build() {
+        let (archive, _built) = published_archive(&DICTIONARY_FILES[..8]);
+        let sha256 = sha256_hex(&archive);
+        let (base, _requests) = serve(200, archive);
+        let url = format!("{base}/{PUBLISHED_KEY}.tar.gz");
+        let cache = tempfile::tempdir().unwrap();
+        let failure = failure(fetch_published_into(
+            cache.path(),
+            &url,
+            &sha256,
+            source_metadata(),
+        ));
+        assert!(failure.contains("has no metadata.json"), "{failure}");
+        assert!(!cache.path().join(SEEDED_OUTPUT_DIR).exists());
+    }
+
+    #[test]
+    fn a_published_dictionary_of_another_crate_stops_the_build() {
+        let (archive, _built) = published_archive(&DICTIONARY_FILES);
+        let sha256 = sha256_hex(&archive);
+        let (base, _requests) = serve(200, archive);
+        let url = format!("{base}/{PUBLISHED_KEY}.tar.gz");
+        let cache = tempfile::tempdir().unwrap();
+        let other = Metadata {
+            name: "other".to_string(),
+            ..source_metadata()
+        };
+        let failure = failure(fetch_published_into(cache.path(), &url, &sha256, other));
+        assert!(failure.contains("does not fit this crate"), "{failure}");
+        assert!(!cache.path().join(SEEDED_OUTPUT_DIR).exists());
+    }
+
+    #[test]
+    fn switching_between_published_and_source_rebuilds_the_entry() {
+        // The cache holds the dummy dictionary's source archive, so the
+        // build from source needs no network.
+        let (cache, md5) = seeded_cache();
+        let (archive, _built) = published_archive(&DICTIONARY_FILES);
+        let sha256 = sha256_hex(&archive);
+        let (base, requests) = serve(200, archive);
+        let url = format!("{base}/{PUBLISHED_KEY}.tar.gz");
+        let record = |build_dir: &Path| -> BuildInputs {
+            let path = build_inputs_path(&build_dir.join(SEEDED_OUTPUT_DIR));
+            serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
+        };
+
+        fetch_published_into(cache.path(), &url, &sha256, source_metadata()).unwrap();
+        assert!(record(cache.path()).published.is_some());
+        build_seeded(cache.path(), md5).unwrap();
+        assert_eq!(record(cache.path()).published, None);
+        fetch_published_into(cache.path(), &url, &sha256, source_metadata()).unwrap();
+        assert!(record(cache.path()).published.is_some());
+        assert_eq!(requests.load(Ordering::SeqCst), 2);
     }
 }

@@ -6,4 +6,5 @@
 - [Feature フラグ](./development/feature_flags.md) -- 利用可能な feature フラグとその効果
 - [プロジェクト構成](./development/project_structure.md) -- クレートの配置とモジュール構成
 - [学習パイプライン](./development/training_pipeline.md) -- CRF ベースの辞書学習ワークフロー
+- [辞書のリリース](./development/dictionary_release.md) -- `embed-*` のビルドが埋め込む公式の辞書の公開
 - [貢献ガイド](./development/contributing.md) -- コントリビューター向けガイドライン

@@ -142,4 +142,5 @@
     - [Feature フラグ](./development/feature_flags.md)
     - [プロジェクト構成](./development/project_structure.md)
     - [学習パイプライン](./development/training_pipeline.md)
+    - [辞書のリリース](./development/dictionary_release.md)
     - [貢献ガイド](./development/contributing.md)

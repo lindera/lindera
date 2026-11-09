@@ -142,4 +142,5 @@
     - [Feature Flags](./development/feature_flags.md)
     - [Project Structure](./development/project_structure.md)
     - [Training Pipeline](./development/training_pipeline.md)
+    - [Dictionary Release](./development/dictionary_release.md)
     - [Contributing](./development/contributing.md)
