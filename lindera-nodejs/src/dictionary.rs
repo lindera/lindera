@@ -26,19 +26,19 @@ pub struct JsDictionary {
 #[napi]
 impl JsDictionary {
     /// Returns the name of the dictionary metadata.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn metadata_name(&self) -> String {
         self.inner.metadata.name.clone()
     }
 
     /// Returns the character encoding of the dictionary.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn metadata_encoding(&self) -> String {
         self.inner.metadata.encoding.clone()
     }
 
     /// Returns the full metadata object of the dictionary.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn metadata(&self) -> JsMetadata {
         JsMetadata::from((*self.inner.metadata).clone())
     }
@@ -70,7 +70,7 @@ pub struct JsUserDictionary {
 ///   such as the `context_id_freq.txt` of a dictionary crate, as `lindera
 ///   build --context-id-freq` takes it. Read only with
 ///   `connection_id_mapping`.
-#[napi]
+#[napi(catch_unwind)]
 pub fn build_dictionary(
     input_dir: String,
     output_dir: String,
@@ -113,7 +113,7 @@ pub fn build_dictionary(
 ///   not a directory despite its name. The user dictionary loaders choose
 ///   how to load a file by its extension, so end it with `.bin`.
 /// * `metadata` - Optional metadata configuration. If omitted, default values are used.
-#[napi]
+#[napi(catch_unwind)]
 pub fn build_user_dictionary(
     _kind: String,
     input_file: String,
@@ -158,7 +158,7 @@ pub fn build_user_dictionary(
 ///   The user dictionary loaders choose how to load a file by its extension,
 ///   so end it with `.bin`.
 /// * `dictionary` - The system dictionary the user dictionary is built for.
-#[napi]
+#[napi(catch_unwind)]
 pub fn build_user_dictionary_for(
     input_file: String,
     output_file: String,
@@ -182,7 +182,7 @@ pub fn build_user_dictionary_for(
 /// # Returns
 ///
 /// A loaded Dictionary object.
-#[napi]
+#[napi(catch_unwind)]
 pub fn load_dictionary(uri: String) -> napi::Result<JsDictionary> {
     lindera_load_dictionary(&uri)
         .map_err(|e| to_napi_error(format!("Failed to load dictionary from '{uri}': {e}")))
@@ -199,7 +199,7 @@ pub fn load_dictionary(uri: String) -> napi::Result<JsDictionary> {
 /// # Returns
 ///
 /// A loaded UserDictionary object.
-#[napi]
+#[napi(catch_unwind)]
 pub fn load_user_dictionary(uri: String, metadata: &JsMetadata) -> napi::Result<JsUserDictionary> {
     let meta: Metadata = JsMetadata::to_lindera_metadata(metadata);
     lindera_load_user_dictionary(&uri, &meta)
@@ -223,7 +223,7 @@ pub fn load_user_dictionary(uri: String, metadata: &JsMetadata) -> napi::Result<
 /// # Returns
 ///
 /// A loaded UserDictionary object.
-#[napi]
+#[napi(catch_unwind)]
 pub fn load_user_dictionary_for(
     uri: String,
     dictionary: &JsDictionary,

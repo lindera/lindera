@@ -58,7 +58,7 @@ impl JsMetadata {
     ///
     /// The metadata, or an `InvalidArg` error for a cost or context ID that
     /// is not an integer in its range.
-    #[napi(constructor)]
+    #[napi(constructor, catch_unwind)]
     pub fn new(options: Option<MetadataOptions>) -> napi::Result<Self> {
         let opts = options.unwrap_or(MetadataOptions {
             name: None,
@@ -92,7 +92,7 @@ impl JsMetadata {
     /// # Returns
     ///
     /// A Metadata instance with default configuration.
-    #[napi(factory)]
+    #[napi(factory, catch_unwind)]
     pub fn create_default() -> Self {
         JsMetadata {
             inner: CoreMetadata::new(None, None, None, None, None, None, None, None, None, None),
@@ -108,7 +108,7 @@ impl JsMetadata {
     /// # Returns
     ///
     /// A Metadata instance loaded from the file.
-    #[napi(factory)]
+    #[napi(factory, catch_unwind)]
     pub fn from_json_file(path: String) -> napi::Result<Self> {
         let json_str = std::fs::read_to_string(&path).map_err(|e| {
             napi::Error::new(
@@ -128,31 +128,31 @@ impl JsMetadata {
     }
 
     /// Dictionary name.
-    #[napi(getter)]
+    #[napi(getter, catch_unwind)]
     pub fn name(&self) -> String {
         self.inner.name.clone()
     }
 
     /// Sets the dictionary name.
-    #[napi(setter)]
+    #[napi(setter, catch_unwind)]
     pub fn set_name(&mut self, name: String) {
         self.inner.name = name;
     }
 
     /// Character encoding.
-    #[napi(getter)]
+    #[napi(getter, catch_unwind)]
     pub fn encoding(&self) -> String {
         self.inner.encoding.clone()
     }
 
     /// Sets the character encoding.
-    #[napi(setter)]
+    #[napi(setter, catch_unwind)]
     pub fn set_encoding(&mut self, encoding: String) {
         self.inner.encoding = encoding;
     }
 
     /// Default word cost.
-    #[napi(getter)]
+    #[napi(getter, catch_unwind)]
     pub fn default_word_cost(&self) -> i32 {
         self.inner.default_word_cost as i32
     }
@@ -167,14 +167,14 @@ impl JsMetadata {
     ///
     /// Nothing, or an `InvalidArg` error for any other number, which leaves
     /// the cost unchanged.
-    #[napi(setter)]
+    #[napi(setter, catch_unwind)]
     pub fn set_default_word_cost(&mut self, cost: f64) -> napi::Result<()> {
         self.inner.default_word_cost = integer_arg("defaultWordCost", cost)?;
         Ok(())
     }
 
     /// Default left context ID.
-    #[napi(getter)]
+    #[napi(getter, catch_unwind)]
     pub fn default_left_context_id(&self) -> u32 {
         self.inner.default_left_context_id as u32
     }
@@ -189,14 +189,14 @@ impl JsMetadata {
     ///
     /// Nothing, or an `InvalidArg` error for any other number, which leaves
     /// the ID unchanged.
-    #[napi(setter)]
+    #[napi(setter, catch_unwind)]
     pub fn set_default_left_context_id(&mut self, id: f64) -> napi::Result<()> {
         self.inner.default_left_context_id = integer_arg("defaultLeftContextId", id)?;
         Ok(())
     }
 
     /// Default right context ID.
-    #[napi(getter)]
+    #[napi(getter, catch_unwind)]
     pub fn default_right_context_id(&self) -> u32 {
         self.inner.default_right_context_id as u32
     }
@@ -211,44 +211,44 @@ impl JsMetadata {
     ///
     /// Nothing, or an `InvalidArg` error for any other number, which leaves
     /// the ID unchanged.
-    #[napi(setter)]
+    #[napi(setter, catch_unwind)]
     pub fn set_default_right_context_id(&mut self, id: f64) -> napi::Result<()> {
         self.inner.default_right_context_id = integer_arg("defaultRightContextId", id)?;
         Ok(())
     }
 
     /// Default field value for missing fields.
-    #[napi(getter)]
+    #[napi(getter, catch_unwind)]
     pub fn default_field_value(&self) -> String {
         self.inner.default_field_value.clone()
     }
 
     /// Sets the default field value.
-    #[napi(setter)]
+    #[napi(setter, catch_unwind)]
     pub fn set_default_field_value(&mut self, value: String) {
         self.inner.default_field_value = value;
     }
 
     /// Whether flexible CSV parsing is enabled.
-    #[napi(getter)]
+    #[napi(getter, catch_unwind)]
     pub fn flexible_csv(&self) -> bool {
         self.inner.flexible_csv
     }
 
     /// Sets flexible CSV parsing.
-    #[napi(setter)]
+    #[napi(setter, catch_unwind)]
     pub fn set_flexible_csv(&mut self, value: bool) {
         self.inner.flexible_csv = value;
     }
 
     /// Whether to skip entries with invalid cost or ID.
-    #[napi(getter)]
+    #[napi(getter, catch_unwind)]
     pub fn skip_invalid_cost_or_id(&self) -> bool {
         self.inner.skip_invalid_cost_or_id
     }
 
     /// Sets whether to skip invalid entries.
-    #[napi(setter)]
+    #[napi(setter, catch_unwind)]
     pub fn set_skip_invalid_cost_or_id(&mut self, value: bool) {
         self.inner.skip_invalid_cost_or_id = value;
     }
@@ -261,7 +261,7 @@ impl JsMetadata {
     /// metadata carries left-space penalty rules (as ko-dic's
     /// `metadata.json` does), they are included under `spacePenalty` as a
     /// JSON string such as `{"rules":[...]}`; otherwise the key is absent.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn to_object(&self) -> HashMap<String, String> {
         let mut dict = HashMap::new();
         dict.insert("name".to_string(), self.inner.name.clone());

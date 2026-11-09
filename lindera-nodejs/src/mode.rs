@@ -50,7 +50,7 @@ impl Mode {
     /// # Returns
     ///
     /// Normal mode.
-    #[napi(factory)]
+    #[napi(factory, catch_unwind)]
     pub fn normal() -> Self {
         Self {
             inner: LinderaMode::Normal,
@@ -69,7 +69,7 @@ impl Mode {
     /// Decompose mode with the penalty. Throws, with code `InvalidArg`, for
     /// a penalty that is not an object or a field that is not an integer in
     /// its range.
-    #[napi(factory)]
+    #[napi(factory, catch_unwind)]
     pub fn decompose(
         #[napi(ts_arg_type = "Penalty | undefined | null")] penalty: Option<PenaltyArg>,
     ) -> napi::Result<Self> {
@@ -86,21 +86,21 @@ impl Mode {
     ///
     /// The mode, with the default penalty for `"decompose"`. Throws for any
     /// other name, as `setMode` did for it in v6.
-    #[napi(factory, js_name = "fromStr")]
+    #[napi(factory, js_name = "fromStr", catch_unwind)]
     pub fn parse(name: String) -> napi::Result<Self> {
         let inner = lindera_binding::parse_mode(&name).map_err(to_napi_error)?;
         Ok(Self { inner })
     }
 
     /// The name of the mode: `"normal"` or `"decompose"`.
-    #[napi(getter)]
+    #[napi(getter, catch_unwind)]
     pub fn name(&self) -> String {
         self.inner.as_str().to_string()
     }
 
     /// The penalty of decompose mode, as a copy with every field set, or
     /// `null` for normal mode.
-    #[napi(getter)]
+    #[napi(getter, catch_unwind)]
     pub fn penalty(&self) -> Option<Penalty> {
         match &self.inner {
             LinderaMode::Normal => None,
@@ -109,13 +109,13 @@ impl Mode {
     }
 
     /// Returns whether this is normal mode.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn is_normal(&self) -> bool {
         matches!(self.inner, LinderaMode::Normal)
     }
 
     /// Returns whether this is decompose mode.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn is_decompose(&self) -> bool {
         matches!(self.inner, LinderaMode::Decompose(_))
     }
@@ -125,13 +125,13 @@ impl Mode {
     /// # Arguments
     ///
     /// * `other` - Another `Mode`. A value that is not a `Mode` throws.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn equals(&self, other: &Mode) -> bool {
         self == other
     }
 
     /// Returns the name of the mode, as `name` does.
-    #[napi(js_name = "toString")]
+    #[napi(js_name = "toString", catch_unwind)]
     pub fn js_to_string(&self) -> String {
         self.name()
     }

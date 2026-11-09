@@ -73,6 +73,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **PHP: 省略可能な引数に型違いの値を渡すと、既定値を使わずに例外を投げる** | 省略可能な引数に別の型の値を渡す PHP のコード。例えば `Lindera\Trainer::train()` の `$max_iter` に数字の文字列を、`tokenizeNbest()` の `$unique` に `1` を渡すもの | 宣言された型の値を渡す。`$argv` の値のような文字列は `(int)` などでキャストする。`null` を渡すか引数を省略すれば、これまでどおり既定値になる |
 | **PHP・Node.js・WASM: 設定の範囲外の整数の引数は、折り返さずに例外を投げる** | そのような値を渡すコード。例えば `Metadata` の既定の単語コストに `100000` を渡すもの（v6 は `-31072` を保持した）や、N-best の件数に `-1` を渡すもの（v6 はすべての分割を列挙した）。`getFieldName` と PHP の `getDetail` への負の位置。Node.js と WASM では、`1.5` や `NaN` のような整数でない数値 | 範囲内の整数を渡す。エラーは引数の名前と範囲を示す |
 | **バインディング: モードは、Rust の `Mode` と同じく decompose モードのペナルティを持つ `Mode` で表す。`set_mode` / `setMode` と `Tokenizer` のコンストラクタはモードの名前ではなく `Mode` を受け取り、`TokenizerBuilder::set_segmenter_mode` は `Mode::Decompose` のペナルティを保つ** | モードを設定するバインディングのユーザー。バインディングの `Mode`、Node.js の `JsMode`、WASM の数値の `Mode` を使うコード。Node.js の型 `JsPenalty` を名指しする TypeScript のコード。`set_segmenter_mode` に既定でないペナルティを渡す Rust のコード。`CoreTokenizerBuilder::set_mode` や `CoreTokenizer::from_segmenter` の関数を呼ぶバインディングの作者 | `"normal"` や `"decompose"` の代わりに `Mode.normal()` や `Mode.decompose(penalty)`（Ruby では `Lindera::Mode.normal`、PHP では `Lindera\Mode::normal()`）を渡す。実行時に読んだモードの名前は `Mode.from_str` / `Mode.fromStr` で `Mode` にする。`JsPenalty` を `Penalty` に改名する。`lindera-binding` の関数には `lindera::mode::Mode` を渡す |
+| Node.js: panic は Node.js を abort させずに `Error` を投げる | Lindera の panic（バグ）に当たる Node.js のプログラム | 変更は不要。バインディングのほかのエラーと同じところで `Error`（`code` は `GenericFailure`）を捕まえ、メソッドが panic したオブジェクトは作り直し、panic を報告する |
 | **`lindera train` は MeCab の学習器と同じくラティスを作り、`unk.def` のすべてのエントリを保持する。`model.dat` の形式バージョンは 3.0.0** | `lindera train`・`lindera export` と、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー | 7.0.0 ですべてのモデルを学習し直し、エクスポートと辞書のビルドもやり直す（v6.2.0 以前に書いた `model.dat` は拒否される）。`unk.def` のすべての行に 5 つ以上のフィールドを書く。種辞書からコメント行を消す |
 | **`lindera train` のデフォルトの正則化は、MeCab の学習器と同じく係数 1.0 の L2** | `lindera train`、`lindera_trainer` と `lindera_crf` の `Trainer::new`、Python・Node.js・Ruby・PHP のバインディングの学習関数を、正則化の種類と係数の両方を渡さずに使うユーザー | 精度が上がり、`matrix.def` が大きくなる。v6 のデフォルトの設定を使うには `--regularization l1 --lambda 0.01`（Rust では `.use_l2(false).regularization_cost(0.01)`、バインディングでは `regularization` に `l1`、`lambda` に 0.01。[#1262](https://github.com/lindera/lindera/issues/1262)）を渡す |
 | **`lindera train` は、MeCab の学習器や libLBFGS と同じく、最初のライン探索を長さ 1 の刻みから始める** | `lindera train`、`lindera_trainer` と `lindera_crf` の `Trainer`、Python・Node.js・Ruby・PHP のバインディングの学習関数を使うユーザー | 対処は不要。v6 の設定でも、学習したモデルはすべて v6 と変わる。分離可能なデータの L1 は、数回の反復で止まらずに学習を続ける |
@@ -1542,6 +1543,19 @@ Node.js では `InvalidArg` のエラー、WASM では `expected instance of Mod
   `lindera::mode::Mode` を受け取ります。`set_mode` は `Result` を返さなくなりました。
   `lindera_binding::parse_mode` は、バインディングの `from_str` と同じくモードの名前を
   読みます。
+
+## Node.js: panic は Node.js を abort させずに `Error` を投げる
+
+v6.2.0 までは、Node.js バインディングの Rust のコードの panic（Lindera のバグです）が
+napi-rs のコールバックまで巻き戻り、Node.js が
+`fatal runtime error: failed to initiate panic, error 5, aborting` を出して abort して
+いました。v7.0.0 は、バインディングのすべての関数・メソッドで panic を捕まえます
+（[#1314](https://github.com/lindera/lindera/issues/1314)）。呼び出しは、ほかの多くの
+失敗と同じく `code` が `GenericFailure` で、`message` が panic のメッセージの `Error` を
+投げ、Node.js は動き続けます。Rust は今も、panic が起きた位置とメッセージを標準エラーに
+書きます。メソッドが panic したオブジェクトは、panic の前にメソッドが変えた状態を
+持っていることがあるので、作り直してください。Node.js バインディングの
+[エラー](lindera-nodejs.md#エラー)も参照してください。
 
 ## `lindera train` は MeCab の学習器と同じくラティスを作る
 

@@ -76,6 +76,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **PHP: an optional argument of the wrong type throws instead of selecting the default** | PHP code that passes a value of another type to an optional parameter, such as a numeric string for `$max_iter` of `Lindera\Trainer::train()` or `1` for `$unique` of `tokenizeNbest()` | Pass the declared type, casting strings such as `$argv` values with `(int)`; `null` or leaving the argument out still selects the default |
 | **PHP, Node.js and WASM: an integer argument outside the range of its setting throws instead of wrapping** | Code that passes such a value, such as `100000` for the default word cost of `Metadata` (v6 stored `-31072`) or `-1` for the number of N-best results (v6 listed every segmentation); a negative index for `getFieldName` or PHP's `getDetail`; in Node.js and WASM, a number that is not an integer, such as `1.5` or `NaN` | Pass an integer in the range; the error names the parameter and the range |
 | **Bindings: a mode is a `Mode`, which holds the penalty of decompose mode as the Rust `Mode` does; `set_mode` / `setMode` and the `Tokenizer` constructors take a `Mode` instead of a mode name, and `TokenizerBuilder::set_segmenter_mode` keeps the penalty of a `Mode::Decompose`** | Binding users who set a mode; code that uses a binding's `Mode`, Node.js's `JsMode` or WASM's numeric `Mode`; TypeScript code that names the Node.js type `JsPenalty`; Rust code that passes a custom penalty to `set_segmenter_mode`; binding authors who call `CoreTokenizerBuilder::set_mode` or the `CoreTokenizer::from_segmenter` functions | Pass `Mode.normal()` or `Mode.decompose(penalty)` (in Ruby `Lindera::Mode.normal`, in PHP `Lindera\Mode::normal()`) instead of `"normal"` or `"decompose"`, and turn a mode name read at run time into a `Mode` with `Mode.from_str` / `Mode.fromStr`; rename `JsPenalty` to `Penalty`; pass a `lindera::mode::Mode` to the `lindera-binding` functions |
+| Node.js: a panic throws an `Error` instead of aborting Node.js | Node.js programs that run into a panic of Lindera, which is a bug | Nothing to change; catch the `Error` (its `code` is `GenericFailure`) where you catch the binding's other errors, create again an object whose method panicked, and report the panic |
 | **`lindera train` builds its lattices as MeCab's learner does and keeps every `unk.def` entry; `model.dat` has the format version 3.0.0** | Users of `lindera train` and `lindera export`, and of the training functions of the Python, Node.js, Ruby and PHP bindings | Train every model again with 7.0.0, then export and build it again (a `model.dat` written by v6.2.0 or earlier is rejected); give every `unk.def` line at least five fields; remove comment lines from seed lexicons |
 | **`lindera train` regularizes with L2 and a coefficient of 1.0 by default, as MeCab's learner does** | Users of `lindera train`, of `Trainer::new` in `lindera_trainer` and `lindera_crf`, and of the training functions of the Python, Node.js, Ruby and PHP bindings, who do not give both the regularization type and the coefficient | Expect more accurate models and a larger `matrix.def`; pass `--regularization l1 --lambda 0.01` (`.use_l2(false).regularization_cost(0.01)` in Rust, `regularization` `l1` and `lambda` 0.01 in the bindings, [#1262](https://github.com/lindera/lindera/issues/1262)) to use v6's default settings |
 | **`lindera train` starts its first line search at a unit step, as MeCab's learner and libLBFGS do** | Users of `lindera train`, of `Trainer` in `lindera_trainer` and `lindera_crf`, and of the training functions of the Python, Node.js, Ruby and PHP bindings | Nothing; expect every trained model to differ from v6's, even with v6's settings, and L1 on separable data to keep training where it stopped after a few iterations |
@@ -1698,6 +1699,20 @@ The other changes:
   `lindera-binding-core` took. `set_mode` no longer returns a `Result`.
   `lindera_binding::parse_mode` parses a mode name, as the bindings'
   `from_str` do.
+
+## Node.js: a panic throws an `Error` instead of aborting
+
+Up to v6.2.0, a panic in the Rust code of the Node.js binding, which is a
+bug of Lindera, unwound into napi-rs's callback and aborted Node.js with
+`fatal runtime error: failed to initiate panic, error 5, aborting`. v7.0.0
+catches the panic at every function and method of the binding
+([#1314](https://github.com/lindera/lindera/issues/1314)): the call throws
+an `Error` whose `code` is `GenericFailure`, as for most other failures,
+and whose `message` is the panic's message, and Node.js goes on running.
+Rust still writes the place of the panic and its message to standard
+error. An object whose method panicked may keep what the method changed
+before the panic, so create it again. See
+[Errors](lindera-nodejs.md#errors) of the Node.js binding.
 
 ## `lindera train` builds its lattices as MeCab's learner does
 
