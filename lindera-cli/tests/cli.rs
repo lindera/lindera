@@ -7,13 +7,22 @@
 //! cargo test -p lindera-cli --features train,embed-ipadic
 //! ```
 
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::process::Stdio;
+use std::thread;
+use std::time::{Duration, Instant};
 
 use assert_cmd::Command;
 
 fn lindera() -> Command {
     Command::cargo_bin("lindera").expect("lindera binary should build")
+}
+
+/// Returns the `lindera` binary as a `std::process::Command`, whose standard
+/// streams can be set, unlike those of assert_cmd's `Command`.
+fn lindera_process() -> std::process::Command {
+    std::process::Command::new(env!("CARGO_BIN_EXE_lindera"))
 }
 
 #[test]
@@ -791,6 +800,213 @@ fn build_accepts_unk_def_lines_with_different_left_and_right_ids_silently() {
     assert!(stderr.is_empty(), "got: {stderr}");
 }
 
+// The commands with a standard output that has no reader any more, as when
+// it is piped into `head`: each ends quietly, with exit code 0 (#1316).
+
+/// How long a command run by [`run_without_stdout_reader`] may take before it
+/// is killed and the test fails, so that a command that goes on waiting for
+/// input fails rather than hangs.
+const NO_READER_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// Returns the writer of a pipe that has no reader.
+///
+/// The reader is dropped, and the writer is written to until a write fails
+/// with a broken pipe. On macOS, `std::io::pipe` sets close-on-exec only after
+/// creating the pipe, so a process that another test spawns at that moment
+/// can keep the read end; once a write fails, no read end is left, and the
+/// pipe cannot get a reader again.
+fn pipe_without_reader() -> io::PipeWriter {
+    let (reader, mut writer) = io::pipe().unwrap();
+    drop(reader);
+    let deadline = Instant::now() + NO_READER_TIMEOUT;
+    loop {
+        match writer.write(b"x") {
+            Err(err) if err.kind() == io::ErrorKind::BrokenPipe => return writer,
+            Err(err) => panic!("writing to the pipe failed: {err}"),
+            Ok(_) => {
+                assert!(
+                    Instant::now() < deadline,
+                    "the read end of the pipe was kept open"
+                );
+                thread::sleep(Duration::from_millis(10));
+            }
+        }
+    }
+}
+
+/// The standard input of a command run by [`run_without_stdout_reader`].
+enum Input {
+    /// No input.
+    Null,
+    /// This text, then the end of the input.
+    Closed(String),
+    /// This text, with the input kept open until the command ends: a command
+    /// that reads its input to the end waits for more, and is killed.
+    KeptOpen(String),
+}
+
+/// Runs `command` with its standard output on a pipe without a reader and
+/// `input` as its standard input, and asserts that it ends quietly: with
+/// exit code 0, without a panic and without an `Error:` line on stderr.
+///
+/// # Arguments
+///
+/// * `command` - The command, with its arguments and environment.
+/// * `input` - Its standard input.
+///
+/// # Returns
+///
+/// What the command wrote to stderr.
+fn run_without_stdout_reader(mut command: std::process::Command, input: Input) -> String {
+    command
+        .stdout(pipe_without_reader())
+        .stderr(Stdio::piped())
+        .stdin(if matches!(input, Input::Null) {
+            Stdio::null()
+        } else {
+            Stdio::piped()
+        });
+    let mut child = command.spawn().unwrap();
+
+    let stdin = child.stdin.take();
+    let feeder = thread::spawn(move || {
+        let (text, keep_open) = match input {
+            Input::Null => return None,
+            Input::Closed(text) => (text, false),
+            Input::KeptOpen(text) => (text, true),
+        };
+        let mut stdin = stdin.unwrap();
+        // The write fails once the command has ended, which is expected.
+        let _ = stdin.write_all(text.as_bytes());
+        // Returned to the test, which drops it once the command has ended.
+        keep_open.then_some(stdin)
+    });
+    let mut stderr = child.stderr.take().unwrap();
+    let stderr_reader = thread::spawn(move || {
+        let mut text = String::new();
+        stderr.read_to_string(&mut text).unwrap();
+        text
+    });
+
+    let deadline = Instant::now() + NO_READER_TIMEOUT;
+    let status = loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            break status;
+        }
+        if Instant::now() >= deadline {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            panic!("{command:?} did not end within {NO_READER_TIMEOUT:?}");
+        }
+        thread::sleep(Duration::from_millis(10));
+    };
+    drop(feeder.join().unwrap());
+    let stderr = stderr_reader.join().unwrap();
+
+    assert!(
+        status.success(),
+        "{command:?} ended with {status}: {stderr}"
+    );
+    assert!(
+        !stderr.contains("panicked"),
+        "{command:?} panicked: {stderr}"
+    );
+    assert!(
+        !stderr.lines().any(|line| line.starts_with("Error: ")),
+        "{command:?} reported an error: {stderr}"
+    );
+    stderr
+}
+
+/// `lindera list` writes its table to stdout.
+#[test]
+fn list_ends_quietly_without_a_stdout_reader() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut command = lindera_process();
+    command
+        .arg("list")
+        .env("LINDERA_DICTIONARIES_DIR", dir.path())
+        .env_remove("LINDERA_DATA_DIR");
+    run_without_stdout_reader(command, Input::Null);
+}
+
+/// `lindera download` writes the path of the dictionary to stdout. The
+/// dictionary is in place and built by this version, so nothing is
+/// downloaded.
+#[test]
+fn download_ends_quietly_without_a_stdout_reader() {
+    let dir = tempfile::tempdir().unwrap();
+    let (dict, _) = build_four_by_four_dictionary(dir.path());
+    let dictionaries = dir.path().join("dictionaries");
+    std::fs::create_dir(&dictionaries).unwrap();
+    std::fs::rename(&dict, dictionaries.join("ipadic")).unwrap();
+
+    let mut command = lindera_process();
+    command
+        .args(["download", "ipadic"])
+        .env("LINDERA_DICTIONARIES_DIR", &dictionaries)
+        .env_remove("LINDERA_DATA_DIR");
+    let stderr = run_without_stdout_reader(command, Input::Null);
+    assert!(
+        stderr.contains("Dictionary 'ipadic' is already downloaded"),
+        "got: {stderr}"
+    );
+}
+
+/// Runs `lindera tokenize` with `args` on a hand-made dictionary, with its
+/// standard output on a pipe without a reader and `input` as its standard
+/// input, and asserts that it ends quietly.
+fn tokenize_without_stdout_reader(args: &[&str], input: Input) {
+    let dir = tempfile::tempdir().unwrap();
+    let (dict, _) = build_four_by_four_dictionary(dir.path());
+    let mut command = lindera_process();
+    command
+        .args(["tokenize", "--dict", dict.to_str().unwrap()])
+        .args(args);
+    run_without_stdout_reader(command, input);
+}
+
+/// Input lines whose output, in every format, is larger than the 8 KiB
+/// buffer of `lindera tokenize`, so that a write fails while it tokenizes,
+/// and smaller than a pipe buffer, so that the test can write them all at
+/// once.
+fn lines_beyond_the_output_buffer() -> String {
+    "東京 東京 東京\n".repeat(1000)
+}
+
+/// `lindera tokenize` stops at the first write without a reader, and reads
+/// no more input: its input is kept open, so reading on would wait for more.
+#[test]
+fn tokenize_stops_without_a_stdout_reader() {
+    tokenize_without_stdout_reader(&[], Input::KeptOpen(lines_beyond_the_output_buffer()));
+}
+
+/// The JSON output goes through `serde_json`, whose error keeps the broken
+/// pipe of the write.
+#[test]
+fn tokenize_json_stops_without_a_stdout_reader() {
+    tokenize_without_stdout_reader(
+        &["--output", "json"],
+        Input::KeptOpen(lines_beyond_the_output_buffer()),
+    );
+}
+
+/// The N-best results are written with their headers.
+#[test]
+fn tokenize_nbest_stops_without_a_stdout_reader() {
+    tokenize_without_stdout_reader(
+        &["--nbest", "2"],
+        Input::KeptOpen(lines_beyond_the_output_buffer()),
+    );
+}
+
+/// The output of one line stays in the buffer, so the write fails at the
+/// final flush.
+#[test]
+fn tokenize_ends_quietly_at_the_final_flush_without_a_stdout_reader() {
+    tokenize_without_stdout_reader(&[], Input::Closed("東京\n".to_string()));
+}
+
 #[cfg(feature = "embed-ipadic")]
 mod with_ipadic {
     use super::*;
@@ -1466,19 +1682,84 @@ mod with_trained_dictionary {
     /// `lindera train` with the files in `resources/training/` and `corpus`
     /// as the corpus, writing the model to `model`, without any other flag.
     fn train_inputs_command(corpus: &Path, model: &Path) -> Command {
+        let mut command = lindera();
+        command.args(train_inputs_args(corpus, model));
+        command
+    }
+
+    /// The arguments of [`train_inputs_command`].
+    fn train_inputs_args(corpus: &Path, model: &Path) -> Vec<String> {
         let training = training_dir();
         let input = |name: &str| training.join(name).to_str().unwrap().to_string();
-        let mut command = lindera();
+        vec![
+            "train".to_string(),
+            "--seed".to_string(),
+            input("seed.csv"),
+            "--corpus".to_string(),
+            corpus.to_str().unwrap().to_string(),
+            "--unk-def".to_string(),
+            input("unk.def"),
+            "--char-def".to_string(),
+            input("char.def"),
+            "--feature-def".to_string(),
+            input("feature.def"),
+            "--rewrite-def".to_string(),
+            input("rewrite.def"),
+            "--output".to_string(),
+            model.to_str().unwrap().to_string(),
+        ]
+    }
+
+    /// `lindera train` writes a line to stdout before the training and one
+    /// after it. Without a reader, it trains and writes the model all the
+    /// same, as the training's own lines are dropped (#1312, #1316).
+    #[test]
+    fn train_writes_the_model_without_a_stdout_reader() {
+        let dir = tempfile::tempdir().unwrap();
+        let model = dir.path().join("model.dat");
+        let mut command = lindera_process();
         command
-            .arg("train")
-            .args(["--seed", &input("seed.csv")])
-            .args(["--corpus", corpus.to_str().unwrap()])
-            .args(["--unk-def", &input("unk.def")])
-            .args(["--char-def", &input("char.def")])
-            .args(["--feature-def", &input("feature.def")])
-            .args(["--rewrite-def", &input("rewrite.def")])
-            .args(["--output", model.to_str().unwrap()]);
+            .args(train_inputs_args(
+                &training_dir().join("corpus.txt"),
+                &model,
+            ))
+            .args(["--max-iterations", "5", "--max-threads", "1"]);
+        run_without_stdout_reader(command, Input::Null);
+        let size = std::fs::metadata(&model).map(|m| m.len()).unwrap_or(0);
+        assert!(size > 0, "no model was written to {}", model.display());
+    }
+
+    /// `lindera export` writes the list of the files it wrote to stdout.
+    /// Without a reader, it writes the files all the same.
+    #[test]
+    fn export_writes_its_files_without_a_stdout_reader() {
+        let dir = tempfile::tempdir().unwrap();
+        let model = dir.path().join("model.dat");
+        stdout_of(
+            train_inputs_command(&training_dir().join("corpus.txt"), &model)
+                .args(["--max-iterations", "3"]),
+        );
+
+        let output = dir.path().join("dictionary");
+        let mut command = lindera_process();
         command
+            .arg("export")
+            .args(["--model", model.to_str().unwrap()])
+            .args([
+                "--metadata",
+                training_dir().join("metadata.json").to_str().unwrap(),
+            ])
+            .args(["--output", output.to_str().unwrap()]);
+        run_without_stdout_reader(command, Input::Null);
+        for file in [
+            "lex.csv",
+            "matrix.def",
+            "unk.def",
+            "char.def",
+            "metadata.json",
+        ] {
+            assert!(output.join(file).is_file(), "{file} was not written");
+        }
     }
 
     /// The CLI accepts zero L1 penalties without passing them to OWL-QN.

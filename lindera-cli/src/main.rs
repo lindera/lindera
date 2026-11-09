@@ -1,6 +1,8 @@
+use std::io::{self, Write};
+use std::process::ExitCode;
+
 use clap::{Parser, Subcommand};
 
-use lindera::LinderaResult;
 use lindera_cli::{get_version, init_logger};
 
 mod commands;
@@ -42,14 +44,19 @@ enum Commands {
 /// Installs the logger, so that the warnings of the library crates reach
 /// stderr, and runs the subcommand.
 ///
+/// A subcommand whose standard output has no reader any more, as when it is
+/// piped into `head`, ends quietly with exit code 0 (#1316). Any other error
+/// is written to stderr as Rust writes the error returned from `main`, and
+/// the exit code is 1.
+///
 /// # Returns
 ///
-/// The result of the subcommand.
-fn main() -> LinderaResult<()> {
+/// The exit code.
+fn main() -> ExitCode {
     init_logger();
     let args = Args::parse();
 
-    match args.command {
+    let result = match args.command {
         Commands::List(args) => commands::list::list(args),
         Commands::Tokenize(args) => commands::tokenize::tokenize(args),
         Commands::Build(args) => commands::build::build(args),
@@ -58,5 +65,16 @@ fn main() -> LinderaResult<()> {
         Commands::Train(args) => commands::train::train(args),
         #[cfg(feature = "train")]
         Commands::Export(args) => commands::export::export(args),
+    };
+
+    match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(err) if commands::is_stdout_closed(&err) => ExitCode::SUCCESS,
+        Err(err) => {
+            // A failure to write the error is ignored, as Rust's default for
+            // `main` does.
+            let _ = writeln!(io::stderr(), "Error: {err:?}");
+            ExitCode::FAILURE
+        }
     }
 }

@@ -82,6 +82,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **`lindera build` と `lindera train` は `char.def` と `unk.def` を照らし合わせる** | それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが `char.def` にあるユーザー、`char.def` と `unk.def` でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、`unk.def` の行を無視したりしていた）。MeCab の `mecab-dict-index` が受け入れる辞書は影響を受けない | 各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに `unk.def` の行を書き、未定義のカテゴリの `unk.def` の行を削除する |
 | **`lindera build` は、MeCab と同じく `matrix.def` にないセルのコストを 0 にする** | セルを省いた `matrix.def` からシステム辞書をビルドするユーザー。すべてのセルを列挙している同梱の辞書と、`lindera export` が書き出す `matrix.def` は対象外 | そうしたセルのコストは 32767 ではなく 0 になる。接続を高いコストのままにするには、そのセルをコスト付きで列挙する |
 | **CLI はライブラリの警告を標準エラー出力に書く** | 標準エラー出力を読む CLI のユーザー。たとえば、そこに何か出力があれば失敗とみなすスクリプト。目立つのは、文の区切り文字のないテキストが 32 KiB を超える入力と、`--context-id-freq` を指定しない ko-dic・UniDic の `lindera build` | 標準エラー出力に `[WARN …]` の行が出ることを前提にする。`RUST_LOG=error` で警告を消せる。標準出力は変わらない |
+| コマンドは、標準出力に読み手がいないとき終了コード 0 で静かに終わる | `lindera` の標準出力を、`head` のように先に終わりうるプログラムにパイプでつなぎ、終了コードを確かめるスクリプト | `lindera tokenize` が 1 で、ほかのコマンドが 101 で panic して終わっていたところが 0 になる。`lindera train` と `lindera export` はモデルやファイルを書くようになった |
 | **設定 `normalize_details` の削除: `Metadata::new` と `CoreMetadata::new` の引数は 10 個、Ruby の `Metadata.new` の引数は 8 個になる** | 辞書のメタデータを作成・参照するコード。Rust（`Metadata`・`lindera_binding::CoreMetadata`・`PrefixDictionaryBuilderOptions`）と、Python・Ruby・PHP・Node.js のバインディングの `Metadata` クラス | 引数・オプション・プロパティを削除する。このキーを含む `metadata.json` もそのまま読み込め、キーは無視される |
 | **`Lattice::tokens_offset`・`tokens_offset_into`・`nbest_tokens_offset`・`NBestGenerator::next` が `(start, end, WordId)` を返す** | これらの `lindera_dictionary` の関数を直接呼び出す Rust コード（`lindera::dictionary::viterbi::…`・`lindera::dictionary::Lattice`・`lindera::dictionary::nbest::…` 経由を含む） | 3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う |
 | **`Lattice::tokens_offset_into` が最良パスの BOS の添字（`Option<usize>`）を返す** | `tokens_offset_into` の戻り値 `()` を値として使う Rust コード | 文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する |
@@ -1844,9 +1845,8 @@ iter: 1, cost: 2.7104295458825787, best_cost: 2.7104295458825787, gamma: 0.21819
 行うように、非ブロッキングで一杯の標準ストリームには、行を受け取るまで待って書きます。v6.2.0
 までは、同じ書き込みで Node.js が `failed to initiate panic, error 5` で abort することがあり、
 Python・Ruby・PHP は例外を投げました。読み手が終わったパイプのように、もう受け取れない
-ストリームへの行は捨て、学習を続けます。ただし `lindera` コマンド自身の最後の行は今も失敗します。
-`lindera train` の標準出力を、終わった読み手へのパイプにつなぐと、モデルを書いた後に
-`failed printing to stdout: Broken pipe` を出して終了コード 101 で終わります。
+ストリームへの行は捨て、学習を続けます。`lindera` コマンド自身の行については、
+[コマンドは標準出力に読み手がいないとき静かに終わる](#コマンドは標準出力に読み手がいないとき静かに終わる)を参照してください。
 
 ## `lindera build` は接続コスト行列の範囲外の文脈 ID を拒否する
 
@@ -1985,6 +1985,35 @@ v6.2.0 までの `lindera` CLI はロガーを組み込んでいなかったた�
 の行を警告しなくなりました。`mecab-dict-index` はこうした行を受け入れ、
 mecab-ko-dic の `unk.def` はすべての行がこうした行です。ロガーを組み込んだ Rust
 のプログラムにも、この警告は出なくなります。
+
+## コマンドは標準出力に読み手がいないとき静かに終わる
+
+v6.2.0 までは、標準出力をつないだプログラムが先に終わると（`head` は欲しい行を
+読むと終わります）、コマンドは次の書き込みで失敗していました。
+
+- `lindera train`・`lindera export`・`lindera list`・`lindera download` は、
+  `failed printing to stdout: Broken pipe (os error 32)` を出し、終了コード 101
+  で panic していました。`lindera train` はモデルを書きませんでした。最初の行で
+  学習の前に、または学習の後でモデルを書く前に panic していたためです。
+  `lindera export` はファイルを書いた後に、`lindera download` は辞書を
+  インストールした後に panic していました。
+- `lindera tokenize` は、
+  `Error: LinderaError { kind: Io, source: Broken pipe (os error 32) }`
+  を出し、終了コード 1 で終わっていました。
+
+v7.0.0 は、終了コード 0 で、メッセージを出さずに終わります
+（[#1316](https://github.com/lindera/lindera/issues/1316)）。
+
+- `lindera tokenize`・`lindera list`・`lindera download` は、読み手のいない最初の
+  書き込みで止まり、`lindera tokenize` は入力の残りを読みません。書き込みの
+  それ以外のエラー（ディスクが一杯など）では、今までどおり標準エラー出力に
+  `Error: …` を出し、終了コード 1 で終わります。
+- `lindera train` と `lindera export` は、学習の進捗と同じく書けない行を捨て、
+  モデルや辞書のファイルを最後まで書きます。標準出力が原因で失敗することは
+  なくなりました。
+
+こうしたパイプラインの終了コードを（`set -o pipefail` などで）確かめるスクリプト
+には、失敗だったところが成功に見えるようになります。
 
 ## `lindera_dictionary` の Rust API 変更
 

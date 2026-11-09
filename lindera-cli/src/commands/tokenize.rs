@@ -13,7 +13,7 @@ use lindera::space_penalty::SpacePenaltyConfig;
 use lindera::token::Token;
 use lindera_cli::get_version;
 
-use super::io_err;
+use super::{io_err, stdout_err};
 
 #[derive(Debug, clap::Args)]
 #[clap(
@@ -144,6 +144,9 @@ impl FromStr for Format {
 
 /// Writes tokens to the given writer in the requested output format.
 ///
+/// The error is returned as it is, so that the caller can tell a standard
+/// output without a reader from other errors (see `stdout_err`).
+///
 /// # Arguments
 ///
 /// * `writer` - The destination for the formatted output (typically a buffered stdout lock).
@@ -153,18 +156,44 @@ impl FromStr for Format {
 ///
 /// # Returns
 ///
-/// `Ok(())` on success, or an I/O / serialization error wrapped in `LinderaError`.
+/// `Ok(())` on success, or the error of the write.
 fn write_output<W: Write>(
     writer: &mut W,
     format: Format,
     tokens: Vec<Token>,
     details_buf: &mut String,
-) -> LinderaResult<()> {
+) -> io::Result<()> {
     match format {
         Format::Mecab => mecab_output(writer, tokens, details_buf),
         Format::Json => json_output(writer, tokens),
         Format::Wakati => wakati_output(writer, tokens),
     }
+}
+
+/// Writes the N-best results of one input line: for each, an `NBEST <rank>
+/// (cost=<cost>)` header and its tokens in the requested output format.
+///
+/// # Arguments
+///
+/// * `writer` - The destination for the formatted output (typically a buffered stdout lock).
+/// * `format` - The output format to render the tokens in.
+/// * `results` - The results, best first, each with its tokens and its cost.
+/// * `details_buf` - A scratch buffer reused across tokens for joining detail fields.
+///
+/// # Returns
+///
+/// `Ok(())` on success, or the error of the write.
+fn write_nbest_output<W: Write>(
+    writer: &mut W,
+    format: Format,
+    results: Vec<(Vec<Token>, i64)>,
+    details_buf: &mut String,
+) -> io::Result<()> {
+    for (rank, (tokens, cost)) in results.into_iter().enumerate() {
+        writeln!(writer, "NBEST {} (cost={})", rank + 1, cost)?;
+        write_output(writer, format, tokens, details_buf)?;
+    }
+    Ok(())
 }
 
 /// Writes tokens in the MeCab format: one `surface\tdetails` line per token,
@@ -178,12 +207,12 @@ fn write_output<W: Write>(
 ///
 /// # Returns
 ///
-/// `Ok(())` on success, or an I/O error wrapped in `LinderaError`.
+/// `Ok(())` on success, or the error of the write.
 fn mecab_output<W: Write>(
     writer: &mut W,
     mut tokens: Vec<Token>,
     details_buf: &mut String,
-) -> LinderaResult<()> {
+) -> io::Result<()> {
     for token in tokens.iter_mut() {
         details_buf.clear();
         // details_iter avoids the fresh Vec<&str> that details() collects
@@ -194,9 +223,9 @@ fn mecab_output<W: Write>(
             }
             details_buf.push_str(detail);
         }
-        writeln!(writer, "{}\t{}", token.surface.as_ref(), details_buf).map_err(io_err)?;
+        writeln!(writer, "{}\t{}", token.surface.as_ref(), details_buf)?;
     }
-    writeln!(writer, "EOS").map_err(io_err)?;
+    writeln!(writer, "EOS")?;
 
     Ok(())
 }
@@ -210,17 +239,19 @@ fn mecab_output<W: Write>(
 ///
 /// # Returns
 ///
-/// `Ok(())` on success, or an I/O / serialization error wrapped in `LinderaError`.
-fn json_output<W: Write>(writer: &mut W, mut tokens: Vec<Token>) -> LinderaResult<()> {
+/// `Ok(())` on success, or the error of the write. An error of `serde_json`
+/// is converted with `io::Error::from`, which gives back the `io::Error` of
+/// a failed write as it was; serializing the token values fails for no other
+/// reason.
+fn json_output<W: Write>(writer: &mut W, mut tokens: Vec<Token>) -> io::Result<()> {
     let mut json_tokens = Vec::new();
     for token in tokens.iter_mut() {
         let token_value = token.as_value();
         json_tokens.push(token_value);
     }
 
-    serde_json::to_writer_pretty(&mut *writer, &json_tokens)
-        .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
-    writeln!(writer).map_err(io_err)?;
+    serde_json::to_writer_pretty(&mut *writer, &json_tokens).map_err(io::Error::from)?;
+    writeln!(writer)?;
 
     Ok(())
 }
@@ -237,15 +268,15 @@ fn json_output<W: Write>(writer: &mut W, mut tokens: Vec<Token>) -> LinderaResul
 ///
 /// # Returns
 ///
-/// `Ok(())` on success, or an I/O error wrapped in `LinderaError`.
-fn wakati_output<W: Write>(writer: &mut W, tokens: Vec<Token>) -> LinderaResult<()> {
+/// `Ok(())` on success, or the error of the write.
+fn wakati_output<W: Write>(writer: &mut W, tokens: Vec<Token>) -> io::Result<()> {
     for (i, token) in tokens.iter().enumerate() {
         if i > 0 {
-            write!(writer, " ").map_err(io_err)?;
+            write!(writer, " ")?;
         }
-        write!(writer, "{}", token.surface.as_ref()).map_err(io_err)?;
+        write!(writer, "{}", token.surface.as_ref())?;
     }
-    writeln!(writer).map_err(io_err)?;
+    writeln!(writer)?;
 
     Ok(())
 }
@@ -398,21 +429,23 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         // the line, which is part of the input (#1115).
         let line = strip_line_terminator(&text);
 
+        // A write that fails because the standard output has no reader ends
+        // the loop with an error that `main` turns into exit code 0, so the
+        // rest of the input is not read (#1316).
         if nbest >= 2 {
             let results = worker.tokenize_nbest(line, nbest, nbest_unique, nbest_cost_threshold)?;
-            for (rank, (tokens, cost)) in results.into_iter().enumerate() {
-                writeln!(writer, "NBEST {} (cost={})", rank + 1, cost).map_err(io_err)?;
-                write_output(&mut writer, output_format, tokens, &mut details_buf)?;
-            }
+            write_nbest_output(&mut writer, output_format, results, &mut details_buf)
+                .map_err(stdout_err)?;
         } else {
             let tokens = worker.tokenize(line)?;
-            write_output(&mut writer, output_format, tokens, &mut details_buf)?;
+            write_output(&mut writer, output_format, tokens, &mut details_buf)
+                .map_err(stdout_err)?;
         }
     }
 
     // Surface write errors instead of letting the implicit flush on drop
     // swallow them.
-    writer.flush().map_err(io_err)?;
+    writer.flush().map_err(stdout_err)?;
 
     Ok(())
 }

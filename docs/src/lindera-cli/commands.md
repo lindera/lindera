@@ -20,6 +20,15 @@ Every command writes its results to standard output and the warnings of the Lind
 
 The `RUST_LOG` environment variable selects the messages, for example `RUST_LOG=error` for errors only, and `RUST_LOG_STYLE=never` turns their colors off; see [RUST_LOG](../getting_started/environment_variables.md#rust_log).
 
+## When standard output has no reader
+
+When the program that reads the standard output of a command exits first, as `head` does once it has the lines it wants, the command ends quietly, with exit code 0 and no message:
+
+- `tokenize`, `list` and `download` write their result there, so they stop at the first write that has no reader. `tokenize` reads no more of its input. Another error while they write, such as a full disk, is written to standard error, and the exit code is 1.
+- `train` and `export` only report there on the files they write, so they drop the lines that cannot be written, as the training does with its progress, and write the model or the dictionary files all the same. Standard output never makes them fail.
+
+Up to v6.2.0, the commands failed instead; see the [migration guide](../migration_v6_to_v7.md#the-commands-end-quietly-when-their-standard-output-has-no-reader).
+
 ## list
 
 List the dictionaries that `--dict` can take: those embedded in the binary (via the `embed-*` feature flags) and those in the dictionaries directory, where `lindera download` puts them, each with the version of Lindera that built it.

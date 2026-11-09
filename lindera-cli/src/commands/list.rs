@@ -5,7 +5,7 @@ use lindera::LinderaResult;
 use lindera::dictionary::load_dictionary;
 use lindera_cli::get_version;
 
-use super::io_err;
+use super::{io_err, write_stdout};
 use crate::dictionary_registry::{
     dictionaries_dir, embedded_dictionary_names, installed_lindera_version,
     is_complete_dictionary_dir,
@@ -93,8 +93,9 @@ struct DirectoryListing {
 /// # Returns
 ///
 /// `Ok(())` when the listing is printed. An error when an embedded
-/// dictionary cannot be loaded, or when the dictionaries directory cannot be
-/// determined or read.
+/// dictionary cannot be loaded, when the dictionaries directory cannot be
+/// determined or read, or when the listing cannot be written to stdout (see
+/// `stdout_err`).
 pub fn list(_args: ListArgs) -> LinderaResult<()> {
     let cli_version = get_version();
     let mut rows = Vec::new();
@@ -123,8 +124,7 @@ pub fn list(_args: ListArgs) -> LinderaResult<()> {
     }
     rows.extend(listing.rows);
 
-    print!("{}", render_rows(&rows));
-    Ok(())
+    write_stdout(&render_rows(&rows))
 }
 
 /// Decides the state of a dictionary.
