@@ -1,0 +1,194 @@
+name: "Dictionary cache"
+description: >-
+  Keep the dictionaries that the dictionary crates' build scripts build in
+  LINDERA_BUILD_DICTIONARY_CACHE_DIR with actions/cache, one cache entry per
+  dictionary (#1337). Call it with `mode: restore` before the build, which
+  sets the variable for the rest of the job, and with `mode: save` at the
+  end, which writes whether each dictionary was built or reused and saves the
+  ones that the restore missed.
+
+# The key changes with the builder (lindera-dictionary), the dictionary crate
+# and Cargo.lock: the build compares the builder's version and source digest,
+# but not the versions of its dependencies (see LINDERA_BUILD_DICTIONARY_CACHE_DIR
+# in docs/src/getting_started/environment_variables.md). Only the built
+# dictionary is kept, as a cache hit does not read the source archive. The
+# restore and the save get the same path, since the cache version depends on
+# it, and the save uses the key that the restore resolved.
+#
+# In regression.yml, the seven dictionary crate jobs run before the other jobs
+# that embed a dictionary, so they normally save, and the later jobs of the
+# same run restore. release.yml and periodic.yml do not use it: the published
+# dictionaries and the release tests are built from source, and the periodic
+# runs exercise the builder with the beta and nightly toolchains.
+
+inputs:
+  dictionaries:
+    description: >-
+      The dictionaries the build embeds, separated by spaces: ipadic,
+      ipadic-neologd, unidic, sudachidict, ko-dic, cc-cedict, jieba.
+    required: true
+  mode:
+    description: "`restore` before the build, `save` after it."
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check the inputs
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        DICTIONARIES: ${{ inputs.dictionaries }}
+      run: |
+        case "$MODE" in
+          restore | save) ;;
+          *) echo "::error::mode must be restore or save, not '$MODE'"; exit 1 ;;
+        esac
+        for name in $DICTIONARIES; do
+          case "$name" in
+            ipadic | ipadic-neologd | unidic | sudachidict | ko-dic | cc-cedict | jieba) ;;
+            *) echo "::error::unknown dictionary '$name'"; exit 1 ;;
+          esac
+        done
+
+    - name: Set the dictionary cache directory
+      if: inputs.mode == 'restore'
+      shell: bash
+      run: echo "LINDERA_BUILD_DICTIONARY_CACHE_DIR=${{ runner.temp }}/lindera-dictionary-cache" >> "$GITHUB_ENV"
+
+    - name: Restore ipadic
+      id: ipadic
+      if: inputs.mode == 'restore' && contains(format(' {0} ', inputs.dictionaries), ' ipadic ')
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-ipadic
+        key: lindera-dictionary-${{ runner.os }}-ipadic-${{ hashFiles('Cargo.lock', 'lindera-dictionary/**', 'lindera-ipadic/**') }}
+
+    - name: Restore ipadic-neologd
+      id: ipadic-neologd
+      if: inputs.mode == 'restore' && contains(format(' {0} ', inputs.dictionaries), ' ipadic-neologd ')
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-ipadic-neologd
+        key: lindera-dictionary-${{ runner.os }}-ipadic-neologd-${{ hashFiles('Cargo.lock', 'lindera-dictionary/**', 'lindera-ipadic-neologd/**') }}
+
+    - name: Restore unidic
+      id: unidic
+      if: inputs.mode == 'restore' && contains(format(' {0} ', inputs.dictionaries), ' unidic ')
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-unidic
+        key: lindera-dictionary-${{ runner.os }}-unidic-${{ hashFiles('Cargo.lock', 'lindera-dictionary/**', 'lindera-unidic/**') }}
+
+    - name: Restore sudachidict
+      id: sudachidict
+      if: inputs.mode == 'restore' && contains(format(' {0} ', inputs.dictionaries), ' sudachidict ')
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-sudachidict
+        key: lindera-dictionary-${{ runner.os }}-sudachidict-${{ hashFiles('Cargo.lock', 'lindera-dictionary/**', 'lindera-sudachidict/**') }}
+
+    - name: Restore ko-dic
+      id: ko-dic
+      if: inputs.mode == 'restore' && contains(format(' {0} ', inputs.dictionaries), ' ko-dic ')
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-ko-dic
+        key: lindera-dictionary-${{ runner.os }}-ko-dic-${{ hashFiles('Cargo.lock', 'lindera-dictionary/**', 'lindera-ko-dic/**') }}
+
+    - name: Restore cc-cedict
+      id: cc-cedict
+      if: inputs.mode == 'restore' && contains(format(' {0} ', inputs.dictionaries), ' cc-cedict ')
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-cc-cedict
+        key: lindera-dictionary-${{ runner.os }}-cc-cedict-${{ hashFiles('Cargo.lock', 'lindera-dictionary/**', 'lindera-cc-cedict/**') }}
+
+    - name: Restore jieba
+      id: jieba
+      if: inputs.mode == 'restore' && contains(format(' {0} ', inputs.dictionaries), ' jieba ')
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-jieba
+        key: lindera-dictionary-${{ runner.os }}-jieba-${{ hashFiles('Cargo.lock', 'lindera-dictionary/**', 'lindera-jieba/**') }}
+
+    # The save step of each dictionary reads these: whether its restore hit,
+    # and the key it tried. The marker dates the restore for report.sh.
+    - name: Record the restore
+      if: inputs.mode == 'restore'
+      shell: bash
+      run: |
+        {
+          echo "LINDERA_DICTIONARY_CACHE_HIT_IPADIC=${{ steps.ipadic.outputs.cache-hit }}"
+          echo "LINDERA_DICTIONARY_CACHE_KEY_IPADIC=${{ steps.ipadic.outputs.cache-primary-key }}"
+          echo "LINDERA_DICTIONARY_CACHE_HIT_IPADIC_NEOLOGD=${{ steps.ipadic-neologd.outputs.cache-hit }}"
+          echo "LINDERA_DICTIONARY_CACHE_KEY_IPADIC_NEOLOGD=${{ steps.ipadic-neologd.outputs.cache-primary-key }}"
+          echo "LINDERA_DICTIONARY_CACHE_HIT_UNIDIC=${{ steps.unidic.outputs.cache-hit }}"
+          echo "LINDERA_DICTIONARY_CACHE_KEY_UNIDIC=${{ steps.unidic.outputs.cache-primary-key }}"
+          echo "LINDERA_DICTIONARY_CACHE_HIT_SUDACHIDICT=${{ steps.sudachidict.outputs.cache-hit }}"
+          echo "LINDERA_DICTIONARY_CACHE_KEY_SUDACHIDICT=${{ steps.sudachidict.outputs.cache-primary-key }}"
+          echo "LINDERA_DICTIONARY_CACHE_HIT_KO_DIC=${{ steps.ko-dic.outputs.cache-hit }}"
+          echo "LINDERA_DICTIONARY_CACHE_KEY_KO_DIC=${{ steps.ko-dic.outputs.cache-primary-key }}"
+          echo "LINDERA_DICTIONARY_CACHE_HIT_CC_CEDICT=${{ steps.cc-cedict.outputs.cache-hit }}"
+          echo "LINDERA_DICTIONARY_CACHE_KEY_CC_CEDICT=${{ steps.cc-cedict.outputs.cache-primary-key }}"
+          echo "LINDERA_DICTIONARY_CACHE_HIT_JIEBA=${{ steps.jieba.outputs.cache-hit }}"
+          echo "LINDERA_DICTIONARY_CACHE_KEY_JIEBA=${{ steps.jieba.outputs.cache-primary-key }}"
+        } >> "$GITHUB_ENV"
+        mkdir -p "${{ runner.temp }}"
+        touch "${{ runner.temp }}/lindera-dictionary-cache.restored"
+
+    - name: Report whether each dictionary was built or reused
+      if: inputs.mode == 'save'
+      shell: bash
+      env:
+        DICTIONARIES: ${{ inputs.dictionaries }}
+      run: bash "${{ github.action_path }}/report.sh" "${{ runner.temp }}/lindera-dictionary-cache.restored"
+
+    - name: Save ipadic
+      if: inputs.mode == 'save' && contains(format(' {0} ', inputs.dictionaries), ' ipadic ') && env.LINDERA_DICTIONARY_CACHE_HIT_IPADIC != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-ipadic
+        key: ${{ env.LINDERA_DICTIONARY_CACHE_KEY_IPADIC }}
+
+    - name: Save ipadic-neologd
+      if: inputs.mode == 'save' && contains(format(' {0} ', inputs.dictionaries), ' ipadic-neologd ') && env.LINDERA_DICTIONARY_CACHE_HIT_IPADIC_NEOLOGD != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-ipadic-neologd
+        key: ${{ env.LINDERA_DICTIONARY_CACHE_KEY_IPADIC_NEOLOGD }}
+
+    - name: Save unidic
+      if: inputs.mode == 'save' && contains(format(' {0} ', inputs.dictionaries), ' unidic ') && env.LINDERA_DICTIONARY_CACHE_HIT_UNIDIC != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-unidic
+        key: ${{ env.LINDERA_DICTIONARY_CACHE_KEY_UNIDIC }}
+
+    - name: Save sudachidict
+      if: inputs.mode == 'save' && contains(format(' {0} ', inputs.dictionaries), ' sudachidict ') && env.LINDERA_DICTIONARY_CACHE_HIT_SUDACHIDICT != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-sudachidict
+        key: ${{ env.LINDERA_DICTIONARY_CACHE_KEY_SUDACHIDICT }}
+
+    - name: Save ko-dic
+      if: inputs.mode == 'save' && contains(format(' {0} ', inputs.dictionaries), ' ko-dic ') && env.LINDERA_DICTIONARY_CACHE_HIT_KO_DIC != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-ko-dic
+        key: ${{ env.LINDERA_DICTIONARY_CACHE_KEY_KO_DIC }}
+
+    - name: Save cc-cedict
+      if: inputs.mode == 'save' && contains(format(' {0} ', inputs.dictionaries), ' cc-cedict ') && env.LINDERA_DICTIONARY_CACHE_HIT_CC_CEDICT != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-cc-cedict
+        key: ${{ env.LINDERA_DICTIONARY_CACHE_KEY_CC_CEDICT }}
+
+    - name: Save jieba
+      if: inputs.mode == 'save' && contains(format(' {0} ', inputs.dictionaries), ' jieba ') && env.LINDERA_DICTIONARY_CACHE_HIT_JIEBA != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-jieba
+        key: ${{ env.LINDERA_DICTIONARY_CACHE_KEY_JIEBA }}

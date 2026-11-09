@@ -439,6 +439,7 @@ jobs:
     with:
       crate: lindera-ipadic
       features: "--features embed-ipadic"
+      dictionaries: "ipadic"
       lint: true
 
   test-lindera-ipadic-neologd:
@@ -451,6 +452,7 @@ jobs:
     with:
       crate: lindera-ipadic-neologd
       features: "--features embed-ipadic-neologd"
+      dictionaries: "ipadic-neologd"
       free-disk-space: true
       lint: true
 
@@ -464,6 +466,7 @@ jobs:
     with:
       crate: lindera-unidic
       features: "--features embed-unidic"
+      dictionaries: "unidic"
       free-disk-space: true
       lint: true
 
@@ -477,6 +480,7 @@ jobs:
     with:
       crate: lindera-sudachidict
       features: "--features embed-sudachidict"
+      dictionaries: "sudachidict"
       free-disk-space: true
       lint: true
 
@@ -490,6 +494,7 @@ jobs:
     with:
       crate: lindera-ko-dic
       features: "--features embed-ko-dic"
+      dictionaries: "ko-dic"
       lint: true
 
   test-lindera-cc-cedict:
@@ -502,6 +507,7 @@ jobs:
     with:
       crate: lindera-cc-cedict
       features: "--features embed-cc-cedict"
+      dictionaries: "cc-cedict"
       lint: true
 
   test-lindera-jieba:
@@ -514,6 +520,7 @@ jobs:
     with:
       crate: lindera-jieba
       features: "--features embed-jieba"
+      dictionaries: "jieba"
       lint: true
 
   test-lindera-segmenter:
@@ -543,6 +550,7 @@ jobs:
     with:
       crate: lindera-segmenter
       features: "--features embed-ipadic,embed-ko-dic,train"
+      dictionaries: "ipadic ko-dic"
       target: ${{ matrix.platform.target }}
       runs-on: ${{ matrix.platform.runner }}
       lint: true
@@ -584,6 +592,7 @@ jobs:
     with:
       crate: lindera-segmenter
       features: "--features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba"
+      dictionaries: "ipadic ipadic-neologd unidic sudachidict ko-dic cc-cedict jieba"
       free-disk-space: true
       lint: true
 
@@ -597,6 +606,7 @@ jobs:
     with:
       crate: lindera-analysis
       features: "--features embed-ipadic,embed-ko-dic"
+      dictionaries: "ipadic ko-dic"
       lint: true
 
   test-lindera:
@@ -617,6 +627,7 @@ jobs:
     with:
       crate: lindera
       features: "--features embed-ipadic,embed-ko-dic,train"
+      dictionaries: "ipadic ko-dic"
       target: ${{ matrix.platform.target }}
       runs-on: ${{ matrix.platform.runner }}
       lint: true
@@ -646,6 +657,7 @@ jobs:
     with:
       crate: lindera
       features: "--features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba"
+      dictionaries: "ipadic ipadic-neologd unidic sudachidict ko-dic cc-cedict jieba"
       free-disk-space: true
       lint: true
 
@@ -728,6 +740,7 @@ jobs:
     with:
       crate: lindera-binding
       features: "--features embed-ipadic,embed-ko-dic"
+      dictionaries: "ipadic ko-dic"
       lint: true
 
   test-lindera-cli:
@@ -740,6 +753,7 @@ jobs:
     with:
       crate: lindera-cli
       features: "--features train,embed-ipadic"
+      dictionaries: "ipadic"
       lint: true
 
   test-lindera-python:
@@ -755,6 +769,14 @@ jobs:
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
+
+      # The dictionary that `make test-lindera-python` embeds
+      # (`--features=embed-ipadic,train`) (#1337).
+      - name: Restore the built dictionaries
+        uses: ./.github/actions/dictionary-cache
+        with:
+          dictionaries: ipadic
+          mode: restore
 
       - name: Setup Python
         uses: actions/setup-python@v7
@@ -778,6 +800,12 @@ jobs:
       - name: Check docs
         run: make check-docs-lindera-python
 
+      - name: Save the built dictionaries
+        uses: ./.github/actions/dictionary-cache
+        with:
+          dictionaries: ipadic
+          mode: save
+
   test-lindera-nodejs:
     name: Test lindera-nodejs
     needs: [test-lindera, test-lindera-analysis, test-lindera-binding, detect-changes]
@@ -791,6 +819,13 @@ jobs:
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
+
+      # The dictionaries that NODEJS_TEST_FEATURES in the Makefile embeds (#1337).
+      - name: Restore the built dictionaries
+        uses: ./.github/actions/dictionary-cache
+        with:
+          dictionaries: ipadic ko-dic
+          mode: restore
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -836,6 +871,12 @@ jobs:
       - name: Check docs
         run: make check-docs-lindera-nodejs
 
+      - name: Save the built dictionaries
+        uses: ./.github/actions/dictionary-cache
+        with:
+          dictionaries: ipadic ko-dic
+          mode: save
+
   test-lindera-ruby:
     name: Test lindera-ruby
     needs: [test-lindera, test-lindera-analysis, test-lindera-binding, detect-changes]
@@ -849,6 +890,14 @@ jobs:
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
+
+      # The dictionary that `make test-lindera-ruby` embeds
+      # (`LINDERA_FEATURES="embed-ipadic,train"`) (#1337).
+      - name: Restore the built dictionaries
+        uses: ./.github/actions/dictionary-cache
+        with:
+          dictionaries: ipadic
+          mode: restore
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -873,6 +922,12 @@ jobs:
       # clippy's check builds of the crates.io dependencies.
       - name: Check docs
         run: make check-docs-lindera-ruby
+
+      - name: Save the built dictionaries
+        uses: ./.github/actions/dictionary-cache
+        with:
+          dictionaries: ipadic
+          mode: save
 
   # Builds the source gem the way release.yml does and installs it with
   # `gem install` in a bare ruby container, then tokenizes with it. The lindera
@@ -929,6 +984,13 @@ jobs:
       - name: Pair libclang with clang
         uses: ./.github/actions/setup-libclang
 
+      # The dictionary that PHP_TEST_FEATURES in the Makefile embeds (#1337).
+      - name: Restore the built dictionaries
+        uses: ./.github/actions/dictionary-cache
+        with:
+          dictionaries: ipadic
+          mode: restore
+
       - name: Run PHP test
         shell: bash
         run: |
@@ -951,6 +1013,12 @@ jobs:
       # clippy's check builds of the crates.io dependencies.
       - name: Check docs
         run: make check-docs-lindera-php
+
+      - name: Save the built dictionaries
+        uses: ./.github/actions/dictionary-cache
+        with:
+          dictionaries: ipadic
+          mode: save
 
   test-lindera-php-macos:
     name: Test lindera-php (macOS, phpize path)
@@ -1002,6 +1070,14 @@ jobs:
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
+      # The dictionary that WASM_FEATURES in the Makefile embeds; the build
+      # scripts run on the host, so the dictionaries are the host's (#1337).
+      - name: Restore the built dictionaries
+        uses: ./.github/actions/dictionary-cache
+        with:
+          dictionaries: ipadic
+          mode: restore
+
       - name: Run WASM test
         run: make test-lindera-wasm
 
@@ -1030,6 +1106,12 @@ jobs:
       # clippy's check builds of the crates.io dependencies.
       - name: Check docs
         run: make check-docs-lindera-wasm
+
+      - name: Save the built dictionaries
+        uses: ./.github/actions/dictionary-cache
+        with:
+          dictionaries: ipadic
+          mode: save
 
   # The benchmark harness in scripts/benchmarks/, which the bindings share, and
   # the JavaScript the docs load belong to no binding, so no binding job lints
