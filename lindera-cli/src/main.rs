@@ -1,3 +1,9 @@
+// `eprint!` and `eprintln!` panic when stderr has no reader; the CLI's own
+// messages go through `lindera_cli::write_stderr` and `write_stderr_line`,
+// which drop them instead (#1338). The messages of a download that fetches
+// cannot be reached by the tests without the network, so clippy guards them.
+#![deny(clippy::print_stderr)]
+
 use std::io::{self, Write};
 use std::process::ExitCode;
 

@@ -27,6 +27,8 @@ When the program that reads the standard output of a command exits first, as `he
 - `tokenize`, `list` and `download` write their result there, so they stop at the first write that has no reader. `tokenize` reads no more of its input. Another error while they write, such as a full disk, is written to standard error, and the exit code is 1.
 - `train` and `export` only report there on the files they write, so they drop the lines that cannot be written, as the training does with its progress, and write the model or the dictionary files all the same. Standard output never makes them fail.
 
+When standard error has no reader, the commands drop their own messages there in the same way, such as the progress and notices of `download` and the notices of `list`, and go on to write their result.
+
 Up to v6.2.0, the commands failed instead; see the [migration guide](../migration_v6_to_v7.md#the-commands-end-quietly-when-their-standard-output-has-no-reader).
 
 ## list

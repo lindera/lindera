@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use lindera::LinderaResult;
 use lindera::dictionary::load_dictionary;
-use lindera_cli::get_version;
+use lindera_cli::{get_version, write_stderr_line};
 
 use super::{io_err, write_stdout};
 use crate::dictionary_registry::{
@@ -111,16 +111,16 @@ pub fn list(_args: ListArgs) -> LinderaResult<()> {
     let dir = dictionaries_dir()?;
     let listing = directory_listing(&dir, cli_version)?;
     for skipped in &listing.skipped {
-        eprintln!(
+        write_stderr_line(format_args!(
             "Skipped {}: not a dictionary (no metadata.json)",
             skipped.display()
-        );
+        ));
     }
     if listing.rows.is_empty() {
-        eprintln!(
+        write_stderr_line(format_args!(
             "No dictionaries in {}; run 'lindera download <name>' to download one",
             dir.display()
-        );
+        ));
     }
     rows.extend(listing.rows);
 

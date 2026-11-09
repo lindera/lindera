@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use lindera::LinderaResult;
 use lindera::dictionary::{DictionaryKind, Metadata};
 use lindera::error::LinderaErrorKind;
+use lindera_cli::write_stderr_line;
 
 /// Dictionary names accepted by `lindera download`.
 ///
@@ -115,9 +116,11 @@ fn choose_dictionaries_dir(
 }
 
 /// Resolves the directory that holds the dictionaries, writing the warning
-/// about [`DEPRECATED_DATA_DIR_ENV`] on stderr. The warning goes through
-/// `eprintln!`, as the one about `LINDERA_CONFIG_PATH` does (#1304); call
-/// this once per command, and only when the command needs the directory.
+/// about [`DEPRECATED_DATA_DIR_ENV`] on stderr. The warning goes straight to
+/// stderr rather than through `log`, as the one about `LINDERA_CONFIG_PATH`
+/// does (#1304), with [`write_stderr_line`], which drops it when stderr has
+/// no reader (#1338); call this once per command, and only when the command
+/// needs the directory.
 ///
 /// # Returns
 ///
@@ -133,7 +136,7 @@ pub(crate) fn dictionaries_dir() -> LinderaResult<PathBuf> {
         env::var_os(DEPRECATED_DATA_DIR_ENV),
     );
     if let Some(warning) = &choice.warning {
-        eprintln!("{warning}");
+        write_stderr_line(format_args!("{warning}"));
     }
     if let Some(dir) = choice.dir {
         return Ok(dir);
