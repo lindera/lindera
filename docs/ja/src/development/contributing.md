@@ -22,12 +22,13 @@ Lindera への貢献に興味をお持ちいただきありがとうございま
 
     ```bash
     cargo fmt --all -- --check
+    cargo update --workspace --locked
     cargo clippy -- -D warnings
     cargo test
     make check-docs
     ```
 
-    > 注意: CI はこの 4 つをすべて検査します。フォーマットを確認し、各クレートに対してそのクレートのテストと同じ feature で clippy（警告はエラー扱い）とテストを実行し、どのクレートでも rustdoc に警告があれば失敗します。`make check-docs` は、ビルドにそれぞれの言語のツールチェーンが必要な言語バインディングを対象にしません。バインディングを変更した場合は、そのバインディングの CI ジョブと同じく `make check-docs-lindera-<binding>` も実行してください。`make lint` と `make test` はクレートごとに同じ feature を使い、`make lint-lindera-<binding>` はそのバインディングの CI ジョブが実行する言語側の linter も実行します。`make lint` は最後に `make lint-scripts` を実行し、クレートの外のスクリプトを CI の `Lint scripts` ジョブと同じく lint します。詳しくは[ビルドとテスト](build_and_test.md)を参照してください。
+    > 注意: CI はこの 5 つをすべて検査します。フォーマットと、`Cargo.lock` が各 `Cargo.toml` と一致していること（`Cargo.toml` を変更したら、cargo が書き換えた `Cargo.lock` もコミットしてください）を確認し、各クレートに対してそのクレートのテストと同じ feature で clippy（警告はエラー扱い）とテストを実行し、どのクレートでも rustdoc に警告があれば失敗します。`make check-docs` は、ビルドにそれぞれの言語のツールチェーンが必要な言語バインディングを対象にしません。バインディングを変更した場合は、そのバインディングの CI ジョブと同じく `make check-docs-lindera-<binding>` も実行してください。`make lint` と `make test` はクレートごとに同じ feature を使い、`make lint-lindera-<binding>` はそのバインディングの CI ジョブが実行する言語側の linter も実行します。`make lint` は最後に `make lint-scripts` を実行し、クレートの外のスクリプトを CI の `Lint scripts` ジョブと同じく lint します。詳しくは[ビルドとテスト](build_and_test.md)を参照してください。
 
 5. 変更をコミットしてプッシュし、プルリクエストを開きます。
 
