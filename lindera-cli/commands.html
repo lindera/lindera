@@ -192,6 +192,13 @@
 [WARN  lindera_segmenter::segmenter] no sentence delimiter (\n, \t, 。, 、) found within 32768 bytes from offset 0; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)
 </code></pre>
 <p>The <code>RUST_LOG</code> environment variable selects the messages, for example <code>RUST_LOG=error</code> for errors only, and <code>RUST_LOG_STYLE=never</code> turns their colors off; see <a href="../getting_started/environment_variables.html#rust_log">RUST_LOG</a>.</p>
+<h2 id="when-standard-output-has-no-reader"><a class="header" href="#when-standard-output-has-no-reader">When standard output has no reader</a></h2>
+<p>When the program that reads the standard output of a command exits first, as <code>head</code> does once it has the lines it wants, the command ends quietly, with exit code 0 and no message:</p>
+<ul>
+<li><code>tokenize</code>, <code>list</code> and <code>download</code> write their result there, so they stop at the first write that has no reader. <code>tokenize</code> reads no more of its input. Another error while they write, such as a full disk, is written to standard error, and the exit code is 1.</li>
+<li><code>train</code> and <code>export</code> only report there on the files they write, so they drop the lines that cannot be written, as the training does with its progress, and write the model or the dictionary files all the same. Standard output never makes them fail.</li>
+</ul>
+<p>Up to v6.2.0, the commands failed instead; see the <a href="../migration_v6_to_v7.html#the-commands-end-quietly-when-their-standard-output-has-no-reader">migration guide</a>.</p>
 <h2 id="list"><a class="header" href="#list">list</a></h2>
 <p>List the dictionaries that <code>--dict</code> can take: those embedded in the binary (via the <code>embed-*</code> feature flags) and those in the dictionaries directory, where <code>lindera download</code> puts them, each with the version of Lindera that built it.</p>
 <h3 id="list-parameters"><a class="header" href="#list-parameters">List parameters</a></h3>

@@ -2406,6 +2406,13 @@ After building with an <code>embed-*</code> feature flag, use the <code>embedded
 [WARN  lindera_segmenter::segmenter] no sentence delimiter (\n, \t, 。, 、) found within 32768 bytes from offset 0; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)
 </code></pre>
 <p>The <code>RUST_LOG</code> environment variable selects the messages, for example <code>RUST_LOG=error</code> for errors only, and <code>RUST_LOG_STYLE=never</code> turns their colors off; see <a href="lindera-cli/../getting_started/environment_variables.html#rust_log">RUST_LOG</a>.</p>
+<h2 id="when-standard-output-has-no-reader"><a class="header" href="#when-standard-output-has-no-reader">When standard output has no reader</a></h2>
+<p>When the program that reads the standard output of a command exits first, as <code>head</code> does once it has the lines it wants, the command ends quietly, with exit code 0 and no message:</p>
+<ul>
+<li><code>tokenize</code>, <code>list</code> and <code>download</code> write their result there, so they stop at the first write that has no reader. <code>tokenize</code> reads no more of its input. Another error while they write, such as a full disk, is written to standard error, and the exit code is 1.</li>
+<li><code>train</code> and <code>export</code> only report there on the files they write, so they drop the lines that cannot be written, as the training does with its progress, and write the model or the dictionary files all the same. Standard output never makes them fail.</li>
+</ul>
+<p>Up to v6.2.0, the commands failed instead; see the <a href="lindera-cli/../migration_v6_to_v7.html#the-commands-end-quietly-when-their-standard-output-has-no-reader">migration guide</a>.</p>
 <h2 id="list"><a class="header" href="#list">list</a></h2>
 <p>List the dictionaries that <code>--dict</code> can take: those embedded in the binary (via the <code>embed-*</code> feature flags) and those in the dictionaries directory, where <code>lindera download</code> puts them, each with the version of Lindera that built it.</p>
 <h3 id="list-parameters"><a class="header" href="#list-parameters">List parameters</a></h3>
@@ -10591,6 +10598,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong><code>lindera build</code> and <code>lindera train</code> check <code>char.def</code> against <code>unk.def</code></strong></td><td>Anyone whose <code>char.def</code> has a range line that names a category not defined on an earlier line, or a category defined twice, or whose <code>char.def</code> and <code>unk.def</code> do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored <code>unk.def</code> lines); not dictionaries that MeCab's <code>mecab-dict-index</code> accepts</td><td>Define each category once, before the range lines that name it; give every category an <code>unk.def</code> line, and remove the <code>unk.def</code> lines of undefined categories</td></tr>
 <tr><td><strong><code>lindera build</code> gives a cell missing from <code>matrix.def</code> the cost 0, as MeCab does</strong></td><td>Anyone who builds a system dictionary from a <code>matrix.def</code> that leaves cells out; not the bundled dictionaries or a <code>matrix.def</code> that <code>lindera export</code> writes, which list every cell</td><td>Expect such a cell to cost 0 instead of 32767; to keep a connection expensive, list its cell with a cost</td></tr>
 <tr><td><strong>The CLI writes library warnings to standard error</strong></td><td>CLI users who read standard error, for example scripts that treat any output there as a failure; most visibly input with more than 32 KiB without a sentence delimiter, and <code>lindera build</code> of ko-dic or UniDic without <code>--context-id-freq</code></td><td>Expect <code>[WARN …]</code> lines on standard error; set <code>RUST_LOG=error</code> to hide them. Standard output does not change</td></tr>
+<tr><td>The commands end quietly, with exit code 0, when their standard output has no reader</td><td>Scripts that pipe the standard output of <code>lindera</code> into a program that may exit first, such as <code>head</code>, and check the exit code</td><td>Expect exit code 0 where <code>lindera tokenize</code> ended with 1 and the other commands panicked with 101; <code>lindera train</code> and <code>lindera export</code> now write the model or the files</td></tr>
 <tr><td><strong>The <code>normalize_details</code> setting is removed: <code>Metadata::new</code> and <code>CoreMetadata::new</code> take 10 arguments, Ruby's <code>Metadata.new</code> takes 8</strong></td><td>Code that creates or reads dictionary metadata: Rust (<code>Metadata</code>, <code>lindera_binding::CoreMetadata</code>, <code>PrefixDictionaryBuilderOptions</code>) and the <code>Metadata</code> classes of the Python, Ruby, PHP and Node.js bindings</td><td>Remove the argument, option or property; a <code>metadata.json</code> that still has the key loads, and the key is ignored</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>, <code>tokens_offset_into</code>, <code>nbest_tokens_offset</code> and <code>NBestGenerator::next</code> return <code>(start, end, WordId)</code></strong></td><td>Rust code that calls these <code>lindera_dictionary</code> functions directly (also as <code>lindera::dictionary::viterbi::…</code>, <code>lindera::dictionary::Lattice</code> and <code>lindera::dictionary::nbest::…</code>)</td><td>Destructure three fields and use the returned end instead of the next token's start</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> returns the BOS index of the best path (<code>Option&lt;usize&gt;</code>)</strong></td><td>Rust code that uses the <code>()</code> value of <code>tokens_offset_into</code></td><td>Nothing for a call written as a statement; otherwise ignore the new value</td></tr>
@@ -12331,10 +12339,8 @@ stream that is full and non-blocking, as Node.js makes the streams of a
 same writes could abort Node.js with <code>failed to initiate panic, error 5</code>,
 and made Python, Ruby and PHP raise an exception. A line that a stream can
 no longer take, such as a pipe whose reader has exited, is dropped, and the
-training goes on. The <code>lindera</code> command itself still fails on its own last
-line: with the standard output of <code>lindera train</code> piped into a reader that
-has exited, it writes the model and then ends with exit code 101 and
-<code>failed printing to stdout: Broken pipe</code>.</p>
+training goes on. For the lines of the <code>lindera</code> command itself, see
+<a href="migration_v6_to_v7.html#the-commands-end-quietly-when-their-standard-output-has-no-reader">The commands end quietly when their standard output has no reader</a>.</p>
 <h2 id="lindera-build-rejects-context-ids-outside-the-connection-matrix"><a class="header" href="#lindera-build-rejects-context-ids-outside-the-connection-matrix"><code>lindera build</code> rejects context IDs outside the connection matrix</a></h2>
 <p>Up to v6.2.0, <code>lindera build</code> accepted a <code>lex.csv</code> row or an <code>unk.def</code> line
 whose context IDs fall outside <code>matrix.def</code>, and the built dictionary
@@ -12470,6 +12476,34 @@ hides the warnings, and <code>RUST_LOG=debug</code> adds debugging messages (see
 whose left and right context IDs differ, which <code>mecab-dict-index</code> accepts:
 every line of mecab-ko-dic's <code>unk.def</code> is such a line. Rust programs that
 install a logger no longer get this warning either.</p>
+<h2 id="the-commands-end-quietly-when-their-standard-output-has-no-reader"><a class="header" href="#the-commands-end-quietly-when-their-standard-output-has-no-reader">The commands end quietly when their standard output has no reader</a></h2>
+<p>Up to v6.2.0, a command whose standard output was piped into a program that
+had exited, as <code>head</code> does once it has the lines it wants, failed on its next
+write to it:</p>
+<ul>
+<li><code>lindera train</code>, <code>lindera export</code>, <code>lindera list</code> and <code>lindera download</code>
+panicked with exit code 101 and
+<code>failed printing to stdout: Broken pipe (os error 32)</code>. <code>lindera train</code>
+wrote no model: it panicked on its first line, before the training, or
+after the training, before writing the model. <code>lindera export</code> panicked
+after writing the files, and <code>lindera download</code> after installing the
+dictionary.</li>
+<li><code>lindera tokenize</code> ended with exit code 1 and
+<code>Error: LinderaError { kind: Io, source: Broken pipe (os error 32) }</code>.</li>
+</ul>
+<p>v7.0.0 ends them with exit code 0 and no message
+(<a href="https://github.com/lindera/lindera/issues/1316">#1316</a>):</p>
+<ul>
+<li><code>lindera tokenize</code>, <code>lindera list</code> and <code>lindera download</code> stop at the first
+write that has no reader, and <code>lindera tokenize</code> reads no more of its
+input. Another error while they write, such as a full disk, still ends them
+with exit code 1 and <code>Error: …</code> on standard error.</li>
+<li><code>lindera train</code> and <code>lindera export</code> drop the lines that cannot be written,
+as the training does with its progress, and write the model or the
+dictionary files all the same. Standard output no longer makes them fail.</li>
+</ul>
+<p>A script that checks the exit code of such a pipeline, for example with
+<code>set -o pipefail</code>, now sees a success where it saw a failure.</p>
 <h2 id="rust-api-changes-in-lindera_dictionary-1"><a class="header" href="#rust-api-changes-in-lindera_dictionary-1">Rust API changes in <code>lindera_dictionary</code></a></h2>
 <p>These affect only code that calls the lattice backtraces directly, that
 creates dictionary metadata with <code>Metadata::new</code>, that reads the

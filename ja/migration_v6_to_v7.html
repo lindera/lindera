@@ -256,6 +256,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong><code>lindera build</code> と <code>lindera train</code> は <code>char.def</code> と <code>unk.def</code> を照らし合わせる</strong></td><td>それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが <code>char.def</code> にあるユーザー、<code>char.def</code> と <code>unk.def</code> でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、<code>unk.def</code> の行を無視したりしていた）。MeCab の <code>mecab-dict-index</code> が受け入れる辞書は影響を受けない</td><td>各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに <code>unk.def</code> の行を書き、未定義のカテゴリの <code>unk.def</code> の行を削除する</td></tr>
 <tr><td><strong><code>lindera build</code> は、MeCab と同じく <code>matrix.def</code> にないセルのコストを 0 にする</strong></td><td>セルを省いた <code>matrix.def</code> からシステム辞書をビルドするユーザー。すべてのセルを列挙している同梱の辞書と、<code>lindera export</code> が書き出す <code>matrix.def</code> は対象外</td><td>そうしたセルのコストは 32767 ではなく 0 になる。接続を高いコストのままにするには、そのセルをコスト付きで列挙する</td></tr>
 <tr><td><strong>CLI はライブラリの警告を標準エラー出力に書く</strong></td><td>標準エラー出力を読む CLI のユーザー。たとえば、そこに何か出力があれば失敗とみなすスクリプト。目立つのは、文の区切り文字のないテキストが 32 KiB を超える入力と、<code>--context-id-freq</code> を指定しない ko-dic・UniDic の <code>lindera build</code></td><td>標準エラー出力に <code>[WARN …]</code> の行が出ることを前提にする。<code>RUST_LOG=error</code> で警告を消せる。標準出力は変わらない</td></tr>
+<tr><td>コマンドは、標準出力に読み手がいないとき終了コード 0 で静かに終わる</td><td><code>lindera</code> の標準出力を、<code>head</code> のように先に終わりうるプログラムにパイプでつなぎ、終了コードを確かめるスクリプト</td><td><code>lindera tokenize</code> が 1 で、ほかのコマンドが 101 で panic して終わっていたところが 0 になる。<code>lindera train</code> と <code>lindera export</code> はモデルやファイルを書くようになった</td></tr>
 <tr><td><strong>設定 <code>normalize_details</code> の削除: <code>Metadata::new</code> と <code>CoreMetadata::new</code> の引数は 10 個、Ruby の <code>Metadata.new</code> の引数は 8 個になる</strong></td><td>辞書のメタデータを作成・参照するコード。Rust（<code>Metadata</code>・<code>lindera_binding::CoreMetadata</code>・<code>PrefixDictionaryBuilderOptions</code>）と、Python・Ruby・PHP・Node.js のバインディングの <code>Metadata</code> クラス</td><td>引数・オプション・プロパティを削除する。このキーを含む <code>metadata.json</code> もそのまま読み込め、キーは無視される</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset</code>・<code>tokens_offset_into</code>・<code>nbest_tokens_offset</code>・<code>NBestGenerator::next</code> が <code>(start, end, WordId)</code> を返す</strong></td><td>これらの <code>lindera_dictionary</code> の関数を直接呼び出す Rust コード（<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・<code>lindera::dictionary::nbest::…</code> 経由を含む）</td><td>3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> が最良パスの BOS の添字（<code>Option&lt;usize&gt;</code>）を返す</strong></td><td><code>tokens_offset_into</code> の戻り値 <code>()</code> を値として使う Rust コード</td><td>文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する</td></tr>
@@ -1805,9 +1806,8 @@ iter: 1, cost: 2.7104295458825787, best_cost: 2.7104295458825787, gamma: 0.21819
 行うように、非ブロッキングで一杯の標準ストリームには、行を受け取るまで待って書きます。v6.2.0
 までは、同じ書き込みで Node.js が <code>failed to initiate panic, error 5</code> で abort することがあり、
 Python・Ruby・PHP は例外を投げました。読み手が終わったパイプのように、もう受け取れない
-ストリームへの行は捨て、学習を続けます。ただし <code>lindera</code> コマンド自身の最後の行は今も失敗します。
-<code>lindera train</code> の標準出力を、終わった読み手へのパイプにつなぐと、モデルを書いた後に
-<code>failed printing to stdout: Broken pipe</code> を出して終了コード 101 で終わります。</p>
+ストリームへの行は捨て、学習を続けます。<code>lindera</code> コマンド自身の行については、
+<a href="#%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E3%81%AF%E6%A8%99%E6%BA%96%E5%87%BA%E5%8A%9B%E3%81%AB%E8%AA%AD%E3%81%BF%E6%89%8B%E3%81%8C%E3%81%84%E3%81%AA%E3%81%84%E3%81%A8%E3%81%8D%E9%9D%99%E3%81%8B%E3%81%AB%E7%B5%82%E3%82%8F%E3%82%8B">コマンドは標準出力に読み手がいないとき静かに終わる</a>を参照してください。</p>
 <h2 id="lindera-build-は接続コスト行列の範囲外の文脈-id-を拒否する"><a class="header" href="#lindera-build-は接続コスト行列の範囲外の文脈-id-を拒否する"><code>lindera build</code> は接続コスト行列の範囲外の文脈 ID を拒否する</a></h2>
 <p>v6.2.0 までの <code>lindera build</code> は、文脈 ID が <code>matrix.def</code> の範囲外にある <code>lex.csv</code>
 の行や <code>unk.def</code> の行を受け付け、ビルドした辞書は、解析中にそうした語を引いた
@@ -1928,6 +1928,33 @@ MeCab の <code>mecab-dict-index</code> はそうしたセルのコストを 0 �
 の行を警告しなくなりました。<code>mecab-dict-index</code> はこうした行を受け入れ、
 mecab-ko-dic の <code>unk.def</code> はすべての行がこうした行です。ロガーを組み込んだ Rust
 のプログラムにも、この警告は出なくなります。</p>
+<h2 id="コマンドは標準出力に読み手がいないとき静かに終わる"><a class="header" href="#コマンドは標準出力に読み手がいないとき静かに終わる">コマンドは標準出力に読み手がいないとき静かに終わる</a></h2>
+<p>v6.2.0 までは、標準出力をつないだプログラムが先に終わると（<code>head</code> は欲しい行を
+読むと終わります）、コマンドは次の書き込みで失敗していました。</p>
+<ul>
+<li><code>lindera train</code>・<code>lindera export</code>・<code>lindera list</code>・<code>lindera download</code> は、
+<code>failed printing to stdout: Broken pipe (os error 32)</code> を出し、終了コード 101
+で panic していました。<code>lindera train</code> はモデルを書きませんでした。最初の行で
+学習の前に、または学習の後でモデルを書く前に panic していたためです。
+<code>lindera export</code> はファイルを書いた後に、<code>lindera download</code> は辞書を
+インストールした後に panic していました。</li>
+<li><code>lindera tokenize</code> は、
+<code>Error: LinderaError { kind: Io, source: Broken pipe (os error 32) }</code>
+を出し、終了コード 1 で終わっていました。</li>
+</ul>
+<p>v7.0.0 は、終了コード 0 で、メッセージを出さずに終わります
+（<a href="https://github.com/lindera/lindera/issues/1316">#1316</a>）。</p>
+<ul>
+<li><code>lindera tokenize</code>・<code>lindera list</code>・<code>lindera download</code> は、読み手のいない最初の
+書き込みで止まり、<code>lindera tokenize</code> は入力の残りを読みません。書き込みの
+それ以外のエラー（ディスクが一杯など）では、今までどおり標準エラー出力に
+<code>Error: …</code> を出し、終了コード 1 で終わります。</li>
+<li><code>lindera train</code> と <code>lindera export</code> は、学習の進捗と同じく書けない行を捨て、
+モデルや辞書のファイルを最後まで書きます。標準出力が原因で失敗することは
+なくなりました。</li>
+</ul>
+<p>こうしたパイプラインの終了コードを（<code>set -o pipefail</code> などで）確かめるスクリプト
+には、失敗だったところが成功に見えるようになります。</p>
 <h2 id="lindera_dictionary-の-rust-api-変更"><a class="header" href="#lindera_dictionary-の-rust-api-変更"><code>lindera_dictionary</code> の Rust API 変更</a></h2>
 <p>以下は、ラティスのバックトレースを直接呼び出すコード、<code>Metadata::new</code> で辞書の
 メタデータを作成するコード、辞書の文字カテゴリを読むコード、<code>UnknownDictionary</code>
