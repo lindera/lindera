@@ -36,8 +36,12 @@ let dictionary = load_dictionary("/path/to/ipadic")?;
 > let dictionary = load_dictionary("embedded://ipadic")?;
 > ```
 >
+> An `embed-*` build downloads the dictionary that Lindera publishes on GitHub for the dictionary crate, checks its SHA-256, and embeds it; it no longer builds the dictionary from source, so it needs access to `github.com` (which serves the file from `release-assets.githubusercontent.com`) rather than `lindera.dev`. With `LINDERA_BUILD_DICTIONARY_CACHE_DIR`, a later build uses the downloaded dictionary without network access. See [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](./environment_variables.md#lindera_build_dictionary_from_source) for when the build script builds from source instead.
+>
+> Only the bundled dictionaries can be embedded. Build your own dictionary with `lindera build` and load it from its directory at runtime.
+>
 > See [Feature Flags](../development/feature_flags.md) for details.
 
 ## Environment Variables
 
-The build scripts of the dictionary crates read `LINDERA_BUILD_DICTIONARY_CACHE_DIR`, `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` and `DOCS_RS`, and `TokenizerBuilder::new()` reads `LINDERA_CONFIG_FILE`. See [Environment Variables](./environment_variables.md) for these and the other variables that Lindera reads.
+The build scripts of the dictionary crates read `LINDERA_BUILD_DICTIONARY_CACHE_DIR`, `LINDERA_BUILD_DICTIONARY_FROM_SOURCE`, `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` and `DOCS_RS`, and `TokenizerBuilder::new()` reads `LINDERA_CONFIG_FILE`. See [Environment Variables](./environment_variables.md) for these and the other variables that Lindera reads.

@@ -5,6 +5,7 @@ Lindera reads the environment variables below; none of them is required.
 | Variable | Read by | Value | Without it |
 | --- | --- | --- | --- |
 | [`LINDERA_BUILD_DICTIONARY_CACHE_DIR`](#lindera_build_dictionary_cache_dir) | The build scripts of the dictionary crates | A directory | Each build downloads and builds the dictionary in its own output directory |
+| [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source) | The build scripts of the dictionary crates | `1` or `true` | A dictionary crate downloads the published dictionary it pins, and builds from source only when it cannot use it |
 | [`LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`](#lindera_build_context_id_freq_file) | The build scripts of the dictionary crates | A file | The histogram bundled with the dictionary crate, if any |
 | [`DOCS_RS`](#docs_rs) | The build scripts of the dictionary crates | Set by docs.rs | The real dictionaries are built |
 | [`LINDERA_CONFIG_FILE`](#lindera_config_file) | `TokenizerBuilder::new()`, and so `lindera tokenize` and the bindings | A file | An empty configuration |
@@ -35,6 +36,8 @@ The format version is part of the path so that a cache written by a build with a
 - the source archive (file name and MD5) and the directory the build reads in it
 - the context-id frequency histogram the build reads (`context_id_freq.txt`, or the file named by `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`) when `connection_id_mapping` is enabled
 
+A published dictionary that a build downloads instead of building it (see [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source)) is cached in the same place, and `build_inputs.json` records it by its key and SHA-256 besides the inputs above. The next build that would download the same published dictionary uses the cached one; a build that switches between the published dictionary and the build from source replaces it.
+
 A dictionary left behind by an interrupted build, or cached by a release from before `build_inputs.json`, is rebuilt. The versions of the builder's dependencies are not compared: after upgrading a dependency of `lindera-dictionary` without a format version change, clear the cache if the built dictionaries may differ. Directories from older format versions are not deleted automatically; remove them by hand if the cache grows.
 
 `cargo build -vv` shows, for each dictionary crate, whether the cached dictionary was used and why or why not, on lines that start with `lindera dictionary cache:`.
@@ -61,6 +64,31 @@ Notes:
 - Builds that share the directory, such as `cargo build` alongside rust-analyzer with its own target directory, write each dictionary one at a time: a build that finds another build writing the same dictionary waits for it, and then uses the dictionary it left (`cargo build -vv` shows `lindera dictionary cache: waiting for another build`). The lock is an empty `<dictionary>.lock` file next to the dictionary, held while a build writes it. It works between builds on one machine, and on a network file system only as far as the file system supports file locks. Where the file cannot be locked, the build prints a warning and goes on without the lock, as builds before 7.0.0 did, so two such builds can still remove each other's files
 - Builds with `DOCS_RS` set ignore this variable (see `DOCS_RS` below)
 
+### LINDERA_BUILD_DICTIONARY_FROM_SOURCE
+
+The seven official dictionaries are built once for each change of their inputs and published as GitHub releases, one release per dictionary and version, which are never replaced. Each dictionary crate pins its published dictionary, by URL and SHA-256, in the `prebuilt.json` next to its `metadata.json`, and its build script downloads that archive, checks its SHA-256, and embeds it, instead of downloading the source archive and building the dictionary. The archive holds the same files as a build from source; only the `lindera_version` in its `metadata.json` names the Lindera version that built it. How the dictionaries are published is in [Dictionary Release](../development/dictionary_release.md).
+
+A failed download, an archive with another SHA-256, or one that lacks a file or does not fit the crate's `metadata.json`, stops the build with an error that says what went wrong; the build does not embed anything it could not check, and does not build from source instead.
+
+The build script builds the dictionary from source, as up to v6, in these cases:
+
+- `LINDERA_BUILD_DICTIONARY_FROM_SOURCE` is `1` or `true`. `0`, `false` and the empty value leave the choice to the build script; any other value counts as `1`, with a warning.
+- `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` names a histogram, with which the dictionary differs from the published one.
+- The published dictionary has another dictionary format version than this build reads, as on the development branch between a change of the format and the publication of the new dictionaries.
+- `prebuilt.json` pins no SHA-256 yet, while a new dictionary waits to be published.
+
+In the first three cases, the build script says why in a warning, such as:
+
+```text
+warning: lindera-ipadic@7.0.0: building the ipadic dictionary from source, because LINDERA_BUILD_DICTIONARY_FROM_SOURCE is set
+```
+
+Cargo shows these warnings for a dictionary crate built from a path, such as a checkout of this repository; for one from crates.io, it shows them only when the build fails or runs with `cargo build -vv`. Changing the variable, or `prebuilt.json`, reruns the build script. Builds with `DOCS_RS` set build neither: they use dummy dictionaries (see `DOCS_RS` below).
+
+```shell
+LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1 cargo build --features=embed-ipadic
+```
+
 ### LINDERA_BUILD_CONTEXT_ID_FREQ_FILE
 
 The `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` environment variable names a context-ID frequency histogram that the dictionary crates' build scripts read in place of the `context_id_freq.txt` bundled with the crate. It applies only to a dictionary whose `metadata.json` enables `connection_id_mapping`, as those of UniDic and ko-dic do among the bundled dictionaries, and has no effect at runtime. The histogram orders the context IDs of the connection cost matrix so that frequent ones sit close together, which changes the speed of tokenization but never its result; the `ctxfreq_dump` example of the `lindera` crate writes one from a corpus.
@@ -70,7 +98,7 @@ export LINDERA_BUILD_CONTEXT_ID_FREQ_FILE=/path/to/context_id_freq.txt
 cargo build --features=embed-unidic
 ```
 
-Only the build scripts read it: `lindera build` takes the histogram from its `--context-id-freq` option, and the functions of the bindings that build a dictionary take it as an optional argument, `context_id_freq` (`contextIdFreq` in Node.js). Changing the variable, or the file it names, reruns the build script, and the cache of `LINDERA_BUILD_DICTIONARY_CACHE_DIR` compares the histogram's contents.
+Only the build scripts read it: `lindera build` takes the histogram from its `--context-id-freq` option, and the functions of the bindings that build a dictionary take it as an optional argument, `context_id_freq` (`contextIdFreq` in Node.js). Changing the variable, or the file it names, reruns the build script, and the cache of `LINDERA_BUILD_DICTIONARY_CACHE_DIR` compares the histogram's contents. With the variable set, the build script builds the dictionary from source rather than downloading the published one (see [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source)).
 
 `LINDERA_CTX_FREQ_FILE`, the name of this variable up to v6, still works until v8.0.0, with a deprecation warning:
 

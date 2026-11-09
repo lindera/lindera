@@ -434,7 +434,13 @@ jobs:
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
 
+      # Built from source rather than taken from the published dictionary
+      # (#1336), so that metadata.json carries this release's version as its
+      # lindera_version: `lindera download` takes an installed dictionary
+      # for current only when that equals the CLI's version.
       - name: Build dictionary
+        env:
+          LINDERA_BUILD_DICTIONARY_FROM_SOURCE: "1"
         run: |
           LINDERA_BUILD_DICTIONARY_CACHE_DIR=dictionaries cargo build -p ${{ matrix.dictionary.name }} --features ${{ matrix.dictionary.feature }}
 

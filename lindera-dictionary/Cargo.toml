@@ -13,7 +13,7 @@ categories = { workspace = true }
 license = { workspace = true }
 
 [features]
-build_rs = ["dep:flate2", "dep:md5", "dep:rand", "dep:tar", "dep:ureq"]
+build_rs = ["dep:flate2", "dep:md5", "dep:rand", "dep:sha2", "dep:tar", "dep:ureq"]
 mmap = ["dep:memmap2"]
 # Experimental: instrument connection-matrix accesses to profile per-context-id
 # access frequency over a corpus (used to build a corpus-frequency remap). Off by
@@ -40,6 +40,9 @@ rand = { version = "0.10.2", default-features = false, optional = true }
 rkyv = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+# Checks the SHA-256 that a dictionary crate pins for its published dictionary
+# (`prebuilt.json`, #1336); only the `build_rs` feature needs it.
+sha2 = { version = "0.11.1", default-features = false, optional = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
 tar = { version = "0.4.46", optional = true }
