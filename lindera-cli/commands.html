@@ -198,6 +198,7 @@
 <li><code>tokenize</code>, <code>list</code> and <code>download</code> write their result there, so they stop at the first write that has no reader. <code>tokenize</code> reads no more of its input. Another error while they write, such as a full disk, is written to standard error, and the exit code is 1.</li>
 <li><code>train</code> and <code>export</code> only report there on the files they write, so they drop the lines that cannot be written, as the training does with its progress, and write the model or the dictionary files all the same. Standard output never makes them fail.</li>
 </ul>
+<p>When standard error has no reader, the commands drop their own messages there in the same way, such as the progress and notices of <code>download</code> and the notices of <code>list</code>, and go on to write their result.</p>
 <p>Up to v6.2.0, the commands failed instead; see the <a href="../migration_v6_to_v7.html#the-commands-end-quietly-when-their-standard-output-has-no-reader">migration guide</a>.</p>
 <h2 id="list"><a class="header" href="#list">list</a></h2>
 <p>List the dictionaries that <code>--dict</code> can take: those embedded in the binary (via the <code>embed-*</code> feature flags) and those in the dictionaries directory, where <code>lindera download</code> puts them, each with the version of Lindera that built it.</p>

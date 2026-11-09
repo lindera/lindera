@@ -198,6 +198,7 @@
 <li><code>tokenize</code>・<code>list</code>・<code>download</code> は結果を標準出力に書くので、読み手のいない最初の書き込みで止まります。<code>tokenize</code> は入力の残りを読みません。書き込みのそれ以外のエラー（ディスクが一杯など）は標準エラー出力に書き、終了コードは 1 です。</li>
 <li><code>train</code>・<code>export</code> は、書いたファイルについて標準出力に報告するだけなので、学習の進捗と同じく書けない行を捨て、モデルや辞書のファイルを最後まで書きます。標準出力が原因で失敗することはありません。</li>
 </ul>
+<p>標準エラー出力に読み手がいないときも、コマンドは自身のメッセージ（<code>download</code> の進捗や通知、<code>list</code> の通知など）を同じく捨て、続けて結果を書きます。</p>
 <p>v6.2.0 までは、コマンドは失敗していました。<a href="../migration_v6_to_v7.html#%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E3%81%AF%E6%A8%99%E6%BA%96%E5%87%BA%E5%8A%9B%E3%81%AB%E8%AA%AD%E3%81%BF%E6%89%8B%E3%81%8C%E3%81%84%E3%81%AA%E3%81%84%E3%81%A8%E3%81%8D%E9%9D%99%E3%81%8B%E3%81%AB%E7%B5%82%E3%82%8F%E3%82%8B">移行ガイド</a>を参照してください。</p>
 <h2 id="list"><a class="header" href="#list">list</a></h2>
 <p><code>--dict</code> に渡せる辞書の一覧を表示します。（<code>embed-*</code> feature フラグ経由で）バイナリに埋め込まれた辞書と、<code>lindera download</code> が辞書を置く辞書ディレクトリにある辞書を、それぞれをビルドした Lindera のバージョンとともに表示します。</p>
