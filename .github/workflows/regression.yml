@@ -186,6 +186,8 @@ jobs:
               - 'lindera-ko-dic/**'
               # The dictionary build tests build this source.
               - 'resources/connection_id_mapping/**'
+              # A tokenizer test loads a user dictionary from here.
+              - 'resources/user_dict/**'
               - *shared-workspace
               - *shared-crate-workflow
             lindera-cli:
@@ -225,6 +227,8 @@ jobs:
               - 'lindera-jieba/**'
               # The dictionary build tests build this source.
               - 'resources/connection_id_mapping/**'
+              # The training tests train from these files.
+              - 'resources/training/**'
               - *shared-workspace
               - *shared-make
             lindera-nodejs:
@@ -247,6 +251,8 @@ jobs:
               - 'scripts/benchmarks/memcheck_nodejs.mjs'
               # The dictionary build tests build this source.
               - 'resources/connection_id_mapping/**'
+              # The training tests train from these files.
+              - 'resources/training/**'
               - *shared-workspace
               - *shared-make
             lindera-ruby:
@@ -267,6 +273,8 @@ jobs:
               - 'lindera-jieba/**'
               # The dictionary build tests build this source.
               - 'resources/connection_id_mapping/**'
+              # The training tests train from these files.
+              - 'resources/training/**'
               - *shared-workspace
               - *shared-make
             # Gem packaging: the crate as `cargo package` normalizes it (which
@@ -295,6 +303,8 @@ jobs:
               - 'lindera-jieba/**'
               # The dictionary build tests build this source.
               - 'resources/connection_id_mapping/**'
+              # The training tests train from these files.
+              - 'resources/training/**'
               - *shared-workspace
               - *shared-make
             lindera-wasm:
@@ -314,6 +324,8 @@ jobs:
               - 'lindera-jieba/**'
               - 'scripts/benchmarks/memcheck_common.mjs'
               - 'scripts/benchmarks/memcheck_wasm.mjs'
+              # The user dictionary tests embed these files.
+              - 'resources/user_dict/**'
               - *shared-workspace
               - *shared-make
             # The crates `make check-docs` documents (CARGO_CRATES in the
