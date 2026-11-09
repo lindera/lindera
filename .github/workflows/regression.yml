@@ -24,6 +24,13 @@ jobs:
       - name: Run format
         run: cargo fmt --all -- --check
 
+      # Cargo.lock must match the manifests. Two pull requests that each passed
+      # once left a lock file that cargo rejects under --locked, which only the
+      # release would have noticed (#1340). This job runs on every pull request
+      # and push, and resolving from the index needs no crate sources.
+      - name: Check that Cargo.lock matches the manifests
+        run: cargo update --workspace --locked
+
       # Doc comments name their sections in English (#1124). `git grep` exits
       # with 0 on a match and 1 on none; anything else is an error, which must
       # fail the step rather than pass it.
