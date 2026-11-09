@@ -39,8 +39,24 @@ pub struct ExportArgs {
     cost_factor: Option<i32>,
 }
 
+/// Runs the `export` subcommand: writes the dictionary source files of a
+/// trained model to the output directory.
+///
+/// The lines that report on the files written go to stdout through
+/// `write_line`: a line that stdout can no longer take, as when its reader has
+/// exited, is dropped, so the files are written all the same (#1316).
+///
+/// # Arguments
+///
+/// * `args` - Parsed command line arguments.
+///
+/// # Returns
+///
+/// `Ok(())` when the files are written. An error when the model cannot be
+/// read or the files cannot be written.
 pub fn export(args: ExportArgs) -> LinderaResult<()> {
     use lindera::dictionary::trainer::SerializableModel;
+    use lindera::dictionary::trainer::console::{Stream, write_line};
     use std::fs::File;
 
     // Load trained model
@@ -62,13 +78,19 @@ pub fn export(args: ExportArgs) -> LinderaResult<()> {
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     if args.metadata.is_some() {
-        println!("Updated metadata.json with trained model values");
+        write_line(
+            Stream::Stdout,
+            format_args!("Updated metadata.json with trained model values"),
+        );
     }
 
-    println!("Dictionary files exported to: {:?}", args.output);
-    println!("Files created:");
+    write_line(
+        Stream::Stdout,
+        format_args!("Dictionary files exported to: {:?}", args.output),
+    );
+    write_line(Stream::Stdout, format_args!("Files created:"));
     for file in &files_created {
-        println!("  - {file:?}");
+        write_line(Stream::Stdout, format_args!("  - {file:?}"));
     }
 
     Ok(())

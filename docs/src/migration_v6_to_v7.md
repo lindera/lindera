@@ -85,6 +85,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`lindera build` and `lindera train` check `char.def` against `unk.def`** | Anyone whose `char.def` has a range line that names a category not defined on an earlier line, or a category defined twice, or whose `char.def` and `unk.def` do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored `unk.def` lines); not dictionaries that MeCab's `mecab-dict-index` accepts | Define each category once, before the range lines that name it; give every category an `unk.def` line, and remove the `unk.def` lines of undefined categories |
 | **`lindera build` gives a cell missing from `matrix.def` the cost 0, as MeCab does** | Anyone who builds a system dictionary from a `matrix.def` that leaves cells out; not the bundled dictionaries or a `matrix.def` that `lindera export` writes, which list every cell | Expect such a cell to cost 0 instead of 32767; to keep a connection expensive, list its cell with a cost |
 | **The CLI writes library warnings to standard error** | CLI users who read standard error, for example scripts that treat any output there as a failure; most visibly input with more than 32 KiB without a sentence delimiter, and `lindera build` of ko-dic or UniDic without `--context-id-freq` | Expect `[WARN …]` lines on standard error; set `RUST_LOG=error` to hide them. Standard output does not change |
+| The commands end quietly, with exit code 0, when their standard output has no reader | Scripts that pipe the standard output of `lindera` into a program that may exit first, such as `head`, and check the exit code | Expect exit code 0 where `lindera tokenize` ended with 1 and the other commands panicked with 101; `lindera train` and `lindera export` now write the model or the files |
 | **The `normalize_details` setting is removed: `Metadata::new` and `CoreMetadata::new` take 10 arguments, Ruby's `Metadata.new` takes 8** | Code that creates or reads dictionary metadata: Rust (`Metadata`, `lindera_binding::CoreMetadata`, `PrefixDictionaryBuilderOptions`) and the `Metadata` classes of the Python, Ruby, PHP and Node.js bindings | Remove the argument, option or property; a `metadata.json` that still has the key loads, and the key is ignored |
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
 | **`Lattice::tokens_offset_into` returns the BOS index of the best path (`Option<usize>`)** | Rust code that uses the `()` value of `tokens_offset_into` | Nothing for a call written as a statement; otherwise ignore the new value |
@@ -2039,10 +2040,8 @@ stream that is full and non-blocking, as Node.js makes the streams of a
 same writes could abort Node.js with `failed to initiate panic, error 5`,
 and made Python, Ruby and PHP raise an exception. A line that a stream can
 no longer take, such as a pipe whose reader has exited, is dropped, and the
-training goes on. The `lindera` command itself still fails on its own last
-line: with the standard output of `lindera train` piped into a reader that
-has exited, it writes the model and then ends with exit code 101 and
-`failed printing to stdout: Broken pipe`.
+training goes on. For the lines of the `lindera` command itself, see
+[The commands end quietly when their standard output has no reader](#the-commands-end-quietly-when-their-standard-output-has-no-reader).
 
 ## `lindera build` rejects context IDs outside the connection matrix
 
@@ -2196,6 +2195,36 @@ hides the warnings, and `RUST_LOG=debug` adds debugging messages (see
 whose left and right context IDs differ, which `mecab-dict-index` accepts:
 every line of mecab-ko-dic's `unk.def` is such a line. Rust programs that
 install a logger no longer get this warning either.
+
+## The commands end quietly when their standard output has no reader
+
+Up to v6.2.0, a command whose standard output was piped into a program that
+had exited, as `head` does once it has the lines it wants, failed on its next
+write to it:
+
+- `lindera train`, `lindera export`, `lindera list` and `lindera download`
+  panicked with exit code 101 and
+  `failed printing to stdout: Broken pipe (os error 32)`. `lindera train`
+  wrote no model: it panicked on its first line, before the training, or
+  after the training, before writing the model. `lindera export` panicked
+  after writing the files, and `lindera download` after installing the
+  dictionary.
+- `lindera tokenize` ended with exit code 1 and
+  `Error: LinderaError { kind: Io, source: Broken pipe (os error 32) }`.
+
+v7.0.0 ends them with exit code 0 and no message
+([#1316](https://github.com/lindera/lindera/issues/1316)):
+
+- `lindera tokenize`, `lindera list` and `lindera download` stop at the first
+  write that has no reader, and `lindera tokenize` reads no more of its
+  input. Another error while they write, such as a full disk, still ends them
+  with exit code 1 and `Error: …` on standard error.
+- `lindera train` and `lindera export` drop the lines that cannot be written,
+  as the training does with its progress, and write the model or the
+  dictionary files all the same. Standard output no longer makes them fail.
+
+A script that checks the exit code of such a pipeline, for example with
+`set -o pipefail`, now sees a success where it saw a failure.
 
 ## Rust API changes in `lindera_dictionary`
 

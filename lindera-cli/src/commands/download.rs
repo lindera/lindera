@@ -7,7 +7,7 @@ use lindera::LinderaResult;
 use lindera::error::LinderaErrorKind;
 use lindera_cli::get_version;
 
-use super::io_err;
+use super::{io_err, write_stdout};
 use crate::dictionary_registry::{
     DOWNLOADABLE_DICTIONARIES, dictionaries_dir, dictionary_dir, download_url,
     installed_lindera_version, is_complete_dictionary_dir, missing_dictionary_files,
@@ -153,7 +153,9 @@ pub struct DownloadArgs {
 ///
 /// # Returns
 ///
-/// `Ok(())` when the dictionary is installed (or already present).
+/// `Ok(())` when the dictionary is installed (or already present) and its
+/// path is printed. An error when the download or the installation fails, or
+/// when the path cannot be written to stdout (see `stdout_err`).
 pub fn download(args: DownloadArgs) -> LinderaResult<()> {
     let dictionaries_dir = dictionaries_dir()?;
     let version = get_version();
@@ -177,10 +179,10 @@ pub fn download(args: DownloadArgs) -> LinderaResult<()> {
         // Terminate the `\r`-rewritten progress line.
         eprintln!();
     }
-    match outcome {
+    let path = match outcome {
         DownloadOutcome::Installed(path) => {
             eprintln!("Downloaded dictionary '{}'", args.name);
-            println!("{}", path.display());
+            path
         }
         DownloadOutcome::Replaced {
             path,
@@ -194,18 +196,20 @@ pub fn download(args: DownloadArgs) -> LinderaResult<()> {
                 "Downloaded dictionary '{}', replacing the one built by {previous}",
                 args.name
             );
-            println!("{}", path.display());
+            path
         }
         DownloadOutcome::AlreadyPresent(path) => {
             eprintln!(
                 "Dictionary '{}' is already downloaded; use --force to re-download it",
                 args.name
             );
-            println!("{}", path.display());
+            path
         }
-    }
+    };
 
-    Ok(())
+    // Written in one place for the three outcomes, so that a standard output
+    // without a reader ends each of them quietly (#1316).
+    write_stdout(&format!("{}\n", path.display()))
 }
 
 /// Builds a progress callback that renders download progress on stderr.

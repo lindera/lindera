@@ -106,7 +106,24 @@ pub struct TrainArgs {
     max_threads: Option<usize>,
 }
 
+/// Runs the `train` subcommand: trains a model on the corpus and writes it to
+/// the output file.
+///
+/// The lines that report on the training go to stdout through `write_line`,
+/// as the training's own progress does: a line that stdout can no longer
+/// take, as when its reader has exited, is dropped, and the training goes on
+/// (#1316).
+///
+/// # Arguments
+///
+/// * `args` - Parsed command line arguments.
+///
+/// # Returns
+///
+/// `Ok(())` when the model is written. An error when an input cannot be read
+/// or parsed, when the training fails, or when the model cannot be written.
 pub fn train(args: TrainArgs) -> LinderaResult<()> {
+    use lindera::dictionary::trainer::console::{Stream, write_line};
     use lindera::dictionary::trainer::{Corpus, RegularizationType, Trainer, TrainerConfig};
     use std::fs::File;
 
@@ -140,7 +157,10 @@ pub fn train(args: TrainArgs) -> LinderaResult<()> {
     let corpus =
         Corpus::from_reader(corpus_file).map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
-    println!("Training with {} examples...", corpus.len());
+    write_line(
+        Stream::Stdout,
+        format_args!("Training with {} examples...", corpus.len()),
+    );
 
     // Train model
     let model = trainer
@@ -157,6 +177,9 @@ pub fn train(args: TrainArgs) -> LinderaResult<()> {
         .write_model(&mut output_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
-    println!("Model saved to {:?}", args.output);
+    write_line(
+        Stream::Stdout,
+        format_args!("Model saved to {:?}", args.output),
+    );
     Ok(())
 }
