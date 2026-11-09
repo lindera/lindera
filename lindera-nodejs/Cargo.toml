@@ -58,4 +58,4 @@ syn = { version = "3.0", features = ["full"] }
 
 [build-dependencies]
 napi-build = "2.3.2"
-napi-derive-backend = "6.0.0"
+napi-derive-backend = "7.0.0"
