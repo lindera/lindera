@@ -73,7 +73,7 @@ pub struct TrainOptions {
 /// of 1 or more, and a `regularization`, `lambda`, `elasticNetL1Ratio` or
 /// `eta` that is not accepted, are an `InvalidArg` error, raised before any
 /// file is read.
-#[napi]
+#[napi(catch_unwind)]
 pub fn train(options: TrainOptions) -> napi::Result<()> {
     // Check the settings before touching any file.
     let invalid_arg = |message: String| napi::Error::new(napi::Status::InvalidArg, message);
@@ -200,7 +200,7 @@ pub struct ExportOptions {
 /// # Arguments
 ///
 /// * `options` - Export options containing file paths.
-#[napi]
+#[napi(catch_unwind)]
 pub fn export_model(options: ExportOptions) -> napi::Result<()> {
     let model_path = Path::new(&options.model);
     let output_path = Path::new(&options.output);

@@ -17,9 +17,11 @@ WASM_FEATURES = embed-ipadic
 
 # ── Node.js ─────────────────────────────────────────────────────────────────
 # Dictionaries embedded in the Node.js test build, so the dictionary-backed
-# tests run instead of being skipped (#1066). memcheck builds with the same
-# features, so it does not switch the addon to a different build.
-NODEJS_TEST_FEATURES = embed-ipadic,embed-ko-dic
+# tests run instead of being skipped (#1066), and `test-hooks`, which exports
+# the function that tests/test_panic.js makes panic (#1314); a release build
+# never enables it. memcheck builds with the same features, so it does not
+# switch the addon to a different build.
+NODEJS_TEST_FEATURES = embed-ipadic,embed-ko-dic,test-hooks
 
 # Run a cargo command with RbConfig values exported, as the Ruby binding build
 # expects (used by lint, test and check-docs for lindera-ruby).
@@ -219,8 +221,9 @@ lint-lindera-python: setup-ruff ## Lint lindera-python
 	$(RUFF) format --check lindera-python/tests/ lindera-python/examples/
 	$(RUFF) check lindera-python/tests/ lindera-python/examples/
 
+# `test-hooks` adds the test-only exports, so that clippy lints them too.
 lint-lindera-nodejs: ## Lint lindera-nodejs
-	cargo clippy -p lindera-nodejs --all-targets -- -D warnings
+	cargo clippy -p lindera-nodejs --all-targets --features test-hooks -- -D warnings
 	cd lindera-nodejs && $(PRETTIER) --check tests/ examples/ types-check/
 
 lint-lindera-ruby: ## Lint lindera-ruby
@@ -298,7 +301,8 @@ check-docs: ## Check rustdoc warnings in the cargo crates (public and private it
 # binding's CI job runs (#1156). The same two passes as the libraries above.
 # Default features, as they already enable every feature that adds or removes
 # an item (`train`; the `embed-*` features only choose the embedded
-# dictionaries). No dictionary is built, so neither DOCS_RS nor a separate
+# dictionaries), plus lindera-nodejs's `test-hooks`, which adds its test-only
+# exports. No dictionary is built, so neither DOCS_RS nor a separate
 # target directory is needed. `env` lets the command follow the RbConfig
 # wrapper for lindera-ruby.
 CHECK_DOCS_BINDING = env RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --lib
@@ -308,8 +312,8 @@ check-docs-lindera-python: ## Check rustdoc warnings in lindera-python (public a
 	$(CHECK_DOCS_BINDING) -p lindera-python --document-private-items
 
 check-docs-lindera-nodejs: ## Check rustdoc warnings in lindera-nodejs (public and private items)
-	$(CHECK_DOCS_BINDING) -p lindera-nodejs
-	$(CHECK_DOCS_BINDING) -p lindera-nodejs --document-private-items
+	$(CHECK_DOCS_BINDING) -p lindera-nodejs --features test-hooks
+	$(CHECK_DOCS_BINDING) -p lindera-nodejs --features test-hooks --document-private-items
 
 check-docs-lindera-ruby: ## Check rustdoc warnings in lindera-ruby (public and private items)
 	$(CARGO_TEST_WITH_RBCONFIG) $(CHECK_DOCS_BINDING) -p lindera-ruby

@@ -35,6 +35,11 @@ embed-cjk = [
     "lindera/embed-cjk",
 ] # Embed CJK dictionaries (IPADIC, ko-dic, Jieba)
 train = ["lindera/train"] # Enable training functionality
+# For tests only, never for a release build: exports `__panicForTest`, which
+# panics, so that tests/test_panic.js can check that a panic throws an
+# `Error` instead of aborting Node.js (#1314). `make test-lindera-nodejs`
+# enables it through NODEJS_TEST_FEATURES.
+test-hooks = []
 default = ["train"] # Training enabled by default
 
 [dependencies]
@@ -45,6 +50,11 @@ napi-derive = "3.6.0"
 num_cpus = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+
+[dev-dependencies]
+# Parses the sources in the test that every `#[napi]` function and method
+# carries `catch_unwind` (src/lib.rs).
+syn = { version = "2.0", features = ["full"] }
 
 [build-dependencies]
 napi-build = "2.3.2"

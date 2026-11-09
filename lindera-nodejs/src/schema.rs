@@ -129,7 +129,7 @@ impl JsSchema {
     /// # Arguments
     ///
     /// * `fields` - Array of field name strings.
-    #[napi(constructor)]
+    #[napi(constructor, catch_unwind)]
     pub fn new(fields: Vec<String>) -> Self {
         Self {
             inner: CoreSchema::new(fields),
@@ -141,7 +141,7 @@ impl JsSchema {
     /// # Returns
     ///
     /// A schema with the standard IPADIC field definitions.
-    #[napi(factory)]
+    #[napi(factory, catch_unwind)]
     pub fn create_default() -> Self {
         Self {
             inner: CoreSchema::create_default(),
@@ -149,7 +149,7 @@ impl JsSchema {
     }
 
     /// Returns the field names in the schema.
-    #[napi(getter)]
+    #[napi(getter, catch_unwind)]
     pub fn fields(&self) -> Vec<String> {
         self.inner.fields().to_vec()
     }
@@ -163,13 +163,13 @@ impl JsSchema {
     /// # Returns
     ///
     /// The zero-based index of the field, or `undefined` if not found.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn get_field_index(&self, field_name: String) -> Option<u32> {
         self.inner.get_field_index(&field_name).map(|i| i as u32)
     }
 
     /// Returns the total number of fields in the schema.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn field_count(&self) -> u32 {
         self.inner.field_count() as u32
     }
@@ -184,7 +184,7 @@ impl JsSchema {
     ///
     /// The field name, `undefined` if the schema has no field at `index`, or
     /// an `InvalidArg` error when `index` is negative or not an integer.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn get_field_name(&self, index: f64) -> napi::Result<Option<String>> {
         let index = integer_arg("index", index)?;
         Ok(self.inner.get_field_name(index).map(str::to_string))
@@ -195,7 +195,7 @@ impl JsSchema {
     /// # Returns
     ///
     /// An array of custom field names.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn get_custom_fields(&self) -> Vec<String> {
         self.inner.get_custom_fields().to_vec()
     }
@@ -205,7 +205,7 @@ impl JsSchema {
     /// # Returns
     ///
     /// An array of all field names.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn get_all_fields(&self) -> Vec<String> {
         self.inner.fields().to_vec()
     }
@@ -219,7 +219,7 @@ impl JsSchema {
     /// # Returns
     ///
     /// The field definition, or `undefined` if not found.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn get_field_by_name(&self, name: String) -> Option<JsFieldDefinition> {
         self.inner
             .get_field_by_name(&name)
@@ -231,7 +231,7 @@ impl JsSchema {
     /// # Arguments
     ///
     /// * `record` - Array of field values to validate.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn validate_record(&self, record: Vec<String>) -> napi::Result<()> {
         self.inner.validate_record(&record).map_err(to_napi_error)
     }

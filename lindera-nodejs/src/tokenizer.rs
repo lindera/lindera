@@ -27,7 +27,7 @@ pub struct JsTokenizerBuilder {
 #[napi]
 impl JsTokenizerBuilder {
     /// Creates a new TokenizerBuilder with default configuration.
-    #[napi(constructor)]
+    #[napi(constructor, catch_unwind)]
     pub fn new() -> napi::Result<Self> {
         let inner = CoreTokenizerBuilder::new().map_err(to_napi_error)?;
         Ok(Self { inner })
@@ -42,7 +42,7 @@ impl JsTokenizerBuilder {
     /// # Returns
     ///
     /// A new TokenizerBuilder with the loaded configuration.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn from_file(&self, file_path: String) -> napi::Result<JsTokenizerBuilder> {
         let inner =
             CoreTokenizerBuilder::from_file(Path::new(&file_path)).map_err(to_napi_error)?;
@@ -59,7 +59,7 @@ impl JsTokenizerBuilder {
     ///
     /// The builder itself (`this`), enabling method chaining. Throws, with
     /// code `InvalidArg`, for a value that is not a `Mode`.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn set_mode(&mut self, mode: &Mode) -> &Self {
         self.inner.set_mode(mode.as_lindera());
         self
@@ -74,7 +74,7 @@ impl JsTokenizerBuilder {
     /// # Returns
     ///
     /// The builder itself (`this`), enabling method chaining.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn set_dictionary(&mut self, path: String) -> &Self {
         self.inner.set_dictionary(&path);
         self
@@ -89,7 +89,7 @@ impl JsTokenizerBuilder {
     /// # Returns
     ///
     /// The builder itself (`this`), enabling method chaining.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn set_user_dictionary(&mut self, uri: String) -> &Self {
         self.inner.set_user_dictionary(&uri);
         self
@@ -108,7 +108,7 @@ impl JsTokenizerBuilder {
     /// # Returns
     ///
     /// The builder itself (`this`), enabling method chaining.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn set_keep_whitespace(&mut self, keep_whitespace: bool) -> &Self {
         self.inner.set_keep_whitespace(keep_whitespace);
         self
@@ -132,7 +132,10 @@ impl JsTokenizerBuilder {
     /// # Returns
     ///
     /// The builder itself (`this`), enabling method chaining.
-    #[napi(ts_args_type = "skipWhitespace: boolean | null | undefined")]
+    #[napi(
+        ts_args_type = "skipWhitespace: boolean | null | undefined",
+        catch_unwind
+    )]
     pub fn set_skip_whitespace(&mut self, skip_whitespace: Option<bool>) -> &Self {
         self.inner.set_skip_whitespace(skip_whitespace);
         self
@@ -160,7 +163,8 @@ impl JsTokenizerBuilder {
     /// `value` is none of the forms above, or when it nests more than 128
     /// levels deep (a value that contains itself always does).
     #[napi(
-        ts_args_type = "value: boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined"
+        ts_args_type = "value: boolean | { rules: Array<{ pos: Array<string>; cost: number }> } | null | undefined",
+        catch_unwind
     )]
     pub fn set_space_penalty(&mut self, value: Option<JsonArg>) -> napi::Result<&Self> {
         // `null` and `undefined` both arrive as `None`; they select the
@@ -184,7 +188,7 @@ impl JsTokenizerBuilder {
     /// The builder itself (`this`), enabling method chaining. Throws when
     /// `args` nests more than 128 levels deep (a value that contains itself
     /// always does).
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn append_character_filter(
         &mut self,
         kind: String,
@@ -207,7 +211,7 @@ impl JsTokenizerBuilder {
     /// The builder itself (`this`), enabling method chaining. Throws when
     /// `args` nests more than 128 levels deep (a value that contains itself
     /// always does).
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn append_token_filter(
         &mut self,
         kind: String,
@@ -223,7 +227,7 @@ impl JsTokenizerBuilder {
     /// # Returns
     ///
     /// A configured Tokenizer instance ready for use.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn build(&self) -> napi::Result<JsTokenizer> {
         let inner = self.inner.build().map_err(to_napi_error)?;
         Ok(JsTokenizer { inner })
@@ -256,7 +260,7 @@ impl JsTokenizer {
     /// setting, as `setSpacePenalty` and `build()` do, and for a user
     /// dictionary with a context ID outside the dictionary's connection
     /// matrix.
-    #[napi(constructor)]
+    #[napi(constructor, catch_unwind)]
     pub fn new(
         dictionary: &JsDictionary,
         mode: Option<&Mode>,
@@ -294,7 +298,7 @@ impl JsTokenizer {
     ///
     /// An array of token objects containing morphological features, in
     /// reading order.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn tokenize(&self, text: String) -> napi::Result<Vec<Token>> {
         let views = self.inner.tokenize(&text).map_err(to_napi_error)?;
         Ok(views.into_iter().map(Token::from_view).collect())
@@ -314,7 +318,7 @@ impl JsTokenizer {
     /// # Returns
     ///
     /// An array of surface strings, in reading order.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn tokenize_surfaces(&self, text: String) -> napi::Result<Vec<String>> {
         let views = self.inner.tokenize_surfaces(&text).map_err(to_napi_error)?;
         Ok(views.into_iter().map(|view| view.surface).collect())
@@ -335,7 +339,7 @@ impl JsTokenizer {
     /// An array of NbestResult objects, each containing tokens and their cost,
     /// or an `InvalidArg` error when `n` or `cost_threshold` is not an integer
     /// in its range.
-    #[napi]
+    #[napi(catch_unwind)]
     pub fn tokenize_nbest(
         &self,
         text: String,
