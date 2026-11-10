@@ -198,7 +198,7 @@
 <p>設定すると、各ビルドは <code>$LINDERA_BUILD_DICTIONARY_CACHE_DIR/&lt;version&gt;-fmt&lt;format&gt;/</code>（<code>&lt;version&gt;</code> は辞書クレートのバージョン、<code>&lt;format&gt;</code> は辞書フォーマットバージョン）配下に 2 種類のファイルを保存します：</p>
 <ul>
 <li>ダウンロードした配布アーカイブ（MD5 で検証。無効なファイルは自動的に再ダウンロード）</li>
-<li>クレートに埋め込まれるビルド済みバイナリ辞書と、その辞書を何から作ったかを記録する <code>build_inputs.json</code></li>
+<li>ビルド済みバイナリ辞書と、その辞書を何から作ったかを記録する <code>build_inputs.json</code></li>
 </ul>
 <p>フォーマットバージョンをパスに含めているのは、オンディスクレイアウトが異なるビルドが書いたキャッシュを「古いまま再利用」ではなく「キャッシュミス」にするためです。キャッシュした辞書は、次のすべてが今回のビルドと一致するときだけ再利用し、そうでなければ作り直します。</p>
 <ul>
@@ -209,7 +209,8 @@
 </ul>
 <p>ビルドせずにダウンロードした公開済みの辞書（<a href="#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a> を参照）も同じ場所にキャッシュし、<code>build_inputs.json</code> には上の入力に加えて、その辞書の鍵と SHA-256 を記録します。同じ公開済みの辞書をダウンロードするはずの次のビルドは、キャッシュした辞書を使います。公開済みの辞書とソースからのビルドを切り替えたビルドは、作り直します。</p>
 <p>中断されたビルドが残した辞書や、<code>build_inputs.json</code> より前のリリースがキャッシュした辞書は作り直します。ビルダーが依存するクレートのバージョンは比較しません。フォーマットバージョンを変えずに <code>lindera-dictionary</code> の依存クレートを更新したときは、ビルドした辞書が変わりうるならキャッシュを削除してください。古いフォーマットバージョンのディレクトリは自動削除されないため、キャッシュが肥大化する場合は手動で削除してください。</p>
-<p><code>cargo build -vv</code> を実行すると、辞書クレートごとに、キャッシュした辞書を使ったかどうかとその理由が <code>lindera dictionary cache:</code> で始まる行に表示されます。</p>
+<p>ビルドは、キャッシュしたファイルそのものは埋め込みません。辞書の 9 つのファイルを build script の出力ディレクトリ（<code>OUT_DIR</code>）にハードリンクし（キャッシュがターゲットディレクトリと別のファイルシステムにあるときなど、リンクできないファイルはコピーし）、そこから埋め込みます。そのため、入力の異なる別のビルドがキャッシュした辞書を置き換えても、キャッシュを削除しても、クレートが埋め込んだ辞書は変わりません。どの checkout やターゲットディレクトリのビルドも、1 つのディレクトリを共有できます。</p>
+<p><code>cargo build -vv</code> を実行すると、辞書クレートごとに、キャッシュした辞書を使ったかどうかとその理由、辞書をリンクしたかコピーしたかが <code>lindera dictionary cache:</code> で始まる行に表示されます。</p>
 <p>これにより以下のメリットがあります：</p>
 <ul>
 <li><strong>オフラインビルド</strong>: 一度キャッシュされれば、以降のビルドにネットワークアクセスは不要です</li>
@@ -220,23 +221,18 @@
 <pre><code class="language-shell">export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 cargo build --features=embed-ipadic
 </code></pre>
-<p>すべてのターゲットディレクトリと worktree で 1 つのディレクトリを共有するには（後述の条件を参照）、絶対パスを一度だけ設定します。上のようにシェルのプロファイルに書くか、cargo が build script に渡す <code>~/.cargo/config.toml</code> に書きます：</p>
+<p>すべてのターゲットディレクトリと worktree で 1 つのディレクトリを共有するには、絶対パスを一度だけ設定します。上のようにシェルのプロファイルに書くか、cargo が build script に渡す <code>~/.cargo/config.toml</code> に書きます：</p>
 <pre><code class="language-toml">[env]
 LINDERA_BUILD_DICTIONARY_CACHE_DIR = "/path/to/cache"
 </code></pre>
 <p><code>[env]</code> の値を変えると、変数を変えたときと同じく build script が再実行されます。シェルで設定した変数は <code>[env]</code> より優先されます。</p>
 <p>注意点：</p>
 <ul>
-<li>このディレクトリは自動管理されており、削除しても安全です（必要に応じて再ダウンロード・再ビルドされます）</li>
+<li>このディレクトリは自動管理されており、削除しても安全です。ビルド済みのクレートはリンクまたはコピーした辞書を持ち続け、辞書が必要な次のビルドが再ダウンロード・再ビルドします</li>
 <li>バージョンごとのサブディレクトリはアップグレードのたびに蓄積され、自動削除されません。古いものは自由に削除できます</li>
 <li>この変数を設定すると、<code>embed-*</code> feature が無効でも辞書クレートはダウンロードとビルドを実行します（キャッシュの事前準備に便利です）。このビルドは辞書を埋め込まないので、キャッシュにすでにある辞書は確かめずにそのまま残します。<code>embed-*</code> feature を有効にしたビルドが確かめ、必要なら作り直します</li>
-<li>ディレクトリを共有するのは、<code>lindera-dictionary</code> のコードが同じビルドどうしに限ってください。クレートはキャッシュディレクトリのファイルそのものを埋め込むので、辞書ビルダーのコードが異なる 2 つの checkout が共有すると、互いの辞書を作り直し合います。さらに、build script が再実行されなかったクレートは、もう一方の checkout が作った辞書を埋め込むことがあります（この条件をなくす作業は <a href="https://github.com/lindera/lindera/issues/1343">#1343</a>）：
-<ul>
-<li>1 つの checkout のターゲットディレクトリ（別の <code>--target-dir</code>、rust-analyzer や別のプロファイルのもの）は、いつでも共有できます</li>
-<li>worktree は、同じ <code>lindera-dictionary</code> でビルドする間は共有できます。辞書ビルダーを変える worktree には、別のディレクトリを使ってください。たとえば、その worktree のシェルで変数を設定すれば、<code>[env]</code> より優先されます</li>
-<li>このリポジトリでは相対パスがワークスペースのルートを基準に解決されるので、checkout ごとに別のキャッシュになります</li>
-</ul>
-</li>
+<li>相対パスはワークスペースのルートを基準に解決されるので、このリポジトリでは checkout ごとに別のキャッシュになります。共有するには絶対パスを設定してください</li>
+<li>ビルダーが異なる checkout や、入力が異なるビルド（<code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code> など）は、build script が実行されるたびに互いのキャッシュした辞書を置き換えます。そのたびにダウンロードやビルドがかかりますが、ビルド済みのクレートが埋め込んだ辞書は変わりません</li>
 <li>CI の実行をまたいでキャッシュを残す（たとえば <code>actions/cache</code> で）ときは、<code>lindera-dictionary</code> と辞書クレートに加えて <code>Cargo.lock</code> でも変わるキーにしてください。ビルダーが依存するクレートのバージョンは比較しないためです。このリポジトリの CI は、こうしたキーで辞書ごとに 1 つのエントリを残します（<code>.github/actions/dictionary-cache</code>）</li>
 <li>このディレクトリを共有するビルド（たとえば <code>cargo build</code> と、別のターゲットディレクトリを使う rust-analyzer）は、辞書を 1 つずつ書き込みます。同じ辞書を別のビルドが書き込んでいれば、それが終わるのを待ち、そのビルドが残した辞書を使います（<code>cargo build -vv</code> に <code>lindera dictionary cache: waiting for another build</code> と表示されます）。ロックは辞書の隣にある空の <code>&lt;辞書&gt;.lock</code> ファイルで、ビルドが辞書を書き込む間だけ保持します。ロックが効くのは 1 台のマシンの中のビルド同士で、ネットワークファイルシステムでは、そのファイルシステムがファイルロックに対応する範囲に限られます。ファイルをロックできないときは、ビルドは警告を出し、7.0.0 より前と同じくロックなしで続けるので、そうしたビルド同士は互いのファイルを消すことがあります</li>
 <li><code>DOCS_RS</code> を設定したビルドは、この変数を無視します（後述の <code>DOCS_RS</code> を参照）</li>

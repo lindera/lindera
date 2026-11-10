@@ -204,7 +204,7 @@
 </code></pre>
 <blockquote>
 <p>注意: CI では <code>--all-features</code> は使用されません。各クレートに対してキュレートされた個別の feature の組み合わせでテストを実行します（<code>.github/workflows/regression.yml</code> を参照）。Makefile のクレート別パターンターゲット（<code>make test-&lt;crate&gt;</code>、<code>make lint-&lt;crate&gt;</code>）は CI と同じ feature の組み合わせを適用するため、ローカルでの実行方法としては最も近い代替手段です。CI はさらに、<code>lindera-segmenter</code> と <code>lindera</code> をすべての辞書を埋め込んだ状態でもう一度テストし（Linux のみ）、ほかの辞書の feature でだけ有効になるテストも実行します。ローカルで同じことをするには、<code>cargo test -p lindera --features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba</code> を実行します（<code>lindera-segmenter</code> も同様）。</p>
-<p>注意: 辞書クレートは build script で辞書を作り、辞書ごとに数秒から数分かかります。CI は作った辞書を <code>actions/cache</code> で実行をまたいで残し、辞書ごとに 1 つのエントリにします（<code>.github/actions/dictionary-cache</code>）。そのため、<code>lindera-dictionary</code>・辞書クレート・<code>Cargo.lock</code> が変わらない実行では、辞書を作り直しません。ローカルでは <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を設定すると、ターゲットディレクトリや worktree をまたいで共有できます。条件は<a href="../getting_started/environment_variables.html#lindera_build_dictionary_cache_dir">環境変数</a>を参照してください。</p>
+<p>注意: 辞書クレートは build script で辞書を作り、辞書ごとに数秒から数分かかります。CI は作った辞書を <code>actions/cache</code> で実行をまたいで残し、辞書ごとに 1 つのエントリにします（<code>.github/actions/dictionary-cache</code>）。そのため、<code>lindera-dictionary</code>・辞書クレート・<code>Cargo.lock</code> が変わらない実行では、辞書を作り直しません。ローカルでは <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を設定すると、ターゲットディレクトリや worktree をまたいで共有できます。詳しくは<a href="../getting_started/environment_variables.html#lindera_build_dictionary_cache_dir">環境変数</a>を参照してください。</p>
 </blockquote>
 <h3 id="ワークスペース全体のテスト"><a class="header" href="#ワークスペース全体のテスト">ワークスペース全体のテスト</a></h3>
 <pre><code class="language-bash">cargo test
