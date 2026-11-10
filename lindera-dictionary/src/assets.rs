@@ -44,7 +44,11 @@ pub struct FetchParams {
     /// outside the matrix.
     pub dummy_input: &'static str,
 
-    /// URLs from which to fetch the asset
+    /// URLs from which to fetch the asset, tried in a random order.
+    ///
+    /// `LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL` replaces them with the one
+    /// URL `<base>/<file_name>` (#584), so a mirror serves the archive under
+    /// [`file_name`](Self::file_name).
     pub download_urls: &'static [&'static str],
 
     /// SHA-256 of the source archive, in hexadecimal digits of either case.
@@ -669,6 +673,26 @@ impl PrebuiltDictionary {
             self.path.trim_start_matches('/')
         )
     }
+
+    /// The pin with its `base_url` replaced by a mirror's, from
+    /// [`PUBLISHED_BASE_URL_ENV`] (#584).
+    ///
+    /// # Arguments
+    ///
+    /// * `base_url` - The mirror's base URL, if one is set.
+    ///
+    /// # Returns
+    ///
+    /// The pin, downloading from `base_url` when it is given.
+    fn with_base_url(self, base_url: Option<&str>) -> Self {
+        match base_url {
+            Some(base_url) => Self {
+                base_url: base_url.to_string(),
+                ..self
+            },
+            None => self,
+        }
+    }
 }
 
 /// Reads a dictionary crate's [`PREBUILT_FILE`].
@@ -724,6 +748,104 @@ fn from_source_requested(value: Option<OsString>) -> (bool, Option<String>) {
                  dictionary from source, or to 0 or false (or unset it) not to"
             )),
         ),
+    }
+}
+
+/// Environment variable that names a mirror of the published dictionaries:
+/// its URL replaces the `base_url` of a crate's [`PREBUILT_FILE`] (#584).
+const PUBLISHED_BASE_URL_ENV: &str = "LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL";
+
+/// Environment variable that names a mirror of the dictionary source
+/// archives: a build downloads [`FetchParams::file_name`] under its URL in
+/// place of [`FetchParams::download_urls`] (#584).
+const SOURCE_BASE_URL_ENV: &str = "LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL";
+
+/// Reads [`PUBLISHED_BASE_URL_ENV`] or [`SOURCE_BASE_URL_ENV`].
+///
+/// A mirror replaces the original host rather than adding to it, so a value
+/// that the build cannot use stops the build instead of sending it to the
+/// original host. The errors do not repeat the value, which may hold
+/// credentials.
+///
+/// # Arguments
+///
+/// * `name` - The variable's name, for the errors.
+/// * `value` - The variable's value, if set.
+///
+/// # Returns
+///
+/// The base URL without its trailing `/`; `None` when the variable is unset
+/// or blank; or an error when the value is not UTF-8 or not a URL, has a
+/// scheme other than `http` and `https`, or has a user name, a password, a
+/// query or a fragment. ureq sends the user information of a URL only to a
+/// proxy, so credentials there would not authenticate the download; and the
+/// build appends a path to the URL, which a query or a fragment would end.
+fn base_url_from(name: &str, value: Option<OsString>) -> LinderaResult<Option<String>> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    let invalid =
+        |reason: &str| LinderaErrorKind::Args.with_error(anyhow::anyhow!("{name} {reason}"));
+    let Some(text) = value.to_str() else {
+        return Err(invalid("is not valid UTF-8"));
+    };
+    let text = text.trim();
+    if text.is_empty() {
+        return Ok(None);
+    }
+    let uri: ureq::http::Uri = text
+        .parse()
+        .map_err(|err| invalid(&format!("is not a URL: {err}")))?;
+    let http = uri.scheme_str().is_some_and(|scheme| {
+        scheme.eq_ignore_ascii_case("http") || scheme.eq_ignore_ascii_case("https")
+    });
+    if !http {
+        return Err(invalid("must be an http or https URL"));
+    }
+    if uri
+        .authority()
+        .is_some_and(|authority| authority.as_str().contains('@'))
+    {
+        return Err(invalid(
+            "must not have a user name or a password, which the build does not send",
+        ));
+    }
+    if text.contains(['?', '#']) {
+        return Err(invalid(
+            "must not have a query or a fragment, since the build appends a path to it",
+        ));
+    }
+    Ok(Some(text.trim_end_matches('/').to_string()))
+}
+
+/// `params` with its download URLs replaced by a mirror's, from
+/// [`SOURCE_BASE_URL_ENV`] (#584).
+///
+/// The mirror replaces the URLs rather than adding to them: the download
+/// tries its URLs in a random order ([`download_with_retry`]), and would
+/// reach the original host. `FetchParams` holds `'static` strings so that a
+/// dictionary crate can write it as a literal, so the new URL is leaked; a
+/// build script makes one.
+///
+/// # Arguments
+///
+/// * `params` - The crate's parameters.
+/// * `base_url` - The mirror's base URL, without a trailing `/`, if one is
+///   set.
+///
+/// # Returns
+///
+/// `params`, downloading only `<base_url>/<file_name>` when `base_url` is
+/// given.
+fn with_source_base_url(params: FetchParams, base_url: Option<&str>) -> FetchParams {
+    let Some(base_url) = base_url else {
+        return params;
+    };
+    let url: &'static str = Box::leak(format!("{base_url}/{}", params.file_name).into_boxed_str());
+    let download_urls: &'static [&'static str] = Box::leak(Box::new([url]));
+    FetchParams {
+        download_urls,
+        ..params
     }
 }
 
@@ -1376,6 +1498,12 @@ fn metadata_matches_source(cached: &Metadata, source: &Metadata) -> bool {
 /// the old ranking. Both variable names are watched, so that setting or
 /// changing either reruns it.
 ///
+/// The mirrors, [`PUBLISHED_BASE_URL_ENV`] and [`SOURCE_BASE_URL_ENV`], are
+/// not watched (#584): the crate pins the SHA-256 of what it downloads, so
+/// the dictionary is the same from any host, and another mirror need not
+/// download it again. A build script that failed, as when the original host
+/// was unreachable, runs again on the next build anyway.
+///
 /// # Arguments
 ///
 /// * `ships_context_id_freq` - Whether the crate has a `context_id_freq.txt`.
@@ -1444,6 +1572,15 @@ fn rerun_directives(
 /// not set, until v8.0.0, with a `cargo:warning` that cargo shows only for a
 /// path dependency.
 ///
+/// `LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` and
+/// `LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL` name mirrors that replace the
+/// hosts of the published dictionary and of the source archive (#584): the
+/// build downloads `<base>/<path>` in place of the URL in the crate's
+/// `prebuilt.json`, and `<base>/<file_name>` in place of
+/// `params.download_urls`, and never the original. What it downloads is
+/// checked against the same SHA-256. A value that is not an `http` or
+/// `https` URL, or that has credentials, a query or a fragment, is an error.
+///
 /// # Arguments
 ///
 /// * `params` - Describes the asset to fetch (archive name, mirrors, SHA-256)
@@ -1495,7 +1632,17 @@ fn fetch_for(
     if let Some(warning) = from_source_warning {
         println!("cargo:warning={warning}");
     }
-    let prebuilt = read_prebuilt(Path::new(PREBUILT_FILE))?;
+    // The mirrors replace the crate's own URLs here, so that nothing below
+    // can reach the original hosts (#584).
+    let published_base_url = base_url_from(
+        PUBLISHED_BASE_URL_ENV,
+        std::env::var_os(PUBLISHED_BASE_URL_ENV),
+    )?;
+    let source_base_url =
+        base_url_from(SOURCE_BASE_URL_ENV, std::env::var_os(SOURCE_BASE_URL_ENV))?;
+    let prebuilt = read_prebuilt(Path::new(PREBUILT_FILE))?
+        .map(|prebuilt| prebuilt.with_base_url(published_base_url.as_deref()));
+    let params = with_source_base_url(params, source_base_url.as_deref());
     let source = choose_dictionary_source(
         is_docs_rs_build(),
         from_source,
@@ -2193,7 +2340,9 @@ const CONTEXT_ID_FREQ_FILE: &str = "context_id_freq.txt";
 ///
 /// Reads `metadata.json` from the crate root, fetches and builds the
 /// dictionary described by `params`, and embeds the result under
-/// `LINDERA_WORK_DIR`.
+/// `LINDERA_WORK_DIR`. The environment variables that [`fetch`] reads apply,
+/// among them `LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` and
+/// `LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL`, which download from mirrors.
 ///
 /// When the crate's embed feature is disabled (`embed_enabled == false`) and
 /// no cache override is set via `LINDERA_BUILD_DICTIONARY_CACHE_DIR`, this is
@@ -2375,8 +2524,8 @@ mod tests {
 
     use super::*;
     use crate::dictionary::context_id_map::ContextIdMap;
-    use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn test_create_dummy_dictionary_source_without_subdir() {
@@ -3467,10 +3616,33 @@ mod tests {
     ///
     /// The server's base URL and the number of requests it has answered.
     fn serve(status: u16, body: Vec<u8>) -> (String, Arc<AtomicUsize>) {
+        let (base, requests, _) = serve_and_record(status, body);
+        (base, requests)
+    }
+
+    /// [`serve`], recording the target of each request, such as
+    /// `/a/b.tar.gz`, in the order of the requests.
+    fn serve_recording(status: u16, body: Vec<u8>) -> (String, Arc<Mutex<Vec<String>>>) {
+        let (base, _, targets) = serve_and_record(status, body);
+        (base, targets)
+    }
+
+    /// The server of [`serve`] and [`serve_recording`].
+    ///
+    /// # Returns
+    ///
+    /// The server's base URL, the number of requests it has answered, and
+    /// their targets.
+    fn serve_and_record(
+        status: u16,
+        body: Vec<u8>,
+    ) -> (String, Arc<AtomicUsize>, Arc<Mutex<Vec<String>>>) {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let address = listener.local_addr().unwrap();
         let requests = Arc::new(AtomicUsize::new(0));
         let answered = Arc::clone(&requests);
+        let targets = Arc::new(Mutex::new(Vec::new()));
+        let recorded = Arc::clone(&targets);
         std::thread::spawn(move || {
             for stream in listener.incoming() {
                 let Ok(mut stream) = stream else { continue };
@@ -3483,6 +3655,13 @@ mod tests {
                         _ => break,
                     }
                 }
+                // The request line is `GET <target> HTTP/1.1`.
+                let target = String::from_utf8_lossy(&head)
+                    .split_whitespace()
+                    .nth(1)
+                    .unwrap_or_default()
+                    .to_string();
+                recorded.lock().unwrap().push(target);
                 answered.fetch_add(1, Ordering::SeqCst);
                 let _ = write!(
                     stream,
@@ -3492,7 +3671,7 @@ mod tests {
                 let _ = stream.write_all(&body);
             }
         });
-        (format!("http://{address}"), requests)
+        (format!("http://{address}"), requests, targets)
     }
 
     /// Builds the dummy dictionary from source and packs `files` of it as a
@@ -3928,5 +4107,208 @@ mod tests {
             dictionary_bytes(&out.path().join(SEEDED_OUTPUT_DIR)),
             dictionary_bytes(&cache.path().join(SEEDED_OUTPUT_DIR))
         );
+    }
+
+    // The mirrors (#584).
+
+    /// [`base_url_from`] for a variable named `MIRROR`, with the error as
+    /// its text.
+    fn read_mirror(value: Option<OsString>) -> Result<Option<String>, String> {
+        base_url_from("MIRROR", value).map_err(|err| err.to_string())
+    }
+
+    #[test]
+    fn base_urls_are_read_from_the_variables() {
+        let mut wrong = Vec::new();
+        for (value, expected) in [
+            (None, None),
+            (Some(""), None),
+            (Some(" \t"), None),
+            (
+                Some("https://mirror.example/lindera"),
+                Some("https://mirror.example/lindera"),
+            ),
+            (
+                Some("https://mirror.example/lindera/"),
+                Some("https://mirror.example/lindera"),
+            ),
+            (
+                Some(" http://127.0.0.1:8080/a// "),
+                Some("http://127.0.0.1:8080/a"),
+            ),
+        ] {
+            let actual = read_mirror(value.map(OsString::from));
+            if actual != Ok(expected.map(str::to_string)) {
+                wrong.push(format!("{value:?}: {actual:?}"));
+            }
+        }
+        assert!(wrong.is_empty(), "{wrong:#?}");
+    }
+
+    #[test]
+    fn a_base_url_that_the_build_cannot_use_is_an_error() {
+        let mut wrong = Vec::new();
+        for (value, reason) in [
+            ("mirror.example", "must be an http or https URL"),
+            (
+                "ftp://mirror.example/lindera",
+                "must be an http or https URL",
+            ),
+            (
+                "https://user:secret@mirror.example/lindera",
+                "must not have a user name or a password",
+            ),
+            (
+                "https://mirror.example/lindera?token=secret",
+                "must not have a query or a fragment",
+            ),
+            (
+                "https://mirror.example/lindera#secret",
+                "must not have a query or a fragment",
+            ),
+            ("https://mirror example/lindera", "is not a URL"),
+        ] {
+            match read_mirror(Some(value.into())) {
+                Ok(url) => wrong.push(format!("{value}: accepted as {url:?}")),
+                // The error names the variable and does not repeat the value.
+                Err(error) if !error.contains(&format!("MIRROR {reason}")) => {
+                    wrong.push(format!("{value}: {error}"))
+                }
+                Err(error) if error.contains("secret") || error.contains("mirror.example") => {
+                    wrong.push(format!("{value}: repeats the value: {error}"))
+                }
+                Err(_) => {}
+            }
+        }
+        assert!(wrong.is_empty(), "{wrong:#?}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_base_url_that_is_not_utf8_is_an_error() {
+        use std::os::unix::ffi::OsStringExt;
+
+        let value = OsString::from_vec(b"https://mirror.example/\xff".to_vec());
+        let error = read_mirror(Some(value)).unwrap_err();
+        assert!(error.contains("MIRROR is not valid UTF-8"), "{error}");
+    }
+
+    #[test]
+    fn a_published_base_url_replaces_the_pinned_one() {
+        let pinned = pin(DICTIONARY_FORMAT_VERSION, Some(SHA256_OF_ABC));
+        assert_eq!(pinned.clone().with_base_url(None), pinned);
+        let mirrored = pinned.with_base_url(Some("http://mirror.example/github"));
+        assert_eq!(
+            choose_dictionary_source(false, false, false, Some(&mirrored), "test"),
+            DictionarySource::Published {
+                key: PUBLISHED_KEY.to_string(),
+                url: "http://mirror.example/github/dictionary-test-1.0-fmt3-r1/\
+                      test-1.0-fmt3-r1.tar.gz"
+                    .to_string(),
+                sha256: SHA256_OF_ABC.to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn a_source_base_url_replaces_the_download_urls() {
+        let params = || FetchParams {
+            download_urls: &["https://lindera.dev/mecab-test.tar.gz"],
+            ..seeded_params("unused")
+        };
+        assert_eq!(
+            with_source_base_url(params(), None).download_urls,
+            ["https://lindera.dev/mecab-test.tar.gz"]
+        );
+        // The mirror's URL alone, not added to the crate's.
+        assert_eq!(
+            with_source_base_url(params(), Some("http://mirror.example/lindera")).download_urls,
+            ["http://mirror.example/lindera/mecab-test.tar.gz"]
+        );
+    }
+
+    #[test]
+    fn a_published_dictionary_is_downloaded_from_the_mirror_alone() {
+        let (archive, _built) = published_archive(&DICTIONARY_FILES);
+        let sha256 = sha256_hex(&archive);
+        let (original, original_requests) = serve(404, Vec::new());
+        let (mirror, mirror_targets) = serve_recording(200, archive);
+        let pinned = PrebuiltDictionary {
+            base_url: original,
+            ..pin(DICTIONARY_FORMAT_VERSION, Some(sha256.as_str()))
+        };
+        let mirrored = pinned.with_base_url(Some(&format!("{mirror}/github")));
+        let source = choose_dictionary_source(false, false, false, Some(&mirrored), "test");
+        let cache = tempfile::tempdir().unwrap();
+        fetch_into(
+            cache.path(),
+            true,
+            &source,
+            &seeded_params("unused"),
+            &DictionaryBuilder::new(source_metadata()),
+            CachePurpose::Embed,
+            None,
+        )
+        .expect("the published dictionary comes from the mirror");
+
+        assert_eq!(
+            *mirror_targets.lock().unwrap(),
+            ["/github/dictionary-test-1.0-fmt3-r1/test-1.0-fmt3-r1.tar.gz"]
+        );
+        assert_eq!(original_requests.load(Ordering::SeqCst), 0);
+        crate::dictionary::Dictionary::load_from_path(&cache.path().join(SEEDED_OUTPUT_DIR))
+            .unwrap();
+    }
+
+    #[test]
+    fn a_source_archive_is_downloaded_from_the_mirror_alone() {
+        let archives = tempfile::tempdir().unwrap();
+        let pinned = write_source_archive(archives.path(), SEEDED_ARCHIVE, SEEDED_LEXICON);
+        let (original, original_requests) = serve(404, Vec::new());
+        let (mirror, mirror_targets) =
+            serve_recording(200, fs::read(archives.path().join(SEEDED_ARCHIVE)).unwrap());
+        let params = with_source_base_url(
+            params_downloading_from(pinned, format!("{original}/{SEEDED_ARCHIVE}")),
+            Some(&format!("{mirror}/lindera")),
+        );
+        let cache = tempfile::tempdir().unwrap();
+        build_with(cache.path(), &params, None).expect("the source archive comes from the mirror");
+
+        assert_eq!(
+            *mirror_targets.lock().unwrap(),
+            [format!("/lindera/{SEEDED_ARCHIVE}")]
+        );
+        assert_eq!(original_requests.load(Ordering::SeqCst), 0);
+        assert_eq!(
+            file_sha256(&cache.path().join(SEEDED_ARCHIVE)).unwrap(),
+            pinned
+        );
+    }
+
+    #[test]
+    fn a_mirror_that_serves_another_archive_stops_the_build() {
+        // The original host serves the pinned archive, so a build that went
+        // to it after the mirror's archive failed the check would succeed.
+        let archives = tempfile::tempdir().unwrap();
+        let pinned = write_source_archive(archives.path(), SEEDED_ARCHIVE, SEEDED_LEXICON);
+        add_other_archive(archives.path());
+        let (original, original_requests) =
+            serve(200, fs::read(archives.path().join(SEEDED_ARCHIVE)).unwrap());
+        let (mirror, mirror_targets) =
+            serve_recording(200, fs::read(archives.path().join(OTHER_ARCHIVE)).unwrap());
+        let params = with_source_base_url(
+            params_downloading_from(pinned, format!("{original}/{SEEDED_ARCHIVE}")),
+            Some(&format!("{mirror}/lindera")),
+        );
+        let cache = tempfile::tempdir().unwrap();
+
+        let failure = failure(build_with(cache.path(), &params, None));
+        assert!(
+            failure.contains(&format!("SHA-256 mismatch: expected {pinned}")),
+            "{failure}"
+        );
+        assert_eq!(mirror_targets.lock().unwrap().len(), MAX_ROUND);
+        assert_eq!(original_requests.load(Ordering::SeqCst), 0);
+        assert!(!cache.path().join(SEEDED_OUTPUT_DIR).exists());
     }
 }

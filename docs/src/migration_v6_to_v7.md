@@ -85,7 +85,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`lindera build` rejects context IDs outside `matrix.def`** | Anyone who builds a system dictionary whose `lex.csv` or `unk.def` has a context ID beyond the size of its `matrix.def` (such a dictionary built and then panicked at tokenization); not dictionaries that MeCab's `mecab-dict-index` accepts. Also anyone whose user dictionary has such a context ID for the system dictionary it is used with: building the tokenizer now reports it, where tokenization used to panic | Fix the IDs or the matrix, or set `skip_invalid_cost_or_id` in `metadata.json` to drop such `lex.csv` rows; fix such IDs in the user dictionary |
 | **`lindera build` and `lindera train` check `char.def` against `unk.def`** | Anyone whose `char.def` has a range line that names a category not defined on an earlier line, or a category defined twice, or whose `char.def` and `unk.def` do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored `unk.def` lines); not dictionaries that MeCab's `mecab-dict-index` accepts | Define each category once, before the range lines that name it; give every category an `unk.def` line, and remove the `unk.def` lines of undefined categories |
 | **`lindera build` gives a cell missing from `matrix.def` the cost 0, as MeCab does** | Anyone who builds a system dictionary from a `matrix.def` that leaves cells out; not the bundled dictionaries or a `matrix.def` that `lindera export` writes, which list every cell | Expect such a cell to cost 0 instead of 32767; to keep a connection expensive, list its cell with a cost |
-| **`embed-*` builds download the published dictionary instead of building it from source** | Anyone who builds with an `embed-*` feature, most visibly where the build may reach `lindera.dev` but not `github.com` | Allow `github.com` and `release-assets.githubusercontent.com`, or set `LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1` to build from source as before |
+| **`embed-*` builds download the published dictionary instead of building it from source** | Anyone who builds with an `embed-*` feature, most visibly where the build may reach `lindera.dev` but not `github.com` | Allow `github.com` and `release-assets.githubusercontent.com`, point `LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` at a mirror of the releases, or set `LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1` to build from source as before |
 | **The CLI writes library warnings to standard error** | CLI users who read standard error, for example scripts that treat any output there as a failure; most visibly input with more than 32 KiB without a sentence delimiter, and `lindera build` of ko-dic or UniDic without `--context-id-freq` | Expect `[WARN …]` lines on standard error; set `RUST_LOG=error` to hide them. Standard output does not change |
 | The commands end quietly, with exit code 0, when their standard output has no reader, and go on without their messages when their standard error has none | Scripts that pipe the standard output or the standard error of `lindera` into a program that may exit first, such as `head`, and check the exit code | Expect exit code 0 where `lindera tokenize` ended with 1 and the other commands panicked with 101; `lindera train` and `lindera export` now write the model or the files, and `lindera download` its path |
 | **The `normalize_details` setting is removed: `Metadata::new` and `CoreMetadata::new` take 10 arguments, Ruby's `Metadata.new` takes 8** | Code that creates or reads dictionary metadata: Rust (`Metadata`, `lindera_binding::CoreMetadata`, `PrefixDictionaryBuilderOptions`) and the `Metadata` classes of the Python, Ruby, PHP and Node.js bindings | Remove the argument, option or property; a `metadata.json` that still has the key loads, and the key is ignored |
@@ -2211,12 +2211,20 @@ are the ones a build from source makes, except the `lindera_version` in
 The build downloads from `github.com`, which serves the file from
 `release-assets.githubusercontent.com`, instead of `lindera.dev`. A build
 whose network allows only `lindera.dev` fails to download it; allow the two
-hosts, or set `LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1` to build the
+hosts, set `LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` to a mirror of the
+releases, or set `LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1` to build the
 dictionary from source as before. A failed download or check stops the build
 with an error, rather than building from source. The build script still
 builds from source, with a warning, when `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`
 is set. See
 [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](getting_started/environment_variables.md#lindera_build_dictionary_from_source).
+
+A build that must reach neither host can download both the published
+dictionaries and the source archives from mirrors, with
+`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` and
+`LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL`
+([#584](https://github.com/lindera/lindera/issues/584)). See
+[`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](getting_started/environment_variables.md#lindera_build_dictionary_published_base_url).
 
 The `embed-*` features embed only the bundled dictionaries. A dictionary of
 your own is built with `lindera build` and loaded from its directory at

@@ -6,6 +6,8 @@ Lindera reads the environment variables below; none of them is required.
 | --- | --- | --- | --- |
 | [`LINDERA_BUILD_DICTIONARY_CACHE_DIR`](#lindera_build_dictionary_cache_dir) | The build scripts of the dictionary crates | A directory | Each build downloads and builds the dictionary in its own output directory |
 | [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source) | The build scripts of the dictionary crates | `1` or `true` | A dictionary crate downloads the published dictionary it pins, and builds from source only when it cannot use it |
+| [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url) | The build scripts of the dictionary crates | An `http` or `https` URL | The published dictionaries are downloaded from GitHub releases |
+| [`LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL`](#lindera_build_dictionary_source_base_url) | The build scripts of the dictionary crates | An `http` or `https` URL | The source archives are downloaded from `https://lindera.dev` |
 | [`LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`](#lindera_build_context_id_freq_file) | The build scripts of the dictionary crates | A file | The histogram bundled with the dictionary crate, if any |
 | [`DOCS_RS`](#docs_rs) | The build scripts of the dictionary crates | Set by docs.rs | The real dictionaries are built |
 | [`LINDERA_CONFIG_FILE`](#lindera_config_file) | `TokenizerBuilder::new()`, and so `lindera tokenize` and the bindings | A file | An empty configuration |
@@ -101,6 +103,41 @@ Cargo shows these warnings for a dictionary crate built from a path, such as a c
 ```shell
 LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1 cargo build --features=embed-ipadic
 ```
+
+### LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL
+
+`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` and [`LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL`](#lindera_build_dictionary_source_base_url) point the downloads of the build scripts at mirrors, for builds that must not reach the hosts Lindera publishes on, such as builds that go through a proxy repository like Artifactory. Each variable replaces one host:
+
+| Variable | Replaces | The build downloads |
+| --- | --- | --- |
+| `LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` | `https://github.com/lindera/lindera/releases/download`, the `base_url` in the crate's `prebuilt.json` | `<base>/<path>`, with the `path` in `prebuilt.json` |
+| `LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL` | `https://lindera.dev`, where the crate's `build.rs` downloads the source archive from | `<base>/<file_name>`, with the archive's file name |
+
+For IPADIC, with the variables set to `https://mirror.example/lindera-releases` and `https://mirror.example/lindera-dev`, the build downloads one of these:
+
+```text
+https://mirror.example/lindera-releases/dictionary-ipadic-2.7.0-20250920-fmt3-r1/ipadic-2.7.0-20250920-fmt3-r1.tar.gz
+https://mirror.example/lindera-dev/mecab-ipadic-2.7.0-20250920.tar.gz
+```
+
+A mirror thus keeps the files at the paths they have on the original host: an Artifactory remote repository that proxies `https://github.com/lindera/lindera/releases/download` serves the published dictionaries, and one that proxies `https://lindera.dev` serves the source archives. A build downloads the published dictionary by default and the source archive only when it builds from source (see [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source)), which can also happen without `LINDERA_BUILD_DICTIONARY_FROM_SOURCE`; a build that must not reach the original hosts sets both variables.
+
+```shell
+export LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL=https://mirror.example/lindera-releases
+export LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL=https://mirror.example/lindera-dev
+cargo build --features=embed-ipadic
+```
+
+- The mirror replaces the host: the build downloads from the mirror alone, and never from the original host, even when the mirror fails.
+- The build checks what it downloads against the SHA-256 that the dictionary crate pins, as it does for the original host, and a mirror that serves another file stops the build.
+- The value is an `http` or `https` URL; a trailing `/` is ignored. The build sends no credentials, so the mirror has to serve the files without authentication. A URL with a user name or a password is an error, as is one with a query or a fragment, which the build could not append the path to. An empty value means no mirror.
+- The cache of `LINDERA_BUILD_DICTIONARY_CACHE_DIR` keeps a dictionary and a source archive by their SHA-256, not by the host they came from, so a build with a mirror uses what a build without one cached, and the other way round.
+- Changing either variable does not rerun the build script, since the dictionary is the same from any host. A build script that failed, for example because it could not reach the original host, runs again on the next build.
+- Only the build scripts read the variables. `lindera download` downloads its dictionaries from GitHub at run time.
+
+### LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL
+
+The mirror of the dictionary source archives, which the build downloads as `<base>/<file_name>` in place of `https://lindera.dev/<file_name>`. See [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url), which describes both variables.
 
 ### LINDERA_BUILD_CONTEXT_ID_FREQ_FILE
 
