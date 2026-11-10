@@ -72,6 +72,7 @@ A trait for filters that post-process the tokens produced by the segmenter. Each
 - `set_keep_whitespace(&mut self, keep: bool)` — sets whether whitespace tokens are kept in the output for subsequent calls; kept whitespace also stays in the lattice, so the other tokens can differ.
 - `set_skip_whitespace(&mut self, skip: bool)` — sets whether whitespace is skipped in the lattice for subsequent calls when whitespace tokens are not kept (by default the dictionary's setting).
 - `set_max_grouping_len(&mut self, max_grouping_len: Option<usize>)`, `set_unknown_word_ladder(&mut self, unknown_word_ladder: bool)` — set the unknown-word grouping cap and the length ladder for subsequent calls.
+- `set_break_characters(&mut self, chars: &str)` — sets the break characters for subsequent calls (`・` by default; an empty string gives MeCab's segmentation).
 - `set_space_penalty(&mut self, space_penalty: Option<SpacePenaltyConfig>)`, `set_space_penalty_from_dictionary(&mut self)` — set the left-space penalty rules for subsequent calls, or restore the dictionary's.
 - `shrink_to(&mut self, text_len_hint: usize)` — immediately shrinks the worker's internal buffers to what an input of `text_len_hint` bytes needs.
 - `reset(&mut self)` — discards all internal buffers, replacing them with fresh ones; intended for recovery paths (e.g. after a panic poisoned a mutex holding the worker), with configuration (dictionary, filters, mode) preserved.

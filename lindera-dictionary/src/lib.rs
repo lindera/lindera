@@ -1,5 +1,6 @@
 #[cfg(feature = "build_rs")]
 pub mod assets;
+pub mod break_characters;
 pub mod builder;
 pub mod dictionary;
 pub mod error;

@@ -252,6 +252,8 @@ class TokenizerBuilder
 
     public function fromFile(string $file_path): void {}
 
+    public function setBreakCharacters(mixed $break_characters): void {}
+
     public function setDictionary(string $path): void {}
 
     public function setKeepWhitespace(bool $keep_whitespace): void {}

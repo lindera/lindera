@@ -65,6 +65,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **The context is carried across `、` and `。` within a line, as in MeCab** | Anyone who segments Japanese text with `、` or `。` inside a line | Expect some words after `、` or `。` to be read differently, mostly as MeCab reads them, and the N-best costs of such lines to change; no setting restores the v6 behavior |
 | **N-best: every result covers the whole input** | Anyone who asks for N-best results (`segment_nbest`, `tokenize_nbest`, `lindera tokenize -N`, the bindings' N-best methods) for input with more than one sentence | Expect the cheapest segmentations of the whole input from the second result on, and one result without tokens for an empty input; a cost threshold now applies to the whole input |
 | **Unknown words start at every position, as in MeCab** | Anyone who segments text with runs of katakana, symbols or Latin letters in normal mode, most visibly katakana joined by `・` and Korean sentence-final punctuation such as `."` | Expect such runs to be split where MeCab splits them, and katakana- and Latin-heavy text to take about 13% more instructions; no setting restores the v6 behavior |
+| **Middle dots break unknown words by default** | Anyone who segments Japanese text with katakana joined by `・`, most visibly unknown names such as `レノン・ジョン`, and users of decompose mode with dictionaries that have many words with `・` (IPADIC-NEologd, SudachiDict) | Expect `・` to split such runs, and such words in decompose mode; set `break_characters: ""` (`--disable-break-characters`) for MeCab's segmentation |
 | **Unknown words come from each character's default category and group the characters that share a category, as in MeCab** | Anyone who segments text where a character with several categories meets other characters; in the bundled dictionaries, a hanja numeral followed by hanja with ko-dic, and `〇` (U+3007) with ko-dic; Rust code that relies on the order of `CharacterDefinition::lookup_categories` | Expect such text to be segmented as MeCab segments it (ko-dic `三國史記` is one `SH` word, `〇〇〇` one `SY` word); no setting restores the v6 behavior |
 | **CC-CEDICT: unknown words cost 400, and the entries made only of Latin letters or only of digits 399** | Anyone who segments text with CC-CEDICT, most visibly entries that mix Latin letters or digits with Chinese characters, such as `T恤`; anyone who reads its N-best costs | Expect such entries to be one word, `〇` and entries such as `PK` to come with their pinyin and definition, Latin words, kana and numbers to stay one word as in v6, and the costs of paths to change; build a CC-CEDICT dictionary directory from the `CC-CEDICT-MeCab-0.1.0-20261021` archive |
 | **Jieba: `〇` is a numeral entry** | Anyone who segments text with `〇` (U+3007) with Jieba | Expect each `〇` to be one numeral word (`m`, pinyin `ling2`) instead of part of an unknown word, as MeCab segments it with the same dictionary; build a Jieba dictionary directory from the `mecab-jieba-0.1.3` archive |
@@ -942,9 +943,11 @@ change.
   range of their `char.def`. After a dictionary word and `・`, an unknown
   katakana word could not start, so `ジョン・レノン` became one unknown word.
   Now the unknown word starts after them, as in MeCab. A run that starts
-  with an unknown word, such as `レノン・ジョン`, stays one unknown word, in
-  MeCab too. In the same way, a dictionary symbol is no longer merged into
-  the unknown symbols after it.
+  with an unknown word, such as `レノン・ジョン`, stays one unknown word in
+  MeCab; v7.0.0 splits it too, as `・` is a break character by default (see
+  [Middle dots break unknown words by default](#middle-dots-break-unknown-words-by-default)).
+  In the same way, a dictionary symbol is no longer merged into the unknown
+  symbols after it.
 - **Korean**: a sentence-final `."`, `?"`, `!"` or `.'` was one symbol
   (`SY`). Now `.`, `?` and `!` are sentence-final punctuation (`SF`), as in
   MeCab, and the ending before them can change with it, as in `"좋아."`.
@@ -989,6 +992,52 @@ and from 18 to 127 MiB with UniDic.
 There is no setting to restore the v6 behavior. `unknown_word_ladder(false)`
 (`--disable-unknown-word-ladder`) still turns off the shorter unknown-word
 candidates, but no longer reproduces the output of Lindera before v6.
+
+## Middle dots break unknown words by default
+
+The bundled dictionaries put `・` (U+30FB) in the katakana category of their
+`char.def`, so a run of katakana joined by `・` is one unknown word when its
+first word is not in the dictionary, as in MeCab, while a dictionary word
+before `・` ends there (see
+[Unknown words start at every position, as in MeCab](#unknown-words-start-at-every-position-as-in-mecab)).
+Whether text was split at `・` thus depended on whether its first word was in
+the dictionary. v7.0.0 makes `・` a break character by default
+([#1353](https://github.com/lindera/lindera/issues/1353)): no unknown word
+crosses a boundary between a break character and another character, in every
+mode, and in decompose mode no system-dictionary word does either.
+
+| Input (IPADIC) | MeCab, and v7 with no break characters | v7 |
+| --- | --- | --- |
+| `レノン・ジョン` | `レノン・ジョン`, one unknown word | `レノン`, `・` and `ジョン` |
+| `ザ・サイレント・フォレスト` | `ザ・サイレント・フォレスト`, one unknown word | `ザ`, `・`, `サイレント`, `・` and `フォレスト` |
+| `リベラル・アーツ・カレッジ` | `リベラル`, `・` and `アーツ・カレッジ` | `リベラル`, `・`, `アーツ`, `・` and `カレッジ` |
+| `インフォームド・コンセント`, in decompose mode | One dictionary word | `インフォームド`, `・` and `コンセント` |
+
+- In decompose mode, a system-dictionary word with a boundary inside it does
+  not enter the lattice, and comes out as its parts, without its own part of
+  speech and reading: IPADIC has 658 such entries, IPADIC-NEologd 302,023,
+  SudachiDict 175,744 and UniDic 1,094, mostly emoticons such as
+  `Φ（・∀・＊）`. Normal mode keeps them, and every mode keeps
+  user-dictionary words and words made of `・` only.
+- `･` (U+FF65) is not a break character by default: every bundled
+  dictionary puts it in the symbol category, so no unknown word runs through
+  it.
+- For MeCab's segmentation, set no break characters: `break_characters: ""`
+  under `segmenter` in the configuration, `--disable-break-characters` for
+  `lindera tokenize`, `Segmenter::break_characters("")`, or
+  `set_break_characters("")` (`setBreakCharacters("")`) in the bindings. A
+  string sets other break characters.
+- `lindera train` and `Trainer` create the unknown-word candidates with the
+  same rule, `・` by default; train with the break characters the dictionary
+  will be used with (`--break-characters`, `--disable-break-characters`,
+  `Trainer::break_characters`).
+- `Lattice::unknown_word_candidates` takes the break characters as a new
+  argument, before `out`: pass `None` for the candidates of before.
+  `LatticeOptions` has a new field, `break_characters`, `None` by default, so
+  the lattice itself keeps MeCab's segmentation unless told otherwise.
+- Segmenting takes up to about 1.3% more instructions (0.5% on *Botchan*
+  and 1.0% on UD Japanese GSD with IPADIC, measured on macOS), and less in
+  decompose mode on long runs of katakana joined by `・`.
 
 ## Unknown words come from the default category, as in MeCab
 
@@ -2803,6 +2852,11 @@ letters:
   No setting restores the v6 output, and
   `unknown_word_ladder(false)` no longer gives the output of Lindera before
   v6.
+- Expect katakana joined by `・` to be split at `・` even where MeCab keeps
+  the run whole, as `・` is a break character by default, and decompose mode
+  to split the dictionary words with `・` inside; `break_characters: ""`
+  gives MeCab's segmentation (see
+  [Middle dots break unknown words by default](#middle-dots-break-unknown-words-by-default)).
 - Expect katakana- and Latin-heavy text to take about 13% more
   instructions, and very long katakana runs in N-best to take much more
   time and memory.

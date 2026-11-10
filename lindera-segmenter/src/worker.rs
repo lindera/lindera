@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use lindera_dictionary::break_characters::BreakCharacters;
 use lindera_dictionary::mode::Mode;
 use lindera_dictionary::space_penalty::SpacePenaltyConfig;
 use lindera_dictionary::viterbi::Lattice;
@@ -244,6 +245,16 @@ impl SegmentWorker {
     /// * `unknown_word_ladder` - Whether to emit the length ladder.
     pub fn set_unknown_word_ladder(&mut self, unknown_word_ladder: bool) {
         self.segmenter.unknown_word_ladder = unknown_word_ladder;
+    }
+
+    /// Sets the break characters for subsequent calls (see
+    /// `Segmenter::break_characters`; defaults to `・`).
+    ///
+    /// # Arguments
+    ///
+    /// * `chars` - The break characters; an empty string turns the rule off.
+    pub fn set_break_characters(&mut self, chars: &str) {
+        self.segmenter.break_characters = BreakCharacters::new(chars);
     }
 
     /// Sets the left-space penalty rules for subsequent calls (see

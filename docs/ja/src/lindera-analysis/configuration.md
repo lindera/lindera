@@ -13,6 +13,7 @@ segmenter:
   # use_mmap: false # ファイルシステム辞書（embedded:// ではない辞書）にのみ意味がある
   # max_grouping_len: 24 # 未知語のグルーピング長の上限。省略または 0 で無制限
   # unknown_word_ladder: true # 短い未知語候補も生成する（デフォルト: true）
+  # break_characters: "・" # この文字の境目を、未知語と、decompose モードではシステム辞書の語もまたがない（デフォルト: "・"）。"" で MeCab と同じ分割
   # space_penalty: false # 左側空白ペナルティ（韓国語）。ルールを同梱する辞書（ko-dic）ではデフォルトでオン。false でオフ、オブジェクトで明示的なルールを指定
 
 character_filters:
@@ -87,6 +88,7 @@ token_filters:
 | `use_mmap` | bool | `mmap` feature が有効なとき on（デフォルト） | 辞書をメモリマップする。ファイルシステム辞書（`embedded://` ではない辞書）にのみ意味がある |
 | `max_grouping_len` | integer | *(無制限)* | 未知語グルーピングの上限（**先頭の 1 文字を超えた**文字数）。MeCab の `max-grouping-size` に相当する（MeCab のデフォルトは 24）。上限は各位置で判定され、上限を超えるランはその位置ではグルーピングされず、1 文字候補（および候補ラダーと辞書語）が残る。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になる。キーを省略するか `0` を指定すると無制限になる |
 | `unknown_word_ladder` | bool | `true` | MeCab や Vibrato と同様に、文字の既定の文字種の `char.def` の `LENGTH` フィールドまでの短い未知語候補も生成する。`false` を指定すると v6 より前と同じくこれらの候補を作らない。ただし、グルーピングした未知語の内側から始まる未知語など、その後の変更による出力の違いは残る。[Segmenter](../lindera/segmenter.md#未知語のグルーピング) を参照 |
+| `break_characters` | string | `"・"` | 区切り文字（文字列の各文字）。どのモードでも未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたがない（ユーザー辞書の語と、区切り文字だけからなる語は残る）。空の文字列で MeCab と同じ分割になり、`ジョン・レノン` は区切っても `レノン・ジョン` は 1 語のまま。[区切り文字](../lindera/segmenter.md#区切り文字)を参照 |
 | `space_penalty` | bool または object | *(辞書同梱のルール、あれば)* | 左側空白ペナルティ（mecab-ko の `left-space-penalty-factor`）。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する。省略または `null` で辞書が `metadata.json` に同梱するルールを使用（ko-dic は mecab-ko-dic のルールを同梱するため ko-dic ではデフォルトでオン。他の同梱辞書はルールを持たない）、`false` でオフ、`true` で辞書のルールを要求（同梱しない辞書ではエラー）、オブジェクト `{"rules": [{"pos": [...], "cost": n}, ...]}` で明示的なルールを指定。[Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照 |
 
 ```shell

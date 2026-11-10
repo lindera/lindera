@@ -92,6 +92,23 @@ With IPADIC, for example, `Google が 新しい` reads `が` as a particle (`助
 builder.set_skip_whitespace(False)
 ```
 
+#### `set_break_characters(chars)`
+
+Sets the break characters. `chars` has the same meaning as `segmenter.break_characters` in a [configuration file](../lindera-analysis/configuration.md):
+
+- A string -- Each of its characters is a break character: no unknown word crosses a boundary between a break character and another character, and in decompose mode no system-dictionary word does either. User-dictionary words and words made of break characters only stay.
+- `""` -- No break characters, which gives MeCab's segmentation.
+- `None` -- The default, `・`. Use it to undo an earlier call.
+
+A value set here overrides a `break_characters` loaded with `from_file`. Any other value raises `TypeError`.
+
+With IPADIC, for example, `レノン・ジョン`, which is not in the dictionary, is `レノン`, `・` and `ジョン` by default and one unknown word with `set_break_characters("")`. See [Segmenter](../lindera/segmenter.md#break-characters) for details.
+
+```python
+# Split as MeCab does
+builder.set_break_characters("")
+```
+
 #### `set_space_penalty(value)`
 
 Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added. `value` has the same meaning as `segmenter.space_penalty` in a [configuration file](../lindera-analysis/configuration.md):

@@ -1309,6 +1309,57 @@ mod with_ipadic {
         assert_eq!(stdout.trim(), "関西 国際 空港 限定 トートバッグ");
     }
 
+    /// #1353: `・` breaks an unknown word by default;
+    /// `--disable-break-characters` splits as MeCab does, and
+    /// `--break-characters` sets the characters. The two flags exclude
+    /// each other.
+    #[test]
+    fn tokenize_break_characters() {
+        let wakati = |flags: &[&str], input: &str| {
+            let output = lindera()
+                .args([
+                    "tokenize",
+                    "--dict",
+                    "embedded://ipadic",
+                    "--output",
+                    "wakati",
+                ])
+                .args(flags)
+                .write_stdin(format!("{input}\n"))
+                .output()
+                .unwrap();
+            assert!(output.status.success(), "{flags:?}");
+            String::from_utf8(output.stdout).unwrap().trim().to_string()
+        };
+        assert_eq!(wakati(&[], "レノン・ジョン"), "レノン ・ ジョン");
+        assert_eq!(
+            wakati(&["--disable-break-characters"], "レノン・ジョン"),
+            "レノン・ジョン"
+        );
+        // The value replaces the default: with `ー` alone, `・` no longer
+        // breaks.
+        assert_eq!(
+            wakati(&["--break-characters", "ー"], "レノン・ジョン"),
+            "レノン・ジョン"
+        );
+
+        let both = lindera()
+            .args([
+                "tokenize",
+                "--dict",
+                "embedded://ipadic",
+                "--break-characters",
+                "・",
+                "--disable-break-characters",
+            ])
+            .write_stdin("レノン・ジョン\n")
+            .output()
+            .unwrap();
+        assert!(!both.status.success());
+        let stderr = String::from_utf8(both.stderr).unwrap();
+        assert!(stderr.contains("cannot be used with"), "{stderr}");
+    }
+
     #[test]
     fn tokenize_mecab_output_exact_format() {
         // Locks the exact MeCab output shape produced through the buffered
@@ -1806,6 +1857,22 @@ mod with_trained_dictionary {
             "--output".to_string(),
             model.to_str().unwrap().to_string(),
         ]
+    }
+
+    /// #1353: `lindera train` takes `--break-characters` and
+    /// `--disable-break-characters`, which exclude each other, as for
+    /// `lindera tokenize`; the conflict stops it before it reads a file.
+    #[test]
+    fn train_break_character_flags_exclude_each_other() {
+        let dir = tempfile::tempdir().unwrap();
+        let output = train_inputs_command(&dir.path().join("corpus.txt"), &dir.path().join("m"))
+            .args(["--break-characters", "・", "--disable-break-characters"])
+            .output()
+            .unwrap();
+        assert!(!output.status.success());
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(stderr.contains("cannot be used with"), "{stderr}");
+        assert!(!dir.path().join("m").exists());
     }
 
     /// `lindera train` writes a line to stdout before the training and one

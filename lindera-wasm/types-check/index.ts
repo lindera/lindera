@@ -117,3 +117,20 @@ export function checkSkipWhitespaceForms(): void {
   builder.set_skip_whitespace();
   void builder;
 }
+
+// `setBreakCharacters` and its alias type their argument the same way: a
+// string, `null` or `undefined`, and required.
+export function checkBreakCharactersForms(): void {
+  const builder: TokenizerBuilder = new TokenizerBuilder()
+    .setBreakCharacters("・")
+    .setBreakCharacters("")
+    .setBreakCharacters(null)
+    .setBreakCharacters(undefined)
+    .set_break_characters("・")
+    .set_break_characters(null);
+  // @ts-expect-error -- the argument is required.
+  builder.setBreakCharacters();
+  // @ts-expect-error -- not a string.
+  builder.setBreakCharacters(true);
+  void builder;
+}

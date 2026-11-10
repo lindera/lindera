@@ -256,6 +256,46 @@ impl TokenizerBuilder {
         self.share()
     }
 
+    /// Sets the break characters, with the same meaning as
+    /// `segmenter.break_characters` in a YAML config.
+    ///
+    /// Each character of the string is a break character: no unknown word,
+    /// nor, in decompose mode, any system-dictionary word, crosses a
+    /// boundary between a break character and another character. An empty
+    /// string turns the rule off, which gives MeCab's segmentation; `null`
+    /// or `undefined` goes back to the default, `・`.
+    ///
+    /// # Arguments
+    ///
+    /// * `chars` - The break characters, or `null` / `undefined` for the
+    ///   default. The argument is required in the TypeScript declaration, as
+    ///   for `setSkipWhitespace`.
+    ///
+    /// # Returns
+    ///
+    /// A builder handle sharing this configuration, enabling method chaining,
+    /// or an error for a value that is neither a string nor `null` /
+    /// `undefined`.
+    #[wasm_bindgen(js_name = "setBreakCharacters")]
+    pub fn set_break_characters(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "string | null | undefined")] chars: JsValue,
+    ) -> Result<TokenizerBuilder, JsValue> {
+        let chars = if chars.is_null() || chars.is_undefined() {
+            None
+        } else {
+            Some(chars.as_string().ok_or_else(|| {
+                JsValue::from_str("break_characters must be a string, null or undefined")
+            })?)
+        };
+        self.state
+            .borrow_mut()
+            .inner
+            .set_break_characters(chars.as_deref());
+
+        Ok(self.share())
+    }
+
     /// Sets the left-space penalty (Korean; mecab-ko's
     /// `left-space-penalty-factor`), with the same meaning as
     /// `segmenter.space_penalty` in a YAML config.
@@ -380,6 +420,24 @@ impl TokenizerBuilder {
         #[wasm_bindgen(unchecked_param_type = "boolean | null | undefined")] skip: Option<bool>,
     ) -> TokenizerBuilder {
         self.set_skip_whitespace(skip)
+    }
+
+    /// Sets the break characters (snake_case alias of `setBreakCharacters`).
+    ///
+    /// # Arguments
+    ///
+    /// * `chars` - A string, or `null` / `undefined` for the default.
+    ///
+    /// # Returns
+    ///
+    /// A builder handle sharing this configuration, or an error for a value
+    /// of another type.
+    #[wasm_bindgen(js_name = "set_break_characters")]
+    pub fn py_set_break_characters(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "string | null | undefined")] chars: JsValue,
+    ) -> Result<TokenizerBuilder, JsValue> {
+        self.set_break_characters(chars)
     }
 
     /// Sets the left-space penalty (snake_case alias of `setSpacePenalty`).
@@ -1483,6 +1541,61 @@ mod tests {
                 "助詞",
                 "alias true (instance: {by_instance})"
             );
+        }
+    }
+
+    /// `setBreakCharacters()` and its snake_case alias set the break
+    /// characters (#1353), for a dictionary set by URI or as an instance:
+    /// `レノン・ジョン`, not in IPADIC, splits at `・` by default and with
+    /// `"・"`, is one unknown word with `""` or another set, and `null` /
+    /// `undefined` go back to the default. A value of another type is an
+    /// error.
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_set_break_characters_changes_tokenization() {
+        use crate::TokenizerBuilder;
+        use crate::dictionary::load_dictionary;
+        use wasm_bindgen::JsValue;
+
+        fn surfaces(builder: &TokenizerBuilder) -> Vec<String> {
+            surfaces_and_pos(&builder.build().unwrap(), "レノン・ジョン")
+                .into_iter()
+                .map(|(surface, _)| surface)
+                .collect()
+        }
+        let split = ["レノン", "・", "ジョン"];
+        let whole = ["レノン・ジョン"];
+
+        for by_instance in [false, true] {
+            let builder = TokenizerBuilder::new().unwrap();
+            if by_instance {
+                builder.set_dictionary_instance(&load_dictionary("embedded://ipadic").unwrap());
+            } else {
+                builder.set_dictionary("embedded://ipadic");
+            }
+            let case = |what: &str| format!("{what} (instance: {by_instance})");
+            assert_eq!(surfaces(&builder), split, "{}", case("default"));
+            builder.set_break_characters(JsValue::from_str("")).unwrap();
+            assert_eq!(surfaces(&builder), whole, "{}", case("empty"));
+            builder.set_break_characters(JsValue::NULL).unwrap();
+            assert_eq!(surfaces(&builder), split, "{}", case("null"));
+            builder
+                .set_break_characters(JsValue::from_str("ー"))
+                .unwrap();
+            assert_eq!(surfaces(&builder), whole, "{}", case("another set"));
+            builder.set_break_characters(JsValue::UNDEFINED).unwrap();
+            assert_eq!(surfaces(&builder), split, "{}", case("undefined"));
+            builder
+                .py_set_break_characters(JsValue::from_str(""))
+                .unwrap();
+            assert_eq!(surfaces(&builder), whole, "{}", case("alias"));
+            for value in [JsValue::from_f64(0.0), JsValue::TRUE] {
+                assert!(
+                    builder.set_break_characters(value).is_err(),
+                    "{}",
+                    case("not a string")
+                );
+            }
         }
     }
 

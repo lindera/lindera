@@ -80,6 +80,21 @@ export function checkSkipWhitespaceForms(): void {
   void builder;
 }
 
+// `setBreakCharacters` declares its argument type by hand as well: a string,
+// `null` or `undefined`, and the argument is required.
+export function checkBreakCharactersForms(): void {
+  const builder: TokenizerBuilder = new TokenizerBuilder()
+    .setBreakCharacters("・")
+    .setBreakCharacters("")
+    .setBreakCharacters(null)
+    .setBreakCharacters(undefined);
+  // @ts-expect-error -- the argument is required.
+  builder.setBreakCharacters();
+  // @ts-expect-error -- not a string.
+  builder.setBreakCharacters(true);
+  void builder;
+}
+
 // Every documented form of the constructor: the arguments after the
 // dictionary are optional. The WASM declarations lost their `?` once (#1076);
 // this guards the Node.js ones the same way.

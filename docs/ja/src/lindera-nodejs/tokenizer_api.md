@@ -99,6 +99,23 @@ builder.setSkipWhitespace(false);
 builder.setSkipWhitespace(null);
 ```
 
+#### `setBreakCharacters(chars)`
+
+区切り文字を設定します。`chars` の意味は[設定ファイル](../lindera-analysis/configuration.md)の `segmenter.break_characters` と同じです：
+
+- 文字列 -- 各文字が区切り文字になります。未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたぎません。ユーザー辞書の語と、区切り文字だけからなる語は残ります。
+- `""` -- 区切り文字を使いません。MeCab と同じ分割になります。
+- `null` または `undefined` -- デフォルトの `・` です。以前の呼び出しを取り消すときに使います。
+
+引数は省略できません。ここで設定した値は、`fromFile` で読み込んだ `break_characters` より優先されます。それ以外の値では例外が送出されます。
+
+たとえば IPADIC では、辞書に無い `レノン・ジョン` は、デフォルトでは `レノン`、`・`、`ジョン` に、`setBreakCharacters("")` では 1 つの未知語になります。詳しくは [Segmenter](../lindera/segmenter.md#区切り文字) を参照してください。
+
+```javascript
+// MeCab と同じく分割する
+builder.setBreakCharacters("");
+```
+
 #### `setSpacePenalty(value)`
 
 韓国語向けの左側空白ペナルティ（mecab-ko の `left-space-penalty-factor`）を設定します。直前に空白があり、先頭品詞タグがルールの一覧にある候補に、そのルールのコストを加算します。値の意味は[設定ファイル](../lindera-analysis/configuration.md)の `segmenter.space_penalty` と同じです。

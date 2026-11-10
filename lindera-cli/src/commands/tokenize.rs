@@ -82,6 +82,18 @@ pub struct TokenizeArgs {
     )]
     disable_unknown_word_ladder: bool,
     #[clap(
+        long = "break-characters",
+        value_name = "CHARS",
+        conflicts_with = "disable_break_characters",
+        help = "Break characters, each character of CHARS (default: ・). No unknown word crosses a boundary between a break character and another character, in any mode, and in decompose mode no system-dictionary word does either (user-dictionary words and words of break characters only stay). Without it, an unknown katakana word runs through ・, which the bundled dictionaries put in the katakana category: レノン・ジョン is one word while ジョン・レノン splits after ジョン, as in MeCab"
+    )]
+    break_characters: Option<String>,
+    #[clap(
+        long = "disable-break-characters",
+        help = "Use no break characters: split at ・ only where MeCab does (see --break-characters)"
+    )]
+    disable_break_characters: bool,
+    #[clap(
         long = "disable-space-penalty",
         conflicts_with = "space_penalty_rules",
         help = "Disable the left-space penalty (mecab-ko's left-space-penalty-factor) that a dictionary shipping rules in its metadata.json applies by default (ko-dic). A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added; disabling it together with --disable-skip-whitespace turns off both changes since v6.0 in how Korean is read around spaces (this penalty and whitespace skipping), but not the other output changes since then, such as the split of sentence-final punctuation runs"
@@ -348,6 +360,14 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     // Unknown-word length ladder (default: enabled)
     if args.disable_unknown_word_ladder {
         builder.set_segmenter_unknown_word_ladder(false);
+    }
+
+    // Break characters: `・` by default (#1353).
+    if args.disable_break_characters {
+        builder.set_segmenter_break_characters(Some(""));
+    }
+    if let Some(chars) = args.break_characters.as_deref() {
+        builder.set_segmenter_break_characters(Some(chars));
     }
 
     // Left-space penalty: on by default with the rules the dictionary ships

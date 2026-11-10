@@ -101,6 +101,23 @@ A value set here overrides the dictionary's default, for a dictionary set with `
 builder.setSkipWhitespace(false);
 ```
 
+#### `setBreakCharacters(chars)`
+
+Sets the break characters. `chars` has the same meaning as `segmenter.break_characters` in a [configuration file](../lindera-analysis/configuration.md):
+
+- A string -- Each of its characters is a break character: no unknown word crosses a boundary between a break character and another character, and in decompose mode no system-dictionary word does either. User-dictionary words and words made of break characters only stay.
+- `""` -- No break characters, which gives MeCab's segmentation.
+- `null` or `undefined` -- The default, `・`. Use it to undo an earlier call.
+
+The argument is required. It applies both to a dictionary set with `setDictionary()` and to one set with `setDictionaryInstance()`. Any other value throws.
+
+With IPADIC, for example, `レノン・ジョン`, which is not in the dictionary, is `レノン`, `・` and `ジョン` by default and one unknown word with `setBreakCharacters("")`. See [Segmenter](../lindera/segmenter.md#break-characters) for details.
+
+```javascript
+// Split as MeCab does
+builder.setBreakCharacters("");
+```
+
 #### `setSpacePenalty(value)`
 
 Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added.
@@ -440,6 +457,7 @@ For consistency with the Python API, these methods are also available in snake\_
 | `setUserDictionaryInstance()` | `set_user_dictionary_instance()` |
 | `setKeepWhitespace()` | `set_keep_whitespace()` |
 | `setSkipWhitespace()` | `set_skip_whitespace()` |
+| `setBreakCharacters()` | `set_break_characters()` |
 | `setSpacePenalty()` | `set_space_penalty()` |
 | `appendCharacterFilter()` | `append_character_filter()` |
 | `appendTokenFilter()` | `append_token_filter()` |

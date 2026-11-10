@@ -101,6 +101,23 @@ builder.setKeepWhitespace(true);
 builder.setSkipWhitespace(false);
 ```
 
+#### `setBreakCharacters(chars)`
+
+区切り文字を設定します。`chars` の意味は[設定ファイル](../lindera-analysis/configuration.md)の `segmenter.break_characters` と同じです：
+
+- 文字列 -- 各文字が区切り文字になります。未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたぎません。ユーザー辞書の語と、区切り文字だけからなる語は残ります。
+- `""` -- 区切り文字を使いません。MeCab と同じ分割になります。
+- `null` または `undefined` -- デフォルトの `・` です。以前の呼び出しを取り消すときに使います。
+
+引数は省略できません。`setDictionary()` で設定した辞書にも、`setDictionaryInstance()` で設定した辞書にも効きます。それ以外の値では例外が送出されます。
+
+たとえば IPADIC では、辞書に無い `レノン・ジョン` は、デフォルトでは `レノン`、`・`、`ジョン` に、`setBreakCharacters("")` では 1 つの未知語になります。詳しくは [Segmenter](../lindera/segmenter.md#区切り文字) を参照してください。
+
+```javascript
+// MeCab と同じく分割する
+builder.setBreakCharacters("");
+```
+
 #### `setSpacePenalty(value)`
 
 韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。
@@ -437,6 +454,7 @@ Python API との一貫性のため、次のメソッドは snake\_case 形式�
 | `setUserDictionaryInstance()` | `set_user_dictionary_instance()` |
 | `setKeepWhitespace()` | `set_keep_whitespace()` |
 | `setSkipWhitespace()` | `set_skip_whitespace()` |
+| `setBreakCharacters()` | `set_break_characters()` |
 | `setSpacePenalty()` | `set_space_penalty()` |
 | `appendCharacterFilter()` | `append_character_filter()` |
 | `appendTokenFilter()` | `append_token_filter()` |

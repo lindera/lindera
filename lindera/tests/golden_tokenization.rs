@@ -402,6 +402,71 @@ fn ipadic_dash_entries() {
     );
 }
 
+/// #1353: a segmenter breaks at `・` by default, whether the word before it
+/// is in the dictionary or not, and in Decompose mode a dictionary word with
+/// `・` inside is split too. With no break characters, it splits as MeCab
+/// does: after a dictionary word only (the table in #1353, MeCab 0.996 with
+/// IPADIC).
+#[cfg(feature = "embed-ipadic")]
+#[test]
+fn ipadic_break_characters() {
+    let wakati = |segmenter: &Segmenter, text: &str| -> String {
+        segmenter
+            .segment(Cow::Borrowed(text))
+            .expect("segmentation should succeed")
+            .iter()
+            .map(|token| token.surface.to_string())
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    let decompose = Mode::Decompose(Penalty::default());
+    // (mode, text, with the default, with no break characters)
+    let cases = [
+        (
+            &Mode::Normal,
+            "ジョン・レノンが歌う",
+            "ジョン ・ レノン が 歌う",
+            "ジョン ・ レノン が 歌う",
+        ),
+        (
+            &Mode::Normal,
+            "レノン・ジョン",
+            "レノン ・ ジョン",
+            "レノン・ジョン",
+        ),
+        (
+            &Mode::Normal,
+            "ザ・サイレント・フォレスト",
+            "ザ ・ サイレント ・ フォレスト",
+            "ザ・サイレント・フォレスト",
+        ),
+        (
+            &Mode::Normal,
+            "リベラル・アーツ・カレッジ",
+            "リベラル ・ アーツ ・ カレッジ",
+            "リベラル ・ アーツ・カレッジ",
+        ),
+        (
+            &Mode::Normal,
+            "インフォームド・コンセントを得る",
+            "インフォームド・コンセント を 得る",
+            "インフォームド・コンセント を 得る",
+        ),
+        (
+            &decompose,
+            "インフォームド・コンセントを得る",
+            "インフォームド ・ コンセント を 得る",
+            "インフォームド・コンセント を 得る",
+        ),
+    ];
+    for (mode, text, with, without) in cases {
+        let on = segmenter("embedded://ipadic", mode.clone());
+        let off = segmenter("embedded://ipadic", mode.clone()).break_characters("");
+        assert_eq!(wakati(&on, text), with, "{mode:?} {text}");
+        assert_eq!(wakati(&off, text), without, "{mode:?} {text}, off");
+    }
+}
+
 /// Regression test #1131: IPADIC's two `狡い` entries tie (same context ids
 /// and cost; only the reading and the pronunciation differ), and the first
 /// CSV row wins, as in MeCab: `ズルイ`, not `コスイ`. The lattice used to

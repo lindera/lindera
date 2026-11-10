@@ -85,6 +85,23 @@ builder.set_keep_whitespace(true)
 builder.set_skip_whitespace(false)
 ```
 
+#### `set_break_characters(chars)`
+
+区切り文字を設定します。`chars` の意味は[設定ファイル](../lindera-analysis/configuration.md)の `segmenter.break_characters` と同じです：
+
+- 文字列 -- 各文字が区切り文字になります。未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたぎません。ユーザー辞書の語と、区切り文字だけからなる語は残ります。
+- `''` -- 区切り文字を使いません。MeCab と同じ分割になります。
+- `nil` -- デフォルトの `・` です。以前の呼び出しを取り消すときに使います。
+
+ここで設定した値は、`from_file` で読み込んだ `break_characters` より優先されます。それ以外の値では `TypeError` が送出されます。
+
+たとえば IPADIC では、辞書に無い `レノン・ジョン` は、デフォルトでは `レノン`、`・`、`ジョン` に、`set_break_characters('')` では 1 つの未知語になります。詳しくは [Segmenter](../lindera/segmenter.md#区切り文字) を参照してください。
+
+```ruby
+# MeCab と同じく分割する
+builder.set_break_characters('')
+```
+
 #### `set_space_penalty(value)`
 
 韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。`value` の意味は[設定ファイル](../lindera-analysis/configuration.md)の `segmenter.space_penalty` と同じです：

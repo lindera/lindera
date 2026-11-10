@@ -16,6 +16,7 @@ use std::sync::Arc;
 use lindera_dictionary::mode::Mode;
 use log::warn;
 
+use lindera_dictionary::break_characters::BreakCharacters;
 use lindera_dictionary::dictionary::{Dictionary, UserDictionary};
 use lindera_dictionary::space_penalty::{SpacePenaltyConfig, SpacePenaltyTable};
 use lindera_dictionary::viterbi::{
@@ -330,6 +331,18 @@ pub struct Segmenter {
     /// as unknown words that start inside a grouped run (#1105).
     pub unknown_word_ladder: bool,
 
+    /// Break characters (#1353): no unknown word crosses a boundary
+    /// between a break character and a character that is not one, in every
+    /// mode, and in Decompose mode no system-dictionary word does either;
+    /// user-dictionary words and words of break characters only stay. The
+    /// bundled dictionaries put `・` in the katakana category, so without it
+    /// an unknown `レノン・ジョン` is one word while `ジョン・レノン` splits
+    /// after the dictionary word `ジョン`, as in MeCab. Defaults to `・`
+    /// ([`DEFAULT_BREAK_CHARACTERS`](lindera_dictionary::break_characters::DEFAULT_BREAK_CHARACTERS));
+    /// an empty set gives MeCab's segmentation. See
+    /// [`LatticeOptions::break_characters`].
+    pub break_characters: BreakCharacters,
+
     /// Left-space penalty rules (mecab-ko's `left-space-penalty-factor`,
     /// nori's `computeSpacePenalty`): a candidate that starts right after
     /// whitespace and whose first part-of-speech tag matches a rule gets the
@@ -433,6 +446,7 @@ impl Segmenter {
             skip_whitespace,        // Default: the dictionary's (skip, as MeCab does)
             max_grouping_len: None, // Default: unbounded grouping
             unknown_word_ladder: true, // Default (v6+): honor char.def's LENGTH field
+            break_characters: BreakCharacters::default_set(), // Default (v7+): break at `・`
             space_penalty: None,    // Set below from the dictionary's shipped rules, if any
             space_penalty_table: None,
             whitespace,
@@ -626,6 +640,22 @@ impl Segmenter {
         self
     }
 
+    /// Builder method to set the break characters (see the
+    /// `break_characters` field; defaults to `・`).
+    ///
+    /// # Arguments
+    ///
+    /// * `chars` - The break characters, each character of the string; an
+    ///   empty string turns the rule off, which gives MeCab's segmentation.
+    ///
+    /// # Returns
+    ///
+    /// `self`, for chaining.
+    pub fn break_characters(mut self, chars: &str) -> Self {
+        self.break_characters = BreakCharacters::new(chars);
+        self
+    }
+
     /// Builder method to set the left-space penalty rules (see the
     /// `space_penalty` field). `None` disables the penalty, including the
     /// rules the dictionary ships and [`Segmenter::new`] applies by default.
@@ -774,6 +804,7 @@ impl Segmenter {
         options.unknown_word_ladder = self.unknown_word_ladder;
         options.space_penalty = self.space_penalty_table.as_deref();
         options.skip_whitespace = self.whitespace_to_skip();
+        options.break_characters = Some(&self.break_characters);
         options
     }
 
@@ -1030,6 +1061,19 @@ impl Segmenter {
             .and_then(Value::as_bool)
             .unwrap_or(true);
 
+        // Load the break_characters option from the config. Absent or `null`
+        // keeps the default (`・`); a string replaces it, each of its
+        // characters a break character, and an empty one turns the rule off.
+        let break_characters = match config.get("break_characters") {
+            None | Some(Value::Null) => None,
+            Some(Value::String(chars)) => Some(chars.as_str()),
+            Some(value) => {
+                return Err(LinderaErrorKind::Parse.with_error(anyhow::anyhow!(
+                    "break_characters field must be a string or null, got {value}"
+                )));
+            }
+        };
+
         // Load the space_penalty option from the config. Absent or `null`
         // keeps the default `Segmenter::new` chose (the rules the dictionary
         // ships, if any); `false` turns the penalty off; `true` requires the
@@ -1058,6 +1102,9 @@ impl Segmenter {
             .unknown_word_ladder(unknown_word_ladder);
         if let Some(skip_whitespace) = skip_whitespace {
             segmenter.skip_whitespace = skip_whitespace;
+        }
+        if let Some(break_characters) = break_characters {
+            segmenter = segmenter.break_characters(break_characters);
         }
         match space_penalty {
             SpacePenaltySetting::Default => Ok(segmenter),
@@ -2572,6 +2619,81 @@ mod tests {
         });
 
         Segmenter::from_config(&config).unwrap();
+    }
+
+    /// #1353: a segmenter breaks at `・` by default. In the config,
+    /// `break_characters` absent or `null` keeps that default, a string
+    /// replaces it (empty: no break characters, MeCab's segmentation), and
+    /// another type is rejected. Decompose mode drops the system words that
+    /// cross a boundary; Normal mode keeps them.
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_break_characters_from_config() {
+        use std::borrow::Cow;
+
+        use lindera_dictionary::break_characters::BreakCharacters;
+
+        let surfaces = |segmenter: &Segmenter, text: &str| -> Vec<String> {
+            segmenter
+                .segment(Cow::Borrowed(text))
+                .unwrap()
+                .iter()
+                .map(|token| token.surface.to_string())
+                .collect()
+        };
+        let build = |mode: &str, value: Option<serde_json::Value>| {
+            let mut config = serde_json::json!({ "dictionary": "embedded://ipadic", "mode": mode });
+            if let Some(value) = value {
+                config["break_characters"] = value;
+            }
+            Segmenter::from_config(&config)
+        };
+
+        // `レノン・ジョン` is not in IPADIC: one unknown word without the rule.
+        let unknown = "レノン・ジョン";
+        for value in [
+            None,
+            Some(serde_json::Value::Null),
+            Some(serde_json::json!("・")),
+        ] {
+            let segmenter = build("normal", value.clone()).unwrap();
+            assert_eq!(
+                segmenter.break_characters,
+                BreakCharacters::default_set(),
+                "{value:?}"
+            );
+            assert_eq!(
+                surfaces(&segmenter, unknown),
+                ["レノン", "・", "ジョン"],
+                "{value:?}"
+            );
+        }
+        let off = build("normal", Some(serde_json::json!(""))).unwrap();
+        assert!(off.break_characters.is_empty());
+        assert_eq!(surfaces(&off, unknown), [unknown]);
+
+        // `インフォームド・コンセント` is an IPADIC word.
+        let word = "インフォームド・コンセント";
+        assert_eq!(surfaces(&build("normal", None).unwrap(), word), [word]);
+        assert_eq!(
+            surfaces(&build("decompose", None).unwrap(), word),
+            ["インフォームド", "・", "コンセント"]
+        );
+        assert_eq!(
+            surfaces(
+                &build("decompose", Some(serde_json::json!(""))).unwrap(),
+                word
+            ),
+            [word]
+        );
+
+        for value in [
+            serde_json::json!(1),
+            serde_json::json!(true),
+            serde_json::json!(["・"]),
+        ] {
+            assert!(build("normal", Some(value.clone())).is_err(), "{value}");
+        }
     }
 
     #[test]
