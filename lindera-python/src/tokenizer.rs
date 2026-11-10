@@ -229,6 +229,31 @@ impl PyTokenizerBuilder {
         Ok(slf)
     }
 
+    /// Sets the break characters, with the same meaning as
+    /// `segmenter.break_characters` in a YAML config.
+    ///
+    /// Each character of the string is a break character: no unknown word,
+    /// nor, in decompose mode, any system-dictionary word, crosses a
+    /// boundary between a break character and another character. An empty
+    /// string turns the rule off, which gives MeCab's segmentation; `None`
+    /// goes back to the default, `・`.
+    ///
+    /// # Arguments
+    ///
+    /// * `break_characters` - The break characters, or `None` for the default.
+    ///
+    /// # Returns
+    ///
+    /// Self for method chaining.
+    #[pyo3(signature = (break_characters))]
+    fn set_break_characters<'a>(
+        mut slf: PyRefMut<'a, Self>,
+        break_characters: Option<String>,
+    ) -> PyResult<PyRefMut<'a, Self>> {
+        slf.inner.set_break_characters(break_characters.as_deref());
+        Ok(slf)
+    }
+
     /// Sets the left-space penalty (Korean), with the same meaning as
     /// `segmenter.space_penalty` in a YAML config.
     ///

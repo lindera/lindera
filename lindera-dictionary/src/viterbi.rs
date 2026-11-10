@@ -4,7 +4,8 @@ use byteorder::{ByteOrder, LittleEndian, WriteBytesExt};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::dictionary::character_definition::{CategoryId, CharacterDefinition};
+use crate::break_characters::BreakCharacters;
+use crate::dictionary::character_definition::{CategoryData, CategoryId, CharacterDefinition};
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use crate::dictionary::prefix_dictionary::{PrefixDictionary, UserPrefixDictionary};
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
@@ -550,6 +551,18 @@ pub struct Lattice {
     /// O(n) over a sentence (#944). Reset to 0 per sentence by
     /// `prepare_char_buffers`.
     group_run_end: u32,
+    /// Per character of the sentence, the end (exclusive) of its break run:
+    /// the next boundary between a break character and a character that is
+    /// not one, or the end of the sentence (see
+    /// [`LatticeOptions::break_characters`]). Filled by
+    /// `prepare_char_buffers` only when break characters are set and the
+    /// sentence has one, and empty otherwise, so that a sentence without
+    /// them costs one scan. Its own buffer, as `CharData` has no room left.
+    break_run_end: Vec<u32>,
+    /// Whether the system-dictionary search at each position ends at the
+    /// position's break run (Decompose mode with a break character in the
+    /// sentence); set per sentence by `prepare_char_buffers`.
+    break_dictionary_words: bool,
     /// Decompose penalty cache for the left edges of the position
     /// currently being relaxed; see `add_edge_in_lattice` (#944).
     penalty_cache: Vec<i32>,
@@ -790,12 +803,38 @@ pub struct LatticeOptions<'a> {
     /// it does not say which one a path starts from, and `unique` folds
     /// paths that differ only in it.
     pub bos: &'a [BosContext],
+    /// Break characters (#1353); `None` (the default) or an empty set
+    /// breaks nothing, which is MeCab's segmentation. A boundary is a place
+    /// between a break character and a character that is not one:
+    ///
+    /// - No unknown word crosses a boundary, in every mode and in both the
+    ///   1-best and the N-best lattice: the grouped run and the length
+    ///   ladder stop there. The bundled dictionaries put `・` in the
+    ///   katakana category, so without this rule an unknown `レノン・ジョン`
+    ///   is one word, while `ジョン・レノン` splits after the dictionary
+    ///   word `ジョン`.
+    /// - In Decompose mode, no system-dictionary word crosses a boundary:
+    ///   the dictionary is searched up to the next boundary only, so such a
+    ///   word does not enter the lattice, and whether a word starts at a
+    ///   position (which decides whether a category with `invoke` off
+    ///   creates unknown words there) depends on the words that remain, so
+    ///   every position that an edge reaches still gets one. Words made of
+    ///   break characters only stay, and so do user-dictionary words, which
+    ///   a user registered on purpose. Normal mode keeps every dictionary
+    ///   word.
+    ///
+    /// A penalty would not do for Decompose mode: the length penalties are
+    /// bounded per sentence (see `SENTENCE_PENALTY_BUDGET`), so in a long
+    /// sentence one could not guarantee the split.
+    pub break_characters: Option<&'a BreakCharacters>,
 }
 
 impl<'a> LatticeOptions<'a> {
     /// Options for `mode` with the defaults `set_text` uses: unbounded
     /// grouping, the length ladder on, no space penalty, whitespace kept in
-    /// the lattice, the dictionary's single BOS edge.
+    /// the lattice, the dictionary's single BOS edge, no break characters.
+    /// A segmenter breaks at `・` by default; the lattice does not, so that
+    /// it gives MeCab's segmentation unless told otherwise.
     ///
     /// # Arguments
     ///
@@ -812,6 +851,7 @@ impl<'a> LatticeOptions<'a> {
             space_penalty: None,
             skip_whitespace: None,
             bos: &[],
+            break_characters: None,
         }
     }
 
@@ -1455,6 +1495,46 @@ impl Lattice {
                 }
             }
         }
+
+        self.prepare_break_runs(options);
+    }
+
+    /// Fills `break_run_end` for the sentence in `chars_buf`, and sets
+    /// `break_dictionary_words` (see [`LatticeOptions::break_characters`]).
+    ///
+    /// Both stay empty and `false` when no break characters are set or the
+    /// sentence has none, which leaves the sentence as it would be without
+    /// the rule.
+    ///
+    /// # Arguments
+    ///
+    /// * `options` - The lattice options: the break characters and the mode.
+    fn prepare_break_runs(&mut self, options: &LatticeOptions) {
+        self.break_run_end.clear();
+        self.break_dictionary_words = false;
+        // An empty set has no character in the sentence, so it returns here
+        // too.
+        let Some(breaks) = options.break_characters else {
+            return;
+        };
+        if !self.chars_buf.iter().any(|&c| breaks.contains(c)) {
+            return;
+        }
+        let n_chars = self.chars_buf.len();
+        self.break_run_end.resize(n_chars, 0);
+        // Backwards, so that each character takes the end of the run of the
+        // character after it unless a boundary lies between the two.
+        let mut end = n_chars;
+        let mut next_is_break = None;
+        for i in (0..n_chars).rev() {
+            let is_break = breaks.contains(self.chars_buf[i]);
+            if next_is_break.is_some_and(|next| next != is_break) {
+                end = i + 1;
+            }
+            self.break_run_end[i] = end as u32;
+            next_is_break = Some(is_break);
+        }
+        self.break_dictionary_words = options.mode.is_search();
     }
 
     /// Returns whether the characters at `a` and `b` share any category
@@ -1785,10 +1865,19 @@ impl Lattice {
             // The system dictionary: per-position common-prefix search over
             // the in-place trie, run only at lattice-reachable positions (the
             // gate above). Searched before anything is added, so that
-            // `found` is known to the unknown words, which come first.
+            // `found` is known to the unknown words, which come first. In
+            // Decompose mode with break characters, the search ends at the
+            // position's break run, so no word crosses a boundary and `found`
+            // describes the words that remain (see
+            // `LatticeOptions::break_characters`).
             self.sys_matches.clear();
             {
-                let suffix = &self.codes_buf[char_idx..];
+                let end = if self.break_dictionary_words {
+                    self.break_run_end[char_idx] as usize
+                } else {
+                    n_chars
+                };
+                let suffix = &self.codes_buf[char_idx..end];
                 for (entries, end_char_offset) in dict.common_prefix_search_codes(suffix) {
                     let end_char = (char_idx + end_char_offset) as u32;
                     for chunk in entries.as_chunks::<{ WordEntry::SERIALIZED_LEN }>().0 {
@@ -1825,21 +1914,37 @@ impl Lattice {
             // as in MeCab (#1105): one may start inside a run that an earlier
             // position grouped, e.g. after a dictionary word ending inside it.
             // Only the character's default category, the first of its list,
-            // creates them, as MeCab's `default_type` does (#1111).
+            // creates them, as MeCab's `default_type` does (#1111). A sentence
+            // with break characters takes them out of line (#1353).
             if self.char_info_buffer[char_idx].categories_len > 0 {
                 let category = self.get_cached_category(char_definitions, char_idx, 0);
-                self.process_unknown_word(
-                    char_definitions,
-                    unknown_dictionary,
-                    cost_matrix,
-                    search_mode,
-                    max_grouping_len,
-                    unknown_word_ladder,
-                    space_penalty,
-                    category,
-                    char_idx,
-                    found,
-                );
+                if self.break_run_end.is_empty() {
+                    self.process_unknown_word(
+                        char_definitions,
+                        unknown_dictionary,
+                        cost_matrix,
+                        search_mode,
+                        max_grouping_len,
+                        unknown_word_ladder,
+                        space_penalty,
+                        category,
+                        char_idx,
+                        found,
+                    );
+                } else {
+                    self.process_unknown_word_in_break_run(
+                        char_definitions,
+                        unknown_dictionary,
+                        cost_matrix,
+                        search_mode,
+                        max_grouping_len,
+                        unknown_word_ladder,
+                        space_penalty,
+                        category,
+                        char_idx,
+                        found,
+                    );
+                }
             }
 
             // Then the system dictionary's words, last found first, so a
@@ -2027,7 +2132,7 @@ impl Lattice {
         char_idx: usize,
         found: bool,
     ) {
-        let Some((primary, ladder)) = self.unknown_word_lengths(
+        let Some((primary, ladder)) = self.unknown_word_lengths_with_breaks(
             char_definitions,
             max_grouping_len,
             unknown_word_ladder,
@@ -2462,6 +2567,101 @@ impl Lattice {
         Some((primary, ladder))
     }
 
+    /// [`Self::unknown_word_lengths`] for a sentence that may have break
+    /// characters (see [`LatticeOptions::break_characters`]): the lengths of
+    /// [`Self::unknown_word_lengths_in_break_run`] when it has some.
+    ///
+    /// The main loops do not call it: there, a branch in the lengths, which
+    /// they inline, cost 2-3% more instructions on text without break
+    /// characters, so they take a sentence with break characters to
+    /// [`Self::process_unknown_word_in_break_run`] instead (#1353).
+    ///
+    /// # Arguments
+    ///
+    /// See [`Self::unknown_word_lengths`].
+    ///
+    /// # Returns
+    ///
+    /// As for [`Self::unknown_word_lengths`].
+    fn unknown_word_lengths_with_breaks(
+        &mut self,
+        char_definitions: &CharacterDefinition,
+        max_grouping_len: Option<usize>,
+        unknown_word_ladder: bool,
+        category: CategoryId,
+        char_idx: usize,
+        found: bool,
+    ) -> Option<(usize, usize)> {
+        if self.break_run_end.is_empty() {
+            return self.unknown_word_lengths(
+                char_definitions,
+                max_grouping_len,
+                unknown_word_ladder,
+                category,
+                char_idx,
+                found,
+            );
+        }
+        let category_data = char_definitions.lookup_definition(category);
+        if !category_data.invoke && found {
+            return None;
+        }
+        Some(self.unknown_word_lengths_in_break_run(
+            char_definitions,
+            max_grouping_len,
+            unknown_word_ladder,
+            category_data,
+            char_idx,
+        ))
+    }
+
+    /// [`Self::unknown_word_lengths`] in a sentence with break characters
+    /// (see [`LatticeOptions::break_characters`]): neither the grouping run
+    /// nor the length ladder goes past the end of the break run of
+    /// `char_idx`. Both count characters from `char_idx` on, so cutting them
+    /// at the end of the break run gives what a count that stops there
+    /// would; the run that [`Self::group_run_len`] caches may go past it, as
+    /// the cut is made at every position. The grouping cap applies to the
+    /// cut run.
+    ///
+    /// # Arguments
+    ///
+    /// See [`Self::unknown_word_lengths`]; `category_data` is the
+    /// definition of the category, which creates candidates here.
+    ///
+    /// # Returns
+    ///
+    /// `(primary, ladder)` in characters.
+    #[cold]
+    #[inline(never)]
+    fn unknown_word_lengths_in_break_run(
+        &mut self,
+        char_definitions: &CharacterDefinition,
+        max_grouping_len: Option<usize>,
+        unknown_word_ladder: bool,
+        category_data: &CategoryData,
+        char_idx: usize,
+    ) -> (usize, usize) {
+        let room = self.break_run_end[char_idx] as usize - char_idx;
+        let mut primary = 1;
+        if category_data.group {
+            primary = self.group_run_len(char_definitions, char_idx).min(room);
+            if let Some(cap) = max_grouping_len
+                && primary > 1
+                && primary - 1 > cap
+            {
+                primary = 1;
+            }
+        }
+        let ladder = if unknown_word_ladder && category_data.length > 0 {
+            self.ladder_run_len(char_definitions, char_idx, category_data.length as usize)
+                .min(room)
+        } else {
+            0
+        };
+        (primary, ladder)
+    }
+
     /// Adds the unknown-word candidates of the default category at
     /// `char_idx` to the 1-best lattice: the primary candidate and the length ladder of
     /// [`Self::unknown_word_lengths`].
@@ -2514,10 +2714,58 @@ impl Lattice {
         );
     }
 
+    /// [`Self::process_unknown_word`] in a sentence with break characters
+    /// (see [`LatticeOptions::break_characters`]), out of line: the main
+    /// loops take such a sentence here, one branch per position, so that
+    /// the functions they inline for the other sentences stay as they were.
+    /// A branch in [`Self::unknown_word_lengths`] instead cost 2-3% more
+    /// instructions on text without break characters (#1353).
+    ///
+    /// # Arguments
+    ///
+    /// See [`Self::process_unknown_word`].
+    #[cold]
+    #[inline(never)]
+    #[allow(clippy::too_many_arguments)]
+    fn process_unknown_word_in_break_run(
+        &mut self,
+        char_definitions: &CharacterDefinition,
+        unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        search_mode: &Mode,
+        max_grouping_len: Option<usize>,
+        unknown_word_ladder: bool,
+        space_penalty: Option<&SpacePenaltyTable>,
+        category: CategoryId,
+        char_idx: usize,
+        found: bool,
+    ) {
+        let Some((primary, ladder)) = self.unknown_word_lengths_with_breaks(
+            char_definitions,
+            max_grouping_len,
+            unknown_word_ladder,
+            category,
+            char_idx,
+            found,
+        ) else {
+            return;
+        };
+        self.emit_unknown_word_edges(
+            unknown_dictionary,
+            cost_matrix,
+            search_mode,
+            space_penalty,
+            category,
+            char_idx,
+            Self::candidate_lengths(primary, ladder),
+        );
+    }
+
     /// Lists the unknown-word candidates of `text` at every start position,
     /// as [`Lattice::set_text_with_options`] would create them with the
-    /// default options and the given `max_grouping_len` (the length ladder
-    /// on, whitespace kept), but without the reachability gate: a position
+    /// default options and the given `max_grouping_len` and break characters
+    /// (the length ladder on, whitespace kept), but without the reachability
+    /// gate: a position
     /// no edge ends at gets its candidates too. The trainer builds its
     /// lattices from them, so that training sees the unknown words the
     /// runtime creates (#1110).
@@ -2543,7 +2791,12 @@ impl Lattice {
     /// * `text` - One sentence.
     /// * `max_grouping_len` - Unknown-word grouping cap, as
     ///   [`LatticeOptions::max_grouping_len`] (`None` = unbounded).
+    /// * `break_characters` - The break characters, as
+    ///   [`LatticeOptions::break_characters`]: no candidate crosses a
+    ///   boundary. The candidates are those of Normal mode, so the system
+    ///   dictionary is searched in full for the `invoke` check.
     /// * `out` - Cleared, then filled with the candidates.
+    #[allow(clippy::too_many_arguments)]
     pub fn unknown_word_candidates(
         &mut self,
         dict: &PrefixDictionary,
@@ -2551,11 +2804,13 @@ impl Lattice {
         unknown_dictionary: &UnknownDictionary,
         text: &str,
         max_grouping_len: Option<usize>,
+        break_characters: Option<&BreakCharacters>,
         out: &mut Vec<UnknownWordCandidate>,
     ) {
         out.clear();
         let mode = Mode::Normal;
-        let options = LatticeOptions::new(&mode);
+        let mut options = LatticeOptions::new(&mode);
+        options.break_characters = break_characters;
         self.prepare_char_buffers(dict, char_definitions, text, &options);
         let n_chars = self.chars_buf.len();
         for char_idx in 0..n_chars {
@@ -2567,7 +2822,7 @@ impl Lattice {
                 .next()
                 .is_some();
             let category = self.get_cached_category(char_definitions, char_idx, 0);
-            let Some((primary, ladder)) = self.unknown_word_lengths(
+            let Some((primary, ladder)) = self.unknown_word_lengths_with_breaks(
                 char_definitions,
                 max_grouping_len,
                 options.unknown_word_ladder,
@@ -3514,6 +3769,50 @@ impl Lattice {
         );
     }
 
+    /// [`Self::process_unknown_word_nbest`] in a sentence with break
+    /// characters, out of line (see
+    /// [`Self::process_unknown_word_in_break_run`]).
+    ///
+    /// # Arguments
+    ///
+    /// See [`Self::process_unknown_word`].
+    #[cold]
+    #[inline(never)]
+    #[allow(clippy::too_many_arguments)]
+    fn process_unknown_word_nbest_in_break_run(
+        &mut self,
+        char_definitions: &CharacterDefinition,
+        unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        search_mode: &Mode,
+        max_grouping_len: Option<usize>,
+        unknown_word_ladder: bool,
+        space_penalty: Option<&SpacePenaltyTable>,
+        category: CategoryId,
+        char_idx: usize,
+        found: bool,
+    ) {
+        let Some((primary, ladder)) = self.unknown_word_lengths_with_breaks(
+            char_definitions,
+            max_grouping_len,
+            unknown_word_ladder,
+            category,
+            char_idx,
+            found,
+        ) else {
+            return;
+        };
+        self.emit_unknown_word_edges_nbest(
+            unknown_dictionary,
+            cost_matrix,
+            search_mode,
+            space_penalty,
+            category,
+            char_idx,
+            Self::candidate_lengths(primary, ladder),
+        );
+    }
+
     /// Forward Viterbi for N-Best mode with the positional option set:
     /// [`Lattice::set_text`] that additionally records every predecessor
     /// transition in `all_paths`. Equivalent to
@@ -3691,11 +3990,17 @@ impl Lattice {
             let space_owners =
                 space_penalty.and_then(|table| self.space_gate(table, char_idx, own));
 
-            // The system dictionary's words, searched first; see
+            // The system dictionary's words, searched first, up to the
+            // position's break run in Decompose mode; see
             // set_text_with_options.
             self.sys_matches.clear();
             {
-                let suffix = &self.codes_buf[char_idx..];
+                let end = if self.break_dictionary_words {
+                    self.break_run_end[char_idx] as usize
+                } else {
+                    n_chars
+                };
+                let suffix = &self.codes_buf[char_idx..end];
                 for (entries, end_char_offset) in dict.common_prefix_search_codes(suffix) {
                     let end_char = (char_idx + end_char_offset) as u32;
                     for chunk in entries.as_chunks::<{ WordEntry::SERIALIZED_LEN }>().0 {
@@ -3731,18 +4036,33 @@ impl Lattice {
             // category first.
             if self.char_info_buffer[char_idx].categories_len > 0 {
                 let category = self.get_cached_category(char_definitions, char_idx, 0);
-                self.process_unknown_word_nbest(
-                    char_definitions,
-                    unknown_dictionary,
-                    cost_matrix,
-                    search_mode,
-                    max_grouping_len,
-                    unknown_word_ladder,
-                    space_penalty,
-                    category,
-                    char_idx,
-                    found,
-                );
+                if self.break_run_end.is_empty() {
+                    self.process_unknown_word_nbest(
+                        char_definitions,
+                        unknown_dictionary,
+                        cost_matrix,
+                        search_mode,
+                        max_grouping_len,
+                        unknown_word_ladder,
+                        space_penalty,
+                        category,
+                        char_idx,
+                        found,
+                    );
+                } else {
+                    self.process_unknown_word_nbest_in_break_run(
+                        char_definitions,
+                        unknown_dictionary,
+                        cost_matrix,
+                        search_mode,
+                        max_grouping_len,
+                        unknown_word_ladder,
+                        space_penalty,
+                        category,
+                        char_idx,
+                        found,
+                    );
+                }
             }
 
             // Then the system dictionary's words, last found first.
@@ -3924,7 +4244,7 @@ impl Lattice {
         char_idx: usize,
         found: bool,
     ) {
-        let Some((primary, ladder)) = self.unknown_word_lengths(
+        let Some((primary, ladder)) = self.unknown_word_lengths_with_breaks(
             char_definitions,
             max_grouping_len,
             unknown_word_ladder,
@@ -4080,6 +4400,8 @@ mod tests {
     use std::collections::BTreeMap;
 
     use daachorse::DoubleArrayAhoCorasickBuilder;
+
+    use crate::break_characters::BreakCharacters;
 
     use crate::dictionary::character_definition::{
         CategoryData, CategoryId, CharacterDefinition, LookupTable,
@@ -4711,6 +5033,7 @@ mod tests {
             &unknown_dictionary,
             "kkhhk",
             None,
+            None,
             &mut out,
         );
         assert_eq!(
@@ -4737,6 +5060,7 @@ mod tests {
             &unknown_dictionary,
             "kxk",
             None,
+            None,
             &mut out,
         );
         assert_eq!(
@@ -4753,6 +5077,7 @@ mod tests {
             &unknown_dictionary,
             "hhh",
             Some(1),
+            None,
             &mut out,
         );
         assert_eq!(
@@ -4797,6 +5122,7 @@ mod tests {
                 &unknown_dictionary,
                 text,
                 None,
+                None,
                 &mut out,
             );
             let mut expected: Vec<_> = out
@@ -4807,6 +5133,365 @@ mod tests {
             expected.sort_by_key(|c| (c.start_char, c.end_char, c.word_id));
             edges.sort_by_key(|c| (c.start_char, c.end_char, c.word_id));
             assert_eq!(edges, expected, "{text}");
+        }
+    }
+
+    // Break characters (#1353).
+
+    /// The dictionary of the break-character tests, with `.` standing in for
+    /// `・`: `a`, `b` and `.` share the category A (grouping, `invoke` on,
+    /// length 2), as the bundled dictionaries put `・` in KATAKANA; `h` is H
+    /// (no grouping, `invoke` off, length 1); every other character is
+    /// DEFAULT (grouping, `invoke` off). The system words are `a.b` and `h.`,
+    /// which cross a boundary, `.` and `..`, made of break characters only,
+    /// and `ab`. `unk.def` has one entry per category: DEFAULT 0, A 1, H 2.
+    struct BreakFixture {
+        dict: PrefixDictionary,
+        char_definitions: CharacterDefinition,
+        unknown_dictionary: UnknownDictionary,
+        cost_matrix: ConnectionCostMatrix,
+    }
+
+    fn break_fixture() -> BreakFixture {
+        // DEFAULT = 0, A = 1, H = 2.
+        fn categories(c: u32, buf: &mut Vec<CategoryId>) {
+            match c {
+                0x2E | 0x61 | 0x62 => buf.push(CategoryId(1)),
+                0x68 => buf.push(CategoryId(2)),
+                _ => buf.push(CategoryId(0)),
+            }
+        }
+        let mapping =
+            LookupTable::from_fn(vec![0, 0x2E, 0x2F, 0x61, 0x63, 0x68, 0x69], &categories);
+        let category = |invoke, group, length| CategoryData {
+            invoke,
+            group,
+            length,
+        };
+        let char_definitions = CharacterDefinition::new(
+            vec![
+                category(false, true, 0),
+                category(true, true, 2),
+                category(false, false, 1),
+            ],
+            vec!["DEFAULT".into(), "A".into(), "H".into()],
+            mapping,
+        );
+        let unknown = |id| WordEntry::new(WordId::new(LexType::Unknown, id), 0, 0, 0);
+        let unknown_dictionary = UnknownDictionary {
+            category_references: vec![vec![0], vec![1], vec![2]],
+            costs: (0..3).map(unknown).collect(),
+            words_idx_data: Vec::new(),
+            words_data: Vec::new(),
+        };
+        let mut map = BTreeMap::new();
+        for (id, surface) in ["a.b", "h.", ".", "..", "ab"].into_iter().enumerate() {
+            map.insert(
+                surface.to_string(),
+                vec![WordEntry::new(
+                    WordId::new(LexType::System, id as u32),
+                    0,
+                    0,
+                    0,
+                )],
+            );
+        }
+        BreakFixture {
+            dict: PrefixDictionary::from_word_entry_map(&map).unwrap(),
+            char_definitions,
+            unknown_dictionary,
+            cost_matrix: ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0, 0]).unwrap(),
+        }
+    }
+
+    /// An edge of a break-character test lattice: start and end positions,
+    /// whether it is an unknown word, a system word or a user word, and its
+    /// entry id.
+    type Span = (usize, usize, LexType, u32);
+
+    /// Builds the 1-best or the N-best lattice of `text` with the fixture
+    /// and returns its edges, BOS and EOS left out, in increasing end
+    /// position.
+    fn break_lattice_edges(
+        fixture: &BreakFixture,
+        user_dict: Option<&UserPrefixDictionary>,
+        text: &str,
+        mode: &Mode,
+        breaks: Option<&BreakCharacters>,
+        nbest: bool,
+    ) -> Vec<Span> {
+        let mut options = LatticeOptions::new(mode);
+        options.break_characters = breaks;
+        let mut lattice = Lattice::default();
+        if nbest {
+            lattice.set_text_nbest_with_options(
+                &fixture.dict,
+                &user_dict,
+                &fixture.char_definitions,
+                &fixture.unknown_dictionary,
+                &fixture.cost_matrix,
+                text,
+                &options,
+            );
+        } else {
+            lattice.set_text_with_options(
+                &fixture.dict,
+                &user_dict,
+                &fixture.char_definitions,
+                &fixture.unknown_dictionary,
+                &fixture.cost_matrix,
+                text,
+                &options,
+            );
+        }
+        let n_chars = text.chars().count();
+        let mut spans = Vec::new();
+        for end_char in 1..=n_chars {
+            for edge in lattice.edges_at_char(end_char) {
+                let word_id = edge.word_id();
+                if end_char == n_chars && edge.start_char() as usize == n_chars {
+                    continue; // EOS
+                }
+                spans.push((
+                    edge.start_char() as usize,
+                    end_char,
+                    word_id.lex_type(),
+                    word_id.id(),
+                ));
+            }
+        }
+        spans
+    }
+
+    /// Whether the characters `start..end` of `text` lie on both sides of a
+    /// boundary between `.` and another character.
+    fn crosses_a_boundary(text: &str, start: usize, end: usize) -> bool {
+        let chars: Vec<char> = text.chars().collect();
+        chars[start..end]
+            .windows(2)
+            .any(|w| (w[0] == '.') != (w[1] == '.'))
+    }
+
+    /// The four lattices the rule applies to: Normal and Decompose mode,
+    /// 1-best and N-best.
+    fn break_modes() -> Vec<(Mode, bool)> {
+        let decompose = Mode::Decompose(Penalty::default());
+        vec![
+            (Mode::Normal, false),
+            (Mode::Normal, true),
+            (decompose.clone(), false),
+            (decompose, true),
+        ]
+    }
+
+    #[test]
+    fn no_unknown_word_crosses_a_break_boundary() {
+        let fixture = break_fixture();
+        let breaks = BreakCharacters::new(".");
+        let mut wrong = Vec::new();
+        for (mode, nbest) in break_modes() {
+            for text in ["ab.ab", "a..ba.", ".ab", "ba.b.a"] {
+                let case = format!("{mode:?} nbest={nbest} {text}");
+                let with = break_lattice_edges(&fixture, None, text, &mode, Some(&breaks), nbest);
+                for &(start, end, lex_type, _) in &with {
+                    if lex_type == LexType::Unknown && crosses_a_boundary(text, start, end) {
+                        wrong.push(format!("{case}: unknown {start}..{end} crosses"));
+                    }
+                }
+                // The runs on either side of `.` are still grouped.
+                if text == "ab.ab" {
+                    for span in [(0, 2), (2, 3), (3, 5)] {
+                        if !with.contains(&(span.0, span.1, LexType::Unknown, 1)) {
+                            wrong.push(format!("{case}: no unknown {}..{}", span.0, span.1));
+                        }
+                    }
+                    // Without break characters, `ab.ab` is one unknown word.
+                    let without = break_lattice_edges(&fixture, None, text, &mode, None, nbest);
+                    if !without.contains(&(0, 5, LexType::Unknown, 1)) {
+                        wrong.push(format!("{case}: no unknown 0..5 without break characters"));
+                    }
+                }
+            }
+        }
+        assert!(wrong.is_empty(), "{wrong:#?}");
+    }
+
+    #[test]
+    fn the_grouping_cap_applies_to_the_run_cut_at_a_boundary() {
+        // `aba.a` is one run of A without break characters. Cut at the
+        // boundary, the run at 0 is `aba`, two characters beyond the first,
+        // which a cap of 2 keeps; the uncut run, four beyond the first, would
+        // fall back to one character. The ladder of A stops at two
+        // characters, so only the grouping run makes `aba`.
+        let fixture = break_fixture();
+        let breaks = BreakCharacters::new(".");
+        let mut wrong = Vec::new();
+        for (mode, nbest) in break_modes() {
+            let mut options = LatticeOptions::new(&mode);
+            options.max_grouping_len = Some(2);
+            options.break_characters = Some(&breaks);
+            let mut lattice = Lattice::default();
+            let args = (
+                &fixture.dict,
+                &None,
+                &fixture.char_definitions,
+                &fixture.unknown_dictionary,
+                &fixture.cost_matrix,
+            );
+            if nbest {
+                lattice.set_text_nbest_with_options(
+                    args.0, args.1, args.2, args.3, args.4, "aba.a", &options,
+                );
+            } else {
+                lattice.set_text_with_options(
+                    args.0, args.1, args.2, args.3, args.4, "aba.a", &options,
+                );
+            }
+            let grouped = lattice
+                .edges_at_char(3)
+                .iter()
+                .any(|edge| edge.start_char() == 0 && edge.word_id().is_unknown());
+            if !grouped {
+                wrong.push(format!("{mode:?} nbest={nbest}: no unknown aba"));
+            }
+        }
+        assert!(wrong.is_empty(), "{wrong:#?}");
+    }
+
+    #[test]
+    fn decompose_mode_drops_the_system_words_that_cross_a_break_boundary() {
+        let fixture = break_fixture();
+        let breaks = BreakCharacters::new(".");
+        let user_entry = WordEntry::new(WordId::new(LexType::User, 0), 0, 0, 0);
+        let user_dict = one_surface_user_dictionary("b.", &[user_entry]);
+        let text = "a.b..";
+        let a_dot_b = (0, 3, LexType::System, 0);
+        let mut wrong = Vec::new();
+        for (mode, nbest) in break_modes() {
+            let case = format!("{mode:?} nbest={nbest}");
+            let with = break_lattice_edges(
+                &fixture,
+                Some(&user_dict),
+                text,
+                &mode,
+                Some(&breaks),
+                nbest,
+            );
+            // `a.b` crosses a boundary: gone in Decompose mode only.
+            if with.contains(&a_dot_b) == mode.is_search() {
+                wrong.push(format!("{case}: a.b present = {}", !mode.is_search()));
+            }
+            // Words of break characters only, and the user's word, stay.
+            for kept in [
+                (1, 2, LexType::System, 2),
+                (3, 5, LexType::System, 3),
+                (2, 4, LexType::User, 0),
+            ] {
+                if !with.contains(&kept) {
+                    wrong.push(format!("{case}: {kept:?} missing"));
+                }
+            }
+            // Without break characters, Decompose mode keeps `a.b`.
+            let without = break_lattice_edges(&fixture, Some(&user_dict), text, &mode, None, nbest);
+            if !without.contains(&a_dot_b) {
+                wrong.push(format!("{case}: a.b missing without break characters"));
+            }
+        }
+        assert!(wrong.is_empty(), "{wrong:#?}");
+    }
+
+    #[test]
+    fn a_position_whose_only_word_crosses_a_boundary_gets_unknown_words() {
+        // `h` is in a category with `invoke` off, and the only word starting
+        // there, `h.`, crosses a boundary. In Decompose mode the word does
+        // not enter the lattice, so no word starts at `h`, and the unknown
+        // `h` keeps the text segmentable.
+        let fixture = break_fixture();
+        let breaks = BreakCharacters::new(".");
+        let decompose = Mode::Decompose(Penalty::default());
+        let mut wrong = Vec::new();
+        for nbest in [false, true] {
+            let with = break_lattice_edges(&fixture, None, "h.", &decompose, Some(&breaks), nbest);
+            if !with.contains(&(0, 1, LexType::Unknown, 2)) {
+                wrong.push(format!("nbest={nbest}: no unknown h"));
+            }
+            if !with.iter().any(|&(_, end, _, _)| end == 2) {
+                wrong.push(format!("nbest={nbest}: nothing reaches the end"));
+            }
+            if with.contains(&(0, 2, LexType::System, 1)) {
+                wrong.push(format!("nbest={nbest}: h. present"));
+            }
+        }
+        assert!(wrong.is_empty(), "{wrong:#?}");
+    }
+
+    #[test]
+    fn the_trainer_candidates_follow_the_break_characters() {
+        let fixture = break_fixture();
+        let breaks = BreakCharacters::new(".");
+        let mode = Mode::Normal;
+        let mut lattice = Lattice::default();
+        let mut out = Vec::new();
+        for text in ["ab.ab", "a..ba.", "h.ab", ".ab.", "ba.b.a"] {
+            // At every position the runtime reaches, its unknown-word edges
+            // are the candidates starting there, with break characters too.
+            let mut runtime =
+                break_lattice_edges(&fixture, None, text, &mode, Some(&breaks), false);
+            runtime.retain(|&(_, _, lex_type, _)| lex_type == LexType::Unknown);
+            let mut reachable = vec![false; text.chars().count() + 1];
+            reachable[0] = true;
+            for &(_, end, _, _) in
+                &break_lattice_edges(&fixture, None, text, &mode, Some(&breaks), false)
+            {
+                reachable[end] = true;
+            }
+            lattice.unknown_word_candidates(
+                &fixture.dict,
+                &fixture.char_definitions,
+                &fixture.unknown_dictionary,
+                text,
+                None,
+                Some(&breaks),
+                &mut out,
+            );
+            let mut expected: Vec<Span> = out
+                .iter()
+                .filter(|c| reachable[c.start_char])
+                .map(|c| (c.start_char, c.end_char, LexType::Unknown, c.word_id))
+                .collect();
+            // All unknown words, so the entry id orders them with the span.
+            expected.sort_by_key(|&(start, end, _, id)| (start, end, id));
+            runtime.sort_by_key(|&(start, end, _, id)| (start, end, id));
+            assert_eq!(runtime, expected, "{text}");
+            assert!(
+                out.iter()
+                    .all(|c| !crosses_a_boundary(text, c.start_char, c.end_char)),
+                "{text}: {out:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn no_or_empty_break_characters_leave_the_lattice_as_it_was() {
+        let fixture = break_fixture();
+        let empty = BreakCharacters::new("");
+        let user_entry = WordEntry::new(WordId::new(LexType::User, 0), 0, 0, 0);
+        let user_dict = one_surface_user_dictionary("b.", &[user_entry]);
+        for (mode, nbest) in break_modes() {
+            for text in ["ab.ab", "a.b..", "h.", "a..ba."] {
+                assert_eq!(
+                    break_lattice_edges(&fixture, Some(&user_dict), text, &mode, None, nbest),
+                    break_lattice_edges(
+                        &fixture,
+                        Some(&user_dict),
+                        text,
+                        &mode,
+                        Some(&empty),
+                        nbest
+                    ),
+                    "{mode:?} nbest={nbest} {text}"
+                );
+            }
         }
     }
 

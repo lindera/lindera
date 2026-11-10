@@ -104,6 +104,18 @@ pub struct TrainArgs {
         help = "Maximum number of threads, 1 or more (defaults to CPU core count; affects only speed, never the trained model)"
     )]
     max_threads: Option<usize>,
+    #[clap(
+        long = "break-characters",
+        value_name = "CHARS",
+        conflicts_with = "disable_break_characters",
+        help = "Break characters, each character of CHARS (default: ・), as for lindera tokenize: no unknown-word candidate crosses a boundary between a break character and another character. Train with the value the dictionary will be used with; the corpus's own tokens are kept whatever they span"
+    )]
+    break_characters: Option<String>,
+    #[clap(
+        long = "disable-break-characters",
+        help = "Use no break characters, as lindera tokenize --disable-break-characters does"
+    )]
+    disable_break_characters: bool,
 }
 
 /// Runs the `train` subcommand: trains a model on the corpus and writes it to
@@ -144,13 +156,20 @@ pub fn train(args: TrainArgs) -> LinderaResult<()> {
     .map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
     // Initialize trainer
-    let trainer = Trainer::new(config)
+    let mut trainer = Trainer::new(config)
         .map_err(|err| LinderaErrorKind::Args.with_error(err))?
         .regularization_cost(args.lambda)
         .regularization_type(regularization, args.elastic_net_l1_ratio)
         .max_iter(args.iter)
         .eta(args.eta)
         .num_threads(args.max_threads.unwrap_or_else(num_cpus::get));
+    // Break characters: `・` by default, as at runtime (#1353).
+    if args.disable_break_characters {
+        trainer = trainer.break_characters("");
+    }
+    if let Some(chars) = args.break_characters.as_deref() {
+        trainer = trainer.break_characters(chars);
+    }
 
     // Load corpus
     let corpus_file = File::open(&args.corpus).map_err(io_err)?;

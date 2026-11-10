@@ -321,6 +321,58 @@ class LinderaTest extends TestCase
         $builder->setSkipWhitespace();
     }
 
+    // #1353: "レノン・ジョン" is not in IPADIC. With "・" as a break character
+    // (the default), the unknown word stops at it; with none, the katakana
+    // run, "・" included, is one unknown word, as in MeCab. null goes back to
+    // the default.
+    public function testTokenizerBuilderSetBreakCharacters(): void
+    {
+        $surfaces = function (?string ...$values): array {
+            $builder = new Lindera\TokenizerBuilder();
+            $builder->setDictionary('embedded://ipadic');
+            foreach ($values as $value) {
+                $this->assertNull($builder->setBreakCharacters($value));
+            }
+
+            return $builder->build()->tokenizeSurfaces('レノン・ジョン');
+        };
+        $split = ['レノン', '・', 'ジョン'];
+        $whole = ['レノン・ジョン'];
+
+        $this->assertSame($split, $surfaces());
+        $this->assertSame($split, $surfaces('・'));
+        $this->assertSame($whole, $surfaces(''));
+        // Another set replaces the default.
+        $this->assertSame($whole, $surfaces('ー'));
+        $this->assertSame($split, $surfaces('', null));
+        // The last call wins.
+        $this->assertSame($whole, $surfaces('・', ''));
+    }
+
+    // A value of another type must not be read as null, which would silently
+    // restore the default, and the argument is required.
+    public function testTokenizerBuilderSetBreakCharactersRejectsNonStrings(): void
+    {
+        $values = [
+            'int' => 0,
+            'bool' => true,
+            'array' => ['・'],
+            'object' => new \stdClass(),
+        ];
+        $builder = new Lindera\TokenizerBuilder();
+        foreach ($values as $label => $value) {
+            try {
+                $builder->setBreakCharacters($value);
+                $this->fail("setBreakCharacters accepted a non-string: {$label}");
+            } catch (\TypeError $e) {
+                $this->assertStringContainsString('break_characters', $e->getMessage(), $label);
+            }
+        }
+
+        $this->expectException(\ArgumentCountError::class);
+        $builder->setBreakCharacters();
+    }
+
     // #1052: setSpacePenalty takes the same values as segmenter.space_penalty
     // in a config file. IPADIC ships no rules, so everything but `true`
     // (which requires the dictionary's rules) builds.

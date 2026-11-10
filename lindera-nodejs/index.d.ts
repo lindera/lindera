@@ -478,6 +478,26 @@ export declare class TokenizerBuilder {
    */
   setSkipWhitespace(skipWhitespace: boolean | null | undefined): this
   /**
+   * Sets the break characters, with the same meaning as
+   * `segmenter.break_characters` in a YAML config.
+   *
+   * Each character of the string is a break character: no unknown word,
+   * nor, in decompose mode, any system-dictionary word, crosses a
+   * boundary between a break character and another character. An empty
+   * string turns the rule off, which gives MeCab's segmentation; `null`
+   * or `undefined` goes back to the default, `・`.
+   *
+   * # Arguments
+   *
+   * * `break_characters` - The break characters, or `null` / `undefined`
+   *   for the default.
+   *
+   * # Returns
+   *
+   * The builder itself (`this`), enabling method chaining.
+   */
+  setBreakCharacters(breakCharacters: string | null | undefined): this
+  /**
    * Sets the left-space penalty (Korean), with the same meaning as
    * `segmenter.space_penalty` in a configuration file.
    *

@@ -210,6 +210,22 @@ Independently of grouping, Lindera also generates a MeCab/Vibrato-inspired "leng
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladder(false);
 ```
 
+## Break Characters
+
+By default, a segmenter breaks at `・` (U+30FB). A boundary is a place between a break character and a character that is not one: no unknown word crosses a boundary, in every mode, and in Decompose mode no system-dictionary word does either.
+
+The bundled dictionaries put `・` in the katakana category of their `char.def`, so without this rule a run of katakana joined by `・` is one unknown word when its first word is not in the dictionary. MeCab, and Lindera with no break characters, return `レノン・ジョン` whole, while `ジョン・レノン` splits after the dictionary word `ジョン`. With `・` as a break character, both split into three tokens, such as `レノン`, `・` and `ジョン`, and `サイレント` matches `ザ・サイレント・フォレスト` in a search. This is a deliberate difference from MeCab.
+
+In Decompose mode, a system-dictionary word with a boundary inside it, such as IPADIC's `インフォームド・コンセント` or the many such entries of IPADIC-NEologd and SudachiDict, does not enter the lattice: it comes out as its parts, without its own part of speech and reading. Normal mode keeps such words. Every mode keeps user-dictionary words, which a user registered on purpose, and words made of break characters only, such as `・`.
+
+`break_characters` takes a string, each character of which is a break character, in place of the default; an empty string gives MeCab's segmentation:
+
+```rust
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).break_characters("");
+```
+
+`･` (U+FF65) is not in the default: every bundled dictionary puts it in the symbol category, apart from the halfwidth katakana, so no unknown word runs through it anyway. The configuration key `break_characters`, the CLI flags `--break-characters` and `--disable-break-characters`, and the bindings' `set_break_characters` (`setBreakCharacters`) set the same thing. Train a dictionary with the break characters it will be used with: `Trainer::break_characters` and the same two flags of `lindera train` set them, with the same default.
+
 ## Left-Space Penalty (Korean)
 
 MeCab-based Korean analyzers (mecab-ko with mecab-ko-dic, Lucene's nori) add a cost to a candidate that starts right after whitespace when its part-of-speech tag is one that attaches to the preceding word without a space: particles (`J*`), endings (`E*`), the copula (`VCP`) and derivational suffixes (`XS*`). Without it, `검색 이 잘 된다` reads `이` as the subject particle `JKS` rather than the interjection `IC`. Lindera applies the same penalty by default for dictionaries that ship the rules in their metadata (ko-dic does); other dictionaries are unaffected. Opt out with `Segmenter::space_penalty(None)`, `"space_penalty": false` in the config, or `--disable-space-penalty` on the CLI. Together with `skip_whitespace(false)`, this turns off both changes since v6.0 in how Korean is read around spaces (this penalty and whitespace skipping), but not the other output changes since then, such as the split of punctuation runs like `."` (see [Migrating from v6 to v7](../migration_v6_to_v7.md#unknown-words-start-at-every-position-as-in-mecab)).
@@ -300,7 +316,7 @@ for line in lines {
 }
 ```
 
-The returned tokens borrow the worker, so they must be consumed before the next call (the usual per-line loop above compiles as-is). `set_mode`, `set_keep_whitespace`, `set_skip_whitespace`, `set_max_grouping_len`, `set_unknown_word_ladder`, `set_space_penalty` and `set_space_penalty_from_dictionary` switch the configuration between calls. `segmenter()` returns a shared reference to the underlying segmenter; no `&mut` accessor is provided, since swapping the dictionary out from under the reused lattice would break the dictionary-lattice pairing the worker exists to guarantee.
+The returned tokens borrow the worker, so they must be consumed before the next call (the usual per-line loop above compiles as-is). `set_mode`, `set_keep_whitespace`, `set_skip_whitespace`, `set_max_grouping_len`, `set_unknown_word_ladder`, `set_break_characters`, `set_space_penalty` and `set_space_penalty_from_dictionary` switch the configuration between calls. `segmenter()` returns a shared reference to the underlying segmenter; no `&mut` accessor is provided, since swapping the dictionary out from under the reused lattice would break the dictionary-lattice pairing the worker exists to guarantee.
 
 A worker also bounds retained memory: one delimiter-free maximum-length sentence grows the lattice to several MB (roughly 18 MB for a 32 KiB ASCII sentence, 6 MB for a 32 KiB CJK one, whose character-indexed lattice has a third of the slots), and a plain `Lattice` keeps that forever. The worker automatically shrinks its lattice, and releases its scratch buffers, once a window of calls shows the capacity is oversized, and `shrink_to(text_len_hint)` forces a shrink immediately. `reset()` discards the internal buffers outright and replaces them with fresh ones; it is intended for recovery paths (e.g. after a panic poisoned a mutex holding the worker) where the buffers may hold an inconsistent intermediate state — the segmenter configuration itself is preserved.
 

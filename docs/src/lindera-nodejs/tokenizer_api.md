@@ -97,6 +97,23 @@ builder.setSkipWhitespace(false);
 builder.setSkipWhitespace(null);
 ```
 
+#### `setBreakCharacters(chars)`
+
+Sets the break characters. `chars` has the same meaning as `segmenter.break_characters` in a [configuration file](../lindera-analysis/configuration.md):
+
+- A string -- Each of its characters is a break character: no unknown word crosses a boundary between a break character and another character, and in decompose mode no system-dictionary word does either. User-dictionary words and words made of break characters only stay.
+- `""` -- No break characters, which gives MeCab's segmentation.
+- `null` or `undefined` -- The default, `・`. Use it to undo an earlier call.
+
+The argument is required. A value set here overrides a `break_characters` loaded with `fromFile`. Any other value throws.
+
+With IPADIC, for example, `レノン・ジョン`, which is not in the dictionary, is `レノン`, `・` and `ジョン` by default and one unknown word with `setBreakCharacters("")`. See [Segmenter](../lindera/segmenter.md#break-characters) for details.
+
+```javascript
+// Split as MeCab does
+builder.setBreakCharacters("");
+```
+
 #### `setSpacePenalty(value)`
 
 Sets the left-space penalty for Korean (mecab-ko's `left-space-penalty-factor`): a candidate that starts right after whitespace and whose first part-of-speech tag is listed in a rule gets that rule's cost added. The value means the same as `segmenter.space_penalty` in a [configuration file](../lindera-analysis/configuration.md).

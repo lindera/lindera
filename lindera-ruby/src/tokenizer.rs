@@ -125,6 +125,25 @@ impl RbTokenizerBuilder {
         self.inner.borrow_mut().set_skip_whitespace(skip_whitespace);
     }
 
+    /// Sets the break characters, with the same meaning as
+    /// `segmenter.break_characters` in a YAML config.
+    ///
+    /// Each character of the string is a break character: no unknown word,
+    /// nor, in decompose mode, any system-dictionary word, crosses a
+    /// boundary between a break character and another character. An empty
+    /// string turns the rule off, which gives MeCab's segmentation; `nil`
+    /// goes back to the default, `・`.
+    ///
+    /// # Arguments
+    ///
+    /// * `break_characters` - The break characters, or `nil` for the
+    ///   default. A value that is not a string raises a `TypeError`.
+    fn set_break_characters(&self, break_characters: Option<String>) {
+        self.inner
+            .borrow_mut()
+            .set_break_characters(break_characters.as_deref());
+    }
+
     /// Sets the left-space penalty (Korean), with the same meaning as
     /// `segmenter.space_penalty` in a YAML config.
     ///
@@ -407,6 +426,10 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
     builder_class.define_method(
         "set_skip_whitespace",
         method!(RbTokenizerBuilder::set_skip_whitespace, 1),
+    )?;
+    builder_class.define_method(
+        "set_break_characters",
+        method!(RbTokenizerBuilder::set_break_characters, 1),
     )?;
     builder_class.define_method(
         "set_space_penalty",

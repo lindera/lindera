@@ -254,6 +254,16 @@ impl AnalysisWorker {
             .set_unknown_word_ladder(unknown_word_ladder);
     }
 
+    /// Sets the break characters for subsequent calls (see
+    /// `Segmenter::break_characters`; defaults to `・`).
+    ///
+    /// # Arguments
+    ///
+    /// * `chars` - The break characters; an empty string turns the rule off.
+    pub fn set_break_characters(&mut self, chars: &str) {
+        self.segment_worker.set_break_characters(chars);
+    }
+
     /// Sets the left-space penalty rules for subsequent calls (see
     /// `Segmenter::space_penalty`; `None` disables it, overriding the rules
     /// the dictionary ships and applies by default).

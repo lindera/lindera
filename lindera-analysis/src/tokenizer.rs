@@ -324,6 +324,33 @@ impl TokenizerBuilder {
         self
     }
 
+    /// Sets the break characters (see `Segmenter::break_characters`): no
+    /// unknown word, nor, in Decompose mode, any system-dictionary word,
+    /// crosses a boundary between a break character and a character that
+    /// is not one.
+    ///
+    /// # Arguments
+    ///
+    /// * `break_characters` - The break characters, each character of the
+    ///   string, where an empty string turns the rule off (MeCab's
+    ///   segmentation); or `None` to remove the setting, so the Segmenter
+    ///   uses its default, `・`.
+    ///
+    /// # Returns
+    ///
+    /// A mutable reference to `self`, for chaining.
+    pub fn set_segmenter_break_characters(&mut self, break_characters: Option<&str>) -> &mut Self {
+        match break_characters {
+            Some(chars) => self.config["segmenter"]["break_characters"] = json!(chars),
+            None => {
+                if let Some(segmenter) = self.config["segmenter"].as_object_mut() {
+                    segmenter.remove("break_characters");
+                }
+            }
+        }
+        self
+    }
+
     /// Sets the left-space penalty rules (see `Segmenter::space_penalty`).
     /// Pass `None` to turn the penalty off (`space_penalty: false`), which
     /// also overrides the rules the dictionary ships and applies by default;

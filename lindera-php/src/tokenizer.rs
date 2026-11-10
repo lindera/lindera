@@ -43,6 +43,33 @@ fn space_penalty_value(value: &Zval) -> PhpResult<serde_json::Value> {
     })
 }
 
+/// Converts a break-characters setting from PHP.
+///
+/// The setter takes the raw value rather than an `Option<String>`, so that
+/// the argument stays required (see [`skip_whitespace_value`]) and a value of
+/// another type is rejected instead of being taken as `null`.
+///
+/// # Arguments
+///
+/// * `value` - `null` or a string.
+///
+/// # Returns
+///
+/// `None` for `null`, the string otherwise, or a `TypeError` for a value of
+/// any other type.
+fn break_characters_value(value: &Zval) -> PhpResult<Option<String>> {
+    if value.is_null() {
+        return Ok(None);
+    }
+    value.string().map(Some).ok_or_else(|| {
+        PhpException::new(
+            "break_characters must be null or a string".to_string(),
+            0,
+            ce::type_error(),
+        )
+    })
+}
+
 /// Converts a whitespace-skipping setting from PHP.
 ///
 /// The setter takes the raw value rather than an `Option<bool>` to keep its
@@ -175,6 +202,32 @@ impl PhpTokenizerBuilder {
     pub fn set_skip_whitespace(&self, skip_whitespace: &Zval) -> PhpResult<()> {
         let skip_whitespace = skip_whitespace_value(skip_whitespace)?;
         self.inner.borrow_mut().set_skip_whitespace(skip_whitespace);
+        Ok(())
+    }
+
+    /// Sets the break characters, with the same meaning as
+    /// `segmenter.break_characters` in a config file. Exposed to PHP as
+    /// `setBreakCharacters(mixed $break_characters)`.
+    ///
+    /// Each character of the string is a break character: no unknown word,
+    /// nor, in decompose mode, any system-dictionary word, crosses a
+    /// boundary between a break character and another character. An empty
+    /// string turns the rule off, which gives MeCab's segmentation; `null`
+    /// goes back to the default, `・`.
+    ///
+    /// # Arguments
+    ///
+    /// * `break_characters` - The setting: a string, or `null` for the
+    ///   default. The argument is required.
+    ///
+    /// # Returns
+    ///
+    /// Nothing on success; throws `TypeError` for a value of any other type.
+    pub fn set_break_characters(&self, break_characters: &Zval) -> PhpResult<()> {
+        let break_characters = break_characters_value(break_characters)?;
+        self.inner
+            .borrow_mut()
+            .set_break_characters(break_characters.as_deref());
         Ok(())
     }
 

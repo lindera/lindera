@@ -147,6 +147,12 @@ pub struct Trainer {
     /// unbounded, as the runtime's default does.
     max_grouping_len: Option<usize>,
 
+    /// Break characters, with the meaning of the runtime's
+    /// `break_characters` (#1353): no unknown-word candidate crosses a
+    /// boundary between a break character and a character that is not one.
+    /// `・` by default, as the segmenter's default.
+    break_characters: lindera_dictionary::break_characters::BreakCharacters,
+
     provider: lindera_crf::FeatureProvider,
 
     /// The CRF label of every `unk.def` entry, indexed by unknown-word entry
@@ -523,6 +529,7 @@ impl Trainer {
         Ok(Self {
             config,
             max_grouping_len: None,
+            break_characters: lindera_dictionary::break_characters::BreakCharacters::default_set(),
             provider,
             unk_entry_labels,
             virtual_labels: HashMap::new(),
@@ -642,6 +649,25 @@ impl Trainer {
     /// The trainer.
     pub fn max_grouping_len(mut self, len: Option<usize>) -> Self {
         self.max_grouping_len = len;
+        self
+    }
+
+    /// Sets the break characters, with the meaning of the runtime's
+    /// `break_characters` (#1353): no unknown-word candidate crosses a
+    /// boundary between a break character and a character that is not one.
+    /// Train with the value the dictionary will be used with; the default,
+    /// `・`, is the segmenter's. The gold tokens of the corpus become edges
+    /// whatever they span.
+    ///
+    /// # Arguments
+    ///
+    /// * `chars` - The break characters; an empty string turns the rule off.
+    ///
+    /// # Returns
+    ///
+    /// The trainer.
+    pub fn break_characters(mut self, chars: &str) -> Self {
+        self.break_characters = lindera_dictionary::break_characters::BreakCharacters::new(chars);
         self
     }
 
@@ -1089,6 +1115,7 @@ impl Trainer {
             &dict.unknown_dictionary,
             &example.sentence,
             self.max_grouping_len,
+            Some(&self.break_characters),
             &mut self.unknown_candidates,
         );
 
@@ -2629,6 +2656,28 @@ mod unk_def_entry_tests {
         let lattice1 = build(&mut capped_at_1, &abc);
         assert_eq!(gold(&lattice1, 0), (3, 2 + 10 + 1), "a virtual label");
         assert_eq!(negatives(&lattice1, 0), unks(&[(1, 2), (1, 3)]));
+    }
+
+    /// `Trainer::break_characters` splits the candidates as the runtime
+    /// option does (#1353), and its default is the runtime's, `・`: with `B`
+    /// as a break character, the ALPHA run `ABC` is no candidate, and the
+    /// candidates at its start end before `B`, as with a grouping cap of 1.
+    #[test]
+    fn break_characters_split_candidates_as_at_runtime() {
+        use lindera_dictionary::break_characters::BreakCharacters;
+
+        assert_eq!(trainer().break_characters, BreakCharacters::default_set());
+
+        let abc = example(&[("ABC", "名詞,固有名詞,組織,*,*,*,*")]);
+        let mut default = trainer();
+        let lattice = build(&mut default, &abc);
+        assert_eq!(gold(&lattice, 0), (3, unk(2).get()));
+        assert_eq!(negatives(&lattice, 0), unks(&[(3, 3)]));
+
+        let mut breaking_at_b = trainer().break_characters("B");
+        let lattice = build(&mut breaking_at_b, &abc);
+        assert_eq!(gold(&lattice, 0), (3, 2 + 10 + 1), "a virtual label");
+        assert_eq!(negatives(&lattice, 0), unks(&[(1, 2), (1, 3)]));
     }
 
     /// The exported `unk.def` has one line per input line, in input order,

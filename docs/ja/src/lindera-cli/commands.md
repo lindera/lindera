@@ -90,6 +90,8 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 - `--disable-skip-whitespace`: 空白を読み飛ばさず、独立したノード（空白の見出し語か `SPACE` の未知語）としてラティスに残す（出力からは引き続き除去する。v7 より前の動作）。そのノードの連接コストがすべて 0 の ko-dic では、空白のたびに連接の文脈が途切れる。読み飛ばしは、`metadata.json` で無効にしていない辞書（SudachiDict は無効）ではデフォルトで有効。`--keep-whitespace` と併用した場合は効果がない。[Segmenter](../lindera/segmenter.md#空白文字の扱い) のドキュメントを参照
 - `--max-grouping-len`: 未知語グルーピングの上限（先頭を除いた文字数。MeCab の `max-grouping-size` に相当し、MeCab のデフォルトは 24）。上限は各位置で判定され、ラン（MeCab と同じく、どの文字も直前の文字と `char.def` の文字種を共有する連続）が上限を超える位置ではグルーピング候補を出さず、1 文字候補（および候補ラダーと辞書語）が残ります。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になります。`0` または省略: 無制限。例は [Segmenter](../lindera/segmenter.md) のドキュメントを参照
 - `--disable-unknown-word-ladder`: MeCab/Vibrato 由来の未知語候補ラダー（`char.def` の `LENGTH` フィールド）を無効化する。デフォルトで有効。無効にすると、v6 より前と同じくこれらの候補を作らない。ただし、グルーピングした未知語の内側から始まる未知語など、その後の変更による出力の違いは残る。[Segmenter](../lindera/segmenter.md#未知語のグルーピング) のドキュメントを参照
+- `--break-characters <CHARS>`: 区切り文字（`CHARS` の各文字。デフォルト: `・`）。どのモードでも未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたぎません。ユーザー辞書の語と、区切り文字だけからなる語は残ります。[Segmenter](../lindera/segmenter.md#区切り文字) のドキュメントを参照
+- `--disable-break-characters`: 区切り文字を使わず、MeCab と同じ分割にします。カタカナの未知語は `・` をまたぎ（`レノン・ジョン` は 1 語のまま）、その前が辞書語ならそこで区切ります（`ジョン・レノン` は区切る）。`--break-characters` とは同時に指定できません
 - `--disable-space-penalty`: 辞書の `metadata.json` に同梱されたルールでデフォルト有効になる左側空白ペナルティ（mecab-ko の `left-space-penalty-factor`。ko-dic は mecab-ko-dic のルールを同梱）を無効にする。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する機能で、`--disable-skip-whitespace` と併せて無効にすると、空白まわりの韓国語の解析について v6.0 以降に入った 2 つの変更（このペナルティと空白の読み飛ばし）がどちらもオフになる。ただし、`."` のような記号の連続が分かれるなど、それ以外の出力の変化は残る。[Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) のドキュメントを参照
 - `--space-penalty-rules`: 辞書のルールの代わりに、明示的な左側空白ペナルティのルールを JSON で指定する。例: `'{"rules":[{"pos":["JKS","JX"],"cost":6000}]}'`。`--disable-space-penalty` とは同時に指定できない
 - `--mmap`: 辞書ディレクトリの単語リストにメモリマップドファイル読み込みを使用する。`embedded://` 辞書、および `mmap` feature が無効な場合は無視される。プロセスがマップを保持している間に辞書ディレクトリを再ビルド・切り詰めると、次回のルックアップで SIGBUS を引き起こす可能性がある。
@@ -925,6 +927,7 @@ Downloaded dictionary 'ipadic'
 - `--max-iterations` / `-i`: 学習の最大反復回数。1 以上 (デフォルト: 100)
 - `--eta` / `-e`: 収束判定の許容値。目的関数の相対変化がこの値を 3 回続けて下回ると、`--max-iterations` より前に学習を止めます。`0` で判定を切ります (デフォルト: 0.00005。MeCab の学習器のデフォルトと同じ)
 - `--max-threads` / `-t`: 最大スレッド数。1 以上 (デフォルトはCPUコア数。速度のみに影響し、学習結果は変わりません)
+- `--break-characters <CHARS>` / `--disable-break-characters`: 未知語候補の区切り文字。`lindera tokenize` と同じ意味です（デフォルト: `・`）。辞書を使うときと同じ値で学習してください。コーパス自身のトークンは、境目をまたいでもそのまま使います
 
 ### 基本的なワークフロー
 

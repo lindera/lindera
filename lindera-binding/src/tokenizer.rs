@@ -191,6 +191,33 @@ impl CoreTokenizerBuilder {
         self
     }
 
+    /// Sets the break characters (see `Segmenter::break_characters`), with
+    /// the same meaning as `segmenter.break_characters` in a YAML config:
+    ///
+    /// - a string makes each of its characters a break character: no
+    ///   unknown word, nor, in decompose mode, any system-dictionary word,
+    ///   crosses a boundary between a break character and another
+    ///   character;
+    /// - an empty string turns the rule off, which gives MeCab's
+    ///   segmentation;
+    /// - `None` removes the setting, so the default, `・`, applies.
+    ///
+    /// A value set here overrides a setting loaded from a configuration
+    /// file.
+    ///
+    /// # Arguments
+    ///
+    /// * `break_characters` - The break characters, or `None` for the
+    ///   default.
+    ///
+    /// # Returns
+    ///
+    /// The builder, for chaining.
+    pub fn set_break_characters(&mut self, break_characters: Option<&str>) -> &mut Self {
+        self.inner.set_segmenter_break_characters(break_characters);
+        self
+    }
+
     /// Sets the left-space penalty (Korean; see `Segmenter::space_penalty`)
     /// from a value with the same meaning as `segmenter.space_penalty` in a
     /// YAML config:

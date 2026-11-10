@@ -221,6 +221,22 @@ Viterbi 探索が最もコストの低い長さを選べるようにします。
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladder(false);
 ```
 
+## 区切り文字
+
+既定では、Segmenter は `・`（U+30FB）で区切ります。境目とは、区切り文字と区切り文字でない文字の間のことです。どのモードでも未知語は境目をまたがず、Decompose モードではシステム辞書の語もまたぎません。
+
+同梱の辞書は `char.def` で `・` をカタカナのカテゴリに入れているので、この規則が無いと、`・` でつないだカタカナの並びは、先頭の語が辞書に無いときに 1 つの未知語になります。MeCab と、区切り文字の無い Lindera は、`レノン・ジョン` を 1 語のまま返し、`ジョン・レノン` は辞書語の `ジョン` の後で区切ります。`・` を区切り文字にすると、どちらも `レノン`、`・`、`ジョン` のような 3 つのトークンに分かれ、検索で `サイレント` が `ザ・サイレント・フォレスト` に一致します。MeCab との意図した違いです。
+
+Decompose モードでは、IPADIC の `インフォームド・コンセント` や、IPADIC-NEologd と SudachiDict に多くある同様の語のように、内側に境目を持つシステム辞書の語は格子に入りません。その語は、固有の品詞や読みを持たないまま、部分に分かれて出ます。Normal モードはそのような語も残します。ユーザーが意図して登録したユーザー辞書の語と、`・` のように区切り文字だけからなる語は、どのモードでも残ります。
+
+`break_characters` は、既定の代わりに、各文字を区切り文字とする文字列を受け取ります。空の文字列にすると MeCab と同じ分割になります:
+
+```rust
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).break_characters("");
+```
+
+`･`（U+FF65）は既定に含めていません。同梱のどの辞書も、半角カタカナとは別に記号のカテゴリに入れているので、そもそも未知語はそこで止まります。設定ファイルのキー `break_characters`、CLI のフラグ `--break-characters` と `--disable-break-characters`、バインディングの `set_break_characters`（`setBreakCharacters`）も同じものを設定します。辞書は、使うときと同じ区切り文字で学習してください。`Trainer::break_characters` と、`lindera train` の同じ 2 つのフラグで設定でき、既定も同じです。
+
 ## 左側空白ペナルティ（韓国語）
 
 MeCab ベースの韓国語解析器（mecab-ko + mecab-ko-dic、Lucene の nori）は、直前に空白がある候補の品詞が、本来は前の語に空白なしで付く品詞（助詞 `J*`、語尾 `E*`、指定詞 `VCP`、派生接尾辞 `XS*`）である場合にコストを加算します。これがないと `검색 이 잘 된다` の `이` は感動詞 `IC` ではなく主格助詞 `JKS` と解析されます。Lindera は、ルールを `metadata.json` に同梱する辞書（ko-dic）ではこのペナルティをデフォルトで適用します。他の辞書には影響しません。`Segmenter::space_penalty(None)`、設定の `"space_penalty": false`、CLI の `--disable-space-penalty` でオフにできます。`skip_whitespace(false)` と併用すると、空白まわりの韓国語の解析について v6.0 以降に入った 2 つの変更（このペナルティと空白の読み飛ばし）がどちらもオフになります。ただし、`."` のような記号の連続が分かれるなど、それ以外の出力の変化は残ります（[v6 から v7 への移行](../migration_v6_to_v7.md#mecab-と同じくどの位置からも未知語が始まる)を参照）。
@@ -311,7 +327,7 @@ for line in lines {
 }
 ```
 
-返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。`set_mode`・`set_keep_whitespace`・`set_skip_whitespace`・`set_max_grouping_len`・`set_unknown_word_ladder`・`set_space_penalty`・`set_space_penalty_from_dictionary` で呼び出しごとに設定を切り替えられます。`segmenter()` は内部の Segmenter への共有参照を返します。`&mut` でのアクセサは意図的に提供されていません。再利用中のラティスの下で辞書を差し替えてしまうと、この worker が保証する辞書とラティスの対応関係が壊れてしまうためです。
+返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。`set_mode`・`set_keep_whitespace`・`set_skip_whitespace`・`set_max_grouping_len`・`set_unknown_word_ladder`・`set_break_characters`・`set_space_penalty`・`set_space_penalty_from_dictionary` で呼び出しごとに設定を切り替えられます。`segmenter()` は内部の Segmenter への共有参照を返します。`&mut` でのアクセサは意図的に提供されていません。再利用中のラティスの下で辞書を差し替えてしまうと、この worker が保証する辞書とラティスの対応関係が壊れてしまうためです。
 
 Worker は保持メモリも制限します。区切り文字のない最大長の文を 1 回処理するとラティスは数 MB まで成長し（32 KiB の ASCII 文で約 18 MB、32 KiB の CJK 文では文字索引ラティスのスロット数が 1/3 のため約 6 MB）、素の `Lattice` はそれを保持し続けます。Worker は一定回数の呼び出し窓で容量が過大と判明した場合に、自動でラティスを縮小してスクラッチバッファを解放し、`shrink_to(text_len_hint)` で即時に縮小することもできます。`reset()` は内部バッファを破棄して新しいものに置き換えます。これは、例えばパニックによって worker を保持する Mutex がポイズニングされた場合など、バッファが不整合な中間状態を保持している可能性がある回復経路のために用意されています。Segmenter の設定（mode や空白の扱いなど）自体は保持されます。
 

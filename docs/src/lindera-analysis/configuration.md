@@ -13,6 +13,7 @@ segmenter:
   # use_mmap: false # only meaningful for filesystem (non-embedded://) dictionaries
   # max_grouping_len: 24 # cap on unknown-word grouping; omit or 0 for unbounded
   # unknown_word_ladder: true # emit shorter unknown-word candidates (default: true)
+  # break_characters: "・" # no unknown word, nor in decompose mode any system-dictionary word, crosses a boundary of these characters (default: "・"); "" splits as MeCab does
   # space_penalty: false # left-space penalty (Korean); on by default for dictionaries that ship rules (ko-dic). false turns it off, an object gives explicit rules
 
 character_filters:
@@ -87,6 +88,7 @@ token_filters:
 | `use_mmap` | bool | on when the `mmap` feature is compiled in (the default) | Memory-map the dictionary; only meaningful for filesystem (non-`embedded://`) dictionaries |
 | `max_grouping_len` | integer | *(unbounded)* | Cap on unknown-word grouping, in characters **beyond the first**, matching MeCab's `max-grouping-size` (MeCab defaults to 24). Applied at each position: a run longer than the cap is not grouped there, the single-character candidate (plus the length ladder and dictionary words) remains, and the remaining tail is grouped again once it fits, so no unknown token exceeds cap+1 characters. Omitting the key, or setting `0`, leaves grouping unbounded |
 | `unknown_word_ladder` | bool | `true` | Also emit the shorter unknown-word candidates up to the `LENGTH` field in `char.def` of the character's default category, as MeCab and Vibrato do. `false` leaves them out, as before v6; other changes since then, such as unknown words that start inside a grouped run, still apply. See [Segmenter](../lindera/segmenter.md#unknown-word-grouping) |
+| `break_characters` | string | `"・"` | Break characters, each character of the string: no unknown word crosses a boundary between a break character and another character, in every mode, and in decompose mode no system-dictionary word does either (user-dictionary words and words of break characters only stay). An empty string gives MeCab's segmentation, which keeps `レノン・ジョン` whole while splitting `ジョン・レノン`. See [Break Characters](../lindera/segmenter.md#break-characters) |
 | `space_penalty` | bool or object | *(the dictionary's rules, if any)* | Left-space penalty (mecab-ko's `left-space-penalty-factor`): a candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added. Omitted or `null` keeps the rules the dictionary ships in its `metadata.json` (ko-dic ships mecab-ko-dic's, so the penalty is on by default for ko-dic; the other bundled dictionaries ship none); `false` turns it off; `true` requires the dictionary's rules (an error when it ships none); an object `{"rules": [{"pos": [...], "cost": n}, ...]}` gives explicit rules. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) |
 
 ```shell
