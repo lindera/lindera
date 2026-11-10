@@ -417,17 +417,19 @@ v6 からアップグレードする場合は<a href="getting_started/../migrati
 </span>// Cargo.toml: lindera = { version = "7", features = ["embed-ipadic"] }
 let dictionary = load_dictionary("embedded://ipadic")?;
 <span class="boring">}</span></code></pre></pre>
-<p><code>embed-*</code> のビルドは、辞書クレートのために Lindera が GitHub で公開している辞書をダウンロードし、SHA-256 を確かめて埋め込みます。辞書をソースからビルドしなくなったので、ビルドには <code>lindera.dev</code> ではなく <code>github.com</code>（ファイルは <code>release-assets.githubusercontent.com</code> から配られます）への接続が要ります。<code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を設定すれば、2 回目からのビルドはダウンロードした辞書を使い、ネットワークに接続しません。build script がソースからビルドする場合は、<a href="getting_started/./environment_variables.html#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a> を参照してください。</p>
+<p><code>embed-*</code> のビルドは、辞書クレートのために Lindera が GitHub で公開している辞書をダウンロードし、SHA-256 を確かめて埋め込みます。辞書をソースからビルドしなくなったので、ビルドには <code>lindera.dev</code> ではなく <code>github.com</code>（ファイルは <code>release-assets.githubusercontent.com</code> から配られます）への接続が要ります。<code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を設定すれば、2 回目からのビルドはダウンロードした辞書を使い、ネットワークに接続しません。build script がソースからビルドする場合は、<a href="getting_started/./environment_variables.html#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a> を、ミラーからダウンロードするには <a href="getting_started/./environment_variables.html#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a> を参照してください。</p>
 <p>埋め込めるのは同梱の辞書だけです。自分の辞書は <code>lindera build</code> でビルドし、実行時にそのディレクトリから読み込んでください。</p>
 <p>詳細は <a href="getting_started/../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
 </blockquote>
 <h2 id="環境変数"><a class="header" href="#環境変数">環境変数</a></h2>
-<p>辞書クレートの build script は <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>・<code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code>・<code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code>・<code>DOCS_RS</code> を、<code>TokenizerBuilder::new()</code> は <code>LINDERA_CONFIG_FILE</code> を読みます。これらを含め、Lindera が読む環境変数は<a href="getting_started/./environment_variables.html">環境変数</a>を参照してください。</p>
+<p>辞書クレートの build script は <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>・<code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code>・<code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code>・<code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code>・<code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code>・<code>DOCS_RS</code> を、<code>TokenizerBuilder::new()</code> は <code>LINDERA_CONFIG_FILE</code> を読みます。これらを含め、Lindera が読む環境変数は<a href="getting_started/./environment_variables.html">環境変数</a>を参照してください。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="環境変数-1"><a class="header" href="#環境変数-1">環境変数</a></h1>
 <p>Lindera は次の環境変数を読みます。どれも設定しなくても動きます。</p>
 <div class="table-wrapper"><table><thead><tr><th>変数</th><th>読むもの</th><th>値</th><th>設定しないとき</th></tr></thead><tbody>
 <tr><td><a href="getting_started/environment_variables.html#lindera_build_dictionary_cache_dir"><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code></a></td><td>辞書クレートの build script</td><td>ディレクトリ</td><td>ビルドごとに、その出力ディレクトリで辞書をダウンロードしてビルドする</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a></td><td>辞書クレートの build script</td><td><code>1</code> か <code>true</code></td><td>辞書クレートは固定した公開済みの辞書をダウンロードし、それを使えないときだけソースからビルドする</td></tr>
+<tr><td><a href="getting_started/environment_variables.html#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a></td><td>辞書クレートの build script</td><td><code>http</code> か <code>https</code> の URL</td><td>公開済みの辞書を GitHub のリリースからダウンロードする</td></tr>
+<tr><td><a href="getting_started/environment_variables.html#lindera_build_dictionary_source_base_url"><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></a></td><td>辞書クレートの build script</td><td><code>http</code> か <code>https</code> の URL</td><td>ソースのアーカイブを <code>https://lindera.dev</code> からダウンロードする</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#lindera_build_context_id_freq_file"><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code></a></td><td>辞書クレートの build script</td><td>ファイル</td><td>辞書クレートに同梱の頻度表（あれば）</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#docs_rs"><code>DOCS_RS</code></a></td><td>辞書クレートの build script</td><td>docs.rs が設定する</td><td>本物の辞書をビルドする</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#lindera_config_file"><code>LINDERA_CONFIG_FILE</code></a></td><td><code>TokenizerBuilder::new()</code>（<code>lindera tokenize</code> とバインディングも）</td><td>ファイル</td><td>空の設定</td></tr>
@@ -500,6 +502,32 @@ LINDERA_BUILD_DICTIONARY_CACHE_DIR = "/path/to/cache"
 <p>Cargo がこの警告を表示するのは、このリポジトリの checkout のように、パスから辞書クレートをビルドするときです。crates.io の辞書クレートでは、ビルドが失敗したときと <code>cargo build -vv</code> を付けたときだけ表示します。変数や <code>prebuilt.json</code> を変えると、build script が再実行されます。<code>DOCS_RS</code> を設定したビルドは、どちらもせずにダミーの辞書を使います（後述の <code>DOCS_RS</code> を参照）。</p>
 <pre><code class="language-shell">LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1 cargo build --features=embed-ipadic
 </code></pre>
+<h3 id="lindera_build_dictionary_published_base_url"><a class="header" href="#lindera_build_dictionary_published_base_url">LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</a></h3>
+<p><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code> と <a href="getting_started/environment_variables.html#lindera_build_dictionary_source_base_url"><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></a> は、build script のダウンロード先をミラーに向けます。Artifactory のようなプロキシのリポジトリを通すビルドなど、Lindera が公開しているホストに届いてはいけないビルドのための変数です。それぞれが 1 つのホストを置き換えます。</p>
+<div class="table-wrapper"><table><thead><tr><th>変数</th><th>置き換えるもの</th><th>ビルドがダウンロードするもの</th></tr></thead><tbody>
+<tr><td><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></td><td><code>https://github.com/lindera/lindera/releases/download</code>（クレートの <code>prebuilt.json</code> の <code>base_url</code>）</td><td><code>&lt;base&gt;/&lt;path&gt;</code>（<code>path</code> は <code>prebuilt.json</code> のもの）</td></tr>
+<tr><td><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></td><td><code>https://lindera.dev</code>（クレートの <code>build.rs</code> がソースのアーカイブを取るホスト）</td><td><code>&lt;base&gt;/&lt;file_name&gt;</code>（<code>file_name</code> はアーカイブのファイル名）</td></tr>
+</tbody></table>
+</div>
+<p>IPADIC の場合、変数を <code>https://mirror.example/lindera-releases</code> と <code>https://mirror.example/lindera-dev</code> にすると、ビルドは次のどちらかをダウンロードします。</p>
+<pre><code class="language-text">https://mirror.example/lindera-releases/dictionary-ipadic-2.7.0-20250920-fmt3-r1/ipadic-2.7.0-20250920-fmt3-r1.tar.gz
+https://mirror.example/lindera-dev/mecab-ipadic-2.7.0-20250920.tar.gz
+</code></pre>
+<p>つまり、ミラーには元のホストと同じパスでファイルを置きます。Artifactory なら、<code>https://github.com/lindera/lindera/releases/download</code> をプロキシする remote repository が公開済みの辞書を、<code>https://lindera.dev</code> をプロキシするものがソースのアーカイブを配ります。ビルドは、既定では公開済みの辞書をダウンロードし、ソースからビルドするときだけソースのアーカイブをダウンロードします（<a href="getting_started/environment_variables.html#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a> を参照）。ソースからのビルドは <code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code> がなくても起こるので、元のホストに届いてはいけないビルドでは、両方の変数を設定します。</p>
+<pre><code class="language-shell">export LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL=https://mirror.example/lindera-releases
+export LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL=https://mirror.example/lindera-dev
+cargo build --features=embed-ipadic
+</code></pre>
+<ul>
+<li>ミラーはホストを置き換えます。ビルドはミラーだけからダウンロードし、ミラーが失敗しても元のホストには行きません。</li>
+<li>ビルドは、元のホストから取るときと同じく、ダウンロードしたものを辞書クレートが固定した SHA-256 と照合します。別のファイルを返すミラーは、ビルドを止めます。</li>
+<li>値は <code>http</code> か <code>https</code> の URL です。末尾の <code>/</code> は無視します。ビルドは認証情報を送らないので、ミラーは認証なしでファイルを配る必要があります。ユーザー名やパスワードを含む URL はエラーです。問い合わせ文字列やフラグメントを含む URL も、後ろにパスを付けられないのでエラーです。空の値はミラーなしとみなします。</li>
+<li><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> のキャッシュは、辞書とソースのアーカイブを、取ってきたホストではなく SHA-256 で記録します。そのため、ミラーを使うビルドは、ミラーを使わないビルドがキャッシュしたものを使い、その逆も同じです。</li>
+<li>どちらの変数を変えても、build script は再実行されません。どのホストから取っても辞書は同じだからです。元のホストに届かなかったなどで失敗した build script は、次のビルドで改めて実行されます。</li>
+<li>この変数を読むのは build script だけです。<code>lindera download</code> は、実行時に GitHub から辞書をダウンロードします。</li>
+</ul>
+<h3 id="lindera_build_dictionary_source_base_url"><a class="header" href="#lindera_build_dictionary_source_base_url">LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</a></h3>
+<p>辞書のソースのアーカイブのミラーです。ビルドは <code>https://lindera.dev/&lt;file_name&gt;</code> の代わりに <code>&lt;base&gt;/&lt;file_name&gt;</code> をダウンロードします。2 つの変数の説明は <a href="getting_started/environment_variables.html#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a> にあります。</p>
 <h3 id="lindera_build_context_id_freq_file"><a class="header" href="#lindera_build_context_id_freq_file">LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</a></h3>
 <p><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> 環境変数は、辞書クレートの build script が、クレートに同梱の <code>context_id_freq.txt</code> の代わりに読む文脈 ID の頻度表を指定します。効くのは <code>metadata.json</code> で <code>connection_id_mapping</code> を有効にした辞書（同梱の辞書では UniDic と ko-dic）だけで、実行時の動作には影響しません。頻度表は、よく使う文脈 ID が近くに並ぶように連接コスト行列の文脈 ID を並べ替えるためのもので、トークナイズの速さは変わりますが、結果は変わりません。<code>lindera</code> クレートの例 <code>ctxfreq_dump</code> で、コーパスから頻度表を作れます。</p>
 <pre><code class="language-shell">export LINDERA_BUILD_CONTEXT_ID_FREQ_FILE=/path/to/context_id_freq.txt
@@ -10494,7 +10522,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong><code>lindera build</code> は <code>matrix.def</code> の範囲外の文脈 ID を拒否する</strong></td><td><code>lex.csv</code> や <code>unk.def</code> に <code>matrix.def</code> の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の <code>mecab-dict-index</code> が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる）</td><td>ID か行列を直すか、<code>metadata.json</code> の <code>skip_invalid_cost_or_id</code> でそうした <code>lex.csv</code> の行を取り除く。ユーザー辞書ではそうした ID を直す</td></tr>
 <tr><td><strong><code>lindera build</code> と <code>lindera train</code> は <code>char.def</code> と <code>unk.def</code> を照らし合わせる</strong></td><td>それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが <code>char.def</code> にあるユーザー、<code>char.def</code> と <code>unk.def</code> でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、<code>unk.def</code> の行を無視したりしていた）。MeCab の <code>mecab-dict-index</code> が受け入れる辞書は影響を受けない</td><td>各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに <code>unk.def</code> の行を書き、未定義のカテゴリの <code>unk.def</code> の行を削除する</td></tr>
 <tr><td><strong><code>lindera build</code> は、MeCab と同じく <code>matrix.def</code> にないセルのコストを 0 にする</strong></td><td>セルを省いた <code>matrix.def</code> からシステム辞書をビルドするユーザー。すべてのセルを列挙している同梱の辞書と、<code>lindera export</code> が書き出す <code>matrix.def</code> は対象外</td><td>そうしたセルのコストは 32767 ではなく 0 になる。接続を高いコストのままにするには、そのセルをコスト付きで列挙する</td></tr>
-<tr><td><strong><code>embed-*</code> のビルドは、辞書をソースからビルドせずに公開済みの辞書をダウンロードする</strong></td><td><code>embed-*</code> feature を付けてビルドするユーザー。目立つのは、ビルドが <code>lindera.dev</code> には接続できて <code>github.com</code> には接続できない環境</td><td><code>github.com</code> と <code>release-assets.githubusercontent.com</code> への接続を許すか、<code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1</code> を設定して、これまでどおりソースからビルドする</td></tr>
+<tr><td><strong><code>embed-*</code> のビルドは、辞書をソースからビルドせずに公開済みの辞書をダウンロードする</strong></td><td><code>embed-*</code> feature を付けてビルドするユーザー。目立つのは、ビルドが <code>lindera.dev</code> には接続できて <code>github.com</code> には接続できない環境</td><td><code>github.com</code> と <code>release-assets.githubusercontent.com</code> への接続を許すか、<code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code> をリリースのミラーに向けるか、<code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1</code> を設定して、これまでどおりソースからビルドする</td></tr>
 <tr><td><strong>CLI はライブラリの警告を標準エラー出力に書く</strong></td><td>標準エラー出力を読む CLI のユーザー。たとえば、そこに何か出力があれば失敗とみなすスクリプト。目立つのは、文の区切り文字のないテキストが 32 KiB を超える入力と、<code>--context-id-freq</code> を指定しない ko-dic・UniDic の <code>lindera build</code></td><td>標準エラー出力に <code>[WARN …]</code> の行が出ることを前提にする。<code>RUST_LOG=error</code> で警告を消せる。標準出力は変わらない</td></tr>
 <tr><td>コマンドは、標準出力に読み手がいないとき終了コード 0 で静かに終わり、標準エラー出力に読み手がいないときはメッセージを捨てて続ける</td><td><code>lindera</code> の標準出力や標準エラー出力を、<code>head</code> のように先に終わりうるプログラムにパイプでつなぎ、終了コードを確かめるスクリプト</td><td><code>lindera tokenize</code> が 1 で、ほかのコマンドが 101 で panic して終わっていたところが 0 になる。<code>lindera train</code> と <code>lindera export</code> はモデルやファイルを、<code>lindera download</code> はパスを書くようになった</td></tr>
 <tr><td><strong>設定 <code>normalize_details</code> の削除: <code>Metadata::new</code> と <code>CoreMetadata::new</code> の引数は 10 個、Ruby の <code>Metadata.new</code> の引数は 8 個になる</strong></td><td>辞書のメタデータを作成・参照するコード。Rust（<code>Metadata</code>・<code>lindera_binding::CoreMetadata</code>・<code>PrefixDictionaryBuilderOptions</code>）と、Python・Ruby・PHP・Node.js のバインディングの <code>Metadata</code> クラス</td><td>引数・オプション・プロパティを削除する。このキーを含む <code>metadata.json</code> もそのまま読み込め、キーは無視される</td></tr>
@@ -12178,12 +12206,20 @@ build script は、<code>prebuilt.json</code> が固定する辞書をダウン�
 <p>ビルドは <code>lindera.dev</code> ではなく <code>github.com</code> からダウンロードし、ファイルは
 <code>release-assets.githubusercontent.com</code> から配られます。ネットワークが <code>lindera.dev</code>
 しか許さないビルドはダウンロードに失敗するので、この 2 つのホストへの接続を
-許すか、<code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1</code> を設定して、これまでどおり
+許すか、<code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code> をリリースのミラーに
+向けるか、<code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1</code> を設定して、これまでどおり
 ソースから辞書をビルドしてください。ダウンロードや確認に失敗したビルドは、
 ソースからのビルドに切り替えずにエラーで止まります。
 <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> を設定したビルドは、今も警告を出して
 ソースからビルドします。
 <a href="getting_started/environment_variables.html#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a>
+を参照してください。</p>
+<p>どちらのホストにも接続できないビルドは、
+<code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code> と
+<code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code> で、公開済みの辞書もソースの
+アーカイブもミラーからダウンロードできます
+（<a href="https://github.com/lindera/lindera/issues/584">#584</a>）。
+<a href="getting_started/environment_variables.html#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a>
 を参照してください。</p>
 <p><code>embed-*</code> feature で埋め込めるのは同梱の辞書だけです。自分の辞書は、これまでどおり
 <code>lindera build</code> でビルドし、実行時にそのディレクトリから読み込みます。</p>

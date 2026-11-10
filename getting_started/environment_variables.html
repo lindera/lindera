@@ -181,6 +181,8 @@
 <div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Read by</th><th>Value</th><th>Without it</th></tr></thead><tbody>
 <tr><td><a href="#lindera_build_dictionary_cache_dir"><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code></a></td><td>The build scripts of the dictionary crates</td><td>A directory</td><td>Each build downloads and builds the dictionary in its own output directory</td></tr>
 <tr><td><a href="#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a></td><td>The build scripts of the dictionary crates</td><td><code>1</code> or <code>true</code></td><td>A dictionary crate downloads the published dictionary it pins, and builds from source only when it cannot use it</td></tr>
+<tr><td><a href="#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a></td><td>The build scripts of the dictionary crates</td><td>An <code>http</code> or <code>https</code> URL</td><td>The published dictionaries are downloaded from GitHub releases</td></tr>
+<tr><td><a href="#lindera_build_dictionary_source_base_url"><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></a></td><td>The build scripts of the dictionary crates</td><td>An <code>http</code> or <code>https</code> URL</td><td>The source archives are downloaded from <code>https://lindera.dev</code></td></tr>
 <tr><td><a href="#lindera_build_context_id_freq_file"><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code></a></td><td>The build scripts of the dictionary crates</td><td>A file</td><td>The histogram bundled with the dictionary crate, if any</td></tr>
 <tr><td><a href="#docs_rs"><code>DOCS_RS</code></a></td><td>The build scripts of the dictionary crates</td><td>Set by docs.rs</td><td>The real dictionaries are built</td></tr>
 <tr><td><a href="#lindera_config_file"><code>LINDERA_CONFIG_FILE</code></a></td><td><code>TokenizerBuilder::new()</code>, and so <code>lindera tokenize</code> and the bindings</td><td>A file</td><td>An empty configuration</td></tr>
@@ -253,6 +255,32 @@ LINDERA_BUILD_DICTIONARY_CACHE_DIR = "/path/to/cache"
 <p>Cargo shows these warnings for a dictionary crate built from a path, such as a checkout of this repository; for one from crates.io, it shows them only when the build fails or runs with <code>cargo build -vv</code>. Changing the variable, or <code>prebuilt.json</code>, reruns the build script. Builds with <code>DOCS_RS</code> set build neither: they use dummy dictionaries (see <code>DOCS_RS</code> below).</p>
 <pre><code class="language-shell">LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1 cargo build --features=embed-ipadic
 </code></pre>
+<h3 id="lindera_build_dictionary_published_base_url"><a class="header" href="#lindera_build_dictionary_published_base_url">LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</a></h3>
+<p><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code> and <a href="#lindera_build_dictionary_source_base_url"><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></a> point the downloads of the build scripts at mirrors, for builds that must not reach the hosts Lindera publishes on, such as builds that go through a proxy repository like Artifactory. Each variable replaces one host:</p>
+<div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Replaces</th><th>The build downloads</th></tr></thead><tbody>
+<tr><td><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></td><td><code>https://github.com/lindera/lindera/releases/download</code>, the <code>base_url</code> in the crate's <code>prebuilt.json</code></td><td><code>&lt;base&gt;/&lt;path&gt;</code>, with the <code>path</code> in <code>prebuilt.json</code></td></tr>
+<tr><td><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></td><td><code>https://lindera.dev</code>, where the crate's <code>build.rs</code> downloads the source archive from</td><td><code>&lt;base&gt;/&lt;file_name&gt;</code>, with the archive's file name</td></tr>
+</tbody></table>
+</div>
+<p>For IPADIC, with the variables set to <code>https://mirror.example/lindera-releases</code> and <code>https://mirror.example/lindera-dev</code>, the build downloads one of these:</p>
+<pre><code class="language-text">https://mirror.example/lindera-releases/dictionary-ipadic-2.7.0-20250920-fmt3-r1/ipadic-2.7.0-20250920-fmt3-r1.tar.gz
+https://mirror.example/lindera-dev/mecab-ipadic-2.7.0-20250920.tar.gz
+</code></pre>
+<p>A mirror thus keeps the files at the paths they have on the original host: an Artifactory remote repository that proxies <code>https://github.com/lindera/lindera/releases/download</code> serves the published dictionaries, and one that proxies <code>https://lindera.dev</code> serves the source archives. A build downloads the published dictionary by default and the source archive only when it builds from source (see <a href="#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a>), which can also happen without <code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code>; a build that must not reach the original hosts sets both variables.</p>
+<pre><code class="language-shell">export LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL=https://mirror.example/lindera-releases
+export LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL=https://mirror.example/lindera-dev
+cargo build --features=embed-ipadic
+</code></pre>
+<ul>
+<li>The mirror replaces the host: the build downloads from the mirror alone, and never from the original host, even when the mirror fails.</li>
+<li>The build checks what it downloads against the SHA-256 that the dictionary crate pins, as it does for the original host, and a mirror that serves another file stops the build.</li>
+<li>The value is an <code>http</code> or <code>https</code> URL; a trailing <code>/</code> is ignored. The build sends no credentials, so the mirror has to serve the files without authentication. A URL with a user name or a password is an error, as is one with a query or a fragment, which the build could not append the path to. An empty value means no mirror.</li>
+<li>The cache of <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> keeps a dictionary and a source archive by their SHA-256, not by the host they came from, so a build with a mirror uses what a build without one cached, and the other way round.</li>
+<li>Changing either variable does not rerun the build script, since the dictionary is the same from any host. A build script that failed, for example because it could not reach the original host, runs again on the next build.</li>
+<li>Only the build scripts read the variables. <code>lindera download</code> downloads its dictionaries from GitHub at run time.</li>
+</ul>
+<h3 id="lindera_build_dictionary_source_base_url"><a class="header" href="#lindera_build_dictionary_source_base_url">LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</a></h3>
+<p>The mirror of the dictionary source archives, which the build downloads as <code>&lt;base&gt;/&lt;file_name&gt;</code> in place of <code>https://lindera.dev/&lt;file_name&gt;</code>. See <a href="#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a>, which describes both variables.</p>
 <h3 id="lindera_build_context_id_freq_file"><a class="header" href="#lindera_build_context_id_freq_file">LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</a></h3>
 <p>The <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> environment variable names a context-ID frequency histogram that the dictionary crates' build scripts read in place of the <code>context_id_freq.txt</code> bundled with the crate. It applies only to a dictionary whose <code>metadata.json</code> enables <code>connection_id_mapping</code>, as those of UniDic and ko-dic do among the bundled dictionaries, and has no effect at runtime. The histogram orders the context IDs of the connection cost matrix so that frequent ones sit close together, which changes the speed of tokenization but never its result; the <code>ctxfreq_dump</code> example of the <code>lindera</code> crate writes one from a corpus.</p>
 <pre><code class="language-shell">export LINDERA_BUILD_CONTEXT_ID_FREQ_FILE=/path/to/context_id_freq.txt
