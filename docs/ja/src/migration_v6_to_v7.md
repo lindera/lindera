@@ -49,6 +49,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **`LINDERA_DICTIONARIES_PATH` の削除** | 非推奨のビルドキャッシュ変数をまだ設定しているユーザー | `LINDERA_BUILD_DICTIONARY_CACHE_DIR` を設定する。旧名は無視される |
 | **`LINDERA_CONFIG_PATH` を `LINDERA_CONFIG_FILE` に改名** | `TokenizerBuilder::new()`・`lindera tokenize`・言語バインディングのために `LINDERA_CONFIG_PATH` を設定しているユーザー | `LINDERA_CONFIG_FILE` を設定する。旧名も v8.0.0 までは非推奨の警告付きで使える |
 | `LINDERA_WORKDIR` を `LINDERA_WORK_DIR` に改名 | 自前の build script で `embedded_dictionary!` のために `LINDERA_WORKDIR` を設定している辞書クレートだけ | `LINDERA_WORK_DIR` を設定する。`build_embedded_dictionary` を使うクレートは対応不要 |
+| `FetchParams` はソースのアーカイブを SHA-256 で固定する（`md5_hash` は `sha256` に） | 自前の build script で `lindera_dictionary::assets::FetchParams` を組み立てている辞書クレートだけ | `sha256` にアーカイブの SHA-256 を設定する。同梱の辞書クレートは対応不要 |
 | `LINDERA_CTX_FREQ_FILE` を `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` に改名し、辞書クレートの build script だけが読む | UniDic や ko-dic のように `connection_id_mapping` を有効にした辞書のために `LINDERA_CTX_FREQ_FILE` を設定しているユーザー | `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` を設定する（旧名も build script では v8.0.0 まで非推奨の警告付きで使える）。`lindera build` には `--context-id-freq` で、バインディングのビルド関数には `context_id_freq` で頻度表を渡す |
 | **`lindera download` は辞書を `LINDERA_DICTIONARIES_DIR/<name>` に置き、`LINDERA_DATA_DIR` を置き換える** | `lindera download` と `lindera list` のユーザー、`LINDERA_DATA_DIR` を設定しているユーザー | 辞書を再ダウンロードする。`LINDERA_DICTIONARIES_DIR` を設定する（旧名も v8.0.0 までは `<dir>/dictionaries` として非推奨の警告付きで使える） |
 | **`--dict` と `--system-dict` は辞書名を受け付けない** | `lindera tokenize --dict ipadic` や `lindera build --system-dict ipadic` を実行しているユーザー | `lindera download` が表示するパスか、`embedded://ipadic` を渡す |
@@ -408,6 +409,32 @@ error: environment variable `LINDERA_WORK_DIR` not defined at compile time
 
 利用者が設定する変数ではないので、
 [環境変数](./getting_started/environment_variables.md)のページには載せていません。
+
+## `FetchParams` はソースのアーカイブを SHA-256 で固定する
+
+辞書クレートの build script は、辞書を作る元のソースのアーカイブを
+`lindera_dictionary::assets::FetchParams` で指定します。v6 までは、ダウンロードした
+アーカイブを `md5_hash` の MD5 で確かめていました。v7 からは `sha256` の SHA-256 で
+確かめます（[#1349](https://github.com/lindera/lindera/issues/1349)）。MD5 は衝突を
+作れるので、MD5 が一致しても、そのアーカイブがクレートの想定したものだとは言えない
+ためです。同梱の辞書クレートはアーカイブの SHA-256 を固定しているので、それらを使う
+利用者は対応不要です。自前の build script で `FetchParams` を組み立てているクレートは、
+`md5_hash` を `sha256` に置き換えてください。置き換えないとコンパイルできません:
+
+```text
+error[E0560]: struct `FetchParams` has no field named `md5_hash`
+```
+
+```rust
+// v6
+md5_hash: "a95c409f12f1023fce8ef91f991ef042",
+
+// v7: 同じアーカイブの SHA-256（`shasum -a 256` や `sha256sum` で求める）
+sha256: "a7ba9f645ffe7094e56ae1c4a81d100df8fbb1e28bbe1792622e9728e162db3d",
+```
+
+変更の前に書いたビルドのキャッシュ（`LINDERA_BUILD_DICTIONARY_CACHE_DIR`）は、
+記録が MD5 を指しているので、各辞書をもう 1 回だけ作り直します。
 
 ## `LINDERA_CTX_FREQ_FILE` を `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` に改名
 

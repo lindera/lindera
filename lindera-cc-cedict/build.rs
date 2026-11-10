@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         output_dir: "lindera-cc-cedict",
         dummy_input: "测试,0,0,-1131,*,*,*,*,ce4 shi4,測試,测试,to test (machinery etc)/to test (students)/test/quiz/exam/beta (software)/\n",
         download_urls: &["https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz"],
-        md5_hash: "0b369904e0af2318b0b2ee3bdc9030f7",
+        sha256: "82ba796fc97b66cae97957855a583fded076f9cdbe0ad0c997f8293fe1bd7a7f",
     };
 
     build_embedded_dictionary(cfg!(feature = "embed-cc-cedict"), fetch_params)

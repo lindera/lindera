@@ -47,8 +47,13 @@ pub struct FetchParams {
     /// URLs from which to fetch the asset
     pub download_urls: &'static [&'static str],
 
-    /// MD5 hash of the file
-    pub md5_hash: &'static str,
+    /// SHA-256 of the source archive, in hexadecimal digits of either case.
+    ///
+    /// A downloaded archive, and one already in the build directory, is used
+    /// only when it has this digest (#1349). The digest lives in the crate
+    /// rather than next to the archive on its host, so that a host or a
+    /// mirror that serves another archive cannot also serve a digest for it.
+    pub sha256: &'static str,
 }
 
 #[cfg(target_os = "windows")]
@@ -305,44 +310,27 @@ fn create_dummy_dictionary_source(
 /// truncated or substituted download.
 const BODY_LIMIT: u64 = u64::MAX;
 
-/// The digest a downloaded file must have.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum ExpectedDigest<'a> {
-    /// The MD5 that a dictionary crate pins for its source archive
-    /// ([`FetchParams::md5_hash`]).
-    Md5(&'a str),
-    /// The SHA-256 that a dictionary crate pins for its published dictionary
-    /// ([`PrebuiltDictionary::sha256`]).
-    Sha256(&'a str),
-}
-
-impl ExpectedDigest<'_> {
-    /// Checks `content` against the digest.
-    ///
-    /// # Arguments
-    ///
-    /// * `content` - The downloaded bytes.
-    ///
-    /// # Returns
-    ///
-    /// `Ok(())` when the digest matches, ignoring the case of the hexadecimal
-    /// digits, or a message that names the algorithm and both digests.
-    fn check(&self, content: &[u8]) -> Result<(), String> {
-        let (algorithm, expected, actual) = match self {
-            ExpectedDigest::Md5(expected) => {
-                let mut context = Context::new();
-                context.consume(content);
-                ("MD5", *expected, format!("{:x}", context.finalize()))
-            }
-            ExpectedDigest::Sha256(expected) => ("SHA-256", *expected, sha256_hex(content)),
-        };
-        if actual.eq_ignore_ascii_case(expected) {
-            Ok(())
-        } else {
-            Err(format!(
-                "{algorithm} mismatch: expected {expected}, got {actual}"
-            ))
-        }
+/// Checks a digest against the SHA-256 that a dictionary crate pins, for its
+/// source archive ([`FetchParams::sha256`]) or its published dictionary
+/// ([`PrebuiltDictionary::sha256`]).
+///
+/// # Arguments
+///
+/// * `expected` - The pinned SHA-256, in hexadecimal digits of either case.
+/// * `actual` - The SHA-256 of the file, from [`sha256_hex`] or
+///   [`file_sha256`].
+///
+/// # Returns
+///
+/// `Ok(())` when the digests match, ignoring the case of the hexadecimal
+/// digits, or a message that names both digests.
+fn check_sha256(expected: &str, actual: &str) -> Result<(), String> {
+    if actual.eq_ignore_ascii_case(expected) {
+        Ok(())
+    } else {
+        Err(format!(
+            "SHA-256 mismatch: expected {expected}, got {actual}"
+        ))
     }
 }
 
@@ -358,13 +346,23 @@ impl ExpectedDigest<'_> {
 fn sha256_hex(content: &[u8]) -> String {
     use sha2::{Digest, Sha256};
 
-    Sha256::digest(content)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+    hex_digits(&Sha256::digest(content))
 }
 
-/// Downloads a file from one of `download_urls` and checks its digest.
+/// Writes `bytes` as lowercase hexadecimal digits, two per byte.
+///
+/// # Arguments
+///
+/// * `bytes` - The bytes of a digest.
+///
+/// # Returns
+///
+/// The digits.
+fn hex_digits(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+/// Downloads a file from one of `download_urls` and checks its SHA-256.
 ///
 /// Each round tries every URL once, in a random order, and a response that
 /// fails (a request error, a non-2xx status, a body that cannot be read or a
@@ -375,7 +373,7 @@ fn sha256_hex(content: &[u8]) -> String {
 /// * `agent` - The HTTP agent, with `http_status_as_error` off.
 /// * `download_urls` - The URLs to try.
 /// * `max_rounds` - How many times to go through the URLs.
-/// * `expected` - The digest the file must have.
+/// * `expected_sha256` - The SHA-256 the file must have ([`check_sha256`]).
 ///
 /// # Returns
 ///
@@ -385,7 +383,7 @@ fn download_with_retry(
     agent: &Agent,
     download_urls: Vec<&str>,
     max_rounds: usize,
-    expected: ExpectedDigest<'_>,
+    expected_sha256: &str,
 ) -> Result<Vec<u8>, Box<dyn Error>> {
     if download_urls.is_empty() {
         return Err("No download URLs provided".into());
@@ -423,7 +421,7 @@ fn download_with_retry(
                         .limit(BODY_LIMIT)
                         .read_to_vec()
                     {
-                        Ok(content) => match expected.check(&content) {
+                        Ok(content) => match check_sha256(expected_sha256, &sha256_hex(&content)) {
                             Ok(()) => {
                                 debug!("Digest check passed from {url}");
                                 return Ok(content);
@@ -859,8 +857,10 @@ struct BuildInputs {
     builder_digest: String,
     /// File name of the source archive ([`FetchParams::file_name`]).
     archive_file_name: String,
-    /// MD5 of the source archive ([`FetchParams::md5_hash`]).
-    archive_md5: String,
+    /// SHA-256 of the source archive ([`FetchParams::sha256`]), in lowercase.
+    /// It replaced the archive's MD5 (#1349): a record that still has
+    /// `archive_md5` does not parse, so its entry is rebuilt.
+    archive_sha256: String,
     /// Directory the archive extracts to ([`FetchParams::input_dir`]).
     input_dir: String,
     /// Sub-directory of the extracted archive the build reads
@@ -1007,6 +1007,31 @@ fn file_md5(path: &Path) -> io::Result<String> {
     Ok(format!("{:x}", context.finalize()))
 }
 
+/// Computes the SHA-256 of a file, reading it in chunks.
+///
+/// # Arguments
+///
+/// * `path` - The file to hash.
+///
+/// # Returns
+///
+/// The digest as lowercase hexadecimal digits, or the I/O error.
+fn file_sha256(path: &Path) -> io::Result<String> {
+    use sha2::{Digest, Sha256};
+
+    let mut file = File::open(path)?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0; 8192];
+    loop {
+        let count = file.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        hasher.update(&buffer[..count]);
+    }
+    Ok(hex_digits(&hasher.finalize()))
+}
+
 /// The inputs of the build `fetch` is about to run, to compare with a cached
 /// dictionary's record.
 ///
@@ -1052,7 +1077,7 @@ fn expected_build_inputs(
         builder_version: env!("CARGO_PKG_VERSION").to_string(),
         builder_digest: builder_digest.to_string(),
         archive_file_name: params.file_name.to_string(),
-        archive_md5: params.md5_hash.to_string(),
+        archive_sha256: params.sha256.to_ascii_lowercase(),
         input_dir: params.input_dir.to_string(),
         src_subdir: params.src_subdir.map(str::to_string),
         context_id_freq_md5,
@@ -1421,7 +1446,7 @@ fn rerun_directives(
 ///
 /// # Arguments
 ///
-/// * `params` - Describes the asset to fetch (archive name, mirrors, MD5 hash)
+/// * `params` - Describes the asset to fetch (archive name, mirrors, SHA-256)
 ///   and the input/output directory layout of the dictionary build.
 /// * `builder` - Dictionary builder that turns the extracted MeCab sources into
 ///   the Lindera dictionary format.
@@ -1774,23 +1799,18 @@ fn build_entry(
                 source_path_for_build.display()
             );
 
-            // Verify MD5 hash
-            let actual_md5 = file_md5(source_path_for_build).map_err(|err| {
+            // An archive left by an earlier build is used only with the pinned
+            // SHA-256, as a download is (#1349).
+            let actual_sha256 = file_sha256(source_path_for_build).map_err(|err| {
                 LinderaErrorKind::Io
                     .with_error(anyhow::anyhow!(err))
                     .add_context(format!(
-                        "Failed to read source file for MD5 check: {source_path_for_build:?}"
+                        "Failed to read source file for SHA-256 check: {source_path_for_build:?}"
                     ))
             })?;
 
-            if actual_md5 == params.md5_hash {
-                debug!("MD5 check passed for cached file. Skipping download.");
-                false
-            } else {
-                warn!(
-                    "MD5 mismatch for cached file. Expected: {}, Actual: {}",
-                    params.md5_hash, actual_md5
-                );
+            if let Err(mismatch) = check_sha256(params.sha256, &actual_sha256) {
+                warn!("{mismatch} for the cached file {source_path_for_build:?}");
                 // Remove invalid file
                 fs::remove_file(source_path_for_build).map_err(|err| {
                     LinderaErrorKind::Io
@@ -1800,6 +1820,9 @@ fn build_entry(
                         ))
                 })?;
                 true
+            } else {
+                debug!("SHA-256 check passed for cached file. Skipping download.");
+                false
             }
         } else {
             debug!("Source file not found. Will download.");
@@ -1832,7 +1855,7 @@ fn build_entry(
                 &agent,
                 params.download_urls.to_vec(),
                 MAX_ROUND,
-                ExpectedDigest::Md5(params.md5_hash),
+                params.sha256,
             )
             .map_err(|err| {
                 LinderaErrorKind::Io
@@ -2085,12 +2108,11 @@ fn fetch_published(
     debug!("Downloading the published dictionary {key} from {url}");
     // One message rather than a context: `LinderaError` displays only the
     // outermost one, and the reason must show.
-    let content = download_with_retry(&agent, vec![url], MAX_ROUND, ExpectedDigest::Sha256(sha256))
-        .map_err(|err| {
-            LinderaErrorKind::Io.with_error(anyhow::anyhow!(
-                "Failed to download the published dictionary {key} from {url}: {err}; {hint}"
-            ))
-        })?;
+    let content = download_with_retry(&agent, vec![url], MAX_ROUND, sha256).map_err(|err| {
+        LinderaErrorKind::Io.with_error(anyhow::anyhow!(
+            "Failed to download the published dictionary {key} from {url}: {err}; {hint}"
+        ))
+    })?;
 
     let tmp_extract_path = build_dir.join(format!("tmp-published-{key}"));
     let _ = fs::remove_dir_all(&tmp_extract_path);
@@ -2186,7 +2208,7 @@ const CONTEXT_ID_FREQ_FILE: &str = "context_id_freq.txt";
 ///
 /// * `embed_enabled` - Whether the calling crate's embed feature is enabled,
 ///   i.e. whether the built dictionary is compiled into the binary.
-/// * `params` - Describes the asset to fetch (archive name, mirrors, MD5 hash)
+/// * `params` - Describes the asset to fetch (archive name, mirrors, SHA-256)
 ///   and the input/output directory layout of the dictionary build.
 ///
 /// # Returns
@@ -2560,7 +2582,8 @@ mod tests {
             builder_version: "7.0.0".to_string(),
             builder_digest: "0123456789abcdef0123456789abcdef".to_string(),
             archive_file_name: "mecab-ipadic-2.7.0-20250920.tar.gz".to_string(),
-            archive_md5: "fedcba9876543210fedcba9876543210".to_string(),
+            archive_sha256: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+                .to_string(),
             input_dir: "mecab-ipadic-2.7.0-20250920".to_string(),
             src_subdir: None,
             context_id_freq_md5: None,
@@ -2603,7 +2626,9 @@ mod tests {
                 i.builder_digest.replace_range(0..1, "f")
             }),
             ("archive_file_name", |i| i.archive_file_name.push('x')),
-            ("archive_md5", |i| i.archive_md5.replace_range(0..1, "0")),
+            ("archive_sha256", |i| {
+                i.archive_sha256.replace_range(0..1, "0")
+            }),
             ("input_dir", |i| i.input_dir.push('x')),
             ("src_subdir", |i| {
                 i.src_subdir = Some("dict-src".to_string())
@@ -2737,7 +2762,7 @@ mod tests {
             output_dir: "lindera-ipadic",
             dummy_input: "",
             download_urls: &[],
-            md5_hash: "fedcba9876543210fedcba9876543210",
+            sha256: "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210",
         }
     }
 
@@ -2837,7 +2862,8 @@ mod tests {
                 builder_version: env!("CARGO_PKG_VERSION").to_string(),
                 builder_digest: "digest".to_string(),
                 archive_file_name: params.file_name.to_string(),
-                archive_md5: params.md5_hash.to_string(),
+                archive_sha256: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+                    .to_string(),
                 input_dir: params.input_dir.to_string(),
                 src_subdir: Some("dict-src".to_string()),
                 context_id_freq_md5: None,
@@ -2907,16 +2933,16 @@ mod tests {
 
     /// A cache directory holding the source archive of a dummy dictionary,
     /// as a download leaves it, so that a build needs no network; and the
-    /// archive's MD5, for [`seeded_params`].
+    /// archive's SHA-256, for [`seeded_params`].
     fn seeded_cache() -> (tempfile::TempDir, &'static str) {
         let cache = tempfile::tempdir().unwrap();
-        let md5 = write_source_archive(cache.path(), SEEDED_ARCHIVE, SEEDED_LEXICON);
-        (cache, md5)
+        let sha256 = write_source_archive(cache.path(), SEEDED_ARCHIVE, SEEDED_LEXICON);
+        (cache, sha256)
     }
 
     /// Writes the source archive of a dummy dictionary with `lexicon` into
     /// `cache` as `name`, as a download leaves it, extracting to
-    /// [`SEEDED_INPUT_DIR`]; returns its MD5.
+    /// [`SEEDED_INPUT_DIR`]; returns its SHA-256.
     fn write_source_archive(cache: &Path, name: &str, lexicon: &str) -> &'static str {
         let sources = tempfile::tempdir().unwrap();
         let source_dir = sources.path().join(SEEDED_INPUT_DIR);
@@ -2931,12 +2957,12 @@ mod tests {
             .append_dir_all(SEEDED_INPUT_DIR, &source_dir)
             .unwrap();
         archive.into_inner().unwrap().finish().unwrap();
-        let md5 = file_md5(&archive_path).unwrap();
-        Box::leak(md5.into_boxed_str())
+        let sha256 = file_sha256(&archive_path).unwrap();
+        Box::leak(sha256.into_boxed_str())
     }
 
     /// The parameters that build the dummy dictionary of [`seeded_cache`].
-    fn seeded_params(md5: &'static str) -> FetchParams {
+    fn seeded_params(sha256: &'static str) -> FetchParams {
         FetchParams {
             file_name: SEEDED_ARCHIVE,
             input_dir: SEEDED_INPUT_DIR,
@@ -2944,13 +2970,13 @@ mod tests {
             output_dir: SEEDED_OUTPUT_DIR,
             dummy_input: "",
             download_urls: &[],
-            md5_hash: md5,
+            sha256,
         }
     }
 
     /// Builds the dummy dictionary into the cache `build_dir`, to embed it.
-    fn build_seeded(build_dir: &Path, md5: &'static str) -> LinderaResult<()> {
-        build_with(build_dir, &seeded_params(md5), None)
+    fn build_seeded(build_dir: &Path, sha256: &'static str) -> LinderaResult<()> {
+        build_with(build_dir, &seeded_params(sha256), None)
     }
 
     /// Builds the dummy dictionary of `params`' archive into the cache
@@ -2972,9 +2998,9 @@ mod tests {
     }
 
     /// The record a build of the dummy dictionary writes.
-    fn seeded_inputs(md5: &'static str) -> BuildInputs {
+    fn seeded_inputs(sha256: &'static str) -> BuildInputs {
         expected_build_inputs(
-            &seeded_params(md5),
+            &seeded_params(sha256),
             &DictionaryBuilder::new(source_metadata()),
             BUILDER_SOURCE_DIGEST,
             &DictionarySource::Source { reason: None },
@@ -2986,7 +3012,7 @@ mod tests {
     /// Writes a current entry for the dummy dictionary, standing in for the
     /// one another build leaves, with a marker file that a rebuild removes;
     /// returns the marker's path.
-    fn write_current_entry(build_dir: &Path, md5: &'static str) -> PathBuf {
+    fn write_current_entry(build_dir: &Path, sha256: &'static str) -> PathBuf {
         let output_dir = build_dir.join(SEEDED_OUTPUT_DIR);
         fs::create_dir_all(&output_dir).unwrap();
         let metadata = Metadata {
@@ -2998,7 +3024,7 @@ mod tests {
             serde_json::to_vec_pretty(&metadata).unwrap(),
         )
         .unwrap();
-        write_build_inputs(&output_dir, &seeded_inputs(md5)).unwrap();
+        write_build_inputs(&output_dir, &seeded_inputs(sha256)).unwrap();
         let marker = output_dir.join("marker");
         fs::write(&marker, b"").unwrap();
         marker
@@ -3015,12 +3041,12 @@ mod tests {
     fn a_waiting_build_uses_the_entry_built_meanwhile() {
         // #1206: a build that finds another build of the same dictionary
         // writing it waits, and then uses what that build left.
-        let (cache, md5) = seeded_cache();
+        let (cache, sha256) = seeded_cache();
         let build_dir = cache.path().to_path_buf();
         let lock = hold_entry_lock(&build_dir);
         let waiting = {
             let build_dir = build_dir.clone();
-            std::thread::spawn(move || build_seeded(&build_dir, md5))
+            std::thread::spawn(move || build_seeded(&build_dir, sha256))
         };
         std::thread::sleep(Duration::from_millis(300));
         assert!(
@@ -3038,7 +3064,7 @@ mod tests {
                 "{name} written without the lock"
             );
         }
-        let marker = write_current_entry(&build_dir, md5);
+        let marker = write_current_entry(&build_dir, sha256);
         drop(lock);
         waiting.join().unwrap().unwrap();
         assert!(marker.exists(), "the entry was built again");
@@ -3048,13 +3074,13 @@ mod tests {
     fn a_cache_hit_does_not_wait_for_the_lock() {
         // A current entry is used without the lock, so that a read-only
         // cache works and builds that only read it do not queue up.
-        let (cache, md5) = seeded_cache();
+        let (cache, sha256) = seeded_cache();
         let build_dir = cache.path().to_path_buf();
-        let marker = write_current_entry(&build_dir, md5);
+        let marker = write_current_entry(&build_dir, sha256);
         let _lock = hold_entry_lock(&build_dir);
         let build = {
             let build_dir = build_dir.clone();
-            std::thread::spawn(move || build_seeded(&build_dir, md5))
+            std::thread::spawn(move || build_seeded(&build_dir, sha256))
         };
         let deadline = std::time::Instant::now() + Duration::from_secs(10);
         while !build.is_finished() {
@@ -3075,7 +3101,7 @@ mod tests {
         const BUILDS: usize = 8;
         const ROUNDS: usize = 10;
         for round in 0..ROUNDS {
-            let (cache, md5) = seeded_cache();
+            let (cache, sha256) = seeded_cache();
             let barrier = std::sync::Arc::new(std::sync::Barrier::new(BUILDS));
             let builds: Vec<_> = (0..BUILDS)
                 .map(|_| {
@@ -3083,7 +3109,7 @@ mod tests {
                     let barrier = barrier.clone();
                     std::thread::spawn(move || {
                         barrier.wait();
-                        build_seeded(&build_dir, md5)
+                        build_seeded(&build_dir, sha256)
                     })
                 })
                 .collect();
@@ -3096,7 +3122,7 @@ mod tests {
 
             let output_dir = cache.path().join(SEEDED_OUTPUT_DIR);
             assert_eq!(
-                decide(&output_dir, Some(&seeded_inputs(md5))),
+                decide(&output_dir, Some(&seeded_inputs(sha256))),
                 Ok(CacheHit::Current),
                 "round {round}"
             );
@@ -3304,23 +3330,126 @@ mod tests {
     }
 
     #[test]
-    fn digests_are_checked_with_their_algorithm() {
-        assert_eq!(ExpectedDigest::Sha256(SHA256_OF_ABC).check(b"abc"), Ok(()));
+    fn sha256_digests_are_compared_ignoring_case() {
+        assert_eq!(sha256_hex(b"abc"), SHA256_OF_ABC);
+        assert_eq!(check_sha256(SHA256_OF_ABC, &sha256_hex(b"abc")), Ok(()));
         assert_eq!(
-            ExpectedDigest::Sha256(&SHA256_OF_ABC.to_ascii_uppercase()).check(b"abc"),
+            check_sha256(&SHA256_OF_ABC.to_ascii_uppercase(), &sha256_hex(b"abc")),
             Ok(())
         );
-        let mismatch = ExpectedDigest::Sha256(SHA256_OF_ABC)
-            .check(b"abd")
-            .unwrap_err();
-        assert!(
-            mismatch.starts_with(&format!("SHA-256 mismatch: expected {SHA256_OF_ABC}, got ")),
-            "{mismatch}"
+        let mismatch = check_sha256(SHA256_OF_ABC, &sha256_hex(b"abd")).unwrap_err();
+        assert_eq!(
+            mismatch,
+            format!(
+                "SHA-256 mismatch: expected {SHA256_OF_ABC}, got {}",
+                sha256_hex(b"abd")
+            )
         );
-        let md5_of_abc = "900150983cd24fb0d6963f7d28e17f72";
-        assert_eq!(ExpectedDigest::Md5(md5_of_abc).check(b"abc"), Ok(()));
-        let mismatch = ExpectedDigest::Md5(md5_of_abc).check(b"abd").unwrap_err();
-        assert!(mismatch.starts_with("MD5 mismatch: "), "{mismatch}");
+    }
+
+    #[test]
+    fn a_file_is_hashed_as_its_content() {
+        // Longer than the 8192-byte buffer, so that the file is read in
+        // several chunks.
+        let content: Vec<u8> = (0..20_000u32).map(|i| (i % 251) as u8).collect();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("archive.tar.gz");
+        fs::write(&path, &content).unwrap();
+        assert_eq!(file_sha256(&path).unwrap(), sha256_hex(&content));
+    }
+
+    /// [`seeded_params`] with `sha256`, downloading the archive from `url`
+    /// alone.
+    fn params_downloading_from(sha256: &'static str, url: String) -> FetchParams {
+        let urls: &'static [&'static str] =
+            Box::leak(vec![&*Box::leak(url.into_boxed_str())].into_boxed_slice());
+        FetchParams {
+            download_urls: urls,
+            ..seeded_params(sha256)
+        }
+    }
+
+    #[test]
+    fn a_downloaded_source_archive_with_another_sha256_stops_the_build() {
+        // The crate pins the seeded archive, and the host serves another one.
+        let archives = tempfile::tempdir().unwrap();
+        let pinned = write_source_archive(archives.path(), SEEDED_ARCHIVE, SEEDED_LEXICON);
+        add_other_archive(archives.path());
+        let (base, requests) = serve(200, fs::read(archives.path().join(OTHER_ARCHIVE)).unwrap());
+        let params = params_downloading_from(pinned, format!("{base}/{SEEDED_ARCHIVE}"));
+        let cache = tempfile::tempdir().unwrap();
+
+        let failure = failure(build_with(cache.path(), &params, None));
+        assert!(
+            failure.contains(&format!("SHA-256 mismatch: expected {pinned}")),
+            "{failure}"
+        );
+        assert_eq!(requests.load(Ordering::SeqCst), MAX_ROUND);
+        assert!(!cache.path().join(SEEDED_ARCHIVE).exists());
+        assert!(!cache.path().join(SEEDED_OUTPUT_DIR).exists());
+    }
+
+    #[test]
+    fn a_cached_source_archive_with_another_sha256_is_downloaded_again() {
+        let archives = tempfile::tempdir().unwrap();
+        let pinned = write_source_archive(archives.path(), SEEDED_ARCHIVE, SEEDED_LEXICON);
+        let (base, requests) = serve(200, fs::read(archives.path().join(SEEDED_ARCHIVE)).unwrap());
+        let params = params_downloading_from(pinned, format!("{base}/{SEEDED_ARCHIVE}"));
+        // The build directory holds another archive under the pinned name, as
+        // a download from a host that served it would have left it.
+        let cache = tempfile::tempdir().unwrap();
+        write_source_archive(cache.path(), SEEDED_ARCHIVE, OTHER_LEXICON);
+
+        build_with(cache.path(), &params, None).unwrap();
+        assert_eq!(requests.load(Ordering::SeqCst), 1);
+        assert_eq!(
+            file_sha256(&cache.path().join(SEEDED_ARCHIVE)).unwrap(),
+            pinned
+        );
+        // The dictionary is the one of the pinned archive's entry.
+        let (reference, reference_sha256) = seeded_cache();
+        build_seeded(reference.path(), reference_sha256).unwrap();
+        assert_eq!(
+            dictionary_bytes(&cache.path().join(SEEDED_OUTPUT_DIR)),
+            dictionary_bytes(&reference.path().join(SEEDED_OUTPUT_DIR))
+        );
+    }
+
+    #[test]
+    fn a_cached_source_archive_is_used_with_a_pin_in_upper_case() {
+        let (cache, sha256) = seeded_cache();
+        let upper: &'static str = Box::leak(sha256.to_ascii_uppercase().into_boxed_str());
+        // `seeded_params` has no URLs, so the build fails if it downloads.
+        build_with(cache.path(), &seeded_params(upper), None).unwrap();
+
+        // The record keeps the digest in lowercase, so that the case of the
+        // pin does not decide whether the entry is current.
+        let output = cache.path().join(SEEDED_OUTPUT_DIR);
+        let record: BuildInputs =
+            serde_json::from_slice(&fs::read(build_inputs_path(&output)).unwrap()).unwrap();
+        assert_eq!(record.archive_sha256, sha256);
+    }
+
+    #[test]
+    fn a_record_with_the_md5_of_the_archive_is_a_miss() {
+        // A record written before #1349 names the MD5 of the archive.
+        let inputs = build_inputs();
+        let dir = cached_entry(Some(&inputs));
+        let path = build_inputs_path(dir.path());
+        let mut record: serde_json::Value =
+            serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        let fields = record.as_object_mut().unwrap();
+        assert!(fields.remove("archive_sha256").is_some());
+        fields.insert(
+            "archive_md5".to_string(),
+            "fedcba9876543210fedcba9876543210".into(),
+        );
+        fs::write(&path, serde_json::to_vec(&record).unwrap()).unwrap();
+
+        assert_eq!(
+            decide(dir.path(), Some(&inputs)),
+            Err(CacheMiss::UnreadableRecord)
+        );
     }
 
     #[test]
@@ -3375,8 +3504,8 @@ mod tests {
     /// The archive, and the cache that holds the dictionary built from
     /// source, in [`SEEDED_OUTPUT_DIR`].
     fn published_archive(files: &[&str]) -> (Vec<u8>, tempfile::TempDir) {
-        let (cache, md5) = seeded_cache();
-        build_seeded(cache.path(), md5).unwrap();
+        let (cache, sha256) = seeded_cache();
+        build_seeded(cache.path(), sha256).unwrap();
         let archive = pack_published(&cache.path().join(SEEDED_OUTPUT_DIR), files);
         (archive, cache)
     }
@@ -3542,7 +3671,7 @@ mod tests {
     fn switching_between_published_and_source_rebuilds_the_entry() {
         // The cache holds the dummy dictionary's source archive, so the
         // build from source needs no network.
-        let (cache, md5) = seeded_cache();
+        let (cache, archive_sha256) = seeded_cache();
         let (archive, _built) = published_archive(&DICTIONARY_FILES);
         let sha256 = sha256_hex(&archive);
         let (base, requests) = serve(200, archive);
@@ -3554,7 +3683,7 @@ mod tests {
 
         fetch_published_into(cache.path(), &url, &sha256, source_metadata()).unwrap();
         assert!(record(cache.path()).published.is_some());
-        build_seeded(cache.path(), md5).unwrap();
+        build_seeded(cache.path(), archive_sha256).unwrap();
         assert_eq!(record(cache.path()).published, None);
         fetch_published_into(cache.path(), &url, &sha256, source_metadata()).unwrap();
         assert!(record(cache.path()).published.is_some());
@@ -3572,17 +3701,17 @@ mod tests {
     /// The one entry of the second dummy dictionary.
     const OTHER_LEXICON: &str = "試験,0,0,-500,名詞,一般,*,*,*,*,*,*,*\n";
 
-    /// Writes the second dummy archive into `cache`; returns its MD5.
+    /// Writes the second dummy archive into `cache`; returns its SHA-256.
     fn add_other_archive(cache: &Path) -> &'static str {
         write_source_archive(cache, OTHER_ARCHIVE, OTHER_LEXICON)
     }
 
     /// The parameters that build the second dummy dictionary into the same
     /// entry as [`seeded_params`].
-    fn other_params(md5: &'static str) -> FetchParams {
+    fn other_params(sha256: &'static str) -> FetchParams {
         FetchParams {
             file_name: OTHER_ARCHIVE,
-            ..seeded_params(md5)
+            ..seeded_params(sha256)
         }
     }
 
@@ -3605,18 +3734,18 @@ mod tests {
     fn an_export_keeps_its_bytes_when_a_build_from_source_replaces_the_entry() {
         // Another checkout, with other inputs, builds the dictionary from
         // source into the same entry after this build exported it.
-        let (cache, md5) = seeded_cache();
-        let other_md5 = add_other_archive(cache.path());
+        let (cache, sha256) = seeded_cache();
+        let other_sha256 = add_other_archive(cache.path());
         let out = tempfile::tempdir().unwrap();
         let export_to = ExportTo {
             dir: out.path(),
             link: &link_file,
         };
-        build_with(cache.path(), &seeded_params(md5), Some(export_to)).unwrap();
+        build_with(cache.path(), &seeded_params(sha256), Some(export_to)).unwrap();
         let exported = out.path().join(SEEDED_OUTPUT_DIR);
         let before = dictionary_bytes(&exported);
 
-        build_with(cache.path(), &other_params(other_md5), None).unwrap();
+        build_with(cache.path(), &other_params(other_sha256), None).unwrap();
         assert_eq!(dictionary_bytes(&exported), before);
         assert_ne!(
             dictionary_bytes(&cache.path().join(SEEDED_OUTPUT_DIR)),
@@ -3629,19 +3758,24 @@ mod tests {
     fn an_export_keeps_its_bytes_when_a_published_dictionary_replaces_the_entry() {
         // Another checkout downloads a published dictionary, packed from
         // the second dummy dictionary, into the same entry.
-        let (cache, md5) = seeded_cache();
+        let (cache, archive_sha256) = seeded_cache();
         let out = tempfile::tempdir().unwrap();
         let export_to = ExportTo {
             dir: out.path(),
             link: &link_file,
         };
-        build_with(cache.path(), &seeded_params(md5), Some(export_to)).unwrap();
+        build_with(
+            cache.path(),
+            &seeded_params(archive_sha256),
+            Some(export_to),
+        )
+        .unwrap();
         let exported = out.path().join(SEEDED_OUTPUT_DIR);
         let before = dictionary_bytes(&exported);
 
         let other_cache = tempfile::tempdir().unwrap();
-        let other_md5 = add_other_archive(other_cache.path());
-        build_with(other_cache.path(), &other_params(other_md5), None).unwrap();
+        let other_sha256 = add_other_archive(other_cache.path());
+        build_with(other_cache.path(), &other_params(other_sha256), None).unwrap();
         let archive = pack_published(
             &other_cache.path().join(SEEDED_OUTPUT_DIR),
             &DICTIONARY_FILES,
@@ -3662,13 +3796,13 @@ mod tests {
     fn an_export_survives_the_removal_of_the_cache() {
         // The cache is documented as safe to delete; a crate that embeds the
         // export still compiles after it is removed.
-        let (cache, md5) = seeded_cache();
+        let (cache, sha256) = seeded_cache();
         let out = tempfile::tempdir().unwrap();
         let export_to = ExportTo {
             dir: out.path(),
             link: &link_file,
         };
-        build_with(cache.path(), &seeded_params(md5), Some(export_to)).unwrap();
+        build_with(cache.path(), &seeded_params(sha256), Some(export_to)).unwrap();
         let exported = out.path().join(SEEDED_OUTPUT_DIR);
         let before = dictionary_bytes(&exported);
 
@@ -3684,8 +3818,8 @@ mod tests {
     fn an_entry_is_copied_where_it_cannot_be_linked() {
         // As when the cache and the target directory are on different file
         // systems.
-        let (cache, md5) = seeded_cache();
-        build_seeded(cache.path(), md5).unwrap();
+        let (cache, sha256) = seeded_cache();
+        build_seeded(cache.path(), sha256).unwrap();
         let entry = cache.path().join(SEEDED_OUTPUT_DIR);
         let out = tempfile::tempdir().unwrap();
         let dest = out.path().join(SEEDED_OUTPUT_DIR);
@@ -3700,8 +3834,8 @@ mod tests {
 
     #[test]
     fn an_entry_is_linked_where_it_can_be() {
-        let (cache, md5) = seeded_cache();
-        build_seeded(cache.path(), md5).unwrap();
+        let (cache, sha256) = seeded_cache();
+        build_seeded(cache.path(), sha256).unwrap();
         let entry = cache.path().join(SEEDED_OUTPUT_DIR);
         let out = tempfile::tempdir().unwrap();
         let dest = out.path().join(SEEDED_OUTPUT_DIR);
@@ -3729,21 +3863,21 @@ mod tests {
         // entry while the third file is linked, so the export holds files of
         // two dictionaries; the check after the export misses, and the build
         // exports again under the lock, after building its own dictionary.
-        let (cache, md5) = seeded_cache();
-        let other_md5 = add_other_archive(cache.path());
+        let (cache, sha256) = seeded_cache();
+        let other_sha256 = add_other_archive(cache.path());
         let first = tempfile::tempdir().unwrap();
         let export_to = ExportTo {
             dir: first.path(),
             link: &link_file,
         };
-        build_with(cache.path(), &seeded_params(md5), Some(export_to)).unwrap();
+        build_with(cache.path(), &seeded_params(sha256), Some(export_to)).unwrap();
         let own = dictionary_bytes(&first.path().join(SEEDED_OUTPUT_DIR));
 
         let calls = AtomicUsize::new(0);
         let cache_dir = cache.path().to_path_buf();
         let replacing_link = |from: &Path, to: &Path| -> io::Result<()> {
             if calls.fetch_add(1, Ordering::SeqCst) == 2 {
-                build_with(&cache_dir, &other_params(other_md5), None).unwrap();
+                build_with(&cache_dir, &other_params(other_sha256), None).unwrap();
             }
             fs::hard_link(from, to)
         };
@@ -3752,7 +3886,7 @@ mod tests {
             dir: second.path(),
             link: &replacing_link,
         };
-        build_with(cache.path(), &seeded_params(md5), Some(export_to)).unwrap();
+        build_with(cache.path(), &seeded_params(sha256), Some(export_to)).unwrap();
         assert_eq!(
             dictionary_bytes(&second.path().join(SEEDED_OUTPUT_DIR)),
             own
@@ -3768,8 +3902,8 @@ mod tests {
     fn a_cache_hit_exports_without_waiting_for_the_lock() {
         // As `a_cache_hit_does_not_wait_for_the_lock`, for a build that
         // exports the entry.
-        let (cache, md5) = seeded_cache();
-        build_seeded(cache.path(), md5).unwrap();
+        let (cache, sha256) = seeded_cache();
+        build_seeded(cache.path(), sha256).unwrap();
         let build_dir = cache.path().to_path_buf();
         let _lock = hold_entry_lock(&build_dir);
         let out = tempfile::tempdir().unwrap();
@@ -3779,7 +3913,7 @@ mod tests {
                 dir: &out_dir,
                 link: &link_file,
             };
-            build_with(&build_dir, &seeded_params(md5), Some(export_to))
+            build_with(&build_dir, &seeded_params(sha256), Some(export_to))
         });
         let deadline = std::time::Instant::now() + Duration::from_secs(10);
         while !build.is_finished() {
