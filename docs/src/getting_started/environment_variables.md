@@ -27,7 +27,7 @@ The `LINDERA_BUILD_DICTIONARY_CACHE_DIR` environment variable designates a build
 When set, each build stores two kinds of files under `$LINDERA_BUILD_DICTIONARY_CACHE_DIR/<version>-fmt<format>/` (where `<version>` is the dictionary crate version and `<format>` is the dictionary format version):
 
 - the downloaded distribution archive (validated with MD5; invalid files are re-downloaded)
-- the built binary dictionary that gets embedded into the crate, with a `build_inputs.json` that records what it was built from
+- the built binary dictionary, with a `build_inputs.json` that records what it was built from
 
 The format version is part of the path so that a cache written by a build with a different on-disk dictionary layout is a miss rather than a stale hit. A cached dictionary is reused only when all of the following match the current build, and is rebuilt otherwise:
 
@@ -40,7 +40,9 @@ A published dictionary that a build downloads instead of building it (see [`LIND
 
 A dictionary left behind by an interrupted build, or cached by a release from before `build_inputs.json`, is rebuilt. The versions of the builder's dependencies are not compared: after upgrading a dependency of `lindera-dictionary` without a format version change, clear the cache if the built dictionaries may differ. Directories from older format versions are not deleted automatically; remove them by hand if the cache grows.
 
-`cargo build -vv` shows, for each dictionary crate, whether the cached dictionary was used and why or why not, on lines that start with `lindera dictionary cache:`.
+A build does not embed the cached files themselves: it links the nine files of the dictionary into the build script's output directory (`OUT_DIR`), copies those it cannot link (when the cache is on another file system than the target directory, for example), and embeds them from there. A crate thus keeps the dictionary it embedded when another build, with other inputs, replaces the cached one, or when the cache is removed, and builds in any checkouts and target directories can share one directory.
+
+`cargo build -vv` shows, for each dictionary crate, whether the cached dictionary was used and why or why not, and whether it was linked or copied, on lines that start with `lindera dictionary cache:`.
 
 This enables:
 
@@ -55,7 +57,7 @@ export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 cargo build --features=embed-ipadic
 ```
 
-To share one directory among every target directory and worktree (see the conditions below), set an absolute path once: in the shell profile, as above, or in `~/.cargo/config.toml`, which cargo passes to the build scripts:
+To share one directory among every target directory and worktree, set an absolute path once: in the shell profile, as above, or in `~/.cargo/config.toml`, which cargo passes to the build scripts:
 
 ```toml
 [env]
@@ -66,13 +68,11 @@ Changing the value under `[env]` reruns the build scripts, as changing the varia
 
 Notes:
 
-- The directory is managed automatically and is safe to delete; contents are re-downloaded and rebuilt as needed
+- The directory is managed automatically and is safe to delete: a crate already built keeps the dictionary it linked or copied, and the next build that needs a dictionary downloads or builds it again
 - Version subdirectories accumulate across upgrades and are not garbage-collected; old ones can be removed freely
 - Setting this variable causes dictionary crates to download and build their dictionaries even when no `embed-*` feature is enabled (useful for pre-populating the cache). Such a build embeds nothing, so it keeps a dictionary already in the cache without checking it; a build with the `embed-*` feature checks it and rebuilds it if needed
-- Share a directory only among builds with the same `lindera-dictionary` code. The crates embed the files of the cache directory itself, so two checkouts with different builder code that share it rebuild each other's dictionaries, and a crate whose build script does not rerun can embed the dictionary the other checkout built ([#1343](https://github.com/lindera/lindera/issues/1343) is about lifting this condition):
-  - the target directories of one checkout, such as another `--target-dir`, rust-analyzer's or another profile's, can always share it;
-  - worktrees can share it while they build with the same `lindera-dictionary`; give a worktree that changes the builder a directory of its own, for example by setting the variable in its shell, which takes precedence over `[env]`;
-  - in this repository, a relative path resolves under the workspace root, which gives each checkout its own cache
+- A relative path resolves under the workspace root, which, in this repository, gives each checkout its own cache; set an absolute path to share one
+- Checkouts whose builders differ, or whose builds differ in their inputs (`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`, for example), replace each other's cached dictionaries when their build scripts run, which costs a download or a build each time, but does not change what an already built crate embeds
 - A cache kept between CI runs, for example with `actions/cache`, needs a key that changes with `Cargo.lock` as well as with `lindera-dictionary` and the dictionary crate, since the versions of the builder's dependencies are not compared. This repository's CI keeps one entry per dictionary under such a key (`.github/actions/dictionary-cache`)
 - Builds that share the directory, such as `cargo build` alongside rust-analyzer with its own target directory, write each dictionary one at a time: a build that finds another build writing the same dictionary waits for it, and then uses the dictionary it left (`cargo build -vv` shows `lindera dictionary cache: waiting for another build`). The lock is an empty `<dictionary>.lock` file next to the dictionary, held while a build writes it. It works between builds on one machine, and on a network file system only as far as the file system supports file locks. Where the file cannot be locked, the build prints a warning and goes on without the lock, as builds before 7.0.0 did, so two such builds can still remove each other's files
 - Builds with `DOCS_RS` set ignore this variable (see `DOCS_RS` below)

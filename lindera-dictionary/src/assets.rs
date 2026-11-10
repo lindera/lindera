@@ -89,6 +89,22 @@ fn copy_dir_all(src: &Path, dst: &Path) -> LinderaResult<()> {
     Ok(())
 }
 
+/// Removes `dir` with everything in it, if it exists, and creates it empty.
+///
+/// With [`rename_directory`], this is how a build replaces a dictionary
+/// directory, a cache entry included: the new dictionary is written into a
+/// temporary directory, the old directory is emptied, and the new one moved
+/// in its place. The old files are removed, never written in place, which is
+/// what lets a build embed a hard link to a cache entry's file (#1343): the
+/// link keeps the old file when the entry is replaced.
+///
+/// # Arguments
+///
+/// * `dir` - The directory to empty.
+///
+/// # Returns
+///
+/// `Ok(())` once `dir` exists and is empty, or the I/O error.
 fn empty_directory(dir: &Path) -> LinderaResult<()> {
     if dir.exists() {
         fs::remove_dir_all(dir).map_err(|err| {
@@ -107,6 +123,21 @@ fn empty_directory(dir: &Path) -> LinderaResult<()> {
     Ok(())
 }
 
+/// Moves the directory `dir` to `new_dir`, an empty directory or none.
+///
+/// On Unix it is a `rename`, so the files keep the inodes they were written
+/// with in `dir`. On Windows the files are copied into `new_dir` and `dir`
+/// is removed, so they are new files there too. Either way, no file already
+/// in `new_dir` is written in place (see [`empty_directory`]).
+///
+/// # Arguments
+///
+/// * `dir` - The directory to move.
+/// * `new_dir` - Where to move it; its parent is created if needed.
+///
+/// # Returns
+///
+/// `Ok(())` once the files are in `new_dir`, or the I/O error.
 fn rename_directory(dir: &Path, new_dir: &Path) -> LinderaResult<()> {
     // Ensure parent directory of new_dir exists
     if let Some(parent) = new_dir.parent() {
@@ -1372,6 +1403,12 @@ fn rerun_directives(
 /// `params.dummy_input` instead of the downloaded one, and it always goes
 /// under `OUT_DIR`, so that later builds never take a dummy from the cache.
 ///
+/// Either way, the crate embeds the dictionary from `OUT_DIR`, which the
+/// build script passes to it as `LINDERA_WORK_DIR`: a dictionary in the cache
+/// is exported there, a hard link or a copy of each file, so that what the
+/// crate embeds does not change when another build replaces the cache entry
+/// or the cache is removed (#1343; see `fetch_into`).
+///
 /// Builds that share the cache write each dictionary one at a time: a build
 /// that finds another build of the same dictionary writing it waits, and then
 /// uses the dictionary that build left in place (see `fetch_into`).
@@ -1449,6 +1486,11 @@ fn fetch_for(
     }
     let builder = with_context_id_freq_override(builder, ctx_freq.path);
 
+    // The directory the crate embeds the dictionary from, in every case.
+    let out_dir = PathBuf::from(std::env::var_os("OUT_DIR").ok_or_else(|| {
+        LinderaErrorKind::Io.with_error(anyhow::anyhow!("OUT_DIR environment variable is not set"))
+    })?); /* ex) target/debug/build/<pkg>/out */
+
     // Directory path for build package
     // if the cache directory variable is defined (and this is not a documentation build, see
     // `cache_dir_unless_docs_rs`), behaves like a cache, which a build reuses only when it was
@@ -1487,24 +1529,27 @@ fn fetch_for(
             true,
         )
     } else {
-        (
-            PathBuf::from(std::env::var_os("OUT_DIR").ok_or_else(|| {
-                LinderaErrorKind::Io
-                    .with_error(anyhow::anyhow!("OUT_DIR environment variable is not set"))
-            })?), /* ex) target/debug/build/<pkg>/out */
-            false,
-        )
+        (out_dir.clone(), false)
     };
 
-    // environment variable passed to dependents, that will actually be used to include the dictionary in the library
-    println!("cargo::rustc-env=LINDERA_WORK_DIR={}", build_dir.display());
+    // The variable that `embedded_dictionary!` includes the dictionary from:
+    // always `OUT_DIR`, never the cache, whose entry another build may
+    // replace or a user may remove after this build (#1343).
+    println!("cargo::rustc-env=LINDERA_WORK_DIR={}", out_dir.display());
 
-    fetch_into(&build_dir, is_cache, &source, &params, &builder, purpose)
+    let hard_link = |from: &Path, to: &Path| fs::hard_link(from, to);
+    let export_to = (is_cache && purpose == CachePurpose::Embed).then_some(ExportTo {
+        dir: &out_dir,
+        link: &hard_link,
+    });
+    fetch_into(
+        &build_dir, is_cache, &source, &params, &builder, purpose, export_to,
+    )
 }
 
 /// [`fetch_for`] once the build directory is known: fetches the source and
 /// builds the dictionary into `build_dir`, unless the cache there already
-/// holds it.
+/// holds it, and exports it to `export_to`.
 ///
 /// In a cache, one build at a time writes a dictionary's entry, from the
 /// cache check to the record of its inputs, under [`lock_cache_entry`]. The
@@ -1513,13 +1558,28 @@ fn fetch_for(
 /// is checked again once the lock is held, so a build that waited uses the
 /// dictionary the other build left instead of building it again.
 ///
-/// The lock covers the writers only: the compile that embeds the dictionary
-/// reads it after the build script has exited. That is safe because a build
-/// with the same inputs never rewrites an entry that is current. A build
-/// without this crate's source digest rebuilds every time and so does rewrite
-/// it, as the `cargo:warning` it prints says; builds with different inputs
-/// rebuild each other's entries, which is why the cache directory should not
-/// be shared between checkouts.
+/// A build that embeds a dictionary of the cache does not embed the entry's
+/// files: it exports them to `export_to` (`OUT_DIR`), a hard link or a copy
+/// of each file ([`export_entry`]), and the crate embeds the export (#1343).
+/// Another build may then replace the entry, with other inputs, or the cache
+/// may be removed, without changing what this build embeds. A hard link is
+/// enough because an entry is replaced, never written in place: a build
+/// writes the new dictionary into a temporary directory and moves it over
+/// the emptied entry ([`empty_directory`], [`rename_directory`]), and the one
+/// file written in place, `build_inputs.json`, is not exported. Nothing may
+/// write an export in place either, as that would write the entry too.
+///
+/// On a hit, the entry is exported without the lock and checked again
+/// afterwards. A build that replaced the entry meanwhile removed or changed
+/// its record, so the second check misses, and this build goes on as on a
+/// miss, with the lock, rather than embed the files of two entries. This
+/// assumes that the entry is replaced at most once during the export: an
+/// entry replaced twice, the second time with this build's inputs again,
+/// passes the check even if the export took files of the one in between.
+/// That takes two builds to finish within one export, a few milliseconds for
+/// hard links. On a miss, the entry is exported while the lock is held;
+/// where the lock cannot be taken, the entry is checked again after the
+/// export, and a miss is an error.
 ///
 /// # Arguments
 ///
@@ -1531,6 +1591,9 @@ fn fetch_for(
 /// * `params` - Describes the asset to fetch and the directory layout.
 /// * `builder` - Dictionary builder, with the histogram the build reads.
 /// * `purpose` - Whether the dictionary is embedded or only fills the cache.
+/// * `export_to` - Where to export the dictionary, for a build that embeds
+///   it from the cache; `None` when the crate embeds it from `build_dir`
+///   (`OUT_DIR`), or does not embed it.
 ///
 /// # Returns
 ///
@@ -1542,6 +1605,7 @@ fn fetch_into(
     params: &FetchParams,
     builder: &DictionaryBuilder,
     purpose: CachePurpose,
+    export_to: Option<ExportTo<'_>>,
 ) -> LinderaResult<()> {
     fs::create_dir_all(build_dir).map_err(|err| {
         LinderaErrorKind::Io
@@ -1566,9 +1630,35 @@ fn fetch_into(
     } else {
         None
     };
+    let decide = || cache_decision(&output_dir, purpose, expected.as_ref(), builder.metadata());
+    let report_hit = |hit: CacheHit| {
+        println!(
+            "{CACHE_REPORT_PREFIX} using {}: {hit}",
+            output_dir.display()
+        );
+    };
+    // Exports the entry while the lock is held, or checks it again after the
+    // export where it could not be taken.
+    let export_held = |export_to: ExportTo<'_>, locked: bool| -> LinderaResult<()> {
+        let dest = export_to.dir.join(params.output_dir);
+        let export = export_entry(&output_dir, &dest, export_to.link)?;
+        if !locked
+            && expected.is_some()
+            && let Err(miss) = decide()
+        {
+            return Err(LinderaErrorKind::Io.with_error(anyhow::anyhow!(
+                "{} changed while it was exported to {} ({miss}), and it cannot be locked; \
+                 build again",
+                output_dir.display(),
+                dest.display()
+            )));
+        }
+        report_export(&output_dir, &dest, &export);
+        Ok(())
+    };
     // Bound to a name so that the lock is held until this function returns,
-    // after the input directory is removed.
-    let _entry_lock = if is_cache {
+    // after the input directory is removed and the dictionary exported.
+    let entry_lock = if is_cache {
         if expected.is_none() && purpose == CachePurpose::Embed {
             println!(
                 "cargo:warning=the lindera-dictionary source digest is unavailable, \
@@ -1576,22 +1666,34 @@ fn fetch_into(
                 output_dir.display()
             );
         }
-        let decide = || cache_decision(&output_dir, purpose, expected.as_ref(), builder.metadata());
-        let report_hit = |hit: CacheHit| {
+        if let Ok(hit) = decide() {
+            let Some(export_to) = export_to else {
+                report_hit(hit);
+                return Ok(());
+            };
+            // Checked again after the export, without the lock: see above.
+            let dest = export_to.dir.join(params.output_dir);
+            if let Ok(export) = export_entry(&output_dir, &dest, export_to.link)
+                && let Ok(hit) = decide()
+            {
+                report_hit(hit);
+                report_export(&output_dir, &dest, &export);
+                return Ok(());
+            }
             println!(
-                "{CACHE_REPORT_PREFIX} using {}: {hit}",
+                "{CACHE_REPORT_PREFIX} {} could not be exported, or changed while it was, so \
+                 the build takes its lock",
                 output_dir.display()
             );
-        };
-        if let Ok(hit) = decide() {
-            report_hit(hit);
-            return Ok(());
         }
         let lock = lock_cache_entry(build_dir, params.output_dir)?;
         // Another build may have built the dictionary while this one waited.
         match decide() {
             Ok(hit) => {
                 report_hit(hit);
+                if let Some(export_to) = export_to {
+                    export_held(export_to, lock.is_some())?;
+                }
                 return Ok(());
             }
             Err(miss) => println!(
@@ -1604,17 +1706,63 @@ fn fetch_into(
         None
     };
 
+    build_entry(
+        build_dir,
+        &input_dir,
+        &output_dir,
+        source,
+        params,
+        builder,
+        expected.as_ref(),
+    )?;
+    if let Some(export_to) = export_to {
+        export_held(export_to, entry_lock.is_some())?;
+    }
+    Ok(())
+}
+
+/// Builds or downloads the dictionary into `output_dir`, for [`fetch_into`],
+/// once it knows that the cache, if any, does not hold it.
+///
+/// The dictionary is written into a temporary directory and replaces
+/// `output_dir` ([`empty_directory`], [`rename_directory`]); in a cache, the
+/// record of its inputs goes last, so that an interrupted build leaves no
+/// record and the next build rebuilds.
+///
+/// # Arguments
+///
+/// * `build_dir` - The directory to build in: a cache directory, or `OUT_DIR`.
+/// * `input_dir` - Where the source archive is extracted.
+/// * `output_dir` - Where the dictionary goes.
+/// * `source` - How to get the dictionary ([`choose_dictionary_source`]).
+/// * `params` - Describes the asset to fetch and the directory layout.
+/// * `builder` - Dictionary builder, with the histogram the build reads.
+/// * `expected` - The inputs to record with the dictionary in a cache, or
+///   `None` outside a cache or without this crate's source digest.
+///
+/// # Returns
+///
+/// `Ok(())` once the dictionary is in `output_dir`, or the error.
+fn build_entry(
+    build_dir: &Path,
+    input_dir: &Path,
+    output_dir: &Path,
+    source: &DictionarySource,
+    params: &FetchParams,
+    builder: &DictionaryBuilder,
+    expected: Option<&BuildInputs>,
+) -> LinderaResult<()> {
     if let DictionarySource::Published { key, url, sha256 } = source {
-        fetch_published(build_dir, &output_dir, key, url, sha256, builder.metadata())?;
+        fetch_published(build_dir, output_dir, key, url, sha256, builder.metadata())?;
         // As below, the record goes last, once the dictionary is in place.
         if let Some(inputs) = &expected {
-            write_build_inputs(&output_dir, inputs)?;
+            write_build_inputs(output_dir, inputs)?;
         }
         return Ok(());
     }
 
     if *source == DictionarySource::Dummy {
-        create_dummy_dictionary_source(&input_dir, params.src_subdir, params.dummy_input)?;
+        create_dummy_dictionary_source(input_dir, params.src_subdir, params.dummy_input)?;
     } else {
         // Source file path for build package
         let source_path_for_build = &build_dir.join(params.file_name);
@@ -1761,9 +1909,9 @@ fn fetch_into(
         })?;
 
         // Empty the input directory first to avoid conflicts when renaming the directory later on Linux and macOS systems (which do not support overwriting directories).
-        empty_directory(&input_dir)?;
+        empty_directory(input_dir)?;
 
-        rename_directory(&tmp_extracted_path, &input_dir)?;
+        rename_directory(&tmp_extracted_path, input_dir)?;
 
         let _ = fs::remove_dir_all(&tmp_extract_path);
     }
@@ -1773,7 +1921,7 @@ fn fetch_into(
 
     let build_input_dir = match params.src_subdir {
         Some(subdir) => input_dir.join(subdir),
-        None => input_dir.clone(),
+        None => input_dir.to_path_buf(),
     };
 
     builder
@@ -1785,20 +1933,115 @@ fn fetch_into(
         })?;
 
     // Empty the output directory
-    empty_directory(&output_dir)?;
+    empty_directory(output_dir)?;
 
     // Rename tmp_output_path to output_dir
-    rename_directory(&tmp_output_path, &output_dir)?;
+    rename_directory(&tmp_output_path, output_dir)?;
 
     // Record the inputs last, once the dictionary is in place, so that an
     // interrupted build leaves no record and the next build rebuilds.
     if let Some(inputs) = &expected {
-        write_build_inputs(&output_dir, inputs)?;
+        write_build_inputs(output_dir, inputs)?;
     }
 
     let _ = fs::remove_dir_all(input_dir);
 
     Ok(())
+}
+
+/// Where [`fetch_into`] exports the dictionary that a build embeds from the
+/// cache, and how it puts each file there (#1343).
+#[derive(Clone, Copy)]
+struct ExportTo<'a> {
+    /// The directory the crate embeds from (`OUT_DIR`); the dictionary goes
+    /// into its sub-directory [`FetchParams::output_dir`].
+    dir: &'a Path,
+    /// Puts one file into place, from the entry's path to the export's:
+    /// [`fs::hard_link`] in a build, a replacement in the tests.
+    link: &'a dyn Fn(&Path, &Path) -> io::Result<()>,
+}
+
+/// How [`export_entry`] put a dictionary's files into place.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Export {
+    /// Every file is a hard link to the entry's.
+    Linked,
+    /// At least one file could not be linked and was copied; the error of the
+    /// first link that failed.
+    Copied(String),
+}
+
+/// Puts the files of a dictionary that `embedded_dictionary!` includes
+/// ([`DICTIONARY_FILES`]) from a cache entry into the directory that a crate
+/// embeds them from (#1343).
+///
+/// `dest` is emptied first, then each file is put there with `link`, which is
+/// [`fs::hard_link`] in a build, and copied where the link fails: across file
+/// systems, or on one without hard links. A file that a failed link left
+/// behind is removed before the copy, so that the copy never writes through
+/// a link into the entry. The entry's other files, such as
+/// `build_inputs.json`, are not exported.
+///
+/// # Arguments
+///
+/// * `entry` - The dictionary in the cache.
+/// * `dest` - The directory to put its files into.
+/// * `link` - Puts one file into place, from the entry's path to `dest`'s.
+///
+/// # Returns
+///
+/// How the files were put, or the error for a file that could be neither
+/// linked nor copied.
+fn export_entry(
+    entry: &Path,
+    dest: &Path,
+    link: &dyn Fn(&Path, &Path) -> io::Result<()>,
+) -> LinderaResult<Export> {
+    empty_directory(dest)?;
+    let mut first_link_error = None;
+    for file in DICTIONARY_FILES {
+        let from = entry.join(file);
+        let to = dest.join(file);
+        let Err(link_error) = link(&from, &to) else {
+            continue;
+        };
+        let _ = fs::remove_file(&to);
+        // One message rather than a context: `LinderaError` displays only the
+        // outermost one, and both errors must show.
+        fs::copy(&from, &to).map_err(|err| {
+            LinderaErrorKind::Io.with_error(anyhow::anyhow!(
+                "Failed to copy {from:?} to {to:?}: {err} (linking it failed: {link_error})"
+            ))
+        })?;
+        first_link_error.get_or_insert_with(|| link_error.to_string());
+    }
+    Ok(match first_link_error {
+        None => Export::Linked,
+        Some(err) => Export::Copied(err),
+    })
+}
+
+/// Prints the [`CACHE_REPORT_PREFIX`] line about an export, which
+/// `cargo build -vv` shows.
+///
+/// # Arguments
+///
+/// * `entry` - The dictionary in the cache.
+/// * `dest` - Where it was exported.
+/// * `export` - How ([`export_entry`]).
+fn report_export(entry: &Path, dest: &Path, export: &Export) {
+    match export {
+        Export::Linked => println!(
+            "{CACHE_REPORT_PREFIX} linked {} into {}",
+            entry.display(),
+            dest.display()
+        ),
+        Export::Copied(err) => println!(
+            "{CACHE_REPORT_PREFIX} copied {} into {}, as linking failed: {err}",
+            entry.display(),
+            dest.display()
+        ),
+    }
 }
 
 /// Downloads a published dictionary, checks it, and moves it into
@@ -2667,10 +2910,18 @@ mod tests {
     /// archive's MD5, for [`seeded_params`].
     fn seeded_cache() -> (tempfile::TempDir, &'static str) {
         let cache = tempfile::tempdir().unwrap();
+        let md5 = write_source_archive(cache.path(), SEEDED_ARCHIVE, SEEDED_LEXICON);
+        (cache, md5)
+    }
+
+    /// Writes the source archive of a dummy dictionary with `lexicon` into
+    /// `cache` as `name`, as a download leaves it, extracting to
+    /// [`SEEDED_INPUT_DIR`]; returns its MD5.
+    fn write_source_archive(cache: &Path, name: &str, lexicon: &str) -> &'static str {
         let sources = tempfile::tempdir().unwrap();
         let source_dir = sources.path().join(SEEDED_INPUT_DIR);
-        create_dummy_dictionary_source(&source_dir, None, SEEDED_LEXICON).unwrap();
-        let archive_path = cache.path().join(SEEDED_ARCHIVE);
+        create_dummy_dictionary_source(&source_dir, None, lexicon).unwrap();
+        let archive_path = cache.join(name);
         let encoder = flate2::write::GzEncoder::new(
             File::create(&archive_path).unwrap(),
             flate2::Compression::fast(),
@@ -2681,7 +2932,7 @@ mod tests {
             .unwrap();
         archive.into_inner().unwrap().finish().unwrap();
         let md5 = file_md5(&archive_path).unwrap();
-        (cache, Box::leak(md5.into_boxed_str()))
+        Box::leak(md5.into_boxed_str())
     }
 
     /// The parameters that build the dummy dictionary of [`seeded_cache`].
@@ -2699,13 +2950,24 @@ mod tests {
 
     /// Builds the dummy dictionary into the cache `build_dir`, to embed it.
     fn build_seeded(build_dir: &Path, md5: &'static str) -> LinderaResult<()> {
+        build_with(build_dir, &seeded_params(md5), None)
+    }
+
+    /// Builds the dummy dictionary of `params`' archive into the cache
+    /// `build_dir`, to embed it, exporting it to `export_to`.
+    fn build_with(
+        build_dir: &Path,
+        params: &FetchParams,
+        export_to: Option<ExportTo<'_>>,
+    ) -> LinderaResult<()> {
         fetch_into(
             build_dir,
             true,
             &DictionarySource::Source { reason: None },
-            &seeded_params(md5),
+            params,
             &DictionaryBuilder::new(source_metadata()),
             CachePurpose::Embed,
+            export_to,
         )
     }
 
@@ -3115,7 +3377,13 @@ mod tests {
     fn published_archive(files: &[&str]) -> (Vec<u8>, tempfile::TempDir) {
         let (cache, md5) = seeded_cache();
         build_seeded(cache.path(), md5).unwrap();
-        let built = cache.path().join(SEEDED_OUTPUT_DIR);
+        let archive = pack_published(&cache.path().join(SEEDED_OUTPUT_DIR), files);
+        (archive, cache)
+    }
+
+    /// Packs `files` of the dictionary in `built` as a published dictionary
+    /// is packed: in one directory named [`PUBLISHED_KEY`].
+    fn pack_published(built: &Path, files: &[&str]) -> Vec<u8> {
         let encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
         let mut archive = tar::Builder::new(encoder);
         for file in files {
@@ -3123,7 +3391,7 @@ mod tests {
                 .append_path_with_name(built.join(file), format!("{PUBLISHED_KEY}/{file}"))
                 .unwrap();
         }
-        (archive.into_inner().unwrap().finish().unwrap(), cache)
+        archive.into_inner().unwrap().finish().unwrap()
     }
 
     /// Gets the published dictionary at `url` into the cache `build_dir`, for
@@ -3133,6 +3401,17 @@ mod tests {
         url: &str,
         sha256: &str,
         metadata: Metadata,
+    ) -> LinderaResult<()> {
+        fetch_published_with(build_dir, url, sha256, metadata, None)
+    }
+
+    /// [`fetch_published_into`], exporting the dictionary to `export_to`.
+    fn fetch_published_with(
+        build_dir: &Path,
+        url: &str,
+        sha256: &str,
+        metadata: Metadata,
+        export_to: Option<ExportTo<'_>>,
     ) -> LinderaResult<()> {
         fetch_into(
             build_dir,
@@ -3145,6 +3424,7 @@ mod tests {
             &seeded_params("unused"),
             &DictionaryBuilder::new(metadata),
             CachePurpose::Embed,
+            export_to,
         )
     }
 
@@ -3279,5 +3559,240 @@ mod tests {
         fetch_published_into(cache.path(), &url, &sha256, source_metadata()).unwrap();
         assert!(record(cache.path()).published.is_some());
         assert_eq!(requests.load(Ordering::SeqCst), 2);
+    }
+
+    // The export of a cached dictionary to the directory the crate embeds it
+    // from (#1343).
+
+    /// File name of a second dummy archive, whose dictionary has another
+    /// entry, so that a build from it replaces the entry of the first one
+    /// with other bytes.
+    const OTHER_ARCHIVE: &str = "mecab-test-other.tar.gz";
+
+    /// The one entry of the second dummy dictionary.
+    const OTHER_LEXICON: &str = "試験,0,0,-500,名詞,一般,*,*,*,*,*,*,*\n";
+
+    /// Writes the second dummy archive into `cache`; returns its MD5.
+    fn add_other_archive(cache: &Path) -> &'static str {
+        write_source_archive(cache, OTHER_ARCHIVE, OTHER_LEXICON)
+    }
+
+    /// The parameters that build the second dummy dictionary into the same
+    /// entry as [`seeded_params`].
+    fn other_params(md5: &'static str) -> FetchParams {
+        FetchParams {
+            file_name: OTHER_ARCHIVE,
+            ..seeded_params(md5)
+        }
+    }
+
+    /// Links a file, as a build exports the entry.
+    fn link_file(from: &Path, to: &Path) -> io::Result<()> {
+        fs::hard_link(from, to)
+    }
+
+    /// The bytes of the files that `embedded_dictionary!` includes, in `dir`.
+    fn dictionary_bytes(dir: &Path) -> Vec<Vec<u8>> {
+        DICTIONARY_FILES
+            .iter()
+            .map(|file| {
+                fs::read(dir.join(file)).unwrap_or_else(|err| panic!("{file} in {dir:?}: {err}"))
+            })
+            .collect()
+    }
+
+    #[test]
+    fn an_export_keeps_its_bytes_when_a_build_from_source_replaces_the_entry() {
+        // Another checkout, with other inputs, builds the dictionary from
+        // source into the same entry after this build exported it.
+        let (cache, md5) = seeded_cache();
+        let other_md5 = add_other_archive(cache.path());
+        let out = tempfile::tempdir().unwrap();
+        let export_to = ExportTo {
+            dir: out.path(),
+            link: &link_file,
+        };
+        build_with(cache.path(), &seeded_params(md5), Some(export_to)).unwrap();
+        let exported = out.path().join(SEEDED_OUTPUT_DIR);
+        let before = dictionary_bytes(&exported);
+
+        build_with(cache.path(), &other_params(other_md5), None).unwrap();
+        assert_eq!(dictionary_bytes(&exported), before);
+        assert_ne!(
+            dictionary_bytes(&cache.path().join(SEEDED_OUTPUT_DIR)),
+            before,
+            "the other build did not replace the entry"
+        );
+    }
+
+    #[test]
+    fn an_export_keeps_its_bytes_when_a_published_dictionary_replaces_the_entry() {
+        // Another checkout downloads a published dictionary, packed from
+        // the second dummy dictionary, into the same entry.
+        let (cache, md5) = seeded_cache();
+        let out = tempfile::tempdir().unwrap();
+        let export_to = ExportTo {
+            dir: out.path(),
+            link: &link_file,
+        };
+        build_with(cache.path(), &seeded_params(md5), Some(export_to)).unwrap();
+        let exported = out.path().join(SEEDED_OUTPUT_DIR);
+        let before = dictionary_bytes(&exported);
+
+        let other_cache = tempfile::tempdir().unwrap();
+        let other_md5 = add_other_archive(other_cache.path());
+        build_with(other_cache.path(), &other_params(other_md5), None).unwrap();
+        let archive = pack_published(
+            &other_cache.path().join(SEEDED_OUTPUT_DIR),
+            &DICTIONARY_FILES,
+        );
+        let sha256 = sha256_hex(&archive);
+        let (base, _requests) = serve(200, archive);
+        let url = format!("{base}/{PUBLISHED_KEY}.tar.gz");
+        fetch_published_into(cache.path(), &url, &sha256, source_metadata()).unwrap();
+        assert_eq!(dictionary_bytes(&exported), before);
+        assert_ne!(
+            dictionary_bytes(&cache.path().join(SEEDED_OUTPUT_DIR)),
+            before,
+            "the download did not replace the entry"
+        );
+    }
+
+    #[test]
+    fn an_export_survives_the_removal_of_the_cache() {
+        // The cache is documented as safe to delete; a crate that embeds the
+        // export still compiles after it is removed.
+        let (cache, md5) = seeded_cache();
+        let out = tempfile::tempdir().unwrap();
+        let export_to = ExportTo {
+            dir: out.path(),
+            link: &link_file,
+        };
+        build_with(cache.path(), &seeded_params(md5), Some(export_to)).unwrap();
+        let exported = out.path().join(SEEDED_OUTPUT_DIR);
+        let before = dictionary_bytes(&exported);
+
+        let cache_path = cache.path().to_path_buf();
+        cache.close().unwrap();
+        assert!(!cache_path.exists());
+        assert_eq!(dictionary_bytes(&exported), before);
+        let dictionary = crate::dictionary::Dictionary::load_from_path(&exported).unwrap();
+        assert_eq!(dictionary.prefix_dictionary.find_surface("テスト").len(), 1);
+    }
+
+    #[test]
+    fn an_entry_is_copied_where_it_cannot_be_linked() {
+        // As when the cache and the target directory are on different file
+        // systems.
+        let (cache, md5) = seeded_cache();
+        build_seeded(cache.path(), md5).unwrap();
+        let entry = cache.path().join(SEEDED_OUTPUT_DIR);
+        let out = tempfile::tempdir().unwrap();
+        let dest = out.path().join(SEEDED_OUTPUT_DIR);
+        let no_link =
+            |_: &Path, _: &Path| -> io::Result<()> { Err(io::Error::other("no hard links here")) };
+        assert_eq!(
+            export_entry(&entry, &dest, &no_link).unwrap(),
+            Export::Copied("no hard links here".to_string())
+        );
+        assert_eq!(dictionary_bytes(&dest), dictionary_bytes(&entry));
+    }
+
+    #[test]
+    fn an_entry_is_linked_where_it_can_be() {
+        let (cache, md5) = seeded_cache();
+        build_seeded(cache.path(), md5).unwrap();
+        let entry = cache.path().join(SEEDED_OUTPUT_DIR);
+        let out = tempfile::tempdir().unwrap();
+        let dest = out.path().join(SEEDED_OUTPUT_DIR);
+        assert_eq!(
+            export_entry(&entry, &dest, &link_file).unwrap(),
+            Export::Linked
+        );
+        assert_eq!(dictionary_bytes(&dest), dictionary_bytes(&entry));
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            for file in DICTIONARY_FILES {
+                assert_eq!(
+                    fs::metadata(dest.join(file)).unwrap().ino(),
+                    fs::metadata(entry.join(file)).unwrap().ino(),
+                    "{file}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn an_entry_replaced_during_the_export_of_a_hit_is_not_embedded() {
+        // A hit is exported without the lock. Another build replaces the
+        // entry while the third file is linked, so the export holds files of
+        // two dictionaries; the check after the export misses, and the build
+        // exports again under the lock, after building its own dictionary.
+        let (cache, md5) = seeded_cache();
+        let other_md5 = add_other_archive(cache.path());
+        let first = tempfile::tempdir().unwrap();
+        let export_to = ExportTo {
+            dir: first.path(),
+            link: &link_file,
+        };
+        build_with(cache.path(), &seeded_params(md5), Some(export_to)).unwrap();
+        let own = dictionary_bytes(&first.path().join(SEEDED_OUTPUT_DIR));
+
+        let calls = AtomicUsize::new(0);
+        let cache_dir = cache.path().to_path_buf();
+        let replacing_link = |from: &Path, to: &Path| -> io::Result<()> {
+            if calls.fetch_add(1, Ordering::SeqCst) == 2 {
+                build_with(&cache_dir, &other_params(other_md5), None).unwrap();
+            }
+            fs::hard_link(from, to)
+        };
+        let second = tempfile::tempdir().unwrap();
+        let export_to = ExportTo {
+            dir: second.path(),
+            link: &replacing_link,
+        };
+        build_with(cache.path(), &seeded_params(md5), Some(export_to)).unwrap();
+        assert_eq!(
+            dictionary_bytes(&second.path().join(SEEDED_OUTPUT_DIR)),
+            own
+        );
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            2 * DICTIONARY_FILES.len(),
+            "the entry was not exported twice"
+        );
+    }
+
+    #[test]
+    fn a_cache_hit_exports_without_waiting_for_the_lock() {
+        // As `a_cache_hit_does_not_wait_for_the_lock`, for a build that
+        // exports the entry.
+        let (cache, md5) = seeded_cache();
+        build_seeded(cache.path(), md5).unwrap();
+        let build_dir = cache.path().to_path_buf();
+        let _lock = hold_entry_lock(&build_dir);
+        let out = tempfile::tempdir().unwrap();
+        let out_dir = out.path().to_path_buf();
+        let build = std::thread::spawn(move || {
+            let export_to = ExportTo {
+                dir: &out_dir,
+                link: &link_file,
+            };
+            build_with(&build_dir, &seeded_params(md5), Some(export_to))
+        });
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        while !build.is_finished() {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "a cache hit waited for the lock"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        build.join().unwrap().unwrap();
+        assert_eq!(
+            dictionary_bytes(&out.path().join(SEEDED_OUTPUT_DIR)),
+            dictionary_bytes(&cache.path().join(SEEDED_OUTPUT_DIR))
+        );
     }
 }
