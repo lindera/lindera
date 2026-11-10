@@ -14,12 +14,25 @@
 // second half grows about as much as the first. Once the leak is gone, the
 // second half flattens out near zero. A generous absolute ceiling is kept as
 // a safety net for pathological cases.
+//
+// Precondition on macOS (see #1355): libmalloc keeps the large blocks a
+// process frees resident for reuse (its large cache), up to a bound, and RSS
+// counts them. Each call on the 100,000-character input frees about 3.7 MB of
+// large blocks, so RSS climbs for about 60 calls before it levels off, and the
+// check would read that as accumulation. `MallocLargeCache=0` in the
+// environment turns the cache off, so RSS follows live memory again; memory
+// that stays allocated, such as the class instances of #922, still shows.
+// glibc does not read the variable. The Makefile sets it, and
+// measureRssGrowth refuses to measure on macOS without it, so that running a
+// script on its own stops with the reason instead of failing with the wrong
+// diagnosis.
 
 /// Runs `tokenizeOnce` repeatedly and reports how RSS evolves.
 ///
 /// Requires `--expose-gc`: `global.gc()` runs between iterations so the
 /// measurement reflects memory that could not be reclaimed, matching #922's
-/// methodology.
+/// methodology. On macOS it also requires `MallocLargeCache=0` in the
+/// environment (see the header).
 ///
 /// @param {object} options
 /// @param {() => void} options.tokenizeOnce - One full tokenize call.
@@ -33,6 +46,13 @@ export function measureRssGrowth({ tokenizeOnce, iterations, warmup }) {
   if (typeof global.gc !== "function") {
     throw new Error(
       "memcheck requires --expose-gc (run node with --expose-gc)",
+    );
+  }
+  if (process.platform === "darwin" && process.env.MallocLargeCache !== "0") {
+    throw new Error(
+      "memcheck on macOS requires MallocLargeCache=0 in the environment: " +
+        "without it, macOS's malloc keeps freed large blocks resident and " +
+        "RSS counts them (#1355)",
     );
   }
 

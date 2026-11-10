@@ -5,9 +5,11 @@
 // `wasm-pack build --target nodejs` artifact so the check runs in a plain
 // Node process rather than a browser. Exits non-zero on regression.
 //
-// Must be run with --expose-gc, and needs a nodejs-target build first:
+// Must be run with --expose-gc, and on macOS with MallocLargeCache=0 in the
+// environment (see memcheck_common.mjs); it needs a nodejs-target build first.
+// `make memcheck-lindera-wasm` does all three:
 //   cd lindera-wasm && wasm-pack build --target nodejs --features embed-ipadic --out-dir pkg-node
-//   node --expose-gc scripts/benchmarks/memcheck_wasm.mjs
+//   MallocLargeCache=0 node --expose-gc scripts/benchmarks/memcheck_wasm.mjs
 //
 // Environment:
 //   MEMCHECK_WASM_PKG_DIR  package directory to load (default: lindera-wasm/pkg-node)
