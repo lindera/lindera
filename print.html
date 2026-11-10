@@ -1450,6 +1450,16 @@ Requires the <code>mmap</code> cargo feature (enabled by default).</p>
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladder(false);
 <span class="boring">}</span></code></pre></pre>
+<h2 id="break-characters"><a class="header" href="#break-characters">Break Characters</a></h2>
+<p>By default, a segmenter breaks at <code>・</code> (U+30FB). A boundary is a place between a break character and a character that is not one: no unknown word crosses a boundary, in every mode, and in Decompose mode no system-dictionary word does either.</p>
+<p>The bundled dictionaries put <code>・</code> in the katakana category of their <code>char.def</code>, so without this rule a run of katakana joined by <code>・</code> is one unknown word when its first word is not in the dictionary. MeCab, and Lindera with no break characters, return <code>レノン・ジョン</code> whole, while <code>ジョン・レノン</code> splits after the dictionary word <code>ジョン</code>. With <code>・</code> as a break character, both split into three tokens, such as <code>レノン</code>, <code>・</code> and <code>ジョン</code>, and <code>サイレント</code> matches <code>ザ・サイレント・フォレスト</code> in a search. This is a deliberate difference from MeCab.</p>
+<p>In Decompose mode, a system-dictionary word with a boundary inside it, such as IPADIC's <code>インフォームド・コンセント</code> or the many such entries of IPADIC-NEologd and SudachiDict, does not enter the lattice: it comes out as its parts, without its own part of speech and reading. Normal mode keeps such words. Every mode keeps user-dictionary words, which a user registered on purpose, and words made of break characters only, such as <code>・</code>.</p>
+<p><code>break_characters</code> takes a string, each character of which is a break character, in place of the default; an empty string gives MeCab's segmentation:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).break_characters("");
+<span class="boring">}</span></code></pre></pre>
+<p><code>･</code> (U+FF65) is not in the default: every bundled dictionary puts it in the symbol category, apart from the halfwidth katakana, so no unknown word runs through it anyway. The configuration key <code>break_characters</code>, the CLI flags <code>--break-characters</code> and <code>--disable-break-characters</code>, and the bindings' <code>set_break_characters</code> (<code>setBreakCharacters</code>) set the same thing. Train a dictionary with the break characters it will be used with: <code>Trainer::break_characters</code> and the same two flags of <code>lindera train</code> set them, with the same default.</p>
 <h2 id="left-space-penalty-korean"><a class="header" href="#left-space-penalty-korean">Left-Space Penalty (Korean)</a></h2>
 <p>MeCab-based Korean analyzers (mecab-ko with mecab-ko-dic, Lucene's nori) add a cost to a candidate that starts right after whitespace when its part-of-speech tag is one that attaches to the preceding word without a space: particles (<code>J*</code>), endings (<code>E*</code>), the copula (<code>VCP</code>) and derivational suffixes (<code>XS*</code>). Without it, <code>검색 이 잘 된다</code> reads <code>이</code> as the subject particle <code>JKS</code> rather than the interjection <code>IC</code>. Lindera applies the same penalty by default for dictionaries that ship the rules in their metadata (ko-dic does); other dictionaries are unaffected. Opt out with <code>Segmenter::space_penalty(None)</code>, <code>"space_penalty": false</code> in the config, or <code>--disable-space-penalty</code> on the CLI. Together with <code>skip_whitespace(false)</code>, this turns off both changes since v6.0 in how Korean is read around spaces (this penalty and whitespace skipping), but not the other output changes since then, such as the split of punctuation runs like <code>."</code> (see <a href="lindera/../migration_v6_to_v7.html#unknown-words-start-at-every-position-as-in-mecab">Migrating from v6 to v7</a>).</p>
 <p><code>SpacePenaltyConfig</code> is a list of rules, each pairing first part-of-speech tags with a cost. A candidate is matched by the part of its tag before the first <code>+</code> (for ko-dic <code>Inflect</code> rows, the <code>first_part_of_speech</code> column); the first matching rule wins and unlisted tags cost nothing. mecab-ko-dic's <code>dicrc</code> rules translate to:</p>
@@ -1519,7 +1529,7 @@ for line in lines {
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<p>The returned tokens borrow the worker, so they must be consumed before the next call (the usual per-line loop above compiles as-is). <code>set_mode</code>, <code>set_keep_whitespace</code>, <code>set_skip_whitespace</code>, <code>set_max_grouping_len</code>, <code>set_unknown_word_ladder</code>, <code>set_space_penalty</code> and <code>set_space_penalty_from_dictionary</code> switch the configuration between calls. <code>segmenter()</code> returns a shared reference to the underlying segmenter; no <code>&amp;mut</code> accessor is provided, since swapping the dictionary out from under the reused lattice would break the dictionary-lattice pairing the worker exists to guarantee.</p>
+<p>The returned tokens borrow the worker, so they must be consumed before the next call (the usual per-line loop above compiles as-is). <code>set_mode</code>, <code>set_keep_whitespace</code>, <code>set_skip_whitespace</code>, <code>set_max_grouping_len</code>, <code>set_unknown_word_ladder</code>, <code>set_break_characters</code>, <code>set_space_penalty</code> and <code>set_space_penalty_from_dictionary</code> switch the configuration between calls. <code>segmenter()</code> returns a shared reference to the underlying segmenter; no <code>&amp;mut</code> accessor is provided, since swapping the dictionary out from under the reused lattice would break the dictionary-lattice pairing the worker exists to guarantee.</p>
 <p>A worker also bounds retained memory: one delimiter-free maximum-length sentence grows the lattice to several MB (roughly 18 MB for a 32 KiB ASCII sentence, 6 MB for a 32 KiB CJK one, whose character-indexed lattice has a third of the slots), and a plain <code>Lattice</code> keeps that forever. The worker automatically shrinks its lattice, and releases its scratch buffers, once a window of calls shows the capacity is oversized, and <code>shrink_to(text_len_hint)</code> forces a shrink immediately. <code>reset()</code> discards the internal buffers outright and replaces them with fresh ones; it is intended for recovery paths (e.g. after a panic poisoned a mutex holding the worker) where the buffers may hold an inconsistent intermediate state — the segmenter configuration itself is preserved.</p>
 <p>The worker is permanently bound to the dictionary of the segmenter that created it; there is no way to swap dictionaries under a live worker, which rules out a class of lattice-reuse bugs by construction. For multi-threaded use, create one worker per thread from a shared <code>Segmenter</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h1>
@@ -1671,6 +1681,7 @@ Specify the path to the following file in the environment variable <code>LINDERA
   # use_mmap: false # only meaningful for filesystem (non-embedded://) dictionaries
   # max_grouping_len: 24 # cap on unknown-word grouping; omit or 0 for unbounded
   # unknown_word_ladder: true # emit shorter unknown-word candidates (default: true)
+  # break_characters: "・" # no unknown word, nor in decompose mode any system-dictionary word, crosses a boundary of these characters (default: "・"); "" splits as MeCab does
   # space_penalty: false # left-space penalty (Korean); on by default for dictionaries that ship rules (ko-dic). false turns it off, an object gives explicit rules
 
 character_filters:
@@ -1742,6 +1753,7 @@ token_filters:
 <tr><td><code>use_mmap</code></td><td>bool</td><td>on when the <code>mmap</code> feature is compiled in (the default)</td><td>Memory-map the dictionary; only meaningful for filesystem (non-<code>embedded://</code>) dictionaries</td></tr>
 <tr><td><code>max_grouping_len</code></td><td>integer</td><td><em>(unbounded)</em></td><td>Cap on unknown-word grouping, in characters <strong>beyond the first</strong>, matching MeCab's <code>max-grouping-size</code> (MeCab defaults to 24). Applied at each position: a run longer than the cap is not grouped there, the single-character candidate (plus the length ladder and dictionary words) remains, and the remaining tail is grouped again once it fits, so no unknown token exceeds cap+1 characters. Omitting the key, or setting <code>0</code>, leaves grouping unbounded</td></tr>
 <tr><td><code>unknown_word_ladder</code></td><td>bool</td><td><code>true</code></td><td>Also emit the shorter unknown-word candidates up to the <code>LENGTH</code> field in <code>char.def</code> of the character's default category, as MeCab and Vibrato do. <code>false</code> leaves them out, as before v6; other changes since then, such as unknown words that start inside a grouped run, still apply. See <a href="lindera-analysis/../lindera/segmenter.html#unknown-word-grouping">Segmenter</a></td></tr>
+<tr><td><code>break_characters</code></td><td>string</td><td><code>"・"</code></td><td>Break characters, each character of the string: no unknown word crosses a boundary between a break character and another character, in every mode, and in decompose mode no system-dictionary word does either (user-dictionary words and words of break characters only stay). An empty string gives MeCab's segmentation, which keeps <code>レノン・ジョン</code> whole while splitting <code>ジョン・レノン</code>. See <a href="lindera-analysis/../lindera/segmenter.html#break-characters">Break Characters</a></td></tr>
 <tr><td><code>space_penalty</code></td><td>bool or object</td><td><em>(the dictionary's rules, if any)</em></td><td>Left-space penalty (mecab-ko's <code>left-space-penalty-factor</code>): a candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added. Omitted or <code>null</code> keeps the rules the dictionary ships in its <code>metadata.json</code> (ko-dic ships mecab-ko-dic's, so the penalty is on by default for ko-dic; the other bundled dictionaries ship none); <code>false</code> turns it off; <code>true</code> requires the dictionary's rules (an error when it ships none); an object <code>{"rules": [{"pos": [...], "cost": n}, ...]}</code> gives explicit rules. See <a href="lindera-analysis/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a></td></tr>
 </tbody></table>
 </div>
@@ -2358,6 +2370,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <li><code>set_keep_whitespace(&amp;mut self, keep: bool)</code> — sets whether whitespace tokens are kept in the output for subsequent calls; kept whitespace also stays in the lattice, so the other tokens can differ.</li>
 <li><code>set_skip_whitespace(&amp;mut self, skip: bool)</code> — sets whether whitespace is skipped in the lattice for subsequent calls when whitespace tokens are not kept (by default the dictionary's setting).</li>
 <li><code>set_max_grouping_len(&amp;mut self, max_grouping_len: Option&lt;usize&gt;)</code>, <code>set_unknown_word_ladder(&amp;mut self, unknown_word_ladder: bool)</code> — set the unknown-word grouping cap and the length ladder for subsequent calls.</li>
+<li><code>set_break_characters(&amp;mut self, chars: &amp;str)</code> — sets the break characters for subsequent calls (<code>・</code> by default; an empty string gives MeCab's segmentation).</li>
 <li><code>set_space_penalty(&amp;mut self, space_penalty: Option&lt;SpacePenaltyConfig&gt;)</code>, <code>set_space_penalty_from_dictionary(&amp;mut self)</code> — set the left-space penalty rules for subsequent calls, or restore the dictionary's.</li>
 <li><code>shrink_to(&amp;mut self, text_len_hint: usize)</code> — immediately shrinks the worker's internal buffers to what an input of <code>text_len_hint</code> bytes needs.</li>
 <li><code>reset(&amp;mut self)</code> — discards all internal buffers, replacing them with fresh ones; intended for recovery paths (e.g. after a panic poisoned a mutex holding the worker), with configuration (dictionary, filters, mode) preserved.</li>
@@ -2545,6 +2558,12 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 </li>
 <li>
 <p><code>--disable-unknown-word-ladder</code>: Disable the MeCab/Vibrato-inspired unknown-word length ladder (<code>char.def</code>'s <code>LENGTH</code> field). Enabled by default. Disabling it leaves out these candidates, as before v6; other changes since then, such as unknown words that start inside a grouped run, still apply. See the <a href="lindera-cli/../lindera/segmenter.html#unknown-word-grouping">Segmenter</a> documentation</p>
+</li>
+<li>
+<p><code>--break-characters &lt;CHARS&gt;</code>: Break characters, each character of <code>CHARS</code> (default: <code>・</code>). No unknown word crosses a boundary between a break character and another character, in any mode, and in decompose mode no system-dictionary word does either; user-dictionary words and words of break characters only stay. See the <a href="lindera-cli/../lindera/segmenter.html#break-characters">Segmenter</a> documentation</p>
+</li>
+<li>
+<p><code>--disable-break-characters</code>: Use no break characters, which gives MeCab's segmentation: an unknown katakana word runs through <code>・</code> (<code>レノン・ジョン</code> stays one word), while a dictionary word before it still ends there (<code>ジョン・レノン</code> splits). Cannot be combined with <code>--break-characters</code></p>
 </li>
 <li>
 <p><code>--disable-space-penalty</code>: Disable the left-space penalty (mecab-ko's <code>left-space-penalty-factor</code>) that a dictionary shipping rules in its <code>metadata.json</code> applies by default (ko-dic ships mecab-ko-dic's). A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added; disabling it together with <code>--disable-skip-whitespace</code> turns off both changes since v6.0 in how Korean is read around spaces (this penalty and whitespace skipping), but not the other output changes since then, such as the split of punctuation runs like <code>."</code>. See the <a href="lindera-cli/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> documentation</p>
@@ -3176,6 +3195,7 @@ Downloaded dictionary 'ipadic'
 <li><code>--max-iterations</code> / <code>-i</code>: Maximum number of iterations for training, 1 or more (default: 100)</li>
 <li><code>--eta</code> / <code>-e</code>: Tolerance of the convergence test: training stops before <code>--max-iterations</code> once the relative change of the objective stays below this value for 3 iterations in a row; <code>0</code> disables the test (default: 0.00005, the default of MeCab's learner)</li>
 <li><code>--max-threads</code> / <code>-t</code>: Maximum number of threads, 1 or more (defaults to CPU core count; affects only speed, never the trained model)</li>
+<li><code>--break-characters &lt;CHARS&gt;</code> / <code>--disable-break-characters</code>: The break characters of the unknown-word candidates, as for <code>lindera tokenize</code> (default: <code>・</code>). Train with the value the dictionary will be used with; the corpus's own tokens are kept whatever they span</li>
 </ul>
 <h3 id="basic-workflow"><a class="header" href="#basic-workflow">Basic workflow</a></h3>
 <h4 id="1-prepare-training-files"><a class="header" href="#1-prepare-training-files">1. Prepare training files</a></h4>
@@ -3629,6 +3649,18 @@ builder.set_dictionary("/path/to/dictionary")
 <p>With IPADIC, for example, <code>Google が 新しい</code> reads <code>が</code> as a particle (<code>助詞</code>) by default and as a conjunction (<code>接続詞</code>) with <code>set_skip_whitespace(False)</code>. See <a href="lindera-python/../lindera/segmenter.html#whitespace-handling">Segmenter</a> for details.</p>
 <pre><code class="language-python"># Keep whitespace in the lattice, as before v7
 builder.set_skip_whitespace(False)
+</code></pre>
+<h4 id="set_break_characterschars"><a class="header" href="#set_break_characterschars"><code>set_break_characters(chars)</code></a></h4>
+<p>Sets the break characters. <code>chars</code> has the same meaning as <code>segmenter.break_characters</code> in a <a href="lindera-python/../lindera-analysis/configuration.html">configuration file</a>:</p>
+<ul>
+<li>A string -- Each of its characters is a break character: no unknown word crosses a boundary between a break character and another character, and in decompose mode no system-dictionary word does either. User-dictionary words and words made of break characters only stay.</li>
+<li><code>""</code> -- No break characters, which gives MeCab's segmentation.</li>
+<li><code>None</code> -- The default, <code>・</code>. Use it to undo an earlier call.</li>
+</ul>
+<p>A value set here overrides a <code>break_characters</code> loaded with <code>from_file</code>. Any other value raises <code>TypeError</code>.</p>
+<p>With IPADIC, for example, <code>レノン・ジョン</code>, which is not in the dictionary, is <code>レノン</code>, <code>・</code> and <code>ジョン</code> by default and one unknown word with <code>set_break_characters("")</code>. See <a href="lindera-python/../lindera/segmenter.html#break-characters">Segmenter</a> for details.</p>
+<pre><code class="language-python"># Split as MeCab does
+builder.set_break_characters("")
 </code></pre>
 <h4 id="set_space_penaltyvalue"><a class="header" href="#set_space_penaltyvalue"><code>set_space_penalty(value)</code></a></h4>
 <p>Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added. <code>value</code> has the same meaning as <code>segmenter.space_penalty</code> in a <a href="lindera-python/../lindera-analysis/configuration.html">configuration file</a>:</p>
@@ -4630,6 +4662,18 @@ builder.setSkipWhitespace(false);
 // Back to the dictionary's default
 builder.setSkipWhitespace(null);
 </code></pre>
+<h4 id="setbreakcharacterschars"><a class="header" href="#setbreakcharacterschars"><code>setBreakCharacters(chars)</code></a></h4>
+<p>Sets the break characters. <code>chars</code> has the same meaning as <code>segmenter.break_characters</code> in a <a href="lindera-nodejs/../lindera-analysis/configuration.html">configuration file</a>:</p>
+<ul>
+<li>A string -- Each of its characters is a break character: no unknown word crosses a boundary between a break character and another character, and in decompose mode no system-dictionary word does either. User-dictionary words and words made of break characters only stay.</li>
+<li><code>""</code> -- No break characters, which gives MeCab's segmentation.</li>
+<li><code>null</code> or <code>undefined</code> -- The default, <code>・</code>. Use it to undo an earlier call.</li>
+</ul>
+<p>The argument is required. A value set here overrides a <code>break_characters</code> loaded with <code>fromFile</code>. Any other value throws.</p>
+<p>With IPADIC, for example, <code>レノン・ジョン</code>, which is not in the dictionary, is <code>レノン</code>, <code>・</code> and <code>ジョン</code> by default and one unknown word with <code>setBreakCharacters("")</code>. See <a href="lindera-nodejs/../lindera/segmenter.html#break-characters">Segmenter</a> for details.</p>
+<pre><code class="language-javascript">// Split as MeCab does
+builder.setBreakCharacters("");
+</code></pre>
 <h4 id="setspacepenaltyvalue"><a class="header" href="#setspacepenaltyvalue"><code>setSpacePenalty(value)</code></a></h4>
 <p>Sets the left-space penalty for Korean (mecab-ko's <code>left-space-penalty-factor</code>): a candidate that starts right after whitespace and whose first part-of-speech tag is listed in a rule gets that rule's cost added. The value means the same as <code>segmenter.space_penalty</code> in a <a href="lindera-nodejs/../lindera-analysis/configuration.html">configuration file</a>.</p>
 <div class="table-wrapper"><table><thead><tr><th>Value</th><th>Effect</th></tr></thead><tbody>
@@ -5560,6 +5604,18 @@ builder.set_dictionary('/path/to/dictionary')
 <p>With IPADIC, for example, <code>Google が 新しい</code> reads <code>が</code> as a particle (<code>助詞</code>) by default and as a conjunction (<code>接続詞</code>) with <code>set_skip_whitespace(false)</code>. See <a href="lindera-ruby/../lindera/segmenter.html#whitespace-handling">Segmenter</a> for details.</p>
 <pre><code class="language-ruby"># Keep whitespace in the lattice, as before v7
 builder.set_skip_whitespace(false)
+</code></pre>
+<h4 id="set_break_characterschars-1"><a class="header" href="#set_break_characterschars-1"><code>set_break_characters(chars)</code></a></h4>
+<p>Sets the break characters. <code>chars</code> has the same meaning as <code>segmenter.break_characters</code> in a <a href="lindera-ruby/../lindera-analysis/configuration.html">configuration file</a>:</p>
+<ul>
+<li>A string -- Each of its characters is a break character: no unknown word crosses a boundary between a break character and another character, and in decompose mode no system-dictionary word does either. User-dictionary words and words made of break characters only stay.</li>
+<li><code>''</code> -- No break characters, which gives MeCab's segmentation.</li>
+<li><code>nil</code> -- The default, <code>・</code>. Use it to undo an earlier call.</li>
+</ul>
+<p>A value set here overrides a <code>break_characters</code> loaded with <code>from_file</code>. Any other value raises <code>TypeError</code>.</p>
+<p>With IPADIC, for example, <code>レノン・ジョン</code>, which is not in the dictionary, is <code>レノン</code>, <code>・</code> and <code>ジョン</code> by default and one unknown word with <code>set_break_characters('')</code>. See <a href="lindera-ruby/../lindera/segmenter.html#break-characters">Segmenter</a> for details.</p>
+<pre><code class="language-ruby"># Split as MeCab does
+builder.set_break_characters('')
 </code></pre>
 <h4 id="set_space_penaltyvalue-1"><a class="header" href="#set_space_penaltyvalue-1"><code>set_space_penalty(value)</code></a></h4>
 <p>Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added. <code>value</code> has the same meaning as <code>segmenter.space_penalty</code> in a <a href="lindera-ruby/../lindera-analysis/configuration.html">configuration file</a>:</p>
@@ -6581,6 +6637,18 @@ $builder-&gt;setKeepWhitespace(true);
 
 // Keep whitespace in the lattice, as before v7
 $builder-&gt;setSkipWhitespace(false);
+</code></pre>
+<h4 id="setbreakcharacterschars-1"><a class="header" href="#setbreakcharacterschars-1"><code>setBreakCharacters($chars)</code></a></h4>
+<p>Sets the break characters. <code>$chars</code> has the same meaning as <code>segmenter.break_characters</code> in a <a href="lindera-php/../lindera-analysis/configuration.html">configuration file</a>:</p>
+<ul>
+<li>A string -- Each of its characters is a break character: no unknown word crosses a boundary between a break character and another character, and in decompose mode no system-dictionary word does either. User-dictionary words and words made of break characters only stay.</li>
+<li><code>''</code> -- No break characters, which gives MeCab's segmentation.</li>
+<li><code>null</code> -- The default, <code>・</code>. Use it to undo an earlier call.</li>
+</ul>
+<p>The argument is required. A value set here overrides a <code>break_characters</code> loaded with <code>fromFile</code>. A value of another type throws a <code>TypeError</code>.</p>
+<p>With IPADIC, for example, <code>レノン・ジョン</code>, which is not in the dictionary, is <code>レノン</code>, <code>・</code> and <code>ジョン</code> by default and one unknown word with <code>setBreakCharacters('')</code>. See <a href="lindera-php/../lindera/segmenter.html#break-characters">Segmenter</a> for details.</p>
+<pre><code class="language-php">// Split as MeCab does
+$builder-&gt;setBreakCharacters('');
 </code></pre>
 <h4 id="setspacepenaltyvalue-1"><a class="header" href="#setspacepenaltyvalue-1"><code>setSpacePenalty($value)</code></a></h4>
 <p>Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added. <code>$value</code> has the same meaning as <code>segmenter.space_penalty</code> in a <a href="lindera-php/../lindera-analysis/configuration.html">configuration file</a>:</p>
@@ -7708,6 +7776,18 @@ builder.setDictionaryInstance(dictionary);
 <pre><code class="language-javascript">// Keep whitespace in the lattice, as before v7
 builder.setSkipWhitespace(false);
 </code></pre>
+<h4 id="setbreakcharacterschars-2"><a class="header" href="#setbreakcharacterschars-2"><code>setBreakCharacters(chars)</code></a></h4>
+<p>Sets the break characters. <code>chars</code> has the same meaning as <code>segmenter.break_characters</code> in a <a href="lindera-wasm/../lindera-analysis/configuration.html">configuration file</a>:</p>
+<ul>
+<li>A string -- Each of its characters is a break character: no unknown word crosses a boundary between a break character and another character, and in decompose mode no system-dictionary word does either. User-dictionary words and words made of break characters only stay.</li>
+<li><code>""</code> -- No break characters, which gives MeCab's segmentation.</li>
+<li><code>null</code> or <code>undefined</code> -- The default, <code>・</code>. Use it to undo an earlier call.</li>
+</ul>
+<p>The argument is required. It applies both to a dictionary set with <code>setDictionary()</code> and to one set with <code>setDictionaryInstance()</code>. Any other value throws.</p>
+<p>With IPADIC, for example, <code>レノン・ジョン</code>, which is not in the dictionary, is <code>レノン</code>, <code>・</code> and <code>ジョン</code> by default and one unknown word with <code>setBreakCharacters("")</code>. See <a href="lindera-wasm/../lindera/segmenter.html#break-characters">Segmenter</a> for details.</p>
+<pre><code class="language-javascript">// Split as MeCab does
+builder.setBreakCharacters("");
+</code></pre>
 <h4 id="setspacepenaltyvalue-2"><a class="header" href="#setspacepenaltyvalue-2"><code>setSpacePenalty(value)</code></a></h4>
 <p>Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added.</p>
 <ul>
@@ -7998,6 +8078,7 @@ console.log(error.toString()); // "message"
 <tr><td><code>setUserDictionaryInstance()</code></td><td><code>set_user_dictionary_instance()</code></td></tr>
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
 <tr><td><code>setSkipWhitespace()</code></td><td><code>set_skip_whitespace()</code></td></tr>
+<tr><td><code>setBreakCharacters()</code></td><td><code>set_break_characters()</code></td></tr>
 <tr><td><code>setSpacePenalty()</code></td><td><code>set_space_penalty()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
@@ -10635,6 +10716,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>The context is carried across <code>、</code> and <code>。</code> within a line, as in MeCab</strong></td><td>Anyone who segments Japanese text with <code>、</code> or <code>。</code> inside a line</td><td>Expect some words after <code>、</code> or <code>。</code> to be read differently, mostly as MeCab reads them, and the N-best costs of such lines to change; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>N-best: every result covers the whole input</strong></td><td>Anyone who asks for N-best results (<code>segment_nbest</code>, <code>tokenize_nbest</code>, <code>lindera tokenize -N</code>, the bindings' N-best methods) for input with more than one sentence</td><td>Expect the cheapest segmentations of the whole input from the second result on, and one result without tokens for an empty input; a cost threshold now applies to the whole input</td></tr>
 <tr><td><strong>Unknown words start at every position, as in MeCab</strong></td><td>Anyone who segments text with runs of katakana, symbols or Latin letters in normal mode, most visibly katakana joined by <code>・</code> and Korean sentence-final punctuation such as <code>."</code></td><td>Expect such runs to be split where MeCab splits them, and katakana- and Latin-heavy text to take about 13% more instructions; no setting restores the v6 behavior</td></tr>
+<tr><td><strong>Middle dots break unknown words by default</strong></td><td>Anyone who segments Japanese text with katakana joined by <code>・</code>, most visibly unknown names such as <code>レノン・ジョン</code>, and users of decompose mode with dictionaries that have many words with <code>・</code> (IPADIC-NEologd, SudachiDict)</td><td>Expect <code>・</code> to split such runs, and such words in decompose mode; set <code>break_characters: ""</code> (<code>--disable-break-characters</code>) for MeCab's segmentation</td></tr>
 <tr><td><strong>Unknown words come from each character's default category and group the characters that share a category, as in MeCab</strong></td><td>Anyone who segments text where a character with several categories meets other characters; in the bundled dictionaries, a hanja numeral followed by hanja with ko-dic, and <code>〇</code> (U+3007) with ko-dic; Rust code that relies on the order of <code>CharacterDefinition::lookup_categories</code></td><td>Expect such text to be segmented as MeCab segments it (ko-dic <code>三國史記</code> is one <code>SH</code> word, <code>〇〇〇</code> one <code>SY</code> word); no setting restores the v6 behavior</td></tr>
 <tr><td><strong>CC-CEDICT: unknown words cost 400, and the entries made only of Latin letters or only of digits 399</strong></td><td>Anyone who segments text with CC-CEDICT, most visibly entries that mix Latin letters or digits with Chinese characters, such as <code>T恤</code>; anyone who reads its N-best costs</td><td>Expect such entries to be one word, <code>〇</code> and entries such as <code>PK</code> to come with their pinyin and definition, Latin words, kana and numbers to stay one word as in v6, and the costs of paths to change; build a CC-CEDICT dictionary directory from the <code>CC-CEDICT-MeCab-0.1.0-20261021</code> archive</td></tr>
 <tr><td><strong>Jieba: <code>〇</code> is a numeral entry</strong></td><td>Anyone who segments text with <code>〇</code> (U+3007) with Jieba</td><td>Expect each <code>〇</code> to be one numeral word (<code>m</code>, pinyin <code>ling2</code>) instead of part of an unknown word, as MeCab segments it with the same dictionary; build a Jieba dictionary directory from the <code>mecab-jieba-0.1.3</code> archive</td></tr>
@@ -11393,9 +11475,11 @@ change.</p>
 range of their <code>char.def</code>. After a dictionary word and <code>・</code>, an unknown
 katakana word could not start, so <code>ジョン・レノン</code> became one unknown word.
 Now the unknown word starts after them, as in MeCab. A run that starts
-with an unknown word, such as <code>レノン・ジョン</code>, stays one unknown word, in
-MeCab too. In the same way, a dictionary symbol is no longer merged into
-the unknown symbols after it.</li>
+with an unknown word, such as <code>レノン・ジョン</code>, stays one unknown word in
+MeCab; v7.0.0 splits it too, as <code>・</code> is a break character by default (see
+<a href="migration_v6_to_v7.html#middle-dots-break-unknown-words-by-default">Middle dots break unknown words by default</a>).
+In the same way, a dictionary symbol is no longer merged into the unknown
+symbols after it.</li>
 <li><strong>Korean</strong>: a sentence-final <code>."</code>, <code>?"</code>, <code>!"</code> or <code>.'</code> was one symbol
 (<code>SY</code>). Now <code>.</code>, <code>?</code> and <code>!</code> are sentence-final punctuation (<code>SF</code>), as in
 MeCab, and the ending before them can change with it, as in <code>"좋아."</code>.</li>
@@ -11438,6 +11522,51 @@ and from 18 to 127 MiB with UniDic.</p>
 <p>There is no setting to restore the v6 behavior. <code>unknown_word_ladder(false)</code>
 (<code>--disable-unknown-word-ladder</code>) still turns off the shorter unknown-word
 candidates, but no longer reproduces the output of Lindera before v6.</p>
+<h2 id="middle-dots-break-unknown-words-by-default"><a class="header" href="#middle-dots-break-unknown-words-by-default">Middle dots break unknown words by default</a></h2>
+<p>The bundled dictionaries put <code>・</code> (U+30FB) in the katakana category of their
+<code>char.def</code>, so a run of katakana joined by <code>・</code> is one unknown word when its
+first word is not in the dictionary, as in MeCab, while a dictionary word
+before <code>・</code> ends there (see
+<a href="migration_v6_to_v7.html#unknown-words-start-at-every-position-as-in-mecab">Unknown words start at every position, as in MeCab</a>).
+Whether text was split at <code>・</code> thus depended on whether its first word was in
+the dictionary. v7.0.0 makes <code>・</code> a break character by default
+(<a href="https://github.com/lindera/lindera/issues/1353">#1353</a>): no unknown word
+crosses a boundary between a break character and another character, in every
+mode, and in decompose mode no system-dictionary word does either.</p>
+<div class="table-wrapper"><table><thead><tr><th>Input (IPADIC)</th><th>MeCab, and v7 with no break characters</th><th>v7</th></tr></thead><tbody>
+<tr><td><code>レノン・ジョン</code></td><td><code>レノン・ジョン</code>, one unknown word</td><td><code>レノン</code>, <code>・</code> and <code>ジョン</code></td></tr>
+<tr><td><code>ザ・サイレント・フォレスト</code></td><td><code>ザ・サイレント・フォレスト</code>, one unknown word</td><td><code>ザ</code>, <code>・</code>, <code>サイレント</code>, <code>・</code> and <code>フォレスト</code></td></tr>
+<tr><td><code>リベラル・アーツ・カレッジ</code></td><td><code>リベラル</code>, <code>・</code> and <code>アーツ・カレッジ</code></td><td><code>リベラル</code>, <code>・</code>, <code>アーツ</code>, <code>・</code> and <code>カレッジ</code></td></tr>
+<tr><td><code>インフォームド・コンセント</code>, in decompose mode</td><td>One dictionary word</td><td><code>インフォームド</code>, <code>・</code> and <code>コンセント</code></td></tr>
+</tbody></table>
+</div>
+<ul>
+<li>In decompose mode, a system-dictionary word with a boundary inside it does
+not enter the lattice, and comes out as its parts, without its own part of
+speech and reading: IPADIC has 658 such entries, IPADIC-NEologd 302,023,
+SudachiDict 175,744 and UniDic 1,094, mostly emoticons such as
+<code>Φ（・∀・＊）</code>. Normal mode keeps them, and every mode keeps
+user-dictionary words and words made of <code>・</code> only.</li>
+<li><code>･</code> (U+FF65) is not a break character by default: every bundled
+dictionary puts it in the symbol category, so no unknown word runs through
+it.</li>
+<li>For MeCab's segmentation, set no break characters: <code>break_characters: ""</code>
+under <code>segmenter</code> in the configuration, <code>--disable-break-characters</code> for
+<code>lindera tokenize</code>, <code>Segmenter::break_characters("")</code>, or
+<code>set_break_characters("")</code> (<code>setBreakCharacters("")</code>) in the bindings. A
+string sets other break characters.</li>
+<li><code>lindera train</code> and <code>Trainer</code> create the unknown-word candidates with the
+same rule, <code>・</code> by default; train with the break characters the dictionary
+will be used with (<code>--break-characters</code>, <code>--disable-break-characters</code>,
+<code>Trainer::break_characters</code>).</li>
+<li><code>Lattice::unknown_word_candidates</code> takes the break characters as a new
+argument, before <code>out</code>: pass <code>None</code> for the candidates of before.
+<code>LatticeOptions</code> has a new field, <code>break_characters</code>, <code>None</code> by default, so
+the lattice itself keeps MeCab's segmentation unless told otherwise.</li>
+<li>Segmenting takes up to about 1.3% more instructions (0.5% on <em>Botchan</em>
+and 1.0% on UD Japanese GSD with IPADIC, measured on macOS), and less in
+decompose mode on long runs of katakana joined by <code>・</code>.</li>
+</ul>
 <h2 id="unknown-words-come-from-the-default-category-as-in-mecab"><a class="header" href="#unknown-words-come-from-the-default-category-as-in-mecab">Unknown words come from the default category, as in MeCab</a></h2>
 <p>A character can have more than one category in <code>char.def</code>: the kanji
 numerals are <code>KANJINUMERIC KANJI</code> in IPADIC and UniDic,
@@ -13110,6 +13239,11 @@ dictionary symbol, and Korean sentence-final punctuation such as <code>."</code>
 No setting restores the v6 output, and
 <code>unknown_word_ladder(false)</code> no longer gives the output of Lindera before
 v6.</li>
+<li>Expect katakana joined by <code>・</code> to be split at <code>・</code> even where MeCab keeps
+the run whole, as <code>・</code> is a break character by default, and decompose mode
+to split the dictionary words with <code>・</code> inside; <code>break_characters: ""</code>
+gives MeCab's segmentation (see
+<a href="migration_v6_to_v7.html#middle-dots-break-unknown-words-by-default">Middle dots break unknown words by default</a>).</li>
 <li>Expect katakana- and Latin-heavy text to take about 13% more
 instructions, and very long katakana runs in N-best to take much more
 time and memory.</li>

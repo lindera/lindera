@@ -238,6 +238,18 @@ builder.setSkipWhitespace(false);
 // Back to the dictionary's default
 builder.setSkipWhitespace(null);
 </code></pre>
+<h4 id="setbreakcharacterschars"><a class="header" href="#setbreakcharacterschars"><code>setBreakCharacters(chars)</code></a></h4>
+<p>Sets the break characters. <code>chars</code> has the same meaning as <code>segmenter.break_characters</code> in a <a href="../lindera-analysis/configuration.html">configuration file</a>:</p>
+<ul>
+<li>A string -- Each of its characters is a break character: no unknown word crosses a boundary between a break character and another character, and in decompose mode no system-dictionary word does either. User-dictionary words and words made of break characters only stay.</li>
+<li><code>""</code> -- No break characters, which gives MeCab's segmentation.</li>
+<li><code>null</code> or <code>undefined</code> -- The default, <code>・</code>. Use it to undo an earlier call.</li>
+</ul>
+<p>The argument is required. A value set here overrides a <code>break_characters</code> loaded with <code>fromFile</code>. Any other value throws.</p>
+<p>With IPADIC, for example, <code>レノン・ジョン</code>, which is not in the dictionary, is <code>レノン</code>, <code>・</code> and <code>ジョン</code> by default and one unknown word with <code>setBreakCharacters("")</code>. See <a href="../lindera/segmenter.html#break-characters">Segmenter</a> for details.</p>
+<pre><code class="language-javascript">// Split as MeCab does
+builder.setBreakCharacters("");
+</code></pre>
 <h4 id="setspacepenaltyvalue"><a class="header" href="#setspacepenaltyvalue"><code>setSpacePenalty(value)</code></a></h4>
 <p>Sets the left-space penalty for Korean (mecab-ko's <code>left-space-penalty-factor</code>): a candidate that starts right after whitespace and whose first part-of-speech tag is listed in a rule gets that rule's cost added. The value means the same as <code>segmenter.space_penalty</code> in a <a href="../lindera-analysis/configuration.html">configuration file</a>.</p>
 <div class="table-wrapper"><table><thead><tr><th>Value</th><th>Effect</th></tr></thead><tbody>

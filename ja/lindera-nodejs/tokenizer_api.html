@@ -240,6 +240,18 @@ builder.setSkipWhitespace(false);
 // 辞書のデフォルトに戻す
 builder.setSkipWhitespace(null);
 </code></pre>
+<h4 id="setbreakcharacterschars"><a class="header" href="#setbreakcharacterschars"><code>setBreakCharacters(chars)</code></a></h4>
+<p>区切り文字を設定します。<code>chars</code> の意味は<a href="../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.break_characters</code> と同じです：</p>
+<ul>
+<li>文字列 -- 各文字が区切り文字になります。未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたぎません。ユーザー辞書の語と、区切り文字だけからなる語は残ります。</li>
+<li><code>""</code> -- 区切り文字を使いません。MeCab と同じ分割になります。</li>
+<li><code>null</code> または <code>undefined</code> -- デフォルトの <code>・</code> です。以前の呼び出しを取り消すときに使います。</li>
+</ul>
+<p>引数は省略できません。ここで設定した値は、<code>fromFile</code> で読み込んだ <code>break_characters</code> より優先されます。それ以外の値では例外が送出されます。</p>
+<p>たとえば IPADIC では、辞書に無い <code>レノン・ジョン</code> は、デフォルトでは <code>レノン</code>、<code>・</code>、<code>ジョン</code> に、<code>setBreakCharacters("")</code> では 1 つの未知語になります。詳しくは <a href="../lindera/segmenter.html#%E5%8C%BA%E5%88%87%E3%82%8A%E6%96%87%E5%AD%97">Segmenter</a> を参照してください。</p>
+<pre><code class="language-javascript">// MeCab と同じく分割する
+builder.setBreakCharacters("");
+</code></pre>
 <h4 id="setspacepenaltyvalue"><a class="header" href="#setspacepenaltyvalue"><code>setSpacePenalty(value)</code></a></h4>
 <p>韓国語向けの左側空白ペナルティ（mecab-ko の <code>left-space-penalty-factor</code>）を設定します。直前に空白があり、先頭品詞タグがルールの一覧にある候補に、そのルールのコストを加算します。値の意味は<a href="../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです。</p>
 <div class="table-wrapper"><table><thead><tr><th>値</th><th>効果</th></tr></thead><tbody>

@@ -1457,6 +1457,16 @@ Viterbi 探索が最もコストの低い長さを選べるようにします。
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladder(false);
 <span class="boring">}</span></code></pre></pre>
+<h2 id="区切り文字"><a class="header" href="#区切り文字">区切り文字</a></h2>
+<p>既定では、Segmenter は <code>・</code>（U+30FB）で区切ります。境目とは、区切り文字と区切り文字でない文字の間のことです。どのモードでも未知語は境目をまたがず、Decompose モードではシステム辞書の語もまたぎません。</p>
+<p>同梱の辞書は <code>char.def</code> で <code>・</code> をカタカナのカテゴリに入れているので、この規則が無いと、<code>・</code> でつないだカタカナの並びは、先頭の語が辞書に無いときに 1 つの未知語になります。MeCab と、区切り文字の無い Lindera は、<code>レノン・ジョン</code> を 1 語のまま返し、<code>ジョン・レノン</code> は辞書語の <code>ジョン</code> の後で区切ります。<code>・</code> を区切り文字にすると、どちらも <code>レノン</code>、<code>・</code>、<code>ジョン</code> のような 3 つのトークンに分かれ、検索で <code>サイレント</code> が <code>ザ・サイレント・フォレスト</code> に一致します。MeCab との意図した違いです。</p>
+<p>Decompose モードでは、IPADIC の <code>インフォームド・コンセント</code> や、IPADIC-NEologd と SudachiDict に多くある同様の語のように、内側に境目を持つシステム辞書の語は格子に入りません。その語は、固有の品詞や読みを持たないまま、部分に分かれて出ます。Normal モードはそのような語も残します。ユーザーが意図して登録したユーザー辞書の語と、<code>・</code> のように区切り文字だけからなる語は、どのモードでも残ります。</p>
+<p><code>break_characters</code> は、既定の代わりに、各文字を区切り文字とする文字列を受け取ります。空の文字列にすると MeCab と同じ分割になります:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).break_characters("");
+<span class="boring">}</span></code></pre></pre>
+<p><code>･</code>（U+FF65）は既定に含めていません。同梱のどの辞書も、半角カタカナとは別に記号のカテゴリに入れているので、そもそも未知語はそこで止まります。設定ファイルのキー <code>break_characters</code>、CLI のフラグ <code>--break-characters</code> と <code>--disable-break-characters</code>、バインディングの <code>set_break_characters</code>（<code>setBreakCharacters</code>）も同じものを設定します。辞書は、使うときと同じ区切り文字で学習してください。<code>Trainer::break_characters</code> と、<code>lindera train</code> の同じ 2 つのフラグで設定でき、既定も同じです。</p>
 <h2 id="左側空白ペナルティ韓国語"><a class="header" href="#左側空白ペナルティ韓国語">左側空白ペナルティ（韓国語）</a></h2>
 <p>MeCab ベースの韓国語解析器（mecab-ko + mecab-ko-dic、Lucene の nori）は、直前に空白がある候補の品詞が、本来は前の語に空白なしで付く品詞（助詞 <code>J*</code>、語尾 <code>E*</code>、指定詞 <code>VCP</code>、派生接尾辞 <code>XS*</code>）である場合にコストを加算します。これがないと <code>검색 이 잘 된다</code> の <code>이</code> は感動詞 <code>IC</code> ではなく主格助詞 <code>JKS</code> と解析されます。Lindera は、ルールを <code>metadata.json</code> に同梱する辞書（ko-dic）ではこのペナルティをデフォルトで適用します。他の辞書には影響しません。<code>Segmenter::space_penalty(None)</code>、設定の <code>"space_penalty": false</code>、CLI の <code>--disable-space-penalty</code> でオフにできます。<code>skip_whitespace(false)</code> と併用すると、空白まわりの韓国語の解析について v6.0 以降に入った 2 つの変更（このペナルティと空白の読み飛ばし）がどちらもオフになります。ただし、<code>."</code> のような記号の連続が分かれるなど、それ以外の出力の変化は残ります（<a href="lindera/../migration_v6_to_v7.html#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E3%81%A9%E3%81%AE%E4%BD%8D%E7%BD%AE%E3%81%8B%E3%82%89%E3%82%82%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%8C%E5%A7%8B%E3%81%BE%E3%82%8B">v6 から v7 への移行</a>を参照）。</p>
 <p><code>SpacePenaltyConfig</code> は「先頭品詞タグの一覧とコスト」の組（ルール）のリストです。候補は品詞タグの最初の <code>+</code> より前の部分（ko-dic の <code>Inflect</code> 行では <code>first_part_of_speech</code> 列）で照合され、最初に一致したルールが適用されます。一覧にないタグのコストは 0 です。mecab-ko-dic の <code>dicrc</code> のルールは次のように書けます:</p>
@@ -1526,7 +1536,7 @@ for line in lines {
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<p>返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。<code>set_mode</code>・<code>set_keep_whitespace</code>・<code>set_skip_whitespace</code>・<code>set_max_grouping_len</code>・<code>set_unknown_word_ladder</code>・<code>set_space_penalty</code>・<code>set_space_penalty_from_dictionary</code> で呼び出しごとに設定を切り替えられます。<code>segmenter()</code> は内部の Segmenter への共有参照を返します。<code>&amp;mut</code> でのアクセサは意図的に提供されていません。再利用中のラティスの下で辞書を差し替えてしまうと、この worker が保証する辞書とラティスの対応関係が壊れてしまうためです。</p>
+<p>返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。<code>set_mode</code>・<code>set_keep_whitespace</code>・<code>set_skip_whitespace</code>・<code>set_max_grouping_len</code>・<code>set_unknown_word_ladder</code>・<code>set_break_characters</code>・<code>set_space_penalty</code>・<code>set_space_penalty_from_dictionary</code> で呼び出しごとに設定を切り替えられます。<code>segmenter()</code> は内部の Segmenter への共有参照を返します。<code>&amp;mut</code> でのアクセサは意図的に提供されていません。再利用中のラティスの下で辞書を差し替えてしまうと、この worker が保証する辞書とラティスの対応関係が壊れてしまうためです。</p>
 <p>Worker は保持メモリも制限します。区切り文字のない最大長の文を 1 回処理するとラティスは数 MB まで成長し（32 KiB の ASCII 文で約 18 MB、32 KiB の CJK 文では文字索引ラティスのスロット数が 1/3 のため約 6 MB）、素の <code>Lattice</code> はそれを保持し続けます。Worker は一定回数の呼び出し窓で容量が過大と判明した場合に、自動でラティスを縮小してスクラッチバッファを解放し、<code>shrink_to(text_len_hint)</code> で即時に縮小することもできます。<code>reset()</code> は内部バッファを破棄して新しいものに置き換えます。これは、例えばパニックによって worker を保持する Mutex がポイズニングされた場合など、バッファが不整合な中間状態を保持している可能性がある回復経路のために用意されています。Segmenter の設定（mode や空白の扱いなど）自体は保持されます。</p>
 <p>Worker は作成元セグメンターの辞書に恒久的に紐付けられ、稼働中の worker の辞書を差し替える手段はありません。これにより、ラティス再利用に起因するバグの一群を構造的に排除しています。マルチスレッドで使う場合は、共有の <code>Segmenter</code> からスレッドごとに worker を 1 つ作成してください。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="エラーハンドリング"><a class="header" href="#エラーハンドリング">エラーハンドリング</a></h1>
@@ -1676,6 +1686,7 @@ lindera-analysis = "7"
   # use_mmap: false # ファイルシステム辞書（embedded:// ではない辞書）にのみ意味がある
   # max_grouping_len: 24 # 未知語のグルーピング長の上限。省略または 0 で無制限
   # unknown_word_ladder: true # 短い未知語候補も生成する（デフォルト: true）
+  # break_characters: "・" # この文字の境目を、未知語と、decompose モードではシステム辞書の語もまたがない（デフォルト: "・"）。"" で MeCab と同じ分割
   # space_penalty: false # 左側空白ペナルティ（韓国語）。ルールを同梱する辞書（ko-dic）ではデフォルトでオン。false でオフ、オブジェクトで明示的なルールを指定
 
 character_filters:
@@ -1747,6 +1758,7 @@ token_filters:
 <tr><td><code>use_mmap</code></td><td>bool</td><td><code>mmap</code> feature が有効なとき on（デフォルト）</td><td>辞書をメモリマップする。ファイルシステム辞書（<code>embedded://</code> ではない辞書）にのみ意味がある</td></tr>
 <tr><td><code>max_grouping_len</code></td><td>integer</td><td><em>(無制限)</em></td><td>未知語グルーピングの上限（<strong>先頭の 1 文字を超えた</strong>文字数）。MeCab の <code>max-grouping-size</code> に相当する（MeCab のデフォルトは 24）。上限は各位置で判定され、上限を超えるランはその位置ではグルーピングされず、1 文字候補（および候補ラダーと辞書語）が残る。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になる。キーを省略するか <code>0</code> を指定すると無制限になる</td></tr>
 <tr><td><code>unknown_word_ladder</code></td><td>bool</td><td><code>true</code></td><td>MeCab や Vibrato と同様に、文字の既定の文字種の <code>char.def</code> の <code>LENGTH</code> フィールドまでの短い未知語候補も生成する。<code>false</code> を指定すると v6 より前と同じくこれらの候補を作らない。ただし、グルーピングした未知語の内側から始まる未知語など、その後の変更による出力の違いは残る。<a href="lindera-analysis/../lindera/segmenter.html#%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%AE%E3%82%B0%E3%83%AB%E3%83%BC%E3%83%94%E3%83%B3%E3%82%B0">Segmenter</a> を参照</td></tr>
+<tr><td><code>break_characters</code></td><td>string</td><td><code>"・"</code></td><td>区切り文字（文字列の各文字）。どのモードでも未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたがない（ユーザー辞書の語と、区切り文字だけからなる語は残る）。空の文字列で MeCab と同じ分割になり、<code>ジョン・レノン</code> は区切っても <code>レノン・ジョン</code> は 1 語のまま。<a href="lindera-analysis/../lindera/segmenter.html#%E5%8C%BA%E5%88%87%E3%82%8A%E6%96%87%E5%AD%97">区切り文字</a>を参照</td></tr>
 <tr><td><code>space_penalty</code></td><td>bool または object</td><td><em>(辞書同梱のルール、あれば)</em></td><td>左側空白ペナルティ（mecab-ko の <code>left-space-penalty-factor</code>）。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する。省略または <code>null</code> で辞書が <code>metadata.json</code> に同梱するルールを使用（ko-dic は mecab-ko-dic のルールを同梱するため ko-dic ではデフォルトでオン。他の同梱辞書はルールを持たない）、<code>false</code> でオフ、<code>true</code> で辞書のルールを要求（同梱しない辞書ではエラー）、オブジェクト <code>{"rules": [{"pos": [...], "cost": n}, ...]}</code> で明示的なルールを指定。<a href="lindera-analysis/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照</td></tr>
 </tbody></table>
 </div>
@@ -2362,6 +2374,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <li><code>set_keep_whitespace(&amp;mut self, keep: bool)</code> — 以降の呼び出しで空白トークンを出力に残すかどうかを設定します。残した空白はラティスにも残るため、他のトークンも変わることがあります。</li>
 <li><code>set_skip_whitespace(&amp;mut self, skip: bool)</code> — 空白トークンを残さないとき、以降の呼び出しで空白をラティス上で読み飛ばすかどうかを設定します（デフォルトは辞書の設定）。</li>
 <li><code>set_max_grouping_len(&amp;mut self, max_grouping_len: Option&lt;usize&gt;)</code>・<code>set_unknown_word_ladder(&amp;mut self, unknown_word_ladder: bool)</code> — 以降の呼び出しで使う未知語グルーピングの上限と候補ラダーを設定します。</li>
+<li><code>set_break_characters(&amp;mut self, chars: &amp;str)</code> — 以降の呼び出しで使う区切り文字を設定します（既定は <code>・</code>。空の文字列で MeCab と同じ分割）。</li>
 <li><code>set_space_penalty(&amp;mut self, space_penalty: Option&lt;SpacePenaltyConfig&gt;)</code>・<code>set_space_penalty_from_dictionary(&amp;mut self)</code> — 以降の呼び出しで使う左側空白ペナルティのルールを設定するか、辞書のルールに戻します。</li>
 <li><code>shrink_to(&amp;mut self, text_len_hint: usize)</code> — ワーカーの内部バッファを、<code>text_len_hint</code>バイトの入力に必要なサイズまで直ちに縮小します。</li>
 <li><code>reset(&amp;mut self)</code> — すべての内部バッファを破棄し、新しいバッファに置き換えます。（例えばワーカーを保持する<code>Mutex</code>がパニックでpoisonedになった場合の）リカバリ用途を想定しており、設定（辞書・フィルタ・モード）は保持されます。</li>
@@ -2549,6 +2562,12 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 </li>
 <li>
 <p><code>--disable-unknown-word-ladder</code>: MeCab/Vibrato 由来の未知語候補ラダー（<code>char.def</code> の <code>LENGTH</code> フィールド）を無効化する。デフォルトで有効。無効にすると、v6 より前と同じくこれらの候補を作らない。ただし、グルーピングした未知語の内側から始まる未知語など、その後の変更による出力の違いは残る。<a href="lindera-cli/../lindera/segmenter.html#%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%AE%E3%82%B0%E3%83%AB%E3%83%BC%E3%83%94%E3%83%B3%E3%82%B0">Segmenter</a> のドキュメントを参照</p>
+</li>
+<li>
+<p><code>--break-characters &lt;CHARS&gt;</code>: 区切り文字（<code>CHARS</code> の各文字。デフォルト: <code>・</code>）。どのモードでも未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたぎません。ユーザー辞書の語と、区切り文字だけからなる語は残ります。<a href="lindera-cli/../lindera/segmenter.html#%E5%8C%BA%E5%88%87%E3%82%8A%E6%96%87%E5%AD%97">Segmenter</a> のドキュメントを参照</p>
+</li>
+<li>
+<p><code>--disable-break-characters</code>: 区切り文字を使わず、MeCab と同じ分割にします。カタカナの未知語は <code>・</code> をまたぎ（<code>レノン・ジョン</code> は 1 語のまま）、その前が辞書語ならそこで区切ります（<code>ジョン・レノン</code> は区切る）。<code>--break-characters</code> とは同時に指定できません</p>
 </li>
 <li>
 <p><code>--disable-space-penalty</code>: 辞書の <code>metadata.json</code> に同梱されたルールでデフォルト有効になる左側空白ペナルティ（mecab-ko の <code>left-space-penalty-factor</code>。ko-dic は mecab-ko-dic のルールを同梱）を無効にする。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する機能で、<code>--disable-skip-whitespace</code> と併せて無効にすると、空白まわりの韓国語の解析について v6.0 以降に入った 2 つの変更（このペナルティと空白の読み飛ばし）がどちらもオフになる。ただし、<code>."</code> のような記号の連続が分かれるなど、それ以外の出力の変化は残る。<a href="lindera-cli/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> のドキュメントを参照</p>
@@ -3180,6 +3199,7 @@ Downloaded dictionary 'ipadic'
 <li><code>--max-iterations</code> / <code>-i</code>: 学習の最大反復回数。1 以上 (デフォルト: 100)</li>
 <li><code>--eta</code> / <code>-e</code>: 収束判定の許容値。目的関数の相対変化がこの値を 3 回続けて下回ると、<code>--max-iterations</code> より前に学習を止めます。<code>0</code> で判定を切ります (デフォルト: 0.00005。MeCab の学習器のデフォルトと同じ)</li>
 <li><code>--max-threads</code> / <code>-t</code>: 最大スレッド数。1 以上 (デフォルトはCPUコア数。速度のみに影響し、学習結果は変わりません)</li>
+<li><code>--break-characters &lt;CHARS&gt;</code> / <code>--disable-break-characters</code>: 未知語候補の区切り文字。<code>lindera tokenize</code> と同じ意味です（デフォルト: <code>・</code>）。辞書を使うときと同じ値で学習してください。コーパス自身のトークンは、境目をまたいでもそのまま使います</li>
 </ul>
 <h3 id="基本的なワークフロー"><a class="header" href="#基本的なワークフロー">基本的なワークフロー</a></h3>
 <h4 id="1-学習用ファイルの準備"><a class="header" href="#1-学習用ファイルの準備">1. 学習用ファイルの準備</a></h4>
@@ -3634,6 +3654,18 @@ builder.set_dictionary("/path/to/dictionary")
 <p>たとえば IPADIC では、<code>Google が 新しい</code> の <code>が</code> は、デフォルトでは助詞（<code>助詞</code>）、<code>set_skip_whitespace(False)</code> では接続詞（<code>接続詞</code>）と解析されます。詳しくは <a href="lindera-python/../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> を参照してください。</p>
 <pre><code class="language-python"># v7 より前と同じく、空白をラティスに残す
 builder.set_skip_whitespace(False)
+</code></pre>
+<h4 id="set_break_characterschars"><a class="header" href="#set_break_characterschars"><code>set_break_characters(chars)</code></a></h4>
+<p>区切り文字を設定します。<code>chars</code> の意味は<a href="lindera-python/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.break_characters</code> と同じです：</p>
+<ul>
+<li>文字列 -- 各文字が区切り文字になります。未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたぎません。ユーザー辞書の語と、区切り文字だけからなる語は残ります。</li>
+<li><code>""</code> -- 区切り文字を使いません。MeCab と同じ分割になります。</li>
+<li><code>None</code> -- デフォルトの <code>・</code> です。以前の呼び出しを取り消すときに使います。</li>
+</ul>
+<p>ここで設定した値は、<code>from_file</code> で読み込んだ <code>break_characters</code> より優先されます。それ以外の値では <code>TypeError</code> が送出されます。</p>
+<p>たとえば IPADIC では、辞書に無い <code>レノン・ジョン</code> は、デフォルトでは <code>レノン</code>、<code>・</code>、<code>ジョン</code> に、<code>set_break_characters("")</code> では 1 つの未知語になります。詳しくは <a href="lindera-python/../lindera/segmenter.html#%E5%8C%BA%E5%88%87%E3%82%8A%E6%96%87%E5%AD%97">Segmenter</a> を参照してください。</p>
+<pre><code class="language-python"># MeCab と同じく分割する
+builder.set_break_characters("")
 </code></pre>
 <h4 id="set_space_penaltyvalue"><a class="header" href="#set_space_penaltyvalue"><code>set_space_penalty(value)</code></a></h4>
 <p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。<code>value</code> の意味は<a href="lindera-python/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです：</p>
@@ -4630,6 +4662,18 @@ builder.setSkipWhitespace(false);
 // 辞書のデフォルトに戻す
 builder.setSkipWhitespace(null);
 </code></pre>
+<h4 id="setbreakcharacterschars"><a class="header" href="#setbreakcharacterschars"><code>setBreakCharacters(chars)</code></a></h4>
+<p>区切り文字を設定します。<code>chars</code> の意味は<a href="lindera-nodejs/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.break_characters</code> と同じです：</p>
+<ul>
+<li>文字列 -- 各文字が区切り文字になります。未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたぎません。ユーザー辞書の語と、区切り文字だけからなる語は残ります。</li>
+<li><code>""</code> -- 区切り文字を使いません。MeCab と同じ分割になります。</li>
+<li><code>null</code> または <code>undefined</code> -- デフォルトの <code>・</code> です。以前の呼び出しを取り消すときに使います。</li>
+</ul>
+<p>引数は省略できません。ここで設定した値は、<code>fromFile</code> で読み込んだ <code>break_characters</code> より優先されます。それ以外の値では例外が送出されます。</p>
+<p>たとえば IPADIC では、辞書に無い <code>レノン・ジョン</code> は、デフォルトでは <code>レノン</code>、<code>・</code>、<code>ジョン</code> に、<code>setBreakCharacters("")</code> では 1 つの未知語になります。詳しくは <a href="lindera-nodejs/../lindera/segmenter.html#%E5%8C%BA%E5%88%87%E3%82%8A%E6%96%87%E5%AD%97">Segmenter</a> を参照してください。</p>
+<pre><code class="language-javascript">// MeCab と同じく分割する
+builder.setBreakCharacters("");
+</code></pre>
 <h4 id="setspacepenaltyvalue"><a class="header" href="#setspacepenaltyvalue"><code>setSpacePenalty(value)</code></a></h4>
 <p>韓国語向けの左側空白ペナルティ（mecab-ko の <code>left-space-penalty-factor</code>）を設定します。直前に空白があり、先頭品詞タグがルールの一覧にある候補に、そのルールのコストを加算します。値の意味は<a href="lindera-nodejs/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです。</p>
 <div class="table-wrapper"><table><thead><tr><th>値</th><th>効果</th></tr></thead><tbody>
@@ -5551,6 +5595,18 @@ builder.set_dictionary('/path/to/dictionary')
 <p>たとえば IPADIC では、<code>Google が 新しい</code> の <code>が</code> は、デフォルトでは助詞（<code>助詞</code>）、<code>set_skip_whitespace(false)</code> では接続詞（<code>接続詞</code>）と解析されます。詳しくは <a href="lindera-ruby/../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> を参照してください。</p>
 <pre><code class="language-ruby"># v7 より前と同じく、空白をラティスに残す
 builder.set_skip_whitespace(false)
+</code></pre>
+<h4 id="set_break_characterschars-1"><a class="header" href="#set_break_characterschars-1"><code>set_break_characters(chars)</code></a></h4>
+<p>区切り文字を設定します。<code>chars</code> の意味は<a href="lindera-ruby/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.break_characters</code> と同じです：</p>
+<ul>
+<li>文字列 -- 各文字が区切り文字になります。未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたぎません。ユーザー辞書の語と、区切り文字だけからなる語は残ります。</li>
+<li><code>''</code> -- 区切り文字を使いません。MeCab と同じ分割になります。</li>
+<li><code>nil</code> -- デフォルトの <code>・</code> です。以前の呼び出しを取り消すときに使います。</li>
+</ul>
+<p>ここで設定した値は、<code>from_file</code> で読み込んだ <code>break_characters</code> より優先されます。それ以外の値では <code>TypeError</code> が送出されます。</p>
+<p>たとえば IPADIC では、辞書に無い <code>レノン・ジョン</code> は、デフォルトでは <code>レノン</code>、<code>・</code>、<code>ジョン</code> に、<code>set_break_characters('')</code> では 1 つの未知語になります。詳しくは <a href="lindera-ruby/../lindera/segmenter.html#%E5%8C%BA%E5%88%87%E3%82%8A%E6%96%87%E5%AD%97">Segmenter</a> を参照してください。</p>
+<pre><code class="language-ruby"># MeCab と同じく分割する
+builder.set_break_characters('')
 </code></pre>
 <h4 id="set_space_penaltyvalue-1"><a class="header" href="#set_space_penaltyvalue-1"><code>set_space_penalty(value)</code></a></h4>
 <p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。<code>value</code> の意味は<a href="lindera-ruby/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです：</p>
@@ -6556,6 +6612,18 @@ $builder-&gt;setDictionary('/path/to/dictionary');
 <p>たとえば IPADIC では、<code>Google が 新しい</code> の <code>が</code> は、デフォルトでは助詞（<code>助詞</code>）、<code>setSkipWhitespace(false)</code> では接続詞（<code>接続詞</code>）と解析されます。詳しくは <a href="lindera-php/../lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> を参照してください。</p>
 <pre><code class="language-php">// v7 より前と同じく、空白をラティスに残す
 $builder-&gt;setSkipWhitespace(false);
+</code></pre>
+<h4 id="setbreakcharacterschars-1"><a class="header" href="#setbreakcharacterschars-1"><code>setBreakCharacters($chars)</code></a></h4>
+<p>区切り文字を設定します。<code>$chars</code> の意味は<a href="lindera-php/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.break_characters</code> と同じです：</p>
+<ul>
+<li>文字列 -- 各文字が区切り文字になります。未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたぎません。ユーザー辞書の語と、区切り文字だけからなる語は残ります。</li>
+<li><code>''</code> -- 区切り文字を使いません。MeCab と同じ分割になります。</li>
+<li><code>null</code> -- デフォルトの <code>・</code> です。以前の呼び出しを取り消すときに使います。</li>
+</ul>
+<p>引数は省略できません。ここで設定した値は、<code>fromFile</code> で読み込んだ <code>break_characters</code> より優先されます。ほかの型の値では <code>TypeError</code> が送出されます。</p>
+<p>たとえば IPADIC では、辞書に無い <code>レノン・ジョン</code> は、デフォルトでは <code>レノン</code>、<code>・</code>、<code>ジョン</code> に、<code>setBreakCharacters('')</code> では 1 つの未知語になります。詳しくは <a href="lindera-php/../lindera/segmenter.html#%E5%8C%BA%E5%88%87%E3%82%8A%E6%96%87%E5%AD%97">Segmenter</a> を参照してください。</p>
+<pre><code class="language-php">// MeCab と同じく分割する
+$builder-&gt;setBreakCharacters('');
 </code></pre>
 <h4 id="setspacepenaltyvalue-1"><a class="header" href="#setspacepenaltyvalue-1"><code>setSpacePenalty($value)</code></a></h4>
 <p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。<code>$value</code> の意味は<a href="lindera-php/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです：</p>
@@ -7589,6 +7657,18 @@ builder.setDictionaryInstance(dictionary);
 <pre><code class="language-javascript">// v7 より前と同じく、空白をラティスに残す
 builder.setSkipWhitespace(false);
 </code></pre>
+<h4 id="setbreakcharacterschars-2"><a class="header" href="#setbreakcharacterschars-2"><code>setBreakCharacters(chars)</code></a></h4>
+<p>区切り文字を設定します。<code>chars</code> の意味は<a href="lindera-wasm/../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.break_characters</code> と同じです：</p>
+<ul>
+<li>文字列 -- 各文字が区切り文字になります。未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたぎません。ユーザー辞書の語と、区切り文字だけからなる語は残ります。</li>
+<li><code>""</code> -- 区切り文字を使いません。MeCab と同じ分割になります。</li>
+<li><code>null</code> または <code>undefined</code> -- デフォルトの <code>・</code> です。以前の呼び出しを取り消すときに使います。</li>
+</ul>
+<p>引数は省略できません。<code>setDictionary()</code> で設定した辞書にも、<code>setDictionaryInstance()</code> で設定した辞書にも効きます。それ以外の値では例外が送出されます。</p>
+<p>たとえば IPADIC では、辞書に無い <code>レノン・ジョン</code> は、デフォルトでは <code>レノン</code>、<code>・</code>、<code>ジョン</code> に、<code>setBreakCharacters("")</code> では 1 つの未知語になります。詳しくは <a href="lindera-wasm/../lindera/segmenter.html#%E5%8C%BA%E5%88%87%E3%82%8A%E6%96%87%E5%AD%97">Segmenter</a> を参照してください。</p>
+<pre><code class="language-javascript">// MeCab と同じく分割する
+builder.setBreakCharacters("");
+</code></pre>
 <h4 id="setspacepenaltyvalue-2"><a class="header" href="#setspacepenaltyvalue-2"><code>setSpacePenalty(value)</code></a></h4>
 <p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。</p>
 <ul>
@@ -7876,6 +7956,7 @@ console.log(error.toString()); // "message"
 <tr><td><code>setUserDictionaryInstance()</code></td><td><code>set_user_dictionary_instance()</code></td></tr>
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
 <tr><td><code>setSkipWhitespace()</code></td><td><code>set_skip_whitespace()</code></td></tr>
+<tr><td><code>setBreakCharacters()</code></td><td><code>set_break_characters()</code></td></tr>
 <tr><td><code>setSpacePenalty()</code></td><td><code>set_space_penalty()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
@@ -10502,6 +10583,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong>MeCab と同じく、行の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぐ</strong></td><td>行の中に <code>、</code> や <code>。</code> を含む日本語のテキストを分割するユーザー</td><td><code>、</code> や <code>。</code> の直後の語の解析が一部変わり（多くは MeCab と同じ解析になる）、そうした行の N-best のコストが変わることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>N-best: 各結果が入力全体を覆う</strong></td><td>複数の文を含む入力で N-best（<code>segment_nbest</code>・<code>tokenize_nbest</code>・<code>lindera tokenize -N</code>・バインディングの N-best メソッド）を使うユーザー</td><td>2 件目以降が入力全体のコストの小さい分割になり、空の入力がトークンのない結果を 1 件返すことを前提にする。コストの閾値は入力全体に対して適用される</td></tr>
 <tr><td><strong>MeCab と同じく、どの位置からも未知語が始まる</strong></td><td>カタカナ・記号・英字が続くテキストを通常モードで分割するユーザー。特に <code>・</code> でつないだカタカナと、<code>."</code> のような韓国語の文末の句読点</td><td>そうした連続が MeCab と同じ位置で分かれること、カタカナや英字の多いテキストで命令数が 13% 程度増えることを前提にする。v6 の動作に戻す設定はない</td></tr>
+<tr><td><strong>既定で中黒が未知語を区切る</strong></td><td><code>・</code> でつないだカタカナを含む日本語を分割するユーザー。特に <code>レノン・ジョン</code> のような未知の名前と、<code>・</code> を含む語の多い辞書（IPADIC-NEologd・SudachiDict）を decompose モードで使うユーザー</td><td>そうした並びと、decompose モードのそうした語が <code>・</code> で分かれることを前提にする。MeCab と同じ分割にするには <code>break_characters: ""</code>（<code>--disable-break-characters</code>）を設定する</td></tr>
 <tr><td><strong>MeCab と同じく、未知語は文字の既定カテゴリから作り、カテゴリを共有する文字をまとめる</strong></td><td>複数のカテゴリを持つ文字がほかの文字と並ぶテキストを分割するユーザー。同梱の辞書では、ko-dic の漢数字に続く漢字と、ko-dic の <code>〇</code>（U+3007）。<code>CharacterDefinition::lookup_categories</code> の順序に依存する Rust コード</td><td>そうしたテキストが MeCab と同じ分割になることを前提にする（ko-dic の <code>三國史記</code> は 1 つの <code>SH</code>、<code>〇〇〇</code> は 1 つの <code>SY</code>）。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>CC-CEDICT: 未知語のコストは 400、英字だけ・数字だけの見出し語のコストは 399</strong></td><td>CC-CEDICT でテキストを分割するユーザー。特に <code>T恤</code> のように英字や数字と漢字が混ざる見出し語。CC-CEDICT の N-best のコストを読むユーザー</td><td>そうした見出し語が 1 語になること、<code>〇</code> や <code>PK</code> のような見出し語がピンインと定義つきで出ること、英単語・仮名・数字は v6 と同じく 1 語のままであること、パスのコストが変わることを前提にする。CC-CEDICT の辞書ディレクトリは <code>CC-CEDICT-MeCab-0.1.0-20261021</code> のアーカイブからビルドする</td></tr>
 <tr><td><strong>Jieba: <code>〇</code> は数字の見出し語</strong></td><td>Jieba で <code>〇</code>（U+3007）を含むテキストを分割するユーザー</td><td>各 <code>〇</code> が未知語の一部ではなく、数字の 1 語（<code>m</code>、ピンイン <code>ling2</code>）になることを前提にする（同じ辞書の MeCab と同じ）。Jieba の辞書ディレクトリは <code>mecab-jieba-0.1.3</code> のアーカイブからビルドする</td></tr>
@@ -11197,8 +11279,9 @@ Decompose モードはもともとこの動作で、出力は変わりません�
 範囲に含めています。辞書語と <code>・</code> の後ろからはカタカナの未知語を始められなかった
 ため、<code>ジョン・レノン</code> は 1 つの未知語になっていました。v7 では MeCab と同じく、
 その後ろから未知語が始まります。<code>レノン・ジョン</code> のように未知語で始まる範囲は、
-MeCab でも 1 つの未知語のままです。同じように、辞書の記号がその後ろの未知の記号と
-まとめられることもなくなります。</li>
+MeCab では 1 つの未知語のままです。v7.0.0 は、既定で <code>・</code> を区切り文字とするので、
+これも区切ります（<a href="migration_v6_to_v7.html#%E6%97%A2%E5%AE%9A%E3%81%A7%E4%B8%AD%E9%BB%92%E3%81%8C%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%82%92%E5%8C%BA%E5%88%87%E3%82%8B">既定で中黒が未知語を区切る</a>を参照）。
+同じように、辞書の記号がその後ろの未知の記号とまとめられることもなくなります。</li>
 <li><strong>韓国語</strong>: 文末の <code>."</code>・<code>?"</code>・<code>!"</code>・<code>.'</code> は 1 つの記号（<code>SY</code>）になっていました。
 v7 では MeCab と同じく <code>.</code>・<code>?</code>・<code>!</code> が文末の句読点（<code>SF</code>）になり、<code>"좋아."</code> の
 ように、その前の語尾の解析も変わることがあります。</li>
@@ -11235,6 +11318,46 @@ CC-CEDICT では英単語と仮名の連続が v6 と同じく 1 語のままで
 <p>v6 の動作に戻す設定はありません。<code>unknown_word_ladder(false)</code>
 （<code>--disable-unknown-word-ladder</code>）は引き続き短い未知語候補を無効にしますが、
 v6 より前の Lindera の出力は再現しなくなりました。</p>
+<h2 id="既定で中黒が未知語を区切る"><a class="header" href="#既定で中黒が未知語を区切る">既定で中黒が未知語を区切る</a></h2>
+<p>同梱の辞書は <code>char.def</code> で <code>・</code>（U+30FB）をカタカナのカテゴリに入れているため、
+<code>・</code> でつないだカタカナの並びは、先頭の語が辞書に無いと、MeCab と同じく 1 つの
+未知語になり、<code>・</code> の前が辞書語ならそこで区切られます
+（<a href="migration_v6_to_v7.html#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E3%81%A9%E3%81%AE%E4%BD%8D%E7%BD%AE%E3%81%8B%E3%82%89%E3%82%82%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%8C%E5%A7%8B%E3%81%BE%E3%82%8B">MeCab と同じく、どの位置からも未知語が始まる</a>を参照）。
+つまり、<code>・</code> で区切るかどうかは、先頭の語が辞書にあるかどうかで決まっていました。
+v7.0.0 は既定で <code>・</code> を区切り文字にします
+（<a href="https://github.com/lindera/lindera/issues/1353">#1353</a>）。どのモードでも未知語は
+区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語も
+またぎません。</p>
+<div class="table-wrapper"><table><thead><tr><th>入力（IPADIC）</th><th>MeCab、および区切り文字の無い v7</th><th>v7</th></tr></thead><tbody>
+<tr><td><code>レノン・ジョン</code></td><td><code>レノン・ジョン</code>（1 つの未知語）</td><td><code>レノン</code>・<code>・</code>・<code>ジョン</code></td></tr>
+<tr><td><code>ザ・サイレント・フォレスト</code></td><td><code>ザ・サイレント・フォレスト</code>（1 つの未知語）</td><td><code>ザ</code>・<code>・</code>・<code>サイレント</code>・<code>・</code>・<code>フォレスト</code></td></tr>
+<tr><td><code>リベラル・アーツ・カレッジ</code></td><td><code>リベラル</code>・<code>・</code>・<code>アーツ・カレッジ</code></td><td><code>リベラル</code>・<code>・</code>・<code>アーツ</code>・<code>・</code>・<code>カレッジ</code></td></tr>
+<tr><td>decompose モードの <code>インフォームド・コンセント</code></td><td>1 つの辞書語</td><td><code>インフォームド</code>・<code>・</code>・<code>コンセント</code></td></tr>
+</tbody></table>
+</div>
+<ul>
+<li>decompose モードでは、内側に境目を持つシステム辞書の語は格子に入らず、固有の品詞や
+読みを持たないまま部分に分かれて出ます。そのような語は、IPADIC に 658、
+IPADIC-NEologd に 302,023、SudachiDict に 175,744、UniDic に 1,094 あり、UniDic の
+多くは <code>Φ（・∀・＊）</code> のような顔文字です。通常モードはこれらの語を残します。
+ユーザー辞書の語と、<code>・</code> だけからなる語は、どのモードでも残ります。</li>
+<li><code>･</code>（U+FF65）は既定の区切り文字ではありません。同梱のどの辞書も記号のカテゴリに
+入れているので、未知語はそこで止まります。</li>
+<li>MeCab と同じ分割にするには、区切り文字を空にします。設定ファイルの <code>segmenter</code> の
+<code>break_characters: ""</code>、<code>lindera tokenize</code> の <code>--disable-break-characters</code>、
+<code>Segmenter::break_characters("")</code>、バインディングの <code>set_break_characters("")</code>
+（<code>setBreakCharacters("")</code>）のいずれかです。文字列を渡すと別の区切り文字になります。</li>
+<li><code>lindera train</code> と <code>Trainer</code> も、同じ規則で未知語の候補を作ります（既定は <code>・</code>）。
+辞書を使うときと同じ区切り文字で学習してください（<code>--break-characters</code>、
+<code>--disable-break-characters</code>、<code>Trainer::break_characters</code>）。</li>
+<li><code>Lattice::unknown_word_candidates</code> は、<code>out</code> の前に区切り文字の引数を新たに取ります。
+以前と同じ候補にするには <code>None</code> を渡します。<code>LatticeOptions</code> には新しいフィールド
+<code>break_characters</code> があり、既定は <code>None</code> なので、格子そのものは指定しない限り
+MeCab と同じ分割のままです。</li>
+<li>分割の命令数は最大で 1.3% 程度増えます（IPADIC で『坊っちゃん』は 0.5%、
+UD Japanese GSD は 1.0%。macOS で計測）。<code>・</code> でつないだカタカナの長い並びでは、
+decompose モードで減ります。</li>
+</ul>
 <h2 id="mecab-と同じく未知語は既定カテゴリから作る"><a class="header" href="#mecab-と同じく未知語は既定カテゴリから作る">MeCab と同じく、未知語は既定カテゴリから作る</a></h2>
 <p><code>char.def</code> では、1 つの文字が複数のカテゴリを持つことがあります。漢数字は
 IPADIC と UniDic では <code>KANJINUMERIC KANJI</code>、ko-dic では <code>HANJANUMERIC HANJA</code>、CC-CEDICT と
@@ -12708,6 +12831,10 @@ ID を直し、<code>.bin</code> を使う場合はビルドし直す。そう�
 カタカナ（IPADIC・IPADIC-NEologd・UniDic）、辞書の記号の直後の未知の記号、
 <code>."</code> のような韓国語の文末の句読点が該当する。v6 の出力に戻す設定はなく、
 <code>unknown_word_ladder(false)</code> でも v6 より前の Lindera の出力にはならない。</li>
+<li><code>・</code> でつないだカタカナは、MeCab が 1 語のままにする並びでも、既定で <code>・</code> で
+分かれることを前提にする。decompose モードでは、内側に <code>・</code> を持つ辞書語も分かれる。
+<code>break_characters: ""</code> で MeCab と同じ分割になる
+（<a href="migration_v6_to_v7.html#%E6%97%A2%E5%AE%9A%E3%81%A7%E4%B8%AD%E9%BB%92%E3%81%8C%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%82%92%E5%8C%BA%E5%88%87%E3%82%8B">既定で中黒が未知語を区切る</a>を参照）。</li>
 <li>カタカナや英字の多いテキストで命令数が 13% 程度増え、カタカナの非常に長い連続の
 N-best では時間とメモリが大きく増えることを前提にする。</li>
 </ul>

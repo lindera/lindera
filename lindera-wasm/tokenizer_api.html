@@ -251,6 +251,18 @@ builder.setDictionaryInstance(dictionary);
 <pre><code class="language-javascript">// Keep whitespace in the lattice, as before v7
 builder.setSkipWhitespace(false);
 </code></pre>
+<h4 id="setbreakcharacterschars"><a class="header" href="#setbreakcharacterschars"><code>setBreakCharacters(chars)</code></a></h4>
+<p>Sets the break characters. <code>chars</code> has the same meaning as <code>segmenter.break_characters</code> in a <a href="../lindera-analysis/configuration.html">configuration file</a>:</p>
+<ul>
+<li>A string -- Each of its characters is a break character: no unknown word crosses a boundary between a break character and another character, and in decompose mode no system-dictionary word does either. User-dictionary words and words made of break characters only stay.</li>
+<li><code>""</code> -- No break characters, which gives MeCab's segmentation.</li>
+<li><code>null</code> or <code>undefined</code> -- The default, <code>・</code>. Use it to undo an earlier call.</li>
+</ul>
+<p>The argument is required. It applies both to a dictionary set with <code>setDictionary()</code> and to one set with <code>setDictionaryInstance()</code>. Any other value throws.</p>
+<p>With IPADIC, for example, <code>レノン・ジョン</code>, which is not in the dictionary, is <code>レノン</code>, <code>・</code> and <code>ジョン</code> by default and one unknown word with <code>setBreakCharacters("")</code>. See <a href="../lindera/segmenter.html#break-characters">Segmenter</a> for details.</p>
+<pre><code class="language-javascript">// Split as MeCab does
+builder.setBreakCharacters("");
+</code></pre>
 <h4 id="setspacepenaltyvalue"><a class="header" href="#setspacepenaltyvalue"><code>setSpacePenalty(value)</code></a></h4>
 <p>Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added.</p>
 <ul>
@@ -541,6 +553,7 @@ console.log(error.toString()); // "message"
 <tr><td><code>setUserDictionaryInstance()</code></td><td><code>set_user_dictionary_instance()</code></td></tr>
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
 <tr><td><code>setSkipWhitespace()</code></td><td><code>set_skip_whitespace()</code></td></tr>
+<tr><td><code>setBreakCharacters()</code></td><td><code>set_break_characters()</code></td></tr>
 <tr><td><code>setSpacePenalty()</code></td><td><code>set_space_penalty()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>

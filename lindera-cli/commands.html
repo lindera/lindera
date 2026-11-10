@@ -277,6 +277,12 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 <p><code>--disable-unknown-word-ladder</code>: Disable the MeCab/Vibrato-inspired unknown-word length ladder (<code>char.def</code>'s <code>LENGTH</code> field). Enabled by default. Disabling it leaves out these candidates, as before v6; other changes since then, such as unknown words that start inside a grouped run, still apply. See the <a href="../lindera/segmenter.html#unknown-word-grouping">Segmenter</a> documentation</p>
 </li>
 <li>
+<p><code>--break-characters &lt;CHARS&gt;</code>: Break characters, each character of <code>CHARS</code> (default: <code>・</code>). No unknown word crosses a boundary between a break character and another character, in any mode, and in decompose mode no system-dictionary word does either; user-dictionary words and words of break characters only stay. See the <a href="../lindera/segmenter.html#break-characters">Segmenter</a> documentation</p>
+</li>
+<li>
+<p><code>--disable-break-characters</code>: Use no break characters, which gives MeCab's segmentation: an unknown katakana word runs through <code>・</code> (<code>レノン・ジョン</code> stays one word), while a dictionary word before it still ends there (<code>ジョン・レノン</code> splits). Cannot be combined with <code>--break-characters</code></p>
+</li>
+<li>
 <p><code>--disable-space-penalty</code>: Disable the left-space penalty (mecab-ko's <code>left-space-penalty-factor</code>) that a dictionary shipping rules in its <code>metadata.json</code> applies by default (ko-dic ships mecab-ko-dic's). A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added; disabling it together with <code>--disable-skip-whitespace</code> turns off both changes since v6.0 in how Korean is read around spaces (this penalty and whitespace skipping), but not the other output changes since then, such as the split of punctuation runs like <code>."</code>. See the <a href="../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> documentation</p>
 </li>
 <li>
@@ -906,6 +912,7 @@ Downloaded dictionary 'ipadic'
 <li><code>--max-iterations</code> / <code>-i</code>: Maximum number of iterations for training, 1 or more (default: 100)</li>
 <li><code>--eta</code> / <code>-e</code>: Tolerance of the convergence test: training stops before <code>--max-iterations</code> once the relative change of the objective stays below this value for 3 iterations in a row; <code>0</code> disables the test (default: 0.00005, the default of MeCab's learner)</li>
 <li><code>--max-threads</code> / <code>-t</code>: Maximum number of threads, 1 or more (defaults to CPU core count; affects only speed, never the trained model)</li>
+<li><code>--break-characters &lt;CHARS&gt;</code> / <code>--disable-break-characters</code>: The break characters of the unknown-word candidates, as for <code>lindera tokenize</code> (default: <code>・</code>). Train with the value the dictionary will be used with; the corpus's own tokens are kept whatever they span</li>
 </ul>
 <h3 id="basic-workflow"><a class="header" href="#basic-workflow">Basic workflow</a></h3>
 <h4 id="1-prepare-training-files"><a class="header" href="#1-prepare-training-files">1. Prepare training files</a></h4>

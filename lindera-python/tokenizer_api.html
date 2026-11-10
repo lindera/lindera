@@ -235,6 +235,18 @@ builder.set_dictionary("/path/to/dictionary")
 <pre><code class="language-python"># Keep whitespace in the lattice, as before v7
 builder.set_skip_whitespace(False)
 </code></pre>
+<h4 id="set_break_characterschars"><a class="header" href="#set_break_characterschars"><code>set_break_characters(chars)</code></a></h4>
+<p>Sets the break characters. <code>chars</code> has the same meaning as <code>segmenter.break_characters</code> in a <a href="../lindera-analysis/configuration.html">configuration file</a>:</p>
+<ul>
+<li>A string -- Each of its characters is a break character: no unknown word crosses a boundary between a break character and another character, and in decompose mode no system-dictionary word does either. User-dictionary words and words made of break characters only stay.</li>
+<li><code>""</code> -- No break characters, which gives MeCab's segmentation.</li>
+<li><code>None</code> -- The default, <code>・</code>. Use it to undo an earlier call.</li>
+</ul>
+<p>A value set here overrides a <code>break_characters</code> loaded with <code>from_file</code>. Any other value raises <code>TypeError</code>.</p>
+<p>With IPADIC, for example, <code>レノン・ジョン</code>, which is not in the dictionary, is <code>レノン</code>, <code>・</code> and <code>ジョン</code> by default and one unknown word with <code>set_break_characters("")</code>. See <a href="../lindera/segmenter.html#break-characters">Segmenter</a> for details.</p>
+<pre><code class="language-python"># Split as MeCab does
+builder.set_break_characters("")
+</code></pre>
 <h4 id="set_space_penaltyvalue"><a class="header" href="#set_space_penaltyvalue"><code>set_space_penalty(value)</code></a></h4>
 <p>Sets the left-space penalty for Korean: a candidate that starts right after whitespace and whose part-of-speech tag normally attaches to the preceding word (particles, endings, ...) gets a cost added. <code>value</code> has the same meaning as <code>segmenter.space_penalty</code> in a <a href="../lindera-analysis/configuration.html">configuration file</a>:</p>
 <ul>

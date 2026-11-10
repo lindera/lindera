@@ -236,6 +236,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong>MeCab と同じく、行の中では <code>、</code>・<code>。</code> をまたいで文脈を引き継ぐ</strong></td><td>行の中に <code>、</code> や <code>。</code> を含む日本語のテキストを分割するユーザー</td><td><code>、</code> や <code>。</code> の直後の語の解析が一部変わり（多くは MeCab と同じ解析になる）、そうした行の N-best のコストが変わることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>N-best: 各結果が入力全体を覆う</strong></td><td>複数の文を含む入力で N-best（<code>segment_nbest</code>・<code>tokenize_nbest</code>・<code>lindera tokenize -N</code>・バインディングの N-best メソッド）を使うユーザー</td><td>2 件目以降が入力全体のコストの小さい分割になり、空の入力がトークンのない結果を 1 件返すことを前提にする。コストの閾値は入力全体に対して適用される</td></tr>
 <tr><td><strong>MeCab と同じく、どの位置からも未知語が始まる</strong></td><td>カタカナ・記号・英字が続くテキストを通常モードで分割するユーザー。特に <code>・</code> でつないだカタカナと、<code>."</code> のような韓国語の文末の句読点</td><td>そうした連続が MeCab と同じ位置で分かれること、カタカナや英字の多いテキストで命令数が 13% 程度増えることを前提にする。v6 の動作に戻す設定はない</td></tr>
+<tr><td><strong>既定で中黒が未知語を区切る</strong></td><td><code>・</code> でつないだカタカナを含む日本語を分割するユーザー。特に <code>レノン・ジョン</code> のような未知の名前と、<code>・</code> を含む語の多い辞書（IPADIC-NEologd・SudachiDict）を decompose モードで使うユーザー</td><td>そうした並びと、decompose モードのそうした語が <code>・</code> で分かれることを前提にする。MeCab と同じ分割にするには <code>break_characters: ""</code>（<code>--disable-break-characters</code>）を設定する</td></tr>
 <tr><td><strong>MeCab と同じく、未知語は文字の既定カテゴリから作り、カテゴリを共有する文字をまとめる</strong></td><td>複数のカテゴリを持つ文字がほかの文字と並ぶテキストを分割するユーザー。同梱の辞書では、ko-dic の漢数字に続く漢字と、ko-dic の <code>〇</code>（U+3007）。<code>CharacterDefinition::lookup_categories</code> の順序に依存する Rust コード</td><td>そうしたテキストが MeCab と同じ分割になることを前提にする（ko-dic の <code>三國史記</code> は 1 つの <code>SH</code>、<code>〇〇〇</code> は 1 つの <code>SY</code>）。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>CC-CEDICT: 未知語のコストは 400、英字だけ・数字だけの見出し語のコストは 399</strong></td><td>CC-CEDICT でテキストを分割するユーザー。特に <code>T恤</code> のように英字や数字と漢字が混ざる見出し語。CC-CEDICT の N-best のコストを読むユーザー</td><td>そうした見出し語が 1 語になること、<code>〇</code> や <code>PK</code> のような見出し語がピンインと定義つきで出ること、英単語・仮名・数字は v6 と同じく 1 語のままであること、パスのコストが変わることを前提にする。CC-CEDICT の辞書ディレクトリは <code>CC-CEDICT-MeCab-0.1.0-20261021</code> のアーカイブからビルドする</td></tr>
 <tr><td><strong>Jieba: <code>〇</code> は数字の見出し語</strong></td><td>Jieba で <code>〇</code>（U+3007）を含むテキストを分割するユーザー</td><td>各 <code>〇</code> が未知語の一部ではなく、数字の 1 語（<code>m</code>、ピンイン <code>ling2</code>）になることを前提にする（同じ辞書の MeCab と同じ）。Jieba の辞書ディレクトリは <code>mecab-jieba-0.1.3</code> のアーカイブからビルドする</td></tr>
@@ -931,8 +932,9 @@ Decompose モードはもともとこの動作で、出力は変わりません�
 範囲に含めています。辞書語と <code>・</code> の後ろからはカタカナの未知語を始められなかった
 ため、<code>ジョン・レノン</code> は 1 つの未知語になっていました。v7 では MeCab と同じく、
 その後ろから未知語が始まります。<code>レノン・ジョン</code> のように未知語で始まる範囲は、
-MeCab でも 1 つの未知語のままです。同じように、辞書の記号がその後ろの未知の記号と
-まとめられることもなくなります。</li>
+MeCab では 1 つの未知語のままです。v7.0.0 は、既定で <code>・</code> を区切り文字とするので、
+これも区切ります（<a href="#%E6%97%A2%E5%AE%9A%E3%81%A7%E4%B8%AD%E9%BB%92%E3%81%8C%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%82%92%E5%8C%BA%E5%88%87%E3%82%8B">既定で中黒が未知語を区切る</a>を参照）。
+同じように、辞書の記号がその後ろの未知の記号とまとめられることもなくなります。</li>
 <li><strong>韓国語</strong>: 文末の <code>."</code>・<code>?"</code>・<code>!"</code>・<code>.'</code> は 1 つの記号（<code>SY</code>）になっていました。
 v7 では MeCab と同じく <code>.</code>・<code>?</code>・<code>!</code> が文末の句読点（<code>SF</code>）になり、<code>"좋아."</code> の
 ように、その前の語尾の解析も変わることがあります。</li>
@@ -969,6 +971,46 @@ CC-CEDICT では英単語と仮名の連続が v6 と同じく 1 語のままで
 <p>v6 の動作に戻す設定はありません。<code>unknown_word_ladder(false)</code>
 （<code>--disable-unknown-word-ladder</code>）は引き続き短い未知語候補を無効にしますが、
 v6 より前の Lindera の出力は再現しなくなりました。</p>
+<h2 id="既定で中黒が未知語を区切る"><a class="header" href="#既定で中黒が未知語を区切る">既定で中黒が未知語を区切る</a></h2>
+<p>同梱の辞書は <code>char.def</code> で <code>・</code>（U+30FB）をカタカナのカテゴリに入れているため、
+<code>・</code> でつないだカタカナの並びは、先頭の語が辞書に無いと、MeCab と同じく 1 つの
+未知語になり、<code>・</code> の前が辞書語ならそこで区切られます
+（<a href="#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E3%81%A9%E3%81%AE%E4%BD%8D%E7%BD%AE%E3%81%8B%E3%82%89%E3%82%82%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%8C%E5%A7%8B%E3%81%BE%E3%82%8B">MeCab と同じく、どの位置からも未知語が始まる</a>を参照）。
+つまり、<code>・</code> で区切るかどうかは、先頭の語が辞書にあるかどうかで決まっていました。
+v7.0.0 は既定で <code>・</code> を区切り文字にします
+（<a href="https://github.com/lindera/lindera/issues/1353">#1353</a>）。どのモードでも未知語は
+区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語も
+またぎません。</p>
+<div class="table-wrapper"><table><thead><tr><th>入力（IPADIC）</th><th>MeCab、および区切り文字の無い v7</th><th>v7</th></tr></thead><tbody>
+<tr><td><code>レノン・ジョン</code></td><td><code>レノン・ジョン</code>（1 つの未知語）</td><td><code>レノン</code>・<code>・</code>・<code>ジョン</code></td></tr>
+<tr><td><code>ザ・サイレント・フォレスト</code></td><td><code>ザ・サイレント・フォレスト</code>（1 つの未知語）</td><td><code>ザ</code>・<code>・</code>・<code>サイレント</code>・<code>・</code>・<code>フォレスト</code></td></tr>
+<tr><td><code>リベラル・アーツ・カレッジ</code></td><td><code>リベラル</code>・<code>・</code>・<code>アーツ・カレッジ</code></td><td><code>リベラル</code>・<code>・</code>・<code>アーツ</code>・<code>・</code>・<code>カレッジ</code></td></tr>
+<tr><td>decompose モードの <code>インフォームド・コンセント</code></td><td>1 つの辞書語</td><td><code>インフォームド</code>・<code>・</code>・<code>コンセント</code></td></tr>
+</tbody></table>
+</div>
+<ul>
+<li>decompose モードでは、内側に境目を持つシステム辞書の語は格子に入らず、固有の品詞や
+読みを持たないまま部分に分かれて出ます。そのような語は、IPADIC に 658、
+IPADIC-NEologd に 302,023、SudachiDict に 175,744、UniDic に 1,094 あり、UniDic の
+多くは <code>Φ（・∀・＊）</code> のような顔文字です。通常モードはこれらの語を残します。
+ユーザー辞書の語と、<code>・</code> だけからなる語は、どのモードでも残ります。</li>
+<li><code>･</code>（U+FF65）は既定の区切り文字ではありません。同梱のどの辞書も記号のカテゴリに
+入れているので、未知語はそこで止まります。</li>
+<li>MeCab と同じ分割にするには、区切り文字を空にします。設定ファイルの <code>segmenter</code> の
+<code>break_characters: ""</code>、<code>lindera tokenize</code> の <code>--disable-break-characters</code>、
+<code>Segmenter::break_characters("")</code>、バインディングの <code>set_break_characters("")</code>
+（<code>setBreakCharacters("")</code>）のいずれかです。文字列を渡すと別の区切り文字になります。</li>
+<li><code>lindera train</code> と <code>Trainer</code> も、同じ規則で未知語の候補を作ります（既定は <code>・</code>）。
+辞書を使うときと同じ区切り文字で学習してください（<code>--break-characters</code>、
+<code>--disable-break-characters</code>、<code>Trainer::break_characters</code>）。</li>
+<li><code>Lattice::unknown_word_candidates</code> は、<code>out</code> の前に区切り文字の引数を新たに取ります。
+以前と同じ候補にするには <code>None</code> を渡します。<code>LatticeOptions</code> には新しいフィールド
+<code>break_characters</code> があり、既定は <code>None</code> なので、格子そのものは指定しない限り
+MeCab と同じ分割のままです。</li>
+<li>分割の命令数は最大で 1.3% 程度増えます（IPADIC で『坊っちゃん』は 0.5%、
+UD Japanese GSD は 1.0%。macOS で計測）。<code>・</code> でつないだカタカナの長い並びでは、
+decompose モードで減ります。</li>
+</ul>
 <h2 id="mecab-と同じく未知語は既定カテゴリから作る"><a class="header" href="#mecab-と同じく未知語は既定カテゴリから作る">MeCab と同じく、未知語は既定カテゴリから作る</a></h2>
 <p><code>char.def</code> では、1 つの文字が複数のカテゴリを持つことがあります。漢数字は
 IPADIC と UniDic では <code>KANJINUMERIC KANJI</code>、ko-dic では <code>HANJANUMERIC HANJA</code>、CC-CEDICT と
@@ -2442,6 +2484,10 @@ ID を直し、<code>.bin</code> を使う場合はビルドし直す。そう�
 カタカナ（IPADIC・IPADIC-NEologd・UniDic）、辞書の記号の直後の未知の記号、
 <code>."</code> のような韓国語の文末の句読点が該当する。v6 の出力に戻す設定はなく、
 <code>unknown_word_ladder(false)</code> でも v6 より前の Lindera の出力にはならない。</li>
+<li><code>・</code> でつないだカタカナは、MeCab が 1 語のままにする並びでも、既定で <code>・</code> で
+分かれることを前提にする。decompose モードでは、内側に <code>・</code> を持つ辞書語も分かれる。
+<code>break_characters: ""</code> で MeCab と同じ分割になる
+（<a href="#%E6%97%A2%E5%AE%9A%E3%81%A7%E4%B8%AD%E9%BB%92%E3%81%8C%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%82%92%E5%8C%BA%E5%88%87%E3%82%8B">既定で中黒が未知語を区切る</a>を参照）。</li>
 <li>カタカナや英字の多いテキストで命令数が 13% 程度増え、カタカナの非常に長い連続の
 N-best では時間とメモリが大きく増えることを前提にする。</li>
 </ul>

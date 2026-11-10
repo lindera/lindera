@@ -229,6 +229,18 @@ builder.set_dictionary('/path/to/dictionary')
 <pre><code class="language-ruby"># v7 より前と同じく、空白をラティスに残す
 builder.set_skip_whitespace(false)
 </code></pre>
+<h4 id="set_break_characterschars"><a class="header" href="#set_break_characterschars"><code>set_break_characters(chars)</code></a></h4>
+<p>区切り文字を設定します。<code>chars</code> の意味は<a href="../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.break_characters</code> と同じです：</p>
+<ul>
+<li>文字列 -- 各文字が区切り文字になります。未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたぎません。ユーザー辞書の語と、区切り文字だけからなる語は残ります。</li>
+<li><code>''</code> -- 区切り文字を使いません。MeCab と同じ分割になります。</li>
+<li><code>nil</code> -- デフォルトの <code>・</code> です。以前の呼び出しを取り消すときに使います。</li>
+</ul>
+<p>ここで設定した値は、<code>from_file</code> で読み込んだ <code>break_characters</code> より優先されます。それ以外の値では <code>TypeError</code> が送出されます。</p>
+<p>たとえば IPADIC では、辞書に無い <code>レノン・ジョン</code> は、デフォルトでは <code>レノン</code>、<code>・</code>、<code>ジョン</code> に、<code>set_break_characters('')</code> では 1 つの未知語になります。詳しくは <a href="../lindera/segmenter.html#%E5%8C%BA%E5%88%87%E3%82%8A%E6%96%87%E5%AD%97">Segmenter</a> を参照してください。</p>
+<pre><code class="language-ruby"># MeCab と同じく分割する
+builder.set_break_characters('')
+</code></pre>
 <h4 id="set_space_penaltyvalue"><a class="header" href="#set_space_penaltyvalue"><code>set_space_penalty(value)</code></a></h4>
 <p>韓国語向けの左側空白ペナルティ（left-space penalty）を設定します。直前に空白がある候補のうち、本来は前の語に空白なしで付く品詞（助詞、語尾など）の候補にコストを加算します。<code>value</code> の意味は<a href="../lindera-analysis/configuration.html">設定ファイル</a>の <code>segmenter.space_penalty</code> と同じです：</p>
 <ul>

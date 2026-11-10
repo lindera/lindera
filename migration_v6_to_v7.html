@@ -239,6 +239,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>The context is carried across <code>、</code> and <code>。</code> within a line, as in MeCab</strong></td><td>Anyone who segments Japanese text with <code>、</code> or <code>。</code> inside a line</td><td>Expect some words after <code>、</code> or <code>。</code> to be read differently, mostly as MeCab reads them, and the N-best costs of such lines to change; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>N-best: every result covers the whole input</strong></td><td>Anyone who asks for N-best results (<code>segment_nbest</code>, <code>tokenize_nbest</code>, <code>lindera tokenize -N</code>, the bindings' N-best methods) for input with more than one sentence</td><td>Expect the cheapest segmentations of the whole input from the second result on, and one result without tokens for an empty input; a cost threshold now applies to the whole input</td></tr>
 <tr><td><strong>Unknown words start at every position, as in MeCab</strong></td><td>Anyone who segments text with runs of katakana, symbols or Latin letters in normal mode, most visibly katakana joined by <code>・</code> and Korean sentence-final punctuation such as <code>."</code></td><td>Expect such runs to be split where MeCab splits them, and katakana- and Latin-heavy text to take about 13% more instructions; no setting restores the v6 behavior</td></tr>
+<tr><td><strong>Middle dots break unknown words by default</strong></td><td>Anyone who segments Japanese text with katakana joined by <code>・</code>, most visibly unknown names such as <code>レノン・ジョン</code>, and users of decompose mode with dictionaries that have many words with <code>・</code> (IPADIC-NEologd, SudachiDict)</td><td>Expect <code>・</code> to split such runs, and such words in decompose mode; set <code>break_characters: ""</code> (<code>--disable-break-characters</code>) for MeCab's segmentation</td></tr>
 <tr><td><strong>Unknown words come from each character's default category and group the characters that share a category, as in MeCab</strong></td><td>Anyone who segments text where a character with several categories meets other characters; in the bundled dictionaries, a hanja numeral followed by hanja with ko-dic, and <code>〇</code> (U+3007) with ko-dic; Rust code that relies on the order of <code>CharacterDefinition::lookup_categories</code></td><td>Expect such text to be segmented as MeCab segments it (ko-dic <code>三國史記</code> is one <code>SH</code> word, <code>〇〇〇</code> one <code>SY</code> word); no setting restores the v6 behavior</td></tr>
 <tr><td><strong>CC-CEDICT: unknown words cost 400, and the entries made only of Latin letters or only of digits 399</strong></td><td>Anyone who segments text with CC-CEDICT, most visibly entries that mix Latin letters or digits with Chinese characters, such as <code>T恤</code>; anyone who reads its N-best costs</td><td>Expect such entries to be one word, <code>〇</code> and entries such as <code>PK</code> to come with their pinyin and definition, Latin words, kana and numbers to stay one word as in v6, and the costs of paths to change; build a CC-CEDICT dictionary directory from the <code>CC-CEDICT-MeCab-0.1.0-20261021</code> archive</td></tr>
 <tr><td><strong>Jieba: <code>〇</code> is a numeral entry</strong></td><td>Anyone who segments text with <code>〇</code> (U+3007) with Jieba</td><td>Expect each <code>〇</code> to be one numeral word (<code>m</code>, pinyin <code>ling2</code>) instead of part of an unknown word, as MeCab segments it with the same dictionary; build a Jieba dictionary directory from the <code>mecab-jieba-0.1.3</code> archive</td></tr>
@@ -997,9 +998,11 @@ change.</p>
 range of their <code>char.def</code>. After a dictionary word and <code>・</code>, an unknown
 katakana word could not start, so <code>ジョン・レノン</code> became one unknown word.
 Now the unknown word starts after them, as in MeCab. A run that starts
-with an unknown word, such as <code>レノン・ジョン</code>, stays one unknown word, in
-MeCab too. In the same way, a dictionary symbol is no longer merged into
-the unknown symbols after it.</li>
+with an unknown word, such as <code>レノン・ジョン</code>, stays one unknown word in
+MeCab; v7.0.0 splits it too, as <code>・</code> is a break character by default (see
+<a href="#middle-dots-break-unknown-words-by-default">Middle dots break unknown words by default</a>).
+In the same way, a dictionary symbol is no longer merged into the unknown
+symbols after it.</li>
 <li><strong>Korean</strong>: a sentence-final <code>."</code>, <code>?"</code>, <code>!"</code> or <code>.'</code> was one symbol
 (<code>SY</code>). Now <code>.</code>, <code>?</code> and <code>!</code> are sentence-final punctuation (<code>SF</code>), as in
 MeCab, and the ending before them can change with it, as in <code>"좋아."</code>.</li>
@@ -1042,6 +1045,51 @@ and from 18 to 127 MiB with UniDic.</p>
 <p>There is no setting to restore the v6 behavior. <code>unknown_word_ladder(false)</code>
 (<code>--disable-unknown-word-ladder</code>) still turns off the shorter unknown-word
 candidates, but no longer reproduces the output of Lindera before v6.</p>
+<h2 id="middle-dots-break-unknown-words-by-default"><a class="header" href="#middle-dots-break-unknown-words-by-default">Middle dots break unknown words by default</a></h2>
+<p>The bundled dictionaries put <code>・</code> (U+30FB) in the katakana category of their
+<code>char.def</code>, so a run of katakana joined by <code>・</code> is one unknown word when its
+first word is not in the dictionary, as in MeCab, while a dictionary word
+before <code>・</code> ends there (see
+<a href="#unknown-words-start-at-every-position-as-in-mecab">Unknown words start at every position, as in MeCab</a>).
+Whether text was split at <code>・</code> thus depended on whether its first word was in
+the dictionary. v7.0.0 makes <code>・</code> a break character by default
+(<a href="https://github.com/lindera/lindera/issues/1353">#1353</a>): no unknown word
+crosses a boundary between a break character and another character, in every
+mode, and in decompose mode no system-dictionary word does either.</p>
+<div class="table-wrapper"><table><thead><tr><th>Input (IPADIC)</th><th>MeCab, and v7 with no break characters</th><th>v7</th></tr></thead><tbody>
+<tr><td><code>レノン・ジョン</code></td><td><code>レノン・ジョン</code>, one unknown word</td><td><code>レノン</code>, <code>・</code> and <code>ジョン</code></td></tr>
+<tr><td><code>ザ・サイレント・フォレスト</code></td><td><code>ザ・サイレント・フォレスト</code>, one unknown word</td><td><code>ザ</code>, <code>・</code>, <code>サイレント</code>, <code>・</code> and <code>フォレスト</code></td></tr>
+<tr><td><code>リベラル・アーツ・カレッジ</code></td><td><code>リベラル</code>, <code>・</code> and <code>アーツ・カレッジ</code></td><td><code>リベラル</code>, <code>・</code>, <code>アーツ</code>, <code>・</code> and <code>カレッジ</code></td></tr>
+<tr><td><code>インフォームド・コンセント</code>, in decompose mode</td><td>One dictionary word</td><td><code>インフォームド</code>, <code>・</code> and <code>コンセント</code></td></tr>
+</tbody></table>
+</div>
+<ul>
+<li>In decompose mode, a system-dictionary word with a boundary inside it does
+not enter the lattice, and comes out as its parts, without its own part of
+speech and reading: IPADIC has 658 such entries, IPADIC-NEologd 302,023,
+SudachiDict 175,744 and UniDic 1,094, mostly emoticons such as
+<code>Φ（・∀・＊）</code>. Normal mode keeps them, and every mode keeps
+user-dictionary words and words made of <code>・</code> only.</li>
+<li><code>･</code> (U+FF65) is not a break character by default: every bundled
+dictionary puts it in the symbol category, so no unknown word runs through
+it.</li>
+<li>For MeCab's segmentation, set no break characters: <code>break_characters: ""</code>
+under <code>segmenter</code> in the configuration, <code>--disable-break-characters</code> for
+<code>lindera tokenize</code>, <code>Segmenter::break_characters("")</code>, or
+<code>set_break_characters("")</code> (<code>setBreakCharacters("")</code>) in the bindings. A
+string sets other break characters.</li>
+<li><code>lindera train</code> and <code>Trainer</code> create the unknown-word candidates with the
+same rule, <code>・</code> by default; train with the break characters the dictionary
+will be used with (<code>--break-characters</code>, <code>--disable-break-characters</code>,
+<code>Trainer::break_characters</code>).</li>
+<li><code>Lattice::unknown_word_candidates</code> takes the break characters as a new
+argument, before <code>out</code>: pass <code>None</code> for the candidates of before.
+<code>LatticeOptions</code> has a new field, <code>break_characters</code>, <code>None</code> by default, so
+the lattice itself keeps MeCab's segmentation unless told otherwise.</li>
+<li>Segmenting takes up to about 1.3% more instructions (0.5% on <em>Botchan</em>
+and 1.0% on UD Japanese GSD with IPADIC, measured on macOS), and less in
+decompose mode on long runs of katakana joined by <code>・</code>.</li>
+</ul>
 <h2 id="unknown-words-come-from-the-default-category-as-in-mecab"><a class="header" href="#unknown-words-come-from-the-default-category-as-in-mecab">Unknown words come from the default category, as in MeCab</a></h2>
 <p>A character can have more than one category in <code>char.def</code>: the kanji
 numerals are <code>KANJINUMERIC KANJI</code> in IPADIC and UniDic,
@@ -2714,6 +2762,11 @@ dictionary symbol, and Korean sentence-final punctuation such as <code>."</code>
 No setting restores the v6 output, and
 <code>unknown_word_ladder(false)</code> no longer gives the output of Lindera before
 v6.</li>
+<li>Expect katakana joined by <code>・</code> to be split at <code>・</code> even where MeCab keeps
+the run whole, as <code>・</code> is a break character by default, and decompose mode
+to split the dictionary words with <code>・</code> inside; <code>break_characters: ""</code>
+gives MeCab's segmentation (see
+<a href="#middle-dots-break-unknown-words-by-default">Middle dots break unknown words by default</a>).</li>
 <li>Expect katakana- and Latin-heavy text to take about 13% more
 instructions, and very long katakana runs in N-best to take much more
 time and memory.</li>
