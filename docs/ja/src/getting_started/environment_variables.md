@@ -6,6 +6,8 @@ Lindera は次の環境変数を読みます。どれも設定しなくても動
 | --- | --- | --- | --- |
 | [`LINDERA_BUILD_DICTIONARY_CACHE_DIR`](#lindera_build_dictionary_cache_dir) | 辞書クレートの build script | ディレクトリ | ビルドごとに、その出力ディレクトリで辞書をダウンロードしてビルドする |
 | [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source) | 辞書クレートの build script | `1` か `true` | 辞書クレートは固定した公開済みの辞書をダウンロードし、それを使えないときだけソースからビルドする |
+| [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url) | 辞書クレートの build script | `http` か `https` の URL | 公開済みの辞書を GitHub のリリースからダウンロードする |
+| [`LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL`](#lindera_build_dictionary_source_base_url) | 辞書クレートの build script | `http` か `https` の URL | ソースのアーカイブを `https://lindera.dev` からダウンロードする |
 | [`LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`](#lindera_build_context_id_freq_file) | 辞書クレートの build script | ファイル | 辞書クレートに同梱の頻度表（あれば） |
 | [`DOCS_RS`](#docs_rs) | 辞書クレートの build script | docs.rs が設定する | 本物の辞書をビルドする |
 | [`LINDERA_CONFIG_FILE`](#lindera_config_file) | `TokenizerBuilder::new()`（`lindera tokenize` とバインディングも） | ファイル | 空の設定 |
@@ -101,6 +103,41 @@ Cargo がこの警告を表示するのは、このリポジトリの checkout �
 ```shell
 LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1 cargo build --features=embed-ipadic
 ```
+
+### LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL
+
+`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` と [`LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL`](#lindera_build_dictionary_source_base_url) は、build script のダウンロード先をミラーに向けます。Artifactory のようなプロキシのリポジトリを通すビルドなど、Lindera が公開しているホストに届いてはいけないビルドのための変数です。それぞれが 1 つのホストを置き換えます。
+
+| 変数 | 置き換えるもの | ビルドがダウンロードするもの |
+| --- | --- | --- |
+| `LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` | `https://github.com/lindera/lindera/releases/download`（クレートの `prebuilt.json` の `base_url`） | `<base>/<path>`（`path` は `prebuilt.json` のもの） |
+| `LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL` | `https://lindera.dev`（クレートの `build.rs` がソースのアーカイブを取るホスト） | `<base>/<file_name>`（`file_name` はアーカイブのファイル名） |
+
+IPADIC の場合、変数を `https://mirror.example/lindera-releases` と `https://mirror.example/lindera-dev` にすると、ビルドは次のどちらかをダウンロードします。
+
+```text
+https://mirror.example/lindera-releases/dictionary-ipadic-2.7.0-20250920-fmt3-r1/ipadic-2.7.0-20250920-fmt3-r1.tar.gz
+https://mirror.example/lindera-dev/mecab-ipadic-2.7.0-20250920.tar.gz
+```
+
+つまり、ミラーには元のホストと同じパスでファイルを置きます。Artifactory なら、`https://github.com/lindera/lindera/releases/download` をプロキシする remote repository が公開済みの辞書を、`https://lindera.dev` をプロキシするものがソースのアーカイブを配ります。ビルドは、既定では公開済みの辞書をダウンロードし、ソースからビルドするときだけソースのアーカイブをダウンロードします（[`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source) を参照）。ソースからのビルドは `LINDERA_BUILD_DICTIONARY_FROM_SOURCE` がなくても起こるので、元のホストに届いてはいけないビルドでは、両方の変数を設定します。
+
+```shell
+export LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL=https://mirror.example/lindera-releases
+export LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL=https://mirror.example/lindera-dev
+cargo build --features=embed-ipadic
+```
+
+- ミラーはホストを置き換えます。ビルドはミラーだけからダウンロードし、ミラーが失敗しても元のホストには行きません。
+- ビルドは、元のホストから取るときと同じく、ダウンロードしたものを辞書クレートが固定した SHA-256 と照合します。別のファイルを返すミラーは、ビルドを止めます。
+- 値は `http` か `https` の URL です。末尾の `/` は無視します。ビルドは認証情報を送らないので、ミラーは認証なしでファイルを配る必要があります。ユーザー名やパスワードを含む URL はエラーです。問い合わせ文字列やフラグメントを含む URL も、後ろにパスを付けられないのでエラーです。空の値はミラーなしとみなします。
+- `LINDERA_BUILD_DICTIONARY_CACHE_DIR` のキャッシュは、辞書とソースのアーカイブを、取ってきたホストではなく SHA-256 で記録します。そのため、ミラーを使うビルドは、ミラーを使わないビルドがキャッシュしたものを使い、その逆も同じです。
+- どちらの変数を変えても、build script は再実行されません。どのホストから取っても辞書は同じだからです。元のホストに届かなかったなどで失敗した build script は、次のビルドで改めて実行されます。
+- この変数を読むのは build script だけです。`lindera download` は、実行時に GitHub から辞書をダウンロードします。
+
+### LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL
+
+辞書のソースのアーカイブのミラーです。ビルドは `https://lindera.dev/<file_name>` の代わりに `<base>/<file_name>` をダウンロードします。2 つの変数の説明は [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url) にあります。
 
 ### LINDERA_BUILD_CONTEXT_ID_FREQ_FILE
 

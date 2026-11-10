@@ -82,7 +82,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **`lindera build` は `matrix.def` の範囲外の文脈 ID を拒否する** | `lex.csv` や `unk.def` に `matrix.def` の大きさを超える文脈 ID があるシステム辞書をビルドするユーザー（そうした辞書はビルドでき、解析時にパニックしていた）。MeCab の `mecab-dict-index` が受け付ける辞書は対象外。また、組み合わせるシステム辞書に対してそうした文脈 ID を持つユーザー辞書を使うユーザー（解析時のパニックではなく、トークナイザーの構築時のエラーになる） | ID か行列を直すか、`metadata.json` の `skip_invalid_cost_or_id` でそうした `lex.csv` の行を取り除く。ユーザー辞書ではそうした ID を直す |
 | **`lindera build` と `lindera train` は `char.def` と `unk.def` を照らし合わせる** | それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが `char.def` にあるユーザー、`char.def` と `unk.def` でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、`unk.def` の行を無視したりしていた）。MeCab の `mecab-dict-index` が受け入れる辞書は影響を受けない | 各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに `unk.def` の行を書き、未定義のカテゴリの `unk.def` の行を削除する |
 | **`lindera build` は、MeCab と同じく `matrix.def` にないセルのコストを 0 にする** | セルを省いた `matrix.def` からシステム辞書をビルドするユーザー。すべてのセルを列挙している同梱の辞書と、`lindera export` が書き出す `matrix.def` は対象外 | そうしたセルのコストは 32767 ではなく 0 になる。接続を高いコストのままにするには、そのセルをコスト付きで列挙する |
-| **`embed-*` のビルドは、辞書をソースからビルドせずに公開済みの辞書をダウンロードする** | `embed-*` feature を付けてビルドするユーザー。目立つのは、ビルドが `lindera.dev` には接続できて `github.com` には接続できない環境 | `github.com` と `release-assets.githubusercontent.com` への接続を許すか、`LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1` を設定して、これまでどおりソースからビルドする |
+| **`embed-*` のビルドは、辞書をソースからビルドせずに公開済みの辞書をダウンロードする** | `embed-*` feature を付けてビルドするユーザー。目立つのは、ビルドが `lindera.dev` には接続できて `github.com` には接続できない環境 | `github.com` と `release-assets.githubusercontent.com` への接続を許すか、`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` をリリースのミラーに向けるか、`LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1` を設定して、これまでどおりソースからビルドする |
 | **CLI はライブラリの警告を標準エラー出力に書く** | 標準エラー出力を読む CLI のユーザー。たとえば、そこに何か出力があれば失敗とみなすスクリプト。目立つのは、文の区切り文字のないテキストが 32 KiB を超える入力と、`--context-id-freq` を指定しない ko-dic・UniDic の `lindera build` | 標準エラー出力に `[WARN …]` の行が出ることを前提にする。`RUST_LOG=error` で警告を消せる。標準出力は変わらない |
 | コマンドは、標準出力に読み手がいないとき終了コード 0 で静かに終わり、標準エラー出力に読み手がいないときはメッセージを捨てて続ける | `lindera` の標準出力や標準エラー出力を、`head` のように先に終わりうるプログラムにパイプでつなぎ、終了コードを確かめるスクリプト | `lindera tokenize` が 1 で、ほかのコマンドが 101 で panic して終わっていたところが 0 になる。`lindera train` と `lindera export` はモデルやファイルを、`lindera download` はパスを書くようになった |
 | **設定 `normalize_details` の削除: `Metadata::new` と `CoreMetadata::new` の引数は 10 個、Ruby の `Metadata.new` の引数は 8 個になる** | 辞書のメタデータを作成・参照するコード。Rust（`Metadata`・`lindera_binding::CoreMetadata`・`PrefixDictionaryBuilderOptions`）と、Python・Ruby・PHP・Node.js のバインディングの `Metadata` クラス | 引数・オプション・プロパティを削除する。このキーを含む `metadata.json` もそのまま読み込め、キーは無視される |
@@ -2000,12 +2000,21 @@ build script は、`prebuilt.json` が固定する辞書をダウンロードし
 ビルドは `lindera.dev` ではなく `github.com` からダウンロードし、ファイルは
 `release-assets.githubusercontent.com` から配られます。ネットワークが `lindera.dev`
 しか許さないビルドはダウンロードに失敗するので、この 2 つのホストへの接続を
-許すか、`LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1` を設定して、これまでどおり
+許すか、`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` をリリースのミラーに
+向けるか、`LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1` を設定して、これまでどおり
 ソースから辞書をビルドしてください。ダウンロードや確認に失敗したビルドは、
 ソースからのビルドに切り替えずにエラーで止まります。
 `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` を設定したビルドは、今も警告を出して
 ソースからビルドします。
 [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](getting_started/environment_variables.md#lindera_build_dictionary_from_source)
+を参照してください。
+
+どちらのホストにも接続できないビルドは、
+`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` と
+`LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL` で、公開済みの辞書もソースの
+アーカイブもミラーからダウンロードできます
+（[#584](https://github.com/lindera/lindera/issues/584)）。
+[`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](getting_started/environment_variables.md#lindera_build_dictionary_published_base_url)
 を参照してください。
 
 `embed-*` feature で埋め込めるのは同梱の辞書だけです。自分の辞書は、これまでどおり
