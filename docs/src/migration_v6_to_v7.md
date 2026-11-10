@@ -52,6 +52,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`LINDERA_DICTIONARIES_PATH` is removed** | Anyone still setting the deprecated build-cache variable | Set `LINDERA_BUILD_DICTIONARY_CACHE_DIR`; the old name is now ignored |
 | **`LINDERA_CONFIG_PATH` is renamed to `LINDERA_CONFIG_FILE`** | Anyone who sets `LINDERA_CONFIG_PATH` for `TokenizerBuilder::new()`, `lindera tokenize` or a language binding | Set `LINDERA_CONFIG_FILE`; the old name works with a deprecation warning until v8.0.0 |
 | `LINDERA_WORKDIR` is renamed to `LINDERA_WORK_DIR` | Only a dictionary crate whose own build script sets `LINDERA_WORKDIR` for `embedded_dictionary!` | Set `LINDERA_WORK_DIR`; a crate that uses `build_embedded_dictionary` needs nothing |
+| `FetchParams` pins the source archive by SHA-256: `md5_hash` is replaced by `sha256` | Only a dictionary crate whose own build script builds `lindera_dictionary::assets::FetchParams` | Set `sha256` to the SHA-256 of the archive; the bundled dictionary crates need nothing |
 | `LINDERA_CTX_FREQ_FILE` is renamed to `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`, which only the build scripts of the dictionary crates read | Anyone who sets `LINDERA_CTX_FREQ_FILE` for a dictionary with `connection_id_mapping`, such as UniDic and ko-dic | Set `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` (the old name works in the build scripts with a deprecation warning until v8.0.0); give `lindera build` the histogram with `--context-id-freq`, and the build functions of the bindings with `context_id_freq` |
 | **`lindera download` puts dictionaries in `LINDERA_DICTIONARIES_DIR/<name>`, which replaces `LINDERA_DATA_DIR`** | Users of `lindera download` and `lindera list`, and anyone who sets `LINDERA_DATA_DIR` | Download the dictionaries again; set `LINDERA_DICTIONARIES_DIR` (the old name works, as `<dir>/dictionaries`, with a deprecation warning until v8.0.0) |
 | **`--dict` and `--system-dict` no longer take a dictionary name** | Anyone who runs `lindera tokenize --dict ipadic` or `lindera build --system-dict ipadic` | Pass the path that `lindera download` prints, or `embedded://ipadic` |
@@ -432,6 +433,34 @@ error: environment variable `LINDERA_WORK_DIR` not defined at compile time
 Users do not set this variable, and the
 [Environment Variables](./getting_started/environment_variables.md) page does
 not list it.
+
+## FetchParams pins the source archive by SHA-256
+
+The build script of a dictionary crate describes the source archive it builds
+from with `lindera_dictionary::assets::FetchParams`. Up to v6 the build checked
+the downloaded archive against an MD5 in `md5_hash`; now it checks it against
+the SHA-256 in `sha256`
+([#1349](https://github.com/lindera/lindera/issues/1349)), since MD5
+collisions can be made, so an MD5 does not show that the archive is the one
+the crate was written for. The bundled dictionary crates pin the SHA-256 of
+their archives, so a user of them needs no change. A crate whose own build
+script builds `FetchParams` has to replace `md5_hash` with `sha256`; otherwise
+it fails to compile:
+
+```text
+error[E0560]: struct `FetchParams` has no field named `md5_hash`
+```
+
+```rust
+// v6
+md5_hash: "a95c409f12f1023fce8ef91f991ef042",
+
+// v7: the SHA-256 of the same archive, from `shasum -a 256` or `sha256sum`
+sha256: "a7ba9f645ffe7094e56ae1c4a81d100df8fbb1e28bbe1792622e9728e162db3d",
+```
+
+A build cache (`LINDERA_BUILD_DICTIONARY_CACHE_DIR`) written before the change
+builds each dictionary once more, as its records name the MD5.
 
 ## LINDERA_CTX_FREQ_FILE renamed to LINDERA_BUILD_CONTEXT_ID_FREQ_FILE
 

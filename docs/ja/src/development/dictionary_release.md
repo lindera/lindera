@@ -38,7 +38,7 @@
 
 | 変更 | 新しい鍵 |
 | --- | --- |
-| 新しいソースのアーカイブ（`build.rs` の新しい `file_name` と `md5_hash`） | その版と、改訂番号 1 |
+| 新しいソースのアーカイブ（`build.rs` の新しい `file_name` と `sha256`） | その版と、改訂番号 1 |
 | 新しい辞書フォーマットバージョン（`DICTIONARY_FORMAT_VERSION`） | 7 つの辞書すべての `fmt<新しい版>` と `format_version`、改訂番号 1 |
 | ビルドしたファイルを変えるそのほかの変更（ビルダー、ビルダーが出力をそのまま書く依存クレート、クレートの `metadata.json` や `context_id_freq.txt`） | 次の改訂番号 |
 

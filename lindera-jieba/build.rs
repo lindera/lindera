@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         output_dir: "lindera-jieba",
         dummy_input: "1号店,0,0,1789,n,NUMERIC,*,*,*,*,3,1,店,low\n",
         download_urls: &["https://lindera.dev/mecab-jieba-0.1.3.tar.gz"],
-        md5_hash: "121fdf0caa1f3b2a304259cec8ab5dcf",
+        sha256: "c5bc9490ba6c86f217f644424953257bd5661995c4da5a562698ee5364fca2e1",
     };
 
     build_embedded_dictionary(cfg!(feature = "embed-jieba"), fetch_params)

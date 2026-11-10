@@ -38,7 +38,7 @@ A dictionary needs a new key, and so a new release, whenever the dictionary buil
 
 | Change | New key |
 | --- | --- |
-| A new source archive (a new `file_name` and `md5_hash` in `build.rs`) | Its version, and revision 1 |
+| A new source archive (a new `file_name` and `sha256` in `build.rs`) | Its version, and revision 1 |
 | A new dictionary format version (`DICTIONARY_FORMAT_VERSION`) | `fmt<new version>` and `format_version`, and revision 1, for all seven dictionaries |
 | Anything else that changes the built files: the builder, a dependency whose output it writes, the crate's `metadata.json` or `context_id_freq.txt` | The next revision |
 
