@@ -226,6 +226,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> is removed</strong></td><td>Anyone still setting the deprecated build-cache variable</td><td>Set <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>; the old name is now ignored</td></tr>
 <tr><td><strong><code>LINDERA_CONFIG_PATH</code> is renamed to <code>LINDERA_CONFIG_FILE</code></strong></td><td>Anyone who sets <code>LINDERA_CONFIG_PATH</code> for <code>TokenizerBuilder::new()</code>, <code>lindera tokenize</code> or a language binding</td><td>Set <code>LINDERA_CONFIG_FILE</code>; the old name works with a deprecation warning until v8.0.0</td></tr>
 <tr><td><code>LINDERA_WORKDIR</code> is renamed to <code>LINDERA_WORK_DIR</code></td><td>Only a dictionary crate whose own build script sets <code>LINDERA_WORKDIR</code> for <code>embedded_dictionary!</code></td><td>Set <code>LINDERA_WORK_DIR</code>; a crate that uses <code>build_embedded_dictionary</code> needs nothing</td></tr>
+<tr><td><code>FetchParams</code> pins the source archive by SHA-256: <code>md5_hash</code> is replaced by <code>sha256</code></td><td>Only a dictionary crate whose own build script builds <code>lindera_dictionary::assets::FetchParams</code></td><td>Set <code>sha256</code> to the SHA-256 of the archive; the bundled dictionary crates need nothing</td></tr>
 <tr><td><code>LINDERA_CTX_FREQ_FILE</code> is renamed to <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code>, which only the build scripts of the dictionary crates read</td><td>Anyone who sets <code>LINDERA_CTX_FREQ_FILE</code> for a dictionary with <code>connection_id_mapping</code>, such as UniDic and ko-dic</td><td>Set <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> (the old name works in the build scripts with a deprecation warning until v8.0.0); give <code>lindera build</code> the histogram with <code>--context-id-freq</code>, and the build functions of the bindings with <code>context_id_freq</code></td></tr>
 <tr><td><strong><code>lindera download</code> puts dictionaries in <code>LINDERA_DICTIONARIES_DIR/&lt;name&gt;</code>, which replaces <code>LINDERA_DATA_DIR</code></strong></td><td>Users of <code>lindera download</code> and <code>lindera list</code>, and anyone who sets <code>LINDERA_DATA_DIR</code></td><td>Download the dictionaries again; set <code>LINDERA_DICTIONARIES_DIR</code> (the old name works, as <code>&lt;dir&gt;/dictionaries</code>, with a deprecation warning until v8.0.0)</td></tr>
 <tr><td><strong><code>--dict</code> and <code>--system-dict</code> no longer take a dictionary name</strong></td><td>Anyone who runs <code>lindera tokenize --dict ipadic</code> or <code>lindera build --system-dict ipadic</code></td><td>Pass the path that <code>lindera download</code> prints, or <code>embedded://ipadic</code></td></tr>
@@ -560,6 +561,29 @@ instead; otherwise it fails to compile:</p>
 <p>Users do not set this variable, and the
 <a href="./getting_started/environment_variables.html">Environment Variables</a> page does
 not list it.</p>
+<h2 id="fetchparams-pins-the-source-archive-by-sha-256"><a class="header" href="#fetchparams-pins-the-source-archive-by-sha-256">FetchParams pins the source archive by SHA-256</a></h2>
+<p>The build script of a dictionary crate describes the source archive it builds
+from with <code>lindera_dictionary::assets::FetchParams</code>. Up to v6 the build checked
+the downloaded archive against an MD5 in <code>md5_hash</code>; now it checks it against
+the SHA-256 in <code>sha256</code>
+(<a href="https://github.com/lindera/lindera/issues/1349">#1349</a>), since MD5
+collisions can be made, so an MD5 does not show that the archive is the one
+the crate was written for. The bundled dictionary crates pin the SHA-256 of
+their archives, so a user of them needs no change. A crate whose own build
+script builds <code>FetchParams</code> has to replace <code>md5_hash</code> with <code>sha256</code>; otherwise
+it fails to compile:</p>
+<pre><code class="language-text">error[E0560]: struct `FetchParams` has no field named `md5_hash`
+</code></pre>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// v6
+md5_hash: "a95c409f12f1023fce8ef91f991ef042",
+
+// v7: the SHA-256 of the same archive, from `shasum -a 256` or `sha256sum`
+sha256: "a7ba9f645ffe7094e56ae1c4a81d100df8fbb1e28bbe1792622e9728e162db3d",
+<span class="boring">}</span></code></pre></pre>
+<p>A build cache (<code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>) written before the change
+builds each dictionary once more, as its records name the MD5.</p>
 <h2 id="lindera_ctx_freq_file-renamed-to-lindera_build_context_id_freq_file"><a class="header" href="#lindera_ctx_freq_file-renamed-to-lindera_build_context_id_freq_file">LINDERA_CTX_FREQ_FILE renamed to LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</a></h2>
 <p>The build scripts of the dictionary crates read the context-ID frequency
 histogram named by <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> in place of the

@@ -444,14 +444,14 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 <p><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> 環境変数は、埋め込み辞書ビルドパイプラインのビルド時キャッシュディレクトリを指定します。辞書クレートの build script のみが読み取り、実行時の動作には影響しません。</p>
 <p>設定すると、各ビルドは <code>$LINDERA_BUILD_DICTIONARY_CACHE_DIR/&lt;version&gt;-fmt&lt;format&gt;/</code>（<code>&lt;version&gt;</code> は辞書クレートのバージョン、<code>&lt;format&gt;</code> は辞書フォーマットバージョン）配下に 2 種類のファイルを保存します：</p>
 <ul>
-<li>ダウンロードした配布アーカイブ（MD5 で検証。無効なファイルは自動的に再ダウンロード）</li>
+<li>ダウンロードした配布アーカイブ（クレートの <code>build.rs</code> が固定した SHA-256 で検証。無効なファイルは自動的に再ダウンロード）</li>
 <li>ビルド済みバイナリ辞書と、その辞書を何から作ったかを記録する <code>build_inputs.json</code></li>
 </ul>
 <p>フォーマットバージョンをパスに含めているのは、オンディスクレイアウトが異なるビルドが書いたキャッシュを「古いまま再利用」ではなく「キャッシュミス」にするためです。キャッシュした辞書は、次のすべてが今回のビルドと一致するときだけ再利用し、そうでなければ作り直します。</p>
 <ul>
 <li>辞書フォーマットバージョンと、クレートの <code>metadata.json</code> の内容</li>
 <li>辞書を作る <code>lindera-dictionary</code> クレートのバージョンとソースのダイジェスト。辞書ビルダーを変更すると、コミット前の変更でも辞書を作り直します</li>
-<li>ソースアーカイブ（ファイル名と MD5）と、ビルドがその中で読むディレクトリ</li>
+<li>ソースアーカイブ（ファイル名と SHA-256）と、ビルドがその中で読むディレクトリ</li>
 <li><code>connection_id_mapping</code> が有効なとき、ビルドが読む文脈 ID の頻度表（<code>context_id_freq.txt</code>、または <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> が指すファイル）</li>
 </ul>
 <p>ビルドせずにダウンロードした公開済みの辞書（<a href="getting_started/environment_variables.html#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a> を参照）も同じ場所にキャッシュし、<code>build_inputs.json</code> には上の入力に加えて、その辞書の鍵と SHA-256 を記録します。同じ公開済みの辞書をダウンロードするはずの次のビルドは、キャッシュした辞書を使います。公開済みの辞書とソースからのビルドを切り替えたビルドは、作り直します。</p>
@@ -10461,6 +10461,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong><code>LINDERA_DICTIONARIES_PATH</code> の削除</strong></td><td>非推奨のビルドキャッシュ変数をまだ設定しているユーザー</td><td><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を設定する。旧名は無視される</td></tr>
 <tr><td><strong><code>LINDERA_CONFIG_PATH</code> を <code>LINDERA_CONFIG_FILE</code> に改名</strong></td><td><code>TokenizerBuilder::new()</code>・<code>lindera tokenize</code>・言語バインディングのために <code>LINDERA_CONFIG_PATH</code> を設定しているユーザー</td><td><code>LINDERA_CONFIG_FILE</code> を設定する。旧名も v8.0.0 までは非推奨の警告付きで使える</td></tr>
 <tr><td><code>LINDERA_WORKDIR</code> を <code>LINDERA_WORK_DIR</code> に改名</td><td>自前の build script で <code>embedded_dictionary!</code> のために <code>LINDERA_WORKDIR</code> を設定している辞書クレートだけ</td><td><code>LINDERA_WORK_DIR</code> を設定する。<code>build_embedded_dictionary</code> を使うクレートは対応不要</td></tr>
+<tr><td><code>FetchParams</code> はソースのアーカイブを SHA-256 で固定する（<code>md5_hash</code> は <code>sha256</code> に）</td><td>自前の build script で <code>lindera_dictionary::assets::FetchParams</code> を組み立てている辞書クレートだけ</td><td><code>sha256</code> にアーカイブの SHA-256 を設定する。同梱の辞書クレートは対応不要</td></tr>
 <tr><td><code>LINDERA_CTX_FREQ_FILE</code> を <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> に改名し、辞書クレートの build script だけが読む</td><td>UniDic や ko-dic のように <code>connection_id_mapping</code> を有効にした辞書のために <code>LINDERA_CTX_FREQ_FILE</code> を設定しているユーザー</td><td><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> を設定する（旧名も build script では v8.0.0 まで非推奨の警告付きで使える）。<code>lindera build</code> には <code>--context-id-freq</code> で、バインディングのビルド関数には <code>context_id_freq</code> で頻度表を渡す</td></tr>
 <tr><td><strong><code>lindera download</code> は辞書を <code>LINDERA_DICTIONARIES_DIR/&lt;name&gt;</code> に置き、<code>LINDERA_DATA_DIR</code> を置き換える</strong></td><td><code>lindera download</code> と <code>lindera list</code> のユーザー、<code>LINDERA_DATA_DIR</code> を設定しているユーザー</td><td>辞書を再ダウンロードする。<code>LINDERA_DICTIONARIES_DIR</code> を設定する（旧名も v8.0.0 までは <code>&lt;dir&gt;/dictionaries</code> として非推奨の警告付きで使える）</td></tr>
 <tr><td><strong><code>--dict</code> と <code>--system-dict</code> は辞書名を受け付けない</strong></td><td><code>lindera tokenize --dict ipadic</code> や <code>lindera build --system-dict ipadic</code> を実行しているユーザー</td><td><code>lindera download</code> が表示するパスか、<code>embedded://ipadic</code> を渡す</td></tr>
@@ -10774,6 +10775,27 @@ build script で <code>embedded_dictionary!</code> のために <code>LINDERA_WO
 </code></pre>
 <p>利用者が設定する変数ではないので、
 <a href="./getting_started/environment_variables.html">環境変数</a>のページには載せていません。</p>
+<h2 id="fetchparams-はソースのアーカイブを-sha-256-で固定する"><a class="header" href="#fetchparams-はソースのアーカイブを-sha-256-で固定する"><code>FetchParams</code> はソースのアーカイブを SHA-256 で固定する</a></h2>
+<p>辞書クレートの build script は、辞書を作る元のソースのアーカイブを
+<code>lindera_dictionary::assets::FetchParams</code> で指定します。v6 までは、ダウンロードした
+アーカイブを <code>md5_hash</code> の MD5 で確かめていました。v7 からは <code>sha256</code> の SHA-256 で
+確かめます（<a href="https://github.com/lindera/lindera/issues/1349">#1349</a>）。MD5 は衝突を
+作れるので、MD5 が一致しても、そのアーカイブがクレートの想定したものだとは言えない
+ためです。同梱の辞書クレートはアーカイブの SHA-256 を固定しているので、それらを使う
+利用者は対応不要です。自前の build script で <code>FetchParams</code> を組み立てているクレートは、
+<code>md5_hash</code> を <code>sha256</code> に置き換えてください。置き換えないとコンパイルできません:</p>
+<pre><code class="language-text">error[E0560]: struct `FetchParams` has no field named `md5_hash`
+</code></pre>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// v6
+md5_hash: "a95c409f12f1023fce8ef91f991ef042",
+
+// v7: 同じアーカイブの SHA-256（`shasum -a 256` や `sha256sum` で求める）
+sha256: "a7ba9f645ffe7094e56ae1c4a81d100df8fbb1e28bbe1792622e9728e162db3d",
+<span class="boring">}</span></code></pre></pre>
+<p>変更の前に書いたビルドのキャッシュ（<code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>）は、
+記録が MD5 を指しているので、各辞書をもう 1 回だけ作り直します。</p>
 <h2 id="lindera_ctx_freq_file-を-lindera_build_context_id_freq_file-に改名"><a class="header" href="#lindera_ctx_freq_file-を-lindera_build_context_id_freq_file-に改名"><code>LINDERA_CTX_FREQ_FILE</code> を <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> に改名</a></h2>
 <p>辞書クレートの build script は、<code>metadata.json</code> で <code>connection_id_mapping</code> が
 有効なとき（UniDic と ko-dic）、クレートに同梱の <code>context_id_freq.txt</code> の代わりに、
@@ -13372,7 +13394,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <h2 id="鍵を変えるとき"><a class="header" href="#鍵を変えるとき">鍵を変えるとき</a></h2>
 <p>ソースからビルドした辞書が公開済みのものと変わるときは、その辞書に新しい鍵、つまり新しいリリースが要ります。</p>
 <div class="table-wrapper"><table><thead><tr><th>変更</th><th>新しい鍵</th></tr></thead><tbody>
-<tr><td>新しいソースのアーカイブ（<code>build.rs</code> の新しい <code>file_name</code> と <code>md5_hash</code>）</td><td>その版と、改訂番号 1</td></tr>
+<tr><td>新しいソースのアーカイブ（<code>build.rs</code> の新しい <code>file_name</code> と <code>sha256</code>）</td><td>その版と、改訂番号 1</td></tr>
 <tr><td>新しい辞書フォーマットバージョン（<code>DICTIONARY_FORMAT_VERSION</code>）</td><td>7 つの辞書すべての <code>fmt&lt;新しい版&gt;</code> と <code>format_version</code>、改訂番号 1</td></tr>
 <tr><td>ビルドしたファイルを変えるそのほかの変更（ビルダー、ビルダーが出力をそのまま書く依存クレート、クレートの <code>metadata.json</code> や <code>context_id_freq.txt</code>）</td><td>次の改訂番号</td></tr>
 </tbody></table>

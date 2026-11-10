@@ -197,14 +197,14 @@
 <p>The <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> environment variable designates a build-time cache directory for the embedded-dictionary build pipeline. It is read only by the dictionary crates' build scripts and has no effect at runtime.</p>
 <p>When set, each build stores two kinds of files under <code>$LINDERA_BUILD_DICTIONARY_CACHE_DIR/&lt;version&gt;-fmt&lt;format&gt;/</code> (where <code>&lt;version&gt;</code> is the dictionary crate version and <code>&lt;format&gt;</code> is the dictionary format version):</p>
 <ul>
-<li>the downloaded distribution archive (validated with MD5; invalid files are re-downloaded)</li>
+<li>the downloaded distribution archive (validated against the SHA-256 that the crate's <code>build.rs</code> pins; invalid files are re-downloaded)</li>
 <li>the built binary dictionary, with a <code>build_inputs.json</code> that records what it was built from</li>
 </ul>
 <p>The format version is part of the path so that a cache written by a build with a different on-disk dictionary layout is a miss rather than a stale hit. A cached dictionary is reused only when all of the following match the current build, and is rebuilt otherwise:</p>
 <ul>
 <li>the dictionary format version and the contents of the crate's <code>metadata.json</code></li>
 <li>the <code>lindera-dictionary</code> crate that builds it: its version and a digest of its source, so that any change to the dictionary builder, an uncommitted one included, rebuilds the dictionary</li>
-<li>the source archive (file name and MD5) and the directory the build reads in it</li>
+<li>the source archive (file name and SHA-256) and the directory the build reads in it</li>
 <li>the context-id frequency histogram the build reads (<code>context_id_freq.txt</code>, or the file named by <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code>) when <code>connection_id_mapping</code> is enabled</li>
 </ul>
 <p>A published dictionary that a build downloads instead of building it (see <a href="#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a>) is cached in the same place, and <code>build_inputs.json</code> records it by its key and SHA-256 besides the inputs above. The next build that would download the same published dictionary uses the cached one; a build that switches between the published dictionary and the build from source replaces it.</p>

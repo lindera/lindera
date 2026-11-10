@@ -197,14 +197,14 @@
 <p><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> 環境変数は、埋め込み辞書ビルドパイプラインのビルド時キャッシュディレクトリを指定します。辞書クレートの build script のみが読み取り、実行時の動作には影響しません。</p>
 <p>設定すると、各ビルドは <code>$LINDERA_BUILD_DICTIONARY_CACHE_DIR/&lt;version&gt;-fmt&lt;format&gt;/</code>（<code>&lt;version&gt;</code> は辞書クレートのバージョン、<code>&lt;format&gt;</code> は辞書フォーマットバージョン）配下に 2 種類のファイルを保存します：</p>
 <ul>
-<li>ダウンロードした配布アーカイブ（MD5 で検証。無効なファイルは自動的に再ダウンロード）</li>
+<li>ダウンロードした配布アーカイブ（クレートの <code>build.rs</code> が固定した SHA-256 で検証。無効なファイルは自動的に再ダウンロード）</li>
 <li>ビルド済みバイナリ辞書と、その辞書を何から作ったかを記録する <code>build_inputs.json</code></li>
 </ul>
 <p>フォーマットバージョンをパスに含めているのは、オンディスクレイアウトが異なるビルドが書いたキャッシュを「古いまま再利用」ではなく「キャッシュミス」にするためです。キャッシュした辞書は、次のすべてが今回のビルドと一致するときだけ再利用し、そうでなければ作り直します。</p>
 <ul>
 <li>辞書フォーマットバージョンと、クレートの <code>metadata.json</code> の内容</li>
 <li>辞書を作る <code>lindera-dictionary</code> クレートのバージョンとソースのダイジェスト。辞書ビルダーを変更すると、コミット前の変更でも辞書を作り直します</li>
-<li>ソースアーカイブ（ファイル名と MD5）と、ビルドがその中で読むディレクトリ</li>
+<li>ソースアーカイブ（ファイル名と SHA-256）と、ビルドがその中で読むディレクトリ</li>
 <li><code>connection_id_mapping</code> が有効なとき、ビルドが読む文脈 ID の頻度表（<code>context_id_freq.txt</code>、または <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> が指すファイル）</li>
 </ul>
 <p>ビルドせずにダウンロードした公開済みの辞書（<a href="#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a> を参照）も同じ場所にキャッシュし、<code>build_inputs.json</code> には上の入力に加えて、その辞書の鍵と SHA-256 を記録します。同じ公開済みの辞書をダウンロードするはずの次のビルドは、キャッシュした辞書を使います。公開済みの辞書とソースからのビルドを切り替えたビルドは、作り直します。</p>

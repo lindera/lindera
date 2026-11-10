@@ -199,7 +199,7 @@
 <h2 id="when-the-key-changes"><a class="header" href="#when-the-key-changes">When the key changes</a></h2>
 <p>A dictionary needs a new key, and so a new release, whenever the dictionary built from source would differ from the published one:</p>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>New key</th></tr></thead><tbody>
-<tr><td>A new source archive (a new <code>file_name</code> and <code>md5_hash</code> in <code>build.rs</code>)</td><td>Its version, and revision 1</td></tr>
+<tr><td>A new source archive (a new <code>file_name</code> and <code>sha256</code> in <code>build.rs</code>)</td><td>Its version, and revision 1</td></tr>
 <tr><td>A new dictionary format version (<code>DICTIONARY_FORMAT_VERSION</code>)</td><td><code>fmt&lt;new version&gt;</code> and <code>format_version</code>, and revision 1, for all seven dictionaries</td></tr>
 <tr><td>Anything else that changes the built files: the builder, a dependency whose output it writes, the crate's <code>metadata.json</code> or <code>context_id_freq.txt</code></td><td>The next revision</td></tr>
 </tbody></table>
