@@ -38,6 +38,7 @@ let dictionary = load_dictionary("/path/to/ipadic")?;
 | `embed-ipadic` | IPADIC | 日本語 |
 | `embed-ipadic-neologd` | IPADIC NEologd | 日本語 |
 | `embed-unidic` | UniDic | 日本語 |
+| `embed-unidic-cwj` | UniDic CWJ | 日本語 |
 | `embed-sudachidict` | SudachiDict | 日本語 |
 | `embed-ko-dic` | ko-dic | 韓国語 |
 | `embed-cc-cedict` | CC-CEDICT | 中国語 |

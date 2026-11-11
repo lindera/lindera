@@ -54,6 +54,7 @@ jobs:
       lindera-ipadic: ${{ steps.filter.outputs.lindera-ipadic }}
       lindera-ipadic-neologd: ${{ steps.filter.outputs.lindera-ipadic-neologd }}
       lindera-unidic: ${{ steps.filter.outputs.lindera-unidic }}
+      lindera-unidic-cwj: ${{ steps.filter.outputs.lindera-unidic-cwj }}
       lindera-sudachidict: ${{ steps.filter.outputs.lindera-sudachidict }}
       lindera-ko-dic: ${{ steps.filter.outputs.lindera-ko-dic }}
       lindera-cc-cedict: ${{ steps.filter.outputs.lindera-cc-cedict }}
@@ -125,6 +126,11 @@ jobs:
               - 'lindera-dictionary/**'
               - *shared-workspace
               - *shared-crate-workflow
+            lindera-unidic-cwj:
+              - 'lindera-unidic-cwj/**'
+              - 'lindera-dictionary/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera-sudachidict:
               - 'lindera-sudachidict/**'
               - 'lindera-dictionary/**'
@@ -153,6 +159,7 @@ jobs:
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
+              - 'lindera-unidic-cwj/**'
               - 'lindera-sudachidict/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
@@ -173,6 +180,7 @@ jobs:
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
+              - 'lindera-unidic-cwj/**'
               - 'lindera-sudachidict/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
@@ -226,6 +234,7 @@ jobs:
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
+              - 'lindera-unidic-cwj/**'
               - 'lindera-sudachidict/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
@@ -246,6 +255,7 @@ jobs:
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
+              - 'lindera-unidic-cwj/**'
               - 'lindera-sudachidict/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
@@ -268,6 +278,7 @@ jobs:
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
+              - 'lindera-unidic-cwj/**'
               - 'lindera-sudachidict/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
@@ -292,6 +303,7 @@ jobs:
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
+              - 'lindera-unidic-cwj/**'
               - 'lindera-sudachidict/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
@@ -322,6 +334,7 @@ jobs:
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
+              - 'lindera-unidic-cwj/**'
               - 'lindera-sudachidict/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
@@ -362,6 +375,7 @@ jobs:
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
+              - 'lindera-unidic-cwj/**'
               - 'lindera-sudachidict/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
@@ -469,6 +483,36 @@ jobs:
       dictionaries: "unidic"
       free-disk-space: true
       lint: true
+
+  test-lindera-unidic-cwj:
+    name: Test lindera-unidic-cwj
+    needs: [test-lindera-dictionary, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-unidic-cwj == 'true')
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-unidic-cwj
+      features: "--features embed-unidic-cwj"
+      dictionaries: "unidic-cwj"
+      free-disk-space: true
+      lint: true
+
+  # UniDic CWJ is kept out of the jobs that embed every dictionary at once:
+  # embedding it takes about 11 GiB to compile and puts 1.2 GB into every
+  # test binary (#216). This job runs only the tests of lindera that read it.
+  test-lindera-unidic-cwj-tokenization:
+    name: Test lindera with UniDic CWJ
+    needs: [test-lindera-unidic-cwj, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera == 'true')
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera
+      features: "--features embed-unidic-cwj --test golden_tokenization --test embedded_zero_copy_matrix"
+      dictionaries: "unidic-cwj"
+      free-disk-space: true
 
   test-lindera-sudachidict:
     name: Test lindera-sudachidict

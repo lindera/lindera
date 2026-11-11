@@ -1,6 +1,6 @@
 name: Dictionaries
 
-# Builds the seven official dictionaries from source, packs each into the
+# Builds the eight official dictionaries from source, packs each into the
 # archive that its crate's prebuilt.json pins, and checks it against the
 # published one; run by hand with `publish`, it publishes the archives whose
 # release does not exist yet (#1336). The steps of a release are in
@@ -21,6 +21,7 @@ on:
       - "lindera-ipadic/**"
       - "lindera-ipadic-neologd/**"
       - "lindera-unidic/**"
+      - "lindera-unidic-cwj/**"
       - "lindera-sudachidict/**"
       - "lindera-ko-dic/**"
       - "lindera-cc-cedict/**"
@@ -35,6 +36,7 @@ on:
       - "lindera-ipadic/**"
       - "lindera-ipadic-neologd/**"
       - "lindera-unidic/**"
+      - "lindera-unidic-cwj/**"
       - "lindera-sudachidict/**"
       - "lindera-ko-dic/**"
       - "lindera-cc-cedict/**"
@@ -61,6 +63,7 @@ jobs:
           - lindera-ipadic
           - lindera-ipadic-neologd
           - lindera-unidic
+          - lindera-unidic-cwj
           - lindera-sudachidict
           - lindera-ko-dic
           - lindera-cc-cedict
@@ -88,6 +91,25 @@ jobs:
             echo "url=$url"
           } >> "$GITHUB_OUTPUT"
 
+      # UniDic CWJ's source package is 2.77 GiB and unpacks to 8.6 GB, and its
+      # embedding build writes 4 GB more (#216); the runner has 14 GB of SSD.
+      - name: Free disk space
+        if: matrix.crate == 'lindera-unidic-cwj'
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          df -h /
+
+      # UniDic CWJ's source is NINJAL's 2.77 GiB package from NINJAL's server,
+      # so the archive is kept between runs rather than downloaded each time
+      # (#216).
+      - name: Restore the source archive
+        if: matrix.crate == 'lindera-unidic-cwj'
+        uses: ./.github/actions/source-archive-cache
+        with:
+          crate: ${{ matrix.crate }}
+          cache-dir: ${{ env.CACHE_DIR }}
+          mode: restore
+
       # The crate's build script builds the dictionary from source into the
       # cache directory, at <dir>/<crate version>-fmt<format version>/<crate>.
       - name: Build from source
@@ -95,6 +117,14 @@ jobs:
           LINDERA_BUILD_DICTIONARY_FROM_SOURCE: "1"
           LINDERA_BUILD_DICTIONARY_CACHE_DIR: ${{ env.CACHE_DIR }}
         run: cargo build --locked -p "$CRATE" --features "embed-${CRATE#lindera-}"
+
+      - name: Save the source archive
+        if: matrix.crate == 'lindera-unidic-cwj'
+        uses: ./.github/actions/source-archive-cache
+        with:
+          crate: ${{ matrix.crate }}
+          cache-dir: ${{ env.CACHE_DIR }}
+          mode: save
 
       # The archive holds one directory named after the key, with the nine
       # files that the crate embeds and NOTICE.txt. Sorted names, a fixed

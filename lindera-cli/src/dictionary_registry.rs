@@ -14,10 +14,11 @@ use lindera_cli::write_stderr_line;
 /// `DictionaryKind`, whose variants are feature-gated and absent from a
 /// default CLI build) and matches the pre-built dictionary archives published
 /// on the GitHub releases page.
-pub(crate) const DOWNLOADABLE_DICTIONARIES: [&str; 7] = [
+pub(crate) const DOWNLOADABLE_DICTIONARIES: [&str; 8] = [
     "ipadic",
     "ipadic-neologd",
     "unidic",
+    "unidic-cwj",
     "sudachidict",
     "ko-dic",
     "cc-cedict",

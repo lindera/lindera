@@ -18,6 +18,9 @@ embed-ipadic-neologd = [
     "lindera/embed-ipadic-neologd",
 ] # Embed IPADIC-NEologd dictionary in the binary
 embed-unidic = ["lindera/embed-unidic"] # Embed UniDic dictionary in the binary
+embed-unidic-cwj = [
+    "lindera/embed-unidic-cwj",
+] # Embed UniDic CWJ dictionary in the binary
 embed-sudachidict = [
     "lindera/embed-sudachidict",
 ] # Embed SudachiDict dictionary in the binary

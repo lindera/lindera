@@ -11,6 +11,7 @@ graph TB
     TRAINER["lindera-trainer\n(CRF Training)"]
     IPADIC["lindera-ipadic"]
     UNIDIC["lindera-unidic"]
+    UNIDICCWJ["lindera-unidic-cwj"]
     SUDACHIDICT["lindera-sudachidict"]
     KODIC["lindera-ko-dic"]
     CCCEDICT["lindera-cc-cedict"]
@@ -32,6 +33,7 @@ graph TB
     TRAINER -.->|"train feature"| SEGMENTER
     DICT --> IPADIC
     DICT --> UNIDIC
+    DICT --> UNIDICCWJ
     DICT --> SUDACHIDICT
     DICT --> KODIC
     DICT --> CCCEDICT
@@ -40,6 +42,7 @@ graph TB
     DICT --> SEGMENTER
     IPADIC --> SEGMENTER
     UNIDIC --> SEGMENTER
+    UNIDICCWJ --> SEGMENTER
     SUDACHIDICT --> SEGMENTER
     KODIC --> SEGMENTER
     CCCEDICT --> SEGMENTER
@@ -72,6 +75,7 @@ graph TB
 | `lindera-ipadic` | 辞書 | IPADICベースの日本語辞書。 |
 | `lindera-ipadic-neologd` | 辞書 | IPADIC NEologdベースの日本語辞書（新語対応）。 |
 | `lindera-unidic` | 辞書 | UniDicベースの日本語辞書。 |
+| `lindera-unidic-cwj` | 辞書 | 現代書き言葉UniDic（UniDic CWJ）ベースの日本語辞書。 |
 | `lindera-sudachidict` | 辞書 | SudachiDictベースの日本語辞書。 |
 | `lindera-ko-dic` | 辞書 | ko-dicベースの韓国語辞書。 |
 | `lindera-cc-cedict` | 辞書 | CC-CEDICTベースの中国語辞書。 |
@@ -114,6 +118,7 @@ Output Tokens
 | `embed-ipadic` | IPADIC辞書をバイナリに埋め込み | 無効 |
 | `embed-ipadic-neologd` | IPADIC NEologd辞書をバイナリに埋め込み | 無効 |
 | `embed-unidic` | UniDic辞書をバイナリに埋め込み | 無効 |
+| `embed-unidic-cwj` | UniDic CWJ辞書をバイナリに埋め込み（1.2 GB） | 無効 |
 | `embed-sudachidict` | SudachiDict辞書をバイナリに埋め込み | 無効 |
 | `embed-ko-dic` | ko-dic辞書をバイナリに埋め込み | 無効 |
 | `embed-cc-cedict` | CC-CEDICT辞書をバイナリに埋め込み | 無効 |

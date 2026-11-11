@@ -1,0 +1,55 @@
+{
+  "name": "unidic-cwj",
+  "encoding": "UTF-8",
+  "default_word_cost": -10000,
+  "default_left_context_id": 0,
+  "default_right_context_id": 0,
+  "default_field_value": "*",
+  "flexible_csv": false,
+  "skip_invalid_cost_or_id": false,
+  "dictionary_schema": {
+    "fields": [
+      "surface",
+      "left_context_id",
+      "right_context_id",
+      "cost",
+      "part_of_speech",
+      "part_of_speech_subcategory_1",
+      "part_of_speech_subcategory_2",
+      "part_of_speech_subcategory_3",
+      "conjugation_type",
+      "conjugation_form",
+      "reading",
+      "lexeme",
+      "orthographic_surface_form",
+      "phonological_surface_form",
+      "orthographic_base_form",
+      "phonological_base_form",
+      "word_type",
+      "initial_mutation_type",
+      "initial_mutation_form",
+      "final_mutation_type",
+      "final_mutation_form",
+      "initial_connection_type",
+      "final_connection_type",
+      "lexeme_class",
+      "kana",
+      "kana_base",
+      "form",
+      "form_base",
+      "accent_type",
+      "accent_connection_type",
+      "accent_modification_type",
+      "lexicon_id",
+      "lemma_id"
+    ]
+  },
+  "user_dictionary_schema": {
+    "fields": [
+      "surface",
+      "part_of_speech",
+      "reading"
+    ]
+  },
+  "connection_id_mapping": false
+}

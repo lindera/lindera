@@ -1,8 +1,8 @@
 # Dictionary Release
 
-The seven official dictionaries (IPADIC, IPADIC NEologd, UniDic, SudachiDict, ko-dic, CC-CEDICT and Jieba) are built once for each change of their inputs and published, and an `embed-*` build embeds the published dictionary instead of building it from source ([#1336](https://github.com/lindera/lindera/issues/1336)). This page describes how they are published, and the steps of a Lindera release that depend on them. How a build chooses between the published dictionary and the build from source is in [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](../getting_started/environment_variables.md#lindera_build_dictionary_from_source).
+The eight official dictionaries (IPADIC, IPADIC NEologd, UniDic, UniDic CWJ, SudachiDict, ko-dic, CC-CEDICT and Jieba) are built once for each change of their inputs and published, and an `embed-*` build embeds the published dictionary instead of building it from source ([#1336](https://github.com/lindera/lindera/issues/1336)). This page describes how they are published, and the steps of a Lindera release that depend on them. How a build chooses between the published dictionary and the build from source is in [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](../getting_started/environment_variables.md#lindera_build_dictionary_from_source).
 
-Only these seven dictionaries are published and embedded. A dictionary that a user builds is not embedded: it is built with `lindera build` and loaded from its directory at runtime.
+Only these eight dictionaries are published and embedded. A dictionary that a user builds is not embedded: it is built with `lindera build` and loaded from its directory at runtime.
 
 ## What is published
 
@@ -39,10 +39,12 @@ A dictionary needs a new key, and so a new release, whenever the dictionary buil
 | Change | New key |
 | --- | --- |
 | A new source archive (a new `file_name` and `sha256` in `build.rs`) | Its version, and revision 1 |
-| A new dictionary format version (`DICTIONARY_FORMAT_VERSION`) | `fmt<new version>` and `format_version`, and revision 1, for all seven dictionaries |
+| A new dictionary format version (`DICTIONARY_FORMAT_VERSION`) | `fmt<new version>` and `format_version`, and revision 1, for all eight dictionaries |
 | Anything else that changes the built files: the builder, a dependency whose output it writes, the crate's `metadata.json` or `context_id_freq.txt` | The next revision |
 
-The `Dictionaries` workflow (`.github/workflows/dictionaries.yml`) finds such a change. On a pull request or a push to `main` that changes `lindera-dictionary`, a dictionary crate or `Cargo.lock`, it builds the seven dictionaries from source on Linux, packs them as published archives, prints the SHA-256 of each archive and of each file in the summary of its jobs, and, when `prebuilt.json` pins a SHA-256, compares each built file with the published one: byte for byte, and `metadata.json` without `lindera_version`. A difference fails the job and asks for a new revision.
+The `Dictionaries` workflow (`.github/workflows/dictionaries.yml`) finds such a change. On a pull request or a push to `main` that changes `lindera-dictionary`, a dictionary crate or `Cargo.lock`, it builds the eight dictionaries from source on Linux, packs them as published archives, prints the SHA-256 of each archive and of each file in the summary of its jobs, and, when `prebuilt.json` pins a SHA-256, compares each built file with the published one: byte for byte, and `metadata.json` without `lindera_version`. A difference fails the job and asks for a new revision.
+
+The source archives of seven dictionaries are hosted on lindera.dev. UniDic CWJ's is NINJAL's own package, `unidic-cwj-202512_full.zip` (2.77 GiB), downloaded from NINJAL's official URL ([#216](https://github.com/lindera/lindera/issues/216)). That server is not run by Lindera, so the workflow, and the `build-dictionary` job of `release.yml`, do not download the 2.77 GiB each time: they keep that archive between runs with `actions/cache` (`.github/actions/source-archive-cache`), keyed on its file name and SHA-256, and download it only for a new source archive, or after the cache entry has been evicted.
 
 A build reading a pinned dictionary of another format version builds from source, so a pull request that changes the format builds and tests as before; the warning says so.
 
@@ -72,4 +74,4 @@ The dictionary crates on crates.io pin their published dictionaries, so the dict
 2. Make sure that each `prebuilt.json` pins a SHA-256, and that the latest `Dictionaries` run on `main` passed. Publish and pin any dictionary that is missing, as above.
 3. Tag the release. `release.yml` publishes the crates, and builds the `lindera-<name>-<version>.zip` archives for `lindera download` from source, so that their `metadata.json` names the release's version as `lindera_version`: `lindera download` takes an installed dictionary for current only when that equals the version of the CLI.
 
-For v7.0.0, the first release with published dictionaries ([#1085](https://github.com/lindera/lindera/issues/1085)): freeze the dictionary format, publish the seven dictionaries, merge the pull request that pins their SHA-256, then tag `v7.0.0`.
+For v7.0.0, the first release with published dictionaries ([#1085](https://github.com/lindera/lindera/issues/1085)): freeze the dictionary format, publish the eight dictionaries, merge the pull request that pins their SHA-256, then tag `v7.0.0`.

@@ -49,7 +49,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **`LINDERA_DICTIONARIES_PATH` の削除** | 非推奨のビルドキャッシュ変数をまだ設定しているユーザー | `LINDERA_BUILD_DICTIONARY_CACHE_DIR` を設定する。旧名は無視される |
 | **`LINDERA_CONFIG_PATH` を `LINDERA_CONFIG_FILE` に改名** | `TokenizerBuilder::new()`・`lindera tokenize`・言語バインディングのために `LINDERA_CONFIG_PATH` を設定しているユーザー | `LINDERA_CONFIG_FILE` を設定する。旧名も v8.0.0 までは非推奨の警告付きで使える |
 | `LINDERA_WORKDIR` を `LINDERA_WORK_DIR` に改名 | 自前の build script で `embedded_dictionary!` のために `LINDERA_WORKDIR` を設定している辞書クレートだけ | `LINDERA_WORK_DIR` を設定する。`build_embedded_dictionary` を使うクレートは対応不要 |
-| `FetchParams` はソースのアーカイブを SHA-256 で固定する（`md5_hash` は `sha256` に） | 自前の build script で `lindera_dictionary::assets::FetchParams` を組み立てている辞書クレートだけ | `sha256` にアーカイブの SHA-256 を設定する。同梱の辞書クレートは対応不要 |
+| `FetchParams` はソースのアーカイブを SHA-256 で固定する（`md5_hash` は `sha256` に）。`archive_layout` も加わる | 自前の build script で `lindera_dictionary::assets::FetchParams` を組み立てている辞書クレートだけ | `sha256` にアーカイブの SHA-256 を、`archive_layout` に `ArchiveLayout::TopDirectory` を設定する。同梱の辞書クレートは対応不要 |
 | `LINDERA_CTX_FREQ_FILE` を `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` に改名し、辞書クレートの build script だけが読む | UniDic や ko-dic のように `connection_id_mapping` を有効にした辞書のために `LINDERA_CTX_FREQ_FILE` を設定しているユーザー | `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` を設定する（旧名も build script では v8.0.0 まで非推奨の警告付きで使える）。`lindera build` には `--context-id-freq` で、バインディングのビルド関数には `context_id_freq` で頻度表を渡す |
 | **`lindera download` は辞書を `LINDERA_DICTIONARIES_DIR/<name>` に置き、`LINDERA_DATA_DIR` を置き換える** | `lindera download` と `lindera list` のユーザー、`LINDERA_DATA_DIR` を設定しているユーザー | 辞書を再ダウンロードする。`LINDERA_DICTIONARIES_DIR` を設定する（旧名も v8.0.0 までは `<dir>/dictionaries` として非推奨の警告付きで使える） |
 | **`--dict` と `--system-dict` は辞書名を受け付けない** | `lindera tokenize --dict ipadic` や `lindera build --system-dict ipadic` を実行しているユーザー | `lindera download` が表示するパスか、`embedded://ipadic` を渡す |
@@ -436,6 +436,28 @@ sha256: "a7ba9f645ffe7094e56ae1c4a81d100df8fbb1e28bbe1792622e9728e162db3d",
 
 変更の前に書いたビルドのキャッシュ（`LINDERA_BUILD_DICTIONARY_CACHE_DIR`）は、
 記録が MD5 を指しているので、各辞書をもう 1 回だけ作り直します。
+
+`FetchParams` には `archive_layout` も加わりました
+（[#216](https://github.com/lindera/lindera/issues/216)）。アーカイブが辞書のファイルを
+どこに置いているかを表します。`lindera.dev` のアーカイブと同じく `input_dir` という
+1 つの最上位のディレクトリの下にあれば `ArchiveLayout::TopDirectory`、アーカイブの
+最上位に直にあれば `ArchiveLayout::Root` です。自前の build script で `FetchParams` を
+組み立てているクレートは、このフィールドを足してください。足さないとコンパイルできません:
+
+```text
+error[E0063]: missing field `archive_layout` in initializer of `FetchParams`
+```
+
+```rust
+use lindera_dictionary::assets::{ArchiveLayout, FetchParams};
+
+// v7: v6 と同じく、ファイルは input_dir の下にある
+archive_layout: ArchiveLayout::TopDirectory,
+```
+
+ソースのアーカイブには zip も使えるようになりました。形式は `file_name` の拡張子
+（`.tar.gz` か `.zip`）で決まります。zip からは、ビルダーが読むファイル
+（`char.def`・`matrix.def`・`unk.def` と辞書の CSV）だけを取り出します。
 
 ## `LINDERA_CTX_FREQ_FILE` を `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` に改名
 
@@ -2033,7 +2055,7 @@ MeCab の `mecab-dict-index` はそうしたセルのコストを 0 にし、v7.
 ## `embed-*` のビルドは公開済みの辞書をダウンロードする
 
 v6.2.0 までは、`embed-*` feature を付けたビルドのたびに、辞書のソースのアーカイブを
-`lindera.dev` から取って辞書をビルドしていました。v7.0.0 では、同梱の 7 つの辞書を
+`lindera.dev` から取って辞書をビルドしていました。v7.0.0 では、同梱の 8 つの辞書を
 それぞれ一度だけビルドして GitHub のリリースとして公開し、各辞書クレートの
 build script は、`prebuilt.json` が固定する辞書をダウンロードし、SHA-256 を
 確かめて埋め込みます（[#1336](https://github.com/lindera/lindera/issues/1336)）。
