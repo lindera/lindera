@@ -6,8 +6,10 @@
 // native memory — and asserts that RSS growth flattens out instead of
 // climbing linearly. Exits non-zero on regression.
 //
-// Must be run with --expose-gc:
-//   node --expose-gc scripts/benchmarks/memcheck_nodejs.mjs
+// Must be run with --expose-gc, and on macOS with MallocLargeCache=0 in the
+// environment (see memcheck_common.mjs); `make memcheck-lindera-nodejs` sets
+// both:
+//   MallocLargeCache=0 node --expose-gc scripts/benchmarks/memcheck_nodejs.mjs
 //
 // Environment:
 //   BENCH_LINDERA_DIR  checkout whose build artifacts to load (default: this repo)

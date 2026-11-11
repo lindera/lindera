@@ -23,6 +23,15 @@ WASM_FEATURES = embed-ipadic
 # switch the addon to a different build.
 NODEJS_TEST_FEATURES = embed-ipadic,embed-ko-dic,test-hooks
 
+# ── memcheck ────────────────────────────────────────────────────────────────
+# How the memcheck targets run node: with --expose-gc, so the scripts can
+# force a GC between iterations, and with MallocLargeCache=0, which macOS's
+# malloc reads. Without it, macOS keeps freed large blocks resident, RSS
+# counts them, and the Node.js check fails with no leak (#1355). glibc does
+# not read the variable. scripts/benchmarks/memcheck_common.mjs refuses to
+# measure on macOS without it.
+MEMCHECK_NODE = MallocLargeCache=0 node --expose-gc
+
 # Run a cargo command with RbConfig values exported, as the Ruby binding build
 # expects (used by lint, test and check-docs for lindera-ruby).
 CARGO_TEST_WITH_RBCONFIG = ruby -rrbconfig -e 'RbConfig::CONFIG.each { |k, v| ENV["RBCONFIG_\#{k.upcase}"] = v }; exec(*ARGV)' --
@@ -342,11 +351,11 @@ test-lindera-nodejs: ## Test lindera-nodejs (Rust unit tests + Node.js test + ge
 
 memcheck-lindera-nodejs: ## Check lindera-nodejs releases token memory in synchronous loops
 	cd lindera-nodejs && npm install --quiet && npx napi build --platform -p lindera-nodejs --features $(NODEJS_TEST_FEATURES)
-	node --expose-gc scripts/benchmarks/memcheck_nodejs.mjs
+	$(MEMCHECK_NODE) scripts/benchmarks/memcheck_nodejs.mjs
 
 memcheck-lindera-wasm: ## Check lindera-wasm releases token memory in synchronous loops
 	cd lindera-wasm && wasm-pack build --target nodejs --features=$(WASM_FEATURES) --out-dir pkg-node
-	node --expose-gc scripts/benchmarks/memcheck_wasm.mjs
+	$(MEMCHECK_NODE) scripts/benchmarks/memcheck_wasm.mjs
 
 # The TypeScript version is kept in step with lindera-nodejs/package-lock.json.
 types-check-lindera-wasm: ## Type-check the TypeScript declarations wasm-pack generates for lindera-wasm
