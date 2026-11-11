@@ -11,6 +11,7 @@ graph TB
     TRAINER["lindera-trainer\n(CRF Training)"]
     IPADIC["lindera-ipadic"]
     UNIDIC["lindera-unidic"]
+    UNIDICCWJ["lindera-unidic-cwj"]
     SUDACHIDICT["lindera-sudachidict"]
     KODIC["lindera-ko-dic"]
     CCCEDICT["lindera-cc-cedict"]
@@ -32,6 +33,7 @@ graph TB
     TRAINER -.->|"train feature"| SEGMENTER
     DICT --> IPADIC
     DICT --> UNIDIC
+    DICT --> UNIDICCWJ
     DICT --> SUDACHIDICT
     DICT --> KODIC
     DICT --> CCCEDICT
@@ -40,6 +42,7 @@ graph TB
     DICT --> SEGMENTER
     IPADIC --> SEGMENTER
     UNIDIC --> SEGMENTER
+    UNIDICCWJ --> SEGMENTER
     SUDACHIDICT --> SEGMENTER
     KODIC --> SEGMENTER
     CCCEDICT --> SEGMENTER
@@ -72,6 +75,7 @@ graph TB
 | `lindera-ipadic` | Dictionary | Japanese dictionary based on IPADIC. |
 | `lindera-ipadic-neologd` | Dictionary | Japanese dictionary based on IPADIC NEologd (includes neologisms). |
 | `lindera-unidic` | Dictionary | Japanese dictionary based on UniDic. |
+| `lindera-unidic-cwj` | Dictionary | Japanese dictionary based on UniDic for contemporary written Japanese (UniDic CWJ). |
 | `lindera-sudachidict` | Dictionary | Japanese dictionary based on SudachiDict. |
 | `lindera-ko-dic` | Dictionary | Korean dictionary based on ko-dic. |
 | `lindera-cc-cedict` | Dictionary | Chinese dictionary based on CC-CEDICT. |
@@ -114,6 +118,7 @@ The **Segmenter** is the core component. It builds a lattice of candidate tokens
 | `embed-ipadic` | Embed the IPADIC dictionary into the binary | Disabled |
 | `embed-ipadic-neologd` | Embed the IPADIC NEologd dictionary into the binary | Disabled |
 | `embed-unidic` | Embed the UniDic dictionary into the binary | Disabled |
+| `embed-unidic-cwj` | Embed the UniDic CWJ dictionary into the binary (1.2 GB) | Disabled |
 | `embed-sudachidict` | Embed the SudachiDict dictionary into the binary | Disabled |
 | `embed-ko-dic` | Embed the ko-dic dictionary into the binary | Disabled |
 | `embed-cc-cedict` | Embed the CC-CEDICT dictionary into the binary | Disabled |

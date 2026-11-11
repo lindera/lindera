@@ -10,6 +10,7 @@ members = [
     "lindera-ko-dic",
     "lindera-sudachidict",
     "lindera-unidic",
+    "lindera-unidic-cwj",
     "lindera-segmenter",
     "lindera",
     "lindera-analysis",
@@ -71,6 +72,7 @@ lindera-python = { version = "7.0.0", path = "lindera-python" }
 lindera-ruby = { version = "7.0.0", path = "lindera-ruby" }
 lindera-segmenter = { version = "7.0.0", path = "lindera-segmenter", default-features = false }
 lindera-unidic = { version = "7.0.0", path = "lindera-unidic" }
+lindera-unidic-cwj = { version = "7.0.0", path = "lindera-unidic-cwj" }
 lindera-php = { version = "7.0.0", path = "lindera-php" }
 lindera-wasm = { version = "7.0.0", path = "lindera-wasm" }
 log = "0.4.33"

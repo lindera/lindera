@@ -15,7 +15,7 @@ description: >-
 # restore and the save get the same path, since the cache version depends on
 # it, and the save uses the key that the restore resolved.
 #
-# In regression.yml, the seven dictionary crate jobs run before the other jobs
+# In regression.yml, the eight dictionary crate jobs run before the other jobs
 # that embed a dictionary, so they normally save, and the later jobs of the
 # same run restore. release.yml and periodic.yml do not use it: the published
 # dictionaries and the release tests are built from source, and the periodic
@@ -25,7 +25,8 @@ inputs:
   dictionaries:
     description: >-
       The dictionaries the build embeds, separated by spaces: ipadic,
-      ipadic-neologd, unidic, sudachidict, ko-dic, cc-cedict, jieba.
+      ipadic-neologd, unidic, unidic-cwj, sudachidict, ko-dic, cc-cedict,
+      jieba.
     required: true
   mode:
     description: "`restore` before the build, `save` after it."
@@ -46,7 +47,7 @@ runs:
         esac
         for name in $DICTIONARIES; do
           case "$name" in
-            ipadic | ipadic-neologd | unidic | sudachidict | ko-dic | cc-cedict | jieba) ;;
+            ipadic | ipadic-neologd | unidic | unidic-cwj | sudachidict | ko-dic | cc-cedict | jieba) ;;
             *) echo "::error::unknown dictionary '$name'"; exit 1 ;;
           esac
         done
@@ -79,6 +80,14 @@ runs:
       with:
         path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-unidic
         key: lindera-dictionary-${{ runner.os }}-unidic-${{ hashFiles('Cargo.lock', 'lindera-dictionary/**', 'lindera-unidic/**') }}
+
+    - name: Restore unidic-cwj
+      id: unidic-cwj
+      if: inputs.mode == 'restore' && contains(format(' {0} ', inputs.dictionaries), ' unidic-cwj ')
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-unidic-cwj
+        key: lindera-dictionary-${{ runner.os }}-unidic-cwj-${{ hashFiles('Cargo.lock', 'lindera-dictionary/**', 'lindera-unidic-cwj/**') }}
 
     - name: Restore sudachidict
       id: sudachidict
@@ -125,6 +134,8 @@ runs:
           echo "LINDERA_DICTIONARY_CACHE_KEY_IPADIC_NEOLOGD=${{ steps.ipadic-neologd.outputs.cache-primary-key }}"
           echo "LINDERA_DICTIONARY_CACHE_HIT_UNIDIC=${{ steps.unidic.outputs.cache-hit }}"
           echo "LINDERA_DICTIONARY_CACHE_KEY_UNIDIC=${{ steps.unidic.outputs.cache-primary-key }}"
+          echo "LINDERA_DICTIONARY_CACHE_HIT_UNIDIC_CWJ=${{ steps.unidic-cwj.outputs.cache-hit }}"
+          echo "LINDERA_DICTIONARY_CACHE_KEY_UNIDIC_CWJ=${{ steps.unidic-cwj.outputs.cache-primary-key }}"
           echo "LINDERA_DICTIONARY_CACHE_HIT_SUDACHIDICT=${{ steps.sudachidict.outputs.cache-hit }}"
           echo "LINDERA_DICTIONARY_CACHE_KEY_SUDACHIDICT=${{ steps.sudachidict.outputs.cache-primary-key }}"
           echo "LINDERA_DICTIONARY_CACHE_HIT_KO_DIC=${{ steps.ko-dic.outputs.cache-hit }}"
@@ -164,6 +175,13 @@ runs:
       with:
         path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-unidic
         key: ${{ env.LINDERA_DICTIONARY_CACHE_KEY_UNIDIC }}
+
+    - name: Save unidic-cwj
+      if: inputs.mode == 'save' && contains(format(' {0} ', inputs.dictionaries), ' unidic-cwj ') && env.LINDERA_DICTIONARY_CACHE_HIT_UNIDIC_CWJ != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ runner.temp }}/lindera-dictionary-cache/*-fmt*/lindera-unidic-cwj
+        key: ${{ env.LINDERA_DICTIONARY_CACHE_KEY_UNIDIC_CWJ }}
 
     - name: Save sudachidict
       if: inputs.mode == 'save' && contains(format(' {0} ', inputs.dictionaries), ' sudachidict ') && env.LINDERA_DICTIONARY_CACHE_HIT_SUDACHIDICT != 'true'

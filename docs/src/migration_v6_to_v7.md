@@ -52,7 +52,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`LINDERA_DICTIONARIES_PATH` is removed** | Anyone still setting the deprecated build-cache variable | Set `LINDERA_BUILD_DICTIONARY_CACHE_DIR`; the old name is now ignored |
 | **`LINDERA_CONFIG_PATH` is renamed to `LINDERA_CONFIG_FILE`** | Anyone who sets `LINDERA_CONFIG_PATH` for `TokenizerBuilder::new()`, `lindera tokenize` or a language binding | Set `LINDERA_CONFIG_FILE`; the old name works with a deprecation warning until v8.0.0 |
 | `LINDERA_WORKDIR` is renamed to `LINDERA_WORK_DIR` | Only a dictionary crate whose own build script sets `LINDERA_WORKDIR` for `embedded_dictionary!` | Set `LINDERA_WORK_DIR`; a crate that uses `build_embedded_dictionary` needs nothing |
-| `FetchParams` pins the source archive by SHA-256: `md5_hash` is replaced by `sha256` | Only a dictionary crate whose own build script builds `lindera_dictionary::assets::FetchParams` | Set `sha256` to the SHA-256 of the archive; the bundled dictionary crates need nothing |
+| `FetchParams` pins the source archive by SHA-256: `md5_hash` is replaced by `sha256`; and it gains `archive_layout` | Only a dictionary crate whose own build script builds `lindera_dictionary::assets::FetchParams` | Set `sha256` to the SHA-256 of the archive, and `archive_layout: ArchiveLayout::TopDirectory`; the bundled dictionary crates need nothing |
 | `LINDERA_CTX_FREQ_FILE` is renamed to `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`, which only the build scripts of the dictionary crates read | Anyone who sets `LINDERA_CTX_FREQ_FILE` for a dictionary with `connection_id_mapping`, such as UniDic and ko-dic | Set `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` (the old name works in the build scripts with a deprecation warning until v8.0.0); give `lindera build` the histogram with `--context-id-freq`, and the build functions of the bindings with `context_id_freq` |
 | **`lindera download` puts dictionaries in `LINDERA_DICTIONARIES_DIR/<name>`, which replaces `LINDERA_DATA_DIR`** | Users of `lindera download` and `lindera list`, and anyone who sets `LINDERA_DATA_DIR` | Download the dictionaries again; set `LINDERA_DICTIONARIES_DIR` (the old name works, as `<dir>/dictionaries`, with a deprecation warning until v8.0.0) |
 | **`--dict` and `--system-dict` no longer take a dictionary name** | Anyone who runs `lindera tokenize --dict ipadic` or `lindera build --system-dict ipadic` | Pass the path that `lindera download` prints, or `embedded://ipadic` |
@@ -462,6 +462,29 @@ sha256: "a7ba9f645ffe7094e56ae1c4a81d100df8fbb1e28bbe1792622e9728e162db3d",
 
 A build cache (`LINDERA_BUILD_DICTIONARY_CACHE_DIR`) written before the change
 builds each dictionary once more, as its records name the MD5.
+
+`FetchParams` also gains `archive_layout`
+([#216](https://github.com/lindera/lindera/issues/216)), which says where the
+archive keeps the dictionary's files: `ArchiveLayout::TopDirectory` under one
+top directory named `input_dir`, as every archive on `lindera.dev` does, or
+`ArchiveLayout::Root` at the archive's root. A crate whose own build script
+builds `FetchParams` adds the field; otherwise it fails to compile:
+
+```text
+error[E0063]: missing field `archive_layout` in initializer of `FetchParams`
+```
+
+```rust
+use lindera_dictionary::assets::{ArchiveLayout, FetchParams};
+
+// v7: the files sit under input_dir, as in v6
+archive_layout: ArchiveLayout::TopDirectory,
+```
+
+The source archive can now also be a zip: the extension of `file_name`
+(`.tar.gz` or `.zip`) selects the format. From a zip, the build extracts only
+the files the builder reads: `char.def`, `matrix.def`, `unk.def` and the
+lexicon CSVs.
 
 ## LINDERA_CTX_FREQ_FILE renamed to LINDERA_BUILD_CONTEXT_ID_FREQ_FILE
 
@@ -2250,7 +2273,7 @@ connection expensive, list its cell with a cost.
 
 Up to v6.2.0, every build with an `embed-*` feature downloaded the source
 archive of its dictionary from `lindera.dev` and built the dictionary. v7.0.0 builds each of
-the seven bundled dictionaries once and publishes it as a GitHub release, and
+the eight bundled dictionaries once and publishes it as a GitHub release, and
 the build script of each dictionary crate downloads the dictionary that its
 `prebuilt.json` pins, checks its SHA-256 and embeds it
 ([#1336](https://github.com/lindera/lindera/issues/1336)). The embedded files

@@ -1,11 +1,12 @@
 use std::error::Error;
 
-use lindera_dictionary::assets::{FetchParams, build_embedded_dictionary};
+use lindera_dictionary::assets::{ArchiveLayout, FetchParams, build_embedded_dictionary};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let fetch_params = FetchParams {
         file_name: "CC-CEDICT-MeCab-0.1.0-20261021.tar.gz",
         input_dir: "CC-CEDICT-MeCab-0.1.0-20261021",
+        archive_layout: ArchiveLayout::TopDirectory,
         src_subdir: None,
         output_dir: "lindera-cc-cedict",
         dummy_input: "测试,0,0,-1131,*,*,*,*,ce4 shi4,測試,测试,to test (machinery etc)/to test (students)/test/quiz/exam/beta (software)/\n",

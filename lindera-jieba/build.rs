@@ -1,11 +1,12 @@
 use std::error::Error;
 
-use lindera_dictionary::assets::{FetchParams, build_embedded_dictionary};
+use lindera_dictionary::assets::{ArchiveLayout, FetchParams, build_embedded_dictionary};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let fetch_params = FetchParams {
         file_name: "mecab-jieba-0.1.3.tar.gz",
         input_dir: "mecab-jieba-0.1.3",
+        archive_layout: ArchiveLayout::TopDirectory,
         src_subdir: Some("dict-src"),
         output_dir: "lindera-jieba",
         dummy_input: "1号店,0,0,1789,n,NUMERIC,*,*,*,*,3,1,店,low\n",

@@ -874,7 +874,7 @@ Download the pre-built dictionary archive matching the CLI version from the [Git
 
 ### Download parameters
 
-- Dictionary name (required): one of `ipadic`, `ipadic-neologd`, `unidic`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba`
+- Dictionary name (required): one of `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba`
 - `--force`: Re-download and replace the dictionary even when the CLI's version built it
 
 ### Storage location

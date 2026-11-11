@@ -22,6 +22,9 @@ embed-ipadic-neologd = [
 embed-unidic = [
     "lindera-segmenter/embed-unidic",
 ] # Embed UniDic dictionary in the binary
+embed-unidic-cwj = [
+    "lindera-segmenter/embed-unidic-cwj",
+] # Embed UniDic CWJ dictionary in the binary
 embed-sudachidict = [
     "lindera-segmenter/embed-sudachidict",
 ] # Embed SudachiDict dictionary in the binary

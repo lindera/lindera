@@ -84,6 +84,7 @@ Segmenterが生成したトークンを後処理するフィルタのtraitです
 | `embed-ipadic` | IPADIC辞書をバイナリに埋め込む（`lindera/embed-ipadic`へ委譲） | No |
 | `embed-ipadic-neologd` | IPADIC-NEologd辞書をバイナリに埋め込む（`lindera/embed-ipadic-neologd`へ委譲） | No |
 | `embed-unidic` | UniDic辞書をバイナリに埋め込む（`lindera/embed-unidic`へ委譲） | No |
+| `embed-unidic-cwj` | UniDic CWJ辞書をバイナリに埋め込む（`lindera/embed-unidic-cwj`へ委譲） | No |
 | `embed-sudachidict` | SudachiDict辞書をバイナリに埋め込む（`lindera/embed-sudachidict`へ委譲） | No |
 | `embed-ko-dic` | ko-dic辞書をバイナリに埋め込む（`lindera/embed-ko-dic`へ委譲） | No |
 | `embed-cc-cedict` | CC-CEDICT辞書をバイナリに埋め込む（`lindera/embed-cc-cedict`へ委譲） | No |

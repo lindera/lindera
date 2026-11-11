@@ -38,6 +38,7 @@ These features embed pre-built dictionaries directly into the binary, eliminatin
 | `embed-ipadic` | IPADIC | Japanese |
 | `embed-ipadic-neologd` | IPADIC NEologd | Japanese |
 | `embed-unidic` | UniDic | Japanese |
+| `embed-unidic-cwj` | UniDic CWJ | Japanese |
 | `embed-sudachidict` | SudachiDict | Japanese |
 | `embed-ko-dic` | ko-dic | Korean |
 | `embed-cc-cedict` | CC-CEDICT | Chinese |

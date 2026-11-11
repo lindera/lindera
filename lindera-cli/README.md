@@ -32,7 +32,7 @@ The easiest way to obtain a dictionary is the `download` subcommand, which insta
 
 `lindera list` shows the dictionaries in place and those embedded in the binary.
 
-Available dictionary names: `ipadic`, `ipadic-neologd`, `unidic`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba`.
+Available dictionary names: `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba`.
 
 Alternatively, pre-built dictionaries are available from [GitHub Releases](https://github.com/lindera/lindera/releases).
 Download a dictionary archive (e.g. `lindera-ipadic-*.zip`), extract it, and specify the path with the `--dict` option.

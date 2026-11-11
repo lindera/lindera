@@ -874,7 +874,7 @@ CLI と同じバージョンの学習済み辞書アーカイブを [GitHub リ�
 
 ### download パラメータ
 
-- 辞書名（必須）: `ipadic`, `ipadic-neologd`, `unidic`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba` のいずれか
+- 辞書名（必須）: `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba` のいずれか
 - `--force`: CLI のバージョンがビルドした辞書でも、再ダウンロードして置き換える
 
 ### 保存場所

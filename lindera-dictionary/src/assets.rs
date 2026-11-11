@@ -21,12 +21,28 @@ use crate::error::LinderaErrorKind;
 
 const MAX_ROUND: usize = 3;
 
+/// Where a source archive keeps the dictionary's files (#216).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ArchiveLayout {
+    /// Under one top directory named [`FetchParams::input_dir`], as in the
+    /// archives hosted on lindera.dev.
+    TopDirectory,
+    /// At the root of the archive, as in NINJAL's UniDic CWJ packages.
+    Root,
+}
+
 pub struct FetchParams {
-    /// Dictionary file name
+    /// File name of the source archive. Its extension selects the format:
+    /// `.tar.gz` or `.zip`.
     pub file_name: &'static str,
 
-    /// MeCab directory (archive root directory name)
+    /// Name of the directory that holds the dictionary's files: the
+    /// archive's top directory with [`ArchiveLayout::TopDirectory`], and the
+    /// directory they are extracted into with [`ArchiveLayout::Root`].
     pub input_dir: &'static str,
+
+    /// Where the archive keeps the dictionary's files.
+    pub archive_layout: ArchiveLayout,
 
     /// Subdirectory within input_dir to use as the dictionary source.
     /// When `Some("dict-src")`, the dictionary builder reads from `input_dir/dict-src/`
@@ -1936,6 +1952,10 @@ fn build_entry(
     if *source == DictionarySource::Dummy {
         create_dummy_dictionary_source(input_dir, params.src_subdir, params.dummy_input)?;
     } else {
+        // Before any download, so that a crate naming an archive of another
+        // format fails at once.
+        let format = archive_format(params.file_name)?;
+
         // Source file path for build package
         let source_path_for_build = &build_dir.join(params.file_name);
 
@@ -2039,44 +2059,32 @@ fn build_entry(
             info!("Source file cached at: {}", source_path_for_build.display());
         }
 
-        // Decompress a tar.gz file
+        // Extract the archive, so that the dictionary's files end up in
+        // `tmp-archive-<input_dir>/<input_dir>`.
         let tmp_extract_path =
             Path::new(&build_dir).join(format!("tmp-archive-{}", params.input_dir));
         let tmp_extracted_path = tmp_extract_path.join(params.input_dir);
         let _ = fs::remove_dir_all(&tmp_extract_path);
-        fs::create_dir_all(&tmp_extract_path).map_err(|err| {
+        fs::create_dir_all(&tmp_extracted_path).map_err(|err| {
             LinderaErrorKind::Io
                 .with_error(anyhow::anyhow!(err))
                 .add_context(format!(
-                    "Failed to create temporary extraction directory: {tmp_extract_path:?}"
+                    "Failed to create temporary extraction directory: {tmp_extracted_path:?}"
                 ))
         })?;
 
-        let mut tar_gz = File::open(source_path_for_build).map_err(|err| {
-            LinderaErrorKind::Io
-                .with_error(anyhow::anyhow!(err))
-                .add_context(format!(
-                    "Failed to open source file: {source_path_for_build:?}"
-                ))
-        })?;
-        let mut buffer = Vec::new();
-        tar_gz.read_to_end(&mut buffer).map_err(|err| {
-            LinderaErrorKind::Io
-                .with_error(anyhow::anyhow!(err))
-                .add_context(format!(
-                    "Failed to read source file: {source_path_for_build:?}"
-                ))
-        })?;
-        let cursor = Cursor::new(buffer);
-        let decoder = GzDecoder::new(cursor);
-        let mut archive = Archive::new(decoder);
-        archive.unpack(&tmp_extract_path).map_err(|err| {
-            LinderaErrorKind::Io
-                .with_error(anyhow::anyhow!(err))
-                .add_context(format!(
-                    "Failed to unpack archive: {source_path_for_build:?} to {tmp_extract_path:?}"
-                ))
-        })?;
+        match format {
+            ArchiveFormat::TarGz => {
+                // An archive with a top directory unpacks next to it, and one
+                // without into it.
+                let unpack_dir = match params.archive_layout {
+                    ArchiveLayout::TopDirectory => &tmp_extract_path,
+                    ArchiveLayout::Root => &tmp_extracted_path,
+                };
+                unpack_tar_gz(source_path_for_build, unpack_dir)?;
+            }
+            ArchiveFormat::Zip => unpack_zip(source_path_for_build, &tmp_extracted_path, params)?,
+        }
 
         // Empty the input directory first to avoid conflicts when renaming the directory later on Linux and macOS systems (which do not support overwriting directories).
         empty_directory(input_dir)?;
@@ -2116,6 +2124,198 @@ fn build_entry(
 
     let _ = fs::remove_dir_all(input_dir);
 
+    Ok(())
+}
+
+/// The format of a source archive, from its file name (#216).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ArchiveFormat {
+    /// A gzip-compressed tar archive (`.tar.gz`), as hosted on lindera.dev.
+    TarGz,
+    /// A zip archive (`.zip`), as NINJAL distributes UniDic CWJ.
+    Zip,
+}
+
+/// The format of the source archive named `file_name`.
+///
+/// # Arguments
+///
+/// * `file_name` - [`FetchParams::file_name`].
+///
+/// # Returns
+///
+/// [`ArchiveFormat::TarGz`] for a name ending in `.tar.gz`, and
+/// [`ArchiveFormat::Zip`] for one ending in `.zip`.
+///
+/// # Errors
+///
+/// An `Args` error for any other name, so that a crate naming an archive of
+/// another format fails before it downloads anything.
+fn archive_format(file_name: &str) -> LinderaResult<ArchiveFormat> {
+    if file_name.ends_with(".tar.gz") {
+        Ok(ArchiveFormat::TarGz)
+    } else if file_name.ends_with(".zip") {
+        Ok(ArchiveFormat::Zip)
+    } else {
+        Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+            "the source archive {file_name} is neither a .tar.gz nor a .zip file"
+        )))
+    }
+}
+
+/// Unpacks the whole `.tar.gz` archive `source` into `unpack_dir`.
+///
+/// # Arguments
+///
+/// * `source` - The downloaded archive.
+/// * `unpack_dir` - The directory to unpack into.
+fn unpack_tar_gz(source: &Path, unpack_dir: &Path) -> LinderaResult<()> {
+    let mut tar_gz = File::open(source).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!("Failed to open source file: {source:?}"))
+    })?;
+    let mut buffer = Vec::new();
+    tar_gz.read_to_end(&mut buffer).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!("Failed to read source file: {source:?}"))
+    })?;
+    let cursor = Cursor::new(buffer);
+    let decoder = GzDecoder::new(cursor);
+    let mut archive = Archive::new(decoder);
+    archive.unpack(unpack_dir).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!(
+                "Failed to unpack archive: {source:?} to {unpack_dir:?}"
+            ))
+    })
+}
+
+/// Whether the dictionary builder reads a file of this name from the source
+/// directory: the character, unknown-word and connection definitions, and
+/// every lexicon CSV (`DictionaryBuilder::build_dictionary`).
+///
+/// # Arguments
+///
+/// * `name` - A file name, without its directory.
+fn is_builder_input(name: &str) -> bool {
+    matches!(name, "char.def" | "matrix.def" | "unk.def") || name.ends_with(".csv")
+}
+
+/// Where a zip entry goes in the dictionary's directory, if it is extracted.
+///
+/// Only the files the builder reads ([`is_builder_input`]) are extracted, and
+/// only from the directory it reads (`src_subdir` when set): a package can
+/// hold much more, such as NINJAL's compiled MeCab dictionary and training
+/// files, which take 2 GB of the 10.5 GB of UniDic CWJ ver.2025.12.
+///
+/// # Arguments
+///
+/// * `entry` - The entry's path, as [`zip::read::ZipFile::enclosed_name`]
+///   gives it.
+/// * `layout` - [`FetchParams::archive_layout`].
+/// * `input_dir` - [`FetchParams::input_dir`].
+/// * `src_subdir` - [`FetchParams::src_subdir`].
+///
+/// # Returns
+///
+/// The path relative to the dictionary's directory, or `None` when the entry
+/// is not extracted: it lies outside the dictionary's directory or the source
+/// directory, has a component other than a plain name, or is not read by the
+/// builder.
+fn zip_entry_target(
+    entry: &Path,
+    layout: ArchiveLayout,
+    input_dir: &str,
+    src_subdir: Option<&str>,
+) -> Option<PathBuf> {
+    let mut parts = Vec::new();
+    for component in entry.components() {
+        match component {
+            std::path::Component::Normal(part) => parts.push(part.to_str()?),
+            _ => return None,
+        }
+    }
+    let within = match layout {
+        ArchiveLayout::TopDirectory => match parts.split_first() {
+            Some((&top, rest)) if top == input_dir => rest,
+            _ => return None,
+        },
+        ArchiveLayout::Root => parts.as_slice(),
+    };
+    let (name, dir) = within.split_last()?;
+    let source_dir: Vec<&str> = src_subdir
+        .map(|subdir| subdir.split('/').filter(|part| !part.is_empty()).collect())
+        .unwrap_or_default();
+    if dir != source_dir.as_slice() || !is_builder_input(name) {
+        return None;
+    }
+    Some(within.iter().collect())
+}
+
+/// Extracts the files the builder reads from the zip archive `source` into
+/// `dictionary_dir`, the directory named [`FetchParams::input_dir`].
+///
+/// The archive is read from the file one entry at a time, not loaded into
+/// memory whole; NINJAL's UniDic CWJ package is 2.77 GiB. The zip crate checks
+/// each entry's CRC-32 as it reads it.
+///
+/// # Arguments
+///
+/// * `source` - The downloaded archive.
+/// * `dictionary_dir` - The directory to extract into.
+/// * `params` - The crate's layout ([`zip_entry_target`]).
+fn unpack_zip(source: &Path, dictionary_dir: &Path, params: &FetchParams) -> LinderaResult<()> {
+    let file = File::open(source).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!("Failed to open source file: {source:?}"))
+    })?;
+    let mut archive = zip::ZipArchive::new(io::BufReader::new(file)).map_err(|err| {
+        LinderaErrorKind::Content
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!("Failed to read zip archive: {source:?}"))
+    })?;
+    for index in 0..archive.len() {
+        let mut entry = archive.by_index(index).map_err(|err| {
+            LinderaErrorKind::Content
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!("Failed to read entry {index} of {source:?}"))
+        })?;
+        if !entry.is_file() {
+            continue;
+        }
+        let Some(target) = entry.enclosed_name().and_then(|path| {
+            zip_entry_target(
+                &path,
+                params.archive_layout,
+                params.input_dir,
+                params.src_subdir,
+            )
+        }) else {
+            continue;
+        };
+        let destination = dictionary_dir.join(target);
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent).map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!("Failed to create directory: {parent:?}"))
+            })?;
+        }
+        let mut out = File::create(&destination).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!("Failed to create file: {destination:?}"))
+        })?;
+        io::copy(&mut entry, &mut out).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!("Failed to extract {destination:?} from {source:?}"))
+        })?;
+    }
     Ok(())
 }
 
@@ -2907,6 +3107,7 @@ mod tests {
         FetchParams {
             file_name: "mecab-ipadic-2.7.0-20250920.tar.gz",
             input_dir: "mecab-ipadic-2.7.0-20250920",
+            archive_layout: ArchiveLayout::TopDirectory,
             src_subdir: None,
             output_dir: "lindera-ipadic",
             dummy_input: "",
@@ -3115,6 +3316,7 @@ mod tests {
         FetchParams {
             file_name: SEEDED_ARCHIVE,
             input_dir: SEEDED_INPUT_DIR,
+            archive_layout: ArchiveLayout::TopDirectory,
             src_subdir: None,
             output_dir: SEEDED_OUTPUT_DIR,
             dummy_input: "",
@@ -3144,6 +3346,251 @@ mod tests {
             CachePurpose::Embed,
             export_to,
         )
+    }
+
+    /// Writes a zip archive at `path` with `entries` (path in the archive,
+    /// content), deflated as NINJAL's packages are; returns its SHA-256.
+    fn write_zip(path: &Path, entries: &[(String, Vec<u8>)]) -> &'static str {
+        let mut writer = zip::ZipWriter::new(File::create(path).unwrap());
+        let options = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Deflated);
+        for (name, content) in entries {
+            writer.start_file(name.as_str(), options).unwrap();
+            writer.write_all(content).unwrap();
+        }
+        writer.finish().unwrap();
+        let sha256 = file_sha256(path).unwrap();
+        Box::leak(sha256.into_boxed_str())
+    }
+
+    /// The files of the dummy dictionary's source with `lexicon`, as (name,
+    /// content), each name prefixed with `prefix`.
+    fn dummy_source_entries(prefix: &str, lexicon: &str) -> Vec<(String, Vec<u8>)> {
+        let sources = tempfile::tempdir().unwrap();
+        create_dummy_dictionary_source(sources.path(), None, lexicon).unwrap();
+        let mut entries: Vec<_> = fs::read_dir(sources.path())
+            .unwrap()
+            .map(|entry| {
+                let entry = entry.unwrap();
+                (
+                    format!("{prefix}{}", entry.file_name().to_str().unwrap()),
+                    fs::read(entry.path()).unwrap(),
+                )
+            })
+            .collect();
+        entries.sort();
+        entries
+    }
+
+    /// Entries that a package holds besides the builder's inputs, as
+    /// NINJAL's do (a compiled MeCab dictionary, a matrix in MeCab's binary
+    /// form, license files, other directories), each prefixed with `prefix`.
+    fn extra_entries(prefix: &str) -> Vec<(String, Vec<u8>)> {
+        [
+            "sys.dic",
+            "matrix.bin",
+            "dicrc",
+            "license/BSD",
+            "license/extra.csv",
+        ]
+        .into_iter()
+        .map(|name| {
+            (
+                format!("{prefix}{name}"),
+                b"not read by the builder".to_vec(),
+            )
+        })
+        .collect()
+    }
+
+    /// The files under `dir`, relative to it, sorted.
+    fn files_under(dir: &Path) -> Vec<String> {
+        let mut files = Vec::new();
+        let mut pending = vec![dir.to_path_buf()];
+        while let Some(current) = pending.pop() {
+            for entry in fs::read_dir(&current).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    pending.push(path);
+                } else {
+                    let relative = path.strip_prefix(dir).unwrap();
+                    files.push(relative.to_str().unwrap().replace('\\', "/"));
+                }
+            }
+        }
+        files.sort();
+        files
+    }
+
+    #[test]
+    fn archive_format_follows_the_file_name() {
+        // #216: the format comes from the extension; any other name is an
+        // `Args` error.
+        assert_eq!(
+            archive_format("mecab-ipadic-2.7.0-20250920.tar.gz").unwrap(),
+            ArchiveFormat::TarGz
+        );
+        assert_eq!(
+            archive_format("unidic-cwj-202512_full.zip").unwrap(),
+            ArchiveFormat::Zip
+        );
+        for name in [
+            "dictionary.tgz",
+            "dictionary.tar",
+            "dictionary.zip.sha256",
+            "zip",
+        ] {
+            let err = archive_format(name).expect_err(name);
+            assert_eq!(err.kind(), LinderaErrorKind::Args, "{name}");
+        }
+    }
+
+    #[test]
+    fn zip_entry_target_takes_only_the_builder_inputs() {
+        // #216: only the definitions and the lexicon CSVs of the source
+        // directory are extracted, wherever the layout puts that directory.
+        use ArchiveLayout::{Root, TopDirectory};
+        let target = |entry: &str, layout, subdir| {
+            zip_entry_target(Path::new(entry), layout, "dict", subdir)
+                .map(|path| path.to_str().unwrap().replace('\\', "/"))
+        };
+        for name in ["lex.csv", "char.def", "matrix.def", "unk.def"] {
+            assert_eq!(target(name, Root, None).as_deref(), Some(name));
+            assert_eq!(
+                target(&format!("dict/{name}"), TopDirectory, None).as_deref(),
+                Some(name)
+            );
+        }
+        // Files the builder does not read, and files outside its directory.
+        for entry in [
+            "sys.dic",
+            "matrix.bin",
+            "dicrc",
+            "license/BSD",
+            "license/extra.csv",
+        ] {
+            assert_eq!(target(entry, Root, None), None, "{entry}");
+        }
+        // The top directory must be `input_dir`, and is required.
+        assert_eq!(target("other/lex.csv", TopDirectory, None), None);
+        assert_eq!(target("lex.csv", TopDirectory, None), None);
+        // `src_subdir` names the directory the builder reads.
+        assert_eq!(
+            target("dict/dict-src/lex.csv", TopDirectory, Some("dict-src")).as_deref(),
+            Some("dict-src/lex.csv")
+        );
+        assert_eq!(target("dict/lex.csv", TopDirectory, Some("dict-src")), None);
+        assert_eq!(
+            target("dict-src/matrix.def", Root, Some("dict-src")).as_deref(),
+            Some("dict-src/matrix.def")
+        );
+        // Only plain names.
+        assert_eq!(target("../lex.csv", Root, None), None);
+        assert_eq!(target("/lex.csv", Root, None), None);
+    }
+
+    #[test]
+    fn unpack_zip_extracts_only_the_builder_inputs() {
+        // #216: a package's compiled dictionary, binary matrix, licenses and
+        // other directories are left in the archive.
+        let dir = tempfile::tempdir().unwrap();
+        let archive = dir.path().join("dictionary.zip");
+        let mut entries = dummy_source_entries("", SEEDED_LEXICON);
+        let expected: Vec<String> = entries.iter().map(|(name, _)| name.clone()).collect();
+        entries.extend(extra_entries(""));
+        write_zip(&archive, &entries);
+        let params = FetchParams {
+            file_name: "dictionary.zip",
+            archive_layout: ArchiveLayout::Root,
+            ..seeded_params("unused")
+        };
+        let out = dir.path().join("out");
+        fs::create_dir_all(&out).unwrap();
+        unpack_zip(&archive, &out, &params).unwrap();
+        assert_eq!(files_under(&out), expected);
+        for (name, content) in &entries[..expected.len()] {
+            assert_eq!(&fs::read(out.join(name)).unwrap(), content, "{name}");
+        }
+    }
+
+    #[test]
+    fn source_archives_of_every_format_and_layout_build() {
+        // #216: a zip with its files at the root (NINJAL's UniDic CWJ), a zip
+        // with a top directory, and a tar.gz with its files at the root build
+        // the same dictionary as the tar.gz with a top directory.
+        let top = format!("{SEEDED_INPUT_DIR}/");
+        let cases = [
+            ("mecab-test.zip", ArchiveLayout::Root, ""),
+            ("mecab-test.zip", ArchiveLayout::TopDirectory, top.as_str()),
+            ("mecab-test.tar.gz", ArchiveLayout::Root, ""),
+        ];
+        let (reference_cache, reference_sha256) = seeded_cache();
+        build_seeded(reference_cache.path(), reference_sha256).unwrap();
+        let reference = reference_cache.path().join(SEEDED_OUTPUT_DIR);
+        for (file_name, layout, prefix) in cases {
+            let cache = tempfile::tempdir().unwrap();
+            let archive = cache.path().join(file_name);
+            let mut entries = dummy_source_entries(prefix, SEEDED_LEXICON);
+            entries.extend(extra_entries(prefix));
+            let sha256 = if file_name.ends_with(".zip") {
+                write_zip(&archive, &entries)
+            } else {
+                let encoder = flate2::write::GzEncoder::new(
+                    File::create(&archive).unwrap(),
+                    flate2::Compression::fast(),
+                );
+                let mut tar = tar::Builder::new(encoder);
+                for (name, content) in &entries {
+                    let mut header = tar::Header::new_gnu();
+                    header.set_size(content.len() as u64);
+                    header.set_mode(0o644);
+                    header.set_cksum();
+                    tar.append_data(&mut header, name, content.as_slice())
+                        .unwrap();
+                }
+                tar.into_inner().unwrap().finish().unwrap();
+                Box::leak(file_sha256(&archive).unwrap().into_boxed_str())
+            };
+            let params = FetchParams {
+                file_name,
+                archive_layout: layout,
+                ..seeded_params(sha256)
+            };
+            build_with(cache.path(), &params, None)
+                .unwrap_or_else(|err| panic!("{file_name} {layout:?}: {err}"));
+            let output = cache.path().join(SEEDED_OUTPUT_DIR);
+            for file in [
+                "matrix.mtx",
+                "dict.words",
+                "dict.trie",
+                "unk.bin",
+                "char_def.bin",
+            ] {
+                assert_eq!(
+                    fs::read(output.join(file)).unwrap(),
+                    fs::read(reference.join(file)).unwrap(),
+                    "{file_name} {layout:?}: {file}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn an_archive_of_another_format_fails_before_downloading() {
+        // #216: the format is checked before the download, so a crate that
+        // names an unsupported archive does not download it first.
+        let cache = tempfile::tempdir().unwrap();
+        let params = FetchParams {
+            file_name: "mecab-test.tgz",
+            download_urls: &["http://127.0.0.1:9/mecab-test.tgz"],
+            ..seeded_params("unused")
+        };
+        let err = build_with(cache.path(), &params, None).unwrap_err();
+        assert_eq!(err.kind(), LinderaErrorKind::Args, "{err}");
+        assert!(
+            !cache.path().join("mecab-test.tgz.download").exists(),
+            "a download started"
+        );
     }
 
     /// The record a build of the dummy dictionary writes.

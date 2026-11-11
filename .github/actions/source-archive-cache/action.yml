@@ -1,0 +1,105 @@
+name: "Source archive cache"
+description: >-
+  Keep the source archive of a dictionary crate that downloads it from its
+  original host, rather than lindera.dev, with actions/cache (#216), so that
+  the builds from source do not download it each time: UniDic CWJ's is
+  NINJAL's 2.77 GiB package, from a server Lindera does not run. Call it
+  with `mode: restore` before a build from source, which puts a cached archive
+  where the crate's build script looks for it, and with `mode: save` after the
+  build, which saves the archive the build downloaded when the restore missed.
+
+# The key is the archive's file name and SHA-256, as the crate's build.rs pins
+# them, so a new source archive is a new entry; the build script checks the
+# SHA-256 of an archive it finds in place, as of one it downloads. The archive
+# is cached at a fixed path and copied into the build's cache directory,
+# <cache-dir>/<crate version>-fmt<format version>/, which changes with each
+# Lindera version.
+
+inputs:
+  crate:
+    description: "The dictionary crate, such as lindera-unidic-cwj."
+    required: true
+  cache-dir:
+    description: "LINDERA_BUILD_DICTIONARY_CACHE_DIR of the build."
+    required: true
+  mode:
+    description: "`restore` before the build, `save` after it."
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Locate the source archive
+      id: locate
+      shell: bash
+      env:
+        CRATE: ${{ inputs.crate }}
+        CACHE_DIR: ${{ inputs.cache-dir }}
+        MODE: ${{ inputs.mode }}
+      run: |
+        case "$MODE" in
+          restore | save) ;;
+          *) echo "::error::mode must be restore or save, not '$MODE'"; exit 1 ;;
+        esac
+        file=$(sed -n 's/^ *file_name: "\(.*\)",$/\1/p' "$CRATE/build.rs")
+        sha256=$(sed -n 's/^ *sha256: "\(.*\)",$/\1/p' "$CRATE/build.rs")
+        version=$(cargo metadata --no-deps --format-version=1 | jq -r --arg crate "$CRATE" '.packages[] | select(.name == $crate) | .version')
+        format_version=$(jq -r '.format_version' "$CRATE/prebuilt.json")
+        if [ -z "$file" ] || [ -z "$sha256" ] || [ -z "$version" ] || [ -z "$format_version" ]; then
+          echo "::error::could not read the source archive of $CRATE (file '$file', sha256 '$sha256', version '$version', format version '$format_version')"
+          exit 1
+        fi
+        {
+          echo "file=$file"
+          echo "sha256=$sha256"
+          echo "build-dir=$CACHE_DIR/$version-fmt$format_version"
+          echo "stash=$RUNNER_TEMP/source-archive-cache"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Restore the source archive
+      id: restore
+      if: inputs.mode == 'restore'
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ steps.locate.outputs.stash }}/${{ steps.locate.outputs.file }}
+        key: source-archive-${{ steps.locate.outputs.file }}-${{ steps.locate.outputs.sha256 }}
+
+    - name: Put the archive where the build script looks for it
+      if: inputs.mode == 'restore'
+      shell: bash
+      env:
+        HIT: ${{ steps.restore.outputs.cache-hit }}
+        STASH: ${{ steps.locate.outputs.stash }}
+        FILE: ${{ steps.locate.outputs.file }}
+        BUILD_DIR: ${{ steps.locate.outputs.build-dir }}
+      run: |
+        echo "LINDERA_SOURCE_ARCHIVE_CACHE_HIT=$HIT" >> "$GITHUB_ENV"
+        if [ "$HIT" = "true" ]; then
+          mkdir -p "$BUILD_DIR"
+          mv "$STASH/$FILE" "$BUILD_DIR/$FILE"
+          echo "Restored $FILE into $BUILD_DIR"
+        else
+          echo "No cached $FILE; the build downloads it"
+        fi
+
+    - name: Stash the downloaded archive
+      if: inputs.mode == 'save' && env.LINDERA_SOURCE_ARCHIVE_CACHE_HIT != 'true'
+      shell: bash
+      env:
+        STASH: ${{ steps.locate.outputs.stash }}
+        FILE: ${{ steps.locate.outputs.file }}
+        BUILD_DIR: ${{ steps.locate.outputs.build-dir }}
+      run: |
+        if [ ! -f "$BUILD_DIR/$FILE" ]; then
+          echo "::error::the build left no $FILE in $BUILD_DIR"
+          exit 1
+        fi
+        mkdir -p "$STASH"
+        mv "$BUILD_DIR/$FILE" "$STASH/$FILE"
+
+    - name: Save the source archive
+      if: inputs.mode == 'save' && env.LINDERA_SOURCE_ARCHIVE_CACHE_HIT != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ steps.locate.outputs.stash }}/${{ steps.locate.outputs.file }}
+        key: source-archive-${{ steps.locate.outputs.file }}-${{ steps.locate.outputs.sha256 }}

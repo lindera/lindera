@@ -7,7 +7,7 @@ Lindera reads the environment variables below; none of them is required.
 | [`LINDERA_BUILD_DICTIONARY_CACHE_DIR`](#lindera_build_dictionary_cache_dir) | The build scripts of the dictionary crates | A directory | Each build downloads and builds the dictionary in its own output directory |
 | [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source) | The build scripts of the dictionary crates | `1` or `true` | A dictionary crate downloads the published dictionary it pins, and builds from source only when it cannot use it |
 | [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url) | The build scripts of the dictionary crates | An `http` or `https` URL | The published dictionaries are downloaded from GitHub releases |
-| [`LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL`](#lindera_build_dictionary_source_base_url) | The build scripts of the dictionary crates | An `http` or `https` URL | The source archives are downloaded from `https://lindera.dev` |
+| [`LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL`](#lindera_build_dictionary_source_base_url) | The build scripts of the dictionary crates | An `http` or `https` URL | The source archives are downloaded from `https://lindera.dev`, and UniDic CWJ's from NINJAL (`https://clrd.ninjal.ac.jp`) |
 | [`LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`](#lindera_build_context_id_freq_file) | The build scripts of the dictionary crates | A file | The histogram bundled with the dictionary crate, if any |
 | [`DOCS_RS`](#docs_rs) | The build scripts of the dictionary crates | Set by docs.rs | The real dictionaries are built |
 | [`LINDERA_CONFIG_FILE`](#lindera_config_file) | `TokenizerBuilder::new()`, and so `lindera tokenize` and the bindings | A file | An empty configuration |
@@ -81,7 +81,7 @@ Notes:
 
 ### LINDERA_BUILD_DICTIONARY_FROM_SOURCE
 
-The seven official dictionaries are built once for each change of their inputs and published as GitHub releases, one release per dictionary and version, which are never replaced. Each dictionary crate pins its published dictionary, by URL and SHA-256, in the `prebuilt.json` next to its `metadata.json`, and its build script downloads that archive, checks its SHA-256, and embeds it, instead of downloading the source archive and building the dictionary. The archive holds the same files as a build from source; only the `lindera_version` in its `metadata.json` names the Lindera version that built it. How the dictionaries are published is in [Dictionary Release](../development/dictionary_release.md).
+The eight official dictionaries are built once for each change of their inputs and published as GitHub releases, one release per dictionary and version, which are never replaced. Each dictionary crate pins its published dictionary, by URL and SHA-256, in the `prebuilt.json` next to its `metadata.json`, and its build script downloads that archive, checks its SHA-256, and embeds it, instead of downloading the source archive and building the dictionary. The archive holds the same files as a build from source; only the `lindera_version` in its `metadata.json` names the Lindera version that built it. How the dictionaries are published is in [Dictionary Release](../development/dictionary_release.md).
 
 A failed download, an archive with another SHA-256, or one that lacks a file or does not fit the crate's `metadata.json`, stops the build with an error that says what went wrong; the build does not embed anything it could not check, and does not build from source instead.
 
@@ -111,7 +111,7 @@ LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1 cargo build --features=embed-ipadic
 | Variable | Replaces | The build downloads |
 | --- | --- | --- |
 | `LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` | `https://github.com/lindera/lindera/releases/download`, the `base_url` in the crate's `prebuilt.json` | `<base>/<path>`, with the `path` in `prebuilt.json` |
-| `LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL` | `https://lindera.dev`, where the crate's `build.rs` downloads the source archive from | `<base>/<file_name>`, with the archive's file name |
+| `LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL` | `https://lindera.dev`, where the crate's `build.rs` downloads the source archive from; for UniDic CWJ, NINJAL's `https://clrd.ninjal.ac.jp/unidic_archive/2512` | `<base>/<file_name>`, with the archive's file name |
 
 For IPADIC, with the variables set to `https://mirror.example/lindera-releases` and `https://mirror.example/lindera-dev`, the build downloads one of these:
 
@@ -120,7 +120,7 @@ https://mirror.example/lindera-releases/dictionary-ipadic-2.7.0-20250920-fmt3-r1
 https://mirror.example/lindera-dev/mecab-ipadic-2.7.0-20250920.tar.gz
 ```
 
-A mirror thus keeps the files at the paths they have on the original host: an Artifactory remote repository that proxies `https://github.com/lindera/lindera/releases/download` serves the published dictionaries, and one that proxies `https://lindera.dev` serves the source archives. A build downloads the published dictionary by default and the source archive only when it builds from source (see [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source)), which can also happen without `LINDERA_BUILD_DICTIONARY_FROM_SOURCE`; a build that must not reach the original hosts sets both variables.
+A mirror thus keeps the files at the paths they have on the original host: an Artifactory remote repository that proxies `https://github.com/lindera/lindera/releases/download` serves the published dictionaries, and one that proxies `https://lindera.dev` serves the source archives. UniDic CWJ's source archive is not on lindera.dev: a mirror that builds it from source serves NINJAL's `unidic-cwj-202512_full.zip` at the same base, under that file name. A build downloads the published dictionary by default and the source archive only when it builds from source (see [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source)), which can also happen without `LINDERA_BUILD_DICTIONARY_FROM_SOURCE`; a build that must not reach the original hosts sets both variables.
 
 ```shell
 export LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL=https://mirror.example/lindera-releases
@@ -137,7 +137,7 @@ cargo build --features=embed-ipadic
 
 ### LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL
 
-The mirror of the dictionary source archives, which the build downloads as `<base>/<file_name>` in place of `https://lindera.dev/<file_name>`. See [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url), which describes both variables.
+The mirror of the dictionary source archives, which the build downloads as `<base>/<file_name>` in place of `https://lindera.dev/<file_name>` (for UniDic CWJ, in place of NINJAL's URL). See [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url), which describes both variables.
 
 ### LINDERA_BUILD_CONTEXT_ID_FREQ_FILE
 

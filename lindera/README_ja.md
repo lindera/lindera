@@ -32,7 +32,7 @@ lindera = { version = "7", default-features = false, features = ["mmap"] }
 | `analysis` | 分析チェーン。`lindera::analysis` として再エクスポート（`lindera-analysis` が提供） | 有効 |
 | `mmap` | ファイルシステム辞書をデフォルトでメモリマップ読み込みする | 有効 |
 | `train` | CRF ベースの辞書学習（`lindera-trainer` に依存） | 無効 |
-| `embed-ipadic`、`embed-ipadic-neologd`、`embed-unidic`、`embed-sudachidict` | 日本語辞書をバイナリに埋め込む | 無効 |
+| `embed-ipadic`、`embed-ipadic-neologd`、`embed-unidic`、`embed-unidic-cwj`、`embed-sudachidict` | 日本語辞書をバイナリに埋め込む | 無効 |
 | `embed-ko-dic` | 韓国語辞書（ko-dic）をバイナリに埋め込む | 無効 |
 | `embed-cc-cedict`、`embed-jieba` | 中国語辞書をバイナリに埋め込む | 無効 |
 

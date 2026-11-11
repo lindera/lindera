@@ -13,7 +13,7 @@ categories = { workspace = true }
 license = { workspace = true }
 
 [features]
-build_rs = ["dep:flate2", "dep:md5", "dep:rand", "dep:sha2", "dep:tar", "dep:ureq"]
+build_rs = ["dep:flate2", "dep:md5", "dep:rand", "dep:sha2", "dep:tar", "dep:ureq", "dep:zip"]
 mmap = ["dep:memmap2"]
 # Experimental: instrument connection-matrix accesses to profile per-context-id
 # access frequency over a corpus (used to build a corpus-frequency remap). Off by
@@ -53,6 +53,12 @@ thiserror = "2.0.19"
 # every crate that embeds a dictionary) out of the graph.
 ureq = { version = "3.3.0", default-features = false, features = [
     "rustls",
+], optional = true }
+# Reads the zip packages that a dictionary crate downloads from their original
+# host (UniDic CWJ from NINJAL, #216); only the `build_rs` feature needs it.
+# The same version and features as `lindera-cli`'s.
+zip = { version = "9.0.0", default-features = false, features = [
+    "deflate-flate2",
 ], optional = true }
 
 # rayon does not support wasm32-unknown-unknown (no OS threads); the connection
