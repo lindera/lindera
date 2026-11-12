@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::fs::File;
-use std::io::{self, BufRead, Write};
+use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
 #[cfg(not(target_family = "wasm"))]
 use std::ops::Range;
 use std::path::Path;
@@ -9,13 +9,13 @@ use std::sync::Arc;
 use encoding_rs::{Encoding, UTF_16BE, UTF_16LE};
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use log::debug;
-use memchr::memchr;
+use memchr::{memchr, memrchr};
 
 use crate::LinderaResult;
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use crate::dictionary::context_id_map::ContextIdMap;
 use crate::error::{LinderaError, LinderaErrorKind};
-use crate::util::{read_file, write_data};
+use crate::util::write_data;
 
 /// UTF-8 byte order mark. `encoding_rs::Encoding::decode` strips a leading
 /// UTF-8 BOM, so the raw-byte fast path must strip it too to stay
@@ -28,6 +28,18 @@ const UTF8_BOM: &[u8] = &[0xEF, 0xBB, 0xBF];
 /// thread-pool overhead.
 #[cfg(not(target_family = "wasm"))]
 const PARALLEL_THRESHOLD: usize = 1 << 20; // 1 MiB
+
+/// Size of the blocks `matrix.def` is read and parsed in (#1366).
+///
+/// The builder holds one block of the text at a time, besides the matrix,
+/// rather than the whole file: UniDic CWJ's `matrix.def` is 7.70 GiB of text
+/// for a 982 MiB matrix. A block is far above the parallel threshold, so a
+/// large matrix is still parsed in parallel, one block after another.
+const BLOCK_SIZE: usize = 64 << 20; // 64 MiB
+
+/// Number of matrix values converted to bytes at a time when `matrix.mtx` is
+/// written, so that the file is written without a byte copy of the matrix.
+const WRITE_CHUNK_VALUES: usize = 1 << 16;
 
 /// The cost of a cell that `matrix.def` does not list.
 ///
@@ -158,11 +170,12 @@ impl ConnectionCostMatrixBuilder {
     /// A cell that `matrix.def` does not list costs 0, as in MeCab's
     /// `mecab-dict-index`.
     ///
-    /// The parser reads the raw bytes and, for ASCII-compatible encodings,
-    /// parses the space-separated integers directly without decoding the whole
-    /// file into a `String`. Files whose encoding is UTF-16 (by configured
-    /// label or by BOM) fall back to the decode path. On non-wasm targets a
-    /// large matrix is parsed in parallel with rayon.
+    /// The file is read in blocks of 64 MiB, so the build holds the matrix
+    /// and one block of the text rather than the whole text (#1366). The parser reads the raw bytes and, for ASCII-compatible
+    /// encodings, parses the space-separated integers directly. A file whose
+    /// encoding is UTF-16 (by configured label or by BOM) is decoded to UTF-8
+    /// as it is read. On non-wasm targets each block of a large matrix is
+    /// parsed in parallel with rayon.
     ///
     /// # Arguments
     ///
@@ -172,23 +185,24 @@ impl ConnectionCostMatrixBuilder {
     /// # Returns
     ///
     /// `Ok(())` on success, or a [`LinderaResult`] error if the file cannot be
-    /// read, the header is missing, or a data line is malformed.
+    /// read, the header is missing, or a data line is malformed. Nothing is
+    /// written then.
     pub fn build(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         let matrix_data_path = input_dir.join("matrix.def");
         debug!("reading {matrix_data_path:?}");
-        let buffer = read_file(&matrix_data_path)?;
-
-        // Decode only when the bytes are not ASCII-compatible (UTF-16). The
-        // decoded String is kept alive here so the parser can borrow its bytes.
-        let decoded = self.decode_if_needed(&buffer)?;
-        let bytes: &[u8] = match &decoded {
-            Some(decoded) => decoded.as_bytes(),
-            None => strip_utf8_bom(&buffer),
-        };
+        let file = File::open(&matrix_data_path).map_err(|err| {
+            LinderaErrorKind::Io.with_error(err).add_context(format!(
+                "Failed to open file: {}",
+                matrix_data_path.display()
+            ))
+        })?;
+        let mut reader = self.open_matrix_reader(file)?;
 
         // Parse the header line ("<forward_size> <backward_size>").
-        let header_end = memchr(b'\n', bytes).unwrap_or(bytes.len());
-        let matrix_size = parse_header(&bytes[..header_end])?;
+        let mut header = Vec::new();
+        reader.read_until(b'\n', &mut header).map_err(read_error)?;
+        let header = header.strip_suffix(b"\n").unwrap_or(&header);
+        let matrix_size = parse_header(strip_utf8_bom(header))?;
         let MatrixSize {
             forward_size,
             backward_size,
@@ -215,69 +229,59 @@ impl ConnectionCostMatrixBuilder {
         // Parse the data region (everything after the header line) and scatter
         // the costs into `costs`. Applied in file order so a duplicated
         // (forward_id, backward_id) pair keeps last-occurrence-wins semantics.
-        let data = if header_end < bytes.len() {
-            &bytes[header_end + 1..]
-        } else {
-            &[]
-        };
-        self.fill_costs(data, matrix_size, &mut costs)?;
+        self.fill_costs(&mut reader, BLOCK_SIZE, matrix_size, &mut costs)?;
 
-        // Serialize as little-endian i16 values (identical bytes to the
-        // previous per-value byteorder writes).
-        let mut matrix_mtx_buffer = Vec::with_capacity(costs.len() * 2);
-        for cost in &costs {
-            matrix_mtx_buffer.extend_from_slice(&cost.to_le_bytes());
-        }
-
-        let wtr_matrix_mtx_path = output_dir.join(Path::new("matrix.mtx"));
-        let mut wtr_matrix_mtx = io::BufWriter::new(
-            File::create(wtr_matrix_mtx_path)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-        );
-        write_data(&matrix_mtx_buffer, &mut wtr_matrix_mtx)?;
-        wtr_matrix_mtx
-            .flush()
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
-        Ok(())
+        write_matrix_mtx(&costs, &output_dir.join(Path::new("matrix.mtx")))
     }
 
-    /// Decode the buffer into a `String` only when the raw bytes cannot be
-    /// parsed directly, i.e. when the configured encoding is UTF-16 or a
-    /// UTF-16 BOM is present. `matrix.def` content is always ASCII, so every
-    /// other (ASCII-compatible) encoding is parsed from the raw bytes.
+    /// Opens `matrix.def` for parsing as ASCII-compatible bytes.
+    ///
+    /// `matrix.def` holds only ASCII, so a file in an ASCII-compatible
+    /// encoding is read as it is, and its UTF-8 BOM, if any, is left for the
+    /// header to drop. A file whose configured encoding is UTF-16, or that
+    /// starts with a UTF-16 BOM, is decoded to UTF-8 as it is read; its BOM
+    /// takes precedence over the label and is dropped, as `Encoding::decode`
+    /// does.
     ///
     /// # Arguments
     ///
-    /// * `buffer` - The raw bytes read from `matrix.def`.
+    /// * `file` - The opened `matrix.def`.
     ///
     /// # Returns
     ///
-    /// `Some(decoded)` when a charset decode is required, otherwise `None`.
-    fn decode_if_needed(&self, buffer: &[u8]) -> LinderaResult<Option<String>> {
+    /// A reader of the file's bytes, or an error if the encoding label is
+    /// invalid or the start of the file cannot be read.
+    fn open_matrix_reader(&self, file: File) -> LinderaResult<Box<dyn BufRead>> {
         let encoding =
             Encoding::for_label_no_replacement(self.encoding.as_bytes()).ok_or_else(|| {
                 LinderaErrorKind::Decode
                     .with_error(anyhow::anyhow!("Invalid encoding: {}", self.encoding))
             })?;
 
-        let is_utf16 = encoding == UTF_16LE || encoding == UTF_16BE || has_utf16_bom(buffer);
+        let mut reader = BufReader::new(file);
+        let head = reader.fill_buf().map_err(read_error)?;
+        let is_utf16 = encoding == UTF_16LE || encoding == UTF_16BE || has_utf16_bom(head);
         if is_utf16 {
-            // `decode` performs BOM sniffing and honors a UTF-16 BOM over the
-            // configured label, matching the previous read_file_with_encoding.
-            Ok(Some(encoding.decode(buffer).0.into_owned()))
+            let decoder = DecodeReaderBytesBuilder::new()
+                .encoding(Some(encoding))
+                .bom_override(true)
+                .strip_bom(true)
+                .build(reader);
+            Ok(Box::new(BufReader::new(decoder)))
         } else {
-            Ok(None)
+            Ok(Box::new(reader))
         }
     }
 
     /// Parse the data region and scatter costs into `costs`.
     ///
-    /// On non-wasm targets a sufficiently large region is parsed in parallel.
+    /// On non-wasm targets a block large enough is parsed in parallel.
     ///
     /// # Arguments
     ///
-    /// * `data` - Bytes of the data region (after the header line).
+    /// * `reader` - The file, positioned after the header line.
+    /// * `block_size` - The size of the blocks to read, [`BLOCK_SIZE`] but in
+    ///   tests.
     /// * `matrix_size` - The axis sizes from the header; every entry is
     ///   checked against them.
     /// * `costs` - Destination cost array to scatter into.
@@ -289,16 +293,19 @@ impl ConnectionCostMatrixBuilder {
     #[cfg(not(target_family = "wasm"))]
     fn fill_costs(
         &self,
-        data: &[u8],
+        reader: &mut dyn BufRead,
+        block_size: usize,
         matrix_size: MatrixSize,
         costs: &mut [i16],
     ) -> LinderaResult<()> {
         let remap = self.context_id_remap.as_deref();
-        if data.len() >= PARALLEL_THRESHOLD {
-            fill_costs_parallel(data, matrix_size, costs, remap)
-        } else {
-            fill_costs_sequential(data, matrix_size, costs, remap)
-        }
+        for_each_block(reader, block_size, |block, first_line| {
+            if block.len() >= PARALLEL_THRESHOLD {
+                fill_costs_parallel(block, first_line, matrix_size, costs, remap)
+            } else {
+                fill_costs_sequential(block, first_line, matrix_size, costs, remap)
+            }
+        })
     }
 
     /// Parse the data region and scatter costs into `costs` (wasm: always
@@ -306,7 +313,9 @@ impl ConnectionCostMatrixBuilder {
     ///
     /// # Arguments
     ///
-    /// * `data` - Bytes of the data region (after the header line).
+    /// * `reader` - The file, positioned after the header line.
+    /// * `block_size` - The size of the blocks to read, [`BLOCK_SIZE`] but in
+    ///   tests.
     /// * `matrix_size` - The axis sizes from the header; every entry is
     ///   checked against them.
     /// * `costs` - Destination cost array to scatter into.
@@ -318,12 +327,121 @@ impl ConnectionCostMatrixBuilder {
     #[cfg(target_family = "wasm")]
     fn fill_costs(
         &self,
-        data: &[u8],
+        reader: &mut dyn BufRead,
+        block_size: usize,
         matrix_size: MatrixSize,
         costs: &mut [i16],
     ) -> LinderaResult<()> {
-        fill_costs_sequential(data, matrix_size, costs, self.context_id_remap.as_deref())
+        let remap = self.context_id_remap.as_deref();
+        for_each_block(reader, block_size, |block, first_line| {
+            fill_costs_sequential(block, first_line, matrix_size, costs, remap)
+        })
     }
+}
+
+/// Reads the data region of `matrix.def` in blocks of at most `block_size`
+/// bytes that end at a line end, and hands each block to `parse` with the
+/// number of its first line in the file.
+///
+/// The part of a line that a block cuts off is carried over to the start of
+/// the next block, so `parse` never sees part of a line. A line longer than a
+/// block makes the block grow until the line ends. The last block ends at the
+/// end of the file, with or without a line end.
+///
+/// # Arguments
+///
+/// * `reader` - The file, positioned after the header line.
+/// * `block_size` - The most bytes a block holds, unless one line is longer.
+/// * `parse` - Parses one block; returns the number of lines it went through,
+///   which numbers the lines of the next block.
+///
+/// # Returns
+///
+/// `Ok(())`, or the first error of `parse` or of the read.
+fn for_each_block(
+    reader: &mut dyn BufRead,
+    block_size: usize,
+    mut parse: impl FnMut(&[u8], usize) -> LinderaResult<usize>,
+) -> LinderaResult<()> {
+    // A block of 0 bytes would read nothing and never end.
+    let block_size = block_size.max(1);
+    let mut block = Vec::with_capacity(block_size);
+    // The header is line 1, so the data region starts on line 2.
+    let mut first_line = 2;
+    loop {
+        // Fill the block up to its size after the carried-over line, or by
+        // another block's size while one line is longer than a block.
+        let want = match block_size.checked_sub(block.len()) {
+            Some(room) if room > 0 => room,
+            _ => block_size,
+        };
+        let read = Read::take(&mut *reader, want as u64)
+            .read_to_end(&mut block)
+            .map_err(read_error)?;
+        // `Take` stops early only at the end of the file.
+        let at_end = read < want;
+        let end = if at_end {
+            block.len()
+        } else {
+            match memrchr(b'\n', &block) {
+                Some(last_newline) => last_newline + 1,
+                // No line end yet: read on until the line ends.
+                None => continue,
+            }
+        };
+        if end > 0 {
+            first_line += parse(&block[..end], first_line)?;
+        }
+        if at_end {
+            return Ok(());
+        }
+        block.drain(..end);
+    }
+}
+
+/// Maps a failed read of `matrix.def` to a Lindera error.
+///
+/// # Arguments
+///
+/// * `err` - The I/O error of the read.
+///
+/// # Returns
+///
+/// An `Io` error saying that `matrix.def` could not be read.
+fn read_error(err: io::Error) -> LinderaError {
+    LinderaErrorKind::Io
+        .with_error(err)
+        .add_context("Failed to read matrix.def")
+}
+
+/// Writes the matrix values to `path` as little-endian `i16`s.
+///
+/// The values are converted [`WRITE_CHUNK_VALUES`] at a time, so the file is
+/// written without a byte copy of the whole matrix (#1366).
+///
+/// # Arguments
+///
+/// * `costs` - The `matrix.mtx` values: the header and the cells.
+/// * `path` - Where to write `matrix.mtx`.
+///
+/// # Returns
+///
+/// `Ok(())`, or an error if the file cannot be created or written.
+fn write_matrix_mtx(costs: &[i16], path: &Path) -> LinderaResult<()> {
+    let file =
+        File::create(path).map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mut writer = BufWriter::new(file);
+    let mut bytes = Vec::with_capacity(WRITE_CHUNK_VALUES * 2);
+    for chunk in costs.chunks(WRITE_CHUNK_VALUES) {
+        bytes.clear();
+        for cost in chunk {
+            bytes.extend_from_slice(&cost.to_le_bytes());
+        }
+        write_data(&bytes, &mut writer)?;
+    }
+    writer
+        .flush()
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
 }
 
 /// Creates the `matrix.mtx` values before `matrix.def` is read: the
@@ -578,39 +696,49 @@ fn parse_data_line(
 ///
 /// # Arguments
 ///
-/// * `data` - Bytes of the data region (after the header line).
+/// * `data` - The block of the data region the line is in.
+/// * `first_line` - The line number of the block's first line in the file.
 /// * `line_start` - Offset of the line's first byte in `data`.
 /// * `message` - What is wrong with the line.
 ///
 /// # Returns
 ///
 /// A `Content` error reading `matrix.def line <n>: <message>`.
-fn data_line_error(data: &[u8], line_start: usize, message: String) -> LinderaError {
-    // The header is line 1, so the data region starts on line 2.
-    let line = 2 + memchr::memchr_iter(b'\n', &data[..line_start]).count();
+fn data_line_error(
+    data: &[u8],
+    first_line: usize,
+    line_start: usize,
+    message: String,
+) -> LinderaError {
+    let line = first_line + memchr::memchr_iter(b'\n', &data[..line_start]).count();
     LinderaErrorKind::Content.with_error(anyhow::anyhow!("matrix.def line {line}: {message}"))
 }
 
-/// Parse the data region sequentially, scattering costs into `costs`.
+/// Parse a block of the data region sequentially, scattering costs into
+/// `costs`.
 ///
 /// # Arguments
 ///
-/// * `data` - Bytes of the data region (after the header line).
+/// * `data` - A block of the data region, ending at a line end or at the end
+///   of the file.
+/// * `first_line` - The line number of the block's first line in the file.
 /// * `matrix_size` - The axis sizes from the header.
 /// * `costs` - Destination cost array to scatter into.
 /// * `remap` - The context-id remap to relabel the ids with, if any.
 ///
 /// # Returns
 ///
-/// `Ok(())`, or an error naming the line of the first malformed or
-/// out-of-range entry.
+/// The number of lines in the block, or an error naming the line of the
+/// first malformed or out-of-range entry.
 fn fill_costs_sequential(
     data: &[u8],
+    first_line: usize,
     matrix_size: MatrixSize,
     costs: &mut [i16],
     remap: Option<&ContextIdMap>,
-) -> LinderaResult<()> {
+) -> LinderaResult<usize> {
     let costs_len = costs.len();
+    let mut lines = 0;
     let mut pos = 0;
     while pos < data.len() {
         let line_end = memchr(b'\n', &data[pos..])
@@ -619,37 +747,42 @@ fn fill_costs_sequential(
         match parse_data_line(&data[pos..line_end], matrix_size, costs_len, remap) {
             Ok(Some((index, cost))) => costs[index] = cost,
             Ok(None) => {}
-            Err(message) => return Err(data_line_error(data, pos, message)),
+            Err(message) => return Err(data_line_error(data, first_line, pos, message)),
         }
+        lines += 1;
         pos = line_end + 1;
     }
-    Ok(())
+    Ok(lines)
 }
 
-/// Parse the data region in parallel, then scatter costs into `costs` in file
-/// order (preserving last-occurrence-wins for duplicate entries).
+/// Parse a block of the data region in parallel, then scatter costs into
+/// `costs` in file order (preserving last-occurrence-wins for duplicate
+/// entries).
 ///
-/// The input is split into newline-aligned chunks, each parsed on a rayon
+/// The block is split into newline-aligned chunks, each parsed on a rayon
 /// worker into a `(index, cost)` list; the lists are then applied in order.
 ///
 /// # Arguments
 ///
-/// * `data` - Bytes of the data region (after the header line).
+/// * `data` - A block of the data region, ending at a line end or at the end
+///   of the file.
+/// * `first_line` - The line number of the block's first line in the file.
 /// * `matrix_size` - The axis sizes from the header.
 /// * `costs` - Destination cost array to scatter into.
 /// * `remap` - The context-id remap to relabel the ids with, if any.
 ///
 /// # Returns
 ///
-/// `Ok(())`, or an error naming the line of a malformed or out-of-range
-/// entry.
+/// The number of lines in the block, or an error naming the line of a
+/// malformed or out-of-range entry.
 #[cfg(not(target_family = "wasm"))]
 fn fill_costs_parallel(
     data: &[u8],
+    first_line: usize,
     matrix_size: MatrixSize,
     costs: &mut [i16],
     remap: Option<&ContextIdMap>,
-) -> LinderaResult<()> {
+) -> LinderaResult<usize> {
     use rayon::prelude::*;
 
     let costs_len = costs.len();
@@ -674,25 +807,37 @@ fn fill_costs_parallel(
     bounds.push(data.len());
 
     let chunks: Vec<Range<usize>> = bounds.windows(2).map(|w| w[0]..w[1]).collect();
-    let partials: Vec<Vec<(usize, i16)>> = chunks
+    let partials: Vec<(Vec<(usize, i16)>, usize)> = chunks
         .par_iter()
-        .map(|chunk| parse_chunk(data, chunk.clone(), matrix_size, costs_len, remap))
+        .map(|chunk| {
+            parse_chunk(
+                data,
+                first_line,
+                chunk.clone(),
+                matrix_size,
+                costs_len,
+                remap,
+            )
+        })
         .collect::<LinderaResult<Vec<_>>>()?;
 
-    for partial in &partials {
+    let mut lines = 0;
+    for (partial, chunk_lines) in &partials {
         for &(index, cost) in partial {
             costs[index] = cost;
         }
+        lines += chunk_lines;
     }
-    Ok(())
+    Ok(lines)
 }
 
 /// Parse all data lines in a single chunk into a `(index, cost)` list.
 ///
 /// # Arguments
 ///
-/// * `data` - Bytes of the whole data region, which the line numbers in
-///   errors are counted over.
+/// * `data` - The block of the data region, which the line numbers in errors
+///   are counted over.
+/// * `first_line` - The line number of the block's first line in the file.
 /// * `chunk` - The newline-aligned range of `data` to parse.
 /// * `matrix_size` - The axis sizes from the header.
 /// * `costs_len` - Length of the destination cost array, for bounds checking.
@@ -700,17 +845,20 @@ fn fill_costs_parallel(
 ///
 /// # Returns
 ///
-/// The parsed `(index, cost)` pairs in chunk order, or an error naming the
-/// line of the first malformed or out-of-range entry in the chunk.
+/// The parsed `(index, cost)` pairs in chunk order and the number of lines
+/// in the chunk, or an error naming the line of the first malformed or
+/// out-of-range entry in the chunk.
 #[cfg(not(target_family = "wasm"))]
 fn parse_chunk(
     data: &[u8],
+    first_line: usize,
     chunk: Range<usize>,
     matrix_size: MatrixSize,
     costs_len: usize,
     remap: Option<&ContextIdMap>,
-) -> LinderaResult<Vec<(usize, i16)>> {
+) -> LinderaResult<(Vec<(usize, i16)>, usize)> {
     let mut out = Vec::with_capacity(chunk.len() / 8);
+    let mut lines = 0;
     let mut pos = chunk.start;
     while pos < chunk.end {
         let line_end = memchr(b'\n', &data[pos..chunk.end])
@@ -719,11 +867,12 @@ fn parse_chunk(
         match parse_data_line(&data[pos..line_end], matrix_size, costs_len, remap) {
             Ok(Some(entry)) => out.push(entry),
             Ok(None) => {}
-            Err(message) => return Err(data_line_error(data, pos, message)),
+            Err(message) => return Err(data_line_error(data, first_line, pos, message)),
         }
+        lines += 1;
         pos = line_end + 1;
     }
-    Ok(out)
+    Ok((out, lines))
 }
 
 #[cfg(test)]
@@ -781,7 +930,7 @@ mod tests {
         } else {
             &[]
         };
-        fill_costs_sequential(data, matrix_size, &mut costs, None).unwrap();
+        fill_costs_sequential(data, 2, matrix_size, &mut costs, None).unwrap();
         costs
     }
 
@@ -868,10 +1017,10 @@ mod tests {
         };
 
         let mut seq = initial_costs(matrix_size);
-        fill_costs_sequential(data, matrix_size, &mut seq, None).unwrap();
+        fill_costs_sequential(data, 2, matrix_size, &mut seq, None).unwrap();
 
         let mut par = initial_costs(matrix_size);
-        fill_costs_parallel(data, matrix_size, &mut par, None).unwrap();
+        fill_costs_parallel(data, 2, matrix_size, &mut par, None).unwrap();
 
         assert_eq!(seq, par);
         assert_eq!(seq, reference_costs(&matrix));
@@ -889,7 +1038,7 @@ mod tests {
             backward_size: 2,
         };
         let mut costs = initial_costs(matrix_size);
-        assert!(fill_costs_sequential(data, matrix_size, &mut costs, None).is_err());
+        assert!(fill_costs_sequential(data, 2, matrix_size, &mut costs, None).is_err());
     }
 
     #[test]
@@ -919,13 +1068,13 @@ mod tests {
             backward_size: 2,
         };
         let mut costs = initial_costs(size);
-        let err = fill_costs_sequential(data, size, &mut costs, None)
+        let err = fill_costs_sequential(data, 2, size, &mut costs, None)
             .unwrap_err()
             .to_string();
         // The header is line 1 and the blank line counts.
         assert!(err.contains("matrix.def line 4: entry (3, 0)"), "{err}");
 
-        let err = fill_costs_sequential(b"0 -1 0\n", size, &mut costs, None)
+        let err = fill_costs_sequential(b"0 -1 0\n", 2, size, &mut costs, None)
             .unwrap_err()
             .to_string();
         assert!(err.contains("matrix.def line 2: entry (0, -1)"), "{err}");
@@ -951,7 +1100,7 @@ mod tests {
             }
         }
         let mut costs = initial_costs(size);
-        let err = fill_costs_parallel(data.as_bytes(), size, &mut costs, None)
+        let err = fill_costs_parallel(data.as_bytes(), 2, size, &mut costs, None)
             .unwrap_err()
             .to_string();
         assert!(
@@ -1000,5 +1149,163 @@ mod tests {
         let with_bom = [0xEF, 0xBB, 0xBF, b'1', b' ', b'1'];
         assert_eq!(strip_utf8_bom(&with_bom), b"1 1");
         assert_eq!(strip_utf8_bom(b"1 1"), b"1 1");
+    }
+
+    /// A 3x2 matrix with an empty line, `\r\n` line ends, a line longer than
+    /// most of the block sizes tried, and a last line without a line end.
+    const BLOCK_MATRIX: &str =
+        "3 2\n0 0 1\r\n\n1 0 -2\n2 0                              3\n0 1 4\r\n1 1 5\n2 1 6";
+
+    /// Fills a matrix from the data region of `matrix` read in blocks of
+    /// `block_size` bytes.
+    fn block_costs(matrix: &str, block_size: usize) -> LinderaResult<Vec<i16>> {
+        let (header, data) = matrix.split_once('\n').unwrap();
+        let matrix_size = parse_header(header.as_bytes()).unwrap();
+        let mut costs = initial_costs(matrix_size);
+        ConnectionCostMatrixBuilderOptions::default()
+            .builder()
+            .fill_costs(
+                &mut io::Cursor::new(data.as_bytes()),
+                block_size,
+                matrix_size,
+                &mut costs,
+            )?;
+        Ok(costs)
+    }
+
+    #[test]
+    fn test_blocks_of_every_size_match_reference() {
+        // Every block size from 1 byte to more than the whole text cuts the
+        // lines at every position; the cut line must be carried over (#1366).
+        let reference = reference_costs(BLOCK_MATRIX);
+        let data_len = BLOCK_MATRIX.split_once('\n').unwrap().1.len();
+        for block_size in 1..=data_len + 1 {
+            let costs = block_costs(BLOCK_MATRIX, block_size)
+                .unwrap_or_else(|err| panic!("block size {block_size}: {err}"));
+            assert_eq!(costs, reference, "block size {block_size}");
+        }
+    }
+
+    #[test]
+    fn test_blocks_stay_within_their_size() {
+        // With no line longer than a block, a block never holds more than its
+        // size, so the file is not read whole; and every byte is handed over
+        // once, in order.
+        let data = "0 0 1\n1 0 2\n2 0 3\n0 1 4\n1 1 5\n2 1 6\n".repeat(20);
+        let longest_line = data.lines().map(|line| line.len() + 1).max().unwrap();
+        for block_size in [longest_line, longest_line + 3, 64, 200] {
+            let mut seen = Vec::new();
+            let mut largest = 0;
+            for_each_block(
+                &mut io::Cursor::new(data.as_bytes()),
+                block_size,
+                |block, _| {
+                    largest = largest.max(block.len());
+                    seen.extend_from_slice(block);
+                    Ok(memchr::memchr_iter(b'\n', block).count())
+                },
+            )
+            .unwrap();
+            assert!(
+                largest <= block_size,
+                "block size {block_size}: a block of {largest} bytes"
+            );
+            assert_eq!(seen, data.as_bytes(), "block size {block_size}");
+        }
+    }
+
+    #[test]
+    fn test_error_line_numbers_across_blocks() {
+        // The out-of-range entry (3, 0) is on line 6 of the file, whatever
+        // block it falls in.
+        let matrix = "3 2\n0 0 1\n\n1 0 2\n2 0 3\n3 0 4\n0 1 5\n";
+        for block_size in [1, 5, 7, 12, 64] {
+            let err = block_costs(matrix, block_size).unwrap_err().to_string();
+            assert!(
+                err.contains("matrix.def line 6: entry (3, 0)"),
+                "block size {block_size}: {err}"
+            );
+        }
+    }
+
+    #[cfg(not(target_family = "wasm"))]
+    #[test]
+    fn test_parallel_error_names_the_line_in_the_file() {
+        // A block that starts on line 100 of the file: the bad entry on its
+        // 30,000th line is line 30,099 of the file.
+        let size = MatrixSize {
+            forward_size: 200,
+            backward_size: 200,
+        };
+        let mut data = String::new();
+        for line in 0..40_000u32 {
+            if line == 29_999 {
+                data.push_str("200 0 0\n");
+            } else {
+                data.push_str(&format!("{} {} 0\n", line % 200, line / 200 % 200));
+            }
+        }
+        let mut costs = initial_costs(size);
+        let err = fill_costs_parallel(data.as_bytes(), 100, size, &mut costs, None)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("matrix.def line 30099: entry (200, 0)"),
+            "{err}"
+        );
+    }
+
+    /// Builds `matrix.mtx` from a `matrix.def` with the given bytes and
+    /// encoding label, and returns its bytes.
+    fn build_bytes(matrix_def: &[u8], encoding: &'static str) -> Vec<u8> {
+        let input = tempfile::tempdir().unwrap();
+        let output = tempfile::tempdir().unwrap();
+        std::fs::write(input.path().join("matrix.def"), matrix_def).unwrap();
+        ConnectionCostMatrixBuilderOptions::default()
+            .encoding(encoding)
+            .builder()
+            .build(input.path(), output.path())
+            .unwrap_or_else(|err| panic!("{encoding}: {err}"));
+        std::fs::read(output.path().join("matrix.mtx")).unwrap()
+    }
+
+    #[test]
+    fn test_build_decodes_utf16_while_reading() {
+        // The same matrix in UTF-16 (by BOM or by label) and in UTF-8 with a
+        // BOM builds the same matrix.mtx as in plain UTF-8.
+        let text = "3 2\n0 0 1\n1 0 -2\n2 1 7\n";
+        let expected = build_bytes(text.as_bytes(), "UTF-8");
+
+        let mut utf16le_with_bom = vec![0xFF, 0xFE];
+        let mut utf16be = Vec::new();
+        for unit in text.encode_utf16() {
+            utf16le_with_bom.extend_from_slice(&unit.to_le_bytes());
+            utf16be.extend_from_slice(&unit.to_be_bytes());
+        }
+        assert_eq!(build_bytes(&utf16le_with_bom, "UTF-8"), expected);
+        assert_eq!(build_bytes(&utf16be, "UTF-16BE"), expected);
+
+        let utf8_with_bom = [&[0xEF, 0xBB, 0xBF][..], text.as_bytes()].concat();
+        assert_eq!(build_bytes(&utf8_with_bom, "UTF-8"), expected);
+    }
+
+    #[test]
+    fn test_build_writes_every_piece() {
+        // 300 x 300 cells are more than one piece of WRITE_CHUNK_VALUES, so
+        // matrix.mtx is written in several pieces.
+        let (forward, backward) = (300u32, 300u32);
+        assert!((forward * backward) as usize > WRITE_CHUNK_VALUES);
+        let mut matrix = format!("{forward} {backward}\n");
+        for b in 0..backward {
+            for f in 0..forward {
+                let cost = ((f * 7 + b * 13) % 2000) as i32 - 1000;
+                matrix.push_str(&format!("{f} {b} {cost}\n"));
+            }
+        }
+        let expected: Vec<u8> = reference_costs(&matrix)
+            .iter()
+            .flat_map(|cost| cost.to_le_bytes())
+            .collect();
+        assert_eq!(build_bytes(matrix.as_bytes(), "UTF-8"), expected);
     }
 }
