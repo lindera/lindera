@@ -766,7 +766,9 @@ jobs:
 
   # `ctxfreq` counts every connection-cost lookup for profiling, so no test job
   # enables it. The docs-rs job type-checks its library code; this lints that
-  # code in the three crates and the ctxfreq_dump example (#1153).
+  # code in the three crates and the ctxfreq_dump example (#1153), and runs the
+  # tests of lindera-dictionary with it, which check that the lattice counts
+  # its lookups (#1372).
   check-ctxfreq:
     name: Check ctxfreq feature
     needs: [test-lindera, detect-changes]
@@ -785,6 +787,9 @@ jobs:
 
       - name: Run clippy
         run: cargo clippy -p lindera-dictionary -p lindera-segmenter -p lindera --features ctxfreq --all-targets -- -D warnings
+
+      - name: Run the tests of lindera-dictionary
+        run: cargo test -p lindera-dictionary --features ctxfreq
 
   # Reproduces the docs.rs build of the facade: nightly, `--cfg docsrs` (see
   # `[package.metadata.docs.rs]` in lindera/Cargo.toml) and all features.

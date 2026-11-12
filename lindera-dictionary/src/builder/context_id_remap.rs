@@ -297,6 +297,13 @@ mod ctxfreq {
 
     /// Record one connection-matrix access.
     ///
+    /// [`ConnectionCostMatrix::cost`] records its own lookups. The lattice
+    /// reads whole rows through [`ConnectionCostMatrix::row`] instead, so it
+    /// records each of its lookups itself (`viterbi.rs`, #1372).
+    ///
+    /// [`ConnectionCostMatrix::cost`]: crate::dictionary::connection_cost_matrix::ConnectionCostMatrix::cost
+    /// [`ConnectionCostMatrix::row`]: crate::dictionary::connection_cost_matrix::ConnectionCostMatrix::row
+    ///
     /// # Arguments
     ///
     /// * `forward_id` - Right-context id of the left node (matrix forward axis).
@@ -348,10 +355,28 @@ mod ctxfreq {
         write_row(&mut f, &right)?;
         f.flush()
     }
+
+    /// Returns the counts recorded on this thread and clears them, so that
+    /// a test reads the lookups of one lattice only.
+    ///
+    /// # Returns
+    ///
+    /// The per-left-context-id counts (matrix backward axis) and the
+    /// per-right-context-id counts (forward axis), each as long as the
+    /// largest id recorded plus one.
+    #[cfg(test)]
+    pub fn take() -> (Vec<u64>, Vec<u64>) {
+        let left = HIST_LEFT.with(|h| std::mem::take(&mut *h.borrow_mut()));
+        let right = HIST_RIGHT.with(|h| std::mem::take(&mut *h.borrow_mut()));
+        (left, right)
+    }
 }
 
 #[cfg(feature = "ctxfreq")]
 pub use ctxfreq::{dump as dump_ctx_freq, record_access};
+
+#[cfg(all(test, feature = "ctxfreq"))]
+pub(crate) use ctxfreq::take as take_ctx_freq;
 
 #[cfg(test)]
 mod tests {

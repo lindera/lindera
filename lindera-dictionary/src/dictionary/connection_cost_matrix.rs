@@ -371,6 +371,10 @@ impl ConnectionCostMatrix {
     /// id, so callers relaxing many forward ids against the same backward id
     /// pay the offset computation and bounds check once.
     ///
+    /// The `ctxfreq` feature does not see the lookups made through the row,
+    /// unlike those of [`Self::cost`]: a caller records each one with
+    /// `record_access`, as the lattice does (#1372).
+    ///
     /// # Arguments
     ///
     /// * `backward_id` - The backward context id selecting the row.
