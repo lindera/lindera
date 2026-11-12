@@ -9237,7 +9237,7 @@ ca02ad51c8ae238373dcb150eec014f1ad9f05f54c7416a16c2fe444fd4921b3  /tmp/unidic-cw
   --dest /tmp/lindera-unidic-cwj-202512 \
   --metadata ./lindera-unidic-cwj/metadata.json
 </code></pre>
-<p>パッケージは 2.77 GiB、取り出す 4 つのファイルは合わせて 7.95 GiB で、そのうち 7.70 GiB が <code>matrix.def</code> です。ビルダーは <code>matrix.def</code> を丸ごと読み込むので、ビルドには少なくともそれだけのメモリを使います。</p>
+<p>パッケージは 2.77 GiB、取り出す 4 つのファイルは合わせて 7.95 GiB で、そのうち 7.70 GiB が <code>matrix.def</code> です。ビルダーは <code>matrix.def</code> を 64 MiB ずつ読むので、ファイル全体ではなく、982 MiB の行列と 1 ブロックだけを持ちます。辞書の組み立てで確保したメモリは、macOS で最大 2.48 GiB でした。</p>
 <p><code>lindera-unidic-cwj/metadata.json</code> は <code>connection_id_mapping: false</code> で、クレートには <code>context_id_freq.txt</code> もないので、<code>--context-id-freq</code> は要りません。</p>
 <h2 id="ユーザー辞書のビルド-8"><a class="header" href="#ユーザー辞書のビルド-8">ユーザー辞書のビルド</a></h2>
 <p>CSV ファイルからユーザー辞書をビルドします。簡易版のフォーマットは UniDic 2.1.2 と同じです:</p>
@@ -9391,7 +9391,7 @@ f737d26ce9daf96347e1ccaf34896a36651ffb7ceff91d4d8041591ff7a387e4  /tmp/unidic-cs
   --dest /tmp/lindera-unidic-csj-202512 \
   --metadata ./lindera-unidic-csj/metadata.json
 </code></pre>
-<p>パッケージは 2.81 GiB、取り出す 4 つのファイルは合わせて 8.18 GiB で、そのうち 7.92 GiB が <code>matrix.def</code> です。ビルダーは <code>matrix.def</code> を丸ごと読み込むので、ビルドには少なくともそれだけのメモリを使います。</p>
+<p>パッケージは 2.81 GiB、取り出す 4 つのファイルは合わせて 8.18 GiB で、そのうち 7.92 GiB が <code>matrix.def</code> です。ビルダーは <code>matrix.def</code> を 64 MiB ずつ読むので、ファイル全体ではなく、1,002 MiB の行列と 1 ブロックだけを持ちます。辞書の組み立てで確保したメモリは、macOS で最大 2.50 GiB でした。</p>
 <p><code>lindera-unidic-csj/metadata.json</code> は、名前のほかは UniDic CWJ のものと同じです。2 つのパッケージのフィールドが同じためです。<code>connection_id_mapping: false</code> で、クレートには <code>context_id_freq.txt</code> もないので、<code>--context-id-freq</code> は要りません。</p>
 <h2 id="ユーザー辞書のビルド-9"><a class="header" href="#ユーザー辞書のビルド-9">ユーザー辞書のビルド</a></h2>
 <p>CSV ファイルからユーザー辞書をビルドします。簡易版のフォーマットは UniDic 2.1.2 と同じです:</p>

@@ -190,7 +190,7 @@ ca02ad51c8ae238373dcb150eec014f1ad9f05f54c7416a16c2fe444fd4921b3  /tmp/unidic-cw
   --dest /tmp/lindera-unidic-cwj-202512 \
   --metadata ./lindera-unidic-cwj/metadata.json
 </code></pre>
-<p>The package is 2.77 GiB, and the four files take 7.95 GiB, <code>matrix.def</code> 7.70 GiB of them. The builder reads <code>matrix.def</code> whole, so the build takes at least that much memory.</p>
+<p>The package is 2.77 GiB, and the four files take 7.95 GiB, <code>matrix.def</code> 7.70 GiB of them. The builder reads <code>matrix.def</code> in blocks of 64 MiB, so it holds the 982 MiB matrix and one block rather than the whole file: building the dictionary allocated at most 2.48 GiB on macOS.</p>
 <p><code>lindera-unidic-cwj/metadata.json</code> sets <code>connection_id_mapping: false</code>, and the crate ships no <code>context_id_freq.txt</code>, so no <code>--context-id-freq</code> is needed.</p>
 <h2 id="build-user-dictionary"><a class="header" href="#build-user-dictionary">Build user dictionary</a></h2>
 <p>Build a user dictionary from a CSV file. The simple format is the same as UniDic 2.1.2's:</p>
