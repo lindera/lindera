@@ -18,7 +18,7 @@ ca02ad51c8ae238373dcb150eec014f1ad9f05f54c7416a16c2fe444fd4921b3  /tmp/unidic-cw
   --metadata ./lindera-unidic-cwj/metadata.json
 ```
 
-The package is 2.77 GiB, and the four files take 7.95 GiB, `matrix.def` 7.70 GiB of them. The builder reads `matrix.def` whole, so the build takes at least that much memory.
+The package is 2.77 GiB, and the four files take 7.95 GiB, `matrix.def` 7.70 GiB of them. The builder reads `matrix.def` in blocks of 64 MiB, so it holds the 982 MiB matrix and one block rather than the whole file: building the dictionary allocated at most 2.48 GiB on macOS.
 
 `lindera-unidic-cwj/metadata.json` sets `connection_id_mapping: false`, and the crate ships no `context_id_freq.txt`, so no `--context-id-freq` is needed.
 

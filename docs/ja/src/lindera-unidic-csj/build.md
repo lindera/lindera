@@ -18,7 +18,7 @@ f737d26ce9daf96347e1ccaf34896a36651ffb7ceff91d4d8041591ff7a387e4  /tmp/unidic-cs
   --metadata ./lindera-unidic-csj/metadata.json
 ```
 
-パッケージは 2.81 GiB、取り出す 4 つのファイルは合わせて 8.18 GiB で、そのうち 7.92 GiB が `matrix.def` です。ビルダーは `matrix.def` を丸ごと読み込むので、ビルドには少なくともそれだけのメモリを使います。
+パッケージは 2.81 GiB、取り出す 4 つのファイルは合わせて 8.18 GiB で、そのうち 7.92 GiB が `matrix.def` です。ビルダーは `matrix.def` を 64 MiB ずつ読むので、ファイル全体ではなく、1,002 MiB の行列と 1 ブロックだけを持ちます。辞書の組み立てで確保したメモリは、macOS で最大 2.50 GiB でした。
 
 `lindera-unidic-csj/metadata.json` は、名前のほかは UniDic CWJ のものと同じです。2 つのパッケージのフィールドが同じためです。`connection_id_mapping: false` で、クレートには `context_id_freq.txt` もないので、`--context-id-freq` は要りません。
 
