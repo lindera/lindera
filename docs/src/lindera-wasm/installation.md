@@ -83,7 +83,7 @@ For advanced users who want to embed dictionaries directly into the WASM binary,
 | `embed-jieba` | Jieba | Chinese |
 | `embed-cjk` | IPADIC + ko-dic + Jieba | CJK (all) |
 
-UniDic CWJ has no `embed-unidic-cwj` here: its dictionary takes 1.2 GB, which is not practical for WASM ([#216](https://github.com/lindera/lindera/issues/216)).
+UniDic CWJ and UniDic CSJ have no `embed-unidic-cwj` or `embed-unidic-csj` here: each dictionary takes 1.2 GB, which is not practical for WASM ([#216](https://github.com/lindera/lindera/issues/216), [#1358](https://github.com/lindera/lindera/issues/1358)).
 
 You can combine multiple dictionaries by enabling multiple feature flags:
 

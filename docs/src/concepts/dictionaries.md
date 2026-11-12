@@ -8,6 +8,7 @@ Lindera supports various dictionaries for Japanese, Korean, and Chinese morpholo
 | [IPADIC NEologd](../lindera-ipadic-neologd.md) | Japanese | `lindera-ipadic-neologd` | IPADIC with neologisms (new words) |
 | [UniDic](../lindera-unidic.md) | Japanese | `lindera-unidic` | Uniform word unit definitions |
 | [UniDic CWJ](../lindera-unidic-cwj.md) | Japanese | `lindera-unidic-cwj` | UniDic ver.2025.12 from NINJAL, with accent and kana forms; 1.2 GB |
+| [UniDic CSJ](../lindera-unidic-csj.md) | Japanese | `lindera-unidic-csj` | UniDic for spoken Japanese ver.2025.12 from NINJAL: UniDic CWJ's words with costs trained on conversation; 1.2 GB |
 | [SudachiDict](../lindera-sudachidict.md) | Japanese | `lindera-sudachidict` | Actively maintained vocabulary, updated several times a year upstream |
 | [ko-dic](../lindera-ko-dic.md) | Korean | `lindera-ko-dic` | Korean morphological analysis |
 | [CC-CEDICT](../lindera-cc-cedict.md) | Chinese | `lindera-cc-cedict` | Chinese-English dictionary |

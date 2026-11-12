@@ -2055,7 +2055,7 @@ MeCab の `mecab-dict-index` はそうしたセルのコストを 0 にし、v7.
 ## `embed-*` のビルドは公開済みの辞書をダウンロードする
 
 v6.2.0 までは、`embed-*` feature を付けたビルドのたびに、辞書のソースのアーカイブを
-`lindera.dev` から取って辞書をビルドしていました。v7.0.0 では、同梱の 8 つの辞書を
+`lindera.dev` から取って辞書をビルドしていました。v7.0.0 では、同梱の 9 つの辞書を
 それぞれ一度だけビルドして GitHub のリリースとして公開し、各辞書クレートの
 build script は、`prebuilt.json` が固定する辞書をダウンロードし、SHA-256 を
 確かめて埋め込みます（[#1336](https://github.com/lindera/lindera/issues/1336)）。

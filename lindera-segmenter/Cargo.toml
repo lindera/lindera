@@ -25,6 +25,9 @@ embed-unidic = [
 embed-unidic-cwj = [
     "lindera-unidic-cwj/embed-unidic-cwj",
 ] # Embed UniDic CWJ dictionary in the binary
+embed-unidic-csj = [
+    "lindera-unidic-csj/embed-unidic-csj",
+] # Embed UniDic CSJ dictionary in the binary
 embed-sudachidict = [
     "lindera-sudachidict/embed-sudachidict",
 ] # Embed SudachiDict dictionary in the binary
@@ -76,6 +79,7 @@ lindera-sudachidict = { workspace = true, optional = true }
 lindera-trainer = { workspace = true, optional = true }
 lindera-unidic = { workspace = true, optional = true }
 lindera-unidic-cwj = { workspace = true, optional = true }
+lindera-unidic-csj = { workspace = true, optional = true }
 log = { workspace = true }
 percent-encoding = "2.3.2"
 serde = { workspace = true }

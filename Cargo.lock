@@ -1669,6 +1669,7 @@ dependencies = [
  "lindera-sudachidict",
  "lindera-trainer",
  "lindera-unidic",
+ "lindera-unidic-csj",
  "lindera-unidic-cwj",
  "log",
  "percent-encoding",
@@ -1706,6 +1707,13 @@ dependencies = [
 
 [[package]]
 name = "lindera-unidic"
+version = "7.0.0"
+dependencies = [
+ "lindera-dictionary",
+]
+
+[[package]]
+name = "lindera-unidic-csj"
 version = "7.0.0"
 dependencies = [
  "lindera-dictionary",

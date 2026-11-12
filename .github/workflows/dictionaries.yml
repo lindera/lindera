@@ -1,6 +1,6 @@
 name: Dictionaries
 
-# Builds the eight official dictionaries from source, packs each into the
+# Builds the nine official dictionaries from source, packs each into the
 # archive that its crate's prebuilt.json pins, and checks it against the
 # published one; run by hand with `publish`, it publishes the archives whose
 # release does not exist yet (#1336). The steps of a release are in
@@ -22,6 +22,7 @@ on:
       - "lindera-ipadic-neologd/**"
       - "lindera-unidic/**"
       - "lindera-unidic-cwj/**"
+      - "lindera-unidic-csj/**"
       - "lindera-sudachidict/**"
       - "lindera-ko-dic/**"
       - "lindera-cc-cedict/**"
@@ -37,6 +38,7 @@ on:
       - "lindera-ipadic-neologd/**"
       - "lindera-unidic/**"
       - "lindera-unidic-cwj/**"
+      - "lindera-unidic-csj/**"
       - "lindera-sudachidict/**"
       - "lindera-ko-dic/**"
       - "lindera-cc-cedict/**"
@@ -64,6 +66,7 @@ jobs:
           - lindera-ipadic-neologd
           - lindera-unidic
           - lindera-unidic-cwj
+          - lindera-unidic-csj
           - lindera-sudachidict
           - lindera-ko-dic
           - lindera-cc-cedict
@@ -91,19 +94,20 @@ jobs:
             echo "url=$url"
           } >> "$GITHUB_OUTPUT"
 
-      # UniDic CWJ's source package is 2.77 GiB and unpacks to 8.6 GB, and its
-      # embedding build writes 4 GB more (#216); the runner has 14 GB of SSD.
+      # UniDic CWJ's and UniDic CSJ's source packages are 2.77 GiB and
+      # 2.81 GiB and unpack to 8.6 GB and 8.8 GB, and their embedding builds
+      # write 4 GB more (#216, #1358); the runner has 14 GB of SSD.
       - name: Free disk space
-        if: matrix.crate == 'lindera-unidic-cwj'
+        if: matrix.crate == 'lindera-unidic-cwj' || matrix.crate == 'lindera-unidic-csj'
         run: |
           sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/share/dotnet /opt/ghc /usr/local/.ghcup
           df -h /
 
-      # UniDic CWJ's source is NINJAL's 2.77 GiB package from NINJAL's server,
-      # so the archive is kept between runs rather than downloaded each time
-      # (#216).
+      # UniDic CWJ's and UniDic CSJ's sources are NINJAL's packages of about
+      # 2.8 GiB from NINJAL's server, so the archives are kept between runs
+      # rather than downloaded each time (#216, #1358).
       - name: Restore the source archive
-        if: matrix.crate == 'lindera-unidic-cwj'
+        if: matrix.crate == 'lindera-unidic-cwj' || matrix.crate == 'lindera-unidic-csj'
         uses: ./.github/actions/source-archive-cache
         with:
           crate: ${{ matrix.crate }}
@@ -119,7 +123,7 @@ jobs:
         run: cargo build --locked -p "$CRATE" --features "embed-${CRATE#lindera-}"
 
       - name: Save the source archive
-        if: matrix.crate == 'lindera-unidic-cwj'
+        if: matrix.crate == 'lindera-unidic-cwj' || matrix.crate == 'lindera-unidic-csj'
         uses: ./.github/actions/source-archive-cache
         with:
           crate: ${{ matrix.crate }}

@@ -32,6 +32,10 @@ embed-unidic-cwj = [
     "lindera-segmenter/embed-unidic-cwj",
     "lindera-analysis?/embed-unidic-cwj",
 ] # Embed UniDic CWJ dictionary in the binary
+embed-unidic-csj = [
+    "lindera-segmenter/embed-unidic-csj",
+    "lindera-analysis?/embed-unidic-csj",
+] # Embed UniDic CSJ dictionary in the binary
 embed-sudachidict = [
     "lindera-segmenter/embed-sudachidict",
     "lindera-analysis?/embed-sudachidict",
@@ -109,6 +113,11 @@ required-features = ["embed-unidic"]
 name = "bench_unidic_cwj"
 harness = false
 required-features = ["embed-unidic-cwj"]
+
+[[bench]]
+name = "bench_unidic_csj"
+harness = false
+required-features = ["embed-unidic-csj"]
 
 [[bench]]
 name = "bench_ko_dic"

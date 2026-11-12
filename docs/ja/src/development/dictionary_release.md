@@ -1,8 +1,8 @@
 # 辞書のリリース
 
-公式の 8 つの辞書（IPADIC、IPADIC NEologd、UniDic、UniDic CWJ、SudachiDict、ko-dic、CC-CEDICT、Jieba）は、入力が変わるたびに一度だけビルドして公開し、`embed-*` のビルドは、辞書をソースからビルドする代わりに公開済みの辞書を埋め込みます（[#1336](https://github.com/lindera/lindera/issues/1336)）。このページでは、辞書の公開のしかたと、それに関わる Lindera のリリースの手順を説明します。ビルドが公開済みの辞書とソースからのビルドのどちらを使うかは、[`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](../getting_started/environment_variables.md#lindera_build_dictionary_from_source) にあります。
+公式の 9 つの辞書（IPADIC、IPADIC NEologd、UniDic、UniDic CWJ、UniDic CSJ、SudachiDict、ko-dic、CC-CEDICT、Jieba）は、入力が変わるたびに一度だけビルドして公開し、`embed-*` のビルドは、辞書をソースからビルドする代わりに公開済みの辞書を埋め込みます（[#1336](https://github.com/lindera/lindera/issues/1336)）。このページでは、辞書の公開のしかたと、それに関わる Lindera のリリースの手順を説明します。ビルドが公開済みの辞書とソースからのビルドのどちらを使うかは、[`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](../getting_started/environment_variables.md#lindera_build_dictionary_from_source) にあります。
 
-公開して埋め込むのは、この 8 つの辞書だけです。利用者がビルドする辞書は埋め込みません。`lindera build` でビルドし、実行時にそのディレクトリから読み込みます。
+公開して埋め込むのは、この 9 つの辞書だけです。利用者がビルドする辞書は埋め込みません。`lindera build` でビルドし、実行時にそのディレクトリから読み込みます。
 
 ## 公開するもの
 
@@ -39,12 +39,12 @@
 | 変更 | 新しい鍵 |
 | --- | --- |
 | 新しいソースのアーカイブ（`build.rs` の新しい `file_name` と `sha256`） | その版と、改訂番号 1 |
-| 新しい辞書フォーマットバージョン（`DICTIONARY_FORMAT_VERSION`） | 8 つの辞書すべての `fmt<新しい版>` と `format_version`、改訂番号 1 |
+| 新しい辞書フォーマットバージョン（`DICTIONARY_FORMAT_VERSION`） | 9 つの辞書すべての `fmt<新しい版>` と `format_version`、改訂番号 1 |
 | ビルドしたファイルを変えるそのほかの変更（ビルダー、ビルダーが出力をそのまま書く依存クレート、クレートの `metadata.json` や `context_id_freq.txt`） | 次の改訂番号 |
 
-この変更は `Dictionaries` のワークフロー（`.github/workflows/dictionaries.yml`）が見つけます。`lindera-dictionary`、辞書クレート、`Cargo.lock` を変える pull request と `main` への push で、8 つの辞書を Linux でソースからビルドし、公開する形のアーカイブにまとめ、アーカイブと各ファイルの SHA-256 をジョブの summary に出します。`prebuilt.json` が SHA-256 を固定していれば、ビルドした各ファイルを公開済みのものと比べます。比べ方はバイト単位で、`metadata.json` だけは `lindera_version` を除きます。違いがあればジョブは失敗し、新しい改訂番号を求めます。
+この変更は `Dictionaries` のワークフロー（`.github/workflows/dictionaries.yml`）が見つけます。`lindera-dictionary`、辞書クレート、`Cargo.lock` を変える pull request と `main` への push で、9 つの辞書を Linux でソースからビルドし、公開する形のアーカイブにまとめ、アーカイブと各ファイルの SHA-256 をジョブの summary に出します。`prebuilt.json` が SHA-256 を固定していれば、ビルドした各ファイルを公開済みのものと比べます。比べ方はバイト単位で、`metadata.json` だけは `lindera_version` を除きます。違いがあればジョブは失敗し、新しい改訂番号を求めます。
 
-7 つの辞書のソースのアーカイブは lindera.dev に置いています。UniDic CWJ のソースは国立国語研究所のパッケージ `unidic-cwj-202512_full.zip`（2.77 GiB）そのもので、国立国語研究所の公式の URL から取得します（[#216](https://github.com/lindera/lindera/issues/216)）。Lindera が運用していないサーバーから実行のたびに 2.77 GiB を取得しないように、このワークフローと `release.yml` の `build-dictionary` のジョブは、このアーカイブを `actions/cache`（`.github/actions/source-archive-cache`）で実行をまたいで保存します。キーはファイル名と SHA-256 で、ダウンロードするのは、ソースのアーカイブが新しくなったときと、キャッシュが消されたときだけです。
+7 つの辞書のソースのアーカイブは lindera.dev に置いています。UniDic CWJ と UniDic CSJ のソースは、国立国語研究所のパッケージ `unidic-cwj-202512_full.zip`（2.77 GiB）と `unidic-csj-202512_full.zip`（2.81 GiB）そのもので、国立国語研究所の公式の URL から取得します（[#216](https://github.com/lindera/lindera/issues/216)、[#1358](https://github.com/lindera/lindera/issues/1358)）。Lindera が運用していないサーバーから実行のたびにこれらのパッケージを取得しないように、このワークフローと `release.yml` の `build-dictionary` のジョブは、それぞれのアーカイブを `actions/cache`（`.github/actions/source-archive-cache`）で実行をまたいで保存します。キーはファイル名と SHA-256 で、ダウンロードするのは、ソースのアーカイブが新しくなったときと、キャッシュが消されたときだけです。
 
 固定した辞書のフォーマットバージョンが違うビルドは、ソースからビルドします。そのため、フォーマットを変える pull request も、これまでどおりビルドしてテストでき、そのことは警告で示されます。
 
@@ -74,4 +74,4 @@ crates.io の辞書クレートは公開済みの辞書を固定するので、�
 2. すべての `prebuilt.json` が SHA-256 を固定していることと、`main` の最新の `Dictionaries` の実行が成功していることを確かめます。足りない辞書は、上の手順で公開して固定します。
 3. リリースのタグを打ちます。`release.yml` はクレートを公開し、`lindera download` 用の `lindera-<名前>-<版>.zip` をソースからビルドします。`lindera download` は、入っている辞書の `metadata.json` の `lindera_version` が CLI の版と同じときだけ最新とみなすので、zip の `lindera_version` をリリースの版にするためです。
 
-公開済みの辞書を使う最初のリリースである v7.0.0 では（[#1085](https://github.com/lindera/lindera/issues/1085)）、辞書フォーマットを凍結し、8 つの辞書を公開し、その SHA-256 を固定する pull request をマージしてから、`v7.0.0` のタグを打ちます。
+公開済みの辞書を使う最初のリリースである v7.0.0 では（[#1085](https://github.com/lindera/lindera/issues/1085)）、辞書フォーマットを凍結し、9 つの辞書を公開し、その SHA-256 を固定する pull request をマージしてから、`v7.0.0` のタグを打ちます。

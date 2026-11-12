@@ -2273,7 +2273,7 @@ connection expensive, list its cell with a cost.
 
 Up to v6.2.0, every build with an `embed-*` feature downloaded the source
 archive of its dictionary from `lindera.dev` and built the dictionary. v7.0.0 builds each of
-the eight bundled dictionaries once and publishes it as a GitHub release, and
+the nine bundled dictionaries once and publishes it as a GitHub release, and
 the build script of each dictionary crate downloads the dictionary that its
 `prebuilt.json` pins, checks its SHA-256 and embeds it
 ([#1336](https://github.com/lindera/lindera/issues/1336)). The embedded files

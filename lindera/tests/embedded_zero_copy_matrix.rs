@@ -12,6 +12,7 @@
     feature = "embed-ipadic",
     feature = "embed-unidic",
     feature = "embed-unidic-cwj",
+    feature = "embed-unidic-csj",
     feature = "embed-sudachidict"
 ))]
 
@@ -53,9 +54,18 @@ fn embedded_unidic_matrix_is_zero_copy() {
 #[test]
 #[cfg(feature = "embed-unidic-cwj")]
 fn embedded_unidic_cwj_matrix_is_zero_copy() {
-    // The largest matrix of the embedded dictionaries (24,082 x 21,375,
-    // 982 MiB): a copy here would double the memory of every process (#216).
+    // One of the two largest matrices of the embedded dictionaries (24,082 x
+    // 21,375, 982 MiB): a copy here would double the memory of every process
+    // (#216).
     assert_embedded_matrix_is_borrowed("embedded://unidic-cwj");
+}
+
+#[test]
+#[cfg(feature = "embed-unidic-csj")]
+fn embedded_unidic_csj_matrix_is_zero_copy() {
+    // The largest matrix of the embedded dictionaries (24,314 x 21,609,
+    // 1,002 MiB), slightly larger than UniDic CWJ's (#1358).
+    assert_embedded_matrix_is_borrowed("embedded://unidic-csj");
 }
 
 #[test]

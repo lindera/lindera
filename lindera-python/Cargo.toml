@@ -28,6 +28,9 @@ embed-unidic = ["lindera/embed-unidic"] # Include Japanese dictionary (UniDic)
 embed-unidic-cwj = [
     "lindera/embed-unidic-cwj",
 ] # Include Japanese dictionary (UniDic CWJ)
+embed-unidic-csj = [
+    "lindera/embed-unidic-csj",
+] # Include Japanese dictionary (UniDic CSJ)
 embed-sudachidict = [
     "lindera/embed-sudachidict",
 ] # Include Japanese dictionary (SudachiDict)

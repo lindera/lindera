@@ -1,0 +1,22 @@
+[package]
+name = "lindera-unidic-csj"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+description = "A Japanese morphological dictionary for UniDic for contemporary spoken Japanese (UniDic CSJ)."
+documentation = "https://docs.rs/lindera-unidic-csj"
+homepage = { workspace = true }
+repository = { workspace = true }
+readme = "README.md"
+keywords = ["morphological", "analysis", "dictionary", "japanese", "unidic"]
+categories = { workspace = true }
+license = { workspace = true }
+
+[features]
+embed-unidic-csj = [] # Embed UniDic CSJ dictionary in the binary
+
+[dependencies]
+lindera-dictionary = { workspace = true }
+
+[build-dependencies]
+lindera-dictionary = { workspace = true, features = ["build_rs"] }

@@ -85,6 +85,14 @@ CLI 使用時に展開した辞書パスを指定します（アーカイブに�
 
 実行ファイルは 1.2 GB の辞書を含み、ビルドには 11 GiB ほどのメモリを使います。`lindera download unidic-cwj` なら、埋め込まずに辞書を取得できます。
 
+#### UniDic CSJ（日本語辞書）
+
+```shell
+% cargo build --release --features=embed-unidic-csj
+```
+
+実行ファイルは 1.2 GB の辞書を含み、ビルドには、UniDic CWJ と同じく 8〜11 GiB のメモリを使います。`lindera download unidic-csj` なら、埋め込まずに辞書を取得できます。
+
 #### SudachiDict（日本語辞書）
 
 ```shell
