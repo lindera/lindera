@@ -14,8 +14,8 @@
 //! cargo insta review  # or inspect the diff manually
 //! ```
 
-//! Snapshots currently exist for IPADIC, UniDic, UniDic CWJ, SudachiDict,
-//! ko-dic and Jieba. Tests for the remaining embedded dictionaries (IPADIC NEologd,
+//! Snapshots currently exist for IPADIC, UniDic, UniDic CWJ, UniDic CSJ,
+//! SudachiDict, ko-dic and Jieba. Tests for the remaining embedded dictionaries (IPADIC NEologd,
 //! CC-CEDICT) can be added with the same `golden_tests!` macro once snapshots
 //! have been generated in an environment where those dictionaries can be
 //! downloaded and embedded.
@@ -24,6 +24,7 @@
     feature = "embed-ipadic",
     feature = "embed-unidic",
     feature = "embed-unidic-cwj",
+    feature = "embed-unidic-csj",
     feature = "embed-sudachidict",
     feature = "embed-ko-dic",
     feature = "embed-jieba",
@@ -133,6 +134,12 @@ golden_tests!(
     "embed-unidic-cwj",
     unidic_cwj,
     "embedded://unidic-cwj",
+    JAPANESE_TEXTS
+);
+golden_tests!(
+    "embed-unidic-csj",
+    unidic_csj,
+    "embedded://unidic-csj",
     JAPANESE_TEXTS
 );
 golden_tests!(

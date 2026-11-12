@@ -112,6 +112,29 @@ jobs:
       cache: true
       free-disk-space: true
 
+  test-lindera-unidic-csj:
+    name: Test lindera-unidic-csj
+    needs: [test-lindera-dictionary]
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-unidic-csj
+      features: "--features embed-unidic-csj"
+      cache: true
+      free-disk-space: true
+
+  # UniDic CSJ is kept out of the jobs that embed every dictionary at once,
+  # as UniDic CWJ is (#1358); this job runs only the tests of lindera that
+  # read it.
+  test-lindera-unidic-csj-tokenization:
+    name: Test lindera with UniDic CSJ
+    needs: [test-lindera-unidic-csj]
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera
+      features: "--features embed-unidic-csj --test golden_tokenization --test embedded_zero_copy_matrix"
+      cache: true
+      free-disk-space: true
+
   test-lindera-sudachidict:
     name: Test lindera-sudachidict
     needs: [test-lindera-dictionary]
@@ -158,6 +181,7 @@ jobs:
       - test-lindera-ipadic-neologd
       - test-lindera-unidic
       - test-lindera-unidic-cwj
+      - test-lindera-unidic-csj
       - test-lindera-sudachidict
       - test-lindera-ko-dic
       - test-lindera-cc-cedict
@@ -189,6 +213,7 @@ jobs:
       - test-lindera-ipadic-neologd
       - test-lindera-unidic
       - test-lindera-unidic-cwj
+      - test-lindera-unidic-csj
       - test-lindera-sudachidict
       - test-lindera-ko-dic
       - test-lindera-cc-cedict
@@ -404,6 +429,7 @@ jobs:
         test-lindera-segmenter-all-dictionaries,
         test-lindera-all-dictionaries,
         test-lindera-unidic-cwj-tokenization,
+        test-lindera-unidic-csj-tokenization,
         test-lindera-binding,
         test-lindera-python,
         test-lindera-nodejs,
@@ -443,6 +469,8 @@ jobs:
             feature: "embed-unidic"
           - name: "lindera-unidic-cwj"
             feature: "embed-unidic-cwj"
+          - name: "lindera-unidic-csj"
+            feature: "embed-unidic-csj"
           - name: "lindera-sudachidict"
             feature: "embed-sudachidict"
           - name: "lindera-ko-dic"
@@ -461,19 +489,20 @@ jobs:
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
 
-      # UniDic CWJ's source package is 2.77 GiB and unpacks to 8.6 GB, and its
-      # embedding build writes 4 GB more (#216); the runner has 14 GB of SSD.
+      # UniDic CWJ's and UniDic CSJ's source packages are 2.77 GiB and
+      # 2.81 GiB and unpack to 8.6 GB and 8.8 GB, and their embedding builds
+      # write 4 GB more (#216, #1358); the runner has 14 GB of SSD.
       - name: Free disk space
-        if: matrix.dictionary.name == 'lindera-unidic-cwj'
+        if: matrix.dictionary.name == 'lindera-unidic-cwj' || matrix.dictionary.name == 'lindera-unidic-csj'
         run: |
           sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/share/dotnet /opt/ghc /usr/local/.ghcup
           df -h /
 
-      # UniDic CWJ's source is NINJAL's 2.77 GiB package from NINJAL's server,
-      # so the archive is kept between runs rather than downloaded each time
-      # (#216).
+      # UniDic CWJ's and UniDic CSJ's sources are NINJAL's packages of about
+      # 2.8 GiB from NINJAL's server, so the archives are kept between runs
+      # rather than downloaded each time (#216, #1358).
       - name: Restore the source archive
-        if: matrix.dictionary.name == 'lindera-unidic-cwj'
+        if: matrix.dictionary.name == 'lindera-unidic-cwj' || matrix.dictionary.name == 'lindera-unidic-csj'
         uses: ./.github/actions/source-archive-cache
         with:
           crate: ${{ matrix.dictionary.name }}
@@ -491,7 +520,7 @@ jobs:
           LINDERA_BUILD_DICTIONARY_CACHE_DIR=dictionaries cargo build -p ${{ matrix.dictionary.name }} --features ${{ matrix.dictionary.feature }}
 
       - name: Save the source archive
-        if: matrix.dictionary.name == 'lindera-unidic-cwj'
+        if: matrix.dictionary.name == 'lindera-unidic-cwj' || matrix.dictionary.name == 'lindera-unidic-csj'
         uses: ./.github/actions/source-archive-cache
         with:
           crate: ${{ matrix.dictionary.name }}
@@ -1198,7 +1227,7 @@ jobs:
           # Binding crates (lindera-python, lindera-nodejs, lindera-ruby,
           # lindera-wasm, lindera-php) are not published to crates.io; they are
           # distributed through their own registries (PyPI, npm, RubyGems).
-          for crate in lindera-crf lindera-dictionary lindera-trainer lindera-cc-cedict lindera-jieba lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera-unidic-cwj lindera-sudachidict lindera-segmenter lindera-analysis lindera lindera-binding lindera-cli; do
+          for crate in lindera-crf lindera-dictionary lindera-trainer lindera-cc-cedict lindera-jieba lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera-unidic-cwj lindera-unidic-csj lindera-sudachidict lindera-segmenter lindera-analysis lindera lindera-binding lindera-cli; do
             VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r ".packages[] | select(.name==\"$crate\") | .version")
             PUBLISHED_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" "https://crates.io/api/v1/crates/$crate" | jq -r 'select(.versions != null) | .versions[].num')
             if echo "${PUBLISHED_VERSIONS}" | grep -Fx "${VERSION}" >/dev/null; then

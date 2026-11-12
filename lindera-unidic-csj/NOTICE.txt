@@ -1,0 +1,50 @@
+===========================================================================
+Lindera Morphological Analyzer
+===========================================================================
+
+This software includes a binary and/or source version of data from
+
+  UniDic for contemporary spoken Japanese (現代話し言葉UniDic) ver.2025.12
+
+which can be obtained from
+
+  https://clrd.ninjal.ac.jp/unidic_archive/2512/unidic-csj-202512_full.zip
+
+It is copyrighted free software by the National Institute for Japanese
+Language and Linguistics, released under any of the GPL v2.0, the LGPL v2.1
+or the BSD License (the package's license/COPYING). The package's BSD
+License follows.
+
+===========================================================================
+unidic-csj-202512 Notice (license/BSD)
+===========================================================================
+
+Copyright (c) 2023 National Institute for Japanese Language and Linguistics
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+ * Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+
+ * Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the
+   distribution.
+
+ * Neither the name of the UniDic Consortium nor the names of its
+   contributors may be used to endorse or promote products derived
+   from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

@@ -25,6 +25,9 @@ embed-unidic = [
 embed-unidic-cwj = [
     "lindera-segmenter/embed-unidic-cwj",
 ] # Embed UniDic CWJ dictionary in the binary
+embed-unidic-csj = [
+    "lindera-segmenter/embed-unidic-csj",
+] # Embed UniDic CSJ dictionary in the binary
 embed-sudachidict = [
     "lindera-segmenter/embed-sudachidict",
 ] # Embed SudachiDict dictionary in the binary

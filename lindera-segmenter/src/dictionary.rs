@@ -42,6 +42,10 @@ pub use lindera_trainer as trainer;
 use lindera_unidic::DICTIONARY_NAME as UNIDIC_DICTIONARY_NAME;
 #[cfg(feature = "embed-unidic")]
 use lindera_unidic::embedded::EmbeddedUniDicLoader;
+#[cfg(feature = "embed-unidic-csj")]
+use lindera_unidic_csj::DICTIONARY_NAME as UNIDIC_CSJ_DICTIONARY_NAME;
+#[cfg(feature = "embed-unidic-csj")]
+use lindera_unidic_csj::embedded::EmbeddedUniDicCsjLoader;
 #[cfg(feature = "embed-unidic-cwj")]
 use lindera_unidic_cwj::DICTIONARY_NAME as UNIDIC_CWJ_DICTIONARY_NAME;
 #[cfg(feature = "embed-unidic-cwj")]
@@ -78,6 +82,7 @@ pub enum DictionaryScheme {
         feature = "embed-ipadic-neologd",
         feature = "embed-unidic",
         feature = "embed-unidic-cwj",
+        feature = "embed-unidic-csj",
         feature = "embed-sudachidict",
         feature = "embed-ko-dic",
         feature = "embed-cc-cedict",
@@ -97,6 +102,7 @@ impl DictionaryScheme {
                 feature = "embed-ipadic-neologd",
                 feature = "embed-unidic",
                 feature = "embed-unidic-cwj",
+                feature = "embed-unidic-csj",
                 feature = "embed-sudachidict",
                 feature = "embed-ko-dic",
                 feature = "embed-cc-cedict",
@@ -117,6 +123,7 @@ impl FromStr for DictionaryScheme {
                 feature = "embed-ipadic-neologd",
                 feature = "embed-unidic",
                 feature = "embed-unidic-cwj",
+                feature = "embed-unidic-csj",
                 feature = "embed-sudachidict",
                 feature = "embed-ko-dic",
                 feature = "embed-cc-cedict",
@@ -144,6 +151,9 @@ pub enum DictionaryKind {
     #[cfg(feature = "embed-unidic-cwj")]
     #[serde(rename = "unidic-cwj")]
     UniDicCwj,
+    #[cfg(feature = "embed-unidic-csj")]
+    #[serde(rename = "unidic-csj")]
+    UniDicCsj,
     #[cfg(feature = "embed-sudachidict")]
     #[serde(rename = "sudachidict")]
     SudachiDict,
@@ -175,6 +185,8 @@ impl DictionaryKind {
                 DictionaryKind::UniDic => cfg!(feature = "embed-unidic"),
                 #[cfg(feature = "embed-unidic-cwj")]
                 DictionaryKind::UniDicCwj => cfg!(feature = "embed-unidic-cwj"),
+                #[cfg(feature = "embed-unidic-csj")]
+                DictionaryKind::UniDicCsj => cfg!(feature = "embed-unidic-csj"),
                 #[cfg(feature = "embed-sudachidict")]
                 DictionaryKind::SudachiDict => cfg!(feature = "embed-sudachidict"),
                 #[cfg(feature = "embed-ko-dic")]
@@ -199,6 +211,8 @@ impl DictionaryKind {
             DictionaryKind::UniDic => UNIDIC_DICTIONARY_NAME,
             #[cfg(feature = "embed-unidic-cwj")]
             DictionaryKind::UniDicCwj => UNIDIC_CWJ_DICTIONARY_NAME,
+            #[cfg(feature = "embed-unidic-csj")]
+            DictionaryKind::UniDicCsj => UNIDIC_CSJ_DICTIONARY_NAME,
             #[cfg(feature = "embed-sudachidict")]
             DictionaryKind::SudachiDict => SUDACHIDICT_DICTIONARY_NAME,
             #[cfg(feature = "embed-ko-dic")]
@@ -233,6 +247,10 @@ impl FromStr for DictionaryKind {
         #[cfg(feature = "embed-unidic-cwj")]
         if input == UNIDIC_CWJ_DICTIONARY_NAME {
             return Ok(DictionaryKind::UniDicCwj);
+        }
+        #[cfg(feature = "embed-unidic-csj")]
+        if input == UNIDIC_CSJ_DICTIONARY_NAME {
+            return Ok(DictionaryKind::UniDicCsj);
         }
         #[cfg(feature = "embed-sudachidict")]
         if input == SUDACHIDICT_DICTIONARY_NAME {
@@ -277,6 +295,8 @@ pub fn resolve_embedded_loader(
         DictionaryKind::UniDic => Ok(Box::new(EmbeddedUniDicLoader::new())),
         #[cfg(feature = "embed-unidic-cwj")]
         DictionaryKind::UniDicCwj => Ok(Box::new(EmbeddedUniDicCwjLoader::new())),
+        #[cfg(feature = "embed-unidic-csj")]
+        DictionaryKind::UniDicCsj => Ok(Box::new(EmbeddedUniDicCsjLoader::new())),
         #[cfg(feature = "embed-sudachidict")]
         DictionaryKind::SudachiDict => Ok(Box::new(EmbeddedSudachiDictLoader::new())),
         #[cfg(feature = "embed-ko-dic")]
@@ -386,6 +406,7 @@ pub fn load_dictionary_with_options(uri: &str, use_mmap: bool) -> LinderaResult<
                         feature = "embed-ipadic-neologd",
                         feature = "embed-unidic",
                         feature = "embed-unidic-cwj",
+                        feature = "embed-unidic-csj",
                         feature = "embed-sudachidict",
                         feature = "embed-ko-dic",
                         feature = "embed-cc-cedict",
@@ -585,6 +606,7 @@ fn load_user_dictionary_with(
                         feature = "embed-ipadic-neologd",
                         feature = "embed-unidic",
                         feature = "embed-unidic-cwj",
+                        feature = "embed-unidic-csj",
                         feature = "embed-sudachidict",
                         feature = "embed-ko-dic",
                         feature = "embed-cc-cedict",

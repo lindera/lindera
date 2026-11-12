@@ -2,8 +2,9 @@ name: "Source archive cache"
 description: >-
   Keep the source archive of a dictionary crate that downloads it from its
   original host, rather than lindera.dev, with actions/cache (#216), so that
-  the builds from source do not download it each time: UniDic CWJ's is
-  NINJAL's 2.77 GiB package, from a server Lindera does not run. Call it
+  the builds from source do not download it each time: UniDic CWJ's and
+  UniDic CSJ's (#1358) are NINJAL's 2.77 GiB and 2.81 GiB packages, from a
+  server Lindera does not run. Call it
   with `mode: restore` before a build from source, which puts a cached archive
   where the crate's build script looks for it, and with `mode: save` after the
   build, which saves the archive the build downloaded when the restore missed.

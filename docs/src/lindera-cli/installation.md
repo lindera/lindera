@@ -85,6 +85,14 @@ For advanced users who want to embed dictionaries directly into the binary, use 
 
 The binary carries the 1.2 GB dictionary, and the build takes about 11 GiB of memory. `lindera download unidic-cwj` gets the dictionary without embedding it.
 
+#### UniDic CSJ (Japanese dictionary)
+
+```shell
+% cargo build --release --features=embed-unidic-csj
+```
+
+The binary carries the 1.2 GB dictionary, and the build takes 8 to 11 GiB of memory, as for UniDic CWJ. `lindera download unidic-csj` gets the dictionary without embedding it.
+
 #### SudachiDict (Japanese dictionary)
 
 ```shell

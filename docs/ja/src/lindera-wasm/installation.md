@@ -61,7 +61,7 @@ wasm-pack のデフォルトの `--target` は `bundler` ですが、公開さ�
 | `embed-jieba` | Jieba | 中国語 |
 | `embed-cjk` | IPADIC + ko-dic + Jieba | CJK（全言語） |
 
-UniDic CWJ の `embed-unidic-cwj` はありません。辞書が 1.2 GB あり、WASM には現実的でないためです（[#216](https://github.com/lindera/lindera/issues/216)）。
+UniDic CWJ と UniDic CSJ の `embed-unidic-cwj`・`embed-unidic-csj` はありません。どちらも辞書が 1.2 GB あり、WASM には現実的でないためです（[#216](https://github.com/lindera/lindera/issues/216)、[#1358](https://github.com/lindera/lindera/issues/1358)）。
 
 複数の feature フラグを有効にして複数の辞書を組み合わせることができます：
 
