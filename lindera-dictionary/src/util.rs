@@ -2,6 +2,8 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::ops::Deref;
 use std::path::Path;
+#[cfg(feature = "mmap")]
+use std::sync::Arc;
 
 #[cfg(feature = "mmap")]
 use memmap2::Mmap;
@@ -172,8 +174,6 @@ pub fn read_file_with_encoding(filepath: &Path, encoding_name: &str) -> LinderaR
     let buffer = read_file(filepath)?;
     Ok(encoding.decode(&buffer).0.into_owned())
 }
-
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub enum Data {

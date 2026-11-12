@@ -446,6 +446,21 @@ jobs:
       runs-on: ${{ matrix.platform.runner }}
       lint: true
 
+  # The workspace dependency on lindera-dictionary keeps its default features,
+  # so every other job builds it with `mmap`. This one tests and lints it
+  # without, as the jobs below do for lindera-segmenter and lindera (#1370).
+  test-lindera-dictionary-no-default-features:
+    name: Test lindera-dictionary (no default features)
+    needs: [test-lindera-dictionary, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-dictionary == 'true')
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-dictionary
+      features: "--no-default-features --features build_rs"
+      lint: true
+
   test-lindera-trainer:
     name: Test lindera-trainer
     needs: [test-lindera-dictionary, detect-changes]
