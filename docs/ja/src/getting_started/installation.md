@@ -36,7 +36,7 @@ let dictionary = load_dictionary("/path/to/ipadic")?;
 > let dictionary = load_dictionary("embedded://ipadic")?;
 > ```
 >
-> `embed-*` のビルドは、辞書クレートのために Lindera が GitHub で公開している辞書をダウンロードし、SHA-256 を確かめて埋め込みます。辞書をソースからビルドしなくなったので、ビルドには `lindera.dev` ではなく `github.com`（ファイルは `release-assets.githubusercontent.com` から配られます）への接続が要ります。`LINDERA_BUILD_DICTIONARY_CACHE_DIR` を設定すれば、2 回目からのビルドはダウンロードした辞書を使い、ネットワークに接続しません。build script がソースからビルドする場合は、[`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](./environment_variables.md#lindera_build_dictionary_from_source) を、ミラーからダウンロードするには [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](./environment_variables.md#lindera_build_dictionary_published_base_url) を参照してください。
+> crates.io の辞書クレートの `embed-*` のビルドは、そのリリースで Lindera が GitHub に置いた辞書をダウンロードし、SHA-256 を確かめて埋め込みます。辞書をソースからビルドしなくなったので、ビルドには `lindera.dev` ではなく `github.com`（ファイルは `release-assets.githubusercontent.com` から配られます）への接続が要ります。リポジトリの checkout からのビルドは、辞書をソースからビルドします。`LINDERA_BUILD_DICTIONARY_CACHE_DIR` を設定すれば、2 回目からのビルドはダウンロードした辞書を使い、ネットワークに接続しません。build script がソースからビルドする場合は、[`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](./environment_variables.md#lindera_build_dictionary_from_source) を、ミラーからダウンロードするには [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](./environment_variables.md#lindera_build_dictionary_published_base_url) を参照してください。
 >
 > 埋め込めるのは同梱の辞書だけです。自分の辞書は `lindera build` でビルドし、実行時にそのディレクトリから読み込んでください。
 >

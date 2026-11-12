@@ -509,10 +509,12 @@ jobs:
           cache-dir: ${{ github.workspace }}/dictionaries
           mode: restore
 
-      # Built from source rather than taken from the published dictionary
-      # (#1336), so that metadata.json carries this release's version as its
-      # lindera_version: `lindera download` takes an installed dictionary
-      # for current only when that equals the CLI's version.
+      # Built from source, as the checkout has no prebuilt.json (#1362);
+      # LINDERA_BUILD_DICTIONARY_FROM_SOURCE makes sure of it. metadata.json
+      # then carries this release's version as its lindera_version:
+      # `lindera download` takes an installed dictionary for current only when
+      # that equals the CLI's version. The dictionary crates published to
+      # crates.io pin these archives (see publish-crates).
       - name: Build dictionary
         env:
           LINDERA_BUILD_DICTIONARY_FROM_SOURCE: "1"
@@ -1212,7 +1214,9 @@ jobs:
 
   publish-crates:
     name: Publish crates
-    needs: [create-release]
+    # The dictionary crates pin the archives that build-dictionary uploads to
+    # this release (#1362), so they are published after them.
+    needs: [create-release, build-dictionary]
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
@@ -1221,6 +1225,30 @@ jobs:
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
+
+      # Each dictionary crate gets a prebuilt.json that pins its archive on
+      # this release's page by SHA-256, so that an embed-* build of the
+      # published crate downloads it instead of building the dictionary. The
+      # files are not committed: builds from the repository build from source.
+      - name: Pin the dictionaries of this release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dictionary") | .version')
+          crates="lindera-ipadic lindera-ipadic-neologd lindera-unidic lindera-unidic-cwj lindera-unidic-csj lindera-sudachidict lindera-ko-dic lindera-cc-cedict lindera-jieba"
+          mkdir -p dictionary-archives
+          for crate in $crates; do
+            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$crate-$VERSION.zip" --dir dictionary-archives
+          done
+          # shellcheck disable=SC2086 # one argument per crate
+          scripts/write_dictionary_pins.sh "$TAG" "$VERSION" dictionary-archives $crates
+
+      # An embed build of one pinned dictionary (IPADIC, about 10 MB) downloads
+      # its archive from this release and checks it, before any crate is
+      # published with a pin that does not work.
+      - name: Check a pinned dictionary
+        run: cargo build -p lindera-ipadic --features embed-ipadic
 
       - name: Publish crates
         run: |
@@ -1235,7 +1263,12 @@ jobs:
             else
               echo "Publishing $crate $VERSION..."
               pushd $crate
-              cargo publish
+              if [ -f prebuilt.json ]; then
+                # The pin written above is the crate's only uncommitted file.
+                cargo publish --allow-dirty
+              else
+                cargo publish
+              fi
               popd
               sleep 20
             fi
