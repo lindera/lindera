@@ -240,14 +240,14 @@ LINDERA_BUILD_DICTIONARY_CACHE_DIR = "/path/to/cache"
 <li>Builds with <code>DOCS_RS</code> set ignore this variable (see <code>DOCS_RS</code> below)</li>
 </ul>
 <h3 id="lindera_build_dictionary_from_source"><a class="header" href="#lindera_build_dictionary_from_source">LINDERA_BUILD_DICTIONARY_FROM_SOURCE</a></h3>
-<p>The nine official dictionaries are built once for each change of their inputs and published as GitHub releases, one release per dictionary and version, which are never replaced. Each dictionary crate pins its published dictionary, by URL and SHA-256, in the <code>prebuilt.json</code> next to its <code>metadata.json</code>, and its build script downloads that archive, checks its SHA-256, and embeds it, instead of downloading the source archive and building the dictionary. The archive holds the same files as a build from source; only the <code>lindera_version</code> in its <code>metadata.json</code> names the Lindera version that built it. How the dictionaries are published is in <a href="../development/dictionary_release.html">Dictionary Release</a>.</p>
+<p>A Lindera release builds the nine official dictionaries from source and puts them on the page of its version, next to the binaries, as <code>lindera-&lt;name&gt;-&lt;version&gt;.zip</code>. A dictionary crate published on crates.io pins its release's archive, by URL and SHA-256, in the <code>prebuilt.json</code> next to its <code>metadata.json</code>, which the release writes, and its build script downloads that archive, checks it, and embeds it, instead of downloading the source archive and building the dictionary. The archive holds the same files as a build from source; only the <code>lindera_version</code> in its <code>metadata.json</code> names the release. How the dictionaries are published is in <a href="../development/dictionary_release.html">Dictionary Release</a>.</p>
 <p>A failed download, an archive with another SHA-256, or one that lacks a file or does not fit the crate's <code>metadata.json</code>, stops the build with an error that says what went wrong; the build does not embed anything it could not check, and does not build from source instead.</p>
 <p>The build script builds the dictionary from source, as up to v6, in these cases:</p>
 <ul>
 <li><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code> is <code>1</code> or <code>true</code>. <code>0</code>, <code>false</code> and the empty value leave the choice to the build script; any other value counts as <code>1</code>, with a warning.</li>
 <li><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> names a histogram, with which the dictionary differs from the published one.</li>
-<li>The published dictionary has another dictionary format version than this build reads, as on the development branch between a change of the format and the publication of the new dictionaries.</li>
-<li><code>prebuilt.json</code> pins no SHA-256 yet, while a new dictionary waits to be published.</li>
+<li>The pinned dictionary has another dictionary format version than this build reads, which a pin that a release writes never has.</li>
+<li>The crate has no <code>prebuilt.json</code>, as when it is built from this repository (a checkout or a git dependency) rather than from crates.io.</li>
 </ul>
 <p>In the first three cases, the build script says why in a warning, such as:</p>
 <pre><code class="language-text">warning: lindera-ipadic@7.0.0: building the ipadic dictionary from source, because LINDERA_BUILD_DICTIONARY_FROM_SOURCE is set
@@ -263,7 +263,7 @@ LINDERA_BUILD_DICTIONARY_CACHE_DIR = "/path/to/cache"
 </tbody></table>
 </div>
 <p>For IPADIC, with the variables set to <code>https://mirror.example/lindera-releases</code> and <code>https://mirror.example/lindera-dev</code>, the build downloads one of these:</p>
-<pre><code class="language-text">https://mirror.example/lindera-releases/dictionary-ipadic-2.7.0-20250920-fmt3-r1/ipadic-2.7.0-20250920-fmt3-r1.tar.gz
+<pre><code class="language-text">https://mirror.example/lindera-releases/v7.0.0/lindera-ipadic-7.0.0.zip
 https://mirror.example/lindera-dev/mecab-ipadic-2.7.0-20250920.tar.gz
 </code></pre>
 <p>A mirror thus keeps the files at the paths they have on the original host: an Artifactory remote repository that proxies <code>https://github.com/lindera/lindera/releases/download</code> serves the published dictionaries, and one that proxies <code>https://lindera.dev</code> serves the source archives. The source archives of UniDic CWJ and UniDic CSJ are not on lindera.dev: a mirror that builds them from source serves NINJAL's <code>unidic-cwj-202512_full.zip</code> and <code>unidic-csj-202512_full.zip</code> at the same base, under those file names. A build downloads the published dictionary by default and the source archive only when it builds from source (see <a href="#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a>), which can also happen without <code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code>; a build that must not reach the original hosts sets both variables.</p>

@@ -177,62 +177,38 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="dictionary-release"><a class="header" href="#dictionary-release">Dictionary Release</a></h1>
-<p>The nine official dictionaries (IPADIC, IPADIC NEologd, UniDic, UniDic CWJ, UniDic CSJ, SudachiDict, ko-dic, CC-CEDICT and Jieba) are built once for each change of their inputs and published, and an <code>embed-*</code> build embeds the published dictionary instead of building it from source (<a href="https://github.com/lindera/lindera/issues/1336">#1336</a>). This page describes how they are published, and the steps of a Lindera release that depend on them. How a build chooses between the published dictionary and the build from source is in <a href="../getting_started/environment_variables.html#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a>.</p>
+<p>A Lindera release builds the nine official dictionaries (IPADIC, IPADIC NEologd, UniDic, UniDic CWJ, UniDic CSJ, SudachiDict, ko-dic, CC-CEDICT and Jieba) from source and puts them on the page of its version, next to the binaries (<a href="https://github.com/lindera/lindera/issues/1362">#1362</a>). <code>lindera download</code> installs these archives, and an <code>embed-*</code> build of a dictionary crate from crates.io embeds its archive instead of building the dictionary from source (<a href="https://github.com/lindera/lindera/issues/1336">#1336</a>). This page describes what is published, how a build gets its dictionary, and the steps of a release.</p>
 <p>Only these nine dictionaries are published and embedded. A dictionary that a user builds is not embedded: it is built with <code>lindera build</code> and loaded from its directory at runtime.</p>
 <h2 id="what-is-published"><a class="header" href="#what-is-published">What is published</a></h2>
-<p>Each published dictionary is an archive, <code>&lt;key&gt;.tar.gz</code>, attached to its own GitHub release under the tag <code>dictionary-&lt;key&gt;</code>. The archive holds one directory named <code>&lt;key&gt;</code>, with the nine files that the dictionary crate embeds (<code>char_def.bin</code>, <code>matrix.mtx</code>, <code>dict.trie</code>, <code>dict.valsidx</code>, <code>dict.vals</code>, <code>dict.wordsidx</code>, <code>dict.words</code>, <code>unk.bin</code> and <code>metadata.json</code>) and the crate's <code>NOTICE.txt</code>. A release is never replaced or deleted, because the dictionary crates published on crates.io pin its archive.</p>
-<p>The key names the inputs of the dictionary:</p>
-<pre><code class="language-text">&lt;name&gt;-&lt;version of the source archive&gt;-fmt&lt;dictionary format version&gt;-r&lt;revision&gt;
-</code></pre>
-<p>For example, <code>ipadic-2.7.0-20250920-fmt3-r1</code> is the first IPADIC dictionary built from <code>mecab-ipadic-2.7.0-20250920.tar.gz</code> in the dictionary format version 3.</p>
-<h2 id="the-pin"><a class="header" href="#the-pin">The pin</a></h2>
-<p>Each dictionary crate pins its published dictionary in <code>prebuilt.json</code>, next to its <code>metadata.json</code>:</p>
+<p>The release <code>v&lt;version&gt;</code> holds one archive per dictionary, <code>lindera-&lt;name&gt;-&lt;version&gt;.zip</code>, for example <code>lindera-ipadic-7.0.0.zip</code> in <code>v7.0.0</code>. The archive holds one directory named <code>lindera-&lt;name&gt;</code>, with the nine files that the dictionary crate embeds (<code>char_def.bin</code>, <code>matrix.mtx</code>, <code>dict.trie</code>, <code>dict.valsidx</code>, <code>dict.vals</code>, <code>dict.wordsidx</code>, <code>dict.words</code>, <code>unk.bin</code> and <code>metadata.json</code>) and the crate's <code>NOTICE.txt</code>. Its <code>metadata.json</code> names the release's version as <code>lindera_version</code>: <code>lindera download</code> takes an installed dictionary for current only when that equals the version of the CLI.</p>
+<p>The <code>build-dictionary</code> job of <code>release.yml</code> builds the archives on the tag. The dictionary crates published on crates.io pin them, so a release's archives are never replaced or deleted.</p>
+<h2 id="how-a-build-gets-its-dictionary"><a class="header" href="#how-a-build-gets-its-dictionary">How a build gets its dictionary</a></h2>
+<p>A dictionary crate published on crates.io has a <code>prebuilt.json</code> next to its <code>metadata.json</code>, which the release writes just before it publishes the crate:</p>
 <pre><code class="language-json">{
-  "key": "ipadic-2.7.0-20250920-fmt3-r1",
+  "key": "lindera-ipadic",
   "format_version": 3,
   "base_url": "https://github.com/lindera/lindera/releases/download",
-  "path": "dictionary-ipadic-2.7.0-20250920-fmt3-r1/ipadic-2.7.0-20250920-fmt3-r1.tar.gz",
-  "sha256": null
+  "path": "v7.0.0/lindera-ipadic-7.0.0.zip",
+  "sha256": "&lt;SHA-256 of the archive&gt;"
 }
 </code></pre>
-<p><code>sha256</code> is the SHA-256 of the archive. While it is <code>null</code>, the dictionary is built from source, which is how a new key waits for its dictionary to be published. The URL is <code>base_url</code> and <code>path</code> joined by <code>/</code>.</p>
-<h2 id="when-the-key-changes"><a class="header" href="#when-the-key-changes">When the key changes</a></h2>
-<p>A dictionary needs a new key, and so a new release, whenever the dictionary built from source would differ from the published one:</p>
-<div class="table-wrapper"><table><thead><tr><th>Change</th><th>New key</th></tr></thead><tbody>
-<tr><td>A new source archive (a new <code>file_name</code> and <code>sha256</code> in <code>build.rs</code>)</td><td>Its version, and revision 1</td></tr>
-<tr><td>A new dictionary format version (<code>DICTIONARY_FORMAT_VERSION</code>)</td><td><code>fmt&lt;new version&gt;</code> and <code>format_version</code>, and revision 1, for all nine dictionaries</td></tr>
-<tr><td>Anything else that changes the built files: the builder, a dependency whose output it writes, the crate's <code>metadata.json</code> or <code>context_id_freq.txt</code></td><td>The next revision</td></tr>
-</tbody></table>
-</div>
-<p>The <code>Dictionaries</code> workflow (<code>.github/workflows/dictionaries.yml</code>) finds such a change. On a pull request or a push to <code>main</code> that changes <code>lindera-dictionary</code>, a dictionary crate or <code>Cargo.lock</code>, it builds the nine dictionaries from source on Linux, packs them as published archives, prints the SHA-256 of each archive and of each file in the summary of its jobs, and, when <code>prebuilt.json</code> pins a SHA-256, compares each built file with the published one: byte for byte, and <code>metadata.json</code> without <code>lindera_version</code>. A difference fails the job and asks for a new revision.</p>
-<p>The source archives of seven dictionaries are hosted on lindera.dev. UniDic CWJ's and UniDic CSJ's are NINJAL's own packages, <code>unidic-cwj-202512_full.zip</code> (2.77 GiB) and <code>unidic-csj-202512_full.zip</code> (2.81 GiB), downloaded from NINJAL's official URL (<a href="https://github.com/lindera/lindera/issues/216">#216</a>, <a href="https://github.com/lindera/lindera/issues/1358">#1358</a>). That server is not run by Lindera, so the workflow, and the <code>build-dictionary</code> job of <code>release.yml</code>, do not download these packages each time: they keep each archive between runs with <code>actions/cache</code> (<code>.github/actions/source-archive-cache</code>), keyed on its file name and SHA-256, and download it only for a new source archive, or after the cache entry has been evicted.</p>
-<p>A build reading a pinned dictionary of another format version builds from source, so a pull request that changes the format builds and tests as before; the warning says so.</p>
-<h2 id="publishing-a-dictionary"><a class="header" href="#publishing-a-dictionary">Publishing a dictionary</a></h2>
-<ol>
-<li>
-<p>In a pull request with the change, give each dictionary that changes its new key in <code>prebuilt.json</code> (with <code>format_version</code> when the format changes), and set its <code>sha256</code> to <code>null</code>. Until the dictionary is published, builds build it from source.</p>
-</li>
-<li>
-<p>Once the pull request is merged, run the <code>Dictionaries</code> workflow on <code>main</code> with <code>publish</code>:</p>
-<pre><code class="language-shell">gh workflow run dictionaries.yml --repo lindera/lindera --ref main -f publish=true
-</code></pre>
-<p>The workflow builds the dictionaries again, creates a release for each key that has none yet, attaches the archive, and checks that GitHub reports the SHA-256 it uploaded. It never replaces a release: for a key that is published already, it reports the release, with a warning when the archive it built differs.</p>
-</li>
-<li>
-<p>Take the SHA-256 of each new archive from the summary of the run, or from the release:</p>
-<pre><code class="language-shell">gh release view dictionary-ipadic-2.7.0-20250920-fmt3-r1 --repo lindera/lindera --json assets --jq '.assets[].digest'
-</code></pre>
-<p>Set it, without the <code>sha256:</code> that the release prefixes it with, as <code>sha256</code> in <code>prebuilt.json</code> in a pull request. Its <code>Dictionaries</code> run downloads the published dictionary and compares it with the build from source.</p>
-</li>
-</ol>
+<p>An <code>embed-*</code> build of that crate downloads the archive (<code>base_url</code> and <code>path</code> joined by <code>/</code>), checks it against <code>sha256</code>, checks that it holds the directory <code>key</code> with the nine files and a <code>metadata.json</code> that fits the crate, and embeds it. A build that cannot download or check it stops with an error, rather than embedding anything unchecked or falling back to the source.</p>
+<p>The repository has no <code>prebuilt.json</code>. A build from the repository (<code>main</code>, a pull request, a git dependency) builds every dictionary from source; <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> keeps the built dictionaries between builds, and CI keeps that directory in its cache (<a href="https://github.com/lindera/lindera/issues/1337">#1337</a>). <a href="../getting_started/environment_variables.html#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a> makes a published crate build from source too.</p>
+<h2 id="source-archives"><a class="header" href="#source-archives">Source archives</a></h2>
+<p>The source archives of seven dictionaries are hosted on lindera.dev. UniDic CWJ's and UniDic CSJ's are NINJAL's own packages, <code>unidic-cwj-202512_full.zip</code> (2.77 GiB) and <code>unidic-csj-202512_full.zip</code> (2.81 GiB), downloaded from NINJAL's official URL (<a href="https://github.com/lindera/lindera/issues/216">#216</a>, <a href="https://github.com/lindera/lindera/issues/1358">#1358</a>). That server is not run by Lindera, so the <code>build-dictionary</code> job of <code>release.yml</code> does not download these packages each time: it keeps each archive between runs with <code>actions/cache</code> (<code>.github/actions/source-archive-cache</code>), keyed on its file name and SHA-256, and downloads it only for a new source archive, or after the cache entry has been evicted.</p>
 <h2 id="releasing-lindera"><a class="header" href="#releasing-lindera">Releasing Lindera</a></h2>
-<p>The dictionary crates on crates.io pin their published dictionaries, so the dictionaries must be published, and pinned, before the crates are:</p>
 <ol>
-<li>Do not change the dictionary format until the release is out.</li>
-<li>Make sure that each <code>prebuilt.json</code> pins a SHA-256, and that the latest <code>Dictionaries</code> run on <code>main</code> passed. Publish and pin any dictionary that is missing, as above.</li>
-<li>Tag the release. <code>release.yml</code> publishes the crates, and builds the <code>lindera-&lt;name&gt;-&lt;version&gt;.zip</code> archives for <code>lindera download</code> from source, so that their <code>metadata.json</code> names the release's version as <code>lindera_version</code>: <code>lindera download</code> takes an installed dictionary for current only when that equals the version of the CLI.</li>
+<li>Raise the version (<code>scripts/bump-up-version.sh &lt;version&gt;</code>) in a pull request, and merge it.</li>
+<li>Tag the release (<code>v&lt;version&gt;</code>). <code>release.yml</code> then:
+<ol>
+<li>builds the dictionaries from source and uploads their archives to the release, as above;</li>
+<li>downloads them again, and writes the <code>prebuilt.json</code> of each dictionary crate with its archive's SHA-256 (<code>scripts/write_dictionary_pins.sh</code>);</li>
+<li>builds <code>lindera-ipadic</code> with <code>embed-ipadic</code>, which downloads and checks its pinned archive, so that no crate is published with a pin that does not work;</li>
+<li>publishes the crates; the dictionary crates with <code>cargo publish --allow-dirty</code>, as their <code>prebuilt.json</code> is not committed.</li>
 </ol>
-<p>For v7.0.0, the first release with published dictionaries (<a href="https://github.com/lindera/lindera/issues/1085">#1085</a>): freeze the dictionary format, publish the nine dictionaries, merge the pull request that pins their SHA-256, then tag <code>v7.0.0</code>.</p>
+</li>
+</ol>
+<p>Nothing is published or pinned before the tag: a change to a dictionary, to its source archive or to the dictionary format needs no step of its own, and reaches the published crates with the next release.</p>
 
                     </main>
 

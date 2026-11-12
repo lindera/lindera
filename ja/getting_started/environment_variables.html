@@ -240,14 +240,14 @@ LINDERA_BUILD_DICTIONARY_CACHE_DIR = "/path/to/cache"
 <li><code>DOCS_RS</code> を設定したビルドは、この変数を無視します（後述の <code>DOCS_RS</code> を参照）</li>
 </ul>
 <h3 id="lindera_build_dictionary_from_source"><a class="header" href="#lindera_build_dictionary_from_source">LINDERA_BUILD_DICTIONARY_FROM_SOURCE</a></h3>
-<p>公式の 9 つの辞書は、入力が変わるたびに一度だけビルドし、辞書と版ごとに 1 つの GitHub のリリースとして公開します。公開したリリースは置き換えません。各辞書クレートは、<code>metadata.json</code> の隣の <code>prebuilt.json</code> で、公開済みの辞書を URL と SHA-256 で固定しています。build script は、ソースのアーカイブを取って辞書をビルドする代わりに、そのアーカイブをダウンロードし、SHA-256 を確かめて埋め込みます。アーカイブの中身はソースからビルドしたものと同じで、違うのは <code>metadata.json</code> の <code>lindera_version</code> だけです。これは、その辞書をビルドした Lindera の版を表します。公開の手順は<a href="../development/dictionary_release.html">辞書のリリース</a>にあります。</p>
+<p>Lindera のリリースは、公式の 9 つの辞書をソースからビルドし、そのバージョンのリリースのページに、バイナリと一緒に <code>lindera-&lt;名前&gt;-&lt;バージョン&gt;.zip</code> として置きます。crates.io に公開した辞書クレートは、<code>metadata.json</code> の隣の <code>prebuilt.json</code> で、そのリリースのアーカイブを URL と SHA-256 で固定しています。このファイルはリリースが書きます。build script は、ソースのアーカイブを取って辞書をビルドする代わりに、そのアーカイブをダウンロードし、確かめて埋め込みます。アーカイブの中身はソースからビルドしたものと同じで、違うのは <code>metadata.json</code> の <code>lindera_version</code> だけです。これは、そのリリースのバージョンを表します。公開の手順は<a href="../development/dictionary_release.html">辞書のリリース</a>にあります。</p>
 <p>ダウンロードの失敗、SHA-256 の違うアーカイブ、ファイルが欠けているかクレートの <code>metadata.json</code> に合わないアーカイブは、何が起きたかを示すエラーでビルドを止めます。確かめられなかったものは埋め込まず、ソースからのビルドにも切り替えません。</p>
 <p>build script は、次の場合に v6 までと同じくソースから辞書をビルドします。</p>
 <ul>
 <li><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code> が <code>1</code> か <code>true</code> のとき。<code>0</code>、<code>false</code>、空の値は、build script の判断に任せます。ほかの値は、警告を出したうえで <code>1</code> とみなします。</li>
 <li><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> が頻度表を指すとき。辞書が公開済みのものと変わるためです。</li>
-<li>公開済みの辞書の辞書フォーマットバージョンが、このビルドの読むものと違うとき。開発中のブランチで、フォーマットを変えてから新しい辞書を公開するまでの間がこれにあたります。</li>
-<li><code>prebuilt.json</code> がまだ SHA-256 を固定していないとき。新しい辞書が公開を待っている間です。</li>
+<li>固定した辞書の辞書フォーマットバージョンが、このビルドの読むものと違うとき。リリースが書いた固定では起きません。</li>
+<li>クレートに <code>prebuilt.json</code> がないとき。crates.io ではなく、このリポジトリ（checkout や git の依存）からビルドするときがこれにあたります。</li>
 </ul>
 <p>はじめの 3 つの場合は、build script が理由を警告で示します。たとえば次のとおりです。</p>
 <pre><code class="language-text">warning: lindera-ipadic@7.0.0: building the ipadic dictionary from source, because LINDERA_BUILD_DICTIONARY_FROM_SOURCE is set
@@ -263,7 +263,7 @@ LINDERA_BUILD_DICTIONARY_CACHE_DIR = "/path/to/cache"
 </tbody></table>
 </div>
 <p>IPADIC の場合、変数を <code>https://mirror.example/lindera-releases</code> と <code>https://mirror.example/lindera-dev</code> にすると、ビルドは次のどちらかをダウンロードします。</p>
-<pre><code class="language-text">https://mirror.example/lindera-releases/dictionary-ipadic-2.7.0-20250920-fmt3-r1/ipadic-2.7.0-20250920-fmt3-r1.tar.gz
+<pre><code class="language-text">https://mirror.example/lindera-releases/v7.0.0/lindera-ipadic-7.0.0.zip
 https://mirror.example/lindera-dev/mecab-ipadic-2.7.0-20250920.tar.gz
 </code></pre>
 <p>つまり、ミラーには元のホストと同じパスでファイルを置きます。Artifactory なら、<code>https://github.com/lindera/lindera/releases/download</code> をプロキシする remote repository が公開済みの辞書を、<code>https://lindera.dev</code> をプロキシするものがソースのアーカイブを配ります。UniDic CWJ と UniDic CSJ のソースのアーカイブは lindera.dev にはないので、それらをソースからビルドするミラーでは、国立国語研究所の <code>unidic-cwj-202512_full.zip</code> と <code>unidic-csj-202512_full.zip</code> を、同じベースにそれぞれのファイル名で置きます。ビルドは、既定では公開済みの辞書をダウンロードし、ソースからビルドするときだけソースのアーカイブをダウンロードします（<a href="#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a> を参照）。ソースからのビルドは <code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code> がなくても起こるので、元のホストに届いてはいけないビルドでは、両方の変数を設定します。</p>

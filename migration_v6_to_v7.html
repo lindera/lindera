@@ -2207,13 +2207,17 @@ differently, since a connection through such a cell now costs 0. To keep a
 connection expensive, list its cell with a cost.</p>
 <h2 id="embed--builds-download-the-published-dictionary"><a class="header" href="#embed--builds-download-the-published-dictionary"><code>embed-*</code> builds download the published dictionary</a></h2>
 <p>Up to v6.2.0, every build with an <code>embed-*</code> feature downloaded the source
-archive of its dictionary from <code>lindera.dev</code> and built the dictionary. v7.0.0 builds each of
-the nine bundled dictionaries once and publishes it as a GitHub release, and
-the build script of each dictionary crate downloads the dictionary that its
-<code>prebuilt.json</code> pins, checks its SHA-256 and embeds it
-(<a href="https://github.com/lindera/lindera/issues/1336">#1336</a>). The embedded files
+archive of its dictionary from <code>lindera.dev</code> and built the dictionary. From
+v7.0.0, a release puts the nine bundled dictionaries on its release page, as
+it already did for <code>lindera download</code>, and the build script of each
+dictionary crate published on crates.io downloads its release's archive,
+which its <code>prebuilt.json</code> pins, checks its SHA-256 and embeds it
+(<a href="https://github.com/lindera/lindera/issues/1336">#1336</a>,
+<a href="https://github.com/lindera/lindera/issues/1362">#1362</a>). The embedded files
 are the ones a build from source makes, except the <code>lindera_version</code> in
-<code>metadata.json</code>, which names the Lindera version that built the dictionary.</p>
+<code>metadata.json</code>, which names the release. A build from a checkout of the
+repository, or from a git dependency, has no <code>prebuilt.json</code> and builds the
+dictionary from source, as before.</p>
 <p>The build downloads from <code>github.com</code>, which serves the file from
 <code>release-assets.githubusercontent.com</code>, instead of <code>lindera.dev</code>. A build
 whose network allows only <code>lindera.dev</code> fails to download it; allow the two

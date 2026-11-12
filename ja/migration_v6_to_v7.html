@@ -1991,12 +1991,16 @@ MeCab の <code>mecab-dict-index</code> はそうしたセルのコストを 0 �
 コスト付きで列挙してください。</p>
 <h2 id="embed--のビルドは公開済みの辞書をダウンロードする"><a class="header" href="#embed--のビルドは公開済みの辞書をダウンロードする"><code>embed-*</code> のビルドは公開済みの辞書をダウンロードする</a></h2>
 <p>v6.2.0 までは、<code>embed-*</code> feature を付けたビルドのたびに、辞書のソースのアーカイブを
-<code>lindera.dev</code> から取って辞書をビルドしていました。v7.0.0 では、同梱の 9 つの辞書を
-それぞれ一度だけビルドして GitHub のリリースとして公開し、各辞書クレートの
-build script は、<code>prebuilt.json</code> が固定する辞書をダウンロードし、SHA-256 を
-確かめて埋め込みます（<a href="https://github.com/lindera/lindera/issues/1336">#1336</a>）。
+<code>lindera.dev</code> から取って辞書をビルドしていました。v7.0.0 からは、リリースが
+同梱の 9 つの辞書を、<code>lindera download</code> 用にすでにしていたとおりリリースの
+ページに置き、crates.io に公開した各辞書クレートの build script は、
+<code>prebuilt.json</code> が固定するそのリリースのアーカイブをダウンロードし、SHA-256 を
+確かめて埋め込みます（<a href="https://github.com/lindera/lindera/issues/1336">#1336</a>、
+<a href="https://github.com/lindera/lindera/issues/1362">#1362</a>）。
 埋め込むファイルはソースからのビルドと同じで、違うのは <code>metadata.json</code> の
-<code>lindera_version</code> だけです。これは、その辞書をビルドした Lindera の版を表します。</p>
+<code>lindera_version</code> だけです。これは、そのリリースのバージョンを表します。
+リポジトリの checkout や git の依存からのビルドには <code>prebuilt.json</code> がなく、
+これまでどおり辞書をソースからビルドします。</p>
 <p>ビルドは <code>lindera.dev</code> ではなく <code>github.com</code> からダウンロードし、ファイルは
 <code>release-assets.githubusercontent.com</code> から配られます。ネットワークが <code>lindera.dev</code>
 しか許さないビルドはダウンロードに失敗するので、この 2 つのホストへの接続を
