@@ -81,7 +81,7 @@ LINDERA_BUILD_DICTIONARY_CACHE_DIR = "/path/to/cache"
 
 ### LINDERA_BUILD_DICTIONARY_FROM_SOURCE
 
-公式の 9 つの辞書は、入力が変わるたびに一度だけビルドし、辞書と版ごとに 1 つの GitHub のリリースとして公開します。公開したリリースは置き換えません。各辞書クレートは、`metadata.json` の隣の `prebuilt.json` で、公開済みの辞書を URL と SHA-256 で固定しています。build script は、ソースのアーカイブを取って辞書をビルドする代わりに、そのアーカイブをダウンロードし、SHA-256 を確かめて埋め込みます。アーカイブの中身はソースからビルドしたものと同じで、違うのは `metadata.json` の `lindera_version` だけです。これは、その辞書をビルドした Lindera の版を表します。公開の手順は[辞書のリリース](../development/dictionary_release.md)にあります。
+Lindera のリリースは、公式の 9 つの辞書をソースからビルドし、そのバージョンのリリースのページに、バイナリと一緒に `lindera-<名前>-<バージョン>.zip` として置きます。crates.io に公開した辞書クレートは、`metadata.json` の隣の `prebuilt.json` で、そのリリースのアーカイブを URL と SHA-256 で固定しています。このファイルはリリースが書きます。build script は、ソースのアーカイブを取って辞書をビルドする代わりに、そのアーカイブをダウンロードし、確かめて埋め込みます。アーカイブの中身はソースからビルドしたものと同じで、違うのは `metadata.json` の `lindera_version` だけです。これは、そのリリースのバージョンを表します。公開の手順は[辞書のリリース](../development/dictionary_release.md)にあります。
 
 ダウンロードの失敗、SHA-256 の違うアーカイブ、ファイルが欠けているかクレートの `metadata.json` に合わないアーカイブは、何が起きたかを示すエラーでビルドを止めます。確かめられなかったものは埋め込まず、ソースからのビルドにも切り替えません。
 
@@ -89,8 +89,8 @@ build script は、次の場合に v6 までと同じくソースから辞書を
 
 - `LINDERA_BUILD_DICTIONARY_FROM_SOURCE` が `1` か `true` のとき。`0`、`false`、空の値は、build script の判断に任せます。ほかの値は、警告を出したうえで `1` とみなします。
 - `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` が頻度表を指すとき。辞書が公開済みのものと変わるためです。
-- 公開済みの辞書の辞書フォーマットバージョンが、このビルドの読むものと違うとき。開発中のブランチで、フォーマットを変えてから新しい辞書を公開するまでの間がこれにあたります。
-- `prebuilt.json` がまだ SHA-256 を固定していないとき。新しい辞書が公開を待っている間です。
+- 固定した辞書の辞書フォーマットバージョンが、このビルドの読むものと違うとき。リリースが書いた固定では起きません。
+- クレートに `prebuilt.json` がないとき。crates.io ではなく、このリポジトリ（checkout や git の依存）からビルドするときがこれにあたります。
 
 はじめの 3 つの場合は、build script が理由を警告で示します。たとえば次のとおりです。
 
@@ -116,7 +116,7 @@ LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1 cargo build --features=embed-ipadic
 IPADIC の場合、変数を `https://mirror.example/lindera-releases` と `https://mirror.example/lindera-dev` にすると、ビルドは次のどちらかをダウンロードします。
 
 ```text
-https://mirror.example/lindera-releases/dictionary-ipadic-2.7.0-20250920-fmt3-r1/ipadic-2.7.0-20250920-fmt3-r1.tar.gz
+https://mirror.example/lindera-releases/v7.0.0/lindera-ipadic-7.0.0.zip
 https://mirror.example/lindera-dev/mecab-ipadic-2.7.0-20250920.tar.gz
 ```
 

@@ -652,27 +652,32 @@ const DICTIONARY_FILES: [&str; 9] = [
 /// A dictionary crate's published dictionary, as its [`PREBUILT_FILE`] pins
 /// it.
 ///
-/// The official dictionaries are built once per change of their inputs and
-/// published as GitHub releases, one per artifact; an `embed-*` build
-/// downloads the pinned archive and checks its SHA-256 instead of building the
-/// dictionary from source ([`choose_dictionary_source`]).
+/// A release builds the official dictionaries from source and puts them on
+/// the page of its version, next to the binaries, as
+/// `lindera-<name>-<version>.zip`; just before it publishes the dictionary
+/// crates, it writes each crate's [`PREBUILT_FILE`] with the archive's
+/// SHA-256 (#1362). The file is not in the repository, so only a published
+/// crate has one: its `embed-*` build downloads the pinned archive and checks
+/// it instead of building the dictionary from source
+/// ([`choose_dictionary_source`]), and a build from the repository builds
+/// from source.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct PrebuiltDictionary {
-    /// Name of the artifact: the dictionary, the version of its source, the
-    /// dictionary format version and a revision, such as
-    /// `ipadic-2.7.0-20250920-fmt3-r1`. The archive holds one directory of
-    /// that name.
+    /// Name of the dictionary in messages and in the cache record, and the
+    /// one directory the archive holds: the crate's name, such as
+    /// `lindera-ipadic`.
     key: String,
     /// The dictionary format version the artifact was built in.
     format_version: u32,
     /// The URL the archive's path is relative to; kept apart from `path` so
     /// that a mirror can replace it (#584).
     base_url: String,
-    /// The path of the archive under `base_url`.
+    /// The path of the archive under `base_url`, such as
+    /// `v7.0.0/lindera-ipadic-7.0.0.zip`.
     path: String,
-    /// The SHA-256 of the archive, or `None` until it is published; without
-    /// it, the dictionary is built from source.
+    /// The SHA-256 of the archive. Without it (`null`), the dictionary is
+    /// built from source.
     sha256: Option<String>,
 }
 
@@ -896,8 +901,9 @@ enum DictionarySource {
 /// has no network; a build that forces the build from source
 /// ([`FROM_SOURCE_ENV`]), one that ranks context IDs with another histogram
 /// ([`CONTEXT_ID_FREQ_FILE_ENV`]), whose output differs from the published
-/// dictionary, and one whose format version differs from the pinned one, as
-/// on `main` between a format change and the publication of new dictionaries,
+/// dictionary, and one whose format version differs from the pinned one (a
+/// pin that a release writes has the format of the crates it publishes, so
+/// this guards against a pin written by hand),
 /// build from source.
 ///
 /// # Arguments
@@ -2127,12 +2133,14 @@ fn build_entry(
     Ok(())
 }
 
-/// The format of a source archive, from its file name (#216).
+/// The format of an archive, from its file name or URL: a source archive
+/// (#216) or a published dictionary (#1362).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ArchiveFormat {
     /// A gzip-compressed tar archive (`.tar.gz`), as hosted on lindera.dev.
     TarGz,
-    /// A zip archive (`.zip`), as NINJAL distributes UniDic CWJ.
+    /// A zip archive (`.zip`), as NINJAL distributes UniDic CWJ and a release
+    /// publishes its dictionaries.
     Zip,
 }
 
@@ -2417,20 +2425,24 @@ fn report_export(entry: &Path, dest: &Path, export: &Export) {
 /// Downloads a published dictionary, checks it, and moves it into
 /// `output_dir` (#1336).
 ///
-/// Nothing reaches `output_dir` unless the archive has the pinned SHA-256 and
-/// holds a directory named `key` with every file that `embedded_dictionary!`
-/// includes and a `metadata.json` of this build's format version that
-/// matches the crate's (apart from the fields the build derives). Any failure
-/// stops the build: a dictionary that cannot be checked is never embedded,
-/// and the build does not fall back to the source, so that a problem with the
-/// published dictionaries shows instead of slowing every build down.
+/// The archive is a `.zip`, as a release puts it on the page of its version
+/// for `lindera download` and the published crates pin it (#1362), or a
+/// `.tar.gz`; the extension of `url` says which, before anything is
+/// downloaded. Nothing reaches `output_dir` unless the archive has the pinned
+/// SHA-256 and holds a directory named `key` with every file that
+/// `embedded_dictionary!` includes and a `metadata.json` of this build's
+/// format version that matches the crate's (apart from the fields the build
+/// derives). Any failure stops the build: a dictionary that cannot be checked
+/// is never embedded, and the build does not fall back to the source, so that
+/// a problem with the published dictionaries shows instead of slowing every
+/// build down.
 ///
 /// # Arguments
 ///
 /// * `build_dir` - The build directory, for the temporary files.
 /// * `output_dir` - Where the dictionary goes.
-/// * `key` - The artifact's name, which is also the directory in the archive.
-/// * `url` - Where to download the archive.
+/// * `key` - The directory in the archive, such as `lindera-ipadic`.
+/// * `url` - Where to download the archive, ending in `.zip` or `.tar.gz`.
 /// * `sha256` - The SHA-256 the archive must have.
 /// * `source_metadata` - The metadata the crate ships.
 ///
@@ -2446,6 +2458,14 @@ fn fetch_published(
     source_metadata: &Metadata,
 ) -> LinderaResult<()> {
     let hint = format!("set {FROM_SOURCE_ENV}=1 to build the dictionary from source instead");
+    // Known before the download, so that a pin to an archive of another
+    // format fails without fetching it.
+    let format = archive_format(url).map_err(|_| {
+        LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+            "The published dictionary {key} at {url} is neither a .zip nor a .tar.gz archive; \
+             {hint}"
+        ))
+    })?;
 
     let agent: Agent = Agent::config_builder()
         .user_agent(format!("Lindera/{}", env!("CARGO_PKG_VERSION")))
@@ -2470,11 +2490,18 @@ fn fetch_published(
                 "Failed to create temporary extraction directory: {tmp_extract_path:?}"
             ))
     })?;
-    let result = unpack_published(&content, &tmp_extract_path, key, source_metadata, &hint)
-        .and_then(|unpacked| {
-            empty_directory(output_dir)?;
-            rename_directory(&unpacked, output_dir)
-        });
+    let result = unpack_published(
+        &content,
+        format,
+        &tmp_extract_path,
+        key,
+        source_metadata,
+        &hint,
+    )
+    .and_then(|unpacked| {
+        empty_directory(output_dir)?;
+        rename_directory(&unpacked, output_dir)
+    });
     let _ = fs::remove_dir_all(&tmp_extract_path);
     result?;
     info!("Using the published dictionary {key} from {url}");
@@ -2486,8 +2513,9 @@ fn fetch_published(
 /// # Arguments
 ///
 /// * `content` - The archive, already checked against its SHA-256.
+/// * `format` - Its format, from its URL.
 /// * `extract_dir` - An empty directory to unpack into.
-/// * `key` - The artifact's name: the directory the archive must hold.
+/// * `key` - The directory the archive must hold.
 /// * `source_metadata` - The metadata the crate ships.
 /// * `hint` - How to build the dictionary from source, for the errors.
 ///
@@ -2496,18 +2524,27 @@ fn fetch_published(
 /// The unpacked dictionary directory, or an error naming what is wrong.
 fn unpack_published(
     content: &[u8],
+    format: ArchiveFormat,
     extract_dir: &Path,
     key: &str,
     source_metadata: &Metadata,
     hint: &str,
 ) -> LinderaResult<PathBuf> {
-    Archive::new(GzDecoder::new(Cursor::new(content)))
-        .unpack(extract_dir)
-        .map_err(|err| {
-            LinderaErrorKind::Io.with_error(anyhow::anyhow!(
-                "Failed to unpack the published dictionary {key}: {err}; {hint}"
-            ))
-        })?;
+    let unpacked = match format {
+        ArchiveFormat::TarGz => Archive::new(GzDecoder::new(Cursor::new(content)))
+            .unpack(extract_dir)
+            .map_err(|err| err.to_string()),
+        // `extract` writes only the entries whose names stay inside
+        // `extract_dir`, as `tar` does.
+        ArchiveFormat::Zip => zip::ZipArchive::new(Cursor::new(content))
+            .and_then(|mut archive| archive.extract(extract_dir))
+            .map_err(|err| err.to_string()),
+    };
+    unpacked.map_err(|err| {
+        LinderaErrorKind::Io.with_error(anyhow::anyhow!(
+            "Failed to unpack the published dictionary {key}: {err}; {hint}"
+        ))
+    })?;
     let dictionary_dir = extract_dir.join(key);
     let missing: Vec<&str> = DICTIONARY_FILES
         .into_iter()
@@ -2521,9 +2558,7 @@ fn unpack_published(
     }
     check_cached_metadata(&dictionary_dir, source_metadata).map_err(|mismatch| {
         LinderaErrorKind::Content.with_error(anyhow::anyhow!(
-            "The published dictionary {key} does not fit this crate ({mismatch}): give the \
-             dictionary a new revision in {PREBUILT_FILE} and clear its sha256 until it is \
-             published, or {hint}"
+            "The published dictionary {key} does not fit this crate ({mismatch}); {hint}"
         ))
     })?;
     Ok(dictionary_dir)
@@ -4149,6 +4184,37 @@ mod tests {
         archive.into_inner().unwrap().finish().unwrap()
     }
 
+    /// Packs `files` of the dictionary in `built` as a release packs a
+    /// dictionary for the page of its version (#1362): a zip archive with
+    /// one directory named [`PUBLISHED_KEY`], and the `NOTICE.txt` that the
+    /// release adds to it.
+    fn pack_published_zip(built: &Path, files: &[&str]) -> Vec<u8> {
+        let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        let options = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Deflated);
+        for file in files {
+            writer
+                .start_file(format!("{PUBLISHED_KEY}/{file}"), options)
+                .unwrap();
+            writer
+                .write_all(&fs::read(built.join(file)).unwrap())
+                .unwrap();
+        }
+        writer
+            .start_file(format!("{PUBLISHED_KEY}/NOTICE.txt"), options)
+            .unwrap();
+        writer.write_all(b"notice").unwrap();
+        writer.finish().unwrap().into_inner()
+    }
+
+    /// [`published_archive`] as a zip archive ([`pack_published_zip`]).
+    fn published_zip(files: &[&str]) -> (Vec<u8>, tempfile::TempDir) {
+        let (cache, sha256) = seeded_cache();
+        build_seeded(cache.path(), sha256).unwrap();
+        let archive = pack_published_zip(&cache.path().join(SEEDED_OUTPUT_DIR), files);
+        (archive, cache)
+    }
+
     /// Gets the published dictionary at `url` into the cache `build_dir`, for
     /// a crate that ships `metadata`.
     fn fetch_published_into(
@@ -4290,6 +4356,88 @@ mod tests {
         };
         let failure = failure(fetch_published_into(cache.path(), &url, &sha256, other));
         assert!(failure.contains("does not fit this crate"), "{failure}");
+        assert!(!cache.path().join(SEEDED_OUTPUT_DIR).exists());
+    }
+
+    // #1362: a release puts its dictionaries on the page of its version as
+    // zip archives, and the published crates pin those.
+    #[test]
+    fn a_published_zip_dictionary_is_downloaded_checked_and_cached() {
+        let (archive, built) = published_zip(&DICTIONARY_FILES);
+        let sha256 = sha256_hex(&archive);
+        let (base, requests) = serve(200, archive);
+        let url = format!("{base}/v7.0.0/{PUBLISHED_KEY}-7.0.0.zip");
+        let cache = tempfile::tempdir().unwrap();
+        fetch_published_into(cache.path(), &url, &sha256, source_metadata()).unwrap();
+
+        let output = cache.path().join(SEEDED_OUTPUT_DIR);
+        for file in DICTIONARY_FILES {
+            assert_eq!(
+                fs::read(output.join(file)).unwrap(),
+                fs::read(built.path().join(SEEDED_OUTPUT_DIR).join(file)).unwrap(),
+                "{file}"
+            );
+        }
+        crate::dictionary::Dictionary::load_from_path(&output).unwrap();
+        assert_eq!(requests.load(Ordering::SeqCst), 1);
+
+        // The next build uses the cached entry without downloading it again.
+        fetch_published_into(cache.path(), &url, &sha256, source_metadata()).unwrap();
+        assert_eq!(requests.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn a_published_zip_dictionary_without_a_file_stops_the_build() {
+        let (archive, _built) = published_zip(&DICTIONARY_FILES[..8]);
+        let sha256 = sha256_hex(&archive);
+        let (base, _requests) = serve(200, archive);
+        let url = format!("{base}/v7.0.0/{PUBLISHED_KEY}-7.0.0.zip");
+        let cache = tempfile::tempdir().unwrap();
+        let failure = failure(fetch_published_into(
+            cache.path(),
+            &url,
+            &sha256,
+            source_metadata(),
+        ));
+        assert!(failure.contains("has no metadata.json"), "{failure}");
+        assert!(!cache.path().join(SEEDED_OUTPUT_DIR).exists());
+    }
+
+    #[test]
+    fn a_published_zip_dictionary_of_another_crate_stops_the_build() {
+        let (archive, _built) = published_zip(&DICTIONARY_FILES);
+        let sha256 = sha256_hex(&archive);
+        let (base, _requests) = serve(200, archive);
+        let url = format!("{base}/v7.0.0/{PUBLISHED_KEY}-7.0.0.zip");
+        let cache = tempfile::tempdir().unwrap();
+        let other = Metadata {
+            name: "other".to_string(),
+            ..source_metadata()
+        };
+        let failure = failure(fetch_published_into(cache.path(), &url, &sha256, other));
+        assert!(failure.contains("does not fit this crate"), "{failure}");
+        assert!(!cache.path().join(SEEDED_OUTPUT_DIR).exists());
+    }
+
+    #[test]
+    fn a_published_dictionary_of_another_format_fails_before_downloading() {
+        let (archive, _built) = published_zip(&DICTIONARY_FILES);
+        let sha256 = sha256_hex(&archive);
+        let (base, requests) = serve(200, archive);
+        let url = format!("{base}/v7.0.0/{PUBLISHED_KEY}-7.0.0.tar.bz2");
+        let cache = tempfile::tempdir().unwrap();
+        let failure = failure(fetch_published_into(
+            cache.path(),
+            &url,
+            &sha256,
+            source_metadata(),
+        ));
+        assert!(
+            failure.contains("is neither a .zip nor a .tar.gz archive"),
+            "{failure}"
+        );
+        assert!(failure.contains(FROM_SOURCE_ENV), "{failure}");
+        assert_eq!(requests.load(Ordering::SeqCst), 0);
         assert!(!cache.path().join(SEEDED_OUTPUT_DIR).exists());
     }
 

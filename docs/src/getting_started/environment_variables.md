@@ -81,7 +81,7 @@ Notes:
 
 ### LINDERA_BUILD_DICTIONARY_FROM_SOURCE
 
-The nine official dictionaries are built once for each change of their inputs and published as GitHub releases, one release per dictionary and version, which are never replaced. Each dictionary crate pins its published dictionary, by URL and SHA-256, in the `prebuilt.json` next to its `metadata.json`, and its build script downloads that archive, checks its SHA-256, and embeds it, instead of downloading the source archive and building the dictionary. The archive holds the same files as a build from source; only the `lindera_version` in its `metadata.json` names the Lindera version that built it. How the dictionaries are published is in [Dictionary Release](../development/dictionary_release.md).
+A Lindera release builds the nine official dictionaries from source and puts them on the page of its version, next to the binaries, as `lindera-<name>-<version>.zip`. A dictionary crate published on crates.io pins its release's archive, by URL and SHA-256, in the `prebuilt.json` next to its `metadata.json`, which the release writes, and its build script downloads that archive, checks it, and embeds it, instead of downloading the source archive and building the dictionary. The archive holds the same files as a build from source; only the `lindera_version` in its `metadata.json` names the release. How the dictionaries are published is in [Dictionary Release](../development/dictionary_release.md).
 
 A failed download, an archive with another SHA-256, or one that lacks a file or does not fit the crate's `metadata.json`, stops the build with an error that says what went wrong; the build does not embed anything it could not check, and does not build from source instead.
 
@@ -89,8 +89,8 @@ The build script builds the dictionary from source, as up to v6, in these cases:
 
 - `LINDERA_BUILD_DICTIONARY_FROM_SOURCE` is `1` or `true`. `0`, `false` and the empty value leave the choice to the build script; any other value counts as `1`, with a warning.
 - `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` names a histogram, with which the dictionary differs from the published one.
-- The published dictionary has another dictionary format version than this build reads, as on the development branch between a change of the format and the publication of the new dictionaries.
-- `prebuilt.json` pins no SHA-256 yet, while a new dictionary waits to be published.
+- The pinned dictionary has another dictionary format version than this build reads, which a pin that a release writes never has.
+- The crate has no `prebuilt.json`, as when it is built from this repository (a checkout or a git dependency) rather than from crates.io.
 
 In the first three cases, the build script says why in a warning, such as:
 
@@ -116,7 +116,7 @@ LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1 cargo build --features=embed-ipadic
 For IPADIC, with the variables set to `https://mirror.example/lindera-releases` and `https://mirror.example/lindera-dev`, the build downloads one of these:
 
 ```text
-https://mirror.example/lindera-releases/dictionary-ipadic-2.7.0-20250920-fmt3-r1/ipadic-2.7.0-20250920-fmt3-r1.tar.gz
+https://mirror.example/lindera-releases/v7.0.0/lindera-ipadic-7.0.0.zip
 https://mirror.example/lindera-dev/mecab-ipadic-2.7.0-20250920.tar.gz
 ```
 

@@ -1,77 +1,44 @@
 # 辞書のリリース
 
-公式の 9 つの辞書（IPADIC、IPADIC NEologd、UniDic、UniDic CWJ、UniDic CSJ、SudachiDict、ko-dic、CC-CEDICT、Jieba）は、入力が変わるたびに一度だけビルドして公開し、`embed-*` のビルドは、辞書をソースからビルドする代わりに公開済みの辞書を埋め込みます（[#1336](https://github.com/lindera/lindera/issues/1336)）。このページでは、辞書の公開のしかたと、それに関わる Lindera のリリースの手順を説明します。ビルドが公開済みの辞書とソースからのビルドのどちらを使うかは、[`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](../getting_started/environment_variables.md#lindera_build_dictionary_from_source) にあります。
+Lindera のリリースは、公式の 9 つの辞書（IPADIC、IPADIC NEologd、UniDic、UniDic CWJ、UniDic CSJ、SudachiDict、ko-dic、CC-CEDICT、Jieba）をソースからビルドし、そのバージョンのリリースのページに、バイナリと一緒に置きます（[#1362](https://github.com/lindera/lindera/issues/1362)）。`lindera download` はこのアーカイブをインストールし、crates.io の辞書クレートの `embed-*` のビルドは、辞書をソースからビルドする代わりにこのアーカイブを埋め込みます（[#1336](https://github.com/lindera/lindera/issues/1336)）。このページでは、公開するもの、ビルドが辞書を得る方法、リリースの手順を説明します。
 
 公開して埋め込むのは、この 9 つの辞書だけです。利用者がビルドする辞書は埋め込みません。`lindera build` でビルドし、実行時にそのディレクトリから読み込みます。
 
 ## 公開するもの
 
-公開する辞書はそれぞれアーカイブ `<key>.tar.gz` で、タグ `dictionary-<key>` の専用の GitHub のリリースに添付します。アーカイブには `<key>` という名前のディレクトリが 1 つあり、辞書クレートが埋め込む 9 つのファイル（`char_def.bin`、`matrix.mtx`、`dict.trie`、`dict.valsidx`、`dict.vals`、`dict.wordsidx`、`dict.words`、`unk.bin`、`metadata.json`）と、クレートの `NOTICE.txt` が入っています。crates.io に公開した辞書クレートがアーカイブを固定しているので、リリースは置き換えも削除もしません。
+リリース `v<バージョン>` には、辞書ごとに 1 つのアーカイブ `lindera-<名前>-<バージョン>.zip` があります。たとえば `v7.0.0` の `lindera-ipadic-7.0.0.zip` です。アーカイブには `lindera-<名前>` という名前のディレクトリが 1 つあり、辞書クレートが埋め込む 9 つのファイル（`char_def.bin`、`matrix.mtx`、`dict.trie`、`dict.valsidx`、`dict.vals`、`dict.wordsidx`、`dict.words`、`unk.bin`、`metadata.json`）と、クレートの `NOTICE.txt` が入っています。`metadata.json` の `lindera_version` は、そのリリースのバージョンです。`lindera download` は、入っている辞書の `lindera_version` が CLI のバージョンと同じときだけ最新とみなします。
 
-鍵（key）は、辞書の入力を表す名前です。
+アーカイブは、タグで `release.yml` の `build-dictionary` のジョブがビルドします。crates.io に公開した辞書クレートがアーカイブを固定しているので、リリースのアーカイブは置き換えも削除もしません。
 
-```text
-<名前>-<ソースのアーカイブの版>-fmt<辞書フォーマットバージョン>-r<改訂番号>
-```
+## ビルドが辞書を得る方法
 
-たとえば `ipadic-2.7.0-20250920-fmt3-r1` は、`mecab-ipadic-2.7.0-20250920.tar.gz` から辞書フォーマットバージョン 3 でビルドした、最初の IPADIC の辞書です。
-
-## 固定
-
-各辞書クレートは、`metadata.json` の隣の `prebuilt.json` で、公開済みの辞書を固定します。
+crates.io に公開した辞書クレートには、`metadata.json` の隣に `prebuilt.json` があります。リリースが、クレートを公開する直前に書いたものです。
 
 ```json
 {
-  "key": "ipadic-2.7.0-20250920-fmt3-r1",
+  "key": "lindera-ipadic",
   "format_version": 3,
   "base_url": "https://github.com/lindera/lindera/releases/download",
-  "path": "dictionary-ipadic-2.7.0-20250920-fmt3-r1/ipadic-2.7.0-20250920-fmt3-r1.tar.gz",
-  "sha256": null
+  "path": "v7.0.0/lindera-ipadic-7.0.0.zip",
+  "sha256": "<アーカイブの SHA-256>"
 }
 ```
 
-`sha256` はアーカイブの SHA-256 です。`null` の間は、辞書をソースからビルドします。新しい鍵は、こうして辞書の公開を待ちます。URL は、`base_url` と `path` を `/` でつないだものです。
+そのクレートの `embed-*` のビルドは、アーカイブ（`base_url` と `path` を `/` でつないだ URL）をダウンロードし、`sha256` と照合します。さらに、`key` のディレクトリに 9 つのファイルがあり、`metadata.json` がクレートに合うことを確かめてから埋め込みます。ダウンロードや確かめに失敗したビルドは、確かめていないものを埋め込んだり、ソースからのビルドに切り替えたりせずに、エラーで止まります。
 
-## 鍵を変えるとき
+リポジトリには `prebuilt.json` がありません。リポジトリからのビルド（`main`、pull request、git の依存）は、すべての辞書をソースからビルドします。ビルドした辞書は `LINDERA_BUILD_DICTIONARY_CACHE_DIR` に残せて、CI はそのディレクトリをキャッシュに保存します（[#1337](https://github.com/lindera/lindera/issues/1337)）。[`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](../getting_started/environment_variables.md#lindera_build_dictionary_from_source) を設定すると、公開したクレートでもソースからビルドします。
 
-ソースからビルドした辞書が公開済みのものと変わるときは、その辞書に新しい鍵、つまり新しいリリースが要ります。
+## ソースのアーカイブ
 
-| 変更 | 新しい鍵 |
-| --- | --- |
-| 新しいソースのアーカイブ（`build.rs` の新しい `file_name` と `sha256`） | その版と、改訂番号 1 |
-| 新しい辞書フォーマットバージョン（`DICTIONARY_FORMAT_VERSION`） | 9 つの辞書すべての `fmt<新しい版>` と `format_version`、改訂番号 1 |
-| ビルドしたファイルを変えるそのほかの変更（ビルダー、ビルダーが出力をそのまま書く依存クレート、クレートの `metadata.json` や `context_id_freq.txt`） | 次の改訂番号 |
-
-この変更は `Dictionaries` のワークフロー（`.github/workflows/dictionaries.yml`）が見つけます。`lindera-dictionary`、辞書クレート、`Cargo.lock` を変える pull request と `main` への push で、9 つの辞書を Linux でソースからビルドし、公開する形のアーカイブにまとめ、アーカイブと各ファイルの SHA-256 をジョブの summary に出します。`prebuilt.json` が SHA-256 を固定していれば、ビルドした各ファイルを公開済みのものと比べます。比べ方はバイト単位で、`metadata.json` だけは `lindera_version` を除きます。違いがあればジョブは失敗し、新しい改訂番号を求めます。
-
-7 つの辞書のソースのアーカイブは lindera.dev に置いています。UniDic CWJ と UniDic CSJ のソースは、国立国語研究所のパッケージ `unidic-cwj-202512_full.zip`（2.77 GiB）と `unidic-csj-202512_full.zip`（2.81 GiB）そのもので、国立国語研究所の公式の URL から取得します（[#216](https://github.com/lindera/lindera/issues/216)、[#1358](https://github.com/lindera/lindera/issues/1358)）。Lindera が運用していないサーバーから実行のたびにこれらのパッケージを取得しないように、このワークフローと `release.yml` の `build-dictionary` のジョブは、それぞれのアーカイブを `actions/cache`（`.github/actions/source-archive-cache`）で実行をまたいで保存します。キーはファイル名と SHA-256 で、ダウンロードするのは、ソースのアーカイブが新しくなったときと、キャッシュが消されたときだけです。
-
-固定した辞書のフォーマットバージョンが違うビルドは、ソースからビルドします。そのため、フォーマットを変える pull request も、これまでどおりビルドしてテストでき、そのことは警告で示されます。
-
-## 辞書を公開する
-
-1. 変更を入れる pull request で、変わる辞書の `prebuilt.json` に新しい鍵を書き（フォーマットを変えるなら `format_version` も）、`sha256` を `null` にします。公開されるまでの間、ビルドはその辞書をソースからビルドします。
-2. pull request をマージしたら、`main` で `Dictionaries` のワークフローを `publish` 付きで動かします。
-
-   ```shell
-   gh workflow run dictionaries.yml --repo lindera/lindera --ref main -f publish=true
-   ```
-
-   ワークフローは辞書をもう一度ビルドし、まだリリースのない鍵ごとにリリースを作ってアーカイブを添付し、GitHub が報告する SHA-256 がアップロードしたものと同じかを確かめます。リリースを置き換えることはしません。公開済みの鍵については、そのリリースを報告し、今回ビルドしたアーカイブが違えば警告を出します。
-3. 新しいアーカイブの SHA-256 を、実行の summary かリリースから取ります。
-
-   ```shell
-   gh release view dictionary-ipadic-2.7.0-20250920-fmt3-r1 --repo lindera/lindera --json assets --jq '.assets[].digest'
-   ```
-
-   リリースが前に付ける `sha256:` を除いて、pull request で `prebuilt.json` の `sha256` に書きます。その pull request の `Dictionaries` の実行が、公開済みの辞書をダウンロードし、ソースからのビルドと比べます。
+7 つの辞書のソースのアーカイブは lindera.dev に置いています。UniDic CWJ と UniDic CSJ のソースは、国立国語研究所のパッケージ `unidic-cwj-202512_full.zip`（2.77 GiB）と `unidic-csj-202512_full.zip`（2.81 GiB）そのもので、国立国語研究所の公式の URL から取得します（[#216](https://github.com/lindera/lindera/issues/216)、[#1358](https://github.com/lindera/lindera/issues/1358)）。Lindera が運用していないサーバーから実行のたびにこれらのパッケージを取得しないように、`release.yml` の `build-dictionary` のジョブは、それぞれのアーカイブを `actions/cache`（`.github/actions/source-archive-cache`）で実行をまたいで保存します。キーはファイル名と SHA-256 で、ダウンロードするのは、ソースのアーカイブが新しくなったときと、キャッシュが消されたときだけです。
 
 ## Lindera のリリース
 
-crates.io の辞書クレートは公開済みの辞書を固定するので、クレートを公開する前に、辞書を公開して固定しておく必要があります。
+1. pull request でバージョンを上げ（`scripts/bump-up-version.sh <バージョン>`）、マージします。
+2. リリースのタグ（`v<バージョン>`）を打ちます。`release.yml` は次の順に進めます。
+   1. 辞書をソースからビルドし、そのアーカイブをリリースに上げます（上のとおり）。
+   2. アーカイブをもう一度ダウンロードし、各辞書クレートの `prebuilt.json` に、そのアーカイブの SHA-256 を書きます（`scripts/write_dictionary_pins.sh`）。
+   3. `lindera-ipadic` を `embed-ipadic` 付きでビルドし、固定したアーカイブのダウンロードと照合が通ることを確かめます。固定が働かないクレートを公開しないためです。
+   4. クレートを公開します。辞書クレートの `prebuilt.json` は commit しないので、辞書クレートは `cargo publish --allow-dirty` で公開します。
 
-1. リリースが終わるまで、辞書フォーマットを変えません。
-2. すべての `prebuilt.json` が SHA-256 を固定していることと、`main` の最新の `Dictionaries` の実行が成功していることを確かめます。足りない辞書は、上の手順で公開して固定します。
-3. リリースのタグを打ちます。`release.yml` はクレートを公開し、`lindera download` 用の `lindera-<名前>-<版>.zip` をソースからビルドします。`lindera download` は、入っている辞書の `metadata.json` の `lindera_version` が CLI の版と同じときだけ最新とみなすので、zip の `lindera_version` をリリースの版にするためです。
-
-公開済みの辞書を使う最初のリリースである v7.0.0 では（[#1085](https://github.com/lindera/lindera/issues/1085)）、辞書フォーマットを凍結し、9 つの辞書を公開し、その SHA-256 を固定する pull request をマージしてから、`v7.0.0` のタグを打ちます。
+タグの前に公開や固定をする手順はありません。辞書、そのソースのアーカイブ、辞書フォーマットを変えても、それだけのための手順は要らず、次のリリースで公開したクレートに入ります。

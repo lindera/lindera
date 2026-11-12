@@ -45,7 +45,9 @@ runs:
         file=$(sed -n 's/^ *file_name: "\(.*\)",$/\1/p' "$CRATE/build.rs")
         sha256=$(sed -n 's/^ *sha256: "\(.*\)",$/\1/p' "$CRATE/build.rs")
         version=$(cargo metadata --no-deps --format-version=1 | jq -r --arg crate "$CRATE" '.packages[] | select(.name == $crate) | .version')
-        format_version=$(jq -r '.format_version' "$CRATE/prebuilt.json")
+        # The build cache directory is keyed on the dictionary format version
+        # (see build_embedded_dictionary in lindera-dictionary/src/assets.rs).
+        format_version=$(sed -n 's/^pub const DICTIONARY_FORMAT_VERSION: u32 = \([0-9]*\);$/\1/p' lindera-dictionary/src/dictionary/metadata.rs)
         if [ -z "$file" ] || [ -z "$sha256" ] || [ -z "$version" ] || [ -z "$format_version" ]; then
           echo "::error::could not read the source archive of $CRATE (file '$file', sha256 '$sha256', version '$version', format version '$format_version')"
           exit 1

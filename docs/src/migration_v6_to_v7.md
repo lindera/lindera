@@ -2272,13 +2272,17 @@ connection expensive, list its cell with a cost.
 ## `embed-*` builds download the published dictionary
 
 Up to v6.2.0, every build with an `embed-*` feature downloaded the source
-archive of its dictionary from `lindera.dev` and built the dictionary. v7.0.0 builds each of
-the nine bundled dictionaries once and publishes it as a GitHub release, and
-the build script of each dictionary crate downloads the dictionary that its
-`prebuilt.json` pins, checks its SHA-256 and embeds it
-([#1336](https://github.com/lindera/lindera/issues/1336)). The embedded files
+archive of its dictionary from `lindera.dev` and built the dictionary. From
+v7.0.0, a release puts the nine bundled dictionaries on its release page, as
+it already did for `lindera download`, and the build script of each
+dictionary crate published on crates.io downloads its release's archive,
+which its `prebuilt.json` pins, checks its SHA-256 and embeds it
+([#1336](https://github.com/lindera/lindera/issues/1336),
+[#1362](https://github.com/lindera/lindera/issues/1362)). The embedded files
 are the ones a build from source makes, except the `lindera_version` in
-`metadata.json`, which names the Lindera version that built the dictionary.
+`metadata.json`, which names the release. A build from a checkout of the
+repository, or from a git dependency, has no `prebuilt.json` and builds the
+dictionary from source, as before.
 
 The build downloads from `github.com`, which serves the file from
 `release-assets.githubusercontent.com`, instead of `lindera.dev`. A build
