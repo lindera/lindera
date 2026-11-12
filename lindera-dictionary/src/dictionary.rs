@@ -308,6 +308,9 @@ impl Dictionary {
     /// plain-read regardless of this flag. Separately, `Dictionary::clone()`
     /// is O(1) regardless of `use_mmap`, since
     /// `prefix_dictionary`/`connection_cost_matrix` are `Arc`-wrapped.
+    ///
+    /// Without the `mmap` feature, `use_mmap` is ignored: every component is
+    /// plain-read.
     pub fn load_from_path_with_options(dict_path: &Path, use_mmap: bool) -> LinderaResult<Self> {
         // Verify that the dictionary directory exists
         if !dict_path.exists() {
@@ -332,6 +335,11 @@ impl Dictionary {
         metadata.validate_format_version()?;
 
         let character_definition = CharacterDefinitionLoader::load(dict_path)?;
+
+        // Only the `mmap` branches below read `use_mmap`; without the feature
+        // every component is plain-read, whatever it says (#1370).
+        #[cfg(not(feature = "mmap"))]
+        let _ = use_mmap;
 
         let connection_cost_matrix = {
             #[cfg(feature = "mmap")]
