@@ -35,7 +35,15 @@ const PARALLEL_THRESHOLD: usize = 1 << 20; // 1 MiB
 /// rather than the whole file: UniDic CWJ's `matrix.def` is 7.70 GiB of text
 /// for a 982 MiB matrix. A block is far above the parallel threshold, so a
 /// large matrix is still parsed in parallel, one block after another.
+///
+/// A block is no larger than the file, so a smaller `matrix.def` (IPADIC's
+/// is 22 MiB) is read into a buffer of its own size, not of 64 MiB.
 const BLOCK_SIZE: usize = 64 << 20; // 64 MiB
+
+/// The smallest block `matrix.def` is read in, whatever size the file
+/// reports: a file whose size is not known (a pipe reports 0 bytes) is still
+/// read in blocks of a useful size rather than byte by byte.
+const MIN_BLOCK_SIZE: usize = 64 << 10; // 64 KiB
 
 /// Number of matrix values converted to bytes at a time when `matrix.mtx` is
 /// written, so that the file is written without a byte copy of the matrix.
@@ -170,12 +178,13 @@ impl ConnectionCostMatrixBuilder {
     /// A cell that `matrix.def` does not list costs 0, as in MeCab's
     /// `mecab-dict-index`.
     ///
-    /// The file is read in blocks of 64 MiB, so the build holds the matrix
-    /// and one block of the text rather than the whole text (#1366). The parser reads the raw bytes and, for ASCII-compatible
-    /// encodings, parses the space-separated integers directly. A file whose
-    /// encoding is UTF-16 (by configured label or by BOM) is decoded to UTF-8
-    /// as it is read. On non-wasm targets each block of a large matrix is
-    /// parsed in parallel with rayon.
+    /// The file is read in blocks of 64 MiB, or of the file's size if that is
+    /// smaller, so the build holds the matrix and one block of the text rather
+    /// than the whole text (#1366). The parser reads the raw bytes and, for
+    /// ASCII-compatible encodings, parses the space-separated integers
+    /// directly. A file whose encoding is UTF-16 (by configured label or by
+    /// BOM) is decoded to UTF-8 as it is read. On non-wasm targets each block
+    /// of a large matrix is parsed in parallel with rayon.
     ///
     /// # Arguments
     ///
@@ -196,6 +205,10 @@ impl ConnectionCostMatrixBuilder {
                 matrix_data_path.display()
             ))
         })?;
+        // A block need not be larger than the file: the text after the header
+        // is shorter, and decoding UTF-16 halves it.
+        let file_len = file.metadata().map_err(read_error)?.len();
+        let block_size = file_len.clamp(MIN_BLOCK_SIZE as u64, BLOCK_SIZE as u64) as usize;
         let mut reader = self.open_matrix_reader(file)?;
 
         // Parse the header line ("<forward_size> <backward_size>").
@@ -229,7 +242,7 @@ impl ConnectionCostMatrixBuilder {
         // Parse the data region (everything after the header line) and scatter
         // the costs into `costs`. Applied in file order so a duplicated
         // (forward_id, backward_id) pair keeps last-occurrence-wins semantics.
-        self.fill_costs(&mut reader, BLOCK_SIZE, matrix_size, &mut costs)?;
+        self.fill_costs(&mut reader, block_size, matrix_size, &mut costs)?;
 
         write_matrix_mtx(&costs, &output_dir.join(Path::new("matrix.mtx")))
     }
@@ -280,8 +293,8 @@ impl ConnectionCostMatrixBuilder {
     /// # Arguments
     ///
     /// * `reader` - The file, positioned after the header line.
-    /// * `block_size` - The size of the blocks to read, [`BLOCK_SIZE`] but in
-    ///   tests.
+    /// * `block_size` - The size of the blocks to read: [`BLOCK_SIZE`], or the
+    ///   file's size if that is smaller, but any size in tests.
     /// * `matrix_size` - The axis sizes from the header; every entry is
     ///   checked against them.
     /// * `costs` - Destination cost array to scatter into.
@@ -314,8 +327,8 @@ impl ConnectionCostMatrixBuilder {
     /// # Arguments
     ///
     /// * `reader` - The file, positioned after the header line.
-    /// * `block_size` - The size of the blocks to read, [`BLOCK_SIZE`] but in
-    ///   tests.
+    /// * `block_size` - The size of the blocks to read: [`BLOCK_SIZE`], or the
+    ///   file's size if that is smaller, but any size in tests.
     /// * `matrix_size` - The axis sizes from the header; every entry is
     ///   checked against them.
     /// * `costs` - Destination cost array to scatter into.
