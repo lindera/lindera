@@ -141,7 +141,7 @@ cargo build --features=embed-ipadic
 
 ### LINDERA_BUILD_CONTEXT_ID_FREQ_FILE
 
-`LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` 環境変数は、辞書クレートの build script が、クレートに同梱の `context_id_freq.txt` の代わりに読む文脈 ID の頻度表を指定します。効くのは `metadata.json` で `connection_id_mapping` を有効にした辞書（同梱の辞書では UniDic と ko-dic）だけで、実行時の動作には影響しません。頻度表は、よく使う文脈 ID が近くに並ぶように連接コスト行列の文脈 ID を並べ替えるためのもので、トークナイズの速さは変わりますが、結果は変わりません。`lindera` クレートの例 `ctxfreq_dump` で、コーパスから頻度表を作れます。
+`LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` 環境変数は、辞書クレートの build script が、クレートに同梱の `context_id_freq.txt` の代わりに読む文脈 ID の頻度表を指定します。効くのは `metadata.json` で `connection_id_mapping` を有効にした辞書（同梱の辞書では UniDic、UniDic CWJ、UniDic CSJ、ko-dic）だけで、実行時の動作には影響しません。頻度表は、よく使う文脈 ID が近くに並ぶように連接コスト行列の文脈 ID を並べ替えるためのもので、トークナイズの速さは変わりますが、結果は変わりません。`lindera` クレートの例 `ctxfreq_dump` で、コーパスから頻度表を作れます。
 
 ```shell
 export LINDERA_BUILD_CONTEXT_ID_FREQ_FILE=/path/to/context_id_freq.txt

@@ -103,7 +103,7 @@ const metadata = Metadata.fromJsonFile("/path/to/lindera-ko-dic/metadata.json");
 buildDictionary("/path/to/mecab-ko-dic", "/path/to/output_dir", metadata);
 ```
 
-`Metadata.fromJsonFile()` also keeps `connection_id_mapping`, which the `metadata.json` of ko-dic and UniDic enables. The build then relabels the context IDs of the connection matrix by access frequency, as `lindera build` does, to improve the cache locality of connection-cost lookups; the results of tokenization do not change. Pass a context-ID frequency histogram as the fourth argument, `contextIdFreq`, such as the `context_id_freq.txt` of the dictionary crate, to rank the IDs by their frequency in a corpus, as `lindera build --context-id-freq` does. Without one, the IDs are ranked by the count of dictionary entries, a much weaker proxy. A dictionary without `connection_id_mapping` does not read the histogram.
+`Metadata.fromJsonFile()` also keeps `connection_id_mapping`, which the `metadata.json` of ko-dic, UniDic, UniDic CWJ and UniDic CSJ enables. The build then relabels the context IDs of the connection matrix by access frequency, as `lindera build` does, to improve the cache locality of connection-cost lookups; the results of tokenization do not change. Pass a context-ID frequency histogram as the fourth argument, `contextIdFreq`, such as the `context_id_freq.txt` of the dictionary crate, to rank the IDs by their frequency in a corpus, as `lindera build --context-id-freq` does. Without one, the IDs are ranked by the count of dictionary entries, a much weaker proxy. A dictionary without `connection_id_mapping` does not read the histogram.
 
 ```javascript
 buildDictionary(

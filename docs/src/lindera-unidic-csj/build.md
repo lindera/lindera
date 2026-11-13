@@ -15,12 +15,13 @@ f737d26ce9daf96347e1ccaf34896a36651ffb7ceff91d4d8041591ff7a387e4  /tmp/unidic-cs
 % lindera build \
   --src /tmp/unidic-csj-202512 \
   --dest /tmp/lindera-unidic-csj-202512 \
-  --metadata ./lindera-unidic-csj/metadata.json
+  --metadata ./lindera-unidic-csj/metadata.json \
+  --context-id-freq ./lindera-unidic-csj/context_id_freq.txt
 ```
 
 The package is 2.81 GiB, and the four files take 8.18 GiB, `matrix.def` 7.92 GiB of them. The builder reads `matrix.def` in blocks of 64 MiB, so it holds the 1,002 MiB matrix and one block rather than the whole file: building the dictionary allocated at most 2.50 GiB on macOS.
 
-`lindera-unidic-csj/metadata.json` is UniDic CWJ's with another name: the two packages have the same fields. It sets `connection_id_mapping: false`, and the crate ships no `context_id_freq.txt`, so no `--context-id-freq` is needed.
+`lindera-unidic-csj/metadata.json` is UniDic CWJ's with another name: the two packages have the same fields. It sets `connection_id_mapping: true`, and the crate ships its own `context_id_freq.txt`, counted over `resources/bocchan.txt` as UniDic CWJ's is: pass it with `--context-id-freq` / `-f`. See [UniDic CWJ](../lindera-unidic-cwj/build.md) for what the relabeling does.
 
 ## Build user dictionary
 
