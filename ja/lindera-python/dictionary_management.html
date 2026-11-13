@@ -246,7 +246,7 @@ build_dictionary("/path/to/input_dir", "/path/to/output_dir", metadata)
 </code></pre>
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
 <p><code>Metadata.from_json_file</code> で読み込んだメタデータは <code>metadata.json</code> の <code>space_penalty</code> ルールを保持し、ビルドした辞書にもそのルールが同梱されます。そのため ko-dic をビルドした場合も、左側空白ペナルティはデフォルトでオンのままです。トークナイザーごとにオフにするには <code>TokenizerBuilder.set_space_penalty(False)</code> を使います（<a href="./tokenizer_api.html#set_space_penaltyvalue">Tokenizer API</a> を参照）。コンストラクタで作成した <code>Metadata</code> はルールを持ちません。</p>
-<p><code>Metadata.from_json_file</code> で読み込んだメタデータは、ko-dic と UniDic の <code>metadata.json</code> が有効にしている <code>connection_id_mapping</code> も保持します。このときビルドは、<code>lindera build</code> と同じく連接コスト行列の文脈 ID を参照頻度の順に付け替え、連接コストを引くときのキャッシュ局所性を高めます。トークナイズの結果は変わりません。<code>context_id_freq</code> に文脈 ID の頻度表（辞書クレートの <code>context_id_freq.txt</code> など）を渡すと、<code>lindera build --context-id-freq</code> と同じく、コーパスでの頻度で ID を並べます。渡さなければ、辞書の項目の数で並べます。これは頻度の代わりとしてはずっと弱いものです。<code>connection_id_mapping</code> のない辞書は頻度表を読みません。</p>
+<p><code>Metadata.from_json_file</code> で読み込んだメタデータは、ko-dic・UniDic・UniDic CWJ・UniDic CSJ の <code>metadata.json</code> が有効にしている <code>connection_id_mapping</code> も保持します。このときビルドは、<code>lindera build</code> と同じく連接コスト行列の文脈 ID を参照頻度の順に付け替え、連接コストを引くときのキャッシュ局所性を高めます。トークナイズの結果は変わりません。<code>context_id_freq</code> に文脈 ID の頻度表（辞書クレートの <code>context_id_freq.txt</code> など）を渡すと、<code>lindera build --context-id-freq</code> と同じく、コーパスでの頻度で ID を並べます。渡さなければ、辞書の項目の数で並べます。これは頻度の代わりとしてはずっと弱いものです。<code>connection_id_mapping</code> のない辞書は頻度表を読みません。</p>
 <pre><code class="language-python">metadata = Metadata.from_json_file("/path/to/lindera-ko-dic/metadata.json")
 build_dictionary(
     "/path/to/mecab-ko-dic",

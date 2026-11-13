@@ -282,7 +282,7 @@ cargo build --features=embed-ipadic
 <h3 id="lindera_build_dictionary_source_base_url"><a class="header" href="#lindera_build_dictionary_source_base_url">LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</a></h3>
 <p>辞書のソースのアーカイブのミラーです。ビルドは <code>https://lindera.dev/&lt;file_name&gt;</code>（UniDic CWJ と UniDic CSJ では国立国語研究所の URL）の代わりに <code>&lt;base&gt;/&lt;file_name&gt;</code> をダウンロードします。2 つの変数の説明は <a href="#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a> にあります。</p>
 <h3 id="lindera_build_context_id_freq_file"><a class="header" href="#lindera_build_context_id_freq_file">LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</a></h3>
-<p><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> 環境変数は、辞書クレートの build script が、クレートに同梱の <code>context_id_freq.txt</code> の代わりに読む文脈 ID の頻度表を指定します。効くのは <code>metadata.json</code> で <code>connection_id_mapping</code> を有効にした辞書（同梱の辞書では UniDic と ko-dic）だけで、実行時の動作には影響しません。頻度表は、よく使う文脈 ID が近くに並ぶように連接コスト行列の文脈 ID を並べ替えるためのもので、トークナイズの速さは変わりますが、結果は変わりません。<code>lindera</code> クレートの例 <code>ctxfreq_dump</code> で、コーパスから頻度表を作れます。</p>
+<p><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> 環境変数は、辞書クレートの build script が、クレートに同梱の <code>context_id_freq.txt</code> の代わりに読む文脈 ID の頻度表を指定します。効くのは <code>metadata.json</code> で <code>connection_id_mapping</code> を有効にした辞書（同梱の辞書では UniDic、UniDic CWJ、UniDic CSJ、ko-dic）だけで、実行時の動作には影響しません。頻度表は、よく使う文脈 ID が近くに並ぶように連接コスト行列の文脈 ID を並べ替えるためのもので、トークナイズの速さは変わりますが、結果は変わりません。<code>lindera</code> クレートの例 <code>ctxfreq_dump</code> で、コーパスから頻度表を作れます。</p>
 <pre><code class="language-shell">export LINDERA_BUILD_CONTEXT_ID_FREQ_FILE=/path/to/context_id_freq.txt
 cargo build --features=embed-unidic
 </code></pre>

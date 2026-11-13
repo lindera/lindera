@@ -188,10 +188,11 @@ ca02ad51c8ae238373dcb150eec014f1ad9f05f54c7416a16c2fe444fd4921b3  /tmp/unidic-cw
 % lindera build \
   --src /tmp/unidic-cwj-202512 \
   --dest /tmp/lindera-unidic-cwj-202512 \
-  --metadata ./lindera-unidic-cwj/metadata.json
+  --metadata ./lindera-unidic-cwj/metadata.json \
+  --context-id-freq ./lindera-unidic-cwj/context_id_freq.txt
 </code></pre>
 <p>パッケージは 2.77 GiB、取り出す 4 つのファイルは合わせて 7.95 GiB で、そのうち 7.70 GiB が <code>matrix.def</code> です。ビルダーは <code>matrix.def</code> を 64 MiB ずつ読むので、ファイル全体ではなく、982 MiB の行列と 1 ブロックだけを持ちます。辞書の組み立てで確保したメモリは、macOS で最大 2.48 GiB でした。</p>
-<p><code>lindera-unidic-cwj/metadata.json</code> は <code>connection_id_mapping: false</code> で、クレートには <code>context_id_freq.txt</code> もないので、<code>--context-id-freq</code> は要りません。</p>
+<p><code>lindera-unidic-cwj/metadata.json</code> は <code>connection_id_mapping: true</code> です。ビルダーは、連接コストの行列の文脈 ID を、解析で参照される回数の多い順に付け替え、よく参照するセルをメモリ上で近くに集めます。<code>--context-id-freq</code> / <code>-f</code> には、クレートに同梱の <code>context_id_freq.txt</code> を渡します。この頻度は、<code>ctxfreq_dump</code> の例で <code>resources/bocchan.txt</code> を解析して数えたものです。渡さなくても組み立ては成功しますが、<a href="../lindera-unidic/build.html">UniDic</a> と同じく、精度の低いエントリ数ベースの順位に切り替わり、警告を出します。どちらの場合も、付け替えはコストを変えないので、解析結果は同じです。</p>
 <h2 id="ユーザー辞書のビルド"><a class="header" href="#ユーザー辞書のビルド">ユーザー辞書のビルド</a></h2>
 <p>CSV ファイルからユーザー辞書をビルドします。簡易版のフォーマットは UniDic 2.1.2 と同じです:</p>
 <pre><code class="language-shell">% lindera build \

@@ -188,10 +188,11 @@ f737d26ce9daf96347e1ccaf34896a36651ffb7ceff91d4d8041591ff7a387e4  /tmp/unidic-cs
 % lindera build \
   --src /tmp/unidic-csj-202512 \
   --dest /tmp/lindera-unidic-csj-202512 \
-  --metadata ./lindera-unidic-csj/metadata.json
+  --metadata ./lindera-unidic-csj/metadata.json \
+  --context-id-freq ./lindera-unidic-csj/context_id_freq.txt
 </code></pre>
 <p>パッケージは 2.81 GiB、取り出す 4 つのファイルは合わせて 8.18 GiB で、そのうち 7.92 GiB が <code>matrix.def</code> です。ビルダーは <code>matrix.def</code> を 64 MiB ずつ読むので、ファイル全体ではなく、1,002 MiB の行列と 1 ブロックだけを持ちます。辞書の組み立てで確保したメモリは、macOS で最大 2.50 GiB でした。</p>
-<p><code>lindera-unidic-csj/metadata.json</code> は、名前のほかは UniDic CWJ のものと同じです。2 つのパッケージのフィールドが同じためです。<code>connection_id_mapping: false</code> で、クレートには <code>context_id_freq.txt</code> もないので、<code>--context-id-freq</code> は要りません。</p>
+<p><code>lindera-unidic-csj/metadata.json</code> は、名前のほかは UniDic CWJ のものと同じです。2 つのパッケージのフィールドが同じためです。<code>connection_id_mapping: true</code> で、クレートには、UniDic CWJ と同じく <code>resources/bocchan.txt</code> を解析して数えた <code>context_id_freq.txt</code> を同梱しているので、<code>--context-id-freq</code> / <code>-f</code> で渡します。付け替えについては <a href="../lindera-unidic-cwj/build.html">UniDic CWJ</a> を見てください。</p>
 <h2 id="ユーザー辞書のビルド"><a class="header" href="#ユーザー辞書のビルド">ユーザー辞書のビルド</a></h2>
 <p>CSV ファイルからユーザー辞書をビルドします。簡易版のフォーマットは UniDic 2.1.2 と同じです:</p>
 <pre><code class="language-shell">% lindera build \
