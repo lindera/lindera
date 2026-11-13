@@ -52,8 +52,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         backward_size,
     )?;
 
+    // Every lookup counts once on each axis, so the first axis's total is the
+    // number of lookups. None at all means that the lattice's reads went
+    // uncounted, as from #886 to #1372: an all-zero histogram would remap
+    // nothing, so it is not left behind.
+    let written = std::fs::read_to_string(&out_path)?;
+    let lookups = written
+        .lines()
+        .nth(1)
+        .unwrap_or_default()
+        .split_whitespace()
+        .map(str::parse::<u64>)
+        .sum::<Result<u64, _>>()?;
+    if lookups == 0 {
+        std::fs::remove_file(&out_path)?;
+        return Err(format!(
+            "no connection-cost lookup was counted over {corpus_path}; {out_path} is not written"
+        )
+        .into());
+    }
+
     println!(
-        "dictionary={dictionary_uri} corpus={corpus_path} tokens={} axes: forward={forward_size} backward={backward_size} -> {out_path}",
+        "dictionary={dictionary_uri} corpus={corpus_path} tokens={} lookups={lookups} axes: forward={forward_size} backward={backward_size} -> {out_path}",
         tokens.len()
     );
     Ok(())

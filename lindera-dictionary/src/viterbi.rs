@@ -5,6 +5,11 @@ use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::break_characters::BreakCharacters;
+// The lattice reads the matrix by rows, which `ConnectionCostMatrix::cost`
+// does not see, so it records each lookup for the context-id histogram
+// itself; without the feature these statements are not compiled (#1372).
+#[cfg(feature = "ctxfreq")]
+use crate::builder::context_id_remap::record_access;
 use crate::dictionary::character_definition::{CategoryData, CategoryId, CharacterDefinition};
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use crate::dictionary::prefix_dictionary::{PrefixDictionary, UserPrefixDictionary};
@@ -1997,6 +2002,8 @@ impl Lattice {
             let cost_row = cost_matrix.row(0); // EOS default left_id
 
             for (i, left_edge) in left_edges.iter().enumerate() {
+                #[cfg(feature = "ctxfreq")]
+                record_access(u32::from(left_edge.right_id), 0);
                 let path_cost = left_edge.path_cost + cost_row[left_edge.right_id as usize] as i32;
                 let path_cost = match search_mode {
                     Mode::Normal => path_cost,
@@ -2880,6 +2887,8 @@ impl Lattice {
         let left_edges = &self.ends_at[start_char];
         let cost_row = cost_matrix.row(right_left_id);
         for (i, left_edge) in left_edges.iter().enumerate() {
+            #[cfg(feature = "ctxfreq")]
+            record_access(u32::from(left_edge.right_id), right_left_id);
             let conn_cost = cost_row[left_edge.right_id as usize] as i32;
             let total_cost = (left_edge.path_cost + conn_cost).saturating_add(cache[i]);
 
@@ -2930,6 +2939,8 @@ impl Lattice {
         let cost_row = cost_matrix.row(right_left_id);
         for (i, &penalty_cost) in self.penalty_cache.iter().enumerate() {
             let left_edge = &self.ends_at[start_char][i];
+            #[cfg(feature = "ctxfreq")]
+            record_access(u32::from(left_edge.right_id), right_left_id);
             let conn_cost = cost_row[left_edge.right_id as usize] as i32;
             let total_cost = (left_edge.path_cost + conn_cost)
                 .saturating_add(penalty_cost)
@@ -3024,6 +3035,8 @@ impl Lattice {
         let mut best_left = None;
         let cost_row = cost_matrix.row(right_left_id);
         for (i, left_edge) in self.ends_at[start_char].iter().enumerate() {
+            #[cfg(feature = "ctxfreq")]
+            record_access(u32::from(left_edge.right_id), right_left_id);
             let conn_cost = cost_row[left_edge.right_id as usize] as i32;
             let mut total_cost = left_edge.path_cost + conn_cost;
             if decompose {
@@ -3187,6 +3200,8 @@ impl Lattice {
                 let left_edges = &self.ends_at[start_char];
                 let cost_row = cost_matrix.row(right_left_id);
                 for (i, left_edge) in left_edges.iter().enumerate() {
+                    #[cfg(feature = "ctxfreq")]
+                    record_access(u32::from(left_edge.right_id), right_left_id);
                     let conn_cost = cost_row[left_edge.right_id as usize] as i32;
                     let total_cost = left_edge.path_cost + conn_cost;
 
@@ -3616,6 +3631,8 @@ impl Lattice {
                 let mut best_left = None;
                 let cost_row = cost_matrix.row(right_left_id);
                 for (i, left_edge) in self.ends_at[start_char].iter().enumerate() {
+                    #[cfg(feature = "ctxfreq")]
+                    record_access(u32::from(left_edge.right_id), right_left_id);
                     let total_cost = (left_edge.path_cost
                         + cost_row[left_edge.right_id as usize] as i32)
                         .saturating_add(extra_cost);
@@ -4124,6 +4141,8 @@ impl Lattice {
 
             for i in 0..self.ends_at[n_chars].len() {
                 let left_edge = &self.ends_at[n_chars][i];
+                #[cfg(feature = "ctxfreq")]
+                record_access(u32::from(left_edge.right_id), 0);
                 let path_cost = left_edge.path_cost + cost_row[left_edge.right_id as usize] as i32;
                 let path_cost = match search_mode {
                     Mode::Normal => path_cost,
@@ -8780,6 +8799,132 @@ mod tests {
                 "{case}"
             );
             assert_path_costs_bounded(&lattice, case);
+        }
+    }
+
+    // --- #1372: the lattice records its lookups for `ctxfreq` ---
+
+    /// The lattice reads the matrix by rows, which
+    /// `ConnectionCostMatrix::cost` does not see, so each of its seven
+    /// reads records its lookups itself. Each test goes through some of
+    /// them and checks the counts exactly.
+    #[cfg(feature = "ctxfreq")]
+    mod ctxfreq {
+        use super::*;
+        use crate::builder::context_id_remap::take_ctx_freq;
+
+        /// The counts of each axis for `ab` and for `a b`: one lookup from
+        /// BOS (right context id 0) to the first word (left 1), one from it
+        /// (right 1) to `b` (left 2), and one from `b` (right 2) to EOS
+        /// (left 0). The EOS lookups are thus counted apart from the
+        /// relaxations on the left axis.
+        const ONE_EACH: [u64; 3] = [1, 1, 1];
+
+        /// Builds the 1-best or the N-best lattice of `text` and returns the
+        /// counts that it recorded, left context ids first.
+        ///
+        /// The dictionary holds `a` (context ids 1 and 1), or `a ` with its
+        /// space when `owned`, and `b` (2 and 2), whose left-space penalty
+        /// of 500 makes the lattice add the penalty per left edge after
+        /// `a `, through `relax_per_edge`. The 3 × 3 matrix costs 0
+        /// everywhere, and whitespace is skipped.
+        ///
+        /// # Arguments
+        ///
+        /// * `text` - The text to segment.
+        /// * `mode` - The segmentation mode.
+        /// * `nbest` - Whether to build the N-best lattice.
+        /// * `owned` - Whether the first word is `a ` rather than `a`.
+        ///
+        /// # Returns
+        ///
+        /// The counts per left context id and per right context id.
+        fn counts(text: &str, mode: &Mode, nbest: bool, owned: bool) -> (Vec<u64>, Vec<u64>) {
+            let char_definition = test_char_definition();
+            let unknown_dictionary = test_unknown_dictionary();
+            let mut map = BTreeMap::new();
+            let first = if owned { "a " } else { "a" };
+            map.insert(first.to_string(), vec![WordEntry::new(sys(0), 0, 1, 1)]);
+            map.insert("b".to_string(), vec![WordEntry::new(sys(1), 0, 2, 2)]);
+            let dict = PrefixDictionary::from_word_entry_map(&map).unwrap();
+            // Transposed-format header (-1, three forward ids, three backward
+            // ids) and nine zero costs.
+            let mut matrix = vec![0xff, 0xff, 3, 0, 3, 0];
+            matrix.resize(6 + 9 * 2, 0);
+            let cost_matrix = ConnectionCostMatrix::load(matrix).unwrap();
+            let whitespace = WhitespaceClassifier::new(&char_definition).unwrap();
+            let space_penalty = SpacePenaltyTable::from_costs(
+                &[0, 500],
+                &[0; 3],
+                Some(WhitespaceClassifier::new(&char_definition).unwrap()),
+            );
+            let mut options = LatticeOptions::new(mode);
+            options.skip_whitespace = Some(&whitespace);
+            options.space_penalty = Some(&space_penalty);
+
+            // Drop what the thread counted before.
+            take_ctx_freq();
+            let mut lattice = Lattice::default();
+            if nbest {
+                lattice.set_text_nbest_with_options(
+                    &dict,
+                    &None,
+                    &char_definition,
+                    &unknown_dictionary,
+                    &cost_matrix,
+                    text,
+                    &options,
+                );
+            } else {
+                lattice.set_text_with_options(
+                    &dict,
+                    &None,
+                    &char_definition,
+                    &unknown_dictionary,
+                    &cost_matrix,
+                    text,
+                    &options,
+                );
+            }
+            take_ctx_freq()
+        }
+
+        /// `relax` and the 1-best EOS connection.
+        #[test]
+        fn test_ctxfreq_counts_the_normal_mode() {
+            let counts = counts("ab", &Mode::Normal, false, false);
+            assert_eq!(counts, (ONE_EACH.to_vec(), ONE_EACH.to_vec()));
+        }
+
+        /// `relax_decompose` and the 1-best EOS connection.
+        #[test]
+        fn test_ctxfreq_counts_the_decompose_mode() {
+            let mode = Mode::Decompose(Penalty::default());
+            let counts = counts("ab", &mode, false, false);
+            assert_eq!(counts, (ONE_EACH.to_vec(), ONE_EACH.to_vec()));
+        }
+
+        /// `relax_nbest` and the N-best EOS connection.
+        #[test]
+        fn test_ctxfreq_counts_the_nbest_normal_mode() {
+            let counts = counts("ab", &Mode::Normal, true, false);
+            assert_eq!(counts, (ONE_EACH.to_vec(), ONE_EACH.to_vec()));
+        }
+
+        /// `relax_decompose_nbest` and the N-best EOS connection.
+        #[test]
+        fn test_ctxfreq_counts_the_nbest_decompose_mode() {
+            let mode = Mode::Decompose(Penalty::default());
+            let counts = counts("ab", &mode, true, false);
+            assert_eq!(counts, (ONE_EACH.to_vec(), ONE_EACH.to_vec()));
+        }
+
+        /// `relax_per_edge`, where `a ` owns the space before `b`, with
+        /// `relax` and the 1-best EOS connection.
+        #[test]
+        fn test_ctxfreq_counts_the_edges_that_own_whitespace() {
+            let counts = counts("a b", &Mode::Normal, false, true);
+            assert_eq!(counts, (ONE_EACH.to_vec(), ONE_EACH.to_vec()));
         }
     }
 }
