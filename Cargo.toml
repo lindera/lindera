@@ -58,7 +58,7 @@ hashbrown = "0.17.1"
 lindera = { version = "7.0.0", path = "lindera" }
 lindera-analysis = { version = "7.0.0", path = "lindera-analysis", default-features = false }
 lindera-binding = { version = "7.0.0", path = "lindera-binding" }
-lindera-crf = { version = "7.0.0", path = "lindera-crf" }
+lindera-crf = { version = "7.0.0", path = "lindera-crf", default-features = false }
 lindera-cc-cedict = { version = "7.0.0", path = "lindera-cc-cedict" }
 lindera-cli = { version = "7.0.0", path = "lindera-cli" }
 lindera-dictionary = { version = "7.0.0", path = "lindera-dictionary" }
