@@ -516,6 +516,8 @@ Outputs detailed token information in JSON format:
 ]
 ```
 
+`byte_start`, `byte_end` and `word_id` are numbers. The fields of the dictionary's schema are strings, with the text the dictionary has, even when it looks like a number: UniDic CWJ's `lexicon_id`, for example, goes beyond what a reader that holds numbers as doubles, such as JavaScript's `JSON.parse`, reads exactly, and comes back as written. Convert a field where you need a number.
+
 ### N-Best tokenization
 
 Lindera supports N-Best tokenization, which returns the top N tokenization candidates ordered by cost (lower cost = better). This is based on the Forward-DP Backward-A\* algorithm, compatible with MeCab's N-Best implementation.

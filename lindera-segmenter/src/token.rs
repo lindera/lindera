@@ -294,9 +294,14 @@ impl<'a> Token<'a> {
     ///
     /// # Returns
     ///
-    /// Returns a `serde_json::Value` containing all available fields and their values.
-    /// Numeric fields (byte_start, byte_end, word_id) are represented as numbers,
-    /// while text fields remain as strings.
+    /// Returns a `serde_json::Value` object with the token's `surface`,
+    /// `byte_start`, `byte_end` and `word_id`, and one entry per field of the
+    /// dictionary's schema that the token's details reach. `byte_start`,
+    /// `byte_end` and `word_id` are numbers. The dictionary's fields are
+    /// strings, with the text the dictionary has, even when it looks like a
+    /// number: `007` stays `"007"`, and an identifier beyond 2^53, such as
+    /// UniDic CWJ's `lexicon_id`, comes back exactly from readers that hold
+    /// numbers as doubles (#1365).
     ///
     /// # Example
     ///
@@ -338,17 +343,13 @@ impl<'a> Token<'a> {
         // Add word_id as number
         obj.insert("word_id".to_string(), json!(word_id));
 
-        // Add each custom field from the schema
+        // Add each field of the schema as the text the dictionary has: a
+        // field that looks like a number in one entry may not in another, and
+        // the text may not survive a number (`007`, `NaN`, identifiers beyond
+        // 2^53), so it is never parsed (#1365).
         for (i, field_name) in schema_custom_fields.iter().enumerate() {
             if let Some(value) = details.get(i) {
-                // Try to parse as number if possible, otherwise keep as string
-                if let Ok(num) = value.parse::<i64>() {
-                    obj.insert(field_name.to_string(), json!(num));
-                } else if let Ok(num) = value.parse::<f64>() {
-                    obj.insert(field_name.to_string(), json!(num));
-                } else {
-                    obj.insert(field_name.to_string(), json!(*value));
-                }
+                obj.insert(field_name.to_string(), json!(*value));
             }
         }
 
@@ -648,6 +649,51 @@ mod tests {
             let value = token.as_value();
             assert_eq!(value["conjugation_type"], conjugation_type);
             assert_eq!(value["conjugation_form"], conjugation_form);
+        }
+    }
+
+    /// The fields of [`NUMERIC_LOOKING_ENTRY`] and the text of each, which
+    /// `as_value` must give back as strings.
+    const NUMERIC_LOOKING_FIELDS: [(&str, &str); 9] = [
+        ("part_of_speech", "名詞"),
+        ("part_of_speech_subcategory_1", "007"),
+        ("part_of_speech_subcategory_2", "NaN"),
+        ("part_of_speech_subcategory_3", "1e3"),
+        ("conjugation_type", "-1"),
+        ("conjugation_form", "0.5"),
+        ("base_form", "9726013605028523"),
+        ("reading", "inf"),
+        ("pronunciation", "スウジゴ"),
+    ];
+
+    /// A detailed user dictionary entry in IPADIC's columns whose details
+    /// look like numbers, as in [`NUMERIC_LOOKING_FIELDS`].
+    const NUMERIC_LOOKING_ENTRY: &str =
+        "数字語,1288,1288,-1000,名詞,007,NaN,1e3,-1,0.5,9726013605028523,inf,スウジゴ\n";
+
+    /// `as_value` writes the dictionary's fields as the text the dictionary
+    /// has (#1365). Until then it wrote `007` as `7`, `NaN` and `inf` as
+    /// `null`, `1e3` as `1000.0`, and `9726013605028523` as a number, which
+    /// readers with doubles read as `9726013605028524`.
+    #[test]
+    fn test_as_value_writes_the_dictionary_fields_as_strings() {
+        let dictionary = match load_dictionary("embedded://ipadic") {
+            Ok(dictionary) => dictionary,
+            Err(err) => panic!("failed to load embedded IPADIC: {err}"),
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let csv = dir.path().join("numeric_looking_userdic.csv");
+        std::fs::write(&csv, NUMERIC_LOOKING_ENTRY).unwrap();
+        let user_dictionary =
+            crate::dictionary::load_user_dictionary_from_csv(&dictionary.metadata, &csv).unwrap();
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary));
+        let mut tokens = segmenter.segment(Cow::Borrowed("数字語")).unwrap();
+        assert_eq!(tokens.len(), 1);
+
+        let value = tokens[0].as_value();
+        assert_eq!(value["surface"], "数字語");
+        for (field, text) in NUMERIC_LOOKING_FIELDS {
+            assert_eq!(value[field], serde_json::json!(text), "{field}");
         }
     }
 }

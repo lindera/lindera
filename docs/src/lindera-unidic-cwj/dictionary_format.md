@@ -44,7 +44,7 @@ Refer to the [UniDic FAQ](https://clrd.ninjal.ac.jp/unidic/faq.html) for the fie
 | 31 | 語彙表ID | Lexicon ID | |
 | 32 | 語彙素ID | Lemma ID | |
 
-The JSON output of `lindera tokenize` writes a field that parses as an integer as a JSON number. `lexicon_id` goes above 2^53, the largest integer a JavaScript number holds exactly: `JSON.parse` gives another value, so read the JSON with a parser that keeps big integers.
+The JSON output of `lindera tokenize` writes these fields as strings, with the dictionary's text, as it writes every field of the schema. `lexicon_id` goes above 2^53, the largest integer a JavaScript number holds exactly, so convert it to a number only with a type that keeps big integers, such as JavaScript's `BigInt`.
 
 ## User dictionary format (CSV)
 
