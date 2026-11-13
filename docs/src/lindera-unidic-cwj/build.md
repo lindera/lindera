@@ -15,12 +15,13 @@ ca02ad51c8ae238373dcb150eec014f1ad9f05f54c7416a16c2fe444fd4921b3  /tmp/unidic-cw
 % lindera build \
   --src /tmp/unidic-cwj-202512 \
   --dest /tmp/lindera-unidic-cwj-202512 \
-  --metadata ./lindera-unidic-cwj/metadata.json
+  --metadata ./lindera-unidic-cwj/metadata.json \
+  --context-id-freq ./lindera-unidic-cwj/context_id_freq.txt
 ```
 
 The package is 2.77 GiB, and the four files take 7.95 GiB, `matrix.def` 7.70 GiB of them. The builder reads `matrix.def` in blocks of 64 MiB, so it holds the 982 MiB matrix and one block rather than the whole file: building the dictionary allocated at most 2.48 GiB on macOS.
 
-`lindera-unidic-cwj/metadata.json` sets `connection_id_mapping: false`, and the crate ships no `context_id_freq.txt`, so no `--context-id-freq` is needed.
+`lindera-unidic-cwj/metadata.json` sets `connection_id_mapping: true`, so the builder relabels the context IDs of the connection-cost matrix by how often tokenization reads them, which keeps the cells it reads close together in memory. Pass the crate's `context_id_freq.txt` with `--context-id-freq` / `-f`: it was counted over `resources/bocchan.txt` with the `ctxfreq_dump` example. Without it, the build still succeeds, but ranks the IDs by a much weaker entry-count proxy and warns, as for [UniDic](../lindera-unidic/build.md). Either way the tokens are the same: the relabeling keeps every cost.
 
 ## Build user dictionary
 

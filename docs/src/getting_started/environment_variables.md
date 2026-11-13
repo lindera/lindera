@@ -141,7 +141,7 @@ The mirror of the dictionary source archives, which the build downloads as `<bas
 
 ### LINDERA_BUILD_CONTEXT_ID_FREQ_FILE
 
-The `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` environment variable names a context-ID frequency histogram that the dictionary crates' build scripts read in place of the `context_id_freq.txt` bundled with the crate. It applies only to a dictionary whose `metadata.json` enables `connection_id_mapping`, as those of UniDic and ko-dic do among the bundled dictionaries, and has no effect at runtime. The histogram orders the context IDs of the connection cost matrix so that frequent ones sit close together, which changes the speed of tokenization but never its result; the `ctxfreq_dump` example of the `lindera` crate writes one from a corpus.
+The `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` environment variable names a context-ID frequency histogram that the dictionary crates' build scripts read in place of the `context_id_freq.txt` bundled with the crate. It applies only to a dictionary whose `metadata.json` enables `connection_id_mapping`, as those of UniDic, UniDic CWJ, UniDic CSJ and ko-dic do among the bundled dictionaries, and has no effect at runtime. The histogram orders the context IDs of the connection cost matrix so that frequent ones sit close together, which changes the speed of tokenization but never its result; the `ctxfreq_dump` example of the `lindera` crate writes one from a corpus.
 
 ```shell
 export LINDERA_BUILD_CONTEXT_ID_FREQ_FILE=/path/to/context_id_freq.txt

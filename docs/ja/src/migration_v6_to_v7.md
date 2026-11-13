@@ -84,7 +84,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **`lindera build` と `lindera train` は `char.def` と `unk.def` を照らし合わせる** | それより前の行で定義していないカテゴリを指す範囲行や、2 回定義したカテゴリが `char.def` にあるユーザー、`char.def` と `unk.def` でカテゴリが一致しないユーザー（そうした辞書はビルドでき、その後パニックしたり、別のカテゴリの設定を使ったり、出力を途中で打ち切ったり、`unk.def` の行を無視したりしていた）。MeCab の `mecab-dict-index` が受け入れる辞書は影響を受けない | 各カテゴリを、それを指す範囲行より前で 1 回だけ定義する。すべてのカテゴリに `unk.def` の行を書き、未定義のカテゴリの `unk.def` の行を削除する |
 | **`lindera build` は、MeCab と同じく `matrix.def` にないセルのコストを 0 にする** | セルを省いた `matrix.def` からシステム辞書をビルドするユーザー。すべてのセルを列挙している同梱の辞書と、`lindera export` が書き出す `matrix.def` は対象外 | そうしたセルのコストは 32767 ではなく 0 になる。接続を高いコストのままにするには、そのセルをコスト付きで列挙する |
 | **`embed-*` のビルドは、辞書をソースからビルドせずに公開済みの辞書をダウンロードする** | `embed-*` feature を付けてビルドするユーザー。目立つのは、ビルドが `lindera.dev` には接続できて `github.com` には接続できない環境 | `github.com` と `release-assets.githubusercontent.com` への接続を許すか、`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` をリリースのミラーに向けるか、`LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1` を設定して、これまでどおりソースからビルドする |
-| **CLI はライブラリの警告を標準エラー出力に書く** | 標準エラー出力を読む CLI のユーザー。たとえば、そこに何か出力があれば失敗とみなすスクリプト。目立つのは、文の区切り文字のないテキストが 32 KiB を超える入力と、`--context-id-freq` を指定しない ko-dic・UniDic の `lindera build` | 標準エラー出力に `[WARN …]` の行が出ることを前提にする。`RUST_LOG=error` で警告を消せる。標準出力は変わらない |
+| **CLI はライブラリの警告を標準エラー出力に書く** | 標準エラー出力を読む CLI のユーザー。たとえば、そこに何か出力があれば失敗とみなすスクリプト。目立つのは、文の区切り文字のないテキストが 32 KiB を超える入力と、`--context-id-freq` を指定しない ko-dic・UniDic・UniDic CWJ・UniDic CSJ の `lindera build` | 標準エラー出力に `[WARN …]` の行が出ることを前提にする。`RUST_LOG=error` で警告を消せる。標準出力は変わらない |
 | コマンドは、標準出力に読み手がいないとき終了コード 0 で静かに終わり、標準エラー出力に読み手がいないときはメッセージを捨てて続ける | `lindera` の標準出力や標準エラー出力を、`head` のように先に終わりうるプログラムにパイプでつなぎ、終了コードを確かめるスクリプト | `lindera tokenize` が 1 で、ほかのコマンドが 101 で panic して終わっていたところが 0 になる。`lindera train` と `lindera export` はモデルやファイルを、`lindera download` はパスを書くようになった |
 | **設定 `normalize_details` の削除: `Metadata::new` と `CoreMetadata::new` の引数は 10 個、Ruby の `Metadata.new` の引数は 8 個になる** | 辞書のメタデータを作成・参照するコード。Rust（`Metadata`・`lindera_binding::CoreMetadata`・`PrefixDictionaryBuilderOptions`）と、Python・Ruby・PHP・Node.js のバインディングの `Metadata` クラス | 引数・オプション・プロパティを削除する。このキーを含む `metadata.json` もそのまま読み込め、キーは無視される |
 | **`Lattice::tokens_offset`・`tokens_offset_into`・`nbest_tokens_offset`・`NBestGenerator::next` が `(start, end, WordId)` を返す** | これらの `lindera_dictionary` の関数を直接呼び出す Rust コード（`lindera::dictionary::viterbi::…`・`lindera::dictionary::Lattice`・`lindera::dictionary::nbest::…` 経由を含む） | 3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う |
@@ -462,7 +462,7 @@ archive_layout: ArchiveLayout::TopDirectory,
 ## `LINDERA_CTX_FREQ_FILE` を `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` に改名
 
 辞書クレートの build script は、`metadata.json` で `connection_id_mapping` が
-有効なとき（UniDic と ko-dic）、クレートに同梱の `context_id_freq.txt` の代わりに、
+有効なとき（UniDic、UniDic CWJ、UniDic CSJ、ko-dic）、クレートに同梱の `context_id_freq.txt` の代わりに、
 `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` が指す文脈 ID の頻度表を読みます
 （[#1308](https://github.com/lindera/lindera/issues/1308)）。v6 まではこの変数の
 名前は `LINDERA_CTX_FREQ_FILE` で、`DictionaryBuilder` 自身が読んでいたので、
@@ -2100,7 +2100,7 @@ v6.2.0 までの `lindera` CLI はロガーを組み込んでいなかったた�
   区切ったときに警告します。
 - `lindera build` は、`skip_invalid_cost_or_id` によって `lex.csv` の行を
   取り除いたときと、辞書の `metadata.json` が `connection_id_mapping` を設定して
-  いて（ko-dic・UniDic）、`--context-id-freq` を指定していないときに警告します。
+  いて（ko-dic・UniDic・UniDic CWJ・UniDic CSJ）、`--context-id-freq` を指定していないときに警告します。
   ビルドの例と同じく、辞書クレートの `context_id_freq.txt` を渡してください。
 
 ```text

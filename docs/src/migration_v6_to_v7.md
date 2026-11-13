@@ -87,7 +87,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`lindera build` and `lindera train` check `char.def` against `unk.def`** | Anyone whose `char.def` has a range line that names a category not defined on an earlier line, or a category defined twice, or whose `char.def` and `unk.def` do not name the same categories (such a dictionary built, and then panicked, used the settings of another category, cut its output short or ignored `unk.def` lines); not dictionaries that MeCab's `mecab-dict-index` accepts | Define each category once, before the range lines that name it; give every category an `unk.def` line, and remove the `unk.def` lines of undefined categories |
 | **`lindera build` gives a cell missing from `matrix.def` the cost 0, as MeCab does** | Anyone who builds a system dictionary from a `matrix.def` that leaves cells out; not the bundled dictionaries or a `matrix.def` that `lindera export` writes, which list every cell | Expect such a cell to cost 0 instead of 32767; to keep a connection expensive, list its cell with a cost |
 | **`embed-*` builds download the published dictionary instead of building it from source** | Anyone who builds with an `embed-*` feature, most visibly where the build may reach `lindera.dev` but not `github.com` | Allow `github.com` and `release-assets.githubusercontent.com`, point `LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` at a mirror of the releases, or set `LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1` to build from source as before |
-| **The CLI writes library warnings to standard error** | CLI users who read standard error, for example scripts that treat any output there as a failure; most visibly input with more than 32 KiB without a sentence delimiter, and `lindera build` of ko-dic or UniDic without `--context-id-freq` | Expect `[WARN …]` lines on standard error; set `RUST_LOG=error` to hide them. Standard output does not change |
+| **The CLI writes library warnings to standard error** | CLI users who read standard error, for example scripts that treat any output there as a failure; most visibly input with more than 32 KiB without a sentence delimiter, and `lindera build` of ko-dic, UniDic, UniDic CWJ or UniDic CSJ without `--context-id-freq` | Expect `[WARN …]` lines on standard error; set `RUST_LOG=error` to hide them. Standard output does not change |
 | The commands end quietly, with exit code 0, when their standard output has no reader, and go on without their messages when their standard error has none | Scripts that pipe the standard output or the standard error of `lindera` into a program that may exit first, such as `head`, and check the exit code | Expect exit code 0 where `lindera tokenize` ended with 1 and the other commands panicked with 101; `lindera train` and `lindera export` now write the model or the files, and `lindera download` its path |
 | **The `normalize_details` setting is removed: `Metadata::new` and `CoreMetadata::new` take 10 arguments, Ruby's `Metadata.new` takes 8** | Code that creates or reads dictionary metadata: Rust (`Metadata`, `lindera_binding::CoreMetadata`, `PrefixDictionaryBuilderOptions`) and the `Metadata` classes of the Python, Ruby, PHP and Node.js bindings | Remove the argument, option or property; a `metadata.json` that still has the key loads, and the key is ignored |
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
@@ -491,8 +491,8 @@ lexicon CSVs.
 The build scripts of the dictionary crates read the context-ID frequency
 histogram named by `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` in place of the
 `context_id_freq.txt` bundled with the crate, when `metadata.json` enables
-`connection_id_mapping`, as it does for UniDic and ko-dic
-([#1308](https://github.com/lindera/lindera/issues/1308)). Up to v6 the
+`connection_id_mapping`, as it does for UniDic, UniDic CWJ, UniDic CSJ and
+ko-dic ([#1308](https://github.com/lindera/lindera/issues/1308)). Up to v6 the
 variable was `LINDERA_CTX_FREQ_FILE`, and `DictionaryBuilder` read it itself,
 so it also applied to `lindera build`, where it took precedence over
 `--context-id-freq`. In v7:
@@ -2318,7 +2318,8 @@ not change. For example:
   of text have no sentence delimiter.
 - `lindera build` warns when it drops a `lex.csv` row because of
   `skip_invalid_cost_or_id`, and when the dictionary's `metadata.json` sets
-  `connection_id_mapping` (ko-dic, UniDic) and `--context-id-freq` is not
+  `connection_id_mapping` (ko-dic, UniDic, UniDic CWJ, UniDic CSJ) and
+  `--context-id-freq` is not
   given. Pass the `context_id_freq.txt` of the dictionary crate, as the
   build examples do.
 
