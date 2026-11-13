@@ -1486,6 +1486,60 @@ mod with_ipadic {
         (surface.to_string(), start, end)
     }
 
+    /// `--output json` writes the dictionary's fields as the text the
+    /// dictionary has, even where it looks like a number (#1365): a detailed
+    /// user dictionary entry in IPADIC's columns whose details were written
+    /// as `7`, `null`, `1000.0`, `-1`, `0.5`, a number beyond 2^53 and `null`
+    /// until then. `byte_start`, `byte_end` and `word_id` stay numbers.
+    #[test]
+    fn tokenize_json_writes_the_dictionary_fields_as_strings() {
+        let dir = tempfile::tempdir().unwrap();
+        let csv = dir.path().join("numeric_looking_userdic.csv");
+        std::fs::write(
+            &csv,
+            "数字語,1288,1288,-1000,名詞,007,NaN,1e3,-1,0.5,9726013605028523,inf,スウジゴ\n",
+        )
+        .unwrap();
+        let output = lindera()
+            .args([
+                "tokenize",
+                "--dict",
+                "embedded://ipadic",
+                "--user-dict",
+                csv.to_str().unwrap(),
+                "--output",
+                "json",
+            ])
+            .write_stdin("数字語\n")
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let tokens: Vec<serde_json::Value> = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(tokens.len(), 1);
+        let token = &tokens[0];
+        assert_eq!(token["surface"], "数字語");
+        assert_eq!(token["byte_start"], 0);
+        assert_eq!(token["byte_end"], 9);
+        assert!(token["word_id"].is_u64());
+        for (field, text) in [
+            ("part_of_speech", "名詞"),
+            ("part_of_speech_subcategory_1", "007"),
+            ("part_of_speech_subcategory_2", "NaN"),
+            ("part_of_speech_subcategory_3", "1e3"),
+            ("conjugation_type", "-1"),
+            ("conjugation_form", "0.5"),
+            ("base_form", "9726013605028523"),
+            ("reading", "inf"),
+            ("pronunciation", "スウジゴ"),
+        ] {
+            assert_eq!(token[field], serde_json::json!(text), "{field}");
+        }
+    }
+
     #[test]
     fn tokenize_offsets_index_the_input_line() {
         // Only the line terminator is removed (#1115): the spaces and tabs

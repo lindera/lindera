@@ -44,7 +44,7 @@
 | 31 | 語彙表ID | Lexicon ID | |
 | 32 | 語彙素ID | Lemma ID | |
 
-`lindera tokenize` の JSON 出力は、整数として読める項目を JSON の数値で書きます。`lexicon_id` は、JavaScript の数値が正確に表せる上限の 2^53 を超えます。`JSON.parse` で読むと別の値になるので、大きな整数を保つパーサーで読んでください。
+`lindera tokenize` の JSON 出力は、スキーマのほかの項目と同じく、これらの項目も辞書の文字のまま文字列で書きます。`lexicon_id` は、JavaScript の数値が正確に表せる上限の 2^53 を超えるので、数値に変換するときは、JavaScript の `BigInt` のように大きな整数を保つ型を使ってください。
 
 ## ユーザー辞書フォーマット (CSV)
 
