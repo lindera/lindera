@@ -217,7 +217,7 @@
 <tr><td>32</td><td>語彙素ID</td><td>Lemma ID</td><td></td></tr>
 </tbody></table>
 </div>
-<p>The JSON output of <code>lindera tokenize</code> writes a field that parses as an integer as a JSON number. <code>lexicon_id</code> goes above 2^53, the largest integer a JavaScript number holds exactly: <code>JSON.parse</code> gives another value, so read the JSON with a parser that keeps big integers.</p>
+<p>The JSON output of <code>lindera tokenize</code> writes these fields as strings, with the dictionary's text, as it writes every field of the schema. <code>lexicon_id</code> goes above 2^53, the largest integer a JavaScript number holds exactly, so convert it to a number only with a type that keeps big integers, such as JavaScript's <code>BigInt</code>.</p>
 <h2 id="user-dictionary-format-csv"><a class="header" href="#user-dictionary-format-csv">User dictionary format (CSV)</a></h2>
 <h3 id="simple-version"><a class="header" href="#simple-version">Simple version</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Index</th><th>Name (Japanese)</th><th>Name (English)</th><th>Notes</th></tr></thead><tbody>

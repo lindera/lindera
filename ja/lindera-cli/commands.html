@@ -606,6 +606,7 @@ EOS
   ...
 ]
 </code></pre>
+<p><code>byte_start</code>・<code>byte_end</code>・<code>word_id</code> は数値です。辞書のスキーマの欄は、数字に見えても、辞書にある文字のまま文字列で書きます。たとえば UniDic CWJ の <code>lexicon_id</code> は、数値を倍精度で持つ読み手（JavaScript の <code>JSON.parse</code> など）では正確に読めない大きさになりますが、書いたとおりの値で読めます。数値が要る欄は、読む側で変換してください。</p>
 <h3 id="n-best-トークナイズ"><a class="header" href="#n-best-トークナイズ">N-Best トークナイズ</a></h3>
 <p>Linderaは N-Best トークナイズをサポートしており、コスト順（低コスト＝高精度）に上位 N 件のトークナイズ候補を返します。これは MeCab の N-Best 実装と互換性のある Forward-DP Backward-A* アルゴリズムに基づいています。</p>
 <p>行は <code>\t</code>・<code>。</code>・<code>、</code> で文に区切られますが、<code>、</code> と <code>。</code> をまたいで文脈を引き継ぐため、タブを含まない行の候補は、行全体の分割のうちコストの小さい N 件です（わずかな例外は<a href="../lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>を参照）。タブは区間の終わりになります。タブを含む行は区間ごとに探索され、候補は区間ごとに 1 つのパスを選んだ組み合わせのうちコストの小さい N 件です。どの候補も行全体の分割です。</p>

@@ -245,6 +245,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong>MeCab と同じく、表層形・文脈 ID・コストが同じ見出し語からは CSV で先の行を出力する</strong></td><td>IPADIC・IPADIC-NEologd・UniDic・ko-dic、またはそうした見出し語を持つユーザー辞書で、読みや原形などのトークンの詳細情報を読むユーザー。N-best を使うユーザー</td><td>そうした語の詳細情報が MeCab と同じになり（IPADIC の <code>狡い</code> の読みは <code>コスイ</code> ではなく <code>ズルイ</code>）、ユーザー辞書の見出し語が引き続きシステム辞書の同点の見出し語に勝ち、N-best の 1 件目が常に 1-best と同じになることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>MeCab と同じく、コストが同じ分割からは最後の語が後から始まる方を選ぶ</strong></td><td>テキストを解析するすべてのユーザー。日本語・韓国語の辞書ではまれ（比較したテキストでは約 54,000 行のうち 9 行）だが、CC-CEDICT では約 4 分の 1 の文に現れる（UD Chinese GSD の 4,997 文のうち 1,267 文。Jieba では 3 文）</td><td>そうした箇所が MeCab と同じ分割になることを前提にする（IPADIC の <code>腸窒扶斯</code> は <code>腸 / 窒 / 扶斯</code> ではなく <code>腸 / 窒扶 / 斯</code>、CC-CEDICT の <code>電視台上班</code> は <code>電視 / 台 / 上班</code> ではなく <code>電視 / 台上 / 班</code>）。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong><code>lindera tokenize</code> が各入力行から改行コードだけを取り除き、すべての行に結果を出す</strong></td><td>行頭・行末に空白がある入力を CLI に渡すユーザー、トークンのない行の wakati や N-best の出力を読むユーザー</td><td>オフセットが入力行の中の位置を指し、行頭・行末の U+3000 がトークンになり（IPADIC では <code>記号,空白</code>）、<code>--keep-whitespace</code> でそこの空白も出力され、空行や空白だけの行が wakati では空行に、N-best では結果 1 件になることを前提にする。v6 の動作に戻す設定はない</td></tr>
+<tr><td><strong><code>lindera tokenize --output json</code> が辞書の素性の欄を文字列で書く</strong></td><td>CLI の JSON 出力を読むコードや <code>Token::as_value</code> を呼ぶコードで、UniDic CWJ の <code>lexicon_id</code>・<code>lemma_id</code>・<code>accent_type</code> や SudachiDict の <code>dictionary_form_id</code> などの欄を数値として読んでいるもの</td><td>辞書の素性の欄を文字列として読み、数値が要る欄は読む側で変換する。<code>byte_start</code>・<code>byte_end</code>・<code>word_id</code> は数値のまま</td></tr>
 <tr><td><strong>WASM: 辞書の設定方法にかかわらず <code>TokenizerBuilder</code> の設定が適用される</strong></td><td><code>setDictionaryInstance()</code> と <code>setKeepWhitespace()</code> やフィルタ、または <code>setDictionary()</code> と <code>setUserDictionaryInstance()</code> を組み合わせる WASM のユーザー</td><td>それらの設定とユーザー辞書が効くことを前提にする。<code>char.def</code> に <code>SPACE</code> カテゴリがない辞書インスタンスでは、URI で設定した辞書と同じく <code>setKeepWhitespace(true)</code> が必要になる</td></tr>
 <tr><td><strong>PHP: 省略可能な引数に型違いの値を渡すと、既定値を使わずに例外を投げる</strong></td><td>省略可能な引数に別の型の値を渡す PHP のコード。例えば <code>Lindera\Trainer::train()</code> の <code>$max_iter</code> に数字の文字列を、<code>tokenizeNbest()</code> の <code>$unique</code> に <code>1</code> を渡すもの</td><td>宣言された型の値を渡す。<code>$argv</code> の値のような文字列は <code>(int)</code> などでキャストする。<code>null</code> を渡すか引数を省略すれば、これまでどおり既定値になる</td></tr>
 <tr><td><strong>PHP・Node.js・WASM: 設定の範囲外の整数の引数は、折り返さずに例外を投げる</strong></td><td>そのような値を渡すコード。例えば <code>Metadata</code> の既定の単語コストに <code>100000</code> を渡すもの（v6 は <code>-31072</code> を保持した）や、N-best の件数に <code>-1</code> を渡すもの（v6 はすべての分割を列挙した）。<code>getFieldName</code> と PHP の <code>getDetail</code> への負の位置。Node.js と WASM では、<code>1.5</code> や <code>NaN</code> のような整数でない数値</td><td>範囲内の整数を渡す。エラーは引数の名前と範囲を示す</td></tr>
@@ -320,7 +321,8 @@ IPADIC・IPADIC-NEologd では、<code>―</code> や <code>～</code> で書か
 1 語になります。そして <code>lindera tokenize</code> は、各入力行の両端の空白をすべて
 取り除くのをやめて改行コードだけを取り除くため、行頭・行末の U+3000 が残り、
 オフセットが入力行の中の位置を指すようになり、wakati 形式や <code>-N</code> でもすべての行に
-結果を出します。また、WASM バインディングの <code>TokenizerBuilder</code> は、v6 では辞書の
+結果を出します。その JSON 出力は、v6 では数字に見える素性の欄を JSON の数値で
+書いていましたが、辞書の素性の欄を辞書の文字のまま文字列で書きます。また、WASM バインディングの <code>TokenizerBuilder</code> は、v6 では辞書の
 設定方法によって一部の設定を無視していましたが、どちらの方法でもすべての設定と
 ユーザー辞書を適用するようになります。それ以外は、同じ入力と
 辞書に対して、v7.0.0 は v6.2.0 と同じトークンを、同じ位置ベースの詳細情報
@@ -1457,6 +1459,64 @@ N-best の結果を除いて変わりません。変更は CLI にあり、辞�
 変わりません。v6 の動作に戻す設定はありません。v6 の
 オフセットとトークンが必要なら、テキストを <code>lindera tokenize</code> に渡す前に各行の
 両端の空白を取り除いてください。</p>
+<h2 id="lindera-tokenize---output-json-が辞書の素性の欄を文字列で書く"><a class="header" href="#lindera-tokenize---output-json-が辞書の素性の欄を文字列で書く"><code>lindera tokenize --output json</code> が辞書の素性の欄を文字列で書く</a></h2>
+<p>v6.2.0 までの <code>lindera tokenize</code> の JSON 出力（<code>Token::as_value</code> が作る）は、
+辞書のスキーマの各欄を、文字が整数として読めれば整数、小数として読めれば小数、
+それ以外は文字列で書いていました。そのため、同じ欄がトークンによって数値にも
+文字列にもなり、辞書の文字のままには戻らない値もありました。v7.0.0 は、mecab 形式の
+出力やバインディングの <code>details</code> と同じく、スキーマのすべての欄を辞書の文字のまま
+文字列で書きます。<code>byte_start</code>・<code>byte_end</code>・<code>word_id</code> は数値のままです
+（<a href="https://github.com/lindera/lindera/issues/1365">#1365</a>）。</p>
+<p>次の文字を欄に持つ IPADIC のユーザー辞書の語では、次のようになります。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書の文字</th><th>v6</th><th>v7</th></tr></thead><tbody>
+<tr><td><code>007</code></td><td><code>7</code></td><td><code>"007"</code></td></tr>
+<tr><td><code>NaN</code>、<code>inf</code></td><td><code>null</code></td><td><code>"NaN"</code>、<code>"inf"</code></td></tr>
+<tr><td><code>1e3</code></td><td><code>1000.0</code></td><td><code>"1e3"</code></td></tr>
+<tr><td><code>-1</code>、<code>0.5</code></td><td><code>-1</code>、<code>0.5</code></td><td><code>"-1"</code>、<code>"0.5"</code></td></tr>
+<tr><td><code>9726013605028523</code></td><td><code>9726013605028523</code>（JavaScript の <code>JSON.parse</code> では <code>9726013605028524</code> と読まれる）</td><td><code>"9726013605028523"</code></td></tr>
+</tbody></table>
+</div>
+<p>公式の辞書で変わるのは、文字が数値になる語のある欄です。</p>
+<ul>
+<li>
+<p>UniDic CWJ・UniDic CSJ: <code>lexicon_id</code>・<code>lemma_id</code>・<code>accent_type</code>。<code>lexicon_id</code> は
+2^53 を超え、v6 の変換では、坊っちゃんを UniDic CWJ で解析した値のうち 2,023 個が、
+倍精度の数で読むと別の値になりました。UniDic CWJ で <code>見せた</code> を解析した最初の
+トークンのうち、変わる欄は次のとおりです。v6 の変換では <code>2</code>・<code>36480</code>・
+<code>10027554702500481</code>（<code>JSON.parse</code> では <code>10027554702500480</code> と読まれる）と
+書いていました。</p>
+<pre><code class="language-json">[
+  {
+    ...
+    "accent_type": "2",
+    ...
+    "lemma_id": "36480",
+    ...
+    "lexicon_id": "10027554702500481",
+    ...
+    "surface": "見せ",
+    "word_id": 880831,
+    ...
+  },
+  ...
+]
+</code></pre>
+</li>
+<li>
+<p>SudachiDict: <code>dictionary_form_id</code> と、先頭の 0 が落ちていた <code>synonym_group_ids</code>
+（<code>001453</code> を <code>1453</code> と書いていた）。</p>
+</li>
+<li>
+<p>UniDic・UniDic CWJ・UniDic CSJ・SudachiDict: <code>1</code> のように数字で書く語の表記の欄。</p>
+</li>
+<li>
+<p>Jieba: 長い語では <code>4+</code> になる <code>char_count</code>。</p>
+</li>
+</ul>
+<p>ほかの公式の辞書で変わるのは、数字で書く語のように、その欄の文字が数値になる語だけです。
+坊っちゃんでは、IPADIC と IPADIC-NEologd の出力は変わりませんでした。スキーマの欄は
+文字列として読み、数値が要る欄は読む側で変換してください。欄を数値と比べていたコードは、
+文字列と比べるようになります。</p>
 <h2 id="wasm-辞書の設定方法にかかわらずビルダーの設定が適用される"><a class="header" href="#wasm-辞書の設定方法にかかわらずビルダーの設定が適用される">WASM: 辞書の設定方法にかかわらずビルダーの設定が適用される</a></h2>
 <p>v6.2.0 までの WASM バインディングの <code>TokenizerBuilder.build()</code> は、辞書の設定方法に
 よって、ビルダーの設定の一部を無視していました：</p>

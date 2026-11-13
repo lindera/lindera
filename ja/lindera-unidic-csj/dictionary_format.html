@@ -217,7 +217,7 @@
 <tr><td>32</td><td>語彙素ID</td><td>Lemma ID</td><td></td></tr>
 </tbody></table>
 </div>
-<p><code>lindera tokenize</code> の JSON 出力は、整数として読める項目を JSON の数値で書きます。<code>lexicon_id</code> は、JavaScript の数値が正確に表せる上限の 2^53 を超えます。<code>JSON.parse</code> で読むと別の値になるので、大きな整数を保つパーサーで読んでください。</p>
+<p><code>lindera tokenize</code> の JSON 出力は、スキーマのほかの項目と同じく、これらの項目も辞書の文字のまま文字列で書きます。<code>lexicon_id</code> は、JavaScript の数値が正確に表せる上限の 2^53 を超えるので、数値に変換するときは、JavaScript の <code>BigInt</code> のように大きな整数を保つ型を使ってください。</p>
 <h2 id="ユーザー辞書フォーマット-csv"><a class="header" href="#ユーザー辞書フォーマット-csv">ユーザー辞書フォーマット (CSV)</a></h2>
 <h3 id="簡易版"><a class="header" href="#簡易版">簡易版</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Index</th><th>Name (Japanese)</th><th>Name (English)</th><th>Notes</th></tr></thead><tbody>

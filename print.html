@@ -2911,6 +2911,7 @@ EOS
   ...
 ]
 </code></pre>
+<p><code>byte_start</code>, <code>byte_end</code> and <code>word_id</code> are numbers. The fields of the dictionary's schema are strings, with the text the dictionary has, even when it looks like a number: UniDic CWJ's <code>lexicon_id</code>, for example, goes beyond what a reader that holds numbers as doubles, such as JavaScript's <code>JSON.parse</code>, reads exactly, and comes back as written. Convert a field where you need a number.</p>
 <h3 id="n-best-tokenization-1"><a class="header" href="#n-best-tokenization-1">N-Best tokenization</a></h3>
 <p>Lindera supports N-Best tokenization, which returns the top N tokenization candidates ordered by cost (lower cost = better). This is based on the Forward-DP Backward-A* algorithm, compatible with MeCab's N-Best implementation.</p>
 <p>A line is cut into sentences at <code>\t</code>, <code>。</code> and <code>、</code>, but the context is carried across <code>、</code> and <code>。</code>, so the candidates for a line without a tab are the N best segmentations of the whole line (for the few exceptions, see <a href="lindera-cli/../lindera/segmenter.html#sentence-splitting">Sentence Splitting</a>). A tab ends a segment: a line with tabs is searched segment by segment, and its candidates are the N cheapest combinations of one path per segment. Every candidate segments the whole line.</p>
@@ -9329,7 +9330,7 @@ UniDic CWJ is much larger than the other dictionaries. The built dictionary take
 <tr><td>32</td><td>語彙素ID</td><td>Lemma ID</td><td></td></tr>
 </tbody></table>
 </div>
-<p>The JSON output of <code>lindera tokenize</code> writes a field that parses as an integer as a JSON number. <code>lexicon_id</code> goes above 2^53, the largest integer a JavaScript number holds exactly: <code>JSON.parse</code> gives another value, so read the JSON with a parser that keeps big integers.</p>
+<p>The JSON output of <code>lindera tokenize</code> writes these fields as strings, with the dictionary's text, as it writes every field of the schema. <code>lexicon_id</code> goes above 2^53, the largest integer a JavaScript number holds exactly, so convert it to a number only with a type that keeps big integers, such as JavaScript's <code>BigInt</code>.</p>
 <h2 id="user-dictionary-format-csv-3"><a class="header" href="#user-dictionary-format-csv-3">User dictionary format (CSV)</a></h2>
 <h3 id="simple-version-3"><a class="header" href="#simple-version-3">Simple version</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Index</th><th>Name (Japanese)</th><th>Name (English)</th><th>Notes</th></tr></thead><tbody>
@@ -9484,7 +9485,7 @@ UniDic CSJ is as large as UniDic CWJ. The built dictionary takes 1.2 GB, 1,002 M
 <tr><td>32</td><td>語彙素ID</td><td>Lemma ID</td><td></td></tr>
 </tbody></table>
 </div>
-<p>The JSON output of <code>lindera tokenize</code> writes a field that parses as an integer as a JSON number. <code>lexicon_id</code> goes above 2^53, the largest integer a JavaScript number holds exactly: <code>JSON.parse</code> gives another value, so read the JSON with a parser that keeps big integers.</p>
+<p>The JSON output of <code>lindera tokenize</code> writes these fields as strings, with the dictionary's text, as it writes every field of the schema. <code>lexicon_id</code> goes above 2^53, the largest integer a JavaScript number holds exactly, so convert it to a number only with a type that keeps big integers, such as JavaScript's <code>BigInt</code>.</p>
 <h2 id="user-dictionary-format-csv-4"><a class="header" href="#user-dictionary-format-csv-4">User dictionary format (CSV)</a></h2>
 <h3 id="simple-version-4"><a class="header" href="#simple-version-4">Simple version</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Index</th><th>Name (Japanese)</th><th>Name (English)</th><th>Notes</th></tr></thead><tbody>
@@ -11062,6 +11063,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>Entries with the same surface, context IDs and cost: the first CSV row is output, as in MeCab</strong></td><td>Anyone who reads token details such as the reading or the base form with IPADIC, IPADIC-NEologd, UniDic or ko-dic, or with a user dictionary that has such entries; N-best users</td><td>Expect such words to get MeCab's details (IPADIC <code>狡い</code> reads <code>ズルイ</code>, not <code>コスイ</code>), a user entry to still win a tie with a system entry, and the first N-best result to always be the 1-best; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>Segmentations of equal cost: the one whose last word starts later is chosen, as in MeCab</strong></td><td>Anyone who segments text: rarely with the Japanese and Korean dictionaries (9 of about 54,000 lines in the texts compared), but in about a quarter of the sentences with CC-CEDICT (1,267 of the 4,997 sentences of UD Chinese GSD; 3 with Jieba)</td><td>Expect such lines to be segmented as MeCab segments them (IPADIC <code>腸窒扶斯</code> is <code>腸 / 窒扶 / 斯</code>, not <code>腸 / 窒 / 扶斯</code>, and CC-CEDICT <code>電視台上班</code> is <code>電視 / 台上 / 班</code>, not <code>電視 / 台 / 上班</code>); no setting restores the v6 behavior</td></tr>
 <tr><td><strong><code>lindera tokenize</code> removes only the line terminator from each input line and writes a result for every line</strong></td><td>CLI users whose input lines start or end with whitespace, or who read the wakati or N-best output of lines without tokens</td><td>Expect the offsets to index the input line, U+3000 at the start or end of a line to be a token (IPADIC <code>記号,空白</code>), <code>--keep-whitespace</code> to output the spaces there, and an empty line or a line of spaces to give an empty wakati line and one N-best result; no setting restores the v6 behavior</td></tr>
+<tr><td><strong><code>lindera tokenize --output json</code> writes the dictionary's fields as strings</strong></td><td>Code that reads the CLI's JSON output, or calls <code>Token::as_value</code>, and expects numbers in fields such as UniDic CWJ's <code>lexicon_id</code>, <code>lemma_id</code> and <code>accent_type</code> or SudachiDict's <code>dictionary_form_id</code></td><td>Read the dictionary's fields as strings, and convert where you need a number; <code>byte_start</code>, <code>byte_end</code> and <code>word_id</code> are still numbers</td></tr>
 <tr><td><strong>WASM: the <code>TokenizerBuilder</code> settings apply whichever way the dictionary is set</strong></td><td>WASM users who combine <code>setDictionaryInstance()</code> with <code>setKeepWhitespace()</code> or filters, or <code>setDictionary()</code> with <code>setUserDictionaryInstance()</code></td><td>Expect those settings and the user dictionary to take effect; a dictionary instance whose <code>char.def</code> has no <code>SPACE</code> category now needs <code>setKeepWhitespace(true)</code>, as a dictionary set by URI does</td></tr>
 <tr><td><strong>PHP: an optional argument of the wrong type throws instead of selecting the default</strong></td><td>PHP code that passes a value of another type to an optional parameter, such as a numeric string for <code>$max_iter</code> of <code>Lindera\Trainer::train()</code> or <code>1</code> for <code>$unique</code> of <code>tokenizeNbest()</code></td><td>Pass the declared type, casting strings such as <code>$argv</code> values with <code>(int)</code>; <code>null</code> or leaving the argument out still selects the default</td></tr>
 <tr><td><strong>PHP, Node.js and WASM: an integer argument outside the range of its setting throws instead of wrapping</strong></td><td>Code that passes such a value, such as <code>100000</code> for the default word cost of <code>Metadata</code> (v6 stored <code>-31072</code>) or <code>-1</code> for the number of N-best results (v6 listed every segmentation); a negative index for <code>getFieldName</code> or PHP's <code>getDetail</code>; in Node.js and WASM, a number that is not an integer, such as <code>1.5</code> or <code>NaN</code></td><td>Pass an integer in the range; the error names the parameter and the range</td></tr>
@@ -11148,7 +11150,9 @@ entry, one word with its pinyin instead of part of an unknown word.
 And <code>lindera tokenize</code> removes only the line terminator from each input line
 instead of all the whitespace at its ends, which keeps U+3000 at the start
 or end of a line and makes the offsets index the line, and it writes a
-result for every line, also in the wakati format and with <code>-N</code>. And the
+result for every line, also in the wakati format and with <code>-N</code>. Its JSON
+output writes the dictionary's fields as strings, with the dictionary's
+text, where v6 wrote those that looked like numbers as JSON numbers. And the
 WASM binding's <code>TokenizerBuilder</code> applies all its settings and the user
 dictionary whichever way the dictionary was set, where v6 ignored some of
 them.
@@ -12424,6 +12428,70 @@ not change, except for the N-best result of an empty input. The change is
 in the CLI, not in the dictionary files. No option restores the v6 behavior; to get the v6 offsets and tokens,
 remove the whitespace at the ends of each line before passing the text to
 <code>lindera tokenize</code>.</p>
+<h2 id="lindera-tokenize---output-json-writes-the-dictionarys-fields-as-strings"><a class="header" href="#lindera-tokenize---output-json-writes-the-dictionarys-fields-as-strings"><code>lindera tokenize --output json</code> writes the dictionary's fields as strings</a></h2>
+<p>Up to v6.2.0, the JSON output of <code>lindera tokenize</code>, which
+<code>Token::as_value</code> builds, wrote each field of the dictionary's schema as an
+integer when its text read as one, as a floating-point number when it read
+as one, and as a string otherwise. A field could be a number in one token
+and a string in the next, and some texts did not come back as they are in
+the dictionary. v7.0.0 writes every field of the schema as a string, with
+the dictionary's text, as the <code>mecab</code> output and the bindings' <code>details</code>
+do. <code>byte_start</code>, <code>byte_end</code> and <code>word_id</code> are still numbers
+(<a href="https://github.com/lindera/lindera/issues/1365">#1365</a>).</p>
+<p>A user dictionary entry for IPADIC whose fields hold these texts:</p>
+<div class="table-wrapper"><table><thead><tr><th>Text in the dictionary</th><th>v6</th><th>v7</th></tr></thead><tbody>
+<tr><td><code>007</code></td><td><code>7</code></td><td><code>"007"</code></td></tr>
+<tr><td><code>NaN</code>, <code>inf</code></td><td><code>null</code></td><td><code>"NaN"</code>, <code>"inf"</code></td></tr>
+<tr><td><code>1e3</code></td><td><code>1000.0</code></td><td><code>"1e3"</code></td></tr>
+<tr><td><code>-1</code>, <code>0.5</code></td><td><code>-1</code>, <code>0.5</code></td><td><code>"-1"</code>, <code>"0.5"</code></td></tr>
+<tr><td><code>9726013605028523</code></td><td><code>9726013605028523</code>, which JavaScript's <code>JSON.parse</code> reads as <code>9726013605028524</code></td><td><code>"9726013605028523"</code></td></tr>
+</tbody></table>
+</div>
+<p>The fields this changes in the official dictionaries are those whose text is
+a number in some entries:</p>
+<ul>
+<li>
+<p>UniDic CWJ and UniDic CSJ: <code>lexicon_id</code>, <code>lemma_id</code> and <code>accent_type</code>.
+<code>lexicon_id</code> goes beyond 2^53: with the v6 conversion, 2,023 of the values
+that UniDic CWJ gives over <em>Botchan</em> came back as other values when read
+as doubles. The fields that change in the first token of <code>見せた</code> with
+UniDic CWJ, which the v6 conversion wrote as <code>2</code>, <code>36480</code> and
+<code>10027554702500481</code> (read by <code>JSON.parse</code> as <code>10027554702500480</code>):</p>
+<pre><code class="language-json">[
+  {
+    ...
+    "accent_type": "2",
+    ...
+    "lemma_id": "36480",
+    ...
+    "lexicon_id": "10027554702500481",
+    ...
+    "surface": "見せ",
+    "word_id": 880831,
+    ...
+  },
+  ...
+]
+</code></pre>
+</li>
+<li>
+<p>SudachiDict: <code>dictionary_form_id</code> and <code>synonym_group_ids</code>, which lost its
+leading zeros (<code>001453</code> was written as <code>1453</code>).</p>
+</li>
+<li>
+<p>UniDic, UniDic CWJ, UniDic CSJ and SudachiDict: the surface forms of words
+written in digits, such as <code>1</code>.</p>
+</li>
+<li>
+<p>Jieba: <code>char_count</code>, which is <code>4+</code> for longer words.</p>
+</li>
+</ul>
+<p>In the other official dictionaries, a field changes only in an entry whose
+text there is a number, such as a word written in digits; over <em>Botchan</em>,
+IPADIC and IPADIC-NEologd gave the same output as before. Read the fields
+of the schema as strings, and
+convert those you need as numbers; a reader that compared a field with a
+number now compares it with a string.</p>
 <h2 id="wasm-the-builder-settings-apply-whichever-way-the-dictionary-is-set"><a class="header" href="#wasm-the-builder-settings-apply-whichever-way-the-dictionary-is-set">WASM: the builder settings apply whichever way the dictionary is set</a></h2>
 <p>Up to v6.2.0, <code>TokenizerBuilder.build()</code> in the WASM binding ignored part of
 the builder's configuration, depending on how the dictionary was set:</p>

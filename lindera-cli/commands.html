@@ -606,6 +606,7 @@ EOS
   ...
 ]
 </code></pre>
+<p><code>byte_start</code>, <code>byte_end</code> and <code>word_id</code> are numbers. The fields of the dictionary's schema are strings, with the text the dictionary has, even when it looks like a number: UniDic CWJ's <code>lexicon_id</code>, for example, goes beyond what a reader that holds numbers as doubles, such as JavaScript's <code>JSON.parse</code>, reads exactly, and comes back as written. Convert a field where you need a number.</p>
 <h3 id="n-best-tokenization"><a class="header" href="#n-best-tokenization">N-Best tokenization</a></h3>
 <p>Lindera supports N-Best tokenization, which returns the top N tokenization candidates ordered by cost (lower cost = better). This is based on the Forward-DP Backward-A* algorithm, compatible with MeCab's N-Best implementation.</p>
 <p>A line is cut into sentences at <code>\t</code>, <code>。</code> and <code>、</code>, but the context is carried across <code>、</code> and <code>。</code>, so the candidates for a line without a tab are the N best segmentations of the whole line (for the few exceptions, see <a href="../lindera/segmenter.html#sentence-splitting">Sentence Splitting</a>). A tab ends a segment: a line with tabs is searched segment by segment, and its candidates are the N cheapest combinations of one path per segment. Every candidate segments the whole line.</p>
