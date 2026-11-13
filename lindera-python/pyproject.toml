@@ -29,7 +29,7 @@ package-mode = false
 [tool.poetry.dependencies]
 python = ">=3.10,<3.16"
 maturin = "^1.16.0"
-patchelf = "^0.19.1.0"
+patchelf = "^0.19.3.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.2.0"
