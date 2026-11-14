@@ -33,7 +33,7 @@ const WAIT_FIRST: Duration = Duration::from_millis(1);
 const WAIT_MAX: Duration = Duration::from_millis(50);
 
 /// A standard stream to write a line to.
-#[cfg_attr(docsrs, doc(cfg(feature = "train")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "console")))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Stream {
     /// The standard output.
@@ -56,7 +56,7 @@ pub enum Stream {
 ///
 /// * `stream` - The stream to write to.
 /// * `args` - The line, without the newline, as `format_args!` makes it.
-#[cfg_attr(docsrs, doc(cfg(feature = "train")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "console")))]
 pub fn write_line(stream: Stream, args: fmt::Arguments<'_>) {
     let mut line = alloc::fmt::format(args);
     line.push('\n');

@@ -153,8 +153,8 @@ mod utils;
 
 #[cfg(feature = "train")]
 mod bigram_table;
-#[cfg(feature = "train")]
-#[cfg_attr(docsrs, doc(cfg(feature = "train")))]
+#[cfg(feature = "console")]
+#[cfg_attr(docsrs, doc(cfg(feature = "console")))]
 pub mod console;
 #[cfg(feature = "train")]
 mod forward_backward;

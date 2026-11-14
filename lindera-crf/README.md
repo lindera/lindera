@@ -19,6 +19,10 @@ This library supports:
 - **Rust 2024 edition**: Updated to Rust 2024 edition
 - **Dependency updates**: Updated `argmin` (0.10 -> 0.11), `argmin-math` (0.4 -> 0.5), `hashbrown` (0.15 -> 0.16)
 
+The `console` feature exposes the non-panicking standard-stream writer without
+training dependencies. It enables `std` and is included by the default `train`
+feature. Builds with only `alloc` remain `no_std`.
+
 ## Examples
 
 ```rust
