@@ -425,6 +425,25 @@ jobs:
       crate: lindera-crf
       lint: true
 
+  # The job above tests and lints lindera-crf with its default features, which
+  # include `train`. This one does it without `train`: with `alloc` alone, the
+  # smallest (no_std) build, and with `console`, the build that lindera-analysis
+  # and lindera-cli use (#1380).
+  test-lindera-crf-no-default-features:
+    name: Test lindera-crf (no default features, ${{ matrix.features }})
+    needs: [test-lindera-crf, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-crf == 'true')
+    strategy:
+      matrix:
+        features: [alloc, console]
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-crf
+      features: "--no-default-features --features ${{ matrix.features }}"
+      lint: true
+
   test-lindera-dictionary:
     name: Test lindera-dictionary (${{ matrix.platform.target }})
     needs: [format, test-lindera-crf, detect-changes]

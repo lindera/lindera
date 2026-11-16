@@ -61,10 +61,15 @@ pub fn generate_test_lattice() -> Lattice {
     lattice
 }
 
+// The helpers from here to `generate_irregular_feature_provider` are used only
+// by the tests of `bigram_table` and `trainer`, which are built only with the
+// `train` feature, so they are built only with it too (#1380).
+
 /// Deterministically mixes `(index, pos, salt)` into a pseudo-random value.
 ///
 /// A splitmix-style finalizer, so lattice shapes are a pure function of their
 /// inputs and never depend on generation order or process state.
+#[cfg(feature = "train")]
 fn pseudo(index: usize, pos: usize, salt: usize) -> usize {
     let mut x = (index as u64)
         .wrapping_mul(0x9E37_79B9_7F4A_7C15)
@@ -88,6 +93,7 @@ fn pseudo(index: usize, pos: usize, salt: usize) -> usize {
 /// `calculate_loss` follows as the positive path; skip edges are then added
 /// between backbone nodes, so every edge starts and ends on the backbone and
 /// no dead ends exist.
+#[cfg(feature = "train")]
 pub fn generate_test_lattices(count: usize) -> Vec<Lattice> {
     (0..count)
         .map(|i| {
@@ -133,6 +139,7 @@ pub fn generate_test_lattices(count: usize) -> Vec<Lattice> {
 /// index, so `generate_irregular_feature_provider()` gives some of them
 /// feature sets with empty bigram slots (label 8) or no feature set at all
 /// (label 9).
+#[cfg(feature = "train")]
 pub fn generate_irregular_lattices(count: usize) -> Vec<Lattice> {
     (0..count)
         .map(|i| {
@@ -162,6 +169,7 @@ pub fn generate_irregular_lattices(count: usize) -> Vec<Lattice> {
 /// Returns `generate_test_feature_provider()` with an eighth feature set
 /// whose bigram ids have empty slots on both sides. Label 9 has no feature
 /// set.
+#[cfg(feature = "train")]
 pub fn generate_irregular_feature_provider() -> FeatureProvider {
     let mut feature_provider = generate_test_feature_provider();
     feature_provider
