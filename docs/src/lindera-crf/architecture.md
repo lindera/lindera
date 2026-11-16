@@ -6,7 +6,7 @@
 lindera-crf/src/
 ├── lib.rs                # Public API re-exports
 ├── bigram_table.rs       # Bigram weight indices of the training lattices
-├── console.rs            # Progress lines written without panicking (write_line)
+├── console.rs            # Side output written without panicking (write, write_line)
 ├── feature.rs            # FeatureSet, FeatureProvider
 ├── lattice.rs            # Edge, Node, Lattice
 ├── model.rs              # RawModel, MergedModel, Model trait
@@ -47,7 +47,7 @@ The optimizer stops at the first of these:
 - `StopReason::MaxIterations`: the cap set with `Trainer::max_iter`.
 - `StopReason::LineSearchFailed`: the line search of an iteration failed far from the optimum, where the norm of the gradient at the best weights of the run was still at least `1e-5` times its norm at the initial weights. The weights are the best ones of the run. A search direction with a component that is not finite, which the optimizer builds from a step that left the gradient unchanged, fails the line search too.
 
-While it trains, the optimizer writes the solver's name, `L-BFGS`, and then a line per iteration to standard error, such as `iter: 1, cost: 0.5948643217470097, best_cost: 0.5948643217470097, gamma: 0.47689090558496994`: the number of the iteration, its cost, the best cost so far, and the solver's key-value pairs, sorted by key. It writes them on the training thread through `console::write_line`, as a write to a blocking stream would: while the stream is full and non-blocking, as Node.js makes the standard streams of a `node --test` child, it waits until the stream takes the line, trying again after 1 ms, doubling up to 50 ms, and a line that the stream can no longer take, such as a pipe whose reader has exited, is dropped. It never panics, so the training gives the same result whatever happens to its output ([#1312](https://github.com/lindera/lindera/issues/1312)). `lindera_trainer` writes its progress and warnings with the same function.
+While it trains, the optimizer writes the solver's name, `L-BFGS`, and then a line per iteration to standard error, such as `iter: 1, cost: 0.5948643217470097, best_cost: 0.5948643217470097, gamma: 0.47689090558496994`: the number of the iteration, its cost, the best cost so far, and the solver's key-value pairs, sorted by key. It writes them on the training thread through `console::write_line`, as a write to a blocking stream would: while the stream is full and non-blocking, as Node.js makes the standard streams of a `node --test` child, it waits until the stream takes the line, trying again after 1 ms, doubling up to 50 ms, and a line that the stream can no longer take, such as a pipe whose reader has exited, is dropped. It never panics, so the training gives the same result whatever happens to its output ([#1312](https://github.com/lindera/lindera/issues/1312)). `lindera_trainer` writes its progress and warnings with the same function. So do `lindera-analysis`, for its warning about the configuration variables ([#1315](https://github.com/lindera/lindera/issues/1315)), and `lindera-cli`, for its own messages on standard error ([#1329](https://github.com/lindera/lindera/issues/1329)), which use `lindera-crf` with only its `console` feature. `console::write` writes in the same way without a newline, for the progress line that `lindera download` rewrites on a terminal.
 
 ### Regularization
 
@@ -82,6 +82,7 @@ Before the optimizer starts, a bigram table records, for every pair of edges tha
 | --------- | ------------- | --------- |
 | `alloc` | Alloc support for `no_std` | No* |
 | `std` | Standard library support (implies `alloc`) | No* |
-| `train` | Training functionality (L-BFGS, multi-threading, progress lines) | Yes |
+| `console` | Writing to the standard streams without panicking (`console::write`, `console::write_line`), without the training (implies `std`) | No* |
+| `train` | Training functionality (L-BFGS, multi-threading, progress lines; implies `console`) | Yes |
 
-\* Not listed directly in `default`, but transitively enabled by `train` (which is on by default and enables `std`, which in turn enables `alloc`) -- so `alloc`/`std` are active in a default build.
+\* Not listed directly in `default`, but transitively enabled by `train` (which is on by default and enables `console`, which enables `std`, which in turn enables `alloc`) -- so `alloc`/`std`/`console` are active in a default build.

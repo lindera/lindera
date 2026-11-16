@@ -6,6 +6,16 @@ use std::os::unix::net::UnixStream;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+/// How long the full stderr is kept full after the child has printed
+/// `ready`.
+///
+/// The parent cannot tell a child that waits to write the warning from one
+/// that has not reached it yet. A child that panics on the full stderr fails
+/// the test only if it reaches the warning within this time, and it reaches
+/// the warning right after printing `ready`, so only a child held up for this
+/// long between the two would pass with a panicking write (#1329).
+const HOLD: Duration = Duration::from_secs(2);
+
 #[test]
 fn warning_child() {
     if std::env::var_os("LINDERA_WARNING_CHILD").is_none() {
@@ -54,9 +64,15 @@ fn deprecated_config_warning_survives_a_full_nonblocking_stderr() {
         assert_ne!(stdout.read_line(&mut line).unwrap(), 0);
     }
     // Keep stderr full while the child attempts the warning, then let it drain.
-    let until = Instant::now() + Duration::from_millis(100);
+    // A child that panics on the full stderr ends within HOLD, and one that
+    // waits for room, as it should, is still running at its end; a child that
+    // ends with success then would mean that stderr was not full.
+    let until = Instant::now() + HOLD;
     while Instant::now() < until && child.try_wait().unwrap().is_none() {
         std::thread::sleep(Duration::from_millis(1));
+    }
+    if let Some(status) = child.try_wait().unwrap() {
+        panic!("warning child ended with {status} while its stderr was full");
     }
     reader.set_nonblocking(true).unwrap();
     let deadline = Instant::now() + Duration::from_secs(5);

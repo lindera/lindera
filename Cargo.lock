@@ -1524,6 +1524,7 @@ dependencies = [
  "env_logger",
  "flate2",
  "lindera",
+ "lindera-crf",
  "log",
  "num_cpus",
  "serde_json",

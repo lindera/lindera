@@ -67,6 +67,9 @@ flate2 = { version = "1.1.9", default-features = false, features = [
     "rust_backend",
 ] }
 lindera = { workspace = true, features = ["analysis"] }
+# The writer that never panics on a full or closed standard stream, for the
+# CLI's own messages on stderr (#1338, #1329), also without `train`.
+lindera-crf = { workspace = true, features = ["console"] }
 num_cpus = { workspace = true }
 serde_json = { workspace = true }
 # Same configuration as lindera-dictionary's build-time dependency: blocking
