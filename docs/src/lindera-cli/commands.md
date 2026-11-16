@@ -735,11 +735,11 @@ Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for 
 #### Build UniDic (Japanese dictionary)
 
 ```shell
-% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
-% tar zxvf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
+% curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
+% unzip /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
 
 % lindera build \
-  --src /tmp/unidic-mecab-2.1.2 \
+  --src /tmp/unidic-mecab-2.1.2_src \
   --dest /tmp/lindera-unidic-2.1.2 \
   --metadata ./lindera-unidic/metadata.json \
   --context-id-freq ./lindera-unidic/context_id_freq.txt

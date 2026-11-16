@@ -64,9 +64,9 @@ Character and unknown-word definitions from the UniDic 2.1.2 source
 (the same archive `lindera-unidic` builds from):
 
 ```shell
-% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
-% tar zxf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
-% cp /tmp/unidic-mecab-2.1.2/char.def /tmp/unidic-mecab-2.1.2/unk.def .
+% curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
+% unzip -o -q /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
+% cp /tmp/unidic-mecab-2.1.2_src/char.def /tmp/unidic-mecab-2.1.2_src/unk.def .
 ```
 
 ## Align unk.def with the SudachiDict column layout
