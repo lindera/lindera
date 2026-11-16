@@ -30,7 +30,7 @@ The repository has no `prebuilt.json`. A build from the repository (`main`, a pu
 
 ## Source archives
 
-The source archives of seven dictionaries are hosted on lindera.dev. UniDic CWJ's and UniDic CSJ's are NINJAL's own packages, `unidic-cwj-202512_full.zip` (2.77 GiB) and `unidic-csj-202512_full.zip` (2.81 GiB), downloaded from NINJAL's official URL ([#216](https://github.com/lindera/lindera/issues/216), [#1358](https://github.com/lindera/lindera/issues/1358)). That server is not run by Lindera, so the `build-dictionary` job of `release.yml` does not download these packages each time: it keeps each archive between runs with `actions/cache` (`.github/actions/source-archive-cache`), keyed on its file name and SHA-256, and downloads it only for a new source archive, or after the cache entry has been evicted.
+The source archives of six dictionaries are hosted on lindera.dev. UniDic's, UniDic CWJ's and UniDic CSJ's are NINJAL's own packages, `unidic-mecab-2.1.2_src.zip` (134 MiB), `unidic-cwj-202512_full.zip` (2.77 GiB) and `unidic-csj-202512_full.zip` (2.81 GiB), downloaded from NINJAL's official URL ([#216](https://github.com/lindera/lindera/issues/216), [#1358](https://github.com/lindera/lindera/issues/1358), [#1384](https://github.com/lindera/lindera/issues/1384)). That server is not run by Lindera, so the `build-dictionary` job of `release.yml` does not download these packages each time: it keeps each archive between runs with `actions/cache` (`.github/actions/source-archive-cache`), keyed on its file name and SHA-256, and downloads it only for a new source archive, or after the cache entry has been evicted.
 
 ## Releasing Lindera
 

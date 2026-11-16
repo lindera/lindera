@@ -4,14 +4,16 @@
 
 ## システム辞書のビルド
 
-UniDic のソースファイルをダウンロードし、辞書をビルドします:
+国立国語研究所が配布する UniDic 2.1.2 のソースのパッケージをダウンロードし、辞書をビルドします:
 
 ```shell
-% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
-% tar zxvf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
+% curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
+% shasum -a 256 /tmp/unidic-mecab-2.1.2_src.zip
+6cce98269214ce7de6159f61a25ffc5b436375c098cc86d6aa98c0605cbf90d4  /tmp/unidic-mecab-2.1.2_src.zip
+% unzip /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
 
 % lindera build \
-  --src /tmp/unidic-mecab-2.1.2 \
+  --src /tmp/unidic-mecab-2.1.2_src \
   --dest /tmp/lindera-unidic-2.1.2 \
   --metadata ./lindera-unidic/metadata.json \
   --context-id-freq ./lindera-unidic/context_id_freq.txt

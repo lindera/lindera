@@ -61,9 +61,9 @@ SudachiDict の raw 辞書ファイル（最新の日付は
 アーカイブと同じもの）から取得します:
 
 ```shell
-% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
-% tar zxf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
-% cp /tmp/unidic-mecab-2.1.2/char.def /tmp/unidic-mecab-2.1.2/unk.def .
+% curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
+% unzip -o -q /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
+% cp /tmp/unidic-mecab-2.1.2_src/char.def /tmp/unidic-mecab-2.1.2_src/unk.def .
 ```
 
 ## unk.def を SudachiDict のカラムレイアウトに揃える

@@ -498,11 +498,12 @@ jobs:
           sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/share/dotnet /opt/ghc /usr/local/.ghcup
           df -h /
 
-      # UniDic CWJ's and UniDic CSJ's sources are NINJAL's packages of about
-      # 2.8 GiB from NINJAL's server, so the archives are kept between runs
-      # rather than downloaded each time (#216, #1358).
+      # UniDic's, UniDic CWJ's and UniDic CSJ's sources are NINJAL's packages
+      # (134 MiB, and about 2.8 GiB each) from NINJAL's server, which Lindera
+      # does not run, so the archives are kept between runs rather than
+      # downloaded each time (#216, #1358, #1384).
       - name: Restore the source archive
-        if: matrix.dictionary.name == 'lindera-unidic-cwj' || matrix.dictionary.name == 'lindera-unidic-csj'
+        if: matrix.dictionary.name == 'lindera-unidic' || matrix.dictionary.name == 'lindera-unidic-cwj' || matrix.dictionary.name == 'lindera-unidic-csj'
         uses: ./.github/actions/source-archive-cache
         with:
           crate: ${{ matrix.dictionary.name }}
@@ -522,7 +523,7 @@ jobs:
           LINDERA_BUILD_DICTIONARY_CACHE_DIR=dictionaries cargo build -p ${{ matrix.dictionary.name }} --features ${{ matrix.dictionary.feature }}
 
       - name: Save the source archive
-        if: matrix.dictionary.name == 'lindera-unidic-cwj' || matrix.dictionary.name == 'lindera-unidic-csj'
+        if: matrix.dictionary.name == 'lindera-unidic' || matrix.dictionary.name == 'lindera-unidic-cwj' || matrix.dictionary.name == 'lindera-unidic-csj'
         uses: ./.github/actions/source-archive-cache
         with:
           crate: ${{ matrix.dictionary.name }}

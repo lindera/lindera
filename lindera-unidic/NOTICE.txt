@@ -8,7 +8,7 @@ This software includes a binary and/or source version of data from
 
 which can be obtained from
 
-  https://unidic.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip
+  https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip
 
 ===========================================================================
 unidic-mecab-2.1.2_src Notice
