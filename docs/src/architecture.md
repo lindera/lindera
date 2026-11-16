@@ -52,9 +52,11 @@ graph TB
     JIEBA --> SEGMENTER
     NEOLOGD --> SEGMENTER
     SEGMENTER --> ANALYSIS
+    CRF -->|"console feature"| ANALYSIS
     SEGMENTER --> LIB
     ANALYSIS -.->|"analysis feature"| LIB
     LIB --> CLI
+    CRF -->|"console feature"| CLI
     LIB --> BINDING
     BINDING --> PY
     BINDING --> NODEJS
@@ -67,7 +69,7 @@ graph TB
 
 | Crate | Type | Description |
 | --- | --- | --- |
-| `lindera-crf` | Core | Pure Rust CRF (Conditional Random Field) implementation. Supports `no_std`. Uses `rkyv` for serialization. |
+| `lindera-crf` | Core | Pure Rust CRF (Conditional Random Field) implementation. Supports `no_std`. Uses `rkyv` for serialization. Its `console` feature, without the training, writes to the standard streams without panicking; `lindera-analysis` and `lindera-cli` use it for their own messages. |
 | `lindera-dictionary` | Core | Dictionary base library. Provides dictionary loading and building. |
 | `lindera-trainer` | Core | CRF-based dictionary training pipeline. Builds on `lindera-crf` and `lindera-dictionary`; consumed directly or via the `lindera` facade's `train` feature. |
 | `lindera-segmenter` | Core | Pure morphological segmenter (the `lindera` crate of v6 and earlier). Integrates the dictionary crates and provides the `Segmenter` API. |
@@ -118,7 +120,7 @@ The **Segmenter** is the core component. It builds a lattice of candidate tokens
 | --- | --- | --- |
 | `analysis` | Re-export of `lindera-analysis` as `lindera::analysis` (character filters, token filters, `Tokenizer`) | Enabled (off with `default-features = false`) |
 | `mmap` | Memory-mapped file support for filesystem-based dictionary loading (opt-in via `--mmap`/`use_mmap`; the word-list files, the connection-cost matrix, and the trie all stay lazily paged) | Enabled |
-| `train` | CRF-based dictionary training functionality (depends on `lindera-crf`) | CLI + Python/Node.js/Ruby/PHP bindings (default); opt-in for the `lindera` library crate; unavailable in `lindera-wasm` |
+| `train` | CRF-based dictionary training functionality (adds `lindera-trainer` and the `train` feature of `lindera-crf`) | CLI + Python/Node.js/Ruby/PHP bindings (default); opt-in for the `lindera` library crate; unavailable in `lindera-wasm` |
 | `embed-ipadic` | Embed the IPADIC dictionary into the binary | Disabled |
 | `embed-ipadic-neologd` | Embed the IPADIC NEologd dictionary into the binary | Disabled |
 | `embed-unidic` | Embed the UniDic dictionary into the binary | Disabled |

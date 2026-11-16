@@ -94,5 +94,5 @@ cargo build --features embed-ipadic,embed-ko-dic
 ### Notes
 
 - Embedding dictionaries increases binary size significantly. Only embed dictionaries you actually need.
-- The `train` feature adds a dependency on `lindera-trainer` (and through it `lindera-crf`) and increases compile time. It is not needed for tokenization-only use cases.
+- The `train` feature adds a dependency on `lindera-trainer` and on the training part of `lindera-crf` (L-BFGS through `argmin`), and increases compile time. It is not needed for tokenization-only use cases. Without it, `lindera-analysis` (the `analysis` feature) still depends on `lindera-crf`, with only its `console` feature, to write its warnings without panicking on a full or closed standard error.
 - The `mmap` feature enables memory-mapped dictionary loading for filesystem-based dictionaries, requested via `--mmap` (CLI) or the `use_mmap` segmenter config key. Every large component stays lazily paged and costs no anonymous memory: the word-list files (`dict.vals`/`dict.wordsidx`/`dict.words`), the connection-cost matrix (`matrix.mtx`), and the prefix-dictionary trie (`dict.trie`), which is walked in place over its serialized bytes. Nothing is fully materialized at load. It has no effect on embedded dictionaries, whose data is read in place from the binary regardless.

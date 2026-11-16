@@ -16,12 +16,9 @@ This library supports:
 - **Elastic Net regularization**: Added `Regularization::ElasticNet` that combines L1 and L2 penalties with a configurable `l1_ratio` parameter
 - **Default regularization**: `Trainer::new` regularizes with L2 and `DEFAULT_LAMBDA` (1.0), the objective of MeCab's learner with its default `-c 1.0`; rucrf's default is L1 with 0.1
 - **Progress output**: The iteration lines are written on the training thread by `console::write_line`, which never panics on a full or closed standard stream, instead of `argmin-observer-slog`
+- **`console` feature**: `console::write_line`, and `console::write` for text without a newline, are available without the training dependencies through the `console` feature, which enables `std` and which the default `train` feature includes; `lindera-analysis` and `lindera-cli` write their own messages with them. Builds with only `alloc` remain `no_std`
 - **Rust 2024 edition**: Updated to Rust 2024 edition
 - **Dependency updates**: Updated `argmin` (0.10 -> 0.11), `argmin-math` (0.4 -> 0.5), `hashbrown` (0.15 -> 0.16)
-
-The `console` feature exposes the non-panicking standard-stream writer without
-training dependencies. It enables `std` and is included by the default `train`
-feature. Builds with only `alloc` remain `no_std`.
 
 ## Examples
 

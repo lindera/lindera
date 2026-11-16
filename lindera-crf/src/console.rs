@@ -1,18 +1,22 @@
-//! Writing the training's progress lines to the standard output and the
-//! standard error without panicking.
+//! Writing side output to the standard output and the standard error without
+//! panicking.
 //!
-//! The training runs inside other programs: the CLI, and the Node.js,
-//! Python, Ruby and PHP bindings. Their standard streams may be non-blocking
-//! (Node.js makes them so when they are pipes, and `node --test` does for
-//! every test file), or may have no reader any more. `println!` and
-//! `eprintln!` panic when a write fails, and a panic on the thread that
-//! called a Node.js function aborts the whole process (#1312).
+//! The side output is what a program writes besides its result: the
+//! training's progress lines (#1312), the warning of `lindera-analysis` about
+//! its configuration variables (#1315), and the messages of `lindera-cli`,
+//! such as the progress of a download (#1329). It is written inside other
+//! programs: the CLI, and the Node.js, Python, Ruby and PHP bindings. Their
+//! standard streams may be non-blocking (Node.js makes them so when they are
+//! pipes, and `node --test` does for every test file), or may have no reader
+//! any more. `println!` and `eprintln!` panic when a write fails, and a panic
+//! on the thread that called a Node.js function aborts the whole process.
 //!
-//! [`write_line`] writes as a write to a blocking stream would: it waits
-//! while the stream is full, so that no line is lost or cut, and it drops a
-//! line that the stream can no longer take, so that the training goes on.
-//! Progress is a side output: whatever happens to it, the training gives the
-//! same result.
+//! [`write_line`] and [`write()`] write as a write to a blocking stream would:
+//! they wait while the stream is full, so that no text is lost or cut, and
+//! they drop text that the stream can no longer take, so that the caller goes
+//! on. Whatever happens to the side output, the caller's result is the same.
+//!
+//! This module is built with the `console` feature, which `train` includes.
 
 use core::fmt;
 use std::io::{self, Write};
@@ -32,7 +36,7 @@ const WAIT_FIRST: Duration = Duration::from_millis(1);
 /// this long after the stream has room again.
 const WAIT_MAX: Duration = Duration::from_millis(50);
 
-/// A standard stream to write a line to.
+/// A standard stream to write to.
 #[cfg_attr(docsrs, doc(cfg(feature = "console")))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Stream {
@@ -60,18 +64,43 @@ pub enum Stream {
 pub fn write_line(stream: Stream, args: fmt::Arguments<'_>) {
     let mut line = alloc::fmt::format(args);
     line.push('\n');
+    write_text(stream, &line);
+}
+
+/// Writes text to a standard stream, without a newline after it.
+///
+/// It writes as [`write_line`] does, for text that is not a whole line, such
+/// as a progress line that a terminal rewrites after a carriage return.
+///
+/// # Arguments
+///
+/// * `stream` - The stream to write to.
+/// * `args` - The text, as `format_args!` makes it.
+#[cfg_attr(docsrs, doc(cfg(feature = "console")))]
+pub fn write(stream: Stream, args: fmt::Arguments<'_>) {
+    write_text(stream, &alloc::fmt::format(args));
+}
+
+/// Writes formatted text to a standard stream with the stream's lock held,
+/// and drops it on an error.
+///
+/// # Arguments
+///
+/// * `stream` - The stream to write to.
+/// * `text` - The text.
+fn write_text(stream: Stream, text: &str) {
     let mut sleep = thread::sleep;
-    // The line is dropped on an error, as described above.
+    // The text is dropped on an error, as `write_line` describes.
     let _ = match stream {
-        Stream::Stdout => write_line_to(&mut io::stdout().lock(), line.as_bytes(), &mut sleep),
-        Stream::Stderr => write_line_to(&mut io::stderr().lock(), line.as_bytes(), &mut sleep),
+        Stream::Stdout => write_to(&mut io::stdout().lock(), text.as_bytes(), &mut sleep),
+        Stream::Stderr => write_to(&mut io::stderr().lock(), text.as_bytes(), &mut sleep),
     };
 }
 
-/// Writes `line` to `writer` and flushes it, waiting while it would block.
+/// Writes `bytes` to `writer` and flushes it, waiting while it would block.
 ///
 /// `write_all` is not used, since after an error it does not tell how much
-/// was written, and trying the whole line again would write its start
+/// was written, and trying all the bytes again would write their start
 /// twice. The flush is needed because Rust's standard output keeps the rest
 /// of a line that was written only in part in its buffer, and reports it as
 /// written.
@@ -79,7 +108,7 @@ pub fn write_line(stream: Stream, args: fmt::Arguments<'_>) {
 /// # Arguments
 ///
 /// * `writer` - The writer.
-/// * `line` - The bytes to write.
+/// * `bytes` - The bytes to write.
 /// * `wait` - Called with the time to wait before trying a write that would
 ///   block again.
 ///
@@ -88,13 +117,13 @@ pub fn write_line(stream: Stream, args: fmt::Arguments<'_>) {
 /// `Ok(())` once every byte is written and flushed, or the error that ended
 /// the write: [`io::ErrorKind::WriteZero`] when the writer took no byte, or
 /// the first error other than an interrupted write or one that would block.
-fn write_line_to<W: Write + ?Sized>(
+fn write_to<W: Write + ?Sized>(
     writer: &mut W,
-    line: &[u8],
+    bytes: &[u8],
     wait: &mut dyn FnMut(Duration),
 ) -> io::Result<()> {
     let mut pause = WAIT_FIRST;
-    let mut rest = line;
+    let mut rest = bytes;
     while !rest.is_empty() {
         match writer.write(rest) {
             Ok(0) => return Err(io::ErrorKind::WriteZero.into()),
@@ -186,11 +215,11 @@ mod tests {
         }
     }
 
-    /// Runs [`write_line_to`] on `writer` with `line`, and returns its
-    /// result with the waits it asked for, in milliseconds.
+    /// Runs [`write_to`] on `writer` with `line`, and returns its result
+    /// with the waits it asked for, in milliseconds.
     fn run(writer: &mut Scripted, line: &[u8]) -> (io::Result<()>, Vec<u128>) {
         let mut waits = Vec::new();
-        let result = write_line_to(writer, line, &mut |d: Duration| waits.push(d.as_millis()));
+        let result = write_to(writer, line, &mut |d: Duration| waits.push(d.as_millis()));
         (result, waits)
     }
 

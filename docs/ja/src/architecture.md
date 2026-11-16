@@ -52,9 +52,11 @@ graph TB
     JIEBA --> SEGMENTER
     NEOLOGD --> SEGMENTER
     SEGMENTER --> ANALYSIS
+    CRF -->|"console feature"| ANALYSIS
     SEGMENTER --> LIB
     ANALYSIS -.->|"analysis feature"| LIB
     LIB --> CLI
+    CRF -->|"console feature"| CLI
     LIB --> BINDING
     BINDING --> PY
     BINDING --> NODEJS
@@ -67,7 +69,7 @@ graph TB
 
 | クレート | 種類 | 説明 |
 | --- | --- | --- |
-| `lindera-crf` | コア | Pure RustによるCRF（条件付き確率場）実装。`no_std`サポート。シリアライゼーションに`rkyv`を使用。 |
+| `lindera-crf` | コア | Pure RustによるCRF（条件付き確率場）実装。`no_std`サポート。シリアライゼーションに`rkyv`を使用。`console` featureは、学習なしで、標準ストリームにpanicせずに書く機能を提供し、`lindera-analysis`と`lindera-cli`が自身のメッセージに使う。 |
 | `lindera-dictionary` | コア | 辞書ベースライブラリ。辞書の読み込みとビルドを提供。 |
 | `lindera-trainer` | コア | CRFベースの辞書学習パイプライン。`lindera-crf`と`lindera-dictionary`の上に構築され、直接、または`lindera`facadeの`train` feature経由で利用される。 |
 | `lindera-segmenter` | コア | 純粋な形態素セグメンター（v6 以前の `lindera` クレート）。辞書クレートを統合し、`Segmenter` APIを提供。 |
@@ -118,7 +120,7 @@ Output Tokens
 | --- | --- | --- |
 | `analysis` | `lindera-analysis`を`lindera::analysis`として再エクスポート（文字フィルタ、トークンフィルタ、`Tokenizer`） | 有効（`default-features = false`で無効） |
 | `mmap` | ファイルシステム辞書読み込みのためのメモリマップドファイルサポート（`--mmap`/`use_mmap`でオプトイン。トライ・単語リストファイル・接続コスト行列はいずれもマップしたバイト列上で直接参照され、遅延読み込みされる） | 有効 |
-| `train` | CRFベースの辞書学習機能（`lindera-crf`に依存） | CLI + Python/Node.js/Ruby/PHPバインディング（デフォルト有効）／`lindera`ライブラリクレートではデフォルト無効（オプトイン）／`lindera-wasm`では利用不可 |
+| `train` | CRFベースの辞書学習機能（`lindera-trainer`と`lindera-crf`の`train` featureを追加） | CLI + Python/Node.js/Ruby/PHPバインディング（デフォルト有効）／`lindera`ライブラリクレートではデフォルト無効（オプトイン）／`lindera-wasm`では利用不可 |
 | `embed-ipadic` | IPADIC辞書をバイナリに埋め込み | 無効 |
 | `embed-ipadic-neologd` | IPADIC NEologd辞書をバイナリに埋め込み | 無効 |
 | `embed-unidic` | UniDic辞書をバイナリに埋め込み | 無効 |

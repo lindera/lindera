@@ -5,7 +5,8 @@ use std::time::Duration;
 
 use lindera::LinderaResult;
 use lindera::error::LinderaErrorKind;
-use lindera_cli::{get_version, write_stderr, write_stderr_line};
+use lindera_cli::get_version;
+use lindera_crf::console::{Stream, write, write_line};
 
 use super::{io_err, write_stdout};
 use crate::dictionary_registry::{
@@ -177,7 +178,7 @@ pub fn download(args: DownloadArgs) -> LinderaResult<()> {
     ) && io::stderr().is_terminal()
     {
         // Terminate the `\r`-rewritten progress line.
-        write_stderr_line(format_args!(""));
+        write_line(Stream::Stderr, format_args!(""));
     }
     let (notice, path) = match outcome {
         DownloadOutcome::Installed(path) => {
@@ -211,7 +212,7 @@ pub fn download(args: DownloadArgs) -> LinderaResult<()> {
     // The notice and the path are each written in one place for the three
     // outcomes, so that a stderr without a reader (#1338) and a stdout without
     // a reader (#1316) end each of them as the tests check for one.
-    write_stderr_line(format_args!("{notice}"));
+    write_line(Stream::Stderr, format_args!("{notice}"));
     write_stdout(&format!("{}\n", path.display()))
 }
 
@@ -242,7 +243,7 @@ fn progress_renderer(url: String) -> impl FnMut(u64, Option<u64>) {
     move |bytes, total| {
         if !started {
             started = true;
-            write_stderr_line(format_args!("Downloading {url}"));
+            write_line(Stream::Stderr, format_args!("Downloading {url}"));
         }
         if !is_terminal {
             return;
@@ -252,18 +253,17 @@ fn progress_renderer(url: String) -> impl FnMut(u64, Option<u64>) {
                 let percent = bytes * 100 / total;
                 if last_rendered != Some(percent) {
                     last_rendered = Some(percent);
-                    write_stderr(format_args!(
-                        "\r{percent}% ({:.1}/{:.1} MiB)",
-                        mib(bytes),
-                        mib(total)
-                    ));
+                    write(
+                        Stream::Stderr,
+                        format_args!("\r{percent}% ({:.1}/{:.1} MiB)", mib(bytes), mib(total)),
+                    );
                 }
             }
             _ => {
                 let whole_mib = bytes / (1024 * 1024);
                 if last_rendered != Some(whole_mib) {
                     last_rendered = Some(whole_mib);
-                    write_stderr(format_args!("\r{:.1} MiB", mib(bytes)));
+                    write(Stream::Stderr, format_args!("\r{:.1} MiB", mib(bytes)));
                 }
             }
         }
