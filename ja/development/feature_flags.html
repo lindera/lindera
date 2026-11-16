@@ -252,7 +252,7 @@ lindera = { version = "7", features = ["embed-ipadic", "embed-ko-dic"] }
 <h3 id="注意事項"><a class="header" href="#注意事項">注意事項</a></h3>
 <ul>
 <li>辞書の埋め込みはバイナリサイズを大幅に増加させます。実際に必要な辞書のみを埋め込んでください。</li>
-<li><code>train</code> feature は <code>lindera-trainer</code>（を通じて <code>lindera-crf</code>）への依存を追加し、コンパイル時間が増加します。トークナイズのみのユースケースでは不要です。</li>
+<li><code>train</code> feature は <code>lindera-trainer</code> と、<code>lindera-crf</code> の学習の部分（<code>argmin</code> による L-BFGS）への依存を追加し、コンパイル時間が増加します。トークナイズのみのユースケースでは不要です。<code>train</code> がなくても、<code>lindera-analysis</code>（<code>analysis</code> feature）は、一杯か閉じた標準エラー出力で panic せずに警告を書くために、<code>console</code> feature だけを有効にした <code>lindera-crf</code> に依存します。</li>
 <li><code>mmap</code> feature はファイルシステム辞書に対するメモリマップド読み込みを有効にします（CLIの<code>--mmap</code>または<code>segmenter</code>設定の<code>use_mmap</code>キーで要求）。辞書フォーマットバージョン 2 以降、トライ（<code>dict.trie</code>/<code>dict.valsidx</code>）もシリアライズ済みバイト列上を直接走査するため、単語リストファイル（<code>dict.vals</code>/<code>dict.wordsidx</code>/<code>dict.words</code>）・接続コスト行列（<code>matrix.mtx</code>）と合わせて、大きなコンポーネントはすべて遅延読み込みされ、匿名メモリを消費しません。ロード時に全体がメモリに展開されるコンポーネントはありません。埋め込み辞書には影響しませんが、埋め込み辞書のトライと接続コスト行列もバイナリ内から直接参照されます。</li>
 </ul>
 

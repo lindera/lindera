@@ -226,9 +226,11 @@
     JIEBA --&gt; SEGMENTER
     NEOLOGD --&gt; SEGMENTER
     SEGMENTER --&gt; ANALYSIS
+    CRF --&gt;|"console feature"| ANALYSIS
     SEGMENTER --&gt; LIB
     ANALYSIS -.-&gt;|"analysis feature"| LIB
     LIB --&gt; CLI
+    CRF --&gt;|"console feature"| CLI
     LIB --&gt; BINDING
     BINDING --&gt; PY
     BINDING --&gt; NODEJS
@@ -238,7 +240,7 @@
 </code></pre>
 <h2 id="クレート一覧"><a class="header" href="#クレート一覧">クレート一覧</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>クレート</th><th>種類</th><th>説明</th></tr></thead><tbody>
-<tr><td><code>lindera-crf</code></td><td>コア</td><td>Pure RustによるCRF（条件付き確率場）実装。<code>no_std</code>サポート。シリアライゼーションに<code>rkyv</code>を使用。</td></tr>
+<tr><td><code>lindera-crf</code></td><td>コア</td><td>Pure RustによるCRF（条件付き確率場）実装。<code>no_std</code>サポート。シリアライゼーションに<code>rkyv</code>を使用。<code>console</code> featureは、学習なしで、標準ストリームにpanicせずに書く機能を提供し、<code>lindera-analysis</code>と<code>lindera-cli</code>が自身のメッセージに使う。</td></tr>
 <tr><td><code>lindera-dictionary</code></td><td>コア</td><td>辞書ベースライブラリ。辞書の読み込みとビルドを提供。</td></tr>
 <tr><td><code>lindera-trainer</code></td><td>コア</td><td>CRFベースの辞書学習パイプライン。<code>lindera-crf</code>と<code>lindera-dictionary</code>の上に構築され、直接、または<code>lindera</code>facadeの<code>train</code> feature経由で利用される。</td></tr>
 <tr><td><code>lindera-segmenter</code></td><td>コア</td><td>純粋な形態素セグメンター（v6 以前の <code>lindera</code> クレート）。辞書クレートを統合し、<code>Segmenter</code> APIを提供。</td></tr>
@@ -283,7 +285,7 @@ Output Tokens
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>analysis</code></td><td><code>lindera-analysis</code>を<code>lindera::analysis</code>として再エクスポート（文字フィルタ、トークンフィルタ、<code>Tokenizer</code>）</td><td>有効（<code>default-features = false</code>で無効）</td></tr>
 <tr><td><code>mmap</code></td><td>ファイルシステム辞書読み込みのためのメモリマップドファイルサポート（<code>--mmap</code>/<code>use_mmap</code>でオプトイン。トライ・単語リストファイル・接続コスト行列はいずれもマップしたバイト列上で直接参照され、遅延読み込みされる）</td><td>有効</td></tr>
-<tr><td><code>train</code></td><td>CRFベースの辞書学習機能（<code>lindera-crf</code>に依存）</td><td>CLI + Python/Node.js/Ruby/PHPバインディング（デフォルト有効）／<code>lindera</code>ライブラリクレートではデフォルト無効（オプトイン）／<code>lindera-wasm</code>では利用不可</td></tr>
+<tr><td><code>train</code></td><td>CRFベースの辞書学習機能（<code>lindera-trainer</code>と<code>lindera-crf</code>の<code>train</code> featureを追加）</td><td>CLI + Python/Node.js/Ruby/PHPバインディング（デフォルト有効）／<code>lindera</code>ライブラリクレートではデフォルト無効（オプトイン）／<code>lindera-wasm</code>では利用不可</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC辞書をバイナリに埋め込み</td><td>無効</td></tr>
 <tr><td><code>embed-ipadic-neologd</code></td><td>IPADIC NEologd辞書をバイナリに埋め込み</td><td>無効</td></tr>
 <tr><td><code>embed-unidic</code></td><td>UniDic辞書をバイナリに埋め込み</td><td>無効</td></tr>

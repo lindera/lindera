@@ -253,7 +253,7 @@ lindera = { version = "7", features = ["embed-ipadic", "embed-ko-dic"] }
 <h3 id="notes"><a class="header" href="#notes">Notes</a></h3>
 <ul>
 <li>Embedding dictionaries increases binary size significantly. Only embed dictionaries you actually need.</li>
-<li>The <code>train</code> feature adds a dependency on <code>lindera-trainer</code> (and through it <code>lindera-crf</code>) and increases compile time. It is not needed for tokenization-only use cases.</li>
+<li>The <code>train</code> feature adds a dependency on <code>lindera-trainer</code> and on the training part of <code>lindera-crf</code> (L-BFGS through <code>argmin</code>), and increases compile time. It is not needed for tokenization-only use cases. Without it, <code>lindera-analysis</code> (the <code>analysis</code> feature) still depends on <code>lindera-crf</code>, with only its <code>console</code> feature, to write its warnings without panicking on a full or closed standard error.</li>
 <li>The <code>mmap</code> feature enables memory-mapped dictionary loading for filesystem-based dictionaries, requested via <code>--mmap</code> (CLI) or the <code>use_mmap</code> segmenter config key. Every large component stays lazily paged and costs no anonymous memory: the word-list files (<code>dict.vals</code>/<code>dict.wordsidx</code>/<code>dict.words</code>), the connection-cost matrix (<code>matrix.mtx</code>), and the prefix-dictionary trie (<code>dict.trie</code>), which is walked in place over its serialized bytes. Nothing is fully materialized at load. It has no effect on embedded dictionaries, whose data is read in place from the binary regardless.</li>
 </ul>
 

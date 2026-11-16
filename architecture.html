@@ -226,9 +226,11 @@
     JIEBA --&gt; SEGMENTER
     NEOLOGD --&gt; SEGMENTER
     SEGMENTER --&gt; ANALYSIS
+    CRF --&gt;|"console feature"| ANALYSIS
     SEGMENTER --&gt; LIB
     ANALYSIS -.-&gt;|"analysis feature"| LIB
     LIB --&gt; CLI
+    CRF --&gt;|"console feature"| CLI
     LIB --&gt; BINDING
     BINDING --&gt; PY
     BINDING --&gt; NODEJS
@@ -238,7 +240,7 @@
 </code></pre>
 <h2 id="crate-overview"><a class="header" href="#crate-overview">Crate Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Crate</th><th>Type</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>lindera-crf</code></td><td>Core</td><td>Pure Rust CRF (Conditional Random Field) implementation. Supports <code>no_std</code>. Uses <code>rkyv</code> for serialization.</td></tr>
+<tr><td><code>lindera-crf</code></td><td>Core</td><td>Pure Rust CRF (Conditional Random Field) implementation. Supports <code>no_std</code>. Uses <code>rkyv</code> for serialization. Its <code>console</code> feature, without the training, writes to the standard streams without panicking; <code>lindera-analysis</code> and <code>lindera-cli</code> use it for their own messages.</td></tr>
 <tr><td><code>lindera-dictionary</code></td><td>Core</td><td>Dictionary base library. Provides dictionary loading and building.</td></tr>
 <tr><td><code>lindera-trainer</code></td><td>Core</td><td>CRF-based dictionary training pipeline. Builds on <code>lindera-crf</code> and <code>lindera-dictionary</code>; consumed directly or via the <code>lindera</code> facade's <code>train</code> feature.</td></tr>
 <tr><td><code>lindera-segmenter</code></td><td>Core</td><td>Pure morphological segmenter (the <code>lindera</code> crate of v6 and earlier). Integrates the dictionary crates and provides the <code>Segmenter</code> API.</td></tr>
@@ -283,7 +285,7 @@ Output Tokens
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>analysis</code></td><td>Re-export of <code>lindera-analysis</code> as <code>lindera::analysis</code> (character filters, token filters, <code>Tokenizer</code>)</td><td>Enabled (off with <code>default-features = false</code>)</td></tr>
 <tr><td><code>mmap</code></td><td>Memory-mapped file support for filesystem-based dictionary loading (opt-in via <code>--mmap</code>/<code>use_mmap</code>; the word-list files, the connection-cost matrix, and the trie all stay lazily paged)</td><td>Enabled</td></tr>
-<tr><td><code>train</code></td><td>CRF-based dictionary training functionality (depends on <code>lindera-crf</code>)</td><td>CLI + Python/Node.js/Ruby/PHP bindings (default); opt-in for the <code>lindera</code> library crate; unavailable in <code>lindera-wasm</code></td></tr>
+<tr><td><code>train</code></td><td>CRF-based dictionary training functionality (adds <code>lindera-trainer</code> and the <code>train</code> feature of <code>lindera-crf</code>)</td><td>CLI + Python/Node.js/Ruby/PHP bindings (default); opt-in for the <code>lindera</code> library crate; unavailable in <code>lindera-wasm</code></td></tr>
 <tr><td><code>embed-ipadic</code></td><td>Embed the IPADIC dictionary into the binary</td><td>Disabled</td></tr>
 <tr><td><code>embed-ipadic-neologd</code></td><td>Embed the IPADIC NEologd dictionary into the binary</td><td>Disabled</td></tr>
 <tr><td><code>embed-unidic</code></td><td>Embed the UniDic dictionary into the binary</td><td>Disabled</td></tr>
