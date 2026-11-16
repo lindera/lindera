@@ -228,9 +228,9 @@ Sudachi のエンジンプラグインは再現しません。利用する前に
 </code></pre>
 <p>文字種定義と未知語定義は UniDic 2.1.2 のソース（<code>lindera-unidic</code> がビルドに使う
 アーカイブと同じもの）から取得します:</p>
-<pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
-% tar zxf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
-% cp /tmp/unidic-mecab-2.1.2/char.def /tmp/unidic-mecab-2.1.2/unk.def .
+<pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
+% unzip -o -q /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
+% cp /tmp/unidic-mecab-2.1.2_src/char.def /tmp/unidic-mecab-2.1.2_src/unk.def .
 </code></pre>
 <h2 id="unkdef-を-sudachidict-のカラムレイアウトに揃える"><a class="header" href="#unkdef-を-sudachidict-のカラムレイアウトに揃える">unk.def を SudachiDict のカラムレイアウトに揃える</a></h2>
 <p>SudachiDict の辞書行は 19 カラムで、カラム 4（0 始まり）は表示用の表層形（display

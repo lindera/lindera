@@ -441,7 +441,7 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 <tr><td><a href="getting_started/environment_variables.html#lindera_build_dictionary_cache_dir"><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code></a></td><td>The build scripts of the dictionary crates</td><td>A directory</td><td>Each build downloads and builds the dictionary in its own output directory</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a></td><td>The build scripts of the dictionary crates</td><td><code>1</code> or <code>true</code></td><td>A dictionary crate downloads the published dictionary it pins, and builds from source only when it cannot use it</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a></td><td>The build scripts of the dictionary crates</td><td>An <code>http</code> or <code>https</code> URL</td><td>The published dictionaries are downloaded from GitHub releases</td></tr>
-<tr><td><a href="getting_started/environment_variables.html#lindera_build_dictionary_source_base_url"><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></a></td><td>The build scripts of the dictionary crates</td><td>An <code>http</code> or <code>https</code> URL</td><td>The source archives are downloaded from <code>https://lindera.dev</code>, and UniDic CWJ's and UniDic CSJ's from NINJAL (<code>https://clrd.ninjal.ac.jp</code>)</td></tr>
+<tr><td><a href="getting_started/environment_variables.html#lindera_build_dictionary_source_base_url"><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></a></td><td>The build scripts of the dictionary crates</td><td>An <code>http</code> or <code>https</code> URL</td><td>The source archives are downloaded from <code>https://lindera.dev</code>, and UniDic's, UniDic CWJ's and UniDic CSJ's from NINJAL (<code>https://clrd.ninjal.ac.jp</code>)</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#lindera_build_context_id_freq_file"><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code></a></td><td>The build scripts of the dictionary crates</td><td>A file</td><td>The histogram bundled with the dictionary crate, if any</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#docs_rs"><code>DOCS_RS</code></a></td><td>The build scripts of the dictionary crates</td><td>Set by docs.rs</td><td>The real dictionaries are built</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#lindera_config_file"><code>LINDERA_CONFIG_FILE</code></a></td><td><code>TokenizerBuilder::new()</code>, and so <code>lindera tokenize</code> and the bindings</td><td>A file</td><td>An empty configuration</td></tr>
@@ -518,14 +518,14 @@ LINDERA_BUILD_DICTIONARY_CACHE_DIR = "/path/to/cache"
 <p><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code> and <a href="getting_started/environment_variables.html#lindera_build_dictionary_source_base_url"><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></a> point the downloads of the build scripts at mirrors, for builds that must not reach the hosts Lindera publishes on, such as builds that go through a proxy repository like Artifactory. Each variable replaces one host:</p>
 <div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Replaces</th><th>The build downloads</th></tr></thead><tbody>
 <tr><td><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></td><td><code>https://github.com/lindera/lindera/releases/download</code>, the <code>base_url</code> in the crate's <code>prebuilt.json</code></td><td><code>&lt;base&gt;/&lt;path&gt;</code>, with the <code>path</code> in <code>prebuilt.json</code></td></tr>
-<tr><td><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></td><td><code>https://lindera.dev</code>, where the crate's <code>build.rs</code> downloads the source archive from; for UniDic CWJ and UniDic CSJ, NINJAL's <code>https://clrd.ninjal.ac.jp/unidic_archive/2512</code></td><td><code>&lt;base&gt;/&lt;file_name&gt;</code>, with the archive's file name</td></tr>
+<tr><td><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></td><td><code>https://lindera.dev</code>, where the crate's <code>build.rs</code> downloads the source archive from; for UniDic, NINJAL's <code>https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2</code>, and for UniDic CWJ and UniDic CSJ, NINJAL's <code>https://clrd.ninjal.ac.jp/unidic_archive/2512</code></td><td><code>&lt;base&gt;/&lt;file_name&gt;</code>, with the archive's file name</td></tr>
 </tbody></table>
 </div>
 <p>For IPADIC, with the variables set to <code>https://mirror.example/lindera-releases</code> and <code>https://mirror.example/lindera-dev</code>, the build downloads one of these:</p>
 <pre><code class="language-text">https://mirror.example/lindera-releases/v7.0.0/lindera-ipadic-7.0.0.zip
 https://mirror.example/lindera-dev/mecab-ipadic-2.7.0-20250920.tar.gz
 </code></pre>
-<p>A mirror thus keeps the files at the paths they have on the original host: an Artifactory remote repository that proxies <code>https://github.com/lindera/lindera/releases/download</code> serves the published dictionaries, and one that proxies <code>https://lindera.dev</code> serves the source archives. The source archives of UniDic CWJ and UniDic CSJ are not on lindera.dev: a mirror that builds them from source serves NINJAL's <code>unidic-cwj-202512_full.zip</code> and <code>unidic-csj-202512_full.zip</code> at the same base, under those file names. A build downloads the published dictionary by default and the source archive only when it builds from source (see <a href="getting_started/environment_variables.html#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a>), which can also happen without <code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code>; a build that must not reach the original hosts sets both variables.</p>
+<p>A mirror thus keeps the files at the paths they have on the original host: an Artifactory remote repository that proxies <code>https://github.com/lindera/lindera/releases/download</code> serves the published dictionaries, and one that proxies <code>https://lindera.dev</code> serves the source archives. The source archives of UniDic, UniDic CWJ and UniDic CSJ are not on lindera.dev: a mirror that builds them from source serves NINJAL's <code>unidic-mecab-2.1.2_src.zip</code>, <code>unidic-cwj-202512_full.zip</code> and <code>unidic-csj-202512_full.zip</code> at the same base, under those file names. A build downloads the published dictionary by default and the source archive only when it builds from source (see <a href="getting_started/environment_variables.html#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a>), which can also happen without <code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code>; a build that must not reach the original hosts sets both variables.</p>
 <pre><code class="language-shell">export LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL=https://mirror.example/lindera-releases
 export LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL=https://mirror.example/lindera-dev
 cargo build --features=embed-ipadic
@@ -539,7 +539,7 @@ cargo build --features=embed-ipadic
 <li>Only the build scripts read the variables. <code>lindera download</code> downloads its dictionaries from GitHub at run time.</li>
 </ul>
 <h3 id="lindera_build_dictionary_source_base_url"><a class="header" href="#lindera_build_dictionary_source_base_url">LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</a></h3>
-<p>The mirror of the dictionary source archives, which the build downloads as <code>&lt;base&gt;/&lt;file_name&gt;</code> in place of <code>https://lindera.dev/&lt;file_name&gt;</code> (for UniDic CWJ and UniDic CSJ, in place of NINJAL's URL). See <a href="getting_started/environment_variables.html#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a>, which describes both variables.</p>
+<p>The mirror of the dictionary source archives, which the build downloads as <code>&lt;base&gt;/&lt;file_name&gt;</code> in place of <code>https://lindera.dev/&lt;file_name&gt;</code> (for UniDic, UniDic CWJ and UniDic CSJ, in place of NINJAL's URL). See <a href="getting_started/environment_variables.html#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a>, which describes both variables.</p>
 <h3 id="lindera_build_context_id_freq_file"><a class="header" href="#lindera_build_context_id_freq_file">LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</a></h3>
 <p>The <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> environment variable names a context-ID frequency histogram that the dictionary crates' build scripts read in place of the <code>context_id_freq.txt</code> bundled with the crate. It applies only to a dictionary whose <code>metadata.json</code> enables <code>connection_id_mapping</code>, as those of UniDic, UniDic CWJ, UniDic CSJ and ko-dic do among the bundled dictionaries, and has no effect at runtime. The histogram orders the context IDs of the connection cost matrix so that frequent ones sit close together, which changes the speed of tokenization but never its result; the <code>ctxfreq_dump</code> example of the <code>lindera</code> crate writes one from a corpus.</p>
 <pre><code class="language-shell">export LINDERA_BUILD_CONTEXT_ID_FREQ_FILE=/path/to/context_id_freq.txt
@@ -3072,11 +3072,11 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: 'æ
   --metadata ./lindera-ipadic-neologd/metadata.json
 </code></pre>
 <h4 id="build-unidic-japanese-dictionary"><a class="header" href="#build-unidic-japanese-dictionary">Build UniDic (Japanese dictionary)</a></h4>
-<pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
-% tar zxvf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
+<pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
+% unzip /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
 
 % lindera build \
-  --src /tmp/unidic-mecab-2.1.2 \
+  --src /tmp/unidic-mecab-2.1.2_src \
   --dest /tmp/lindera-unidic-2.1.2 \
   --metadata ./lindera-unidic/metadata.json \
   --context-id-freq ./lindera-unidic/context_id_freq.txt
@@ -9176,12 +9176,14 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <div style="break-before: page; page-break-before: always;"></div><h1 id="build-12"><a class="header" href="#build-12">Build</a></h1>
 <p>This page describes how to build the UniDic dictionary from source files.</p>
 <h2 id="build-system-dictionary-2"><a class="header" href="#build-system-dictionary-2">Build system dictionary</a></h2>
-<p>Download the UniDic source files and build the dictionary:</p>
-<pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
-% tar zxvf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
+<p>Download NINJAL's source package of UniDic 2.1.2 and build the dictionary:</p>
+<pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
+% shasum -a 256 /tmp/unidic-mecab-2.1.2_src.zip
+6cce98269214ce7de6159f61a25ffc5b436375c098cc86d6aa98c0605cbf90d4  /tmp/unidic-mecab-2.1.2_src.zip
+% unzip /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
 
 % lindera build \
-  --src /tmp/unidic-mecab-2.1.2 \
+  --src /tmp/unidic-mecab-2.1.2_src \
   --dest /tmp/lindera-unidic-2.1.2 \
   --metadata ./lindera-unidic/metadata.json \
   --context-id-freq ./lindera-unidic/context_id_freq.txt
@@ -10242,9 +10244,9 @@ the UniDic 2.1.2 matrix (SudachiDict entries use UniDic context IDs):</p>
 </code></pre>
 <p>Character and unknown-word definitions from the UniDic 2.1.2 source
 (the same archive <code>lindera-unidic</code> builds from):</p>
-<pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
-% tar zxf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
-% cp /tmp/unidic-mecab-2.1.2/char.def /tmp/unidic-mecab-2.1.2/unk.def .
+<pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
+% unzip -o -q /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
+% cp /tmp/unidic-mecab-2.1.2_src/char.def /tmp/unidic-mecab-2.1.2_src/unk.def .
 </code></pre>
 <h2 id="align-unkdef-with-the-sudachidict-column-layout"><a class="header" href="#align-unkdef-with-the-sudachidict-column-layout">Align unk.def with the SudachiDict column layout</a></h2>
 <p>SudachiDict lexicon rows have 19 columns; column 4 (0-based) is the display
@@ -14416,7 +14418,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <p>An <code>embed-*</code> build of that crate downloads the archive (<code>base_url</code> and <code>path</code> joined by <code>/</code>), checks it against <code>sha256</code>, checks that it holds the directory <code>key</code> with the nine files and a <code>metadata.json</code> that fits the crate, and embeds it. A build that cannot download or check it stops with an error, rather than embedding anything unchecked or falling back to the source.</p>
 <p>The repository has no <code>prebuilt.json</code>. A build from the repository (<code>main</code>, a pull request, a git dependency) builds every dictionary from source; <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> keeps the built dictionaries between builds, and CI keeps that directory in its cache (<a href="https://github.com/lindera/lindera/issues/1337">#1337</a>). <a href="development/../getting_started/environment_variables.html#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a> makes a published crate build from source too.</p>
 <h2 id="source-archives"><a class="header" href="#source-archives">Source archives</a></h2>
-<p>The source archives of seven dictionaries are hosted on lindera.dev. UniDic CWJ's and UniDic CSJ's are NINJAL's own packages, <code>unidic-cwj-202512_full.zip</code> (2.77 GiB) and <code>unidic-csj-202512_full.zip</code> (2.81 GiB), downloaded from NINJAL's official URL (<a href="https://github.com/lindera/lindera/issues/216">#216</a>, <a href="https://github.com/lindera/lindera/issues/1358">#1358</a>). That server is not run by Lindera, so the <code>build-dictionary</code> job of <code>release.yml</code> does not download these packages each time: it keeps each archive between runs with <code>actions/cache</code> (<code>.github/actions/source-archive-cache</code>), keyed on its file name and SHA-256, and downloads it only for a new source archive, or after the cache entry has been evicted.</p>
+<p>The source archives of six dictionaries are hosted on lindera.dev. UniDic's, UniDic CWJ's and UniDic CSJ's are NINJAL's own packages, <code>unidic-mecab-2.1.2_src.zip</code> (134 MiB), <code>unidic-cwj-202512_full.zip</code> (2.77 GiB) and <code>unidic-csj-202512_full.zip</code> (2.81 GiB), downloaded from NINJAL's official URL (<a href="https://github.com/lindera/lindera/issues/216">#216</a>, <a href="https://github.com/lindera/lindera/issues/1358">#1358</a>, <a href="https://github.com/lindera/lindera/issues/1384">#1384</a>). That server is not run by Lindera, so the <code>build-dictionary</code> job of <code>release.yml</code> does not download these packages each time: it keeps each archive between runs with <code>actions/cache</code> (<code>.github/actions/source-archive-cache</code>), keyed on its file name and SHA-256, and downloads it only for a new source archive, or after the cache entry has been evicted.</p>
 <h2 id="releasing-lindera"><a class="header" href="#releasing-lindera">Releasing Lindera</a></h2>
 <ol>
 <li>Raise the version (<code>scripts/bump-up-version.sh &lt;version&gt;</code>) in a pull request, and merge it.</li>

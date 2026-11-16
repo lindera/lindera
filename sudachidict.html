@@ -231,9 +231,9 @@ the UniDic 2.1.2 matrix (SudachiDict entries use UniDic context IDs):</p>
 </code></pre>
 <p>Character and unknown-word definitions from the UniDic 2.1.2 source
 (the same archive <code>lindera-unidic</code> builds from):</p>
-<pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
-% tar zxf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
-% cp /tmp/unidic-mecab-2.1.2/char.def /tmp/unidic-mecab-2.1.2/unk.def .
+<pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
+% unzip -o -q /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
+% cp /tmp/unidic-mecab-2.1.2_src/char.def /tmp/unidic-mecab-2.1.2_src/unk.def .
 </code></pre>
 <h2 id="align-unkdef-with-the-sudachidict-column-layout"><a class="header" href="#align-unkdef-with-the-sudachidict-column-layout">Align unk.def with the SudachiDict column layout</a></h2>
 <p>SudachiDict lexicon rows have 19 columns; column 4 (0-based) is the display
