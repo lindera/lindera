@@ -30,7 +30,7 @@ crates.io に公開した辞書クレートには、`metadata.json` の隣に `p
 
 ## ソースのアーカイブ
 
-6 つの辞書のソースのアーカイブは lindera.dev に置いています。UniDic、UniDic CWJ、UniDic CSJ のソースは、国立国語研究所のパッケージ `unidic-mecab-2.1.2_src.zip`（134 MiB）、`unidic-cwj-202512_full.zip`（2.77 GiB）、`unidic-csj-202512_full.zip`（2.81 GiB）そのもので、国立国語研究所の公式の URL から取得します（[#216](https://github.com/lindera/lindera/issues/216)、[#1358](https://github.com/lindera/lindera/issues/1358)、[#1384](https://github.com/lindera/lindera/issues/1384)）。Lindera が運用していないサーバーから実行のたびにこれらのパッケージを取得しないように、`release.yml` の `build-dictionary` のジョブは、それぞれのアーカイブを `actions/cache`（`.github/actions/source-archive-cache`）で実行をまたいで保存します。キーはファイル名と SHA-256 で、ダウンロードするのは、ソースのアーカイブが新しくなったときと、キャッシュが消されたときだけです。
+5 つの辞書のソースのアーカイブは lindera.dev に置いています。UniDic、UniDic CWJ、UniDic CSJ のソースは、国立国語研究所のパッケージ `unidic-mecab-2.1.2_src.zip`（134 MiB）、`unidic-cwj-202512_full.zip`（2.77 GiB）、`unidic-csj-202512_full.zip`（2.81 GiB）そのもので、国立国語研究所の公式の URL から取得します（[#216](https://github.com/lindera/lindera/issues/216)、[#1358](https://github.com/lindera/lindera/issues/1358)、[#1384](https://github.com/lindera/lindera/issues/1384)）。ko-dic のソースは、mecab-ko-dic の公式のリリース `mecab-ko-dic-2.1.1-20180720.tar.gz`（47 MiB）そのもので、上流のリポジトリの Bitbucket の Downloads から取得します（[#1386](https://github.com/lindera/lindera/issues/1386)）。Lindera が運用していないサーバーから実行のたびにこれらのアーカイブを取得しないように、`release.yml` の `build-dictionary` のジョブは、それぞれのアーカイブを `actions/cache`（`.github/actions/source-archive-cache`）で実行をまたいで保存します。キーはファイル名と SHA-256 で、ダウンロードするのは、ソースのアーカイブが新しくなったときと、キャッシュが消されたときだけです。
 
 ## Lindera のリリース
 
