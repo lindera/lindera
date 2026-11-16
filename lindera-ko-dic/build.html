@@ -178,8 +178,10 @@
                     <main>
                         <h1 id="build"><a class="header" href="#build">Build</a></h1>
 <h2 id="build-system-dictionary"><a class="header" href="#build-system-dictionary">Build system dictionary</a></h2>
-<p>Download and extract the mecab-ko-dic source files, then build the dictionary:</p>
-<pre><code class="language-shell">% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz"
+<p>Download the official release of mecab-ko-dic from the Downloads of its upstream repository on Bitbucket, extract it, and build the dictionary:</p>
+<pre><code class="language-shell">% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.1.1-20180720.tar.gz"
+% shasum -a 256 /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz
+fd62d3d6d8fa85145528065fabad4d7cb20f6b2201e71be4081a4e9701a5b330  /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz
 % tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
 % lindera build \
   --src /tmp/mecab-ko-dic-2.1.1-20180720 \
