@@ -7,7 +7,7 @@ Lindera reads the environment variables below; none of them is required.
 | [`LINDERA_BUILD_DICTIONARY_CACHE_DIR`](#lindera_build_dictionary_cache_dir) | The build scripts of the dictionary crates | A directory | Each build downloads and builds the dictionary in its own output directory |
 | [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source) | The build scripts of the dictionary crates | `1` or `true` | A dictionary crate downloads the published dictionary it pins, and builds from source only when it cannot use it |
 | [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url) | The build scripts of the dictionary crates | An `http` or `https` URL | The published dictionaries are downloaded from GitHub releases |
-| [`LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL`](#lindera_build_dictionary_source_base_url) | The build scripts of the dictionary crates | An `http` or `https` URL | The source archives are downloaded from `https://lindera.dev`, and UniDic's, UniDic CWJ's and UniDic CSJ's from NINJAL (`https://clrd.ninjal.ac.jp`) |
+| [`LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL`](#lindera_build_dictionary_source_base_url) | The build scripts of the dictionary crates | An `http` or `https` URL | The source archives are downloaded from `https://lindera.dev`, UniDic's, UniDic CWJ's and UniDic CSJ's from NINJAL (`https://clrd.ninjal.ac.jp`), and ko-dic's from mecab-ko-dic's Bitbucket Downloads (`https://bitbucket.org`) |
 | [`LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`](#lindera_build_context_id_freq_file) | The build scripts of the dictionary crates | A file | The histogram bundled with the dictionary crate, if any |
 | [`DOCS_RS`](#docs_rs) | The build scripts of the dictionary crates | Set by docs.rs | The real dictionaries are built |
 | [`LINDERA_CONFIG_FILE`](#lindera_config_file) | `TokenizerBuilder::new()`, and so `lindera tokenize` and the bindings | A file | An empty configuration |
@@ -111,7 +111,7 @@ LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1 cargo build --features=embed-ipadic
 | Variable | Replaces | The build downloads |
 | --- | --- | --- |
 | `LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` | `https://github.com/lindera/lindera/releases/download`, the `base_url` in the crate's `prebuilt.json` | `<base>/<path>`, with the `path` in `prebuilt.json` |
-| `LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL` | `https://lindera.dev`, where the crate's `build.rs` downloads the source archive from; for UniDic, NINJAL's `https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2`, and for UniDic CWJ and UniDic CSJ, NINJAL's `https://clrd.ninjal.ac.jp/unidic_archive/2512` | `<base>/<file_name>`, with the archive's file name |
+| `LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL` | `https://lindera.dev`, where the crate's `build.rs` downloads the source archive from; for UniDic, NINJAL's `https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2`, for UniDic CWJ and UniDic CSJ, NINJAL's `https://clrd.ninjal.ac.jp/unidic_archive/2512`, and for ko-dic, mecab-ko-dic's Bitbucket Downloads, `https://bitbucket.org/eunjeon/mecab-ko-dic/downloads` | `<base>/<file_name>`, with the archive's file name |
 
 For IPADIC, with the variables set to `https://mirror.example/lindera-releases` and `https://mirror.example/lindera-dev`, the build downloads one of these:
 
@@ -120,7 +120,7 @@ https://mirror.example/lindera-releases/v7.0.0/lindera-ipadic-7.0.0.zip
 https://mirror.example/lindera-dev/mecab-ipadic-2.7.0-20250920.tar.gz
 ```
 
-A mirror thus keeps the files at the paths they have on the original host: an Artifactory remote repository that proxies `https://github.com/lindera/lindera/releases/download` serves the published dictionaries, and one that proxies `https://lindera.dev` serves the source archives. The source archives of UniDic, UniDic CWJ and UniDic CSJ are not on lindera.dev: a mirror that builds them from source serves NINJAL's `unidic-mecab-2.1.2_src.zip`, `unidic-cwj-202512_full.zip` and `unidic-csj-202512_full.zip` at the same base, under those file names. A build downloads the published dictionary by default and the source archive only when it builds from source (see [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source)), which can also happen without `LINDERA_BUILD_DICTIONARY_FROM_SOURCE`; a build that must not reach the original hosts sets both variables.
+A mirror thus keeps the files at the paths they have on the original host: an Artifactory remote repository that proxies `https://github.com/lindera/lindera/releases/download` serves the published dictionaries, and one that proxies `https://lindera.dev` serves the source archives. The source archives of UniDic, UniDic CWJ, UniDic CSJ and ko-dic do not come from lindera.dev: a mirror that builds them from source serves NINJAL's `unidic-mecab-2.1.2_src.zip`, `unidic-cwj-202512_full.zip` and `unidic-csj-202512_full.zip`, and Bitbucket's `mecab-ko-dic-2.1.1-20180720.tar.gz`, at the same base, under those file names. lindera.dev has a `mecab-ko-dic-2.1.1-20180720.tar.gz` too, the one v6 builds from: it holds the same release repacked but fails the SHA-256 check, so the mirror serves Bitbucket's in its place. A build downloads the published dictionary by default and the source archive only when it builds from source (see [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source)), which can also happen without `LINDERA_BUILD_DICTIONARY_FROM_SOURCE`; a build that must not reach the original hosts sets both variables.
 
 ```shell
 export LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL=https://mirror.example/lindera-releases
@@ -137,7 +137,7 @@ cargo build --features=embed-ipadic
 
 ### LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL
 
-The mirror of the dictionary source archives, which the build downloads as `<base>/<file_name>` in place of `https://lindera.dev/<file_name>` (for UniDic, UniDic CWJ and UniDic CSJ, in place of NINJAL's URL). See [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url), which describes both variables.
+The mirror of the dictionary source archives, which the build downloads as `<base>/<file_name>` in place of `https://lindera.dev/<file_name>` (for UniDic, UniDic CWJ and UniDic CSJ, in place of NINJAL's URL, and for ko-dic, in place of Bitbucket's). See [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url), which describes both variables.
 
 ### LINDERA_BUILD_CONTEXT_ID_FREQ_FILE
 

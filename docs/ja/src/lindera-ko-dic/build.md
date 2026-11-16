@@ -2,10 +2,12 @@
 
 ## システム辞書のビルド
 
-mecab-ko-dic のソースファイルをダウンロード・展開し、辞書をビルドします:
+mecab-ko-dic の公式のリリースを、上流のリポジトリの Bitbucket の Downloads からダウンロード・展開し、辞書をビルドします:
 
 ```shell
-% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz"
+% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.1.1-20180720.tar.gz"
+% shasum -a 256 /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz
+fd62d3d6d8fa85145528065fabad4d7cb20f6b2201e71be4081a4e9701a5b330  /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz
 % tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
 % lindera build \
   --src /tmp/mecab-ko-dic-2.1.1-20180720 \

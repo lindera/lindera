@@ -1,5 +1,5 @@
 ===========================================================================
-Lindera Japanese Morphological Analyzer
+Lindera Morphological Analyzer
 ===========================================================================
 
 This software includes a binary and/or source version of data from
