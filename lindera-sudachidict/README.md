@@ -65,8 +65,11 @@ The detailed version follows the dictionary format above (19 columns).
 ## Behavioral differences from Sudachi
 
 This dictionary reproduces SudachiDict's vocabulary and lattice behavior,
-but not the Sudachi engine plugins (katakana/numeric joining, input
-normalization, A/B/C split modes). See the
+and reads Sudachi's own `char.def` as Sudachi does (`"char_def_format":
+"sudachi"` in `metadata.json`), but not the Sudachi engine plugins
+(katakana/numeric joining, input normalization, A/B/C split modes) or
+Sudachi's rule that no word starts inside a run of Latin, Greek or Cyrillic
+letters. See the
 [SudachiDict page](https://lindera.github.io/docs/sudachidict.html) in the
 Lindera documentation for details.
 

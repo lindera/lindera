@@ -4,7 +4,7 @@ Lindera Morphological Analyzer
 
 This software includes a binary and/or source version of data from
 
-  SudachiDict 20260723 (sudachidict-20260723)
+  SudachiDict 20260723 (sudachidict-0.1.0-20260723)
 
 which can be obtained from
 
@@ -19,10 +19,14 @@ by the WAP Tokushima Laboratory of AI and NLP
 
 SudachiDict is licensed under the Apache License, Version 2.0
 (http://www.apache.org/licenses/LICENSE-2.0). The connection matrix
-(matrix.def) and the character / unknown-word definitions (char.def,
-unk.def) are part of UniDic (unidic-mecab 2.1.2), which is distributed
-under a BSD/GPL/LGPL triple license; the BSD notice is reproduced in the
-SudachiDict LEGAL notice below.
+(matrix.def) and the unknown-word definitions (unk.def) are part of UniDic
+(unidic-mecab 2.1.2), which is distributed under a BSD/GPL/LGPL triple
+license; the BSD notice is reproduced in the SudachiDict LEGAL notice
+below. The character definitions (char.def) are Sudachi's own, taken
+unmodified from sudachi.rs v0.7.0
+(https://github.com/WorksApplications/sudachi.rs, resources/char.def),
+which is licensed under the Apache License, Version 2.0; they are UniDic's
+char.def with Sudachi's changes.
 
 ===========================================================================
 SudachiDict LEGAL Notice

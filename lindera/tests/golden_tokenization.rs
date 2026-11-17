@@ -481,6 +481,90 @@ fn ipadic_break_characters() {
     }
 }
 
+/// Joins the surfaces of `text` segmented by `segmenter` with spaces.
+#[cfg(feature = "embed-sudachidict")]
+fn wakati(segmenter: &Segmenter, text: &str) -> String {
+    segmenter
+        .segment(Cow::Borrowed(text))
+        .expect("segmentation should succeed")
+        .iter()
+        .map(|token| token.surface.to_string())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// #1353 with SudachiDict: the break characters (`・` by default) do not
+/// depend on `char.def`, which in Sudachi's format (#1388) leaves `・` out of
+/// the katakana category. An unknown katakana word stops at `・` with or
+/// without them, Decompose mode splits a dictionary word with `・` inside
+/// only with them, and Normal mode keeps such words.
+#[cfg(feature = "embed-sudachidict")]
+#[test]
+fn sudachidict_break_characters() {
+    let decompose = Mode::Decompose(Penalty::default());
+    // (mode, text, with the default, with no break characters)
+    let cases = [
+        (
+            &Mode::Normal,
+            "ジョン・レノンが歌う",
+            "ジョン・レノン が 歌う",
+            "ジョン・レノン が 歌う",
+        ),
+        (
+            &Mode::Normal,
+            "レノン・ジョン",
+            "レノン ・ ジョン",
+            "レノン ・ ジョン",
+        ),
+        (
+            &Mode::Normal,
+            "リベラル・アーツ・カレッジ",
+            "リベラル・アーツ・カレッジ",
+            "リベラル・アーツ・カレッジ",
+        ),
+        (
+            &decompose,
+            "ジョン・レノンが歌う",
+            "ジョン ・ レノン が 歌う",
+            "ジョン・レノン が 歌う",
+        ),
+        (
+            &decompose,
+            "ザ・サイレント・フォレスト",
+            "ザ ・ サイレント ・ フォレスト",
+            "ザ ・ サイレント ・ フォレスト",
+        ),
+    ];
+    for (mode, text, with, without) in cases {
+        let on = segmenter("embedded://sudachidict", mode.clone());
+        let off = segmenter("embedded://sudachidict", mode.clone()).break_characters("");
+        assert_eq!(wakati(&on, text), with, "{mode:?} {text}");
+        assert_eq!(wakati(&off, text), without, "{mode:?} {text}, off");
+    }
+}
+
+/// #1388: SudachiDict reads Sudachi's own `char.def` as Sudachi does. The
+/// first three lines are segmented as sudachi.rs 0.7.0 segments them (mode
+/// C, without its input-text and path-rewrite plugins): `々` is KANJI too,
+/// so `時々` stays a word before `｜`; combining marks join the letters
+/// before them; small katakana have `NOOOVBOW`, so no unknown word starts at
+/// them. ZWJ is not whitespace, so it stays in the output, as the
+/// one-character fallback where nothing else starts; Sudachi, whose
+/// `can_bow` rule Lindera does not have, keeps `テスト‍ケース` whole.
+#[cfg(feature = "embed-sudachidict")]
+#[test]
+fn sudachidict_reads_sudachis_char_def() {
+    let segmenter = segmenter("embedded://sudachidict", Mode::Normal);
+    for (text, expected) in [
+        ("時々｜図抜けた", "時々 ｜ 図抜け た"),
+        ("re\u{301}sume\u{301}を書く", "re\u{301}sume\u{301} を 書く"),
+        ("ァィゥェォを並べる", "ァ ィ ゥ ェ ォ を 並べる"),
+        ("テスト\u{200d}ケース", "テスト \u{200d} ケース"),
+    ] {
+        assert_eq!(wakati(&segmenter, text), expected, "{text}");
+    }
+}
+
 /// Regression test #1131: IPADIC's two `狡い` entries tie (same context ids
 /// and cost; only the reading and the pronunciation differ), and the first
 /// CSV row wins, as in MeCab: `ズルイ`, not `コスイ`. The lattice used to
