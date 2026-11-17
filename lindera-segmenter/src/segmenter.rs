@@ -335,9 +335,11 @@ pub struct Segmenter {
     /// between a break character and a character that is not one, in every
     /// mode, and in Decompose mode no system-dictionary word does either;
     /// user-dictionary words and words of break characters only stay. The
-    /// bundled dictionaries put `・` in the katakana category, so without it
-    /// an unknown `レノン・ジョン` is one word while `ジョン・レノン` splits
-    /// after the dictionary word `ジョン`, as in MeCab. Defaults to `・`
+    /// `char.def` of IPADIC, UniDic, ko-dic, CC-CEDICT and Jieba puts `・` in
+    /// the katakana category, so without it an unknown `レノン・ジョン` is one
+    /// word while `ジョン・レノン` splits after the dictionary word `ジョン`,
+    /// as in MeCab; SudachiDict's leaves it out (#1388), and the rule applies
+    /// to every dictionary alike. Defaults to `・`
     /// ([`DEFAULT_BREAK_CHARACTERS`](lindera_dictionary::break_characters::DEFAULT_BREAK_CHARACTERS));
     /// an empty set gives MeCab's segmentation. See
     /// [`LatticeOptions::break_characters`].

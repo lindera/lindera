@@ -9,6 +9,7 @@ use std::path::Path;
 
 use lindera_dictionary::builder::DictionaryBuilder;
 use lindera_dictionary::dictionary::Dictionary;
+use lindera_dictionary::dictionary::character_definition::{CharDefFormat, NO_OOV_BOW, NO_OOV_EOW};
 use lindera_dictionary::dictionary::metadata::{DICTIONARY_FORMAT_VERSION, Metadata};
 
 /// Minimal `char.def`: the mandatory DEFAULT category plus KANJI, with the CJK
@@ -114,6 +115,67 @@ fn build_dictionary_keeps_whitespace_surfaces() {
     assert_eq!(costs(" "), vec![10]);
     assert_eq!(costs("日本"), vec![100]);
     assert_eq!(costs("日本 "), vec![50]);
+}
+
+/// `char_def_format` in `metadata.json` selects Sudachi's `char.def` format
+/// (#1388): the build reads `ALL` and the flags and takes the union of the
+/// lines that overlap, and the loaded dictionary has the format, the
+/// categories and the flags. The same `char.def` in MeCab's format is
+/// rejected with a hint at the setting.
+#[test]
+fn build_dictionary_reads_the_sudachi_char_def_format() {
+    const SUDACHI_CHAR_DEF: &str = "\
+DEFAULT 0 1 0
+KANJI 0 0 2
+0x4E00..0x9FFF KANJI
+0x3005 KANJI NOOOVBOW
+0x3000..0x303F DEFAULT
+0x200D ALL NOOOVBOW NOOOVEOW
+";
+    let input = tempfile::tempdir().unwrap();
+    let output = tempfile::tempdir().unwrap();
+    write_source(input.path());
+    fs::write(input.path().join("char.def"), SUDACHI_CHAR_DEF).unwrap();
+
+    let metadata = Metadata {
+        char_def_format: CharDefFormat::Sudachi,
+        ..Metadata::default()
+    };
+    DictionaryBuilder::new(metadata)
+        .build_dictionary(input.path(), output.path())
+        .expect("build_dictionary should succeed");
+    let dictionary =
+        Dictionary::load_from_path(output.path()).expect("a freshly built dictionary should load");
+    assert_eq!(dictionary.metadata.char_def_format, CharDefFormat::Sudachi);
+    let char_definition = &dictionary.character_definition;
+    assert_eq!(char_definition.format(), CharDefFormat::Sudachi);
+    let names = |c: char| -> Vec<&str> {
+        char_definition
+            .lookup_categories(c)
+            .iter()
+            .map(|&id| char_definition.category_name(id))
+            .collect()
+    };
+    assert_eq!(names('々'), vec!["DEFAULT", "KANJI"]);
+    assert_eq!(char_definition.flags_of('々'), NO_OOV_BOW);
+    assert_eq!(names('\u{200D}'), vec!["DEFAULT", "KANJI"]);
+    assert_eq!(
+        char_definition.flags_of('\u{200D}'),
+        NO_OOV_BOW | NO_OOV_EOW
+    );
+    assert_eq!(names('本'), vec!["KANJI"]);
+    assert_eq!(char_definition.flags_of('本'), 0);
+
+    let mecab_output = tempfile::tempdir().unwrap();
+    let message = DictionaryBuilder::new(Metadata::default())
+        .build_dictionary(input.path(), mecab_output.path())
+        .expect_err("MeCab's format does not read NOOOVBOW")
+        .to_string();
+    assert!(
+        message.contains("category NOOOVBOW is not defined")
+            && message.contains("\"char_def_format\": \"sudachi\""),
+        "{message}"
+    );
 }
 
 #[test]

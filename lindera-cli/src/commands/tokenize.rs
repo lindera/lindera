@@ -85,7 +85,7 @@ pub struct TokenizeArgs {
         long = "break-characters",
         value_name = "CHARS",
         conflicts_with = "disable_break_characters",
-        help = "Break characters, each character of CHARS (default: ・). No unknown word crosses a boundary between a break character and another character, in any mode, and in decompose mode no system-dictionary word does either (user-dictionary words and words of break characters only stay). Without it, an unknown katakana word runs through ・, which the bundled dictionaries put in the katakana category: レノン・ジョン is one word while ジョン・レノン splits after ジョン, as in MeCab"
+        help = "Break characters, each character of CHARS (default: ・). No unknown word crosses a boundary between a break character and another character, in any mode, and in decompose mode no system-dictionary word does either (user-dictionary words and words of break characters only stay). Without it, an unknown katakana word runs through ・ with the dictionaries that put ・ in the katakana category (IPADIC, UniDic, ko-dic, CC-CEDICT and Jieba; not SudachiDict): レノン・ジョン is one word while ジョン・レノン splits after ジョン, as in MeCab"
     )]
     break_characters: Option<String>,
     #[clap(

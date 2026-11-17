@@ -1,6 +1,7 @@
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
+use crate::dictionary::character_definition::CharDefFormat;
 use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::schema::Schema;
 use crate::space_penalty::SpacePenaltyConfig;
@@ -53,7 +54,10 @@ const DEFAULT_FIELD_VALUE: &str = "*";
 ///   version 2: the IPADIC `conjugation_type` and `conjugation_form` column
 ///   names (#1086), entries with whitespace kept (#1094), the last
 ///   overlapping `char.def` line deciding (#1104) and IPADIC dashes and
-///   tildes kept as written (#1130).
+///   tildes kept as written (#1130). It also covers a later 7.0.0 change,
+///   made before any release read version 3: `char_def.bin` records the
+///   format of `char.def` and, in Sudachi's format, the flags of each row
+///   (#1388).
 pub const DICTIONARY_FORMAT_VERSION: u32 = 3;
 
 /// The format version assumed for a built dictionary whose `metadata.json`
@@ -175,6 +179,16 @@ pub struct Metadata {
     /// `"skip_whitespace"`, or `lindera tokenize --disable-skip-whitespace`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub skip_whitespace: Option<bool>,
+    /// The format of the dictionary's `char.def` (#1388): MeCab's, the
+    /// default (`"mecab"`), or Sudachi's (`"sudachi"`), which the builder
+    /// reads as Sudachi does (the union of overlapping lines, `ALL`, the
+    /// flags `NOOOVBOW` and `NOOOVEOW`) and which makes the lattice create
+    /// unknown words as Sudachi does. SudachiDict sets `"sudachi"`. The
+    /// built `char_def.bin` records the format, so the runtime reads it from
+    /// there. Omitted from the file when it is MeCab's, so existing
+    /// `metadata.json` files stay byte-identical.
+    #[serde(default, skip_serializing_if = "CharDefFormat::is_mecab")]
+    pub char_def_format: CharDefFormat,
 }
 
 impl Default for Metadata {
@@ -253,6 +267,7 @@ impl Metadata {
             model_info: None,
             space_penalty: None,
             skip_whitespace: None,
+            char_def_format: CharDefFormat::Mecab,
         }
     }
 
@@ -387,6 +402,33 @@ mod tests {
             let parsed: Metadata = serde_json::from_str(&json).unwrap();
             assert_eq!(parsed.skip_whitespace, Some(value));
         }
+    }
+
+    /// `char_def_format` is MeCab's when absent, is not written for MeCab's,
+    /// and round-trips as `"sudachi"` (#1388). An unknown format is an
+    /// error, rather than silently MeCab's.
+    #[test]
+    fn char_def_format_is_optional_and_round_trips() {
+        let without = serde_json::to_string(&Metadata::default()).unwrap();
+        assert!(!without.contains("char_def_format"), "{without}");
+        let parsed = Metadata::load(without.as_bytes()).unwrap();
+        assert_eq!(parsed.char_def_format, CharDefFormat::Mecab);
+
+        let metadata = Metadata {
+            char_def_format: CharDefFormat::Sudachi,
+            ..Metadata::default()
+        };
+        let json = serde_json::to_string(&metadata).unwrap();
+        assert!(json.contains("\"char_def_format\":\"sudachi\""), "{json}");
+        let parsed = Metadata::load(json.as_bytes()).unwrap();
+        assert_eq!(parsed.char_def_format, CharDefFormat::Sudachi);
+
+        let explicit = without.replacen('{', "{\"char_def_format\":\"mecab\",", 1);
+        let parsed = Metadata::load(explicit.as_bytes()).unwrap();
+        assert_eq!(parsed.char_def_format, CharDefFormat::Mecab);
+
+        let unknown = without.replacen('{', "{\"char_def_format\":\"juman\",", 1);
+        assert!(Metadata::load(unknown.as_bytes()).is_err());
     }
 
     /// `lindera_version` is absent from source `metadata.json` files and from

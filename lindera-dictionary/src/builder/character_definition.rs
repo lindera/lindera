@@ -10,12 +10,70 @@ use log::debug;
 
 use crate::LinderaResult;
 use crate::dictionary::character_definition::{
-    CategoryData, CategoryId, CharacterDefinition, LookupTable,
+    CategoryData, CategoryId, CharDefFormat, CharacterDefinition, LookupTable, NO_OOV_BOW,
+    NO_OOV_EOW,
 };
 use crate::error::LinderaErrorKind;
 use crate::util::{read_file_with_encoding, write_data};
 
 const DEFAULT_CATEGORY_NAME: &str = "DEFAULT";
+
+/// Sudachi's name for every category on a range line (#1388).
+const ALL_CATEGORIES_NAME: &str = "ALL";
+
+/// Sudachi's name of the flag [`NO_OOV_BOW`] on a range line.
+const NO_OOV_BOW_NAME: &str = "NOOOVBOW";
+
+/// Sudachi's name of the flag [`NO_OOV_EOW`] on a range line.
+const NO_OOV_EOW_NAME: &str = "NOOOVEOW";
+
+/// The names that only the Sudachi format reads on a range line, and that
+/// it does not let a definition line define.
+const SUDACHI_RESERVED_NAMES: [&str; 3] = [ALL_CATEGORIES_NAME, NO_OOV_BOW_NAME, NO_OOV_EOW_NAME];
+
+/// The most categories the Sudachi format takes: the lattice intersects the
+/// categories of a run as the bits of a `u64` (Sudachi has 15).
+const SUDACHI_MAX_CATEGORIES: usize = 64;
+
+/// One range line of a `char.def` in the Sudachi format.
+#[derive(Debug, Clone)]
+struct SudachiRange {
+    /// The first code point of the range.
+    low: u32,
+    /// The last code point of the range, included.
+    high: u32,
+    /// The categories the line names, in the order written.
+    categories: Vec<CategoryId>,
+    /// Whether the line names `ALL`.
+    all: bool,
+    /// The flags the line names ([`NO_OOV_BOW`], [`NO_OOV_EOW`]).
+    flags: u8,
+}
+
+/// Parses a code point of a range line in the Sudachi format, which, unlike
+/// MeCab's UCS-2, can be outside the BMP (Sudachi's `char.def` maps
+/// `0x1F3FB..0x1F3FE`).
+///
+/// # Arguments
+///
+/// * `source` - The name of the `char.def` content, for the message.
+/// * `line_number` - The 1-based number of the line.
+/// * `s` - The code point, with or without `0x`.
+///
+/// # Returns
+///
+/// The code point, or an error when it is not hexadecimal or not a Unicode
+/// scalar value.
+fn parse_sudachi_codepoint(source: &str, line_number: usize, s: &str) -> LinderaResult<u32> {
+    u32::from_str_radix(s.trim_start_matches("0x"), 16)
+        .ok()
+        .filter(|&cp| char::from_u32(cp).is_some())
+        .ok_or_else(|| {
+            LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                "{source}: line {line_number}: {s} is not a code point"
+            ))
+        })
+}
 
 fn ucs2_to_unicode(ucs2_codepoint: u16) -> LinderaResult<u32> {
     let mut buf = [0u8; 2];
@@ -50,9 +108,14 @@ fn parse_hex_codepoint(s: &str) -> LinderaResult<u32> {
 #[derive(Debug)]
 pub struct CharacterDefinitionBuilder {
     encoding: Cow<'static, str>,
+    /// The format to read `char.def` in (#1388).
+    format: CharDefFormat,
     category_definition: Vec<CategoryData>,
     category_index: HashMap<String, CategoryId>,
+    /// The range lines in the MeCab format.
     char_ranges: Vec<(u32, u32, Vec<CategoryId>)>,
+    /// The range lines in the Sudachi format.
+    sudachi_ranges: Vec<SudachiRange>,
     /// The 1-based line on which each category was defined, for the error
     /// on a second definition.
     category_lines: HashMap<String, usize>,
@@ -63,6 +126,7 @@ pub struct CharacterDefinitionBuilder {
 #[derive(Debug, Default)]
 pub struct CharacterDefinitionBuilderOptions {
     encoding: Option<Cow<'static, str>>,
+    format: Option<CharDefFormat>,
     category_definition: Option<Vec<CategoryData>>,
     category_index: Option<HashMap<String, CategoryId>>,
     char_ranges: Option<Vec<(u32, u32, Vec<CategoryId>)>>,
@@ -71,6 +135,20 @@ pub struct CharacterDefinitionBuilderOptions {
 impl CharacterDefinitionBuilderOptions {
     pub fn encoding(&mut self, value: impl Into<Cow<'static, str>>) -> &mut Self {
         self.encoding = Some(value.into());
+        self
+    }
+
+    /// Sets the format to read `char.def` in (#1388); MeCab's by default.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The format, from `char_def_format` in `metadata.json`.
+    ///
+    /// # Returns
+    ///
+    /// The options.
+    pub fn format(&mut self, value: CharDefFormat) -> &mut Self {
+        self.format = Some(value);
         self
     }
 
@@ -92,9 +170,11 @@ impl CharacterDefinitionBuilderOptions {
     pub fn builder(&self) -> CharacterDefinitionBuilder {
         CharacterDefinitionBuilder {
             encoding: self.encoding.clone().unwrap_or_else(|| "UTF-8".into()),
+            format: self.format.unwrap_or_default(),
             category_definition: self.category_definition.clone().unwrap_or_default(),
             category_index: self.category_index.clone().unwrap_or_default(),
             char_ranges: self.char_ranges.clone().unwrap_or_default(),
+            sudachi_ranges: Vec::new(),
             category_lines: HashMap::new(),
         }
     }
@@ -126,7 +206,10 @@ impl CharacterDefinitionBuilder {
     ///
     /// # Returns
     ///
-    /// The id, or an error naming the source, the line and the category.
+    /// The id, or an error naming the source, the line and the category. In
+    /// the MeCab format, the error on a name that only the Sudachi format
+    /// reads (`ALL`, `NOOOVBOW`, `NOOOVEOW`) says how to select that format,
+    /// and that `lindera train` does not read it (#1388).
     fn defined_category_id(
         &self,
         source: &str,
@@ -135,10 +218,23 @@ impl CharacterDefinitionBuilder {
     ) -> LinderaResult<CategoryId> {
         match self.category_index.get(category) {
             Some(&category_id) if category_id.0 < self.category_definition.len() => Ok(category_id),
-            _ => Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
-                "{source}: line {line_number}: category {category} is not defined; a range line \
-                 can only name a category defined on an earlier line"
-            ))),
+            _ => {
+                let hint = if self.format == CharDefFormat::Mecab
+                    && SUDACHI_RESERVED_NAMES.contains(&category)
+                {
+                    format!(
+                        " ({category} is the syntax of Sudachi's char.def, which a dictionary \
+                         selects with \"char_def_format\": \"sudachi\" in its metadata.json; \
+                         lindera train reads MeCab's format only)"
+                    )
+                } else {
+                    String::new()
+                };
+                Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                    "{source}: line {line_number}: category {category} is not defined; a range \
+                     line can only name a category defined on an earlier line{hint}"
+                )))
+            }
         }
     }
 
@@ -197,6 +293,78 @@ impl CharacterDefinitionBuilder {
         Ok(())
     }
 
+    /// Parses a range line in the Sudachi format (`0xLOW[..0xHIGH] NAME...`,
+    /// #1388): the code points can be outside the BMP, and besides the
+    /// categories defined on earlier lines, a name can be `ALL` (every
+    /// category) or the flag `NOOOVBOW` or `NOOOVEOW`.
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - The name of the `char.def` content, for the messages.
+    /// * `line_number` - The 1-based number of the line.
+    /// * `line` - The line without its comment.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())`, or an error when a bound is not a code point, the range
+    /// ends before it starts, the line names nothing, or a name is neither
+    /// reserved nor a category defined on an earlier line.
+    fn parse_range_sudachi(
+        &mut self,
+        source: &str,
+        line_number: usize,
+        line: &str,
+    ) -> LinderaResult<()> {
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        let (low, high) = match fields[0].split("..").collect::<Vec<&str>>()[..] {
+            [single] => {
+                let cp = parse_sudachi_codepoint(source, line_number, single)?;
+                (cp, cp)
+            }
+            [low, high] => (
+                parse_sudachi_codepoint(source, line_number, low)?,
+                parse_sudachi_codepoint(source, line_number, high)?,
+            ),
+            _ => {
+                return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                    "{source}: line {line_number}: a character range should be 'START..END' or \
+                     'SINGLE', got {}",
+                    fields[0]
+                )));
+            }
+        };
+        if low > high {
+            return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                "{source}: line {line_number}: the range {} ends before it starts",
+                fields[0]
+            )));
+        }
+        if fields.len() < 2 {
+            return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                "{source}: line {line_number}: a character range requires at least one category"
+            )));
+        }
+        let mut range = SudachiRange {
+            low,
+            high,
+            categories: Vec::new(),
+            all: false,
+            flags: 0,
+        };
+        for &name in &fields[1..] {
+            match name {
+                ALL_CATEGORIES_NAME => range.all = true,
+                NO_OOV_BOW_NAME => range.flags |= NO_OOV_BOW,
+                NO_OOV_EOW_NAME => range.flags |= NO_OOV_EOW,
+                _ => range
+                    .categories
+                    .push(self.defined_category_id(source, line_number, name)?),
+            }
+        }
+        self.sudachi_ranges.push(range);
+        Ok(())
+    }
+
     /// Parses a category line (`NAME INVOKE GROUP LENGTH`).
     ///
     /// # Arguments
@@ -208,7 +376,9 @@ impl CharacterDefinitionBuilder {
     /// # Returns
     ///
     /// `Ok(())`, or an error when the line does not have four fields, a
-    /// number does not parse, or the category is already defined.
+    /// number does not parse, or the category is already defined. In the
+    /// Sudachi format, also when the name is reserved (`ALL`, `NOOOVBOW`,
+    /// `NOOOVEOW`) or the category would be one too many.
     fn parse_category(
         &mut self,
         source: &str,
@@ -265,6 +435,20 @@ impl CharacterDefinitionBuilder {
                 "{source}: line {line_number}: category {name} is already defined{defined_on}"
             )));
         }
+        if self.format == CharDefFormat::Sudachi {
+            if SUDACHI_RESERVED_NAMES.contains(&name) {
+                return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                    "{source}: line {line_number}: {name} is reserved in Sudachi's char.def \
+                     format and cannot be defined as a category"
+                )));
+            }
+            if self.category_definition.len() == SUDACHI_MAX_CATEGORIES {
+                return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                    "{source}: line {line_number}: Sudachi's char.def format takes at most \
+                     {SUDACHI_MAX_CATEGORIES} categories"
+                )));
+            }
+        }
         // force a category_id allocation
         self.category_id(name);
         self.category_definition.push(category_data);
@@ -283,7 +467,9 @@ impl CharacterDefinitionBuilder {
     ///
     /// # Returns
     ///
-    /// `Ok(())`, or the error of the first line that cannot be parsed.
+    /// `Ok(())`, or the error of the first line that cannot be parsed. In
+    /// the Sudachi format, also an error when no line defines `DEFAULT`,
+    /// which the lattice falls back to (#1388).
     fn parse(&mut self, source: &str, content: &str) -> LinderaResult<()> {
         for (index, line) in content.lines().enumerate() {
             let line_number = index + 1;
@@ -300,10 +486,23 @@ impl CharacterDefinitionBuilder {
                 continue;
             }
             if line_str.starts_with("0x") {
-                self.parse_range(source, line_number, line_str)?;
+                match self.format {
+                    CharDefFormat::Mecab => self.parse_range(source, line_number, line_str)?,
+                    CharDefFormat::Sudachi => {
+                        self.parse_range_sudachi(source, line_number, line_str)?
+                    }
+                }
             } else {
                 self.parse_category(source, line_number, line_str)?;
             }
+        }
+        if self.format == CharDefFormat::Sudachi
+            && !self.category_lines.contains_key(DEFAULT_CATEGORY_NAME)
+        {
+            return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                "{source}: no line defines {DEFAULT_CATEGORY_NAME}, which Sudachi's char.def \
+                 format requires"
+            )));
         }
         Ok(())
     }
@@ -373,17 +572,70 @@ impl CharacterDefinitionBuilder {
         }
     }
 
+    /// Writes the categories of a code point in the Sudachi format into
+    /// `categories_buffer`, and returns its flags (#1388).
+    ///
+    /// As Sudachi's `CharacterCategory::compile`, the code point gets the
+    /// union of the categories and flags of every line that covers it, `ALL`
+    /// standing for every category the file defines. A code point that no
+    /// line gives a category or a flag is `DEFAULT`; one with flags only has
+    /// no category.
+    ///
+    /// # Arguments
+    ///
+    /// * `c` - The code point to look up.
+    /// * `categories_buffer` - Cleared, then filled with the category ids in
+    ///   category id order.
+    ///
+    /// # Returns
+    ///
+    /// The flags ([`NO_OOV_BOW`], [`NO_OOV_EOW`]).
+    fn lookup_sudachi(&self, c: u32, categories_buffer: &mut Vec<CategoryId>) -> u8 {
+        categories_buffer.clear();
+        let mut all = false;
+        let mut flags = 0;
+        for range in self
+            .sudachi_ranges
+            .iter()
+            .filter(|range| range.low <= c && c <= range.high)
+        {
+            all |= range.all;
+            flags |= range.flags;
+            categories_buffer.extend_from_slice(&range.categories);
+        }
+        if all {
+            categories_buffer.clear();
+            categories_buffer.extend((0..self.category_definition.len()).map(CategoryId));
+        } else {
+            categories_buffer.sort_unstable();
+            categories_buffer.dedup();
+        }
+        if categories_buffer.is_empty()
+            && flags == 0
+            && let Some(default_category) = self.default_category_id()
+        {
+            categories_buffer.push(default_category);
+        }
+        flags
+    }
+
     /// Writes the default category of a code point into `categories_buffer`.
     ///
-    /// The default category is the first category of the last line that
-    /// covers the code point (MeCab's `default_type`), or `DEFAULT` when no
-    /// line covers it.
+    /// In the MeCab format, the default category is the first category of
+    /// the last line that covers the code point (MeCab's `default_type`), or
+    /// `DEFAULT` when no line covers it. The Sudachi format has no default
+    /// category; it gives the category with the lowest id.
     ///
     /// # Arguments
     ///
     /// * `c` - The code point to look up.
     /// * `categories_buffer` - Cleared, then filled with at most one category id.
     fn lookup_default_category(&self, c: u32, categories_buffer: &mut Vec<CategoryId>) {
+        if self.format == CharDefFormat::Sudachi {
+            self.lookup_sudachi(c, categories_buffer);
+            categories_buffer.truncate(1);
+            return;
+        }
         categories_buffer.clear();
         let default_category = match self.last_covering_categories(c) {
             Some(category_ids) => category_ids.first().copied(),
@@ -398,11 +650,18 @@ impl CharacterDefinitionBuilder {
     ///
     /// The start and the end + 1 of every range line, sorted and deduplicated.
     fn range_boundaries(&self) -> Vec<u32> {
-        let boundaries_set: BTreeSet<u32> = self
-            .char_ranges
-            .iter()
-            .flat_map(|(low, high, _)| [*low, *high + 1u32])
-            .collect();
+        let boundaries_set: BTreeSet<u32> = match self.format {
+            CharDefFormat::Mecab => self
+                .char_ranges
+                .iter()
+                .flat_map(|(low, high, _)| [*low, *high + 1u32])
+                .collect(),
+            CharDefFormat::Sudachi => self
+                .sudachi_ranges
+                .iter()
+                .flat_map(|range| [range.low, range.high + 1u32])
+                .collect(),
+        };
         boundaries_set.into_iter().collect()
     }
 
@@ -412,18 +671,25 @@ impl CharacterDefinitionBuilder {
     ///
     /// The lookup table stored in `char_def.bin`.
     fn build_lookup_table(&self) -> LookupTable<CategoryId> {
-        LookupTable::from_fn(self.range_boundaries(), &|c, buff| {
-            self.lookup_categories(c, buff)
-        })
+        match self.format {
+            CharDefFormat::Mecab => LookupTable::from_fn(self.range_boundaries(), &|c, buff| {
+                self.lookup_categories(c, buff)
+            }),
+            CharDefFormat::Sudachi => LookupTable::from_fn(self.range_boundaries(), &|c, buff| {
+                self.lookup_sudachi(c, buff);
+            }),
+        }
     }
 
     /// Builds a table that maps every code point to its default category.
     ///
-    /// The default category is the first category of the last `char.def` line
-    /// that covers the code point (MeCab's `default_type`), or `DEFAULT` when
-    /// no line covers it. The dictionary itself does not store it; the trainer
-    /// uses it for the `%t` feature. Call it after [`Self::build_from_str`] or
-    /// [`Self::build`].
+    /// In the MeCab format, the default category is the first category of
+    /// the last `char.def` line that covers the code point (MeCab's
+    /// `default_type`), or `DEFAULT` when no line covers it. The Sudachi
+    /// format has no default category; the table gives the category with the
+    /// lowest id. The dictionary itself does not store it; the trainer, which
+    /// reads the MeCab format only, uses it for the `%t` feature. Call it
+    /// after [`Self::build_from_str`] or [`Self::build`].
     ///
     /// # Returns
     ///
@@ -443,7 +709,25 @@ impl CharacterDefinitionBuilder {
             category_names[category_id.0] = category_name.clone();
         }
         let mapping = self.build_lookup_table();
-        CharacterDefinition::new(self.category_definition.clone(), category_names, mapping)
+        match self.format {
+            CharDefFormat::Mecab => {
+                CharacterDefinition::new(self.category_definition.clone(), category_names, mapping)
+            }
+            CharDefFormat::Sudachi => {
+                let mut buffer = Vec::new();
+                let flags = mapping
+                    .boundaries()
+                    .iter()
+                    .map(|&boundary| self.lookup_sudachi(boundary, &mut buffer))
+                    .collect();
+                CharacterDefinition::new_sudachi(
+                    self.category_definition.clone(),
+                    category_names,
+                    mapping,
+                    flags,
+                )
+            }
+        }
     }
 
     /// Parses `char.def` content and returns the character definition it
@@ -451,7 +735,9 @@ impl CharacterDefinitionBuilder {
     ///
     /// Unlike [`Self::build`], it reads no file and writes no `char_def.bin`,
     /// so other components (such as the trainer) can read `char.def` with
-    /// exactly the rules the dictionary builder uses.
+    /// exactly the rules the dictionary builder uses. It reads the content in
+    /// the format of the options ([`CharacterDefinitionBuilderOptions::format`]):
+    /// MeCab's by default, or Sudachi's (#1388).
     ///
     /// # Arguments
     ///
@@ -462,7 +748,9 @@ impl CharacterDefinitionBuilder {
     /// The character definition, or an error if a line cannot be parsed. As
     /// in `mecab-dict-index`, a range line that names a category not defined
     /// on an earlier line and a category defined twice are errors, which
-    /// name the line (`char.def: line N: ...`) and the category.
+    /// name the line (`char.def: line N: ...`) and the category. The Sudachi
+    /// format also rejects a definition of `ALL`, `NOOOVBOW` or `NOOOVEOW`,
+    /// more than 64 categories, and a file without `DEFAULT`.
     pub fn build_from_str(&mut self, content: &str) -> LinderaResult<CharacterDefinition> {
         self.build_named("char.def", content)
     }
@@ -800,6 +1088,284 @@ KANJINUMERIC 1 1 0
             input_dir.path().join("char.def").display()
         );
         assert!(message.contains(&expected), "{message}");
+    }
+
+    /// Lines of Sudachi's `char.def` (sudachi.rs v0.7.0, #1388): they
+    /// overlap, use `ALL` and the flags, and go beyond the BMP. The last line
+    /// gives U+E000 a flag and no category, which Sudachi's file does not.
+    const SUDACHI_CHAR_DEF: &str = "\
+DEFAULT         0 1 0  # DEFAULT is a mandatory category!
+SPACE           0 1 0
+KANJI           0 0 2
+SYMBOL          1 1 0
+HIRAGANA        0 1 2
+KATAKANA        1 1 2
+KANJINUMERIC    0 1 0  #change INVOKE 1->0
+
+0x0020 SPACE
+0x3041..0x309F  HIRAGANA
+0x30A1..0x30FA  KATAKANA
+0x30FC..0x30FF  KATAKANA
+0x30A1          NOOOVBOW # Small A
+0x30FC..0x30FE  NOOOVBOW # 'ー' 'ヽ' 'ヾ'
+0x3005          KANJI NOOOVBOW
+0x3007          KANJI
+0x4E00..0x9FFF  KANJI
+0x4E00 KANJINUMERIC KANJI
+0x2000..0x206F  SYMBOL # General Punctuation
+0x3000..0x303F  SYMBOL # CJK Symbol and Punctuation
+0x3007 SYMBOL KANJINUMERIC
+0x309b..0x309c HIRAGANA KATAKANA # voiced/semi-voiced sound marks
+0x0300..0x036F ALL NOOOVBOW # Combining Diacritical Marks
+0x1F3FB..0x1F3FE ALL NOOOVBOW # emoji skin tone modifiers
+0x200C..0x200D ALL NOOOVBOW NOOOVEOW # Zero Width Non-Joiner/Joiner
+0xE000 NOOOVBOW
+";
+
+    /// Every category of [`SUDACHI_CHAR_DEF`], in id order.
+    const SUDACHI_ALL: [&str; 7] = [
+        "DEFAULT",
+        "SPACE",
+        "KANJI",
+        "SYMBOL",
+        "HIRAGANA",
+        "KATAKANA",
+        "KANJINUMERIC",
+    ];
+
+    fn build_sudachi(content: &str) -> (CharacterDefinitionBuilder, CharacterDefinition) {
+        let mut builder = CharacterDefinitionBuilderOptions::default()
+            .format(CharDefFormat::Sudachi)
+            .builder();
+        let char_def = builder.build_from_str(content).unwrap();
+        (builder, char_def)
+    }
+
+    /// Parses `content` in the Sudachi format, which must be rejected, and
+    /// returns the message.
+    fn build_sudachi_error(content: &str) -> String {
+        let mut builder = CharacterDefinitionBuilderOptions::default()
+            .format(CharDefFormat::Sudachi)
+            .builder();
+        match builder.build_from_str(content) {
+            Ok(_) => panic!("char.def content was accepted: {content:?}"),
+            Err(err) => err.to_string(),
+        }
+    }
+
+    /// #1388: in the Sudachi format, a code point gets the union of the
+    /// lines that cover it, in category id order, where the MeCab format
+    /// lets the last line decide.
+    #[test]
+    fn test_sudachi_union_of_overlapping_lines() {
+        let (_, char_def) = build_sudachi(SUDACHI_CHAR_DEF);
+
+        assert_eq!(char_def.format(), CharDefFormat::Sudachi);
+        // `々` and `〇` keep KANJI, which the later SYMBOL range replaces in
+        // the MeCab format.
+        assert_eq!(category_names(&char_def, '々'), vec!["KANJI", "SYMBOL"]);
+        assert_eq!(
+            category_names(&char_def, '〇'),
+            vec!["KANJI", "SYMBOL", "KANJINUMERIC"]
+        );
+        // Category id order, not the order of the line.
+        assert_eq!(
+            category_names(&char_def, '一'),
+            vec!["KANJI", "KANJINUMERIC"]
+        );
+        assert_eq!(
+            category_names(&char_def, '゛'),
+            vec!["HIRAGANA", "KATAKANA"]
+        );
+        assert_eq!(category_names(&char_def, '「'), vec!["SYMBOL"]);
+        assert_eq!(category_names(&char_def, 'ア'), vec!["KATAKANA"]);
+        // No line covers `・` or `a`.
+        assert_eq!(category_names(&char_def, '・'), vec!["DEFAULT"]);
+        assert_eq!(category_names(&char_def, 'a'), vec!["DEFAULT"]);
+    }
+
+    /// #1388: the flags are the union of the lines too, and `ALL` stands
+    /// for every category the file defines.
+    #[test]
+    fn test_sudachi_all_and_flags() {
+        let (_, char_def) = build_sudachi(SUDACHI_CHAR_DEF);
+
+        for (c, flags) in [
+            ('々', NO_OOV_BOW),
+            ('ァ', NO_OOV_BOW),
+            ('ー', NO_OOV_BOW),
+            ('ヾ', NO_OOV_BOW),
+            ('ア', 0),
+            ('ヿ', 0),
+            ('一', 0),
+            ('\u{0301}', NO_OOV_BOW),
+            ('\u{200D}', NO_OOV_BOW | NO_OOV_EOW),
+            ('\u{2010}', 0),
+        ] {
+            assert_eq!(char_def.flags_of(c), flags, "U+{:04X}", c as u32);
+        }
+        assert_eq!(category_names(&char_def, '\u{0301}'), SUDACHI_ALL);
+        assert_eq!(category_names(&char_def, '\u{200D}'), SUDACHI_ALL);
+        assert_eq!(category_names(&char_def, '\u{2010}'), vec!["SYMBOL"]);
+    }
+
+    /// #1388: the Sudachi format reads code points beyond the BMP.
+    #[test]
+    fn test_sudachi_code_points_beyond_the_bmp() {
+        let (_, char_def) = build_sudachi(SUDACHI_CHAR_DEF);
+
+        assert_eq!(category_names(&char_def, '\u{1F3FB}'), SUDACHI_ALL);
+        assert_eq!(char_def.flags_of('\u{1F3FE}'), NO_OOV_BOW);
+        assert_eq!(category_names(&char_def, '\u{1F3FF}'), vec!["DEFAULT"]);
+        assert_eq!(char_def.flags_of('\u{1F3FF}'), 0);
+    }
+
+    /// #1388: a code point with flags and no category has no category, as
+    /// in Sudachi's `CharacterCategory::compile`, not `DEFAULT`.
+    #[test]
+    fn test_sudachi_flags_without_category() {
+        let (_, char_def) = build_sudachi(SUDACHI_CHAR_DEF);
+
+        assert!(char_def.lookup_categories('\u{E000}').is_empty());
+        assert_eq!(char_def.flags_of('\u{E000}'), NO_OOV_BOW);
+    }
+
+    /// #1388: the Sudachi format still rejects a name that no earlier line
+    /// defines, without the hint of the MeCab format.
+    #[test]
+    fn test_sudachi_rejects_an_undefined_category() {
+        let message = build_sudachi_error("DEFAULT 0 1 0\nHIRAGANA 1 1 0\n0x3042 FOO\n");
+
+        assert!(
+            message.contains("char.def: line 3: category FOO is not defined"),
+            "{message}"
+        );
+        assert!(!message.contains("char_def_format"), "{message}");
+    }
+
+    /// #1388: the names that only a range line of the Sudachi format reads
+    /// cannot be defined as categories.
+    #[test]
+    fn test_sudachi_rejects_a_reserved_name_as_a_category() {
+        for name in ["ALL", "NOOOVBOW", "NOOOVEOW"] {
+            let message = build_sudachi_error(&format!("DEFAULT 0 1 0\n{name} 0 1 0\n"));
+
+            assert!(
+                message.contains(&format!(
+                    "char.def: line 2: {name} is reserved in Sudachi's char.def format"
+                )),
+                "{message}"
+            );
+        }
+    }
+
+    /// #1388: the Sudachi format needs `DEFAULT`, which the lattice falls
+    /// back to.
+    #[test]
+    fn test_sudachi_requires_default() {
+        let message = build_sudachi_error("KANJI 0 0 2\n0x4E00..0x9FFF KANJI\n");
+
+        assert!(
+            message.contains("char.def: no line defines DEFAULT"),
+            "{message}"
+        );
+    }
+
+    /// #1388: the Sudachi format takes 64 categories, not 65.
+    #[test]
+    fn test_sudachi_category_limit() {
+        let definitions = |count: usize| {
+            std::iter::once("DEFAULT 0 1 0\n".to_string())
+                .chain((1..count).map(|i| format!("C{i} 0 1 0\n")))
+                .collect::<String>()
+        };
+        let (_, char_def) = build_sudachi(&definitions(64));
+        assert_eq!(char_def.categories().len(), 64);
+
+        let message = build_sudachi_error(&definitions(65));
+        assert!(
+            message.contains("char.def: line 65: Sudachi's char.def format takes at most 64"),
+            "{message}"
+        );
+    }
+
+    /// #1388: a bound that is not a Unicode scalar value, and a range that
+    /// ends before it starts, are errors.
+    #[test]
+    fn test_sudachi_rejects_invalid_ranges() {
+        for (range, expected) in [
+            ("0xD800", "0xD800 is not a code point"),
+            ("0x110000", "0x110000 is not a code point"),
+            ("0xZZ", "0xZZ is not a code point"),
+            (
+                "0x3042..0x3041",
+                "the range 0x3042..0x3041 ends before it starts",
+            ),
+        ] {
+            let message = build_sudachi_error(&format!("DEFAULT 0 1 0\n{range} DEFAULT\n"));
+
+            assert!(
+                message.contains(&format!("char.def: line 2: {expected}")),
+                "{message}"
+            );
+        }
+    }
+
+    /// #1388: the MeCab format rejects the syntax of Sudachi's `char.def`
+    /// with a hint at the format, and that the trainer reads MeCab's only.
+    #[test]
+    fn test_mecab_format_hints_at_the_sudachi_format() {
+        for name in ["ALL", "NOOOVBOW", "NOOOVEOW"] {
+            let message = build_error(&format!(
+                "DEFAULT 0 1 0\nKATAKANA 1 1 2\n0x30A1..0x30FA KATAKANA\n0x30A1 {name}\n"
+            ));
+
+            assert!(
+                message.contains(&format!(
+                    "char.def: line 4: category {name} is not defined; a range line can only \
+                     name a category defined on an earlier line ({name} is the syntax of \
+                     Sudachi's char.def, which a dictionary selects with \"char_def_format\": \
+                     \"sudachi\" in its metadata.json; lindera train reads MeCab's format only)"
+                )),
+                "{message}"
+            );
+        }
+        let message = build_error("DEFAULT 0 1 0\n0x3042 FOO\n");
+        assert!(!message.contains("char_def_format"), "{message}");
+    }
+
+    /// #1388: `build` writes the format, the categories and the flags of
+    /// the Sudachi format into `char_def.bin`.
+    #[test]
+    fn test_build_writes_the_same_sudachi_definition() {
+        let input_dir = tempfile::tempdir().unwrap();
+        let output_dir = tempfile::tempdir().unwrap();
+        std::fs::write(input_dir.path().join("char.def"), SUDACHI_CHAR_DEF).unwrap();
+
+        let mut builder = CharacterDefinitionBuilderOptions::default()
+            .format(CharDefFormat::Sudachi)
+            .builder();
+        builder.build(input_dir.path(), output_dir.path()).unwrap();
+        let written = std::fs::read(output_dir.path().join("char_def.bin")).unwrap();
+        let loaded = CharacterDefinition::load(&written).unwrap();
+
+        let (_, expected) = build_sudachi(SUDACHI_CHAR_DEF);
+        assert_eq!(loaded.format(), CharDefFormat::Sudachi);
+        for c in [
+            '々',
+            '〇',
+            '一',
+            'ァ',
+            '・',
+            'a',
+            '\u{0301}',
+            '\u{200D}',
+            '\u{1F3FB}',
+            '\u{E000}',
+        ] {
+            assert_eq!(category_names(&loaded, c), category_names(&expected, c));
+            assert_eq!(loaded.flags_of(c), expected.flags_of(c));
+        }
     }
 
     #[test]

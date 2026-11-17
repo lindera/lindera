@@ -4,6 +4,58 @@ use serde::{Deserialize, Serialize};
 use crate::LinderaResult;
 use crate::error::LinderaErrorKind;
 
+/// The format of a dictionary's `char.def`, which its `metadata.json` selects
+/// with `char_def_format` (#1388). It decides how the builder reads the file
+/// and how the lattice creates unknown words.
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum CharDefFormat {
+    /// MeCab's format, the default: the last line that covers a code point
+    /// decides its categories (#1095), and the first of them, its default
+    /// category, alone creates unknown words (#1111).
+    #[default]
+    Mecab,
+    /// Sudachi's format: a code point gets the union of the categories of
+    /// every line that covers it, `ALL` names every category, and the flags
+    /// `NOOOVBOW` and `NOOOVEOW` keep unknown words from starting at or
+    /// right after it. Every category of a character creates unknown words,
+    /// over runs cut as Sudachi cuts them, and a position where nothing else
+    /// starts gets a one-character unknown word of `DEFAULT`, as in Sudachi.
+    Sudachi,
+}
+
+impl CharDefFormat {
+    /// Returns whether this is MeCab's format, the default, which
+    /// `metadata.json` leaves out.
+    ///
+    /// # Returns
+    ///
+    /// `true` for [`CharDefFormat::Mecab`].
+    pub fn is_mecab(&self) -> bool {
+        *self == CharDefFormat::Mecab
+    }
+}
+
+/// Flag of a code point in the Sudachi format (`NOOOVBOW`): no unknown word
+/// starts at it.
+pub const NO_OOV_BOW: u8 = 1;
+
+/// Flag of a code point in the Sudachi format (`NOOOVEOW`): no unknown word
+/// starts right after it.
+pub const NO_OOV_EOW: u8 = 2;
+
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
 
 pub struct CategoryData {
@@ -60,6 +112,39 @@ impl<T: Copy + Clone> LookupTable<T> {
         &self.values[idx][..]
     }
 
+    /// Returns the index of the row that covers `target`.
+    ///
+    /// # Arguments
+    ///
+    /// * `target` - The code point to look up.
+    ///
+    /// # Returns
+    ///
+    /// The index into the rows, which [`Self::eval`] reads.
+    pub(crate) fn row_index(&self, target: u32) -> usize {
+        self.boundaries
+            .binary_search(&target)
+            .unwrap_or_else(|val| val - 1)
+    }
+
+    /// Returns the number of rows.
+    ///
+    /// # Returns
+    ///
+    /// The number of rows, one per boundary.
+    pub(crate) fn row_count(&self) -> usize {
+        self.values.len()
+    }
+
+    /// Returns the first code point of each row, in row order.
+    ///
+    /// # Returns
+    ///
+    /// The boundaries, sorted, the first being 0.
+    pub(crate) fn boundaries(&self) -> &[u32] {
+        &self.boundaries
+    }
+
     /// Returns whether `pred` holds for the values of any range that covers
     /// a codepoint at or above `from`.
     ///
@@ -97,10 +182,26 @@ const FLAT_MAX_OFFSET: usize = (1 << 24) - 1;
 pub struct CharacterDefinition {
     pub category_definitions: Vec<CategoryData>,
     pub category_names: Vec<String>,
-    /// Code point ranges to their categories. Each row lists the default
-    /// category first, then the others in category id order (#1111); see
-    /// [`Self::lookup_categories`].
+    /// Code point ranges to their categories. In the MeCab format, each row
+    /// lists the default category first, then the others in category id
+    /// order (#1111); in the Sudachi format, all of them in category id
+    /// order. See [`Self::lookup_categories`].
     pub mapping: LookupTable<CategoryId>,
+    /// The format the builder read `char.def` in, which decides how the
+    /// lattice creates unknown words (#1388).
+    #[serde(default)]
+    pub format: CharDefFormat,
+    /// Sudachi format only: the flags ([`NO_OOV_BOW`], [`NO_OOV_EOW`]) of
+    /// each `mapping` row, in row order. Empty in the MeCab format.
+    #[serde(default)]
+    pub flags: Vec<u8>,
+    /// Sudachi format only: the flags of every BMP code point, so that the
+    /// lattice reads them with one indexed load. Runtime-only like
+    /// `flat_index`: skipped by serde and rkyv, rebuilt at load. Empty in the
+    /// MeCab format.
+    #[serde(skip)]
+    #[rkyv(with = ::rkyv::with::Skip)]
+    flat_flags: Vec<u8>,
     /// Concatenation of the `mapping` rows in row order; the backing pool
     /// sliced by `flat_index`. Runtime-only: skipped by serde and rkyv (a
     /// trailing zero-sized member in the archived layout), rebuilt at load.
@@ -117,14 +218,15 @@ pub struct CharacterDefinition {
 }
 
 impl CharacterDefinition {
-    /// Creates a definition from its parsed parts and builds the flat
-    /// BMP category table.
+    /// Creates a definition in the MeCab format from its parsed parts and
+    /// builds the flat BMP category table.
     ///
     /// # Arguments
     ///
     /// * `category_definitions` - Per-category invoke/group/length flags.
     /// * `category_names` - Category names in `CategoryId` order.
-    /// * `mapping` - Codepoint-range to category-set lookup table.
+    /// * `mapping` - Codepoint-range to category-set lookup table, each row
+    ///   with its default category first.
     ///
     /// # Returns
     ///
@@ -134,15 +236,134 @@ impl CharacterDefinition {
         category_names: Vec<String>,
         mapping: LookupTable<CategoryId>,
     ) -> Self {
+        Self::with_format(
+            category_definitions,
+            category_names,
+            mapping,
+            CharDefFormat::Mecab,
+            Vec::new(),
+        )
+    }
+
+    /// Creates a definition in the Sudachi format (#1388) from its parsed
+    /// parts and builds the flat BMP tables.
+    ///
+    /// # Arguments
+    ///
+    /// * `category_definitions` - Per-category invoke/group/length flags.
+    /// * `category_names` - Category names in `CategoryId` order.
+    /// * `mapping` - Codepoint-range to category-set lookup table, each row
+    ///   in category id order.
+    /// * `flags` - The flags ([`NO_OOV_BOW`], [`NO_OOV_EOW`]) of each row of
+    ///   `mapping`, in row order.
+    ///
+    /// # Returns
+    ///
+    /// The definition.
+    ///
+    /// # Panics
+    ///
+    /// When `flags` does not have one entry per row of `mapping`.
+    pub fn new_sudachi(
+        category_definitions: Vec<CategoryData>,
+        category_names: Vec<String>,
+        mapping: LookupTable<CategoryId>,
+        flags: Vec<u8>,
+    ) -> Self {
+        assert_eq!(
+            flags.len(),
+            mapping.row_count(),
+            "one flag entry per row of the mapping"
+        );
+        Self::with_format(
+            category_definitions,
+            category_names,
+            mapping,
+            CharDefFormat::Sudachi,
+            flags,
+        )
+    }
+
+    /// Creates a definition and builds its runtime tables.
+    ///
+    /// # Arguments
+    ///
+    /// * `category_definitions` - Per-category invoke/group/length flags.
+    /// * `category_names` - Category names in `CategoryId` order.
+    /// * `mapping` - Codepoint-range to category-set lookup table.
+    /// * `format` - The format of `char.def`.
+    /// * `flags` - The flags of each row of `mapping`; empty in the MeCab
+    ///   format.
+    ///
+    /// # Returns
+    ///
+    /// The definition.
+    fn with_format(
+        category_definitions: Vec<CategoryData>,
+        category_names: Vec<String>,
+        mapping: LookupTable<CategoryId>,
+        format: CharDefFormat,
+        flags: Vec<u8>,
+    ) -> Self {
         let mut definition = CharacterDefinition {
             category_definitions,
             category_names,
             mapping,
+            format,
+            flags,
+            flat_flags: Vec::new(),
             flat_categories: Vec::new(),
             flat_index: Vec::new(),
         };
         definition.build_flat_table();
+        definition.build_flat_flags();
         definition
+    }
+
+    /// Builds the flat BMP flag table from `flags` (the Sudachi format), or
+    /// leaves it empty when there are no flags (the MeCab format) or when a
+    /// definition read from bytes does not have one entry per row.
+    fn build_flat_flags(&mut self) {
+        self.flat_flags.clear();
+        if self.flags.is_empty() || self.flags.len() != self.mapping.row_count() {
+            return;
+        }
+        self.flat_flags = (0..FLAT_TABLE_LEN as u32)
+            .map(|cp| self.flags[self.mapping.row_index(cp)])
+            .collect();
+    }
+
+    /// Returns the format the builder read `char.def` in.
+    ///
+    /// # Returns
+    ///
+    /// The format.
+    #[inline]
+    pub fn format(&self) -> CharDefFormat {
+        self.format
+    }
+
+    /// Returns the flags of `c` in the Sudachi format ([`NO_OOV_BOW`],
+    /// [`NO_OOV_EOW`]).
+    ///
+    /// # Arguments
+    ///
+    /// * `c` - The character to look up.
+    ///
+    /// # Returns
+    ///
+    /// The flags; always 0 in the MeCab format.
+    #[inline]
+    pub fn flags_of(&self, c: char) -> u8 {
+        if self.flags.is_empty() {
+            return 0;
+        }
+        let cp = c as u32;
+        if (cp as usize) < FLAT_TABLE_LEN && !self.flat_flags.is_empty() {
+            self.flat_flags[cp as usize]
+        } else {
+            self.flags[self.mapping.row_index(cp)]
+        }
     }
 
     /// Builds the flat BMP category table from `mapping`.
@@ -187,8 +408,24 @@ impl CharacterDefinition {
             .map_err(|err| {
                 LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err.to_string()))
             })?;
-        // The flat table is not serialized; rebuild it after deserialization.
+        // The flags must have one entry per row in the Sudachi format and
+        // none in the MeCab format; `flags_of` indexes them by row.
+        let expected_flags = match definition.format {
+            CharDefFormat::Mecab => 0,
+            CharDefFormat::Sudachi => definition.mapping.row_count(),
+        };
+        if definition.flags.len() != expected_flags {
+            return Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
+                "char_def.bin: {} flag entries for {} rows in the {:?} format",
+                definition.flags.len(),
+                definition.mapping.row_count(),
+                definition.format
+            )));
+        }
+        // The flat tables are not serialized; rebuild them after
+        // deserialization.
         definition.build_flat_table();
+        definition.build_flat_flags();
         Ok(definition)
     }
 
@@ -200,22 +437,6 @@ impl CharacterDefinition {
         &self.category_names[category_id.0]
     }
 
-    /// Returns whether `category` is assigned to any codepoint at or above
-    /// `from`.
-    ///
-    /// # Arguments
-    ///
-    /// * `category` - The category to look for.
-    /// * `from` - The lowest codepoint of interest.
-    ///
-    /// # Returns
-    ///
-    /// `true` when some codepoint at or above `from` carries `category`.
-    pub(crate) fn has_category_from(&self, category: CategoryId, from: u32) -> bool {
-        self.mapping
-            .any_range_from(from, |categories| categories.contains(&category))
-    }
-
     pub fn category_id_by_name(&self, name: &str) -> Option<CategoryId> {
         self.category_names
             .iter()
@@ -225,11 +446,17 @@ impl CharacterDefinition {
 
     /// Returns the categories of `c`.
     ///
-    /// The first category is the default category of `c` (the first
-    /// category of the last `char.def` line that covers it, MeCab's
-    /// `default_type`), the only one that creates unknown-word candidates;
-    /// the others follow in category id order (#1111). The list is empty
-    /// only when no line covers `c` and `char.def` does not use `DEFAULT`.
+    /// In the MeCab format, the first category is the default category of
+    /// `c` (the first category of the last `char.def` line that covers it,
+    /// MeCab's `default_type`), the only one that creates unknown-word
+    /// candidates; the others follow in category id order (#1111). The list
+    /// is empty only when no line covers `c` and `char.def` does not use
+    /// `DEFAULT`.
+    ///
+    /// In the Sudachi format (#1388), every category of `c` comes in
+    /// category id order: there is no default category, and each of them
+    /// creates unknown-word candidates. The list is empty only when the
+    /// lines that cover `c` give it flags and no category.
     ///
     /// # Arguments
     ///
@@ -237,7 +464,7 @@ impl CharacterDefinition {
     ///
     /// # Returns
     ///
-    /// The category ids, the default category first.
+    /// The category ids, the default category first in the MeCab format.
     pub fn lookup_categories(&self, c: char) -> &[CategoryId] {
         let cp = c as u32;
         if (cp as usize) < FLAT_TABLE_LEN && !self.flat_index.is_empty() {
@@ -324,7 +551,8 @@ mod tests {
     }
 
     use crate::dictionary::character_definition::{
-        CategoryData, CategoryId, CharacterDefinition, LookupTable,
+        CategoryData, CategoryId, CharDefFormat, CharacterDefinition, LookupTable, NO_OOV_BOW,
+        NO_OOV_EOW,
     };
 
     #[test]
@@ -398,6 +626,80 @@ mod tests {
                 "mismatch at U+{cp:04X}"
             );
         }
+    }
+
+    /// A Sudachi-format definition over the rows of [`test_definition`],
+    /// with flags on the row of 0x3040.. and on the row beyond the BMP.
+    fn test_sudachi_definition() -> CharacterDefinition {
+        let definition = test_definition();
+        let flags = vec![0, 0, NO_OOV_BOW, 0, NO_OOV_BOW | NO_OOV_EOW];
+        CharacterDefinition::new_sudachi(
+            definition.category_definitions,
+            definition.category_names,
+            definition.mapping,
+            flags,
+        )
+    }
+
+    /// #1388: the flags of a code point are those of its row, through the
+    /// flat BMP table and through the binary search beyond the BMP, and 0
+    /// in the MeCab format.
+    #[test]
+    fn test_flags_of_every_code_point() {
+        let sudachi = test_sudachi_definition();
+        let mecab = test_definition();
+        assert_eq!(sudachi.format(), CharDefFormat::Sudachi);
+        assert_eq!(mecab.format(), CharDefFormat::Mecab);
+        assert!(!sudachi.flat_flags.is_empty(), "flat flags should be built");
+        for cp in 0..=0x10FFFFu32 {
+            let Some(c) = char::from_u32(cp) else {
+                continue;
+            };
+            let expected = if cp >= 0x20000 {
+                NO_OOV_BOW | NO_OOV_EOW
+            } else if (0x3040..0x4E00).contains(&cp) {
+                NO_OOV_BOW
+            } else {
+                0
+            };
+            assert_eq!(sudachi.flags_of(c), expected, "U+{cp:04X}");
+            assert_eq!(mecab.flags_of(c), 0, "U+{cp:04X}");
+        }
+    }
+
+    /// #1388: the format and the flags survive the round trip through
+    /// `char_def.bin`, and the flat flag table is rebuilt by `load()`.
+    #[test]
+    fn test_sudachi_definition_survives_rkyv_round_trip() {
+        let definition = test_sudachi_definition();
+        let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&definition).unwrap();
+        let reloaded = CharacterDefinition::load(&bytes).unwrap();
+        assert_eq!(reloaded.format(), CharDefFormat::Sudachi);
+        assert_eq!(reloaded.flags, definition.flags);
+        assert!(!reloaded.flat_flags.is_empty(), "load() must rebuild");
+        for cp in [0u32, 0x41, 0x3042, 0x4E8C, 0x20B9F] {
+            let c = char::from_u32(cp).unwrap();
+            assert_eq!(reloaded.flags_of(c), definition.flags_of(c));
+            assert_eq!(
+                reloaded.lookup_categories(c),
+                definition.lookup_categories(c)
+            );
+        }
+    }
+
+    /// #1388: `load()` rejects flags that do not have one entry per row in
+    /// the Sudachi format, or any flag in the MeCab format.
+    #[test]
+    fn test_load_rejects_flags_that_do_not_fit_the_rows() {
+        let mut sudachi = test_sudachi_definition();
+        sudachi.flags.pop();
+        let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&sudachi).unwrap();
+        assert!(CharacterDefinition::load(&bytes).is_err());
+
+        let mut mecab = test_definition();
+        mecab.flags = vec![0; mecab.mapping.row_count()];
+        let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&mecab).unwrap();
+        assert!(CharacterDefinition::load(&bytes).is_err());
     }
 
     /// Regression test for #878 stage 2: the flat table is skipped during

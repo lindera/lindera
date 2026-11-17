@@ -7,6 +7,7 @@
 //! module collects that into a single [`CoreMetadata`] the bindings can wrap.
 
 use lindera::dictionary::Metadata;
+use lindera::dictionary::core::character_definition::CharDefFormat;
 use lindera::space_penalty::SpacePenaltyConfig;
 
 use crate::schema::CoreSchema;
@@ -43,10 +44,11 @@ fn default_user_dictionary_schema() -> CoreSchema {
 /// not expose it), nor is `lindera_version`, which the dictionary builder
 /// stamps when it writes a dictionary (#1303), nor `context_id_map`, which
 /// the builder writes into a dictionary it relabels. `space_penalty`,
-/// `skip_whitespace` and `connection_id_mapping` are retained, so a
-/// dictionary built from a `metadata.json` that ships left-space penalty
-/// rules (ko-dic), turns whitespace skipping off (SudachiDict) or enables
-/// the relabelling of context IDs (ko-dic, UniDic) keeps them.
+/// `skip_whitespace`, `connection_id_mapping` and `char_def_format` are
+/// retained, so a dictionary built from a `metadata.json` that ships
+/// left-space penalty rules (ko-dic), turns whitespace skipping off
+/// (SudachiDict), enables the relabelling of context IDs (ko-dic, UniDic)
+/// or selects Sudachi's `char.def` format (SudachiDict, #1388) keeps them.
 #[derive(Debug, Clone)]
 pub struct CoreMetadata {
     /// Dictionary name.
@@ -79,6 +81,9 @@ pub struct CoreMetadata {
     /// context IDs by access frequency (`true` for ko-dic and UniDic); see
     /// `DictionaryBuilder::with_context_id_freq`.
     pub connection_id_mapping: bool,
+    /// The format of the dictionary's `char.def` (#1388): MeCab's, the
+    /// default, or Sudachi's (SudachiDict).
+    pub char_def_format: CharDefFormat,
 }
 
 impl CoreMetadata {
@@ -100,7 +105,7 @@ impl CoreMetadata {
     /// # Returns
     ///
     /// The new `CoreMetadata`, with no `space_penalty` and no `skip_whitespace`
-    /// setting, and `connection_id_mapping` off.
+    /// setting, `connection_id_mapping` off, and MeCab's `char.def` format.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: Option<String>,
@@ -130,6 +135,7 @@ impl CoreMetadata {
             space_penalty: None,
             skip_whitespace: None,
             connection_id_mapping: false,
+            char_def_format: CharDefFormat::Mecab,
         }
     }
 
@@ -165,7 +171,8 @@ impl Default for CoreMetadata {
 impl From<Metadata> for CoreMetadata {
     /// Converts a lindera [`Metadata`] into a [`CoreMetadata`] (dropping
     /// `model_info`, `lindera_version` and `context_id_map`, keeping
-    /// `space_penalty`, `skip_whitespace` and `connection_id_mapping`).
+    /// `space_penalty`, `skip_whitespace`, `connection_id_mapping` and
+    /// `char_def_format`).
     fn from(metadata: Metadata) -> Self {
         Self {
             name: metadata.name,
@@ -181,6 +188,7 @@ impl From<Metadata> for CoreMetadata {
             space_penalty: metadata.space_penalty,
             skip_whitespace: metadata.skip_whitespace,
             connection_id_mapping: metadata.connection_id_mapping,
+            char_def_format: metadata.char_def_format,
         }
     }
 }
@@ -188,11 +196,13 @@ impl From<Metadata> for CoreMetadata {
 impl From<CoreMetadata> for Metadata {
     /// Converts a [`CoreMetadata`] into a lindera [`Metadata`] (`model_info`,
     /// `lindera_version` and `context_id_map` are `None`; `space_penalty`,
-    /// `skip_whitespace` and `connection_id_mapping` are carried over).
+    /// `skip_whitespace`, `connection_id_mapping` and `char_def_format` are
+    /// carried over).
     fn from(metadata: CoreMetadata) -> Self {
         let space_penalty = metadata.space_penalty;
         let skip_whitespace = metadata.skip_whitespace;
         let connection_id_mapping = metadata.connection_id_mapping;
+        let char_def_format = metadata.char_def_format;
         let mut converted = Metadata::new(
             metadata.name,
             metadata.encoding,
@@ -208,6 +218,7 @@ impl From<CoreMetadata> for Metadata {
         converted.space_penalty = space_penalty;
         converted.skip_whitespace = skip_whitespace;
         converted.connection_id_mapping = connection_id_mapping;
+        converted.char_def_format = char_def_format;
         converted
     }
 }
@@ -273,6 +284,7 @@ mod tests {
         assert!(back.space_penalty_json().is_none());
         assert!(back.skip_whitespace.is_none());
         assert!(!back.connection_id_mapping);
+        assert_eq!(back.char_def_format, CharDefFormat::Mecab);
     }
 
     /// ko-dic's `metadata.json` ships left-space penalty rules; loading it the
@@ -326,5 +338,23 @@ mod tests {
 
         let rebuilt: Metadata = CoreMetadata::from(metadata).into();
         assert!(rebuilt.connection_id_mapping);
+    }
+
+    /// SudachiDict's `metadata.json` selects Sudachi's `char.def` format;
+    /// the setting must survive the same round trip, so that a dictionary
+    /// the bindings build from it reads `char.def` as `lindera build` does
+    /// (#1388).
+    #[test]
+    fn keeps_char_def_format_from_sudachidict_metadata() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../lindera-sudachidict/metadata.json");
+        let json = std::fs::read_to_string(&path).unwrap();
+        let metadata: Metadata = serde_json::from_str(&json).unwrap();
+        assert_eq!(metadata.char_def_format, CharDefFormat::Sudachi);
+
+        let core = CoreMetadata::from(metadata);
+        assert_eq!(core.char_def_format, CharDefFormat::Sudachi);
+        let rebuilt: Metadata = core.into();
+        assert_eq!(rebuilt.char_def_format, CharDefFormat::Sudachi);
     }
 }
