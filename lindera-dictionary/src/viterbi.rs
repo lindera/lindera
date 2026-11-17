@@ -10,7 +10,9 @@ use crate::break_characters::BreakCharacters;
 // itself; without the feature these statements are not compiled (#1372).
 #[cfg(feature = "ctxfreq")]
 use crate::builder::context_id_remap::record_access;
-use crate::dictionary::character_definition::{CategoryData, CategoryId, CharacterDefinition};
+use crate::dictionary::character_definition::{
+    CategoryData, CategoryId, CharDefFormat, CharacterDefinition, NO_OOV_BOW, NO_OOV_EOW,
+};
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use crate::dictionary::prefix_dictionary::{PrefixDictionary, UserPrefixDictionary};
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
@@ -568,6 +570,25 @@ pub struct Lattice {
     /// position's break run (Decompose mode with a break character in the
     /// sentence); set per sentence by `prepare_char_buffers`.
     break_dictionary_words: bool,
+    /// Whether the main loops take the unknown words of the sentence out of
+    /// line: when it has break characters (`break_run_end` is filled), or
+    /// when the dictionary's `char.def` is in the Sudachi format (#1388).
+    /// Set per sentence by `prepare_char_buffers`.
+    unknown_words_out_of_line: bool,
+    /// Sudachi format only (#1388): the categories of each character of the
+    /// sentence as bits, bit `i` for category id `i` (the builder allows at
+    /// most 64 categories). Filled by `prepare_sudachi`; a MeCab-format
+    /// dictionary never reads it.
+    sudachi_categories: Vec<u64>,
+    /// Sudachi format only: the flags (`NO_OOV_BOW`, `NO_OOV_EOW`) of each
+    /// character of the sentence. Filled by `prepare_sudachi`.
+    sudachi_flags: Vec<u8>,
+    /// Sudachi format only: the end (exclusive) of the last run cut so far
+    /// (see `sudachi_run_len`). Reset to 0 per sentence by `prepare_sudachi`.
+    sudachi_run_end: u32,
+    /// Sudachi format only: the unknown-word spans of the position being
+    /// processed, filled by `sudachi_unknown_spans`.
+    unknown_spans: Vec<UnknownSpan>,
     /// Decompose penalty cache for the left edges of the position
     /// currently being relaxed; see `add_edge_in_lattice` (#944).
     penalty_cache: Vec<i32>,
@@ -731,6 +752,37 @@ pub struct UnknownWordCandidate {
     pub word_id: u32,
 }
 
+/// The unknown words of one category at one position in the Sudachi format
+/// (#1388): the grouped run and the length ladder of the category, or the
+/// one-character fallback of `DEFAULT`. Every `unk.def` entry of the
+/// category gets every length.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct UnknownSpan {
+    /// The category whose `unk.def` entries the words take.
+    category: CategoryId,
+    /// The length of the grouped run, in characters, for a category with
+    /// `GROUP` set (one character when `max_grouping_len` cuts the run).
+    primary: Option<usize>,
+    /// The longest length of the ladder `1..=ladder`; 0 for none.
+    ladder: usize,
+}
+
+impl UnknownSpan {
+    /// Returns the lengths in the order the lattice adds them: the grouped
+    /// run, then the ladder without the run's length.
+    ///
+    /// # Returns
+    ///
+    /// The lengths, each once.
+    #[inline]
+    fn lengths(self) -> impl Iterator<Item = usize> + Clone {
+        let primary = self.primary;
+        primary
+            .into_iter()
+            .chain((1..=self.ladder).filter(move |&len| Some(len) != primary))
+    }
+}
+
 /// Per-sentence options for [`Lattice::set_text_with_options`] and
 /// [`Lattice::set_text_nbest_with_options`].
 ///
@@ -814,10 +866,12 @@ pub struct LatticeOptions<'a> {
     ///
     /// - No unknown word crosses a boundary, in every mode and in both the
     ///   1-best and the N-best lattice: the grouped run and the length
-    ///   ladder stop there. The bundled dictionaries put `・` in the
-    ///   katakana category, so without this rule an unknown `レノン・ジョン`
-    ///   is one word, while `ジョン・レノン` splits after the dictionary
-    ///   word `ジョン`.
+    ///   ladder stop there. The `char.def` of IPADIC, UniDic, ko-dic,
+    ///   CC-CEDICT and Jieba puts `・` in the katakana category, so without
+    ///   this rule an unknown `レノン・ジョン` is one word, while
+    ///   `ジョン・レノン` splits after the dictionary word `ジョン`.
+    ///   SudachiDict's leaves it out (#1388); the rule checks the
+    ///   characters, whatever their categories.
     /// - In Decompose mode, no system-dictionary word crosses a boundary:
     ///   the dictionary is searched up to the next boundary only, so such a
     ///   word does not enter the lattice, and whether a word starts at a
@@ -1453,7 +1507,7 @@ impl Lattice {
                 Some(whitespace) if !whitespace.has_members_above_latin1() => false,
                 Some(whitespace) => {
                     let space = whitespace.category();
-                    if categories_start & CATEGORIES_IN_POOL != 0 {
+                    let has_space = if categories_start & CATEGORIES_IN_POOL != 0 {
                         let offset = (categories_start & !CATEGORIES_IN_POOL) as usize;
                         (offset..offset + categories_len as usize)
                             .any(|idx| char_definitions.flat_category(idx) == space)
@@ -1461,7 +1515,10 @@ impl Lattice {
                         let start = categories_start as usize;
                         self.categories_buffer[start..start + categories_len as usize]
                             .contains(&space)
-                    }
+                    };
+                    // In Sudachi's format, `SPACE` must be the only
+                    // category (see `WhitespaceClassifier::is_space`).
+                    has_space && (categories_len == 1 || !whitespace.space_only())
                 }
                 None => unicode_whitespace && c.is_whitespace(),
             };
@@ -1502,6 +1559,162 @@ impl Lattice {
         }
 
         self.prepare_break_runs(options);
+        self.unknown_words_out_of_line = !self.break_run_end.is_empty();
+        if char_definitions.format() == CharDefFormat::Sudachi {
+            self.prepare_sudachi(char_definitions);
+            self.unknown_words_out_of_line = true;
+        }
+    }
+
+    /// Fills the per-character buffers of the Sudachi format (#1388) for the
+    /// sentence in `chars_buf`: the category bits (`sudachi_categories`) and
+    /// the flags (`sudachi_flags`), and resets the runs cut so far
+    /// (`sudachi_run_end`). Out of line, so that `prepare_char_buffers`
+    /// compiles for a MeCab-format dictionary as before.
+    ///
+    /// # Arguments
+    ///
+    /// * `char_definitions` - Character category definitions, in the
+    ///   Sudachi format.
+    #[cold]
+    #[inline(never)]
+    fn prepare_sudachi(&mut self, char_definitions: &CharacterDefinition) {
+        let n_chars = self.chars_buf.len();
+        self.sudachi_categories.clear();
+        self.sudachi_flags.clear();
+        self.sudachi_run_end = 0;
+        for char_idx in 0..n_chars {
+            let len = self.char_info_buffer[char_idx].categories_len as usize;
+            let bits = (0..len).fold(0u64, |bits, ord| {
+                let category = self.get_cached_category(char_definitions, char_idx, ord);
+                // The builder allows at most 64 categories in this format.
+                bits | 1u64.checked_shl(category.0 as u32).unwrap_or(0)
+            });
+            self.sudachi_categories.push(bits);
+            self.sudachi_flags
+                .push(char_definitions.flags_of(self.chars_buf[char_idx]));
+        }
+    }
+
+    /// Returns the length of the run that `char_idx` is in, from `char_idx`
+    /// on, as Sudachi cuts runs (`InputBuffer::fill_cat_continuity`, #1388):
+    /// the sentence is cut into runs from its start, a run going on while the
+    /// intersection of the categories and the flags of all its characters is
+    /// not empty, and a position inside a run takes the rest of that run.
+    /// MeCab's run ([`Self::group_run_len`]) instead goes on while each
+    /// character shares a category with the one before it. Must be called
+    /// with non-decreasing `char_idx` within a sentence, which keeps the cuts
+    /// O(n) over a sentence.
+    ///
+    /// # Arguments
+    ///
+    /// * `char_idx` - Start position, in characters.
+    ///
+    /// # Returns
+    ///
+    /// The length, at least 1.
+    fn sudachi_run_len(&mut self, char_idx: usize) -> usize {
+        let n_chars = self.sudachi_categories.len();
+        while self.sudachi_run_end as usize <= char_idx {
+            let start = self.sudachi_run_end as usize;
+            let mut categories = self.sudachi_categories[start];
+            let mut flags = self.sudachi_flags[start];
+            let mut end = start + 1;
+            while end < n_chars {
+                let next_categories = categories & self.sudachi_categories[end];
+                let next_flags = flags & self.sudachi_flags[end];
+                if next_categories == 0 && next_flags == 0 {
+                    break;
+                }
+                categories = next_categories;
+                flags = next_flags;
+                end += 1;
+            }
+            self.sudachi_run_end = end as u32;
+        }
+        self.sudachi_run_end as usize - char_idx
+    }
+
+    /// Fills `unknown_spans` with the unknown words at `char_idx` in the
+    /// Sudachi format (#1388), as Sudachi's `MeCabOovPlugin` and its fallback
+    /// create them:
+    ///
+    /// - None when the character has `NOOOVBOW` or the one before it has
+    ///   `NOOOVEOW` (`InputBuffer::can_oov_bow`).
+    /// - Otherwise, for each category of the character in id order, unless
+    ///   its `invoke` is off and a dictionary word starts here: with `group`
+    ///   on, one word over the run ([`Self::sudachi_run_len`]), which
+    ///   `max_grouping_len` turns into one character when the run has more
+    ///   than that many characters beyond the first; with the ladder on, the
+    ///   lengths `1..=LENGTH` that fit in the run, one less than the run with
+    ///   `group` on. A break run (see [`LatticeOptions::break_characters`])
+    ///   cuts the run.
+    /// - When no category gives a word and no dictionary word starts here,
+    ///   one character of `DEFAULT`, so that the sentence stays connected, as
+    ///   Sudachi's last OOV provider does (`SimpleOovPlugin`, whose part of
+    ///   speech, context ids and cost are those of the `DEFAULT` row of
+    ///   SudachiDict's `unk.def`). Sudachi makes it as long as the run of
+    ///   characters no word can start inside (`can_bow`), which Lindera does
+    ///   not have.
+    ///
+    /// # Arguments
+    ///
+    /// * `char_definitions` - Character category definitions, in the
+    ///   Sudachi format.
+    /// * `max_grouping_len` - Unknown-word grouping cap (`None` = unbounded).
+    /// * `unknown_word_ladder` - Whether to emit the length ladder.
+    /// * `char_idx` - Start position, in characters.
+    /// * `found` - Whether a dictionary word starts at `char_idx`.
+    fn sudachi_unknown_spans(
+        &mut self,
+        char_definitions: &CharacterDefinition,
+        max_grouping_len: Option<usize>,
+        unknown_word_ladder: bool,
+        char_idx: usize,
+        found: bool,
+    ) {
+        self.unknown_spans.clear();
+        let can_oov_bow = self.sudachi_flags[char_idx] & NO_OOV_BOW == 0
+            && (char_idx == 0 || self.sudachi_flags[char_idx - 1] & NO_OOV_EOW == 0);
+        if can_oov_bow {
+            let mut run = self.sudachi_run_len(char_idx);
+            if !self.break_run_end.is_empty() {
+                run = run.min(self.break_run_end[char_idx] as usize - char_idx);
+            }
+            for ord in 0..self.char_info_buffer[char_idx].categories_len as usize {
+                let category = self.get_cached_category(char_definitions, char_idx, ord);
+                let category_data = char_definitions.lookup_definition(category);
+                if !category_data.invoke && found {
+                    continue;
+                }
+                let primary = category_data.group.then(|| match max_grouping_len {
+                    Some(cap) if run - 1 > cap => 1,
+                    _ => run,
+                });
+                let ladder = if unknown_word_ladder {
+                    (category_data.length as usize).min(run - usize::from(category_data.group))
+                } else {
+                    0
+                };
+                if primary.is_some() || ladder > 0 {
+                    self.unknown_spans.push(UnknownSpan {
+                        category,
+                        primary,
+                        ladder,
+                    });
+                }
+            }
+        }
+        if self.unknown_spans.is_empty()
+            && !found
+            && let Some(default_category) = char_definitions.category_id_by_name("DEFAULT")
+        {
+            self.unknown_spans.push(UnknownSpan {
+                category: default_category,
+                primary: Some(1),
+                ladder: 0,
+            });
+        }
     }
 
     /// Fills `break_run_end` for the sentence in `chars_buf`, and sets
@@ -1920,36 +2133,35 @@ impl Lattice {
             // position grouped, e.g. after a dictionary word ending inside it.
             // Only the character's default category, the first of its list,
             // creates them, as MeCab's `default_type` does (#1111). A sentence
-            // with break characters takes them out of line (#1353).
-            if self.char_info_buffer[char_idx].categories_len > 0 {
+            // with break characters (#1353), or of a dictionary whose
+            // `char.def` is in the Sudachi format (#1388), takes them out of
+            // line.
+            if self.unknown_words_out_of_line {
+                self.process_unknown_word_out_of_line(
+                    char_definitions,
+                    unknown_dictionary,
+                    cost_matrix,
+                    search_mode,
+                    max_grouping_len,
+                    unknown_word_ladder,
+                    space_penalty,
+                    char_idx,
+                    found,
+                );
+            } else if self.char_info_buffer[char_idx].categories_len > 0 {
                 let category = self.get_cached_category(char_definitions, char_idx, 0);
-                if self.break_run_end.is_empty() {
-                    self.process_unknown_word(
-                        char_definitions,
-                        unknown_dictionary,
-                        cost_matrix,
-                        search_mode,
-                        max_grouping_len,
-                        unknown_word_ladder,
-                        space_penalty,
-                        category,
-                        char_idx,
-                        found,
-                    );
-                } else {
-                    self.process_unknown_word_in_break_run(
-                        char_definitions,
-                        unknown_dictionary,
-                        cost_matrix,
-                        search_mode,
-                        max_grouping_len,
-                        unknown_word_ladder,
-                        space_penalty,
-                        category,
-                        char_idx,
-                        found,
-                    );
-                }
+                self.process_unknown_word(
+                    char_definitions,
+                    unknown_dictionary,
+                    cost_matrix,
+                    search_mode,
+                    max_grouping_len,
+                    unknown_word_ladder,
+                    space_penalty,
+                    category,
+                    char_idx,
+                    found,
+                );
             }
 
             // Then the system dictionary's words, last found first, so a
@@ -2066,7 +2278,27 @@ impl Lattice {
         char_idx: usize,
         found: bool,
     ) {
-        if self.char_info_buffer[char_idx].categories_len > 0 {
+        if char_definitions.format() == CharDefFormat::Sudachi {
+            self.sudachi_unknown_spans(
+                char_definitions,
+                max_grouping_len,
+                unknown_word_ladder,
+                char_idx,
+                found,
+            );
+            for i in 0..self.unknown_spans.len() {
+                let span = self.unknown_spans[i];
+                self.emit_unknown_word_edges_owned(
+                    unknown_dictionary,
+                    cost_matrix,
+                    search_mode,
+                    gate,
+                    span.category,
+                    char_idx,
+                    span.lengths(),
+                );
+            }
+        } else if self.char_info_buffer[char_idx].categories_len > 0 {
             let category = self.get_cached_category(char_definitions, char_idx, 0);
             self.process_unknown_word_owned(
                 char_definitions,
@@ -2149,6 +2381,43 @@ impl Lattice {
         ) else {
             return;
         };
+        self.emit_unknown_word_edges_owned(
+            unknown_dictionary,
+            cost_matrix,
+            search_mode,
+            gate,
+            category,
+            char_idx,
+            Self::candidate_lengths(primary, ladder),
+        );
+    }
+
+    /// [`Self::emit_unknown_word_edges`] at a position where some left edges
+    /// own the whitespace before it (see [`Self::add_candidates_owned`]):
+    /// each entry relaxed with the left-space penalty per left edge
+    /// ([`Self::relax_owned`]), one relaxation for all its lengths.
+    ///
+    /// # Arguments
+    ///
+    /// * `unknown_dictionary` - Source of unknown-word entries.
+    /// * `cost_matrix` - The connection cost matrix.
+    /// * `search_mode` - The segmentation mode.
+    /// * `gate` - The penalty table and the left edges that own the
+    ///   whitespace.
+    /// * `category` - The character category the edges belong to.
+    /// * `char_idx` - Start position, in characters.
+    /// * `lengths` - The span lengths, in characters, in emission order.
+    #[allow(clippy::too_many_arguments)]
+    fn emit_unknown_word_edges_owned(
+        &mut self,
+        unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        search_mode: &Mode,
+        gate: SpaceGate<'_>,
+        category: CategoryId,
+        char_idx: usize,
+        lengths: impl Iterator<Item = usize> + Clone,
+    ) {
         for &word_id in unknown_dictionary.lookup_word_ids(category).iter().rev() {
             let word_entry = unknown_dictionary.word_entry(word_id);
             let space = gate.cost(&word_entry);
@@ -2157,7 +2426,7 @@ impl Lattice {
             else {
                 continue;
             };
-            for num_chars in Self::candidate_lengths(primary, ladder) {
+            for num_chars in lengths.clone() {
                 let kanji_only = self.is_kanji_all(char_idx, num_chars);
                 let edge = Self::create_edge(word_entry, char_idx, kanji_only);
                 // The penalty is part of `best` already.
@@ -2581,7 +2850,7 @@ impl Lattice {
     /// The main loops do not call it: there, a branch in the lengths, which
     /// they inline, cost 2-3% more instructions on text without break
     /// characters, so they take a sentence with break characters to
-    /// [`Self::process_unknown_word_in_break_run`] instead (#1353).
+    /// [`Self::process_unknown_word_out_of_line`] instead (#1353).
     ///
     /// # Arguments
     ///
@@ -2721,20 +2990,27 @@ impl Lattice {
         );
     }
 
-    /// [`Self::process_unknown_word`] in a sentence with break characters
-    /// (see [`LatticeOptions::break_characters`]), out of line: the main
-    /// loops take such a sentence here, one branch per position, so that
-    /// the functions they inline for the other sentences stay as they were.
-    /// A branch in [`Self::unknown_word_lengths`] instead cost 2-3% more
+    /// [`Self::process_unknown_word`] out of line, for a sentence with break
+    /// characters (see [`LatticeOptions::break_characters`]) or of a
+    /// dictionary whose `char.def` is in the Sudachi format (#1388): the main
+    /// loops take such a sentence here, one branch per position, so that the
+    /// functions they inline for the other sentences stay as they were. A
+    /// branch in [`Self::unknown_word_lengths`] instead cost 2-3% more
     /// instructions on text without break characters (#1353).
+    ///
+    /// In the MeCab format, the default category of the character creates
+    /// the candidates, cut at the break run; in the Sudachi format, the
+    /// spans of [`Self::sudachi_unknown_spans`], also for a character
+    /// without categories, which may need the fallback.
     ///
     /// # Arguments
     ///
-    /// See [`Self::process_unknown_word`].
+    /// See [`Self::process_unknown_word`]; the categories come from
+    /// `char_idx`.
     #[cold]
     #[inline(never)]
     #[allow(clippy::too_many_arguments)]
-    fn process_unknown_word_in_break_run(
+    fn process_unknown_word_out_of_line(
         &mut self,
         char_definitions: &CharacterDefinition,
         unknown_dictionary: &UnknownDictionary,
@@ -2743,10 +3019,35 @@ impl Lattice {
         max_grouping_len: Option<usize>,
         unknown_word_ladder: bool,
         space_penalty: Option<&SpacePenaltyTable>,
-        category: CategoryId,
         char_idx: usize,
         found: bool,
     ) {
+        if char_definitions.format() == CharDefFormat::Sudachi {
+            self.sudachi_unknown_spans(
+                char_definitions,
+                max_grouping_len,
+                unknown_word_ladder,
+                char_idx,
+                found,
+            );
+            for i in 0..self.unknown_spans.len() {
+                let span = self.unknown_spans[i];
+                self.emit_unknown_word_edges(
+                    unknown_dictionary,
+                    cost_matrix,
+                    search_mode,
+                    space_penalty,
+                    span.category,
+                    char_idx,
+                    span.lengths(),
+                );
+            }
+            return;
+        }
+        if self.char_info_buffer[char_idx].categories_len == 0 {
+            return;
+        }
+        let category = self.get_cached_category(char_definitions, char_idx, 0);
         let Some((primary, ladder)) = self.unknown_word_lengths_with_breaks(
             char_definitions,
             max_grouping_len,
@@ -2784,7 +3085,11 @@ impl Lattice {
     /// of the category gets each span. The candidates come in increasing
     /// start order; at one start, entry by entry in `unk.def` order, each
     /// entry's spans in the order the runtime adds them. (The runtime adds
-    /// the entries in reverse; the set is the same.)
+    /// the entries in reverse; the set is the same.) In the Sudachi format
+    /// ([`CharDefFormat::Sudachi`], #1388), every category of the character
+    /// creates candidates, over Sudachi's runs, one category after another
+    /// in id order, and the one-character fallback of `DEFAULT` is listed
+    /// where the runtime adds it.
     ///
     /// The lattice's per-sentence buffers are overwritten; the edges are
     /// not touched, and the next `set_text*` call starts afresh as usual.
@@ -2820,14 +3125,38 @@ impl Lattice {
         options.break_characters = break_characters;
         self.prepare_char_buffers(dict, char_definitions, text, &options);
         let n_chars = self.chars_buf.len();
+        let sudachi = char_definitions.format() == CharDefFormat::Sudachi;
         for char_idx in 0..n_chars {
-            if self.char_info_buffer[char_idx].categories_len == 0 {
+            // In the Sudachi format, a character without categories may
+            // still need the fallback.
+            if !sudachi && self.char_info_buffer[char_idx].categories_len == 0 {
                 continue;
             }
             let found = dict
                 .common_prefix_search_codes(&self.codes_buf[char_idx..])
                 .next()
                 .is_some();
+            if sudachi {
+                self.sudachi_unknown_spans(
+                    char_definitions,
+                    max_grouping_len,
+                    options.unknown_word_ladder,
+                    char_idx,
+                    found,
+                );
+                for span in &self.unknown_spans {
+                    for &word_id in unknown_dictionary.lookup_word_ids(span.category) {
+                        for num_chars in span.lengths() {
+                            out.push(UnknownWordCandidate {
+                                start_char: char_idx,
+                                end_char: char_idx + num_chars,
+                                word_id,
+                            });
+                        }
+                    }
+                }
+                continue;
+            }
             let category = self.get_cached_category(char_definitions, char_idx, 0);
             let Some((primary, ladder)) = self.unknown_word_lengths_with_breaks(
                 char_definitions,
@@ -3786,17 +4115,18 @@ impl Lattice {
         );
     }
 
-    /// [`Self::process_unknown_word_nbest`] in a sentence with break
-    /// characters, out of line (see
-    /// [`Self::process_unknown_word_in_break_run`]).
+    /// [`Self::process_unknown_word_nbest`] out of line, for a sentence with
+    /// break characters or of a dictionary whose `char.def` is in the
+    /// Sudachi format (see [`Self::process_unknown_word_out_of_line`]).
     ///
     /// # Arguments
     ///
-    /// See [`Self::process_unknown_word`].
+    /// See [`Self::process_unknown_word`]; the categories come from
+    /// `char_idx`.
     #[cold]
     #[inline(never)]
     #[allow(clippy::too_many_arguments)]
-    fn process_unknown_word_nbest_in_break_run(
+    fn process_unknown_word_nbest_out_of_line(
         &mut self,
         char_definitions: &CharacterDefinition,
         unknown_dictionary: &UnknownDictionary,
@@ -3805,10 +4135,35 @@ impl Lattice {
         max_grouping_len: Option<usize>,
         unknown_word_ladder: bool,
         space_penalty: Option<&SpacePenaltyTable>,
-        category: CategoryId,
         char_idx: usize,
         found: bool,
     ) {
+        if char_definitions.format() == CharDefFormat::Sudachi {
+            self.sudachi_unknown_spans(
+                char_definitions,
+                max_grouping_len,
+                unknown_word_ladder,
+                char_idx,
+                found,
+            );
+            for i in 0..self.unknown_spans.len() {
+                let span = self.unknown_spans[i];
+                self.emit_unknown_word_edges_nbest(
+                    unknown_dictionary,
+                    cost_matrix,
+                    search_mode,
+                    space_penalty,
+                    span.category,
+                    char_idx,
+                    span.lengths(),
+                );
+            }
+            return;
+        }
+        if self.char_info_buffer[char_idx].categories_len == 0 {
+            return;
+        }
+        let category = self.get_cached_category(char_definitions, char_idx, 0);
         let Some((primary, ladder)) = self.unknown_word_lengths_with_breaks(
             char_definitions,
             max_grouping_len,
@@ -4049,37 +4404,34 @@ impl Lattice {
             }
 
             // The candidates in the processing order of set_text_with_options,
-            // so ties resolve the same way: the unknown words of the default
-            // category first.
-            if self.char_info_buffer[char_idx].categories_len > 0 {
+            // so ties resolve the same way: the unknown words first, out of
+            // line as there.
+            if self.unknown_words_out_of_line {
+                self.process_unknown_word_nbest_out_of_line(
+                    char_definitions,
+                    unknown_dictionary,
+                    cost_matrix,
+                    search_mode,
+                    max_grouping_len,
+                    unknown_word_ladder,
+                    space_penalty,
+                    char_idx,
+                    found,
+                );
+            } else if self.char_info_buffer[char_idx].categories_len > 0 {
                 let category = self.get_cached_category(char_definitions, char_idx, 0);
-                if self.break_run_end.is_empty() {
-                    self.process_unknown_word_nbest(
-                        char_definitions,
-                        unknown_dictionary,
-                        cost_matrix,
-                        search_mode,
-                        max_grouping_len,
-                        unknown_word_ladder,
-                        space_penalty,
-                        category,
-                        char_idx,
-                        found,
-                    );
-                } else {
-                    self.process_unknown_word_nbest_in_break_run(
-                        char_definitions,
-                        unknown_dictionary,
-                        cost_matrix,
-                        search_mode,
-                        max_grouping_len,
-                        unknown_word_ladder,
-                        space_penalty,
-                        category,
-                        char_idx,
-                        found,
-                    );
-                }
+                self.process_unknown_word_nbest(
+                    char_definitions,
+                    unknown_dictionary,
+                    cost_matrix,
+                    search_mode,
+                    max_grouping_len,
+                    unknown_word_ladder,
+                    space_penalty,
+                    category,
+                    char_idx,
+                    found,
+                );
             }
 
             // Then the system dictionary's words, last found first.
@@ -4202,7 +4554,27 @@ impl Lattice {
         char_idx: usize,
         found: bool,
     ) {
-        if self.char_info_buffer[char_idx].categories_len > 0 {
+        if char_definitions.format() == CharDefFormat::Sudachi {
+            self.sudachi_unknown_spans(
+                char_definitions,
+                max_grouping_len,
+                unknown_word_ladder,
+                char_idx,
+                found,
+            );
+            for i in 0..self.unknown_spans.len() {
+                let span = self.unknown_spans[i];
+                self.emit_unknown_word_edges_nbest_owned(
+                    unknown_dictionary,
+                    cost_matrix,
+                    search_mode,
+                    gate,
+                    span.category,
+                    char_idx,
+                    span.lengths(),
+                );
+            }
+        } else if self.char_info_buffer[char_idx].categories_len > 0 {
             let category = self.get_cached_category(char_definitions, char_idx, 0);
             self.process_unknown_word_nbest_owned(
                 char_definitions,
@@ -4273,12 +4645,40 @@ impl Lattice {
         ) else {
             return;
         };
+        self.emit_unknown_word_edges_nbest_owned(
+            unknown_dictionary,
+            cost_matrix,
+            search_mode,
+            gate,
+            category,
+            char_idx,
+            Self::candidate_lengths(primary, ladder),
+        );
+    }
+
+    /// [`Self::emit_unknown_word_edges_owned`] for the nbest lattice
+    /// ([`Self::relax_nbest_owned`]).
+    ///
+    /// # Arguments
+    ///
+    /// See [`Self::emit_unknown_word_edges_owned`].
+    #[allow(clippy::too_many_arguments)]
+    fn emit_unknown_word_edges_nbest_owned(
+        &mut self,
+        unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        search_mode: &Mode,
+        gate: SpaceGate<'_>,
+        category: CategoryId,
+        char_idx: usize,
+        lengths: impl Iterator<Item = usize> + Clone,
+    ) {
         for &word_id in unknown_dictionary.lookup_word_ids(category).iter().rev() {
             let word_entry = unknown_dictionary.word_entry(word_id);
             let space = gate.cost(&word_entry);
             let left_id = word_entry.left_id as u32;
             let best = self.relax_nbest_owned(char_idx, left_id, cost_matrix, search_mode, space);
-            for num_chars in Self::candidate_lengths(primary, ladder) {
+            for num_chars in lengths.clone() {
                 let kanji_only = self.is_kanji_all(char_idx, num_chars);
                 let edge = Self::create_edge(word_entry, char_idx, kanji_only);
                 self.push_relaxed_nbest(edge, char_idx + num_chars, best);
@@ -4423,7 +4823,7 @@ mod tests {
     use crate::break_characters::BreakCharacters;
 
     use crate::dictionary::character_definition::{
-        CategoryData, CategoryId, CharacterDefinition, LookupTable,
+        CategoryData, CategoryId, CharacterDefinition, LookupTable, NO_OOV_BOW, NO_OOV_EOW,
     };
     use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
     use crate::dictionary::prefix_dictionary::{PrefixDictionary, UserPrefixDictionary};
@@ -5155,11 +5555,425 @@ mod tests {
         }
     }
 
+    // The Sudachi format (#1388).
+
+    /// The dictionary of the Sudachi-format tests, ASCII characters standing
+    /// in for Sudachi's (category ids in parentheses):
+    ///
+    /// - `k`: KANJI (1); `m`: KANJI SYMBOL (1, 2); `q`: KANJI KATAKANA
+    ///   (1, 3); `s`: SYMBOL (2); `t` and `.`: KATAKANA (3); ` `: SPACE (4);
+    ///   any other character: DEFAULT (0).
+    /// - `r`: KANJI SYMBOL with `NOOOVBOW`, as `々`; `x`: KATAKANA with
+    ///   `NOOOVBOW`, as `ー`; `z`: every category with `NOOOVBOW` and
+    ///   `NOOOVEOW`, as ZWJ; U+0301: every category with `NOOOVBOW`, as
+    ///   the combining marks; U+3000: SPACE alone.
+    ///
+    /// DEFAULT groups (`invoke` off), KANJI does not (`invoke` off, length
+    /// 2), SYMBOL groups (`invoke` on), KATAKANA groups (`invoke` on, length
+    /// 2), SPACE groups (`invoke` off). `unk.def` has one entry per category,
+    /// whose id is the category's. The system words are `k ` and `xs`.
+    struct SudachiFixture {
+        dict: PrefixDictionary,
+        char_definitions: CharacterDefinition,
+        unknown_dictionary: UnknownDictionary,
+        cost_matrix: ConnectionCostMatrix,
+    }
+
+    fn sudachi_fixture() -> SudachiFixture {
+        fn row(c: u32) -> (Vec<usize>, u8) {
+            match c {
+                0x20 => (vec![4], 0),
+                0x2E | 0x74 => (vec![3], 0),
+                0x6B => (vec![1], 0),
+                0x6D => (vec![1, 2], 0),
+                0x71 => (vec![1, 3], 0),
+                0x72 => (vec![1, 2], NO_OOV_BOW),
+                0x73 => (vec![2], 0),
+                0x78 => (vec![3], NO_OOV_BOW),
+                0x7A => (vec![0, 1, 2, 3, 4], NO_OOV_BOW | NO_OOV_EOW),
+                0x301 => (vec![0, 1, 2, 3, 4], NO_OOV_BOW),
+                0x3000 => (vec![4], 0),
+                _ => (vec![0], 0),
+            }
+        }
+        // In increasing order: the flags follow the rows of the mapping.
+        let boundaries = vec![
+            0, 0x20, 0x21, 0x2E, 0x2F, 0x6B, 0x6C, 0x6D, 0x6E, 0x71, 0x72, 0x73, 0x74, 0x75, 0x78,
+            0x79, 0x7A, 0x7B, 0x301, 0x302, 0x3000, 0x3001,
+        ];
+        let mapping = LookupTable::from_fn(boundaries.clone(), &|c, buf: &mut Vec<CategoryId>| {
+            buf.extend(row(c).0.into_iter().map(CategoryId));
+        });
+        let flags = boundaries.iter().map(|&c| row(c).1).collect();
+        let category = |invoke, group, length| CategoryData {
+            invoke,
+            group,
+            length,
+        };
+        let char_definitions = CharacterDefinition::new_sudachi(
+            vec![
+                category(false, true, 0),
+                category(false, false, 2),
+                category(true, true, 0),
+                category(true, true, 2),
+                category(false, true, 0),
+            ],
+            ["DEFAULT", "KANJI", "SYMBOL", "KATAKANA", "SPACE"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
+            mapping,
+            flags,
+        );
+        let unknown = |id| WordEntry::new(WordId::new(LexType::Unknown, id), 0, 0, 0);
+        let unknown_dictionary = UnknownDictionary {
+            category_references: (0..5).map(|id| vec![id]).collect(),
+            costs: (0..5).map(unknown).collect(),
+            words_idx_data: Vec::new(),
+            words_data: Vec::new(),
+        };
+        let mut map = BTreeMap::new();
+        for (id, surface) in ["k ", "xs"].into_iter().enumerate() {
+            map.insert(
+                surface.to_string(),
+                vec![WordEntry::new(
+                    WordId::new(LexType::System, id as u32),
+                    0,
+                    0,
+                    0,
+                )],
+            );
+        }
+        SudachiFixture {
+            dict: PrefixDictionary::from_word_entry_map(&map).unwrap(),
+            char_definitions,
+            unknown_dictionary,
+            cost_matrix: ConnectionCostMatrix::load(vec![0xff, 0xff, 1, 0, 1, 0, 0, 0]).unwrap(),
+        }
+    }
+
+    /// Builds the 1-best or the N-best lattice of `text` with the Sudachi
+    /// fixture.
+    fn sudachi_lattice(
+        fixture: &SudachiFixture,
+        text: &str,
+        options: &LatticeOptions,
+        nbest: bool,
+    ) -> Lattice {
+        let mut lattice = Lattice::default();
+        if nbest {
+            lattice.set_text_nbest_with_options(
+                &fixture.dict,
+                &None,
+                &fixture.char_definitions,
+                &fixture.unknown_dictionary,
+                &fixture.cost_matrix,
+                text,
+                options,
+            );
+        } else {
+            lattice.set_text_with_options(
+                &fixture.dict,
+                &None,
+                &fixture.char_definitions,
+                &fixture.unknown_dictionary,
+                &fixture.cost_matrix,
+                text,
+                options,
+            );
+        }
+        lattice
+    }
+
+    /// The edges of `lattice`, BOS and EOS left out, as (start, end, lex
+    /// type, entry id), sorted.
+    fn sudachi_edges(lattice: &Lattice) -> Vec<Span> {
+        let n_chars = lattice.char_len();
+        let mut spans = Vec::new();
+        for end_char in 1..=n_chars {
+            for edge in lattice.edges_at_char(end_char) {
+                if end_char == n_chars && edge.start_char() as usize == n_chars {
+                    continue; // EOS
+                }
+                let word_id = edge.word_id();
+                spans.push((
+                    edge.start_char() as usize,
+                    end_char,
+                    word_id.lex_type(),
+                    word_id.id(),
+                ));
+            }
+        }
+        spans.sort_by_key(|&(start, end, lex_type, id)| {
+            (start, end, lex_type == LexType::Unknown, id)
+        });
+        spans.dedup();
+        spans
+    }
+
+    /// The unknown words of `text` in the 1-best and the N-best lattice with
+    /// `options`, as (start, end, `unk.def` entry id = category id); asserts
+    /// that both lattices have the same ones.
+    fn sudachi_unknown_words(
+        fixture: &SudachiFixture,
+        text: &str,
+        options: &LatticeOptions,
+    ) -> Vec<(usize, usize, u32)> {
+        let unknown = |nbest| {
+            let lattice = sudachi_lattice(fixture, text, options, nbest);
+            sudachi_edges(&lattice)
+                .into_iter()
+                .filter(|&(_, _, lex_type, _)| lex_type == LexType::Unknown)
+                .map(|(start, end, _, id)| (start, end, id))
+                .collect::<Vec<_>>()
+        };
+        let one_best = unknown(false);
+        assert_eq!(unknown(true), one_best, "{text}: N-best");
+        one_best
+    }
+
+    /// No unknown word starts at a character with `NOOOVBOW`: `x` gets the
+    /// fallback, a one-character DEFAULT word, and `t` groups through it, as
+    /// they share KATAKANA.
+    #[test]
+    fn sudachi_no_unknown_word_starts_at_no_oov_bow() {
+        let fixture = sudachi_fixture();
+        let options = LatticeOptions::new(&Mode::Normal);
+        assert_eq!(
+            sudachi_unknown_words(&fixture, "tx", &options),
+            vec![(0, 1, 3), (0, 2, 3), (1, 2, 0)]
+        );
+    }
+
+    /// No unknown word starts right after a character with `NOOOVEOW`: `z`
+    /// and the `t` after it get the fallback only.
+    #[test]
+    fn sudachi_no_unknown_word_starts_after_no_oov_eow() {
+        let fixture = sudachi_fixture();
+        let options = LatticeOptions::new(&Mode::Normal);
+        assert_eq!(
+            sudachi_unknown_words(&fixture, "zt", &options),
+            vec![(0, 1, 0), (1, 2, 0)]
+        );
+        // `t` after another character creates its own words.
+        assert_eq!(
+            sudachi_unknown_words(&fixture, "at", &options),
+            vec![(0, 1, 0), (1, 2, 3)]
+        );
+    }
+
+    /// The fallback keeps the sentence connected, and only where no
+    /// dictionary word starts: `xs` is a system word, so `x` gets nothing
+    /// else.
+    #[test]
+    fn sudachi_fallback_only_where_nothing_else_starts() {
+        let fixture = sudachi_fixture();
+        let options = LatticeOptions::new(&Mode::Normal);
+        for nbest in [false, true] {
+            let lattice = sudachi_lattice(&fixture, "x", &options, nbest);
+            assert_eq!(
+                sudachi_edges(&lattice),
+                vec![(0, 1, LexType::Unknown, 0)],
+                "nbest={nbest}"
+            );
+            assert_eq!(lattice.tokens_offset().len(), 1, "nbest={nbest}: a path");
+
+            let lattice = sudachi_lattice(&fixture, "xs", &options, nbest);
+            assert_eq!(
+                sudachi_edges(&lattice),
+                vec![(0, 2, LexType::System, 1)],
+                "nbest={nbest}"
+            );
+        }
+    }
+
+    /// Every category of a character creates unknown words: `m` is KANJI
+    /// and SYMBOL.
+    #[test]
+    fn sudachi_unknown_words_from_every_category() {
+        let fixture = sudachi_fixture();
+        let options = LatticeOptions::new(&Mode::Normal);
+        assert_eq!(
+            sudachi_unknown_words(&fixture, "m", &options),
+            vec![(0, 1, 1), (0, 1, 2)]
+        );
+    }
+
+    /// Runs are cut from the start of the sentence where the intersection
+    /// of their categories becomes empty, and a position inside a run takes
+    /// the rest of it (as `漢々「`): `k` and `m` share KANJI and `s` shares
+    /// nothing with both, so SYMBOL at `m` groups `m` alone, where MeCab's
+    /// chained run (`m` and `s` share SYMBOL) would group `ms`.
+    #[test]
+    fn sudachi_runs_are_cut_where_the_intersection_is_empty() {
+        let fixture = sudachi_fixture();
+        let options = LatticeOptions::new(&Mode::Normal);
+        assert_eq!(
+            sudachi_unknown_words(&fixture, "kms", &options),
+            vec![(0, 1, 1), (0, 2, 1), (1, 2, 1), (1, 2, 2), (2, 3, 2)]
+        );
+    }
+
+    /// The flags take part in the intersection: `r` and `x` share only
+    /// `NOOOVBOW`, so they make one run, and `q` starts the next one with
+    /// `k`, which gives KANJI's ladder and KATAKANA's group two characters
+    /// at `q`.
+    #[test]
+    fn sudachi_flags_take_part_in_runs() {
+        let fixture = sudachi_fixture();
+        let options = LatticeOptions::new(&Mode::Normal);
+        assert_eq!(
+            sudachi_unknown_words(&fixture, "rxqk", &options),
+            vec![
+                (0, 1, 0),
+                (1, 2, 0),
+                (2, 3, 1),
+                (2, 3, 3),
+                (2, 4, 1),
+                (2, 4, 3),
+                (3, 4, 1)
+            ]
+        );
+    }
+
+    /// The ladder stays in the run: at `q`, the rest of the run `tq` is one
+    /// character, so KANJI's ladder (length 2) gives one character, though
+    /// `k` after it is KANJI too.
+    #[test]
+    fn sudachi_ladder_stays_in_the_run() {
+        let fixture = sudachi_fixture();
+        let options = LatticeOptions::new(&Mode::Normal);
+        assert_eq!(
+            sudachi_unknown_words(&fixture, "tqk", &options),
+            vec![(0, 1, 3), (0, 2, 3), (1, 2, 1), (1, 2, 3), (2, 3, 1)]
+        );
+    }
+
+    /// `max_grouping_len` turns a grouped run with more characters beyond
+    /// the first into one character, as in the MeCab format (#944).
+    #[test]
+    fn sudachi_max_grouping_len() {
+        let fixture = sudachi_fixture();
+        let mut options = LatticeOptions::new(&Mode::Normal);
+        options.max_grouping_len = Some(1);
+        assert_eq!(
+            sudachi_unknown_words(&fixture, "ttt", &options),
+            vec![(0, 1, 3), (0, 2, 3), (1, 2, 3), (1, 3, 3), (2, 3, 3)]
+        );
+    }
+
+    /// Break characters (#1353) cut the run and the ladder in the Sudachi
+    /// format too: `.` is KATAKANA like `t`.
+    #[test]
+    fn sudachi_break_characters_cut_runs() {
+        let fixture = sudachi_fixture();
+        let breaks = BreakCharacters::new(".");
+        let mut options = LatticeOptions::new(&Mode::Normal);
+        options.break_characters = Some(&breaks);
+        assert_eq!(
+            sudachi_unknown_words(&fixture, "tt.t", &options),
+            vec![(0, 1, 3), (0, 2, 3), (1, 2, 3), (2, 3, 3), (3, 4, 3)]
+        );
+        options.break_characters = None;
+        assert_eq!(
+            sudachi_unknown_words(&fixture, "tt.t", &options),
+            vec![
+                (0, 1, 3),
+                (0, 2, 3),
+                (0, 4, 3),
+                (1, 2, 3),
+                (1, 3, 3),
+                (1, 4, 3),
+                (2, 3, 3),
+                (2, 4, 3),
+                (3, 4, 3)
+            ]
+        );
+    }
+
+    /// Where a left edge owns the whitespace before a position, the
+    /// candidates there are added out of line (#1117); they follow the
+    /// Sudachi format too: the system word `k ` owns the space before `x`,
+    /// which gets the fallback only. (`k` creates no unknown word, as
+    /// KANJI has `invoke` off and `k ` starts there, so nothing ends at the
+    /// space.)
+    #[test]
+    fn sudachi_unknown_words_where_a_left_edge_owns_the_whitespace() {
+        let fixture = sudachi_fixture();
+        let whitespace = WhitespaceClassifier::new(&fixture.char_definitions).unwrap();
+        let table = SpacePenaltyTable::from_costs(&[0, 0], &[0; 5], Some(whitespace));
+        let mut options = LatticeOptions::new(&Mode::Normal);
+        options.space_penalty = Some(&table);
+        assert_eq!(
+            sudachi_unknown_words(&fixture, "k x", &options),
+            vec![(2, 3, 0)]
+        );
+    }
+
+    /// With whitespace skipped, a character is whitespace in the Sudachi
+    /// format only when SPACE is its only category: U+3000 (SPACE alone) is
+    /// skipped, and nothing starts at it, while U+0301 (every category, as
+    /// the combining marks are) is not, and gets the fallback. Both lie
+    /// above U+00FF, where the lattice reads their categories.
+    #[test]
+    fn sudachi_whitespace_is_space_alone() {
+        let fixture = sudachi_fixture();
+        let whitespace = WhitespaceClassifier::new(&fixture.char_definitions).unwrap();
+        let mut options = LatticeOptions::new(&Mode::Normal);
+        options.skip_whitespace = Some(&whitespace);
+
+        let words = sudachi_unknown_words(&fixture, "t\u{3000}t", &options);
+        assert!(words.iter().all(|&(start, _, _)| start != 1), "{words:?}");
+        let words = sudachi_unknown_words(&fixture, "t\u{301}", &options);
+        assert!(words.contains(&(1, 2, 0)), "{words:?}");
+    }
+
+    /// `unknown_word_candidates`, which the trainer uses, lists the unknown
+    /// words of the lattice in the Sudachi format too, where every position
+    /// is reachable.
+    #[test]
+    fn sudachi_unknown_word_candidates_match_the_lattice() {
+        use crate::viterbi::UnknownWordCandidate;
+
+        let fixture = sudachi_fixture();
+        let options = LatticeOptions::new(&Mode::Normal);
+        let mut lattice = Lattice::default();
+        let mut candidates = Vec::new();
+        for text in ["tx", "zt", "at", "m", "kms", "rxqk", "tqk", "ttt"] {
+            lattice.unknown_word_candidates(
+                &fixture.dict,
+                &fixture.char_definitions,
+                &fixture.unknown_dictionary,
+                text,
+                None,
+                None,
+                &mut candidates,
+            );
+            let mut listed: Vec<(usize, usize, u32)> = candidates
+                .iter()
+                .map(
+                    |&UnknownWordCandidate {
+                         start_char,
+                         end_char,
+                         word_id,
+                     }| (start_char, end_char, word_id),
+                )
+                .collect();
+            listed.sort_unstable();
+            assert_eq!(
+                listed,
+                sudachi_unknown_words(&fixture, text, &options),
+                "{text}"
+            );
+        }
+    }
+
     // Break characters (#1353).
 
     /// The dictionary of the break-character tests, with `.` standing in for
     /// `・`: `a`, `b` and `.` share the category A (grouping, `invoke` on,
-    /// length 2), as the bundled dictionaries put `・` in KATAKANA; `h` is H
+    /// length 2), as IPADIC's and UniDic's `char.def` put `・` in KATAKANA;
+    /// `h` is H
     /// (no grouping, `invoke` off, length 1); every other character is
     /// DEFAULT (grouping, `invoke` off). The system words are `a.b` and `h.`,
     /// which cross a boundary, `.` and `..`, made of break characters only,

@@ -64,9 +64,12 @@ SudachiDict の辞書フォーマットと品詞タグの詳細については [
 
 ## Sudachi との挙動の違い
 
-この辞書は SudachiDict の語彙とラティスの挙動を再現しますが、Sudachi
-エンジンのプラグイン（カタカナ・数値の結合、入力正規化、A/B/C 分割
-モード）は再現しません。詳細は Lindera ドキュメントの
+この辞書は SudachiDict の語彙とラティスの挙動を再現し、Sudachi 自身の
+`char.def` を Sudachi と同じ規則で読みます（`metadata.json` の
+`"char_def_format": "sudachi"`）。ただし、Sudachi エンジンのプラグイン
+（カタカナ・数値の結合、入力正規化、A/B/C 分割モード）と、ラテン・ギリシャ・
+キリル文字の並びの途中から語を始めない Sudachi の規則は再現しません。
+詳細は Lindera ドキュメントの
 [SudachiDict ページ](https://lindera.github.io/docs/sudachidict.html)を
 参照してください。
 

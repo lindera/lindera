@@ -91,7 +91,7 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 - `--max-grouping-len`: 未知語グルーピングの上限（先頭を除いた文字数。MeCab の `max-grouping-size` に相当し、MeCab のデフォルトは 24）。上限は各位置で判定され、ラン（MeCab と同じく、どの文字も直前の文字と `char.def` の文字種を共有する連続）が上限を超える位置ではグルーピング候補を出さず、1 文字候補（および候補ラダーと辞書語）が残ります。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になります。`0` または省略: 無制限。例は [Segmenter](../lindera/segmenter.md) のドキュメントを参照
 - `--disable-unknown-word-ladder`: MeCab/Vibrato 由来の未知語候補ラダー（`char.def` の `LENGTH` フィールド）を無効化する。デフォルトで有効。無効にすると、v6 より前と同じくこれらの候補を作らない。ただし、グルーピングした未知語の内側から始まる未知語など、その後の変更による出力の違いは残る。[Segmenter](../lindera/segmenter.md#未知語のグルーピング) のドキュメントを参照
 - `--break-characters <CHARS>`: 区切り文字（`CHARS` の各文字。デフォルト: `・`）。どのモードでも未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたぎません。ユーザー辞書の語と、区切り文字だけからなる語は残ります。[Segmenter](../lindera/segmenter.md#区切り文字) のドキュメントを参照
-- `--disable-break-characters`: 区切り文字を使わず、MeCab と同じ分割にします。カタカナの未知語は `・` をまたぎ（`レノン・ジョン` は 1 語のまま）、その前が辞書語ならそこで区切ります（`ジョン・レノン` は区切る）。`--break-characters` とは同時に指定できません
+- `--disable-break-characters`: 区切り文字を使わず、MeCab と同じ分割にします。`char.def` で `・` をカタカナのカテゴリに入れている辞書（IPADIC と UniDic は入れている。SudachiDict は入れていない）では、カタカナの未知語は `・` をまたぎ（`レノン・ジョン` は 1 語のまま）、その前が辞書語ならそこで区切ります（`ジョン・レノン` は区切る）。`--break-characters` とは同時に指定できません
 - `--disable-space-penalty`: 辞書の `metadata.json` に同梱されたルールでデフォルト有効になる左側空白ペナルティ（mecab-ko の `left-space-penalty-factor`。ko-dic は mecab-ko-dic のルールを同梱）を無効にする。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する機能で、`--disable-skip-whitespace` と併せて無効にすると、空白まわりの韓国語の解析について v6.0 以降に入った 2 つの変更（このペナルティと空白の読み飛ばし）がどちらもオフになる。ただし、`."` のような記号の連続が分かれるなど、それ以外の出力の変化は残る。[Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) のドキュメントを参照
 - `--space-penalty-rules`: 辞書のルールの代わりに、明示的な左側空白ペナルティのルールを JSON で指定する。例: `'{"rules":[{"pos":["JKS","JX"],"cost":6000}]}'`。`--disable-space-penalty` とは同時に指定できない
 - `--mmap`: 辞書ディレクトリの単語リストにメモリマップドファイル読み込みを使用する。`embedded://` 辞書、および `mmap` feature が無効な場合は無視される。プロセスがマップを保持している間に辞書ディレクトリを再ビルド・切り詰めると、次回のルックアップで SIGBUS を引き起こす可能性がある。
@@ -703,6 +703,15 @@ Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for 
 ```
 
 `lindera train` も、学習の前に `--char-def` と `--unk-def` を同じように確認します（[学習パイプライン](../development/training_pipeline.md#3-文字定義-chardef)を参照）。
+
+### char.def の形式
+
+辞書の `metadata.json` は、`char_def_format` で `char.def` の形式を選びます（[#1388](https://github.com/lindera/lindera/issues/1388)）：
+
+- `"mecab"`（省略したときの既定）: MeCab の形式です。コードポイントのカテゴリは、それを覆う最後の行が決めます。その先頭のカテゴリ（既定のカテゴリ）だけが未知語を作ります。
+- `"sudachi"`: Sudachi の形式で、SudachiDict が使います。コードポイントは、それを覆うすべての行のカテゴリを持ちます。範囲行には、ファイルが定義したカテゴリのほかに、`ALL`（すべてのカテゴリ）と、フラグ `NOOOVBOW`（その文字から未知語を始めない）・`NOOOVEOW`（その文字の直後から未知語を始めない）を書けます。BMP の外のコードポイントも書けます。ファイルは `DEFAULT` を定義する必要があり、`ALL`・`NOOOVBOW`・`NOOOVEOW` をカテゴリとして定義することはできず、定義できるカテゴリは 64 個までです。未知語は、文字のすべてのカテゴリから、Sudachi と同じ規則で区切ったまとまりの上に作ります。ほかに何も始まらない位置には、Sudachi と同じく `DEFAULT` の 1 文字の未知語を置きます。空白（`--keep-whitespace`・`--disable-skip-whitespace`・左空白ペナルティが扱うもの）とみなすのは、カテゴリが `SPACE` だけの文字です。`ALL` がすべてのカテゴリに入れる結合文字や ZWJ などは、空白とみなしません。
+
+`lindera train` は、`--char-def` を MeCab の形式でだけ読みます。
 
 ### 例
 

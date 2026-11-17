@@ -1,11 +1,14 @@
 //! Break characters: characters that a token does not run across (#1353).
 //!
-//! The bundled dictionaries put `・` (U+30FB) in the katakana category of
-//! their `char.def`, so an unknown katakana word runs through it, and
-//! whether text is split at `・` depends on whether its first word is in the
-//! dictionary: MeCab, and Lindera with no break characters, split
-//! `ジョン・レノン` after the dictionary word `ジョン` but keep the unknown
-//! `レノン・ジョン` whole. With break characters, a boundary between a break
+//! The `char.def` of IPADIC, UniDic, ko-dic, CC-CEDICT and Jieba puts `・`
+//! (U+30FB) in the katakana category, so an unknown katakana word runs
+//! through it, and whether text is split at `・` depends on whether its
+//! first word is in the dictionary: MeCab, and Lindera with no break
+//! characters, split `ジョン・レノン` after the dictionary word `ジョン` but
+//! keep the unknown `レノン・ジョン` whole. (SudachiDict's, which is
+//! Sudachi's own, leaves `・` out of the katakana category since #1388; the
+//! rule does not depend on `char.def`.) With break characters, a boundary
+//! between a break
 //! character and a character that is not one ends every unknown word, in
 //! every mode, and, in Decompose mode, every system-dictionary word (see
 //! [`LatticeOptions::break_characters`]).

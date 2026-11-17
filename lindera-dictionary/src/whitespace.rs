@@ -5,11 +5,13 @@
 //! it skips them in the lattice and does not output them. Lindera uses the
 //! same set for [`LatticeOptions::skip_whitespace`], for the left-space
 //! penalty and for dropping whitespace tokens when `keep_whitespace` is
-//! false.
+//! false. In Sudachi's `char.def` format (#1388), where `ALL` puts
+//! combining marks, variation selectors and ZWJ in every category, a
+//! character is whitespace only when `SPACE` is its only category.
 //!
 //! [`LatticeOptions::skip_whitespace`]: crate::viterbi::LatticeOptions::skip_whitespace
 
-use crate::dictionary::character_definition::{CategoryId, CharacterDefinition};
+use crate::dictionary::character_definition::{CategoryId, CharDefFormat, CharacterDefinition};
 
 /// Precomputed membership test for a dictionary's `SPACE` category.
 ///
@@ -27,6 +29,12 @@ pub struct WhitespaceClassifier {
     category: CategoryId,
     /// Whether any codepoint above U+00FF is in the category.
     above_latin1: bool,
+    /// Whether a character is whitespace only when `SPACE` is its only
+    /// category: in Sudachi's `char.def` format (#1388), `ALL` puts
+    /// combining marks, variation selectors and ZWJ in every category,
+    /// `SPACE` included, which does not make them whitespace. In MeCab's
+    /// format, any character with `SPACE` is whitespace.
+    space_only: bool,
 }
 
 impl WhitespaceClassifier {
@@ -42,18 +50,55 @@ impl WhitespaceClassifier {
     /// category.
     pub fn new(char_definitions: &CharacterDefinition) -> Option<Self> {
         let category = char_definitions.category_id_by_name("SPACE")?;
+        let space_only = char_definitions.format() == CharDefFormat::Sudachi;
+        let is_space =
+            |categories: &[CategoryId]| Self::is_space_in(categories, category, space_only);
         let mut ascii = [false; 256];
-        for (codepoint, is_space) in ascii.iter_mut().enumerate() {
+        for (codepoint, space) in ascii.iter_mut().enumerate() {
             if let Some(c) = char::from_u32(codepoint as u32) {
-                *is_space = char_definitions.lookup_categories(c).contains(&category);
+                *space = is_space(char_definitions.lookup_categories(c));
             }
         }
-        let above_latin1 = char_definitions.has_category_from(category, 256);
+        let above_latin1 = char_definitions.mapping.any_range_from(256, is_space);
         Some(Self {
             ascii,
             category,
             above_latin1,
+            space_only,
         })
+    }
+
+    /// Returns whether a character with `categories` is whitespace.
+    ///
+    /// # Arguments
+    ///
+    /// * `categories` - The categories of the character.
+    /// * `space` - The `SPACE` category.
+    /// * `space_only` - Whether `SPACE` must be the only category (Sudachi's
+    ///   format).
+    ///
+    /// # Returns
+    ///
+    /// `true` for whitespace.
+    #[inline]
+    fn is_space_in(categories: &[CategoryId], space: CategoryId, space_only: bool) -> bool {
+        if space_only {
+            categories == [space].as_slice()
+        } else {
+            categories.contains(&space)
+        }
+    }
+
+    /// Returns whether a character is whitespace only when `SPACE` is its
+    /// only category (Sudachi's `char.def` format, #1388), rather than
+    /// whenever it has `SPACE`.
+    ///
+    /// # Returns
+    ///
+    /// `true` in Sudachi's format.
+    #[inline]
+    pub(crate) fn space_only(&self) -> bool {
+        self.space_only
     }
 
     /// Returns the `SPACE` category id the classifier tests for.
@@ -91,7 +136,8 @@ impl WhitespaceClassifier {
         self.above_latin1
     }
 
-    /// Returns whether `c` is in the `SPACE` category.
+    /// Returns whether `c` is whitespace: in the `SPACE` category, and, in
+    /// Sudachi's `char.def` format, in no other category.
     ///
     /// # Arguments
     ///
@@ -101,7 +147,7 @@ impl WhitespaceClassifier {
     ///
     /// # Returns
     ///
-    /// `true` for a `SPACE`-category character.
+    /// `true` for whitespace.
     #[inline]
     pub fn is_space(&self, c: char, char_definitions: &CharacterDefinition) -> bool {
         let codepoint = c as u32;
@@ -109,9 +155,11 @@ impl WhitespaceClassifier {
             self.ascii[codepoint as usize]
         } else {
             self.above_latin1
-                && char_definitions
-                    .lookup_categories(c)
-                    .contains(&self.category)
+                && Self::is_space_in(
+                    char_definitions.lookup_categories(c),
+                    self.category,
+                    self.space_only,
+                )
         }
     }
 }
@@ -186,5 +234,53 @@ mod tests {
         assert!(classifier.is_space('\u{3000}', &definitions));
         assert!(!classifier.is_space('\u{3001}', &definitions));
         assert!(!classifier.is_space('\u{2FFF}', &definitions));
+    }
+
+    /// #1388: in Sudachi's format, a character is whitespace only when
+    /// `SPACE` is its only category: `ALL` puts combining marks, variation
+    /// selectors and ZWJ in `SPACE` too. In MeCab's format, the same rows
+    /// make them whitespace.
+    #[test]
+    fn test_sudachi_format_needs_space_alone() {
+        // DEFAULT = 0, SPACE = 1, ALPHA = 2; U+0020 and U+3000 are SPACE
+        // alone, U+0301 and U+200D are every category (`ALL`).
+        let rows = |c: u32, buf: &mut Vec<CategoryId>| match c {
+            0x20 | 0x3000 => buf.push(CategoryId(1)),
+            0x301 | 0x200D => buf.extend([CategoryId(0), CategoryId(1), CategoryId(2)]),
+            _ => buf.push(CategoryId(0)),
+        };
+        let boundaries = vec![0, 0x20, 0x21, 0x301, 0x302, 0x200D, 0x200E, 0x3000, 0x3001];
+        let category = CategoryData {
+            invoke: false,
+            group: true,
+            length: 0,
+        };
+        let names = || vec!["DEFAULT".into(), "SPACE".into(), "ALPHA".into()];
+        let sudachi = CharacterDefinition::new_sudachi(
+            vec![category; 3],
+            names(),
+            LookupTable::from_fn(boundaries.clone(), &rows),
+            vec![0; boundaries.len()],
+        );
+        let mecab = CharacterDefinition::new(
+            vec![category; 3],
+            names(),
+            LookupTable::from_fn(boundaries, &rows),
+        );
+
+        let classifier = WhitespaceClassifier::new(&sudachi).unwrap();
+        assert!(classifier.has_members_above_latin1());
+        for (c, expected) in [
+            (' ', true),
+            ('\u{3000}', true),
+            ('\u{301}', false),
+            ('\u{200D}', false),
+        ] {
+            assert_eq!(classifier.is_space(c, &sudachi), expected, "{c:?}");
+        }
+        let classifier = WhitespaceClassifier::new(&mecab).unwrap();
+        for c in [' ', '\u{3000}', '\u{301}', '\u{200D}'] {
+            assert!(classifier.is_space(c, &mecab), "{c:?}");
+        }
     }
 }

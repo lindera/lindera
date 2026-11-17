@@ -331,6 +331,7 @@ impl DictionaryBuilder {
     ) -> LinderaResult<CharacterDefinition> {
         CharacterDefinitionBuilderOptions::default()
             .encoding(self.metadata.encoding.clone())
+            .format(self.metadata.char_def_format)
             .builder()
             .build(input_dir, output_dir)
     }

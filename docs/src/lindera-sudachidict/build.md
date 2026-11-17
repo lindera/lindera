@@ -7,16 +7,16 @@ This page describes how to build the SudachiDict dictionary from source files.
 Download the SudachiDict source archive and build the dictionary:
 
 ```shell
-% curl -L -o /tmp/sudachidict-20260723.tar.gz "https://lindera.dev/sudachidict-20260723.tar.gz"
-% tar zxvf /tmp/sudachidict-20260723.tar.gz -C /tmp
+% curl -L -o /tmp/sudachidict-0.1.0-20260723.tar.gz "https://lindera.dev/sudachidict-0.1.0-20260723.tar.gz"
+% tar zxvf /tmp/sudachidict-0.1.0-20260723.tar.gz -C /tmp
 
 % lindera build \
-  --src /tmp/sudachidict-20260723 \
+  --src /tmp/sudachidict-0.1.0-20260723 \
   --dest /tmp/lindera-sudachidict \
   --metadata ./lindera-sudachidict/metadata.json
 ```
 
-The archive bundles the raw lexicons (small + core + notcore), the connection matrix, and pre-aligned `char.def` / `unk.def`, so no manual preprocessing is needed. The built dictionary is about 570MB.
+The archive bundles the raw lexicons (small + core + notcore), the connection matrix, Sudachi's own `char.def` (from sudachi.rs `v0.7.0`, which `"char_def_format": "sudachi"` in `metadata.json` reads as Sudachi does) and the pre-aligned `unk.def`, so no manual preprocessing is needed. The built dictionary is about 570MB.
 
 > [!TIP]
 > To build from a newer upstream SudachiDict release than the bundled one, see

@@ -38,5 +38,6 @@
     ]
   },
   "connection_id_mapping": false,
-  "skip_whitespace": false
+  "skip_whitespace": false,
+  "char_def_format": "sudachi"
 }

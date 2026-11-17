@@ -2,7 +2,7 @@
 
 ## Dictionary version
 
-This repository contains [SudachiDict](https://github.com/lindera/sudachidict) 20260723 (small + core + notcore lexicons).
+This repository contains [SudachiDict](https://github.com/lindera/sudachidict) 20260723 (small + core + notcore lexicons), from the mirror's tag `0.1.0-20260723`, with Sudachi's own `char.def` (sudachi.rs `v0.7.0`), which `"char_def_format": "sudachi"` in `metadata.json` reads as Sudachi does.
 
 ## Dictionary format
 
