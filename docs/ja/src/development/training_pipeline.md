@@ -143,6 +143,12 @@ MeCab と同じく、範囲行が指せるのはそれより前の行で定義�
 Error: LinderaError { kind: Args, source: failed to parse char.def: LinderaError(kind=Content, source=char.def: line 1: category KATAKANA is not defined; a range line can only name a category defined on an earlier line) }
 ```
 
+`lindera train` は、`char.def` を MeCab の形式でだけ読みます。辞書が `metadata.json` の `"char_def_format": "sudachi"` で選ぶ Sudachi の形式（[`lindera build`](../lindera-cli/commands.md#chardef-の形式) を参照）では、文字に `%t` のための既定のカテゴリがありません。Sudachi 自身の `char.def`（SudachiDict が使う sudachi.rs `v0.7.0` のもの）を渡すと、`lindera train` は最初のフラグで止まります：
+
+```text
+Error: LinderaError { kind: Args, source: failed to parse char.def: LinderaError(kind=Content, source=char.def: line 78: category NOOOVBOW is not defined; a range line can only name a category defined on an earlier line (NOOOVBOW is the syntax of Sudachi's char.def, which a dictionary selects with "char_def_format": "sudachi" in its metadata.json; lindera train reads MeCab's format only)) }
+```
+
 `SPACE` カテゴリと、`unk.def` のその行は残してください。MeCab は、すべての `char.def` に `DEFAULT` と `SPACE` を求めます。また、すべてのカテゴリに `unk.def` の行が 1 つ以上必要です（次の節を参照）。Segmenter は `SPACE` の文字を空白として扱い、デフォルトでは MeCab と同じく読み飛ばして出力しません。`char.def` に `SPACE` カテゴリがない辞書は、`--keep-whitespace` を指定しないと使えず、`lindera tokenize` は `SPACE category is not defined in the dictionary (char.def)` で失敗します。
 
 学習は、ランタイムと同じコード（`Lattice::unknown_word_candidates`）で未知語候補を作ります。そのため、ビルドした辞書が作る候補に対して重みを学習します。

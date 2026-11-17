@@ -143,6 +143,12 @@ As in MeCab, a range line can name only categories defined on an earlier line, a
 Error: LinderaError { kind: Args, source: failed to parse char.def: LinderaError(kind=Content, source=char.def: line 1: category KATAKANA is not defined; a range line can only name a category defined on an earlier line) }
 ```
 
+`lindera train` reads `char.def` in MeCab's format only. Sudachi's format, which a dictionary selects with `"char_def_format": "sudachi"` in its `metadata.json` (see [`lindera build`](../lindera-cli/commands.md#chardef-format)), gives a character no default category for `%t`. With Sudachi's own `char.def` (sudachi.rs `v0.7.0`, as SudachiDict uses it), `lindera train` stops at its first flag:
+
+```text
+Error: LinderaError { kind: Args, source: failed to parse char.def: LinderaError(kind=Content, source=char.def: line 78: category NOOOVBOW is not defined; a range line can only name a category defined on an earlier line (NOOOVBOW is the syntax of Sudachi's char.def, which a dictionary selects with "char_def_format": "sudachi" in its metadata.json; lindera train reads MeCab's format only)) }
+```
+
 Keep the `SPACE` category, which MeCab requires in every `char.def` along with `DEFAULT`, and its line in `unk.def`: every category needs at least one `unk.def` line (see the next section). The segmenter treats its characters as whitespace: by default it skips them, as MeCab does, and does not output them. Without `--keep-whitespace`, a dictionary whose `char.def` has no `SPACE` category cannot be used: `lindera tokenize` fails with `SPACE category is not defined in the dictionary (char.def)`.
 
 Training creates the unknown-word candidates with the runtime's own code (`Lattice::unknown_word_candidates`), so it learns weights for the candidates that the built dictionary produces:

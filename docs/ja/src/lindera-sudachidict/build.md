@@ -7,16 +7,16 @@
 SudachiDict のソースアーカイブをダウンロードし、辞書をビルドします:
 
 ```shell
-% curl -L -o /tmp/sudachidict-20260723.tar.gz "https://lindera.dev/sudachidict-20260723.tar.gz"
-% tar zxvf /tmp/sudachidict-20260723.tar.gz -C /tmp
+% curl -L -o /tmp/sudachidict-0.1.0-20260723.tar.gz "https://lindera.dev/sudachidict-0.1.0-20260723.tar.gz"
+% tar zxvf /tmp/sudachidict-0.1.0-20260723.tar.gz -C /tmp
 
 % lindera build \
-  --src /tmp/sudachidict-20260723 \
+  --src /tmp/sudachidict-0.1.0-20260723 \
   --dest /tmp/lindera-sudachidict \
   --metadata ./lindera-sudachidict/metadata.json
 ```
 
-アーカイブには raw レキシコン（small + core + notcore）、連接コスト行列、および位置合わせ済みの `char.def` / `unk.def` が同梱されているため、手動の前処理は不要です。ビルドされた辞書のサイズは約 570MB です。
+アーカイブには raw レキシコン（small + core + notcore）、連接コスト行列、Sudachi 自身の `char.def`（sudachi.rs `v0.7.0` のもの。`metadata.json` の `"char_def_format": "sudachi"` で Sudachi と同じ規則で読みます）、および位置合わせ済みの `unk.def` が同梱されているため、手動の前処理は不要です。ビルドされた辞書のサイズは約 570MB です。
 
 > [!TIP]
 > 同梱バージョンより新しい上流の SudachiDict リリースからビルドするには、

@@ -16,8 +16,8 @@
 関連 Issue: [lindera/lindera#487](https://github.com/lindera/lindera/issues/487)
 
 > [!NOTE]
-> このレシピで生成される辞書は**語彙とラティスの挙動**が Sudachi と一致しますが、
-> Sudachi のエンジンプラグインは再現しません。利用する前に、下記の
+> このレシピで生成される辞書は**語彙・文字種定義・未知語**が Sudachi と一致しますが、
+> Sudachi のエンジンプラグインと、いくつかのエンジンの規則は再現しません。利用する前に、下記の
 > [Sudachi との挙動の違い](#sudachi-との挙動の違い) を確認してください。
 
 ## なぜ SudachiDict か
@@ -57,20 +57,22 @@ SudachiDict の raw 辞書ファイル（最新の日付は
 % unzip -o matrix.def.zip && rm matrix.def.zip
 ```
 
-文字種定義と未知語定義は UniDic 2.1.2 のソース（`lindera-unidic` がビルドに使う
-アーカイブと同じもの）から取得します:
+文字種定義と未知語定義は、Sudachi 自身のものを sudachi.rs の `v0.7.0` タグから
+取得します（Sudachi `v0.8.2` も同じ 2 ファイルを同梱しています）。`unk.def` は
+UniDic 2.1.2 のものと同じファイルです。`char.def` は UniDic のものに Sudachi が修正と
+Sudachi だけが読む書き方を加えたもので、下の[メタデータ](#メタデータ)でその形式を
+選びます:
 
 ```shell
-% curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
-% unzip -o -q /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
-% cp /tmp/unidic-mecab-2.1.2_src/char.def /tmp/unidic-mecab-2.1.2_src/unk.def .
+% curl -LO "https://raw.githubusercontent.com/WorksApplications/sudachi.rs/v0.7.0/resources/char.def"
+% curl -LO "https://raw.githubusercontent.com/WorksApplications/sudachi.rs/v0.7.0/resources/unk.def"
 ```
 
 ## unk.def を SudachiDict のカラムレイアウトに揃える
 
 SudachiDict の辞書行は 19 カラムで、カラム 4（0 始まり）は表示用の表層形（display
-surface）です。そのため形態素の詳細情報はカラム 5 から始まります。一方 UniDic の
-`unk.def` は品詞がカラム 4 にあります。プレースホルダの表示カラムを挿入して、
+surface）です。そのため形態素の詳細情報はカラム 5 から始まります。一方 Sudachi の
+`unk.def` は、UniDic のものと同じく品詞がカラム 4 にあります。プレースホルダの表示カラムを挿入して、
 未知語の詳細情報が辞書語と同じインデックスに来るようにします:
 
 ```shell
@@ -116,13 +118,23 @@ surface）です。そのため形態素の詳細情報はカラム 5 から始�
     ]
   },
   "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] },
-  "skip_whitespace": false
+  "skip_whitespace": false,
+  "char_def_format": "sudachi"
 }
 ```
 
 `skip_whitespace: false` は、Sudachi と同様に、また SudachiDict のコストが前提と
 しているとおりに、空白をラティスに残します。指定しないと Lindera は MeCab と
 同様に空白を読み飛ばします（[Segmenter](./lindera/segmenter.md#空白文字の扱い) を参照）。
+
+`char_def_format: "sudachi"` は、`char.def` を Sudachi と同じ規則で読みます。
+コードポイントは、それを覆うすべての行のカテゴリを持ちます。`ALL` はすべての
+カテゴリを表し、フラグ `NOOOVBOW` と `NOOOVEOW` は、その文字から、またはその文字の
+直後から未知語を始めないようにします。未知語は、文字のすべてのカテゴリから、
+Sudachi と同じ規則で区切ったまとまりの上に作ります。ほかに何も始まらない位置には、
+Sudachi と同じく `DEFAULT` の 1 文字の未知語を置きます。指定しないと、ビルダーは
+`char.def` を MeCab の形式で読み、Sudachi のファイルの最初の `NOOOVBOW` で止まります
+（[`lindera build`](./lindera-cli/commands.md#build) を参照）。
 
 ## ビルドと確認
 
@@ -161,13 +173,24 @@ small + core + notcore（2026-07-23）のビルドは Lindera v6 で約 10 秒�
 
 ## Sudachi との挙動の違い
 
-ラティス層は等価であることを検証済みです: 行列ファイルは SudachiDict の公式ビルドが
-使用するものと byte 単位で同一（sha256）であり、Sudachi のパス書き換え・入力正規化
-プラグインを無効にすると、Sudachi エンジンはこの辞書を使う Lindera と同じ最小コスト
-パスを生成します。残る違いは辞書データではなく Sudachi の*エンジンプラグイン*です:
+辞書のデータは Sudachi のものです。行列ファイルは SudachiDict の公式ビルドが使う
+ものと byte 単位で同一（sha256）で、`char.def` と `unk.def` は Sudachi 自身のもの
+です。`char_def_format: "sudachi"` により、Lindera は `char.def` の読み方と未知語の
+作り方を Sudachi に合わせます（[#1388](https://github.com/lindera/lindera/issues/1388)）。
+同じ語彙から組んだ sudachi.rs `v0.7.0` と、Sudachi の入力テキストと経路書き換えの
+プラグインを外して（未知語のプラグインだけ、C 単位、文に分けない）比べると、
+『坊っちゃん』（`resources/bocchan.txt`）の 505 行のうち 502 行で同じトークンに
+なります。残る 2 行はコストの等しい経路が 2 つあり、Sudachi が他方を選ぶ行です
+（Lindera の `大学卒業 / 生` に対し Sudachi は `大学 / 卒業生`）。残る 1 行は URL を
+含む行で、Sudachi は辞書語 `http://` を使います。語彙はこの語を `http://`
+と書いており、ビルダーはこれをまだ復号しません（[#1389](https://github.com/lindera/lindera/issues/1389)）。
+残る違いはエンジンにあります:
 
 | Sudachi の機能 | 効果 | Lindera での状況 |
 | --- | --- | --- |
+| ラテン・ギリシャ・キリル文字（`ALPHA`・`GREEK`・`CYRILLIC`。結合文字・異体字セレクタ・ZWJ のように `ALL` のものも含む）で、直前の文字とカテゴリを共有する文字からは、語を始めない（`can_bow`） | そのような文字の直前で辞書語が終わることもない。結合アクセントの付いた `cafe` は 1 つの未知語 `café` になり、異体字セレクタの付いた `♥` は 1 語になる | 未対応 |
+| コストの等しい経路の選び方 | MeCab の規則とは別の経路を選ぶ | Lindera は MeCab と同じ規則で選ぶ |
+| ほかに何も始まらない位置の代わりの語（`SimpleOovPlugin`） | 語を始められる次の文字（`can_bow`）まで伸びる | 1 文字 |
 | `JoinKatakanaOovPlugin` | カタカナ連続を結合するパス書き換え（例: よりコストの低い `サブ`+`スク` のパスではなく `サブスク`） | 未対応 |
 | `JoinNumericPlugin` | 数値列の結合 | 未対応 |
 | `DefaultInputTextPlugin` | 検索前の NFKC + 小文字化による正規化（例: 半角の `AI` が正規化済みエントリにヒット） | Lindera の character filter（`unicode_normalize`）で部分的に代替可能 |
@@ -175,8 +198,9 @@ small + core + notcore（2026-07-23）のビルドは Lindera v6 で約 10 秒�
 
 ## ライセンス
 
-SudachiDict は Apache-2.0 です。`matrix.def`、`char.def`、`unk.def` は UniDic の一部です
+SudachiDict は Apache-2.0 です。`matrix.def` は UniDic の一部です
 （BSD/GPL/LGPL のトリプルライセンス —
 [SudachiDict の LEGAL notice](https://github.com/WorksApplications/SudachiDict/blob/develop/LEGAL)
-を参照）。このレシピでビルドした辞書は両方を含みます。再配布の前にライセンスを
-確認してください。
+を参照）。`char.def` と `unk.def` は sudachi.rs（Apache-2.0）から取ります。`unk.def` は
+UniDic のものと同じファイルで、`char.def` は UniDic のものに Sudachi が手を加えたものです。
+このレシピでビルドした辞書はこれらを含みます。再配布の前にライセンスを確認してください。
