@@ -358,7 +358,7 @@ Viterbi 探索が最もコストの低い長さを選べるようにします。
 <span class="boring">}</span></code></pre></pre>
 <h2 id="区切り文字"><a class="header" href="#区切り文字">区切り文字</a></h2>
 <p>既定では、Segmenter は <code>・</code>（U+30FB）で区切ります。境目とは、区切り文字と区切り文字でない文字の間のことです。どのモードでも未知語は境目をまたがず、Decompose モードではシステム辞書の語もまたぎません。</p>
-<p>同梱の辞書は <code>char.def</code> で <code>・</code> をカタカナのカテゴリに入れているので、この規則が無いと、<code>・</code> でつないだカタカナの並びは、先頭の語が辞書に無いときに 1 つの未知語になります。MeCab と、区切り文字の無い Lindera は、<code>レノン・ジョン</code> を 1 語のまま返し、<code>ジョン・レノン</code> は辞書語の <code>ジョン</code> の後で区切ります。<code>・</code> を区切り文字にすると、どちらも <code>レノン</code>、<code>・</code>、<code>ジョン</code> のような 3 つのトークンに分かれ、検索で <code>サイレント</code> が <code>ザ・サイレント・フォレスト</code> に一致します。MeCab との意図した違いです。</p>
+<p>IPADIC・UniDic・ko-dic・CC-CEDICT・Jieba の <code>char.def</code> は <code>・</code> をカタカナのカテゴリに入れているので、この規則が無いと、<code>・</code> でつないだカタカナの並びは、先頭の語が辞書に無いときに 1 つの未知語になります（SudachiDict の <code>char.def</code> は Sudachi 自身のもので、<code>・</code> をカタカナのカテゴリに入れていません。この規則はどの辞書にも同じように効きます）。MeCab と、区切り文字の無い Lindera は、<code>レノン・ジョン</code> を 1 語のまま返し、<code>ジョン・レノン</code> は辞書語の <code>ジョン</code> の後で区切ります。<code>・</code> を区切り文字にすると、どちらも <code>レノン</code>、<code>・</code>、<code>ジョン</code> のような 3 つのトークンに分かれ、検索で <code>サイレント</code> が <code>ザ・サイレント・フォレスト</code> に一致します。MeCab との意図した違いです。</p>
 <p>Decompose モードでは、IPADIC の <code>インフォームド・コンセント</code> や、IPADIC-NEologd と SudachiDict に多くある同様の語のように、内側に境目を持つシステム辞書の語は格子に入りません。その語は、固有の品詞や読みを持たないまま、部分に分かれて出ます。Normal モードはそのような語も残します。ユーザーが意図して登録したユーザー辞書の語と、<code>・</code> のように区切り文字だけからなる語は、どのモードでも残ります。</p>
 <p><code>break_characters</code> は、既定の代わりに、各文字を区切り文字とする文字列を受け取ります。空の文字列にすると MeCab と同じ分割になります:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]

@@ -178,10 +178,10 @@
                     <main>
                         <h1 id="lindera-sudachidict"><a class="header" href="#lindera-sudachidict">Lindera SudachiDict</a></h1>
 <p>Lindera SudachiDict は、Sudachi 形態素解析器が使用する、活発にメンテナンスされている辞書 <a href="https://github.com/WorksApplications/SudachiDict">SudachiDict</a> に基づく日本語辞書クレートです。上流で年に数回更新されているため、最近の語彙（<code>令和</code>、<code>スマホ</code>、<code>推し活</code>、...）が語彙に含まれます。各エントリは 19 フィールドを持ち、正規化表記・分割情報・同義語グループ ID といった SudachiDict 固有のカラムを含みます。</p>
-<p>辞書のソースファイルは <a href="https://github.com/lindera/sudachidict">lindera/sudachidict</a> にミラーされています。同梱バージョンは <code>20260723</code>（small + core + notcore レキシコン）です。</p>
+<p>辞書のソースファイルは <a href="https://github.com/lindera/sudachidict">lindera/sudachidict</a> にミラーされています。同梱バージョンは <code>20260723</code>（small + core + notcore レキシコン）で、Sudachi 自身の <code>char.def</code>（sudachi.rs <code>v0.7.0</code>）を加えたミラーのタグ <code>0.1.0-20260723</code> から取ります。</p>
 <blockquote>
 <p>[!NOTE]
-この辞書は SudachiDict の語彙とラティスの挙動を再現しますが、Sudachi のエンジンプラグイン（カタカナ・数詞の連結、入力正規化、A/B/C 分割モード）は再現しません。詳細は <a href="./sudachidict.html#sudachi-%E3%81%A8%E3%81%AE%E6%8C%99%E5%8B%95%E3%81%AE%E9%81%95%E3%81%84">Sudachi との挙動の違い</a>を参照してください。</p>
+この辞書は SudachiDict の語彙とラティスの挙動を再現し、Sudachi 自身の <code>char.def</code> を Sudachi と同じ規則で読みます。ただし、Sudachi のエンジンプラグイン（カタカナ・数詞の連結、入力正規化、A/B/C 分割モード）と、いくつかのエンジンの規則は再現しません。詳細は <a href="./sudachidict.html#sudachi-%E3%81%A8%E3%81%AE%E6%8C%99%E5%8B%95%E3%81%AE%E9%81%95%E3%81%84">Sudachi との挙動の違い</a>を参照してください。</p>
 </blockquote>
 <h2 id="目次"><a class="header" href="#目次">目次</a></h2>
 <ul>

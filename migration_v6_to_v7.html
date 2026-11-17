@@ -241,6 +241,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>Unknown words start at every position, as in MeCab</strong></td><td>Anyone who segments text with runs of katakana, symbols or Latin letters in normal mode, most visibly katakana joined by <code>・</code> and Korean sentence-final punctuation such as <code>."</code></td><td>Expect such runs to be split where MeCab splits them, and katakana- and Latin-heavy text to take about 13% more instructions; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>Middle dots break unknown words by default</strong></td><td>Anyone who segments Japanese text with katakana joined by <code>・</code>, most visibly unknown names such as <code>レノン・ジョン</code>, and users of decompose mode with dictionaries that have many words with <code>・</code> (IPADIC-NEologd, SudachiDict)</td><td>Expect <code>・</code> to split such runs, and such words in decompose mode; set <code>break_characters: ""</code> (<code>--disable-break-characters</code>) for MeCab's segmentation</td></tr>
 <tr><td><strong>Unknown words come from each character's default category and group the characters that share a category, as in MeCab</strong></td><td>Anyone who segments text where a character with several categories meets other characters; in the bundled dictionaries, a hanja numeral followed by hanja with ko-dic, and <code>〇</code> (U+3007) with ko-dic; Rust code that relies on the order of <code>CharacterDefinition::lookup_categories</code></td><td>Expect such text to be segmented as MeCab segments it (ko-dic <code>三國史記</code> is one <code>SH</code> word, <code>〇〇〇</code> one <code>SY</code> word); no setting restores the v6 behavior</td></tr>
+<tr><td><strong>SudachiDict reads Sudachi's own <code>char.def</code>, as Sudachi does</strong></td><td>Anyone who segments text with SudachiDict, most visibly <code>々</code> before a symbol, unknown katakana that starts with a small katakana or <code>ー</code>, and text with combining marks, variation selectors or ZWJ; anyone who builds a dictionary from Sudachi's <code>char.def</code></td><td>Expect such text to be segmented as Sudachi segments it; to build SudachiDict yourself, set <code>"char_def_format": "sudachi"</code> in its <code>metadata.json</code> (see <a href="#sudachidict-reads-sudachis-own-chardef">SudachiDict reads Sudachi's own <code>char.def</code></a>)</td></tr>
 <tr><td><strong>CC-CEDICT: unknown words cost 400, and the entries made only of Latin letters or only of digits 399</strong></td><td>Anyone who segments text with CC-CEDICT, most visibly entries that mix Latin letters or digits with Chinese characters, such as <code>T恤</code>; anyone who reads its N-best costs</td><td>Expect such entries to be one word, <code>〇</code> and entries such as <code>PK</code> to come with their pinyin and definition, Latin words, kana and numbers to stay one word as in v6, and the costs of paths to change; build a CC-CEDICT dictionary directory from the <code>CC-CEDICT-MeCab-0.1.0-20261021</code> archive</td></tr>
 <tr><td><strong>Jieba: <code>〇</code> is a numeral entry</strong></td><td>Anyone who segments text with <code>〇</code> (U+3007) with Jieba</td><td>Expect each <code>〇</code> to be one numeral word (<code>m</code>, pinyin <code>ling2</code>) instead of part of an unknown word, as MeCab segments it with the same dictionary; build a Jieba dictionary directory from the <code>mecab-jieba-0.1.3</code> archive</td></tr>
 <tr><td><strong>Jieba: costs retrained on UD Chinese GSD</strong></td><td>Anyone who segments text with Jieba; users of simple Jieba user dictionaries</td><td>Expect Chinese text to be segmented as UD Chinese GSD segments it, finer than jieba (<code>中华 / 人民 / 共和 / 国</code>, <code>这 / 个</code>; segmentation F1 on its test split 77.3 → 87.7), and simple user dictionary words to cost −32768; build a Jieba dictionary directory from the <code>mecab-jieba-0.1.3</code> archive</td></tr>
@@ -1068,8 +1069,10 @@ and from 18 to 127 MiB with UniDic.</p>
 (<code>--disable-unknown-word-ladder</code>) still turns off the shorter unknown-word
 candidates, but no longer reproduces the output of Lindera before v6.</p>
 <h2 id="middle-dots-break-unknown-words-by-default"><a class="header" href="#middle-dots-break-unknown-words-by-default">Middle dots break unknown words by default</a></h2>
-<p>The bundled dictionaries put <code>・</code> (U+30FB) in the katakana category of their
-<code>char.def</code>, so a run of katakana joined by <code>・</code> is one unknown word when its
+<p>The <code>char.def</code> of IPADIC, UniDic, ko-dic, CC-CEDICT and Jieba puts <code>・</code>
+(U+30FB) in the katakana category (SudachiDict's no longer does, see
+<a href="#sudachidict-reads-sudachis-own-chardef">SudachiDict reads Sudachi's own <code>char.def</code></a>),
+so a run of katakana joined by <code>・</code> is one unknown word when its
 first word is not in the dictionary, as in MeCab, while a dictionary word
 before <code>・</code> ends there (see
 <a href="#unknown-words-start-at-every-position-as-in-mecab">Unknown words start at every position, as in MeCab</a>).
@@ -1172,6 +1175,38 @@ category first, then the other categories in category id order. The 7.0.0
 version changes (see
 <a href="#dictionary-directories-must-be-rebuilt">Dictionary directories must be rebuilt</a>).</p>
 <p>There is no setting to restore the v6 behavior.</p>
+<h2 id="sudachidict-reads-sudachis-own-chardef"><a class="header" href="#sudachidict-reads-sudachis-own-chardef">SudachiDict reads Sudachi's own char.def</a></h2>
+<p>SudachiDict used to be built with UniDic 2.1.2's <code>char.def</code>, as SudachiDict
+ships none. v7.0.0 builds it with Sudachi's own <code>char.def</code> (sudachi.rs
+<code>v0.7.0</code>) and reads it as Sudachi does
+(<a href="https://github.com/lindera/lindera/issues/1388">#1388</a>), which its
+<code>metadata.json</code> selects with <code>"char_def_format": "sudachi"</code>:</p>
+<ul>
+<li>A code point gets the categories of every line that covers it, <code>ALL</code>
+stands for every category, and the flags <code>NOOOVBOW</code> and <code>NOOOVEOW</code> keep
+unknown words from starting at a character and right after it: small
+katakana, <code>ー</code>, <code>ヽ</code>, <code>ヾ</code>, <code>々</code>, combining marks, variation selectors,
+skin tone modifiers, ZWNJ and ZWJ.</li>
+<li>Unknown words come from every category of a character, over runs cut as
+Sudachi cuts them, and a position where nothing else starts gets a
+one-character unknown word of <code>DEFAULT</code>, as in Sudachi.</li>
+<li>The file maps <code>×</code> and <code>÷</code> to SYMBOL, CR to SPACE and U+9FA6..U+9FFF to
+KANJI, and leaves <code>・</code> out of the katakana category.</li>
+</ul>
+<div class="table-wrapper"><table><thead><tr><th>Input (SudachiDict)</th><th>v7.0.0 before #1388</th><th>v7.0.0 and Sudachi</th></tr></thead><tbody>
+<tr><td><code>時々｜図抜けた</code></td><td><code>時 / 々｜ / 図抜け / た</code></td><td><code>時々 / ｜ / 図抜け / た</code></td></tr>
+<tr><td><code>résumé</code> (with combining accents)</td><td><code>re / ́ / su / me / ́</code></td><td><code>résumé</code></td></tr>
+<tr><td><code>ァィゥェォを並べる</code></td><td><code>ァィゥェォ / を / 並べる</code></td><td><code>ァ / ィ / ゥ / ェ / ォ / を / 並べる</code></td></tr>
+</tbody></table>
+</div>
+<p>On <em>Botchan</em> (<code>resources/bocchan.txt</code>), 5 of its 505 lines change, all of
+them at <code>々</code> before <code>｜</code>, and Lindera now gives the same tokens as sudachi.rs
+<code>v0.7.0</code> (with its input-text and path-rewrite plugins disabled) on 502 of
+the lines, up from 497 (see
+<a href="./sudachidict.html#behavioral-differences-from-sudachi">SudachiDict (Custom Build)</a>
+for the other three). To build SudachiDict yourself, use Sudachi's
+<code>char.def</code> with <code>"char_def_format": "sudachi"</code>; MeCab's format, the default,
+stops at the first <code>NOOOVBOW</code> of the file.</p>
 <h2 id="cc-cedict-unknown-words-no-longer-cost-less-than-dictionary-words"><a class="header" href="#cc-cedict-unknown-words-no-longer-cost-less-than-dictionary-words">CC-CEDICT: unknown words no longer cost less than dictionary words</a></h2>
 <p>v7.0.0 builds the CC-CEDICT dictionary from <code>CC-CEDICT-MeCab-0.1.0-20261021</code>
 instead of <code>CC-CEDICT-MeCab-0.1.0-20200409</code>

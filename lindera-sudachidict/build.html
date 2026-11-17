@@ -180,15 +180,15 @@
 <p>This page describes how to build the SudachiDict dictionary from source files.</p>
 <h2 id="build-system-dictionary"><a class="header" href="#build-system-dictionary">Build system dictionary</a></h2>
 <p>Download the SudachiDict source archive and build the dictionary:</p>
-<pre><code class="language-shell">% curl -L -o /tmp/sudachidict-20260723.tar.gz "https://lindera.dev/sudachidict-20260723.tar.gz"
-% tar zxvf /tmp/sudachidict-20260723.tar.gz -C /tmp
+<pre><code class="language-shell">% curl -L -o /tmp/sudachidict-0.1.0-20260723.tar.gz "https://lindera.dev/sudachidict-0.1.0-20260723.tar.gz"
+% tar zxvf /tmp/sudachidict-0.1.0-20260723.tar.gz -C /tmp
 
 % lindera build \
-  --src /tmp/sudachidict-20260723 \
+  --src /tmp/sudachidict-0.1.0-20260723 \
   --dest /tmp/lindera-sudachidict \
   --metadata ./lindera-sudachidict/metadata.json
 </code></pre>
-<p>The archive bundles the raw lexicons (small + core + notcore), the connection matrix, and pre-aligned <code>char.def</code> / <code>unk.def</code>, so no manual preprocessing is needed. The built dictionary is about 570MB.</p>
+<p>The archive bundles the raw lexicons (small + core + notcore), the connection matrix, Sudachi's own <code>char.def</code> (from sudachi.rs <code>v0.7.0</code>, which <code>"char_def_format": "sudachi"</code> in <code>metadata.json</code> reads as Sudachi does) and the pre-aligned <code>unk.def</code>, so no manual preprocessing is needed. The built dictionary is about 570MB.</p>
 <blockquote>
 <p>[!TIP]
 To build from a newer upstream SudachiDict release than the bundled one, see

@@ -178,10 +178,10 @@
                     <main>
                         <h1 id="lindera-sudachidict"><a class="header" href="#lindera-sudachidict">Lindera SudachiDict</a></h1>
 <p>Lindera SudachiDict is a Japanese dictionary crate based on <a href="https://github.com/WorksApplications/SudachiDict">SudachiDict</a>, the actively maintained dictionary used by the Sudachi morphological analyzer. It is updated several times a year upstream, so recent vocabulary (<code>令和</code>, <code>スマホ</code>, <code>推し活</code>, ...) is in-vocabulary. Each entry has 19 fields, including SudachiDict-specific columns such as the normalized form, split references, and synonym group IDs.</p>
-<p>The dictionary source files are mirrored at <a href="https://github.com/lindera/sudachidict">lindera/sudachidict</a>. The bundled version is <code>20260723</code> (small + core + notcore lexicons).</p>
+<p>The dictionary source files are mirrored at <a href="https://github.com/lindera/sudachidict">lindera/sudachidict</a>. The bundled version is <code>20260723</code> (small + core + notcore lexicons), from the mirror's tag <code>0.1.0-20260723</code>, which adds Sudachi's own <code>char.def</code> (sudachi.rs <code>v0.7.0</code>).</p>
 <blockquote>
 <p>[!NOTE]
-This dictionary reproduces SudachiDict's vocabulary and lattice behavior, but not the Sudachi engine plugins (katakana/numeric joining, input normalization, A/B/C split modes). See <a href="./sudachidict.html#behavioral-differences-from-sudachi">Behavioral differences from Sudachi</a> for details.</p>
+This dictionary reproduces SudachiDict's vocabulary and lattice behavior, and reads Sudachi's own <code>char.def</code> as Sudachi does, but not the Sudachi engine plugins (katakana/numeric joining, input normalization, A/B/C split modes) or a few engine rules. See <a href="./sudachidict.html#behavioral-differences-from-sudachi">Behavioral differences from Sudachi</a> for details.</p>
 </blockquote>
 <h2 id="contents"><a class="header" href="#contents">Contents</a></h2>
 <ul>

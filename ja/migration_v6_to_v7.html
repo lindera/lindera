@@ -238,6 +238,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong>MeCab と同じく、どの位置からも未知語が始まる</strong></td><td>カタカナ・記号・英字が続くテキストを通常モードで分割するユーザー。特に <code>・</code> でつないだカタカナと、<code>."</code> のような韓国語の文末の句読点</td><td>そうした連続が MeCab と同じ位置で分かれること、カタカナや英字の多いテキストで命令数が 13% 程度増えることを前提にする。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>既定で中黒が未知語を区切る</strong></td><td><code>・</code> でつないだカタカナを含む日本語を分割するユーザー。特に <code>レノン・ジョン</code> のような未知の名前と、<code>・</code> を含む語の多い辞書（IPADIC-NEologd・SudachiDict）を decompose モードで使うユーザー</td><td>そうした並びと、decompose モードのそうした語が <code>・</code> で分かれることを前提にする。MeCab と同じ分割にするには <code>break_characters: ""</code>（<code>--disable-break-characters</code>）を設定する</td></tr>
 <tr><td><strong>MeCab と同じく、未知語は文字の既定カテゴリから作り、カテゴリを共有する文字をまとめる</strong></td><td>複数のカテゴリを持つ文字がほかの文字と並ぶテキストを分割するユーザー。同梱の辞書では、ko-dic の漢数字に続く漢字と、ko-dic の <code>〇</code>（U+3007）。<code>CharacterDefinition::lookup_categories</code> の順序に依存する Rust コード</td><td>そうしたテキストが MeCab と同じ分割になることを前提にする（ko-dic の <code>三國史記</code> は 1 つの <code>SH</code>、<code>〇〇〇</code> は 1 つの <code>SY</code>）。v6 の動作に戻す設定はない</td></tr>
+<tr><td><strong>SudachiDict は Sudachi 自身の <code>char.def</code> を Sudachi と同じ規則で読む</strong></td><td>SudachiDict でテキストを分割するユーザー。特に記号の前の <code>々</code>、小書きのカタカナや <code>ー</code> で始まるカタカナの未知語、結合文字・異体字セレクタ・ZWJ を含むテキスト。Sudachi の <code>char.def</code> から辞書をビルドするユーザー</td><td>そうしたテキストが Sudachi と同じように分割されることを前提にする。SudachiDict を自分でビルドするときは、<code>metadata.json</code> に <code>"char_def_format": "sudachi"</code> を書く（<a href="#sudachidict-%E3%81%8C-sudachi-%E8%87%AA%E8%BA%AB%E3%81%AE-chardef-%E3%82%92%E8%AA%AD%E3%82%80">SudachiDict が Sudachi 自身の <code>char.def</code> を読む</a>を参照）</td></tr>
 <tr><td><strong>CC-CEDICT: 未知語のコストは 400、英字だけ・数字だけの見出し語のコストは 399</strong></td><td>CC-CEDICT でテキストを分割するユーザー。特に <code>T恤</code> のように英字や数字と漢字が混ざる見出し語。CC-CEDICT の N-best のコストを読むユーザー</td><td>そうした見出し語が 1 語になること、<code>〇</code> や <code>PK</code> のような見出し語がピンインと定義つきで出ること、英単語・仮名・数字は v6 と同じく 1 語のままであること、パスのコストが変わることを前提にする。CC-CEDICT の辞書ディレクトリは <code>CC-CEDICT-MeCab-0.1.0-20261021</code> のアーカイブからビルドする</td></tr>
 <tr><td><strong>Jieba: <code>〇</code> は数字の見出し語</strong></td><td>Jieba で <code>〇</code>（U+3007）を含むテキストを分割するユーザー</td><td>各 <code>〇</code> が未知語の一部ではなく、数字の 1 語（<code>m</code>、ピンイン <code>ling2</code>）になることを前提にする（同じ辞書の MeCab と同じ）。Jieba の辞書ディレクトリは <code>mecab-jieba-0.1.3</code> のアーカイブからビルドする</td></tr>
 <tr><td><strong>Jieba: UD Chinese GSD でコストを学習し直した</strong></td><td>Jieba でテキストを解析するユーザー。Jieba の簡易形式のユーザー辞書を使うユーザー</td><td>中国語のテキストが UD Chinese GSD と同じ分け方（jieba より細かい。<code>中华 / 人民 / 共和 / 国</code>、<code>这 / 个</code>。その test の分割の F1 は 77.3 → 87.7）になり、簡易形式のユーザー辞書の語のコストが −32768 になることを前提にする。Jieba の辞書ディレクトリは <code>mecab-jieba-0.1.3</code> のアーカイブからビルドする</td></tr>
@@ -992,7 +993,9 @@ CC-CEDICT では英単語と仮名の連続が v6 と同じく 1 語のままで
 （<code>--disable-unknown-word-ladder</code>）は引き続き短い未知語候補を無効にしますが、
 v6 より前の Lindera の出力は再現しなくなりました。</p>
 <h2 id="既定で中黒が未知語を区切る"><a class="header" href="#既定で中黒が未知語を区切る">既定で中黒が未知語を区切る</a></h2>
-<p>同梱の辞書は <code>char.def</code> で <code>・</code>（U+30FB）をカタカナのカテゴリに入れているため、
+<p>IPADIC・UniDic・ko-dic・CC-CEDICT・Jieba の <code>char.def</code> は <code>・</code>（U+30FB）を
+カタカナのカテゴリに入れているため（SudachiDict のものは入れなくなりました。
+<a href="#sudachidict-%E3%81%8C-sudachi-%E8%87%AA%E8%BA%AB%E3%81%AE-chardef-%E3%82%92%E8%AA%AD%E3%82%80">SudachiDict が Sudachi 自身の <code>char.def</code> を読む</a>を参照）、
 <code>・</code> でつないだカタカナの並びは、先頭の語が辞書に無いと、MeCab と同じく 1 つの
 未知語になり、<code>・</code> の前が辞書語ならそこで区切られます
 （<a href="#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E3%81%A9%E3%81%AE%E4%BD%8D%E7%BD%AE%E3%81%8B%E3%82%89%E3%82%82%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%8C%E5%A7%8B%E3%81%BE%E3%82%8B">MeCab と同じく、どの位置からも未知語が始まる</a>を参照）。
@@ -1077,6 +1080,36 @@ IPADIC-NEologd・UniDic・ko-dic・CC-CEDICT・Jieba のすべてで MeCab と�
 <code>char_def.bin</code> はこの順に保存するため、辞書の形式バージョンが変わります
 （<a href="#%E8%BE%9E%E6%9B%B8%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E3%81%AE%E5%86%8D%E3%83%93%E3%83%AB%E3%83%89%E3%81%8C%E5%BF%85%E8%A6%81">辞書ディレクトリの再ビルドが必要</a>を参照）。</p>
 <p>v6 の動作に戻す設定はありません。</p>
+<h2 id="sudachidict-が-sudachi-自身の-chardef-を読む"><a class="header" href="#sudachidict-が-sudachi-自身の-chardef-を読む">SudachiDict が Sudachi 自身の char.def を読む</a></h2>
+<p>SudachiDict は <code>char.def</code> を同梱していないため、これまでは UniDic 2.1.2 の
+<code>char.def</code> でビルドしていました。v7.0.0 は Sudachi 自身の <code>char.def</code>（sudachi.rs
+<code>v0.7.0</code>）でビルドし、Sudachi と同じ規則で読みます
+（<a href="https://github.com/lindera/lindera/issues/1388">#1388</a>）。その形式は
+<code>metadata.json</code> の <code>"char_def_format": "sudachi"</code> で選びます:</p>
+<ul>
+<li>コードポイントは、それを覆うすべての行のカテゴリを持ちます。<code>ALL</code> はすべての
+カテゴリを表し、フラグ <code>NOOOVBOW</code> と <code>NOOOVEOW</code> は、その文字から、またはその
+文字の直後から未知語を始めないようにします。対象は、小書きのカタカナ、<code>ー</code>、
+<code>ヽ</code>、<code>ヾ</code>、<code>々</code>、結合文字、異体字セレクタ、肌の色の修飾子、ZWNJ、ZWJ です。</li>
+<li>未知語は、文字のすべてのカテゴリから、Sudachi と同じ規則で区切ったまとまりの
+上に作ります。ほかに何も始まらない位置には、Sudachi と同じく <code>DEFAULT</code> の
+1 文字の未知語を置きます。</li>
+<li>このファイルは <code>×</code> と <code>÷</code> を SYMBOL に、CR を SPACE に、U+9FA6..U+9FFF を
+KANJI に入れ、<code>・</code> をカタカナのカテゴリから外しています。</li>
+</ul>
+<div class="table-wrapper"><table><thead><tr><th>入力（SudachiDict）</th><th>#1388 より前の v7.0.0</th><th>v7.0.0 と Sudachi</th></tr></thead><tbody>
+<tr><td><code>時々｜図抜けた</code></td><td><code>時 / 々｜ / 図抜け / た</code></td><td><code>時々 / ｜ / 図抜け / た</code></td></tr>
+<tr><td><code>résumé</code>（結合アクセント付き）</td><td><code>re / ́ / su / me / ́</code></td><td><code>résumé</code></td></tr>
+<tr><td><code>ァィゥェォを並べる</code></td><td><code>ァィゥェォ / を / 並べる</code></td><td><code>ァ / ィ / ゥ / ェ / ォ / を / 並べる</code></td></tr>
+</tbody></table>
+</div>
+<p>『坊っちゃん』（<code>resources/bocchan.txt</code>）では、505 行のうち 5 行が変わり、
+どれも <code>｜</code> の前の <code>々</code> の箇所です。sudachi.rs <code>v0.7.0</code>（入力テキストと経路書き換えの
+プラグインを外したもの）と同じトークンになる行は、497 行から 502 行に増えました
+（残る 3 行は <a href="./sudachidict.html#sudachi-%E3%81%A8%E3%81%AE%E6%8C%99%E5%8B%95%E3%81%AE%E9%81%95%E3%81%84">SudachiDict（カスタムビルド）</a>
+を参照）。SudachiDict を自分でビルドするときは、Sudachi の <code>char.def</code> と
+<code>"char_def_format": "sudachi"</code> を使います。既定の MeCab の形式では、ファイルの
+最初の <code>NOOOVBOW</code> で止まります。</p>
 <h2 id="cc-cedict-未知語は辞書語より安くならない"><a class="header" href="#cc-cedict-未知語は辞書語より安くならない">CC-CEDICT: 未知語は辞書語より安くならない</a></h2>
 <p>v7.0.0 は CC-CEDICT 辞書を <code>CC-CEDICT-MeCab-0.1.0-20200409</code> ではなく
 <code>CC-CEDICT-MeCab-0.1.0-20261021</code> からビルドします

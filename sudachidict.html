@@ -194,8 +194,9 @@ newer upstream release than the bundled one, or to build a custom variant
 <p>Related issue: <a href="https://github.com/lindera/lindera/issues/487">lindera/lindera#487</a></p>
 <blockquote>
 <p>[!NOTE]
-This recipe produces a dictionary whose <strong>vocabulary and lattice behavior</strong>
-match Sudachi, but it does not reproduce Sudachi's engine plugins.
+This recipe produces a dictionary whose <strong>vocabulary, character
+definitions and unknown words</strong> match Sudachi, but it does not reproduce
+Sudachi's engine plugins and a few engine rules.
 See <a href="#behavioral-differences-from-sudachi">Behavioral differences</a> below
 before relying on it.</p>
 </blockquote>
@@ -229,17 +230,20 @@ the UniDic 2.1.2 matrix (SudachiDict entries use UniDic context IDs):</p>
 <pre><code class="language-shell">% curl -LO "https://d2ej7fkh96fzlu.cloudfront.net/sudachidict-raw/matrix.def.zip"
 % unzip -o matrix.def.zip &amp;&amp; rm matrix.def.zip
 </code></pre>
-<p>Character and unknown-word definitions from the UniDic 2.1.2 source
-(the same archive <code>lindera-unidic</code> builds from):</p>
-<pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
-% unzip -o -q /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
-% cp /tmp/unidic-mecab-2.1.2_src/char.def /tmp/unidic-mecab-2.1.2_src/unk.def .
+<p>Sudachi's own character and unknown-word definitions, from the <code>v0.7.0</code> tag
+of sudachi.rs (Sudachi <code>v0.8.2</code> ships the same two files). Its <code>unk.def</code> is
+the same file as UniDic 2.1.2's; its <code>char.def</code> is UniDic's with Sudachi's
+fixes and with syntax that only Sudachi reads, which the
+<a href="#metadata">metadata</a> below selects:</p>
+<pre><code class="language-shell">% curl -LO "https://raw.githubusercontent.com/WorksApplications/sudachi.rs/v0.7.0/resources/char.def"
+% curl -LO "https://raw.githubusercontent.com/WorksApplications/sudachi.rs/v0.7.0/resources/unk.def"
 </code></pre>
 <h2 id="align-unkdef-with-the-sudachidict-column-layout"><a class="header" href="#align-unkdef-with-the-sudachidict-column-layout">Align unk.def with the SudachiDict column layout</a></h2>
 <p>SudachiDict lexicon rows have 19 columns; column 4 (0-based) is the display
-surface, so morphological details start at column 5. UniDic's <code>unk.def</code> has
-its part-of-speech at column 4. Insert a placeholder display column so
-unknown words expose their details at the same indices as dictionary words:</p>
+surface, so morphological details start at column 5. Sudachi's <code>unk.def</code>, like
+UniDic's, has its part-of-speech at column 4. Insert a placeholder display
+column so unknown words expose their details at the same indices as
+dictionary words:</p>
 <pre><code class="language-shell">% awk -F, 'BEGIN{OFS=","} {out=$1 OFS $2 OFS $3 OFS $4 OFS "*"; for(i=5;i&lt;=NF;i++) out=out OFS $i; print out}' unk.def &gt; unk.def.tmp &amp;&amp; mv unk.def.tmp unk.def
 </code></pre>
 <h2 id="metadata"><a class="header" href="#metadata">Metadata</a></h2>
@@ -278,12 +282,22 @@ reserved columns; the rest name SudachiDict's columns in order:</p>
     ]
   },
   "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] },
-  "skip_whitespace": false
+  "skip_whitespace": false,
+  "char_def_format": "sudachi"
 }
 </code></pre>
 <p><code>skip_whitespace: false</code> keeps whitespace in the lattice, as Sudachi does and
 as SudachiDict's costs assume; without it, Lindera skips whitespace as MeCab
 does (see <a href="./lindera/segmenter.html#whitespace-handling">Segmenter</a>).</p>
+<p><code>char_def_format: "sudachi"</code> reads <code>char.def</code> as Sudachi does: a code point
+gets the categories of every line that covers it, <code>ALL</code> stands for every
+category, and the flags <code>NOOOVBOW</code> and <code>NOOOVEOW</code> keep unknown words from
+starting at a character and right after it. Unknown words then come from
+every category of a character, over runs cut as Sudachi cuts them, and a
+position where nothing else starts gets a one-character unknown word of
+<code>DEFAULT</code>, as in Sudachi. Without it, the builder reads <code>char.def</code> in
+MeCab's format, which stops at the first <code>NOOOVBOW</code> of Sudachi's file (see
+<a href="./lindera-cli/commands.html#build"><code>lindera build</code></a>).</p>
 <h2 id="build-and-verify"><a class="header" href="#build-and-verify">Build and verify</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src /tmp/sudachidict-src \
@@ -316,12 +330,24 @@ through the dictionary schema, so they match this dictionary the same way
 they match IPADIC or UniDic.</p>
 </blockquote>
 <h2 id="behavioral-differences-from-sudachi"><a class="header" href="#behavioral-differences-from-sudachi">Behavioral differences from Sudachi</a></h2>
-<p>The lattice layer is verified equivalent: the matrix file is byte-identical
-(sha256) to the one SudachiDict's official build uses, and with Sudachi's
-path-rewrite and input-normalization plugins disabled, the Sudachi engine
-produces the same minimum-cost paths as this dictionary under Lindera.
-The remaining differences are Sudachi <em>engine plugins</em>, not dictionary data:</p>
+<p>The dictionary data is Sudachi's: the matrix file is byte-identical (sha256)
+to the one SudachiDict's official build uses, <code>char.def</code> and <code>unk.def</code> are
+Sudachi's own, and <code>char_def_format: "sudachi"</code> makes Lindera read
+<code>char.def</code> and create unknown words as Sudachi does
+(<a href="https://github.com/lindera/lindera/issues/1388">#1388</a>). Compared with
+sudachi.rs <code>v0.7.0</code> on the same lexicons, with Sudachi's input-text and
+path-rewrite plugins disabled (its unknown-word plugins only, mode C,
+sentences not split), Lindera gives the same tokens on 502 of the 505 lines
+of <em>Botchan</em> (<code>resources/bocchan.txt</code>): two lines have two paths of equal
+cost, and Sudachi chooses the other one (<code>大学 / 卒業生</code> where Lindera gives
+<code>大学卒業 / 生</code>), and one has a URL, where Sudachi uses the dictionary word
+<code>http://</code>, which the lexicon writes as <code>http://</code> and the builder
+does not decode yet (<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>).
+The remaining differences are in the engine:</p>
 <div class="table-wrapper"><table><thead><tr><th>Sudachi feature</th><th>Effect</th><th>Status under Lindera</th></tr></thead><tbody>
+<tr><td>No word starts at a character that is Latin, Greek or Cyrillic (<code>ALPHA</code>, <code>GREEK</code>, <code>CYRILLIC</code>, or <code>ALL</code> as combining marks, variation selectors and ZWJ are) and shares a category with the character before it (<code>can_bow</code>)</td><td>A dictionary word cannot end before such a character either: <code>cafe</code> followed by a combining acute accent is one unknown word <code>café</code>, and <code>♥</code> with a variation selector is one word</td><td>Not replicated</td></tr>
+<tr><td>Ties between paths of equal cost</td><td>Sudachi chooses another path than MeCab's rule</td><td>Lindera breaks ties as MeCab does</td></tr>
+<tr><td>The fallback where nothing else starts (<code>SimpleOovPlugin</code>)</td><td>The word runs to the next character where a word can start (<code>can_bow</code>)</td><td>One character</td></tr>
 <tr><td><code>JoinKatakanaOovPlugin</code></td><td>Rewrites paths to join katakana runs (e.g. <code>サブスク</code> instead of the cheaper <code>サブ</code>+<code>スク</code> path)</td><td>Not replicated</td></tr>
 <tr><td><code>JoinNumericPlugin</code></td><td>Joins numeric sequences</td><td>Not replicated</td></tr>
 <tr><td><code>DefaultInputTextPlugin</code></td><td>NFKC + lowercase normalization before lookup (e.g. half-width <code>AI</code> hits a normalized entry)</td><td>Partially available via Lindera character filters (<code>unicode_normalize</code>)</td></tr>
@@ -329,11 +355,13 @@ The remaining differences are Sudachi <em>engine plugins</em>, not dictionary da
 </tbody></table>
 </div>
 <h2 id="license"><a class="header" href="#license">License</a></h2>
-<p>SudachiDict is Apache-2.0. <code>matrix.def</code>, <code>char.def</code>, and <code>unk.def</code> are part
-of UniDic (BSD/GPL/LGPL triple license — see the <a href="https://github.com/WorksApplications/SudachiDict/blob/develop/LEGAL">SudachiDict LEGAL
+<p>SudachiDict is Apache-2.0. <code>matrix.def</code> is part of UniDic (BSD/GPL/LGPL
+triple license — see the <a href="https://github.com/WorksApplications/SudachiDict/blob/develop/LEGAL">SudachiDict LEGAL
 notice</a>).
-A dictionary built with this recipe combines both; review the licenses
-before redistribution.</p>
+<code>char.def</code> and <code>unk.def</code> come from sudachi.rs (Apache-2.0); <code>unk.def</code> is the
+same file as UniDic's, and <code>char.def</code> is UniDic's with Sudachi's changes. A
+dictionary built with this recipe combines them; review the licenses before
+redistribution.</p>
 
                     </main>
 

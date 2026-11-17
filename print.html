@@ -1180,7 +1180,7 @@ tokenizer
 <p>The check matters because most artifacts have no header of their own: <code>matrix.mtx</code>, <code>dict.vals</code> and <code>dict.words</code> are raw arrays, so a dictionary from an older layout that happens to be a plausible length decodes into garbage rather than failing. A source <code>metadata.json</code> — the hand-written kind checked into each dictionary crate — describes build <em>inputs</em>, carries no <code>format_version</code>, and is never format-checked.</p>
 <p><code>build_metadata</code> stamps <code>lindera_version</code>, the version of Lindera that built the dictionary, in the same way. Loading does not check it: <code>lindera list</code> shows it, and <code>lindera download</code> downloads a dictionary again when it differs from the CLI's version. Dictionaries built before v7.0.0 do not have it.</p>
 <p>Bump <code>DICTIONARY_FORMAT_VERSION</code> on any change to the bytes of a built artifact. That includes upgrading a dependency whose serialized form is written verbatim (<code>crawdad</code> for <code>dict.trie</code>, <code>rkyv</code> for <code>char_def.bin</code> and <code>unk.bin</code>, <code>daachorse</code> inside user dictionary <code>.bin</code> files), which is easy to overlook because no line of this crate changes. The build cache is keyed on the format version for exactly that reason.</p>
-<p>The current format version is 3. Version 2 (v6.0.0) replaced the system prefix dictionary's byte-wise daachorse Aho-Corasick automaton (<code>dict.da</code>) with a char-wise double-array trie (<code>dict.trie</code>) plus a <code>u32</code> prefix-sum index (<code>dict.valsidx</code>). Version 3 (v7.0.0) lists each code point's default category first in its <code>char_def.bin</code> row, followed by its other categories in category id order, because unknown words come from the default category only, as in MeCab; a version 2 row would silently give the wrong default category. Version 3 also covers the earlier 7.0.0 changes to what the builder writes (see <a href="lindera-dictionary/../migration_v6_to_v7.html">Migrating from v6 to v7</a>). Dictionaries at version 2 or earlier are rejected at load time with an actionable error. User dictionary <code>.bin</code> files were not affected by <em>that</em> change — but they are written by <code>daachorse</code>, so a <code>daachorse</code> upgrade does invalidate them, which is exactly why it belongs in the list above.</p>
+<p>The current format version is 3. Version 2 (v6.0.0) replaced the system prefix dictionary's byte-wise daachorse Aho-Corasick automaton (<code>dict.da</code>) with a char-wise double-array trie (<code>dict.trie</code>) plus a <code>u32</code> prefix-sum index (<code>dict.valsidx</code>). Version 3 (v7.0.0) lists each code point's default category first in its <code>char_def.bin</code> row, followed by its other categories in category id order, because unknown words come from the default category only, as in MeCab; a version 2 row would silently give the wrong default category. Version 3 also covers the earlier 7.0.0 changes to what the builder writes (see <a href="lindera-dictionary/../migration_v6_to_v7.html">Migrating from v6 to v7</a>), and a later one, made before any release read version 3: <code>char_def.bin</code> records the format of <code>char.def</code> and, in Sudachi's format, the flags of each row (<a href="https://github.com/lindera/lindera/issues/1388">#1388</a>). Dictionaries at version 2 or earlier are rejected at load time with an actionable error. User dictionary <code>.bin</code> files were not affected by <em>that</em> change — but they are written by <code>daachorse</code>, so a <code>daachorse</code> upgrade does invalidate them, which is exactly why it belongs in the list above.</p>
 <h3 id="context-id-remapping"><a class="header" href="#context-id-remapping">Context ID Remapping</a></h3>
 <p>Dictionary metadata (<code>lindera-dictionary/src/dictionary/metadata.rs</code>) carries a <code>connection_id_mapping: bool</code> flag and an optional <code>context_id_map: Option&lt;ContextIdMap&gt;</code>. When a dictionary crate (e.g. <code>lindera-unidic</code>) enables <code>connection_id_mapping</code>, <code>DictionaryBuilder</code> relabels the connection matrix's left/right context IDs by access frequency at build time, so that frequently-used connection-cost cells cluster together for better cache locality; <code>DictionaryBuilder::with_context_id_freq</code> attaches an optional bundled frequency histogram used to rank the IDs, and the remap itself is computed in <code>lindera-dictionary/src/builder/context_id_remap.rs</code>. <code>ContextIdMap</code> (<code>lindera-dictionary/src/dictionary/context_id_map.rs</code>) holds the resulting <code>left</code>/<code>right</code> permutation and is persisted into the built <code>metadata.json</code> so the same mapping can be reapplied later. Because user dictionaries are always compiled in the original, un-remapped ID space, <code>UserDictionary::remap_context_ids</code> (<code>lindera-dictionary/src/dictionary.rs</code>) uses the persisted <code>ContextIdMap</code> to relabel a user dictionary's context IDs into the same space as the system dictionary it is attached to. The remap is a bijective relabeling, so it does not change tokenization output, only lookup locality.</p>
 <h3 id="training"><a class="header" href="#training">Training</a></h3>
@@ -1467,7 +1467,7 @@ Requires the <code>mmap</code> cargo feature (enabled by default).</p>
 <span class="boring">}</span></code></pre></pre>
 <h2 id="break-characters"><a class="header" href="#break-characters">Break Characters</a></h2>
 <p>By default, a segmenter breaks at <code>・</code> (U+30FB). A boundary is a place between a break character and a character that is not one: no unknown word crosses a boundary, in every mode, and in Decompose mode no system-dictionary word does either.</p>
-<p>The bundled dictionaries put <code>・</code> in the katakana category of their <code>char.def</code>, so without this rule a run of katakana joined by <code>・</code> is one unknown word when its first word is not in the dictionary. MeCab, and Lindera with no break characters, return <code>レノン・ジョン</code> whole, while <code>ジョン・レノン</code> splits after the dictionary word <code>ジョン</code>. With <code>・</code> as a break character, both split into three tokens, such as <code>レノン</code>, <code>・</code> and <code>ジョン</code>, and <code>サイレント</code> matches <code>ザ・サイレント・フォレスト</code> in a search. This is a deliberate difference from MeCab.</p>
+<p>The <code>char.def</code> of IPADIC, UniDic, ko-dic, CC-CEDICT and Jieba puts <code>・</code> in the katakana category, so without this rule a run of katakana joined by <code>・</code> is one unknown word when its first word is not in the dictionary. (SudachiDict's <code>char.def</code>, which is Sudachi's own, leaves <code>・</code> out of the katakana category; the rule applies to every dictionary alike.) MeCab, and Lindera with no break characters, return <code>レノン・ジョン</code> whole, while <code>ジョン・レノン</code> splits after the dictionary word <code>ジョン</code>. With <code>・</code> as a break character, both split into three tokens, such as <code>レノン</code>, <code>・</code> and <code>ジョン</code>, and <code>サイレント</code> matches <code>ザ・サイレント・フォレスト</code> in a search. This is a deliberate difference from MeCab.</p>
 <p>In Decompose mode, a system-dictionary word with a boundary inside it, such as IPADIC's <code>インフォームド・コンセント</code> or the many such entries of IPADIC-NEologd and SudachiDict, does not enter the lattice: it comes out as its parts, without its own part of speech and reading. Normal mode keeps such words. Every mode keeps user-dictionary words, which a user registered on purpose, and words made of break characters only, such as <code>・</code>.</p>
 <p><code>break_characters</code> takes a string, each character of which is a break character, in place of the default; an empty string gives MeCab's segmentation:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -2588,7 +2588,7 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 <p><code>--break-characters &lt;CHARS&gt;</code>: Break characters, each character of <code>CHARS</code> (default: <code>・</code>). No unknown word crosses a boundary between a break character and another character, in any mode, and in decompose mode no system-dictionary word does either; user-dictionary words and words of break characters only stay. See the <a href="lindera-cli/../lindera/segmenter.html#break-characters">Segmenter</a> documentation</p>
 </li>
 <li>
-<p><code>--disable-break-characters</code>: Use no break characters, which gives MeCab's segmentation: an unknown katakana word runs through <code>・</code> (<code>レノン・ジョン</code> stays one word), while a dictionary word before it still ends there (<code>ジョン・レノン</code> splits). Cannot be combined with <code>--break-characters</code></p>
+<p><code>--disable-break-characters</code>: Use no break characters, which gives MeCab's segmentation: with a dictionary whose <code>char.def</code> puts <code>・</code> in the katakana category (IPADIC and UniDic do, SudachiDict does not), an unknown katakana word runs through <code>・</code> (<code>レノン・ジョン</code> stays one word), while a dictionary word before it still ends there (<code>ジョン・レノン</code> splits). Cannot be combined with <code>--break-characters</code></p>
 </li>
 <li>
 <p><code>--disable-space-penalty</code>: Disable the left-space penalty (mecab-ko's <code>left-space-penalty-factor</code>) that a dictionary shipping rules in its <code>metadata.json</code> applies by default (ko-dic ships mecab-ko-dic's). A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added; disabling it together with <code>--disable-skip-whitespace</code> turns off both changes since v6.0 in how Korean is read around spaces (this penalty and whitespace skipping), but not the other output changes since then, such as the split of punctuation runs like <code>."</code>. See the <a href="lindera-cli/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> documentation</p>
@@ -3050,6 +3050,13 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
 <pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for category SPACE, which char.def defines; every char.def category needs at least one unk.def line }
 </code></pre>
 <p><code>lindera train</code> checks its <code>--char-def</code> and <code>--unk-def</code> in the same way before it trains (see <a href="lindera-cli/../development/training_pipeline.html#3-character-definition-chardef">Training Pipeline</a>).</p>
+<h3 id="chardef-format"><a class="header" href="#chardef-format">char.def format</a></h3>
+<p>A dictionary's <code>metadata.json</code> selects the format of its <code>char.def</code> with <code>char_def_format</code> (<a href="https://github.com/lindera/lindera/issues/1388">#1388</a>):</p>
+<ul>
+<li><code>"mecab"</code>, the default when the field is omitted: MeCab's format. The last line that covers a code point decides its categories, and the first of them, its default category, alone creates unknown words.</li>
+<li><code>"sudachi"</code>: Sudachi's format, which SudachiDict uses. A code point gets the categories of every line that covers it. Besides the categories that the file defines, a range line can name <code>ALL</code> (every category) and the flags <code>NOOOVBOW</code> (no unknown word starts at the character) and <code>NOOOVEOW</code> (no unknown word starts right after it), and a code point can be outside the BMP. The file must define <code>DEFAULT</code>, cannot define <code>ALL</code>, <code>NOOOVBOW</code> or <code>NOOOVEOW</code> as a category, and can define at most 64 categories. Every category of a character creates unknown words, over runs cut as Sudachi cuts them, and a position where nothing else starts gets a one-character unknown word of <code>DEFAULT</code>, as in Sudachi. A character is whitespace (for <code>--keep-whitespace</code>, <code>--disable-skip-whitespace</code> and the left-space penalty) only when <code>SPACE</code> is its only category, so that the characters that <code>ALL</code> puts in every category, such as combining marks and ZWJ, are not.</li>
+</ul>
+<p><code>lindera train</code> reads <code>--char-def</code> in MeCab's format only.</p>
 <h3 id="examples-1"><a class="header" href="#examples-1">Examples</a></h3>
 <h4 id="build-ipadic-japanese-dictionary"><a class="header" href="#build-ipadic-japanese-dictionary">Build IPADIC (Japanese dictionary)</a></h4>
 <pre><code class="language-shell"># Download and extract IPADIC source files
@@ -9585,10 +9592,10 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 }</code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-sudachidict"><a class="header" href="#lindera-sudachidict">Lindera SudachiDict</a></h1>
 <p>Lindera SudachiDict is a Japanese dictionary crate based on <a href="https://github.com/WorksApplications/SudachiDict">SudachiDict</a>, the actively maintained dictionary used by the Sudachi morphological analyzer. It is updated several times a year upstream, so recent vocabulary (<code>令和</code>, <code>スマホ</code>, <code>推し活</code>, ...) is in-vocabulary. Each entry has 19 fields, including SudachiDict-specific columns such as the normalized form, split references, and synonym group IDs.</p>
-<p>The dictionary source files are mirrored at <a href="https://github.com/lindera/sudachidict">lindera/sudachidict</a>. The bundled version is <code>20260723</code> (small + core + notcore lexicons).</p>
+<p>The dictionary source files are mirrored at <a href="https://github.com/lindera/sudachidict">lindera/sudachidict</a>. The bundled version is <code>20260723</code> (small + core + notcore lexicons), from the mirror's tag <code>0.1.0-20260723</code>, which adds Sudachi's own <code>char.def</code> (sudachi.rs <code>v0.7.0</code>).</p>
 <blockquote>
 <p>[!NOTE]
-This dictionary reproduces SudachiDict's vocabulary and lattice behavior, but not the Sudachi engine plugins (katakana/numeric joining, input normalization, A/B/C split modes). See <a href="./sudachidict.html#behavioral-differences-from-sudachi">Behavioral differences from Sudachi</a> for details.</p>
+This dictionary reproduces SudachiDict's vocabulary and lattice behavior, and reads Sudachi's own <code>char.def</code> as Sudachi does, but not the Sudachi engine plugins (katakana/numeric joining, input normalization, A/B/C split modes) or a few engine rules. See <a href="./sudachidict.html#behavioral-differences-from-sudachi">Behavioral differences from Sudachi</a> for details.</p>
 </blockquote>
 <h2 id="contents-9"><a class="header" href="#contents-9">Contents</a></h2>
 <ul>
@@ -9602,7 +9609,7 @@ This dictionary reproduces SudachiDict's vocabulary and lattice behavior, but no
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-sudachidict-1"><a class="header" href="#lindera-sudachidict-1">Lindera SudachiDict</a></h1>
 <h2 id="dictionary-version-5"><a class="header" href="#dictionary-version-5">Dictionary version</a></h2>
-<p>This repository contains <a href="https://github.com/lindera/sudachidict">SudachiDict</a> 20260723 (small + core + notcore lexicons).</p>
+<p>This repository contains <a href="https://github.com/lindera/sudachidict">SudachiDict</a> 20260723 (small + core + notcore lexicons), from the mirror's tag <code>0.1.0-20260723</code>, with Sudachi's own <code>char.def</code> (sudachi.rs <code>v0.7.0</code>), which <code>"char_def_format": "sudachi"</code> in <code>metadata.json</code> reads as Sudachi does.</p>
 <h2 id="dictionary-format-5"><a class="header" href="#dictionary-format-5">Dictionary format</a></h2>
 <p>Refer to the <a href="https://github.com/WorksApplications/SudachiDict">SudachiDict documentation</a> for details on the dictionary format and part-of-speech tags.</p>
 <div class="table-wrapper"><table><thead><tr><th>Index</th><th>Name (Japanese)</th><th>Name (English)</th><th>Notes</th></tr></thead><tbody>
@@ -9664,15 +9671,15 @@ dictionary the same way they match IPADIC or UniDic (see
 <p>This page describes how to build the SudachiDict dictionary from source files.</p>
 <h2 id="build-system-dictionary-5"><a class="header" href="#build-system-dictionary-5">Build system dictionary</a></h2>
 <p>Download the SudachiDict source archive and build the dictionary:</p>
-<pre><code class="language-shell">% curl -L -o /tmp/sudachidict-20260723.tar.gz "https://lindera.dev/sudachidict-20260723.tar.gz"
-% tar zxvf /tmp/sudachidict-20260723.tar.gz -C /tmp
+<pre><code class="language-shell">% curl -L -o /tmp/sudachidict-0.1.0-20260723.tar.gz "https://lindera.dev/sudachidict-0.1.0-20260723.tar.gz"
+% tar zxvf /tmp/sudachidict-0.1.0-20260723.tar.gz -C /tmp
 
 % lindera build \
-  --src /tmp/sudachidict-20260723 \
+  --src /tmp/sudachidict-0.1.0-20260723 \
   --dest /tmp/lindera-sudachidict \
   --metadata ./lindera-sudachidict/metadata.json
 </code></pre>
-<p>The archive bundles the raw lexicons (small + core + notcore), the connection matrix, and pre-aligned <code>char.def</code> / <code>unk.def</code>, so no manual preprocessing is needed. The built dictionary is about 570MB.</p>
+<p>The archive bundles the raw lexicons (small + core + notcore), the connection matrix, Sudachi's own <code>char.def</code> (from sudachi.rs <code>v0.7.0</code>, which <code>"char_def_format": "sudachi"</code> in <code>metadata.json</code> reads as Sudachi does) and the pre-aligned <code>unk.def</code>, so no manual preprocessing is needed. The built dictionary is about 570MB.</p>
 <blockquote>
 <p>[!TIP]
 To build from a newer upstream SudachiDict release than the bundled one, see
@@ -10209,8 +10216,9 @@ newer upstream release than the bundled one, or to build a custom variant
 <p>Related issue: <a href="https://github.com/lindera/lindera/issues/487">lindera/lindera#487</a></p>
 <blockquote>
 <p>[!NOTE]
-This recipe produces a dictionary whose <strong>vocabulary and lattice behavior</strong>
-match Sudachi, but it does not reproduce Sudachi's engine plugins.
+This recipe produces a dictionary whose <strong>vocabulary, character
+definitions and unknown words</strong> match Sudachi, but it does not reproduce
+Sudachi's engine plugins and a few engine rules.
 See <a href="sudachidict.html#behavioral-differences-from-sudachi">Behavioral differences</a> below
 before relying on it.</p>
 </blockquote>
@@ -10244,17 +10252,20 @@ the UniDic 2.1.2 matrix (SudachiDict entries use UniDic context IDs):</p>
 <pre><code class="language-shell">% curl -LO "https://d2ej7fkh96fzlu.cloudfront.net/sudachidict-raw/matrix.def.zip"
 % unzip -o matrix.def.zip &amp;&amp; rm matrix.def.zip
 </code></pre>
-<p>Character and unknown-word definitions from the UniDic 2.1.2 source
-(the same archive <code>lindera-unidic</code> builds from):</p>
-<pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
-% unzip -o -q /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
-% cp /tmp/unidic-mecab-2.1.2_src/char.def /tmp/unidic-mecab-2.1.2_src/unk.def .
+<p>Sudachi's own character and unknown-word definitions, from the <code>v0.7.0</code> tag
+of sudachi.rs (Sudachi <code>v0.8.2</code> ships the same two files). Its <code>unk.def</code> is
+the same file as UniDic 2.1.2's; its <code>char.def</code> is UniDic's with Sudachi's
+fixes and with syntax that only Sudachi reads, which the
+<a href="sudachidict.html#metadata">metadata</a> below selects:</p>
+<pre><code class="language-shell">% curl -LO "https://raw.githubusercontent.com/WorksApplications/sudachi.rs/v0.7.0/resources/char.def"
+% curl -LO "https://raw.githubusercontent.com/WorksApplications/sudachi.rs/v0.7.0/resources/unk.def"
 </code></pre>
 <h2 id="align-unkdef-with-the-sudachidict-column-layout"><a class="header" href="#align-unkdef-with-the-sudachidict-column-layout">Align unk.def with the SudachiDict column layout</a></h2>
 <p>SudachiDict lexicon rows have 19 columns; column 4 (0-based) is the display
-surface, so morphological details start at column 5. UniDic's <code>unk.def</code> has
-its part-of-speech at column 4. Insert a placeholder display column so
-unknown words expose their details at the same indices as dictionary words:</p>
+surface, so morphological details start at column 5. Sudachi's <code>unk.def</code>, like
+UniDic's, has its part-of-speech at column 4. Insert a placeholder display
+column so unknown words expose their details at the same indices as
+dictionary words:</p>
 <pre><code class="language-shell">% awk -F, 'BEGIN{OFS=","} {out=$1 OFS $2 OFS $3 OFS $4 OFS "*"; for(i=5;i&lt;=NF;i++) out=out OFS $i; print out}' unk.def &gt; unk.def.tmp &amp;&amp; mv unk.def.tmp unk.def
 </code></pre>
 <h2 id="metadata-5"><a class="header" href="#metadata-5">Metadata</a></h2>
@@ -10293,12 +10304,22 @@ reserved columns; the rest name SudachiDict's columns in order:</p>
     ]
   },
   "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] },
-  "skip_whitespace": false
+  "skip_whitespace": false,
+  "char_def_format": "sudachi"
 }
 </code></pre>
 <p><code>skip_whitespace: false</code> keeps whitespace in the lattice, as Sudachi does and
 as SudachiDict's costs assume; without it, Lindera skips whitespace as MeCab
 does (see <a href="./lindera/segmenter.html#whitespace-handling">Segmenter</a>).</p>
+<p><code>char_def_format: "sudachi"</code> reads <code>char.def</code> as Sudachi does: a code point
+gets the categories of every line that covers it, <code>ALL</code> stands for every
+category, and the flags <code>NOOOVBOW</code> and <code>NOOOVEOW</code> keep unknown words from
+starting at a character and right after it. Unknown words then come from
+every category of a character, over runs cut as Sudachi cuts them, and a
+position where nothing else starts gets a one-character unknown word of
+<code>DEFAULT</code>, as in Sudachi. Without it, the builder reads <code>char.def</code> in
+MeCab's format, which stops at the first <code>NOOOVBOW</code> of Sudachi's file (see
+<a href="./lindera-cli/commands.html#build"><code>lindera build</code></a>).</p>
 <h2 id="build-and-verify"><a class="header" href="#build-and-verify">Build and verify</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src /tmp/sudachidict-src \
@@ -10331,12 +10352,24 @@ through the dictionary schema, so they match this dictionary the same way
 they match IPADIC or UniDic.</p>
 </blockquote>
 <h2 id="behavioral-differences-from-sudachi"><a class="header" href="#behavioral-differences-from-sudachi">Behavioral differences from Sudachi</a></h2>
-<p>The lattice layer is verified equivalent: the matrix file is byte-identical
-(sha256) to the one SudachiDict's official build uses, and with Sudachi's
-path-rewrite and input-normalization plugins disabled, the Sudachi engine
-produces the same minimum-cost paths as this dictionary under Lindera.
-The remaining differences are Sudachi <em>engine plugins</em>, not dictionary data:</p>
+<p>The dictionary data is Sudachi's: the matrix file is byte-identical (sha256)
+to the one SudachiDict's official build uses, <code>char.def</code> and <code>unk.def</code> are
+Sudachi's own, and <code>char_def_format: "sudachi"</code> makes Lindera read
+<code>char.def</code> and create unknown words as Sudachi does
+(<a href="https://github.com/lindera/lindera/issues/1388">#1388</a>). Compared with
+sudachi.rs <code>v0.7.0</code> on the same lexicons, with Sudachi's input-text and
+path-rewrite plugins disabled (its unknown-word plugins only, mode C,
+sentences not split), Lindera gives the same tokens on 502 of the 505 lines
+of <em>Botchan</em> (<code>resources/bocchan.txt</code>): two lines have two paths of equal
+cost, and Sudachi chooses the other one (<code>大学 / 卒業生</code> where Lindera gives
+<code>大学卒業 / 生</code>), and one has a URL, where Sudachi uses the dictionary word
+<code>http://</code>, which the lexicon writes as <code>http://</code> and the builder
+does not decode yet (<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>).
+The remaining differences are in the engine:</p>
 <div class="table-wrapper"><table><thead><tr><th>Sudachi feature</th><th>Effect</th><th>Status under Lindera</th></tr></thead><tbody>
+<tr><td>No word starts at a character that is Latin, Greek or Cyrillic (<code>ALPHA</code>, <code>GREEK</code>, <code>CYRILLIC</code>, or <code>ALL</code> as combining marks, variation selectors and ZWJ are) and shares a category with the character before it (<code>can_bow</code>)</td><td>A dictionary word cannot end before such a character either: <code>cafe</code> followed by a combining acute accent is one unknown word <code>café</code>, and <code>♥</code> with a variation selector is one word</td><td>Not replicated</td></tr>
+<tr><td>Ties between paths of equal cost</td><td>Sudachi chooses another path than MeCab's rule</td><td>Lindera breaks ties as MeCab does</td></tr>
+<tr><td>The fallback where nothing else starts (<code>SimpleOovPlugin</code>)</td><td>The word runs to the next character where a word can start (<code>can_bow</code>)</td><td>One character</td></tr>
 <tr><td><code>JoinKatakanaOovPlugin</code></td><td>Rewrites paths to join katakana runs (e.g. <code>サブスク</code> instead of the cheaper <code>サブ</code>+<code>スク</code> path)</td><td>Not replicated</td></tr>
 <tr><td><code>JoinNumericPlugin</code></td><td>Joins numeric sequences</td><td>Not replicated</td></tr>
 <tr><td><code>DefaultInputTextPlugin</code></td><td>NFKC + lowercase normalization before lookup (e.g. half-width <code>AI</code> hits a normalized entry)</td><td>Partially available via Lindera character filters (<code>unicode_normalize</code>)</td></tr>
@@ -10344,11 +10377,13 @@ The remaining differences are Sudachi <em>engine plugins</em>, not dictionary da
 </tbody></table>
 </div>
 <h2 id="license-1"><a class="header" href="#license-1">License</a></h2>
-<p>SudachiDict is Apache-2.0. <code>matrix.def</code>, <code>char.def</code>, and <code>unk.def</code> are part
-of UniDic (BSD/GPL/LGPL triple license — see the <a href="https://github.com/WorksApplications/SudachiDict/blob/develop/LEGAL">SudachiDict LEGAL
+<p>SudachiDict is Apache-2.0. <code>matrix.def</code> is part of UniDic (BSD/GPL/LGPL
+triple license — see the <a href="https://github.com/WorksApplications/SudachiDict/blob/develop/LEGAL">SudachiDict LEGAL
 notice</a>).
-A dictionary built with this recipe combines both; review the licenses
-before redistribution.</p>
+<code>char.def</code> and <code>unk.def</code> come from sudachi.rs (Apache-2.0); <code>unk.def</code> is the
+same file as UniDic's, and <code>char.def</code> is UniDic's with Sudachi's changes. A
+dictionary built with this recipe combines them; review the licenses before
+redistribution.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="migrating-from-v3-to-v4"><a class="header" href="#migrating-from-v3-to-v4">Migrating from v3 to v4</a></h1>
 <p>Lindera v4.0.0 is a major release that bundles the breaking changes that were
 deliberately deferred during the v3 series. Each change is small on its own; this
@@ -11063,6 +11098,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>Unknown words start at every position, as in MeCab</strong></td><td>Anyone who segments text with runs of katakana, symbols or Latin letters in normal mode, most visibly katakana joined by <code>・</code> and Korean sentence-final punctuation such as <code>."</code></td><td>Expect such runs to be split where MeCab splits them, and katakana- and Latin-heavy text to take about 13% more instructions; no setting restores the v6 behavior</td></tr>
 <tr><td><strong>Middle dots break unknown words by default</strong></td><td>Anyone who segments Japanese text with katakana joined by <code>・</code>, most visibly unknown names such as <code>レノン・ジョン</code>, and users of decompose mode with dictionaries that have many words with <code>・</code> (IPADIC-NEologd, SudachiDict)</td><td>Expect <code>・</code> to split such runs, and such words in decompose mode; set <code>break_characters: ""</code> (<code>--disable-break-characters</code>) for MeCab's segmentation</td></tr>
 <tr><td><strong>Unknown words come from each character's default category and group the characters that share a category, as in MeCab</strong></td><td>Anyone who segments text where a character with several categories meets other characters; in the bundled dictionaries, a hanja numeral followed by hanja with ko-dic, and <code>〇</code> (U+3007) with ko-dic; Rust code that relies on the order of <code>CharacterDefinition::lookup_categories</code></td><td>Expect such text to be segmented as MeCab segments it (ko-dic <code>三國史記</code> is one <code>SH</code> word, <code>〇〇〇</code> one <code>SY</code> word); no setting restores the v6 behavior</td></tr>
+<tr><td><strong>SudachiDict reads Sudachi's own <code>char.def</code>, as Sudachi does</strong></td><td>Anyone who segments text with SudachiDict, most visibly <code>々</code> before a symbol, unknown katakana that starts with a small katakana or <code>ー</code>, and text with combining marks, variation selectors or ZWJ; anyone who builds a dictionary from Sudachi's <code>char.def</code></td><td>Expect such text to be segmented as Sudachi segments it; to build SudachiDict yourself, set <code>"char_def_format": "sudachi"</code> in its <code>metadata.json</code> (see <a href="migration_v6_to_v7.html#sudachidict-reads-sudachis-own-chardef">SudachiDict reads Sudachi's own <code>char.def</code></a>)</td></tr>
 <tr><td><strong>CC-CEDICT: unknown words cost 400, and the entries made only of Latin letters or only of digits 399</strong></td><td>Anyone who segments text with CC-CEDICT, most visibly entries that mix Latin letters or digits with Chinese characters, such as <code>T恤</code>; anyone who reads its N-best costs</td><td>Expect such entries to be one word, <code>〇</code> and entries such as <code>PK</code> to come with their pinyin and definition, Latin words, kana and numbers to stay one word as in v6, and the costs of paths to change; build a CC-CEDICT dictionary directory from the <code>CC-CEDICT-MeCab-0.1.0-20261021</code> archive</td></tr>
 <tr><td><strong>Jieba: <code>〇</code> is a numeral entry</strong></td><td>Anyone who segments text with <code>〇</code> (U+3007) with Jieba</td><td>Expect each <code>〇</code> to be one numeral word (<code>m</code>, pinyin <code>ling2</code>) instead of part of an unknown word, as MeCab segments it with the same dictionary; build a Jieba dictionary directory from the <code>mecab-jieba-0.1.3</code> archive</td></tr>
 <tr><td><strong>Jieba: costs retrained on UD Chinese GSD</strong></td><td>Anyone who segments text with Jieba; users of simple Jieba user dictionaries</td><td>Expect Chinese text to be segmented as UD Chinese GSD segments it, finer than jieba (<code>中华 / 人民 / 共和 / 国</code>, <code>这 / 个</code>; segmentation F1 on its test split 77.3 → 87.7), and simple user dictionary words to cost −32768; build a Jieba dictionary directory from the <code>mecab-jieba-0.1.3</code> archive</td></tr>
@@ -11890,8 +11926,10 @@ and from 18 to 127 MiB with UniDic.</p>
 (<code>--disable-unknown-word-ladder</code>) still turns off the shorter unknown-word
 candidates, but no longer reproduces the output of Lindera before v6.</p>
 <h2 id="middle-dots-break-unknown-words-by-default"><a class="header" href="#middle-dots-break-unknown-words-by-default">Middle dots break unknown words by default</a></h2>
-<p>The bundled dictionaries put <code>・</code> (U+30FB) in the katakana category of their
-<code>char.def</code>, so a run of katakana joined by <code>・</code> is one unknown word when its
+<p>The <code>char.def</code> of IPADIC, UniDic, ko-dic, CC-CEDICT and Jieba puts <code>・</code>
+(U+30FB) in the katakana category (SudachiDict's no longer does, see
+<a href="migration_v6_to_v7.html#sudachidict-reads-sudachis-own-chardef">SudachiDict reads Sudachi's own <code>char.def</code></a>),
+so a run of katakana joined by <code>・</code> is one unknown word when its
 first word is not in the dictionary, as in MeCab, while a dictionary word
 before <code>・</code> ends there (see
 <a href="migration_v6_to_v7.html#unknown-words-start-at-every-position-as-in-mecab">Unknown words start at every position, as in MeCab</a>).
@@ -11994,6 +12032,38 @@ category first, then the other categories in category id order. The 7.0.0
 version changes (see
 <a href="migration_v6_to_v7.html#dictionary-directories-must-be-rebuilt">Dictionary directories must be rebuilt</a>).</p>
 <p>There is no setting to restore the v6 behavior.</p>
+<h2 id="sudachidict-reads-sudachis-own-chardef"><a class="header" href="#sudachidict-reads-sudachis-own-chardef">SudachiDict reads Sudachi's own char.def</a></h2>
+<p>SudachiDict used to be built with UniDic 2.1.2's <code>char.def</code>, as SudachiDict
+ships none. v7.0.0 builds it with Sudachi's own <code>char.def</code> (sudachi.rs
+<code>v0.7.0</code>) and reads it as Sudachi does
+(<a href="https://github.com/lindera/lindera/issues/1388">#1388</a>), which its
+<code>metadata.json</code> selects with <code>"char_def_format": "sudachi"</code>:</p>
+<ul>
+<li>A code point gets the categories of every line that covers it, <code>ALL</code>
+stands for every category, and the flags <code>NOOOVBOW</code> and <code>NOOOVEOW</code> keep
+unknown words from starting at a character and right after it: small
+katakana, <code>ー</code>, <code>ヽ</code>, <code>ヾ</code>, <code>々</code>, combining marks, variation selectors,
+skin tone modifiers, ZWNJ and ZWJ.</li>
+<li>Unknown words come from every category of a character, over runs cut as
+Sudachi cuts them, and a position where nothing else starts gets a
+one-character unknown word of <code>DEFAULT</code>, as in Sudachi.</li>
+<li>The file maps <code>×</code> and <code>÷</code> to SYMBOL, CR to SPACE and U+9FA6..U+9FFF to
+KANJI, and leaves <code>・</code> out of the katakana category.</li>
+</ul>
+<div class="table-wrapper"><table><thead><tr><th>Input (SudachiDict)</th><th>v7.0.0 before #1388</th><th>v7.0.0 and Sudachi</th></tr></thead><tbody>
+<tr><td><code>時々｜図抜けた</code></td><td><code>時 / 々｜ / 図抜け / た</code></td><td><code>時々 / ｜ / 図抜け / た</code></td></tr>
+<tr><td><code>résumé</code> (with combining accents)</td><td><code>re / ́ / su / me / ́</code></td><td><code>résumé</code></td></tr>
+<tr><td><code>ァィゥェォを並べる</code></td><td><code>ァィゥェォ / を / 並べる</code></td><td><code>ァ / ィ / ゥ / ェ / ォ / を / 並べる</code></td></tr>
+</tbody></table>
+</div>
+<p>On <em>Botchan</em> (<code>resources/bocchan.txt</code>), 5 of its 505 lines change, all of
+them at <code>々</code> before <code>｜</code>, and Lindera now gives the same tokens as sudachi.rs
+<code>v0.7.0</code> (with its input-text and path-rewrite plugins disabled) on 502 of
+the lines, up from 497 (see
+<a href="./sudachidict.html#behavioral-differences-from-sudachi">SudachiDict (Custom Build)</a>
+for the other three). To build SudachiDict yourself, use Sudachi's
+<code>char.def</code> with <code>"char_def_format": "sudachi"</code>; MeCab's format, the default,
+stops at the first <code>NOOOVBOW</code> of the file.</p>
 <h2 id="cc-cedict-unknown-words-no-longer-cost-less-than-dictionary-words"><a class="header" href="#cc-cedict-unknown-words-no-longer-cost-less-than-dictionary-words">CC-CEDICT: unknown words no longer cost less than dictionary words</a></h2>
 <p>v7.0.0 builds the CC-CEDICT dictionary from <code>CC-CEDICT-MeCab-0.1.0-20261021</code>
 instead of <code>CC-CEDICT-MeCab-0.1.0-20200409</code>
@@ -14155,6 +14225,9 @@ NUMERIC 1 1 0
 <p>A range line can list more than one category (for example <code>0x4E00 KANJINUMERIC KANJI</code>), and every range line needs at least one. When several lines cover the same code point, the last line decides its categories, as in MeCab. The first category on that line is the character's default category: the only one that creates unknown-word candidates, and the one the <code>%t</code> feature template uses.</p>
 <p>As in MeCab, a range line can name only categories defined on an earlier line, and each category is defined once. <code>lindera train</code> and <code>lindera build</code> reject a <code>char.def</code> that breaks either, with an error that names the line and the category. For example, <code>lindera train</code> with <code>0x30FC KATAKANA</code> inserted as the first line of <code>char.def</code>, before the line that defines <code>KATAKANA</code>:</p>
 <pre><code class="language-text">Error: LinderaError { kind: Args, source: failed to parse char.def: LinderaError(kind=Content, source=char.def: line 1: category KATAKANA is not defined; a range line can only name a category defined on an earlier line) }
+</code></pre>
+<p><code>lindera train</code> reads <code>char.def</code> in MeCab's format only. Sudachi's format, which a dictionary selects with <code>"char_def_format": "sudachi"</code> in its <code>metadata.json</code> (see <a href="development/../lindera-cli/commands.html#chardef-format"><code>lindera build</code></a>), gives a character no default category for <code>%t</code>. With Sudachi's own <code>char.def</code> (sudachi.rs <code>v0.7.0</code>, as SudachiDict uses it), <code>lindera train</code> stops at its first flag:</p>
+<pre><code class="language-text">Error: LinderaError { kind: Args, source: failed to parse char.def: LinderaError(kind=Content, source=char.def: line 78: category NOOOVBOW is not defined; a range line can only name a category defined on an earlier line (NOOOVBOW is the syntax of Sudachi's char.def, which a dictionary selects with "char_def_format": "sudachi" in its metadata.json; lindera train reads MeCab's format only)) }
 </code></pre>
 <p>Keep the <code>SPACE</code> category, which MeCab requires in every <code>char.def</code> along with <code>DEFAULT</code>, and its line in <code>unk.def</code>: every category needs at least one <code>unk.def</code> line (see the next section). The segmenter treats its characters as whitespace: by default it skips them, as MeCab does, and does not output them. Without <code>--keep-whitespace</code>, a dictionary whose <code>char.def</code> has no <code>SPACE</code> category cannot be used: <code>lindera tokenize</code> fails with <code>SPACE category is not defined in the dictionary (char.def)</code>.</p>
 <p>Training creates the unknown-word candidates with the runtime's own code (<code>Lattice::unknown_word_candidates</code>), so it learns weights for the candidates that the built dictionary produces:</p>

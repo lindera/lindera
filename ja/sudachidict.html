@@ -193,8 +193,8 @@ SudachiDict は公式辞書クレート
 <p>関連 Issue: <a href="https://github.com/lindera/lindera/issues/487">lindera/lindera#487</a></p>
 <blockquote>
 <p>[!NOTE]
-このレシピで生成される辞書は<strong>語彙とラティスの挙動</strong>が Sudachi と一致しますが、
-Sudachi のエンジンプラグインは再現しません。利用する前に、下記の
+このレシピで生成される辞書は<strong>語彙・文字種定義・未知語</strong>が Sudachi と一致しますが、
+Sudachi のエンジンプラグインと、いくつかのエンジンの規則は再現しません。利用する前に、下記の
 <a href="#sudachi-%E3%81%A8%E3%81%AE%E6%8C%99%E5%8B%95%E3%81%AE%E9%81%95%E3%81%84">Sudachi との挙動の違い</a> を確認してください。</p>
 </blockquote>
 <h2 id="なぜ-sudachidict-か"><a class="header" href="#なぜ-sudachidict-か">なぜ SudachiDict か</a></h2>
@@ -226,16 +226,18 @@ Sudachi のエンジンプラグインは再現しません。利用する前に
 <pre><code class="language-shell">% curl -LO "https://d2ej7fkh96fzlu.cloudfront.net/sudachidict-raw/matrix.def.zip"
 % unzip -o matrix.def.zip &amp;&amp; rm matrix.def.zip
 </code></pre>
-<p>文字種定義と未知語定義は UniDic 2.1.2 のソース（<code>lindera-unidic</code> がビルドに使う
-アーカイブと同じもの）から取得します:</p>
-<pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
-% unzip -o -q /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
-% cp /tmp/unidic-mecab-2.1.2_src/char.def /tmp/unidic-mecab-2.1.2_src/unk.def .
+<p>文字種定義と未知語定義は、Sudachi 自身のものを sudachi.rs の <code>v0.7.0</code> タグから
+取得します（Sudachi <code>v0.8.2</code> も同じ 2 ファイルを同梱しています）。<code>unk.def</code> は
+UniDic 2.1.2 のものと同じファイルです。<code>char.def</code> は UniDic のものに Sudachi が修正と
+Sudachi だけが読む書き方を加えたもので、下の<a href="#%E3%83%A1%E3%82%BF%E3%83%87%E3%83%BC%E3%82%BF">メタデータ</a>でその形式を
+選びます:</p>
+<pre><code class="language-shell">% curl -LO "https://raw.githubusercontent.com/WorksApplications/sudachi.rs/v0.7.0/resources/char.def"
+% curl -LO "https://raw.githubusercontent.com/WorksApplications/sudachi.rs/v0.7.0/resources/unk.def"
 </code></pre>
 <h2 id="unkdef-を-sudachidict-のカラムレイアウトに揃える"><a class="header" href="#unkdef-を-sudachidict-のカラムレイアウトに揃える">unk.def を SudachiDict のカラムレイアウトに揃える</a></h2>
 <p>SudachiDict の辞書行は 19 カラムで、カラム 4（0 始まり）は表示用の表層形（display
-surface）です。そのため形態素の詳細情報はカラム 5 から始まります。一方 UniDic の
-<code>unk.def</code> は品詞がカラム 4 にあります。プレースホルダの表示カラムを挿入して、
+surface）です。そのため形態素の詳細情報はカラム 5 から始まります。一方 Sudachi の
+<code>unk.def</code> は、UniDic のものと同じく品詞がカラム 4 にあります。プレースホルダの表示カラムを挿入して、
 未知語の詳細情報が辞書語と同じインデックスに来るようにします:</p>
 <pre><code class="language-shell">% awk -F, 'BEGIN{OFS=","} {out=$1 OFS $2 OFS $3 OFS $4 OFS "*"; for(i=5;i&lt;=NF;i++) out=out OFS $i; print out}' unk.def &gt; unk.def.tmp &amp;&amp; mv unk.def.tmp unk.def
 </code></pre>
@@ -275,12 +277,21 @@ surface）です。そのため形態素の詳細情報はカラム 5 から始�
     ]
   },
   "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] },
-  "skip_whitespace": false
+  "skip_whitespace": false,
+  "char_def_format": "sudachi"
 }
 </code></pre>
 <p><code>skip_whitespace: false</code> は、Sudachi と同様に、また SudachiDict のコストが前提と
 しているとおりに、空白をラティスに残します。指定しないと Lindera は MeCab と
 同様に空白を読み飛ばします（<a href="./lindera/segmenter.html#%E7%A9%BA%E7%99%BD%E6%96%87%E5%AD%97%E3%81%AE%E6%89%B1%E3%81%84">Segmenter</a> を参照）。</p>
+<p><code>char_def_format: "sudachi"</code> は、<code>char.def</code> を Sudachi と同じ規則で読みます。
+コードポイントは、それを覆うすべての行のカテゴリを持ちます。<code>ALL</code> はすべての
+カテゴリを表し、フラグ <code>NOOOVBOW</code> と <code>NOOOVEOW</code> は、その文字から、またはその文字の
+直後から未知語を始めないようにします。未知語は、文字のすべてのカテゴリから、
+Sudachi と同じ規則で区切ったまとまりの上に作ります。ほかに何も始まらない位置には、
+Sudachi と同じく <code>DEFAULT</code> の 1 文字の未知語を置きます。指定しないと、ビルダーは
+<code>char.def</code> を MeCab の形式で読み、Sudachi のファイルの最初の <code>NOOOVBOW</code> で止まります
+（<a href="./lindera-cli/commands.html#build"><code>lindera build</code></a> を参照）。</p>
 <h2 id="ビルドと確認"><a class="header" href="#ビルドと確認">ビルドと確認</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src /tmp/sudachidict-src \
@@ -311,11 +322,22 @@ surface）です。そのため形態素の詳細情報はカラム 5 から始�
 と同様にこの辞書でも一致します。</p>
 </blockquote>
 <h2 id="sudachi-との挙動の違い"><a class="header" href="#sudachi-との挙動の違い">Sudachi との挙動の違い</a></h2>
-<p>ラティス層は等価であることを検証済みです: 行列ファイルは SudachiDict の公式ビルドが
-使用するものと byte 単位で同一（sha256）であり、Sudachi のパス書き換え・入力正規化
-プラグインを無効にすると、Sudachi エンジンはこの辞書を使う Lindera と同じ最小コスト
-パスを生成します。残る違いは辞書データではなく Sudachi の<em>エンジンプラグイン</em>です:</p>
+<p>辞書のデータは Sudachi のものです。行列ファイルは SudachiDict の公式ビルドが使う
+ものと byte 単位で同一（sha256）で、<code>char.def</code> と <code>unk.def</code> は Sudachi 自身のもの
+です。<code>char_def_format: "sudachi"</code> により、Lindera は <code>char.def</code> の読み方と未知語の
+作り方を Sudachi に合わせます（<a href="https://github.com/lindera/lindera/issues/1388">#1388</a>）。
+同じ語彙から組んだ sudachi.rs <code>v0.7.0</code> と、Sudachi の入力テキストと経路書き換えの
+プラグインを外して（未知語のプラグインだけ、C 単位、文に分けない）比べると、
+『坊っちゃん』（<code>resources/bocchan.txt</code>）の 505 行のうち 502 行で同じトークンに
+なります。残る 2 行はコストの等しい経路が 2 つあり、Sudachi が他方を選ぶ行です
+（Lindera の <code>大学卒業 / 生</code> に対し Sudachi は <code>大学 / 卒業生</code>）。残る 1 行は URL を
+含む行で、Sudachi は辞書語 <code>http://</code> を使います。語彙はこの語を <code>http://</code>
+と書いており、ビルダーはこれをまだ復号しません（<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>）。
+残る違いはエンジンにあります:</p>
 <div class="table-wrapper"><table><thead><tr><th>Sudachi の機能</th><th>効果</th><th>Lindera での状況</th></tr></thead><tbody>
+<tr><td>ラテン・ギリシャ・キリル文字（<code>ALPHA</code>・<code>GREEK</code>・<code>CYRILLIC</code>。結合文字・異体字セレクタ・ZWJ のように <code>ALL</code> のものも含む）で、直前の文字とカテゴリを共有する文字からは、語を始めない（<code>can_bow</code>）</td><td>そのような文字の直前で辞書語が終わることもない。結合アクセントの付いた <code>cafe</code> は 1 つの未知語 <code>café</code> になり、異体字セレクタの付いた <code>♥</code> は 1 語になる</td><td>未対応</td></tr>
+<tr><td>コストの等しい経路の選び方</td><td>MeCab の規則とは別の経路を選ぶ</td><td>Lindera は MeCab と同じ規則で選ぶ</td></tr>
+<tr><td>ほかに何も始まらない位置の代わりの語（<code>SimpleOovPlugin</code>）</td><td>語を始められる次の文字（<code>can_bow</code>）まで伸びる</td><td>1 文字</td></tr>
 <tr><td><code>JoinKatakanaOovPlugin</code></td><td>カタカナ連続を結合するパス書き換え（例: よりコストの低い <code>サブ</code>+<code>スク</code> のパスではなく <code>サブスク</code>）</td><td>未対応</td></tr>
 <tr><td><code>JoinNumericPlugin</code></td><td>数値列の結合</td><td>未対応</td></tr>
 <tr><td><code>DefaultInputTextPlugin</code></td><td>検索前の NFKC + 小文字化による正規化（例: 半角の <code>AI</code> が正規化済みエントリにヒット）</td><td>Lindera の character filter（<code>unicode_normalize</code>）で部分的に代替可能</td></tr>
@@ -323,11 +345,12 @@ surface）です。そのため形態素の詳細情報はカラム 5 から始�
 </tbody></table>
 </div>
 <h2 id="ライセンス"><a class="header" href="#ライセンス">ライセンス</a></h2>
-<p>SudachiDict は Apache-2.0 です。<code>matrix.def</code>、<code>char.def</code>、<code>unk.def</code> は UniDic の一部です
+<p>SudachiDict は Apache-2.0 です。<code>matrix.def</code> は UniDic の一部です
 （BSD/GPL/LGPL のトリプルライセンス —
 <a href="https://github.com/WorksApplications/SudachiDict/blob/develop/LEGAL">SudachiDict の LEGAL notice</a>
-を参照）。このレシピでビルドした辞書は両方を含みます。再配布の前にライセンスを
-確認してください。</p>
+を参照）。<code>char.def</code> と <code>unk.def</code> は sudachi.rs（Apache-2.0）から取ります。<code>unk.def</code> は
+UniDic のものと同じファイルで、<code>char.def</code> は UniDic のものに Sudachi が手を加えたものです。
+このレシピでビルドした辞書はこれらを含みます。再配布の前にライセンスを確認してください。</p>
 
                     </main>
 
