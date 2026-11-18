@@ -713,6 +713,15 @@ Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for 
 
 `lindera train` は、`--char-def` を MeCab の形式でだけ読みます。
 
+### 語彙の形式
+
+辞書の `metadata.json` は、`lexicon_format` で語彙の CSV ファイルの形式を選びます（[#1389](https://github.com/lindera/lindera/issues/1389)）：
+
+- `"mecab"`（省略したときの既定）: MeCab の形式です。すべての欄を、書かれたとおりに読みます。
+- `"sudachi"`: Sudachi の形式で、SudachiDict が使います。バックスラッシュ・`u`・16 進数 4 桁、またはバックスラッシュ・`u`・波括弧で囲んだ 16 進数 1〜6 桁は、その数が表すコードポイントを表します。ビルダーは、Sudachi の辞書ビルダーと同じく、これをすべての欄で復号します。たとえば SudachiDict は、`http://` を `http:\u002f\u002f`、`1,2塁` を `1\u002c2塁` と書いています。エスケープは左から順に復号し、復号してできた文字列をもう一度復号することはしません。バックスラッシュ自体のエスケープはないので、エスケープの前のバックスラッシュはそのまま残ります。Unicode のスカラー値でない値（サロゲート、または U+10FFFF より大きい値）や、組んだ辞書でエントリの詳細を区切る NUL を表すエスケープがあると、ファイルと行を示すエラーでビルドが止まります。その辞書に対して組む user dictionary（`lindera build --user` にその `metadata.json` を渡したもの、またはその辞書と一緒に読み込む `.csv` ファイル）も、同じように復号します。
+
+`unk.def` は、どちらの形式でも書かれたとおりに読みます。Sudachi も同じです。
+
 ### 例
 
 #### IPADIC（日本語辞書）のビルド

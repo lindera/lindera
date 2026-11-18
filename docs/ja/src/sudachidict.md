@@ -119,7 +119,8 @@ surface）です。そのため形態素の詳細情報はカラム 5 から始�
   },
   "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] },
   "skip_whitespace": false,
-  "char_def_format": "sudachi"
+  "char_def_format": "sudachi",
+  "lexicon_format": "sudachi"
 }
 ```
 
@@ -135,6 +136,14 @@ Sudachi と同じ規則で区切ったまとまりの上に作ります。ほか
 Sudachi と同じく `DEFAULT` の 1 文字の未知語を置きます。指定しないと、ビルダーは
 `char.def` を MeCab の形式で読み、Sudachi のファイルの最初の `NOOOVBOW` で止まります
 （[`lindera build`](./lindera-cli/commands.md#build) を参照）。
+
+`lexicon_format: "sudachi"` は、SudachiDict の語彙が `(`・`)`・`/`・`,`・`|`・`"`
+を書くのに使うエスケープを、Sudachi の辞書ビルダーと同じく復号します。たとえば語彙は、
+語 `http://` を `http:\u002f\u002f`、`1,2塁` を `1\u002c2塁` と書いて
+います。すべての欄を復号するので、詳細も復号され、この辞書に対して組む user
+dictionary の行も同じく復号されます。指定しないと、2026-07-23 の語彙の 3,723 件の
+エントリはエスケープを残したままになり、本文に一致しません（[`lindera build`](./lindera-cli/commands.md#語彙の形式)
+と [#1389](https://github.com/lindera/lindera/issues/1389) を参照）。
 
 ## ビルドと確認
 
@@ -177,13 +186,13 @@ small + core + notcore（2026-07-23）のビルドは Lindera v6 で約 10 秒�
 ものと byte 単位で同一（sha256）で、`char.def` と `unk.def` は Sudachi 自身のもの
 です。`char_def_format: "sudachi"` により、Lindera は `char.def` の読み方と未知語の
 作り方を Sudachi に合わせます（[#1388](https://github.com/lindera/lindera/issues/1388)）。
+`lexicon_format: "sudachi"` により、語彙のエスケープも Sudachi と同じく復号します
+（[#1389](https://github.com/lindera/lindera/issues/1389)）。
 同じ語彙から組んだ sudachi.rs `v0.7.0` と、Sudachi の入力テキストと経路書き換えの
 プラグインを外して（未知語のプラグインだけ、C 単位、文に分けない）比べると、
-『坊っちゃん』（`resources/bocchan.txt`）の 505 行のうち 502 行で同じトークンに
-なります。残る 2 行はコストの等しい経路が 2 つあり、Sudachi が他方を選ぶ行です
-（Lindera の `大学卒業 / 生` に対し Sudachi は `大学 / 卒業生`）。残る 1 行は URL を
-含む行で、Sudachi は辞書語 `http://` を使います。語彙はこの語を `http://`
-と書いており、ビルダーはこれをまだ復号しません（[#1389](https://github.com/lindera/lindera/issues/1389)）。
+『坊っちゃん』（`resources/bocchan.txt`）の 505 行のうち 503 行で、品詞まで同じ
+トークンになります。残る 2 行はコストの等しい経路が 2 つあり、Sudachi が他方を
+選ぶ行です（Lindera の `大学卒業 / 生` に対し Sudachi は `大学 / 卒業生`）。
 残る違いはエンジンにあります:
 
 | Sudachi の機能 | 効果 | Lindera での状況 |

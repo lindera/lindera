@@ -16,7 +16,7 @@ Download the SudachiDict source archive and build the dictionary:
   --metadata ./lindera-sudachidict/metadata.json
 ```
 
-The archive bundles the raw lexicons (small + core + notcore), the connection matrix, Sudachi's own `char.def` (from sudachi.rs `v0.7.0`, which `"char_def_format": "sudachi"` in `metadata.json` reads as Sudachi does) and the pre-aligned `unk.def`, so no manual preprocessing is needed. The built dictionary is about 570MB.
+The archive bundles the raw lexicons (small + core + notcore, whose escapes `"lexicon_format": "sudachi"` in `metadata.json` decodes as Sudachi does), the connection matrix, Sudachi's own `char.def` (from sudachi.rs `v0.7.0`, which `"char_def_format": "sudachi"` in `metadata.json` reads as Sudachi does) and the pre-aligned `unk.def`, so no manual preprocessing is needed. The built dictionary is about 570MB.
 
 > [!TIP]
 > To build from a newer upstream SudachiDict release than the bundled one, see
