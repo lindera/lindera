@@ -8,6 +8,7 @@
 
 use lindera::dictionary::Metadata;
 use lindera::dictionary::core::character_definition::CharDefFormat;
+use lindera::dictionary::core::lexicon_format::LexiconFormat;
 use lindera::space_penalty::SpacePenaltyConfig;
 
 use crate::schema::CoreSchema;
@@ -44,11 +45,13 @@ fn default_user_dictionary_schema() -> CoreSchema {
 /// not expose it), nor is `lindera_version`, which the dictionary builder
 /// stamps when it writes a dictionary (#1303), nor `context_id_map`, which
 /// the builder writes into a dictionary it relabels. `space_penalty`,
-/// `skip_whitespace`, `connection_id_mapping` and `char_def_format` are
-/// retained, so a dictionary built from a `metadata.json` that ships
-/// left-space penalty rules (ko-dic), turns whitespace skipping off
-/// (SudachiDict), enables the relabelling of context IDs (ko-dic, UniDic)
-/// or selects Sudachi's `char.def` format (SudachiDict, #1388) keeps them.
+/// `skip_whitespace`, `connection_id_mapping`, `char_def_format` and
+/// `lexicon_format` are retained, so a dictionary built from a
+/// `metadata.json` that ships left-space penalty rules (ko-dic), turns
+/// whitespace skipping off (SudachiDict), enables the relabelling of context
+/// IDs (ko-dic, UniDic), selects Sudachi's `char.def` format (SudachiDict,
+/// #1388) or Sudachi's lexicon format (SudachiDict, #1389) keeps them, and
+/// so does a user dictionary built with that metadata.
 #[derive(Debug, Clone)]
 pub struct CoreMetadata {
     /// Dictionary name.
@@ -84,6 +87,10 @@ pub struct CoreMetadata {
     /// The format of the dictionary's `char.def` (#1388): MeCab's, the
     /// default, or Sudachi's (SudachiDict).
     pub char_def_format: CharDefFormat,
+    /// The format of the dictionary's lexicons (#1389): MeCab's, the
+    /// default, or Sudachi's (SudachiDict), whose escapes the builder
+    /// decodes, in the user dictionaries built with this metadata too.
+    pub lexicon_format: LexiconFormat,
 }
 
 impl CoreMetadata {
@@ -105,7 +112,8 @@ impl CoreMetadata {
     /// # Returns
     ///
     /// The new `CoreMetadata`, with no `space_penalty` and no `skip_whitespace`
-    /// setting, `connection_id_mapping` off, and MeCab's `char.def` format.
+    /// setting, `connection_id_mapping` off, and MeCab's `char.def` and
+    /// lexicon formats.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: Option<String>,
@@ -136,6 +144,7 @@ impl CoreMetadata {
             skip_whitespace: None,
             connection_id_mapping: false,
             char_def_format: CharDefFormat::Mecab,
+            lexicon_format: LexiconFormat::Mecab,
         }
     }
 
@@ -171,8 +180,8 @@ impl Default for CoreMetadata {
 impl From<Metadata> for CoreMetadata {
     /// Converts a lindera [`Metadata`] into a [`CoreMetadata`] (dropping
     /// `model_info`, `lindera_version` and `context_id_map`, keeping
-    /// `space_penalty`, `skip_whitespace`, `connection_id_mapping` and
-    /// `char_def_format`).
+    /// `space_penalty`, `skip_whitespace`, `connection_id_mapping`,
+    /// `char_def_format` and `lexicon_format`).
     fn from(metadata: Metadata) -> Self {
         Self {
             name: metadata.name,
@@ -189,6 +198,7 @@ impl From<Metadata> for CoreMetadata {
             skip_whitespace: metadata.skip_whitespace,
             connection_id_mapping: metadata.connection_id_mapping,
             char_def_format: metadata.char_def_format,
+            lexicon_format: metadata.lexicon_format,
         }
     }
 }
@@ -196,13 +206,14 @@ impl From<Metadata> for CoreMetadata {
 impl From<CoreMetadata> for Metadata {
     /// Converts a [`CoreMetadata`] into a lindera [`Metadata`] (`model_info`,
     /// `lindera_version` and `context_id_map` are `None`; `space_penalty`,
-    /// `skip_whitespace`, `connection_id_mapping` and `char_def_format` are
-    /// carried over).
+    /// `skip_whitespace`, `connection_id_mapping`, `char_def_format` and
+    /// `lexicon_format` are carried over).
     fn from(metadata: CoreMetadata) -> Self {
         let space_penalty = metadata.space_penalty;
         let skip_whitespace = metadata.skip_whitespace;
         let connection_id_mapping = metadata.connection_id_mapping;
         let char_def_format = metadata.char_def_format;
+        let lexicon_format = metadata.lexicon_format;
         let mut converted = Metadata::new(
             metadata.name,
             metadata.encoding,
@@ -219,6 +230,7 @@ impl From<CoreMetadata> for Metadata {
         converted.skip_whitespace = skip_whitespace;
         converted.connection_id_mapping = connection_id_mapping;
         converted.char_def_format = char_def_format;
+        converted.lexicon_format = lexicon_format;
         converted
     }
 }
@@ -285,6 +297,7 @@ mod tests {
         assert!(back.skip_whitespace.is_none());
         assert!(!back.connection_id_mapping);
         assert_eq!(back.char_def_format, CharDefFormat::Mecab);
+        assert_eq!(back.lexicon_format, LexiconFormat::Mecab);
     }
 
     /// ko-dic's `metadata.json` ships left-space penalty rules; loading it the
@@ -356,5 +369,24 @@ mod tests {
         assert_eq!(core.char_def_format, CharDefFormat::Sudachi);
         let rebuilt: Metadata = core.into();
         assert_eq!(rebuilt.char_def_format, CharDefFormat::Sudachi);
+    }
+
+    /// SudachiDict's `metadata.json` selects Sudachi's lexicon format, and
+    /// the setting must survive the same round trip, so that a dictionary
+    /// the bindings build from it, and a user dictionary built with its
+    /// metadata, decode the escapes of the lexicon as `lindera build` does
+    /// (#1389).
+    #[test]
+    fn keeps_lexicon_format_from_sudachidict_metadata() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../lindera-sudachidict/metadata.json");
+        let json = std::fs::read_to_string(&path).unwrap();
+        let metadata: Metadata = serde_json::from_str(&json).unwrap();
+        assert_eq!(metadata.lexicon_format, LexiconFormat::Sudachi);
+
+        let core = CoreMetadata::from(metadata);
+        assert_eq!(core.lexicon_format, LexiconFormat::Sudachi);
+        let rebuilt: Metadata = core.into();
+        assert_eq!(rebuilt.lexicon_format, LexiconFormat::Sudachi);
     }
 }
