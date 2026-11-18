@@ -1,6 +1,7 @@
 pub mod character_definition;
 pub mod connection_cost_matrix;
 pub mod context_id_remap;
+mod lexicon_escape;
 pub mod metadata;
 pub mod prefix_dictionary;
 pub mod unknown_dictionary;
@@ -437,6 +438,7 @@ impl DictionaryBuilder {
             .encoding(self.metadata.encoding.clone())
             .skip_invalid_cost_or_id(self.metadata.skip_invalid_cost_or_id)
             .schema(self.metadata.dictionary_schema.clone())
+            .lexicon_format(self.metadata.lexicon_format)
             .context_id_remap(remap)
             .matrix_size(matrix_size)
             .builder()
@@ -507,6 +509,7 @@ impl DictionaryBuilder {
             .default_left_context_id(self.metadata.default_left_context_id)
             .default_right_context_id(self.metadata.default_right_context_id)
             .flexible_csv(self.metadata.flexible_csv)
+            .lexicon_format(self.metadata.lexicon_format)
             .matrix_size(self.system_matrix_size)
             .user_dictionary_handler(Some(Box::new(move |row: &StringRecord| {
                 // Map user dictionary fields to dictionary schema fields

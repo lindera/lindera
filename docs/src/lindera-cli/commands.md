@@ -713,6 +713,15 @@ A dictionary's `metadata.json` selects the format of its `char.def` with `char_d
 
 `lindera train` reads `--char-def` in MeCab's format only.
 
+### Lexicon format
+
+A dictionary's `metadata.json` selects the format of its lexicon CSV files with `lexicon_format` ([#1389](https://github.com/lindera/lindera/issues/1389)):
+
+- `"mecab"`, the default when the field is omitted: MeCab's format. Every field is taken as written.
+- `"sudachi"`: Sudachi's format, which SudachiDict uses. A backslash, `u` and four hex digits, or a backslash, `u` and one to six hex digits in braces, stand for the code point that the digits name, and the builder decodes them in every field, as Sudachi's dictionary builder does: SudachiDict writes `http://` as `http:\u002f\u002f` and `1,2塁` as `1\u002c2塁`. The escapes are decoded left to right, the text that one stands for is not decoded again, and a backslash before an escape stays, since there is no escape for the backslash itself. An escape for a value that is not a Unicode scalar value (a surrogate, or above U+10FFFF), or for NUL, which separates the details of an entry in a built dictionary, fails the build with an error that names the file and the line. The user dictionaries built for the dictionary, with `lindera build --user` and its `metadata.json` or from a `.csv` file loaded with the dictionary, are decoded in the same way.
+
+`unk.def` is read as written in both formats, as Sudachi reads it.
+
 ### Examples
 
 #### Build IPADIC (Japanese dictionary)

@@ -17,7 +17,9 @@ use log::{debug, warn};
 
 use crate::LinderaResult;
 use crate::builder::connection_cost_matrix::MatrixSize;
+use crate::builder::lexicon_escape::decode_record;
 use crate::dictionary::context_id_map::ContextIdMap;
+use crate::dictionary::lexicon_format::LexiconFormat;
 use crate::dictionary::schema::Schema;
 use crate::error::LinderaErrorKind;
 use crate::util::write_data;
@@ -29,6 +31,9 @@ pub struct PrefixDictionaryBuilder {
     encoding: Cow<'static, str>,
     skip_invalid_cost_or_id: bool,
     schema: Schema,
+    /// The format of the lexicon, which decides whether the fields of each
+    /// row are decoded as they are read (#1389).
+    lexicon_format: LexiconFormat,
     /// Optional connection-cost context-ID remap. When present, each entry's
     /// `left_id`/`right_id` is relabeled via `remap.left`/`remap.right` before the
     /// `WordEntry` is created, matching the remap applied to the connection matrix.
@@ -48,6 +53,7 @@ pub struct PrefixDictionaryBuilderOptions {
     encoding: Option<Cow<'static, str>>,
     skip_invalid_cost_or_id: Option<bool>,
     schema: Option<Schema>,
+    lexicon_format: Option<LexiconFormat>,
     context_id_remap: Option<Arc<ContextIdMap>>,
     matrix_size: Option<MatrixSize>,
 }
@@ -70,6 +76,22 @@ impl PrefixDictionaryBuilderOptions {
 
     pub fn schema(&mut self, value: Schema) -> &mut Self {
         self.schema = Some(value);
+        self
+    }
+
+    /// Sets the format of the lexicon, which decides whether the fields of
+    /// each row are decoded as they are read (#1389).
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The format; MeCab's, the default, takes the fields as
+    ///   written, and Sudachi's decodes its escapes in every field.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    pub fn lexicon_format(&mut self, value: LexiconFormat) -> &mut Self {
+        self.lexicon_format = Some(value);
         self
     }
 
@@ -100,6 +122,7 @@ impl PrefixDictionaryBuilderOptions {
             encoding: self.encoding.clone().unwrap_or_else(|| "UTF-8".into()),
             skip_invalid_cost_or_id: self.skip_invalid_cost_or_id.unwrap_or(false),
             schema: self.schema.clone().unwrap_or_default(),
+            lexicon_format: self.lexicon_format.unwrap_or_default(),
             context_id_remap: self.context_id_remap.clone(),
             matrix_size: self.matrix_size,
         }
@@ -114,6 +137,7 @@ impl PrefixDictionaryBuilder {
             encoding: "UTF-8".into(),
             skip_invalid_cost_or_id: false,
             schema,
+            lexicon_format: LexiconFormat::Mecab,
             context_id_remap: None,
             matrix_size: None,
         }
@@ -199,9 +223,11 @@ impl PrefixDictionaryBuilder {
 
     /// Read CSV files.
     ///
-    /// When a matrix size is set, each row's context ids are checked as the row
-    /// is read, while its file name is still at hand; see
-    /// [`Self::check_context_ids`].
+    /// Each row is decoded as the lexicon format reads it (#1389), as it is
+    /// read and before anything else looks at it, so that the sort, the
+    /// trie and the details all see the decoded text. When a matrix size is
+    /// set, each row's context ids are then checked, while its file name is
+    /// still at hand; see [`Self::check_context_ids`].
     ///
     /// # Arguments
     ///
@@ -210,7 +236,9 @@ impl PrefixDictionaryBuilder {
     ///
     /// # Returns
     ///
-    /// The rows in file order, without the rows the context-id check skipped.
+    /// The rows in file order, without the rows the context-id check skipped,
+    /// or an error naming the file and the line of a row that cannot be
+    /// decoded.
     fn read_csv_files(
         &self,
         filenames: &[PathBuf],
@@ -245,6 +273,11 @@ impl PrefixDictionaryBuilder {
                     LinderaErrorKind::Content
                         .with_error(anyhow!(err))
                         .add_context(format!("Failed to parse CSV record in file: {filename:?}"))
+                })?;
+                let line = record.position().map_or(0, |position| position.line());
+                let record = decode_record(self.lexicon_format, record).map_err(|message| {
+                    LinderaErrorKind::Content
+                        .with_error(anyhow!("{}: line {line}: {message}", filename.display()))
                 })?;
                 if let Some(matrix_size) = self.matrix_size
                     && !self.check_context_ids(&record, matrix_size, filename)?

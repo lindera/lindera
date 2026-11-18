@@ -124,7 +124,8 @@ reserved columns; the rest name SudachiDict's columns in order:
   },
   "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] },
   "skip_whitespace": false,
-  "char_def_format": "sudachi"
+  "char_def_format": "sudachi",
+  "lexicon_format": "sudachi"
 }
 ```
 
@@ -141,6 +142,16 @@ position where nothing else starts gets a one-character unknown word of
 `DEFAULT`, as in Sudachi. Without it, the builder reads `char.def` in
 MeCab's format, which stops at the first `NOOOVBOW` of Sudachi's file (see
 [`lindera build`](./lindera-cli/commands.md#build)).
+
+`lexicon_format: "sudachi"` decodes the escapes that SudachiDict's lexicons
+write for `(`, `)`, `/`, `,`, `|` and `"`, as Sudachi's dictionary builder
+does: the lexicon writes the word `http://` as `http:\u002f\u002f`
+and `1,2塁` as `1\u002c2塁`. Every field is decoded, so the details are
+too, and so are the rows of a user dictionary built for this dictionary.
+Without it, 3,723 entries of the 2026-07-23 lexicons keep their escapes and
+never match text (see
+[`lindera build`](./lindera-cli/commands.md#lexicon-format) and
+[#1389](https://github.com/lindera/lindera/issues/1389)).
 
 ## Build and verify
 
@@ -183,18 +194,18 @@ references, synonym group IDs), so downstream code can use them.
 
 The dictionary data is Sudachi's: the matrix file is byte-identical (sha256)
 to the one SudachiDict's official build uses, `char.def` and `unk.def` are
-Sudachi's own, and `char_def_format: "sudachi"` makes Lindera read
-`char.def` and create unknown words as Sudachi does
-([#1388](https://github.com/lindera/lindera/issues/1388)). Compared with
+Sudachi's own, `char_def_format: "sudachi"` makes Lindera read `char.def`
+and create unknown words as Sudachi does
+([#1388](https://github.com/lindera/lindera/issues/1388)), and
+`lexicon_format: "sudachi"` decodes the escapes of the lexicons as Sudachi
+does ([#1389](https://github.com/lindera/lindera/issues/1389)). Compared with
 sudachi.rs `v0.7.0` on the same lexicons, with Sudachi's input-text and
 path-rewrite plugins disabled (its unknown-word plugins only, mode C,
-sentences not split), Lindera gives the same tokens on 502 of the 505 lines
-of *Botchan* (`resources/bocchan.txt`): two lines have two paths of equal
-cost, and Sudachi chooses the other one (`大学 / 卒業生` where Lindera gives
-`大学卒業 / 生`), and one has a URL, where Sudachi uses the dictionary word
-`http://`, which the lexicon writes as `http://` and the builder
-does not decode yet ([#1389](https://github.com/lindera/lindera/issues/1389)).
-The remaining differences are in the engine:
+sentences not split), Lindera gives the same tokens, with the same parts of
+speech, on 503 of the 505 lines of *Botchan* (`resources/bocchan.txt`): the
+other two have two paths of equal cost, and Sudachi chooses the other one
+(`大学 / 卒業生` where Lindera gives `大学卒業 / 生`). The remaining
+differences are in the engine:
 
 | Sudachi feature | Effect | Status under Lindera |
 | --- | --- | --- |

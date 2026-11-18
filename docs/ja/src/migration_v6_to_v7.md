@@ -65,6 +65,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **既定で中黒が未知語を区切る** | `・` でつないだカタカナを含む日本語を分割するユーザー。特に `レノン・ジョン` のような未知の名前と、`・` を含む語の多い辞書（IPADIC-NEologd・SudachiDict）を decompose モードで使うユーザー | そうした並びと、decompose モードのそうした語が `・` で分かれることを前提にする。MeCab と同じ分割にするには `break_characters: ""`（`--disable-break-characters`）を設定する |
 | **MeCab と同じく、未知語は文字の既定カテゴリから作り、カテゴリを共有する文字をまとめる** | 複数のカテゴリを持つ文字がほかの文字と並ぶテキストを分割するユーザー。同梱の辞書では、ko-dic の漢数字に続く漢字と、ko-dic の `〇`（U+3007）。`CharacterDefinition::lookup_categories` の順序に依存する Rust コード | そうしたテキストが MeCab と同じ分割になることを前提にする（ko-dic の `三國史記` は 1 つの `SH`、`〇〇〇` は 1 つの `SY`）。v6 の動作に戻す設定はない |
 | **SudachiDict は Sudachi 自身の `char.def` を Sudachi と同じ規則で読む** | SudachiDict でテキストを分割するユーザー。特に記号の前の `々`、小書きのカタカナや `ー` で始まるカタカナの未知語、結合文字・異体字セレクタ・ZWJ を含むテキスト。Sudachi の `char.def` から辞書をビルドするユーザー | そうしたテキストが Sudachi と同じように分割されることを前提にする。SudachiDict を自分でビルドするときは、`metadata.json` に `"char_def_format": "sudachi"` を書く（[SudachiDict が Sudachi 自身の `char.def` を読む](#sudachidict-が-sudachi-自身の-chardef-を読む)を参照） |
+| **SudachiDict は語彙のエスケープを Sudachi と同じく復号する** | `(`・`)`・`/`・`,`・`\|`・`"` を含む辞書語があるテキストを SudachiDict で分割するユーザー。特に URL（`http://`）、`1,2塁`、`b/s`、顔文字。そうした語の詳細を読むユーザー。Sudachi の語彙から辞書や user dictionary をビルドするユーザー | そうした語が見つかり、詳細も Sudachi と同じく復号されることを前提にする。SudachiDict を自分でビルドするときは、`metadata.json` に `"lexicon_format": "sudachi"` を書く（[SudachiDict が語彙のエスケープを復号する](#sudachidict-が語彙のエスケープを復号する)を参照） |
 | **CC-CEDICT: 未知語のコストは 400、英字だけ・数字だけの見出し語のコストは 399** | CC-CEDICT でテキストを分割するユーザー。特に `T恤` のように英字や数字と漢字が混ざる見出し語。CC-CEDICT の N-best のコストを読むユーザー | そうした見出し語が 1 語になること、`〇` や `PK` のような見出し語がピンインと定義つきで出ること、英単語・仮名・数字は v6 と同じく 1 語のままであること、パスのコストが変わることを前提にする。CC-CEDICT の辞書ディレクトリは `CC-CEDICT-MeCab-0.1.0-20261021` のアーカイブからビルドする |
 | **Jieba: `〇` は数字の見出し語** | Jieba で `〇`（U+3007）を含むテキストを分割するユーザー | 各 `〇` が未知語の一部ではなく、数字の 1 語（`m`、ピンイン `ling2`）になることを前提にする（同じ辞書の MeCab と同じ）。Jieba の辞書ディレクトリは `mecab-jieba-0.1.3` のアーカイブからビルドする |
 | **Jieba: UD Chinese GSD でコストを学習し直した** | Jieba でテキストを解析するユーザー。Jieba の簡易形式のユーザー辞書を使うユーザー | 中国語のテキストが UD Chinese GSD と同じ分け方（jieba より細かい。`中华 / 人民 / 共和 / 国`、`这 / 个`。その test の分割の F1 は 77.3 → 87.7）になり、簡易形式のユーザー辞書の語のコストが −32768 になることを前提にする。Jieba の辞書ディレクトリは `mecab-jieba-0.1.3` のアーカイブからビルドする |
@@ -1062,11 +1063,45 @@ SudachiDict は `char.def` を同梱していないため、これまでは UniD
 
 『坊っちゃん』（`resources/bocchan.txt`）では、505 行のうち 5 行が変わり、
 どれも `｜` の前の `々` の箇所です。sudachi.rs `v0.7.0`（入力テキストと経路書き換えの
-プラグインを外したもの）と同じトークンになる行は、497 行から 502 行に増えました
-（残る 3 行は [SudachiDict（カスタムビルド）](./sudachidict.md#sudachi-との挙動の違い)
-を参照）。SudachiDict を自分でビルドするときは、Sudachi の `char.def` と
+プラグインを外したもの）と同じトークンになる行は、497 行から 502 行に増えました。
+残る 3 行のうち 1 行は[次の節](#sudachidict-が語彙のエスケープを復号する)の URL で、
+残る 2 行は [SudachiDict（カスタムビルド）](./sudachidict.md#sudachi-との挙動の違い)
+で説明しています。SudachiDict を自分でビルドするときは、Sudachi の `char.def` と
 `"char_def_format": "sudachi"` を使います。既定の MeCab の形式では、ファイルの
 最初の `NOOOVBOW` で止まります。
+
+## SudachiDict が語彙のエスケープを復号する
+
+SudachiDict の語彙は、`(`・`)`・`/`・`,`・`|`・`"` を、バックスラッシュ・`u`・
+16 進数 4 桁のエスケープで書いています。たとえば語 `http://` は
+`http:\u002f\u002f`、`1,2塁` は `1\u002c2塁` と書かれています。Sudachi の
+辞書ビルダーはこれを復号しますが、Lindera のビルダーは復号しなかったため、
+2026-07-23 の語彙の 3,723 件のエントリがエスケープを残したままで、本文に
+一致しませんでした。v7.0.0 は、Sudachi と同じくすべての欄でこれを復号します
+（[#1389](https://github.com/lindera/lindera/issues/1389)）。その形式は SudachiDict の
+`metadata.json` の `"lexicon_format": "sudachi"` で選びます。下の表のトークンは
+コードスパンで示し、`␣` は空白です:
+
+| 入力（SudachiDict） | #1389 より前の v7.0.0 | v7.0.0 と Sudachi |
+| --- | --- | --- |
+| `http://lindera.dev` | `http` `://` `lindera` `.` `dev` | `http://` `lindera` `.` `dev` |
+| `1,2塁` | `1` `,` `2塁` | `1,2塁` |
+| `b/s` | `b` `/` `s` | `b/s` |
+| `co.,ltd.` | `co` `.,` `ltd` `.` | `co.,ltd.` |
+| `\( ^o^ )/` | `\(` `␣` `^o^` `␣` `)/` | `\( ^o^ )/` |
+
+詳細も復号されます。`1,2塁` の表示用の見出しは `1,2塁`、正規化形は `一二塁` です。
+SudachiDict に対して組む user dictionary の行も、Sudachi のユーザー辞書と同じく
+復号されます。`lindera tokenize` の `mecab` 出力は詳細をカンマで区切り、引用符で
+囲まないので、この表示用の見出しのようにカンマを含む詳細は、その出力では区切りが
+曖昧になります。CC-CEDICT と Jieba の一部の詳細も、すでに同じです。JSON 出力は
+影響を受けません。
+
+『坊っちゃん』では、505 行のうち URL を含む 1 行が変わり、sudachi.rs `v0.7.0`
+（入力テキストと経路書き換えのプラグインを外したもの）と同じトークンになる行は、
+502 行から 503 行に増えました。SudachiDict を自分でビルドするときは、
+`"lexicon_format": "sudachi"` を書きます。書かないと、エスケープのある語は
+エスケープを残したままになります。
 
 ## CC-CEDICT: 未知語は辞書語より安くならない
 

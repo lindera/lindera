@@ -565,6 +565,74 @@ fn sudachidict_reads_sudachis_char_def() {
     }
 }
 
+/// The surface of each token of `text` with its display surface
+/// (`details[0]`), its reading (`details[7]`) and its normalized form
+/// (`details[8]`), the columns of SudachiDict's schema.
+#[cfg(feature = "embed-sudachidict")]
+fn sudachidict_tokens(segmenter: &Segmenter, text: &str) -> Vec<[String; 4]> {
+    segmenter
+        .segment(Cow::Borrowed(text))
+        .expect("segmentation should succeed")
+        .iter_mut()
+        .map(|token| {
+            let surface = token.surface.to_string();
+            let details = token.details();
+            let detail = |index: usize| details.get(index).map_or("", |d| d).to_string();
+            [surface, detail(0), detail(7), detail(8)]
+        })
+        .collect()
+}
+
+/// #1389: SudachiDict's lexicons write `(`, `)`, `/`, `,`, `|` and `"` as
+/// escapes, which `"lexicon_format": "sudachi"` makes the builder decode, as
+/// Sudachi's does. The words are found as sudachi.rs 0.7.0 finds them (mode
+/// C, without its input-text and path-rewrite plugins), and their details
+/// are decoded. A user dictionary built with the dictionary's metadata, as
+/// the segmenter builds a `.csv` one, is decoded too.
+#[cfg(feature = "embed-sudachidict")]
+#[test]
+fn sudachidict_decodes_lexicon_escapes() {
+    let dictionary = lindera::dictionary::load_dictionary("embedded://sudachidict")
+        .expect("embedded dictionary should load");
+    let metadata = (*dictionary.metadata).clone();
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let token = |surface: &str, display: &str, reading: &str, normalized: &str| {
+        [surface, display, reading, normalized].map(String::from)
+    };
+    let tokens = sudachidict_tokens(&segmenter, "http://lindera.dev");
+    assert_eq!(
+        tokens[0],
+        token("http://", "http://", "エイチティーティーピー", "http://")
+    );
+    assert_eq!(
+        sudachidict_tokens(&segmenter, "1,2塁"),
+        vec![token("1,2塁", "1,2塁", "イチニルイ", "一二塁")]
+    );
+    assert_eq!(
+        sudachidict_tokens(&segmenter, "b/s"),
+        vec![token("b/s", "B/S", "b/s", "B/S")]
+    );
+    // An emoticon whose backslash is written as it is before its escaped
+    // parenthesis.
+    assert_eq!(wakati(&segmenter, "\\( ^o^ )/"), "\\( ^o^ )/");
+
+    // The backslashes of the escapes are written `\x5c`.
+    let dir = tempfile::tempdir().expect("temporary directory");
+    let csv = dir.path().join("userdic.csv");
+    std::fs::write(&csv, "lindera\x5cu002fdev,名詞,リンデラ\x5cu002fデブ\n")
+        .expect("user dictionary written");
+    let user_dictionary =
+        lindera::dictionary::load_user_dictionary(csv.to_str().unwrap(), &metadata)
+            .expect("user dictionary should load");
+    let dictionary = lindera::dictionary::load_dictionary("embedded://sudachidict")
+        .expect("embedded dictionary should load");
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary));
+    assert_eq!(
+        sudachidict_tokens(&segmenter, "lindera/dev"),
+        vec![token("lindera/dev", "*", "リンデラ/デブ", "*")]
+    );
+}
+
 /// Regression test #1131: IPADIC's two `狡い` entries tie (same context ids
 /// and cost; only the reading and the pronunciation differ), and the first
 /// CSV row wins, as in MeCab: `ズルイ`, not `コスイ`. The lattice used to

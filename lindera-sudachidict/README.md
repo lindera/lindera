@@ -62,11 +62,17 @@ The detailed version follows the dictionary format above (19 columns).
 | 0-18 | - | Same as the dictionary format | |
 | 19 | - | - | After 19, it can be freely expanded. |
 
+Both versions are read as the lexicons are: a backslash, `u` and four hex
+digits, or a backslash, `u` and one to six hex digits in braces, stand for
+the character that the digits name, as in Sudachi's user dictionaries
+(`"lexicon_format": "sudachi"` in `metadata.json`).
+
 ## Behavioral differences from Sudachi
 
 This dictionary reproduces SudachiDict's vocabulary and lattice behavior,
-and reads Sudachi's own `char.def` as Sudachi does (`"char_def_format":
-"sudachi"` in `metadata.json`), but not the Sudachi engine plugins
+reads Sudachi's own `char.def` as Sudachi does (`"char_def_format":
+"sudachi"` in `metadata.json`) and decodes the escapes of its lexicons as
+Sudachi does (`"lexicon_format": "sudachi"`), but not the Sudachi engine plugins
 (katakana/numeric joining, input normalization, A/B/C split modes) or
 Sudachi's rule that no word starts inside a run of Latin, Greek or Cyrillic
 letters. See the

@@ -2,7 +2,7 @@
 
 ## 辞書バージョン
 
-このリポジトリには [SudachiDict](https://github.com/lindera/sudachidict) 20260723（small + core + notcore レキシコン）が含まれています。ミラーのタグ `0.1.0-20260723` から取り、Sudachi 自身の `char.def`（sudachi.rs `v0.7.0`）を、`metadata.json` の `"char_def_format": "sudachi"` で Sudachi と同じ規則で読みます。
+このリポジトリには [SudachiDict](https://github.com/lindera/sudachidict) 20260723（small + core + notcore レキシコン）が含まれています。ミラーのタグ `0.1.0-20260723` から取り、Sudachi 自身の `char.def`（sudachi.rs `v0.7.0`）を、`metadata.json` の `"char_def_format": "sudachi"` で Sudachi と同じ規則で読みます。`"lexicon_format": "sudachi"` は、レキシコンのエスケープ（`(`・`)`・`/`・`,`・`|`・`"` を書くのに使う、バックスラッシュ・`u`・16 進数）を、Sudachi と同じくすべての欄で復号します。user dictionary も同じです。
 
 ## 辞書フォーマット
 
