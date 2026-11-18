@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::dictionary::character_definition::CharDefFormat;
 use crate::dictionary::context_id_map::ContextIdMap;
+use crate::dictionary::lexicon_format::LexiconFormat;
 use crate::dictionary::schema::Schema;
 use crate::space_penalty::SpacePenaltyConfig;
 
@@ -189,6 +190,16 @@ pub struct Metadata {
     /// `metadata.json` files stay byte-identical.
     #[serde(default, skip_serializing_if = "CharDefFormat::is_mecab")]
     pub char_def_format: CharDefFormat,
+    /// The format of the dictionary's lexicon CSV files (#1389): MeCab's,
+    /// the default (`"mecab"`), whose fields are taken as written, or
+    /// Sudachi's (`"sudachi"`), whose escapes (a backslash, `u` and four hex
+    /// digits, or one to six in braces) the builder decodes in every field,
+    /// as Sudachi's dictionary builder does. SudachiDict sets `"sudachi"`.
+    /// It applies to the user dictionaries built for the dictionary too, so
+    /// the built `metadata.json` keeps it. Omitted from the file when it is
+    /// MeCab's, so existing `metadata.json` files stay byte-identical.
+    #[serde(default, skip_serializing_if = "LexiconFormat::is_mecab")]
+    pub lexicon_format: LexiconFormat,
 }
 
 impl Default for Metadata {
@@ -217,7 +228,7 @@ impl Metadata {
     /// Creates metadata for a dictionary in the current on-disk format, with
     /// `lindera_version` and every optional setting (`connection_id_mapping`,
     /// `context_id_map`, `model_info`, `space_penalty`, `skip_whitespace`)
-    /// left unset.
+    /// left unset, and `char_def_format` and `lexicon_format` at MeCab's.
     ///
     /// # Arguments
     ///
@@ -268,6 +279,7 @@ impl Metadata {
             space_penalty: None,
             skip_whitespace: None,
             char_def_format: CharDefFormat::Mecab,
+            lexicon_format: LexiconFormat::Mecab,
         }
     }
 
@@ -428,6 +440,33 @@ mod tests {
         assert_eq!(parsed.char_def_format, CharDefFormat::Mecab);
 
         let unknown = without.replacen('{', "{\"char_def_format\":\"juman\",", 1);
+        assert!(Metadata::load(unknown.as_bytes()).is_err());
+    }
+
+    /// `lexicon_format` is MeCab's when absent, is not written for MeCab's,
+    /// and round-trips as `"sudachi"` (#1389). An unknown format is an
+    /// error, rather than silently MeCab's.
+    #[test]
+    fn lexicon_format_is_optional_and_round_trips() {
+        let without = serde_json::to_string(&Metadata::default()).unwrap();
+        assert!(!without.contains("lexicon_format"), "{without}");
+        let parsed = Metadata::load(without.as_bytes()).unwrap();
+        assert_eq!(parsed.lexicon_format, LexiconFormat::Mecab);
+
+        let metadata = Metadata {
+            lexicon_format: LexiconFormat::Sudachi,
+            ..Metadata::default()
+        };
+        let json = serde_json::to_string(&metadata).unwrap();
+        assert!(json.contains("\"lexicon_format\":\"sudachi\""), "{json}");
+        let parsed = Metadata::load(json.as_bytes()).unwrap();
+        assert_eq!(parsed.lexicon_format, LexiconFormat::Sudachi);
+
+        let explicit = without.replacen('{', "{\"lexicon_format\":\"mecab\",", 1);
+        let parsed = Metadata::load(explicit.as_bytes()).unwrap();
+        assert_eq!(parsed.lexicon_format, LexiconFormat::Mecab);
+
+        let unknown = without.replacen('{', "{\"lexicon_format\":\"juman\",", 1);
         assert!(Metadata::load(unknown.as_bytes()).is_err());
     }
 

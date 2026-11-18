@@ -13,7 +13,9 @@ use log::debug;
 
 use crate::LinderaResult;
 use crate::builder::connection_cost_matrix::MatrixSize;
+use crate::builder::lexicon_escape::decode_record;
 use crate::dictionary::UserDictionary;
+use crate::dictionary::lexicon_format::LexiconFormat;
 use crate::dictionary::prefix_dictionary::UserPrefixDictionary;
 use crate::error::LinderaErrorKind;
 use crate::viterbi::WordEntry;
@@ -40,6 +42,10 @@ pub struct UserDictionaryBuilder {
     default_left_context_id: u16,
     default_right_context_id: u16,
     flexible_csv: bool,
+    /// The lexicon format of the system dictionary the user dictionary is
+    /// for, which decides whether the fields of each row are decoded as they
+    /// are read (#1389).
+    lexicon_format: LexiconFormat,
     user_dictionary_handler: StringRecordProcessor,
     /// The connection matrix size of the system dictionary the user
     /// dictionary is for. Every row's context IDs are checked against it;
@@ -58,6 +64,8 @@ pub struct UserDictionaryBuilderOptions {
     default_left_context_id: Option<u16>,
     default_right_context_id: Option<u16>,
     flexible_csv: Option<bool>,
+    /// See [`UserDictionaryBuilder`]'s field of the same name.
+    lexicon_format: Option<LexiconFormat>,
     user_dictionary_handler: StringRecordProcessor,
     /// See [`UserDictionaryBuilder`]'s field of the same name.
     matrix_size: Option<MatrixSize>,
@@ -94,6 +102,23 @@ impl UserDictionaryBuilderOptions {
         self
     }
 
+    /// Sets the lexicon format of the system dictionary the user dictionary
+    /// is for, which decides whether the fields of each row are decoded as
+    /// they are read (#1389).
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The format; MeCab's, the default, takes the fields as
+    ///   written, and Sudachi's decodes its escapes in every field.
+    ///
+    /// # Returns
+    ///
+    /// The options with the format set.
+    pub fn lexicon_format(mut self, value: LexiconFormat) -> Self {
+        self.lexicon_format = Some(value);
+        self
+    }
+
     pub fn user_dictionary_handler(mut self, value: StringRecordProcessor) -> Self {
         self.user_dictionary_handler = value;
         self
@@ -123,6 +148,7 @@ impl UserDictionaryBuilderOptions {
             default_left_context_id: self.default_left_context_id.unwrap_or(0),
             default_right_context_id: self.default_right_context_id.unwrap_or(0),
             flexible_csv: self.flexible_csv.unwrap_or(true),
+            lexicon_format: self.lexicon_format.unwrap_or_default(),
             user_dictionary_handler: self.user_dictionary_handler,
             matrix_size: self.matrix_size,
         }
@@ -172,8 +198,9 @@ impl UserDictionaryBuilder {
             .flexible(self.flexible_csv)
             .from_reader(reader);
 
-        // Every row is checked as it is read, before the sort, so an error
-        // names the first bad row in input order by its CSV line.
+        // Every row is decoded as the lexicon format reads it (#1389) and
+        // checked as it is read, before the sort, so an error names the first
+        // bad row in input order by its CSV line.
         let mut rows: Vec<ParsedRow> = vec![];
         for (line_num, result) in rdr.records().enumerate() {
             let record = result.map_err(|err| {
@@ -183,6 +210,11 @@ impl UserDictionaryBuilder {
                         "Failed to parse CSV record at line {}",
                         line_num + 1,
                     ))
+            })?;
+            let line = record.position().map_or(0, |position| position.line());
+            let record = decode_record(self.lexicon_format, record).map_err(|message| {
+                LinderaErrorKind::Content
+                    .with_error(anyhow::anyhow!("user dictionary line {line}: {message}"))
             })?;
             rows.push(self.parse_row(record)?);
         }
@@ -455,8 +487,11 @@ mod tests {
     use std::path::PathBuf;
 
     use crate::builder::DictionaryBuilder;
+    use crate::dictionary::UserDictionary;
     use crate::dictionary::connection_cost_matrix::zero_matrix;
+    use crate::dictionary::lexicon_format::LexiconFormat;
     use crate::dictionary::metadata::Metadata;
+    use crate::viterbi::WordEntry;
 
     fn fixture_path(name: &str) -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -535,6 +570,136 @@ mod tests {
                 "unexpected error for {csv:?}: {err}"
             );
         }
+    }
+
+    /// A builder with flexible CSV parsing and the given lexicon format, as
+    /// the system dictionary's metadata would set it.
+    fn builder_with_lexicon_format(lexicon_format: LexiconFormat) -> DictionaryBuilder {
+        DictionaryBuilder::new(Metadata {
+            flexible_csv: true,
+            lexicon_format,
+            ..Metadata::default()
+        })
+    }
+
+    /// Returns the details of each entry of `dict` whose surface is
+    /// `surface`, looked up in the automaton as the lattice looks it up.
+    fn details_of(dict: &UserDictionary, surface: &str) -> Vec<Vec<String>> {
+        let Some(found) = dict
+            .dict
+            .da
+            .find_overlapping_iter(surface)
+            .find(|m| m.start() == 0 && m.end() == surface.len())
+        else {
+            return Vec::new();
+        };
+        let (offset, count) = dict.dict.decode_val(found.value());
+        let vals: &[u8] = &dict.dict.vals_data;
+        let start = offset as usize * WordEntry::SERIALIZED_LEN;
+        let end = start + count as usize * WordEntry::SERIALIZED_LEN;
+        vals[start..end]
+            .as_chunks::<{ WordEntry::SERIALIZED_LEN }>()
+            .0
+            .iter()
+            .map(|chunk| {
+                let word_id = WordEntry::deserialize(chunk, false).word_id().id();
+                dict.word_details(word_id as usize)
+                    .into_iter()
+                    .map(String::from)
+                    .collect()
+            })
+            .collect()
+    }
+
+    // The backslashes of the escapes below are written `\x5c`.
+
+    /// A simple row (surface, reading, pronunciation) and a detailed row,
+    /// each with escapes.
+    const ESCAPED_ROWS: &str = "\
+b\x5cu002fs,ビー\x5cu002fエス,ビーエス
+1\x5cu002c2塁,0,0,100,名詞,一般,*,*,*,*,1\x5cu002c2塁,イチニルイ,イチニルイ
+";
+
+    /// With Sudachi's lexicon format in the system dictionary's metadata,
+    /// the rows of a user dictionary are decoded, simple and detailed alike,
+    /// as `sudachi ubuild` decodes them (#1389): the decoded surfaces are
+    /// found and the details are decoded. With MeCab's format the rows are
+    /// taken as written.
+    #[test]
+    fn rows_are_decoded_in_the_sudachi_lexicon_format() {
+        let dict = builder_with_lexicon_format(LexiconFormat::Sudachi)
+            .build_user_dict_from_reader(ESCAPED_ROWS.as_bytes())
+            .unwrap();
+        assert_eq!(
+            details_of(&dict, "b/s"),
+            vec![vec![
+                "*",
+                "*",
+                "*",
+                "*",
+                "*",
+                "*",
+                "*",
+                "ビー/エス",
+                "ビーエス"
+            ]]
+        );
+        assert_eq!(
+            details_of(&dict, "1,2塁"),
+            vec![vec![
+                "名詞",
+                "一般",
+                "*",
+                "*",
+                "*",
+                "*",
+                "1,2塁",
+                "イチニルイ",
+                "イチニルイ"
+            ]]
+        );
+        assert!(details_of(&dict, "b\x5cu002fs").is_empty());
+
+        let dict = builder_with_lexicon_format(LexiconFormat::Mecab)
+            .build_user_dict_from_reader(ESCAPED_ROWS.as_bytes())
+            .unwrap();
+        assert!(details_of(&dict, "b/s").is_empty());
+        assert_eq!(
+            details_of(&dict, "b\x5cu002fs"),
+            vec![vec![
+                "*",
+                "*",
+                "*",
+                "*",
+                "*",
+                "*",
+                "*",
+                "ビー\x5cu002fエス",
+                "ビーエス"
+            ]]
+        );
+    }
+
+    /// An escape that cannot be decoded fails the build with the line of
+    /// its row; with MeCab's format the same row builds.
+    #[test]
+    fn a_bad_escape_fails_with_the_line() {
+        let csv = "東京,トウキョウ,トーキョー\na\x5cu{110000},エー,エー\n";
+        let err = match builder_with_lexicon_format(LexiconFormat::Sudachi)
+            .build_user_dict_from_reader(csv.as_bytes())
+        {
+            Ok(_) => panic!("{csv:?} must not build"),
+            Err(err) => format!("{err:?}"),
+        };
+        assert!(
+            err.contains("user dictionary line 2: invalid escape \x5cu{110000}"),
+            "{err}"
+        );
+        assert!(
+            builder_with_lexicon_format(LexiconFormat::Mecab)
+                .build_user_dict_from_reader(csv.as_bytes())
+                .is_ok()
+        );
     }
 
     /// A detailed IPADIC row (13 fields) with the given surface, context IDs

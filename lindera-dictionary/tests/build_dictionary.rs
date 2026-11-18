@@ -10,6 +10,7 @@ use std::path::Path;
 use lindera_dictionary::builder::DictionaryBuilder;
 use lindera_dictionary::dictionary::Dictionary;
 use lindera_dictionary::dictionary::character_definition::{CharDefFormat, NO_OOV_BOW, NO_OOV_EOW};
+use lindera_dictionary::dictionary::lexicon_format::LexiconFormat;
 use lindera_dictionary::dictionary::metadata::{DICTIONARY_FORMAT_VERSION, Metadata};
 
 /// Minimal `char.def`: the mandatory DEFAULT category plus KANJI, with the CJK
@@ -115,6 +116,155 @@ fn build_dictionary_keeps_whitespace_surfaces() {
     assert_eq!(costs(" "), vec![10]);
     assert_eq!(costs("日本"), vec![100]);
     assert_eq!(costs("日本 "), vec![50]);
+}
+
+/// A lexicon written with Sudachi's escapes (the backslashes are written
+/// `\x5c` here): `b/s` and `(株)` escaped, and a `(株)` written as it is after
+/// the escaped one, as in SudachiDict.
+const ESCAPED_LEX_CSV: &str = "\
+b\x5cu002fs,0,0,100,名詞,一般,*,*,*,*,B\x5cu002FS,ビーエス,ビーエス
+\x5cu0028株\x5cu0029,0,0,300,記号,一般,*,*,*,*,\x5cu0028株\x5cu0029,カブシキガイシャ,カブシキガイシャ
+(株),0,0,200,記号,一般,*,*,*,*,㈱,キゴウ,キゴウ
+本,0,0,200,名詞,一般,*,*,*,*,本,ホン,ホン
+";
+
+/// Builds `ESCAPED_LEX_CSV` with the given lexicon format and returns, for
+/// each surface asked for, the cost and details of its entries, in the
+/// order the lattice adds them.
+fn build_escaped_lexicon(
+    lexicon_format: LexiconFormat,
+    surfaces: &[&str],
+) -> Vec<Vec<(i16, Vec<String>)>> {
+    let input = tempfile::tempdir().unwrap();
+    let output = tempfile::tempdir().unwrap();
+    write_source_with(input.path(), ESCAPED_LEX_CSV, UNK_DEF, MATRIX_DEF);
+    let metadata = Metadata {
+        lexicon_format,
+        ..Metadata::default()
+    };
+    DictionaryBuilder::new(metadata)
+        .build_dictionary(input.path(), output.path())
+        .expect("build_dictionary should succeed");
+    let dictionary =
+        Dictionary::load_from_path(output.path()).expect("a freshly built dictionary should load");
+    assert_eq!(dictionary.metadata.lexicon_format, lexicon_format);
+    surfaces
+        .iter()
+        .map(|surface| {
+            dictionary
+                .prefix_dictionary
+                .find_surface(surface)
+                .iter()
+                .map(|entry| {
+                    let details = dictionary
+                        .word_details(entry.word_id().id() as usize)
+                        .into_iter()
+                        .map(String::from)
+                        .collect();
+                    (entry.word_cost(), details)
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// `lexicon_format: "sudachi"` decodes Sudachi's escapes in every field of
+/// the lexicon (#1389): the decoded surface is found and the escaped one is
+/// not, the details are decoded, and the built `metadata.json` keeps the
+/// format. The rows are decoded before they are sorted, so the two `(株)`
+/// keep their order in the lexicon: escaped first, as Sudachi lists them.
+#[test]
+fn build_dictionary_decodes_the_sudachi_lexicon_escapes() {
+    let details =
+        |fields: &[&str]| -> Vec<String> { fields.iter().map(|f| f.to_string()).collect() };
+    let found = build_escaped_lexicon(
+        LexiconFormat::Sudachi,
+        &["b/s", "(株)", "b\x5cu002fs", "\x5cu0028株\x5cu0029"],
+    );
+    assert_eq!(
+        found[0],
+        vec![(
+            100,
+            details(&[
+                "名詞",
+                "一般",
+                "*",
+                "*",
+                "*",
+                "*",
+                "B/S",
+                "ビーエス",
+                "ビーエス"
+            ])
+        )]
+    );
+    assert_eq!(
+        found[1],
+        vec![
+            (
+                300,
+                details(&[
+                    "記号",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "(株)",
+                    "カブシキガイシャ",
+                    "カブシキガイシャ"
+                ])
+            ),
+            (
+                200,
+                details(&["記号", "一般", "*", "*", "*", "*", "㈱", "キゴウ", "キゴウ"])
+            ),
+        ]
+    );
+    assert!(found[2].is_empty(), "{:?}", found[2]);
+    assert!(found[3].is_empty(), "{:?}", found[3]);
+}
+
+/// With MeCab's lexicon format, the default, the same lexicon is taken as
+/// written: the escaped surfaces are the keys and the details keep their
+/// escapes.
+#[test]
+fn build_dictionary_takes_a_mecab_lexicon_as_written() {
+    let found = build_escaped_lexicon(
+        LexiconFormat::Mecab,
+        &["b/s", "(株)", "b\x5cu002fs", "\x5cu0028株\x5cu0029"],
+    );
+    assert!(found[0].is_empty(), "{:?}", found[0]);
+    assert_eq!(
+        found[1].iter().map(|(cost, _)| *cost).collect::<Vec<_>>(),
+        vec![200]
+    );
+    assert_eq!(found[2].len(), 1);
+    assert_eq!(found[2][0].1[6], "B\x5cu002FS");
+    assert_eq!(found[3].len(), 1);
+}
+
+/// An escape that cannot be decoded fails the build with the file and the
+/// line of its row.
+#[test]
+fn build_dictionary_rejects_a_bad_lexicon_escape() {
+    let metadata = Metadata {
+        lexicon_format: LexiconFormat::Sudachi,
+        ..Metadata::default()
+    };
+    let lex = "本,0,0,200,名詞,一般,*,*,*,*,本,ホン,ホン\n\
+               a,0,0,100,名詞,一般,*,*,*,*,\x5cu{110000},エー,エー\n";
+    let err = build_error(metadata, lex, UNK_DEF, MATRIX_DEF).expect("the escape is invalid");
+    assert!(
+        err.contains(
+            "lex.csv: line 2: invalid escape \x5cu{110000}: U+110000 is not a Unicode scalar value"
+        ),
+        "{err}"
+    );
+    assert_eq!(
+        build_error(Metadata::default(), lex, UNK_DEF, MATRIX_DEF),
+        None
+    );
 }
 
 /// `char_def_format` in `metadata.json` selects Sudachi's `char.def` format

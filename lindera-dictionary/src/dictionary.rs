@@ -1,6 +1,7 @@
 pub mod character_definition;
 pub mod connection_cost_matrix;
 pub mod context_id_map;
+pub mod lexicon_format;
 pub mod metadata;
 pub mod prefix_dictionary;
 pub mod schema;
