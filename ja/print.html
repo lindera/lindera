@@ -3061,6 +3061,13 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
 <li><code>"sudachi"</code>: Sudachi の形式で、SudachiDict が使います。コードポイントは、それを覆うすべての行のカテゴリを持ちます。範囲行には、ファイルが定義したカテゴリのほかに、<code>ALL</code>（すべてのカテゴリ）と、フラグ <code>NOOOVBOW</code>（その文字から未知語を始めない）・<code>NOOOVEOW</code>（その文字の直後から未知語を始めない）を書けます。BMP の外のコードポイントも書けます。ファイルは <code>DEFAULT</code> を定義する必要があり、<code>ALL</code>・<code>NOOOVBOW</code>・<code>NOOOVEOW</code> をカテゴリとして定義することはできず、定義できるカテゴリは 64 個までです。未知語は、文字のすべてのカテゴリから、Sudachi と同じ規則で区切ったまとまりの上に作ります。ほかに何も始まらない位置には、Sudachi と同じく <code>DEFAULT</code> の 1 文字の未知語を置きます。空白（<code>--keep-whitespace</code>・<code>--disable-skip-whitespace</code>・左空白ペナルティが扱うもの）とみなすのは、カテゴリが <code>SPACE</code> だけの文字です。<code>ALL</code> がすべてのカテゴリに入れる結合文字や ZWJ などは、空白とみなしません。</li>
 </ul>
 <p><code>lindera train</code> は、<code>--char-def</code> を MeCab の形式でだけ読みます。</p>
+<h3 id="語彙の形式"><a class="header" href="#語彙の形式">語彙の形式</a></h3>
+<p>辞書の <code>metadata.json</code> は、<code>lexicon_format</code> で語彙の CSV ファイルの形式を選びます（<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>）：</p>
+<ul>
+<li><code>"mecab"</code>（省略したときの既定）: MeCab の形式です。すべての欄を、書かれたとおりに読みます。</li>
+<li><code>"sudachi"</code>: Sudachi の形式で、SudachiDict が使います。バックスラッシュ・<code>u</code>・16 進数 4 桁、またはバックスラッシュ・<code>u</code>・波括弧で囲んだ 16 進数 1〜6 桁は、その数が表すコードポイントを表します。ビルダーは、Sudachi の辞書ビルダーと同じく、これをすべての欄で復号します。たとえば SudachiDict は、<code>http://</code> を <code>http:\u002f\u002f</code>、<code>1,2塁</code> を <code>1\u002c2塁</code> と書いています。エスケープは左から順に復号し、復号してできた文字列をもう一度復号することはしません。バックスラッシュ自体のエスケープはないので、エスケープの前のバックスラッシュはそのまま残ります。Unicode のスカラー値でない値（サロゲート、または U+10FFFF より大きい値）や、組んだ辞書でエントリの詳細を区切る NUL を表すエスケープがあると、ファイルと行を示すエラーでビルドが止まります。その辞書に対して組む user dictionary（<code>lindera build --user</code> にその <code>metadata.json</code> を渡したもの、またはその辞書と一緒に読み込む <code>.csv</code> ファイル）も、同じように復号します。</li>
+</ul>
+<p><code>unk.def</code> は、どちらの形式でも書かれたとおりに読みます。Sudachi も同じです。</p>
 <h3 id="例"><a class="header" href="#例">例</a></h3>
 <h4 id="ipadic日本語辞書のビルド"><a class="header" href="#ipadic日本語辞書のビルド">IPADIC（日本語辞書）のビルド</a></h4>
 <pre><code class="language-shell"># IPADICソースファイルのダウンロードと展開
@@ -9487,7 +9494,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-sudachidict-1"><a class="header" href="#lindera-sudachidict-1">Lindera SudachiDict</a></h1>
 <h2 id="辞書バージョン-5"><a class="header" href="#辞書バージョン-5">辞書バージョン</a></h2>
-<p>このリポジトリには <a href="https://github.com/lindera/sudachidict">SudachiDict</a> 20260723（small + core + notcore レキシコン）が含まれています。ミラーのタグ <code>0.1.0-20260723</code> から取り、Sudachi 自身の <code>char.def</code>（sudachi.rs <code>v0.7.0</code>）を、<code>metadata.json</code> の <code>"char_def_format": "sudachi"</code> で Sudachi と同じ規則で読みます。</p>
+<p>このリポジトリには <a href="https://github.com/lindera/sudachidict">SudachiDict</a> 20260723（small + core + notcore レキシコン）が含まれています。ミラーのタグ <code>0.1.0-20260723</code> から取り、Sudachi 自身の <code>char.def</code>（sudachi.rs <code>v0.7.0</code>）を、<code>metadata.json</code> の <code>"char_def_format": "sudachi"</code> で Sudachi と同じ規則で読みます。<code>"lexicon_format": "sudachi"</code> は、レキシコンのエスケープ（<code>(</code>・<code>)</code>・<code>/</code>・<code>,</code>・<code>|</code>・<code>"</code> を書くのに使う、バックスラッシュ・<code>u</code>・16 進数）を、Sudachi と同じくすべての欄で復号します。user dictionary も同じです。</p>
 <h2 id="辞書フォーマット-5"><a class="header" href="#辞書フォーマット-5">辞書フォーマット</a></h2>
 <p>辞書フォーマットおよび品詞タグの詳細については、<a href="https://github.com/WorksApplications/SudachiDict">SudachiDict のドキュメント</a>を参照してください。</p>
 <div class="table-wrapper"><table><thead><tr><th>Index</th><th>Name (Japanese)</th><th>Name (English)</th><th>Notes</th></tr></thead><tbody>
@@ -9556,7 +9563,7 @@ UniDic と同様にこの辞書でも一致します。詳細は
   --dest /tmp/lindera-sudachidict \
   --metadata ./lindera-sudachidict/metadata.json
 </code></pre>
-<p>アーカイブには raw レキシコン（small + core + notcore）、連接コスト行列、Sudachi 自身の <code>char.def</code>（sudachi.rs <code>v0.7.0</code> のもの。<code>metadata.json</code> の <code>"char_def_format": "sudachi"</code> で Sudachi と同じ規則で読みます）、および位置合わせ済みの <code>unk.def</code> が同梱されているため、手動の前処理は不要です。ビルドされた辞書のサイズは約 570MB です。</p>
+<p>アーカイブには raw レキシコン（small + core + notcore。そのエスケープは、<code>metadata.json</code> の <code>"lexicon_format": "sudachi"</code> で Sudachi と同じく復号します）、連接コスト行列、Sudachi 自身の <code>char.def</code>（sudachi.rs <code>v0.7.0</code> のもの。<code>metadata.json</code> の <code>"char_def_format": "sudachi"</code> で Sudachi と同じ規則で読みます）、および位置合わせ済みの <code>unk.def</code> が同梱されているため、手動の前処理は不要です。ビルドされた辞書のサイズは約 570MB です。</p>
 <blockquote>
 <p>[!TIP]
 同梱バージョンより新しい上流の SudachiDict リリースからビルドするには、
@@ -10175,7 +10182,8 @@ surface）です。そのため形態素の詳細情報はカラム 5 から始�
   },
   "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] },
   "skip_whitespace": false,
-  "char_def_format": "sudachi"
+  "char_def_format": "sudachi",
+  "lexicon_format": "sudachi"
 }
 </code></pre>
 <p><code>skip_whitespace: false</code> は、Sudachi と同様に、また SudachiDict のコストが前提と
@@ -10189,6 +10197,13 @@ Sudachi と同じ規則で区切ったまとまりの上に作ります。ほか
 Sudachi と同じく <code>DEFAULT</code> の 1 文字の未知語を置きます。指定しないと、ビルダーは
 <code>char.def</code> を MeCab の形式で読み、Sudachi のファイルの最初の <code>NOOOVBOW</code> で止まります
 （<a href="./lindera-cli/commands.html#build"><code>lindera build</code></a> を参照）。</p>
+<p><code>lexicon_format: "sudachi"</code> は、SudachiDict の語彙が <code>(</code>・<code>)</code>・<code>/</code>・<code>,</code>・<code>|</code>・<code>"</code>
+を書くのに使うエスケープを、Sudachi の辞書ビルダーと同じく復号します。たとえば語彙は、
+語 <code>http://</code> を <code>http:\u002f\u002f</code>、<code>1,2塁</code> を <code>1\u002c2塁</code> と書いて
+います。すべての欄を復号するので、詳細も復号され、この辞書に対して組む user
+dictionary の行も同じく復号されます。指定しないと、2026-07-23 の語彙の 3,723 件の
+エントリはエスケープを残したままになり、本文に一致しません（<a href="./lindera-cli/commands.html#%E8%AA%9E%E5%BD%99%E3%81%AE%E5%BD%A2%E5%BC%8F"><code>lindera build</code></a>
+と <a href="https://github.com/lindera/lindera/issues/1389">#1389</a> を参照）。</p>
 <h2 id="ビルドと確認"><a class="header" href="#ビルドと確認">ビルドと確認</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src /tmp/sudachidict-src \
@@ -10223,13 +10238,13 @@ Sudachi と同じく <code>DEFAULT</code> の 1 文字の未知語を置きま�
 ものと byte 単位で同一（sha256）で、<code>char.def</code> と <code>unk.def</code> は Sudachi 自身のもの
 です。<code>char_def_format: "sudachi"</code> により、Lindera は <code>char.def</code> の読み方と未知語の
 作り方を Sudachi に合わせます（<a href="https://github.com/lindera/lindera/issues/1388">#1388</a>）。
+<code>lexicon_format: "sudachi"</code> により、語彙のエスケープも Sudachi と同じく復号します
+（<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>）。
 同じ語彙から組んだ sudachi.rs <code>v0.7.0</code> と、Sudachi の入力テキストと経路書き換えの
 プラグインを外して（未知語のプラグインだけ、C 単位、文に分けない）比べると、
-『坊っちゃん』（<code>resources/bocchan.txt</code>）の 505 行のうち 502 行で同じトークンに
-なります。残る 2 行はコストの等しい経路が 2 つあり、Sudachi が他方を選ぶ行です
-（Lindera の <code>大学卒業 / 生</code> に対し Sudachi は <code>大学 / 卒業生</code>）。残る 1 行は URL を
-含む行で、Sudachi は辞書語 <code>http://</code> を使います。語彙はこの語を <code>http://</code>
-と書いており、ビルダーはこれをまだ復号しません（<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>）。
+『坊っちゃん』（<code>resources/bocchan.txt</code>）の 505 行のうち 503 行で、品詞まで同じ
+トークンになります。残る 2 行はコストの等しい経路が 2 つあり、Sudachi が他方を
+選ぶ行です（Lindera の <code>大学卒業 / 生</code> に対し Sudachi は <code>大学 / 卒業生</code>）。
 残る違いはエンジンにあります:</p>
 <div class="table-wrapper"><table><thead><tr><th>Sudachi の機能</th><th>効果</th><th>Lindera での状況</th></tr></thead><tbody>
 <tr><td>ラテン・ギリシャ・キリル文字（<code>ALPHA</code>・<code>GREEK</code>・<code>CYRILLIC</code>。結合文字・異体字セレクタ・ZWJ のように <code>ALL</code> のものも含む）で、直前の文字とカテゴリを共有する文字からは、語を始めない（<code>can_bow</code>）</td><td>そのような文字の直前で辞書語が終わることもない。結合アクセントの付いた <code>cafe</code> は 1 つの未知語 <code>café</code> になり、異体字セレクタの付いた <code>♥</code> は 1 語になる</td><td>未対応</td></tr>
@@ -10961,6 +10976,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong>既定で中黒が未知語を区切る</strong></td><td><code>・</code> でつないだカタカナを含む日本語を分割するユーザー。特に <code>レノン・ジョン</code> のような未知の名前と、<code>・</code> を含む語の多い辞書（IPADIC-NEologd・SudachiDict）を decompose モードで使うユーザー</td><td>そうした並びと、decompose モードのそうした語が <code>・</code> で分かれることを前提にする。MeCab と同じ分割にするには <code>break_characters: ""</code>（<code>--disable-break-characters</code>）を設定する</td></tr>
 <tr><td><strong>MeCab と同じく、未知語は文字の既定カテゴリから作り、カテゴリを共有する文字をまとめる</strong></td><td>複数のカテゴリを持つ文字がほかの文字と並ぶテキストを分割するユーザー。同梱の辞書では、ko-dic の漢数字に続く漢字と、ko-dic の <code>〇</code>（U+3007）。<code>CharacterDefinition::lookup_categories</code> の順序に依存する Rust コード</td><td>そうしたテキストが MeCab と同じ分割になることを前提にする（ko-dic の <code>三國史記</code> は 1 つの <code>SH</code>、<code>〇〇〇</code> は 1 つの <code>SY</code>）。v6 の動作に戻す設定はない</td></tr>
 <tr><td><strong>SudachiDict は Sudachi 自身の <code>char.def</code> を Sudachi と同じ規則で読む</strong></td><td>SudachiDict でテキストを分割するユーザー。特に記号の前の <code>々</code>、小書きのカタカナや <code>ー</code> で始まるカタカナの未知語、結合文字・異体字セレクタ・ZWJ を含むテキスト。Sudachi の <code>char.def</code> から辞書をビルドするユーザー</td><td>そうしたテキストが Sudachi と同じように分割されることを前提にする。SudachiDict を自分でビルドするときは、<code>metadata.json</code> に <code>"char_def_format": "sudachi"</code> を書く（<a href="migration_v6_to_v7.html#sudachidict-%E3%81%8C-sudachi-%E8%87%AA%E8%BA%AB%E3%81%AE-chardef-%E3%82%92%E8%AA%AD%E3%82%80">SudachiDict が Sudachi 自身の <code>char.def</code> を読む</a>を参照）</td></tr>
+<tr><td><strong>SudachiDict は語彙のエスケープを Sudachi と同じく復号する</strong></td><td><code>(</code>・<code>)</code>・<code>/</code>・<code>,</code>・<code>|</code>・<code>"</code> を含む辞書語があるテキストを SudachiDict で分割するユーザー。特に URL（<code>http://</code>）、<code>1,2塁</code>、<code>b/s</code>、顔文字。そうした語の詳細を読むユーザー。Sudachi の語彙から辞書や user dictionary をビルドするユーザー</td><td>そうした語が見つかり、詳細も Sudachi と同じく復号されることを前提にする。SudachiDict を自分でビルドするときは、<code>metadata.json</code> に <code>"lexicon_format": "sudachi"</code> を書く（<a href="migration_v6_to_v7.html#sudachidict-%E3%81%8C%E8%AA%9E%E5%BD%99%E3%81%AE%E3%82%A8%E3%82%B9%E3%82%B1%E3%83%BC%E3%83%97%E3%82%92%E5%BE%A9%E5%8F%B7%E3%81%99%E3%82%8B">SudachiDict が語彙のエスケープを復号する</a>を参照）</td></tr>
 <tr><td><strong>CC-CEDICT: 未知語のコストは 400、英字だけ・数字だけの見出し語のコストは 399</strong></td><td>CC-CEDICT でテキストを分割するユーザー。特に <code>T恤</code> のように英字や数字と漢字が混ざる見出し語。CC-CEDICT の N-best のコストを読むユーザー</td><td>そうした見出し語が 1 語になること、<code>〇</code> や <code>PK</code> のような見出し語がピンインと定義つきで出ること、英単語・仮名・数字は v6 と同じく 1 語のままであること、パスのコストが変わることを前提にする。CC-CEDICT の辞書ディレクトリは <code>CC-CEDICT-MeCab-0.1.0-20261021</code> のアーカイブからビルドする</td></tr>
 <tr><td><strong>Jieba: <code>〇</code> は数字の見出し語</strong></td><td>Jieba で <code>〇</code>（U+3007）を含むテキストを分割するユーザー</td><td>各 <code>〇</code> が未知語の一部ではなく、数字の 1 語（<code>m</code>、ピンイン <code>ling2</code>）になることを前提にする（同じ辞書の MeCab と同じ）。Jieba の辞書ディレクトリは <code>mecab-jieba-0.1.3</code> のアーカイブからビルドする</td></tr>
 <tr><td><strong>Jieba: UD Chinese GSD でコストを学習し直した</strong></td><td>Jieba でテキストを解析するユーザー。Jieba の簡易形式のユーザー辞書を使うユーザー</td><td>中国語のテキストが UD Chinese GSD と同じ分け方（jieba より細かい。<code>中华 / 人民 / 共和 / 国</code>、<code>这 / 个</code>。その test の分割の F1 は 77.3 → 87.7）になり、簡易形式のユーザー辞書の語のコストが −32768 になることを前提にする。Jieba の辞書ディレクトリは <code>mecab-jieba-0.1.3</code> のアーカイブからビルドする</td></tr>
@@ -11827,11 +11843,41 @@ KANJI に入れ、<code>・</code> をカタカナのカテゴリから外して
 </div>
 <p>『坊っちゃん』（<code>resources/bocchan.txt</code>）では、505 行のうち 5 行が変わり、
 どれも <code>｜</code> の前の <code>々</code> の箇所です。sudachi.rs <code>v0.7.0</code>（入力テキストと経路書き換えの
-プラグインを外したもの）と同じトークンになる行は、497 行から 502 行に増えました
-（残る 3 行は <a href="./sudachidict.html#sudachi-%E3%81%A8%E3%81%AE%E6%8C%99%E5%8B%95%E3%81%AE%E9%81%95%E3%81%84">SudachiDict（カスタムビルド）</a>
-を参照）。SudachiDict を自分でビルドするときは、Sudachi の <code>char.def</code> と
+プラグインを外したもの）と同じトークンになる行は、497 行から 502 行に増えました。
+残る 3 行のうち 1 行は<a href="migration_v6_to_v7.html#sudachidict-%E3%81%8C%E8%AA%9E%E5%BD%99%E3%81%AE%E3%82%A8%E3%82%B9%E3%82%B1%E3%83%BC%E3%83%97%E3%82%92%E5%BE%A9%E5%8F%B7%E3%81%99%E3%82%8B">次の節</a>の URL で、
+残る 2 行は <a href="./sudachidict.html#sudachi-%E3%81%A8%E3%81%AE%E6%8C%99%E5%8B%95%E3%81%AE%E9%81%95%E3%81%84">SudachiDict（カスタムビルド）</a>
+で説明しています。SudachiDict を自分でビルドするときは、Sudachi の <code>char.def</code> と
 <code>"char_def_format": "sudachi"</code> を使います。既定の MeCab の形式では、ファイルの
 最初の <code>NOOOVBOW</code> で止まります。</p>
+<h2 id="sudachidict-が語彙のエスケープを復号する"><a class="header" href="#sudachidict-が語彙のエスケープを復号する">SudachiDict が語彙のエスケープを復号する</a></h2>
+<p>SudachiDict の語彙は、<code>(</code>・<code>)</code>・<code>/</code>・<code>,</code>・<code>|</code>・<code>"</code> を、バックスラッシュ・<code>u</code>・
+16 進数 4 桁のエスケープで書いています。たとえば語 <code>http://</code> は
+<code>http:\u002f\u002f</code>、<code>1,2塁</code> は <code>1\u002c2塁</code> と書かれています。Sudachi の
+辞書ビルダーはこれを復号しますが、Lindera のビルダーは復号しなかったため、
+2026-07-23 の語彙の 3,723 件のエントリがエスケープを残したままで、本文に
+一致しませんでした。v7.0.0 は、Sudachi と同じくすべての欄でこれを復号します
+（<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>）。その形式は SudachiDict の
+<code>metadata.json</code> の <code>"lexicon_format": "sudachi"</code> で選びます。下の表のトークンは
+コードスパンで示し、<code>␣</code> は空白です:</p>
+<div class="table-wrapper"><table><thead><tr><th>入力（SudachiDict）</th><th>#1389 より前の v7.0.0</th><th>v7.0.0 と Sudachi</th></tr></thead><tbody>
+<tr><td><code>http://lindera.dev</code></td><td><code>http</code> <code>://</code> <code>lindera</code> <code>.</code> <code>dev</code></td><td><code>http://</code> <code>lindera</code> <code>.</code> <code>dev</code></td></tr>
+<tr><td><code>1,2塁</code></td><td><code>1</code> <code>,</code> <code>2塁</code></td><td><code>1,2塁</code></td></tr>
+<tr><td><code>b/s</code></td><td><code>b</code> <code>/</code> <code>s</code></td><td><code>b/s</code></td></tr>
+<tr><td><code>co.,ltd.</code></td><td><code>co</code> <code>.,</code> <code>ltd</code> <code>.</code></td><td><code>co.,ltd.</code></td></tr>
+<tr><td><code>\( ^o^ )/</code></td><td><code>\(</code> <code>␣</code> <code>^o^</code> <code>␣</code> <code>)/</code></td><td><code>\( ^o^ )/</code></td></tr>
+</tbody></table>
+</div>
+<p>詳細も復号されます。<code>1,2塁</code> の表示用の見出しは <code>1,2塁</code>、正規化形は <code>一二塁</code> です。
+SudachiDict に対して組む user dictionary の行も、Sudachi のユーザー辞書と同じく
+復号されます。<code>lindera tokenize</code> の <code>mecab</code> 出力は詳細をカンマで区切り、引用符で
+囲まないので、この表示用の見出しのようにカンマを含む詳細は、その出力では区切りが
+曖昧になります。CC-CEDICT と Jieba の一部の詳細も、すでに同じです。JSON 出力は
+影響を受けません。</p>
+<p>『坊っちゃん』では、505 行のうち URL を含む 1 行が変わり、sudachi.rs <code>v0.7.0</code>
+（入力テキストと経路書き換えのプラグインを外したもの）と同じトークンになる行は、
+502 行から 503 行に増えました。SudachiDict を自分でビルドするときは、
+<code>"lexicon_format": "sudachi"</code> を書きます。書かないと、エスケープのある語は
+エスケープを残したままになります。</p>
 <h2 id="cc-cedict-未知語は辞書語より安くならない"><a class="header" href="#cc-cedict-未知語は辞書語より安くならない">CC-CEDICT: 未知語は辞書語より安くならない</a></h2>
 <p>v7.0.0 は CC-CEDICT 辞書を <code>CC-CEDICT-MeCab-0.1.0-20200409</code> ではなく
 <code>CC-CEDICT-MeCab-0.1.0-20261021</code> からビルドします

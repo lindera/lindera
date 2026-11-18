@@ -749,6 +749,13 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
 <li><code>"sudachi"</code>: Sudachi の形式で、SudachiDict が使います。コードポイントは、それを覆うすべての行のカテゴリを持ちます。範囲行には、ファイルが定義したカテゴリのほかに、<code>ALL</code>（すべてのカテゴリ）と、フラグ <code>NOOOVBOW</code>（その文字から未知語を始めない）・<code>NOOOVEOW</code>（その文字の直後から未知語を始めない）を書けます。BMP の外のコードポイントも書けます。ファイルは <code>DEFAULT</code> を定義する必要があり、<code>ALL</code>・<code>NOOOVBOW</code>・<code>NOOOVEOW</code> をカテゴリとして定義することはできず、定義できるカテゴリは 64 個までです。未知語は、文字のすべてのカテゴリから、Sudachi と同じ規則で区切ったまとまりの上に作ります。ほかに何も始まらない位置には、Sudachi と同じく <code>DEFAULT</code> の 1 文字の未知語を置きます。空白（<code>--keep-whitespace</code>・<code>--disable-skip-whitespace</code>・左空白ペナルティが扱うもの）とみなすのは、カテゴリが <code>SPACE</code> だけの文字です。<code>ALL</code> がすべてのカテゴリに入れる結合文字や ZWJ などは、空白とみなしません。</li>
 </ul>
 <p><code>lindera train</code> は、<code>--char-def</code> を MeCab の形式でだけ読みます。</p>
+<h3 id="語彙の形式"><a class="header" href="#語彙の形式">語彙の形式</a></h3>
+<p>辞書の <code>metadata.json</code> は、<code>lexicon_format</code> で語彙の CSV ファイルの形式を選びます（<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>）：</p>
+<ul>
+<li><code>"mecab"</code>（省略したときの既定）: MeCab の形式です。すべての欄を、書かれたとおりに読みます。</li>
+<li><code>"sudachi"</code>: Sudachi の形式で、SudachiDict が使います。バックスラッシュ・<code>u</code>・16 進数 4 桁、またはバックスラッシュ・<code>u</code>・波括弧で囲んだ 16 進数 1〜6 桁は、その数が表すコードポイントを表します。ビルダーは、Sudachi の辞書ビルダーと同じく、これをすべての欄で復号します。たとえば SudachiDict は、<code>http://</code> を <code>http:\u002f\u002f</code>、<code>1,2塁</code> を <code>1\u002c2塁</code> と書いています。エスケープは左から順に復号し、復号してできた文字列をもう一度復号することはしません。バックスラッシュ自体のエスケープはないので、エスケープの前のバックスラッシュはそのまま残ります。Unicode のスカラー値でない値（サロゲート、または U+10FFFF より大きい値）や、組んだ辞書でエントリの詳細を区切る NUL を表すエスケープがあると、ファイルと行を示すエラーでビルドが止まります。その辞書に対して組む user dictionary（<code>lindera build --user</code> にその <code>metadata.json</code> を渡したもの、またはその辞書と一緒に読み込む <code>.csv</code> ファイル）も、同じように復号します。</li>
+</ul>
+<p><code>unk.def</code> は、どちらの形式でも書かれたとおりに読みます。Sudachi も同じです。</p>
 <h3 id="例"><a class="header" href="#例">例</a></h3>
 <h4 id="ipadic日本語辞書のビルド"><a class="header" href="#ipadic日本語辞書のビルド">IPADIC（日本語辞書）のビルド</a></h4>
 <pre><code class="language-shell"># IPADICソースファイルのダウンロードと展開

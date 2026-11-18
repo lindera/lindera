@@ -178,7 +178,7 @@
                     <main>
                         <h1 id="lindera-sudachidict"><a class="header" href="#lindera-sudachidict">Lindera SudachiDict</a></h1>
 <h2 id="辞書バージョン"><a class="header" href="#辞書バージョン">辞書バージョン</a></h2>
-<p>このリポジトリには <a href="https://github.com/lindera/sudachidict">SudachiDict</a> 20260723（small + core + notcore レキシコン）が含まれています。ミラーのタグ <code>0.1.0-20260723</code> から取り、Sudachi 自身の <code>char.def</code>（sudachi.rs <code>v0.7.0</code>）を、<code>metadata.json</code> の <code>"char_def_format": "sudachi"</code> で Sudachi と同じ規則で読みます。</p>
+<p>このリポジトリには <a href="https://github.com/lindera/sudachidict">SudachiDict</a> 20260723（small + core + notcore レキシコン）が含まれています。ミラーのタグ <code>0.1.0-20260723</code> から取り、Sudachi 自身の <code>char.def</code>（sudachi.rs <code>v0.7.0</code>）を、<code>metadata.json</code> の <code>"char_def_format": "sudachi"</code> で Sudachi と同じ規則で読みます。<code>"lexicon_format": "sudachi"</code> は、レキシコンのエスケープ（<code>(</code>・<code>)</code>・<code>/</code>・<code>,</code>・<code>|</code>・<code>"</code> を書くのに使う、バックスラッシュ・<code>u</code>・16 進数）を、Sudachi と同じくすべての欄で復号します。user dictionary も同じです。</p>
 <h2 id="辞書フォーマット"><a class="header" href="#辞書フォーマット">辞書フォーマット</a></h2>
 <p>辞書フォーマットおよび品詞タグの詳細については、<a href="https://github.com/WorksApplications/SudachiDict">SudachiDict のドキュメント</a>を参照してください。</p>
 <div class="table-wrapper"><table><thead><tr><th>Index</th><th>Name (Japanese)</th><th>Name (English)</th><th>Notes</th></tr></thead><tbody>

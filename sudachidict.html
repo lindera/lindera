@@ -283,7 +283,8 @@ reserved columns; the rest name SudachiDict's columns in order:</p>
   },
   "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] },
   "skip_whitespace": false,
-  "char_def_format": "sudachi"
+  "char_def_format": "sudachi",
+  "lexicon_format": "sudachi"
 }
 </code></pre>
 <p><code>skip_whitespace: false</code> keeps whitespace in the lattice, as Sudachi does and
@@ -298,6 +299,15 @@ position where nothing else starts gets a one-character unknown word of
 <code>DEFAULT</code>, as in Sudachi. Without it, the builder reads <code>char.def</code> in
 MeCab's format, which stops at the first <code>NOOOVBOW</code> of Sudachi's file (see
 <a href="./lindera-cli/commands.html#build"><code>lindera build</code></a>).</p>
+<p><code>lexicon_format: "sudachi"</code> decodes the escapes that SudachiDict's lexicons
+write for <code>(</code>, <code>)</code>, <code>/</code>, <code>,</code>, <code>|</code> and <code>"</code>, as Sudachi's dictionary builder
+does: the lexicon writes the word <code>http://</code> as <code>http:\u002f\u002f</code>
+and <code>1,2塁</code> as <code>1\u002c2塁</code>. Every field is decoded, so the details are
+too, and so are the rows of a user dictionary built for this dictionary.
+Without it, 3,723 entries of the 2026-07-23 lexicons keep their escapes and
+never match text (see
+<a href="./lindera-cli/commands.html#lexicon-format"><code>lindera build</code></a> and
+<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>).</p>
 <h2 id="build-and-verify"><a class="header" href="#build-and-verify">Build and verify</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src /tmp/sudachidict-src \
@@ -332,18 +342,18 @@ they match IPADIC or UniDic.</p>
 <h2 id="behavioral-differences-from-sudachi"><a class="header" href="#behavioral-differences-from-sudachi">Behavioral differences from Sudachi</a></h2>
 <p>The dictionary data is Sudachi's: the matrix file is byte-identical (sha256)
 to the one SudachiDict's official build uses, <code>char.def</code> and <code>unk.def</code> are
-Sudachi's own, and <code>char_def_format: "sudachi"</code> makes Lindera read
-<code>char.def</code> and create unknown words as Sudachi does
-(<a href="https://github.com/lindera/lindera/issues/1388">#1388</a>). Compared with
+Sudachi's own, <code>char_def_format: "sudachi"</code> makes Lindera read <code>char.def</code>
+and create unknown words as Sudachi does
+(<a href="https://github.com/lindera/lindera/issues/1388">#1388</a>), and
+<code>lexicon_format: "sudachi"</code> decodes the escapes of the lexicons as Sudachi
+does (<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>). Compared with
 sudachi.rs <code>v0.7.0</code> on the same lexicons, with Sudachi's input-text and
 path-rewrite plugins disabled (its unknown-word plugins only, mode C,
-sentences not split), Lindera gives the same tokens on 502 of the 505 lines
-of <em>Botchan</em> (<code>resources/bocchan.txt</code>): two lines have two paths of equal
-cost, and Sudachi chooses the other one (<code>大学 / 卒業生</code> where Lindera gives
-<code>大学卒業 / 生</code>), and one has a URL, where Sudachi uses the dictionary word
-<code>http://</code>, which the lexicon writes as <code>http://</code> and the builder
-does not decode yet (<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>).
-The remaining differences are in the engine:</p>
+sentences not split), Lindera gives the same tokens, with the same parts of
+speech, on 503 of the 505 lines of <em>Botchan</em> (<code>resources/bocchan.txt</code>): the
+other two have two paths of equal cost, and Sudachi chooses the other one
+(<code>大学 / 卒業生</code> where Lindera gives <code>大学卒業 / 生</code>). The remaining
+differences are in the engine:</p>
 <div class="table-wrapper"><table><thead><tr><th>Sudachi feature</th><th>Effect</th><th>Status under Lindera</th></tr></thead><tbody>
 <tr><td>No word starts at a character that is Latin, Greek or Cyrillic (<code>ALPHA</code>, <code>GREEK</code>, <code>CYRILLIC</code>, or <code>ALL</code> as combining marks, variation selectors and ZWJ are) and shares a category with the character before it (<code>can_bow</code>)</td><td>A dictionary word cannot end before such a character either: <code>cafe</code> followed by a combining acute accent is one unknown word <code>café</code>, and <code>♥</code> with a variation selector is one word</td><td>Not replicated</td></tr>
 <tr><td>Ties between paths of equal cost</td><td>Sudachi chooses another path than MeCab's rule</td><td>Lindera breaks ties as MeCab does</td></tr>

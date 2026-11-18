@@ -278,7 +278,8 @@ surface）です。そのため形態素の詳細情報はカラム 5 から始�
   },
   "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] },
   "skip_whitespace": false,
-  "char_def_format": "sudachi"
+  "char_def_format": "sudachi",
+  "lexicon_format": "sudachi"
 }
 </code></pre>
 <p><code>skip_whitespace: false</code> は、Sudachi と同様に、また SudachiDict のコストが前提と
@@ -292,6 +293,13 @@ Sudachi と同じ規則で区切ったまとまりの上に作ります。ほか
 Sudachi と同じく <code>DEFAULT</code> の 1 文字の未知語を置きます。指定しないと、ビルダーは
 <code>char.def</code> を MeCab の形式で読み、Sudachi のファイルの最初の <code>NOOOVBOW</code> で止まります
 （<a href="./lindera-cli/commands.html#build"><code>lindera build</code></a> を参照）。</p>
+<p><code>lexicon_format: "sudachi"</code> は、SudachiDict の語彙が <code>(</code>・<code>)</code>・<code>/</code>・<code>,</code>・<code>|</code>・<code>"</code>
+を書くのに使うエスケープを、Sudachi の辞書ビルダーと同じく復号します。たとえば語彙は、
+語 <code>http://</code> を <code>http:\u002f\u002f</code>、<code>1,2塁</code> を <code>1\u002c2塁</code> と書いて
+います。すべての欄を復号するので、詳細も復号され、この辞書に対して組む user
+dictionary の行も同じく復号されます。指定しないと、2026-07-23 の語彙の 3,723 件の
+エントリはエスケープを残したままになり、本文に一致しません（<a href="./lindera-cli/commands.html#%E8%AA%9E%E5%BD%99%E3%81%AE%E5%BD%A2%E5%BC%8F"><code>lindera build</code></a>
+と <a href="https://github.com/lindera/lindera/issues/1389">#1389</a> を参照）。</p>
 <h2 id="ビルドと確認"><a class="header" href="#ビルドと確認">ビルドと確認</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src /tmp/sudachidict-src \
@@ -326,13 +334,13 @@ Sudachi と同じく <code>DEFAULT</code> の 1 文字の未知語を置きま�
 ものと byte 単位で同一（sha256）で、<code>char.def</code> と <code>unk.def</code> は Sudachi 自身のもの
 です。<code>char_def_format: "sudachi"</code> により、Lindera は <code>char.def</code> の読み方と未知語の
 作り方を Sudachi に合わせます（<a href="https://github.com/lindera/lindera/issues/1388">#1388</a>）。
+<code>lexicon_format: "sudachi"</code> により、語彙のエスケープも Sudachi と同じく復号します
+（<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>）。
 同じ語彙から組んだ sudachi.rs <code>v0.7.0</code> と、Sudachi の入力テキストと経路書き換えの
 プラグインを外して（未知語のプラグインだけ、C 単位、文に分けない）比べると、
-『坊っちゃん』（<code>resources/bocchan.txt</code>）の 505 行のうち 502 行で同じトークンに
-なります。残る 2 行はコストの等しい経路が 2 つあり、Sudachi が他方を選ぶ行です
-（Lindera の <code>大学卒業 / 生</code> に対し Sudachi は <code>大学 / 卒業生</code>）。残る 1 行は URL を
-含む行で、Sudachi は辞書語 <code>http://</code> を使います。語彙はこの語を <code>http://</code>
-と書いており、ビルダーはこれをまだ復号しません（<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>）。
+『坊っちゃん』（<code>resources/bocchan.txt</code>）の 505 行のうち 503 行で、品詞まで同じ
+トークンになります。残る 2 行はコストの等しい経路が 2 つあり、Sudachi が他方を
+選ぶ行です（Lindera の <code>大学卒業 / 生</code> に対し Sudachi は <code>大学 / 卒業生</code>）。
 残る違いはエンジンにあります:</p>
 <div class="table-wrapper"><table><thead><tr><th>Sudachi の機能</th><th>効果</th><th>Lindera での状況</th></tr></thead><tbody>
 <tr><td>ラテン・ギリシャ・キリル文字（<code>ALPHA</code>・<code>GREEK</code>・<code>CYRILLIC</code>。結合文字・異体字セレクタ・ZWJ のように <code>ALL</code> のものも含む）で、直前の文字とカテゴリを共有する文字からは、語を始めない（<code>can_bow</code>）</td><td>そのような文字の直前で辞書語が終わることもない。結合アクセントの付いた <code>cafe</code> は 1 つの未知語 <code>café</code> になり、異体字セレクタの付いた <code>♥</code> は 1 語になる</td><td>未対応</td></tr>

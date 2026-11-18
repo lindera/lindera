@@ -188,7 +188,7 @@
   --dest /tmp/lindera-sudachidict \
   --metadata ./lindera-sudachidict/metadata.json
 </code></pre>
-<p>アーカイブには raw レキシコン（small + core + notcore）、連接コスト行列、Sudachi 自身の <code>char.def</code>（sudachi.rs <code>v0.7.0</code> のもの。<code>metadata.json</code> の <code>"char_def_format": "sudachi"</code> で Sudachi と同じ規則で読みます）、および位置合わせ済みの <code>unk.def</code> が同梱されているため、手動の前処理は不要です。ビルドされた辞書のサイズは約 570MB です。</p>
+<p>アーカイブには raw レキシコン（small + core + notcore。そのエスケープは、<code>metadata.json</code> の <code>"lexicon_format": "sudachi"</code> で Sudachi と同じく復号します）、連接コスト行列、Sudachi 自身の <code>char.def</code>（sudachi.rs <code>v0.7.0</code> のもの。<code>metadata.json</code> の <code>"char_def_format": "sudachi"</code> で Sudachi と同じ規則で読みます）、および位置合わせ済みの <code>unk.def</code> が同梱されているため、手動の前処理は不要です。ビルドされた辞書のサイズは約 570MB です。</p>
 <blockquote>
 <p>[!TIP]
 同梱バージョンより新しい上流の SudachiDict リリースからビルドするには、

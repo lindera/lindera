@@ -242,6 +242,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>Middle dots break unknown words by default</strong></td><td>Anyone who segments Japanese text with katakana joined by <code>・</code>, most visibly unknown names such as <code>レノン・ジョン</code>, and users of decompose mode with dictionaries that have many words with <code>・</code> (IPADIC-NEologd, SudachiDict)</td><td>Expect <code>・</code> to split such runs, and such words in decompose mode; set <code>break_characters: ""</code> (<code>--disable-break-characters</code>) for MeCab's segmentation</td></tr>
 <tr><td><strong>Unknown words come from each character's default category and group the characters that share a category, as in MeCab</strong></td><td>Anyone who segments text where a character with several categories meets other characters; in the bundled dictionaries, a hanja numeral followed by hanja with ko-dic, and <code>〇</code> (U+3007) with ko-dic; Rust code that relies on the order of <code>CharacterDefinition::lookup_categories</code></td><td>Expect such text to be segmented as MeCab segments it (ko-dic <code>三國史記</code> is one <code>SH</code> word, <code>〇〇〇</code> one <code>SY</code> word); no setting restores the v6 behavior</td></tr>
 <tr><td><strong>SudachiDict reads Sudachi's own <code>char.def</code>, as Sudachi does</strong></td><td>Anyone who segments text with SudachiDict, most visibly <code>々</code> before a symbol, unknown katakana that starts with a small katakana or <code>ー</code>, and text with combining marks, variation selectors or ZWJ; anyone who builds a dictionary from Sudachi's <code>char.def</code></td><td>Expect such text to be segmented as Sudachi segments it; to build SudachiDict yourself, set <code>"char_def_format": "sudachi"</code> in its <code>metadata.json</code> (see <a href="#sudachidict-reads-sudachis-own-chardef">SudachiDict reads Sudachi's own <code>char.def</code></a>)</td></tr>
+<tr><td><strong>SudachiDict decodes the escapes of its lexicons, as Sudachi does</strong></td><td>Anyone who segments text with SudachiDict that has a dictionary word with <code>(</code>, <code>)</code>, <code>/</code>, <code>,</code>, <code>|</code> or <code>"</code>, most visibly URLs (<code>http://</code>), <code>1,2塁</code>, <code>b/s</code> and emoticons, or reads the details of such words; anyone who builds a dictionary or a user dictionary from Sudachi's lexicons</td><td>Expect such words to be found and their details decoded, as in Sudachi; to build SudachiDict yourself, set <code>"lexicon_format": "sudachi"</code> in its <code>metadata.json</code> (see <a href="#sudachidict-decodes-the-escapes-of-its-lexicons">SudachiDict decodes the escapes of its lexicons</a>)</td></tr>
 <tr><td><strong>CC-CEDICT: unknown words cost 400, and the entries made only of Latin letters or only of digits 399</strong></td><td>Anyone who segments text with CC-CEDICT, most visibly entries that mix Latin letters or digits with Chinese characters, such as <code>T恤</code>; anyone who reads its N-best costs</td><td>Expect such entries to be one word, <code>〇</code> and entries such as <code>PK</code> to come with their pinyin and definition, Latin words, kana and numbers to stay one word as in v6, and the costs of paths to change; build a CC-CEDICT dictionary directory from the <code>CC-CEDICT-MeCab-0.1.0-20261021</code> archive</td></tr>
 <tr><td><strong>Jieba: <code>〇</code> is a numeral entry</strong></td><td>Anyone who segments text with <code>〇</code> (U+3007) with Jieba</td><td>Expect each <code>〇</code> to be one numeral word (<code>m</code>, pinyin <code>ling2</code>) instead of part of an unknown word, as MeCab segments it with the same dictionary; build a Jieba dictionary directory from the <code>mecab-jieba-0.1.3</code> archive</td></tr>
 <tr><td><strong>Jieba: costs retrained on UD Chinese GSD</strong></td><td>Anyone who segments text with Jieba; users of simple Jieba user dictionaries</td><td>Expect Chinese text to be segmented as UD Chinese GSD segments it, finer than jieba (<code>中华 / 人民 / 共和 / 国</code>, <code>这 / 个</code>; segmentation F1 on its test split 77.3 → 87.7), and simple user dictionary words to cost −32768; build a Jieba dictionary directory from the <code>mecab-jieba-0.1.3</code> archive</td></tr>
@@ -1202,11 +1203,41 @@ KANJI, and leaves <code>・</code> out of the katakana category.</li>
 <p>On <em>Botchan</em> (<code>resources/bocchan.txt</code>), 5 of its 505 lines change, all of
 them at <code>々</code> before <code>｜</code>, and Lindera now gives the same tokens as sudachi.rs
 <code>v0.7.0</code> (with its input-text and path-rewrite plugins disabled) on 502 of
-the lines, up from 497 (see
+the lines, up from 497. Of the other three, one is the URL of the
+<a href="#sudachidict-decodes-the-escapes-of-its-lexicons">next section</a>, and
 <a href="./sudachidict.html#behavioral-differences-from-sudachi">SudachiDict (Custom Build)</a>
-for the other three). To build SudachiDict yourself, use Sudachi's
+explains the last two. To build SudachiDict yourself, use Sudachi's
 <code>char.def</code> with <code>"char_def_format": "sudachi"</code>; MeCab's format, the default,
 stops at the first <code>NOOOVBOW</code> of the file.</p>
+<h2 id="sudachidict-decodes-the-escapes-of-its-lexicons"><a class="header" href="#sudachidict-decodes-the-escapes-of-its-lexicons">SudachiDict decodes the escapes of its lexicons</a></h2>
+<p>SudachiDict's lexicons write <code>(</code>, <code>)</code>, <code>/</code>, <code>,</code>, <code>|</code> and <code>"</code> as escapes: a
+backslash, <code>u</code> and four hex digits. The word <code>http://</code> is written
+<code>http:\u002f\u002f</code>, and <code>1,2塁</code> is written <code>1\u002c2塁</code>. Sudachi's
+dictionary builder decodes them, and Lindera's builder did not, so 3,723
+entries of the 2026-07-23 lexicons kept their escapes and never matched
+text. v7.0.0 decodes them in every field, as Sudachi does
+(<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>), which SudachiDict's
+<code>metadata.json</code> selects with <code>"lexicon_format": "sudachi"</code>. The tokens below
+are in code spans, and <code>␣</code> is a space:</p>
+<div class="table-wrapper"><table><thead><tr><th>Input (SudachiDict)</th><th>v7.0.0 before #1389</th><th>v7.0.0 and Sudachi</th></tr></thead><tbody>
+<tr><td><code>http://lindera.dev</code></td><td><code>http</code> <code>://</code> <code>lindera</code> <code>.</code> <code>dev</code></td><td><code>http://</code> <code>lindera</code> <code>.</code> <code>dev</code></td></tr>
+<tr><td><code>1,2塁</code></td><td><code>1</code> <code>,</code> <code>2塁</code></td><td><code>1,2塁</code></td></tr>
+<tr><td><code>b/s</code></td><td><code>b</code> <code>/</code> <code>s</code></td><td><code>b/s</code></td></tr>
+<tr><td><code>co.,ltd.</code></td><td><code>co</code> <code>.,</code> <code>ltd</code> <code>.</code></td><td><code>co.,ltd.</code></td></tr>
+<tr><td><code>\( ^o^ )/</code></td><td><code>\(</code> <code>␣</code> <code>^o^</code> <code>␣</code> <code>)/</code></td><td><code>\( ^o^ )/</code></td></tr>
+</tbody></table>
+</div>
+<p>The details are decoded too: the display surface of <code>1,2塁</code> is <code>1,2塁</code>, and
+its normalized form <code>一二塁</code>. So are the rows of a user dictionary built for
+SudachiDict, as in Sudachi's user dictionaries. The <code>mecab</code> output of
+<code>lindera tokenize</code> joins the details with commas and does not quote them, so
+a detail with a comma, such as that display surface, is ambiguous there, as
+some details of CC-CEDICT and Jieba already are; the JSON output is not.</p>
+<p>On <em>Botchan</em>, 1 of its 505 lines changes, the one with a URL, and Lindera now
+gives the same tokens as sudachi.rs <code>v0.7.0</code> (with its input-text and
+path-rewrite plugins disabled) on 503 of the lines, up from 502. To build
+SudachiDict yourself, set <code>"lexicon_format": "sudachi"</code>; without it, the
+words with escapes keep them.</p>
 <h2 id="cc-cedict-unknown-words-no-longer-cost-less-than-dictionary-words"><a class="header" href="#cc-cedict-unknown-words-no-longer-cost-less-than-dictionary-words">CC-CEDICT: unknown words no longer cost less than dictionary words</a></h2>
 <p>v7.0.0 builds the CC-CEDICT dictionary from <code>CC-CEDICT-MeCab-0.1.0-20261021</code>
 instead of <code>CC-CEDICT-MeCab-0.1.0-20200409</code>

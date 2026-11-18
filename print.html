@@ -3057,6 +3057,13 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
 <li><code>"sudachi"</code>: Sudachi's format, which SudachiDict uses. A code point gets the categories of every line that covers it. Besides the categories that the file defines, a range line can name <code>ALL</code> (every category) and the flags <code>NOOOVBOW</code> (no unknown word starts at the character) and <code>NOOOVEOW</code> (no unknown word starts right after it), and a code point can be outside the BMP. The file must define <code>DEFAULT</code>, cannot define <code>ALL</code>, <code>NOOOVBOW</code> or <code>NOOOVEOW</code> as a category, and can define at most 64 categories. Every category of a character creates unknown words, over runs cut as Sudachi cuts them, and a position where nothing else starts gets a one-character unknown word of <code>DEFAULT</code>, as in Sudachi. A character is whitespace (for <code>--keep-whitespace</code>, <code>--disable-skip-whitespace</code> and the left-space penalty) only when <code>SPACE</code> is its only category, so that the characters that <code>ALL</code> puts in every category, such as combining marks and ZWJ, are not.</li>
 </ul>
 <p><code>lindera train</code> reads <code>--char-def</code> in MeCab's format only.</p>
+<h3 id="lexicon-format"><a class="header" href="#lexicon-format">Lexicon format</a></h3>
+<p>A dictionary's <code>metadata.json</code> selects the format of its lexicon CSV files with <code>lexicon_format</code> (<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>):</p>
+<ul>
+<li><code>"mecab"</code>, the default when the field is omitted: MeCab's format. Every field is taken as written.</li>
+<li><code>"sudachi"</code>: Sudachi's format, which SudachiDict uses. A backslash, <code>u</code> and four hex digits, or a backslash, <code>u</code> and one to six hex digits in braces, stand for the code point that the digits name, and the builder decodes them in every field, as Sudachi's dictionary builder does: SudachiDict writes <code>http://</code> as <code>http:\u002f\u002f</code> and <code>1,2塁</code> as <code>1\u002c2塁</code>. The escapes are decoded left to right, the text that one stands for is not decoded again, and a backslash before an escape stays, since there is no escape for the backslash itself. An escape for a value that is not a Unicode scalar value (a surrogate, or above U+10FFFF), or for NUL, which separates the details of an entry in a built dictionary, fails the build with an error that names the file and the line. The user dictionaries built for the dictionary, with <code>lindera build --user</code> and its <code>metadata.json</code> or from a <code>.csv</code> file loaded with the dictionary, are decoded in the same way.</li>
+</ul>
+<p><code>unk.def</code> is read as written in both formats, as Sudachi reads it.</p>
 <h3 id="examples-1"><a class="header" href="#examples-1">Examples</a></h3>
 <h4 id="build-ipadic-japanese-dictionary"><a class="header" href="#build-ipadic-japanese-dictionary">Build IPADIC (Japanese dictionary)</a></h4>
 <pre><code class="language-shell"># Download and extract IPADIC source files
@@ -9609,7 +9616,7 @@ This dictionary reproduces SudachiDict's vocabulary and lattice behavior, and re
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-sudachidict-1"><a class="header" href="#lindera-sudachidict-1">Lindera SudachiDict</a></h1>
 <h2 id="dictionary-version-5"><a class="header" href="#dictionary-version-5">Dictionary version</a></h2>
-<p>This repository contains <a href="https://github.com/lindera/sudachidict">SudachiDict</a> 20260723 (small + core + notcore lexicons), from the mirror's tag <code>0.1.0-20260723</code>, with Sudachi's own <code>char.def</code> (sudachi.rs <code>v0.7.0</code>), which <code>"char_def_format": "sudachi"</code> in <code>metadata.json</code> reads as Sudachi does.</p>
+<p>This repository contains <a href="https://github.com/lindera/sudachidict">SudachiDict</a> 20260723 (small + core + notcore lexicons), from the mirror's tag <code>0.1.0-20260723</code>, with Sudachi's own <code>char.def</code> (sudachi.rs <code>v0.7.0</code>), which <code>"char_def_format": "sudachi"</code> in <code>metadata.json</code> reads as Sudachi does. <code>"lexicon_format": "sudachi"</code> decodes the escapes of the lexicons (a backslash, <code>u</code> and hex digits, which they write for <code>(</code>, <code>)</code>, <code>/</code>, <code>,</code>, <code>|</code> and <code>"</code>) in every field, as Sudachi does, in user dictionaries too.</p>
 <h2 id="dictionary-format-5"><a class="header" href="#dictionary-format-5">Dictionary format</a></h2>
 <p>Refer to the <a href="https://github.com/WorksApplications/SudachiDict">SudachiDict documentation</a> for details on the dictionary format and part-of-speech tags.</p>
 <div class="table-wrapper"><table><thead><tr><th>Index</th><th>Name (Japanese)</th><th>Name (English)</th><th>Notes</th></tr></thead><tbody>
@@ -9679,7 +9686,7 @@ dictionary the same way they match IPADIC or UniDic (see
   --dest /tmp/lindera-sudachidict \
   --metadata ./lindera-sudachidict/metadata.json
 </code></pre>
-<p>The archive bundles the raw lexicons (small + core + notcore), the connection matrix, Sudachi's own <code>char.def</code> (from sudachi.rs <code>v0.7.0</code>, which <code>"char_def_format": "sudachi"</code> in <code>metadata.json</code> reads as Sudachi does) and the pre-aligned <code>unk.def</code>, so no manual preprocessing is needed. The built dictionary is about 570MB.</p>
+<p>The archive bundles the raw lexicons (small + core + notcore, whose escapes <code>"lexicon_format": "sudachi"</code> in <code>metadata.json</code> decodes as Sudachi does), the connection matrix, Sudachi's own <code>char.def</code> (from sudachi.rs <code>v0.7.0</code>, which <code>"char_def_format": "sudachi"</code> in <code>metadata.json</code> reads as Sudachi does) and the pre-aligned <code>unk.def</code>, so no manual preprocessing is needed. The built dictionary is about 570MB.</p>
 <blockquote>
 <p>[!TIP]
 To build from a newer upstream SudachiDict release than the bundled one, see
@@ -10305,7 +10312,8 @@ reserved columns; the rest name SudachiDict's columns in order:</p>
   },
   "user_dictionary_schema": { "fields": ["surface", "part_of_speech", "reading"] },
   "skip_whitespace": false,
-  "char_def_format": "sudachi"
+  "char_def_format": "sudachi",
+  "lexicon_format": "sudachi"
 }
 </code></pre>
 <p><code>skip_whitespace: false</code> keeps whitespace in the lattice, as Sudachi does and
@@ -10320,6 +10328,15 @@ position where nothing else starts gets a one-character unknown word of
 <code>DEFAULT</code>, as in Sudachi. Without it, the builder reads <code>char.def</code> in
 MeCab's format, which stops at the first <code>NOOOVBOW</code> of Sudachi's file (see
 <a href="./lindera-cli/commands.html#build"><code>lindera build</code></a>).</p>
+<p><code>lexicon_format: "sudachi"</code> decodes the escapes that SudachiDict's lexicons
+write for <code>(</code>, <code>)</code>, <code>/</code>, <code>,</code>, <code>|</code> and <code>"</code>, as Sudachi's dictionary builder
+does: the lexicon writes the word <code>http://</code> as <code>http:\u002f\u002f</code>
+and <code>1,2塁</code> as <code>1\u002c2塁</code>. Every field is decoded, so the details are
+too, and so are the rows of a user dictionary built for this dictionary.
+Without it, 3,723 entries of the 2026-07-23 lexicons keep their escapes and
+never match text (see
+<a href="./lindera-cli/commands.html#lexicon-format"><code>lindera build</code></a> and
+<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>).</p>
 <h2 id="build-and-verify"><a class="header" href="#build-and-verify">Build and verify</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src /tmp/sudachidict-src \
@@ -10354,18 +10371,18 @@ they match IPADIC or UniDic.</p>
 <h2 id="behavioral-differences-from-sudachi"><a class="header" href="#behavioral-differences-from-sudachi">Behavioral differences from Sudachi</a></h2>
 <p>The dictionary data is Sudachi's: the matrix file is byte-identical (sha256)
 to the one SudachiDict's official build uses, <code>char.def</code> and <code>unk.def</code> are
-Sudachi's own, and <code>char_def_format: "sudachi"</code> makes Lindera read
-<code>char.def</code> and create unknown words as Sudachi does
-(<a href="https://github.com/lindera/lindera/issues/1388">#1388</a>). Compared with
+Sudachi's own, <code>char_def_format: "sudachi"</code> makes Lindera read <code>char.def</code>
+and create unknown words as Sudachi does
+(<a href="https://github.com/lindera/lindera/issues/1388">#1388</a>), and
+<code>lexicon_format: "sudachi"</code> decodes the escapes of the lexicons as Sudachi
+does (<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>). Compared with
 sudachi.rs <code>v0.7.0</code> on the same lexicons, with Sudachi's input-text and
 path-rewrite plugins disabled (its unknown-word plugins only, mode C,
-sentences not split), Lindera gives the same tokens on 502 of the 505 lines
-of <em>Botchan</em> (<code>resources/bocchan.txt</code>): two lines have two paths of equal
-cost, and Sudachi chooses the other one (<code>大学 / 卒業生</code> where Lindera gives
-<code>大学卒業 / 生</code>), and one has a URL, where Sudachi uses the dictionary word
-<code>http://</code>, which the lexicon writes as <code>http://</code> and the builder
-does not decode yet (<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>).
-The remaining differences are in the engine:</p>
+sentences not split), Lindera gives the same tokens, with the same parts of
+speech, on 503 of the 505 lines of <em>Botchan</em> (<code>resources/bocchan.txt</code>): the
+other two have two paths of equal cost, and Sudachi chooses the other one
+(<code>大学 / 卒業生</code> where Lindera gives <code>大学卒業 / 生</code>). The remaining
+differences are in the engine:</p>
 <div class="table-wrapper"><table><thead><tr><th>Sudachi feature</th><th>Effect</th><th>Status under Lindera</th></tr></thead><tbody>
 <tr><td>No word starts at a character that is Latin, Greek or Cyrillic (<code>ALPHA</code>, <code>GREEK</code>, <code>CYRILLIC</code>, or <code>ALL</code> as combining marks, variation selectors and ZWJ are) and shares a category with the character before it (<code>can_bow</code>)</td><td>A dictionary word cannot end before such a character either: <code>cafe</code> followed by a combining acute accent is one unknown word <code>café</code>, and <code>♥</code> with a variation selector is one word</td><td>Not replicated</td></tr>
 <tr><td>Ties between paths of equal cost</td><td>Sudachi chooses another path than MeCab's rule</td><td>Lindera breaks ties as MeCab does</td></tr>
@@ -11099,6 +11116,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong>Middle dots break unknown words by default</strong></td><td>Anyone who segments Japanese text with katakana joined by <code>・</code>, most visibly unknown names such as <code>レノン・ジョン</code>, and users of decompose mode with dictionaries that have many words with <code>・</code> (IPADIC-NEologd, SudachiDict)</td><td>Expect <code>・</code> to split such runs, and such words in decompose mode; set <code>break_characters: ""</code> (<code>--disable-break-characters</code>) for MeCab's segmentation</td></tr>
 <tr><td><strong>Unknown words come from each character's default category and group the characters that share a category, as in MeCab</strong></td><td>Anyone who segments text where a character with several categories meets other characters; in the bundled dictionaries, a hanja numeral followed by hanja with ko-dic, and <code>〇</code> (U+3007) with ko-dic; Rust code that relies on the order of <code>CharacterDefinition::lookup_categories</code></td><td>Expect such text to be segmented as MeCab segments it (ko-dic <code>三國史記</code> is one <code>SH</code> word, <code>〇〇〇</code> one <code>SY</code> word); no setting restores the v6 behavior</td></tr>
 <tr><td><strong>SudachiDict reads Sudachi's own <code>char.def</code>, as Sudachi does</strong></td><td>Anyone who segments text with SudachiDict, most visibly <code>々</code> before a symbol, unknown katakana that starts with a small katakana or <code>ー</code>, and text with combining marks, variation selectors or ZWJ; anyone who builds a dictionary from Sudachi's <code>char.def</code></td><td>Expect such text to be segmented as Sudachi segments it; to build SudachiDict yourself, set <code>"char_def_format": "sudachi"</code> in its <code>metadata.json</code> (see <a href="migration_v6_to_v7.html#sudachidict-reads-sudachis-own-chardef">SudachiDict reads Sudachi's own <code>char.def</code></a>)</td></tr>
+<tr><td><strong>SudachiDict decodes the escapes of its lexicons, as Sudachi does</strong></td><td>Anyone who segments text with SudachiDict that has a dictionary word with <code>(</code>, <code>)</code>, <code>/</code>, <code>,</code>, <code>|</code> or <code>"</code>, most visibly URLs (<code>http://</code>), <code>1,2塁</code>, <code>b/s</code> and emoticons, or reads the details of such words; anyone who builds a dictionary or a user dictionary from Sudachi's lexicons</td><td>Expect such words to be found and their details decoded, as in Sudachi; to build SudachiDict yourself, set <code>"lexicon_format": "sudachi"</code> in its <code>metadata.json</code> (see <a href="migration_v6_to_v7.html#sudachidict-decodes-the-escapes-of-its-lexicons">SudachiDict decodes the escapes of its lexicons</a>)</td></tr>
 <tr><td><strong>CC-CEDICT: unknown words cost 400, and the entries made only of Latin letters or only of digits 399</strong></td><td>Anyone who segments text with CC-CEDICT, most visibly entries that mix Latin letters or digits with Chinese characters, such as <code>T恤</code>; anyone who reads its N-best costs</td><td>Expect such entries to be one word, <code>〇</code> and entries such as <code>PK</code> to come with their pinyin and definition, Latin words, kana and numbers to stay one word as in v6, and the costs of paths to change; build a CC-CEDICT dictionary directory from the <code>CC-CEDICT-MeCab-0.1.0-20261021</code> archive</td></tr>
 <tr><td><strong>Jieba: <code>〇</code> is a numeral entry</strong></td><td>Anyone who segments text with <code>〇</code> (U+3007) with Jieba</td><td>Expect each <code>〇</code> to be one numeral word (<code>m</code>, pinyin <code>ling2</code>) instead of part of an unknown word, as MeCab segments it with the same dictionary; build a Jieba dictionary directory from the <code>mecab-jieba-0.1.3</code> archive</td></tr>
 <tr><td><strong>Jieba: costs retrained on UD Chinese GSD</strong></td><td>Anyone who segments text with Jieba; users of simple Jieba user dictionaries</td><td>Expect Chinese text to be segmented as UD Chinese GSD segments it, finer than jieba (<code>中华 / 人民 / 共和 / 国</code>, <code>这 / 个</code>; segmentation F1 on its test split 77.3 → 87.7), and simple user dictionary words to cost −32768; build a Jieba dictionary directory from the <code>mecab-jieba-0.1.3</code> archive</td></tr>
@@ -12059,11 +12077,41 @@ KANJI, and leaves <code>・</code> out of the katakana category.</li>
 <p>On <em>Botchan</em> (<code>resources/bocchan.txt</code>), 5 of its 505 lines change, all of
 them at <code>々</code> before <code>｜</code>, and Lindera now gives the same tokens as sudachi.rs
 <code>v0.7.0</code> (with its input-text and path-rewrite plugins disabled) on 502 of
-the lines, up from 497 (see
+the lines, up from 497. Of the other three, one is the URL of the
+<a href="migration_v6_to_v7.html#sudachidict-decodes-the-escapes-of-its-lexicons">next section</a>, and
 <a href="./sudachidict.html#behavioral-differences-from-sudachi">SudachiDict (Custom Build)</a>
-for the other three). To build SudachiDict yourself, use Sudachi's
+explains the last two. To build SudachiDict yourself, use Sudachi's
 <code>char.def</code> with <code>"char_def_format": "sudachi"</code>; MeCab's format, the default,
 stops at the first <code>NOOOVBOW</code> of the file.</p>
+<h2 id="sudachidict-decodes-the-escapes-of-its-lexicons"><a class="header" href="#sudachidict-decodes-the-escapes-of-its-lexicons">SudachiDict decodes the escapes of its lexicons</a></h2>
+<p>SudachiDict's lexicons write <code>(</code>, <code>)</code>, <code>/</code>, <code>,</code>, <code>|</code> and <code>"</code> as escapes: a
+backslash, <code>u</code> and four hex digits. The word <code>http://</code> is written
+<code>http:\u002f\u002f</code>, and <code>1,2塁</code> is written <code>1\u002c2塁</code>. Sudachi's
+dictionary builder decodes them, and Lindera's builder did not, so 3,723
+entries of the 2026-07-23 lexicons kept their escapes and never matched
+text. v7.0.0 decodes them in every field, as Sudachi does
+(<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>), which SudachiDict's
+<code>metadata.json</code> selects with <code>"lexicon_format": "sudachi"</code>. The tokens below
+are in code spans, and <code>␣</code> is a space:</p>
+<div class="table-wrapper"><table><thead><tr><th>Input (SudachiDict)</th><th>v7.0.0 before #1389</th><th>v7.0.0 and Sudachi</th></tr></thead><tbody>
+<tr><td><code>http://lindera.dev</code></td><td><code>http</code> <code>://</code> <code>lindera</code> <code>.</code> <code>dev</code></td><td><code>http://</code> <code>lindera</code> <code>.</code> <code>dev</code></td></tr>
+<tr><td><code>1,2塁</code></td><td><code>1</code> <code>,</code> <code>2塁</code></td><td><code>1,2塁</code></td></tr>
+<tr><td><code>b/s</code></td><td><code>b</code> <code>/</code> <code>s</code></td><td><code>b/s</code></td></tr>
+<tr><td><code>co.,ltd.</code></td><td><code>co</code> <code>.,</code> <code>ltd</code> <code>.</code></td><td><code>co.,ltd.</code></td></tr>
+<tr><td><code>\( ^o^ )/</code></td><td><code>\(</code> <code>␣</code> <code>^o^</code> <code>␣</code> <code>)/</code></td><td><code>\( ^o^ )/</code></td></tr>
+</tbody></table>
+</div>
+<p>The details are decoded too: the display surface of <code>1,2塁</code> is <code>1,2塁</code>, and
+its normalized form <code>一二塁</code>. So are the rows of a user dictionary built for
+SudachiDict, as in Sudachi's user dictionaries. The <code>mecab</code> output of
+<code>lindera tokenize</code> joins the details with commas and does not quote them, so
+a detail with a comma, such as that display surface, is ambiguous there, as
+some details of CC-CEDICT and Jieba already are; the JSON output is not.</p>
+<p>On <em>Botchan</em>, 1 of its 505 lines changes, the one with a URL, and Lindera now
+gives the same tokens as sudachi.rs <code>v0.7.0</code> (with its input-text and
+path-rewrite plugins disabled) on 503 of the lines, up from 502. To build
+SudachiDict yourself, set <code>"lexicon_format": "sudachi"</code>; without it, the
+words with escapes keep them.</p>
 <h2 id="cc-cedict-unknown-words-no-longer-cost-less-than-dictionary-words"><a class="header" href="#cc-cedict-unknown-words-no-longer-cost-less-than-dictionary-words">CC-CEDICT: unknown words no longer cost less than dictionary words</a></h2>
 <p>v7.0.0 builds the CC-CEDICT dictionary from <code>CC-CEDICT-MeCab-0.1.0-20261021</code>
 instead of <code>CC-CEDICT-MeCab-0.1.0-20200409</code>

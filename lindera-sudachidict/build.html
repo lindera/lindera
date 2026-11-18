@@ -188,7 +188,7 @@
   --dest /tmp/lindera-sudachidict \
   --metadata ./lindera-sudachidict/metadata.json
 </code></pre>
-<p>The archive bundles the raw lexicons (small + core + notcore), the connection matrix, Sudachi's own <code>char.def</code> (from sudachi.rs <code>v0.7.0</code>, which <code>"char_def_format": "sudachi"</code> in <code>metadata.json</code> reads as Sudachi does) and the pre-aligned <code>unk.def</code>, so no manual preprocessing is needed. The built dictionary is about 570MB.</p>
+<p>The archive bundles the raw lexicons (small + core + notcore, whose escapes <code>"lexicon_format": "sudachi"</code> in <code>metadata.json</code> decodes as Sudachi does), the connection matrix, Sudachi's own <code>char.def</code> (from sudachi.rs <code>v0.7.0</code>, which <code>"char_def_format": "sudachi"</code> in <code>metadata.json</code> reads as Sudachi does) and the pre-aligned <code>unk.def</code>, so no manual preprocessing is needed. The built dictionary is about 570MB.</p>
 <blockquote>
 <p>[!TIP]
 To build from a newer upstream SudachiDict release than the bundled one, see
