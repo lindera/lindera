@@ -3497,6 +3497,13 @@ impl Lattice {
     /// still ties with the initial best cost, so a transition connects
     /// however large a penalty makes it (#1223).
     ///
+    /// In Normal mode, the best left edge is kept as a plain index rather
+    /// than an `Option`: every `i32` is `<= i32::MAX`, the initial best cost,
+    /// so the first left edge always sets it, and the slot is checked to be
+    /// non-empty before the loop. The loop runs over the indices rather than
+    /// `iter().enumerate()`, so that it compiles with one induction variable
+    /// instead of two (#1394).
+    ///
     /// # Arguments
     ///
     /// * `start_char` - The incoming edge's start position.
@@ -3519,16 +3526,19 @@ impl Lattice {
             return None;
         }
 
-        let mut best_cost = i32::MAX;
-        let mut best_left = None;
-
         match mode {
             Mode::Normal => {
                 // Matrix row hoisted out of the loop; the plain additions
                 // cannot overflow thanks to PATH_COST_CLAMP (#880).
                 let left_edges = &self.ends_at[start_char];
                 let cost_row = cost_matrix.row(right_left_id);
-                for (i, left_edge) in left_edges.iter().enumerate() {
+                let mut best_cost = i32::MAX;
+                let mut best_left = 0;
+                // Indices, not `iter().enumerate()`: one induction variable
+                // instead of two (see the doc comment).
+                #[allow(clippy::needless_range_loop)]
+                for i in 0..left_edges.len() {
+                    let left_edge = &left_edges[i];
                     #[cfg(feature = "ctxfreq")]
                     record_access(u32::from(left_edge.right_id), right_left_id);
                     let conn_cost = cost_row[left_edge.right_id as usize] as i32;
@@ -3536,17 +3546,17 @@ impl Lattice {
 
                     if total_cost <= best_cost {
                         best_cost = total_cost;
-                        best_left = Some(i as u32);
+                        best_left = i;
                     }
                 }
+                Some((best_cost, best_left as u32))
             }
             Mode::Decompose(penalty) => {
-                (best_cost, best_left) =
+                let (best_cost, best_left) =
                     self.relax_decompose(start_char, right_left_id, penalty, cost_matrix);
+                best_left.map(|left| (best_cost, left))
             }
         }
-
-        best_left.map(|left| (best_cost, left))
     }
 
     /// Stores `edge` in slot `stop_char` with the transition `best` found by
