@@ -1435,7 +1435,7 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 既に静的なゼロコピーバイトスライスであるため）。<code>mmap</code> cargo feature
 （デフォルトで有効）が必要です。</p>
 <h2 id="空白文字の扱い"><a class="header" href="#空白文字の扱い">空白文字の扱い</a></h2>
-<p>デフォルトでは、MeCab と同様に空白をラティス上で読み飛ばします。空白文字から始まる語はなく、空白の後ろの語は空白の前の語に直接接続し、辞書が学習した連接コストが使われます。読み飛ばした空白は出力に現れず、トークンの表層形とオフセットにも含まれません。ただし、見出し語の一部である空白は、語の途中（IPADIC-NEologd の <code>GeForce GTX</code>、ユーザー辞書の <code>해운대 해수욕장</code>）でも末尾（ko-dic の、半角スペースの付いた <code>에듀</code>）でも、MeCab と同じくその語のトークンに残ります。「空白」とは辞書の <code>SPACE</code> 文字カテゴリ（<code>char.def</code>）のことで、ko-dic では U+0020、U+0009、U+000A、U+000B、U+000D、IPADIC・IPADIC-NEologd・UniDic・SudachiDict・CC-CEDICT・Jieba では U+0020、U+0009、U+000A、U+000B です。これらの <code>char.def</code> は U+00D0（<code>Ð</code>）も <code>SPACE</code> に割り当てています（U+000D のタイポ）が、後続の <code>0x00C0..0x00FF ALPHA</code> 行が優先されるため、MeCab と同じく <code>Ð</code> は英字として扱われます。</p>
+<p>デフォルトでは、MeCab と同様に空白をラティス上で読み飛ばします。空白文字から始まる語はなく、空白の後ろの語は空白の前の語に直接接続し、辞書が学習した連接コストが使われます。読み飛ばした空白は出力に現れず、トークンの表層形とオフセットにも含まれません。ただし、見出し語の一部である空白は、語の途中（IPADIC-NEologd の <code>GeForce GTX</code>、ユーザー辞書の <code>해운대 해수욕장</code>）でも末尾（ko-dic の、半角スペースの付いた <code>에듀</code>）でも、MeCab と同じくその語のトークンに残ります。「空白」とは辞書の <code>SPACE</code> 文字カテゴリ（<code>char.def</code>）のことで、ko-dic と SudachiDict では U+0020、U+0009、U+000A、U+000B、U+000D、IPADIC・IPADIC-NEologd・UniDic・UniDic CWJ・UniDic CSJ・CC-CEDICT・Jieba では U+0020、U+0009、U+000A、U+000B です。後者の <code>char.def</code> は U+00D0（<code>Ð</code>）も <code>SPACE</code> に割り当てています（U+000D のタイポ）が、後続の <code>0x00C0..0x00FF ALPHA</code> 行が優先されるため、MeCab と同じく <code>Ð</code> は英字として扱われます。</p>
 <p>デフォルトは辞書の <code>metadata.json</code>（<code>skip_whitespace</code>）で決まります。SudachiDict はこれを <code>false</code> にしています。Sudachi は空白をラティスに残して <code>空白</code> トークンとして出力し、SudachiDict のコストもそれに合わせて調整されているため、読み飛ばすと、たとえば <code>caramel man</code> という項目が 2 つの普通名詞に分割されてしまいます。そのため SudachiDict では、デフォルトで空白が独立したノード（U+0020 の項目のような <code>空白</code> の見出し語か、<code>SPACE</code> の未知語）としてラティスに残ります（出力からは除外されます）。他の同梱辞書はこの設定を持たず、その場合は読み飛ばします。設定が導入される前にビルドされた辞書（再ビルドするまでの Lindera 6.x 製の SudachiDict を含む）も同様です。</p>
 <p><code>Segmenter</code> に対して <code>keep_whitespace(true)</code> を呼び出すと、空白のトークンを出力します。このとき空白はラティスにも独立したノード（IPADIC や UniDic の U+3000 の項目のような空白の見出し語か、<code>SPACE</code> の未知語）として残るため、他のトークンも、空白を読み飛ばすデフォルトの出力と変わることがあります：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -11155,7 +11155,7 @@ v7 でもそのままコンパイルできます。このクレートは、<code
 <pre><code class="language-text">lindera::dictionary
 ├── Dictionary, Metadata, Schema, load_dictionary, load_user_dictionary, DictionaryKind, …   （変更なし）
 ├── core          lindera_dictionary::dictionary（prefix_dictionary, character_definition, connection_cost_matrix, unknown_dictionary, …）
-├── builder, error, loader, mode, nbest, space_penalty, util, viterbi
+├── break_characters, builder, error, loader, mode, nbest, space_penalty, util, viterbi, whitespace
 ├── embedded_dictionary!, include_bytes_aligned!
 └── trainer       lindera_trainer（`train` feature。変更なし）
 </code></pre>
@@ -11585,7 +11585,7 @@ v7.0.0 は MeCab・vibrato・Kuromoji と同じく最後の行だけを使いま
 カテゴリ名は、ko-dic では <code>HANJA</code>・<code>HANJANUMERIC</code>、CC-CEDICT と Jieba では
 <code>CHINESE</code>・<code>CHINESENUMERIC</code> です）。</p>
 <div class="table-wrapper"><table><thead><tr><th>文字</th><th>v6 のカテゴリ</th><th>v7 のカテゴリ</th><th>影響</th></tr></thead><tbody>
-<tr><td><code>Ð</code>（U+00D0）</td><td><code>SPACE</code>・<code>ALPHA</code></td><td><code>ALPHA</code></td><td>ko-dic 以外のすべての辞書は、<code>ALPHA</code> の範囲より前に U+00D0 を <code>SPACE</code> に割り当てています（mecab-ipadic から引き継がれた U+000D のタイポ）。このため <code>Ð</code> は空白として出力から消え、前後の語も分断されていました。<code>GUÐMUNDUR さん</code> は <code>GU</code>・<code>MUNDUR</code>・<code>さん</code> ではなく <code>GUÐMUNDUR</code>・<code>さん</code> になります</td></tr>
+<tr><td><code>Ð</code>（U+00D0）</td><td><code>SPACE</code>・<code>ALPHA</code></td><td><code>ALPHA</code></td><td>ko-dic と SudachiDict 以外のすべての辞書は、<code>ALPHA</code> の範囲より前に U+00D0 を <code>SPACE</code> に割り当てています（mecab-ipadic から引き継がれた U+000D のタイポ）。SudachiDict も v6.2.0 まではそうでしたが、v7.0.0 からは Sudachi 自身の <code>char.def</code> を使い、U+00D0 を <code>SPACE</code> にしません（<a href="migration_v6_to_v7.html#sudachidict-%E3%81%8C-sudachi-%E8%87%AA%E8%BA%AB%E3%81%AE-chardef-%E3%82%92%E8%AA%AD%E3%82%80">SudachiDict が Sudachi 自身の char.def を読む</a>を参照）。このため <code>Ð</code> は空白として出力から消え、前後の語も分断されていました。<code>GUÐMUNDUR さん</code> は <code>GU</code>・<code>MUNDUR</code>・<code>さん</code> ではなく <code>GUÐMUNDUR</code>・<code>さん</code> になります</td></tr>
 <tr><td><code>々</code>（U+3005）</td><td><code>KANJI</code>・<code>SYMBOL</code></td><td><code>SYMBOL</code></td><td><code>人々</code> や <code>佐々木</code> のような辞書の語は変わりません。辞書にない漢字の後ろでは、MeCab と同じく <code>々</code> が単独のトークンになります（<code>龘々</code> は 1 つの未知語ではなく <code>龘</code>・<code>々</code>）。ko-dic では <code>々</code> の品詞が <code>SH</code> ではなく <code>SY</code> になります</td></tr>
 <tr><td><code>〇</code>（U+3007）</td><td><code>KANJI</code>・<code>SYMBOL</code>・<code>KANJINUMERIC</code></td><td><code>SYMBOL</code>・<code>KANJINUMERIC</code></td><td>数字の連続のまとまり方が変わることがあります。ko-dic では <code>二〇二六年</code> が <code>二</code>・<code>〇</code>・<code>二六</code>・<code>年</code> ではなく 1 つの未知語（<code>SH</code>）になります（<a href="migration_v6_to_v7.html#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%AF%E6%97%A2%E5%AE%9A%E3%82%AB%E3%83%86%E3%82%B4%E3%83%AA%E3%81%8B%E3%82%89%E4%BD%9C%E3%82%8B">MeCab と同じく、未知語は既定カテゴリから作る</a>も参照）</td></tr>
 </tbody></table>
@@ -12973,6 +12973,7 @@ mecab-ko-dic の <code>unk.def</code> はすべての行がこうした行です
 <tr><td><code>PrefixDictionaryBuilderOptions::normalize_details(value)</code></td><td>削除</td></tr>
 <tr><td>—</td><td>公開フィールド <code>Metadata::skip_whitespace: Option&lt;bool&gt;</code> を追加（<code>lindera_binding::CoreMetadata::skip_whitespace</code> も）</td></tr>
 <tr><td>—</td><td>公開フィールド <code>Metadata::lindera_version: Option&lt;String&gt;</code> を追加</td></tr>
+<tr><td>—</td><td>公開フィールド <code>Metadata::char_def_format: CharDefFormat</code> と <code>Metadata::lexicon_format: LexiconFormat</code> を追加（<code>lindera_binding::CoreMetadata</code> にも。こちらには <code>connection_id_mapping: bool</code> も）</td></tr>
 <tr><td><code>CharacterDefinition::lookup_categories(c)</code> は <code>c</code> を覆うすべての行のカテゴリを返す</td><td><code>c</code> を覆う最後の行のカテゴリを、既定カテゴリを先頭に、残りをカテゴリ ID 順に返す</td></tr>
 <tr><td><code>DICTIONARY_FORMAT_VERSION</code> は <code>2</code></td><td><code>3</code></td></tr>
 <tr><td><code>UnknownDictionary::gen_unk_words(sentence, start_pos, has_matched, max_grouping_len, callback)</code></td><td>削除</td></tr>
@@ -13062,6 +13063,19 @@ BOS です。</li>
 ビルドした辞書では <code>None</code> で、<code>Metadata::new</code> も <code>None</code> にします。すべての
 フィールドを並べた構造体リテラルには <code>lindera_version: None</code> も必要です。
 <code>lindera_binding::CoreMetadata</code> にはこのフィールドはありません。</p>
+<p><code>Metadata</code> には、<code>char.def</code> と語彙の読み方を表す公開フィールド
+<code>char_def_format: CharDefFormat</code> と <code>lexicon_format: LexiconFormat</code>
+（<code>lindera::dictionary::core::character_definition::CharDefFormat</code> と
+<code>lindera::dictionary::core::lexicon_format::LexiconFormat</code>）も加わりました。
+値は <code>Mecab</code> か <code>Sudachi</code> です（<a href="migration_v6_to_v7.html#sudachidict-%E3%81%8C-sudachi-%E8%87%AA%E8%BA%AB%E3%81%AE-chardef-%E3%82%92%E8%AA%AD%E3%82%80">SudachiDict が Sudachi 自身の char.def を読む</a>
+と <a href="migration_v6_to_v7.html#sudachidict-%E3%81%8C%E8%AA%9E%E5%BD%99%E3%81%AE%E3%82%A8%E3%82%B9%E3%82%B1%E3%83%BC%E3%83%97%E3%82%92%E5%BE%A9%E5%8F%B7%E3%81%99%E3%82%8B">SudachiDict が語彙のエスケープを復号する</a>
+を参照）。<code>lindera_binding::CoreMetadata</code> にも両方が加わり、さらにバインディングが
+これまで落としていた <code>connection_id_mapping: bool</code> も加わりました
+（<a href="migration_v6_to_v7.html#lindera_ctx_freq_file-%E3%82%92-lindera_build_context_id_freq_file-%E3%81%AB%E6%94%B9%E5%90%8D"><code>LINDERA_CTX_FREQ_FILE</code> を <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> に改名</a>
+を参照）。<code>Metadata::new</code>・<code>CoreMetadata::new</code> と、両方の <code>Default</code> の実装は、
+2 つの形式を <code>Mecab</code> に、<code>connection_id_mapping</code> を <code>false</code> にします。すべての
+フィールドを <code>..</code> なしで並べた構造体リテラルには、これらのフィールドも必要です。
+リテラルの最後を <code>..Default::default()</code> にしても構いません。</p>
 <p><code>CharacterDefinition::lookup_categories</code> のシグネチャは変わりません。先頭のカテゴリ
 が未知語を作るカテゴリです（<a href="migration_v6_to_v7.html#mecab-%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E6%9C%AA%E7%9F%A5%E8%AA%9E%E3%81%AF%E6%97%A2%E5%AE%9A%E3%82%AB%E3%83%86%E3%82%B4%E3%83%AA%E3%81%8B%E3%82%89%E4%BD%9C%E3%82%8B">MeCab と同じく、未知語は既定カテゴリから作る</a>を参照）。文字があるカテゴリを持つかどうかだけを
 調べるコードには影響しません。ビルダーが書き出し、読み込み時に受け付ける

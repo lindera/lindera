@@ -436,7 +436,7 @@ API:</p>
 <pre><code class="language-text">lindera::dictionary
 ├── Dictionary, Metadata, Schema, load_dictionary, load_user_dictionary, DictionaryKind, …   (unchanged)
 ├── core          lindera_dictionary::dictionary (prefix_dictionary, character_definition, connection_cost_matrix, unknown_dictionary, …)
-├── builder, error, loader, mode, nbest, space_penalty, util, viterbi
+├── break_characters, builder, error, loader, mode, nbest, space_penalty, util, viterbi, whitespace
 ├── embedded_dictionary!, include_bytes_aligned!
 └── trainer       lindera_trainer, with the `train` feature (unchanged)
 </code></pre>
@@ -897,7 +897,7 @@ vibrato and Kuromoji do. In the bundled dictionaries, three characters
 change (ko-dic calls the kanji categories <code>HANJA</code> and <code>HANJANUMERIC</code>, and
 CC-CEDICT and Jieba call them <code>CHINESE</code> and <code>CHINESENUMERIC</code>):</p>
 <div class="table-wrapper"><table><thead><tr><th>Character</th><th>v6 categories</th><th>v7 categories</th><th>Effect</th></tr></thead><tbody>
-<tr><td><code>Ð</code> (U+00D0)</td><td><code>SPACE</code>, <code>ALPHA</code></td><td><code>ALPHA</code></td><td>Every dictionary except ko-dic maps U+00D0 to <code>SPACE</code> (a typo for U+000D inherited from mecab-ipadic) before the <code>ALPHA</code> range, so <code>Ð</code> was dropped as whitespace and split the word around it. <code>GUÐMUNDUR さん</code> now gives <code>GUÐMUNDUR</code> and <code>さん</code> instead of <code>GU</code>, <code>MUNDUR</code> and <code>さん</code></td></tr>
+<tr><td><code>Ð</code> (U+00D0)</td><td><code>SPACE</code>, <code>ALPHA</code></td><td><code>ALPHA</code></td><td>Every dictionary except ko-dic and SudachiDict maps U+00D0 to <code>SPACE</code> (a typo for U+000D inherited from mecab-ipadic) before the <code>ALPHA</code> range (SudachiDict did too up to v6.2.0; from v7.0.0 it has Sudachi's own <code>char.def</code>, which does not, see <a href="#sudachidict-reads-sudachis-own-chardef">SudachiDict reads Sudachi's own char.def</a>), so <code>Ð</code> was dropped as whitespace and split the word around it. <code>GUÐMUNDUR さん</code> now gives <code>GUÐMUNDUR</code> and <code>さん</code> instead of <code>GU</code>, <code>MUNDUR</code> and <code>さん</code></td></tr>
 <tr><td><code>々</code> (U+3005)</td><td><code>KANJI</code>, <code>SYMBOL</code></td><td><code>SYMBOL</code></td><td>Dictionary words such as <code>人々</code> and <code>佐々木</code> are unchanged. After a kanji that the dictionary does not know, <code>々</code> is a token of its own, as in MeCab: <code>龘々</code> gives <code>龘</code> and <code>々</code> instead of one unknown word. With ko-dic, <code>々</code> is tagged <code>SY</code> instead of <code>SH</code></td></tr>
 <tr><td><code>〇</code> (U+3007)</td><td><code>KANJI</code>, <code>SYMBOL</code>, <code>KANJINUMERIC</code></td><td><code>SYMBOL</code>, <code>KANJINUMERIC</code></td><td>Runs of numerals can be grouped differently. With ko-dic, <code>二〇二六年</code> is one unknown word (<code>SH</code>) instead of <code>二</code>, <code>〇</code>, <code>二六</code> and <code>年</code> (see also <a href="#unknown-words-come-from-the-default-category-as-in-mecab">Unknown words come from the default category, as in MeCab</a>)</td></tr>
 </tbody></table>
@@ -2471,6 +2471,7 @@ language bindings change only in their <code>Metadata</code> class (see
 <tr><td><code>PrefixDictionaryBuilderOptions::normalize_details(value)</code></td><td>Removed</td></tr>
 <tr><td>—</td><td>New public field <code>Metadata::skip_whitespace: Option&lt;bool&gt;</code> (also <code>lindera_binding::CoreMetadata::skip_whitespace</code>)</td></tr>
 <tr><td>—</td><td>New public field <code>Metadata::lindera_version: Option&lt;String&gt;</code></td></tr>
+<tr><td>—</td><td>New public fields <code>Metadata::char_def_format: CharDefFormat</code> and <code>Metadata::lexicon_format: LexiconFormat</code> (also on <code>lindera_binding::CoreMetadata</code>, with <code>connection_id_mapping: bool</code>)</td></tr>
 <tr><td><code>CharacterDefinition::lookup_categories(c)</code> returns the categories of every line that covers <code>c</code></td><td>Returns the categories of the last line that covers <code>c</code>, its default category first and the others in category id order</td></tr>
 <tr><td><code>DICTIONARY_FORMAT_VERSION</code> is <code>2</code></td><td><code>3</code></td></tr>
 <tr><td><code>UnknownDictionary::gen_unk_words(sentence, start_pos, has_matched, max_grouping_len, callback)</code></td><td>Removed</td></tr>
@@ -2567,6 +2568,21 @@ it builds, over any value in the source <code>metadata.json</code>; it is <code>
 dictionary built before v7.0.0, and <code>Metadata::new</code> sets it to <code>None</code>. A
 struct literal that lists every field needs <code>lindera_version: None</code> too.
 <code>lindera_binding::CoreMetadata</code> does not have the field.</p>
+<p><code>Metadata</code> also gains the public fields <code>char_def_format: CharDefFormat</code>
+and <code>lexicon_format: LexiconFormat</code>
+(<code>lindera::dictionary::core::character_definition::CharDefFormat</code> and
+<code>lindera::dictionary::core::lexicon_format::LexiconFormat</code>), which say how
+<code>char.def</code> and the lexicons are read: <code>Mecab</code> or <code>Sudachi</code> (see
+<a href="#sudachidict-reads-sudachis-own-chardef">SudachiDict reads Sudachi's own char.def</a>
+and
+<a href="#sudachidict-decodes-the-escapes-of-its-lexicons">SudachiDict decodes the escapes of its lexicons</a>).
+<code>lindera_binding::CoreMetadata</code> gains both, and
+<code>connection_id_mapping: bool</code>, which the bindings used to drop (see
+<a href="#lindera_ctx_freq_file-renamed-to-lindera_build_context_id_freq_file">LINDERA_CTX_FREQ_FILE renamed to LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</a>).
+<code>Metadata::new</code>, <code>CoreMetadata::new</code> and both <code>Default</code> implementations set
+the two formats to <code>Mecab</code> and <code>connection_id_mapping</code> to <code>false</code>. A struct
+literal that lists every field without <code>..</code> needs these fields too, or ends
+with <code>..Default::default()</code>.</p>
 <p><code>CharacterDefinition::lookup_categories</code> keeps its signature. Its first
 category is the one that creates unknown words (see
 <a href="#unknown-words-come-from-the-default-category-as-in-mecab">Unknown words come from the default category, as in MeCab</a>);
