@@ -9,7 +9,6 @@ pub mod unknown_dictionary;
 
 use std::fs;
 use std::path::Path;
-use std::str;
 use std::sync::Arc;
 
 use byteorder::{ByteOrder, LittleEndian};
@@ -55,9 +54,9 @@ pub static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec![UNK_FIELD]);
 /// [`UserDictionary::word_details_iter`], or
 /// [`UnknownDictionary::word_details_iter`].
 pub struct DetailFields<'a> {
-    /// The remaining fields, split from the entry's NUL-joined blob.
-    inner: str::Split<'a, char>,
-    /// How many fields `inner` has yet to yield, for `ExactSizeIterator`.
+    /// The fields not yet yielded, still joined with NUL.
+    rest: &'a str,
+    /// How many fields `rest` has yet to yield, for `ExactSizeIterator`.
     remaining: usize,
 }
 
@@ -91,7 +90,7 @@ impl<'a> DetailFields<'a> {
     #[inline]
     fn from_joined_with_count(joined: &'a str, count: usize) -> Self {
         Self {
-            inner: joined.split('\0'),
+            rest: joined,
             remaining: count,
         }
     }
@@ -105,11 +104,6 @@ impl<'a> DetailFields<'a> {
     /// # Returns
     ///
     /// A one-field iterator yielding `"UNK"`.
-    //
-    // Returns `Self`, not `DetailFields<'static>`: `str::Split` makes this
-    // type invariant over `'a`, so a `'static` value would not coerce to a
-    // shorter lifetime. The `&'static str` constant coerces to `&'a str`
-    // before construction instead, which needs no variance.
     #[inline]
     pub fn unk() -> Self {
         Self::from_joined(UNK_FIELD)
@@ -124,12 +118,10 @@ impl<'a> DetailFields<'a> {
     /// # Returns
     ///
     /// An iterator that yields nothing.
-    //
-    // Returns `Self` for the same invariance reason as `unk`.
     #[inline]
     pub fn empty() -> Self {
         Self {
-            inner: "".split('\0'),
+            rest: "",
             remaining: 0,
         }
     }
@@ -149,7 +141,19 @@ impl<'a> Iterator for DetailFields<'a> {
             return None;
         }
         self.remaining -= 1;
-        self.inner.next()
+        // The NUL is searched for here rather than kept in a `str::Split`:
+        // a `Split` carries its needle in its state, and a caller that gets
+        // the iterator from a function that is not inlined, as
+        // `Token::details_iter` does, no longer sees that the needle is one
+        // byte, so every field went through a `memcmp` call. A needle
+        // written in `next` is a constant wherever `next` runs (#1399).
+        match self.rest.split_once('\0') {
+            Some((field, rest)) => {
+                self.rest = rest;
+                Some(field)
+            }
+            None => Some(std::mem::take(&mut self.rest)),
+        }
     }
 
     /// Reports the exact number of fields left, so collecting into a `Vec`
