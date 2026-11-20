@@ -489,13 +489,13 @@ mod tests {
 
         let bin = include_bytes!("../../resources/user_dict/ipadic_simple_userdic.bin");
         let loaded = load_user_dictionary_bin_from_bytes(bin).unwrap();
-        let words = loaded.inner.dict.words_data.to_vec();
+        let words = loaded.inner.dict.words_data().to_vec();
         let user_dictionary = JsValue::from(loaded);
         for attempt in 0..2 {
             let Some(read) = user_dictionary_from_js(Some(user_dictionary.clone())).unwrap() else {
                 panic!("attempt {attempt}: no user dictionary was read");
             };
-            assert_eq!(*read.dict.words_data, *words, "attempt {attempt}");
+            assert_eq!(read.dict.words_data(), &words[..], "attempt {attempt}");
         }
 
         assert!(user_dictionary_from_js(None).unwrap().is_none());

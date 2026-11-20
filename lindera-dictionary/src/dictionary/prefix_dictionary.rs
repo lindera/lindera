@@ -20,7 +20,8 @@ use rkyv::with::{ArchiveWith, DeserializeWith, SerializeWith};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Place, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::{LinderaResult, error::LinderaErrorKind, util::Data, viterbi::WordEntry};
+use crate::util::{Data, DetailChecks, JoinedDetails, recorded_joined_details};
+use crate::{LinderaResult, error::LinderaErrorKind, viterbi::WordEntry};
 
 /// Match structure for common prefix iterator compatibility
 #[derive(Debug, Clone)]
@@ -101,10 +102,13 @@ pub struct PrefixDictionary {
     vals_idx: Data,
     /// The values file (`dict.vals`): `WordEntry` records back to back.
     pub vals_data: Data,
-    /// Byte offsets into `words_data`, one `u32` per word id.
-    pub words_idx_data: Data,
+    /// Byte offsets into `words_data`, one `u32` per word id. Private, like
+    /// `words_data`, so that the bytes cannot change behind `detail_checks`.
+    words_idx_data: Data,
     /// Word detail records.
-    pub words_data: Data,
+    words_data: Data,
+    /// The entries of `words_data` already validated as UTF-8.
+    detail_checks: DetailChecks,
     /// The root node's raw `base`, cached at load so every common-prefix
     /// search starts with the current node's `base` already in hand and the
     /// walk reads exactly one node per character step (#942). A trie with no
@@ -301,8 +305,66 @@ impl PrefixDictionary {
             vals_data: vals_data.into(),
             words_idx_data: words_idx_data.into(),
             words_data: words_data.into(),
+            detail_checks: DetailChecks::default(),
             root_base,
         })
+    }
+
+    /// Returns the word-id index (`dict.wordsidx`): one little-endian `u32`
+    /// per word id, the byte offset of the word's entry in
+    /// [`PrefixDictionary::words_data`].
+    ///
+    /// # Returns
+    ///
+    /// The index bytes, as loaded.
+    #[inline]
+    pub fn words_idx_data(&self) -> &[u8] {
+        &self.words_idx_data
+    }
+
+    /// Returns the word detail records (`dict.words`): for each entry, a
+    /// 4-byte little-endian length followed by that many bytes of NUL-joined
+    /// fields.
+    ///
+    /// The bytes are read-only: an entry's details are validated as UTF-8 the
+    /// first time they are read, and not again, which relies on the bytes
+    /// staying as they were loaded. To use other bytes, load another
+    /// dictionary.
+    ///
+    /// # Returns
+    ///
+    /// The detail records, as loaded.
+    #[inline]
+    pub fn words_data(&self) -> &[u8] {
+        &self.words_data
+    }
+
+    /// Looks up a word's NUL-joined details, validating them as UTF-8 only
+    /// on the first read of the word (#1393).
+    ///
+    /// # Arguments
+    ///
+    /// * `word_id` - The system word id.
+    ///
+    /// # Returns
+    ///
+    /// Whether the id has no slot, its entry is malformed, or its fields.
+    #[inline]
+    pub(crate) fn joined_details(&self, word_id: usize) -> JoinedDetails<'_> {
+        // SAFETY: `detail_checks` is a private field, empty wherever a
+        // `PrefixDictionary` is made (`load`, and `Clone`, which gives an
+        // empty record), and used only here, with this dictionary's own
+        // private `words_idx_data` and `words_data`, which nothing changes
+        // after `load`. A memory-mapped file is assumed not to change while
+        // it is mapped, as borrowing it as `&[u8]` already assumes.
+        unsafe {
+            recorded_joined_details(
+                &self.words_idx_data,
+                &self.words_data,
+                &self.detail_checks,
+                word_id,
+            )
+        }
     }
 
     /// Reads node `idx`'s `(base, check)` pair, raw (flag bits included).
@@ -868,7 +930,9 @@ mod double_array_serde {
 /// names, so keeping the sequence is what lets every previously-built user
 /// dictionary `.bin` keep loading. Do not add, remove or reorder fields
 /// without bumping the dictionary format version and rebuilding the committed
-/// `.bin` fixtures.
+/// `.bin` fixtures. The one exception is `detail_checks`, last: it is skipped
+/// by rkyv, which archives a skipped field as `()`, so the archived bytes are
+/// those of the five fields before it (#1393).
 #[derive(Clone, Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
 pub struct UserPrefixDictionary {
     /// The Aho-Corasick automaton over surface forms.
@@ -877,13 +941,20 @@ pub struct UserPrefixDictionary {
     pub da: DoubleArrayAhoCorasick<u32>,
     /// The values file: `WordEntry` records back to back.
     pub vals_data: Data,
-    /// Byte offsets into `words_data`, one `u32` per word id.
-    pub words_idx_data: Data,
+    /// Byte offsets into `words_data`, one `u32` per word id. Private, like
+    /// `words_data`, so that the bytes cannot change behind `detail_checks`.
+    words_idx_data: Data,
     /// Word detail records.
-    pub words_data: Data,
+    words_data: Data,
     /// Always `false`; retained because the archived field sequence must not
     /// change (see the type-level comment).
     pub is_system: bool,
+    /// The entries of `words_data` already validated as UTF-8. Neither
+    /// archived nor serialized: a loaded dictionary starts with an empty
+    /// record.
+    #[serde(skip)]
+    #[rkyv(with = rkyv::with::Skip)]
+    detail_checks: DetailChecks,
 }
 
 impl UserPrefixDictionary {
@@ -956,7 +1027,63 @@ impl UserPrefixDictionary {
             words_idx_data: words_idx_data.into(),
             words_data: words_data.into(),
             is_system: false,
+            detail_checks: DetailChecks::default(),
         })
+    }
+
+    /// Returns the word-id index: one little-endian `u32` per word id, the
+    /// byte offset of the word's entry in
+    /// [`UserPrefixDictionary::words_data`].
+    ///
+    /// # Returns
+    ///
+    /// The index bytes, as loaded.
+    #[inline]
+    pub fn words_idx_data(&self) -> &[u8] {
+        &self.words_idx_data
+    }
+
+    /// Returns the word detail records: for each entry, a 4-byte
+    /// little-endian length followed by that many bytes of NUL-joined fields.
+    ///
+    /// The bytes are read-only: an entry's details are validated as UTF-8 the
+    /// first time they are read, and not again, which relies on the bytes
+    /// staying as they were loaded. To use other bytes, load another
+    /// dictionary.
+    ///
+    /// # Returns
+    ///
+    /// The detail records, as loaded.
+    #[inline]
+    pub fn words_data(&self) -> &[u8] {
+        &self.words_data
+    }
+
+    /// Looks up a word's NUL-joined details, validating them as UTF-8 only
+    /// on the first read of the word (#1393).
+    ///
+    /// # Arguments
+    ///
+    /// * `word_id` - The user-dictionary word id.
+    ///
+    /// # Returns
+    ///
+    /// Whether the id has no slot, its entry is malformed, or its fields.
+    #[inline]
+    pub(crate) fn joined_details(&self, word_id: usize) -> JoinedDetails<'_> {
+        // SAFETY: `detail_checks` is a private field, empty wherever a
+        // `UserPrefixDictionary` is made (`load`, `Clone`, and rkyv and serde
+        // deserialization, which skip it and use `Default`), and used only
+        // here, with this dictionary's own private `words_idx_data` and
+        // `words_data`, which nothing changes after the dictionary is made.
+        unsafe {
+            recorded_joined_details(
+                &self.words_idx_data,
+                &self.words_data,
+                &self.detail_checks,
+                word_id,
+            )
+        }
     }
 }
 
@@ -1186,6 +1313,128 @@ mod tests {
                 Vec::<u8>::new()
             )
             .is_err()
+        );
+    }
+
+    /// The detail records of two entries, as `dict.wordsidx` and
+    /// `dict.words` bytes: entry 0 is valid, and entry 1 ends in a byte that
+    /// is not UTF-8.
+    fn valid_and_invalid_details() -> (Vec<u8>, Vec<u8>) {
+        let mut words_idx_data = Vec::new();
+        let mut words_data = Vec::new();
+        for blob in ["名詞\0一般".as_bytes(), b"ok\0\xff"] {
+            words_idx_data.extend_from_slice(&(words_data.len() as u32).to_le_bytes());
+            words_data.extend_from_slice(&(blob.len() as u32).to_le_bytes());
+            words_data.extend_from_slice(blob);
+        }
+        (words_idx_data, words_data)
+    }
+
+    /// A system dictionary with no surfaces and the given detail records.
+    fn system_dictionary_with_details(
+        words_idx_data: Vec<u8>,
+        words_data: Vec<u8>,
+    ) -> PrefixDictionary {
+        let (trie, vals_idx) = PrefixDictionary::serialize_trie(&BTreeMap::new()).unwrap();
+        PrefixDictionary::load(trie, vals_idx, Vec::<u8>::new(), words_idx_data, words_data)
+            .unwrap()
+    }
+
+    /// A user dictionary with one dummy surface and the given detail records.
+    fn user_dictionary_with_details(
+        words_idx_data: Vec<u8>,
+        words_data: Vec<u8>,
+    ) -> UserPrefixDictionary {
+        let da = DoubleArrayAhoCorasickBuilder::new()
+            .build_with_values([("x", 0u32)])
+            .unwrap();
+        UserPrefixDictionary::load(da.serialize(), Vec::<u8>::new(), words_idx_data, words_data)
+            .unwrap()
+    }
+
+    /// What a `joined_details` lookup found, owned, for the assertions.
+    fn found(found: JoinedDetails<'_>) -> Result<String, &'static str> {
+        match found {
+            JoinedDetails::Fields(joined, _) => Ok(joined.to_string()),
+            JoinedDetails::Malformed => Err("malformed"),
+            JoinedDetails::NoSlot => Err("no slot"),
+        }
+    }
+
+    /// Reads entry 0 of `valid_and_invalid_details` twice and checks that
+    /// the first read records it.
+    fn assert_valid_entry_recorded(
+        name: &str,
+        read: &dyn Fn(usize) -> Result<String, &'static str>,
+        recorded: &dyn Fn(usize) -> bool,
+    ) {
+        let expected = Ok("名詞\0一般".to_string());
+        assert!(!recorded(0), "{name}: recorded before the first read");
+        assert_eq!(read(0), expected, "{name}: first read");
+        assert!(recorded(0), "{name}: not recorded after the first read");
+        assert_eq!(read(0), expected, "{name}: second read");
+    }
+
+    /// Reads entry 1 of `valid_and_invalid_details` twice and checks that it
+    /// fails both times and is never recorded.
+    fn assert_malformed_entry_not_recorded(
+        name: &str,
+        read: &dyn Fn(usize) -> Result<String, &'static str>,
+        recorded: &dyn Fn(usize) -> bool,
+    ) {
+        assert_eq!(read(1), Err("malformed"), "{name}: first read");
+        // Checked before the second read: a recorded malformed entry would
+        // be converted without validation.
+        assert!(!recorded(1), "{name}: recorded after a failed read");
+        assert_eq!(read(1), Err("malformed"), "{name}: second read");
+        assert!(!recorded(1), "{name}: recorded after two failed reads");
+    }
+
+    /// A valid entry is validated by its first read and recorded, and reads
+    /// the same afterwards; a clone starts with an empty record (#1393).
+    #[test]
+    fn joined_details_records_a_valid_entry_on_its_first_read() {
+        let (words_idx_data, words_data) = valid_and_invalid_details();
+
+        let system = system_dictionary_with_details(words_idx_data.clone(), words_data.clone());
+        assert_valid_entry_recorded(
+            "system",
+            &|word_id| found(system.joined_details(word_id)),
+            &|word_id| system.detail_checks.is_recorded(word_id),
+        );
+        let clone = system.clone();
+        assert_valid_entry_recorded(
+            "system clone",
+            &|word_id| found(clone.joined_details(word_id)),
+            &|word_id| clone.detail_checks.is_recorded(word_id),
+        );
+
+        let user = user_dictionary_with_details(words_idx_data, words_data);
+        assert_valid_entry_recorded(
+            "user",
+            &|word_id| found(user.joined_details(word_id)),
+            &|word_id| user.detail_checks.is_recorded(word_id),
+        );
+    }
+
+    /// An entry that is not valid UTF-8 is never recorded, so every read of
+    /// it is validated, and fails, again (#1393).
+    #[test]
+    fn joined_details_never_records_a_malformed_entry() {
+        let (words_idx_data, words_data) = valid_and_invalid_details();
+
+        let system = system_dictionary_with_details(words_idx_data.clone(), words_data.clone());
+        assert_malformed_entry_not_recorded(
+            "system",
+            &|word_id| found(system.joined_details(word_id)),
+            &|word_id| system.detail_checks.is_recorded(word_id),
+        );
+
+        let user = user_dictionary_with_details(words_idx_data, words_data);
+        assert_malformed_entry_not_recorded(
+            "user",
+            &|word_id| found(user.joined_details(word_id)),
+            &|word_id| user.detail_checks.is_recorded(word_id),
         );
     }
 }

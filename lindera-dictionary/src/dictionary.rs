@@ -31,7 +31,7 @@ use crate::loader::connection_cost_matrix::ConnectionCostMatrixLoader;
 use crate::loader::metadata::MetadataLoader;
 use crate::loader::prefix_dictionary::PrefixDictionaryLoader;
 use crate::loader::unknown_dictionary::UnknownDictionaryLoader;
-use crate::util::{Data, detail_field_count, joined_details_at, words_idx_offset};
+use crate::util::{Data, JoinedDetails, detail_field_count};
 use crate::viterbi::WordEntry;
 
 /// The single field the unknown-word sentinel consists of.
@@ -74,9 +74,25 @@ impl<'a> DetailFields<'a> {
     /// splits into a single empty field.
     #[inline]
     fn from_joined(joined: &'a str) -> Self {
+        Self::from_joined_with_count(joined, detail_field_count(joined.as_bytes()))
+    }
+
+    /// Builds the field list of a validated NUL-joined blob whose field
+    /// count is already known.
+    ///
+    /// # Arguments
+    ///
+    /// * `joined` - The entry's joined fields, already UTF-8 validated.
+    /// * `count` - The number of fields `joined` splits into.
+    ///
+    /// # Returns
+    ///
+    /// The fields in schema order.
+    #[inline]
+    fn from_joined_with_count(joined: &'a str, count: usize) -> Self {
         Self {
             inner: joined.split('\0'),
-            remaining: detail_field_count(joined.as_bytes()),
+            remaining: count,
         }
     }
 
@@ -150,7 +166,7 @@ impl<'a> Iterator for DetailFields<'a> {
 
 impl ExactSizeIterator for DetailFields<'_> {}
 
-/// Looks up one entry in a packed dictionary's detail records.
+/// Turns what a packed dictionary found for a word id into its fields.
 ///
 /// Shared by [`Dictionary`] and [`UserDictionary`], whose storage layout is
 /// identical and whose only behavioural difference is what a word id with no
@@ -158,9 +174,7 @@ impl ExactSizeIterator for DetailFields<'_> {}
 ///
 /// # Arguments
 ///
-/// * `words_idx_data` - The word-id index table.
-/// * `words_data` - The packed detail records.
-/// * `word_id` - The word id to look up.
+/// * `found` - The lookup's result, from the dictionary's `joined_details`.
 /// * `missing` - Builds the fallback for a word id with no slot in the index.
 ///
 /// # Returns
@@ -169,20 +183,16 @@ impl ExactSizeIterator for DetailFields<'_> {}
 /// [`DetailFields::unk`] when the entry itself is malformed.
 #[inline]
 fn packed_details_iter<'a>(
-    words_idx_data: &'a [u8],
-    words_data: &'a [u8],
-    word_id: usize,
+    found: JoinedDetails<'a>,
     missing: fn() -> DetailFields<'a>,
 ) -> DetailFields<'a> {
-    let Some(offset) = words_idx_offset(words_idx_data, word_id) else {
-        return missing();
-    };
     // A malformed entry always falls back to the sentinel in both
     // dictionaries; only a word id with no slot at all is subject to
     // `missing`.
-    match joined_details_at(words_data, offset) {
-        Some(joined) => DetailFields::from_joined(joined),
-        None => DetailFields::unk(),
+    match found {
+        JoinedDetails::NoSlot => missing(),
+        JoinedDetails::Malformed => DetailFields::unk(),
+        JoinedDetails::Fields(joined, count) => DetailFields::from_joined_with_count(joined, count),
     }
 }
 
@@ -268,9 +278,7 @@ impl Dictionary {
     #[inline]
     pub fn word_details_iter<'a>(&'a self, word_id: usize) -> DetailFields<'a> {
         packed_details_iter(
-            &self.prefix_dictionary.words_idx_data,
-            &self.prefix_dictionary.words_data,
-            word_id,
+            self.prefix_dictionary.joined_details(word_id),
             DetailFields::empty,
         )
     }
@@ -529,12 +537,7 @@ impl UserDictionary {
     /// sentinel rather than nothing; that divergence is pre-existing.
     #[inline]
     pub fn word_details_iter<'a>(&'a self, word_id: usize) -> DetailFields<'a> {
-        packed_details_iter(
-            &self.dict.words_idx_data,
-            &self.dict.words_data,
-            word_id,
-            DetailFields::unk,
-        )
+        packed_details_iter(self.dict.joined_details(word_id), DetailFields::unk)
     }
 }
 
@@ -547,10 +550,13 @@ mod tests {
     use crate::dictionary::connection_cost_matrix::zero_matrix;
     use crate::dictionary::prefix_dictionary::UserPrefixDictionary;
 
-    /// Builds a user dictionary whose words blob holds `entries`, each
-    /// encoded as a 4-byte LE length followed by its NUL-joined fields --
-    /// the layout `builder::user_dictionary` writes.
-    fn user_dictionary(entries: &[&[&str]]) -> UserDictionary {
+    /// Packs `entries` the way `builder::user_dictionary` writes them: each
+    /// entry a 4-byte LE length followed by its NUL-joined fields, and the
+    /// index one LE `u32` offset per entry.
+    ///
+    /// Returns `(words_idx_data, words_data)`, for a test to corrupt before
+    /// building the dictionary with [`user_dictionary_from_parts`].
+    fn packed_entries(entries: &[&[&str]]) -> (Vec<u8>, Vec<u8>) {
         let mut words_idx_data = Vec::new();
         let mut words_data = Vec::new();
         for fields in entries {
@@ -559,21 +565,32 @@ mod tests {
             words_data.extend_from_slice(&(joined.len() as u32).to_le_bytes());
             words_data.extend_from_slice(joined.as_bytes());
         }
+        (words_idx_data, words_data)
+    }
+
+    /// Builds a user dictionary over the given detail records.
+    fn user_dictionary_from_parts(words_idx_data: Vec<u8>, words_data: Vec<u8>) -> UserDictionary {
         // The automaton is irrelevant to `word_details`, but the type needs a
         // real one; a single dummy key keeps the build valid.
         let da = match DoubleArrayAhoCorasickBuilder::new().build_with_values([("x", 0u32)]) {
             Ok(da) => da,
             Err(err) => panic!("failed to build test automaton: {err}"),
         };
-        UserDictionary {
-            dict: UserPrefixDictionary {
-                da,
-                vals_data: Vec::new().into(),
-                words_idx_data: words_idx_data.into(),
-                words_data: words_data.into(),
-                is_system: false,
-            },
+        match UserPrefixDictionary::load(
+            da.serialize(),
+            Vec::<u8>::new(),
+            words_idx_data,
+            words_data,
+        ) {
+            Ok(dict) => UserDictionary { dict },
+            Err(err) => panic!("failed to load test user dictionary: {err}"),
         }
+    }
+
+    /// Builds a user dictionary whose words blob holds `entries`.
+    fn user_dictionary(entries: &[&[&str]]) -> UserDictionary {
+        let (words_idx_data, words_data) = packed_entries(entries);
+        user_dictionary_from_parts(words_idx_data, words_data)
     }
 
     /// Fields come back in order with the exact count that was written.
@@ -611,13 +628,32 @@ mod tests {
     /// Invalid UTF-8 falls back to the `UNK` sentinel rather than panicking.
     #[test]
     fn user_word_details_invalid_utf8_returns_unk() {
-        let mut dict = user_dictionary(&[&["ok", "fields"]]);
-        let words_data: &[u8] = &dict.dict.words_data;
-        let mut bytes = words_data.to_vec();
-        let last = bytes.len() - 1;
-        bytes[last] = 0xff;
-        dict.dict.words_data = bytes.into();
+        let (words_idx_data, mut words_data) = packed_entries(&[&["ok", "fields"]]);
+        let last = words_data.len() - 1;
+        words_data[last] = 0xff;
+        let dict = user_dictionary_from_parts(words_idx_data, words_data);
         assert_eq!(dict.word_details(0), UNK.to_vec());
+    }
+
+    /// The field count recorded by the first read is the one later reads
+    /// report, and an entry with more fields than a byte can count still
+    /// reports its exact length (#1393).
+    #[test]
+    fn user_word_details_iter_reports_the_recorded_count() {
+        let names: Vec<String> = (0..300).map(|i| format!("f{i}")).collect();
+        let many: Vec<&str> = names.iter().map(String::as_str).collect();
+        let few = ["名詞", "一般", "*"];
+        let dict = user_dictionary(&[&many, &few]);
+
+        for read in 0..2 {
+            let details = dict.word_details_iter(0);
+            assert_eq!(details.len(), 300, "300 fields, read {read}");
+            assert_eq!(details.collect::<Vec<_>>(), many, "300 fields, read {read}");
+
+            let details = dict.word_details_iter(1);
+            assert_eq!(details.len(), 3, "3 fields, read {read}");
+            assert_eq!(details.collect::<Vec<_>>(), few, "3 fields, read {read}");
+        }
     }
 
     /// The iterator and the allocating accessor must agree field for field --
@@ -661,15 +697,12 @@ mod tests {
     /// `UnknownDictionary` has always done and the repo's no-panic rule.
     #[test]
     fn user_word_details_corrupt_offset_falls_back_instead_of_panicking() {
-        let mut dict = user_dictionary(&[&["名詞", "一般"]]);
+        let (mut words_idx_data, words_data) = packed_entries(&[&["名詞", "一般"]]);
 
         // Point word id 0's index entry far past the end of `words_data`.
-        let idx: &[u8] = &dict.dict.words_idx_data;
-        let mut idx_bytes = idx.to_vec();
-        let words_len: &[u8] = &dict.dict.words_data;
-        let past_end = (words_len.len() as u32) + 1_000;
-        idx_bytes[0..4].copy_from_slice(&past_end.to_le_bytes());
-        dict.dict.words_idx_data = idx_bytes.into();
+        let past_end = (words_data.len() as u32) + 1_000;
+        words_idx_data[0..4].copy_from_slice(&past_end.to_le_bytes());
+        let dict = user_dictionary_from_parts(words_idx_data, words_data);
 
         assert_eq!(dict.word_details(0), UNK.to_vec());
         assert_eq!(dict.word_details_iter(0).collect::<Vec<_>>(), vec!["UNK"]);
