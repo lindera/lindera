@@ -9,7 +9,31 @@ const NEW_FORMAT_HEADER_LEN: usize = 6;
 /// Byte length of the legacy format header: `[i16 forward_size][i16 backward_size]`.
 const OLD_FORMAT_HEADER_LEN: usize = 4;
 
-/// A `*const i16` that is safe to share across threads.
+/// One cell of the connection cost matrix: an `i16` kept as the two
+/// little-endian bytes that `matrix.mtx` stores.
+///
+/// Its alignment is 1, so a slice of costs can be viewed in place over any
+/// bytes, whatever their address: an embedded `matrix.mtx`, which
+/// `include_bytes!` aligns to 1 byte only, a memory map, or a buffer read
+/// from a file. [`ConnectionCost::get`] decodes the value as little-endian
+/// on every host, so a big-endian host reads the same bytes in place too.
+#[repr(transparent)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct ConnectionCost([u8; 2]);
+
+impl ConnectionCost {
+    /// Returns the cost.
+    ///
+    /// # Returns
+    ///
+    /// The cell's value, decoded from its two little-endian bytes.
+    #[inline(always)]
+    pub fn get(self) -> i16 {
+        i16::from_le_bytes(self.0)
+    }
+}
+
+/// A `*const ConnectionCost` that is safe to share across threads.
 ///
 /// A bare raw pointer is `!Send + !Sync`, which would strip both auto traits
 /// from [`ConnectionCostMatrix`] and, through `Arc<ConnectionCostMatrix>`,
@@ -18,16 +42,17 @@ const OLD_FORMAT_HEADER_LEN: usize = 4;
 /// to the pointer instead of blanket-asserting it for the whole struct keeps
 /// a future non-`Send` field catchable by the compiler.
 #[derive(Clone, Copy)]
-struct CostsPtr(*const i16);
+struct CostsPtr(*const ConnectionCost);
 
-// SAFETY: the pointee is a `[i16]` that stays immutable for the lifetime of
-// the owning `ConnectionCostMatrix` (its `storage` field keeps the allocation
-// alive and no `&mut` path to it exists), and `i16` is `Send`. Sending the
-// pointer therefore exposes no more than sending a `&'static [i16]` would.
+// SAFETY: the pointee is a `[ConnectionCost]` that stays immutable for the
+// lifetime of the owning `ConnectionCostMatrix` (its `storage` field keeps the
+// allocation alive and no `&mut` path to it exists), and `ConnectionCost` is
+// `Send`. Sending the pointer therefore exposes no more than sending a
+// `&'static [ConnectionCost]` would.
 unsafe impl Send for CostsPtr {}
 
 // SAFETY: same as `Send`. The pointee is never mutated, so concurrent shared
-// reads through this pointer cannot race, and `i16` is `Sync`.
+// reads through this pointer cannot race, and `ConnectionCost` is `Sync`.
 unsafe impl Sync for CostsPtr {}
 
 /// Owner of the cost values behind [`ConnectionCostMatrix`]'s cached pointer.
@@ -36,20 +61,17 @@ unsafe impl Sync for CostsPtr {}
 /// variant and it never changes. The enum exists only so the borrowed and
 /// owned cases can share a single pointer-derivation site
 /// ([`ConnectionCostMatrix::from_storage`]); the hot path never matches on it.
+#[derive(Clone)]
 enum CostStorage {
-    /// Zero-copy: the payload is read in place from `matrix.mtx`'s bytes.
-    ///
-    /// Only constructed after [`ConnectionCostMatrix::is_borrowable`] has
-    /// confirmed a little-endian host and an `i16`-aligned payload start,
-    /// which together mean the on-disk bytes already *are* the in-memory
-    /// values.
+    /// Zero-copy: the costs are read in place from the bytes of a matrix in
+    /// the transposed format, whatever their address and the host's byte
+    /// order. Cloning it keeps the borrow: `Data::Static` and `Data::Map`
+    /// clone to the very same bytes, and the fresh buffer of a cloned
+    /// `Data::Vec` needs no particular alignment either.
     Borrowed(Data),
-    /// Fallback: values decoded into an owned buffer, used when the payload
-    /// cannot be viewed in place (unaligned base address, big-endian host, or
-    /// the legacy non-transposed format, which needs a transpose anyway).
-    /// `Vec<i16>` is inherently `i16`-aligned, so no explicit alignment work
-    /// is needed here.
-    Owned(Vec<i16>),
+    /// The legacy, non-transposed format, transposed into an owned buffer of
+    /// little-endian costs in the transposed layout, without a header.
+    Owned(Vec<u8>),
 }
 
 impl CostStorage {
@@ -62,52 +84,22 @@ impl CostStorage {
     /// # Returns
     ///
     /// The flat, transposed cost table.
-    fn costs(&self) -> &[i16] {
-        match self {
-            // SAFETY: `ConnectionCostMatrix::is_borrowable` verified a
-            // little-endian host and an `i16`-aligned payload start, and
-            // `load` verified the buffer is at least `NEW_FORMAT_HEADER_LEN`
-            // bytes long, so the subslice below cannot panic. `len() / 2`
-            // rounds down, so every element lies fully inside the backing
-            // allocation, whose size is by construction at most `isize::MAX`
-            // bytes. The bytes are never mutated (`Data` is reached through
-            // `&self` and no `&mut` path exists), a slice's `as_ptr()` is
-            // never null, and `i16` has no invalid bit patterns.
-            Self::Borrowed(data) => unsafe {
-                let payload = &data[NEW_FORMAT_HEADER_LEN..];
-                core::slice::from_raw_parts(payload.as_ptr().cast::<i16>(), payload.len() / 2)
-            },
-            Self::Owned(costs) => costs,
-        }
-    }
-}
-
-impl Clone for CostStorage {
-    /// Clones the storage, re-establishing the borrow invariant rather than
-    /// duplicating the variant blindly.
-    ///
-    /// `Data::Static` and `Data::Map` clone to the very same bytes (a copied
-    /// `'static` reference, and an `Arc` sharing one mapping), so a borrow
-    /// survives. `Data::Vec` does not: cloning it allocates a fresh buffer,
-    /// and `Vec<u8>` guarantees only 1-byte alignment, so the copy can land
-    /// at an address where the payload is no longer `i16`-aligned. Borrowing
-    /// from such a buffer would be undefined behaviour, so this decodes into
-    /// an owned buffer instead -- correct, just no longer zero-copy.
-    ///
-    /// # Returns
-    ///
-    /// Storage holding the same cost values, borrowed when that stays sound.
-    fn clone(&self) -> Self {
-        match self {
-            Self::Borrowed(data) => {
-                let cloned = data.clone();
-                if ConnectionCostMatrix::is_borrowable(&cloned) {
-                    Self::Borrowed(cloned)
-                } else {
-                    Self::Owned(self.costs().to_vec())
-                }
-            }
-            Self::Owned(costs) => Self::Owned(costs.clone()),
+    fn costs(&self) -> &[ConnectionCost] {
+        let bytes: &[u8] = match self {
+            // `load` verified that the buffer is at least
+            // `NEW_FORMAT_HEADER_LEN` bytes long, so this cannot panic.
+            Self::Borrowed(data) => &data[NEW_FORMAT_HEADER_LEN..],
+            Self::Owned(bytes) => bytes,
+        };
+        // SAFETY: `ConnectionCost` is `repr(transparent)` over `[u8; 2]`, so
+        // it has a size of 2, an alignment of 1 and no invalid bit patterns:
+        // any address of `bytes` is a valid start. `len() / 2` rounds down, so
+        // every element lies fully inside `bytes`, whose size is by
+        // construction at most `isize::MAX` bytes. The bytes are never
+        // mutated (they are reached through `&self` and no `&mut` path
+        // exists), and a slice's `as_ptr()` is never null.
+        unsafe {
+            core::slice::from_raw_parts(bytes.as_ptr().cast::<ConnectionCost>(), bytes.len() / 2)
         }
     }
 }
@@ -115,9 +107,10 @@ impl Clone for CostStorage {
 /// The connection cost matrix, in transposed layout
 /// (`costs[forward_id + backward_id * forward_size]`).
 ///
-/// The values are borrowed from their backing bytes whenever possible (see
-/// [`ConnectionCostMatrix::is_zero_copy`]); for UniDic that avoids a 71 MB
-/// copy and 71 MB of anonymous RSS on every load.
+/// The values of a matrix in the transposed format are always borrowed from
+/// their backing bytes, whatever their address and the host's byte order
+/// (see [`ConnectionCostMatrix::is_zero_copy`]); for UniDic that avoids a
+/// 71 MB copy and 71 MB of anonymous RSS on every load.
 ///
 /// `#[repr(C)]` is load-bearing: it pins the four fields the Viterbi inner
 /// loop touches into the first 24 bytes, i.e. a single cache line, and keeps
@@ -134,7 +127,7 @@ pub struct ConnectionCostMatrix {
     /// `.rodata` (`Data::Static`), a stable heap allocation (`Data::Vec` and
     /// `CostStorage::Owned`), or an `Arc`-owned mapping (`Data::Map`).
     costs_ptr: CostsPtr,
-    /// Number of `i16` cost values reachable from `costs_ptr`.
+    /// Number of cost values reachable from `costs_ptr`.
     costs_len: usize,
     /// Number of forward (left-context) ids, i.e. the length of one row.
     pub forward_size: u32,
@@ -149,9 +142,9 @@ impl ConnectionCostMatrix {
     /// Load a `ConnectionCostMatrix` from raw binary data.
     ///
     /// Supports the transposed format (header marker `-1`) and the legacy
-    /// format. The transposed format is borrowed in place when the host is
-    /// little-endian and the payload is `i16`-aligned; otherwise, and always
-    /// for the legacy format, the values are decoded into an owned buffer.
+    /// format. The transposed format is always borrowed in place, at any
+    /// address and on any host; the legacy format is transposed into an
+    /// owned buffer.
     ///
     /// # Arguments
     ///
@@ -186,22 +179,11 @@ impl ConnectionCostMatrix {
             let costs_len = (conn_data.len() - NEW_FORMAT_HEADER_LEN) / 2;
             Self::validate_axes(forward_size, backward_size, costs_len)?;
 
-            let storage = if Self::is_borrowable(&conn_data) {
-                CostStorage::Borrowed(conn_data)
-            } else {
-                let mut costs_data = vec![0i16; costs_len];
-                // Slice exactly `costs_len * 2` bytes: `read_i16_into` panics
-                // unless `src.len() == 2 * dst.len()`, which `&conn_data[6..]`
-                // violates for an odd-length buffer.
-                let end = NEW_FORMAT_HEADER_LEN + costs_len * 2;
-                LittleEndian::read_i16_into(
-                    &conn_data[NEW_FORMAT_HEADER_LEN..end],
-                    &mut costs_data,
-                );
-                CostStorage::Owned(costs_data)
-            };
-
-            Ok(Self::from_storage(storage, forward_size, backward_size))
+            Ok(Self::from_storage(
+                CostStorage::Borrowed(conn_data),
+                forward_size,
+                backward_size,
+            ))
         } else {
             // Old format: laid out as `[backward_id + forward_id *
             // backward_size]`, so it must be transposed and can never be
@@ -218,13 +200,14 @@ impl ConnectionCostMatrix {
                 &mut old_costs_data,
             );
 
-            // Transpose to new layout in memory
-            let mut costs_data = vec![0i16; costs_len];
+            // Transpose to the new layout in memory, as little-endian bytes.
+            let mut costs_data = vec![0u8; costs_len * 2];
             for f in 0..forward_size {
                 for b in 0..backward_size {
                     let old_id = (b + f * backward_size) as usize;
                     let new_id = (f + b * forward_size) as usize;
-                    costs_data[new_id] = old_costs_data[old_id];
+                    costs_data[new_id * 2..new_id * 2 + 2]
+                        .copy_from_slice(&old_costs_data[old_id].to_le_bytes());
                 }
             }
 
@@ -268,36 +251,6 @@ impl ConnectionCostMatrix {
         }
     }
 
-    /// Whether the transposed payload inside `conn_data` can be viewed as
-    /// `[i16]` in place.
-    ///
-    /// # Arguments
-    ///
-    /// * `conn_data` - The whole matrix buffer, header included. Must be at
-    ///   least [`NEW_FORMAT_HEADER_LEN`] bytes long.
-    ///
-    /// # Returns
-    ///
-    /// `true` when the host is little-endian and the payload start is
-    /// `i16`-aligned. The payload stores little-endian `i16` values, so on
-    /// such a host the on-disk bytes already are the in-memory values.
-    fn is_borrowable(conn_data: &Data) -> bool {
-        // On a big-endian host every value would need a byte swap, which only
-        // the owning path can do.
-        if !cfg!(target_endian = "little") {
-            return false;
-        }
-        // Pure address arithmetic; nothing is dereferenced here. `mmap` bases
-        // are page-aligned and embedded data is aligned by
-        // `include_bytes_aligned!`, so this holds on every shipped path. A
-        // `Vec<u8>` from `read_file` satisfies it in practice too, but that is
-        // not guaranteed, hence the runtime check.
-        conn_data[NEW_FORMAT_HEADER_LEN..]
-            .as_ptr()
-            .cast::<i16>()
-            .is_aligned()
-    }
-
     /// Rejects a header whose axis sizes do not fit the payload.
     ///
     /// [`Self::row`] and [`Self::cost`] index a `costs_len`-long slice, so an
@@ -338,9 +291,10 @@ impl ConnectionCostMatrix {
     ///
     /// # Returns
     ///
-    /// The cost values, indexed by `forward_id + backward_id * forward_size`.
+    /// The cost values, indexed by `forward_id + backward_id * forward_size`;
+    /// [`ConnectionCost::get`] gives each one as an `i16`.
     #[inline(always)]
-    pub fn costs(&self) -> &[i16] {
+    pub fn costs(&self) -> &[ConnectionCost] {
         // SAFETY: `costs_ptr`/`costs_len` were derived in `from_storage` from
         // `self.storage`, which this `&self` borrow keeps alive. `storage`,
         // `costs_ptr` and `costs_len` are private and no method takes
@@ -361,8 +315,10 @@ impl ConnectionCostMatrix {
     ///
     /// # Returns
     ///
-    /// `true` when the matrix borrows its values, `false` when it owns a
-    /// decoded copy.
+    /// `true` for a matrix in the transposed format, which every dictionary
+    /// that Lindera builds has, whatever the address of its bytes and the
+    /// host's byte order; `false` for the legacy format, which is transposed
+    /// into an owned copy.
     pub fn is_zero_copy(&self) -> bool {
         matches!(self.storage, CostStorage::Borrowed(_))
     }
@@ -381,9 +337,10 @@ impl ConnectionCostMatrix {
     ///
     /// # Returns
     ///
-    /// A `forward_size`-long slice indexed directly by forward context id.
+    /// A `forward_size`-long slice indexed directly by forward context id;
+    /// [`ConnectionCost::get`] gives each cost as an `i16`.
     #[inline]
-    pub fn row(&self, backward_id: u32) -> &[i16] {
+    pub fn row(&self, backward_id: u32) -> &[ConnectionCost] {
         let start = (backward_id * self.forward_size) as usize;
         &self.costs()[start..start + self.forward_size as usize]
     }
@@ -395,7 +352,7 @@ impl ConnectionCostMatrix {
         crate::builder::context_id_remap::record_access(forward_id, backward_id);
 
         let cost_id = (forward_id + backward_id * self.forward_size) as usize;
-        self.costs()[cost_id] as i32
+        self.costs()[cost_id].get() as i32
     }
 }
 
@@ -410,10 +367,6 @@ impl Clone for ConnectionCostMatrix {
     /// while the copied pointer still refers to the source's -- a
     /// use-after-free as soon as the source is dropped. Deriving `Clone` on
     /// this type is therefore forbidden.
-    ///
-    /// Alignment is handled one level down, in `CostStorage`'s own `Clone`:
-    /// a reallocated `Data::Vec` may no longer be `i16`-aligned, so the
-    /// borrow is re-validated there and falls back to an owned buffer.
     ///
     /// # Returns
     ///
@@ -446,16 +399,16 @@ mod tests {
     use byteorder::{LittleEndian, WriteBytesExt};
 
     /// Backing buffer whose `body` starts at a 16-byte boundary, so the cost
-    /// payload at offset 6 is `i16`-aligned and the borrowed path is taken.
+    /// payload at offset 6 is `i16`-aligned.
     #[repr(C, align(16))]
     struct AlignedBuf<const N: usize> {
         body: [u8; N],
     }
 
     /// Backing buffer whose `body` starts one byte past a 2-byte boundary, so
-    /// the cost payload at offset 6 lands on an odd address and the owning
-    /// fallback is taken. This is deterministic, unlike relying on whatever
-    /// alignment the allocator happens to give a `Vec<u8>`.
+    /// the cost payload at offset 6 lands on an odd address. This is
+    /// deterministic, unlike relying on whatever alignment the allocator
+    /// happens to give a `Vec<u8>`.
     #[repr(C, align(2))]
     struct MisalignedBuf<const N: usize> {
         _pad: u8,
@@ -497,6 +450,11 @@ mod tests {
     };
     static ALIGNED_DEGENERATE: AlignedBuf<8> = AlignedBuf { body: DEGENERATE };
 
+    /// The values of a row or of the whole table.
+    fn values(costs: &[ConnectionCost]) -> Vec<i16> {
+        costs.iter().map(|cost| cost.get()).collect()
+    }
+
     fn assert_sample_costs(matrix: &ConnectionCostMatrix) {
         assert_eq!(matrix.forward_size, 2);
         assert_eq!(matrix.backward_size, 3);
@@ -506,9 +464,16 @@ mod tests {
         assert_eq!(matrix.cost(1, 1), 13);
         assert_eq!(matrix.cost(0, 2), 14);
         assert_eq!(matrix.cost(1, 2), 15);
-        assert_eq!(matrix.row(0), &[10, 11]);
-        assert_eq!(matrix.row(1), &[12, 13]);
-        assert_eq!(matrix.row(2), &[14, 15]);
+        assert_eq!(values(matrix.row(0)), [10, 11]);
+        assert_eq!(values(matrix.row(1)), [12, 13]);
+        assert_eq!(values(matrix.row(2)), [14, 15]);
+    }
+
+    #[test]
+    fn connection_cost_reads_little_endian_on_any_host() {
+        assert_eq!(ConnectionCost([0x34, 0x12]).get(), 0x1234);
+        assert_eq!(ConnectionCost([0xff, 0xff]).get(), -1);
+        assert_eq!(ConnectionCost([0x00, 0x80]).get(), i16::MIN);
     }
 
     #[test]
@@ -557,38 +522,47 @@ mod tests {
     }
 
     #[test]
-    fn borrowed_and_owned_produce_identical_costs() {
-        let borrowed = ConnectionCostMatrix::load(&ALIGNED_TRANSPOSED.body[..]).unwrap();
-        let owned = ConnectionCostMatrix::load(&MISALIGNED_TRANSPOSED.body[..]).unwrap();
+    fn unaligned_payload_is_borrowed_too() {
+        // The legacy format is transposed into an owned buffer, so it gives
+        // the expected costs through the other path.
+        let mut legacy = Vec::new();
+        legacy.write_i16::<LittleEndian>(2).unwrap();
+        legacy.write_i16::<LittleEndian>(3).unwrap();
+        for v in [10i16, 12, 14, 11, 13, 15] {
+            legacy.write_i16::<LittleEndian>(v).unwrap();
+        }
+        let owned = ConnectionCostMatrix::load(legacy).unwrap();
+        assert!(!owned.is_zero_copy());
 
-        assert!(borrowed.is_zero_copy(), "aligned payload must be borrowed");
-        assert!(
-            !owned.is_zero_copy(),
-            "misaligned payload must fall back to an owned copy"
-        );
-
-        assert_sample_costs(&borrowed);
-        assert_sample_costs(&owned);
-        assert_eq!(borrowed.costs(), owned.costs());
+        for (name, bytes) in [
+            ("aligned", &ALIGNED_TRANSPOSED.body[..]),
+            ("misaligned", &MISALIGNED_TRANSPOSED.body[..]),
+        ] {
+            let matrix = ConnectionCostMatrix::load(bytes).unwrap();
+            assert!(matrix.is_zero_copy(), "{name} payload must be borrowed");
+            assert_eq!(matrix.costs().as_ptr().cast::<u8>(), bytes[6..].as_ptr());
+            assert_sample_costs(&matrix);
+            assert_eq!(matrix.costs(), owned.costs(), "{name}");
+        }
     }
 
     #[test]
     fn clone_does_not_alias_the_source_buffer() {
-        // `Data::Vec` is the variant a derived `Clone` would get wrong twice
-        // over: the clone allocates a fresh buffer, so a bitwise-copied
-        // pointer would dangle once the source is dropped, and the fresh
-        // buffer is only guaranteed 1-byte aligned, so keeping the borrow
-        // could produce an unaligned `&[i16]`. Miri catches both.
+        // `Data::Vec` is the variant a derived `Clone` would get wrong: the
+        // clone allocates a fresh buffer, so a bitwise-copied pointer would
+        // dangle once the source is dropped. Miri catches it. The fresh
+        // buffer needs no particular alignment, so the clone borrows too.
         let source = ConnectionCostMatrix::load(TRANSPOSED.to_vec()).unwrap();
         let cloned = source.clone();
         drop(source);
+        assert!(cloned.is_zero_copy());
         assert_sample_costs(&cloned);
     }
 
     #[test]
     fn cloning_a_static_backed_matrix_stays_zero_copy() {
-        // `Data::Static` clones to the very same bytes, so the borrow -- and
-        // with it the alignment that `load` validated -- survives.
+        // `Data::Static` clones to the very same bytes, so the borrow
+        // survives.
         let source = ConnectionCostMatrix::load(&ALIGNED_TRANSPOSED.body[..]).unwrap();
         assert!(source.is_zero_copy());
 
@@ -635,10 +609,11 @@ mod tests {
 
     #[test]
     fn odd_length_payload_does_not_panic() {
-        // `read_i16_into` panics unless `src.len() == 2 * dst.len()`, so the
-        // owning path must slice off the trailing odd byte.
+        // A trailing odd byte is not a whole cost: the view rounds the length
+        // down, at an unaligned address too.
         let matrix = ConnectionCostMatrix::load(&MISALIGNED_TRANSPOSED_ODD.body[..]).unwrap();
-        assert!(!matrix.is_zero_copy());
+        assert!(matrix.is_zero_copy());
+        assert_eq!(matrix.costs().len(), 6);
         assert_sample_costs(&matrix);
     }
 

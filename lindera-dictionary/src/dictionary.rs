@@ -302,11 +302,10 @@ impl Dictionary {
     ///
     /// - `ConnectionCostMatrix` reads its costs **in place**, with no copy and
     ///   no anonymous memory: `matrix.mtx` already stores the values in the
-    ///   in-memory layout, and an mmap base is page-aligned, so the payload
-    ///   can be viewed as `[i16]` directly. Loading it is O(1) and the pages
-    ///   are faulted in lazily during tokenization. (Costs are also borrowed
-    ///   from a plain read's buffer whenever it happens to be `i16`-aligned;
-    ///   the alignment is only *guaranteed* under mmap and for embedded data.)
+    ///   layout it reads, as little-endian bytes at any address. Loading it
+    ///   is O(1) and the pages are faulted in lazily during tokenization.
+    ///   (Costs are borrowed from a plain read's buffer as well; it is the
+    ///   buffer itself that a plain read has to allocate and fill.)
     /// - `PrefixDictionary`'s `vals_data`/`words_idx_data`/`words_data` are
     ///   likewise mmap-backed and read lazily at lookup time.
     /// - `PrefixDictionary`'s double-array trie (`da`) is still eagerly

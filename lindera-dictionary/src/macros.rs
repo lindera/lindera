@@ -8,64 +8,24 @@
 //! [`embedded_dictionary!`](crate::embedded_dictionary) generates that
 //! boilerplate from those two inputs.
 
-/// Includes a file's bytes as a 16-byte-aligned `&'static [u8]`.
-///
-/// `include_bytes!` yields a `[u8; N]`, whose alignment guarantee is 1. The
-/// connection cost matrix payload starts at byte 6 of `matrix.mtx`, so a
-/// 1-aligned base can leave it at an odd address, which pushes
-/// [`crate::dictionary::connection_cost_matrix::ConnectionCostMatrix::load`]
-/// into its owning fallback and reintroduces exactly the copy that this crate
-/// avoids elsewhere (71.5 MB for UniDic). Wrapping the array in a
-/// `#[repr(C, align(16))]` struct raises the `static`'s alignment so the
-/// zero-copy path is taken deterministically rather than by the linker's
-/// goodwill.
-///
-/// The data is bound to a `static` rather than a `const`: a `const` body would
-/// be encoded into the crate's metadata at roughly 4x its size. A `static`'s
-/// initializer is still encoded once, so unlike the other files of
-/// [`embedded_dictionary!`](crate::embedded_dictionary), which are returned from private `fn`s, this
-/// payload remains in `lib.rmeta`.
-///
-/// # Arguments
-///
-/// * `$path` - Path forwarded to `include_bytes!`.
-///
-/// # Returns
-///
-/// A `&'static [u8]` whose first byte is 16-byte aligned.
-#[macro_export]
-macro_rules! include_bytes_aligned {
-    ($path:expr) => {{
-        /// Raises the alignment of the wrapped bytes to 16.
-        #[repr(C, align(16))]
-        struct Aligned16<T: ?Sized> {
-            /// The included bytes.
-            bytes: T,
-        }
-
-        static ALIGNED: &Aligned16<[u8]> = &Aligned16 {
-            bytes: *::core::include_bytes!($path),
-        };
-
-        &ALIGNED.bytes
-    }};
-}
-
 /// Generates the embedded-dictionary loader for a dictionary crate.
 ///
 /// The dictionary data is baked into the binary with `include_bytes!`,
 /// reading from the `LINDERA_WORK_DIR` directory populated by the crate's
 /// build script.
 ///
-/// Each file except `matrix.mtx` is returned from a private `fn` rather than
-/// bound to a `const` or a `static`. A `const` body is encoded into the
-/// crate's metadata at roughly 4x its size and a `static`'s initializer at 1x,
-/// so either puts every dictionary byte into `lib.rmeta`, which every
-/// downstream crate reads back. The body of a private, non-generic,
-/// non-`#[inline]` `fn` is not encoded. Keep it that way: making these
-/// functions `pub` or `load()` `#[inline]` brings the bytes back into the
-/// metadata in release builds. `matrix.mtx` needs a const-evaluated aligned
-/// wrapper (see [`include_bytes_aligned!`]), so it stays in the metadata.
+/// Each file is returned from a private `fn` rather than bound to a `const`
+/// or a `static`. A `const` body is encoded into the crate's metadata at
+/// roughly 4x its size and a `static`'s initializer at 1x, so either puts
+/// every dictionary byte into `lib.rmeta`, which roughly doubles the crate's
+/// `rlib` and adds to the time and the memory that compiling it takes. The
+/// body of a private, non-generic, non-`#[inline]` `fn` is not encoded. Keep
+/// it that way: making these functions `pub` or `load()` `#[inline]` brings
+/// the bytes back into the metadata in release builds.
+///
+/// `include_bytes!` aligns the bytes to 1 only, which every file can take:
+/// [`ConnectionCostMatrix`](crate::dictionary::connection_cost_matrix::ConnectionCostMatrix)
+/// reads `matrix.mtx` in place at any address.
 ///
 /// * `$dir` — the dictionary subdirectory inside `LINDERA_WORK_DIR`
 ///   (e.g. `"/lindera-ipadic"`).
@@ -84,10 +44,10 @@ macro_rules! embedded_dictionary {
             include_bytes!(concat!(env!("LINDERA_WORK_DIR"), $dir, "/char_def.bin"))
         }
 
-        // Aligned so `ConnectionCostMatrix::load` can view the payload as
-        // `[i16]` in place instead of decoding it into an owned buffer.
-        static CONNECTION_DATA: &[u8] =
-            $crate::include_bytes_aligned!(concat!(env!("LINDERA_WORK_DIR"), $dir, "/matrix.mtx"));
+        /// Returns the dictionary's matrix.mtx bytes.
+        fn connection_data() -> &'static [u8] {
+            include_bytes!(concat!(env!("LINDERA_WORK_DIR"), $dir, "/matrix.mtx"))
+        }
 
         /// Returns the dictionary's dict.trie bytes.
         fn trie_data() -> &'static [u8] {
@@ -144,7 +104,7 @@ macro_rules! embedded_dictionary {
             )?;
             let connection_cost_matrix =
                 $crate::dictionary::connection_cost_matrix::ConnectionCostMatrix::load(
-                    CONNECTION_DATA,
+                    connection_data(),
                 )?;
             let character_definition =
                 $crate::dictionary::character_definition::CharacterDefinition::load(

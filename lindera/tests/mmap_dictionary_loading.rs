@@ -114,10 +114,9 @@ fn mmap_loading_matches_plain_loading_via_uri() {
 }
 
 /// The mmap path must read the connection cost matrix in place rather than
-/// decoding it into an owned `Vec<i16>`: `mmap` hands back a page-aligned
-/// base and the cost payload starts at byte 6, so the `i16` view is always
-/// aligned. This is the load-time and RSS win of #926 -- UniDic's matrix
-/// alone is 71.5 MB, copied on every load before this change.
+/// decoding it into an owned buffer. This is the load-time and RSS win of
+/// #926 -- UniDic's matrix alone is 71.5 MB, copied on every load before that
+/// change.
 #[test]
 #[cfg(feature = "mmap")]
 fn mmap_loading_borrows_the_connection_cost_matrix() {

@@ -97,6 +97,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`Lattice::tokens_offset_into` returns the BOS index of the best path (`Option<usize>`)** | Rust code that uses the `()` value of `tokens_offset_into` | Nothing for a call written as a statement; otherwise ignore the new value |
 | **`UnknownDictionary::gen_unk_words`, `UnknownDictionary::compatible_unk_index`, `UnkWord` and `WordIdx` are removed** | Rust code that uses them from `lindera_dictionary::dictionary::unknown_dictionary` (also `lindera::dictionary::core::unknown_dictionary`) | Use `Lattice::unknown_word_candidates`, which lists the unknown words that the runtime creates |
 | **`words_idx_data` and `words_data` of `PrefixDictionary` and `UserPrefixDictionary` are methods instead of public fields** | Rust code that reads or assigns these fields from `lindera_dictionary::dictionary::prefix_dictionary` (also `lindera::dictionary::core::prefix_dictionary`), such as `dictionary.prefix_dictionary.words_data` or `user_dictionary.dict.words_data` | Call `words_idx_data()` and `words_data()`, which return `&[u8]`; to use other detail records, load the dictionary again with `PrefixDictionary::load` or `UserPrefixDictionary::load` |
+| **`ConnectionCostMatrix::costs()` and `row()` return `&[ConnectionCost]`, and `include_bytes_aligned!` is removed** | Rust code that reads the costs of a `ConnectionCostMatrix` from `lindera_dictionary::dictionary::connection_cost_matrix` (also `lindera::dictionary::core::connection_cost_matrix`) through `costs()` or `row()`, such as `dictionary.connection_cost_matrix.row(id)[j]`; code that embeds bytes with `lindera_dictionary::include_bytes_aligned!` | Call `get()` on each `ConnectionCost`, which returns the `i16`, or call `cost()`; embed bytes with `include_bytes!` |
 | **`lindera_trainer`: `SerializableModel::unk_category_names` and `unk_categories` are replaced by `unk_entries`, and `Trainer::max_grouping_len` takes the runtime's meaning** | Rust code that uses `lindera-trainer` (also `lindera::dictionary::trainer`) | Read `unk_entries`, the `unk.def` entries in file order; pass `max_grouping_len` the cap the dictionary will be used with |
 | **`lindera_trainer`: `FeatureExtractor`'s feature ID maps are read through a `FeatureIdMap`, and `TrainerConfig::surface_features()` is removed** | Rust code that uses `lindera-trainer` (also `lindera::dictionary::trainer`) and reads the ID maps of a `FeatureExtractor` it builds, or calls `surface_features()` | Call `unigram_feature_ids()`, `left_feature_ids()` and `right_feature_ids()` instead of reading the fields; rebuild the map from `surfaces()` and `features()` (see [Rust API changes in `lindera_trainer`](#rust-api-changes-in-lindera_trainer)) |
 
@@ -289,7 +290,7 @@ lindera::dictionary
 ├── Dictionary, Metadata, Schema, load_dictionary, load_user_dictionary, DictionaryKind, …   (unchanged)
 ├── core          lindera_dictionary::dictionary (prefix_dictionary, character_definition, connection_cost_matrix, unknown_dictionary, …)
 ├── break_characters, builder, error, loader, mode, nbest, space_penalty, util, viterbi, whitespace
-├── embedded_dictionary!, include_bytes_aligned!
+├── embedded_dictionary!
 └── trainer       lindera_trainer, with the `train` feature (unchanged)
 ```
 
@@ -2520,7 +2521,8 @@ These affect only code that calls the lattice backtraces directly, that
 creates dictionary metadata with `Metadata::new`, that reads the
 character categories of a dictionary, that generates unknown words with
 `UnknownDictionary`, that reads the detail records of a prefix dictionary,
-or that builds a dictionary from a `char.def` and an
+that reads the costs of a connection cost matrix or embeds bytes with
+`include_bytes_aligned!`, or that builds a dictionary from a `char.def` and an
 `unk.def` that `mecab-dict-index` rejects (see
 [the previous section](#lindera-build-and-lindera-train-check-chardef-against-unkdef)):
 `lindera_dictionary::viterbi::Lattice` and
@@ -2568,6 +2570,9 @@ language bindings change only in their `Metadata` class (see
 | — | New in `unknown_dictionary`: `check_unknown_word_categories`, the check of `unk.def` against the `char.def` categories that the builder and the trainer run |
 | `PrefixDictionary::words_idx_data` and `PrefixDictionary::words_data`, public fields of type `Data` | Private; read with the methods `words_idx_data()` and `words_data()`, which return `&[u8]` |
 | `UserPrefixDictionary::words_idx_data` and `UserPrefixDictionary::words_data`, public fields of type `Data` | Private; read with the methods `words_idx_data()` and `words_data()`, which return `&[u8]` |
+| `ConnectionCostMatrix::costs()` and `ConnectionCostMatrix::row(backward_id)` return `&[i16]` | Return `&[ConnectionCost]`; `ConnectionCost::get()` returns each value as an `i16` |
+| `ConnectionCostMatrix::is_zero_copy()` is `true` when the host is little-endian and the costs start at an even address | `true` for every matrix in the transposed format, the format that Lindera builds |
+| `include_bytes_aligned!` | Removed; `embedded_dictionary!` embeds every file with `include_bytes!` |
 
 Each token is now `(start, end, word_id)` instead of `(start, word_id)`,
 with byte offsets within the sentence. With whitespace skipped
@@ -2705,6 +2710,22 @@ that assigned other bytes loads a new dictionary with
 `PrefixDictionary::load` or `UserPrefixDictionary::load` instead. User
 dictionary `.bin` files are unchanged, and the ones built with v6 still
 load.
+
+The connection cost matrix reads its costs as little-endian bytes at any
+address. `ConnectionCostMatrix::costs()` and `row()` return slices of
+`ConnectionCost`, a two-byte cell whose `get()` returns the `i16`, instead
+of `&[i16]`, which needed the costs to start at an even address. Every
+matrix in the transposed format, the format that Lindera builds, is now read
+in place, also from a buffer at an odd address and on a big-endian host;
+only the legacy format is still copied, so `is_zero_copy()` is `true` for
+all the others. `cost()` still returns an `i32`. `include_bytes_aligned!`,
+which existed only to align the embedded matrix, is removed:
+`embedded_dictionary!` returns `matrix.mtx` from a private `fn` with
+`include_bytes!`, as it returns the other files, which keeps the matrix out
+of the dictionary crate's metadata. For UniDic CWJ, measured on Linux, the
+crate's `lib.rmeta` shrinks from 1,158 MB to under 10 KB and its `rlib`
+from 2.46 GB to 1.31 GB; compiling the crate takes about a third of the time
+in a debug build and 8% less in a release build.
 
 ## Rust API changes in `lindera_trainer`
 
@@ -2873,6 +2894,9 @@ Rust crate users:
 - If you read `words_idx_data` or `words_data` of a `PrefixDictionary` or a
   `UserPrefixDictionary`, call the methods of the same names; if you
   assigned them, load the dictionary again with its `load` function.
+- If you read the costs of a `ConnectionCostMatrix` through `costs()` or
+  `row()`, call `get()` on each `ConnectionCost`; if you used
+  `include_bytes_aligned!`, use `include_bytes!`.
 - If you read `SerializableModel::unk_category_names` or `unk_categories`,
   read `unk_entries` instead, and if you set `Trainer::max_grouping_len`,
   pass it the cap that the dictionary will be used with.

@@ -117,7 +117,7 @@ fn margin(matrix: &ConnectionCostMatrix, from: u16, over: u16) -> i32 {
     matrix
         .costs()
         .chunks_exact(forward_size)
-        .map(|row| i32::from(row[over]) - i32::from(row[from]))
+        .map(|row| i32::from(row[over].get()) - i32::from(row[from].get()))
         .max()
         .unwrap_or(i32::MAX)
 }
