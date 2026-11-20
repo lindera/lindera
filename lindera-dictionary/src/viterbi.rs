@@ -2216,7 +2216,8 @@ impl Lattice {
             for (i, left_edge) in left_edges.iter().enumerate() {
                 #[cfg(feature = "ctxfreq")]
                 record_access(u32::from(left_edge.right_id), 0);
-                let path_cost = left_edge.path_cost + cost_row[left_edge.right_id as usize] as i32;
+                let path_cost =
+                    left_edge.path_cost + cost_row[left_edge.right_id as usize].get() as i32;
                 let path_cost = match search_mode {
                     Mode::Normal => path_cost,
                     Mode::Decompose(penalty) => {
@@ -3218,7 +3219,7 @@ impl Lattice {
         for (i, left_edge) in left_edges.iter().enumerate() {
             #[cfg(feature = "ctxfreq")]
             record_access(u32::from(left_edge.right_id), right_left_id);
-            let conn_cost = cost_row[left_edge.right_id as usize] as i32;
+            let conn_cost = cost_row[left_edge.right_id as usize].get() as i32;
             let total_cost = (left_edge.path_cost + conn_cost).saturating_add(cache[i]);
 
             if total_cost <= best_cost {
@@ -3270,7 +3271,7 @@ impl Lattice {
             let left_edge = &self.ends_at[start_char][i];
             #[cfg(feature = "ctxfreq")]
             record_access(u32::from(left_edge.right_id), right_left_id);
-            let conn_cost = cost_row[left_edge.right_id as usize] as i32;
+            let conn_cost = cost_row[left_edge.right_id as usize].get() as i32;
             let total_cost = (left_edge.path_cost + conn_cost)
                 .saturating_add(penalty_cost)
                 .saturating_add(extra_cost);
@@ -3366,7 +3367,7 @@ impl Lattice {
         for (i, left_edge) in self.ends_at[start_char].iter().enumerate() {
             #[cfg(feature = "ctxfreq")]
             record_access(u32::from(left_edge.right_id), right_left_id);
-            let conn_cost = cost_row[left_edge.right_id as usize] as i32;
+            let conn_cost = cost_row[left_edge.right_id as usize].get() as i32;
             let mut total_cost = left_edge.path_cost + conn_cost;
             if decompose {
                 total_cost = total_cost.saturating_add(self.penalty_cache[i]);
@@ -3541,7 +3542,7 @@ impl Lattice {
                     let left_edge = &left_edges[i];
                     #[cfg(feature = "ctxfreq")]
                     record_access(u32::from(left_edge.right_id), right_left_id);
-                    let conn_cost = cost_row[left_edge.right_id as usize] as i32;
+                    let conn_cost = cost_row[left_edge.right_id as usize].get() as i32;
                     let total_cost = left_edge.path_cost + conn_cost;
 
                     if total_cost <= best_cost {
@@ -3973,7 +3974,7 @@ impl Lattice {
                     #[cfg(feature = "ctxfreq")]
                     record_access(u32::from(left_edge.right_id), right_left_id);
                     let total_cost = (left_edge.path_cost
-                        + cost_row[left_edge.right_id as usize] as i32)
+                        + cost_row[left_edge.right_id as usize].get() as i32)
                         .saturating_add(extra_cost);
 
                     // Every transition is recorded for N-Best.
@@ -4505,7 +4506,8 @@ impl Lattice {
                 let left_edge = &self.ends_at[n_chars][i];
                 #[cfg(feature = "ctxfreq")]
                 record_access(u32::from(left_edge.right_id), 0);
-                let path_cost = left_edge.path_cost + cost_row[left_edge.right_id as usize] as i32;
+                let path_cost =
+                    left_edge.path_cost + cost_row[left_edge.right_id as usize].get() as i32;
                 let path_cost = match search_mode {
                     Mode::Normal => path_cost,
                     Mode::Decompose(penalty) => {

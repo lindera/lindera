@@ -65,11 +65,11 @@ use crate::error::{LinderaError, LinderaErrorKind};
 #[doc(no_inline)]
 pub use lindera_dictionary::dictionary as core;
 #[doc(no_inline)]
+pub use lindera_dictionary::embedded_dictionary;
+#[doc(no_inline)]
 pub use lindera_dictionary::{
     break_characters, builder, error, loader, mode, nbest, space_penalty, util, viterbi, whitespace,
 };
-#[doc(no_inline)]
-pub use lindera_dictionary::{embedded_dictionary, include_bytes_aligned};
 
 pub use lindera_dictionary::builder::DictionaryBuilder;
 pub use lindera_dictionary::dictionary::metadata::Metadata;

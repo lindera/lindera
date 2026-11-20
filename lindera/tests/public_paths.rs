@@ -93,8 +93,8 @@ use lindera::dictionary::core::connection_cost_matrix::ConnectionCostMatrix;
 use lindera::dictionary::core::prefix_dictionary::PrefixDictionary;
 use lindera::dictionary::core::unknown_dictionary::UnknownDictionary;
 use lindera::dictionary::core::{Dictionary, UserDictionary};
+use lindera::dictionary::embedded_dictionary;
 use lindera::dictionary::viterbi::Lattice;
-use lindera::dictionary::{embedded_dictionary, include_bytes_aligned};
 
 #[test]
 fn facade_reports_a_version() {

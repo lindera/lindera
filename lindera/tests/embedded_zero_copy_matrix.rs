@@ -1,12 +1,11 @@
 //! The embedded (`include_bytes!`) dictionaries must read their connection
 //! cost matrix in place, like the mmap path does.
 //!
-//! `include_bytes!` guarantees only 1-byte alignment, so `embedded_dictionary!`
-//! routes `matrix.mtx` through `include_bytes_aligned!` to raise it. Without
-//! that, `ConnectionCostMatrix::load` silently falls back to decoding the
-//! payload into an owned `Vec<i16>` -- correct, but it reintroduces exactly
-//! the copy #926 removes, and on a `no_std`-free target such as wasm32 (where
-//! there is no mmap at all) the embedded path is the only path.
+//! `include_bytes!` guarantees only 1-byte alignment, and
+//! `ConnectionCostMatrix` reads its costs at any address. A matrix copied at
+//! load time would reintroduce exactly the copy #926 removes, and on a target
+//! such as wasm32 (where there is no mmap at all) the embedded path is the
+//! only path.
 
 #![cfg(any(
     feature = "embed-ipadic",
@@ -26,9 +25,8 @@ fn assert_embedded_matrix_is_borrowed(uri: &str) {
     assert!(
         matrix.is_zero_copy(),
         "{uri}: the embedded connection cost matrix must be borrowed, not copied. \
-         The payload starts at byte 6 of matrix.mtx, so the backing static needs \
-         at least 2-byte alignment -- check that embedded_dictionary! still uses \
-         include_bytes_aligned! for CONNECTION_DATA."
+         ConnectionCostMatrix::load borrows every matrix in the transposed format \
+         at any address -- check that matrix.mtx is in that format."
     );
 
     // Sanity-check that the borrowed view really is the matrix: a MeCab

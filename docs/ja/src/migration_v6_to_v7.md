@@ -94,6 +94,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **`Lattice::tokens_offset_into` が最良パスの BOS の添字（`Option<usize>`）を返す** | `tokens_offset_into` の戻り値 `()` を値として使う Rust コード | 文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する |
 | **`UnknownDictionary::gen_unk_words`・`UnknownDictionary::compatible_unk_index`・`UnkWord`・`WordIdx` の削除** | これらを `lindera_dictionary::dictionary::unknown_dictionary`（`lindera::dictionary::core::unknown_dictionary` 経由を含む）から使う Rust コード | ランタイムが作る未知語を列挙する `Lattice::unknown_word_candidates` を使う |
 | **`PrefixDictionary`・`UserPrefixDictionary` の `words_idx_data`・`words_data` が公開フィールドからメソッドに変更** | これらのフィールドを `lindera_dictionary::dictionary::prefix_dictionary`（`lindera::dictionary::core::prefix_dictionary` 経由を含む）から読む、または代入する Rust コード（`dictionary.prefix_dictionary.words_data`、`user_dictionary.dict.words_data` など） | `&[u8]` を返す `words_idx_data()`・`words_data()` を呼ぶ。別の詳細のレコードを使うには、`PrefixDictionary::load` か `UserPrefixDictionary::load` で辞書を読み込み直す |
+| **`ConnectionCostMatrix::costs()`・`row()` が `&[ConnectionCost]` を返し、`include_bytes_aligned!` を削除** | `lindera_dictionary::dictionary::connection_cost_matrix`（`lindera::dictionary::core::connection_cost_matrix` 経由を含む）の `ConnectionCostMatrix` のコストを `costs()` や `row()` で読む Rust コード（`dictionary.connection_cost_matrix.row(id)[j]` など）、`lindera_dictionary::include_bytes_aligned!` でバイト列を埋め込むコード | 各 `ConnectionCost` の `get()` で `i16` を得るか、`cost()` を呼ぶ。バイト列は `include_bytes!` で埋め込む |
 | **`lindera_trainer`: `SerializableModel::unk_category_names` と `unk_categories` は `unk_entries` に置き換わり、`Trainer::max_grouping_len` はランタイムと同じ意味になる** | `lindera-trainer`（`lindera::dictionary::trainer` 経由を含む）を使う Rust コード | ファイル順の `unk.def` のエントリである `unk_entries` を読む。`max_grouping_len` には辞書を使うときの上限を渡す |
 | **`lindera_trainer`: `FeatureExtractor` の素性 ID の表は `FeatureIdMap` を通して読み、`TrainerConfig::surface_features()` は削除される** | `lindera-trainer`（`lindera::dictionary::trainer` 経由を含む）を使い、自分で作った `FeatureExtractor` の ID の表を読む、または `surface_features()` を呼ぶ Rust コード | フィールドを読む代わりに `unigram_feature_ids()`・`left_feature_ids()`・`right_feature_ids()` を呼ぶ。表は `surfaces()` と `features()` から作り直す（[`lindera_trainer` の Rust API 変更](#lindera_trainer-の-rust-api-変更)を参照） |
 
@@ -271,7 +272,7 @@ lindera::dictionary
 ├── Dictionary, Metadata, Schema, load_dictionary, load_user_dictionary, DictionaryKind, …   （変更なし）
 ├── core          lindera_dictionary::dictionary（prefix_dictionary, character_definition, connection_cost_matrix, unknown_dictionary, …）
 ├── break_characters, builder, error, loader, mode, nbest, space_penalty, util, viterbi, whitespace
-├── embedded_dictionary!, include_bytes_aligned!
+├── embedded_dictionary!
 └── trainer       lindera_trainer（`train` feature。変更なし）
 ```
 
@@ -2288,7 +2289,8 @@ v7.0.0 は、終了コード 0 で、メッセージを出さずに終わりま�
 以下は、ラティスのバックトレースを直接呼び出すコード、`Metadata::new` で辞書の
 メタデータを作成するコード、辞書の文字カテゴリを読むコード、`UnknownDictionary`
 で未知語を生成するコード、プレフィックス辞書の詳細のレコードを読むコード、
-`mecab-dict-index` が拒否する `char.def` と `unk.def`
+接続コスト行列のコストを読むコードや `include_bytes_aligned!` でバイト列を
+埋め込むコード、`mecab-dict-index` が拒否する `char.def` と `unk.def`
 から辞書をビルドするコード（[前の節](#lindera-build-と-lindera-train-は-chardef-と-unkdef-を照らし合わせる)を参照）
 にのみ影響します。対象は
 `lindera_dictionary::viterbi::Lattice` と `lindera_dictionary::nbest::NBestGenerator`
@@ -2332,6 +2334,9 @@ v7.0.0 は、終了コード 0 で、メッセージを出さずに終わりま�
 | — | `unknown_dictionary` に `check_unknown_word_categories` を追加。ビルダーと学習器が実行する、`char.def` のカテゴリと `unk.def` の照合 |
 | `PrefixDictionary::words_idx_data` と `PrefixDictionary::words_data` は `Data` 型の公開フィールド | 非公開。`&[u8]` を返すメソッド `words_idx_data()`・`words_data()` で読む |
 | `UserPrefixDictionary::words_idx_data` と `UserPrefixDictionary::words_data` は `Data` 型の公開フィールド | 非公開。`&[u8]` を返すメソッド `words_idx_data()`・`words_data()` で読む |
+| `ConnectionCostMatrix::costs()` と `ConnectionCostMatrix::row(backward_id)` は `&[i16]` を返す | `&[ConnectionCost]` を返す。`ConnectionCost::get()` が各値を `i16` で返す |
+| `ConnectionCostMatrix::is_zero_copy()` は、ホストがリトルエンディアンで、コストが偶数の番地から始まるときに `true` | Lindera がビルドする転置形式の行列なら、常に `true` |
+| `include_bytes_aligned!` | 削除。`embedded_dictionary!` はどのファイルも `include_bytes!` で埋め込む |
 
 各トークンは `(start, word_id)` ではなく `(start, end, word_id)` になりました。
 オフセットは文内のバイト位置です。空白を読み飛ばすとき（v7 で追加された
@@ -2455,6 +2460,17 @@ BOS の辺の、`LatticeOptions::bos` での添字です。デフォルトの単
 `words_data()` で読んでください。別のバイト列を代入していたコードは、代わりに
 `PrefixDictionary::load` か `UserPrefixDictionary::load` で新しい辞書を読み込みます。
 ユーザー辞書の `.bin` は変わらず、v6 でビルドしたものもそのまま読み込めます。
+
+接続コスト行列は、コストを、どの番地にあるリトルエンディアンのバイト列からでも
+読むようになりました。`ConnectionCostMatrix::costs()` と `row()` は、コストが
+偶数の番地から始まる必要があった `&[i16]` の代わりに、`get()` で `i16` を返す
+2 バイトのセル `ConnectionCost` のスライスを返します。Lindera がビルドする転置形式
+の行列は、奇数の番地から始まるバッファでも、ビッグエンディアンのホストでも、
+すべてその場で読みます。コピーするのは古い形式だけなので、それ以外では
+`is_zero_copy()` は `true` です。`cost()` は引き続き `i32` を返します。埋め込んだ
+行列の境界をそろえるためだけにあった `include_bytes_aligned!` は削除しました。
+`embedded_dictionary!` は、ほかのファイルと同じく `matrix.mtx` も非公開の `fn` から
+`include_bytes!` で返すので、行列は辞書クレートのメタデータに入りません。
 
 ## `lindera_trainer` の Rust API 変更
 
@@ -2599,6 +2615,9 @@ Rust クレートのユーザー:
 - `PrefixDictionary` や `UserPrefixDictionary` の `words_idx_data`・`words_data` を
   読んでいる場合は、同じ名前のメソッドを呼ぶ。代入している場合は、その `load`
   関数で辞書を読み込み直す。
+- `ConnectionCostMatrix` のコストを `costs()` や `row()` で読んでいる場合は、各
+  `ConnectionCost` の `get()` を呼ぶ。`include_bytes_aligned!` を使っている場合は、
+  `include_bytes!` を使う。
 - `SerializableModel::unk_category_names` や `unk_categories` を読んでいる場合は
   代わりに `unk_entries` を読み、`Trainer::max_grouping_len` を設定している場合は
   辞書を使うときの上限を渡す。
