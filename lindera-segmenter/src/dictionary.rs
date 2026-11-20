@@ -59,10 +59,15 @@ use crate::error::{LinderaError, LinderaErrorKind};
 // `lindera::dictionary::core::prefix_dictionary::PrefixDictionary` and
 // `lindera::dictionary::builder::DictionaryBuilder`. `no_inline` keeps
 // rustdoc from duplicating the whole crate under `dictionary`.
+// `break_characters` and `whitespace` give the types of the public fields
+// of `LatticeOptions` and of `Segmenter::break_characters`. `assets` is left
+// out: it serves the build scripts of the dictionary crates.
 #[doc(no_inline)]
 pub use lindera_dictionary::dictionary as core;
 #[doc(no_inline)]
-pub use lindera_dictionary::{builder, error, loader, mode, nbest, space_penalty, util, viterbi};
+pub use lindera_dictionary::{
+    break_characters, builder, error, loader, mode, nbest, space_penalty, util, viterbi, whitespace,
+};
 #[doc(no_inline)]
 pub use lindera_dictionary::{embedded_dictionary, include_bytes_aligned};
 

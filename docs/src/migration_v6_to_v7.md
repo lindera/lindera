@@ -288,7 +288,7 @@ API:
 lindera::dictionary
 ├── Dictionary, Metadata, Schema, load_dictionary, load_user_dictionary, DictionaryKind, …   (unchanged)
 ├── core          lindera_dictionary::dictionary (prefix_dictionary, character_definition, connection_cost_matrix, unknown_dictionary, …)
-├── builder, error, loader, mode, nbest, space_penalty, util, viterbi
+├── break_characters, builder, error, loader, mode, nbest, space_penalty, util, viterbi, whitespace
 ├── embedded_dictionary!, include_bytes_aligned!
 └── trainer       lindera_trainer, with the `train` feature (unchanged)
 ```
@@ -833,7 +833,7 @@ CC-CEDICT and Jieba call them `CHINESE` and `CHINESENUMERIC`):
 
 | Character | v6 categories | v7 categories | Effect |
 | --- | --- | --- | --- |
-| `Ð` (U+00D0) | `SPACE`, `ALPHA` | `ALPHA` | Every dictionary except ko-dic maps U+00D0 to `SPACE` (a typo for U+000D inherited from mecab-ipadic) before the `ALPHA` range, so `Ð` was dropped as whitespace and split the word around it. `GUÐMUNDUR さん` now gives `GUÐMUNDUR` and `さん` instead of `GU`, `MUNDUR` and `さん` |
+| `Ð` (U+00D0) | `SPACE`, `ALPHA` | `ALPHA` | Every dictionary except ko-dic and SudachiDict maps U+00D0 to `SPACE` (a typo for U+000D inherited from mecab-ipadic) before the `ALPHA` range (SudachiDict did too up to v6.2.0; from v7.0.0 it has Sudachi's own `char.def`, which does not, see [SudachiDict reads Sudachi's own char.def](#sudachidict-reads-sudachis-own-chardef)), so `Ð` was dropped as whitespace and split the word around it. `GUÐMUNDUR さん` now gives `GUÐMUNDUR` and `さん` instead of `GU`, `MUNDUR` and `さん` |
 | `々` (U+3005) | `KANJI`, `SYMBOL` | `SYMBOL` | Dictionary words such as `人々` and `佐々木` are unchanged. After a kanji that the dictionary does not know, `々` is a token of its own, as in MeCab: `龘々` gives `龘` and `々` instead of one unknown word. With ko-dic, `々` is tagged `SY` instead of `SH` |
 | `〇` (U+3007) | `KANJI`, `SYMBOL`, `KANJINUMERIC` | `SYMBOL`, `KANJINUMERIC` | Runs of numerals can be grouped differently. With ko-dic, `二〇二六年` is one unknown word (`SH`) instead of `二`, `〇`, `二六` and `年` (see also [Unknown words come from the default category, as in MeCab](#unknown-words-come-from-the-default-category-as-in-mecab)) |
 
@@ -2556,6 +2556,7 @@ language bindings change only in their `Metadata` class (see
 | `PrefixDictionaryBuilderOptions::normalize_details(value)` | Removed |
 | — | New public field `Metadata::skip_whitespace: Option<bool>` (also `lindera_binding::CoreMetadata::skip_whitespace`) |
 | — | New public field `Metadata::lindera_version: Option<String>` |
+| — | New public fields `Metadata::char_def_format: CharDefFormat` and `Metadata::lexicon_format: LexiconFormat` (also on `lindera_binding::CoreMetadata`, with `connection_id_mapping: bool`) |
 | `CharacterDefinition::lookup_categories(c)` returns the categories of every line that covers `c` | Returns the categories of the last line that covers `c`, its default category first and the others in category id order |
 | `DICTIONARY_FORMAT_VERSION` is `2` | `3` |
 | `UnknownDictionary::gen_unk_words(sentence, start_pos, has_matched, max_grouping_len, callback)` | Removed |
@@ -2658,6 +2659,22 @@ it builds, over any value in the source `metadata.json`; it is `None` for a
 dictionary built before v7.0.0, and `Metadata::new` sets it to `None`. A
 struct literal that lists every field needs `lindera_version: None` too.
 `lindera_binding::CoreMetadata` does not have the field.
+
+`Metadata` also gains the public fields `char_def_format: CharDefFormat`
+and `lexicon_format: LexiconFormat`
+(`lindera::dictionary::core::character_definition::CharDefFormat` and
+`lindera::dictionary::core::lexicon_format::LexiconFormat`), which say how
+`char.def` and the lexicons are read: `Mecab` or `Sudachi` (see
+[SudachiDict reads Sudachi's own char.def](#sudachidict-reads-sudachis-own-chardef)
+and
+[SudachiDict decodes the escapes of its lexicons](#sudachidict-decodes-the-escapes-of-its-lexicons)).
+`lindera_binding::CoreMetadata` gains both, and
+`connection_id_mapping: bool`, which the bindings used to drop (see
+[LINDERA_CTX_FREQ_FILE renamed to LINDERA_BUILD_CONTEXT_ID_FREQ_FILE](#lindera_ctx_freq_file-renamed-to-lindera_build_context_id_freq_file)).
+`Metadata::new`, `CoreMetadata::new` and both `Default` implementations set
+the two formats to `Mecab` and `connection_id_mapping` to `false`. A struct
+literal that lists every field without `..` needs these fields too, or ends
+with `..Default::default()`.
 
 `CharacterDefinition::lookup_categories` keeps its signature. Its first
 category is the one that creates unknown words (see
