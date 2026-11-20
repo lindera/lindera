@@ -270,7 +270,7 @@ v7 でもそのままコンパイルできます。このクレートは、`lind
 lindera::dictionary
 ├── Dictionary, Metadata, Schema, load_dictionary, load_user_dictionary, DictionaryKind, …   （変更なし）
 ├── core          lindera_dictionary::dictionary（prefix_dictionary, character_definition, connection_cost_matrix, unknown_dictionary, …）
-├── builder, error, loader, mode, nbest, space_penalty, util, viterbi
+├── break_characters, builder, error, loader, mode, nbest, space_penalty, util, viterbi, whitespace
 ├── embedded_dictionary!, include_bytes_aligned!
 └── trainer       lindera_trainer（`train` feature。変更なし）
 ```
@@ -784,7 +784,7 @@ v7.0.0 は MeCab・vibrato・Kuromoji と同じく最後の行だけを使いま
 
 | 文字 | v6 のカテゴリ | v7 のカテゴリ | 影響 |
 | --- | --- | --- | --- |
-| `Ð`（U+00D0） | `SPACE`・`ALPHA` | `ALPHA` | ko-dic 以外のすべての辞書は、`ALPHA` の範囲より前に U+00D0 を `SPACE` に割り当てています（mecab-ipadic から引き継がれた U+000D のタイポ）。このため `Ð` は空白として出力から消え、前後の語も分断されていました。`GUÐMUNDUR さん` は `GU`・`MUNDUR`・`さん` ではなく `GUÐMUNDUR`・`さん` になります |
+| `Ð`（U+00D0） | `SPACE`・`ALPHA` | `ALPHA` | ko-dic と SudachiDict 以外のすべての辞書は、`ALPHA` の範囲より前に U+00D0 を `SPACE` に割り当てています（mecab-ipadic から引き継がれた U+000D のタイポ）。SudachiDict も v6.2.0 まではそうでしたが、v7.0.0 からは Sudachi 自身の `char.def` を使い、U+00D0 を `SPACE` にしません（[SudachiDict が Sudachi 自身の char.def を読む](#sudachidict-が-sudachi-自身の-chardef-を読む)を参照）。このため `Ð` は空白として出力から消え、前後の語も分断されていました。`GUÐMUNDUR さん` は `GU`・`MUNDUR`・`さん` ではなく `GUÐMUNDUR`・`さん` になります |
 | `々`（U+3005） | `KANJI`・`SYMBOL` | `SYMBOL` | `人々` や `佐々木` のような辞書の語は変わりません。辞書にない漢字の後ろでは、MeCab と同じく `々` が単独のトークンになります（`龘々` は 1 つの未知語ではなく `龘`・`々`）。ko-dic では `々` の品詞が `SH` ではなく `SY` になります |
 | `〇`（U+3007） | `KANJI`・`SYMBOL`・`KANJINUMERIC` | `SYMBOL`・`KANJINUMERIC` | 数字の連続のまとまり方が変わることがあります。ko-dic では `二〇二六年` が `二`・`〇`・`二六`・`年` ではなく 1 つの未知語（`SH`）になります（[MeCab と同じく、未知語は既定カテゴリから作る](#mecab-と同じく未知語は既定カテゴリから作る)も参照） |
 
@@ -2320,6 +2320,7 @@ v7.0.0 は、終了コード 0 で、メッセージを出さずに終わりま�
 | `PrefixDictionaryBuilderOptions::normalize_details(value)` | 削除 |
 | — | 公開フィールド `Metadata::skip_whitespace: Option<bool>` を追加（`lindera_binding::CoreMetadata::skip_whitespace` も） |
 | — | 公開フィールド `Metadata::lindera_version: Option<String>` を追加 |
+| — | 公開フィールド `Metadata::char_def_format: CharDefFormat` と `Metadata::lexicon_format: LexiconFormat` を追加（`lindera_binding::CoreMetadata` にも。こちらには `connection_id_mapping: bool` も） |
 | `CharacterDefinition::lookup_categories(c)` は `c` を覆うすべての行のカテゴリを返す | `c` を覆う最後の行のカテゴリを、既定カテゴリを先頭に、残りをカテゴリ ID 順に返す |
 | `DICTIONARY_FORMAT_VERSION` は `2` | `3` |
 | `UnknownDictionary::gen_unk_words(sentence, start_pos, has_matched, max_grouping_len, callback)` | 削除 |
@@ -2415,6 +2416,20 @@ BOS の辺の、`LatticeOptions::bos` での添字です。デフォルトの単
 ビルドした辞書では `None` で、`Metadata::new` も `None` にします。すべての
 フィールドを並べた構造体リテラルには `lindera_version: None` も必要です。
 `lindera_binding::CoreMetadata` にはこのフィールドはありません。
+
+`Metadata` には、`char.def` と語彙の読み方を表す公開フィールド
+`char_def_format: CharDefFormat` と `lexicon_format: LexiconFormat`
+（`lindera::dictionary::core::character_definition::CharDefFormat` と
+`lindera::dictionary::core::lexicon_format::LexiconFormat`）も加わりました。
+値は `Mecab` か `Sudachi` です（[SudachiDict が Sudachi 自身の char.def を読む](#sudachidict-が-sudachi-自身の-chardef-を読む)
+と [SudachiDict が語彙のエスケープを復号する](#sudachidict-が語彙のエスケープを復号する)
+を参照）。`lindera_binding::CoreMetadata` にも両方が加わり、さらにバインディングが
+これまで落としていた `connection_id_mapping: bool` も加わりました
+（[`LINDERA_CTX_FREQ_FILE` を `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` に改名](#lindera_ctx_freq_file-を-lindera_build_context_id_freq_file-に改名)
+を参照）。`Metadata::new`・`CoreMetadata::new` と、両方の `Default` の実装は、
+2 つの形式を `Mecab` に、`connection_id_mapping` を `false` にします。すべての
+フィールドを `..` なしで並べた構造体リテラルには、これらのフィールドも必要です。
+リテラルの最後を `..Default::default()` にしても構いません。
 
 `CharacterDefinition::lookup_categories` のシグネチャは変わりません。先頭のカテゴリ
 が未知語を作るカテゴリです（[MeCab と同じく、未知語は既定カテゴリから作る](#mecab-と同じく未知語は既定カテゴリから作る)を参照）。文字があるカテゴリを持つかどうかだけを
