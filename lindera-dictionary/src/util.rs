@@ -4,6 +4,8 @@ use std::ops::Deref;
 use std::path::Path;
 #[cfg(feature = "mmap")]
 use std::sync::Arc;
+use std::sync::OnceLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 #[cfg(feature = "mmap")]
 use memmap2::Mmap;
@@ -102,14 +104,183 @@ pub(crate) fn words_idx_count(words_idx_data: &[u8]) -> usize {
 /// or the payload's encoding is invalid.
 #[inline]
 pub(crate) fn joined_details_at(words_data: &[u8], offset: usize) -> Option<&str> {
+    str::from_utf8(detail_blob_at(words_data, offset)?).ok()
+}
+
+/// Locates one entry's NUL-joined detail blob, without validating it.
+///
+/// Each entry is a 4-byte little-endian length followed by that many bytes of
+/// NUL-joined fields.
+///
+/// # Arguments
+///
+/// * `words_data` - The packed detail records.
+/// * `offset` - The entry's byte offset inside `words_data`.
+///
+/// # Returns
+///
+/// The entry's bytes, or `None` when the offset or the declared length runs
+/// past the end of `words_data`.
+#[inline]
+fn detail_blob_at(words_data: &[u8], offset: usize) -> Option<&[u8]> {
     let header: [u8; 4] = words_data
         .get(offset..offset.checked_add(4)?)?
         .try_into()
         .ok()?;
     let start = offset + 4;
     let len = u32::from_le_bytes(header) as usize;
-    let bytes = words_data.get(start..start.checked_add(len)?)?;
-    str::from_utf8(bytes).ok()
+    words_data.get(start..start.checked_add(len)?)
+}
+
+/// Which entries of a packed dictionary's detail records have been validated
+/// as UTF-8: one bit per word id.
+///
+/// The detail records of a loaded dictionary never change, so an entry that
+/// was valid UTF-8 once stays valid. [`recorded_joined_details`] validates an
+/// entry the first time it is read, sets the entry's bit, and skips the
+/// validation from then on (#1393). Validating on every read was the largest
+/// single cost of decoding a token's details, and validating every entry when
+/// the dictionary is loaded would turn the O(1) load of an embedded or
+/// memory-mapped dictionary into a pass over all of its detail records.
+///
+/// The bits are allocated on first use, sized from the word-id index, so
+/// loading a dictionary stays O(1), and a dictionary whose details are never
+/// read allocates nothing.
+///
+/// A record only means something next to the bytes it was filled from, so it
+/// is never carried over to another value: [`Default`] and [`Clone`] both give
+/// an empty record. (`Dictionary::clone` shares the dictionary itself through
+/// an `Arc`, and with it the record.)
+#[derive(Default)]
+pub(crate) struct DetailChecks {
+    /// One bit per word id, set once the entry has been validated.
+    bits: OnceLock<Box<[AtomicU64]>>,
+}
+
+impl Clone for DetailChecks {
+    /// Returns an empty record: the clone is checked again on its own reads.
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}
+
+impl DetailChecks {
+    /// Returns the record's words, allocating them on first use.
+    ///
+    /// # Arguments
+    ///
+    /// * `word_count` - The number of word ids of the dictionary. Only the
+    ///   first call's value is used; the record's dictionary never changes,
+    ///   so every call passes the same value.
+    ///
+    /// # Returns
+    ///
+    /// One `u64` per 64 word ids, all zero until entries are recorded.
+    #[inline]
+    fn bits(&self, word_count: usize) -> &[AtomicU64] {
+        self.bits.get_or_init(|| {
+            (0..word_count.div_ceil(64))
+                .map(|_| AtomicU64::new(0))
+                .collect()
+        })
+    }
+
+    /// Whether `word_id`'s entry has been recorded as valid, for the tests.
+    ///
+    /// # Arguments
+    ///
+    /// * `word_id` - The word id.
+    ///
+    /// # Returns
+    ///
+    /// `true` once the entry has been read and validated.
+    #[cfg(test)]
+    pub(crate) fn is_recorded(&self, word_id: usize) -> bool {
+        self.bits
+            .get()
+            .and_then(|bits| bits.get(word_id / 64))
+            .is_some_and(|word| word.load(Ordering::Relaxed) & (1 << (word_id % 64)) != 0)
+    }
+}
+
+/// What [`recorded_joined_details`] finds for a word id.
+pub(crate) enum JoinedDetails<'a> {
+    /// The word id has no slot in the word-id index.
+    NoSlot,
+    /// The entry's offset, declared length or encoding is invalid.
+    Malformed,
+    /// The entry's NUL-joined fields.
+    Fields(&'a str),
+}
+
+/// Looks up one entry's NUL-joined detail blob, and validates it as UTF-8
+/// only the first time the entry is read.
+///
+/// The first read of an entry validates it with `str::from_utf8`; when that
+/// succeeds, the entry's bit in `checks` is set, and later reads convert the
+/// same bytes without validating them. An entry that fails is never recorded,
+/// so every read of it fails again, as before (#1393).
+///
+/// # Arguments
+///
+/// * `words_idx_data` - The word-id index table.
+/// * `words_data` - The packed detail records.
+/// * `checks` - The record of the entries already validated.
+/// * `word_id` - The word id to look up.
+///
+/// # Returns
+///
+/// [`JoinedDetails::NoSlot`] when the id has no slot in the index,
+/// [`JoinedDetails::Malformed`] when the entry's offset, declared length or
+/// encoding is invalid, and the entry's fields otherwise.
+///
+/// # Safety
+///
+/// `checks` must only ever have been used with these same `words_idx_data`
+/// and `words_data` bytes, and those bytes must not change while `checks`
+/// exists. A set bit then means that the bytes this function locates for the
+/// word id were validated by an earlier call.
+#[inline]
+pub(crate) unsafe fn recorded_joined_details<'a>(
+    words_idx_data: &'a [u8],
+    words_data: &'a [u8],
+    checks: &DetailChecks,
+    word_id: usize,
+) -> JoinedDetails<'a> {
+    let Some(offset) = words_idx_offset(words_idx_data, word_id) else {
+        return JoinedDetails::NoSlot;
+    };
+    let Some(bytes) = detail_blob_at(words_data, offset) else {
+        return JoinedDetails::Malformed;
+    };
+    // `words_idx_offset` found a slot, so `word_id` is below the word count
+    // and the record has a bit for it; `get` keeps a panic off this path all
+    // the same, and falls back to validating.
+    let bit = 1u64 << (word_id % 64);
+    let word = checks
+        .bits(words_idx_count(words_idx_data))
+        .get(word_id / 64);
+    if let Some(word) = word
+        && word.load(Ordering::Relaxed) & bit != 0
+    {
+        // SAFETY: a bit is set only below, after `str::from_utf8` accepted
+        // the bytes that `words_idx_offset` and `detail_blob_at` located for
+        // this word id. By the caller's contract, `checks` has only been used
+        // with these same `words_idx_data` and `words_data`, which have not
+        // changed since, so that lookup located the same bytes as this one.
+        return JoinedDetails::Fields(unsafe { str::from_utf8_unchecked(bytes) });
+    }
+    match str::from_utf8(bytes) {
+        Ok(joined) => {
+            if let Some(word) = word {
+                // `Relaxed` is enough: the bit states a fact about bytes that
+                // never change, and publishes no other write.
+                word.fetch_or(bit, Ordering::Relaxed);
+            }
+            JoinedDetails::Fields(joined)
+        }
+        Err(_) => JoinedDetails::Malformed,
+    }
 }
 
 /// Write data directly to the writer.

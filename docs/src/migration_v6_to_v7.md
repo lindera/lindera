@@ -96,6 +96,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`Lattice::tokens_offset`, `tokens_offset_into`, `nbest_tokens_offset` and `NBestGenerator::next` return `(start, end, WordId)`** | Rust code that calls these `lindera_dictionary` functions directly (also as `lindera::dictionary::viterbi::…`, `lindera::dictionary::Lattice` and `lindera::dictionary::nbest::…`) | Destructure three fields and use the returned end instead of the next token's start |
 | **`Lattice::tokens_offset_into` returns the BOS index of the best path (`Option<usize>`)** | Rust code that uses the `()` value of `tokens_offset_into` | Nothing for a call written as a statement; otherwise ignore the new value |
 | **`UnknownDictionary::gen_unk_words`, `UnknownDictionary::compatible_unk_index`, `UnkWord` and `WordIdx` are removed** | Rust code that uses them from `lindera_dictionary::dictionary::unknown_dictionary` (also `lindera::dictionary::core::unknown_dictionary`) | Use `Lattice::unknown_word_candidates`, which lists the unknown words that the runtime creates |
+| **`words_idx_data` and `words_data` of `PrefixDictionary` and `UserPrefixDictionary` are methods instead of public fields** | Rust code that reads or assigns these fields from `lindera_dictionary::dictionary::prefix_dictionary` (also `lindera::dictionary::core::prefix_dictionary`), such as `dictionary.prefix_dictionary.words_data` or `user_dictionary.dict.words_data` | Call `words_idx_data()` and `words_data()`, which return `&[u8]`; to use other detail records, load the dictionary again with `PrefixDictionary::load` or `UserPrefixDictionary::load` |
 | **`lindera_trainer`: `SerializableModel::unk_category_names` and `unk_categories` are replaced by `unk_entries`, and `Trainer::max_grouping_len` takes the runtime's meaning** | Rust code that uses `lindera-trainer` (also `lindera::dictionary::trainer`) | Read `unk_entries`, the `unk.def` entries in file order; pass `max_grouping_len` the cap the dictionary will be used with |
 | **`lindera_trainer`: `FeatureExtractor`'s feature ID maps are read through a `FeatureIdMap`, and `TrainerConfig::surface_features()` is removed** | Rust code that uses `lindera-trainer` (also `lindera::dictionary::trainer`) and reads the ID maps of a `FeatureExtractor` it builds, or calls `surface_features()` | Call `unigram_feature_ids()`, `left_feature_ids()` and `right_feature_ids()` instead of reading the fields; rebuild the map from `surfaces()` and `features()` (see [Rust API changes in `lindera_trainer`](#rust-api-changes-in-lindera_trainer)) |
 
@@ -2518,7 +2519,8 @@ directory, and the warning about `LINDERA_DATA_DIR`.
 These affect only code that calls the lattice backtraces directly, that
 creates dictionary metadata with `Metadata::new`, that reads the
 character categories of a dictionary, that generates unknown words with
-`UnknownDictionary`, or that builds a dictionary from a `char.def` and an
+`UnknownDictionary`, that reads the detail records of a prefix dictionary,
+or that builds a dictionary from a `char.def` and an
 `unk.def` that `mecab-dict-index` rejects (see
 [the previous section](#lindera-build-and-lindera-train-check-chardef-against-unkdef)):
 `lindera_dictionary::viterbi::Lattice` and
@@ -2530,6 +2532,8 @@ character categories of a dictionary, that generates unknown words with
 `lindera_dictionary::dictionary::character_definition::CharacterDefinition`, and
 `lindera_dictionary::dictionary::unknown_dictionary`, also reachable as
 `lindera::dictionary::core::unknown_dictionary`, and
+`lindera_dictionary::dictionary::prefix_dictionary`, also reachable as
+`lindera::dictionary::core::prefix_dictionary`, and
 `lindera_dictionary::builder`, also reachable as
 `lindera::dictionary::builder`.
 The `Segmenter`, `Tokenizer`,
@@ -2561,6 +2565,8 @@ language bindings change only in their `Metadata` class (see
 | `CharacterDefinitionBuilder::build_from_str` and `build` accept a range line that names a category not defined on an earlier line, and a category defined twice | Return an error that names the line and the category |
 | `DictionaryBuilder::build_dictionary` and `build_unknown_dictionary` accept an `unk.def` line whose category `char.def` does not define, and a `char.def` category without an `unk.def` line | Return an error that names the file and the category |
 | — | New in `unknown_dictionary`: `check_unknown_word_categories`, the check of `unk.def` against the `char.def` categories that the builder and the trainer run |
+| `PrefixDictionary::words_idx_data` and `PrefixDictionary::words_data`, public fields of type `Data` | Private; read with the methods `words_idx_data()` and `words_data()`, which return `&[u8]` |
+| `UserPrefixDictionary::words_idx_data` and `UserPrefixDictionary::words_data`, public fields of type `Data` | Private; read with the methods `words_idx_data()` and `words_data()`, which return `&[u8]` |
 
 Each token is now `(start, end, word_id)` instead of `(start, word_id)`,
 with byte offsets within the sentence. With whitespace skipped
@@ -2672,6 +2678,16 @@ for every candidate of every start position of `text`, with character
 positions and the `unk.def` entry ID, as `set_text_with_options` creates
 them with the default options and the given `max_grouping_len`, also at
 positions that no path reaches. The tokenization path does not change.
+
+The detail records of `PrefixDictionary` and `UserPrefixDictionary`, the
+word-id index (`dict.wordsidx`) and the details (`dict.words`), are no
+longer public fields. A word's details are now validated as UTF-8 the first
+time they are read and not again, which needs the bytes to stay as they
+were loaded. Read them with `words_idx_data()` and `words_data()`; code
+that assigned other bytes loads a new dictionary with
+`PrefixDictionary::load` or `UserPrefixDictionary::load` instead. User
+dictionary `.bin` files are unchanged, and the ones built with v6 still
+load.
 
 ## Rust API changes in `lindera_trainer`
 
@@ -2837,6 +2853,9 @@ Rust crate users:
 - If you call `UnknownDictionary::gen_unk_words` or
   `UnknownDictionary::compatible_unk_index`, or use `UnkWord` or `WordIdx`,
   list the unknown words with `Lattice::unknown_word_candidates` instead.
+- If you read `words_idx_data` or `words_data` of a `PrefixDictionary` or a
+  `UserPrefixDictionary`, call the methods of the same names; if you
+  assigned them, load the dictionary again with its `load` function.
 - If you read `SerializableModel::unk_category_names` or `unk_categories`,
   read `unk_entries` instead, and if you set `Trainer::max_grouping_len`,
   pass it the cap that the dictionary will be used with.

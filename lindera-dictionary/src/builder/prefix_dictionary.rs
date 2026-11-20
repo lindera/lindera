@@ -1054,8 +1054,8 @@ mod tests {
             let entries = dict.find_surface(surface);
             assert_eq!(entries.len(), 1, "one entry for {surface}");
             let word_id = entries[0].word_id().id() as usize;
-            let offset = crate::util::words_idx_offset(&dict.words_idx_data, word_id).unwrap();
-            crate::util::joined_details_at(&dict.words_data, offset)
+            let offset = crate::util::words_idx_offset(dict.words_idx_data(), word_id).unwrap();
+            crate::util::joined_details_at(dict.words_data(), offset)
                 .unwrap()
                 .to_string()
         };
