@@ -268,6 +268,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong><code>Lattice::tokens_offset_into</code> が最良パスの BOS の添字（<code>Option&lt;usize&gt;</code>）を返す</strong></td><td><code>tokens_offset_into</code> の戻り値 <code>()</code> を値として使う Rust コード</td><td>文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する</td></tr>
 <tr><td><strong><code>UnknownDictionary::gen_unk_words</code>・<code>UnknownDictionary::compatible_unk_index</code>・<code>UnkWord</code>・<code>WordIdx</code> の削除</strong></td><td>これらを <code>lindera_dictionary::dictionary::unknown_dictionary</code>（<code>lindera::dictionary::core::unknown_dictionary</code> 経由を含む）から使う Rust コード</td><td>ランタイムが作る未知語を列挙する <code>Lattice::unknown_word_candidates</code> を使う</td></tr>
 <tr><td><strong><code>PrefixDictionary</code>・<code>UserPrefixDictionary</code> の <code>words_idx_data</code>・<code>words_data</code> が公開フィールドからメソッドに変更</strong></td><td>これらのフィールドを <code>lindera_dictionary::dictionary::prefix_dictionary</code>（<code>lindera::dictionary::core::prefix_dictionary</code> 経由を含む）から読む、または代入する Rust コード（<code>dictionary.prefix_dictionary.words_data</code>、<code>user_dictionary.dict.words_data</code> など）</td><td><code>&amp;[u8]</code> を返す <code>words_idx_data()</code>・<code>words_data()</code> を呼ぶ。別の詳細のレコードを使うには、<code>PrefixDictionary::load</code> か <code>UserPrefixDictionary::load</code> で辞書を読み込み直す</td></tr>
+<tr><td><strong><code>ConnectionCostMatrix::costs()</code>・<code>row()</code> が <code>&amp;[ConnectionCost]</code> を返し、<code>include_bytes_aligned!</code> を削除</strong></td><td><code>lindera_dictionary::dictionary::connection_cost_matrix</code>（<code>lindera::dictionary::core::connection_cost_matrix</code> 経由を含む）の <code>ConnectionCostMatrix</code> のコストを <code>costs()</code> や <code>row()</code> で読む Rust コード（<code>dictionary.connection_cost_matrix.row(id)[j]</code> など）、<code>lindera_dictionary::include_bytes_aligned!</code> でバイト列を埋め込むコード</td><td>各 <code>ConnectionCost</code> の <code>get()</code> で <code>i16</code> を得るか、<code>cost()</code> を呼ぶ。バイト列は <code>include_bytes!</code> で埋め込む</td></tr>
 <tr><td><strong><code>lindera_trainer</code>: <code>SerializableModel::unk_category_names</code> と <code>unk_categories</code> は <code>unk_entries</code> に置き換わり、<code>Trainer::max_grouping_len</code> はランタイムと同じ意味になる</strong></td><td><code>lindera-trainer</code>（<code>lindera::dictionary::trainer</code> 経由を含む）を使う Rust コード</td><td>ファイル順の <code>unk.def</code> のエントリである <code>unk_entries</code> を読む。<code>max_grouping_len</code> には辞書を使うときの上限を渡す</td></tr>
 <tr><td><strong><code>lindera_trainer</code>: <code>FeatureExtractor</code> の素性 ID の表は <code>FeatureIdMap</code> を通して読み、<code>TrainerConfig::surface_features()</code> は削除される</strong></td><td><code>lindera-trainer</code>（<code>lindera::dictionary::trainer</code> 経由を含む）を使い、自分で作った <code>FeatureExtractor</code> の ID の表を読む、または <code>surface_features()</code> を呼ぶ Rust コード</td><td>フィールドを読む代わりに <code>unigram_feature_ids()</code>・<code>left_feature_ids()</code>・<code>right_feature_ids()</code> を呼ぶ。表は <code>surfaces()</code> と <code>features()</code> から作り直す（<a href="#lindera_trainer-%E3%81%AE-rust-api-%E5%A4%89%E6%9B%B4"><code>lindera_trainer</code> の Rust API 変更</a>を参照）</td></tr>
 </tbody></table>
@@ -419,7 +420,7 @@ v7 でもそのままコンパイルできます。このクレートは、<code
 ├── Dictionary, Metadata, Schema, load_dictionary, load_user_dictionary, DictionaryKind, …   （変更なし）
 ├── core          lindera_dictionary::dictionary（prefix_dictionary, character_definition, connection_cost_matrix, unknown_dictionary, …）
 ├── break_characters, builder, error, loader, mode, nbest, space_penalty, util, viterbi, whitespace
-├── embedded_dictionary!, include_bytes_aligned!
+├── embedded_dictionary!
 └── trainer       lindera_trainer（`train` feature。変更なし）
 </code></pre>
 <p>既存の <code>lindera::dictionary::*</code> パスはすべて有効なままで、再エクスポートは同じ
@@ -2206,7 +2207,8 @@ mecab-ko-dic の <code>unk.def</code> はすべての行がこうした行です
 <p>以下は、ラティスのバックトレースを直接呼び出すコード、<code>Metadata::new</code> で辞書の
 メタデータを作成するコード、辞書の文字カテゴリを読むコード、<code>UnknownDictionary</code>
 で未知語を生成するコード、プレフィックス辞書の詳細のレコードを読むコード、
-<code>mecab-dict-index</code> が拒否する <code>char.def</code> と <code>unk.def</code>
+接続コスト行列のコストを読むコードや <code>include_bytes_aligned!</code> でバイト列を
+埋め込むコード、<code>mecab-dict-index</code> が拒否する <code>char.def</code> と <code>unk.def</code>
 から辞書をビルドするコード（<a href="#lindera-build-%E3%81%A8-lindera-train-%E3%81%AF-chardef-%E3%81%A8-unkdef-%E3%82%92%E7%85%A7%E3%82%89%E3%81%97%E5%90%88%E3%82%8F%E3%81%9B%E3%82%8B">前の節</a>を参照）
 にのみ影響します。対象は
 <code>lindera_dictionary::viterbi::Lattice</code> と <code>lindera_dictionary::nbest::NBestGenerator</code>
@@ -2248,6 +2250,9 @@ mecab-ko-dic の <code>unk.def</code> はすべての行がこうした行です
 <tr><td>—</td><td><code>unknown_dictionary</code> に <code>check_unknown_word_categories</code> を追加。ビルダーと学習器が実行する、<code>char.def</code> のカテゴリと <code>unk.def</code> の照合</td></tr>
 <tr><td><code>PrefixDictionary::words_idx_data</code> と <code>PrefixDictionary::words_data</code> は <code>Data</code> 型の公開フィールド</td><td>非公開。<code>&amp;[u8]</code> を返すメソッド <code>words_idx_data()</code>・<code>words_data()</code> で読む</td></tr>
 <tr><td><code>UserPrefixDictionary::words_idx_data</code> と <code>UserPrefixDictionary::words_data</code> は <code>Data</code> 型の公開フィールド</td><td>非公開。<code>&amp;[u8]</code> を返すメソッド <code>words_idx_data()</code>・<code>words_data()</code> で読む</td></tr>
+<tr><td><code>ConnectionCostMatrix::costs()</code> と <code>ConnectionCostMatrix::row(backward_id)</code> は <code>&amp;[i16]</code> を返す</td><td><code>&amp;[ConnectionCost]</code> を返す。<code>ConnectionCost::get()</code> が各値を <code>i16</code> で返す</td></tr>
+<tr><td><code>ConnectionCostMatrix::is_zero_copy()</code> は、ホストがリトルエンディアンで、コストが偶数の番地から始まるときに <code>true</code></td><td>Lindera がビルドする転置形式の行列なら、常に <code>true</code></td></tr>
+<tr><td><code>include_bytes_aligned!</code></td><td>削除。<code>embedded_dictionary!</code> はどのファイルも <code>include_bytes!</code> で埋め込む</td></tr>
 </tbody></table>
 </div>
 <p>各トークンは <code>(start, word_id)</code> ではなく <code>(start, end, word_id)</code> になりました。
@@ -2361,6 +2366,19 @@ BOS です。</li>
 <code>words_data()</code> で読んでください。別のバイト列を代入していたコードは、代わりに
 <code>PrefixDictionary::load</code> か <code>UserPrefixDictionary::load</code> で新しい辞書を読み込みます。
 ユーザー辞書の <code>.bin</code> は変わらず、v6 でビルドしたものもそのまま読み込めます。</p>
+<p>接続コスト行列は、コストを、どの番地にあるリトルエンディアンのバイト列からでも
+読むようになりました。<code>ConnectionCostMatrix::costs()</code> と <code>row()</code> は、コストが
+偶数の番地から始まる必要があった <code>&amp;[i16]</code> の代わりに、<code>get()</code> で <code>i16</code> を返す
+2 バイトのセル <code>ConnectionCost</code> のスライスを返します。Lindera がビルドする転置形式
+の行列は、奇数の番地から始まるバッファでも、ビッグエンディアンのホストでも、
+すべてその場で読みます。コピーするのは古い形式だけなので、それ以外では
+<code>is_zero_copy()</code> は <code>true</code> です。<code>cost()</code> は引き続き <code>i32</code> を返します。埋め込んだ
+行列の境界をそろえるためだけにあった <code>include_bytes_aligned!</code> は削除しました。
+<code>embedded_dictionary!</code> は、ほかのファイルと同じく <code>matrix.mtx</code> も非公開の <code>fn</code> から
+<code>include_bytes!</code> で返すので、行列は辞書クレートのメタデータに入りません。
+Linux で測ると、UniDic CWJ では、クレートの <code>lib.rmeta</code> が 1,158 MB から 10 KB
+未満に、<code>rlib</code> が 2.46 GB から 1.31 GB になり、クレートのコンパイルにかかる時間は、
+debug ビルドで約 3 分の 1 に、release ビルドで 8% 短くなります。</p>
 <h2 id="lindera_trainer-の-rust-api-変更"><a class="header" href="#lindera_trainer-の-rust-api-変更"><code>lindera_trainer</code> の Rust API 変更</a></h2>
 <p>以下は、<code>lindera-trainer</code> を直接、または <code>lindera::dictionary::trainer</code>（<code>train</code>
 feature）経由で使う Rust コードにのみ影響します
@@ -2499,6 +2517,9 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <li><code>PrefixDictionary</code> や <code>UserPrefixDictionary</code> の <code>words_idx_data</code>・<code>words_data</code> を
 読んでいる場合は、同じ名前のメソッドを呼ぶ。代入している場合は、その <code>load</code>
 関数で辞書を読み込み直す。</li>
+<li><code>ConnectionCostMatrix</code> のコストを <code>costs()</code> や <code>row()</code> で読んでいる場合は、各
+<code>ConnectionCost</code> の <code>get()</code> を呼ぶ。<code>include_bytes_aligned!</code> を使っている場合は、
+<code>include_bytes!</code> を使う。</li>
 <li><code>SerializableModel::unk_category_names</code> や <code>unk_categories</code> を読んでいる場合は
 代わりに <code>unk_entries</code> を読み、<code>Trainer::max_grouping_len</code> を設定している場合は
 辞書を使うときの上限を渡す。</li>

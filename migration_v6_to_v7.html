@@ -271,6 +271,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> returns the BOS index of the best path (<code>Option&lt;usize&gt;</code>)</strong></td><td>Rust code that uses the <code>()</code> value of <code>tokens_offset_into</code></td><td>Nothing for a call written as a statement; otherwise ignore the new value</td></tr>
 <tr><td><strong><code>UnknownDictionary::gen_unk_words</code>, <code>UnknownDictionary::compatible_unk_index</code>, <code>UnkWord</code> and <code>WordIdx</code> are removed</strong></td><td>Rust code that uses them from <code>lindera_dictionary::dictionary::unknown_dictionary</code> (also <code>lindera::dictionary::core::unknown_dictionary</code>)</td><td>Use <code>Lattice::unknown_word_candidates</code>, which lists the unknown words that the runtime creates</td></tr>
 <tr><td><strong><code>words_idx_data</code> and <code>words_data</code> of <code>PrefixDictionary</code> and <code>UserPrefixDictionary</code> are methods instead of public fields</strong></td><td>Rust code that reads or assigns these fields from <code>lindera_dictionary::dictionary::prefix_dictionary</code> (also <code>lindera::dictionary::core::prefix_dictionary</code>), such as <code>dictionary.prefix_dictionary.words_data</code> or <code>user_dictionary.dict.words_data</code></td><td>Call <code>words_idx_data()</code> and <code>words_data()</code>, which return <code>&amp;[u8]</code>; to use other detail records, load the dictionary again with <code>PrefixDictionary::load</code> or <code>UserPrefixDictionary::load</code></td></tr>
+<tr><td><strong><code>ConnectionCostMatrix::costs()</code> and <code>row()</code> return <code>&amp;[ConnectionCost]</code>, and <code>include_bytes_aligned!</code> is removed</strong></td><td>Rust code that reads the costs of a <code>ConnectionCostMatrix</code> from <code>lindera_dictionary::dictionary::connection_cost_matrix</code> (also <code>lindera::dictionary::core::connection_cost_matrix</code>) through <code>costs()</code> or <code>row()</code>, such as <code>dictionary.connection_cost_matrix.row(id)[j]</code>; code that embeds bytes with <code>lindera_dictionary::include_bytes_aligned!</code></td><td>Call <code>get()</code> on each <code>ConnectionCost</code>, which returns the <code>i16</code>, or call <code>cost()</code>; embed bytes with <code>include_bytes!</code></td></tr>
 <tr><td><strong><code>lindera_trainer</code>: <code>SerializableModel::unk_category_names</code> and <code>unk_categories</code> are replaced by <code>unk_entries</code>, and <code>Trainer::max_grouping_len</code> takes the runtime's meaning</strong></td><td>Rust code that uses <code>lindera-trainer</code> (also <code>lindera::dictionary::trainer</code>)</td><td>Read <code>unk_entries</code>, the <code>unk.def</code> entries in file order; pass <code>max_grouping_len</code> the cap the dictionary will be used with</td></tr>
 <tr><td><strong><code>lindera_trainer</code>: <code>FeatureExtractor</code>'s feature ID maps are read through a <code>FeatureIdMap</code>, and <code>TrainerConfig::surface_features()</code> is removed</strong></td><td>Rust code that uses <code>lindera-trainer</code> (also <code>lindera::dictionary::trainer</code>) and reads the ID maps of a <code>FeatureExtractor</code> it builds, or calls <code>surface_features()</code></td><td>Call <code>unigram_feature_ids()</code>, <code>left_feature_ids()</code> and <code>right_feature_ids()</code> instead of reading the fields; rebuild the map from <code>surfaces()</code> and <code>features()</code> (see <a href="#rust-api-changes-in-lindera_trainer">Rust API changes in <code>lindera_trainer</code></a>)</td></tr>
 </tbody></table>
@@ -437,7 +438,7 @@ API:</p>
 ├── Dictionary, Metadata, Schema, load_dictionary, load_user_dictionary, DictionaryKind, …   (unchanged)
 ├── core          lindera_dictionary::dictionary (prefix_dictionary, character_definition, connection_cost_matrix, unknown_dictionary, …)
 ├── break_characters, builder, error, loader, mode, nbest, space_penalty, util, viterbi, whitespace
-├── embedded_dictionary!, include_bytes_aligned!
+├── embedded_dictionary!
 └── trainer       lindera_trainer, with the `train` feature (unchanged)
 </code></pre>
 <p>All existing <code>lindera::dictionary::*</code> paths stay valid, and the re-exports
@@ -2437,7 +2438,8 @@ directory, and the warning about <code>LINDERA_DATA_DIR</code>.</p>
 creates dictionary metadata with <code>Metadata::new</code>, that reads the
 character categories of a dictionary, that generates unknown words with
 <code>UnknownDictionary</code>, that reads the detail records of a prefix dictionary,
-or that builds a dictionary from a <code>char.def</code> and an
+that reads the costs of a connection cost matrix or embeds bytes with
+<code>include_bytes_aligned!</code>, or that builds a dictionary from a <code>char.def</code> and an
 <code>unk.def</code> that <code>mecab-dict-index</code> rejects (see
 <a href="#lindera-build-and-lindera-train-check-chardef-against-unkdef">the previous section</a>):
 <code>lindera_dictionary::viterbi::Lattice</code> and
@@ -2483,6 +2485,9 @@ language bindings change only in their <code>Metadata</code> class (see
 <tr><td>—</td><td>New in <code>unknown_dictionary</code>: <code>check_unknown_word_categories</code>, the check of <code>unk.def</code> against the <code>char.def</code> categories that the builder and the trainer run</td></tr>
 <tr><td><code>PrefixDictionary::words_idx_data</code> and <code>PrefixDictionary::words_data</code>, public fields of type <code>Data</code></td><td>Private; read with the methods <code>words_idx_data()</code> and <code>words_data()</code>, which return <code>&amp;[u8]</code></td></tr>
 <tr><td><code>UserPrefixDictionary::words_idx_data</code> and <code>UserPrefixDictionary::words_data</code>, public fields of type <code>Data</code></td><td>Private; read with the methods <code>words_idx_data()</code> and <code>words_data()</code>, which return <code>&amp;[u8]</code></td></tr>
+<tr><td><code>ConnectionCostMatrix::costs()</code> and <code>ConnectionCostMatrix::row(backward_id)</code> return <code>&amp;[i16]</code></td><td>Return <code>&amp;[ConnectionCost]</code>; <code>ConnectionCost::get()</code> returns each value as an <code>i16</code></td></tr>
+<tr><td><code>ConnectionCostMatrix::is_zero_copy()</code> is <code>true</code> when the host is little-endian and the costs start at an even address</td><td><code>true</code> for every matrix in the transposed format, the format that Lindera builds</td></tr>
+<tr><td><code>include_bytes_aligned!</code></td><td>Removed; <code>embedded_dictionary!</code> embeds every file with <code>include_bytes!</code></td></tr>
 </tbody></table>
 </div>
 <p>Each token is now <code>(start, end, word_id)</code> instead of <code>(start, word_id)</code>,
@@ -2610,6 +2615,21 @@ that assigned other bytes loads a new dictionary with
 <code>PrefixDictionary::load</code> or <code>UserPrefixDictionary::load</code> instead. User
 dictionary <code>.bin</code> files are unchanged, and the ones built with v6 still
 load.</p>
+<p>The connection cost matrix reads its costs as little-endian bytes at any
+address. <code>ConnectionCostMatrix::costs()</code> and <code>row()</code> return slices of
+<code>ConnectionCost</code>, a two-byte cell whose <code>get()</code> returns the <code>i16</code>, instead
+of <code>&amp;[i16]</code>, which needed the costs to start at an even address. Every
+matrix in the transposed format, the format that Lindera builds, is now read
+in place, also from a buffer at an odd address and on a big-endian host;
+only the legacy format is still copied, so <code>is_zero_copy()</code> is <code>true</code> for
+all the others. <code>cost()</code> still returns an <code>i32</code>. <code>include_bytes_aligned!</code>,
+which existed only to align the embedded matrix, is removed:
+<code>embedded_dictionary!</code> returns <code>matrix.mtx</code> from a private <code>fn</code> with
+<code>include_bytes!</code>, as it returns the other files, which keeps the matrix out
+of the dictionary crate's metadata. For UniDic CWJ, measured on Linux, the
+crate's <code>lib.rmeta</code> shrinks from 1,158 MB to under 10 KB and its <code>rlib</code>
+from 2.46 GB to 1.31 GB; compiling the crate takes about a third of the time
+in a debug build and 8% less in a release build.</p>
 <h2 id="rust-api-changes-in-lindera_trainer"><a class="header" href="#rust-api-changes-in-lindera_trainer">Rust API changes in <code>lindera_trainer</code></a></h2>
 <p>These affect only Rust code that uses <code>lindera-trainer</code> directly or through
 <code>lindera::dictionary::trainer</code> (the <code>train</code> feature) (see
@@ -2772,6 +2792,9 @@ list the unknown words with <code>Lattice::unknown_word_candidates</code> instea
 <li>If you read <code>words_idx_data</code> or <code>words_data</code> of a <code>PrefixDictionary</code> or a
 <code>UserPrefixDictionary</code>, call the methods of the same names; if you
 assigned them, load the dictionary again with its <code>load</code> function.</li>
+<li>If you read the costs of a <code>ConnectionCostMatrix</code> through <code>costs()</code> or
+<code>row()</code>, call <code>get()</code> on each <code>ConnectionCost</code>; if you used
+<code>include_bytes_aligned!</code>, use <code>include_bytes!</code>.</li>
 <li>If you read <code>SerializableModel::unk_category_names</code> or <code>unk_categories</code>,
 read <code>unk_entries</code> instead, and if you set <code>Trainer::max_grouping_len</code>,
 pass it the cap that the dictionary will be used with.</li>
