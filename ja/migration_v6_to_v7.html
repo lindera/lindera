@@ -267,6 +267,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong><code>Lattice::tokens_offset</code>・<code>tokens_offset_into</code>・<code>nbest_tokens_offset</code>・<code>NBestGenerator::next</code> が <code>(start, end, WordId)</code> を返す</strong></td><td>これらの <code>lindera_dictionary</code> の関数を直接呼び出す Rust コード（<code>lindera::dictionary::viterbi::…</code>・<code>lindera::dictionary::Lattice</code>・<code>lindera::dictionary::nbest::…</code> 経由を含む）</td><td>3 つの要素に分解し、次のトークンの開始位置の代わりに返された終了位置を使う</td></tr>
 <tr><td><strong><code>Lattice::tokens_offset_into</code> が最良パスの BOS の添字（<code>Option&lt;usize&gt;</code>）を返す</strong></td><td><code>tokens_offset_into</code> の戻り値 <code>()</code> を値として使う Rust コード</td><td>文として呼び出しているなら対応不要。それ以外は新しい戻り値を無視する</td></tr>
 <tr><td><strong><code>UnknownDictionary::gen_unk_words</code>・<code>UnknownDictionary::compatible_unk_index</code>・<code>UnkWord</code>・<code>WordIdx</code> の削除</strong></td><td>これらを <code>lindera_dictionary::dictionary::unknown_dictionary</code>（<code>lindera::dictionary::core::unknown_dictionary</code> 経由を含む）から使う Rust コード</td><td>ランタイムが作る未知語を列挙する <code>Lattice::unknown_word_candidates</code> を使う</td></tr>
+<tr><td><strong><code>PrefixDictionary</code>・<code>UserPrefixDictionary</code> の <code>words_idx_data</code>・<code>words_data</code> が公開フィールドからメソッドに変更</strong></td><td>これらのフィールドを <code>lindera_dictionary::dictionary::prefix_dictionary</code>（<code>lindera::dictionary::core::prefix_dictionary</code> 経由を含む）から読む、または代入する Rust コード（<code>dictionary.prefix_dictionary.words_data</code>、<code>user_dictionary.dict.words_data</code> など）</td><td><code>&amp;[u8]</code> を返す <code>words_idx_data()</code>・<code>words_data()</code> を呼ぶ。別の詳細のレコードを使うには、<code>PrefixDictionary::load</code> か <code>UserPrefixDictionary::load</code> で辞書を読み込み直す</td></tr>
 <tr><td><strong><code>lindera_trainer</code>: <code>SerializableModel::unk_category_names</code> と <code>unk_categories</code> は <code>unk_entries</code> に置き換わり、<code>Trainer::max_grouping_len</code> はランタイムと同じ意味になる</strong></td><td><code>lindera-trainer</code>（<code>lindera::dictionary::trainer</code> 経由を含む）を使う Rust コード</td><td>ファイル順の <code>unk.def</code> のエントリである <code>unk_entries</code> を読む。<code>max_grouping_len</code> には辞書を使うときの上限を渡す</td></tr>
 <tr><td><strong><code>lindera_trainer</code>: <code>FeatureExtractor</code> の素性 ID の表は <code>FeatureIdMap</code> を通して読み、<code>TrainerConfig::surface_features()</code> は削除される</strong></td><td><code>lindera-trainer</code>（<code>lindera::dictionary::trainer</code> 経由を含む）を使い、自分で作った <code>FeatureExtractor</code> の ID の表を読む、または <code>surface_features()</code> を呼ぶ Rust コード</td><td>フィールドを読む代わりに <code>unigram_feature_ids()</code>・<code>left_feature_ids()</code>・<code>right_feature_ids()</code> を呼ぶ。表は <code>surfaces()</code> と <code>features()</code> から作り直す（<a href="#lindera_trainer-%E3%81%AE-rust-api-%E5%A4%89%E6%9B%B4"><code>lindera_trainer</code> の Rust API 変更</a>を参照）</td></tr>
 </tbody></table>
@@ -2204,7 +2205,8 @@ mecab-ko-dic の <code>unk.def</code> はすべての行がこうした行です
 <h2 id="lindera_dictionary-の-rust-api-変更"><a class="header" href="#lindera_dictionary-の-rust-api-変更"><code>lindera_dictionary</code> の Rust API 変更</a></h2>
 <p>以下は、ラティスのバックトレースを直接呼び出すコード、<code>Metadata::new</code> で辞書の
 メタデータを作成するコード、辞書の文字カテゴリを読むコード、<code>UnknownDictionary</code>
-で未知語を生成するコード、<code>mecab-dict-index</code> が拒否する <code>char.def</code> と <code>unk.def</code>
+で未知語を生成するコード、プレフィックス辞書の詳細のレコードを読むコード、
+<code>mecab-dict-index</code> が拒否する <code>char.def</code> と <code>unk.def</code>
 から辞書をビルドするコード（<a href="#lindera-build-%E3%81%A8-lindera-train-%E3%81%AF-chardef-%E3%81%A8-unkdef-%E3%82%92%E7%85%A7%E3%82%89%E3%81%97%E5%90%88%E3%82%8F%E3%81%9B%E3%82%8B">前の節</a>を参照）
 にのみ影響します。対象は
 <code>lindera_dictionary::viterbi::Lattice</code> と <code>lindera_dictionary::nbest::NBestGenerator</code>
@@ -2213,7 +2215,9 @@ mecab-ko-dic の <code>unk.def</code> はすべての行がこうした行です
 <code>lindera_dictionary::dictionary::metadata::Metadata</code>（<code>lindera::dictionary::Metadata</code>
 からも参照できます）、<code>lindera_dictionary::dictionary::character_definition::CharacterDefinition</code>、
 <code>lindera_dictionary::dictionary::unknown_dictionary</code>（<code>lindera::dictionary::core::unknown_dictionary</code>
-からも参照できます）、<code>lindera_dictionary::builder</code>（<code>lindera::dictionary::builder</code>
+からも参照できます）、<code>lindera_dictionary::dictionary::prefix_dictionary</code>
+（<code>lindera::dictionary::core::prefix_dictionary</code> からも参照できます）、
+<code>lindera_dictionary::builder</code>（<code>lindera::dictionary::builder</code>
 からも参照できます）です。<code>Segmenter</code>・<code>Tokenizer</code>・<code>SegmentWorker</code>・
 <code>AnalysisWorker</code> の API と CLI は影響を受けません。言語バインディングで変わるのは
 <code>Metadata</code> クラスだけです（<a href="#%E8%A8%AD%E5%AE%9A-normalize_details-%E3%81%AE%E5%89%8A%E9%99%A4">設定 <code>normalize_details</code> の削除</a>
@@ -2241,6 +2245,8 @@ mecab-ko-dic の <code>unk.def</code> はすべての行がこうした行です
 <tr><td><code>CharacterDefinitionBuilder::build_from_str</code> と <code>build</code> は、それより前の行で定義していないカテゴリを指す範囲行と、2 回定義したカテゴリを受け入れる</td><td>行とカテゴリを示すエラーを返す</td></tr>
 <tr><td><code>DictionaryBuilder::build_dictionary</code> と <code>build_unknown_dictionary</code> は、<code>char.def</code> が定義していないカテゴリを指す <code>unk.def</code> の行と、<code>unk.def</code> の行がない <code>char.def</code> のカテゴリを受け入れる</td><td>ファイルとカテゴリを示すエラーを返す</td></tr>
 <tr><td>—</td><td><code>unknown_dictionary</code> に <code>check_unknown_word_categories</code> を追加。ビルダーと学習器が実行する、<code>char.def</code> のカテゴリと <code>unk.def</code> の照合</td></tr>
+<tr><td><code>PrefixDictionary::words_idx_data</code> と <code>PrefixDictionary::words_data</code> は <code>Data</code> 型の公開フィールド</td><td>非公開。<code>&amp;[u8]</code> を返すメソッド <code>words_idx_data()</code>・<code>words_data()</code> で読む</td></tr>
+<tr><td><code>UserPrefixDictionary::words_idx_data</code> と <code>UserPrefixDictionary::words_data</code> は <code>Data</code> 型の公開フィールド</td><td>非公開。<code>&amp;[u8]</code> を返すメソッド <code>words_idx_data()</code>・<code>words_data()</code> で読む</td></tr>
 </tbody></table>
 </div>
 <p>各トークンは <code>(start, word_id)</code> ではなく <code>(start, end, word_id)</code> になりました。
@@ -2334,6 +2340,13 @@ BOS です。</li>
 <code>out</code> に入れます。候補は <code>set_text_with_options</code> がデフォルトの設定と指定した
 <code>max_grouping_len</code> で作るものと同じで、どのパスも届かない位置の候補も含みます。
 解析の処理は変わりません。</p>
+<p><code>PrefixDictionary</code> と <code>UserPrefixDictionary</code> の詳細のレコード（語 ID の索引
+<code>dict.wordsidx</code> と詳細 <code>dict.words</code>）は、公開フィールドではなくなりました。
+語の詳細は、最初に読むときに UTF-8 として検証し、以後は検証しません。そのため、
+読み込んだときのバイト列が変わらないことが前提になります。<code>words_idx_data()</code> と
+<code>words_data()</code> で読んでください。別のバイト列を代入していたコードは、代わりに
+<code>PrefixDictionary::load</code> か <code>UserPrefixDictionary::load</code> で新しい辞書を読み込みます。
+ユーザー辞書の <code>.bin</code> は変わらず、v6 でビルドしたものもそのまま読み込めます。</p>
 <h2 id="lindera_trainer-の-rust-api-変更"><a class="header" href="#lindera_trainer-の-rust-api-変更"><code>lindera_trainer</code> の Rust API 変更</a></h2>
 <p>以下は、<code>lindera-trainer</code> を直接、または <code>lindera::dictionary::trainer</code>（<code>train</code>
 feature）経由で使う Rust コードにのみ影響します
@@ -2469,6 +2482,9 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <li><code>UnknownDictionary::gen_unk_words</code> や <code>UnknownDictionary::compatible_unk_index</code> を
 呼び出しているか、<code>UnkWord</code> や <code>WordIdx</code> を使っている場合は、代わりに
 <code>Lattice::unknown_word_candidates</code> で未知語を列挙する。</li>
+<li><code>PrefixDictionary</code> や <code>UserPrefixDictionary</code> の <code>words_idx_data</code>・<code>words_data</code> を
+読んでいる場合は、同じ名前のメソッドを呼ぶ。代入している場合は、その <code>load</code>
+関数で辞書を読み込み直す。</li>
 <li><code>SerializableModel::unk_category_names</code> や <code>unk_categories</code> を読んでいる場合は
 代わりに <code>unk_entries</code> を読み、<code>Trainer::max_grouping_len</code> を設定している場合は
 辞書を使うときの上限を渡す。</li>
