@@ -2722,7 +2722,10 @@ all the others. `cost()` still returns an `i32`. `include_bytes_aligned!`,
 which existed only to align the embedded matrix, is removed:
 `embedded_dictionary!` returns `matrix.mtx` from a private `fn` with
 `include_bytes!`, as it returns the other files, which keeps the matrix out
-of the dictionary crate's metadata.
+of the dictionary crate's metadata. For UniDic CWJ, measured on Linux, the
+crate's `lib.rmeta` shrinks from 1,158 MB to under 10 KB and its `rlib`
+from 2.46 GB to 1.31 GB; compiling the crate takes about a third of the time
+in a debug build and 8% less in a release build.
 
 ## Rust API changes in `lindera_trainer`
 

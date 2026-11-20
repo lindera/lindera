@@ -2471,6 +2471,9 @@ BOS の辺の、`LatticeOptions::bos` での添字です。デフォルトの単
 行列の境界をそろえるためだけにあった `include_bytes_aligned!` は削除しました。
 `embedded_dictionary!` は、ほかのファイルと同じく `matrix.mtx` も非公開の `fn` から
 `include_bytes!` で返すので、行列は辞書クレートのメタデータに入りません。
+Linux で測ると、UniDic CWJ では、クレートの `lib.rmeta` が 1,158 MB から 10 KB
+未満に、`rlib` が 2.46 GB から 1.31 GB になり、クレートのコンパイルにかかる時間は、
+debug ビルドで約 3 分の 1 に、release ビルドで 8% 短くなります。
 
 ## `lindera_trainer` の Rust API 変更
 
