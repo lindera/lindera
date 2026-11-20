@@ -1355,7 +1355,7 @@ mod tests {
     /// What a `joined_details` lookup found, owned, for the assertions.
     fn found(found: JoinedDetails<'_>) -> Result<String, &'static str> {
         match found {
-            JoinedDetails::Fields(joined) => Ok(joined.to_string()),
+            JoinedDetails::Fields(joined, _) => Ok(joined.to_string()),
             JoinedDetails::Malformed => Err("malformed"),
             JoinedDetails::NoSlot => Err("no slot"),
         }

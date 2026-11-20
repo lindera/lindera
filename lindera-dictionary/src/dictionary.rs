@@ -74,9 +74,25 @@ impl<'a> DetailFields<'a> {
     /// splits into a single empty field.
     #[inline]
     fn from_joined(joined: &'a str) -> Self {
+        Self::from_joined_with_count(joined, detail_field_count(joined.as_bytes()))
+    }
+
+    /// Builds the field list of a validated NUL-joined blob whose field
+    /// count is already known.
+    ///
+    /// # Arguments
+    ///
+    /// * `joined` - The entry's joined fields, already UTF-8 validated.
+    /// * `count` - The number of fields `joined` splits into.
+    ///
+    /// # Returns
+    ///
+    /// The fields in schema order.
+    #[inline]
+    fn from_joined_with_count(joined: &'a str, count: usize) -> Self {
         Self {
             inner: joined.split('\0'),
-            remaining: detail_field_count(joined.as_bytes()),
+            remaining: count,
         }
     }
 
@@ -176,7 +192,7 @@ fn packed_details_iter<'a>(
     match found {
         JoinedDetails::NoSlot => missing(),
         JoinedDetails::Malformed => DetailFields::unk(),
-        JoinedDetails::Fields(joined) => DetailFields::from_joined(joined),
+        JoinedDetails::Fields(joined, count) => DetailFields::from_joined_with_count(joined, count),
     }
 }
 
@@ -619,18 +635,24 @@ mod tests {
         assert_eq!(dict.word_details(0), UNK.to_vec());
     }
 
-    /// An entry with more fields than a byte can count still reports its
-    /// exact length and yields every field.
+    /// The field count recorded by the first read is the one later reads
+    /// report, and an entry with more fields than a byte can count still
+    /// reports its exact length (#1393).
     #[test]
-    fn user_word_details_iter_counts_hundreds_of_fields() {
+    fn user_word_details_iter_reports_the_recorded_count() {
         let names: Vec<String> = (0..300).map(|i| format!("f{i}")).collect();
-        let fields: Vec<&str> = names.iter().map(String::as_str).collect();
-        let dict = user_dictionary(&[&fields]);
+        let many: Vec<&str> = names.iter().map(String::as_str).collect();
+        let few = ["名詞", "一般", "*"];
+        let dict = user_dictionary(&[&many, &few]);
 
         for read in 0..2 {
             let details = dict.word_details_iter(0);
-            assert_eq!(details.len(), 300, "read {read}");
-            assert_eq!(details.collect::<Vec<_>>(), fields, "read {read}");
+            assert_eq!(details.len(), 300, "300 fields, read {read}");
+            assert_eq!(details.collect::<Vec<_>>(), many, "300 fields, read {read}");
+
+            let details = dict.word_details_iter(1);
+            assert_eq!(details.len(), 3, "3 fields, read {read}");
+            assert_eq!(details.collect::<Vec<_>>(), few, "3 fields, read {read}");
         }
     }
 
