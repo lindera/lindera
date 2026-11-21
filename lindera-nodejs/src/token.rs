@@ -7,6 +7,10 @@
 //! GC. Plain objects are owned entirely by the JS heap, so the same loop
 //! stays flat, and they survive `JSON.stringify` / `structuredClone` /
 //! worker transfer without conversion (#922, #930).
+//!
+//! `Token` and `NbestResult` give their types to `index.d.ts`; their
+//! objects are made by `crate::token_objects`, the same as the conversion
+//! napi-rs derives from them (#1409).
 
 /// N-best tokenization result.
 ///
@@ -64,31 +68,9 @@ impl Token {
     }
 }
 
-/// Makes the token views of a batch into token objects, text by text.
-///
-/// The synchronous batch methods and their `Promise` versions, both for a
-/// batch made at once and for each part of a batch made in parts
-/// (`crate::batch_parts`), all convert through this function and the two
-/// below, so that the loop over the tokens has one copy: a second copy of
-/// such a loop once stopped the compiler from inlining the conversion of a
-/// token into the loop of the single-text methods (#1407).
-///
-/// # Arguments
-///
-/// * `batch` - The views of each text, in the order of the texts.
-///
-/// # Returns
-///
-/// The token objects of each text, in the same order.
-pub(crate) fn tokens_from_views(batch: Vec<Vec<lindera_binding::TokenView>>) -> Vec<Vec<Token>> {
-    batch
-        .into_iter()
-        .map(|views| views.into_iter().map(Token::from_view).collect())
-        .collect()
-}
-
 /// Makes the surface-only views of a batch into surface strings, text by
-/// text, as [`tokens_from_views`] does for tokens.
+/// text. The synchronous `tokenizeSurfacesBatch` and the parts of its
+/// `Promise` version both convert through it.
 ///
 /// # Arguments
 ///
@@ -106,30 +88,26 @@ pub(crate) fn surfaces_from_views(
         .collect()
 }
 
-/// Makes the N-best results of a batch into `NbestResult` objects, text by
-/// text, as [`tokens_from_views`] does for tokens.
+/// Makes the surfaces of a batch at once, as `tokenizeSurfacesBatch` gives
+/// them: the conversion of a batch that fits in one part
+/// (`crate::batch_parts`).
 ///
 /// # Arguments
 ///
-/// * `batch` - The `(views, cost)` pairs of each text, in the order of the
-///   texts.
+/// * `env` - The environment of the current call.
+/// * `batch` - The views of each text.
 ///
 /// # Returns
 ///
-/// The N-best results of each text, in the same order.
-pub(crate) fn nbest_from_views(
-    batch: Vec<lindera_binding::tokenizer::NbestViews>,
-) -> Vec<Vec<NbestResult>> {
-    batch
-        .into_iter()
-        .map(|results| {
-            results
-                .into_iter()
-                .map(|(views, cost)| NbestResult {
-                    tokens: views.into_iter().map(Token::from_view).collect(),
-                    cost,
-                })
-                .collect()
-        })
-        .collect()
+/// The array of the surface strings of each text.
+///
+/// # Safety
+///
+/// `env` must be the environment of the current call.
+pub(crate) unsafe fn surfaces_value(
+    env: napi::sys::napi_env,
+    batch: Vec<Vec<lindera_binding::token::SurfaceView>>,
+) -> napi::Result<napi::sys::napi_value> {
+    // SAFETY: the caller guarantees `env`.
+    unsafe { napi::bindgen_prelude::ToNapiValue::to_napi_value(env, surfaces_from_views(batch)) }
 }

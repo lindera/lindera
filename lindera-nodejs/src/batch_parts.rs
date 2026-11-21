@@ -17,11 +17,11 @@
 //! `step`. There is no `napi_deferred`, which only settling frees (a worker
 //! terminated with parts pending would leak it), and no `napi_ref`.
 //!
-//! A part goes through the conversions of the synchronous methods
-//! (`tokens_from_views`, `surfaces_from_views`, `nbest_from_views` and
-//! napi's conversion of a `Vec`) into a temporary array, whose elements then
-//! move into the outer array. So the loop over the tokens keeps one copy
-//! (see `crate::token`).
+//! A part of token objects or N-best results is made by the conversion of
+//! the synchronous methods (`crate::token_objects`), straight into the
+//! outer array or the open text's array. A part of surfaces goes through
+//! `surfaces_from_views` and napi's conversion of a `Vec` into a temporary
+//! array, whose elements then move into the outer array.
 //!
 //! An error or a panic in `start` or `step` rejects the promise: an error
 //! that a callback of `setImmediate` returned to napi would be thrown as an
@@ -42,7 +42,9 @@ use lindera_binding::TokenView;
 use lindera_binding::token::SurfaceView;
 use lindera_binding::tokenizer::NbestViews;
 
-use crate::token::{nbest_from_views, surfaces_from_views, tokens_from_views};
+use crate::js::{element, length, set_element};
+use crate::token::surfaces_from_views;
+use crate::token_objects;
 
 /// The weight of the values that one part makes at most, unless a single
 /// value weighs more. About 1,700 IPADIC tokens or 32,768 surfaces.
@@ -84,6 +86,21 @@ impl Weight for SurfaceView {
 /// the results, or the thenable that makes them in parts), and an argument
 /// of the callbacks here.
 pub struct BatchValue(sys::napi_value);
+
+impl BatchValue {
+    /// Wraps a JavaScript value.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - A handle of the current call.
+    ///
+    /// # Returns
+    ///
+    /// The wrapped value.
+    pub(crate) fn new(value: sys::napi_value) -> Self {
+        Self(value)
+    }
+}
 
 impl ToNapiValue for BatchValue {
     unsafe fn to_napi_value(_env: sys::napi_env, val: Self) -> napi::Result<sys::napi_value> {
@@ -599,59 +616,6 @@ impl NbestCursor {
     }
 }
 
-/// The element of `array` at `index`.
-///
-/// # Safety
-///
-/// `env` must be the environment of the current call, and `array` an array
-/// handle of it.
-unsafe fn element(
-    env: sys::napi_env,
-    array: sys::napi_value,
-    index: u32,
-) -> napi::Result<sys::napi_value> {
-    let mut value = ptr::null_mut();
-    // SAFETY: the caller guarantees both handles; `value` outlives the call.
-    check_status!(
-        unsafe { sys::napi_get_element(env, array, index, &mut value) },
-        "Failed to get an element of a batch's array"
-    )?;
-    Ok(value)
-}
-
-/// Sets the element of `array` at `index`.
-///
-/// # Safety
-///
-/// As [`element`], and `value` must be a handle of the current call.
-unsafe fn set_element(
-    env: sys::napi_env,
-    array: sys::napi_value,
-    index: u32,
-    value: sys::napi_value,
-) -> napi::Result<()> {
-    // SAFETY: the caller guarantees the three handles.
-    check_status!(
-        unsafe { sys::napi_set_element(env, array, index, value) },
-        "Failed to set an element of a batch's array"
-    )
-}
-
-/// The length of `array`.
-///
-/// # Safety
-///
-/// As [`element`].
-unsafe fn length(env: sys::napi_env, array: sys::napi_value) -> napi::Result<u32> {
-    let mut len = 0;
-    // SAFETY: the caller guarantees both handles; `len` outlives the call.
-    check_status!(
-        unsafe { sys::napi_get_array_length(env, array, &mut len) },
-        "Failed to get the length of a batch's array"
-    )?;
-    Ok(len)
-}
-
 /// Appends the elements of `source` from `from` on to `target`.
 ///
 /// # Safety
@@ -828,12 +792,12 @@ impl Cursor for FlatCursor<TokenView> {
         let Some(part) = self.take(budget) else {
             return Ok(true);
         };
-        // SAFETY: the caller guarantees the handles; the part's array is a
-        // handle of the current call.
+        // SAFETY: the caller guarantees the handles.
         unsafe {
-            let made = ToNapiValue::to_napi_value(env, tokens_from_views(part.chunks))?;
-            place_flat(env, outer, made, part.first, part.continues)?;
+            token_objects::fill_texts(env, outer, part.first as u32, part.continues, &part.chunks)?;
         }
+        let tokens = part.chunks.iter().map(Vec::len).sum();
+        token_objects::drop_views(tokens, part.chunks);
         Ok(self.open.is_none() && self.texts.len() == 0)
     }
 }
@@ -852,7 +816,8 @@ impl Cursor for FlatCursor<SurfaceView> {
         let Some(part) = self.take(budget) else {
             return Ok(true);
         };
-        // SAFETY: as for the tokens.
+        // SAFETY: the caller guarantees the handles; the part's array is a
+        // handle of the current call.
         unsafe {
             let made = ToNapiValue::to_napi_value(env, surfaces_from_views(part.chunks))?;
             place_flat(env, outer, made, part.first, part.continues)?;
@@ -875,49 +840,25 @@ impl Cursor for NbestCursor {
         let Some(part) = self.take(budget) else {
             return Ok(true);
         };
-        // SAFETY: the caller guarantees the handles; every element and
-        // property is a handle of the current call.
+        // SAFETY: the caller guarantees the handles.
         unsafe {
-            let made = ToNapiValue::to_napi_value(env, nbest_from_views(part.chunks))?;
-            let chunks = length(env, made)?;
-            let mut next = part.first as u32;
-            for index in 0..chunks {
-                let chunk = element(env, made, index)?;
-                if index > 0 || !part.continues_text {
-                    set_element(env, outer, next, chunk)?;
-                    next += 1;
-                    continue;
-                }
-                let open = element(env, outer, next - 1)?;
-                let mut from = 0;
-                if part.continues_result {
-                    let last = element(env, open, length(env, open)? - 1)?;
-                    let tokens = tokens_of(env, last)?;
-                    append(env, tokens, tokens_of(env, element(env, chunk, 0)?)?, 0)?;
-                    from = 1;
-                }
-                append(env, open, chunk, from)?;
-            }
+            token_objects::fill_nbest_texts(
+                env,
+                outer,
+                part.first as u32,
+                part.continues_text,
+                part.continues_result,
+                &part.chunks,
+            )?;
         }
+        let tokens = part
+            .chunks
+            .iter()
+            .flat_map(|text| text.iter().map(|(views, _)| views.len()))
+            .sum();
+        token_objects::drop_views(tokens, part.chunks);
         Ok(self.open_text.is_none() && self.texts.len() == 0)
     }
-}
-
-/// The `tokens` array of an `NbestResult` object.
-///
-/// # Safety
-///
-/// `env` must be the environment of the current call, and `result` an
-/// object handle of it.
-unsafe fn tokens_of(env: sys::napi_env, result: sys::napi_value) -> napi::Result<sys::napi_value> {
-    let mut tokens = ptr::null_mut();
-    // SAFETY: the caller guarantees both handles; the name and `tokens`
-    // outlive the call.
-    check_status!(
-        unsafe { sys::napi_get_named_property(env, result, c"tokens".as_ptr(), &mut tokens) },
-        "Failed to get the tokens of an N-best result"
-    )?;
-    Ok(tokens)
 }
 
 /// The state of a batch made in parts, which `start` and `step` share.
@@ -936,17 +877,19 @@ struct Batch<C> {
 /// # Arguments
 ///
 /// * `env` - The environment of `resolve`.
-/// * `results` - The results, made by the conversion of the synchronous
-///   method.
+/// * `batch` - The views of the batch.
+/// * `convert` - The conversion of the synchronous method.
 ///
 /// # Returns
 ///
 /// The array of the results.
-fn at_once<R: ToNapiValue>(env: &Env, results: R) -> napi::Result<BatchValue> {
+fn at_once<B>(
+    env: &Env,
+    batch: B,
+    convert: unsafe fn(sys::napi_env, B) -> napi::Result<sys::napi_value>,
+) -> napi::Result<BatchValue> {
     // SAFETY: `env` is the environment of `resolve`, the current call.
-    Ok(BatchValue(unsafe {
-        ToNapiValue::to_napi_value(env.raw(), results)?
-    }))
+    Ok(BatchValue(unsafe { convert(env.raw(), batch)? }))
 }
 
 /// Makes the value of `resolve` for a batch that does not fit in one part:
@@ -1001,10 +944,10 @@ fn in_parts<C: Cursor>(env: &Env, cursor: C, config: PartConfig) -> napi::Result
 /// # Returns
 ///
 /// The value of `resolve`.
-pub(crate) fn resolve_flat<V: Weight, R: ToNapiValue>(
+pub(crate) fn resolve_flat<V: Weight>(
     env: &Env,
     batch: Vec<Vec<V>>,
-    convert: fn(Vec<Vec<V>>) -> R,
+    convert: unsafe fn(sys::napi_env, Vec<Vec<V>>) -> napi::Result<sys::napi_value>,
     config: PartConfig,
 ) -> napi::Result<BatchValue>
 where
@@ -1012,7 +955,7 @@ where
 {
     inject(env.raw(), &config, 0)?;
     if flat_fits(&batch, config.budget) {
-        at_once(env, convert(batch))
+        at_once(env, batch, convert)
     } else {
         in_parts(env, FlatCursor::new(batch), config)
     }
@@ -1037,7 +980,7 @@ pub(crate) fn resolve_nbest(
 ) -> napi::Result<BatchValue> {
     inject(env.raw(), &config, 0)?;
     if nbest_fits(&batch, config.budget) {
-        at_once(env, nbest_from_views(batch))
+        at_once(env, batch, token_objects::nbest_batch)
     } else {
         in_parts(env, NbestCursor::new(batch), config)
     }

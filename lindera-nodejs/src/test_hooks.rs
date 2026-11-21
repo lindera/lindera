@@ -129,3 +129,133 @@ pub fn fail_batch_part_for_test(part: u32, kind: String) -> napi::Result<()> {
     *fault = Some(Fault { part, kind });
     Ok(())
 }
+
+/// Tokenizes `texts` as `tokenizeBatch` does, and makes the token objects
+/// with the conversion that napi-rs derives from `Token`, as the binding
+/// did before #1409, so that tests/test_token_objects.js can compare the
+/// objects of `crate::token_objects` with them.
+///
+/// # Arguments
+///
+/// * `tokenizer` - The tokenizer.
+/// * `texts` - The texts.
+///
+/// # Returns
+///
+/// The token objects of each text.
+#[napi(
+    catch_unwind,
+    skip_typescript,
+    js_name = "__tokenizeBatchDerivedForTest"
+)]
+pub fn tokenize_batch_derived_for_test(
+    tokenizer: &crate::tokenizer::JsTokenizer,
+    texts: Vec<String>,
+) -> napi::Result<Vec<Vec<crate::token::Token>>> {
+    let batch = tokenizer
+        .inner
+        .tokenize_batch(&texts, None)
+        .map_err(crate::error::to_napi_error)?;
+    Ok(batch
+        .into_iter()
+        .map(|views| {
+            views
+                .into_iter()
+                .map(crate::token::Token::from_view)
+                .collect()
+        })
+        .collect())
+}
+
+/// Tokenizes `text` as `tokenizeNbest(text, n)` does, and makes the N-best
+/// results with the conversion that napi-rs derives from `NbestResult`, as
+/// [`tokenize_batch_derived_for_test`] does for tokens.
+///
+/// # Arguments
+///
+/// * `tokenizer` - The tokenizer.
+/// * `text` - The text.
+/// * `n` - The number of results.
+///
+/// # Returns
+///
+/// The N-best results.
+#[napi(
+    catch_unwind,
+    skip_typescript,
+    js_name = "__tokenizeNbestDerivedForTest"
+)]
+pub fn tokenize_nbest_derived_for_test(
+    tokenizer: &crate::tokenizer::JsTokenizer,
+    text: String,
+    n: u32,
+) -> napi::Result<Vec<crate::token::NbestResult>> {
+    let results = tokenizer
+        .inner
+        .tokenize_nbest(&text, n as usize, false, None)
+        .map_err(crate::error::to_napi_error)?;
+    Ok(results
+        .into_iter()
+        .map(|(views, cost)| crate::token::NbestResult {
+            tokens: views
+                .into_iter()
+                .map(crate::token::Token::from_view)
+                .collect(),
+            cost,
+        })
+        .collect())
+}
+
+/// Sets the number of tokens made in one handle scope (#1409), so that the
+/// tests can make small calls in many scopes.
+///
+/// # Arguments
+///
+/// * `tokens` - The tokens of a scope, 1 or more, or `null` for the default
+///   (`SCOPE_TOKENS` in the `token_objects` module).
+///
+/// # Returns
+///
+/// `Ok(())`, or an `InvalidArg` error for 0.
+#[napi(catch_unwind, skip_typescript, js_name = "__setTokenScopeForTest")]
+pub fn set_token_scope_for_test(tokens: Option<u32>) -> napi::Result<()> {
+    if tokens == Some(0) {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            "the tokens of a scope must be 1 or more",
+        ));
+    }
+    crate::token_objects::hooks::SCOPE.store(
+        tokens.unwrap_or(0) as usize,
+        std::sync::atomic::Ordering::Relaxed,
+    );
+    Ok(())
+}
+
+/// Sets where the views of the calls are dropped once their objects are
+/// made (#1409).
+///
+/// # Arguments
+///
+/// * `mode` - `"thread"` (always on the thread that drops them), `"inline"`
+///   (always on the spot) or `null` (as the number of tokens says).
+///
+/// # Returns
+///
+/// `Ok(())`, or an `InvalidArg` error for another `mode`.
+#[napi(catch_unwind, skip_typescript, js_name = "__setDropThreadForTest")]
+pub fn set_drop_thread_for_test(mode: Option<String>) -> napi::Result<()> {
+    let value = match mode.as_deref() {
+        None => 0,
+        Some("thread") => 1,
+        Some("inline") => 2,
+        Some(other) => {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("unknown place to drop the views {other:?}"),
+            ));
+        }
+    };
+    crate::token_objects::hooks::DROP.store(value, std::sync::atomic::Ordering::Relaxed);
+    Ok(())
+}

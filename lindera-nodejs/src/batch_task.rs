@@ -31,7 +31,8 @@ use lindera_binding::{CoreTokenizer, TokenView};
 
 use crate::batch_parts::{self, BatchValue, PartConfig};
 use crate::error::to_napi_error;
-use crate::token::{surfaces_from_views, tokens_from_views};
+use crate::token::surfaces_value;
+use crate::token_objects;
 
 /// Runs the work of a task's `compute` or `resolve`, making a panic in it
 /// the error that `#[napi(catch_unwind)]` makes of a panic
@@ -127,7 +128,7 @@ impl Task for TokenizeBatchTask {
     /// parts (`crate::batch_parts`).
     fn resolve(&mut self, env: Env, output: Self::Output) -> napi::Result<Self::JsValue> {
         let config = self.config;
-        catch_panic(|| batch_parts::resolve_flat(&env, output, tokens_from_views, config))
+        catch_panic(|| batch_parts::resolve_flat(&env, output, token_objects::token_batch, config))
     }
 }
 
@@ -192,7 +193,7 @@ impl Task for TokenizeSurfacesBatchTask {
     /// parts (`crate::batch_parts`).
     fn resolve(&mut self, env: Env, output: Self::Output) -> napi::Result<Self::JsValue> {
         let config = self.config;
-        catch_panic(|| batch_parts::resolve_flat(&env, output, surfaces_from_views, config))
+        catch_panic(|| batch_parts::resolve_flat(&env, output, surfaces_value, config))
     }
 }
 

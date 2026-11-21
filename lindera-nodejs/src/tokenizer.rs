@@ -9,18 +9,21 @@ use std::num::NonZeroUsize;
 use std::path::Path;
 use std::sync::Arc;
 
+use napi::Env;
 use napi::bindgen_prelude::AsyncTask;
 
 use lindera_binding::argument::Positive;
 use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
+use crate::batch_parts::BatchValue;
 use crate::batch_task::{
     NbestArgs, TokenizeBatchTask, TokenizeNbestBatchTask, TokenizeSurfacesBatchTask,
 };
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::error::to_napi_error;
 use crate::mode::Mode;
-use crate::token::{NbestResult, Token, nbest_from_views, surfaces_from_views, tokens_from_views};
+use crate::token::surfaces_from_views;
+use crate::token_objects;
 use crate::util::{JsonArg, integer_arg, js_value_to_serde_value, optional_integer_arg};
 
 /// Builder for creating a Tokenizer with custom configuration.
@@ -277,7 +280,7 @@ impl JsTokenizerBuilder {
 pub struct JsTokenizer {
     /// The tokenizer, shared with the tasks of the batch methods that return
     /// a `Promise`, which run while the `Tokenizer` object may be collected.
-    inner: Arc<CoreTokenizer>,
+    pub(crate) inner: Arc<CoreTokenizer>,
 }
 
 #[napi]
@@ -338,10 +341,12 @@ impl JsTokenizer {
     ///
     /// An array of token objects containing morphological features, in
     /// reading order.
-    #[napi(catch_unwind)]
-    pub fn tokenize(&self, text: String) -> napi::Result<Vec<Token>> {
+    #[napi(catch_unwind, ts_return_type = "Array<Token>")]
+    pub fn tokenize(&self, env: Env, text: String) -> napi::Result<BatchValue> {
         let views = self.inner.tokenize(&text).map_err(to_napi_error)?;
-        Ok(views.into_iter().map(Token::from_view).collect())
+        // SAFETY: `env` is the environment of this call.
+        let value = unsafe { token_objects::tokens(env.raw(), views)? };
+        Ok(BatchValue::new(value))
     }
 
     /// Tokenizes the given text and returns only the token surfaces.
@@ -379,30 +384,24 @@ impl JsTokenizer {
     /// An array of NbestResult objects, each containing tokens and their cost,
     /// or an `InvalidArg` error when `n` or `cost_threshold` is not an integer
     /// in its range.
-    #[napi(catch_unwind)]
+    #[napi(catch_unwind, ts_return_type = "Array<NbestResult>")]
     pub fn tokenize_nbest(
         &self,
+        env: Env,
         text: String,
         n: f64,
         unique: Option<bool>,
         cost_threshold: Option<f64>,
-    ) -> napi::Result<Vec<NbestResult>> {
+    ) -> napi::Result<BatchValue> {
         let n = integer_arg("n", n)?;
         let cost_threshold = optional_integer_arg("costThreshold", cost_threshold)?;
         let results = self
             .inner
             .tokenize_nbest(&text, n, unique.unwrap_or(false), cost_threshold)
             .map_err(to_napi_error)?;
-
-        let js_results: Vec<NbestResult> = results
-            .into_iter()
-            .map(|(views, cost)| NbestResult {
-                tokens: views.into_iter().map(Token::from_view).collect(),
-                cost,
-            })
-            .collect();
-
-        Ok(js_results)
+        // SAFETY: `env` is the environment of this call.
+        let value = unsafe { token_objects::nbest(env.raw(), results)? };
+        Ok(BatchValue::new(value))
     }
 
     /// Tokenizes every text of `texts`, each as `tokenize` does, on up to
@@ -417,24 +416,27 @@ impl JsTokenizer {
     ///
     /// * `texts` - An array of texts.
     /// * `max_threads` - The most threads, an integer of 1 or more (default:
-    ///   the number of CPUs).
+    ///   the parallelism the system reports).
     ///
     /// # Returns
     ///
     /// An array with the token objects of each text, or an `InvalidArg`
     /// error when `maxThreads` is not an integer of 1 or more.
-    #[napi(catch_unwind)]
+    #[napi(catch_unwind, ts_return_type = "Array<Array<Token>>")]
     pub fn tokenize_batch(
         &self,
+        env: Env,
         texts: Vec<String>,
         max_threads: Option<f64>,
-    ) -> napi::Result<Vec<Vec<Token>>> {
+    ) -> napi::Result<BatchValue> {
         let max_threads = batch_threads(max_threads)?;
         let batch = self
             .inner
             .tokenize_batch(&texts, max_threads)
             .map_err(to_napi_error)?;
-        Ok(tokens_from_views(batch))
+        // SAFETY: `env` is the environment of this call.
+        let value = unsafe { token_objects::token_batch(env.raw(), batch)? };
+        Ok(BatchValue::new(value))
     }
 
     /// Tokenizes every text of `texts` as `tokenizeSurfaces` does, on up to
@@ -444,7 +446,7 @@ impl JsTokenizer {
     ///
     /// * `texts` - An array of texts.
     /// * `max_threads` - The most threads, an integer of 1 or more (default:
-    ///   the number of CPUs).
+    ///   the parallelism the system reports).
     ///
     /// # Returns
     ///
@@ -475,22 +477,23 @@ impl JsTokenizer {
     /// * `cost_threshold` - Maximum cost difference from the best path of
     ///   each text, an integer that fits in 64 bits (default: undefined).
     /// * `max_threads` - The most threads, an integer of 1 or more (default:
-    ///   the number of CPUs).
+    ///   the parallelism the system reports).
     ///
     /// # Returns
     ///
     /// An array with the NbestResult objects of each text, or an
     /// `InvalidArg` error when `n`, `costThreshold` or `maxThreads` is not
     /// an integer in its range.
-    #[napi(catch_unwind)]
+    #[napi(catch_unwind, ts_return_type = "Array<Array<NbestResult>>")]
     pub fn tokenize_nbest_batch(
         &self,
+        env: Env,
         texts: Vec<String>,
         n: f64,
         unique: Option<bool>,
         cost_threshold: Option<f64>,
         max_threads: Option<f64>,
-    ) -> napi::Result<Vec<Vec<NbestResult>>> {
+    ) -> napi::Result<BatchValue> {
         let n = integer_arg("n", n)?;
         let cost_threshold = optional_integer_arg("costThreshold", cost_threshold)?;
         let max_threads = batch_threads(max_threads)?;
@@ -504,7 +507,9 @@ impl JsTokenizer {
                 max_threads,
             )
             .map_err(to_napi_error)?;
-        Ok(nbest_from_views(batch))
+        // SAFETY: `env` is the environment of this call.
+        let value = unsafe { token_objects::nbest_batch(env.raw(), batch)? };
+        Ok(BatchValue::new(value))
     }
 
     /// Tokenizes every text of `texts` as `tokenizeBatch` does, and returns
