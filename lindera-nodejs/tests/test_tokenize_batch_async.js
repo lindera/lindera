@@ -6,6 +6,7 @@ const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const { describe, it } = require("node:test");
+const util = require("node:util");
 
 const lindera = require("../index.js");
 
@@ -259,6 +260,378 @@ describe(
         },
         ended,
       );
+    });
+  },
+);
+
+// A batch whose results do not fit in one part is made in parts, with a turn
+// of the event loop between two parts (lindera/lindera#1408). The test hooks
+// set the budget of a part, count the parts, and make a part fail; they exist
+// only in a build with the `test-hooks` feature.
+describe(
+  "Making the results of a batch in parts",
+  {
+    skip:
+      (!hasEmbeddedIpadic && "embedded://ipadic not available") ||
+      (!hasTestHooks && "built without the test-hooks feature"),
+  },
+  () => {
+    const index = path.join(__dirname, "..", "index.js");
+    const bocchan = path.join(
+      __dirname,
+      "..",
+      "..",
+      "resources",
+      "bocchan.txt",
+    );
+
+    // 40 lines, an empty text, and the 40 lines as one text: parts that end
+    // inside a text, between texts, and after an empty one.
+    function partTexts() {
+      const lines = fs.readFileSync(bocchan, "utf8").split("\n").slice(0, 40);
+      return lines.concat(["", lines.join("")]);
+    }
+
+    // Runs `call` with the budget of a part set to `units`, then puts the
+    // default back.
+    async function withBudget(units, call) {
+      lindera.__setBatchPartBudgetForTest(units);
+      try {
+        return await call();
+      } finally {
+        lindera.__setBatchPartBudgetForTest(null);
+      }
+    }
+
+    // Runs `script` in a child Node.js, so that a failure that ends the
+    // process ends the child alone; returns what it printed as JSON.
+    function runChild(script) {
+      const child = spawnSync(process.execPath, ["-e", script], {
+        encoding: "utf8",
+        timeout: 120_000,
+      });
+      const ended =
+        `exit code ${child.status}, signal ${child.signal}, ` +
+        `standard output:\n${(child.stdout || "").slice(-2000)}\n` +
+        `standard error:\n${(child.stderr || "").slice(-2000)}`;
+      assert.strictEqual(child.error, undefined, ended);
+      assert.strictEqual(child.signal, null, ended);
+      assert.strictEqual(child.status, 0, ended);
+      return { result: JSON.parse(child.stdout), ended };
+    }
+
+    // The start of every child script: the binding, a tokenizer, the lines.
+    const childPrelude = `
+      const fs = require("node:fs");
+      const lindera = require(${JSON.stringify(index)});
+      const t = new lindera.Tokenizer(
+        lindera.loadDictionary("embedded://ipadic"),
+        lindera.Mode.normal(),
+      );
+      const lines = fs.readFileSync(${JSON.stringify(bocchan)}, "utf8").split("\\n").slice(0, 40);
+      const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    `;
+
+    // Checks that two batches are deeply and strictly equal, text by text,
+    // and names the first text and element that differ: the diff that
+    // `assert.deepStrictEqual` makes of two large batches can take longer
+    // than the test may run.
+    function assertSameBatch(actual, expected, label) {
+      assert.strictEqual(actual.length, expected.length, `${label}: texts`);
+      for (let i = 0; i < expected.length; i += 1) {
+        if (util.isDeepStrictEqual(actual[i], expected[i])) {
+          continue;
+        }
+        const got = Array.isArray(actual[i]) ? actual[i] : [];
+        let j = 0;
+        while (
+          j < expected[i].length &&
+          util.isDeepStrictEqual(got[j], expected[i][j])
+        ) {
+          j += 1;
+        }
+        assert.fail(
+          `${label}: text ${i}, element ${j} of ${expected[i].length} ` +
+            `(${got.length} made): ${util.inspect(got[j], { depth: 1 })} ` +
+            `instead of ${util.inspect(expected[i][j], { depth: 1 })}`,
+        );
+      }
+    }
+
+    for (const budget of [1, 7, 50]) {
+      it(`gives the synchronous results with parts of ${budget}`, async () => {
+        const t = tokenizer();
+        const all = partTexts();
+        await withBudget(budget, async () => {
+          assertSameBatch(
+            await t.tokenizeBatchAsync(all),
+            t.tokenizeBatch(all),
+            "tokenizeBatchAsync",
+          );
+          assertSameBatch(
+            await t.tokenizeSurfacesBatchAsync(all),
+            t.tokenizeSurfacesBatch(all),
+            "tokenizeSurfacesBatchAsync",
+          );
+          assertSameBatch(
+            await t.tokenizeNbestBatchAsync(all, 3, true),
+            t.tokenizeNbestBatch(all, 3, true),
+            "tokenizeNbestBatchAsync",
+          );
+        });
+      });
+    }
+
+    it("makes one token or one empty text per part with parts of 1", async () => {
+      const t = tokenizer();
+      const all = partTexts();
+      const expected = t
+        .tokenizeBatch(all)
+        .reduce((sum, tokens) => sum + Math.max(1, tokens.length), 0);
+      await withBudget(1, async () => {
+        for (const call of [
+          "tokenizeBatchAsync",
+          "tokenizeSurfacesBatchAsync",
+        ]) {
+          const before = lindera.__batchPartsMadeForTest();
+          await t[call](all);
+          assert.strictEqual(
+            lindera.__batchPartsMadeForTest() - before,
+            expected,
+            call,
+          );
+        }
+      });
+    });
+
+    it("makes a batch that fits in one part at once", async () => {
+      const t = tokenizer();
+      const before = lindera.__batchPartsMadeForTest();
+      assert.deepStrictEqual(
+        await t.tokenizeBatchAsync(["東京"]),
+        t.tokenizeBatch(["東京"]),
+      );
+      assert.strictEqual(lindera.__batchPartsMadeForTest(), before);
+    });
+
+    it("lets timers and immediates run between two parts", async () => {
+      const t = tokenizer();
+      const all = partTexts();
+      await withBudget(1, async () => {
+        const before = lindera.__batchPartsMadeForTest();
+        let settled = false;
+        let ticksInParts = 0;
+        let timerSet = false;
+        let timerFired = false;
+        const tick = () => {
+          const made = lindera.__batchPartsMadeForTest() - before;
+          if (made > 0 && !settled) {
+            ticksInParts += 1;
+            if (!timerSet) {
+              timerSet = true;
+              setTimeout(() => {
+                timerFired = !settled;
+              }, 0);
+            }
+          }
+          if (!settled) {
+            setImmediate(tick);
+          }
+        };
+        const pending = t.tokenizeBatchAsync(all);
+        setImmediate(tick);
+        await pending;
+        settled = true;
+        const parts = lindera.__batchPartsMadeForTest() - before;
+        assert.ok(parts > 100, `${parts} parts`);
+        assert.ok(
+          ticksInParts >= parts - 1,
+          `${ticksInParts} ticks between ${parts} parts`,
+        );
+        assert.ok(
+          timerFired,
+          "a timer set at the first part ran before the promise settled",
+        );
+      });
+    });
+
+    for (const kind of ["error", "panic"]) {
+      it(`rejects the Promise on ${kind === "error" ? "an error" : "a panic"} in a later part`, () => {
+        const { result, ended } = runChild(`${childPrelude}
+          lindera.__setBatchPartBudgetForTest(1);
+          lindera.__failBatchPartForTest(2, ${JSON.stringify(kind)});
+          const before = lindera.__batchPartsMadeForTest();
+          t.tokenizeBatchAsync(lines).then(
+            () => console.log(JSON.stringify({ resolved: true })),
+            (error) => {
+              // No part after the one that failed, then the binding goes on
+              // working.
+              setTimeout(async () => {
+                const parts = lindera.__batchPartsMadeForTest() - before;
+                lindera.__setBatchPartBudgetForTest(7);
+                const again = await t.tokenizeBatchAsync(lines);
+                console.log(JSON.stringify({
+                  rejected: true,
+                  isError: error instanceof Error,
+                  code: error && error.code,
+                  message: error && error.message,
+                  parts,
+                  again: same(again, t.tokenizeBatch(lines)),
+                }));
+              }, 50);
+            },
+          );
+        `);
+        assert.deepStrictEqual(
+          result,
+          {
+            rejected: true,
+            isError: true,
+            code: "GenericFailure",
+            message: "lindera-nodejs test failure in part 2",
+            parts: 2,
+            again: true,
+          },
+          ended,
+        );
+      });
+    }
+
+    it("rejects the Promise with an exception thrown in a later part", () => {
+      const { result, ended } = runChild(`${childPrelude}
+        lindera.__setBatchPartBudgetForTest(1);
+        lindera.__failBatchPartForTest(2, "throw");
+        t.tokenizeBatchAsync(lines).then(
+          () => console.log(JSON.stringify({ resolved: true })),
+          // The exception thrown has no code, unlike the error of a part
+          // that fails (GenericFailure).
+          (error) => console.log(JSON.stringify({
+            rejected: true,
+            code: (error && error.code) ?? null,
+            message: error && error.message,
+          })),
+        );
+      `);
+      assert.deepStrictEqual(
+        result,
+        {
+          rejected: true,
+          code: null,
+          message: "lindera-nodejs test failure in part 2",
+        },
+        ended,
+      );
+    });
+
+    it("rejects the Promise on a panic in resolve", () => {
+      const { result, ended } = runChild(`${childPrelude}
+        lindera.__failBatchPartForTest(0, "panic");
+        t.tokenizeBatchAsync(["東京"]).then(
+          () => console.log(JSON.stringify({ resolved: true })),
+          (error) => console.log(JSON.stringify({
+            rejected: true,
+            code: error && error.code,
+            message: error && error.message,
+          })),
+        );
+      `);
+      assert.deepStrictEqual(
+        result,
+        {
+          rejected: true,
+          code: "GenericFailure",
+          message: "lindera-nodejs test failure in part 0",
+        },
+        ended,
+      );
+    });
+
+    // A worker that starts a batch in parts of 1 and says so once a part
+    // has been made; its parent then terminates it.
+    const workerCode = `
+      const { parentPort, workerData } = require("node:worker_threads");
+      const lindera = require(workerData.index);
+      const t = new lindera.Tokenizer(
+        lindera.loadDictionary("embedded://ipadic"),
+        lindera.Mode.normal(),
+      );
+      const lines = require("node:fs").readFileSync(workerData.bocchan, "utf8").split("\\n");
+      lindera.__setBatchPartBudgetForTest(1);
+      const before = lindera.__batchPartsMadeForTest();
+      t.tokenizeBatchAsync(lines);
+      const wait = () => {
+        if (lindera.__batchPartsMadeForTest() > before) {
+          parentPort.postMessage("started");
+        } else {
+          setImmediate(wait);
+        }
+      };
+      setImmediate(wait);
+    `;
+
+    it("survives workers terminated with parts pending", () => {
+      const { result, ended } = runChild(`${childPrelude}
+        const { Worker } = require("node:worker_threads");
+        const workerCode = ${JSON.stringify(workerCode)};
+        const workerData = {
+          index: ${JSON.stringify(index)},
+          bocchan: ${JSON.stringify(bocchan)},
+        };
+        (async () => {
+          for (let i = 0; i < 10; i += 1) {
+            const worker = new Worker(workerCode, { eval: true, workerData });
+            await new Promise((resolve, reject) => {
+              worker.once("message", resolve);
+              worker.once("error", reject);
+            });
+            await worker.terminate();
+          }
+          lindera.__setBatchPartBudgetForTest(7);
+          const after = await t.tokenizeBatchAsync(lines);
+          console.log(JSON.stringify({ same: same(after, t.tokenizeBatch(lines)) }));
+        })().catch((error) => {
+          console.log(JSON.stringify({ error: String(error) }));
+        });
+      `);
+      assert.deepStrictEqual(result, { same: true }, ended);
+    });
+
+    it("gives the synchronous results to two batches in parts at once", async () => {
+      const t = tokenizer();
+      const all = partTexts();
+      await withBudget(7, async () => {
+        const [a, b] = await Promise.all([
+          t.tokenizeBatchAsync(all),
+          t.tokenizeSurfacesBatchAsync(all),
+        ]);
+        assertSameBatch(a, t.tokenizeBatch(all), "tokenizeBatchAsync");
+        assertSameBatch(
+          b,
+          t.tokenizeSurfacesBatch(all),
+          "tokenizeSurfacesBatchAsync",
+        );
+      });
+    });
+
+    it("settles without setImmediate, making the rest at once", () => {
+      const { result, ended } = runChild(`${childPrelude}
+        lindera.__setBatchPartBudgetForTest(1);
+        const before = lindera.__batchPartsMadeForTest();
+        const pending = t.tokenizeBatchAsync(lines);
+        const saved = globalThis.setImmediate;
+        globalThis.setImmediate = undefined;
+        pending.then(
+          (batch) => {
+            globalThis.setImmediate = saved;
+            console.log(JSON.stringify({
+              same: same(batch, t.tokenizeBatch(lines)),
+              parts: lindera.__batchPartsMadeForTest() - before,
+            }));
+          },
+          (error) => console.log(JSON.stringify({ error: String(error) })),
+        );
+      `);
+      assert.deepStrictEqual(result, { same: true, parts: 0 }, ended);
     });
   },
 );

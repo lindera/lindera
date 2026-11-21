@@ -512,9 +512,10 @@ impl JsTokenizer {
     ///
     /// The texts are tokenized on a thread of libuv's pool, on up to
     /// `maxThreads` threads of the batch, while the event loop runs; the
-    /// token objects are made afterwards on the JavaScript thread. Batches on
-    /// the same tokenizer run one after the other; a single-text call does
-    /// not wait for them.
+    /// token objects are then made on the JavaScript thread, at once when
+    /// they are few, or else in parts with a turn of the event loop between
+    /// two parts. Batches on the same tokenizer run one after the other; a
+    /// single-text call does not wait for them.
     ///
     /// # Arguments
     ///
@@ -528,7 +529,7 @@ impl JsTokenizer {
     /// rejects with an `InvalidArg` error when `maxThreads` is not an integer
     /// of 1 or more, and with the error of the first text in input order
     /// that fails.
-    #[napi(catch_unwind)]
+    #[napi(catch_unwind, ts_return_type = "Promise<Array<Array<Token>>>")]
     pub fn tokenize_batch_async(
         &self,
         texts: Vec<String>,
@@ -554,7 +555,7 @@ impl JsTokenizer {
     ///
     /// A `Promise` of an array with the surface strings of each text. It
     /// rejects as `tokenizeBatchAsync`'s does.
-    #[napi(catch_unwind)]
+    #[napi(catch_unwind, ts_return_type = "Promise<Array<Array<string>>>")]
     pub fn tokenize_surfaces_batch_async(
         &self,
         texts: Vec<String>,
@@ -586,7 +587,7 @@ impl JsTokenizer {
     /// rejects with an `InvalidArg` error when `n`, `costThreshold` or
     /// `maxThreads` is not an integer in its range, and with the error of
     /// the first text in input order that fails.
-    #[napi(catch_unwind)]
+    #[napi(catch_unwind, ts_return_type = "Promise<Array<Array<NbestResult>>>")]
     pub fn tokenize_nbest_batch_async(
         &self,
         texts: Vec<String>,
