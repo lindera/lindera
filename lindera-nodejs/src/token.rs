@@ -63,3 +63,72 @@ impl Token {
         }
     }
 }
+
+/// Makes the token views of a batch into token objects, text by text.
+///
+/// The synchronous batch methods and the tasks of their `Promise` versions
+/// (`crate::batch_task`) all convert through this function and the two
+/// below, so that the loop over the tokens has one copy: a second copy of
+/// such a loop once stopped the compiler from inlining the conversion of a
+/// token into the loop of the single-text methods (#1407).
+///
+/// # Arguments
+///
+/// * `batch` - The views of each text, in the order of the texts.
+///
+/// # Returns
+///
+/// The token objects of each text, in the same order.
+pub(crate) fn tokens_from_views(batch: Vec<Vec<lindera_binding::TokenView>>) -> Vec<Vec<Token>> {
+    batch
+        .into_iter()
+        .map(|views| views.into_iter().map(Token::from_view).collect())
+        .collect()
+}
+
+/// Makes the surface-only views of a batch into surface strings, text by
+/// text, as [`tokens_from_views`] does for tokens.
+///
+/// # Arguments
+///
+/// * `batch` - The views of each text, in the order of the texts.
+///
+/// # Returns
+///
+/// The surface strings of each text, in the same order.
+pub(crate) fn surfaces_from_views(
+    batch: Vec<Vec<lindera_binding::token::SurfaceView>>,
+) -> Vec<Vec<String>> {
+    batch
+        .into_iter()
+        .map(|views| views.into_iter().map(|view| view.surface).collect())
+        .collect()
+}
+
+/// Makes the N-best results of a batch into `NbestResult` objects, text by
+/// text, as [`tokens_from_views`] does for tokens.
+///
+/// # Arguments
+///
+/// * `batch` - The `(views, cost)` pairs of each text, in the order of the
+///   texts.
+///
+/// # Returns
+///
+/// The N-best results of each text, in the same order.
+pub(crate) fn nbest_from_views(
+    batch: Vec<lindera_binding::tokenizer::NbestViews>,
+) -> Vec<Vec<NbestResult>> {
+    batch
+        .into_iter()
+        .map(|results| {
+            results
+                .into_iter()
+                .map(|(views, cost)| NbestResult {
+                    tokens: views.into_iter().map(Token::from_view).collect(),
+                    cost,
+                })
+                .collect()
+        })
+        .collect()
+}

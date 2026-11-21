@@ -7,14 +7,20 @@
 
 use std::num::NonZeroUsize;
 use std::path::Path;
+use std::sync::Arc;
+
+use napi::bindgen_prelude::AsyncTask;
 
 use lindera_binding::argument::Positive;
 use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
+use crate::batch_task::{
+    NbestArgs, TokenizeBatchTask, TokenizeNbestBatchTask, TokenizeSurfacesBatchTask,
+};
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::error::to_napi_error;
 use crate::mode::Mode;
-use crate::token::{NbestResult, Token};
+use crate::token::{NbestResult, Token, nbest_from_views, surfaces_from_views, tokens_from_views};
 use crate::util::{JsonArg, integer_arg, js_value_to_serde_value, optional_integer_arg};
 
 /// Builder for creating a Tokenizer with custom configuration.
@@ -258,7 +264,9 @@ impl JsTokenizerBuilder {
     #[napi(catch_unwind)]
     pub fn build(&self) -> napi::Result<JsTokenizer> {
         let inner = self.inner.build().map_err(to_napi_error)?;
-        Ok(JsTokenizer { inner })
+        Ok(JsTokenizer {
+            inner: Arc::new(inner),
+        })
     }
 }
 
@@ -267,7 +275,9 @@ impl JsTokenizerBuilder {
 /// The tokenizer processes text and returns tokens with their morphological features.
 #[napi(js_name = "Tokenizer")]
 pub struct JsTokenizer {
-    inner: CoreTokenizer,
+    /// The tokenizer, shared with the tasks of the batch methods that return
+    /// a `Promise`, which run while the `Tokenizer` object may be collected.
+    inner: Arc<CoreTokenizer>,
 }
 
 #[napi]
@@ -309,7 +319,9 @@ impl JsTokenizer {
             CoreTokenizer::from_segmenter_with_space_penalty(mode, dict, user_dict, &space_penalty)
                 .map_err(to_napi_error)?;
 
-        Ok(Self { inner })
+        Ok(Self {
+            inner: Arc::new(inner),
+        })
     }
 
     /// Tokenizes the given text.
@@ -422,10 +434,7 @@ impl JsTokenizer {
             .inner
             .tokenize_batch(&texts, max_threads)
             .map_err(to_napi_error)?;
-        Ok(batch
-            .into_iter()
-            .map(|views| views.into_iter().map(Token::from_view).collect())
-            .collect())
+        Ok(tokens_from_views(batch))
     }
 
     /// Tokenizes every text of `texts` as `tokenizeSurfaces` does, on up to
@@ -452,10 +461,7 @@ impl JsTokenizer {
             .inner
             .tokenize_surfaces_batch(&texts, max_threads)
             .map_err(to_napi_error)?;
-        Ok(batch
-            .into_iter()
-            .map(|views| views.into_iter().map(|view| view.surface).collect())
-            .collect())
+        Ok(surfaces_from_views(batch))
     }
 
     /// Tokenizes every text of `texts` as `tokenizeNbest` does, on up to
@@ -498,18 +504,110 @@ impl JsTokenizer {
                 max_threads,
             )
             .map_err(to_napi_error)?;
-        Ok(batch
-            .into_iter()
-            .map(|results| {
-                results
-                    .into_iter()
-                    .map(|(views, cost)| NbestResult {
-                        tokens: views.into_iter().map(Token::from_view).collect(),
-                        cost,
-                    })
-                    .collect()
+        Ok(nbest_from_views(batch))
+    }
+
+    /// Tokenizes every text of `texts` as `tokenizeBatch` does, and returns
+    /// a `Promise` of the same results.
+    ///
+    /// The texts are tokenized on a thread of libuv's pool, on up to
+    /// `maxThreads` threads of the batch, while the event loop runs; the
+    /// token objects are made afterwards on the JavaScript thread. Batches on
+    /// the same tokenizer run one after the other; a single-text call does
+    /// not wait for them.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - An array of texts.
+    /// * `max_threads` - The most threads, an integer of 1 or more (default:
+    ///   the parallelism the system reports).
+    ///
+    /// # Returns
+    ///
+    /// A `Promise` of an array with the token objects of each text. It
+    /// rejects with an `InvalidArg` error when `maxThreads` is not an integer
+    /// of 1 or more, and with the error of the first text in input order
+    /// that fails.
+    #[napi(catch_unwind)]
+    pub fn tokenize_batch_async(
+        &self,
+        texts: Vec<String>,
+        max_threads: Option<f64>,
+    ) -> AsyncTask<TokenizeBatchTask> {
+        AsyncTask::new(TokenizeBatchTask::new(
+            Arc::clone(&self.inner),
+            texts,
+            batch_threads(max_threads),
+        ))
+    }
+
+    /// Tokenizes every text of `texts` as `tokenizeSurfacesBatch` does, and
+    /// returns a `Promise` of the same results, as `tokenizeBatchAsync` does.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - An array of texts.
+    /// * `max_threads` - The most threads, an integer of 1 or more (default:
+    ///   the parallelism the system reports).
+    ///
+    /// # Returns
+    ///
+    /// A `Promise` of an array with the surface strings of each text. It
+    /// rejects as `tokenizeBatchAsync`'s does.
+    #[napi(catch_unwind)]
+    pub fn tokenize_surfaces_batch_async(
+        &self,
+        texts: Vec<String>,
+        max_threads: Option<f64>,
+    ) -> AsyncTask<TokenizeSurfacesBatchTask> {
+        AsyncTask::new(TokenizeSurfacesBatchTask::new(
+            Arc::clone(&self.inner),
+            texts,
+            batch_threads(max_threads),
+        ))
+    }
+
+    /// Tokenizes every text of `texts` as `tokenizeNbestBatch` does, and
+    /// returns a `Promise` of the same results, as `tokenizeBatchAsync` does.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - An array of texts.
+    /// * `n` - Number of N-best results per text, an integer of 0 or more.
+    /// * `unique` - If true, deduplicate results (default: false).
+    /// * `cost_threshold` - Maximum cost difference from the best path of
+    ///   each text, an integer that fits in 64 bits (default: undefined).
+    /// * `max_threads` - The most threads, an integer of 1 or more (default:
+    ///   the parallelism the system reports).
+    ///
+    /// # Returns
+    ///
+    /// A `Promise` of an array with the NbestResult objects of each text. It
+    /// rejects with an `InvalidArg` error when `n`, `costThreshold` or
+    /// `maxThreads` is not an integer in its range, and with the error of
+    /// the first text in input order that fails.
+    #[napi(catch_unwind)]
+    pub fn tokenize_nbest_batch_async(
+        &self,
+        texts: Vec<String>,
+        n: f64,
+        unique: Option<bool>,
+        cost_threshold: Option<f64>,
+        max_threads: Option<f64>,
+    ) -> AsyncTask<TokenizeNbestBatchTask> {
+        let args = (|| {
+            Ok(NbestArgs {
+                n: integer_arg("n", n)?,
+                unique: unique.unwrap_or(false),
+                cost_threshold: optional_integer_arg("costThreshold", cost_threshold)?,
+                max_threads: batch_threads(max_threads)?,
             })
-            .collect())
+        })();
+        AsyncTask::new(TokenizeNbestBatchTask::new(
+            Arc::clone(&self.inner),
+            texts,
+            args,
+        ))
     }
 }
 

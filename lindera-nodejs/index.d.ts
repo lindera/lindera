@@ -437,6 +437,68 @@ export declare class Tokenizer {
    * an integer in its range.
    */
   tokenizeNbestBatch(texts: Array<string>, n: number, unique?: boolean | undefined | null, costThreshold?: number | undefined | null, maxThreads?: number | undefined | null): Array<Array<NbestResult>>
+  /**
+   * Tokenizes every text of `texts` as `tokenizeBatch` does, and returns
+   * a `Promise` of the same results.
+   *
+   * The texts are tokenized on a thread of libuv's pool, on up to
+   * `maxThreads` threads of the batch, while the event loop runs; the
+   * token objects are made afterwards on the JavaScript thread. Batches on
+   * the same tokenizer run one after the other; a single-text call does
+   * not wait for them.
+   *
+   * # Arguments
+   *
+   * * `texts` - An array of texts.
+   * * `max_threads` - The most threads, an integer of 1 or more (default:
+   *   the parallelism the system reports).
+   *
+   * # Returns
+   *
+   * A `Promise` of an array with the token objects of each text. It
+   * rejects with an `InvalidArg` error when `maxThreads` is not an integer
+   * of 1 or more, and with the error of the first text in input order
+   * that fails.
+   */
+  tokenizeBatchAsync(texts: Array<string>, maxThreads?: number | undefined | null): Promise<Array<Array<Token>>>
+  /**
+   * Tokenizes every text of `texts` as `tokenizeSurfacesBatch` does, and
+   * returns a `Promise` of the same results, as `tokenizeBatchAsync` does.
+   *
+   * # Arguments
+   *
+   * * `texts` - An array of texts.
+   * * `max_threads` - The most threads, an integer of 1 or more (default:
+   *   the parallelism the system reports).
+   *
+   * # Returns
+   *
+   * A `Promise` of an array with the surface strings of each text. It
+   * rejects as `tokenizeBatchAsync`'s does.
+   */
+  tokenizeSurfacesBatchAsync(texts: Array<string>, maxThreads?: number | undefined | null): Promise<Array<Array<string>>>
+  /**
+   * Tokenizes every text of `texts` as `tokenizeNbestBatch` does, and
+   * returns a `Promise` of the same results, as `tokenizeBatchAsync` does.
+   *
+   * # Arguments
+   *
+   * * `texts` - An array of texts.
+   * * `n` - Number of N-best results per text, an integer of 0 or more.
+   * * `unique` - If true, deduplicate results (default: false).
+   * * `cost_threshold` - Maximum cost difference from the best path of
+   *   each text, an integer that fits in 64 bits (default: undefined).
+   * * `max_threads` - The most threads, an integer of 1 or more (default:
+   *   the parallelism the system reports).
+   *
+   * # Returns
+   *
+   * A `Promise` of an array with the NbestResult objects of each text. It
+   * rejects with an `InvalidArg` error when `n`, `costThreshold` or
+   * `maxThreads` is not an integer in its range, and with the error of
+   * the first text in input order that fails.
+   */
+  tokenizeNbestBatchAsync(texts: Array<string>, n: number, unique?: boolean | undefined | null, costThreshold?: number | undefined | null, maxThreads?: number | undefined | null): Promise<Array<Array<NbestResult>>>
 }
 export type JsTokenizer = Tokenizer
 

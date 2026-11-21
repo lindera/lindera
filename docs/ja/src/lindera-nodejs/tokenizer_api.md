@@ -297,6 +297,41 @@ for (const tokens of batch) {
 
 **戻り値:** `NbestResult[][]`
 
+#### `tokenizeBatchAsync(texts, maxThreads?)`
+
+配列の各テキストを `tokenizeBatch` と同じくトークナイズし、同じ結果の `Promise` を返します。テキストは libuv のスレッドの上で、最大 `maxThreads` 個のスレッドでトークナイズされ、その間もイベントループは動きます。トークンのオブジェクトは、その後に JavaScript のスレッドで作ります。
+
+```javascript
+const batch = await tokenizer.tokenizeBatchAsync(["形態素解析", "すもももももももものうち"]);
+for (const tokens of batch) {
+  console.log(tokens.map((t) => t.surface));
+}
+```
+
+- `maxThreads` が 1 以上の整数でなければ、`tokenizeBatch` が投げるのと同じ `InvalidArg` のエラーで `Promise` を拒否します。配列の代わりに文字列を渡すなど、引数の型が違うときは、ほかのメソッドと同じく、呼び出した時点で例外を投げます。
+- トークンのオブジェクトを作る間は、今も JavaScript のスレッドを使い、その時間はトークンの数とともに伸びます。`tokenizeBatchAsync` では、これが呼び出しの時間のほとんどを占めます。Linux x86_64 の端末で IPADIC を使い、`bocchan.txt` を 20 回つないだ入力（10,760 行、139 万トークン）を 8 スレッドで処理すると、イベントループは `tokenizeBatchAsync` の間に約 2.9 秒、`tokenizeSurfacesBatchAsync` の間に約 0.16 秒止まりました。大きな入力でイベントループを止めたくないときは、入力を数百行ずつに分けて呼んでください。
+- 一括の処理は、動いている間 libuv のスレッドを 1 つ使います（既定では 4 つ、`UV_THREADPOOL_SIZE`）。このスレッドは、ファイルの読み書きや DNS の処理と共有です。同じトークナイザーの一括は順番に流れ、同じトークナイザーの単発の呼び出しはそれを待ちません。
+
+**パラメータ:** `tokenizeBatch` と同じです。
+
+**戻り値:** `Promise<Token[][]>`
+
+#### `tokenizeSurfacesBatchAsync(texts, maxThreads?)`
+
+配列の各テキストを `tokenizeSurfacesBatch` と同じくトークナイズし、`tokenizeBatchAsync` と同じく、同じ結果の `Promise` を返します。
+
+**パラメータ:** `tokenizeBatch` と同じです。
+
+**戻り値:** `Promise<string[][]>`
+
+#### `tokenizeNbestBatchAsync(texts, n, unique?, costThreshold?, maxThreads?)`
+
+配列の各テキストを `tokenizeNbestBatch` と同じくトークナイズし、`tokenizeBatchAsync` と同じく、同じ結果の `Promise` を返します。`n`、`costThreshold`、`maxThreads` が範囲の外なら `Promise` を拒否します。
+
+**パラメータ:** `tokenizeNbestBatch` と同じです。
+
+**戻り値:** `Promise<NbestResult[][]>`
+
 ## Token
 
 `Token` は単一の形態素トークンを表すプレーンオブジェクトです。クラスではなく

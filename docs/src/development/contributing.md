@@ -59,7 +59,9 @@ or reviewing a binding feature, apply the following policy:
   Whether tokens are class instances or plain data, naming conventions
   (camelCase vs. snake_case), and serialization helpers (`to_dict` / `to_h` /
   `toArray` / `toJSON`) are per-language decisions and do not need to match
-  across bindings. The JS bindings return plain objects because their hosts
+  across bindings. So is whether a long call also gets a form that does not
+  block the runtime, such as the Node.js binding's `...Async` batch methods,
+  which return a `Promise`. The JS bindings return plain objects because their hosts
   defer class finalizers, while Python, Ruby, and PHP keep classes because
   their finalization is deterministic.
 
