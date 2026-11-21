@@ -380,7 +380,7 @@ for (const tokens of batch) {
 </code></pre>
 <ul>
 <li><code>maxThreads</code> が 1 以上の整数でなければ、<code>tokenizeBatch</code> が投げるのと同じ <code>InvalidArg</code> のエラーで <code>Promise</code> を拒否します。配列の代わりに文字列を渡すなど、引数の型が違うときは、ほかのメソッドと同じく、呼び出した時点で例外を投げます。</li>
-<li>トークンのオブジェクトは、JavaScript のスレッドで作ります。結果の少ない一括は、<code>tokenizeBatch</code> と同じくその場で作ります。それより大きい一括は部分に分けて作り、2 つの部分の間でイベントループを 1 回まわします（<code>setImmediate</code> を使います）。そのため、オブジェクトを作る間もタイマーや I/O が動き、部分を作るのに libuv のスレッドプールは使いません。Linux x86_64 の端末で IPADIC を使い、<code>bocchan.txt</code> を 20 回つないだ入力（10,760 行、139 万トークン）を 8 スレッドで処理すると、イベントループの最大の遅れは、<code>tokenizeBatchAsync</code> で約 18 ms（全部のオブジェクトをその場で作ったときは約 3.3 秒）、<code>tokenizeSurfacesBatchAsync</code> で約 9 ms でした。遅れの多くは、若い世代のガベージコレクションによるものです。<code>tokenizeBatchAsync</code> の呼び出しは約 2.4 秒でした。</li>
+<li>トークンのオブジェクトは、JavaScript のスレッドで作ります。結果の少ない一括は、<code>tokenizeBatch</code> と同じくその場で作ります。それより大きい一括は部分に分けて作り、2 つの部分の間でイベントループを 1 回まわします（<code>setImmediate</code> を使います）。そのため、オブジェクトを作る間もタイマーや I/O が動き、部分を作るのに libuv のスレッドプールは使いません。Linux x86_64 の端末で IPADIC を使い、<code>bocchan.txt</code> を 20 回つないだ入力（10,760 行、139 万トークン）を 8 スレッドで処理すると、イベントループの最大の遅れは、<code>tokenizeBatchAsync</code> で約 15 ms、<code>tokenizeSurfacesBatchAsync</code> で約 8 ms でした。遅れの多くは、若い世代のガベージコレクションによるものです。<code>tokenizeBatchAsync</code> の呼び出しは約 1.6 秒でした。同期版の <code>tokenizeBatch</code> は約 1.5 秒で、その間ずっとイベントループを止めます。</li>
 <li><code>setImmediate</code> を置き換える偽のタイマー（Jest や Sinon のものなど）を使うと、部分に分けて作る一括の <code>Promise</code> は、そのタイマーが immediate を動かすまで決着しません。<code>setImmediate</code> が関数でなければ、残りの部分をその場で作ります。</li>
 <li>一括の処理は、動いている間 libuv のスレッドを 1 つ使います（既定では 4 つ、<code>UV_THREADPOOL_SIZE</code>）。このスレッドは、ファイルの読み書きや DNS の処理と共有です。同じトークナイザーの一括は順番に流れ、同じトークナイザーの単発の呼び出しはそれを待ちません。</li>
 </ul>
