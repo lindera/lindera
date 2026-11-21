@@ -4900,6 +4900,28 @@ for (const tokens of batch) {
 <p>配列の各テキストを <code>tokenizeNbest</code> と同じくトークナイズし、<code>tokenizeBatch</code> と同じく最大 <code>maxThreads</code> 個のスレッドで処理します。<code>n</code>、<code>unique</code>、<code>costThreshold</code> は各テキストに当てはまります。</p>
 <p><strong>パラメータ:</strong> <code>texts</code> と <code>maxThreads</code> は <code>tokenizeBatch</code>、<code>n</code>、<code>unique</code>、<code>costThreshold</code> は <code>tokenizeNbest</code> と同じです。</p>
 <p><strong>戻り値:</strong> <code>NbestResult[][]</code></p>
+<h4 id="tokenizebatchasynctexts-maxthreads"><a class="header" href="#tokenizebatchasynctexts-maxthreads"><code>tokenizeBatchAsync(texts, maxThreads?)</code></a></h4>
+<p>配列の各テキストを <code>tokenizeBatch</code> と同じくトークナイズし、同じ結果の <code>Promise</code> を返します。テキストは libuv のスレッドの上で、最大 <code>maxThreads</code> 個のスレッドでトークナイズされ、その間もイベントループは動きます。トークンのオブジェクトは、その後に JavaScript のスレッドで作ります。</p>
+<pre><code class="language-javascript">const batch = await tokenizer.tokenizeBatchAsync(["形態素解析", "すもももももももものうち"]);
+for (const tokens of batch) {
+  console.log(tokens.map((t) =&gt; t.surface));
+}
+</code></pre>
+<ul>
+<li><code>maxThreads</code> が 1 以上の整数でなければ、<code>tokenizeBatch</code> が投げるのと同じ <code>InvalidArg</code> のエラーで <code>Promise</code> を拒否します。配列の代わりに文字列を渡すなど、引数の型が違うときは、ほかのメソッドと同じく、呼び出した時点で例外を投げます。</li>
+<li>トークンのオブジェクトを作る間は、今も JavaScript のスレッドを使い、その時間はトークンの数とともに伸びます。<code>tokenizeBatchAsync</code> では、これが呼び出しの時間のほとんどを占めます。Linux x86_64 の端末で IPADIC を使い、<code>bocchan.txt</code> を 20 回つないだ入力（10,760 行、139 万トークン）を 8 スレッドで処理すると、イベントループは <code>tokenizeBatchAsync</code> の間に約 2.9 秒、<code>tokenizeSurfacesBatchAsync</code> の間に約 0.16 秒止まりました。大きな入力でイベントループを止めたくないときは、入力を数百行ずつに分けて呼んでください。</li>
+<li>一括の処理は、動いている間 libuv のスレッドを 1 つ使います（既定では 4 つ、<code>UV_THREADPOOL_SIZE</code>）。このスレッドは、ファイルの読み書きや DNS の処理と共有です。同じトークナイザーの一括は順番に流れ、同じトークナイザーの単発の呼び出しはそれを待ちません。</li>
+</ul>
+<p><strong>パラメータ:</strong> <code>tokenizeBatch</code> と同じです。</p>
+<p><strong>戻り値:</strong> <code>Promise&lt;Token[][]&gt;</code></p>
+<h4 id="tokenizesurfacesbatchasynctexts-maxthreads"><a class="header" href="#tokenizesurfacesbatchasynctexts-maxthreads"><code>tokenizeSurfacesBatchAsync(texts, maxThreads?)</code></a></h4>
+<p>配列の各テキストを <code>tokenizeSurfacesBatch</code> と同じくトークナイズし、<code>tokenizeBatchAsync</code> と同じく、同じ結果の <code>Promise</code> を返します。</p>
+<p><strong>パラメータ:</strong> <code>tokenizeBatch</code> と同じです。</p>
+<p><strong>戻り値:</strong> <code>Promise&lt;string[][]&gt;</code></p>
+<h4 id="tokenizenbestbatchasynctexts-n-unique-costthreshold-maxthreads"><a class="header" href="#tokenizenbestbatchasynctexts-n-unique-costthreshold-maxthreads"><code>tokenizeNbestBatchAsync(texts, n, unique?, costThreshold?, maxThreads?)</code></a></h4>
+<p>配列の各テキストを <code>tokenizeNbestBatch</code> と同じくトークナイズし、<code>tokenizeBatchAsync</code> と同じく、同じ結果の <code>Promise</code> を返します。<code>n</code>、<code>costThreshold</code>、<code>maxThreads</code> が範囲の外なら <code>Promise</code> を拒否します。</p>
+<p><strong>パラメータ:</strong> <code>tokenizeNbestBatch</code> と同じです。</p>
+<p><strong>戻り値:</strong> <code>Promise&lt;NbestResult[][]&gt;</code></p>
 <h2 id="token-1"><a class="header" href="#token-1">Token</a></h2>
 <p><code>Token</code> は単一の形態素トークンを表すプレーンオブジェクトです。クラスではなく
 TypeScript の <code>interface</code> であり、メソッドもプロトタイプも持ちません。
@@ -7969,7 +7991,7 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 const resultsWithThreshold = tokenizer.tokenizeNbest("すもももももももものうち", 3, false, 100n);
 </code></pre>
 <h4 id="tokenizebatchtexts-maxthreads-1"><a class="header" href="#tokenizebatchtexts-maxthreads-1"><code>tokenizeBatch(texts, maxThreads?)</code></a></h4>
-<p>配列の各テキストを <code>tokenize</code> と同じくトークナイズし、テキストの順にトークンを返します。WASM にはスレッドがないので、テキストは呼び出したスレッドで順に処理します。<code>maxThreads</code> は検査するだけで使いません。一括の処理を複数のスレッドで行うほかのバインディング向けに書いたコードが、そのまま動くようにするためです。テキストごとに WASM との境界を越えずに済みます。</p>
+<p>配列の各テキストを <code>tokenize</code> と同じくトークナイズし、テキストの順にトークンを返します。WASM にはスレッドがないので、テキストは呼び出したスレッドで順に処理します。<code>maxThreads</code> は検査するだけで使いません。一括の処理を複数のスレッドで行うほかのバインディング向けに書いたコードが、そのまま動くようにするためです。テキストごとに WASM との境界を越えずに済みます。同じ理由で、Node.js のバインディングの <code>tokenizeBatchAsync</code> のような <code>Promise</code> 版はありません。WASM では、一括の処理は JavaScript のスレッドで動くままになるためです。</p>
 <ul>
 <li><strong>パラメータ</strong>:
 <ul>
@@ -14404,7 +14426,7 @@ make check-docs
 <p>Lindera は Python・Node.js・Ruby・PHP・WASM のバインディングを提供しています。バインディングの機能を追加・レビューする際は次の方針に従ってください。</p>
 <ul>
 <li><strong>機能セットを揃える。</strong> トークナイズ（<code>tokenize</code> / <code>tokenize_surfaces</code> / <code>tokenize_nbest</code> と、その一括の形の <code>tokenize_batch</code> / <code>tokenize_surfaces_batch</code> / <code>tokenize_nbest_batch</code>）、ユーザー辞書、文字フィルタ、トークンフィルタは全バインディングで利用できるようにします。あるバインディングに機能を追加したら、他のバインディングの計画（または追跡 Issue）を添えてください。</li>
-<li><strong>表現と寿命管理は各言語に従う。</strong> トークンをクラスにするかプレーンデータにするか、命名規則（camelCase / snake_case）、変換ヘルパー（<code>to_dict</code> / <code>to_h</code> / <code>toArray</code> / <code>toJSON</code>）は言語ごとの判断で、バインディング間で一致させる必要はありません。JS バインディングはホストがクラスのファイナライザを遅延させるためプレーンオブジェクトを返し、Python・Ruby・PHP は解放が決定的なのでクラスを保ちます。</li>
+<li><strong>表現と寿命管理は各言語に従う。</strong> トークンをクラスにするかプレーンデータにするか、命名規則（camelCase / snake_case）、変換ヘルパー（<code>to_dict</code> / <code>to_h</code> / <code>toArray</code> / <code>toJSON</code>）は言語ごとの判断で、バインディング間で一致させる必要はありません。長い呼び出しに、実行環境を止めない形（<code>Promise</code> を返す Node.js のバインディングの一括の <code>...Async</code> のメソッドなど）を足すかも、言語ごとの判断です。JS バインディングはホストがクラスのファイナライザを遅延させるためプレーンオブジェクトを返し、Python・Ruby・PHP は解放が決定的なのでクラスを保ちます。</li>
 </ul>
 <p>共通ロジックは <code>lindera-binding</code>（例: <code>TokenView</code>）に置き、各バインディングはコアのデータを自身の FFI 型に写すだけにします。</p>
 <h2 id="テスト-1"><a class="header" href="#テスト-1">テスト</a></h2>

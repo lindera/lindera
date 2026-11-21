@@ -4900,6 +4900,28 @@ for (const tokens of batch) {
 <p>Tokenizes every text of an array as <code>tokenizeNbest</code> does, on up to <code>maxThreads</code> threads, as <code>tokenizeBatch</code> does. <code>n</code>, <code>unique</code> and <code>costThreshold</code> apply to each text.</p>
 <p><strong>Parameters:</strong> <code>texts</code> and <code>maxThreads</code> as <code>tokenizeBatch</code>; <code>n</code>, <code>unique</code> and <code>costThreshold</code> as <code>tokenizeNbest</code>.</p>
 <p><strong>Returns:</strong> <code>NbestResult[][]</code></p>
+<h4 id="tokenizebatchasynctexts-maxthreads"><a class="header" href="#tokenizebatchasynctexts-maxthreads"><code>tokenizeBatchAsync(texts, maxThreads?)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenizeBatch</code> does, and returns a <code>Promise</code> of the same results. The texts are tokenized on a thread of libuv's pool, on up to <code>maxThreads</code> threads, while the event loop runs; the token objects are then made on the JavaScript thread.</p>
+<pre><code class="language-javascript">const batch = await tokenizer.tokenizeBatchAsync(["形態素解析", "すもももももももものうち"]);
+for (const tokens of batch) {
+  console.log(tokens.map((t) =&gt; t.surface));
+}
+</code></pre>
+<ul>
+<li>A <code>maxThreads</code> that is not an integer of 1 or more rejects the <code>Promise</code> with the <code>InvalidArg</code> error that <code>tokenizeBatch</code> throws. An argument of the wrong type, such as a string instead of an array, throws when the method is called, as for every method.</li>
+<li>Making the token objects still takes the JavaScript thread, for a time that grows with the number of tokens, and for <code>tokenizeBatchAsync</code> it is most of the time of the call: with IPADIC on a Linux x86_64 machine, on <code>bocchan.txt</code> 20 times (10,760 lines, 1.39 million tokens) on 8 threads, the event loop stopped for about 2.9 s during <code>tokenizeBatchAsync</code> and for about 0.16 s during <code>tokenizeSurfacesBatchAsync</code>. To keep the event loop responsive with a large input, split it into calls of a few hundred lines each.</li>
+<li>A batch takes one thread of libuv's pool while it runs (the pool has 4 by default, <code>UV_THREADPOOL_SIZE</code>), which file system and DNS calls share. Batches on the same tokenizer run one after the other; single-text calls on it do not wait for them.</li>
+</ul>
+<p><strong>Parameters:</strong> as <code>tokenizeBatch</code>.</p>
+<p><strong>Returns:</strong> <code>Promise&lt;Token[][]&gt;</code></p>
+<h4 id="tokenizesurfacesbatchasynctexts-maxthreads"><a class="header" href="#tokenizesurfacesbatchasynctexts-maxthreads"><code>tokenizeSurfacesBatchAsync(texts, maxThreads?)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenizeSurfacesBatch</code> does, and returns a <code>Promise</code> of the same results, as <code>tokenizeBatchAsync</code> does.</p>
+<p><strong>Parameters:</strong> as <code>tokenizeBatch</code>.</p>
+<p><strong>Returns:</strong> <code>Promise&lt;string[][]&gt;</code></p>
+<h4 id="tokenizenbestbatchasynctexts-n-unique-costthreshold-maxthreads"><a class="header" href="#tokenizenbestbatchasynctexts-n-unique-costthreshold-maxthreads"><code>tokenizeNbestBatchAsync(texts, n, unique?, costThreshold?, maxThreads?)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenizeNbestBatch</code> does, and returns a <code>Promise</code> of the same results, as <code>tokenizeBatchAsync</code> does. An <code>n</code>, <code>costThreshold</code> or <code>maxThreads</code> outside its range rejects the <code>Promise</code>.</p>
+<p><strong>Parameters:</strong> as <code>tokenizeNbestBatch</code>.</p>
+<p><strong>Returns:</strong> <code>Promise&lt;NbestResult[][]&gt;</code></p>
 <h2 id="token-1"><a class="header" href="#token-1">Token</a></h2>
 <p><code>Token</code> is a plain object describing a single morphological token. It is a
 TypeScript <code>interface</code>, not a class: it has no methods and no prototype, and
@@ -8091,7 +8113,7 @@ multiple tokenizers can be built from the same configuration.</p>
 const resultsWithThreshold = tokenizer.tokenizeNbest("すもももももももものうち", 3, false, 100n);
 </code></pre>
 <h4 id="tokenizebatchtexts-maxthreads-1"><a class="header" href="#tokenizebatchtexts-maxthreads-1"><code>tokenizeBatch(texts, maxThreads?)</code></a></h4>
-<p>Tokenizes every text of an array, each as <code>tokenize</code> does, and returns their tokens in the order of the texts. WASM has no threads: the texts are tokenized one after the other on the calling thread. <code>maxThreads</code> is checked and otherwise ignored, so that code written for the other bindings, which run a batch on several threads, runs unchanged; the batch saves crossing into WASM once per text.</p>
+<p>Tokenizes every text of an array, each as <code>tokenize</code> does, and returns their tokens in the order of the texts. WASM has no threads: the texts are tokenized one after the other on the calling thread. <code>maxThreads</code> is checked and otherwise ignored, so that code written for the other bindings, which run a batch on several threads, runs unchanged; the batch saves crossing into WASM once per text. For the same reason, there are no <code>Promise</code> versions such as the Node.js binding's <code>tokenizeBatchAsync</code>: here the batch would still run on the JavaScript thread.</p>
 <ul>
 <li><strong>Parameters</strong>:
 <ul>
@@ -14866,7 +14888,9 @@ tracking issue) for the others.</li>
 Whether tokens are class instances or plain data, naming conventions
 (camelCase vs. snake_case), and serialization helpers (<code>to_dict</code> / <code>to_h</code> /
 <code>toArray</code> / <code>toJSON</code>) are per-language decisions and do not need to match
-across bindings. The JS bindings return plain objects because their hosts
+across bindings. So is whether a long call also gets a form that does not
+block the runtime, such as the Node.js binding's <code>...Async</code> batch methods,
+which return a <code>Promise</code>. The JS bindings return plain objects because their hosts
 defer class finalizers, while Python, Ruby, and PHP keep classes because
 their finalization is deterministic.</li>
 </ul>

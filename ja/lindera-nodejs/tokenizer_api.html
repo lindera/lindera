@@ -371,6 +371,28 @@ for (const tokens of batch) {
 <p>配列の各テキストを <code>tokenizeNbest</code> と同じくトークナイズし、<code>tokenizeBatch</code> と同じく最大 <code>maxThreads</code> 個のスレッドで処理します。<code>n</code>、<code>unique</code>、<code>costThreshold</code> は各テキストに当てはまります。</p>
 <p><strong>パラメータ:</strong> <code>texts</code> と <code>maxThreads</code> は <code>tokenizeBatch</code>、<code>n</code>、<code>unique</code>、<code>costThreshold</code> は <code>tokenizeNbest</code> と同じです。</p>
 <p><strong>戻り値:</strong> <code>NbestResult[][]</code></p>
+<h4 id="tokenizebatchasynctexts-maxthreads"><a class="header" href="#tokenizebatchasynctexts-maxthreads"><code>tokenizeBatchAsync(texts, maxThreads?)</code></a></h4>
+<p>配列の各テキストを <code>tokenizeBatch</code> と同じくトークナイズし、同じ結果の <code>Promise</code> を返します。テキストは libuv のスレッドの上で、最大 <code>maxThreads</code> 個のスレッドでトークナイズされ、その間もイベントループは動きます。トークンのオブジェクトは、その後に JavaScript のスレッドで作ります。</p>
+<pre><code class="language-javascript">const batch = await tokenizer.tokenizeBatchAsync(["形態素解析", "すもももももももものうち"]);
+for (const tokens of batch) {
+  console.log(tokens.map((t) =&gt; t.surface));
+}
+</code></pre>
+<ul>
+<li><code>maxThreads</code> が 1 以上の整数でなければ、<code>tokenizeBatch</code> が投げるのと同じ <code>InvalidArg</code> のエラーで <code>Promise</code> を拒否します。配列の代わりに文字列を渡すなど、引数の型が違うときは、ほかのメソッドと同じく、呼び出した時点で例外を投げます。</li>
+<li>トークンのオブジェクトを作る間は、今も JavaScript のスレッドを使い、その時間はトークンの数とともに伸びます。<code>tokenizeBatchAsync</code> では、これが呼び出しの時間のほとんどを占めます。Linux x86_64 の端末で IPADIC を使い、<code>bocchan.txt</code> を 20 回つないだ入力（10,760 行、139 万トークン）を 8 スレッドで処理すると、イベントループは <code>tokenizeBatchAsync</code> の間に約 2.9 秒、<code>tokenizeSurfacesBatchAsync</code> の間に約 0.16 秒止まりました。大きな入力でイベントループを止めたくないときは、入力を数百行ずつに分けて呼んでください。</li>
+<li>一括の処理は、動いている間 libuv のスレッドを 1 つ使います（既定では 4 つ、<code>UV_THREADPOOL_SIZE</code>）。このスレッドは、ファイルの読み書きや DNS の処理と共有です。同じトークナイザーの一括は順番に流れ、同じトークナイザーの単発の呼び出しはそれを待ちません。</li>
+</ul>
+<p><strong>パラメータ:</strong> <code>tokenizeBatch</code> と同じです。</p>
+<p><strong>戻り値:</strong> <code>Promise&lt;Token[][]&gt;</code></p>
+<h4 id="tokenizesurfacesbatchasynctexts-maxthreads"><a class="header" href="#tokenizesurfacesbatchasynctexts-maxthreads"><code>tokenizeSurfacesBatchAsync(texts, maxThreads?)</code></a></h4>
+<p>配列の各テキストを <code>tokenizeSurfacesBatch</code> と同じくトークナイズし、<code>tokenizeBatchAsync</code> と同じく、同じ結果の <code>Promise</code> を返します。</p>
+<p><strong>パラメータ:</strong> <code>tokenizeBatch</code> と同じです。</p>
+<p><strong>戻り値:</strong> <code>Promise&lt;string[][]&gt;</code></p>
+<h4 id="tokenizenbestbatchasynctexts-n-unique-costthreshold-maxthreads"><a class="header" href="#tokenizenbestbatchasynctexts-n-unique-costthreshold-maxthreads"><code>tokenizeNbestBatchAsync(texts, n, unique?, costThreshold?, maxThreads?)</code></a></h4>
+<p>配列の各テキストを <code>tokenizeNbestBatch</code> と同じくトークナイズし、<code>tokenizeBatchAsync</code> と同じく、同じ結果の <code>Promise</code> を返します。<code>n</code>、<code>costThreshold</code>、<code>maxThreads</code> が範囲の外なら <code>Promise</code> を拒否します。</p>
+<p><strong>パラメータ:</strong> <code>tokenizeNbestBatch</code> と同じです。</p>
+<p><strong>戻り値:</strong> <code>Promise&lt;NbestResult[][]&gt;</code></p>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
 <p><code>Token</code> は単一の形態素トークンを表すプレーンオブジェクトです。クラスではなく
 TypeScript の <code>interface</code> であり、メソッドもプロトタイプも持ちません。

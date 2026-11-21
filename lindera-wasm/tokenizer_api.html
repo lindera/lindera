@@ -383,7 +383,7 @@ multiple tokenizers can be built from the same configuration.</p>
 const resultsWithThreshold = tokenizer.tokenizeNbest("すもももももももものうち", 3, false, 100n);
 </code></pre>
 <h4 id="tokenizebatchtexts-maxthreads"><a class="header" href="#tokenizebatchtexts-maxthreads"><code>tokenizeBatch(texts, maxThreads?)</code></a></h4>
-<p>Tokenizes every text of an array, each as <code>tokenize</code> does, and returns their tokens in the order of the texts. WASM has no threads: the texts are tokenized one after the other on the calling thread. <code>maxThreads</code> is checked and otherwise ignored, so that code written for the other bindings, which run a batch on several threads, runs unchanged; the batch saves crossing into WASM once per text.</p>
+<p>Tokenizes every text of an array, each as <code>tokenize</code> does, and returns their tokens in the order of the texts. WASM has no threads: the texts are tokenized one after the other on the calling thread. <code>maxThreads</code> is checked and otherwise ignored, so that code written for the other bindings, which run a batch on several threads, runs unchanged; the batch saves crossing into WASM once per text. For the same reason, there are no <code>Promise</code> versions such as the Node.js binding's <code>tokenizeBatchAsync</code>: here the batch would still run on the JavaScript thread.</p>
 <ul>
 <li><strong>Parameters</strong>:
 <ul>

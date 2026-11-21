@@ -226,7 +226,7 @@ make check-docs
 <p>Lindera は Python・Node.js・Ruby・PHP・WASM のバインディングを提供しています。バインディングの機能を追加・レビューする際は次の方針に従ってください。</p>
 <ul>
 <li><strong>機能セットを揃える。</strong> トークナイズ（<code>tokenize</code> / <code>tokenize_surfaces</code> / <code>tokenize_nbest</code> と、その一括の形の <code>tokenize_batch</code> / <code>tokenize_surfaces_batch</code> / <code>tokenize_nbest_batch</code>）、ユーザー辞書、文字フィルタ、トークンフィルタは全バインディングで利用できるようにします。あるバインディングに機能を追加したら、他のバインディングの計画（または追跡 Issue）を添えてください。</li>
-<li><strong>表現と寿命管理は各言語に従う。</strong> トークンをクラスにするかプレーンデータにするか、命名規則（camelCase / snake_case）、変換ヘルパー（<code>to_dict</code> / <code>to_h</code> / <code>toArray</code> / <code>toJSON</code>）は言語ごとの判断で、バインディング間で一致させる必要はありません。JS バインディングはホストがクラスのファイナライザを遅延させるためプレーンオブジェクトを返し、Python・Ruby・PHP は解放が決定的なのでクラスを保ちます。</li>
+<li><strong>表現と寿命管理は各言語に従う。</strong> トークンをクラスにするかプレーンデータにするか、命名規則（camelCase / snake_case）、変換ヘルパー（<code>to_dict</code> / <code>to_h</code> / <code>toArray</code> / <code>toJSON</code>）は言語ごとの判断で、バインディング間で一致させる必要はありません。長い呼び出しに、実行環境を止めない形（<code>Promise</code> を返す Node.js のバインディングの一括の <code>...Async</code> のメソッドなど）を足すかも、言語ごとの判断です。JS バインディングはホストがクラスのファイナライザを遅延させるためプレーンオブジェクトを返し、Python・Ruby・PHP は解放が決定的なのでクラスを保ちます。</li>
 </ul>
 <p>共通ロジックは <code>lindera-binding</code>（例: <code>TokenView</code>）に置き、各バインディングはコアのデータを自身の FFI 型に写すだけにします。</p>
 <h2 id="テスト"><a class="header" href="#テスト">テスト</a></h2>
