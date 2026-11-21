@@ -1,9 +1,15 @@
 use std::borrow::Cow;
+use std::iter::{self, Chain, RepeatN};
+use std::slice;
 
 use lindera_dictionary::dictionary::{DetailFields, UNK};
 use serde_json::{Value, json};
 
 use crate::dictionary::{Dictionary, UserDictionary, WordId};
+
+/// The field that pads a token's details to the dictionary schema's custom
+/// field count, so that every token can be read by index up to that width.
+const PADDING_FIELD: &str = "*";
 
 #[derive(Clone)]
 pub struct Token<'a> {
@@ -44,13 +50,26 @@ pub struct Token<'a> {
     /// in the default dictionary. If `None`, the default dictionary is used.
     pub user_dictionary: Option<&'a UserDictionary>,
 
-    /// An optional vector containing detailed information about the token.
-    /// Each element in the vector is a `Cow` (Copy-On-Write) type, which allows
-    /// for efficient handling of both owned and borrowed string data.
+    /// The token's details, once they are loaded or written.
+    ///
+    /// Each element is a `Cow` (Copy-On-Write) string, so that the fields can
+    /// borrow the dictionary's bytes or own a value a token filter wrote.
     ///
     /// # Note
     ///
-    /// This field is optional and may be `None` if no detailed information is available.
+    /// This field is `None` until the details are loaded or written:
+    ///
+    /// - [`Token::details`], [`Token::get_detail`] and [`Token::get`] load the
+    ///   dictionary's details into it on their first call, so that repeated
+    ///   reads by index do not split the dictionary entry again;
+    /// - token filters that rewrite a token's details, such as the compound
+    ///   word filters, store them here, and every accessor reads them from
+    ///   here instead of the dictionary.
+    ///
+    /// [`Token::details_iter`] and [`Token::as_value`] read the details in one
+    /// pass without loading them, so the field stays `None` after them; in
+    /// particular after the Japanese part-of-speech filters, which read the
+    /// details with [`Token::details_iter`].
     pub details: Option<Vec<Cow<'a, str>>>,
 }
 
@@ -123,6 +142,9 @@ impl<'a> Token<'a> {
     ///
     /// - The first time this method is called, it fetches the details from the dictionary (or user dictionary), but on subsequent calls, it returns the cached details in `self.details`.
     /// - If the token is unknown and no details can be retrieved, a default value (`UNK`) is used.
+    /// - Loading the details allocates the cache once per token, and every call
+    ///   collects a new `Vec<&str>`. To read the details once, in order, use
+    ///   [`Token::details_iter`], which allocates neither.
     pub fn details(&mut self) -> Vec<&str> {
         // Ensure details are initialized
         self.ensure_details();
@@ -134,42 +156,65 @@ impl<'a> Token<'a> {
         }
     }
 
-    /// Returns an iterator over the token's details without allocating the
-    /// intermediate `Vec<&str>` that [`Token::details`] collects on every
-    /// call.
+    /// Returns an iterator over the token's details, read in one pass without
+    /// allocating.
     ///
-    /// Details are loaded (and cached) on first access, exactly as with
-    /// [`Token::details`]; only the per-call collection is avoided. Prefer
-    /// this accessor when the details are consumed once in order (joining,
-    /// serializing, copying into an FFI buffer).
+    /// The fields are those [`Token::details`] returns, in the same order and
+    /// padded with `*` to the same width. They come from the `details` field
+    /// when a token filter wrote it or a read by index loaded it, and
+    /// otherwise straight from the dictionary's
+    /// bytes, without loading them into the field: neither the cache nor the
+    /// `Vec<&str>` that [`Token::details`] collects is allocated (#1399).
+    /// Prefer this accessor when the details are consumed once in order
+    /// (joining, serializing, copying into an FFI buffer).
+    ///
+    /// Since nothing is loaded, the `details` field stays `None` after this
+    /// call when it was `None` before, and a [`Token::set_detail`] that
+    /// follows it does nothing; call [`Token::details`] first to change a
+    /// field.
     ///
     /// # Returns
     ///
     /// An iterator yielding each detail field as `&str`, in schema order.
     pub fn details_iter(&mut self) -> impl Iterator<Item = &str> {
-        self.ensure_details();
-        self.details
-            .as_deref()
-            .unwrap_or_default()
-            .iter()
-            .map(|c| c.as_ref())
+        self.read_details()
     }
 
-    /// Loads and caches this token's detail fields.
+    /// One pass over the token's details: the stored ones when the
+    /// `details` field is set, the dictionary's otherwise.
     ///
-    /// The fields are borrowed straight out of the dictionary's own bytes and
-    /// written into the cache vector, which is sized exactly once, so
-    /// materializing a token's details costs a single allocation: the cache
-    /// itself. Going through an intermediate `Vec<&str>` cost one more
-    /// (#966).
-    fn ensure_details(&mut self) {
-        if self.details.is_some() {
-            return;
+    /// Takes `&self`, so that [`Token::as_value`] can read the details while
+    /// it reads the other fields; the public [`Token::details_iter`] keeps
+    /// its `&mut self` signature.
+    ///
+    /// # Returns
+    ///
+    /// The fields in schema order, with an exact `size_hint`.
+    fn read_details(&self) -> DetailsIter<'_, 'a> {
+        match &self.details {
+            Some(details) => DetailsIter::Stored(details.iter()),
+            None => {
+                let (fields, padding) = self.dictionary_fields();
+                DetailsIter::Dictionary(fields.chain(iter::repeat_n(PADDING_FIELD, padding)))
+            }
         }
+    }
 
-        // Copied out of `self` before the borrow below so the fields borrow
-        // for `'a` rather than for this `&mut self`; the dictionary accessors
-        // take `&'a self`.
+    /// The token's fields as its dictionary stores them, and how many `*`
+    /// pad them to the dictionary schema's width.
+    ///
+    /// Details are padded to the dictionary schema's custom field count so
+    /// that token filters can safely access any field by index.
+    ///
+    /// # Returns
+    ///
+    /// The fields of the token's system, unknown-word or user dictionary
+    /// entry, borrowed from the dictionary's bytes for `'a`, and the number
+    /// of `*` that follow them (0 when they already reach the schema's
+    /// width).
+    fn dictionary_fields(&self) -> (DetailFields<'a>, usize) {
+        // Copied out of `self` so the fields borrow for `'a` rather than for
+        // this `&self`; the dictionary accessors take `&'a self`.
         let dictionary: &'a Dictionary = self.dictionary;
         let user_dictionary: Option<&'a UserDictionary> = self.user_dictionary;
         let word_id = self.word_id.id() as usize;
@@ -185,23 +230,37 @@ impl<'a> Token<'a> {
             }
         };
 
-        // Details are padded to the dictionary schema's custom field count so
-        // that token filters can safely access any field by index.
         let expected_len = dictionary
             .metadata
             .dictionary_schema
             .get_custom_fields()
             .len();
+        let padding = expected_len.saturating_sub(fields.len());
+
+        (fields, padding)
+    }
+
+    /// Loads and caches this token's detail fields, for the accessors that
+    /// read them by index ([`Token::details`], [`Token::get_detail`],
+    /// [`Token::get`]).
+    ///
+    /// The fields are borrowed straight out of the dictionary's own bytes and
+    /// written into the cache vector, which is sized exactly once, so
+    /// materializing a token's details costs a single allocation: the cache
+    /// itself. Going through an intermediate `Vec<&str>` cost one more
+    /// (#966).
+    fn ensure_details(&mut self) {
+        if self.details.is_some() {
+            return;
+        }
 
         // `DetailFields` is an `ExactSizeIterator`, so the padded width is
         // known before anything is materialized and this is the only
-        // allocation on the path -- neither the extend nor the pad below can
-        // reallocate.
-        let mut details: Vec<Cow<'a, str>> = Vec::with_capacity(fields.len().max(expected_len));
+        // allocation on the path -- neither extend can reallocate.
+        let (fields, padding) = self.dictionary_fields();
+        let mut details: Vec<Cow<'a, str>> = Vec::with_capacity(fields.len() + padding);
         details.extend(fields.map(Cow::Borrowed));
-        if details.len() < expected_len {
-            details.resize(expected_len, Cow::Borrowed("*"));
-        }
+        details.extend(iter::repeat_n(Cow::Borrowed(PADDING_FIELD), padding));
 
         self.details = Some(details);
     }
@@ -219,7 +278,7 @@ impl<'a> Token<'a> {
     ///
     /// # Details
     ///
-    /// - This method first ensures that the token's details are populated by calling `self.details()`.
+    /// - This method first loads the token's details into the `details` field, as [`Token::details`] does, unless they are there already; later reads by index use them without splitting the dictionary entry again.
     /// - If details are available and the provided index is valid, the detail at the specified index is returned as `Some(&str)`.
     /// - If the index is out of range, `None` is returned.
     pub fn get_detail(&mut self, index: usize) -> Option<&str> {
@@ -245,6 +304,7 @@ impl<'a> Token<'a> {
     ///
     /// - The `Cow<'a, str>` type allows flexibility, as it can handle either borrowed or owned strings.
     /// - This method does not initialize the details if they are not already set. To ensure the details are set, `details()` can be called prior to calling this method.
+    /// - [`Token::details`], [`Token::get_detail`] and [`Token::get`] load the details; [`Token::details_iter`] and [`Token::as_value`] read them without loading them, so after those alone this method does nothing.
     pub fn set_detail(&mut self, index: usize, detail: Cow<'a, str>) {
         if let Some(details) = self.details.as_mut() {
             details[index] = detail;
@@ -261,6 +321,9 @@ impl<'a> Token<'a> {
     ///
     /// Returns an `Option<&str>` containing the value of the specified field.
     /// If the field name is not found or the schema is not available, `None` is returned.
+    ///
+    /// A field of the dictionary's schema is read with [`Token::get_detail`],
+    /// which loads the token's details into the `details` field.
     ///
     /// # Example
     ///
@@ -303,6 +366,9 @@ impl<'a> Token<'a> {
     /// UniDic CWJ's `lexicon_id`, comes back exactly from readers that hold
     /// numbers as doubles (#1365).
     ///
+    /// The details are read in one pass, as [`Token::details_iter`] reads
+    /// them, without loading them into the `details` field (#1399).
+    ///
     /// # Example
     ///
     /// ```no_run
@@ -314,46 +380,77 @@ impl<'a> Token<'a> {
     /// println!("Word ID: {}", value["word_id"]); // This is a number
     /// ```
     pub fn as_value(&mut self) -> Value {
-        // Get schema info first
         let schema_custom_fields = self
             .dictionary
             .metadata
             .dictionary_schema
             .get_custom_fields();
 
-        // Copy values before mutable borrow
-        let surface = self.surface.to_string();
-        let byte_start = self.byte_start;
-        let byte_end = self.byte_end;
-        let word_id = self.word_id.id();
-
-        // Get details (requires mutable borrow)
-        let details = self.details();
-
         // Build JSON object
         let mut obj = serde_json::Map::new();
 
         // Add surface as string
-        obj.insert("surface".to_string(), json!(surface));
+        obj.insert("surface".to_string(), json!(&*self.surface));
 
         // Add byte positions as numbers
-        obj.insert("byte_start".to_string(), json!(byte_start));
-        obj.insert("byte_end".to_string(), json!(byte_end));
+        obj.insert("byte_start".to_string(), json!(self.byte_start));
+        obj.insert("byte_end".to_string(), json!(self.byte_end));
 
         // Add word_id as number
-        obj.insert("word_id".to_string(), json!(word_id));
+        obj.insert("word_id".to_string(), json!(self.word_id.id()));
 
-        // Add each field of the schema as the text the dictionary has: a
-        // field that looks like a number in one entry may not in another, and
-        // the text may not survive a number (`007`, `NaN`, identifiers beyond
-        // 2^53), so it is never parsed (#1365).
-        for (i, field_name) in schema_custom_fields.iter().enumerate() {
-            if let Some(value) = details.get(i) {
-                obj.insert(field_name.to_string(), json!(*value));
-            }
+        // Add each field of the schema that the details reach, as the text
+        // the dictionary has: a field that looks like a number in one entry
+        // may not in another, and the text may not survive a number (`007`,
+        // `NaN`, identifiers beyond 2^53), so it is never parsed (#1365).
+        for (field_name, value) in schema_custom_fields.iter().zip(self.read_details()) {
+            obj.insert(field_name.to_string(), json!(value));
         }
 
         Value::Object(obj)
+    }
+}
+
+/// One pass over a token's details, as [`Token::details_iter`] yields them.
+///
+/// Either the details stored in the token's `details` field, or its
+/// dictionary's fields followed by the `*` that pad them to the schema's
+/// width, read without loading them into the field.
+enum DetailsIter<'t, 'a> {
+    /// The details in the token's `details` field.
+    Stored(slice::Iter<'t, Cow<'a, str>>),
+    /// The dictionary's fields, then their padding.
+    Dictionary(Chain<DetailFields<'a>, RepeatN<&'a str>>),
+}
+
+impl<'t, 'a: 't> Iterator for DetailsIter<'t, 'a> {
+    type Item = &'t str;
+
+    /// Yields the next detail field.
+    ///
+    /// # Returns
+    ///
+    /// The next field in schema order, or `None` once all are read.
+    #[inline]
+    fn next(&mut self) -> Option<&'t str> {
+        match self {
+            Self::Stored(details) => details.next().map(|detail| detail.as_ref()),
+            Self::Dictionary(fields) => fields.next(),
+        }
+    }
+
+    /// Reports the exact number of fields left, so that collecting the
+    /// details allocates once.
+    ///
+    /// # Returns
+    ///
+    /// `(remaining, Some(remaining))`.
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            Self::Stored(details) => details.size_hint(),
+            Self::Dictionary(fields) => fields.size_hint(),
+        }
     }
 }
 
@@ -551,10 +648,10 @@ mod tests {
         let mut saw_unknown = false;
         for mut token in tokens {
             saw_unknown |= token.word_id.is_unknown();
-            let _ = token.details_iter().count();
+            let _ = token.details();
             let details = match token.details.as_ref() {
                 Some(details) => details,
-                None => panic!("details must be cached after details_iter"),
+                None => panic!("details must be cached after details()"),
             };
             assert_eq!(details.len(), expected_len, "surface {:?}", token.surface);
             assert_eq!(
@@ -604,10 +701,10 @@ mod tests {
             if !token.word_id.is_system() && !token.word_id.is_unknown() {
                 saw_user_token = true;
             }
-            let _ = token.details_iter().count();
+            let _ = token.details();
             let details = match token.details.as_ref() {
                 Some(details) => details,
-                None => panic!("details must be cached after details_iter"),
+                None => panic!("details must be cached after details()"),
             };
             assert_eq!(details.capacity(), expected_len);
         }
@@ -615,6 +712,157 @@ mod tests {
             saw_user_token,
             "expected at least one user-dictionary token"
         );
+    }
+
+    /// Text whose tokens come from all three dictionaries of
+    /// [`mixed_segmenter`]: a user dictionary word (`東京スカイツリー`), system
+    /// words, and a Latin run that becomes an unknown word.
+    const MIXED_TEXT: &str = "東京スカイツリーの近くでsupercalifragilistic";
+
+    /// A segmenter for IPADIC with `resources/user_dict/ipadic_simple_userdic.csv`.
+    fn mixed_segmenter() -> Segmenter {
+        use std::path::PathBuf;
+
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("user_dict")
+            .join("ipadic_simple_userdic.csv");
+        let config = serde_json::json!({
+            "dictionary": "embedded://ipadic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
+            "mode": "normal"
+        });
+        match Segmenter::from_config(&config) {
+            Ok(segmenter) => segmenter,
+            Err(err) => panic!("failed to build segmenter: {err}"),
+        }
+    }
+
+    /// `details_iter` reads a token's details without loading them into the
+    /// `details` field (#1399), and yields the fields `details()` loads,
+    /// padded to the schema's width, for a system, an unknown and a user
+    /// dictionary word.
+    #[test]
+    fn test_details_iter_leaves_details_unloaded() {
+        let segmenter = mixed_segmenter();
+        let width = segmenter
+            .dictionary
+            .metadata
+            .dictionary_schema
+            .get_custom_fields()
+            .len();
+        let tokens = match segmenter.segment(Cow::Borrowed(MIXED_TEXT)) {
+            Ok(tokens) => tokens,
+            Err(err) => panic!("segment failed: {err}"),
+        };
+
+        let (mut saw_system, mut saw_unknown, mut saw_user) = (false, false, false);
+        for mut token in tokens {
+            if token.word_id.is_unknown() {
+                saw_unknown = true;
+            } else if token.word_id.is_system() {
+                saw_system = true;
+            } else {
+                saw_user = true;
+            }
+
+            let loaded: Vec<String> = {
+                let mut probe = token.clone();
+                probe.details().iter().map(|s| s.to_string()).collect()
+            };
+            let read: Vec<String> = token.details_iter().map(str::to_string).collect();
+            assert_eq!(read, loaded, "surface {:?}", token.surface);
+            assert_eq!(read.len(), width, "surface {:?}", token.surface);
+            assert!(
+                token.details.is_none(),
+                "details_iter loaded the details of {:?}",
+                token.surface
+            );
+        }
+        assert!(saw_system, "expected a system dictionary token");
+        assert!(saw_unknown, "expected an unknown-word token");
+        assert!(saw_user, "expected a user dictionary token");
+    }
+
+    /// `as_value` reads the details without loading them into the `details`
+    /// field (#1399), and gives the value it gives for a token whose details
+    /// were loaded first.
+    #[test]
+    fn test_as_value_leaves_details_unloaded() {
+        let segmenter = mixed_segmenter();
+        let tokens = match segmenter.segment(Cow::Borrowed(MIXED_TEXT)) {
+            Ok(tokens) => tokens,
+            Err(err) => panic!("segment failed: {err}"),
+        };
+        assert!(!tokens.is_empty());
+
+        for mut token in tokens {
+            let expected = {
+                let mut loaded = token.clone();
+                let _ = loaded.details();
+                assert!(loaded.details.is_some());
+                loaded.as_value()
+            };
+            let value = token.as_value();
+            assert_eq!(value, expected, "surface {:?}", token.surface);
+            assert!(
+                token.details.is_none(),
+                "as_value loaded the details of {:?}",
+                token.surface
+            );
+        }
+    }
+
+    /// Details written into the `details` field, as the compound word filters
+    /// write them, are what `details_iter` and `as_value` read, not the
+    /// dictionary's.
+    #[test]
+    fn test_single_passes_read_the_stored_details() {
+        let dictionary = match load_dictionary("embedded://ipadic") {
+            Ok(dictionary) => dictionary,
+            Err(err) => panic!("failed to load embedded IPADIC: {err}"),
+        };
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+        let mut tokens = match segmenter.segment(Cow::Borrowed("東京")) {
+            Ok(tokens) => tokens,
+            Err(err) => panic!("segment failed: {err}"),
+        };
+        assert_eq!(tokens.len(), 1);
+        let mut token = tokens.remove(0);
+        token.details = Some(vec![
+            Cow::Borrowed("複合語"),
+            Cow::Owned("書き込み".to_string()),
+        ]);
+
+        let read: Vec<&str> = token.details_iter().collect();
+        assert_eq!(read, ["複合語", "書き込み"]);
+
+        let value = token.as_value();
+        assert_eq!(value["part_of_speech"], "複合語");
+        assert_eq!(value["part_of_speech_subcategory_1"], "書き込み");
+        assert!(value.get("part_of_speech_subcategory_2").is_none());
+    }
+
+    /// `details_iter` reports its exact length before anything is read, so
+    /// that collecting the details, as the bindings' `TokenView` does,
+    /// allocates once: for the dictionary's fields with their padding and for
+    /// stored details alike.
+    #[test]
+    fn test_details_iter_reports_its_length() {
+        let segmenter = mixed_segmenter();
+        let mut tokens = match segmenter.segment(Cow::Borrowed(MIXED_TEXT)) {
+            Ok(tokens) => tokens,
+            Err(err) => panic!("segment failed: {err}"),
+        };
+        assert!(!tokens.is_empty());
+        // Stored details narrower than the schema, as a merged token has.
+        tokens[0].details = Some(vec![Cow::Borrowed("複合語")]);
+
+        for mut token in tokens {
+            let len = token.clone().details().len();
+            let hint = token.details_iter().size_hint();
+            assert_eq!(hint, (len, Some(len)), "surface {:?}", token.surface);
+        }
     }
 
     /// IPADIC stores 活用型 (conjugation type) before 活用形 (conjugation

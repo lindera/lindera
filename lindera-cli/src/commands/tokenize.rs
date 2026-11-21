@@ -236,8 +236,10 @@ fn mecab_output<W: Write>(
 ) -> io::Result<()> {
     for token in tokens.iter_mut() {
         details_buf.clear();
-        // details_iter avoids the fresh Vec<&str> that details() collects
-        // on every call (#942); the joined string reuses details_buf.
+        // details_iter reads the details in one pass, without the fresh
+        // Vec<&str> that details() collects on every call (#942) or the
+        // per-token cache it loads (#1399); the joined string reuses
+        // details_buf.
         for (i, detail) in token.details_iter().enumerate() {
             if i > 0 {
                 details_buf.push(',');
