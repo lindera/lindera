@@ -1,12 +1,14 @@
 use std::cell::RefCell;
+use std::num::NonZeroUsize;
 use std::rc::Rc;
 
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
 
-use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
+use lindera_binding::argument::Positive;
+use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder, TokenView};
 
-use crate::argument::{integer_arg, optional_i64_from_bigint};
+use crate::argument::{integer_arg, optional_i64_from_bigint, optional_integer_arg};
 use crate::dictionary::{JsDictionary, JsUserDictionary, user_dictionary_from_js};
 use crate::json::json_from_js;
 use crate::mode::{JsMode, mode_from_js};
@@ -634,6 +636,223 @@ impl Tokenizer {
     pub fn py_tokenize_surfaces(&self, input_text: &str) -> Result<Vec<String>, JsValue> {
         self.tokenize_surfaces(input_text)
     }
+
+    /// Tokenizes every text of `texts`, each as `tokenize` does, and
+    /// returns their tokens in the order of `texts`.
+    ///
+    /// WASM has no threads: the texts are tokenized one after the other on
+    /// the calling thread, whatever `max_threads` is. `max_threads` is
+    /// checked (an integer of 1 or more) and otherwise ignored, so that a
+    /// call written for the other bindings runs unchanged; the batch saves
+    /// crossing into WASM once per text.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - An array of texts.
+    /// * `max_threads` - The most threads, an integer of 1 or more, or
+    ///   `undefined` / `null`.
+    ///
+    /// # Returns
+    ///
+    /// An array with the token objects of each text, or an error for a
+    /// `max_threads` that is not an integer of 1 or more.
+    #[wasm_bindgen(js_name = "tokenizeBatch")]
+    pub fn tokenize_batch(
+        &self,
+        texts: Vec<String>,
+        #[wasm_bindgen(unchecked_optional_param_type = "number | null")] max_threads: Option<f64>,
+    ) -> Result<JsValue, JsValue> {
+        let max_threads = batch_threads(max_threads)?;
+        let batch = self
+            .inner
+            .tokenize_batch(&texts, max_threads)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+        let outer = js_sys::Array::new();
+        for views in batch {
+            outer.push(&tokens_to_js(views));
+        }
+        Ok(outer.into())
+    }
+
+    /// Tokenizes every text of `texts` as `tokenizeSurfaces` does, as
+    /// `tokenizeBatch` does.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - An array of texts.
+    /// * `max_threads` - Checked and ignored, as `tokenizeBatch` does.
+    ///
+    /// # Returns
+    ///
+    /// An array with the surface strings of each text, or an error for a
+    /// `max_threads` that is not an integer of 1 or more.
+    #[wasm_bindgen(js_name = "tokenizeSurfacesBatch")]
+    pub fn tokenize_surfaces_batch(
+        &self,
+        texts: Vec<String>,
+        #[wasm_bindgen(unchecked_optional_param_type = "number | null")] max_threads: Option<f64>,
+    ) -> Result<JsValue, JsValue> {
+        let max_threads = batch_threads(max_threads)?;
+        let batch = self
+            .inner
+            .tokenize_surfaces_batch(&texts, max_threads)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+        let outer = js_sys::Array::new();
+        for views in batch {
+            let surfaces = js_sys::Array::new();
+            for view in views {
+                surfaces.push(&JsValue::from(view.surface));
+            }
+            outer.push(&surfaces);
+        }
+        Ok(outer.into())
+    }
+
+    /// Tokenizes every text of `texts` as `tokenizeNbest` does, as
+    /// `tokenizeBatch` does.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - An array of texts.
+    /// * `n` - Number of N-best results per text, an integer of 0 or more.
+    /// * `unique` - Deduplicate results with identical word boundaries.
+    /// * `cost_threshold` - A BigInt that fits in 64 bits, as
+    ///   `tokenizeNbest` takes it.
+    /// * `max_threads` - Checked and ignored, as `tokenizeBatch` does.
+    ///
+    /// # Returns
+    ///
+    /// An array with the N-best results of each text, each `{ tokens, cost }`
+    /// as `tokenizeNbest` returns them, or an error for an `n`, a
+    /// `cost_threshold` or a `max_threads` outside its range.
+    #[wasm_bindgen(js_name = "tokenizeNbestBatch")]
+    pub fn tokenize_nbest_batch(
+        &self,
+        texts: Vec<String>,
+        n: f64,
+        #[wasm_bindgen(unchecked_optional_param_type = "boolean | null")] unique: Option<bool>,
+        #[wasm_bindgen(unchecked_optional_param_type = "bigint | null")] cost_threshold: Option<
+            JsValue,
+        >,
+        #[wasm_bindgen(unchecked_optional_param_type = "number | null")] max_threads: Option<f64>,
+    ) -> Result<JsValue, JsValue> {
+        let n = integer_arg("n", n)?;
+        let cost_threshold = optional_i64_from_bigint("cost_threshold", cost_threshold)?;
+        let max_threads = batch_threads(max_threads)?;
+        let batch = self
+            .inner
+            .tokenize_nbest_batch(
+                &texts,
+                n,
+                unique.unwrap_or(false),
+                cost_threshold,
+                max_threads,
+            )
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+        let outer = js_sys::Array::new();
+        for results in batch {
+            let results = nbest_to_js(results)?;
+            outer.push(&results);
+        }
+        Ok(outer.into())
+    }
+
+    /// Tokenizes every text of `texts`, as `tokenizeBatch` does
+    /// (snake_case alias).
+    #[wasm_bindgen(js_name = "tokenize_batch")]
+    pub fn py_tokenize_batch(
+        &self,
+        texts: Vec<String>,
+        #[wasm_bindgen(unchecked_optional_param_type = "number | null")] max_threads: Option<f64>,
+    ) -> Result<JsValue, JsValue> {
+        self.tokenize_batch(texts, max_threads)
+    }
+
+    /// Tokenizes every text of `texts`, as `tokenizeSurfacesBatch` does
+    /// (snake_case alias).
+    #[wasm_bindgen(js_name = "tokenize_surfaces_batch")]
+    pub fn py_tokenize_surfaces_batch(
+        &self,
+        texts: Vec<String>,
+        #[wasm_bindgen(unchecked_optional_param_type = "number | null")] max_threads: Option<f64>,
+    ) -> Result<JsValue, JsValue> {
+        self.tokenize_surfaces_batch(texts, max_threads)
+    }
+
+    /// Tokenizes every text of `texts`, as `tokenizeNbestBatch` does
+    /// (snake_case alias).
+    #[wasm_bindgen(js_name = "tokenize_nbest_batch")]
+    pub fn py_tokenize_nbest_batch(
+        &self,
+        texts: Vec<String>,
+        n: f64,
+        #[wasm_bindgen(unchecked_optional_param_type = "boolean | null")] unique: Option<bool>,
+        #[wasm_bindgen(unchecked_optional_param_type = "bigint | null")] cost_threshold: Option<
+            JsValue,
+        >,
+        #[wasm_bindgen(unchecked_optional_param_type = "number | null")] max_threads: Option<f64>,
+    ) -> Result<JsValue, JsValue> {
+        self.tokenize_nbest_batch(texts, n, unique, cost_threshold, max_threads)
+    }
+}
+
+/// Makes the token objects of one text into an array.
+///
+/// # Arguments
+///
+/// * `views` - The tokens of the text.
+///
+/// # Returns
+///
+/// The array of plain token objects.
+fn tokens_to_js(views: Vec<TokenView>) -> js_sys::Array {
+    let tokens = js_sys::Array::new();
+    for view in views {
+        tokens.push(&token_view_to_js(view));
+    }
+    tokens
+}
+
+/// Makes the N-best results of one text into an array of `{ tokens, cost }`
+/// objects, as `tokenizeNbest` returns them.
+///
+/// # Arguments
+///
+/// * `results` - The `(tokens, cost)` pairs of the text.
+///
+/// # Returns
+///
+/// The array, or the error of setting a property.
+fn nbest_to_js(results: Vec<(Vec<TokenView>, i64)>) -> Result<js_sys::Array, JsValue> {
+    let outer = js_sys::Array::new();
+    for (views, cost) in results {
+        let entry = js_sys::Object::new();
+        js_sys::Reflect::set(&entry, &"tokens".into(), &tokens_to_js(views))?;
+        js_sys::Reflect::set(&entry, &"cost".into(), &JsValue::from(cost as f64))?;
+        outer.push(&entry);
+    }
+    Ok(outer)
+}
+
+/// Converts the `max_threads` argument of the batch methods, as the other
+/// bindings check theirs.
+///
+/// # Arguments
+///
+/// * `max_threads` - The argument.
+///
+/// # Returns
+///
+/// The thread count, `None` for the default, or an error when it is not an
+/// integer of 1 or more.
+fn batch_threads(max_threads: Option<f64>) -> Result<Option<NonZeroUsize>, JsValue> {
+    Ok(
+        optional_integer_arg::<Positive<usize>>("max_threads", max_threads)?
+            .and_then(|Positive(n)| NonZeroUsize::new(n)),
+    )
 }
 
 #[cfg(test)]
@@ -2071,5 +2290,132 @@ mod tests {
             }
         }
         assert!(failures.is_empty(), "{failures:#?}");
+    }
+
+    /// `JSON.stringify` of a value: tokens and N-best results are plain
+    /// objects, so equal results give equal strings.
+    #[cfg(target_arch = "wasm32")]
+    fn json(value: &wasm_bindgen::JsValue) -> String {
+        js_sys::JSON::stringify(value).unwrap().as_string().unwrap()
+    }
+
+    /// The batch methods give every text the results of the single calls,
+    /// in the order of the texts, through their camelCase names and their
+    /// snake_case aliases, with and without `max_threads` (#1402).
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_batch_methods_match_single_calls() {
+        use wasm_bindgen::JsValue;
+
+        use crate::TokenizerBuilder;
+
+        let builder = TokenizerBuilder::new().unwrap();
+        builder.set_dictionary("embedded://ipadic");
+        let tokenizer = builder.build().unwrap();
+        let texts: Vec<String> = [
+            "関西国際空港限定トートバッグ",
+            "すもももももももものうち",
+            "",
+        ]
+        .iter()
+        .map(|text| text.to_string())
+        .collect();
+
+        let expected = json(&JsValue::from(
+            texts
+                .iter()
+                .map(|text| {
+                    tokenizer
+                        .tokenize(text)
+                        .unwrap()
+                        .into_iter()
+                        .collect::<js_sys::Array>()
+                })
+                .collect::<js_sys::Array>(),
+        ));
+        for batch in [
+            tokenizer.tokenize_batch(texts.clone(), None).unwrap(),
+            tokenizer.tokenize_batch(texts.clone(), Some(4.0)).unwrap(),
+            tokenizer.py_tokenize_batch(texts.clone(), None).unwrap(),
+        ] {
+            assert_eq!(json(&batch), expected);
+        }
+
+        let expected_surfaces = json(&JsValue::from(
+            texts
+                .iter()
+                .map(|text| {
+                    tokenizer
+                        .tokenize_surfaces(text)
+                        .unwrap()
+                        .into_iter()
+                        .map(JsValue::from)
+                        .collect::<js_sys::Array>()
+                })
+                .collect::<js_sys::Array>(),
+        ));
+        for batch in [
+            tokenizer
+                .tokenize_surfaces_batch(texts.clone(), Some(2.0))
+                .unwrap(),
+            tokenizer
+                .py_tokenize_surfaces_batch(texts.clone(), None)
+                .unwrap(),
+        ] {
+            assert_eq!(json(&batch), expected_surfaces);
+        }
+
+        let expected_nbest = json(&JsValue::from(
+            texts
+                .iter()
+                .map(|text| {
+                    tokenizer
+                        .tokenize_nbest(text, 3.0, Some(true), None)
+                        .unwrap()
+                })
+                .collect::<js_sys::Array>(),
+        ));
+        for batch in [
+            tokenizer
+                .tokenize_nbest_batch(texts.clone(), 3.0, Some(true), None, Some(2.0))
+                .unwrap(),
+            tokenizer
+                .py_tokenize_nbest_batch(texts.clone(), 3.0, Some(true), None, None)
+                .unwrap(),
+        ] {
+            assert_eq!(json(&batch), expected_nbest);
+        }
+    }
+
+    /// The batch methods reject a `max_threads` that is not an integer of 1
+    /// or more, as the other bindings do (#1402).
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_batch_methods_reject_a_thread_count_below_one() {
+        use wasm_bindgen::JsValue;
+
+        use crate::TokenizerBuilder;
+
+        let builder = TokenizerBuilder::new().unwrap();
+        builder.set_dictionary("embedded://ipadic");
+        let tokenizer = builder.build().unwrap();
+        let texts = || vec!["東京".to_string()];
+        let message = |result: Result<JsValue, JsValue>| result.unwrap_err().as_string().unwrap();
+
+        let zero = "max_threads must be an integer between 1 and 4294967295, got 0";
+        assert_eq!(message(tokenizer.tokenize_batch(texts(), Some(0.0))), zero);
+        assert_eq!(
+            message(tokenizer.tokenize_surfaces_batch(texts(), Some(0.0))),
+            zero
+        );
+        assert_eq!(
+            message(tokenizer.tokenize_nbest_batch(texts(), 2.0, None, None, Some(0.0))),
+            zero
+        );
+        assert_eq!(
+            message(tokenizer.tokenize_batch(texts(), Some(-1.0))),
+            "max_threads must be an integer between 1 and 4294967295, got -1"
+        );
+        assert!(message(tokenizer.tokenize_batch(texts(), Some(1.5))).ends_with("got 1.5"));
     }
 }

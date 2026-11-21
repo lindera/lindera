@@ -6,13 +6,15 @@
 //! this module only adds the magnus wrappers and the Ruby-hash conversion.
 
 use std::cell::RefCell;
+use std::num::NonZeroUsize;
 use std::path::Path;
 
 use magnus::prelude::*;
 use magnus::scan_args::{get_kwargs, scan_args};
 use magnus::{Error, Integer, RArray, RHash, Ruby, Value, function, method};
 
-use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
+use lindera_binding::argument::Positive;
+use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder, TokenView};
 
 use crate::dictionary::{RbDictionary, RbUserDictionary};
 use crate::error::to_magnus_error;
@@ -393,6 +395,177 @@ impl RbTokenizer {
 
         Ok(rb_results)
     }
+
+    /// Tokenizes every text of `texts`, each as `tokenize` does, on up to
+    /// `max_threads` threads, and returns their tokens in the order of
+    /// `texts`: `tokenize_batch(texts, max_threads = nil)`.
+    ///
+    /// The tokenization runs on several threads while the call holds the
+    /// GVL, so other Ruby threads wait for it. The results are the same for
+    /// every number of threads.
+    ///
+    /// # Arguments
+    ///
+    /// * `ruby` - Ruby runtime handle (passed by magnus, not by the caller).
+    /// * `rb_self` - The tokenizer.
+    /// * `args` - `texts`, an array of strings, and `max_threads`, an
+    ///   integer of 1 or more, or `nil` (the default) for the number of
+    ///   CPUs.
+    ///
+    /// # Returns
+    ///
+    /// An array with the Token objects of each text, an `ArgumentError` for
+    /// a wrong number of arguments, a `TypeError` for `texts` that is not an
+    /// array of strings, a `RangeError` for a `max_threads` outside its
+    /// range, or a `RuntimeError` for the first text, in the order of
+    /// `texts`, whose tokenization fails.
+    fn tokenize_batch(ruby: &Ruby, rb_self: &Self, args: &[Value]) -> Result<RArray, Error> {
+        let args = scan_args::<(Vec<String>,), (Option<Option<Integer>>,), (), (), (), ()>(args)?;
+        let (texts,) = args.required;
+        let (max_threads,) = args.optional;
+        let max_threads = batch_threads(ruby, max_threads.flatten())?;
+        let batch = rb_self
+            .inner
+            .tokenize_batch(&texts, max_threads)
+            .map_err(|err| to_magnus_error(ruby, err.to_string()))?;
+
+        let rb_batch = ruby.ary_new_capa(batch.len());
+        for views in batch {
+            rb_batch.push(token_array(ruby, views)?)?;
+        }
+        Ok(rb_batch)
+    }
+
+    /// Tokenizes every text of `texts` as `tokenize_surfaces` does, on up to
+    /// `max_threads` threads, as `tokenize_batch` does:
+    /// `tokenize_surfaces_batch(texts, max_threads = nil)`.
+    ///
+    /// # Arguments
+    ///
+    /// * `ruby` - Ruby runtime handle (passed by magnus, not by the caller).
+    /// * `rb_self` - The tokenizer.
+    /// * `args` - `texts` and `max_threads`, as `tokenize_batch` takes them.
+    ///
+    /// # Returns
+    ///
+    /// An array with the surface strings of each text, or the errors
+    /// `tokenize_batch` raises.
+    fn tokenize_surfaces_batch(
+        ruby: &Ruby,
+        rb_self: &Self,
+        args: &[Value],
+    ) -> Result<RArray, Error> {
+        let args = scan_args::<(Vec<String>,), (Option<Option<Integer>>,), (), (), (), ()>(args)?;
+        let (texts,) = args.required;
+        let (max_threads,) = args.optional;
+        let max_threads = batch_threads(ruby, max_threads.flatten())?;
+        let batch = rb_self
+            .inner
+            .tokenize_surfaces_batch(&texts, max_threads)
+            .map_err(|err| to_magnus_error(ruby, err.to_string()))?;
+
+        let rb_batch = ruby.ary_new_capa(batch.len());
+        for views in batch {
+            let surfaces = ruby.ary_new_capa(views.len());
+            for view in views {
+                surfaces.push(view.surface)?;
+            }
+            rb_batch.push(surfaces)?;
+        }
+        Ok(rb_batch)
+    }
+
+    /// Tokenizes every text of `texts` as `tokenize_nbest` does, on up to
+    /// `max_threads` threads, as `tokenize_batch` does:
+    /// `tokenize_nbest_batch(texts, n, unique, cost_threshold, max_threads = nil)`.
+    ///
+    /// # Arguments
+    ///
+    /// * `ruby` - Ruby runtime handle (passed by magnus, not by the caller).
+    /// * `rb_self` - The tokenizer.
+    /// * `args` - `texts`; `n`, `unique` and `cost_threshold`, as
+    ///   `tokenize_nbest` takes them; and `max_threads`, as
+    ///   `tokenize_batch` takes it.
+    ///
+    /// # Returns
+    ///
+    /// An array with the [tokens, cost] pairs of each text, a `RangeError`
+    /// for an `n`, a `cost_threshold` or a `max_threads` outside its range,
+    /// or the other errors `tokenize_batch` raises.
+    fn tokenize_nbest_batch(ruby: &Ruby, rb_self: &Self, args: &[Value]) -> Result<RArray, Error> {
+        let args = scan_args::<
+            (Vec<String>, Integer, Option<bool>, Option<Integer>),
+            (Option<Option<Integer>>,),
+            (),
+            (),
+            (),
+            (),
+        >(args)?;
+        let (texts, n, unique, cost_threshold) = args.required;
+        let (max_threads,) = args.optional;
+        let n = integer_arg(ruby, "n", n)?;
+        let cost_threshold = optional_integer_arg(ruby, "cost_threshold", cost_threshold)?;
+        let max_threads = batch_threads(ruby, max_threads.flatten())?;
+        let batch = rb_self
+            .inner
+            .tokenize_nbest_batch(
+                &texts,
+                n,
+                unique.unwrap_or(false),
+                cost_threshold,
+                max_threads,
+            )
+            .map_err(|err| to_magnus_error(ruby, err.to_string()))?;
+
+        let rb_batch = ruby.ary_new_capa(batch.len());
+        for results in batch {
+            let rb_results = ruby.ary_new_capa(results.len());
+            for (views, cost) in results {
+                let pair = ruby.ary_new_capa(2);
+                pair.push(token_array(ruby, views)?)?;
+                pair.push(cost)?;
+                rb_results.push(pair)?;
+            }
+            rb_batch.push(rb_results)?;
+        }
+        Ok(rb_batch)
+    }
+}
+
+/// Makes the Token objects of one text into an array.
+///
+/// # Arguments
+///
+/// * `ruby` - Ruby runtime handle.
+/// * `views` - The tokens of the text.
+///
+/// # Returns
+///
+/// The array of Token objects.
+fn token_array(ruby: &Ruby, views: Vec<TokenView>) -> Result<RArray, Error> {
+    let arr = ruby.ary_new_capa(views.len());
+    for view in views {
+        arr.push(ruby.into_value(RbToken::from_view(view)))?;
+    }
+    Ok(arr)
+}
+
+/// Converts the `max_threads` argument of the batch methods, as `train`
+/// checks its own.
+///
+/// # Arguments
+///
+/// * `ruby` - Ruby runtime handle.
+/// * `max_threads` - The argument, `None` for `nil` or omitted.
+///
+/// # Returns
+///
+/// The thread count, `None` for the default, or a `RangeError` when it is
+/// not an integer of 1 or more.
+fn batch_threads(ruby: &Ruby, max_threads: Option<Integer>) -> Result<Option<NonZeroUsize>, Error> {
+    let max_threads: Option<Positive<usize>> =
+        optional_integer_arg(ruby, "max_threads", max_threads)?;
+    Ok(max_threads.and_then(|Positive(n)| NonZeroUsize::new(n)))
 }
 
 /// Defines TokenizerBuilder and Tokenizer classes in the given Ruby module.
@@ -453,6 +626,15 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
         method!(RbTokenizer::tokenize_surfaces, 1),
     )?;
     tokenizer_class.define_method("tokenize_nbest", method!(RbTokenizer::tokenize_nbest, 4))?;
+    tokenizer_class.define_method("tokenize_batch", method!(RbTokenizer::tokenize_batch, -1))?;
+    tokenizer_class.define_method(
+        "tokenize_surfaces_batch",
+        method!(RbTokenizer::tokenize_surfaces_batch, -1),
+    )?;
+    tokenizer_class.define_method(
+        "tokenize_nbest_batch",
+        method!(RbTokenizer::tokenize_nbest_batch, -1),
+    )?;
 
     Ok(())
 }

@@ -129,6 +129,28 @@ function cases() {
         range: I64_RANGE,
         outside: [1e300, -1e300],
       },
+      // The thread counts of the batch methods start at 1, as train's
+      // (#1402).
+      "tokenizer.tokenizeBatch(texts, maxThreads)": {
+        call: (v) => tokenizer.tokenizeBatch(["東京"], v),
+        name: "maxThreads",
+        range: ["1", USIZE_MAX],
+        outside: [-1, 0],
+      },
+      "tokenizer.tokenizeSurfacesBatch(texts, maxThreads)": {
+        call: (v) => tokenizer.tokenizeSurfacesBatch(["東京"], v),
+        name: "maxThreads",
+        range: ["1", USIZE_MAX],
+        outside: [-1, 0],
+      },
+      "tokenizer.tokenizeNbestBatch(texts, n, unique, costThreshold, maxThreads)":
+        {
+          call: (v) =>
+            tokenizer.tokenizeNbestBatch(["東京"], 2, false, null, v),
+          name: "maxThreads",
+          range: ["1", USIZE_MAX],
+          outside: [-1, 0],
+        },
     });
   }
   if (hasTrainFeature) {

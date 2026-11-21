@@ -5,8 +5,10 @@
 //! [`lindera_binding::CoreTokenizerBuilder`] / [`lindera_binding::CoreTokenizer`];
 //! this module only adds the napi wrappers and the JS-value conversion.
 
+use std::num::NonZeroUsize;
 use std::path::Path;
 
+use lindera_binding::argument::Positive;
 use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{JsDictionary, JsUserDictionary};
@@ -390,4 +392,141 @@ impl JsTokenizer {
 
         Ok(js_results)
     }
+
+    /// Tokenizes every text of `texts`, each as `tokenize` does, on up to
+    /// `maxThreads` threads, and returns their tokens in the order of
+    /// `texts`.
+    ///
+    /// The call is synchronous: the JavaScript thread waits until every
+    /// text is tokenized, while the tokenization runs on several threads.
+    /// The results are the same for every number of threads.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - An array of texts.
+    /// * `max_threads` - The most threads, an integer of 1 or more (default:
+    ///   the number of CPUs).
+    ///
+    /// # Returns
+    ///
+    /// An array with the token objects of each text, or an `InvalidArg`
+    /// error when `maxThreads` is not an integer of 1 or more.
+    #[napi(catch_unwind)]
+    pub fn tokenize_batch(
+        &self,
+        texts: Vec<String>,
+        max_threads: Option<f64>,
+    ) -> napi::Result<Vec<Vec<Token>>> {
+        let max_threads = batch_threads(max_threads)?;
+        let batch = self
+            .inner
+            .tokenize_batch(&texts, max_threads)
+            .map_err(to_napi_error)?;
+        Ok(batch
+            .into_iter()
+            .map(|views| views.into_iter().map(Token::from_view).collect())
+            .collect())
+    }
+
+    /// Tokenizes every text of `texts` as `tokenizeSurfaces` does, on up to
+    /// `maxThreads` threads, as `tokenizeBatch` does.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - An array of texts.
+    /// * `max_threads` - The most threads, an integer of 1 or more (default:
+    ///   the number of CPUs).
+    ///
+    /// # Returns
+    ///
+    /// An array with the surface strings of each text, or an `InvalidArg`
+    /// error when `maxThreads` is not an integer of 1 or more.
+    #[napi(catch_unwind)]
+    pub fn tokenize_surfaces_batch(
+        &self,
+        texts: Vec<String>,
+        max_threads: Option<f64>,
+    ) -> napi::Result<Vec<Vec<String>>> {
+        let max_threads = batch_threads(max_threads)?;
+        let batch = self
+            .inner
+            .tokenize_surfaces_batch(&texts, max_threads)
+            .map_err(to_napi_error)?;
+        Ok(batch
+            .into_iter()
+            .map(|views| views.into_iter().map(|view| view.surface).collect())
+            .collect())
+    }
+
+    /// Tokenizes every text of `texts` as `tokenizeNbest` does, on up to
+    /// `maxThreads` threads, as `tokenizeBatch` does.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - An array of texts.
+    /// * `n` - Number of N-best results per text, an integer of 0 or more.
+    /// * `unique` - If true, deduplicate results (default: false).
+    /// * `cost_threshold` - Maximum cost difference from the best path of
+    ///   each text, an integer that fits in 64 bits (default: undefined).
+    /// * `max_threads` - The most threads, an integer of 1 or more (default:
+    ///   the number of CPUs).
+    ///
+    /// # Returns
+    ///
+    /// An array with the NbestResult objects of each text, or an
+    /// `InvalidArg` error when `n`, `costThreshold` or `maxThreads` is not
+    /// an integer in its range.
+    #[napi(catch_unwind)]
+    pub fn tokenize_nbest_batch(
+        &self,
+        texts: Vec<String>,
+        n: f64,
+        unique: Option<bool>,
+        cost_threshold: Option<f64>,
+        max_threads: Option<f64>,
+    ) -> napi::Result<Vec<Vec<NbestResult>>> {
+        let n = integer_arg("n", n)?;
+        let cost_threshold = optional_integer_arg("costThreshold", cost_threshold)?;
+        let max_threads = batch_threads(max_threads)?;
+        let batch = self
+            .inner
+            .tokenize_nbest_batch(
+                &texts,
+                n,
+                unique.unwrap_or(false),
+                cost_threshold,
+                max_threads,
+            )
+            .map_err(to_napi_error)?;
+        Ok(batch
+            .into_iter()
+            .map(|results| {
+                results
+                    .into_iter()
+                    .map(|(views, cost)| NbestResult {
+                        tokens: views.into_iter().map(Token::from_view).collect(),
+                        cost,
+                    })
+                    .collect()
+            })
+            .collect())
+    }
+}
+
+/// Converts the `maxThreads` argument of the batch methods, as the
+/// training function checks its own.
+///
+/// # Arguments
+///
+/// * `max_threads` - The argument.
+///
+/// # Returns
+///
+/// The thread count, `None` for the default, or an `InvalidArg` error when
+/// it is not an integer of 1 or more.
+fn batch_threads(max_threads: Option<f64>) -> napi::Result<Option<NonZeroUsize>> {
+    Ok(
+        optional_integer_arg::<Positive<usize>>("maxThreads", max_threads)?
+            .and_then(|Positive(n)| NonZeroUsize::new(n)),
+    )
 }

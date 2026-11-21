@@ -18,12 +18,14 @@
 //! tokens = tokenizer.tokenize("すもももももももものうち")
 //! ```
 
+use std::num::NonZeroUsize;
 use std::path::Path;
 
 use pyo3::exceptions::{PyOverflowError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
+use lindera_binding::argument::{Positive, integer_argument_message};
 use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{PyDictionary, PyUserDictionary};
@@ -486,6 +488,157 @@ impl PyTokenizer {
             .collect();
 
         Ok(py_results)
+    }
+
+    /// Tokenizes every text of `texts`, each as `tokenize` does, on up to
+    /// `max_threads` threads, and returns their tokens in the order of
+    /// `texts`.
+    ///
+    /// The texts are tokenized with the GIL released, so other Python
+    /// threads run meanwhile; the Token objects are made afterwards. The
+    /// results are the same for every number of threads.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - A list of texts (a single `str` raises `TypeError`).
+    /// * `max_threads` - The most threads, 1 or more; `None` (the default)
+    ///   is the number of CPUs.
+    ///
+    /// # Returns
+    ///
+    /// A list with the list of Token objects of each text.
+    ///
+    /// # Errors
+    ///
+    /// `ValueError` for a `max_threads` of 0 and `OverflowError` for a
+    /// negative one; the error of the first text, in the order of `texts`,
+    /// whose tokenization fails.
+    #[pyo3(signature = (texts, max_threads=None))]
+    fn tokenize_batch(
+        &self,
+        py: Python<'_>,
+        texts: Vec<String>,
+        max_threads: Option<usize>,
+    ) -> PyResult<Vec<Vec<PyToken>>> {
+        let max_threads = batch_threads(max_threads)?;
+        let batch = py
+            .detach(|| self.inner.tokenize_batch(&texts, max_threads))
+            .map_err(to_py_error)?;
+        Ok(batch
+            .into_iter()
+            .map(|views| views.into_iter().map(PyToken::from_view).collect())
+            .collect())
+    }
+
+    /// Tokenizes every text of `texts` as `tokenize_surfaces` does, on up
+    /// to `max_threads` threads, as `tokenize_batch` does.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - A list of texts (a single `str` raises `TypeError`).
+    /// * `max_threads` - The most threads, 1 or more; `None` (the default)
+    ///   is the number of CPUs.
+    ///
+    /// # Returns
+    ///
+    /// A list with the surface strings of each text.
+    ///
+    /// # Errors
+    ///
+    /// As `tokenize_batch`.
+    #[pyo3(signature = (texts, max_threads=None))]
+    fn tokenize_surfaces_batch(
+        &self,
+        py: Python<'_>,
+        texts: Vec<String>,
+        max_threads: Option<usize>,
+    ) -> PyResult<Vec<Vec<String>>> {
+        let max_threads = batch_threads(max_threads)?;
+        let batch = py
+            .detach(|| self.inner.tokenize_surfaces_batch(&texts, max_threads))
+            .map_err(to_py_error)?;
+        Ok(batch
+            .into_iter()
+            .map(|views| views.into_iter().map(|view| view.surface).collect())
+            .collect())
+    }
+
+    /// Tokenizes every text of `texts` as `tokenize_nbest` does, on up to
+    /// `max_threads` threads, as `tokenize_batch` does.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - A list of texts (a single `str` raises `TypeError`).
+    /// * `n` - Number of N-best results per text.
+    /// * `unique` - Deduplicate results with identical word boundaries.
+    /// * `cost_threshold` - Discard results costing more than the best
+    ///   result of their text + threshold.
+    /// * `max_threads` - The most threads, 1 or more; `None` (the default)
+    ///   is the number of CPUs.
+    ///
+    /// # Returns
+    ///
+    /// A list with the N-best results of each text, each a list of
+    /// `(tokens, cost)` ordered by cost (best first).
+    ///
+    /// # Errors
+    ///
+    /// As `tokenize_batch`.
+    #[pyo3(signature = (texts, n, unique=false, cost_threshold=None, max_threads=None))]
+    fn tokenize_nbest_batch(
+        &self,
+        py: Python<'_>,
+        texts: Vec<String>,
+        n: usize,
+        unique: bool,
+        cost_threshold: Option<i64>,
+        max_threads: Option<usize>,
+    ) -> PyResult<Vec<PyNbestResults>> {
+        let max_threads = batch_threads(max_threads)?;
+        let batch = py
+            .detach(|| {
+                self.inner
+                    .tokenize_nbest_batch(&texts, n, unique, cost_threshold, max_threads)
+            })
+            .map_err(to_py_error)?;
+        Ok(batch
+            .into_iter()
+            .map(|results| {
+                results
+                    .into_iter()
+                    .map(|(views, cost)| {
+                        (views.into_iter().map(PyToken::from_view).collect(), cost)
+                    })
+                    .collect()
+            })
+            .collect())
+    }
+}
+
+/// The N-best results of one text, as `tokenize_nbest` returns them: the
+/// tokens and the cost of every result, best first.
+type PyNbestResults = Vec<(Vec<PyToken>, i64)>;
+
+/// Converts the `max_threads` argument of the batch methods, as the
+/// training functions check theirs.
+///
+/// # Arguments
+///
+/// * `max_threads` - The argument; pyo3 already raises `OverflowError` for
+///   a negative one.
+///
+/// # Returns
+///
+/// The thread count, `None` for the default, or `ValueError` for 0.
+fn batch_threads(max_threads: Option<usize>) -> PyResult<Option<NonZeroUsize>> {
+    match max_threads {
+        None => Ok(None),
+        Some(n) => NonZeroUsize::new(n).map(Some).ok_or_else(|| {
+            PyValueError::new_err(integer_argument_message::<Positive<usize>>(
+                "max_threads",
+                n,
+            ))
+        }),
     }
 }
 

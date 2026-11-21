@@ -245,6 +245,43 @@ for tokens, cost in results:
 
 **戻り値:** `list[tuple[list[Token], int]]`
 
+#### `tokenize_batch(texts, max_threads=None)`
+
+リストの各テキストを `tokenize` と同じくトークナイズし、最大 `max_threads` 個のスレッドで処理して、テキストの順にトークンを返します。結果はスレッドの数によらず同じです。トークナイズの間は GIL を外すので、その間もほかの Python のスレッドは動きます。`Token` のオブジェクトはその後に作ります。
+
+```python
+batch = tokenizer.tokenize_batch(["形態素解析", "すもももももももものうち"])
+for tokens in batch:
+    print([t.surface for t in tokens])
+```
+
+各テキストは 1 回の呼び出しとしてトークナイズされます。文書の行のリストを渡すと各行のトークンになり、文書全体を 1 つのテキストとしてトークナイズした結果とは違います。短いリストは 1 つのスレッドで処理し（1 スレッドあたり 16 KiB 以上の入力が要ります）、ユーザー辞書があれば各スレッドがそれぞれ複製を持ちます。結果が大きい一括（数 MB のテキストのトークンなど）は、既定より少ないスレッドのほうが速いことがあります。多くのスレッドが同時にトークンのメモリを作ると、時間の多くがカーネルの中で使われるためです。
+
+**パラメータ:**
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| `texts` | `list[str]` | トークナイズするテキスト（`str` を 1 つ渡すと `TypeError`） |
+| `max_threads` | `int` または `None` | 最大のスレッドの数。1 以上（デフォルト: `None`、CPU の数）。0 は `ValueError` |
+
+**戻り値:** `list[list[Token]]`
+
+#### `tokenize_surfaces_batch(texts, max_threads=None)`
+
+リストの各テキストを `tokenize_surfaces` と同じくトークナイズし、`tokenize_batch` と同じく最大 `max_threads` 個のスレッドで処理します。
+
+**パラメータ:** `tokenize_batch` と同じです。
+
+**戻り値:** `list[list[str]]`
+
+#### `tokenize_nbest_batch(texts, n, unique=False, cost_threshold=None, max_threads=None)`
+
+リストの各テキストを `tokenize_nbest` と同じくトークナイズし、`tokenize_batch` と同じく最大 `max_threads` 個のスレッドで処理します。`n`、`unique`、`cost_threshold` は各テキストに当てはまります。
+
+**パラメータ:** `texts` と `max_threads` は `tokenize_batch`、`n`、`unique`、`cost_threshold` は `tokenize_nbest` と同じです。
+
+**戻り値:** `list[list[tuple[list[Token], int]]]`
+
 ## Mode
 
 `Mode` は、[`TokenizerBuilder.set_mode()`](#set_modemode) と [`Tokenizer` のコンストラクタ](#tokenizerdictionary-modenone-user_dictionarynone-space_penaltynone) が受け取るトークナイズモードです。Rust の `lindera::mode::Mode` に対応し、normal モードか、[`Penalty`](#penalty) を持つ decompose モードのどちらかを表します。

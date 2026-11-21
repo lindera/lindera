@@ -6,15 +6,17 @@
 //! this module only adds the ext-php-rs wrappers and the Zval conversion.
 
 use std::cell::RefCell;
+use std::num::NonZeroUsize;
 use std::path::Path;
 
 use ext_php_rs::prelude::*;
 use ext_php_rs::types::Zval;
 use ext_php_rs::zend::ce;
 
+use lindera_binding::argument::Positive;
 use lindera_binding::{CoreTokenizer, CoreTokenizerBuilder};
 
-use crate::convert::{ConvertError, int_arg, zval_to_value};
+use crate::convert::{ConvertError, int_arg, nullable_int_arg, zval_to_value};
 use crate::dictionary::{PhpDictionary, PhpUserDictionary};
 use crate::error::lindera_value_err;
 use crate::mode::PhpMode;
@@ -452,6 +454,140 @@ impl PhpTokenizer {
 
         Ok(php_results)
     }
+
+    /// Tokenizes every text of `texts`, each as `tokenize` does, on up to
+    /// `max_threads` threads, and returns their tokens in the order of
+    /// `texts`. Exposed to PHP as `tokenizeBatch`.
+    ///
+    /// The call waits until every text is tokenized, while the
+    /// tokenization runs on several threads. The results are the same for
+    /// every number of threads.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - An array of texts.
+    /// * `max_threads` - The most threads, 1 or more; `null` (the default)
+    ///   is the number of CPUs.
+    ///
+    /// # Returns
+    ///
+    /// An array with the Token objects of each text, or a `ValueError` for
+    /// a `max_threads` below 1.
+    pub fn tokenize_batch(
+        &self,
+        texts: Vec<String>,
+        max_threads: Option<i64>,
+    ) -> PhpResult<Vec<Vec<PhpToken>>> {
+        let max_threads = batch_threads(max_threads)?;
+        let batch = self
+            .inner
+            .tokenize_batch(&texts, max_threads)
+            .map_err(lindera_value_err)?;
+        Ok(batch
+            .into_iter()
+            .map(|views| views.into_iter().map(PhpToken::from_view).collect())
+            .collect())
+    }
+
+    /// Tokenizes every text of `texts` as `tokenizeSurfaces` does, on up to
+    /// `max_threads` threads, as `tokenizeBatch` does. Exposed to PHP as
+    /// `tokenizeSurfacesBatch`.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - An array of texts.
+    /// * `max_threads` - The most threads, 1 or more; `null` (the default)
+    ///   is the number of CPUs.
+    ///
+    /// # Returns
+    ///
+    /// An array with the surface strings of each text, or a `ValueError`
+    /// for a `max_threads` below 1.
+    pub fn tokenize_surfaces_batch(
+        &self,
+        texts: Vec<String>,
+        max_threads: Option<i64>,
+    ) -> PhpResult<Vec<Vec<String>>> {
+        let max_threads = batch_threads(max_threads)?;
+        let batch = self
+            .inner
+            .tokenize_surfaces_batch(&texts, max_threads)
+            .map_err(lindera_value_err)?;
+        Ok(batch
+            .into_iter()
+            .map(|views| views.into_iter().map(|view| view.surface).collect())
+            .collect())
+    }
+
+    /// Tokenizes every text of `texts` as `tokenizeNbest` does, on up to
+    /// `max_threads` threads, as `tokenizeBatch` does. Exposed to PHP as
+    /// `tokenizeNbestBatch`.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - An array of texts.
+    /// * `n` - Number of N-best results per text, 0 or more.
+    /// * `unique` - If true, only return unique segmentations. Default: false.
+    /// * `cost_threshold` - Optional cost threshold for filtering the results
+    ///   of each text.
+    /// * `max_threads` - The most threads, 1 or more; `null` (the default)
+    ///   is the number of CPUs.
+    ///
+    /// # Returns
+    ///
+    /// An array with the NbestResult entries of each text, or a
+    /// `ValueError` for a negative `n` or a `max_threads` below 1.
+    pub fn tokenize_nbest_batch(
+        &self,
+        texts: Vec<String>,
+        n: i64,
+        unique: Option<bool>,
+        cost_threshold: Option<i64>,
+        max_threads: Option<i64>,
+    ) -> PhpResult<Vec<Vec<PhpNbestResult>>> {
+        let n = int_arg("n", n)?;
+        let max_threads = batch_threads(max_threads)?;
+        let batch = self
+            .inner
+            .tokenize_nbest_batch(
+                &texts,
+                n,
+                unique.unwrap_or(false),
+                cost_threshold,
+                max_threads,
+            )
+            .map_err(lindera_value_err)?;
+        Ok(batch
+            .into_iter()
+            .map(|results| {
+                results
+                    .into_iter()
+                    .map(|(views, cost)| PhpNbestResult {
+                        tokens: views.into_iter().map(PhpToken::from_view).collect(),
+                        cost,
+                    })
+                    .collect()
+            })
+            .collect())
+    }
+}
+
+/// Converts the `max_threads` argument of the batch methods, as `train`
+/// checks its own.
+///
+/// # Arguments
+///
+/// * `max_threads` - The argument: `null`, omitted, or an `int`.
+///
+/// # Returns
+///
+/// The thread count, `None` for the default, or a `ValueError` for a value
+/// below 1.
+fn batch_threads(max_threads: Option<i64>) -> PhpResult<Option<NonZeroUsize>> {
+    Ok(
+        nullable_int_arg::<Positive<usize>>("max_threads", max_threads)?
+            .and_then(|Positive(n)| NonZeroUsize::new(n)),
+    )
 }
 
 /// N-best tokenization result containing tokens and their cost.

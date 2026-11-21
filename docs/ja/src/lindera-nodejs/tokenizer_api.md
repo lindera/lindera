@@ -259,6 +259,44 @@ for (const { tokens, cost } of results) {
 
 **戻り値:** `NbestResult[]`。各 `NbestResult` は `{ tokens: Token[], cost: number }` です。
 
+#### `tokenizeBatch(texts, maxThreads?)`
+
+配列の各テキストを `tokenize` と同じくトークナイズし、最大 `maxThreads` 個のスレッドで処理して、テキストの順にトークンを返します。結果はスレッドの数によらず同じです。呼び出しは同期で、トークナイズは複数のスレッドで動きますが、JavaScript のスレッドは全部のテキストが終わるまで待ちます。
+
+```javascript
+const batch = tokenizer.tokenizeBatch(["形態素解析", "すもももももももものうち"]);
+for (const tokens of batch) {
+  console.log(tokens.map((t) => t.surface));
+}
+```
+
+各テキストは 1 回の呼び出しとしてトークナイズされます。文書の行の配列を渡すと各行のトークンになり、文書全体を 1 つのテキストとしてトークナイズした結果とは違います。短い配列は 1 つのスレッドで処理し（1 スレッドあたり 16 KiB 以上の入力が要ります）、ユーザー辞書があれば各スレッドがそれぞれ複製を持ちます。結果が大きい一括（数 MB のテキストのトークンなど）は、既定より少ないスレッドのほうが速いことがあります。多くのスレッドが同時にトークンのメモリを作ると、時間の多くがカーネルの中で使われるためです。
+
+**パラメータ:**
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| `texts` | `string[]` | トークナイズするテキスト |
+| `maxThreads` | `number \| undefined` | 最大のスレッドの数。1 以上の整数（デフォルト: CPU の数）。ほかの数は `InvalidArg` のエラー |
+
+**戻り値:** `Token[][]`
+
+#### `tokenizeSurfacesBatch(texts, maxThreads?)`
+
+配列の各テキストを `tokenizeSurfaces` と同じくトークナイズし、`tokenizeBatch` と同じく最大 `maxThreads` 個のスレッドで処理します。
+
+**パラメータ:** `tokenizeBatch` と同じです。
+
+**戻り値:** `string[][]`
+
+#### `tokenizeNbestBatch(texts, n, unique?, costThreshold?, maxThreads?)`
+
+配列の各テキストを `tokenizeNbest` と同じくトークナイズし、`tokenizeBatch` と同じく最大 `maxThreads` 個のスレッドで処理します。`n`、`unique`、`costThreshold` は各テキストに当てはまります。
+
+**パラメータ:** `texts` と `maxThreads` は `tokenizeBatch`、`n`、`unique`、`costThreshold` は `tokenizeNbest` と同じです。
+
+**戻り値:** `NbestResult[][]`
+
 ## Token
 
 `Token` は単一の形態素トークンを表すプレーンオブジェクトです。クラスではなく

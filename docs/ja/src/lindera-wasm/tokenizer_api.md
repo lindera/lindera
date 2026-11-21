@@ -249,6 +249,33 @@ const results = tokenizer.tokenizeNbest("すもももももももものうち", 
 const resultsWithThreshold = tokenizer.tokenizeNbest("すもももももももものうち", 3, false, 100n);
 ```
 
+#### `tokenizeBatch(texts, maxThreads?)`
+
+配列の各テキストを `tokenize` と同じくトークナイズし、テキストの順にトークンを返します。WASM にはスレッドがないので、テキストは呼び出したスレッドで順に処理します。`maxThreads` は検査するだけで使いません。一括の処理を複数のスレッドで行うほかのバインディング向けに書いたコードが、そのまま動くようにするためです。テキストごとに WASM との境界を越えずに済みます。
+
+- **パラメータ**:
+  - `texts` (string[]) -- トークナイズするテキスト
+  - `maxThreads` (number, 省略可) -- 1 以上の整数。ほかの数を渡すと例外
+- **戻り値**: テキストごとの `Token[]` の配列
+
+```javascript
+const batch = tokenizer.tokenizeBatch(["形態素解析", "すもももももももものうち"]);
+```
+
+#### `tokenizeSurfacesBatch(texts, maxThreads?)`
+
+配列の各テキストを `tokenizeSurfaces` と同じくトークナイズします。そのほかは `tokenizeBatch` と同じです。
+
+- **パラメータ**: `tokenizeBatch` と同じ
+- **戻り値**: テキストごとの `string[]` の配列
+
+#### `tokenizeNbestBatch(texts, n, unique?, costThreshold?, maxThreads?)`
+
+配列の各テキストを `tokenizeNbest` と同じくトークナイズします。そのほかは `tokenizeBatch` と同じです。`n`、`unique`、`costThreshold` は各テキストに当てはまります。
+
+- **パラメータ**: `texts` と `maxThreads` は `tokenizeBatch`、`n`、`unique`、`costThreshold` は `tokenizeNbest` と同じ
+- **戻り値**: テキストごとの N-best の結果（`{ tokens: Token[], cost: number }` の配列）の配列
+
 ## Token
 
 トークナイザーが生成する単一のトークンで、プレーンな JavaScript オブジェクトです。
@@ -460,6 +487,9 @@ Python API との一貫性のため、次のメソッドは snake\_case 形式�
 | `appendTokenFilter()` | `append_token_filter()` |
 | `tokenizeSurfaces()` | `tokenize_surfaces()` |
 | `tokenizeNbest()` | `tokenize_nbest()` |
+| `tokenizeBatch()` | `tokenize_batch()` |
+| `tokenizeSurfacesBatch()` | `tokenize_surfaces_batch()` |
+| `tokenizeNbestBatch()` | `tokenize_nbest_batch()` |
 | `loadDictionary()` | `load_dictionary()` |
 | `loadDictionaryFromBytes()` | `load_dictionary_from_bytes()` |
 | `loadUserDictionaryFromBytes()` | `load_user_dictionary_from_bytes()` |

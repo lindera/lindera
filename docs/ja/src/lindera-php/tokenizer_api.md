@@ -254,6 +254,46 @@ foreach ($results as $result) {
 
 **戻り値:** `array<NbestResult>`
 
+#### `tokenizeBatch($texts, $max_threads)`
+
+配列の各テキストを `tokenize` と同じくトークナイズし、最大 `$max_threads` 個のスレッドで処理して、テキストの順にトークンを返します。結果はスレッドの数によらず同じです。トークナイズは複数のスレッドで動きますが、呼び出しは全部のテキストが終わるまで戻りません。
+
+```php
+<?php
+
+$batch = $tokenizer->tokenizeBatch(['形態素解析', 'すもももももももものうち']);
+foreach ($batch as $tokens) {
+    echo implode(' ', array_map(fn($token) => $token->surface, $tokens)), "\n";
+}
+```
+
+各テキストは 1 回の呼び出しとしてトークナイズされます。文書の行の配列を渡すと各行のトークンになり、文書全体を 1 つのテキストとしてトークナイズした結果とは違います。短い配列は 1 つのスレッドで処理し（1 スレッドあたり 16 KiB 以上の入力が要ります）、ユーザー辞書があれば各スレッドがそれぞれ複製を持ちます。結果が大きい一括（数 MB のテキストのトークンなど）は、既定より少ないスレッドのほうが速いことがあります。多くのスレッドが同時にトークンのメモリを作ると、時間の多くがカーネルの中で使われるためです。
+
+**パラメータ:**
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| `$texts` | `array<string>` | トークナイズするテキスト |
+| `$max_threads` | `int\|null` | 最大のスレッドの数。1 以上（デフォルト: `null`、CPU の数）。1 未満は `ValueError` |
+
+**戻り値:** `array<array<Token>>`
+
+#### `tokenizeSurfacesBatch($texts, $max_threads)`
+
+配列の各テキストを `tokenizeSurfaces` と同じくトークナイズし、`tokenizeBatch` と同じく最大 `$max_threads` 個のスレッドで処理します。
+
+**パラメータ:** `tokenizeBatch` と同じです。
+
+**戻り値:** `array<array<string>>`
+
+#### `tokenizeNbestBatch($texts, $n, $unique, $cost_threshold, $max_threads)`
+
+配列の各テキストを `tokenizeNbest` と同じくトークナイズし、`tokenizeBatch` と同じく最大 `$max_threads` 個のスレッドで処理します。`$n`、`$unique`、`$cost_threshold` は各テキストに当てはまります。
+
+**パラメータ:** `$texts` と `$max_threads` は `tokenizeBatch`、`$n`、`$unique`、`$cost_threshold` は `tokenizeNbest` と同じです。
+
+**戻り値:** `array<array<NbestResult>>`
+
 ## NbestResult
 
 `NbestResult` は N-best トークナイズの個別の結果を表します。

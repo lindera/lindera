@@ -195,6 +195,8 @@ jobs:
               - 'lindera-jieba/**'
               # The golden tokenization tests load a user dictionary from here.
               - 'resources/user_dict/**'
+              # The parallel tokenization tests tokenize the lines of this text.
+              - 'resources/bocchan.txt'
               - *shared-workspace
               - *shared-crate-workflow
             lindera-analysis:
@@ -212,6 +214,8 @@ jobs:
               # resources/config/lindera.yml.
               - 'lindera-python/resources/lindera.yml'
               - 'lindera-nodejs/resources/lindera.yml'
+              # The worker pool tests tokenize the lines of this text.
+              - 'resources/bocchan.txt'
               - *shared-workspace
               - *shared-crate-workflow
             lindera-binding:
@@ -229,6 +233,8 @@ jobs:
               - 'resources/user_dict/**'
               # A metadata test reads SudachiDict's metadata.
               - 'lindera-sudachidict/metadata.json'
+              # The batch tests tokenize the lines of this text.
+              - 'resources/bocchan.txt'
               - *shared-workspace
               - *shared-crate-workflow
             lindera-cli:
@@ -250,6 +256,8 @@ jobs:
               - 'lindera-jieba/**'
               # The CLI tests train, export and build from these files.
               - 'resources/training/**'
+              # The --max-threads tests tokenize the lines of this text.
+              - 'resources/bocchan.txt'
               - *shared-workspace
               - *shared-crate-workflow
             lindera-python:
@@ -274,6 +282,8 @@ jobs:
               - 'resources/connection_id_mapping/**'
               # The training tests train from these files.
               - 'resources/training/**'
+              # The batch tests tokenize the lines of this text.
+              - 'resources/bocchan.txt'
               - *shared-workspace
               - *shared-make
             lindera-nodejs:
@@ -300,6 +310,8 @@ jobs:
               - 'resources/connection_id_mapping/**'
               # The training tests train from these files.
               - 'resources/training/**'
+              # The batch tests tokenize the lines of this text.
+              - 'resources/bocchan.txt'
               - *shared-workspace
               - *shared-make
             lindera-ruby:
@@ -324,6 +336,8 @@ jobs:
               - 'resources/connection_id_mapping/**'
               # The training tests train from these files.
               - 'resources/training/**'
+              # The batch tests tokenize the lines of this text.
+              - 'resources/bocchan.txt'
               - *shared-workspace
               - *shared-make
             # Gem packaging: the crate as `cargo package` normalizes it (which
@@ -356,6 +370,8 @@ jobs:
               - 'resources/connection_id_mapping/**'
               # The training tests train from these files.
               - 'resources/training/**'
+              # The batch tests tokenize the lines of this text.
+              - 'resources/bocchan.txt'
               - *shared-workspace
               - *shared-make
             lindera-wasm:

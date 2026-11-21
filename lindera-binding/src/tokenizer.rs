@@ -7,6 +7,7 @@
 //! [`CoreTokenizer`], leaving each binding to do only its FFI-value conversion
 //! (`serde_json::Value` ⇔ the host language's argument type) and a thin wrapper.
 
+use std::num::NonZeroUsize;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 
@@ -14,10 +15,12 @@ use serde_json::Value;
 
 use lindera::analysis::tokenizer::{Tokenizer, TokenizerBuilder};
 use lindera::analysis::worker::AnalysisWorker;
+use lindera::analysis::worker_pool::AnalysisWorkerPool;
 use lindera::dictionary::{Dictionary, UserDictionary};
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
 use lindera::space_penalty::SpacePenaltyConfig;
+use lindera::token::Token;
 
 use crate::error::{CoreError, CoreResult};
 use crate::token::{SurfaceView, TokenView};
@@ -320,10 +323,21 @@ impl CoreTokenizerBuilder {
 ///
 /// Returns owned [`TokenView`]s so the bindings never handle borrowed
 /// `lindera` tokens directly.
+///
+/// The batch methods ([`Self::tokenize_batch`] and the others) run on an
+/// [`AnalysisWorkerPool`] of their own, made from the worker's configuration
+/// on the first batch call, so a tokenizer that never runs a batch holds no
+/// more than its one worker. While a batch runs, the pool holds a copy of
+/// the user dictionary for each of its workers.
 pub struct CoreTokenizer {
     /// The reusable analysis session (lattice + normalization buffer +
     /// scratch), locked per call.
     worker: Mutex<AnalysisWorker>,
+    /// The workers of the batch methods, made on the first batch call
+    /// (`None` before it), locked per batch. The pool's lock is always taken
+    /// before the worker's, and the worker's only to copy its configuration,
+    /// so the two locks cannot wait for each other.
+    batch_workers: Mutex<Option<AnalysisWorkerPool>>,
 }
 
 /// Locks the worker mutex, recovering from poisoning.
@@ -349,6 +363,97 @@ fn lock_worker(mutex: &Mutex<AnalysisWorker>) -> MutexGuard<'_, AnalysisWorker> 
             guard
         }
     }
+}
+
+/// Locks the batch pool mutex, recovering from poisoning as [`lock_worker`]
+/// does: a poisoned guard is taken back and the pool's workers are reset.
+///
+/// # Arguments
+///
+/// * `mutex` - The mutex that guards the pool.
+///
+/// # Returns
+///
+/// A guard for the (possibly reset) pool, `None` before the first batch.
+fn lock_pool(
+    mutex: &Mutex<Option<AnalysisWorkerPool>>,
+) -> MutexGuard<'_, Option<AnalysisWorkerPool>> {
+    match mutex.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => {
+            let mut guard = poisoned.into_inner();
+            if let Some(pool) = guard.as_mut() {
+                pool.reset();
+            }
+            guard
+        }
+    }
+}
+
+/// The N-best results of one text, as [`CoreTokenizer::tokenize_nbest`]
+/// returns them: the tokens and the cost of every result, best first.
+pub type NbestViews = Vec<(Vec<TokenView>, i64)>;
+
+/// Returns the number of threads a batch runs on when the caller gives
+/// none: the parallelism the system reports, or 1 where it reports none
+/// (wasm).
+///
+/// # Returns
+///
+/// The number of threads.
+fn default_max_threads() -> NonZeroUsize {
+    std::thread::available_parallelism().unwrap_or(NonZeroUsize::MIN)
+}
+
+/// Makes the tokens of one text into [`TokenView`]s.
+///
+/// The single-text and the batch methods all convert through this function
+/// (and [`surface_views`] and [`nbest_views`]), which is not generic, so the
+/// loop over the tokens is compiled once, in this crate. A batch method is
+/// generic and compiled in the binding's crate: a conversion written in it
+/// was a second copy of the loop, and the compiler stopped inlining
+/// [`TokenView::from_token`] into the loop of the single-text methods.
+///
+/// # Arguments
+///
+/// * `tokens` - The tokens of the text.
+///
+/// # Returns
+///
+/// The views, in the order of the tokens.
+fn token_views(tokens: Vec<Token<'_>>) -> Vec<TokenView> {
+    tokens.into_iter().map(TokenView::from_token).collect()
+}
+
+/// Makes the tokens of one text into [`SurfaceView`]s, as [`token_views`]
+/// makes them into [`TokenView`]s.
+///
+/// # Arguments
+///
+/// * `tokens` - The tokens of the text.
+///
+/// # Returns
+///
+/// The views, in the order of the tokens.
+fn surface_views(tokens: Vec<Token<'_>>) -> Vec<SurfaceView> {
+    tokens.into_iter().map(SurfaceView::from_token).collect()
+}
+
+/// Makes the N-best results of one text into [`TokenView`]s, as
+/// [`token_views`] does for one result.
+///
+/// # Arguments
+///
+/// * `results` - The `(tokens, cost)` pairs of the text.
+///
+/// # Returns
+///
+/// The `(views, cost)` pairs, in the order of the results.
+fn nbest_views(results: Vec<(Vec<Token<'_>>, i64)>) -> NbestViews {
+    results
+        .into_iter()
+        .map(|(tokens, cost)| (token_views(tokens), cost))
+        .collect()
 }
 
 impl CoreTokenizer {
@@ -416,6 +521,7 @@ impl CoreTokenizer {
     pub fn from_tokenizer(tokenizer: Tokenizer) -> Self {
         Self {
             worker: Mutex::new(tokenizer.into_worker()),
+            batch_workers: Mutex::new(None),
         }
     }
 
@@ -426,7 +532,7 @@ impl CoreTokenizer {
     pub fn tokenize(&self, text: &str) -> CoreResult<Vec<TokenView>> {
         let mut worker = lock_worker(&self.worker);
         let tokens = worker.tokenize(text)?;
-        Ok(tokens.into_iter().map(TokenView::from_token).collect())
+        Ok(token_views(tokens))
     }
 
     /// Tokenizes `text`, returning surface-only views ([`SurfaceView`])
@@ -442,7 +548,7 @@ impl CoreTokenizer {
     pub fn tokenize_surfaces(&self, text: &str) -> CoreResult<Vec<SurfaceView>> {
         let mut worker = lock_worker(&self.worker);
         let tokens = worker.tokenize(text)?;
-        Ok(tokens.into_iter().map(SurfaceView::from_token).collect())
+        Ok(surface_views(tokens))
     }
 
     /// Tokenizes `text` and returns the N-best results as `(tokens, cost)` pairs.
@@ -458,15 +564,104 @@ impl CoreTokenizer {
     ) -> CoreResult<Vec<(Vec<TokenView>, i64)>> {
         let mut worker = lock_worker(&self.worker);
         let results = worker.tokenize_nbest(text, n, unique, cost_threshold)?;
-        Ok(results
-            .into_iter()
-            .map(|(tokens, cost)| {
-                (
-                    tokens.into_iter().map(TokenView::from_token).collect(),
-                    cost,
-                )
-            })
-            .collect())
+        Ok(nbest_views(results))
+    }
+
+    /// Tokenizes every text of `texts` as [`Self::tokenize`] does, on up to
+    /// `max_threads` threads, and returns the tokens of each text in the
+    /// order of `texts` (see [`AnalysisWorkerPool::tokenize_batch`]). The
+    /// tokens are made into [`TokenView`]s on the threads too.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - The texts, each tokenized as a call of its own.
+    /// * `max_threads` - The most threads to run on, or `None` for the
+    ///   parallelism the system reports.
+    ///
+    /// # Returns
+    ///
+    /// The tokens of each text, or the error of the first text in input
+    /// order that fails.
+    pub fn tokenize_batch<S: AsRef<str> + Sync>(
+        &self,
+        texts: &[S],
+        max_threads: Option<NonZeroUsize>,
+    ) -> CoreResult<Vec<Vec<TokenView>>> {
+        let max_threads = max_threads.unwrap_or_else(default_max_threads);
+        self.with_pool(|pool| pool.tokenize_batch(texts, max_threads, token_views))
+    }
+
+    /// Tokenizes every text of `texts` as [`Self::tokenize_surfaces`] does,
+    /// on up to `max_threads` threads, as [`Self::tokenize_batch`] does.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - The texts, each tokenized as a call of its own.
+    /// * `max_threads` - The most threads to run on, or `None` for the
+    ///   parallelism the system reports.
+    ///
+    /// # Returns
+    ///
+    /// The surface-only views of each text, or the error of the first text
+    /// in input order that fails.
+    pub fn tokenize_surfaces_batch<S: AsRef<str> + Sync>(
+        &self,
+        texts: &[S],
+        max_threads: Option<NonZeroUsize>,
+    ) -> CoreResult<Vec<Vec<SurfaceView>>> {
+        let max_threads = max_threads.unwrap_or_else(default_max_threads);
+        self.with_pool(|pool| pool.tokenize_batch(texts, max_threads, surface_views))
+    }
+
+    /// Tokenizes every text of `texts` as [`Self::tokenize_nbest`] does, on
+    /// up to `max_threads` threads, as [`Self::tokenize_batch`] does.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - The texts, each tokenized as a call of its own.
+    /// * `n` - Maximum number of tokenizations per text.
+    /// * `unique` - Deduplicate results with identical word boundaries.
+    /// * `cost_threshold` - Discard results costing more than the best
+    ///   result of their text + threshold.
+    /// * `max_threads` - The most threads to run on, or `None` for the
+    ///   parallelism the system reports.
+    ///
+    /// # Returns
+    ///
+    /// The `(tokens, cost)` pairs of each text, or the error of the first
+    /// text in input order that fails.
+    pub fn tokenize_nbest_batch<S: AsRef<str> + Sync>(
+        &self,
+        texts: &[S],
+        n: usize,
+        unique: bool,
+        cost_threshold: Option<i64>,
+        max_threads: Option<NonZeroUsize>,
+    ) -> CoreResult<Vec<NbestViews>> {
+        let max_threads = max_threads.unwrap_or_else(default_max_threads);
+        self.with_pool(|pool| {
+            pool.tokenize_nbest_batch(texts, n, unique, cost_threshold, max_threads, nbest_views)
+        })
+    }
+
+    /// Runs `batch` on the batch workers, making them from the worker's
+    /// configuration on the first call.
+    ///
+    /// # Arguments
+    ///
+    /// * `batch` - Runs the batch on the pool.
+    ///
+    /// # Returns
+    ///
+    /// What `batch` returns, with its error made a [`CoreError`].
+    fn with_pool<R>(
+        &self,
+        batch: impl FnOnce(&mut AnalysisWorkerPool) -> lindera::LinderaResult<R>,
+    ) -> CoreResult<R> {
+        let mut pool = lock_pool(&self.batch_workers);
+        let pool =
+            pool.get_or_insert_with(|| lock_worker(&self.worker).to_tokenizer().into_worker_pool());
+        Ok(batch(pool)?)
     }
 }
 
@@ -679,6 +874,241 @@ mod tests {
             for (a, b) in expected.iter().zip(after.iter()) {
                 assert_eq!(a.surface, b.surface);
             }
+        }
+
+        /// Every field of a token view.
+        type ViewFields = (String, usize, usize, usize, u32, bool, Vec<String>);
+
+        /// The fields of `views`.
+        fn view_fields(views: &[TokenView]) -> Vec<ViewFields> {
+            views
+                .iter()
+                .map(|view| {
+                    (
+                        view.surface.clone(),
+                        view.byte_start,
+                        view.byte_end,
+                        view.position,
+                        view.word_id,
+                        view.is_unknown,
+                        view.details.clone(),
+                    )
+                })
+                .collect()
+        }
+
+        /// The lines of `resources/bocchan.txt` and an empty text: enough
+        /// input for a batch on several threads.
+        fn bocchan_lines() -> Vec<String> {
+            let path =
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../resources/bocchan.txt");
+            let text = match std::fs::read_to_string(&path) {
+                Ok(text) => text,
+                Err(err) => panic!("failed to read {}: {err}", path.display()),
+            };
+            let mut lines: Vec<String> = text.lines().map(str::to_string).collect();
+            lines.push(String::new());
+            lines
+        }
+
+        /// The thread counts the batch tests run with.
+        fn thread_counts() -> [Option<NonZeroUsize>; 4] {
+            [
+                None,
+                NonZeroUsize::new(1),
+                NonZeroUsize::new(2),
+                NonZeroUsize::new(8),
+            ]
+        }
+
+        /// The fields of the tokens of every text, from one `tokenize` call
+        /// each.
+        fn one_by_one(tokenizer: &CoreTokenizer, texts: &[String]) -> Vec<Vec<ViewFields>> {
+            texts
+                .iter()
+                .map(|text| match tokenizer.tokenize(text) {
+                    Ok(views) => view_fields(&views),
+                    Err(err) => panic!("tokenize failed: {err}"),
+                })
+                .collect()
+        }
+
+        /// A batch gives every text the tokens of a `tokenize` call, in the
+        /// order of the texts, on every number of threads.
+        #[test]
+        fn tokenize_batch_matches_tokenize() {
+            let tokenizer = ipadic_tokenizer();
+            let texts = bocchan_lines();
+            let expected = one_by_one(&tokenizer, &texts);
+            for max_threads in thread_counts() {
+                let actual = match tokenizer.tokenize_batch(&texts, max_threads) {
+                    Ok(batch) => batch,
+                    Err(err) => panic!("tokenize_batch failed: {err}"),
+                };
+                let actual: Vec<Vec<ViewFields>> =
+                    actual.iter().map(|views| view_fields(views)).collect();
+                assert!(actual == expected, "the batch on {max_threads:?} differs");
+            }
+        }
+
+        /// The surface batch and the N-best batch give the results of their
+        /// single calls.
+        #[test]
+        fn tokenize_surfaces_batch_and_nbest_batch_match_single_calls() {
+            let tokenizer = ipadic_tokenizer();
+            let texts = bocchan_lines();
+            let surfaces_of = |views: &[SurfaceView]| {
+                views
+                    .iter()
+                    .map(|view| (view.surface.clone(), view.byte_start, view.byte_end))
+                    .collect::<Vec<_>>()
+            };
+            let expected: Vec<_> = texts
+                .iter()
+                .map(|text| match tokenizer.tokenize_surfaces(text) {
+                    Ok(views) => surfaces_of(&views),
+                    Err(err) => panic!("tokenize_surfaces failed: {err}"),
+                })
+                .collect();
+            let some: Vec<String> = texts.iter().take(60).cloned().collect();
+            let expected_nbest: Vec<_> = some
+                .iter()
+                .map(
+                    |text| match tokenizer.tokenize_nbest(text, 3, true, Some(5000)) {
+                        Ok(results) => results
+                            .iter()
+                            .map(|(views, cost)| (view_fields(views), *cost))
+                            .collect::<Vec<_>>(),
+                        Err(err) => panic!("tokenize_nbest failed: {err}"),
+                    },
+                )
+                .collect();
+            for max_threads in thread_counts() {
+                let actual = match tokenizer.tokenize_surfaces_batch(&texts, max_threads) {
+                    Ok(batch) => batch
+                        .iter()
+                        .map(|views| surfaces_of(views))
+                        .collect::<Vec<_>>(),
+                    Err(err) => panic!("tokenize_surfaces_batch failed: {err}"),
+                };
+                assert!(actual == expected, "the surfaces on {max_threads:?} differ");
+                let actual_nbest =
+                    match tokenizer.tokenize_nbest_batch(&some, 3, true, Some(5000), max_threads) {
+                        Ok(batch) => batch
+                            .iter()
+                            .map(|results| {
+                                results
+                                    .iter()
+                                    .map(|(views, cost)| (view_fields(views), *cost))
+                                    .collect::<Vec<_>>()
+                            })
+                            .collect::<Vec<_>>(),
+                        Err(err) => panic!("tokenize_nbest_batch failed: {err}"),
+                    };
+                assert!(
+                    actual_nbest == expected_nbest,
+                    "the N-best results on {max_threads:?} differ"
+                );
+            }
+        }
+
+        /// The workers of a batch tokenize with the builder's configuration:
+        /// its mode, filters and user dictionary.
+        #[test]
+        fn tokenize_batch_uses_the_tokenizer_configuration() {
+            let csv = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../resources/user_dict/ipadic_simple_userdic.csv");
+            let mut builder = CoreTokenizerBuilder::new().expect("builder");
+            builder
+                .set_dictionary("embedded://ipadic")
+                .set_mode(&Mode::Decompose(Penalty::default()))
+                .set_user_dictionary(csv.to_str().expect("UTF-8 path"))
+                .append_character_filter(
+                    "mapping",
+                    &serde_json::json!({ "mapping": { "リンデラ": "Lindera" } }),
+                )
+                .append_token_filter("lowercase", &serde_json::json!({}));
+            let tokenizer = builder.build().expect("tokenizer");
+            let samples = [
+                // The user dictionary has 東京スカイツリー.
+                "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です",
+                // Decompose splits a long compound.
+                "関西国際空港限定トートバッグ",
+                // The mapping and lowercase filters.
+                "リンデラ TOKYO",
+            ];
+            let samples: Vec<String> = samples.iter().map(|text| text.to_string()).collect();
+
+            // Each setting shows in the fixture: a tokenizer without them
+            // tokenizes every sample differently.
+            let plain = ipadic_tokenizer();
+            let configured = one_by_one(&tokenizer, &samples);
+            let unconfigured = one_by_one(&plain, &samples);
+            for (index, text) in samples.iter().enumerate() {
+                assert!(
+                    configured[index] != unconfigured[index],
+                    "fixture assumption: the configuration changes {text:?}"
+                );
+            }
+
+            // Enough input for every one of 4 threads to take some.
+            let texts: Vec<String> = samples.iter().cycle().take(3000).cloned().collect();
+            let expected = one_by_one(&tokenizer, &texts);
+            let actual = match tokenizer.tokenize_batch(&texts, NonZeroUsize::new(4)) {
+                Ok(batch) => batch
+                    .iter()
+                    .map(|views| view_fields(views))
+                    .collect::<Vec<_>>(),
+                Err(err) => panic!("tokenize_batch failed: {err}"),
+            };
+            assert!(actual == expected, "the batch ignores the configuration");
+        }
+
+        /// An empty batch returns no result.
+        #[test]
+        fn tokenize_batch_takes_an_empty_list() {
+            let tokenizer = ipadic_tokenizer();
+            let none: [&str; 0] = [];
+            match tokenizer.tokenize_batch(&none, None) {
+                Ok(batch) => assert!(batch.is_empty()),
+                Err(err) => panic!("tokenize_batch failed: {err}"),
+            }
+        }
+
+        /// A panic while the pool's lock is held must not wedge the batch
+        /// methods: the next batch recovers from the poisoned mutex.
+        #[test]
+        fn tokenize_batch_recovers_from_poisoned_pool_lock() {
+            use std::sync::Arc;
+
+            let tokenizer = Arc::new(ipadic_tokenizer());
+            let texts = bocchan_lines();
+            let expected = one_by_one(&tokenizer, &texts);
+            // The first batch makes the pool.
+            if let Err(err) = tokenizer.tokenize_batch(&texts, NonZeroUsize::new(2)) {
+                panic!("tokenize_batch failed: {err}");
+            }
+
+            let poisoner = Arc::clone(&tokenizer);
+            let result = std::thread::spawn(move || {
+                let _guard = lock_pool(&poisoner.batch_workers);
+                panic!("intentional panic to poison the pool lock");
+            })
+            .join();
+            assert!(result.is_err(), "poisoning thread must have panicked");
+            assert!(
+                tokenizer.batch_workers.is_poisoned(),
+                "lock must be poisoned"
+            );
+
+            let actual = match tokenizer.tokenize_batch(&texts, NonZeroUsize::new(2)) {
+                Ok(batch) => batch
+                    .iter()
+                    .map(|views| view_fields(views))
+                    .collect::<Vec<_>>(),
+                Err(err) => panic!("tokenize_batch after poison failed: {err}"),
+            };
+            assert!(actual == expected, "the batch after the poison differs");
         }
 
         /// IPADIC ships no left-space penalty rules: requiring them (`true`)

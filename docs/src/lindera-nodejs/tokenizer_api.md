@@ -257,6 +257,44 @@ for (const { tokens, cost } of results) {
 
 **Returns:** `NbestResult[]`, where each `NbestResult` is `{ tokens: Token[], cost: number }`
 
+#### `tokenizeBatch(texts, maxThreads?)`
+
+Tokenizes every text of an array, each as `tokenize` does, on up to `maxThreads` threads, and returns their tokens in the order of the texts. The results are the same for every number of threads. The call is synchronous: the JavaScript thread waits until every text is tokenized, while the tokenization runs on several threads.
+
+```javascript
+const batch = tokenizer.tokenizeBatch(["形態素解析", "すもももももももものうち"]);
+for (const tokens of batch) {
+  console.log(tokens.map((t) => t.surface));
+}
+```
+
+Every text is tokenized as a call of its own: an array of the lines of a document gives the tokens of each line, not those of the whole document as one text. A short array runs on one thread (a thread needs at least 16 KiB of input), and every thread holds its own copy of the user dictionary, if any. A batch whose results are large, such as the tokens of several megabytes of text, can run faster on fewer threads than the default: when many threads make the memory of the tokens at once, much of the time goes to the kernel.
+
+**Parameters:**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `texts` | `string[]` | Texts to tokenize |
+| `maxThreads` | `number \| undefined` | The most threads, an integer of 1 or more (default: the number of CPUs); any other number throws an `InvalidArg` error |
+
+**Returns:** `Token[][]`
+
+#### `tokenizeSurfacesBatch(texts, maxThreads?)`
+
+Tokenizes every text of an array as `tokenizeSurfaces` does, on up to `maxThreads` threads, as `tokenizeBatch` does.
+
+**Parameters:** as `tokenizeBatch`.
+
+**Returns:** `string[][]`
+
+#### `tokenizeNbestBatch(texts, n, unique?, costThreshold?, maxThreads?)`
+
+Tokenizes every text of an array as `tokenizeNbest` does, on up to `maxThreads` threads, as `tokenizeBatch` does. `n`, `unique` and `costThreshold` apply to each text.
+
+**Parameters:** `texts` and `maxThreads` as `tokenizeBatch`; `n`, `unique` and `costThreshold` as `tokenizeNbest`.
+
+**Returns:** `NbestResult[][]`
+
 ## Token
 
 `Token` is a plain object describing a single morphological token. It is a
