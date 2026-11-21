@@ -379,6 +379,31 @@ v6.1.0 から、ko-dic では mecab-ko と同じく左側空白ペナルティ�
 // コスト閾値を指定する場合 -- bigint リテラルとして渡す必要がある点に注意
 const resultsWithThreshold = tokenizer.tokenizeNbest("すもももももももものうち", 3, false, 100n);
 </code></pre>
+<h4 id="tokenizebatchtexts-maxthreads"><a class="header" href="#tokenizebatchtexts-maxthreads"><code>tokenizeBatch(texts, maxThreads?)</code></a></h4>
+<p>配列の各テキストを <code>tokenize</code> と同じくトークナイズし、テキストの順にトークンを返します。WASM にはスレッドがないので、テキストは呼び出したスレッドで順に処理します。<code>maxThreads</code> は検査するだけで使いません。一括の処理を複数のスレッドで行うほかのバインディング向けに書いたコードが、そのまま動くようにするためです。テキストごとに WASM との境界を越えずに済みます。</p>
+<ul>
+<li><strong>パラメータ</strong>:
+<ul>
+<li><code>texts</code> (string[]) -- トークナイズするテキスト</li>
+<li><code>maxThreads</code> (number, 省略可) -- 1 以上の整数。ほかの数を渡すと例外</li>
+</ul>
+</li>
+<li><strong>戻り値</strong>: テキストごとの <code>Token[]</code> の配列</li>
+</ul>
+<pre><code class="language-javascript">const batch = tokenizer.tokenizeBatch(["形態素解析", "すもももももももものうち"]);
+</code></pre>
+<h4 id="tokenizesurfacesbatchtexts-maxthreads"><a class="header" href="#tokenizesurfacesbatchtexts-maxthreads"><code>tokenizeSurfacesBatch(texts, maxThreads?)</code></a></h4>
+<p>配列の各テキストを <code>tokenizeSurfaces</code> と同じくトークナイズします。そのほかは <code>tokenizeBatch</code> と同じです。</p>
+<ul>
+<li><strong>パラメータ</strong>: <code>tokenizeBatch</code> と同じ</li>
+<li><strong>戻り値</strong>: テキストごとの <code>string[]</code> の配列</li>
+</ul>
+<h4 id="tokenizenbestbatchtexts-n-unique-costthreshold-maxthreads"><a class="header" href="#tokenizenbestbatchtexts-n-unique-costthreshold-maxthreads"><code>tokenizeNbestBatch(texts, n, unique?, costThreshold?, maxThreads?)</code></a></h4>
+<p>配列の各テキストを <code>tokenizeNbest</code> と同じくトークナイズします。そのほかは <code>tokenizeBatch</code> と同じです。<code>n</code>、<code>unique</code>、<code>costThreshold</code> は各テキストに当てはまります。</p>
+<ul>
+<li><strong>パラメータ</strong>: <code>texts</code> と <code>maxThreads</code> は <code>tokenizeBatch</code>、<code>n</code>、<code>unique</code>、<code>costThreshold</code> は <code>tokenizeNbest</code> と同じ</li>
+<li><strong>戻り値</strong>: テキストごとの N-best の結果（<code>{ tokens: Token[], cost: number }</code> の配列）の配列</li>
+</ul>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
 <p>トークナイザーが生成する単一のトークンで、プレーンな JavaScript オブジェクトです。</p>
 <h3 id="プロパティ"><a class="header" href="#プロパティ">プロパティ</a></h3>
@@ -556,6 +581,9 @@ console.log(error.toString()); // "message"
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
 <tr><td><code>tokenizeSurfaces()</code></td><td><code>tokenize_surfaces()</code></td></tr>
 <tr><td><code>tokenizeNbest()</code></td><td><code>tokenize_nbest()</code></td></tr>
+<tr><td><code>tokenizeBatch()</code></td><td><code>tokenize_batch()</code></td></tr>
+<tr><td><code>tokenizeSurfacesBatch()</code></td><td><code>tokenize_surfaces_batch()</code></td></tr>
+<tr><td><code>tokenizeNbestBatch()</code></td><td><code>tokenize_nbest_batch()</code></td></tr>
 <tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
 <tr><td><code>loadDictionaryFromBytes()</code></td><td><code>load_dictionary_from_bytes()</code></td></tr>
 <tr><td><code>loadUserDictionaryFromBytes()</code></td><td><code>load_user_dictionary_from_bytes()</code></td></tr>

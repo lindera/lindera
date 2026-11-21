@@ -3835,6 +3835,28 @@ for tokens, cost in results:
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>list[tuple[list[Token], int]]</code></p>
+<h4 id="tokenize_batchtexts-max_threadsnone"><a class="header" href="#tokenize_batchtexts-max_threadsnone"><code>tokenize_batch(texts, max_threads=None)</code></a></h4>
+<p>Tokenizes every text of a list, each as <code>tokenize</code> does, on up to <code>max_threads</code> threads, and returns their tokens in the order of the texts. The results are the same for every number of threads. The texts are tokenized with the GIL released, so other Python threads run meanwhile; the <code>Token</code> objects are made afterwards.</p>
+<pre><code class="language-python">batch = tokenizer.tokenize_batch(["形態素解析", "すもももももももものうち"])
+for tokens in batch:
+    print([t.surface for t in tokens])
+</code></pre>
+<p>Every text is tokenized as a call of its own: a list of the lines of a document gives the tokens of each line, not those of the whole document as one text. A short list runs on one thread (a thread needs at least 16 KiB of input), and every thread holds its own copy of the user dictionary, if any. A batch whose results are large, such as the tokens of several megabytes of text, can run faster on fewer threads than the default: when many threads make the memory of the tokens at once, much of the time goes to the kernel.</p>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>texts</code></td><td><code>list[str]</code></td><td>Texts to tokenize (a single <code>str</code> raises <code>TypeError</code>)</td></tr>
+<tr><td><code>max_threads</code></td><td><code>int</code> or <code>None</code></td><td>The most threads, 1 or more (default: <code>None</code>, the number of CPUs); 0 raises <code>ValueError</code></td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>list[list[Token]]</code></p>
+<h4 id="tokenize_surfaces_batchtexts-max_threadsnone"><a class="header" href="#tokenize_surfaces_batchtexts-max_threadsnone"><code>tokenize_surfaces_batch(texts, max_threads=None)</code></a></h4>
+<p>Tokenizes every text of a list as <code>tokenize_surfaces</code> does, on up to <code>max_threads</code> threads, as <code>tokenize_batch</code> does.</p>
+<p><strong>Parameters:</strong> as <code>tokenize_batch</code>.</p>
+<p><strong>Returns:</strong> <code>list[list[str]]</code></p>
+<h4 id="tokenize_nbest_batchtexts-n-uniquefalse-cost_thresholdnone-max_threadsnone"><a class="header" href="#tokenize_nbest_batchtexts-n-uniquefalse-cost_thresholdnone-max_threadsnone"><code>tokenize_nbest_batch(texts, n, unique=False, cost_threshold=None, max_threads=None)</code></a></h4>
+<p>Tokenizes every text of a list as <code>tokenize_nbest</code> does, on up to <code>max_threads</code> threads, as <code>tokenize_batch</code> does. <code>n</code>, <code>unique</code> and <code>cost_threshold</code> apply to each text.</p>
+<p><strong>Parameters:</strong> <code>texts</code> and <code>max_threads</code> as <code>tokenize_batch</code>; <code>n</code>, <code>unique</code> and <code>cost_threshold</code> as <code>tokenize_nbest</code>.</p>
+<p><strong>Returns:</strong> <code>list[list[tuple[list[Token], int]]]</code></p>
 <h2 id="mode-1"><a class="header" href="#mode-1">Mode</a></h2>
 <p><code>Mode</code> is the tokenization mode that <a href="lindera-python/tokenizer_api.html#set_modemode"><code>TokenizerBuilder.set_mode()</code></a> and the <a href="lindera-python/tokenizer_api.html#tokenizerdictionary-modenone-user_dictionarynone-space_penaltynone"><code>Tokenizer</code> constructor</a> take. It is the counterpart of the Rust <code>lindera::mode::Mode</code>: normal mode, or decompose mode with its <a href="lindera-python/tokenizer_api.html#penalty"><code>Penalty</code></a>.</p>
 <h3 id="creating-a-mode"><a class="header" href="#creating-a-mode">Creating a Mode</a></h3>
@@ -4855,6 +4877,29 @@ for (const { tokens, cost } of results) {
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>NbestResult[]</code>, where each <code>NbestResult</code> is <code>{ tokens: Token[], cost: number }</code></p>
+<h4 id="tokenizebatchtexts-maxthreads"><a class="header" href="#tokenizebatchtexts-maxthreads"><code>tokenizeBatch(texts, maxThreads?)</code></a></h4>
+<p>Tokenizes every text of an array, each as <code>tokenize</code> does, on up to <code>maxThreads</code> threads, and returns their tokens in the order of the texts. The results are the same for every number of threads. The call is synchronous: the JavaScript thread waits until every text is tokenized, while the tokenization runs on several threads.</p>
+<pre><code class="language-javascript">const batch = tokenizer.tokenizeBatch(["形態素解析", "すもももももももものうち"]);
+for (const tokens of batch) {
+  console.log(tokens.map((t) =&gt; t.surface));
+}
+</code></pre>
+<p>Every text is tokenized as a call of its own: an array of the lines of a document gives the tokens of each line, not those of the whole document as one text. A short array runs on one thread (a thread needs at least 16 KiB of input), and every thread holds its own copy of the user dictionary, if any. A batch whose results are large, such as the tokens of several megabytes of text, can run faster on fewer threads than the default: when many threads make the memory of the tokens at once, much of the time goes to the kernel.</p>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>texts</code></td><td><code>string[]</code></td><td>Texts to tokenize</td></tr>
+<tr><td><code>maxThreads</code></td><td><code>number | undefined</code></td><td>The most threads, an integer of 1 or more (default: the number of CPUs); any other number throws an <code>InvalidArg</code> error</td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>Token[][]</code></p>
+<h4 id="tokenizesurfacesbatchtexts-maxthreads"><a class="header" href="#tokenizesurfacesbatchtexts-maxthreads"><code>tokenizeSurfacesBatch(texts, maxThreads?)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenizeSurfaces</code> does, on up to <code>maxThreads</code> threads, as <code>tokenizeBatch</code> does.</p>
+<p><strong>Parameters:</strong> as <code>tokenizeBatch</code>.</p>
+<p><strong>Returns:</strong> <code>string[][]</code></p>
+<h4 id="tokenizenbestbatchtexts-n-unique-costthreshold-maxthreads"><a class="header" href="#tokenizenbestbatchtexts-n-unique-costthreshold-maxthreads"><code>tokenizeNbestBatch(texts, n, unique?, costThreshold?, maxThreads?)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenizeNbest</code> does, on up to <code>maxThreads</code> threads, as <code>tokenizeBatch</code> does. <code>n</code>, <code>unique</code> and <code>costThreshold</code> apply to each text.</p>
+<p><strong>Parameters:</strong> <code>texts</code> and <code>maxThreads</code> as <code>tokenizeBatch</code>; <code>n</code>, <code>unique</code> and <code>costThreshold</code> as <code>tokenizeNbest</code>.</p>
+<p><strong>Returns:</strong> <code>NbestResult[][]</code></p>
 <h2 id="token-1"><a class="header" href="#token-1">Token</a></h2>
 <p><code>Token</code> is a plain object describing a single morphological token. It is a
 TypeScript <code>interface</code>, not a class: it has no methods and no prototype, and
@@ -5799,6 +5844,29 @@ end
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>Array&lt;Array(Array&lt;Token&gt;, Integer)&gt;</code></p>
+<h4 id="tokenize_batchtexts-max_threads--nil"><a class="header" href="#tokenize_batchtexts-max_threads--nil"><code>tokenize_batch(texts, max_threads = nil)</code></a></h4>
+<p>Tokenizes every text of an array, each as <code>tokenize</code> does, on up to <code>max_threads</code> threads, and returns their tokens in the order of the texts. The results are the same for every number of threads. The tokenization runs on several threads while the call holds the GVL, so other Ruby threads wait for it.</p>
+<pre><code class="language-ruby">batch = tokenizer.tokenize_batch(['形態素解析', 'すもももももももものうち'])
+batch.each do |tokens|
+  puts tokens.map(&amp;:surface).inspect
+end
+</code></pre>
+<p>Every text is tokenized as a call of its own: an array of the lines of a document gives the tokens of each line, not those of the whole document as one text. A short array runs on one thread (a thread needs at least 16 KiB of input), and every thread holds its own copy of the user dictionary, if any. A batch whose results are large, such as the tokens of several megabytes of text, can run faster on fewer threads than the default: when many threads make the memory of the tokens at once, much of the time goes to the kernel.</p>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>texts</code></td><td><code>Array&lt;String&gt;</code></td><td>Texts to tokenize</td></tr>
+<tr><td><code>max_threads</code></td><td><code>Integer</code> or <code>nil</code></td><td>The most threads, 1 or more (default: <code>nil</code>, the number of CPUs); any other integer raises <code>RangeError</code></td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>Array&lt;Array&lt;Token&gt;&gt;</code></p>
+<h4 id="tokenize_surfaces_batchtexts-max_threads--nil"><a class="header" href="#tokenize_surfaces_batchtexts-max_threads--nil"><code>tokenize_surfaces_batch(texts, max_threads = nil)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenize_surfaces</code> does, on up to <code>max_threads</code> threads, as <code>tokenize_batch</code> does.</p>
+<p><strong>Parameters:</strong> as <code>tokenize_batch</code>.</p>
+<p><strong>Returns:</strong> <code>Array&lt;Array&lt;String&gt;&gt;</code></p>
+<h4 id="tokenize_nbest_batchtexts-n-unique-cost_threshold-max_threads--nil"><a class="header" href="#tokenize_nbest_batchtexts-n-unique-cost_threshold-max_threads--nil"><code>tokenize_nbest_batch(texts, n, unique, cost_threshold, max_threads = nil)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenize_nbest</code> does, on up to <code>max_threads</code> threads, as <code>tokenize_batch</code> does. <code>n</code>, <code>unique</code> and <code>cost_threshold</code> apply to each text.</p>
+<p><strong>Parameters:</strong> <code>texts</code> and <code>max_threads</code> as <code>tokenize_batch</code>; <code>n</code>, <code>unique</code> and <code>cost_threshold</code> as <code>tokenize_nbest</code>.</p>
+<p><strong>Returns:</strong> <code>Array&lt;Array&lt;Array(Array&lt;Token&gt;, Integer)&gt;&gt;</code></p>
 <h2 id="mode-3"><a class="header" href="#mode-3">Mode</a></h2>
 <p><code>Lindera::Mode</code> is the tokenization mode that <a href="lindera-ruby/tokenizer_api.html#set_modemode"><code>TokenizerBuilder#set_mode</code></a> and <a href="lindera-ruby/tokenizer_api.html#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Tokenizer.new</code></a> take. It is the Ruby counterpart of the Rust <code>lindera::mode::Mode</code>: normal mode, or decompose mode with the <a href="lindera-ruby/tokenizer_api.html#penalty"><code>Lindera::Penalty</code></a> it uses.</p>
 <h3 id="creating-a-mode-1"><a class="header" href="#creating-a-mode-1">Creating a Mode</a></h3>
@@ -6859,6 +6927,31 @@ foreach ($results as $result) {
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>array&lt;NbestResult&gt;</code></p>
+<h4 id="tokenizebatchtexts-max_threads"><a class="header" href="#tokenizebatchtexts-max_threads"><code>tokenizeBatch($texts, $max_threads)</code></a></h4>
+<p>Tokenizes every text of an array, each as <code>tokenize</code> does, on up to <code>$max_threads</code> threads, and returns their tokens in the order of the texts. The results are the same for every number of threads. The call waits until every text is tokenized, while the tokenization runs on several threads.</p>
+<pre><code class="language-php">&lt;?php
+
+$batch = $tokenizer-&gt;tokenizeBatch(['形態素解析', 'すもももももももものうち']);
+foreach ($batch as $tokens) {
+    echo implode(' ', array_map(fn($token) =&gt; $token-&gt;surface, $tokens)), "\n";
+}
+</code></pre>
+<p>Every text is tokenized as a call of its own: an array of the lines of a document gives the tokens of each line, not those of the whole document as one text. A short array runs on one thread (a thread needs at least 16 KiB of input), and every thread holds its own copy of the user dictionary, if any. A batch whose results are large, such as the tokens of several megabytes of text, can run faster on fewer threads than the default: when many threads make the memory of the tokens at once, much of the time goes to the kernel.</p>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>$texts</code></td><td><code>array&lt;string&gt;</code></td><td>Texts to tokenize</td></tr>
+<tr><td><code>$max_threads</code></td><td><code>int|null</code></td><td>The most threads, 1 or more (default: <code>null</code>, the number of CPUs); a value below 1 throws <code>ValueError</code></td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>array&lt;array&lt;Token&gt;&gt;</code></p>
+<h4 id="tokenizesurfacesbatchtexts-max_threads"><a class="header" href="#tokenizesurfacesbatchtexts-max_threads"><code>tokenizeSurfacesBatch($texts, $max_threads)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenizeSurfaces</code> does, on up to <code>$max_threads</code> threads, as <code>tokenizeBatch</code> does.</p>
+<p><strong>Parameters:</strong> as <code>tokenizeBatch</code>.</p>
+<p><strong>Returns:</strong> <code>array&lt;array&lt;string&gt;&gt;</code></p>
+<h4 id="tokenizenbestbatchtexts-n-unique-cost_threshold-max_threads"><a class="header" href="#tokenizenbestbatchtexts-n-unique-cost_threshold-max_threads"><code>tokenizeNbestBatch($texts, $n, $unique, $cost_threshold, $max_threads)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenizeNbest</code> does, on up to <code>$max_threads</code> threads, as <code>tokenizeBatch</code> does. <code>$n</code>, <code>$unique</code> and <code>$cost_threshold</code> apply to each text.</p>
+<p><strong>Parameters:</strong> <code>$texts</code> and <code>$max_threads</code> as <code>tokenizeBatch</code>; <code>$n</code>, <code>$unique</code> and <code>$cost_threshold</code> as <code>tokenizeNbest</code>.</p>
+<p><strong>Returns:</strong> <code>array&lt;array&lt;NbestResult&gt;&gt;</code></p>
 <h2 id="nbestresult"><a class="header" href="#nbestresult">NbestResult</a></h2>
 <p><code>Lindera\NbestResult</code> represents a single N-best tokenization result.</p>
 <h3 id="nbestresult-properties"><a class="header" href="#nbestresult-properties">NbestResult Properties</a></h3>
@@ -7997,6 +8090,31 @@ multiple tokenizers can be built from the same configuration.</p>
 // With a cost threshold -- note that it must be passed as a bigint literal
 const resultsWithThreshold = tokenizer.tokenizeNbest("すもももももももものうち", 3, false, 100n);
 </code></pre>
+<h4 id="tokenizebatchtexts-maxthreads-1"><a class="header" href="#tokenizebatchtexts-maxthreads-1"><code>tokenizeBatch(texts, maxThreads?)</code></a></h4>
+<p>Tokenizes every text of an array, each as <code>tokenize</code> does, and returns their tokens in the order of the texts. WASM has no threads: the texts are tokenized one after the other on the calling thread. <code>maxThreads</code> is checked and otherwise ignored, so that code written for the other bindings, which run a batch on several threads, runs unchanged; the batch saves crossing into WASM once per text.</p>
+<ul>
+<li><strong>Parameters</strong>:
+<ul>
+<li><code>texts</code> (string[]) -- Texts to tokenize</li>
+<li><code>maxThreads</code> (number, optional) -- An integer of 1 or more; any other number throws</li>
+</ul>
+</li>
+<li><strong>Returns</strong>: Array of <code>Token[]</code>, one per text</li>
+</ul>
+<pre><code class="language-javascript">const batch = tokenizer.tokenizeBatch(["形態素解析", "すもももももももものうち"]);
+</code></pre>
+<h4 id="tokenizesurfacesbatchtexts-maxthreads-1"><a class="header" href="#tokenizesurfacesbatchtexts-maxthreads-1"><code>tokenizeSurfacesBatch(texts, maxThreads?)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenizeSurfaces</code> does, as <code>tokenizeBatch</code> does.</p>
+<ul>
+<li><strong>Parameters</strong>: as <code>tokenizeBatch</code></li>
+<li><strong>Returns</strong>: Array of <code>string[]</code>, one per text</li>
+</ul>
+<h4 id="tokenizenbestbatchtexts-n-unique-costthreshold-maxthreads-1"><a class="header" href="#tokenizenbestbatchtexts-n-unique-costthreshold-maxthreads-1"><code>tokenizeNbestBatch(texts, n, unique?, costThreshold?, maxThreads?)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenizeNbest</code> does, as <code>tokenizeBatch</code> does. <code>n</code>, <code>unique</code> and <code>costThreshold</code> apply to each text.</p>
+<ul>
+<li><strong>Parameters</strong>: <code>texts</code> and <code>maxThreads</code> as <code>tokenizeBatch</code>; <code>n</code>, <code>unique</code> and <code>costThreshold</code> as <code>tokenizeNbest</code></li>
+<li><strong>Returns</strong>: Array of the N-best results of each text, each an array of <code>{ tokens: Token[], cost: number }</code></li>
+</ul>
 <h2 id="token-4"><a class="header" href="#token-4">Token</a></h2>
 <p>A single token produced by the tokenizer, as a plain JavaScript object.</p>
 <h3 id="properties-7"><a class="header" href="#properties-7">Properties</a></h3>
@@ -8174,6 +8292,9 @@ console.log(error.toString()); // "message"
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
 <tr><td><code>tokenizeSurfaces()</code></td><td><code>tokenize_surfaces()</code></td></tr>
 <tr><td><code>tokenizeNbest()</code></td><td><code>tokenize_nbest()</code></td></tr>
+<tr><td><code>tokenizeBatch()</code></td><td><code>tokenize_batch()</code></td></tr>
+<tr><td><code>tokenizeSurfacesBatch()</code></td><td><code>tokenize_surfaces_batch()</code></td></tr>
+<tr><td><code>tokenizeNbestBatch()</code></td><td><code>tokenize_nbest_batch()</code></td></tr>
 <tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
 <tr><td><code>loadDictionaryFromBytes()</code></td><td><code>load_dictionary_from_bytes()</code></td></tr>
 <tr><td><code>loadUserDictionaryFromBytes()</code></td><td><code>load_user_dictionary_from_bytes()</code></td></tr>
@@ -14736,7 +14857,8 @@ make check-docs
 or reviewing a binding feature, apply the following policy:</p>
 <ul>
 <li><strong>Keep the feature set aligned.</strong> Capabilities — tokenization
-(<code>tokenize</code> / <code>tokenize_surfaces</code> / <code>tokenize_nbest</code>), user dictionaries,
+(<code>tokenize</code> / <code>tokenize_surfaces</code> / <code>tokenize_nbest</code>, and their batch forms
+<code>tokenize_batch</code> / <code>tokenize_surfaces_batch</code> / <code>tokenize_nbest_batch</code>), user dictionaries,
 character filters, and token filters — should be available in every
 binding. A feature added to one binding should come with a plan (or a
 tracking issue) for the others.</li>

@@ -348,6 +348,29 @@ for (const { tokens, cost } of results) {
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>NbestResult[]</code>。各 <code>NbestResult</code> は <code>{ tokens: Token[], cost: number }</code> です。</p>
+<h4 id="tokenizebatchtexts-maxthreads"><a class="header" href="#tokenizebatchtexts-maxthreads"><code>tokenizeBatch(texts, maxThreads?)</code></a></h4>
+<p>配列の各テキストを <code>tokenize</code> と同じくトークナイズし、最大 <code>maxThreads</code> 個のスレッドで処理して、テキストの順にトークンを返します。結果はスレッドの数によらず同じです。呼び出しは同期で、トークナイズは複数のスレッドで動きますが、JavaScript のスレッドは全部のテキストが終わるまで待ちます。</p>
+<pre><code class="language-javascript">const batch = tokenizer.tokenizeBatch(["形態素解析", "すもももももももものうち"]);
+for (const tokens of batch) {
+  console.log(tokens.map((t) =&gt; t.surface));
+}
+</code></pre>
+<p>各テキストは 1 回の呼び出しとしてトークナイズされます。文書の行の配列を渡すと各行のトークンになり、文書全体を 1 つのテキストとしてトークナイズした結果とは違います。短い配列は 1 つのスレッドで処理し（1 スレッドあたり 16 KiB 以上の入力が要ります）、ユーザー辞書があれば各スレッドがそれぞれ複製を持ちます。結果が大きい一括（数 MB のテキストのトークンなど）は、既定より少ないスレッドのほうが速いことがあります。多くのスレッドが同時にトークンのメモリを作ると、時間の多くがカーネルの中で使われるためです。</p>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>texts</code></td><td><code>string[]</code></td><td>トークナイズするテキスト</td></tr>
+<tr><td><code>maxThreads</code></td><td><code>number | undefined</code></td><td>最大のスレッドの数。1 以上の整数（デフォルト: CPU の数）。ほかの数は <code>InvalidArg</code> のエラー</td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>Token[][]</code></p>
+<h4 id="tokenizesurfacesbatchtexts-maxthreads"><a class="header" href="#tokenizesurfacesbatchtexts-maxthreads"><code>tokenizeSurfacesBatch(texts, maxThreads?)</code></a></h4>
+<p>配列の各テキストを <code>tokenizeSurfaces</code> と同じくトークナイズし、<code>tokenizeBatch</code> と同じく最大 <code>maxThreads</code> 個のスレッドで処理します。</p>
+<p><strong>パラメータ:</strong> <code>tokenizeBatch</code> と同じです。</p>
+<p><strong>戻り値:</strong> <code>string[][]</code></p>
+<h4 id="tokenizenbestbatchtexts-n-unique-costthreshold-maxthreads"><a class="header" href="#tokenizenbestbatchtexts-n-unique-costthreshold-maxthreads"><code>tokenizeNbestBatch(texts, n, unique?, costThreshold?, maxThreads?)</code></a></h4>
+<p>配列の各テキストを <code>tokenizeNbest</code> と同じくトークナイズし、<code>tokenizeBatch</code> と同じく最大 <code>maxThreads</code> 個のスレッドで処理します。<code>n</code>、<code>unique</code>、<code>costThreshold</code> は各テキストに当てはまります。</p>
+<p><strong>パラメータ:</strong> <code>texts</code> と <code>maxThreads</code> は <code>tokenizeBatch</code>、<code>n</code>、<code>unique</code>、<code>costThreshold</code> は <code>tokenizeNbest</code> と同じです。</p>
+<p><strong>戻り値:</strong> <code>NbestResult[][]</code></p>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
 <p><code>Token</code> は単一の形態素トークンを表すプレーンオブジェクトです。クラスではなく
 TypeScript の <code>interface</code> であり、メソッドもプロトタイプも持ちません。

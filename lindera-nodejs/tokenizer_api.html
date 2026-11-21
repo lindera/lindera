@@ -346,6 +346,29 @@ for (const { tokens, cost } of results) {
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>NbestResult[]</code>, where each <code>NbestResult</code> is <code>{ tokens: Token[], cost: number }</code></p>
+<h4 id="tokenizebatchtexts-maxthreads"><a class="header" href="#tokenizebatchtexts-maxthreads"><code>tokenizeBatch(texts, maxThreads?)</code></a></h4>
+<p>Tokenizes every text of an array, each as <code>tokenize</code> does, on up to <code>maxThreads</code> threads, and returns their tokens in the order of the texts. The results are the same for every number of threads. The call is synchronous: the JavaScript thread waits until every text is tokenized, while the tokenization runs on several threads.</p>
+<pre><code class="language-javascript">const batch = tokenizer.tokenizeBatch(["形態素解析", "すもももももももものうち"]);
+for (const tokens of batch) {
+  console.log(tokens.map((t) =&gt; t.surface));
+}
+</code></pre>
+<p>Every text is tokenized as a call of its own: an array of the lines of a document gives the tokens of each line, not those of the whole document as one text. A short array runs on one thread (a thread needs at least 16 KiB of input), and every thread holds its own copy of the user dictionary, if any. A batch whose results are large, such as the tokens of several megabytes of text, can run faster on fewer threads than the default: when many threads make the memory of the tokens at once, much of the time goes to the kernel.</p>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>texts</code></td><td><code>string[]</code></td><td>Texts to tokenize</td></tr>
+<tr><td><code>maxThreads</code></td><td><code>number | undefined</code></td><td>The most threads, an integer of 1 or more (default: the number of CPUs); any other number throws an <code>InvalidArg</code> error</td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>Token[][]</code></p>
+<h4 id="tokenizesurfacesbatchtexts-maxthreads"><a class="header" href="#tokenizesurfacesbatchtexts-maxthreads"><code>tokenizeSurfacesBatch(texts, maxThreads?)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenizeSurfaces</code> does, on up to <code>maxThreads</code> threads, as <code>tokenizeBatch</code> does.</p>
+<p><strong>Parameters:</strong> as <code>tokenizeBatch</code>.</p>
+<p><strong>Returns:</strong> <code>string[][]</code></p>
+<h4 id="tokenizenbestbatchtexts-n-unique-costthreshold-maxthreads"><a class="header" href="#tokenizenbestbatchtexts-n-unique-costthreshold-maxthreads"><code>tokenizeNbestBatch(texts, n, unique?, costThreshold?, maxThreads?)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenizeNbest</code> does, on up to <code>maxThreads</code> threads, as <code>tokenizeBatch</code> does. <code>n</code>, <code>unique</code> and <code>costThreshold</code> apply to each text.</p>
+<p><strong>Parameters:</strong> <code>texts</code> and <code>maxThreads</code> as <code>tokenizeBatch</code>; <code>n</code>, <code>unique</code> and <code>costThreshold</code> as <code>tokenizeNbest</code>.</p>
+<p><strong>Returns:</strong> <code>NbestResult[][]</code></p>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
 <p><code>Token</code> is a plain object describing a single morphological token. It is a
 TypeScript <code>interface</code>, not a class: it has no methods and no prototype, and

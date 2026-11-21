@@ -337,6 +337,29 @@ end
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>Array&lt;Array(Array&lt;Token&gt;, Integer)&gt;</code></p>
+<h4 id="tokenize_batchtexts-max_threads--nil"><a class="header" href="#tokenize_batchtexts-max_threads--nil"><code>tokenize_batch(texts, max_threads = nil)</code></a></h4>
+<p>Tokenizes every text of an array, each as <code>tokenize</code> does, on up to <code>max_threads</code> threads, and returns their tokens in the order of the texts. The results are the same for every number of threads. The tokenization runs on several threads while the call holds the GVL, so other Ruby threads wait for it.</p>
+<pre><code class="language-ruby">batch = tokenizer.tokenize_batch(['形態素解析', 'すもももももももものうち'])
+batch.each do |tokens|
+  puts tokens.map(&amp;:surface).inspect
+end
+</code></pre>
+<p>Every text is tokenized as a call of its own: an array of the lines of a document gives the tokens of each line, not those of the whole document as one text. A short array runs on one thread (a thread needs at least 16 KiB of input), and every thread holds its own copy of the user dictionary, if any. A batch whose results are large, such as the tokens of several megabytes of text, can run faster on fewer threads than the default: when many threads make the memory of the tokens at once, much of the time goes to the kernel.</p>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>texts</code></td><td><code>Array&lt;String&gt;</code></td><td>Texts to tokenize</td></tr>
+<tr><td><code>max_threads</code></td><td><code>Integer</code> or <code>nil</code></td><td>The most threads, 1 or more (default: <code>nil</code>, the number of CPUs); any other integer raises <code>RangeError</code></td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>Array&lt;Array&lt;Token&gt;&gt;</code></p>
+<h4 id="tokenize_surfaces_batchtexts-max_threads--nil"><a class="header" href="#tokenize_surfaces_batchtexts-max_threads--nil"><code>tokenize_surfaces_batch(texts, max_threads = nil)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenize_surfaces</code> does, on up to <code>max_threads</code> threads, as <code>tokenize_batch</code> does.</p>
+<p><strong>Parameters:</strong> as <code>tokenize_batch</code>.</p>
+<p><strong>Returns:</strong> <code>Array&lt;Array&lt;String&gt;&gt;</code></p>
+<h4 id="tokenize_nbest_batchtexts-n-unique-cost_threshold-max_threads--nil"><a class="header" href="#tokenize_nbest_batchtexts-n-unique-cost_threshold-max_threads--nil"><code>tokenize_nbest_batch(texts, n, unique, cost_threshold, max_threads = nil)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenize_nbest</code> does, on up to <code>max_threads</code> threads, as <code>tokenize_batch</code> does. <code>n</code>, <code>unique</code> and <code>cost_threshold</code> apply to each text.</p>
+<p><strong>Parameters:</strong> <code>texts</code> and <code>max_threads</code> as <code>tokenize_batch</code>; <code>n</code>, <code>unique</code> and <code>cost_threshold</code> as <code>tokenize_nbest</code>.</p>
+<p><strong>Returns:</strong> <code>Array&lt;Array&lt;Array(Array&lt;Token&gt;, Integer)&gt;&gt;</code></p>
 <h2 id="mode"><a class="header" href="#mode">Mode</a></h2>
 <p><code>Lindera::Mode</code> is the tokenization mode that <a href="#set_modemode"><code>TokenizerBuilder#set_mode</code></a> and <a href="#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil"><code>Tokenizer.new</code></a> take. It is the Ruby counterpart of the Rust <code>lindera::mode::Mode</code>: normal mode, or decompose mode with the <a href="#penalty"><code>Lindera::Penalty</code></a> it uses.</p>
 <h3 id="creating-a-mode"><a class="header" href="#creating-a-mode">Creating a Mode</a></h3>

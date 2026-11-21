@@ -382,6 +382,31 @@ multiple tokenizers can be built from the same configuration.</p>
 // With a cost threshold -- note that it must be passed as a bigint literal
 const resultsWithThreshold = tokenizer.tokenizeNbest("すもももももももものうち", 3, false, 100n);
 </code></pre>
+<h4 id="tokenizebatchtexts-maxthreads"><a class="header" href="#tokenizebatchtexts-maxthreads"><code>tokenizeBatch(texts, maxThreads?)</code></a></h4>
+<p>Tokenizes every text of an array, each as <code>tokenize</code> does, and returns their tokens in the order of the texts. WASM has no threads: the texts are tokenized one after the other on the calling thread. <code>maxThreads</code> is checked and otherwise ignored, so that code written for the other bindings, which run a batch on several threads, runs unchanged; the batch saves crossing into WASM once per text.</p>
+<ul>
+<li><strong>Parameters</strong>:
+<ul>
+<li><code>texts</code> (string[]) -- Texts to tokenize</li>
+<li><code>maxThreads</code> (number, optional) -- An integer of 1 or more; any other number throws</li>
+</ul>
+</li>
+<li><strong>Returns</strong>: Array of <code>Token[]</code>, one per text</li>
+</ul>
+<pre><code class="language-javascript">const batch = tokenizer.tokenizeBatch(["形態素解析", "すもももももももものうち"]);
+</code></pre>
+<h4 id="tokenizesurfacesbatchtexts-maxthreads"><a class="header" href="#tokenizesurfacesbatchtexts-maxthreads"><code>tokenizeSurfacesBatch(texts, maxThreads?)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenizeSurfaces</code> does, as <code>tokenizeBatch</code> does.</p>
+<ul>
+<li><strong>Parameters</strong>: as <code>tokenizeBatch</code></li>
+<li><strong>Returns</strong>: Array of <code>string[]</code>, one per text</li>
+</ul>
+<h4 id="tokenizenbestbatchtexts-n-unique-costthreshold-maxthreads"><a class="header" href="#tokenizenbestbatchtexts-n-unique-costthreshold-maxthreads"><code>tokenizeNbestBatch(texts, n, unique?, costThreshold?, maxThreads?)</code></a></h4>
+<p>Tokenizes every text of an array as <code>tokenizeNbest</code> does, as <code>tokenizeBatch</code> does. <code>n</code>, <code>unique</code> and <code>costThreshold</code> apply to each text.</p>
+<ul>
+<li><strong>Parameters</strong>: <code>texts</code> and <code>maxThreads</code> as <code>tokenizeBatch</code>; <code>n</code>, <code>unique</code> and <code>costThreshold</code> as <code>tokenizeNbest</code></li>
+<li><strong>Returns</strong>: Array of the N-best results of each text, each an array of <code>{ tokens: Token[], cost: number }</code></li>
+</ul>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
 <p>A single token produced by the tokenizer, as a plain JavaScript object.</p>
 <h3 id="properties"><a class="header" href="#properties">Properties</a></h3>
@@ -559,6 +584,9 @@ console.log(error.toString()); // "message"
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
 <tr><td><code>tokenizeSurfaces()</code></td><td><code>tokenize_surfaces()</code></td></tr>
 <tr><td><code>tokenizeNbest()</code></td><td><code>tokenize_nbest()</code></td></tr>
+<tr><td><code>tokenizeBatch()</code></td><td><code>tokenize_batch()</code></td></tr>
+<tr><td><code>tokenizeSurfacesBatch()</code></td><td><code>tokenize_surfaces_batch()</code></td></tr>
+<tr><td><code>tokenizeNbestBatch()</code></td><td><code>tokenize_nbest_batch()</code></td></tr>
 <tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
 <tr><td><code>loadDictionaryFromBytes()</code></td><td><code>load_dictionary_from_bytes()</code></td></tr>
 <tr><td><code>loadUserDictionaryFromBytes()</code></td><td><code>load_user_dictionary_from_bytes()</code></td></tr>

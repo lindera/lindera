@@ -227,7 +227,8 @@ make check-docs
 or reviewing a binding feature, apply the following policy:</p>
 <ul>
 <li><strong>Keep the feature set aligned.</strong> Capabilities — tokenization
-(<code>tokenize</code> / <code>tokenize_surfaces</code> / <code>tokenize_nbest</code>), user dictionaries,
+(<code>tokenize</code> / <code>tokenize_surfaces</code> / <code>tokenize_nbest</code>, and their batch forms
+<code>tokenize_batch</code> / <code>tokenize_surfaces_batch</code> / <code>tokenize_nbest_batch</code>), user dictionaries,
 character filters, and token filters — should be available in every
 binding. A feature added to one binding should come with a plan (or a
 tracking issue) for the others.</li>

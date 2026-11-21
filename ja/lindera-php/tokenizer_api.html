@@ -349,6 +349,31 @@ foreach ($results as $result) {
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>array&lt;NbestResult&gt;</code></p>
+<h4 id="tokenizebatchtexts-max_threads"><a class="header" href="#tokenizebatchtexts-max_threads"><code>tokenizeBatch($texts, $max_threads)</code></a></h4>
+<p>配列の各テキストを <code>tokenize</code> と同じくトークナイズし、最大 <code>$max_threads</code> 個のスレッドで処理して、テキストの順にトークンを返します。結果はスレッドの数によらず同じです。トークナイズは複数のスレッドで動きますが、呼び出しは全部のテキストが終わるまで戻りません。</p>
+<pre><code class="language-php">&lt;?php
+
+$batch = $tokenizer-&gt;tokenizeBatch(['形態素解析', 'すもももももももものうち']);
+foreach ($batch as $tokens) {
+    echo implode(' ', array_map(fn($token) =&gt; $token-&gt;surface, $tokens)), "\n";
+}
+</code></pre>
+<p>各テキストは 1 回の呼び出しとしてトークナイズされます。文書の行の配列を渡すと各行のトークンになり、文書全体を 1 つのテキストとしてトークナイズした結果とは違います。短い配列は 1 つのスレッドで処理し（1 スレッドあたり 16 KiB 以上の入力が要ります）、ユーザー辞書があれば各スレッドがそれぞれ複製を持ちます。結果が大きい一括（数 MB のテキストのトークンなど）は、既定より少ないスレッドのほうが速いことがあります。多くのスレッドが同時にトークンのメモリを作ると、時間の多くがカーネルの中で使われるためです。</p>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>$texts</code></td><td><code>array&lt;string&gt;</code></td><td>トークナイズするテキスト</td></tr>
+<tr><td><code>$max_threads</code></td><td><code>int|null</code></td><td>最大のスレッドの数。1 以上（デフォルト: <code>null</code>、CPU の数）。1 未満は <code>ValueError</code></td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>array&lt;array&lt;Token&gt;&gt;</code></p>
+<h4 id="tokenizesurfacesbatchtexts-max_threads"><a class="header" href="#tokenizesurfacesbatchtexts-max_threads"><code>tokenizeSurfacesBatch($texts, $max_threads)</code></a></h4>
+<p>配列の各テキストを <code>tokenizeSurfaces</code> と同じくトークナイズし、<code>tokenizeBatch</code> と同じく最大 <code>$max_threads</code> 個のスレッドで処理します。</p>
+<p><strong>パラメータ:</strong> <code>tokenizeBatch</code> と同じです。</p>
+<p><strong>戻り値:</strong> <code>array&lt;array&lt;string&gt;&gt;</code></p>
+<h4 id="tokenizenbestbatchtexts-n-unique-cost_threshold-max_threads"><a class="header" href="#tokenizenbestbatchtexts-n-unique-cost_threshold-max_threads"><code>tokenizeNbestBatch($texts, $n, $unique, $cost_threshold, $max_threads)</code></a></h4>
+<p>配列の各テキストを <code>tokenizeNbest</code> と同じくトークナイズし、<code>tokenizeBatch</code> と同じく最大 <code>$max_threads</code> 個のスレッドで処理します。<code>$n</code>、<code>$unique</code>、<code>$cost_threshold</code> は各テキストに当てはまります。</p>
+<p><strong>パラメータ:</strong> <code>$texts</code> と <code>$max_threads</code> は <code>tokenizeBatch</code>、<code>$n</code>、<code>$unique</code>、<code>$cost_threshold</code> は <code>tokenizeNbest</code> と同じです。</p>
+<p><strong>戻り値:</strong> <code>array&lt;array&lt;NbestResult&gt;&gt;</code></p>
 <h2 id="nbestresult"><a class="header" href="#nbestresult">NbestResult</a></h2>
 <p><code>NbestResult</code> は N-best トークナイズの個別の結果を表します。</p>
 <h3 id="nbestresult-プロパティ"><a class="header" href="#nbestresult-プロパティ">NbestResult プロパティ</a></h3>
