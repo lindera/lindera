@@ -84,7 +84,12 @@ use lindera::analysis::token_filter::TokenFilterLoader;
 #[cfg(feature = "analysis")]
 use lindera::analysis::tokenizer::{Tokenizer, TokenizerBuilder};
 #[cfg(feature = "analysis")]
-use lindera::analysis::{character_filter, token_filter, tokenizer, worker};
+use lindera::analysis::{character_filter, token_filter, tokenizer, worker, worker_pool};
+// Tokenization of a list of texts on several threads (#1402).
+#[cfg(feature = "analysis")]
+use lindera::analysis::worker::AnalysisWorker;
+#[cfg(feature = "analysis")]
+use lindera::analysis::worker_pool::AnalysisWorkerPool;
 
 // The raw `lindera-dictionary` API, re-exported under `lindera::dictionary`.
 use lindera::dictionary::builder::DictionaryBuilder;

@@ -1007,6 +1007,91 @@ fn tokenize_ends_quietly_at_the_final_flush_without_a_stdout_reader() {
     tokenize_without_stdout_reader(&[], Input::Closed("東京\n".to_string()));
 }
 
+/// On several threads, the reader thread waits in a read of the open input
+/// while the output of the lines read is written, and the command ends at
+/// the first write without a reader, as on one thread (#1402).
+#[test]
+fn tokenize_on_several_threads_stops_without_a_stdout_reader() {
+    tokenize_without_stdout_reader(
+        &["--max-threads", "4"],
+        Input::KeptOpen(lines_beyond_the_output_buffer()),
+    );
+}
+
+/// The JSON output on several threads (#1402).
+#[test]
+fn tokenize_json_on_several_threads_stops_without_a_stdout_reader() {
+    tokenize_without_stdout_reader(
+        &["--max-threads", "4", "--output", "json"],
+        Input::KeptOpen(lines_beyond_the_output_buffer()),
+    );
+}
+
+/// The N-best results on several threads (#1402).
+#[test]
+fn tokenize_nbest_on_several_threads_stops_without_a_stdout_reader() {
+    tokenize_without_stdout_reader(
+        &["--max-threads", "4", "--nbest", "2"],
+        Input::KeptOpen(lines_beyond_the_output_buffer()),
+    );
+}
+
+/// On several threads, the output of one line also stays in the buffer
+/// until the final flush (#1402).
+#[test]
+fn tokenize_on_several_threads_ends_quietly_at_the_final_flush_without_a_stdout_reader() {
+    tokenize_without_stdout_reader(&["--max-threads", "4"], Input::Closed("東京\n".to_string()));
+}
+
+/// On several threads, the warning of a forced cut goes to stderr from the
+/// thread that tokenizes the line, once (#1402).
+#[test]
+fn tokenize_on_several_threads_writes_the_forced_cut_warning_to_stderr() {
+    let dir = tempfile::tempdir().unwrap();
+    let (dict, _) = build_four_by_four_dictionary(dir.path());
+    let input = format!("{}\n", "a".repeat(40_000));
+    let output = lindera()
+        .args([
+            "tokenize",
+            "--dict",
+            dict.to_str().unwrap(),
+            "--max-threads",
+            "4",
+        ])
+        .env_remove("RUST_LOG")
+        .write_stdin(input)
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(output.status.success(), "got: {stderr}");
+    assert_eq!(
+        stderr.matches("forcing a sentence boundary").count(),
+        1,
+        "got: {stderr}"
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("aaaa"), "got: {stdout}");
+}
+
+/// `--max-threads` takes 1 or more (#1402).
+#[test]
+fn tokenize_rejects_zero_threads() {
+    let output = lindera()
+        .args([
+            "tokenize",
+            "--dict",
+            "embedded://ipadic",
+            "--max-threads",
+            "0",
+        ])
+        .write_stdin("東京\n")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("--max-threads"), "got: {stderr}");
+}
+
 // The commands with a stderr that has no reader: their own messages there are
 // dropped, and they write their result and end with exit code 0 (#1338).
 
@@ -1554,6 +1639,124 @@ mod with_ipadic {
         assert_eq!(
             spans(" 東京\n 大阪 \n", &[]),
             vec![vec![span("東京", 1, 7)], vec![span("大阪", 1, 7)]]
+        );
+    }
+
+    /// On several threads, the offsets also index each input line (#1402).
+    #[test]
+    fn tokenize_offsets_on_several_threads_index_each_input_line() {
+        assert_eq!(
+            spans(" 東京\n 大阪 \n", &["--max-threads", "4"]),
+            vec![vec![span("東京", 1, 7)], vec![span("大阪", 1, 7)]]
+        );
+    }
+
+    /// Runs `lindera tokenize` with IPADIC and `args` on `input` and the
+    /// given number of threads.
+    fn tokenize_on_threads(args: &[&str], input: &[u8], threads: &str) -> std::process::Output {
+        lindera()
+            .args([
+                "tokenize",
+                "--dict",
+                "embedded://ipadic",
+                "--max-threads",
+                threads,
+            ])
+            .args(args)
+            .write_stdin(input.to_vec())
+            .output()
+            .unwrap()
+    }
+
+    /// Asserts that `lindera tokenize` with IPADIC and `args` succeeds on
+    /// `input` with the same stdout on 4 threads as on one (#1402).
+    fn assert_same_output_on_several_threads(args: &[&str], input: &[u8]) {
+        let one = tokenize_on_threads(args, input, "1");
+        let four = tokenize_on_threads(args, input, "4");
+        assert!(
+            one.status.success(),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&one.stderr)
+        );
+        assert!(
+            four.status.success(),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&four.stderr)
+        );
+        assert!(
+            input.is_empty() || !one.stdout.is_empty(),
+            "{args:?}: no output"
+        );
+        assert!(
+            one.stdout == four.stdout,
+            "{args:?}: the output on 4 threads differs from the output on one"
+        );
+    }
+
+    /// The first `lines` lines of `resources/bocchan.txt`, then a CRLF
+    /// line, an empty line, and a last line without a terminator.
+    fn bocchan_and_line_ends(lines: usize) -> Vec<u8> {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../resources/bocchan.txt");
+        let text = std::fs::read_to_string(path).unwrap();
+        let mut input: String = text
+            .lines()
+            .take(lines)
+            .map(|line| format!("{line}\n"))
+            .collect();
+        input.push_str("東京\r\n\nすもももももももものうち");
+        input.into_bytes()
+    }
+
+    /// The output on several threads is the output on one, byte for byte:
+    /// in every format, with N-best, in decompose mode, with filters, and
+    /// for an empty input and a single line (#1402).
+    #[test]
+    fn tokenize_on_several_threads_writes_the_same_output() {
+        let all = bocchan_and_line_ends(usize::MAX);
+        for args in [&[][..], &["--output", "wakati"], &["--output", "json"]] {
+            assert_same_output_on_several_threads(args, &all);
+        }
+        let some = bocchan_and_line_ends(120);
+        for args in [
+            &["--mode", "decompose"][..],
+            &["--nbest", "3", "--nbest-unique"],
+            &["--output", "json", "--nbest", "2"],
+            &[
+                "--char-filter",
+                r#"japanese_iteration_mark:{"normalize_kanji":true,"normalize_kana":true}"#,
+                "--token-filter",
+                r#"japanese_compound_word:{"tags":["名詞,数"],"new_tag":"名詞,数"}"#,
+            ],
+        ] {
+            assert_same_output_on_several_threads(args, &some);
+        }
+        assert_same_output_on_several_threads(&[], b"");
+        assert_same_output_on_several_threads(&[], "すもももももももものうち\n".as_bytes());
+    }
+
+    /// A line that is not UTF-8 ends the command after the output of the
+    /// lines before it, with the same stdout, exit code and error on
+    /// several threads as on one (#1402).
+    #[test]
+    fn tokenize_on_several_threads_stops_at_a_line_that_is_not_utf8() {
+        let mut input = bocchan_and_line_ends(120);
+        input.extend_from_slice(b"\n\xff\n");
+        input.extend_from_slice("東京\n".as_bytes());
+        let one = tokenize_on_threads(&[], &input, "1");
+        let four = tokenize_on_threads(&[], &input, "4");
+        assert_eq!(one.status.code(), Some(1));
+        assert_eq!(four.status.code(), Some(1));
+        let stderr = String::from_utf8(four.stderr.clone()).unwrap();
+        assert!(stderr.starts_with("Error:"), "got: {stderr}");
+        assert_eq!(one.stderr, four.stderr);
+        // The 120 lines of bocchan.txt and the 3 lines after them, up to the
+        // line that is not UTF-8.
+        let stdout = String::from_utf8(one.stdout.clone()).unwrap();
+        assert_eq!(stdout.matches("EOS\n").count(), 123);
+        assert!(stdout.ends_with("EOS\n"));
+        assert!(
+            one.stdout == four.stdout,
+            "the output before the error differs on 4 threads"
         );
     }
 

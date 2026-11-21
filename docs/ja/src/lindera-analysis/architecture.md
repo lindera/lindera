@@ -62,7 +62,7 @@ Segmenterが生成したトークンを後処理するフィルタのtraitです
 
 ### AnalysisWorker
 
-`AnalysisWorker`（`Tokenizer::new_worker`または`Tokenizer::into_worker`で作成）は、解析チェーン全体に対する再利用可能なセッションです。呼び出しごとのバッファ — Viterbiラティスとバックトレース用スクラッチ（`SegmentWorker`経由）、文字フィルタが操作する正規化テキストバッファ、オフセットマッピング用スクラッチ — をすべて所有するため、`tokenize`を繰り返し呼び出しても`Tokenizer::tokenize`が支払う呼び出しごとのアロケーションを回避できます。文字フィルタが設定されている場合、トークンのsurfaceはトークンごとの`String`にコピーされる代わりにワーカーのバッファを借用します。返されるトークンはワーカーを借用するため、次の呼び出しの前に消費する必要があります。マルチスレッドで使う場合はスレッドごとにワーカーを作成してください（あるいは`lindera-binding`のように`Mutex`で保護します）。基盤となる`SegmentWorker`と自動メモリ縮小ポリシーについては[Segmenter](../lindera/segmenter.md)のページを参照してください。
+`AnalysisWorker`（`Tokenizer::new_worker`または`Tokenizer::into_worker`で作成）は、解析チェーン全体に対する再利用可能なセッションです。呼び出しごとのバッファ — Viterbiラティスとバックトレース用スクラッチ（`SegmentWorker`経由）、文字フィルタが操作する正規化テキストバッファ、オフセットマッピング用スクラッチ — をすべて所有するため、`tokenize`を繰り返し呼び出しても`Tokenizer::tokenize`が支払う呼び出しごとのアロケーションを回避できます。文字フィルタが設定されている場合、トークンのsurfaceはトークンごとの`String`にコピーされる代わりにワーカーのバッファを借用します。返されるトークンはワーカーを借用するため、次の呼び出しの前に消費する必要があります。マルチスレッドで使う場合はスレッドごとにワーカーを作成してください（あるいは`lindera-binding`のように`Mutex`で保護します）。テキストの一覧をトークナイズするなら、[`AnalysisWorkerPool`](#analysisworkerpool)も使えます。基盤となる`SegmentWorker`と自動メモリ縮小ポリシーについては[Segmenter](../lindera/segmenter.md)のページを参照してください。
 
 `AnalysisWorker`の主なpublicメソッド:
 
@@ -76,6 +76,35 @@ Segmenterが生成したトークンを後処理するフィルタのtraitです
 - `set_space_penalty(&mut self, space_penalty: Option<SpacePenaltyConfig>)`・`set_space_penalty_from_dictionary(&mut self)` — 以降の呼び出しで使う左側空白ペナルティのルールを設定するか、辞書のルールに戻します。
 - `shrink_to(&mut self, text_len_hint: usize)` — ワーカーの内部バッファを、`text_len_hint`バイトの入力に必要なサイズまで直ちに縮小します。
 - `reset(&mut self)` — すべての内部バッファを破棄し、新しいバッファに置き換えます。（例えばワーカーを保持する`Mutex`がパニックでpoisonedになった場合の）リカバリ用途を想定しており、設定（辞書・フィルタ・モード）は保持されます。
+- `to_tokenizer(&self)` — ワーカーの設定（上の setter で変えた設定も含む）を持つ`Tokenizer`を返します。ここから、このワーカーと同じようにトークナイズするワーカーを作れます。ユーザー辞書があれば複製します。
+
+### AnalysisWorkerPool
+
+`AnalysisWorkerPool`（`Tokenizer::new_worker_pool`または`Tokenizer::into_worker_pool`で作成）は、テキストの一覧を複数のスレッドでトークナイズします。各テキストは`AnalysisWorker::tokenize`と同じく 1 回の呼び出しとしてトークナイズされ、結果はテキストの順に返るので、スレッドの数によらず同じ結果になります。文書の行の一覧を渡すと、各行を別々にトークナイズする`lindera tokenize`と同じトークンになります。文書全体を 1 つのテキストとしてトークナイズした結果とは違います（そちらのオフセット、位置、N-best の結果は行をまたぎます）。
+
+```rust
+use std::num::NonZeroUsize;
+
+let mut pool = tokenizer.into_worker_pool();
+let threads = std::thread::available_parallelism().unwrap_or(NonZeroUsize::MIN);
+let surfaces: Vec<Vec<String>> = pool.tokenize_batch(&lines, threads, |tokens| {
+    tokens.into_iter().map(|token| token.surface.into_owned()).collect()
+})?;
+```
+
+クロージャは、テキストをトークナイズしたスレッドで、その直後に動きます。トークンはそのスレッドのワーカーを借用しているので、呼び出し側が残すもの（`String`、件数、整形した出力など）に変えるのはクロージャの役目です。この変換も並列に動きます。
+
+- `tokenize_batch(&mut self, texts, max_threads, f)` — 呼び出したスレッドを含めて最大`max_threads`個のスレッドで各テキストをトークナイズし、`f`の結果を`texts`の順に返します。
+- `tokenize_nbest_batch(&mut self, texts, n, unique, cost_threshold, max_threads, f)` — 同じことを`AnalysisWorker::tokenize_nbest`で行います。`f`は 1 つのテキストの`(tokens, cost)`の組を受け取ります。
+- `worker_count(&self)`・`truncate_workers(&mut self, max_workers)` — プールが持つワーカーの数と、`max_workers`を超えるワーカーの解放です。
+- `shrink_to(&mut self, text_len_hint)`・`reset(&mut self)` — `AnalysisWorker`の同名のメソッドを全ワーカーに行います。
+
+一括の処理の動き方:
+
+- プールはワーカー 1 つで始まり、持っているワーカーより多いスレッドで動くときに、そこから（`to_tokenizer`で）ワーカーを作ります。各ワーカーは次の一括の処理のためにバッファを保持し、ユーザー辞書があればそれぞれ複製を持ちます。システム辞書は共有します。
+- スレッドが 1 つのとき、テキストが 1 つのとき、入力が短いとき（スレッド 1 つあたり 16 KiB 以上が要ります）、スレッドのない wasm では、呼び出したスレッドだけで動きます。それ以外は`std::thread::scope`でスレッドを起こし、テキストをチャンクに分けて配ります。
+- テキストが失敗したときは、入力の順で最初に失敗したテキストのエラーを返します（テキストを順にループで処理したときと同じエラーです）。その後ろのテキストはトークナイズされないことがあります。トークナイズや`f`の panic も同じ規則で呼び出したスレッドで再開し、panic したワーカーはリセットするので、プールはそのまま使えます。
+- ワーカーは 1 つのトークナイザーの複製なので、インスタンスごとに状態を持つ自作のフィルタは、ワーカーごとに別の状態を持ちます。
 
 ## Feature フラグ
 
