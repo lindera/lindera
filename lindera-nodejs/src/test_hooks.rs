@@ -20,7 +20,7 @@ pub fn panic_for_test(message: String) {
 }
 
 /// A task that panics in `compute`, through the function every batch task's
-/// `compute` goes through (`compute_batch` in the `batch_task` module).
+/// `compute` goes through (`catch_panic` in the `batch_task` module).
 pub struct PanicTask {
     /// The message of the panic.
     message: String,
@@ -34,7 +34,7 @@ impl napi::Task for PanicTask {
     /// Panics with the message, on a thread of libuv's pool.
     fn compute(&mut self) -> napi::Result<Self::Output> {
         let message = std::mem::take(&mut self.message);
-        crate::batch_task::compute_batch(|| -> napi::Result<()> { panic!("{message}") })
+        crate::batch_task::catch_panic(|| -> napi::Result<()> { panic!("{message}") })
     }
 
     /// Never runs, as `compute` panics.
@@ -57,4 +57,75 @@ impl napi::Task for PanicTask {
 #[napi(catch_unwind, skip_typescript, js_name = "__panicInTaskForTest")]
 pub fn panic_in_task_for_test(message: String) -> napi::bindgen_prelude::AsyncTask<PanicTask> {
     napi::bindgen_prelude::AsyncTask::new(PanicTask { message })
+}
+
+/// Sets the budget of a part for the batch tasks made from now on, so that
+/// tests/test_tokenize_batch_async.js can make a small batch in many parts
+/// (#1408).
+///
+/// # Arguments
+///
+/// * `units` - The weight that one part makes at most, 1 or more, or `null`
+///   for the default (`PART_BUDGET` in the `batch_parts` module).
+///
+/// # Returns
+///
+/// `Ok(())`, or an `InvalidArg` error for 0.
+#[napi(catch_unwind, skip_typescript, js_name = "__setBatchPartBudgetForTest")]
+pub fn set_batch_part_budget_for_test(units: Option<u32>) -> napi::Result<()> {
+    if units == Some(0) {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            "the budget of a part must be 1 or more",
+        ));
+    }
+    crate::batch_parts::hooks::BUDGET.store(
+        units.unwrap_or(0) as usize,
+        std::sync::atomic::Ordering::Relaxed,
+    );
+    Ok(())
+}
+
+/// Returns the number of parts that batch tasks began in this process, after
+/// their `resolve` (#1408).
+///
+/// # Returns
+///
+/// The number of parts.
+#[napi(catch_unwind, skip_typescript, js_name = "__batchPartsMadeForTest")]
+pub fn batch_parts_made_for_test() -> u32 {
+    crate::batch_parts::hooks::PARTS_MADE.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// Makes a part of the next batch task fail, once (#1408).
+///
+/// # Arguments
+///
+/// * `part` - The part: 0 is the task's `resolve`, 1 the first part made
+///   after it.
+/// * `kind` - `"error"` (the part returns an error), `"panic"` (it panics)
+///   or `"throw"` (it throws a JavaScript exception, then returns an error).
+///
+/// # Returns
+///
+/// `Ok(())`, or an `InvalidArg` error for another `kind`.
+#[napi(catch_unwind, skip_typescript, js_name = "__failBatchPartForTest")]
+pub fn fail_batch_part_for_test(part: u32, kind: String) -> napi::Result<()> {
+    use crate::batch_parts::{Fault, FaultKind};
+    let kind = match kind.as_str() {
+        "error" => FaultKind::Error,
+        "panic" => FaultKind::Panic,
+        "throw" => FaultKind::Throw,
+        other => {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("unknown kind of failure {other:?}"),
+            ));
+        }
+    };
+    let mut fault = crate::batch_parts::hooks::FAULT
+        .lock()
+        .map_err(|error| napi::Error::from_reason(error.to_string()))?;
+    *fault = Some(Fault { part, kind });
+    Ok(())
 }

@@ -443,9 +443,10 @@ export declare class Tokenizer {
    *
    * The texts are tokenized on a thread of libuv's pool, on up to
    * `maxThreads` threads of the batch, while the event loop runs; the
-   * token objects are made afterwards on the JavaScript thread. Batches on
-   * the same tokenizer run one after the other; a single-text call does
-   * not wait for them.
+   * token objects are then made on the JavaScript thread, at once when
+   * they are few, or else in parts with a turn of the event loop between
+   * two parts. Batches on the same tokenizer run one after the other; a
+   * single-text call does not wait for them.
    *
    * # Arguments
    *

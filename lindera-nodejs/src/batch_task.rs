@@ -4,18 +4,19 @@
 //!
 //! napi runs a task's `compute` on a thread of libuv's pool and its
 //! `resolve` on the JavaScript thread, so the texts are tokenized while the
-//! event loop runs, and the token objects are made afterwards on the
-//! JavaScript thread. A task owns a clone of the tokenizer's
-//! `Arc<CoreTokenizer>`, as the `Tokenizer` object may be collected while
-//! the task runs.
+//! event loop runs. `resolve` then makes the results on the JavaScript
+//! thread: at once when they fit in one part, or else in parts with a turn
+//! of the event loop between two parts (`crate::batch_parts`, #1408). A task
+//! owns a clone of the tokenizer's `Arc<CoreTokenizer>`, as the `Tokenizer`
+//! object may be collected while the task runs.
 //!
 //! The arguments are checked on the JavaScript thread, when the task is made;
 //! an argument out of its range is kept in the task, and `compute` returns
 //! its error, which rejects the `Promise`.
 //!
-//! Each task is a type of its own, with an `impl Task` of its own: napi's
-//! type generation finds the `JsValue` of a task by the name of its type,
-//! and gives a generic task `Promise<unknown>` in `index.d.ts`.
+//! The `JsValue` of a task is the array of the results or the thenable that
+//! makes them, so the methods give their types in `index.d.ts` with
+//! `ts_return_type` (`crate::tokenizer`).
 
 use std::num::NonZeroUsize;
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -28,17 +29,19 @@ use lindera_binding::token::SurfaceView;
 use lindera_binding::tokenizer::NbestViews;
 use lindera_binding::{CoreTokenizer, TokenView};
 
+use crate::batch_parts::{self, BatchValue, PartConfig};
 use crate::error::to_napi_error;
-use crate::token::{NbestResult, Token, nbest_from_views, surfaces_from_views, tokens_from_views};
+use crate::token::{surfaces_from_views, tokens_from_views};
 
-/// Runs the work of a task's `compute`, making a panic in it the error that
-/// `#[napi(catch_unwind)]` makes of a panic (`GenericFailure`, with the
-/// panic's message).
+/// Runs the work of a task's `compute` or `resolve`, making a panic in it
+/// the error that `#[napi(catch_unwind)]` makes of a panic
+/// (`GenericFailure`, with the panic's message).
 ///
-/// napi calls `compute` without catching a panic, so a panic would unwind
-/// across an `extern "C"` function and abort Node.js; a batch resumes the
-/// first panic of its texts on the thread that runs it, which is libuv's
-/// thread here. Every task's `compute` goes through this function.
+/// napi calls `compute` and `resolve` without catching a panic, so a panic
+/// would unwind across an `extern "C"` function and abort Node.js; a batch
+/// resumes the first panic of its texts on the thread that runs it, which is
+/// libuv's thread for `compute`. Every task's `compute` and `resolve` go
+/// through this function.
 ///
 /// # Arguments
 ///
@@ -47,7 +50,7 @@ use crate::token::{NbestResult, Token, nbest_from_views, surfaces_from_views, to
 /// # Returns
 ///
 /// What `work` returns, or the error of its panic.
-pub(crate) fn compute_batch<R>(work: impl FnOnce() -> napi::Result<R>) -> napi::Result<R> {
+pub(crate) fn catch_panic<R>(work: impl FnOnce() -> napi::Result<R>) -> napi::Result<R> {
     catch_unwind(AssertUnwindSafe(work)).map_err(panic_to_error)?
 }
 
@@ -73,6 +76,8 @@ pub struct TokenizeBatchTask {
     /// The checked `maxThreads`, or the error that rejects the `Promise`;
     /// taken by `compute`.
     max_threads: Option<napi::Result<Option<NonZeroUsize>>>,
+    /// How the token objects are made in parts.
+    config: PartConfig,
 }
 
 impl TokenizeBatchTask {
@@ -96,14 +101,14 @@ impl TokenizeBatchTask {
             tokenizer,
             texts,
             max_threads: Some(max_threads),
+            config: PartConfig::current(),
         }
     }
 }
 
-#[napi]
 impl Task for TokenizeBatchTask {
     type Output = Vec<Vec<TokenView>>;
-    type JsValue = Vec<Vec<Token>>;
+    type JsValue = BatchValue;
 
     /// Tokenizes the texts, on a thread of libuv's pool, as `tokenizeBatch`
     /// does, or returns the error of an argument out of its range.
@@ -111,16 +116,18 @@ impl Task for TokenizeBatchTask {
         let max_threads = taken(&mut self.max_threads)?;
         let texts = std::mem::take(&mut self.texts);
         let tokenizer = &self.tokenizer;
-        compute_batch(|| {
+        catch_panic(|| {
             tokenizer
                 .tokenize_batch(&texts, max_threads)
                 .map_err(to_napi_error)
         })
     }
 
-    /// Makes the token objects, on the JavaScript thread.
-    fn resolve(&mut self, _env: Env, output: Self::Output) -> napi::Result<Self::JsValue> {
-        Ok(tokens_from_views(output))
+    /// Makes the token objects on the JavaScript thread, at once or in
+    /// parts (`crate::batch_parts`).
+    fn resolve(&mut self, env: Env, output: Self::Output) -> napi::Result<Self::JsValue> {
+        let config = self.config;
+        catch_panic(|| batch_parts::resolve_flat(&env, output, tokens_from_views, config))
     }
 }
 
@@ -133,6 +140,8 @@ pub struct TokenizeSurfacesBatchTask {
     /// The checked `maxThreads`, or the error that rejects the `Promise`;
     /// taken by `compute`.
     max_threads: Option<napi::Result<Option<NonZeroUsize>>>,
+    /// How the surface strings are made in parts.
+    config: PartConfig,
 }
 
 impl TokenizeSurfacesBatchTask {
@@ -156,14 +165,14 @@ impl TokenizeSurfacesBatchTask {
             tokenizer,
             texts,
             max_threads: Some(max_threads),
+            config: PartConfig::current(),
         }
     }
 }
 
-#[napi]
 impl Task for TokenizeSurfacesBatchTask {
     type Output = Vec<Vec<SurfaceView>>;
-    type JsValue = Vec<Vec<String>>;
+    type JsValue = BatchValue;
 
     /// Tokenizes the texts, on a thread of libuv's pool, as
     /// `tokenizeSurfacesBatch` does, or returns the error of an argument out
@@ -172,16 +181,18 @@ impl Task for TokenizeSurfacesBatchTask {
         let max_threads = taken(&mut self.max_threads)?;
         let texts = std::mem::take(&mut self.texts);
         let tokenizer = &self.tokenizer;
-        compute_batch(|| {
+        catch_panic(|| {
             tokenizer
                 .tokenize_surfaces_batch(&texts, max_threads)
                 .map_err(to_napi_error)
         })
     }
 
-    /// Makes the surface strings, on the JavaScript thread.
-    fn resolve(&mut self, _env: Env, output: Self::Output) -> napi::Result<Self::JsValue> {
-        Ok(surfaces_from_views(output))
+    /// Makes the surface strings on the JavaScript thread, at once or in
+    /// parts (`crate::batch_parts`).
+    fn resolve(&mut self, env: Env, output: Self::Output) -> napi::Result<Self::JsValue> {
+        let config = self.config;
+        catch_panic(|| batch_parts::resolve_flat(&env, output, surfaces_from_views, config))
     }
 }
 
@@ -194,6 +205,8 @@ pub struct TokenizeNbestBatchTask {
     /// The checked arguments, or the error that rejects the `Promise`; taken
     /// by `compute`.
     args: Option<napi::Result<NbestArgs>>,
+    /// How the `NbestResult` objects are made in parts.
+    config: PartConfig,
 }
 
 impl TokenizeNbestBatchTask {
@@ -217,14 +230,14 @@ impl TokenizeNbestBatchTask {
             tokenizer,
             texts,
             args: Some(args),
+            config: PartConfig::current(),
         }
     }
 }
 
-#[napi]
 impl Task for TokenizeNbestBatchTask {
     type Output = Vec<NbestViews>;
-    type JsValue = Vec<Vec<NbestResult>>;
+    type JsValue = BatchValue;
 
     /// Tokenizes the texts, on a thread of libuv's pool, as
     /// `tokenizeNbestBatch` does, or returns the error of an argument out of
@@ -233,7 +246,7 @@ impl Task for TokenizeNbestBatchTask {
         let args = taken(&mut self.args)?;
         let texts = std::mem::take(&mut self.texts);
         let tokenizer = &self.tokenizer;
-        compute_batch(|| {
+        catch_panic(|| {
             tokenizer
                 .tokenize_nbest_batch(
                     &texts,
@@ -246,9 +259,11 @@ impl Task for TokenizeNbestBatchTask {
         })
     }
 
-    /// Makes the `NbestResult` objects, on the JavaScript thread.
-    fn resolve(&mut self, _env: Env, output: Self::Output) -> napi::Result<Self::JsValue> {
-        Ok(nbest_from_views(output))
+    /// Makes the `NbestResult` objects on the JavaScript thread, at once or
+    /// in parts (`crate::batch_parts`).
+    fn resolve(&mut self, env: Env, output: Self::Output) -> napi::Result<Self::JsValue> {
+        let config = self.config;
+        catch_panic(|| batch_parts::resolve_nbest(&env, output, config))
     }
 }
 

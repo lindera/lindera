@@ -66,8 +66,9 @@ impl Token {
 
 /// Makes the token views of a batch into token objects, text by text.
 ///
-/// The synchronous batch methods and the tasks of their `Promise` versions
-/// (`crate::batch_task`) all convert through this function and the two
+/// The synchronous batch methods and their `Promise` versions, both for a
+/// batch made at once and for each part of a batch made in parts
+/// (`crate::batch_parts`), all convert through this function and the two
 /// below, so that the loop over the tokens has one copy: a second copy of
 /// such a loop once stopped the compiler from inlining the conversion of a
 /// token into the loop of the single-text methods (#1407).
