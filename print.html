@@ -11146,6 +11146,7 @@ This guide lists every breaking change and the one-line fixes for each.</p>
 <tr><td><strong><code>UnknownDictionary::gen_unk_words</code>, <code>UnknownDictionary::compatible_unk_index</code>, <code>UnkWord</code> and <code>WordIdx</code> are removed</strong></td><td>Rust code that uses them from <code>lindera_dictionary::dictionary::unknown_dictionary</code> (also <code>lindera::dictionary::core::unknown_dictionary</code>)</td><td>Use <code>Lattice::unknown_word_candidates</code>, which lists the unknown words that the runtime creates</td></tr>
 <tr><td><strong><code>words_idx_data</code> and <code>words_data</code> of <code>PrefixDictionary</code> and <code>UserPrefixDictionary</code> are methods instead of public fields</strong></td><td>Rust code that reads or assigns these fields from <code>lindera_dictionary::dictionary::prefix_dictionary</code> (also <code>lindera::dictionary::core::prefix_dictionary</code>), such as <code>dictionary.prefix_dictionary.words_data</code> or <code>user_dictionary.dict.words_data</code></td><td>Call <code>words_idx_data()</code> and <code>words_data()</code>, which return <code>&amp;[u8]</code>; to use other detail records, load the dictionary again with <code>PrefixDictionary::load</code> or <code>UserPrefixDictionary::load</code></td></tr>
 <tr><td><strong><code>ConnectionCostMatrix::costs()</code> and <code>row()</code> return <code>&amp;[ConnectionCost]</code>, and <code>include_bytes_aligned!</code> is removed</strong></td><td>Rust code that reads the costs of a <code>ConnectionCostMatrix</code> from <code>lindera_dictionary::dictionary::connection_cost_matrix</code> (also <code>lindera::dictionary::core::connection_cost_matrix</code>) through <code>costs()</code> or <code>row()</code>, such as <code>dictionary.connection_cost_matrix.row(id)[j]</code>; code that embeds bytes with <code>lindera_dictionary::include_bytes_aligned!</code></td><td>Call <code>get()</code> on each <code>ConnectionCost</code>, which returns the <code>i16</code>, or call <code>cost()</code>; embed bytes with <code>include_bytes!</code></td></tr>
+<tr><td><strong>After <code>details_iter()</code>, <code>as_value()</code> and the Japanese part-of-speech filters, the <code>details</code> field of a <code>Token</code> stays <code>None</code></strong></td><td>Rust code that reads the public <code>details</code> field of a <code>lindera::token::Token</code> after these calls, or after a tokenizer with <code>japanese_stop_tags</code>, <code>japanese_keep_tags</code>, <code>japanese_compound_word</code> or <code>japanese_number</code>, such as one built from the shipped <code>lindera.yml</code></td><td>Read the details with <code>details()</code>, <code>details_iter()</code>, <code>get_detail()</code> or <code>get()</code> instead of the field (see <a href="migration_v6_to_v7.html#the-details-field-of-a-token-stays-none-after-a-single-pass">The <code>details</code> field of a token stays <code>None</code> after a single pass</a>)</td></tr>
 <tr><td><strong><code>lindera_trainer</code>: <code>SerializableModel::unk_category_names</code> and <code>unk_categories</code> are replaced by <code>unk_entries</code>, and <code>Trainer::max_grouping_len</code> takes the runtime's meaning</strong></td><td>Rust code that uses <code>lindera-trainer</code> (also <code>lindera::dictionary::trainer</code>)</td><td>Read <code>unk_entries</code>, the <code>unk.def</code> entries in file order; pass <code>max_grouping_len</code> the cap the dictionary will be used with</td></tr>
 <tr><td><strong><code>lindera_trainer</code>: <code>FeatureExtractor</code>'s feature ID maps are read through a <code>FeatureIdMap</code>, and <code>TrainerConfig::surface_features()</code> is removed</strong></td><td>Rust code that uses <code>lindera-trainer</code> (also <code>lindera::dictionary::trainer</code>) and reads the ID maps of a <code>FeatureExtractor</code> it builds, or calls <code>surface_features()</code></td><td>Call <code>unigram_feature_ids()</code>, <code>left_feature_ids()</code> and <code>right_feature_ids()</code> instead of reading the fields; rebuild the map from <code>surfaces()</code> and <code>features()</code> (see <a href="migration_v6_to_v7.html#rust-api-changes-in-lindera_trainer">Rust API changes in <code>lindera_trainer</code></a>)</td></tr>
 </tbody></table>
@@ -13307,6 +13308,33 @@ In v7.0.0, a message that cannot be written is dropped, and the command
 writes its result and ends as it would otherwise: the progress and notices of
 <code>lindera download</code>, the notices of <code>lindera list</code> about the dictionaries
 directory, and the warning about <code>LINDERA_DATA_DIR</code>.</p>
+<h2 id="the-details-field-of-a-token-stays-none-after-a-single-pass"><a class="header" href="#the-details-field-of-a-token-stays-none-after-a-single-pass">The <code>details</code> field of a token stays <code>None</code> after a single pass</a></h2>
+<p>A <code>Token</code> (<code>lindera::token::Token</code>) keeps its details in its public field
+<code>details</code> once they are loaded. Up to v6.2.0, every way of reading them
+loaded them there, into a vector allocated per token. v7.0.0 reads them in
+one pass, without loading them, in <code>details_iter()</code> and <code>as_value()</code>, which
+the CLI's mecab and JSON outputs and the bindings use
+(<a href="https://github.com/lindera/lindera/issues/1399">#1399</a>). After those, the
+field stays <code>None</code> when it was <code>None</code> before. The Japanese part-of-speech
+filters, <code>japanese_stop_tags</code>, <code>japanese_keep_tags</code>,
+<code>japanese_compound_word</code> and <code>japanese_number</code>, read the details with
+<code>details_iter()</code>, so after a tokenizer with any of them, such as one built
+from the shipped <code>lindera.yml</code>, the field of a token whose details they did
+not rewrite stays <code>None</code> as well.</p>
+<p><code>details()</code>, <code>get_detail()</code> and <code>get()</code> still load the details into the
+field, and the field still holds the details that a token filter rewrote,
+such as those of a merged compound word, which every accessor then returns.
+<code>set_detail()</code> changes a field only after the details are loaded, as in v6,
+so call <code>details()</code> before it.</p>
+<p>Read the details through the accessors instead of the field:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// v6: the field was filled after the tag filters
+let part_of_speech = token.details.as_ref().unwrap()[0].to_string();
+
+// v7
+let part_of_speech = token.get_detail(0).unwrap_or_default().to_string();
+<span class="boring">}</span></code></pre></pre>
 <h2 id="rust-api-changes-in-lindera_dictionary-1"><a class="header" href="#rust-api-changes-in-lindera_dictionary-1">Rust API changes in <code>lindera_dictionary</code></a></h2>
 <p>These affect only code that calls the lattice backtraces directly, that
 creates dictionary metadata with <code>Metadata::new</code>, that reads the
@@ -13669,6 +13697,10 @@ assigned them, load the dictionary again with its <code>load</code> function.</l
 <li>If you read the costs of a <code>ConnectionCostMatrix</code> through <code>costs()</code> or
 <code>row()</code>, call <code>get()</code> on each <code>ConnectionCost</code>; if you used
 <code>include_bytes_aligned!</code>, use <code>include_bytes!</code>.</li>
+<li>If you read the <code>details</code> field of a <code>Token</code> directly, read the details
+with <code>details()</code>, <code>details_iter()</code>, <code>get_detail()</code> or <code>get()</code> instead; the
+field stays <code>None</code> after <code>details_iter()</code>, <code>as_value()</code> and the Japanese
+part-of-speech filters.</li>
 <li>If you read <code>SerializableModel::unk_category_names</code> or <code>unk_categories</code>,
 read <code>unk_entries</code> instead, and if you set <code>Trainer::max_grouping_len</code>,
 pass it the cap that the dictionary will be used with.</li>

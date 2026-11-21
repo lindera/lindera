@@ -269,6 +269,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 <tr><td><strong><code>UnknownDictionary::gen_unk_words</code>・<code>UnknownDictionary::compatible_unk_index</code>・<code>UnkWord</code>・<code>WordIdx</code> の削除</strong></td><td>これらを <code>lindera_dictionary::dictionary::unknown_dictionary</code>（<code>lindera::dictionary::core::unknown_dictionary</code> 経由を含む）から使う Rust コード</td><td>ランタイムが作る未知語を列挙する <code>Lattice::unknown_word_candidates</code> を使う</td></tr>
 <tr><td><strong><code>PrefixDictionary</code>・<code>UserPrefixDictionary</code> の <code>words_idx_data</code>・<code>words_data</code> が公開フィールドからメソッドに変更</strong></td><td>これらのフィールドを <code>lindera_dictionary::dictionary::prefix_dictionary</code>（<code>lindera::dictionary::core::prefix_dictionary</code> 経由を含む）から読む、または代入する Rust コード（<code>dictionary.prefix_dictionary.words_data</code>、<code>user_dictionary.dict.words_data</code> など）</td><td><code>&amp;[u8]</code> を返す <code>words_idx_data()</code>・<code>words_data()</code> を呼ぶ。別の詳細のレコードを使うには、<code>PrefixDictionary::load</code> か <code>UserPrefixDictionary::load</code> で辞書を読み込み直す</td></tr>
 <tr><td><strong><code>ConnectionCostMatrix::costs()</code>・<code>row()</code> が <code>&amp;[ConnectionCost]</code> を返し、<code>include_bytes_aligned!</code> を削除</strong></td><td><code>lindera_dictionary::dictionary::connection_cost_matrix</code>（<code>lindera::dictionary::core::connection_cost_matrix</code> 経由を含む）の <code>ConnectionCostMatrix</code> のコストを <code>costs()</code> や <code>row()</code> で読む Rust コード（<code>dictionary.connection_cost_matrix.row(id)[j]</code> など）、<code>lindera_dictionary::include_bytes_aligned!</code> でバイト列を埋め込むコード</td><td>各 <code>ConnectionCost</code> の <code>get()</code> で <code>i16</code> を得るか、<code>cost()</code> を呼ぶ。バイト列は <code>include_bytes!</code> で埋め込む</td></tr>
+<tr><td><strong><code>details_iter()</code>・<code>as_value()</code>・日本語の品詞のフィルタの後も、<code>Token</code> の <code>details</code> フィールドは <code>None</code> のまま</strong></td><td><code>lindera::token::Token</code> の公開フィールド <code>details</code> を、これらの呼び出しの後や、<code>japanese_stop_tags</code>・<code>japanese_keep_tags</code>・<code>japanese_compound_word</code>・<code>japanese_number</code> を使うトークナイザー（同梱の <code>lindera.yml</code> から作ったものなど）の後に読む Rust コード</td><td>フィールドではなく <code>details()</code>・<code>details_iter()</code>・<code>get_detail()</code>・<code>get()</code> で詳細を読む（<a href="#%E8%A9%B3%E7%B4%B0%E3%82%92-1-%E5%9B%9E%E3%81%A0%E3%81%91%E9%A0%86%E3%81%AB%E8%AA%AD%E3%82%93%E3%81%A0%E5%BE%8C%E3%82%82%E3%83%88%E3%83%BC%E3%82%AF%E3%83%B3%E3%81%AE-details-%E3%83%95%E3%82%A3%E3%83%BC%E3%83%AB%E3%83%89%E3%81%AF-none-%E3%81%AE%E3%81%BE%E3%81%BE">詳細を 1 回だけ順に読んだ後も、トークンの <code>details</code> フィールドは <code>None</code> のまま</a>を参照）</td></tr>
 <tr><td><strong><code>lindera_trainer</code>: <code>SerializableModel::unk_category_names</code> と <code>unk_categories</code> は <code>unk_entries</code> に置き換わり、<code>Trainer::max_grouping_len</code> はランタイムと同じ意味になる</strong></td><td><code>lindera-trainer</code>（<code>lindera::dictionary::trainer</code> 経由を含む）を使う Rust コード</td><td>ファイル順の <code>unk.def</code> のエントリである <code>unk_entries</code> を読む。<code>max_grouping_len</code> には辞書を使うときの上限を渡す</td></tr>
 <tr><td><strong><code>lindera_trainer</code>: <code>FeatureExtractor</code> の素性 ID の表は <code>FeatureIdMap</code> を通して読み、<code>TrainerConfig::surface_features()</code> は削除される</strong></td><td><code>lindera-trainer</code>（<code>lindera::dictionary::trainer</code> 経由を含む）を使い、自分で作った <code>FeatureExtractor</code> の ID の表を読む、または <code>surface_features()</code> を呼ぶ Rust コード</td><td>フィールドを読む代わりに <code>unigram_feature_ids()</code>・<code>left_feature_ids()</code>・<code>right_feature_ids()</code> を呼ぶ。表は <code>surfaces()</code> と <code>features()</code> から作り直す（<a href="#lindera_trainer-%E3%81%AE-rust-api-%E5%A4%89%E6%9B%B4"><code>lindera_trainer</code> の Rust API 変更</a>を参照）</td></tr>
 </tbody></table>
@@ -2203,6 +2204,31 @@ mecab-ko-dic の <code>unk.def</code> はすべての行がこうした行です
 メッセージを捨て、ほかのときと同じく結果を書いて終わります。対象は、
 <code>lindera download</code> の進捗と通知、辞書ディレクトリについての <code>lindera list</code> の
 通知、<code>LINDERA_DATA_DIR</code> についての警告です。</p>
+<h2 id="詳細を-1-回だけ順に読んだ後もトークンの-details-フィールドは-none-のまま"><a class="header" href="#詳細を-1-回だけ順に読んだ後もトークンの-details-フィールドは-none-のまま">詳細を 1 回だけ順に読んだ後も、トークンの <code>details</code> フィールドは <code>None</code> のまま</a></h2>
+<p><code>Token</code>（<code>lindera::token::Token</code>）は、読み込んだ詳細を公開フィールド <code>details</code>
+に持ちます。v6.2.0 までは、どの読み方でも、詳細をトークンごとに確保したベクタに
+読み込んで、このフィールドに置いていました。v7.0.0 は、CLI の mecab と JSON の
+出力とバインディングが使う <code>details_iter()</code> と <code>as_value()</code> で、詳細を読み込まずに
+順に 1 回だけ読みます
+（<a href="https://github.com/lindera/lindera/issues/1399">#1399</a>）。その後も、前に <code>None</code>
+だったフィールドは <code>None</code> のままです。日本語の品詞のフィルタ
+（<code>japanese_stop_tags</code>・<code>japanese_keep_tags</code>・<code>japanese_compound_word</code>・
+<code>japanese_number</code>）は <code>details_iter()</code> で詳細を読むので、これらを使うトークナイザー
+（同梱の <code>lindera.yml</code> から作ったものなど）の後も、フィルタが詳細を書き換えなかった
+トークンのフィールドは <code>None</code> のままです。</p>
+<p><code>details()</code>・<code>get_detail()</code>・<code>get()</code> は、今までどおり詳細をフィールドに読み込みます。
+トークンフィルタが書き換えた詳細（結合した複合語の詳細など）も、今までどおり
+フィールドに入り、どの読み方もそれを返します。<code>set_detail()</code> が欄を変えるのは、
+v6 と同じく詳細を読み込んだ後だけなので、先に <code>details()</code> を呼んでください。</p>
+<p>フィールドではなく、読むためのメソッドで詳細を読んでください。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// v6: タグのフィルタの後はフィールドが埋まっていた
+let part_of_speech = token.details.as_ref().unwrap()[0].to_string();
+
+// v7
+let part_of_speech = token.get_detail(0).unwrap_or_default().to_string();
+<span class="boring">}</span></code></pre></pre>
 <h2 id="lindera_dictionary-の-rust-api-変更"><a class="header" href="#lindera_dictionary-の-rust-api-変更"><code>lindera_dictionary</code> の Rust API 変更</a></h2>
 <p>以下は、ラティスのバックトレースを直接呼び出すコード、<code>Metadata::new</code> で辞書の
 メタデータを作成するコード、辞書の文字カテゴリを読むコード、<code>UnknownDictionary</code>
@@ -2520,6 +2546,9 @@ unicode-segmentation）もコンパイルされるため、v6 の依存ツリー
 <li><code>ConnectionCostMatrix</code> のコストを <code>costs()</code> や <code>row()</code> で読んでいる場合は、各
 <code>ConnectionCost</code> の <code>get()</code> を呼ぶ。<code>include_bytes_aligned!</code> を使っている場合は、
 <code>include_bytes!</code> を使う。</li>
+<li><code>Token</code> の <code>details</code> フィールドを直接読んでいる場合は、<code>details()</code>・<code>details_iter()</code>・
+<code>get_detail()</code>・<code>get()</code> で詳細を読む。<code>details_iter()</code>・<code>as_value()</code>・日本語の品詞の
+フィルタの後は、フィールドは <code>None</code> のまま。</li>
 <li><code>SerializableModel::unk_category_names</code> や <code>unk_categories</code> を読んでいる場合は
 代わりに <code>unk_entries</code> を読み、<code>Trainer::max_grouping_len</code> を設定している場合は
 辞書を使うときの上限を渡す。</li>
