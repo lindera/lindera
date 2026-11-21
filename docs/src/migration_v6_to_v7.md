@@ -98,6 +98,7 @@ This guide lists every breaking change and the one-line fixes for each.
 | **`UnknownDictionary::gen_unk_words`, `UnknownDictionary::compatible_unk_index`, `UnkWord` and `WordIdx` are removed** | Rust code that uses them from `lindera_dictionary::dictionary::unknown_dictionary` (also `lindera::dictionary::core::unknown_dictionary`) | Use `Lattice::unknown_word_candidates`, which lists the unknown words that the runtime creates |
 | **`words_idx_data` and `words_data` of `PrefixDictionary` and `UserPrefixDictionary` are methods instead of public fields** | Rust code that reads or assigns these fields from `lindera_dictionary::dictionary::prefix_dictionary` (also `lindera::dictionary::core::prefix_dictionary`), such as `dictionary.prefix_dictionary.words_data` or `user_dictionary.dict.words_data` | Call `words_idx_data()` and `words_data()`, which return `&[u8]`; to use other detail records, load the dictionary again with `PrefixDictionary::load` or `UserPrefixDictionary::load` |
 | **`ConnectionCostMatrix::costs()` and `row()` return `&[ConnectionCost]`, and `include_bytes_aligned!` is removed** | Rust code that reads the costs of a `ConnectionCostMatrix` from `lindera_dictionary::dictionary::connection_cost_matrix` (also `lindera::dictionary::core::connection_cost_matrix`) through `costs()` or `row()`, such as `dictionary.connection_cost_matrix.row(id)[j]`; code that embeds bytes with `lindera_dictionary::include_bytes_aligned!` | Call `get()` on each `ConnectionCost`, which returns the `i16`, or call `cost()`; embed bytes with `include_bytes!` |
+| **After `details_iter()`, `as_value()` and the Japanese part-of-speech filters, the `details` field of a `Token` stays `None`** | Rust code that reads the public `details` field of a `lindera::token::Token` after these calls, or after a tokenizer with `japanese_stop_tags`, `japanese_keep_tags`, `japanese_compound_word` or `japanese_number`, such as one built from the shipped `lindera.yml` | Read the details with `details()`, `details_iter()`, `get_detail()` or `get()` instead of the field (see [The `details` field of a token stays `None` after a single pass](#the-details-field-of-a-token-stays-none-after-a-single-pass)) |
 | **`lindera_trainer`: `SerializableModel::unk_category_names` and `unk_categories` are replaced by `unk_entries`, and `Trainer::max_grouping_len` takes the runtime's meaning** | Rust code that uses `lindera-trainer` (also `lindera::dictionary::trainer`) | Read `unk_entries`, the `unk.def` entries in file order; pass `max_grouping_len` the cap the dictionary will be used with |
 | **`lindera_trainer`: `FeatureExtractor`'s feature ID maps are read through a `FeatureIdMap`, and `TrainerConfig::surface_features()` is removed** | Rust code that uses `lindera-trainer` (also `lindera::dictionary::trainer`) and reads the ID maps of a `FeatureExtractor` it builds, or calls `surface_features()` | Call `unigram_feature_ids()`, `left_feature_ids()` and `right_feature_ids()` instead of reading the fields; rebuild the map from `surfaces()` and `features()` (see [Rust API changes in `lindera_trainer`](#rust-api-changes-in-lindera_trainer)) |
 
@@ -2515,6 +2516,37 @@ writes its result and ends as it would otherwise: the progress and notices of
 `lindera download`, the notices of `lindera list` about the dictionaries
 directory, and the warning about `LINDERA_DATA_DIR`.
 
+## The `details` field of a token stays `None` after a single pass
+
+A `Token` (`lindera::token::Token`) keeps its details in its public field
+`details` once they are loaded. Up to v6.2.0, every way of reading them
+loaded them there, into a vector allocated per token. v7.0.0 reads them in
+one pass, without loading them, in `details_iter()` and `as_value()`, which
+the CLI's mecab and JSON outputs and the bindings use
+([#1399](https://github.com/lindera/lindera/issues/1399)). After those, the
+field stays `None` when it was `None` before. The Japanese part-of-speech
+filters, `japanese_stop_tags`, `japanese_keep_tags`,
+`japanese_compound_word` and `japanese_number`, read the details with
+`details_iter()`, so after a tokenizer with any of them, such as one built
+from the shipped `lindera.yml`, the field of a token whose details they did
+not rewrite stays `None` as well.
+
+`details()`, `get_detail()` and `get()` still load the details into the
+field, and the field still holds the details that a token filter rewrote,
+such as those of a merged compound word, which every accessor then returns.
+`set_detail()` changes a field only after the details are loaded, as in v6,
+so call `details()` before it.
+
+Read the details through the accessors instead of the field:
+
+```rust
+// v6: the field was filled after the tag filters
+let part_of_speech = token.details.as_ref().unwrap()[0].to_string();
+
+// v7
+let part_of_speech = token.get_detail(0).unwrap_or_default().to_string();
+```
+
 ## Rust API changes in `lindera_dictionary`
 
 These affect only code that calls the lattice backtraces directly, that
@@ -2897,6 +2929,10 @@ Rust crate users:
 - If you read the costs of a `ConnectionCostMatrix` through `costs()` or
   `row()`, call `get()` on each `ConnectionCost`; if you used
   `include_bytes_aligned!`, use `include_bytes!`.
+- If you read the `details` field of a `Token` directly, read the details
+  with `details()`, `details_iter()`, `get_detail()` or `get()` instead; the
+  field stays `None` after `details_iter()`, `as_value()` and the Japanese
+  part-of-speech filters.
 - If you read `SerializableModel::unk_category_names` or `unk_categories`,
   read `unk_entries` instead, and if you set `Trainer::max_grouping_len`,
   pass it the cap that the dictionary will be used with.
