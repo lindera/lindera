@@ -98,6 +98,7 @@ Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean te
 - `--nbest` / `-N`: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.
 - `--nbest-unique`: Deduplicate N-best results by removing paths that produce the same segmentation: each result is the cheapest path of its word boundaries.
 - `--nbest-cost-threshold`: Maximum cost difference from the best result. Only results with cost within `best_cost + threshold` are returned; both costs are totals over the whole input line.
+- `--max-threads`: Number of threads that tokenize, 1 or more (default: 1). The output is the same for every number. See [Tokenizing on several threads](#tokenizing-on-several-threads)
 - Input file: Optional file path (default: stdin). The input is read line by line, and each line is tokenized on its own. Only the line terminator (`\n`, or `\r\n`) is removed: whitespace at the start or end of a line is handled as elsewhere in the line (spaces and tabs, which are `SPACE` characters, are skipped and dropped from the output; U+3000 is a token with IPADIC, IPADIC-NEologd and UniDic), and the byte offsets in the JSON output index the line. Unlike MeCab, which outputs the `\r` of a CRLF line as an unknown word, Lindera removes it
 
 ### Basic usage
@@ -607,6 +608,20 @@ NBEST 3 (cost=18365)
 ```
 
 Only 3 results are returned: the 4th result of the example above costs 21125, which exceeds `15760 + 5000 = 20760`.
+
+### Tokenizing on several threads
+
+`--max-threads N` with `N` of 2 or more tokenizes the lines of the input on `N` threads. Every line is still tokenized on its own, by a tokenizer with the same settings, and the output is written in input order, so it is the same, byte for byte, as on one thread, in every output format, with N-best and with filters:
+
+```bash
+lindera tokenize --dict embedded://ipadic --max-threads 8 large.txt > large.mecab
+```
+
+- One more thread reads the input, in chunks of whole lines, and the output of a chunk is written once the output of the chunks before it is. The chunks read but not yet written are bounded (2 per tokenizing thread), and so is the memory they take.
+- Every tokenizing thread holds its own copy of the user dictionary, if any; the system dictionary is shared.
+- As on one thread, the output is buffered: a line that cannot be read (not UTF-8) or tokenized ends the command with exit code 1 after the output of the lines before it, and a standard output without a reader ends it with exit code 0, without reading the rest of the input.
+- A warning, such as the one of a [forced sentence cut](../lindera/segmenter.md#sentence-splitting), comes from the thread that tokenizes its line, so the warnings of several lines can reach stderr in another order than their lines.
+- The default is 1, unlike the default of `lindera train --max-threads` (the number of CPU cores), so that the CPU use and the memory of existing scripts stay as they were. A short input gains nothing from more threads.
 
 ### Advanced tokenization with filters
 

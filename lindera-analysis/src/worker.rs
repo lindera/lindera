@@ -318,6 +318,35 @@ impl AnalysisWorker {
         self.text_buf = String::new();
         self.offset_mappings = Vec::new();
     }
+
+    /// Returns a [`Tokenizer`] with this worker's configuration, from which
+    /// more workers that tokenize as this one does can be made.
+    ///
+    /// The tokenizer gets a clone of the worker's segmenter, with the
+    /// settings changed by the setters above (the dictionary clone is
+    /// `Arc`-cheap, but a configured user dictionary is deep-copied), and
+    /// clones of its character and token filters (`box_clone`). None of the
+    /// worker's buffers are copied.
+    ///
+    /// # Returns
+    ///
+    /// A tokenizer whose [`Tokenizer::tokenize`] gives the same tokens as
+    /// this worker's [`Self::tokenize`].
+    pub fn to_tokenizer(&self) -> Tokenizer {
+        Tokenizer {
+            segmenter: self.segment_worker.segmenter().clone(),
+            character_filters: self
+                .character_filters
+                .iter()
+                .map(|filter| filter.box_clone())
+                .collect(),
+            token_filters: self
+                .token_filters
+                .iter()
+                .map(|filter| filter.box_clone())
+                .collect(),
+        }
+    }
 }
 
 #[cfg(test)]

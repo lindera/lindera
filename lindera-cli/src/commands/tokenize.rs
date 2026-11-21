@@ -1,5 +1,7 @@
+mod parallel;
+
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, BufWriter, Write};
+use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -128,6 +130,13 @@ pub struct TokenizeArgs {
     )]
     nbest_cost_threshold: Option<i64>,
     #[clap(
+        long = "max-threads",
+        default_value = "1",
+        value_parser = clap::builder::RangedU64ValueParser::<usize>::new().range(1..),
+        help = "Number of threads that tokenize, 1 or more (default: 1). The output is the same for every number: each line is still tokenized on its own, and the output is written in input order. With 2 or more, a thread of its own reads the input in chunks of lines, and every tokenizing thread holds a copy of the user dictionary"
+    )]
+    max_threads: usize,
+    #[clap(
         help = "Input text file (default: stdin). Each line is tokenized on its own, with only its line terminator (\\n or \\r\\n) removed, so whitespace at the start or end of a line is handled as elsewhere in the line and offsets index the line"
     )]
     input_file: Option<PathBuf>,
@@ -161,7 +170,7 @@ impl FromStr for Format {
 ///
 /// # Arguments
 ///
-/// * `writer` - The destination for the formatted output (typically a buffered stdout lock).
+/// * `writer` - The destination for the formatted output (the output buffer of a line, or of a chunk of lines on several threads).
 /// * `format` - The output format to render the tokens in.
 /// * `tokens` - The tokens produced for one input line.
 /// * `details_buf` - A scratch buffer reused across tokens for joining detail fields.
@@ -187,7 +196,7 @@ fn write_output<W: Write>(
 ///
 /// # Arguments
 ///
-/// * `writer` - The destination for the formatted output (typically a buffered stdout lock).
+/// * `writer` - The destination for the formatted output (the output buffer of a line, or of a chunk of lines on several threads).
 /// * `format` - The output format to render the tokens in.
 /// * `results` - The results, best first, each with its tokens and its cost.
 /// * `details_buf` - A scratch buffer reused across tokens for joining detail fields.
@@ -235,9 +244,14 @@ fn mecab_output<W: Write>(
             }
             details_buf.push_str(detail);
         }
-        writeln!(writer, "{}\t{}", token.surface.as_ref(), details_buf)?;
+        // Written as they are, without the formatting machinery that
+        // `writeln!` goes through.
+        writer.write_all(token.surface.as_bytes())?;
+        writer.write_all(b"\t")?;
+        writer.write_all(details_buf.as_bytes())?;
+        writer.write_all(b"\n")?;
     }
-    writeln!(writer, "EOS")?;
+    writer.write_all(b"EOS\n")?;
 
     Ok(())
 }
@@ -263,7 +277,7 @@ fn json_output<W: Write>(writer: &mut W, mut tokens: Vec<Token>) -> io::Result<(
     }
 
     serde_json::to_writer_pretty(&mut *writer, &json_tokens).map_err(io::Error::from)?;
-    writeln!(writer)?;
+    writer.write_all(b"\n")?;
 
     Ok(())
 }
@@ -284,11 +298,11 @@ fn json_output<W: Write>(writer: &mut W, mut tokens: Vec<Token>) -> io::Result<(
 fn wakati_output<W: Write>(writer: &mut W, tokens: Vec<Token>) -> io::Result<()> {
     for (i, token) in tokens.iter().enumerate() {
         if i > 0 {
-            write!(writer, " ")?;
+            writer.write_all(b" ")?;
         }
-        write!(writer, "{}", token.surface.as_ref())?;
+        writer.write_all(token.surface.as_bytes())?;
     }
-    writeln!(writer)?;
+    writer.write_all(b"\n")?;
 
     Ok(())
 }
@@ -409,6 +423,22 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         tokenizer.append_token_filter(token_filter);
     }
 
+    // On several threads, `parallel` reads, tokenizes and writes (#1402);
+    // on one, the loop below does.
+    if args.max_threads > 1 {
+        let input: Box<dyn Read + Send> = match args.input_file {
+            Some(input_file) => Box::new(File::open(input_file).map_err(io_err)?),
+            None => Box::new(io::stdin()),
+        };
+        let settings = parallel::Settings {
+            format: output_format,
+            nbest: args.nbest,
+            nbest_unique: args.nbest_unique,
+            nbest_cost_threshold: args.nbest_cost_threshold,
+        };
+        return parallel::tokenize_lines(tokenizer, input, settings, args.max_threads);
+    }
+
     // input file
     let mut reader: Box<dyn BufRead> = if let Some(input_file) = args.input_file {
         Box::new(BufReader::new(File::open(input_file).map_err(io_err)?))
@@ -435,6 +465,11 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     // reallocations.
     let mut text = String::new();
     let mut details_buf = String::new();
+    // The output of a line is formatted into a buffer first, as the threads
+    // of `parallel` format it, so that the formatting functions have one
+    // instance: an instance for each writer gives the functions they call
+    // two callers, which changes what fat LTO inlines (#1402).
+    let mut line_output = Vec::new();
 
     loop {
         // read the text to be tokenized from stdin
@@ -449,18 +484,22 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         // the line, which is part of the input (#1115).
         let line = strip_line_terminator(&text);
 
+        // Writing to a `Vec` does not fail.
+        line_output.clear();
+        if nbest >= 2 {
+            let results = worker.tokenize_nbest(line, nbest, nbest_unique, nbest_cost_threshold)?;
+            write_nbest_output(&mut line_output, output_format, results, &mut details_buf)
+                .map_err(io_err)?;
+        } else {
+            let tokens = worker.tokenize(line)?;
+            write_output(&mut line_output, output_format, tokens, &mut details_buf)
+                .map_err(io_err)?;
+        }
+
         // A write that fails because the standard output has no reader ends
         // the loop with an error that `main` turns into exit code 0, so the
         // rest of the input is not read (#1316).
-        if nbest >= 2 {
-            let results = worker.tokenize_nbest(line, nbest, nbest_unique, nbest_cost_threshold)?;
-            write_nbest_output(&mut writer, output_format, results, &mut details_buf)
-                .map_err(stdout_err)?;
-        } else {
-            let tokens = worker.tokenize(line)?;
-            write_output(&mut writer, output_format, tokens, &mut details_buf)
-                .map_err(stdout_err)?;
-        }
+        writer.write_all(&line_output).map_err(stdout_err)?;
     }
 
     // Surface write errors instead of letting the implicit flush on drop
@@ -531,6 +570,21 @@ mod tests {
         let cli =
             Cli::try_parse_from(base.iter().chain(["--disable-skip-whitespace"].iter())).unwrap();
         assert!(cli.args.disable_skip_whitespace);
+    }
+
+    /// `--max-threads` defaults to 1, the loop on one thread, takes 1 or
+    /// more, and has no short form: `-t` stays `--token-filter` (#1402).
+    #[test]
+    fn max_threads_flag() {
+        let base = ["lindera", "--dict", "embedded://ipadic"];
+        let cli = Cli::try_parse_from(base.iter()).unwrap();
+        assert_eq!(cli.args.max_threads, 1);
+        let cli = Cli::try_parse_from(base.iter().chain(["--max-threads", "4"].iter())).unwrap();
+        assert_eq!(cli.args.max_threads, 4);
+        assert!(Cli::try_parse_from(base.iter().chain(["--max-threads", "0"].iter())).is_err());
+        let cli = Cli::try_parse_from(base.iter().chain(["-t", "lowercase"].iter())).unwrap();
+        assert_eq!(cli.args.max_threads, 1);
+        assert_eq!(cli.args.token_filters, Some(vec!["lowercase".to_string()]));
     }
 
     #[test]

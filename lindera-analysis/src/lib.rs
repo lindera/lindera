@@ -9,11 +9,15 @@
 //! - [`tokenizer`]: composes character filters, a
 //!   [`Segmenter`](lindera_segmenter::segmenter::Segmenter), and token filters
 //!   into a single pipeline, configurable programmatically or via a YAML file
+//! - [`worker`]: a reusable session over that pipeline, for one thread
+//! - [`worker_pool`]: sessions with one configuration, which tokenize a list
+//!   of texts on several threads
 
 pub mod character_filter;
 pub mod token_filter;
 pub mod tokenizer;
 pub mod worker;
+pub mod worker_pool;
 
 use serde_json::Value;
 
