@@ -95,6 +95,7 @@ v6.2.0 以前にビルドまたはダウンロードした辞書ディレクト�
 | **`UnknownDictionary::gen_unk_words`・`UnknownDictionary::compatible_unk_index`・`UnkWord`・`WordIdx` の削除** | これらを `lindera_dictionary::dictionary::unknown_dictionary`（`lindera::dictionary::core::unknown_dictionary` 経由を含む）から使う Rust コード | ランタイムが作る未知語を列挙する `Lattice::unknown_word_candidates` を使う |
 | **`PrefixDictionary`・`UserPrefixDictionary` の `words_idx_data`・`words_data` が公開フィールドからメソッドに変更** | これらのフィールドを `lindera_dictionary::dictionary::prefix_dictionary`（`lindera::dictionary::core::prefix_dictionary` 経由を含む）から読む、または代入する Rust コード（`dictionary.prefix_dictionary.words_data`、`user_dictionary.dict.words_data` など） | `&[u8]` を返す `words_idx_data()`・`words_data()` を呼ぶ。別の詳細のレコードを使うには、`PrefixDictionary::load` か `UserPrefixDictionary::load` で辞書を読み込み直す |
 | **`ConnectionCostMatrix::costs()`・`row()` が `&[ConnectionCost]` を返し、`include_bytes_aligned!` を削除** | `lindera_dictionary::dictionary::connection_cost_matrix`（`lindera::dictionary::core::connection_cost_matrix` 経由を含む）の `ConnectionCostMatrix` のコストを `costs()` や `row()` で読む Rust コード（`dictionary.connection_cost_matrix.row(id)[j]` など）、`lindera_dictionary::include_bytes_aligned!` でバイト列を埋め込むコード | 各 `ConnectionCost` の `get()` で `i16` を得るか、`cost()` を呼ぶ。バイト列は `include_bytes!` で埋め込む |
+| **`details_iter()`・`as_value()`・日本語の品詞のフィルタの後も、`Token` の `details` フィールドは `None` のまま** | `lindera::token::Token` の公開フィールド `details` を、これらの呼び出しの後や、`japanese_stop_tags`・`japanese_keep_tags`・`japanese_compound_word`・`japanese_number` を使うトークナイザー（同梱の `lindera.yml` から作ったものなど）の後に読む Rust コード | フィールドではなく `details()`・`details_iter()`・`get_detail()`・`get()` で詳細を読む（[詳細を 1 回だけ順に読んだ後も、トークンの `details` フィールドは `None` のまま](#詳細を-1-回だけ順に読んだ後もトークンの-details-フィールドは-none-のまま)を参照） |
 | **`lindera_trainer`: `SerializableModel::unk_category_names` と `unk_categories` は `unk_entries` に置き換わり、`Trainer::max_grouping_len` はランタイムと同じ意味になる** | `lindera-trainer`（`lindera::dictionary::trainer` 経由を含む）を使う Rust コード | ファイル順の `unk.def` のエントリである `unk_entries` を読む。`max_grouping_len` には辞書を使うときの上限を渡す |
 | **`lindera_trainer`: `FeatureExtractor` の素性 ID の表は `FeatureIdMap` を通して読み、`TrainerConfig::surface_features()` は削除される** | `lindera-trainer`（`lindera::dictionary::trainer` 経由を含む）を使い、自分で作った `FeatureExtractor` の ID の表を読む、または `surface_features()` を呼ぶ Rust コード | フィールドを読む代わりに `unigram_feature_ids()`・`left_feature_ids()`・`right_feature_ids()` を呼ぶ。表は `surfaces()` と `features()` から作り直す（[`lindera_trainer` の Rust API 変更](#lindera_trainer-の-rust-api-変更)を参照） |
 
@@ -2284,6 +2285,35 @@ v7.0.0 は、終了コード 0 で、メッセージを出さずに終わりま�
 `lindera download` の進捗と通知、辞書ディレクトリについての `lindera list` の
 通知、`LINDERA_DATA_DIR` についての警告です。
 
+## 詳細を 1 回だけ順に読んだ後も、トークンの `details` フィールドは `None` のまま
+
+`Token`（`lindera::token::Token`）は、読み込んだ詳細を公開フィールド `details`
+に持ちます。v6.2.0 までは、どの読み方でも、詳細をトークンごとに確保したベクタに
+読み込んで、このフィールドに置いていました。v7.0.0 は、CLI の mecab と JSON の
+出力とバインディングが使う `details_iter()` と `as_value()` で、詳細を読み込まずに
+順に 1 回だけ読みます
+（[#1399](https://github.com/lindera/lindera/issues/1399)）。その後も、前に `None`
+だったフィールドは `None` のままです。日本語の品詞のフィルタ
+（`japanese_stop_tags`・`japanese_keep_tags`・`japanese_compound_word`・
+`japanese_number`）は `details_iter()` で詳細を読むので、これらを使うトークナイザー
+（同梱の `lindera.yml` から作ったものなど）の後も、フィルタが詳細を書き換えなかった
+トークンのフィールドは `None` のままです。
+
+`details()`・`get_detail()`・`get()` は、今までどおり詳細をフィールドに読み込みます。
+トークンフィルタが書き換えた詳細（結合した複合語の詳細など）も、今までどおり
+フィールドに入り、どの読み方もそれを返します。`set_detail()` が欄を変えるのは、
+v6 と同じく詳細を読み込んだ後だけなので、先に `details()` を呼んでください。
+
+フィールドではなく、読むためのメソッドで詳細を読んでください。
+
+```rust
+// v6: タグのフィルタの後はフィールドが埋まっていた
+let part_of_speech = token.details.as_ref().unwrap()[0].to_string();
+
+// v7
+let part_of_speech = token.get_detail(0).unwrap_or_default().to_string();
+```
+
 ## `lindera_dictionary` の Rust API 変更
 
 以下は、ラティスのバックトレースを直接呼び出すコード、`Metadata::new` で辞書の
@@ -2621,6 +2651,9 @@ Rust クレートのユーザー:
 - `ConnectionCostMatrix` のコストを `costs()` や `row()` で読んでいる場合は、各
   `ConnectionCost` の `get()` を呼ぶ。`include_bytes_aligned!` を使っている場合は、
   `include_bytes!` を使う。
+- `Token` の `details` フィールドを直接読んでいる場合は、`details()`・`details_iter()`・
+  `get_detail()`・`get()` で詳細を読む。`details_iter()`・`as_value()`・日本語の品詞の
+  フィルタの後は、フィールドは `None` のまま。
 - `SerializableModel::unk_category_names` や `unk_categories` を読んでいる場合は
   代わりに `unk_entries` を読み、`Trainer::max_grouping_len` を設定している場合は
   辞書を使うときの上限を渡す。
