@@ -73,6 +73,28 @@ export function checkTokenShape(text: string): void {
   void [batch, batchDefault, surfacesBatch, nbestBatch];
 }
 
+// The batch methods that return a Promise (#1406): the same results as the
+// synchronous ones, once awaited.
+export async function checkTokenizeBatchAsync(text: string): Promise<void> {
+  const tokenizer = new Tokenizer(loadDictionary("embedded://ipadic"));
+  const pending: Promise<Array<Array<Token>>> = tokenizer.tokenizeBatchAsync([
+    text,
+  ]);
+  const batch: Array<Array<Token>> = await pending;
+  const batchThreads: Array<Array<Token>> = await tokenizer.tokenizeBatchAsync(
+    [text, text],
+    4,
+  );
+  const surfacesBatch: Array<Array<string>> =
+    await tokenizer.tokenizeSurfacesBatchAsync([text], 2);
+  const nbestBatch: Array<Array<NbestResult>> =
+    await tokenizer.tokenizeNbestBatchAsync([text], 3, true, 5000, 2);
+  const nbestDefault: Array<Array<NbestResult>> =
+    await tokenizer.tokenizeNbestBatchAsync([text], 3);
+
+  void [batch, batchThreads, surfacesBatch, nbestBatch, nbestDefault];
+}
+
 // `setSpacePenalty` declares its argument type by hand (`ts_args_type`), so
 // check that the declaration parses and accepts every documented form.
 export function checkSpacePenaltyForms(): void {

@@ -295,6 +295,41 @@ Tokenizes every text of an array as `tokenizeNbest` does, on up to `maxThreads` 
 
 **Returns:** `NbestResult[][]`
 
+#### `tokenizeBatchAsync(texts, maxThreads?)`
+
+Tokenizes every text of an array as `tokenizeBatch` does, and returns a `Promise` of the same results. The texts are tokenized on a thread of libuv's pool, on up to `maxThreads` threads, while the event loop runs; the token objects are then made on the JavaScript thread.
+
+```javascript
+const batch = await tokenizer.tokenizeBatchAsync(["形態素解析", "すもももももももものうち"]);
+for (const tokens of batch) {
+  console.log(tokens.map((t) => t.surface));
+}
+```
+
+- A `maxThreads` that is not an integer of 1 or more rejects the `Promise` with the `InvalidArg` error that `tokenizeBatch` throws. An argument of the wrong type, such as a string instead of an array, throws when the method is called, as for every method.
+- Making the token objects still takes the JavaScript thread, for a time that grows with the number of tokens, and for `tokenizeBatchAsync` it is most of the time of the call: with IPADIC on a Linux x86_64 machine, on `bocchan.txt` 20 times (10,760 lines, 1.39 million tokens) on 8 threads, the event loop stopped for about 2.9 s during `tokenizeBatchAsync` and for about 0.16 s during `tokenizeSurfacesBatchAsync`. To keep the event loop responsive with a large input, split it into calls of a few hundred lines each.
+- A batch takes one thread of libuv's pool while it runs (the pool has 4 by default, `UV_THREADPOOL_SIZE`), which file system and DNS calls share. Batches on the same tokenizer run one after the other; single-text calls on it do not wait for them.
+
+**Parameters:** as `tokenizeBatch`.
+
+**Returns:** `Promise<Token[][]>`
+
+#### `tokenizeSurfacesBatchAsync(texts, maxThreads?)`
+
+Tokenizes every text of an array as `tokenizeSurfacesBatch` does, and returns a `Promise` of the same results, as `tokenizeBatchAsync` does.
+
+**Parameters:** as `tokenizeBatch`.
+
+**Returns:** `Promise<string[][]>`
+
+#### `tokenizeNbestBatchAsync(texts, n, unique?, costThreshold?, maxThreads?)`
+
+Tokenizes every text of an array as `tokenizeNbestBatch` does, and returns a `Promise` of the same results, as `tokenizeBatchAsync` does. An `n`, `costThreshold` or `maxThreads` outside its range rejects the `Promise`.
+
+**Parameters:** as `tokenizeNbestBatch`.
+
+**Returns:** `Promise<NbestResult[][]>`
+
 ## Token
 
 `Token` is a plain object describing a single morphological token. It is a

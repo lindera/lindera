@@ -24,6 +24,7 @@
 #[macro_use]
 extern crate napi_derive;
 
+pub mod batch_task;
 pub mod dictionary;
 pub mod error;
 pub mod metadata;
