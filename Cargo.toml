@@ -61,7 +61,10 @@ lindera-binding = { version = "7.0.0", path = "lindera-binding" }
 lindera-crf = { version = "7.0.0", path = "lindera-crf", default-features = false }
 lindera-cc-cedict = { version = "7.0.0", path = "lindera-cc-cedict" }
 lindera-cli = { version = "7.0.0", path = "lindera-cli" }
-lindera-dictionary = { version = "7.0.0", path = "lindera-dictionary" }
+# Without its default features, so that `mmap` (and `memmap2`) is built only
+# for a crate that turns it on, as the `mmap` feature of lindera-segmenter
+# does; the dictionary crates and lindera-trainer do not need it (#1414).
+lindera-dictionary = { version = "7.0.0", path = "lindera-dictionary", default-features = false }
 lindera-trainer = { version = "7.0.0", path = "lindera-trainer" }
 lindera-ipadic = { version = "7.0.0", path = "lindera-ipadic" }
 lindera-ipadic-neologd = { version = "7.0.0", path = "lindera-ipadic-neologd" }

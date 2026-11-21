@@ -7,7 +7,7 @@ Lindera uses Cargo feature flags to control optional functionality and dictionar
 | Feature | Description | Default |
 | --- | --- | --- |
 | `analysis` | The analysis chain (`lindera::analysis`: character filters, token filters, and the `Tokenizer`), re-exported from `lindera-analysis` | Yes |
-| `mmap` | Memory-mapped loading as the default for filesystem dictionaries (`use_mmap`); `memmap2` is linked either way | Yes |
+| `mmap` | Memory-mapped loading of filesystem dictionaries, the default of `use_mmap`; without it, `memmap2` is not linked and `use_mmap = true` reads the files | Yes |
 | `train` | CRF-based dictionary training (depends on `lindera-trainer`; `lindera::dictionary::trainer`) | See below |
 
 - `analysis` and `mmap` are both enabled by default in the `lindera` facade.
