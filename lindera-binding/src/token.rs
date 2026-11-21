@@ -19,8 +19,10 @@ pub struct TokenView {
 impl TokenView {
     /// Extracts the binding-facing data from a `lindera` token.
     pub fn from_token(mut token: Token) -> Self {
-        // details_iter avoids the intermediate Vec<&str> that details()
-        // collects on every call.
+        // details_iter reads the details in one pass, without the
+        // intermediate Vec<&str> that details() collects on every call or
+        // the per-token cache it loads (#1399); its exact length lets the
+        // collect below allocate once.
         let details = token.details_iter().map(|s| s.to_string()).collect();
 
         Self {

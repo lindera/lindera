@@ -208,8 +208,10 @@ pub(crate) fn part_of_speech_offset_of(tokens: &[Token<'_>]) -> usize {
 /// behavior that predates this helper -- such a key simply matches no
 /// configured tag.
 ///
-/// `details_iter` is used rather than `details` so the per-token `Vec<&str>`
-/// the latter collects is not allocated.
+/// `details_iter` is used rather than `details` so that neither the per-token
+/// `Vec<&str>` the latter collects nor the details cache it loads is
+/// allocated (#1399). The token's `details` field therefore stays `None` after
+/// the Japanese tag filters, unless a filter rewrote the details.
 ///
 /// # Arguments
 ///

@@ -1247,18 +1247,8 @@ mod tests {
                 assert_eq!(token.position_length, 1);
                 assert!(token.word_id.is_unknown());
                 assert_eq!(
-                    token.details,
-                    Some(vec![
-                        Cow::Borrowed("名詞"),
-                        Cow::Borrowed("固有名詞"),
-                        Cow::Borrowed("組織"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                    ])
+                    token.details(),
+                    vec!["名詞", "固有名詞", "組織", "*", "*", "*", "*", "*", "*",]
                 );
             }
             {
@@ -1269,18 +1259,18 @@ mod tests {
                 assert_eq!(token.position, 2);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.details,
-                    Some(vec![
-                        Cow::Borrowed("名詞"),
-                        Cow::Borrowed("一般"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("形態素"),
-                        Cow::Borrowed("ケイタイソ"),
-                        Cow::Borrowed("ケイタイソ"),
-                    ])
+                    token.details(),
+                    vec![
+                        "名詞",
+                        "一般",
+                        "*",
+                        "*",
+                        "*",
+                        "*",
+                        "形態素",
+                        "ケイタイソ",
+                        "ケイタイソ",
+                    ]
                 );
             }
             {
@@ -1291,18 +1281,18 @@ mod tests {
                 assert_eq!(token.position, 3);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.details,
-                    Some(vec![
-                        Cow::Borrowed("名詞"),
-                        Cow::Borrowed("サ変接続"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("解析"),
-                        Cow::Borrowed("カイセキ"),
-                        Cow::Borrowed("カイセキ"),
-                    ])
+                    token.details(),
+                    vec![
+                        "名詞",
+                        "サ変接続",
+                        "*",
+                        "*",
+                        "*",
+                        "*",
+                        "解析",
+                        "カイセキ",
+                        "カイセキ",
+                    ]
                 );
             }
             {
@@ -1313,18 +1303,18 @@ mod tests {
                 assert_eq!(token.position, 4);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.details,
-                    Some(vec![
-                        Cow::Borrowed("名詞"),
-                        Cow::Borrowed("一般"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("エンジン"),
-                        Cow::Borrowed("エンジン"),
-                        Cow::Borrowed("エンジン"),
-                    ])
+                    token.details(),
+                    vec![
+                        "名詞",
+                        "一般",
+                        "*",
+                        "*",
+                        "*",
+                        "*",
+                        "エンジン",
+                        "エンジン",
+                        "エンジン",
+                    ]
                 );
             }
 
@@ -1369,18 +1359,18 @@ mod tests {
                 assert_eq!(token.position, 3);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.details,
-                    Some(vec![
-                        Cow::Borrowed("名詞"),
-                        Cow::Borrowed("一般"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("ガソリン"),
-                        Cow::Borrowed("ガソリン"),
-                        Cow::Borrowed("ガソリン"),
-                    ])
+                    token.details(),
+                    vec![
+                        "名詞",
+                        "一般",
+                        "*",
+                        "*",
+                        "*",
+                        "*",
+                        "ガソリン",
+                        "ガソリン",
+                        "ガソリン",
+                    ]
                 );
             }
 
@@ -1420,18 +1410,18 @@ mod tests {
                 assert_eq!(token.position, 0);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.details,
-                    Some(vec![
-                        Cow::Borrowed("名詞"),
-                        Cow::Borrowed("一般"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("お釣り"),
-                        Cow::Borrowed("オツリ"),
-                        Cow::Borrowed("オツリ"),
-                    ])
+                    token.details(),
+                    vec![
+                        "名詞",
+                        "一般",
+                        "*",
+                        "*",
+                        "*",
+                        "*",
+                        "お釣り",
+                        "オツリ",
+                        "オツリ",
+                    ]
                 );
             }
             {
@@ -1444,18 +1434,8 @@ mod tests {
                 assert_eq!(token.position, 2);
                 assert_eq!(token.position_length, 4);
                 assert_eq!(
-                    token.details,
-                    Some(vec![
-                        Cow::Borrowed("名詞"),
-                        Cow::Borrowed("数"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                    ])
+                    token.details(),
+                    vec!["名詞", "数", "*", "*", "*", "*", "*", "*", "*",]
                 );
             }
             {
@@ -1466,18 +1446,18 @@ mod tests {
                 assert_eq!(token.position, 6);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.details,
-                    Some(vec![
-                        Cow::Borrowed("名詞"),
-                        Cow::Borrowed("接尾"),
-                        Cow::Borrowed("助数詞"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("円"),
-                        Cow::Borrowed("エン"),
-                        Cow::Borrowed("エン"),
-                    ])
+                    token.details(),
+                    vec![
+                        "名詞",
+                        "接尾",
+                        "助数詞",
+                        "*",
+                        "*",
+                        "*",
+                        "円",
+                        "エン",
+                        "エン",
+                    ]
                 );
             }
         }
@@ -1503,18 +1483,18 @@ mod tests {
                 assert_eq!(token.position, 0);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.details,
-                    Some(vec![
-                        Cow::Borrowed("名詞"),
-                        Cow::Borrowed("代名詞"),
-                        Cow::Borrowed("一般"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("ここ"),
-                        Cow::Borrowed("ココ"),
-                        Cow::Borrowed("ココ"),
-                    ])
+                    token.details(),
+                    vec![
+                        "名詞",
+                        "代名詞",
+                        "一般",
+                        "*",
+                        "*",
+                        "*",
+                        "ここ",
+                        "ココ",
+                        "ココ",
+                    ]
                 );
             }
             {
@@ -1525,18 +1505,18 @@ mod tests {
                 assert_eq!(token.position, 2);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.details,
-                    Some(vec![
-                        Cow::Borrowed("形容詞"),
-                        Cow::Borrowed("自立"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("形容詞・イ段"),
-                        Cow::Borrowed("基本形"),
-                        Cow::Borrowed("騒騒しい"),
-                        Cow::Borrowed("ソウゾウシイ"),
-                        Cow::Borrowed("ソーゾーシイ"),
-                    ])
+                    token.details(),
+                    vec![
+                        "形容詞",
+                        "自立",
+                        "*",
+                        "*",
+                        "形容詞・イ段",
+                        "基本形",
+                        "騒騒しい",
+                        "ソウゾウシイ",
+                        "ソーゾーシイ",
+                    ]
                 );
             }
         }
