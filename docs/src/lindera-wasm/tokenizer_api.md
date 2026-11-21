@@ -252,6 +252,33 @@ const results = tokenizer.tokenizeNbest("すもももももももものうち", 
 const resultsWithThreshold = tokenizer.tokenizeNbest("すもももももももものうち", 3, false, 100n);
 ```
 
+#### `tokenizeBatch(texts, maxThreads?)`
+
+Tokenizes every text of an array, each as `tokenize` does, and returns their tokens in the order of the texts. WASM has no threads: the texts are tokenized one after the other on the calling thread. `maxThreads` is checked and otherwise ignored, so that code written for the other bindings, which run a batch on several threads, runs unchanged; the batch saves crossing into WASM once per text.
+
+- **Parameters**:
+  - `texts` (string[]) -- Texts to tokenize
+  - `maxThreads` (number, optional) -- An integer of 1 or more; any other number throws
+- **Returns**: Array of `Token[]`, one per text
+
+```javascript
+const batch = tokenizer.tokenizeBatch(["形態素解析", "すもももももももものうち"]);
+```
+
+#### `tokenizeSurfacesBatch(texts, maxThreads?)`
+
+Tokenizes every text of an array as `tokenizeSurfaces` does, as `tokenizeBatch` does.
+
+- **Parameters**: as `tokenizeBatch`
+- **Returns**: Array of `string[]`, one per text
+
+#### `tokenizeNbestBatch(texts, n, unique?, costThreshold?, maxThreads?)`
+
+Tokenizes every text of an array as `tokenizeNbest` does, as `tokenizeBatch` does. `n`, `unique` and `costThreshold` apply to each text.
+
+- **Parameters**: `texts` and `maxThreads` as `tokenizeBatch`; `n`, `unique` and `costThreshold` as `tokenizeNbest`
+- **Returns**: Array of the N-best results of each text, each an array of `{ tokens: Token[], cost: number }`
+
 ## Token
 
 A single token produced by the tokenizer, as a plain JavaScript object.
@@ -463,6 +490,9 @@ For consistency with the Python API, these methods are also available in snake\_
 | `appendTokenFilter()` | `append_token_filter()` |
 | `tokenizeSurfaces()` | `tokenize_surfaces()` |
 | `tokenizeNbest()` | `tokenize_nbest()` |
+| `tokenizeBatch()` | `tokenize_batch()` |
+| `tokenizeSurfacesBatch()` | `tokenize_surfaces_batch()` |
+| `tokenizeNbestBatch()` | `tokenize_nbest_batch()` |
 | `loadDictionary()` | `load_dictionary()` |
 | `loadDictionaryFromBytes()` | `load_dictionary_from_bytes()` |
 | `loadUserDictionaryFromBytes()` | `load_user_dictionary_from_bytes()` |

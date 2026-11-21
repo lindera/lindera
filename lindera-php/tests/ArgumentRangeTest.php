@@ -28,6 +28,7 @@ class ArgumentRangeTest extends TestCase
      */
     private const FULL_RANGE = [
         'Tokenizer::tokenizeNbest($cost_threshold)',
+        'Tokenizer::tokenizeNbestBatch($cost_threshold)',
     ];
 
     private static ?Lindera\Dictionary $dictionary = null;
@@ -59,6 +60,12 @@ class ArgumentRangeTest extends TestCase
             'Schema::getFieldName($index)' => [static fn(int $v) => Lindera\Schema::createDefault()->getFieldName($v), 0, $unsigned],
             'Token::getDetail($index)' => [static fn(int $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenize('東京')[0]->getDetail($v), 0, $unsigned],
             'Tokenizer::tokenizeNbest($n)' => [static fn(int $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbest('東京', $v), 0, $unsigned],
+            'Tokenizer::tokenizeNbestBatch($n)' => [static fn(int $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbestBatch(['東京'], $v), 0, $unsigned],
+            // The thread counts of the batch methods start at 1, as
+            // Trainer::train's (#1402).
+            'Tokenizer::tokenizeBatch($max_threads)' => [static fn(int $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeBatch(['東京'], $v), 1, $unsigned],
+            'Tokenizer::tokenizeSurfacesBatch($max_threads)' => [static fn(int $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeSurfacesBatch(['東京'], $v), 1, $unsigned],
+            'Tokenizer::tokenizeNbestBatch($max_threads)' => [static fn(int $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbestBatch(['東京'], 1, max_threads: $v), 1, $unsigned],
         ];
         if (class_exists(Lindera\Trainer::class)) {
             $missing = self::MISSING;

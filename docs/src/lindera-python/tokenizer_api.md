@@ -244,6 +244,43 @@ for tokens, cost in results:
 
 **Returns:** `list[tuple[list[Token], int]]`
 
+#### `tokenize_batch(texts, max_threads=None)`
+
+Tokenizes every text of a list, each as `tokenize` does, on up to `max_threads` threads, and returns their tokens in the order of the texts. The results are the same for every number of threads. The texts are tokenized with the GIL released, so other Python threads run meanwhile; the `Token` objects are made afterwards.
+
+```python
+batch = tokenizer.tokenize_batch(["形態素解析", "すもももももももものうち"])
+for tokens in batch:
+    print([t.surface for t in tokens])
+```
+
+Every text is tokenized as a call of its own: a list of the lines of a document gives the tokens of each line, not those of the whole document as one text. A short list runs on one thread (a thread needs at least 16 KiB of input), and every thread holds its own copy of the user dictionary, if any. A batch whose results are large, such as the tokens of several megabytes of text, can run faster on fewer threads than the default: when many threads make the memory of the tokens at once, much of the time goes to the kernel.
+
+**Parameters:**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `texts` | `list[str]` | Texts to tokenize (a single `str` raises `TypeError`) |
+| `max_threads` | `int` or `None` | The most threads, 1 or more (default: `None`, the number of CPUs); 0 raises `ValueError` |
+
+**Returns:** `list[list[Token]]`
+
+#### `tokenize_surfaces_batch(texts, max_threads=None)`
+
+Tokenizes every text of a list as `tokenize_surfaces` does, on up to `max_threads` threads, as `tokenize_batch` does.
+
+**Parameters:** as `tokenize_batch`.
+
+**Returns:** `list[list[str]]`
+
+#### `tokenize_nbest_batch(texts, n, unique=False, cost_threshold=None, max_threads=None)`
+
+Tokenizes every text of a list as `tokenize_nbest` does, on up to `max_threads` threads, as `tokenize_batch` does. `n`, `unique` and `cost_threshold` apply to each text.
+
+**Parameters:** `texts` and `max_threads` as `tokenize_batch`; `n`, `unique` and `cost_threshold` as `tokenize_nbest`.
+
+**Returns:** `list[list[tuple[list[Token], int]]]`
+
 ## Mode
 
 `Mode` is the tokenization mode that [`TokenizerBuilder.set_mode()`](#set_modemode) and the [`Tokenizer` constructor](#tokenizerdictionary-modenone-user_dictionarynone-space_penaltynone) take. It is the counterpart of the Rust `lindera::mode::Mode`: normal mode, or decompose mode with its [`Penalty`](#penalty).

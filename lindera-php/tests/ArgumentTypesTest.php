@@ -55,6 +55,11 @@ class ArgumentTypesTest extends TestCase
             'Tokenizer::__construct($user_dictionary)' => static fn(mixed $v) => new Lindera\Tokenizer(self::dictionary(), user_dictionary: $v),
             'Tokenizer::tokenizeNbest($unique)' => static fn(mixed $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbest('東京都', 2, unique: $v),
             'Tokenizer::tokenizeNbest($cost_threshold)' => static fn(mixed $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbest('東京都', 2, cost_threshold: $v),
+            'Tokenizer::tokenizeBatch($max_threads)' => static fn(mixed $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeBatch(['東京都'], max_threads: $v),
+            'Tokenizer::tokenizeSurfacesBatch($max_threads)' => static fn(mixed $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeSurfacesBatch(['東京都'], max_threads: $v),
+            'Tokenizer::tokenizeNbestBatch($unique)' => static fn(mixed $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbestBatch(['東京都'], 2, unique: $v),
+            'Tokenizer::tokenizeNbestBatch($cost_threshold)' => static fn(mixed $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbestBatch(['東京都'], 2, cost_threshold: $v),
+            'Tokenizer::tokenizeNbestBatch($max_threads)' => static fn(mixed $v) => (new Lindera\Tokenizer(self::dictionary()))->tokenizeNbestBatch(['東京都'], 2, max_threads: $v),
             'Dictionary::build($context_id_freq)' => static fn(mixed $v) => Lindera\Dictionary::build($missing, $missing, new Lindera\Metadata(), $v),
             'Dictionary::buildUser($metadata)' => static fn(mixed $v) => Lindera\Dictionary::buildUser('ipadic', $missing, $missing, $v),
         ];

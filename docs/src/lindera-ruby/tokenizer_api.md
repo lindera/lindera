@@ -245,6 +245,44 @@ end
 
 **Returns:** `Array<Array(Array<Token>, Integer)>`
 
+#### `tokenize_batch(texts, max_threads = nil)`
+
+Tokenizes every text of an array, each as `tokenize` does, on up to `max_threads` threads, and returns their tokens in the order of the texts. The results are the same for every number of threads. The tokenization runs on several threads while the call holds the GVL, so other Ruby threads wait for it.
+
+```ruby
+batch = tokenizer.tokenize_batch(['形態素解析', 'すもももももももものうち'])
+batch.each do |tokens|
+  puts tokens.map(&:surface).inspect
+end
+```
+
+Every text is tokenized as a call of its own: an array of the lines of a document gives the tokens of each line, not those of the whole document as one text. A short array runs on one thread (a thread needs at least 16 KiB of input), and every thread holds its own copy of the user dictionary, if any. A batch whose results are large, such as the tokens of several megabytes of text, can run faster on fewer threads than the default: when many threads make the memory of the tokens at once, much of the time goes to the kernel.
+
+**Parameters:**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `texts` | `Array<String>` | Texts to tokenize |
+| `max_threads` | `Integer` or `nil` | The most threads, 1 or more (default: `nil`, the number of CPUs); any other integer raises `RangeError` |
+
+**Returns:** `Array<Array<Token>>`
+
+#### `tokenize_surfaces_batch(texts, max_threads = nil)`
+
+Tokenizes every text of an array as `tokenize_surfaces` does, on up to `max_threads` threads, as `tokenize_batch` does.
+
+**Parameters:** as `tokenize_batch`.
+
+**Returns:** `Array<Array<String>>`
+
+#### `tokenize_nbest_batch(texts, n, unique, cost_threshold, max_threads = nil)`
+
+Tokenizes every text of an array as `tokenize_nbest` does, on up to `max_threads` threads, as `tokenize_batch` does. `n`, `unique` and `cost_threshold` apply to each text.
+
+**Parameters:** `texts` and `max_threads` as `tokenize_batch`; `n`, `unique` and `cost_threshold` as `tokenize_nbest`.
+
+**Returns:** `Array<Array<Array(Array<Token>, Integer)>>`
+
 ## Mode
 
 `Lindera::Mode` is the tokenization mode that [`TokenizerBuilder#set_mode`](#set_modemode) and [`Tokenizer.new`](#linderatokenizernewdictionary-mode--nil-user_dictionary--nil-space_penalty-nil) take. It is the Ruby counterpart of the Rust `lindera::mode::Mode`: normal mode, or decompose mode with the [`Lindera::Penalty`](#penalty) it uses.

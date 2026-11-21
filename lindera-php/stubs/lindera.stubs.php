@@ -235,9 +235,15 @@ class Tokenizer
 
     public function tokenize(string $text): array {}
 
+    public function tokenizeBatch(array $texts, ?int $max_threads = null): array {}
+
     public function tokenizeNbest(string $text, int $n, ?bool $unique = null, ?int $cost_threshold = null): array {}
 
+    public function tokenizeNbestBatch(array $texts, int $n, ?bool $unique = null, ?int $cost_threshold = null, ?int $max_threads = null): array {}
+
     public function tokenizeSurfaces(string $text): array {}
+
+    public function tokenizeSurfacesBatch(array $texts, ?int $max_threads = null): array {}
 }
 
 class TokenizerBuilder

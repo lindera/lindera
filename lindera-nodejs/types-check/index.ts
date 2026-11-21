@@ -53,6 +53,24 @@ export function checkTokenShape(text: string): void {
   const cost: number = nbest[0].cost;
 
   void [nbestTokens, cost];
+
+  // The batch methods (#1402): one result per text, with or without
+  // maxThreads.
+  const batch: Array<Array<Token>> = tokenizer.tokenizeBatch([text, text], 4);
+  const batchDefault: Array<Array<Token>> = tokenizer.tokenizeBatch([text]);
+  const surfacesBatch: Array<Array<string>> = tokenizer.tokenizeSurfacesBatch(
+    [text],
+    2,
+  );
+  const nbestBatch: Array<Array<NbestResult>> = tokenizer.tokenizeNbestBatch(
+    [text],
+    3,
+    true,
+    5000,
+    2,
+  );
+
+  void [batch, batchDefault, surfacesBatch, nbestBatch];
 }
 
 // `setSpacePenalty` declares its argument type by hand (`ts_args_type`), so

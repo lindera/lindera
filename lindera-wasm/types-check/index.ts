@@ -89,6 +89,29 @@ export function checkTokenize(text: string): void {
   const tokens: Array<unknown> = tokenizer.tokenize(text);
   const surfaces: Array<string> = tokenizer.tokenizeSurfaces(text);
   void [tokens, surfaces];
+
+  // The batch methods (#1402): max_threads and the N-best options are
+  // optional.
+  const batch: unknown = tokenizer.tokenizeBatch([text, text]);
+  const batchThreads: unknown = tokenizer.tokenizeBatch([text], 4);
+  const surfacesBatch: unknown = tokenizer.tokenizeSurfacesBatch([text]);
+  const nbestBatch: unknown = tokenizer.tokenizeNbestBatch([text], 3);
+  const nbestBatchAll: unknown = tokenizer.tokenizeNbestBatch(
+    [text],
+    3,
+    true,
+    BigInt(5000),
+    2,
+  );
+  const snakeBatch: unknown = tokenizer.tokenize_batch([text], null);
+  void [
+    batch,
+    batchThreads,
+    surfacesBatch,
+    nbestBatch,
+    nbestBatchAll,
+    snakeBatch,
+  ];
 }
 
 export function checkSpacePenaltyForms(): void {

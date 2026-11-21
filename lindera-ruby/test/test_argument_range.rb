@@ -52,6 +52,14 @@ class TestArgumentRange < Minitest::Test
     'Token#get_detail(index)' => [->(v) { tokenizer.tokenize('東京')[0].get_detail(v) }, *U64],
     'Tokenizer#tokenize_nbest(n)' => [->(v) { tokenizer.tokenize_nbest('東京', v, nil, nil) }, *U64],
     'Tokenizer#tokenize_nbest(cost_threshold)' => [->(v) { tokenizer.tokenize_nbest('東京', 1, nil, v) }, *I64],
+    # The thread counts of the batch methods start at 1, as train's (#1402).
+    'Tokenizer#tokenize_batch(max_threads)' => [->(v) { tokenizer.tokenize_batch(['東京'], v) }, *COUNT],
+    'Tokenizer#tokenize_surfaces_batch(max_threads)' => [
+      ->(v) { tokenizer.tokenize_surfaces_batch(['東京'], v) }, *COUNT
+    ],
+    'Tokenizer#tokenize_nbest_batch(max_threads)' => [
+      ->(v) { tokenizer.tokenize_nbest_batch(['東京'], 1, nil, nil, v) }, *COUNT
+    ],
     'Lindera.train(max_iter)' => [->(v) { train(v, 1) }, *COUNT],
     'Lindera.train(max_threads)' => [->(v) { train(1, v) }, *COUNT]
   }.freeze

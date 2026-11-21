@@ -283,6 +283,46 @@ foreach ($results as $result) {
 
 **Returns:** `array<NbestResult>`
 
+#### `tokenizeBatch($texts, $max_threads)`
+
+Tokenizes every text of an array, each as `tokenize` does, on up to `$max_threads` threads, and returns their tokens in the order of the texts. The results are the same for every number of threads. The call waits until every text is tokenized, while the tokenization runs on several threads.
+
+```php
+<?php
+
+$batch = $tokenizer->tokenizeBatch(['形態素解析', 'すもももももももものうち']);
+foreach ($batch as $tokens) {
+    echo implode(' ', array_map(fn($token) => $token->surface, $tokens)), "\n";
+}
+```
+
+Every text is tokenized as a call of its own: an array of the lines of a document gives the tokens of each line, not those of the whole document as one text. A short array runs on one thread (a thread needs at least 16 KiB of input), and every thread holds its own copy of the user dictionary, if any. A batch whose results are large, such as the tokens of several megabytes of text, can run faster on fewer threads than the default: when many threads make the memory of the tokens at once, much of the time goes to the kernel.
+
+**Parameters:**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `$texts` | `array<string>` | Texts to tokenize |
+| `$max_threads` | `int\|null` | The most threads, 1 or more (default: `null`, the number of CPUs); a value below 1 throws `ValueError` |
+
+**Returns:** `array<array<Token>>`
+
+#### `tokenizeSurfacesBatch($texts, $max_threads)`
+
+Tokenizes every text of an array as `tokenizeSurfaces` does, on up to `$max_threads` threads, as `tokenizeBatch` does.
+
+**Parameters:** as `tokenizeBatch`.
+
+**Returns:** `array<array<string>>`
+
+#### `tokenizeNbestBatch($texts, $n, $unique, $cost_threshold, $max_threads)`
+
+Tokenizes every text of an array as `tokenizeNbest` does, on up to `$max_threads` threads, as `tokenizeBatch` does. `$n`, `$unique` and `$cost_threshold` apply to each text.
+
+**Parameters:** `$texts` and `$max_threads` as `tokenizeBatch`; `$n`, `$unique` and `$cost_threshold` as `tokenizeNbest`.
+
+**Returns:** `array<array<NbestResult>>`
+
 ## NbestResult
 
 `Lindera\NbestResult` represents a single N-best tokenization result.

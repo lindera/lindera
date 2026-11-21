@@ -50,7 +50,8 @@ Lindera ships bindings for Python, Node.js, Ruby, PHP, and WASM. When adding
 or reviewing a binding feature, apply the following policy:
 
 - **Keep the feature set aligned.** Capabilities — tokenization
-  (`tokenize` / `tokenize_surfaces` / `tokenize_nbest`), user dictionaries,
+  (`tokenize` / `tokenize_surfaces` / `tokenize_nbest`, and their batch forms
+  `tokenize_batch` / `tokenize_surfaces_batch` / `tokenize_nbest_batch`), user dictionaries,
   character filters, and token filters — should be available in every
   binding. A feature added to one binding should come with a plan (or a
   tracking issue) for the others.
