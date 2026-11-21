@@ -1546,7 +1546,7 @@ for line in lines {
 <span class="boring">}</span></code></pre></pre>
 <p>The returned tokens borrow the worker, so they must be consumed before the next call (the usual per-line loop above compiles as-is). <code>set_mode</code>, <code>set_keep_whitespace</code>, <code>set_skip_whitespace</code>, <code>set_max_grouping_len</code>, <code>set_unknown_word_ladder</code>, <code>set_break_characters</code>, <code>set_space_penalty</code> and <code>set_space_penalty_from_dictionary</code> switch the configuration between calls. <code>segmenter()</code> returns a shared reference to the underlying segmenter; no <code>&amp;mut</code> accessor is provided, since swapping the dictionary out from under the reused lattice would break the dictionary-lattice pairing the worker exists to guarantee.</p>
 <p>A worker also bounds retained memory: one delimiter-free maximum-length sentence grows the lattice to several MB (roughly 18 MB for a 32 KiB ASCII sentence, 6 MB for a 32 KiB CJK one, whose character-indexed lattice has a third of the slots), and a plain <code>Lattice</code> keeps that forever. The worker automatically shrinks its lattice, and releases its scratch buffers, once a window of calls shows the capacity is oversized, and <code>shrink_to(text_len_hint)</code> forces a shrink immediately. <code>reset()</code> discards the internal buffers outright and replaces them with fresh ones; it is intended for recovery paths (e.g. after a panic poisoned a mutex holding the worker) where the buffers may hold an inconsistent intermediate state — the segmenter configuration itself is preserved.</p>
-<p>The worker is permanently bound to the dictionary of the segmenter that created it; there is no way to swap dictionaries under a live worker, which rules out a class of lattice-reuse bugs by construction. For multi-threaded use, create one worker per thread from a shared <code>Segmenter</code>.</p>
+<p>The worker is permanently bound to the dictionary of the segmenter that created it; there is no way to swap dictionaries under a live worker, which rules out a class of lattice-reuse bugs by construction. For multi-threaded use, create one worker per thread from a shared <code>Segmenter</code>. To tokenize a list of texts on several threads, with the results in the order of the texts, use an <a href="lindera/../lindera-analysis/architecture.html#analysisworkerpool"><code>AnalysisWorkerPool</code></a>, which does this over the full analysis chain.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h1>
 <p>Lindera uses a structured error system based on <code>anyhow</code> and <code>thiserror</code> for ergonomic error handling throughout the library.</p>
 <h2 id="linderaresult"><a class="header" href="#linderaresult">LinderaResult</a></h2>
@@ -2376,7 +2376,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <p><code>TokenizerBuilder</code> assembles a <code>Tokenizer</code> from a <code>TokenizerConfig</code> (a <code>serde_json::Value</code>), which can be constructed programmatically, loaded from a YAML file (via <code>TokenizerBuilder::from_file</code>, or automatically from the <code>LINDERA_CONFIG_FILE</code> environment variable via <code>TokenizerBuilder::new</code>), or built up incrementally with <code>set_segmenter_mode</code>, <code>set_segmenter_dictionary</code>, <code>append_character_filter</code>, and <code>append_token_filter</code>. See <a href="lindera-analysis/./configuration.html">Configuration</a> for the YAML file format and <a href="lindera-analysis/./filters.html">Filters</a> for the full filter reference.</p>
 <p><code>TokenizerBuilder::build</code> loads the dictionaries the configuration names. <code>TokenizerBuilder::build_with_dictionaries</code> (and <code>Tokenizer::from_config_with_dictionaries</code>) takes already-loaded dictionaries instead, such as ones loaded from bytes, and applies every other setting of the configuration to them, filters included; see <a href="lindera-analysis/../lindera/segmenter.html#building-from-config">Building from Config</a> for how the given dictionaries replace the configured ones. The WASM binding's <code>TokenizerBuilder</code> builds its tokenizers this way, with the dictionaries set by <code>setDictionaryInstance()</code> and <code>setUserDictionaryInstance()</code>.</p>
 <h3 id="analysisworker"><a class="header" href="#analysisworker">AnalysisWorker</a></h3>
-<p><code>AnalysisWorker</code> (created with <code>Tokenizer::new_worker</code> or <code>Tokenizer::into_worker</code>) is a reusable session over the full analysis chain. It owns every per-call buffer — the Viterbi lattice and backtrace scratch (via <code>SegmentWorker</code>), the normalized-text buffer the character filters operate on, and the offset-mapping scratch — so repeated <code>tokenize</code> calls avoid the per-call allocations <code>Tokenizer::tokenize</code> pays. When character filters are configured, token surfaces borrow the worker's buffer instead of being copied into per-token <code>String</code>s. Returned tokens borrow the worker and must be consumed before the next call; for multi-threaded use, create one worker per thread (or guard one with a <code>Mutex</code>, as <code>lindera-binding</code> does). See the <a href="lindera-analysis/../lindera/segmenter.html">Segmenter</a> page for the underlying <code>SegmentWorker</code> and its automatic memory-shrink policy.</p>
+<p><code>AnalysisWorker</code> (created with <code>Tokenizer::new_worker</code> or <code>Tokenizer::into_worker</code>) is a reusable session over the full analysis chain. It owns every per-call buffer — the Viterbi lattice and backtrace scratch (via <code>SegmentWorker</code>), the normalized-text buffer the character filters operate on, and the offset-mapping scratch — so repeated <code>tokenize</code> calls avoid the per-call allocations <code>Tokenizer::tokenize</code> pays. When character filters are configured, token surfaces borrow the worker's buffer instead of being copied into per-token <code>String</code>s. Returned tokens borrow the worker and must be consumed before the next call; for multi-threaded use, create one worker per thread (or guard one with a <code>Mutex</code>, as <code>lindera-binding</code> does), or tokenize a list of texts with an <a href="lindera-analysis/architecture.html#analysisworkerpool"><code>AnalysisWorkerPool</code></a>. See the <a href="lindera-analysis/../lindera/segmenter.html">Segmenter</a> page for the underlying <code>SegmentWorker</code> and its automatic memory-shrink policy.</p>
 <p><code>AnalysisWorker</code>'s public methods:</p>
 <ul>
 <li><code>tokenize(&amp;mut self, text: &amp;str)</code> — tokenizes <code>text</code> through the full analysis chain, reusing the worker's internal buffers; produces exactly the same tokens as <code>Tokenizer::tokenize</code>.</li>
@@ -2389,6 +2389,33 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <li><code>set_space_penalty(&amp;mut self, space_penalty: Option&lt;SpacePenaltyConfig&gt;)</code>, <code>set_space_penalty_from_dictionary(&amp;mut self)</code> — set the left-space penalty rules for subsequent calls, or restore the dictionary's.</li>
 <li><code>shrink_to(&amp;mut self, text_len_hint: usize)</code> — immediately shrinks the worker's internal buffers to what an input of <code>text_len_hint</code> bytes needs.</li>
 <li><code>reset(&amp;mut self)</code> — discards all internal buffers, replacing them with fresh ones; intended for recovery paths (e.g. after a panic poisoned a mutex holding the worker), with configuration (dictionary, filters, mode) preserved.</li>
+<li><code>to_tokenizer(&amp;self)</code> — returns a <code>Tokenizer</code> with the worker's configuration, the settings changed by the setters above included, from which more workers that tokenize as this one does can be made. The user dictionary, if any, is copied.</li>
+</ul>
+<h3 id="analysisworkerpool"><a class="header" href="#analysisworkerpool">AnalysisWorkerPool</a></h3>
+<p><code>AnalysisWorkerPool</code> (created with <code>Tokenizer::new_worker_pool</code> or <code>Tokenizer::into_worker_pool</code>) tokenizes a list of texts on several threads. Every text is tokenized as a call of its own, as <code>AnalysisWorker::tokenize</code> tokenizes it, and the results come back in the order of the texts, so they are the same for every number of threads. A list of the lines of a document gives the tokens that <code>lindera tokenize</code> gives, since it also tokenizes every line on its own; it does not give those of the whole document as one text, whose offsets, positions and N-best results span its lines.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::num::NonZeroUsize;
+
+let mut pool = tokenizer.into_worker_pool();
+let threads = std::thread::available_parallelism().unwrap_or(NonZeroUsize::MIN);
+let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, threads, |tokens| {
+    tokens.into_iter().map(|token| token.surface.into_owned()).collect()
+})?;
+<span class="boring">}</span></code></pre></pre>
+<p>The closure runs on the thread that tokenized the text, right after it: the tokens borrow that thread's worker, so it turns them into what the caller keeps (<code>String</code>s, counts, a formatted output), and that work runs in parallel too.</p>
+<ul>
+<li><code>tokenize_batch(&amp;mut self, texts, max_threads, f)</code> — tokenizes every text on up to <code>max_threads</code> threads, the calling thread included, and returns the results of <code>f</code> in the order of <code>texts</code>.</li>
+<li><code>tokenize_nbest_batch(&amp;mut self, texts, n, unique, cost_threshold, max_threads, f)</code> — the same with <code>AnalysisWorker::tokenize_nbest</code>; <code>f</code> gets the <code>(tokens, cost)</code> pairs of one text.</li>
+<li><code>worker_count(&amp;self)</code>, <code>truncate_workers(&amp;mut self, max_workers)</code> — the number of workers the pool holds, and dropping the ones beyond <code>max_workers</code>.</li>
+<li><code>shrink_to(&amp;mut self, text_len_hint)</code>, <code>reset(&amp;mut self)</code> — as <code>AnalysisWorker</code>'s, for every worker.</li>
+</ul>
+<p>How a batch runs:</p>
+<ul>
+<li>The pool starts with one worker and makes more from it (<code>to_tokenizer</code>) when a batch runs on more threads than it has workers. Every worker keeps its buffers for the next batches and holds its own copy of the user dictionary, if any; the system dictionary is shared.</li>
+<li>A batch runs on the calling thread alone when it is given one thread, one text or a short input (the input of a thread is at least 16 KiB), and always on wasm, which has no threads. Otherwise it starts threads with <code>std::thread::scope</code>, which hand out the texts in chunks.</li>
+<li>If texts fail, the error of the first one in input order is returned, as a loop over the texts would return it, and the texts after it may not be tokenized. A panic, in the tokenization or in <code>f</code>, is resumed on the calling thread in the same way, after the worker that panicked is reset, so the pool stays usable.</li>
+<li>The workers are clones of one tokenizer, so a filter of your own whose instances keep state of their own gives each worker its own state.</li>
 </ul>
 <h2 id="feature-flags-3"><a class="header" href="#feature-flags-3">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
@@ -2607,6 +2634,9 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 </li>
 <li>
 <p><code>--nbest-cost-threshold</code>: Maximum cost difference from the best result. Only results with cost within <code>best_cost + threshold</code> are returned; both costs are totals over the whole input line.</p>
+</li>
+<li>
+<p><code>--max-threads</code>: Number of threads that tokenize, 1 or more (default: 1). The output is the same for every number. See <a href="lindera-cli/commands.html#tokenizing-on-several-threads">Tokenizing on several threads</a></p>
 </li>
 <li>
 <p>Input file: Optional file path (default: stdin). The input is read line by line, and each line is tokenized on its own. Only the line terminator (<code>\n</code>, or <code>\r\n</code>) is removed: whitespace at the start or end of a line is handled as elsewhere in the line (spaces and tabs, which are <code>SPACE</code> characters, are skipped and dropped from the output; U+3000 is a token with IPADIC, IPADIC-NEologd and UniDic), and the byte offsets in the JSON output index the line. Unlike MeCab, which outputs the <code>\r</code> of a CRLF line as an unknown word, Lindera removes it</p>
@@ -2983,6 +3013,17 @@ NBEST 3 (cost=18365)
 営業 部 長谷 川 です
 </code></pre>
 <p>Only 3 results are returned: the 4th result of the example above costs 21125, which exceeds <code>15760 + 5000 = 20760</code>.</p>
+<h3 id="tokenizing-on-several-threads"><a class="header" href="#tokenizing-on-several-threads">Tokenizing on several threads</a></h3>
+<p><code>--max-threads N</code> with <code>N</code> of 2 or more tokenizes the lines of the input on <code>N</code> threads. Every line is still tokenized on its own, by a tokenizer with the same settings, and the output is written in input order, so it is the same, byte for byte, as on one thread, in every output format, with N-best and with filters:</p>
+<pre><code class="language-bash">lindera tokenize --dict embedded://ipadic --max-threads 8 large.txt &gt; large.mecab
+</code></pre>
+<ul>
+<li>One more thread reads the input, in chunks of whole lines, and the output of a chunk is written once the output of the chunks before it is. The chunks read but not yet written are bounded (2 per tokenizing thread), and so is the memory they take.</li>
+<li>Every tokenizing thread holds its own copy of the user dictionary, if any; the system dictionary is shared.</li>
+<li>As on one thread, the output is buffered: a line that cannot be read (not UTF-8) or tokenized ends the command with exit code 1 after the output of the lines before it, and a standard output without a reader ends it with exit code 0, without reading the rest of the input.</li>
+<li>A warning, such as the one of a <a href="lindera-cli/../lindera/segmenter.html#sentence-splitting">forced sentence cut</a>, comes from the thread that tokenizes its line, so the warnings of several lines can reach stderr in another order than their lines.</li>
+<li>The default is 1, unlike the default of <code>lindera train --max-threads</code> (the number of CPU cores), so that the CPU use and the memory of existing scripts stay as they were. A short input gains nothing from more threads.</li>
+</ul>
 <h3 id="advanced-tokenization-with-filters"><a class="header" href="#advanced-tokenization-with-filters">Advanced tokenization with filters</a></h3>
 <p>Lindera provides an analytical framework that combines character filters, tokenizers, and token filters for advanced text processing. Filters are configured using JSON.</p>
 <pre><code class="language-shell">% echo "すもももももももものうち" | lindera tokenize \

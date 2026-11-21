@@ -225,7 +225,7 @@
 <p><code>TokenizerBuilder</code>は<code>TokenizerConfig</code>（<code>serde_json::Value</code>）から<code>Tokenizer</code>を組み立てます。この設定はプログラムから直接構築することも、YAMLファイルから読み込むこと（<code>TokenizerBuilder::from_file</code>、または環境変数<code>LINDERA_CONFIG_FILE</code>経由で自動的に読み込む<code>TokenizerBuilder::new</code>）も、<code>set_segmenter_mode</code>・<code>set_segmenter_dictionary</code>・<code>append_character_filter</code>・<code>append_token_filter</code>で段階的に組み立てることもできます。YAMLファイルの形式は<a href="./configuration.html">設定</a>を、フィルタの完全なリファレンスは<a href="./filters.html">フィルタ</a>を参照してください。</p>
 <p><code>TokenizerBuilder::build</code>は、設定が指す辞書を読み込みます。<code>TokenizerBuilder::build_with_dictionaries</code>（と<code>Tokenizer::from_config_with_dictionaries</code>）は、代わりにバイト列から読み込んだ辞書などの読み込み済みの辞書を受け取り、フィルタを含む設定のほかの項目をすべてその辞書に適用します。渡した辞書が設定の辞書をどう置き換えるかは<a href="../lindera/segmenter.html#config-%E3%81%8B%E3%82%89%E3%81%AE%E6%A7%8B%E7%AF%89">Config からの構築</a>を参照してください。WASMバインディングの<code>TokenizerBuilder</code>は、<code>setDictionaryInstance()</code>と<code>setUserDictionaryInstance()</code>で設定した辞書を渡して、この方法でトークナイザーをビルドします。</p>
 <h3 id="analysisworker"><a class="header" href="#analysisworker">AnalysisWorker</a></h3>
-<p><code>AnalysisWorker</code>（<code>Tokenizer::new_worker</code>または<code>Tokenizer::into_worker</code>で作成）は、解析チェーン全体に対する再利用可能なセッションです。呼び出しごとのバッファ — Viterbiラティスとバックトレース用スクラッチ（<code>SegmentWorker</code>経由）、文字フィルタが操作する正規化テキストバッファ、オフセットマッピング用スクラッチ — をすべて所有するため、<code>tokenize</code>を繰り返し呼び出しても<code>Tokenizer::tokenize</code>が支払う呼び出しごとのアロケーションを回避できます。文字フィルタが設定されている場合、トークンのsurfaceはトークンごとの<code>String</code>にコピーされる代わりにワーカーのバッファを借用します。返されるトークンはワーカーを借用するため、次の呼び出しの前に消費する必要があります。マルチスレッドで使う場合はスレッドごとにワーカーを作成してください（あるいは<code>lindera-binding</code>のように<code>Mutex</code>で保護します）。基盤となる<code>SegmentWorker</code>と自動メモリ縮小ポリシーについては<a href="../lindera/segmenter.html">Segmenter</a>のページを参照してください。</p>
+<p><code>AnalysisWorker</code>（<code>Tokenizer::new_worker</code>または<code>Tokenizer::into_worker</code>で作成）は、解析チェーン全体に対する再利用可能なセッションです。呼び出しごとのバッファ — Viterbiラティスとバックトレース用スクラッチ（<code>SegmentWorker</code>経由）、文字フィルタが操作する正規化テキストバッファ、オフセットマッピング用スクラッチ — をすべて所有するため、<code>tokenize</code>を繰り返し呼び出しても<code>Tokenizer::tokenize</code>が支払う呼び出しごとのアロケーションを回避できます。文字フィルタが設定されている場合、トークンのsurfaceはトークンごとの<code>String</code>にコピーされる代わりにワーカーのバッファを借用します。返されるトークンはワーカーを借用するため、次の呼び出しの前に消費する必要があります。マルチスレッドで使う場合はスレッドごとにワーカーを作成してください（あるいは<code>lindera-binding</code>のように<code>Mutex</code>で保護します）。テキストの一覧をトークナイズするなら、<a href="#analysisworkerpool"><code>AnalysisWorkerPool</code></a>も使えます。基盤となる<code>SegmentWorker</code>と自動メモリ縮小ポリシーについては<a href="../lindera/segmenter.html">Segmenter</a>のページを参照してください。</p>
 <p><code>AnalysisWorker</code>の主なpublicメソッド:</p>
 <ul>
 <li><code>tokenize(&amp;mut self, text: &amp;str)</code> — ワーカーの内部バッファを再利用しながら、解析チェーン全体を通して<code>text</code>をトークナイズします。同じ入力・設定であれば<code>Tokenizer::tokenize</code>とまったく同じトークンを返します。</li>
@@ -238,6 +238,33 @@
 <li><code>set_space_penalty(&amp;mut self, space_penalty: Option&lt;SpacePenaltyConfig&gt;)</code>・<code>set_space_penalty_from_dictionary(&amp;mut self)</code> — 以降の呼び出しで使う左側空白ペナルティのルールを設定するか、辞書のルールに戻します。</li>
 <li><code>shrink_to(&amp;mut self, text_len_hint: usize)</code> — ワーカーの内部バッファを、<code>text_len_hint</code>バイトの入力に必要なサイズまで直ちに縮小します。</li>
 <li><code>reset(&amp;mut self)</code> — すべての内部バッファを破棄し、新しいバッファに置き換えます。（例えばワーカーを保持する<code>Mutex</code>がパニックでpoisonedになった場合の）リカバリ用途を想定しており、設定（辞書・フィルタ・モード）は保持されます。</li>
+<li><code>to_tokenizer(&amp;self)</code> — ワーカーの設定（上の setter で変えた設定も含む）を持つ<code>Tokenizer</code>を返します。ここから、このワーカーと同じようにトークナイズするワーカーを作れます。ユーザー辞書があれば複製します。</li>
+</ul>
+<h3 id="analysisworkerpool"><a class="header" href="#analysisworkerpool">AnalysisWorkerPool</a></h3>
+<p><code>AnalysisWorkerPool</code>（<code>Tokenizer::new_worker_pool</code>または<code>Tokenizer::into_worker_pool</code>で作成）は、テキストの一覧を複数のスレッドでトークナイズします。各テキストは<code>AnalysisWorker::tokenize</code>と同じく 1 回の呼び出しとしてトークナイズされ、結果はテキストの順に返るので、スレッドの数によらず同じ結果になります。文書の行の一覧を渡すと、各行を別々にトークナイズする<code>lindera tokenize</code>と同じトークンになります。文書全体を 1 つのテキストとしてトークナイズした結果とは違います（そちらのオフセット、位置、N-best の結果は行をまたぎます）。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::num::NonZeroUsize;
+
+let mut pool = tokenizer.into_worker_pool();
+let threads = std::thread::available_parallelism().unwrap_or(NonZeroUsize::MIN);
+let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, threads, |tokens| {
+    tokens.into_iter().map(|token| token.surface.into_owned()).collect()
+})?;
+<span class="boring">}</span></code></pre></pre>
+<p>クロージャは、テキストをトークナイズしたスレッドで、その直後に動きます。トークンはそのスレッドのワーカーを借用しているので、呼び出し側が残すもの（<code>String</code>、件数、整形した出力など）に変えるのはクロージャの役目です。この変換も並列に動きます。</p>
+<ul>
+<li><code>tokenize_batch(&amp;mut self, texts, max_threads, f)</code> — 呼び出したスレッドを含めて最大<code>max_threads</code>個のスレッドで各テキストをトークナイズし、<code>f</code>の結果を<code>texts</code>の順に返します。</li>
+<li><code>tokenize_nbest_batch(&amp;mut self, texts, n, unique, cost_threshold, max_threads, f)</code> — 同じことを<code>AnalysisWorker::tokenize_nbest</code>で行います。<code>f</code>は 1 つのテキストの<code>(tokens, cost)</code>の組を受け取ります。</li>
+<li><code>worker_count(&amp;self)</code>・<code>truncate_workers(&amp;mut self, max_workers)</code> — プールが持つワーカーの数と、<code>max_workers</code>を超えるワーカーの解放です。</li>
+<li><code>shrink_to(&amp;mut self, text_len_hint)</code>・<code>reset(&amp;mut self)</code> — <code>AnalysisWorker</code>の同名のメソッドを全ワーカーに行います。</li>
+</ul>
+<p>一括の処理の動き方:</p>
+<ul>
+<li>プールはワーカー 1 つで始まり、持っているワーカーより多いスレッドで動くときに、そこから（<code>to_tokenizer</code>で）ワーカーを作ります。各ワーカーは次の一括の処理のためにバッファを保持し、ユーザー辞書があればそれぞれ複製を持ちます。システム辞書は共有します。</li>
+<li>スレッドが 1 つのとき、テキストが 1 つのとき、入力が短いとき（スレッド 1 つあたり 16 KiB 以上が要ります）、スレッドのない wasm では、呼び出したスレッドだけで動きます。それ以外は<code>std::thread::scope</code>でスレッドを起こし、テキストをチャンクに分けて配ります。</li>
+<li>テキストが失敗したときは、入力の順で最初に失敗したテキストのエラーを返します（テキストを順にループで処理したときと同じエラーです）。その後ろのテキストはトークナイズされないことがあります。トークナイズや<code>f</code>の panic も同じ規則で呼び出したスレッドで再開し、panic したワーカーはリセットするので、プールはそのまま使えます。</li>
+<li>ワーカーは 1 つのトークナイザーの複製なので、インスタンスごとに状態を持つ自作のフィルタは、ワーカーごとに別の状態を持ちます。</li>
 </ul>
 <h2 id="feature-フラグ"><a class="header" href="#feature-フラグ">Feature フラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>

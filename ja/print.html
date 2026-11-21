@@ -1553,7 +1553,7 @@ for line in lines {
 <span class="boring">}</span></code></pre></pre>
 <p>返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。<code>set_mode</code>・<code>set_keep_whitespace</code>・<code>set_skip_whitespace</code>・<code>set_max_grouping_len</code>・<code>set_unknown_word_ladder</code>・<code>set_break_characters</code>・<code>set_space_penalty</code>・<code>set_space_penalty_from_dictionary</code> で呼び出しごとに設定を切り替えられます。<code>segmenter()</code> は内部の Segmenter への共有参照を返します。<code>&amp;mut</code> でのアクセサは意図的に提供されていません。再利用中のラティスの下で辞書を差し替えてしまうと、この worker が保証する辞書とラティスの対応関係が壊れてしまうためです。</p>
 <p>Worker は保持メモリも制限します。区切り文字のない最大長の文を 1 回処理するとラティスは数 MB まで成長し（32 KiB の ASCII 文で約 18 MB、32 KiB の CJK 文では文字索引ラティスのスロット数が 1/3 のため約 6 MB）、素の <code>Lattice</code> はそれを保持し続けます。Worker は一定回数の呼び出し窓で容量が過大と判明した場合に、自動でラティスを縮小してスクラッチバッファを解放し、<code>shrink_to(text_len_hint)</code> で即時に縮小することもできます。<code>reset()</code> は内部バッファを破棄して新しいものに置き換えます。これは、例えばパニックによって worker を保持する Mutex がポイズニングされた場合など、バッファが不整合な中間状態を保持している可能性がある回復経路のために用意されています。Segmenter の設定（mode や空白の扱いなど）自体は保持されます。</p>
-<p>Worker は作成元セグメンターの辞書に恒久的に紐付けられ、稼働中の worker の辞書を差し替える手段はありません。これにより、ラティス再利用に起因するバグの一群を構造的に排除しています。マルチスレッドで使う場合は、共有の <code>Segmenter</code> からスレッドごとに worker を 1 つ作成してください。</p>
+<p>Worker は作成元セグメンターの辞書に恒久的に紐付けられ、稼働中の worker の辞書を差し替える手段はありません。これにより、ラティス再利用に起因するバグの一群を構造的に排除しています。マルチスレッドで使う場合は、共有の <code>Segmenter</code> からスレッドごとに worker を 1 つ作成してください。テキストの一覧を複数のスレッドでトークナイズし、結果をテキストの順に受け取るなら、解析チェーン全体でこれを行う <a href="lindera/../lindera-analysis/architecture.html#analysisworkerpool"><code>AnalysisWorkerPool</code></a> を使ってください。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="エラーハンドリング"><a class="header" href="#エラーハンドリング">エラーハンドリング</a></h1>
 <p>Lindera はライブラリ全体で使いやすいエラーハンドリングを実現するため、<code>anyhow</code> と <code>thiserror</code> に基づく構造化されたエラーシステムを使用しています。</p>
 <h2 id="linderaresult"><a class="header" href="#linderaresult">LinderaResult</a></h2>
@@ -2380,7 +2380,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <p><code>TokenizerBuilder</code>は<code>TokenizerConfig</code>（<code>serde_json::Value</code>）から<code>Tokenizer</code>を組み立てます。この設定はプログラムから直接構築することも、YAMLファイルから読み込むこと（<code>TokenizerBuilder::from_file</code>、または環境変数<code>LINDERA_CONFIG_FILE</code>経由で自動的に読み込む<code>TokenizerBuilder::new</code>）も、<code>set_segmenter_mode</code>・<code>set_segmenter_dictionary</code>・<code>append_character_filter</code>・<code>append_token_filter</code>で段階的に組み立てることもできます。YAMLファイルの形式は<a href="lindera-analysis/./configuration.html">設定</a>を、フィルタの完全なリファレンスは<a href="lindera-analysis/./filters.html">フィルタ</a>を参照してください。</p>
 <p><code>TokenizerBuilder::build</code>は、設定が指す辞書を読み込みます。<code>TokenizerBuilder::build_with_dictionaries</code>（と<code>Tokenizer::from_config_with_dictionaries</code>）は、代わりにバイト列から読み込んだ辞書などの読み込み済みの辞書を受け取り、フィルタを含む設定のほかの項目をすべてその辞書に適用します。渡した辞書が設定の辞書をどう置き換えるかは<a href="lindera-analysis/../lindera/segmenter.html#config-%E3%81%8B%E3%82%89%E3%81%AE%E6%A7%8B%E7%AF%89">Config からの構築</a>を参照してください。WASMバインディングの<code>TokenizerBuilder</code>は、<code>setDictionaryInstance()</code>と<code>setUserDictionaryInstance()</code>で設定した辞書を渡して、この方法でトークナイザーをビルドします。</p>
 <h3 id="analysisworker"><a class="header" href="#analysisworker">AnalysisWorker</a></h3>
-<p><code>AnalysisWorker</code>（<code>Tokenizer::new_worker</code>または<code>Tokenizer::into_worker</code>で作成）は、解析チェーン全体に対する再利用可能なセッションです。呼び出しごとのバッファ — Viterbiラティスとバックトレース用スクラッチ（<code>SegmentWorker</code>経由）、文字フィルタが操作する正規化テキストバッファ、オフセットマッピング用スクラッチ — をすべて所有するため、<code>tokenize</code>を繰り返し呼び出しても<code>Tokenizer::tokenize</code>が支払う呼び出しごとのアロケーションを回避できます。文字フィルタが設定されている場合、トークンのsurfaceはトークンごとの<code>String</code>にコピーされる代わりにワーカーのバッファを借用します。返されるトークンはワーカーを借用するため、次の呼び出しの前に消費する必要があります。マルチスレッドで使う場合はスレッドごとにワーカーを作成してください（あるいは<code>lindera-binding</code>のように<code>Mutex</code>で保護します）。基盤となる<code>SegmentWorker</code>と自動メモリ縮小ポリシーについては<a href="lindera-analysis/../lindera/segmenter.html">Segmenter</a>のページを参照してください。</p>
+<p><code>AnalysisWorker</code>（<code>Tokenizer::new_worker</code>または<code>Tokenizer::into_worker</code>で作成）は、解析チェーン全体に対する再利用可能なセッションです。呼び出しごとのバッファ — Viterbiラティスとバックトレース用スクラッチ（<code>SegmentWorker</code>経由）、文字フィルタが操作する正規化テキストバッファ、オフセットマッピング用スクラッチ — をすべて所有するため、<code>tokenize</code>を繰り返し呼び出しても<code>Tokenizer::tokenize</code>が支払う呼び出しごとのアロケーションを回避できます。文字フィルタが設定されている場合、トークンのsurfaceはトークンごとの<code>String</code>にコピーされる代わりにワーカーのバッファを借用します。返されるトークンはワーカーを借用するため、次の呼び出しの前に消費する必要があります。マルチスレッドで使う場合はスレッドごとにワーカーを作成してください（あるいは<code>lindera-binding</code>のように<code>Mutex</code>で保護します）。テキストの一覧をトークナイズするなら、<a href="lindera-analysis/architecture.html#analysisworkerpool"><code>AnalysisWorkerPool</code></a>も使えます。基盤となる<code>SegmentWorker</code>と自動メモリ縮小ポリシーについては<a href="lindera-analysis/../lindera/segmenter.html">Segmenter</a>のページを参照してください。</p>
 <p><code>AnalysisWorker</code>の主なpublicメソッド:</p>
 <ul>
 <li><code>tokenize(&amp;mut self, text: &amp;str)</code> — ワーカーの内部バッファを再利用しながら、解析チェーン全体を通して<code>text</code>をトークナイズします。同じ入力・設定であれば<code>Tokenizer::tokenize</code>とまったく同じトークンを返します。</li>
@@ -2393,6 +2393,33 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <li><code>set_space_penalty(&amp;mut self, space_penalty: Option&lt;SpacePenaltyConfig&gt;)</code>・<code>set_space_penalty_from_dictionary(&amp;mut self)</code> — 以降の呼び出しで使う左側空白ペナルティのルールを設定するか、辞書のルールに戻します。</li>
 <li><code>shrink_to(&amp;mut self, text_len_hint: usize)</code> — ワーカーの内部バッファを、<code>text_len_hint</code>バイトの入力に必要なサイズまで直ちに縮小します。</li>
 <li><code>reset(&amp;mut self)</code> — すべての内部バッファを破棄し、新しいバッファに置き換えます。（例えばワーカーを保持する<code>Mutex</code>がパニックでpoisonedになった場合の）リカバリ用途を想定しており、設定（辞書・フィルタ・モード）は保持されます。</li>
+<li><code>to_tokenizer(&amp;self)</code> — ワーカーの設定（上の setter で変えた設定も含む）を持つ<code>Tokenizer</code>を返します。ここから、このワーカーと同じようにトークナイズするワーカーを作れます。ユーザー辞書があれば複製します。</li>
+</ul>
+<h3 id="analysisworkerpool"><a class="header" href="#analysisworkerpool">AnalysisWorkerPool</a></h3>
+<p><code>AnalysisWorkerPool</code>（<code>Tokenizer::new_worker_pool</code>または<code>Tokenizer::into_worker_pool</code>で作成）は、テキストの一覧を複数のスレッドでトークナイズします。各テキストは<code>AnalysisWorker::tokenize</code>と同じく 1 回の呼び出しとしてトークナイズされ、結果はテキストの順に返るので、スレッドの数によらず同じ結果になります。文書の行の一覧を渡すと、各行を別々にトークナイズする<code>lindera tokenize</code>と同じトークンになります。文書全体を 1 つのテキストとしてトークナイズした結果とは違います（そちらのオフセット、位置、N-best の結果は行をまたぎます）。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::num::NonZeroUsize;
+
+let mut pool = tokenizer.into_worker_pool();
+let threads = std::thread::available_parallelism().unwrap_or(NonZeroUsize::MIN);
+let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, threads, |tokens| {
+    tokens.into_iter().map(|token| token.surface.into_owned()).collect()
+})?;
+<span class="boring">}</span></code></pre></pre>
+<p>クロージャは、テキストをトークナイズしたスレッドで、その直後に動きます。トークンはそのスレッドのワーカーを借用しているので、呼び出し側が残すもの（<code>String</code>、件数、整形した出力など）に変えるのはクロージャの役目です。この変換も並列に動きます。</p>
+<ul>
+<li><code>tokenize_batch(&amp;mut self, texts, max_threads, f)</code> — 呼び出したスレッドを含めて最大<code>max_threads</code>個のスレッドで各テキストをトークナイズし、<code>f</code>の結果を<code>texts</code>の順に返します。</li>
+<li><code>tokenize_nbest_batch(&amp;mut self, texts, n, unique, cost_threshold, max_threads, f)</code> — 同じことを<code>AnalysisWorker::tokenize_nbest</code>で行います。<code>f</code>は 1 つのテキストの<code>(tokens, cost)</code>の組を受け取ります。</li>
+<li><code>worker_count(&amp;self)</code>・<code>truncate_workers(&amp;mut self, max_workers)</code> — プールが持つワーカーの数と、<code>max_workers</code>を超えるワーカーの解放です。</li>
+<li><code>shrink_to(&amp;mut self, text_len_hint)</code>・<code>reset(&amp;mut self)</code> — <code>AnalysisWorker</code>の同名のメソッドを全ワーカーに行います。</li>
+</ul>
+<p>一括の処理の動き方:</p>
+<ul>
+<li>プールはワーカー 1 つで始まり、持っているワーカーより多いスレッドで動くときに、そこから（<code>to_tokenizer</code>で）ワーカーを作ります。各ワーカーは次の一括の処理のためにバッファを保持し、ユーザー辞書があればそれぞれ複製を持ちます。システム辞書は共有します。</li>
+<li>スレッドが 1 つのとき、テキストが 1 つのとき、入力が短いとき（スレッド 1 つあたり 16 KiB 以上が要ります）、スレッドのない wasm では、呼び出したスレッドだけで動きます。それ以外は<code>std::thread::scope</code>でスレッドを起こし、テキストをチャンクに分けて配ります。</li>
+<li>テキストが失敗したときは、入力の順で最初に失敗したテキストのエラーを返します（テキストを順にループで処理したときと同じエラーです）。その後ろのテキストはトークナイズされないことがあります。トークナイズや<code>f</code>の panic も同じ規則で呼び出したスレッドで再開し、panic したワーカーはリセットするので、プールはそのまま使えます。</li>
+<li>ワーカーは 1 つのトークナイザーの複製なので、インスタンスごとに状態を持つ自作のフィルタは、ワーカーごとに別の状態を持ちます。</li>
 </ul>
 <h2 id="feature-フラグ-1"><a class="header" href="#feature-フラグ-1">Feature フラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
@@ -2611,6 +2638,9 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 </li>
 <li>
 <p><code>--nbest-cost-threshold</code>: 最良の結果からの最大コスト差。<code>best_cost + threshold</code> 以内のコストを持つ結果のみが返されます。どちらのコストも入力行全体の合計です。</p>
+</li>
+<li>
+<p><code>--max-threads</code>: トークナイズするスレッドの数。1 以上 (デフォルト: 1)。出力はスレッドの数によらず同じです。<a href="lindera-cli/commands.html#%E8%A4%87%E6%95%B0%E3%81%AE%E3%82%B9%E3%83%AC%E3%83%83%E3%83%89%E3%81%A7%E3%81%AE%E3%83%88%E3%83%BC%E3%82%AF%E3%83%8A%E3%82%A4%E3%82%BA">複数のスレッドでのトークナイズ</a>を参照してください</p>
 </li>
 <li>
 <p>入力ファイル: オプションのファイルパス (デフォルト: 標準入力)。入力は 1 行ずつ読み込まれ、行ごとに解析されます。取り除くのは行末の改行コード（<code>\n</code> または <code>\r\n</code>）だけで、行頭・行末の空白も行の途中と同じに扱います（<code>SPACE</code> の文字である半角空白とタブは読み飛ばして出力から除き、U+3000 は IPADIC・IPADIC-NEologd・UniDic ではトークンになります）。JSON 出力のバイトオフセットは入力行の中の位置を指します。MeCab は CRLF の行の <code>\r</code> も未知語として出力しますが、Lindera は取り除きます</p>
@@ -2987,6 +3017,17 @@ NBEST 3 (cost=18365)
 営業 部 長谷 川 です
 </code></pre>
 <p>上の例の 4 位のコスト 21125 が <code>15760 + 5000 = 20760</code> を超えるため、3 件の結果のみが返されます。</p>
+<h3 id="複数のスレッドでのトークナイズ"><a class="header" href="#複数のスレッドでのトークナイズ">複数のスレッドでのトークナイズ</a></h3>
+<p><code>--max-threads N</code> に 2 以上の <code>N</code> を指定すると、入力の行を <code>N</code> 個のスレッドでトークナイズします。各行はこれまでどおり同じ設定のトークナイザーで 1 行ずつトークナイズされ、出力は入力の順に書かれます。そのため、どの出力形式でも、N-best やフィルタを使っても、出力は 1 スレッドのときとバイト単位で同じです:</p>
+<pre><code class="language-bash">lindera tokenize --dict embedded://ipadic --max-threads 8 large.txt &gt; large.mecab
+</code></pre>
+<ul>
+<li>入力は、もう 1 つのスレッドが行の区切りでまとめて（チャンクとして）読みます。チャンクの出力は、それより前のチャンクの出力を書いた後に書きます。読んだがまだ書いていないチャンクの数には上限（トークナイズするスレッド 1 つあたり 2 つ）があり、それらが使うメモリにも上限があります。</li>
+<li>トークナイズする各スレッドは、ユーザー辞書があればそれぞれ複製を持ちます。システム辞書は共有します。</li>
+<li>1 スレッドのときと同じく出力はバッファしてから書きます。読めない行（UTF-8 でない行）やトークナイズに失敗した行があると、その前の行の出力を書いてから終了コード 1 で終わります。標準出力を読む側がいなくなると、残りの入力を読まずに終了コード 0 で終わります。</li>
+<li><a href="lindera-cli/../lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">強制的な文の区切り</a>などの警告は、その行をトークナイズしたスレッドから出ます。そのため、複数の行の警告が、行とは違う順で標準エラー出力に出ることがあります。</li>
+<li>既定値が 1 なのは、既存のスクリプトの CPU の使い方とメモリを変えないためです（<code>lindera train --max-threads</code> の既定値は CPU のコア数です）。短い入力では、スレッドを増やしても速くなりません。</li>
+</ul>
 <h3 id="フィルタを使用した高度なトークナイズ"><a class="header" href="#フィルタを使用した高度なトークナイズ">フィルタを使用した高度なトークナイズ</a></h3>
 <p>Linderaは、文字フィルタ、トークナイザー、トークンフィルタを組み合わせた分析フレームワークを提供します。フィルタはJSONを使用して構成します。</p>
 <pre><code class="language-shell">% echo "すもももももももものうち" | lindera tokenize \

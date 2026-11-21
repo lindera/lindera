@@ -225,7 +225,7 @@
 <p><code>TokenizerBuilder</code> assembles a <code>Tokenizer</code> from a <code>TokenizerConfig</code> (a <code>serde_json::Value</code>), which can be constructed programmatically, loaded from a YAML file (via <code>TokenizerBuilder::from_file</code>, or automatically from the <code>LINDERA_CONFIG_FILE</code> environment variable via <code>TokenizerBuilder::new</code>), or built up incrementally with <code>set_segmenter_mode</code>, <code>set_segmenter_dictionary</code>, <code>append_character_filter</code>, and <code>append_token_filter</code>. See <a href="./configuration.html">Configuration</a> for the YAML file format and <a href="./filters.html">Filters</a> for the full filter reference.</p>
 <p><code>TokenizerBuilder::build</code> loads the dictionaries the configuration names. <code>TokenizerBuilder::build_with_dictionaries</code> (and <code>Tokenizer::from_config_with_dictionaries</code>) takes already-loaded dictionaries instead, such as ones loaded from bytes, and applies every other setting of the configuration to them, filters included; see <a href="../lindera/segmenter.html#building-from-config">Building from Config</a> for how the given dictionaries replace the configured ones. The WASM binding's <code>TokenizerBuilder</code> builds its tokenizers this way, with the dictionaries set by <code>setDictionaryInstance()</code> and <code>setUserDictionaryInstance()</code>.</p>
 <h3 id="analysisworker"><a class="header" href="#analysisworker">AnalysisWorker</a></h3>
-<p><code>AnalysisWorker</code> (created with <code>Tokenizer::new_worker</code> or <code>Tokenizer::into_worker</code>) is a reusable session over the full analysis chain. It owns every per-call buffer — the Viterbi lattice and backtrace scratch (via <code>SegmentWorker</code>), the normalized-text buffer the character filters operate on, and the offset-mapping scratch — so repeated <code>tokenize</code> calls avoid the per-call allocations <code>Tokenizer::tokenize</code> pays. When character filters are configured, token surfaces borrow the worker's buffer instead of being copied into per-token <code>String</code>s. Returned tokens borrow the worker and must be consumed before the next call; for multi-threaded use, create one worker per thread (or guard one with a <code>Mutex</code>, as <code>lindera-binding</code> does). See the <a href="../lindera/segmenter.html">Segmenter</a> page for the underlying <code>SegmentWorker</code> and its automatic memory-shrink policy.</p>
+<p><code>AnalysisWorker</code> (created with <code>Tokenizer::new_worker</code> or <code>Tokenizer::into_worker</code>) is a reusable session over the full analysis chain. It owns every per-call buffer — the Viterbi lattice and backtrace scratch (via <code>SegmentWorker</code>), the normalized-text buffer the character filters operate on, and the offset-mapping scratch — so repeated <code>tokenize</code> calls avoid the per-call allocations <code>Tokenizer::tokenize</code> pays. When character filters are configured, token surfaces borrow the worker's buffer instead of being copied into per-token <code>String</code>s. Returned tokens borrow the worker and must be consumed before the next call; for multi-threaded use, create one worker per thread (or guard one with a <code>Mutex</code>, as <code>lindera-binding</code> does), or tokenize a list of texts with an <a href="#analysisworkerpool"><code>AnalysisWorkerPool</code></a>. See the <a href="../lindera/segmenter.html">Segmenter</a> page for the underlying <code>SegmentWorker</code> and its automatic memory-shrink policy.</p>
 <p><code>AnalysisWorker</code>'s public methods:</p>
 <ul>
 <li><code>tokenize(&amp;mut self, text: &amp;str)</code> — tokenizes <code>text</code> through the full analysis chain, reusing the worker's internal buffers; produces exactly the same tokens as <code>Tokenizer::tokenize</code>.</li>
@@ -238,6 +238,33 @@
 <li><code>set_space_penalty(&amp;mut self, space_penalty: Option&lt;SpacePenaltyConfig&gt;)</code>, <code>set_space_penalty_from_dictionary(&amp;mut self)</code> — set the left-space penalty rules for subsequent calls, or restore the dictionary's.</li>
 <li><code>shrink_to(&amp;mut self, text_len_hint: usize)</code> — immediately shrinks the worker's internal buffers to what an input of <code>text_len_hint</code> bytes needs.</li>
 <li><code>reset(&amp;mut self)</code> — discards all internal buffers, replacing them with fresh ones; intended for recovery paths (e.g. after a panic poisoned a mutex holding the worker), with configuration (dictionary, filters, mode) preserved.</li>
+<li><code>to_tokenizer(&amp;self)</code> — returns a <code>Tokenizer</code> with the worker's configuration, the settings changed by the setters above included, from which more workers that tokenize as this one does can be made. The user dictionary, if any, is copied.</li>
+</ul>
+<h3 id="analysisworkerpool"><a class="header" href="#analysisworkerpool">AnalysisWorkerPool</a></h3>
+<p><code>AnalysisWorkerPool</code> (created with <code>Tokenizer::new_worker_pool</code> or <code>Tokenizer::into_worker_pool</code>) tokenizes a list of texts on several threads. Every text is tokenized as a call of its own, as <code>AnalysisWorker::tokenize</code> tokenizes it, and the results come back in the order of the texts, so they are the same for every number of threads. A list of the lines of a document gives the tokens that <code>lindera tokenize</code> gives, since it also tokenizes every line on its own; it does not give those of the whole document as one text, whose offsets, positions and N-best results span its lines.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::num::NonZeroUsize;
+
+let mut pool = tokenizer.into_worker_pool();
+let threads = std::thread::available_parallelism().unwrap_or(NonZeroUsize::MIN);
+let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, threads, |tokens| {
+    tokens.into_iter().map(|token| token.surface.into_owned()).collect()
+})?;
+<span class="boring">}</span></code></pre></pre>
+<p>The closure runs on the thread that tokenized the text, right after it: the tokens borrow that thread's worker, so it turns them into what the caller keeps (<code>String</code>s, counts, a formatted output), and that work runs in parallel too.</p>
+<ul>
+<li><code>tokenize_batch(&amp;mut self, texts, max_threads, f)</code> — tokenizes every text on up to <code>max_threads</code> threads, the calling thread included, and returns the results of <code>f</code> in the order of <code>texts</code>.</li>
+<li><code>tokenize_nbest_batch(&amp;mut self, texts, n, unique, cost_threshold, max_threads, f)</code> — the same with <code>AnalysisWorker::tokenize_nbest</code>; <code>f</code> gets the <code>(tokens, cost)</code> pairs of one text.</li>
+<li><code>worker_count(&amp;self)</code>, <code>truncate_workers(&amp;mut self, max_workers)</code> — the number of workers the pool holds, and dropping the ones beyond <code>max_workers</code>.</li>
+<li><code>shrink_to(&amp;mut self, text_len_hint)</code>, <code>reset(&amp;mut self)</code> — as <code>AnalysisWorker</code>'s, for every worker.</li>
+</ul>
+<p>How a batch runs:</p>
+<ul>
+<li>The pool starts with one worker and makes more from it (<code>to_tokenizer</code>) when a batch runs on more threads than it has workers. Every worker keeps its buffers for the next batches and holds its own copy of the user dictionary, if any; the system dictionary is shared.</li>
+<li>A batch runs on the calling thread alone when it is given one thread, one text or a short input (the input of a thread is at least 16 KiB), and always on wasm, which has no threads. Otherwise it starts threads with <code>std::thread::scope</code>, which hand out the texts in chunks.</li>
+<li>If texts fail, the error of the first one in input order is returned, as a loop over the texts would return it, and the texts after it may not be tokenized. A panic, in the tokenization or in <code>f</code>, is resumed on the calling thread in the same way, after the worker that panicked is reset, so the pool stays usable.</li>
+<li>The workers are clones of one tokenizer, so a filter of your own whose instances keep state of their own gives each worker its own state.</li>
 </ul>
 <h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
