@@ -392,7 +392,7 @@ export declare class Tokenizer {
    *
    * * `texts` - An array of texts.
    * * `max_threads` - The most threads, an integer of 1 or more (default:
-   *   the number of CPUs).
+   *   the parallelism the system reports).
    *
    * # Returns
    *
@@ -408,7 +408,7 @@ export declare class Tokenizer {
    *
    * * `texts` - An array of texts.
    * * `max_threads` - The most threads, an integer of 1 or more (default:
-   *   the number of CPUs).
+   *   the parallelism the system reports).
    *
    * # Returns
    *
@@ -428,7 +428,7 @@ export declare class Tokenizer {
    * * `cost_threshold` - Maximum cost difference from the best path of
    *   each text, an integer that fits in 64 bits (default: undefined).
    * * `max_threads` - The most threads, an integer of 1 or more (default:
-   *   the number of CPUs).
+   *   the parallelism the system reports).
    *
    * # Returns
    *
