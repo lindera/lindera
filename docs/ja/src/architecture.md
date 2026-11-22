@@ -77,6 +77,7 @@ graph TB
 | `lindera` | コア | ファサードクレート。Rustユーザーが追加する唯一の依存で、`lindera-segmenter`を再エクスポートし、デフォルトで有効な`analysis` featureにより`lindera-analysis`を`lindera::analysis`として提供。 |
 | `lindera-cli` | アプリケーション | トークナイズ、辞書ビルド、CRF学習のためのコマンドラインインターフェース。 |
 | `lindera-binding` | コア | 以下の5つの言語バインディングが共有するFFI非依存のヘルパー。`lindera`ファサードに依存。 |
+| `lindera-dependency` | コア | 日本語の文節の係り受け解析。開発中で未公開。今は基本の型と CaboCha のラティス形式の読み書きだけを持つ。workspace のほかのクレートに依存しない。 |
 | `lindera-ipadic` | 辞書 | IPADICベースの日本語辞書。 |
 | `lindera-ipadic-neologd` | 辞書 | IPADIC NEologdベースの日本語辞書（新語対応）。 |
 | `lindera-unidic` | 辞書 | UniDicベースの日本語辞書。 |

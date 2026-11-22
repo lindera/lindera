@@ -41,6 +41,25 @@ jobs:
       - name: Run test
         run: cargo test -p lindera-crf
 
+  test-lindera-dependency:
+    name: Test lindera-dependency (${{ matrix.toolchain }})
+    needs: [format]
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+
+      - name: Run test
+        run: cargo test -p lindera-dependency
+
   test-lindera-dictionary:
     name: Test lindera-dictionary (${{ matrix.platform.target }}, ${{ matrix.toolchain }})
     needs: [format, test-lindera-crf]

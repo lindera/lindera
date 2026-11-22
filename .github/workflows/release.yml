@@ -35,6 +35,14 @@ jobs:
       crate: lindera-crf
       cache: true
 
+  test-lindera-dependency:
+    name: Test lindera-dependency
+    needs: [format]
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-dependency
+      cache: true
+
   test-lindera-dictionary:
     name: Test lindera-dictionary (${{ matrix.platform.target }})
     needs: [format]
@@ -1137,6 +1145,7 @@ jobs:
       [
         format,
         test-lindera-crf,
+        test-lindera-dependency,
         test-lindera-dictionary,
         test-lindera-trainer,
         test-lindera-ipadic,

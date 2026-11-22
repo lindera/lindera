@@ -12,6 +12,7 @@ lindera/
 ├── lindera/                # Facade crate (re-exports lindera-segmenter and lindera-analysis); tests, examples, benches
 ├── lindera-segmenter/      # Morphological segmentation library (Segmenter API)
 ├── lindera-analysis/       # Analysis chain (character/token filters, tokenizer)
+├── lindera-dependency/     # Bunsetsu dependency analysis (under development, not published)
 ├── lindera-cli/            # CLI tool
 ├── lindera-binding/        # FFI-independent helpers shared by the language bindings
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
@@ -67,6 +68,10 @@ The facade crate and the single dependency for Rust users. It re-exports every m
 #### `lindera-analysis`
 
 Lucene-style analysis chain on top of `lindera-segmenter` (used as `lindera::analysis` through the facade): character filters, token filters, and the `Tokenizer` that composes them around a `Segmenter`.
+
+#### `lindera-dependency`
+
+Japanese bunsetsu dependency analysis, under development and not published yet ([#1417](https://github.com/lindera/lindera/issues/1417)). So far it holds the types the analysis is built on (a morpheme trait, bunsetsu and sentences), the reading and writing of the lattice format of CaboCha (`cabocha -f1`), and a check of the dependency tree. It depends on no other crate of the workspace and builds for `wasm32-unknown-unknown` (`make check-lindera-dependency`).
 
 #### `lindera-cli`
 

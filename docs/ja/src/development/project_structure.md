@@ -12,6 +12,7 @@ lindera/
 ├── lindera/                # ファサードクレート（lindera-segmenter と lindera-analysis を再エクスポート）。tests・examples・benches を含む
 ├── lindera-segmenter/      # 形態素分割ライブラリ（Segmenter API）
 ├── lindera-analysis/       # 分析チェーン（character/token filter・tokenizer）
+├── lindera-dependency/     # 文節の係り受け解析（開発中・未公開）
 ├── lindera-cli/            # CLI ツール
 ├── lindera-binding/        # 言語バインディングが共有するFFI非依存のヘルパー
 ├── lindera-ipadic/         # IPADIC 辞書（日本語）
@@ -67,6 +68,10 @@ lindera/
 #### `lindera-analysis`
 
 `lindera-segmenter` の上に構築されたLucene風の分析チェーンです（ファサード経由では `lindera::analysis` として利用します）。文字フィルタ、トークンフィルタ、およびそれらを `Segmenter` の周りで組み合わせる `Tokenizer` を提供します。
+
+#### `lindera-dependency`
+
+日本語の文節の係り受け解析です。開発中で、まだ公開していません（[#1417](https://github.com/lindera/lindera/issues/1417)）。今は、解析の土台になる型（形態素の trait、文節、文）、CaboCha のラティス形式（`cabocha -f1`）の読み書き、係り受けの木の検査だけがあります。workspace のほかのクレートには依存せず、`wasm32-unknown-unknown` 向けにビルドできます（`make check-lindera-dependency`）。
 
 #### `lindera-cli`
 

@@ -77,6 +77,7 @@ graph TB
 | `lindera` | Core | Facade crate and the one dependency Rust users add: re-exports `lindera-segmenter` and, with the default `analysis` feature, `lindera-analysis` as `lindera::analysis`. |
 | `lindera-cli` | Application | Command-line interface for tokenization, dictionary building, and CRF training. |
 | `lindera-binding` | Core | FFI-independent helpers shared by the five language bindings below; depends on the `lindera` facade. |
+| `lindera-dependency` | Core | Japanese bunsetsu dependency analysis, under development and not published yet: the core types and the lattice format of CaboCha. Depends on no other crate of the workspace. |
 | `lindera-ipadic` | Dictionary | Japanese dictionary based on IPADIC. |
 | `lindera-ipadic-neologd` | Dictionary | Japanese dictionary based on IPADIC NEologd (includes neologisms). |
 | `lindera-unidic` | Dictionary | Japanese dictionary based on UniDic. |

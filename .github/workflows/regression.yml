@@ -63,6 +63,7 @@ jobs:
       lindera-segmenter: ${{ steps.filter.outputs.lindera-segmenter }}
       lindera: ${{ steps.filter.outputs.lindera }}
       lindera-analysis: ${{ steps.filter.outputs.lindera-analysis }}
+      lindera-dependency: ${{ steps.filter.outputs.lindera-dependency }}
       lindera-binding: ${{ steps.filter.outputs.lindera-binding }}
       lindera-cli: ${{ steps.filter.outputs.lindera-cli }}
       lindera-python: ${{ steps.filter.outputs.lindera-python }}
@@ -396,6 +397,15 @@ jobs:
               - 'resources/user_dict/**'
               - *shared-workspace
               - *shared-make
+            # lindera-dependency depends on no other crate of the workspace.
+            # check-lindera-dependency follows this filter too, hence the
+            # script and the Makefile.
+            lindera-dependency:
+              - 'lindera-dependency/**'
+              - 'scripts/check_dependency_crate.sh'
+              - *shared-workspace
+              - *shared-crate-workflow
+              - *shared-make
             # The crates `make check-docs` documents (CARGO_CRATES in the
             # Makefile, which also holds the command).
             docs:
@@ -414,6 +424,7 @@ jobs:
               - 'lindera-segmenter/**'
               - 'lindera-analysis/**'
               - 'lindera/**'
+              - 'lindera-dependency/**'
               - 'lindera-binding/**'
               - 'lindera-cli/**'
               - *shared-workspace
@@ -465,6 +476,38 @@ jobs:
       crate: lindera-crf
       features: "--no-default-features --features ${{ matrix.features }}"
       lint: true
+
+  test-lindera-dependency:
+    name: Test lindera-dependency
+    needs: [format, detect-changes]
+    if: github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-dependency == 'true'
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-dependency
+      lint: true
+
+  # lindera-dependency takes any sequence of morphemes: it has to build
+  # for wasm32-unknown-unknown, and to depend on no tokenizer or
+  # dictionary crate (#1418). No other job builds a library crate for
+  # that target.
+  check-lindera-dependency:
+    name: Check lindera-dependency (wasm32, dependencies)
+    needs: [test-lindera-dependency, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-dependency == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          target: wasm32-unknown-unknown
+
+      - name: Check lindera-dependency
+        run: make check-lindera-dependency
 
   test-lindera-dictionary:
     name: Test lindera-dictionary (${{ matrix.platform.target }})

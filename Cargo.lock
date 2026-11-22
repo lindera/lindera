@@ -1544,6 +1544,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "lindera-dependency"
+version = "7.0.0"
+
+[[package]]
 name = "lindera-dictionary"
 version = "7.0.0"
 dependencies = [

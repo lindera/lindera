@@ -15,6 +15,7 @@ members = [
     "lindera-segmenter",
     "lindera",
     "lindera-analysis",
+    "lindera-dependency",
     "lindera-cli",
     "lindera-binding",
     "lindera-python",

@@ -73,7 +73,8 @@ RUBOCOP_PATHS = Gemfile Rakefile lindera.gemspec extconf.rb test/ examples/ lib/
 CARGO_CRATES := lindera-crf lindera-dictionary lindera-trainer lindera-ipadic \
 	lindera-ipadic-neologd lindera-unidic lindera-unidic-cwj lindera-unidic-csj \
 	lindera-sudachidict lindera-ko-dic lindera-cc-cedict lindera-jieba \
-	lindera-segmenter lindera-analysis lindera lindera-binding lindera-cli
+	lindera-segmenter lindera-analysis lindera lindera-dependency \
+	lindera-binding lindera-cli
 
 # Language bindings with bespoke tooling (explicit targets below).
 BINDING_CRATES := lindera-python lindera-nodejs lindera-ruby lindera-php lindera-wasm
@@ -313,6 +314,9 @@ check-docs: ## Check rustdoc warnings in the cargo crates (public and private it
 
 check-memmap2: ## Check that memmap2 is linked only into the builds with the mmap feature, as CI does
 	scripts/check_memmap2.sh
+
+check-lindera-dependency: ## Check that lindera-dependency builds for wasm32 and needs no tokenizer or dictionary, as CI does
+	scripts/check_dependency_crate.sh
 
 # The language bindings are left out of check-docs because building each one
 # needs its language's toolchain, so each gets a target of its own, which that
