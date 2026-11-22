@@ -35,10 +35,19 @@ The source archives of five dictionaries are hosted on lindera.dev. UniDic's, Un
 ## Releasing Lindera
 
 1. Raise the version (`scripts/bump-up-version.sh <version>`) in a pull request, and merge it.
-2. Tag the release (`v<version>`). `release.yml` then:
-   1. builds the dictionaries from source and uploads their archives to the release, as above;
-   2. downloads them again, and writes the `prebuilt.json` of each dictionary crate with its archive's SHA-256 (`scripts/write_dictionary_pins.sh`);
-   3. builds `lindera-ipadic` with `embed-ipadic`, which downloads and checks its pinned archive, so that no crate is published with a pin that does not work;
-   4. publishes the crates; the dictionary crates with `cargo publish --allow-dirty`, as their `prebuilt.json` is not committed.
+2. Optionally, run `release.yml` by hand on `main` (`workflow_dispatch`). This dry run runs every test and every build of a release, gathers the assets and checks that none is missing (`scripts/check_release_assets.sh`). It uploads and publishes nothing.
+3. Tag the release (`v<version>`). `release.yml` then goes through these steps, each only after the one before has passed ([#1413](https://github.com/lindera/lindera/issues/1413)):
+   1. runs the tests and builds every asset: the dictionaries from source, as above, the CLI binaries, the wheels and the sdist, the gem, the PIE binaries, the WASM package and the Node.js binaries;
+   2. creates the release as a draft, and uploads the assets to it;
+   3. publishes the release, so that the dictionary archives have their public URLs;
+   4. downloads the archives again, and writes the `prebuilt.json` of each dictionary crate with its archive's SHA-256 (`scripts/write_dictionary_pins.sh`);
+   5. builds `lindera-ipadic` with `embed-ipadic`, which downloads and checks its pinned archive, so that no crate is published with a pin that does not work;
+   6. publishes the crates; the dictionary crates with `cargo publish --allow-dirty`, as their `prebuilt.json` is not committed;
+   7. installs the gem, which compiles against the crates just published, and tokenizes with it;
+   8. publishes to PyPI, npm and RubyGems.
+
+A job that failed can be run again: a version that a registry already has is skipped, and the assets of a release that is already public are left as they are.
+
+RubyGems is published with an API key. The account's multi-factor authentication level has to be "UI and gem signin" for a release: with "UI and API", `gem push` asks for a one-time password, and the job fails.
 
 Nothing is published or pinned before the tag: a change to a dictionary, to its source archive or to the dictionary format needs no step of its own, and reaches the published crates with the next release.

@@ -14,6 +14,7 @@ jobs:
   format:
     name: Format
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -36,7 +37,7 @@ jobs:
 
   test-lindera-dictionary:
     name: Test lindera-dictionary (${{ matrix.platform.target }})
-    needs: [format, test-lindera-crf]
+    needs: [format]
     strategy:
       matrix:
         platform:
@@ -55,7 +56,7 @@ jobs:
 
   test-lindera-trainer:
     name: Test lindera-trainer
-    needs: [format, test-lindera-dictionary]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-trainer
@@ -63,7 +64,7 @@ jobs:
 
   test-lindera-ipadic:
     name: Test lindera-ipadic
-    needs: [test-lindera-dictionary]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-ipadic
@@ -72,7 +73,7 @@ jobs:
 
   test-lindera-ipadic-neologd:
     name: Test lindera-ipadic-neologd
-    needs: [test-lindera-dictionary]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-ipadic-neologd
@@ -82,7 +83,7 @@ jobs:
 
   test-lindera-unidic:
     name: Test lindera-unidic
-    needs: [test-lindera-dictionary]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-unidic
@@ -92,7 +93,7 @@ jobs:
 
   test-lindera-unidic-cwj:
     name: Test lindera-unidic-cwj
-    needs: [test-lindera-dictionary]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-unidic-cwj
@@ -104,7 +105,7 @@ jobs:
   # (#216); this job runs only the tests of lindera that read it.
   test-lindera-unidic-cwj-tokenization:
     name: Test lindera with UniDic CWJ
-    needs: [test-lindera-unidic-cwj]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera
@@ -114,7 +115,7 @@ jobs:
 
   test-lindera-unidic-csj:
     name: Test lindera-unidic-csj
-    needs: [test-lindera-dictionary]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-unidic-csj
@@ -127,7 +128,7 @@ jobs:
   # read it.
   test-lindera-unidic-csj-tokenization:
     name: Test lindera with UniDic CSJ
-    needs: [test-lindera-unidic-csj]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera
@@ -137,7 +138,7 @@ jobs:
 
   test-lindera-sudachidict:
     name: Test lindera-sudachidict
-    needs: [test-lindera-dictionary]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-sudachidict
@@ -147,7 +148,7 @@ jobs:
 
   test-lindera-ko-dic:
     name: Test lindera-ko-dic
-    needs: [test-lindera-dictionary]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-ko-dic
@@ -156,7 +157,7 @@ jobs:
 
   test-lindera-cc-cedict:
     name: Test lindera-cc-cedict
-    needs: [test-lindera-dictionary]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-cc-cedict
@@ -165,7 +166,7 @@ jobs:
 
   test-lindera-jieba:
     name: Test lindera-jieba
-    needs: [test-lindera-dictionary]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-jieba
@@ -174,18 +175,7 @@ jobs:
 
   test-lindera-segmenter:
     name: Test lindera-segmenter (${{ matrix.platform.target }})
-    needs:
-      - test-lindera-dictionary
-      - test-lindera-trainer
-      - test-lindera-ipadic
-      - test-lindera-ipadic-neologd
-      - test-lindera-unidic
-      - test-lindera-unidic-cwj
-      - test-lindera-unidic-csj
-      - test-lindera-sudachidict
-      - test-lindera-ko-dic
-      - test-lindera-cc-cedict
-      - test-lindera-jieba
+    needs: [format]
     strategy:
       matrix:
         platform:
@@ -206,18 +196,7 @@ jobs:
   # than IPADIC and ko-dic run too (#1153). Linux only, as in regression.yml.
   test-lindera-segmenter-all-dictionaries:
     name: Test lindera-segmenter (all dictionaries)
-    needs:
-      - test-lindera-dictionary
-      - test-lindera-trainer
-      - test-lindera-ipadic
-      - test-lindera-ipadic-neologd
-      - test-lindera-unidic
-      - test-lindera-unidic-cwj
-      - test-lindera-unidic-csj
-      - test-lindera-sudachidict
-      - test-lindera-ko-dic
-      - test-lindera-cc-cedict
-      - test-lindera-jieba
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-segmenter
@@ -227,7 +206,7 @@ jobs:
 
   test-lindera-analysis:
     name: Test lindera-analysis
-    needs: [test-lindera-segmenter]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-analysis
@@ -236,7 +215,7 @@ jobs:
 
   test-lindera:
     name: Test lindera (${{ matrix.platform.target }})
-    needs: [test-lindera-analysis]
+    needs: [format]
     strategy:
       matrix:
         platform:
@@ -255,7 +234,7 @@ jobs:
 
   test-lindera-no-default-features:
     name: Test lindera (no default features)
-    needs: [test-lindera]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera
@@ -264,7 +243,7 @@ jobs:
 
   test-lindera-all-dictionaries:
     name: Test lindera (all dictionaries)
-    needs: [test-lindera-analysis]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera
@@ -274,7 +253,7 @@ jobs:
 
   test-lindera-binding:
     name: Test lindera-binding
-    needs: [test-lindera]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-binding
@@ -283,7 +262,7 @@ jobs:
 
   test-lindera-cli:
     name: Test lindera-cli
-    needs: [test-lindera]
+    needs: [format]
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-cli
@@ -292,8 +271,9 @@ jobs:
 
   test-lindera-python:
     name: Test lindera-python
-    needs: [test-lindera]
+    needs: [format]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -316,8 +296,9 @@ jobs:
 
   test-lindera-nodejs:
     name: Test lindera-nodejs
-    needs: [test-lindera]
+    needs: [format]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -349,8 +330,9 @@ jobs:
 
   test-lindera-ruby:
     name: Test lindera-ruby
-    needs: [test-lindera]
+    needs: [format]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -375,8 +357,9 @@ jobs:
 
   test-lindera-php:
     name: Test lindera-php
-    needs: [test-lindera]
+    needs: [format]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -402,8 +385,9 @@ jobs:
 
   test-lindera-wasm:
     name: Test lindera-wasm
-    needs: [test-lindera]
+    needs: [format]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -420,46 +404,8 @@ jobs:
         run: |
           make test-lindera-wasm
 
-  create-release:
-    name: Create Release
-    needs:
-      [
-        test-lindera-cli,
-        test-lindera-no-default-features,
-        test-lindera-segmenter-all-dictionaries,
-        test-lindera-all-dictionaries,
-        test-lindera-unidic-cwj-tokenization,
-        test-lindera-unidic-csj-tokenization,
-        test-lindera-binding,
-        test-lindera-python,
-        test-lindera-nodejs,
-        test-lindera-ruby,
-        test-lindera-php,
-        test-lindera-wasm,
-      ]
-    # Tag pushes only. On a workflow_dispatch from a branch, tag_name would be
-    # the branch name and action-gh-release would create a release and a tag
-    # for it. Every build and publish job below needs this job (directly or
-    # through a build job), so skipping it here also skips them; a dispatch is
-    # then a dry run of the tests, build-php-binaries and build-python-sdist.
-    if: ${{ startsWith(github.ref, 'refs/tags/') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          name: Release ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-          make_latest: true
-
   build-dictionary:
     name: Build Dictionary (${{ matrix.dictionary.name }})
-    needs: [create-release]
     strategy:
       matrix:
         dictionary:
@@ -482,6 +428,7 @@ jobs:
           - name: "lindera-jieba"
             feature: "embed-jieba"
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -550,22 +497,14 @@ jobs:
           zip -r ../../${{ matrix.dictionary.name }}-${{ steps.get_version.outputs.version }}.zip ${{ matrix.dictionary.name }} -x "${{ matrix.dictionary.name }}/build_inputs.json"
 
       - name: Upload artifact
-        uses: softprops/action-gh-release@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: ${{ matrix.dictionary.name }}-${{ steps.get_version.outputs.version }}.zip
-          tag_name: ${{ github.ref_name }}
-
-      - name: Upload dictionary artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.dictionary.name }}
-          path: dictionaries/
+          name: dictionary-${{ matrix.dictionary.name }}
+          path: ${{ matrix.dictionary.name }}-${{ steps.get_version.outputs.version }}.zip
+          if-no-files-found: error
 
   build:
     name: Build binaries for ${{ matrix.platform.target }}
-    needs: [create-release]
     strategy:
       matrix:
         platform:
@@ -604,6 +543,7 @@ jobs:
         toolchain: [stable]
 
     runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 45
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -653,16 +593,14 @@ jobs:
         run: powershell Compress-Archive -DestinationPath lindera-${{ matrix.platform.target }}-${{ steps.get_version.outputs.version }}${{ matrix.platform.archive }} -Path target/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Upload artifact
-        uses: softprops/action-gh-release@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/upload-artifact@v7
         with:
-          files: lindera-${{ matrix.platform.target }}-${{ steps.get_version.outputs.version }}${{ matrix.platform.archive }}
-          tag_name: ${{ github.ref_name }}
+          name: cli-${{ matrix.platform.target }}
+          path: lindera-${{ matrix.platform.target }}-${{ steps.get_version.outputs.version }}${{ matrix.platform.archive }}
+          if-no-files-found: error
 
   build-python-wheels:
     name: Build wheels for ${{ matrix.platform.target }}
-    needs: [create-release]
     strategy:
       matrix:
         platform:
@@ -679,6 +617,7 @@ jobs:
           - runner: macos-15-intel
             target: x86_64-apple-darwin
     runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 45
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -704,32 +643,19 @@ jobs:
               apt-get update && apt-get install libssl-dev pkg-config -y
             fi
 
-      - name: Upload artifact
-        uses: softprops/action-gh-release@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: dist/*
-          tag_name: ${{ github.ref_name }}
-
       - name: Upload to workflow artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: wheels-lindera-python-${{ runner.os }}-${{ matrix.platform.target }}-${{ github.ref_name }}
+          name: wheels-lindera-python-${{ runner.os }}-${{ matrix.platform.target }}
           path: dist
           if-no-files-found: error
 
   build-python-sdist:
     name: Build sdist
-    needs: [test-lindera-python, create-release]
-    # Runs after the release exists on a tag push, and as a dry run on
-    # workflow_dispatch from a branch, so that a broken sdist shows up before
-    # the tag is cut: nothing else builds it, and publish-pypi holds back the
-    # wheels too when this job fails. The result checks mirror
-    # build-php-binaries (see the comment there). The sdist is attached to the
-    # GitHub Release only on a tag.
-    if: ${{ !cancelled() && needs.test-lindera-python.result == 'success' && (needs.create-release.result == 'success' || (needs.create-release.result == 'skipped' && !startsWith(github.ref, 'refs/tags/'))) }}
+    # Runs on a dispatch too, so that a broken sdist shows up before the tag is
+    # cut: nothing else builds it.
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -803,15 +729,6 @@ jobs:
           "${venv}/bin/python" -m pip install "${SDIST}"
           "${venv}/bin/python" -c "import lindera; print('lindera', lindera.version())"
 
-      - name: Upload artifact
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: dist/*
-          tag_name: ${{ github.ref_name }}
-
       - name: Upload to workflow artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -828,9 +745,8 @@ jobs:
   # this version.
   build-ruby-gem:
     name: Build Ruby gem
-    needs: [create-release]
-    if: ${{ startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -851,7 +767,11 @@ jobs:
         working-directory: lindera-ruby
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ruby") | .version')
+          if [[ "$GITHUB_REF" == refs/tags/v* && "v${VERSION}" != "$GITHUB_REF_NAME" ]]; then
+            echo "::error::The tag $GITHUB_REF_NAME is not the version of lindera-ruby (${VERSION})."
+            exit 1
+          fi
           sed -i.bak "s/spec.version = '.*'/spec.version = '${VERSION}'/" lindera.gemspec
           rm -f lindera.gemspec.bak
 
@@ -866,7 +786,7 @@ jobs:
       - name: Upload gem artifact
         uses: actions/upload-artifact@v7
         with:
-          name: gem-lindera-${{ github.ref_name }}
+          name: gem-lindera
           path: lindera-ruby/pkg/*.gem
           if-no-files-found: error
 
@@ -875,8 +795,8 @@ jobs:
   # in a bare ruby container, so a prerequisite missing from the docs would
   # fail it; macOS installs into an empty GEM_HOME. Both use a current Ruby and
   # the latest stable Rust, so the documented minimums (Ruby 3.1, Rust 1.89)
-  # are not tested. publish-rubygems attaches the gem to the GitHub Release and
-  # pushes it to RubyGems only after every leg passes.
+  # are not tested. It is the one test that cannot run before a publish job;
+  # PyPI, npm and RubyGems are published only after every leg passes (#1413).
   test-ruby-gem:
     name: Test Ruby gem install (${{ matrix.platform.name }})
     needs: [build-ruby-gem, publish-crates]
@@ -892,6 +812,7 @@ jobs:
             runner: macos-latest
             container: false
     runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 20
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -899,7 +820,7 @@ jobs:
       - name: Download gem artifact
         uses: actions/download-artifact@v8
         with:
-          name: gem-lindera-${{ github.ref_name }}
+          name: gem-lindera
           path: gems
 
       - name: Install gem in a clean ruby container and tokenize
@@ -931,16 +852,8 @@ jobs:
 
   build-php-binaries:
     name: Build PIE binary (php${{ matrix.php-version }}-${{ matrix.platform.arch }}-${{ matrix.platform.os }}-${{ matrix.ts }})
-    needs: [test-lindera-php, create-release]
-    # Runs after the release exists on a tag push, and as a dry run on
-    # workflow_dispatch from a branch. create-release is tag-gated and ends
-    # up `skipped` on a dispatch, which the implicit success() would treat
-    # as a failure, hence the explicit result checks. `skipped` is accepted
-    # only off a tag: on a tag it means another test job failed, and the
-    # upload step below would otherwise create the release with nothing but
-    # the PHP zips on it. The zips are always uploaded as workflow artifacts
-    # and attached to the GitHub Release only on a tag (last step).
-    if: ${{ !cancelled() && needs.test-lindera-php.result == 'success' && (needs.create-release.result == 'success' || (needs.create-release.result == 'skipped' && !startsWith(github.ref, 'refs/tags/'))) }}
+    # Runs on a dispatch too. The zips are workflow artifacts; release-assets
+    # attaches them to the GitHub Release.
     strategy:
       # A dry run should report every cell rather than stop at the first
       # failure.
@@ -970,6 +883,7 @@ jobs:
             os: darwin
             libc: bsdlibc
     runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 45
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -1091,20 +1005,10 @@ jobs:
           path: lindera-php/${{ steps.package.outputs.asset }}
           if-no-files-found: error
 
-      - name: Upload release asset
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: lindera-php/${{ steps.package.outputs.asset }}
-          tag_name: ${{ github.ref_name }}
-
   build-wasm:
     name: Build WASM
-    needs: [create-release]
     runs-on: ubuntu-latest
-    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    timeout-minutes: 45
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -1162,8 +1066,6 @@ jobs:
 
   build-lindera-nodejs:
     name: Build Node.js Native (${{ matrix.platform.target }})
-    needs: [create-release]
-    if: ${{ startsWith(github.ref, 'refs/tags/') }}
     strategy:
       fail-fast: false
       matrix:
@@ -1181,6 +1083,7 @@ jobs:
           - runner: windows-latest
             target: aarch64-pc-windows-msvc
     runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 45
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -1214,12 +1117,165 @@ jobs:
           path: lindera-nodejs/*.node
           if-no-files-found: error
 
+  release-assets:
+    name: Release assets
+    # Every test and every build of the release: nothing is uploaded or
+    # published before all of them have passed (#1413).
+    needs:
+      [
+        format,
+        test-lindera-crf,
+        test-lindera-dictionary,
+        test-lindera-trainer,
+        test-lindera-ipadic,
+        test-lindera-ipadic-neologd,
+        test-lindera-unidic,
+        test-lindera-unidic-cwj,
+        test-lindera-unidic-cwj-tokenization,
+        test-lindera-unidic-csj,
+        test-lindera-unidic-csj-tokenization,
+        test-lindera-sudachidict,
+        test-lindera-ko-dic,
+        test-lindera-cc-cedict,
+        test-lindera-jieba,
+        test-lindera-segmenter,
+        test-lindera-segmenter-all-dictionaries,
+        test-lindera-analysis,
+        test-lindera,
+        test-lindera-no-default-features,
+        test-lindera-all-dictionaries,
+        test-lindera-binding,
+        test-lindera-cli,
+        test-lindera-python,
+        test-lindera-nodejs,
+        test-lindera-ruby,
+        test-lindera-php,
+        test-lindera-wasm,
+        build-dictionary,
+        build,
+        build-python-wheels,
+        build-python-sdist,
+        build-ruby-gem,
+        build-php-binaries,
+        build-wasm,
+        build-lindera-nodejs,
+      ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Download the dictionaries
+        uses: actions/download-artifact@v8
+        with:
+          pattern: dictionary-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Download the CLI archives
+        uses: actions/download-artifact@v8
+        with:
+          pattern: cli-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Download the wheels
+        uses: actions/download-artifact@v8
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Download the sdist
+        uses: actions/download-artifact@v8
+        with:
+          name: sdist-lindera-python
+          path: release-assets
+
+      - name: Download the PIE binaries
+        uses: actions/download-artifact@v8
+        with:
+          pattern: pie-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Download the gem
+        uses: actions/download-artifact@v8
+        with:
+          name: gem-lindera
+          path: release-assets
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      # On a dispatch too, so that a dry run shows a build that no longer
+      # produces its asset.
+      - name: Check the assets
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: scripts/check_release_assets.sh release-assets "$VERSION"
+
+      # Tag pushes only. The release stays a draft until publish-release, so
+      # that it is never public without its assets. When this job runs again
+      # for a release that is already public, it uploads nothing: the
+      # published dictionary crates pin the archives of the release by
+      # SHA-256 (#1362), so they must not be replaced.
+      - name: Upload the assets to a draft release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          if [ "v${VERSION}" != "$TAG" ]; then
+            echo "::error::The tag $TAG is not the version of lindera (${VERSION})."
+            exit 1
+          fi
+          if draft=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft); then
+            echo "Release $TAG exists (draft: $draft)."
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "Release $TAG" --generate-notes
+            draft=true
+          fi
+          if [ "$draft" != "true" ]; then
+            echo "::notice::Release $TAG is already public: its assets are left as they are."
+            exit 0
+          fi
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber release-assets/*
+
+  publish-release:
+    name: Publish the GitHub Release
+    # The release becomes public, and the latest, with every asset on it.
+    # It comes before publish-crates because the dictionary crates pin the
+    # archives by their URLs on the release page, which a draft does not
+    # serve (#1362).
+    needs: [release-assets]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    permissions:
+      contents: write
+    steps:
+      - name: Publish the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+
   publish-crates:
     name: Publish crates
-    # The dictionary crates pin the archives that build-dictionary uploads to
-    # this release (#1362), so they are published after them.
-    needs: [create-release, build-dictionary]
+    # The dictionary crates pin the archives of this release (#1362), so they
+    # are published once the release is public. crates.io comes before the
+    # other registries: the gem install test needs the crates (#1413).
+    needs: [publish-release]
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
       - name: Checkout
@@ -1272,7 +1328,6 @@ jobs:
                 cargo publish
               fi
               popd
-              sleep 20
             fi
           done
         env:
@@ -1280,8 +1335,9 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
-    needs: [build-python-wheels, build-python-sdist]
+    needs: [test-ruby-gem]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     permissions:
       id-token: write
@@ -1332,8 +1388,9 @@ jobs:
 
   publish-wasm-npm:
     name: Publish WASM to npm
-    needs: [build-wasm]
+    needs: [test-ruby-gem]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
       - name: Run checkout
@@ -1380,8 +1437,9 @@ jobs:
 
   publish-nodejs-npm:
     name: Publish Node.js to npm
-    needs: [build-lindera-nodejs]
+    needs: [test-ruby-gem]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
       - name: Run checkout
@@ -1485,6 +1543,7 @@ jobs:
     name: Publish to RubyGems
     needs: [test-ruby-gem]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
       - name: Download gem artifacts
@@ -1493,14 +1552,6 @@ jobs:
           pattern: gem-*
           merge-multiple: true
           path: gems
-
-      - name: Upload to release
-        uses: softprops/action-gh-release@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: gems/*.gem
-          tag_name: ${{ github.ref_name }}
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
