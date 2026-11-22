@@ -229,6 +229,13 @@
 <p>For a language binding, <code>make lint-lindera-&lt;binding&gt;</code> then runs the binding's language-side linter, as the binding's CI job does: ruff for Python, Prettier for Node.js and WASM, RuboCop for Ruby, and PHP CS Fixer for PHP. Their versions are pinned (ruff and Prettier in the <code>Makefile</code>, RuboCop in <code>lindera-ruby/Gemfile</code>, PHP CS Fixer in <code>composer.json</code>), so a new release of a tool cannot fail CI on unchanged code. The targets install the pinned versions themselves, which needs the language's toolchain (Python 3, Node.js with npx, Bundler, Composer) and network access.</p>
 <p><code>make lint-scripts</code> lints the hand-written files that belong to no binding, as the <code>Lint scripts</code> CI job does: the benchmark harness in <code>scripts/benchmarks/</code>, which the bindings share, and the JavaScript the docs load (<code>docs/mermaid-init.js</code>). It runs the same pinned tools, and checks each file with the rules of the binding written in its language, so it needs all four toolchains. <code>make lint</code> runs it after the crates.</p>
 </blockquote>
+<h3 id="memmap2-linkage"><a class="header" href="#memmap2-linkage">memmap2 Linkage</a></h3>
+<p>Check that <code>memmap2</code> is linked only into the builds with the <code>mmap</code> feature:</p>
+<pre><code class="language-bash">make check-memmap2
+</code></pre>
+<blockquote>
+<p>Note: CI runs <code>make check-memmap2</code> in the <code>Check memmap2 linkage</code> job. It runs <code>cargo tree -i memmap2</code> for builds of <code>lindera</code>, <code>lindera-segmenter</code> and <code>lindera-trainer</code> with and without <code>mmap</code> (<code>scripts/check_memmap2.sh</code>). The workspace depends on <code>lindera-dictionary</code> without its default features; a dependency on it that kept them would link <code>memmap2</code> into every build (#1414).</p>
+</blockquote>
 <h2 id="documentation"><a class="header" href="#documentation">Documentation</a></h2>
 <h3 id="api-documentation"><a class="header" href="#api-documentation">API Documentation</a></h3>
 <p>Generate and open Rust API documentation:</p>

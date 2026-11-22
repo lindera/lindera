@@ -229,6 +229,13 @@
 <p>言語バインディングでは、<code>make lint-lindera-&lt;binding&gt;</code> が続けて、そのバインディングの CI ジョブと同じく言語側の linter を実行します。Python は ruff、Node.js と WASM は Prettier、Ruby は RuboCop、PHP は PHP CS Fixer です。これらの版は固定してあるので（ruff と Prettier は <code>Makefile</code>、RuboCop は <code>lindera-ruby/Gemfile</code>、PHP CS Fixer は <code>composer.json</code>）、ツールの新しいリリースが、変更していないコードで CI を失敗させることはありません。ターゲットは固定した版を自分でインストールするので、その言語のツールチェーン（Python 3、npx の使える Node.js、Bundler、Composer）とネットワークへの接続が必要です。</p>
 <p><code>make lint-scripts</code> は、どのバインディングにも属さない手書きのファイルを、CI の <code>Lint scripts</code> ジョブと同じく lint します。対象は、バインディングが共有する <code>scripts/benchmarks/</code> のベンチマーク一式と、docs が読み込む JavaScript（<code>docs/mermaid-init.js</code>）です。同じ固定版のツールを使い、各ファイルにはその言語のバインディングの規則を当てるので、4 つの言語のツールチェーンがすべて必要です。<code>make lint</code> は、クレートの後にこれも実行します。</p>
 </blockquote>
+<h3 id="memmap2-のリンク"><a class="header" href="#memmap2-のリンク">memmap2 のリンク</a></h3>
+<p><code>memmap2</code> が <code>mmap</code> feature のあるビルドにだけリンクされることを確かめます:</p>
+<pre><code class="language-bash">make check-memmap2
+</code></pre>
+<blockquote>
+<p>注意: CI は <code>Check memmap2 linkage</code> ジョブで <code>make check-memmap2</code> を実行します。<code>lindera</code>、<code>lindera-segmenter</code>、<code>lindera-trainer</code> の <code>mmap</code> ありとなしのビルドについて <code>cargo tree -i memmap2</code> を実行します（<code>scripts/check_memmap2.sh</code>）。ワークスペースは <code>lindera-dictionary</code> にデフォルト feature なしで依存します。デフォルト feature を残した依存があると、すべてのビルドに <code>memmap2</code> がリンクされます（#1414）。</p>
+</blockquote>
 <h2 id="ドキュメント"><a class="header" href="#ドキュメント">ドキュメント</a></h2>
 <h3 id="api-ドキュメント"><a class="header" href="#api-ドキュメント">API ドキュメント</a></h3>
 <p>Rust の API ドキュメントを生成して開きます：</p>

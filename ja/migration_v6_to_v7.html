@@ -396,13 +396,16 @@ lindera-analysis = "6"
 <pre><code class="language-toml"># メモリマップ読み込み付きのセグメンター（v6 のデフォルトビルドと同じ）
 lindera = { version = "7", default-features = false, features = ["mmap"] }
 
-# セグメンターと分析チェーン。メモリマップ読み込みはデフォルトにしない
+# セグメンターと分析チェーン。メモリマップ読み込みなし
 lindera = { version = "7", default-features = false, features = ["analysis"] }
 </code></pre>
-<p><code>memmap2</code> 自体は <code>lindera-dictionary</code> のデフォルト feature を通じてどちらの場合も
-リンクされます。ファサードの <code>mmap</code> feature は <code>load_dictionary</code> などの
-<code>use_mmap</code> のデフォルト値を決めるだけで、
-<code>load_dictionary_with_options(uri, true)</code> は feature なしでも動作します。</p>
+<p><code>mmap</code> なしでは、メモリマップ読み込みそのものが組み込まれません。<code>memmap2</code> は
+リンクされず、<code>load_dictionary_with_options(uri, true)</code> や設定の
+<code>use_mmap: true</code> は、ファイルをメモリマップせずに読み込みます（トークンは同じです）。
+ファイルをメモリマップする低水準の項目（<code>lindera::dictionary::util::mmap_file</code>、
+<code>Data::Map</code>、ローダーの <code>load_mmap</code>）もありません。7.0.0 では、<code>memmap2</code> は
+<code>lindera-dictionary</code> のデフォルト feature を通じてどちらの場合もリンクされ、
+feature なしでも <code>use_mmap = true</code> でメモリマップしていました（#1414）。</p>
 <h3 id="セグメンターは-lindera-segmenter-として公開"><a class="header" href="#セグメンターは-lindera-segmenter-として公開">セグメンターは <code>lindera-segmenter</code> として公開</a></h3>
 <p>v6 までの <code>lindera</code> クレートは、同じモジュール（<code>dictionary</code>・<code>error</code>・<code>mode</code>・
 <code>segmenter</code>・<code>space_penalty</code>・<code>token</code>・<code>worker</code>）と同じ API を持つ

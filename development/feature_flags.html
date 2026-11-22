@@ -181,7 +181,7 @@
 <h2 id="core-features"><a class="header" href="#core-features">Core Features</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>analysis</code></td><td>The analysis chain (<code>lindera::analysis</code>: character filters, token filters, and the <code>Tokenizer</code>), re-exported from <code>lindera-analysis</code></td><td>Yes</td></tr>
-<tr><td><code>mmap</code></td><td>Memory-mapped loading as the default for filesystem dictionaries (<code>use_mmap</code>); <code>memmap2</code> is linked either way</td><td>Yes</td></tr>
+<tr><td><code>mmap</code></td><td>Memory-mapped loading of filesystem dictionaries, the default of <code>use_mmap</code>; without it, <code>memmap2</code> is not linked and <code>use_mmap = true</code> reads the files</td><td>Yes</td></tr>
 <tr><td><code>train</code></td><td>CRF-based dictionary training (depends on <code>lindera-trainer</code>; <code>lindera::dictionary::trainer</code>)</td><td>See below</td></tr>
 </tbody></table>
 </div>

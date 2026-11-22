@@ -413,13 +413,17 @@ the default for filesystem dictionaries (as in v6, where
 <pre><code class="language-toml"># Segmenter with memory-mapped loading (the v6 default build)
 lindera = { version = "7", default-features = false, features = ["mmap"] }
 
-# Segmenter and analysis chain, without memory-mapped loading as the default
+# Segmenter and analysis chain, without memory-mapped loading
 lindera = { version = "7", default-features = false, features = ["analysis"] }
 </code></pre>
-<p><code>memmap2</code> itself stays linked either way through <code>lindera-dictionary</code>'s
-default features; the facade's <code>mmap</code> feature only selects the default for
-<code>use_mmap</code> in <code>load_dictionary</code> and friends, and
-<code>load_dictionary_with_options(uri, true)</code> works without it.</p>
+<p>Without <code>mmap</code>, memory-mapped loading is not built at all: <code>memmap2</code> is not
+linked, <code>load_dictionary_with_options(uri, true)</code> and the <code>use_mmap: true</code>
+configuration key read the files instead of mapping them (the tokens are the
+same), and the low-level items that map files
+(<code>lindera::dictionary::util::mmap_file</code>, <code>Data::Map</code>, the loaders'
+<code>load_mmap</code>) are not there. In 7.0.0, <code>memmap2</code> was linked either way through
+<code>lindera-dictionary</code>'s default features, and <code>use_mmap = true</code> mapped the
+files without the feature (#1414).</p>
 <h3 id="the-segmenter-is-published-as-lindera-segmenter"><a class="header" href="#the-segmenter-is-published-as-lindera-segmenter">The segmenter is published as lindera-segmenter</a></h3>
 <p>The <code>lindera</code> crate of v6 and earlier continues as <code>lindera-segmenter</code> 7.0.0,
 with the same modules (<code>dictionary</code>, <code>error</code>, <code>mode</code>, <code>segmenter</code>,

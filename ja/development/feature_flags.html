@@ -181,7 +181,7 @@
 <h2 id="コア-feature"><a class="header" href="#コア-feature">コア Feature</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>analysis</code></td><td>分析チェーン（<code>lindera::analysis</code>: character filter・token filter・<code>Tokenizer</code>）。<code>lindera-analysis</code> を再エクスポート</td><td>有効</td></tr>
-<tr><td><code>mmap</code></td><td>ファイルシステム辞書のメモリマップ読み込みをデフォルトにする（<code>use_mmap</code>）。<code>memmap2</code> 自体は常にリンクされる</td><td>有効</td></tr>
+<tr><td><code>mmap</code></td><td>ファイルシステム辞書のメモリマップ読み込み。<code>use_mmap</code> のデフォルト値にもなる。無効にすると <code>memmap2</code> はリンクされず、<code>use_mmap = true</code> でもファイルを読み込む</td><td>有効</td></tr>
 <tr><td><code>train</code></td><td>CRF ベースの辞書学習（<code>lindera-trainer</code> に依存。<code>lindera::dictionary::trainer</code>）</td><td>下記参照</td></tr>
 </tbody></table>
 </div>
