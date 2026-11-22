@@ -57,16 +57,14 @@ use crate::error::{LinderaError, LinderaErrorKind};
 // Low-level building blocks of `lindera-dictionary`, exposed inside this
 // module so facade users reach them as
 // `lindera::dictionary::core::prefix_dictionary::PrefixDictionary` and
-// `lindera::dictionary::builder::DictionaryBuilder`. `no_inline` keeps
-// rustdoc from duplicating the whole crate under `dictionary`.
+// `lindera::dictionary::builder::DictionaryBuilder`. rustdoc inlines them, so
+// that they have pages under those paths: it does not link a `no_inline`
+// re-export inside a module that another crate (`lindera`) inlines (#1415).
 // `break_characters` and `whitespace` give the types of the public fields
 // of `LatticeOptions` and of `Segmenter::break_characters`. `assets` is left
 // out: it serves the build scripts of the dictionary crates.
-#[doc(no_inline)]
 pub use lindera_dictionary::dictionary as core;
-#[doc(no_inline)]
 pub use lindera_dictionary::embedded_dictionary;
-#[doc(no_inline)]
 pub use lindera_dictionary::{
     break_characters, builder, error, loader, mode, nbest, space_penalty, util, viterbi, whitespace,
 };
@@ -364,8 +362,11 @@ pub fn load_embedded_dictionary(kind: DictionaryKind) -> LinderaResult<Dictionar
 }
 
 /// Load a dictionary from a URI (`embedded://<kind>`, `file://<path>`) or a
-/// bare filesystem path, always doing a plain file read for filesystem
-/// dictionaries (no memory mapping).
+/// bare filesystem path.
+///
+/// Filesystem dictionaries are memory-mapped when the `mmap` feature is on
+/// (the default), and read into memory otherwise. To choose, use
+/// [`load_dictionary_with_options`].
 ///
 /// # Arguments
 ///
