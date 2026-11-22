@@ -14377,15 +14377,22 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <h2 id="lindera-のリリース"><a class="header" href="#lindera-のリリース">Lindera のリリース</a></h2>
 <ol>
 <li>pull request でバージョンを上げ（<code>scripts/bump-up-version.sh &lt;バージョン&gt;</code>）、マージします。</li>
-<li>リリースのタグ（<code>v&lt;バージョン&gt;</code>）を打ちます。<code>release.yml</code> は次の順に進めます。
+<li>必要なら、<code>main</code> で <code>release.yml</code> を手動で実行します（<code>workflow_dispatch</code>）。この dry run は、リリースの全テストと全ビルドを実行し、成果物を集めて、欠けがないことを確かめます（<code>scripts/check_release_assets.sh</code>）。アップロードも公開もしません。</li>
+<li>リリースのタグ（<code>v&lt;バージョン&gt;</code>）を打ちます。<code>release.yml</code> は次の順に進めます。どの手順も、前の手順が通ってから始まります（<a href="https://github.com/lindera/lindera/issues/1413">#1413</a>）。
 <ol>
-<li>辞書をソースからビルドし、そのアーカイブをリリースに上げます（上のとおり）。</li>
+<li>テストを実行し、すべての成果物をビルドします。辞書（上のとおりソースから）、CLI のバイナリ、wheel と sdist、gem、PIE のバイナリ、WASM のパッケージ、Node.js のバイナリです。</li>
+<li>リリースを下書きで作り、成果物を上げます。</li>
+<li>リリースを公開します。辞書のアーカイブに公開の URL が付きます。</li>
 <li>アーカイブをもう一度ダウンロードし、各辞書クレートの <code>prebuilt.json</code> に、そのアーカイブの SHA-256 を書きます（<code>scripts/write_dictionary_pins.sh</code>）。</li>
 <li><code>lindera-ipadic</code> を <code>embed-ipadic</code> 付きでビルドし、固定したアーカイブのダウンロードと照合が通ることを確かめます。固定が働かないクレートを公開しないためです。</li>
 <li>クレートを公開します。辞書クレートの <code>prebuilt.json</code> は commit しないので、辞書クレートは <code>cargo publish --allow-dirty</code> で公開します。</li>
+<li>gem をインストールして、トークナイズを試します。gem は、公開したばかりのクレートでコンパイルされます。</li>
+<li>PyPI、npm、RubyGems に公開します。</li>
 </ol>
 </li>
 </ol>
+<p>失敗したジョブは、実行し直せます。レジストリにすでにあるバージョンは飛ばし、公開済みのリリースの成果物は置き換えません。</p>
+<p>RubyGems には API キーで公開します。リリースのときは、アカウントの多要素認証のレベルを「UI and gem signin」にしておきます。「UI and API」では <code>gem push</code> がワンタイムパスワードを求め、ジョブが失敗します。</p>
 <p>タグの前に公開や固定をする手順はありません。辞書、そのソースのアーカイブ、辞書フォーマットを変えても、それだけのための手順は要らず、次のリリースで公開したクレートに入ります。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="貢献ガイド"><a class="header" href="#貢献ガイド">貢献ガイド</a></h1>
 <p>Lindera への貢献に興味をお持ちいただきありがとうございます。このページでは、貢献を始めるためのガイドラインを紹介します。</p>
