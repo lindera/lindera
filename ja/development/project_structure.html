@@ -229,7 +229,7 @@
 <h4 id="lindera-analysis"><a class="header" href="#lindera-analysis"><code>lindera-analysis</code></a></h4>
 <p><code>lindera-segmenter</code> の上に構築されたLucene風の分析チェーンです（ファサード経由では <code>lindera::analysis</code> として利用します）。文字フィルタ、トークンフィルタ、およびそれらを <code>Segmenter</code> の周りで組み合わせる <code>Tokenizer</code> を提供します。</p>
 <h4 id="lindera-dependency"><a class="header" href="#lindera-dependency"><code>lindera-dependency</code></a></h4>
-<p>日本語の文節の係り受け解析です。開発中で、まだ公開していません（<a href="https://github.com/lindera/lindera/issues/1417">#1417</a>）。今は、解析の土台になる型（形態素の trait、文節、文）、CaboCha のラティス形式（<code>cabocha -f1</code>）の読み書き、係り受けの木の検査だけがあります。workspace のほかのクレートには依存せず、<code>wasm32-unknown-unknown</code> 向けにビルドできます（<code>make check-lindera-dependency</code>）。</p>
+<p>日本語の文節の係り受け解析です。開発中で、まだ公開していません（<a href="https://github.com/lindera/lindera/issues/1417">#1417</a>）。今は、解析の土台になる型（形態素の trait、文節、文）、CaboCha のラティス形式（<code>cabocha -f1</code>）の読み書き、係り受けの木の検査があります。既定のビルドは workspace のほかのクレートに依存せず、<code>wasm32-unknown-unknown</code> 向けにビルドできます（<code>make check-lindera-dependency</code>）。<code>train</code> feature を付けると、<code>lindera-dependency convert</code> コマンドも入ります。UD Japanese-GSD のような係り受けのコーパスを <code>lindera-segmenter</code> で解析し直して、学習データを作ります（クレートの README を参照）。</p>
 <h4 id="lindera-cli"><a class="header" href="#lindera-cli"><code>lindera-cli</code></a></h4>
 <p>トークナイズ、辞書学習、エクスポート、ビルドのためのコマンドラインインターフェースです。デフォルトで <code>train</code> feature が有効です。</p>
 <h4 id="lindera-binding"><a class="header" href="#lindera-binding"><code>lindera-binding</code></a></h4>
