@@ -35,10 +35,19 @@ crates.io に公開した辞書クレートには、`metadata.json` の隣に `p
 ## Lindera のリリース
 
 1. pull request でバージョンを上げ（`scripts/bump-up-version.sh <バージョン>`）、マージします。
-2. リリースのタグ（`v<バージョン>`）を打ちます。`release.yml` は次の順に進めます。
-   1. 辞書をソースからビルドし、そのアーカイブをリリースに上げます（上のとおり）。
-   2. アーカイブをもう一度ダウンロードし、各辞書クレートの `prebuilt.json` に、そのアーカイブの SHA-256 を書きます（`scripts/write_dictionary_pins.sh`）。
-   3. `lindera-ipadic` を `embed-ipadic` 付きでビルドし、固定したアーカイブのダウンロードと照合が通ることを確かめます。固定が働かないクレートを公開しないためです。
-   4. クレートを公開します。辞書クレートの `prebuilt.json` は commit しないので、辞書クレートは `cargo publish --allow-dirty` で公開します。
+2. 必要なら、`main` で `release.yml` を手動で実行します（`workflow_dispatch`）。この dry run は、リリースの全テストと全ビルドを実行し、成果物を集めて、欠けがないことを確かめます（`scripts/check_release_assets.sh`）。アップロードも公開もしません。
+3. リリースのタグ（`v<バージョン>`）を打ちます。`release.yml` は次の順に進めます。どの手順も、前の手順が通ってから始まります（[#1413](https://github.com/lindera/lindera/issues/1413)）。
+   1. テストを実行し、すべての成果物をビルドします。辞書（上のとおりソースから）、CLI のバイナリ、wheel と sdist、gem、PIE のバイナリ、WASM のパッケージ、Node.js のバイナリです。
+   2. リリースを下書きで作り、成果物を上げます。
+   3. リリースを公開します。辞書のアーカイブに公開の URL が付きます。
+   4. アーカイブをもう一度ダウンロードし、各辞書クレートの `prebuilt.json` に、そのアーカイブの SHA-256 を書きます（`scripts/write_dictionary_pins.sh`）。
+   5. `lindera-ipadic` を `embed-ipadic` 付きでビルドし、固定したアーカイブのダウンロードと照合が通ることを確かめます。固定が働かないクレートを公開しないためです。
+   6. クレートを公開します。辞書クレートの `prebuilt.json` は commit しないので、辞書クレートは `cargo publish --allow-dirty` で公開します。
+   7. gem をインストールして、トークナイズを試します。gem は、公開したばかりのクレートでコンパイルされます。
+   8. PyPI、npm、RubyGems に公開します。
+
+失敗したジョブは、実行し直せます。レジストリにすでにあるバージョンは飛ばし、公開済みのリリースの成果物は置き換えません。
+
+RubyGems には API キーで公開します。リリースのときは、アカウントの多要素認証のレベルを「UI and gem signin」にしておきます。「UI and API」では `gem push` がワンタイムパスワードを求め、ジョブが失敗します。
 
 タグの前に公開や固定をする手順はありません。辞書、そのソースのアーカイブ、辞書フォーマットを変えても、それだけのための手順は要らず、次のリリースで公開したクレートに入ります。

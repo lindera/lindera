@@ -55,6 +55,9 @@ on:
 jobs:
   test:
     runs-on: ${{ inputs.runs-on }}
+    # A job that calls this workflow cannot set a timeout of its own. The
+    # longest test takes about 7 minutes (#1413).
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
