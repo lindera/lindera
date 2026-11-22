@@ -274,8 +274,8 @@ impl<M> Sentence<M> {
                 continue;
             };
             let end = first_head.min(count);
-            for second in first + 1..end {
-                if let Some(second_head) = self.bunsetsu[second].head
+            for (second, inner) in self.bunsetsu.iter().enumerate().take(end).skip(first + 1) {
+                if let Some(second_head) = inner.head
                     && second_head > first_head
                 {
                     violations.push(Violation::CrossingArcs { first, second });
