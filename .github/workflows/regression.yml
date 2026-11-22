@@ -73,6 +73,7 @@ jobs:
       lindera-wasm: ${{ steps.filter.outputs.lindera-wasm }}
       docs: ${{ steps.filter.outputs.docs }}
       scripts: ${{ steps.filter.outputs.scripts }}
+      check-memmap2: ${{ steps.filter.outputs.check-memmap2 }}
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -431,6 +432,11 @@ jobs:
               - 'composer.json'
               - '.github/workflows/regression.yml'
               - *shared-make
+            # The check itself; the manifests it checks are in the lindera
+            # filter, which check-memmap2 also follows.
+            check-memmap2:
+              - 'scripts/check_memmap2.sh'
+              - *shared-make
 
   test-lindera-crf:
     name: Test lindera-crf
@@ -481,9 +487,11 @@ jobs:
       runs-on: ${{ matrix.platform.runner }}
       lint: true
 
-  # The workspace dependency on lindera-dictionary keeps its default features,
-  # so every other job builds it with `mmap`. This one tests and lints it
-  # without, as the jobs below do for lindera-segmenter and lindera (#1370).
+  # lindera-dictionary's own jobs build it with its default features, `mmap`
+  # among them; the jobs of the crates above it build it with `mmap` only when
+  # their own `mmap` feature is on, as the workspace dependency on it has no
+  # default features (#1414). This one tests and lints it without, as the jobs
+  # below do for lindera-segmenter and lindera (#1370).
   test-lindera-dictionary-no-default-features:
     name: Test lindera-dictionary (no default features)
     needs: [test-lindera-dictionary, detect-changes]
@@ -825,6 +833,31 @@ jobs:
 
       - name: Run the tests of lindera-dictionary
         run: cargo test -p lindera-dictionary --features ctxfreq
+
+  # `memmap2` is linked only into the builds with the `mmap` feature, as the
+  # workspace dependency on lindera-dictionary has no default features
+  # (#1414); a dependency that keeps them would bring it back into every
+  # build. This checks the dependency graphs of the builds with and without
+  # `mmap` (scripts/check_memmap2.sh). It builds nothing, so it does not wait
+  # for the tests.
+  check-memmap2:
+    name: Check memmap2 linkage
+    needs: [detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' ||
+      needs.detect-changes.outputs.lindera == 'true' ||
+      needs.detect-changes.outputs.check-memmap2 == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+
+      - name: Check memmap2 linkage
+        run: make check-memmap2
 
   # Reproduces the docs.rs build of the facade: nightly, `--cfg docsrs` (see
   # `[package.metadata.docs.rs]` in lindera/Cargo.toml) and all features.

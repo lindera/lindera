@@ -92,6 +92,16 @@ cargo clippy -- -D warnings
 >
 > `make lint-scripts` は、どのバインディングにも属さない手書きのファイルを、CI の `Lint scripts` ジョブと同じく lint します。対象は、バインディングが共有する `scripts/benchmarks/` のベンチマーク一式と、docs が読み込む JavaScript（`docs/mermaid-init.js`）です。同じ固定版のツールを使い、各ファイルにはその言語のバインディングの規則を当てるので、4 つの言語のツールチェーンがすべて必要です。`make lint` は、クレートの後にこれも実行します。
 
+### memmap2 のリンク
+
+`memmap2` が `mmap` feature のあるビルドにだけリンクされることを確かめます:
+
+```bash
+make check-memmap2
+```
+
+> 注意: CI は `Check memmap2 linkage` ジョブで `make check-memmap2` を実行します。`lindera`、`lindera-segmenter`、`lindera-trainer` の `mmap` ありとなしのビルドについて `cargo tree -i memmap2` を実行します（`scripts/check_memmap2.sh`）。ワークスペースは `lindera-dictionary` にデフォルト feature なしで依存します。デフォルト feature を残した依存があると、すべてのビルドに `memmap2` がリンクされます（#1414）。
+
 ## ドキュメント
 
 ### API ドキュメント

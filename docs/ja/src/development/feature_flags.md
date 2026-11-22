@@ -7,7 +7,7 @@ Lindera は Cargo の feature フラグを使用して、オプション機能�
 | Feature | 説明 | デフォルト |
 | --- | --- | --- |
 | `analysis` | 分析チェーン（`lindera::analysis`: character filter・token filter・`Tokenizer`）。`lindera-analysis` を再エクスポート | 有効 |
-| `mmap` | ファイルシステム辞書のメモリマップ読み込みをデフォルトにする（`use_mmap`）。`memmap2` 自体は常にリンクされる | 有効 |
+| `mmap` | ファイルシステム辞書のメモリマップ読み込み。`use_mmap` のデフォルト値にもなる。無効にすると `memmap2` はリンクされず、`use_mmap = true` でもファイルを読み込む | 有効 |
 | `train` | CRF ベースの辞書学習（`lindera-trainer` に依存。`lindera::dictionary::trainer`） | 下記参照 |
 
 - `analysis` と `mmap` は `lindera` ファサードでどちらもデフォルト有効です。

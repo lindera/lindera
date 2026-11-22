@@ -258,14 +258,18 @@ the default for filesystem dictionaries (as in v6, where
 # Segmenter with memory-mapped loading (the v6 default build)
 lindera = { version = "7", default-features = false, features = ["mmap"] }
 
-# Segmenter and analysis chain, without memory-mapped loading as the default
+# Segmenter and analysis chain, without memory-mapped loading
 lindera = { version = "7", default-features = false, features = ["analysis"] }
 ```
 
-`memmap2` itself stays linked either way through `lindera-dictionary`'s
-default features; the facade's `mmap` feature only selects the default for
-`use_mmap` in `load_dictionary` and friends, and
-`load_dictionary_with_options(uri, true)` works without it.
+Without `mmap`, memory-mapped loading is not built at all: `memmap2` is not
+linked, `load_dictionary_with_options(uri, true)` and the `use_mmap: true`
+configuration key read the files instead of mapping them (the tokens are the
+same), and the low-level items that map files
+(`lindera::dictionary::util::mmap_file`, `Data::Map`, the loaders'
+`load_mmap`) are not there. In 7.0.0, `memmap2` was linked either way through
+`lindera-dictionary`'s default features, and `use_mmap = true` mapped the
+files without the feature (#1414).
 
 ### The segmenter is published as lindera-segmenter
 

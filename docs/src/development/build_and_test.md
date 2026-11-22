@@ -92,6 +92,16 @@ cargo clippy -- -D warnings
 >
 > `make lint-scripts` lints the hand-written files that belong to no binding, as the `Lint scripts` CI job does: the benchmark harness in `scripts/benchmarks/`, which the bindings share, and the JavaScript the docs load (`docs/mermaid-init.js`). It runs the same pinned tools, and checks each file with the rules of the binding written in its language, so it needs all four toolchains. `make lint` runs it after the crates.
 
+### memmap2 Linkage
+
+Check that `memmap2` is linked only into the builds with the `mmap` feature:
+
+```bash
+make check-memmap2
+```
+
+> Note: CI runs `make check-memmap2` in the `Check memmap2 linkage` job. It runs `cargo tree -i memmap2` for builds of `lindera`, `lindera-segmenter` and `lindera-trainer` with and without `mmap` (`scripts/check_memmap2.sh`). The workspace depends on `lindera-dictionary` without its default features; a dependency on it that kept them would link `memmap2` into every build (#1414).
+
 ## Documentation
 
 ### API Documentation

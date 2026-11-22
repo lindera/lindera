@@ -8,8 +8,10 @@ use std::borrow::Cow;
 use std::fs;
 use std::path::Path;
 
+use lindera::dictionary::util::Data;
 use lindera::dictionary::{
-    DictionaryBuilder, Metadata, load_dictionary_with_options, load_fs_dictionary_with_options,
+    Dictionary, DictionaryBuilder, Metadata, load_dictionary_with_options,
+    load_fs_dictionary_with_options,
 };
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
@@ -133,6 +135,79 @@ fn mmap_loading_borrows_the_connection_cost_matrix() {
         mmapped.connection_cost_matrix.costs(),
         plain.connection_cost_matrix.costs(),
         "borrowed and copied matrices must hold identical costs"
+    );
+}
+
+/// Loads the dictionary at `dict_dir` with `use_mmap = true` through each
+/// public path that takes it: a filesystem path, a URI and the `use_mmap`
+/// key of a segmenter configuration.
+///
+/// # Arguments
+///
+/// * `dict_dir` - The directory of a built dictionary.
+///
+/// # Returns
+///
+/// The name of each path with the dictionary it loaded.
+fn load_with_mmap_requested(dict_dir: &Path) -> Vec<(&'static str, Dictionary)> {
+    let uri = dict_dir.to_str().unwrap();
+    let config = serde_json::json!({
+        "dictionary": uri,
+        "mode": "normal",
+        "use_mmap": true,
+    });
+    vec![
+        (
+            "load_fs_dictionary_with_options",
+            load_fs_dictionary_with_options(dict_dir, true).unwrap(),
+        ),
+        (
+            "load_dictionary_with_options",
+            load_dictionary_with_options(uri, true).unwrap(),
+        ),
+        (
+            "Segmenter::from_config",
+            Segmenter::from_config(&config).unwrap().dictionary,
+        ),
+    ]
+}
+
+/// With the `mmap` feature, `use_mmap = true` maps the files of the prefix
+/// dictionary on every path that takes it.
+#[test]
+#[cfg(feature = "mmap")]
+fn use_mmap_maps_the_files_with_the_mmap_feature() {
+    let dict = build_dictionary();
+
+    let read: Vec<&str> = load_with_mmap_requested(dict.path())
+        .into_iter()
+        .filter(|(_, dictionary)| !matches!(dictionary.prefix_dictionary.vals_data, Data::Map(_)))
+        .map(|(path, _)| path)
+        .collect();
+    assert!(
+        read.is_empty(),
+        "with the mmap feature, use_mmap = true must map the files, but these paths read them: {read:?}"
+    );
+}
+
+/// Without the `mmap` feature, `memmap2` is not linked, and `use_mmap =
+/// true` reads the files on every path that takes it (#1414). Before #1414,
+/// the workspace dependency on lindera-dictionary kept its default `mmap`
+/// feature, so these paths mapped the files even without the feature of
+/// `lindera`.
+#[test]
+#[cfg(not(feature = "mmap"))]
+fn use_mmap_reads_the_files_without_the_mmap_feature() {
+    let dict = build_dictionary();
+
+    let mapped: Vec<&str> = load_with_mmap_requested(dict.path())
+        .into_iter()
+        .filter(|(_, dictionary)| !matches!(dictionary.prefix_dictionary.vals_data, Data::Vec(_)))
+        .map(|(path, _)| path)
+        .collect();
+    assert!(
+        mapped.is_empty(),
+        "without the mmap feature, use_mmap = true must read the files, but these paths did not: {mapped:?}"
     );
 }
 

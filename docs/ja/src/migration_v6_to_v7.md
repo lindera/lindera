@@ -241,14 +241,17 @@ lindera-analysis = "6"
 # メモリマップ読み込み付きのセグメンター（v6 のデフォルトビルドと同じ）
 lindera = { version = "7", default-features = false, features = ["mmap"] }
 
-# セグメンターと分析チェーン。メモリマップ読み込みはデフォルトにしない
+# セグメンターと分析チェーン。メモリマップ読み込みなし
 lindera = { version = "7", default-features = false, features = ["analysis"] }
 ```
 
-`memmap2` 自体は `lindera-dictionary` のデフォルト feature を通じてどちらの場合も
-リンクされます。ファサードの `mmap` feature は `load_dictionary` などの
-`use_mmap` のデフォルト値を決めるだけで、
-`load_dictionary_with_options(uri, true)` は feature なしでも動作します。
+`mmap` なしでは、メモリマップ読み込みそのものが組み込まれません。`memmap2` は
+リンクされず、`load_dictionary_with_options(uri, true)` や設定の
+`use_mmap: true` は、ファイルをメモリマップせずに読み込みます（トークンは同じです）。
+ファイルをメモリマップする低水準の項目（`lindera::dictionary::util::mmap_file`、
+`Data::Map`、ローダーの `load_mmap`）もありません。7.0.0 では、`memmap2` は
+`lindera-dictionary` のデフォルト feature を通じてどちらの場合もリンクされ、
+feature なしでも `use_mmap = true` でメモリマップしていました（#1414）。
 
 ### セグメンターは `lindera-segmenter` として公開
 

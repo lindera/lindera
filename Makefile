@@ -307,6 +307,9 @@ check-docs: ## Check rustdoc warnings in the cargo crates (public and private it
 	$(CHECK_DOCS) --lib --document-private-items
 	$(CHECK_DOCS) --bins
 
+check-memmap2: ## Check that memmap2 is linked only into the builds with the mmap feature, as CI does
+	scripts/check_memmap2.sh
+
 # The language bindings are left out of check-docs because building each one
 # needs its language's toolchain, so each gets a target of its own, which that
 # binding's CI job runs (#1156). The same two passes as the libraries above.

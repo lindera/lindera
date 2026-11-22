@@ -85,7 +85,7 @@ token_filters:
 | `user_dictionary` | string | *(なし)* | ユーザー辞書のパス |
 | `keep_whitespace` | bool | `false` | 空白トークンを出力する。このとき空白はラティスにも残るため、他のトークンも、MeCab と同様に空白を読み飛ばすデフォルトの出力と変わることがある |
 | `skip_whitespace` | bool | *(辞書の設定: `true`、SudachiDict は `false`)* | `keep_whitespace` が false のとき、MeCab と同様に空白をラティス上で読み飛ばし、前後の語を直接接続する。`false` で空白を独立したノード（空白の見出し語か `SPACE` の未知語）としてラティスに残す（v7 より前の動作）。そのノードの連接コストがすべて 0 の ko-dic では、空白のたびに連接の文脈が途切れる。省略または `null` で辞書の `metadata.json` のデフォルトを使う。[Segmenter](../lindera/segmenter.md#空白文字の扱い) を参照 |
-| `use_mmap` | bool | `mmap` feature が有効なとき on（デフォルト） | 辞書をメモリマップする。ファイルシステム辞書（`embedded://` ではない辞書）にのみ意味がある |
+| `use_mmap` | bool | `mmap` feature が有効なとき on（デフォルト） | 辞書をメモリマップする。ファイルシステム辞書（`embedded://` ではない辞書）にのみ意味があり、`mmap` feature なしでは無視される |
 | `max_grouping_len` | integer | *(無制限)* | 未知語グルーピングの上限（**先頭の 1 文字を超えた**文字数）。MeCab の `max-grouping-size` に相当する（MeCab のデフォルトは 24）。上限は各位置で判定され、上限を超えるランはその位置ではグルーピングされず、1 文字候補（および候補ラダーと辞書語）が残る。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になる。キーを省略するか `0` を指定すると無制限になる |
 | `unknown_word_ladder` | bool | `true` | MeCab や Vibrato と同様に、文字の既定の文字種の `char.def` の `LENGTH` フィールドまでの短い未知語候補も生成する。`false` を指定すると v6 より前と同じくこれらの候補を作らない。ただし、グルーピングした未知語の内側から始まる未知語など、その後の変更による出力の違いは残る。[Segmenter](../lindera/segmenter.md#未知語のグルーピング) を参照 |
 | `break_characters` | string | `"・"` | 区切り文字（文字列の各文字）。どのモードでも未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたがない（ユーザー辞書の語と、区切り文字だけからなる語は残る）。空の文字列で MeCab と同じ分割になり、`ジョン・レノン` は区切っても `レノン・ジョン` は 1 語のまま。[区切り文字](../lindera/segmenter.md#区切り文字)を参照 |
