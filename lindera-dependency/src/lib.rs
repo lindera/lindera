@@ -25,6 +25,11 @@
 //!   assume, with one root that is the last bunsetsu, every head to the
 //!   right, and no crossing arcs.
 //!
+//! With the `train` feature, the `corpus` module and the
+//! `lindera-dependency convert` command make training data from a dependency
+//! corpus such as UD Japanese-GSD: bunsetsu dependencies on the morphemes of
+//! a dictionary, in the lattice format.
+//!
 //! # Examples
 //!
 //! Read a sentence in the lattice format, look at its bunsetsu, and write it
@@ -89,6 +94,8 @@
 //! # Ok::<(), lindera_dependency::Error>(())
 //! ```
 
+#[cfg(feature = "train")]
+pub mod corpus;
 pub mod error;
 pub mod lattice;
 pub mod morpheme;
@@ -96,4 +103,4 @@ pub mod sentence;
 
 pub use error::{Error, Result};
 pub use morpheme::Morpheme;
-pub use sentence::{ArcType, Bunsetsu, Sentence, Violation};
+pub use sentence::{ArcType, Bunsetsu, Sentence, Violation, tree_violations};

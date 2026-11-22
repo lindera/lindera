@@ -397,11 +397,16 @@ jobs:
               - 'resources/user_dict/**'
               - *shared-workspace
               - *shared-make
-            # lindera-dependency depends on no other crate of the workspace.
+            # The default build of lindera-dependency depends on no other
+            # crate of the workspace; its command (`train`) tokenizes with
+            # lindera-segmenter and, in the tests, the embedded IPADIC.
             # check-lindera-dependency follows this filter too, hence the
             # script and the Makefile.
             lindera-dependency:
               - 'lindera-dependency/**'
+              - 'lindera-segmenter/**'
+              - 'lindera-dictionary/**'
+              - 'lindera-ipadic/**'
               - 'scripts/check_dependency_crate.sh'
               - *shared-workspace
               - *shared-crate-workflow
@@ -484,6 +489,22 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-dependency
+      lint: true
+
+  # The job above tests and lints the default build, which has no
+  # dependency. This one does it with `train`: the corpus conversion and
+  # the `lindera-dependency` command, which tokenizes with IPADIC (#1419).
+  test-lindera-dependency-train:
+    name: Test lindera-dependency (train)
+    needs: [test-lindera-dependency, test-lindera-segmenter, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-dependency == 'true')
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-dependency
+      features: "--features train,embed-ipadic"
+      dictionaries: "ipadic"
       lint: true
 
   # lindera-dependency takes any sequence of morphemes: it has to build

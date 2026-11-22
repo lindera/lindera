@@ -15,7 +15,30 @@ license = { workspace = true }
 # publishes every crate at one version, and this one would be of no use yet.
 publish = false
 
-# No dependency: the core takes any sequence of morphemes, and has to build
-# without a tokenizer or a dictionary, for wasm32-unknown-unknown as well
-# (`make check-lindera-dependency`).
+[features]
+default = []
+# The tools that make training data (#1419): the `corpus` module and the
+# `lindera-dependency` command, which tokenizes with Lindera.
+train = ["dep:clap", "dep:lindera-segmenter"]
+# Embeds IPADIC in the command, for `--dict embedded://ipadic`.
+embed-ipadic = ["train", "lindera-segmenter/embed-ipadic"]
+
+# No dependency in the default build: the core takes any sequence of
+# morphemes, and has to build without a tokenizer or a dictionary, for
+# wasm32-unknown-unknown as well (`make check-lindera-dependency`).
+#
+# Behind `train`, the command depends on lindera-segmenter and on nothing
+# above it: lindera-analysis is to depend on this crate for the token filter
+# (#1417), so this crate must never depend on lindera-analysis or on the
+# lindera facade.
 [dependencies]
+clap = { version = "4.6.4", features = ["derive", "cargo"], optional = true }
+lindera-segmenter = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile = "3.27.0"
+
+[[bin]]
+name = "lindera-dependency"
+path = "src/bin/lindera-dependency.rs"
+required-features = ["train"]

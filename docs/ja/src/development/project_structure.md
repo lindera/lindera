@@ -71,7 +71,7 @@ lindera/
 
 #### `lindera-dependency`
 
-日本語の文節の係り受け解析です。開発中で、まだ公開していません（[#1417](https://github.com/lindera/lindera/issues/1417)）。今は、解析の土台になる型（形態素の trait、文節、文）、CaboCha のラティス形式（`cabocha -f1`）の読み書き、係り受けの木の検査だけがあります。workspace のほかのクレートには依存せず、`wasm32-unknown-unknown` 向けにビルドできます（`make check-lindera-dependency`）。
+日本語の文節の係り受け解析です。開発中で、まだ公開していません（[#1417](https://github.com/lindera/lindera/issues/1417)）。今は、解析の土台になる型（形態素の trait、文節、文）、CaboCha のラティス形式（`cabocha -f1`）の読み書き、係り受けの木の検査があります。既定のビルドは workspace のほかのクレートに依存せず、`wasm32-unknown-unknown` 向けにビルドできます（`make check-lindera-dependency`）。`train` feature を付けると、`lindera-dependency convert` コマンドも入ります。UD Japanese-GSD のような係り受けのコーパスを `lindera-segmenter` で解析し直して、学習データを作ります（クレートの README を参照）。
 
 #### `lindera-cli`
 

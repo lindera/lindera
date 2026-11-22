@@ -101,6 +101,7 @@ FEATURES_lindera-segmenter      := --features embed-ipadic,embed-ko-dic,train
 FEATURES_lindera                := --features embed-ipadic,embed-ko-dic,train
 FEATURES_lindera-analysis       := --features embed-ipadic,embed-ko-dic
 FEATURES_lindera-cli            := --features train
+FEATURES_lindera-dependency     := --features train,embed-ipadic
 
 # Per-target feature overrides (where test/build differ). Lint uses the test
 # features, as it lints the test code too (see test_features).
