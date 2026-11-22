@@ -186,6 +186,7 @@
 ├── lindera/                # Facade crate (re-exports lindera-segmenter and lindera-analysis); tests, examples, benches
 ├── lindera-segmenter/      # Morphological segmentation library (Segmenter API)
 ├── lindera-analysis/       # Analysis chain (character/token filters, tokenizer)
+├── lindera-dependency/     # Bunsetsu dependency analysis (under development, not published)
 ├── lindera-cli/            # CLI tool
 ├── lindera-binding/        # FFI-independent helpers shared by the language bindings
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
@@ -227,6 +228,8 @@
 <p>The facade crate and the single dependency for Rust users. It re-exports every module of <code>lindera-segmenter</code> and, with the default <code>analysis</code> feature, <code>lindera-analysis</code> as <code>lindera::analysis</code>. The directory also holds the integration tests, examples, and benches that exercise the public paths.</p>
 <h4 id="lindera-analysis"><a class="header" href="#lindera-analysis"><code>lindera-analysis</code></a></h4>
 <p>Lucene-style analysis chain on top of <code>lindera-segmenter</code> (used as <code>lindera::analysis</code> through the facade): character filters, token filters, and the <code>Tokenizer</code> that composes them around a <code>Segmenter</code>.</p>
+<h4 id="lindera-dependency"><a class="header" href="#lindera-dependency"><code>lindera-dependency</code></a></h4>
+<p>Japanese bunsetsu dependency analysis, under development and not published yet (<a href="https://github.com/lindera/lindera/issues/1417">#1417</a>). So far it holds the types the analysis is built on (a morpheme trait, bunsetsu and sentences), the reading and writing of the lattice format of CaboCha (<code>cabocha -f1</code>), and a check of the dependency tree. It depends on no other crate of the workspace and builds for <code>wasm32-unknown-unknown</code> (<code>make check-lindera-dependency</code>).</p>
 <h4 id="lindera-cli"><a class="header" href="#lindera-cli"><code>lindera-cli</code></a></h4>
 <p>Command-line interface for tokenization, dictionary training, export, and building. The <code>train</code> feature is enabled by default.</p>
 <h4 id="lindera-binding"><a class="header" href="#lindera-binding"><code>lindera-binding</code></a></h4>
