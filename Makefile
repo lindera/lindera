@@ -296,7 +296,10 @@ lint-scripts: setup-ruff ## Lint the scripts outside the crates
 # target directory keeps those dummies, and the rebuild of the real
 # dictionaries after them, out of `target/`. The build scripts ignore
 # LINDERA_BUILD_DICTIONARY_CACHE_DIR under `DOCS_RS`, so the dummies do not
-# land in a shared cache either (#1157).
+# land in a shared cache either (#1157). After the first pass, the page of
+# `lindera::dictionary::core` must exist: the low-level modules that
+# `lindera::dictionary` re-exports have pages of their own (#1415). The check
+# comes before the binaries' pass, which replaces `doc/lindera`.
 CHECK_DOCS_TARGET_DIR ?= target/check-docs
 CHECK_DOCS = DOCS_RS=1 RUSTDOCFLAGS="-D warnings" \
 	cargo doc --no-deps --all-features --target-dir $(CHECK_DOCS_TARGET_DIR) \
@@ -304,6 +307,7 @@ CHECK_DOCS = DOCS_RS=1 RUSTDOCFLAGS="-D warnings" \
 
 check-docs: ## Check rustdoc warnings in the cargo crates (public and private items), as CI does
 	$(CHECK_DOCS) --lib
+	test -f $(CHECK_DOCS_TARGET_DIR)/doc/lindera/dictionary/core/index.html
 	$(CHECK_DOCS) --lib --document-private-items
 	$(CHECK_DOCS) --bins
 
@@ -501,16 +505,21 @@ define PUBLISH_CRATE
 	fi
 endef
 
-# Crates published to crates.io, in dependency order. Each call is a separate
-# recipe line (the multi-line PUBLISH_CRATE macro cannot be folded with foreach).
+# Crates published to crates.io, in dependency order: the crates of the
+# `Publish crates` step of release.yml, in its order (the binding crates have
+# `publish = false`). The release workflow is what publishes a release: it
+# also writes the `prebuilt.json` of each dictionary crate, which pins the
+# dictionary archive of the release, and this target does not. Each call is a
+# separate recipe line (the multi-line PUBLISH_CRATE macro cannot be folded
+# with foreach).
 publish: ## Publish packages to crates.io
 	$(call PUBLISH_CRATE,lindera-crf,$(call crate_version,lindera-crf))
 	$(call PUBLISH_CRATE,lindera-dictionary,$(call crate_version,lindera-dictionary))
 	$(call PUBLISH_CRATE,lindera-trainer,$(call crate_version,lindera-trainer))
 	$(call PUBLISH_CRATE,lindera-cc-cedict,$(call crate_version,lindera-cc-cedict))
+	$(call PUBLISH_CRATE,lindera-jieba,$(call crate_version,lindera-jieba))
 	$(call PUBLISH_CRATE,lindera-ipadic,$(call crate_version,lindera-ipadic))
 	$(call PUBLISH_CRATE,lindera-ipadic-neologd,$(call crate_version,lindera-ipadic-neologd))
-	$(call PUBLISH_CRATE,lindera-jieba,$(call crate_version,lindera-jieba))
 	$(call PUBLISH_CRATE,lindera-ko-dic,$(call crate_version,lindera-ko-dic))
 	$(call PUBLISH_CRATE,lindera-unidic,$(call crate_version,lindera-unidic))
 	$(call PUBLISH_CRATE,lindera-unidic-cwj,$(call crate_version,lindera-unidic-cwj))
@@ -521,8 +530,3 @@ publish: ## Publish packages to crates.io
 	$(call PUBLISH_CRATE,lindera,$(LINDERA_VERSION))
 	$(call PUBLISH_CRATE,lindera-binding,$(call crate_version,lindera-binding))
 	$(call PUBLISH_CRATE,lindera-cli,$(call crate_version,lindera-cli))
-	$(call PUBLISH_CRATE,lindera-python,$(call crate_version,lindera-python))
-	$(call PUBLISH_CRATE,lindera-nodejs,$(call crate_version,lindera-nodejs))
-	$(call PUBLISH_CRATE,lindera-ruby,$(call crate_version,lindera-ruby))
-	$(call PUBLISH_CRATE,lindera-php,$(call crate_version,lindera-php))
-	$(call PUBLISH_CRATE,lindera-wasm,$(call crate_version,lindera-wasm))
