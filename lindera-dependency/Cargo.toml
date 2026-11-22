@@ -1,0 +1,21 @@
+[package]
+name = "lindera-dependency"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+description = "Japanese bunsetsu dependency analysis for Lindera."
+documentation = "https://docs.rs/lindera-dependency"
+homepage = { workspace = true }
+repository = { workspace = true }
+readme = "README.md"
+keywords = ["dependency", "parsing", "bunsetsu", "japanese", "cabocha"]
+categories = { workspace = true }
+license = { workspace = true }
+# Not published before it has a model to parse with (#1418): the workspace
+# publishes every crate at one version, and this one would be of no use yet.
+publish = false
+
+# No dependency: the core takes any sequence of morphemes, and has to build
+# without a tokenizer or a dictionary, for wasm32-unknown-unknown as well
+# (`make check-lindera-dependency`).
+[dependencies]
