@@ -23,6 +23,17 @@ pub enum Error {
     Structure(String),
     /// Reading or writing failed.
     Io(io::Error),
+    /// The input is not a CoNLL-U file the corpus conversion can read.
+    #[cfg(feature = "train")]
+    Conllu {
+        /// The number of the line, from 1.
+        line: usize,
+        /// What is wrong with the line.
+        message: String,
+    },
+    /// The tokenizer given to the corpus conversion failed.
+    #[cfg(feature = "train")]
+    Tokenizer(Box<dyn std::error::Error + Send + Sync>),
 }
 
 impl Error {
@@ -42,6 +53,24 @@ impl Error {
             message: message.into(),
         }
     }
+
+    /// Makes a [`Error::Conllu`].
+    ///
+    /// # Arguments
+    ///
+    /// * `line` - The number of the line, from 1.
+    /// * `message` - What is wrong with the line.
+    ///
+    /// # Returns
+    ///
+    /// The error.
+    #[cfg(feature = "train")]
+    pub(crate) fn conllu(line: usize, message: impl Into<String>) -> Self {
+        Error::Conllu {
+            line,
+            message: message.into(),
+        }
+    }
 }
 
 impl fmt::Display for Error {
@@ -50,6 +79,10 @@ impl fmt::Display for Error {
             Error::Format { line, message } => write!(f, "line {line}: {message}"),
             Error::Structure(message) => write!(f, "invalid sentence: {message}"),
             Error::Io(error) => write!(f, "{error}"),
+            #[cfg(feature = "train")]
+            Error::Conllu { line, message } => write!(f, "line {line}: {message}"),
+            #[cfg(feature = "train")]
+            Error::Tokenizer(error) => write!(f, "tokenizer: {error}"),
         }
     }
 }
@@ -58,6 +91,8 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::Io(error) => Some(error),
+            #[cfg(feature = "train")]
+            Error::Tokenizer(error) => Some(error.as_ref()),
             _ => None,
         }
     }

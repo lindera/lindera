@@ -1546,6 +1546,11 @@ dependencies = [
 [[package]]
 name = "lindera-dependency"
 version = "7.0.0"
+dependencies = [
+ "clap",
+ "lindera-segmenter",
+ "tempfile",
+]
 
 [[package]]
 name = "lindera-dictionary"

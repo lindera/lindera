@@ -233,58 +233,79 @@ impl<M> Sentence<M> {
     /// bunsetsu. A head that is not the index of a bunsetsu is not reported
     /// here, but by [`Sentence::check`].
     pub fn violations(&self) -> Vec<Violation> {
-        let mut violations = Vec::new();
-        let count = self.bunsetsu.len();
-        if count == 0 {
-            return violations;
-        }
+        let heads: Vec<Option<usize>> =
+            self.bunsetsu.iter().map(|bunsetsu| bunsetsu.head).collect();
+        tree_violations(&heads)
+    }
+}
 
-        let roots: Vec<usize> = (0..count)
-            .filter(|&index| self.bunsetsu[index].head.is_none())
-            .collect();
-        match roots.first() {
-            None => violations.push(Violation::NoRoot),
-            Some(&root) => {
-                if roots.len() > 1 {
-                    violations.push(Violation::MultipleRoots {
-                        roots: roots.clone(),
-                    });
-                }
-                if self.bunsetsu[count - 1].head.is_some() {
-                    violations.push(Violation::RootNotLast { root });
-                }
-            }
-        }
+/// The ways the heads of the bunsetsu of a sentence break the tree the
+/// parsers assume: one root, the root is the last bunsetsu, every head is to
+/// the right of its bunsetsu, and no two arcs cross.
+///
+/// This is [`Sentence::violations`] for bunsetsu that have no morphemes yet,
+/// as in the conversion of a corpus.
+///
+/// # Arguments
+///
+/// * `heads` - The head of each bunsetsu, from left to right: the index of
+///   another bunsetsu, or `None` for a root.
+///
+/// # Returns
+///
+/// Every violation, in the order of the list above and then of the
+/// bunsetsu; none for a valid tree, and none without bunsetsu. A head that
+/// is not the index of a bunsetsu is not reported.
+pub fn tree_violations(heads: &[Option<usize>]) -> Vec<Violation> {
+    let mut violations = Vec::new();
+    let count = heads.len();
+    if count == 0 {
+        return violations;
+    }
 
-        for (index, bunsetsu) in self.bunsetsu.iter().enumerate() {
-            if let Some(head) = bunsetsu.head
-                && head <= index
-            {
-                violations.push(Violation::HeadNotToTheRight {
-                    bunsetsu: index,
-                    head,
+    let roots: Vec<usize> = (0..count).filter(|&index| heads[index].is_none()).collect();
+    match roots.first() {
+        None => violations.push(Violation::NoRoot),
+        Some(&root) => {
+            if roots.len() > 1 {
+                violations.push(Violation::MultipleRoots {
+                    roots: roots.clone(),
                 });
             }
-        }
-
-        // Among the arcs that go to the right, two cross when one starts
-        // inside the other and ends outside it.
-        for (first, bunsetsu) in self.bunsetsu.iter().enumerate() {
-            let Some(first_head) = bunsetsu.head.filter(|&head| head > first) else {
-                continue;
-            };
-            let end = first_head.min(count);
-            for (second, inner) in self.bunsetsu.iter().enumerate().take(end).skip(first + 1) {
-                if let Some(second_head) = inner.head
-                    && second_head > first_head
-                {
-                    violations.push(Violation::CrossingArcs { first, second });
-                }
+            if heads[count - 1].is_some() {
+                violations.push(Violation::RootNotLast { root });
             }
         }
-
-        violations
     }
+
+    for (index, head) in heads.iter().enumerate() {
+        if let Some(head) = *head
+            && head <= index
+        {
+            violations.push(Violation::HeadNotToTheRight {
+                bunsetsu: index,
+                head,
+            });
+        }
+    }
+
+    // Among the arcs that go to the right, two cross when one starts
+    // inside the other and ends outside it.
+    for (first, head) in heads.iter().enumerate() {
+        let Some(first_head) = head.filter(|&head| head > first) else {
+            continue;
+        };
+        let end = first_head.min(count);
+        for (second, inner) in heads.iter().enumerate().take(end).skip(first + 1) {
+            if let Some(second_head) = *inner
+                && second_head > first_head
+            {
+                violations.push(Violation::CrossingArcs { first, second });
+            }
+        }
+    }
+
+    violations
 }
 
 /// Checks the comment lines of a sentence.
