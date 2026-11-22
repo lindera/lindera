@@ -404,6 +404,11 @@ jobs:
         run: |
           make test-lindera-wasm
 
+  # The builds run on a dispatch too, so that a dry run builds what a release
+  # builds, and upload workflow artifacts only: release-assets puts them on
+  # the release. Each build of a binding, and of the CLI, waits for the test of
+  # its crate, so that a failing test does not start its builds; the
+  # dictionaries, the longest builds, wait for nothing (#1413).
   build-dictionary:
     name: Build Dictionary (${{ matrix.dictionary.name }})
     strategy:
@@ -505,6 +510,7 @@ jobs:
 
   build:
     name: Build binaries for ${{ matrix.platform.target }}
+    needs: [test-lindera-cli]
     strategy:
       matrix:
         platform:
@@ -601,6 +607,7 @@ jobs:
 
   build-python-wheels:
     name: Build wheels for ${{ matrix.platform.target }}
+    needs: [test-lindera-python]
     strategy:
       matrix:
         platform:
@@ -652,6 +659,7 @@ jobs:
 
   build-python-sdist:
     name: Build sdist
+    needs: [test-lindera-python]
     # Runs on a dispatch too, so that a broken sdist shows up before the tag is
     # cut: nothing else builds it.
     runs-on: ubuntu-latest
@@ -745,6 +753,7 @@ jobs:
   # this version.
   build-ruby-gem:
     name: Build Ruby gem
+    needs: [test-lindera-ruby]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -852,6 +861,7 @@ jobs:
 
   build-php-binaries:
     name: Build PIE binary (php${{ matrix.php-version }}-${{ matrix.platform.arch }}-${{ matrix.platform.os }}-${{ matrix.ts }})
+    needs: [test-lindera-php]
     # Runs on a dispatch too. The zips are workflow artifacts; release-assets
     # attaches them to the GitHub Release.
     strategy:
@@ -1007,6 +1017,7 @@ jobs:
 
   build-wasm:
     name: Build WASM
+    needs: [test-lindera-wasm]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -1066,6 +1077,7 @@ jobs:
 
   build-lindera-nodejs:
     name: Build Node.js Native (${{ matrix.platform.target }})
+    needs: [test-lindera-nodejs]
     strategy:
       fail-fast: false
       matrix:
