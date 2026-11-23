@@ -31,3 +31,8 @@ flamegraph.svg
 # mdBook build artifacts (built and deployed by deploy-docs.yml)
 docs/book/
 docs/ja/book/
+
+# The corpora the scripts in scripts/dependency fetch and what they write.
+# The corpora are not part of this repository.
+/scripts/dependency/data/
+/scripts/dependency/head_variants/Cargo.lock

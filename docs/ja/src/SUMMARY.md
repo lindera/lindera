@@ -151,4 +151,5 @@
     - [プロジェクト構成](./development/project_structure.md)
     - [学習パイプライン](./development/training_pipeline.md)
     - [辞書のリリース](./development/dictionary_release.md)
+    - [設計メモ: 係り受け解析](./development/dependency_design.md)
     - [貢献ガイド](./development/contributing.md)

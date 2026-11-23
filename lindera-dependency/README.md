@@ -20,6 +20,13 @@ what the analysis is built on, and its first step:
 
 The parser, which finds the head of each bunsetsu, is still to come.
 
+Why the crate has the shape it has, and the numbers behind it, are in the
+design notes
+([English](../docs/src/development/dependency_design.md),
+[Japanese](../docs/ja/src/development/dependency_design.md)). The scripts
+that give the numbers are in
+[`scripts/dependency`](../scripts/dependency/README.md).
+
 In its default build it has no dependency, and builds for
 `wasm32-unknown-unknown`.
 

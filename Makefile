@@ -264,19 +264,22 @@ lint: ## Lint all crates and the scripts outside them
 # and PHP CS Fixer's in lindera-php (given explicitly, as none of them is found
 # from scripts/). CI runs lint-scripts in the "Lint scripts" job.
 SCRIPTS_DIR = scripts/benchmarks/
+# The measurement scripts of lindera-dependency are Python and shell; ruff
+# checks the Python as it checks the benchmark harness (#1423).
+PYTHON_SCRIPTS = $(SCRIPTS_DIR) scripts/dependency/
 DOCS_JS     = docs/mermaid-init.js docs/ja/mermaid-init.js
 
 format-scripts: setup-ruff ## Format the scripts outside the crates
-	$(RUFF) format --config lindera-python/pyproject.toml $(SCRIPTS_DIR)
-	$(RUFF) check --fix --config lindera-python/pyproject.toml $(SCRIPTS_DIR)
+	$(RUFF) format --config lindera-python/pyproject.toml $(PYTHON_SCRIPTS)
+	$(RUFF) check --fix --config lindera-python/pyproject.toml $(PYTHON_SCRIPTS)
 	$(PRETTIER) --write $(SCRIPTS_DIR) $(DOCS_JS)
 	cd lindera-ruby && bundle install --quiet && bundle exec rubocop -a --config .rubocop.yml ../$(SCRIPTS_DIR)
 	composer install --quiet --no-interaction
 	vendor/bin/php-cs-fixer fix --config=lindera-php/.php-cs-fixer.dist.php $(SCRIPTS_DIR)
 
 lint-scripts: setup-ruff ## Lint the scripts outside the crates
-	$(RUFF) format --check --config lindera-python/pyproject.toml $(SCRIPTS_DIR)
-	$(RUFF) check --config lindera-python/pyproject.toml $(SCRIPTS_DIR)
+	$(RUFF) format --check --config lindera-python/pyproject.toml $(PYTHON_SCRIPTS)
+	$(RUFF) check --config lindera-python/pyproject.toml $(PYTHON_SCRIPTS)
 	$(PRETTIER) --check $(SCRIPTS_DIR) $(DOCS_JS)
 	cd lindera-ruby && bundle install --quiet && bundle exec rubocop --config .rubocop.yml ../$(SCRIPTS_DIR)
 	composer install --quiet --no-interaction
