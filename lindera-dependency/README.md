@@ -20,6 +20,9 @@ what the analysis is built on, and its first step:
 
 The parser, which finds the head of each bunsetsu, is still to come.
 
+The documentation has a chapter on the crate, in
+[English](../docs/src/lindera-dependency.md) and in
+[Japanese](../docs/ja/src/lindera-dependency.md).
 Why the crate has the shape it has, and the numbers behind it, are in the
 design notes
 ([English](../docs/src/development/dependency_design.md),

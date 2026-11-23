@@ -2,7 +2,7 @@
 
 日本語の文節の係り受け解析を行うクレート `lindera-dependency`（[#1417](https://github.com/lindera/lindera/issues/1417)）の設計メモです。何を決めたか、なぜそう決めたか、参照した実装が何をしているか、決定の根拠になった数字と、その数字をもう一度出す方法を記録します。
 
-このクレートは開発中で、まだ公開していません。今あるものの使い方は[クレートの README](https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md) にあります。このページは、クレートを変更する人のためのものです。
+このクレートは開発中で、まだ公開していません。今あるものの使い方は [Lindera Dependency](../lindera-dependency.md) の章と[クレートの README](https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md) にあります。このページは、クレートを変更する人のためのものです。
 
 **このページを更新する人**: 決定や数字を変える pull request が、このページも英語と日本語の両方で直します。
 

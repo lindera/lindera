@@ -2,7 +2,7 @@
 
 These are the design notes of `lindera-dependency`, the crate for Japanese bunsetsu dependency analysis ([#1417](https://github.com/lindera/lindera/issues/1417)). They record what was decided and why, what the reference implementations do, and every number the decisions rest on, with the way to get it again.
 
-The crate is under development and not published. How to use what exists is in the [README of the crate](https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md); this page is for the people who change it.
+The crate is under development and not published. How to use what exists is in the [Lindera Dependency](../lindera-dependency.md) chapter and in the [README of the crate](https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md); this page is for the people who change it.
 
 **Who updates this page**: the pull request that changes a decision or a number changes this page with it, in English and in Japanese.
 

@@ -45,6 +45,13 @@
     - [Architecture](./lindera-analysis/architecture.md)
     - [API Reference](./lindera-analysis/api_reference.md)
 
+- [Lindera Dependency](./lindera-dependency.md)
+    - [Architecture](./lindera-dependency/architecture.md)
+    - [Chunking](./lindera-dependency/chunking.md)
+    - [Head and Function Word](./lindera-dependency/head_and_function_word.md)
+    - [Training Data](./lindera-dependency/training_data.md)
+    - [Evaluation](./lindera-dependency/evaluation.md)
+
 - [Lindera CLI](./lindera-cli.md)
     - [Installation](./lindera-cli/installation.md)
     - [Commands](./lindera-cli/commands.md)
