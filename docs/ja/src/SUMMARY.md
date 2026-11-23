@@ -45,6 +45,13 @@
     - [アーキテクチャ](./lindera-analysis/architecture.md)
     - [APIリファレンス](./lindera-analysis/api_reference.md)
 
+- [Lindera Dependency](./lindera-dependency.md)
+    - [アーキテクチャ](./lindera-dependency/architecture.md)
+    - [文節の区切り](./lindera-dependency/chunking.md)
+    - [主辞と機能語](./lindera-dependency/head_and_function_word.md)
+    - [学習データ](./lindera-dependency/training_data.md)
+    - [評価](./lindera-dependency/evaluation.md)
+
 - [Lindera CLI](./lindera-cli.md)
     - [インストール](./lindera-cli/installation.md)
     - [コマンド](./lindera-cli/commands.md)

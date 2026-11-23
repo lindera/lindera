@@ -77,7 +77,7 @@ graph TB
 | `lindera` | Core | Facade crate and the one dependency Rust users add: re-exports `lindera-segmenter` and, with the default `analysis` feature, `lindera-analysis` as `lindera::analysis`. |
 | `lindera-cli` | Application | Command-line interface for tokenization, dictionary building, and CRF training. |
 | `lindera-binding` | Core | FFI-independent helpers shared by the five language bindings below; depends on the `lindera` facade. |
-| `lindera-dependency` | Core | Japanese bunsetsu dependency analysis, under development and not published yet: the core types, the lattice format of CaboCha, the schema of a dictionary with the head and the function word of a bunsetsu, the segmentation into bunsetsu (chunking), and a command that makes training data, trains the chunker and evaluates. Its default build depends on no other crate of the workspace. |
+| `lindera-dependency` | Core | Japanese bunsetsu dependency analysis, under development and not published yet: the core types, the lattice format of CaboCha, the schema of a dictionary with the head and the function word of a bunsetsu, the segmentation into bunsetsu (chunking), and a command that makes training data, trains the chunker and evaluates. Its default build depends on no other crate of the workspace. See [Lindera Dependency](./lindera-dependency.md). |
 | `lindera-ipadic` | Dictionary | Japanese dictionary based on IPADIC. |
 | `lindera-ipadic-neologd` | Dictionary | Japanese dictionary based on IPADIC NEologd (includes neologisms). |
 | `lindera-unidic` | Dictionary | Japanese dictionary based on UniDic. |
@@ -145,5 +145,6 @@ The **Segmenter** is the core component. It builds a lattice of candidate tokens
 - [Lindera Dictionary](./lindera-dictionary.md) -- Dictionary loading and building
 - [Lindera Trainer](./lindera-trainer.md) -- CRF-based dictionary training
 - [Lindera CRF](./lindera-crf.md) -- The CRF engine
+- [Lindera Dependency](./lindera-dependency.md) -- Bunsetsu dependency analysis (under development)
 - [Lindera CLI](./lindera-cli.md) -- Command-line interface
 - [Development Guide](./development.md) -- Build, test, and contribute
