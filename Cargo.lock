@@ -1548,6 +1548,7 @@ name = "lindera-dependency"
 version = "7.0.0"
 dependencies = [
  "clap",
+ "lindera-crf",
  "lindera-segmenter",
  "serde_json",
  "tempfile",

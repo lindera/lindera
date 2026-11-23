@@ -288,6 +288,8 @@ struct Outcome {
     /// Whether each bunsetsu of the answer but the last is right from end to
     /// end.
     arcs: Vec<bool>,
+    /// Whether the segmentation is right: every bunsetsu.
+    segmentation: bool,
     /// Whether the segmentation and every head are right.
     sentence: bool,
 }
@@ -471,6 +473,7 @@ fn evaluate_sentence<G, S>(
 
     Outcome {
         arcs,
+        segmentation: same_segmentation,
         sentence: every_head,
     }
 }
@@ -540,6 +543,9 @@ pub struct Comparison {
     pub first: Evaluation,
     /// The evaluation of the second output.
     pub second: Evaluation,
+    /// The pairs of segmentations: a sentence is right when every bunsetsu
+    /// is. These compare two chunkers, whatever the heads.
+    pub segmentations: Pairs,
     /// The pairs of end-to-end arcs: the bunsetsu of the answer but the last
     /// of each sentence. With the segmentation of the answer in both
     /// outputs, these are the arcs of level 1.
@@ -553,6 +559,7 @@ impl fmt::Display for Comparison {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "first output\n{}\n", self.first)?;
         writeln!(f, "second output\n{}\n", self.second)?;
+        writeln!(f, "paired segmentations: {}", self.segmentations)?;
         writeln!(f, "paired arcs: {}", self.arcs)?;
         write!(f, "paired sentences: {}", self.sentences)
     }
@@ -584,6 +591,9 @@ pub fn compare<G: Morpheme, A: Morpheme, B: Morpheme>(
         for (&first, &second) in first.arcs.iter().zip(&second.arcs) {
             comparison.arcs.add(first, second);
         }
+        comparison
+            .segmentations
+            .add(first.segmentation, second.segmentation);
         comparison.sentences.add(first.sentence, second.sentence);
     }
     Ok(comparison)
@@ -1132,6 +1142,15 @@ mod tests {
                 neither: 2,
             }
         );
+        // Both outputs have the segmentation of the answer in the four
+        // sentences paired.
+        assert_eq!(
+            comparison.segmentations,
+            Pairs {
+                both: 4,
+                ..Pairs::default()
+            }
+        );
         // Each output keeps its own evaluation: the last sentence counts
         // for the first one.
         assert_eq!(comparison.first.different, Vec::<usize>::new());
@@ -1144,6 +1163,53 @@ mod tests {
         assert!((comparison.arcs.p_value() - 1.0).abs() < 1e-12);
         // 1 and 0 discordant sentences: 2 × 1 / 2.
         assert!((comparison.sentences.p_value() - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn segmentations_are_paired_whatever_the_heads() {
+        let chain = [(1, Some(1)), (1, Some(2)), (1, Some(3)), (1, None)];
+        let merged = [(1, Some(1)), (2, Some(2)), (1, None)];
+        // The heads of this output are wrong, and its segmentation right.
+        let other_heads = [(1, Some(3)), (1, Some(3)), (1, Some(3)), (1, None)];
+        let gold = [
+            sentence(ABCD, &chain),
+            sentence(ABCD, &chain),
+            sentence(ABCD, &chain),
+            sentence(ABCD, &chain),
+        ];
+        let first = [
+            sentence(ABCD, &other_heads),
+            sentence(ABCD, &chain),
+            sentence(ABCD, &merged),
+            sentence(ABCD, &merged),
+        ];
+        let second = [
+            sentence(ABCD, &chain),
+            sentence(ABCD, &merged),
+            sentence(ABCD, &other_heads),
+            sentence(ABCD, &merged),
+        ];
+        let comparison = compare(&gold, &first, &second).unwrap();
+        assert_eq!(
+            comparison.segmentations,
+            Pairs {
+                both: 1,
+                first_only: 1,
+                second_only: 1,
+                neither: 1,
+            }
+        );
+        // The sentences, with their heads: only the second output has the
+        // first sentence right, and only the first the second.
+        assert_eq!(
+            comparison.sentences,
+            Pairs {
+                both: 0,
+                first_only: 1,
+                second_only: 1,
+                neither: 2,
+            }
+        );
     }
 
     #[test]
@@ -1233,6 +1299,12 @@ end to end sentences: 0.00% (0/1)"
     #[test]
     fn a_comparison_is_written_with_its_pairs() {
         let comparison = Comparison {
+            segmentations: Pairs {
+                both: 7,
+                first_only: 1,
+                second_only: 3,
+                neither: 0,
+            },
             arcs: Pairs {
                 both: 80,
                 first_only: 10,
@@ -1252,7 +1324,8 @@ end to end sentences: 0.00% (0/1)"
         assert!(text.contains("\n\nsecond output\nsentences: 0\n"), "{text}");
         assert!(
             text.ends_with(
-                "paired arcs: both 80, first only 10, second only 2, neither 8, McNemar p = 0.0386\n\
+                "paired segmentations: both 7, first only 1, second only 3, neither 0, McNemar p = 0.6250\n\
+                 paired arcs: both 80, first only 10, second only 2, neither 8, McNemar p = 0.0386\n\
                  paired sentences: both 5, first only 5, second only 0, neither 1, McNemar p = 0.0625"
             ),
             "{text}"

@@ -153,7 +153,8 @@ fn compares_two_outputs() {
     );
     assert!(
         text.ends_with(
-            "paired arcs: both 1, first only 2, second only 0, neither 1, McNemar p = 0.5000\n\
+            "paired segmentations: both 1, first only 1, second only 0, neither 0, McNemar p = 1.0000\n\
+             paired arcs: both 1, first only 2, second only 0, neither 1, McNemar p = 0.5000\n\
              paired sentences: both 1, first only 0, second only 0, neither 1, McNemar p = 1.0000\n"
         ),
         "{text}"
@@ -178,6 +179,8 @@ fn compares_two_outputs() {
     let p_value = arcs["p_value"].as_f64().unwrap();
     assert!((p_value - 0.5).abs() < 1e-12, "{p_value}");
     assert_eq!(json["paired_sentences"]["neither"], 1);
+    assert_eq!(json["paired_segmentations"]["first_only"], 1);
+    assert_eq!(json["paired_segmentations"]["both"], 1);
 }
 
 #[test]

@@ -10,8 +10,8 @@
 //! 読んだ。 ◀──┘   (root)
 //! ```
 //!
-//! This crate holds, so far, what the analysis is built on and nothing of the
-//! analysis itself:
+//! This crate holds, so far, what the analysis is built on and its first
+//! step, the segmentation into bunsetsu; the parser is still to come.
 //!
 //! - [`Morpheme`], the trait of a morpheme: a surface and the feature columns
 //!   of its dictionary. The crate depends on no tokenizer, and a type outside
@@ -24,13 +24,20 @@
 //! - [`Sentence::violations`]: whether a sentence is the tree the parsers
 //!   assume, with one root that is the last bunsetsu, every head to the
 //!   right, and no crossing arcs.
+//! - [`Schema`]: which feature columns of a dictionary hold the part of
+//!   speech, the conjugation and the base form.
+//! - [`chunker`]: segmenting the morphemes of a sentence into bunsetsu, with
+//!   a conditional random field over two labels and a model that is a table
+//!   of weights.
 //!
 //! With the `train` feature, the `corpus` module and the
 //! `lindera-dependency convert` command make training data from a dependency
 //! corpus such as UD Japanese-GSD: bunsetsu dependencies on the morphemes of
 //! a dictionary, in the lattice format. The `evaluation` module and the
 //! `lindera-dependency evaluate` command count the accuracy of chunking and
-//! of dependency as CaboCha and J.DepP do, and compare two outputs.
+//! of dependency as CaboCha and J.DepP do, and compare two outputs. The
+//! model of the chunker is trained with `lindera-crf`
+//! (`lindera-dependency train-chunker`).
 //!
 //! # Examples
 //!
@@ -96,6 +103,7 @@
 //! # Ok::<(), lindera_dependency::Error>(())
 //! ```
 
+pub mod chunker;
 #[cfg(feature = "train")]
 pub mod corpus;
 pub mod error;
@@ -103,8 +111,10 @@ pub mod error;
 pub mod evaluation;
 pub mod lattice;
 pub mod morpheme;
+pub mod schema;
 pub mod sentence;
 
 pub use error::{Error, Result};
 pub use morpheme::Morpheme;
+pub use schema::Schema;
 pub use sentence::{ArcType, Bunsetsu, Sentence, Violation, tree_violations};

@@ -6,13 +6,17 @@ A dependency analysis groups the morphemes of a sentence into bunsetsu (文節)
 and finds, for each bunsetsu, the bunsetsu it depends on.
 
 This crate is under development and is not published yet. So far it holds
-what the analysis is built on:
+what the analysis is built on, and its first step:
 
 - the `Morpheme` trait: a surface and the feature columns of its dictionary;
   the crate depends on no tokenizer
 - the `Sentence` and `Bunsetsu` types
 - the reading and writing of the lattice format of CaboCha (`cabocha -f1`)
 - a check that a sentence is the tree the parsers assume
+- the `Schema` of a dictionary: which feature column holds what
+- the chunker, which segments the morphemes of a sentence into bunsetsu
+
+The parser, which finds the head of each bunsetsu, is still to come.
 
 In its default build it has no dependency, and builds for
 `wasm32-unknown-unknown`.
@@ -100,6 +104,116 @@ handles them; it is not legal advice.
   and its license stated. Whether the share-alike condition extends to a
   trained model is not settled, and this project makes no claim either way.
 
+## Chunking
+
+The chunker segments the morphemes of a sentence into bunsetsu. It decides,
+for every morpheme, whether it starts a bunsetsu (`B`) or continues one
+(`I`), with a conditional random field over the two labels, as CaboCha does.
+
+```rust
+use lindera_dependency::chunker::{Chunker, ChunkerModel};
+
+let model = ChunkerModel::from_bytes(&std::fs::read("chunker.model")?)?;
+let chunker = Chunker::new(model);
+// The ranges of the bunsetsu, as indices into the morphemes.
+let bunsetsu = chunker.chunk(&morphemes);
+```
+
+Chunking is in the default build and needs no other crate: the model is a
+table from feature string to the weights of `B` and `I`, with the weights of
+the transitions, and the labels are found by Viterbi. `Chunker::chunk` takes
+`&self`, and a chunker is `Send + Sync`. The first morpheme always starts a
+bunsetsu, and an empty sentence has none.
+
+The feature strings are made in two steps that can each be replaced. The
+columns of a morpheme (its surface, its part of speech, its conjugation
+form, ...) are read through the `Schema` of the dictionary, which says which
+feature column holds what; `Schema::ipadic()` is the one of IPADIC. A
+template in the format of CRF++ then expands them. A model holds the schema,
+the columns and the template it was trained with.
+
+### Training
+
+Training is behind the `train` feature and uses `lindera-crf`:
+
+```shell
+cargo run --release -p lindera-dependency --features train -- train-chunker \
+    --input train.lattice --output chunker.model
+cargo run --release -p lindera-dependency --features train -- chunk \
+    --model chunker.model --input dev.lattice --output output.lattice
+```
+
+`chunk` segments the morphemes of its input again, for `evaluate` to compare
+with the answer. On UD Japanese-GSD converted as above with IPADIC,
+`train-chunker` without an option takes a few seconds and writes:
+
+```text
+ja_gsd-ud-train.lattice: 7024 sentences
+iterations: 126
+feature strings: 4325
+weights: 8656
+bytes: 195322
+```
+
+| | F | Precision | Recall | Sentences with every bunsetsu right |
+| --- | --- | --- | --- | --- |
+| UD Japanese-GSD dev | 96.85 | 97.02% (4,009 / 4,132) | 96.67% (4,009 / 4,147) | 432 / 506 |
+| UD Japanese-GSD test | 96.92 | 96.85% (4,373 / 4,515) | 96.98% (4,373 / 4,509) | 459 / 542 |
+| UD Japanese-PUD | 98.04 | 98.05% (9,649 / 9,841) | 98.03% (9,649 / 9,843) | 885 / 994 |
+
+The bytes of the model are a format of this crate, with weights as `f64`; it
+is not the file format of a released model.
+
+### How the defaults were chosen
+
+The defaults are three columns (the surface, the part of speech as its
+levels joined by `-`, the conjugation form), the template of CaboCha's
+chunker with five lines for the conjugation form, and L1 regularization with
+the coefficient 0.5. They come from a 10-fold cross-validation on the train
+file (7,024 sentences, 56,396 bunsetsu), as the section on the evaluation
+asks. F over the 10 folds:
+
+| Columns | L1 0.25 | L1 0.5 | L1 1.0 | L2 0.25 | L2 0.5 | L2 1.0 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Surface and part of speech (CaboCha) | 96.83 | 96.76 | 96.62 | 96.66 | 96.65 | 96.56 |
+| With the conjugation form | 96.98 | 96.94 | 96.86 | 96.82 | 96.79 | 96.73 |
+| With the conjugation form, five lines (the default) | 96.95 | 96.93 | 96.82 | 96.79 | 96.77 | 96.70 |
+| With the conjugation type | 96.82 | 96.78 | 96.68 | 96.75 | 96.69 | 96.64 |
+| With the base form | 96.95 | 96.94 | 96.82 | 96.82 | 96.80 | 96.74 |
+
+A column is added with the lines CaboCha's template for named entities has
+for its third column (13 lines), or with five: the column for the morpheme,
+the one before and the one after, and the column with the part of speech
+for the morpheme and the one before. With L1 and the coefficients 0.1 and
+0.15, F is 96.82 and 96.83 for CaboCha's columns and 96.98 and 96.97 with
+the conjugation form; with the conjugation form and the base form together
+it is 96.99, 97.02 and 97.00 for 0.1, 0.15 and 0.25.
+
+Pairs of settings, by the segmentation of each sentence (`evaluate
+--compare`):
+
+| First | Second | First only / second only | p |
+| --- | --- | --- | --- |
+| CaboCha's columns, L1 0.25 | With the conjugation form, L1 0.25 | 52 / 102 | 0.0001 |
+| CaboCha's columns, L1 0.25 | With the conjugation type, L1 0.25 | 65 / 70 | 0.7308 |
+| CaboCha's columns, L1 0.25 | With the base form, L1 0.25 | 82 / 121 | 0.0075 |
+| With the conjugation form, L1 0.25 | With the base form too, L1 0.25 | 40 / 47 | 0.5203 |
+| With the conjugation form, L1 0.25 | The same, L1 0.5 | 49 / 37 | 0.2354 |
+| With the conjugation form, L1 0.25 | The same, L1 1.0 | 123 / 80 | 0.0031 |
+| With the conjugation form, L1 0.25 | The same, L2 0.25 | 151 / 102 | 0.0025 |
+| With the conjugation form, L1 0.25 | The default | 72 / 55 | 0.1554 |
+| CaboCha's columns, L1 0.25 | The default | 74 / 107 | 0.0171 |
+| The default | The same, L1 1.0 | 91 / 52 | 0.0014 |
+
+- The conjugation form helps, and the conjugation type does not. The base
+  form helps too, and adds nothing to the conjugation form.
+- L1 is better than L2, with a model fifty times smaller.
+- The coefficients 0.1 to 0.5 do not differ; 1.0 is worse.
+
+Among the settings that do not differ from the best one, the default is the
+smallest: 8,656 weights, against 10,934 for the 13 lines and the coefficient
+0.25. The dev file does not tell them apart (F from 96.78 to 96.85).
+
 ## Evaluation
 
 `lindera-dependency evaluate`, also behind the `train` feature, compares an
@@ -157,18 +271,23 @@ The same baseline at level 1 is 62.77% (2,490 / 3,967) on the test file and
 ### Comparing two outputs
 
 With `--compare`, a second output is evaluated too, and the two are paired:
-each end-to-end arc, and each sentence, is right in both, in the first only,
-in the second only or in neither. The p-value is the one of McNemar's exact
-test, two-sided, on the two discordant counts.
+each segmentation of a sentence, each end-to-end arc and each sentence is
+right in both, in the first only, in the second only or in neither. The
+p-value is the one of McNemar's exact test, two-sided, on the two discordant
+counts. The segmentations compare two chunkers, whatever the heads.
 
 ```shell
 cargo run --release -p lindera-dependency --features train -- evaluate \
     --gold dev.lattice --system first.lattice --compare second.lattice
 ```
 
+For two chunkers on the 10 folds of the train file (the template of CaboCha,
+then the default one):
+
 ```text
-paired arcs: both 1212, first only 942, second only 826, neither 645, McNemar p = 0.0062
-paired sentences: both 4, first only 121, second only 12, neither 368, McNemar p = 0.0000
+paired segmentations: both 5908, first only 74, second only 107, neither 935, McNemar p = 0.0171
+paired arcs: both 29235, first only 117, second only 164, neither 19856, McNemar p = 0.0060
+paired sentences: both 887, first only 4, second only 12, neither 6121, McNemar p = 0.0768
 ```
 
 ### Which data for which question

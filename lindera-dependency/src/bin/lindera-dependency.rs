@@ -28,6 +28,15 @@
 //! ```text
 //! lindera-dependency split --input train.lattice --folds 10 --output-dir folds
 //! ```
+//!
+//! `train-chunker` trains the model of the chunker on such training data,
+//! and `chunk` segments the morphemes of a file again with a model, for
+//! `evaluate` to compare with the answer:
+//!
+//! ```text
+//! lindera-dependency train-chunker --input train.lattice --output chunker.model
+//! lindera-dependency chunk --model chunker.model --input dev.lattice --output output.lattice
+//! ```
 
 use std::borrow::Cow;
 use std::fs::{self, File};
@@ -37,10 +46,13 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
-use lindera_dependency::Sentence;
+use lindera_dependency::chunker::{
+    self, Chunker, ChunkerModel, Regularization, Template, TrainOptions,
+};
 use lindera_dependency::corpus::{self, DictionaryMorpheme, TokenizerError};
 use lindera_dependency::evaluation::{self, Comparison, Count, Evaluation, Pairs};
 use lindera_dependency::lattice::{self, LatticeMorpheme};
+use lindera_dependency::{Bunsetsu, Sentence};
 use lindera_segmenter::dictionary::load_dictionary;
 use lindera_segmenter::mode::Mode;
 use lindera_segmenter::segmenter::Segmenter;
@@ -68,6 +80,10 @@ enum Command {
     Evaluate(EvaluateArgs),
     /// Splits a file into the folds of a cross-validation.
     Split(SplitArgs),
+    /// Trains the model of the chunker.
+    TrainChunker(TrainChunkerArgs),
+    /// Segments the morphemes of a file into bunsetsu with a model.
+    Chunk(ChunkArgs),
 }
 
 /// The arguments of `convert`.
@@ -146,6 +162,103 @@ struct SplitArgs {
         help = "Directory for fold<i>.test.lattice and fold<i>.train.lattice, created when missing"
     )]
     output_dir: PathBuf,
+}
+
+/// The regularization of `train-chunker`.
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+enum RegularizationArg {
+    /// L1: a small model.
+    L1,
+    /// L2.
+    L2,
+}
+
+/// The arguments of `train-chunker`.
+#[derive(Debug, clap::Args)]
+#[clap(
+    about = "Train the model of the chunker on a file in the lattice format with bunsetsu (the output of convert), for the IPADIC schema"
+)]
+struct TrainChunkerArgs {
+    /// The training data.
+    #[clap(
+        short = 'i',
+        long = "input",
+        help = "Training data, in the lattice format"
+    )]
+    input: PathBuf,
+    /// The model.
+    #[clap(short = 'o', long = "output", help = "Model file to write")]
+    output: PathBuf,
+    /// The regularization.
+    #[clap(
+        long = "regularization",
+        value_enum,
+        default_value = "l1",
+        help = "Regularization: l1 gives a small model, and the better one on UD Japanese-GSD"
+    )]
+    regularization: RegularizationArg,
+    /// The coefficient of the regularization.
+    #[clap(
+        long = "lambda",
+        default_value_t = 0.5,
+        help = "Coefficient of the regularization; the larger, the smaller the weights"
+    )]
+    lambda: f64,
+    /// The columns the template reads.
+    #[clap(
+        long = "columns",
+        default_value = "surface,pos,cform",
+        help = "Columns the template reads, by number: surface, pos, ctype, cform, base"
+    )]
+    columns: String,
+    /// The template.
+    #[clap(
+        long = "template",
+        help = "Template file in the format of CRF++ (default: the template of CaboCha, and the conjugation form as column 2)"
+    )]
+    template: Option<PathBuf>,
+    /// The largest number of iterations.
+    #[clap(
+        long = "max-iterations",
+        default_value_t = 1000,
+        help = "Largest number of iterations of the optimizer"
+    )]
+    max_iterations: u64,
+    /// The number of threads.
+    #[clap(
+        long = "threads",
+        help = "Number of threads (default: the number of CPUs)"
+    )]
+    threads: Option<NonZeroUsize>,
+}
+
+/// The arguments of `chunk`.
+#[derive(Debug, clap::Args)]
+#[clap(
+    about = "Segment the morphemes of a file in the lattice format into bunsetsu with a chunker model; the bunsetsu of the input are not read, and each bunsetsu written depends on the next"
+)]
+struct ChunkArgs {
+    /// The model.
+    #[clap(
+        short = 'm',
+        long = "model",
+        help = "Model file that train-chunker wrote"
+    )]
+    model: PathBuf,
+    /// The morphemes.
+    #[clap(
+        short = 'i',
+        long = "input",
+        help = "File to segment, in the lattice format"
+    )]
+    input: PathBuf,
+    /// The segmented sentences.
+    #[clap(
+        short = 'o',
+        long = "output",
+        help = "File to write, in the lattice format"
+    )]
+    output: PathBuf,
 }
 
 /// The error type of the command.
@@ -299,6 +412,7 @@ fn comparison_json(comparison: &Comparison) -> serde_json::Value {
     serde_json::json!({
         "first": evaluation_json(&comparison.first),
         "second": evaluation_json(&comparison.second),
+        "paired_segmentations": pairs_json(&comparison.segmentations),
         "paired_arcs": pairs_json(&comparison.arcs),
         "paired_sentences": pairs_json(&comparison.sentences),
     })
@@ -403,12 +517,117 @@ fn split(args: SplitArgs) -> Result<(), CommandError> {
     Ok(())
 }
 
+/// Runs `train-chunker`.
+///
+/// # Arguments
+///
+/// * `args` - The arguments.
+///
+/// # Returns
+///
+/// `Ok(())` once the model is written, or the first error: a file that
+/// cannot be read or written, columns or a template that cannot be read, or
+/// training data that cannot be trained on.
+fn train_chunker(args: TrainChunkerArgs) -> Result<(), CommandError> {
+    let template = match &args.template {
+        None => Template::default(),
+        Some(path) => {
+            let text = fs::read_to_string(path)
+                .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+            Template::parse(&text).map_err(|error| format!("{}: {error}", path.display()))?
+        }
+    };
+    let options = TrainOptions {
+        columns: chunker::parse_columns(&args.columns)?,
+        template,
+        regularization: match args.regularization {
+            RegularizationArg::L1 => Regularization::L1,
+            RegularizationArg::L2 => Regularization::L2,
+        },
+        lambda: args.lambda,
+        max_iterations: args.max_iterations,
+        threads: args
+            .threads
+            .or_else(|| std::thread::available_parallelism().ok())
+            .map_or(1, NonZeroUsize::get),
+        ..TrainOptions::default()
+    };
+    let sentences = read_lattice(&args.input)?;
+    let trained = chunker::train(&sentences, &options)
+        .map_err(|error| format!("{}: {error}", args.input.display()))?;
+    let bytes = trained.model.to_bytes();
+    fs::write(&args.output, &bytes)
+        .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;
+
+    // A failure to write the summary is ignored: the model is complete.
+    let _ = writeln!(
+        io::stderr(),
+        "{}: {} sentences\niterations: {}{}\nfeature strings: {}\nweights: {}\nbytes: {}",
+        args.input.display(),
+        sentences.len(),
+        trained.iterations,
+        if trained.converged {
+            ""
+        } else {
+            " (not converged)"
+        },
+        trained.model.feature_count(),
+        trained.model.weight_count(),
+        bytes.len()
+    );
+    Ok(())
+}
+
+/// Runs `chunk`.
+///
+/// # Arguments
+///
+/// * `args` - The arguments.
+///
+/// # Returns
+///
+/// `Ok(())` once the output is written, or the first error: a model or an
+/// input that cannot be read, or an output that cannot be written.
+fn chunk(args: ChunkArgs) -> Result<(), CommandError> {
+    let bytes = fs::read(&args.model)
+        .map_err(|error| format!("cannot read {}: {error}", args.model.display()))?;
+    let model = ChunkerModel::from_bytes(&bytes)
+        .map_err(|error| format!("{}: {error}", args.model.display()))?;
+    let chunker = Chunker::new(model);
+    let sentences = read_lattice(&args.input)?;
+
+    let output = File::create(&args.output)
+        .map_err(|error| format!("cannot create {}: {error}", args.output.display()))?;
+    let mut output = BufWriter::new(output);
+    for mut sentence in sentences {
+        let ranges = chunker.chunk(&sentence.morphemes);
+        let count = ranges.len();
+        // There is no parser yet: each bunsetsu depends on the next, which
+        // is the baseline, and leaves the segmentation to be evaluated.
+        sentence.bunsetsu = ranges
+            .into_iter()
+            .enumerate()
+            .map(|(index, morphemes)| {
+                Bunsetsu::new(morphemes, (index + 1 < count).then_some(index + 1))
+            })
+            .collect();
+        lattice::write(&mut output, &sentence)
+            .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;
+    }
+    output
+        .flush()
+        .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;
+    Ok(())
+}
+
 fn main() -> ExitCode {
     let args = Args::parse();
     let result = match args.command {
         Command::Convert(args) => convert(args),
         Command::Evaluate(args) => evaluate(args),
         Command::Split(args) => split(args),
+        Command::TrainChunker(args) => train_chunker(args),
+        Command::Chunk(args) => chunk(args),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

@@ -399,11 +399,13 @@ jobs:
               - *shared-make
             # The default build of lindera-dependency depends on no other
             # crate of the workspace; its command (`train`) tokenizes with
-            # lindera-segmenter and, in the tests, the embedded IPADIC.
+            # lindera-segmenter and, in the tests, the embedded IPADIC, and
+            # trains the chunker with lindera-crf.
             # check-lindera-dependency follows this filter too, hence the
             # script and the Makefile.
             lindera-dependency:
               - 'lindera-dependency/**'
+              - 'lindera-crf/**'
               - 'lindera-segmenter/**'
               - 'lindera-dictionary/**'
               - 'lindera-ipadic/**'
