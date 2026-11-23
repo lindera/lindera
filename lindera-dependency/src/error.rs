@@ -34,6 +34,10 @@ pub enum Error {
     /// The tokenizer given to the corpus conversion failed.
     #[cfg(feature = "train")]
     Tokenizer(Box<dyn std::error::Error + Send + Sync>),
+    /// The files given to the evaluation cannot be compared: they do not
+    /// hold the same number of sentences.
+    #[cfg(feature = "train")]
+    Evaluation(String),
 }
 
 impl Error {
@@ -83,6 +87,8 @@ impl fmt::Display for Error {
             Error::Conllu { line, message } => write!(f, "line {line}: {message}"),
             #[cfg(feature = "train")]
             Error::Tokenizer(error) => write!(f, "tokenizer: {error}"),
+            #[cfg(feature = "train")]
+            Error::Evaluation(message) => write!(f, "{message}"),
         }
     }
 }

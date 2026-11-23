@@ -17,9 +17,10 @@ publish = false
 
 [features]
 default = []
-# The tools that make training data (#1419): the `corpus` module and the
-# `lindera-dependency` command, which tokenizes with Lindera.
-train = ["dep:clap", "dep:lindera-segmenter"]
+# The tools around the parser: the `corpus` module, which makes training data
+# (#1419), the `evaluation` module (#1420), and the `lindera-dependency`
+# command, which tokenizes with Lindera.
+train = ["dep:clap", "dep:lindera-segmenter", "dep:serde_json"]
 # Embeds IPADIC in the command, for `--dict embedded://ipadic`.
 embed-ipadic = ["train", "lindera-segmenter/embed-ipadic"]
 
@@ -34,6 +35,7 @@ embed-ipadic = ["train", "lindera-segmenter/embed-ipadic"]
 [dependencies]
 clap = { version = "4.6.4", features = ["derive", "cargo"], optional = true }
 lindera-segmenter = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile = "3.27.0"
