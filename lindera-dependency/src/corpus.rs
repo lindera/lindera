@@ -13,7 +13,9 @@
 //!    boundary falls inside a morpheme.
 //!
 //! [`convert()`] does both for a whole file, writes the lattice format and
-//! counts what it did in a [`Report`]. Nothing here depends on a tokenizer:
+//! counts what it did in a [`Report`], with how often the head word of a
+//! [`Schema`] is the content head of the corpus. Nothing here depends on a
+//! tokenizer:
 //! the caller gives the morphemes. The `lindera-dependency convert` command
 //! tokenizes with Lindera.
 //!
@@ -23,6 +25,7 @@
 //! # Examples
 //!
 //! ```
+//! use lindera_dependency::Schema;
 //! use lindera_dependency::corpus::{self, DictionaryMorpheme};
 //!
 //! // 彼は | 本を | 読んだ, in the columns the conversion reads.
@@ -45,7 +48,7 @@
 //! };
 //!
 //! let mut output = Vec::new();
-//! let report = corpus::convert(conllu.as_bytes(), &mut output, tokenize)?;
+//! let report = corpus::convert(conllu.as_bytes(), &mut output, &Schema::ipadic(), tokenize)?;
 //! assert_eq!(report.kept, 1);
 //! assert_eq!(
 //!     String::from_utf8(output).unwrap(),
@@ -62,6 +65,7 @@ pub mod conllu;
 pub mod convert;
 pub mod project;
 
+use std::collections::BTreeMap;
 use std::fmt;
 use std::io::{BufRead, Write};
 
@@ -72,7 +76,12 @@ pub use project::{Projection, project};
 use crate::error::{Error, Result};
 use crate::lattice;
 use crate::morpheme::Morpheme;
+use crate::schema::Schema;
 use crate::sentence::ArcType;
+
+/// The number of kinds of disagreement on the head word a [`Report`]
+/// writes: the most frequent ones.
+const DISAGREEMENTS_SHOWN: usize = 10;
 
 /// Why a sentence of a corpus is left out of the training data.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -163,6 +172,21 @@ impl Morpheme for DictionaryMorpheme {
     }
 }
 
+/// A way the head word of a schema is not the content head of the corpus:
+/// the parts of speech of the two morphemes, and their order.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct HeadDisagreement {
+    /// The part of speech of the head word by the schema, as
+    /// [`Schema::part_of_speech_of`] gives it.
+    pub schema: String,
+    /// The part of speech of the morpheme with the content head of the
+    /// corpus.
+    pub corpus: String,
+    /// Whether the head word by the schema is to the right of the content
+    /// head of the corpus, or to its left.
+    pub schema_is_right: bool,
+}
+
 /// What the conversion of a file did.
 ///
 /// [`fmt::Display`] writes it as the lines of a report.
@@ -202,6 +226,14 @@ pub struct Report {
     pub parallel_arcs_written: usize,
     /// The morphemes written.
     pub morphemes: usize,
+    /// The bunsetsu written whose content head the corpus gives
+    /// (`BunsetuPositionType`).
+    pub heads: usize,
+    /// Those whose head word by the schema is the morpheme with that
+    /// content head.
+    pub heads_agree: usize,
+    /// The others, by kind.
+    pub head_disagreements: BTreeMap<HeadDisagreement, usize>,
 }
 
 impl Report {
@@ -246,7 +278,9 @@ impl Report {
     /// # Arguments
     ///
     /// * `projection` - The sentence.
-    fn count_kept<M>(&mut self, projection: &Projection<M>) {
+    /// * `schema` - The schema whose head word is compared with the content
+    ///   head of the corpus.
+    fn count_kept<M: Morpheme>(&mut self, projection: &Projection<M>, schema: &Schema) {
         self.kept += 1;
         self.boundaries += projection.boundaries;
         self.boundaries_fit += projection.boundaries_fit;
@@ -262,6 +296,27 @@ impl Report {
             .filter(|bunsetsu| bunsetsu.head.is_some() && bunsetsu.arc_type == ArcType::Parallel)
             .count();
         self.morphemes += projection.sentence.morphemes.len();
+
+        let sentence = &projection.sentence;
+        for (bunsetsu, content_head) in sentence.bunsetsu.iter().zip(&projection.content_heads) {
+            let morphemes = &sentence.morphemes[bunsetsu.morphemes.clone()];
+            let (Some(content_head), Some((head, _))) =
+                (*content_head, schema.positions(morphemes))
+            else {
+                continue;
+            };
+            self.heads += 1;
+            if head == content_head {
+                self.heads_agree += 1;
+                continue;
+            }
+            let disagreement = HeadDisagreement {
+                schema: schema.part_of_speech_of(&morphemes[head]),
+                corpus: schema.part_of_speech_of(&morphemes[content_head]),
+                schema_is_right: head > content_head,
+            };
+            *self.head_disagreements.entry(disagreement).or_default() += 1;
+        }
     }
 
     /// The number of sentences left out for a cause.
@@ -340,7 +395,29 @@ impl fmt::Display for Report {
                 self.bunsetsu.saturating_sub(self.kept)
             )
         )?;
-        write!(f, "morphemes written: {}", self.morphemes)
+        writeln!(f, "morphemes written: {}", self.morphemes)?;
+        write!(
+            f,
+            "head words on the content head of the corpus: {}",
+            Share(self.heads_agree, self.heads)
+        )?;
+        // The most frequent kinds first, and the same order every time.
+        let mut disagreements: Vec<(&HeadDisagreement, &usize)> =
+            self.head_disagreements.iter().collect();
+        disagreements.sort_by(|left, right| right.1.cmp(left.1).then(left.0.cmp(right.0)));
+        for (disagreement, count) in disagreements.into_iter().take(DISAGREEMENTS_SHOWN) {
+            let side = if disagreement.schema_is_right {
+                "right"
+            } else {
+                "left"
+            };
+            write!(
+                f,
+                "\n  {count}: {} is the head word, to the {side} of {}",
+                disagreement.schema, disagreement.corpus
+            )?;
+        }
+        Ok(())
     }
 }
 
@@ -352,13 +429,23 @@ pub type TokenizerError = Box<dyn std::error::Error + Send + Sync>;
 /// Each sentence goes through [`to_bunsetsu`] and, with the morphemes that
 /// `tokenize` gives for its text, through [`project()`]. The sentences that
 /// remain are written with bunsetsu lines that hold the head and the arc
-/// type only, without comments.
+/// type only, without comments: the positions of the head word and of the
+/// function word are not written, since what reads the data computes them
+/// from its schema.
+///
+/// For the bunsetsu whose content head the corpus gives
+/// (`BunsetuPositionType=SEM_HEAD`, or `ROOT`), the report counts how often
+/// the head word of `schema` is the morpheme with the first character of
+/// that word. The function word is not compared: the corpus has none that
+/// is the one of a schema.
 ///
 /// # Arguments
 ///
 /// * `reader` - The corpus, in CoNLL-U with `BunsetuBILabel` in the last
 ///   column, as UD Japanese-GSD and UD Japanese-PUD have it.
 /// * `writer` - Where the lattice format is written.
+/// * `schema` - The schema of the dictionary of the morphemes, whose head
+///   word the report measures. It does not change what is written.
 /// * `tokenize` - Gives the morphemes of a text. It has to be the tokenizer,
 ///   with the dictionary and the settings, the parser will run with.
 ///
@@ -368,7 +455,12 @@ pub type TokenizerError = Box<dyn std::error::Error + Send + Sync>;
 /// read and for a sentence without a `# text` comment, [`Error::Tokenizer`]
 /// when `tokenize` fails, [`Error::Structure`] for a morpheme the lattice
 /// format cannot hold, [`Error::Io`] when reading or writing fails.
-pub fn convert<R, W, M, F>(reader: R, writer: &mut W, mut tokenize: F) -> Result<Report>
+pub fn convert<R, W, M, F>(
+    reader: R,
+    writer: &mut W,
+    schema: &Schema,
+    mut tokenize: F,
+) -> Result<Report>
 where
     R: BufRead,
     W: Write,
@@ -394,7 +486,7 @@ where
         match project(&sentence, &tree, morphemes) {
             Ok(projection) => {
                 lattice::write(writer, &projection.sentence)?;
-                report.count_kept(&projection);
+                report.count_kept(&projection, schema);
             }
             Err(causes) => report.count_dropped(&causes),
         }
@@ -420,9 +512,18 @@ mod tests {
                     head,
                     deprel: deprel.to_string(),
                     starts_bunsetsu,
+                    content_head: false,
                 })
                 .collect(),
         }
+    }
+
+    /// A sentence with some of its words marked as content heads.
+    pub(super) fn with_content_heads(mut sentence: UdSentence, words: &[usize]) -> UdSentence {
+        for &word in words {
+            sentence.words[word].content_head = true;
+        }
+        sentence
     }
 
     /// Morphemes with the given surfaces and the one feature column `*`.
@@ -435,14 +536,36 @@ mod tests {
 
     /// The CoNLL-U text of sentences of words given as for [`ud_sentence`].
     fn conllu_text(sentences: &[&[(&str, usize, &str, bool)]]) -> String {
+        let sentences: Vec<Sentence<'_>> = sentences.iter().map(|words| (*words, EMPTY)).collect();
+        conllu_text_with_content_heads(&sentences)
+    }
+
+    /// The words of a sentence as for [`ud_sentence`], and the indices of
+    /// those that are content heads.
+    type Sentence<'a> = (&'a [(&'a str, usize, &'a str, bool)], &'a [usize]);
+
+    /// No content head.
+    const EMPTY: &[usize] = &[];
+
+    /// The CoNLL-U text of sentences, with `BunsetuPositionType=SEM_HEAD`
+    /// on the content heads and `CONT` on the other words when a sentence
+    /// has content heads, and without the key when it has none.
+    fn conllu_text_with_content_heads(sentences: &[Sentence<'_>]) -> String {
         let mut text = String::new();
-        for words in sentences {
+        for (words, content_heads) in sentences {
             let forms: String = words.iter().map(|word| word.0).collect();
             text.push_str(&format!("# text = {forms}\n"));
             for (index, (form, head, deprel, starts_bunsetsu)) in words.iter().enumerate() {
                 let label = if *starts_bunsetsu { "B" } else { "I" };
+                let position = if content_heads.is_empty() {
+                    ""
+                } else if content_heads.contains(&index) {
+                    "|BunsetuPositionType=SEM_HEAD"
+                } else {
+                    "|BunsetuPositionType=CONT"
+                };
                 text.push_str(&format!(
-                    "{}\t{form}\t_\t_\t_\t_\t{head}\t{deprel}\t_\tBunsetuBILabel={label}\n",
+                    "{}\t{form}\t_\t_\t_\t_\t{head}\t{deprel}\t_\tBunsetuBILabel={label}{position}\n",
                     index + 1
                 ));
             }
@@ -491,7 +614,13 @@ mod tests {
     fn converts_a_file_and_writes_head_only_bunsetsu_lines() {
         let input = conllu_text(&[VALID]);
         let mut output = Vec::new();
-        let report = convert(input.as_bytes(), &mut output, tokenizer(&["読む"])).unwrap();
+        let report = convert(
+            input.as_bytes(),
+            &mut output,
+            &Schema::ipadic(),
+            tokenizer(&["読む"]),
+        )
+        .unwrap();
         assert_eq!(
             String::from_utf8(output).unwrap(),
             "* 0 2D \n彼\t*\nは\t*\n* 1 2D \n本\t*\nを\t*\n* 2 -1D \n読む\t*\nEOS\n"
@@ -520,7 +649,13 @@ mod tests {
             ("読む", 0, "root", true),
         ]]);
         let mut output = Vec::new();
-        let report = convert(input.as_bytes(), &mut output, tokenizer(&["読む"])).unwrap();
+        let report = convert(
+            input.as_bytes(),
+            &mut output,
+            &Schema::ipadic(),
+            tokenizer(&["読む"]),
+        )
+        .unwrap();
         let output = String::from_utf8(output).unwrap();
         assert_eq!(
             output,
@@ -554,7 +689,7 @@ mod tests {
                 .collect::<Vec<_>>())
         };
         let mut output = Vec::new();
-        convert(input.as_bytes(), &mut output, tokenize).unwrap();
+        convert(input.as_bytes(), &mut output, &Schema::ipadic(), tokenize).unwrap();
         let output = String::from_utf8(output).unwrap();
         assert_eq!(output, "* 0 1D \na\t記号,a\n* 1 -1D \n,\t記号,\",\"\nEOS\n");
         // Read back, the comma is one column.
@@ -606,7 +741,7 @@ mod tests {
             Ok(morphemes)
         };
         let mut output = Vec::new();
-        let report = convert(input.as_bytes(), &mut output, tokenize).unwrap();
+        let report = convert(input.as_bytes(), &mut output, &Schema::ipadic(), tokenize).unwrap();
         assert_eq!(
             report,
             Report {
@@ -627,6 +762,7 @@ mod tests {
                 bunsetsu: 6,
                 parallel_arcs_written: 1,
                 morphemes: 7,
+                ..Report::default()
             }
         );
         assert_eq!(report.dropped_for(DropCause::Root), 1);
@@ -635,6 +771,158 @@ mod tests {
             String::from_utf8(output).unwrap().matches("EOS\n").count(),
             2
         );
+    }
+
+    /// A tokenizer that splits 利用した本を読む into morphemes with the
+    /// features of IPADIC.
+    fn ipadic_tokenizer(_: &str) -> std::result::Result<Vec<DictionaryMorpheme>, TokenizerError> {
+        Ok([
+            ("利用", "名詞,サ変接続,*,*,*,*,利用"),
+            ("し", "動詞,自立,*,*,サ変・スル,連用形,する"),
+            ("た", "助動詞,*,*,*,特殊・タ,基本形,た"),
+            ("本", "名詞,一般,*,*,*,*,本"),
+            ("を", "助詞,格助詞,一般,*,*,*,を"),
+            ("読む", "動詞,自立,*,*,五段・マ行,基本形,読む"),
+        ]
+        .into_iter()
+        .map(|(surface, features)| {
+            DictionaryMorpheme::new(
+                surface.to_string(),
+                features.split(',').map(str::to_string).collect(),
+            )
+        })
+        .collect())
+    }
+
+    /// 利用 し た | 本 を | 読む.
+    const SURU: &[(&str, usize, &str, bool)] = &[
+        ("利用", 4, "acl", true),
+        ("し", 1, "aux", false),
+        ("た", 1, "aux", false),
+        ("本", 6, "obj", true),
+        ("を", 4, "case", false),
+        ("読む", 0, "root", true),
+    ];
+
+    #[test]
+    fn counts_the_head_words_on_the_content_head_of_the_corpus() {
+        // The corpus has 利用, 本 and 読む as content heads, as the schema
+        // of IPADIC does.
+        let input = conllu_text_with_content_heads(&[(SURU, &[0, 3, 5])]);
+        let mut output = Vec::new();
+        let report = convert(
+            input.as_bytes(),
+            &mut output,
+            &Schema::ipadic(),
+            ipadic_tokenizer,
+        )
+        .unwrap();
+        assert_eq!((report.heads, report.heads_agree), (3, 3));
+        assert!(report.head_disagreements.is_empty());
+        let with_ipadic = output;
+
+        // CaboCha's rule alone has し as the head word of the first
+        // bunsetsu; and a corpus with を as a content head disagrees to
+        // the other side.
+        let mut cabocha = Schema::ipadic();
+        cabocha.function_words.truncate(6);
+        let input = conllu_text_with_content_heads(&[(SURU, &[0, 4, 5])]);
+        let mut output = Vec::new();
+        let report = convert(input.as_bytes(), &mut output, &cabocha, ipadic_tokenizer).unwrap();
+        assert_eq!((report.heads, report.heads_agree), (3, 1));
+        let disagreements: Vec<(HeadDisagreement, usize)> =
+            report.head_disagreements.into_iter().collect();
+        assert_eq!(
+            disagreements,
+            [
+                (
+                    HeadDisagreement {
+                        schema: "動詞-自立".to_string(),
+                        corpus: "名詞-サ変接続".to_string(),
+                        schema_is_right: true,
+                    },
+                    1
+                ),
+                (
+                    HeadDisagreement {
+                        schema: "名詞-一般".to_string(),
+                        corpus: "助詞-格助詞-一般".to_string(),
+                        schema_is_right: false,
+                    },
+                    1
+                ),
+            ]
+        );
+        // The schema and the content heads change the report, not what is
+        // written.
+        assert_eq!(output, with_ipadic);
+        assert!(!String::from_utf8(output).unwrap().contains('/'));
+    }
+
+    #[test]
+    fn a_bunsetsu_without_one_content_head_is_not_measured() {
+        // No word of the second bunsetsu is marked, and two of the first.
+        let input = conllu_text_with_content_heads(&[(SURU, &[0, 1, 5])]);
+        let mut output = Vec::new();
+        let report = convert(
+            input.as_bytes(),
+            &mut output,
+            &Schema::ipadic(),
+            ipadic_tokenizer,
+        )
+        .unwrap();
+        assert_eq!(
+            (report.bunsetsu, report.heads, report.heads_agree),
+            (3, 1, 1)
+        );
+    }
+
+    #[test]
+    fn the_report_shows_the_most_frequent_disagreements() {
+        let disagreement = |schema: &str, corpus: &str, schema_is_right| HeadDisagreement {
+            schema: schema.to_string(),
+            corpus: corpus.to_string(),
+            schema_is_right,
+        };
+        let mut report = Report {
+            heads: 200,
+            heads_agree: 150,
+            ..Report::default()
+        };
+        // 12 kinds: `k00` once, `k01` twice, and so on; and two kinds with
+        // the same count.
+        for index in 0..12 {
+            report.head_disagreements.insert(
+                disagreement(&format!("k{index:02}"), "名詞", true),
+                index + 1,
+            );
+        }
+        report
+            .head_disagreements
+            .insert(disagreement("k11", "名詞", false), 12);
+        let text = report.to_string();
+        let lines: Vec<&str> = text
+            .lines()
+            .skip_while(|line| !line.starts_with("head words"))
+            .collect();
+        assert_eq!(
+            lines,
+            [
+                "head words on the content head of the corpus: 150 of 200 (75.00%)",
+                // The same count: to the left before to the right.
+                "  12: k11 is the head word, to the left of 名詞",
+                "  12: k11 is the head word, to the right of 名詞",
+                "  11: k10 is the head word, to the right of 名詞",
+                "  10: k09 is the head word, to the right of 名詞",
+                "  9: k08 is the head word, to the right of 名詞",
+                "  8: k07 is the head word, to the right of 名詞",
+                "  7: k06 is the head word, to the right of 名詞",
+                "  6: k05 is the head word, to the right of 名詞",
+                "  5: k04 is the head word, to the right of 名詞",
+                "  4: k03 is the head word, to the right of 名詞",
+            ]
+        );
+        assert!(!text.ends_with('\n'));
     }
 
     #[test]
@@ -654,6 +942,7 @@ mod tests {
             bunsetsu: 205,
             parallel_arcs_written: 2,
             morphemes: 500,
+            ..Report::default()
         };
         assert_eq!(
             report.to_string(),
@@ -672,7 +961,8 @@ sentences with merged bunsetsu: 1 of 6 (16.67%)
 bunsetsu merged: 1 of 206 (0.49%)
 bunsetsu written: 205
 arcs of type P written: 2 of 199 (1.01%)
-morphemes written: 500"
+morphemes written: 500
+head words on the content head of the corpus: 0 of 0"
         );
         assert_eq!(
             Report::default().to_string().lines().next(),
@@ -684,7 +974,13 @@ morphemes written: 500"
     fn fails_on_a_sentence_without_text_and_on_a_failing_tokenizer() {
         let input = "1\t彼\t_\t_\t_\t_\t0\troot\t_\tBunsetuBILabel=B\n";
         let mut output = Vec::new();
-        let error = convert(input.as_bytes(), &mut output, tokenizer(&[])).unwrap_err();
+        let error = convert(
+            input.as_bytes(),
+            &mut output,
+            &Schema::ipadic(),
+            tokenizer(&[]),
+        )
+        .unwrap_err();
         assert_eq!(
             error.to_string(),
             "line 1: the sentence has no `# text` comment"
@@ -694,7 +990,7 @@ morphemes written: 500"
         let failing = |_: &str| -> std::result::Result<Vec<DictionaryMorpheme>, TokenizerError> {
             Err("no dictionary".into())
         };
-        let error = convert(input.as_bytes(), &mut output, failing).unwrap_err();
+        let error = convert(input.as_bytes(), &mut output, &Schema::ipadic(), failing).unwrap_err();
         assert_eq!(error.to_string(), "tokenizer: no dictionary");
         assert!(output.is_empty());
     }
@@ -707,7 +1003,13 @@ morphemes written: 500"
 2\t彼\t_\t_\t_\t_\t1\tnsubj\t_\tBunsetuBILabel=B
 ";
         let mut output = Vec::new();
-        let report = convert(input.as_bytes(), &mut output, tokenizer(&[])).unwrap();
+        let report = convert(
+            input.as_bytes(),
+            &mut output,
+            &Schema::ipadic(),
+            tokenizer(&[]),
+        )
+        .unwrap();
         assert_eq!((report.sentences, report.dropped), (1, 1));
     }
 }

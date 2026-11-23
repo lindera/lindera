@@ -13,7 +13,9 @@ what the analysis is built on, and its first step:
 - the `Sentence` and `Bunsetsu` types
 - the reading and writing of the lattice format of CaboCha (`cabocha -f1`)
 - a check that a sentence is the tree the parsers assume
-- the `Schema` of a dictionary: which feature column holds what
+- the `Schema` of a dictionary: which feature column holds what, which
+  morphemes are function words and symbols, and from them the head and
+  the function word of a bunsetsu
 - the chunker, which segments the morphemes of a sentence into bunsetsu
 
 The parser, which finds the head of each bunsetsu, is still to come.
@@ -51,8 +53,10 @@ cargo run --release -p lindera-dependency --features embed-ipadic -- convert \
    every head to the right, and no crossing arcs.
 
 The output is in the lattice format, with bunsetsu lines that hold the head
-and the arc type only. A report goes to the standard error. For the train
-file of UD Japanese-GSD with IPADIC:
+and the arc type only: the positions of the head word and of the function
+word are not written, since what reads the data computes them from its
+schema. A report goes to the standard error. For the train file of UD
+Japanese-GSD with IPADIC:
 
 ```text
 ja_gsd-ud-train.conllu
@@ -71,11 +75,24 @@ bunsetsu merged: 392 of 56788 (0.69%)
 bunsetsu written: 56396
 arcs of type P written: 489 of 49372 (0.99%)
 morphemes written: 162456
+head words on the content head of the corpus: 54449 of 56396 (96.55%)
+  275: 名詞-一般 is the head word, to the right of 名詞-一般
+  240: 名詞-接尾-一般 is the head word, to the right of 名詞-一般
+  90: 名詞-接尾-助数詞 is the head word, to the right of 名詞-数
+  76: 名詞-一般 is the head word, to the right of 接頭詞-名詞接続
+  51: 動詞-自立 is the head word, to the right of 名詞-一般
+  46: 動詞-自立 is the head word, to the right of 動詞-自立
+  46: 名詞-数 is the head word, to the left of 助動詞
+  36: 名詞-一般 is the head word, to the left of 助詞-格助詞-連語
+  35: 名詞-一般 is the head word, to the right of 名詞-固有名詞-人名-名
+  34: 名詞-接尾-助数詞 is the head word, to the left of 名詞-非自立-副詞可能
 ```
 
 A sentence dropped for two causes counts for both. The arcs of type `P` are
 counted before the bunsetsu are laid over the morphemes, and again in what
-is written: a merged bunsetsu takes the arc of the last one merged.
+is written: a merged bunsetsu takes the arc of the last one merged. The
+last lines compare the head word of the schema of IPADIC with the content
+head of the corpus; see [Head and function word](#head-and-function-word).
 
 ### Corpora
 
@@ -130,7 +147,8 @@ columns of a morpheme (its surface, its part of speech, its conjugation
 form, ...) are read through the `Schema` of the dictionary, which says which
 feature column holds what; `Schema::ipadic()` is the one of IPADIC. A
 template in the format of CRF++ then expands them. A model holds the schema,
-the columns and the template it was trained with.
+the columns and the template it was trained with; the schema is stored
+whole, with its patterns for the head and the function word.
 
 ### Training
 
@@ -152,7 +170,7 @@ ja_gsd-ud-train.lattice: 7024 sentences
 iterations: 126
 feature strings: 4325
 weights: 8656
-bytes: 195322
+bytes: 196164
 ```
 
 | | F | Precision | Recall | Sentences with every bunsetsu right |
@@ -213,6 +231,100 @@ Pairs of settings, by the segmentation of each sentence (`evaluate
 Among the settings that do not differ from the best one, the default is the
 smallest: 8,656 weights, against 10,934 for the 13 lines and the coefficient
 0.25. The dev file does not tell them apart (F from 96.78 to 96.85).
+
+## Head and function word
+
+Each bunsetsu has a head (主辞), its last content word, and a function word
+(機能語), its last particle or auxiliary. The parser builds most of its
+features from the two, the lattice format has their positions on the `*`
+line, and the head is the word to take for a bunsetsu when indexing pairs
+or extracting triples.
+
+Which morphemes they are depends on the dictionary, and so does the column
+that holds the part of speech or the base form. A `Schema` holds all of it
+as data, and one piece of code applies it:
+
+```rust
+use lindera_dependency::Schema;
+
+let schema = Schema::ipadic();
+// The positions of the head word and of the function word, counted from
+// the first morpheme of the bunsetsu: (0, 2) for 読ん / で / いる / 。
+let positions = schema.positions(&morphemes[bunsetsu.clone()]);
+// Punctuation and brackets, for the features of the parser.
+let ends_with_comma = morphemes.last().is_some_and(|last| schema.is_comma(last));
+```
+
+The rule is the one of `findHead` of CaboCha. Both positions start at the
+first morpheme of the bunsetsu. From the left, a morpheme that matches a
+function word pattern becomes the function word; a morpheme that matches
+none of them, is not a symbol and is not in the list of what is not a head
+becomes the head. A head after the function word becomes the function word
+too. A bunsetsu of symbols only has both at its first morpheme.
+
+A pattern is a prefix of the part-of-speech levels, optionally with the base
+forms the morpheme may have and with a pattern for the morpheme before it in
+the bunsetsu. A symbol is recognized by its part of speech or by its
+surface: IPADIC has no half-width symbols, so `,` is an unknown word and
+comes out as 名詞,サ変接続. Commas (`、` `,` `，`), periods (`。` `.` `．`),
+opening brackets and closing brackets are kinds of their own
+(`Schema::is_comma` and the like), in full width and half width. A morpheme
+with fewer feature columns than the schema names matches no pattern on the
+missing ones; nothing panics.
+
+### The schema of IPADIC
+
+`Schema::ipadic()` starts from the patterns of CaboCha for IPA and adds what
+the measurement below supports:
+
+| | Patterns |
+| --- | --- |
+| Function words | 助詞, 助動詞, 動詞,非自立, 動詞,接尾, 形容詞,非自立, 形容詞,接尾 (CaboCha); する, できる and 出来る (動詞,自立) |
+| Not heads | 記号 (CaboCha) and symbols by their surface; 名詞,非自立 (こと, の, よう); the suffixes 的 (名詞,接尾,形容動詞語幹) and さ (名詞,接尾,特殊); a 動詞,自立 right after a 助詞 (こと / に / なっ / た, かも / しれ / ない) |
+
+The head is CaboCha's, the content word, and not J.DepP's, which lets an
+auxiliary be the head. The function word is defined by the schema alone: UD
+Japanese-GSD has no label that means the same.
+
+### Agreement with UD Japanese-GSD
+
+UD Japanese-GSD marks the content head of each bunsetsu
+(`BunsetuPositionType=SEM_HEAD`, or `ROOT` in the bunsetsu of the root).
+`convert` counts the bunsetsu whose head word is the morpheme that holds the
+first character of that word, and its report ends with the count and the
+most frequent disagreements, by part of speech. For the corpora converted
+as above with IPADIC, each line is the one before with one addition; the
+last line is `Schema::ipadic()`:
+
+| Rule | GSD train | GSD dev | GSD test | PUD |
+| --- | --- | --- | --- | --- |
+| The rule of CaboCha for IPA | 85.43% | 86.30% | 84.61% | 86.70% |
+| And symbols by their surface | 87.19% | 88.14% | 87.40% | 86.70% |
+| And する, できる are function words | 94.13% | 94.43% | 93.52% | 94.27% |
+| And 名詞,非自立 is not a head | 95.31% | 95.66% | 95.48% | 95.61% |
+| And the suffix 的 is not a head | 95.81% | 96.24% | 96.01% | 96.51% |
+| And the suffix さ is not a head | 95.89% | 96.43% | 96.32% | 96.65% |
+| And a verb after a particle is not a head | 96.55% (54,449 / 56,396) | 96.96% (4,021 / 4,147) | 96.92% (4,370 / 4,509) | 97.46% (9,593 / 9,843) |
+
+The additions were chosen on the train file. The largest is the verbal noun
+with する (利用 / し / た): CaboCha's rule makes し the head, the corpus the
+noun. `%` and `°` are not symbols: they are units, which the corpus has as
+the head (50 / %).
+
+What remains is not a matter of one part of speech. Of the 1,947
+disagreements in train, the most frequent kinds are a compound noun whose
+head in the corpus is not its last noun, often because IPADIC splits a word
+the corpus has as one (霊 / 芝: 275 with 名詞,一般 for both; 本 / 作: 240
+with 名詞,接尾,一般 as the head word after 名詞,一般), a number with a
+counter where the corpus has the number (2 / 人: 90), and a prefix the
+corpus has as the head (同 / 法: 76).
+
+Two variants were measured on the same data, with a script outside the
+repository, and not taken. Leaving every suffix (名詞,接尾) out of the heads
+lowers the agreement by about 9 points: the corpus has a suffix such as 化
+or 性 as the head. Keeping 名詞,非自立,副詞可能 (後, 間) as a head changes
+train by +0.05 points, dev by +0.17 and test by -0.09, which is not a
+systematic difference.
 
 ## Evaluation
 

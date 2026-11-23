@@ -25,6 +25,12 @@ pub struct Projection<M> {
     /// The number of bunsetsu lost by merging: the boundaries that are not
     /// morpheme boundaries.
     pub merged: usize,
+    /// For each bunsetsu of the sentence, the morpheme that holds the
+    /// first character of its content head in the corpus, counted from the
+    /// first morpheme of the bunsetsu; `None` for a bunsetsu whose content
+    /// head the corpus does not give. What the head word of a schema is
+    /// measured against.
+    pub content_heads: Vec<Option<usize>>,
 }
 
 /// Lays the bunsetsu of a sentence over morphemes.
@@ -32,8 +38,8 @@ pub struct Projection<M> {
 /// Bunsetsu and morphemes are aligned by character offsets, white space
 /// left out. Where a bunsetsu boundary falls inside a morpheme, the bunsetsu
 /// are merged up to the next boundary that is a morpheme boundary; the
-/// merged bunsetsu takes the head and the arc type of the last one merged,
-/// and the heads are renumbered.
+/// merged bunsetsu takes the head, the arc type and the content head of the
+/// last one merged, and the heads are renumbered.
 ///
 /// # Arguments
 ///
@@ -51,13 +57,16 @@ pub fn project<M: Morpheme>(
     tree: &BunsetsuTree,
     morphemes: Vec<M>,
 ) -> Result<Projection<M>, Vec<DropCause>> {
-    // The end of each bunsetsu and of each morpheme, in characters that are
-    // not white space, and the characters themselves to compare.
+    // The end of each bunsetsu and of each morpheme and the start of each
+    // word, in characters that are not white space, and the characters
+    // themselves to compare.
     let mut corpus_text = String::new();
+    let mut word_starts = Vec::with_capacity(sentence.words.len());
     let mut bunsetsu_ends = Vec::with_capacity(tree.bunsetsu.len());
     let mut offset = 0;
     for bunsetsu in &tree.bunsetsu {
         for word in &sentence.words[bunsetsu.words.clone()] {
+            word_starts.push(offset);
             offset += push_without_white_space(&mut corpus_text, &word.form);
         }
         bunsetsu_ends.push(offset);
@@ -120,6 +129,21 @@ pub fn project<M: Morpheme>(
         return Err(causes);
     }
 
+    // The morpheme that holds the first character of the content head word
+    // of each bunsetsu: the first one that ends after that character.
+    let content_heads = bunsetsu
+        .iter()
+        .zip(&sources)
+        .map(|(morphemes, &source)| {
+            let word = tree.bunsetsu[source].content_head?;
+            let start = *word_starts.get(word)?;
+            let morpheme = morpheme_ends.partition_point(|&end| end <= start);
+            morphemes
+                .contains(&morpheme)
+                .then(|| morpheme - morphemes.start)
+        })
+        .collect();
+
     let bunsetsu = bunsetsu
         .into_iter()
         .zip(heads)
@@ -138,6 +162,7 @@ pub fn project<M: Morpheme>(
         boundaries,
         boundaries_fit: boundaries - merged,
         merged,
+        content_heads,
     })
 }
 
@@ -163,7 +188,7 @@ fn push_without_white_space(target: &mut String, text: &str) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::corpus::tests::{morphemes, ud_sentence};
+    use crate::corpus::tests::{morphemes, ud_sentence, with_content_heads};
     use crate::corpus::{DictionaryMorpheme, to_bunsetsu};
 
     /// Projects a sentence onto morphemes with the given surfaces.
@@ -225,6 +250,97 @@ mod tests {
             (2, 2, 0)
         );
         assert!(projection.sentence.violations().is_empty());
+    }
+
+    /// The content heads of a sentence projected onto morphemes with the
+    /// given surfaces, with the given words marked.
+    fn content_heads(
+        words: &[(&str, usize, &str, bool)],
+        marked: &[usize],
+        surfaces: &[&str],
+    ) -> Vec<Option<usize>> {
+        let sentence = with_content_heads(ud_sentence(words), marked);
+        let tree = to_bunsetsu(&sentence).unwrap();
+        project(&sentence, &tree, morphemes(surfaces))
+            .unwrap()
+            .content_heads
+    }
+
+    #[test]
+    fn the_content_head_is_the_morpheme_with_the_first_character_of_the_word() {
+        // お 茶 を | 東京都 で | 飲む, with 茶, 東京都 and 飲む marked.
+        let words = [
+            ("お", 2, "compound", true),
+            ("茶", 6, "obj", false),
+            ("を", 2, "case", false),
+            ("東京都", 6, "obl", true),
+            ("で", 4, "case", false),
+            ("飲む", 0, "root", true),
+        ];
+        let marked = [1, 3, 5];
+        // The same morphemes as the words: the position in the bunsetsu.
+        assert_eq!(
+            content_heads(&words, &marked, &["お", "茶", "を", "東京都", "で", "飲む"]),
+            [Some(1), Some(0), Some(0)]
+        );
+        // お茶 is one morpheme, which holds 茶; 東京都 is two, and the
+        // first holds its first character; 飲む is two too.
+        assert_eq!(
+            content_heads(
+                &words,
+                &marked,
+                &["お茶", "を", "東京", "都", "で", "飲", "む"]
+            ),
+            [Some(0), Some(0), Some(0)]
+        );
+        // The word is the second of its bunsetsu and starts inside a
+        // morpheme: を of お 茶 を, with 茶を as one morpheme.
+        assert_eq!(
+            content_heads(&words, &[2, 4, 5], &["お", "茶を", "東京都", "で", "飲む"]),
+            [Some(1), Some(1), Some(0)]
+        );
+        // A bunsetsu without a content head in the corpus has none.
+        assert_eq!(
+            content_heads(&words, &[1], &["お", "茶", "を", "東京都", "で", "飲む"]),
+            [Some(1), None, None]
+        );
+    }
+
+    #[test]
+    fn a_merged_bunsetsu_takes_the_content_head_of_the_last_one_merged() {
+        // a | b c | 読む, with ab as one morpheme: the first two bunsetsu
+        // are merged. The content head of the first is a, in the morpheme
+        // ab; the one of the second is c, the second morpheme.
+        let words = [
+            ("a", 4, "dep", true),
+            ("b", 3, "compound", true),
+            ("c", 4, "dep", false),
+            ("読む", 0, "root", true),
+        ];
+        assert_eq!(
+            content_heads(&words, &[0, 2, 3], &["ab", "c", "読む"]),
+            [Some(1), Some(0)]
+        );
+        // The last one merged has none: the merged bunsetsu has none,
+        // whatever the first has.
+        assert_eq!(
+            content_heads(&words, &[0, 3], &["ab", "c", "読む"]),
+            [None, Some(0)]
+        );
+    }
+
+    #[test]
+    fn white_space_does_not_move_the_content_head() {
+        // a b | 読む, with a morpheme of white space between a and b.
+        let words = [
+            ("a", 2, "compound", true),
+            ("b", 3, "dep", false),
+            ("読む", 0, "root", true),
+        ];
+        assert_eq!(
+            content_heads(&words, &[1, 2], &["a", " ", "b", "読む"]),
+            [Some(2), Some(0)]
+        );
     }
 
     #[test]
