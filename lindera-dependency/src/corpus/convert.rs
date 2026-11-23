@@ -34,6 +34,10 @@ pub struct UdBunsetsu {
     /// The type of the arc to the head: [`ArcType::Parallel`] between
     /// conjuncts, [`ArcType::Dependency`] elsewhere.
     pub arc_type: ArcType,
+    /// The content head of the bunsetsu, as an index into the words of the
+    /// sentence: its one word with `BunsetuPositionType=SEM_HEAD` or
+    /// `ROOT`. `None` when the bunsetsu has no such word or more than one.
+    pub content_head: Option<usize>,
 }
 
 /// The bunsetsu dependencies of a UD sentence: a tree as the parsers assume.
@@ -116,10 +120,18 @@ pub fn to_bunsetsu(sentence: &UdSentence) -> Result<BunsetsuTree, Vec<DropCause>
         .into_iter()
         .zip(heads)
         .zip(arc_types)
-        .map(|((words, head), arc_type)| UdBunsetsu {
-            words,
-            head,
-            arc_type,
+        .map(|((range, head), arc_type)| {
+            let mut content_heads = range.clone().filter(|&index| words[index].content_head);
+            let content_head = match (content_heads.next(), content_heads.next()) {
+                (Some(index), None) => Some(index),
+                _ => None,
+            };
+            UdBunsetsu {
+                words: range,
+                head,
+                arc_type,
+                content_head,
+            }
         })
         .collect();
     Ok(BunsetsuTree {
@@ -225,7 +237,7 @@ pub(super) fn drop_causes(heads: &[Option<usize>]) -> Vec<DropCause> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::corpus::tests::ud_sentence;
+    use crate::corpus::tests::{ud_sentence, with_content_heads};
 
     /// The heads and the arc types of the bunsetsu of a converted sentence,
     /// as `(head, letter)`.
@@ -256,6 +268,34 @@ mod tests {
         assert_eq!(words, [0..2, 2..4, 4..6]);
         assert_eq!(arcs(&tree), [(Some(2), 'D'), (Some(2), 'D'), (None, 'D')]);
         assert_eq!(tree.ambiguous_heads, 0);
+    }
+
+    #[test]
+    fn the_content_head_is_the_one_word_marked_in_the_bunsetsu() {
+        // 彼 は | 本 を | 読ん だ
+        let words = [
+            ("彼", 5, "nsubj", true),
+            ("は", 1, "case", false),
+            ("本", 5, "obj", true),
+            ("を", 3, "case", false),
+            ("読ん", 0, "root", true),
+            ("だ", 5, "aux", false),
+        ];
+        let content_heads = |marked: &[usize]| -> Vec<Option<usize>> {
+            let sentence = with_content_heads(ud_sentence(&words), marked);
+            to_bunsetsu(&sentence)
+                .unwrap()
+                .bunsetsu
+                .iter()
+                .map(|bunsetsu| bunsetsu.content_head)
+                .collect()
+        };
+        // One word each: its index in the sentence, the first of the
+        // bunsetsu or not.
+        assert_eq!(content_heads(&[0, 3, 4]), [Some(0), Some(3), Some(4)]);
+        // None in the second bunsetsu, two in the third.
+        assert_eq!(content_heads(&[0, 4, 5]), [Some(0), None, None]);
+        assert_eq!(content_heads(&[]), [None, None, None]);
     }
 
     #[test]

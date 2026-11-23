@@ -2,7 +2,8 @@
 //!
 //! A sentence is its comment lines and its words; of the ten columns of a
 //! word, the form, the head, the relation and, from the last column, the
-//! label that says whether the word starts a bunsetsu.
+//! label that says whether the word starts a bunsetsu and the one that says
+//! whether it is the content head of its bunsetsu.
 
 use std::io::BufRead;
 
@@ -10,6 +11,15 @@ use crate::error::{Error, Result};
 
 /// The key of the bunsetsu label in the MISC column of UD Japanese.
 const BUNSETSU_LABEL: &str = "BunsetuBILabel";
+
+/// The key of the role of a word in its bunsetsu, in the MISC column of UD
+/// Japanese.
+const POSITION_TYPE: &str = "BunsetuPositionType";
+
+/// The values of [`POSITION_TYPE`] of the content head of a bunsetsu: the
+/// word the others of the bunsetsu depend on, and the same word in the
+/// bunsetsu of the root.
+const CONTENT_HEADS: [&str; 2] = ["SEM_HEAD", "ROOT"];
 
 /// A word of a CoNLL-U sentence.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,6 +34,10 @@ pub struct UdWord {
     /// Whether the word starts a bunsetsu: `BunsetuBILabel=B` in the MISC
     /// column (column 10).
     pub starts_bunsetsu: bool,
+    /// Whether the word is the content head of its bunsetsu:
+    /// `BunsetuPositionType=SEM_HEAD`, or `ROOT`, in the MISC column. `false`
+    /// for a word without the key.
+    pub content_head: bool,
 }
 
 /// A sentence of a CoNLL-U file.
@@ -221,11 +235,16 @@ fn parse_word(line: &str, number: usize, expected_id: usize) -> Result<Option<Ud
             ));
         }
     };
+    let content_head = columns[9]
+        .split('|')
+        .find_map(|pair| pair.strip_prefix(POSITION_TYPE)?.strip_prefix('='))
+        .is_some_and(|value| CONTENT_HEADS.contains(&value));
     Ok(Some(UdWord {
         form: columns[1].to_string(),
         head,
         deprel: columns[7].to_string(),
         starts_bunsetsu,
+        content_head,
     }))
 }
 
@@ -295,18 +314,21 @@ mod tests {
                     head: 3,
                     deprel: "nsubj".to_string(),
                     starts_bunsetsu: true,
+                    content_head: false,
                 },
                 UdWord {
                     form: "は".to_string(),
                     head: 1,
                     deprel: "case".to_string(),
                     starts_bunsetsu: false,
+                    content_head: false,
                 },
                 UdWord {
                     form: "読む".to_string(),
                     head: 0,
                     deprel: "root".to_string(),
                     starts_bunsetsu: true,
+                    content_head: false,
                 },
             ]
         );
@@ -315,6 +337,38 @@ mod tests {
         assert_eq!(second.line, 7);
         assert_eq!(second.text(), None);
         assert_eq!(second.words.len(), 1);
+    }
+
+    #[test]
+    fn reads_the_content_head_from_the_position_type() {
+        let content_heads = |misc: &[&str]| -> Vec<bool> {
+            let input: String = misc
+                .iter()
+                .enumerate()
+                .map(|(index, misc)| {
+                    let head = if index == 0 { "0" } else { "1" };
+                    line(&(index + 1).to_string(), "x", head, "dep", misc)
+                })
+                .collect();
+            parse(&input).unwrap()[0]
+                .words
+                .iter()
+                .map(|word| word.content_head)
+                .collect()
+        };
+        assert_eq!(
+            content_heads(&[
+                "BunsetuBILabel=B|BunsetuPositionType=ROOT|LUWBILabel=B",
+                "BunsetuBILabel=B|BunsetuPositionType=SEM_HEAD",
+                "BunsetuPositionType=SYN_HEAD|BunsetuBILabel=I",
+                "BunsetuBILabel=I|BunsetuPositionType=FUNC",
+                "BunsetuBILabel=I|BunsetuPositionType=CONT",
+                // Without the key, and with a key that only starts like it.
+                "BunsetuBILabel=B",
+                "BunsetuBILabel=B|BunsetuPositionTypeX=SEM_HEAD",
+            ]),
+            [true, true, false, false, false, false, false]
+        );
     }
 
     #[test]

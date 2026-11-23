@@ -7,10 +7,17 @@ use std::process::Command;
 
 use lindera_dependency::{Morpheme, lattice};
 
-/// A word line of CoNLL-U with the columns the conversion reads.
+/// A word line of CoNLL-U with the columns the conversion reads. A word
+/// that starts a bunsetsu is its content head.
 fn word(id: usize, form: &str, head: usize, deprel: &str, starts_bunsetsu: bool) -> String {
-    let label = if starts_bunsetsu { "B" } else { "I" };
-    format!("{id}\t{form}\t_\t_\t_\t_\t{head}\t{deprel}\t_\tBunsetuBILabel={label}|SpaceAfter=No\n")
+    let (label, position) = if starts_bunsetsu {
+        ("B", "SEM_HEAD")
+    } else {
+        ("I", "CONT")
+    };
+    format!(
+        "{id}\t{form}\t_\t_\t_\t_\t{head}\t{deprel}\t_\tBunsetuBILabel={label}|BunsetuPositionType={position}|SpaceAfter=No\n"
+    )
 }
 
 /// Two sentences: その | 後 | 彼は | 本を | 読んだ。, whose first two bunsetsu
@@ -88,6 +95,14 @@ fn converts_a_corpus_with_ipadic() {
     assert_eq!(sentence.morphemes[0].feature(0), Some("名詞"));
     assert!(text.starts_with("* 0 3D \nその後\t名詞,"), "{text}");
     assert!(sentence.comments.is_empty());
+    // The bunsetsu lines hold the head only: no positions of the head word
+    // and of the function word.
+    assert!(
+        sentence
+            .bunsetsu
+            .iter()
+            .all(|bunsetsu| bunsetsu.positions.is_none())
+    );
 
     // The report names the file and counts the merge and the drop.
     for line in [
@@ -97,6 +112,9 @@ fn converts_a_corpus_with_ipadic() {
         "bunsetsu boundaries on a morpheme boundary: 3 of 4 (75.00%)",
         "bunsetsu merged: 1 of 5 (20.00%)",
         "bunsetsu written: 4",
+        // その後, 彼, 本 and 読ん are the head words by the schema of IPADIC
+        // and the content heads of the corpus.
+        "head words on the content head of the corpus: 4 of 4 (100.00%)",
     ] {
         assert!(report.contains(line), "no `{line}` in:\n{report}");
     }

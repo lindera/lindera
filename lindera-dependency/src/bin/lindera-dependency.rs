@@ -11,7 +11,8 @@
 //! The corpus is tokenized with Lindera and the dictionary given, with the
 //! default settings, as the parser will be used; the result is written in
 //! the lattice format, and a report of what was kept, merged and dropped
-//! goes to the standard error.
+//! goes to the standard error. The report ends with how often the head word
+//! of the IPADIC schema is the content head of the corpus.
 //!
 //! `evaluate` compares an output with the answer, both in the lattice
 //! format, and writes the accuracy of chunking and of dependency to the
@@ -52,7 +53,7 @@ use lindera_dependency::chunker::{
 use lindera_dependency::corpus::{self, DictionaryMorpheme, TokenizerError};
 use lindera_dependency::evaluation::{self, Comparison, Count, Evaluation, Pairs};
 use lindera_dependency::lattice::{self, LatticeMorpheme};
-use lindera_dependency::{Bunsetsu, Sentence};
+use lindera_dependency::{Bunsetsu, Schema, Sentence};
 use lindera_segmenter::dictionary::load_dictionary;
 use lindera_segmenter::mode::Mode;
 use lindera_segmenter::segmenter::Segmenter;
@@ -297,8 +298,13 @@ fn convert(args: ConvertArgs) -> Result<(), CommandError> {
     let output = File::create(&args.output)
         .map_err(|error| format!("cannot create {}: {error}", args.output.display()))?;
     let mut output = BufWriter::new(output);
-    let report = corpus::convert(BufReader::new(input), &mut output, tokenize)
-        .map_err(|error| format!("{}: {error}", args.input.display()))?;
+    let report = corpus::convert(
+        BufReader::new(input),
+        &mut output,
+        &Schema::ipadic(),
+        tokenize,
+    )
+    .map_err(|error| format!("{}: {error}", args.input.display()))?;
     output
         .flush()
         .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;

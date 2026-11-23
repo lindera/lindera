@@ -4,17 +4,16 @@ use std::collections::HashMap;
 
 use super::columns::Column;
 use super::template::Template;
+use crate::bytes::{Reader, push_string, push_u32};
 use crate::error::{Error, Result};
 use crate::schema::Schema;
 
 /// The first bytes of a model.
 const MAGIC: &[u8; 8] = b"LDCHUNK\0";
 
-/// The version of the bytes of a model.
-const VERSION: u32 = 1;
-
-/// The value that stands for a column the schema does not have.
-const NO_COLUMN: u32 = u32::MAX;
+/// The version of the bytes of a model. Version 2 holds the whole schema,
+/// with its patterns and its symbols; version 1 held its columns only.
+const VERSION: u32 = 2;
 
 /// A label of the chunker.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -214,12 +213,7 @@ impl ChunkerModel {
         bytes.extend_from_slice(MAGIC);
         push_u32(&mut bytes, VERSION);
 
-        let column = |index: Option<usize>| index.map_or(NO_COLUMN, |index| index as u32);
-        push_u32(&mut bytes, self.schema.part_of_speech.start as u32);
-        push_u32(&mut bytes, self.schema.part_of_speech.end as u32);
-        push_u32(&mut bytes, column(self.schema.conjugation_type));
-        push_u32(&mut bytes, column(self.schema.conjugation_form));
-        push_u32(&mut bytes, column(self.schema.base_form));
+        self.schema.write(&mut bytes);
 
         push_u32(&mut bytes, self.columns.len() as u32);
         for column in &self.columns {
@@ -256,7 +250,7 @@ impl ChunkerModel {
     /// this version: another magic number or version, bytes that end early
     /// or go on after the model, or content [`ChunkerModel::new`] refuses.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        let mut reader = Reader { bytes, position: 0 };
+        let mut reader = Reader::new(bytes, "chunker model", Error::Chunker);
         if reader.take(MAGIC.len())? != MAGIC {
             return Err(Error::Chunker(
                 "not a chunker model: the magic number is missing".to_string(),
@@ -269,18 +263,7 @@ impl ChunkerModel {
             )));
         }
 
-        let start = reader.u32()? as usize;
-        let end = reader.u32()? as usize;
-        let mut column = || -> Result<Option<usize>> {
-            let value = reader.u32()?;
-            Ok((value != NO_COLUMN).then_some(value as usize))
-        };
-        let schema = Schema {
-            part_of_speech: start..end,
-            conjugation_type: column()?,
-            conjugation_form: column()?,
-            base_form: column()?,
-        };
+        let schema = Schema::read(&mut reader)?;
 
         let count = reader.u32()? as usize;
         let mut columns = Vec::new();
@@ -308,128 +291,20 @@ impl ChunkerModel {
                 ));
             }
         }
-        if reader.position != bytes.len() {
+        if reader.remaining() != 0 {
             return Err(Error::Chunker(format!(
                 "the chunker model has {} bytes after its end",
-                bytes.len() - reader.position
+                reader.remaining()
             )));
         }
         Self::new(schema, columns, template, transitions, features)
     }
 }
 
-/// Appends a number as 4 bytes.
-///
-/// # Arguments
-///
-/// * `bytes` - The bytes to append to.
-/// * `value` - The number.
-fn push_u32(bytes: &mut Vec<u8>, value: u32) {
-    bytes.extend_from_slice(&value.to_le_bytes());
-}
-
-/// Appends a string: its length in bytes as 4 bytes, then its UTF-8.
-///
-/// # Arguments
-///
-/// * `bytes` - The bytes to append to.
-/// * `value` - The string.
-fn push_string(bytes: &mut Vec<u8>, value: &str) {
-    push_u32(bytes, value.len() as u32);
-    bytes.extend_from_slice(value.as_bytes());
-}
-
-/// Reads the bytes of a model from the first to the last.
-struct Reader<'a> {
-    /// The bytes.
-    bytes: &'a [u8],
-    /// The number of bytes read.
-    position: usize,
-}
-
-impl<'a> Reader<'a> {
-    /// Takes the next bytes.
-    ///
-    /// # Arguments
-    ///
-    /// * `length` - The number of bytes.
-    ///
-    /// # Returns
-    ///
-    /// The bytes, or [`Error::Chunker`] when fewer are left.
-    fn take(&mut self, length: usize) -> Result<&'a [u8]> {
-        let end = self
-            .position
-            .checked_add(length)
-            .filter(|end| *end <= self.bytes.len())
-            .ok_or_else(|| {
-                Error::Chunker(format!(
-                    "the chunker model ends early: {length} bytes expected at {}, {} left",
-                    self.position,
-                    self.bytes.len() - self.position
-                ))
-            })?;
-        let taken = &self.bytes[self.position..end];
-        self.position = end;
-        Ok(taken)
-    }
-
-    /// Takes the next bytes as an array.
-    ///
-    /// # Returns
-    ///
-    /// The array, or the error of [`Reader::take`].
-    fn array<const N: usize>(&mut self) -> Result<[u8; N]> {
-        let mut array = [0; N];
-        array.copy_from_slice(self.take(N)?);
-        Ok(array)
-    }
-
-    /// Reads a number of 4 bytes.
-    ///
-    /// # Returns
-    ///
-    /// The number, or the error of [`Reader::take`].
-    fn u32(&mut self) -> Result<u32> {
-        Ok(u32::from_le_bytes(self.array()?))
-    }
-
-    /// Reads a number of 8 bytes.
-    ///
-    /// # Returns
-    ///
-    /// The number, or the error of [`Reader::take`].
-    fn u64(&mut self) -> Result<u64> {
-        Ok(u64::from_le_bytes(self.array()?))
-    }
-
-    /// Reads a weight.
-    ///
-    /// # Returns
-    ///
-    /// The weight, or the error of [`Reader::take`].
-    fn f64(&mut self) -> Result<f64> {
-        Ok(f64::from_le_bytes(self.array()?))
-    }
-
-    /// Reads a string.
-    ///
-    /// # Returns
-    ///
-    /// The string, or [`Error::Chunker`] when the bytes end early or are
-    /// not UTF-8.
-    fn string(&mut self) -> Result<String> {
-        let length = self.u32()? as usize;
-        let bytes = self.take(length)?;
-        String::from_utf8(bytes.to_vec()).map_err(|_| {
-            Error::Chunker("the chunker model has a string that is not UTF-8".to_string())
-        })
-    }
-}
-
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use crate::schema::Pattern;
 
     /// A model with the template of CaboCha and the given weights of
     /// feature strings and transitions.
@@ -480,6 +355,10 @@ pub(crate) mod tests {
                 conjugation_type: None,
                 conjugation_form: Some(7),
                 base_form: None,
+                // The patterns and the symbols go to the bytes too.
+                function_words: vec![Pattern::new(&["助詞"])],
+                not_heads: vec![Pattern::new(&["名詞", "非自立"]).after(Pattern::default())],
+                symbols: Schema::ipadic().symbols,
             },
             vec![
                 Column::Surface,
@@ -524,12 +403,15 @@ pub(crate) mod tests {
             error(&other),
             "not a chunker model: the magic number is missing"
         );
-        let mut other = bytes.clone();
-        other[8] = 2;
-        assert_eq!(
-            error(&other),
-            "the chunker model has the version 2, and this crate reads 1"
-        );
+        // Version 1 held the columns of the schema only; it is not read.
+        for version in [1, 3] {
+            let mut other = bytes.clone();
+            other[8] = version;
+            assert_eq!(
+                error(&other),
+                format!("the chunker model has the version {version}, and this crate reads 2")
+            );
+        }
         // Cut anywhere, the bytes end early.
         for length in [12, 30, bytes.len() - 1] {
             let message = error(&bytes[..length]);
@@ -546,9 +428,11 @@ pub(crate) mod tests {
     #[test]
     fn refuses_bytes_with_content_that_is_no_model() {
         let bytes = model(&[("U02:は", [-1.5, 2.0])], [[0.0; 3]; 3]).to_bytes();
-        // The columns start after the magic number, the version and the 5
-        // numbers of the schema: their count, then one code each.
-        let columns = 8 + 4 + 5 * 4;
+        // The columns start after the magic number, the version and the
+        // schema: their count, then one code each.
+        let mut schema = Vec::new();
+        Schema::ipadic().write(&mut schema);
+        let columns = 8 + 4 + schema.len();
         assert_eq!(&bytes[columns..columns + 6], [2, 0, 0, 0, 0, 1]);
 
         let mut other = bytes.clone();

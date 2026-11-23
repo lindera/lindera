@@ -24,8 +24,11 @@
 //! - [`Sentence::violations`]: whether a sentence is the tree the parsers
 //!   assume, with one root that is the last bunsetsu, every head to the
 //!   right, and no crossing arcs.
-//! - [`Schema`]: which feature columns of a dictionary hold the part of
-//!   speech, the conjugation and the base form.
+//! - [`Schema`]: what is known about a dictionary, as data. Which feature
+//!   columns hold the part of speech, the conjugation and the base form;
+//!   the patterns ([`Pattern`]) of its function words; how its symbols are
+//!   recognized ([`Symbols`]). [`Schema::positions`] gives the head word and
+//!   the function word of a bunsetsu.
 //! - [`chunker`]: segmenting the morphemes of a sentence into bunsetsu, with
 //!   a conditional random field over two labels and a model that is a table
 //!   of weights.
@@ -103,6 +106,7 @@
 //! # Ok::<(), lindera_dependency::Error>(())
 //! ```
 
+mod bytes;
 pub mod chunker;
 #[cfg(feature = "train")]
 pub mod corpus;
@@ -116,5 +120,5 @@ pub mod sentence;
 
 pub use error::{Error, Result};
 pub use morpheme::Morpheme;
-pub use schema::Schema;
+pub use schema::{Marks, Pattern, Schema, Symbols};
 pub use sentence::{ArcType, Bunsetsu, Sentence, Violation, tree_violations};

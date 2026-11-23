@@ -116,21 +116,7 @@ impl Column {
         };
         match self {
             Column::Surface => morpheme.surface().to_string(),
-            Column::PartOfSpeech => {
-                let mut value = String::new();
-                for index in schema.part_of_speech.clone() {
-                    match morpheme.feature(index) {
-                        Some(level) if level != MISSING => {
-                            if !value.is_empty() {
-                                value.push('-');
-                            }
-                            value.push_str(level);
-                        }
-                        _ => break,
-                    }
-                }
-                value
-            }
+            Column::PartOfSpeech => schema.part_of_speech_of(morpheme),
             Column::ConjugationType => feature(schema.conjugation_type),
             Column::ConjugationForm => feature(schema.conjugation_form),
             Column::BaseForm => feature(schema.base_form),
@@ -229,6 +215,7 @@ mod tests {
             conjugation_type: None,
             conjugation_form: None,
             base_form: Some(2),
+            ..Schema::default()
         };
         let morpheme = LatticeMorpheme::new("読ん", "動詞,自立,読む,連用");
         let columns = [
