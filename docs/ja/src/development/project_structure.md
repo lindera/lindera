@@ -71,7 +71,7 @@ lindera/
 
 #### `lindera-dependency`
 
-日本語の文節の係り受け解析です。開発中で、まだ公開していません（[#1417](https://github.com/lindera/lindera/issues/1417)）。今は、解析の土台になる型（形態素の trait、文節、文）、CaboCha のラティス形式（`cabocha -f1`）の読み書き、係り受けの木の検査があります。既定のビルドは workspace のほかのクレートに依存せず、`wasm32-unknown-unknown` 向けにビルドできます（`make check-lindera-dependency`）。`train` feature を付けると、`lindera-dependency convert` コマンドも入ります。UD Japanese-GSD のような係り受けのコーパスを `lindera-segmenter` で解析し直して、学習データを作ります。`lindera-dependency evaluate` と `lindera-dependency split` コマンドも入り、文節の区切りと係り受けの精度を CaboCha・J.DepP と同じ数え方で数え、交差検証の分割を書き出します（クレートの README を参照）。
+日本語の文節の係り受け解析です。開発中で、まだ公開していません（[#1417](https://github.com/lindera/lindera/issues/1417)）。今は、解析の土台になる型（形態素の trait、文節、文）、CaboCha のラティス形式（`cabocha -f1`）の読み書き、係り受けの木の検査、文節の区切り（条件付き確率場と、重みの表だけのモデルで、形態素を文節にまとめる）があります。既定のビルドは workspace のほかのクレートに依存せず、`wasm32-unknown-unknown` 向けにビルドできます（`make check-lindera-dependency`）。`train` feature を付けると、`lindera-dependency convert` コマンドも入ります。UD Japanese-GSD のような係り受けのコーパスを `lindera-segmenter` で解析し直して、学習データを作ります。`lindera-dependency evaluate` と `lindera-dependency split` コマンドも入り、文節の区切りと係り受けの精度を CaboCha・J.DepP と同じ数え方で数え、交差検証の分割を書き出します。`lindera-dependency train-chunker` と `lindera-dependency chunk` コマンドは、文節の区切りのモデルを `lindera-crf` で学習し、そのモデルでファイルを区切り直します（クレートの README を参照）。
 
 #### `lindera-cli`
 

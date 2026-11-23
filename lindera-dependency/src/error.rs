@@ -23,6 +23,10 @@ pub enum Error {
     Structure(String),
     /// Reading or writing failed.
     Io(io::Error),
+    /// The chunker was given something it cannot use: a template or a list
+    /// of columns that cannot be read, bytes that are not a model, or
+    /// training data that cannot be trained on.
+    Chunker(String),
     /// The input is not a CoNLL-U file the corpus conversion can read.
     #[cfg(feature = "train")]
     Conllu {
@@ -83,6 +87,7 @@ impl fmt::Display for Error {
             Error::Format { line, message } => write!(f, "line {line}: {message}"),
             Error::Structure(message) => write!(f, "invalid sentence: {message}"),
             Error::Io(error) => write!(f, "{error}"),
+            Error::Chunker(message) => write!(f, "{message}"),
             #[cfg(feature = "train")]
             Error::Conllu { line, message } => write!(f, "line {line}: {message}"),
             #[cfg(feature = "train")]
