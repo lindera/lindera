@@ -1,0 +1,339 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Chunking - Lindera Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../index.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="../architecture.html"><strong aria-hidden="true">2.</strong> Architecture</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="../getting_started.html"><strong aria-hidden="true">3.</strong> Getting Started</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../getting_started/installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../getting_started/environment_variables.html"><strong aria-hidden="true">3.2.</strong> Environment Variables</a></li><li class="chapter-item expanded "><a href="../getting_started/quickstart.html"><strong aria-hidden="true">3.3.</strong> Quick Start</a></li><li class="chapter-item expanded "><a href="../getting_started/examples.html"><strong aria-hidden="true">3.4.</strong> Examples</a></li><li class="spacer"></li></ol></li><li class="chapter-item expanded "><a href="../concepts.html"><strong aria-hidden="true">4.</strong> Core Concepts</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../concepts/morphological_analysis.html"><strong aria-hidden="true">4.1.</strong> Morphological Analysis</a></li><li class="chapter-item expanded "><a href="../concepts/dictionaries.html"><strong aria-hidden="true">4.2.</strong> Dictionaries</a></li><li class="chapter-item expanded "><a href="../concepts/tokenization.html"><strong aria-hidden="true">4.3.</strong> Tokenization</a></li><li class="chapter-item expanded "><a href="../concepts/user_dictionary.html"><strong aria-hidden="true">4.4.</strong> User Dictionary</a></li><li class="chapter-item expanded "><a href="../concepts/filters.html"><strong aria-hidden="true">4.5.</strong> Filters</a></li><li class="spacer"></li></ol></li><li class="chapter-item expanded "><a href="../lindera-crf.html"><strong aria-hidden="true">5.</strong> Lindera CRF</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-crf/architecture.html"><strong aria-hidden="true">5.1.</strong> Architecture</a></li><li class="chapter-item expanded "><a href="../lindera-crf/api_reference.html"><strong aria-hidden="true">5.2.</strong> API Reference</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-dictionary.html"><strong aria-hidden="true">6.</strong> Lindera Dictionary</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-dictionary/architecture.html"><strong aria-hidden="true">6.1.</strong> Architecture</a></li><li class="chapter-item expanded "><a href="../lindera-dictionary/api_reference.html"><strong aria-hidden="true">6.2.</strong> API Reference</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-trainer.html"><strong aria-hidden="true">7.</strong> Lindera Trainer</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-trainer/architecture.html"><strong aria-hidden="true">7.1.</strong> Architecture</a></li><li class="chapter-item expanded "><a href="../lindera-trainer/api_reference.html"><strong aria-hidden="true">7.2.</strong> API Reference</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera.html"><strong aria-hidden="true">8.</strong> Lindera Library</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera/segmenter.html"><strong aria-hidden="true">8.1.</strong> Segmenter</a></li><li class="chapter-item expanded "><a href="../lindera/error_handling.html"><strong aria-hidden="true">8.2.</strong> Error Handling</a></li><li class="chapter-item expanded "><a href="../lindera/api_reference.html"><strong aria-hidden="true">8.3.</strong> API Reference</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-analysis.html"><strong aria-hidden="true">9.</strong> Lindera Analysis</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-analysis/configuration.html"><strong aria-hidden="true">9.1.</strong> Configuration</a></li><li class="chapter-item expanded "><a href="../lindera-analysis/filters.html"><strong aria-hidden="true">9.2.</strong> Filters</a></li><li class="chapter-item expanded "><a href="../lindera-analysis/architecture.html"><strong aria-hidden="true">9.3.</strong> Architecture</a></li><li class="chapter-item expanded "><a href="../lindera-analysis/api_reference.html"><strong aria-hidden="true">9.4.</strong> API Reference</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-dependency.html"><strong aria-hidden="true">10.</strong> Lindera Dependency</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-dependency/architecture.html"><strong aria-hidden="true">10.1.</strong> Architecture</a></li><li class="chapter-item expanded "><a href="../lindera-dependency/chunking.html" class="active"><strong aria-hidden="true">10.2.</strong> Chunking</a></li><li class="chapter-item expanded "><a href="../lindera-dependency/head_and_function_word.html"><strong aria-hidden="true">10.3.</strong> Head and Function Word</a></li><li class="chapter-item expanded "><a href="../lindera-dependency/training_data.html"><strong aria-hidden="true">10.4.</strong> Training Data</a></li><li class="chapter-item expanded "><a href="../lindera-dependency/evaluation.html"><strong aria-hidden="true">10.5.</strong> Evaluation</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-cli.html"><strong aria-hidden="true">11.</strong> Lindera CLI</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-cli/installation.html"><strong aria-hidden="true">11.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../lindera-cli/commands.html"><strong aria-hidden="true">11.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="../lindera-cli/tutorial.html"><strong aria-hidden="true">11.3.</strong> Tutorial</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-python.html"><strong aria-hidden="true">12.</strong> Lindera Python</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-python/installation.html"><strong aria-hidden="true">12.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../lindera-python/quickstart.html"><strong aria-hidden="true">12.2.</strong> Quick Start</a></li><li class="chapter-item expanded "><a href="../lindera-python/tokenizer_api.html"><strong aria-hidden="true">12.3.</strong> Tokenizer API</a></li><li class="chapter-item expanded "><a href="../lindera-python/dictionary_management.html"><strong aria-hidden="true">12.4.</strong> Dictionary Management</a></li><li class="chapter-item expanded "><a href="../lindera-python/text_processing_pipeline.html"><strong aria-hidden="true">12.5.</strong> Text Processing Pipeline</a></li><li class="chapter-item expanded "><a href="../lindera-python/training.html"><strong aria-hidden="true">12.6.</strong> Training</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-nodejs.html"><strong aria-hidden="true">13.</strong> Lindera Node.js</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-nodejs/installation.html"><strong aria-hidden="true">13.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../lindera-nodejs/quickstart.html"><strong aria-hidden="true">13.2.</strong> Quick Start</a></li><li class="chapter-item expanded "><a href="../lindera-nodejs/tokenizer_api.html"><strong aria-hidden="true">13.3.</strong> Tokenizer API</a></li><li class="chapter-item expanded "><a href="../lindera-nodejs/dictionary_management.html"><strong aria-hidden="true">13.4.</strong> Dictionary Management</a></li><li class="chapter-item expanded "><a href="../lindera-nodejs/text_processing_pipeline.html"><strong aria-hidden="true">13.5.</strong> Text Processing Pipeline</a></li><li class="chapter-item expanded "><a href="../lindera-nodejs/training.html"><strong aria-hidden="true">13.6.</strong> Training</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-ruby.html"><strong aria-hidden="true">14.</strong> Lindera Ruby</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-ruby/installation.html"><strong aria-hidden="true">14.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../lindera-ruby/quickstart.html"><strong aria-hidden="true">14.2.</strong> Quick Start</a></li><li class="chapter-item expanded "><a href="../lindera-ruby/tokenizer_api.html"><strong aria-hidden="true">14.3.</strong> Tokenizer API</a></li><li class="chapter-item expanded "><a href="../lindera-ruby/dictionary_management.html"><strong aria-hidden="true">14.4.</strong> Dictionary Management</a></li><li class="chapter-item expanded "><a href="../lindera-ruby/text_processing_pipeline.html"><strong aria-hidden="true">14.5.</strong> Text Processing Pipeline</a></li><li class="chapter-item expanded "><a href="../lindera-ruby/training.html"><strong aria-hidden="true">14.6.</strong> Training</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-php.html"><strong aria-hidden="true">15.</strong> Lindera PHP</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-php/installation.html"><strong aria-hidden="true">15.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../lindera-php/quickstart.html"><strong aria-hidden="true">15.2.</strong> Quick Start</a></li><li class="chapter-item expanded "><a href="../lindera-php/tokenizer_api.html"><strong aria-hidden="true">15.3.</strong> Tokenizer API</a></li><li class="chapter-item expanded "><a href="../lindera-php/dictionary_management.html"><strong aria-hidden="true">15.4.</strong> Dictionary Management</a></li><li class="chapter-item expanded "><a href="../lindera-php/text_processing_pipeline.html"><strong aria-hidden="true">15.5.</strong> Text Processing Pipeline</a></li><li class="chapter-item expanded "><a href="../lindera-php/training.html"><strong aria-hidden="true">15.6.</strong> Training</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-wasm.html"><strong aria-hidden="true">16.</strong> Lindera WASM</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-wasm/installation.html"><strong aria-hidden="true">16.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../lindera-wasm/quickstart.html"><strong aria-hidden="true">16.2.</strong> Quick Start</a></li><li class="chapter-item expanded "><a href="../lindera-wasm/tokenizer_api.html"><strong aria-hidden="true">16.3.</strong> Tokenizer API</a></li><li class="chapter-item expanded "><a href="../lindera-wasm/dictionary_management.html"><strong aria-hidden="true">16.4.</strong> Dictionary Management</a></li><li class="chapter-item expanded "><a href="../lindera-wasm/browser_usage.html"><strong aria-hidden="true">16.5.</strong> Browser Usage</a></li><li class="chapter-item expanded "><a href="../lindera-wasm/opfs.html"><strong aria-hidden="true">16.6.</strong> OPFS Dictionary Storage</a></li><li class="spacer"></li></ol></li><li class="chapter-item expanded "><a href="../lindera-ipadic.html"><strong aria-hidden="true">17.</strong> Lindera IPADIC</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-ipadic/dictionary_format.html"><strong aria-hidden="true">17.1.</strong> Dictionary Format</a></li><li class="chapter-item expanded "><a href="../lindera-ipadic/build.html"><strong aria-hidden="true">17.2.</strong> Build</a></li><li class="chapter-item expanded "><a href="../lindera-ipadic/examples.html"><strong aria-hidden="true">17.3.</strong> Examples</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-ipadic-neologd.html"><strong aria-hidden="true">18.</strong> Lindera IPADIC NEologd</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-ipadic-neologd/dictionary_format.html"><strong aria-hidden="true">18.1.</strong> Dictionary Format</a></li><li class="chapter-item expanded "><a href="../lindera-ipadic-neologd/build.html"><strong aria-hidden="true">18.2.</strong> Build</a></li><li class="chapter-item expanded "><a href="../lindera-ipadic-neologd/examples.html"><strong aria-hidden="true">18.3.</strong> Examples</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-unidic.html"><strong aria-hidden="true">19.</strong> Lindera UniDic</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-unidic/dictionary_format.html"><strong aria-hidden="true">19.1.</strong> Dictionary Format</a></li><li class="chapter-item expanded "><a href="../lindera-unidic/build.html"><strong aria-hidden="true">19.2.</strong> Build</a></li><li class="chapter-item expanded "><a href="../lindera-unidic/examples.html"><strong aria-hidden="true">19.3.</strong> Examples</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-unidic-cwj.html"><strong aria-hidden="true">20.</strong> Lindera UniDic CWJ</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-unidic-cwj/dictionary_format.html"><strong aria-hidden="true">20.1.</strong> Dictionary Format</a></li><li class="chapter-item expanded "><a href="../lindera-unidic-cwj/build.html"><strong aria-hidden="true">20.2.</strong> Build</a></li><li class="chapter-item expanded "><a href="../lindera-unidic-cwj/examples.html"><strong aria-hidden="true">20.3.</strong> Examples</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-unidic-csj.html"><strong aria-hidden="true">21.</strong> Lindera UniDic CSJ</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-unidic-csj/dictionary_format.html"><strong aria-hidden="true">21.1.</strong> Dictionary Format</a></li><li class="chapter-item expanded "><a href="../lindera-unidic-csj/build.html"><strong aria-hidden="true">21.2.</strong> Build</a></li><li class="chapter-item expanded "><a href="../lindera-unidic-csj/examples.html"><strong aria-hidden="true">21.3.</strong> Examples</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-sudachidict.html"><strong aria-hidden="true">22.</strong> Lindera SudachiDict</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-sudachidict/dictionary_format.html"><strong aria-hidden="true">22.1.</strong> Dictionary Format</a></li><li class="chapter-item expanded "><a href="../lindera-sudachidict/build.html"><strong aria-hidden="true">22.2.</strong> Build</a></li><li class="chapter-item expanded "><a href="../lindera-sudachidict/examples.html"><strong aria-hidden="true">22.3.</strong> Examples</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-ko-dic.html"><strong aria-hidden="true">23.</strong> Lindera ko-dic</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-ko-dic/dictionary_format.html"><strong aria-hidden="true">23.1.</strong> Dictionary Format</a></li><li class="chapter-item expanded "><a href="../lindera-ko-dic/build.html"><strong aria-hidden="true">23.2.</strong> Build</a></li><li class="chapter-item expanded "><a href="../lindera-ko-dic/examples.html"><strong aria-hidden="true">23.3.</strong> Examples</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-cc-cedict.html"><strong aria-hidden="true">24.</strong> Lindera CC-CEDICT</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-cc-cedict/dictionary_format.html"><strong aria-hidden="true">24.1.</strong> Dictionary Format</a></li><li class="chapter-item expanded "><a href="../lindera-cc-cedict/build.html"><strong aria-hidden="true">24.2.</strong> Build</a></li><li class="chapter-item expanded "><a href="../lindera-cc-cedict/examples.html"><strong aria-hidden="true">24.3.</strong> Examples</a></li></ol></li><li class="chapter-item expanded "><a href="../lindera-jieba.html"><strong aria-hidden="true">25.</strong> Lindera Jieba</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lindera-jieba/dictionary_format.html"><strong aria-hidden="true">25.1.</strong> Dictionary Format</a></li><li class="chapter-item expanded "><a href="../lindera-jieba/build.html"><strong aria-hidden="true">25.2.</strong> Build</a></li><li class="chapter-item expanded "><a href="../lindera-jieba/examples.html"><strong aria-hidden="true">25.3.</strong> Examples</a></li></ol></li><li class="chapter-item expanded "><a href="../sudachidict.html"><strong aria-hidden="true">26.</strong> SudachiDict (Custom Build)</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="../migration_v3_to_v4.html"><strong aria-hidden="true">27.</strong> Migration v3 to v4</a></li><li class="chapter-item expanded "><a href="../migration_v4_to_v5.html"><strong aria-hidden="true">28.</strong> Migration v4 to v5</a></li><li class="chapter-item expanded "><a href="../migration_v5_to_v6.html"><strong aria-hidden="true">29.</strong> Migration v5 to v6</a></li><li class="chapter-item expanded "><a href="../migration_v6_to_v7.html"><strong aria-hidden="true">30.</strong> Migration v6 to v7</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="../development.html"><strong aria-hidden="true">31.</strong> Development Guide</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../development/build_and_test.html"><strong aria-hidden="true">31.1.</strong> Build & Test</a></li><li class="chapter-item expanded "><a href="../development/feature_flags.html"><strong aria-hidden="true">31.2.</strong> Feature Flags</a></li><li class="chapter-item expanded "><a href="../development/project_structure.html"><strong aria-hidden="true">31.3.</strong> Project Structure</a></li><li class="chapter-item expanded "><a href="../development/training_pipeline.html"><strong aria-hidden="true">31.4.</strong> Training Pipeline</a></li><li class="chapter-item expanded "><a href="../development/dictionary_release.html"><strong aria-hidden="true">31.5.</strong> Dictionary Release</a></li><li class="chapter-item expanded "><a href="../development/dependency_design.html"><strong aria-hidden="true">31.6.</strong> Design Notes: Dependency Analysis</a></li><li class="chapter-item expanded "><a href="../development/contributing.html"><strong aria-hidden="true">31.7.</strong> Contributing</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Lindera Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/lindera/lindera" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="chunking"><a class="header" href="#chunking">Chunking</a></h1>
+<p>The chunker segments the morphemes of a sentence into bunsetsu. It decides, for every morpheme, whether it starts a bunsetsu (<code>B</code>) or continues one (<code>I</code>), with a conditional random field over the two labels, as CaboCha does.</p>
+<p>Chunking is in the default build and needs no other crate: the model is a table from feature string to the weights of <code>B</code> and <code>I</code>, with the weights of the transitions, and the labels are found by Viterbi. Training is behind the <code>train</code> feature.</p>
+<h2 id="chunking-a-sentence"><a class="header" href="#chunking-a-sentence">Chunking a sentence</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera_dependency::chunker::{Chunker, ChunkerModel};
+use lindera_dependency::lattice::{self, LatticeMorpheme};
+use lindera_dependency::{Bunsetsu, Morpheme, Sentence};
+
+let model = ChunkerModel::from_bytes(&amp;std::fs::read("chunker.model")?)?;
+let chunker = Chunker::new(model);
+
+// The morphemes of 彼は本を読んだ。 as IPADIC gives them. Any type that
+// implements `Morpheme` will do.
+let morphemes = vec![
+    LatticeMorpheme::new("彼", "名詞,代名詞,一般,*,*,*,彼,カレ,カレ"),
+    LatticeMorpheme::new("は", "助詞,係助詞,*,*,*,*,は,ハ,ワ"),
+    LatticeMorpheme::new("本", "名詞,一般,*,*,*,*,本,ホン,ホン"),
+    LatticeMorpheme::new("を", "助詞,格助詞,一般,*,*,*,を,ヲ,ヲ"),
+    LatticeMorpheme::new("読ん", "動詞,自立,*,*,五段・マ行,連用タ接続,読む,ヨン,ヨン"),
+    LatticeMorpheme::new("だ", "助動詞,*,*,*,特殊・タ,基本形,だ,ダ,ダ"),
+    LatticeMorpheme::new("。", "記号,句点,*,*,*,*,。,。,。"),
+];
+
+// The ranges of the bunsetsu, as indices into the morphemes.
+let ranges = chunker.chunk(&amp;morphemes);
+assert_eq!(ranges, [0..2, 2..4, 4..7]);
+<span class="boring">}</span></code></pre></pre>
+<p><code>Chunker::chunk</code> takes <code>&amp;self</code>, and a chunker is <code>Send + Sync</code>, so one chunker serves several threads. The first morpheme always starts a bunsetsu, and an empty sentence has none.</p>
+<p>The morphemes have to come from the dictionary the model was trained with, tokenized with the same settings: a model belongs to one dictionary.</p>
+<h3 id="with-the-head-word-and-the-function-word"><a class="header" href="#with-the-head-word-and-the-function-word">With the head word and the function word</a></h3>
+<p>A model holds the <a href="./head_and_function_word.html">schema</a> it was trained with, which gives the head word and the function word of each bunsetsu. The following writes the result in the lattice format. There is no parser yet, so the heads are a placeholder here: every bunsetsu depends on the next one.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let schema = chunker.model().schema();
+let count = ranges.len();
+let bunsetsu = ranges
+    .into_iter()
+    .enumerate()
+    .map(|(index, range)| {
+        let positions = schema.positions(&amp;morphemes[range.clone()]);
+        let mut bunsetsu = Bunsetsu::new(range, (index + 1 &lt; count).then_some(index + 1));
+        bunsetsu.positions = positions;
+        bunsetsu
+    })
+    .collect();
+let sentence = Sentence::new(morphemes, bunsetsu)?;
+let mut output = Vec::new();
+lattice::write(&amp;mut output, &amp;sentence)?;
+print!("{}", String::from_utf8(output)?);
+<span class="boring">}</span></code></pre></pre>
+<pre><code class="language-text">* 0 1D 0/1
+彼	名詞,代名詞,一般,*,*,*,彼,カレ,カレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
+* 1 2D 0/1
+本	名詞,一般,*,*,*,*,本,ホン,ホン
+を	助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+* 2 -1D 0/1
+読ん	動詞,自立,*,*,五段・マ行,連用タ接続,読む,ヨン,ヨン
+だ	助動詞,*,*,*,特殊・タ,基本形,だ,ダ,ダ
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<h2 id="training-a-model"><a class="header" href="#training-a-model">Training a model</a></h2>
+<p>No model is distributed yet. Train one from <a href="./training_data.html">training data</a>:</p>
+<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
+    --input train.lattice --output chunker.model
+</code></pre>
+<p>On the train file of UD Japanese-GSD converted with IPADIC, this takes a few seconds and ends with:</p>
+<pre><code class="language-text">train.lattice: 7024 sentences
+iterations: 126
+feature strings: 4325
+weights: 8656
+bytes: 196164
+</code></pre>
+<p>Training the same data again gives the same bytes. The bytes of a model are a format of this crate, with weights as <code>f64</code>; it is not the file format of a released model, and it may change.</p>
+<div class="table-wrapper"><table><thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>--regularization</code></td><td><code>l1</code></td><td><code>l1</code> or <code>l2</code></td></tr>
+<tr><td><code>--lambda</code></td><td><code>0.5</code></td><td>The coefficient of the regularization</td></tr>
+<tr><td><code>--columns</code></td><td><code>surface,pos,cform</code></td><td>The columns the template reads: <code>surface</code>, <code>pos</code> (the part of speech as its levels joined by <code>-</code>), <code>ctype</code> (conjugation type), <code>cform</code> (conjugation form), <code>base</code> (base form)</td></tr>
+<tr><td><code>--template</code></td><td>The template of CaboCha's chunker with five lines for a third column</td><td>A file in the format of CRF++</td></tr>
+<tr><td><code>--max-iterations</code></td><td><code>1000</code></td><td>The largest number of iterations</td></tr>
+<tr><td><code>--threads</code></td><td>The number of CPUs</td><td>The number of threads</td></tr>
+</tbody></table>
+</div>
+<p><code>chunk</code> segments the morphemes of a file again with a model, for <a href="./evaluation.html"><code>evaluate</code></a> to compare with the answer:</p>
+<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- chunk \
+    --model chunker.model --input dev.lattice --output output.lattice
+</code></pre>
+<p>It writes every bunsetsu as depending on the next one, since there is no parser yet.</p>
+<h2 id="accuracy"><a class="header" href="#accuracy">Accuracy</a></h2>
+<p>With the defaults, trained on the train file of UD Japanese-GSD (commit c662dc9) with IPADIC:</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th>F</th><th>Precision</th><th>Recall</th><th>Sentences with every bunsetsu right</th></tr></thead><tbody>
+<tr><td>UD Japanese-GSD dev</td><td>96.85</td><td>97.02% (4,009 / 4,132)</td><td>96.67% (4,009 / 4,147)</td><td>432 / 506</td></tr>
+<tr><td>UD Japanese-GSD test</td><td>96.92</td><td>96.85% (4,373 / 4,515)</td><td>96.98% (4,373 / 4,509)</td><td>459 / 542</td></tr>
+<tr><td>UD Japanese-PUD</td><td>98.04</td><td>98.05% (9,649 / 9,841)</td><td>98.03% (9,649 / 9,843)</td><td>885 / 994</td></tr>
+</tbody></table>
+</div>
+<p>The defaults were chosen by a 10-fold cross-validation on the train file. The conjugation form helps, the conjugation type does not, and L1 is better than L2 with a model about fifty times smaller. The tables of the cross-validation are in the <a href="https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md#how-the-defaults-were-chosen">README of the crate</a>, and <a href="https://github.com/lindera/lindera/tree/main/scripts/dependency"><code>scripts/dependency</code></a> runs them again.</p>
+<h2 id="how-the-features-are-made"><a class="header" href="#how-the-features-are-made">How the features are made</a></h2>
+<p>The feature strings are made in two steps that can each be replaced:</p>
+<ol>
+<li><strong>Columns.</strong> For each morpheme, the columns of the model are read through the schema: the surface, the part of speech, the conjugation form.</li>
+<li><strong>Template.</strong> A template in the format of CRF++ expands the columns of the morpheme and of its neighbours into feature strings: <code>U02:%x[0,0]</code> is the first column of the morpheme itself, <code>U11:%x[-1,1]</code> the second column of the one before. A position outside the sentence gives <code>_B-1</code>, <code>_B+1</code> and so on.</li>
+</ol>
+<p>The decoder sees only the feature strings and the table of weights. <code>Chunker::features</code> makes the strings and <code>Chunker::labels</code> decodes them, so an extractor of your own can feed the same decoder.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../lindera-dependency/architecture.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../lindera-dependency/head_and_function_word.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../lindera-dependency/architecture.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../lindera-dependency/head_and_function_word.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>
