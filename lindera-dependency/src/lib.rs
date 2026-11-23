@@ -28,7 +28,9 @@
 //! With the `train` feature, the `corpus` module and the
 //! `lindera-dependency convert` command make training data from a dependency
 //! corpus such as UD Japanese-GSD: bunsetsu dependencies on the morphemes of
-//! a dictionary, in the lattice format.
+//! a dictionary, in the lattice format. The `evaluation` module and the
+//! `lindera-dependency evaluate` command count the accuracy of chunking and
+//! of dependency as CaboCha and J.DepP do, and compare two outputs.
 //!
 //! # Examples
 //!
@@ -97,6 +99,8 @@
 #[cfg(feature = "train")]
 pub mod corpus;
 pub mod error;
+#[cfg(feature = "train")]
+pub mod evaluation;
 pub mod lattice;
 pub mod morpheme;
 pub mod sentence;

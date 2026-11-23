@@ -12,15 +12,35 @@
 //! default settings, as the parser will be used; the result is written in
 //! the lattice format, and a report of what was kept, merged and dropped
 //! goes to the standard error.
+//!
+//! `evaluate` compares an output with the answer, both in the lattice
+//! format, and writes the accuracy of chunking and of dependency to the
+//! standard output; with a second output, also the paired counts of the two
+//! and the p-value of McNemar's test:
+//!
+//! ```text
+//! lindera-dependency evaluate --gold dev.lattice --system output.lattice
+//! ```
+//!
+//! `split` writes the test and the training file of each fold of a
+//! cross-validation:
+//!
+//! ```text
+//! lindera-dependency split --input train.lattice --folds 10 --output-dir folds
+//! ```
 
 use std::borrow::Cow;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{self, BufReader, BufWriter, Write};
-use std::path::PathBuf;
+use std::num::NonZeroUsize;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
+use lindera_dependency::Sentence;
 use lindera_dependency::corpus::{self, DictionaryMorpheme, TokenizerError};
+use lindera_dependency::evaluation::{self, Comparison, Count, Evaluation, Pairs};
+use lindera_dependency::lattice::{self, LatticeMorpheme};
 use lindera_segmenter::dictionary::load_dictionary;
 use lindera_segmenter::mode::Mode;
 use lindera_segmenter::segmenter::Segmenter;
@@ -44,6 +64,10 @@ struct Args {
 enum Command {
     /// Makes training data in the lattice format from a dependency corpus.
     Convert(ConvertArgs),
+    /// Evaluates an output against the answer.
+    Evaluate(EvaluateArgs),
+    /// Splits a file into the folds of a cross-validation.
+    Split(SplitArgs),
 }
 
 /// The arguments of `convert`.
@@ -69,6 +93,59 @@ struct ConvertArgs {
         help = "File to write, in the lattice format"
     )]
     output: PathBuf,
+}
+
+/// The arguments of `evaluate`.
+#[derive(Debug, clap::Args)]
+#[clap(
+    about = "Evaluate chunking and dependency accuracy of an output against the answer, both in the lattice format, as CaboCha and J.DepP count them"
+)]
+struct EvaluateArgs {
+    /// The answer.
+    #[clap(short = 'g', long = "gold", help = "The answer, in the lattice format")]
+    gold: PathBuf,
+    /// The output to evaluate.
+    #[clap(
+        short = 's',
+        long = "system",
+        help = "The output to evaluate: the same sentences in the same order"
+    )]
+    system: PathBuf,
+    /// A second output, to compare with the first.
+    #[clap(
+        short = 'c',
+        long = "compare",
+        help = "A second output: also evaluated, and paired with the first for McNemar's test"
+    )]
+    compare: Option<PathBuf>,
+    /// Whether to write JSON.
+    #[clap(long = "json", help = "Write JSON instead of text")]
+    json: bool,
+}
+
+/// The arguments of `split`.
+#[derive(Debug, clap::Args)]
+#[clap(
+    about = "Split a file in the lattice format into the folds of a cross-validation: sentence i is in the test file of fold i mod k, and in the training file of every other fold"
+)]
+struct SplitArgs {
+    /// The file to split.
+    #[clap(
+        short = 'i',
+        long = "input",
+        help = "File to split, in the lattice format"
+    )]
+    input: PathBuf,
+    /// The number of folds.
+    #[clap(short = 'k', long = "folds", help = "Number of folds, at least 2")]
+    folds: NonZeroUsize,
+    /// Where the files of the folds are written.
+    #[clap(
+        short = 'o',
+        long = "output-dir",
+        help = "Directory for fold<i>.test.lattice and fold<i>.train.lattice, created when missing"
+    )]
+    output_dir: PathBuf,
 }
 
 /// The error type of the command.
@@ -118,10 +195,220 @@ fn convert(args: ConvertArgs) -> Result<(), CommandError> {
     Ok(())
 }
 
+/// Reads the sentences of a file in the lattice format.
+///
+/// # Arguments
+///
+/// * `path` - The file.
+///
+/// # Returns
+///
+/// The sentences, or an error that names the file.
+fn read_lattice(path: &Path) -> Result<Vec<Sentence<LatticeMorpheme>>, CommandError> {
+    let file =
+        File::open(path).map_err(|error| format!("cannot open {}: {error}", path.display()))?;
+    lattice::Reader::new(BufReader::new(file))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| format!("{}: {error}", path.display()).into())
+}
+
+/// A count as JSON: its numerator, its denominator and their ratio, `null`
+/// when nothing was counted.
+///
+/// # Arguments
+///
+/// * `count` - The count.
+///
+/// # Returns
+///
+/// The JSON object.
+fn count_json(count: &Count) -> serde_json::Value {
+    serde_json::json!({
+        "correct": count.correct,
+        "total": count.total,
+        "ratio": count.ratio(),
+    })
+}
+
+/// An evaluation as JSON.
+///
+/// # Arguments
+///
+/// * `evaluation` - The evaluation.
+///
+/// # Returns
+///
+/// The JSON object.
+fn evaluation_json(evaluation: &Evaluation) -> serde_json::Value {
+    let chunking = &evaluation.chunking;
+    serde_json::json!({
+        "sentences": evaluation.sentences,
+        "different_morphemes": evaluation.different,
+        "without_bunsetsu": evaluation.without_bunsetsu,
+        "chunking": {
+            "correct": chunking.correct,
+            "system": chunking.system,
+            "gold": chunking.gold,
+            "precision": chunking.precision(),
+            "recall": chunking.recall(),
+            "f_score": chunking.f_score(),
+            "sentences": count_json(&chunking.sentences),
+        },
+        "dependency": {
+            "level0": count_json(&evaluation.dependency.level0),
+            "level1": count_json(&evaluation.dependency.level1),
+            "level2": count_json(&evaluation.dependency.level2),
+            "sentences": count_json(&evaluation.dependency.sentences),
+        },
+        "end_to_end": {
+            "arcs": count_json(&evaluation.end_to_end.arcs),
+            "sentences": count_json(&evaluation.end_to_end.sentences),
+        },
+    })
+}
+
+/// The pairs of two outputs as JSON, with the p-value of McNemar's test.
+///
+/// # Arguments
+///
+/// * `pairs` - The pairs.
+///
+/// # Returns
+///
+/// The JSON object.
+fn pairs_json(pairs: &Pairs) -> serde_json::Value {
+    serde_json::json!({
+        "both": pairs.both,
+        "first_only": pairs.first_only,
+        "second_only": pairs.second_only,
+        "neither": pairs.neither,
+        "p_value": pairs.p_value(),
+    })
+}
+
+/// A comparison as JSON.
+///
+/// # Arguments
+///
+/// * `comparison` - The comparison.
+///
+/// # Returns
+///
+/// The JSON object.
+fn comparison_json(comparison: &Comparison) -> serde_json::Value {
+    serde_json::json!({
+        "first": evaluation_json(&comparison.first),
+        "second": evaluation_json(&comparison.second),
+        "paired_arcs": pairs_json(&comparison.arcs),
+        "paired_sentences": pairs_json(&comparison.sentences),
+    })
+}
+
+/// Runs `evaluate`.
+///
+/// # Arguments
+///
+/// * `args` - The arguments.
+///
+/// # Returns
+///
+/// `Ok(())` once the result is written to the standard output, or the first
+/// error: a file that cannot be read, files that hold different numbers of
+/// sentences, or a failure to write.
+fn evaluate(args: EvaluateArgs) -> Result<(), CommandError> {
+    let gold = read_lattice(&args.gold)?;
+    let system = read_lattice(&args.system)?;
+    let (text, json) = match &args.compare {
+        None => {
+            let evaluation = evaluation::evaluate(&gold, &system)?;
+            (evaluation.to_string(), evaluation_json(&evaluation))
+        }
+        Some(second) => {
+            let second = read_lattice(second)?;
+            let comparison = evaluation::compare(&gold, &system, &second)?;
+            (comparison.to_string(), comparison_json(&comparison))
+        }
+    };
+    let output = if args.json {
+        serde_json::to_string_pretty(&json)?
+    } else {
+        text
+    };
+    writeln!(io::stdout(), "{output}")?;
+    Ok(())
+}
+
+/// Runs `split`.
+///
+/// # Arguments
+///
+/// * `args` - The arguments.
+///
+/// # Returns
+///
+/// `Ok(())` once the files of every fold are written, or the first error:
+/// fewer than 2 folds, a file that cannot be read, or a file that cannot be
+/// written.
+fn split(args: SplitArgs) -> Result<(), CommandError> {
+    let folds = args.folds.get();
+    if folds < 2 {
+        return Err("a cross-validation needs at least 2 folds".into());
+    }
+    let sentences = read_lattice(&args.input)?;
+    fs::create_dir_all(&args.output_dir)
+        .map_err(|error| format!("cannot create {}: {error}", args.output_dir.display()))?;
+
+    let create = |name: String| -> Result<(PathBuf, BufWriter<File>), CommandError> {
+        let path = args.output_dir.join(name);
+        let file = File::create(&path)
+            .map_err(|error| format!("cannot create {}: {error}", path.display()))?;
+        Ok((path, BufWriter::new(file)))
+    };
+    let mut tests = Vec::with_capacity(folds);
+    let mut trains = Vec::with_capacity(folds);
+    for fold in 0..folds {
+        tests.push(create(format!("fold{fold}.test.lattice"))?);
+        trains.push(create(format!("fold{fold}.train.lattice"))?);
+    }
+
+    let mut test_sizes = vec![0usize; folds];
+    for (index, sentence) in sentences.iter().enumerate() {
+        let own = evaluation::fold_of(index, args.folds);
+        test_sizes[own] += 1;
+        for fold in 0..folds {
+            let (path, writer) = if fold == own {
+                &mut tests[fold]
+            } else {
+                &mut trains[fold]
+            };
+            lattice::write(writer, sentence)
+                .map_err(|error| format!("cannot write {}: {error}", path.display()))?;
+        }
+    }
+    for (path, writer) in tests.iter_mut().chain(trains.iter_mut()) {
+        writer
+            .flush()
+            .map_err(|error| format!("cannot write {}: {error}", path.display()))?;
+    }
+
+    // A failure to write the summary is ignored: the files are complete.
+    let mut summary = format!("{}: {} sentences", args.input.display(), sentences.len());
+    for (fold, size) in test_sizes.iter().enumerate() {
+        summary.push_str(&format!(
+            "\nfold {fold}: test {size}, train {}",
+            sentences.len() - size
+        ));
+    }
+    let _ = writeln!(io::stderr(), "{summary}");
+    Ok(())
+}
+
 fn main() -> ExitCode {
     let args = Args::parse();
     let result = match args.command {
         Command::Convert(args) => convert(args),
+        Command::Evaluate(args) => evaluate(args),
+        Command::Split(args) => split(args),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
