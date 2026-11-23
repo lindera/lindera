@@ -1,0 +1,21 @@
+# Measures the head word of variants of the schema of IPADIC against the
+# content head of a corpus, with `corpus::convert` and the embedded IPADIC:
+# the table "Agreement with UD Japanese-GSD" of the README of
+# lindera-dependency.
+#
+# Not a member of the lindera workspace (it has a workspace of its own), not
+# built by CI and not published. Run it from the root of the repository:
+#
+#   cargo run --release --manifest-path scripts/dependency/head_variants/Cargo.toml -- \
+#       scripts/dependency/data/gsd/ja_gsd-ud-train.conllu
+[package]
+name = "head_variants"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+lindera-dependency = { path = "../../../lindera-dependency", features = ["embed-ipadic"] }
+lindera-segmenter = { path = "../../../lindera-segmenter" }

@@ -440,6 +440,7 @@ jobs:
             # versions it applies to them live, in the bindings.
             scripts:
               - 'scripts/benchmarks/**'
+              - 'scripts/dependency/**'
               - 'docs/mermaid-init.js'
               - 'docs/ja/mermaid-init.js'
               - 'lindera-python/pyproject.toml'

@@ -7,4 +7,5 @@
 - [プロジェクト構成](./development/project_structure.md) -- クレートの配置とモジュール構成
 - [学習パイプライン](./development/training_pipeline.md) -- CRF ベースの辞書学習ワークフロー
 - [辞書のリリース](./development/dictionary_release.md) -- `embed-*` のビルドが埋め込む公式の辞書の公開
+- [設計メモ: 係り受け解析](./development/dependency_design.md) -- `lindera-dependency` の決定と、その根拠になった数字
 - [貢献ガイド](./development/contributing.md) -- コントリビューター向けガイドライン

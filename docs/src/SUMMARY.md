@@ -151,4 +151,5 @@
     - [Project Structure](./development/project_structure.md)
     - [Training Pipeline](./development/training_pipeline.md)
     - [Dictionary Release](./development/dictionary_release.md)
+    - [Design Notes: Dependency Analysis](./development/dependency_design.md)
     - [Contributing](./development/contributing.md)
