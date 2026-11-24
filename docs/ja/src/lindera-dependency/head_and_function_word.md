@@ -83,7 +83,7 @@ CaboCha のパターンに足したものは、測定から決めました。UD 
 
 ## ほかの辞書
 
-スキーマは、フィールドが公開されている値です。列、`function_words`、`not_heads`、`symbols` があります。ほかの辞書のスキーマは、新しいコードを書かずに、データから作れます。このクレートが今のところ用意しているのは IPADIC だけで、UniDic が続く予定です。
+スキーマは、フィールドが公開されている値です。列、`function_words`、`not_heads`、`symbols` と、[解析器](./parsing.md)が読む 2 つの一覧 `particles`・`lexicalized` があります。ほかの辞書のスキーマは、新しいコードを書かずに、データから作れます。このクレートが今のところ用意しているのは IPADIC だけで、UniDic が続く予定です。
 
 ```rust
 use lindera_dependency::{Marks, Pattern, Schema, Symbols};

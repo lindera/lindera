@@ -344,7 +344,7 @@ fn check_comments(comments: &[String]) -> Result<()> {
 /// # Returns
 ///
 /// `Ok(())`, or [`Error::Structure`] for the first thing that is wrong.
-fn check_bunsetsu(morphemes: usize, bunsetsu: &[Bunsetsu]) -> Result<()> {
+pub(crate) fn check_bunsetsu(morphemes: usize, bunsetsu: &[Bunsetsu]) -> Result<()> {
     if bunsetsu.is_empty() {
         return Ok(());
     }

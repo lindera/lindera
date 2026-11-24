@@ -17,8 +17,11 @@ what the analysis is built on, and its first step:
   morphemes are function words and symbols, and from them the head and
   the function word of a bunsetsu
 - the chunker, which segments the morphemes of a sentence into bunsetsu
+- the parser, which finds the head of each bunsetsu, with its features
+  and the training instances of its classifier
 
-The parser, which finds the head of each bunsetsu, is still to come.
+The parser has no trained model yet: it parses with weights given to it,
+and the training of those weights is still to come.
 
 The documentation has a chapter on the crate, in
 [English](../docs/src/lindera-dependency.md) and in
@@ -180,7 +183,7 @@ ja_gsd-ud-train.lattice: 7024 sentences
 iterations: 126
 feature strings: 4325
 weights: 8656
-bytes: 196164
+bytes: 196273
 ```
 
 | | F | Precision | Recall | Sentences with every bunsetsu right |
@@ -290,6 +293,8 @@ the measurement below supports:
 | | Patterns |
 | --- | --- |
 | Function words | 助詞, 助動詞, 動詞,非自立, 動詞,接尾, 形容詞,非自立, 形容詞,接尾 (CaboCha); する, できる and 出来る (動詞,自立) |
+| Particles | 助詞 (CaboCha) |
+| Function words taken by their surface as a child | 助詞, 副詞, 連体詞, 接続詞 (CaboCha) |
 | Not heads | 記号 (CaboCha) and symbols by their surface; 名詞,非自立 (こと, の, よう); the suffixes 的 (名詞,接尾,形容動詞語幹) and さ (名詞,接尾,特殊); a 動詞,自立 right after a 助詞 (こと / に / なっ / た, かも / しれ / ない) |
 
 The head is CaboCha's, the content word, and not J.DepP's, which lets an
@@ -335,6 +340,118 @@ lowers the agreement by about 9 points: the corpus has a suffix such as 化
 or 性 as the head. Keeping 名詞,非自立,副詞可能 (後, 間) as a head changes
 train by +0.05 points, dev by +0.17 and test by -0.09, which is not a
 systematic difference.
+
+## Parsing
+
+The parser finds the head of each bunsetsu. It goes through the bunsetsu
+from left to right with a stack (shift-reduce), and asks one question at a
+time: does this bunsetsu, the source, depend on that one, the target? This
+is what CaboCha (`parseShiftReduce`) and J.DepP (`_parseLinear`) do. Every
+head is to the right of its bunsetsu, no two arcs cross, and the last
+bunsetsu is the root; the number of decisions is under twice the number of
+bunsetsu.
+
+There is no trained model of the parser yet
+([#1437](https://github.com/lindera/lindera/issues/1437)). What is here is
+the loop, the features, a classifier that takes weights made by hand or by
+an experiment, and the training instances of a classifier.
+
+```rust
+use std::collections::HashMap;
+
+use lindera_dependency::parser::{FeatureSet, LinearClassifier, Parser};
+use lindera_dependency::Schema;
+
+// One weight: a bunsetsu that ends in を depends on the next one.
+let pairs = HashMap::from([(("SFS:を".to_string(), "DIST:1".to_string()), 2.0)]);
+let classifier = LinearClassifier::new(-1.0, HashMap::new(), pairs)?;
+let parser = Parser::new(Schema::ipadic(), FeatureSet::cabocha(), classifier);
+// The bunsetsu with their heads, their head words and function words, and
+// the scores; `ranges` is what `Chunker::chunk` gives.
+let bunsetsu = parser.parse(&morphemes, &ranges)?;
+```
+
+Parsing is in the default build and needs no other crate. It is in three
+parts:
+
+- **The features of a decision** are strings, with the names CaboCha gives
+  them, so that a model of CaboCha can be converted without renaming them.
+  They are made through the `Schema`: nothing in the parser names a part of
+  speech or a column.
+- **The classifier** (`Classifier`) gives a number to each feature string
+  it knows, once for each bunsetsu of a sentence, and scores the numbers of
+  a decision; the source depends on the target when the score is above 0.
+  `LinearClassifier` adds a bias, the weight of each feature and the weight
+  of each pair of features, which is what the polynomial kernel of degree 2
+  of CaboCha and of J.DepP comes to once it is expanded.
+- **The loop** asks the decisions. With a classifier it parses; with the
+  answer of a sentence it gives the training instances of a classifier.
+
+### The features
+
+| Group | Features |
+| --- | --- |
+| `distance` | The number of bunsetsu from the source to the target: `DIST:1`, `DIST:2-5`, `DIST:6-` |
+| `source`, `target` | The bunsetsu, with `S` or `D` in front: the surface, the levels of the part of speech up to the first `*` and the conjugation form of its head (`SHS:彼`, `SHP0:名詞`), its function word (`SFS:は`), its first and its last morpheme (`SLS:`, `SRS:`); its punctuation (`SPUNC:、`) and its brackets (`SOB:「`, `SOB:1`, `SCB:」`, `SCB:1`); each of its particles (`SCASE:は`); first or last bunsetsu of the sentence (`SBOS:1`, `SEOS:1`) |
+| `left` | The surface of the function word of the bunsetsu before the source (`LF:`) |
+| `right` | The surfaces of the first morpheme, the head and the function word of the bunsetsu after the target (`RL:`, `RH:`, `RF:`) |
+| `children` | Each bunsetsu already attached to the source (`a:`) and to the target (`A:`), by its function word: its surface for a word of `Schema::lexicalized`, or else its conjugation form, or else its part of speech |
+| `gap` | The bunsetsu in between: their punctuation (`GPUNC:、`), their brackets (`GOB:「`, `GCB:」`), the function word of each when it is a particle (`GCASE:を`); and whether brackets open or close in between (`GNB:1`, `GOB:1`, `GCB:1`, `GBB:1`) |
+
+The features of a decision are sorted, and each is there once. The
+`children` features are the only ones that depend on the decisions made
+before.
+
+Which groups a model uses is data: a `FeatureSet`, written as
+`distance,source,target,left,right,children,gap`. `FeatureSet::cabocha()`
+has all of them.
+
+Where the features differ from CaboCha's:
+
+- The surface is not normalized. Punctuation and brackets are those of the
+  schema, which recognizes them by part of speech and by surface, in both
+  widths.
+- The head and the function word are those of `Schema::positions`, which
+  has more patterns for IPADIC than CaboCha (see above).
+- A bunsetsu whose head is not known (CaboCha's partial training) is not
+  supported.
+- An arc to the last bunsetsu is not asked, and has the score 0. CaboCha
+  writes the score of the decision before.
+
+J.DepP has features CaboCha does not have: whether the heads of two bunsetsu
+have the same surface, and the balance of brackets instead of their
+presence. They are candidates for the comparison of feature sets
+([#1437](https://github.com/lindera/lindera/issues/1437)).
+
+### Training instances
+
+`parser::instances` runs the loop on a sentence whose heads are known, with
+the answer deciding, as CaboCha does in its training mode. Each decision is
+one instance: its features, and whether the source depends on the target.
+The `children` features are those of the answer so far. A sentence whose
+tree the parser cannot make is an error.
+
+The `instances` command writes them for a file in the lattice format, with
+the schema of IPADIC:
+
+```shell
+cargo run --release -p lindera-dependency --features train -- instances \
+    --input train.lattice --output train.instances
+```
+
+Each line is `+1` or `-1` and the feature strings of one instance, separated
+by tabs; an empty line ends each sentence. `--features` takes a feature set.
+The command stops at a sentence whose tree does not come back when its
+answer decides. On the training data made as above, every tree comes back:
+
+| File | Sentences | Bunsetsu | Instances | Positive | Negative |
+| --- | --- | --- | --- | --- | --- |
+| UD Japanese-GSD train | 7,024 | 56,396 | 66,000 | 33,512 | 32,488 |
+| UD Japanese-GSD dev | 506 | 4,147 | 4,881 | 2,474 | 2,407 |
+| UD Japanese-GSD test | 542 | 4,509 | 5,377 | 2,707 | 2,670 |
+| UD Japanese-PUD | 994 | 9,843 | 12,739 | 6,077 | 6,662 |
+
+`scripts/dependency/parser_instances.sh` gives these numbers.
 
 ## Evaluation
 

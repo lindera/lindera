@@ -101,6 +101,14 @@ pub struct Schema {
     /// What is neither a function word nor a head, besides the symbols: a
     /// morpheme that matches one of these patterns.
     pub not_heads: Vec<Pattern>,
+    /// The particles: a morpheme that matches one of these patterns. The
+    /// parser names the particles of a bunsetsu in its features.
+    pub particles: Vec<Pattern>,
+    /// The function words that tell by their surface how a bunsetsu
+    /// modifies another: a morpheme that matches one of these patterns. For
+    /// a bunsetsu that ends in any other word, the parser takes the
+    /// conjugation form or the part of speech in its place.
+    pub lexicalized: Vec<Pattern>,
     /// How symbols, punctuation and brackets are recognized.
     pub symbols: Symbols,
 }
@@ -131,6 +139,9 @@ impl Schema {
     /// surface is made of symbol characters only: IPADIC has no half-width
     /// symbols, and gives `,` as 名詞,サ変接続.
     ///
+    /// The particles are 助詞, and the function words taken by their
+    /// surface are 助詞, 副詞, 連体詞 and 接続詞, as in CaboCha.
+    ///
     /// # Returns
     ///
     /// The schema.
@@ -154,6 +165,13 @@ impl Schema {
                 Pattern::new(&["名詞", "接尾", "形容動詞語幹"]),
                 Pattern::new(&["名詞", "接尾", "特殊"]),
                 Pattern::new(&["動詞", "自立"]).after(Pattern::new(&["助詞"])),
+            ],
+            particles: vec![Pattern::new(&["助詞"])],
+            lexicalized: vec![
+                Pattern::new(&["助詞"]),
+                Pattern::new(&["副詞"]),
+                Pattern::new(&["連体詞"]),
+                Pattern::new(&["接続詞"]),
             ],
             symbols: Symbols {
                 others: Marks::new(&[&["記号"]], OTHER_SYMBOLS),
@@ -203,6 +221,41 @@ impl Schema {
             function = head;
         }
         Some((head, function))
+    }
+
+    /// Whether a morpheme of a bunsetsu is a particle: it matches one of
+    /// [`Schema::particles`].
+    ///
+    /// # Arguments
+    ///
+    /// * `bunsetsu` - The morphemes of the bunsetsu.
+    /// * `index` - The index of the morpheme in the bunsetsu.
+    ///
+    /// # Returns
+    ///
+    /// Whether it is a particle; `false` for an index past the bunsetsu.
+    pub fn is_particle<M: Morpheme>(&self, bunsetsu: &[M], index: usize) -> bool {
+        self.particles
+            .iter()
+            .any(|one| one.matches(self, bunsetsu, index))
+    }
+
+    /// Whether a morpheme of a bunsetsu tells by its surface how the
+    /// bunsetsu modifies another: it matches one of
+    /// [`Schema::lexicalized`].
+    ///
+    /// # Arguments
+    ///
+    /// * `bunsetsu` - The morphemes of the bunsetsu.
+    /// * `index` - The index of the morpheme in the bunsetsu.
+    ///
+    /// # Returns
+    ///
+    /// Whether it is such a word; `false` for an index past the bunsetsu.
+    pub fn is_lexicalized<M: Morpheme>(&self, bunsetsu: &[M], index: usize) -> bool {
+        self.lexicalized
+            .iter()
+            .any(|one| one.matches(self, bunsetsu, index))
     }
 
     /// Whether a morpheme is a symbol: a comma, a period, a bracket or any
@@ -304,7 +357,8 @@ impl Schema {
     /// Appends the schema to the bytes of a model.
     ///
     /// The columns, then the function word patterns, the patterns of what
-    /// is not a head, and the symbols.
+    /// is not a head, the particles, the function words taken by their
+    /// surface, and the symbols.
     ///
     /// # Arguments
     ///
@@ -316,7 +370,12 @@ impl Schema {
         push_u32(bytes, column(self.conjugation_type));
         push_u32(bytes, column(self.conjugation_form));
         push_u32(bytes, column(self.base_form));
-        for patterns in [&self.function_words, &self.not_heads] {
+        for patterns in [
+            &self.function_words,
+            &self.not_heads,
+            &self.particles,
+            &self.lexicalized,
+        ] {
             push_u32(bytes, patterns.len() as u32);
             for pattern in patterns {
                 pattern.write(bytes);
@@ -354,6 +413,8 @@ impl Schema {
         };
         let function_words = patterns()?;
         let not_heads = patterns()?;
+        let particles = patterns()?;
+        let lexicalized = patterns()?;
         Ok(Self {
             part_of_speech: start..end,
             conjugation_type,
@@ -361,6 +422,8 @@ impl Schema {
             base_form,
             function_words,
             not_heads,
+            particles,
+            lexicalized,
             symbols: Symbols::read(reader)?,
         })
     }
@@ -703,6 +766,13 @@ mod tests {
                 Pattern::new(&["動詞"])
                     .after(Pattern::new(&["助詞"]).with_base_forms(&["に", "と", "を"])),
             ],
+            particles: vec![Pattern::new(&["助詞"])],
+            lexicalized: vec![
+                Pattern::new(&["助詞"]),
+                Pattern::new(&["副詞"]),
+                Pattern::new(&["連体詞"]),
+                Pattern::new(&["接続詞"]),
+            ],
             symbols: Symbols {
                 others: Marks::new(&[&["空白"], &["補助記号"], &["記号"]], ""),
                 commas: Marks::new(&[&["補助記号", "読点"]], COMMAS),
@@ -711,6 +781,30 @@ mod tests {
                 close_brackets: Marks::new(&[&["補助記号", "括弧閉"]], CLOSE_BRACKETS),
             },
         }
+    }
+
+    #[test]
+    fn particles_and_words_taken_by_their_surface_follow_the_patterns() {
+        let schema = Schema::ipadic();
+        let bunsetsu = morphemes(&[
+            (
+                "ゆっくり",
+                "副詞,助詞類接続,*,*,*,*,ゆっくり,ユックリ,ユックリ",
+            ),
+            ("と", "助詞,格助詞,一般,*,*,*,と,ト,ト"),
+            ("この", "連体詞,*,*,*,*,*,この,コノ,コノ"),
+            ("しかし", "接続詞,*,*,*,*,*,しかし,シカシ,シカシ"),
+            ("本", "名詞,一般,*,*,*,*,本,ホン,ホン"),
+        ]);
+        // The last index is past the bunsetsu.
+        let particles: Vec<bool> = (0..6)
+            .map(|index| schema.is_particle(&bunsetsu, index))
+            .collect();
+        assert_eq!(particles, [false, true, false, false, false, false]);
+        let lexicalized: Vec<bool> = (0..6)
+            .map(|index| schema.is_lexicalized(&bunsetsu, index))
+            .collect();
+        assert_eq!(lexicalized, [true, true, true, true, false, false]);
     }
 
     #[test]

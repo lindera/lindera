@@ -19,6 +19,12 @@ lindera-dependency/src/
 │   ├── model.rs          # ChunkerModel: the table of weights, and its bytes
 │   ├── decode.rs         # Viterbi over the two labels
 │   └── train.rs          # Training with lindera-crf (train)
+├── parser.rs             # Parser
+├── parser/
+│   ├── features.rs       # Group, FeatureSet: the features of a decision
+│   ├── shift_reduce.rs   # The loop over the bunsetsu
+│   ├── classifier.rs     # Classifier, LinearClassifier
+│   └── oracle.rs         # Training instances from an answer
 ├── corpus.rs             # Training data from a dependency corpus (train)
 ├── corpus/
 │   ├── conllu.rs         # Reading CoNLL-U
@@ -121,11 +127,15 @@ A sentence without bunsetsu lines is a sentence of morphemes only, as a tokenize
 
 ### Schema
 
-A `Schema` holds what is known about a dictionary as data: which columns hold the part of speech, the conjugation and the base form, which morphemes are function words, and how symbols are recognized. See [Head and Function Word](./head_and_function_word.md).
+A `Schema` holds what is known about a dictionary as data: which columns hold the part of speech, the conjugation and the base form, which morphemes are function words and which are particles, and how symbols are recognized. See [Head and Function Word](./head_and_function_word.md).
 
 ### Chunker / ChunkerModel
 
 A `Chunker` segments morphemes into bunsetsu with a `ChunkerModel`: a table from feature string to weights, with the schema, the columns and the template it was trained with. See [Chunking](./chunking.md).
+
+### Parser / Classifier
+
+A `Parser` finds the head of each bunsetsu with shift-reduce. The features of a decision are strings made through the schema; a `FeatureSet` says which groups of them are made; a `Classifier` scores them. `LinearClassifier` adds the weights of the features and of their pairs. `parser::instances` gives the training instances of a classifier from a sentence with its answer. See [Parsing](./parsing.md).
 
 ### The command
 
@@ -138,6 +148,7 @@ With the `train` feature the crate builds the `lindera-dependency` command, whic
 | `split` | Writes the folds of a cross-validation | [Evaluation](./evaluation.md) |
 | `train-chunker` | Trains the model of the chunker | [Chunking](./chunking.md) |
 | `chunk` | Segments the morphemes of a file again with a model | [Chunking](./chunking.md) |
+| `instances` | Writes the training instances of the parser | [Parsing](./parsing.md) |
 
 The command is in this crate, not in `lindera-cli`: `lindera-cli` is published, and cannot depend on a crate that is not.
 
@@ -145,7 +156,7 @@ The command is in this crate, not in `lindera-cli`: `lindera-cli` is published, 
 
 | Feature | Description | Default |
 | --- | --- | --- |
-| (none) | The types, the lattice format, the schema and the chunker. No dependency; builds for `wasm32-unknown-unknown` | Yes |
+| (none) | The types, the lattice format, the schema, the chunker and the parser. No dependency; builds for `wasm32-unknown-unknown` | Yes |
 | `train` | The `corpus` and `evaluation` modules, the training of the chunker with `lindera-crf`, and the `lindera-dependency` command, which tokenizes with `lindera-segmenter` | No |
 | `embed-ipadic` | Embeds IPADIC in the command, for `--dict embedded://ipadic` (implies `train`) | No |
 

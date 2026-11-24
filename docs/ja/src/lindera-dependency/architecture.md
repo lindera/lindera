@@ -19,6 +19,12 @@ lindera-dependency/src/
 │   ├── model.rs          # ChunkerModel: the table of weights, and its bytes
 │   ├── decode.rs         # Viterbi over the two labels
 │   └── train.rs          # Training with lindera-crf (train)
+├── parser.rs             # Parser
+├── parser/
+│   ├── features.rs       # Group, FeatureSet: the features of a decision
+│   ├── shift_reduce.rs   # The loop over the bunsetsu
+│   ├── classifier.rs     # Classifier, LinearClassifier
+│   └── oracle.rs         # Training instances from an answer
 ├── corpus.rs             # Training data from a dependency corpus (train)
 ├── corpus/
 │   ├── conllu.rs         # Reading CoNLL-U
@@ -121,11 +127,15 @@ assert_eq!(output, text.as_bytes());
 
 ### Schema
 
-`Schema` は、辞書について分かっていることをデータとして持ちます。どの列が品詞・活用・原形か、どの形態素が機能語か、記号をどう見分けるか、です。[主辞と機能語](./head_and_function_word.md)を参照してください。
+`Schema` は、辞書について分かっていることをデータとして持ちます。どの列が品詞・活用・原形か、どの形態素が機能語か、どれが助詞か、記号をどう見分けるか、です。[主辞と機能語](./head_and_function_word.md)を参照してください。
 
 ### Chunker / ChunkerModel
 
 `Chunker` は、`ChunkerModel` を使って形態素を文節に区切ります。モデルは、素性の文字列から重みへの表で、学習に使ったスキーマ、列、テンプレートを一緒に持ちます。[文節の区切り](./chunking.md)を参照してください。
+
+### Parser / Classifier
+
+`Parser` は、shift-reduce で各文節の係り先を求めます。1 回の判定の素性は、スキーマを通して作る文字列です。`FeatureSet` がどの群の素性を作るかを決め、`Classifier` が素性に点数を付けます。`LinearClassifier` は、素性の重みとその対の重みを足します。`parser::instances` は、正解のある文から分類器の学習事例を作ります。[係り受けの解析](./parsing.md)を参照してください。
 
 ### コマンド
 
@@ -138,6 +148,7 @@ assert_eq!(output, text.as_bytes());
 | `split` | 交差検証の分割を書き出す | [評価](./evaluation.md) |
 | `train-chunker` | 文節の区切りのモデルを学習する | [文節の区切り](./chunking.md) |
 | `chunk` | モデルで、ファイルの形態素を区切り直す | [文節の区切り](./chunking.md) |
+| `instances` | 解析器の学習事例を書き出す | [係り受けの解析](./parsing.md) |
 
 コマンドは `lindera-cli` ではなく、このクレートにあります。`lindera-cli` は公開されているので、公開していないクレートに依存できません。
 
@@ -145,7 +156,7 @@ assert_eq!(output, text.as_bytes());
 
 | Feature | 説明 | デフォルト |
 | --- | --- | --- |
-| （なし） | 型、ラティス形式、スキーマ、文節の区切り。依存がなく、`wasm32-unknown-unknown` 向けにビルドできる | Yes |
+| （なし） | 型、ラティス形式、スキーマ、文節の区切り、解析器。依存がなく、`wasm32-unknown-unknown` 向けにビルドできる | Yes |
 | `train` | `corpus` と `evaluation` のモジュール、`lindera-crf` による区切りの学習、`lindera-dependency` コマンド（分かち書きは `lindera-segmenter`） | No |
 | `embed-ipadic` | コマンドに IPADIC を埋め込む。`--dict embedded://ipadic` で使う（`train` を含む） | No |
 

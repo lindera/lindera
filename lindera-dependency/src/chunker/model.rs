@@ -11,9 +11,11 @@ use crate::schema::Schema;
 /// The first bytes of a model.
 const MAGIC: &[u8; 8] = b"LDCHUNK\0";
 
-/// The version of the bytes of a model. Version 2 holds the whole schema,
-/// with its patterns and its symbols; version 1 held its columns only.
-const VERSION: u32 = 2;
+/// The version of the bytes of a model. Version 3 holds the whole schema,
+/// with the particles and the function words taken by their surface, which
+/// the parser reads; version 2 held the schema without them, and version 1
+/// its columns only.
+const VERSION: u32 = 3;
 
 /// A label of the chunker.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -358,6 +360,8 @@ pub(crate) mod tests {
                 // The patterns and the symbols go to the bytes too.
                 function_words: vec![Pattern::new(&["助詞"])],
                 not_heads: vec![Pattern::new(&["名詞", "非自立"]).after(Pattern::default())],
+                particles: vec![Pattern::new(&["助詞", "格助詞"])],
+                lexicalized: vec![Pattern::new(&["副詞"]), Pattern::new(&["連体詞"])],
                 symbols: Schema::ipadic().symbols,
             },
             vec![
@@ -403,13 +407,13 @@ pub(crate) mod tests {
             error(&other),
             "not a chunker model: the magic number is missing"
         );
-        // Version 1 held the columns of the schema only; it is not read.
-        for version in [1, 3] {
+        // Versions 1 and 2 held less of the schema; they are not read.
+        for version in [1, 2, 4] {
             let mut other = bytes.clone();
             other[8] = version;
             assert_eq!(
                 error(&other),
-                format!("the chunker model has the version {version}, and this crate reads 2")
+                format!("the chunker model has the version {version}, and this crate reads 3")
             );
         }
         // Cut anywhere, the bytes end early.

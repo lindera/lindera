@@ -32,6 +32,7 @@ Run everything from the root of the repository.
 | `baseline_next.py` | The baseline "every bunsetsu depends on the next one", counted independently of `lindera-dependency evaluate` |
 | `chunker_experiments.sh` | The experiments behind the defaults of the chunker: the cross-validation, the pairs of settings, the result |
 | `chunker_experiment.py`, `make_templates.py` | The driver and the feature templates of `chunker_experiments.sh` |
+| `parser_instances.sh` | The training instances of the parser for the four files, with `lindera-dependency instances`: the sentences, the instances, and that the answer of every sentence gives its tree back |
 | `head_variants/` | The agreement of the head word for CaboCha's rule and for each addition of `Schema::ipadic()`, measured with `corpus::convert` |
 | `head_rules.py` | The same in Python, with examples by surface and the variants that were not taken |
 
@@ -68,6 +69,9 @@ target/release/lindera-dependency evaluate \
 # The chunker: about an hour for all the stages.
 scripts/dependency/chunker_experiments.sh all
 
+# The training instances of the parser.
+scripts/dependency/parser_instances.sh
+
 # The head word.
 cargo run --release --manifest-path scripts/dependency/head_variants/Cargo.toml -- $corpora
 python3 -I -B scripts/dependency/head_rules.py $data table
@@ -89,8 +93,9 @@ The models of the chunker are the same bytes each time.
 | `convert_corpora.sh` | Bunsetsu boundaries on a morpheme boundary: 99.21% (train), 99.16% (dev), 99.10% (test), 99.45% (PUD). Bunsetsu written: 56,396, 4,147, 4,509, 9,843 |
 | `compare_outputs.py` | `COMPARE_OK`, every line identical |
 | `baseline_next.py` | Level 1: 64.10% (2,334 / 3,641) on dev, 62.77% (2,490 / 3,967) on test, 60.87% (5,386 / 8,849) on PUD; the same from `evaluate` |
-| `chunker_experiments.sh default` | F 96.85 on dev, 96.92 on test, 98.04 on PUD; 4,325 feature strings, 8,656 weights |
+| `chunker_experiments.sh default` | F 96.85 on dev, 96.92 on test, 98.04 on PUD; 4,325 feature strings, 8,656 weights, 196,273 bytes |
 | `chunker_experiments.sh cv` | F over the 10 folds of train, such as 96.83 for CaboCha's columns with L1 and 0.25, and 96.93 for the default setting; the README of the crate has the table |
+| `parser_instances.sh` | Sentences 7,024, 506, 542, 994, as `convert` kept; instances 66,000, 4,881, 5,377, 12,739 with CaboCha's feature set. The command stops at a tree that does not come back, so four reports mean that every tree did |
 | `head_variants/` | The head word on the content head of the corpus: from 85.43% with CaboCha's rule to 96.55% with `Schema::ipadic()` on GSD train; 96.96% on dev, 96.92% on test, 97.46% on PUD |
 
 ## What these scripts do not reproduce

@@ -88,7 +88,7 @@ train.lattice: 7024 sentences
 iterations: 126
 feature strings: 4325
 weights: 8656
-bytes: 196164
+bytes: 196273
 ```
 
 同じデータで学習し直すと、同じバイト列になります。モデルのバイト列は、このクレートの独自の形式で、重みは `f64` です。公開するモデルのファイル形式ではなく、変わることがあります。
@@ -109,7 +109,7 @@ cargo run --release -p lindera-dependency --features train -- chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 ```
 
-解析器がまだ無いので、どの文節も次の文節に係るとして書き出します。
+[解析器](./parsing.md)の学習済みのモデルがまだ無いので、どの文節も次の文節に係るとして書き出します。
 
 ## 精度
 
