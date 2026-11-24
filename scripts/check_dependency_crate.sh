@@ -10,13 +10,19 @@
 # or a dictionary crate. lindera-crf, the CRF engine, is the one crate of the
 # workspace it may depend on.
 #
+# The `cli` feature is the command for a user (#1439): it tokenizes with
+# lindera-segmenter, and must not bring the training code, which is
+# lindera-crf.
+#
 # Usage:
 #   scripts/check_dependency_crate.sh
 #
 # Builds the crate for wasm32-unknown-unknown and reads
 # `cargo tree --locked -p lindera-dependency -e normal`, from the workspace
-# root. Prints one line per check, and fails if the build fails or if the
-# crate depends on another crate of the workspace than lindera-crf.
+# root, for the default build and for the build with `cli`. Prints one line
+# per check, and fails if the build fails, if the default build depends on
+# another crate of the workspace than lindera-crf, or if the build with
+# `cli` depends on lindera-crf or does not depend on lindera-segmenter.
 
 set -euo pipefail
 
@@ -41,6 +47,24 @@ if [ -n "$forbidden" ]; then
   failed=1
 else
   echo "ok: lindera-dependency depends on no tokenizer or dictionary crate"
+fi
+
+if ! tree=$(cargo tree --locked -p lindera-dependency --features cli -e normal --prefix none); then
+  echo "error: cargo tree --features cli failed" >&2
+  exit 1
+fi
+if echo "$tree" | awk '$1 == "lindera-crf" { found = 1 } END { exit !found }'; then
+  echo "error: lindera-dependency with cli depends on lindera-crf, the training code" >&2
+  failed=1
+else
+  echo "ok: lindera-dependency with cli has no training code"
+fi
+# The check above passes on an empty tree: the tokenizer has to be there.
+if echo "$tree" | awk '$1 == "lindera-segmenter" { found = 1 } END { exit !found }'; then
+  echo "ok: lindera-dependency with cli depends on lindera-segmenter"
+else
+  echo "error: lindera-dependency with cli does not depend on lindera-segmenter" >&2
+  failed=1
 fi
 
 exit "$failed"

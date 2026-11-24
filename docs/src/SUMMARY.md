@@ -50,6 +50,7 @@
     - [Chunking](./lindera-dependency/chunking.md)
     - [Parsing](./lindera-dependency/parsing.md)
     - [Model File](./lindera-dependency/model_file.md)
+    - [Command Line](./lindera-dependency/command_line.md)
     - [Head and Function Word](./lindera-dependency/head_and_function_word.md)
     - [Training Data](./lindera-dependency/training_data.md)
     - [Evaluation](./lindera-dependency/evaluation.md)

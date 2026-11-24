@@ -45,6 +45,11 @@
 //!   loop, and the classifier of a model file, which reads its weights
 //!   where they are.
 //!
+//! With the `cli` feature the crate builds the `lindera-dependency` command:
+//! `lindera-dependency parse` tokenizes plain text with a Lindera
+//! dictionary, and writes its bunsetsu and their dependencies in the
+//! lattice format. That build has no training code.
+//!
 //! With the `train` feature, the `corpus` module and the
 //! `lindera-dependency convert` command make training data from a dependency
 //! corpus such as UD Japanese-GSD: bunsetsu dependencies on the morphemes of
@@ -55,8 +60,7 @@
 //! (`lindera-dependency train-chunker`, which writes a model file). The
 //! classifier of the parser is trained by dual coordinate descent, as
 //! CaboCha, or passive-aggressive, as J.DepP
-//! (`lindera-dependency train-parser`), and `lindera-dependency parse`
-//! finds the heads of a file with a model.
+//! (`lindera-dependency train-parser`).
 //!
 //! # Examples
 //!
@@ -137,6 +141,6 @@ pub mod schema;
 pub mod sentence;
 
 pub use error::{Error, Result};
-pub use morpheme::Morpheme;
+pub use morpheme::{DictionaryMorpheme, Morpheme};
 pub use schema::{Marks, Pattern, Schema, Symbols};
 pub use sentence::{ArcType, Bunsetsu, Sentence, Violation, tree_violations};

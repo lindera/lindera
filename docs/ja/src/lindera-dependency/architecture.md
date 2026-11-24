@@ -5,7 +5,7 @@
 ```text
 lindera-dependency/src/
 ├── lib.rs                # Public API re-exports
-├── morpheme.rs           # Morpheme trait
+├── morpheme.rs           # Morpheme trait, DictionaryMorpheme
 ├── sentence.rs           # Sentence, Bunsetsu, ArcType, Violation
 ├── lattice.rs            # Reading and writing the lattice format of CaboCha
 ├── schema.rs             # Schema: columns, head word and function word
@@ -39,7 +39,9 @@ lindera-dependency/src/
 ├── error.rs              # Error types
 ├── bytes.rs              # Helpers for the bytes of a model
 └── bin/
-    └── lindera-dependency.rs   # The command (train)
+    ├── lindera-dependency.rs   # The command: parse, chunk (cli)
+    └── lindera-dependency/
+        └── train.rs            # The subcommands of training and evaluation (train)
 ```
 
 ## 主要コンポーネント
@@ -148,18 +150,18 @@ assert_eq!(output, text.as_bytes());
 
 ### コマンド
 
-`train` feature を付けると、`lindera-dependency` コマンドがビルドされます。分かち書きには `lindera-segmenter` を使います。
+`cli` feature を付けると、`lindera-dependency` コマンドがビルドされます。分かち書きには `lindera-segmenter` を使い、学習のコードは入りません。`train` feature を付けると、学習データを作る、学習する、評価するサブコマンドが加わります。
 
-| サブコマンド | 内容 | ページ |
-| --- | --- | --- |
-| `convert` | 文節のラベルを持つ CoNLL-U のファイルから、学習データを作る | [学習データ](./training_data.md) |
-| `evaluate` | 出力を正解と比べる | [評価](./evaluation.md) |
-| `split` | 交差検証の分割を書き出す | [評価](./evaluation.md) |
-| `train-chunker` | 文節の区切りを学習し、モデルファイルを書く | [文節の区切り](./chunking.md) |
-| `chunk` | モデルファイルで、ファイルの形態素を区切り直す | [文節の区切り](./chunking.md) |
-| `instances` | 解析器の学習事例を書き出す | [係り受けの解析](./parsing.md) |
-| `train-parser` | 解析器を学習し、モデルファイルを書く。ほかのファイルの区切りを入れられる | [係り受けの解析](./parsing.md) |
-| `parse` | モデルファイルで、ファイルの係り先を求める。文節の上で、または形態素から | [係り受けの解析](./parsing.md) |
+| サブコマンド | Feature | 内容 | ページ |
+| --- | --- | --- | --- |
+| `parse` | `cli` | テキストか、分かち書き済み・文節つきの入力を解析し、ラティス形式で書く | [コマンドライン](./command_line.md) |
+| `chunk` | `cli` | モデルファイルで、ファイルの形態素を区切り直す | [文節の区切り](./chunking.md) |
+| `convert` | `train` | 文節のラベルを持つ CoNLL-U のファイルから、学習データを作る | [学習データ](./training_data.md) |
+| `evaluate` | `train` | 出力を正解と比べる | [評価](./evaluation.md) |
+| `split` | `train` | 交差検証の分割を書き出す | [評価](./evaluation.md) |
+| `train-chunker` | `train` | 文節の区切りを学習し、モデルファイルを書く | [文節の区切り](./chunking.md) |
+| `instances` | `train` | 解析器の学習事例を書き出す | [係り受けの解析](./parsing.md) |
+| `train-parser` | `train` | 解析器を学習し、モデルファイルを書く。ほかのファイルの区切りを入れられる | [係り受けの解析](./parsing.md) |
 
 コマンドは `lindera-cli` ではなく、このクレートにあります。`lindera-cli` は公開されているので、公開していないクレートに依存できません。
 
@@ -168,7 +170,8 @@ assert_eq!(output, text.as_bytes());
 | Feature | 説明 | デフォルト |
 | --- | --- | --- |
 | （なし） | 型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器。依存がなく、`wasm32-unknown-unknown` 向けにビルドできる | Yes |
-| `train` | `corpus` と `evaluation` のモジュール、`lindera-crf` による区切りの学習と解析器の学習、`lindera-dependency` コマンド（分かち書きは `lindera-segmenter`） | No |
-| `embed-ipadic` | コマンドに IPADIC を埋め込む。`--dict embedded://ipadic` で使う（`train` を含む） | No |
+| `cli` | `lindera-dependency` コマンドの `parse` と `chunk`。分かち書きは `lindera-segmenter`。学習のコードは入らない | No |
+| `train` | `corpus` と `evaluation` のモジュール、`lindera-crf` による区切りの学習と解析器の学習、そのサブコマンド（`cli` を含む） | No |
+| `embed-ipadic` | コマンドに IPADIC を埋め込む。`--dict embedded://ipadic` で使う（`cli` を含む） | No |
 
 このクレートが依存するのは `lindera-segmenter` までで、`lindera` と `lindera-analysis` には依存しません。これから作るトークンフィルターで、`lindera-analysis` がこのクレートに依存するためです。

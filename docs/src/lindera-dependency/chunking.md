@@ -109,7 +109,7 @@ cargo run --release -p lindera-dependency --features train -- chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 ```
 
-It writes every bunsetsu as depending on the next one: it measures the chunker alone. [`parse --chunk`](./parsing.md#training-a-model) segments and parses.
+It writes every bunsetsu as depending on the next one: it measures the chunker alone. [`parse --input-layer morphemes`](./command_line.md#input-that-is-tokenized-already) segments and parses.
 
 ## Accuracy
 

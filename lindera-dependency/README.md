@@ -20,6 +20,8 @@ what the analysis is built on, and its first step:
 - the model file of a dictionary, which is read in place
 - the parser, which finds the head of each bunsetsu, with its features
   and the training of its classifier
+- the `lindera-dependency` command, which parses plain text and writes
+  the lattice format
 
 No model is distributed yet: the chunker and the parser are trained with
 the commands of the crate, in a few seconds each.
@@ -36,6 +38,44 @@ that give the numbers are in
 
 In its default build it has no dependency, and builds for
 `wasm32-unknown-unknown`.
+
+## Command line
+
+With the `cli` feature the crate builds the `lindera-dependency` command,
+which has no training code. `parse` reads plain text, one sentence per
+line, tokenizes it with a Lindera dictionary, and writes the bunsetsu and
+their dependencies in the lattice format, as `cabocha -f1` does. It needs a
+model file with a chunker and a parser, trained [as below](#training-the-parser).
+
+```shell
+cargo build --release -p lindera-dependency --features cli,embed-ipadic
+echo "彼は赤い花を見た。" | target/release/lindera-dependency parse \
+    --model ipadic.model --dict embedded://ipadic
+```
+
+```text
+* 0 3D 0/1 0.000000
+彼	名詞,代名詞,一般,*,*,*,彼,カレ,カレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
+* 1 2D 0/0 0.704616
+赤い	形容詞,自立,*,*,形容詞・アウオ段,基本形,赤い,アカイ,アカイ
+* 2 3D 0/1 0.000000
+花	名詞,一般,*,*,*,*,花,ハナ,ハナ
+を	助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+* 3 -1D 0/1 0.000000
+見	動詞,自立,*,*,一段,連用形,見る,ミ,ミ
+た	助動詞,*,*,*,特殊・タ,基本形,た,タ,タ
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+```
+
+The dictionary that is loaded has to be the one the model names. With
+`--input-layer morphemes` or `--input-layer bunsetsu` the input is in the
+lattice format, tokenized or segmented already. An empty line gives `EOS`
+alone. The chapter of the documentation has the options, and what is kept
+of CaboCha's. On the text of the test file of UD Japanese-GSD the command
+writes about 6,600 sentences per second
+(`scripts/dependency/parse_speed.sh`).
 
 ## Training data
 
@@ -520,18 +560,18 @@ answer decides. On the training data made as above, every tree comes back:
 
 Training is behind the `train` feature. `train-parser` trains the parser and
 writes a model file; with `--chunker`, the chunker of another model file
-goes into it, which makes the whole model of the dictionary. `parse` finds
-the heads of a file with a model: on the bunsetsu of the file, or with
-`--chunk` on those of the chunker of the model, which is the analysis from
-the morphemes.
+goes into it, which makes the whole model of the dictionary. `parse` with
+`--input-layer` finds the heads of a file in the lattice format: with
+`bunsetsu` on the bunsetsu of the file, with `morphemes` on those of the
+chunker of the model, which is the analysis from the morphemes.
 
 ```shell
 cargo run --release -p lindera-dependency --features train -- train-parser \
     --input train.lattice --chunker chunker.model --output ipadic.model
 cargo run --release -p lindera-dependency --features train -- parse \
-    --model ipadic.model --input dev.lattice --output output.lattice
-cargo run --release -p lindera-dependency --features train -- parse --chunk \
-    --model ipadic.model --input dev.lattice --output output.lattice
+    --input-layer bunsetsu --model ipadic.model --input dev.lattice --output output.lattice
+cargo run --release -p lindera-dependency --features train -- parse \
+    --input-layer morphemes --model ipadic.model --input dev.lattice --output output.lattice
 ```
 
 On UD Japanese-GSD converted as above with IPADIC, `train-parser` without an

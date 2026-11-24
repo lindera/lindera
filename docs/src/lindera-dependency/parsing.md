@@ -323,16 +323,16 @@ A last line, `seconds:`, has the time of the training; it is left out here. Trai
 | `--quantization` | `i8` | The weights in the file: `f32` as they are, `i16` or `i8` as whole numbers times a scale |
 | `--seed` | `1` | For `dcd`: the seed of the order of the decisions |
 
-`parse` finds the heads of a file with a model, for [`evaluate`](./evaluation.md) to compare with the answer:
+[`parse`](./command_line.md) with `--input-layer` finds the heads of a file in the lattice format with a model, for [`evaluate`](./evaluation.md) to compare with the answer:
 
 ```shell
 cargo run --release -p lindera-dependency --features train -- parse \
-    --model ipadic.model --input dev.lattice --output output.lattice
-cargo run --release -p lindera-dependency --features train -- parse --chunk \
-    --model ipadic.model --input dev.lattice --output output.lattice
+    --input-layer bunsetsu --model ipadic.model --input dev.lattice --output output.lattice
+cargo run --release -p lindera-dependency --features train -- parse \
+    --input-layer morphemes --model ipadic.model --input dev.lattice --output output.lattice
 ```
 
-Without `--chunk` it parses the bunsetsu of the input, which measures the parser alone. With `--chunk` the bunsetsu of the input are not read: the morphemes are segmented by the chunker of the model and then parsed, which is the analysis as it is used.
+With `bunsetsu` it parses the bunsetsu of the input, which measures the parser alone. With `morphemes` the bunsetsu of the input are not read: the morphemes are segmented by the chunker of the model and then parsed, which is the analysis as it is used. Without `--input-layer` the input is plain text: see [Command Line](./command_line.md).
 
 ## Accuracy
 

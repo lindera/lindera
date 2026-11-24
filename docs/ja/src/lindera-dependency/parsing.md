@@ -323,16 +323,16 @@ bytes: 6258548
 | `--quantization` | `i8` | ファイルの中の重み。`f32` はそのまま、`i16` と `i8` は整数と尺度の積 |
 | `--seed` | `1` | `dcd` のとき、判定を回る順の種 |
 
-`parse` は、モデルでファイルの係り先を求めます。[`evaluate`](./evaluation.md) で正解と比べるためのものです。
+[`parse`](./command_line.md) に `--input-layer` を付けると、モデルで、ラティス形式のファイルの係り先を求めます。[`evaluate`](./evaluation.md) で正解と比べるためのものです。
 
 ```shell
 cargo run --release -p lindera-dependency --features train -- parse \
-    --model ipadic.model --input dev.lattice --output output.lattice
-cargo run --release -p lindera-dependency --features train -- parse --chunk \
-    --model ipadic.model --input dev.lattice --output output.lattice
+    --input-layer bunsetsu --model ipadic.model --input dev.lattice --output output.lattice
+cargo run --release -p lindera-dependency --features train -- parse \
+    --input-layer morphemes --model ipadic.model --input dev.lattice --output output.lattice
 ```
 
-`--chunk` が無ければ、入力の文節を解析します。解析器だけを測る形です。`--chunk` を付けると、入力の文節は読みません。形態素をモデルの区切りで文節に区切ってから解析します。実際に使うときの解析です。
+`bunsetsu` では、入力の文節を解析します。解析器だけを測る形です。`morphemes` では、入力の文節は読みません。形態素をモデルの区切りで文節に区切ってから解析します。実際に使うときの解析です。`--input-layer` が無ければ、入力はテキストです。[コマンドライン](./command_line.md)を見てください。
 
 ## 精度
 

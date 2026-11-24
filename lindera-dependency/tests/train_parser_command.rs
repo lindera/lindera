@@ -172,7 +172,7 @@ fn trains_a_parser_and_parses_with_it() {
 
     assert_eq!(
         success(run(
-            &["parse"],
+            &["parse", "--input-layer", "bunsetsu"],
             &[
                 ("--model", &model_path),
                 ("--input", &train_path),
@@ -277,7 +277,7 @@ fn trains_the_whole_model_of_a_dictionary() {
     let flat_path = directory.path().join("flat.lattice");
     fs::write(&flat_path, flat).unwrap();
     success(run(
-        &["parse", "--chunk"],
+        &["parse", "--input-layer", "morphemes"],
         &[
             ("--model", &model_path),
             ("--input", &flat_path),
@@ -288,7 +288,7 @@ fn trains_the_whole_model_of_a_dictionary() {
     assert_eq!(heads(&output), heads(&training_data()));
     // Without --chunk the one bunsetsu of each sentence is its root.
     success(run(
-        &["parse"],
+        &["parse", "--input-layer", "bunsetsu"],
         &[
             ("--model", &model_path),
             ("--input", &flat_path),
@@ -301,7 +301,7 @@ fn trains_the_whole_model_of_a_dictionary() {
     // A file without the part that is needed.
     fs::remove_file(&output_path).unwrap();
     let error = failure(run(
-        &["parse", "--chunk"],
+        &["parse", "--input-layer", "morphemes"],
         &[
             ("--model", &parser_path),
             ("--input", &flat_path),
@@ -313,7 +313,7 @@ fn trains_the_whole_model_of_a_dictionary() {
         "{error}"
     );
     let error = failure(run(
-        &["parse"],
+        &["parse", "--input-layer", "bunsetsu"],
         &[
             ("--model", &chunker_path),
             ("--input", &flat_path),
@@ -394,7 +394,7 @@ fn trains_with_the_settings_asked_for() {
     assert_ne!(averaged, last);
     fs::write(&model_path, &last).unwrap();
     success(run(
-        &["parse"],
+        &["parse", "--input-layer", "bunsetsu"],
         &[
             ("--model", &model_path),
             ("--input", &train_path),
@@ -512,10 +512,10 @@ fn fails_with_the_cause() {
         ("--input", &train_path),
         ("--output", &output_path),
     ];
-    let error = failure(run(&["parse"], &parse));
+    let error = failure(run(&["parse", "--input-layer", "bunsetsu"], &parse));
     assert!(error.contains("Error: cannot read"), "{error}");
     fs::write(&model_path, b"not a model").unwrap();
-    let error = failure(run(&["parse"], &parse));
+    let error = failure(run(&["parse", "--input-layer", "bunsetsu"], &parse));
     assert!(
         error.contains("parser.model: not a model file: the magic number is missing"),
         "{error}"
@@ -527,7 +527,7 @@ fn fails_with_the_cause() {
     );
     fs::write(&narrow_path, narrow).unwrap();
     let error = failure(run(
-        &["parse"],
+        &["parse", "--input-layer", "bunsetsu"],
         &[
             ("--model", &other_path),
             ("--input", &narrow_path),
@@ -540,5 +540,8 @@ fn fails_with_the_cause() {
         ),
         "{error}"
     );
-    assert!(!output_path.exists());
+    // The sentences are written as they are parsed: the one before the
+    // sentence that failed is there, and nothing after it.
+    let written = fs::read_to_string(&output_path).unwrap();
+    assert_eq!(heads(&written), [[Some(1), None]]);
 }

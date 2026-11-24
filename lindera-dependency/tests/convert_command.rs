@@ -1,6 +1,6 @@
 //! The `lindera-dependency convert` command, with the embedded IPADIC.
 
-#![cfg(feature = "embed-ipadic")]
+#![cfg(all(feature = "train", feature = "embed-ipadic"))]
 
 use std::fs;
 use std::process::Command;
