@@ -196,6 +196,58 @@ fn split_quoted(quoted: &str) -> Option<(String, Option<&str>)> {
     None
 }
 
+/// A morpheme of a dictionary: its surface and its feature columns.
+///
+/// What a tokenizer gives, when it has no type of its own that implements
+/// [`Morpheme`]: the command makes one from each token of Lindera.
+///
+/// # Examples
+///
+/// ```
+/// use lindera_dependency::{DictionaryMorpheme, Morpheme};
+///
+/// let morpheme = DictionaryMorpheme::new(
+///     "本".to_string(),
+///     vec!["名詞".to_string(), "一般".to_string()],
+/// );
+/// assert_eq!(morpheme.surface(), "本");
+/// assert_eq!(morpheme.feature(1), Some("一般"));
+/// assert_eq!(morpheme.features(), "名詞,一般");
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DictionaryMorpheme {
+    /// The surface.
+    pub surface: String,
+    /// The feature columns.
+    pub features: Vec<String>,
+}
+
+impl DictionaryMorpheme {
+    /// Makes a morpheme.
+    ///
+    /// # Arguments
+    ///
+    /// * `surface` - The surface.
+    /// * `features` - The feature columns.
+    ///
+    /// # Returns
+    ///
+    /// The morpheme.
+    pub fn new(surface: String, features: Vec<String>) -> Self {
+        Self { surface, features }
+    }
+}
+
+impl Morpheme for DictionaryMorpheme {
+    fn surface(&self) -> &str {
+        &self.surface
+    }
+
+    fn feature(&self, index: usize) -> Option<&str> {
+        self.features.get(index).map(String::as_str)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

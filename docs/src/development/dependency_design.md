@@ -61,6 +61,9 @@ Each decision has the issue that made it. A decision is changed by a pull reques
 | The accuracy targets are the ones under "Targets" below. | They are the baselines measured on the same data. | #1417 |
 | A token filter writes its result as four string columns at the end of `Token::details`: bunsetsu id, head bunsetsu id (-1 for the root), position in the bunsetsu, score. | It needs no change of `Token`. See the open questions. | #1417 |
 | The crate will read the models CaboCha distributes through a converter, after the first release. Those models are not redistributed. | Feature extraction is separate from decoding for this. | #1417, #1421 |
+| The command for text is in the binary of this crate, in a build without the training code: the `cli` feature holds the command, `train` adds the training to it. The `lindera` command follows with the filter and the publication. | A user of the command does not get `lindera-crf`. `lindera-cli` is published and cannot depend on a crate that is not, and an output format of `lindera tokenize` needs the token filter. | #1439 |
+| Of CaboCha's options the command keeps the lattice output (`-f1`) and the three input layers (`-I`), as `--input-layer`. The tree, XML and CoNLL outputs, the output layer and the named entities are not kept. | The lattice format is what other tools read, and its writer exists. The layers are what `parse` and `parse --chunk` did, as one option. The morphemes alone and the bunsetsu alone have commands of their own. | #1439 |
+| The command reads, parses and writes one sentence at a time, and stops at the first sentence that fails, with what it wrote before. | It stands in a pipe, and its memory does not grow with the input. | #1439 |
 
 ## The reference implementations
 
@@ -90,7 +93,7 @@ Read from the sources: CaboCha 0.69 (taku910/cabocha, commit 96e100a) and J.DepP
 1. **Word dependencies to bunsetsu dependencies.** A word with `BunsetuBILabel=B` starts a bunsetsu; the word whose head is outside the bunsetsu gives the head of the bunsetsu; coordination is put back (`a → b`, `b → c`, `c → h`, with `P`); a sentence that is not a tree is dropped.
 2. **Projection onto the morphemes of the dictionary.** The text is tokenized with the dictionary and the default settings of Lindera, as the parser will be used. Bunsetsu are laid over the morphemes by character offsets; where a boundary falls inside a morpheme, the bunsetsu are merged up to the next boundary that fits, and the merged one takes the head of the last one, as `kc2cabocha.pl` does.
 
-The command is a subcommand of the crate's own binary, behind the `train` feature: `lindera-cli` is published and cannot depend on a crate that is not.
+The command is a subcommand of the crate's own binary, behind the `train` feature (the binary itself is behind `cli` since #1439): `lindera-cli` is published and cannot depend on a crate that is not.
 
 ### Evaluation ([#1420](https://github.com/lindera/lindera/issues/1420))
 
@@ -142,12 +145,20 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 - **The head of the schema and the features.** The content head of #1422 is the better word to index, and the worse one to parse with: with CaboCha's rule for the head and CaboCha's features, the cross-validation gives 89.22%; with the head of the schema, 88.96%. The morpheme after the head gives the difference back (89.19%), and with it the two rules do not differ.
 - **`train-parser --chunker`** copies the chunker part of another file as its bytes are (`ModelBuilder::from_model`), so that the chunker and the parser are trained apart and end in one file.
 
+### Command ([#1439](https://github.com/lindera/lindera/issues/1439))
+
+- **`parse` is the command of a user**: plain text in, one sentence per line, and the lattice format out. It was the subcommand that parsed a lattice file for `evaluate`; a second subcommand for text would have been a second entry to the same analysis. What it did is `--input-layer bunsetsu` and `--input-layer morphemes` now.
+- **The text is tokenized as the training data is**: `Mode::Normal` and no user dictionary, the settings of `convert`. Another segmentation would not be the one the model was trained on.
+- **The name of the dictionary that was loaded is compared with the name in the model file** (`Model::check_dictionary` of #1437), which is the check the model file was given its name for. With a lattice input there is no dictionary, and the number of feature columns is what is checked.
+- **The features are split in two**: `cli` brings `clap` and `lindera-segmenter`, `train` adds `lindera-crf` and `serde_json`. `scripts/check_dependency_crate.sh` checks that the build with `cli` has no `lindera-crf`, and a job of CI tests the command in that build.
+- **`DictionaryMorpheme`**, the morpheme made from a token, moved from the `corpus` module, which is behind `train`, to the default build.
+- **Not verified**: reading the output with CaboCha's tools, which are not built here (#1433). The output is read back by `lattice::parse` and by `evaluate`.
+
 ## What is to come
 
 | Part | Notes | Issue |
 | --- | --- | --- |
 | Token filter | And its use from the configuration file and the bindings. | [#1438](https://github.com/lindera/lindera/issues/1438) |
-| Command | Output compatible with `cabocha -f1`. | [#1439](https://github.com/lindera/lindera/issues/1439) |
 | IPADIC model | Training, release, documentation, license notes. The crate is published with it. | [#1440](https://github.com/lindera/lindera/issues/1440) |
 | UniDic model | A second schema. | [#1441](https://github.com/lindera/lindera/issues/1441) |
 | Converter for the models of CaboCha | The normalization table of the surface, the reader of a CRF++ text model, and the expansion of the support vectors of the parser model. | [#1442](https://github.com/lindera/lindera/issues/1442) |
@@ -268,6 +279,7 @@ Level 1 is the share of the bunsetsu, but the last of each sentence, with the ri
 | The default model | 6,258,548 bytes with the chunker; 62,380 feature strings; 19 passes, 21,374 support vectors of 66,000 decisions; about 3 seconds; the same bytes when trained twice | Script: `parser_experiments.sh final` |
 | The default model on the 542 sentences of test, one core of an AMD Ryzen AI Max+ 395 | Read in 2,732 microseconds; chunking 20,354, parsing 16,678, both 8,718 sentences per second | Script: `parser_experiments.sh speed` |
 | The same with the other tables of the pairs | Hashed, four bytes: 19,028,600 bytes, parsing 13,375. A weight for every pair, one byte: 24,514,588 bytes, 2,741; four bytes: 38,162,161 bytes, 2,679 | Script: `parser_experiments.sh speed` |
+| The command on the text of the 543 sentences of test, repeated 100 times, with the default model and the embedded IPADIC | About 6,600 sentences per second from the text to the lattice format; 5 ms to load the dictionary and the model | Script: `parse_speed.sh` |
 
 ### Model file
 
@@ -307,7 +319,7 @@ The default chunker model, on one core of an AMD Ryzen AI Max+ 395, with Rust 1.
 | [#1433](https://github.com/lindera/lindera/issues/1433) | The baselines of CaboCha and J.DepP, measured again | Open |
 | [#1437](https://github.com/lindera/lindera/issues/1437) | The model file, and the training of the parser | Done |
 | [#1438](https://github.com/lindera/lindera/issues/1438) | Token filter | Open |
-| [#1439](https://github.com/lindera/lindera/issues/1439) | Command | Open |
+| [#1439](https://github.com/lindera/lindera/issues/1439) | Command | Done |
 | [#1440](https://github.com/lindera/lindera/issues/1440) | IPADIC model, and the publication of the crate | Open |
 | [#1441](https://github.com/lindera/lindera/issues/1441) | UniDic model | Open |
 | [#1442](https://github.com/lindera/lindera/issues/1442) | Converter for the models of CaboCha | Open |

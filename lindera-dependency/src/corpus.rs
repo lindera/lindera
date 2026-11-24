@@ -73,6 +73,10 @@ pub use conllu::{ConlluReader, UdSentence, UdWord};
 pub use convert::{BunsetsuTree, UdBunsetsu, to_bunsetsu};
 pub use project::{Projection, project};
 
+// The morpheme a tokenizer gives, which the command needs without the
+// training code as well: it is in the default build.
+pub use crate::morpheme::DictionaryMorpheme;
+
 use crate::error::{Error, Result};
 use crate::lattice;
 use crate::morpheme::Morpheme;
@@ -131,44 +135,6 @@ impl DropCause {
 impl fmt::Display for DropCause {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.name())
-    }
-}
-
-/// A morpheme of a dictionary: its surface and its feature columns.
-///
-/// What a tokenizer gives to [`convert()`] and [`project()`], when it has no
-/// type of its own that implements [`Morpheme`].
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DictionaryMorpheme {
-    /// The surface.
-    pub surface: String,
-    /// The feature columns.
-    pub features: Vec<String>,
-}
-
-impl DictionaryMorpheme {
-    /// Makes a morpheme.
-    ///
-    /// # Arguments
-    ///
-    /// * `surface` - The surface.
-    /// * `features` - The feature columns.
-    ///
-    /// # Returns
-    ///
-    /// The morpheme.
-    pub fn new(surface: String, features: Vec<String>) -> Self {
-        Self { surface, features }
-    }
-}
-
-impl Morpheme for DictionaryMorpheme {
-    fn surface(&self) -> &str {
-        &self.surface
-    }
-
-    fn feature(&self, index: usize) -> Option<&str> {
-        self.features.get(index).map(String::as_str)
     }
 }
 

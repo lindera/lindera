@@ -495,8 +495,24 @@ jobs:
       lint: true
 
   # The job above tests and lints the default build, which has no
-  # dependency. This one does it with `train`: the corpus conversion and
-  # the `lindera-dependency` command, which tokenizes with IPADIC (#1419).
+  # dependency. This one does it with `cli`: the `lindera-dependency`
+  # command for a user, which tokenizes with IPADIC and has no training
+  # code (#1439). No other job builds the command without `train`.
+  test-lindera-dependency-cli:
+    name: Test lindera-dependency (cli)
+    needs: [test-lindera-dependency, test-lindera-segmenter, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-dependency == 'true')
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-dependency
+      features: "--features cli,embed-ipadic"
+      dictionaries: "ipadic"
+      lint: true
+
+  # And this one with `train`: the corpus conversion, the training and the
+  # subcommands for them (#1419).
   test-lindera-dependency-train:
     name: Test lindera-dependency (train)
     needs: [test-lindera-dependency, test-lindera-segmenter, detect-changes]

@@ -62,6 +62,22 @@ def count(part):
     return f"{100 * part['ratio']:.2f} ({part['correct']}/{part['total']})"
 
 
+def parse(command, layer, model, source, output):
+    """The command line that parses a lattice file from an input layer."""
+    return [
+        command,
+        "parse",
+        "--input-layer",
+        layer,
+        "--model",
+        model,
+        "--input",
+        source,
+        "--output",
+        output,
+    ]
+
+
 def fold(command, folds, out, options, index):
     """Trains and parses one fold; returns the summary of the training."""
     model = os.path.join(out, f"fold{index}.model")
@@ -70,7 +86,7 @@ def fold(command, folds, out, options, index):
     )
     test = os.path.join(folds, f"fold{index}.test.lattice")
     output = os.path.join(out, f"fold{index}.out.lattice")
-    run([command, "parse", "--model", model, "--input", test, "--output", output])
+    run(parse(command, "bunsetsu", model, test, output))
     os.remove(model)
     return summary
 
@@ -137,22 +153,10 @@ def full(argv):
     for file in files:
         gold = os.path.join(data, f"{file}.lattice")
         output = os.path.join(out, f"{file}.gold.lattice")
-        run([command, "parse", "--model", model, "--input", gold, "--output", output])
+        run(parse(command, "bunsetsu", model, gold, output))
         given = evaluate(command, gold, output)
         output = os.path.join(out, f"{file}.end.lattice")
-        run(
-            [
-                command,
-                "parse",
-                "--chunk",
-                "--model",
-                model,
-                "--input",
-                gold,
-                "--output",
-                output,
-            ]
-        )
+        run(parse(command, "morphemes", model, gold, output))
         end = evaluate(command, gold, output)
         print(
             f"full {name} {file}: level 1 {count(given['dependency']['level1'])}"

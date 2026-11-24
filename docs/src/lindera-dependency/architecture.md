@@ -5,7 +5,7 @@
 ```text
 lindera-dependency/src/
 ├── lib.rs                # Public API re-exports
-├── morpheme.rs           # Morpheme trait
+├── morpheme.rs           # Morpheme trait, DictionaryMorpheme
 ├── sentence.rs           # Sentence, Bunsetsu, ArcType, Violation
 ├── lattice.rs            # Reading and writing the lattice format of CaboCha
 ├── schema.rs             # Schema: columns, head word and function word
@@ -39,7 +39,9 @@ lindera-dependency/src/
 ├── error.rs              # Error types
 ├── bytes.rs              # Helpers for the bytes of a model
 └── bin/
-    └── lindera-dependency.rs   # The command (train)
+    ├── lindera-dependency.rs   # The command: parse, chunk (cli)
+    └── lindera-dependency/
+        └── train.rs            # The subcommands of training and evaluation (train)
 ```
 
 ## Key Components
@@ -148,18 +150,18 @@ A `Parser` finds the head of each bunsetsu with shift-reduce. The features of a 
 
 ### The command
 
-With the `train` feature the crate builds the `lindera-dependency` command, which tokenizes with `lindera-segmenter`:
+With the `cli` feature the crate builds the `lindera-dependency` command, which tokenizes with `lindera-segmenter` and has no training code. The `train` feature adds the subcommands that make training data, train and evaluate:
 
-| Subcommand | What it does | Page |
-| --- | --- | --- |
-| `convert` | Makes training data from a CoNLL-U file with bunsetsu labels | [Training Data](./training_data.md) |
-| `evaluate` | Compares an output with the answer | [Evaluation](./evaluation.md) |
-| `split` | Writes the folds of a cross-validation | [Evaluation](./evaluation.md) |
-| `train-chunker` | Trains the chunker and writes a model file | [Chunking](./chunking.md) |
-| `chunk` | Segments the morphemes of a file again with a model file | [Chunking](./chunking.md) |
-| `instances` | Writes the training instances of the parser | [Parsing](./parsing.md) |
-| `train-parser` | Trains the parser and writes a model file, with the chunker of another one | [Parsing](./parsing.md) |
-| `parse` | Finds the heads of a file with a model file, on its bunsetsu or from its morphemes | [Parsing](./parsing.md) |
+| Subcommand | Feature | What it does | Page |
+| --- | --- | --- | --- |
+| `parse` | `cli` | Parses plain text, or input that is tokenized or segmented already, and writes the lattice format | [Command Line](./command_line.md) |
+| `chunk` | `cli` | Segments the morphemes of a file again with a model file | [Chunking](./chunking.md) |
+| `convert` | `train` | Makes training data from a CoNLL-U file with bunsetsu labels | [Training Data](./training_data.md) |
+| `evaluate` | `train` | Compares an output with the answer | [Evaluation](./evaluation.md) |
+| `split` | `train` | Writes the folds of a cross-validation | [Evaluation](./evaluation.md) |
+| `train-chunker` | `train` | Trains the chunker and writes a model file | [Chunking](./chunking.md) |
+| `instances` | `train` | Writes the training instances of the parser | [Parsing](./parsing.md) |
+| `train-parser` | `train` | Trains the parser and writes a model file, with the chunker of another one | [Parsing](./parsing.md) |
 
 The command is in this crate, not in `lindera-cli`: `lindera-cli` is published, and cannot depend on a crate that is not.
 
@@ -168,7 +170,8 @@ The command is in this crate, not in `lindera-cli`: `lindera-cli` is published, 
 | Feature | Description | Default |
 | --- | --- | --- |
 | (none) | The types, the lattice format, the schema, the model file, the chunker and the parser. No dependency; builds for `wasm32-unknown-unknown` | Yes |
-| `train` | The `corpus` and `evaluation` modules, the training of the chunker with `lindera-crf` and of the parser, and the `lindera-dependency` command, which tokenizes with `lindera-segmenter` | No |
-| `embed-ipadic` | Embeds IPADIC in the command, for `--dict embedded://ipadic` (implies `train`) | No |
+| `cli` | The `lindera-dependency` command with `parse` and `chunk`, which tokenizes with `lindera-segmenter`. No training code | No |
+| `train` | The `corpus` and `evaluation` modules, the training of the chunker with `lindera-crf` and of the parser, and their subcommands (implies `cli`) | No |
+| `embed-ipadic` | Embeds IPADIC in the command, for `--dict embedded://ipadic` (implies `cli`) | No |
 
 The crate depends on `lindera-segmenter` at most, never on `lindera` or `lindera-analysis`: the token filter that is to come will make `lindera-analysis` depend on this crate.

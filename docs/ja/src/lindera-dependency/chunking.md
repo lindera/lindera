@@ -109,7 +109,7 @@ cargo run --release -p lindera-dependency --features train -- chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 ```
 
-どの文節も次の文節に係るとして書き出します。区切りだけを測るためです。区切ってから解析するのは [`parse --chunk`](./parsing.md#モデルを学習する) です。
+どの文節も次の文節に係るとして書き出します。区切りだけを測るためです。区切ってから解析するのは [`parse --input-layer morphemes`](./command_line.md#分かち書き済みの入力) です。
 
 ## 精度
 
