@@ -210,48 +210,46 @@ mod tests {
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token {
-                surface: Cow::Borrowed("バター"),
-                byte_start: 0,
-                byte_end: 9,
-                position: 0,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 94843),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![
-                    Cow::Borrowed("名詞"),
-                    Cow::Borrowed("一般"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("バター"),
-                    Cow::Borrowed("バター"),
-                    Cow::Borrowed("バター"),
-                ]),
-            },
-            Token {
-                surface: Cow::Borrowed("メーカー"),
-                byte_start: 9,
-                byte_end: 21,
-                position: 1,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 100137),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![
-                    Cow::Borrowed("名詞"),
-                    Cow::Borrowed("一般"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("バター"),
-                    Cow::Borrowed("バター"),
-                    Cow::Borrowed("バター"),
-                ]),
-            },
+            Token::new(
+                Cow::Borrowed("バター"),
+                0,
+                9,
+                0,
+                WordId::new(LexType::System, 94843),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![
+                Cow::Borrowed("名詞"),
+                Cow::Borrowed("一般"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("バター"),
+                Cow::Borrowed("バター"),
+                Cow::Borrowed("バター"),
+            ]),
+            Token::new(
+                Cow::Borrowed("メーカー"),
+                9,
+                21,
+                1,
+                WordId::new(LexType::System, 100137),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![
+                Cow::Borrowed("名詞"),
+                Cow::Borrowed("一般"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("バター"),
+                Cow::Borrowed("バター"),
+                Cow::Borrowed("バター"),
+            ]),
         ];
 
         filter.apply(&mut tokens).unwrap();

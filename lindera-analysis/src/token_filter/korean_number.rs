@@ -331,16 +331,17 @@ mod tests {
 
         let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
 
-        let make_token = |surface: &'static str, tag: &'static str, position: usize| Token {
-            surface: Cow::Borrowed(surface),
-            byte_start: 0,
-            byte_end: surface.len(),
-            position,
-            position_length: 1,
-            word_id: WordId::new(LexType::System, 0),
-            dictionary: &dictionary,
-            user_dictionary: None,
-            details: Some(vec![
+        let make_token = |surface: &'static str, tag: &'static str, position: usize| {
+            Token::new(
+                Cow::Borrowed(surface),
+                0,
+                surface.len(),
+                position,
+                WordId::new(LexType::System, 0),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![
                 Cow::Borrowed(tag),
                 Cow::Borrowed("*"),
                 Cow::Borrowed("F"),
@@ -349,7 +350,7 @@ mod tests {
                 Cow::Borrowed("*"),
                 Cow::Borrowed("*"),
                 Cow::Borrowed("*"),
-            ]),
+            ])
         };
 
         // Without tags every token is converted.

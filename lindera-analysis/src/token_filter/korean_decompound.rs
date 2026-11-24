@@ -520,17 +520,16 @@ impl KoreanDecompoundTokenFilter {
             set(index, Cow::Borrowed(ABSENT));
         }
 
-        Token {
-            surface: Cow::Owned(surface),
-            byte_start: span.0,
-            byte_end: span.1,
+        Token::new(
+            Cow::Owned(surface),
+            span.0,
+            span.1,
             position,
-            position_length: 1,
-            word_id: source.word_id,
-            dictionary: source.dictionary,
-            user_dictionary: source.user_dictionary,
-            details: Some(details),
-        }
+            source.word_id,
+            source.dictionary,
+            source.user_dictionary,
+        )
+        .with_details(details)
     }
 }
 
@@ -763,26 +762,25 @@ mod tests {
             token_type: &'a str,
             expression: &'a str,
         ) -> Token<'a> {
-            Token {
-                surface: Cow::Borrowed(surface),
+            Token::new(
+                Cow::Borrowed(surface),
                 byte_start,
-                byte_end: byte_start + surface.len(),
+                byte_start + surface.len(),
                 position,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 0),
+                WordId::new(LexType::System, 0),
                 dictionary,
-                user_dictionary: None,
-                details: Some(vec![
-                    Cow::Borrowed(pos_tag),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("F"),
-                    Cow::Borrowed(surface),
-                    Cow::Borrowed(token_type),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed(expression),
-                ]),
-            }
+                None,
+            )
+            .with_details(vec![
+                Cow::Borrowed(pos_tag),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("F"),
+                Cow::Borrowed(surface),
+                Cow::Borrowed(token_type),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed(expression),
+            ])
         }
 
         fn rendered(tokens: &mut [Token<'_>]) -> Vec<(String, usize, usize, usize, usize)> {
@@ -1230,17 +1228,15 @@ mod tests {
         use lindera_segmenter::token::Token;
 
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
-        let mut tokens: Vec<Token> = vec![Token {
-            surface: Cow::Borrowed("関西国際空港"),
-            byte_start: 0,
-            byte_end: 18,
-            position: 0,
-            position_length: 1,
-            word_id: WordId::new(LexType::System, 0),
-            dictionary: &dictionary,
-            user_dictionary: None,
-            details: None,
-        }];
+        let mut tokens: Vec<Token> = vec![Token::new(
+            Cow::Borrowed("関西国際空港"),
+            0,
+            18,
+            0,
+            WordId::new(LexType::System, 0),
+            &dictionary,
+            None,
+        )];
 
         let config: KoreanDecompoundTokenFilterConfig = serde_json::from_str("{}").unwrap();
         let filter = KoreanDecompoundTokenFilter::from_config(&config).unwrap();

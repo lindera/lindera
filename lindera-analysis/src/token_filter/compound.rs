@@ -219,17 +219,16 @@ mod tests {
     /// contiguous byte offsets, position `i`, and a single-field detail that
     /// either matches or not.
     fn make(dictionary: &Dictionary, i: usize, matching: bool) -> Token<'_> {
-        Token {
-            surface: Cow::Owned(format!("s{i}")),
-            byte_start: i * 2,
-            byte_end: i * 2 + 2,
-            position: i,
-            position_length: 1,
-            word_id: WordId::new(LexType::System, i as u32),
+        Token::new(
+            Cow::Owned(format!("s{i}")),
+            i * 2,
+            i * 2 + 2,
+            i,
+            WordId::new(LexType::System, i as u32),
             dictionary,
-            user_dictionary: None,
-            details: Some(vec![Cow::Borrowed(if matching { MATCH } else { OTHER })]),
-        }
+            None,
+        )
+        .with_details(vec![Cow::Borrowed(if matching { MATCH } else { OTHER })])
     }
 
     fn match_set() -> HashSet<String> {
@@ -352,16 +351,17 @@ mod tests {
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
         let tags = match_set();
 
-        let spanning = |surface: &'static str, start: usize, end: usize, position: usize| Token {
-            surface: Cow::Borrowed(surface),
-            byte_start: start,
-            byte_end: end,
-            position,
-            position_length: 1,
-            word_id: WordId::new(LexType::System, 0),
-            dictionary: &dictionary,
-            user_dictionary: None,
-            details: Some(vec![Cow::Borrowed(MATCH)]),
+        let spanning = |surface: &'static str, start: usize, end: usize, position: usize| {
+            Token::new(
+                Cow::Borrowed(surface),
+                start,
+                end,
+                position,
+                WordId::new(LexType::System, 0),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![Cow::Borrowed(MATCH)])
         };
         let render = |tokens: &[Token<'_>]| -> Vec<(String, usize, usize)> {
             tokens

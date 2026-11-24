@@ -66,17 +66,18 @@ mod tests {
 
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
-        let mut tokens: Vec<Token> = vec![Token {
-            surface: Cow::Borrowed("Rust"),
-            byte_start: 0,
-            byte_end: 4,
-            position: 0,
-            position_length: 1,
-            word_id: WordId::new(LexType::System, 4294967295),
-            dictionary: &dictionary,
-            user_dictionary: None,
-            details: Some(vec![Cow::Borrowed("UNK")]),
-        }];
+        let mut tokens: Vec<Token> = vec![
+            Token::new(
+                Cow::Borrowed("Rust"),
+                0,
+                4,
+                0,
+                WordId::new(LexType::System, 4294967295),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![Cow::Borrowed("UNK")]),
+        ];
 
         filter.apply(&mut tokens).unwrap();
 
@@ -99,17 +100,18 @@ mod tests {
 
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
-        let mut tokens: Vec<Token> = vec![Token {
-            surface: Cow::Borrowed("東京"),
-            byte_start: 0,
-            byte_end: 6,
-            position: 0,
-            position_length: 1,
-            word_id: WordId::new(LexType::System, 4294967295),
-            dictionary: &dictionary,
-            user_dictionary: None,
-            details: Some(vec![Cow::Borrowed("UNK")]),
-        }];
+        let mut tokens: Vec<Token> = vec![
+            Token::new(
+                Cow::Borrowed("東京"),
+                0,
+                6,
+                0,
+                WordId::new(LexType::System, 4294967295),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![Cow::Borrowed("UNK")]),
+        ];
 
         filter.apply(&mut tokens).unwrap();
 

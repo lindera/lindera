@@ -153,17 +153,18 @@ mod tests {
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
         {
-            let mut tokens: Vec<Token> = vec![Token {
-                surface: Cow::Borrowed("café"),
-                byte_start: 0,
-                byte_end: 4,
-                position: 0,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 4294967295),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![Cow::Borrowed("UNK")]),
-            }];
+            let mut tokens: Vec<Token> = vec![
+                Token::new(
+                    Cow::Borrowed("café"),
+                    0,
+                    4,
+                    0,
+                    WordId::new(LexType::System, 4294967295),
+                    &dictionary,
+                    None,
+                )
+                .with_details(vec![Cow::Borrowed("UNK")]),
+            ];
 
             filter.apply(&mut tokens).unwrap();
 
@@ -171,16 +172,17 @@ mod tests {
         }
 
         {
-            let mut tokens: Vec<Token> = vec![Token {
-                surface: Cow::Borrowed("ガソリン"),
-                byte_start: 0,
-                byte_end: 12,
-                position: 0,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 84915),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![
+            let mut tokens: Vec<Token> = vec![
+                Token::new(
+                    Cow::Borrowed("ガソリン"),
+                    0,
+                    12,
+                    0,
+                    WordId::new(LexType::System, 84915),
+                    &dictionary,
+                    None,
+                )
+                .with_details(vec![
                     Cow::Borrowed("名詞"),
                     Cow::Borrowed("一般"),
                     Cow::Borrowed("*"),
@@ -191,7 +193,7 @@ mod tests {
                     Cow::Borrowed("ガソリン"),
                     Cow::Borrowed("ガソリン"),
                 ]),
-            }];
+            ];
 
             filter.apply(&mut tokens).unwrap();
 
@@ -221,17 +223,18 @@ mod tests {
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
         {
-            let mut tokens: Vec<Token> = vec![Token {
-                surface: Cow::Borrowed("café"),
-                byte_start: 0,
-                byte_end: 4,
-                position: 0,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 4294967295),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![Cow::Borrowed("UNK")]),
-            }];
+            let mut tokens: Vec<Token> = vec![
+                Token::new(
+                    Cow::Borrowed("café"),
+                    0,
+                    4,
+                    0,
+                    WordId::new(LexType::System, 4294967295),
+                    &dictionary,
+                    None,
+                )
+                .with_details(vec![Cow::Borrowed("UNK")]),
+            ];
 
             filter.apply(&mut tokens).unwrap();
 
@@ -239,16 +242,17 @@ mod tests {
         }
 
         {
-            let mut tokens: Vec<Token> = vec![Token {
-                surface: Cow::Borrowed("ガソリン"),
-                byte_start: 0,
-                byte_end: 12,
-                position: 0,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 84915),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![
+            let mut tokens: Vec<Token> = vec![
+                Token::new(
+                    Cow::Borrowed("ガソリン"),
+                    0,
+                    12,
+                    0,
+                    WordId::new(LexType::System, 84915),
+                    &dictionary,
+                    None,
+                )
+                .with_details(vec![
                     Cow::Borrowed("名詞"),
                     Cow::Borrowed("一般"),
                     Cow::Borrowed("*"),
@@ -259,7 +263,7 @@ mod tests {
                     Cow::Borrowed("ガソリン"),
                     Cow::Borrowed("ガソリン"),
                 ]),
-            }];
+            ];
 
             filter.apply(&mut tokens).unwrap();
 

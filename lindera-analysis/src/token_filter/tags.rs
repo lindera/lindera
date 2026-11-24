@@ -294,17 +294,16 @@ pub(crate) mod test_support {
         rows.iter()
             .enumerate()
             .map(|(i, (surface, details))| {
-                let token = Token {
-                    surface: Cow::Borrowed(surface),
+                let token = Token::new(
+                    Cow::Borrowed(surface),
                     byte_start,
-                    byte_end: byte_start + surface.len(),
-                    position: i,
-                    position_length: 1,
-                    word_id: WordId::new(LexType::System, i as u32),
+                    byte_start + surface.len(),
+                    i,
+                    WordId::new(LexType::System, i as u32),
                     dictionary,
-                    user_dictionary: None,
-                    details: Some(details.iter().map(|d| Cow::Borrowed(*d)).collect()),
-                };
+                    None,
+                )
+                .with_details(details.iter().map(|d| Cow::Borrowed(*d)).collect());
                 byte_start += surface.len();
                 token
             })
@@ -329,17 +328,18 @@ mod tests {
         use lindera_segmenter::token::Token;
 
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
-        let mut tokens: Vec<Token> = vec![Token {
-            surface: Cow::Borrowed("もも"),
-            byte_start: 0,
-            byte_end: 6,
-            position: 0,
-            position_length: 1,
-            word_id: WordId::new(LexType::System, 4294967295),
-            dictionary: &dictionary,
-            user_dictionary: None,
-            details: Some(vec![Cow::Borrowed("UNK")]),
-        }];
+        let mut tokens: Vec<Token> = vec![
+            Token::new(
+                Cow::Borrowed("もも"),
+                0,
+                6,
+                0,
+                WordId::new(LexType::System, 4294967295),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![Cow::Borrowed("UNK")]),
+        ];
 
         let tags = HashSet::new();
         let extract_called = Cell::new(false);
@@ -364,17 +364,18 @@ mod tests {
         use lindera_segmenter::token::Token;
 
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
-        let mut tokens: Vec<Token> = vec![Token {
-            surface: Cow::Borrowed("もも"),
-            byte_start: 0,
-            byte_end: 6,
-            position: 0,
-            position_length: 1,
-            word_id: WordId::new(LexType::System, 4294967295),
-            dictionary: &dictionary,
-            user_dictionary: None,
-            details: Some(vec![Cow::Borrowed("UNK")]),
-        }];
+        let mut tokens: Vec<Token> = vec![
+            Token::new(
+                Cow::Borrowed("もも"),
+                0,
+                6,
+                0,
+                WordId::new(LexType::System, 4294967295),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![Cow::Borrowed("UNK")]),
+        ];
 
         let tags = HashSet::new();
         let extract_called = Cell::new(false);
@@ -423,17 +424,16 @@ mod tests {
         ];
 
         for (details, expected) in cases {
-            let mut token = Token {
-                surface: Cow::Borrowed("x"),
-                byte_start: 0,
-                byte_end: 1,
-                position: 0,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 0),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(details.iter().map(|d| Cow::Borrowed(*d)).collect()),
-            };
+            let mut token = Token::new(
+                Cow::Borrowed("x"),
+                0,
+                1,
+                0,
+                WordId::new(LexType::System, 0),
+                &dictionary,
+                None,
+            )
+            .with_details(details.iter().map(|d| Cow::Borrowed(*d)).collect());
 
             let mut key = String::new();
             write_japanese_pos_key(&mut token, 0, &mut key);
@@ -459,16 +459,17 @@ mod tests {
 
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
-        let make = |surface: &'static str, details: &[&'static str], id: u32| Token {
-            surface: Cow::Borrowed(surface),
-            byte_start: 0,
-            byte_end: surface.len(),
-            position: 0,
-            position_length: 1,
-            word_id: WordId::new(LexType::System, id),
-            dictionary: &dictionary,
-            user_dictionary: None,
-            details: Some(details.iter().map(|d| Cow::Borrowed(*d)).collect()),
+        let make = |surface: &'static str, details: &[&'static str], id: u32| {
+            Token::new(
+                Cow::Borrowed(surface),
+                0,
+                surface.len(),
+                0,
+                WordId::new(LexType::System, id),
+                &dictionary,
+                None,
+            )
+            .with_details(details.iter().map(|d| Cow::Borrowed(*d)).collect())
         };
 
         // A long key first, then a short one, then an empty one.
@@ -508,24 +509,25 @@ mod tests {
             shape
                 .iter()
                 .enumerate()
-                .map(|(i, drop)| Token {
-                    surface: if *drop {
-                        Cow::Borrowed("drop")
-                    } else {
-                        Cow::Borrowed("keep")
-                    },
-                    byte_start: i,
-                    byte_end: i + 4,
-                    position: i,
-                    position_length: 1,
-                    word_id: WordId::new(LexType::System, i as u32),
-                    dictionary: &dictionary,
-                    user_dictionary: None,
-                    details: Some(if *drop {
+                .map(|(i, drop)| {
+                    Token::new(
+                        if *drop {
+                            Cow::Borrowed("drop")
+                        } else {
+                            Cow::Borrowed("keep")
+                        },
+                        i,
+                        i + 4,
+                        i,
+                        WordId::new(LexType::System, i as u32),
+                        &dictionary,
+                        None,
+                    )
+                    .with_details(if *drop {
                         vec![Cow::Borrowed("助詞")]
                     } else {
                         vec![Cow::Borrowed("名詞")]
-                    }),
+                    })
                 })
                 .collect()
         };
