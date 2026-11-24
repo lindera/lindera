@@ -2,8 +2,8 @@
 //! is read in place.
 //!
 //! A model file says what dictionary it is for, by a name and by the
-//! [`Schema`] of the dictionary, and holds parts: so far the chunker.
-//! A part can be absent.
+//! [`Schema`] of the dictionary, and holds parts: the chunker and the
+//! parser. A part can be absent.
 //!
 //! [`Model`] reads a file from bytes it borrows or owns, without copying its
 //! tables: a file embedded with `include_bytes!`, read into a `Vec<u8>` or
@@ -25,7 +25,7 @@
 //! the name of the dictionary  string
 //! the schema
 //! the number of parts      u32
-//! for each part:           its kind u32 (1 is the chunker),
+//! for each part:           its kind u32 (1 the chunker, 2 the parser),
 //!                          its offset from the first byte of the file u64,
 //!                          its length u64
 //! the parts, one after the other, in this order, up to the end of the file
@@ -35,6 +35,14 @@
 //! the template as a string, the nine weights of the transitions as `f64`,
 //! and a table of the feature strings, sorted, each with the weight of `B`
 //! and the weight of `I` as `f64`.
+//!
+//! The parser part: the feature set as a string, one byte for the
+//! quantization of the weights and one for how the weights of the pairs are
+//! kept, the bias and the scale of the quantization as `f64`, a table of the
+//! feature strings with their weights, and the weights of the pairs: a
+//! table of `2^bits` weights the pairs are hashed into, or the pairs of
+//! each feature with a weight of their own. The documentation of the
+//! project has every field.
 //!
 //! # Examples
 //!
@@ -89,7 +97,11 @@ use crate::bytes::{Reader, push_string, push_u32};
 use crate::chunker::model::WEIGHTS_WIDTH;
 use crate::chunker::{Chunker, ChunkerData, ChunkerModel, Column, Template};
 use crate::error::{Error, Result};
+use crate::morpheme::Morpheme;
+use crate::parser::model::ParserLayout;
+use crate::parser::{Parser, ParserModel, ParserPart, Quantization};
 use crate::schema::Schema;
+use crate::sentence::Bunsetsu;
 use table::{Layout, Table};
 
 /// The first bytes of a model file.
@@ -100,6 +112,9 @@ const VERSION: u32 = 1;
 
 /// The kind of the chunker part.
 const KIND_CHUNKER: u32 = 1;
+
+/// The kind of the parser part.
+const KIND_PARSER: u32 = 2;
 
 /// What the bytes are, in the messages of the errors.
 const WHAT: &str = "model";
@@ -120,6 +135,10 @@ pub struct Model<B> {
     schema: Schema,
     /// The chunker part, when the file has one.
     chunker: Option<ChunkerLayout>,
+    /// The parser part, when the file has one.
+    parser: Option<ParserLayout>,
+    /// Where each part is in the bytes, with its kind.
+    parts: Vec<(u32, Range<usize>)>,
 }
 
 /// The chunker part of a model: what is small is read, and the table of the
@@ -214,11 +233,13 @@ impl<B: AsRef<[u8]>> Model<B> {
         }
 
         let mut chunker = None;
-        for (kind, range) in parts {
-            match kind {
+        let mut parser = None;
+        for (kind, range) in &parts {
+            match *kind {
                 KIND_CHUNKER => {
                     chunker = Some(ChunkerLayout::read(&all[range.clone()], range.start)?)
                 }
+                KIND_PARSER => parser = Some(ParserLayout::read(&all[range.clone()], range.start)?),
                 _ => {
                     return Err(Error::Model(format!(
                         "the model has a part of the unknown kind {kind}"
@@ -232,6 +253,8 @@ impl<B: AsRef<[u8]>> Model<B> {
             dictionary,
             schema,
             chunker,
+            parser,
+            parts,
         })
     }
 
@@ -299,6 +322,48 @@ impl<B: AsRef<[u8]>> Model<B> {
         }))
     }
 
+    /// The parser of the model.
+    ///
+    /// # Returns
+    ///
+    /// A parser whose classifier reads its weights on the bytes of the
+    /// model, or `None` when the file has no parser part.
+    pub fn parser(&self) -> Option<Parser<ParserPart<'_>>> {
+        let layout = self.parser.as_ref()?;
+        Some(Parser::new(
+            self.schema.clone(),
+            layout.feature_set().clone(),
+            layout.part(self.bytes.as_ref()),
+        ))
+    }
+
+    /// Analyzes a sentence: segments its morphemes into bunsetsu with the
+    /// chunker of the model, and finds the head of each with its parser.
+    ///
+    /// To analyze many sentences, take [`Model::chunker`] and
+    /// [`Model::parser`] once and use them for each: this makes both for
+    /// every call.
+    ///
+    /// # Arguments
+    ///
+    /// * `morphemes` - The morphemes of the sentence.
+    ///
+    /// # Returns
+    ///
+    /// The bunsetsu with their heads, as [`Parser::parse`] gives them; none
+    /// for an empty sentence. [`Error::Model`] when the file has no chunker
+    /// or no parser, and [`Error::Dictionary`] for a morpheme with fewer
+    /// feature columns than the schema reads.
+    pub fn analyze<M: Morpheme>(&self, morphemes: &[M]) -> Result<Vec<Bunsetsu>> {
+        let chunker = self
+            .chunker()
+            .ok_or_else(|| Error::Model("the model has no chunker".to_string()))?;
+        let parser = self
+            .parser()
+            .ok_or_else(|| Error::Model("the model has no parser".to_string()))?;
+        parser.parse(morphemes, &chunker.chunk(morphemes)?)
+    }
+
     /// The bytes of the file.
     ///
     /// # Returns
@@ -316,6 +381,7 @@ impl<B: AsRef<[u8]>> fmt::Debug for Model<B> {
             .field("dictionary", &self.dictionary)
             .field("bytes", &self.bytes.as_ref().len())
             .field("chunker", &self.chunker.is_some())
+            .field("parser", &self.parser.is_some())
             .finish()
     }
 }
@@ -490,6 +556,8 @@ pub struct ModelBuilder {
     schema: Schema,
     /// The bytes of the chunker part, when one was given.
     chunker: Option<Vec<u8>>,
+    /// The bytes of the parser part, when one was given.
+    parser: Option<Vec<u8>>,
 }
 
 impl ModelBuilder {
@@ -515,7 +583,35 @@ impl ModelBuilder {
             dictionary: dictionary.to_string(),
             schema,
             chunker: None,
+            parser: None,
         })
+    }
+
+    /// Starts a model file with the dictionary, the schema and the parts
+    /// of another one, to add a part to it or to replace one.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The model file to start from.
+    ///
+    /// # Returns
+    ///
+    /// The builder, with the bytes of the parts of the model as they are.
+    pub fn from_model<B: AsRef<[u8]>>(model: &Model<B>) -> Self {
+        let part = |kind: u32| {
+            model
+                .parts
+                .iter()
+                .find(|(other, _)| *other == kind)
+                .and_then(|(_, range)| model.bytes.as_ref().get(range.clone()))
+                .map(<[u8]>::to_vec)
+        };
+        Self {
+            dictionary: model.dictionary.clone(),
+            schema: model.schema.clone(),
+            chunker: part(KIND_CHUNKER),
+            parser: part(KIND_PARSER),
+        }
     }
 
     /// Gives the file its chunker part.
@@ -540,6 +636,29 @@ impl ModelBuilder {
         Ok(self)
     }
 
+    /// Gives the file its parser part.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The model of the parser.
+    /// * `quantization` - How its weights are written.
+    ///
+    /// # Returns
+    ///
+    /// The builder, or [`Error::Model`] when the parser was not trained
+    /// with the schema of the file.
+    pub fn parser(mut self, model: &ParserModel, quantization: Quantization) -> Result<Self> {
+        if model.schema() != &self.schema {
+            return Err(Error::Model(
+                "the parser has another schema than the model".to_string(),
+            ));
+        }
+        let mut part = Vec::new();
+        model.write_part(&mut part, quantization);
+        self.parser = Some(part);
+        Ok(self)
+    }
+
     /// Writes the file.
     ///
     /// The same parts give the same bytes.
@@ -554,10 +673,9 @@ impl ModelBuilder {
         push_string(&mut bytes, &self.dictionary);
         self.schema.write(&mut bytes);
 
-        let parts: Vec<(u32, &[u8])> = self
-            .chunker
-            .iter()
-            .map(|part| (KIND_CHUNKER, part.as_slice()))
+        let parts: Vec<(u32, &[u8])> = [(KIND_CHUNKER, &self.chunker), (KIND_PARSER, &self.parser)]
+            .into_iter()
+            .filter_map(|(kind, part)| Some((kind, part.as_deref()?)))
             .collect();
         push_u32(&mut bytes, parts.len() as u32);
         // Each entry of the list is a kind and two numbers of 8 bytes.
@@ -792,7 +910,7 @@ mod tests {
         assert_eq!(
             format!("{model:?}"),
             format!(
-                "Model {{ dictionary: \"ipadic\", bytes: {}, chunker: true }}",
+                "Model {{ dictionary: \"ipadic\", bytes: {}, chunker: true, parser: false }}",
                 model.as_bytes().len()
             )
         );
@@ -890,8 +1008,8 @@ mod tests {
         assert_eq!(bytes[list + 16..list + 24], length.to_le_bytes());
 
         let mut other = bytes.clone();
-        other[list + 4] = 2;
-        assert_eq!(error(&other), "the model has a part of the unknown kind 2");
+        other[list + 4] = 3;
+        assert_eq!(error(&other), "the model has a part of the unknown kind 3");
 
         // The part starts one byte later, or one byte earlier.
         for start in [offset + 1, offset - 1] {
@@ -1058,6 +1176,265 @@ mod tests {
             }
         }
         // A change of a weight, for one, gives another file that is read.
+        assert!(read > 0);
+    }
+}
+
+/// A model file with the parser part.
+#[cfg(test)]
+// A sentence that is one bunsetsu is given as `[0..n]`: an array of one
+// range, which is what is meant.
+#[allow(clippy::single_range_in_vec_init)]
+mod parser_tests {
+    use super::*;
+    use crate::chunker::model::tests::model as chunker_model;
+    use crate::lattice::LatticeMorpheme;
+    use crate::parser::{Classifier, FeatureSet, PairWeights};
+
+    /// A chunker for which a particle continues a bunsetsu and anything
+    /// else starts one.
+    fn chunker() -> ChunkerModel {
+        chunker_model(
+            &[
+                ("U12:助詞-係助詞", [0.0, 1.0]),
+                ("U12:助詞-格助詞-一般", [0.0, 1.0]),
+            ],
+            [[0.0; 3]; 3],
+        )
+    }
+
+    /// A parser for which a bunsetsu that ends in を depends on the next
+    /// one, and nothing else is attached before the end of the sentence.
+    fn parser() -> ParserModel {
+        ParserModel::new(
+            Schema::ipadic(),
+            FeatureSet::cabocha(),
+            -1.0,
+            vec![("DIST:1".to_string(), 0.0), ("SFS:を".to_string(), 0.0)],
+            PairWeights::Exact(vec![((0, 1), 2.0)]),
+        )
+        .unwrap()
+    }
+
+    /// The bytes of a model file of IPADIC with the two parts.
+    fn bytes(quantization: Quantization) -> Vec<u8> {
+        ModelBuilder::new("ipadic", Schema::ipadic())
+            .unwrap()
+            .chunker(&chunker())
+            .unwrap()
+            .parser(&parser(), quantization)
+            .unwrap()
+            .to_bytes()
+    }
+
+    /// 彼 は / 本 を / 読む / 人.
+    fn morphemes() -> Vec<LatticeMorpheme> {
+        vec![
+            LatticeMorpheme::new("彼", "名詞,代名詞,一般,*,*,*,彼,カレ,カレ"),
+            LatticeMorpheme::new("は", "助詞,係助詞,*,*,*,*,は,ハ,ワ"),
+            LatticeMorpheme::new("本", "名詞,一般,*,*,*,*,本,ホン,ホン"),
+            LatticeMorpheme::new("を", "助詞,格助詞,一般,*,*,*,を,ヲ,ヲ"),
+            LatticeMorpheme::new("読む", "動詞,自立,*,*,五段・マ行,基本形,読む,ヨム,ヨム"),
+            LatticeMorpheme::new("人", "名詞,一般,*,*,*,*,人,ヒト,ヒト"),
+        ]
+    }
+
+    #[test]
+    fn a_file_with_both_parts_analyzes_a_sentence() {
+        for quantization in [Quantization::F32, Quantization::I16, Quantization::I8] {
+            let bytes = bytes(quantization);
+            let model = Model::new(bytes.as_slice()).unwrap();
+            assert_eq!(
+                format!("{model:?}"),
+                format!(
+                    "Model {{ dictionary: \"ipadic\", bytes: {}, chunker: true, parser: true }}",
+                    bytes.len()
+                )
+            );
+            let morphemes = morphemes();
+            let analyzed = model.analyze(&morphemes).unwrap();
+            let ranges: Vec<_> = analyzed.iter().map(|one| one.morphemes.clone()).collect();
+            assert_eq!(ranges, [0..2, 2..4, 4..5, 5..6]);
+            let heads: Vec<Option<usize>> = analyzed.iter().map(|one| one.head).collect();
+            // 本 を depends on 読む, the next one; the others on the last.
+            assert_eq!(heads, [Some(3), Some(2), Some(3), None]);
+            // The bias and the weight of the pair, which every
+            // quantization writes as it is: it is the largest weight.
+            assert_eq!(analyzed[1].score, Some(1.0));
+            assert_eq!(analyzed[1].positions, Some((0, 1)));
+
+            // The same as the two steps, and as the model in memory.
+            let parser_of_file = model.parser().unwrap();
+            assert_eq!(parser_of_file.feature_set(), &FeatureSet::cabocha());
+            assert_eq!(parser_of_file.schema(), &Schema::ipadic());
+            let chunks = model.chunker().unwrap().chunk(&morphemes).unwrap();
+            assert_eq!(parser_of_file.parse(&morphemes, &chunks).unwrap(), analyzed);
+            let in_memory = Parser::new(Schema::ipadic(), FeatureSet::cabocha(), parser());
+            assert_eq!(in_memory.parse(&morphemes, &chunks).unwrap(), analyzed);
+            assert_eq!(parser_of_file.classifier().id("SFS:を"), Some(1));
+
+            let none: [LatticeMorpheme; 0] = [];
+            assert!(model.analyze(&none).unwrap().is_empty());
+        }
+    }
+
+    #[test]
+    fn the_parts_are_listed_in_their_order() {
+        let bytes = bytes(Quantization::F32);
+        let mut schema = Vec::new();
+        Schema::ipadic().write(&mut schema);
+        let list = 8 + 4 + 4 + "ipadic".len() + schema.len();
+        assert_eq!(bytes[list..list + 4], [2, 0, 0, 0]);
+        // The chunker, then the parser, one after the other to the end.
+        let entry = |index: usize| {
+            let start = list + 4 + 20 * index;
+            let number = |from: usize| {
+                u64::from_le_bytes(bytes[start + from..start + from + 8].try_into().unwrap())
+                    as usize
+            };
+            (bytes[start], number(4), number(12))
+        };
+        let (first, second) = (entry(0), entry(1));
+        assert_eq!(first.0, 1);
+        assert_eq!(second.0, 2);
+        assert_eq!(first.1, list + 4 + 40);
+        assert_eq!(second.1, first.1 + first.2);
+        assert_eq!(second.1 + second.2, bytes.len());
+        // In whatever order the parts are given.
+        let other = ModelBuilder::new("ipadic", Schema::ipadic())
+            .unwrap()
+            .parser(&parser(), Quantization::F32)
+            .unwrap()
+            .chunker(&chunker())
+            .unwrap()
+            .to_bytes();
+        assert_eq!(other, bytes);
+    }
+
+    #[test]
+    fn a_file_without_a_part_does_not_analyze() {
+        let only_chunker = ModelBuilder::new("ipadic", Schema::ipadic())
+            .unwrap()
+            .chunker(&chunker())
+            .unwrap()
+            .to_bytes();
+        let only_parser = ModelBuilder::new("ipadic", Schema::ipadic())
+            .unwrap()
+            .parser(&parser(), Quantization::I8)
+            .unwrap()
+            .to_bytes();
+        let morphemes = morphemes();
+        for (bytes, message) in [
+            (only_chunker, "the model has no parser"),
+            (only_parser, "the model has no chunker"),
+        ] {
+            let model = Model::new(bytes).unwrap();
+            let error = model.analyze(&morphemes).unwrap_err();
+            assert!(matches!(error, Error::Model(_)), "{error:?}");
+            assert_eq!(error.to_string(), message);
+            assert_eq!(model.parser().is_none(), message.ends_with("parser"));
+            assert_eq!(model.chunker().is_none(), message.ends_with("chunker"));
+        }
+        // Morphemes of another dictionary are refused by both steps.
+        let model = Model::new(bytes(Quantization::I8)).unwrap();
+        let narrow = [LatticeMorpheme::new("彼", "名詞,代名詞")];
+        let error = model.analyze(&narrow).unwrap_err();
+        assert!(matches!(error, Error::Dictionary(_)), "{error:?}");
+        let error = model.parser().unwrap().parse(&narrow, &[0..1]).unwrap_err();
+        assert!(matches!(error, Error::Dictionary(_)), "{error:?}");
+    }
+
+    #[test]
+    fn a_file_is_started_from_another_one() {
+        let only_chunker = ModelBuilder::new("ipadic", Schema::ipadic())
+            .unwrap()
+            .chunker(&chunker())
+            .unwrap()
+            .to_bytes();
+        let model = Model::new(only_chunker.as_slice()).unwrap();
+        // The chunker of the file, as its bytes are, and a parser.
+        let both = ModelBuilder::from_model(&model)
+            .parser(&parser(), Quantization::I16)
+            .unwrap()
+            .to_bytes();
+        assert_eq!(both, bytes(Quantization::I16));
+        // Nothing added: the same file.
+        assert_eq!(ModelBuilder::from_model(&model).to_bytes(), only_chunker);
+        let full = Model::new(both.as_slice()).unwrap();
+        assert_eq!(ModelBuilder::from_model(&full).to_bytes(), both);
+        // A part given again takes the place of the one of the file.
+        let again = ModelBuilder::from_model(&full)
+            .parser(&parser(), Quantization::I8)
+            .unwrap()
+            .to_bytes();
+        assert_eq!(again, bytes(Quantization::I8));
+        assert_ne!(again, both);
+
+        // The name and the schema are those of the file.
+        let mut schema = Schema::ipadic();
+        schema.base_form = None;
+        let other = ModelBuilder::new("other", schema.clone())
+            .unwrap()
+            .to_bytes();
+        let other = Model::new(other).unwrap();
+        let copy = Model::new(ModelBuilder::from_model(&other).to_bytes()).unwrap();
+        assert_eq!(copy.dictionary(), "other");
+        assert_eq!(copy.schema(), &schema);
+    }
+
+    #[test]
+    fn the_builder_refuses_a_parser_of_another_schema() {
+        let mut other = Schema::ipadic();
+        other.base_form = None;
+        let error = ModelBuilder::new("other", other)
+            .unwrap()
+            .parser(&parser(), Quantization::F32)
+            .unwrap_err();
+        assert!(matches!(error, Error::Model(_)), "{error:?}");
+        assert_eq!(
+            error.to_string(),
+            "the parser has another schema than the model"
+        );
+    }
+
+    #[test]
+    fn a_parser_part_that_is_not_one_is_refused_with_the_file() {
+        let bytes = bytes(Quantization::F32);
+        // The last weight of the file is the one of the pair.
+        let mut other = bytes.clone();
+        let last = other.len() - 4;
+        assert_eq!(other[last..], 2.0f32.to_le_bytes());
+        other[last..].copy_from_slice(&f32::NAN.to_le_bytes());
+        let error = Model::new(other).unwrap_err();
+        assert!(matches!(error, Error::Model(_)), "{error:?}");
+        assert_eq!(
+            error.to_string(),
+            "the model has a weight that is not finite"
+        );
+        for length in 0..bytes.len() {
+            assert!(Model::new(&bytes[..length]).is_err(), "{length}");
+        }
+    }
+
+    #[test]
+    fn no_changed_byte_makes_reading_or_analyzing_panic() {
+        let bytes = bytes(Quantization::I8);
+        let morphemes = morphemes();
+        let mut read = 0;
+        for position in 0..bytes.len() {
+            for value in [0, 1, 0x7f, 0x80, 0xff, bytes[position] ^ 1] {
+                if value == bytes[position] {
+                    continue;
+                }
+                let mut other = bytes.clone();
+                other[position] = value;
+                if let Ok(model) = Model::new(other) {
+                    read += 1;
+                    let _ = model.analyze(&morphemes);
+                    let _ = ModelBuilder::from_model(&model).to_bytes();
+                }
+            }
+        }
         assert!(read > 0);
     }
 }

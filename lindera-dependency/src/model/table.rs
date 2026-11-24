@@ -44,7 +44,7 @@ use crate::error::Result;
 /// # Returns
 ///
 /// The hash.
-fn hash(key: &[u8]) -> usize {
+pub(crate) fn hash(key: &[u8]) -> usize {
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
     for &byte in key {
         hash ^= u64::from(byte);

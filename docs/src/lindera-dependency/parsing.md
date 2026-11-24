@@ -2,7 +2,61 @@
 
 Parsing finds, for each bunsetsu of a sentence, the bunsetsu it depends on. The `parser` module does it the way CaboCha and J.DepP do: it goes through the bunsetsu from left to right with a stack (shift-reduce), and a classifier answers one question at a time.
 
-> The crate has **no trained model of the parser yet**. What is here is the loop, the features, a classifier that takes weights made by hand or by an experiment, and the training instances of a classifier. Training and the model file are tracked in [#1437](https://github.com/lindera/lindera/issues/1437).
+No model is distributed yet. [Train one](#training-a-model) from [training data](./training_data.md): it takes a few seconds.
+
+## Parsing with a model
+
+A [model file](./model_file.md) holds the chunker and the parser of a dictionary. With both, a sentence goes from morphemes to dependencies:
+
+```rust
+use std::io;
+
+use lindera_dependency::lattice::{self, LatticeMorpheme};
+use lindera_dependency::model::Model;
+use lindera_dependency::Sentence;
+
+let model = Model::new(std::fs::read("ipadic.model")?)?;
+let chunker = model.chunker().expect("the file has a chunker");
+let parser = model.parser().expect("the file has a parser");
+
+// The morphemes of 彼は赤い花を見た。 as IPADIC gives them.
+let morphemes = vec![
+    LatticeMorpheme::new("彼", "名詞,代名詞,一般,*,*,*,彼,カレ,カレ"),
+    LatticeMorpheme::new("は", "助詞,係助詞,*,*,*,*,は,ハ,ワ"),
+    LatticeMorpheme::new("赤い", "形容詞,自立,*,*,形容詞・アウオ段,基本形,赤い,アカイ,アカイ"),
+    LatticeMorpheme::new("花", "名詞,一般,*,*,*,*,花,ハナ,ハナ"),
+    LatticeMorpheme::new("を", "助詞,格助詞,一般,*,*,*,を,ヲ,ヲ"),
+    LatticeMorpheme::new("見", "動詞,自立,*,*,一段,連用形,見る,ミ,ミ"),
+    LatticeMorpheme::new("た", "助動詞,*,*,*,特殊・タ,基本形,た,タ,タ"),
+    LatticeMorpheme::new("。", "記号,句点,*,*,*,*,。,。,。"),
+];
+let ranges = chunker.chunk(&morphemes)?;
+let bunsetsu = parser.parse(&morphemes, &ranges)?;
+
+// The result is a sentence the lattice format can hold.
+let sentence = Sentence::new(morphemes, bunsetsu)?;
+lattice::write(&mut io::stdout(), &sentence)?;
+```
+
+<!-- markdownlint-disable MD010 -->
+```text
+* 0 3D 0/1 0.000000
+彼	名詞,代名詞,一般,*,*,*,彼,カレ,カレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
+* 1 2D 0/0 0.704616
+赤い	形容詞,自立,*,*,形容詞・アウオ段,基本形,赤い,アカイ,アカイ
+* 2 3D 0/1 0.000000
+花	名詞,一般,*,*,*,*,花,ハナ,ハナ
+を	助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+* 3 -1D 0/1 0.000000
+見	動詞,自立,*,*,一段,連用形,見る,ミ,ミ
+た	助動詞,*,*,*,特殊・タ,基本形,た,タ,タ
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+```
+<!-- markdownlint-enable MD010 -->
+
+Each bunsetsu has its head, the positions of its head word and of its function word, and the score of the decision that attached it: above 0, and the larger the surer. Here 赤い depends on 花を with the score 0.70. The score is 0 for the root and for a bunsetsu attached to the root, since that decision is not asked. `Model::analyze` does the two steps in one call; for many sentences, take the chunker and the parser once, as above. Both take `&self` and serve several threads.
 
 ## How a sentence is parsed
 
@@ -27,7 +81,7 @@ For 彼は | 本を | 読んだと | 言う, where 本を depends on 読んだ�
 
 ## Using the parser
 
-A `Parser` takes the [schema](./head_and_function_word.md) of the dictionary, a feature set and a classifier. This classifier is made by hand, with one weight: a bunsetsu that ends in を depends on the next one.
+The parser of a model file is a `Parser` with the classifier of the file. A `Parser` can be made from its parts as well: the [schema](./head_and_function_word.md) of the dictionary, a feature set and a classifier. This classifier is made by hand, with one weight: a bunsetsu that ends in を depends on the next one.
 
 ```rust
 use std::collections::HashMap;
@@ -97,11 +151,19 @@ A classifier implements the trait `Classifier`, in two steps:
 
 A decision looks up no string, as in CaboCha.
 
-`LinearClassifier` is the classifier of the crate for now. Its score is a bias, plus the weight of each feature of the decision, plus the weight of each pair of them: what the polynomial kernel of degree 2 of CaboCha and of J.DepP comes to once it is expanded. It keeps its weights in hash tables in memory, which is enough to parse with weights made by hand or by an experiment.
+Every classifier of the crate scores a bias, plus the weight of each feature of the decision, plus the weight of each pair of them: what the polynomial kernel of degree 2 of CaboCha and of J.DepP comes to once it is expanded.
+
+| Classifier | Where the weights are |
+| --- | --- |
+| `ParserPart` | On the bytes of a model file; `Model::parser` gives a parser with it |
+| `ParserModel` | In memory: what training gives, and what `ModelBuilder` writes |
+| `LinearClassifier` | In memory, in hash tables by the names of the features: for weights made by hand |
+
+A trained model keeps the weights of the pairs in a table of a fixed size that the pairs are hashed into, so pairs that fall on the same place share a weight. A weight of its own for every pair is the other choice (`--pairs exact`); see [How the defaults were chosen](#how-the-defaults-were-chosen).
 
 ## The features
 
-The features of a decision are strings, with the names CaboCha gives them. Most are made once for each bunsetsu, and a decision puts together those of the bunsetsu it looks at. They are sorted, and each is there once.
+The features of a decision are strings, with the names CaboCha gives them, and one group CaboCha does not have. Most are made once for each bunsetsu, and a decision puts together those of the bunsetsu it looks at. They are sorted, and each is there once.
 
 | Group | Features | Examples |
 | --- | --- | --- |
@@ -112,18 +174,23 @@ The features of a decision are strings, with the names CaboCha gives them. Most 
 | `right` | The surfaces of the first morpheme, the head and the function word of the bunsetsu after the target | `RL:言う`, `RH:言う`, `RF:言う` |
 | `children` | Each bunsetsu already attached to the source (`a:`) and to the target (`A:`), by its function word: its surface when it is a particle, an adverb, an adnominal or a conjunction; or else its conjugation form; or else its part of speech | `a:は`, `A:を`, `A:基本形`, `a:名詞-一般` |
 | `gap` | The bunsetsu between the source and the target: their punctuation, their brackets, the function word of each when it is a particle; and whether brackets open or close in between | `GPUNC:、`, `GOB:「`, `GCASE:を`, `GNB:1` (neither), `GOB:1`, `GCB:1`, `GBB:1` (both) |
+| `after` | The morpheme after the head of the source and of the target (`N`): its surface, the levels of its part of speech and its conjugation form | `SNS:し`, `SNP0:動詞`, `SNF:連用形`, `DNS:こと` |
 
 The `children` features are the only ones that depend on the decisions made before.
+
+The `after` group is not CaboCha's. CaboCha takes the last word of a bunsetsu that is not a function word as its head. The head of a [schema](./head_and_function_word.md) is the content word, which can be the word before that one: 利用 in 利用 / し / た, 読む in 読む / こと / を. What follows the head then says what the bunsetsu is as a whole, a verb or a noun, and the parser needs it: with these features the accuracy is as high as with CaboCha's head, and the head stays the content word.
 
 Nothing in the parser names a part of speech or a column: the head and the function word, the levels of the part of speech, the conjugation form, the particles (`Schema::particles`), the words taken by their surface as a child (`Schema::lexicalized`) and the symbols all come from the schema.
 
 ### The feature set
 
-Which groups are made is data, as the template of the chunker is. A `FeatureSet` is written as the names of its groups with commas, and `FeatureSet::cabocha()` has all of them:
+Which groups are made is data, as the template of the chunker is. A `FeatureSet` is written as the names of its groups with commas. The default, `FeatureSet::default()`, has all of them:
 
 ```text
-distance,source,target,left,right,children,gap
+distance,source,target,left,right,children,gap,after
 ```
+
+`FeatureSet::cabocha()` is the same without `after`. A model file holds the feature set of its parser.
 
 A classifier is trained on the features of one set and parses with the same set.
 
@@ -134,10 +201,11 @@ A classifier is trained on the features of one set and parses with the same set.
 | Surface | Normalized by a table (full width and half width) | As the tokenizer gives it | The schema recognizes a symbol in both widths, by its part of speech and by its surface |
 | Punctuation and brackets | 。 and 、, ten opening and ten closing brackets, by the normalized surface | Those of the schema, which also has `,` `.` `，` `．` and more brackets | IPADIC gives a half-width symbol as a noun |
 | Head and function word | `findHead` with the patterns of the tag set | `Schema::positions`, which has more patterns for IPADIC | See [Head and Function Word](./head_and_function_word.md) |
+| The morpheme after the head | No such feature | The group `after` | The head of the schema is the content word |
 | A bunsetsu whose head is not known | Attached to the next one, without an instance (partial training) | Not supported: a bunsetsu without a head is the root | The training data has the head of every bunsetsu |
 | Score of an arc to the last bunsetsu | The score of the decision before, which is unrelated | 0 | That decision is not asked |
 
-J.DepP has features CaboCha does not have: whether the heads of two bunsetsu have the same surface (a hint of coordination), and the balance of brackets instead of their presence. They are candidates for the comparison of feature sets in [#1437](https://github.com/lindera/lindera/issues/1437).
+J.DepP has features CaboCha does not have: whether the heads of two bunsetsu have the same surface (a hint of coordination), and the balance of brackets instead of their presence. They are not here: the accuracy targets were met without them.
 
 ## Training instances
 
@@ -190,13 +258,13 @@ With the `train` feature, `lindera-dependency instances` writes the instances of
 lindera-dependency instances --input train.lattice --output train.instances
 ```
 
-Each line is one instance: `+1` or `-1`, then the feature strings, separated by tabs. An empty line ends each sentence, so that a file can be cut into folds between sentences. `--features` takes a feature set; the default is the one of CaboCha.
+Each line is one instance: `+1` or `-1`, then the feature strings, separated by tabs. An empty line ends each sentence, so that a file can be cut into folds between sentences. `--features` takes a feature set; the default is every group.
 
 The report goes to the standard error. For the train file of UD Japanese-GSD:
 
 ```text
 train.lattice
-features: distance,source,target,left,right,children,gap
+features: distance,source,target,left,right,children,gap,after
 sentences: 7024
 bunsetsu: 56396
 instances: 66000
@@ -212,3 +280,86 @@ The command stops at a sentence whose tree does not come back when its answer de
 | UD Japanese-GSD dev | 506 | 4,147 | 4,881 | 2,474 | 2,407 |
 | UD Japanese-GSD test | 542 | 4,509 | 5,377 | 2,707 | 2,670 |
 | UD Japanese-PUD | 994 | 9,843 | 12,739 | 6,077 | 6,662 |
+
+## Training a model
+
+Training is behind the `train` feature. `train-parser` trains the parser on [training data](./training_data.md), with the schema of IPADIC, and writes a [model file](./model_file.md). With `--chunker`, the chunker of another model file goes into the output, which is then the whole model of the dictionary:
+
+```shell
+cargo run --release -p lindera-dependency --features train -- train-chunker \
+    --input train.lattice --output chunker.model
+cargo run --release -p lindera-dependency --features train -- train-parser \
+    --input train.lattice --chunker chunker.model --output ipadic.model
+```
+
+On the train file of UD Japanese-GSD converted with IPADIC, `train-parser` takes about three seconds and ends with:
+
+```text
+train.lattice: 7024 sentences
+features: distance,source,target,left,right,children,gap,after
+instances: 66000
+passes: 19
+updates: 21374
+feature strings: 62380
+pair weights: 2762034
+bytes: 6258548
+```
+
+A last line, `seconds:`, has the time of the training; it is left out here. Training the same data again gives the same bytes.
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `--chunker` | None | A model file whose chunker goes into the output |
+| `--algorithm` | `dcd` | `dcd`: dual coordinate descent on a support vector machine, as CaboCha trains. `pa`: passive-aggressive, as J.DepP trains |
+| `--cost` | `0.0015` for `dcd`, `0.001` for `pa` | The most one training decision adds to the weights |
+| `--iterations` | `10` | For `pa`: the passes over the training decisions |
+| `--averaged` | Off | For `pa`: the average of the weights after every decision |
+| `--features` | Every group | The [feature set](#the-feature-set) |
+| `--pairs` | `hashed` | `hashed`: a table of a fixed size the pairs share. `exact`: a weight for every pair |
+| `--bits` | `22` | For `hashed`: the table has 2^bits weights |
+| `--min-support` | `1` | For `exact`: the training decisions a pair has to be in to get a weight |
+| `--pair-threshold` | `0` | For `exact`: a pair whose weight is closer to 0 is left out |
+| `--min-count` | `1` | The training decisions a feature has to be in to be used |
+| `--quantization` | `i8` | The weights in the file: `f32` as they are, `i16` or `i8` as whole numbers times a scale |
+| `--seed` | `1` | For `dcd`: the seed of the order of the decisions |
+
+`parse` finds the heads of a file with a model, for [`evaluate`](./evaluation.md) to compare with the answer:
+
+```shell
+cargo run --release -p lindera-dependency --features train -- parse \
+    --model ipadic.model --input dev.lattice --output output.lattice
+cargo run --release -p lindera-dependency --features train -- parse --chunk \
+    --model ipadic.model --input dev.lattice --output output.lattice
+```
+
+Without `--chunk` it parses the bunsetsu of the input, which measures the parser alone. With `--chunk` the bunsetsu of the input are not read: the morphemes are segmented by the chunker of the model and then parsed, which is the analysis as it is used.
+
+## Accuracy
+
+With the defaults, trained on the train file of UD Japanese-GSD (commit c662dc9) with IPADIC. The dependency accuracy counts every bunsetsu but the last of each sentence ([level 1](./evaluation.md)).
+
+| | With the bunsetsu of the answer | From the morphemes | Chunking F |
+| --- | --- | --- | --- |
+| UD Japanese-GSD dev | 90.11% (3,281 / 3,641) | 85.39% (3,109 / 3,641) | 96.85 |
+| UD Japanese-GSD test | 88.53% (3,512 / 3,967) | 84.47% (3,351 / 3,967) | 96.92 |
+| UD Japanese-PUD | 88.81% (7,859 / 8,849) | 86.19% (7,627 / 8,849) | 98.04 |
+
+The targets of the project, from CaboCha and J.DepP trained on the same data, were 89.0 on dev and 87.8 on test with the bunsetsu of the answer, and 85.0 on dev and 84.3 on test from the morphemes. Those baselines cannot be measured again with what is in this repository ([#1433](https://github.com/lindera/lindera/issues/1433)), so the comparison is with numbers on record, not with a run of the two tools.
+
+The model file with the chunker and the parser has 6,258,548 bytes. On one core of an AMD Ryzen AI Max+ 395 it is read in about 3 ms, and chunks and parses about 8,700 sentences per second; see [Model File](./model_file.md#size-and-speed).
+
+## How the defaults were chosen
+
+By a 10-fold cross-validation on the train file, on the bunsetsu of the answer. Settings that do not differ significantly (McNemar's exact test on the arcs) are taken as equal, and the smaller or faster one is chosen; the dev file chooses between sizes the cross-validation does not tell apart.
+
+| Choice | Level 1 over the 10 folds | What it showed |
+| --- | --- | --- |
+| Dual coordinate descent, cost 0.0015 | 88.96% | The best cost; 0.003 gives 88.91% (p = 0.47), 0.001 gives 88.79% (p < 0.001) |
+| Passive-aggressive, averaged, cost 0.0005, 30 passes | 88.88% | Not different from dual coordinate descent (p = 0.22), in the same time; it needs a number of passes to be chosen, and dual coordinate descent ends by itself |
+| CaboCha's feature set without `right` | 88.53% | The group that matters most (p < 0.001); without `gap` 88.75%, without `children` 88.87% |
+| With the group `after` | 89.19% | Better than CaboCha's set (p < 0.001) |
+| A weight for every pair, in a table of 38 MB | 89.19% | 2,700 sentences per second |
+| Pairs hashed into 2^22 weights | 89.21% | Not different (p = 0.60), 16,700 sentences per second; 2^18 to 2^21 do not differ either, and 2^22 is the best of them on dev |
+| Weights of 1 byte | 89.21% | Not different from 4 bytes (p = 0.86); weights of 2 bytes give the same output |
+
+The tables with every setting are in the [README of the crate](https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md#how-the-defaults-of-the-parser-were-chosen), and [`scripts/dependency/parser_experiments.sh`](https://github.com/lindera/lindera/tree/main/scripts/dependency) runs them again.

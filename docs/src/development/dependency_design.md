@@ -49,6 +49,12 @@ Each decision has the issue that made it. A decision is changed by a pull reques
 | A model file is read in place, by a type that is generic over what holds the bytes, and is checked once, when it is opened. | Bytes embedded in a program, a file read into memory and a memory map of the caller are one code path, without a dependency and on `wasm32-unknown-unknown`. After the check nothing fails or panics. No number is read through a pointer, so the alignment of the bytes does not matter, as for `matrix.mtx` in #1364. | #1437 |
 | A table of strings in a model file is stored sorted, with a hash table over it. | The strings are found in the time of a hash, where they are; sorted, the same strings always give the same bytes. A binary search over the sorted strings alone was measured and is slower (see the numbers). | #1437 |
 | The dictionary of a model is checked twice: by its name, by the caller that knows the dictionary of its morphemes; and by the number of feature columns, always. | A morpheme with fewer columns than the schema reads cannot be of the dictionary, and is refused instead of analyzed. Morphemes of another dictionary that are wide enough cannot be told by their shape; only the name tells them. | #1437 |
+| The parser is trained by dual coordinate descent on a support vector machine with the hinge loss, as CaboCha, with CaboCha's cost of 0.0015. Passive-aggressive, as J.DepP, is an option. | The two do not differ in a cross-validation (88.96% and 88.88%, p = 0.22) and take the same time. Dual coordinate descent ends by itself; passive-aggressive needs a number of passes to be chosen. | #1437 |
+| The weights of the pairs of features are in a table of 2^22 weights that the pairs are hashed into. A weight of its own for every pair is an option. | The accuracy does not differ (p = 0.60), parsing is six times faster, and the file is a sixth. Sizes from 2^18 do not differ in the cross-validation; 2^22 is the best of them on dev. | #1437 |
+| The place of a hashed pair comes from the hashes of the two feature strings, not from their numbers in a model. | A model can leave features out without moving the pairs of the others, and training and inference cannot disagree on a numbering. | #1437 |
+| The weights of the parser are written as one byte each, a whole number times a scale. | The accuracy does not differ from weights of four bytes (p = 0.86); weights of two bytes give the same output. The file is a third, and parsing is faster. | #1437 |
+| The features of the parser are CaboCha's and one group more: the morpheme after the head of the source and of the target. The head of a bunsetsu stays the content word of the schema. | With the head of the schema, CaboCha's features lose what CaboCha's head gave them: whether a bunsetsu is a verb or a noun as a whole (利用 / し / た, 読む / こと / を). The group gives it back: 89.19% against 88.96% in the cross-validation (p < 0.001). The output keeps the content word as the head. | #1437 |
+| A model is chosen by the rule of #1420, and what does not differ is taken as equal: among equal settings the smaller or faster one is the default. | The differences between good settings are under the noise of the data; size and speed are not. | #1437 |
 | The chunker-only file of before the model file (magic number `LDCHUNK`) is not read any more. | The crate is not published and no model is distributed; a second reader would be kept for no file that exists. | #1437 |
 | Training data holds no head word and function word positions; what reads it computes them from the schema. | A change of the rule cannot leave stale positions in a file. | #1422 |
 | Settings are compared by cross-validation on the train file; the dev file chooses between close settings; the test file and PUD are for the reported result only. | Dev and test are small: the 95% interval of an accuracy near 90% is about ±1 point on them. | #1420 |
@@ -111,8 +117,8 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 - **The loop** is `parseShiftReduce` of CaboCha and `_parseLinear` of J.DepP: a stack of the bunsetsu without a head, each following bunsetsu as the target, the top of the stack as the source. An arc to the last bunsetsu is not asked. The loop takes the decision as a function, so the classifier and the answer of a sentence run the same code.
 - **The features** are CaboCha's (`src/selector.cpp`, `src/dep.cpp`), in seven groups: the distance, the source, the target, the bunsetsu before the source, the one after the target, the bunsetsu already attached, and the gap. They are made once for each bunsetsu and put together for a decision, generic over what a string is turned into: the number of the classifier when parsing, the string itself for training instances.
 - **Differences from CaboCha**: the surface is not normalized, and punctuation and brackets are those of the schema; the head and the function word are those of the schema of #1422; a bunsetsu without a known head is not supported; an arc that is not asked has the score 0, where CaboCha writes the score of the decision before.
-- **J.DepP's features** (`jdepp/pdep.cc`) differ: four bunsetsu by the first morpheme, the head, the tail and the last one; whether two heads have the same surface; the balance of brackets; the particles of the bunsetsu in between that compete for the target; nothing of the bunsetsu already attached. What only J.DepP has is left for the comparison of feature sets.
-- **`LinearClassifier`** adds a bias, the weights of the features and the weights of their pairs, from hash tables. It is the least that parses with weights made by hand; the storage of trained weights is decided with the parser part of the model file.
+- **J.DepP's features** (`jdepp/pdep.cc`) differ: four bunsetsu by the first morpheme, the head, the tail and the last one; whether two heads have the same surface; the balance of brackets; the particles of the bunsetsu in between that compete for the target; nothing of the bunsetsu already attached. What only J.DepP has was not tried: the targets were met without it.
+- **`LinearClassifier`** adds a bias, the weights of the features and the weights of their pairs, from hash tables. It is the least that parses with weights made by hand; a trained model has its own (see below).
 - **Training instances** are the decisions the loop asks when the answer decides, each with its features and its answer, as in CaboCha's training mode. The answer gives the tree of every sentence of the training data back.
 
 ### Model file ([#1437](https://github.com/lindera/lindera/issues/1437))
@@ -123,13 +129,23 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 - **The chunker reads through a trait** (`ChunkerData`), as the parser reads its classifier: the model in memory that training gives, and the part of a file, are two implementations, and the decoder is the same code. They give the same labels on every sentence of dev, test and PUD.
 - **The table of strings** is the piece the parser will share for the numbers of its features. It is sorted and has slots, a hash table with open addressing over the 64-bit FNV-1a of a string, with at least two slots per string. Most feature strings of a sentence are not in a model (L1 leaves 4,325 of them), so what matters is how fast a string is not found: with at most half of the slots taken, the search ends at an empty slot after one or two steps.
 - **`Chunker::chunk` and `Parser::parse` return an error** for a morpheme with fewer feature columns than the schema reads. Before, such a morpheme was analyzed with empty columns.
-- **Not done here**: the parser part, quantization (the weights of the chunker are `f64`, so that it gives the labels of `lindera-crf`), and a checksum. A file that was cut is found by its lengths; a changed weight is not found.
+- **Not done**: quantization of the chunker (its weights are `f64`, so that it gives the labels of `lindera-crf`, and it is 4% of a model file), and a checksum. A file that was cut is found by its lengths; a changed weight is not found.
+
+### Training of the parser, and its part of the model file ([#1437](https://github.com/lindera/lindera/issues/1437))
+
+- **One space, two algorithms.** Both reference trainers learn the same linear model: a bias, a weight for each feature and a weight for each pair, which is the kernel `(1 + s)^2` expanded; a step `d` adds `d`, `3 d` and `2 d`. CaboCha does not solve the kernel problem with a kernel either (`src/svm_learn.cpp`). The two algorithms here differ in the step only, and where the weight of a pair is kept is one function under both.
+- **Dual coordinate descent** follows `solveParameters` of CaboCha: the hinge loss, the box of the cost, shrinking, a random order at every pass, and the stop at a projected gradient of 0.1. The kernel of a decision with itself counts a place that several of its pairs share by the square of their number, so that the step is exact with hashed pairs as well. The order comes from a generator of the crate (SplitMix64) with a seed, so the same data gives the same model.
+- **Passive-aggressive** follows opal (PA-I): the step is the loss over the number of features, no larger than the cost. With the pairs, a step moves the score by about the number of features times too much, so the cost has to bind: good costs are near 0.0005, where CaboCha's is 0.0015. The average of the weights is kept as opal keeps it.
+- **Training takes seconds, not minutes**: 66,000 decisions with 37 features each on average have about 680 pairs each, and a pass touches them once. The whole train file is learned in about three seconds on one core.
+- **The parser part of a file** holds the feature set, the bias, the scale of the quantization, the table of the feature strings with their weights, and the weights of the pairs: a table of `2^bits` weights, or the pairs of each feature sorted by the other feature. The classifier of a file reads them where they are; with weights of four bytes it gives the score of the model in memory to the last bit.
+- **A weight for every pair is slow as it is stored here**: each pair of a decision is a binary search in the pairs of one of its features. CaboCha keeps the pairs of the 3,000 most frequent features in a triangular array and the rest in a double array; that was not built, since hashing gives the same accuracy.
+- **The head of the schema and the features.** The content head of #1422 is the better word to index, and the worse one to parse with: with CaboCha's rule for the head and CaboCha's features, the cross-validation gives 89.22%; with the head of the schema, 88.96%. The morpheme after the head gives the difference back (89.19%), and with it the two rules do not differ.
+- **`train-parser --chunker`** copies the chunker part of another file as its bytes are (`ModelBuilder::from_model`), so that the chunker and the parser are trained apart and end in one file.
 
 ## What is to come
 
 | Part | Notes | Issue |
 | --- | --- | --- |
-| Training of the parser, and its part of the model file | The algorithm and the feature set chosen by cross-validation; how the weights of the pairs are stored; quantization; size and speed. The model file itself and the check of the dictionary are done. | [#1437](https://github.com/lindera/lindera/issues/1437) |
 | Token filter | And its use from the configuration file and the bindings. | [#1438](https://github.com/lindera/lindera/issues/1438) |
 | Command | Output compatible with `cabocha -f1`. | [#1439](https://github.com/lindera/lindera/issues/1439) |
 | IPADIC model | Training, release, documentation, license notes. The crate is published with it. | [#1440](https://github.com/lindera/lindera/issues/1440) |
@@ -142,7 +158,6 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 - **How the filter is named in a configuration.** Use from the configuration file, the command and the bindings needs a change in `lindera-analysis`: `TokenFilterLoader::load_from_value` is a fixed `match` on the `kind`. Either the filter lives in `lindera-analysis` behind a feature and depends on the core of this crate, or `lindera-analysis` gets a registry of filters.
 - **Typed fields for the result on `Token`**, instead of string columns in `details`, which `as_value()` does not show.
 - **Bunsetsu ids restart at 0 in every sentence**, so they collide when one input holds several sentences; a fifth column with the sentence number would solve it.
-- **The training algorithm of the parser** (passive-aggressive as in J.DepP, or dual coordinate descent as in CaboCha) and how the weights are stored (feature hashing or an exact table). Both are to be measured.
 - **More training data** under a usable license.
 
 ## Targets
@@ -155,7 +170,7 @@ On UD Japanese-GSD with IPADIC, from the baselines below:
 | Dependency accuracy with the bunsetsu of the answer (level 1) | 89.0 or more | 87.8 or more |
 | End-to-end dependency accuracy | 85.0 or more | 84.3 or more |
 
-The dependency target is J.DepP less one point; the other two are CaboCha's numbers. The same numbers on UD Japanese-PUD are reported. Chunking is met: 96.85 and 96.92 (#1421).
+The dependency target is J.DepP less one point; the other two are CaboCha's numbers. The same numbers on UD Japanese-PUD are reported. All three are met with IPADIC: chunking 96.85 and 96.92 (#1421), dependency with the bunsetsu of the answer 90.11 and 88.53, end to end 85.39 and 84.47 (#1437). The baselines themselves are numbers on record: they are to be measured again in #1433.
 
 Besides the accuracy: inference builds for `wasm32-unknown-unknown`; the parser runs as a token filter and as a command; the size of the model and the throughput are measured and documented; the model is released with the provenance and the license of its training data.
 
@@ -228,7 +243,31 @@ The README of the crate has the whole table of the cross-validation and the ten 
 | Number | Value | From |
 | --- | --- | --- |
 | Sentences whose tree comes back when the answer decides | train 7,024 of 7,024, dev 506 of 506, test 542 of 542, PUD 994 of 994 | Script: `parser_instances.sh` |
-| Training instances, CaboCha's feature set | train 66,000 (33,512 positive), dev 4,881 (2,474), test 5,377 (2,707), PUD 12,739 (6,077) | Script: `parser_instances.sh` |
+| Training instances | train 66,000 (33,512 positive), dev 4,881 (2,474), test 5,377 (2,707), PUD 12,739 (6,077) | Script: `parser_instances.sh` |
+
+### Training of the parser
+
+Level 1 is the share of the bunsetsu, but the last of each sentence, with the right head. A cross-validation is over the 10 folds of the train file (49,372 bunsetsu), on the bunsetsu of the answer; "p" is McNemar's exact test on the arcs. Unless said, a setting has CaboCha's feature set, dual coordinate descent with the cost 0.0015, a weight for every pair, and weights of four bytes. The README of the crate has every setting.
+
+| Number | Value | From |
+| --- | --- | --- |
+| Features of a training decision | 37.1 on average, 58 at most; 96,003 different ones in the train file, 60,050 in two decisions or more | The files of `parser_instances.sh` with CaboCha's feature set (`--features`), counted with `awk` and `sort`; not kept as a script |
+| Dual coordinate descent, by the cost | 0.0005: 88.11%; 0.001: 88.79%; 0.0015: 88.96%; 0.002: 89.01%; 0.003: 88.91%; 0.005: 88.76%; 0.01: 88.72% | Script: `parser_experiments.sh algorithm` |
+| Passive-aggressive, averaged, 30 passes, by the cost | 0.0005: 88.88%; 0.001: 88.81%; 0.005: 88.83%; without the average 88.76%, 88.70%, 88.33% | Script: `parser_experiments.sh algorithm` |
+| Dual coordinate descent against passive-aggressive (0.0005, 30 passes, averaged) | 559 arcs only the first has right, 518 only the second, p = 0.22; 6.3 and 8.2 seconds a fold | Script: `parser_experiments.sh compare` |
+| CaboCha's feature set without one group | `right`: 88.53% (p < 0.001); `gap`: 88.75% (p < 0.001); `children`: 88.87% (p = 0.07); `left`: 88.93%; `distance`: 88.94% | Script: `parser_experiments.sh features`, `compare` |
+| With the morpheme after the head | 89.19% against 88.96%: 637 and 523 arcs, p = 0.0009 | Script: `parser_experiments.sh features`, `compare` |
+| The head of CaboCha's rule against the head of the schema, CaboCha's features | 89.22% and 88.96%; with the morpheme after the head, 89.23% and 89.19% | A program outside the repository that trains with variants of the schema, as `head_variants/` makes them; not kept |
+| Pairs in 3 decisions or more, every group of features | 89.19%, as with every pair (p = 0.93), with 1,310,821 pairs for 4,168,732 | Script: `parser_experiments.sh pairs`, `compare` |
+| Pairs hashed into 2^16, 2^18, 2^20, 2^21, 2^22, 2^24 weights | 88.81%, 89.14%, 89.15%, 89.19%, 89.21%, 89.22%; against a weight for every pair (89.19%), 2^18: p = 0.43, 2^20: p = 0.36, 2^22: p = 0.60 | Script: `parser_experiments.sh storage`, `compare` |
+| The same on dev, trained on the whole train file, weights of one byte | 2^18: 89.92%; 2^20: 89.81%; 2^21: 90.03%; 2^22: 90.11% | Script: `parser_experiments.sh storage` |
+| Weights of two bytes and of one byte against four, pairs hashed into 2^22 | The same output; 18 and 16 arcs, p = 0.86 | Script: `parser_experiments.sh quantization`, `compare` |
+| The defaults: level 1 with the bunsetsu of the answer | dev 90.11% (3,281 / 3,641), test 88.53% (3,512 / 3,967), PUD 88.81% (7,859 / 8,849) | Script: `parser_experiments.sh final` |
+| The defaults: end to end | dev 85.39% (3,109 / 3,641), test 84.47% (3,351 / 3,967), PUD 86.19% (7,627 / 8,849) | Script: `parser_experiments.sh final` |
+| The defaults with CaboCha's feature set | With the bunsetsu of the answer: dev 89.15%, test 88.30%, PUD 88.33%. End to end: dev 84.45%, test 84.30%, PUD 85.59% | Script: `parser_experiments.sh final` |
+| The default model | 6,258,548 bytes with the chunker; 62,380 feature strings; 19 passes, 21,374 support vectors of 66,000 decisions; about 3 seconds; the same bytes when trained twice | Script: `parser_experiments.sh final` |
+| The default model on the 542 sentences of test, one core of an AMD Ryzen AI Max+ 395 | Read in 2,732 microseconds; chunking 20,354, parsing 16,678, both 8,718 sentences per second | Script: `parser_experiments.sh speed` |
+| The same with the other tables of the pairs | Hashed, four bytes: 19,028,600 bytes, parsing 13,375. A weight for every pair, one byte: 24,514,588 bytes, 2,741; four bytes: 38,162,161 bytes, 2,679 | Script: `parser_experiments.sh speed` |
 
 ### Model file
 
@@ -266,7 +305,7 @@ The default chunker model, on one core of an AMD Ryzen AI Max+ 395, with Rust 1.
 | [#1434](https://github.com/lindera/lindera/issues/1434) | The chapter of the documentation | Done |
 | [#1436](https://github.com/lindera/lindera/issues/1436) | Dependency parser: the loop, the features, the training instances | Done |
 | [#1433](https://github.com/lindera/lindera/issues/1433) | The baselines of CaboCha and J.DepP, measured again | Open |
-| [#1437](https://github.com/lindera/lindera/issues/1437) | The model file (done), and the training of the parser | In progress |
+| [#1437](https://github.com/lindera/lindera/issues/1437) | The model file, and the training of the parser | Done |
 | [#1438](https://github.com/lindera/lindera/issues/1438) | Token filter | Open |
 | [#1439](https://github.com/lindera/lindera/issues/1439) | Command | Open |
 | [#1440](https://github.com/lindera/lindera/issues/1440) | IPADIC model, and the publication of the crate | Open |

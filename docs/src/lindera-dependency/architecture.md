@@ -27,6 +27,8 @@ lindera-dependency/src/
 │   ├── features.rs       # Group, FeatureSet: the features of a decision
 │   ├── shift_reduce.rs   # The loop over the bunsetsu
 │   ├── classifier.rs     # Classifier, LinearClassifier
+│   ├── model.rs          # ParserModel, ParserPart: the weights, in memory and on a file
+│   ├── train.rs          # Training: dual coordinate descent, passive-aggressive (train)
 │   └── oracle.rs         # Training instances from an answer
 ├── corpus.rs             # Training data from a dependency corpus (train)
 ├── corpus/
@@ -138,11 +140,11 @@ A `Chunker` segments morphemes into bunsetsu with a table from feature string to
 
 ### Model / ModelBuilder
 
-A `Model` is the model file of a dictionary, read in place from bytes it owns or borrows: the name of the dictionary, its schema, and the trained parts. `ModelBuilder` writes one. See [Model File](./model_file.md).
+A `Model` is the model file of a dictionary, read in place from bytes it owns or borrows: the name of the dictionary, its schema, and the trained parts, the chunker and the parser. `Model::analyze` takes a sentence from morphemes to dependencies. `ModelBuilder` writes a file. See [Model File](./model_file.md).
 
 ### Parser / Classifier
 
-A `Parser` finds the head of each bunsetsu with shift-reduce. The features of a decision are strings made through the schema; a `FeatureSet` says which groups of them are made; a `Classifier` scores them. `LinearClassifier` adds the weights of the features and of their pairs. `parser::instances` gives the training instances of a classifier from a sentence with its answer. See [Parsing](./parsing.md).
+A `Parser` finds the head of each bunsetsu with shift-reduce. The features of a decision are strings made through the schema; a `FeatureSet` says which groups of them are made; a `Classifier` scores them, by adding the weights of the features and of their pairs. The classifier of a model file is a `ParserPart`, which reads the weights on the bytes of the file; `ParserModel` holds them in memory, as training gives them; `LinearClassifier` takes weights made by hand. `parser::instances` gives the training instances from a sentence with its answer, and `parser::train` trains on them. See [Parsing](./parsing.md).
 
 ### The command
 
@@ -156,6 +158,8 @@ With the `train` feature the crate builds the `lindera-dependency` command, whic
 | `train-chunker` | Trains the chunker and writes a model file | [Chunking](./chunking.md) |
 | `chunk` | Segments the morphemes of a file again with a model file | [Chunking](./chunking.md) |
 | `instances` | Writes the training instances of the parser | [Parsing](./parsing.md) |
+| `train-parser` | Trains the parser and writes a model file, with the chunker of another one | [Parsing](./parsing.md) |
+| `parse` | Finds the heads of a file with a model file, on its bunsetsu or from its morphemes | [Parsing](./parsing.md) |
 
 The command is in this crate, not in `lindera-cli`: `lindera-cli` is published, and cannot depend on a crate that is not.
 
@@ -164,7 +168,7 @@ The command is in this crate, not in `lindera-cli`: `lindera-cli` is published, 
 | Feature | Description | Default |
 | --- | --- | --- |
 | (none) | The types, the lattice format, the schema, the model file, the chunker and the parser. No dependency; builds for `wasm32-unknown-unknown` | Yes |
-| `train` | The `corpus` and `evaluation` modules, the training of the chunker with `lindera-crf`, and the `lindera-dependency` command, which tokenizes with `lindera-segmenter` | No |
+| `train` | The `corpus` and `evaluation` modules, the training of the chunker with `lindera-crf` and of the parser, and the `lindera-dependency` command, which tokenizes with `lindera-segmenter` | No |
 | `embed-ipadic` | Embeds IPADIC in the command, for `--dict embedded://ipadic` (implies `train`) | No |
 
 The crate depends on `lindera-segmenter` at most, never on `lindera` or `lindera-analysis`: the token filter that is to come will make `lindera-analysis` depend on this crate.

@@ -46,6 +46,17 @@
 //! ```text
 //! lindera-dependency instances --input train.lattice --output train.instances
 //! ```
+//!
+//! `train-parser` trains the parser on such training data and writes a
+//! model file, with the chunker of another model file when one is given;
+//! `parse` finds the heads of a file with a model, on the bunsetsu of the
+//! file or, with `--chunk`, on those of the chunker of the model:
+//!
+//! ```text
+//! lindera-dependency train-parser --input train.lattice --chunker chunker.model \\
+//!     --output ipadic.model
+//! lindera-dependency parse --model ipadic.model --input dev.lattice --output output.lattice
+//! ```
 
 use std::borrow::Cow;
 use std::fs::{self, File};
@@ -53,6 +64,7 @@ use std::io::{self, BufReader, BufWriter, Write};
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::time::Instant;
 
 use clap::{Parser, Subcommand};
 use lindera_dependency::chunker::{self, Regularization, Template, TrainOptions};
@@ -60,7 +72,10 @@ use lindera_dependency::corpus::{self, DictionaryMorpheme, TokenizerError};
 use lindera_dependency::evaluation::{self, Comparison, Count, Evaluation, Pairs};
 use lindera_dependency::lattice::{self, LatticeMorpheme};
 use lindera_dependency::model::{Model, ModelBuilder};
-use lindera_dependency::parser::{self, FeatureSet};
+use lindera_dependency::parser::{
+    self, Algorithm, FeatureSet, Pairs as PairTable, Quantization,
+    TrainOptions as ParserTrainOptions,
+};
 use lindera_dependency::{Bunsetsu, Schema, Sentence};
 use lindera_segmenter::dictionary::load_dictionary;
 use lindera_segmenter::mode::Mode;
@@ -95,6 +110,10 @@ enum Command {
     Chunk(ChunkArgs),
     /// Writes the training instances of the parser.
     Instances(InstancesArgs),
+    /// Trains the parser and writes a model file.
+    TrainParser(TrainParserArgs),
+    /// Finds the head of each bunsetsu of a file with a model file.
+    Parse(ParseArgs),
 }
 
 /// The arguments of `convert`.
@@ -296,7 +315,7 @@ struct InstancesArgs {
     #[clap(
         short = 'f',
         long = "features",
-        default_value_t = FeatureSet::cabocha().to_string(),
+        default_value_t = FeatureSet::default().to_string(),
         help = "Groups of features to make, separated by commas"
     )]
     features: String,
@@ -305,6 +324,180 @@ struct InstancesArgs {
 /// The name of the dictionary of the models the command trains: the one
 /// whose schema it uses, [`Schema::ipadic`].
 const DICTIONARY: &str = "ipadic";
+
+/// The algorithm of `train-parser`.
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+enum AlgorithmArg {
+    /// Dual coordinate descent, as CaboCha.
+    Dcd,
+    /// Passive-aggressive, as J.DepP.
+    Pa,
+}
+
+/// The table of the pairs of `train-parser`.
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+enum PairsArg {
+    /// A weight of its own for every pair.
+    Exact,
+    /// A table of a fixed size the pairs are hashed into.
+    Hashed,
+}
+
+/// The quantization of `train-parser`.
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+enum QuantizationArg {
+    /// 4 bytes a weight.
+    F32,
+    /// 2 bytes a weight.
+    I16,
+    /// 1 byte a weight.
+    I8,
+}
+
+/// The arguments of `train-parser`.
+#[derive(Debug, clap::Args)]
+#[clap(
+    about = "Train the parser on a file in the lattice format with the head of every bunsetsu (the output of convert), for the IPADIC schema, and write a model file"
+)]
+struct TrainParserArgs {
+    /// The training data.
+    #[clap(
+        short = 'i',
+        long = "input",
+        help = "Training data, in the lattice format"
+    )]
+    input: PathBuf,
+    /// The model.
+    #[clap(short = 'o', long = "output", help = "Model file to write")]
+    output: PathBuf,
+    /// A model file to take the other parts from.
+    #[clap(
+        long = "chunker",
+        help = "Model file that train-chunker wrote: its chunker goes into the output, which is then the whole model of the dictionary"
+    )]
+    chunker: Option<PathBuf>,
+    /// The algorithm.
+    #[clap(
+        long = "algorithm",
+        value_enum,
+        default_value = "dcd",
+        help = "dcd: dual coordinate descent on a support vector machine, as CaboCha; pa: passive-aggressive, as J.DepP"
+    )]
+    algorithm: AlgorithmArg,
+    /// The cost.
+    #[clap(
+        long = "cost",
+        help = "The most one training decision adds to the weights (default: 0.0015 for dcd, 0.001 for pa)"
+    )]
+    cost: Option<f64>,
+    /// The passes of passive-aggressive.
+    #[clap(
+        long = "iterations",
+        default_value_t = 10,
+        help = "Passes over the training decisions, for pa"
+    )]
+    iterations: u32,
+    /// Whether passive-aggressive averages.
+    #[clap(
+        long = "averaged",
+        help = "For pa: the average of the weights after every decision, not the last ones"
+    )]
+    averaged: bool,
+    /// The groups of features.
+    #[clap(
+        short = 'f',
+        long = "features",
+        default_value_t = FeatureSet::default().to_string(),
+        help = "Groups of features to make, separated by commas"
+    )]
+    features: String,
+    /// The table of the pairs.
+    #[clap(
+        long = "pairs",
+        value_enum,
+        default_value = "hashed",
+        help = "exact: a weight for every pair; hashed: a table of 2^bits weights the pairs share"
+    )]
+    pairs: PairsArg,
+    /// The support a pair needs.
+    #[clap(
+        long = "min-support",
+        default_value_t = 1,
+        help = "For exact pairs: the number of training decisions a pair has to be in to get a weight"
+    )]
+    min_support: u32,
+    /// The size of the table of hashed pairs.
+    #[clap(
+        long = "bits",
+        default_value_t = 22,
+        help = "For hashed pairs: the table has 2^bits weights (1 to 30)"
+    )]
+    bits: u32,
+    /// The count a feature needs.
+    #[clap(
+        long = "min-count",
+        default_value_t = 1,
+        help = "The number of training decisions a feature has to be in to be used"
+    )]
+    min_count: u32,
+    /// The smallest weight of a pair that is kept.
+    #[clap(
+        long = "pair-threshold",
+        default_value_t = 0.0,
+        help = "For exact pairs: a pair whose weight is closer to 0 than this is left out of the model"
+    )]
+    pair_threshold: f64,
+    /// How the weights are written.
+    #[clap(
+        long = "quantization",
+        value_enum,
+        default_value = "i8",
+        help = "The weights in the file: f32 as they are, i16 or i8 as whole numbers times a scale"
+    )]
+    quantization: QuantizationArg,
+    /// The seed.
+    #[clap(
+        long = "seed",
+        default_value_t = 1,
+        help = "Seed of the order of the decisions, for dcd"
+    )]
+    seed: u64,
+}
+
+/// The arguments of `parse`.
+#[derive(Debug, clap::Args)]
+#[clap(
+    about = "Find the head of each bunsetsu of a file in the lattice format with a model file: on the bunsetsu of the input, or with --chunk on those of the chunker of the model"
+)]
+struct ParseArgs {
+    /// The model.
+    #[clap(
+        short = 'm',
+        long = "model",
+        help = "Model file that train-parser wrote"
+    )]
+    model: PathBuf,
+    /// The sentences.
+    #[clap(
+        short = 'i',
+        long = "input",
+        help = "File to parse, in the lattice format"
+    )]
+    input: PathBuf,
+    /// The parsed sentences.
+    #[clap(
+        short = 'o',
+        long = "output",
+        help = "File to write, in the lattice format"
+    )]
+    output: PathBuf,
+    /// Whether the morphemes are segmented again.
+    #[clap(
+        long = "chunk",
+        help = "Segment the morphemes with the chunker of the model, and do not read the bunsetsu of the input: the analysis from morphemes to dependencies"
+    )]
+    chunk: bool,
+}
 
 /// The error type of the command.
 type CommandError = Box<dyn std::error::Error + Send + Sync>;
@@ -655,9 +848,9 @@ fn chunk(args: ChunkArgs) -> Result<(), CommandError> {
             format!("{}: sentence {}: {error}", args.input.display(), index + 1)
         })?;
         let count = ranges.len();
-        // The parser has no trained model yet: each bunsetsu depends on the
+        // This command is the chunker alone: each bunsetsu depends on the
         // next, which is the baseline, and leaves the segmentation to be
-        // evaluated.
+        // evaluated. `parse --chunk` segments and parses.
         sentence.bunsetsu = ranges
             .into_iter()
             .enumerate()
@@ -665,6 +858,158 @@ fn chunk(args: ChunkArgs) -> Result<(), CommandError> {
                 Bunsetsu::new(morphemes, (index + 1 < count).then_some(index + 1))
             })
             .collect();
+    }
+
+    let output = File::create(&args.output)
+        .map_err(|error| format!("cannot create {}: {error}", args.output.display()))?;
+    let mut output = BufWriter::new(output);
+    for sentence in &sentences {
+        lattice::write(&mut output, sentence)
+            .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;
+    }
+    output
+        .flush()
+        .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;
+    Ok(())
+}
+
+/// Runs `train-parser`.
+///
+/// The features are made with the schema of IPADIC.
+///
+/// # Arguments
+///
+/// * `args` - The arguments.
+///
+/// # Returns
+///
+/// `Ok(())` once the model and the report are written, or the first error:
+/// a file that cannot be read or written, a feature set that cannot be
+/// read, a model file whose dictionary is another one, or training data
+/// that cannot be trained on.
+fn train_parser(args: TrainParserArgs) -> Result<(), CommandError> {
+    let options = ParserTrainOptions {
+        features: FeatureSet::parse(&args.features)?,
+        algorithm: match args.algorithm {
+            AlgorithmArg::Dcd => Algorithm::DualCoordinateDescent {
+                cost: args.cost.unwrap_or(0.0015),
+            },
+            AlgorithmArg::Pa => Algorithm::PassiveAggressive {
+                cost: args.cost.unwrap_or(0.001),
+                iterations: args.iterations,
+                averaged: args.averaged,
+            },
+        },
+        pairs: match args.pairs {
+            PairsArg::Exact => PairTable::Exact {
+                min_support: args.min_support,
+            },
+            PairsArg::Hashed => PairTable::Hashed { bits: args.bits },
+        },
+        min_count: args.min_count,
+        pair_threshold: args.pair_threshold,
+        seed: args.seed,
+        ..ParserTrainOptions::default()
+    };
+    let quantization = match args.quantization {
+        QuantizationArg::F32 => Quantization::F32,
+        QuantizationArg::I16 => Quantization::I16,
+        QuantizationArg::I8 => Quantization::I8,
+    };
+    // The file the chunker comes from is read before the training: a file
+    // that cannot be used is found at once.
+    let builder = match &args.chunker {
+        None => ModelBuilder::new(DICTIONARY, options.schema.clone())?,
+        Some(path) => {
+            let bytes = fs::read(path)
+                .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+            let model =
+                Model::new(bytes).map_err(|error| format!("{}: {error}", path.display()))?;
+            model
+                .check_dictionary(DICTIONARY)
+                .map_err(|error| format!("{}: {error}", path.display()))?;
+            if model.chunker().is_none() {
+                return Err(format!("{}: the model has no chunker", path.display()).into());
+            }
+            ModelBuilder::from_model(&model)
+        }
+    };
+
+    let sentences = read_lattice(&args.input)?;
+    let started = Instant::now();
+    let trained = parser::train(&sentences, &options)
+        .map_err(|error| format!("{}: {error}", args.input.display()))?;
+    let seconds = started.elapsed().as_secs_f64();
+    let bytes = builder.parser(&trained.model, quantization)?.to_bytes();
+    fs::write(&args.output, &bytes)
+        .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;
+
+    // A failure to write the summary is ignored: the model is complete.
+    let _ = writeln!(
+        io::stderr(),
+        "{}: {} sentences\nfeatures: {}\ninstances: {}\npasses: {}{}\nupdates: {}\nfeature strings: {}\npair weights: {}\nbytes: {}\nseconds: {seconds:.1}",
+        args.input.display(),
+        sentences.len(),
+        options.features,
+        trained.instances,
+        trained.passes,
+        if trained.converged {
+            ""
+        } else {
+            " (not converged)"
+        },
+        trained.updates,
+        trained.model.feature_count(),
+        trained.model.pair_count(),
+        bytes.len()
+    );
+    Ok(())
+}
+
+/// Runs `parse`.
+///
+/// # Arguments
+///
+/// * `args` - The arguments.
+///
+/// # Returns
+///
+/// `Ok(())` once the output is written, or the first error: a model or an
+/// input that cannot be read, a model without the part that is needed, a
+/// sentence that cannot be parsed, or an output that cannot be written.
+fn parse(args: ParseArgs) -> Result<(), CommandError> {
+    let bytes = fs::read(&args.model)
+        .map_err(|error| format!("cannot read {}: {error}", args.model.display()))?;
+    let model = Model::new(bytes).map_err(|error| format!("{}: {error}", args.model.display()))?;
+    let parser = model
+        .parser()
+        .ok_or_else(|| format!("{}: the model has no parser", args.model.display()))?;
+    let chunker = if args.chunk {
+        Some(
+            model
+                .chunker()
+                .ok_or_else(|| format!("{}: the model has no chunker", args.model.display()))?,
+        )
+    } else {
+        None
+    };
+
+    let mut sentences = read_lattice(&args.input)?;
+    // Every sentence is parsed before the output is created: an input that
+    // cannot be parsed leaves no file behind.
+    for (index, sentence) in sentences.iter_mut().enumerate() {
+        let named = |error: lindera_dependency::Error| {
+            format!("{}: sentence {}: {error}", args.input.display(), index + 1)
+        };
+        let ranges = match &chunker {
+            Some(chunker) => chunker.chunk(&sentence.morphemes).map_err(named)?,
+            None => sentence
+                .bunsetsu
+                .iter()
+                .map(|bunsetsu| bunsetsu.morphemes.clone())
+                .collect(),
+        };
+        sentence.bunsetsu = parser.parse(&sentence.morphemes, &ranges).map_err(named)?;
     }
 
     let output = File::create(&args.output)
@@ -739,6 +1084,8 @@ fn main() -> ExitCode {
         Command::TrainChunker(args) => train_chunker(args),
         Command::Chunk(args) => chunk(args),
         Command::Instances(args) => instances(args),
+        Command::TrainParser(args) => train_parser(args),
+        Command::Parse(args) => parse(args),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

@@ -27,6 +27,8 @@ lindera-dependency/src/
 │   ├── features.rs       # Group, FeatureSet: the features of a decision
 │   ├── shift_reduce.rs   # The loop over the bunsetsu
 │   ├── classifier.rs     # Classifier, LinearClassifier
+│   ├── model.rs          # ParserModel, ParserPart: the weights, in memory and on a file
+│   ├── train.rs          # Training: dual coordinate descent, passive-aggressive (train)
 │   └── oracle.rs         # Training instances from an answer
 ├── corpus.rs             # Training data from a dependency corpus (train)
 ├── corpus/
@@ -138,11 +140,11 @@ assert_eq!(output, text.as_bytes());
 
 ### Model / ModelBuilder
 
-`Model` は、辞書のモデルファイルです。所有するか借りるバイト列を、その場で読みます。辞書の名前、スキーマ、学習した部分を持ちます。`ModelBuilder` はファイルを書きます。[モデルファイル](./model_file.md)を参照してください。
+`Model` は、辞書のモデルファイルです。所有するか借りるバイト列を、その場で読みます。辞書の名前、スキーマ、学習した部分（文節の区切りと解析器）を持ちます。`Model::analyze` は、文を形態素から係り受けまで解析します。`ModelBuilder` はファイルを書きます。[モデルファイル](./model_file.md)を参照してください。
 
 ### Parser / Classifier
 
-`Parser` は、shift-reduce で各文節の係り先を求めます。1 回の判定の素性は、スキーマを通して作る文字列です。`FeatureSet` がどの群の素性を作るかを決め、`Classifier` が素性に点数を付けます。`LinearClassifier` は、素性の重みとその対の重みを足します。`parser::instances` は、正解のある文から分類器の学習事例を作ります。[係り受けの解析](./parsing.md)を参照してください。
+`Parser` は、shift-reduce で各文節の係り先を求めます。1 回の判定の素性は、スキーマを通して作る文字列です。`FeatureSet` がどの群の素性を作るかを決め、`Classifier` が、素性の重みとその対の重みを足して点数を付けます。モデルファイルの分類器は `ParserPart` で、ファイルのバイト列の上で重みを読みます。`ParserModel` は、学習の結果の重みをメモリに持ちます。`LinearClassifier` は、手で作った重みを受け取ります。`parser::instances` は正解のある文から学習事例を作り、`parser::train` がそれで学習します。[係り受けの解析](./parsing.md)を参照してください。
 
 ### コマンド
 
@@ -156,6 +158,8 @@ assert_eq!(output, text.as_bytes());
 | `train-chunker` | 文節の区切りを学習し、モデルファイルを書く | [文節の区切り](./chunking.md) |
 | `chunk` | モデルファイルで、ファイルの形態素を区切り直す | [文節の区切り](./chunking.md) |
 | `instances` | 解析器の学習事例を書き出す | [係り受けの解析](./parsing.md) |
+| `train-parser` | 解析器を学習し、モデルファイルを書く。ほかのファイルの区切りを入れられる | [係り受けの解析](./parsing.md) |
+| `parse` | モデルファイルで、ファイルの係り先を求める。文節の上で、または形態素から | [係り受けの解析](./parsing.md) |
 
 コマンドは `lindera-cli` ではなく、このクレートにあります。`lindera-cli` は公開されているので、公開していないクレートに依存できません。
 
@@ -164,7 +168,7 @@ assert_eq!(output, text.as_bytes());
 | Feature | 説明 | デフォルト |
 | --- | --- | --- |
 | （なし） | 型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器。依存がなく、`wasm32-unknown-unknown` 向けにビルドできる | Yes |
-| `train` | `corpus` と `evaluation` のモジュール、`lindera-crf` による区切りの学習、`lindera-dependency` コマンド（分かち書きは `lindera-segmenter`） | No |
+| `train` | `corpus` と `evaluation` のモジュール、`lindera-crf` による区切りの学習と解析器の学習、`lindera-dependency` コマンド（分かち書きは `lindera-segmenter`） | No |
 | `embed-ipadic` | コマンドに IPADIC を埋め込む。`--dict embedded://ipadic` で使う（`train` を含む） | No |
 
 このクレートが依存するのは `lindera-segmenter` までで、`lindera` と `lindera-analysis` には依存しません。これから作るトークンフィルターで、`lindera-analysis` がこのクレートに依存するためです。

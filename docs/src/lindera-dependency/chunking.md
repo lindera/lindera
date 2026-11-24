@@ -37,7 +37,7 @@ The morphemes have to come from the dictionary the model was trained with, token
 
 ### With the head word and the function word
 
-A model file holds the [schema](./head_and_function_word.md) of its dictionary, which gives the head word and the function word of each bunsetsu. The following writes the result in the lattice format. There is no parser yet, so the heads are a placeholder here: every bunsetsu depends on the next one.
+A model file holds the [schema](./head_and_function_word.md) of its dictionary, which gives the head word and the function word of each bunsetsu. The following writes the result in the lattice format. The heads are a placeholder here, every bunsetsu depending on the next one; the [parser](./parsing.md) finds them.
 
 ```rust
 let schema = model.schema();
@@ -109,7 +109,7 @@ cargo run --release -p lindera-dependency --features train -- chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 ```
 
-It writes every bunsetsu as depending on the next one, since the [parser](./parsing.md) has no trained model yet.
+It writes every bunsetsu as depending on the next one: it measures the chunker alone. [`parse --chunk`](./parsing.md#training-a-model) segments and parses.
 
 ## Accuracy
 
