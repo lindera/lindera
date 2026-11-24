@@ -57,8 +57,9 @@ impl<C: Classifier + ?Sized> Classifier for &C {
 /// is expanded.
 ///
 /// It looks up every pair of the features of a decision in a hash table,
-/// which is enough to parse with weights made by hand or by an experiment.
-/// A trained model has its own table.
+/// which is enough to parse with weights made by hand. A trained model is
+/// a [`ParserModel`](super::ParserModel), and in a model file a
+/// [`ParserPart`](super::ParserPart).
 #[derive(Debug, Clone, PartialEq)]
 pub struct LinearClassifier {
     /// The number of each feature.

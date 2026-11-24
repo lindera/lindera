@@ -37,7 +37,7 @@ assert_eq!(ranges, [0..2, 2..4, 4..7]);
 
 ### 主辞と機能語を付ける
 
-モデルファイルは、辞書の[スキーマ](./head_and_function_word.md)を持っていて、そこから各文節の主辞と機能語が決まります。次の例は、結果をラティス形式で書き出します。解析器がまだ無いので、ここでの係り先は仮のものです。どの文節も次の文節に係るとしています。
+モデルファイルは、辞書の[スキーマ](./head_and_function_word.md)を持っていて、そこから各文節の主辞と機能語が決まります。次の例は、結果をラティス形式で書き出します。ここでの係り先は仮のもので、どの文節も次の文節に係るとしています。係り先は[解析器](./parsing.md)が求めます。
 
 ```rust
 let schema = model.schema();
@@ -109,7 +109,7 @@ cargo run --release -p lindera-dependency --features train -- chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 ```
 
-[解析器](./parsing.md)の学習済みのモデルがまだ無いので、どの文節も次の文節に係るとして書き出します。
+どの文節も次の文節に係るとして書き出します。区切りだけを測るためです。区切ってから解析するのは [`parse --chunk`](./parsing.md#モデルを学習する) です。
 
 ## 精度
 

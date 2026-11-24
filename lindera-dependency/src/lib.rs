@@ -10,9 +10,10 @@
 //! 読んだ。 ◀──┘   (root)
 //! ```
 //!
-//! This crate holds, so far, what the analysis is built on, its first step,
-//! the segmentation into bunsetsu, and the parser without a trained model:
-//! it parses with weights given to it, and their training is still to come.
+//! This crate holds what the analysis is built on, its two steps, the
+//! segmentation into bunsetsu and the parsing of their dependencies, and
+//! the model file of a dictionary. No model is distributed yet: the two
+//! steps are trained with the commands of the crate.
 //!
 //! - [`Morpheme`], the trait of a morpheme: a surface and the feature columns
 //!   of its dictionary. The crate depends on no tokenizer, and a type outside
@@ -34,13 +35,15 @@
 //!   a conditional random field over two labels and a model that is a table
 //!   of weights.
 //! - [`model`]: the model file of a dictionary. It names the dictionary,
-//!   holds its schema and the trained parts, so far the chunker, and is read
-//!   in place: from bytes embedded in a program, read from a file or mapped
-//!   into memory, without copying its tables.
+//!   holds its schema and the trained parts, the chunker and the parser,
+//!   and is read in place: from bytes embedded in a program, read from a
+//!   file or mapped into memory, without copying its tables.
+//!   [`Model::analyze`](model::Model::analyze) takes a sentence from its
+//!   morphemes to its dependencies.
 //! - [`parser`]: finding the head of each bunsetsu, with shift-reduce and a
-//!   classifier over features and pairs of features. The features and the
-//!   loop are here, and the training instances of a classifier; a trained
-//!   model is not here yet.
+//!   classifier over features and pairs of features: the features, the
+//!   loop, and the classifier of a model file, which reads its weights
+//!   where they are.
 //!
 //! With the `train` feature, the `corpus` module and the
 //! `lindera-dependency convert` command make training data from a dependency
@@ -49,9 +52,11 @@
 //! `lindera-dependency evaluate` command count the accuracy of chunking and
 //! of dependency as CaboCha and J.DepP do, and compare two outputs. The
 //! model of the chunker is trained with `lindera-crf`
-//! (`lindera-dependency train-chunker`, which writes a model file), and
-//! `lindera-dependency instances` writes the training instances of the
-//! parser.
+//! (`lindera-dependency train-chunker`, which writes a model file). The
+//! classifier of the parser is trained by dual coordinate descent, as
+//! CaboCha, or passive-aggressive, as J.DepP
+//! (`lindera-dependency train-parser`), and `lindera-dependency parse`
+//! finds the heads of a file with a model.
 //!
 //! # Examples
 //!

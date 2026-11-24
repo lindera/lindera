@@ -15,14 +15,21 @@
 //!   bunsetsu, through the [`Schema`] of the dictionary. A [`FeatureSet`]
 //!   says which [`Group`]s of features are made.
 //! - **The classifier** ([`Classifier`]) scores the features of a decision:
-//!   the source depends on the target when the score is above 0.
-//!   [`LinearClassifier`] adds the weights of the features and of their
-//!   pairs.
+//!   the source depends on the target when the score is above 0. Every
+//!   classifier here adds the weights of the features and of their pairs:
+//!   [`ParserPart`] reads them on the bytes of a model file,
+//!   [`ParserModel`] holds them in memory as training gives them, and
+//!   [`LinearClassifier`] takes weights made by hand.
 //! - **The loop** asks the decisions. With a classifier it parses
 //!   ([`Parser::parse`]); with the answer of a sentence it gives the
 //!   training instances of a classifier ([`instances`]).
 //!
-//! Parsing needs nothing but this crate.
+//! Parsing needs nothing but this crate. Training, behind the `train`
+//! feature, is `train`: dual coordinate descent as CaboCha does it, or
+//! passive-aggressive as J.DepP does.
+//!
+//! The parser of a model file comes from
+//! [`Model::parser`](crate::model::Model::parser).
 //!
 //! # Examples
 //!
@@ -66,14 +73,20 @@
 
 mod classifier;
 mod features;
+pub(crate) mod model;
 mod oracle;
 mod shift_reduce;
+#[cfg(feature = "train")]
+mod train;
 
 use std::ops::Range;
 
 pub use classifier::{Classifier, LinearClassifier};
 pub use features::{FeatureSet, Group};
+pub use model::{PairWeights, ParserModel, ParserPart, Quantization};
 pub use oracle::{Instance, instances, write_instances};
+#[cfg(feature = "train")]
+pub use train::{Algorithm, Pairs, TrainOptions, Trained, train};
 
 use crate::error::Result;
 use crate::morpheme::Morpheme;

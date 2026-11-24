@@ -59,12 +59,20 @@ pub enum Group {
     /// open or close in between: `GNB:1` for neither, `GOB:1`, `GCB:1`,
     /// `GBB:1` for both.
     Gap,
+    /// The morpheme after the head of the source (`SNS:`, `SNP0:`, `SNF:`)
+    /// and of the target (`DNS:`): its surface, the levels of its part of
+    /// speech and its conjugation form. CaboCha has no such feature. Its
+    /// head is the last word of a bunsetsu that is not a function word;
+    /// the head of a [`Schema`] can be the content word before it (利用 in
+    /// 利用 / し / た, 読む in 読む / こと / を), and the word that follows
+    /// says what the bunsetsu is as a whole.
+    AfterHead,
 }
 
 impl Group {
     /// Every group, with its name, in the order of the list of a
     /// [`FeatureSet`].
-    const ALL: [(Group, &'static str); 7] = [
+    const ALL: [(Group, &'static str); 8] = [
         (Group::Distance, "distance"),
         (Group::Source, "source"),
         (Group::Target, "target"),
@@ -72,10 +80,11 @@ impl Group {
         (Group::Right, "right"),
         (Group::Children, "children"),
         (Group::Gap, "gap"),
+        (Group::AfterHead, "after"),
     ];
 
     /// The name of the group: `distance`, `source`, `target`, `left`,
-    /// `right`, `children` or `gap`.
+    /// `right`, `children`, `gap` or `after`.
     ///
     /// # Returns
     ///
@@ -147,14 +156,18 @@ impl FeatureSet {
         })
     }
 
-    /// The feature set of CaboCha: every group.
+    /// The feature set of CaboCha: every group but [`Group::AfterHead`].
     ///
     /// # Returns
     ///
     /// The set.
     pub fn cabocha() -> Self {
         Self {
-            groups: Group::ALL.iter().map(|(group, _)| *group).collect(),
+            groups: Group::ALL
+                .iter()
+                .map(|(group, _)| *group)
+                .filter(|group| *group != Group::AfterHead)
+                .collect(),
         }
     }
 
@@ -186,7 +199,7 @@ impl FeatureSet {
     /// # Returns
     ///
     /// The groups, in the order `distance`, `source`, `target`, `left`,
-    /// `right`, `children`, `gap`.
+    /// `right`, `children`, `gap`, `after`.
     pub fn groups(&self) -> &[Group] {
         &self.groups
     }
@@ -206,9 +219,12 @@ impl FeatureSet {
 }
 
 impl Default for FeatureSet {
-    /// The feature set of CaboCha.
+    /// Every group: the feature set of CaboCha and [`Group::AfterHead`],
+    /// which is what a model is trained with unless another set is given.
     fn default() -> Self {
-        Self::cabocha()
+        Self {
+            groups: Group::ALL.iter().map(|(group, _)| *group).collect(),
+        }
     }
 }
 
@@ -244,6 +260,10 @@ struct Roles<T> {
     /// As a bunsetsu between the source and the target, without the state
     /// of the brackets.
     gap: Vec<T>,
+    /// The morpheme after its head, as the source of a decision.
+    after_source: Vec<T>,
+    /// The morpheme after its head, as the target of a decision.
+    after_target: Vec<T>,
     /// As a bunsetsu attached to the source.
     child_of_source: Option<T>,
     /// As a bunsetsu attached to the target.
@@ -311,6 +331,8 @@ impl<T: Clone + Ord> Prepared<T> {
                 let left = role(Group::Left, "", &strings.left);
                 let right = role(Group::Right, "", &strings.right);
                 let gap = role(Group::Gap, "", &strings.gap);
+                let after_source = role(Group::AfterHead, "S", &strings.after);
+                let after_target = role(Group::AfterHead, "D", &strings.after);
                 let child = std::slice::from_ref(&strings.child);
                 let child_of_source = role(Group::Children, "a:", child).pop();
                 let child_of_target = role(Group::Children, "A:", child).pop();
@@ -320,6 +342,8 @@ impl<T: Clone + Ord> Prepared<T> {
                     left,
                     right,
                     gap,
+                    after_source,
+                    after_target,
                     child_of_source,
                     child_of_target,
                     opens: strings.opens,
@@ -371,6 +395,8 @@ impl<T: Clone + Ord> Prepared<T> {
         features.extend(self.distance[class].clone());
         features.extend_from_slice(&self.bunsetsu[source].source);
         features.extend_from_slice(&self.bunsetsu[target].target);
+        features.extend_from_slice(&self.bunsetsu[source].after_source);
+        features.extend_from_slice(&self.bunsetsu[target].after_target);
         if source > 0 {
             features.extend_from_slice(&self.bunsetsu[source - 1].left);
         }
@@ -411,6 +437,9 @@ struct Strings {
     right: Vec<String>,
     /// The features as a bunsetsu in the gap.
     gap: Vec<String>,
+    /// The features of the morpheme after the head, without the `S` or `D`
+    /// in front; none when the head is the last morpheme.
+    after: Vec<String>,
     /// The feature as a child, without the `a:` or `A:` in front.
     child: String,
     /// Whether the bunsetsu has an opening bracket.
@@ -467,6 +496,10 @@ impl Strings {
                 push_morpheme(schema, role, morpheme, &mut statics);
             }
         }
+        let mut after = Vec::new();
+        if let Some(morpheme) = morphemes.get(head + 1) {
+            push_morpheme(schema, 'N', morpheme, &mut after);
+        }
         if first {
             statics.push("BOS:1".to_string());
         }
@@ -509,6 +542,7 @@ impl Strings {
             left,
             right,
             gap,
+            after,
             child,
             opens,
             closes,
@@ -542,7 +576,8 @@ fn conjugation_form<'a, M: Morpheme>(schema: &Schema, morpheme: &'a M) -> Option
 ///
 /// * `schema` - The schema of the dictionary of the morpheme.
 /// * `role` - The letter of the morpheme in the bunsetsu: `H` for the head,
-///   `F` for the function word, `L` for the first, `R` for the last.
+///   `F` for the function word, `L` for the first, `R` for the last, `N`
+///   for the one after the head.
 /// * `morpheme` - The morpheme.
 /// * `features` - The features to append to.
 fn push_morpheme<M: Morpheme>(
@@ -564,6 +599,9 @@ fn push_morpheme<M: Morpheme>(
 }
 
 #[cfg(test)]
+// A sentence that is one bunsetsu is given as `[0..n]`: an array of one
+// range, which is what is meant.
+#[allow(clippy::single_range_in_vec_init)]
 mod tests {
     use super::*;
     use crate::lattice::LatticeMorpheme;
@@ -604,12 +642,17 @@ mod tests {
     fn is_of(group: Group, feature: &str) -> bool {
         match group {
             Group::Distance => feature.starts_with("DIST:"),
-            Group::Source => feature.starts_with('S'),
-            Group::Target => feature.starts_with('D') && !feature.starts_with("DIST:"),
+            Group::Source => feature.starts_with('S') && !feature.starts_with("SN"),
+            Group::Target => {
+                feature.starts_with('D')
+                    && !feature.starts_with("DIST:")
+                    && !feature.starts_with("DN")
+            }
             Group::Left => feature.starts_with("LF:"),
             Group::Right => feature.starts_with('R'),
             Group::Children => feature.starts_with("a:") || feature.starts_with("A:"),
             Group::Gap => feature.starts_with('G'),
+            Group::AfterHead => feature.starts_with("SN") || feature.starts_with("DN"),
         }
     }
 
@@ -834,7 +877,7 @@ mod tests {
         let sentence = fixtures::sentence();
         let attached = vec![vec![], vec![0], vec![], vec![2], vec![]];
         let all = decision(
-            &prepared(&FeatureSet::cabocha(), &sentence),
+            &prepared(&FeatureSet::default(), &sentence),
             1,
             3,
             &attached,
@@ -869,12 +912,78 @@ mod tests {
     }
 
     #[test]
+    fn the_morpheme_after_the_head_is_a_feature_of_the_source_and_of_the_target() {
+        // 利用 し た / 読む こと を / 知っ た: the heads are 利用 and 読む, as
+        // the schema of IPADIC has them, and し and こと follow them.
+        let morphemes: Vec<LatticeMorpheme> = [
+            ("利用", "名詞,サ変接続,*,*,*,*,利用,リヨウ,リヨー"),
+            ("し", "動詞,自立,*,*,サ変・スル,連用形,する,シ,シ"),
+            ("た", "助動詞,*,*,*,特殊・タ,基本形,た,タ,タ"),
+            ("読む", "動詞,自立,*,*,五段・マ行,基本形,読む,ヨム,ヨム"),
+            ("こと", "名詞,非自立,一般,*,*,*,こと,コト,コト"),
+            ("を", "助詞,格助詞,一般,*,*,*,を,ヲ,ヲ"),
+            ("知っ", "動詞,自立,*,*,五段・ラ行,連用タ接続,知る,シッ,シッ"),
+            ("た", "助動詞,*,*,*,特殊・タ,基本形,た,タ,タ"),
+        ]
+        .iter()
+        .map(|(surface, features)| LatticeMorpheme::new(*surface, *features))
+        .collect();
+        let sentence = (morphemes, vec![0..3, 3..6, 6..8]);
+        let after = |set: &FeatureSet, source: usize, target: usize| -> Vec<String> {
+            decision(&prepared(set, &sentence), source, target, &no_children(3))
+                .into_iter()
+                .filter(|feature| is_of(Group::AfterHead, feature))
+                .collect()
+        };
+        assert_eq!(
+            after(&FeatureSet::default(), 0, 1),
+            [
+                "DNP0:名詞",
+                "DNP1:非自立",
+                "DNP2:一般",
+                "DNS:こと",
+                "SNF:連用形",
+                "SNP0:動詞",
+                "SNP1:自立",
+                "SNS:し"
+            ]
+        );
+        // The head of 知っ た is 知っ, and た follows it.
+        assert_eq!(
+            after(&FeatureSet::default(), 1, 2),
+            [
+                "DNF:基本形",
+                "DNP0:助動詞",
+                "DNS:た",
+                "SNP0:名詞",
+                "SNP1:非自立",
+                "SNP2:一般",
+                "SNS:こと"
+            ]
+        );
+        // CaboCha's set has none of them, and a head that ends its
+        // bunsetsu gives none.
+        assert!(after(&FeatureSet::cabocha(), 0, 1).is_empty());
+        let (morphemes, _) = &sentence;
+        let alone = (morphemes[3..4].to_vec(), vec![0..1]);
+        let prepared = prepared(&FeatureSet::default(), &alone);
+        assert!(prepared.bunsetsu[0].after_source.is_empty());
+        assert!(prepared.bunsetsu[0].after_target.is_empty());
+    }
+
+    #[test]
     fn a_feature_set_is_read_from_its_text_and_written_back() {
         assert_eq!(
             FeatureSet::cabocha().to_string(),
             "distance,source,target,left,right,children,gap"
         );
-        assert_eq!(FeatureSet::default(), FeatureSet::cabocha());
+        // The default has the morpheme after the head as well.
+        assert_eq!(
+            FeatureSet::default().to_string(),
+            "distance,source,target,left,right,children,gap,after"
+        );
+        assert!(!FeatureSet::cabocha().has(Group::AfterHead));
+        assert_eq!(Group::ALL.len(), 8);
         // The order of the text does not matter, nor do spaces.
         let set = FeatureSet::parse("gap, source ,distance").unwrap();
         assert_eq!(set.groups(), [Group::Distance, Group::Source, Group::Gap]);

@@ -74,7 +74,7 @@ fn writes_the_decisions_of_each_sentence() {
         report,
         format!(
             "{}\n\
-             features: distance,source,target,left,right,children,gap\n\
+             features: distance,source,target,left,right,children,gap,after\n\
              sentences: 3\n\
              bunsetsu: 7\n\
              instances: 2\n\
@@ -100,6 +100,9 @@ fn writes_the_decisions_of_each_sentence() {
         assert!(line.contains(&format!("SHS:{source}").as_str()), "{line:?}");
         assert!(line.contains(&format!("DHS:{target}").as_str()), "{line:?}");
         assert!(line.contains(&"DIST:1"), "{line:?}");
+        // The particle after the head of the source, which the default
+        // feature set has.
+        assert!(line.contains(&"SNP0:助詞"), "{line:?}");
         // The features are sorted.
         let mut sorted = line[1..].to_vec();
         sorted.sort_unstable();
