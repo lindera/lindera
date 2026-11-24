@@ -4,18 +4,14 @@ use std::collections::HashMap;
 
 use super::columns::Column;
 use super::template::Template;
-use crate::bytes::{Reader, push_string, push_u32};
+use crate::bytes::{push_string, push_u32};
 use crate::error::{Error, Result};
+use crate::model::table;
 use crate::schema::Schema;
 
-/// The first bytes of a model.
-const MAGIC: &[u8; 8] = b"LDCHUNK\0";
-
-/// The version of the bytes of a model. Version 3 holds the whole schema,
-/// with the particles and the function words taken by their surface, which
-/// the parser reads; version 2 held the schema without them, and version 1
-/// its columns only.
-const VERSION: u32 = 3;
+/// The width of the weights of a feature string in a model file: two
+/// numbers of 8 bytes, the weight of `B` and the weight of `I`.
+pub(crate) const WEIGHTS_WIDTH: usize = 16;
 
 /// A label of the chunker.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,11 +42,68 @@ impl Label {
 /// The index of the start and of the end of a sentence in the transitions.
 pub(crate) const BOUNDARY: usize = 0;
 
-/// The model of the chunker.
+/// What a chunker reads of a model: what makes the feature strings, and
+/// their weights.
+///
+/// [`ChunkerModel`] holds them in memory, as training gives them or as they
+/// are made by hand; the chunker of a model file
+/// ([`Model::chunker`](crate::model::Model::chunker)) reads them on the
+/// bytes of the file.
+pub trait ChunkerData {
+    /// The schema of the dictionary the model is for.
+    ///
+    /// # Returns
+    ///
+    /// The schema.
+    fn schema(&self) -> &Schema;
+
+    /// The columns the template reads.
+    ///
+    /// # Returns
+    ///
+    /// The columns, in the order of their numbers in the template.
+    fn columns(&self) -> &[Column];
+
+    /// The template.
+    ///
+    /// # Returns
+    ///
+    /// The template.
+    fn template(&self) -> &Template;
+
+    /// The weight of a transition.
+    ///
+    /// # Arguments
+    ///
+    /// * `from` - 0 for the start of the sentence, 1 for `B`, 2 for `I`.
+    /// * `to` - 0 for the end of the sentence, 1 for `B`, 2 for `I`.
+    ///
+    /// # Returns
+    ///
+    /// The weight; 0 for an index over 2.
+    fn transition(&self, from: usize, to: usize) -> f64;
+
+    /// The weights of a feature string.
+    ///
+    /// # Arguments
+    ///
+    /// * `feature` - The feature string, as the template expands it.
+    ///
+    /// # Returns
+    ///
+    /// The weight of `B` and the weight of `I`, or `None` for a string the
+    /// model does not have.
+    fn feature(&self, feature: &str) -> Option<[f64; 2]>;
+}
+
+/// The model of the chunker, in memory.
 ///
 /// It holds the weights, and with them what makes the feature strings they
 /// are for: the schema of the dictionary, the columns and the template.
 /// Training and inference then cannot disagree on the features.
+///
+/// It is what training gives. To keep it, put it into a model file with
+/// [`ModelBuilder`](crate::model::ModelBuilder).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ChunkerModel {
     /// The schema of the dictionary the model is for.
@@ -199,114 +252,72 @@ impl ChunkerModel {
             .count()
     }
 
-    /// Writes the model as bytes.
+    /// Appends the model to bytes, as the chunker part of a model file.
     ///
-    /// The format is the one of this crate at this version, little endian:
-    /// a magic number, the version, the schema, the columns, the template,
-    /// the transitions, and the feature strings in order with their
-    /// weights. The same model gives the same bytes. It is not the file
-    /// format of a released model.
+    /// The columns, the template, the transitions, and the table of the
+    /// feature strings with their weights. The schema is not written: a
+    /// model file holds it once, for all its parts. The same model gives
+    /// the same bytes.
     ///
-    /// # Returns
+    /// # Arguments
     ///
-    /// The bytes, which [`ChunkerModel::from_bytes`] reads.
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(MAGIC);
-        push_u32(&mut bytes, VERSION);
-
-        self.schema.write(&mut bytes);
-
-        push_u32(&mut bytes, self.columns.len() as u32);
+    /// * `bytes` - The bytes to append to.
+    pub(crate) fn write_part(&self, bytes: &mut Vec<u8>) {
+        push_u32(bytes, self.columns.len() as u32);
         for column in &self.columns {
             bytes.push(column.code());
         }
 
-        push_string(&mut bytes, &self.template.to_string());
+        push_string(bytes, &self.template.to_string());
 
         for weight in self.transitions.iter().flatten() {
             bytes.extend_from_slice(&weight.to_le_bytes());
         }
 
-        let mut features: Vec<(&String, &[f64; 2])> = self.features.iter().collect();
-        features.sort_by(|left, right| left.0.cmp(right.0));
-        bytes.extend_from_slice(&(features.len() as u64).to_le_bytes());
-        for (feature, weights) in features {
-            push_string(&mut bytes, feature);
-            for weight in weights {
-                bytes.extend_from_slice(&weight.to_le_bytes());
-            }
-        }
-        bytes
+        let mut features: Vec<(&str, [u8; WEIGHTS_WIDTH])> = self
+            .features
+            .iter()
+            .map(|(feature, weights)| {
+                let mut value = [0; WEIGHTS_WIDTH];
+                value[..8].copy_from_slice(&weights[0].to_le_bytes());
+                value[8..].copy_from_slice(&weights[1].to_le_bytes());
+                (feature.as_str(), value)
+            })
+            .collect();
+        features.sort_by(|left, right| left.0.as_bytes().cmp(right.0.as_bytes()));
+        let entries: Vec<(&str, &[u8])> = features
+            .iter()
+            .map(|(feature, value)| (*feature, value.as_slice()))
+            .collect();
+        table::write(bytes, WEIGHTS_WIDTH, &entries);
+    }
+}
+
+impl ChunkerData for ChunkerModel {
+    fn schema(&self) -> &Schema {
+        &self.schema
     }
 
-    /// Reads a model from bytes.
-    ///
-    /// # Arguments
-    ///
-    /// * `bytes` - The bytes [`ChunkerModel::to_bytes`] wrote.
-    ///
-    /// # Returns
-    ///
-    /// The model, or [`Error::Chunker`] for bytes that are not a model of
-    /// this version: another magic number or version, bytes that end early
-    /// or go on after the model, or content [`ChunkerModel::new`] refuses.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        let mut reader = Reader::new(bytes, "chunker model", Error::Chunker);
-        if reader.take(MAGIC.len())? != MAGIC {
-            return Err(Error::Chunker(
-                "not a chunker model: the magic number is missing".to_string(),
-            ));
-        }
-        let version = reader.u32()?;
-        if version != VERSION {
-            return Err(Error::Chunker(format!(
-                "the chunker model has the version {version}, and this crate reads {VERSION}"
-            )));
-        }
+    fn columns(&self) -> &[Column] {
+        &self.columns
+    }
 
-        let schema = Schema::read(&mut reader)?;
+    fn template(&self) -> &Template {
+        &self.template
+    }
 
-        let count = reader.u32()? as usize;
-        let mut columns = Vec::new();
-        for &code in reader.take(count)? {
-            columns.push(Column::from_code(code).ok_or_else(|| {
-                Error::Chunker(format!("the chunker model has the unknown column {code}"))
-            })?);
-        }
+    fn transition(&self, from: usize, to: usize) -> f64 {
+        ChunkerModel::transition(self, from, to)
+    }
 
-        let template = Template::parse(&reader.string()?)?;
-
-        let mut transitions = [[0.0; 3]; 3];
-        for weight in transitions.iter_mut().flatten() {
-            *weight = reader.f64()?;
-        }
-
-        let count = reader.u64()?;
-        let mut features = HashMap::new();
-        for _ in 0..count {
-            let feature = reader.string()?;
-            let weights = [reader.f64()?, reader.f64()?];
-            if features.insert(feature, weights).is_some() {
-                return Err(Error::Chunker(
-                    "the chunker model has a feature twice".to_string(),
-                ));
-            }
-        }
-        if reader.remaining() != 0 {
-            return Err(Error::Chunker(format!(
-                "the chunker model has {} bytes after its end",
-                reader.remaining()
-            )));
-        }
-        Self::new(schema, columns, template, transitions, features)
+    fn feature(&self, feature: &str) -> Option<[f64; 2]> {
+        ChunkerModel::feature(self, feature)
     }
 }
 
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::schema::Pattern;
 
     /// A model with the template of CaboCha and the given weights of
     /// feature strings and transitions.
@@ -322,11 +333,6 @@ pub(crate) mod tests {
                 .collect(),
         )
         .unwrap()
-    }
-
-    /// The error of bytes that are not a model.
-    fn error(bytes: &[u8]) -> String {
-        ChunkerModel::from_bytes(bytes).unwrap_err().to_string()
     }
 
     #[test]
@@ -347,129 +353,6 @@ pub(crate) mod tests {
         assert_eq!(model.feature_count(), 2);
         // 3 weights of features and 4 of transitions are not 0.
         assert_eq!(model.weight_count(), 7);
-    }
-
-    #[test]
-    fn bytes_are_read_back_as_the_same_model() {
-        let original = ChunkerModel::new(
-            Schema {
-                part_of_speech: 1..3,
-                conjugation_type: None,
-                conjugation_form: Some(7),
-                base_form: None,
-                // The patterns and the symbols go to the bytes too.
-                function_words: vec![Pattern::new(&["助詞"])],
-                not_heads: vec![Pattern::new(&["名詞", "非自立"]).after(Pattern::default())],
-                particles: vec![Pattern::new(&["助詞", "格助詞"])],
-                lexicalized: vec![Pattern::new(&["副詞"]), Pattern::new(&["連体詞"])],
-                symbols: Schema::ipadic().symbols,
-            },
-            vec![
-                Column::Surface,
-                Column::PartOfSpeech,
-                Column::ConjugationForm,
-            ],
-            Template::parse("U00:%x[0,0]\nU01:%x[-1,1]/%x[0,2]\nB\n").unwrap(),
-            [
-                [0.0, 0.25, -3.0],
-                [1e-300, -0.5, 1.0],
-                [0.75, f64::MAX, -0.0],
-            ],
-            [
-                ("U00:彼".to_string(), [-1.5, 2.0]),
-                ("U01:_B-1/連用形".to_string(), [0.1, -0.2]),
-                ("U00:".to_string(), [0.0, 3.0]),
-            ]
-            .into_iter()
-            .collect(),
-        )
-        .unwrap();
-        let bytes = original.to_bytes();
-        let read = ChunkerModel::from_bytes(&bytes).unwrap();
-        assert_eq!(read, original);
-        // The same model gives the same bytes, whatever the order of its
-        // table.
-        assert_eq!(read.to_bytes(), bytes);
-        assert_eq!(&bytes[..8], b"LDCHUNK\0");
-    }
-
-    #[test]
-    fn refuses_bytes_that_are_not_a_model() {
-        let bytes = model(&[("U02:は", [-1.5, 2.0])], [[0.0; 3]; 3]).to_bytes();
-
-        assert_eq!(
-            error(b"LDCHUNK"),
-            "the chunker model ends early: 8 bytes expected at 0, 7 left"
-        );
-        let mut other = bytes.clone();
-        other[0] = b'X';
-        assert_eq!(
-            error(&other),
-            "not a chunker model: the magic number is missing"
-        );
-        // Versions 1 and 2 held less of the schema; they are not read.
-        for version in [1, 2, 4] {
-            let mut other = bytes.clone();
-            other[8] = version;
-            assert_eq!(
-                error(&other),
-                format!("the chunker model has the version {version}, and this crate reads 3")
-            );
-        }
-        // Cut anywhere, the bytes end early.
-        for length in [12, 30, bytes.len() - 1] {
-            let message = error(&bytes[..length]);
-            assert!(
-                message.starts_with("the chunker model ends early"),
-                "{message}"
-            );
-        }
-        let mut other = bytes.clone();
-        other.push(0);
-        assert_eq!(error(&other), "the chunker model has 1 bytes after its end");
-    }
-
-    #[test]
-    fn refuses_bytes_with_content_that_is_no_model() {
-        let bytes = model(&[("U02:は", [-1.5, 2.0])], [[0.0; 3]; 3]).to_bytes();
-        // The columns start after the magic number, the version and the
-        // schema: their count, then one code each.
-        let mut schema = Vec::new();
-        Schema::ipadic().write(&mut schema);
-        let columns = 8 + 4 + schema.len();
-        assert_eq!(&bytes[columns..columns + 6], [2, 0, 0, 0, 0, 1]);
-
-        let mut other = bytes.clone();
-        other[columns + 5] = 9;
-        assert_eq!(error(&other), "the chunker model has the unknown column 9");
-
-        // One column for a template that reads two.
-        let mut other = bytes.clone();
-        other[columns] = 1;
-        other.remove(columns + 5);
-        assert_eq!(
-            error(&other),
-            "the template reads 2 columns, and 1 are given"
-        );
-
-        // A weight that is not a number: the last 8 bytes are the weight of
-        // `I` of the only feature.
-        let mut other = bytes.clone();
-        let last = other.len() - 8;
-        other[last..].copy_from_slice(&f64::NAN.to_le_bytes());
-        assert_eq!(error(&other), "a weight is not finite");
-    }
-
-    #[test]
-    fn refuses_bytes_with_a_feature_twice() {
-        let mut bytes = model(&[("aa", [1.0, 0.0]), ("ab", [0.0, 1.0])], [[0.0; 3]; 3]).to_bytes();
-        // The second feature string, after its length: `ab` becomes `aa`.
-        let second = bytes
-            .windows(6)
-            .position(|window| window == [2, 0, 0, 0, b'a', b'b'])
-            .unwrap();
-        bytes[second + 5] = b'a';
-        assert_eq!(error(&bytes), "the chunker model has a feature twice");
     }
 
     #[test]

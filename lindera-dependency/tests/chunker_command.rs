@@ -7,8 +7,9 @@ use std::fs;
 use std::path::Path;
 use std::process::{Command, Output};
 
-use lindera_dependency::chunker::{Chunker, ChunkerModel, Column};
-use lindera_dependency::{Morpheme, lattice};
+use lindera_dependency::chunker::{ChunkerData, Column};
+use lindera_dependency::model::{Model, ModelBuilder};
+use lindera_dependency::{Morpheme, Schema, lattice};
 
 /// A sentence in the lattice format, of bunsetsu given as their morphemes,
 /// each `surface/part of speech`, every bunsetsu depending on the last.
@@ -98,7 +99,11 @@ fn trains_a_model_and_chunks_with_it() {
         &[("--input", &train_path), ("--output", &model_path)],
     ));
     let bytes = fs::read(&model_path).unwrap();
-    let model = ChunkerModel::from_bytes(&bytes).unwrap();
+    let file = Model::new(bytes.as_slice()).unwrap();
+    assert_eq!(file.dictionary(), "ipadic");
+    assert_eq!(file.schema(), &Schema::ipadic());
+    let chunker = file.chunker().unwrap();
+    let model = chunker.model();
     assert_eq!(
         model.columns(),
         [
@@ -155,14 +160,13 @@ fn trains_a_model_and_chunks_with_it() {
     );
 
     // The command chunks as the library does with the same model.
-    let chunker = Chunker::new(model);
     for sentence in lattice::parse(&output).unwrap() {
         let expected: Vec<_> = sentence
             .bunsetsu
             .iter()
             .map(|bunsetsu| bunsetsu.morphemes.clone())
             .collect();
-        assert_eq!(chunker.chunk(&sentence.morphemes), expected);
+        assert_eq!(chunker.chunk(&sentence.morphemes).unwrap(), expected);
         assert!(sentence.violations().is_empty());
         assert!(!sentence.morphemes[0].surface().is_empty());
     }
@@ -232,7 +236,9 @@ fn trains_with_other_columns_and_a_template_file() {
             ("--template", &template_path),
         ],
     ));
-    let model = ChunkerModel::from_bytes(&fs::read(&model_path).unwrap()).unwrap();
+    let file = Model::new(fs::read(&model_path).unwrap()).unwrap();
+    let chunker = file.chunker().unwrap();
+    let model = chunker.model();
     assert_eq!(
         model.columns(),
         [
@@ -306,7 +312,40 @@ fn fails_with_the_cause() {
     fs::write(&model_path, b"not a model").unwrap();
     let error = failure(run(&["chunk"], &chunk));
     assert!(
-        error.contains("chunker.model: not a chunker model: the magic number is missing"),
+        error.contains("chunker.model: not a model file: the magic number is missing"),
+        "{error}"
+    );
+    // A model file without a chunker.
+    let bytes = ModelBuilder::new("ipadic", Schema::ipadic())
+        .unwrap()
+        .to_bytes();
+    fs::write(&model_path, bytes).unwrap();
+    let error = failure(run(&["chunk"], &chunk));
+    assert!(
+        error.contains("chunker.model: the model has no chunker"),
+        "{error}"
+    );
+    assert!(!output_path.exists());
+
+    // Morphemes that are not of the dictionary of the model: the second
+    // sentence has one with three feature columns. Nothing is written.
+    success(run(&["train-chunker", "--threads", "1"], &train));
+    let input_path = directory.path().join("input.lattice");
+    let input = "* 0 -1D \n犬\t名詞,*,*,*,*,基本形,犬,*,*\nEOS\n\
+                 * 0 -1D \n犬\t名詞,*,*,*,*,基本形,犬,*,*\nは\t助詞,*,*\nEOS\n";
+    fs::write(&input_path, input).unwrap();
+    let error = failure(run(
+        &["chunk"],
+        &[
+            ("--model", &model_path),
+            ("--input", &input_path),
+            ("--output", &output_path),
+        ],
+    ));
+    assert!(
+        error.contains(
+            "input.lattice: sentence 2: the morpheme 2 (\"は\") has fewer than the 7 feature columns the schema reads"
+        ),
         "{error}"
     );
     assert!(!output_path.exists());

@@ -2,17 +2,17 @@
 
 文節の区切り（チャンキング）は、文の形態素を文節にまとめます。形態素ごとに、文節を始める（`B`）か、続ける（`I`）かを決めます。CaboCha と同じく、この 2 つのラベルの条件付き確率場を使います。
 
-区切りは既定のビルドに入っていて、ほかのクレートを必要としません。モデルは、素性の文字列から `B` と `I` の重みへの表と、遷移の重みで、ラベルは Viterbi で求めます。学習は `train` feature の裏にあります。
+区切りは既定のビルドに入っていて、ほかのクレートを必要としません。モデルは、素性の文字列から `B` と `I` の重みへの表と、遷移の重みで、ラベルは Viterbi で求めます。表は、[モデルファイル](./model_file.md)の中の位置のまま読みます。学習は `train` feature の裏にあります。
 
 ## 文を区切る
 
 ```rust
-use lindera_dependency::chunker::{Chunker, ChunkerModel};
 use lindera_dependency::lattice::{self, LatticeMorpheme};
+use lindera_dependency::model::Model;
 use lindera_dependency::{Bunsetsu, Morpheme, Sentence};
 
-let model = ChunkerModel::from_bytes(&std::fs::read("chunker.model")?)?;
-let chunker = Chunker::new(model);
+let model = Model::new(std::fs::read("chunker.model")?)?;
+let chunker = model.chunker().expect("the file has a chunker");
 
 // The morphemes of 彼は本を読んだ。 as IPADIC gives them. Any type that
 // implements `Morpheme` will do.
@@ -27,20 +27,20 @@ let morphemes = vec![
 ];
 
 // The ranges of the bunsetsu, as indices into the morphemes.
-let ranges = chunker.chunk(&morphemes);
+let ranges = chunker.chunk(&morphemes)?;
 assert_eq!(ranges, [0..2, 2..4, 4..7]);
 ```
 
 `Chunker::chunk` は `&self` を取り、chunker は `Send + Sync` なので、1 つの chunker を複数のスレッドで使えます。先頭の形態素は必ず文節を始め、空の文には文節がありません。
 
-形態素は、モデルを学習した辞書のもので、同じ設定で分かち書きしたものでなければなりません。モデルは 1 つの辞書に属します。
+形態素は、モデルを学習した辞書のもので、同じ設定で分かち書きしたものでなければなりません。モデルは 1 つの辞書に属します。モデルのスキーマが読む列より少ない列しか持たない形態素は、エラーで断ります。[辞書の照合](./model_file.md#辞書の照合)を参照してください。
 
 ### 主辞と機能語を付ける
 
-モデルは、学習に使った[スキーマ](./head_and_function_word.md)を持っていて、そこから各文節の主辞と機能語が決まります。次の例は、結果をラティス形式で書き出します。解析器がまだ無いので、ここでの係り先は仮のものです。どの文節も次の文節に係るとしています。
+モデルファイルは、辞書の[スキーマ](./head_and_function_word.md)を持っていて、そこから各文節の主辞と機能語が決まります。次の例は、結果をラティス形式で書き出します。解析器がまだ無いので、ここでの係り先は仮のものです。どの文節も次の文節に係るとしています。
 
 ```rust
-let schema = chunker.model().schema();
+let schema = model.schema();
 let count = ranges.len();
 let bunsetsu = ranges
     .into_iter()
@@ -88,10 +88,10 @@ train.lattice: 7024 sentences
 iterations: 126
 feature strings: 4325
 weights: 8656
-bytes: 196273
+bytes: 261851
 ```
 
-同じデータで学習し直すと、同じバイト列になります。モデルのバイト列は、このクレートの独自の形式で、重みは `f64` です。公開するモデルのファイル形式ではなく、変わることがあります。
+出力は、辞書 `ipadic` の[モデルファイル](./model_file.md)で、部分は区切りだけです。同じデータで学習し直すと、同じバイト列になります。重みは `f64` です。形式は、最初のリリースまでに変わることがあります。
 
 | オプション | 既定 | 意味 |
 | --- | --- | --- |

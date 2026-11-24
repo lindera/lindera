@@ -1,6 +1,6 @@
 //! Decoding: the best labels of a sentence, by Viterbi over `B` and `I`.
 
-use super::model::{BOUNDARY, ChunkerModel, Label};
+use super::model::{BOUNDARY, ChunkerData, Label};
 
 /// The best labels of a sentence.
 ///
@@ -23,7 +23,7 @@ use super::model::{BOUNDARY, ChunkerModel, Label};
 /// # Returns
 ///
 /// One label per position; none for an empty sentence.
-pub(crate) fn decode(model: &ChunkerModel, features: &[Vec<String>]) -> Vec<Label> {
+pub(crate) fn decode<D: ChunkerData>(model: &D, features: &[Vec<String>]) -> Vec<Label> {
     let count = features.len();
     if count == 0 {
         return Vec::new();

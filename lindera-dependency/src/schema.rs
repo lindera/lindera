@@ -47,7 +47,7 @@ pub use pattern::Pattern;
 pub use symbols::{Marks, Symbols};
 
 use crate::bytes::{Reader, push_u32};
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::morpheme::Morpheme;
 
 /// The value that stands for a column the schema does not have, in its
@@ -352,6 +352,60 @@ impl Schema {
             }
         }
         value
+    }
+
+    /// The number of feature columns the schema reads.
+    ///
+    /// # Returns
+    ///
+    /// One more than the largest index among the columns of the part of
+    /// speech, of the conjugation and of the base form: a morpheme of the
+    /// dictionary has at least this many columns.
+    pub fn width(&self) -> usize {
+        [
+            Some(self.part_of_speech.end),
+            self.conjugation_type.map(|index| index + 1),
+            self.conjugation_form.map(|index| index + 1),
+            self.base_form.map(|index| index + 1),
+        ]
+        .into_iter()
+        .flatten()
+        .max()
+        .unwrap_or(0)
+    }
+
+    /// Checks that morphemes can be of the dictionary of the schema.
+    ///
+    /// A morpheme with fewer feature columns than the schema reads comes
+    /// from another dictionary, or from a tokenizer that drops columns:
+    /// analyzing it would give an answer from columns that are not there.
+    /// Morphemes of another dictionary that are wide enough pass; the name
+    /// of the dictionary in a model file is for those
+    /// ([`Model::check_dictionary`](crate::model::Model::check_dictionary)).
+    ///
+    /// # Arguments
+    ///
+    /// * `morphemes` - The morphemes.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())`, or [`Error::Dictionary`] for the first morpheme that has
+    /// fewer columns than [`Schema::width`].
+    pub fn check<M: Morpheme>(&self, morphemes: &[M]) -> Result<()> {
+        let width = self.width();
+        let Some(last) = width.checked_sub(1) else {
+            return Ok(());
+        };
+        for (index, morpheme) in morphemes.iter().enumerate() {
+            if morpheme.feature(last).is_none() {
+                return Err(Error::Dictionary(format!(
+                    "the morpheme {} ({:?}) has fewer than the {width} feature columns the schema reads: it is not of the dictionary of the model",
+                    index + 1,
+                    morpheme.surface()
+                )));
+            }
+        }
+        Ok(())
     }
 
     /// Appends the schema to the bytes of a model.
@@ -883,5 +937,49 @@ mod tests {
             let message = Schema::read(&mut reader).unwrap_err().to_string();
             assert!(message.contains("ends early"), "{length}: {message}");
         }
+    }
+
+    #[test]
+    fn the_width_is_the_number_of_columns_the_schema_reads() {
+        // IPADIC: four levels of part of speech, the conjugation type and
+        // form, the base form.
+        assert_eq!(Schema::ipadic().width(), 7);
+        let mut schema = Schema::ipadic();
+        schema.base_form = None;
+        assert_eq!(schema.width(), 6);
+        schema.conjugation_form = None;
+        schema.conjugation_type = Some(9);
+        assert_eq!(schema.width(), 10);
+        schema.conjugation_type = None;
+        assert_eq!(schema.width(), 4);
+        schema.part_of_speech = 0..0;
+        assert_eq!(schema.width(), 0);
+    }
+
+    #[test]
+    fn morphemes_with_fewer_columns_than_the_schema_reads_are_refused() {
+        let schema = Schema::ipadic();
+        let wide = LatticeMorpheme::new("彼", "名詞,代名詞,一般,*,*,*,彼,カレ,カレ");
+        // An unknown word of MeCab has no reading: seven columns.
+        let unknown = LatticeMorpheme::new("x", "名詞,一般,*,*,*,*,*");
+        let narrow = LatticeMorpheme::new("彼", "名詞,代名詞,一般,*,*,*");
+        let none: [LatticeMorpheme; 0] = [];
+        assert!(schema.check(&none).is_ok());
+        assert!(schema.check(&[wide.clone(), unknown.clone()]).is_ok());
+
+        let error = schema.check(&[wide.clone(), unknown, narrow]).unwrap_err();
+        assert!(matches!(error, Error::Dictionary(_)), "{error:?}");
+        assert_eq!(
+            error.to_string(),
+            "the morpheme 3 (\"彼\") has fewer than the 7 feature columns the schema reads: it is not of the dictionary of the model"
+        );
+
+        // A schema that reads nothing refuses nothing.
+        let mut schema = Schema::ipadic();
+        schema.part_of_speech = 0..0;
+        schema.conjugation_type = None;
+        schema.conjugation_form = None;
+        schema.base_form = None;
+        assert!(schema.check(&[LatticeMorpheme::new("彼", "")]).is_ok());
     }
 }

@@ -17,6 +17,7 @@ what the analysis is built on, and its first step:
   morphemes are function words and symbols, and from them the head and
   the function word of a bunsetsu
 - the chunker, which segments the morphemes of a sentence into bunsetsu
+- the model file of a dictionary, which is read in place
 - the parser, which finds the head of each bunsetsu, with its features
   and the training instances of its classifier
 
@@ -141,27 +142,30 @@ for every morpheme, whether it starts a bunsetsu (`B`) or continues one
 (`I`), with a conditional random field over the two labels, as CaboCha does.
 
 ```rust
-use lindera_dependency::chunker::{Chunker, ChunkerModel};
+use lindera_dependency::model::Model;
 
-let model = ChunkerModel::from_bytes(&std::fs::read("chunker.model")?)?;
-let chunker = Chunker::new(model);
+let model = Model::new(std::fs::read("chunker.model")?)?;
+let chunker = model.chunker().expect("the file has a chunker");
 // The ranges of the bunsetsu, as indices into the morphemes.
-let bunsetsu = chunker.chunk(&morphemes);
+let bunsetsu = chunker.chunk(&morphemes)?;
 ```
 
 Chunking is in the default build and needs no other crate: the model is a
 table from feature string to the weights of `B` and `I`, with the weights of
 the transitions, and the labels are found by Viterbi. `Chunker::chunk` takes
 `&self`, and a chunker is `Send + Sync`. The first morpheme always starts a
-bunsetsu, and an empty sentence has none.
+bunsetsu, and an empty sentence has none. A morpheme with fewer feature
+columns than the schema of the model reads is refused with an error: it is
+not of the dictionary of the model.
 
 The feature strings are made in two steps that can each be replaced. The
 columns of a morpheme (its surface, its part of speech, its conjugation
 form, ...) are read through the `Schema` of the dictionary, which says which
 feature column holds what; `Schema::ipadic()` is the one of IPADIC. A
-template in the format of CRF++ then expands them. A model holds the schema,
-the columns and the template it was trained with; the schema is stored
-whole, with its patterns for the head and the function word.
+template in the format of CRF++ then expands them. A model file holds the
+schema, the columns and the template the chunker was trained with; the
+schema is stored whole, with its patterns for the head and the function
+word.
 
 ### Training
 
@@ -183,7 +187,7 @@ ja_gsd-ud-train.lattice: 7024 sentences
 iterations: 126
 feature strings: 4325
 weights: 8656
-bytes: 196273
+bytes: 261851
 ```
 
 | | F | Precision | Recall | Sentences with every bunsetsu right |
@@ -192,8 +196,49 @@ bytes: 196273
 | UD Japanese-GSD test | 96.92 | 96.85% (4,373 / 4,515) | 96.98% (4,373 / 4,509) | 459 / 542 |
 | UD Japanese-PUD | 98.04 | 98.05% (9,649 / 9,841) | 98.03% (9,649 / 9,843) | 885 / 994 |
 
-The bytes of the model are a format of this crate, with weights as `f64`; it
-is not the file format of a released model.
+The output is a model file, described in the next section.
+
+### The model file
+
+A model file holds what one dictionary needs to be analyzed: the name of the
+dictionary, its schema, and the trained parts, so far the chunker. `Model`
+reads it in place, from whatever holds the bytes, and copies none of its
+tables:
+
+```rust
+use lindera_dependency::model::Model;
+
+// Read from a file: a `Model<Vec<u8>>`.
+let model = Model::new(std::fs::read("chunker.model")?)?;
+// Embedded in the program: a `Model<&'static [u8]>`.
+let model = Model::new(include_bytes!("chunker.model").as_slice())?;
+
+assert_eq!(model.dictionary(), "ipadic");
+// For a caller that knows the dictionary of its morphemes.
+model.check_dictionary("ipadic")?;
+```
+
+Any type that implements `AsRef<[u8]>` holds the bytes, a memory map of the
+caller as well; the crate itself maps nothing and has no dependency. The
+file is checked once, in `Model::new`: bytes that are not a model file of
+this version are an error, and nothing fails or panics afterwards. No number
+is read through a pointer, so the bytes can sit at any address, and the same
+code runs on `wasm32-unknown-unknown`.
+
+A model belongs to one dictionary, and used on the morphemes of another it
+gives wrong answers without an error. `Model::check_dictionary` compares the
+name of the dictionary, and a morpheme with fewer feature columns than the
+schema reads is refused when it is analyzed. Morphemes of another dictionary
+that are wide enough are told apart by the name only.
+
+The format is version 1: a magic number (`LDMODEL`), the version, the name of
+the dictionary, the schema, a list of the parts, and the parts. A table of
+strings is stored sorted, with a hash table over it, and is looked up where
+it is. The
+[documentation](../docs/src/lindera-dependency/model_file.md) has every
+field. `ModelBuilder` writes a file. The chunker-only bytes that
+`train-chunker` wrote before the model file (magic number `LDCHUNK`) are no
+longer read: train the model again.
 
 ### How the defaults were chosen
 

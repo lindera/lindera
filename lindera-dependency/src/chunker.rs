@@ -10,9 +10,11 @@
 //!   morpheme (its surface, its part of speech, ...) are taken through the
 //!   [`Schema`] of the dictionary, and a [`Template`] in the
 //!   format of CRF++ expands them ([`Chunker::features`]).
-//! - **The model** ([`ChunkerModel`]) is a table from feature string to the
-//!   weights of `B` and `I`, and the weights of the transitions. It holds
-//!   the schema, the columns and the template it was trained with.
+//! - **The model** is a table from feature string to the weights of `B` and
+//!   `I`, and the weights of the transitions, with the schema, the columns
+//!   and the template it was trained with ([`ChunkerData`]). A
+//!   [`ChunkerModel`] holds it in memory; a model file
+//!   ([`Model`](crate::model::Model)) is read where it is.
 //! - **Decoding** ([`Chunker::labels`]) finds the best labels for feature
 //!   strings, by Viterbi. It does not know where the strings come from.
 //!
@@ -54,7 +56,7 @@
 //!     LatticeMorpheme::new("を", "助詞,格助詞,一般,*,*,*,を,ヲ,ヲ"),
 //!     LatticeMorpheme::new("読む", "動詞,自立,*,*,五段・マ行,基本形,読む,ヨム,ヨム"),
 //! ];
-//! assert_eq!(chunker.chunk(&morphemes), [0..2, 2..4, 4..5]);
+//! assert_eq!(chunker.chunk(&morphemes)?, [0..2, 2..4, 4..5]);
 //! # Ok::<(), lindera_dependency::Error>(())
 //! ```
 
@@ -68,11 +70,12 @@ pub mod train;
 use std::ops::Range;
 
 pub use columns::{Column, parse_columns};
-pub use model::{ChunkerModel, Label};
+pub use model::{ChunkerData, ChunkerModel, Label};
 pub use template::Template;
 #[cfg(feature = "train")]
 pub use train::{Regularization, TrainOptions, Trained, train};
 
+use crate::error::Result;
 use crate::morpheme::Morpheme;
 use crate::schema::Schema;
 
@@ -104,13 +107,17 @@ pub(crate) fn extract<M: Morpheme>(
 ///
 /// A chunker is made from a model once and used from any number of threads:
 /// chunking takes `&self` and keeps no state.
+///
+/// `D` is where the model is: a [`ChunkerModel`] in memory, or the chunker
+/// part of a model file, which [`Model::chunker`](crate::model::Model::chunker)
+/// gives.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Chunker {
+pub struct Chunker<D = ChunkerModel> {
     /// The model.
-    model: ChunkerModel,
+    model: D,
 }
 
-impl Chunker {
+impl<D: ChunkerData> Chunker<D> {
     /// Makes a chunker.
     ///
     /// # Arguments
@@ -120,7 +127,7 @@ impl Chunker {
     /// # Returns
     ///
     /// The chunker.
-    pub fn new(model: ChunkerModel) -> Self {
+    pub fn new(model: D) -> Self {
         Self { model }
     }
 
@@ -129,7 +136,7 @@ impl Chunker {
     /// # Returns
     ///
     /// The model.
-    pub fn model(&self) -> &ChunkerModel {
+    pub fn model(&self) -> &D {
         &self.model
     }
 
@@ -181,7 +188,12 @@ impl Chunker {
     /// The bunsetsu from left to right, each as a range of indices into
     /// `morphemes`. They cover the morphemes without a gap: the first
     /// morpheme always starts a bunsetsu. An empty sentence has none.
-    pub fn chunk<M: Morpheme>(&self, morphemes: &[M]) -> Vec<Range<usize>> {
+    ///
+    /// [`Error::Dictionary`](crate::Error::Dictionary) for a morpheme with
+    /// fewer feature columns than the schema of the model reads
+    /// ([`Schema::check`]): it is not of the dictionary of the model.
+    pub fn chunk<M: Morpheme>(&self, morphemes: &[M]) -> Result<Vec<Range<usize>>> {
+        self.model.schema().check(morphemes)?;
         let labels = self.labels(&self.features(morphemes));
         let mut bunsetsu: Vec<Range<usize>> = Vec::new();
         for (index, label) in labels.iter().enumerate() {
@@ -190,7 +202,7 @@ impl Chunker {
                 _ => bunsetsu.push(index..index + 1),
             }
         }
-        bunsetsu
+        Ok(bunsetsu)
     }
 }
 
@@ -230,7 +242,7 @@ mod tests {
     fn chunks_a_sentence() {
         let chunker = chunker();
         let morphemes = morphemes();
-        assert_eq!(chunker.chunk(&morphemes), [0..2, 2..4, 4..5]);
+        assert_eq!(chunker.chunk(&morphemes).unwrap(), [0..2, 2..4, 4..5]);
         assert_eq!(
             chunker.labels(&chunker.features(&morphemes)),
             [
@@ -262,21 +274,24 @@ mod tests {
     fn an_empty_sentence_and_a_sentence_of_one_morpheme() {
         let chunker = chunker();
         let none: [LatticeMorpheme; 0] = [];
-        assert!(chunker.chunk(&none).is_empty());
-        assert_eq!(chunker.chunk(&morphemes()[..1]), [0..1]);
+        assert!(chunker.chunk(&none).unwrap().is_empty());
+        assert_eq!(chunker.chunk(&morphemes()[..1]).unwrap(), [0..1]);
         // A particle alone is a bunsetsu: the first morpheme starts one.
-        assert_eq!(chunker.chunk(&morphemes()[1..2]), [0..1]);
-        assert_eq!(chunker.chunk(&morphemes()[1..4]), [0..1, 1..3]);
+        assert_eq!(chunker.chunk(&morphemes()[1..2]).unwrap(), [0..1]);
+        assert_eq!(chunker.chunk(&morphemes()[1..4]).unwrap(), [0..1, 1..3]);
     }
 
     #[test]
     fn the_bunsetsu_cover_the_morphemes() {
         // Everything continues: one bunsetsu.
         let chunker = Chunker::new(model(&[], [[0.0; 3], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0]]));
-        assert_eq!(chunker.chunk(&morphemes()), [0..5]);
+        assert_eq!(chunker.chunk(&morphemes()).unwrap(), [0..5]);
         // Everything starts: one bunsetsu per morpheme.
         let chunker = Chunker::new(model(&[], [[0.0; 3]; 3]));
-        assert_eq!(chunker.chunk(&morphemes()), [0..1, 1..2, 2..3, 3..4, 4..5]);
+        assert_eq!(
+            chunker.chunk(&morphemes()).unwrap(),
+            [0..1, 1..2, 2..3, 3..4, 4..5]
+        );
     }
 
     #[test]
@@ -289,9 +304,22 @@ mod tests {
         let morphemes = morphemes();
         std::thread::scope(|scope| {
             for _ in 0..2 {
-                scope.spawn(|| assert_eq!(chunker.chunk(&morphemes), [0..2, 2..4, 4..5]));
+                scope.spawn(|| assert_eq!(chunker.chunk(&morphemes).unwrap(), [0..2, 2..4, 4..5]));
             }
         });
         assert_eq!(chunker.model().feature_count(), 2);
+    }
+
+    #[test]
+    fn a_morpheme_of_another_dictionary_is_refused() {
+        let chunker = chunker();
+        let mut morphemes = morphemes();
+        morphemes[3] = LatticeMorpheme::new("を", "助詞,格助詞,一般");
+        let error = chunker.chunk(&morphemes).unwrap_err();
+        assert!(matches!(error, crate::Error::Dictionary(_)), "{error:?}");
+        assert!(
+            error.to_string().starts_with("the morpheme 4 (\"を\")"),
+            "{error}"
+        );
     }
 }

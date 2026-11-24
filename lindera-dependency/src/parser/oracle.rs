@@ -41,13 +41,15 @@ pub struct Instance {
 /// sentence of two bunsetsu or fewer, where nothing is asked.
 /// [`Error::Structure`] when the sentence does not pass
 /// [`Sentence::check`], or when its tree is not one the parser can make
-/// ([`Sentence::violations`]).
+/// ([`Sentence::violations`]); [`Error::Dictionary`] for a morpheme with
+/// fewer feature columns than the schema reads ([`Schema::check`]).
 pub fn instances<M: Morpheme>(
     schema: &Schema,
     set: &FeatureSet,
     sentence: &Sentence<M>,
 ) -> Result<Vec<Instance>> {
     sentence.check()?;
+    schema.check(&sentence.morphemes)?;
     if let Some(violation) = sentence.violations().first() {
         return Err(Error::Structure(format!(
             "the parser cannot make the tree of the sentence: {violation}"
@@ -318,5 +320,17 @@ mod tests {
                 "{feature:?}"
             );
         }
+    }
+
+    #[test]
+    fn a_morpheme_of_another_dictionary_is_refused() {
+        let mut sentence = sentence(&[Some(4), Some(2), Some(4), Some(4), None]);
+        sentence.morphemes[0] = LatticeMorpheme::new("彼", "名詞,代名詞");
+        let error = all(&sentence).unwrap_err();
+        assert!(matches!(error, Error::Dictionary(_)), "{error:?}");
+        assert!(
+            error.to_string().starts_with("the morpheme 1 (\"彼\")"),
+            "{error}"
+        );
     }
 }

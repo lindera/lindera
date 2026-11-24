@@ -1,7 +1,7 @@
 //! Writing and reading the bytes of a model: numbers in little endian, and
 //! strings with their length.
 //!
-//! The model of the chunker and the schema inside it share these.
+//! The model file, its parts and the schema inside it share these.
 
 use crate::error::{Error, Result};
 
@@ -45,7 +45,7 @@ pub(crate) struct Reader<'a> {
     bytes: &'a [u8],
     /// The number of bytes read.
     position: usize,
-    /// What the bytes are, for the messages: `chunker model`.
+    /// What the bytes are, for the messages: `model`.
     what: &'static str,
     /// Makes the error of a message.
     error: fn(String) -> Error,
@@ -57,7 +57,7 @@ impl<'a> Reader<'a> {
     /// # Arguments
     ///
     /// * `bytes` - The bytes.
-    /// * `what` - What the bytes are, for the messages: `chunker model`.
+    /// * `what` - What the bytes are, for the messages: `model`.
     /// * `error` - Makes the error of a message.
     ///
     /// # Returns
@@ -83,6 +83,15 @@ impl<'a> Reader<'a> {
     /// The error.
     pub(crate) fn error(&self, problem: impl std::fmt::Display) -> Error {
         (self.error)(format!("the {} {problem}", self.what))
+    }
+
+    /// The number of bytes read so far.
+    ///
+    /// # Returns
+    ///
+    /// The position of the next byte, from the first byte of the reader.
+    pub(crate) fn position(&self) -> usize {
+        self.position
     }
 
     /// The number of bytes not read yet.

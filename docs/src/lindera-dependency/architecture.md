@@ -16,9 +16,12 @@ lindera-dependency/src/
 ├── chunker/
 │   ├── columns.rs        # Column: what a template reads from a morpheme
 │   ├── template.rs       # Template in the format of CRF++
-│   ├── model.rs          # ChunkerModel: the table of weights, and its bytes
+│   ├── model.rs          # ChunkerData, ChunkerModel: the table of weights
 │   ├── decode.rs         # Viterbi over the two labels
 │   └── train.rs          # Training with lindera-crf (train)
+├── model.rs              # Model, ModelBuilder: the model file of a dictionary
+├── model/
+│   └── table.rs          # A table from strings to values, read in place
 ├── parser.rs             # Parser
 ├── parser/
 │   ├── features.rs       # Group, FeatureSet: the features of a decision
@@ -131,7 +134,11 @@ A `Schema` holds what is known about a dictionary as data: which columns hold th
 
 ### Chunker / ChunkerModel
 
-A `Chunker` segments morphemes into bunsetsu with a `ChunkerModel`: a table from feature string to weights, with the schema, the columns and the template it was trained with. See [Chunking](./chunking.md).
+A `Chunker` segments morphemes into bunsetsu with a table from feature string to weights, and with the schema, the columns and the template the table was trained with. It reads them through the `ChunkerData` trait: from a `ChunkerModel` in memory, which is what training gives, or from the chunker part of a model file. See [Chunking](./chunking.md).
+
+### Model / ModelBuilder
+
+A `Model` is the model file of a dictionary, read in place from bytes it owns or borrows: the name of the dictionary, its schema, and the trained parts. `ModelBuilder` writes one. See [Model File](./model_file.md).
 
 ### Parser / Classifier
 
@@ -146,8 +153,8 @@ With the `train` feature the crate builds the `lindera-dependency` command, whic
 | `convert` | Makes training data from a CoNLL-U file with bunsetsu labels | [Training Data](./training_data.md) |
 | `evaluate` | Compares an output with the answer | [Evaluation](./evaluation.md) |
 | `split` | Writes the folds of a cross-validation | [Evaluation](./evaluation.md) |
-| `train-chunker` | Trains the model of the chunker | [Chunking](./chunking.md) |
-| `chunk` | Segments the morphemes of a file again with a model | [Chunking](./chunking.md) |
+| `train-chunker` | Trains the chunker and writes a model file | [Chunking](./chunking.md) |
+| `chunk` | Segments the morphemes of a file again with a model file | [Chunking](./chunking.md) |
 | `instances` | Writes the training instances of the parser | [Parsing](./parsing.md) |
 
 The command is in this crate, not in `lindera-cli`: `lindera-cli` is published, and cannot depend on a crate that is not.
@@ -156,7 +163,7 @@ The command is in this crate, not in `lindera-cli`: `lindera-cli` is published, 
 
 | Feature | Description | Default |
 | --- | --- | --- |
-| (none) | The types, the lattice format, the schema, the chunker and the parser. No dependency; builds for `wasm32-unknown-unknown` | Yes |
+| (none) | The types, the lattice format, the schema, the model file, the chunker and the parser. No dependency; builds for `wasm32-unknown-unknown` | Yes |
 | `train` | The `corpus` and `evaluation` modules, the training of the chunker with `lindera-crf`, and the `lindera-dependency` command, which tokenizes with `lindera-segmenter` | No |
 | `embed-ipadic` | Embeds IPADIC in the command, for `--dict embedded://ipadic` (implies `train`) | No |
 
