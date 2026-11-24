@@ -208,7 +208,7 @@ assert_eq!(ranges, [0..2, 2..4, 4..7]);
 <p><code>Chunker::chunk</code> takes <code>&amp;self</code>, and a chunker is <code>Send + Sync</code>, so one chunker serves several threads. The first morpheme always starts a bunsetsu, and an empty sentence has none.</p>
 <p>The morphemes have to come from the dictionary the model was trained with, tokenized with the same settings: a model belongs to one dictionary. A morpheme with fewer feature columns than the schema of the model reads is refused with an error; see <a href="./model_file.html#checking-the-dictionary">Checking the dictionary</a>.</p>
 <h3 id="with-the-head-word-and-the-function-word"><a class="header" href="#with-the-head-word-and-the-function-word">With the head word and the function word</a></h3>
-<p>A model file holds the <a href="./head_and_function_word.html">schema</a> of its dictionary, which gives the head word and the function word of each bunsetsu. The following writes the result in the lattice format. There is no parser yet, so the heads are a placeholder here: every bunsetsu depends on the next one.</p>
+<p>A model file holds the <a href="./head_and_function_word.html">schema</a> of its dictionary, which gives the head word and the function word of each bunsetsu. The following writes the result in the lattice format. The heads are a placeholder here, every bunsetsu depending on the next one; the <a href="./parsing.html">parser</a> finds them.</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let schema = model.schema();
@@ -266,7 +266,7 @@ bytes: 261851
 <pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 </code></pre>
-<p>It writes every bunsetsu as depending on the next one, since the <a href="./parsing.html">parser</a> has no trained model yet.</p>
+<p>It writes every bunsetsu as depending on the next one: it measures the chunker alone. <a href="./parsing.html#training-a-model"><code>parse --chunk</code></a> segments and parses.</p>
 <h2 id="accuracy"><a class="header" href="#accuracy">Accuracy</a></h2>
 <p>With the defaults, trained on the train file of UD Japanese-GSD (commit c662dc9) with IPADIC:</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th>F</th><th>Precision</th><th>Recall</th><th>Sentences with every bunsetsu right</th></tr></thead><tbody>

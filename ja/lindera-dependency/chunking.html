@@ -208,7 +208,7 @@ assert_eq!(ranges, [0..2, 2..4, 4..7]);
 <p><code>Chunker::chunk</code> は <code>&amp;self</code> を取り、chunker は <code>Send + Sync</code> なので、1 つの chunker を複数のスレッドで使えます。先頭の形態素は必ず文節を始め、空の文には文節がありません。</p>
 <p>形態素は、モデルを学習した辞書のもので、同じ設定で分かち書きしたものでなければなりません。モデルは 1 つの辞書に属します。モデルのスキーマが読む列より少ない列しか持たない形態素は、エラーで断ります。<a href="./model_file.html#%E8%BE%9E%E6%9B%B8%E3%81%AE%E7%85%A7%E5%90%88">辞書の照合</a>を参照してください。</p>
 <h3 id="主辞と機能語を付ける"><a class="header" href="#主辞と機能語を付ける">主辞と機能語を付ける</a></h3>
-<p>モデルファイルは、辞書の<a href="./head_and_function_word.html">スキーマ</a>を持っていて、そこから各文節の主辞と機能語が決まります。次の例は、結果をラティス形式で書き出します。解析器がまだ無いので、ここでの係り先は仮のものです。どの文節も次の文節に係るとしています。</p>
+<p>モデルファイルは、辞書の<a href="./head_and_function_word.html">スキーマ</a>を持っていて、そこから各文節の主辞と機能語が決まります。次の例は、結果をラティス形式で書き出します。ここでの係り先は仮のもので、どの文節も次の文節に係るとしています。係り先は<a href="./parsing.html">解析器</a>が求めます。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let schema = model.schema();
@@ -266,7 +266,7 @@ bytes: 261851
 <pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 </code></pre>
-<p><a href="./parsing.html">解析器</a>の学習済みのモデルがまだ無いので、どの文節も次の文節に係るとして書き出します。</p>
+<p>どの文節も次の文節に係るとして書き出します。区切りだけを測るためです。区切ってから解析するのは <a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>parse --chunk</code></a> です。</p>
 <h2 id="精度"><a class="header" href="#精度">精度</a></h2>
 <p>既定の設定で、UD Japanese-GSD（commit c662dc9）の train を IPADIC で学習したときの値です。</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th>F</th><th>精度</th><th>再現率</th><th>すべての文節が合った文</th></tr></thead><tbody>

@@ -213,6 +213,12 @@
 <tr><td>モデルファイルは、バイト列を持つものについて総称な型で、その場で読む。検査は、開くときの 1 回だけ。</td><td>プログラムに埋め込んだバイト列、メモリに読んだファイル、呼び出し側のメモリマップが、同じコードで読める。依存は要らず、<code>wasm32-unknown-unknown</code> でも動く。検査の後は、何も失敗せず、panic もしない。数をポインター越しに読まないので、バイト列の境界は関係ない（#1364 の <code>matrix.mtx</code> と同じ）。</td><td>#1437</td></tr>
 <tr><td>モデルファイルの文字列の表は、並べ替えて持ち、その上にハッシュ表を持つ。</td><td>文字列を、ファイルの中の位置のまま、ハッシュの時間で引ける。並べ替えてあるので、同じ文字列からは必ず同じバイト列ができる。並べ替えた文字列の二分探索だけの形も測ったが、遅い（数字を参照）。</td><td>#1437</td></tr>
 <tr><td>モデルの辞書は 2 つの方法で照合する。名前は、形態素の辞書を知っている呼び出し側が照合する。素性の列の数は、いつも照合する。</td><td>スキーマが読む列より少ない列の形態素は、その辞書のものではありえないので、解析せずに断る。列の数が足りている別の辞書の形態素は、形からは見分けられず、名前でしか分からない。</td><td>#1437</td></tr>
+<tr><td>解析器は、CaboCha と同じく、ヒンジ損失のサポートベクターマシンの dual coordinate descent で学習する。コストは CaboCha の 0.0015。J.DepP と同じ passive-aggressive も選べる。</td><td>交差検証で 2 つに差は無く（88.96% と 88.88%、p = 0.22）、時間も同じ。dual coordinate descent は自分で止まる。passive-aggressive は、回る回数を選ぶ必要がある。</td><td>#1437</td></tr>
+<tr><td>素性の対の重みは、2^22 個の重みの表に、対をハッシュで割り当てて持つ。対ごとに重みを持つ形も選べる。</td><td>精度に差は無く（p = 0.60）、解析は 6 倍速く、ファイルは 6 分の 1 になる。交差検証では 2^18 以上の大きさに差が無く、その中で dev が最良なのが 2^22。</td><td>#1437</td></tr>
+<tr><td>ハッシュで割り当てる対の場所は、2 つの素性の文字列のハッシュから決める。モデルの中の番号からは決めない。</td><td>モデルから素性を除いても、ほかの素性の対の場所が動かない。学習と推論で、番号の振り方が食い違うこともない。</td><td>#1437</td></tr>
+<tr><td>解析器の重みは、1 つ 1 バイトで書く。整数と尺度の積。</td><td>4 バイトの重みと精度に差が無い（p = 0.86）。2 バイトの重みは出力が同じ。ファイルは 3 分の 1 になり、解析も速くなる。</td><td>#1437</td></tr>
+<tr><td>解析器の素性は、CaboCha の素性に 1 つの群を足す。係り元と係り先の候補の、主辞の直後の形態素。文節の主辞は、スキーマの内容語のままにする。</td><td>スキーマの主辞では、CaboCha の主辞が CaboCha の素性に与えていた情報が抜ける。文節が全体として動詞か名詞か、である（利用 / し / た、読む / こと / を）。この群がそれを戻す。交差検証で 89.19%、足さないと 88.96%（p &lt; 0.001）。出力の主辞は内容語のまま。</td><td>#1437</td></tr>
+<tr><td>モデルは #1420 の規則で選び、差の無いものは同じとみなす。同じとみなした設定の中では、小さいほう・速いほうを既定にする。</td><td>良い設定どうしの差は、データの揺れより小さい。大きさと速さはそうではない。</td><td>#1437</td></tr>
 <tr><td>モデルファイルより前の、区切りだけのファイル（マジックナンバー <code>LDCHUNK</code>）は、もう読まない。</td><td>クレートは未公開で、配布したモデルは無い。読む側を残しても、読むべきファイルが無い。</td><td>#1437</td></tr>
 <tr><td>学習データには主辞と機能語の位置を書かない。読む側がスキーマから計算する。</td><td>規則を変えても、古い位置がファイルに残らない。</td><td>#1422</td></tr>
 <tr><td>設定の比較は train の交差検証で行う。dev は僅差の設定の選択に使う。test と PUD は、報告する結果にだけ使う。</td><td>dev と test は小さい。90% 前後の精度の 95% 区間は、約 ±1 ポイントになる。</td><td>#1420</td></tr>
@@ -269,8 +275,8 @@
 <li><strong>ループ</strong>は、CaboCha の <code>parseShiftReduce</code>、J.DepP の <code>_parseLinear</code> と同じです。係り先の無い文節をスタックに持ち、続く文節を 1 つずつ係り先の候補にし、スタックの先頭を係り元にします。最後の文節への係りは尋ねません。ループは判定を関数として受け取るので、分類器でも文の正解でも、同じコードが動きます。</li>
 <li><strong>素性</strong>は CaboCha のもの（<code>src/selector.cpp</code>、<code>src/dep.cpp</code>）で、7 つの群に分けています。距離、係り元、係り先の候補、係り元の前の文節、係り先の候補の後の文節、すでに係った文節、間です。文節ごとに 1 回作り、判定のときに組み合わせます。文字列を何に変えるかについて総称にしてあり、解析では分類器の番号、学習事例では文字列そのものです。</li>
 <li><strong>CaboCha との違い</strong>: 表層を正規化せず、句読点と括弧はスキーマのものを使う。主辞と機能語は #1422 のスキーマのものを使う。係り先が分からない文節は扱わない。尋ねない係りの点数は 0 にする（CaboCha は、直前の判定の点数を書く）。</li>
-<li><strong>J.DepP の素性</strong>（<code>jdepp/pdep.cc</code>）は違います。4 つの文節を、最初の形態素・主辞・末尾・最後の形態素で表す。2 つの主辞の表層が同じかどうか。括弧の釣り合い。間の文節のうち、係り先の候補を取り合う文節の助詞。すでに係った文節の素性は無い。J.DepP にしか無い素性は、素性の集合を比べるときに回します。</li>
-<li><strong><code>LinearClassifier</code></strong> は、バイアス、素性の重み、素性の対の重みを、ハッシュ表から足します。手で作った重みで解析するための最小の実装です。学習した重みの持ち方は、モデルファイルの解析器の部分と一緒に決めます。</li>
+<li><strong>J.DepP の素性</strong>（<code>jdepp/pdep.cc</code>）は違います。4 つの文節を、最初の形態素・主辞・末尾・最後の形態素で表す。2 つの主辞の表層が同じかどうか。括弧の釣り合い。間の文節のうち、係り先の候補を取り合う文節の助詞。すでに係った文節の素性は無い。J.DepP にしか無い素性は、試していません。目標に、それ無しで届いたためです。</li>
+<li><strong><code>LinearClassifier</code></strong> は、バイアス、素性の重み、素性の対の重みを、ハッシュ表から足します。手で作った重みで解析するための最小の実装です。学習したモデルは、自分の持ち方を持ちます（下を参照）。</li>
 <li><strong>学習事例</strong>は、正解に答えさせたときにループが尋ねる判定で、それぞれが素性と答えを持ちます。CaboCha の学習モードと同じです。学習データのどの文でも、正解に答えさせると木が戻ります。</li>
 </ul>
 <h3 id="モデルファイル1437"><a class="header" href="#モデルファイル1437">モデルファイル（<a href="https://github.com/lindera/lindera/issues/1437">#1437</a>）</a></h3>
@@ -281,11 +287,21 @@
 <li><strong>区切りは、トレイト（<code>ChunkerData</code>）を通して読む。</strong> 解析器が分類器を読むのと同じ分け方です。学習の結果であるメモリ上のモデルと、ファイルの部分は、その 2 つの実装で、復号は同じコードです。dev・test・PUD のすべての文で、同じラベルになります。</li>
 <li><strong>文字列の表</strong>は、解析器が素性の番号のために共有する部品です。並べ替えてあり、枠を持ちます。枠は、文字列の 64 ビットの FNV-1a による、開番地法のハッシュ表で、1 つの文字列に 2 つ以上の枠があります。1 つの文の素性の文字列の大半は、モデルに入っていません（L1 で残るのは 4,325 個）。そのため、効くのは「無い」と分かるまでの速さです。枠の埋まり方を半分以下にしてあるので、探索は 1〜2 歩で空の枠に当たって終わります。</li>
 <li><strong><code>Chunker::chunk</code> と <code>Parser::parse</code> は、エラーを返す</strong>ようになりました。スキーマが読む列より少ない列の形態素に対してです。これまでは、そうした形態素を、空の列として解析していました。</li>
-<li><strong>ここでしていないこと</strong>: 解析器の部分、量子化（区切りの重みは <code>f64</code> のまま。<code>lindera-crf</code> と同じラベルを出すため）、チェックサム。途中で切れたファイルは長さで分かりますが、書き換わった重みは分かりません。</li>
+<li><strong>していないこと</strong>: 区切りの量子化（重みは <code>f64</code> のまま。<code>lindera-crf</code> と同じラベルを出すためで、区切りはモデルファイルの 4% である）、チェックサム。途中で切れたファイルは長さで分かりますが、書き換わった重みは分かりません。</li>
+</ul>
+<h3 id="解析器の学習とモデルファイルの解析器の部分1437"><a class="header" href="#解析器の学習とモデルファイルの解析器の部分1437">解析器の学習と、モデルファイルの解析器の部分（<a href="https://github.com/lindera/lindera/issues/1437">#1437</a>）</a></h3>
+<ul>
+<li><strong>1 つの空間に、2 つのアルゴリズム。</strong> 参照した 2 つの学習器は、同じ線形のモデルを学習します。バイアス、素性ごとの重み、対ごとの重みで、カーネル <code>(1 + s)^2</code> を展開した形です。刻み <code>d</code> は、それぞれに <code>d</code>、<code>3 d</code>、<code>2 d</code> を足します。CaboCha も、カーネルの問題をカーネルのまま解いてはいません（<code>src/svm_learn.cpp</code>）。ここの 2 つのアルゴリズムは、刻みの決め方だけが違います。対の重みをどこに置くかは、その両方の下にある 1 つの関数です。</li>
+<li><strong>dual coordinate descent</strong> は、CaboCha の <code>solveParameters</code> に従います。ヒンジ損失、コストによる上限、shrinking、毎回の乱数の順、射影勾配の幅 0.1 での停止です。判定の自分自身とのカーネルは、その判定の複数の対が同じ場所に当たるとき、その数の 2 乗で数えます。これで、対をハッシュで割り当てても刻みが正確になります。順は、クレートが持つ生成器（SplitMix64）と種から決まるので、同じデータからは同じモデルができます。</li>
+<li><strong>passive-aggressive</strong> は、opal に従います（PA-I）。刻みは、損失を素性の数で割った値で、コストを上限にします。対があると、1 つの刻みは点数を、素性の数の倍ほど動かしすぎます。そのため、コストが上限として効いていなければなりません。良いコストは 0.0005 の近くで、CaboCha の 0.0015 より小さい値です。重みの平均は、opal と同じ持ち方です。</li>
+<li><strong>学習は、分ではなく秒で終わる</strong>: 66,000 件の判定は、平均 37 個の素性を持ち、対は 1 件あたり約 680 個です。1 回りで、それぞれに 1 回ずつ触ります。train の全部を、1 コアで約 3 秒で学習します。</li>
+<li><strong>ファイルの解析器の部分</strong>は、素性の集合、バイアス、量子化の尺度、素性の文字列の表とその重み、対の重みを持ちます。対の重みは、<code>2^bits</code> 個の重みの表か、素性ごとに相手の素性の順に並べた対です。ファイルの分類器は、これらをその場で読みます。4 バイトの重みなら、メモリ上のモデルと最後のビットまで同じ点数になります。</li>
+<li><strong>対ごとの重みは、ここでの持ち方では遅い</strong>: 判定の対を 1 つずつ、片方の素性の対の中から二分探索で引きます。CaboCha は、頻度の上位 3,000 素性の対を三角形の配列に、残りを double array に持ちます。それは作っていません。ハッシュで同じ精度が出るためです。</li>
+<li><strong>スキーマの主辞と素性。</strong> #1422 の内容語の主辞は、索引に使う語としては良く、解析に使う語としては劣ります。CaboCha の主辞の規則と CaboCha の素性では、交差検証が 89.22% です。スキーマの主辞では 88.96% です。主辞の直後の形態素がこの差を戻し（89.19%）、それを足すと 2 つの規則に差は無くなります。</li>
+<li><strong><code>train-parser --chunker</code></strong> は、ほかのファイルの区切りの部分を、バイト列のまま写します（<code>ModelBuilder::from_model</code>）。区切りと解析器を別々に学習して、1 つのファイルにまとめられます。</li>
 </ul>
 <h2 id="これからの部分"><a class="header" href="#これからの部分">これからの部分</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>部分</th><th>メモ</th><th>Issue</th></tr></thead><tbody>
-<tr><td>解析器の学習と、モデルファイルの解析器の部分</td><td>学習の方法と素性の集合を交差検証で選ぶ。素性の対の重みの持ち方。量子化。大きさと速さ。モデルファイル自体と辞書の照合は済み。</td><td><a href="https://github.com/lindera/lindera/issues/1437">#1437</a></td></tr>
 <tr><td>トークンフィルター</td><td>設定ファイルとバインディングからの利用を含む。</td><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td></tr>
 <tr><td>コマンド</td><td><code>cabocha -f1</code> と互換の出力。</td><td><a href="https://github.com/lindera/lindera/issues/1439">#1439</a></td></tr>
 <tr><td>IPADIC のモデル</td><td>学習、リリース、ドキュメント、ライセンスの記載。クレートはこのときに公開する。</td><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td></tr>
@@ -299,7 +315,6 @@
 <li><strong>設定でのフィルターの名前。</strong> 設定ファイル、コマンド、バインディングから使うには、<code>lindera-analysis</code> の変更が要る。<code>TokenFilterLoader::load_from_value</code> は、<code>kind</code> に対する固定の <code>match</code> である。フィルターを <code>lindera-analysis</code> の feature の裏に置いて、このクレートのコアに依存させるか、<code>lindera-analysis</code> にフィルターの登録の仕組みを足すか、のどちらかになる。</li>
 <li><strong>結果を <code>Token</code> の型付きのフィールドに置くこと。</strong> <code>details</code> の文字列の列は、<code>as_value()</code> に出ない。</li>
 <li><strong>文節の番号は、文ごとに 0 から始まる。</strong> 1 つの入力に複数の文があると衝突する。文の番号を持つ 5 列目を足せば解決する。</li>
-<li><strong>解析器の学習のアルゴリズム</strong>（J.DepP の passive-aggressive か、CaboCha の dual coordinate descent か）と、重みの持ち方（feature hashing か、正確な表か）。どちらも測って決める。</li>
 <li>使えるライセンスの<strong>学習データを増やすこと</strong>。</li>
 </ul>
 <h2 id="目標"><a class="header" href="#目標">目標</a></h2>
@@ -310,7 +325,7 @@
 <tr><td>一貫の係り受けの精度</td><td>85.0 以上</td><td>84.3 以上</td></tr>
 </tbody></table>
 </div>
-<p>係り受けの目標は J.DepP から 1 ポイント引いた値で、ほかの 2 つは CaboCha の数字です。UD Japanese-PUD での同じ数字も報告します。区切りは達成済みです（96.85 と 96.92、#1421）。</p>
+<p>係り受けの目標は J.DepP から 1 ポイント引いた値で、ほかの 2 つは CaboCha の数字です。UD Japanese-PUD での同じ数字も報告します。IPADIC で、3 つとも達成済みです。区切りは 96.85 と 96.92（#1421）、正解の文節での係り受けは 90.11 と 88.53、end to end は 85.39 と 84.47 です（#1437）。基準そのものは記録に残る数字で、#1433 で測り直します。</p>
 <p>精度のほかの目標: 推論が <code>wasm32-unknown-unknown</code> 向けにビルドできる。解析器がトークンフィルターとしてもコマンドとしても動く。モデルの大きさと処理速度を測って文書にする。モデルは、学習データの出どころとライセンスを明記して公開する。</p>
 <h2 id="数字"><a class="header" href="#数字">数字</a></h2>
 <p>決定の根拠になった数字と、その出どころです。データは UD Japanese-GSD c662dc9 と UD Japanese-PUD cf69c5c で、このリポジトリの IPADIC で解析しています。</p>
@@ -369,7 +384,29 @@
 <h3 id="解析器"><a class="header" href="#解析器">解析器</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>数字</th><th>値</th><th>出どころ</th></tr></thead><tbody>
 <tr><td>正解に答えさせると木が戻る文</td><td>train 7,024 文のうち 7,024、dev 506 のうち 506、test 542 のうち 542、PUD 994 のうち 994</td><td>スクリプト: <code>parser_instances.sh</code></td></tr>
-<tr><td>学習事例の数（CaboCha の素性の集合）</td><td>train 66,000（正 33,512）、dev 4,881（2,474）、test 5,377（2,707）、PUD 12,739（6,077）</td><td>スクリプト: <code>parser_instances.sh</code></td></tr>
+<tr><td>学習事例の数</td><td>train 66,000（正 33,512）、dev 4,881（2,474）、test 5,377（2,707）、PUD 12,739（6,077）</td><td>スクリプト: <code>parser_instances.sh</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="解析器の学習"><a class="header" href="#解析器の学習">解析器の学習</a></h3>
+<p>level 1 は、各文の最後を除く文節のうち、係り先が正しいものの割合です。交差検証は train の 10 分割（49,372 文節）で、正解の文節の上で行います。「p」は、係り受けごとの McNemar の正確検定です。断りが無ければ、設定は、CaboCha の素性の集合、コスト 0.0015 の dual coordinate descent、対ごとの重み、4 バイトの重みです。全部の設定は、クレートの README にあります。</p>
+<div class="table-wrapper"><table><thead><tr><th>数字</th><th>値</th><th>出どころ</th></tr></thead><tbody>
+<tr><td>学習の 1 件の判定の素性</td><td>平均 37.1 個、最大 58 個。train に 96,003 種類あり、2 件以上の判定に出るのは 60,050 種類</td><td>CaboCha の素性の集合（<code>--features</code>）で作った <code>parser_instances.sh</code> のファイルを、<code>awk</code> と <code>sort</code> で数えた。スクリプトは残していない</td></tr>
+<tr><td>dual coordinate descent、コストごと</td><td>0.0005: 88.11%、0.001: 88.79%、0.0015: 88.96%、0.002: 89.01%、0.003: 88.91%、0.005: 88.76%、0.01: 88.72%</td><td>スクリプト: <code>parser_experiments.sh algorithm</code></td></tr>
+<tr><td>passive-aggressive、平均化、30 回、コストごと</td><td>0.0005: 88.88%、0.001: 88.81%、0.005: 88.83%。平均化なしは 88.76%、88.70%、88.33%</td><td>スクリプト: <code>parser_experiments.sh algorithm</code></td></tr>
+<tr><td>dual coordinate descent と passive-aggressive（0.0005、30 回、平均化）</td><td>前者だけが正しい係り受け 559、後者だけ 518、p = 0.22。1 分割あたり 6.3 秒と 8.2 秒</td><td>スクリプト: <code>parser_experiments.sh compare</code></td></tr>
+<tr><td>CaboCha の素性の集合から 1 つの群を除く</td><td><code>right</code>: 88.53%（p &lt; 0.001）、<code>gap</code>: 88.75%（p &lt; 0.001）、<code>children</code>: 88.87%（p = 0.07）、<code>left</code>: 88.93%、<code>distance</code>: 88.94%</td><td>スクリプト: <code>parser_experiments.sh features</code>、<code>compare</code></td></tr>
+<tr><td>主辞の直後の形態素を足す</td><td>89.19%、足さないと 88.96%。係り受け 637 と 523、p = 0.0009</td><td>スクリプト: <code>parser_experiments.sh features</code>、<code>compare</code></td></tr>
+<tr><td>CaboCha の規則の主辞と、スキーマの主辞。CaboCha の素性で</td><td>89.22% と 88.96%。主辞の直後の形態素を足すと 89.23% と 89.19%</td><td>リポジトリの外のプログラム。<code>head_variants/</code> と同じ作り方のスキーマの変種で学習する。残していない</td></tr>
+<tr><td>3 件以上の判定に出る対だけ。全部の群の素性で</td><td>89.19%。全部の対と同じ（p = 0.93）。対は 4,168,732 個に対して 1,310,821 個</td><td>スクリプト: <code>parser_experiments.sh pairs</code>、<code>compare</code></td></tr>
+<tr><td>対を 2^16、2^18、2^20、2^21、2^22、2^24 個の重みにハッシュで割り当てる</td><td>88.81%、89.14%、89.15%、89.19%、89.21%、89.22%。対ごとの重み（89.19%）に対して、2^18: p = 0.43、2^20: p = 0.36、2^22: p = 0.60</td><td>スクリプト: <code>parser_experiments.sh storage</code>、<code>compare</code></td></tr>
+<tr><td>同じものを、train の全部で学習して dev で。1 バイトの重み</td><td>2^18: 89.92%、2^20: 89.81%、2^21: 90.03%、2^22: 90.11%</td><td>スクリプト: <code>parser_experiments.sh storage</code></td></tr>
+<tr><td>2 バイトと 1 バイトの重みを、4 バイトと比べる。対は 2^22 個にハッシュ</td><td>出力が同じ。係り受け 18 と 16、p = 0.86</td><td>スクリプト: <code>parser_experiments.sh quantization</code>、<code>compare</code></td></tr>
+<tr><td>既定: 正解の文節での level 1</td><td>dev 90.11%（3,281 / 3,641）、test 88.53%（3,512 / 3,967）、PUD 88.81%（7,859 / 8,849）</td><td>スクリプト: <code>parser_experiments.sh final</code></td></tr>
+<tr><td>既定: end to end</td><td>dev 85.39%（3,109 / 3,641）、test 84.47%（3,351 / 3,967）、PUD 86.19%（7,627 / 8,849）</td><td>スクリプト: <code>parser_experiments.sh final</code></td></tr>
+<tr><td>既定を CaboCha の素性の集合にした場合</td><td>正解の文節で dev 89.15%、test 88.30%、PUD 88.33%。end to end で dev 84.45%、test 84.30%、PUD 85.59%</td><td>スクリプト: <code>parser_experiments.sh final</code></td></tr>
+<tr><td>既定のモデル</td><td>区切りを含めて 6,258,548 バイト。素性の文字列 62,380 個。19 回り、66,000 件の判定のうちサポートベクター 21,374 件。約 3 秒。2 回学習して同じバイト列</td><td>スクリプト: <code>parser_experiments.sh final</code></td></tr>
+<tr><td>既定のモデルを test の 542 文で。AMD Ryzen AI Max+ 395 の 1 コア</td><td>読み込み 2,732 マイクロ秒。区切り毎秒 20,354 文、解析 16,678 文、両方で 8,718 文</td><td>スクリプト: <code>parser_experiments.sh speed</code></td></tr>
+<tr><td>同じものを、対のほかの持ち方で</td><td>ハッシュ・4 バイト: 19,028,600 バイト、解析 13,375 文。対ごとの重み・1 バイト: 24,514,588 バイト、2,741 文。4 バイト: 38,162,161 バイト、2,679 文</td><td>スクリプト: <code>parser_experiments.sh speed</code></td></tr>
 </tbody></table>
 </div>
 <h3 id="モデルファイル"><a class="header" href="#モデルファイル">モデルファイル</a></h3>
@@ -403,7 +440,7 @@
 <tr><td><a href="https://github.com/lindera/lindera/issues/1434">#1434</a></td><td>ドキュメントの章</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1436">#1436</a></td><td>係り受けの解析器。ループ、素性、学習事例</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1433">#1433</a></td><td>CaboCha・J.DepP の基準の測り直し</td><td>未着手</td></tr>
-<tr><td><a href="https://github.com/lindera/lindera/issues/1437">#1437</a></td><td>モデルファイル（済み）と、解析器の学習</td><td>作業中</td></tr>
+<tr><td><a href="https://github.com/lindera/lindera/issues/1437">#1437</a></td><td>モデルファイルと、解析器の学習</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td><td>トークンフィルター</td><td>未着手</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1439">#1439</a></td><td>コマンド</td><td>未着手</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td><td>IPADIC のモデルと、クレートの公開</td><td>未着手</td></tr>

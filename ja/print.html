@@ -2449,14 +2449,14 @@ let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, thr
 </code></pre>
 <h2 id="状態"><a class="header" href="#状態">状態</a></h2>
 <blockquote>
-<p>このクレートは<strong>開発中で、crates.io にはまだ公開していません</strong>。<strong>係り受けの解析器には、学習済みのモデルがまだありません</strong>。解析のループと素性はあり、渡された重みで解析できますが、その重みを学習することはまだできません。完成しているのは、その手前のすべてです。型、学習データ、評価、文節の区切り、文節の主辞と機能語があります。</p>
+<p>このクレートは<strong>開発中で、crates.io にはまだ公開していません</strong>。<strong>配布しているモデルも、まだありません</strong>。自分で学習したモデルを使えば、形態素から係り受けまでの解析が一通りできます。学習データ、文節の区切り、解析器、モデルファイル、評価が揃っています。これからの部分は、公開するモデル、Lindera のトークンフィルター、テキストを受けるコマンドです。</p>
 </blockquote>
 <p>いま使うには、<a href="https://github.com/lindera/lindera">リポジトリ</a>の checkout からビルドします。最初のリリースまでは、インターフェースが変わることがあります。作業は <a href="https://github.com/lindera/lindera/issues/1417">#1417</a> で追っています。</p>
 <h2 id="できること"><a class="header" href="#できること">できること</a></h2>
 <ul>
 <li><strong>文の形態素を文節に区切る</strong>（チャンキング）。条件付き確率場と、重みの表だけのモデルを使います。IPADIC では、UD Japanese-GSD の dev で F 値 96.85、test で 96.92 です。</li>
 <li><strong>モデルを辞書ごとの 1 つのファイルに持ち、その場で読む</strong>。プログラムに埋め込んだバイト列、ファイルから読んだバイト列、メモリマップのどれでも、表を写さずに読みます。ファイルは自分の辞書の名前を持ち、その辞書のものではありえない形態素は断ります。</li>
-<li><strong>文節の係り受けを解析する</strong>。CaboCha・J.DepP と同じく、shift-reduce と、素性とその対の上の分類器を使います。分類器の重みは外から渡します。その分類器の学習事例も書き出せます。</li>
+<li><strong>文節の係り受けを解析する</strong>。CaboCha・J.DepP と同じく、shift-reduce と、素性とその対の上の分類器を使い、その分類器を学習します。IPADIC では、UD Japanese-GSD の dev で、正解の文節なら 90.11% の文節が正しい係り先になり（test は 88.53%）、形態素からなら 85.39% です（test は 84.47%）。</li>
 <li><strong>文節の主辞と機能語を求め</strong>、句読点と括弧を見分ける。辞書のスキーマから決めます。最初のスキーマは IPADIC です。</li>
 <li>CaboCha の<strong>ラティス形式</strong>（<code>cabocha -f1</code>）<strong>を読み書きし</strong>、文が、解析器の仮定する木であるかを検査する。</li>
 <li>UD Japanese-GSD のような係り受けのコーパスから、解析器を動かす辞書の形態素の上で、<strong>学習データを作る</strong>。</li>
@@ -2467,7 +2467,7 @@ let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, thr
 <ul>
 <li><a href="./lindera-dependency/architecture.html">アーキテクチャ</a> -- モジュール、型、ラティス形式、feature フラグ</li>
 <li><a href="./lindera-dependency/chunking.html">文節の区切り</a> -- 形態素を文節に区切る、モデルを学習する</li>
-<li><a href="./lindera-dependency/parsing.html">係り受けの解析</a> -- 文節の係り先を求める。ループ、素性、学習事例</li>
+<li><a href="./lindera-dependency/parsing.html">係り受けの解析</a> -- 文節の係り先を求める。ループ、素性、モデルの学習、精度</li>
 <li><a href="./lindera-dependency/model_file.html">モデルファイル</a> -- 辞書のファイル。その場で読む、辞書を照合する、形式</li>
 <li><a href="./lindera-dependency/head_and_function_word.html">主辞と機能語</a> -- 辞書のスキーマと、文節の 2 つの語</li>
 <li><a href="./lindera-dependency/training_data.html">学習データ</a> -- UD Japanese-GSD から学習データを作る</li>
@@ -2501,6 +2501,8 @@ let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, thr
 │   ├── features.rs       # Group, FeatureSet: the features of a decision
 │   ├── shift_reduce.rs   # The loop over the bunsetsu
 │   ├── classifier.rs     # Classifier, LinearClassifier
+│   ├── model.rs          # ParserModel, ParserPart: the weights, in memory and on a file
+│   ├── train.rs          # Training: dual coordinate descent, passive-aggressive (train)
 │   └── oracle.rs         # Training instances from an answer
 ├── corpus.rs             # Training data from a dependency corpus (train)
 ├── corpus/
@@ -2595,9 +2597,9 @@ assert_eq!(output, text.as_bytes());
 <h3 id="chunker--chunkermodel"><a class="header" href="#chunker--chunkermodel">Chunker / ChunkerModel</a></h3>
 <p><code>Chunker</code> は、素性の文字列から重みへの表と、その表の学習に使ったスキーマ、列、テンプレートで、形態素を文節に区切ります。これらは <code>ChunkerData</code> トレイトを通して読みます。読む先は、メモリ上の <code>ChunkerModel</code>（学習の結果）か、モデルファイルの区切りの部分です。<a href="lindera-dependency/./chunking.html">文節の区切り</a>を参照してください。</p>
 <h3 id="model--modelbuilder"><a class="header" href="#model--modelbuilder">Model / ModelBuilder</a></h3>
-<p><code>Model</code> は、辞書のモデルファイルです。所有するか借りるバイト列を、その場で読みます。辞書の名前、スキーマ、学習した部分を持ちます。<code>ModelBuilder</code> はファイルを書きます。<a href="lindera-dependency/./model_file.html">モデルファイル</a>を参照してください。</p>
+<p><code>Model</code> は、辞書のモデルファイルです。所有するか借りるバイト列を、その場で読みます。辞書の名前、スキーマ、学習した部分（文節の区切りと解析器）を持ちます。<code>Model::analyze</code> は、文を形態素から係り受けまで解析します。<code>ModelBuilder</code> はファイルを書きます。<a href="lindera-dependency/./model_file.html">モデルファイル</a>を参照してください。</p>
 <h3 id="parser--classifier"><a class="header" href="#parser--classifier">Parser / Classifier</a></h3>
-<p><code>Parser</code> は、shift-reduce で各文節の係り先を求めます。1 回の判定の素性は、スキーマを通して作る文字列です。<code>FeatureSet</code> がどの群の素性を作るかを決め、<code>Classifier</code> が素性に点数を付けます。<code>LinearClassifier</code> は、素性の重みとその対の重みを足します。<code>parser::instances</code> は、正解のある文から分類器の学習事例を作ります。<a href="lindera-dependency/./parsing.html">係り受けの解析</a>を参照してください。</p>
+<p><code>Parser</code> は、shift-reduce で各文節の係り先を求めます。1 回の判定の素性は、スキーマを通して作る文字列です。<code>FeatureSet</code> がどの群の素性を作るかを決め、<code>Classifier</code> が、素性の重みとその対の重みを足して点数を付けます。モデルファイルの分類器は <code>ParserPart</code> で、ファイルのバイト列の上で重みを読みます。<code>ParserModel</code> は、学習の結果の重みをメモリに持ちます。<code>LinearClassifier</code> は、手で作った重みを受け取ります。<code>parser::instances</code> は正解のある文から学習事例を作り、<code>parser::train</code> がそれで学習します。<a href="lindera-dependency/./parsing.html">係り受けの解析</a>を参照してください。</p>
 <h3 id="コマンド"><a class="header" href="#コマンド">コマンド</a></h3>
 <p><code>train</code> feature を付けると、<code>lindera-dependency</code> コマンドがビルドされます。分かち書きには <code>lindera-segmenter</code> を使います。</p>
 <div class="table-wrapper"><table><thead><tr><th>サブコマンド</th><th>内容</th><th>ページ</th></tr></thead><tbody>
@@ -2607,13 +2609,15 @@ assert_eq!(output, text.as_bytes());
 <tr><td><code>train-chunker</code></td><td>文節の区切りを学習し、モデルファイルを書く</td><td><a href="lindera-dependency/./chunking.html">文節の区切り</a></td></tr>
 <tr><td><code>chunk</code></td><td>モデルファイルで、ファイルの形態素を区切り直す</td><td><a href="lindera-dependency/./chunking.html">文節の区切り</a></td></tr>
 <tr><td><code>instances</code></td><td>解析器の学習事例を書き出す</td><td><a href="lindera-dependency/./parsing.html">係り受けの解析</a></td></tr>
+<tr><td><code>train-parser</code></td><td>解析器を学習し、モデルファイルを書く。ほかのファイルの区切りを入れられる</td><td><a href="lindera-dependency/./parsing.html">係り受けの解析</a></td></tr>
+<tr><td><code>parse</code></td><td>モデルファイルで、ファイルの係り先を求める。文節の上で、または形態素から</td><td><a href="lindera-dependency/./parsing.html">係り受けの解析</a></td></tr>
 </tbody></table>
 </div>
 <p>コマンドは <code>lindera-cli</code> ではなく、このクレートにあります。<code>lindera-cli</code> は公開されているので、公開していないクレートに依存できません。</p>
 <h2 id="feature-フラグ-2"><a class="header" href="#feature-フラグ-2">Feature フラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td>（なし）</td><td>型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器。依存がなく、<code>wasm32-unknown-unknown</code> 向けにビルドできる</td><td>Yes</td></tr>
-<tr><td><code>train</code></td><td><code>corpus</code> と <code>evaluation</code> のモジュール、<code>lindera-crf</code> による区切りの学習、<code>lindera-dependency</code> コマンド（分かち書きは <code>lindera-segmenter</code>）</td><td>No</td></tr>
+<tr><td><code>train</code></td><td><code>corpus</code> と <code>evaluation</code> のモジュール、<code>lindera-crf</code> による区切りの学習と解析器の学習、<code>lindera-dependency</code> コマンド（分かち書きは <code>lindera-segmenter</code>）</td><td>No</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>コマンドに IPADIC を埋め込む。<code>--dict embedded://ipadic</code> で使う（<code>train</code> を含む）</td><td>No</td></tr>
 </tbody></table>
 </div>
@@ -2650,7 +2654,7 @@ assert_eq!(ranges, [0..2, 2..4, 4..7]);
 <p><code>Chunker::chunk</code> は <code>&amp;self</code> を取り、chunker は <code>Send + Sync</code> なので、1 つの chunker を複数のスレッドで使えます。先頭の形態素は必ず文節を始め、空の文には文節がありません。</p>
 <p>形態素は、モデルを学習した辞書のもので、同じ設定で分かち書きしたものでなければなりません。モデルは 1 つの辞書に属します。モデルのスキーマが読む列より少ない列しか持たない形態素は、エラーで断ります。<a href="lindera-dependency/./model_file.html#%E8%BE%9E%E6%9B%B8%E3%81%AE%E7%85%A7%E5%90%88">辞書の照合</a>を参照してください。</p>
 <h3 id="主辞と機能語を付ける"><a class="header" href="#主辞と機能語を付ける">主辞と機能語を付ける</a></h3>
-<p>モデルファイルは、辞書の<a href="lindera-dependency/./head_and_function_word.html">スキーマ</a>を持っていて、そこから各文節の主辞と機能語が決まります。次の例は、結果をラティス形式で書き出します。解析器がまだ無いので、ここでの係り先は仮のものです。どの文節も次の文節に係るとしています。</p>
+<p>モデルファイルは、辞書の<a href="lindera-dependency/./head_and_function_word.html">スキーマ</a>を持っていて、そこから各文節の主辞と機能語が決まります。次の例は、結果をラティス形式で書き出します。ここでの係り先は仮のもので、どの文節も次の文節に係るとしています。係り先は<a href="lindera-dependency/./parsing.html">解析器</a>が求めます。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let schema = model.schema();
@@ -2708,7 +2712,7 @@ bytes: 261851
 <pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 </code></pre>
-<p><a href="lindera-dependency/./parsing.html">解析器</a>の学習済みのモデルがまだ無いので、どの文節も次の文節に係るとして書き出します。</p>
+<p>どの文節も次の文節に係るとして書き出します。区切りだけを測るためです。区切ってから解析するのは <a href="lindera-dependency/./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>parse --chunk</code></a> です。</p>
 <h2 id="精度"><a class="header" href="#精度">精度</a></h2>
 <p>既定の設定で、UD Japanese-GSD（commit c662dc9）の train を IPADIC で学習したときの値です。</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th>F</th><th>精度</th><th>再現率</th><th>すべての文節が合った文</th></tr></thead><tbody>
@@ -2727,9 +2731,56 @@ bytes: 261851
 <p>復号は、素性の文字列と重みの表だけを見ます。<code>Chunker::features</code> が文字列を作り、<code>Chunker::labels</code> がそれを復号するので、自分で書いた取り出し方から同じ復号を使えます。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="係り受けの解析"><a class="header" href="#係り受けの解析">係り受けの解析</a></h1>
 <p>係り受けの解析は、文の文節ごとに、その文節が係る先の文節を求めます。<code>parser</code> モジュールは、CaboCha・J.DepP と同じ方法で求めます。スタックを使って文節を左から右へたどり（shift-reduce）、分類器が 1 回に 1 つの問いに答えます。</p>
-<blockquote>
-<p>このクレートには、<strong>解析器の学習済みのモデルがまだありません</strong>。今あるのは、解析のループ、素性、手や実験で作った重みを受け取る分類器、分類器の学習事例です。学習とモデルのファイルは <a href="https://github.com/lindera/lindera/issues/1437">#1437</a> で追っています。</p>
-</blockquote>
+<p>配布しているモデルは、まだありません。<a href="lindera-dependency/./training_data.html">学習データ</a>から<a href="lindera-dependency/parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B">学習</a>してください。数秒で終わります。</p>
+<h2 id="モデルで解析する"><a class="header" href="#モデルで解析する">モデルで解析する</a></h2>
+<p><a href="lindera-dependency/./model_file.html">モデルファイル</a>は、1 つの辞書の文節の区切りと解析器を持ちます。両方があれば、文を形態素から係り受けまで解析できます。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::io;
+
+use lindera_dependency::lattice::{self, LatticeMorpheme};
+use lindera_dependency::model::Model;
+use lindera_dependency::Sentence;
+
+let model = Model::new(std::fs::read("ipadic.model")?)?;
+let chunker = model.chunker().expect("the file has a chunker");
+let parser = model.parser().expect("the file has a parser");
+
+// The morphemes of 彼は赤い花を見た。 as IPADIC gives them.
+let morphemes = vec![
+    LatticeMorpheme::new("彼", "名詞,代名詞,一般,*,*,*,彼,カレ,カレ"),
+    LatticeMorpheme::new("は", "助詞,係助詞,*,*,*,*,は,ハ,ワ"),
+    LatticeMorpheme::new("赤い", "形容詞,自立,*,*,形容詞・アウオ段,基本形,赤い,アカイ,アカイ"),
+    LatticeMorpheme::new("花", "名詞,一般,*,*,*,*,花,ハナ,ハナ"),
+    LatticeMorpheme::new("を", "助詞,格助詞,一般,*,*,*,を,ヲ,ヲ"),
+    LatticeMorpheme::new("見", "動詞,自立,*,*,一段,連用形,見る,ミ,ミ"),
+    LatticeMorpheme::new("た", "助動詞,*,*,*,特殊・タ,基本形,た,タ,タ"),
+    LatticeMorpheme::new("。", "記号,句点,*,*,*,*,。,。,。"),
+];
+let ranges = chunker.chunk(&amp;morphemes)?;
+let bunsetsu = parser.parse(&amp;morphemes, &amp;ranges)?;
+
+// The result is a sentence the lattice format can hold.
+let sentence = Sentence::new(morphemes, bunsetsu)?;
+lattice::write(&amp;mut io::stdout(), &amp;sentence)?;
+<span class="boring">}</span></code></pre></pre>
+<!-- markdownlint-disable MD010 -->
+<pre><code class="language-text">* 0 3D 0/1 0.000000
+彼	名詞,代名詞,一般,*,*,*,彼,カレ,カレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
+* 1 2D 0/0 0.704616
+赤い	形容詞,自立,*,*,形容詞・アウオ段,基本形,赤い,アカイ,アカイ
+* 2 3D 0/1 0.000000
+花	名詞,一般,*,*,*,*,花,ハナ,ハナ
+を	助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+* 3 -1D 0/1 0.000000
+見	動詞,自立,*,*,一段,連用形,見る,ミ,ミ
+た	助動詞,*,*,*,特殊・タ,基本形,た,タ,タ
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<!-- markdownlint-enable MD010 -->
+<p>各文節は、係り先、主辞と機能語の位置、その文節を係らせた判定の点数を持ちます。点数は 0 より大きく、大きいほど確かです。ここでは、赤い が 花を に、点数 0.70 で係っています。根と、根に係る文節の点数は 0 です。その判定は尋ねないためです。<code>Model::analyze</code> は、この 2 段を 1 回の呼び出しで行います。多くの文を解析するときは、上のように区切りと解析器を 1 回だけ取り出してください。どちらも <code>&amp;self</code> を取り、複数のスレッドで使えます。</p>
 <h2 id="文を解析する手順"><a class="header" href="#文を解析する手順">文を解析する手順</a></h2>
 <p>1 回の判定は、2 つの文節についての問いです。<strong>係り元</strong>（source）は<strong>係り先の候補</strong>（target）に係るか、を尋ねます。</p>
 <ol>
@@ -2749,7 +2800,7 @@ bytes: 261851
 </tbody></table>
 </div>
 <h2 id="解析器を使う"><a class="header" href="#解析器を使う">解析器を使う</a></h2>
-<p><code>Parser</code> は、辞書の<a href="lindera-dependency/./head_and_function_word.html">スキーマ</a>、素性の集合、分類器を受け取ります。次の分類器は手で作ったもので、重みは 1 つだけです。を で終わる文節は、次の文節に係ります。</p>
+<p>モデルファイルの解析器は、ファイルの分類器を持つ <code>Parser</code> です。<code>Parser</code> は部品からも作れます。辞書の<a href="lindera-dependency/./head_and_function_word.html">スキーマ</a>、素性の集合、分類器の 3 つです。次の分類器は手で作ったもので、重みは 1 つだけです。を で終わる文節は、次の文節に係ります。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::collections::HashMap;
@@ -2813,9 +2864,16 @@ EOS
 <li><code>score</code> は、1 回の判定の素性の番号に点数を付けます。点数が 0 より大きいとき、係り元は係り先の候補に係ります。</li>
 </ul>
 <p>CaboCha と同じく、判定のたびに文字列を引くことはありません。</p>
-<p><code>LinearClassifier</code> は、今のところこのクレートが持つただ 1 つの分類器です。点数は、バイアスに、判定の各素性の重みと、素性の各対の重みを足したものです。CaboCha・J.DepP の 2 次の多項式カーネルを展開すると、この形になります。重みはメモリ上のハッシュ表で持ちます。手や実験で作った重みで解析するには、これで足ります。</p>
+<p>このクレートの分類器はどれも、バイアスに、判定の各素性の重みと、素性の各対の重みを足して点数にします。CaboCha・J.DepP の 2 次の多項式カーネルを展開すると、この形になります。</p>
+<div class="table-wrapper"><table><thead><tr><th>分類器</th><th>重みの置き場所</th></tr></thead><tbody>
+<tr><td><code>ParserPart</code></td><td>モデルファイルのバイト列の上。<code>Model::parser</code> が、これを持つ解析器を返す</td></tr>
+<tr><td><code>ParserModel</code></td><td>メモリ上。学習の結果で、<code>ModelBuilder</code> が書き出すもの</td></tr>
+<tr><td><code>LinearClassifier</code></td><td>メモリ上の、素性の名前で引くハッシュ表。手で作った重みのためのもの</td></tr>
+</tbody></table>
+</div>
+<p>学習したモデルは、対の重みを、決まった大きさの表に持ちます。対はこの表にハッシュで割り当てるので、同じ場所に当たった対は重みを共有します。対ごとに重みを持つ形も選べます（<code>--pairs exact</code>）。<a href="lindera-dependency/parsing.html#%E6%97%A2%E5%AE%9A%E3%81%AE%E9%81%B8%E3%81%B3%E6%96%B9">既定の選び方</a>を参照してください。</p>
 <h2 id="素性"><a class="header" href="#素性">素性</a></h2>
-<p>1 回の判定の素性は文字列で、名前は CaboCha と同じです。ほとんどの素性は文節ごとに 1 回作り、判定のときに、見ている文節の分を組み合わせます。素性は並べ替えてあり、同じものは 1 つだけです。</p>
+<p>1 回の判定の素性は文字列で、名前は CaboCha と同じです。CaboCha に無い群が 1 つあります。ほとんどの素性は文節ごとに 1 回作り、判定のときに、見ている文節の分を組み合わせます。素性は並べ替えてあり、同じものは 1 つだけです。</p>
 <div class="table-wrapper"><table><thead><tr><th>群</th><th>素性</th><th>例</th></tr></thead><tbody>
 <tr><td><code>distance</code></td><td>係り元から係り先の候補までの文節の数。1、2〜5、6 以上</td><td><code>DIST:1</code>、<code>DIST:2-5</code>、<code>DIST:6-</code></td></tr>
 <tr><td><code>source</code></td><td>係り元の文節。主辞（<code>H</code>）、機能語（<code>F</code>）、最初の形態素（<code>L</code>）、最後の形態素（<code>R</code>）の表層、品詞の各階層（最初の <code>*</code> まで）、活用形。句読点と括弧。文節の中のすべての助詞。文の最初の文節か、最後の文節か</td><td><code>SHS:彼</code>、<code>SHP0:名詞</code>、<code>SFS:は</code>、<code>SRF:基本形</code>、<code>SPUNC:、</code>、<code>SOB:「</code>、<code>SOB:1</code>、<code>SCASE:は</code>、<code>SBOS:1</code></td></tr>
@@ -2824,25 +2882,29 @@ EOS
 <tr><td><code>right</code></td><td>係り先の候補の 1 つ後の文節の、最初の形態素・主辞・機能語の表層</td><td><code>RL:言う</code>、<code>RH:言う</code>、<code>RF:言う</code></td></tr>
 <tr><td><code>children</code></td><td>すでに係り元に係った文節（<code>a:</code>）と、係り先の候補に係った文節（<code>A:</code>）。それぞれを機能語で表す。助詞・副詞・連体詞・接続詞なら表層、そうでなければ活用形、それも無ければ品詞</td><td><code>a:は</code>、<code>A:を</code>、<code>A:基本形</code>、<code>a:名詞-一般</code></td></tr>
 <tr><td><code>gap</code></td><td>係り元と係り先の候補の間の文節。句読点、括弧、機能語が助詞のときのその助詞。間で括弧が開くか閉じるか</td><td><code>GPUNC:、</code>、<code>GOB:「</code>、<code>GCASE:を</code>、<code>GNB:1</code>（どちらもない）、<code>GOB:1</code>、<code>GCB:1</code>、<code>GBB:1</code>（両方）</td></tr>
+<tr><td><code>after</code></td><td>係り元と係り先の候補の、主辞の直後の形態素（<code>N</code>）。表層、品詞の各階層、活用形</td><td><code>SNS:し</code>、<code>SNP0:動詞</code>、<code>SNF:連用形</code>、<code>DNS:こと</code></td></tr>
 </tbody></table>
 </div>
 <p>それまでの判定に左右されるのは、<code>children</code> の素性だけです。</p>
+<p><code>after</code> の群は、CaboCha のものではありません。CaboCha は、文節の中で機能語でない最後の語を主辞にします。<a href="lindera-dependency/./head_and_function_word.html">スキーマ</a>の主辞は内容語で、その 1 つ前の語になることがあります。利用 / し / た の 利用、読む / こと / を の 読む です。このとき、文節が全体として動詞なのか名詞なのかは、主辞の直後の語で分かります。解析器にはこの情報が要ります。この素性を足すと、主辞を内容語のままにして、CaboCha の主辞を使ったときと同じ精度になります。</p>
 <p>解析器のコードには、品詞の名前も列の番号も書いていません。主辞と機能語、品詞の階層、活用形、助詞（<code>Schema::particles</code>）、係った文節の素性に表層を使う語（<code>Schema::lexicalized</code>）、記号は、すべてスキーマから取ります。</p>
 <h3 id="素性の集合"><a class="header" href="#素性の集合">素性の集合</a></h3>
-<p>どの群を作るかは、文節の区切りのテンプレートと同じく、データです。<code>FeatureSet</code> は、群の名前をコンマでつないだ文字列で書きます。<code>FeatureSet::cabocha()</code> は全部の群を持ちます。</p>
-<pre><code class="language-text">distance,source,target,left,right,children,gap
+<p>どの群を作るかは、文節の区切りのテンプレートと同じく、データです。<code>FeatureSet</code> は、群の名前をコンマでつないだ文字列で書きます。既定の <code>FeatureSet::default()</code> は全部の群を持ちます。</p>
+<pre><code class="language-text">distance,source,target,left,right,children,gap,after
 </code></pre>
+<p><code>FeatureSet::cabocha()</code> は、ここから <code>after</code> を除いたものです。モデルファイルは、解析器の素性の集合を持ちます。</p>
 <p>分類器は、1 つの集合の素性で学習し、同じ集合で解析します。</p>
 <h3 id="cabocha-との違い"><a class="header" href="#cabocha-との違い">CaboCha との違い</a></h3>
 <div class="table-wrapper"><table><thead><tr><th></th><th>CaboCha</th><th>このクレート</th><th>理由</th></tr></thead><tbody>
 <tr><td>表層</td><td>表で正規化する（全角と半角）</td><td>トークナイザーが出したまま</td><td>スキーマが、記号を品詞と表層の両方で、全角も半角も見分ける</td></tr>
 <tr><td>句読点と括弧</td><td>。と 、、開き括弧 10 種と閉じ括弧 10 種を、正規化した表層で見分ける</td><td>スキーマのもの。<code>,</code> <code>.</code> <code>，</code> <code>．</code> と、より多くの括弧も含む</td><td>IPADIC は、半角の記号を名詞として出す</td></tr>
 <tr><td>主辞と機能語</td><td>タグセットごとのパターンによる <code>findHead</code></td><td><code>Schema::positions</code>。IPADIC のパターンを足してある</td><td><a href="lindera-dependency/./head_and_function_word.html">主辞と機能語</a>を参照</td></tr>
+<tr><td>主辞の直後の形態素</td><td>そのような素性は無い</td><td><code>after</code> の群</td><td>スキーマの主辞は内容語であるため</td></tr>
 <tr><td>係り先が分からない文節</td><td>次の文節に係るとして進め、事例にしない（部分的な学習）</td><td>扱わない。係り先の無い文節は根</td><td>学習データは、すべての文節の係り先を持つ</td></tr>
 <tr><td>最後の文節への係りの点数</td><td>直前の判定の点数（関係のない値）</td><td>0</td><td>その判定は尋ねない</td></tr>
 </tbody></table>
 </div>
-<p>J.DepP には、CaboCha に無い素性があります。2 つの文節の主辞の表層が同じかどうか（並列の手がかり）と、括弧の有無ではなく釣り合いです。これらは、<a href="https://github.com/lindera/lindera/issues/1437">#1437</a> で素性の集合を比べるときの候補です。</p>
+<p>J.DepP には、CaboCha に無い素性があります。2 つの文節の主辞の表層が同じかどうか（並列の手がかり）と、括弧の有無ではなく釣り合いです。これらは入れていません。精度の目標に、これら無しで届いたためです。</p>
 <h2 id="学習事例"><a class="header" href="#学習事例">学習事例</a></h2>
 <p>分類器は、解析器が尋ねる判定で学習します。<code>parser::instances</code> は、係り先が分かっている文でループを回し、分類器の代わりに正解に答えさせます。CaboCha の学習モードと同じです。1 回の判定が 1 件の事例で、その素性と、係り元が係り先の候補に係るかどうかを持ちます。<code>children</code> の素性は、その時点までの正解のものです。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -2884,10 +2946,10 @@ for instance in parser::instances(&amp;Schema::ipadic(), &amp;set, sentence)? {
 <p><code>train</code> feature を付けると、<code>lindera-dependency instances</code> が、ラティス形式のファイルの学習事例を、IPADIC のスキーマで書き出します。</p>
 <pre><code class="language-shell">lindera-dependency instances --input train.lattice --output train.instances
 </code></pre>
-<p>1 行が 1 件の事例です。<code>+1</code> か <code>-1</code> の後に、素性の文字列がタブ区切りで続きます。文ごとに空行が 1 つ入るので、ファイルを文の境目で分割できます。<code>--features</code> は素性の集合を受け取り、既定は CaboCha の集合です。</p>
+<p>1 行が 1 件の事例です。<code>+1</code> か <code>-1</code> の後に、素性の文字列がタブ区切りで続きます。文ごとに空行が 1 つ入るので、ファイルを文の境目で分割できます。<code>--features</code> は素性の集合を受け取り、既定は全部の群です。</p>
 <p>報告は標準エラーに出ます。UD Japanese-GSD の train では、次のとおりです。</p>
 <pre><code class="language-text">train.lattice
-features: distance,source,target,left,right,children,gap
+features: distance,source,target,left,right,children,gap,after
 sentences: 7024
 bunsetsu: 56396
 instances: 66000
@@ -2901,10 +2963,75 @@ negative: 32488
 <tr><td>UD Japanese-GSD test</td><td>542</td><td>4,509</td><td>5,377</td><td>2,707</td><td>2,670</td></tr>
 <tr><td>UD Japanese-PUD</td><td>994</td><td>9,843</td><td>12,739</td><td>6,077</td><td>6,662</td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="モデルファイル"><a class="header" href="#モデルファイル">モデルファイル</a></h1>
-<p>モデルファイルは、1 つの辞書を解析するのに要るものを 1 つにまとめたファイルです。辞書の名前、その<a href="lindera-dependency/./head_and_function_word.html">スキーマ</a>、学習した部分が入ります。今ある部分は<a href="lindera-dependency/./chunking.html">文節の区切り</a>だけで、解析器は後から入ります。</p>
+</div>
+<h2 id="モデルを学習する-1"><a class="header" href="#モデルを学習する-1">モデルを学習する</a></h2>
+<p>学習は <code>train</code> feature の裏にあります。<code>train-parser</code> は、<a href="lindera-dependency/./training_data.html">学習データ</a>から IPADIC のスキーマで解析器を学習し、<a href="lindera-dependency/./model_file.html">モデルファイル</a>を書き出します。<code>--chunker</code> を付けると、ほかのモデルファイルの区切りを出力に入れます。これで、その辞書のモデルの全体になります。</p>
+<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
+    --input train.lattice --output chunker.model
+cargo run --release -p lindera-dependency --features train -- train-parser \
+    --input train.lattice --chunker chunker.model --output ipadic.model
+</code></pre>
+<p>IPADIC で変換した UD Japanese-GSD の train では、<code>train-parser</code> は約 3 秒で終わり、最後に次を出力します。</p>
+<pre><code class="language-text">train.lattice: 7024 sentences
+features: distance,source,target,left,right,children,gap,after
+instances: 66000
+passes: 19
+updates: 21374
+feature strings: 62380
+pair weights: 2762034
+bytes: 6258548
+</code></pre>
+<p>この後に、学習の時間を書いた <code>seconds:</code> の行が続きます（ここでは省いています）。同じデータで学習し直すと、同じバイト列になります。</p>
+<div class="table-wrapper"><table><thead><tr><th>オプション</th><th>既定</th><th>意味</th></tr></thead><tbody>
+<tr><td><code>--chunker</code></td><td>なし</td><td>区切りを出力に入れる、元のモデルファイル</td></tr>
+<tr><td><code>--algorithm</code></td><td><code>dcd</code></td><td><code>dcd</code> は、サポートベクターマシンの dual coordinate descent。CaboCha の学習の方法。<code>pa</code> は passive-aggressive。J.DepP の学習の方法</td></tr>
+<tr><td><code>--cost</code></td><td><code>dcd</code> は <code>0.0015</code>、<code>pa</code> は <code>0.001</code></td><td>学習の 1 件の判定が重みに足せる上限</td></tr>
+<tr><td><code>--iterations</code></td><td><code>10</code></td><td><code>pa</code> のとき、学習の判定を回る回数</td></tr>
+<tr><td><code>--averaged</code></td><td>オフ</td><td><code>pa</code> のとき、判定ごとの重みの平均を使う</td></tr>
+<tr><td><code>--features</code></td><td>全部の群</td><td><a href="lindera-dependency/parsing.html#%E7%B4%A0%E6%80%A7%E3%81%AE%E9%9B%86%E5%90%88">素性の集合</a></td></tr>
+<tr><td><code>--pairs</code></td><td><code>hashed</code></td><td><code>hashed</code> は、対が共有する決まった大きさの表。<code>exact</code> は、対ごとの重み</td></tr>
+<tr><td><code>--bits</code></td><td><code>22</code></td><td><code>hashed</code> のとき、表は 2^bits 個の重みを持つ</td></tr>
+<tr><td><code>--min-support</code></td><td><code>1</code></td><td><code>exact</code> のとき、対が重みを持つのに要る、学習の判定の数</td></tr>
+<tr><td><code>--pair-threshold</code></td><td><code>0</code></td><td><code>exact</code> のとき、重みがこれより 0 に近い対を除く</td></tr>
+<tr><td><code>--min-count</code></td><td><code>1</code></td><td>素性を使うのに要る、学習の判定の数</td></tr>
+<tr><td><code>--quantization</code></td><td><code>i8</code></td><td>ファイルの中の重み。<code>f32</code> はそのまま、<code>i16</code> と <code>i8</code> は整数と尺度の積</td></tr>
+<tr><td><code>--seed</code></td><td><code>1</code></td><td><code>dcd</code> のとき、判定を回る順の種</td></tr>
+</tbody></table>
+</div>
+<p><code>parse</code> は、モデルでファイルの係り先を求めます。<a href="lindera-dependency/./evaluation.html"><code>evaluate</code></a> で正解と比べるためのものです。</p>
+<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- parse \
+    --model ipadic.model --input dev.lattice --output output.lattice
+cargo run --release -p lindera-dependency --features train -- parse --chunk \
+    --model ipadic.model --input dev.lattice --output output.lattice
+</code></pre>
+<p><code>--chunk</code> が無ければ、入力の文節を解析します。解析器だけを測る形です。<code>--chunk</code> を付けると、入力の文節は読みません。形態素をモデルの区切りで文節に区切ってから解析します。実際に使うときの解析です。</p>
+<h2 id="精度-1"><a class="header" href="#精度-1">精度</a></h2>
+<p>UD Japanese-GSD（commit c662dc9）の train と IPADIC で、既定の設定で学習した値です。係り受けの精度は、各文の最後を除く文節で数えます（<a href="lindera-dependency/./evaluation.html">level 1</a>）。</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th>正解の文節で</th><th>形態素から</th><th>区切りの F</th></tr></thead><tbody>
+<tr><td>UD Japanese-GSD dev</td><td>90.11% (3,281 / 3,641)</td><td>85.39% (3,109 / 3,641)</td><td>96.85</td></tr>
+<tr><td>UD Japanese-GSD test</td><td>88.53% (3,512 / 3,967)</td><td>84.47% (3,351 / 3,967)</td><td>96.92</td></tr>
+<tr><td>UD Japanese-PUD</td><td>88.81% (7,859 / 8,849)</td><td>86.19% (7,627 / 8,849)</td><td>98.04</td></tr>
+</tbody></table>
+</div>
+<p>このプロジェクトの目標は、同じデータで学習した CaboCha・J.DepP の値から決めたもので、正解の文節で dev 89.0・test 87.8、形態素から dev 85.0・test 84.3 でした。この基準は、今のリポジトリにあるものでは測り直せません（<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>）。比べている相手は記録に残る数字で、2 つのツールを動かした結果ではありません。</p>
+<p>区切りと解析器を入れたモデルファイルは 6,258,548 バイトです。AMD Ryzen AI Max+ 395 の 1 コアで、読み込みは約 3 ms、区切りと解析を合わせて毎秒 約 8,700 文です。<a href="lindera-dependency/./model_file.html#%E5%A4%A7%E3%81%8D%E3%81%95%E3%81%A8%E9%80%9F%E3%81%95">モデルファイル</a>を参照してください。</p>
+<h2 id="既定の選び方"><a class="header" href="#既定の選び方">既定の選び方</a></h2>
+<p>train の 10 分割交差検証を、正解の文節の上で行って選びました。有意な差の無い設定（係り受けごとの McNemar の正確検定）は同じとみなし、小さいほう・速いほうを選びます。交差検証で差の付かない大きさは、dev で選びます。</p>
+<div class="table-wrapper"><table><thead><tr><th>選んだもの</th><th>10 分割の level 1</th><th>分かったこと</th></tr></thead><tbody>
+<tr><td>dual coordinate descent、コスト 0.0015</td><td>88.96%</td><td>最良のコスト。0.003 は 88.91%（p = 0.47）、0.001 は 88.79%（p &lt; 0.001）</td></tr>
+<tr><td>passive-aggressive、平均化、コスト 0.0005、30 回</td><td>88.88%</td><td>dual coordinate descent と差が無く（p = 0.22）、時間も同じ。回る回数を選ぶ必要があり、dual coordinate descent は自分で止まる</td></tr>
+<tr><td>CaboCha の集合から <code>right</code> を除く</td><td>88.53%</td><td>最も効く群（p &lt; 0.001）。<code>gap</code> を除くと 88.75%、<code>children</code> を除くと 88.87%</td></tr>
+<tr><td><code>after</code> の群を足す</td><td>89.19%</td><td>CaboCha の集合より良い（p &lt; 0.001）</td></tr>
+<tr><td>対ごとの重み。38 MB の表</td><td>89.19%</td><td>毎秒 2,700 文</td></tr>
+<tr><td>対を 2^22 個の重みにハッシュで割り当てる</td><td>89.21%</td><td>差が無く（p = 0.60）、毎秒 16,700 文。2^18 から 2^21 も差が無く、その中で dev が最良なのが 2^22</td></tr>
+<tr><td>1 バイトの重み</td><td>89.21%</td><td>4 バイトと差が無い（p = 0.86）。2 バイトの重みは出力が同じ</td></tr>
+</tbody></table>
+</div>
+<p>全部の設定の表は<a href="https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md#how-the-defaults-of-the-parser-were-chosen">クレートの README</a>にあり、<a href="https://github.com/lindera/lindera/tree/main/scripts/dependency"><code>scripts/dependency/parser_experiments.sh</code></a> で流し直せます。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="モデルファイル"><a class="header" href="#モデルファイル">モデルファイル</a></h1>
+<p>モデルファイルは、1 つの辞書を解析するのに要るものを 1 つにまとめたファイルです。辞書の名前、その<a href="lindera-dependency/./head_and_function_word.html">スキーマ</a>、学習した部分が入ります。部分は、<a href="lindera-dependency/./chunking.html">文節の区切り</a>と<a href="lindera-dependency/./parsing.html">解析器</a>です。</p>
 <p>モデルは 1 つの辞書に属します。辞書の素性の列と、辞書による分かち書きに依存するので、ファイルは、どの辞書のためのものかを自分で持ち、1 つのファイルが 1 つの辞書に対応します。</p>
-<p>配布しているモデルは、まだありません。モデルファイルは <a href="lindera-dependency/./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> が書き出します。</p>
+<p>配布しているモデルは、まだありません。<a href="lindera-dependency/./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> は区切りを入れたモデルファイルを、<a href="lindera-dependency/./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a> は解析器だけか、両方を入れたモデルファイルを書き出します。</p>
 <h2 id="モデルを読む"><a class="header" href="#モデルを読む">モデルを読む</a></h2>
 <p><code>Model</code> は、ファイルをその場で読みます。バイト列を持つ型について総称で、表をどこにも写しません。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -2912,19 +3039,20 @@ negative: 32488
 </span>use lindera_dependency::model::Model;
 
 // Bytes read from a file: the model owns them.
-let model = Model::new(std::fs::read("chunker.model")?)?;
+let model = Model::new(std::fs::read("ipadic.model")?)?;
 
 assert_eq!(model.dictionary(), "ipadic");
 let chunker = model.chunker().expect("the file has a chunker");
+let parser = model.parser().expect("the file has a parser");
 <span class="boring">}</span></code></pre></pre>
 <div class="table-wrapper"><table><thead><tr><th>バイト列を持つもの</th><th>書き方</th></tr></thead><tbody>
 <tr><td>メモリに読み込んだファイル</td><td><code>Model::new(std::fs::read(path)?)</code> で <code>Model&lt;Vec&lt;u8&gt;&gt;</code> になる</td></tr>
-<tr><td>プログラムに埋め込んだファイル</td><td><code>Model::new(include_bytes!("chunker.model").as_slice())</code> で <code>Model&lt;&amp;'static [u8]&gt;</code> になる</td></tr>
+<tr><td>プログラムに埋め込んだファイル</td><td><code>Model::new(include_bytes!("ipadic.model").as_slice())</code> で <code>Model&lt;&amp;'static [u8]&gt;</code> になる</td></tr>
 <tr><td>メモリマップ</td><td><code>AsRef&lt;[u8]&gt;</code> を実装する型なら何でも <code>Model::new(map)</code> に渡せる。<code>memmap2</code> クレートのマップなど。このクレートは依存を持たず、自分ではマップしない</td></tr>
 </tbody></table>
 </div>
 <p>ファイルの全体は、<code>Model::new</code> の中で 1 回だけ検査します。この版のモデルファイルでないバイト列は <code>Error::Model</code> になり、その後は何も失敗せず、panic もしません。数をポインター越しに読まないので、バイト列はどのアドレスにあってもよく、境界に揃っている必要もありません。同じコードが <code>wasm32-unknown-unknown</code> で動きます。</p>
-<p><code>Model::chunker</code> は、モデルのバイト列の上で重みを読む <code>Chunker</code> を返します。ファイルに区切りの部分が無ければ <code>None</code> です。<code>Model</code> は、バイト列がそうであれば <code>Send + Sync</code> で、1 つのモデルを複数のスレッドで使えます。</p>
+<p><code>Model::chunker</code> は、モデルのバイト列の上で重みを読む <code>Chunker</code> を返します。ファイルに区切りの部分が無ければ <code>None</code> です。<code>Model::parser</code> は、同じように <code>Parser</code> を返します。<code>Model::analyze</code> は、1 回の呼び出しで文を区切って解析します。<code>Model</code> は、バイト列がそうであれば <code>Send + Sync</code> で、1 つのモデルを複数のスレッドで使えます。</p>
 <h2 id="辞書の照合"><a class="header" href="#辞書の照合">辞書の照合</a></h2>
 <p>モデルを別の辞書の形態素に使うと、検査しない限り、エラーにならずに誤った答えが出ます。検査は 2 つあります。</p>
 <p><strong>名前。</strong> 形態素の辞書を知っている呼び出し側が、その名前をモデルの名前と比べます。</p>
@@ -2949,7 +3077,7 @@ println!("{error}");
 </code></pre>
 <p>2 つ目の検査は、列の数が足りている別の辞書の形態素を見つけられません。UniDic の形態素は IPADIC より列が多く、列の意味も違います。これを見分けられるのは名前だけなので、辞書を知っている呼び出し側は名前を照合してください。</p>
 <h2 id="モデルを書く"><a class="header" href="#モデルを書く">モデルを書く</a></h2>
-<p><code>ModelBuilder</code> は、辞書の名前、スキーマ、部分からファイルを書きます。区切りの部分は、<a href="lindera-dependency/./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B">学習</a>の結果である <code>ChunkerModel</code> から作ります。</p>
+<p><code>ModelBuilder</code> は、辞書の名前、スキーマ、部分からファイルを書きます。区切りの部分は <code>ChunkerModel</code> から、解析器の部分は <code>ParserModel</code> から作ります。どちらも学習の結果です（<a href="lindera-dependency/./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B">区切りの学習</a>、<a href="lindera-dependency/./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B">解析器の学習</a>）。次の区切りは、手で作ったものです。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::collections::HashMap;
@@ -2979,7 +3107,8 @@ std::fs::write("chunker.model", &amp;bytes)?;
 let model = Model::new(bytes)?;
 assert_eq!(model.dictionary(), "ipadic");
 <span class="boring">}</span></code></pre></pre>
-<p>同じ部分からは、同じバイト列ができます。ファイルのスキーマと違うスキーマで学習した区切りは断ります。</p>
+<p>同じ部分からは、同じバイト列ができます。ファイルのスキーマと違うスキーマで学習した部分は断ります。</p>
+<p><code>ModelBuilder::parser</code> は、<code>ParserModel</code> と、重みの書き方（<code>Quantization::F32</code>、<code>I16</code>、<code>I8</code>）を受け取ります。<code>ModelBuilder::from_model</code> は、すでにあるファイルの名前、スキーマ、部分から始めて、部分を足せるようにします。<code>train-parser --chunker</code> は、これで区切りを写します。</p>
 <h2 id="形式"><a class="header" href="#形式">形式</a></h2>
 <p>版は 1 です。数はすべてリトルエンディアンです。文字列は、バイト数を <code>u32</code> で書き、その後に UTF-8 を続けます。</p>
 <div class="table-wrapper"><table><thead><tr><th>欄</th><th>型</th><th>中身</th></tr></thead><tbody>
@@ -2992,7 +3121,7 @@ assert_eq!(model.dictionary(), "ipadic");
 <tr><td>部分</td><td></td><td>一覧の順に、すき間なく、ファイルの終わりまで</td></tr>
 </tbody></table>
 </div>
-<p>区切りの部分の種類は 1 です。ほかの種類の部分があるファイル、同じ種類が 2 つあるファイル、部分がすき間なく並んでいないファイル、最後の部分の後にバイトが残るファイルは断ります。ほかの版のファイルも断ります。</p>
+<p>区切りの部分の種類は 1、解析器の部分の種類は 2 で、この順に並びます。ほかの種類の部分があるファイル、同じ種類が 2 つあるファイル、部分がすき間なく並んでいないファイル、最後の部分の後にバイトが残るファイルは断ります。ほかの版のファイルも断ります。</p>
 <h3 id="区切りの部分"><a class="header" href="#区切りの部分">区切りの部分</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>欄</th><th>型</th><th>中身</th></tr></thead><tbody>
 <tr><td>列の数</td><td><code>u32</code></td><td></td></tr>
@@ -3002,6 +3131,20 @@ assert_eq!(model.dictionary(), "ipadic");
 <tr><td>素性の文字列</td><td>表</td><td>それぞれに <code>f64</code> が 2 つ。<code>B</code> の重み、<code>I</code> の重みの順</td></tr>
 </tbody></table>
 </div>
+<h3 id="解析器の部分"><a class="header" href="#解析器の部分">解析器の部分</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>欄</th><th>型</th><th>中身</th></tr></thead><tbody>
+<tr><td>素性の集合</td><td>文字列</td><td>素性の群。<code>distance,source,target,left,right,children,gap,after</code> の形</td></tr>
+<tr><td>量子化</td><td>1 バイト</td><td>重みの書き方。0 は <code>f32</code>、1 は <code>i16</code>、2 は <code>i8</code></td></tr>
+<tr><td>対</td><td>1 バイト</td><td>0 は対ごとの重み、1 は対をハッシュで割り当てる表</td></tr>
+<tr><td>バイアス</td><td><code>f64</code></td><td></td></tr>
+<tr><td>尺度</td><td><code>f64</code></td><td>書いてある重みに掛ける数。0 より大きく、<code>f32</code> では 1</td></tr>
+<tr><td>素性の文字列</td><td>表</td><td>それぞれに重み。対をハッシュで割り当てる場合は、その後に <code>u32</code> のキー</td></tr>
+<tr><td>対の重み</td><td></td><td>下を参照</td></tr>
+</tbody></table>
+</div>
+<p>1 回の判定の点数は、バイアスに、その素性と素性の対の重み（書いてある値）の合計に尺度を掛けたものを足した値です。素性の番号は、表の中の順番です。</p>
+<p><strong>対をハッシュで割り当てる場合</strong>: ビット数を <code>u32</code> で書き（1 から 30）、その後に 2^bits 個の重みが続きます。素性のキーは、その文字列のハッシュで、表のハッシュと同じものです。対の場所は 2 つのキーから決めます。小さいほうを 64 ビットの数の上位の半分に置き、その数を混ぜて（30 ビット右にずらした自分との XOR、<code>0xbf58476d1ce4e5b9</code> との積、27 ビットずらした XOR、<code>0x94d049bb133111eb</code> との積）、上位のビットを場所にします。同じ場所に当たった対は、その重みを共有します。</p>
+<p><strong>対ごとに重みを持つ場合</strong>: 対の数を <code>u64</code> で書きます。次に、素性ごとと最後にもう 1 つ、その素性の対（その素性が小さいほうの番号になる対）がどこから始まるかを <code>u32</code> で書きます。続いて、各対の大きいほうの番号を <code>u32</code> で、素性ごとに並べて書き、最後に各対の重みを書きます。</p>
 <h3 id="表"><a class="header" href="#表">表</a></h3>
 <p>表は、文字列から同じ幅の値への対応で、ファイルの中の位置のまま引きます。</p>
 <div class="table-wrapper"><table><thead><tr><th>欄</th><th>型</th><th>中身</th></tr></thead><tbody>
@@ -3017,7 +3160,26 @@ assert_eq!(model.dictionary(), "ipadic");
 <p>枠は、空なら 0、そうでなければ文字列の番号に 1 を足した値です。文字列は、ハッシュが指す枠から始めて、その後の最初の空いた枠に入ります。最後の枠の次は最初の枠です。ハッシュは、文字列のバイト列の 64 ビットの FNV-1a を 32 ビットに畳み（上位の半分と下位の半分の XOR）、枠の数で割った余りです。文字列は並びの順に入れ、表は 1 つの文字列に 2 つ以上の枠を持つように書きます。</p>
 <p>文字列を並べ替えてあるのは、同じ文字列から必ず同じバイト列ができるようにするためです。引くときは枠を使います。</p>
 <h2 id="大きさと速さ"><a class="header" href="#大きさと速さ">大きさと速さ</a></h2>
-<p>UD Japanese-GSD の train と IPADIC で学習した、既定の区切りのモデル（素性の文字列は 4,325 個）の値です。</p>
+<p>UD Japanese-GSD の train と IPADIC で学習した、既定のモデル（区切りと解析器）の値です。test の 542 文で測りました。</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>両方の部分を入れたファイルの大きさ</td><td>6,258,548 バイト</td></tr>
+<tr><td>そのうち区切りを、単独のファイルにした大きさ</td><td>261,851 バイト</td></tr>
+<tr><td>読み込みの時間（<code>Model::new</code>。すべての検査を含む）</td><td>約 2.7 ms</td></tr>
+<tr><td>区切り</td><td>毎秒 約 20,400 文</td></tr>
+<tr><td>正解の文節の解析</td><td>毎秒 約 16,700 文</td></tr>
+<tr><td>区切りと解析</td><td>毎秒 約 8,700 文</td></tr>
+</tbody></table>
+</div>
+<p>対の表は 1 バイトの重みが 2^22 個で、ファイルの 4.2 MB を占めます。残りのほとんどは、解析器の素性の文字列 62,380 個です。</p>
+<p>対の重みの持ち方で変わるのは、大きさと速さで、精度ではありません（<a href="lindera-dependency/./parsing.html#%E6%97%A2%E5%AE%9A%E3%81%AE%E9%81%B8%E3%81%B3%E6%96%B9">既定の選び方</a>を参照）。</p>
+<div class="table-wrapper"><table><thead><tr><th>対</th><th>重み</th><th>ファイルの大きさ</th><th>解析、毎秒の文の数</th></tr></thead><tbody>
+<tr><td>2^22 個の重みにハッシュで割り当てる</td><td>1 バイト</td><td>6,258,548 バイト</td><td>約 16,700</td></tr>
+<tr><td>2^22 個の重みにハッシュで割り当てる</td><td>4 バイト</td><td>19,028,600 バイト</td><td>約 13,400</td></tr>
+<tr><td>対ごとの重み</td><td>1 バイト</td><td>24,514,588 バイト</td><td>約 2,700</td></tr>
+<tr><td>対ごとの重み</td><td>4 バイト</td><td>38,162,161 バイト</td><td>約 2,700</td></tr>
+</tbody></table>
+</div>
+<p>同じデータで学習した区切りだけ（素性の文字列は 4,325 個）を、train の 7,024 文で測った値です。</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
 <tr><td>ファイルの大きさ</td><td>261,851 バイト</td></tr>
 <tr><td>読み込みの時間（<code>Model::new</code>。すべての検査を含む）</td><td>約 0.2 ms</td></tr>
@@ -3025,7 +3187,7 @@ assert_eq!(model.dictionary(), "ipadic");
 <tr><td>同じ区切りをメモリに持った場合（標準ライブラリのハッシュ表）</td><td>毎秒 約 18,223 文</td></tr>
 </tbody></table>
 </div>
-<p>AMD Ryzen AI Max+ 395 の 1 コアで、Rust 1.100.0 を使い、train の 7,024 文で測りました。<a href="https://github.com/lindera/lindera/tree/main/scripts/dependency/model_speed"><code>scripts/dependency/model_speed</code></a> で測り直せます。ファイルの大部分を占めることになる解析器の部分は、まだありません。モデル全体の大きさと速さは、それと一緒に測ります。</p>
+<p>AMD Ryzen AI Max+ 395 の 1 コアで、Rust 1.100.0 を使って測りました。<a href="https://github.com/lindera/lindera/tree/main/scripts/dependency/model_speed"><code>scripts/dependency/model_speed</code></a> と <code>scripts/dependency/parser_experiments.sh speed</code> で測り直せます。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="主辞と機能語"><a class="header" href="#主辞と機能語">主辞と機能語</a></h1>
 <p>文節には、主辞（最後の内容語）と機能語（最後の助詞か助動詞）があります。読ん / で / いる / 。 では、主辞は 読ん、機能語は いる です。</p>
 <ul>
@@ -14769,7 +14931,7 @@ lindera = { version = "7", features = ["embed-ipadic", "embed-ko-dic"] }
 <h4 id="lindera-analysis-1"><a class="header" href="#lindera-analysis-1"><code>lindera-analysis</code></a></h4>
 <p><code>lindera-segmenter</code> の上に構築されたLucene風の分析チェーンです（ファサード経由では <code>lindera::analysis</code> として利用します）。文字フィルタ、トークンフィルタ、およびそれらを <code>Segmenter</code> の周りで組み合わせる <code>Tokenizer</code> を提供します。</p>
 <h4 id="lindera-dependency-1"><a class="header" href="#lindera-dependency-1"><code>lindera-dependency</code></a></h4>
-<p>日本語の文節の係り受け解析です。開発中で、まだ公開していません（<a href="https://github.com/lindera/lindera/issues/1417">#1417</a>）。今は、解析の土台になる型（形態素の trait、文節、文）、CaboCha のラティス形式（<code>cabocha -f1</code>）の読み書き、係り受けの木の検査、辞書のスキーマ（どの素性の列が何を持つかと、文節の主辞・機能語を決め、記号を見分けるパターン。最初のスキーマは IPADIC）、文節の区切り（条件付き確率場と、重みの表だけのモデルで、形態素を文節にまとめる）、辞書のモデルファイル（その場で読む）、解析器（shift-reduce と、素性とその対の上の分類器で、各文節の係り先を求める。学習済みのモデルはまだ無い）があります。既定のビルドは workspace のほかのクレートに依存せず、<code>wasm32-unknown-unknown</code> 向けにビルドできます（<code>make check-lindera-dependency</code>）。<code>train</code> feature を付けると、<code>lindera-dependency convert</code> コマンドも入ります。UD Japanese-GSD のような係り受けのコーパスを <code>lindera-segmenter</code> で解析し直して、学習データを作り、スキーマの主辞がコーパスの内容の主辞と一致する割合を報告します。<code>lindera-dependency evaluate</code> と <code>lindera-dependency split</code> コマンドも入り、文節の区切りと係り受けの精度を CaboCha・J.DepP と同じ数え方で数え、交差検証の分割を書き出します。<code>lindera-dependency train-chunker</code> と <code>lindera-dependency chunk</code> コマンドは、文節の区切りのモデルを <code>lindera-crf</code> で学習し、そのモデルでファイルを区切り直します。<code>lindera-dependency instances</code> コマンドは、解析器の学習事例を書き出します（クレートの README を参照）。使い方は <a href="development/../lindera-dependency.html">Lindera Dependency</a> の章にあります。このクレートの決定と、その根拠になった数字は<a href="development/./dependency_design.html">設計メモ</a>に、数字を出すスクリプトは <code>scripts/dependency/</code> にあります。</p>
+<p>日本語の文節の係り受け解析です。開発中で、まだ公開していません（<a href="https://github.com/lindera/lindera/issues/1417">#1417</a>）。今は、解析の土台になる型（形態素の trait、文節、文）、CaboCha のラティス形式（<code>cabocha -f1</code>）の読み書き、係り受けの木の検査、辞書のスキーマ（どの素性の列が何を持つかと、文節の主辞・機能語を決め、記号を見分けるパターン。最初のスキーマは IPADIC）、文節の区切り（条件付き確率場と、重みの表だけのモデルで、形態素を文節にまとめる）、辞書のモデルファイル（その場で読む）、解析器（shift-reduce と、素性とその対の上の分類器で、各文節の係り先を求める）があります。配布しているモデルはまだ無く、文節の区切りと解析器は、このクレートのコマンドで学習します。既定のビルドは workspace のほかのクレートに依存せず、<code>wasm32-unknown-unknown</code> 向けにビルドできます（<code>make check-lindera-dependency</code>）。<code>train</code> feature を付けると、<code>lindera-dependency convert</code> コマンドも入ります。UD Japanese-GSD のような係り受けのコーパスを <code>lindera-segmenter</code> で解析し直して、学習データを作り、スキーマの主辞がコーパスの内容の主辞と一致する割合を報告します。<code>lindera-dependency evaluate</code> と <code>lindera-dependency split</code> コマンドも入り、文節の区切りと係り受けの精度を CaboCha・J.DepP と同じ数え方で数え、交差検証の分割を書き出します。<code>lindera-dependency train-chunker</code> と <code>lindera-dependency chunk</code> コマンドは、文節の区切りのモデルを <code>lindera-crf</code> で学習し、そのモデルでファイルを区切り直します。<code>lindera-dependency instances</code> コマンドは、解析器の学習事例を書き出します（クレートの README を参照）。使い方は <a href="development/../lindera-dependency.html">Lindera Dependency</a> の章にあります。このクレートの決定と、その根拠になった数字は<a href="development/./dependency_design.html">設計メモ</a>に、数字を出すスクリプトは <code>scripts/dependency/</code> にあります。</p>
 <h4 id="lindera-cli-1"><a class="header" href="#lindera-cli-1"><code>lindera-cli</code></a></h4>
 <p>トークナイズ、辞書学習、エクスポート、ビルドのためのコマンドラインインターフェースです。デフォルトで <code>train</code> feature が有効です。</p>
 <h4 id="lindera-binding"><a class="header" href="#lindera-binding"><code>lindera-binding</code></a></h4>
@@ -15240,6 +15402,12 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>モデルファイルは、バイト列を持つものについて総称な型で、その場で読む。検査は、開くときの 1 回だけ。</td><td>プログラムに埋め込んだバイト列、メモリに読んだファイル、呼び出し側のメモリマップが、同じコードで読める。依存は要らず、<code>wasm32-unknown-unknown</code> でも動く。検査の後は、何も失敗せず、panic もしない。数をポインター越しに読まないので、バイト列の境界は関係ない（#1364 の <code>matrix.mtx</code> と同じ）。</td><td>#1437</td></tr>
 <tr><td>モデルファイルの文字列の表は、並べ替えて持ち、その上にハッシュ表を持つ。</td><td>文字列を、ファイルの中の位置のまま、ハッシュの時間で引ける。並べ替えてあるので、同じ文字列からは必ず同じバイト列ができる。並べ替えた文字列の二分探索だけの形も測ったが、遅い（数字を参照）。</td><td>#1437</td></tr>
 <tr><td>モデルの辞書は 2 つの方法で照合する。名前は、形態素の辞書を知っている呼び出し側が照合する。素性の列の数は、いつも照合する。</td><td>スキーマが読む列より少ない列の形態素は、その辞書のものではありえないので、解析せずに断る。列の数が足りている別の辞書の形態素は、形からは見分けられず、名前でしか分からない。</td><td>#1437</td></tr>
+<tr><td>解析器は、CaboCha と同じく、ヒンジ損失のサポートベクターマシンの dual coordinate descent で学習する。コストは CaboCha の 0.0015。J.DepP と同じ passive-aggressive も選べる。</td><td>交差検証で 2 つに差は無く（88.96% と 88.88%、p = 0.22）、時間も同じ。dual coordinate descent は自分で止まる。passive-aggressive は、回る回数を選ぶ必要がある。</td><td>#1437</td></tr>
+<tr><td>素性の対の重みは、2^22 個の重みの表に、対をハッシュで割り当てて持つ。対ごとに重みを持つ形も選べる。</td><td>精度に差は無く（p = 0.60）、解析は 6 倍速く、ファイルは 6 分の 1 になる。交差検証では 2^18 以上の大きさに差が無く、その中で dev が最良なのが 2^22。</td><td>#1437</td></tr>
+<tr><td>ハッシュで割り当てる対の場所は、2 つの素性の文字列のハッシュから決める。モデルの中の番号からは決めない。</td><td>モデルから素性を除いても、ほかの素性の対の場所が動かない。学習と推論で、番号の振り方が食い違うこともない。</td><td>#1437</td></tr>
+<tr><td>解析器の重みは、1 つ 1 バイトで書く。整数と尺度の積。</td><td>4 バイトの重みと精度に差が無い（p = 0.86）。2 バイトの重みは出力が同じ。ファイルは 3 分の 1 になり、解析も速くなる。</td><td>#1437</td></tr>
+<tr><td>解析器の素性は、CaboCha の素性に 1 つの群を足す。係り元と係り先の候補の、主辞の直後の形態素。文節の主辞は、スキーマの内容語のままにする。</td><td>スキーマの主辞では、CaboCha の主辞が CaboCha の素性に与えていた情報が抜ける。文節が全体として動詞か名詞か、である（利用 / し / た、読む / こと / を）。この群がそれを戻す。交差検証で 89.19%、足さないと 88.96%（p &lt; 0.001）。出力の主辞は内容語のまま。</td><td>#1437</td></tr>
+<tr><td>モデルは #1420 の規則で選び、差の無いものは同じとみなす。同じとみなした設定の中では、小さいほう・速いほうを既定にする。</td><td>良い設定どうしの差は、データの揺れより小さい。大きさと速さはそうではない。</td><td>#1437</td></tr>
 <tr><td>モデルファイルより前の、区切りだけのファイル（マジックナンバー <code>LDCHUNK</code>）は、もう読まない。</td><td>クレートは未公開で、配布したモデルは無い。読む側を残しても、読むべきファイルが無い。</td><td>#1437</td></tr>
 <tr><td>学習データには主辞と機能語の位置を書かない。読む側がスキーマから計算する。</td><td>規則を変えても、古い位置がファイルに残らない。</td><td>#1422</td></tr>
 <tr><td>設定の比較は train の交差検証で行う。dev は僅差の設定の選択に使う。test と PUD は、報告する結果にだけ使う。</td><td>dev と test は小さい。90% 前後の精度の 95% 区間は、約 ±1 ポイントになる。</td><td>#1420</td></tr>
@@ -15296,8 +15464,8 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <li><strong>ループ</strong>は、CaboCha の <code>parseShiftReduce</code>、J.DepP の <code>_parseLinear</code> と同じです。係り先の無い文節をスタックに持ち、続く文節を 1 つずつ係り先の候補にし、スタックの先頭を係り元にします。最後の文節への係りは尋ねません。ループは判定を関数として受け取るので、分類器でも文の正解でも、同じコードが動きます。</li>
 <li><strong>素性</strong>は CaboCha のもの（<code>src/selector.cpp</code>、<code>src/dep.cpp</code>）で、7 つの群に分けています。距離、係り元、係り先の候補、係り元の前の文節、係り先の候補の後の文節、すでに係った文節、間です。文節ごとに 1 回作り、判定のときに組み合わせます。文字列を何に変えるかについて総称にしてあり、解析では分類器の番号、学習事例では文字列そのものです。</li>
 <li><strong>CaboCha との違い</strong>: 表層を正規化せず、句読点と括弧はスキーマのものを使う。主辞と機能語は #1422 のスキーマのものを使う。係り先が分からない文節は扱わない。尋ねない係りの点数は 0 にする（CaboCha は、直前の判定の点数を書く）。</li>
-<li><strong>J.DepP の素性</strong>（<code>jdepp/pdep.cc</code>）は違います。4 つの文節を、最初の形態素・主辞・末尾・最後の形態素で表す。2 つの主辞の表層が同じかどうか。括弧の釣り合い。間の文節のうち、係り先の候補を取り合う文節の助詞。すでに係った文節の素性は無い。J.DepP にしか無い素性は、素性の集合を比べるときに回します。</li>
-<li><strong><code>LinearClassifier</code></strong> は、バイアス、素性の重み、素性の対の重みを、ハッシュ表から足します。手で作った重みで解析するための最小の実装です。学習した重みの持ち方は、モデルファイルの解析器の部分と一緒に決めます。</li>
+<li><strong>J.DepP の素性</strong>（<code>jdepp/pdep.cc</code>）は違います。4 つの文節を、最初の形態素・主辞・末尾・最後の形態素で表す。2 つの主辞の表層が同じかどうか。括弧の釣り合い。間の文節のうち、係り先の候補を取り合う文節の助詞。すでに係った文節の素性は無い。J.DepP にしか無い素性は、試していません。目標に、それ無しで届いたためです。</li>
+<li><strong><code>LinearClassifier</code></strong> は、バイアス、素性の重み、素性の対の重みを、ハッシュ表から足します。手で作った重みで解析するための最小の実装です。学習したモデルは、自分の持ち方を持ちます（下を参照）。</li>
 <li><strong>学習事例</strong>は、正解に答えさせたときにループが尋ねる判定で、それぞれが素性と答えを持ちます。CaboCha の学習モードと同じです。学習データのどの文でも、正解に答えさせると木が戻ります。</li>
 </ul>
 <h3 id="モデルファイル1437"><a class="header" href="#モデルファイル1437">モデルファイル（<a href="https://github.com/lindera/lindera/issues/1437">#1437</a>）</a></h3>
@@ -15308,11 +15476,21 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <li><strong>区切りは、トレイト（<code>ChunkerData</code>）を通して読む。</strong> 解析器が分類器を読むのと同じ分け方です。学習の結果であるメモリ上のモデルと、ファイルの部分は、その 2 つの実装で、復号は同じコードです。dev・test・PUD のすべての文で、同じラベルになります。</li>
 <li><strong>文字列の表</strong>は、解析器が素性の番号のために共有する部品です。並べ替えてあり、枠を持ちます。枠は、文字列の 64 ビットの FNV-1a による、開番地法のハッシュ表で、1 つの文字列に 2 つ以上の枠があります。1 つの文の素性の文字列の大半は、モデルに入っていません（L1 で残るのは 4,325 個）。そのため、効くのは「無い」と分かるまでの速さです。枠の埋まり方を半分以下にしてあるので、探索は 1〜2 歩で空の枠に当たって終わります。</li>
 <li><strong><code>Chunker::chunk</code> と <code>Parser::parse</code> は、エラーを返す</strong>ようになりました。スキーマが読む列より少ない列の形態素に対してです。これまでは、そうした形態素を、空の列として解析していました。</li>
-<li><strong>ここでしていないこと</strong>: 解析器の部分、量子化（区切りの重みは <code>f64</code> のまま。<code>lindera-crf</code> と同じラベルを出すため）、チェックサム。途中で切れたファイルは長さで分かりますが、書き換わった重みは分かりません。</li>
+<li><strong>していないこと</strong>: 区切りの量子化（重みは <code>f64</code> のまま。<code>lindera-crf</code> と同じラベルを出すためで、区切りはモデルファイルの 4% である）、チェックサム。途中で切れたファイルは長さで分かりますが、書き換わった重みは分かりません。</li>
+</ul>
+<h3 id="解析器の学習とモデルファイルの解析器の部分1437"><a class="header" href="#解析器の学習とモデルファイルの解析器の部分1437">解析器の学習と、モデルファイルの解析器の部分（<a href="https://github.com/lindera/lindera/issues/1437">#1437</a>）</a></h3>
+<ul>
+<li><strong>1 つの空間に、2 つのアルゴリズム。</strong> 参照した 2 つの学習器は、同じ線形のモデルを学習します。バイアス、素性ごとの重み、対ごとの重みで、カーネル <code>(1 + s)^2</code> を展開した形です。刻み <code>d</code> は、それぞれに <code>d</code>、<code>3 d</code>、<code>2 d</code> を足します。CaboCha も、カーネルの問題をカーネルのまま解いてはいません（<code>src/svm_learn.cpp</code>）。ここの 2 つのアルゴリズムは、刻みの決め方だけが違います。対の重みをどこに置くかは、その両方の下にある 1 つの関数です。</li>
+<li><strong>dual coordinate descent</strong> は、CaboCha の <code>solveParameters</code> に従います。ヒンジ損失、コストによる上限、shrinking、毎回の乱数の順、射影勾配の幅 0.1 での停止です。判定の自分自身とのカーネルは、その判定の複数の対が同じ場所に当たるとき、その数の 2 乗で数えます。これで、対をハッシュで割り当てても刻みが正確になります。順は、クレートが持つ生成器（SplitMix64）と種から決まるので、同じデータからは同じモデルができます。</li>
+<li><strong>passive-aggressive</strong> は、opal に従います（PA-I）。刻みは、損失を素性の数で割った値で、コストを上限にします。対があると、1 つの刻みは点数を、素性の数の倍ほど動かしすぎます。そのため、コストが上限として効いていなければなりません。良いコストは 0.0005 の近くで、CaboCha の 0.0015 より小さい値です。重みの平均は、opal と同じ持ち方です。</li>
+<li><strong>学習は、分ではなく秒で終わる</strong>: 66,000 件の判定は、平均 37 個の素性を持ち、対は 1 件あたり約 680 個です。1 回りで、それぞれに 1 回ずつ触ります。train の全部を、1 コアで約 3 秒で学習します。</li>
+<li><strong>ファイルの解析器の部分</strong>は、素性の集合、バイアス、量子化の尺度、素性の文字列の表とその重み、対の重みを持ちます。対の重みは、<code>2^bits</code> 個の重みの表か、素性ごとに相手の素性の順に並べた対です。ファイルの分類器は、これらをその場で読みます。4 バイトの重みなら、メモリ上のモデルと最後のビットまで同じ点数になります。</li>
+<li><strong>対ごとの重みは、ここでの持ち方では遅い</strong>: 判定の対を 1 つずつ、片方の素性の対の中から二分探索で引きます。CaboCha は、頻度の上位 3,000 素性の対を三角形の配列に、残りを double array に持ちます。それは作っていません。ハッシュで同じ精度が出るためです。</li>
+<li><strong>スキーマの主辞と素性。</strong> #1422 の内容語の主辞は、索引に使う語としては良く、解析に使う語としては劣ります。CaboCha の主辞の規則と CaboCha の素性では、交差検証が 89.22% です。スキーマの主辞では 88.96% です。主辞の直後の形態素がこの差を戻し（89.19%）、それを足すと 2 つの規則に差は無くなります。</li>
+<li><strong><code>train-parser --chunker</code></strong> は、ほかのファイルの区切りの部分を、バイト列のまま写します（<code>ModelBuilder::from_model</code>）。区切りと解析器を別々に学習して、1 つのファイルにまとめられます。</li>
 </ul>
 <h2 id="これからの部分"><a class="header" href="#これからの部分">これからの部分</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>部分</th><th>メモ</th><th>Issue</th></tr></thead><tbody>
-<tr><td>解析器の学習と、モデルファイルの解析器の部分</td><td>学習の方法と素性の集合を交差検証で選ぶ。素性の対の重みの持ち方。量子化。大きさと速さ。モデルファイル自体と辞書の照合は済み。</td><td><a href="https://github.com/lindera/lindera/issues/1437">#1437</a></td></tr>
 <tr><td>トークンフィルター</td><td>設定ファイルとバインディングからの利用を含む。</td><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td></tr>
 <tr><td>コマンド</td><td><code>cabocha -f1</code> と互換の出力。</td><td><a href="https://github.com/lindera/lindera/issues/1439">#1439</a></td></tr>
 <tr><td>IPADIC のモデル</td><td>学習、リリース、ドキュメント、ライセンスの記載。クレートはこのときに公開する。</td><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td></tr>
@@ -15326,7 +15504,6 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <li><strong>設定でのフィルターの名前。</strong> 設定ファイル、コマンド、バインディングから使うには、<code>lindera-analysis</code> の変更が要る。<code>TokenFilterLoader::load_from_value</code> は、<code>kind</code> に対する固定の <code>match</code> である。フィルターを <code>lindera-analysis</code> の feature の裏に置いて、このクレートのコアに依存させるか、<code>lindera-analysis</code> にフィルターの登録の仕組みを足すか、のどちらかになる。</li>
 <li><strong>結果を <code>Token</code> の型付きのフィールドに置くこと。</strong> <code>details</code> の文字列の列は、<code>as_value()</code> に出ない。</li>
 <li><strong>文節の番号は、文ごとに 0 から始まる。</strong> 1 つの入力に複数の文があると衝突する。文の番号を持つ 5 列目を足せば解決する。</li>
-<li><strong>解析器の学習のアルゴリズム</strong>（J.DepP の passive-aggressive か、CaboCha の dual coordinate descent か）と、重みの持ち方（feature hashing か、正確な表か）。どちらも測って決める。</li>
 <li>使えるライセンスの<strong>学習データを増やすこと</strong>。</li>
 </ul>
 <h2 id="目標"><a class="header" href="#目標">目標</a></h2>
@@ -15337,7 +15514,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>一貫の係り受けの精度</td><td>85.0 以上</td><td>84.3 以上</td></tr>
 </tbody></table>
 </div>
-<p>係り受けの目標は J.DepP から 1 ポイント引いた値で、ほかの 2 つは CaboCha の数字です。UD Japanese-PUD での同じ数字も報告します。区切りは達成済みです（96.85 と 96.92、#1421）。</p>
+<p>係り受けの目標は J.DepP から 1 ポイント引いた値で、ほかの 2 つは CaboCha の数字です。UD Japanese-PUD での同じ数字も報告します。IPADIC で、3 つとも達成済みです。区切りは 96.85 と 96.92（#1421）、正解の文節での係り受けは 90.11 と 88.53、end to end は 85.39 と 84.47 です（#1437）。基準そのものは記録に残る数字で、#1433 で測り直します。</p>
 <p>精度のほかの目標: 推論が <code>wasm32-unknown-unknown</code> 向けにビルドできる。解析器がトークンフィルターとしてもコマンドとしても動く。モデルの大きさと処理速度を測って文書にする。モデルは、学習データの出どころとライセンスを明記して公開する。</p>
 <h2 id="数字"><a class="header" href="#数字">数字</a></h2>
 <p>決定の根拠になった数字と、その出どころです。データは UD Japanese-GSD c662dc9 と UD Japanese-PUD cf69c5c で、このリポジトリの IPADIC で解析しています。</p>
@@ -15396,7 +15573,29 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <h3 id="解析器"><a class="header" href="#解析器">解析器</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>数字</th><th>値</th><th>出どころ</th></tr></thead><tbody>
 <tr><td>正解に答えさせると木が戻る文</td><td>train 7,024 文のうち 7,024、dev 506 のうち 506、test 542 のうち 542、PUD 994 のうち 994</td><td>スクリプト: <code>parser_instances.sh</code></td></tr>
-<tr><td>学習事例の数（CaboCha の素性の集合）</td><td>train 66,000（正 33,512）、dev 4,881（2,474）、test 5,377（2,707）、PUD 12,739（6,077）</td><td>スクリプト: <code>parser_instances.sh</code></td></tr>
+<tr><td>学習事例の数</td><td>train 66,000（正 33,512）、dev 4,881（2,474）、test 5,377（2,707）、PUD 12,739（6,077）</td><td>スクリプト: <code>parser_instances.sh</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="解析器の学習"><a class="header" href="#解析器の学習">解析器の学習</a></h3>
+<p>level 1 は、各文の最後を除く文節のうち、係り先が正しいものの割合です。交差検証は train の 10 分割（49,372 文節）で、正解の文節の上で行います。「p」は、係り受けごとの McNemar の正確検定です。断りが無ければ、設定は、CaboCha の素性の集合、コスト 0.0015 の dual coordinate descent、対ごとの重み、4 バイトの重みです。全部の設定は、クレートの README にあります。</p>
+<div class="table-wrapper"><table><thead><tr><th>数字</th><th>値</th><th>出どころ</th></tr></thead><tbody>
+<tr><td>学習の 1 件の判定の素性</td><td>平均 37.1 個、最大 58 個。train に 96,003 種類あり、2 件以上の判定に出るのは 60,050 種類</td><td>CaboCha の素性の集合（<code>--features</code>）で作った <code>parser_instances.sh</code> のファイルを、<code>awk</code> と <code>sort</code> で数えた。スクリプトは残していない</td></tr>
+<tr><td>dual coordinate descent、コストごと</td><td>0.0005: 88.11%、0.001: 88.79%、0.0015: 88.96%、0.002: 89.01%、0.003: 88.91%、0.005: 88.76%、0.01: 88.72%</td><td>スクリプト: <code>parser_experiments.sh algorithm</code></td></tr>
+<tr><td>passive-aggressive、平均化、30 回、コストごと</td><td>0.0005: 88.88%、0.001: 88.81%、0.005: 88.83%。平均化なしは 88.76%、88.70%、88.33%</td><td>スクリプト: <code>parser_experiments.sh algorithm</code></td></tr>
+<tr><td>dual coordinate descent と passive-aggressive（0.0005、30 回、平均化）</td><td>前者だけが正しい係り受け 559、後者だけ 518、p = 0.22。1 分割あたり 6.3 秒と 8.2 秒</td><td>スクリプト: <code>parser_experiments.sh compare</code></td></tr>
+<tr><td>CaboCha の素性の集合から 1 つの群を除く</td><td><code>right</code>: 88.53%（p &lt; 0.001）、<code>gap</code>: 88.75%（p &lt; 0.001）、<code>children</code>: 88.87%（p = 0.07）、<code>left</code>: 88.93%、<code>distance</code>: 88.94%</td><td>スクリプト: <code>parser_experiments.sh features</code>、<code>compare</code></td></tr>
+<tr><td>主辞の直後の形態素を足す</td><td>89.19%、足さないと 88.96%。係り受け 637 と 523、p = 0.0009</td><td>スクリプト: <code>parser_experiments.sh features</code>、<code>compare</code></td></tr>
+<tr><td>CaboCha の規則の主辞と、スキーマの主辞。CaboCha の素性で</td><td>89.22% と 88.96%。主辞の直後の形態素を足すと 89.23% と 89.19%</td><td>リポジトリの外のプログラム。<code>head_variants/</code> と同じ作り方のスキーマの変種で学習する。残していない</td></tr>
+<tr><td>3 件以上の判定に出る対だけ。全部の群の素性で</td><td>89.19%。全部の対と同じ（p = 0.93）。対は 4,168,732 個に対して 1,310,821 個</td><td>スクリプト: <code>parser_experiments.sh pairs</code>、<code>compare</code></td></tr>
+<tr><td>対を 2^16、2^18、2^20、2^21、2^22、2^24 個の重みにハッシュで割り当てる</td><td>88.81%、89.14%、89.15%、89.19%、89.21%、89.22%。対ごとの重み（89.19%）に対して、2^18: p = 0.43、2^20: p = 0.36、2^22: p = 0.60</td><td>スクリプト: <code>parser_experiments.sh storage</code>、<code>compare</code></td></tr>
+<tr><td>同じものを、train の全部で学習して dev で。1 バイトの重み</td><td>2^18: 89.92%、2^20: 89.81%、2^21: 90.03%、2^22: 90.11%</td><td>スクリプト: <code>parser_experiments.sh storage</code></td></tr>
+<tr><td>2 バイトと 1 バイトの重みを、4 バイトと比べる。対は 2^22 個にハッシュ</td><td>出力が同じ。係り受け 18 と 16、p = 0.86</td><td>スクリプト: <code>parser_experiments.sh quantization</code>、<code>compare</code></td></tr>
+<tr><td>既定: 正解の文節での level 1</td><td>dev 90.11%（3,281 / 3,641）、test 88.53%（3,512 / 3,967）、PUD 88.81%（7,859 / 8,849）</td><td>スクリプト: <code>parser_experiments.sh final</code></td></tr>
+<tr><td>既定: end to end</td><td>dev 85.39%（3,109 / 3,641）、test 84.47%（3,351 / 3,967）、PUD 86.19%（7,627 / 8,849）</td><td>スクリプト: <code>parser_experiments.sh final</code></td></tr>
+<tr><td>既定を CaboCha の素性の集合にした場合</td><td>正解の文節で dev 89.15%、test 88.30%、PUD 88.33%。end to end で dev 84.45%、test 84.30%、PUD 85.59%</td><td>スクリプト: <code>parser_experiments.sh final</code></td></tr>
+<tr><td>既定のモデル</td><td>区切りを含めて 6,258,548 バイト。素性の文字列 62,380 個。19 回り、66,000 件の判定のうちサポートベクター 21,374 件。約 3 秒。2 回学習して同じバイト列</td><td>スクリプト: <code>parser_experiments.sh final</code></td></tr>
+<tr><td>既定のモデルを test の 542 文で。AMD Ryzen AI Max+ 395 の 1 コア</td><td>読み込み 2,732 マイクロ秒。区切り毎秒 20,354 文、解析 16,678 文、両方で 8,718 文</td><td>スクリプト: <code>parser_experiments.sh speed</code></td></tr>
+<tr><td>同じものを、対のほかの持ち方で</td><td>ハッシュ・4 バイト: 19,028,600 バイト、解析 13,375 文。対ごとの重み・1 バイト: 24,514,588 バイト、2,741 文。4 バイト: 38,162,161 バイト、2,679 文</td><td>スクリプト: <code>parser_experiments.sh speed</code></td></tr>
 </tbody></table>
 </div>
 <h3 id="モデルファイル-1"><a class="header" href="#モデルファイル-1">モデルファイル</a></h3>
@@ -15430,7 +15629,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td><a href="https://github.com/lindera/lindera/issues/1434">#1434</a></td><td>ドキュメントの章</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1436">#1436</a></td><td>係り受けの解析器。ループ、素性、学習事例</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1433">#1433</a></td><td>CaboCha・J.DepP の基準の測り直し</td><td>未着手</td></tr>
-<tr><td><a href="https://github.com/lindera/lindera/issues/1437">#1437</a></td><td>モデルファイル（済み）と、解析器の学習</td><td>作業中</td></tr>
+<tr><td><a href="https://github.com/lindera/lindera/issues/1437">#1437</a></td><td>モデルファイルと、解析器の学習</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td><td>トークンフィルター</td><td>未着手</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1439">#1439</a></td><td>コマンド</td><td>未着手</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td><td>IPADIC のモデルと、クレートの公開</td><td>未着手</td></tr>

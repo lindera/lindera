@@ -202,6 +202,8 @@
 │   ├── features.rs       # Group, FeatureSet: the features of a decision
 │   ├── shift_reduce.rs   # The loop over the bunsetsu
 │   ├── classifier.rs     # Classifier, LinearClassifier
+│   ├── model.rs          # ParserModel, ParserPart: the weights, in memory and on a file
+│   ├── train.rs          # Training: dual coordinate descent, passive-aggressive (train)
 │   └── oracle.rs         # Training instances from an answer
 ├── corpus.rs             # Training data from a dependency corpus (train)
 ├── corpus/
@@ -296,9 +298,9 @@ assert_eq!(output, text.as_bytes());
 <h3 id="chunker--chunkermodel"><a class="header" href="#chunker--chunkermodel">Chunker / ChunkerModel</a></h3>
 <p><code>Chunker</code> は、素性の文字列から重みへの表と、その表の学習に使ったスキーマ、列、テンプレートで、形態素を文節に区切ります。これらは <code>ChunkerData</code> トレイトを通して読みます。読む先は、メモリ上の <code>ChunkerModel</code>（学習の結果）か、モデルファイルの区切りの部分です。<a href="./chunking.html">文節の区切り</a>を参照してください。</p>
 <h3 id="model--modelbuilder"><a class="header" href="#model--modelbuilder">Model / ModelBuilder</a></h3>
-<p><code>Model</code> は、辞書のモデルファイルです。所有するか借りるバイト列を、その場で読みます。辞書の名前、スキーマ、学習した部分を持ちます。<code>ModelBuilder</code> はファイルを書きます。<a href="./model_file.html">モデルファイル</a>を参照してください。</p>
+<p><code>Model</code> は、辞書のモデルファイルです。所有するか借りるバイト列を、その場で読みます。辞書の名前、スキーマ、学習した部分（文節の区切りと解析器）を持ちます。<code>Model::analyze</code> は、文を形態素から係り受けまで解析します。<code>ModelBuilder</code> はファイルを書きます。<a href="./model_file.html">モデルファイル</a>を参照してください。</p>
 <h3 id="parser--classifier"><a class="header" href="#parser--classifier">Parser / Classifier</a></h3>
-<p><code>Parser</code> は、shift-reduce で各文節の係り先を求めます。1 回の判定の素性は、スキーマを通して作る文字列です。<code>FeatureSet</code> がどの群の素性を作るかを決め、<code>Classifier</code> が素性に点数を付けます。<code>LinearClassifier</code> は、素性の重みとその対の重みを足します。<code>parser::instances</code> は、正解のある文から分類器の学習事例を作ります。<a href="./parsing.html">係り受けの解析</a>を参照してください。</p>
+<p><code>Parser</code> は、shift-reduce で各文節の係り先を求めます。1 回の判定の素性は、スキーマを通して作る文字列です。<code>FeatureSet</code> がどの群の素性を作るかを決め、<code>Classifier</code> が、素性の重みとその対の重みを足して点数を付けます。モデルファイルの分類器は <code>ParserPart</code> で、ファイルのバイト列の上で重みを読みます。<code>ParserModel</code> は、学習の結果の重みをメモリに持ちます。<code>LinearClassifier</code> は、手で作った重みを受け取ります。<code>parser::instances</code> は正解のある文から学習事例を作り、<code>parser::train</code> がそれで学習します。<a href="./parsing.html">係り受けの解析</a>を参照してください。</p>
 <h3 id="コマンド"><a class="header" href="#コマンド">コマンド</a></h3>
 <p><code>train</code> feature を付けると、<code>lindera-dependency</code> コマンドがビルドされます。分かち書きには <code>lindera-segmenter</code> を使います。</p>
 <div class="table-wrapper"><table><thead><tr><th>サブコマンド</th><th>内容</th><th>ページ</th></tr></thead><tbody>
@@ -308,13 +310,15 @@ assert_eq!(output, text.as_bytes());
 <tr><td><code>train-chunker</code></td><td>文節の区切りを学習し、モデルファイルを書く</td><td><a href="./chunking.html">文節の区切り</a></td></tr>
 <tr><td><code>chunk</code></td><td>モデルファイルで、ファイルの形態素を区切り直す</td><td><a href="./chunking.html">文節の区切り</a></td></tr>
 <tr><td><code>instances</code></td><td>解析器の学習事例を書き出す</td><td><a href="./parsing.html">係り受けの解析</a></td></tr>
+<tr><td><code>train-parser</code></td><td>解析器を学習し、モデルファイルを書く。ほかのファイルの区切りを入れられる</td><td><a href="./parsing.html">係り受けの解析</a></td></tr>
+<tr><td><code>parse</code></td><td>モデルファイルで、ファイルの係り先を求める。文節の上で、または形態素から</td><td><a href="./parsing.html">係り受けの解析</a></td></tr>
 </tbody></table>
 </div>
 <p>コマンドは <code>lindera-cli</code> ではなく、このクレートにあります。<code>lindera-cli</code> は公開されているので、公開していないクレートに依存できません。</p>
 <h2 id="feature-フラグ"><a class="header" href="#feature-フラグ">Feature フラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td>（なし）</td><td>型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器。依存がなく、<code>wasm32-unknown-unknown</code> 向けにビルドできる</td><td>Yes</td></tr>
-<tr><td><code>train</code></td><td><code>corpus</code> と <code>evaluation</code> のモジュール、<code>lindera-crf</code> による区切りの学習、<code>lindera-dependency</code> コマンド（分かち書きは <code>lindera-segmenter</code>）</td><td>No</td></tr>
+<tr><td><code>train</code></td><td><code>corpus</code> と <code>evaluation</code> のモジュール、<code>lindera-crf</code> による区切りの学習と解析器の学習、<code>lindera-dependency</code> コマンド（分かち書きは <code>lindera-segmenter</code>）</td><td>No</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>コマンドに IPADIC を埋め込む。<code>--dict embedded://ipadic</code> で使う（<code>train</code> を含む）</td><td>No</td></tr>
 </tbody></table>
 </div>

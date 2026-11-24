@@ -177,9 +177,9 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="モデルファイル"><a class="header" href="#モデルファイル">モデルファイル</a></h1>
-<p>モデルファイルは、1 つの辞書を解析するのに要るものを 1 つにまとめたファイルです。辞書の名前、その<a href="./head_and_function_word.html">スキーマ</a>、学習した部分が入ります。今ある部分は<a href="./chunking.html">文節の区切り</a>だけで、解析器は後から入ります。</p>
+<p>モデルファイルは、1 つの辞書を解析するのに要るものを 1 つにまとめたファイルです。辞書の名前、その<a href="./head_and_function_word.html">スキーマ</a>、学習した部分が入ります。部分は、<a href="./chunking.html">文節の区切り</a>と<a href="./parsing.html">解析器</a>です。</p>
 <p>モデルは 1 つの辞書に属します。辞書の素性の列と、辞書による分かち書きに依存するので、ファイルは、どの辞書のためのものかを自分で持ち、1 つのファイルが 1 つの辞書に対応します。</p>
-<p>配布しているモデルは、まだありません。モデルファイルは <a href="./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> が書き出します。</p>
+<p>配布しているモデルは、まだありません。<a href="./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> は区切りを入れたモデルファイルを、<a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a> は解析器だけか、両方を入れたモデルファイルを書き出します。</p>
 <h2 id="モデルを読む"><a class="header" href="#モデルを読む">モデルを読む</a></h2>
 <p><code>Model</code> は、ファイルをその場で読みます。バイト列を持つ型について総称で、表をどこにも写しません。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -187,19 +187,20 @@
 </span>use lindera_dependency::model::Model;
 
 // Bytes read from a file: the model owns them.
-let model = Model::new(std::fs::read("chunker.model")?)?;
+let model = Model::new(std::fs::read("ipadic.model")?)?;
 
 assert_eq!(model.dictionary(), "ipadic");
 let chunker = model.chunker().expect("the file has a chunker");
+let parser = model.parser().expect("the file has a parser");
 <span class="boring">}</span></code></pre></pre>
 <div class="table-wrapper"><table><thead><tr><th>バイト列を持つもの</th><th>書き方</th></tr></thead><tbody>
 <tr><td>メモリに読み込んだファイル</td><td><code>Model::new(std::fs::read(path)?)</code> で <code>Model&lt;Vec&lt;u8&gt;&gt;</code> になる</td></tr>
-<tr><td>プログラムに埋め込んだファイル</td><td><code>Model::new(include_bytes!("chunker.model").as_slice())</code> で <code>Model&lt;&amp;'static [u8]&gt;</code> になる</td></tr>
+<tr><td>プログラムに埋め込んだファイル</td><td><code>Model::new(include_bytes!("ipadic.model").as_slice())</code> で <code>Model&lt;&amp;'static [u8]&gt;</code> になる</td></tr>
 <tr><td>メモリマップ</td><td><code>AsRef&lt;[u8]&gt;</code> を実装する型なら何でも <code>Model::new(map)</code> に渡せる。<code>memmap2</code> クレートのマップなど。このクレートは依存を持たず、自分ではマップしない</td></tr>
 </tbody></table>
 </div>
 <p>ファイルの全体は、<code>Model::new</code> の中で 1 回だけ検査します。この版のモデルファイルでないバイト列は <code>Error::Model</code> になり、その後は何も失敗せず、panic もしません。数をポインター越しに読まないので、バイト列はどのアドレスにあってもよく、境界に揃っている必要もありません。同じコードが <code>wasm32-unknown-unknown</code> で動きます。</p>
-<p><code>Model::chunker</code> は、モデルのバイト列の上で重みを読む <code>Chunker</code> を返します。ファイルに区切りの部分が無ければ <code>None</code> です。<code>Model</code> は、バイト列がそうであれば <code>Send + Sync</code> で、1 つのモデルを複数のスレッドで使えます。</p>
+<p><code>Model::chunker</code> は、モデルのバイト列の上で重みを読む <code>Chunker</code> を返します。ファイルに区切りの部分が無ければ <code>None</code> です。<code>Model::parser</code> は、同じように <code>Parser</code> を返します。<code>Model::analyze</code> は、1 回の呼び出しで文を区切って解析します。<code>Model</code> は、バイト列がそうであれば <code>Send + Sync</code> で、1 つのモデルを複数のスレッドで使えます。</p>
 <h2 id="辞書の照合"><a class="header" href="#辞書の照合">辞書の照合</a></h2>
 <p>モデルを別の辞書の形態素に使うと、検査しない限り、エラーにならずに誤った答えが出ます。検査は 2 つあります。</p>
 <p><strong>名前。</strong> 形態素の辞書を知っている呼び出し側が、その名前をモデルの名前と比べます。</p>
@@ -224,7 +225,7 @@ println!("{error}");
 </code></pre>
 <p>2 つ目の検査は、列の数が足りている別の辞書の形態素を見つけられません。UniDic の形態素は IPADIC より列が多く、列の意味も違います。これを見分けられるのは名前だけなので、辞書を知っている呼び出し側は名前を照合してください。</p>
 <h2 id="モデルを書く"><a class="header" href="#モデルを書く">モデルを書く</a></h2>
-<p><code>ModelBuilder</code> は、辞書の名前、スキーマ、部分からファイルを書きます。区切りの部分は、<a href="./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B">学習</a>の結果である <code>ChunkerModel</code> から作ります。</p>
+<p><code>ModelBuilder</code> は、辞書の名前、スキーマ、部分からファイルを書きます。区切りの部分は <code>ChunkerModel</code> から、解析器の部分は <code>ParserModel</code> から作ります。どちらも学習の結果です（<a href="./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B">区切りの学習</a>、<a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B">解析器の学習</a>）。次の区切りは、手で作ったものです。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::collections::HashMap;
@@ -254,7 +255,8 @@ std::fs::write("chunker.model", &amp;bytes)?;
 let model = Model::new(bytes)?;
 assert_eq!(model.dictionary(), "ipadic");
 <span class="boring">}</span></code></pre></pre>
-<p>同じ部分からは、同じバイト列ができます。ファイルのスキーマと違うスキーマで学習した区切りは断ります。</p>
+<p>同じ部分からは、同じバイト列ができます。ファイルのスキーマと違うスキーマで学習した部分は断ります。</p>
+<p><code>ModelBuilder::parser</code> は、<code>ParserModel</code> と、重みの書き方（<code>Quantization::F32</code>、<code>I16</code>、<code>I8</code>）を受け取ります。<code>ModelBuilder::from_model</code> は、すでにあるファイルの名前、スキーマ、部分から始めて、部分を足せるようにします。<code>train-parser --chunker</code> は、これで区切りを写します。</p>
 <h2 id="形式"><a class="header" href="#形式">形式</a></h2>
 <p>版は 1 です。数はすべてリトルエンディアンです。文字列は、バイト数を <code>u32</code> で書き、その後に UTF-8 を続けます。</p>
 <div class="table-wrapper"><table><thead><tr><th>欄</th><th>型</th><th>中身</th></tr></thead><tbody>
@@ -267,7 +269,7 @@ assert_eq!(model.dictionary(), "ipadic");
 <tr><td>部分</td><td></td><td>一覧の順に、すき間なく、ファイルの終わりまで</td></tr>
 </tbody></table>
 </div>
-<p>区切りの部分の種類は 1 です。ほかの種類の部分があるファイル、同じ種類が 2 つあるファイル、部分がすき間なく並んでいないファイル、最後の部分の後にバイトが残るファイルは断ります。ほかの版のファイルも断ります。</p>
+<p>区切りの部分の種類は 1、解析器の部分の種類は 2 で、この順に並びます。ほかの種類の部分があるファイル、同じ種類が 2 つあるファイル、部分がすき間なく並んでいないファイル、最後の部分の後にバイトが残るファイルは断ります。ほかの版のファイルも断ります。</p>
 <h3 id="区切りの部分"><a class="header" href="#区切りの部分">区切りの部分</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>欄</th><th>型</th><th>中身</th></tr></thead><tbody>
 <tr><td>列の数</td><td><code>u32</code></td><td></td></tr>
@@ -277,6 +279,20 @@ assert_eq!(model.dictionary(), "ipadic");
 <tr><td>素性の文字列</td><td>表</td><td>それぞれに <code>f64</code> が 2 つ。<code>B</code> の重み、<code>I</code> の重みの順</td></tr>
 </tbody></table>
 </div>
+<h3 id="解析器の部分"><a class="header" href="#解析器の部分">解析器の部分</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>欄</th><th>型</th><th>中身</th></tr></thead><tbody>
+<tr><td>素性の集合</td><td>文字列</td><td>素性の群。<code>distance,source,target,left,right,children,gap,after</code> の形</td></tr>
+<tr><td>量子化</td><td>1 バイト</td><td>重みの書き方。0 は <code>f32</code>、1 は <code>i16</code>、2 は <code>i8</code></td></tr>
+<tr><td>対</td><td>1 バイト</td><td>0 は対ごとの重み、1 は対をハッシュで割り当てる表</td></tr>
+<tr><td>バイアス</td><td><code>f64</code></td><td></td></tr>
+<tr><td>尺度</td><td><code>f64</code></td><td>書いてある重みに掛ける数。0 より大きく、<code>f32</code> では 1</td></tr>
+<tr><td>素性の文字列</td><td>表</td><td>それぞれに重み。対をハッシュで割り当てる場合は、その後に <code>u32</code> のキー</td></tr>
+<tr><td>対の重み</td><td></td><td>下を参照</td></tr>
+</tbody></table>
+</div>
+<p>1 回の判定の点数は、バイアスに、その素性と素性の対の重み（書いてある値）の合計に尺度を掛けたものを足した値です。素性の番号は、表の中の順番です。</p>
+<p><strong>対をハッシュで割り当てる場合</strong>: ビット数を <code>u32</code> で書き（1 から 30）、その後に 2^bits 個の重みが続きます。素性のキーは、その文字列のハッシュで、表のハッシュと同じものです。対の場所は 2 つのキーから決めます。小さいほうを 64 ビットの数の上位の半分に置き、その数を混ぜて（30 ビット右にずらした自分との XOR、<code>0xbf58476d1ce4e5b9</code> との積、27 ビットずらした XOR、<code>0x94d049bb133111eb</code> との積）、上位のビットを場所にします。同じ場所に当たった対は、その重みを共有します。</p>
+<p><strong>対ごとに重みを持つ場合</strong>: 対の数を <code>u64</code> で書きます。次に、素性ごとと最後にもう 1 つ、その素性の対（その素性が小さいほうの番号になる対）がどこから始まるかを <code>u32</code> で書きます。続いて、各対の大きいほうの番号を <code>u32</code> で、素性ごとに並べて書き、最後に各対の重みを書きます。</p>
 <h3 id="表"><a class="header" href="#表">表</a></h3>
 <p>表は、文字列から同じ幅の値への対応で、ファイルの中の位置のまま引きます。</p>
 <div class="table-wrapper"><table><thead><tr><th>欄</th><th>型</th><th>中身</th></tr></thead><tbody>
@@ -292,7 +308,26 @@ assert_eq!(model.dictionary(), "ipadic");
 <p>枠は、空なら 0、そうでなければ文字列の番号に 1 を足した値です。文字列は、ハッシュが指す枠から始めて、その後の最初の空いた枠に入ります。最後の枠の次は最初の枠です。ハッシュは、文字列のバイト列の 64 ビットの FNV-1a を 32 ビットに畳み（上位の半分と下位の半分の XOR）、枠の数で割った余りです。文字列は並びの順に入れ、表は 1 つの文字列に 2 つ以上の枠を持つように書きます。</p>
 <p>文字列を並べ替えてあるのは、同じ文字列から必ず同じバイト列ができるようにするためです。引くときは枠を使います。</p>
 <h2 id="大きさと速さ"><a class="header" href="#大きさと速さ">大きさと速さ</a></h2>
-<p>UD Japanese-GSD の train と IPADIC で学習した、既定の区切りのモデル（素性の文字列は 4,325 個）の値です。</p>
+<p>UD Japanese-GSD の train と IPADIC で学習した、既定のモデル（区切りと解析器）の値です。test の 542 文で測りました。</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>両方の部分を入れたファイルの大きさ</td><td>6,258,548 バイト</td></tr>
+<tr><td>そのうち区切りを、単独のファイルにした大きさ</td><td>261,851 バイト</td></tr>
+<tr><td>読み込みの時間（<code>Model::new</code>。すべての検査を含む）</td><td>約 2.7 ms</td></tr>
+<tr><td>区切り</td><td>毎秒 約 20,400 文</td></tr>
+<tr><td>正解の文節の解析</td><td>毎秒 約 16,700 文</td></tr>
+<tr><td>区切りと解析</td><td>毎秒 約 8,700 文</td></tr>
+</tbody></table>
+</div>
+<p>対の表は 1 バイトの重みが 2^22 個で、ファイルの 4.2 MB を占めます。残りのほとんどは、解析器の素性の文字列 62,380 個です。</p>
+<p>対の重みの持ち方で変わるのは、大きさと速さで、精度ではありません（<a href="./parsing.html#%E6%97%A2%E5%AE%9A%E3%81%AE%E9%81%B8%E3%81%B3%E6%96%B9">既定の選び方</a>を参照）。</p>
+<div class="table-wrapper"><table><thead><tr><th>対</th><th>重み</th><th>ファイルの大きさ</th><th>解析、毎秒の文の数</th></tr></thead><tbody>
+<tr><td>2^22 個の重みにハッシュで割り当てる</td><td>1 バイト</td><td>6,258,548 バイト</td><td>約 16,700</td></tr>
+<tr><td>2^22 個の重みにハッシュで割り当てる</td><td>4 バイト</td><td>19,028,600 バイト</td><td>約 13,400</td></tr>
+<tr><td>対ごとの重み</td><td>1 バイト</td><td>24,514,588 バイト</td><td>約 2,700</td></tr>
+<tr><td>対ごとの重み</td><td>4 バイト</td><td>38,162,161 バイト</td><td>約 2,700</td></tr>
+</tbody></table>
+</div>
+<p>同じデータで学習した区切りだけ（素性の文字列は 4,325 個）を、train の 7,024 文で測った値です。</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
 <tr><td>ファイルの大きさ</td><td>261,851 バイト</td></tr>
 <tr><td>読み込みの時間（<code>Model::new</code>。すべての検査を含む）</td><td>約 0.2 ms</td></tr>
@@ -300,7 +335,7 @@ assert_eq!(model.dictionary(), "ipadic");
 <tr><td>同じ区切りをメモリに持った場合（標準ライブラリのハッシュ表）</td><td>毎秒 約 18,223 文</td></tr>
 </tbody></table>
 </div>
-<p>AMD Ryzen AI Max+ 395 の 1 コアで、Rust 1.100.0 を使い、train の 7,024 文で測りました。<a href="https://github.com/lindera/lindera/tree/main/scripts/dependency/model_speed"><code>scripts/dependency/model_speed</code></a> で測り直せます。ファイルの大部分を占めることになる解析器の部分は、まだありません。モデル全体の大きさと速さは、それと一緒に測ります。</p>
+<p>AMD Ryzen AI Max+ 395 の 1 コアで、Rust 1.100.0 を使って測りました。<a href="https://github.com/lindera/lindera/tree/main/scripts/dependency/model_speed"><code>scripts/dependency/model_speed</code></a> と <code>scripts/dependency/parser_experiments.sh speed</code> で測り直せます。</p>
 
                     </main>
 

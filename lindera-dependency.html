@@ -185,14 +185,14 @@
 </code></pre>
 <h2 id="status"><a class="header" href="#status">Status</a></h2>
 <blockquote>
-<p>The crate is <strong>under development and not published</strong> on crates.io. The <strong>dependency parser has no trained model yet</strong>: its loop and its features exist, and it parses with weights given to it, but the crate cannot train those weights. What is complete is everything before it: the types, the training data, the evaluation, the segmentation into bunsetsu, and the head word and function word of a bunsetsu.</p>
+<p>The crate is <strong>under development and not published</strong> on crates.io, and <strong>no model is distributed yet</strong>. The analysis is complete from morphemes to dependencies, with a model you train yourself: the training data, the chunker, the parser, the model file and the evaluation are here. What is still to come is a released model, the token filter of Lindera and a command for text.</p>
 </blockquote>
 <p>To use it today, build it from a checkout of the <a href="https://github.com/lindera/lindera">repository</a>. The interfaces may change until the first release. The work is tracked in <a href="https://github.com/lindera/lindera/issues/1417">#1417</a>.</p>
 <h2 id="what-it-can-do"><a class="header" href="#what-it-can-do">What it can do</a></h2>
 <ul>
 <li><strong>Segment the morphemes of a sentence into bunsetsu</strong> (chunking), with a conditional random field and a model that is a table of weights. With IPADIC, the F-score is 96.85 on the dev file and 96.92 on the test file of UD Japanese-GSD.</li>
 <li><strong>Keep a model in one file per dictionary and read it in place</strong>: from bytes embedded in a program, read from a file or mapped into memory, without copying its tables. The file names its dictionary, and morphemes that cannot be of that dictionary are refused.</li>
-<li><strong>Parse the dependencies of the bunsetsu</strong> with shift-reduce and a classifier over features and pairs of features, as CaboCha and J.DepP do, given the weights of the classifier; and write the training instances of such a classifier.</li>
+<li><strong>Parse the dependencies of the bunsetsu</strong> with shift-reduce and a classifier over features and pairs of features, as CaboCha and J.DepP do, and train that classifier. With IPADIC, 90.11% of the bunsetsu of the dev file of UD Japanese-GSD get the right head with the bunsetsu of the answer (88.53% on the test file), and 85.39% from the morphemes (84.47%).</li>
 <li><strong>Give the head word and the function word of a bunsetsu</strong>, and recognize punctuation and brackets, from a schema of the dictionary. IPADIC is the first schema.</li>
 <li><strong>Read and write the lattice format</strong> of CaboCha (<code>cabocha -f1</code>), and check that a sentence is the tree the parsers assume.</li>
 <li><strong>Make training data</strong> from a dependency corpus such as UD Japanese-GSD, on the morphemes of the dictionary the parser will run with.</li>
@@ -203,7 +203,7 @@
 <ul>
 <li><a href="./lindera-dependency/architecture.html">Architecture</a> -- The modules, the types, the lattice format and the feature flags</li>
 <li><a href="./lindera-dependency/chunking.html">Chunking</a> -- Segmenting morphemes into bunsetsu, and training a model</li>
-<li><a href="./lindera-dependency/parsing.html">Parsing</a> -- Finding the head of each bunsetsu: the loop, the features and the training instances</li>
+<li><a href="./lindera-dependency/parsing.html">Parsing</a> -- Finding the head of each bunsetsu: the loop, the features, training a model, and its accuracy</li>
 <li><a href="./lindera-dependency/model_file.html">Model File</a> -- The file of a dictionary: reading it in place, checking the dictionary, and its format</li>
 <li><a href="./lindera-dependency/head_and_function_word.html">Head and Function Word</a> -- The schema of a dictionary and the two words of a bunsetsu</li>
 <li><a href="./lindera-dependency/training_data.html">Training Data</a> -- Making training data from UD Japanese-GSD</li>

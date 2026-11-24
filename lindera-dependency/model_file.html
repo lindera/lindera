@@ -177,9 +177,9 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="model-file"><a class="header" href="#model-file">Model File</a></h1>
-<p>A model file holds what one dictionary needs to be analyzed: the name of the dictionary, its <a href="./head_and_function_word.html">schema</a>, and the trained parts. So far the only part is the <a href="./chunking.html">chunker</a>; the parser follows.</p>
+<p>A model file holds what one dictionary needs to be analyzed: the name of the dictionary, its <a href="./head_and_function_word.html">schema</a>, and the trained parts: the <a href="./chunking.html">chunker</a> and the <a href="./parsing.html">parser</a>.</p>
 <p>A model belongs to one dictionary. It depends on the feature columns of the dictionary and on how the dictionary segments a text, so the file says which dictionary it is for, and one file serves one dictionary.</p>
-<p>No model is distributed yet. <a href="./chunking.html#training-a-model"><code>train-chunker</code></a> writes a model file.</p>
+<p>No model is distributed yet. <a href="./chunking.html#training-a-model"><code>train-chunker</code></a> writes a model file with the chunker, and <a href="./parsing.html#training-a-model"><code>train-parser</code></a> one with the parser, or with both.</p>
 <h2 id="reading-a-model"><a class="header" href="#reading-a-model">Reading a model</a></h2>
 <p><code>Model</code> reads a file in place. It is generic over what holds the bytes, and copies none of its tables:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -187,19 +187,20 @@
 </span>use lindera_dependency::model::Model;
 
 // Bytes read from a file: the model owns them.
-let model = Model::new(std::fs::read("chunker.model")?)?;
+let model = Model::new(std::fs::read("ipadic.model")?)?;
 
 assert_eq!(model.dictionary(), "ipadic");
 let chunker = model.chunker().expect("the file has a chunker");
+let parser = model.parser().expect("the file has a parser");
 <span class="boring">}</span></code></pre></pre>
 <div class="table-wrapper"><table><thead><tr><th>What holds the bytes</th><th>How</th></tr></thead><tbody>
 <tr><td>A file read into memory</td><td><code>Model::new(std::fs::read(path)?)</code> gives a <code>Model&lt;Vec&lt;u8&gt;&gt;</code></td></tr>
-<tr><td>A file embedded in the program</td><td><code>Model::new(include_bytes!("chunker.model").as_slice())</code> gives a <code>Model&lt;&amp;'static [u8]&gt;</code></td></tr>
+<tr><td>A file embedded in the program</td><td><code>Model::new(include_bytes!("ipadic.model").as_slice())</code> gives a <code>Model&lt;&amp;'static [u8]&gt;</code></td></tr>
 <tr><td>A memory map</td><td><code>Model::new(map)</code> for any type that implements <code>AsRef&lt;[u8]&gt;</code>, such as the map of the <code>memmap2</code> crate. This crate has no dependency and maps nothing itself</td></tr>
 </tbody></table>
 </div>
 <p>The whole file is checked once, in <code>Model::new</code>: bytes that are not a model file of this version give an <code>Error::Model</code>, and nothing fails or panics afterwards. No number is read through a pointer, so the bytes can sit at any address, aligned or not. The same code runs on <code>wasm32-unknown-unknown</code>.</p>
-<p><code>Model::chunker</code> gives a <code>Chunker</code> that reads its weights on the bytes of the model, or <code>None</code> when the file has no chunker part. A <code>Model</code> is <code>Send + Sync</code> when its bytes are, and one model serves several threads.</p>
+<p><code>Model::chunker</code> gives a <code>Chunker</code> that reads its weights on the bytes of the model, or <code>None</code> when the file has no chunker part; <code>Model::parser</code> gives a <code>Parser</code> the same way. <code>Model::analyze</code> chunks and parses a sentence in one call. A <code>Model</code> is <code>Send + Sync</code> when its bytes are, and one model serves several threads.</p>
 <h2 id="checking-the-dictionary"><a class="header" href="#checking-the-dictionary">Checking the dictionary</a></h2>
 <p>A model used on the morphemes of another dictionary gives wrong answers without an error, unless it is checked. There are two checks.</p>
 <p><strong>The name.</strong> What knows the dictionary of its morphemes compares its name with the one of the model:</p>
@@ -224,7 +225,7 @@ println!("{error}");
 </code></pre>
 <p>The second check does not find morphemes of another dictionary that are wide enough: the morphemes of UniDic have more columns than IPADIC, and mean something else. Only the name tells those apart, so a caller that knows its dictionary should check the name.</p>
 <h2 id="writing-a-model"><a class="header" href="#writing-a-model">Writing a model</a></h2>
-<p><code>ModelBuilder</code> writes a file from the name of the dictionary, its schema and the parts. The chunker part comes from a <code>ChunkerModel</code>, which is what <a href="./chunking.html#training-a-model">training</a> gives:</p>
+<p><code>ModelBuilder</code> writes a file from the name of the dictionary, its schema and the parts. The chunker part comes from a <code>ChunkerModel</code> and the parser part from a <code>ParserModel</code>, which are what training gives (<a href="./chunking.html#training-a-model">of the chunker</a>, <a href="./parsing.html#training-a-model">of the parser</a>). This chunker is made by hand:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::collections::HashMap;
@@ -254,7 +255,8 @@ std::fs::write("chunker.model", &amp;bytes)?;
 let model = Model::new(bytes)?;
 assert_eq!(model.dictionary(), "ipadic");
 <span class="boring">}</span></code></pre></pre>
-<p>The same parts give the same bytes. A chunker trained with another schema than the one of the file is refused.</p>
+<p>The same parts give the same bytes. A part trained with another schema than the one of the file is refused.</p>
+<p><code>ModelBuilder::parser</code> takes a <code>ParserModel</code> and how its weights are written (<code>Quantization::F32</code>, <code>I16</code> or <code>I8</code>). <code>ModelBuilder::from_model</code> starts from the name, the schema and the parts of a file that exists, to add a part to it; <code>train-parser --chunker</code> does this with the chunker.</p>
 <h2 id="the-format"><a class="header" href="#the-format">The format</a></h2>
 <p>Version 1. Every number is little endian. A string is its length in bytes as a <code>u32</code>, followed by its UTF-8.</p>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Content</th></tr></thead><tbody>
@@ -267,7 +269,7 @@ assert_eq!(model.dictionary(), "ipadic");
 <tr><td>The parts</td><td></td><td>One after the other, in the order of the list, up to the end of the file</td></tr>
 </tbody></table>
 </div>
-<p>The kind of the chunker part is 1. A file with a part of another kind, with the same kind twice, with parts that are not one after the other, or with bytes after the last part is refused, and so is a file of another version.</p>
+<p>The kind of the chunker part is 1 and the kind of the parser part 2, in this order. A file with a part of another kind, with the same kind twice, with parts that are not one after the other, or with bytes after the last part is refused, and so is a file of another version.</p>
 <h3 id="the-chunker-part"><a class="header" href="#the-chunker-part">The chunker part</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Content</th></tr></thead><tbody>
 <tr><td>Number of columns</td><td><code>u32</code></td><td></td></tr>
@@ -277,6 +279,20 @@ assert_eq!(model.dictionary(), "ipadic");
 <tr><td>Feature strings</td><td>table</td><td>Each with two <code>f64</code>: the weight of <code>B</code>, then the weight of <code>I</code></td></tr>
 </tbody></table>
 </div>
+<h3 id="the-parser-part"><a class="header" href="#the-parser-part">The parser part</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Content</th></tr></thead><tbody>
+<tr><td>Feature set</td><td>string</td><td>The groups of features, as <code>distance,source,target,left,right,children,gap,after</code></td></tr>
+<tr><td>Quantization</td><td>1 byte</td><td>How a weight is written: 0 as an <code>f32</code>, 1 as an <code>i16</code>, 2 as an <code>i8</code></td></tr>
+<tr><td>Pairs</td><td>1 byte</td><td>0 for a weight of its own for each pair, 1 for a table the pairs are hashed into</td></tr>
+<tr><td>Bias</td><td><code>f64</code></td><td></td></tr>
+<tr><td>Scale</td><td><code>f64</code></td><td>What a weight as it is written is multiplied by; above 0, and 1 for <code>f32</code></td></tr>
+<tr><td>Feature strings</td><td>table</td><td>Each with its weight; with hashed pairs, followed by its key as a <code>u32</code></td></tr>
+<tr><td>Weights of the pairs</td><td></td><td>See below</td></tr>
+</tbody></table>
+</div>
+<p>The score of a decision is the bias, plus the scale times the sum of the weights, as they are written, of its features and of their pairs. The number of a feature is its index in the table.</p>
+<p>With <strong>hashed pairs</strong>: the number of bits as a <code>u32</code> (1 to 30), then 2^bits weights. The key of a feature is the hash of its string, the one of a table. The place of a pair is taken from the two keys, the smaller in the upper half of a 64-bit number: that number is mixed (XOR with itself shifted right by 30, times <code>0xbf58476d1ce4e5b9</code>, XOR shifted by 27, times <code>0x94d049bb133111eb</code>), and its highest bits are the place. Pairs that fall on the same place share its weight.</p>
+<p>With <strong>a weight for each pair</strong>: the number of pairs as a <code>u64</code>; for each feature and once more, as <code>u32</code>, where its pairs start (those in which it has the smaller number); the larger number of each pair as a <code>u32</code>, sorted for each feature; the weight of each pair.</p>
 <h3 id="a-table"><a class="header" href="#a-table">A table</a></h3>
 <p>A table maps strings to values of one width, and is looked up where it is in the file.</p>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Content</th></tr></thead><tbody>
@@ -292,7 +308,26 @@ assert_eq!(model.dictionary(), "ipadic");
 <p>A slot is 0 when it is empty, and otherwise one more than the index of a string. A string starts at the slot of its hash and goes to the next free slot after it, the first slot following the last. The hash is the 64-bit FNV-1a of the bytes of the string, folded to 32 bits (the high half XOR the low half), modulo the number of slots. The strings are put in by their order, and a table is written with at least two slots per string.</p>
 <p>The strings are sorted so that the same strings always give the same bytes; they are found through the slots.</p>
 <h2 id="size-and-speed"><a class="header" href="#size-and-speed">Size and speed</a></h2>
-<p>For the default chunker model, trained on the train file of UD Japanese-GSD with IPADIC (4,325 feature strings):</p>
+<p>For the default model, the chunker and the parser trained on the train file of UD Japanese-GSD with IPADIC, measured on the 542 sentences of the test file:</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>Size of the file, with both parts</td><td>6,258,548 bytes</td></tr>
+<tr><td>Of which the chunker, in a file of its own</td><td>261,851 bytes</td></tr>
+<tr><td>Time to read it (<code>Model::new</code>, with every check)</td><td>about 2.7 ms</td></tr>
+<tr><td>Chunking</td><td>about 20,400 sentences per second</td></tr>
+<tr><td>Parsing the bunsetsu of the answer</td><td>about 16,700 sentences per second</td></tr>
+<tr><td>Chunking and parsing</td><td>about 8,700 sentences per second</td></tr>
+</tbody></table>
+</div>
+<p>The table of the pairs, with 2^22 weights of one byte, is 4.2 MB of the file; the rest is mostly the 62,380 feature strings of the parser.</p>
+<p>How the weights of the pairs are kept decides the size and the speed, not the accuracy (see <a href="./parsing.html#how-the-defaults-were-chosen">How the defaults were chosen</a>):</p>
+<div class="table-wrapper"><table><thead><tr><th>Pairs</th><th>Weights</th><th>Size of the file</th><th>Parsing, sentences per second</th></tr></thead><tbody>
+<tr><td>Hashed into 2^22 weights</td><td>1 byte</td><td>6,258,548 bytes</td><td>about 16,700</td></tr>
+<tr><td>Hashed into 2^22 weights</td><td>4 bytes</td><td>19,028,600 bytes</td><td>about 13,400</td></tr>
+<tr><td>A weight for each pair</td><td>1 byte</td><td>24,514,588 bytes</td><td>about 2,700</td></tr>
+<tr><td>A weight for each pair</td><td>4 bytes</td><td>38,162,161 bytes</td><td>about 2,700</td></tr>
+</tbody></table>
+</div>
+<p>The chunker alone, trained on the same data (4,325 feature strings), on the 7,024 sentences of the train file:</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
 <tr><td>Size of the file</td><td>261,851 bytes</td></tr>
 <tr><td>Time to read it (<code>Model::new</code>, with every check)</td><td>about 0.2 ms</td></tr>
@@ -300,7 +335,7 @@ assert_eq!(model.dictionary(), "ipadic");
 <tr><td>Chunking with the same chunker in memory, in a hash table of the standard library</td><td>about 18,223 sentences per second</td></tr>
 </tbody></table>
 </div>
-<p>Measured on one core of an AMD Ryzen AI Max+ 395, with Rust 1.100.0, on the 7,024 sentences of the train file; <a href="https://github.com/lindera/lindera/tree/main/scripts/dependency/model_speed"><code>scripts/dependency/model_speed</code></a> measures it again. The parser part, which will be most of a file, is still to come; the size and the speed of a whole model are measured with it.</p>
+<p>Measured on one core of an AMD Ryzen AI Max+ 395, with Rust 1.100.0; <a href="https://github.com/lindera/lindera/tree/main/scripts/dependency/model_speed"><code>scripts/dependency/model_speed</code></a> and <code>scripts/dependency/parser_experiments.sh speed</code> measure it again.</p>
 
                     </main>
 

@@ -202,6 +202,8 @@
 │   ├── features.rs       # Group, FeatureSet: the features of a decision
 │   ├── shift_reduce.rs   # The loop over the bunsetsu
 │   ├── classifier.rs     # Classifier, LinearClassifier
+│   ├── model.rs          # ParserModel, ParserPart: the weights, in memory and on a file
+│   ├── train.rs          # Training: dual coordinate descent, passive-aggressive (train)
 │   └── oracle.rs         # Training instances from an answer
 ├── corpus.rs             # Training data from a dependency corpus (train)
 ├── corpus/
@@ -296,9 +298,9 @@ assert_eq!(output, text.as_bytes());
 <h3 id="chunker--chunkermodel"><a class="header" href="#chunker--chunkermodel">Chunker / ChunkerModel</a></h3>
 <p>A <code>Chunker</code> segments morphemes into bunsetsu with a table from feature string to weights, and with the schema, the columns and the template the table was trained with. It reads them through the <code>ChunkerData</code> trait: from a <code>ChunkerModel</code> in memory, which is what training gives, or from the chunker part of a model file. See <a href="./chunking.html">Chunking</a>.</p>
 <h3 id="model--modelbuilder"><a class="header" href="#model--modelbuilder">Model / ModelBuilder</a></h3>
-<p>A <code>Model</code> is the model file of a dictionary, read in place from bytes it owns or borrows: the name of the dictionary, its schema, and the trained parts. <code>ModelBuilder</code> writes one. See <a href="./model_file.html">Model File</a>.</p>
+<p>A <code>Model</code> is the model file of a dictionary, read in place from bytes it owns or borrows: the name of the dictionary, its schema, and the trained parts, the chunker and the parser. <code>Model::analyze</code> takes a sentence from morphemes to dependencies. <code>ModelBuilder</code> writes a file. See <a href="./model_file.html">Model File</a>.</p>
 <h3 id="parser--classifier"><a class="header" href="#parser--classifier">Parser / Classifier</a></h3>
-<p>A <code>Parser</code> finds the head of each bunsetsu with shift-reduce. The features of a decision are strings made through the schema; a <code>FeatureSet</code> says which groups of them are made; a <code>Classifier</code> scores them. <code>LinearClassifier</code> adds the weights of the features and of their pairs. <code>parser::instances</code> gives the training instances of a classifier from a sentence with its answer. See <a href="./parsing.html">Parsing</a>.</p>
+<p>A <code>Parser</code> finds the head of each bunsetsu with shift-reduce. The features of a decision are strings made through the schema; a <code>FeatureSet</code> says which groups of them are made; a <code>Classifier</code> scores them, by adding the weights of the features and of their pairs. The classifier of a model file is a <code>ParserPart</code>, which reads the weights on the bytes of the file; <code>ParserModel</code> holds them in memory, as training gives them; <code>LinearClassifier</code> takes weights made by hand. <code>parser::instances</code> gives the training instances from a sentence with its answer, and <code>parser::train</code> trains on them. See <a href="./parsing.html">Parsing</a>.</p>
 <h3 id="the-command"><a class="header" href="#the-command">The command</a></h3>
 <p>With the <code>train</code> feature the crate builds the <code>lindera-dependency</code> command, which tokenizes with <code>lindera-segmenter</code>:</p>
 <div class="table-wrapper"><table><thead><tr><th>Subcommand</th><th>What it does</th><th>Page</th></tr></thead><tbody>
@@ -308,13 +310,15 @@ assert_eq!(output, text.as_bytes());
 <tr><td><code>train-chunker</code></td><td>Trains the chunker and writes a model file</td><td><a href="./chunking.html">Chunking</a></td></tr>
 <tr><td><code>chunk</code></td><td>Segments the morphemes of a file again with a model file</td><td><a href="./chunking.html">Chunking</a></td></tr>
 <tr><td><code>instances</code></td><td>Writes the training instances of the parser</td><td><a href="./parsing.html">Parsing</a></td></tr>
+<tr><td><code>train-parser</code></td><td>Trains the parser and writes a model file, with the chunker of another one</td><td><a href="./parsing.html">Parsing</a></td></tr>
+<tr><td><code>parse</code></td><td>Finds the heads of a file with a model file, on its bunsetsu or from its morphemes</td><td><a href="./parsing.html">Parsing</a></td></tr>
 </tbody></table>
 </div>
 <p>The command is in this crate, not in <code>lindera-cli</code>: <code>lindera-cli</code> is published, and cannot depend on a crate that is not.</p>
 <h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td>(none)</td><td>The types, the lattice format, the schema, the model file, the chunker and the parser. No dependency; builds for <code>wasm32-unknown-unknown</code></td><td>Yes</td></tr>
-<tr><td><code>train</code></td><td>The <code>corpus</code> and <code>evaluation</code> modules, the training of the chunker with <code>lindera-crf</code>, and the <code>lindera-dependency</code> command, which tokenizes with <code>lindera-segmenter</code></td><td>No</td></tr>
+<tr><td><code>train</code></td><td>The <code>corpus</code> and <code>evaluation</code> modules, the training of the chunker with <code>lindera-crf</code> and of the parser, and the <code>lindera-dependency</code> command, which tokenizes with <code>lindera-segmenter</code></td><td>No</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>Embeds IPADIC in the command, for <code>--dict embedded://ipadic</code> (implies <code>train</code>)</td><td>No</td></tr>
 </tbody></table>
 </div>
