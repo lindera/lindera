@@ -33,6 +33,10 @@
 //! - [`chunker`]: segmenting the morphemes of a sentence into bunsetsu, with
 //!   a conditional random field over two labels and a model that is a table
 //!   of weights.
+//! - [`model`]: the model file of a dictionary. It names the dictionary,
+//!   holds its schema and the trained parts, so far the chunker, and is read
+//!   in place: from bytes embedded in a program, read from a file or mapped
+//!   into memory, without copying its tables.
 //! - [`parser`]: finding the head of each bunsetsu, with shift-reduce and a
 //!   classifier over features and pairs of features. The features and the
 //!   loop are here, and the training instances of a classifier; a trained
@@ -45,7 +49,7 @@
 //! `lindera-dependency evaluate` command count the accuracy of chunking and
 //! of dependency as CaboCha and J.DepP do, and compare two outputs. The
 //! model of the chunker is trained with `lindera-crf`
-//! (`lindera-dependency train-chunker`), and
+//! (`lindera-dependency train-chunker`, which writes a model file), and
 //! `lindera-dependency instances` writes the training instances of the
 //! parser.
 //!
@@ -121,6 +125,7 @@ pub mod error;
 #[cfg(feature = "train")]
 pub mod evaluation;
 pub mod lattice;
+pub mod model;
 pub mod morpheme;
 pub mod parser;
 pub mod schema;

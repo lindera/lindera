@@ -24,9 +24,17 @@ pub enum Error {
     /// Reading or writing failed.
     Io(io::Error),
     /// The chunker was given something it cannot use: a template or a list
-    /// of columns that cannot be read, bytes that are not a model, or
+    /// of columns that cannot be read, weights that are not finite, or
     /// training data that cannot be trained on.
     Chunker(String),
+    /// Bytes are not a model file this crate reads: another magic number or
+    /// version, bytes that end early or go on after the end, or content
+    /// that is not what the format says.
+    Model(String),
+    /// A model was used with another dictionary than the one it was trained
+    /// for: the name of the dictionary differs, or a morpheme has fewer
+    /// feature columns than the schema of the model reads.
+    Dictionary(String),
     /// The parser was given something it cannot use: a feature set that
     /// cannot be read, or weights that are not finite.
     Parser(String),
@@ -91,6 +99,8 @@ impl fmt::Display for Error {
             Error::Structure(message) => write!(f, "invalid sentence: {message}"),
             Error::Io(error) => write!(f, "{error}"),
             Error::Chunker(message) => write!(f, "{message}"),
+            Error::Model(message) => write!(f, "{message}"),
+            Error::Dictionary(message) => write!(f, "{message}"),
             Error::Parser(message) => write!(f, "{message}"),
             #[cfg(feature = "train")]
             Error::Conllu { line, message } => write!(f, "line {line}: {message}"),

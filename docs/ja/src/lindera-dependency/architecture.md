@@ -16,9 +16,12 @@ lindera-dependency/src/
 ├── chunker/
 │   ├── columns.rs        # Column: what a template reads from a morpheme
 │   ├── template.rs       # Template in the format of CRF++
-│   ├── model.rs          # ChunkerModel: the table of weights, and its bytes
+│   ├── model.rs          # ChunkerData, ChunkerModel: the table of weights
 │   ├── decode.rs         # Viterbi over the two labels
 │   └── train.rs          # Training with lindera-crf (train)
+├── model.rs              # Model, ModelBuilder: the model file of a dictionary
+├── model/
+│   └── table.rs          # A table from strings to values, read in place
 ├── parser.rs             # Parser
 ├── parser/
 │   ├── features.rs       # Group, FeatureSet: the features of a decision
@@ -131,7 +134,11 @@ assert_eq!(output, text.as_bytes());
 
 ### Chunker / ChunkerModel
 
-`Chunker` は、`ChunkerModel` を使って形態素を文節に区切ります。モデルは、素性の文字列から重みへの表で、学習に使ったスキーマ、列、テンプレートを一緒に持ちます。[文節の区切り](./chunking.md)を参照してください。
+`Chunker` は、素性の文字列から重みへの表と、その表の学習に使ったスキーマ、列、テンプレートで、形態素を文節に区切ります。これらは `ChunkerData` トレイトを通して読みます。読む先は、メモリ上の `ChunkerModel`（学習の結果）か、モデルファイルの区切りの部分です。[文節の区切り](./chunking.md)を参照してください。
+
+### Model / ModelBuilder
+
+`Model` は、辞書のモデルファイルです。所有するか借りるバイト列を、その場で読みます。辞書の名前、スキーマ、学習した部分を持ちます。`ModelBuilder` はファイルを書きます。[モデルファイル](./model_file.md)を参照してください。
 
 ### Parser / Classifier
 
@@ -146,8 +153,8 @@ assert_eq!(output, text.as_bytes());
 | `convert` | 文節のラベルを持つ CoNLL-U のファイルから、学習データを作る | [学習データ](./training_data.md) |
 | `evaluate` | 出力を正解と比べる | [評価](./evaluation.md) |
 | `split` | 交差検証の分割を書き出す | [評価](./evaluation.md) |
-| `train-chunker` | 文節の区切りのモデルを学習する | [文節の区切り](./chunking.md) |
-| `chunk` | モデルで、ファイルの形態素を区切り直す | [文節の区切り](./chunking.md) |
+| `train-chunker` | 文節の区切りを学習し、モデルファイルを書く | [文節の区切り](./chunking.md) |
+| `chunk` | モデルファイルで、ファイルの形態素を区切り直す | [文節の区切り](./chunking.md) |
 | `instances` | 解析器の学習事例を書き出す | [係り受けの解析](./parsing.md) |
 
 コマンドは `lindera-cli` ではなく、このクレートにあります。`lindera-cli` は公開されているので、公開していないクレートに依存できません。
@@ -156,7 +163,7 @@ assert_eq!(output, text.as_bytes());
 
 | Feature | 説明 | デフォルト |
 | --- | --- | --- |
-| （なし） | 型、ラティス形式、スキーマ、文節の区切り、解析器。依存がなく、`wasm32-unknown-unknown` 向けにビルドできる | Yes |
+| （なし） | 型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器。依存がなく、`wasm32-unknown-unknown` 向けにビルドできる | Yes |
 | `train` | `corpus` と `evaluation` のモジュール、`lindera-crf` による区切りの学習、`lindera-dependency` コマンド（分かち書きは `lindera-segmenter`） | No |
 | `embed-ipadic` | コマンドに IPADIC を埋め込む。`--dict embedded://ipadic` で使う（`train` を含む） | No |
 

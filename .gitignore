@@ -36,3 +36,4 @@ docs/ja/book/
 # The corpora are not part of this repository.
 /scripts/dependency/data/
 /scripts/dependency/head_variants/Cargo.lock
+/scripts/dependency/model_speed/Cargo.lock

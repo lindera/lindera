@@ -43,8 +43,13 @@ Each decision has the issue that made it. A decision is changed by a pull reques
 | A model holds what makes its features: the schema, the columns, the template; for the parser, the feature set. | Training and inference cannot disagree. | #1421, #1422, #1436 |
 | The features of the parser are strings with CaboCha's names (`SHS:`, `DFP0:`, `GCASE:`, `a:`), made by one function for parsing and for training instances. | A model of CaboCha can be converted without renaming its features; a feature of training cannot differ from the one of parsing. | #1436 |
 | Which groups of features a model uses is data (a feature set), not code. | Feature sets are compared without a change of code, as templates of the chunker are. | #1436 |
-| The particles, and the function words taken by their surface as the feature of a child, are patterns of the schema. | The parser names no part of speech and no column. The schema is in the bytes of a model, so the chunker model went from version 2 to 3. | #1436 |
+| The particles, and the function words taken by their surface as the feature of a child, are patterns of the schema. | The parser names no part of speech and no column. The schema is in the bytes of a model. | #1436 |
 | The classifier is behind an interface in two steps: a number for a feature string, a score for the numbers of a decision. | The strings of a bunsetsu are looked up once per sentence, as in CaboCha; how weights are stored can change without the parser. | #1436 |
+| A dictionary has one model file: the name of the dictionary, its schema once, and the trained parts (the chunker, the parser). | A user needs one file for a dictionary, not two, and the parts cannot disagree on the schema. A model is released on its own schedule, so the file has a version of its own. | #1437 |
+| A model file is read in place, by a type that is generic over what holds the bytes, and is checked once, when it is opened. | Bytes embedded in a program, a file read into memory and a memory map of the caller are one code path, without a dependency and on `wasm32-unknown-unknown`. After the check nothing fails or panics. No number is read through a pointer, so the alignment of the bytes does not matter, as for `matrix.mtx` in #1364. | #1437 |
+| A table of strings in a model file is stored sorted, with a hash table over it. | The strings are found in the time of a hash, where they are; sorted, the same strings always give the same bytes. A binary search over the sorted strings alone was measured and is slower (see the numbers). | #1437 |
+| The dictionary of a model is checked twice: by its name, by the caller that knows the dictionary of its morphemes; and by the number of feature columns, always. | A morpheme with fewer columns than the schema reads cannot be of the dictionary, and is refused instead of analyzed. Morphemes of another dictionary that are wide enough cannot be told by their shape; only the name tells them. | #1437 |
+| The chunker-only file of before the model file (magic number `LDCHUNK`) is not read any more. | The crate is not published and no model is distributed; a second reader would be kept for no file that exists. | #1437 |
 | Training data holds no head word and function word positions; what reads it computes them from the schema. | A change of the rule cannot leave stale positions in a file. | #1422 |
 | Settings are compared by cross-validation on the train file; the dev file chooses between close settings; the test file and PUD are for the reported result only. | Dev and test are small: the 95% interval of an accuracy near 90% is about ±1 point on them. | #1420 |
 | The accuracy targets are the ones under "Targets" below. | They are the baselines measured on the same data. | #1417 |
@@ -107,14 +112,24 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 - **The features** are CaboCha's (`src/selector.cpp`, `src/dep.cpp`), in seven groups: the distance, the source, the target, the bunsetsu before the source, the one after the target, the bunsetsu already attached, and the gap. They are made once for each bunsetsu and put together for a decision, generic over what a string is turned into: the number of the classifier when parsing, the string itself for training instances.
 - **Differences from CaboCha**: the surface is not normalized, and punctuation and brackets are those of the schema; the head and the function word are those of the schema of #1422; a bunsetsu without a known head is not supported; an arc that is not asked has the score 0, where CaboCha writes the score of the decision before.
 - **J.DepP's features** (`jdepp/pdep.cc`) differ: four bunsetsu by the first morpheme, the head, the tail and the last one; whether two heads have the same surface; the balance of brackets; the particles of the bunsetsu in between that compete for the target; nothing of the bunsetsu already attached. What only J.DepP has is left for the comparison of feature sets.
-- **`LinearClassifier`** adds a bias, the weights of the features and the weights of their pairs, from hash tables. It is the least that parses with weights made by hand; the storage of trained weights is decided with the model file.
+- **`LinearClassifier`** adds a bias, the weights of the features and the weights of their pairs, from hash tables. It is the least that parses with weights made by hand; the storage of trained weights is decided with the parser part of the model file.
 - **Training instances** are the decisions the loop asks when the answer decides, each with its features and its answer, as in CaboCha's training mode. The answer gives the tree of every sentence of the training data back.
+
+### Model file ([#1437](https://github.com/lindera/lindera/issues/1437))
+
+- **One file per dictionary.** It starts with a magic number and a version, names its dictionary, holds the schema, then a list of parts and the parts. The chunker is the first part; the parser will be the second. A part can be absent: `train-chunker` writes a file with the chunker only.
+- **Read in place.** `Model<B>` holds any `B: AsRef<[u8]>` and keeps, besides the bytes, only what is small and structured: the name, the schema, the columns and the template of the chunker, its nine transition weights, and where its table is. The weights of the feature strings stay in the bytes and are read with `from_le_bytes`.
+- **Checked once.** `Model::new` reads every field, every offset and every string, and looks every string up through its slots. What is read afterwards goes through checked slices, so a model that was made cannot panic; a test changes every byte of a file in turn to hold this.
+- **The chunker reads through a trait** (`ChunkerData`), as the parser reads its classifier: the model in memory that training gives, and the part of a file, are two implementations, and the decoder is the same code. They give the same labels on every sentence of dev, test and PUD.
+- **The table of strings** is the piece the parser will share for the numbers of its features. It is sorted and has slots, a hash table with open addressing over the 64-bit FNV-1a of a string, with at least two slots per string. Most feature strings of a sentence are not in a model (L1 leaves 4,325 of them), so what matters is how fast a string is not found: with at most half of the slots taken, the search ends at an empty slot after one or two steps.
+- **`Chunker::chunk` and `Parser::parse` return an error** for a morpheme with fewer feature columns than the schema reads. Before, such a morpheme was analyzed with empty columns.
+- **Not done here**: the parser part, quantization (the weights of the chunker are `f64`, so that it gives the labels of `lindera-crf`), and a checksum. A file that was cut is found by its lengths; a changed weight is not found.
 
 ## What is to come
 
 | Part | Notes | Issue |
 | --- | --- | --- |
-| Training of the parser, and the model file | The algorithm and the feature set chosen by cross-validation; the format, the check of the dictionary, quantization, mmap and embedding, WASM. | [#1437](https://github.com/lindera/lindera/issues/1437) |
+| Training of the parser, and its part of the model file | The algorithm and the feature set chosen by cross-validation; how the weights of the pairs are stored; quantization; size and speed. The model file itself and the check of the dictionary are done. | [#1437](https://github.com/lindera/lindera/issues/1437) |
 | Token filter | And its use from the configuration file and the bindings. | [#1438](https://github.com/lindera/lindera/issues/1438) |
 | Command | Output compatible with `cabocha -f1`. | [#1439](https://github.com/lindera/lindera/issues/1439) |
 | IPADIC model | Training, release, documentation, license notes. The crate is published with it. | [#1440](https://github.com/lindera/lindera/issues/1440) |
@@ -214,7 +229,20 @@ The README of the crate has the whole table of the cross-validation and the ten 
 | --- | --- | --- |
 | Sentences whose tree comes back when the answer decides | train 7,024 of 7,024, dev 506 of 506, test 542 of 542, PUD 994 of 994 | Script: `parser_instances.sh` |
 | Training instances, CaboCha's feature set | train 66,000 (33,512 positive), dev 4,881 (2,474), test 5,377 (2,707), PUD 12,739 (6,077) | Script: `parser_instances.sh` |
-| Default chunker model with the schema of version 3 | 196,273 bytes (196,164 at version 2); F unchanged: 96.85, 96.92, 98.04 | Script: `chunker_experiments.sh default` |
+
+### Model file
+
+The default chunker model, on one core of an AMD Ryzen AI Max+ 395, with Rust 1.100.0. Chunking is measured on the 7,024 sentences of the train file, the best of seven rounds.
+
+| Number | Value | From |
+| --- | --- | --- |
+| Model file with the default chunker | 261,851 bytes, 4,325 feature strings; the same bytes when trained twice; F unchanged: 96.85, 96.92, 98.04 | Script: `chunker_experiments.sh default` |
+| The chunker on a model file against the chunker-only file of before | The same lines in the outputs for dev, test and PUD | `chunk` before and after #1437, compared with `cmp`; not kept as a script |
+| Time to read the file, with every check | 228 microseconds | Script: `model_speed/` |
+| Chunking with the model in memory (a hash table of the standard library) | 18,223 sentences per second | Script: `model_speed/` |
+| Chunking with the model on the bytes of the file | 16,896 sentences per second | Script: `model_speed/` |
+| The same, with a binary search over the sorted strings and no slots | 11,103 sentences per second, against 18,274 in memory in the same run; 196,311 bytes | A variant of the code of #1437, not kept |
+| The same, with three slots for two strings, modulo their number | 14,821 sentences per second, against 18,326 in memory in the same run; 222,267 bytes | A variant of the code of #1437, not kept |
 
 ### Lindera
 
@@ -238,7 +266,7 @@ The README of the crate has the whole table of the cross-validation and the ten 
 | [#1434](https://github.com/lindera/lindera/issues/1434) | The chapter of the documentation | Done |
 | [#1436](https://github.com/lindera/lindera/issues/1436) | Dependency parser: the loop, the features, the training instances | Done |
 | [#1433](https://github.com/lindera/lindera/issues/1433) | The baselines of CaboCha and J.DepP, measured again | Open |
-| [#1437](https://github.com/lindera/lindera/issues/1437) | Training of the parser, and the model file | Open |
+| [#1437](https://github.com/lindera/lindera/issues/1437) | The model file (done), and the training of the parser | In progress |
 | [#1438](https://github.com/lindera/lindera/issues/1438) | Token filter | Open |
 | [#1439](https://github.com/lindera/lindera/issues/1439) | Command | Open |
 | [#1440](https://github.com/lindera/lindera/issues/1440) | IPADIC model, and the publication of the crate | Open |

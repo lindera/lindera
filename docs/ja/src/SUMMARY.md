@@ -49,6 +49,7 @@
     - [アーキテクチャ](./lindera-dependency/architecture.md)
     - [文節の区切り](./lindera-dependency/chunking.md)
     - [係り受けの解析](./lindera-dependency/parsing.md)
+    - [モデルファイル](./lindera-dependency/model_file.md)
     - [主辞と機能語](./lindera-dependency/head_and_function_word.md)
     - [学習データ](./lindera-dependency/training_data.md)
     - [評価](./lindera-dependency/evaluation.md)

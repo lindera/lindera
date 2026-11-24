@@ -2,17 +2,17 @@
 
 The chunker segments the morphemes of a sentence into bunsetsu. It decides, for every morpheme, whether it starts a bunsetsu (`B`) or continues one (`I`), with a conditional random field over the two labels, as CaboCha does.
 
-Chunking is in the default build and needs no other crate: the model is a table from feature string to the weights of `B` and `I`, with the weights of the transitions, and the labels are found by Viterbi. Training is behind the `train` feature.
+Chunking is in the default build and needs no other crate: the model is a table from feature string to the weights of `B` and `I`, with the weights of the transitions, and the labels are found by Viterbi. The table is read where it is in a [model file](./model_file.md). Training is behind the `train` feature.
 
 ## Chunking a sentence
 
 ```rust
-use lindera_dependency::chunker::{Chunker, ChunkerModel};
 use lindera_dependency::lattice::{self, LatticeMorpheme};
+use lindera_dependency::model::Model;
 use lindera_dependency::{Bunsetsu, Morpheme, Sentence};
 
-let model = ChunkerModel::from_bytes(&std::fs::read("chunker.model")?)?;
-let chunker = Chunker::new(model);
+let model = Model::new(std::fs::read("chunker.model")?)?;
+let chunker = model.chunker().expect("the file has a chunker");
 
 // The morphemes of 彼は本を読んだ。 as IPADIC gives them. Any type that
 // implements `Morpheme` will do.
@@ -27,20 +27,20 @@ let morphemes = vec![
 ];
 
 // The ranges of the bunsetsu, as indices into the morphemes.
-let ranges = chunker.chunk(&morphemes);
+let ranges = chunker.chunk(&morphemes)?;
 assert_eq!(ranges, [0..2, 2..4, 4..7]);
 ```
 
 `Chunker::chunk` takes `&self`, and a chunker is `Send + Sync`, so one chunker serves several threads. The first morpheme always starts a bunsetsu, and an empty sentence has none.
 
-The morphemes have to come from the dictionary the model was trained with, tokenized with the same settings: a model belongs to one dictionary.
+The morphemes have to come from the dictionary the model was trained with, tokenized with the same settings: a model belongs to one dictionary. A morpheme with fewer feature columns than the schema of the model reads is refused with an error; see [Checking the dictionary](./model_file.md#checking-the-dictionary).
 
 ### With the head word and the function word
 
-A model holds the [schema](./head_and_function_word.md) it was trained with, which gives the head word and the function word of each bunsetsu. The following writes the result in the lattice format. There is no parser yet, so the heads are a placeholder here: every bunsetsu depends on the next one.
+A model file holds the [schema](./head_and_function_word.md) of its dictionary, which gives the head word and the function word of each bunsetsu. The following writes the result in the lattice format. There is no parser yet, so the heads are a placeholder here: every bunsetsu depends on the next one.
 
 ```rust
-let schema = chunker.model().schema();
+let schema = model.schema();
 let count = ranges.len();
 let bunsetsu = ranges
     .into_iter()
@@ -88,10 +88,10 @@ train.lattice: 7024 sentences
 iterations: 126
 feature strings: 4325
 weights: 8656
-bytes: 196273
+bytes: 261851
 ```
 
-Training the same data again gives the same bytes. The bytes of a model are a format of this crate, with weights as `f64`; it is not the file format of a released model, and it may change.
+The output is a [model file](./model_file.md) for the dictionary `ipadic`, with the chunker as its only part. Training the same data again gives the same bytes. The weights are `f64`. The format may change until the first release.
 
 | Option | Default | Meaning |
 | --- | --- | --- |

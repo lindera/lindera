@@ -162,7 +162,9 @@ impl<C: Classifier> Parser<C> {
     ///
     /// [`Error::Structure`](crate::Error::Structure) when the bunsetsu do
     /// not cover the morphemes from the first to the last without a gap, or
-    /// one of them is empty.
+    /// one of them is empty. [`Error::Dictionary`](crate::Error::Dictionary)
+    /// for a morpheme with fewer feature columns than the schema reads
+    /// ([`Schema::check`]).
     pub fn parse<M: Morpheme>(
         &self,
         morphemes: &[M],
@@ -173,6 +175,7 @@ impl<C: Classifier> Parser<C> {
             .map(|range| Bunsetsu::new(range.clone(), None))
             .collect();
         check_bunsetsu(morphemes.len(), &parsed)?;
+        self.schema.check(morphemes)?;
 
         let prepared: Prepared<u32> = Prepared::new(
             &self.schema,
@@ -431,5 +434,18 @@ mod tests {
             .parse(&morphemes, &ranges)
             .unwrap();
         assert_eq!(heads(&parsed), [Some(4), Some(4), Some(4), Some(4), None]);
+    }
+
+    #[test]
+    fn a_morpheme_of_another_dictionary_is_refused() {
+        let (mut morphemes, ranges) = fixtures::sentence();
+        morphemes[1] = LatticeMorpheme::new("は", "助詞,係助詞");
+        let classifier = LinearClassifier::new(1.0, HashMap::new(), HashMap::new()).unwrap();
+        let error = parser(classifier).parse(&morphemes, &ranges).unwrap_err();
+        assert!(matches!(error, crate::Error::Dictionary(_)), "{error:?}");
+        assert!(
+            error.to_string().starts_with("the morpheme 2 (\"は\")"),
+            "{error}"
+        );
     }
 }

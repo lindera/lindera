@@ -55,12 +55,11 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
-use lindera_dependency::chunker::{
-    self, Chunker, ChunkerModel, Regularization, Template, TrainOptions,
-};
+use lindera_dependency::chunker::{self, Regularization, Template, TrainOptions};
 use lindera_dependency::corpus::{self, DictionaryMorpheme, TokenizerError};
 use lindera_dependency::evaluation::{self, Comparison, Count, Evaluation, Pairs};
 use lindera_dependency::lattice::{self, LatticeMorpheme};
+use lindera_dependency::model::{Model, ModelBuilder};
 use lindera_dependency::parser::{self, FeatureSet};
 use lindera_dependency::{Bunsetsu, Schema, Sentence};
 use lindera_segmenter::dictionary::load_dictionary;
@@ -302,6 +301,10 @@ struct InstancesArgs {
     )]
     features: String,
 }
+
+/// The name of the dictionary of the models the command trains: the one
+/// whose schema it uses, [`Schema::ipadic`].
+const DICTIONARY: &str = "ipadic";
 
 /// The error type of the command.
 type CommandError = Box<dyn std::error::Error + Send + Sync>;
@@ -602,7 +605,9 @@ fn train_chunker(args: TrainChunkerArgs) -> Result<(), CommandError> {
     let sentences = read_lattice(&args.input)?;
     let trained = chunker::train(&sentences, &options)
         .map_err(|error| format!("{}: {error}", args.input.display()))?;
-    let bytes = trained.model.to_bytes();
+    let bytes = ModelBuilder::new(DICTIONARY, options.schema.clone())?
+        .chunker(&trained.model)?
+        .to_bytes();
     fs::write(&args.output, &bytes)
         .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;
 
@@ -638,20 +643,21 @@ fn train_chunker(args: TrainChunkerArgs) -> Result<(), CommandError> {
 fn chunk(args: ChunkArgs) -> Result<(), CommandError> {
     let bytes = fs::read(&args.model)
         .map_err(|error| format!("cannot read {}: {error}", args.model.display()))?;
-    let model = ChunkerModel::from_bytes(&bytes)
-        .map_err(|error| format!("{}: {error}", args.model.display()))?;
-    let chunker = Chunker::new(model);
-    let sentences = read_lattice(&args.input)?;
-
-    let output = File::create(&args.output)
-        .map_err(|error| format!("cannot create {}: {error}", args.output.display()))?;
-    let mut output = BufWriter::new(output);
-    for mut sentence in sentences {
-        let ranges = chunker.chunk(&sentence.morphemes);
+    let model = Model::new(bytes).map_err(|error| format!("{}: {error}", args.model.display()))?;
+    let chunker = model
+        .chunker()
+        .ok_or_else(|| format!("{}: the model has no chunker", args.model.display()))?;
+    let mut sentences = read_lattice(&args.input)?;
+    // Every sentence is chunked before the output is created: an input that
+    // is not of the dictionary of the model leaves no file behind.
+    for (index, sentence) in sentences.iter_mut().enumerate() {
+        let ranges = chunker.chunk(&sentence.morphemes).map_err(|error| {
+            format!("{}: sentence {}: {error}", args.input.display(), index + 1)
+        })?;
         let count = ranges.len();
         // The parser has no trained model yet: each bunsetsu depends on the
-        // next, which
-        // is the baseline, and leaves the segmentation to be evaluated.
+        // next, which is the baseline, and leaves the segmentation to be
+        // evaluated.
         sentence.bunsetsu = ranges
             .into_iter()
             .enumerate()
@@ -659,7 +665,13 @@ fn chunk(args: ChunkArgs) -> Result<(), CommandError> {
                 Bunsetsu::new(morphemes, (index + 1 < count).then_some(index + 1))
             })
             .collect();
-        lattice::write(&mut output, &sentence)
+    }
+
+    let output = File::create(&args.output)
+        .map_err(|error| format!("cannot create {}: {error}", args.output.display()))?;
+    let mut output = BufWriter::new(output);
+    for sentence in &sentences {
+        lattice::write(&mut output, sentence)
             .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;
     }
     output

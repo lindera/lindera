@@ -353,6 +353,7 @@ mod tests {
     use super::*;
     use crate::chunker::Chunker;
     use crate::lattice::{self, LatticeMorpheme};
+    use crate::model::{Model as ModelFile, ModelBuilder};
 
     /// The labels `search_best_path` of `lindera-crf` gives a sentence, for
     /// the trained model.
@@ -546,7 +547,10 @@ mod tests {
         let run: Vec<LatticeMorpheme> = (0..10)
             .map(|_| LatticeMorpheme::new("x", "記号,*,*,*,*,*,x,*,*"))
             .collect();
-        assert_eq!(chunker.chunk(&run), [0..2, 2..4, 4..6, 6..8, 8..10]);
+        assert_eq!(
+            chunker.chunk(&run).unwrap(),
+            [0..2, 2..4, 4..6, 6..8, 8..10]
+        );
         // After B, I is preferred to B, and after I, B to I.
         let model = chunker.model();
         assert!(model.transition(1, 2) > model.transition(1, 1));
@@ -567,16 +571,24 @@ mod tests {
         assert_eq!(model.columns(), options.columns);
         assert_eq!(model.template(), &options.template);
 
-        let read = ChunkerModel::from_bytes(&model.to_bytes()).unwrap();
-        assert_eq!(read, model);
-        let chunker = Chunker::new(read);
+        // Through a model file, the chunker reads the same weights where
+        // they are in the bytes.
+        let bytes = ModelBuilder::new("test", options.schema.clone())
+            .unwrap()
+            .chunker(&model)
+            .unwrap()
+            .to_bytes();
+        let read = ModelFile::new(bytes).unwrap();
+        let chunker = read.chunker().unwrap();
+        assert_eq!(chunker.model().feature_count(), model.feature_count());
+        assert_eq!(chunker.model().weight_count(), model.weight_count());
         for sentence in training_data() {
             let expected: Vec<_> = sentence
                 .bunsetsu
                 .iter()
                 .map(|bunsetsu| bunsetsu.morphemes.clone())
                 .collect();
-            assert_eq!(chunker.chunk(&sentence.morphemes), expected);
+            assert_eq!(chunker.chunk(&sentence.morphemes).unwrap(), expected);
         }
     }
 

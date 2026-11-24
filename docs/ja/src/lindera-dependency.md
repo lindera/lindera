@@ -18,19 +18,21 @@ Lindera Dependency（`lindera-dependency`）は、日本語の文節の係り受
 ## できること
 
 - **文の形態素を文節に区切る**（チャンキング）。条件付き確率場と、重みの表だけのモデルを使います。IPADIC では、UD Japanese-GSD の dev で F 値 96.85、test で 96.92 です。
+- **モデルを辞書ごとの 1 つのファイルに持ち、その場で読む**。プログラムに埋め込んだバイト列、ファイルから読んだバイト列、メモリマップのどれでも、表を写さずに読みます。ファイルは自分の辞書の名前を持ち、その辞書のものではありえない形態素は断ります。
 - **文節の係り受けを解析する**。CaboCha・J.DepP と同じく、shift-reduce と、素性とその対の上の分類器を使います。分類器の重みは外から渡します。その分類器の学習事例も書き出せます。
 - **文節の主辞と機能語を求め**、句読点と括弧を見分ける。辞書のスキーマから決めます。最初のスキーマは IPADIC です。
 - CaboCha の**ラティス形式**（`cabocha -f1`）**を読み書きし**、文が、解析器の仮定する木であるかを検査する。
 - UD Japanese-GSD のような係り受けのコーパスから、解析器を動かす辞書の形態素の上で、**学習データを作る**。
 - 文節の区切りと係り受けの精度を、CaboCha・J.DepP と同じ数え方で**評価し**、2 つの出力を対の検定で比べる。
 
-既定のビルドは依存がなく、`wasm32-unknown-unknown` 向けにビルドできます。型、ラティス形式、スキーマ、文節の区切り、解析器が入っています。コマンド、学習、評価は `train` feature の裏にあります。
+既定のビルドは依存がなく、`wasm32-unknown-unknown` 向けにビルドできます。型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器が入っています。コマンド、学習、評価は `train` feature の裏にあります。
 
 ## 目次
 
 - [アーキテクチャ](./lindera-dependency/architecture.md) -- モジュール、型、ラティス形式、feature フラグ
 - [文節の区切り](./lindera-dependency/chunking.md) -- 形態素を文節に区切る、モデルを学習する
 - [係り受けの解析](./lindera-dependency/parsing.md) -- 文節の係り先を求める。ループ、素性、学習事例
+- [モデルファイル](./lindera-dependency/model_file.md) -- 辞書のファイル。その場で読む、辞書を照合する、形式
 - [主辞と機能語](./lindera-dependency/head_and_function_word.md) -- 辞書のスキーマと、文節の 2 つの語
 - [学習データ](./lindera-dependency/training_data.md) -- UD Japanese-GSD から学習データを作る
 - [評価](./lindera-dependency/evaluation.md) -- 精度を数える、2 つの出力を比べる、交差検証
