@@ -83,7 +83,7 @@ The function word is defined by the schema alone: the corpus has no label that m
 
 ## Another dictionary
 
-A schema is a value whose fields are public: the columns, `function_words`, `not_heads` and `symbols`. A schema for another dictionary is built from data, without new code. IPADIC is the only one the crate provides so far; UniDic is to follow.
+A schema is a value whose fields are public: the columns, `function_words`, `not_heads`, `symbols`, and the two lists the [parser](./parsing.md) reads, `particles` and `lexicalized`. A schema for another dictionary is built from data, without new code. IPADIC is the only one the crate provides so far; UniDic is to follow.
 
 ```rust
 use lindera_dependency::{Marks, Pattern, Schema, Symbols};

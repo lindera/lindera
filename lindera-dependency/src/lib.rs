@@ -10,8 +10,9 @@
 //! 読んだ。 ◀──┘   (root)
 //! ```
 //!
-//! This crate holds, so far, what the analysis is built on and its first
-//! step, the segmentation into bunsetsu; the parser is still to come.
+//! This crate holds, so far, what the analysis is built on, its first step,
+//! the segmentation into bunsetsu, and the parser without a trained model:
+//! it parses with weights given to it, and their training is still to come.
 //!
 //! - [`Morpheme`], the trait of a morpheme: a surface and the feature columns
 //!   of its dictionary. The crate depends on no tokenizer, and a type outside
@@ -32,6 +33,10 @@
 //! - [`chunker`]: segmenting the morphemes of a sentence into bunsetsu, with
 //!   a conditional random field over two labels and a model that is a table
 //!   of weights.
+//! - [`parser`]: finding the head of each bunsetsu, with shift-reduce and a
+//!   classifier over features and pairs of features. The features and the
+//!   loop are here, and the training instances of a classifier; a trained
+//!   model is not here yet.
 //!
 //! With the `train` feature, the `corpus` module and the
 //! `lindera-dependency convert` command make training data from a dependency
@@ -40,7 +45,9 @@
 //! `lindera-dependency evaluate` command count the accuracy of chunking and
 //! of dependency as CaboCha and J.DepP do, and compare two outputs. The
 //! model of the chunker is trained with `lindera-crf`
-//! (`lindera-dependency train-chunker`).
+//! (`lindera-dependency train-chunker`), and
+//! `lindera-dependency instances` writes the training instances of the
+//! parser.
 //!
 //! # Examples
 //!
@@ -115,6 +122,7 @@ pub mod error;
 pub mod evaluation;
 pub mod lattice;
 pub mod morpheme;
+pub mod parser;
 pub mod schema;
 pub mod sentence;
 

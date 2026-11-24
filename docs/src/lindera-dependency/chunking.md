@@ -88,7 +88,7 @@ train.lattice: 7024 sentences
 iterations: 126
 feature strings: 4325
 weights: 8656
-bytes: 196164
+bytes: 196273
 ```
 
 Training the same data again gives the same bytes. The bytes of a model are a format of this crate, with weights as `f64`; it is not the file format of a released model, and it may change.
@@ -109,7 +109,7 @@ cargo run --release -p lindera-dependency --features train -- chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 ```
 
-It writes every bunsetsu as depending on the next one, since there is no parser yet.
+It writes every bunsetsu as depending on the next one, since the [parser](./parsing.md) has no trained model yet.
 
 ## Accuracy
 

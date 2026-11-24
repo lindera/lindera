@@ -38,6 +38,14 @@
 //! lindera-dependency train-chunker --input train.lattice --output chunker.model
 //! lindera-dependency chunk --model chunker.model --input dev.lattice --output output.lattice
 //! ```
+//!
+//! `instances` writes the training instances of the parser: the decisions
+//! the parser asks on each sentence of such training data, with their
+//! features and their answers:
+//!
+//! ```text
+//! lindera-dependency instances --input train.lattice --output train.instances
+//! ```
 
 use std::borrow::Cow;
 use std::fs::{self, File};
@@ -53,6 +61,7 @@ use lindera_dependency::chunker::{
 use lindera_dependency::corpus::{self, DictionaryMorpheme, TokenizerError};
 use lindera_dependency::evaluation::{self, Comparison, Count, Evaluation, Pairs};
 use lindera_dependency::lattice::{self, LatticeMorpheme};
+use lindera_dependency::parser::{self, FeatureSet};
 use lindera_dependency::{Bunsetsu, Schema, Sentence};
 use lindera_segmenter::dictionary::load_dictionary;
 use lindera_segmenter::mode::Mode;
@@ -85,6 +94,8 @@ enum Command {
     TrainChunker(TrainChunkerArgs),
     /// Segments the morphemes of a file into bunsetsu with a model.
     Chunk(ChunkArgs),
+    /// Writes the training instances of the parser.
+    Instances(InstancesArgs),
 }
 
 /// The arguments of `convert`.
@@ -260,6 +271,36 @@ struct ChunkArgs {
         help = "File to write, in the lattice format"
     )]
     output: PathBuf,
+}
+
+/// The arguments of `instances`.
+#[derive(Debug, clap::Args)]
+#[clap(
+    about = "Write the training instances of the parser: the decisions it asks on each sentence of a file in the lattice format, each with its features and with the answer of the file"
+)]
+struct InstancesArgs {
+    /// The answers.
+    #[clap(
+        short = 'i',
+        long = "input",
+        help = "File with the answers, in the lattice format (the output of convert)"
+    )]
+    input: PathBuf,
+    /// The instances.
+    #[clap(
+        short = 'o',
+        long = "output",
+        help = "File to write: one instance per line, +1 or -1 and the features separated by tabs, and an empty line after each sentence"
+    )]
+    output: PathBuf,
+    /// The groups of features.
+    #[clap(
+        short = 'f',
+        long = "features",
+        default_value_t = FeatureSet::cabocha().to_string(),
+        help = "Groups of features to make, separated by commas"
+    )]
+    features: String,
 }
 
 /// The error type of the command.
@@ -608,7 +649,8 @@ fn chunk(args: ChunkArgs) -> Result<(), CommandError> {
     for mut sentence in sentences {
         let ranges = chunker.chunk(&sentence.morphemes);
         let count = ranges.len();
-        // There is no parser yet: each bunsetsu depends on the next, which
+        // The parser has no trained model yet: each bunsetsu depends on the
+        // next, which
         // is the baseline, and leaves the segmentation to be evaluated.
         sentence.bunsetsu = ranges
             .into_iter()
@@ -626,6 +668,56 @@ fn chunk(args: ChunkArgs) -> Result<(), CommandError> {
     Ok(())
 }
 
+/// Runs `instances`.
+///
+/// The features are made with the schema of IPADIC, as `convert` computes
+/// the head words with it.
+///
+/// # Arguments
+///
+/// * `args` - The arguments.
+///
+/// # Returns
+///
+/// `Ok(())` once the output and the report are written, or the first
+/// error: a feature set or an input that cannot be read, a sentence whose
+/// tree the parser cannot make, or an output that cannot be written.
+fn instances(args: InstancesArgs) -> Result<(), CommandError> {
+    let set = FeatureSet::parse(&args.features)?;
+    let schema = Schema::ipadic();
+    let sentences = read_lattice(&args.input)?;
+
+    let output = File::create(&args.output)
+        .map_err(|error| format!("cannot create {}: {error}", args.output.display()))?;
+    let mut output = BufWriter::new(output);
+    let mut bunsetsu = 0;
+    let mut positive = 0;
+    let mut negative = 0;
+    for (index, sentence) in sentences.iter().enumerate() {
+        let instances = parser::instances(&schema, &set, sentence).map_err(|error| {
+            format!("{}: sentence {}: {error}", args.input.display(), index + 1)
+        })?;
+        bunsetsu += sentence.bunsetsu.len();
+        positive += instances.iter().filter(|one| one.label).count();
+        negative += instances.iter().filter(|one| !one.label).count();
+        parser::write_instances(&mut output, &instances)
+            .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;
+    }
+    output
+        .flush()
+        .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;
+
+    // A failure to write the report is ignored: the output is complete.
+    let _ = writeln!(
+        io::stderr(),
+        "{}\nfeatures: {set}\nsentences: {}\nbunsetsu: {bunsetsu}\ninstances: {}\npositive: {positive}\nnegative: {negative}",
+        args.input.display(),
+        sentences.len(),
+        positive + negative,
+    );
+    Ok(())
+}
+
 fn main() -> ExitCode {
     let args = Args::parse();
     let result = match args.command {
@@ -634,6 +726,7 @@ fn main() -> ExitCode {
         Command::Split(args) => split(args),
         Command::TrainChunker(args) => train_chunker(args),
         Command::Chunk(args) => chunk(args),
+        Command::Instances(args) => instances(args),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

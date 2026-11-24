@@ -40,7 +40,11 @@ Each decision has the issue that made it. A decision is changed by a pull reques
 | Parsing is shift-reduce with a linear binary classifier over features and pairs of features. | Both reference implementations do this; it is linear in the length of the sentence. | #1417 |
 | What is known about a dictionary is in one value, the schema, as data: the columns by role, the function word patterns, the symbols. | The chunker, the parser and the output share it, and a second dictionary is a second value, not a second code path. | #1421, #1422 |
 | The head of a bunsetsu is CaboCha's (the last content word), not J.DepP's. | It is the word to take for a bunsetsu when indexing or extracting; J.DepP lets an auxiliary be the head. | #1422 |
-| A model holds what makes its features: the schema, the columns, the template. | Training and inference cannot disagree. | #1421, #1422 |
+| A model holds what makes its features: the schema, the columns, the template; for the parser, the feature set. | Training and inference cannot disagree. | #1421, #1422, #1436 |
+| The features of the parser are strings with CaboCha's names (`SHS:`, `DFP0:`, `GCASE:`, `a:`), made by one function for parsing and for training instances. | A model of CaboCha can be converted without renaming its features; a feature of training cannot differ from the one of parsing. | #1436 |
+| Which groups of features a model uses is data (a feature set), not code. | Feature sets are compared without a change of code, as templates of the chunker are. | #1436 |
+| The particles, and the function words taken by their surface as the feature of a child, are patterns of the schema. | The parser names no part of speech and no column. The schema is in the bytes of a model, so the chunker model went from version 2 to 3. | #1436 |
+| The classifier is behind an interface in two steps: a number for a feature string, a score for the numbers of a decision. | The strings of a bunsetsu are looked up once per sentence, as in CaboCha; how weights are stored can change without the parser. | #1436 |
 | Training data holds no head word and function word positions; what reads it computes them from the schema. | A change of the rule cannot leave stale positions in a file. | #1422 |
 | Settings are compared by cross-validation on the train file; the dev file chooses between close settings; the test file and PUD are for the reported result only. | Dev and test are small: the 95% interval of an accuracy near 90% is about ±1 point on them. | #1420 |
 | The accuracy targets are the ones under "Targets" below. | They are the baselines measured on the same data. | #1417 |
@@ -97,19 +101,26 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 - **The schema of IPADIC adds to CaboCha's patterns** what the agreement with the content head of UD Japanese-GSD supports: する and できる are function words; 名詞,非自立, the suffixes 的 and さ, and a verb right after a particle are not heads. The largest systematic disagreement of CaboCha's rule is the verbal noun with する (利用 / し / た), where it makes し the head.
 - The function word is defined by the schema alone. UD Japanese-GSD has no label that means the same: its `SYN_HEAD` matches neither "the last morpheme that is not a symbol" nor "the morpheme after the head".
 
+### Parser ([#1436](https://github.com/lindera/lindera/issues/1436))
+
+- **The loop** is `parseShiftReduce` of CaboCha and `_parseLinear` of J.DepP: a stack of the bunsetsu without a head, each following bunsetsu as the target, the top of the stack as the source. An arc to the last bunsetsu is not asked. The loop takes the decision as a function, so the classifier and the answer of a sentence run the same code.
+- **The features** are CaboCha's (`src/selector.cpp`, `src/dep.cpp`), in seven groups: the distance, the source, the target, the bunsetsu before the source, the one after the target, the bunsetsu already attached, and the gap. They are made once for each bunsetsu and put together for a decision, generic over what a string is turned into: the number of the classifier when parsing, the string itself for training instances.
+- **Differences from CaboCha**: the surface is not normalized, and punctuation and brackets are those of the schema; the head and the function word are those of the schema of #1422; a bunsetsu without a known head is not supported; an arc that is not asked has the score 0, where CaboCha writes the score of the decision before.
+- **J.DepP's features** (`jdepp/pdep.cc`) differ: four bunsetsu by the first morpheme, the head, the tail and the last one; whether two heads have the same surface; the balance of brackets; the particles of the bunsetsu in between that compete for the target; nothing of the bunsetsu already attached. What only J.DepP has is left for the comparison of feature sets.
+- **`LinearClassifier`** adds a bias, the weights of the features and the weights of their pairs, from hash tables. It is the least that parses with weights made by hand; the storage of trained weights is decided with the model file.
+- **Training instances** are the decisions the loop asks when the answer decides, each with its features and its answer, as in CaboCha's training mode. The answer gives the tree of every sentence of the training data back.
+
 ## What is to come
 
-The issues are filed when the ones before them are done, since their results shape them.
-
-| Part | Notes |
-| --- | --- |
-| Dependency parser | Shift-reduce, the features, the feature pairs. The features come from the head word and the function word of the schema. |
-| Training of the parser, and the model file | The format, the check of the dictionary, quantization, mmap and embedding, WASM. |
-| Token filter | And its use from the configuration file and the bindings. |
-| Command | Output compatible with `cabocha -f1`. |
-| IPADIC model | Training, release, documentation, license notes. The crate is published with it. |
-| UniDic model | A second schema. |
-| Converter for the models of CaboCha | The normalization table of the surface, and the reader of a CRF++ text model. |
+| Part | Notes | Issue |
+| --- | --- | --- |
+| Training of the parser, and the model file | The algorithm and the feature set chosen by cross-validation; the format, the check of the dictionary, quantization, mmap and embedding, WASM. | [#1437](https://github.com/lindera/lindera/issues/1437) |
+| Token filter | And its use from the configuration file and the bindings. | [#1438](https://github.com/lindera/lindera/issues/1438) |
+| Command | Output compatible with `cabocha -f1`. | [#1439](https://github.com/lindera/lindera/issues/1439) |
+| IPADIC model | Training, release, documentation, license notes. The crate is published with it. | [#1440](https://github.com/lindera/lindera/issues/1440) |
+| UniDic model | A second schema. | [#1441](https://github.com/lindera/lindera/issues/1441) |
+| Converter for the models of CaboCha | The normalization table of the surface, the reader of a CRF++ text model, and the expansion of the support vectors of the parser model. | [#1442](https://github.com/lindera/lindera/issues/1442) |
+| The baselines of CaboCha and J.DepP, measured again | The scripts that build and train them. | [#1433](https://github.com/lindera/lindera/issues/1433) |
 
 ### Open questions
 
@@ -197,6 +208,14 @@ The README of the crate has the whole table of the cross-validation and the ten 
 | UniDic on GSD's own tags: CaboCha's pattern, with 非自立可能, with compound function words | train 83.89%, 96.17%, 98.06% | Prototype, lost |
 | `SYN_HEAD` of GSD against "last morpheme that is not a symbol" and "the morpheme after the head" | 87–88% and 81–82% | Prototype, lost |
 
+### Parser
+
+| Number | Value | From |
+| --- | --- | --- |
+| Sentences whose tree comes back when the answer decides | train 7,024 of 7,024, dev 506 of 506, test 542 of 542, PUD 994 of 994 | Script: `parser_instances.sh` |
+| Training instances, CaboCha's feature set | train 66,000 (33,512 positive), dev 4,881 (2,474), test 5,377 (2,707), PUD 12,739 (6,077) | Script: `parser_instances.sh` |
+| Default chunker model with the schema of version 3 | 196,273 bytes (196,164 at version 2); F unchanged: 96.85, 96.92, 98.04 | Script: `chunker_experiments.sh default` |
+
 ### Lindera
 
 | Fact | From |
@@ -216,7 +235,15 @@ The README of the crate has the whole table of the cross-validation and the ten 
 | [#1421](https://github.com/lindera/lindera/issues/1421) | Chunker | Done |
 | [#1422](https://github.com/lindera/lindera/issues/1422) | IPADIC schema, head and function word | Done |
 | [#1423](https://github.com/lindera/lindera/issues/1423) | These notes and the measurement scripts | Done |
-| To be filed | Dependency parser; its training and the model file; token filter; command; IPADIC model; UniDic model; converter for the models of CaboCha | — |
+| [#1434](https://github.com/lindera/lindera/issues/1434) | The chapter of the documentation | Done |
+| [#1436](https://github.com/lindera/lindera/issues/1436) | Dependency parser: the loop, the features, the training instances | Done |
+| [#1433](https://github.com/lindera/lindera/issues/1433) | The baselines of CaboCha and J.DepP, measured again | Open |
+| [#1437](https://github.com/lindera/lindera/issues/1437) | Training of the parser, and the model file | Open |
+| [#1438](https://github.com/lindera/lindera/issues/1438) | Token filter | Open |
+| [#1439](https://github.com/lindera/lindera/issues/1439) | Command | Open |
+| [#1440](https://github.com/lindera/lindera/issues/1440) | IPADIC model, and the publication of the crate | Open |
+| [#1441](https://github.com/lindera/lindera/issues/1441) | UniDic model | Open |
+| [#1442](https://github.com/lindera/lindera/issues/1442) | Converter for the models of CaboCha | Open |
 
 ## References
 

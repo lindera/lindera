@@ -48,6 +48,7 @@
 - [Lindera Dependency](./lindera-dependency.md)
     - [Architecture](./lindera-dependency/architecture.md)
     - [Chunking](./lindera-dependency/chunking.md)
+    - [Parsing](./lindera-dependency/parsing.md)
     - [Head and Function Word](./lindera-dependency/head_and_function_word.md)
     - [Training Data](./lindera-dependency/training_data.md)
     - [Evaluation](./lindera-dependency/evaluation.md)
