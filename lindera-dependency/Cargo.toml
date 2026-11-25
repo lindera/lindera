@@ -33,9 +33,9 @@ embed-ipadic = ["cli", "lindera-segmenter/embed-ipadic"]
 # wasm32-unknown-unknown as well (`make check-lindera-dependency`).
 #
 # Behind `cli`, the command depends on lindera-segmenter and on nothing
-# above it: lindera-analysis is to depend on this crate for the token filter
-# (#1417), so this crate must never depend on lindera-analysis or on the
-# lindera facade.
+# above it: lindera-analysis depends on this crate for the token filter,
+# behind its `dependency` feature (#1438), so this crate must never depend
+# on lindera-analysis or on the lindera facade.
 [dependencies]
 clap = { version = "4.6.4", features = ["derive", "cargo"], optional = true }
 lindera-crf = { workspace = true, optional = true, features = ["train"] }

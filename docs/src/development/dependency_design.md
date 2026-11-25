@@ -31,7 +31,7 @@ Each decision has the issue that made it. A decision is changed by a pull reques
 | --- | --- | --- |
 | The crate is `lindera-dependency`, a member of this workspace. Chunking, dependency parsing and, later, named entities live in this one crate. | Lindera keeps its bindings, command and documentation in one repository; a model is released on its own schedule, which the model file absorbs, not the crate. | #1417 |
 | The core takes a sequence of morphemes (a surface and feature columns) and depends on no tokenizer. | A type outside Lindera can be analyzed, and the default build has no dependency and builds for `wasm32-unknown-unknown`. | #1417, #1418 |
-| The crate depends on `lindera-segmenter` at most, behind a feature, never on `lindera` or `lindera-analysis`. | The token filter will make `lindera-analysis` depend on this crate; the other direction would be a cycle. | #1419 |
+| The crate depends on `lindera-segmenter` at most, behind a feature, never on `lindera` or `lindera-analysis`. | The token filter makes `lindera-analysis` depend on this crate; the other direction would be a cycle. | #1419 |
 | The bunsetsu are those of UD Japanese-GSD (NINJAL's standard, as in BCCWJ-DepPara), not those of the Kyoto corpus. | The training data is UD Japanese-GSD, which has the bunsetsu boundaries and a license that allows a model to be released. | #1417 |
 | Coordination is in the form of the Kyoto corpus and CaboCha: each conjunct depends on the next, with the arc type `P`. | UD attaches later conjuncts to the first, with an arc to the left, which the parsers cannot produce. | #1417, #1419 |
 | The first model is for IPADIC; UniDic follows. A model belongs to one dictionary. | A model depends on the part-of-speech columns and on the segmentation of its dictionary. The baselines of CaboCha and of J.DepP were measured with IPADIC, so the numbers can be compared. | #1417 |
@@ -59,7 +59,10 @@ Each decision has the issue that made it. A decision is changed by a pull reques
 | Training data holds no head word and function word positions; what reads it computes them from the schema. | A change of the rule cannot leave stale positions in a file. | #1422 |
 | Settings are compared by cross-validation on the train file; the dev file chooses between close settings; the test file and PUD are for the reported result only. | Dev and test are small: the 95% interval of an accuracy near 90% is about ±1 point on them. | #1420 |
 | The accuracy targets are the ones under "Targets" below. | They are the baselines measured on the same data. | #1417 |
-| A token filter writes its result as four string columns at the end of `Token::details`: bunsetsu id, head bunsetsu id (-1 for the root), position in the bunsetsu, score. | It needs no change of `Token`. See the open questions. | #1417 |
+| A token filter writes its result in a field of `Token`, read with `Token::dependency`: the sentence, the bunsetsu, its head, what the token is in its bunsetsu, the score. `Token::details` and the MeCab output do not change. This replaces four string columns at the end of the details. | The details stay the features of the dictionary, for every output and every later filter, and `Token::as_value` shows the result, which it did not show of columns past the schema. It breaks code that builds a `Token` with a struct expression: `Token` is `#[non_exhaustive]` from here on, so the next field breaks nothing. | #1438 |
+| The filter is in `lindera-analysis`, behind its `dependency` feature, and its `kind` is `japanese_dependency`. | The configuration file, the command and the bindings all make a filter with `TokenFilterLoader::load_from_value`, a fixed `match`: one arm serves them all. A registry of filters would be a second way to name one. | #1438 |
+| The filter cuts a text into sentences, at `。`, `！` and `？` outside brackets, and numbers the bunsetsu from 0 in each; the result holds the number of the sentence. | A model is trained on sentences, and the lattice format numbers bunsetsu in a sentence. | #1438 |
+| The filter refuses the tokens of another dictionary than the one of the model, and tokens an earlier filter removed or joined. | Both give a wrong analysis without failing. | #1438 |
 | The crate will read the models CaboCha distributes through a converter, after the first release. Those models are not redistributed. | Feature extraction is separate from decoding for this. | #1417, #1421 |
 | The command for text is in the binary of this crate, in a build without the training code: the `cli` feature holds the command, `train` adds the training to it. The `lindera` command follows with the filter and the publication. | A user of the command does not get `lindera-crf`. `lindera-cli` is published and cannot depend on a crate that is not, and an output format of `lindera tokenize` needs the token filter. | #1439 |
 | Of CaboCha's options the command keeps the lattice output (`-f1`) and the three input layers (`-I`), as `--input-layer`. The tree, XML and CoNLL outputs, the output layer and the named entities are not kept. | The lattice format is what other tools read, and its writer exists. The layers are what `parse` and `parse --chunk` did, as one option. The morphemes alone and the bunsetsu alone have commands of their own. | #1439 |
@@ -154,11 +157,21 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 - **`DictionaryMorpheme`**, the morpheme made from a token, moved from the `corpus` module, which is behind `train`, to the default build.
 - **Not verified**: reading the output with CaboCha's tools, which are not built here (#1433). The output is read back by `lattice::parse` and by `evaluate`.
 
+### Token filter ([#1438](https://github.com/lindera/lindera/issues/1438))
+
+- **One arm of a `match` makes the filter everywhere.** `TokenFilterLoader::load_from_value` is what the configuration file, the `lindera` command and the bindings call. The arm is there with the `dependency` feature; without it, another arm refuses the `kind` and names the feature, where the build would have said that it knows no such filter. `scripts/check_dependency_crate.sh` checks that the builds without the feature do not link this crate.
+- **The field of `Token` is a slot that frees its value in a cold function.** With a plain `Option<Box<_>>` field, the drop of a token was no longer inlined where tokens are dropped, and tokenizing without the filter took 0.73% more instructions with IPADIC. The slot tests for a value inline and calls a function for the rest: at most 0.35% on 15 workloads. A token grows by one pointer.
+- **The half-width period ends no sentence.** The periods of the schema are `。`, `．` and `.`; with them the filter cut 4 of the 543 lines of the test file of UD Japanese-GSD, all at a number (`4.20`, `1.5km`) or at `...`. The full-width `．` ends a sentence unless a digit follows. `！` and `？` end one too: in IPADIC they are symbols, not periods.
+- **What the filter can see of an earlier filter is the positions.** The tokenizer numbers its tokens from 0 without a gap, a filter that removes tokens leaves a gap, and one that joins them a token of more than one position. A rewritten surface or detail, and tokens removed from the end, cannot be seen; the documentation says to put the filter first.
+- **The tokens are read where they are.** A morpheme of the filter borrows the surface and the details of its token. The model is behind an `Arc`, shared by the clones of the filter, which a tokenizer makes when it is cloned.
+- **The filter gives what the command gives**: on the 543 sentences of the test file of UD Japanese-GSD, every token has the bunsetsu, the head, the role and the score of `lindera-dependency parse` with the same model.
+- **Not verified**: a dictionary other than IPADIC, for which there is no schema yet.
+
 ## What is to come
 
 | Part | Notes | Issue |
 | --- | --- | --- |
-| Token filter | And its use from the configuration file and the bindings. | [#1438](https://github.com/lindera/lindera/issues/1438) |
+| Token filter in the bindings | `TokenView` of `lindera-binding`, and the field of a token in Python, Node.js, Ruby, PHP and WASM. | [#1438](https://github.com/lindera/lindera/issues/1438) |
 | IPADIC model | Training, release, documentation, license notes. The crate is published with it. | [#1440](https://github.com/lindera/lindera/issues/1440) |
 | UniDic model | A second schema. | [#1441](https://github.com/lindera/lindera/issues/1441) |
 | Converter for the models of CaboCha | The normalization table of the surface, the reader of a CRF++ text model, and the expansion of the support vectors of the parser model. | [#1442](https://github.com/lindera/lindera/issues/1442) |
@@ -166,9 +179,8 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 
 ### Open questions
 
-- **How the filter is named in a configuration.** Use from the configuration file, the command and the bindings needs a change in `lindera-analysis`: `TokenFilterLoader::load_from_value` is a fixed `match` on the `kind`. Either the filter lives in `lindera-analysis` behind a feature and depends on the core of this crate, or `lindera-analysis` gets a registry of filters.
-- **Typed fields for the result on `Token`**, instead of string columns in `details`, which `as_value()` does not show.
-- **Bunsetsu ids restart at 0 in every sentence**, so they collide when one input holds several sentences; a fifth column with the sentence number would solve it.
+- **Which release carries the break of `Token`** (7.1.0 or 8.0.0), and **whether the distributed builds of the command and of the bindings have the `dependency` feature**: both are decided with the model ([#1440](https://github.com/lindera/lindera/issues/1440)). Until this crate is published, `lindera-analysis` cannot be published either.
+- **A line break ends no sentence in the token filter**: it is not a token. A text of lines without a period is one sentence there, unless what calls the tokenizer cuts it.
 - **More training data** under a usable license.
 
 ## Targets
@@ -295,6 +307,19 @@ The default chunker model, on one core of an AMD Ryzen AI Max+ 395, with Rust 1.
 | The same, with a binary search over the sorted strings and no slots | 11,103 sentences per second, against 18,274 in memory in the same run; 196,311 bytes | A variant of the code of #1437, not kept |
 | The same, with three slots for two strings, modulo their number | 14,821 sentences per second, against 18,326 in memory in the same run; 222,267 bytes | A variant of the code of #1437, not kept |
 
+### Token filter
+
+`lindera tokenize` with the embedded IPADIC and the default model, on the text of the test file of UD Japanese-GSD repeated 20 times (10,860 sentences, 252,880 tokens), MeCab output, on one core of an AMD Ryzen AI Max+ 395, with Rust 1.100.0. The fastest of five runs, without the time of the same command on an empty input.
+
+| Number | Value | From |
+| --- | --- | --- |
+| Without the filter | About 2,900,000 tokens per second | Script: `filter_speed.sh` |
+| With the filter | About 180,000 tokens per second, 7,700 sentences per second | Script: `filter_speed.sh` |
+| What the filter adds to a token | About 5.2 microseconds; about 78,000 instructions | Script: `filter_speed.sh`; the instructions with `perf stat`, not kept as a script |
+| Making the filter, which reads the model | About 4 ms | Script: `filter_speed.sh` |
+| The filter against `lindera-dependency parse` | The same bunsetsu, heads, roles and scores for the 12,644 tokens of the 543 sentences | A comparison of the two outputs, not kept as a script |
+| A token without a dependency, against Lindera before the field | At most 0.35% more instructions on 15 workloads; one pointer more in a token | `perf stat`, in the pull request of the field (#1449) |
+
 ### Lindera
 
 | Fact | From |
@@ -318,7 +343,7 @@ The default chunker model, on one core of an AMD Ryzen AI Max+ 395, with Rust 1.
 | [#1436](https://github.com/lindera/lindera/issues/1436) | Dependency parser: the loop, the features, the training instances | Done |
 | [#1433](https://github.com/lindera/lindera/issues/1433) | The baselines of CaboCha and J.DepP, measured again | Open |
 | [#1437](https://github.com/lindera/lindera/issues/1437) | The model file, and the training of the parser | Done |
-| [#1438](https://github.com/lindera/lindera/issues/1438) | Token filter | Open |
+| [#1438](https://github.com/lindera/lindera/issues/1438) | Token filter | The filter and the command done; the bindings open |
 | [#1439](https://github.com/lindera/lindera/issues/1439) | Command | Done |
 | [#1440](https://github.com/lindera/lindera/issues/1440) | IPADIC model, and the publication of the crate | Open |
 | [#1441](https://github.com/lindera/lindera/issues/1441) | UniDic model | Open |

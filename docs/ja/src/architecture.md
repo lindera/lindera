@@ -122,6 +122,7 @@ Output Tokens
 | `analysis` | `lindera-analysis`を`lindera::analysis`として再エクスポート（文字フィルタ、トークンフィルタ、`Tokenizer`） | 有効（`default-features = false`で無効） |
 | `mmap` | ファイルシステム辞書読み込みのためのメモリマップドファイルサポート（`--mmap`/`use_mmap`でオプトイン。トライ・単語リストファイル・接続コスト行列はいずれもマップしたバイト列上で直接参照され、遅延読み込みされる） | 有効 |
 | `train` | CRFベースの辞書学習機能（`lindera-trainer`と`lindera-crf`の`train` featureを追加） | CLI + Python/Node.js/Ruby/PHPバインディング（デフォルト有効）／`lindera`ライブラリクレートではデフォルト無効（オプトイン）／`lindera-wasm`では利用不可 |
+| `dependency` | トークンフィルタ`japanese_dependency`。`lindera-dependency`による文節の係り受け解析（`lindera`、`lindera-analysis`、`lindera-cli`） | 無効 |
 | `embed-ipadic` | IPADIC辞書をバイナリに埋め込み | 無効 |
 | `embed-ipadic-neologd` | IPADIC NEologd辞書をバイナリに埋め込み | 無効 |
 | `embed-unidic` | UniDic辞書をバイナリに埋め込み | 無効 |

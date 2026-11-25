@@ -23,6 +23,9 @@ what the analysis is built on, and its first step:
 - the `lindera-dependency` command, which parses plain text and writes
   the lattice format
 
+The token filter `japanese_dependency` of Lindera runs this analysis in a
+tokenizer. It is in `lindera-analysis`, behind its `dependency` feature.
+
 No model is distributed yet: the chunker and the parser are trained with
 the commands of the crate, in a few seconds each.
 

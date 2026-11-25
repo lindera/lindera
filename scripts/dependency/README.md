@@ -36,6 +36,7 @@ Run everything from the root of the repository.
 | `parser_experiments.sh` | The experiments behind the defaults of the parser: the cross-validations of the algorithm, the feature set, the pairs, their table and the quantization, the pairs of settings, the result on dev, test and PUD, and the speed |
 | `parser_experiment.py` | The driver of `parser_experiments.sh` |
 | `parse_speed.sh` | The sentences per second of `lindera-dependency parse` on plain text, in the build with `cli,embed-ipadic`: the text of the test file of UD Japanese-GSD, with and without the time to load the dictionary and the model |
+| `filter_speed.sh` | What the token filter `japanese_dependency` costs in `lindera tokenize`, in the build with `embed-ipadic,dependency`: the tokens per second without and with the filter on the text of the test file of UD Japanese-GSD, and the time the filter adds to a token |
 | `model_speed/` | The size of a model file, the time to read it, and the sentences per second of chunking, of parsing and of both; with a training file, also of a chunker in memory |
 | `head_variants/` | The agreement of the head word for CaboCha's rule and for each addition of `Schema::ipadic()`, measured with `corpus::convert` |
 | `head_rules.py` | The same in Python, with examples by surface and the variants that were not taken |
@@ -115,6 +116,7 @@ The models of the chunker are the same bytes each time.
 | `parser_experiments.sh algorithm` and the other stages | Level 1 over the 10 folds of train, such as 88.96% for CaboCha's feature set and 89.21% for the default setting; the README of the crate has the tables |
 | `parser_experiments.sh speed` | About 16,700 sentences per second for parsing and 8,700 for chunking and parsing with the default model; the times depend on the machine |
 | `parse_speed.sh <model>` | 543 sentences; about 6,600 sentences per second from the text to the lattice format, about 5 ms to load; the times depend on the machine |
+| `filter_speed.sh <model>` | 12,644 tokens in 543 sentences, 20 times; about 2,900,000 tokens per second without the filter and 180,000 with it (7,700 sentences); the filter adds about 5.2 microseconds per token, and making it takes about 4 ms; the times depend on the machine |
 | `parser_instances.sh` | Sentences 7,024, 506, 542, 994, as `convert` kept; instances 66,000, 4,881, 5,377, 12,739. The command stops at a tree that does not come back, so four reports mean that every tree did |
 | `head_variants/` | The head word on the content head of the corpus: from 85.43% with CaboCha's rule to 96.55% with `Schema::ipadic()` on GSD train; 96.96% on dev, 96.92% on test, 97.46% on PUD |
 

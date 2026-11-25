@@ -60,6 +60,7 @@ lindera = { version = "7.0.0", path = "lindera" }
 lindera-analysis = { version = "7.0.0", path = "lindera-analysis", default-features = false }
 lindera-binding = { version = "7.0.0", path = "lindera-binding" }
 lindera-crf = { version = "7.0.0", path = "lindera-crf", default-features = false }
+lindera-dependency = { version = "7.0.0", path = "lindera-dependency", default-features = false }
 lindera-cc-cedict = { version = "7.0.0", path = "lindera-cc-cedict" }
 lindera-cli = { version = "7.0.0", path = "lindera-cli" }
 # Without its default features, so that `mmap` (and `memmap2`) is built only

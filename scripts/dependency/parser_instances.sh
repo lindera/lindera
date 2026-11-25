@@ -16,7 +16,7 @@ here=$(dirname "$(readlink -f "$0")")
 root=$(readlink -f "$here/../..")
 data=$(readlink -f "${1:-$here/data}")
 
-cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-dependency --features embed-ipadic
+cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-dependency --features train,embed-ipadic
 bin="$root/target/release/lindera-dependency"
 
 mkdir -p "$data/instances"

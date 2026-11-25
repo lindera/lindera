@@ -174,4 +174,4 @@ The command is in this crate, not in `lindera-cli`: `lindera-cli` is published, 
 | `train` | The `corpus` and `evaluation` modules, the training of the chunker with `lindera-crf` and of the parser, and their subcommands (implies `cli`) | No |
 | `embed-ipadic` | Embeds IPADIC in the command, for `--dict embedded://ipadic` (implies `cli`) | No |
 
-The crate depends on `lindera-segmenter` at most, never on `lindera` or `lindera-analysis`: the token filter that is to come will make `lindera-analysis` depend on this crate.
+The crate depends on `lindera-segmenter` at most, never on `lindera` or `lindera-analysis`: the token filter makes `lindera-analysis` depend on this crate, behind its `dependency` feature.
