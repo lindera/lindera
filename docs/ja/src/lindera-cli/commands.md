@@ -46,7 +46,7 @@ v6.2.0 までは、コマンドは失敗していました。[移行ガイド](.
 ```
 
 ```text
-Skipped /home/user/.local/share/lindera/dictionaries/6.2.0: not a dictionary (no metadata.json)
+Skipped /home/user/.local/share/lindera/dictionaries/6.2.0: not a dictionary (no metadata.json) and not a model (no model.json)
 NAME    VERSION  STATUS  DICT
 ipadic  7.0.0    ok      embedded://ipadic
 ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
@@ -59,7 +59,23 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 - `STATUS` は `ok`、必要なファイルが欠けている場合は `incomplete`（`lindera download <name> --force` で再ダウンロードしてください）、別のバージョンの Lindera がビルドした辞書や、バージョンの記録がない辞書では `other version`（ダウンロードできる辞書なら `lindera download <name>` で置き換わります）になります。
 - `DICT` は `--dict` に渡す値です。
 
-メッセージは標準エラー出力に出ます。上の例の `6.2.0/`（v7.0.0 より前の CLI がダウンロードした辞書を置いたディレクトリ）のように `metadata.json` のないサブディレクトリは、1 行のメッセージとともに飛ばします。辞書ディレクトリに辞書が 1 つもない場合は、`lindera download` の案内を出します。名前が `.` で始まる項目は、メッセージなしで飛ばします。
+メッセージは標準エラー出力に出ます。上の例の `6.2.0/`（v7.0.0 より前の CLI がダウンロードした辞書を置いたディレクトリ）のように `metadata.json` も `model.json` もないサブディレクトリは、1 行のメッセージとともに飛ばします。辞書ディレクトリに辞書が 1 つもない場合は、`lindera download` の案内を出します。名前が `.` で始まる項目は、メッセージなしで飛ばします。
+
+### 係り受け解析のモデル
+
+[係り受け解析](../lindera-dependency/token_filter.md)のモデルがあるときは、別の表が続きます。バイナリに埋め込んだモデル（feature フラグ `embed-dependency-ipadic`）と、`lindera download dependency-ipadic` がインストールしたモデル（`model.json` のあるサブディレクトリ）です。
+
+```text
+NAME    VERSION  STATUS  DICT
+ipadic  7.0.0    ok      embedded://ipadic
+
+NAME               VERSION  STATUS  MODEL
+dependency-ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
+```
+
+- `VERSION` は、そのモデルをビルドした Lindera のバージョン（`model.json` の `lindera_version`）です。埋め込みのモデルはバージョンの記録を持たないので、`unknown` になります。
+- `STATUS` は辞書と同じで、`ok`、`incomplete`、`other version` のどれかです。`other version` のモデルは、`lindera download dependency-ipadic` で置き換わります。
+- `MODEL` は、トークンフィルター `japanese_dependency` の `model` に渡す値です。モデルファイルか、`embedded://ipadic` になります。
 
 ## tokenize
 
@@ -905,12 +921,12 @@ Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for 
 
 ## download
 
-CLI と同じバージョンの学習済み辞書アーカイブを [GitHub リリースページ](https://github.com/lindera/lindera/releases)からダウンロードし、辞書ディレクトリにインストールします。
+CLI と同じバージョンの学習済み辞書アーカイブを [GitHub リリースページ](https://github.com/lindera/lindera/releases)からダウンロードし、辞書ディレクトリにインストールします。同じコマンドで、リリースが辞書と並べて公開する、係り受け解析のモデルも取得できます。[係り受け解析のモデルのダウンロード](#係り受け解析のモデルのダウンロード)を見てください。
 
 ### download パラメータ
 
-- 辞書名（必須）: `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba` のいずれか
-- `--force`: CLI のバージョンがビルドした辞書でも、再ダウンロードして置き換える
+- 名前（必須）: 辞書なら `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba` のいずれか。`dependency-ipadic` は、IPADIC 用の係り受け解析のモデル
+- `--force`: CLI のバージョンがビルドした辞書やモデルでも、再ダウンロードして置き換える
 
 ### 保存場所
 
@@ -942,6 +958,36 @@ Downloaded dictionary 'ipadic'
 - アーカイブのバージョンは常に CLI のバージョンと一致します。リリースが公開されていない開発版のバージョンで実行すると HTTP 404 で失敗します。
 - 整合性は HTTPS トランスポートと ZIP アーカイブ内蔵のファイルごとの CRC32 チェックサムで検証されます。
 - 最大の辞書（`ipadic-neologd`）は約 305 MB のダウンロードで、展開時にはその約 2 倍の空きディスク容量が必要です。
+
+### 係り受け解析のモデルのダウンロード
+
+`lindera download dependency-ipadic` は、トークンフィルター `japanese_dependency` の [IPADIC のモデル](../lindera-dependency/model_file.md#ipadic-のモデル)を取得します。CLI のバージョンのリリースのページにある `lindera-dependency-ipadic-<version>.zip` で、7.1.0 以降のリリースにあります。辞書と並べて `<辞書ディレクトリ>/dependency-ipadic/` にインストールし、その中のモデルファイルのパスを表示します。フィルターの `model` に渡す値です。
+
+```shell
+% MODEL=$(lindera download dependency-ipadic)
+% DICT_DIR=$(lindera download ipadic)
+% echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT_DIR" --output json \
+    --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
+```
+
+ディレクトリには、`dependency.model`、`model.json`、モデルのライセンスを書いた `NOTICE.txt` が入ります。すでに置いてあるモデルは、`model.json` の `lindera_version` が CLI のバージョンと同じならそのまま使い、違えば置き換えます。辞書と同じ扱いです。モデルがすでにある場合は、次のようになります。
+
+```shell
+% lindera download dependency-ipadic
+```
+
+```text
+Model 'dependency-ipadic' is already downloaded; use --force to re-download it
+/home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
+```
+
+リリースが無いバージョンや、7.1.0 より前のリリースには、ダウンロードできるモデルがありません。
+
+```text
+Error: LinderaError { kind: NotFound, source: model archive not found: https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-dependency-ipadic-7.0.0.zip (HTTP 404). Version 7.0.0 may not have a published release yet; see https://github.com/lindera/lindera/releases }
+```
+
+フィルターを使うには、`dependency` feature を付けてビルドした CLI が必要です。モデルは IPADIC 用なので、IPADIC と一緒に使います。
 
 ## train
 

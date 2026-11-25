@@ -146,3 +146,54 @@ fn a_build_without_the_embedded_model_names_the_feature() {
     assert!(stderr.contains("`embed-dependency-ipadic`"), "{stderr}");
     assert!(output.stdout.is_empty());
 }
+
+/// The model as `lindera download dependency-ipadic` leaves it, and the path
+/// the command prints for it, given to the filter (#1440). The model is in
+/// place and of this version, so nothing is downloaded.
+#[test]
+fn the_path_that_download_prints_is_what_the_filter_takes() {
+    let dictionaries = tempfile::tempdir().unwrap();
+    let directory = dictionaries.path().join("dependency-ipadic");
+    std::fs::create_dir_all(&directory).unwrap();
+    std::fs::copy(MODEL_FILE, directory.join("dependency.model")).unwrap();
+    std::fs::write(directory.join("NOTICE.txt"), b"notice").unwrap();
+    std::fs::write(
+        directory.join("model.json"),
+        json!({
+            "name": "dependency-ipadic",
+            "dictionary": "ipadic",
+            "lindera_version": env!("CARGO_PKG_VERSION"),
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("lindera")
+        .expect("lindera binary should build")
+        .args(["download", "dependency-ipadic"])
+        .env("LINDERA_DICTIONARIES_DIR", dictionaries.path())
+        .env_remove("LINDERA_DATA_DIR")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let printed = String::from_utf8(output.stdout).unwrap();
+    let model = printed.trim_end();
+
+    let text = "彼は本を読んだ。\n";
+    let with_the_printed_path = tokenize(
+        &[
+            "--output",
+            "json",
+            "--token-filter",
+            &format!("japanese_dependency:{}", json!({ "model": model })),
+        ],
+        text,
+    );
+    let with_the_file = tokenize(&["--output", "json", "--token-filter", &filter()], text);
+    assert!(with_the_file.contains("\"dependency\""), "{with_the_file}");
+    assert_eq!(with_the_printed_path, with_the_file);
+}

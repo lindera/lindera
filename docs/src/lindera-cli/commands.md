@@ -46,7 +46,7 @@ This command takes no arguments. It looks for dictionaries in the directory name
 ```
 
 ```text
-Skipped /home/user/.local/share/lindera/dictionaries/6.2.0: not a dictionary (no metadata.json)
+Skipped /home/user/.local/share/lindera/dictionaries/6.2.0: not a dictionary (no metadata.json) and not a model (no model.json)
 NAME    VERSION  STATUS  DICT
 ipadic  7.0.0    ok      embedded://ipadic
 ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
@@ -59,7 +59,23 @@ The table, on stdout, has one dictionary per line: the embedded dictionaries fir
 - `STATUS` is `ok`; `incomplete` when required files are missing (download it again with `lindera download <name> --force`); or `other version` when another version of Lindera built the dictionary, or one that does not say (for a downloadable dictionary, `lindera download <name>` replaces it).
 - `DICT` is the value to pass to `--dict`.
 
-Messages go to stderr: a subdirectory without `metadata.json`, such as the `6.2.0/` above, where a CLI before v7.0.0 put its downloads, is skipped with a line, and a dictionaries directory without dictionaries is reported with a hint to run `lindera download`. Entries whose name starts with `.` are skipped silently.
+Messages go to stderr: a subdirectory with neither `metadata.json` nor `model.json`, such as the `6.2.0/` above, where a CLI before v7.0.0 put its downloads, is skipped with a line, and a dictionaries directory without dictionaries is reported with a hint to run `lindera download`. Entries whose name starts with `.` are skipped silently.
+
+### Models of the dependency parser
+
+The models of the [dependency parser](../lindera-dependency/token_filter.md) follow in a table of their own, when there is one: the model embedded in the binary (the `embed-dependency-ipadic` feature flag) and those that `lindera download dependency-ipadic` installed, which are the subdirectories with a `model.json`.
+
+```text
+NAME    VERSION  STATUS  DICT
+ipadic  7.0.0    ok      embedded://ipadic
+
+NAME               VERSION  STATUS  MODEL
+dependency-ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
+```
+
+- `VERSION` is the version of Lindera that built the model (`lindera_version` in its `model.json`), or `unknown` for the embedded model, which does not say.
+- `STATUS` is as for a dictionary: `ok`, `incomplete`, or `other version`, which `lindera download dependency-ipadic` replaces.
+- `MODEL` is the value to pass as `model` to the token filter `japanese_dependency`: the model file, or `embedded://ipadic`.
 
 ## tokenize
 
@@ -905,12 +921,12 @@ For more details about user dictionary format please refer to the following URL:
 
 ## download
 
-Download the pre-built dictionary archive matching the CLI version from the [GitHub releases page](https://github.com/lindera/lindera/releases) and install it in the dictionaries directory.
+Download the pre-built dictionary archive matching the CLI version from the [GitHub releases page](https://github.com/lindera/lindera/releases) and install it in the dictionaries directory. The same command gets the model of the dependency parser, which a release publishes next to the dictionaries: see [Downloading the model of the dependency parser](#downloading-the-model-of-the-dependency-parser).
 
 ### Download parameters
 
-- Dictionary name (required): one of `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba`
-- `--force`: Re-download and replace the dictionary even when the CLI's version built it
+- Name (required): a dictionary, one of `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba`; or `dependency-ipadic`, the model of the dependency parser for IPADIC
+- `--force`: Re-download and replace the dictionary or the model even when the CLI's version built it
 
 ### Storage location
 
@@ -942,6 +958,36 @@ Notes:
 - The archive version always matches the CLI version; running a development build whose version has no published release yet fails with HTTP 404.
 - Integrity is verified via the HTTPS transport and the ZIP archive's built-in per-file CRC32 checksums.
 - The largest dictionary (`ipadic-neologd`) is a ~305 MB download and requires roughly twice that amount of free disk space during extraction.
+
+### Downloading the model of the dependency parser
+
+`lindera download dependency-ipadic` gets the [model for IPADIC](../lindera-dependency/model_file.md#the-model-for-ipadic) of the token filter `japanese_dependency`, `lindera-dependency-ipadic-<version>.zip` on the page of the release of the CLI's version, from 7.1.0 on. It installs it in `<dictionaries directory>/dependency-ipadic/`, next to the dictionaries, and prints the path of the model file in it, which is what the filter takes as `model`:
+
+```shell
+% MODEL=$(lindera download dependency-ipadic)
+% DICT_DIR=$(lindera download ipadic)
+% echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT_DIR" --output json \
+    --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
+```
+
+The directory holds `dependency.model`, `model.json` and `NOTICE.txt`, which has the license of the model. A model in place is kept when the CLI's version built it, as the `lindera_version` of its `model.json` says, and replaced otherwise, as a dictionary is. With the model in place:
+
+```shell
+% lindera download dependency-ipadic
+```
+
+```text
+Model 'dependency-ipadic' is already downloaded; use --force to re-download it
+/home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
+```
+
+A version without a release, or with a release before 7.1.0, has no model to download:
+
+```text
+Error: LinderaError { kind: NotFound, source: model archive not found: https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-dependency-ipadic-7.0.0.zip (HTTP 404). Version 7.0.0 may not have a published release yet; see https://github.com/lindera/lindera/releases }
+```
+
+The filter needs a build of the CLI with the `dependency` feature. The model belongs to IPADIC: use it with that dictionary.
 
 ## train
 

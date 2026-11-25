@@ -8,12 +8,17 @@ use lindera_crf::console::{Stream, write_line};
 
 use super::{io_err, write_stdout};
 use crate::dictionary_registry::{
-    dictionaries_dir, embedded_dictionary_names, installed_lindera_version,
-    is_complete_dictionary_dir,
+    Downloadable, MODEL_METADATA_FILE, dictionaries_dir, embedded_dictionary_names,
+    installed_lindera_version, is_complete_dictionary_dir,
 };
 
 /// Column headers of the dictionary listing table.
 const HEADERS: [&str; 4] = ["NAME", "VERSION", "STATUS", "DICT"];
+
+/// Column headers of the table of the models of the dependency parser. The
+/// last column is the value of `model` of the token filter
+/// `japanese_dependency`.
+const MODEL_HEADERS: [&str; 4] = ["NAME", "VERSION", "STATUS", "MODEL"];
 
 /// Shown in the `VERSION` column when the dictionary does not say which
 /// version of Lindera built it, as a dictionary built before v7.0.0 does.
@@ -22,7 +27,7 @@ const UNKNOWN_VERSION: &str = "unknown";
 #[derive(Debug, clap::Args)]
 #[clap(
     author,
-    about = "List the embedded dictionaries and those in LINDERA_DICTIONARIES_DIR",
+    about = "List the embedded dictionaries and those in LINDERA_DICTIONARIES_DIR, and the models of the dependency parser",
     version = get_version(),
 )]
 /// Arguments for the `list` subcommand.
@@ -74,7 +79,12 @@ struct DictionaryRow {
 struct DirectoryListing {
     /// One row per dictionary, by name.
     rows: Vec<DictionaryRow>,
-    /// Subdirectories without `metadata.json`, by name.
+    /// One row per model of the dependency parser, by name: the
+    /// subdirectories with a `model.json` (#1440). The last cell of a row
+    /// is the model file.
+    models: Vec<DictionaryRow>,
+    /// Subdirectories with neither `metadata.json` nor `model.json`, by
+    /// name.
     skipped: Vec<PathBuf>,
 }
 
@@ -86,6 +96,11 @@ struct DirectoryListing {
 /// state, and the value to pass to `--dict` (#1303). Subdirectories without
 /// `metadata.json` are reported on stderr instead, as is a dictionaries
 /// directory without dictionaries.
+///
+/// The models of the dependency parser follow in a table of their own, when
+/// there is one: the model embedded in the binary (`embed-dependency-ipadic`)
+/// and those `lindera download` installed, each with the value to pass as
+/// `model` to the token filter `japanese_dependency` (#1440).
 ///
 /// # Arguments
 ///
@@ -115,7 +130,7 @@ pub fn list(_args: ListArgs) -> LinderaResult<()> {
         write_line(
             Stream::Stderr,
             format_args!(
-                "Skipped {}: not a dictionary (no metadata.json)",
+                "Skipped {}: not a dictionary (no metadata.json) and not a model (no model.json)",
                 skipped.display()
             ),
         );
@@ -130,8 +145,39 @@ pub fn list(_args: ListArgs) -> LinderaResult<()> {
         );
     }
     rows.extend(listing.rows);
+    let mut models = embedded_model_rows();
+    models.extend(listing.models);
 
-    write_stdout(&render_rows(&rows))
+    let mut output = render_rows(&HEADERS, &rows);
+    if !models.is_empty() {
+        output.push('\n');
+        output.push_str(&render_rows(&MODEL_HEADERS, &models));
+    }
+    write_stdout(&output)
+}
+
+/// The rows of the models embedded in the binary.
+///
+/// # Returns
+///
+/// One row for the model for IPADIC in a build with
+/// `embed-dependency-ipadic`, with `embedded://ipadic` as the value of
+/// `model`; no row otherwise. An embedded model does not say which version
+/// of Lindera built it, and is the one this binary was built with.
+fn embedded_model_rows() -> Vec<DictionaryRow> {
+    #[cfg(feature = "embed-dependency-ipadic")]
+    {
+        vec![DictionaryRow {
+            name: "dependency-ipadic".to_string(),
+            version: None,
+            status: Status::Ok,
+            dict: "embedded://ipadic".to_string(),
+        }]
+    }
+    #[cfg(not(feature = "embed-dependency-ipadic"))]
+    {
+        Vec::new()
+    }
 }
 
 /// Decides the state of a dictionary.
@@ -179,9 +225,10 @@ fn embedded_row(name: String, version: Option<String>, cli_version: &str) -> Dic
 /// Collects the dictionaries in the dictionaries directory.
 ///
 /// Every subdirectory with a `metadata.json` is a dictionary, complete or
-/// not. Entries whose name starts with `.` (the temporary files of a
-/// download) and files are skipped silently; subdirectories without
-/// `metadata.json`, such as the version directories of the layout before
+/// not, and every other one with a `model.json` is a model of the
+/// dependency parser. Entries whose name starts with `.` (the temporary
+/// files of a download) and files are skipped silently; subdirectories
+/// with neither file, such as the version directories of the layout before
 /// v7.0.0, are returned as skipped.
 ///
 /// # Arguments
@@ -212,6 +259,17 @@ fn directory_listing(dir: &Path, cli_version: &str) -> LinderaResult<DirectoryLi
     let mut listing = DirectoryListing::default();
     for (name, path) in entries {
         if !path.join("metadata.json").is_file() {
+            if path.join(MODEL_METADATA_FILE).is_file() {
+                let kind = Downloadable::DependencyModel;
+                let version = kind.installed_version(&path);
+                listing.models.push(DictionaryRow {
+                    status: status(kind.is_complete(&path), version.as_deref(), cli_version),
+                    dict: kind.path_to_pass(&path).display().to_string(),
+                    name,
+                    version,
+                });
+                continue;
+            }
             listing.skipped.push(path);
             continue;
         }
@@ -234,6 +292,7 @@ fn directory_listing(dir: &Path, cli_version: &str) -> LinderaResult<DirectoryLi
 ///
 /// # Arguments
 ///
+/// * `headers` - The header of each column.
 /// * `rows` - Listing rows to render.
 ///
 /// # Returns
@@ -242,7 +301,7 @@ fn directory_listing(dir: &Path, cli_version: &str) -> LinderaResult<DirectoryLi
 /// terminated by a newline. Columns are separated by two spaces; the
 /// `VERSION` column shows [`UNKNOWN_VERSION`] when the dictionary does not
 /// say.
-fn render_rows(rows: &[DictionaryRow]) -> String {
+fn render_rows(headers: &[&str; 4], rows: &[DictionaryRow]) -> String {
     let cells: Vec<[String; 4]> = rows
         .iter()
         .map(|row| {
@@ -258,7 +317,7 @@ fn render_rows(rows: &[DictionaryRow]) -> String {
         .collect();
 
     // Width of each column except the last, which is left unpadded.
-    let mut widths = [HEADERS[0].len(), HEADERS[1].len(), HEADERS[2].len()];
+    let mut widths = [headers[0].len(), headers[1].len(), headers[2].len()];
     for row in &cells {
         for (width, cell) in widths.iter_mut().zip(row.iter()) {
             *width = (*width).max(cell.len());
@@ -266,7 +325,7 @@ fn render_rows(rows: &[DictionaryRow]) -> String {
     }
 
     let mut output = String::new();
-    render_line(&mut output, &HEADERS.map(str::to_string), &widths);
+    render_line(&mut output, &headers.map(str::to_string), &widths);
     for row in &cells {
         render_line(&mut output, row, &widths);
     }
@@ -423,6 +482,141 @@ ipadic  7.0.0    ok             embedded://ipadic
 mydic   7.0.0    incomplete     /data/mydic
 olddic  unknown  other version  /data/olddic
 ";
-        assert_eq!(render_rows(&rows), expected);
+        assert_eq!(render_rows(&HEADERS, &rows), expected);
+    }
+
+    /// Writes the files of a downloaded model into `dir`, creating it, with
+    /// a `model.json` that says `version` built it (nothing when `None`).
+    fn write_model(dir: &Path, files: &[&str], version: Option<&str>) {
+        fs::create_dir_all(dir).unwrap();
+        for file in files {
+            fs::write(dir.join(file), b"test").unwrap();
+        }
+        let metadata = match version {
+            Some(version) => serde_json::json!({
+                "name": "dependency-ipadic",
+                "dictionary": "ipadic",
+                "lindera_version": version,
+            }),
+            None => serde_json::json!({ "name": "dependency-ipadic" }),
+        };
+        fs::write(
+            dir.join("model.json"),
+            serde_json::to_vec(&metadata).unwrap(),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn directory_listing_lists_the_models_apart_from_the_dictionaries() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path();
+        write_dictionary(
+            &dir.join("ipadic"),
+            &REQUIRED_DICTIONARY_FILES,
+            Some("7.1.0"),
+        );
+        write_model(
+            &dir.join("dependency-ipadic"),
+            &["dependency.model", "NOTICE.txt"],
+            Some("7.1.0"),
+        );
+        write_model(
+            &dir.join("dependency-old"),
+            &["dependency.model", "NOTICE.txt"],
+            Some("7.0.0"),
+        );
+        write_model(
+            &dir.join("dependency-partial"),
+            &["NOTICE.txt"],
+            Some("7.1.0"),
+        );
+        write_model(
+            &dir.join("dependency-unknown"),
+            &["dependency.model", "NOTICE.txt"],
+            None,
+        );
+        fs::create_dir_all(dir.join("other")).unwrap();
+
+        let listing = directory_listing(dir, "7.1.0").unwrap();
+        let names: Vec<&str> = listing.rows.iter().map(|row| row.name.as_str()).collect();
+        assert_eq!(names, ["ipadic"]);
+        let models: Vec<(&str, Option<&str>, Status, String)> = listing
+            .models
+            .iter()
+            .map(|row| {
+                (
+                    row.name.as_str(),
+                    row.version.as_deref(),
+                    row.status,
+                    row.dict.clone(),
+                )
+            })
+            .collect();
+        // The last cell is the model file, not its directory.
+        let file = |name: &str| {
+            dir.join(name)
+                .join("dependency.model")
+                .display()
+                .to_string()
+        };
+        assert_eq!(
+            models,
+            vec![
+                (
+                    "dependency-ipadic",
+                    Some("7.1.0"),
+                    Status::Ok,
+                    file("dependency-ipadic")
+                ),
+                (
+                    "dependency-old",
+                    Some("7.0.0"),
+                    Status::OtherVersion,
+                    file("dependency-old")
+                ),
+                (
+                    "dependency-partial",
+                    Some("7.1.0"),
+                    Status::Incomplete,
+                    file("dependency-partial")
+                ),
+                (
+                    "dependency-unknown",
+                    None,
+                    Status::OtherVersion,
+                    file("dependency-unknown")
+                ),
+            ]
+        );
+        assert_eq!(listing.skipped, vec![dir.join("other")]);
+    }
+
+    #[test]
+    fn the_table_of_the_models_has_its_own_last_column() {
+        let rows = vec![DictionaryRow {
+            name: "dependency-ipadic".to_string(),
+            version: Some("7.1.0".to_string()),
+            status: Status::Ok,
+            dict: "/data/dependency-ipadic/dependency.model".to_string(),
+        }];
+        let expected = "\
+NAME               VERSION  STATUS  MODEL
+dependency-ipadic  7.1.0    ok      /data/dependency-ipadic/dependency.model
+";
+        assert_eq!(render_rows(&MODEL_HEADERS, &rows), expected);
+    }
+
+    #[test]
+    fn the_embedded_model_is_listed_in_a_build_that_has_one() {
+        let rows = embedded_model_rows();
+        if cfg!(feature = "embed-dependency-ipadic") {
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].name, "dependency-ipadic");
+            assert_eq!(rows[0].dict, "embedded://ipadic");
+            assert_eq!(rows[0].status, Status::Ok);
+        } else {
+            assert!(rows.is_empty());
+        }
     }
 }

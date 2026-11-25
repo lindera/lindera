@@ -191,6 +191,94 @@ fn download_with_invalid_name_fails() {
     assert!(stderr.contains("ipadic"), "got: {stderr}");
 }
 
+/// Writes the files of a downloaded model of the dependency parser into
+/// `dir`, creating it, with dummy content and a `model.json` that says
+/// `version` built it: what `lindera download` and `lindera list` check, not
+/// a model that can be loaded.
+fn write_model_files(dir: &Path, version: &str) {
+    std::fs::create_dir_all(dir).unwrap();
+    std::fs::write(dir.join("dependency.model"), b"test").unwrap();
+    std::fs::write(dir.join("NOTICE.txt"), b"test").unwrap();
+    std::fs::write(
+        dir.join("model.json"),
+        format!(
+            "{{\"name\": \"dependency-ipadic\", \"dictionary\": \"ipadic\", \"lindera_version\": \"{version}\"}}"
+        ),
+    )
+    .unwrap();
+}
+
+/// `lindera download dependency-ipadic` prints the model file, the value of
+/// `model` of the token filter, and not its directory. The model is in
+/// place and of this version, so nothing is downloaded (#1440).
+#[test]
+fn download_prints_the_model_file_of_a_model_in_place() {
+    let dictionaries = tempfile::tempdir().unwrap();
+    let model = dictionaries.path().join("dependency-ipadic");
+    write_model_files(&model, env!("CARGO_PKG_VERSION"));
+
+    let output = lindera_with_dictionaries_dir(dictionaries.path())
+        .args(["download", "dependency-ipadic"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert_eq!(
+        String::from_utf8(output.stdout).unwrap(),
+        format!("{}\n", model.join("dependency.model").display())
+    );
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("Model 'dependency-ipadic' is already downloaded"),
+        "got: {stderr}"
+    );
+}
+
+/// `lindera list` shows a downloaded model in a table of its own, after the
+/// dictionaries, with the model file in its last column; a model of
+/// another version is marked (#1440).
+#[test]
+fn list_shows_the_models_in_a_table_of_their_own() {
+    let dictionaries = tempfile::tempdir().unwrap();
+    let model = dictionaries.path().join("dependency-ipadic");
+    write_model_files(&model, env!("CARGO_PKG_VERSION"));
+    write_model_files(&dictionaries.path().join("dependency-old"), "0.0.1");
+
+    let output = lindera_with_dictionaries_dir(dictionaries.path())
+        .arg("list")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(!stderr.contains("Skipped"), "got: {stderr}");
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    let header = lines
+        .iter()
+        .position(|line| line.ends_with("MODEL"))
+        .unwrap_or_else(|| panic!("the table of the models is missing, got: {stdout}"));
+    assert!(lines[0].ends_with("DICT"), "got: {stdout}");
+    assert_eq!(lines[header - 1], "", "got: {stdout}");
+    let cells =
+        |line: &str| -> Vec<String> { line.split_whitespace().map(str::to_string).collect() };
+    let file = model.join("dependency.model").display().to_string();
+    // A build that embeds a model lists that one first.
+    let rows: Vec<Vec<String>> = lines[header + 1..]
+        .iter()
+        .map(|line| cells(line))
+        .filter(|row| row.last().map(String::as_str) != Some("embedded://ipadic"))
+        .collect();
+    assert_eq!(
+        rows[0],
+        ["dependency-ipadic", env!("CARGO_PKG_VERSION"), "ok", &file],
+        "got: {stdout}"
+    );
+    assert_eq!(
+        rows[1][..4],
+        ["dependency-old", "0.0.1", "other", "version"]
+    );
+}
+
 /// `--dict` takes a URI or a path; a dictionary name fails with the two ways
 /// to name the dictionary (#1303).
 #[test]
