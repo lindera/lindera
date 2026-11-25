@@ -348,6 +348,7 @@ every field is read directly.
 | `wordId` | `number` | Dictionary word ID |
 | `isUnknown` | `boolean` | `true` if the word is not in the dictionary |
 | `details` | `string[]` | Morphological details (part of speech, reading, etc.) |
+| `dependency` | `TokenDependency` (optional) | The bunsetsu of the token and its head; the property is there only when the token filter `japanese_dependency` ran |
 
 ### Reading Details
 
@@ -365,6 +366,46 @@ The structure of `details` depends on the dictionary:
 - **IPADIC**: `[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]`
 - **UniDic**: Detailed morphological features following the UniDic specification
 - **ko-dic / CC-CEDICT / Jieba**: Dictionary-specific detail formats
+
+## TokenDependency
+
+The bunsetsu of a token and the bunsetsu it depends on. The token filter `japanese_dependency` puts it in the `dependency` of every token; see [Token Filter](../lindera-dependency/token_filter.md) for the filter, its model, and how a text is cut into sentences.
+
+The filter is in builds with the `dependency` feature only. The distributed packages do not have it yet.
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `sentence` | `number` | The number of the sentence in the text, from 0 |
+| `bunsetsu` | `number` | The number of the bunsetsu of the token in its sentence, from 0 |
+| `head` | `number \| null` | The number of the bunsetsu that one depends on; `null` for the last bunsetsu of a sentence |
+| `role` | `string` | What the token is in its bunsetsu: `head` (the head word), `function` (the function word), `head_function` (both) or `other` |
+| `score` | `number` | The score of the decision that attached the bunsetsu to its head; 0 where nothing was decided |
+
+```javascript
+const { TokenizerBuilder } = require("lindera");
+
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendTokenFilter("japanese_dependency", { model: "ipadic.model" })
+  .build();
+for (const token of tokenizer.tokenize("彼は赤い花を見た。")) {
+  const { bunsetsu, head, role } = token.dependency;
+  console.log(token.surface, bunsetsu, head, role);
+}
+```
+
+```text
+彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 null head
+た 3 null function
+。 3 null other
+```
+
+`TokenDependency` is a plain object, a TypeScript `interface` as `Token` is, and `JSON.stringify` of a token keeps it. A token without the filter has no `dependency` property, and is the object it was before.
 
 ## Mode and Penalty
 

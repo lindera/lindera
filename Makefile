@@ -13,7 +13,7 @@ PYTEST          := $(PYTHON_VENV_DIR)/bin/pytest
 RUFF            := $(PYTHON_VENV_DIR)/bin/ruff
 
 # ── WASM ────────────────────────────────────────────────────────────────────
-WASM_FEATURES = embed-ipadic
+WASM_FEATURES = embed-ipadic,dependency
 
 # ── Node.js ─────────────────────────────────────────────────────────────────
 # Dictionaries embedded in the Node.js test build, so the dictionary-backed
@@ -21,7 +21,7 @@ WASM_FEATURES = embed-ipadic
 # the function that tests/test_panic.js makes panic (#1314); a release build
 # never enables it. memcheck builds with the same features, so it does not
 # switch the addon to a different build.
-NODEJS_TEST_FEATURES = embed-ipadic,embed-ko-dic,test-hooks
+NODEJS_TEST_FEATURES = embed-ipadic,embed-ko-dic,test-hooks,dependency
 
 # ── memcheck ────────────────────────────────────────────────────────────────
 # How the memcheck targets run node: with --expose-gc, so the scripts can
@@ -111,7 +111,7 @@ TEST_FEATURES_lindera-analysis  := --features embed-ipadic,embed-ko-dic,dependen
 TEST_FEATURES_lindera-cli       := --features train,embed-ipadic,dependency
 # lindera-binding's dictionary features exist only for its tests and benches,
 # so build-lindera-binding keeps building without embedded dictionaries.
-TEST_FEATURES_lindera-binding   := --features embed-ipadic,embed-ko-dic
+TEST_FEATURES_lindera-binding   := --features embed-ipadic,embed-ko-dic,dependency
 BUILD_FEATURES_lindera-segmenter := --features train
 BUILD_FEATURES_lindera          := --features train
 
@@ -363,7 +363,7 @@ test-%:
 
 test-lindera-python: setup-venv ## Test lindera-python (Rust unit tests + Python pytest)
 	cargo test -p lindera-python --lib
-	cd lindera-python && VIRTUAL_ENV=$(abspath $(PYTHON_VENV_DIR)) $(abspath $(MATURIN)) develop --quiet --features=embed-ipadic,train && $(abspath $(PYTEST)) tests/ -v
+	cd lindera-python && VIRTUAL_ENV=$(abspath $(PYTHON_VENV_DIR)) $(abspath $(MATURIN)) develop --quiet --features=embed-ipadic,train,dependency && $(abspath $(PYTEST)) tests/ -v
 
 test-lindera-nodejs: ## Test lindera-nodejs (Rust unit tests + Node.js test + generated type check)
 	cargo test -p lindera-nodejs --lib
@@ -384,7 +384,7 @@ types-check-lindera-wasm: ## Type-check the TypeScript declarations wasm-pack ge
 
 test-lindera-ruby: ## Test lindera-ruby (Rust unit tests + minitest)
 	$(CARGO_TEST_WITH_RBCONFIG) cargo test -p lindera-ruby --lib
-	cd lindera-ruby && bundle install --quiet && LINDERA_FEATURES="embed-ipadic,train" bundle exec rake compile && bundle exec rake test
+	cd lindera-ruby && bundle install --quiet && LINDERA_FEATURES="embed-ipadic,train,dependency" bundle exec rake compile && bundle exec rake test
 
 # Installs the source gem with `gem install` in a clean Ruby container, as a
 # user would, and tokenizes with it (lindera-ruby/test/gem/). The lindera
@@ -399,7 +399,7 @@ test-lindera-ruby-gem: package-lindera-ruby ## Test installing the lindera-ruby 
 # The PHPUnit suite loads embedded://ipadic, so the test build embeds IPADIC.
 # Embedded dictionaries do not change the PHP API, so the same build also
 # serves the stub check (StubsTest) and `make stubs-lindera-php`.
-PHP_TEST_FEATURES = embed-ipadic,train
+PHP_TEST_FEATURES = embed-ipadic,train,dependency
 PHP_TEST_LIB = $$(find target/debug -maxdepth 1 \( -name 'liblindera_php.so' -o -name 'liblindera_php.dylib' \) | head -1)
 
 test-lindera-php: ## Test lindera-php (Rust unit tests + PHPUnit)

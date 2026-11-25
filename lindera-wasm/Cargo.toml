@@ -31,6 +31,9 @@ embed-jieba = ["lindera/embed-jieba"] # Embed Jieba dictionary (Chinese)
 embed-cjk = [
     "lindera/embed-cjk",
 ] # Embed CJK dictionaries (IPADIC, ko-dic, Jieba)
+dependency = [
+    "lindera-binding/dependency",
+] # The token filter japanese_dependency (bunsetsu dependency analysis)
 default = []
 
 [dependencies]

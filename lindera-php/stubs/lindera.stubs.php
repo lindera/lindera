@@ -204,6 +204,9 @@ class Token implements \Stringable
     /** @var int */
     public $byte_start;
 
+    /** @var TokenDependency|null */
+    public $dependency;
+
     /** @var list<string> */
     public $details;
 
@@ -225,6 +228,31 @@ class Token implements \Stringable
     public function __toString(): string {}
 
     public function getDetail(int $index): ?string {}
+
+    public function toArray(): array {}
+}
+
+class TokenDependency implements \Stringable
+{
+    /** @var int */
+    public $bunsetsu;
+
+    /** @var int|null */
+    public $head;
+
+    /** @var string */
+    public $role;
+
+    /** @var float */
+    public $score;
+
+    /** @var int */
+    public $sentence;
+
+    /** Not constructible from PHP: instances come from the extension. */
+    private function __construct() {}
+
+    public function __toString(): string {}
 
     public function toArray(): array {}
 }

@@ -13,6 +13,7 @@ use std::sync::{Mutex, MutexGuard};
 
 use serde_json::Value;
 
+use lindera::analysis::token_filter::BoxTokenFilter;
 use lindera::analysis::tokenizer::{Tokenizer, TokenizerBuilder};
 use lindera::analysis::worker::AnalysisWorker;
 use lindera::analysis::worker_pool::AnalysisWorkerPool;
@@ -96,6 +97,11 @@ impl SpacePenaltySetting {
 pub struct CoreTokenizerBuilder {
     /// The backing lindera builder.
     inner: TokenizerBuilder,
+    /// How many token filters were appended by `kind` to this builder.
+    appended: usize,
+    /// The token filters that were appended as instances, each with the
+    /// number of filters appended by `kind` before it.
+    instances: Vec<(usize, BoxTokenFilter)>,
 }
 
 impl CoreTokenizerBuilder {
@@ -103,6 +109,8 @@ impl CoreTokenizerBuilder {
     pub fn new() -> CoreResult<Self> {
         Ok(Self {
             inner: TokenizerBuilder::new()?,
+            appended: 0,
+            instances: Vec::new(),
         })
     }
 
@@ -110,6 +118,8 @@ impl CoreTokenizerBuilder {
     pub fn from_file(file_path: &Path) -> CoreResult<Self> {
         Ok(Self {
             inner: TokenizerBuilder::from_file(file_path)?,
+            appended: 0,
+            instances: Vec::new(),
         })
     }
 
@@ -268,7 +278,45 @@ impl CoreTokenizerBuilder {
     /// Appends a token filter identified by `kind` with JSON `args`.
     pub fn append_token_filter(&mut self, kind: &str, args: &Value) -> &mut Self {
         self.inner.append_token_filter(kind, args);
+        self.appended += 1;
         self
+    }
+
+    /// Appends a token filter that was made in Rust, for a filter that JSON
+    /// arguments cannot describe. It runs where it was appended: after
+    /// the filters appended before it, of either kind, and before the
+    /// ones appended after it.
+    ///
+    /// # Arguments
+    ///
+    /// * `filter` - The token filter.
+    ///
+    /// # Returns
+    ///
+    /// The builder.
+    pub fn append_token_filter_instance(&mut self, filter: BoxTokenFilter) -> &mut Self {
+        self.instances.push((self.appended, filter));
+        self
+    }
+
+    /// Appends the token filter `japanese_dependency` with a model given
+    /// as bytes, where a path cannot be read (a browser) or the model does
+    /// not come from a file.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The bytes of a model file of `lindera-dependency`.
+    ///
+    /// # Returns
+    ///
+    /// The builder, or an error for bytes that are not a model with a
+    /// chunker and a parser.
+    #[cfg(feature = "dependency")]
+    pub fn append_dependency_filter(&mut self, model: Vec<u8>) -> CoreResult<&mut Self> {
+        use lindera::analysis::token_filter::japanese_dependency::JapaneseDependencyTokenFilter;
+
+        let filter = JapaneseDependencyTokenFilter::from_bytes(model)?;
+        Ok(self.append_token_filter_instance(BoxTokenFilter::from(filter)))
     }
 
     /// Builds a [`CoreTokenizer`] from the current configuration.
@@ -303,10 +351,18 @@ impl CoreTokenizerBuilder {
         dictionary: Option<Dictionary>,
         user_dictionary: Option<UserDictionary>,
     ) -> CoreResult<CoreTokenizer> {
-        Ok(CoreTokenizer::from_tokenizer(
-            self.inner
-                .build_with_dictionaries(dictionary, user_dictionary)?,
-        ))
+        let mut tokenizer = self
+            .inner
+            .build_with_dictionaries(dictionary, user_dictionary)?;
+        // The filters of a configuration file come before the ones appended
+        // to this builder, of which `appended` were appended by kind.
+        let first = tokenizer.token_filters.len().saturating_sub(self.appended);
+        for (inserted, (before, filter)) in self.instances.iter().enumerate() {
+            tokenizer
+                .token_filters
+                .insert(first + before + inserted, filter.box_clone());
+        }
+        Ok(CoreTokenizer::from_tokenizer(tokenizer))
     }
 }
 
@@ -1640,6 +1696,192 @@ mod tests {
             assert_eq!(tag_of_jeon(None), "NNG");
             assert_eq!(tag_of_jeon(Some(true)), "NNG");
             assert_eq!(tag_of_jeon(Some(false)), "NP+JX");
+        }
+    }
+
+    /// The token filter `japanese_dependency` through the builder, with the
+    /// model file of the tests of lindera-analysis: every bunsetsu depends
+    /// on the next one.
+    #[cfg(all(feature = "embed-ipadic", feature = "dependency"))]
+    mod with_dependency {
+        use serde_json::json;
+
+        use super::super::*;
+        use crate::token::DependencyView;
+
+        const MODEL_FILE: &str = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../resources/dependency/test_model_ipadic.bin"
+        );
+        const TEXT: &str = "彼は本を読んだ。";
+
+        /// A builder with the embedded IPADIC.
+        fn builder() -> CoreTokenizerBuilder {
+            let mut builder = CoreTokenizerBuilder::new().expect("builder");
+            builder.set_dictionary("embedded://ipadic");
+            builder
+        }
+
+        /// The bunsetsu, the head and the role of the dependency of a token.
+        type Written<'a> = Option<(u32, Option<u32>, &'a str)>;
+
+        /// The surface of each token, and what was written on it.
+        fn written(views: &[TokenView]) -> Vec<(&str, Written<'_>)> {
+            views
+                .iter()
+                .map(|view| {
+                    let dependency = view
+                        .dependency
+                        .as_ref()
+                        .map(|one| (one.bunsetsu, one.head, one.role()));
+                    (view.surface.as_str(), dependency)
+                })
+                .collect()
+        }
+
+        /// The surfaces of the tokens.
+        fn surfaces(views: &[TokenView]) -> Vec<&str> {
+            views.iter().map(|view| view.surface.as_str()).collect()
+        }
+
+        #[test]
+        fn a_view_has_the_dependency_the_filter_wrote() {
+            let mut builder = builder();
+            builder.append_token_filter("japanese_dependency", &json!({ "model": MODEL_FILE }));
+            let tokenizer = builder.build().expect("tokenizer");
+            let views = tokenizer.tokenize(TEXT).expect("tokens");
+            assert_eq!(
+                written(&views),
+                [
+                    ("彼", Some((0, Some(1), "head"))),
+                    ("は", Some((0, Some(1), "function"))),
+                    ("本", Some((1, Some(2), "head"))),
+                    ("を", Some((1, Some(2), "function"))),
+                    ("読ん", Some((2, None, "head"))),
+                    ("だ", Some((2, None, "function"))),
+                    ("。", Some((2, None, "other"))),
+                ]
+            );
+            assert_eq!(
+                views[0].dependency,
+                Some(DependencyView {
+                    sentence: 0,
+                    bunsetsu: 0,
+                    head: Some(1),
+                    role: lindera::token::BunsetsuRole::Head,
+                    score: 1.0,
+                })
+            );
+
+            // The batch and the N-best results carry it too.
+            let batch = tokenizer
+                .tokenize_batch(&[TEXT, TEXT], None)
+                .expect("batch");
+            assert_eq!(written(&batch[1]), written(&views));
+            let nbest = tokenizer
+                .tokenize_nbest(TEXT, 1, false, None)
+                .expect("nbest");
+            assert_eq!(written(&nbest[0].0), written(&views));
+        }
+
+        #[test]
+        fn a_view_has_no_dependency_without_the_filter() {
+            let views = builder()
+                .build()
+                .expect("tokenizer")
+                .tokenize(TEXT)
+                .expect("tokens");
+            assert!(views.iter().all(|view| view.dependency.is_none()));
+        }
+
+        #[test]
+        fn the_filter_is_made_from_the_bytes_of_a_model() {
+            let bytes = std::fs::read(MODEL_FILE).expect("model file");
+            let mut by_bytes = builder();
+            by_bytes.append_dependency_filter(bytes).expect("filter");
+            let mut by_path = builder();
+            by_path.append_token_filter("japanese_dependency", &json!({ "model": MODEL_FILE }));
+            let from_bytes = by_bytes
+                .build()
+                .expect("tokenizer")
+                .tokenize(TEXT)
+                .expect("tokens");
+            let from_path = by_path
+                .build()
+                .expect("tokenizer")
+                .tokenize(TEXT)
+                .expect("tokens");
+            assert!(from_bytes[0].dependency.is_some());
+            assert_eq!(written(&from_bytes), written(&from_path));
+
+            // Bytes that are not a model are refused when they are given.
+            assert!(
+                builder()
+                    .append_dependency_filter(b"not a model".to_vec())
+                    .is_err()
+            );
+        }
+
+        #[test]
+        fn a_filter_given_as_an_instance_runs_where_it_was_appended() {
+            let bytes = std::fs::read(MODEL_FILE).expect("model file");
+            let stop = json!({ "tags": ["助詞,係助詞"] });
+            let refused = |builder: &CoreTokenizerBuilder| -> String {
+                let tokenizer = builder.build().expect("tokenizer");
+                match tokenizer.tokenize(TEXT) {
+                    Ok(_) => panic!("the tokens were taken after a removal"),
+                    Err(error) => error.to_string(),
+                }
+            };
+
+            // Before a filter that removes は: the analysis sees every token.
+            let mut first = builder();
+            first
+                .append_dependency_filter(bytes.clone())
+                .expect("filter");
+            first.append_token_filter("japanese_stop_tags", &stop);
+            let views = first
+                .build()
+                .expect("tokenizer")
+                .tokenize(TEXT)
+                .expect("tokens");
+            assert_eq!(surfaces(&views), ["彼", "本", "を", "読ん", "だ", "。"]);
+            assert!(views.iter().all(|view| view.dependency.is_some()));
+
+            // After it: the filter sees the gap and refuses the tokens.
+            let mut second = builder();
+            second.append_token_filter("japanese_stop_tags", &stop);
+            second
+                .append_dependency_filter(bytes.clone())
+                .expect("filter");
+            assert!(refused(&second).contains("removed or joined"));
+
+            // Between two: after the first, before the second.
+            let mut between = builder();
+            between.append_token_filter("lowercase", &json!({}));
+            between
+                .append_dependency_filter(bytes.clone())
+                .expect("filter");
+            between.append_token_filter("japanese_stop_tags", &stop);
+            let views = between
+                .build()
+                .expect("tokenizer")
+                .tokenize(TEXT)
+                .expect("tokens");
+            assert_eq!(surfaces(&views), ["彼", "本", "を", "読ん", "だ", "。"]);
+
+            // The filters of a configuration file come before it.
+            let directory = tempfile::tempdir().expect("directory");
+            let config = directory.path().join("lindera.yml");
+            std::fs::write(
+                &config,
+                "segmenter:\n  mode: \"normal\"\n  dictionary: \"embedded://ipadic\"\n\
+                 token_filters:\n  - kind: \"japanese_stop_tags\"\n    args:\n      tags:\n        - \"助詞,係助詞\"\n",
+            )
+            .expect("configuration file");
+            let mut from_file = CoreTokenizerBuilder::from_file(&config).expect("builder");
+            from_file.append_dependency_filter(bytes).expect("filter");
+            assert!(refused(&from_file).contains("removed or joined"));
         }
     }
 }

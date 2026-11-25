@@ -226,6 +226,10 @@ jobs:
               - *shared-crate-workflow
             lindera-binding:
               - 'lindera-binding/**'
+              # The token filter japanese_dependency (feature `dependency`),
+              # and the model file its tests read.
+              - 'lindera-dependency/**'
+              - 'resources/dependency/**'
               - 'lindera-analysis/**'
               - 'lindera/**'
               - 'lindera-segmenter/**'
@@ -272,6 +276,10 @@ jobs:
               - *shared-crate-workflow
             lindera-python:
               - 'lindera-python/**'
+              # The token filter japanese_dependency (feature `dependency`),
+              # and the model file its tests read.
+              - 'lindera-dependency/**'
+              - 'resources/dependency/**'
               - 'lindera-binding/**'
               - 'lindera/**'
               - 'lindera-segmenter/**'
@@ -298,6 +306,10 @@ jobs:
               - *shared-make
             lindera-nodejs:
               - 'lindera-nodejs/**'
+              # The token filter japanese_dependency (feature `dependency`),
+              # and the model file its tests read.
+              - 'lindera-dependency/**'
+              - 'resources/dependency/**'
               - 'lindera-binding/**'
               - 'lindera/**'
               - 'lindera-segmenter/**'
@@ -326,6 +338,10 @@ jobs:
               - *shared-make
             lindera-ruby:
               - 'lindera-ruby/**'
+              # The token filter japanese_dependency (feature `dependency`),
+              # and the model file its tests read.
+              - 'lindera-dependency/**'
+              - 'resources/dependency/**'
               - 'lindera-binding/**'
               - 'lindera/**'
               - 'lindera-segmenter/**'
@@ -359,6 +375,10 @@ jobs:
               - *shared-make
             lindera-php:
               - 'lindera-php/**'
+              # The token filter japanese_dependency (feature `dependency`),
+              # and the model file its tests read.
+              - 'lindera-dependency/**'
+              - 'resources/dependency/**'
               - 'composer.json'
               - 'lindera-binding/**'
               - 'lindera/**'
@@ -386,6 +406,10 @@ jobs:
               - *shared-make
             lindera-wasm:
               - 'lindera-wasm/**'
+              # The token filter japanese_dependency (feature `dependency`),
+              # and the model file its tests read.
+              - 'lindera-dependency/**'
+              - 'resources/dependency/**'
               - 'lindera-binding/**'
               - 'lindera/**'
               - 'lindera-segmenter/**'
@@ -422,6 +446,12 @@ jobs:
               - 'lindera-analysis/Cargo.toml'
               - 'lindera/Cargo.toml'
               - 'lindera-cli/Cargo.toml'
+              - 'lindera-binding/Cargo.toml'
+              - 'lindera-python/Cargo.toml'
+              - 'lindera-nodejs/Cargo.toml'
+              - 'lindera-ruby/Cargo.toml'
+              - 'lindera-php/Cargo.toml'
+              - 'lindera-wasm/Cargo.toml'
               - 'scripts/check_dependency_crate.sh'
               - *shared-workspace
               - *shared-crate-workflow
@@ -1011,7 +1041,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-binding
-      features: "--features embed-ipadic,embed-ko-dic"
+      features: "--features embed-ipadic,embed-ko-dic,dependency"
       dictionaries: "ipadic ko-dic"
       lint: true
 

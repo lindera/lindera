@@ -94,6 +94,10 @@ fn lindera(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m.getattr("dictionary")?.getattr("UserDictionary")?,
     )?;
     m.add("Token", m.getattr("token")?.getattr("Token")?)?;
+    m.add(
+        "TokenDependency",
+        m.getattr("token")?.getattr("TokenDependency")?,
+    )?;
     m.add("Mode", m.getattr("mode")?.getattr("Mode")?)?;
     m.add("Penalty", m.getattr("mode")?.getattr("Penalty")?)?;
     m.add("Metadata", m.getattr("metadata")?.getattr("Metadata")?)?;

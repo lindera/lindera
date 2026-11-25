@@ -42,6 +42,9 @@ embed-cjk = [
     "lindera/embed-cjk",
 ] # Embed CJK dictionaries (IPADIC, ko-dic, Jieba)
 train = ["lindera/train"] # Enable training functionality
+dependency = [
+    "lindera-binding/dependency",
+] # The token filter japanese_dependency (bunsetsu dependency analysis)
 default = ["train"] # No directories included
 
 [dependencies]

@@ -291,6 +291,7 @@ const batch = tokenizer.tokenizeBatch(["形態素解析", "すもももももも
 | `wordId` | `number` | 辞書内の単語 ID |
 | `isUnknown` | `boolean` | 未知語かどうか |
 | `details` | `string[]` | 形態素の詳細フィールド |
+| `dependency` | `object`（省略可） | トークンの文節とその係り先。トークンフィルター `japanese_dependency` を使ったときだけ、このプロパティがあります |
 
 > [!NOTE]
 > トークンは `wasm_bindgen` のクラスインスタンスではなくプレーンオブジェクトです。クラスインスタンスは JavaScript 側が解放するまでデータを Rust ヒープ上に保持するため、yield しない同期ループでトークナイズするとメモリが蓄積します。プレーンオブジェクトなら Rust 側に確保されるものが無く、結果は `JSON.stringify`、`structuredClone`、worker への転送を変換なしで通過します。フィールド名は `lindera-nodejs` バインディングと同じ camelCase です。
@@ -311,6 +312,45 @@ const reading = token.details[7]; // 例: "トウキョウ"
 ```javascript
 console.log(JSON.stringify(token, null, 2));
 ```
+
+## TokenDependency
+
+トークンの文節と、その文節の係り先です。トークンフィルター `japanese_dependency` を使うと、各トークンの `dependency` に入ります。フィルター、モデル、テキストの文への分け方は、[トークンフィルター](../lindera-dependency/token_filter.md)を見てください。
+
+フィルターは、`dependency` feature を付けたビルドにだけ入ります。配布しているパッケージには、まだ入っていません。
+
+| プロパティ | 型 | 説明 |
+| --- | --- | --- |
+| `sentence` | `number` | テキストの中での文の番号。0 から |
+| `bunsetsu` | `number` | 文の中での、トークンの文節の番号。0 から |
+| `head` | `number \| null` | その文節の係り先の文節の番号。文の最後の文節では `null` |
+| `role` | `string` | 文節の中での役割。`head`（主辞）、`function`（機能語）、`head_function`（両方）、`other` のどれか |
+| `score` | `number` | その文節を係り先に付けた判定のスコア。判定の無いところは 0 |
+
+```javascript
+const model = new Uint8Array(await (await fetch("ipadic.model")).arrayBuffer());
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendDependencyFilter(model)
+  .build();
+for (const token of tokenizer.tokenize("彼は赤い花を見た。")) {
+  const { bunsetsu, head, role } = token.dependency;
+  console.log(token.surface, bunsetsu, head, role);
+}
+```
+
+```text
+彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 null head
+た 3 null function
+。 3 null other
+```
+
+WebAssembly にはファイルシステムが無いので、モデルはバイト列で `appendDependencyFilter(model)` に渡します（snake\_case の別名は `append_dependency_filter`）。ほかのバインディングは、`appendTokenFilter` にパスを渡します。`appendTokenFilter("japanese_dependency", ...)` は、このメソッドの名前を示すエラーで断ります。このメソッドは、`dependency` feature を付けたビルドにだけあります。フィルターを使わないトークンに `dependency` プロパティはありません。
 
 ## ヘルパー関数
 

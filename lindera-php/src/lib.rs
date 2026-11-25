@@ -53,6 +53,7 @@ pub fn get_module(module: ModuleBuilder) -> ModuleBuilder {
         .name("lindera")
         // Token
         .class::<token::PhpToken>()
+        .class::<token::PhpTokenDependency>()
         // Mode and penalty
         .class::<mode::PhpMode>()
         .class::<mode::PhpPenalty>()

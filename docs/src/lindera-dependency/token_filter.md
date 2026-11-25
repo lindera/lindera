@@ -20,6 +20,10 @@ the token filter japanese_dependency needs a build with the feature `dependency`
 
 `lindera-dependency` is not published on crates.io yet, so the feature works in a checkout of the repository only. The bindings do not have the filter yet ([#1438](https://github.com/lindera/lindera/issues/1438)).
 
+## From the bindings
+
+Python, Node.js, Ruby and PHP append the filter as the others, by its `kind` and the path of the model, and a token has a `dependency`: an object with the five fields below, or nothing (`None`, `nil`, `null`, no property) without the filter. In WebAssembly a path cannot be read, and `appendDependencyFilter` takes the bytes of the model. Each needs a build of the binding with its `dependency` feature, which the distributed packages do not have yet. The API page of each binding has an example: [Python](../lindera-python/tokenizer_api.md#tokendependency), [Node.js](../lindera-nodejs/tokenizer_api.md#tokendependency), [Ruby](../lindera-ruby/tokenizer_api.md#tokendependency), [PHP](../lindera-php/tokenizer_api.md#tokendependency), [WebAssembly](../lindera-wasm/tokenizer_api.md#tokendependency).
+
 ## The model
 
 The filter takes one argument, `model`: the path of a model file with a chunker and a parser, for the dictionary of the tokenizer. No model is distributed yet ([#1440](https://github.com/lindera/lindera/issues/1440)); [Parsing](./parsing.md) shows how to train one, and [Model File](./model_file.md) what the file holds.

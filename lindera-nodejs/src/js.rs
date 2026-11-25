@@ -129,6 +129,36 @@ pub(crate) unsafe fn uint32(env: sys::napi_env, n: u32) -> napi::Result<sys::nap
     Ok(value)
 }
 
+/// The number `n`, as napi-rs makes an `f64`.
+///
+/// # Safety
+///
+/// `env` must be the environment of the current call.
+pub(crate) unsafe fn double(env: sys::napi_env, n: f64) -> napi::Result<sys::napi_value> {
+    let mut value = ptr::null_mut();
+    // SAFETY: the caller guarantees `env`; `value` outlives the call.
+    check_status!(
+        unsafe { sys::napi_create_double(env, n, &mut value) },
+        "Failed to create a number"
+    )?;
+    Ok(value)
+}
+
+/// `null`.
+///
+/// # Safety
+///
+/// `env` must be the environment of the current call.
+pub(crate) unsafe fn null(env: sys::napi_env) -> napi::Result<sys::napi_value> {
+    let mut value = ptr::null_mut();
+    // SAFETY: the caller guarantees `env`; `value` outlives the call.
+    check_status!(
+        unsafe { sys::napi_get_null(env, &mut value) },
+        "Failed to get null"
+    )?;
+    Ok(value)
+}
+
 /// The number `n`, as napi-rs makes an `i64`.
 ///
 /// # Safety

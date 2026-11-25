@@ -25,7 +25,10 @@ use lindera_binding::TokenView;
 /// # Returns
 ///
 /// A plain JS object with camelCase keys: `surface`, `byteStart`,
-/// `byteEnd`, `position`, `wordId`, `isUnknown`, and `details`.
+/// `byteEnd`, `position`, `wordId`, `isUnknown`, and `details`; and, only
+/// for a token the token filter `japanese_dependency` wrote on,
+/// `dependency`, an object with `sentence`, `bunsetsu`, `head` (`null` for
+/// the last bunsetsu of a sentence), `role` and `score`.
 pub fn token_view_to_js(view: TokenView) -> JsValue {
     let js_obj = js_sys::Object::new();
     let _ = js_sys::Reflect::set(&js_obj, &"surface".into(), &view.surface.into());
@@ -44,6 +47,25 @@ pub fn token_view_to_js(view: TokenView) -> JsValue {
         js_details.push(&detail.into());
     }
     let _ = js_sys::Reflect::set(&js_obj, &"details".into(), &js_details.into());
+
+    if let Some(dependency) = view.dependency {
+        let object = js_sys::Object::new();
+        let head = match dependency.head {
+            Some(head) => JsValue::from(f64::from(head)),
+            None => JsValue::NULL,
+        };
+        let fields = [
+            ("sentence", JsValue::from(f64::from(dependency.sentence))),
+            ("bunsetsu", JsValue::from(f64::from(dependency.bunsetsu))),
+            ("head", head),
+            ("role", JsValue::from(dependency.role())),
+            ("score", JsValue::from(dependency.score)),
+        ];
+        for (name, value) in fields {
+            let _ = js_sys::Reflect::set(&object, &name.into(), &value);
+        }
+        let _ = js_sys::Reflect::set(&js_obj, &"dependency".into(), &object.into());
+    }
 
     js_obj.into()
 }

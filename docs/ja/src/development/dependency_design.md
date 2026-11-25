@@ -165,13 +165,15 @@
 - **前のフィルターについてこのフィルターに見えるのは、位置です。** トークナイザーは、トークンに 0 から隙間なく位置を振ります。トークンを消すフィルターは隙間を残し、つなぐフィルターは位置を 2 つ以上占めるトークンを残します。書き換えられた表層や詳細と、末尾から消されたトークンは見えません。文書では、このフィルターを最初に置くよう案内しています。
 - **トークンは、その場で読みます。** フィルターの形態素は、トークンの表層と詳細を借ります。モデルは `Arc` の中にあり、フィルターの複製の間で共有します。トークナイザーを複製すると、フィルターも複製されます。
 - **フィルターの結果は、コマンドの結果と同じです。** UD Japanese-GSD の test の 543 文で、すべてのトークンの文節、係り先、役割、スコアが、同じモデルの `lindera-dependency parse` と一致します。
+- **バインディングは、係り受けをトークンの上の独立したオブジェクトとして返します。** フィルターを使わなければ何も返しません。Python では `None`、Ruby では `nil`、PHP では `null` で、Node.js と WebAssembly ではプロパティがありません。この 2 つではトークンがプレーンなオブジェクトなので、これまでと同じオブジェクトのままです。最後の文節の係り先は、コマンドの JSON と同じく、どのバインディングでも null です。`lindera-binding` の `TokenView` が、5 つすべてに運びます。
+- **Node.js は、6 つのプロパティの名前を、係り受けを持つ最初のトークンで作ります。** そのトークンを作るハンドルスコープの中で作り、スコープを開き直した後は作り直します。フィルターを使わない呼び出しは、これまでと同じ呼び出しで、これまでと同じオブジェクトを作ります。
+- **WebAssembly は、`appendDependencyFilter` でモデルのバイト列を受け取ります。** 読めるパスが無いためです。そのために、`lindera-binding` のビルダーは Rust で作ったフィルターを受け取り、`kind` で足したフィルターの間の、足された位置で動かします。
 - **未検証**: IPADIC 以外の辞書。スキーマがまだありません。
 
 ## これからの部分
 
 | 部分 | メモ | Issue |
 | --- | --- | --- |
-| バインディングのトークンフィルター | `lindera-binding` の `TokenView` と、Python、Node.js、Ruby、PHP、WASM のトークンのフィールド。 | [#1438](https://github.com/lindera/lindera/issues/1438) |
 | IPADIC のモデル | 学習、リリース、ドキュメント、ライセンスの記載。クレートはこのときに公開する。 | [#1440](https://github.com/lindera/lindera/issues/1440) |
 | UniDic のモデル | 2 つ目のスキーマ。 | [#1441](https://github.com/lindera/lindera/issues/1441) |
 | CaboCha のモデルの変換器 | 表層の正規化の表、CRF++ のテキスト形式のモデルの読み込み、解析器のモデルの support vector の展開。 | [#1442](https://github.com/lindera/lindera/issues/1442) |
@@ -343,7 +345,7 @@ level 1 は、各文の最後を除く文節のうち、係り先が正しいも
 | [#1436](https://github.com/lindera/lindera/issues/1436) | 係り受けの解析器。ループ、素性、学習事例 | 済み |
 | [#1433](https://github.com/lindera/lindera/issues/1433) | CaboCha・J.DepP の基準の測り直し | 未着手 |
 | [#1437](https://github.com/lindera/lindera/issues/1437) | モデルファイルと、解析器の学習 | 済み |
-| [#1438](https://github.com/lindera/lindera/issues/1438) | トークンフィルター | フィルターとコマンドは完了。バインディングは未着手 |
+| [#1438](https://github.com/lindera/lindera/issues/1438) | トークンフィルター | 完了 |
 | [#1439](https://github.com/lindera/lindera/issues/1439) | コマンド | 済み |
 | [#1440](https://github.com/lindera/lindera/issues/1440) | IPADIC のモデルと、クレートの公開 | 未着手 |
 | [#1441](https://github.com/lindera/lindera/issues/1441) | UniDic のモデル | 未着手 |

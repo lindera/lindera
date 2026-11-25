@@ -12,6 +12,8 @@
 //! objects are made by `crate::token_objects`, the same as the conversion
 //! napi-rs derives from them (#1409).
 
+use napi::bindgen_prelude::{Either, Null};
+
 /// N-best tokenization result.
 ///
 /// Contains a list of tokens and their total path cost.
@@ -21,6 +23,52 @@ pub struct NbestResult {
     pub tokens: Vec<Token>,
     /// Total path cost of this tokenization.
     pub cost: i64,
+}
+
+/// The bunsetsu of a token and what that bunsetsu depends on: what the
+/// token filter `japanese_dependency` writes on a token.
+///
+/// The bunsetsu of a sentence are numbered from 0, and each of them but the
+/// last depends on a later one, its head.
+#[napi(object)]
+pub struct TokenDependency {
+    /// The number of the sentence in the text, from 0.
+    pub sentence: u32,
+    /// The number of the bunsetsu of the token in its sentence, from 0.
+    pub bunsetsu: u32,
+    /// The number of the bunsetsu that the bunsetsu of the token depends
+    /// on, or `null` for the last bunsetsu of a sentence.
+    pub head: Either<u32, Null>,
+    /// What the token is in its bunsetsu.
+    #[napi(ts_type = "'head' | 'function' | 'head_function' | 'other'")]
+    pub role: String,
+    /// The score of the decision that attached the bunsetsu to its head; 0
+    /// where there was nothing to decide.
+    pub score: f64,
+}
+
+impl TokenDependency {
+    /// Creates a `TokenDependency` from a lindera-binding `DependencyView`.
+    ///
+    /// # Arguments
+    ///
+    /// * `view` - The dependency of a token view.
+    ///
+    /// # Returns
+    ///
+    /// A new `TokenDependency` instance.
+    pub fn from_view(view: lindera_binding::DependencyView) -> Self {
+        Self {
+            sentence: view.sentence,
+            bunsetsu: view.bunsetsu,
+            head: match view.head {
+                Some(head) => Either::A(head),
+                None => Either::B(Null),
+            },
+            role: view.role().to_string(),
+            score: view.score,
+        }
+    }
 }
 
 /// A morphological token.
@@ -43,6 +91,9 @@ pub struct Token {
     pub is_unknown: bool,
     /// Morphological details of the token.
     pub details: Vec<String>,
+    /// The bunsetsu of the token and its head. The property is there only
+    /// when the token filter `japanese_dependency` ran.
+    pub dependency: Option<TokenDependency>,
 }
 
 impl Token {
@@ -64,6 +115,7 @@ impl Token {
             word_id: view.word_id,
             is_unknown: view.is_unknown,
             details: view.details,
+            dependency: view.dependency.map(TokenDependency::from_view),
         }
     }
 }

@@ -418,6 +418,7 @@ p tokenizer.tokenize(text).map(&:surface)
 | `position` | `Integer` | Token position index |
 | `word_id` | `Integer` | Dictionary word ID |
 | `details` | `Array<String>` | Morphological details (part of speech, reading, etc.) |
+| `dependency` | `Lindera::TokenDependency` or `nil` | The bunsetsu of the token and its head; `nil` unless the token filter `japanese_dependency` ran |
 
 Additionally, the predicate method `unknown?` returns `true` if the word is not in the dictionary:
 
@@ -470,6 +471,44 @@ The structure of `details` depends on the dictionary:
 - **IPADIC**: `[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]`
 - **UniDic**: Detailed morphological features following the UniDic specification
 - **ko-dic / CC-CEDICT / Jieba**: Dictionary-specific detail formats
+
+## TokenDependency
+
+The bunsetsu of a token and the bunsetsu it depends on. The token filter `japanese_dependency` puts it in the `dependency` of every token; see [Token Filter](../lindera-dependency/token_filter.md) for the filter, its model, and how a text is cut into sentences.
+
+The filter is in builds with the `dependency` feature only. The distributed packages do not have it yet.
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `sentence` | `Integer` | The number of the sentence in the text, from 0 |
+| `bunsetsu` | `Integer` | The number of the bunsetsu of the token in its sentence, from 0 |
+| `head` | `Integer` or `nil` | The number of the bunsetsu that one depends on; `nil` for the last bunsetsu of a sentence |
+| `role` | `String` | What the token is in its bunsetsu: `head` (the head word), `function` (the function word), `head_function` (both) or `other` |
+| `score` | `Float` | The score of the decision that attached the bunsetsu to its head; 0 where nothing was decided |
+
+```ruby
+builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.append_token_filter('japanese_dependency', { 'model' => 'ipadic.model' })
+tokenizer = builder.build
+tokenizer.tokenize('彼は赤い花を見た。').each do |token|
+  dependency = token.dependency
+  puts [token.surface, dependency.bunsetsu, dependency.head.inspect, dependency.role].join(' ')
+end
+```
+
+```text
+彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 nil head
+た 3 nil function
+。 3 nil other
+```
+
+`TokenDependency#to_h` (and `to_hash`) returns the five fields as a `Hash` keyed by Symbols, and `Token#to_h` has it under `:dependency` (`nil` without the filter).
 
 ## Schema
 

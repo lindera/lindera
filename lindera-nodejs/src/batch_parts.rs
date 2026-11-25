@@ -1148,6 +1148,7 @@ mod tests {
             word_id: 0,
             is_unknown: false,
             details: vec!["*".to_string(); details],
+            dependency: None,
         }
     }
 

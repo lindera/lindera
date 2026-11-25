@@ -41,6 +41,9 @@ embed-cjk = [
     "lindera/embed-cjk",
 ] # Embed CJK dictionaries (IPADIC, ko-dic, Jieba)
 train = ["lindera/train"] # Enable training functionality
+dependency = [
+    "lindera-binding/dependency",
+] # The token filter japanese_dependency (bunsetsu dependency analysis)
 # For tests only, never for a release build: exports `__panicForTest`, which
 # panics, so that tests/test_panic.js can check that a panic throws an
 # `Error` instead of aborting Node.js (#1314). `make test-lindera-nodejs`

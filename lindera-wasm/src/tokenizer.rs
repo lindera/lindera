@@ -364,6 +364,15 @@ impl TokenizerBuilder {
         name: &str,
         args: JsValue,
     ) -> Result<TokenizerBuilder, JsValue> {
+        // A path cannot be read in WebAssembly, and the error of the read
+        // would not say what to do.
+        #[cfg(feature = "dependency")]
+        if name == "japanese_dependency" {
+            return Err(JsValue::from_str(
+                "japanese_dependency cannot read a model from a path in WebAssembly: \
+                 give the bytes of the model to appendDependencyFilter",
+            ));
+        }
         let a = parse_filter_args(args)?;
         self.state.borrow_mut().inner.append_token_filter(name, &a);
 
@@ -475,6 +484,56 @@ impl TokenizerBuilder {
         args: JsValue,
     ) -> Result<TokenizerBuilder, JsValue> {
         self.append_token_filter(name, args)
+    }
+}
+
+/// The token filter `japanese_dependency`, in a build with the
+/// `dependency` feature.
+#[cfg(feature = "dependency")]
+#[wasm_bindgen]
+impl TokenizerBuilder {
+    /// Appends the token filter `japanese_dependency`, which writes on each
+    /// token its bunsetsu and the bunsetsu that one depends on (the
+    /// `dependency` property of a token).
+    ///
+    /// The other bindings give the filter the path of a model file, with
+    /// `appendTokenFilter`; here there is no file system, so the model is
+    /// given as its bytes, such as those of a `fetch`.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The bytes of a model file of `lindera-dependency`, for
+    ///   the dictionary of the tokenizer.
+    ///
+    /// # Returns
+    ///
+    /// A builder handle sharing this configuration, or an error string for
+    /// bytes that are not a model with a chunker and a parser.
+    #[wasm_bindgen(js_name = "appendDependencyFilter")]
+    pub fn append_dependency_filter(&self, model: &[u8]) -> Result<TokenizerBuilder, JsValue> {
+        self.state
+            .borrow_mut()
+            .inner
+            .append_dependency_filter(model.to_vec())
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+        Ok(self.share())
+    }
+
+    /// Appends the token filter `japanese_dependency` (snake_case alias of
+    /// `appendDependencyFilter`).
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The bytes of a model file of `lindera-dependency`.
+    ///
+    /// # Returns
+    ///
+    /// A builder handle sharing this configuration, or an error string for
+    /// bytes that are not a model with a chunker and a parser.
+    #[wasm_bindgen(js_name = "append_dependency_filter")]
+    pub fn py_append_dependency_filter(&self, model: &[u8]) -> Result<TokenizerBuilder, JsValue> {
+        self.append_dependency_filter(model)
     }
 }
 
@@ -2417,5 +2476,174 @@ mod tests {
             "max_threads must be an integer between 1 and 4294967295, got -1"
         );
         assert!(message(tokenizer.tokenize_batch(texts(), Some(1.5))).ends_with("got 1.5"));
+    }
+}
+
+/// The token filter `japanese_dependency` (#1438), with the model file of
+/// the tests of lindera-analysis: every bunsetsu depends on the next one.
+#[cfg(all(test, target_arch = "wasm32", feature = "dependency"))]
+mod dependency_tests {
+    use wasm_bindgen::JsValue;
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    use crate::TokenizerBuilder;
+
+    const MODEL: &[u8] = include_bytes!("../../resources/dependency/test_model_ipadic.bin");
+    const TEXT: &str = "彼は本を読んだ。";
+
+    /// A builder with the embedded IPADIC.
+    fn builder() -> TokenizerBuilder {
+        let builder = TokenizerBuilder::new().unwrap();
+        builder.set_dictionary("embedded://ipadic");
+        builder
+    }
+
+    /// The property `key` of an object.
+    fn get(object: &JsValue, key: &str) -> JsValue {
+        js_sys::Reflect::get(object, &key.into()).unwrap()
+    }
+
+    /// The names of the properties of an object, in their order.
+    fn keys(object: &JsValue) -> Vec<String> {
+        js_sys::Object::keys(&js_sys::Object::from(object.clone()))
+            .iter()
+            .map(|key| key.as_string().unwrap())
+            .collect()
+    }
+
+    /// The surface of a token, and the bunsetsu, the head, the role and the
+    /// score of its dependency.
+    fn written(token: &JsValue) -> (String, f64, Option<f64>, String, f64) {
+        let dependency = get(token, "dependency");
+        (
+            get(token, "surface").as_string().unwrap(),
+            get(&dependency, "bunsetsu").as_f64().unwrap(),
+            get(&dependency, "head").as_f64(),
+            get(&dependency, "role").as_string().unwrap(),
+            get(&dependency, "score").as_f64().unwrap(),
+        )
+    }
+
+    #[wasm_bindgen_test]
+    fn a_token_has_its_dependency() {
+        let tokenizer = builder()
+            .append_dependency_filter(MODEL)
+            .unwrap()
+            .build()
+            .unwrap();
+        let tokens = tokenizer.tokenize(TEXT).unwrap();
+        let expected = [
+            ("彼", 0.0, Some(1.0), "head", 1.0),
+            ("は", 0.0, Some(1.0), "function", 1.0),
+            ("本", 1.0, Some(2.0), "head", 0.0),
+            ("を", 1.0, Some(2.0), "function", 0.0),
+            ("読ん", 2.0, None, "head", 0.0),
+            ("だ", 2.0, None, "function", 0.0),
+            ("。", 2.0, None, "other", 0.0),
+        ];
+        assert_eq!(tokens.len(), expected.len());
+        for (token, (surface, bunsetsu, head, role, score)) in tokens.iter().zip(expected) {
+            assert_eq!(
+                written(token),
+                (surface.to_string(), bunsetsu, head, role.to_string(), score)
+            );
+        }
+        // The fields in their order; the head of the last bunsetsu is null,
+        // not missing.
+        assert_eq!(
+            keys(&tokens[6]),
+            [
+                "surface",
+                "byteStart",
+                "byteEnd",
+                "position",
+                "wordId",
+                "isUnknown",
+                "details",
+                "dependency"
+            ]
+        );
+        let last = get(&tokens[6], "dependency");
+        assert_eq!(
+            keys(&last),
+            ["sentence", "bunsetsu", "head", "role", "score"]
+        );
+        assert!(get(&last, "head").is_null());
+        assert_eq!(get(&last, "sentence").as_f64(), Some(0.0));
+
+        // A second sentence is numbered 1, and its bunsetsu from 0.
+        let tokens = tokenizer.tokenize("彼は本を読んだ。本を読んだ。").unwrap();
+        let second = get(&tokens[7], "dependency");
+        assert_eq!(get(&second, "sentence").as_f64(), Some(1.0));
+        assert_eq!(get(&second, "bunsetsu").as_f64(), Some(0.0));
+    }
+
+    #[wasm_bindgen_test]
+    fn a_token_without_the_filter_has_no_such_property() {
+        let tokens = builder().build().unwrap().tokenize(TEXT).unwrap();
+        for token in &tokens {
+            assert!(get(token, "dependency").is_undefined());
+            assert_eq!(keys(token).len(), 7);
+        }
+    }
+
+    #[wasm_bindgen_test]
+    fn the_filter_runs_where_it_was_appended() {
+        let stop =
+            serde_wasm_bindgen::to_value(&serde_json::json!({"tags": ["助詞,係助詞"]})).unwrap();
+        // Before a filter that removes は.
+        let tokens = builder()
+            .append_dependency_filter(MODEL)
+            .unwrap()
+            .append_token_filter("japanese_stop_tags", stop.clone())
+            .unwrap()
+            .build()
+            .unwrap()
+            .tokenize(TEXT)
+            .unwrap();
+        assert_eq!(tokens.len(), 6);
+        assert_eq!(written(&tokens[1]).0, "本");
+        // After it, the tokens are refused.
+        let error = builder()
+            .append_token_filter("japanese_stop_tags", stop)
+            .unwrap()
+            .append_dependency_filter(MODEL)
+            .unwrap()
+            .build()
+            .unwrap()
+            .tokenize(TEXT)
+            .unwrap_err();
+        assert!(error.as_string().unwrap().contains("removed or joined"));
+    }
+
+    #[wasm_bindgen_test]
+    fn what_is_not_a_model_and_a_path_are_refused() {
+        // Bytes that are not a model, when they are given.
+        assert!(builder().append_dependency_filter(b"not a model").is_err());
+        // A path cannot be read here: the error names the method to use.
+        let args =
+            serde_wasm_bindgen::to_value(&serde_json::json!({"model": "ipadic.model"})).unwrap();
+        let error = builder()
+            .append_token_filter("japanese_dependency", args)
+            .err()
+            .unwrap();
+        assert!(
+            error
+                .as_string()
+                .unwrap()
+                .contains("appendDependencyFilter")
+        );
+    }
+
+    #[wasm_bindgen_test]
+    fn the_snake_case_alias_appends_the_filter() {
+        let tokens = builder()
+            .py_append_dependency_filter(MODEL)
+            .unwrap()
+            .build()
+            .unwrap()
+            .tokenize(TEXT)
+            .unwrap();
+        assert_eq!(written(&tokens[0]).3, "head");
     }
 }
