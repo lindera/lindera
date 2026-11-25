@@ -179,7 +179,7 @@
                         <h1 id="model-file"><a class="header" href="#model-file">Model File</a></h1>
 <p>A model file holds what one dictionary needs to be analyzed: the name of the dictionary, its <a href="./head_and_function_word.html">schema</a>, and the trained parts: the <a href="./chunking.html">chunker</a> and the <a href="./parsing.html">parser</a>.</p>
 <p>A model belongs to one dictionary. It depends on the feature columns of the dictionary and on how the dictionary segments a text, so the file says which dictionary it is for, and one file serves one dictionary.</p>
-<p>No model is distributed yet. <a href="./chunking.html#training-a-model"><code>train-chunker</code></a> writes a model file with the chunker, and <a href="./parsing.html#training-a-model"><code>train-parser</code></a> one with the parser, or with both.</p>
+<p>No model is distributed yet: until the <a href="#the-model-for-ipadic">model for IPADIC</a> is released, a script builds it. <a href="./chunking.html#training-a-model"><code>train-chunker</code></a> writes a model file with the chunker, and <a href="./parsing.html#training-a-model"><code>train-parser</code></a> one with the parser, or with both.</p>
 <h2 id="reading-a-model"><a class="header" href="#reading-a-model">Reading a model</a></h2>
 <p><code>Model</code> reads a file in place. It is generic over what holds the bytes, and copies none of its tables:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -257,6 +257,50 @@ assert_eq!(model.dictionary(), "ipadic");
 <span class="boring">}</span></code></pre></pre>
 <p>The same parts give the same bytes. A part trained with another schema than the one of the file is refused.</p>
 <p><code>ModelBuilder::parser</code> takes a <code>ParserModel</code> and how its weights are written (<code>Quantization::F32</code>, <code>I16</code> or <code>I8</code>). <code>ModelBuilder::from_model</code> starts from the name, the schema and the parts of a file that exists, to add a part to it; <code>train-parser --chunker</code> does this with the chunker.</p>
+<h2 id="the-model-for-ipadic"><a class="header" href="#the-model-for-ipadic">The model for IPADIC</a></h2>
+<p>The project trains one model for IPADIC, with a chunker and a parser, to release it as a file. It is not released yet; <a href="#building-it-again"><code>build_model.sh</code></a> builds it.</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>Dictionary</td><td>IPADIC (<code>ipadic</code>), as the <code>lindera-ipadic</code> crate builds it from mecab-ipadic 2.7.0</td></tr>
+<tr><td>Training data</td><td>The train file of <a href="https://github.com/UniversalDependencies/UD_Japanese-GSD">UD Japanese-GSD</a> at c662dc9, <a href="./training_data.html">converted</a> with IPADIC: 7,024 sentences</td></tr>
+<tr><td>Settings</td><td>The defaults of <a href="./chunking.html#training-a-model"><code>train-chunker</code></a> and of <a href="./parsing.html#training-a-model"><code>train-parser</code></a></td></tr>
+<tr><td>Size</td><td>6,258,548 bytes</td></tr>
+<tr><td>License</td><td>MIT, with a notice: see <a href="#license-of-the-model">License of the model</a></td></tr>
+</tbody></table>
+</div>
+<p>Only the train file is used. The dev and test files of UD Japanese-GSD and UD Japanese-PUD are not seen in training, and no setting was chosen on them, so the <a href="./parsing.html#accuracy">accuracy</a> measured on them is the accuracy of the file itself.</p>
+<h3 id="building-it-again"><a class="header" href="#building-it-again">Building it again</a></h3>
+<p>One script builds the file from the corpus and the sources of the repository:</p>
+<pre><code class="language-shell">scripts/dependency/build_model.sh
+</code></pre>
+<p>It gets UD Japanese-GSD at its fixed commit, builds the <code>lindera-dependency</code> command with a named toolchain and the dependencies of <code>Cargo.lock</code>, converts the train file, trains the chunker and the parser, and writes three files to <code>scripts/dependency/data/model</code>: the model, its <code>NOTICE.txt</code> and <code>SHA256SUMS</code>. It takes about 15 seconds after the build. At its end it names the commit of Lindera, and then says what else it used and what it made:</p>
+<pre><code class="language-text">corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6
+toolchain: rustc 1.100.0 (0ef1bc386 2026-11-09)
+platform: x86_64-unknown-linux-gnu, glibc 2.43
+training data: 5075c95f2518b6af791e6a9ea2bd5f9f63eeaa5b316f3801d8068d71436e5064  train.lattice
+chunker: 74762e9b4f23d1dd06a304238006480264e0fea70b7a3a5c9e647c176dad59c3  chunker.model
+model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic-1.0.0.model (6258548 bytes)
+</code></pre>
+<p><code>--check &lt;sha256&gt;</code> makes the script fail when the file it built has another SHA-256. The script refuses a tree with uncommitted changes, so that the commit it names is what the file was built from.</p>
+<p>The same sources, corpus, toolchain and platform give the same bytes: nothing in the training depends on the time, on the number of threads or on the order of a hash table. Whether another platform gives the same bytes is not known. The training of the chunker calls <code>exp</code> and <code>ln_1p</code> of the mathematics library of the platform, and their last bit can differ from one library to another. The notice of a file (<code>NOTICE.txt</code>) names the platform it was built on.</p>
+<h3 id="license-of-the-model"><a class="header" href="#license-of-the-model">License of the model</a></h3>
+<p>The model file is distributed under the MIT license, the license of Lindera's code. <code>NOTICE.txt</code>, which comes with the file, has the text of the license, an acknowledgement of UD Japanese-GSD and the notice of IPADIC. This is how the project handles the question; it is not legal advice.</p>
+<p><strong>The question.</strong> UD Japanese-GSD is licensed under CC BY-SA 4.0. That license asks that material "derived from or based upon" the licensed material ("Adapted Material") is shared under the same license. Neither the license nor the FAQ of Creative Commons says whether a model trained on a work is such material.</p>
+<p><strong>What the model holds.</strong> The names of features and their weights. A name is made of a part of speech, a conjugation form or the surface of one morpheme, so single words of the training sentences are in the file. No sentence is, and nothing of the annotation: no bunsetsu and no dependency. The model generates no text.</p>
+<p><strong>The position.</strong> The project takes such a model not to be an adaptation of the treebank, so that the share-alike condition does not reach it. The position rests on these:</p>
+<ul>
+<li>The Agency for Cultural Affairs of Japan, <a href="https://www.bunka.go.jp/seisaku/bunkashingikai/chosakuken/pdf/94037901_01.pdf">AI と著作権に関する考え方について</a> (March 2024): a trained model is in many cases not a reproduction of the works it was trained on; it can be one when it is in a state to generate, with high probability, what resembles them. The document says of itself that it is not legally binding.</li>
+<li>Szkalej and Senftleben, <a href="https://www.ivir.nl/publicaties/download/Share-Alike-and-ML.pdf">Mapping the Impact of Share Alike/Copyleft Licensing on Machine Learning and Generative AI</a> (2024): "the final artefact – the trained model – is unlikely to constitute adapted material", as long as it holds no protected traces of the works.</li>
+<li>Creative Commons, <a href="https://creativecommons.org/wp-content/uploads/2025/05/Using-CC-licensed-Works-for-AI-Training.pdf">Using CC-licensed Works for AI Training</a> (2025): releasing a model under the license of its training data is "the most conservative approach", and following it "will almost certainly lead to overcompliance".</li>
+<li>Models trained on text under CC BY-SA are released under permissive licenses: the models of <a href="https://github.com/google-research/bert">BERT</a>, trained on Wikipedia, are under Apache 2.0.</li>
+</ul>
+<p><strong>What is uncertain.</strong> No court has decided whether a trained model is an adaptation of its training data, and others chose the other way: the <a href="https://github.com/explosion/spacy-models/releases/tag/ja_core_news_sm-3.8.0">Japanese model of spaCy</a>, trained on the same treebank, is under CC BY-SA 4.0. If the position turns out to be wrong, the model is distributed under CC BY-SA 4.0 from then on; the file itself does not change.</p>
+<p><strong>What a user does.</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Use</th><th>What it asks</th></tr></thead><tbody>
+<tr><td>Analyzing text with the model</td><td>Nothing. The project puts no condition on what an analysis gives</td></tr>
+<tr><td>Distributing the file, or a program that embeds it</td><td><code>NOTICE.txt</code> goes with it: the text of the MIT license and the notice of IPADIC</td></tr>
+<tr><td>Changing the model and distributing the result</td><td>The same</td></tr>
+</tbody></table>
+</div>
 <h2 id="the-format"><a class="header" href="#the-format">The format</a></h2>
 <p>Version 1. Every number is little endian. A string is its length in bytes as a <code>u32</code>, followed by its UTF-8.</p>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Content</th></tr></thead><tbody>

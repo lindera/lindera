@@ -231,6 +231,9 @@
 <tr><td>テキストを受けるコマンドは、このクレートのバイナリの、学習のコードを含まないビルドに置く。<code>cli</code> feature がコマンドを持ち、<code>train</code> がそこに学習を足す。<code>lindera</code> コマンドからの利用は、フィルターと公開の後にする。</td><td>コマンドを使うだけの人に <code>lindera-crf</code> が入らない。<code>lindera-cli</code> は公開されているので、公開していないクレートに依存できない。<code>lindera tokenize</code> の出力形式にするには、トークンフィルターが要る。</td><td>#1439</td></tr>
 <tr><td>CaboCha のオプションのうち、コマンドは、ラティス形式の出力（<code>-f1</code>）と 3 つの入力の層（<code>-I</code>）を <code>--input-layer</code> として持つ。木・XML・CoNLL の出力、出力の層、固有表現は持たない。</td><td>ラティス形式はほかの道具が読む形式で、書き出しの実装がある。入力の層は、<code>parse</code> と <code>parse --chunk</code> がしていたことを 1 つのオプションにまとめたもの。形態素だけ、文節だけを書くコマンドは別にある。</td><td>#1439</td></tr>
 <tr><td>コマンドは、1 文ずつ読んで、解析して、書く。解析できない最初の文で止まり、そこまでに書いた出力は残る。</td><td>パイプの中で使え、メモリが入力の長さで増えない。</td><td>#1439</td></tr>
+<tr><td>IPADIC のモデルは MIT ライセンスで配布し、UD Japanese-GSD への謝辞と IPADIC の表示を添える。</td><td>モデルが持つのは素性の名前と重みで、注釈は含まない。このプロジェクトは、これをコーパスの改変物ではないとみなす。この問いを判断した裁判例はない。立場の根拠は<a href="../lindera-dependency/model_file.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%A9%E3%82%A4%E3%82%BB%E3%83%B3%E3%82%B9">モデルファイルのページ</a>に書く。コードとモデルが同じライセンスなので、モデルを埋め込んだプログラムは、辞書を埋め込んだプログラムと同じように配布できる。</td><td>#1440</td></tr>
+<tr><td>公開するモデルは、UD Japanese-GSD の train のファイルだけで学習する。</td><td>dev・test・PUD の数字が、公開するファイルそのものの数字になり、誰でも測り直せる。</td><td>#1440</td></tr>
+<tr><td>公開するモデルは独自の版を持ち、このリポジトリのリリースのファイルとして置く。タグは Lindera の版ではない（<code>dependency-ipadic-1.0.0</code>）。1 つのスクリプトがファイルを作り、クレートは、その URL と SHA-256 をソースに持つようにする。</td><td>モデルが変わるのは、学習し直したときで、Lindera のリリースのたびではない。タグは、ファイルを作ったスクリプトの commit を指す。固定のファイルなら、crates.io からのビルドだけでなく、リポジトリからのビルドでも埋め込める。</td><td>#1440</td></tr>
 </tbody></table>
 </div>
 <h2 id="参照した実装"><a class="header" href="#参照した実装">参照した実装</a></h2>
@@ -338,7 +341,7 @@
 </div>
 <h3 id="未決の問い"><a class="header" href="#未決の問い">未決の問い</a></h3>
 <ul>
-<li><strong><code>Token</code> の破壊的変更をどのリリースに入れるか</strong>（7.1.0 か 8.0.0 か）と、<strong>配布するコマンドとバインディングのビルドに <code>dependency</code> feature を入れるか</strong>。どちらも、モデルと一緒に決める（<a href="https://github.com/lindera/lindera/issues/1440">#1440</a>）。このクレートを公開するまでは、<code>lindera-analysis</code> も公開できない。</li>
+<li><strong><code>Token</code> の破壊的変更を入れるリリース</strong>は 7.1.0 で、<strong>配布するコマンドとバインディングのビルドには <code>dependency</code> feature を入れ</strong>、モデルは埋め込まない。どちらも決定済みで、クレートの公開と一緒に行う（<a href="https://github.com/lindera/lindera/issues/1440">#1440</a>）。このクレートを公開するまでは、<code>lindera-analysis</code> も公開できない。</li>
 <li><strong>トークンフィルターでは、改行で文が終わらない。</strong> 改行はトークンではない。句点の無い行が並ぶテキストは、トークナイザーを呼ぶ側が分けないかぎり、1 つの文になる。</li>
 <li>使えるライセンスの<strong>学習データを増やすこと</strong>。</li>
 </ul>

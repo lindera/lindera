@@ -179,7 +179,7 @@
                         <h1 id="モデルファイル"><a class="header" href="#モデルファイル">モデルファイル</a></h1>
 <p>モデルファイルは、1 つの辞書を解析するのに要るものを 1 つにまとめたファイルです。辞書の名前、その<a href="./head_and_function_word.html">スキーマ</a>、学習した部分が入ります。部分は、<a href="./chunking.html">文節の区切り</a>と<a href="./parsing.html">解析器</a>です。</p>
 <p>モデルは 1 つの辞書に属します。辞書の素性の列と、辞書による分かち書きに依存するので、ファイルは、どの辞書のためのものかを自分で持ち、1 つのファイルが 1 つの辞書に対応します。</p>
-<p>配布しているモデルは、まだありません。<a href="./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> は区切りを入れたモデルファイルを、<a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a> は解析器だけか、両方を入れたモデルファイルを書き出します。</p>
+<p>配布しているモデルは、まだありません。<a href="#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>を公開するまでは、スクリプトで作ります。<a href="./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> は区切りを入れたモデルファイルを、<a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a> は解析器だけか、両方を入れたモデルファイルを書き出します。</p>
 <h2 id="モデルを読む"><a class="header" href="#モデルを読む">モデルを読む</a></h2>
 <p><code>Model</code> は、ファイルをその場で読みます。バイト列を持つ型について総称で、表をどこにも写しません。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -257,6 +257,50 @@ assert_eq!(model.dictionary(), "ipadic");
 <span class="boring">}</span></code></pre></pre>
 <p>同じ部分からは、同じバイト列ができます。ファイルのスキーマと違うスキーマで学習した部分は断ります。</p>
 <p><code>ModelBuilder::parser</code> は、<code>ParserModel</code> と、重みの書き方（<code>Quantization::F32</code>、<code>I16</code>、<code>I8</code>）を受け取ります。<code>ModelBuilder::from_model</code> は、すでにあるファイルの名前、スキーマ、部分から始めて、部分を足せるようにします。<code>train-parser --chunker</code> は、これで区切りを写します。</p>
+<h2 id="ipadic-のモデル"><a class="header" href="#ipadic-のモデル">IPADIC のモデル</a></h2>
+<p>このプロジェクトは、IPADIC のモデルを 1 つ学習し、ファイルとして公開します。区切りと解析器の両方が入ります。まだ公開しておらず、<a href="#%E4%BD%9C%E3%82%8A%E7%9B%B4%E3%81%99"><code>build_model.sh</code></a> で作ります。</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>辞書</td><td>IPADIC（<code>ipadic</code>）。<code>lindera-ipadic</code> クレートが mecab-ipadic 2.7.0 から作るもの</td></tr>
+<tr><td>学習データ</td><td><a href="https://github.com/UniversalDependencies/UD_Japanese-GSD">UD Japanese-GSD</a>（c662dc9）の train のファイルを、IPADIC で<a href="./training_data.html">変換</a>したもの。7,024 文</td></tr>
+<tr><td>設定</td><td><a href="./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> と <a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a> の既定</td></tr>
+<tr><td>大きさ</td><td>6,258,548 バイト</td></tr>
+<tr><td>ライセンス</td><td>MIT。表示を添えます。<a href="#%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%A9%E3%82%A4%E3%82%BB%E3%83%B3%E3%82%B9">モデルのライセンス</a>を見てください</td></tr>
+</tbody></table>
+</div>
+<p>使うのは train のファイルだけです。UD Japanese-GSD の dev と test、UD Japanese-PUD は学習で見ておらず、設定の選択にも使っていません。そのため、これらで測った<a href="./parsing.html#%E7%B2%BE%E5%BA%A6">精度</a>は、このファイルそのものの精度です。</p>
+<h3 id="作り直す"><a class="header" href="#作り直す">作り直す</a></h3>
+<p>1 つのスクリプトが、コーパスとリポジトリのソースからファイルを作ります。</p>
+<pre><code class="language-shell">scripts/dependency/build_model.sh
+</code></pre>
+<p>スクリプトは、UD Japanese-GSD を固定の commit で取り、<code>lindera-dependency</code> コマンドを、名指しした toolchain と <code>Cargo.lock</code> の依存でビルドします。続けて、train のファイルを変換し、区切りと解析器を学習して、<code>scripts/dependency/data/model</code> にファイルを 3 つ書きます。モデル、その <code>NOTICE.txt</code>、<code>SHA256SUMS</code> です。ビルドの後は 15 秒ほどで終わります。最後に、Lindera の commit を表示し、続けて、ほかに使ったものと作ったものを表示します。</p>
+<pre><code class="language-text">corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6
+toolchain: rustc 1.100.0 (0ef1bc386 2026-11-09)
+platform: x86_64-unknown-linux-gnu, glibc 2.43
+training data: 5075c95f2518b6af791e6a9ea2bd5f9f63eeaa5b316f3801d8068d71436e5064  train.lattice
+chunker: 74762e9b4f23d1dd06a304238006480264e0fea70b7a3a5c9e647c176dad59c3  chunker.model
+model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic-1.0.0.model (6258548 bytes)
+</code></pre>
+<p><code>--check &lt;sha256&gt;</code> を付けると、作ったファイルの SHA-256 が違うときに、スクリプトが失敗します。未コミットの変更がある作業ツリーでは、スクリプトは動きません。表示する commit が、ファイルの元になったソースと一致するようにするためです。</p>
+<p>ソース、コーパス、toolchain、プラットフォームが同じなら、同じバイト列になります。学習は、時刻にも、スレッドの数にも、ハッシュ表の順序にも依存しません。別のプラットフォームで同じバイト列になるかは、分かっていません。区切りの学習は、プラットフォームの数学ライブラリの <code>exp</code> と <code>ln_1p</code> を呼び、その最後の 1 ビットはライブラリによって違うことがあります。ファイルの表示（<code>NOTICE.txt</code>）に、作ったプラットフォームを書いてあります。</p>
+<h3 id="モデルのライセンス"><a class="header" href="#モデルのライセンス">モデルのライセンス</a></h3>
+<p>モデルファイルは、Lindera のコードと同じ MIT ライセンスで配布します。ファイルに添える <code>NOTICE.txt</code> に、ライセンスの本文、UD Japanese-GSD への謝辞、IPADIC の表示が入っています。以下は、このプロジェクトでの扱い方であり、法的な助言ではありません。</p>
+<p><strong>問い。</strong> UD Japanese-GSD のライセンスは CC BY-SA 4.0 です。このライセンスは、元の素材に「由来する、または基づく」素材（Adapted Material）を、同じライセンスで共有することを求めます。ある著作物で学習したモデルがそれに当たるかは、ライセンスにも、Creative Commons の FAQ にも書かれていません。</p>
+<p><strong>モデルが持つもの。</strong> 素性の名前と、その重みです。名前は、品詞、活用形、1 つの形態素の表層のどれかから作るので、学習した文に出てくる単語は、1 語ずつファイルに入っています。文は入っていません。注釈も入っていません。文節も、係り先もありません。モデルは、テキストを生成しません。</p>
+<p><strong>立場。</strong> このプロジェクトは、こうしたモデルはコーパスの改変物ではなく、継承（share-alike）の条件は及ばない、という立場を取ります。根拠は次のとおりです。</p>
+<ul>
+<li>文化庁の<a href="https://www.bunka.go.jp/seisaku/bunkashingikai/chosakuken/pdf/94037901_01.pdf">「AI と著作権に関する考え方について」</a>（2024 年 3 月）: 「学習済モデルは、学習に用いられた著作物の複製物とはいえない場合が多い」。学習データと類似性のあるものを高確率で生成する状態にある場合などは、複製物と評価されることがある。この文書は、自身に法的な拘束力はないとしている。</li>
+<li>Szkalej・Senftleben の <a href="https://www.ivir.nl/publicaties/download/Share-Alike-and-ML.pdf">Mapping the Impact of Share Alike/Copyleft Licensing on Machine Learning and Generative AI</a>（2024 年）: 学習済みのモデルは、学習に使った著作物の保護される痕跡を含まないかぎり、Adapted Material に当たる見込みは低い。</li>
+<li>Creative Commons の <a href="https://creativecommons.org/wp-content/uploads/2025/05/Using-CC-licensed-Works-for-AI-Training.pdf">Using CC-licensed Works for AI Training</a>（2025 年）: モデルを学習データと同じライセンスで公開するのは「最も保守的な方法」で、従えば「ほぼ確実に、過剰な遵守になる」。</li>
+<li>CC BY-SA のテキストで学習したモデルが、制約の緩いライセンスで公開されている。Wikipedia で学習した <a href="https://github.com/google-research/bert">BERT</a> のモデルは Apache 2.0。</li>
+</ul>
+<p><strong>不確かな点。</strong> 学習済みのモデルが学習データの改変物かどうかを判断した裁判例は、ありません。逆を選んだ例もあります。同じコーパスで学習した <a href="https://github.com/explosion/spacy-models/releases/tag/ja_core_news_sm-3.8.0">spaCy の日本語のモデル</a>は、CC BY-SA 4.0 です。この立場が誤りだと分かったら、それ以降は CC BY-SA 4.0 で配布します。ファイルそのものは変わりません。</p>
+<p><strong>利用者がすること。</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>使い方</th><th>必要なこと</th></tr></thead><tbody>
+<tr><td>モデルでテキストを解析する</td><td>なし。解析の結果に、このプロジェクトは条件を付けません</td></tr>
+<tr><td>ファイルを配布する、ファイルを埋め込んだプログラムを配布する</td><td><code>NOTICE.txt</code> を添える。MIT ライセンスの本文と、IPADIC の表示が入っています</td></tr>
+<tr><td>モデルを変更して配布する</td><td>同じ</td></tr>
+</tbody></table>
+</div>
 <h2 id="形式"><a class="header" href="#形式">形式</a></h2>
 <p>版は 1 です。数はすべてリトルエンディアンです。文字列は、バイト数を <code>u32</code> で書き、その後に UTF-8 を続けます。</p>
 <div class="table-wrapper"><table><thead><tr><th>欄</th><th>型</th><th>中身</th></tr></thead><tbody>
