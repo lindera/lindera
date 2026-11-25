@@ -1,0 +1,81 @@
+===========================================================================
+lindera-dependency: the model for IPADIC, version @VERSION@
+===========================================================================
+
+This notice comes with
+
+  lindera-dependency-ipadic-@VERSION@.model
+
+a model file of lindera-dependency (https://github.com/lindera/lindera):
+the chunker and the dependency parser for Japanese text segmented with
+IPADIC.
+
+It was built by scripts/dependency/build_model.sh of the Lindera
+repository, from
+
+  Lindera        commit @LINDERA_COMMIT@
+  Training data  the train file of UD Japanese-GSD,
+                 commit @CORPUS_COMMIT@
+  Dictionary     IPADIC, as the lindera-ipadic crate of that commit
+                 builds it (mecab-ipadic 2.7.0)
+  Toolchain      @RUSTC@
+  Platform       @PLATFORM@
+
+===========================================================================
+License of the model
+===========================================================================
+
+The model file is distributed under the MIT license.
+
+@LICENSE@
+
+===========================================================================
+Training data: UD Japanese-GSD
+===========================================================================
+
+The model was trained on the train file of the Universal Dependencies
+treebank UD Japanese-GSD
+
+  https://github.com/UniversalDependencies/UD_Japanese-GSD
+
+which is licensed under the Creative Commons Attribution-ShareAlike 4.0
+International license
+
+  https://creativecommons.org/licenses/by-sa/4.0/
+
+The sentences of the treebank were segmented again with IPADIC, its
+bunsetsu and their dependencies were projected onto those morphemes, and
+the weights of the model were estimated from the result. The model holds
+the names of features and their weights. A name is made of a part of
+speech, a conjugation form or the surface of one morpheme, so single words
+that occur in the sentences are in the file. No sentence is, and no
+annotation of the treebank: no bunsetsu and no dependency.
+
+The Lindera project takes the position that such a model is not an
+adaptation of the treebank, and distributes it under the license above.
+No court has decided this question. What the position rests on, and what
+is uncertain, is in the documentation of lindera-dependency:
+
+  https://lindera.github.io/lindera/lindera-dependency/model_file.html
+
+Contributors of UD Japanese-GSD: Omura, Mai; Miyao, Yusuke; Kanayama,
+Hiroshi; Matsuda, Hiroshi; Wakasa, Aya; Yamashita, Kayo; Asahara, Masayuki;
+Tanaka, Takaaki; Murawaki, Yugo; Matsumoto, Yuji; Mori, Shinsuke; Uematsu,
+Sumire; McDonald, Ryan; Nivre, Joakim; Zeman, Daniel. Original treebank
+contributors: LaMontagne, Adam; Souček, Milan; Järvinen, Timo; Radici,
+Alessandra.
+
+  Asahara, M., Kanayama, H., Tanaka, T., Miyao, Y., Uematsu, S., Mori, S.,
+  Matsumoto, Y., Omura, M., & Murawaki, Y. (2018). Universal Dependencies
+  Version 2 for Japanese. In LREC.
+
+===========================================================================
+Dictionary: mecab-ipadic
+===========================================================================
+
+The morphemes are those of the dictionary, and the model holds strings of
+it: surfaces of words and names of parts of speech and of conjugations.
+The notice of the dictionary, as the lindera-ipadic crate carries it,
+follows.
+
+@IPADIC_NOTICE@

@@ -87,4 +87,4 @@ UD Japanese-GSD is licensed under CC BY-SA 4.0 and UD Japanese-PUD under CC BY-S
 
 - The corpora, and data converted from them, are not committed to the repository.
 - Converted data is adapted from the annotations of the corpus. If you share it, share it under the license of the corpus, name the corpus and say that the data was converted.
-- A model trained on converted data is released with the corpus, its version and its license stated. Whether the share-alike condition extends to a trained model is not settled, and this project makes no claim either way.
+- A model trained on converted data is released with the corpus, its version and its license stated. Whether the share-alike condition extends to a trained model is not settled by a court. This project takes its model, which holds weights and none of the annotation, not to be an adaptation of the corpus, and distributes it under the MIT license: see [License of the model](./model_file.md#license-of-the-model).

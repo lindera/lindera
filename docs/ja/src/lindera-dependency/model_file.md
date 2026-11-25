@@ -4,7 +4,7 @@
 
 モデルは 1 つの辞書に属します。辞書の素性の列と、辞書による分かち書きに依存するので、ファイルは、どの辞書のためのものかを自分で持ち、1 つのファイルが 1 つの辞書に対応します。
 
-配布しているモデルは、まだありません。[`train-chunker`](./chunking.md#モデルを学習する) は区切りを入れたモデルファイルを、[`train-parser`](./parsing.md#モデルを学習する) は解析器だけか、両方を入れたモデルファイルを書き出します。
+配布しているモデルは、まだありません。[IPADIC のモデル](#ipadic-のモデル)を公開するまでは、スクリプトで作ります。[`train-chunker`](./chunking.md#モデルを学習する) は区切りを入れたモデルファイルを、[`train-parser`](./parsing.md#モデルを学習する) は解析器だけか、両方を入れたモデルファイルを書き出します。
 
 ## モデルを読む
 
@@ -99,6 +99,68 @@ assert_eq!(model.dictionary(), "ipadic");
 同じ部分からは、同じバイト列ができます。ファイルのスキーマと違うスキーマで学習した部分は断ります。
 
 `ModelBuilder::parser` は、`ParserModel` と、重みの書き方（`Quantization::F32`、`I16`、`I8`）を受け取ります。`ModelBuilder::from_model` は、すでにあるファイルの名前、スキーマ、部分から始めて、部分を足せるようにします。`train-parser --chunker` は、これで区切りを写します。
+
+## IPADIC のモデル
+
+このプロジェクトは、IPADIC のモデルを 1 つ学習し、ファイルとして公開します。区切りと解析器の両方が入ります。まだ公開しておらず、[`build_model.sh`](#作り直す) で作ります。
+
+| | |
+| --- | --- |
+| 辞書 | IPADIC（`ipadic`）。`lindera-ipadic` クレートが mecab-ipadic 2.7.0 から作るもの |
+| 学習データ | [UD Japanese-GSD](https://github.com/UniversalDependencies/UD_Japanese-GSD)（c662dc9）の train のファイルを、IPADIC で[変換](./training_data.md)したもの。7,024 文 |
+| 設定 | [`train-chunker`](./chunking.md#モデルを学習する) と [`train-parser`](./parsing.md#モデルを学習する) の既定 |
+| 大きさ | 6,258,548 バイト |
+| ライセンス | MIT。表示を添えます。[モデルのライセンス](#モデルのライセンス)を見てください |
+
+使うのは train のファイルだけです。UD Japanese-GSD の dev と test、UD Japanese-PUD は学習で見ておらず、設定の選択にも使っていません。そのため、これらで測った[精度](./parsing.md#精度)は、このファイルそのものの精度です。
+
+### 作り直す
+
+1 つのスクリプトが、コーパスとリポジトリのソースからファイルを作ります。
+
+```shell
+scripts/dependency/build_model.sh
+```
+
+スクリプトは、UD Japanese-GSD を固定の commit で取り、`lindera-dependency` コマンドを、名指しした toolchain と `Cargo.lock` の依存でビルドします。続けて、train のファイルを変換し、区切りと解析器を学習して、`scripts/dependency/data/model` にファイルを 3 つ書きます。モデル、その `NOTICE.txt`、`SHA256SUMS` です。ビルドの後は 15 秒ほどで終わります。最後に、Lindera の commit を表示し、続けて、ほかに使ったものと作ったものを表示します。
+
+```text
+corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6
+toolchain: rustc 1.100.0 (0ef1bc386 2026-11-09)
+platform: x86_64-unknown-linux-gnu, glibc 2.43
+training data: 5075c95f2518b6af791e6a9ea2bd5f9f63eeaa5b316f3801d8068d71436e5064  train.lattice
+chunker: 74762e9b4f23d1dd06a304238006480264e0fea70b7a3a5c9e647c176dad59c3  chunker.model
+model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic-1.0.0.model (6258548 bytes)
+```
+
+`--check <sha256>` を付けると、作ったファイルの SHA-256 が違うときに、スクリプトが失敗します。未コミットの変更がある作業ツリーでは、スクリプトは動きません。表示する commit が、ファイルの元になったソースと一致するようにするためです。
+
+ソース、コーパス、toolchain、プラットフォームが同じなら、同じバイト列になります。学習は、時刻にも、スレッドの数にも、ハッシュ表の順序にも依存しません。別のプラットフォームで同じバイト列になるかは、分かっていません。区切りの学習は、プラットフォームの数学ライブラリの `exp` と `ln_1p` を呼び、その最後の 1 ビットはライブラリによって違うことがあります。ファイルの表示（`NOTICE.txt`）に、作ったプラットフォームを書いてあります。
+
+### モデルのライセンス
+
+モデルファイルは、Lindera のコードと同じ MIT ライセンスで配布します。ファイルに添える `NOTICE.txt` に、ライセンスの本文、UD Japanese-GSD への謝辞、IPADIC の表示が入っています。以下は、このプロジェクトでの扱い方であり、法的な助言ではありません。
+
+**問い。** UD Japanese-GSD のライセンスは CC BY-SA 4.0 です。このライセンスは、元の素材に「由来する、または基づく」素材（Adapted Material）を、同じライセンスで共有することを求めます。ある著作物で学習したモデルがそれに当たるかは、ライセンスにも、Creative Commons の FAQ にも書かれていません。
+
+**モデルが持つもの。** 素性の名前と、その重みです。名前は、品詞、活用形、1 つの形態素の表層のどれかから作るので、学習した文に出てくる単語は、1 語ずつファイルに入っています。文は入っていません。注釈も入っていません。文節も、係り先もありません。モデルは、テキストを生成しません。
+
+**立場。** このプロジェクトは、こうしたモデルはコーパスの改変物ではなく、継承（share-alike）の条件は及ばない、という立場を取ります。根拠は次のとおりです。
+
+- 文化庁の[「AI と著作権に関する考え方について」](https://www.bunka.go.jp/seisaku/bunkashingikai/chosakuken/pdf/94037901_01.pdf)（2024 年 3 月）: 「学習済モデルは、学習に用いられた著作物の複製物とはいえない場合が多い」。学習データと類似性のあるものを高確率で生成する状態にある場合などは、複製物と評価されることがある。この文書は、自身に法的な拘束力はないとしている。
+- Szkalej・Senftleben の [Mapping the Impact of Share Alike/Copyleft Licensing on Machine Learning and Generative AI](https://www.ivir.nl/publicaties/download/Share-Alike-and-ML.pdf)（2024 年）: 学習済みのモデルは、学習に使った著作物の保護される痕跡を含まないかぎり、Adapted Material に当たる見込みは低い。
+- Creative Commons の [Using CC-licensed Works for AI Training](https://creativecommons.org/wp-content/uploads/2025/05/Using-CC-licensed-Works-for-AI-Training.pdf)（2025 年）: モデルを学習データと同じライセンスで公開するのは「最も保守的な方法」で、従えば「ほぼ確実に、過剰な遵守になる」。
+- CC BY-SA のテキストで学習したモデルが、制約の緩いライセンスで公開されている。Wikipedia で学習した [BERT](https://github.com/google-research/bert) のモデルは Apache 2.0。
+
+**不確かな点。** 学習済みのモデルが学習データの改変物かどうかを判断した裁判例は、ありません。逆を選んだ例もあります。同じコーパスで学習した [spaCy の日本語のモデル](https://github.com/explosion/spacy-models/releases/tag/ja_core_news_sm-3.8.0)は、CC BY-SA 4.0 です。この立場が誤りだと分かったら、それ以降は CC BY-SA 4.0 で配布します。ファイルそのものは変わりません。
+
+**利用者がすること。**
+
+| 使い方 | 必要なこと |
+| --- | --- |
+| モデルでテキストを解析する | なし。解析の結果に、このプロジェクトは条件を付けません |
+| ファイルを配布する、ファイルを埋め込んだプログラムを配布する | `NOTICE.txt` を添える。MIT ライセンスの本文と、IPADIC の表示が入っています |
+| モデルを変更して配布する | 同じ |
 
 ## 形式
 

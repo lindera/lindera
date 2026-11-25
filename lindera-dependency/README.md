@@ -27,7 +27,10 @@ The token filter `japanese_dependency` of Lindera runs this analysis in a
 tokenizer. It is in `lindera-analysis`, behind its `dependency` feature.
 
 No model is distributed yet: the chunker and the parser are trained with
-the commands of the crate, in a few seconds each.
+the commands of the crate, in a few seconds each. The model for IPADIC that
+will be released is built by
+[`scripts/dependency/build_model.sh`](../scripts/dependency/build_model.sh),
+from the train file of UD Japanese-GSD; it is under the MIT license.
 
 The documentation has a chapter on the crate, in
 [English](../docs/src/lindera-dependency.md) and in
@@ -176,7 +179,10 @@ handles them; it is not legal advice.
   the data was converted.
 - A model trained on converted data is released with the corpus, its version
   and its license stated. Whether the share-alike condition extends to a
-  trained model is not settled, and this project makes no claim either way.
+  trained model is not settled by a court. This project takes its model,
+  which holds weights and none of the annotation, not to be an adaptation
+  of the corpus, and distributes it under the MIT license: see
+  [License of the model](../docs/src/lindera-dependency/model_file.md#license-of-the-model).
 
 ## Chunking
 
