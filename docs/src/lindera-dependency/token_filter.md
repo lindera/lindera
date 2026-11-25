@@ -6,10 +6,11 @@ The filter adds, removes and rewrites no token. The MeCab and wakati outputs are
 
 ## A build with the filter
 
-The filter is in `lindera-analysis`, behind the `dependency` feature, which `lindera` and `lindera-cli` forward. No default build has it:
+The filter is in `lindera-analysis`, behind the `dependency` feature, which `lindera`, `lindera-cli` and the bindings forward. The `lindera` command and the five bindings have the feature in their default builds, from 7.1.0 on, so the packages you install have the filter. The libraries `lindera` and `lindera-analysis` do not have it by default:
 
-```shell
-cargo build --release -p lindera-cli --features embed-ipadic,dependency
+```toml
+[dependencies]
+lindera = { version = "7.1", features = ["dependency"] }
 ```
 
 A build without the feature knows the name of the filter and says what is missing:
@@ -18,11 +19,11 @@ A build without the feature knows the name of the filter and says what is missin
 the token filter japanese_dependency needs a build with the feature `dependency`
 ```
 
-`lindera-dependency` is not published on crates.io yet, so the feature works in a checkout of the repository only. The bindings do not have the filter yet ([#1438](https://github.com/lindera/lindera/issues/1438)).
+The filter needs a model, which is not in a package: see [The model](#the-model).
 
 ## From the bindings
 
-Python, Node.js, Ruby and PHP append the filter as the others, by its `kind` and the path of the model, and a token has a `dependency`: an object with the five fields below, or nothing (`None`, `nil`, `null`, no property) without the filter. In WebAssembly a path cannot be read, and `appendDependencyFilter` takes the bytes of the model. Each needs a build of the binding with its `dependency` feature, which the distributed packages do not have yet. The API page of each binding has an example: [Python](../lindera-python/tokenizer_api.md#tokendependency), [Node.js](../lindera-nodejs/tokenizer_api.md#tokendependency), [Ruby](../lindera-ruby/tokenizer_api.md#tokendependency), [PHP](../lindera-php/tokenizer_api.md#tokendependency), [WebAssembly](../lindera-wasm/tokenizer_api.md#tokendependency).
+Python, Node.js, Ruby and PHP append the filter as the others, by its `kind` and the path of the model, and a token has a `dependency`: an object with the five fields below, or nothing (`None`, `nil`, `null`, no property) without the filter. In WebAssembly a path cannot be read, and `appendDependencyFilter` takes the bytes of the model. The distributed packages have the filter, from 7.1.0 on. The API page of each binding has an example: [Python](../lindera-python/tokenizer_api.md#tokendependency), [Node.js](../lindera-nodejs/tokenizer_api.md#tokendependency), [Ruby](../lindera-ruby/tokenizer_api.md#tokendependency), [PHP](../lindera-php/tokenizer_api.md#tokendependency), [WebAssembly](../lindera-wasm/tokenizer_api.md#tokendependency).
 
 ## The model
 

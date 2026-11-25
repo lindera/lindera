@@ -67,7 +67,9 @@ katakana stemming, and more) mirroring Lucene's kuromoji / nori analyzers.
 
 With the `dependency` feature, the token filter `japanese_dependency` writes
 on each token its bunsetsu and the bunsetsu that one depends on, with a model
-of `lindera-dependency`. The feature is in no default build.
+of `lindera-dependency`. The feature is not in the default build of this
+crate and of `lindera`; the `lindera` command and the bindings have it by
+default.
 
 ## License
 

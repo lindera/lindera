@@ -11,9 +11,9 @@ Lindera Dependency（`lindera-dependency`）は、日本語の文節の係り受
 
 ## 状態
 
-> このクレートは**開発中で、crates.io にはまだ公開していません**。**配布しているモデルも、まだありません**。自分で学習したモデルを使えば、形態素から係り受けまでの解析が一通りできます。学習データ、文節の区切り、解析器、モデルファイル、評価、テキストを受けるコマンドが揃っています。Lindera のトークンフィルターは、コマンドとバインディングの、`dependency` feature を付けたビルドに入っています。これからの部分は、公開するモデルです。
+> このクレートは、Lindera 7.1.0 から crates.io にあります。Lindera のリリースが、一緒に **IPADIC のモデル**を公開します。形態素から係り受けまでの解析が一通りできます。学習データ、文節の区切り、解析器、モデルファイル、評価、テキストを受けるコマンドが揃っています。Lindera のトークンフィルターは、`lindera` コマンドとバインディングの既定のビルドに入っています。
 
-いま使うには、[リポジトリ](https://github.com/lindera/lindera)の checkout からビルドします。最初のリリースまでは、インターフェースが変わることがあります。作業は [#1417](https://github.com/lindera/lindera/issues/1417) で追っています。
+[インストール](./lindera-dependency/installation.md)と[クイックスタート](./lindera-dependency/quickstart.md)から始めてください。作業は [#1417](https://github.com/lindera/lindera/issues/1417) で追っています。
 
 ## できること
 
@@ -31,6 +31,8 @@ Lindera Dependency（`lindera-dependency`）は、日本語の文節の係り受
 
 ## 目次
 
+- [インストール](./lindera-dependency/installation.md) -- クレート、トークンフィルターの入ったビルド、モデルを手に入れる 3 つの方法
+- [クイックスタート](./lindera-dependency/quickstart.md) -- 公開しているモデルで 1 つの文を解析する。コマンドラインと Rust から
 - [アーキテクチャ](./lindera-dependency/architecture.md) -- モジュール、型、ラティス形式、feature フラグ
 - [文節の区切り](./lindera-dependency/chunking.md) -- 形態素を文節に区切る、モデルを学習する
 - [係り受けの解析](./lindera-dependency/parsing.md) -- 文節の係り先を求める。ループ、素性、モデルの学習、精度
@@ -41,6 +43,6 @@ Lindera Dependency（`lindera-dependency`）は、日本語の文節の係り受
 - [学習データ](./lindera-dependency/training_data.md) -- UD Japanese-GSD から学習データを作る
 - [評価](./lindera-dependency/evaluation.md) -- 精度を数える、2 つの出力を比べる、交差検証
 
-API リファレンスのページは、まだありません。クレートが docs.rs に無いためです。API のドキュメントは、`cargo doc -p lindera-dependency --features train --open` で手元にビルドできます。
+- [API リファレンス](./lindera-dependency/api_reference.md) -- docs.rs にあるクレートのドキュメント
 
 このクレートの決定と、その根拠になった数字は、[設計メモ](./development/dependency_design.md)にあります。

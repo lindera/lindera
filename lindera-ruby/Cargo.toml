@@ -49,7 +49,9 @@ embed-dependency-ipadic = [
     "dependency",
     "lindera-binding/embed-dependency-ipadic",
 ] # Embed the model of the token filter japanese_dependency for IPADIC
-default = ["train"] # No directories included
+# `dependency` is in the default build since 7.1.0 (#1440): the code of the
+# token filter japanese_dependency, without a model, which a user downloads.
+default = ["train", "dependency"] # No dictionary and no model included
 
 [dependencies]
 # Exact pins instead of `workspace = true`: the gem ships this crate as

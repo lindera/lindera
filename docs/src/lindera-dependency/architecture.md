@@ -163,7 +163,7 @@ With the `cli` feature the crate builds the `lindera-dependency` command, which 
 | `instances` | `train` | Writes the training instances of the parser | [Parsing](./parsing.md) |
 | `train-parser` | `train` | Trains the parser and writes a model file, with the chunker of another one | [Parsing](./parsing.md) |
 
-The command is in this crate, not in `lindera-cli`: `lindera-cli` is published, and cannot depend on a crate that is not.
+The command is in this crate, not in `lindera-cli`: it writes the lattice format and holds the training, which a user of the tokenizer does not need. `lindera-cli` runs the parser as a [token filter](./token_filter.md).
 
 ## Feature Flags
 

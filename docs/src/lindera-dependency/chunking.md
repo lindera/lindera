@@ -74,7 +74,7 @@ EOS
 
 ## Training a model
 
-No model is distributed yet. Train one from [training data](./training_data.md):
+The [model for IPADIC](./model_file.md#the-model-for-ipadic) that Lindera releases has a chunker. To train one of your own from [training data](./training_data.md):
 
 ```shell
 cargo run --release -p lindera-dependency --features train -- train-chunker \

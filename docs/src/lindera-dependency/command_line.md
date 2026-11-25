@@ -101,4 +101,4 @@ On the text of the test file of UD Japanese-GSD (543 sentences), with the defaul
 
 ## The `lindera` command
 
-`lindera tokenize` runs the parser as a token filter, in a build with the `dependency` feature: see [Token Filter](./token_filter.md). It writes the result on the tokens of its JSON output, not the lattice format. The feature is in no default build, and works in a checkout only: `lindera-cli` is published on crates.io and cannot depend on a crate that is not, until this crate is published ([#1440](https://github.com/lindera/lindera/issues/1440)).
+`lindera tokenize` runs the parser as a token filter: see [Token Filter](./token_filter.md). It writes the result on the tokens of its JSON output, not the lattice format. The `lindera` command has the filter in its default build, from 7.1.0 on.

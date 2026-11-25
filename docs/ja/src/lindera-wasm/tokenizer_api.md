@@ -317,7 +317,7 @@ console.log(JSON.stringify(token, null, 2));
 
 トークンの文節と、その文節の係り先です。トークンフィルター `japanese_dependency` を使うと、各トークンの `dependency` に入ります。フィルター、モデル、テキストの文への分け方は、[トークンフィルター](../lindera-dependency/token_filter.md)を見てください。
 
-フィルターは、`dependency` feature を付けたビルドにだけ入ります。配布しているパッケージには、まだ入っていません。
+7.1.0 から、配布しているパッケージにフィルターが入っています。`dependency` feature が既定のビルドに入ったためです。モデルは入っていません。フィルターにはモデルファイルのバイト列を渡します。Lindera が公開している IPADIC のモデルは、各[リリース](https://github.com/lindera/lindera/releases)のページの `lindera-dependency-ipadic-<version>.zip` にある `dependency.model` で、`lindera download dependency-ipadic` でもインストールできます（[インストール](../lindera-dependency/installation.md#モデル)）。
 
 | プロパティ | 型 | 説明 |
 | --- | --- | --- |

@@ -12,8 +12,9 @@
 //!
 //! This crate holds what the analysis is built on, its two steps, the
 //! segmentation into bunsetsu and the parsing of their dependencies, and
-//! the model file of a dictionary. No model is distributed yet: the two
-//! steps are trained with the commands of the crate.
+//! the model file of a dictionary. A release of Lindera publishes the model
+//! for IPADIC, which the feature `embed-model-ipadic` embeds; the two steps
+//! can also be trained with the commands of the crate.
 //!
 //! - [`Morpheme`], the trait of a morpheme: a surface and the feature columns
 //!   of its dictionary. The crate depends on no tokenizer, and a type outside

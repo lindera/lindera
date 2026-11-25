@@ -11,9 +11,9 @@ Lindera Dependency (`lindera-dependency`) is a crate for Japanese bunsetsu depen
 
 ## Status
 
-> The crate is **under development and not published** on crates.io, and **no model is distributed yet**. The analysis is complete from morphemes to dependencies, with a model you train yourself: the training data, the chunker, the parser, the model file, the evaluation and a command for text are here. The token filter of Lindera is in the builds with the `dependency` feature, of the command and of the bindings. What is still to come is a released model.
+> The crate is on crates.io from Lindera 7.1.0 on, and each release of Lindera publishes the **model for IPADIC** with it. The analysis is complete from morphemes to dependencies: the training data, the chunker, the parser, the model file, the evaluation and a command for text are here, and the token filter of Lindera is in the default builds of the `lindera` command and of the bindings.
 
-To use it today, build it from a checkout of the [repository](https://github.com/lindera/lindera). The interfaces may change until the first release. The work is tracked in [#1417](https://github.com/lindera/lindera/issues/1417).
+Start with the [Installation](./lindera-dependency/installation.md) and the [Quick Start](./lindera-dependency/quickstart.md). The work is tracked in [#1417](https://github.com/lindera/lindera/issues/1417).
 
 ## What it can do
 
@@ -31,6 +31,8 @@ The default build has no dependency and builds for `wasm32-unknown-unknown`: it 
 
 ## Contents
 
+- [Installation](./lindera-dependency/installation.md) -- The crate, the builds that have the token filter, and the three ways to get the model
+- [Quick Start](./lindera-dependency/quickstart.md) -- One sentence parsed with the released model, from the command line and from Rust
 - [Architecture](./lindera-dependency/architecture.md) -- The modules, the types, the lattice format and the feature flags
 - [Chunking](./lindera-dependency/chunking.md) -- Segmenting morphemes into bunsetsu, and training a model
 - [Parsing](./lindera-dependency/parsing.md) -- Finding the head of each bunsetsu: the loop, the features, training a model, and its accuracy
@@ -41,6 +43,6 @@ The default build has no dependency and builds for `wasm32-unknown-unknown`: it 
 - [Training Data](./lindera-dependency/training_data.md) -- Making training data from UD Japanese-GSD
 - [Evaluation](./lindera-dependency/evaluation.md) -- Counting accuracy, comparing two outputs, and cross-validation
 
-There is no API reference page yet: the crate is not on docs.rs. Build the API documentation locally with `cargo doc -p lindera-dependency --features train --open`.
+- [API Reference](./lindera-dependency/api_reference.md) -- The documentation of the crate on docs.rs
 
 For the decisions behind the crate and the numbers they rest on, see the [design notes](./development/dependency_design.md).

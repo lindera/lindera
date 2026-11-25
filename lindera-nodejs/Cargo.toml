@@ -53,7 +53,9 @@ embed-dependency-ipadic = [
 # `Error` instead of aborting Node.js (#1314). `make test-lindera-nodejs`
 # enables it through NODEJS_TEST_FEATURES.
 test-hooks = []
-default = ["train"] # Training enabled by default
+# `dependency` is in the default build since 7.1.0 (#1440): the code of the
+# token filter japanese_dependency, without a model, which a user downloads.
+default = ["train", "dependency"] # Training enabled by default
 
 [dependencies]
 lindera = { workspace = true }

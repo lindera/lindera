@@ -1,6 +1,6 @@
-# Migrating from v7.0
+# Migrating from v7.0 to v7.1
 
-This guide lists the breaking changes made after v7.0.0 that are not released yet. Which version carries them, 7.1.0 or 8.0.0, is decided with the release ([#1440](https://github.com/lindera/lindera/issues/1440)); this page takes the name of that version then.
+This guide lists the breaking changes of v7.1.0. There is one, in the Rust API, and it is in a minor version by a decision of the maintainer ([#1440](https://github.com/lindera/lindera/issues/1440)): code that reads the tokens a tokenizer returns is not affected.
 
 ## Overview
 
@@ -9,6 +9,8 @@ This guide lists the breaking changes made after v7.0.0 that are not released ye
 | **`Token` holds the result of a dependency analysis, and is `#[non_exhaustive]`** | Rust code that builds a `Token` with a struct expression, or that destructures all of its fields | Build the token with `Token::new`, and set the fields that differ afterwards |
 
 Code that reads the tokens a tokenizer returns is not affected: `surface`, `byte_start`, `details()`, `as_value()` and the other fields and methods are what they were.
+
+v7.1 adds bunsetsu dependency analysis ([Lindera Dependency](./lindera-dependency.md)), and this change comes with it. The rest of what v7.1 adds needs no change of existing code; [What does not change](#what-does-not-change) lists what a user may notice.
 
 ## `Token` is built with `Token::new`
 
@@ -59,3 +61,5 @@ The compiler names each place: `cannot create non-exhaustive struct using struct
 - The JSON that `Token::as_value` and `lindera tokenize -o json` write has no new key for a token without a dependency.
 - `Token::details` holds the fields of the dictionary, as before: the result of a dependency analysis is not written there.
 - A token grows by the size of one pointer.
+- The `lindera` command and the bindings have the `dependency` feature in their default builds: the token filter `japanese_dependency` is in the packages, and they depend on the `lindera-dependency` crate, which has no dependency of its own. The command grows by 134 kB. `default-features = false` gives the build without it. The libraries `lindera` and `lindera-analysis` have the feature only when it is named.
+- No model is in a package or embedded by default; `lindera download dependency-ipadic` gets the one for IPADIC.

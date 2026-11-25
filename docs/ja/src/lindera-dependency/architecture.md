@@ -163,7 +163,7 @@ assert_eq!(output, text.as_bytes());
 | `instances` | `train` | 解析器の学習事例を書き出す | [係り受けの解析](./parsing.md) |
 | `train-parser` | `train` | 解析器を学習し、モデルファイルを書く。ほかのファイルの区切りを入れられる | [係り受けの解析](./parsing.md) |
 
-コマンドは `lindera-cli` ではなく、このクレートにあります。`lindera-cli` は公開されているので、公開していないクレートに依存できません。
+コマンドは `lindera-cli` ではなく、このクレートにあります。ラティス形式を書き出し、学習を持つコマンドで、トークナイザーを使うだけの人には要らないためです。`lindera-cli` は、解析器を[トークンフィルター](./token_filter.md)として動かします。
 
 ## Feature フラグ
 
