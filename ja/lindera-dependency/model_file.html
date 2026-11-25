@@ -179,7 +179,7 @@
                         <h1 id="モデルファイル"><a class="header" href="#モデルファイル">モデルファイル</a></h1>
 <p>モデルファイルは、1 つの辞書を解析するのに要るものを 1 つにまとめたファイルです。辞書の名前、その<a href="./head_and_function_word.html">スキーマ</a>、学習した部分が入ります。部分は、<a href="./chunking.html">文節の区切り</a>と<a href="./parsing.html">解析器</a>です。</p>
 <p>モデルは 1 つの辞書に属します。辞書の素性の列と、辞書による分かち書きに依存するので、ファイルは、どの辞書のためのものかを自分で持ち、1 つのファイルが 1 つの辞書に対応します。</p>
-<p>配布しているモデルは、まだありません。<a href="#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>を公開するまでは、スクリプトで作ります。<a href="./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> は区切りを入れたモデルファイルを、<a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a> は解析器だけか、両方を入れたモデルファイルを書き出します。</p>
+<p><a href="#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>は、7.1.0 から、Lindera のリリースが公開します。<a href="./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> は区切りを入れたモデルファイルを、<a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a> は解析器だけか、両方を入れたモデルファイルを書き出します。</p>
 <h2 id="モデルを読む"><a class="header" href="#モデルを読む">モデルを読む</a></h2>
 <p><code>Model</code> は、ファイルをその場で読みます。バイト列を持つ型について総称で、表をどこにも写しません。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -258,8 +258,14 @@ assert_eq!(model.dictionary(), "ipadic");
 <p>同じ部分からは、同じバイト列ができます。ファイルのスキーマと違うスキーマで学習した部分は断ります。</p>
 <p><code>ModelBuilder::parser</code> は、<code>ParserModel</code> と、重みの書き方（<code>Quantization::F32</code>、<code>I16</code>、<code>I8</code>）を受け取ります。<code>ModelBuilder::from_model</code> は、すでにあるファイルの名前、スキーマ、部分から始めて、部分を足せるようにします。<code>train-parser --chunker</code> は、これで区切りを写します。</p>
 <h2 id="ipadic-のモデル"><a class="header" href="#ipadic-のモデル">IPADIC のモデル</a></h2>
-<p>このプロジェクトは、IPADIC のモデルを 1 つ学習し、ファイルとして公開します。区切りと解析器の両方が入ります。まだ公開しておらず、<a href="#%E4%BD%9C%E3%82%8A%E7%9B%B4%E3%81%99"><code>build_model.sh</code></a> で作ります。</p>
-<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<p>このプロジェクトは、IPADIC のモデルを 1 つ学習します。区切りと解析器の両方が入ります。7.1.0 から、Lindera のリリースが <a href="#%E4%BD%9C%E3%82%8A%E7%9B%B4%E3%81%99"><code>build_model.sh</code></a> でモデルを作り、その版のページに、辞書と並べて置きます。<code>v&lt;version&gt;</code> の <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> です。モデルは、辞書と同じく、リリースの版を持ち、そのリリースに属します。Lindera 7.1.0 のプログラムは、7.1.0 のモデルを使います。</p>
+<p>アーカイブには、ディレクトリ <code>lindera-dependency-ipadic</code> が 1 つ入っていて、中にファイルが 3 つあります。</p>
+<div class="table-wrapper"><table><thead><tr><th>ファイル</th><th>中身</th></tr></thead><tbody>
+<tr><td><code>dependency.model</code></td><td>モデルファイル</td></tr>
+<tr><td><code>model.json</code></td><td>モデルの名前（<code>dependency-ipadic</code>）、辞書（<code>ipadic</code>）、Lindera の版（<code>lindera_version</code>）</td></tr>
+<tr><td><code>NOTICE.txt</code></td><td>モデルのライセンス、何から作ったか、IPADIC の表示</td></tr>
+</tbody></table>
+</div><div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
 <tr><td>辞書</td><td>IPADIC（<code>ipadic</code>）。<code>lindera-ipadic</code> クレートが mecab-ipadic 2.7.0 から作るもの</td></tr>
 <tr><td>学習データ</td><td><a href="https://github.com/UniversalDependencies/UD_Japanese-GSD">UD Japanese-GSD</a>（c662dc9）の train のファイルを、IPADIC で<a href="./training_data.html">変換</a>したもの。7,024 文</td></tr>
 <tr><td>設定</td><td><a href="./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> と <a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a> の既定</td></tr>
@@ -268,20 +274,44 @@ assert_eq!(model.dictionary(), "ipadic");
 </tbody></table>
 </div>
 <p>使うのは train のファイルだけです。UD Japanese-GSD の dev と test、UD Japanese-PUD は学習で見ておらず、設定の選択にも使っていません。そのため、これらで測った<a href="./parsing.html#%E7%B2%BE%E5%BA%A6">精度</a>は、このファイルそのものの精度です。</p>
+<h3 id="埋め込む"><a class="header" href="#埋め込む">埋め込む</a></h3>
+<p><code>lindera-dependency</code> の feature <code>embed-model-ipadic</code> が、モデルをプログラムに埋め込みます。<code>lindera</code>、<code>lindera-cli</code>、各バインディングは、これを <code>embed-dependency-ipadic</code> として転送します。埋め込んだモデルは、埋め込んだ辞書と同じ書き方で指します。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera_dependency::embedded;
+
+// The bytes of the program, read in place.
+let model = embedded::model("ipadic")?;
+assert_eq!(model.dictionary(), "ipadic");
+<span class="boring">}</span></code></pre></pre>
+<p><a href="./command_line.html">コマンド</a>には <code>--model embedded://ipadic</code> を、<a href="./token_filter.html">トークンフィルター</a>には <code>model: "embedded://ipadic"</code> を渡します。feature の無いビルドは、その feature の名前を挙げたエラーを返します。</p>
+<p>ビルドは、モデルを学習しません。学習にはコーパスが要るためです。ビルドがモデルをどこから取るかは、クレートをどこから取ったかで決まります。</p>
+<div class="table-wrapper"><table><thead><tr><th>ビルド</th><th>埋め込むモデル</th></tr></thead><tbody>
+<tr><td>crates.io のクレート</td><td>そのリリースのアーカイブ。クレートが <code>prebuilt.json</code> に SHA-256 で固定している。ビルドは、ダウンロードして照合する。辞書のクレートが<a href="../development/dictionary_release.html">辞書</a>にするのと同じ</td></tr>
+<tr><td>リポジトリ（<code>main</code>、pull request、git の依存）</td><td><a href="../getting_started/environment_variables.html#lindera_build_dependency_model_ipadic_file"><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code></a> が指すファイル。リポジトリには <code>prebuilt.json</code> が無く、この変数の無いビルドは、その旨のエラーで止まる</td></tr>
+<tr><td>docs.rs</td><td>空のファイル。<code>embedded::model</code> はエラーを返す</td></tr>
+</tbody></table>
+</div>
+<p>この変数を設定すると、公開済みのクレートも、固定しているアーカイブの代わりに、そのファイルを埋め込みます。</p>
+<pre><code class="language-shell">scripts/dependency/build_model.sh
+export LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE=$PWD/scripts/dependency/data/model/lindera-dependency-ipadic/dependency.model
+cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ipadic
+</code></pre>
 <h3 id="作り直す"><a class="header" href="#作り直す">作り直す</a></h3>
 <p>1 つのスクリプトが、コーパスとリポジトリのソースからファイルを作ります。</p>
 <pre><code class="language-shell">scripts/dependency/build_model.sh
 </code></pre>
-<p>スクリプトは、UD Japanese-GSD を固定の commit で取り、<code>lindera-dependency</code> コマンドを、名指しした toolchain と <code>Cargo.lock</code> の依存でビルドします。続けて、train のファイルを変換し、区切りと解析器を学習して、<code>scripts/dependency/data/model</code> にファイルを 3 つ書きます。モデル、その <code>NOTICE.txt</code>、<code>SHA256SUMS</code> です。ビルドの後は 15 秒ほどで終わります。最後に、Lindera の commit を表示し、続けて、ほかに使ったものと作ったものを表示します。</p>
+<p>スクリプトは、UD Japanese-GSD を固定の commit で取り、<code>lindera-dependency</code> コマンドを、名指しした toolchain と <code>Cargo.lock</code> の依存でビルドします。続けて、train のファイルを変換し、区切りと解析器を学習して、<code>scripts/dependency/data/model</code> に、アーカイブのディレクトリとアーカイブを書きます。ビルドの後は 15 秒ほどで終わります。最後に、Lindera の commit を表示し、続けて、ほかに使ったものと作ったものを表示します。</p>
 <pre><code class="language-text">corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6
 toolchain: rustc 1.100.0 (0ef1bc386 2026-11-09)
 platform: x86_64-unknown-linux-gnu, glibc 2.43
 training data: 5075c95f2518b6af791e6a9ea2bd5f9f63eeaa5b316f3801d8068d71436e5064  train.lattice
 chunker: 74762e9b4f23d1dd06a304238006480264e0fea70b7a3a5c9e647c176dad59c3  chunker.model
-model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic-1.0.0.model (6258548 bytes)
+model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic/dependency.model (6258548 bytes)
+archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  lindera-dependency-ipadic-7.0.0.zip
 </code></pre>
 <p><code>--check &lt;sha256&gt;</code> を付けると、作ったファイルの SHA-256 が違うときに、スクリプトが失敗します。未コミットの変更がある作業ツリーでは、スクリプトは動きません。表示する commit が、ファイルの元になったソースと一致するようにするためです。</p>
-<p>ソース、コーパス、toolchain、プラットフォームが同じなら、同じバイト列になります。学習は、時刻にも、スレッドの数にも、ハッシュ表の順序にも依存しません。別のプラットフォームで同じバイト列になるかは、分かっていません。区切りの学習は、プラットフォームの数学ライブラリの <code>exp</code> と <code>ln_1p</code> を呼び、その最後の 1 ビットはライブラリによって違うことがあります。ファイルの表示（<code>NOTICE.txt</code>）に、作ったプラットフォームを書いてあります。</p>
+<p>ソース、コーパス、toolchain、プラットフォームが同じなら、同じバイト列になります。学習は、時刻にも、スレッドの数にも、ハッシュ表の順序にも依存しません。別のプラットフォームで同じバイト列になるかは、分かっていません。区切りの学習は、プラットフォームの数学ライブラリの <code>exp</code> と <code>ln_1p</code> を呼び、その最後の 1 ビットはライブラリによって違うことがあります。ファイルの表示（<code>NOTICE.txt</code>）に、作ったプラットフォームを書いてあります。リリースのモデルは、リリースのランナーが作るので、ほかの端末で作ったものとバイト列が違うことがあります。そのアーカイブの SHA-256 は、公開したクレートの <code>prebuilt.json</code> にあります。</p>
 <h3 id="モデルのライセンス"><a class="header" href="#モデルのライセンス">モデルのライセンス</a></h3>
 <p>モデルファイルは、Lindera のコードと同じ MIT ライセンスで配布します。ファイルに添える <code>NOTICE.txt</code> に、ライセンスの本文、UD Japanese-GSD への謝辞、IPADIC の表示が入っています。以下は、このプロジェクトでの扱い方であり、法的な助言ではありません。</p>
 <p><strong>問い。</strong> UD Japanese-GSD のライセンスは CC BY-SA 4.0 です。このライセンスは、元の素材に「由来する、または基づく」素材（Adapted Material）を、同じライセンスで共有することを求めます。ある著作物で学習したモデルがそれに当たるかは、ライセンスにも、Creative Commons の FAQ にも書かれていません。</p>

@@ -178,9 +178,9 @@
                     <main>
                         <h1 id="command-line"><a class="header" href="#command-line">Command Line</a></h1>
 <p>The <code>lindera-dependency</code> command takes plain text, tokenizes it with a Lindera dictionary, and writes the bunsetsu of each sentence and their dependencies in the <a href="./architecture.html#the-lattice-format">lattice format</a>, which is what <code>cabocha -f1</code> writes.</p>
-<p>It needs a <a href="./model_file.html">model file</a> with a chunker and a parser. No model is distributed yet: <a href="./parsing.html#training-a-model">train one</a> first.</p>
+<p>It needs a <a href="./model_file.html">model file</a> with a chunker and a parser: the <a href="./model_file.html#the-model-for-ipadic">model for IPADIC</a>, which a release of Lindera publishes from 7.1.0 on, or one you <a href="./parsing.html#training-a-model">train</a>.</p>
 <h2 id="building"><a class="header" href="#building">Building</a></h2>
-<p>The command is behind the <code>cli</code> feature, which brings <code>clap</code> and <code>lindera-segmenter</code> and no training code. <code>embed-ipadic</code> embeds IPADIC in it:</p>
+<p>The command is behind the <code>cli</code> feature, which brings <code>clap</code> and <code>lindera-segmenter</code> and no training code. <code>embed-ipadic</code> embeds IPADIC in it, and <code>embed-model-ipadic</code> the <a href="./model_file.html#embedding-it">model for IPADIC</a>, which <code>--model embedded://ipadic</code> then names:</p>
 <pre><code class="language-shell">cargo build --release -p lindera-dependency --features cli,embed-ipadic
 </code></pre>
 <p>The binary is <code>target/release/lindera-dependency</code>. A build with <code>cli</code> has two subcommands, <code>parse</code> and <a href="./chunking.html"><code>chunk</code></a>; the <code>train</code> feature adds the ones that make training data, train and evaluate.</p>

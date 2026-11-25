@@ -323,6 +323,7 @@ assert_eq!(output, text.as_bytes());
 <tr><td><code>cli</code></td><td><code>lindera-dependency</code> コマンドの <code>parse</code> と <code>chunk</code>。分かち書きは <code>lindera-segmenter</code>。学習のコードは入らない</td><td>No</td></tr>
 <tr><td><code>train</code></td><td><code>corpus</code> と <code>evaluation</code> のモジュール、<code>lindera-crf</code> による区切りの学習と解析器の学習、そのサブコマンド（<code>cli</code> を含む）</td><td>No</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>コマンドに IPADIC を埋め込む。<code>--dict embedded://ipadic</code> で使う（<code>cli</code> を含む）</td><td>No</td></tr>
+<tr><td><code>embed-model-ipadic</code></td><td><a href="./model_file.html#%E5%9F%8B%E3%82%81%E8%BE%BC%E3%82%80">IPADIC のモデル</a>を埋め込む。<code>embedded::model("ipadic")</code> と <code>--model embedded://ipadic</code> で使う。ビルド依存が増え、ライブラリの依存は増えない</td><td>No</td></tr>
 </tbody></table>
 </div>
 <p>このクレートが依存するのは <code>lindera-segmenter</code> までで、<code>lindera</code> と <code>lindera-analysis</code> には依存しません。トークンフィルターのために、<code>lindera-analysis</code> が <code>dependency</code> feature の裏でこのクレートに依存するためです。</p>

@@ -446,6 +446,7 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 <tr><td><a href="getting_started/environment_variables.html#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a></td><td>辞書クレートの build script</td><td><code>http</code> か <code>https</code> の URL</td><td>公開済みの辞書を GitHub のリリースからダウンロードする</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#lindera_build_dictionary_source_base_url"><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></a></td><td>辞書クレートの build script</td><td><code>http</code> か <code>https</code> の URL</td><td>ソースのアーカイブを <code>https://lindera.dev</code> から、UniDic、UniDic CWJ、UniDic CSJ のものは国立国語研究所（<code>https://clrd.ninjal.ac.jp</code>）から、ko-dic のものは mecab-ko-dic の Bitbucket の Downloads（<code>https://bitbucket.org</code>）からダウンロードする</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#lindera_build_context_id_freq_file"><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code></a></td><td>辞書クレートの build script</td><td>ファイル</td><td>辞書クレートに同梱の頻度表（あれば）</td></tr>
+<tr><td><a href="getting_started/environment_variables.html#lindera_build_dependency_model_ipadic_file"><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code></a></td><td><code>embed-model-ipadic</code> を付けた <code>lindera-dependency</code> の build script</td><td>モデルファイル</td><td>公開済みのクレートは、固定しているモデルを埋め込む。リポジトリからのビルドは止まる</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#docs_rs"><code>DOCS_RS</code></a></td><td>辞書クレートの build script</td><td>docs.rs が設定する</td><td>本物の辞書をビルドする</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#lindera_config_file"><code>LINDERA_CONFIG_FILE</code></a></td><td><code>TokenizerBuilder::new()</code>（<code>lindera tokenize</code> とバインディングも）</td><td>ファイル</td><td>空の設定</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#lindera_dictionaries_dir"><code>LINDERA_DICTIONARIES_DIR</code></a></td><td>CLI</td><td>ディレクトリ</td><td>OS のローカルデータディレクトリの <code>lindera/dictionaries</code></td></tr>
@@ -553,6 +554,35 @@ cargo build --features=embed-unidic
 <pre><code class="language-text">warning: lindera-ko-dic@7.0.0: LINDERA_CTX_FREQ_FILE is deprecated and will be removed in v8.0.0; set LINDERA_BUILD_CONTEXT_ID_FREQ_FILE instead
 </code></pre>
 <p>両方を設定すると <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> が使われ、<code>LINDERA_CTX_FREQ_FILE</code> は無視されると警告します。Cargo がこれらの警告を表示するのは、このリポジトリの checkout のように、パスで指定した辞書クレートをビルドするときです。crates.io から取得した辞書クレートでは、ビルドが失敗したときか <code>cargo build -vv</code> のときだけ表示します。</p>
+<h3 id="lindera_build_dependency_model_ipadic_file"><a class="header" href="#lindera_build_dependency_model_ipadic_file">LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</a></h3>
+<p><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code> は、<code>embed-model-ipadic</code>（<code>lindera</code>、そのコマンド、各バインディングでは <code>embed-dependency-ipadic</code>）を付けたビルドが埋め込むモデルファイルを指します。<code>lindera-dependency</code> の IPADIC のモデルです。</p>
+<pre><code class="language-shell">scripts/dependency/build_model.sh
+export LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE=$PWD/scripts/dependency/data/model/lindera-dependency-ipadic/dependency.model
+cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ipadic
+</code></pre>
+<ul>
+<li>
+<p>リポジトリからのビルドには、この変数が必要です。リポジトリには公開済みのモデルの固定が無く、モデルは build script の中では学習できないので、変数が無いとビルドは止まります。</p>
+<pre><code class="language-text">Error: LinderaError { kind: Args, source: lindera-dependency-ipadic is embedded from a release of Lindera, and a build from the repository has none to take it from: build the model with scripts/dependency/build_model.sh of the Lindera repository, and set LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE to the file }
+</code></pre>
+</li>
+<li>
+<p>crates.io のクレートは、そのリリースのアーカイブを固定していて、変数が無ければそれを埋め込みます。変数があれば、指されたファイルを埋め込み、何もダウンロードしません。</p>
+</li>
+<li>
+<p>ファイルは、そのまま埋め込まれます。中身の検査は、ビルドではなく、プログラムがモデルを求めたときに行います。</p>
+</li>
+<li>
+<p>変数か、変数が指すファイルを変えると、build script がもう一度動きます。</p>
+</li>
+<li>
+<p><a href="getting_started/environment_variables.html#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a> のミラーは、固定しているアーカイブにも効きます。アーカイブは、辞書と同じく、リリースのページにあるためです。</p>
+</li>
+<li>
+<p>ドキュメントのビルド（<code>DOCS_RS</code>）は、空のファイルを埋め込み、どちらも読みません。</p>
+</li>
+</ul>
+<p><a href="getting_started/../lindera-dependency/model_file.html#%E5%9F%8B%E3%82%81%E8%BE%BC%E3%82%80">IPADIC のモデル</a>を見てください。</p>
 <h3 id="docs_rs"><a class="header" href="#docs_rs">DOCS_RS</a></h3>
 <p><code>DOCS_RS</code> 環境変数は、docs.rsでドキュメントをビルドする際に自動的に設定されます。この変数が検出されると、Linderaは実際の辞書データをダウンロードする代わりにダミーの辞書ファイルを作成します。これにより、ネットワークアクセスや大容量ファイルのダウンロードなしでドキュメントをビルドできます。</p>
 <p>このビルドは <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を無視します。ダミーの辞書は build script の出力ディレクトリに作られ、キャッシュには入らないので、後で <code>DOCS_RS</code> なしにビルドしても埋め込まれません。</p>
@@ -2644,6 +2674,7 @@ assert_eq!(output, text.as_bytes());
 <tr><td><code>cli</code></td><td><code>lindera-dependency</code> コマンドの <code>parse</code> と <code>chunk</code>。分かち書きは <code>lindera-segmenter</code>。学習のコードは入らない</td><td>No</td></tr>
 <tr><td><code>train</code></td><td><code>corpus</code> と <code>evaluation</code> のモジュール、<code>lindera-crf</code> による区切りの学習と解析器の学習、そのサブコマンド（<code>cli</code> を含む）</td><td>No</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>コマンドに IPADIC を埋め込む。<code>--dict embedded://ipadic</code> で使う（<code>cli</code> を含む）</td><td>No</td></tr>
+<tr><td><code>embed-model-ipadic</code></td><td><a href="lindera-dependency/./model_file.html#%E5%9F%8B%E3%82%81%E8%BE%BC%E3%82%80">IPADIC のモデル</a>を埋め込む。<code>embedded::model("ipadic")</code> と <code>--model embedded://ipadic</code> で使う。ビルド依存が増え、ライブラリの依存は増えない</td><td>No</td></tr>
 </tbody></table>
 </div>
 <p>このクレートが依存するのは <code>lindera-segmenter</code> までで、<code>lindera</code> と <code>lindera-analysis</code> には依存しません。トークンフィルターのために、<code>lindera-analysis</code> が <code>dependency</code> feature の裏でこのクレートに依存するためです。</p>
@@ -3056,7 +3087,7 @@ cargo run --release -p lindera-dependency --features train -- parse \
 <div style="break-before: page; page-break-before: always;"></div><h1 id="モデルファイル"><a class="header" href="#モデルファイル">モデルファイル</a></h1>
 <p>モデルファイルは、1 つの辞書を解析するのに要るものを 1 つにまとめたファイルです。辞書の名前、その<a href="lindera-dependency/./head_and_function_word.html">スキーマ</a>、学習した部分が入ります。部分は、<a href="lindera-dependency/./chunking.html">文節の区切り</a>と<a href="lindera-dependency/./parsing.html">解析器</a>です。</p>
 <p>モデルは 1 つの辞書に属します。辞書の素性の列と、辞書による分かち書きに依存するので、ファイルは、どの辞書のためのものかを自分で持ち、1 つのファイルが 1 つの辞書に対応します。</p>
-<p>配布しているモデルは、まだありません。<a href="lindera-dependency/model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>を公開するまでは、スクリプトで作ります。<a href="lindera-dependency/./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> は区切りを入れたモデルファイルを、<a href="lindera-dependency/./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a> は解析器だけか、両方を入れたモデルファイルを書き出します。</p>
+<p><a href="lindera-dependency/model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>は、7.1.0 から、Lindera のリリースが公開します。<a href="lindera-dependency/./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> は区切りを入れたモデルファイルを、<a href="lindera-dependency/./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a> は解析器だけか、両方を入れたモデルファイルを書き出します。</p>
 <h2 id="モデルを読む"><a class="header" href="#モデルを読む">モデルを読む</a></h2>
 <p><code>Model</code> は、ファイルをその場で読みます。バイト列を持つ型について総称で、表をどこにも写しません。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -3135,8 +3166,14 @@ assert_eq!(model.dictionary(), "ipadic");
 <p>同じ部分からは、同じバイト列ができます。ファイルのスキーマと違うスキーマで学習した部分は断ります。</p>
 <p><code>ModelBuilder::parser</code> は、<code>ParserModel</code> と、重みの書き方（<code>Quantization::F32</code>、<code>I16</code>、<code>I8</code>）を受け取ります。<code>ModelBuilder::from_model</code> は、すでにあるファイルの名前、スキーマ、部分から始めて、部分を足せるようにします。<code>train-parser --chunker</code> は、これで区切りを写します。</p>
 <h2 id="ipadic-のモデル"><a class="header" href="#ipadic-のモデル">IPADIC のモデル</a></h2>
-<p>このプロジェクトは、IPADIC のモデルを 1 つ学習し、ファイルとして公開します。区切りと解析器の両方が入ります。まだ公開しておらず、<a href="lindera-dependency/model_file.html#%E4%BD%9C%E3%82%8A%E7%9B%B4%E3%81%99"><code>build_model.sh</code></a> で作ります。</p>
-<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<p>このプロジェクトは、IPADIC のモデルを 1 つ学習します。区切りと解析器の両方が入ります。7.1.0 から、Lindera のリリースが <a href="lindera-dependency/model_file.html#%E4%BD%9C%E3%82%8A%E7%9B%B4%E3%81%99"><code>build_model.sh</code></a> でモデルを作り、その版のページに、辞書と並べて置きます。<code>v&lt;version&gt;</code> の <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> です。モデルは、辞書と同じく、リリースの版を持ち、そのリリースに属します。Lindera 7.1.0 のプログラムは、7.1.0 のモデルを使います。</p>
+<p>アーカイブには、ディレクトリ <code>lindera-dependency-ipadic</code> が 1 つ入っていて、中にファイルが 3 つあります。</p>
+<div class="table-wrapper"><table><thead><tr><th>ファイル</th><th>中身</th></tr></thead><tbody>
+<tr><td><code>dependency.model</code></td><td>モデルファイル</td></tr>
+<tr><td><code>model.json</code></td><td>モデルの名前（<code>dependency-ipadic</code>）、辞書（<code>ipadic</code>）、Lindera の版（<code>lindera_version</code>）</td></tr>
+<tr><td><code>NOTICE.txt</code></td><td>モデルのライセンス、何から作ったか、IPADIC の表示</td></tr>
+</tbody></table>
+</div><div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
 <tr><td>辞書</td><td>IPADIC（<code>ipadic</code>）。<code>lindera-ipadic</code> クレートが mecab-ipadic 2.7.0 から作るもの</td></tr>
 <tr><td>学習データ</td><td><a href="https://github.com/UniversalDependencies/UD_Japanese-GSD">UD Japanese-GSD</a>（c662dc9）の train のファイルを、IPADIC で<a href="lindera-dependency/./training_data.html">変換</a>したもの。7,024 文</td></tr>
 <tr><td>設定</td><td><a href="lindera-dependency/./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> と <a href="lindera-dependency/./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a> の既定</td></tr>
@@ -3145,20 +3182,44 @@ assert_eq!(model.dictionary(), "ipadic");
 </tbody></table>
 </div>
 <p>使うのは train のファイルだけです。UD Japanese-GSD の dev と test、UD Japanese-PUD は学習で見ておらず、設定の選択にも使っていません。そのため、これらで測った<a href="lindera-dependency/./parsing.html#%E7%B2%BE%E5%BA%A6">精度</a>は、このファイルそのものの精度です。</p>
+<h3 id="埋め込む"><a class="header" href="#埋め込む">埋め込む</a></h3>
+<p><code>lindera-dependency</code> の feature <code>embed-model-ipadic</code> が、モデルをプログラムに埋め込みます。<code>lindera</code>、<code>lindera-cli</code>、各バインディングは、これを <code>embed-dependency-ipadic</code> として転送します。埋め込んだモデルは、埋め込んだ辞書と同じ書き方で指します。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera_dependency::embedded;
+
+// The bytes of the program, read in place.
+let model = embedded::model("ipadic")?;
+assert_eq!(model.dictionary(), "ipadic");
+<span class="boring">}</span></code></pre></pre>
+<p><a href="lindera-dependency/./command_line.html">コマンド</a>には <code>--model embedded://ipadic</code> を、<a href="lindera-dependency/./token_filter.html">トークンフィルター</a>には <code>model: "embedded://ipadic"</code> を渡します。feature の無いビルドは、その feature の名前を挙げたエラーを返します。</p>
+<p>ビルドは、モデルを学習しません。学習にはコーパスが要るためです。ビルドがモデルをどこから取るかは、クレートをどこから取ったかで決まります。</p>
+<div class="table-wrapper"><table><thead><tr><th>ビルド</th><th>埋め込むモデル</th></tr></thead><tbody>
+<tr><td>crates.io のクレート</td><td>そのリリースのアーカイブ。クレートが <code>prebuilt.json</code> に SHA-256 で固定している。ビルドは、ダウンロードして照合する。辞書のクレートが<a href="lindera-dependency/../development/dictionary_release.html">辞書</a>にするのと同じ</td></tr>
+<tr><td>リポジトリ（<code>main</code>、pull request、git の依存）</td><td><a href="lindera-dependency/../getting_started/environment_variables.html#lindera_build_dependency_model_ipadic_file"><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code></a> が指すファイル。リポジトリには <code>prebuilt.json</code> が無く、この変数の無いビルドは、その旨のエラーで止まる</td></tr>
+<tr><td>docs.rs</td><td>空のファイル。<code>embedded::model</code> はエラーを返す</td></tr>
+</tbody></table>
+</div>
+<p>この変数を設定すると、公開済みのクレートも、固定しているアーカイブの代わりに、そのファイルを埋め込みます。</p>
+<pre><code class="language-shell">scripts/dependency/build_model.sh
+export LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE=$PWD/scripts/dependency/data/model/lindera-dependency-ipadic/dependency.model
+cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ipadic
+</code></pre>
 <h3 id="作り直す"><a class="header" href="#作り直す">作り直す</a></h3>
 <p>1 つのスクリプトが、コーパスとリポジトリのソースからファイルを作ります。</p>
 <pre><code class="language-shell">scripts/dependency/build_model.sh
 </code></pre>
-<p>スクリプトは、UD Japanese-GSD を固定の commit で取り、<code>lindera-dependency</code> コマンドを、名指しした toolchain と <code>Cargo.lock</code> の依存でビルドします。続けて、train のファイルを変換し、区切りと解析器を学習して、<code>scripts/dependency/data/model</code> にファイルを 3 つ書きます。モデル、その <code>NOTICE.txt</code>、<code>SHA256SUMS</code> です。ビルドの後は 15 秒ほどで終わります。最後に、Lindera の commit を表示し、続けて、ほかに使ったものと作ったものを表示します。</p>
+<p>スクリプトは、UD Japanese-GSD を固定の commit で取り、<code>lindera-dependency</code> コマンドを、名指しした toolchain と <code>Cargo.lock</code> の依存でビルドします。続けて、train のファイルを変換し、区切りと解析器を学習して、<code>scripts/dependency/data/model</code> に、アーカイブのディレクトリとアーカイブを書きます。ビルドの後は 15 秒ほどで終わります。最後に、Lindera の commit を表示し、続けて、ほかに使ったものと作ったものを表示します。</p>
 <pre><code class="language-text">corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6
 toolchain: rustc 1.100.0 (0ef1bc386 2026-11-09)
 platform: x86_64-unknown-linux-gnu, glibc 2.43
 training data: 5075c95f2518b6af791e6a9ea2bd5f9f63eeaa5b316f3801d8068d71436e5064  train.lattice
 chunker: 74762e9b4f23d1dd06a304238006480264e0fea70b7a3a5c9e647c176dad59c3  chunker.model
-model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic-1.0.0.model (6258548 bytes)
+model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic/dependency.model (6258548 bytes)
+archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  lindera-dependency-ipadic-7.0.0.zip
 </code></pre>
 <p><code>--check &lt;sha256&gt;</code> を付けると、作ったファイルの SHA-256 が違うときに、スクリプトが失敗します。未コミットの変更がある作業ツリーでは、スクリプトは動きません。表示する commit が、ファイルの元になったソースと一致するようにするためです。</p>
-<p>ソース、コーパス、toolchain、プラットフォームが同じなら、同じバイト列になります。学習は、時刻にも、スレッドの数にも、ハッシュ表の順序にも依存しません。別のプラットフォームで同じバイト列になるかは、分かっていません。区切りの学習は、プラットフォームの数学ライブラリの <code>exp</code> と <code>ln_1p</code> を呼び、その最後の 1 ビットはライブラリによって違うことがあります。ファイルの表示（<code>NOTICE.txt</code>）に、作ったプラットフォームを書いてあります。</p>
+<p>ソース、コーパス、toolchain、プラットフォームが同じなら、同じバイト列になります。学習は、時刻にも、スレッドの数にも、ハッシュ表の順序にも依存しません。別のプラットフォームで同じバイト列になるかは、分かっていません。区切りの学習は、プラットフォームの数学ライブラリの <code>exp</code> と <code>ln_1p</code> を呼び、その最後の 1 ビットはライブラリによって違うことがあります。ファイルの表示（<code>NOTICE.txt</code>）に、作ったプラットフォームを書いてあります。リリースのモデルは、リリースのランナーが作るので、ほかの端末で作ったものとバイト列が違うことがあります。そのアーカイブの SHA-256 は、公開したクレートの <code>prebuilt.json</code> にあります。</p>
 <h3 id="モデルのライセンス"><a class="header" href="#モデルのライセンス">モデルのライセンス</a></h3>
 <p>モデルファイルは、Lindera のコードと同じ MIT ライセンスで配布します。ファイルに添える <code>NOTICE.txt</code> に、ライセンスの本文、UD Japanese-GSD への謝辞、IPADIC の表示が入っています。以下は、このプロジェクトでの扱い方であり、法的な助言ではありません。</p>
 <p><strong>問い。</strong> UD Japanese-GSD のライセンスは CC BY-SA 4.0 です。このライセンスは、元の素材に「由来する、または基づく」素材（Adapted Material）を、同じライセンスで共有することを求めます。ある著作物で学習したモデルがそれに当たるかは、ライセンスにも、Creative Commons の FAQ にも書かれていません。</p>
@@ -3259,9 +3320,9 @@ model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera
 <p>AMD Ryzen AI Max+ 395 の 1 コアで、Rust 1.100.0 を使って測りました。<a href="https://github.com/lindera/lindera/tree/main/scripts/dependency/model_speed"><code>scripts/dependency/model_speed</code></a> と <code>scripts/dependency/parser_experiments.sh speed</code> で測り直せます。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="コマンドライン"><a class="header" href="#コマンドライン">コマンドライン</a></h1>
 <p><code>lindera-dependency</code> コマンドは、テキストを受け取り、Lindera の辞書で分かち書きし、各文の文節とその係り受けを<a href="lindera-dependency/./architecture.html#%E3%83%A9%E3%83%86%E3%82%A3%E3%82%B9%E5%BD%A2%E5%BC%8F">ラティス形式</a>で書き出します。<code>cabocha -f1</code> が書くのと同じ形式です。</p>
-<p>区切りと解析器の入った<a href="lindera-dependency/./model_file.html">モデルファイル</a>が必要です。配布しているモデルはまだ無いので、先に<a href="lindera-dependency/./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B">学習します</a>。</p>
+<p>区切りと解析器の入った<a href="lindera-dependency/./model_file.html">モデルファイル</a>が必要です。7.1.0 から Lindera のリリースが公開する <a href="lindera-dependency/./model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>か、自分で<a href="lindera-dependency/./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B">学習した</a>モデルを使います。</p>
 <h2 id="ビルド"><a class="header" href="#ビルド">ビルド</a></h2>
-<p>コマンドは <code>cli</code> feature の裏にあります。この feature は <code>clap</code> と <code>lindera-segmenter</code> を入れ、学習のコードは入れません。<code>embed-ipadic</code> を付けると、IPADIC を埋め込みます。</p>
+<p>コマンドは <code>cli</code> feature の裏にあります。この feature は <code>clap</code> と <code>lindera-segmenter</code> を入れ、学習のコードは入れません。<code>embed-ipadic</code> を付けると、IPADIC を埋め込みます。<code>embed-model-ipadic</code> を付けると、<a href="lindera-dependency/./model_file.html#%E5%9F%8B%E3%82%81%E8%BE%BC%E3%82%80">IPADIC のモデル</a>を埋め込み、<code>--model embedded://ipadic</code> で指せます。</p>
 <pre><code class="language-shell">cargo build --release -p lindera-dependency --features cli,embed-ipadic
 </code></pre>
 <p>バイナリは <code>target/release/lindera-dependency</code> です。<code>cli</code> のビルドのサブコマンドは、<code>parse</code> と <a href="lindera-dependency/./chunking.html"><code>chunk</code></a> の 2 つです。<code>train</code> feature を付けると、学習データを作る、学習する、評価するサブコマンドが加わります。</p>
@@ -3346,7 +3407,7 @@ lindera-dependency parse --model ipadic.model --input-layer bunsetsu \
 <h2 id="バインディングから"><a class="header" href="#バインディングから">バインディングから</a></h2>
 <p>Python、Node.js、Ruby、PHP では、ほかのフィルターと同じく、<code>kind</code> とモデルのパスでフィルターを足します。トークンには <code>dependency</code> が入ります。下の 5 つのフィールドを持つオブジェクトで、フィルターを使わなければ何も入りません（<code>None</code>、<code>nil</code>、<code>null</code>、プロパティなし）。WebAssembly ではパスを読めないので、<code>appendDependencyFilter</code> にモデルのバイト列を渡します。どれも、バインディングを <code>dependency</code> feature を付けてビルドする必要があります。配布しているパッケージには、まだ入っていません。各バインディングの API のページに例があります: <a href="lindera-dependency/../lindera-python/tokenizer_api.html#tokendependency">Python</a>、<a href="lindera-dependency/../lindera-nodejs/tokenizer_api.html#tokendependency">Node.js</a>、<a href="lindera-dependency/../lindera-ruby/tokenizer_api.html#tokendependency">Ruby</a>、<a href="lindera-dependency/../lindera-php/tokenizer_api.html#tokendependency">PHP</a>、<a href="lindera-dependency/../lindera-wasm/tokenizer_api.html#tokendependency">WebAssembly</a>。</p>
 <h2 id="モデル"><a class="header" href="#モデル">モデル</a></h2>
-<p>フィルターの引数は <code>model</code> の 1 つです。文節の区切りと解析器の両方を持ち、トークナイザーの辞書に合ったモデルファイルのパスを渡します。配布しているモデルは、まだありません（<a href="https://github.com/lindera/lindera/issues/1440">#1440</a>）。学習の方法は<a href="lindera-dependency/./parsing.html">係り受けの解析</a>に、ファイルの中身は<a href="lindera-dependency/./model_file.html">モデルファイル</a>にあります。</p>
+<p>フィルターの引数は <code>model</code> の 1 つです。文節の区切りと解析器の両方を持ち、トークナイザーの辞書に合ったモデルファイルのパスを渡します。<code>embedded://ipadic</code> を渡すと、feature <code>embed-dependency-ipadic</code> を付けたビルドが持つモデルを使います。<a href="lindera-dependency/./model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>は、7.1.0 から、Lindera のリリースが公開します。学習の方法は<a href="lindera-dependency/./parsing.html">係り受けの解析</a>に、ファイルの中身は<a href="lindera-dependency/./model_file.html">モデルファイル</a>にあります。</p>
 <p>モデルは、フィルターを作るときに 1 回だけ読み、トークナイザーの複製の間で共有します。読めないファイル、モデルファイルでないファイル、区切りか解析器の無いファイルは、テキストを読む前の、この時点でエラーになります。</p>
 <h2 id="コマンドラインから"><a class="header" href="#コマンドラインから">コマンドラインから</a></h2>
 <pre><code class="language-shell">echo '彼は赤い花を見た。' | lindera tokenize --dict embedded://ipadic --output json \
@@ -15332,6 +15393,7 @@ decompose モードを調整するには <code>Penalty</code> を渡す。実行
 <tr><td><code>mmap</code></td><td>ファイルシステム辞書のメモリマップ読み込み。<code>use_mmap</code> のデフォルト値にもなる。無効にすると <code>memmap2</code> はリンクされず、<code>use_mmap = true</code> でもファイルを読み込む</td><td>有効</td></tr>
 <tr><td><code>train</code></td><td>CRF ベースの辞書学習（<code>lindera-trainer</code> に依存。<code>lindera::dictionary::trainer</code>）</td><td>下記参照</td></tr>
 <tr><td><code>dependency</code></td><td>トークンフィルター <code>japanese_dependency</code>。文節の係り受け解析で、未公開の <code>lindera-dependency</code> を使う（<code>analysis</code> を含む）</td><td>無効</td></tr>
+<tr><td><code>embed-dependency-ipadic</code></td><td>そのフィルターの IPADIC のモデルをビルドに埋め込む。<code>model: "embedded://ipadic"</code> で使う（<code>dependency</code> を含む）。ビルドがモデルをどこから取るかは <a href="development/../lindera-dependency/model_file.html#%E5%9F%8B%E3%82%81%E8%BE%BC%E3%82%80">IPADIC のモデル</a>を参照</td><td>無効</td></tr>
 </tbody></table>
 </div>
 <ul>
@@ -15948,7 +16010,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>コマンドは、1 文ずつ読んで、解析して、書く。解析できない最初の文で止まり、そこまでに書いた出力は残る。</td><td>パイプの中で使え、メモリが入力の長さで増えない。</td><td>#1439</td></tr>
 <tr><td>IPADIC のモデルは MIT ライセンスで配布し、UD Japanese-GSD への謝辞と IPADIC の表示を添える。</td><td>モデルが持つのは素性の名前と重みで、注釈は含まない。このプロジェクトは、これをコーパスの改変物ではないとみなす。この問いを判断した裁判例はない。立場の根拠は<a href="development/../lindera-dependency/model_file.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%A9%E3%82%A4%E3%82%BB%E3%83%B3%E3%82%B9">モデルファイルのページ</a>に書く。コードとモデルが同じライセンスなので、モデルを埋め込んだプログラムは、辞書を埋め込んだプログラムと同じように配布できる。</td><td>#1440</td></tr>
 <tr><td>公開するモデルは、UD Japanese-GSD の train のファイルだけで学習する。</td><td>dev・test・PUD の数字が、公開するファイルそのものの数字になり、誰でも測り直せる。</td><td>#1440</td></tr>
-<tr><td>公開するモデルは独自の版を持ち、このリポジトリのリリースのファイルとして置く。タグは Lindera の版ではない（<code>dependency-ipadic-1.0.0</code>）。1 つのスクリプトがファイルを作り、クレートは、その URL と SHA-256 をソースに持つようにする。</td><td>モデルが変わるのは、学習し直したときで、Lindera のリリースのたびではない。タグは、ファイルを作ったスクリプトの commit を指す。固定のファイルなら、crates.io からのビルドだけでなく、リポジトリからのビルドでも埋め込める。</td><td>#1440</td></tr>
+<tr><td>公開するモデルは Lindera の版を持ち、組み立て済みの辞書と同じ形で公開する。リリースが 1 つのスクリプトでモデルを作り、そのアーカイブを版のページに置き、クレートを公開する直前に <code>prebuilt.json</code> を書く。リポジトリからのビルドは、渡されたファイルを埋め込む。</td><td>リリースが持つものすべてが 1 つの版になり、どのモデルがどのリリースに合うかを誰も知らなくてよい。モデルは、辞書のようにビルドスクリプトの中では作れない（学習できない）ので、固定の無いビルドはファイルを受け取る。2026-11-25 に、独自の版・独自のタグのリリースに代えて決めた。</td><td>#1440</td></tr>
 </tbody></table>
 </div>
 <h2 id="参照した実装"><a class="header" href="#参照した実装">参照した実装</a></h2>

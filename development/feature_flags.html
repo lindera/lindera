@@ -184,6 +184,7 @@
 <tr><td><code>mmap</code></td><td>Memory-mapped loading of filesystem dictionaries, the default of <code>use_mmap</code>; without it, <code>memmap2</code> is not linked and <code>use_mmap = true</code> reads the files</td><td>Yes</td></tr>
 <tr><td><code>train</code></td><td>CRF-based dictionary training (depends on <code>lindera-trainer</code>; <code>lindera::dictionary::trainer</code>)</td><td>See below</td></tr>
 <tr><td><code>dependency</code></td><td>The token filter <code>japanese_dependency</code>: bunsetsu dependency analysis, with <code>lindera-dependency</code>, which is not published yet (implies <code>analysis</code>)</td><td>No</td></tr>
+<tr><td><code>embed-dependency-ipadic</code></td><td>Embeds the model of that filter for IPADIC in the build, for <code>model: "embedded://ipadic"</code> (implies <code>dependency</code>); see <a href="../lindera-dependency/model_file.html#embedding-it">The model for IPADIC</a> for where a build takes it from</td><td>No</td></tr>
 </tbody></table>
 </div>
 <ul>

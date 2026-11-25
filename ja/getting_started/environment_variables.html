@@ -184,6 +184,7 @@
 <tr><td><a href="#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a></td><td>辞書クレートの build script</td><td><code>http</code> か <code>https</code> の URL</td><td>公開済みの辞書を GitHub のリリースからダウンロードする</td></tr>
 <tr><td><a href="#lindera_build_dictionary_source_base_url"><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></a></td><td>辞書クレートの build script</td><td><code>http</code> か <code>https</code> の URL</td><td>ソースのアーカイブを <code>https://lindera.dev</code> から、UniDic、UniDic CWJ、UniDic CSJ のものは国立国語研究所（<code>https://clrd.ninjal.ac.jp</code>）から、ko-dic のものは mecab-ko-dic の Bitbucket の Downloads（<code>https://bitbucket.org</code>）からダウンロードする</td></tr>
 <tr><td><a href="#lindera_build_context_id_freq_file"><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code></a></td><td>辞書クレートの build script</td><td>ファイル</td><td>辞書クレートに同梱の頻度表（あれば）</td></tr>
+<tr><td><a href="#lindera_build_dependency_model_ipadic_file"><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code></a></td><td><code>embed-model-ipadic</code> を付けた <code>lindera-dependency</code> の build script</td><td>モデルファイル</td><td>公開済みのクレートは、固定しているモデルを埋め込む。リポジトリからのビルドは止まる</td></tr>
 <tr><td><a href="#docs_rs"><code>DOCS_RS</code></a></td><td>辞書クレートの build script</td><td>docs.rs が設定する</td><td>本物の辞書をビルドする</td></tr>
 <tr><td><a href="#lindera_config_file"><code>LINDERA_CONFIG_FILE</code></a></td><td><code>TokenizerBuilder::new()</code>（<code>lindera tokenize</code> とバインディングも）</td><td>ファイル</td><td>空の設定</td></tr>
 <tr><td><a href="#lindera_dictionaries_dir"><code>LINDERA_DICTIONARIES_DIR</code></a></td><td>CLI</td><td>ディレクトリ</td><td>OS のローカルデータディレクトリの <code>lindera/dictionaries</code></td></tr>
@@ -291,6 +292,35 @@ cargo build --features=embed-unidic
 <pre><code class="language-text">warning: lindera-ko-dic@7.0.0: LINDERA_CTX_FREQ_FILE is deprecated and will be removed in v8.0.0; set LINDERA_BUILD_CONTEXT_ID_FREQ_FILE instead
 </code></pre>
 <p>両方を設定すると <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> が使われ、<code>LINDERA_CTX_FREQ_FILE</code> は無視されると警告します。Cargo がこれらの警告を表示するのは、このリポジトリの checkout のように、パスで指定した辞書クレートをビルドするときです。crates.io から取得した辞書クレートでは、ビルドが失敗したときか <code>cargo build -vv</code> のときだけ表示します。</p>
+<h3 id="lindera_build_dependency_model_ipadic_file"><a class="header" href="#lindera_build_dependency_model_ipadic_file">LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</a></h3>
+<p><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code> は、<code>embed-model-ipadic</code>（<code>lindera</code>、そのコマンド、各バインディングでは <code>embed-dependency-ipadic</code>）を付けたビルドが埋め込むモデルファイルを指します。<code>lindera-dependency</code> の IPADIC のモデルです。</p>
+<pre><code class="language-shell">scripts/dependency/build_model.sh
+export LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE=$PWD/scripts/dependency/data/model/lindera-dependency-ipadic/dependency.model
+cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ipadic
+</code></pre>
+<ul>
+<li>
+<p>リポジトリからのビルドには、この変数が必要です。リポジトリには公開済みのモデルの固定が無く、モデルは build script の中では学習できないので、変数が無いとビルドは止まります。</p>
+<pre><code class="language-text">Error: LinderaError { kind: Args, source: lindera-dependency-ipadic is embedded from a release of Lindera, and a build from the repository has none to take it from: build the model with scripts/dependency/build_model.sh of the Lindera repository, and set LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE to the file }
+</code></pre>
+</li>
+<li>
+<p>crates.io のクレートは、そのリリースのアーカイブを固定していて、変数が無ければそれを埋め込みます。変数があれば、指されたファイルを埋め込み、何もダウンロードしません。</p>
+</li>
+<li>
+<p>ファイルは、そのまま埋め込まれます。中身の検査は、ビルドではなく、プログラムがモデルを求めたときに行います。</p>
+</li>
+<li>
+<p>変数か、変数が指すファイルを変えると、build script がもう一度動きます。</p>
+</li>
+<li>
+<p><a href="#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a> のミラーは、固定しているアーカイブにも効きます。アーカイブは、辞書と同じく、リリースのページにあるためです。</p>
+</li>
+<li>
+<p>ドキュメントのビルド（<code>DOCS_RS</code>）は、空のファイルを埋め込み、どちらも読みません。</p>
+</li>
+</ul>
+<p><a href="../lindera-dependency/model_file.html#%E5%9F%8B%E3%82%81%E8%BE%BC%E3%82%80">IPADIC のモデル</a>を見てください。</p>
 <h3 id="docs_rs"><a class="header" href="#docs_rs">DOCS_RS</a></h3>
 <p><code>DOCS_RS</code> 環境変数は、docs.rsでドキュメントをビルドする際に自動的に設定されます。この変数が検出されると、Linderaは実際の辞書データをダウンロードする代わりにダミーの辞書ファイルを作成します。これにより、ネットワークアクセスや大容量ファイルのダウンロードなしでドキュメントをビルドできます。</p>
 <p>このビルドは <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> を無視します。ダミーの辞書は build script の出力ディレクトリに作られ、キャッシュには入らないので、後で <code>DOCS_RS</code> なしにビルドしても埋め込まれません。</p>

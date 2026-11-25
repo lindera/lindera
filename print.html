@@ -446,6 +446,7 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 <tr><td><a href="getting_started/environment_variables.html#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a></td><td>The build scripts of the dictionary crates</td><td>An <code>http</code> or <code>https</code> URL</td><td>The published dictionaries are downloaded from GitHub releases</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#lindera_build_dictionary_source_base_url"><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></a></td><td>The build scripts of the dictionary crates</td><td>An <code>http</code> or <code>https</code> URL</td><td>The source archives are downloaded from <code>https://lindera.dev</code>, UniDic's, UniDic CWJ's and UniDic CSJ's from NINJAL (<code>https://clrd.ninjal.ac.jp</code>), and ko-dic's from mecab-ko-dic's Bitbucket Downloads (<code>https://bitbucket.org</code>)</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#lindera_build_context_id_freq_file"><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code></a></td><td>The build scripts of the dictionary crates</td><td>A file</td><td>The histogram bundled with the dictionary crate, if any</td></tr>
+<tr><td><a href="getting_started/environment_variables.html#lindera_build_dependency_model_ipadic_file"><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code></a></td><td>The build script of <code>lindera-dependency</code>, with <code>embed-model-ipadic</code></td><td>A model file</td><td>A published crate embeds the model it pins; a build from the repository stops</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#docs_rs"><code>DOCS_RS</code></a></td><td>The build scripts of the dictionary crates</td><td>Set by docs.rs</td><td>The real dictionaries are built</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#lindera_config_file"><code>LINDERA_CONFIG_FILE</code></a></td><td><code>TokenizerBuilder::new()</code>, and so <code>lindera tokenize</code> and the bindings</td><td>A file</td><td>An empty configuration</td></tr>
 <tr><td><a href="getting_started/environment_variables.html#lindera_dictionaries_dir"><code>LINDERA_DICTIONARIES_DIR</code></a></td><td>The CLI</td><td>A directory</td><td><code>lindera/dictionaries</code> in the OS's local data directory</td></tr>
@@ -553,6 +554,35 @@ cargo build --features=embed-unidic
 <pre><code class="language-text">warning: lindera-ko-dic@7.0.0: LINDERA_CTX_FREQ_FILE is deprecated and will be removed in v8.0.0; set LINDERA_BUILD_CONTEXT_ID_FREQ_FILE instead
 </code></pre>
 <p>When both are set, <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> is used, and the warning says that <code>LINDERA_CTX_FREQ_FILE</code> is ignored. Cargo shows these warnings for a dictionary crate built from a path, such as a checkout of this repository; for one from crates.io, it shows them only when the build fails or runs with <code>cargo build -vv</code>.</p>
+<h3 id="lindera_build_dependency_model_ipadic_file"><a class="header" href="#lindera_build_dependency_model_ipadic_file">LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</a></h3>
+<p><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code> names the model file that a build with <code>embed-model-ipadic</code> (<code>embed-dependency-ipadic</code> in <code>lindera</code>, its command and the bindings) embeds: the model of <code>lindera-dependency</code> for IPADIC.</p>
+<pre><code class="language-shell">scripts/dependency/build_model.sh
+export LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE=$PWD/scripts/dependency/data/model/lindera-dependency-ipadic/dependency.model
+cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ipadic
+</code></pre>
+<ul>
+<li>
+<p>A build from the repository needs it. The repository has no pin of a published model, and the model cannot be trained by the build script, so the build stops without the variable:</p>
+<pre><code class="language-text">Error: LinderaError { kind: Args, source: lindera-dependency-ipadic is embedded from a release of Lindera, and a build from the repository has none to take it from: build the model with scripts/dependency/build_model.sh of the Lindera repository, and set LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE to the file }
+</code></pre>
+</li>
+<li>
+<p>A crate from crates.io pins the archive of its release, and embeds that without the variable. With the variable it embeds the file named, and downloads nothing.</p>
+</li>
+<li>
+<p>The file is embedded as it is. What it holds is checked when the program asks for the model, not by the build.</p>
+</li>
+<li>
+<p>Changing the variable, or the file it names, reruns the build script.</p>
+</li>
+<li>
+<p><a href="getting_started/environment_variables.html#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a> names a mirror for the pinned archive too: it is on the page of the release, as the dictionaries are.</p>
+</li>
+<li>
+<p>A documentation build (<code>DOCS_RS</code>) embeds an empty file, and reads neither.</p>
+</li>
+</ul>
+<p>See <a href="getting_started/../lindera-dependency/model_file.html#embedding-it">The model for IPADIC</a>.</p>
 <h3 id="docs_rs"><a class="header" href="#docs_rs">DOCS_RS</a></h3>
 <p>The <code>DOCS_RS</code> environment variable is automatically set by docs.rs when building documentation. When this variable is detected, Lindera creates dummy dictionary files instead of downloading actual dictionary data, allowing documentation to be built without network access or large file downloads.</p>
 <p>Such a build ignores <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>: the dummy dictionaries are built in the build script's output directory, never in the cache, so a later build without <code>DOCS_RS</code> does not embed them.</p>
@@ -2640,6 +2670,7 @@ assert_eq!(output, text.as_bytes());
 <tr><td><code>cli</code></td><td>The <code>lindera-dependency</code> command with <code>parse</code> and <code>chunk</code>, which tokenizes with <code>lindera-segmenter</code>. No training code</td><td>No</td></tr>
 <tr><td><code>train</code></td><td>The <code>corpus</code> and <code>evaluation</code> modules, the training of the chunker with <code>lindera-crf</code> and of the parser, and their subcommands (implies <code>cli</code>)</td><td>No</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>Embeds IPADIC in the command, for <code>--dict embedded://ipadic</code> (implies <code>cli</code>)</td><td>No</td></tr>
+<tr><td><code>embed-model-ipadic</code></td><td>Embeds the <a href="lindera-dependency/./model_file.html#embedding-it">model for IPADIC</a>, for <code>embedded::model("ipadic")</code> and <code>--model embedded://ipadic</code>. A build dependency, and none of the library</td><td>No</td></tr>
 </tbody></table>
 </div>
 <p>The crate depends on <code>lindera-segmenter</code> at most, never on <code>lindera</code> or <code>lindera-analysis</code>: the token filter makes <code>lindera-analysis</code> depend on this crate, behind its <code>dependency</code> feature.</p>
@@ -3052,7 +3083,7 @@ cargo run --release -p lindera-dependency --features train -- parse \
 <div style="break-before: page; page-break-before: always;"></div><h1 id="model-file"><a class="header" href="#model-file">Model File</a></h1>
 <p>A model file holds what one dictionary needs to be analyzed: the name of the dictionary, its <a href="lindera-dependency/./head_and_function_word.html">schema</a>, and the trained parts: the <a href="lindera-dependency/./chunking.html">chunker</a> and the <a href="lindera-dependency/./parsing.html">parser</a>.</p>
 <p>A model belongs to one dictionary. It depends on the feature columns of the dictionary and on how the dictionary segments a text, so the file says which dictionary it is for, and one file serves one dictionary.</p>
-<p>No model is distributed yet: until the <a href="lindera-dependency/model_file.html#the-model-for-ipadic">model for IPADIC</a> is released, a script builds it. <a href="lindera-dependency/./chunking.html#training-a-model"><code>train-chunker</code></a> writes a model file with the chunker, and <a href="lindera-dependency/./parsing.html#training-a-model"><code>train-parser</code></a> one with the parser, or with both.</p>
+<p>A release of Lindera publishes the <a href="lindera-dependency/model_file.html#the-model-for-ipadic">model for IPADIC</a>, from 7.1.0 on. <a href="lindera-dependency/./chunking.html#training-a-model"><code>train-chunker</code></a> writes a model file with the chunker, and <a href="lindera-dependency/./parsing.html#training-a-model"><code>train-parser</code></a> one with the parser, or with both.</p>
 <h2 id="reading-a-model"><a class="header" href="#reading-a-model">Reading a model</a></h2>
 <p><code>Model</code> reads a file in place. It is generic over what holds the bytes, and copies none of its tables:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -3131,8 +3162,14 @@ assert_eq!(model.dictionary(), "ipadic");
 <p>The same parts give the same bytes. A part trained with another schema than the one of the file is refused.</p>
 <p><code>ModelBuilder::parser</code> takes a <code>ParserModel</code> and how its weights are written (<code>Quantization::F32</code>, <code>I16</code> or <code>I8</code>). <code>ModelBuilder::from_model</code> starts from the name, the schema and the parts of a file that exists, to add a part to it; <code>train-parser --chunker</code> does this with the chunker.</p>
 <h2 id="the-model-for-ipadic"><a class="header" href="#the-model-for-ipadic">The model for IPADIC</a></h2>
-<p>The project trains one model for IPADIC, with a chunker and a parser, to release it as a file. It is not released yet; <a href="lindera-dependency/model_file.html#building-it-again"><code>build_model.sh</code></a> builds it.</p>
-<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<p>The project trains one model for IPADIC, with a chunker and a parser. A release of Lindera builds it with <a href="lindera-dependency/model_file.html#building-it-again"><code>build_model.sh</code></a> and puts it on the page of its version, next to the dictionaries, from 7.1.0 on: <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> in <code>v&lt;version&gt;</code>. The model has the version of the release, as the dictionaries have, and belongs to it: a program of Lindera 7.1.0 takes the model of 7.1.0.</p>
+<p>The archive holds one directory, <code>lindera-dependency-ipadic</code>, with three files:</p>
+<div class="table-wrapper"><table><thead><tr><th>File</th><th>What it is</th></tr></thead><tbody>
+<tr><td><code>dependency.model</code></td><td>The model file</td></tr>
+<tr><td><code>model.json</code></td><td>The name of the model (<code>dependency-ipadic</code>), its dictionary (<code>ipadic</code>) and the version of Lindera (<code>lindera_version</code>)</td></tr>
+<tr><td><code>NOTICE.txt</code></td><td>The license of the model, what it was made from, and the notice of IPADIC</td></tr>
+</tbody></table>
+</div><div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
 <tr><td>Dictionary</td><td>IPADIC (<code>ipadic</code>), as the <code>lindera-ipadic</code> crate builds it from mecab-ipadic 2.7.0</td></tr>
 <tr><td>Training data</td><td>The train file of <a href="https://github.com/UniversalDependencies/UD_Japanese-GSD">UD Japanese-GSD</a> at c662dc9, <a href="lindera-dependency/./training_data.html">converted</a> with IPADIC: 7,024 sentences</td></tr>
 <tr><td>Settings</td><td>The defaults of <a href="lindera-dependency/./chunking.html#training-a-model"><code>train-chunker</code></a> and of <a href="lindera-dependency/./parsing.html#training-a-model"><code>train-parser</code></a></td></tr>
@@ -3141,20 +3178,44 @@ assert_eq!(model.dictionary(), "ipadic");
 </tbody></table>
 </div>
 <p>Only the train file is used. The dev and test files of UD Japanese-GSD and UD Japanese-PUD are not seen in training, and no setting was chosen on them, so the <a href="lindera-dependency/./parsing.html#accuracy">accuracy</a> measured on them is the accuracy of the file itself.</p>
+<h3 id="embedding-it"><a class="header" href="#embedding-it">Embedding it</a></h3>
+<p>The feature <code>embed-model-ipadic</code> of <code>lindera-dependency</code> embeds the model in the program; <code>lindera</code>, <code>lindera-cli</code> and the bindings forward it as <code>embed-dependency-ipadic</code>. The model is then named as the embedded dictionary is:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera_dependency::embedded;
+
+// The bytes of the program, read in place.
+let model = embedded::model("ipadic")?;
+assert_eq!(model.dictionary(), "ipadic");
+<span class="boring">}</span></code></pre></pre>
+<p>The <a href="lindera-dependency/./command_line.html">command</a> takes <code>--model embedded://ipadic</code>, and the <a href="lindera-dependency/./token_filter.html">token filter</a> <code>model: "embedded://ipadic"</code>. A build without the feature answers with an error that names it.</p>
+<p>The model is not trained by the build: the training needs the corpus. Where the build takes it from depends on where the crate comes from:</p>
+<div class="table-wrapper"><table><thead><tr><th>Build</th><th>The model it embeds</th></tr></thead><tbody>
+<tr><td>The crate from crates.io</td><td>The archive of its release, which the crate pins by SHA-256 in a <code>prebuilt.json</code>: the build downloads it and checks it, as a dictionary crate does for its <a href="lindera-dependency/../development/dictionary_release.html">dictionary</a></td></tr>
+<tr><td>The repository (<code>main</code>, a pull request, a git dependency)</td><td>The file <a href="lindera-dependency/../getting_started/environment_variables.html#lindera_build_dependency_model_ipadic_file"><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code></a> names. The repository has no <code>prebuilt.json</code>, and a build without the variable stops with an error that says so</td></tr>
+<tr><td>docs.rs</td><td>An empty file: <code>embedded::model</code> gives an error</td></tr>
+</tbody></table>
+</div>
+<p>With the variable set, a published crate embeds that file too, instead of the one it pins.</p>
+<pre><code class="language-shell">scripts/dependency/build_model.sh
+export LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE=$PWD/scripts/dependency/data/model/lindera-dependency-ipadic/dependency.model
+cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ipadic
+</code></pre>
 <h3 id="building-it-again"><a class="header" href="#building-it-again">Building it again</a></h3>
 <p>One script builds the file from the corpus and the sources of the repository:</p>
 <pre><code class="language-shell">scripts/dependency/build_model.sh
 </code></pre>
-<p>It gets UD Japanese-GSD at its fixed commit, builds the <code>lindera-dependency</code> command with a named toolchain and the dependencies of <code>Cargo.lock</code>, converts the train file, trains the chunker and the parser, and writes three files to <code>scripts/dependency/data/model</code>: the model, its <code>NOTICE.txt</code> and <code>SHA256SUMS</code>. It takes about 15 seconds after the build. At its end it names the commit of Lindera, and then says what else it used and what it made:</p>
+<p>It gets UD Japanese-GSD at its fixed commit, builds the <code>lindera-dependency</code> command with a named toolchain and the dependencies of <code>Cargo.lock</code>, converts the train file, trains the chunker and the parser, and writes the directory of the archive and the archive to <code>scripts/dependency/data/model</code>. It takes about 15 seconds after the build. At its end it names the commit of Lindera, and then says what else it used and what it made:</p>
 <pre><code class="language-text">corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6
 toolchain: rustc 1.100.0 (0ef1bc386 2026-11-09)
 platform: x86_64-unknown-linux-gnu, glibc 2.43
 training data: 5075c95f2518b6af791e6a9ea2bd5f9f63eeaa5b316f3801d8068d71436e5064  train.lattice
 chunker: 74762e9b4f23d1dd06a304238006480264e0fea70b7a3a5c9e647c176dad59c3  chunker.model
-model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic-1.0.0.model (6258548 bytes)
+model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic/dependency.model (6258548 bytes)
+archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  lindera-dependency-ipadic-7.0.0.zip
 </code></pre>
 <p><code>--check &lt;sha256&gt;</code> makes the script fail when the file it built has another SHA-256. The script refuses a tree with uncommitted changes, so that the commit it names is what the file was built from.</p>
-<p>The same sources, corpus, toolchain and platform give the same bytes: nothing in the training depends on the time, on the number of threads or on the order of a hash table. Whether another platform gives the same bytes is not known. The training of the chunker calls <code>exp</code> and <code>ln_1p</code> of the mathematics library of the platform, and their last bit can differ from one library to another. The notice of a file (<code>NOTICE.txt</code>) names the platform it was built on.</p>
+<p>The same sources, corpus, toolchain and platform give the same bytes: nothing in the training depends on the time, on the number of threads or on the order of a hash table. Whether another platform gives the same bytes is not known. The training of the chunker calls <code>exp</code> and <code>ln_1p</code> of the mathematics library of the platform, and their last bit can differ from one library to another. The notice of a file (<code>NOTICE.txt</code>) names the platform it was built on. The model of a release is built by the runner of the release, so its bytes can differ from those of another machine; the SHA-256 of its archive is in the <code>prebuilt.json</code> of the published crate.</p>
 <h3 id="license-of-the-model"><a class="header" href="#license-of-the-model">License of the model</a></h3>
 <p>The model file is distributed under the MIT license, the license of Lindera's code. <code>NOTICE.txt</code>, which comes with the file, has the text of the license, an acknowledgement of UD Japanese-GSD and the notice of IPADIC. This is how the project handles the question; it is not legal advice.</p>
 <p><strong>The question.</strong> UD Japanese-GSD is licensed under CC BY-SA 4.0. That license asks that material "derived from or based upon" the licensed material ("Adapted Material") is shared under the same license. Neither the license nor the FAQ of Creative Commons says whether a model trained on a work is such material.</p>
@@ -3255,9 +3316,9 @@ model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera
 <p>Measured on one core of an AMD Ryzen AI Max+ 395, with Rust 1.100.0; <a href="https://github.com/lindera/lindera/tree/main/scripts/dependency/model_speed"><code>scripts/dependency/model_speed</code></a> and <code>scripts/dependency/parser_experiments.sh speed</code> measure it again.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="command-line"><a class="header" href="#command-line">Command Line</a></h1>
 <p>The <code>lindera-dependency</code> command takes plain text, tokenizes it with a Lindera dictionary, and writes the bunsetsu of each sentence and their dependencies in the <a href="lindera-dependency/./architecture.html#the-lattice-format">lattice format</a>, which is what <code>cabocha -f1</code> writes.</p>
-<p>It needs a <a href="lindera-dependency/./model_file.html">model file</a> with a chunker and a parser. No model is distributed yet: <a href="lindera-dependency/./parsing.html#training-a-model">train one</a> first.</p>
+<p>It needs a <a href="lindera-dependency/./model_file.html">model file</a> with a chunker and a parser: the <a href="lindera-dependency/./model_file.html#the-model-for-ipadic">model for IPADIC</a>, which a release of Lindera publishes from 7.1.0 on, or one you <a href="lindera-dependency/./parsing.html#training-a-model">train</a>.</p>
 <h2 id="building"><a class="header" href="#building">Building</a></h2>
-<p>The command is behind the <code>cli</code> feature, which brings <code>clap</code> and <code>lindera-segmenter</code> and no training code. <code>embed-ipadic</code> embeds IPADIC in it:</p>
+<p>The command is behind the <code>cli</code> feature, which brings <code>clap</code> and <code>lindera-segmenter</code> and no training code. <code>embed-ipadic</code> embeds IPADIC in it, and <code>embed-model-ipadic</code> the <a href="lindera-dependency/./model_file.html#embedding-it">model for IPADIC</a>, which <code>--model embedded://ipadic</code> then names:</p>
 <pre><code class="language-shell">cargo build --release -p lindera-dependency --features cli,embed-ipadic
 </code></pre>
 <p>The binary is <code>target/release/lindera-dependency</code>. A build with <code>cli</code> has two subcommands, <code>parse</code> and <a href="lindera-dependency/./chunking.html"><code>chunk</code></a>; the <code>train</code> feature adds the ones that make training data, train and evaluate.</p>
@@ -3342,7 +3403,7 @@ lindera-dependency parse --model ipadic.model --input-layer bunsetsu \
 <h2 id="from-the-bindings"><a class="header" href="#from-the-bindings">From the bindings</a></h2>
 <p>Python, Node.js, Ruby and PHP append the filter as the others, by its <code>kind</code> and the path of the model, and a token has a <code>dependency</code>: an object with the five fields below, or nothing (<code>None</code>, <code>nil</code>, <code>null</code>, no property) without the filter. In WebAssembly a path cannot be read, and <code>appendDependencyFilter</code> takes the bytes of the model. Each needs a build of the binding with its <code>dependency</code> feature, which the distributed packages do not have yet. The API page of each binding has an example: <a href="lindera-dependency/../lindera-python/tokenizer_api.html#tokendependency">Python</a>, <a href="lindera-dependency/../lindera-nodejs/tokenizer_api.html#tokendependency">Node.js</a>, <a href="lindera-dependency/../lindera-ruby/tokenizer_api.html#tokendependency">Ruby</a>, <a href="lindera-dependency/../lindera-php/tokenizer_api.html#tokendependency">PHP</a>, <a href="lindera-dependency/../lindera-wasm/tokenizer_api.html#tokendependency">WebAssembly</a>.</p>
 <h2 id="the-model"><a class="header" href="#the-model">The model</a></h2>
-<p>The filter takes one argument, <code>model</code>: the path of a model file with a chunker and a parser, for the dictionary of the tokenizer. No model is distributed yet (<a href="https://github.com/lindera/lindera/issues/1440">#1440</a>); <a href="lindera-dependency/./parsing.html">Parsing</a> shows how to train one, and <a href="lindera-dependency/./model_file.html">Model File</a> what the file holds.</p>
+<p>The filter takes one argument, <code>model</code>: the path of a model file with a chunker and a parser, for the dictionary of the tokenizer; or <code>embedded://ipadic</code>, the model that a build with the feature <code>embed-dependency-ipadic</code> holds. A release of Lindera publishes the <a href="lindera-dependency/./model_file.html#the-model-for-ipadic">model for IPADIC</a>, from 7.1.0 on; <a href="lindera-dependency/./parsing.html">Parsing</a> shows how to train one, and <a href="lindera-dependency/./model_file.html">Model File</a> what the file holds.</p>
 <p>The model is read once, when the filter is made, and shared by the copies of the tokenizer. A file that cannot be read, that is not a model file, or that lacks the chunker or the parser is an error then, before any text is read.</p>
 <h2 id="from-the-command-line"><a class="header" href="#from-the-command-line">From the command line</a></h2>
 <pre><code class="language-shell">echo '彼は赤い花を見た。' | lindera tokenize --dict embedded://ipadic --output json \
@@ -15784,6 +15845,7 @@ CLI warning items.</li>
 <tr><td><code>mmap</code></td><td>Memory-mapped loading of filesystem dictionaries, the default of <code>use_mmap</code>; without it, <code>memmap2</code> is not linked and <code>use_mmap = true</code> reads the files</td><td>Yes</td></tr>
 <tr><td><code>train</code></td><td>CRF-based dictionary training (depends on <code>lindera-trainer</code>; <code>lindera::dictionary::trainer</code>)</td><td>See below</td></tr>
 <tr><td><code>dependency</code></td><td>The token filter <code>japanese_dependency</code>: bunsetsu dependency analysis, with <code>lindera-dependency</code>, which is not published yet (implies <code>analysis</code>)</td><td>No</td></tr>
+<tr><td><code>embed-dependency-ipadic</code></td><td>Embeds the model of that filter for IPADIC in the build, for <code>model: "embedded://ipadic"</code> (implies <code>dependency</code>); see <a href="development/../lindera-dependency/model_file.html#embedding-it">The model for IPADIC</a> for where a build takes it from</td><td>No</td></tr>
 </tbody></table>
 </div>
 <ul>
@@ -16401,7 +16463,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>The command reads, parses and writes one sentence at a time, and stops at the first sentence that fails, with what it wrote before.</td><td>It stands in a pipe, and its memory does not grow with the input.</td><td>#1439</td></tr>
 <tr><td>The model for IPADIC is distributed under the MIT license, with an acknowledgement of UD Japanese-GSD and the notice of IPADIC.</td><td>The model holds names of features and weights, and none of the annotation: the project takes it not to be an adaptation of the treebank. No court has decided the question; the <a href="development/../lindera-dependency/model_file.html#license-of-the-model">model file page</a> says what the position rests on. With one license for the code and the model, a program that embeds the model is distributed as one with an embedded dictionary is.</td><td>#1440</td></tr>
 <tr><td>The released model is trained on the train file of UD Japanese-GSD only.</td><td>The numbers on dev, test and PUD are then the numbers of the file that is released, and anyone can take them again.</td><td>#1440</td></tr>
-<tr><td>A released model has a version of its own, and is a file of a release of this repository whose tag is not a version of Lindera (<code>dependency-ipadic-1.0.0</code>). One script builds it, and the crate will have its URL and its SHA-256 in its source.</td><td>A model changes when it is trained again, not with each release of Lindera. The tag names the commit whose script built the file. A fixed file can be embedded by a build from the repository as well as by one from crates.io.</td><td>#1440</td></tr>
+<tr><td>A released model has the version of Lindera, and is released as a built dictionary is: a release builds it with one script, puts its archive on the page of its version, and writes a <code>prebuilt.json</code> into the crate just before it publishes it. A build from the repository embeds a file it is given.</td><td>One version for everything a release holds: nobody has to know which model fits which release. The model cannot be trained by a build script, as a dictionary is built, so a build without a pin takes a file. Decided on 2026-11-25, in place of a version of its own and a release with a tag of its own.</td><td>#1440</td></tr>
 </tbody></table>
 </div>
 <h2 id="the-reference-implementations"><a class="header" href="#the-reference-implementations">The reference implementations</a></h2>

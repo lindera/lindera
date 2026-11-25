@@ -184,6 +184,7 @@
 <tr><td><code>mmap</code></td><td>ファイルシステム辞書のメモリマップ読み込み。<code>use_mmap</code> のデフォルト値にもなる。無効にすると <code>memmap2</code> はリンクされず、<code>use_mmap = true</code> でもファイルを読み込む</td><td>有効</td></tr>
 <tr><td><code>train</code></td><td>CRF ベースの辞書学習（<code>lindera-trainer</code> に依存。<code>lindera::dictionary::trainer</code>）</td><td>下記参照</td></tr>
 <tr><td><code>dependency</code></td><td>トークンフィルター <code>japanese_dependency</code>。文節の係り受け解析で、未公開の <code>lindera-dependency</code> を使う（<code>analysis</code> を含む）</td><td>無効</td></tr>
+<tr><td><code>embed-dependency-ipadic</code></td><td>そのフィルターの IPADIC のモデルをビルドに埋め込む。<code>model: "embedded://ipadic"</code> で使う（<code>dependency</code> を含む）。ビルドがモデルをどこから取るかは <a href="../lindera-dependency/model_file.html#%E5%9F%8B%E3%82%81%E8%BE%BC%E3%82%80">IPADIC のモデル</a>を参照</td><td>無効</td></tr>
 </tbody></table>
 </div>
 <ul>

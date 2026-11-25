@@ -323,6 +323,7 @@ assert_eq!(output, text.as_bytes());
 <tr><td><code>cli</code></td><td>The <code>lindera-dependency</code> command with <code>parse</code> and <code>chunk</code>, which tokenizes with <code>lindera-segmenter</code>. No training code</td><td>No</td></tr>
 <tr><td><code>train</code></td><td>The <code>corpus</code> and <code>evaluation</code> modules, the training of the chunker with <code>lindera-crf</code> and of the parser, and their subcommands (implies <code>cli</code>)</td><td>No</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>Embeds IPADIC in the command, for <code>--dict embedded://ipadic</code> (implies <code>cli</code>)</td><td>No</td></tr>
+<tr><td><code>embed-model-ipadic</code></td><td>Embeds the <a href="./model_file.html#embedding-it">model for IPADIC</a>, for <code>embedded::model("ipadic")</code> and <code>--model embedded://ipadic</code>. A build dependency, and none of the library</td><td>No</td></tr>
 </tbody></table>
 </div>
 <p>The crate depends on <code>lindera-segmenter</code> at most, never on <code>lindera</code> or <code>lindera-analysis</code>: the token filter makes <code>lindera-analysis</code> depend on this crate, behind its <code>dependency</code> feature.</p>
