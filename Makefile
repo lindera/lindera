@@ -105,7 +105,10 @@ FEATURES_lindera-dependency     := --features train,embed-ipadic
 
 # Per-target feature overrides (where test/build differ). Lint uses the test
 # features, as it lints the test code too (see test_features).
-TEST_FEATURES_lindera-cli       := --features train,embed-ipadic
+# `dependency` is the token filter japanese_dependency (#1438). The tests of
+# lindera keep to the build without it, where the filter is refused by name.
+TEST_FEATURES_lindera-analysis  := --features embed-ipadic,embed-ko-dic,dependency
+TEST_FEATURES_lindera-cli       := --features train,embed-ipadic,dependency
 # lindera-binding's dictionary features exist only for its tests and benches,
 # so build-lindera-binding keeps building without embedded dictionaries.
 TEST_FEATURES_lindera-binding   := --features embed-ipadic,embed-ko-dic
@@ -319,7 +322,7 @@ check-docs: ## Check rustdoc warnings in the cargo crates (public and private it
 check-memmap2: ## Check that memmap2 is linked only into the builds with the mmap feature, as CI does
 	scripts/check_memmap2.sh
 
-check-lindera-dependency: ## Check that lindera-dependency builds for wasm32, needs no tokenizer or dictionary, and has no training code with cli, as CI does
+check-lindera-dependency: ## Check that lindera-dependency builds for wasm32, needs no tokenizer or dictionary, has no training code with cli, and is linked behind the dependency feature only, as CI does
 	scripts/check_dependency_crate.sh
 
 # The language bindings are left out of check-docs because building each one

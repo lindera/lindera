@@ -65,6 +65,10 @@ filters, and Japanese/Korean dictionary-driven token filters (base form,
 reading form, part-of-speech keep/stop tags, compound words, numbers,
 katakana stemming, and more) mirroring Lucene's kuromoji / nori analyzers.
 
+With the `dependency` feature, the token filter `japanese_dependency` writes
+on each token its bunsetsu and the bunsetsu that one depends on, with a model
+of `lindera-dependency`. The feature is in no default build.
+
 ## License
 
 MIT

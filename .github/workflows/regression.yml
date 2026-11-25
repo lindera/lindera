@@ -208,6 +208,10 @@ jobs:
               - 'lindera-dictionary/**'
               - 'lindera-ipadic/**'
               - 'lindera-ko-dic/**'
+              # The token filter japanese_dependency (feature `dependency`),
+              # and the model file its tests read.
+              - 'lindera-dependency/**'
+              - 'resources/dependency/**'
               # The tokenizer and token filter tests load these configurations
               # and user dictionaries.
               - 'resources/config/**'
@@ -256,6 +260,10 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+              # The token filter japanese_dependency (feature `dependency`),
+              # and the model file its tests read.
+              - 'lindera-dependency/**'
+              - 'resources/dependency/**'
               # The CLI tests train, export and build from these files.
               - 'resources/training/**'
               # The --max-threads tests tokenize the lines of this text.
@@ -409,6 +417,11 @@ jobs:
               - 'lindera-segmenter/**'
               - 'lindera-dictionary/**'
               - 'lindera-ipadic/**'
+              # check-lindera-dependency reads the `dependency` feature of
+              # these crates: the token filter japanese_dependency (#1438).
+              - 'lindera-analysis/Cargo.toml'
+              - 'lindera/Cargo.toml'
+              - 'lindera-cli/Cargo.toml'
               - 'scripts/check_dependency_crate.sh'
               - *shared-workspace
               - *shared-crate-workflow
@@ -834,7 +847,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-analysis
-      features: "--features embed-ipadic,embed-ko-dic"
+      features: "--features embed-ipadic,embed-ko-dic,dependency"
       dictionaries: "ipadic ko-dic"
       lint: true
 
@@ -1011,7 +1024,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-cli
-      features: "--features train,embed-ipadic"
+      features: "--features train,embed-ipadic,dependency"
       dictionaries: "ipadic"
       lint: true
 

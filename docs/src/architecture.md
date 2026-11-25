@@ -122,6 +122,7 @@ The **Segmenter** is the core component. It builds a lattice of candidate tokens
 | `analysis` | Re-export of `lindera-analysis` as `lindera::analysis` (character filters, token filters, `Tokenizer`) | Enabled (off with `default-features = false`) |
 | `mmap` | Memory-mapped file support for filesystem-based dictionary loading (opt-in via `--mmap`/`use_mmap`; the word-list files, the connection-cost matrix, and the trie all stay lazily paged) | Enabled |
 | `train` | CRF-based dictionary training functionality (adds `lindera-trainer` and the `train` feature of `lindera-crf`) | CLI + Python/Node.js/Ruby/PHP bindings (default); opt-in for the `lindera` library crate; unavailable in `lindera-wasm` |
+| `dependency` | The token filter `japanese_dependency`: bunsetsu dependency analysis with `lindera-dependency` (`lindera`, `lindera-analysis`, `lindera-cli`) | Disabled |
 | `embed-ipadic` | Embed the IPADIC dictionary into the binary | Disabled |
 | `embed-ipadic-neologd` | Embed the IPADIC NEologd dictionary into the binary | Disabled |
 | `embed-unidic` | Embed the UniDic dictionary into the binary | Disabled |

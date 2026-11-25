@@ -43,6 +43,9 @@ embed-jieba = [
 mmap = [
     "lindera-segmenter/mmap",
 ] # Memory-mapped dictionary loading by default (forwarded)
+# The token filter `japanese_dependency`: bunsetsu and their dependencies,
+# with a model of lindera-dependency (#1438). Not in the default build.
+dependency = ["dep:lindera-dependency"]
 default = ["mmap"]
 
 [dependencies]
@@ -50,6 +53,7 @@ anyhow = { workspace = true }
 daachorse = { workspace = true }
 kanaria = "0.2.0"
 lindera-crf = { workspace = true, features = ["console"] }
+lindera-dependency = { workspace = true, optional = true }
 lindera-segmenter = { workspace = true, default-features = false }
 log = { workspace = true }
 regex = { workspace = true }
@@ -67,6 +71,7 @@ criterion = { version = "0.8.2", default-features = false, features = [
 lindera-dictionary = { workspace = true }
 once_cell = { workspace = true }
 serde_json = { workspace = true }
+tempfile = "3.27.0"
 
 [[bench]]
 name = "bench_analysis_ipadic"

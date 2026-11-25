@@ -4,6 +4,7 @@ mod compound;
 /// # Modules
 /// - `japanese_base_form`: Contains the Japanese base form token filter.
 /// - `japanese_compound_word`: Contains the Japanese compound word token filter.
+/// - `japanese_dependency`: Contains the Japanese dependency token filter (feature `dependency`).
 /// - `japanese_kana`: Contains the Japanese kana token filter.
 /// - `japanese_katakana_stem`: Contains the Japanese katakana stem token filter.
 /// - `japanese_keep_tags`: Contains the Japanese keep tags token filter.
@@ -38,6 +39,8 @@ mod compound;
 /// `BoxTokenFilter` is a boxed implementation of a token filter.
 pub mod japanese_base_form;
 pub mod japanese_compound_word;
+#[cfg(feature = "dependency")]
+pub mod japanese_dependency;
 pub mod japanese_kana;
 pub mod japanese_katakana_stem;
 pub mod japanese_keep_tags;
@@ -69,6 +72,10 @@ use crate::token_filter::japanese_base_form::{
 };
 use crate::token_filter::japanese_compound_word::{
     JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME, JapaneseCompoundWordTokenFilter,
+};
+#[cfg(feature = "dependency")]
+use crate::token_filter::japanese_dependency::{
+    JAPANESE_DEPENDENCY_TOKEN_FILTER_NAME, JapaneseDependencyTokenFilter,
 };
 use crate::token_filter::japanese_kana::{
     JAPANESE_KANA_TOKEN_FILTER_NAME, JapaneseKanaTokenFilter,
@@ -198,6 +205,16 @@ impl TokenFilterLoader {
             JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME => {
                 BoxTokenFilter::from(JapaneseCompoundWordTokenFilter::from_config(value)?)
             }
+            #[cfg(feature = "dependency")]
+            JAPANESE_DEPENDENCY_TOKEN_FILTER_NAME => {
+                BoxTokenFilter::from(JapaneseDependencyTokenFilter::from_config(value)?)
+            }
+            #[cfg(not(feature = "dependency"))]
+            "japanese_dependency" => {
+                return Err(LinderaErrorKind::FeatureDisabled.with_error(anyhow::anyhow!(
+                    "the token filter japanese_dependency needs a build with the feature `dependency`"
+                )));
+            }
             JAPANESE_KANA_TOKEN_FILTER_NAME => {
                 BoxTokenFilter::from(JapaneseKanaTokenFilter::from_config(value)?)
             }
@@ -295,5 +312,25 @@ impl TokenFilterLoader {
         let character_filter = Self::load_from_value(kind, &args)?;
 
         Ok(character_filter)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn a_kind_that_is_not_a_token_filter_is_unsupported() {
+        let error = TokenFilterLoader::load_from_value("no_such_filter", &json!({}))
+            .err()
+            .unwrap();
+        assert_eq!(error.kind(), LinderaErrorKind::Deserialize);
+        assert!(
+            error
+                .to_string()
+                .contains("unsupported token filter: no_such_filter")
+        );
     }
 }

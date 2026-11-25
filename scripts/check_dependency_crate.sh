@@ -14,6 +14,11 @@
 # lindera-segmenter, and must not bring the training code, which is
 # lindera-crf.
 #
+# The token filter japanese_dependency (#1438) makes lindera-analysis depend
+# on this crate behind its `dependency` feature, which lindera and
+# lindera-cli forward. The builds without the feature must not link the
+# crate, and the build with it has to.
+#
 # Usage:
 #   scripts/check_dependency_crate.sh
 #
@@ -23,6 +28,9 @@
 # per check, and fails if the build fails, if the default build depends on
 # another crate of the workspace than lindera-crf, or if the build with
 # `cli` depends on lindera-crf or does not depend on lindera-segmenter.
+# Then reads the tree of lindera-analysis, lindera and lindera-cli without
+# and with `dependency`, and fails if lindera-dependency is in the first or
+# is missing from the second.
 
 set -euo pipefail
 
@@ -66,5 +74,28 @@ else
   echo "error: lindera-dependency with cli does not depend on lindera-segmenter" >&2
   failed=1
 fi
+
+for crate in lindera-analysis lindera lindera-cli; do
+  if ! tree=$(cargo tree --locked -p "$crate" -e normal --prefix none); then
+    echo "error: cargo tree -p $crate failed" >&2
+    exit 1
+  fi
+  if echo "$tree" | awk '$1 == "lindera-dependency" { found = 1 } END { exit !found }'; then
+    echo "error: $crate depends on lindera-dependency without the dependency feature" >&2
+    failed=1
+  else
+    echo "ok: $crate without the dependency feature does not depend on lindera-dependency"
+  fi
+  if ! tree=$(cargo tree --locked -p "$crate" --features dependency -e normal --prefix none); then
+    echo "error: cargo tree -p $crate --features dependency failed" >&2
+    exit 1
+  fi
+  if echo "$tree" | awk '$1 == "lindera-dependency" { found = 1 } END { exit !found }'; then
+    echo "ok: $crate with the dependency feature depends on lindera-dependency"
+  else
+    echo "error: $crate with the dependency feature does not depend on lindera-dependency" >&2
+    failed=1
+  fi
+done
 
 exit "$failed"

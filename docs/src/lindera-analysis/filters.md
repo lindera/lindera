@@ -147,6 +147,31 @@ The merged token's details carry `new_tag` at the part-of-speech position resolv
 }
 ```
 
+### japanese_dependency
+
+Analyzes the dependencies of the text: groups the tokens into bunsetsu (文節), finds the bunsetsu each one depends on, and writes the result on every token. No token is added, removed or changed, so the MeCab and wakati outputs stay as they are; the JSON output gets a `dependency` key for each token.
+
+The filter is in builds with the `dependency` feature only (`lindera`, `lindera-analysis` and `lindera-cli` have it; it is in no default). A build without it refuses the `kind` with an error that names the feature. The filter needs a model file of `lindera-dependency` for the dictionary of the tokenizer; no model is distributed yet. See [Token Filter](../lindera-dependency/token_filter.md) for what is written on a token, how a text is cut into sentences, and how to make a model.
+
+Put this filter before any token filter that removes, joins or rewrites tokens: the model reads the tokens as the dictionary gave them. Tokens removed or joined by an earlier filter are refused with an error.
+
+**Parameters:**
+
+| Argument | Type | Required | Description |
+| --- | --- | --- | --- |
+| `model` | string | Yes | Path of a model file of `lindera-dependency`, with a chunker and a parser, for the dictionary of the tokenizer |
+
+**Example:**
+
+```json
+{
+  "kind": "japanese_dependency",
+  "args": {
+    "model": "/path/to/ipadic.model"
+  }
+}
+```
+
 ### japanese_kana
 
 Converts token text between hiragana and katakana.
