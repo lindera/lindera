@@ -49,6 +49,10 @@ embed-cjk4 = [
 mmap = ["lindera/mmap"]     # Use memory-mapped file
 train = ["lindera/train"]   # Enable training functionality
 dependency = ["lindera/dependency"] # The token filter `japanese_dependency`
+embed-dependency-ipadic = [
+    "dependency",
+    "lindera/embed-dependency-ipadic",
+] # Embed the model of the token filter `japanese_dependency` for IPADIC
 default = ["mmap", "train"]
 
 [dependencies]

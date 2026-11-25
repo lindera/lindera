@@ -19,6 +19,8 @@ embed-ko-dic = ["lindera/embed-ko-dic"]
 # The token filter japanese_dependency (#1438): the bindings forward their
 # own `dependency` feature here. Not in the default build.
 dependency = ["lindera/dependency"]
+# The model of that filter for IPADIC, embedded in the build (#1440).
+embed-dependency-ipadic = ["dependency", "lindera/embed-dependency-ipadic"]
 
 [dependencies]
 lindera = { workspace = true, features = ["analysis"] }

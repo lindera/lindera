@@ -81,6 +81,10 @@ dependency = [
     "analysis",
     "lindera-analysis/dependency",
 ] # The token filter `japanese_dependency` (bunsetsu dependency analysis)
+embed-dependency-ipadic = [
+    "dependency",
+    "lindera-analysis/embed-dependency-ipadic",
+] # Embed the model of the token filter `japanese_dependency` for IPADIC
 # Experimental: profile per-context-id connection-matrix access frequency over a
 # corpus (see the `ctxfreq-dump` example). Off by default.
 ctxfreq = ["lindera-segmenter/ctxfreq"]

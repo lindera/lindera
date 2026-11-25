@@ -515,3 +515,56 @@ fn the_output_goes_to_evaluate() {
         "{report}"
     );
 }
+
+/// The model file that the builds of the tests embed: the test jobs name it
+/// in `LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE`. It is the model of the
+/// tests of lindera-analysis, in which every bunsetsu depends on the next.
+#[cfg(feature = "embed-model-ipadic")]
+const EMBEDDED_MODEL_FILE: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../resources/dependency/test_model_ipadic.bin"
+);
+
+#[cfg(feature = "embed-model-ipadic")]
+#[test]
+fn the_embedded_model_parses_as_its_file_does() {
+    let text = "彼は本を読んだ。\n今日は雨だ。\n";
+    let mut embedded = vec!["--model", "embedded://ipadic"];
+    embedded.extend_from_slice(&IPADIC);
+    let from_the_build = success(run(&embedded, &[], text));
+    let from_the_file = success(run(
+        &IPADIC,
+        &[("--model", Path::new(EMBEDDED_MODEL_FILE))],
+        text,
+    ));
+    assert!(from_the_build.starts_with("* 0 1D "), "{from_the_build}");
+    assert_eq!(from_the_build, from_the_file);
+}
+
+#[cfg(not(feature = "embed-model-ipadic"))]
+#[test]
+fn a_build_without_the_embedded_model_names_the_feature() {
+    let mut embedded = vec!["--model", "embedded://ipadic"];
+    embedded.extend_from_slice(&IPADIC);
+    let error = failure(run(&embedded, &[], "彼は本を読んだ。\n"));
+    assert!(
+        error.starts_with(
+            "Error: embedded://ipadic: the model for ipadic is not embedded in this build"
+        ),
+        "{error}"
+    );
+    assert!(error.contains("`embed-model-ipadic`"), "{error}");
+}
+
+#[test]
+fn a_dictionary_without_an_embedded_model_is_refused() {
+    let mut embedded = vec!["--model", "embedded://unidic"];
+    embedded.extend_from_slice(&IPADIC);
+    let error = failure(run(&embedded, &[], "彼は本を読んだ。\n"));
+    assert!(
+        error.starts_with(
+            "Error: embedded://unidic: no model can be embedded for the dictionary unidic"
+        ),
+        "{error}"
+    );
+}

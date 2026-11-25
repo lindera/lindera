@@ -40,6 +40,8 @@
 //!   file or mapped into memory, without copying its tables.
 //!   [`Model::analyze`](model::Model::analyze) takes a sentence from its
 //!   morphemes to its dependencies.
+//! - [`embedded`]: the model of a dictionary that a feature of the crate
+//!   embeds in the build, `embed-model-ipadic` the one for IPADIC.
 //! - [`parser`]: finding the head of each bunsetsu, with shift-reduce and a
 //!   classifier over features and pairs of features: the features, the
 //!   loop, and the classifier of a model file, which reads its weights
@@ -130,6 +132,7 @@ mod bytes;
 pub mod chunker;
 #[cfg(feature = "train")]
 pub mod corpus;
+pub mod embedded;
 pub mod error;
 #[cfg(feature = "train")]
 pub mod evaluation;

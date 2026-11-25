@@ -2,11 +2,11 @@
 
 `lindera-dependency` コマンドは、テキストを受け取り、Lindera の辞書で分かち書きし、各文の文節とその係り受けを[ラティス形式](./architecture.md#ラティス形式)で書き出します。`cabocha -f1` が書くのと同じ形式です。
 
-区切りと解析器の入った[モデルファイル](./model_file.md)が必要です。配布しているモデルはまだ無いので、先に[学習します](./parsing.md#モデルを学習する)。
+区切りと解析器の入った[モデルファイル](./model_file.md)が必要です。7.1.0 から Lindera のリリースが公開する [IPADIC のモデル](./model_file.md#ipadic-のモデル)か、自分で[学習した](./parsing.md#モデルを学習する)モデルを使います。
 
 ## ビルド
 
-コマンドは `cli` feature の裏にあります。この feature は `clap` と `lindera-segmenter` を入れ、学習のコードは入れません。`embed-ipadic` を付けると、IPADIC を埋め込みます。
+コマンドは `cli` feature の裏にあります。この feature は `clap` と `lindera-segmenter` を入れ、学習のコードは入れません。`embed-ipadic` を付けると、IPADIC を埋め込みます。`embed-model-ipadic` を付けると、[IPADIC のモデル](./model_file.md#埋め込む)を埋め込み、`--model embedded://ipadic` で指せます。
 
 ```shell
 cargo build --release -p lindera-dependency --features cli,embed-ipadic

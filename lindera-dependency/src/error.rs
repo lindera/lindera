@@ -35,6 +35,10 @@ pub enum Error {
     /// for: the name of the dictionary differs, or a morpheme has fewer
     /// feature columns than the schema of the model reads.
     Dictionary(String),
+    /// No model is embedded in the build for the dictionary asked for: no
+    /// feature embeds one for it, the build is without the feature, or it
+    /// is a documentation build, which embeds an empty file.
+    Embedded(String),
     /// The parser was given something it cannot use: a feature set that
     /// cannot be read, or weights that are not finite.
     Parser(String),
@@ -101,6 +105,7 @@ impl fmt::Display for Error {
             Error::Chunker(message) => write!(f, "{message}"),
             Error::Model(message) => write!(f, "{message}"),
             Error::Dictionary(message) => write!(f, "{message}"),
+            Error::Embedded(message) => write!(f, "{message}"),
             Error::Parser(message) => write!(f, "{message}"),
             #[cfg(feature = "train")]
             Error::Conllu { line, message } => write!(f, "line {line}: {message}"),

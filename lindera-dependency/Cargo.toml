@@ -27,6 +27,11 @@ cli = ["dep:clap", "dep:lindera-segmenter"]
 train = ["cli", "dep:lindera-crf", "dep:serde_json"]
 # Embeds IPADIC in the command, for `--dict embedded://ipadic`.
 embed-ipadic = ["cli", "lindera-segmenter/embed-ipadic"]
+# Embeds the model for IPADIC, for `embedded::model("ipadic")` and
+# `--model embedded://ipadic`: the one a release of Lindera publishes, or
+# the file LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE names (#1440). It
+# brings a build dependency, and no dependency of the library.
+embed-model-ipadic = ["dep:lindera-dictionary"]
 
 # No dependency in the default build: the core takes any sequence of
 # morphemes, and has to build without a tokenizer or a dictionary, for
@@ -41,6 +46,11 @@ clap = { version = "4.6.4", features = ["derive", "cargo"], optional = true }
 lindera-crf = { workspace = true, optional = true, features = ["train"] }
 lindera-segmenter = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
+
+# Only for the build script, and only with a feature that embeds a model:
+# the download and the check of a published archive.
+[build-dependencies]
+lindera-dictionary = { workspace = true, optional = true, features = ["build_rs"] }
 
 [dev-dependencies]
 tempfile = "3.27.0"

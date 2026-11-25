@@ -19,6 +19,10 @@ use crate::builder::DictionaryBuilder;
 use crate::dictionary::metadata::{DICTIONARY_FORMAT_VERSION, Metadata};
 use crate::error::LinderaErrorKind;
 
+mod published_file;
+
+pub use published_file::{PublishedFile, build_embedded_file};
+
 const MAX_ROUND: usize = 3;
 
 /// Where a source archive keeps the dictionary's files (#216).
@@ -4097,7 +4101,7 @@ mod tests {
     /// # Returns
     ///
     /// The server's base URL and the number of requests it has answered.
-    fn serve(status: u16, body: Vec<u8>) -> (String, Arc<AtomicUsize>) {
+    pub(super) fn serve(status: u16, body: Vec<u8>) -> (String, Arc<AtomicUsize>) {
         let (base, requests, _) = serve_and_record(status, body);
         (base, requests)
     }

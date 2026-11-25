@@ -107,7 +107,11 @@ FEATURES_lindera-dependency     := --features train,embed-ipadic
 # features, as it lints the test code too (see test_features).
 # `dependency` is the token filter japanese_dependency (#1438). The tests of
 # lindera keep to the build without it, where the filter is refused by name.
-TEST_FEATURES_lindera-analysis  := --features embed-ipadic,embed-ko-dic,dependency
+# `embed-dependency-ipadic` and `embed-model-ipadic` embed the model of
+# lindera-dependency (#1440), which the test and lint targets take from
+# the small model of the tests (see below).
+TEST_FEATURES_lindera-analysis  := --features embed-ipadic,embed-ko-dic,embed-dependency-ipadic
+TEST_FEATURES_lindera-dependency := --features train,embed-ipadic,embed-model-ipadic
 TEST_FEATURES_lindera-cli       := --features train,embed-ipadic,dependency
 # lindera-binding's dictionary features exist only for its tests and benches,
 # so build-lindera-binding keeps building without embedded dictionaries.
@@ -119,6 +123,12 @@ BUILD_FEATURES_lindera          := --features train
 # set, else FEATURES_$(1). lint-% uses them too, because clippy lints the test
 # code (`--all-targets`), as CI does with the features it tests each crate with.
 test_features = $(if $(TEST_FEATURES_$(1)),$(TEST_FEATURES_$(1)),$(FEATURES_$(1)))
+
+# What a test build that embeds a model of lindera-dependency embeds: the
+# repository has no pin of a published model (#1440). Only the test and
+# lint targets get it, so that no other build embeds this model by
+# accident.
+test-% lint-%: export LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE ?= $(CURDIR)/resources/dependency/test_model_ipadic.bin
 
 .DEFAULT_GOAL := help
 

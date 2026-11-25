@@ -59,6 +59,22 @@ else
   echo "ok: lindera-dependency depends on no tokenizer or dictionary crate"
 fi
 
+# The build script downloads a published model with lindera-dictionary,
+# behind the features that embed one (#1440): the default build has no
+# build dependency either.
+if ! tree=$(cargo tree --locked -p lindera-dependency -e build --prefix none); then
+  echo "error: cargo tree failed" >&2
+  exit 1
+fi
+others=$(echo "$tree" | awk '$1 != "lindera-dependency" { print $1 }' | sort -u)
+if [ -n "$others" ]; then
+  echo "error: the default build of lindera-dependency has build dependencies:" >&2
+  echo "$others" >&2
+  failed=1
+else
+  echo "ok: the default build of lindera-dependency has no build dependency"
+fi
+
 if ! tree=$(cargo tree --locked -p lindera-dependency --features cli -e normal --prefix none); then
   echo "error: cargo tree --features cli failed" >&2
   exit 1

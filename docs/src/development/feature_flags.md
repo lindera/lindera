@@ -10,6 +10,7 @@ Lindera uses Cargo feature flags to control optional functionality and dictionar
 | `mmap` | Memory-mapped loading of filesystem dictionaries, the default of `use_mmap`; without it, `memmap2` is not linked and `use_mmap = true` reads the files | Yes |
 | `train` | CRF-based dictionary training (depends on `lindera-trainer`; `lindera::dictionary::trainer`) | See below |
 | `dependency` | The token filter `japanese_dependency`: bunsetsu dependency analysis, with `lindera-dependency`, which is not published yet (implies `analysis`) | No |
+| `embed-dependency-ipadic` | Embeds the model of that filter for IPADIC in the build, for `model: "embedded://ipadic"` (implies `dependency`); see [The model for IPADIC](../lindera-dependency/model_file.md#embedding-it) for where a build takes it from | No |
 
 - `analysis` and `mmap` are both enabled by default in the `lindera` facade.
   `default-features = false` turns both off and leaves the pure segmenter (the

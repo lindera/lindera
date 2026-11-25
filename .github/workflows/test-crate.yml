@@ -52,6 +52,13 @@ on:
         type: string
         default: ""
 
+# What a build with a feature that embeds a model of lindera-dependency
+# embeds here (#1440): the small model of the tests. The repository has no
+# pin of a published model, and a build without such a feature does not
+# read the variable.
+env:
+  LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE: ${{ github.workspace }}/resources/dependency/test_model_ipadic.bin
+
 jobs:
   test:
     runs-on: ${{ inputs.runs-on }}

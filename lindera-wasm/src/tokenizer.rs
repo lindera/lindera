@@ -364,16 +364,23 @@ impl TokenizerBuilder {
         name: &str,
         args: JsValue,
     ) -> Result<TokenizerBuilder, JsValue> {
+        let a = parse_filter_args(args)?;
         // A path cannot be read in WebAssembly, and the error of the read
-        // would not say what to do.
+        // would not say what to do. A model embedded in the build is not a
+        // path: it goes on to the filter.
         #[cfg(feature = "dependency")]
-        if name == "japanese_dependency" {
+        if name == "japanese_dependency"
+            && !a
+                .get("model")
+                .and_then(Value::as_str)
+                .is_some_and(|model| model.starts_with("embedded://"))
+        {
             return Err(JsValue::from_str(
                 "japanese_dependency cannot read a model from a path in WebAssembly: \
-                 give the bytes of the model to appendDependencyFilter",
+                 give the bytes of the model to appendDependencyFilter, or \
+                 embedded://ipadic in a build with embed-dependency-ipadic",
             ));
         }
-        let a = parse_filter_args(args)?;
         self.state.borrow_mut().inner.append_token_filter(name, &a);
 
         Ok(self.share())
@@ -2632,6 +2639,40 @@ mod dependency_tests {
                 .as_string()
                 .unwrap()
                 .contains("appendDependencyFilter")
+        );
+    }
+
+    #[wasm_bindgen_test]
+    fn an_embedded_model_is_not_taken_for_a_path() {
+        // No model, and a model that is not a string, are refused as a path.
+        for args in [serde_json::json!({}), serde_json::json!({"model": 1})] {
+            let error = builder()
+                .append_token_filter(
+                    "japanese_dependency",
+                    serde_wasm_bindgen::to_value(&args).unwrap(),
+                )
+                .err()
+                .unwrap();
+            assert!(
+                error
+                    .as_string()
+                    .unwrap()
+                    .contains("appendDependencyFilter")
+            );
+        }
+        // `embedded://` goes on to the filter, which answers for the build.
+        let args = serde_wasm_bindgen::to_value(&serde_json::json!({"model": "embedded://ipadic"}))
+            .unwrap();
+        let built = builder()
+            .append_token_filter("japanese_dependency", args)
+            .unwrap()
+            .build();
+        #[cfg(not(feature = "embed-dependency-ipadic"))]
+        assert!(format!("{:?}", built.err().unwrap()).contains("embed-dependency-ipadic"));
+        #[cfg(feature = "embed-dependency-ipadic")]
+        assert_eq!(
+            written(&built.unwrap().tokenize(TEXT).unwrap()[0]).3,
+            "head"
         );
     }
 

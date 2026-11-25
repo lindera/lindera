@@ -107,3 +107,42 @@ fn a_model_file_that_cannot_be_read_ends_the_command_with_its_path() {
     assert!(stderr.contains("no/such/model.bin"), "{stderr}");
     assert!(output.stdout.is_empty());
 }
+
+/// The `--token-filter` argument of the filter with the embedded model.
+fn embedded_filter() -> String {
+    format!(
+        "japanese_dependency:{}",
+        json!({ "model": "embedded://ipadic" })
+    )
+}
+
+// The builds of the tests embed the model file above: the test jobs name it
+// in LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE.
+#[cfg(feature = "embed-dependency-ipadic")]
+#[test]
+fn the_embedded_model_gives_what_its_file_gives() {
+    let text = "彼は本を読んだ。今日は雨だ。\n";
+    let from_the_file = tokenize(&["--output", "json", "--token-filter", &filter()], text);
+    let from_the_build = tokenize(
+        &["--output", "json", "--token-filter", &embedded_filter()],
+        text,
+    );
+    assert!(from_the_file.contains("\"dependency\""), "{from_the_file}");
+    assert_eq!(from_the_build, from_the_file);
+}
+
+#[cfg(not(feature = "embed-dependency-ipadic"))]
+#[test]
+fn a_build_without_the_embedded_model_names_the_feature() {
+    let output = Command::cargo_bin("lindera")
+        .expect("lindera binary should build")
+        .args(["tokenize", "--dict", "embedded://ipadic", "--token-filter"])
+        .arg(embedded_filter())
+        .write_stdin("彼は本を読んだ。\n")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("`embed-dependency-ipadic`"), "{stderr}");
+    assert!(output.stdout.is_empty());
+}

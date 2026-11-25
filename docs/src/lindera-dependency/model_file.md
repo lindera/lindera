@@ -4,7 +4,7 @@ A model file holds what one dictionary needs to be analyzed: the name of the dic
 
 A model belongs to one dictionary. It depends on the feature columns of the dictionary and on how the dictionary segments a text, so the file says which dictionary it is for, and one file serves one dictionary.
 
-No model is distributed yet: until the [model for IPADIC](#the-model-for-ipadic) is released, a script builds it. [`train-chunker`](./chunking.md#training-a-model) writes a model file with the chunker, and [`train-parser`](./parsing.md#training-a-model) one with the parser, or with both.
+A release of Lindera publishes the [model for IPADIC](#the-model-for-ipadic), from 7.1.0 on. [`train-chunker`](./chunking.md#training-a-model) writes a model file with the chunker, and [`train-parser`](./parsing.md#training-a-model) one with the parser, or with both.
 
 ## Reading a model
 
@@ -102,7 +102,15 @@ The same parts give the same bytes. A part trained with another schema than the 
 
 ## The model for IPADIC
 
-The project trains one model for IPADIC, with a chunker and a parser, to release it as a file. It is not released yet; [`build_model.sh`](#building-it-again) builds it.
+The project trains one model for IPADIC, with a chunker and a parser. A release of Lindera builds it with [`build_model.sh`](#building-it-again) and puts it on the page of its version, next to the dictionaries, from 7.1.0 on: `lindera-dependency-ipadic-<version>.zip` in `v<version>`. The model has the version of the release, as the dictionaries have, and belongs to it: a program of Lindera 7.1.0 takes the model of 7.1.0.
+
+The archive holds one directory, `lindera-dependency-ipadic`, with three files:
+
+| File | What it is |
+| --- | --- |
+| `dependency.model` | The model file |
+| `model.json` | The name of the model (`dependency-ipadic`), its dictionary (`ipadic`) and the version of Lindera (`lindera_version`) |
+| `NOTICE.txt` | The license of the model, what it was made from, and the notice of IPADIC |
 
 | | |
 | --- | --- |
@@ -114,6 +122,36 @@ The project trains one model for IPADIC, with a chunker and a parser, to release
 
 Only the train file is used. The dev and test files of UD Japanese-GSD and UD Japanese-PUD are not seen in training, and no setting was chosen on them, so the [accuracy](./parsing.md#accuracy) measured on them is the accuracy of the file itself.
 
+### Embedding it
+
+The feature `embed-model-ipadic` of `lindera-dependency` embeds the model in the program; `lindera`, `lindera-cli` and the bindings forward it as `embed-dependency-ipadic`. The model is then named as the embedded dictionary is:
+
+```rust
+use lindera_dependency::embedded;
+
+// The bytes of the program, read in place.
+let model = embedded::model("ipadic")?;
+assert_eq!(model.dictionary(), "ipadic");
+```
+
+The [command](./command_line.md) takes `--model embedded://ipadic`, and the [token filter](./token_filter.md) `model: "embedded://ipadic"`. A build without the feature answers with an error that names it.
+
+The model is not trained by the build: the training needs the corpus. Where the build takes it from depends on where the crate comes from:
+
+| Build | The model it embeds |
+| --- | --- |
+| The crate from crates.io | The archive of its release, which the crate pins by SHA-256 in a `prebuilt.json`: the build downloads it and checks it, as a dictionary crate does for its [dictionary](../development/dictionary_release.md) |
+| The repository (`main`, a pull request, a git dependency) | The file [`LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE`](../getting_started/environment_variables.md#lindera_build_dependency_model_ipadic_file) names. The repository has no `prebuilt.json`, and a build without the variable stops with an error that says so |
+| docs.rs | An empty file: `embedded::model` gives an error |
+
+With the variable set, a published crate embeds that file too, instead of the one it pins.
+
+```shell
+scripts/dependency/build_model.sh
+export LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE=$PWD/scripts/dependency/data/model/lindera-dependency-ipadic/dependency.model
+cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ipadic
+```
+
 ### Building it again
 
 One script builds the file from the corpus and the sources of the repository:
@@ -122,7 +160,7 @@ One script builds the file from the corpus and the sources of the repository:
 scripts/dependency/build_model.sh
 ```
 
-It gets UD Japanese-GSD at its fixed commit, builds the `lindera-dependency` command with a named toolchain and the dependencies of `Cargo.lock`, converts the train file, trains the chunker and the parser, and writes three files to `scripts/dependency/data/model`: the model, its `NOTICE.txt` and `SHA256SUMS`. It takes about 15 seconds after the build. At its end it names the commit of Lindera, and then says what else it used and what it made:
+It gets UD Japanese-GSD at its fixed commit, builds the `lindera-dependency` command with a named toolchain and the dependencies of `Cargo.lock`, converts the train file, trains the chunker and the parser, and writes the directory of the archive and the archive to `scripts/dependency/data/model`. It takes about 15 seconds after the build. At its end it names the commit of Lindera, and then says what else it used and what it made:
 
 ```text
 corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6
@@ -130,12 +168,13 @@ toolchain: rustc 1.100.0 (0ef1bc386 2026-11-09)
 platform: x86_64-unknown-linux-gnu, glibc 2.43
 training data: 5075c95f2518b6af791e6a9ea2bd5f9f63eeaa5b316f3801d8068d71436e5064  train.lattice
 chunker: 74762e9b4f23d1dd06a304238006480264e0fea70b7a3a5c9e647c176dad59c3  chunker.model
-model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic-1.0.0.model (6258548 bytes)
+model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic/dependency.model (6258548 bytes)
+archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  lindera-dependency-ipadic-7.0.0.zip
 ```
 
 `--check <sha256>` makes the script fail when the file it built has another SHA-256. The script refuses a tree with uncommitted changes, so that the commit it names is what the file was built from.
 
-The same sources, corpus, toolchain and platform give the same bytes: nothing in the training depends on the time, on the number of threads or on the order of a hash table. Whether another platform gives the same bytes is not known. The training of the chunker calls `exp` and `ln_1p` of the mathematics library of the platform, and their last bit can differ from one library to another. The notice of a file (`NOTICE.txt`) names the platform it was built on.
+The same sources, corpus, toolchain and platform give the same bytes: nothing in the training depends on the time, on the number of threads or on the order of a hash table. Whether another platform gives the same bytes is not known. The training of the chunker calls `exp` and `ln_1p` of the mathematics library of the platform, and their last bit can differ from one library to another. The notice of a file (`NOTICE.txt`) names the platform it was built on. The model of a release is built by the runner of the release, so its bytes can differ from those of another machine; the SHA-256 of its archive is in the `prebuilt.json` of the published crate.
 
 ### License of the model
 

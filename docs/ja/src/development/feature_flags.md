@@ -10,6 +10,7 @@ Lindera は Cargo の feature フラグを使用して、オプション機能�
 | `mmap` | ファイルシステム辞書のメモリマップ読み込み。`use_mmap` のデフォルト値にもなる。無効にすると `memmap2` はリンクされず、`use_mmap = true` でもファイルを読み込む | 有効 |
 | `train` | CRF ベースの辞書学習（`lindera-trainer` に依存。`lindera::dictionary::trainer`） | 下記参照 |
 | `dependency` | トークンフィルター `japanese_dependency`。文節の係り受け解析で、未公開の `lindera-dependency` を使う（`analysis` を含む） | 無効 |
+| `embed-dependency-ipadic` | そのフィルターの IPADIC のモデルをビルドに埋め込む。`model: "embedded://ipadic"` で使う（`dependency` を含む）。ビルドがモデルをどこから取るかは [IPADIC のモデル](../lindera-dependency/model_file.md#埋め込む)を参照 | 無効 |
 
 - `analysis` と `mmap` は `lindera` ファサードでどちらもデフォルト有効です。
   `default-features = false` にすると両方とも無効になり、純粋なセグメンター

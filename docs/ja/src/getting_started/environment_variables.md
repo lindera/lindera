@@ -9,6 +9,7 @@ Lindera は次の環境変数を読みます。どれも設定しなくても動
 | [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url) | 辞書クレートの build script | `http` か `https` の URL | 公開済みの辞書を GitHub のリリースからダウンロードする |
 | [`LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL`](#lindera_build_dictionary_source_base_url) | 辞書クレートの build script | `http` か `https` の URL | ソースのアーカイブを `https://lindera.dev` から、UniDic、UniDic CWJ、UniDic CSJ のものは国立国語研究所（`https://clrd.ninjal.ac.jp`）から、ko-dic のものは mecab-ko-dic の Bitbucket の Downloads（`https://bitbucket.org`）からダウンロードする |
 | [`LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`](#lindera_build_context_id_freq_file) | 辞書クレートの build script | ファイル | 辞書クレートに同梱の頻度表（あれば） |
+| [`LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE`](#lindera_build_dependency_model_ipadic_file) | `embed-model-ipadic` を付けた `lindera-dependency` の build script | モデルファイル | 公開済みのクレートは、固定しているモデルを埋め込む。リポジトリからのビルドは止まる |
 | [`DOCS_RS`](#docs_rs) | 辞書クレートの build script | docs.rs が設定する | 本物の辞書をビルドする |
 | [`LINDERA_CONFIG_FILE`](#lindera_config_file) | `TokenizerBuilder::new()`（`lindera tokenize` とバインディングも） | ファイル | 空の設定 |
 | [`LINDERA_DICTIONARIES_DIR`](#lindera_dictionaries_dir) | CLI | ディレクトリ | OS のローカルデータディレクトリの `lindera/dictionaries` |
@@ -157,6 +158,30 @@ warning: lindera-ko-dic@7.0.0: LINDERA_CTX_FREQ_FILE is deprecated and will be r
 ```
 
 両方を設定すると `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` が使われ、`LINDERA_CTX_FREQ_FILE` は無視されると警告します。Cargo がこれらの警告を表示するのは、このリポジトリの checkout のように、パスで指定した辞書クレートをビルドするときです。crates.io から取得した辞書クレートでは、ビルドが失敗したときか `cargo build -vv` のときだけ表示します。
+
+### LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE
+
+`LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE` は、`embed-model-ipadic`（`lindera`、そのコマンド、各バインディングでは `embed-dependency-ipadic`）を付けたビルドが埋め込むモデルファイルを指します。`lindera-dependency` の IPADIC のモデルです。
+
+```shell
+scripts/dependency/build_model.sh
+export LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE=$PWD/scripts/dependency/data/model/lindera-dependency-ipadic/dependency.model
+cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ipadic
+```
+
+- リポジトリからのビルドには、この変数が必要です。リポジトリには公開済みのモデルの固定が無く、モデルは build script の中では学習できないので、変数が無いとビルドは止まります。
+
+  ```text
+  Error: LinderaError { kind: Args, source: lindera-dependency-ipadic is embedded from a release of Lindera, and a build from the repository has none to take it from: build the model with scripts/dependency/build_model.sh of the Lindera repository, and set LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE to the file }
+  ```
+
+- crates.io のクレートは、そのリリースのアーカイブを固定していて、変数が無ければそれを埋め込みます。変数があれば、指されたファイルを埋め込み、何もダウンロードしません。
+- ファイルは、そのまま埋め込まれます。中身の検査は、ビルドではなく、プログラムがモデルを求めたときに行います。
+- 変数か、変数が指すファイルを変えると、build script がもう一度動きます。
+- [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url) のミラーは、固定しているアーカイブにも効きます。アーカイブは、辞書と同じく、リリースのページにあるためです。
+- ドキュメントのビルド（`DOCS_RS`）は、空のファイルを埋め込み、どちらも読みません。
+
+[IPADIC のモデル](../lindera-dependency/model_file.md#埋め込む)を見てください。
 
 ### DOCS_RS
 

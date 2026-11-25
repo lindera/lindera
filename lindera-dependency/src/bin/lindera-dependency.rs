@@ -41,6 +41,7 @@ use std::process::ExitCode;
 
 use clap::{Parser as _, Subcommand};
 use lindera_dependency::chunker::{Chunker, ChunkerData};
+use lindera_dependency::embedded;
 use lindera_dependency::lattice::{self, LatticeMorpheme};
 use lindera_dependency::model::Model;
 use lindera_dependency::parser::{Classifier, Parser};
@@ -113,9 +114,9 @@ struct ParseArgs {
     #[clap(
         short = 'm',
         long = "model",
-        help = "Model file with a parser, and a chunker unless the input has its bunsetsu (what train-parser --chunker writes)"
+        help = "Model file with a parser, and a chunker unless the input has its bunsetsu (what train-parser --chunker writes), or embedded://ipadic in a build with embed-model-ipadic"
     )]
-    model: PathBuf,
+    model: String,
     /// The dictionary the text is tokenized with.
     #[clap(
         short = 'd',
@@ -158,9 +159,9 @@ struct ChunkArgs {
     #[clap(
         short = 'm',
         long = "model",
-        help = "Model file that train-chunker wrote"
+        help = "Model file that train-chunker wrote, or embedded://ipadic in a build with embed-model-ipadic"
     )]
-    model: PathBuf,
+    model: String,
     /// The morphemes.
     #[clap(
         short = 'i',
@@ -197,6 +198,31 @@ fn read_lattice(path: &Path) -> Result<Vec<Sentence<LatticeMorpheme>>, CommandEr
         .map_err(|error| format!("{}: {error}", path.display()).into())
 }
 
+/// Reads the bytes of a model: of the build, or of a file.
+///
+/// # Arguments
+///
+/// * `model` - What `--model` was given: `embedded://<dictionary>`, or a
+///   path.
+///
+/// # Returns
+///
+/// The bytes embedded in the build for the dictionary, without a copy, or
+/// the content of the file; or an error for a build that embeds no such
+/// model, and for a file that cannot be read.
+fn read_model(model: &str) -> Result<Cow<'static, [u8]>, CommandError> {
+    match embedded::dictionary_of(model) {
+        Some(dictionary) => Ok(Cow::Borrowed(
+            embedded::bytes(dictionary).map_err(|error| format!("{model}: {error}"))?,
+        )),
+        None => {
+            Ok(Cow::Owned(fs::read(model).map_err(|error| {
+                format!("cannot read {model}: {error}")
+            })?))
+        }
+    }
+}
+
 /// Runs `chunk`.
 ///
 /// # Arguments
@@ -208,12 +234,11 @@ fn read_lattice(path: &Path) -> Result<Vec<Sentence<LatticeMorpheme>>, CommandEr
 /// `Ok(())` once the output is written, or the first error: a model or an
 /// input that cannot be read, or an output that cannot be written.
 fn chunk(args: ChunkArgs) -> Result<(), CommandError> {
-    let bytes = fs::read(&args.model)
-        .map_err(|error| format!("cannot read {}: {error}", args.model.display()))?;
-    let model = Model::new(bytes).map_err(|error| format!("{}: {error}", args.model.display()))?;
+    let bytes = read_model(&args.model)?;
+    let model = Model::new(bytes).map_err(|error| format!("{}: {error}", args.model))?;
     let chunker = model
         .chunker()
-        .ok_or_else(|| format!("{}: the model has no chunker", args.model.display()))?;
+        .ok_or_else(|| format!("{}: the model has no chunker", args.model))?;
     let mut sentences = read_lattice(&args.input)?;
     // Every sentence is chunked before the output is created: an input that
     // is not of the dictionary of the model leaves no file behind.
@@ -302,18 +327,17 @@ fn write_parsed<D: ChunkerData, C: Classifier, M: Morpheme, W: Write>(
 /// parsed (the message names its line), or an output that cannot be
 /// written.
 fn parse(args: ParseArgs) -> Result<(), CommandError> {
-    let bytes = fs::read(&args.model)
-        .map_err(|error| format!("cannot read {}: {error}", args.model.display()))?;
-    let model = Model::new(bytes).map_err(|error| format!("{}: {error}", args.model.display()))?;
+    let bytes = read_model(&args.model)?;
+    let model = Model::new(bytes).map_err(|error| format!("{}: {error}", args.model))?;
     let parser = model
         .parser()
-        .ok_or_else(|| format!("{}: the model has no parser", args.model.display()))?;
+        .ok_or_else(|| format!("{}: the model has no parser", args.model))?;
     let chunker = match args.input_layer {
         InputLayer::Bunsetsu => None,
         InputLayer::Text | InputLayer::Morphemes => Some(
             model
                 .chunker()
-                .ok_or_else(|| format!("{}: the model has no chunker", args.model.display()))?,
+                .ok_or_else(|| format!("{}: the model has no chunker", args.model))?,
         ),
     };
 

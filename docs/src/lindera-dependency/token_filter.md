@@ -26,7 +26,7 @@ Python, Node.js, Ruby and PHP append the filter as the others, by its `kind` and
 
 ## The model
 
-The filter takes one argument, `model`: the path of a model file with a chunker and a parser, for the dictionary of the tokenizer. No model is distributed yet ([#1440](https://github.com/lindera/lindera/issues/1440)); [Parsing](./parsing.md) shows how to train one, and [Model File](./model_file.md) what the file holds.
+The filter takes one argument, `model`: the path of a model file with a chunker and a parser, for the dictionary of the tokenizer; or `embedded://ipadic`, the model that a build with the feature `embed-dependency-ipadic` holds. A release of Lindera publishes the [model for IPADIC](./model_file.md#the-model-for-ipadic), from 7.1.0 on; [Parsing](./parsing.md) shows how to train one, and [Model File](./model_file.md) what the file holds.
 
 The model is read once, when the filter is made, and shared by the copies of the tokenizer. A file that cannot be read, that is not a model file, or that lacks the chunker or the parser is an error then, before any text is read.
 
