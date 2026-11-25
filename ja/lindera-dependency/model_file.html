@@ -259,6 +259,7 @@ assert_eq!(model.dictionary(), "ipadic");
 <p><code>ModelBuilder::parser</code> は、<code>ParserModel</code> と、重みの書き方（<code>Quantization::F32</code>、<code>I16</code>、<code>I8</code>）を受け取ります。<code>ModelBuilder::from_model</code> は、すでにあるファイルの名前、スキーマ、部分から始めて、部分を足せるようにします。<code>train-parser --chunker</code> は、これで区切りを写します。</p>
 <h2 id="ipadic-のモデル"><a class="header" href="#ipadic-のモデル">IPADIC のモデル</a></h2>
 <p>このプロジェクトは、IPADIC のモデルを 1 つ学習します。区切りと解析器の両方が入ります。7.1.0 から、Lindera のリリースが <a href="#%E4%BD%9C%E3%82%8A%E7%9B%B4%E3%81%99"><code>build_model.sh</code></a> でモデルを作り、その版のページに、辞書と並べて置きます。<code>v&lt;version&gt;</code> の <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> です。モデルは、辞書と同じく、リリースの版を持ち、そのリリースに属します。Lindera 7.1.0 のプログラムは、7.1.0 のモデルを使います。</p>
+<p><a href="../lindera-cli/commands.html#%E4%BF%82%E3%82%8A%E5%8F%97%E3%81%91%E8%A7%A3%E6%9E%90%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89"><code>lindera download dependency-ipadic</code></a> が、コマンドのバージョンのアーカイブをインストールし、モデルファイルのパスを表示します。</p>
 <p>アーカイブには、ディレクトリ <code>lindera-dependency-ipadic</code> が 1 つ入っていて、中にファイルが 3 つあります。</p>
 <div class="table-wrapper"><table><thead><tr><th>ファイル</th><th>中身</th></tr></thead><tbody>
 <tr><td><code>dependency.model</code></td><td>モデルファイル</td></tr>

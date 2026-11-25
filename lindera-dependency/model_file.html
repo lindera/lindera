@@ -259,6 +259,7 @@ assert_eq!(model.dictionary(), "ipadic");
 <p><code>ModelBuilder::parser</code> takes a <code>ParserModel</code> and how its weights are written (<code>Quantization::F32</code>, <code>I16</code> or <code>I8</code>). <code>ModelBuilder::from_model</code> starts from the name, the schema and the parts of a file that exists, to add a part to it; <code>train-parser --chunker</code> does this with the chunker.</p>
 <h2 id="the-model-for-ipadic"><a class="header" href="#the-model-for-ipadic">The model for IPADIC</a></h2>
 <p>The project trains one model for IPADIC, with a chunker and a parser. A release of Lindera builds it with <a href="#building-it-again"><code>build_model.sh</code></a> and puts it on the page of its version, next to the dictionaries, from 7.1.0 on: <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> in <code>v&lt;version&gt;</code>. The model has the version of the release, as the dictionaries have, and belongs to it: a program of Lindera 7.1.0 takes the model of 7.1.0.</p>
+<p><a href="../lindera-cli/commands.html#downloading-the-model-of-the-dependency-parser"><code>lindera download dependency-ipadic</code></a> installs the archive of the version of the command, and prints the path of the model file.</p>
 <p>The archive holds one directory, <code>lindera-dependency-ipadic</code>, with three files:</p>
 <div class="table-wrapper"><table><thead><tr><th>File</th><th>What it is</th></tr></thead><tbody>
 <tr><td><code>dependency.model</code></td><td>The model file</td></tr>
