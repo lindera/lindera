@@ -173,5 +173,6 @@ assert_eq!(output, text.as_bytes());
 | `cli` | `lindera-dependency` コマンドの `parse` と `chunk`。分かち書きは `lindera-segmenter`。学習のコードは入らない | No |
 | `train` | `corpus` と `evaluation` のモジュール、`lindera-crf` による区切りの学習と解析器の学習、そのサブコマンド（`cli` を含む） | No |
 | `embed-ipadic` | コマンドに IPADIC を埋め込む。`--dict embedded://ipadic` で使う（`cli` を含む） | No |
+| `embed-model-ipadic` | [IPADIC のモデル](./model_file.md#埋め込む)を埋め込む。`embedded::model("ipadic")` と `--model embedded://ipadic` で使う。ビルド依存が増え、ライブラリの依存は増えない | No |
 
 このクレートが依存するのは `lindera-segmenter` までで、`lindera` と `lindera-analysis` には依存しません。トークンフィルターのために、`lindera-analysis` が `dependency` feature の裏でこのクレートに依存するためです。

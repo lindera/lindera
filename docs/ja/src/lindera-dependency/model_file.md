@@ -4,7 +4,7 @@
 
 モデルは 1 つの辞書に属します。辞書の素性の列と、辞書による分かち書きに依存するので、ファイルは、どの辞書のためのものかを自分で持ち、1 つのファイルが 1 つの辞書に対応します。
 
-配布しているモデルは、まだありません。[IPADIC のモデル](#ipadic-のモデル)を公開するまでは、スクリプトで作ります。[`train-chunker`](./chunking.md#モデルを学習する) は区切りを入れたモデルファイルを、[`train-parser`](./parsing.md#モデルを学習する) は解析器だけか、両方を入れたモデルファイルを書き出します。
+[IPADIC のモデル](#ipadic-のモデル)は、7.1.0 から、Lindera のリリースが公開します。[`train-chunker`](./chunking.md#モデルを学習する) は区切りを入れたモデルファイルを、[`train-parser`](./parsing.md#モデルを学習する) は解析器だけか、両方を入れたモデルファイルを書き出します。
 
 ## モデルを読む
 
@@ -102,7 +102,15 @@ assert_eq!(model.dictionary(), "ipadic");
 
 ## IPADIC のモデル
 
-このプロジェクトは、IPADIC のモデルを 1 つ学習し、ファイルとして公開します。区切りと解析器の両方が入ります。まだ公開しておらず、[`build_model.sh`](#作り直す) で作ります。
+このプロジェクトは、IPADIC のモデルを 1 つ学習します。区切りと解析器の両方が入ります。7.1.0 から、Lindera のリリースが [`build_model.sh`](#作り直す) でモデルを作り、その版のページに、辞書と並べて置きます。`v<version>` の `lindera-dependency-ipadic-<version>.zip` です。モデルは、辞書と同じく、リリースの版を持ち、そのリリースに属します。Lindera 7.1.0 のプログラムは、7.1.0 のモデルを使います。
+
+アーカイブには、ディレクトリ `lindera-dependency-ipadic` が 1 つ入っていて、中にファイルが 3 つあります。
+
+| ファイル | 中身 |
+| --- | --- |
+| `dependency.model` | モデルファイル |
+| `model.json` | モデルの名前（`dependency-ipadic`）、辞書（`ipadic`）、Lindera の版（`lindera_version`） |
+| `NOTICE.txt` | モデルのライセンス、何から作ったか、IPADIC の表示 |
 
 | | |
 | --- | --- |
@@ -114,6 +122,36 @@ assert_eq!(model.dictionary(), "ipadic");
 
 使うのは train のファイルだけです。UD Japanese-GSD の dev と test、UD Japanese-PUD は学習で見ておらず、設定の選択にも使っていません。そのため、これらで測った[精度](./parsing.md#精度)は、このファイルそのものの精度です。
 
+### 埋め込む
+
+`lindera-dependency` の feature `embed-model-ipadic` が、モデルをプログラムに埋め込みます。`lindera`、`lindera-cli`、各バインディングは、これを `embed-dependency-ipadic` として転送します。埋め込んだモデルは、埋め込んだ辞書と同じ書き方で指します。
+
+```rust
+use lindera_dependency::embedded;
+
+// The bytes of the program, read in place.
+let model = embedded::model("ipadic")?;
+assert_eq!(model.dictionary(), "ipadic");
+```
+
+[コマンド](./command_line.md)には `--model embedded://ipadic` を、[トークンフィルター](./token_filter.md)には `model: "embedded://ipadic"` を渡します。feature の無いビルドは、その feature の名前を挙げたエラーを返します。
+
+ビルドは、モデルを学習しません。学習にはコーパスが要るためです。ビルドがモデルをどこから取るかは、クレートをどこから取ったかで決まります。
+
+| ビルド | 埋め込むモデル |
+| --- | --- |
+| crates.io のクレート | そのリリースのアーカイブ。クレートが `prebuilt.json` に SHA-256 で固定している。ビルドは、ダウンロードして照合する。辞書のクレートが[辞書](../development/dictionary_release.md)にするのと同じ |
+| リポジトリ（`main`、pull request、git の依存） | [`LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE`](../getting_started/environment_variables.md#lindera_build_dependency_model_ipadic_file) が指すファイル。リポジトリには `prebuilt.json` が無く、この変数の無いビルドは、その旨のエラーで止まる |
+| docs.rs | 空のファイル。`embedded::model` はエラーを返す |
+
+この変数を設定すると、公開済みのクレートも、固定しているアーカイブの代わりに、そのファイルを埋め込みます。
+
+```shell
+scripts/dependency/build_model.sh
+export LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE=$PWD/scripts/dependency/data/model/lindera-dependency-ipadic/dependency.model
+cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ipadic
+```
+
 ### 作り直す
 
 1 つのスクリプトが、コーパスとリポジトリのソースからファイルを作ります。
@@ -122,7 +160,7 @@ assert_eq!(model.dictionary(), "ipadic");
 scripts/dependency/build_model.sh
 ```
 
-スクリプトは、UD Japanese-GSD を固定の commit で取り、`lindera-dependency` コマンドを、名指しした toolchain と `Cargo.lock` の依存でビルドします。続けて、train のファイルを変換し、区切りと解析器を学習して、`scripts/dependency/data/model` にファイルを 3 つ書きます。モデル、その `NOTICE.txt`、`SHA256SUMS` です。ビルドの後は 15 秒ほどで終わります。最後に、Lindera の commit を表示し、続けて、ほかに使ったものと作ったものを表示します。
+スクリプトは、UD Japanese-GSD を固定の commit で取り、`lindera-dependency` コマンドを、名指しした toolchain と `Cargo.lock` の依存でビルドします。続けて、train のファイルを変換し、区切りと解析器を学習して、`scripts/dependency/data/model` に、アーカイブのディレクトリとアーカイブを書きます。ビルドの後は 15 秒ほどで終わります。最後に、Lindera の commit を表示し、続けて、ほかに使ったものと作ったものを表示します。
 
 ```text
 corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6
@@ -130,12 +168,13 @@ toolchain: rustc 1.100.0 (0ef1bc386 2026-11-09)
 platform: x86_64-unknown-linux-gnu, glibc 2.43
 training data: 5075c95f2518b6af791e6a9ea2bd5f9f63eeaa5b316f3801d8068d71436e5064  train.lattice
 chunker: 74762e9b4f23d1dd06a304238006480264e0fea70b7a3a5c9e647c176dad59c3  chunker.model
-model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic-1.0.0.model (6258548 bytes)
+model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic/dependency.model (6258548 bytes)
+archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  lindera-dependency-ipadic-7.0.0.zip
 ```
 
 `--check <sha256>` を付けると、作ったファイルの SHA-256 が違うときに、スクリプトが失敗します。未コミットの変更がある作業ツリーでは、スクリプトは動きません。表示する commit が、ファイルの元になったソースと一致するようにするためです。
 
-ソース、コーパス、toolchain、プラットフォームが同じなら、同じバイト列になります。学習は、時刻にも、スレッドの数にも、ハッシュ表の順序にも依存しません。別のプラットフォームで同じバイト列になるかは、分かっていません。区切りの学習は、プラットフォームの数学ライブラリの `exp` と `ln_1p` を呼び、その最後の 1 ビットはライブラリによって違うことがあります。ファイルの表示（`NOTICE.txt`）に、作ったプラットフォームを書いてあります。
+ソース、コーパス、toolchain、プラットフォームが同じなら、同じバイト列になります。学習は、時刻にも、スレッドの数にも、ハッシュ表の順序にも依存しません。別のプラットフォームで同じバイト列になるかは、分かっていません。区切りの学習は、プラットフォームの数学ライブラリの `exp` と `ln_1p` を呼び、その最後の 1 ビットはライブラリによって違うことがあります。ファイルの表示（`NOTICE.txt`）に、作ったプラットフォームを書いてあります。リリースのモデルは、リリースのランナーが作るので、ほかの端末で作ったものとバイト列が違うことがあります。そのアーカイブの SHA-256 は、公開したクレートの `prebuilt.json` にあります。
 
 ### モデルのライセンス
 

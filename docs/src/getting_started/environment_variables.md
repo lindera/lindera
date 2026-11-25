@@ -9,6 +9,7 @@ Lindera reads the environment variables below; none of them is required.
 | [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url) | The build scripts of the dictionary crates | An `http` or `https` URL | The published dictionaries are downloaded from GitHub releases |
 | [`LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL`](#lindera_build_dictionary_source_base_url) | The build scripts of the dictionary crates | An `http` or `https` URL | The source archives are downloaded from `https://lindera.dev`, UniDic's, UniDic CWJ's and UniDic CSJ's from NINJAL (`https://clrd.ninjal.ac.jp`), and ko-dic's from mecab-ko-dic's Bitbucket Downloads (`https://bitbucket.org`) |
 | [`LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`](#lindera_build_context_id_freq_file) | The build scripts of the dictionary crates | A file | The histogram bundled with the dictionary crate, if any |
+| [`LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE`](#lindera_build_dependency_model_ipadic_file) | The build script of `lindera-dependency`, with `embed-model-ipadic` | A model file | A published crate embeds the model it pins; a build from the repository stops |
 | [`DOCS_RS`](#docs_rs) | The build scripts of the dictionary crates | Set by docs.rs | The real dictionaries are built |
 | [`LINDERA_CONFIG_FILE`](#lindera_config_file) | `TokenizerBuilder::new()`, and so `lindera tokenize` and the bindings | A file | An empty configuration |
 | [`LINDERA_DICTIONARIES_DIR`](#lindera_dictionaries_dir) | The CLI | A directory | `lindera/dictionaries` in the OS's local data directory |
@@ -157,6 +158,30 @@ warning: lindera-ko-dic@7.0.0: LINDERA_CTX_FREQ_FILE is deprecated and will be r
 ```
 
 When both are set, `LINDERA_BUILD_CONTEXT_ID_FREQ_FILE` is used, and the warning says that `LINDERA_CTX_FREQ_FILE` is ignored. Cargo shows these warnings for a dictionary crate built from a path, such as a checkout of this repository; for one from crates.io, it shows them only when the build fails or runs with `cargo build -vv`.
+
+### LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE
+
+`LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE` names the model file that a build with `embed-model-ipadic` (`embed-dependency-ipadic` in `lindera`, its command and the bindings) embeds: the model of `lindera-dependency` for IPADIC.
+
+```shell
+scripts/dependency/build_model.sh
+export LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE=$PWD/scripts/dependency/data/model/lindera-dependency-ipadic/dependency.model
+cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ipadic
+```
+
+- A build from the repository needs it. The repository has no pin of a published model, and the model cannot be trained by the build script, so the build stops without the variable:
+
+  ```text
+  Error: LinderaError { kind: Args, source: lindera-dependency-ipadic is embedded from a release of Lindera, and a build from the repository has none to take it from: build the model with scripts/dependency/build_model.sh of the Lindera repository, and set LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE to the file }
+  ```
+
+- A crate from crates.io pins the archive of its release, and embeds that without the variable. With the variable it embeds the file named, and downloads nothing.
+- The file is embedded as it is. What it holds is checked when the program asks for the model, not by the build.
+- Changing the variable, or the file it names, reruns the build script.
+- [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url) names a mirror for the pinned archive too: it is on the page of the release, as the dictionaries are.
+- A documentation build (`DOCS_RS`) embeds an empty file, and reads neither.
+
+See [The model for IPADIC](../lindera-dependency/model_file.md#embedding-it).
 
 ### DOCS_RS
 

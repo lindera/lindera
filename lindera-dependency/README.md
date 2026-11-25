@@ -26,11 +26,14 @@ what the analysis is built on, and its first step:
 The token filter `japanese_dependency` of Lindera runs this analysis in a
 tokenizer. It is in `lindera-analysis`, behind its `dependency` feature.
 
-No model is distributed yet: the chunker and the parser are trained with
-the commands of the crate, in a few seconds each. The model for IPADIC that
-will be released is built by
+A release of Lindera publishes the model for IPADIC, from 7.1.0 on, on
+the page of its version: `lindera-dependency-ipadic-<version>.zip`. It is
+built by
 [`scripts/dependency/build_model.sh`](../scripts/dependency/build_model.sh),
-from the train file of UD Japanese-GSD; it is under the MIT license.
+from the train file of UD Japanese-GSD, and is under the MIT license. The
+feature `embed-model-ipadic` embeds it in a program. The chunker and the
+parser can also be trained with the commands of the crate, in a few
+seconds each.
 
 The documentation has a chapter on the crate, in
 [English](../docs/src/lindera-dependency.md) and in

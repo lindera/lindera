@@ -34,6 +34,10 @@ embed-cjk = [
 dependency = [
     "lindera-binding/dependency",
 ] # The token filter japanese_dependency (bunsetsu dependency analysis)
+embed-dependency-ipadic = [
+    "dependency",
+    "lindera-binding/embed-dependency-ipadic",
+] # Embed the model of the token filter japanese_dependency for IPADIC
 default = []
 
 [dependencies]

@@ -6,7 +6,9 @@
 //! removed or rewritten.
 //!
 //! It is built with the feature `dependency`, and reads a model file of
-//! `lindera-dependency`, which is for one dictionary.
+//! `lindera-dependency`, which is for one dictionary. The model is given
+//! as bytes, as the path of a file, or as `embedded://ipadic`: the model
+//! that the feature `embed-dependency-ipadic` embeds in the build.
 //!
 //! # Sentences
 //!
@@ -87,7 +89,8 @@ pub type JapaneseDependencyTokenFilterConfig = Value;
 #[derive(Clone, Debug)]
 pub struct JapaneseDependencyTokenFilter {
     /// The model: its chunker and its parser read their weights in it.
-    model: Arc<Model<Vec<u8>>>,
+    /// The bytes are owned, or those of a model embedded in the build.
+    model: Arc<Model<Cow<'static, [u8]>>>,
 }
 
 impl JapaneseDependencyTokenFilter {
@@ -102,6 +105,19 @@ impl JapaneseDependencyTokenFilter {
     /// The filter, or an error for bytes that are not a model file, or a
     /// model without a chunker or without a parser.
     pub fn from_bytes(bytes: Vec<u8>) -> LinderaResult<Self> {
+        Self::from_model_bytes(Cow::Owned(bytes))
+    }
+
+    /// Makes the filter from the bytes of a model file, owned or not.
+    ///
+    /// # Arguments
+    ///
+    /// * `bytes` - The bytes of a model file of `lindera-dependency`.
+    ///
+    /// # Returns
+    ///
+    /// As [`JapaneseDependencyTokenFilter::from_bytes`].
+    fn from_model_bytes(bytes: Cow<'static, [u8]>) -> LinderaResult<Self> {
         let model = Model::new(bytes).map_err(to_error)?;
         if model.chunker().is_none() {
             return Err(LinderaErrorKind::Content
@@ -137,23 +153,52 @@ impl JapaneseDependencyTokenFilter {
             .map_err(|error| error.add_context(format!("the dependency model {}", path.display())))
     }
 
+    /// Makes the filter from the model embedded in the build for a
+    /// dictionary, without copying its bytes.
+    ///
+    /// # Arguments
+    ///
+    /// * `dictionary` - The name of the dictionary of the model, as `ipadic`.
+    ///
+    /// # Returns
+    ///
+    /// The filter, or an error for a dictionary no model can be embedded
+    /// for, and for a build without the feature that embeds it,
+    /// `embed-dependency-ipadic` for IPADIC: the message names the feature
+    /// of `lindera-dependency` behind it, `embed-model-ipadic`.
+    pub fn from_embedded(dictionary: &str) -> LinderaResult<Self> {
+        let bytes = lindera_dependency::embedded::bytes(dictionary).map_err(|error| {
+            LinderaErrorKind::FeatureDisabled.with_error(anyhow::anyhow!(
+                "{JAPANESE_DEPENDENCY_TOKEN_FILTER_NAME}: {error}"
+            ))
+        })?;
+        Self::from_model_bytes(Cow::Borrowed(bytes)).map_err(|error| {
+            error.add_context(format!("the dependency model embedded for {dictionary}"))
+        })
+    }
+
     /// Makes the filter from its configuration.
     ///
     /// # Arguments
     ///
-    /// * `config` - An object with `model`, the path of a model file.
+    /// * `config` - An object with `model`: the path of a model file, or
+    ///   `embedded://<dictionary>` for the model embedded in the build.
     ///
     /// # Returns
     ///
     /// The filter, or an error when `model` is missing or is not a string,
-    /// or as [`JapaneseDependencyTokenFilter::from_path`].
+    /// or as [`JapaneseDependencyTokenFilter::from_path`] and
+    /// [`JapaneseDependencyTokenFilter::from_embedded`].
     pub fn from_config(config: &JapaneseDependencyTokenFilterConfig) -> LinderaResult<Self> {
         let path = config.get("model").and_then(Value::as_str).ok_or_else(|| {
             LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
-                "{JAPANESE_DEPENDENCY_TOKEN_FILTER_NAME}: `model`, the path of a model file, is required"
+                "{JAPANESE_DEPENDENCY_TOKEN_FILTER_NAME}: `model`, the path of a model file or embedded://<dictionary>, is required"
             ))
         })?;
-        Self::from_path(Path::new(path))
+        match lindera_dependency::embedded::dictionary_of(path) {
+            Some(dictionary) => Self::from_embedded(dictionary),
+            None => Self::from_path(Path::new(path)),
+        }
     }
 
     /// The name of the dictionary the model of the filter is for.
@@ -602,7 +647,7 @@ mod tests {
     /// the head of that bunsetsu, and whether the token is the head word
     /// and the function word.
     fn analyzed(
-        model: &Model<Vec<u8>>,
+        model: &Model<Cow<'static, [u8]>>,
         tokens: &mut [Token<'_>],
     ) -> Vec<(u32, Option<u32>, bool, bool)> {
         let morphemes: Vec<DictionaryMorpheme> = tokens
@@ -946,6 +991,81 @@ mod tests {
                 ),
             ]
         );
+    }
+
+    /// The JSON of the tokens of a text, with a filter.
+    fn values(filter: JapaneseDependencyTokenFilter) -> Vec<Value> {
+        let mut tokenizer = tokenizer();
+        tokenizer.append_token_filter(BoxTokenFilter::from(filter));
+        tokenizer
+            .tokenize("彼は本を読んだ。今日は雨だ。")
+            .unwrap()
+            .iter_mut()
+            .map(|token| token.as_value())
+            .collect()
+    }
+
+    // The builds of the tests embed the model file of the other tests: the
+    // test jobs name it in LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE.
+    #[cfg(feature = "embed-dependency-ipadic")]
+    #[test]
+    fn the_embedded_model_gives_what_its_file_gives() {
+        let from_the_file =
+            values(JapaneseDependencyTokenFilter::from_path(Path::new(MODEL_FILE)).unwrap());
+        assert_eq!(
+            from_the_file[0]["dependency"],
+            json!({"sentence": 0, "bunsetsu": 0, "head": 1, "role": "head", "score": 1.0})
+        );
+
+        let embedded = JapaneseDependencyTokenFilter::from_embedded("ipadic").unwrap();
+        assert_eq!(embedded.dictionary(), "ipadic");
+        // The model reads the bytes of the program: none is copied.
+        assert!(std::ptr::eq(
+            embedded.model.as_bytes(),
+            lindera_dependency::embedded::bytes("ipadic").unwrap()
+        ));
+        assert_eq!(values(embedded), from_the_file);
+
+        let args = json!({"model": "embedded://ipadic"});
+        let by_kind =
+            TokenFilterLoader::load_from_value(JAPANESE_DEPENDENCY_TOKEN_FILTER_NAME, &args)
+                .unwrap();
+        let mut tokenizer = tokenizer();
+        tokenizer.append_token_filter(by_kind);
+        let tokens: Vec<Value> = tokenizer
+            .tokenize("彼は本を読んだ。今日は雨だ。")
+            .unwrap()
+            .iter_mut()
+            .map(|token| token.as_value())
+            .collect();
+        assert_eq!(tokens, from_the_file);
+    }
+
+    #[cfg(not(feature = "embed-dependency-ipadic"))]
+    #[test]
+    fn a_build_without_the_embedded_model_names_the_feature() {
+        let args = json!({"model": "embedded://ipadic"});
+        for error in [
+            JapaneseDependencyTokenFilter::from_embedded("ipadic").unwrap_err(),
+            JapaneseDependencyTokenFilter::from_config(&args).unwrap_err(),
+        ] {
+            assert_eq!(error.kind(), LinderaErrorKind::FeatureDisabled);
+            let message = error.to_string();
+            assert!(message.contains("japanese_dependency"), "{message}");
+            assert!(message.contains("`embed-dependency-ipadic`"), "{message}");
+        }
+    }
+
+    #[test]
+    fn a_dictionary_without_an_embedded_model_is_refused() {
+        let args = json!({"model": "embedded://unidic"});
+        let error = JapaneseDependencyTokenFilter::from_config(&args).unwrap_err();
+        assert_eq!(error.kind(), LinderaErrorKind::FeatureDisabled);
+        assert!(error.to_string().contains("unidic"), "{error}");
+        // What does not start with the scheme is a path.
+        let args = json!({"model": "models/embedded://ipadic"});
+        let error = JapaneseDependencyTokenFilter::from_config(&args).unwrap_err();
+        assert_eq!(error.kind(), LinderaErrorKind::Io);
     }
 
     #[test]

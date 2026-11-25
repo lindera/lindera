@@ -46,6 +46,9 @@ mmap = [
 # The token filter `japanese_dependency`: bunsetsu and their dependencies,
 # with a model of lindera-dependency (#1438). Not in the default build.
 dependency = ["dep:lindera-dependency"]
+# Embeds the model of lindera-dependency for IPADIC in the build, for
+# `model: "embedded://ipadic"` (#1440). Not in the default build.
+embed-dependency-ipadic = ["dependency", "lindera-dependency/embed-model-ipadic"]
 default = ["mmap"]
 
 [dependencies]

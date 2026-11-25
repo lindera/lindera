@@ -1551,6 +1551,7 @@ version = "7.0.0"
 dependencies = [
  "clap",
  "lindera-crf",
+ "lindera-dictionary",
  "lindera-segmenter",
  "serde_json",
  "tempfile",

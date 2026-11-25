@@ -173,5 +173,6 @@ The command is in this crate, not in `lindera-cli`: `lindera-cli` is published, 
 | `cli` | The `lindera-dependency` command with `parse` and `chunk`, which tokenizes with `lindera-segmenter`. No training code | No |
 | `train` | The `corpus` and `evaluation` modules, the training of the chunker with `lindera-crf` and of the parser, and their subcommands (implies `cli`) | No |
 | `embed-ipadic` | Embeds IPADIC in the command, for `--dict embedded://ipadic` (implies `cli`) | No |
+| `embed-model-ipadic` | Embeds the [model for IPADIC](./model_file.md#embedding-it), for `embedded::model("ipadic")` and `--model embedded://ipadic`. A build dependency, and none of the library | No |
 
 The crate depends on `lindera-segmenter` at most, never on `lindera` or `lindera-analysis`: the token filter makes `lindera-analysis` depend on this crate, behind its `dependency` feature.

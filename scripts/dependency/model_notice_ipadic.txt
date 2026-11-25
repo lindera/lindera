@@ -1,14 +1,15 @@
 ===========================================================================
-lindera-dependency: the model for IPADIC, version @VERSION@
+lindera-dependency: the model for IPADIC, of Lindera @VERSION@
 ===========================================================================
 
-This notice comes with
+This notice comes with dependency.model, in the archive
 
-  lindera-dependency-ipadic-@VERSION@.model
+  lindera-dependency-ipadic-@VERSION@.zip
 
 a model file of lindera-dependency (https://github.com/lindera/lindera):
 the chunker and the dependency parser for Japanese text segmented with
-IPADIC.
+IPADIC. A release of Lindera publishes it on the page of its version,
+next to its dictionaries.
 
 It was built by scripts/dependency/build_model.sh of the Lindera
 repository, from

@@ -2,11 +2,11 @@
 
 The `lindera-dependency` command takes plain text, tokenizes it with a Lindera dictionary, and writes the bunsetsu of each sentence and their dependencies in the [lattice format](./architecture.md#the-lattice-format), which is what `cabocha -f1` writes.
 
-It needs a [model file](./model_file.md) with a chunker and a parser. No model is distributed yet: [train one](./parsing.md#training-a-model) first.
+It needs a [model file](./model_file.md) with a chunker and a parser: the [model for IPADIC](./model_file.md#the-model-for-ipadic), which a release of Lindera publishes from 7.1.0 on, or one you [train](./parsing.md#training-a-model).
 
 ## Building
 
-The command is behind the `cli` feature, which brings `clap` and `lindera-segmenter` and no training code. `embed-ipadic` embeds IPADIC in it:
+The command is behind the `cli` feature, which brings `clap` and `lindera-segmenter` and no training code. `embed-ipadic` embeds IPADIC in it, and `embed-model-ipadic` the [model for IPADIC](./model_file.md#embedding-it), which `--model embedded://ipadic` then names:
 
 ```shell
 cargo build --release -p lindera-dependency --features cli,embed-ipadic

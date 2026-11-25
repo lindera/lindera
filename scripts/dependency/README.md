@@ -38,7 +38,7 @@ Run everything from the root of the repository.
 | `parser_experiment.py` | The driver of `parser_experiments.sh` |
 | `parse_speed.sh` | The sentences per second of `lindera-dependency parse` on plain text, in the build with `cli,embed-ipadic`: the text of the test file of UD Japanese-GSD, with and without the time to load the dictionary and the model |
 | `filter_speed.sh` | What the token filter `japanese_dependency` costs in `lindera tokenize`, in the build with `embed-ipadic,dependency`: the tokens per second without and with the filter on the text of the test file of UD Japanese-GSD, and the time the filter adds to a token |
-| `build_model.sh` | The model for IPADIC as it is released: the model file, its `NOTICE.txt` and `SHA256SUMS`, from the train file of UD Japanese-GSD and the sources of the repository, with a named toolchain and the dependencies of `Cargo.lock`. `--check <sha256>` compares the file with a known digest |
+| `build_model.sh` | The model for IPADIC as a release of Lindera publishes it: the directory `lindera-dependency-ipadic` with the model file, `model.json` and `NOTICE.txt`, and its archive, from the train file of UD Japanese-GSD and the sources of the repository, with the dependencies of `Cargo.lock`. `--check <sha256>` compares the model with a known digest. `release.yml` runs it for a release; a build from the repository embeds its model through `LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE` |
 | `model_notice_ipadic.txt` | The template of the notice `build_model.sh` writes |
 | `model_speed/` | The size of a model file, the time to read it, and the sentences per second of chunking, of parsing and of both; with a training file, also of a chunker in memory |
 | `head_variants/` | The agreement of the head word for CaboCha's rule and for each addition of `Schema::ipadic()`, measured with `corpus::convert` |
@@ -88,9 +88,8 @@ cargo run --release --manifest-path scripts/dependency/model_speed/Cargo.toml --
     $data/parser/full/default/model $data/lattice/ja_gsd-ud-train.lattice 7 \
     $data/lattice/ja_gsd-ud-train.lattice
 
-# The model as it is released: the file, its notice and the checksums go
-# to $data/model. It needs a tree without uncommitted changes and the
-# toolchain it names (rustup toolchain install 1.100.0).
+# The model as a release publishes it: its directory and its archive go
+# to $data/model. It needs a tree without uncommitted changes.
 scripts/dependency/build_model.sh
 
 # The training instances of the parser.
@@ -121,7 +120,7 @@ The models of the chunker are the same bytes each time.
 | `chunker_experiments.sh cv` | F over the 10 folds of train, such as 96.83 for CaboCha's columns with L1 and 0.25, and 96.93 for the default setting; the README of the crate has the table |
 | `model_speed/` | 261,851 bytes; about 228 microseconds to read the file; chunking the train file at about 18,223 sentences per second with the model in memory and 16,896 on the bytes of the file. The times depend on the machine: these are of one core of an AMD Ryzen AI Max+ 395 |
 | `parser_experiments.sh final` | With the bunsetsu of the answer 90.11% on dev, 88.53% on test, 88.81% on PUD; from the morphemes 85.39%, 84.47%, 86.19%; 6,258,548 bytes, the same bytes twice |
-| `build_model.sh` | 6,258,548 bytes, SHA-256 `793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46`, on x86_64 Linux with glibc 2.43 and Rust 1.100.0; the same bytes as the model of `parser_experiments.sh final`. The same sources, corpus, toolchain and platform give the same bytes. Another platform is not known to: the training of the chunker calls `exp` and `ln_1p` of its mathematics library |
+| `build_model.sh` | The model is 6,258,548 bytes, SHA-256 `793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46`, on x86_64 Linux with glibc 2.43 and Rust 1.100.0; the same bytes as the model of `parser_experiments.sh final`. The same sources, corpus, toolchain and platform give the same bytes, and the same archive for the same version. Another platform is not known to: the training of the chunker calls `exp` and `ln_1p` of its mathematics library |
 | `parser_experiments.sh algorithm` and the other stages | Level 1 over the 10 folds of train, such as 88.96% for CaboCha's feature set and 89.21% for the default setting; the README of the crate has the tables |
 | `parser_experiments.sh speed` | About 16,700 sentences per second for parsing and 8,700 for chunking and parsing with the default model; the times depend on the machine |
 | `parse_speed.sh <model>` | 543 sentences; about 6,600 sentences per second from the text to the lattice format, about 5 ms to load; the times depend on the machine |

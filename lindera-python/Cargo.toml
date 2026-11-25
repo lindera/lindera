@@ -46,6 +46,10 @@ train = ["lindera/train"] # Enable training functionality
 dependency = [
     "lindera-binding/dependency",
 ] # The token filter japanese_dependency (bunsetsu dependency analysis)
+embed-dependency-ipadic = [
+    "dependency",
+    "lindera-binding/embed-dependency-ipadic",
+] # Embed the model of the token filter japanese_dependency for IPADIC
 default = ["train"] # No directories included
 
 [dependencies]

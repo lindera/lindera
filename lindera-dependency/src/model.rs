@@ -108,7 +108,7 @@ use table::{Layout, Table};
 const MAGIC: &[u8; 8] = b"LDMODEL\0";
 
 /// The version of the format.
-const VERSION: u32 = 1;
+pub(crate) const VERSION: u32 = 1;
 
 /// The kind of the chunker part.
 const KIND_CHUNKER: u32 = 1;

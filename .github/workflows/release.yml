@@ -41,7 +41,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-dependency
-      features: "--features train,embed-ipadic"
+      features: "--features train,embed-ipadic,embed-model-ipadic"
       cache: true
 
   test-lindera-dictionary:
