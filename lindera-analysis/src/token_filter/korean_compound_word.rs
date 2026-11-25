@@ -181,16 +181,17 @@ mod tests {
             ]
             .into_iter()
             .enumerate()
-            .map(|(i, (surface, tag, final_consonant))| Token {
-                surface: Cow::Borrowed(surface),
-                byte_start: i * 3,
-                byte_end: i * 3 + 3,
-                position: i,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, i as u32),
-                dictionary,
-                user_dictionary: None,
-                details: Some(vec![
+            .map(|(i, (surface, tag, final_consonant))| {
+                Token::new(
+                    Cow::Borrowed(surface),
+                    i * 3,
+                    i * 3 + 3,
+                    i,
+                    WordId::new(LexType::System, i as u32),
+                    dictionary,
+                    None,
+                )
+                .with_details(vec![
                     Cow::Borrowed(tag),
                     Cow::Borrowed("*"),
                     Cow::Borrowed(final_consonant),
@@ -199,7 +200,7 @@ mod tests {
                     Cow::Borrowed("*"),
                     Cow::Borrowed("*"),
                     Cow::Borrowed("*"),
-                ]),
+                ])
             })
             .collect()
         }

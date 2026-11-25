@@ -195,48 +195,46 @@ mod tests {
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token {
-                surface: Cow::Borrowed("籠原"),
-                byte_start: 0,
-                byte_end: 6,
-                position: 0,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 312630),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![
-                    Cow::Borrowed("名詞"),
-                    Cow::Borrowed("固有名詞"),
-                    Cow::Borrowed("一般"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("籠原"),
-                    Cow::Borrowed("カゴハラ"),
-                    Cow::Borrowed("カゴハラ"),
-                ]),
-            },
-            Token {
-                surface: Cow::Borrowed("駅"),
-                byte_start: 6,
-                byte_end: 9,
-                position: 1,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 383791),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![
-                    Cow::Borrowed("名詞"),
-                    Cow::Borrowed("接尾"),
-                    Cow::Borrowed("地域"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("駅"),
-                    Cow::Borrowed("エキ"),
-                    Cow::Borrowed("エキ"),
-                ]),
-            },
+            Token::new(
+                Cow::Borrowed("籠原"),
+                0,
+                6,
+                0,
+                WordId::new(LexType::System, 312630),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![
+                Cow::Borrowed("名詞"),
+                Cow::Borrowed("固有名詞"),
+                Cow::Borrowed("一般"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("籠原"),
+                Cow::Borrowed("カゴハラ"),
+                Cow::Borrowed("カゴハラ"),
+            ]),
+            Token::new(
+                Cow::Borrowed("駅"),
+                6,
+                9,
+                1,
+                WordId::new(LexType::System, 383791),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![
+                Cow::Borrowed("名詞"),
+                Cow::Borrowed("接尾"),
+                Cow::Borrowed("地域"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("駅"),
+                Cow::Borrowed("エキ"),
+                Cow::Borrowed("エキ"),
+            ]),
         ];
 
         filter.apply(&mut tokens).unwrap();
@@ -270,17 +268,15 @@ mod tests {
 
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
-        let mut tokens: Vec<Token> = vec![Token {
-            surface: Cow::Borrowed("abcab"),
-            byte_start: 0,
-            byte_end: 5,
-            position: 0,
-            position_length: 1,
-            word_id: WordId::new(LexType::System, 0),
-            dictionary: &dictionary,
-            user_dictionary: None,
-            details: None,
-        }];
+        let mut tokens: Vec<Token> = vec![Token::new(
+            Cow::Borrowed("abcab"),
+            0,
+            5,
+            0,
+            WordId::new(LexType::System, 0),
+            &dictionary,
+            None,
+        )];
 
         filter.apply(&mut tokens).unwrap();
 

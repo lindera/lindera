@@ -152,6 +152,7 @@
 - [Migration v4 to v5](./migration_v4_to_v5.md)
 - [Migration v5 to v6](./migration_v5_to_v6.md)
 - [Migration v6 to v7](./migration_v6_to_v7.md)
+- [Migration from v7.0](./migration_from_v7.md)
 
 ---
 

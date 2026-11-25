@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::iter::{self, Chain, RepeatN};
+use std::mem::ManuallyDrop;
 use std::slice;
 
 use lindera_dictionary::dictionary::{DetailFields, UNK};
@@ -11,7 +12,114 @@ use crate::dictionary::{Dictionary, UserDictionary, WordId};
 /// field count, so that every token can be read by index up to that width.
 const PADDING_FIELD: &str = "*";
 
+/// What a morpheme is in its bunsetsu.
+///
+/// A bunsetsu has a head word, the last content word, and a function word,
+/// the last particle or auxiliary; in a bunsetsu of content words alone
+/// the two are the same morpheme.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BunsetsuRole {
+    /// The head word of the bunsetsu.
+    Head,
+    /// The function word of the bunsetsu.
+    Function,
+    /// The head word and the function word at once.
+    HeadAndFunction,
+    /// Neither of the two.
+    Other,
+}
+
+impl BunsetsuRole {
+    /// The name of the role, as [`Token::as_value`] writes it.
+    ///
+    /// # Returns
+    ///
+    /// `head`, `function`, `head_function` or `other`.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Head => "head",
+            Self::Function => "function",
+            Self::HeadAndFunction => "head_function",
+            Self::Other => "other",
+        }
+    }
+}
+
+/// The bunsetsu of a token and what that bunsetsu depends on: the result of
+/// a dependency analysis, which a token filter writes.
+///
+/// A bunsetsu (文節) is a content word with the function words that follow
+/// it. The bunsetsu of a sentence are numbered from 0, and each of them but
+/// the last depends on a later one, its head.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TokenDependency {
+    /// The number of the sentence in the text, from 0.
+    pub sentence: u32,
+    /// The number of the bunsetsu of the token in its sentence, from 0.
+    pub bunsetsu: u32,
+    /// The number of the bunsetsu that the bunsetsu of the token depends on,
+    /// or `None` for the last bunsetsu of a sentence.
+    pub head: Option<u32>,
+    /// What the token is in its bunsetsu.
+    pub role: BunsetsuRole,
+    /// The score of the decision that attached the bunsetsu to its head; 0
+    /// where there was nothing to decide.
+    pub score: f64,
+}
+
+/// Where a token keeps its dependency: nothing, or a pointer to it.
+///
+/// A token of a pipeline without a dependency analysis has none, and what
+/// such a token costs is what counts: the slot is one pointer, and its drop
+/// is a test for a value that is not there. Freeing a value is in a function
+/// of its own, out of line, so that the drop of a `Token` stays small enough
+/// to be inlined where tokens are dropped. With an `Option<Box<_>>` as the
+/// field, the drop of a `Token` became a call per token, and tokenizing took
+/// 0.7% more instructions (#1438).
+#[derive(Default)]
+struct DependencySlot(ManuallyDrop<Option<Box<TokenDependency>>>);
+
+impl Clone for DependencySlot {
+    #[inline]
+    fn clone(&self) -> Self {
+        match &*self.0 {
+            None => Self::default(),
+            Some(dependency) => Self(ManuallyDrop::new(Some(dependency.clone()))),
+        }
+    }
+}
+
+impl Drop for DependencySlot {
+    #[inline(always)]
+    fn drop(&mut self) {
+        if self.0.is_some() {
+            free_dependency(&mut self.0);
+        }
+    }
+}
+
+/// Frees the dependency of a slot, which is left empty.
+///
+/// # Arguments
+///
+/// * `slot` - The value of a slot.
+#[cold]
+#[inline(never)]
+fn free_dependency(slot: &mut Option<Box<TokenDependency>>) {
+    *slot = None;
+}
+
+/// A token: a morpheme of the text, with its place in the text and its
+/// entry in the dictionary.
+///
+/// A token is made by a tokenizer, or with [`Token::new`]. The type is
+/// `#[non_exhaustive]`: outside this crate it cannot be built with a struct
+/// expression, so that a field can be added without breaking that code.
+/// Set the public fields after [`Token::new`] instead.
+///
+/// The result of a dependency analysis is read with [`Token::dependency`].
 #[derive(Clone)]
+#[non_exhaustive]
 pub struct Token<'a> {
     /// The text content of the token, which is a copy-on-write string slice.
     /// This allows for efficient handling of both owned and borrowed string data.
@@ -71,6 +179,10 @@ pub struct Token<'a> {
     /// particular after the Japanese part-of-speech filters, which read the
     /// details with [`Token::details_iter`].
     pub details: Option<Vec<Cow<'a, str>>>,
+
+    /// The bunsetsu of the token and its dependency: see
+    /// [`Token::dependency`] and [`Token::set_dependency`].
+    dependency: DependencySlot,
 }
 
 impl<'a> Token<'a> {
@@ -116,7 +228,62 @@ impl<'a> Token<'a> {
             dictionary,
             user_dictionary,
             details: None,
+            dependency: DependencySlot::default(),
         }
+    }
+
+    /// The bunsetsu of the token and what that bunsetsu depends on.
+    ///
+    /// # Returns
+    ///
+    /// The result of the dependency analysis for this token, or `None`
+    /// unless a token filter that analyzes dependencies ran.
+    #[inline]
+    pub fn dependency(&self) -> Option<&TokenDependency> {
+        self.dependency.0.as_deref()
+    }
+
+    /// Sets or removes the dependency of the token. A token filter that
+    /// analyzes dependencies calls this.
+    ///
+    /// # Arguments
+    ///
+    /// * `dependency` - The bunsetsu of the token and its dependency, or
+    ///   `None` to remove what the token has.
+    pub fn set_dependency(&mut self, dependency: Option<TokenDependency>) {
+        *self.dependency.0 = dependency.map(Box::new);
+    }
+
+    /// Sets how many positions the token spans, which [`Token::new`] sets
+    /// to 1.
+    ///
+    /// # Arguments
+    ///
+    /// * `position_length` - The number of positions, more than 1 for a
+    ///   token that a filter merged from several.
+    ///
+    /// # Returns
+    ///
+    /// The token, with the length set.
+    pub fn with_position_length(mut self, position_length: usize) -> Self {
+        self.position_length = position_length;
+        self
+    }
+
+    /// Sets the details of the token, in place of those of its dictionary
+    /// entry.
+    ///
+    /// # Arguments
+    ///
+    /// * `details` - The detail fields, in the order of the schema of the
+    ///   dictionary.
+    ///
+    /// # Returns
+    ///
+    /// The token, with the details set.
+    pub fn with_details(mut self, details: Vec<Cow<'a, str>>) -> Self {
+        self.details = Some(details);
+        self
     }
 
     /// Retrieves the details of the token, either from the dictionary or the user-defined dictionary.
@@ -407,6 +574,21 @@ impl<'a> Token<'a> {
             obj.insert(field_name.to_string(), json!(value));
         }
 
+        // The dependency, when a token filter wrote one: numbers as numbers,
+        // and `null` for the head of the last bunsetsu of a sentence.
+        if let Some(dependency) = self.dependency() {
+            obj.insert(
+                "dependency".to_string(),
+                json!({
+                    "sentence": dependency.sentence,
+                    "bunsetsu": dependency.bunsetsu,
+                    "head": dependency.head,
+                    "role": dependency.role.as_str(),
+                    "score": dependency.score,
+                }),
+            );
+        }
+
         Value::Object(obj)
     }
 }
@@ -460,7 +642,10 @@ mod tests {
 
     use lindera_dictionary::mode::Mode;
 
-    use crate::dictionary::load_dictionary;
+    use lindera_dictionary::viterbi::LexType;
+
+    use super::{BunsetsuRole, DependencySlot, Token, TokenDependency};
+    use crate::dictionary::{WordId, load_dictionary};
     use crate::segmenter::Segmenter;
 
     /// `Dictionary::word_details` must return every field the entry carries,
@@ -943,5 +1128,132 @@ mod tests {
         for (field, text) in NUMERIC_LOOKING_FIELDS {
             assert_eq!(value[field], serde_json::json!(text), "{field}");
         }
+    }
+
+    /// A token a tokenizer makes has no dependency, and its JSON has no
+    /// `dependency` key: the output of a pipeline without the filter is what
+    /// it was before the field (#1438).
+    #[test]
+    fn test_a_token_has_no_dependency_by_default() {
+        let dictionary = load_dictionary("embedded://ipadic").unwrap();
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+        let mut tokens = segmenter.segment(Cow::Borrowed("彼は本を読んだ")).unwrap();
+        for token in tokens.iter_mut() {
+            assert!(token.dependency().is_none());
+            let value = token.as_value();
+            let keys: Vec<&str> = value
+                .as_object()
+                .unwrap()
+                .keys()
+                .map(String::as_str)
+                .collect();
+            assert!(!keys.contains(&"dependency"), "{keys:?}");
+            // The four fields of every token, and the nine of IPADIC.
+            assert_eq!(keys.len(), 13, "{keys:?}");
+        }
+    }
+
+    /// With a dependency, the JSON has it as an object of numbers and a
+    /// name, next to the fields of the dictionary, and the details are those
+    /// of the dictionary still.
+    #[test]
+    fn test_as_value_writes_the_dependency() {
+        let dictionary = load_dictionary("embedded://ipadic").unwrap();
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+        let mut tokens = segmenter.segment(Cow::Borrowed("彼は読んだ")).unwrap();
+        let without: Vec<serde_json::Value> = tokens.iter_mut().map(Token::as_value).collect();
+        let details: Vec<String> = tokens[0].details_iter().map(str::to_string).collect();
+
+        tokens[0].set_dependency(Some(TokenDependency {
+            sentence: 2,
+            bunsetsu: 0,
+            head: Some(1),
+            role: BunsetsuRole::Head,
+            score: 0.75,
+        }));
+        let last = tokens.len() - 1;
+        tokens[last].set_dependency(Some(TokenDependency {
+            sentence: 2,
+            bunsetsu: 1,
+            head: None,
+            role: BunsetsuRole::Other,
+            score: 0.0,
+        }));
+
+        let value = tokens[0].as_value();
+        assert_eq!(
+            value["dependency"],
+            serde_json::json!({
+                "sentence": 2, "bunsetsu": 0, "head": 1, "role": "head", "score": 0.75
+            })
+        );
+        // Everything else is as without the dependency.
+        let mut rest = value.clone();
+        rest.as_object_mut().unwrap().remove("dependency");
+        assert_eq!(rest, without[0]);
+        assert_eq!(
+            tokens[0].details_iter().collect::<Vec<_>>(),
+            details.iter().map(String::as_str).collect::<Vec<_>>()
+        );
+
+        // The last bunsetsu of a sentence has no head: `null`, not -1.
+        let value = tokens[last].as_value();
+        assert_eq!(value["dependency"]["head"], serde_json::Value::Null);
+        assert_eq!(value["dependency"]["role"], "other");
+        // A token in between has none.
+        assert!(tokens[1].as_value().get("dependency").is_none());
+        // A clone of a token has the dependency of the token, and one of a
+        // token without it has none.
+        assert_eq!(tokens[0].clone().dependency(), tokens[0].dependency());
+        assert!(tokens[1].clone().dependency().is_none());
+        // Setting it again replaces it, and `None` removes it.
+        let mut token = tokens[0].clone();
+        token.set_dependency(tokens[last].dependency().cloned());
+        assert_eq!(token.dependency().unwrap().bunsetsu, 1);
+        token.set_dependency(None);
+        assert!(token.dependency().is_none());
+        assert!(token.as_value().get("dependency").is_none());
+    }
+
+    /// The names of the roles are part of the JSON output.
+    #[test]
+    fn test_the_roles_have_names() {
+        assert_eq!(BunsetsuRole::Head.as_str(), "head");
+        assert_eq!(BunsetsuRole::Function.as_str(), "function");
+        assert_eq!(BunsetsuRole::HeadAndFunction.as_str(), "head_function");
+        assert_eq!(BunsetsuRole::Other.as_str(), "other");
+    }
+
+    /// `Token::new` and the two `with_` methods make what a struct
+    /// expression made before the type was `#[non_exhaustive]`.
+    #[test]
+    fn test_a_token_is_built_without_a_struct_expression() {
+        let dictionary = load_dictionary("embedded://ipadic").unwrap();
+        let word_id = WordId::new(LexType::System, 0);
+        let mut token = Token::new(Cow::Borrowed("本"), 3, 6, 4, word_id, &dictionary, None);
+        assert_eq!(token.position_length, 1);
+        assert!(token.details.is_none());
+        assert!(token.dependency().is_none());
+
+        token = token
+            .with_position_length(2)
+            .with_details(vec![Cow::Borrowed("名詞"), Cow::Borrowed("一般")]);
+        assert_eq!(token.surface, "本");
+        assert_eq!(
+            (token.byte_start, token.byte_end, token.position),
+            (3, 6, 4)
+        );
+        assert_eq!(token.position_length, 2);
+        assert_eq!(token.details(), ["名詞", "一般"]);
+    }
+
+    /// The dependency is behind a pointer: a token grows by 8 bytes, whatever
+    /// the result holds.
+    #[test]
+    fn test_the_dependency_costs_a_token_one_pointer() {
+        assert_eq!(
+            std::mem::size_of::<DependencySlot>(),
+            std::mem::size_of::<usize>()
+        );
     }
 }

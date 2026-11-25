@@ -214,153 +214,146 @@ mod tests {
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token {
-                surface: Cow::Borrowed("すもも"),
-                byte_start: 0,
-                byte_end: 9,
-                position: 0,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 36165),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![
-                    Cow::Borrowed("名詞"),
-                    Cow::Borrowed("一般"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("すもも"),
-                    Cow::Borrowed("スモモ"),
-                    Cow::Borrowed("スモモ"),
-                ]),
-            },
-            Token {
-                surface: Cow::Borrowed("も"),
-                byte_start: 9,
-                byte_end: 12,
-                position: 1,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 73246),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![
-                    Cow::Borrowed("助詞"),
-                    Cow::Borrowed("係助詞"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("も"),
-                    Cow::Borrowed("モ"),
-                    Cow::Borrowed("モ"),
-                ]),
-            },
-            Token {
-                surface: Cow::Borrowed("もも"),
-                byte_start: 12,
-                byte_end: 18,
-                position: 2,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 74990),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![
-                    Cow::Borrowed("名詞"),
-                    Cow::Borrowed("一般"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("もも"),
-                    Cow::Borrowed("モモ"),
-                    Cow::Borrowed("モモ"),
-                ]),
-            },
-            Token {
-                surface: Cow::Borrowed("も"),
-                byte_start: 18,
-                byte_end: 21,
-                position: 3,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 73246),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![
-                    Cow::Borrowed("助詞"),
-                    Cow::Borrowed("係助詞"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("も"),
-                    Cow::Borrowed("モ"),
-                    Cow::Borrowed("モ"),
-                ]),
-            },
-            Token {
-                surface: Cow::Borrowed("もも"),
-                byte_start: 21,
-                byte_end: 27,
-                position: 4,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 74990),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![
-                    Cow::Borrowed("名詞"),
-                    Cow::Borrowed("一般"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("もも"),
-                    Cow::Borrowed("モモ"),
-                    Cow::Borrowed("モモ"),
-                ]),
-            },
-            Token {
-                surface: Cow::Borrowed("の"),
-                byte_start: 27,
-                byte_end: 30,
-                position: 5,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 55831),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![
-                    Cow::Borrowed("助詞"),
-                    Cow::Borrowed("連体化"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("の"),
-                    Cow::Borrowed("ノ"),
-                    Cow::Borrowed("ノ"),
-                ]),
-            },
-            Token {
-                surface: Cow::Borrowed("うち"),
-                byte_start: 30,
-                byte_end: 36,
-                position: 6,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 8029),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![
-                    Cow::Borrowed("名詞"),
-                    Cow::Borrowed("非自立"),
-                    Cow::Borrowed("副詞可能"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("うち"),
-                    Cow::Borrowed("ウチ"),
-                    Cow::Borrowed("ウチ"),
-                ]),
-            },
+            Token::new(
+                Cow::Borrowed("すもも"),
+                0,
+                9,
+                0,
+                WordId::new(LexType::System, 36165),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![
+                Cow::Borrowed("名詞"),
+                Cow::Borrowed("一般"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("すもも"),
+                Cow::Borrowed("スモモ"),
+                Cow::Borrowed("スモモ"),
+            ]),
+            Token::new(
+                Cow::Borrowed("も"),
+                9,
+                12,
+                1,
+                WordId::new(LexType::System, 73246),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![
+                Cow::Borrowed("助詞"),
+                Cow::Borrowed("係助詞"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("も"),
+                Cow::Borrowed("モ"),
+                Cow::Borrowed("モ"),
+            ]),
+            Token::new(
+                Cow::Borrowed("もも"),
+                12,
+                18,
+                2,
+                WordId::new(LexType::System, 74990),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![
+                Cow::Borrowed("名詞"),
+                Cow::Borrowed("一般"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("もも"),
+                Cow::Borrowed("モモ"),
+                Cow::Borrowed("モモ"),
+            ]),
+            Token::new(
+                Cow::Borrowed("も"),
+                18,
+                21,
+                3,
+                WordId::new(LexType::System, 73246),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![
+                Cow::Borrowed("助詞"),
+                Cow::Borrowed("係助詞"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("も"),
+                Cow::Borrowed("モ"),
+                Cow::Borrowed("モ"),
+            ]),
+            Token::new(
+                Cow::Borrowed("もも"),
+                21,
+                27,
+                4,
+                WordId::new(LexType::System, 74990),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![
+                Cow::Borrowed("名詞"),
+                Cow::Borrowed("一般"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("もも"),
+                Cow::Borrowed("モモ"),
+                Cow::Borrowed("モモ"),
+            ]),
+            Token::new(
+                Cow::Borrowed("の"),
+                27,
+                30,
+                5,
+                WordId::new(LexType::System, 55831),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![
+                Cow::Borrowed("助詞"),
+                Cow::Borrowed("連体化"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("の"),
+                Cow::Borrowed("ノ"),
+                Cow::Borrowed("ノ"),
+            ]),
+            Token::new(
+                Cow::Borrowed("うち"),
+                30,
+                36,
+                6,
+                WordId::new(LexType::System, 8029),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![
+                Cow::Borrowed("名詞"),
+                Cow::Borrowed("非自立"),
+                Cow::Borrowed("副詞可能"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("うち"),
+                Cow::Borrowed("ウチ"),
+                Cow::Borrowed("ウチ"),
+            ]),
         ];
 
         filter.apply(&mut tokens).unwrap();
@@ -390,18 +383,18 @@ mod tests {
 
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
-        let mut tokens: Vec<Token> = vec![Token {
-            surface: Cow::Borrowed("テスト"),
-            byte_start: 0,
-            byte_end: 9,
-            position: 0,
-            position_length: 1,
-            word_id: WordId::new(LexType::System, 0),
-            dictionary: &dictionary,
-            user_dictionary: None,
-            // Details were explicitly left empty; this is what triggered the panic.
-            details: Some(vec![]),
-        }];
+        let mut tokens: Vec<Token> = vec![
+            Token::new(
+                Cow::Borrowed("テスト"),
+                0,
+                9,
+                0,
+                WordId::new(LexType::System, 0),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![]),
+        ];
 
         // Must not panic. The empty tag matches no stop tag, so the token is kept.
         filter.apply(&mut tokens).unwrap();
@@ -434,17 +427,18 @@ mod tests {
 
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
-        let mut tokens: Vec<Token> = vec![Token {
-            surface: Cow::Borrowed("テスト"),
-            byte_start: 0,
-            byte_end: 9,
-            position: 0,
-            position_length: 1,
-            word_id: WordId::new(LexType::System, 0),
-            dictionary: &dictionary,
-            user_dictionary: None,
-            details: Some(vec![]),
-        }];
+        let mut tokens: Vec<Token> = vec![
+            Token::new(
+                Cow::Borrowed("テスト"),
+                0,
+                9,
+                0,
+                WordId::new(LexType::System, 0),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![]),
+        ];
 
         filter.apply(&mut tokens).unwrap();
 
@@ -480,29 +474,31 @@ mod tests {
         };
 
         let mut tokens: Vec<Token> = vec![
-            Token {
-                surface: Cow::Borrowed("除去対象"),
-                byte_start: 0,
-                byte_end: 12,
-                position: 0,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 0),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                // Normalized configured tag is "名詞,固有名詞,*,*"; the key
-                // built from these four details must equal it.
-                details: details(&["名詞", "固有名詞", "*", "*"]),
+            {
+                let mut token = Token::new(
+                    Cow::Borrowed("除去対象"),
+                    0,
+                    12,
+                    0,
+                    WordId::new(LexType::System, 0),
+                    &dictionary,
+                    None,
+                );
+                token.details = details(&["名詞", "固有名詞", "*", "*"]);
+                token
             },
-            Token {
-                surface: Cow::Borrowed("保持対象"),
-                byte_start: 12,
-                byte_end: 24,
-                position: 1,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 1),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: details(&["動詞", "自立", "*", "*"]),
+            {
+                let mut token = Token::new(
+                    Cow::Borrowed("保持対象"),
+                    12,
+                    24,
+                    1,
+                    WordId::new(LexType::System, 1),
+                    &dictionary,
+                    None,
+                );
+                token.details = details(&["動詞", "自立", "*", "*"]);
+                token
             },
         ];
 

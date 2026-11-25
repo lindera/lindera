@@ -111,59 +111,56 @@ mod tests {
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token {
-                surface: Cow::Borrowed("羽田空港"),
-                byte_start: 0,
-                byte_end: 12,
-                position: 0,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 321702),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![
-                    Cow::Borrowed("名詞"),
-                    Cow::Borrowed("固有名詞"),
-                    Cow::Borrowed("一般"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("羽田空港"),
-                    Cow::Borrowed("ハネダクウコウ"),
-                    Cow::Borrowed("ハネダクーコー"),
-                ]),
-            },
-            Token {
-                surface: Cow::Borrowed("限定"),
-                byte_start: 12,
-                byte_end: 18,
-                position: 1,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 374175),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![
-                    Cow::Borrowed("名詞"),
-                    Cow::Borrowed("サ変接続"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("*"),
-                    Cow::Borrowed("限定"),
-                    Cow::Borrowed("ゲンテイ"),
-                    Cow::Borrowed("ゲンテイ"),
-                ]),
-            },
-            Token {
-                surface: Cow::Borrowed("トートバッグ"),
-                byte_start: 18,
-                byte_end: 36,
-                position: 2,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 4294967295),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(vec![Cow::Borrowed("UNK")]),
-            },
+            Token::new(
+                Cow::Borrowed("羽田空港"),
+                0,
+                12,
+                0,
+                WordId::new(LexType::System, 321702),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![
+                Cow::Borrowed("名詞"),
+                Cow::Borrowed("固有名詞"),
+                Cow::Borrowed("一般"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("羽田空港"),
+                Cow::Borrowed("ハネダクウコウ"),
+                Cow::Borrowed("ハネダクーコー"),
+            ]),
+            Token::new(
+                Cow::Borrowed("限定"),
+                12,
+                18,
+                1,
+                WordId::new(LexType::System, 374175),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![
+                Cow::Borrowed("名詞"),
+                Cow::Borrowed("サ変接続"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("*"),
+                Cow::Borrowed("限定"),
+                Cow::Borrowed("ゲンテイ"),
+                Cow::Borrowed("ゲンテイ"),
+            ]),
+            Token::new(
+                Cow::Borrowed("トートバッグ"),
+                18,
+                36,
+                2,
+                WordId::new(LexType::System, 4294967295),
+                &dictionary,
+                None,
+            )
+            .with_details(vec![Cow::Borrowed("UNK")]),
         ];
 
         filter.apply(&mut tokens).unwrap();
@@ -208,30 +205,28 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             // Out of vocabulary, so skipped by the unknown-word guard.
-            Token {
-                surface: Cow::Borrowed("asci"),
-                byte_start: 0,
-                byte_end: 4,
-                position: 0,
-                position_length: 1,
-                word_id: WordId::new(LexType::Unknown, 3),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(unknown_details.clone()),
-            },
+            Token::new(
+                Cow::Borrowed("asci"),
+                0,
+                4,
+                0,
+                WordId::new(LexType::Unknown, 3),
+                &dictionary,
+                None,
+            )
+            .with_details(unknown_details.clone()),
             // In the dictionary, but carries no reading, so skipped by the
             // placeholder guard.
-            Token {
-                surface: Cow::Borrowed("("),
-                byte_start: 4,
-                byte_end: 5,
-                position: 1,
-                position_length: 1,
-                word_id: WordId::new(LexType::System, 3),
-                dictionary: &dictionary,
-                user_dictionary: None,
-                details: Some(unknown_details),
-            },
+            Token::new(
+                Cow::Borrowed("("),
+                4,
+                5,
+                1,
+                WordId::new(LexType::System, 3),
+                &dictionary,
+                None,
+            )
+            .with_details(unknown_details),
         ];
 
         filter.apply(&mut tokens).unwrap();
