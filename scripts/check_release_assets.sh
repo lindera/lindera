@@ -17,6 +17,7 @@
 #
 # Expects, directly in <dir>:
 #   - lindera-<dictionary>-<version>.zip for each official dictionary
+#   - lindera-dependency-ipadic-<version>.zip, the model of lindera-dependency
 #   - lindera-<target>-<version>.zip for each target of the CLI
 #   - six wheels, lindera-<version>-*.whl
 #   - the sdist, lindera-<version>.tar.gz
@@ -25,7 +26,7 @@
 #   - the gem, lindera-<version>.gem
 #
 # Prints one line per kind. The lists and counts follow the matrices of
-# build-dictionary, build, build-python-wheels and build-php-binaries in
+# build-dictionary, build-dependency-model, build, build-python-wheels and build-php-binaries in
 # release.yml: update them together.
 
 set -euo pipefail
@@ -97,6 +98,7 @@ for dictionary in $dictionaries; do
   names+=("lindera-$dictionary-$version.zip")
 done
 check_files "dictionaries" "${names[@]}"
+check_files "dependency model" "lindera-dependency-ipadic-$version.zip"
 
 names=()
 for target in $targets; do

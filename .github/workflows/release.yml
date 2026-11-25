@@ -1138,6 +1138,68 @@ jobs:
           path: lindera-nodejs/*.node
           if-no-files-found: error
 
+  # The model of lindera-dependency for IPADIC, which a release publishes on
+  # the page of its version as it does the dictionaries (#1440). It is
+  # trained here, from UD Japanese-GSD at its fixed commit, and measured on
+  # the files it was not trained on: the release stops when a count is not
+  # the one of the documentation. Its bytes are those of this runner, and
+  # lindera-dependency pins them when it is published (see publish-crates).
+  build-dependency-model:
+    name: Build the dependency model (ipadic)
+    needs: [test-lindera-dependency]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dependency") | .version')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      # What `cargo publish` will send, without the build of its
+      # verification: publish-crates runs on a tag only, and a dry run of the
+      # workflow would not see a file that is missing from the package.
+      - name: Package the crate
+        run: |
+          cargo package -p lindera-dependency --no-verify --exclude-lockfile --list > package-files.txt
+          for file in Cargo.toml README.md build.rs src/lib.rs src/embedded.rs; do
+            grep -Fqx "$file" package-files.txt || { echo "::error::$file is not in the package of lindera-dependency"; exit 1; }
+          done
+
+      # From the sources of this commit, with the dependencies of Cargo.lock.
+      # The directory is outside the checkout, whose tree the script wants
+      # without changes.
+      - name: Build the model
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: scripts/dependency/build_model.sh --version "$VERSION" "$RUNNER_TEMP/model"
+
+      - name: Measure the model
+        run: |
+          python3 -I -B scripts/dependency/model_accuracy.py \
+            target/release/lindera-dependency \
+            "$RUNNER_TEMP/model/lindera-dependency-ipadic/dependency.model" \
+            "$RUNNER_TEMP/model/work/corpora" "$RUNNER_TEMP/model/work/accuracy" \
+            --expect scripts/dependency/model_accuracy_ipadic.json
+
+      - name: Create artifact
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: cp "$RUNNER_TEMP/model/lindera-dependency-ipadic-$VERSION.zip" .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: dependency-model-ipadic
+          path: lindera-dependency-ipadic-${{ steps.get_version.outputs.version }}.zip
+          if-no-files-found: error
+
   release-assets:
     name: Release assets
     # Every test and every build of the release: nothing is uploaded or
@@ -1174,6 +1236,7 @@ jobs:
         test-lindera-php,
         test-lindera-wasm,
         build-dictionary,
+        build-dependency-model,
         build,
         build-python-wheels,
         build-python-sdist,
@@ -1195,6 +1258,12 @@ jobs:
         with:
           pattern: dictionary-*
           merge-multiple: true
+          path: release-assets
+
+      - name: Download the dependency model
+        uses: actions/download-artifact@v8
+        with:
+          name: dependency-model-ipadic
           path: release-assets
 
       - name: Download the CLI archives
@@ -1324,18 +1393,35 @@ jobs:
           # shellcheck disable=SC2086 # one argument per crate
           scripts/write_dictionary_pins.sh "$TAG" "$VERSION" dictionary-archives $crates
 
+      # lindera-dependency gets its prebuilt.json the same way: it pins the
+      # archive of the model for IPADIC on this release's page (#1440).
+      - name: Pin the dependency model of this release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dependency") | .version')
+          mkdir -p model-archives
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "lindera-dependency-ipadic-$VERSION.zip" --dir model-archives
+          scripts/write_dependency_model_pin.sh "$TAG" "$VERSION" model-archives
+
       # An embed build of one pinned dictionary (IPADIC, about 10 MB) downloads
       # its archive from this release and checks it, before any crate is
       # published with a pin that does not work.
       - name: Check a pinned dictionary
         run: cargo build -p lindera-ipadic --features embed-ipadic
 
+      # And the same for the model: the build downloads the archive the pin
+      # names and checks it, and the tests read the model it embedded.
+      - name: Check the pinned dependency model
+        run: cargo test -p lindera-dependency --features embed-model-ipadic --lib embedded
+
       - name: Publish crates
         run: |
           # Binding crates (lindera-python, lindera-nodejs, lindera-ruby,
           # lindera-wasm, lindera-php) are not published to crates.io; they are
           # distributed through their own registries (PyPI, npm, RubyGems).
-          for crate in lindera-crf lindera-dictionary lindera-trainer lindera-cc-cedict lindera-jieba lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera-unidic-cwj lindera-unidic-csj lindera-sudachidict lindera-segmenter lindera-analysis lindera lindera-binding lindera-cli; do
+          for crate in lindera-crf lindera-dictionary lindera-trainer lindera-cc-cedict lindera-jieba lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera-unidic-cwj lindera-unidic-csj lindera-sudachidict lindera-segmenter lindera-dependency lindera-analysis lindera lindera-binding lindera-cli; do
             VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r ".packages[] | select(.name==\"$crate\") | .version")
             PUBLISHED_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" "https://crates.io/api/v1/crates/$crate" | jq -r 'select(.versions != null) | .versions[].num')
             if echo "${PUBLISHED_VERSIONS}" | grep -Fx "${VERSION}" >/dev/null; then
