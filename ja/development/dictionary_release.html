@@ -196,18 +196,22 @@
 <p>リポジトリには <code>prebuilt.json</code> がありません。リポジトリからのビルド（<code>main</code>、pull request、git の依存）は、すべての辞書をソースからビルドします。ビルドした辞書は <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> に残せて、CI はそのディレクトリをキャッシュに保存します（<a href="https://github.com/lindera/lindera/issues/1337">#1337</a>）。<a href="../getting_started/environment_variables.html#lindera_build_dictionary_from_source"><code>LINDERA_BUILD_DICTIONARY_FROM_SOURCE</code></a> を設定すると、公開したクレートでもソースからビルドします。</p>
 <h2 id="ソースのアーカイブ"><a class="header" href="#ソースのアーカイブ">ソースのアーカイブ</a></h2>
 <p>5 つの辞書のソースのアーカイブは lindera.dev に置いています。UniDic、UniDic CWJ、UniDic CSJ のソースは、国立国語研究所のパッケージ <code>unidic-mecab-2.1.2_src.zip</code>（134 MiB）、<code>unidic-cwj-202512_full.zip</code>（2.77 GiB）、<code>unidic-csj-202512_full.zip</code>（2.81 GiB）そのもので、国立国語研究所の公式の URL から取得します（<a href="https://github.com/lindera/lindera/issues/216">#216</a>、<a href="https://github.com/lindera/lindera/issues/1358">#1358</a>、<a href="https://github.com/lindera/lindera/issues/1384">#1384</a>）。ko-dic のソースは、mecab-ko-dic の公式のリリース <code>mecab-ko-dic-2.1.1-20180720.tar.gz</code>（47 MiB）そのもので、上流のリポジトリの Bitbucket の Downloads から取得します（<a href="https://github.com/lindera/lindera/issues/1386">#1386</a>）。Lindera が運用していないサーバーから実行のたびにこれらのアーカイブを取得しないように、<code>release.yml</code> の <code>build-dictionary</code> のジョブは、それぞれのアーカイブを <code>actions/cache</code>（<code>.github/actions/source-archive-cache</code>）で実行をまたいで保存します。キーはファイル名と SHA-256 で、ダウンロードするのは、ソースのアーカイブが新しくなったときと、キャッシュが消されたときだけです。</p>
+<h2 id="lindera-dependency-のモデル"><a class="header" href="#lindera-dependency-のモデル">lindera-dependency のモデル</a></h2>
+<p>リリースは、同じ形でアーカイブをもう 1 つ公開します。<a href="../lindera-dependency/model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB"><code>lindera-dependency</code></a> の IPADIC のモデル、<code>lindera-dependency-ipadic-&lt;バージョン&gt;.zip</code> です（<a href="https://github.com/lindera/lindera/issues/1440">#1440</a>）。中身は <code>lindera-dependency-ipadic</code> という名前のディレクトリ 1 つで、<code>dependency.model</code>、リリースのバージョンを <code>lindera_version</code> として持つ <code>model.json</code>、<code>NOTICE.txt</code> が入ります。</p>
+<p><code>release.yml</code> の <code>build-dependency-model</code> ジョブが、<code>scripts/dependency/build_model.sh</code> でモデルを作ります。UD Japanese-GSD と UD Japanese-PUD を固定の commit で GitHub から取り、train のファイルでモデルを学習し、学習に使っていないファイルで測ります（<code>scripts/dependency/model_accuracy.py</code>）。数は <code>scripts/dependency/model_accuracy_ipadic.json</code> の値、つまりドキュメントの数字と同じでなければなりません。違う数字のモデルができたリリースは、何かを上げる前に、そこで止まります。モデルのバイト列は、ランナーが作ったものです。ほかの端末で作ったものと同じになるとは約束しません。</p>
+<p><code>lindera-dependency</code> は、辞書クレートと同じように、アーカイブを固定します。リリースがその <code>prebuilt.json</code> を書き（<code>scripts/write_dependency_model_pin.sh</code>）、公開したクレートを <code>embed-model-ipadic</code> 付きでビルドすると、アーカイブをダウンロードして照合します。違いが 1 つあります。固定の無い辞書クレートは、辞書をソースからビルドします。モデルは build script の中では学習できないので、固定の無いビルド、つまりリポジトリからのビルドはすべて、<a href="../getting_started/environment_variables.html#lindera_build_dependency_model_ipadic_file"><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code></a> が指すファイルを埋め込みます。</p>
 <h2 id="lindera-のリリース"><a class="header" href="#lindera-のリリース">Lindera のリリース</a></h2>
 <ol>
 <li>pull request でバージョンを上げ（<code>scripts/bump-up-version.sh &lt;バージョン&gt;</code>）、マージします。</li>
 <li>必要なら、<code>main</code> で <code>release.yml</code> を手動で実行します（<code>workflow_dispatch</code>）。この dry run は、リリースの全テストと全ビルドを実行し、成果物を集めて、欠けがないことを確かめます（<code>scripts/check_release_assets.sh</code>）。アップロードも公開もしません。</li>
 <li>リリースのタグ（<code>v&lt;バージョン&gt;</code>）を打ちます。<code>release.yml</code> は次の順に進めます。どの手順も、前の手順が通ってから始まります（<a href="https://github.com/lindera/lindera/issues/1413">#1413</a>）。
 <ol>
-<li>テストを実行し、すべての成果物をビルドします。辞書（上のとおりソースから）、CLI のバイナリ、wheel と sdist、gem、PIE のバイナリ、WASM のパッケージ、Node.js のバイナリです。</li>
+<li>テストを実行し、すべての成果物をビルドします。辞書（上のとおりソースから）、<code>lindera-dependency</code> のモデル、CLI のバイナリ、wheel と sdist、gem、PIE のバイナリ、WASM のパッケージ、Node.js のバイナリです。</li>
 <li>リリースを下書きで作り、成果物を上げます。</li>
 <li>リリースを公開します。辞書のアーカイブに公開の URL が付きます。</li>
-<li>アーカイブをもう一度ダウンロードし、各辞書クレートの <code>prebuilt.json</code> に、そのアーカイブの SHA-256 を書きます（<code>scripts/write_dictionary_pins.sh</code>）。</li>
-<li><code>lindera-ipadic</code> を <code>embed-ipadic</code> 付きでビルドし、固定したアーカイブのダウンロードと照合が通ることを確かめます。固定が働かないクレートを公開しないためです。</li>
-<li>クレートを公開します。辞書クレートの <code>prebuilt.json</code> は commit しないので、辞書クレートは <code>cargo publish --allow-dirty</code> で公開します。</li>
+<li>アーカイブをもう一度ダウンロードし、各辞書クレートの <code>prebuilt.json</code> に、そのアーカイブの SHA-256 を書きます（<code>scripts/write_dictionary_pins.sh</code>）。<code>lindera-dependency</code> の <code>prebuilt.json</code> には、モデルのアーカイブの SHA-256 を書きます（<code>scripts/write_dependency_model_pin.sh</code>）。</li>
+<li><code>lindera-ipadic</code> を <code>embed-ipadic</code> 付きで、<code>lindera-dependency</code> を <code>embed-model-ipadic</code> 付きでビルドし、固定したアーカイブのダウンロードと照合が通ることを確かめます。固定が働かないクレートを公開しないためです。</li>
+<li>クレートを公開します。<code>prebuilt.json</code> は commit しないので、辞書クレートと <code>lindera-dependency</code> は <code>cargo publish --allow-dirty</code> で公開します。</li>
 <li>gem をインストールして、トークナイズを試します。gem は、公開したばかりのクレートでコンパイルされます。</li>
 <li>PyPI、npm、RubyGems に公開します。</li>
 </ol>
