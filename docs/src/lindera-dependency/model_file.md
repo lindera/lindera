@@ -104,6 +104,8 @@ The same parts give the same bytes. A part trained with another schema than the 
 
 The project trains one model for IPADIC, with a chunker and a parser. A release of Lindera builds it with [`build_model.sh`](#building-it-again) and puts it on the page of its version, next to the dictionaries, from 7.1.0 on: `lindera-dependency-ipadic-<version>.zip` in `v<version>`. The model has the version of the release, as the dictionaries have, and belongs to it: a program of Lindera 7.1.0 takes the model of 7.1.0.
 
+[`lindera download dependency-ipadic`](../lindera-cli/commands.md#downloading-the-model-of-the-dependency-parser) installs the archive of the version of the command, and prints the path of the model file.
+
 The archive holds one directory, `lindera-dependency-ipadic`, with three files:
 
 | File | What it is |

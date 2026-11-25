@@ -34,7 +34,7 @@ The source archives of five dictionaries are hosted on lindera.dev. UniDic's, Un
 
 ## The model of lindera-dependency
 
-A release publishes one more archive the same way: the model of [`lindera-dependency`](../lindera-dependency/model_file.md#the-model-for-ipadic) for IPADIC, `lindera-dependency-ipadic-<version>.zip` ([#1440](https://github.com/lindera/lindera/issues/1440)). It holds one directory named `lindera-dependency-ipadic`, with `dependency.model`, `model.json`, which names the release's version as `lindera_version`, and `NOTICE.txt`.
+A release publishes one more archive the same way: the model of [`lindera-dependency`](../lindera-dependency/model_file.md#the-model-for-ipadic) for IPADIC, `lindera-dependency-ipadic-<version>.zip` ([#1440](https://github.com/lindera/lindera/issues/1440)). It holds one directory named `lindera-dependency-ipadic`, with `dependency.model`, `model.json`, which names the release's version as `lindera_version`, and `NOTICE.txt`. `lindera download dependency-ipadic` installs it, and takes an installed model for current only when that version equals the version of the CLI, as it does a dictionary.
 
 The `build-dependency-model` job of `release.yml` makes it, with `scripts/dependency/build_model.sh`: it gets UD Japanese-GSD and UD Japanese-PUD at their fixed commits from GitHub, trains the model on the train file, and measures it on the files it was not trained on (`scripts/dependency/model_accuracy.py`). The counts have to be those of `scripts/dependency/model_accuracy_ipadic.json`, which are the numbers of the documentation: a release whose model measures differently stops there, before anything is uploaded. The bytes of the model are those of the runner; they are not promised to be those of another machine.
 

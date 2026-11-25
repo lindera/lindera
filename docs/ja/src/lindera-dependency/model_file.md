@@ -104,6 +104,8 @@ assert_eq!(model.dictionary(), "ipadic");
 
 このプロジェクトは、IPADIC のモデルを 1 つ学習します。区切りと解析器の両方が入ります。7.1.0 から、Lindera のリリースが [`build_model.sh`](#作り直す) でモデルを作り、その版のページに、辞書と並べて置きます。`v<version>` の `lindera-dependency-ipadic-<version>.zip` です。モデルは、辞書と同じく、リリースの版を持ち、そのリリースに属します。Lindera 7.1.0 のプログラムは、7.1.0 のモデルを使います。
 
+[`lindera download dependency-ipadic`](../lindera-cli/commands.md#係り受け解析のモデルのダウンロード) が、コマンドのバージョンのアーカイブをインストールし、モデルファイルのパスを表示します。
+
 アーカイブには、ディレクトリ `lindera-dependency-ipadic` が 1 つ入っていて、中にファイルが 3 つあります。
 
 | ファイル | 中身 |

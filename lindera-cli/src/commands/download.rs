@@ -10,8 +10,7 @@ use lindera_crf::console::{Stream, write, write_line};
 
 use super::{io_err, write_stdout};
 use crate::dictionary_registry::{
-    DOWNLOADABLE_DICTIONARIES, dictionaries_dir, dictionary_dir, download_url,
-    installed_lindera_version, is_complete_dictionary_dir, missing_dictionary_files,
+    DOWNLOADABLE_NAMES, Downloadable, dictionaries_dir, dictionary_dir, download_url,
 };
 
 /// Buffer size for streaming the downloaded archive to disk.
@@ -121,21 +120,21 @@ pub(crate) enum DownloadOutcome {
 #[derive(Debug, clap::Args)]
 #[clap(
     author,
-    about = "Download a pre-built dictionary from the Lindera GitHub releases",
+    about = "Download a pre-built dictionary, or the model of the dependency parser, from the Lindera GitHub releases",
     version = get_version(),
 )]
 /// Arguments for the `download` subcommand.
 pub struct DownloadArgs {
     /// Name of the dictionary to download.
     #[clap(
-        value_parser = clap::builder::PossibleValuesParser::new(DOWNLOADABLE_DICTIONARIES),
-        help = "Dictionary name"
+        value_parser = clap::builder::PossibleValuesParser::new(DOWNLOADABLE_NAMES),
+        help = "Dictionary name, or dependency-ipadic for the model of the dependency parser for IPADIC"
     )]
     name: String,
     /// Replaces an already downloaded dictionary when set.
     #[clap(
         long = "force",
-        help = "Re-download and replace an existing dictionary"
+        help = "Re-download and replace an existing dictionary or model"
     )]
     force: bool,
 }
@@ -180,10 +179,10 @@ pub fn download(args: DownloadArgs) -> LinderaResult<()> {
         // Terminate the `\r`-rewritten progress line.
         write_line(Stream::Stderr, format_args!(""));
     }
+    let kind = Downloadable::of(&args.name);
+    let noun = kind.noun();
     let (notice, path) = match outcome {
-        DownloadOutcome::Installed(path) => {
-            (format!("Downloaded dictionary '{}'", args.name), path)
-        }
+        DownloadOutcome::Installed(path) => (format!("Downloaded {noun} '{}'", args.name), path),
         DownloadOutcome::Replaced {
             path,
             previous_version,
@@ -194,7 +193,7 @@ pub fn download(args: DownloadArgs) -> LinderaResult<()> {
             };
             (
                 format!(
-                    "Downloaded dictionary '{}', replacing the one built by {previous}",
+                    "Downloaded {noun} '{}', replacing the one built by {previous}",
                     args.name
                 ),
                 path,
@@ -202,7 +201,11 @@ pub fn download(args: DownloadArgs) -> LinderaResult<()> {
         }
         DownloadOutcome::AlreadyPresent(path) => (
             format!(
-                "Dictionary '{}' is already downloaded; use --force to re-download it",
+                "{} '{}' is already downloaded; use --force to re-download it",
+                match kind {
+                    Downloadable::Dictionary => "Dictionary",
+                    Downloadable::DependencyModel => "Model",
+                },
                 args.name
             ),
             path,
@@ -213,7 +216,9 @@ pub fn download(args: DownloadArgs) -> LinderaResult<()> {
     // outcomes, so that a stderr without a reader (#1338) and a stdout without
     // a reader (#1316) end each of them as the tests check for one.
     write_line(Stream::Stderr, format_args!("{notice}"));
-    write_stdout(&format!("{}\n", path.display()))
+    // What a user passes on: the directory of a dictionary, for `--dict`,
+    // or the model file, for `model` of the token filter.
+    write_stdout(&format!("{}\n", kind.path_to_pass(&path).display()))
 }
 
 /// Builds a progress callback that renders download progress on stderr.
@@ -301,10 +306,13 @@ pub(crate) fn download_dictionary(
     force: bool,
     progress: &mut dyn FnMut(u64, Option<u64>),
 ) -> LinderaResult<DownloadOutcome> {
+    let kind = Downloadable::of(name);
     let target = dictionary_dir(dictionaries_dir, name);
     // The version of a complete dictionary in place, `Some(None)` when its
-    // metadata.json does not say.
-    let installed = is_complete_dictionary_dir(&target).then(|| installed_lindera_version(&target));
+    // metadata.json does not say. For a model, its model.json.
+    let installed = kind
+        .is_complete(&target)
+        .then(|| kind.installed_version(&target));
     if !force
         && installed
             .as_ref()
@@ -367,13 +375,15 @@ fn download_and_install(
     extract_tmp: &Path,
     progress: &mut dyn FnMut(u64, Option<u64>),
 ) -> LinderaResult<PathBuf> {
+    let kind = Downloadable::of(name);
+    let noun = kind.noun();
     let url = download_url(name, version);
     let response = fetcher.fetch(&url)?;
     match response.status {
         200..=299 => {}
         404 => {
             return Err(LinderaErrorKind::NotFound.with_error(anyhow::anyhow!(
-                "dictionary archive not found: {url} (HTTP 404). Version {version} may not have a published release yet; see https://github.com/lindera/lindera/releases"
+                "{noun} archive not found: {url} (HTTP 404). Version {version} may not have a published release yet; see https://github.com/lindera/lindera/releases"
             )));
         }
         status => {
@@ -386,15 +396,15 @@ fn download_and_install(
     extract_archive(zip_tmp, extract_tmp)?;
 
     let root = find_dictionary_root(extract_tmp, name)?;
-    let missing = missing_dictionary_files(&root);
+    let missing = kind.missing_files(&root);
     if !missing.is_empty() {
         return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
-            "downloaded archive is missing required dictionary files: {}",
+            "downloaded archive is missing required {noun} files: {}",
             missing.join(", ")
         )));
     }
 
-    install_extracted(&root, target)?;
+    install_extracted(kind, &root, target)?;
 
     Ok(target.to_path_buf())
 }
@@ -485,7 +495,7 @@ fn find_dictionary_root(extract_dir: &Path, name: &str) -> LinderaResult<PathBuf
         return Ok(expected);
     }
 
-    if is_complete_dictionary_dir(extract_dir) {
+    if Downloadable::of(name).is_complete(extract_dir) {
         return Ok(extract_dir.to_path_buf());
     }
 
@@ -509,9 +519,10 @@ fn find_dictionary_root(extract_dir: &Path, name: &str) -> LinderaResult<PathBuf
 ///
 /// # Arguments
 ///
+/// * `kind` - What is installed, which says when `target` is complete.
 /// * `root` - Extracted dictionary directory (inside the temporary directory).
 /// * `target` - Final installation directory (replaced when present).
-fn install_extracted(root: &Path, target: &Path) -> LinderaResult<()> {
+fn install_extracted(kind: Downloadable, root: &Path, target: &Path) -> LinderaResult<()> {
     if target.exists() {
         fs::remove_dir_all(target).map_err(io_err)?;
     }
@@ -524,7 +535,7 @@ fn install_extracted(root: &Path, target: &Path) -> LinderaResult<()> {
         Err(err) => {
             // A concurrent download may have installed the dictionary between
             // the removal and the rename; accept the winner's result.
-            if is_complete_dictionary_dir(target) {
+            if kind.is_complete(target) {
                 Ok(())
             } else {
                 Err(io_err(err))
@@ -573,7 +584,9 @@ mod tests {
     use lindera::dictionary::Metadata;
     use zip::write::SimpleFileOptions;
 
-    use crate::dictionary_registry::REQUIRED_DICTIONARY_FILES;
+    use crate::dictionary_registry::{
+        MODEL_FILE, REQUIRED_DICTIONARY_FILES, REQUIRED_MODEL_FILES, is_complete_dictionary_dir,
+    };
 
     use super::*;
 
@@ -1063,5 +1076,168 @@ mod tests {
         .unwrap();
 
         assert_no_temps(dictionaries_dir);
+    }
+
+    /// The archive of a model as a release publishes it: one directory named
+    /// `lindera-dependency-ipadic`, with the files given and a `model.json`
+    /// that names `version`.
+    fn make_model_zip(files: &[&str], version: &str) -> Vec<u8> {
+        let metadata = serde_json::to_vec(&serde_json::json!({
+            "name": "dependency-ipadic",
+            "dictionary": "ipadic",
+            "lindera_version": version,
+        }))
+        .unwrap();
+        let mut entries: Vec<(String, &[u8])> = files
+            .iter()
+            .map(|file| {
+                (
+                    format!("lindera-dependency-ipadic/{file}"),
+                    b"test".as_slice(),
+                )
+            })
+            .collect();
+        entries.push((
+            "lindera-dependency-ipadic/model.json".to_string(),
+            metadata.as_slice(),
+        ));
+        let borrowed: Vec<(&str, &[u8])> = entries
+            .iter()
+            .map(|(path, content)| (path.as_str(), *content))
+            .collect();
+        make_zip(&borrowed)
+    }
+
+    #[test]
+    fn a_model_is_downloaded_next_to_the_dictionaries() {
+        let tmp = tempfile::tempdir().unwrap();
+        let fetcher = MockFetcher::new(200, make_model_zip(&[MODEL_FILE, "NOTICE.txt"], "9.9.9"));
+        let outcome = download_dictionary(
+            &fetcher,
+            "dependency-ipadic",
+            "9.9.9",
+            tmp.path(),
+            false,
+            &mut no_progress(),
+        )
+        .unwrap();
+
+        let DownloadOutcome::Installed(path) = outcome else {
+            panic!("expected Installed outcome");
+        };
+        assert_eq!(path, tmp.path().join("dependency-ipadic"));
+        let kind = Downloadable::of("dependency-ipadic");
+        assert_eq!(kind, Downloadable::DependencyModel);
+        assert!(kind.is_complete(&path));
+        // What the command prints is the model file, for the token filter.
+        assert_eq!(kind.path_to_pass(&path), path.join("dependency.model"));
+        assert!(kind.path_to_pass(&path).is_file());
+        assert_eq!(kind.installed_version(&path).as_deref(), Some("9.9.9"));
+        assert_no_temps(tmp.path());
+
+        // The same version again downloads nothing; another one replaces it.
+        let outcome = download_dictionary(
+            &fetcher,
+            "dependency-ipadic",
+            "9.9.9",
+            tmp.path(),
+            false,
+            &mut no_progress(),
+        )
+        .unwrap();
+        assert!(matches!(outcome, DownloadOutcome::AlreadyPresent(_)));
+        assert_eq!(fetcher.calls.get(), 1);
+
+        let newer = MockFetcher::new(200, make_model_zip(&[MODEL_FILE, "NOTICE.txt"], "10.0.0"));
+        let outcome = download_dictionary(
+            &newer,
+            "dependency-ipadic",
+            "10.0.0",
+            tmp.path(),
+            false,
+            &mut no_progress(),
+        )
+        .unwrap();
+        let DownloadOutcome::Replaced {
+            previous_version, ..
+        } = outcome
+        else {
+            panic!("expected Replaced outcome");
+        };
+        assert_eq!(previous_version.as_deref(), Some("9.9.9"));
+        assert_eq!(kind.installed_version(&path).as_deref(), Some("10.0.0"));
+    }
+
+    #[test]
+    fn an_archive_without_the_model_file_is_refused() {
+        let tmp = tempfile::tempdir().unwrap();
+        let fetcher = MockFetcher::new(200, make_model_zip(&["NOTICE.txt"], "9.9.9"));
+        let error = download_dictionary(
+            &fetcher,
+            "dependency-ipadic",
+            "9.9.9",
+            tmp.path(),
+            false,
+            &mut no_progress(),
+        )
+        .unwrap_err();
+        let message = error.to_string();
+        assert!(
+            message.contains("missing required model files: dependency.model"),
+            "{message}"
+        );
+        assert!(!tmp.path().join("dependency-ipadic").exists());
+        assert_no_temps(tmp.path());
+
+        // A dictionary under the name of a model is not a model.
+        let fetcher = MockFetcher::new(200, make_dictionary_zip(Some("lindera-dependency-ipadic")));
+        let error = download_dictionary(
+            &fetcher,
+            "dependency-ipadic",
+            "9.9.9",
+            tmp.path(),
+            false,
+            &mut no_progress(),
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("missing required model files"));
+    }
+
+    #[test]
+    fn a_model_that_is_not_released_names_the_archive() {
+        let tmp = tempfile::tempdir().unwrap();
+        let fetcher = MockFetcher::new(404, Vec::new());
+        let error = download_dictionary(
+            &fetcher,
+            "dependency-ipadic",
+            "9.9.9",
+            tmp.path(),
+            false,
+            &mut no_progress(),
+        )
+        .unwrap_err();
+        let message = error.to_string();
+        assert!(message.contains("model archive not found: "), "{message}");
+        assert!(
+            message.contains("/v9.9.9/lindera-dependency-ipadic-9.9.9.zip"),
+            "{message}"
+        );
+    }
+
+    #[test]
+    fn the_names_of_download_are_the_dictionaries_and_the_models() {
+        use crate::dictionary_registry::{
+            DOWNLOADABLE_DICTIONARIES, DOWNLOADABLE_MODELS, DOWNLOADABLE_NAMES,
+        };
+        let mut names: Vec<&str> = DOWNLOADABLE_DICTIONARIES.to_vec();
+        names.extend(DOWNLOADABLE_MODELS);
+        assert_eq!(DOWNLOADABLE_NAMES.to_vec(), names);
+        for name in DOWNLOADABLE_DICTIONARIES {
+            assert_eq!(Downloadable::of(name), Downloadable::Dictionary);
+        }
+        for name in DOWNLOADABLE_MODELS {
+            assert_eq!(Downloadable::of(name), Downloadable::DependencyModel);
+        }
+        assert_eq!(REQUIRED_MODEL_FILES.len(), 3);
     }
 }

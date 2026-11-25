@@ -34,7 +34,7 @@ crates.io に公開した辞書クレートには、`metadata.json` の隣に `p
 
 ## lindera-dependency のモデル
 
-リリースは、同じ形でアーカイブをもう 1 つ公開します。[`lindera-dependency`](../lindera-dependency/model_file.md#ipadic-のモデル) の IPADIC のモデル、`lindera-dependency-ipadic-<バージョン>.zip` です（[#1440](https://github.com/lindera/lindera/issues/1440)）。中身は `lindera-dependency-ipadic` という名前のディレクトリ 1 つで、`dependency.model`、リリースのバージョンを `lindera_version` として持つ `model.json`、`NOTICE.txt` が入ります。
+リリースは、同じ形でアーカイブをもう 1 つ公開します。[`lindera-dependency`](../lindera-dependency/model_file.md#ipadic-のモデル) の IPADIC のモデル、`lindera-dependency-ipadic-<バージョン>.zip` です（[#1440](https://github.com/lindera/lindera/issues/1440)）。中身は `lindera-dependency-ipadic` という名前のディレクトリ 1 つで、`dependency.model`、リリースのバージョンを `lindera_version` として持つ `model.json`、`NOTICE.txt` が入ります。`lindera download dependency-ipadic` がこれをインストールします。インストール済みのモデルを現行とみなすのは、辞書と同じく、そのバージョンが CLI のバージョンと同じときだけです。
 
 `release.yml` の `build-dependency-model` ジョブが、`scripts/dependency/build_model.sh` でモデルを作ります。UD Japanese-GSD と UD Japanese-PUD を固定の commit で GitHub から取り、train のファイルでモデルを学習し、学習に使っていないファイルで測ります（`scripts/dependency/model_accuracy.py`）。数は `scripts/dependency/model_accuracy_ipadic.json` の値、つまりドキュメントの数字と同じでなければなりません。違う数字のモデルができたリリースは、何かを上げる前に、そこで止まります。モデルのバイト列は、ランナーが作ったものです。ほかの端末で作ったものと同じになるとは約束しません。
 

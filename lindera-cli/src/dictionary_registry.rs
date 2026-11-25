@@ -26,6 +26,36 @@ pub(crate) const DOWNLOADABLE_DICTIONARIES: [&str; 9] = [
     "jieba",
 ];
 
+/// Model names accepted by `lindera download`: the models of the dependency
+/// parser (`lindera-dependency`), which a release publishes next to the
+/// dictionaries, one per dictionary (#1440).
+pub(crate) const DOWNLOADABLE_MODELS: [&str; 1] = ["dependency-ipadic"];
+
+/// Every name `lindera download` accepts: the dictionaries, then the models.
+pub(crate) const DOWNLOADABLE_NAMES: [&str; 10] = [
+    "ipadic",
+    "ipadic-neologd",
+    "unidic",
+    "unidic-cwj",
+    "unidic-csj",
+    "sudachidict",
+    "ko-dic",
+    "cc-cedict",
+    "jieba",
+    "dependency-ipadic",
+];
+
+/// The model file of a downloaded model, in its directory.
+pub(crate) const MODEL_FILE: &str = "dependency.model";
+
+/// The file of a downloaded model that says what it is: its name, its
+/// dictionary and the version of Lindera that built it (`lindera_version`),
+/// as the `metadata.json` of a dictionary does.
+pub(crate) const MODEL_METADATA_FILE: &str = "model.json";
+
+/// Files that make up a complete downloaded model directory.
+pub(crate) const REQUIRED_MODEL_FILES: [&str; 3] = [MODEL_METADATA_FILE, MODEL_FILE, "NOTICE.txt"];
+
 /// Files that make up a complete pre-built dictionary directory (the same
 /// since dictionary format version 2: the system automaton is `dict.trie` +
 /// `dict.valsidx`).
@@ -199,6 +229,124 @@ pub(crate) fn download_url(name: &str, version: &str) -> String {
 /// `<dictionaries_dir>/<name>`, the value to pass to `--dict`.
 pub(crate) fn dictionary_dir(dictionaries_dir: &Path, name: &str) -> PathBuf {
     dictionaries_dir.join(name)
+}
+
+/// What `lindera download` installs under a name: a dictionary, or a model of
+/// the dependency parser. Both are archives on the page of a release, with
+/// one directory, and both go to `<dictionaries directory>/<name>`; they
+/// differ in the files they hold and in what a user passes on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Downloadable {
+    /// A pre-built dictionary: its directory is what `--dict` takes.
+    Dictionary,
+    /// A model of the dependency parser: its model file is what the token
+    /// filter `japanese_dependency` takes as `model`.
+    DependencyModel,
+}
+
+impl Downloadable {
+    /// What a name of `lindera download` is.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - A name the command accepts.
+    ///
+    /// # Returns
+    ///
+    /// [`Downloadable::DependencyModel`] for a name of
+    /// [`DOWNLOADABLE_MODELS`], and [`Downloadable::Dictionary`] otherwise.
+    pub(crate) fn of(name: &str) -> Self {
+        if DOWNLOADABLE_MODELS.contains(&name) {
+            Downloadable::DependencyModel
+        } else {
+            Downloadable::Dictionary
+        }
+    }
+
+    /// The word for it in a message.
+    ///
+    /// # Returns
+    ///
+    /// `dictionary` or `model`.
+    pub(crate) fn noun(self) -> &'static str {
+        match self {
+            Downloadable::Dictionary => "dictionary",
+            Downloadable::DependencyModel => "model",
+        }
+    }
+
+    /// Lists the required files missing from a directory.
+    ///
+    /// # Arguments
+    ///
+    /// * `dir` - Directory expected to hold a complete dictionary or model.
+    ///
+    /// # Returns
+    ///
+    /// The names from [`REQUIRED_DICTIONARY_FILES`] or
+    /// [`REQUIRED_MODEL_FILES`] that are absent.
+    pub(crate) fn missing_files(self, dir: &Path) -> Vec<&'static str> {
+        match self {
+            Downloadable::Dictionary => missing_dictionary_files(dir),
+            Downloadable::DependencyModel => REQUIRED_MODEL_FILES
+                .iter()
+                .copied()
+                .filter(|file| !dir.join(file).is_file())
+                .collect(),
+        }
+    }
+
+    /// Checks whether a directory holds every required file.
+    ///
+    /// # Arguments
+    ///
+    /// * `dir` - Directory to check.
+    ///
+    /// # Returns
+    ///
+    /// `true` when no required file is missing.
+    pub(crate) fn is_complete(self, dir: &Path) -> bool {
+        self.missing_files(dir).is_empty()
+    }
+
+    /// Reads the version of Lindera that built what a directory holds.
+    ///
+    /// # Arguments
+    ///
+    /// * `dir` - The directory.
+    ///
+    /// # Returns
+    ///
+    /// The `lindera_version` of the `metadata.json` of a dictionary, or of
+    /// the `model.json` of a model; `None` when the file cannot be read or
+    /// parsed, or lacks the field.
+    pub(crate) fn installed_version(self, dir: &Path) -> Option<String> {
+        match self {
+            Downloadable::Dictionary => installed_lindera_version(dir),
+            Downloadable::DependencyModel => {
+                let data = fs::read(dir.join(MODEL_METADATA_FILE)).ok()?;
+                let value: serde_json::Value = serde_json::from_slice(&data).ok()?;
+                value.get("lindera_version")?.as_str().map(str::to_string)
+            }
+        }
+    }
+
+    /// The path a user passes on, for an installation directory.
+    ///
+    /// # Arguments
+    ///
+    /// * `dir` - The directory `lindera download` installed into.
+    ///
+    /// # Returns
+    ///
+    /// `dir` for a dictionary, the value of `--dict`; the model file in it
+    /// for a model, the value of `model` of the token filter.
+    pub(crate) fn path_to_pass(self, dir: &Path) -> PathBuf {
+        match self {
+            Downloadable::Dictionary => dir.to_path_buf(),
+            Downloadable::DependencyModel => dir.join(MODEL_FILE),
+        }
+    }
 }
 
 /// Reads the version of Lindera that built a dictionary directory, from the
