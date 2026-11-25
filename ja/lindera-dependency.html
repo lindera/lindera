@@ -185,7 +185,7 @@
 </code></pre>
 <h2 id="状態"><a class="header" href="#状態">状態</a></h2>
 <blockquote>
-<p>このクレートは<strong>開発中で、crates.io にはまだ公開していません</strong>。<strong>配布しているモデルも、まだありません</strong>。自分で学習したモデルを使えば、形態素から係り受けまでの解析が一通りできます。学習データ、文節の区切り、解析器、モデルファイル、評価、テキストを受けるコマンドが揃っています。Lindera のトークンフィルターは、<code>dependency</code> feature を付けたビルドに入っています。これからの部分は、公開するモデルと、バインディングへのフィルターの追加です。</p>
+<p>このクレートは<strong>開発中で、crates.io にはまだ公開していません</strong>。<strong>配布しているモデルも、まだありません</strong>。自分で学習したモデルを使えば、形態素から係り受けまでの解析が一通りできます。学習データ、文節の区切り、解析器、モデルファイル、評価、テキストを受けるコマンドが揃っています。Lindera のトークンフィルターは、コマンドとバインディングの、<code>dependency</code> feature を付けたビルドに入っています。これからの部分は、公開するモデルです。</p>
 </blockquote>
 <p>いま使うには、<a href="https://github.com/lindera/lindera">リポジトリ</a>の checkout からビルドします。最初のリリースまでは、インターフェースが変わることがあります。作業は <a href="https://github.com/lindera/lindera/issues/1417">#1417</a> で追っています。</p>
 <h2 id="できること"><a class="header" href="#できること">できること</a></h2>
@@ -194,7 +194,7 @@
 <li><strong>モデルを辞書ごとの 1 つのファイルに持ち、その場で読む</strong>。プログラムに埋め込んだバイト列、ファイルから読んだバイト列、メモリマップのどれでも、表を写さずに読みます。ファイルは自分の辞書の名前を持ち、その辞書のものではありえない形態素は断ります。</li>
 <li><strong>文節の係り受けを解析する</strong>。CaboCha・J.DepP と同じく、shift-reduce と、素性とその対の上の分類器を使い、その分類器を学習します。IPADIC では、UD Japanese-GSD の dev で、正解の文節なら 90.11% の文節が正しい係り先になり（test は 88.53%）、形態素からなら 85.39% です（test は 84.47%）。</li>
 <li><strong>コマンドラインでテキストを解析する</strong>。Lindera の辞書で分かち書きし、<code>cabocha -f1</code> と同じ形式で書き出します。</li>
-<li><strong>Lindera のトークンフィルターとして動く</strong>。<code>japanese_dependency</code> を、<code>lindera</code> コマンド、設定ファイル、Rust から使えます。各トークンの文節と係り先が、JSON の出力と <code>Token</code> に入ります。</li>
+<li><strong>Lindera のトークンフィルターとして動く</strong>。<code>japanese_dependency</code> を、<code>lindera</code> コマンド、設定ファイル、Rust、5 つのバインディングから使えます。各トークンの文節と係り先が、JSON の出力と <code>Token</code> に入ります。</li>
 <li><strong>文節の主辞と機能語を求め</strong>、句読点と括弧を見分ける。辞書のスキーマから決めます。最初のスキーマは IPADIC です。</li>
 <li>CaboCha の<strong>ラティス形式</strong>（<code>cabocha -f1</code>）<strong>を読み書きし</strong>、文が、解析器の仮定する木であるかを検査する。</li>
 <li>UD Japanese-GSD のような係り受けのコーパスから、解析器を動かす辞書の形態素の上で、<strong>学習データを作る</strong>。</li>

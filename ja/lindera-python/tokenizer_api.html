@@ -473,6 +473,7 @@ print([token.surface for token in tokenizer.tokenize(text)])
 <tr><td><code>word_id</code></td><td><code>int</code></td><td>辞書の単語 ID</td></tr>
 <tr><td><code>is_unknown</code></td><td><code>bool</code></td><td>辞書に登録されていない単語の場合 <code>True</code></td></tr>
 <tr><td><code>details</code></td><td><code>list[str]</code> または <code>None</code></td><td>形態素の詳細情報（品詞、読みなど）</td></tr>
+<tr><td><code>dependency</code></td><td><code>TokenDependency</code> または <code>None</code></td><td>トークンの文節とその係り先。トークンフィルター <code>japanese_dependency</code> を使ったときだけ入り、それ以外は <code>None</code></td></tr>
 </tbody></table>
 </div>
 <h3 id="token-メソッド"><a class="header" href="#token-メソッド">Token メソッド</a></h3>
@@ -508,6 +509,39 @@ json.dumps([token.to_dict() for token in tokens])
 <li><strong>UniDic</strong>: UniDic 仕様に準拠した詳細な形態素情報</li>
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: 各辞書固有の詳細フォーマット</li>
 </ul>
+<h2 id="tokendependency"><a class="header" href="#tokendependency">TokenDependency</a></h2>
+<p>トークンの文節と、その文節の係り先です。トークンフィルター <code>japanese_dependency</code> を使うと、各トークンの <code>dependency</code> に入ります。フィルター、モデル、テキストの文への分け方は、<a href="../lindera-dependency/token_filter.html">トークンフィルター</a>を見てください。</p>
+<p>フィルターは、<code>dependency</code> feature を付けたビルドにだけ入ります。配布しているパッケージには、まだ入っていません。</p>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>sentence</code></td><td><code>int</code></td><td>テキストの中での文の番号。0 から</td></tr>
+<tr><td><code>bunsetsu</code></td><td><code>int</code></td><td>文の中での、トークンの文節の番号。0 から</td></tr>
+<tr><td><code>head</code></td><td><code>int</code> または <code>None</code></td><td>その文節の係り先の文節の番号。文の最後の文節では <code>None</code></td></tr>
+<tr><td><code>role</code></td><td><code>str</code></td><td>文節の中での役割。<code>head</code>（主辞）、<code>function</code>（機能語）、<code>head_function</code>（両方）、<code>other</code> のどれか</td></tr>
+<tr><td><code>score</code></td><td><code>float</code></td><td>その文節を係り先に付けた判定のスコア。判定の無いところは 0</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-python">from lindera import TokenizerBuilder
+
+tokenizer = (
+    TokenizerBuilder()
+    .set_dictionary("embedded://ipadic")
+    .append_token_filter("japanese_dependency", {"model": "ipadic.model"})
+    .build()
+)
+for token in tokenizer.tokenize("彼は赤い花を見た。"):
+    dependency = token.dependency
+    print(token.surface, dependency.bunsetsu, dependency.head, dependency.role)
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 None head
+た 3 None function
+。 3 None other
+</code></pre>
+<p><code>TokenDependency.to_dict()</code> は 5 つのフィールドを <code>dict</code> で返し、<code>Token.to_dict()</code> はそれを <code>dependency</code> というキーに入れます（フィルターなしでは <code>None</code>）。<code>TokenDependency</code> は変更できません。</p>
 <h2 id="エラーハンドリング"><a class="header" href="#エラーハンドリング">エラーハンドリング</a></h2>
 <p>Lindera Python の関数は、カスタムの例外型ではなく標準的な Python の例外を送出します：</p>
 <ul>

@@ -418,6 +418,7 @@ foreach ($batch as $tokens) {
 <tr><td><code>$word_id</code></td><td><code>int</code></td><td>Dictionary word ID</td></tr>
 <tr><td><code>$is_unknown</code></td><td><code>bool</code></td><td><code>true</code> if the word is not in the dictionary</td></tr>
 <tr><td><code>$details</code></td><td><code>array&lt;string&gt;</code></td><td>Morphological details (part of speech, reading, etc.)</td></tr>
+<tr><td><code>$dependency</code></td><td><code>Lindera\TokenDependency</code> or <code>null</code></td><td>The bunsetsu of the token and its head; <code>null</code> unless the token filter <code>japanese_dependency</code> ran</td></tr>
 </tbody></table>
 </div>
 <h3 id="token-methods"><a class="header" href="#token-methods">Token Methods</a></h3>
@@ -463,6 +464,37 @@ object straight to <code>json_encode</code> does not produce these fields -- cal
 <li><strong>UniDic</strong>: Detailed morphological features following the UniDic specification</li>
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: Dictionary-specific detail formats</li>
 </ul>
+<h2 id="tokendependency"><a class="header" href="#tokendependency">TokenDependency</a></h2>
+<p>The bunsetsu of a token and the bunsetsu it depends on. The token filter <code>japanese_dependency</code> puts it in the <code>$dependency</code> of every token; see <a href="../lindera-dependency/token_filter.html">Token Filter</a> for the filter, its model, and how a text is cut into sentences.</p>
+<p>The filter is in builds with the <code>dependency</code> feature only. The distributed packages do not have it yet.</p>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>$sentence</code></td><td><code>int</code></td><td>The number of the sentence in the text, from 0</td></tr>
+<tr><td><code>$bunsetsu</code></td><td><code>int</code></td><td>The number of the bunsetsu of the token in its sentence, from 0</td></tr>
+<tr><td><code>$head</code></td><td><code>int</code> or <code>null</code></td><td>The number of the bunsetsu that one depends on; <code>null</code> for the last bunsetsu of a sentence</td></tr>
+<tr><td><code>$role</code></td><td><code>string</code></td><td>What the token is in its bunsetsu: <code>head</code> (the head word), <code>function</code> (the function word), <code>head_function</code> (both) or <code>other</code></td></tr>
+<tr><td><code>$score</code></td><td><code>float</code></td><td>The score of the decision that attached the bunsetsu to its head; 0 where nothing was decided</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-php">$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setDictionary('embedded://ipadic');
+$builder-&gt;appendTokenFilter('japanese_dependency', ['model' =&gt; 'ipadic.model']);
+$tokenizer = $builder-&gt;build();
+foreach ($tokenizer-&gt;tokenize('彼は赤い花を見た。') as $token) {
+    $dependency = $token-&gt;dependency;
+    echo $token-&gt;surface, ' ', $dependency-&gt;bunsetsu, ' ',
+        var_export($dependency-&gt;head, true), ' ', $dependency-&gt;role, "\n";
+}
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 NULL head
+た 3 NULL function
+。 3 NULL other
+</code></pre>
+<p><code>TokenDependency::toArray()</code> returns the five fields as an array, and <code>Token::toArray()</code> has it under the key <code>dependency</code> (<code>null</code> without the filter).</p>
 <h2 id="mode"><a class="header" href="#mode">Mode</a></h2>
 <p><code>Lindera\Mode</code> is the tokenization mode: normal, or decompose with a <a href="#penalty"><code>Lindera\Penalty</code></a>. It is the counterpart of the Rust <a href="../lindera/segmenter.html#tokenization-modes"><code>lindera::mode::Mode</code></a>, and <a href="#setmodemode"><code>setMode()</code></a> and the <a href="#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>Tokenizer</code> constructor</a> take it.</p>
 <h3 id="creating-a-mode"><a class="header" href="#creating-a-mode">Creating a Mode</a></h3>

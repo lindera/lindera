@@ -459,6 +459,7 @@ p tokenizer.tokenize(text).map(&amp;:surface)
 <tr><td><code>position</code></td><td><code>Integer</code></td><td>Token position index</td></tr>
 <tr><td><code>word_id</code></td><td><code>Integer</code></td><td>Dictionary word ID</td></tr>
 <tr><td><code>details</code></td><td><code>Array&lt;String&gt;</code></td><td>Morphological details (part of speech, reading, etc.)</td></tr>
+<tr><td><code>dependency</code></td><td><code>Lindera::TokenDependency</code> or <code>nil</code></td><td>The bunsetsu of the token and its head; <code>nil</code> unless the token filter <code>japanese_dependency</code> ran</td></tr>
 </tbody></table>
 </div>
 <p>Additionally, the predicate method <code>unknown?</code> returns <code>true</code> if the word is not in the dictionary:</p>
@@ -498,6 +499,36 @@ JSON.generate(tokens.map(&amp;:to_h))
 <li><strong>UniDic</strong>: Detailed morphological features following the UniDic specification</li>
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: Dictionary-specific detail formats</li>
 </ul>
+<h2 id="tokendependency"><a class="header" href="#tokendependency">TokenDependency</a></h2>
+<p>The bunsetsu of a token and the bunsetsu it depends on. The token filter <code>japanese_dependency</code> puts it in the <code>dependency</code> of every token; see <a href="../lindera-dependency/token_filter.html">Token Filter</a> for the filter, its model, and how a text is cut into sentences.</p>
+<p>The filter is in builds with the <code>dependency</code> feature only. The distributed packages do not have it yet.</p>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>sentence</code></td><td><code>Integer</code></td><td>The number of the sentence in the text, from 0</td></tr>
+<tr><td><code>bunsetsu</code></td><td><code>Integer</code></td><td>The number of the bunsetsu of the token in its sentence, from 0</td></tr>
+<tr><td><code>head</code></td><td><code>Integer</code> or <code>nil</code></td><td>The number of the bunsetsu that one depends on; <code>nil</code> for the last bunsetsu of a sentence</td></tr>
+<tr><td><code>role</code></td><td><code>String</code></td><td>What the token is in its bunsetsu: <code>head</code> (the head word), <code>function</code> (the function word), <code>head_function</code> (both) or <code>other</code></td></tr>
+<tr><td><code>score</code></td><td><code>Float</code></td><td>The score of the decision that attached the bunsetsu to its head; 0 where nothing was decided</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.append_token_filter('japanese_dependency', { 'model' =&gt; 'ipadic.model' })
+tokenizer = builder.build
+tokenizer.tokenize('彼は赤い花を見た。').each do |token|
+  dependency = token.dependency
+  puts [token.surface, dependency.bunsetsu, dependency.head.inspect, dependency.role].join(' ')
+end
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 nil head
+た 3 nil function
+。 3 nil other
+</code></pre>
+<p><code>TokenDependency#to_h</code> (and <code>to_hash</code>) returns the five fields as a <code>Hash</code> keyed by Symbols, and <code>Token#to_h</code> has it under <code>:dependency</code> (<code>nil</code> without the filter).</p>
 <h2 id="schema"><a class="header" href="#schema">Schema</a></h2>
 <p><code>Lindera::Schema</code> holds an ordered list of field names and provides lookups between field name and index. It is used by <code>Metadata#dictionary_schema</code> and <code>Metadata#user_dictionary_schema</code> (see <a href="./dictionary_management.html">Dictionary Management</a>).</p>
 <h3 id="creating-a-schema"><a class="header" href="#creating-a-schema">Creating a Schema</a></h3>

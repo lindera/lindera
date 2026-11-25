@@ -323,11 +323,13 @@
 <li><strong>前のフィルターについてこのフィルターに見えるのは、位置です。</strong> トークナイザーは、トークンに 0 から隙間なく位置を振ります。トークンを消すフィルターは隙間を残し、つなぐフィルターは位置を 2 つ以上占めるトークンを残します。書き換えられた表層や詳細と、末尾から消されたトークンは見えません。文書では、このフィルターを最初に置くよう案内しています。</li>
 <li><strong>トークンは、その場で読みます。</strong> フィルターの形態素は、トークンの表層と詳細を借ります。モデルは <code>Arc</code> の中にあり、フィルターの複製の間で共有します。トークナイザーを複製すると、フィルターも複製されます。</li>
 <li><strong>フィルターの結果は、コマンドの結果と同じです。</strong> UD Japanese-GSD の test の 543 文で、すべてのトークンの文節、係り先、役割、スコアが、同じモデルの <code>lindera-dependency parse</code> と一致します。</li>
+<li><strong>バインディングは、係り受けをトークンの上の独立したオブジェクトとして返します。</strong> フィルターを使わなければ何も返しません。Python では <code>None</code>、Ruby では <code>nil</code>、PHP では <code>null</code> で、Node.js と WebAssembly ではプロパティがありません。この 2 つではトークンがプレーンなオブジェクトなので、これまでと同じオブジェクトのままです。最後の文節の係り先は、コマンドの JSON と同じく、どのバインディングでも null です。<code>lindera-binding</code> の <code>TokenView</code> が、5 つすべてに運びます。</li>
+<li><strong>Node.js は、6 つのプロパティの名前を、係り受けを持つ最初のトークンで作ります。</strong> そのトークンを作るハンドルスコープの中で作り、スコープを開き直した後は作り直します。フィルターを使わない呼び出しは、これまでと同じ呼び出しで、これまでと同じオブジェクトを作ります。</li>
+<li><strong>WebAssembly は、<code>appendDependencyFilter</code> でモデルのバイト列を受け取ります。</strong> 読めるパスが無いためです。そのために、<code>lindera-binding</code> のビルダーは Rust で作ったフィルターを受け取り、<code>kind</code> で足したフィルターの間の、足された位置で動かします。</li>
 <li><strong>未検証</strong>: IPADIC 以外の辞書。スキーマがまだありません。</li>
 </ul>
 <h2 id="これからの部分"><a class="header" href="#これからの部分">これからの部分</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>部分</th><th>メモ</th><th>Issue</th></tr></thead><tbody>
-<tr><td>バインディングのトークンフィルター</td><td><code>lindera-binding</code> の <code>TokenView</code> と、Python、Node.js、Ruby、PHP、WASM のトークンのフィールド。</td><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td></tr>
 <tr><td>IPADIC のモデル</td><td>学習、リリース、ドキュメント、ライセンスの記載。クレートはこのときに公開する。</td><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td></tr>
 <tr><td>UniDic のモデル</td><td>2 つ目のスキーマ。</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
 <tr><td>CaboCha のモデルの変換器</td><td>表層の正規化の表、CRF++ のテキスト形式のモデルの読み込み、解析器のモデルの support vector の展開。</td><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td></tr>
@@ -476,7 +478,7 @@
 <tr><td><a href="https://github.com/lindera/lindera/issues/1436">#1436</a></td><td>係り受けの解析器。ループ、素性、学習事例</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1433">#1433</a></td><td>CaboCha・J.DepP の基準の測り直し</td><td>未着手</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1437">#1437</a></td><td>モデルファイルと、解析器の学習</td><td>済み</td></tr>
-<tr><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td><td>トークンフィルター</td><td>フィルターとコマンドは完了。バインディングは未着手</td></tr>
+<tr><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td><td>トークンフィルター</td><td>完了</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1439">#1439</a></td><td>コマンド</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td><td>IPADIC のモデルと、クレートの公開</td><td>未着手</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td><td>UniDic のモデル</td><td>未着手</td></tr>

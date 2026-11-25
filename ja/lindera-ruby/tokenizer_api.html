@@ -458,6 +458,7 @@ p tokenizer.tokenize(text).map(&amp;:surface)
 <tr><td><code>position</code></td><td><code>Integer</code></td><td>トークンの位置インデックス</td></tr>
 <tr><td><code>word_id</code></td><td><code>Integer</code></td><td>辞書の単語 ID</td></tr>
 <tr><td><code>details</code></td><td><code>Array&lt;String&gt;</code></td><td>形態素の詳細情報（品詞、読みなど）</td></tr>
+<tr><td><code>dependency</code></td><td><code>Lindera::TokenDependency</code> または <code>nil</code></td><td>トークンの文節とその係り先。トークンフィルター <code>japanese_dependency</code> を使ったときだけ入り、それ以外は <code>nil</code></td></tr>
 </tbody></table>
 </div>
 <p>さらに、述語メソッド <code>unknown?</code> は辞書に登録されていない単語の場合 <code>true</code> を返します：</p>
@@ -497,6 +498,36 @@ JSON.generate(tokens.map(&amp;:to_h))
 <li><strong>UniDic</strong>: UniDic 仕様に準拠した詳細な形態素情報</li>
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: 各辞書固有の詳細フォーマット</li>
 </ul>
+<h2 id="tokendependency"><a class="header" href="#tokendependency">TokenDependency</a></h2>
+<p>トークンの文節と、その文節の係り先です。トークンフィルター <code>japanese_dependency</code> を使うと、各トークンの <code>dependency</code> に入ります。フィルター、モデル、テキストの文への分け方は、<a href="../lindera-dependency/token_filter.html">トークンフィルター</a>を見てください。</p>
+<p>フィルターは、<code>dependency</code> feature を付けたビルドにだけ入ります。配布しているパッケージには、まだ入っていません。</p>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>sentence</code></td><td><code>Integer</code></td><td>テキストの中での文の番号。0 から</td></tr>
+<tr><td><code>bunsetsu</code></td><td><code>Integer</code></td><td>文の中での、トークンの文節の番号。0 から</td></tr>
+<tr><td><code>head</code></td><td><code>Integer</code> または <code>nil</code></td><td>その文節の係り先の文節の番号。文の最後の文節では <code>nil</code></td></tr>
+<tr><td><code>role</code></td><td><code>String</code></td><td>文節の中での役割。<code>head</code>（主辞）、<code>function</code>（機能語）、<code>head_function</code>（両方）、<code>other</code> のどれか</td></tr>
+<tr><td><code>score</code></td><td><code>Float</code></td><td>その文節を係り先に付けた判定のスコア。判定の無いところは 0</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.append_token_filter('japanese_dependency', { 'model' =&gt; 'ipadic.model' })
+tokenizer = builder.build
+tokenizer.tokenize('彼は赤い花を見た。').each do |token|
+  dependency = token.dependency
+  puts [token.surface, dependency.bunsetsu, dependency.head.inspect, dependency.role].join(' ')
+end
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 nil head
+た 3 nil function
+。 3 nil other
+</code></pre>
+<p><code>TokenDependency#to_h</code>（と <code>to_hash</code>）は 5 つのフィールドを Symbol をキーとする <code>Hash</code> で返し、<code>Token#to_h</code> はそれを <code>:dependency</code> に入れます（フィルターなしでは <code>nil</code>）。</p>
 <h2 id="schema"><a class="header" href="#schema">Schema</a></h2>
 <p><code>Lindera::Schema</code> はフィールド名の順序付きリストを保持し、フィールド名とインデックスの間の相互変換を提供します。<code>Metadata#dictionary_schema</code> と <code>Metadata#user_dictionary_schema</code> で使用されます（<a href="./dictionary_management.html">辞書管理</a> を参照）。</p>
 <h3 id="schema-の作成"><a class="header" href="#schema-の作成">Schema の作成</a></h3>

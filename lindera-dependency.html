@@ -185,7 +185,7 @@
 </code></pre>
 <h2 id="status"><a class="header" href="#status">Status</a></h2>
 <blockquote>
-<p>The crate is <strong>under development and not published</strong> on crates.io, and <strong>no model is distributed yet</strong>. The analysis is complete from morphemes to dependencies, with a model you train yourself: the training data, the chunker, the parser, the model file, the evaluation and a command for text are here. The token filter of Lindera is in the builds with the <code>dependency</code> feature. What is still to come is a released model, and the filter in the bindings.</p>
+<p>The crate is <strong>under development and not published</strong> on crates.io, and <strong>no model is distributed yet</strong>. The analysis is complete from morphemes to dependencies, with a model you train yourself: the training data, the chunker, the parser, the model file, the evaluation and a command for text are here. The token filter of Lindera is in the builds with the <code>dependency</code> feature, of the command and of the bindings. What is still to come is a released model.</p>
 </blockquote>
 <p>To use it today, build it from a checkout of the <a href="https://github.com/lindera/lindera">repository</a>. The interfaces may change until the first release. The work is tracked in <a href="https://github.com/lindera/lindera/issues/1417">#1417</a>.</p>
 <h2 id="what-it-can-do"><a class="header" href="#what-it-can-do">What it can do</a></h2>
@@ -194,7 +194,7 @@
 <li><strong>Keep a model in one file per dictionary and read it in place</strong>: from bytes embedded in a program, read from a file or mapped into memory, without copying its tables. The file names its dictionary, and morphemes that cannot be of that dictionary are refused.</li>
 <li><strong>Parse the dependencies of the bunsetsu</strong> with shift-reduce and a classifier over features and pairs of features, as CaboCha and J.DepP do, and train that classifier. With IPADIC, 90.11% of the bunsetsu of the dev file of UD Japanese-GSD get the right head with the bunsetsu of the answer (88.53% on the test file), and 85.39% from the morphemes (84.47%).</li>
 <li><strong>Parse plain text from the command line</strong>, tokenized with a Lindera dictionary, and write what <code>cabocha -f1</code> writes.</li>
-<li><strong>Run as a token filter of Lindera</strong>, <code>japanese_dependency</code>: from the <code>lindera</code> command, a configuration file and Rust, with the bunsetsu and the head of each token in the JSON output and on the <code>Token</code>.</li>
+<li><strong>Run as a token filter of Lindera</strong>, <code>japanese_dependency</code>: from the <code>lindera</code> command, a configuration file, Rust and the five bindings, with the bunsetsu and the head of each token in the JSON output and on the <code>Token</code>.</li>
 <li><strong>Give the head word and the function word of a bunsetsu</strong>, and recognize punctuation and brackets, from a schema of the dictionary. IPADIC is the first schema.</li>
 <li><strong>Read and write the lattice format</strong> of CaboCha (<code>cabocha -f1</code>), and check that a sentence is the tree the parsers assume.</li>
 <li><strong>Make training data</strong> from a dependency corpus such as UD Japanese-GSD, on the morphemes of the dictionary the parser will run with.</li>

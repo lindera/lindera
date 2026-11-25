@@ -187,6 +187,8 @@
 <pre><code class="language-text">the token filter japanese_dependency needs a build with the feature `dependency`
 </code></pre>
 <p><code>lindera-dependency</code> は crates.io にまだ公開していないので、この feature は、リポジトリのチェックアウトでだけ使えます。バインディングには、まだフィルターが入っていません（<a href="https://github.com/lindera/lindera/issues/1438">#1438</a>）。</p>
+<h2 id="バインディングから"><a class="header" href="#バインディングから">バインディングから</a></h2>
+<p>Python、Node.js、Ruby、PHP では、ほかのフィルターと同じく、<code>kind</code> とモデルのパスでフィルターを足します。トークンには <code>dependency</code> が入ります。下の 5 つのフィールドを持つオブジェクトで、フィルターを使わなければ何も入りません（<code>None</code>、<code>nil</code>、<code>null</code>、プロパティなし）。WebAssembly ではパスを読めないので、<code>appendDependencyFilter</code> にモデルのバイト列を渡します。どれも、バインディングを <code>dependency</code> feature を付けてビルドする必要があります。配布しているパッケージには、まだ入っていません。各バインディングの API のページに例があります: <a href="../lindera-python/tokenizer_api.html#tokendependency">Python</a>、<a href="../lindera-nodejs/tokenizer_api.html#tokendependency">Node.js</a>、<a href="../lindera-ruby/tokenizer_api.html#tokendependency">Ruby</a>、<a href="../lindera-php/tokenizer_api.html#tokendependency">PHP</a>、<a href="../lindera-wasm/tokenizer_api.html#tokendependency">WebAssembly</a>。</p>
 <h2 id="モデル"><a class="header" href="#モデル">モデル</a></h2>
 <p>フィルターの引数は <code>model</code> の 1 つです。文節の区切りと解析器の両方を持ち、トークナイザーの辞書に合ったモデルファイルのパスを渡します。配布しているモデルは、まだありません（<a href="https://github.com/lindera/lindera/issues/1440">#1440</a>）。学習の方法は<a href="./parsing.html">係り受けの解析</a>に、ファイルの中身は<a href="./model_file.html">モデルファイル</a>にあります。</p>
 <p>モデルは、フィルターを作るときに 1 回だけ読み、トークナイザーの複製の間で共有します。読めないファイル、モデルファイルでないファイル、区切りか解析器の無いファイルは、テキストを読む前の、この時点でエラーになります。</p>

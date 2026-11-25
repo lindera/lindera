@@ -323,11 +323,13 @@
 <li><strong>What the filter can see of an earlier filter is the positions.</strong> The tokenizer numbers its tokens from 0 without a gap, a filter that removes tokens leaves a gap, and one that joins them a token of more than one position. A rewritten surface or detail, and tokens removed from the end, cannot be seen; the documentation says to put the filter first.</li>
 <li><strong>The tokens are read where they are.</strong> A morpheme of the filter borrows the surface and the details of its token. The model is behind an <code>Arc</code>, shared by the clones of the filter, which a tokenizer makes when it is cloned.</li>
 <li><strong>The filter gives what the command gives</strong>: on the 543 sentences of the test file of UD Japanese-GSD, every token has the bunsetsu, the head, the role and the score of <code>lindera-dependency parse</code> with the same model.</li>
+<li><strong>The bindings give the dependency as an object of its own on a token</strong>, and nothing without the filter: <code>None</code> in Python, <code>nil</code> in Ruby, <code>null</code> in PHP, and no property in Node.js and WebAssembly, where a token is a plain object and stays the object it was. The head of the last bunsetsu is null in every binding, as in the JSON of the command. <code>TokenView</code> of <code>lindera-binding</code> carries it to all five.</li>
+<li><strong>Node.js makes the names of the six properties for the first token that has a dependency</strong>, in the handle scope that token is made in, and again after the scope is renewed: a call without the filter makes the objects it made before, with the calls it made before.</li>
+<li><strong>WebAssembly takes the bytes of a model</strong>, with <code>appendDependencyFilter</code>: there is no path to read. The builder of <code>lindera-binding</code> takes a filter that was made in Rust for it, and runs it where it was appended among the filters given by <code>kind</code>.</li>
 <li><strong>Not verified</strong>: a dictionary other than IPADIC, for which there is no schema yet.</li>
 </ul>
 <h2 id="what-is-to-come"><a class="header" href="#what-is-to-come">What is to come</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Part</th><th>Notes</th><th>Issue</th></tr></thead><tbody>
-<tr><td>Token filter in the bindings</td><td><code>TokenView</code> of <code>lindera-binding</code>, and the field of a token in Python, Node.js, Ruby, PHP and WASM.</td><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td></tr>
 <tr><td>IPADIC model</td><td>Training, release, documentation, license notes. The crate is published with it.</td><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td></tr>
 <tr><td>UniDic model</td><td>A second schema.</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
 <tr><td>Converter for the models of CaboCha</td><td>The normalization table of the surface, the reader of a CRF++ text model, and the expansion of the support vectors of the parser model.</td><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td></tr>
@@ -476,7 +478,7 @@
 <tr><td><a href="https://github.com/lindera/lindera/issues/1436">#1436</a></td><td>Dependency parser: the loop, the features, the training instances</td><td>Done</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1433">#1433</a></td><td>The baselines of CaboCha and J.DepP, measured again</td><td>Open</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1437">#1437</a></td><td>The model file, and the training of the parser</td><td>Done</td></tr>
-<tr><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td><td>Token filter</td><td>The filter and the command done; the bindings open</td></tr>
+<tr><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td><td>Token filter</td><td>Done</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1439">#1439</a></td><td>Command</td><td>Done</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td><td>IPADIC model, and the publication of the crate</td><td>Open</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td><td>UniDic model</td><td>Open</td></tr>

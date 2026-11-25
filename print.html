@@ -2463,7 +2463,7 @@ let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, thr
 </code></pre>
 <h2 id="status"><a class="header" href="#status">Status</a></h2>
 <blockquote>
-<p>The crate is <strong>under development and not published</strong> on crates.io, and <strong>no model is distributed yet</strong>. The analysis is complete from morphemes to dependencies, with a model you train yourself: the training data, the chunker, the parser, the model file, the evaluation and a command for text are here. The token filter of Lindera is in the builds with the <code>dependency</code> feature. What is still to come is a released model, and the filter in the bindings.</p>
+<p>The crate is <strong>under development and not published</strong> on crates.io, and <strong>no model is distributed yet</strong>. The analysis is complete from morphemes to dependencies, with a model you train yourself: the training data, the chunker, the parser, the model file, the evaluation and a command for text are here. The token filter of Lindera is in the builds with the <code>dependency</code> feature, of the command and of the bindings. What is still to come is a released model.</p>
 </blockquote>
 <p>To use it today, build it from a checkout of the <a href="https://github.com/lindera/lindera">repository</a>. The interfaces may change until the first release. The work is tracked in <a href="https://github.com/lindera/lindera/issues/1417">#1417</a>.</p>
 <h2 id="what-it-can-do"><a class="header" href="#what-it-can-do">What it can do</a></h2>
@@ -2472,7 +2472,7 @@ let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, thr
 <li><strong>Keep a model in one file per dictionary and read it in place</strong>: from bytes embedded in a program, read from a file or mapped into memory, without copying its tables. The file names its dictionary, and morphemes that cannot be of that dictionary are refused.</li>
 <li><strong>Parse the dependencies of the bunsetsu</strong> with shift-reduce and a classifier over features and pairs of features, as CaboCha and J.DepP do, and train that classifier. With IPADIC, 90.11% of the bunsetsu of the dev file of UD Japanese-GSD get the right head with the bunsetsu of the answer (88.53% on the test file), and 85.39% from the morphemes (84.47%).</li>
 <li><strong>Parse plain text from the command line</strong>, tokenized with a Lindera dictionary, and write what <code>cabocha -f1</code> writes.</li>
-<li><strong>Run as a token filter of Lindera</strong>, <code>japanese_dependency</code>: from the <code>lindera</code> command, a configuration file and Rust, with the bunsetsu and the head of each token in the JSON output and on the <code>Token</code>.</li>
+<li><strong>Run as a token filter of Lindera</strong>, <code>japanese_dependency</code>: from the <code>lindera</code> command, a configuration file, Rust and the five bindings, with the bunsetsu and the head of each token in the JSON output and on the <code>Token</code>.</li>
 <li><strong>Give the head word and the function word of a bunsetsu</strong>, and recognize punctuation and brackets, from a schema of the dictionary. IPADIC is the first schema.</li>
 <li><strong>Read and write the lattice format</strong> of CaboCha (<code>cabocha -f1</code>), and check that a sentence is the tree the parsers assume.</li>
 <li><strong>Make training data</strong> from a dependency corpus such as UD Japanese-GSD, on the morphemes of the dictionary the parser will run with.</li>
@@ -3295,6 +3295,8 @@ lindera-dependency parse --model ipadic.model --input-layer bunsetsu \
 <pre><code class="language-text">the token filter japanese_dependency needs a build with the feature `dependency`
 </code></pre>
 <p><code>lindera-dependency</code> is not published on crates.io yet, so the feature works in a checkout of the repository only. The bindings do not have the filter yet (<a href="https://github.com/lindera/lindera/issues/1438">#1438</a>).</p>
+<h2 id="from-the-bindings"><a class="header" href="#from-the-bindings">From the bindings</a></h2>
+<p>Python, Node.js, Ruby and PHP append the filter as the others, by its <code>kind</code> and the path of the model, and a token has a <code>dependency</code>: an object with the five fields below, or nothing (<code>None</code>, <code>nil</code>, <code>null</code>, no property) without the filter. In WebAssembly a path cannot be read, and <code>appendDependencyFilter</code> takes the bytes of the model. Each needs a build of the binding with its <code>dependency</code> feature, which the distributed packages do not have yet. The API page of each binding has an example: <a href="lindera-dependency/../lindera-python/tokenizer_api.html#tokendependency">Python</a>, <a href="lindera-dependency/../lindera-nodejs/tokenizer_api.html#tokendependency">Node.js</a>, <a href="lindera-dependency/../lindera-ruby/tokenizer_api.html#tokendependency">Ruby</a>, <a href="lindera-dependency/../lindera-php/tokenizer_api.html#tokendependency">PHP</a>, <a href="lindera-dependency/../lindera-wasm/tokenizer_api.html#tokendependency">WebAssembly</a>.</p>
 <h2 id="the-model"><a class="header" href="#the-model">The model</a></h2>
 <p>The filter takes one argument, <code>model</code>: the path of a model file with a chunker and a parser, for the dictionary of the tokenizer. No model is distributed yet (<a href="https://github.com/lindera/lindera/issues/1440">#1440</a>); <a href="lindera-dependency/./parsing.html">Parsing</a> shows how to train one, and <a href="lindera-dependency/./model_file.html">Model File</a> what the file holds.</p>
 <p>The model is read once, when the filter is made, and shared by the copies of the tokenizer. A file that cannot be read, that is not a model file, or that lacks the chunker or the parser is an error then, before any text is read.</p>
@@ -5201,6 +5203,7 @@ print([token.surface for token in tokenizer.tokenize(text)])
 <tr><td><code>word_id</code></td><td><code>int</code></td><td>Dictionary word ID</td></tr>
 <tr><td><code>is_unknown</code></td><td><code>bool</code></td><td><code>True</code> if the word is not in the dictionary</td></tr>
 <tr><td><code>details</code></td><td><code>list[str]</code> or <code>None</code></td><td>Morphological details (part of speech, reading, etc.)</td></tr>
+<tr><td><code>dependency</code></td><td><code>TokenDependency</code> or <code>None</code></td><td>The bunsetsu of the token and its head; <code>None</code> unless the token filter <code>japanese_dependency</code> ran</td></tr>
 </tbody></table>
 </div>
 <h3 id="token-methods"><a class="header" href="#token-methods">Token Methods</a></h3>
@@ -5236,6 +5239,39 @@ json.dumps([token.to_dict() for token in tokens])
 <li><strong>UniDic</strong>: Detailed morphological features following the UniDic specification</li>
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: Dictionary-specific detail formats</li>
 </ul>
+<h2 id="tokendependency"><a class="header" href="#tokendependency">TokenDependency</a></h2>
+<p>The bunsetsu of a token and the bunsetsu it depends on. The token filter <code>japanese_dependency</code> puts it in the <code>dependency</code> of every token; see <a href="lindera-python/../lindera-dependency/token_filter.html">Token Filter</a> for the filter, its model, and how a text is cut into sentences.</p>
+<p>The filter is in builds with the <code>dependency</code> feature only. The distributed packages do not have it yet.</p>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>sentence</code></td><td><code>int</code></td><td>The number of the sentence in the text, from 0</td></tr>
+<tr><td><code>bunsetsu</code></td><td><code>int</code></td><td>The number of the bunsetsu of the token in its sentence, from 0</td></tr>
+<tr><td><code>head</code></td><td><code>int</code> or <code>None</code></td><td>The number of the bunsetsu that one depends on; <code>None</code> for the last bunsetsu of a sentence</td></tr>
+<tr><td><code>role</code></td><td><code>str</code></td><td>What the token is in its bunsetsu: <code>head</code> (the head word), <code>function</code> (the function word), <code>head_function</code> (both) or <code>other</code></td></tr>
+<tr><td><code>score</code></td><td><code>float</code></td><td>The score of the decision that attached the bunsetsu to its head; 0 where nothing was decided</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-python">from lindera import TokenizerBuilder
+
+tokenizer = (
+    TokenizerBuilder()
+    .set_dictionary("embedded://ipadic")
+    .append_token_filter("japanese_dependency", {"model": "ipadic.model"})
+    .build()
+)
+for token in tokenizer.tokenize("彼は赤い花を見た。"):
+    dependency = token.dependency
+    print(token.surface, dependency.bunsetsu, dependency.head, dependency.role)
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 None head
+た 3 None function
+。 3 None other
+</code></pre>
+<p><code>TokenDependency.to_dict()</code> returns the five fields as a <code>dict</code>, and <code>Token.to_dict()</code> has it under the key <code>dependency</code> (<code>None</code> without the filter). A <code>TokenDependency</code> cannot be changed.</p>
 <h2 id="error-handling-1"><a class="header" href="#error-handling-1">Error Handling</a></h2>
 <p>Lindera Python functions raise standard Python exceptions rather than a custom
 exception type:</p>
@@ -6167,6 +6203,7 @@ every field is read directly.</p>
 <tr><td><code>wordId</code></td><td><code>number</code></td><td>Dictionary word ID</td></tr>
 <tr><td><code>isUnknown</code></td><td><code>boolean</code></td><td><code>true</code> if the word is not in the dictionary</td></tr>
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>Morphological details (part of speech, reading, etc.)</td></tr>
+<tr><td><code>dependency</code></td><td><code>TokenDependency</code> (optional)</td><td>The bunsetsu of the token and its head; the property is there only when the token filter <code>japanese_dependency</code> ran</td></tr>
 </tbody></table>
 </div>
 <h3 id="reading-details"><a class="header" href="#reading-details">Reading Details</a></h3>
@@ -6182,6 +6219,38 @@ const reading = token.details[7];  // e.g., "トウキョウ"
 <li><strong>UniDic</strong>: Detailed morphological features following the UniDic specification</li>
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: Dictionary-specific detail formats</li>
 </ul>
+<h2 id="tokendependency-1"><a class="header" href="#tokendependency-1">TokenDependency</a></h2>
+<p>The bunsetsu of a token and the bunsetsu it depends on. The token filter <code>japanese_dependency</code> puts it in the <code>dependency</code> of every token; see <a href="lindera-nodejs/../lindera-dependency/token_filter.html">Token Filter</a> for the filter, its model, and how a text is cut into sentences.</p>
+<p>The filter is in builds with the <code>dependency</code> feature only. The distributed packages do not have it yet.</p>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>sentence</code></td><td><code>number</code></td><td>The number of the sentence in the text, from 0</td></tr>
+<tr><td><code>bunsetsu</code></td><td><code>number</code></td><td>The number of the bunsetsu of the token in its sentence, from 0</td></tr>
+<tr><td><code>head</code></td><td><code>number | null</code></td><td>The number of the bunsetsu that one depends on; <code>null</code> for the last bunsetsu of a sentence</td></tr>
+<tr><td><code>role</code></td><td><code>string</code></td><td>What the token is in its bunsetsu: <code>head</code> (the head word), <code>function</code> (the function word), <code>head_function</code> (both) or <code>other</code></td></tr>
+<tr><td><code>score</code></td><td><code>number</code></td><td>The score of the decision that attached the bunsetsu to its head; 0 where nothing was decided</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendTokenFilter("japanese_dependency", { model: "ipadic.model" })
+  .build();
+for (const token of tokenizer.tokenize("彼は赤い花を見た。")) {
+  const { bunsetsu, head, role } = token.dependency;
+  console.log(token.surface, bunsetsu, head, role);
+}
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 null head
+た 3 null function
+。 3 null other
+</code></pre>
+<p><code>TokenDependency</code> is a plain object, a TypeScript <code>interface</code> as <code>Token</code> is, and <code>JSON.stringify</code> of a token keeps it. A token without the filter has no <code>dependency</code> property, and is the object it was before.</p>
 <h2 id="mode-and-penalty"><a class="header" href="#mode-and-penalty">Mode and Penalty</a></h2>
 <p><code>TokenizerBuilder.setMode()</code> and the <code>Tokenizer</code> constructor take the mode as a <a href="lindera-nodejs/tokenizer_api.html#mode"><code>Mode</code></a>, which holds the penalty of decompose mode as a <a href="lindera-nodejs/tokenizer_api.html#penalty"><code>Penalty</code></a>.</p>
 <h3 id="mode-2"><a class="header" href="#mode-2"><code>Mode</code></a></h3>
@@ -7220,6 +7289,7 @@ p tokenizer.tokenize(text).map(&amp;:surface)
 <tr><td><code>position</code></td><td><code>Integer</code></td><td>Token position index</td></tr>
 <tr><td><code>word_id</code></td><td><code>Integer</code></td><td>Dictionary word ID</td></tr>
 <tr><td><code>details</code></td><td><code>Array&lt;String&gt;</code></td><td>Morphological details (part of speech, reading, etc.)</td></tr>
+<tr><td><code>dependency</code></td><td><code>Lindera::TokenDependency</code> or <code>nil</code></td><td>The bunsetsu of the token and its head; <code>nil</code> unless the token filter <code>japanese_dependency</code> ran</td></tr>
 </tbody></table>
 </div>
 <p>Additionally, the predicate method <code>unknown?</code> returns <code>true</code> if the word is not in the dictionary:</p>
@@ -7259,6 +7329,36 @@ JSON.generate(tokens.map(&amp;:to_h))
 <li><strong>UniDic</strong>: Detailed morphological features following the UniDic specification</li>
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: Dictionary-specific detail formats</li>
 </ul>
+<h2 id="tokendependency-2"><a class="header" href="#tokendependency-2">TokenDependency</a></h2>
+<p>The bunsetsu of a token and the bunsetsu it depends on. The token filter <code>japanese_dependency</code> puts it in the <code>dependency</code> of every token; see <a href="lindera-ruby/../lindera-dependency/token_filter.html">Token Filter</a> for the filter, its model, and how a text is cut into sentences.</p>
+<p>The filter is in builds with the <code>dependency</code> feature only. The distributed packages do not have it yet.</p>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>sentence</code></td><td><code>Integer</code></td><td>The number of the sentence in the text, from 0</td></tr>
+<tr><td><code>bunsetsu</code></td><td><code>Integer</code></td><td>The number of the bunsetsu of the token in its sentence, from 0</td></tr>
+<tr><td><code>head</code></td><td><code>Integer</code> or <code>nil</code></td><td>The number of the bunsetsu that one depends on; <code>nil</code> for the last bunsetsu of a sentence</td></tr>
+<tr><td><code>role</code></td><td><code>String</code></td><td>What the token is in its bunsetsu: <code>head</code> (the head word), <code>function</code> (the function word), <code>head_function</code> (both) or <code>other</code></td></tr>
+<tr><td><code>score</code></td><td><code>Float</code></td><td>The score of the decision that attached the bunsetsu to its head; 0 where nothing was decided</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.append_token_filter('japanese_dependency', { 'model' =&gt; 'ipadic.model' })
+tokenizer = builder.build
+tokenizer.tokenize('彼は赤い花を見た。').each do |token|
+  dependency = token.dependency
+  puts [token.surface, dependency.bunsetsu, dependency.head.inspect, dependency.role].join(' ')
+end
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 nil head
+た 3 nil function
+。 3 nil other
+</code></pre>
+<p><code>TokenDependency#to_h</code> (and <code>to_hash</code>) returns the five fields as a <code>Hash</code> keyed by Symbols, and <code>Token#to_h</code> has it under <code>:dependency</code> (<code>nil</code> without the filter).</p>
 <h2 id="schema-3"><a class="header" href="#schema-3">Schema</a></h2>
 <p><code>Lindera::Schema</code> holds an ordered list of field names and provides lookups between field name and index. It is used by <code>Metadata#dictionary_schema</code> and <code>Metadata#user_dictionary_schema</code> (see <a href="lindera-ruby/./dictionary_management.html">Dictionary Management</a>).</p>
 <h3 id="creating-a-schema-2"><a class="header" href="#creating-a-schema-2">Creating a Schema</a></h3>
@@ -8225,6 +8325,7 @@ foreach ($batch as $tokens) {
 <tr><td><code>$word_id</code></td><td><code>int</code></td><td>Dictionary word ID</td></tr>
 <tr><td><code>$is_unknown</code></td><td><code>bool</code></td><td><code>true</code> if the word is not in the dictionary</td></tr>
 <tr><td><code>$details</code></td><td><code>array&lt;string&gt;</code></td><td>Morphological details (part of speech, reading, etc.)</td></tr>
+<tr><td><code>$dependency</code></td><td><code>Lindera\TokenDependency</code> or <code>null</code></td><td>The bunsetsu of the token and its head; <code>null</code> unless the token filter <code>japanese_dependency</code> ran</td></tr>
 </tbody></table>
 </div>
 <h3 id="token-methods-2"><a class="header" href="#token-methods-2">Token Methods</a></h3>
@@ -8270,6 +8371,37 @@ object straight to <code>json_encode</code> does not produce these fields -- cal
 <li><strong>UniDic</strong>: Detailed morphological features following the UniDic specification</li>
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: Dictionary-specific detail formats</li>
 </ul>
+<h2 id="tokendependency-3"><a class="header" href="#tokendependency-3">TokenDependency</a></h2>
+<p>The bunsetsu of a token and the bunsetsu it depends on. The token filter <code>japanese_dependency</code> puts it in the <code>$dependency</code> of every token; see <a href="lindera-php/../lindera-dependency/token_filter.html">Token Filter</a> for the filter, its model, and how a text is cut into sentences.</p>
+<p>The filter is in builds with the <code>dependency</code> feature only. The distributed packages do not have it yet.</p>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>$sentence</code></td><td><code>int</code></td><td>The number of the sentence in the text, from 0</td></tr>
+<tr><td><code>$bunsetsu</code></td><td><code>int</code></td><td>The number of the bunsetsu of the token in its sentence, from 0</td></tr>
+<tr><td><code>$head</code></td><td><code>int</code> or <code>null</code></td><td>The number of the bunsetsu that one depends on; <code>null</code> for the last bunsetsu of a sentence</td></tr>
+<tr><td><code>$role</code></td><td><code>string</code></td><td>What the token is in its bunsetsu: <code>head</code> (the head word), <code>function</code> (the function word), <code>head_function</code> (both) or <code>other</code></td></tr>
+<tr><td><code>$score</code></td><td><code>float</code></td><td>The score of the decision that attached the bunsetsu to its head; 0 where nothing was decided</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-php">$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setDictionary('embedded://ipadic');
+$builder-&gt;appendTokenFilter('japanese_dependency', ['model' =&gt; 'ipadic.model']);
+$tokenizer = $builder-&gt;build();
+foreach ($tokenizer-&gt;tokenize('彼は赤い花を見た。') as $token) {
+    $dependency = $token-&gt;dependency;
+    echo $token-&gt;surface, ' ', $dependency-&gt;bunsetsu, ' ',
+        var_export($dependency-&gt;head, true), ' ', $dependency-&gt;role, "\n";
+}
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 NULL head
+た 3 NULL function
+。 3 NULL other
+</code></pre>
+<p><code>TokenDependency::toArray()</code> returns the five fields as an array, and <code>Token::toArray()</code> has it under the key <code>dependency</code> (<code>null</code> without the filter).</p>
 <h2 id="mode-4"><a class="header" href="#mode-4">Mode</a></h2>
 <p><code>Lindera\Mode</code> is the tokenization mode: normal, or decompose with a <a href="lindera-php/tokenizer_api.html#penalty"><code>Lindera\Penalty</code></a>. It is the counterpart of the Rust <a href="lindera-php/../lindera/segmenter.html#tokenization-modes"><code>lindera::mode::Mode</code></a>, and <a href="lindera-php/tokenizer_api.html#setmodemode"><code>setMode()</code></a> and the <a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>Tokenizer</code> constructor</a> take it.</p>
 <h3 id="creating-a-mode-2"><a class="header" href="#creating-a-mode-2">Creating a Mode</a></h3>
@@ -9380,6 +9512,7 @@ const resultsWithThreshold = tokenizer.tokenizeNbest("すももももももも�
 <tr><td><code>wordId</code></td><td><code>number</code></td><td>Word ID in the dictionary</td></tr>
 <tr><td><code>isUnknown</code></td><td><code>boolean</code></td><td>Whether the token is an unknown word</td></tr>
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>Morphological detail fields</td></tr>
+<tr><td><code>dependency</code></td><td><code>object</code> (optional)</td><td>The bunsetsu of the token and its head; the property is there only when the token filter <code>japanese_dependency</code> ran</td></tr>
 </tbody></table>
 </div>
 <blockquote>
@@ -9395,6 +9528,37 @@ const reading = token.details[7]; // e.g., "トウキョウ"
 <p>A token is already a plain object, so it serializes as-is.</p>
 <pre><code class="language-javascript">console.log(JSON.stringify(token, null, 2));
 </code></pre>
+<h2 id="tokendependency-4"><a class="header" href="#tokendependency-4">TokenDependency</a></h2>
+<p>The bunsetsu of a token and the bunsetsu it depends on. The token filter <code>japanese_dependency</code> puts it in the <code>dependency</code> of every token; see <a href="lindera-wasm/../lindera-dependency/token_filter.html">Token Filter</a> for the filter, its model, and how a text is cut into sentences.</p>
+<p>The filter is in builds with the <code>dependency</code> feature only. The distributed packages do not have it yet.</p>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>sentence</code></td><td><code>number</code></td><td>The number of the sentence in the text, from 0</td></tr>
+<tr><td><code>bunsetsu</code></td><td><code>number</code></td><td>The number of the bunsetsu of the token in its sentence, from 0</td></tr>
+<tr><td><code>head</code></td><td><code>number | null</code></td><td>The number of the bunsetsu that one depends on; <code>null</code> for the last bunsetsu of a sentence</td></tr>
+<tr><td><code>role</code></td><td><code>string</code></td><td>What the token is in its bunsetsu: <code>head</code> (the head word), <code>function</code> (the function word), <code>head_function</code> (both) or <code>other</code></td></tr>
+<tr><td><code>score</code></td><td><code>number</code></td><td>The score of the decision that attached the bunsetsu to its head; 0 where nothing was decided</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-javascript">const model = new Uint8Array(await (await fetch("ipadic.model")).arrayBuffer());
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendDependencyFilter(model)
+  .build();
+for (const token of tokenizer.tokenize("彼は赤い花を見た。")) {
+  const { bunsetsu, head, role } = token.dependency;
+  console.log(token.surface, bunsetsu, head, role);
+}
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 null head
+た 3 null function
+。 3 null other
+</code></pre>
+<p>There is no file system in WebAssembly, so the model is given as its bytes to <code>appendDependencyFilter(model)</code> (<code>append_dependency_filter</code> is its snake_case alias), where the other bindings give a path to <code>appendTokenFilter</code>. <code>appendTokenFilter("japanese_dependency", ...)</code> is refused with an error that names this method. The method is in builds with the <code>dependency</code> feature only. A token without the filter has no <code>dependency</code> property.</p>
 <h2 id="helper-functions"><a class="header" href="#helper-functions">Helper Functions</a></h2>
 <blockquote>
 <p>[!NOTE]
@@ -16283,11 +16447,13 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <li><strong>What the filter can see of an earlier filter is the positions.</strong> The tokenizer numbers its tokens from 0 without a gap, a filter that removes tokens leaves a gap, and one that joins them a token of more than one position. A rewritten surface or detail, and tokens removed from the end, cannot be seen; the documentation says to put the filter first.</li>
 <li><strong>The tokens are read where they are.</strong> A morpheme of the filter borrows the surface and the details of its token. The model is behind an <code>Arc</code>, shared by the clones of the filter, which a tokenizer makes when it is cloned.</li>
 <li><strong>The filter gives what the command gives</strong>: on the 543 sentences of the test file of UD Japanese-GSD, every token has the bunsetsu, the head, the role and the score of <code>lindera-dependency parse</code> with the same model.</li>
+<li><strong>The bindings give the dependency as an object of its own on a token</strong>, and nothing without the filter: <code>None</code> in Python, <code>nil</code> in Ruby, <code>null</code> in PHP, and no property in Node.js and WebAssembly, where a token is a plain object and stays the object it was. The head of the last bunsetsu is null in every binding, as in the JSON of the command. <code>TokenView</code> of <code>lindera-binding</code> carries it to all five.</li>
+<li><strong>Node.js makes the names of the six properties for the first token that has a dependency</strong>, in the handle scope that token is made in, and again after the scope is renewed: a call without the filter makes the objects it made before, with the calls it made before.</li>
+<li><strong>WebAssembly takes the bytes of a model</strong>, with <code>appendDependencyFilter</code>: there is no path to read. The builder of <code>lindera-binding</code> takes a filter that was made in Rust for it, and runs it where it was appended among the filters given by <code>kind</code>.</li>
 <li><strong>Not verified</strong>: a dictionary other than IPADIC, for which there is no schema yet.</li>
 </ul>
 <h2 id="what-is-to-come"><a class="header" href="#what-is-to-come">What is to come</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Part</th><th>Notes</th><th>Issue</th></tr></thead><tbody>
-<tr><td>Token filter in the bindings</td><td><code>TokenView</code> of <code>lindera-binding</code>, and the field of a token in Python, Node.js, Ruby, PHP and WASM.</td><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td></tr>
 <tr><td>IPADIC model</td><td>Training, release, documentation, license notes. The crate is published with it.</td><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td></tr>
 <tr><td>UniDic model</td><td>A second schema.</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
 <tr><td>Converter for the models of CaboCha</td><td>The normalization table of the surface, the reader of a CRF++ text model, and the expansion of the support vectors of the parser model.</td><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td></tr>
@@ -16436,7 +16602,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td><a href="https://github.com/lindera/lindera/issues/1436">#1436</a></td><td>Dependency parser: the loop, the features, the training instances</td><td>Done</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1433">#1433</a></td><td>The baselines of CaboCha and J.DepP, measured again</td><td>Open</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1437">#1437</a></td><td>The model file, and the training of the parser</td><td>Done</td></tr>
-<tr><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td><td>Token filter</td><td>The filter and the command done; the bindings open</td></tr>
+<tr><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td><td>Token filter</td><td>Done</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1439">#1439</a></td><td>Command</td><td>Done</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td><td>IPADIC model, and the publication of the crate</td><td>Open</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td><td>UniDic model</td><td>Open</td></tr>

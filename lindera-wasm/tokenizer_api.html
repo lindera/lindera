@@ -418,6 +418,7 @@ const resultsWithThreshold = tokenizer.tokenizeNbest("すももももももも�
 <tr><td><code>wordId</code></td><td><code>number</code></td><td>Word ID in the dictionary</td></tr>
 <tr><td><code>isUnknown</code></td><td><code>boolean</code></td><td>Whether the token is an unknown word</td></tr>
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>Morphological detail fields</td></tr>
+<tr><td><code>dependency</code></td><td><code>object</code> (optional)</td><td>The bunsetsu of the token and its head; the property is there only when the token filter <code>japanese_dependency</code> ran</td></tr>
 </tbody></table>
 </div>
 <blockquote>
@@ -433,6 +434,37 @@ const reading = token.details[7]; // e.g., "トウキョウ"
 <p>A token is already a plain object, so it serializes as-is.</p>
 <pre><code class="language-javascript">console.log(JSON.stringify(token, null, 2));
 </code></pre>
+<h2 id="tokendependency"><a class="header" href="#tokendependency">TokenDependency</a></h2>
+<p>The bunsetsu of a token and the bunsetsu it depends on. The token filter <code>japanese_dependency</code> puts it in the <code>dependency</code> of every token; see <a href="../lindera-dependency/token_filter.html">Token Filter</a> for the filter, its model, and how a text is cut into sentences.</p>
+<p>The filter is in builds with the <code>dependency</code> feature only. The distributed packages do not have it yet.</p>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>sentence</code></td><td><code>number</code></td><td>The number of the sentence in the text, from 0</td></tr>
+<tr><td><code>bunsetsu</code></td><td><code>number</code></td><td>The number of the bunsetsu of the token in its sentence, from 0</td></tr>
+<tr><td><code>head</code></td><td><code>number | null</code></td><td>The number of the bunsetsu that one depends on; <code>null</code> for the last bunsetsu of a sentence</td></tr>
+<tr><td><code>role</code></td><td><code>string</code></td><td>What the token is in its bunsetsu: <code>head</code> (the head word), <code>function</code> (the function word), <code>head_function</code> (both) or <code>other</code></td></tr>
+<tr><td><code>score</code></td><td><code>number</code></td><td>The score of the decision that attached the bunsetsu to its head; 0 where nothing was decided</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-javascript">const model = new Uint8Array(await (await fetch("ipadic.model")).arrayBuffer());
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendDependencyFilter(model)
+  .build();
+for (const token of tokenizer.tokenize("彼は赤い花を見た。")) {
+  const { bunsetsu, head, role } = token.dependency;
+  console.log(token.surface, bunsetsu, head, role);
+}
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 null head
+た 3 null function
+。 3 null other
+</code></pre>
+<p>There is no file system in WebAssembly, so the model is given as its bytes to <code>appendDependencyFilter(model)</code> (<code>append_dependency_filter</code> is its snake_case alias), where the other bindings give a path to <code>appendTokenFilter</code>. <code>appendTokenFilter("japanese_dependency", ...)</code> is refused with an error that names this method. The method is in builds with the <code>dependency</code> feature only. A token without the filter has no <code>dependency</code> property.</p>
 <h2 id="helper-functions"><a class="header" href="#helper-functions">Helper Functions</a></h2>
 <blockquote>
 <p>[!NOTE]

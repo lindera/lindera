@@ -415,6 +415,7 @@ const resultsWithThreshold = tokenizer.tokenizeNbest("すももももももも�
 <tr><td><code>wordId</code></td><td><code>number</code></td><td>辞書内の単語 ID</td></tr>
 <tr><td><code>isUnknown</code></td><td><code>boolean</code></td><td>未知語かどうか</td></tr>
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>形態素の詳細フィールド</td></tr>
+<tr><td><code>dependency</code></td><td><code>object</code>（省略可）</td><td>トークンの文節とその係り先。トークンフィルター <code>japanese_dependency</code> を使ったときだけ、このプロパティがあります</td></tr>
 </tbody></table>
 </div>
 <blockquote>
@@ -430,6 +431,37 @@ const reading = token.details[7]; // 例: "トウキョウ"
 <p>トークンは既にプレーンオブジェクトなので、そのままシリアライズできます。</p>
 <pre><code class="language-javascript">console.log(JSON.stringify(token, null, 2));
 </code></pre>
+<h2 id="tokendependency"><a class="header" href="#tokendependency">TokenDependency</a></h2>
+<p>トークンの文節と、その文節の係り先です。トークンフィルター <code>japanese_dependency</code> を使うと、各トークンの <code>dependency</code> に入ります。フィルター、モデル、テキストの文への分け方は、<a href="../lindera-dependency/token_filter.html">トークンフィルター</a>を見てください。</p>
+<p>フィルターは、<code>dependency</code> feature を付けたビルドにだけ入ります。配布しているパッケージには、まだ入っていません。</p>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>sentence</code></td><td><code>number</code></td><td>テキストの中での文の番号。0 から</td></tr>
+<tr><td><code>bunsetsu</code></td><td><code>number</code></td><td>文の中での、トークンの文節の番号。0 から</td></tr>
+<tr><td><code>head</code></td><td><code>number | null</code></td><td>その文節の係り先の文節の番号。文の最後の文節では <code>null</code></td></tr>
+<tr><td><code>role</code></td><td><code>string</code></td><td>文節の中での役割。<code>head</code>（主辞）、<code>function</code>（機能語）、<code>head_function</code>（両方）、<code>other</code> のどれか</td></tr>
+<tr><td><code>score</code></td><td><code>number</code></td><td>その文節を係り先に付けた判定のスコア。判定の無いところは 0</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-javascript">const model = new Uint8Array(await (await fetch("ipadic.model")).arrayBuffer());
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendDependencyFilter(model)
+  .build();
+for (const token of tokenizer.tokenize("彼は赤い花を見た。")) {
+  const { bunsetsu, head, role } = token.dependency;
+  console.log(token.surface, bunsetsu, head, role);
+}
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 null head
+た 3 null function
+。 3 null other
+</code></pre>
+<p>WebAssembly にはファイルシステムが無いので、モデルはバイト列で <code>appendDependencyFilter(model)</code> に渡します（snake_case の別名は <code>append_dependency_filter</code>）。ほかのバインディングは、<code>appendTokenFilter</code> にパスを渡します。<code>appendTokenFilter("japanese_dependency", ...)</code> は、このメソッドの名前を示すエラーで断ります。このメソッドは、<code>dependency</code> feature を付けたビルドにだけあります。フィルターを使わないトークンに <code>dependency</code> プロパティはありません。</p>
 <h2 id="ヘルパー関数"><a class="header" href="#ヘルパー関数">ヘルパー関数</a></h2>
 <blockquote>
 <p>[!NOTE]

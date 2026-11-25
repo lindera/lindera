@@ -2467,7 +2467,7 @@ let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, thr
 </code></pre>
 <h2 id="状態"><a class="header" href="#状態">状態</a></h2>
 <blockquote>
-<p>このクレートは<strong>開発中で、crates.io にはまだ公開していません</strong>。<strong>配布しているモデルも、まだありません</strong>。自分で学習したモデルを使えば、形態素から係り受けまでの解析が一通りできます。学習データ、文節の区切り、解析器、モデルファイル、評価、テキストを受けるコマンドが揃っています。Lindera のトークンフィルターは、<code>dependency</code> feature を付けたビルドに入っています。これからの部分は、公開するモデルと、バインディングへのフィルターの追加です。</p>
+<p>このクレートは<strong>開発中で、crates.io にはまだ公開していません</strong>。<strong>配布しているモデルも、まだありません</strong>。自分で学習したモデルを使えば、形態素から係り受けまでの解析が一通りできます。学習データ、文節の区切り、解析器、モデルファイル、評価、テキストを受けるコマンドが揃っています。Lindera のトークンフィルターは、コマンドとバインディングの、<code>dependency</code> feature を付けたビルドに入っています。これからの部分は、公開するモデルです。</p>
 </blockquote>
 <p>いま使うには、<a href="https://github.com/lindera/lindera">リポジトリ</a>の checkout からビルドします。最初のリリースまでは、インターフェースが変わることがあります。作業は <a href="https://github.com/lindera/lindera/issues/1417">#1417</a> で追っています。</p>
 <h2 id="できること"><a class="header" href="#できること">できること</a></h2>
@@ -2476,7 +2476,7 @@ let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, thr
 <li><strong>モデルを辞書ごとの 1 つのファイルに持ち、その場で読む</strong>。プログラムに埋め込んだバイト列、ファイルから読んだバイト列、メモリマップのどれでも、表を写さずに読みます。ファイルは自分の辞書の名前を持ち、その辞書のものではありえない形態素は断ります。</li>
 <li><strong>文節の係り受けを解析する</strong>。CaboCha・J.DepP と同じく、shift-reduce と、素性とその対の上の分類器を使い、その分類器を学習します。IPADIC では、UD Japanese-GSD の dev で、正解の文節なら 90.11% の文節が正しい係り先になり（test は 88.53%）、形態素からなら 85.39% です（test は 84.47%）。</li>
 <li><strong>コマンドラインでテキストを解析する</strong>。Lindera の辞書で分かち書きし、<code>cabocha -f1</code> と同じ形式で書き出します。</li>
-<li><strong>Lindera のトークンフィルターとして動く</strong>。<code>japanese_dependency</code> を、<code>lindera</code> コマンド、設定ファイル、Rust から使えます。各トークンの文節と係り先が、JSON の出力と <code>Token</code> に入ります。</li>
+<li><strong>Lindera のトークンフィルターとして動く</strong>。<code>japanese_dependency</code> を、<code>lindera</code> コマンド、設定ファイル、Rust、5 つのバインディングから使えます。各トークンの文節と係り先が、JSON の出力と <code>Token</code> に入ります。</li>
 <li><strong>文節の主辞と機能語を求め</strong>、句読点と括弧を見分ける。辞書のスキーマから決めます。最初のスキーマは IPADIC です。</li>
 <li>CaboCha の<strong>ラティス形式</strong>（<code>cabocha -f1</code>）<strong>を読み書きし</strong>、文が、解析器の仮定する木であるかを検査する。</li>
 <li>UD Japanese-GSD のような係り受けのコーパスから、解析器を動かす辞書の形態素の上で、<strong>学習データを作る</strong>。</li>
@@ -3299,6 +3299,8 @@ lindera-dependency parse --model ipadic.model --input-layer bunsetsu \
 <pre><code class="language-text">the token filter japanese_dependency needs a build with the feature `dependency`
 </code></pre>
 <p><code>lindera-dependency</code> は crates.io にまだ公開していないので、この feature は、リポジトリのチェックアウトでだけ使えます。バインディングには、まだフィルターが入っていません（<a href="https://github.com/lindera/lindera/issues/1438">#1438</a>）。</p>
+<h2 id="バインディングから"><a class="header" href="#バインディングから">バインディングから</a></h2>
+<p>Python、Node.js、Ruby、PHP では、ほかのフィルターと同じく、<code>kind</code> とモデルのパスでフィルターを足します。トークンには <code>dependency</code> が入ります。下の 5 つのフィールドを持つオブジェクトで、フィルターを使わなければ何も入りません（<code>None</code>、<code>nil</code>、<code>null</code>、プロパティなし）。WebAssembly ではパスを読めないので、<code>appendDependencyFilter</code> にモデルのバイト列を渡します。どれも、バインディングを <code>dependency</code> feature を付けてビルドする必要があります。配布しているパッケージには、まだ入っていません。各バインディングの API のページに例があります: <a href="lindera-dependency/../lindera-python/tokenizer_api.html#tokendependency">Python</a>、<a href="lindera-dependency/../lindera-nodejs/tokenizer_api.html#tokendependency">Node.js</a>、<a href="lindera-dependency/../lindera-ruby/tokenizer_api.html#tokendependency">Ruby</a>、<a href="lindera-dependency/../lindera-php/tokenizer_api.html#tokendependency">PHP</a>、<a href="lindera-dependency/../lindera-wasm/tokenizer_api.html#tokendependency">WebAssembly</a>。</p>
 <h2 id="モデル"><a class="header" href="#モデル">モデル</a></h2>
 <p>フィルターの引数は <code>model</code> の 1 つです。文節の区切りと解析器の両方を持ち、トークナイザーの辞書に合ったモデルファイルのパスを渡します。配布しているモデルは、まだありません（<a href="https://github.com/lindera/lindera/issues/1440">#1440</a>）。学習の方法は<a href="lindera-dependency/./parsing.html">係り受けの解析</a>に、ファイルの中身は<a href="lindera-dependency/./model_file.html">モデルファイル</a>にあります。</p>
 <p>モデルは、フィルターを作るときに 1 回だけ読み、トークナイザーの複製の間で共有します。読めないファイル、モデルファイルでないファイル、区切りか解析器の無いファイルは、テキストを読む前の、この時点でエラーになります。</p>
@@ -5206,6 +5208,7 @@ print([token.surface for token in tokenizer.tokenize(text)])
 <tr><td><code>word_id</code></td><td><code>int</code></td><td>辞書の単語 ID</td></tr>
 <tr><td><code>is_unknown</code></td><td><code>bool</code></td><td>辞書に登録されていない単語の場合 <code>True</code></td></tr>
 <tr><td><code>details</code></td><td><code>list[str]</code> または <code>None</code></td><td>形態素の詳細情報（品詞、読みなど）</td></tr>
+<tr><td><code>dependency</code></td><td><code>TokenDependency</code> または <code>None</code></td><td>トークンの文節とその係り先。トークンフィルター <code>japanese_dependency</code> を使ったときだけ入り、それ以外は <code>None</code></td></tr>
 </tbody></table>
 </div>
 <h3 id="token-メソッド"><a class="header" href="#token-メソッド">Token メソッド</a></h3>
@@ -5241,6 +5244,39 @@ json.dumps([token.to_dict() for token in tokens])
 <li><strong>UniDic</strong>: UniDic 仕様に準拠した詳細な形態素情報</li>
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: 各辞書固有の詳細フォーマット</li>
 </ul>
+<h2 id="tokendependency"><a class="header" href="#tokendependency">TokenDependency</a></h2>
+<p>トークンの文節と、その文節の係り先です。トークンフィルター <code>japanese_dependency</code> を使うと、各トークンの <code>dependency</code> に入ります。フィルター、モデル、テキストの文への分け方は、<a href="lindera-python/../lindera-dependency/token_filter.html">トークンフィルター</a>を見てください。</p>
+<p>フィルターは、<code>dependency</code> feature を付けたビルドにだけ入ります。配布しているパッケージには、まだ入っていません。</p>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>sentence</code></td><td><code>int</code></td><td>テキストの中での文の番号。0 から</td></tr>
+<tr><td><code>bunsetsu</code></td><td><code>int</code></td><td>文の中での、トークンの文節の番号。0 から</td></tr>
+<tr><td><code>head</code></td><td><code>int</code> または <code>None</code></td><td>その文節の係り先の文節の番号。文の最後の文節では <code>None</code></td></tr>
+<tr><td><code>role</code></td><td><code>str</code></td><td>文節の中での役割。<code>head</code>（主辞）、<code>function</code>（機能語）、<code>head_function</code>（両方）、<code>other</code> のどれか</td></tr>
+<tr><td><code>score</code></td><td><code>float</code></td><td>その文節を係り先に付けた判定のスコア。判定の無いところは 0</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-python">from lindera import TokenizerBuilder
+
+tokenizer = (
+    TokenizerBuilder()
+    .set_dictionary("embedded://ipadic")
+    .append_token_filter("japanese_dependency", {"model": "ipadic.model"})
+    .build()
+)
+for token in tokenizer.tokenize("彼は赤い花を見た。"):
+    dependency = token.dependency
+    print(token.surface, dependency.bunsetsu, dependency.head, dependency.role)
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 None head
+た 3 None function
+。 3 None other
+</code></pre>
+<p><code>TokenDependency.to_dict()</code> は 5 つのフィールドを <code>dict</code> で返し、<code>Token.to_dict()</code> はそれを <code>dependency</code> というキーに入れます（フィルターなしでは <code>None</code>）。<code>TokenDependency</code> は変更できません。</p>
 <h2 id="エラーハンドリング-1"><a class="header" href="#エラーハンドリング-1">エラーハンドリング</a></h2>
 <p>Lindera Python の関数は、カスタムの例外型ではなく標準的な Python の例外を送出します：</p>
 <ul>
@@ -6167,6 +6203,7 @@ TypeScript の <code>interface</code> であり、メソッドもプロトタイ
 <tr><td><code>wordId</code></td><td><code>number</code></td><td>辞書の単語 ID</td></tr>
 <tr><td><code>isUnknown</code></td><td><code>boolean</code></td><td>辞書に登録されていない単語の場合 <code>true</code></td></tr>
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>形態素の詳細情報（品詞、読みなど）</td></tr>
+<tr><td><code>dependency</code></td><td><code>TokenDependency</code>（省略可）</td><td>トークンの文節とその係り先。トークンフィルター <code>japanese_dependency</code> を使ったときだけ、このプロパティがあります</td></tr>
 </tbody></table>
 </div>
 <h3 id="詳細情報の読み出し"><a class="header" href="#詳細情報の読み出し">詳細情報の読み出し</a></h3>
@@ -6182,6 +6219,38 @@ const reading = token.details[7];  // 例: "トウキョウ"
 <li><strong>UniDic</strong>: UniDic 仕様に準拠した詳細な形態素情報</li>
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: 各辞書固有の詳細フォーマット</li>
 </ul>
+<h2 id="tokendependency-1"><a class="header" href="#tokendependency-1">TokenDependency</a></h2>
+<p>トークンの文節と、その文節の係り先です。トークンフィルター <code>japanese_dependency</code> を使うと、各トークンの <code>dependency</code> に入ります。フィルター、モデル、テキストの文への分け方は、<a href="lindera-nodejs/../lindera-dependency/token_filter.html">トークンフィルター</a>を見てください。</p>
+<p>フィルターは、<code>dependency</code> feature を付けたビルドにだけ入ります。配布しているパッケージには、まだ入っていません。</p>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>sentence</code></td><td><code>number</code></td><td>テキストの中での文の番号。0 から</td></tr>
+<tr><td><code>bunsetsu</code></td><td><code>number</code></td><td>文の中での、トークンの文節の番号。0 から</td></tr>
+<tr><td><code>head</code></td><td><code>number | null</code></td><td>その文節の係り先の文節の番号。文の最後の文節では <code>null</code></td></tr>
+<tr><td><code>role</code></td><td><code>string</code></td><td>文節の中での役割。<code>head</code>（主辞）、<code>function</code>（機能語）、<code>head_function</code>（両方）、<code>other</code> のどれか</td></tr>
+<tr><td><code>score</code></td><td><code>number</code></td><td>その文節を係り先に付けた判定のスコア。判定の無いところは 0</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendTokenFilter("japanese_dependency", { model: "ipadic.model" })
+  .build();
+for (const token of tokenizer.tokenize("彼は赤い花を見た。")) {
+  const { bunsetsu, head, role } = token.dependency;
+  console.log(token.surface, bunsetsu, head, role);
+}
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 null head
+た 3 null function
+。 3 null other
+</code></pre>
+<p><code>TokenDependency</code> は、<code>Token</code> と同じくプレーンなオブジェクト（TypeScript の <code>interface</code>）で、トークンを <code>JSON.stringify</code> してもそのまま残ります。フィルターを使わないトークンに <code>dependency</code> プロパティは無く、これまでと同じオブジェクトです。</p>
 <h2 id="mode-と-penalty"><a class="header" href="#mode-と-penalty">Mode と Penalty</a></h2>
 <p><code>TokenizerBuilder.setMode()</code> と <code>Tokenizer</code> のコンストラクタは、モードを <a href="lindera-nodejs/tokenizer_api.html#mode"><code>Mode</code></a> で受け取ります。decompose モードのペナルティは、<code>Mode</code> が <a href="lindera-nodejs/tokenizer_api.html#penalty"><code>Penalty</code></a> として保持します。</p>
 <h3 id="mode-2"><a class="header" href="#mode-2"><code>Mode</code></a></h3>
@@ -7211,6 +7280,7 @@ p tokenizer.tokenize(text).map(&amp;:surface)
 <tr><td><code>position</code></td><td><code>Integer</code></td><td>トークンの位置インデックス</td></tr>
 <tr><td><code>word_id</code></td><td><code>Integer</code></td><td>辞書の単語 ID</td></tr>
 <tr><td><code>details</code></td><td><code>Array&lt;String&gt;</code></td><td>形態素の詳細情報（品詞、読みなど）</td></tr>
+<tr><td><code>dependency</code></td><td><code>Lindera::TokenDependency</code> または <code>nil</code></td><td>トークンの文節とその係り先。トークンフィルター <code>japanese_dependency</code> を使ったときだけ入り、それ以外は <code>nil</code></td></tr>
 </tbody></table>
 </div>
 <p>さらに、述語メソッド <code>unknown?</code> は辞書に登録されていない単語の場合 <code>true</code> を返します：</p>
@@ -7250,6 +7320,36 @@ JSON.generate(tokens.map(&amp;:to_h))
 <li><strong>UniDic</strong>: UniDic 仕様に準拠した詳細な形態素情報</li>
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: 各辞書固有の詳細フォーマット</li>
 </ul>
+<h2 id="tokendependency-2"><a class="header" href="#tokendependency-2">TokenDependency</a></h2>
+<p>トークンの文節と、その文節の係り先です。トークンフィルター <code>japanese_dependency</code> を使うと、各トークンの <code>dependency</code> に入ります。フィルター、モデル、テキストの文への分け方は、<a href="lindera-ruby/../lindera-dependency/token_filter.html">トークンフィルター</a>を見てください。</p>
+<p>フィルターは、<code>dependency</code> feature を付けたビルドにだけ入ります。配布しているパッケージには、まだ入っていません。</p>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>sentence</code></td><td><code>Integer</code></td><td>テキストの中での文の番号。0 から</td></tr>
+<tr><td><code>bunsetsu</code></td><td><code>Integer</code></td><td>文の中での、トークンの文節の番号。0 から</td></tr>
+<tr><td><code>head</code></td><td><code>Integer</code> または <code>nil</code></td><td>その文節の係り先の文節の番号。文の最後の文節では <code>nil</code></td></tr>
+<tr><td><code>role</code></td><td><code>String</code></td><td>文節の中での役割。<code>head</code>（主辞）、<code>function</code>（機能語）、<code>head_function</code>（両方）、<code>other</code> のどれか</td></tr>
+<tr><td><code>score</code></td><td><code>Float</code></td><td>その文節を係り先に付けた判定のスコア。判定の無いところは 0</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.append_token_filter('japanese_dependency', { 'model' =&gt; 'ipadic.model' })
+tokenizer = builder.build
+tokenizer.tokenize('彼は赤い花を見た。').each do |token|
+  dependency = token.dependency
+  puts [token.surface, dependency.bunsetsu, dependency.head.inspect, dependency.role].join(' ')
+end
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 nil head
+た 3 nil function
+。 3 nil other
+</code></pre>
+<p><code>TokenDependency#to_h</code>（と <code>to_hash</code>）は 5 つのフィールドを Symbol をキーとする <code>Hash</code> で返し、<code>Token#to_h</code> はそれを <code>:dependency</code> に入れます（フィルターなしでは <code>nil</code>）。</p>
 <h2 id="schema-3"><a class="header" href="#schema-3">Schema</a></h2>
 <p><code>Lindera::Schema</code> はフィールド名の順序付きリストを保持し、フィールド名とインデックスの間の相互変換を提供します。<code>Metadata#dictionary_schema</code> と <code>Metadata#user_dictionary_schema</code> で使用されます（<a href="lindera-ruby/./dictionary_management.html">辞書管理</a> を参照）。</p>
 <h3 id="schema-の作成-2"><a class="header" href="#schema-の作成-2">Schema の作成</a></h3>
@@ -8192,6 +8292,7 @@ foreach ($batch as $tokens) {
 <tr><td><code>word_id</code></td><td><code>int</code></td><td>辞書の単語 ID</td></tr>
 <tr><td><code>is_unknown</code></td><td><code>bool</code></td><td>辞書に登録されていない単語の場合 <code>true</code></td></tr>
 <tr><td><code>details</code></td><td><code>array&lt;string&gt;</code></td><td>形態素の詳細情報（品詞、読みなど）</td></tr>
+<tr><td><code>dependency</code></td><td><code>Lindera\TokenDependency</code> または <code>null</code></td><td>トークンの文節とその係り先。トークンフィルター <code>japanese_dependency</code> を使ったときだけ入り、それ以外は <code>null</code></td></tr>
 </tbody></table>
 </div>
 <h3 id="token-メソッド-2"><a class="header" href="#token-メソッド-2">Token メソッド</a></h3>
@@ -8233,6 +8334,37 @@ echo json_encode(array_map(fn($t) =&gt; $t-&gt;toArray(), $tokens));
 <li><strong>UniDic</strong>: UniDic 仕様に準拠した詳細な形態素情報</li>
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: 各辞書固有の詳細フォーマット</li>
 </ul>
+<h2 id="tokendependency-3"><a class="header" href="#tokendependency-3">TokenDependency</a></h2>
+<p>トークンの文節と、その文節の係り先です。トークンフィルター <code>japanese_dependency</code> を使うと、各トークンの <code>dependency</code> に入ります。フィルター、モデル、テキストの文への分け方は、<a href="lindera-php/../lindera-dependency/token_filter.html">トークンフィルター</a>を見てください。</p>
+<p>フィルターは、<code>dependency</code> feature を付けたビルドにだけ入ります。配布しているパッケージには、まだ入っていません。</p>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>sentence</code></td><td><code>int</code></td><td>テキストの中での文の番号。0 から</td></tr>
+<tr><td><code>bunsetsu</code></td><td><code>int</code></td><td>文の中での、トークンの文節の番号。0 から</td></tr>
+<tr><td><code>head</code></td><td><code>int</code> または <code>null</code></td><td>その文節の係り先の文節の番号。文の最後の文節では <code>null</code></td></tr>
+<tr><td><code>role</code></td><td><code>string</code></td><td>文節の中での役割。<code>head</code>（主辞）、<code>function</code>（機能語）、<code>head_function</code>（両方）、<code>other</code> のどれか</td></tr>
+<tr><td><code>score</code></td><td><code>float</code></td><td>その文節を係り先に付けた判定のスコア。判定の無いところは 0</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-php">$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setDictionary('embedded://ipadic');
+$builder-&gt;appendTokenFilter('japanese_dependency', ['model' =&gt; 'ipadic.model']);
+$tokenizer = $builder-&gt;build();
+foreach ($tokenizer-&gt;tokenize('彼は赤い花を見た。') as $token) {
+    $dependency = $token-&gt;dependency;
+    echo $token-&gt;surface, ' ', $dependency-&gt;bunsetsu, ' ',
+        var_export($dependency-&gt;head, true), ' ', $dependency-&gt;role, "\n";
+}
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 NULL head
+た 3 NULL function
+。 3 NULL other
+</code></pre>
+<p><code>TokenDependency::toArray()</code> は 5 つのフィールドを配列で返し、<code>Token::toArray()</code> はそれを <code>dependency</code> というキーに入れます（フィルターなしでは <code>null</code>）。</p>
 <h2 id="mode-4"><a class="header" href="#mode-4">Mode</a></h2>
 <p><code>Lindera\Mode</code> はトークナイズモードを表します。normal モードか、<a href="lindera-php/tokenizer_api.html#penalty"><code>Lindera\Penalty</code></a> を持つ decompose モードのどちらかです。Rust の <a href="lindera-php/../lindera/segmenter.html#%E3%83%88%E3%83%BC%E3%82%AF%E3%83%8A%E3%82%A4%E3%82%BA%E3%83%A2%E3%83%BC%E3%83%89"><code>lindera::mode::Mode</code></a> に対応するクラスで、<a href="lindera-php/tokenizer_api.html#setmodemode"><code>setMode()</code></a> と <a href="lindera-php/tokenizer_api.html#new-linderatokenizerdictionary-mode-user_dictionary-space_penalty"><code>Tokenizer</code> のコンストラクタ</a> が受け取ります。</p>
 <h3 id="mode-の作成-2"><a class="header" href="#mode-の作成-2">Mode の作成</a></h3>
@@ -9258,6 +9390,7 @@ const resultsWithThreshold = tokenizer.tokenizeNbest("すももももももも�
 <tr><td><code>wordId</code></td><td><code>number</code></td><td>辞書内の単語 ID</td></tr>
 <tr><td><code>isUnknown</code></td><td><code>boolean</code></td><td>未知語かどうか</td></tr>
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>形態素の詳細フィールド</td></tr>
+<tr><td><code>dependency</code></td><td><code>object</code>（省略可）</td><td>トークンの文節とその係り先。トークンフィルター <code>japanese_dependency</code> を使ったときだけ、このプロパティがあります</td></tr>
 </tbody></table>
 </div>
 <blockquote>
@@ -9273,6 +9406,37 @@ const reading = token.details[7]; // 例: "トウキョウ"
 <p>トークンは既にプレーンオブジェクトなので、そのままシリアライズできます。</p>
 <pre><code class="language-javascript">console.log(JSON.stringify(token, null, 2));
 </code></pre>
+<h2 id="tokendependency-4"><a class="header" href="#tokendependency-4">TokenDependency</a></h2>
+<p>トークンの文節と、その文節の係り先です。トークンフィルター <code>japanese_dependency</code> を使うと、各トークンの <code>dependency</code> に入ります。フィルター、モデル、テキストの文への分け方は、<a href="lindera-wasm/../lindera-dependency/token_filter.html">トークンフィルター</a>を見てください。</p>
+<p>フィルターは、<code>dependency</code> feature を付けたビルドにだけ入ります。配布しているパッケージには、まだ入っていません。</p>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>sentence</code></td><td><code>number</code></td><td>テキストの中での文の番号。0 から</td></tr>
+<tr><td><code>bunsetsu</code></td><td><code>number</code></td><td>文の中での、トークンの文節の番号。0 から</td></tr>
+<tr><td><code>head</code></td><td><code>number | null</code></td><td>その文節の係り先の文節の番号。文の最後の文節では <code>null</code></td></tr>
+<tr><td><code>role</code></td><td><code>string</code></td><td>文節の中での役割。<code>head</code>（主辞）、<code>function</code>（機能語）、<code>head_function</code>（両方）、<code>other</code> のどれか</td></tr>
+<tr><td><code>score</code></td><td><code>number</code></td><td>その文節を係り先に付けた判定のスコア。判定の無いところは 0</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-javascript">const model = new Uint8Array(await (await fetch("ipadic.model")).arrayBuffer());
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendDependencyFilter(model)
+  .build();
+for (const token of tokenizer.tokenize("彼は赤い花を見た。")) {
+  const { bunsetsu, head, role } = token.dependency;
+  console.log(token.surface, bunsetsu, head, role);
+}
+</code></pre>
+<pre><code class="language-text">彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 null head
+た 3 null function
+。 3 null other
+</code></pre>
+<p>WebAssembly にはファイルシステムが無いので、モデルはバイト列で <code>appendDependencyFilter(model)</code> に渡します（snake_case の別名は <code>append_dependency_filter</code>）。ほかのバインディングは、<code>appendTokenFilter</code> にパスを渡します。<code>appendTokenFilter("japanese_dependency", ...)</code> は、このメソッドの名前を示すエラーで断ります。このメソッドは、<code>dependency</code> feature を付けたビルドにだけあります。フィルターを使わないトークンに <code>dependency</code> プロパティはありません。</p>
 <h2 id="ヘルパー関数"><a class="header" href="#ヘルパー関数">ヘルパー関数</a></h2>
 <blockquote>
 <p>[!NOTE]
@@ -15830,11 +15994,13 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <li><strong>前のフィルターについてこのフィルターに見えるのは、位置です。</strong> トークナイザーは、トークンに 0 から隙間なく位置を振ります。トークンを消すフィルターは隙間を残し、つなぐフィルターは位置を 2 つ以上占めるトークンを残します。書き換えられた表層や詳細と、末尾から消されたトークンは見えません。文書では、このフィルターを最初に置くよう案内しています。</li>
 <li><strong>トークンは、その場で読みます。</strong> フィルターの形態素は、トークンの表層と詳細を借ります。モデルは <code>Arc</code> の中にあり、フィルターの複製の間で共有します。トークナイザーを複製すると、フィルターも複製されます。</li>
 <li><strong>フィルターの結果は、コマンドの結果と同じです。</strong> UD Japanese-GSD の test の 543 文で、すべてのトークンの文節、係り先、役割、スコアが、同じモデルの <code>lindera-dependency parse</code> と一致します。</li>
+<li><strong>バインディングは、係り受けをトークンの上の独立したオブジェクトとして返します。</strong> フィルターを使わなければ何も返しません。Python では <code>None</code>、Ruby では <code>nil</code>、PHP では <code>null</code> で、Node.js と WebAssembly ではプロパティがありません。この 2 つではトークンがプレーンなオブジェクトなので、これまでと同じオブジェクトのままです。最後の文節の係り先は、コマンドの JSON と同じく、どのバインディングでも null です。<code>lindera-binding</code> の <code>TokenView</code> が、5 つすべてに運びます。</li>
+<li><strong>Node.js は、6 つのプロパティの名前を、係り受けを持つ最初のトークンで作ります。</strong> そのトークンを作るハンドルスコープの中で作り、スコープを開き直した後は作り直します。フィルターを使わない呼び出しは、これまでと同じ呼び出しで、これまでと同じオブジェクトを作ります。</li>
+<li><strong>WebAssembly は、<code>appendDependencyFilter</code> でモデルのバイト列を受け取ります。</strong> 読めるパスが無いためです。そのために、<code>lindera-binding</code> のビルダーは Rust で作ったフィルターを受け取り、<code>kind</code> で足したフィルターの間の、足された位置で動かします。</li>
 <li><strong>未検証</strong>: IPADIC 以外の辞書。スキーマがまだありません。</li>
 </ul>
 <h2 id="これからの部分"><a class="header" href="#これからの部分">これからの部分</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>部分</th><th>メモ</th><th>Issue</th></tr></thead><tbody>
-<tr><td>バインディングのトークンフィルター</td><td><code>lindera-binding</code> の <code>TokenView</code> と、Python、Node.js、Ruby、PHP、WASM のトークンのフィールド。</td><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td></tr>
 <tr><td>IPADIC のモデル</td><td>学習、リリース、ドキュメント、ライセンスの記載。クレートはこのときに公開する。</td><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td></tr>
 <tr><td>UniDic のモデル</td><td>2 つ目のスキーマ。</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
 <tr><td>CaboCha のモデルの変換器</td><td>表層の正規化の表、CRF++ のテキスト形式のモデルの読み込み、解析器のモデルの support vector の展開。</td><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td></tr>
@@ -15983,7 +16149,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td><a href="https://github.com/lindera/lindera/issues/1436">#1436</a></td><td>係り受けの解析器。ループ、素性、学習事例</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1433">#1433</a></td><td>CaboCha・J.DepP の基準の測り直し</td><td>未着手</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1437">#1437</a></td><td>モデルファイルと、解析器の学習</td><td>済み</td></tr>
-<tr><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td><td>トークンフィルター</td><td>フィルターとコマンドは完了。バインディングは未着手</td></tr>
+<tr><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td><td>トークンフィルター</td><td>完了</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1439">#1439</a></td><td>コマンド</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td><td>IPADIC のモデルと、クレートの公開</td><td>未着手</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td><td>UniDic のモデル</td><td>未着手</td></tr>
