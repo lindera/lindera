@@ -4,7 +4,7 @@ A model file holds what one dictionary needs to be analyzed: the name of the dic
 
 A model belongs to one dictionary. It depends on the feature columns of the dictionary and on how the dictionary segments a text, so the file says which dictionary it is for, and one file serves one dictionary.
 
-No model is distributed yet. [`train-chunker`](./chunking.md#training-a-model) writes a model file with the chunker, and [`train-parser`](./parsing.md#training-a-model) one with the parser, or with both.
+No model is distributed yet: until the [model for IPADIC](#the-model-for-ipadic) is released, a script builds it. [`train-chunker`](./chunking.md#training-a-model) writes a model file with the chunker, and [`train-parser`](./parsing.md#training-a-model) one with the parser, or with both.
 
 ## Reading a model
 
@@ -99,6 +99,68 @@ assert_eq!(model.dictionary(), "ipadic");
 The same parts give the same bytes. A part trained with another schema than the one of the file is refused.
 
 `ModelBuilder::parser` takes a `ParserModel` and how its weights are written (`Quantization::F32`, `I16` or `I8`). `ModelBuilder::from_model` starts from the name, the schema and the parts of a file that exists, to add a part to it; `train-parser --chunker` does this with the chunker.
+
+## The model for IPADIC
+
+The project trains one model for IPADIC, with a chunker and a parser, to release it as a file. It is not released yet; [`build_model.sh`](#building-it-again) builds it.
+
+| | |
+| --- | --- |
+| Dictionary | IPADIC (`ipadic`), as the `lindera-ipadic` crate builds it from mecab-ipadic 2.7.0 |
+| Training data | The train file of [UD Japanese-GSD](https://github.com/UniversalDependencies/UD_Japanese-GSD) at c662dc9, [converted](./training_data.md) with IPADIC: 7,024 sentences |
+| Settings | The defaults of [`train-chunker`](./chunking.md#training-a-model) and of [`train-parser`](./parsing.md#training-a-model) |
+| Size | 6,258,548 bytes |
+| License | MIT, with a notice: see [License of the model](#license-of-the-model) |
+
+Only the train file is used. The dev and test files of UD Japanese-GSD and UD Japanese-PUD are not seen in training, and no setting was chosen on them, so the [accuracy](./parsing.md#accuracy) measured on them is the accuracy of the file itself.
+
+### Building it again
+
+One script builds the file from the corpus and the sources of the repository:
+
+```shell
+scripts/dependency/build_model.sh
+```
+
+It gets UD Japanese-GSD at its fixed commit, builds the `lindera-dependency` command with a named toolchain and the dependencies of `Cargo.lock`, converts the train file, trains the chunker and the parser, and writes three files to `scripts/dependency/data/model`: the model, its `NOTICE.txt` and `SHA256SUMS`. It takes about 15 seconds after the build. At its end it names the commit of Lindera, and then says what else it used and what it made:
+
+```text
+corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6
+toolchain: rustc 1.100.0 (0ef1bc386 2026-11-09)
+platform: x86_64-unknown-linux-gnu, glibc 2.43
+training data: 5075c95f2518b6af791e6a9ea2bd5f9f63eeaa5b316f3801d8068d71436e5064  train.lattice
+chunker: 74762e9b4f23d1dd06a304238006480264e0fea70b7a3a5c9e647c176dad59c3  chunker.model
+model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic-1.0.0.model (6258548 bytes)
+```
+
+`--check <sha256>` makes the script fail when the file it built has another SHA-256. The script refuses a tree with uncommitted changes, so that the commit it names is what the file was built from.
+
+The same sources, corpus, toolchain and platform give the same bytes: nothing in the training depends on the time, on the number of threads or on the order of a hash table. Whether another platform gives the same bytes is not known. The training of the chunker calls `exp` and `ln_1p` of the mathematics library of the platform, and their last bit can differ from one library to another. The notice of a file (`NOTICE.txt`) names the platform it was built on.
+
+### License of the model
+
+The model file is distributed under the MIT license, the license of Lindera's code. `NOTICE.txt`, which comes with the file, has the text of the license, an acknowledgement of UD Japanese-GSD and the notice of IPADIC. This is how the project handles the question; it is not legal advice.
+
+**The question.** UD Japanese-GSD is licensed under CC BY-SA 4.0. That license asks that material "derived from or based upon" the licensed material ("Adapted Material") is shared under the same license. Neither the license nor the FAQ of Creative Commons says whether a model trained on a work is such material.
+
+**What the model holds.** The names of features and their weights. A name is made of a part of speech, a conjugation form or the surface of one morpheme, so single words of the training sentences are in the file. No sentence is, and nothing of the annotation: no bunsetsu and no dependency. The model generates no text.
+
+**The position.** The project takes such a model not to be an adaptation of the treebank, so that the share-alike condition does not reach it. The position rests on these:
+
+- The Agency for Cultural Affairs of Japan, [AI と著作権に関する考え方について](https://www.bunka.go.jp/seisaku/bunkashingikai/chosakuken/pdf/94037901_01.pdf) (March 2024): a trained model is in many cases not a reproduction of the works it was trained on; it can be one when it is in a state to generate, with high probability, what resembles them. The document says of itself that it is not legally binding.
+- Szkalej and Senftleben, [Mapping the Impact of Share Alike/Copyleft Licensing on Machine Learning and Generative AI](https://www.ivir.nl/publicaties/download/Share-Alike-and-ML.pdf) (2024): "the final artefact – the trained model – is unlikely to constitute adapted material", as long as it holds no protected traces of the works.
+- Creative Commons, [Using CC-licensed Works for AI Training](https://creativecommons.org/wp-content/uploads/2025/05/Using-CC-licensed-Works-for-AI-Training.pdf) (2025): releasing a model under the license of its training data is "the most conservative approach", and following it "will almost certainly lead to overcompliance".
+- Models trained on text under CC BY-SA are released under permissive licenses: the models of [BERT](https://github.com/google-research/bert), trained on Wikipedia, are under Apache 2.0.
+
+**What is uncertain.** No court has decided whether a trained model is an adaptation of its training data, and others chose the other way: the [Japanese model of spaCy](https://github.com/explosion/spacy-models/releases/tag/ja_core_news_sm-3.8.0), trained on the same treebank, is under CC BY-SA 4.0. If the position turns out to be wrong, the model is distributed under CC BY-SA 4.0 from then on; the file itself does not change.
+
+**What a user does.**
+
+| Use | What it asks |
+| --- | --- |
+| Analyzing text with the model | Nothing. The project puts no condition on what an analysis gives |
+| Distributing the file, or a program that embeds it | `NOTICE.txt` goes with it: the text of the MIT license and the notice of IPADIC |
+| Changing the model and distributing the result | The same |
 
 ## The format
 

@@ -67,6 +67,9 @@ Each decision has the issue that made it. A decision is changed by a pull reques
 | The command for text is in the binary of this crate, in a build without the training code: the `cli` feature holds the command, `train` adds the training to it. The `lindera` command follows with the filter and the publication. | A user of the command does not get `lindera-crf`. `lindera-cli` is published and cannot depend on a crate that is not, and an output format of `lindera tokenize` needs the token filter. | #1439 |
 | Of CaboCha's options the command keeps the lattice output (`-f1`) and the three input layers (`-I`), as `--input-layer`. The tree, XML and CoNLL outputs, the output layer and the named entities are not kept. | The lattice format is what other tools read, and its writer exists. The layers are what `parse` and `parse --chunk` did, as one option. The morphemes alone and the bunsetsu alone have commands of their own. | #1439 |
 | The command reads, parses and writes one sentence at a time, and stops at the first sentence that fails, with what it wrote before. | It stands in a pipe, and its memory does not grow with the input. | #1439 |
+| The model for IPADIC is distributed under the MIT license, with an acknowledgement of UD Japanese-GSD and the notice of IPADIC. | The model holds names of features and weights, and none of the annotation: the project takes it not to be an adaptation of the treebank. No court has decided the question; the [model file page](../lindera-dependency/model_file.md#license-of-the-model) says what the position rests on. With one license for the code and the model, a program that embeds the model is distributed as one with an embedded dictionary is. | #1440 |
+| The released model is trained on the train file of UD Japanese-GSD only. | The numbers on dev, test and PUD are then the numbers of the file that is released, and anyone can take them again. | #1440 |
+| A released model has a version of its own, and is a file of a release of this repository whose tag is not a version of Lindera (`dependency-ipadic-1.0.0`). One script builds it, and the crate will have its URL and its SHA-256 in its source. | A model changes when it is trained again, not with each release of Lindera. The tag names the commit whose script built the file. A fixed file can be embedded by a build from the repository as well as by one from crates.io. | #1440 |
 
 ## The reference implementations
 
@@ -181,7 +184,7 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 
 ### Open questions
 
-- **Which release carries the break of `Token`** (7.1.0 or 8.0.0), and **whether the distributed builds of the command and of the bindings have the `dependency` feature**: both are decided with the model ([#1440](https://github.com/lindera/lindera/issues/1440)). Until this crate is published, `lindera-analysis` cannot be published either.
+- **The release that carries the break of `Token`** is 7.1.0, and **the distributed builds of the command and of the bindings get the `dependency` feature**, without an embedded model: both are decided, and done with the publication of the crate ([#1440](https://github.com/lindera/lindera/issues/1440)). Until this crate is published, `lindera-analysis` cannot be published either.
 - **A line break ends no sentence in the token filter**: it is not a token. A text of lines without a period is one sentence there, unless what calls the tokenizer cuts it.
 - **More training data** under a usable license.
 
