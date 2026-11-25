@@ -529,8 +529,9 @@ endef
 # Crates published to crates.io, in dependency order: the crates of the
 # `Publish crates` step of release.yml, in its order (the binding crates have
 # `publish = false`). The release workflow is what publishes a release: it
-# also writes the `prebuilt.json` of each dictionary crate, which pins the
-# dictionary archive of the release, and this target does not. Each call is a
+# also writes the `prebuilt.json` of each dictionary crate and of
+# lindera-dependency, which pins the dictionary archive and the model
+# archive of the release, and this target does not. Each call is a
 # separate recipe line (the multi-line PUBLISH_CRATE macro cannot be folded
 # with foreach).
 publish: ## Publish packages to crates.io
@@ -547,6 +548,7 @@ publish: ## Publish packages to crates.io
 	$(call PUBLISH_CRATE,lindera-unidic-csj,$(call crate_version,lindera-unidic-csj))
 	$(call PUBLISH_CRATE,lindera-sudachidict,$(call crate_version,lindera-sudachidict))
 	$(call PUBLISH_CRATE,lindera-segmenter,$(call crate_version,lindera-segmenter))
+	$(call PUBLISH_CRATE,lindera-dependency,$(call crate_version,lindera-dependency))
 	$(call PUBLISH_CRATE,lindera-analysis,$(call crate_version,lindera-analysis))
 	$(call PUBLISH_CRATE,lindera,$(LINDERA_VERSION))
 	$(call PUBLISH_CRATE,lindera-binding,$(call crate_version,lindera-binding))

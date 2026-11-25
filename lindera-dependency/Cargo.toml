@@ -11,9 +11,6 @@ readme = "README.md"
 keywords = ["dependency", "parsing", "bunsetsu", "japanese", "cabocha"]
 categories = { workspace = true }
 license = { workspace = true }
-# Not published before it has a model to parse with (#1418): the workspace
-# publishes every crate at one version, and this one would be of no use yet.
-publish = false
 
 [features]
 default = []
