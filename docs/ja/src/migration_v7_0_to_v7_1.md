@@ -1,6 +1,6 @@
-# v7.0 からの移行
+# v7.0 から v7.1 への移行
 
-このガイドは、v7.0.0 の後に入った、まだリリースしていない破壊的変更をまとめたものです。どの版（7.1.0 か 8.0.0）に入るかは、リリースのときに決めます（[#1440](https://github.com/lindera/lindera/issues/1440)）。そのときに、このページの名前をその版に合わせます。
+このガイドは、v7.1.0 の破壊的変更をまとめたものです。Rust の API に 1 つあります。マイナーの版に入れたのは、メンテナーの決定です（[#1440](https://github.com/lindera/lindera/issues/1440)）。トークナイザーが返したトークンを読むコードは、影響を受けません。
 
 ## 概要
 
@@ -9,6 +9,8 @@
 | **`Token` が係り受け解析の結果を持つようになり、`#[non_exhaustive]` になった** | `Token` を構造体式で作る、または全部の欄を分解する Rust のコード | `Token::new` でトークンを作り、違う欄は後から設定する |
 
 トークナイザーが返したトークンを読むコードは、影響を受けません。`surface`、`byte_start`、`details()`、`as_value()` などの欄とメソッドは、これまでどおりです。
+
+v7.1 は、文節の係り受け解析（[Lindera Dependency](./lindera-dependency.md)）を足します。この変更は、それに伴うものです。v7.1 が足すほかのものは、既存のコードの変更を必要としません。利用者が気づきうる点は、[変わらないこと](#変わらないこと)に挙げます。
 
 ## `Token` は `Token::new` で作る
 
@@ -59,3 +61,5 @@ let token = Token::new(
 - `Token::as_value` と `lindera tokenize -o json` が書く JSON は、係り受けを持たないトークンでは、キーが増えません。
 - `Token::details` は、これまでどおり辞書の欄を持ちます。係り受け解析の結果は、そこには書きません。
 - トークンは、ポインター 1 つ分だけ大きくなります。
+- `lindera` コマンドとバインディングは、既定のビルドに `dependency` feature を持ちます。トークンフィルター `japanese_dependency` がパッケージに入り、`lindera-dependency` クレートに依存します（このクレート自身は依存を持ちません）。コマンドは 134 kB 大きくなります。`default-features = false` で、入っていないビルドになります。ライブラリの `lindera` と `lindera-analysis` は、feature を指定したときだけ持ちます。
+- モデルは、パッケージにも入っておらず、既定では埋め込みもしません。IPADIC のモデルは、`lindera download dependency-ipadic` で取得します。

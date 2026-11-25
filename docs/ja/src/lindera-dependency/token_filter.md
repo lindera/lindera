@@ -6,10 +6,11 @@
 
 ## フィルターの入ったビルド
 
-フィルターは `lindera-analysis` の `dependency` feature の裏にあり、`lindera` と `lindera-cli` がその feature を引き継ぎます。既定のビルドには、どれにも入っていません。
+フィルターは `lindera-analysis` の `dependency` feature の裏にあり、`lindera`、`lindera-cli`、各バインディングがその feature を引き継ぎます。`lindera` コマンドと 5 つのバインディングは、7.1.0 から、既定のビルドにこの feature を持つので、インストールしたパッケージにフィルターが入っています。ライブラリの `lindera` と `lindera-analysis` は、既定では持ちません。
 
-```shell
-cargo build --release -p lindera-cli --features embed-ipadic,dependency
+```toml
+[dependencies]
+lindera = { version = "7.1", features = ["dependency"] }
 ```
 
 feature を付けていないビルドも、フィルターの名前は知っていて、何が足りないかを伝えます。
@@ -18,11 +19,11 @@ feature を付けていないビルドも、フィルターの名前は知って
 the token filter japanese_dependency needs a build with the feature `dependency`
 ```
 
-`lindera-dependency` は crates.io にまだ公開していないので、この feature は、リポジトリのチェックアウトでだけ使えます。バインディングには、まだフィルターが入っていません（[#1438](https://github.com/lindera/lindera/issues/1438)）。
+フィルターにはモデルが必要で、モデルはパッケージに入っていません。[モデル](#モデル)を見てください。
 
 ## バインディングから
 
-Python、Node.js、Ruby、PHP では、ほかのフィルターと同じく、`kind` とモデルのパスでフィルターを足します。トークンには `dependency` が入ります。下の 5 つのフィールドを持つオブジェクトで、フィルターを使わなければ何も入りません（`None`、`nil`、`null`、プロパティなし）。WebAssembly ではパスを読めないので、`appendDependencyFilter` にモデルのバイト列を渡します。どれも、バインディングを `dependency` feature を付けてビルドする必要があります。配布しているパッケージには、まだ入っていません。各バインディングの API のページに例があります: [Python](../lindera-python/tokenizer_api.md#tokendependency)、[Node.js](../lindera-nodejs/tokenizer_api.md#tokendependency)、[Ruby](../lindera-ruby/tokenizer_api.md#tokendependency)、[PHP](../lindera-php/tokenizer_api.md#tokendependency)、[WebAssembly](../lindera-wasm/tokenizer_api.md#tokendependency)。
+Python、Node.js、Ruby、PHP では、ほかのフィルターと同じく、`kind` とモデルのパスでフィルターを足します。トークンには `dependency` が入ります。下の 5 つのフィールドを持つオブジェクトで、フィルターを使わなければ何も入りません（`None`、`nil`、`null`、プロパティなし）。WebAssembly ではパスを読めないので、`appendDependencyFilter` にモデルのバイト列を渡します。7.1.0 から、配布しているパッケージにフィルターが入っています。各バインディングの API のページに例があります: [Python](../lindera-python/tokenizer_api.md#tokendependency)、[Node.js](../lindera-nodejs/tokenizer_api.md#tokendependency)、[Ruby](../lindera-ruby/tokenizer_api.md#tokendependency)、[PHP](../lindera-php/tokenizer_api.md#tokendependency)、[WebAssembly](../lindera-wasm/tokenizer_api.md#tokendependency)。
 
 ## モデル
 

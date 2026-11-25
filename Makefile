@@ -332,7 +332,7 @@ check-docs: ## Check rustdoc warnings in the cargo crates (public and private it
 check-memmap2: ## Check that memmap2 is linked only into the builds with the mmap feature, as CI does
 	scripts/check_memmap2.sh
 
-check-lindera-dependency: ## Check that lindera-dependency builds for wasm32, needs no tokenizer or dictionary, has no training code with cli, and is linked behind the dependency feature only, as CI does
+check-lindera-dependency: ## Check that lindera-dependency builds for wasm32, needs no tokenizer or dictionary, has no training code with cli, and is linked by the libraries behind the dependency feature only and by the command and the bindings by default, as CI does
 	scripts/check_dependency_crate.sh
 
 # The language bindings are left out of check-docs because building each one

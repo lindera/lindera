@@ -74,7 +74,7 @@ EOS
 
 ## モデルを学習する
 
-モデルはまだ配布していません。[学習データ](./training_data.md)から学習します。
+Lindera が公開する [IPADIC のモデル](./model_file.md#ipadic-のモデル)には、区切りが入っています。自分のモデルは、[学習データ](./training_data.md)から学習します。
 
 ```shell
 cargo run --release -p lindera-dependency --features train -- train-chunker \

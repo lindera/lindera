@@ -46,6 +46,8 @@
     - [API Reference](./lindera-analysis/api_reference.md)
 
 - [Lindera Dependency](./lindera-dependency.md)
+    - [Installation](./lindera-dependency/installation.md)
+    - [Quick Start](./lindera-dependency/quickstart.md)
     - [Architecture](./lindera-dependency/architecture.md)
     - [Chunking](./lindera-dependency/chunking.md)
     - [Parsing](./lindera-dependency/parsing.md)
@@ -55,6 +57,7 @@
     - [Head and Function Word](./lindera-dependency/head_and_function_word.md)
     - [Training Data](./lindera-dependency/training_data.md)
     - [Evaluation](./lindera-dependency/evaluation.md)
+    - [API Reference](./lindera-dependency/api_reference.md)
 
 - [Lindera CLI](./lindera-cli.md)
     - [Installation](./lindera-cli/installation.md)
@@ -153,7 +156,7 @@
 - [Migration v4 to v5](./migration_v4_to_v5.md)
 - [Migration v5 to v6](./migration_v5_to_v6.md)
 - [Migration v6 to v7](./migration_v6_to_v7.md)
-- [Migration from v7.0](./migration_from_v7.md)
+- [Migration v7.0 to v7.1](./migration_v7_0_to_v7_1.md)
 
 ---
 

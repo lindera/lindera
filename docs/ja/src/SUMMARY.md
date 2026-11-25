@@ -46,6 +46,8 @@
     - [APIリファレンス](./lindera-analysis/api_reference.md)
 
 - [Lindera Dependency](./lindera-dependency.md)
+    - [インストール](./lindera-dependency/installation.md)
+    - [クイックスタート](./lindera-dependency/quickstart.md)
     - [アーキテクチャ](./lindera-dependency/architecture.md)
     - [文節の区切り](./lindera-dependency/chunking.md)
     - [係り受けの解析](./lindera-dependency/parsing.md)
@@ -55,6 +57,7 @@
     - [主辞と機能語](./lindera-dependency/head_and_function_word.md)
     - [学習データ](./lindera-dependency/training_data.md)
     - [評価](./lindera-dependency/evaluation.md)
+    - [API リファレンス](./lindera-dependency/api_reference.md)
 
 - [Lindera CLI](./lindera-cli.md)
     - [インストール](./lindera-cli/installation.md)
@@ -153,7 +156,7 @@
 - [v4 から v5 への移行](./migration_v4_to_v5.md)
 - [v5 から v6 への移行](./migration_v5_to_v6.md)
 - [v6 から v7 への移行](./migration_v6_to_v7.md)
-- [v7.0 からの移行](./migration_from_v7.md)
+- [v7.0 から v7.1 への移行](./migration_v7_0_to_v7_1.md)
 
 ---
 

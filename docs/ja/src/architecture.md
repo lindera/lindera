@@ -77,7 +77,7 @@ graph TB
 | `lindera` | コア | ファサードクレート。Rustユーザーが追加する唯一の依存で、`lindera-segmenter`を再エクスポートし、デフォルトで有効な`analysis` featureにより`lindera-analysis`を`lindera::analysis`として提供。 |
 | `lindera-cli` | アプリケーション | トークナイズ、辞書ビルド、CRF学習のためのコマンドラインインターフェース。 |
 | `lindera-binding` | コア | 以下の5つの言語バインディングが共有するFFI非依存のヘルパー。`lindera`ファサードに依存。 |
-| `lindera-dependency` | コア | 日本語の文節の係り受け解析。開発中で未公開。今は基本の型、CaboCha のラティス形式の読み書き、辞書のスキーマと文節の主辞・機能語、文節の区切り、学習データの作成・区切りの学習・評価のコマンドを持つ。既定のビルドは workspace のほかのクレートに依存しない。[Lindera Dependency](./lindera-dependency.md) を参照。 |
+| `lindera-dependency` | コア | 日本語の文節の係り受け解析。7.1.0 から公開。基本の型、CaboCha のラティス形式の読み書き、辞書のスキーマと文節の主辞・機能語、文節の区切り、学習データの作成・区切りの学習・評価のコマンドを持つ。既定のビルドは workspace のほかのクレートに依存しない。[Lindera Dependency](./lindera-dependency.md) を参照。 |
 | `lindera-ipadic` | 辞書 | IPADICベースの日本語辞書。 |
 | `lindera-ipadic-neologd` | 辞書 | IPADIC NEologdベースの日本語辞書（新語対応）。 |
 | `lindera-unidic` | 辞書 | UniDicベースの日本語辞書。 |
@@ -146,6 +146,6 @@ Output Tokens
 - [Lindera Dictionary](./lindera-dictionary.md) -- 辞書の読み込みとビルド
 - [Lindera Trainer](./lindera-trainer.md) -- CRFベースの辞書学習
 - [Lindera CRF](./lindera-crf.md) -- CRFエンジン
-- [Lindera Dependency](./lindera-dependency.md) -- 文節の係り受け解析（開発中）
+- [Lindera Dependency](./lindera-dependency.md) -- 文節の係り受け解析
 - [Lindera CLI](./lindera-cli.md) -- コマンドラインインターフェース
 - [開発ガイド](./development.md) -- ビルド、テスト、コントリビュート

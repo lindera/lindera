@@ -101,4 +101,4 @@ UD Japanese-GSD の test のテキスト（543 文）で、既定のモデルと
 
 ## `lindera` コマンド
 
-`lindera tokenize` は、`dependency` feature を付けたビルドで、解析器をトークンフィルターとして動かします。[トークンフィルター](./token_filter.md)を見てください。結果は、ラティス形式ではなく、JSON の出力のトークンに書かれます。この feature はどの既定のビルドにも入っておらず、チェックアウトでだけ使えます。`lindera-cli` は crates.io に公開されていて、このクレートを公開する（[#1440](https://github.com/lindera/lindera/issues/1440)）までは、公開していないクレートに依存できないためです。
+`lindera tokenize` は、解析器をトークンフィルターとして動かします。[トークンフィルター](./token_filter.md)を見てください。結果は、ラティス形式ではなく、JSON の出力のトークンに書かれます。`lindera` コマンドは、7.1.0 から、既定のビルドにフィルターを持ちます。

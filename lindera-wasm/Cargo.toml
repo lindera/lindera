@@ -38,7 +38,9 @@ embed-dependency-ipadic = [
     "dependency",
     "lindera-binding/embed-dependency-ipadic",
 ] # Embed the model of the token filter japanese_dependency for IPADIC
-default = []
+# `dependency` is in the default build since 7.1.0 (#1440): the code of the
+# token filter japanese_dependency, without a model, which a user downloads.
+default = ["dependency"]
 
 [dependencies]
 js-sys = "0.3.103"

@@ -488,7 +488,7 @@ The structure of `details` depends on the dictionary:
 
 The bunsetsu of a token and the bunsetsu it depends on. The token filter `japanese_dependency` puts it in the `dependency` of every token; see [Token Filter](../lindera-dependency/token_filter.md) for the filter, its model, and how a text is cut into sentences.
 
-The filter is in builds with the `dependency` feature only. The distributed packages do not have it yet.
+The distributed packages have the filter, from 7.1.0 on: the `dependency` feature is in the default build. They have no model. The filter takes the path of a model file: the one Lindera releases for IPADIC is `dependency.model` in `lindera-dependency-ipadic-<version>.zip`, on the page of each [release](https://github.com/lindera/lindera/releases), which `lindera download dependency-ipadic` also installs ([Installation](../lindera-dependency/installation.md#the-model)).
 
 | Property | Type | Description |
 | --- | --- | --- |

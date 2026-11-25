@@ -5,8 +5,8 @@ Japanese bunsetsu dependency analysis for [Lindera](https://github.com/lindera/l
 A dependency analysis groups the morphemes of a sentence into bunsetsu (文節)
 and finds, for each bunsetsu, the bunsetsu it depends on.
 
-This crate is under development and is not published yet. So far it holds
-what the analysis is built on, and its first step:
+The crate is on crates.io from Lindera 7.1.0 on, and each release of
+Lindera publishes a model for IPADIC with it. It holds:
 
 - the `Morpheme` trait: a surface and the feature columns of its dictionary;
   the crate depends on no tokenizer

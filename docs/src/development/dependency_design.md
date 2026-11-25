@@ -2,7 +2,7 @@
 
 These are the design notes of `lindera-dependency`, the crate for Japanese bunsetsu dependency analysis ([#1417](https://github.com/lindera/lindera/issues/1417)). They record what was decided and why, what the reference implementations do, and every number the decisions rest on, with the way to get it again.
 
-The crate is under development and not published. How to use what exists is in the [Lindera Dependency](../lindera-dependency.md) chapter and in the [README of the crate](https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md); this page is for the people who change it.
+The crate is published from Lindera 7.1.0 on. How to use it is in the [Lindera Dependency](../lindera-dependency.md) chapter and in the [README of the crate](https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md); this page is for the people who change it.
 
 **Who updates this page**: the pull request that changes a decision or a number changes this page with it, in English and in Japanese.
 
@@ -55,7 +55,7 @@ Each decision has the issue that made it. A decision is changed by a pull reques
 | The weights of the parser are written as one byte each, a whole number times a scale. | The accuracy does not differ from weights of four bytes (p = 0.86); weights of two bytes give the same output. The file is a third, and parsing is faster. | #1437 |
 | The features of the parser are CaboCha's and one group more: the morpheme after the head of the source and of the target. The head of a bunsetsu stays the content word of the schema. | With the head of the schema, CaboCha's features lose what CaboCha's head gave them: whether a bunsetsu is a verb or a noun as a whole (利用 / し / た, 読む / こと / を). The group gives it back: 89.19% against 88.96% in the cross-validation (p < 0.001). The output keeps the content word as the head. | #1437 |
 | A model is chosen by the rule of #1420, and what does not differ is taken as equal: among equal settings the smaller or faster one is the default. | The differences between good settings are under the noise of the data; size and speed are not. | #1437 |
-| The chunker-only file of before the model file (magic number `LDCHUNK`) is not read any more. | The crate is not published and no model is distributed; a second reader would be kept for no file that exists. | #1437 |
+| The chunker-only file of before the model file (magic number `LDCHUNK`) is not read any more. | The crate was not published then and no model was distributed; a second reader would have been kept for no file that existed. | #1437 |
 | Training data holds no head word and function word positions; what reads it computes them from the schema. | A change of the rule cannot leave stale positions in a file. | #1422 |
 | Settings are compared by cross-validation on the train file; the dev file chooses between close settings; the test file and PUD are for the reported result only. | Dev and test are small: the 95% interval of an accuracy near 90% is about ±1 point on them. | #1420 |
 | The accuracy targets are the ones under "Targets" below. | They are the baselines measured on the same data. | #1417 |
@@ -70,6 +70,8 @@ Each decision has the issue that made it. A decision is changed by a pull reques
 | The model for IPADIC is distributed under the MIT license, with an acknowledgement of UD Japanese-GSD and the notice of IPADIC. | The model holds names of features and weights, and none of the annotation: the project takes it not to be an adaptation of the treebank. No court has decided the question; the [model file page](../lindera-dependency/model_file.md#license-of-the-model) says what the position rests on. With one license for the code and the model, a program that embeds the model is distributed as one with an embedded dictionary is. | #1440 |
 | The released model is trained on the train file of UD Japanese-GSD only. | The numbers on dev, test and PUD are then the numbers of the file that is released, and anyone can take them again. | #1440 |
 | A released model has the version of Lindera, and is released as a built dictionary is: a release builds it with one script, puts its archive on the page of its version, and writes a `prebuilt.json` into the crate just before it publishes it. A build from the repository embeds a file it is given. | One version for everything a release holds: nobody has to know which model fits which release. The model cannot be trained by a build script, as a dictionary is built, so a build without a pin takes a file. Decided on 2026-11-25, in place of a version of its own and a release with a tag of its own. | #1440 |
+| The release that first has the crate is 7.1.0, with the break of `Token` stated in the migration guide and in the release notes. | Decided by the maintainer. The break touches code that builds a `Token` with a struct expression or destructures all of its fields, not code that reads the tokens of a tokenizer. | #1440 |
+| The `lindera` command and the five bindings have the `dependency` feature in their default builds, and no embedded model; the libraries `lindera` and `lindera-analysis` do not have the feature by default. | What is distributed has to have the filter, or a user of a package would have to build it from source. The model is data, as a dictionary is: it is downloaded and given by its path, and nobody carries 6 MB of a model they do not use. The command grows by 134 kB (1.5%). A library leaves the choice to its user. | #1440 |
 
 ## The reference implementations
 
@@ -177,14 +179,14 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 
 | Part | Notes | Issue |
 | --- | --- | --- |
-| IPADIC model | Training, release, documentation, license notes. The crate is published with it. | [#1440](https://github.com/lindera/lindera/issues/1440) |
+| IPADIC model | Done: the model is built, measured and published by each release, and the crate is published with it. The first release with both is 7.1.0. | [#1440](https://github.com/lindera/lindera/issues/1440) |
 | UniDic model | A second schema. | [#1441](https://github.com/lindera/lindera/issues/1441) |
 | Converter for the models of CaboCha | The normalization table of the surface, the reader of a CRF++ text model, and the expansion of the support vectors of the parser model. | [#1442](https://github.com/lindera/lindera/issues/1442) |
 | The baselines of CaboCha and J.DepP, measured again | The scripts that build and train them. | [#1433](https://github.com/lindera/lindera/issues/1433) |
 
 ### Open questions
 
-- **The release that carries the break of `Token`** is 7.1.0, and **the distributed builds of the command and of the bindings get the `dependency` feature**, without an embedded model: both are decided, and done with the publication of the crate ([#1440](https://github.com/lindera/lindera/issues/1440)). Until this crate is published, `lindera-analysis` cannot be published either.
+- **The steps of a release that run on a tag only** have not run yet: the upload of the archive of the model, its pin in the crate, the build that checks the pin against the release, and the publication of the crate. They run for the first time with 7.1.0.
 - **A line break ends no sentence in the token filter**: it is not a token. A text of lines without a period is one sentence there, unless what calls the tokenizer cuts it.
 - **More training data** under a usable license.
 

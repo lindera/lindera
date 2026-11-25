@@ -9,7 +9,7 @@ Lindera uses Cargo feature flags to control optional functionality and dictionar
 | `analysis` | The analysis chain (`lindera::analysis`: character filters, token filters, and the `Tokenizer`), re-exported from `lindera-analysis` | Yes |
 | `mmap` | Memory-mapped loading of filesystem dictionaries, the default of `use_mmap`; without it, `memmap2` is not linked and `use_mmap = true` reads the files | Yes |
 | `train` | CRF-based dictionary training (depends on `lindera-trainer`; `lindera::dictionary::trainer`) | See below |
-| `dependency` | The token filter `japanese_dependency`: bunsetsu dependency analysis, with `lindera-dependency`, which is not published yet (implies `analysis`) | No |
+| `dependency` | The token filter `japanese_dependency`: bunsetsu dependency analysis, with `lindera-dependency` (implies `analysis`) | See below |
 | `embed-dependency-ipadic` | Embeds the model of that filter for IPADIC in the build, for `model: "embedded://ipadic"` (implies `dependency`); see [The model for IPADIC](../lindera-dependency/model_file.md#embedding-it) for where a build takes it from | No |
 
 - `analysis` and `mmap` are both enabled by default in the `lindera` facade.
@@ -20,6 +20,7 @@ Lindera uses Cargo feature flags to control optional functionality and dictionar
   re-exports the `lindera-analysis` crate. In v5.x and v6.x it had to be added
   as a separate dependency.
 - `train` is enabled by default in `lindera-cli`, `lindera-python`, `lindera-nodejs`, `lindera-ruby`, and `lindera-php`. It is disabled by default in the `lindera` library crate -- enable it explicitly with `features = ["train"]` for library usage. It is not available in `lindera-wasm`.
+- `dependency` is enabled by default in `lindera-cli`, `lindera-python`, `lindera-nodejs`, `lindera-ruby`, `lindera-php` and `lindera-wasm`, from 7.1.0 on: the packages have the filter, and no model, which a user downloads (`lindera download dependency-ipadic`). It is disabled by default in the `lindera` and `lindera-analysis` library crates.
 
 ## Using External Dictionaries (Recommended)
 

@@ -18,7 +18,10 @@
 # on this crate behind its `dependency` feature, which lindera,
 # lindera-cli, lindera-binding and the five bindings forward. The builds
 # without the feature must not link the crate, and the build with it has
-# to.
+# to. The libraries (lindera-analysis, lindera, lindera-binding) do not
+# have the feature by default; the command and the five bindings, which
+# are what is distributed, do (#1440), and lose the crate with
+# `--no-default-features`.
 #
 # Usage:
 #   scripts/check_dependency_crate.sh
@@ -29,10 +32,11 @@
 # per check, and fails if the build fails, if the default build depends on
 # another crate of the workspace than lindera-crf, or if the build with
 # `cli` depends on lindera-crf or does not depend on lindera-segmenter.
-# Then reads the tree of lindera-analysis, lindera, lindera-cli,
-# lindera-binding and the five bindings without and with `dependency`, and
-# fails if lindera-dependency is in the first or is missing from the
-# second.
+# Then reads the tree of lindera-analysis, lindera and lindera-binding
+# without and with `dependency`, and of lindera-cli and the five bindings
+# by default and with `--no-default-features`, and fails if
+# lindera-dependency is in a build without the feature or is missing from
+# one with it.
 
 set -euo pipefail
 
@@ -93,8 +97,7 @@ else
   failed=1
 fi
 
-for crate in lindera-analysis lindera lindera-cli lindera-binding \
-  lindera-python lindera-nodejs lindera-ruby lindera-php lindera-wasm; do
+for crate in lindera-analysis lindera lindera-binding; do
   if ! tree=$(cargo tree --locked -p "$crate" -e normal --prefix none); then
     echo "error: cargo tree -p $crate failed" >&2
     exit 1
@@ -114,6 +117,30 @@ for crate in lindera-analysis lindera lindera-cli lindera-binding \
   else
     echo "error: $crate with the dependency feature does not depend on lindera-dependency" >&2
     failed=1
+  fi
+done
+
+# What is distributed has the feature by default (#1440).
+for crate in lindera-cli lindera-python lindera-nodejs lindera-ruby lindera-php lindera-wasm; do
+  if ! tree=$(cargo tree --locked -p "$crate" -e normal --prefix none); then
+    echo "error: cargo tree -p $crate failed" >&2
+    exit 1
+  fi
+  if echo "$tree" | awk '$1 == "lindera-dependency" { found = 1 } END { exit !found }'; then
+    echo "ok: $crate depends on lindera-dependency by default"
+  else
+    echo "error: $crate does not depend on lindera-dependency by default" >&2
+    failed=1
+  fi
+  if ! tree=$(cargo tree --locked -p "$crate" --no-default-features -e normal --prefix none); then
+    echo "error: cargo tree -p $crate --no-default-features failed" >&2
+    exit 1
+  fi
+  if echo "$tree" | awk '$1 == "lindera-dependency" { found = 1 } END { exit !found }'; then
+    echo "error: $crate without default features depends on lindera-dependency" >&2
+    failed=1
+  else
+    echo "ok: $crate without default features does not depend on lindera-dependency"
   fi
 done
 
