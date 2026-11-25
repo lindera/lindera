@@ -349,6 +349,7 @@ Tokenizes every text of an array as `tokenizeNbest` does, on up to `$max_threads
 | `$word_id` | `int` | Dictionary word ID |
 | `$is_unknown` | `bool` | `true` if the word is not in the dictionary |
 | `$details` | `array<string>` | Morphological details (part of speech, reading, etc.) |
+| `$dependency` | `Lindera\TokenDependency` or `null` | The bunsetsu of the token and its head; `null` unless the token filter `japanese_dependency` ran |
 
 ### Token Methods
 
@@ -403,6 +404,45 @@ The structure of `details` depends on the dictionary:
 - **IPADIC**: `[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]`
 - **UniDic**: Detailed morphological features following the UniDic specification
 - **ko-dic / CC-CEDICT / Jieba**: Dictionary-specific detail formats
+
+## TokenDependency
+
+The bunsetsu of a token and the bunsetsu it depends on. The token filter `japanese_dependency` puts it in the `$dependency` of every token; see [Token Filter](../lindera-dependency/token_filter.md) for the filter, its model, and how a text is cut into sentences.
+
+The filter is in builds with the `dependency` feature only. The distributed packages do not have it yet.
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `$sentence` | `int` | The number of the sentence in the text, from 0 |
+| `$bunsetsu` | `int` | The number of the bunsetsu of the token in its sentence, from 0 |
+| `$head` | `int` or `null` | The number of the bunsetsu that one depends on; `null` for the last bunsetsu of a sentence |
+| `$role` | `string` | What the token is in its bunsetsu: `head` (the head word), `function` (the function word), `head_function` (both) or `other` |
+| `$score` | `float` | The score of the decision that attached the bunsetsu to its head; 0 where nothing was decided |
+
+```php
+$builder = new Lindera\TokenizerBuilder();
+$builder->setDictionary('embedded://ipadic');
+$builder->appendTokenFilter('japanese_dependency', ['model' => 'ipadic.model']);
+$tokenizer = $builder->build();
+foreach ($tokenizer->tokenize('彼は赤い花を見た。') as $token) {
+    $dependency = $token->dependency;
+    echo $token->surface, ' ', $dependency->bunsetsu, ' ',
+        var_export($dependency->head, true), ' ', $dependency->role, "\n";
+}
+```
+
+```text
+彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 NULL head
+た 3 NULL function
+。 3 NULL other
+```
+
+`TokenDependency::toArray()` returns the five fields as an array, and `Token::toArray()` has it under the key `dependency` (`null` without the filter).
 
 ## Mode
 

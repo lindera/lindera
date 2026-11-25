@@ -15,9 +15,10 @@
 # lindera-crf.
 #
 # The token filter japanese_dependency (#1438) makes lindera-analysis depend
-# on this crate behind its `dependency` feature, which lindera and
-# lindera-cli forward. The builds without the feature must not link the
-# crate, and the build with it has to.
+# on this crate behind its `dependency` feature, which lindera,
+# lindera-cli, lindera-binding and the five bindings forward. The builds
+# without the feature must not link the crate, and the build with it has
+# to.
 #
 # Usage:
 #   scripts/check_dependency_crate.sh
@@ -28,9 +29,10 @@
 # per check, and fails if the build fails, if the default build depends on
 # another crate of the workspace than lindera-crf, or if the build with
 # `cli` depends on lindera-crf or does not depend on lindera-segmenter.
-# Then reads the tree of lindera-analysis, lindera and lindera-cli without
-# and with `dependency`, and fails if lindera-dependency is in the first or
-# is missing from the second.
+# Then reads the tree of lindera-analysis, lindera, lindera-cli,
+# lindera-binding and the five bindings without and with `dependency`, and
+# fails if lindera-dependency is in the first or is missing from the
+# second.
 
 set -euo pipefail
 
@@ -75,7 +77,8 @@ else
   failed=1
 fi
 
-for crate in lindera-analysis lindera lindera-cli; do
+for crate in lindera-analysis lindera lindera-cli lindera-binding \
+  lindera-python lindera-nodejs lindera-ruby lindera-php lindera-wasm; do
   if ! tree=$(cargo tree --locked -p "$crate" -e normal --prefix none); then
     echo "error: cargo tree -p $crate failed" >&2
     exit 1

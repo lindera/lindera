@@ -86,11 +86,19 @@ final class StubGenerator
         'Lindera\Token' => [
             'byte_end' => 'int',
             'byte_start' => 'int',
+            'dependency' => 'TokenDependency|null',
             'details' => 'list<string>',
             'is_unknown' => 'bool',
             'position' => 'int',
             'surface' => 'string',
             'word_id' => 'int',
+        ],
+        'Lindera\TokenDependency' => [
+            'bunsetsu' => 'int',
+            'head' => 'int|null',
+            'role' => 'string',
+            'score' => 'float',
+            'sentence' => 'int',
         ],
     ];
 

@@ -294,6 +294,7 @@ A single token produced by the tokenizer, as a plain JavaScript object.
 | `wordId` | `number` | Word ID in the dictionary |
 | `isUnknown` | `boolean` | Whether the token is an unknown word |
 | `details` | `string[]` | Morphological detail fields |
+| `dependency` | `object` (optional) | The bunsetsu of the token and its head; the property is there only when the token filter `japanese_dependency` ran |
 
 > [!NOTE]
 > Tokens are plain objects, not `wasm_bindgen` class instances. A class instance keeps its data on the Rust heap until the JavaScript side drops it, so a synchronous loop that tokenizes without yielding accumulates memory; nothing is allocated on the Rust side for a plain object, and the result passes through `JSON.stringify`, `structuredClone`, and worker transfer without conversion. Field names are camelCase, matching the `lindera-nodejs` binding.
@@ -314,6 +315,45 @@ A token is already a plain object, so it serializes as-is.
 ```javascript
 console.log(JSON.stringify(token, null, 2));
 ```
+
+## TokenDependency
+
+The bunsetsu of a token and the bunsetsu it depends on. The token filter `japanese_dependency` puts it in the `dependency` of every token; see [Token Filter](../lindera-dependency/token_filter.md) for the filter, its model, and how a text is cut into sentences.
+
+The filter is in builds with the `dependency` feature only. The distributed packages do not have it yet.
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `sentence` | `number` | The number of the sentence in the text, from 0 |
+| `bunsetsu` | `number` | The number of the bunsetsu of the token in its sentence, from 0 |
+| `head` | `number \| null` | The number of the bunsetsu that one depends on; `null` for the last bunsetsu of a sentence |
+| `role` | `string` | What the token is in its bunsetsu: `head` (the head word), `function` (the function word), `head_function` (both) or `other` |
+| `score` | `number` | The score of the decision that attached the bunsetsu to its head; 0 where nothing was decided |
+
+```javascript
+const model = new Uint8Array(await (await fetch("ipadic.model")).arrayBuffer());
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendDependencyFilter(model)
+  .build();
+for (const token of tokenizer.tokenize("彼は赤い花を見た。")) {
+  const { bunsetsu, head, role } = token.dependency;
+  console.log(token.surface, bunsetsu, head, role);
+}
+```
+
+```text
+彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 null head
+た 3 null function
+。 3 null other
+```
+
+There is no file system in WebAssembly, so the model is given as its bytes to `appendDependencyFilter(model)` (`append_dependency_filter` is its snake\_case alias), where the other bindings give a path to `appendTokenFilter`. `appendTokenFilter("japanese_dependency", ...)` is refused with an error that names this method. The method is in builds with the `dependency` feature only. A token without the filter has no `dependency` property.
 
 ## Helper Functions
 

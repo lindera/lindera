@@ -15,6 +15,119 @@ use crate::convert::int_arg;
 ///
 /// Provides access to token surface form, byte positions, word ID,
 /// and morphological details.
+/// The bunsetsu of a token and what that bunsetsu depends on: what the
+/// token filter `japanese_dependency` writes on a token.
+///
+/// The bunsetsu of a sentence are numbered from 0, and each of them but the
+/// last depends on a later one, its head.
+#[php_class]
+#[php(name = "Lindera\\TokenDependency")]
+#[derive(Clone)]
+pub struct PhpTokenDependency {
+    /// The number of the sentence in the text, from 0.
+    pub sentence: u32,
+    /// The number of the bunsetsu of the token in its sentence, from 0.
+    pub bunsetsu: u32,
+    /// The number of the bunsetsu the bunsetsu of the token depends on.
+    pub head: Option<u32>,
+    /// What the token is in its bunsetsu.
+    pub role: &'static str,
+    /// The score of the decision that attached the bunsetsu to its head.
+    pub score: f64,
+}
+
+#[php_impl]
+impl PhpTokenDependency {
+    /// Returns the number of the sentence in the text, from 0.
+    #[php(getter, change_case = "snake_case")]
+    pub fn sentence(&self) -> i64 {
+        i64::from(self.sentence)
+    }
+
+    /// Returns the number of the bunsetsu of the token in its sentence,
+    /// from 0.
+    #[php(getter, change_case = "snake_case")]
+    pub fn bunsetsu(&self) -> i64 {
+        i64::from(self.bunsetsu)
+    }
+
+    /// Returns the number of the bunsetsu that the bunsetsu of the token
+    /// depends on, or null for the last bunsetsu of a sentence.
+    #[php(getter, change_case = "snake_case")]
+    pub fn head(&self) -> Option<i64> {
+        self.head.map(i64::from)
+    }
+
+    /// Returns what the token is in its bunsetsu: `head`, `function`,
+    /// `head_function` or `other`.
+    #[php(getter, change_case = "snake_case")]
+    pub fn role(&self) -> String {
+        self.role.to_string()
+    }
+
+    /// Returns the score of the decision that attached the bunsetsu to its
+    /// head; 0 where there was nothing to decide.
+    #[php(getter, change_case = "snake_case")]
+    pub fn score(&self) -> f64 {
+        self.score
+    }
+
+    /// Returns the dependency as a plain associative array.
+    ///
+    /// # Returns
+    ///
+    /// An array with the keys `sentence`, `bunsetsu`, `head` (null for the
+    /// last bunsetsu of a sentence), `role` and `score`.
+    pub fn to_array(&self) -> PhpResult<ZBox<ZendHashTable>> {
+        let mut arr = ZendHashTable::new();
+        arr.insert("sentence", i64::from(self.sentence))
+            .map_err(|e| PhpException::from_message(e.to_string()))?;
+        arr.insert("bunsetsu", i64::from(self.bunsetsu))
+            .map_err(|e| PhpException::from_message(e.to_string()))?;
+        arr.insert("head", self.head.map(i64::from))
+            .map_err(|e| PhpException::from_message(e.to_string()))?;
+        arr.insert("role", self.role)
+            .map_err(|e| PhpException::from_message(e.to_string()))?;
+        arr.insert("score", self.score)
+            .map_err(|e| PhpException::from_message(e.to_string()))?;
+        Ok(arr)
+    }
+
+    /// Returns a string representation of the dependency.
+    pub fn __to_string(&self) -> String {
+        let head = match self.head {
+            Some(head) => head.to_string(),
+            None => "null".to_string(),
+        };
+        format!(
+            "TokenDependency(sentence={}, bunsetsu={}, head={}, role='{}', score={})",
+            self.sentence, self.bunsetsu, head, self.role, self.score
+        )
+    }
+}
+
+impl PhpTokenDependency {
+    /// Creates a `PhpTokenDependency` from a lindera-binding
+    /// `DependencyView`.
+    ///
+    /// # Arguments
+    ///
+    /// * `view` - The dependency of a token view.
+    ///
+    /// # Returns
+    ///
+    /// A new `PhpTokenDependency` instance.
+    fn from_view(view: lindera_binding::DependencyView) -> Self {
+        Self {
+            sentence: view.sentence,
+            bunsetsu: view.bunsetsu,
+            head: view.head,
+            role: view.role(),
+            score: view.score,
+        }
+    }
+}
+
 #[php_class]
 #[php(name = "Lindera\\Token")]
 #[derive(Clone)]
@@ -33,6 +146,9 @@ pub struct PhpToken {
     pub is_unknown: bool,
     /// Morphological details of the token.
     pub details: Vec<String>,
+    /// The bunsetsu of the token and its head, when the token filter
+    /// `japanese_dependency` ran.
+    pub dependency: Option<PhpTokenDependency>,
 }
 
 #[php_impl]
@@ -107,6 +223,17 @@ impl PhpToken {
         self.details.clone()
     }
 
+    /// Returns the bunsetsu of the token and its head.
+    ///
+    /// # Returns
+    ///
+    /// The dependency, or null unless the token filter
+    /// `japanese_dependency` ran.
+    #[php(getter, change_case = "snake_case")]
+    pub fn dependency(&self) -> Option<PhpTokenDependency> {
+        self.dependency.clone()
+    }
+
     /// Returns the detail at the specified index.
     ///
     /// # Arguments
@@ -147,6 +274,12 @@ impl PhpToken {
         arr.insert("is_unknown", self.is_unknown)
             .map_err(|e| PhpException::from_message(e.to_string()))?;
         arr.insert("details", self.details.clone())
+            .map_err(|e| PhpException::from_message(e.to_string()))?;
+        let dependency = match &self.dependency {
+            Some(dependency) => Some(dependency.to_array()?),
+            None => None,
+        };
+        arr.insert("dependency", dependency)
             .map_err(|e| PhpException::from_message(e.to_string()))?;
         Ok(arr)
     }
@@ -201,6 +334,7 @@ impl PhpToken {
             word_id: view.word_id,
             is_unknown: view.is_unknown,
             details: view.details,
+            dependency: view.dependency.map(PhpTokenDependency::from_view),
         }
     }
 }

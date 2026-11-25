@@ -12,6 +12,105 @@ use crate::util::integer_arg;
 /// Token object wrapping the Rust Token data.
 ///
 /// This class provides access to token fields and details.
+/// The bunsetsu of a token and what that bunsetsu depends on: what the
+/// token filter `japanese_dependency` writes on a token.
+///
+/// The bunsetsu of a sentence are numbered from 0, and each of them but the
+/// last depends on a later one, its head.
+#[derive(Clone)]
+#[magnus::wrap(class = "Lindera::TokenDependency", free_immediately, size)]
+pub struct RbTokenDependency {
+    /// The number of the sentence in the text, from 0.
+    sentence: u32,
+    /// The number of the bunsetsu of the token in its sentence, from 0.
+    bunsetsu: u32,
+    /// The number of the bunsetsu the bunsetsu of the token depends on.
+    head: Option<u32>,
+    /// What the token is in its bunsetsu.
+    role: &'static str,
+    /// The score of the decision that attached the bunsetsu to its head.
+    score: f64,
+}
+
+impl RbTokenDependency {
+    /// Creates an `RbTokenDependency` from a lindera-binding
+    /// `DependencyView`.
+    ///
+    /// # Arguments
+    ///
+    /// * `view` - The dependency of a token view.
+    ///
+    /// # Returns
+    ///
+    /// A new `RbTokenDependency` instance.
+    fn from_view(view: lindera_binding::DependencyView) -> Self {
+        Self {
+            sentence: view.sentence,
+            bunsetsu: view.bunsetsu,
+            head: view.head,
+            role: view.role(),
+            score: view.score,
+        }
+    }
+
+    /// Returns the number of the sentence in the text, from 0.
+    fn sentence(&self) -> u32 {
+        self.sentence
+    }
+
+    /// Returns the number of the bunsetsu of the token in its sentence,
+    /// from 0.
+    fn bunsetsu(&self) -> u32 {
+        self.bunsetsu
+    }
+
+    /// Returns the number of the bunsetsu that the bunsetsu of the token
+    /// depends on, or nil for the last bunsetsu of a sentence.
+    fn head(&self) -> Option<u32> {
+        self.head
+    }
+
+    /// Returns what the token is in its bunsetsu: `head`, `function`,
+    /// `head_function` or `other`.
+    fn role(&self) -> &'static str {
+        self.role
+    }
+
+    /// Returns the score of the decision that attached the bunsetsu to its
+    /// head; 0 where there was nothing to decide.
+    fn score(&self) -> f64 {
+        self.score
+    }
+
+    /// Returns the dependency as a plain Hash.
+    ///
+    /// # Returns
+    ///
+    /// A Hash with the symbol keys `:sentence`, `:bunsetsu`, `:head` (nil
+    /// for the last bunsetsu of a sentence), `:role` and `:score`.
+    fn to_hash(ruby: &Ruby, rb_self: &Self) -> Result<RHash, Error> {
+        let hash = ruby.hash_new();
+        hash.aset(ruby.to_symbol("sentence"), rb_self.sentence)?;
+        hash.aset(ruby.to_symbol("bunsetsu"), rb_self.bunsetsu)?;
+        hash.aset(ruby.to_symbol("head"), rb_self.head)?;
+        hash.aset(ruby.to_symbol("role"), rb_self.role)?;
+        hash.aset(ruby.to_symbol("score"), rb_self.score)?;
+        Ok(hash)
+    }
+
+    /// Returns the inspect representation of the dependency.
+    fn inspect(&self) -> String {
+        let head = match self.head {
+            Some(head) => head.to_string(),
+            None => "nil".to_string(),
+        };
+        format!(
+            "#<Lindera::TokenDependency sentence={}, bunsetsu={}, head={}, role='{}', score={}>",
+            self.sentence, self.bunsetsu, head, self.role, self.score
+        )
+    }
+}
+
 #[magnus::wrap(class = "Lindera::Token", free_immediately, size)]
 pub struct RbToken {
     /// Surface form of the token.
@@ -28,6 +127,9 @@ pub struct RbToken {
     is_unknown: bool,
     /// Morphological details of the token.
     details: Vec<String>,
+    /// The bunsetsu of the token and its head, when the token filter
+    /// `japanese_dependency` ran.
+    dependency: Option<RbTokenDependency>,
 }
 
 impl RbToken {
@@ -62,6 +164,7 @@ impl RbToken {
             word_id: view.word_id,
             is_unknown: view.is_unknown,
             details: view.details,
+            dependency: view.dependency.map(RbTokenDependency::from_view),
         }
     }
 
@@ -100,6 +203,12 @@ impl RbToken {
         self.details.clone()
     }
 
+    /// Returns the bunsetsu of the token and its head, or nil unless the
+    /// token filter `japanese_dependency` ran.
+    fn dependency(&self) -> Option<RbTokenDependency> {
+        self.dependency.clone()
+    }
+
     /// Returns the detail at the specified index.
     ///
     /// # Arguments
@@ -127,8 +236,9 @@ impl RbToken {
     /// # Returns
     ///
     /// A Hash with the keys `:surface`, `:byte_start`, `:byte_end`,
-    /// `:position`, `:word_id`, `:is_unknown`, and `:details`, or a Magnus
-    /// `Error` if the Hash cannot be built.
+    /// `:position`, `:word_id`, `:is_unknown`, `:details`, and
+    /// `:dependency` (nil, or the Hash of `TokenDependency#to_h`), or a
+    /// Magnus `Error` if the Hash cannot be built.
     fn to_hash(ruby: &Ruby, rb_self: &Self) -> Result<RHash, Error> {
         let this = rb_self;
         let hash = ruby.hash_new();
@@ -143,6 +253,13 @@ impl RbToken {
             details.push(detail.as_str())?;
         }
         hash.aset(ruby.to_symbol("details"), details)?;
+        match &this.dependency {
+            Some(dependency) => hash.aset(
+                ruby.to_symbol("dependency"),
+                RbTokenDependency::to_hash(ruby, dependency)?,
+            )?,
+            None => hash.aset(ruby.to_symbol("dependency"), ruby.qnil())?,
+        }
         Ok(hash)
     }
 
@@ -188,8 +305,19 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
     token_class.define_method("to_hash", method!(RbToken::to_hash, 0))?;
     token_class.define_method("to_h", method!(RbToken::to_hash, 0))?;
 
+    token_class.define_method("dependency", method!(RbToken::dependency, 0))?;
     token_class.define_method("to_s", method!(RbToken::to_s, 0))?;
     token_class.define_method("inspect", method!(RbToken::inspect, 0))?;
+
+    let dependency_class = module.define_class("TokenDependency", ruby.class_object())?;
+    dependency_class.define_method("sentence", method!(RbTokenDependency::sentence, 0))?;
+    dependency_class.define_method("bunsetsu", method!(RbTokenDependency::bunsetsu, 0))?;
+    dependency_class.define_method("head", method!(RbTokenDependency::head, 0))?;
+    dependency_class.define_method("role", method!(RbTokenDependency::role, 0))?;
+    dependency_class.define_method("score", method!(RbTokenDependency::score, 0))?;
+    dependency_class.define_method("to_hash", method!(RbTokenDependency::to_hash, 0))?;
+    dependency_class.define_method("to_h", method!(RbTokenDependency::to_hash, 0))?;
+    dependency_class.define_method("inspect", method!(RbTokenDependency::inspect, 0))?;
 
     Ok(())
 }

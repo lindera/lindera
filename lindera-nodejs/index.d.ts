@@ -945,6 +945,37 @@ export interface Token {
   isUnknown: boolean
   /** Morphological details of the token. */
   details: Array<string>
+  /**
+   * The bunsetsu of the token and its head. The property is there only
+   * when the token filter `japanese_dependency` ran.
+   */
+  dependency?: TokenDependency
+}
+
+/**
+ * The bunsetsu of a token and what that bunsetsu depends on: what the
+ * token filter `japanese_dependency` writes on a token.
+ *
+ * The bunsetsu of a sentence are numbered from 0, and each of them but the
+ * last depends on a later one, its head.
+ */
+export interface TokenDependency {
+  /** The number of the sentence in the text, from 0. */
+  sentence: number
+  /** The number of the bunsetsu of the token in its sentence, from 0. */
+  bunsetsu: number
+  /**
+   * The number of the bunsetsu that the bunsetsu of the token depends
+   * on, or `null` for the last bunsetsu of a sentence.
+   */
+  head: number | null
+  /** What the token is in its bunsetsu. */
+  role: 'head' | 'function' | 'head_function' | 'other'
+  /**
+   * The score of the decision that attached the bunsetsu to its head; 0
+   * where there was nothing to decide.
+   */
+  score: number
 }
 
 /**

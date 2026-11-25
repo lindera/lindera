@@ -19,6 +19,7 @@ import {
   TokenizerBuilder,
   type Dictionary,
   type Token,
+  type TokenDependency,
   type NbestResult,
   type Penalty,
 } from "../index.js";
@@ -40,6 +41,25 @@ export function checkTokenShape(text: string): void {
   const details: Array<string> = token.details;
 
   void [surface, byteStart, byteEnd, position, wordId, isUnknown, details];
+
+  // The dependency is there only when the token filter
+  // `japanese_dependency` ran (#1438), and the head of the last bunsetsu
+  // of a sentence is null.
+  const dependency: TokenDependency | undefined = token.dependency;
+  if (dependency !== undefined) {
+    const sentence: number = dependency.sentence;
+    const bunsetsu: number = dependency.bunsetsu;
+    const head: number | null = dependency.head;
+    const role: "head" | "function" | "head_function" | "other" =
+      dependency.role;
+    const score: number = dependency.score;
+    // @ts-expect-error -- the head may be null.
+    const always: number = dependency.head;
+    void [sentence, bunsetsu, head, role, score, always];
+  }
+  // @ts-expect-error -- a token without the filter has no dependency.
+  const present: TokenDependency = token.dependency;
+  void present;
 
   // The surfaces fast path.
   const surfaces: Array<string> = tokenizer.tokenizeSurfaces(text);

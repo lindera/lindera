@@ -16,6 +16,9 @@ license = { workspace = true }
 # benches in this crate; the bindings enable embedding via their own crates.
 embed-ipadic = ["lindera/embed-ipadic"]
 embed-ko-dic = ["lindera/embed-ko-dic"]
+# The token filter japanese_dependency (#1438): the bindings forward their
+# own `dependency` feature here. Not in the default build.
+dependency = ["lindera/dependency"]
 
 [dependencies]
 lindera = { workspace = true, features = ["analysis"] }

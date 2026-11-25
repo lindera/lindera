@@ -165,13 +165,15 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 - **What the filter can see of an earlier filter is the positions.** The tokenizer numbers its tokens from 0 without a gap, a filter that removes tokens leaves a gap, and one that joins them a token of more than one position. A rewritten surface or detail, and tokens removed from the end, cannot be seen; the documentation says to put the filter first.
 - **The tokens are read where they are.** A morpheme of the filter borrows the surface and the details of its token. The model is behind an `Arc`, shared by the clones of the filter, which a tokenizer makes when it is cloned.
 - **The filter gives what the command gives**: on the 543 sentences of the test file of UD Japanese-GSD, every token has the bunsetsu, the head, the role and the score of `lindera-dependency parse` with the same model.
+- **The bindings give the dependency as an object of its own on a token**, and nothing without the filter: `None` in Python, `nil` in Ruby, `null` in PHP, and no property in Node.js and WebAssembly, where a token is a plain object and stays the object it was. The head of the last bunsetsu is null in every binding, as in the JSON of the command. `TokenView` of `lindera-binding` carries it to all five.
+- **Node.js makes the names of the six properties for the first token that has a dependency**, in the handle scope that token is made in, and again after the scope is renewed: a call without the filter makes the objects it made before, with the calls it made before.
+- **WebAssembly takes the bytes of a model**, with `appendDependencyFilter`: there is no path to read. The builder of `lindera-binding` takes a filter that was made in Rust for it, and runs it where it was appended among the filters given by `kind`.
 - **Not verified**: a dictionary other than IPADIC, for which there is no schema yet.
 
 ## What is to come
 
 | Part | Notes | Issue |
 | --- | --- | --- |
-| Token filter in the bindings | `TokenView` of `lindera-binding`, and the field of a token in Python, Node.js, Ruby, PHP and WASM. | [#1438](https://github.com/lindera/lindera/issues/1438) |
 | IPADIC model | Training, release, documentation, license notes. The crate is published with it. | [#1440](https://github.com/lindera/lindera/issues/1440) |
 | UniDic model | A second schema. | [#1441](https://github.com/lindera/lindera/issues/1441) |
 | Converter for the models of CaboCha | The normalization table of the surface, the reader of a CRF++ text model, and the expansion of the support vectors of the parser model. | [#1442](https://github.com/lindera/lindera/issues/1442) |
@@ -343,7 +345,7 @@ The default chunker model, on one core of an AMD Ryzen AI Max+ 395, with Rust 1.
 | [#1436](https://github.com/lindera/lindera/issues/1436) | Dependency parser: the loop, the features, the training instances | Done |
 | [#1433](https://github.com/lindera/lindera/issues/1433) | The baselines of CaboCha and J.DepP, measured again | Open |
 | [#1437](https://github.com/lindera/lindera/issues/1437) | The model file, and the training of the parser | Done |
-| [#1438](https://github.com/lindera/lindera/issues/1438) | Token filter | The filter and the command done; the bindings open |
+| [#1438](https://github.com/lindera/lindera/issues/1438) | Token filter | Done |
 | [#1439](https://github.com/lindera/lindera/issues/1439) | Command | Done |
 | [#1440](https://github.com/lindera/lindera/issues/1440) | IPADIC model, and the publication of the crate | Open |
 | [#1441](https://github.com/lindera/lindera/issues/1441) | UniDic model | Open |

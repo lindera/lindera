@@ -438,6 +438,7 @@ normal モードはペナルティを持ちません。`Mode.normal()` は引数
 | `word_id` | `int` | 辞書の単語 ID |
 | `is_unknown` | `bool` | 辞書に登録されていない単語の場合 `True` |
 | `details` | `list[str]` または `None` | 形態素の詳細情報（品詞、読みなど） |
+| `dependency` | `TokenDependency` または `None` | トークンの文節とその係り先。トークンフィルター `japanese_dependency` を使ったときだけ入り、それ以外は `None` |
 
 ### Token メソッド
 
@@ -483,6 +484,47 @@ json.dumps([token.to_dict() for token in tokens])
 - **IPADIC**: `[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]`
 - **UniDic**: UniDic 仕様に準拠した詳細な形態素情報
 - **ko-dic / CC-CEDICT / Jieba**: 各辞書固有の詳細フォーマット
+
+## TokenDependency
+
+トークンの文節と、その文節の係り先です。トークンフィルター `japanese_dependency` を使うと、各トークンの `dependency` に入ります。フィルター、モデル、テキストの文への分け方は、[トークンフィルター](../lindera-dependency/token_filter.md)を見てください。
+
+フィルターは、`dependency` feature を付けたビルドにだけ入ります。配布しているパッケージには、まだ入っていません。
+
+| プロパティ | 型 | 説明 |
+| --- | --- | --- |
+| `sentence` | `int` | テキストの中での文の番号。0 から |
+| `bunsetsu` | `int` | 文の中での、トークンの文節の番号。0 から |
+| `head` | `int` または `None` | その文節の係り先の文節の番号。文の最後の文節では `None` |
+| `role` | `str` | 文節の中での役割。`head`（主辞）、`function`（機能語）、`head_function`（両方）、`other` のどれか |
+| `score` | `float` | その文節を係り先に付けた判定のスコア。判定の無いところは 0 |
+
+```python
+from lindera import TokenizerBuilder
+
+tokenizer = (
+    TokenizerBuilder()
+    .set_dictionary("embedded://ipadic")
+    .append_token_filter("japanese_dependency", {"model": "ipadic.model"})
+    .build()
+)
+for token in tokenizer.tokenize("彼は赤い花を見た。"):
+    dependency = token.dependency
+    print(token.surface, dependency.bunsetsu, dependency.head, dependency.role)
+```
+
+```text
+彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 None head
+た 3 None function
+。 3 None other
+```
+
+`TokenDependency.to_dict()` は 5 つのフィールドを `dict` で返し、`Token.to_dict()` はそれを `dependency` というキーに入れます（フィルターなしでは `None`）。`TokenDependency` は変更できません。
 
 ## エラーハンドリング
 

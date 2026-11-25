@@ -320,6 +320,7 @@ foreach ($batch as $tokens) {
 | `word_id` | `int` | 辞書の単語 ID |
 | `is_unknown` | `bool` | 辞書に登録されていない単語の場合 `true` |
 | `details` | `array<string>` | 形態素の詳細情報（品詞、読みなど） |
+| `dependency` | `Lindera\TokenDependency` または `null` | トークンの文節とその係り先。トークンフィルター `japanese_dependency` を使ったときだけ入り、それ以外は `null` |
 
 ### Token メソッド
 
@@ -370,6 +371,45 @@ echo json_encode(array_map(fn($t) => $t->toArray(), $tokens));
 - **IPADIC**: `[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]`
 - **UniDic**: UniDic 仕様に準拠した詳細な形態素情報
 - **ko-dic / CC-CEDICT / Jieba**: 各辞書固有の詳細フォーマット
+
+## TokenDependency
+
+トークンの文節と、その文節の係り先です。トークンフィルター `japanese_dependency` を使うと、各トークンの `dependency` に入ります。フィルター、モデル、テキストの文への分け方は、[トークンフィルター](../lindera-dependency/token_filter.md)を見てください。
+
+フィルターは、`dependency` feature を付けたビルドにだけ入ります。配布しているパッケージには、まだ入っていません。
+
+| プロパティ | 型 | 説明 |
+| --- | --- | --- |
+| `sentence` | `int` | テキストの中での文の番号。0 から |
+| `bunsetsu` | `int` | 文の中での、トークンの文節の番号。0 から |
+| `head` | `int` または `null` | その文節の係り先の文節の番号。文の最後の文節では `null` |
+| `role` | `string` | 文節の中での役割。`head`（主辞）、`function`（機能語）、`head_function`（両方）、`other` のどれか |
+| `score` | `float` | その文節を係り先に付けた判定のスコア。判定の無いところは 0 |
+
+```php
+$builder = new Lindera\TokenizerBuilder();
+$builder->setDictionary('embedded://ipadic');
+$builder->appendTokenFilter('japanese_dependency', ['model' => 'ipadic.model']);
+$tokenizer = $builder->build();
+foreach ($tokenizer->tokenize('彼は赤い花を見た。') as $token) {
+    $dependency = $token->dependency;
+    echo $token->surface, ' ', $dependency->bunsetsu, ' ',
+        var_export($dependency->head, true), ' ', $dependency->role, "\n";
+}
+```
+
+```text
+彼 0 3 head
+は 0 3 function
+赤い 1 2 head_function
+花 2 3 head
+を 2 3 function
+見 3 NULL head
+た 3 NULL function
+。 3 NULL other
+```
+
+`TokenDependency::toArray()` は 5 つのフィールドを配列で返し、`Token::toArray()` はそれを `dependency` というキーに入れます（フィルターなしでは `null`）。
 
 ## Mode
 

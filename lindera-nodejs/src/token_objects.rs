@@ -25,8 +25,8 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 use std::sync::mpsc;
 
-use lindera_binding::TokenView;
 use lindera_binding::tokenizer::NbestViews;
+use lindera_binding::{DependencyView, TokenView};
 use napi::sys;
 
 use crate::js;
@@ -48,6 +48,13 @@ const TOKEN_FIELDS: [&str; 7] = [
     "isUnknown",
     "details",
 ];
+
+/// The field of a token object that only a token with a dependency has.
+const DEPENDENCY_FIELD: &str = "dependency";
+
+/// The fields of the dependency of a token, in the order of
+/// `TokenDependency`.
+const DEPENDENCY_FIELDS: [&str; 5] = ["sentence", "bunsetsu", "head", "role", "score"];
 
 /// The fields of an N-best result, in the order of `NbestResult`.
 const NBEST_FIELDS: [&str; 2] = ["tokens", "cost"];
@@ -144,6 +151,10 @@ struct Maker<'v> {
     token_fields: [sys::napi_value; 7],
     /// The names of the fields of an N-best result.
     nbest_fields: [sys::napi_value; 2],
+    /// The names of the fields of a token object with a dependency, and of
+    /// the dependency: made in the current scope for the first token that
+    /// has one, so that a call without the filter makes none.
+    dependency_fields: Option<([sys::napi_value; 8], [sys::napi_value; 5])>,
     /// The strings made in the current scope.
     strings: HashMap<&'v str, sys::napi_value>,
     /// The current scope.
@@ -177,6 +188,7 @@ impl<'v> Maker<'v> {
             env,
             token_fields,
             nbest_fields,
+            dependency_fields: None,
             strings: HashMap::new(),
             scope,
             made: 0,
@@ -224,7 +236,78 @@ impl<'v> Maker<'v> {
                 details,
             ];
             self.made += 1;
-            js::object(env, &self.token_fields, values)
+            match &view.dependency {
+                None => js::object(env, &self.token_fields, values),
+                Some(dependency) => self.token_with_dependency(values, dependency),
+            }
+        }
+    }
+
+    /// The object of a token that has a dependency: the fields of every
+    /// token, and `dependency` after them.
+    ///
+    /// # Arguments
+    ///
+    /// * `values` - The values of the fields of every token.
+    /// * `dependency` - The dependency of the token.
+    ///
+    /// # Safety
+    ///
+    /// As [`Maker::string`].
+    unsafe fn token_with_dependency(
+        &mut self,
+        values: [sys::napi_value; 7],
+        dependency: &DependencyView,
+    ) -> napi::Result<sys::napi_value> {
+        let env = self.env;
+        // SAFETY: `env` is the environment of the current call, and every
+        // handle belongs to the current scope or to the call's.
+        unsafe {
+            let (token_fields, fields) = match self.dependency_fields {
+                Some(names) => names,
+                None => {
+                    let mut token_fields = [std::ptr::null_mut(); 8];
+                    token_fields[..7].copy_from_slice(&self.token_fields);
+                    token_fields[7] = js::string(env, DEPENDENCY_FIELD)?;
+                    let mut fields = [std::ptr::null_mut(); 5];
+                    for (name, field) in fields.iter_mut().zip(DEPENDENCY_FIELDS) {
+                        *name = js::string(env, field)?;
+                    }
+                    self.dependency_fields = Some((token_fields, fields));
+                    (token_fields, fields)
+                }
+            };
+            let head = match dependency.head {
+                Some(head) => js::uint32(env, head)?,
+                None => js::null(env)?,
+            };
+            let object = js::object(
+                env,
+                &fields,
+                [
+                    js::uint32(env, dependency.sentence)?,
+                    js::uint32(env, dependency.bunsetsu)?,
+                    head,
+                    self.string(dependency.role())?,
+                    js::double(env, dependency.score)?,
+                ],
+            )?;
+            let [
+                surface,
+                byte_start,
+                byte_end,
+                position,
+                word_id,
+                is_unknown,
+                details,
+            ] = values;
+            js::object(
+                env,
+                &token_fields,
+                [
+                    surface, byte_start, byte_end, position, word_id, is_unknown, details, object,
+                ],
+            )
         }
     }
 
@@ -259,6 +342,8 @@ impl<'v> Maker<'v> {
             return Ok(false);
         }
         self.strings.clear();
+        // Their handles were of the scope that closes.
+        self.dependency_fields = None;
         self.made = 0;
         let scope = std::mem::replace(&mut self.scope, std::ptr::null_mut());
         // SAFETY: the caller guarantees that the maker's scope is the

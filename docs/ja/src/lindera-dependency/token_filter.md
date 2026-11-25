@@ -20,6 +20,10 @@ the token filter japanese_dependency needs a build with the feature `dependency`
 
 `lindera-dependency` は crates.io にまだ公開していないので、この feature は、リポジトリのチェックアウトでだけ使えます。バインディングには、まだフィルターが入っていません（[#1438](https://github.com/lindera/lindera/issues/1438)）。
 
+## バインディングから
+
+Python、Node.js、Ruby、PHP では、ほかのフィルターと同じく、`kind` とモデルのパスでフィルターを足します。トークンには `dependency` が入ります。下の 5 つのフィールドを持つオブジェクトで、フィルターを使わなければ何も入りません（`None`、`nil`、`null`、プロパティなし）。WebAssembly ではパスを読めないので、`appendDependencyFilter` にモデルのバイト列を渡します。どれも、バインディングを `dependency` feature を付けてビルドする必要があります。配布しているパッケージには、まだ入っていません。各バインディングの API のページに例があります: [Python](../lindera-python/tokenizer_api.md#tokendependency)、[Node.js](../lindera-nodejs/tokenizer_api.md#tokendependency)、[Ruby](../lindera-ruby/tokenizer_api.md#tokendependency)、[PHP](../lindera-php/tokenizer_api.md#tokendependency)、[WebAssembly](../lindera-wasm/tokenizer_api.md#tokendependency)。
+
 ## モデル
 
 フィルターの引数は `model` の 1 つです。文節の区切りと解析器の両方を持ち、トークナイザーの辞書に合ったモデルファイルのパスを渡します。配布しているモデルは、まだありません（[#1440](https://github.com/lindera/lindera/issues/1440)）。学習の方法は[係り受けの解析](./parsing.md)に、ファイルの中身は[モデルファイル](./model_file.md)にあります。
